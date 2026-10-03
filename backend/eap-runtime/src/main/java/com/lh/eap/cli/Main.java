@@ -1,0 +1,5 @@
+package com.lh.eap.cli;
+import com.lh.eap.api.*; import com.lh.eap.capability.*; import com.lh.eap.core.*; import java.nio.file.*;
+public final class Main {
+  public static void main(String[] args) { if (args.length < 2) { System.err.println("Usage: <status|diff|search> <workspace> [args...]"); return; } var registry = new CapabilityRegistry().register(new GitCapability("status")).register(new GitCapability("diff")).register(new RipgrepCapability()); var context = new ExecutionContext(Path.of(args[1]).toAbsolutePath().normalize(), new DefaultProcessExecutor()); var name = switch (args[0]) { case "status" -> "git-status"; case "diff" -> "git-diff"; case "search" -> "rg-search"; default -> throw new IllegalArgumentException("Unknown command: " + args[0]); }; var rest = java.util.Arrays.copyOfRange(args, 2, args.length); var o = registry.require(name).execute(context, rest); System.out.print(o.stdout()); if (!o.success()) { System.err.print(o.stderr()); System.exit(o.exitCode() == -1 ? 1 : o.exitCode()); } }
+}
