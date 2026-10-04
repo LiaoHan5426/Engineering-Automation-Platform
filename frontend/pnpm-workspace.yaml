@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - internal/*
 
 catalog:
   vue: ^3.5.0

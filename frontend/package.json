@@ -11,10 +11,20 @@
     "build": "vp build",
     "check": "vp check",
     "test": "vp test",
-    "preview": "vp preview"
+    "preview": "vp preview",
+    "stylelint": "stylelint \"**/*.{css,vue}\"",
+    "stylelint:fix": "stylelint \"**/*.{css,vue}\" --fix",
+    "clean": "node ./scripts/clean.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.0",
+    "@eap/stylelint-config": "workspace:*",
+    "@tailwindcss/vite": "^4.1.0",
+    "postcss-html": "^1.8.0",
+    "stylelint": "^16.20.0",
+    "stylelint-config-recess-order": "^7.4.0",
+    "stylelint-config-standard": "^38.0.0",
+    "tailwindcss": "^4.1.0",
     "vite-plus": "^1.0.0",
     "vue": "^3.5.0"
   }
