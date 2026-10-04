@@ -1,10 +1,11 @@
 {
   "name": "engineering-automation-platform-frontend",
   "private": true,
-  "packageManager": "pnpm@10.6.2",
+  "packageManager": "pnpm@12.9.0",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "internal/*"
   ],
   "scripts": {
     "dev": "vp dev",
@@ -17,15 +18,16 @@
     "clean": "node ./scripts/clean.mjs"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.0",
+    "@vitejs/plugin-vue": "catalog:tooling",
     "@eap/stylelint-config": "workspace:*",
-    "@tailwindcss/vite": "^4.1.0",
-    "postcss-html": "^1.8.0",
-    "stylelint": "^16.20.0",
-    "stylelint-config-recess-order": "^7.4.0",
-    "stylelint-config-standard": "^38.0.0",
-    "tailwindcss": "^4.1.0",
-    "vite-plus": "^1.0.0",
-    "vue": "^3.5.0"
+    "@tailwindcss/vite": "catalog:frontend",
+    "postcss-html": "catalog:style",
+    "stylelint": "catalog:style",
+    "stylelint-config-recess-order": "catalog:style",
+    "stylelint-config-standard": "catalog:style",
+    "tailwindcss": "catalog:frontend",
+    "vite": "catalog:tooling",
+    "vite-plus": "catalog:tooling",
+    "vue": "catalog:frontend"
   }
 }

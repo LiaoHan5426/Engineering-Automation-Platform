@@ -11,6 +11,12 @@ scripts/    Optional Python tooling and automation helpers
 docs/       Architecture and roadmap
 ```
 
+Planning documents:
+
+- [Frontend prototype](docs/frontend-prototype.md)
+- [Backend architecture and flow](docs/backend-architecture.md)
+- [Development environment](docs/environment.md)
+
 ## First phase
 
 ```text
@@ -29,8 +35,7 @@ Requires JDK 25 and Maven 3.9+.
 ```shell
 cd backend
 mvn test
-mvn package
-java -cp target/classes com.lh.eap.cli.Main status .
+mvn spring-boot:run -pl eap-runtime -am
 ```
 
 Frontend commands use Vite+ from the `frontend/` workspace:

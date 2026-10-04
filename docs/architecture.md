@@ -8,7 +8,7 @@ The repository has three independently buildable areas: a Vue/Vite frontend for 
 - Frontend: Vue 3, TypeScript, Vite+, pnpm workspace, Tailwind CSS 4 through the Vite plugin, and Stylelint through the reusable `@eap/stylelint-config` package in `frontend/internal/stylelint-config`.
 - Frontend linting: Vite+ remains responsible for TypeScript/Vue lint and formatting; Stylelint is responsible for CSS and Vue SFC style blocks. The frontend root `clean` script uses Node's filesystem API to remove dependencies, caches and build output because Vite+ does not provide the required clean-and-reinstall workflow.
 
-The runtime exposes small synchronous capabilities through a stable SPI. A `Capability` receives an `ExecutionContext` and returns an immutable `Observation`; it does not claim that an observation is correct beyond what it measured.
+The runtime is a Spring Boot application in `eap-runtime` and exposes HTTP APIs through Spring MVC. The runtime exposes small synchronous capabilities through a stable SPI. A `Capability` receives an `ExecutionContext` and returns an immutable `Observation`; it does not claim that an observation is correct beyond what it measured.
 
 `ProcessExecutor` is the only abstraction responsible for launching local processes. Git and ripgrep capabilities build argument lists without shell interpolation, making command execution deterministic and inspectable. `CapabilityRegistry` provides explicit name-to-capability lookup.
 

@@ -10,10 +10,14 @@
   },
   "dependencies": {
     "@eap/ui": "workspace:*",
-    "vue": "catalog:"
+    "axios": "catalog:frontend",
+    "nprogress": "catalog:frontend",
+    "vue": "catalog:frontend",
+    "vue-i18n": "catalog:frontend"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.0",
-    "typescript": "catalog:"
+    "@types/nprogress": "catalog:tooling",
+    "@vitejs/plugin-vue": "catalog:tooling",
+    "typescript": "catalog:tooling"
   }
 }

@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { StatusCard } from '@eap/ui'
+import { onMounted, ref } from 'vue'
+import { Badge, Button, MetricCard, Panel } from '@eap/ui'
+import { runtimeApi, type SqlAnalysis, type TaskResult } from './api'
 
-const status = ref('Ready')
+const activeView = ref('Tasks'); const runtimeStatus = ref('Offline'); const capabilities = ref<string[]>([])
+const goal = ref(''); const task = ref<TaskResult | null>(null); const taskBusy = ref(false)
+const sql = ref(''); const sqlResult = ref<SqlAnalysis | null>(null); const sqlBusy = ref(false)
+const databaseInfo = ref<Array<{ id: string; label: string; engine: string; environment: string; credentialsExposed: boolean }>>([])
+const submitTask = async () => { if (!goal.value.trim()) return; taskBusy.value = true; try { task.value = await runtimeApi.createTask(goal.value) } finally { taskBusy.value = false } }
+const analyzeSql = async () => { if (!sql.value.trim()) return; sqlBusy.value = true; try { sqlResult.value = await runtimeApi.analyzeSql(sql.value) } finally { sqlBusy.value = false } }
+onMounted(async () => { try { const [health, available, databases] = await Promise.all([runtimeApi.health(), runtimeApi.capabilities(), runtimeApi.databases()]); runtimeStatus.value = health.status === 'ok' ? 'Connected' : 'Degraded'; capabilities.value = available.capabilities; databaseInfo.value = databases.items } catch { runtimeStatus.value = 'Offline' } })
 </script>
 
-<template>
-  <main>
-    <h1>Engineering Automation Platform</h1>
-    <p>Deterministic-first developer agent runtime.</p>
-    <StatusCard :status="status" />
-  </main>
-</template>
+<template><div class="shell"><aside class="sidebar"><div class="brand">EAP <span>Runtime</span></div><p class="eyebrow">WORKSPACE</p><nav><button v-for="item in ['Tasks', 'SQL Expert', 'Databases', 'Capabilities']" :key="item" :class="{ active: activeView === item }" type="button" @click="activeView = item">{{ item }}</button></nav><div class="sidebar__footer">Deterministic-first<br><span>Local workspace</span></div></aside>
+<main class="content"><header class="topbar"><div><p class="eyebrow">ENGINEERING AUTOMATION PLATFORM</p><h1>{{ activeView }}</h1></div><Badge :label="runtimeStatus" :tone="runtimeStatus === 'Connected' ? 'success' : 'warning'" /></header>
+<div class="metrics"><MetricCard label="Runtime" :value="runtimeStatus" detail="Spring Boot backend" /><MetricCard label="Capabilities" :value="String(capabilities.length)" detail="Registered locally" /><MetricCard label="Database" :value="databaseInfo.length ? 'Protected' : 'Unavailable'" detail="Credentials never exposed" /></div>
+<section v-if="activeView === 'Tasks'" class="layout"><Panel title="Task workspace" description="Describe the outcome you need"><textarea v-model="goal" class="workspace-input" rows="5" placeholder="例如：检查当前仓库状态，或设计知识库授权方案" /><Button label="Submit requirement" variant="primary" :disabled="taskBusy || !goal.trim()" @click="submitTask" /><div v-if="task" class="result"><div class="result-heading"><strong>{{ task.status }}</strong><Badge :label="task.decision" :tone="task.decision === 'accepted' ? 'success' : 'warning'" /></div><p>{{ task.goal }}</p><div v-if="task.observations.length === 0" class="planning-note">No deterministic capability matched. Planning or clarification is required.</div><article v-for="item in task.observations" :key="item.capability" class="observation"><strong>{{ item.capability }} · {{ item.success ? 'passed' : 'failed' }}</strong><pre>{{ item.stdout || item.stderr || 'No output' }}</pre></article></div></Panel><Panel title="How it works" description="Independent evidence"><p>Requirements are routed to bounded local capabilities first. External agents are not treated as truth.</p><p>Unknown requirements remain in planning instead of triggering unrelated Git commands.</p></Panel></section>
+<section v-else-if="activeView === 'SQL Expert'" class="layout"><Panel title="SQL expert" description="Review, rewrite and optimize SQL"><textarea v-model="sql" class="workspace-input code-input" rows="12" placeholder="SELECT ..." /><Button label="Analyze SQL" variant="primary" :disabled="sqlBusy || !sql.trim()" @click="analyzeSql" /><div v-if="sqlResult" class="result"><strong>Analysis · {{ sqlResult.analysisMode }}</strong><pre>{{ sqlResult.sql }}</pre><h3>Optimization advice</h3><ul><li v-for="item in sqlResult.advice" :key="item">{{ item }}</li></ul><div v-if="sqlResult.expertAdvice" class="expert-advice"><h3>Local model expert advice</h3><p>{{ sqlResult.expertAdvice }}</p></div><h3>Safety</h3><ul><li v-for="item in sqlResult.safety" :key="item">{{ item }}</li></ul></div></Panel><Panel title="Execution policy" description="Database information protection"><p>SQL is analyzed without automatically connecting to a database.</p><p>Credentials, passwords and connection strings are excluded from expert context.</p></Panel></section>
+<section v-else-if="activeView === 'Databases'" class="layout"><Panel title="Database information" description="Sanitized metadata available to experts"><article v-for="item in databaseInfo" :key="item.id" class="database-row"><strong>{{ item.label }}</strong><span>{{ item.engine }} · {{ item.environment }}</span><Badge label="Credentials hidden" tone="success" /></article></Panel><Panel title="Access policy" description="Least privilege"><p>Experts receive only explicitly authorized schema metadata and approved query plans.</p><p>Passwords and raw JDBC URLs remain server-side.</p></Panel></section>
+<section v-else class="layout"><Panel title="Capabilities" description="Bounded local tools"><ul><li v-for="item in capabilities" :key="item">{{ item }}</li></ul></Panel></section></main></div></template>

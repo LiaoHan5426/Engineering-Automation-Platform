@@ -4,5 +4,8 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 public record ExecutionContext(Path workspace, ProcessExecutor executor) {
-  public ExecutionContext { Objects.requireNonNull(workspace); Objects.requireNonNull(executor); }
+    public ExecutionContext {
+        Objects.requireNonNull(workspace);
+        Objects.requireNonNull(executor);
+    }
 }

@@ -5,8 +5,8 @@
   "type": "module",
   "exports": "./index.mjs",
   "dependencies": {
-    "postcss-html": "^1.8.0",
-    "stylelint-config-recess-order": "^7.4.0",
-    "stylelint-config-standard": "^38.0.0"
+    "postcss-html": "catalog:style",
+    "stylelint-config-recess-order": "catalog:style",
+    "stylelint-config-standard": "catalog:style"
   }
 }

@@ -1,0 +1,27 @@
+server:
+  address: 127.0.0.1
+  port: ${EAP_SERVER_PORT:8080}
+spring:
+  application:
+    name: eap-runtime
+  devtools:
+    restart:
+      enabled: true
+  datasource:
+    url: ${EAP_DB_URL:jdbc:postgresql://localhost:54321/postgres?currentSchema=eap}
+    username: ${EAP_DB_USERNAME:postgres}
+    password: ${EAP_DB_PASSWORD:1269482226lh.}
+  flyway:
+    locations: classpath:db/migration
+    schemas: eap
+    default-schema: eap
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+eap:
+  llm:
+    enabled: ${EAP_LLM_ENABLED:false}
+    base-url: ${EAP_LLM_BASE_URL:http://127.0.0.1:1234/v1}
+    model: ${EAP_LLM_MODEL:text-embedding-bge-m3}
