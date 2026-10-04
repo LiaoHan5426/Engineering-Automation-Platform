@@ -5,8 +5,8 @@ A cross-platform engineering automation platform with a Vue frontend and a Java 
 ## Repository layout
 
 ```text
-frontend/   Vue monorepo managed by Vite+
-backend/    Java 25 / Maven multi-module runtime
+frontend/   Vue 3 / TypeScript monorepo managed by Vite+
+backend/    Java 25 / Spring Boot / Maven multi-module runtime
 scripts/    Optional Python tooling and automation helpers
 docs/       Architecture and roadmap
 ```
@@ -40,6 +40,10 @@ vp install
 vp check
 vp build
 vp dev
+
+# Remove node_modules, caches and build output, then reinstall dependencies
+pnpm clean
+pnpm install
 ```
 
 Licensed under Apache-2.0.
