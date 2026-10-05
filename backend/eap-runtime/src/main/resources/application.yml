@@ -25,3 +25,4 @@ eap:
     enabled: ${EAP_LLM_ENABLED:false}
     base-url: ${EAP_LLM_BASE_URL:http://127.0.0.1:1234/v1}
     model: ${EAP_LLM_MODEL:text-embedding-bge-m3}
+EAP_ADOPT_EXISTING_SCHEMA: true

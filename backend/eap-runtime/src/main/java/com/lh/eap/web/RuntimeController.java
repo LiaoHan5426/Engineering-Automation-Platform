@@ -43,9 +43,10 @@ public class RuntimeController {
 
     @PostMapping("/tasks")
     public Map<String, Object> createTask(@RequestBody TaskRequest request) {
-        if (request.goal() == null || request.goal().isBlank()) throw new IllegalArgumentException("goal is required");
+        if (request.goal() == null || request.goal().isBlank() || request.goal().length()>8000) throw new IllegalArgumentException("需求不能为空，最多8000字符");
+        request=new TaskRequest(SensitiveData.redact(request.goal()));
         var id = UUID.randomUUID();
-        log.info("Task {} started: goal={}", id, request.goal());
+        log.info("Task {} started: goalLength={}", id, request.goal().length());
         var plan = DeterministicTaskPlanner.plan(request.goal());
         if (plan.capability() == null) {
             log.info("Task {} requires planning: no deterministic capability matched", id);
@@ -70,5 +71,9 @@ public class RuntimeController {
     }
 
     public record TaskRequest(String goal) {
+    }
+    @GetMapping("/tasks/{id}")
+    public Map<String,Object> task(@PathVariable UUID id) {
+        return taskRepository.findById(id).orElseThrow(()->new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,"任务不存在"));
     }
 }
