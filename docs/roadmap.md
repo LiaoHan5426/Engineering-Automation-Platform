@@ -245,7 +245,9 @@ container CRUD with scoped search, database CRUD, expert create/validate/activat
 
 Still prototype-only (tracked per slice in `docs/frontend-prototype.md`): inline rule editing,
 draft-based expert editing with a generated manifest, the finding actions (复制建议 / 查看候选改写 /
-标记忽略), and the supplement composer.
+标记忽略), the supplement composer, and the desktop shell page — delivery-target switch, local workspace
+picker, backend connection settings and shell permissions with an audit log (`docs/desktop-spec.md`
+describes the contract; `apps/desktop` itself is still ⬜).
 
 **Exit criteria:** the console renders live observations, the SQL findings with severity, the
 knowledge citations, the model-advisor routing block and the independent-validation state; `vp build`

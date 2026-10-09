@@ -25,7 +25,7 @@ read the same snapshot the pages read, so the header can never disagree with the
 
 ```text
 ┌───────────────────────────────────────────────────────────────────────────────────┐
-│ EAP   工作空间 [engineering-automation-platform ▾]    ● 已连接  [刷新] [运行分析]   │
+│ EAP   工作空间 [engineering-automation-platform ▾]  ● 已连接 [浏览器] [刷新] [运行分析]│
 ├──────────────┬──────────────────────────────────────────────┬─────────────────────┤
 │ 工作空间      │ 工作台                                        │ 检查器 · 当前页     │
 │              │                                              │                     │
@@ -37,13 +37,25 @@ read the same snapshot the pages read, so the header can never disagree with the
 │ ▤ 规则库      │   · 专家工作室 列表 | DAG | 草稿编辑          │ suggestion: …       │
 │ ▦ 数据库资料  │   · 规则库    规则包 | 规则 | 试算            │                     │
 │ ⚙ 能力目录    │   · 知识库    知识库 | 文档 | 检索            │ 当前任务的流水线    │
-│   ⌂ 总览      │   · 数据库资料 资料表 | 新增 / 编辑 / 删除    │ deterministic ✓     │
-│   ⌗ 本地CLI   │   · 能力目录  总览 | 内置命令 | 本地CLI        │ decision: skip      │
-│   ⛁ MCP工具   │               | MCP工具                     │ model: not called   │
+│              │   · 数据库资料 资料表 | 新增 / 编辑 / 删除    │ deterministic ✓     │
+│ 运行环境      │   · 能力目录  页签由种类声明生成：             │ decision: skip      │
+│ ▣ 桌面外壳    │               总览 | 内置命令 | 本地CLI        │ model: not called   │
+│              │               | MCP工具（HTTP 无页签）        │                     │
+│              │   · 桌面外壳  窗口与菜单 | 本地工作空间 |      │                     │
+│              │               后端连接 | 系统权限与审计       │                     │
 ├──────────────┴──────────────────────────────────────────────┴─────────────────────┤
-│ 就绪   工作空间: engineering-automation-platform   最近刷新 12:04:31   模型: 未启用 │
+│ 就绪  运行目标: 浏览器  工作空间: engineering-automation-platform  本地目录: 未选择  │
 └───────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+The rail has **one entry per page**; a page's sub-pages are tabs inside it, not rail entries. 能力目录
+and 桌面外壳 both work that way, and the 能力目录 tabs are generated from the runtime's kind declaration
+(see below) rather than written into the markup — so a kind that becomes manageable or non-empty appears
+on its own, and HTTP, which is neither, has no tab.
+
+Choosing 桌面端 on the 桌面外壳 page wraps this same shell in a window frame with a native menu
+(文件 / 视图 / 帮助) and enables the platform services that only the shell can provide; the controls that
+cannot work in a browser stay in place, disabled, with the reason printed beside them.
 
 ## Core screens
 
@@ -79,11 +91,17 @@ flowchart LR
   KB --> KBS[Scoped search - scope stated, no fallback]
   O --> DB[Database profiles]
   O --> C[Capability catalog]
-  C --> C0[总览: per-kind table + management + consistency]
-  C --> C1[内置命令: enable/disable + note + code contract]
-  C --> C2[本地CLI: binary override + enable/disable + probe]
+  C --> C0[总览: per-kind table + management + consistency, all derived from state]
+  C --> C1[内置命令: every capability gets enable/disable + note + code contract]
+  C --> C2[本地CLI: every capability gets binary override + enable/disable + probe]
   C --> C3[MCP工具: register / trust / allow-list / delete]
   C --> CS[Scope + registered MCP servers]
+  SH2[桌面外壳: 运行目标 / 本地工作空间 / 后端连接 / 权限与审计] --> DS[Delivery target: browser vs desktop]
+  DS --> DC[Desktop shell: window, native menu, notifications, external link]
+  DS --> LW[Local workspace picker -> Path workspace / EAP_WORKSPACE]
+  DS --> CN[Backend connection + real /api/health probe]
+  DS --> PM[Shell permissions -> gate the controls that depend on them]
+  PM --> AU[Audit log - actions only, never redraws]
 ```
 
 ## Interaction rules
@@ -97,27 +115,36 @@ flowchart LR
   the **matched facts** behind it and the pack that produced it (`rulePacks` in the response). "Why
   did it say that" must always have an answer that is not "it's in the code".
 - **Capabilities are grouped by kind, not listed flat.** The catalog renders the runtime's own
-  declaration as sub-pages: **总览 / 内置命令 / 本地 CLI / MCP 工具**. The tab list itself is built from
-  each kind's declared management entry point plus whether it currently has any capability, so HTTP
-  (nothing to manage yet) gets no tab while MCP gets one even while empty — because that page *is* the
-  entry point that makes it non-empty. The tabs genuinely switch content — exactly one sub-page is
-  rendered at a time, never four stacked sections — and a sub-page with no entries says why it is still
-  there instead of drawing an empty shell. Selecting a capability (its card header or its row in the
-  full table) drives the inspector, which is what makes the catalogue actionable rather than decorative.
+  declaration as sub-pages: **总览 / 内置命令 / 本地 CLI / MCP 工具** — tabs inside the page, not extra
+  rail entries. The tab list itself is built from each kind's declared management entry point plus whether
+  it currently has any capability, so HTTP (nothing to manage yet) gets no tab while MCP gets one even
+  while empty — because that page *is* the entry point that makes it non-empty. The tabs genuinely switch
+  content — exactly one sub-page is rendered at a time, never four stacked sections — and a sub-page with
+  no entries says why it is still there instead of drawing an empty shell. Selecting a capability (its card
+  header or its row in the full table) drives the inspector, which is what makes the catalogue actionable
+  rather than decorative.
   Each capability shows its title, what it must be given, what it
   must be authorised for, what actually executes it, the facts it publishes, the evidence it contributes
   and whether it is runnable right now (a CLI with a missing binary shows `缺少可执行文件`, a capability
   switched off shows `已停用`). A declaration-consistency panel surfaces declared-but-unregistered and
   undeclared-but-registered capabilities rather than hiding them. The console never invents a kind or
   a capability description — both come from `/api/capabilities`.
-- **Each kind of capability has a management surface, and it is honest about its limits.** 内置命令
-  offers enable/disable plus a note, and states that a new capability needs a handler bean and a
-  declaration — the console shows 新增能力一律需要改代码 instead of a button that cannot work. 本地 CLI
+  **Nothing on this page is markup-derived.** The kind table, per-kind counts and state chips, the
+  per-capability cards, the full capability table and the inspector all read one capability list and one
+  kind declaration, so a single switch-off cannot leave "可用 5" in one place and "已停用" in another. The
+  same rule decides what the expert editor may offer: the platform node picker excludes capabilities the
+  operator switched off and lists them separately with the reason (`disabledPlatform`), instead of letting
+  an operator wire a node the runtime refuses to resolve.
+- **Each kind of capability has a management surface, and it is honest about its limits.** Every
+  capability of a manageable kind gets a card — no subset: 内置命令 renders all five, 本地 CLI all three.
+  Both offer enable/disable plus a note, and 内置命令 states that a new capability needs a handler bean and
+  a declaration — the console shows 新增能力一律需要改代码 instead of a button that cannot work. 本地 CLI
   adds a binary override (shown with its resolved path and a `shipped` / `operator` source chip), a reset,
   and an explicit 探测 action that runs `<binary> --version` once; nothing is executed while the page
   renders. MCP 工具 offers full server management: registration form, per-server enable/trust/probe/edit/
   delete, and the list of capabilities each server publishes. A disabled capability is rendered as
-  `已停用`, never as `缺少可执行文件` / `未接入` — "switched off" is a decision, "broken" is a defect.
+  `已停用`, never as `缺少可执行文件` / `未接入` — "switched off" is a decision, "broken" is a defect, and
+  switching one off that an *enabled* expert runs is refused by name.
 - **Capability requirements are visible at every level.** A rule pack shows 需要能力 (its
   `requires.capabilities`); the expert studio shows 所需能力 derived from the packs it references and
   warns when the graph has no node that can produce those facts; the SQL result shows a
@@ -194,13 +221,16 @@ flowchart LR
 - **No control is decorative.** Every button, row and chip either changes visible state or states why
   it cannot, and where a real endpoint exists it is named: `POST /api/mcp-servers` to register a
   server, `DELETE /api/databases/{id}`, `POST /api/rule-packs/dry-run`, `POST /api/experts/{id}/execute`.
-  Interactions that live only in the prototype say so instead of implying a backend. The workspace
-  switcher is client-side (the runtime has no `workspace` column) and says so when it is used; 重新运行
-  and 补充上下文 both name `POST /api/experts/{id}/execute` as what a real console would call, and the
-  supplement composer states outright that the runtime has no supplement resource today, so a supplement
-  is a new execution rather than an in-place rewrite of history. The inverse is enforced too — no button
-  is offered for something the runtime cannot do, so 新增能力一律需要改代码 is stated on 内置命令 rather
-  than shown as a form that could never submit.
+  Interactions that live only in the prototype say so instead of implying a backend. The top-bar workspace
+  switcher is client-side — tasks are not scoped by workspace on the server — and says so when it is used,
+  pointing at 桌面外壳 → 本地工作空间 for the directory that actually decides where the local CLI
+  capabilities run; 重新运行 and 补充上下文 both name `POST /api/experts/{id}/execute` as what a real console
+  would call, and the supplement composer states outright that the runtime has no supplement resource
+  today, so a supplement is a new execution rather than an in-place rewrite of history. The inverse is
+  enforced too — no button is offered for something the runtime cannot do, so 新增能力一律需要改代码 is
+  stated on 内置命令 and the LLM settings are a read-only table rather than a form that could never
+  submit. The one place the prototype *adds* capability, the desktop shell, is gated by a declared
+  permission and the gate is printed next to the control.
 - **Model output is separated.** Model text is always rendered under an "unverified observation"
   heading and never merged into the deterministic findings.
 - **Primary action is one button** (`Run` / `运行分析`); it is the same action as the SQL studio's, so
@@ -214,6 +244,33 @@ flowchart LR
   it means something (概览 / 任务 / SQL 分析室); the platform-wide safety note is explicitly labelled
   全局说明（与页面无关） so it is not mistaken for page state.
 - **Narrow screens** collapse the inspector below the workbench and keep the same navigation order.
+- **The delivery target is state, and the shell is not the product.** 浏览器 and 桌面端 are two targets
+  of one UI, so the shell page can switch between them: switching draws the window frame and the native
+  menu, and switching back does **not** hide the desktop-only controls — it disables them and writes the
+  reason next to them (浏览器读不到本机目录 / 没有窗口生命周期 / 不能持久化偏好). Nothing in the shell plans
+  tasks, decides, authorises an expert or validates anything; the menu carries only platform services
+  (选目录 / 窗口 / 通知 / 打开外部链接 / 审计), and the console asserts that explicitly.
+- **A local workspace is not the top-bar workspace.** The picker chooses a directory on disk, which is
+  the backend process's execution directory (`Path workspace` ← `EAP_WORKSPACE`, otherwise the process
+  start directory, or its parent when the start directory has no `.git`). The runtime exposes no way to
+  change it while running, so the console writes it into the launch configuration and says 需要重启后端才生效
+  instead of pretending the switch applied. The top-bar switcher stays a client-side view filter, and the
+  two are deliberately not one control — merging them would imply a dropdown decides where `git` runs. A
+  missing directory is refused rather than silently falling back to the previous one, because that failure
+  surfaces much later, in the wrong place.
+- **The connection is probed, not faked, and configuration stays read-only.** 测试连接 issues a real
+  `GET /api/health` and reports the status and latency it actually got — including a truthful failure, and
+  a truthful "this environment has no `fetch`" when it cannot probe at all. A credential in the address is
+  refused by parsing the URL's userinfo, not by pattern-matching the string. The LLM budget is a read-only
+  table of the `eap.llm.*` environment variables, because the runtime has no config-write endpoint: a form
+  there could never submit, so it is not drawn.
+- **Revoking a shell permission disables what depends on it.** The permission table is the source of truth
+  for the desktop-only controls, so revoking `dialog:allow-open` really disables 浏览本地目录 and names that
+  capability in the reason; granting it back re-enables the control. Every shell action is appended to an
+  audit log — and switching a sub-tab appends nothing, because the log records actions, not redraws.
+- **Closing the window is a state transition, not a shutdown.** Closing while a run is in flight marks it
+  `已中断` — visible, filterable, evidence preserved, re-runnable — and the settle timer is not allowed to
+  overwrite that with `已完成`.
 
 ## Implementation slices
 
@@ -231,11 +288,16 @@ not adopted yet are marked on the 原型 track alone.
 4. ✅ 应用 · ✅ 原型 — Rule library: pack catalog, rule list with conditions and advice, dry-run, fact
    vocabulary grouped by producing capability, per-pack capability requirements.
 5. ✅ 应用 · ✅ 原型 — Capability catalog as **interactive** sub-pages (总览 / 内置命令 / 本地 CLI /
-   MCP 工具) with per-kind management surfaces — enable/disable + note, CLI binary override + probe,
-   MCP server registration/trust/allow-list/delete — plus per-capability metadata, availability, scope
-   and declaration-consistency reporting; the expert studio shows the capabilities its rule packs
-   require, the MCP tools the expert is authorised to call, and the platform-disabled capabilities that
-   were excluded from the picker.
+   MCP 工具), where the sub-pages, per-kind counts and per-capability cards are **derived from the kind
+   declaration and the capability list** rather than written into the markup, so a switch-off updates the
+   tab, the kind row, the full table, the card and the inspector together. Per-kind management surfaces —
+   enable/disable + note for every built-in command *and* every CLI capability, CLI binary override +
+   reset + probe, MCP server registration/trust/allow-list/delete — plus per-capability metadata,
+   availability, scope and declaration-consistency reporting in both directions (declared-but-unregistered
+   and registered-but-undeclared, plus MCP published-but-undeclared and declared-but-unpublished). The
+   expert studio shows the capabilities its rule packs require, the MCP tools the expert is authorised to
+   call, and excludes the platform-disabled capabilities from the node picker while listing them with the
+   reason.
 6. ✅ 应用 · ✅ 原型 — Live task state and evidence timeline: a run has an explicit state, the timeline
    is driven by the selected task, and re-running appends a row instead of overwriting one.
 7. ⬜ 应用 · ✅ 原型 — Rule editor: select a pack, edit a rule inline (severity / evidence / advice),
@@ -255,6 +317,15 @@ not adopted yet are marked on the 原型 track alone.
     client exists.
 12. ✅ 应用 · ✅ 原型 — Knowledge container management (create / rename / delete a base, add a document,
     preview the chunks) and scoped search whose scope is stated on the page.
-13. ⬜ 应用 · ✅ 原型 — 刷新 / 工作空间 / status bar as real state, with the workspace switcher labelled
-    client-side because the backend has no workspace column.
-14. ⬜ 应用 · ⬜ 原型 — Desktop shell, local workspace picker, backend connection settings.
+13. ⬜ 应用 · ✅ 原型 — 刷新 / 工作空间 / status bar as real state, with the top-bar workspace switcher
+    labelled client-side because tasks are not scoped by workspace on the server.
+14. ⬜ 应用 · ✅ 原型 — **桌面外壳**: a delivery-target switch (浏览器 / 桌面端 · Tauri 2) that draws the
+    window frame and native menu, with desktop-only controls disabled *and explained* in browser mode;
+    window/menu/notification/external-link services; the **local workspace picker** (recent list, a
+    missing directory handled honestly, the Tauri filesystem scope, and the distinction from the
+    top-bar workspace); **backend connection** settings (remote / local runtime / packaged sidecar,
+    address validation, a real `GET /api/health` probe, non-secret preferences, and the LLM budget as a
+    read-only table); and **shell permissions + audit** (revoking a capability really disables the
+    control that depends on it, and every OS action is appended to an audit log). Desktop-only
+    interactions that need no endpoint say so; the ones that map to the runtime name the call they
+    would make. See `docs/desktop-spec.md` for the contract this is modelled on.

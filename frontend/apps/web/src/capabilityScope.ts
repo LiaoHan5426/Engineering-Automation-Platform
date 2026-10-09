@@ -34,6 +34,18 @@ export function isGloballySelectable(item: CapabilityLike): boolean {
 }
 
 /**
+ * Whether the node picker may offer this capability.
+ *
+ * <p>A capability the operator switched off in the catalogue is excluded here and reported separately by
+ * the editor. The backend refuses to resolve it (`resolveFor`), so offering it would let an operator wire
+ * a node that fails at run time; and dropping it silently is indistinguishable from a defect, which is
+ * why the editor prints the disabled list instead of just omitting it.
+ */
+export function offersAsNode(item: CapabilityLike, disabled: string[] = []): boolean {
+  return isGloballySelectable(item) && !disabled.includes(item.name);
+}
+
+/**
  * Nodes that use an expert-scoped capability this expert has not declared. The backend rejects the
  * manifest; catching it here is what turns "save failed" into "tick the tool you need".
  */

@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch, toRaw } from "vue";
 import { runtimeApi, type CapabilityItem, type CapabilityKindSummary } from "./api";
 import { errorMessage } from "./presentation";
-import { isExpertScoped as capabilityIsExpertScoped, isGloballySelectable, unknownDeclaredTools as findUnknownDeclaredTools, undeclaredScopedNodes as findUndeclaredScopedNodes } from "./capabilityScope";
+import { isExpertScoped as capabilityIsExpertScoped, offersAsNode, unknownDeclaredTools as findUnknownDeclaredTools, undeclaredScopedNodes as findUndeclaredScopedNodes } from "./capabilityScope";
 type ExpertDefinition = {
   id: string;
   name: string;
@@ -65,8 +65,12 @@ const capabilityGroups = computed(() => {
         .map((kind) => ({
           label: kind.label + "（" + kind.id + " · " + kind.scopeLabel + "）",
           // Expert-scoped capabilities are deliberately excluded here: the platform has them, this
-          // expert does not — that is the whole point of the authorisation block below.
-          options: catalogCapabilityItems.value.filter((item) => item.kind === kind.id && isGloballySelectable(item)),
+          // expert does not — that is the whole point of the authorisation block below. Switched-off
+          // platform capabilities are excluded too: the runtime refuses to resolve them, and the
+          // disabledPlatform hint below says which ones and why.
+          options: catalogCapabilityItems.value.filter(
+            (item) => item.kind === kind.id && offersAsNode(item, disabledPlatform.value),
+          ),
         }))
         .filter((group) => group.options.length),
     );
@@ -97,9 +101,9 @@ const rulePackChoices = ref<
  */
 const expertScopedCapabilities = ref<string[]>([]);
 /**
- * Platform capabilities the operator switched off in the capability catalog. They are excluded from
- * {@code catalogCapabilities}, so they never appear in the node picker — and the reason is shown,
- * because a silently missing option is indistinguishable from a broken one.
+ * Platform capabilities the operator switched off in the capability catalog. The picker filters them
+ * out through {@code offersAsNode}, and the reason is shown below the selector, because a silently
+ * missing option is indistinguishable from a broken one.
  */
 const disabledPlatform = ref<string[]>([]);
 const expertScopedVocabulary = ref<string[]>([]);

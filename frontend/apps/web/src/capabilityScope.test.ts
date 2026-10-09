@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   isExpertScoped,
   isGloballySelectable,
+  offersAsNode,
   selectableNodes,
   undeclaredScopedNodes,
   unknownDeclaredTools,
@@ -43,5 +44,14 @@ describe("capability scope rules", () => {
   it("reports a declared tool the platform does not publish", () => {
     expect(unknownDeclaredTools([SCOPED], [SCOPED])).toEqual([]);
     expect(unknownDeclaredTools(["mcp.unknown.query"], [SCOPED])).toEqual(["mcp.unknown.query"]);
+  });
+
+  it("never offers a switched-off platform capability as a node", () => {
+    // A disabled capability still has an item (the catalogue lists it as 已停用), so filtering by scope
+    // alone would offer a node the runtime refuses to resolve.
+    expect(items.filter((item) => offersAsNode(item, ["rg-search"])).map((item) => item.name)).toEqual(["sql.parse"]);
+    expect(items.filter((item) => offersAsNode(item, ["sql.parse", "rg-search"]))).toEqual([]);
+    // Expert scope still wins, so a disabled list can never leak an MCP tool into the platform group.
+    expect(offersAsNode(items[2], [])).toBe(false);
   });
 });

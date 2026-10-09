@@ -357,6 +357,39 @@
   .ignored { opacity: .55; }
   .ignored .code::after { content: " · 已忽略"; color: var(--text-mute); font-weight: 600; }
 
+  /* ---------- 桌面外壳：运行目标可切换 ---------- */
+  .desktop-chrome { display: none; }
+  body.desktop-target .desktop-chrome { display: flex; align-items: center; gap: 14px; height: 34px; padding: 0 12px;
+    background: var(--surface-3); border-bottom: 1px solid var(--border-strong); }
+  body.desktop-target .app { height: calc(100vh - 34px); }
+  .win-dots { display: flex; gap: 6px; flex: 0 0 auto; }
+  .win-dots i { width: 11px; height: 11px; border-radius: 50%; background: #d5dbe6; display: block; }
+  .win-title { font-size: 12px; font-weight: 700; color: var(--text-soft); white-space: nowrap; }
+  .win-note { font-size: 11.5px; color: var(--text-mute); }
+  .win-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 11.5px; color: var(--text-mute); white-space: nowrap; }
+  .win-actions span { border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; background: var(--surface); }
+  .native-menu { display: flex; gap: 2px; flex: 0 0 auto; }
+  .native-menu > .menu-wrap > button { border-radius: 6px; padding: 4px 9px; font-size: 12.5px; font-weight: 600; color: var(--text-soft); }
+  .native-menu > .menu-wrap > button:hover { background: var(--surface); }
+
+  .segment { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .segment button { padding: 6px 12px; font-size: 12.5px; font-weight: 600; color: var(--text-soft); border-right: 1px solid var(--border); }
+  .segment button:last-child { border-right: 0; }
+  .segment button:hover:not(.active) { background: var(--surface-2); }
+  .segment button.active { background: var(--accent-soft); color: var(--accent); }
+
+  /* 被挡住的原因就写在控件旁边，而不是留一个看起来能点的按钮 */
+  .gate { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 8px 10px; margin-top: 10px;
+    font-size: 12px; line-height: 1.65; color: var(--text-mute); background: var(--surface-2); }
+  .gate:empty { display: none; }
+  .path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
+  .mono-input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  .audit-row td { font-size: 12px; }
+  .kv { display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 6px 12px; font-size: 12px; align-items: baseline; }
+  .kv dt { color: var(--text-mute); }
+  .kv dd { margin: 0; color: var(--text); word-break: break-word; }
+  .kv + .kv { margin-top: 4px; }
+
   @media (max-width: 1180px) {
     .body { grid-template-columns: 200px minmax(0,1fr); }
     .inspector { display: none; }
@@ -365,6 +398,44 @@
 </style>
 </head>
 <body>
+<!-- 桌面外壳：只在「桌面端」运行目标下出现。每一项目录项都对应一个外壳服务，
+     而不是把 Tauri API 直接写进界面。窗口按钮由操作系统提供，外壳不实现。 -->
+<div class="desktop-chrome" id="desktopChrome">
+  <div class="win-dots" title="窗口按钮由操作系统提供，外壳不实现它们"><i></i><i></i><i></i></div>
+  <span class="win-title">EAP 工程自动化平台 — 桌面端</span>
+  <nav class="native-menu">
+    <div class="menu-wrap">
+      <button onclick="toggleMenu('fileMenu', this)" aria-haspopup="true" aria-expanded="false">文件</button>
+      <div class="menu" id="fileMenu" role="menu">
+        <div class="menu-head">文件</div>
+        <button onclick="menuChooseWorkspace()">选择本地工作空间…<small>外壳服务：chooseWorkspace() → 原生目录对话框</small></button>
+        <button onclick="menuCloseWindow()">关闭窗口<small>正在执行的任务会标记为「已中断」，状态不丢</small></button>
+      </div>
+    </div>
+    <div class="menu-wrap">
+      <button onclick="toggleMenu('viewMenu', this)" aria-haspopup="true" aria-expanded="false">视图</button>
+      <div class="menu" id="viewMenu" role="menu">
+        <div class="menu-head">视图</div>
+        <button onclick="menuGo('overview')">概览</button>
+        <button onclick="menuGo('tasks')">任务与证据时间线</button>
+        <button onclick="menuGo('sql')">SQL 分析室</button>
+        <button onclick="menuGo('desktop')">桌面外壳与连接</button>
+        <button onclick="menuRefresh()">刷新运行时状态<small>重新读取全部面板</small></button>
+      </div>
+    </div>
+    <div class="menu-wrap">
+      <button onclick="toggleMenu('helpMenu', this)" aria-haspopup="true" aria-expanded="false">帮助</button>
+      <div class="menu" id="helpMenu" role="menu">
+        <div class="menu-head">帮助</div>
+        <button onclick="menuPlatformInfo()">平台与环境信息<small>外壳服务：getPlatformInfo()</small></button>
+        <button onclick="menuOpenExternal()">打开项目主页（外部）<small>外壳服务：openExternal()，仅 https 且在白名单内</small></button>
+      </div>
+    </div>
+  </nav>
+  <span class="win-note">外壳只提供平台服务：选目录、窗口与菜单、通知、打开外部链接、审计 —— 任务判定与专家授权始终在后端。</span>
+  <div class="win-actions"><span>—</span><span>□</span><span>×</span>由操作系统实现</div>
+</div>
+
 <div class="app">
   <header class="topbar">
     <div class="brand"><b>EAP</b><span>工程自动化平台</span></div>
@@ -377,8 +448,9 @@
       </div>
     </div>
     <div class="spacer"></div>
-    <span class="chip ok"><span class="dot"></span>运行时已连接</span>
+    <span class="chip ok" id="runtimeChip"><span class="dot"></span>运行时已连接</span>
     <span class="chip warn"><span class="dot"></span>模型：未启用 · 确定性优先</span>
+    <span class="chip" id="targetChip">浏览器</span>
     <button class="btn" id="refreshButton" onclick="refreshAll()">刷新</button>
     <button class="btn primary" onclick="runAnalysisFromTopbar()">运行分析</button>
   </header>
@@ -395,6 +467,8 @@
       <button class="nav" data-view="knowledge"><span class="ic">▢</span>知识库</button>
       <button class="nav" data-view="databases"><span class="ic">▦</span>数据库资料</button>
       <button class="nav" data-view="capabilities"><span class="ic">⚙</span>能力目录</button>
+      <div class="eyebrow" style="margin-top:14px">运行环境</div>
+      <button class="nav" data-view="desktop"><span class="ic">▣</span>桌面外壳</button>
       <div class="foot">确定性能力优先<br><b>结果必须有独立证据</b><br>模型仅作待验证观察</div>
     </nav>
 
@@ -611,6 +685,7 @@ LIMIT 20;</textarea>
                 <option value="completed">已完成</option>
                 <option value="partial">部分完成</option>
                 <option value="running">执行中</option>
+                <option value="interrupted">已中断</option>
               </select>
             </div>
           </div>
@@ -1071,13 +1146,9 @@ LIMIT 20;</textarea>
           </p>
         </div>
 
-        <div class="subtabs" id="capTabs">
-          <button class="active" data-subview="overview">总览</button>
-          <button data-subview="command">内置命令 · 5</button>
-          <button data-subview="cli">本地 CLI · 3</button>
-          <button data-subview="mcp">MCP 工具 · 0</button>
-        </div>
-        <p class="hint">页签由运行时声明的种类生成：<b>可管理或有条目的种类才出现</b>。HTTP 服务两者都不是，因此没有页签，而不是给一个点了没有反应的页面。点击能力名或表格行，右侧检查器显示它的种类、范围、可用状态与管理入口。</p>
+        <!-- 子页由 CAPABILITY_KINDS 生成：可管理或有条目的种类才出现，因此这里不放写死的页签。 -->
+        <div class="subtabs" id="capTabs"></div>
+        <p class="hint">子页由运行时声明的种类生成：<b>可管理或有条目的种类才出现</b>。HTTP 服务两者都不是，因此没有子页，而不是给一个点了没有反应的页面。页签上的数字、总览里的状态、右侧检查器读的是同一份状态，改一处三处一起变。</p>
 
         <!-- 总览 -->
         <div class="subview active" data-subview="overview">
@@ -1086,64 +1157,23 @@ LIMIT 20;</textarea>
           <p class="sub">每一类都回答两个问题：这里能改什么，以及这类能力是怎么产生的。</p>
           <table class="facts" style="margin-top:12px">
             <thead><tr><th>种类</th><th>范围</th><th>数量</th><th>当前状态</th><th>管理入口</th></tr></thead>
-            <tbody>
-              <tr class="clickable" onclick="showKindDetail('command', this)">
-                <td><b>内置命令</b> <span class="mono kind-id">command</span></td>
-                <td><span class="chip">平台级</span></td>
-                <td>5</td>
-                <td><span class="chip ok" id="kindState-command">可用 5</span></td>
-                <td>平台开关：可启用、停用并备注；<b>不能新增或删除</b></td>
-              </tr>
-              <tr class="clickable" onclick="showKindDetail('cli', this)">
-                <td><b>本地 CLI</b> <span class="mono kind-id">cli</span></td>
-                <td><span class="chip">平台级</span></td>
-                <td>3</td>
-                <td><span class="chip ok" id="kindState-cli">可用 2</span> <span class="chip warn" id="kindState-cli2">缺少可执行文件 1</span></td>
-                <td>通道配置：可覆盖二进制位置、启停并主动探测；<b>不能改命令与参数</b></td>
-              </tr>
-              <tr class="clickable" onclick="showKindDetail('mcp', this)">
-                <td><b>MCP 工具</b> <span class="mono kind-id">mcp</span> <span class="chip warn">专家级</span></td>
-                <td><span class="chip warn">专家级</span></td>
-                <td id="overviewMcpCount">0</td>
-                <td id="overviewMcpState"><span class="chip warn">尚未配置</span></td>
-                <td>服务器登记：登记、修改、启用、信任、放行工具、删除</td>
-              </tr>
-              <tr class="clickable" onclick="showKindDetail('http', this)">
-                <td><b>HTTP 服务</b> <span class="mono kind-id">http</span></td>
-                <td><span class="chip warn">专家级</span></td>
-                <td>0</td>
-                <td><span class="chip warn">尚未接入</span></td>
-                <td><span class="chip warn">无管理入口</span></td>
-              </tr>
-            </tbody>
+            <tbody id="kindRows"></tbody>
           </table>
-          <div class="management">
-            <p class="sub"><b>内置命令的能力本身由代码注册</b>：一个实现 CapabilityHandler 的 Bean，加上声明词表里的一处登记；它发布的事实必须先在事实词表中登记。新增内置命令要改代码并重新评审——这是刻意的：发布哪些事实属于代码契约。</p>
-            <p class="sub" style="margin-top:8px"><b>本地 CLI 的能力本身同样是代码</b>（执行什么命令、传什么参数、发布什么事实），界面能改的只是本机上这个二进制在哪里。HTTP 服务既没有处理器也没有管理入口，目录如实显示为零。</p>
-          </div>
+          <div class="management" id="kindCreation"></div>
         </div>
 
         <div class="card">
           <h2>声明与注册一致性</h2>
-          <p class="hint" style="margin-top:8px">专家清单可引用的能力（8 项）与运行时实际注册的处理器一一对应；未注册的能力会被拒绝，未声明的能力无法被清单引用。</p>
-          <p class="hint">可全局引用（平台级）<span id="consistencyUsable">8 项</span>；专家级 <span id="consistencyScoped">0 项</span>，只能通过专家授权使用。停用中的能力 <span id="consistencyDisabled">0 项</span>。</p>
-          <p class="hint">专家目录包含 3 个定义；草稿保存不代表已启用执行。</p>
+          <p class="hint" style="margin-top:8px">专家清单可引用的平台级能力，与运行时实际注册的处理器应当一一对应。<b>两个方向的不一致都会列出来</b>：声明了却没有处理器（清单会被拒绝），或注册了却不在声明词表里（能力不可被引用）。</p>
+          <p class="hint">可全局引用（平台级、未停用）<b id="consistencyUsable">—</b>；专家级 <b id="consistencyScoped">—</b>；平台停用中 <b id="consistencyDisabled">—</b>。</p>
+          <div id="consistencyMismatch"></div>
         </div>
 
         <div class="card">
           <h2>全部能力</h2>
           <table class="facts" style="margin-top:12px">
             <thead><tr><th>能力</th><th>种类</th><th>范围</th><th>状态</th><th>引用专家</th></tr></thead>
-            <tbody id="capabilityAllRows">
-              <tr class="clickable" onclick="inspectCapability('sql.parse', this)"><td class="mono">sql.parse</td><td>内置命令</td><td>平台级</td><td><span class="chip ok">可用</span></td><td>sql-expert、orders-sql</td></tr>
-              <tr class="clickable" onclick="inspectCapability('knowledge.search', this)"><td class="mono">knowledge.search</td><td>内置命令</td><td>平台级</td><td><span class="chip ok">可用</span></td><td>sql-expert、orders-sql</td></tr>
-              <tr class="clickable" onclick="inspectCapability('database.schema.read', this)"><td class="mono">database.schema.read</td><td>内置命令</td><td>平台级</td><td><span class="chip ok">可用</span></td><td>sql-expert</td></tr>
-              <tr class="clickable" onclick="inspectCapability('database.index.read', this)"><td class="mono">database.index.read</td><td>内置命令</td><td>平台级</td><td><span class="chip ok">可用</span></td><td>sql-expert</td></tr>
-              <tr class="clickable" onclick="inspectCapability('database.explain', this)"><td class="mono">database.explain</td><td>内置命令</td><td>平台级</td><td><span class="chip ok">可用</span></td><td>sql-expert（可选节点）</td></tr>
-              <tr class="clickable" onclick="inspectCapability('git-status', this)"><td class="mono">git-status</td><td>本地 CLI</td><td>平台级</td><td><span class="chip ok">可用</span></td><td>—</td></tr>
-              <tr class="clickable" onclick="inspectCapability('git-diff', this)"><td class="mono">git-diff</td><td>本地 CLI</td><td>平台级</td><td><span class="chip ok">可用</span></td><td>—</td></tr>
-              <tr class="clickable" onclick="inspectCapability('rg-search', this)"><td class="mono">rg-search</td><td>本地 CLI</td><td>平台级</td><td><span class="chip warn">缺少可执行文件</span></td><td>—</td></tr>
-            </tbody>
+            <tbody id="capabilityAllRows"></tbody>
           </table>
           <p class="hint" style="margin-top:10px">点击任意一行，右侧检查器显示该能力的种类、范围、可用状态与管理入口。可用状态与引用情况都由运行时回报，不在这里手工判断。</p>
         </div>
@@ -1157,66 +1187,11 @@ LIMIT 20;</textarea>
               <h2>内置命令 <span class="kind-id mono">command</span> <span class="chip">平台级</span></h2>
               <p class="sub">运行时内的确定性处理器：无外部依赖、不访问网络。</p>
             </div>
-            <span class="chip">5 项</span>
+            <span class="chip" id="kindCount-command">—</span>
           </div>
-          <div class="management">
-            <p class="sub"><b>这里可以改什么：</b>可以启用、停用并备注；不能新增或删除。</p>
-            <p class="sub" style="margin-top:6px"><b>能力本身是怎么来的：</b>由代码注册（CapabilityHandler 一个 Bean + 声明词表一处登记），新增需要改代码并重新评审。</p>
-          </div>
-          <div class="cap-grid">
-            <div class="cap">
-              <div class="cap-head clickable" onclick="inspectCapability('sql.parse', this)"><code>sql.parse</code><span class="chip ok" id="cmdStatus-sql.parse">可用</span></div>
-              <b class="cap-title">解析 SQL 并抽取结构事实</b>
-              <p>用 JSQLParser 解析输入语句并发布投影、连接、谓词、分页等结构事实。不执行 SQL、不连接数据库、不判定对错。</p>
-              <dl class="cap-meta">
-                <dt>执行器</dt><dd class="mono">JSQLParser + SqlFactExtractor</dd>
-                <dt>发布事实</dt><dd class="mono">33 项 · parse.status、select.allColumns、predicate.* …</dd>
-                <dt>引用情况</dt><dd>已启用专家：sql-expert、orders-sql</dd>
-              </dl>
-              <div class="controls">
-                <input id="cmdNote-sql.parse" value="为什么停用/启用它" aria-label="备注" />
-                <button class="btn" onclick="saveCapabilityNote('sql.parse')">保存备注</button>
-                <button class="btn" id="cmdToggle-sql.parse" onclick="toggleCapability('sql.parse')">停用</button>
-              </div>
-              <p class="msg" id="cmdMessage-sql.parse"></p>
-              <p class="requirement-line">仍被已启用专家引用时，后端会拒绝停用并点名这些专家——停用会让它们的节点在执行时失败。</p>
-            </div>
-            <div class="cap">
-              <div class="cap-head clickable" onclick="inspectCapability('database.explain', this)"><code>database.explain</code><span class="chip ok" id="cmdStatus-database.explain">可用</span></div>
-              <b class="cap-title">分析执行计划快照</b>
-              <p>解析用户自行取得的 PostgreSQL EXPLAIN JSON，识别扫描与连接节点。不执行 SQL。</p>
-              <dl class="cap-meta">
-                <dt>执行器</dt><dd class="mono">运行时内置解析</dd>
-                <dt>发布事实</dt><dd class="mono">5 项 · plan.loaded、plan.seqScan …</dd>
-                <dt>引用情况</dt><dd>草稿引用：ops-review（不影响停用）</dd>
-              </dl>
-              <div class="controls">
-                <input id="cmdNote-database.explain" value="本机没有快照来源，暂时停用" aria-label="备注" />
-                <button class="btn" onclick="saveCapabilityNote('database.explain')">保存备注</button>
-                <button class="btn" id="cmdToggle-database.explain" onclick="toggleCapability('database.explain')">停用</button>
-              </div>
-              <p class="msg" id="cmdMessage-database.explain"></p>
-              <p class="requirement-line">停用是操作决定，不是“未实现”：清单引用已停用能力时，报错会说明它已被停用，并指向这里重新启用。停用后它也不再出现在专家可选的平台级能力里。</p>
-            </div>
-            <div class="cap">
-              <div class="cap-head clickable" onclick="inspectCapability('knowledge.search', this)"><code>knowledge.search</code><span class="chip ok" id="cmdStatus-knowledge.search">可用</span></div>
-              <b class="cap-title">检索授权知识</b>
-              <p>只在专家被显式授权的知识库内做本地关键词 + 全文检索，每条结果附来源引用。</p>
-              <dl class="cap-meta">
-                <dt>执行器</dt><dd class="mono">KnowledgeRepository · PostgreSQL FTS</dd>
-                <dt>授权</dt><dd>启用专家时选择的知识库</dd>
-                <dt>发布事实</dt><dd class="mono">knowledge.granted、knowledge.matches</dd>
-              </dl>
-              <div class="controls">
-                <input id="cmdNote-knowledge.search" value="为什么停用/启用它" aria-label="备注" />
-                <button class="btn" onclick="saveCapabilityNote('knowledge.search')">保存备注</button>
-                <button class="btn" id="cmdToggle-knowledge.search" onclick="toggleCapability('knowledge.search')">停用</button>
-              </div>
-              <p class="msg" id="cmdMessage-knowledge.search"></p>
-            </div>
-          </div>
+          <div class="management" id="kindManage-command"></div>
+          <div class="cap-grid" id="kindCards-command"></div>
         </div>
-
         </div><!-- /内置命令 -->
 
         <!-- 本地 CLI -->
@@ -1227,72 +1202,11 @@ LIMIT 20;</textarea>
               <h2>本地 CLI <span class="kind-id mono">cli</span> <span class="chip">平台级</span></h2>
               <p class="sub">通过进程执行器调用本机可执行文件：参数数组传参，不做 shell 拼接；需要二进制存在。</p>
             </div>
-            <span class="chip">3 项</span>
+            <span class="chip" id="kindCount-cli">—</span>
           </div>
-          <div class="management">
-            <p class="sub"><b>这里可以改什么：</b>可以覆盖二进制位置、启用/停用并主动探测；不能修改命令与参数。</p>
-            <p class="sub" style="margin-top:6px"><b>能力本身是怎么来的：</b>执行什么命令、传什么参数、发布什么事实都写在能力代码里；界面能改的只是本机上这个二进制在哪里。</p>
-          </div>
-          <div class="cap-grid">
-            <div class="cap">
-              <div class="cap-head clickable" onclick="inspectCapability('git-status', this)"><code>git-status</code><span class="chip ok" id="cliStatus-git-status">可用</span></div>
-              <b class="cap-title">读取本地 Git 状态</b>
-              <p>在工作空间内执行只读的 git status，输出先脱敏再入库。不修改工作区、不推送。</p>
-              <dl class="cap-meta">
-                <dt>声明二进制</dt><dd class="mono">git</dd>
-                <dt>当前生效</dt><dd class="mono" id="cliActive-git-status">git <span class="chip">随能力默认</span></dd>
-                <dt>解析路径</dt><dd class="mono" id="cliResolved-git-status">C:\Program Files\Git\cmd\git.exe</dd>
-                <dt>调用方式</dt><dd class="mono">ProcessExecutor · git status</dd>
-              </dl>
-              <div class="controls">
-                <input id="cliBinary-git-status" placeholder="git 或绝对路径" aria-label="二进制位置" />
-                <button class="btn primary" onclick="saveCliChannel('git-status')">保存位置</button>
-                <button class="btn" onclick="resetCliChannel('git-status')">恢复默认</button>
-                <button class="btn" onclick="probeCliChannel('git-status')">探测</button>
-              </div>
-              <p class="msg" id="cliMessage-git-status"></p>
-              <p class="requirement-line">探测会显式运行 <span class="mono">git --version</span>（短超时、输出脱敏）；这是唯一为管理而执行二进制的地方。渲染目录本身只做 PATH 查找，不执行任何东西。</p>
-            </div>
-            <div class="cap">
-              <div class="cap-head clickable" onclick="inspectCapability('rg-search', this)"><code>rg-search</code><span class="chip warn" id="cliStatus-rg-search">缺少可执行文件</span></div>
-              <b class="cap-title">工作空间检索</b>
-              <p>用 ripgrep 在工作空间内做有界检索，定位代码或配置证据。忽略 .git，参数以数组传入。</p>
-              <dl class="cap-meta">
-                <dt>声明二进制</dt><dd class="mono">rg</dd>
-                <dt>当前生效</dt><dd class="mono" id="cliActive-rg-search">C:/tools/ripgrep/rg.exe <span class="chip warn">操作者覆盖</span></dd>
-                <dt>解析路径</dt><dd class="mono" id="cliResolved-rg-search">未找到（不在 PATH 中，也不是存在的绝对路径）</dd>
-                <dt>调用方式</dt><dd class="mono">ProcessExecutor · rg --line-number --hidden</dd>
-              </dl>
-              <div class="controls">
-                <input id="cliBinary-rg-search" value="C:/tools/ripgrep/rg.exe" aria-label="二进制位置" />
-                <button class="btn primary" onclick="saveCliChannel('rg-search')">保存位置</button>
-                <button class="btn" onclick="resetCliChannel('rg-search')">恢复默认</button>
-                <button class="btn" onclick="probeCliChannel('rg-search')">探测</button>
-              </div>
-              <p class="msg" id="cliMessage-rg-search"></p>
-              <p class="requirement-line">覆盖值随时生效，不需要重启：能力按次解析二进制。找不到时会如实显示「缺少可执行文件」，而不是看起来正常。</p>
-            </div>
-            <div class="cap">
-              <div class="cap-head clickable" onclick="inspectCapability('git-diff', this)"><code>git-diff</code><span class="chip ok" id="cliStatus-git-diff">可用</span></div>
-              <b class="cap-title">读取本地 Git 差异</b>
-              <p>执行只读的 git diff，用于确认改动范围。不修改工作区、不推送。</p>
-              <dl class="cap-meta">
-                <dt>声明二进制</dt><dd class="mono">git</dd>
-                <dt>当前生效</dt><dd class="mono" id="cliActive-git-diff">git <span class="chip">随能力默认</span></dd>
-                <dt>解析路径</dt><dd class="mono" id="cliResolved-git-diff">C:\Program Files\Git\cmd\git.exe</dd>
-              </dl>
-              <div class="controls">
-                <input id="cliBinary-git-diff" placeholder="git 或绝对路径" aria-label="二进制位置" />
-                <button class="btn primary" onclick="saveCliChannel('git-diff')">保存位置</button>
-                <button class="btn" onclick="resetCliChannel('git-diff')">恢复默认</button>
-                <button class="btn" onclick="probeCliChannel('git-diff')">探测</button>
-              </div>
-              <p class="msg" id="cliMessage-git-diff"></p>
-              <p class="requirement-line">引用情况：暂无专家引用（停用不受影响）。</p>
-            </div>
-          </div>
+          <div class="management" id="kindManage-cli"></div>
+          <div class="cap-grid" id="kindCards-cli"></div>
         </div>
-
         </div><!-- /本地 CLI -->
 
         <!-- MCP 工具 -->
@@ -1372,6 +1286,197 @@ LIMIT 20;</textarea>
         </div>
         </div><!-- /MCP 工具 -->
       </section>
+
+      <!-- DESKTOP SHELL -->
+      <section class="view" id="view-desktop">
+        <div class="page-head">
+          <p class="eyebrow">DESKTOP SHELL</p>
+          <h1>桌面外壳与连接</h1>
+          <p>同一套界面有两个投放目标：浏览器部署与 Tauri 2 桌面外壳。外壳只提供平台服务——选目录、原生菜单与窗口、通知、打开外部链接、审计——<b>不含任务规划、判定、专家授权与校验逻辑</b>，那些始终在后端，因此两个目标语义一致。</p>
+          <p class="hint">
+            这是原型里唯一能改变<b>运行目标</b>的地方：切到桌面端会画出窗口外框与原生菜单，并点亮只有外壳才有的控件；
+            切回浏览器时这些控件不会消失，而是变成不可用并在旁边写出原因。界面只调用
+            <span class="mono">DesktopPlatform</span> 契约（<span class="mono">chooseWorkspace / showNotification / openExternal / getPlatformInfo</span>），
+            不直接依赖 Tauri API——外壳是可替换的，Tauri 只是当前实现。
+          </p>
+        </div>
+
+        <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div class="segment" id="targetSwitch">
+            <button data-target="web" class="active">浏览器</button>
+            <button data-target="desktop">桌面端 · Tauri 2</button>
+          </div>
+          <p class="hint" id="targetHint" style="margin:0;max-width:640px"></p>
+        </div>
+
+        <div class="subtabs" id="shellTabs">
+          <button class="active" data-subview="window">窗口与菜单</button>
+          <button data-subview="workspace">本地工作空间</button>
+          <button data-subview="connection">后端连接</button>
+          <button data-subview="permissions">系统权限与审计</button>
+        </div>
+        <p class="hint">页签与能力目录同构：一次只渲染一个子页，而不是把四段内容堆在一起。</p>
+
+        <!-- 窗口与菜单 -->
+        <div class="subview active" data-subview="window">
+          <div class="card" style="margin-top:16px">
+            <div class="row" style="justify-content:space-between">
+              <div>
+                <h2>窗口、菜单与通知</h2>
+                <p class="sub">外壳提供的是平台服务，不是业务动作。菜单里不会出现「批准」「授权专家」「标记完成」——那属于后端语义，外壳不实现它们。</p>
+              </div>
+              <span class="chip" id="windowTargetChip">浏览器</span>
+            </div>
+            <table class="facts" style="margin-top:12px">
+              <thead><tr><th>菜单位置</th><th>动作</th><th>调用的外壳服务</th><th>浏览器端</th></tr></thead>
+              <tbody>
+                <tr><td>文件</td><td>选择本地工作空间…</td><td class="mono">chooseWorkspace()</td><td>不可用：浏览器读不到本机目录</td></tr>
+                <tr><td>文件</td><td>关闭窗口</td><td class="mono">core:window</td><td>不可用：关闭标签页就是结束，没有窗口生命周期</td></tr>
+                <tr><td>视图</td><td>刷新、切换页面</td><td>共享路由，两端一致</td><td>可用</td></tr>
+                <tr><td>帮助</td><td>平台与环境信息</td><td class="mono">getPlatformInfo()</td><td>降级为浏览器信息</td></tr>
+                <tr><td>帮助</td><td>打开项目主页</td><td class="mono">openExternal()</td><td>可用，但走 <span class="mono">window.open</span> 且受同一白名单限制</td></tr>
+              </tbody>
+            </table>
+            <p class="hint" style="margin-top:10px">窗口的最小化 / 最大化 / 关闭按钮由操作系统绘制，外壳不实现也不接管它们，所以这里没有对应的按钮可点——菜单里的「关闭窗口」演示的是<b>关闭时的状态处理</b>。</p>
+            <div class="controls">
+              <button class="btn" id="platformInfoButton" onclick="showPlatformInfo()">平台与环境信息</button>
+              <button class="btn" id="notifyButton" onclick="notifyDesktop()">发送系统通知</button>
+              <button class="btn" id="openExternalButton" onclick="openExternalExample()">打开项目主页（外部）</button>
+            </div>
+            <p class="gate" id="windowGate"></p>
+            <p class="msg" id="windowMessage"></p>
+            <div id="platformInfoBox"></div>
+          </div>
+
+          <div class="card">
+            <h2>关闭窗口时正在执行的任务</h2>
+            <p class="sub">验收条件：关闭窗口不丢任务状态，执行中的任务被恢复或被标记为中断。</p>
+            <p class="hint" style="margin-top:8px">当前执行中的任务：<b id="closeRunningCount">0</b> 条。<span id="closeRunningList"></span></p>
+            <div class="controls">
+              <button class="btn danger" id="closeWindowButton" onclick="simulateCloseWindow()">模拟关闭窗口</button>
+            </div>
+            <p class="gate" id="closeGate"></p>
+            <p class="msg" id="closeMessage"></p>
+          </div>
+        </div>
+
+        <!-- 本地工作空间 -->
+        <div class="subview" data-subview="workspace">
+          <div class="card" style="margin-top:16px">
+            <div class="row" style="justify-content:space-between">
+              <div>
+                <h2>本地工作空间</h2>
+                <p class="sub">外壳让操作者选一个本机目录；它决定确定性 CLI 能力在哪个目录执行，也就是后端的 <span class="mono">Path workspace</span>。</p>
+              </div>
+              <div class="controls" style="margin-top:0">
+                <button class="btn primary" id="browseWorkspaceButton" onclick="chooseWorkspace()">浏览本地目录…</button>
+              </div>
+            </div>
+            <table class="tight" style="margin-top:12px">
+              <thead><tr><th>目录</th><th>名称</th><th>上次打开</th><th>状态</th><th style="text-align:right">操作</th></tr></thead>
+              <tbody id="localWsRows"></tbody>
+            </table>
+            <p class="gate" id="workspaceGate"></p>
+            <p class="msg" id="localWsMessage"></p>
+            <p class="hint" style="margin-top:10px">
+              选目录是外壳的活：Tauri 只把文件系统权限授予被选中的目录，目录之外一律拒绝。<b>执行什么命令、传什么参数仍然属于代码</b>（
+              <span class="mono">ProcessExecutor</span> 以数组传参，不做 shell 拼接），选目录不会扩大这个边界。
+            </p>
+          </div>
+
+          <div class="card">
+            <h2>与运行时执行目录的关系</h2>
+            <div id="wsBinding" style="margin-top:12px"></div>
+            <div class="controls">
+              <button class="btn" id="bindWorkspaceButton" onclick="bindWorkspace()">写入启动配置（EAP_WORKSPACE）</button>
+              <button class="btn" id="reprobeButton" onclick="reprobeRuntime()">重新探测运行时</button>
+            </div>
+            <p class="gate" id="bindGate"></p>
+            <p class="msg" id="wsBindingMessage"></p>
+            <p class="hint" style="margin-top:10px">
+              顶栏的「工作空间」是控制台的本地视图筛选，不写入后端；这里的本地目录是后端进程的执行目录。两者不是一回事，所以不共用一个控件——
+              把它们合成一个，就会让人以为「切一下」就能改掉 git 在哪执行。
+            </p>
+          </div>
+        </div>
+
+        <!-- 后端连接 -->
+        <div class="subview" data-subview="connection">
+          <div class="card" style="margin-top:16px">
+            <h2>运行时连接</h2>
+            <p class="sub">第一版桌面端连接一个单独启动的本地后端；打包 Java 运行时作为签名 sidecar 的分发尚未启用。</p>
+            <div class="grid-2" style="margin-top:12px">
+              <div>
+                <label class="field">连接方式</label>
+                <div class="segment" id="connMode">
+                  <button data-mode="remote" class="active">远程后端</button>
+                  <button data-mode="local">本地运行时</button>
+                  <button data-mode="sidecar">打包 sidecar</button>
+                </div>
+                <p class="requirement-line" id="connModeNote"></p>
+                <label class="field">后端地址</label>
+                <input class="input mono-input" id="connBaseUrl" value="http://127.0.0.1:8080" aria-label="后端地址" />
+                <p class="requirement-line">只能 http / https，且不能把凭据写进地址：运行时同样会拒绝 <span class="mono">user:pass@host</span>。</p>
+              </div>
+              <div>
+                <div id="connProbe"></div>
+              </div>
+            </div>
+            <div class="controls">
+              <button class="btn" id="savePrefButton" onclick="saveConnection()">保存到本机偏好</button>
+              <button class="btn primary" id="testConnectionButton" onclick="testConnection()">测试连接</button>
+            </div>
+            <p class="gate" id="connGate"></p>
+            <p class="msg" id="connMessage"></p>
+          </div>
+
+          <div class="card">
+            <h2>模型与预算（只读）</h2>
+            <p class="sub">这些值由运行时的环境变量决定。控制台不保存密钥，也没有写入入口——运行时没有修改配置的接口，所以这里如实做成只读表，而不是一个存不下去的表单。</p>
+            <table class="facts" style="margin-top:12px">
+              <thead><tr><th>配置项</th><th>环境变量</th><th>当前值</th></tr></thead>
+              <tbody id="llmRows"></tbody>
+            </table>
+            <p class="hint" style="margin-top:10px">模型默认关闭（<span class="mono">EAP_LLM_ENABLED=false</span>）：确定性证据足够时不消耗预算。密钥（如需要）由环境变量注入，不落库、不进日志、不进提示词。</p>
+          </div>
+        </div>
+
+        <!-- 系统权限与审计 -->
+        <div class="subview" data-subview="permissions">
+          <div class="card" style="margin-top:16px">
+            <div class="row" style="justify-content:space-between">
+              <div>
+                <h2>外壳能力与授权</h2>
+                <p class="sub">每一次 OS 操作都要对应一条显式能力（Tauri capability）并留痕。撤回一条授权，依赖它的控件会立刻不可用，并把原因写在控件旁边。</p>
+              </div>
+              <span class="chip" id="permTargetChip">浏览器</span>
+            </div>
+            <table class="facts" style="margin-top:12px">
+              <thead><tr><th>能力</th><th>标识</th><th>范围</th><th>状态</th><th style="text-align:right">操作</th></tr></thead>
+              <tbody id="permRows"></tbody>
+            </table>
+            <p class="gate" id="permGate"></p>
+            <p class="msg" id="permMessage"></p>
+            <p class="hint" style="margin-top:10px">点击任意一行，右侧检查器显示它的标识、范围、授予时机、被谁使用，以及撤回后会发生什么。状态由外壳的 capability 文件决定，界面不自行推测。</p>
+          </div>
+
+          <div class="card">
+            <h2>永久不提供</h2>
+            <ul class="insp-list" id="neverList"></ul>
+            <p class="hint">界面里不会出现这些按钮：不是藏起来，而是根本没有对应能力。需要执行命令时走后端 <span class="mono">ProcessExecutor</span>——参数以数组传入、不做 shell 拼接，并且受能力声明约束。</p>
+          </div>
+
+          <div class="card">
+            <h2>外壳审计日志</h2>
+            <p class="sub">本次会话里每一次外壳动作都会追加一条。真实外壳会写到本机日志文件并附带签名；原型只存在内存里，刷新页面即清空。</p>
+            <table class="tight" style="margin-top:12px">
+              <thead><tr><th>时间</th><th>动作</th><th>目标</th><th>结果</th></tr></thead>
+              <tbody id="auditRows"></tbody>
+            </table>
+            <p class="msg" id="auditMessage"></p>
+          </div>
+        </div>
+      </section>
     </main>
 
     <!-- inspector -->
@@ -1399,7 +1504,9 @@ LIMIT 20;</textarea>
 
   <footer class="statusbar">
     <span>状态：<b id="statusText">就绪</b></span>
+    <span>运行目标：<b id="statusTarget">浏览器</b></span>
     <span>工作空间：<b id="statusWorkspace">engineering-automation-platform</b></span>
+    <span>本地目录：<b id="statusLocalWorkspace">未选择</b></span>
     <span>模型：<b>未启用</b></span>
     <span>确定性覆盖：<b>100%</b></span>
     <span>最近刷新：<b id="lastRefresh">—</b></span>
@@ -1422,40 +1529,15 @@ LIMIT 20;</textarea>
     rules:        { name:'规则库',     pipeline:false, hint:'点击任一规则包，这里显示它需要的能力与版本状态。' },
     knowledge:    { name:'知识库',     pipeline:false, hint:'点击任一知识库，这里显示文档数与检索方式。' },
     databases:    { name:'数据库资料', pipeline:false, hint:'点击「查看」，这里显示该资料的脱敏范围与索引覆盖。' },
-    capabilities: { name:'能力目录',   pipeline:false, hint:'点击能力名或表格行，这里显示它的种类、范围、可用状态与管理入口。' }
+    capabilities: { name:'能力目录',   pipeline:false, hint:'点击能力名或表格行，这里显示它的种类、范围、可用状态与管理入口。' },
+    desktop:      { name:'桌面外壳',   pipeline:false, hint:'外壳只提供平台服务。点击某一项外壳能力，这里显示它的标识、范围、被谁使用与撤回后果。' }
   };
 
-  const DETAIL = {
-    /* 只有能力是静态的：能力由代码注册，界面改不了它，所以它不会过期。
-       任务、专家、规则包、知识库、数据库资料、MCP 服务器都能在本页增删改，
-       静态表一定会在第一次编辑后与现实不符——它们一律由当前状态即时生成。 */
-    capability: {
-      'sql.parse': { title:'sql.parse', sub:'解析 SQL 并抽取结构事实', chip:['ok','可用'],
-        meta:[['种类','内置命令 command'],['范围','平台级'],['可用状态','可用'],['发布事实','33 项'],['引用专家','sql-expert、orders-sql'],['管理入口','平台开关：启用/停用 + 备注']],
-        body:'由代码注册：一个实现 CapabilityHandler 的 Bean，加上声明词表里的一处登记。新增或删除都要改代码并重新评审——发布哪些事实属于代码契约，不能由一次界面操作产生。' },
-      'knowledge.search': { title:'knowledge.search', sub:'检索授权知识', chip:['ok','可用'],
-        meta:[['种类','内置命令 command'],['范围','平台级'],['可用状态','可用'],['发布事实','2 项'],['引用专家','sql-expert、orders-sql'],['管理入口','平台开关：启用/停用 + 备注']],
-        body:'只在专家被显式授权的知识库内检索，每条结果附来源引用。未授权时按「零结果」处理，而不是放宽到全部知识库。' },
-      'database.schema.read': { title:'database.schema.read', sub:'读取脱敏表结构快照', chip:['ok','可用'],
-        meta:[['种类','内置命令 command'],['范围','平台级'],['可用状态','可用'],['发布事实','4 项'],['引用专家','sql-expert'],['管理入口','平台开关：启用/停用 + 备注']],
-        body:'读取人工登记的脱敏快照，不连接业务数据库。快照不是实时结构，这一点会写在证据里。' },
-      'database.index.read': { title:'database.index.read', sub:'读取脱敏索引快照', chip:['ok','可用'],
-        meta:[['种类','内置命令 command'],['范围','平台级'],['可用状态','可用'],['发布事实','4 项'],['引用专家','sql-expert'],['管理入口','平台开关：启用/停用 + 备注']],
-        body:'比对关联列与索引前导列，回答「有没有以该列为前导的索引」。没有高选择性过滤时顺序扫描可能更优，因此不会仅凭 JOIN 就建议加索引。' },
-      'database.explain': { title:'database.explain', sub:'分析执行计划快照', chip:['ok','可用'],
-        meta:[['种类','内置命令 command'],['范围','平台级'],['可用状态','可用'],['发布事实','5 项'],['引用专家','sql-expert（可选节点）'],['管理入口','平台开关：启用/停用 + 备注']],
-        body:'解析用户自行取得的 EXPLAIN JSON，识别扫描与连接节点。平台不执行 SQL、不自动采集计划。' },
-      'git-status': { title:'git-status', sub:'读取本地 Git 状态', chip:['ok','可用'],
-        meta:[['种类','本地 CLI cli'],['范围','平台级'],['可用状态','可用'],['声明二进制','git'],['当前生效','git（随能力默认）'],['管理入口','CLI 通道：覆盖二进制位置 + 启停 + 探测']],
-        body:'执行只读的 git status，参数以数组传入，不做 shell 拼接。界面能改的只是本机上这个二进制在哪里；执行什么命令属于代码。' },
-      'git-diff': { title:'git-diff', sub:'读取本地 Git 差异', chip:['ok','可用'],
-        meta:[['种类','本地 CLI cli'],['范围','平台级'],['可用状态','可用'],['声明二进制','git'],['当前生效','git（随能力默认）'],['管理入口','CLI 通道：覆盖二进制位置 + 启停 + 探测']],
-        body:'执行只读的 git diff 用于确认改动范围，不修改工作区、不推送。当前没有专家引用它。' },
-      'rg-search': { title:'rg-search', sub:'工作空间检索', chip:['warn','缺少可执行文件'],
-        meta:[['种类','本地 CLI cli'],['范围','平台级'],['可用状态','缺少可执行文件'],['声明二进制','rg'],['当前生效','C:/tools/ripgrep/rg.exe（操作者覆盖）'],['管理入口','CLI 通道：覆盖二进制位置 + 启停 + 探测']],
-        body:'覆盖值即时生效、不需要重启，但该路径在本机不存在，因此如实显示「缺少可执行文件」，而不是看起来正常。目录渲染只做 PATH 查找，不执行任何东西。' }
-    }
-  };
+  /* 这里故意是空的：能在这个控制台里被改动的条目，静态表一定会在第一次改动后与现实不符。
+     能力过去放在这里，理由是「它由代码注册、界面改不了」——但 Phase 2e 之后它同样能停用、
+     能改二进制位置、能被专家引用或不再引用，所以它现在也由当前状态即时生成
+     （capabilityDetail / publishedCapabilityDetail），列表与检查器不可能互相矛盾。 */
+  const DETAIL = {};
 
   let currentView = 'overview';
 
@@ -1486,18 +1568,26 @@ LIMIT 20;</textarea>
 
   const SEL_LABEL = {
     task: '任务', capability: '能力', expert: '专家定义',
-    rulePack: '规则包', knowledge: '知识库', profile: '数据库资料', mcpServer: 'MCP 服务器'
+    rulePack: '规则包', knowledge: '知识库', profile: '数据库资料', mcpServer: 'MCP 服务器',
+    permission: '外壳能力', workspace: '本地工作空间'
   };
 
   /* 静态表服务固定示例（能力）；可增删改的条目由当前状态即时生成。 */
   function dynamicDetail(kind, id) {
     if (kind === 'profile') { const p = PROFILES.find(x => x.id === id); return p ? profileDetail(p) : null; }
     if (kind === 'mcpServer') { const s = MCP_SERVERS.find(x => x.id === id); return s ? mcpServerDetail(s) : null; }
-    if (kind === 'capability') { const item = publishedCapability(id); return item ? publishedCapabilityDetail(item) : null; }
+    if (kind === 'capability') {
+      const item = capabilityById(id);
+      if (item) return capabilityDetail(item);
+      const published = publishedCapability(id);
+      return published ? publishedCapabilityDetail(published) : null;
+    }
     if (kind === 'task') { const t = TASKS.find(x => x.id === id); return t ? taskDetail(t) : null; }
     if (kind === 'expert') { const e = EXPERTS.find(x => x.id === id); return e ? expertDetail(e) : null; }
     if (kind === 'rulePack') { const p = RULE_PACKS.find(x => x.id === id); return p ? rulePackDetail(p) : null; }
     if (kind === 'knowledge') { const b = KNOWLEDGE.find(x => x.id === id); return b ? knowledgeDetail(b) : null; }
+    if (kind === 'permission') { const p = PERMISSIONS.find(x => x.id === id); return p ? permissionDetail(p) : null; }
+    if (kind === 'workspace') { const w = LOCAL_WORKSPACES.find(x => x.path === id); return w ? localWorkspaceDetail(w) : null; }
     return null;
   }
 
@@ -1538,7 +1628,8 @@ LIMIT 20;</textarea>
         || document.querySelector('#view-capabilities .subview.active #capabilityAllRows tr.clickable')
         || document.querySelector('#view-capabilities .subview.active tr.clickable');
       pick?.click();
-    }
+    },
+    desktop: () => shellPickActiveSubview()
   };
 
   function setView(view) {
@@ -1554,6 +1645,9 @@ LIMIT 20;</textarea>
     document.getElementById('inspectorBody').innerHTML = '';
     markSelected(null);
 
+    // 页面自带的状态块要重新读一遍：否则显示的是上次离开这一页时的数字。
+    if (view === 'desktop') renderShell();
+
     const pick = DEFAULT_PICK[view];
     if (pick) pick();
     if (!document.getElementById('inspectorBody').innerHTML) {
@@ -1566,24 +1660,10 @@ LIMIT 20;</textarea>
     btn.addEventListener('click', () => setView(btn.dataset.view));
   });
 
-  /* 能力目录子页签：真实切换内容，而不是把四个子页堆在一起。 */
-  document.querySelectorAll('#capTabs button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const key = btn.dataset.subview;
-      document.querySelectorAll('#capTabs button').forEach(b => b.classList.toggle('active', b === btn));
-      document.querySelectorAll('#view-capabilities .subview').forEach(s => s.classList.toggle('active', s.dataset.subview === key));
-      markSelected(null);
-      const first = document.querySelector('#view-capabilities .subview.active .cap-head.clickable')
-        || document.querySelector('#view-capabilities .subview.active #capabilityAllRows tr.clickable')
-        || document.querySelector('#view-capabilities .subview.active tr.clickable');
-      if (first) {
-        first.click();
-      } else {
-        setHint(PAGES.capabilities.hint);
-        document.getElementById('inspectorBody').innerHTML =
-          `<div class="insp-empty">「${btn.textContent.trim()}」当前没有可逐项检查的对象。页签仍然保留，因为这一页本身就是让内容从空到有的入口——例如在这里登记一个 MCP 服务器，它发布的工具随后就会出现在下面。</div>`;
-      }
-    });
+  /* 能力目录子页签：页签是重绘出来的（种类声明 + 条目数），所以用事件委托绑定一次。 */
+  document.getElementById('capTabs').addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (button) showCapabilitySubview(button.dataset.subview);
   });
 
   // 发现 → 检查器（SQL 分析室与规则库试算共用）。动态插入的发现也要能点，因此用统一的绑定函数。
@@ -1773,37 +1853,32 @@ LIMIT 20;</textarea>
     }, '已选中：<b>未判定的规则</b>');
   }
 
-  /* 能力目录「总览」：每类的管理入口与产生方式。 */
-  function showKindDetail(kind, el) {
-    const detail = KIND_DETAIL[kind];
-    if (!detail) return;
+  /* 能力目录「总览」的种类行：管理入口、范围、数量与当前状态都由种类声明 + 条目状态推导。 */
+  function showKindDetail(kindId, el) {
+    const kind = kindById(kindId);
+    if (!kind) return;
+    const items = capabilitiesOf(kindId);
+    const count = countOfKind(kindId);
     markSelected(el);
     renderDetail({
-      title: detail.label, sub: `kind = ${kind}`, chip: detail.chip,
-      meta: detail.meta,
-      body: detail.body,
-      list: detail.list
-    }, `已选中：能力种类 <b>${detail.label}</b>`);
+      title: kind.label, sub: `kind = ${kindId}`,
+      chip: kind.manageable ? [kind.expertScoped ? 'warn' : 'ok', kind.scope] : ['warn', '无管理入口'],
+      meta: [
+        ['种类', kindId],
+        ['范围', `${kind.scope}${kind.expertScoped ? ' · 不会全局启用' : ''}`],
+        ['数量', String(count)],
+        ['管理入口', kind.manageable ? `<span class="mono">${esc(kind.management)}</span>` : '无：这一类既没有条目也没有管理入口'],
+        ['能改什么', kind.manageable ? esc(kind.canChange.join('、')) : '—']
+      ],
+      body: `${kind.creation}${kind.note}`,
+      list: kind.manageable
+        ? [`不可改：${kind.cannot.join('、')}`]
+          .concat(items.length
+            ? [`当前条目：${items.map(item => item.id).join('、')}`]
+            : ['当前没有条目，但子页仍然保留：它正是让内容从空到有的入口'])
+        : [kind.note, '将来接入时：按与 MCP 同样的形状（登记 + 白名单 + 专家授权）设计']
+    }, `已选中：能力种类 <b>${kind.label}</b>`);
   }
-
-  const KIND_DETAIL = {
-    command: { label:'内置命令', chip:['ok','可用 5'], 
-      meta:[['种类','command'],['范围','平台级'],['数量','5'],['管理入口','平台开关：启用 / 停用 + 备注'],['能否新增','不能：新增能力要改代码']],
-      body:'能力本身由代码注册：一个实现 CapabilityHandler 的 Bean，加上声明词表里的一处登记，并登记它发布的事实。界面能改的只有启用状态与备注。',
-      list:['可改：启用 / 停用、备注','不可改：它能执行什么、发布哪些事实','停用会被「已启用专家仍引用它」阻止，并点名专家'] },
-    cli: { label:'本地 CLI', chip:['ok','可用 2 · 缺 1'],
-      meta:[['种类','cli'],['范围','平台级'],['数量','3'],['管理入口','CLI 通道：覆盖二进制位置 + 启停 + 探测'],['能否新增','不能：命令与参数属于代码']],
-      body:'执行什么命令、传什么参数、发布什么事实，都是代码；随机器变化的是「这个二进制在哪」。覆盖值按次解析、即时生效，不需要重启。',
-      list:['可改：二进制位置（PATH 名或绝对路径）、启用 / 停用','可执行：显式探测 <binary> --version（唯一为管理而启动进程的地方）','不可改：命令行与参数（避免把管理界面变成任意命令执行）'] },
-    mcp: { label:'MCP 工具', chip:['warn','专家级'],
-      meta:[['种类','mcp'],['范围','专家级 · 不全局启用'],['数量','见 MCP 子页'],['管理入口','服务器登记：登记 / 修改 / 启用 / 信任 / 白名单 / 删除'],['能否新增','工具由服务器提供，平台只登记白名单']],
-      body:'工具不是平台能力：它由外部服务器发布，平台记录服务器位置与允许的工具，再由专家逐条声明授权。平台不会把服务器返回的内容当作已验证事实。',
-      list:['可改：服务器位置、工具白名单、启用与信任、删除服务器','授权：写入专家清单 mcpTools，启用时生效、停用时撤销','撤回信任或删除被已启用专家使用的服务器会被拒绝并点名专家'] },
-    http: { label:'HTTP 服务', chip:['warn','尚未接入'],
-      meta:[['种类','http'],['范围','专家级 · 不全局启用'],['数量','0'],['管理入口','无（平台尚未实现 HTTP 能力处理器）'],['能否新增','不能：目前没有任何 HTTP 处理器']],
-      body:'HTTP 能力没有处理器、也没有登记表，因此这一类既没有条目也没有管理入口——目录如实显示为零，而不是给一个点了没有反应的页面。',
-      list:['没有可管理项：这一类之所以不给页签，是因为它既不可管理、也没有条目','将来接入时：按与 MCP 同样的形状（登记 + 白名单 + 专家授权）设计'] }
-  };
 
   /* ==================================================================
      运行分析：running → completed 的状态迁移，与任务列表联动。
@@ -1833,6 +1908,14 @@ LIMIT 20;</textarea>
     renderTasks();
 
     setTimeout(() => {
+      // 这条任务可能已经被「关闭窗口」标记为中断：中断是终态，不许定时器把它覆盖成完成。
+      if (task.status === 'interrupted') {
+        analysisRunning = false;
+        button.disabled = false;
+        button.textContent = '开始分析';
+        if (body) body.style.opacity = '1';
+        return;
+      }
       const requested = document.getElementById('requestModel')?.checked;
       task.status = requested ? 'partial' : 'completed';
       task.decision = requested ? 'needs-review' : 'accepted';
@@ -2251,6 +2334,8 @@ LIMIT 20;</textarea>
       const capabilities = server.tools.map(tool => `mcp.${server.id}.${tool}`);
       const problems = mcpProblems(server);
       const note = MCP_NOTES[server.id];
+      const authorised = [...new Set(capabilities.flatMap(capability => mcpAuthorisedExperts(capability)))];
+      const usable = server.enabled && server.trusted;
       return `
       <div class="server-row">
         <div class="cap-head clickable" onclick="inspectMcpServer('${server.id}', this)">
@@ -2263,8 +2348,8 @@ LIMIT 20;</textarea>
           <dt>传输方式</dt><dd class="mono">${esc(server.transport)}</dd>
           <dt>${server.transport === 'stdio' ? '启动命令' : '地址'}</dt><dd class="mono">${esc(server.endpoint)}</dd>
           <dt>工具白名单</dt><dd class="mono">${server.tools.map(esc).join('、') || '（空）'}（操作者声明，未经协议验证）</dd>
-          <dt>发布的能力</dt><dd class="mono">${capabilities.map(esc).join('、') || '—'}</dd>
-          <dt>已授权专家</dt><dd>暂无（需由专家清单声明 mcpTools）</dd>
+          <dt>发布的能力</dt><dd class="mono">${capabilities.map(esc).join('、') || '—'}${usable ? '' : ' <span class="chip warn">未启用 / 未信任期间不交给任何专家</span>'}</dd>
+          <dt>已授权专家</dt><dd>${authorised.length ? esc(authorised.join('、')) : '暂无（需由专家清单声明 mcpTools）'}</dd>
         </dl>
         ${problems.length ? `<p class="requirement-line">当前不可用：${problems.map(esc).join('；')}</p>` : ''}
         <div class="actions" style="margin-top:10px">
@@ -2302,22 +2387,10 @@ LIMIT 20;</textarea>
       </div>`).join('');
   }
 
+  /* 能力目录里的 MCP 数量、页签与总览状态都由能力条目状态推导，这里只做转发：
+     登记 / 启用 / 信任 / 删除服务器之后，四处显示必然同步，不存在只更新其中一处的情况。 */
   function updateCapabilityCounts() {
-    const published = MCP_SERVERS.reduce((total, server) => total + server.tools.length, 0);
-    const tab = document.querySelector('#capTabs button[data-subview="mcp"]');
-    if (tab) tab.textContent = `MCP 工具 · ${published}`;
-    const badge = document.getElementById('mcpCount');
-    if (badge) badge.textContent = `${published} 项`;
-    const overviewCount = document.getElementById('overviewMcpCount');
-    if (overviewCount) overviewCount.textContent = String(published);
-    const overviewState = document.getElementById('overviewMcpState');
-    if (overviewState) {
-      overviewState.innerHTML = published
-        ? `<span class="chip warn">尚未接入 ${published}</span>`
-        : '<span class="chip warn">尚未配置</span>';
-    }
-    const scoped = document.getElementById('consistencyScoped');
-    if (scoped) scoped.textContent = published ? `${published} 项（服务器已发布，平台尚未接入）` : '0 项';
+    renderCapabilities();
   }
 
   function publishedCapability(capabilityId) {
@@ -2348,6 +2421,7 @@ LIMIT 20;</textarea>
   function mcpServerDetail(server) {
     const capabilities = server.tools.map(tool => `mcp.${server.id}.${tool}`);
     const problems = mcpProblems(server);
+    const authorised = [...new Set(capabilities.flatMap(capability => mcpAuthorisedExperts(capability)))];
     return {
       title: server.name, sub: server.id,
       chip: server.enabled && server.trusted ? ['ok','已启用且已信任'] : ['warn','登记未生效'],
@@ -2357,7 +2431,7 @@ LIMIT 20;</textarea>
         [server.transport === 'stdio' ? '启动命令' : '地址', `<span class="mono">${esc(server.endpoint)}</span>`],
         ['工具白名单', capabilities.length ? capabilities.map(esc).join('、') : '（空）'],
         ['启用 / 信任', `${server.enabled ? '已启用' : '未启用'} / ${server.trusted ? '已信任' : '未信任'}`],
-        ['已授权专家', '暂无（需由专家清单声明 mcpTools）'],
+        ['已授权专家', authorised.length ? esc(authorised.join('、')) : '暂无（需由专家清单声明 mcpTools）'],
         ['管理入口', '本页可修改、启用、信任、探测、删除']
       ],
       body:'登记只记录位置与白名单；启用与信任是两件独立的事，只有同时成立，服务器才会把工具发布给声明过它的专家。',
@@ -2528,131 +2602,541 @@ LIMIT 20;</textarea>
   }
 
   /* ==================================================================
-     内置命令开关与 CLI 通道：原型里不存在的控件不做——这里每一个都有反馈。
+     能力目录：一份条目清单（CAPABILITIES）+ 一份种类声明（CAPABILITY_KINDS）。
+     子页、数量、可用状态、种类详情、全部能力表与检查器全部由这两份数据推导，
+     界面不写死任何一种结果——否则第一次停用一个能力，四处显示就会各说各话。
      ================================================================== */
-  const CAPABILITY_SETTINGS = {
-    'sql.parse':        { enabled:true, note:'为什么停用/启用它' },
-    'database.explain': { enabled:true, note:'本机没有快照来源，暂时停用' },
-    'knowledge.search': { enabled:true, note:'为什么停用/启用它' }
-  };
-  const CAPABILITY_USERS = {
-    'sql.parse':        { enabled:['sql-expert','orders-sql'], draft:[] },
-    /* 只有草稿引用：不阻止停用——草稿不能执行，也不持有任何授权。 */
-    'database.explain': { enabled:[], draft:['ops-review'] },
-    'knowledge.search': { enabled:['sql-expert','orders-sql'], draft:[] }
-  };
 
-  function renderCapabilitySetting(capability) {
-    const setting = CAPABILITY_SETTINGS[capability];
-    const status = document.getElementById(`cmdStatus-${capability}`);
-    if (status) {
-      status.className = 'chip ' + (setting.enabled ? 'ok' : 'warn');
-      status.textContent = setting.enabled ? '可用' : '已停用';
+  /* 种类声明（后端 CapabilityKind.ORDER 的形状）。
+     manageable = 这一类有没有管理入口；子页由「可管理 或 有条目」决定。 */
+  const CAPABILITY_KINDS = [
+    { id:'command', label:'内置命令', scope:'平台级', expertScoped:false, manageable:true,
+      management:'平台开关：可启用、停用并备注', limits:'不能新增或删除',
+      canChange:['启用 / 停用','备注（随能力目录一起返回）'],
+      cannot:['新增或删除能力','它执行什么、发布哪些事实'],
+      creation:'内置命令由代码注册：一个实现 CapabilityHandler 的 Bean，加上声明词表里的一处登记，并登记它发布的事实。',
+      note:'新增内置命令要改代码并重新评审——这是刻意的：发布哪些事实属于代码契约。' },
+    { id:'cli', label:'本地 CLI', scope:'平台级', expertScoped:false, manageable:true,
+      management:'CLI 通道：可覆盖二进制位置、启停并主动探测', limits:'不能改命令与参数',
+      canChange:['二进制位置（PATH 里的名字或绝对路径）','启用 / 停用','显式探测 <binary> --version'],
+      cannot:['命令行与参数（否则管理界面就成了任意命令执行）'],
+      creation:'本地 CLI 同样由代码注册：执行什么命令、传什么参数、发布哪些事实都写在能力代码里。',
+      note:'随机器变化的只有「这个二进制在哪」；覆盖值按次解析、即时生效，不需要重启。' },
+    { id:'mcp', label:'MCP 工具', scope:'专家级', expertScoped:true, manageable:true,
+      management:'服务器登记：登记、修改、启用、信任、放行工具、删除', limits:'不能替服务器创建工具',
+      canChange:['服务器位置与工具白名单','启用与信任','删除服务器'],
+      cannot:['替服务器创建工具','把服务器返回的内容当成已验证事实'],
+      creation:'工具由外部 MCP 服务器发布：平台记录服务器位置与工具白名单，再由专家逐条声明授权。',
+      note:'工具按 mcp.<服务器>.<工具> 命名，会话按 (执行, 专家, 服务器) 三元组隔离。' },
+    { id:'http', label:'HTTP 服务', scope:'专家级', expertScoped:true, manageable:false,
+      management:null, limits:'无管理入口',
+      canChange:[],
+      cannot:['管理：平台尚未实现 HTTP 能力处理器'],
+      creation:'平台尚未实现 HTTP 能力处理器，也没有登记表。',
+      note:'既没有条目、也没有管理入口，因此不生成子页——而不是给一个点了没有反应的页面。' }
+  ];
+  const KIND_LABEL = Object.fromEntries(CAPABILITY_KINDS.map(k => [k.id, k.label]));
+  const kindById = id => CAPABILITY_KINDS.find(k => k.id === id);
+
+  /* 声明词表 = 代码里声明支持的能力（后端 ExpertGraph.CAPABILITIES 的形状）。
+     与注册表不一致时，一致性面板会把差异逐条列出来，而不是只报一个数字。 */
+  const DECLARED_CAPABILITIES = ['database.explain','database.index.read','database.schema.read',
+    'git-diff','git-status','knowledge.search','rg-search','sql.parse'];
+
+  /* 注册表 = 运行时真正有处理器的能力。界面能改的只有启用状态、备注与 CLI 二进制位置。 */
+  let CAPABILITIES = [
+    { id:'sql.parse', kind:'command', title:'解析 SQL 并抽取结构事实',
+      body:'用 JSQLParser 解析输入语句并发布投影、连接、谓词、分页等结构事实。不执行 SQL、不连接数据库、不判定对错。',
+      inputs:'问题文本 + SQL', grants:'无需额外授权（平台级）', executor:'JSQLParser + SqlFactExtractor',
+      facts:'33 项 · parse.status、select.allColumns、predicate.* …', evidence:'投影 / 连接 / 谓词 / 分页结构事实',
+      enabled:true, note:'为什么停用/启用它',
+      check:'仍被已启用专家引用时，后端会拒绝停用并点名这些专家——停用会让它们的节点在执行时失败。' },
+    { id:'knowledge.search', kind:'command', title:'检索授权知识',
+      body:'只在专家被显式授权的知识库内做本地关键词 + 全文检索，每条结果附来源引用；未授权时按「零结果」处理，不会放宽到全部知识库。',
+      inputs:'查询关键词 + 专家授权的知识库', grants:'启用专家时选择的知识库',
+      executor:'KnowledgeRepository · PostgreSQL FTS',
+      facts:'2 项 · knowledge.granted、knowledge.matches', evidence:'命中的文档片段与来源引用',
+      enabled:true, note:'为什么停用/启用它',
+      check:'数据检索能力同样受授权约束：停用后节点直接失败，而不是退化成「检索全部知识库」。' },
+    { id:'database.schema.read', kind:'command', title:'读取脱敏表结构快照',
+      body:'读取人工登记的脱敏快照，不连接业务数据库。快照不是实时结构，这一点会写在证据里。',
+      inputs:'数据资料标识 + 表名', grants:'专家授权的数据库资料',
+      executor:'DatabaseProfileRepository（只读快照）',
+      facts:'4 项 · schema.tables、schema.columns …', evidence:'关联列的登记类型与前导索引信息',
+      enabled:true, note:'为什么停用/启用它',
+      check:'停用后依赖脱敏快照的规则会变成「未判定」，而不是看起来通过。' },
+    { id:'database.index.read', kind:'command', title:'读取脱敏索引快照',
+      body:'比对关联列与索引前导列，回答「有没有以该列为前导的索引」。没有高选择性过滤时顺序扫描可能更优，因此不会仅凭 JOIN 就建议加索引。',
+      inputs:'数据资料标识 + 表名', grants:'专家授权的数据库资料',
+      executor:'DatabaseProfileRepository（只读快照）',
+      facts:'4 项 · index.leading、index.missing …', evidence:'索引前导列与关联列的比对结果',
+      enabled:true, note:'为什么停用/启用它',
+      check:'平台不连接业务数据库、不采集实时索引；停用后索引类规则会列为「未判定」。' },
+    { id:'database.explain', kind:'command', title:'分析执行计划快照',
+      body:'解析用户自行取得的 PostgreSQL EXPLAIN JSON，识别扫描与连接节点。平台不执行 SQL、不自动采集计划。',
+      inputs:'用户提供的 EXPLAIN JSON', grants:'无需额外授权（平台级）',
+      executor:'运行时内置解析',
+      facts:'5 项 · plan.loaded、plan.seqScan …', evidence:'扫描与连接节点类型',
+      enabled:true, note:'本机没有快照来源，暂时停用',
+      check:'停用是操作决定，不是「未实现」：清单引用已停用能力时，报错会说明它已被停用并指向这里重新启用；停用后它也不再出现在专家可选的平台级能力里。' },
+    { id:'git-status', kind:'cli', title:'读取本地 Git 状态', declared:'git',
+      call:'ProcessExecutor · git status',
+      body:'在工作空间内执行只读的 git status，输出先脱敏再入库。不修改工作区、不推送。',
+      inputs:'工作空间目录', grants:'无需额外授权（平台级）',
+      facts:'3 项 · vcs.branch、vcs.dirty …', evidence:'工作区改动概览',
+      cli:{ declared:'git', override:null, resolved:'C:\\Program Files\\Git\\cmd\\git.exe', found:true },
+      enabled:true, note:'为什么停用/启用它',
+      check:'探测会显式运行 <span class="mono">git --version</span>（短超时、输出脱敏）；这是唯一为管理而执行二进制的地方。渲染目录本身只做 PATH 查找，不执行任何东西。' },
+    { id:'git-diff', kind:'cli', title:'读取本地 Git 差异', declared:'git',
+      call:'ProcessExecutor · git diff --stat',
+      body:'执行只读的 git diff，用于确认改动范围。不修改工作区、不推送。',
+      inputs:'工作空间目录', grants:'无需额外授权（平台级）',
+      facts:'3 项 · vcs.changedFiles、vcs.diffScope …', evidence:'改动文件清单与差异范围',
+      cli:{ declared:'git', override:null, resolved:'C:\\Program Files\\Git\\cmd\\git.exe', found:true },
+      enabled:true, note:'为什么停用/启用它',
+      check:'覆盖值随时生效、不需要重启：能力按次解析二进制；找不到时如实显示「缺少可执行文件」，而不是看起来正常。' },
+    { id:'rg-search', kind:'cli', title:'工作空间检索', declared:'rg',
+      call:'ProcessExecutor · rg --line-number --hidden',
+      body:'用 ripgrep 在工作空间内做有界检索，定位代码或配置证据。忽略 .git，参数以数组传入。',
+      inputs:'检索模式 + 作用目录', grants:'无需额外授权（平台级）',
+      facts:'2 项 · search.matches、search.scope …', evidence:'命中的文件与行号',
+      cli:{ declared:'rg', override:'C:/tools/ripgrep/rg.exe', resolved:null, found:false },
+      enabled:true, note:'为什么停用/启用它',
+      check:'这个覆盖值在本机不存在（不在 PATH 中，也不是存在的绝对路径），因此如实显示「缺少可执行文件」——停用与缺失是两件事，界面不会混为一谈。' }
+  ];
+
+  /* 反馈进状态，重绘不会把它抹掉：否则一次重绘就变成「点了没反应」。 */
+  const CAPABILITY_MESSAGES = {};
+  function setCapabilityMessage(id, kind, html) {
+    CAPABILITY_MESSAGES[id] = { kind, html };
+    [`cmdMessage-${id}`, `cliMessage-${id}`].forEach(elementId => {
+      const host = document.getElementById(elementId);
+      if (!host) return;
+      host.className = 'msg' + (kind ? ' ' + kind : '');
+      host.innerHTML = html;
+    });
+  }
+
+  const capabilityById = id => CAPABILITIES.find(c => c.id === id) ?? null;
+  const capabilitiesOf = kind => CAPABILITIES.filter(c => c.kind === kind);
+  const platformCapabilities = () => CAPABILITIES.filter(c => !kindById(c.kind)?.expertScoped);
+  function publishedCapabilities() {
+    return MCP_SERVERS.flatMap(server => server.tools.map(tool => ({ capability:`mcp.${server.id}.${tool}`, server, tool })));
+  }
+  const capabilityTitle = id => capabilityById(id)?.title
+    ?? (publishedCapability(id) ? `服务器 ${publishedCapability(id).server.id} 的工具 ${publishedCapability(id).tool}` : id);
+  const capabilityKind = id => capabilityById(id)?.kind ?? (publishedCapability(id) ? 'mcp' : null);
+  const scopeOf = item => kindById(item.kind)?.scope ?? (kindById(item.kind)?.expertScoped ? '专家级' : '平台级');
+
+  /* 引用情况由专家定义推导，与专家页读同一份状态——不是手写的说明文字。 */
+  function capabilityUsage(id) {
+    const uses = expert => expert.nodes.some(node => node.capability === id);
+    return {
+      enabled: EXPERTS.filter(expert => expert.enabled && uses(expert)).map(expert => expert.id),
+      draft: EXPERTS.filter(expert => !expert.enabled && uses(expert)).map(expert => expert.id)
+    };
+  }
+  function usageText(item) {
+    const usage = capabilityUsage(item.id);
+    if (usage.enabled.length) {
+      return `已启用专家：${usage.enabled.join('、')}`
+        + (usage.draft.length ? `；草稿引用：${usage.draft.join('、')}` : '');
     }
-    const button = document.getElementById(`cmdToggle-${capability}`);
-    if (button) button.textContent = setting.enabled ? '停用' : '启用';
+    if (usage.draft.length) return `草稿引用：${usage.draft.join('、')}（草稿不阻止停用）`;
+    return '暂无专家引用';
   }
 
-  function saveCapabilityNote(capability) {
-    const value = document.getElementById(`cmdNote-${capability}`).value.trim();
-    if (value.length > 300) return setMessage(`cmdMessage-${capability}`,'err','备注最多300字符');
-    if (containsSecret(value)) return setMessage(`cmdMessage-${capability}`,'err','备注里不要写凭据；平台不保存 Token 或密钥');
-    CAPABILITY_SETTINGS[capability].note = value;
-    setMessage(`cmdMessage-${capability}`,'ok', value
-      ? `备注已保存，会随能力目录一起返回：${value}`
-      : '备注已清空。');
+  /* 停用是决定，不是缺陷：被停用的能力一律显示「已停用」，绝不说成「缺少可执行文件」。 */
+  function availabilityOf(item) {
+    if (!item.enabled) return { chip:'warn', text:'已停用' };
+    if (item.kind === 'cli') {
+      if (item.cli.found === true) return { chip:'ok', text:'可用' };
+      if (item.cli.found === false) return { chip:'warn', text:'缺少可执行文件' };
+      return { chip:'', text:'无法在原型中判定' };
+    }
+    return { chip:'ok', text:'可用' };
   }
 
-  function toggleCapability(capability) {
-    const setting = CAPABILITY_SETTINGS[capability];
-    const users = CAPABILITY_USERS[capability];
-    if (setting.enabled) {
-      if (users.enabled.length) {
-        return setMessage(`cmdMessage-${capability}`,'err',
-          `无法停用 ${capability}：仍被已启用的专家引用——${users.enabled.join('、')}。`
+  function countOfKind(kind) {
+    return kind === 'mcp' ? publishedCapabilities().length : capabilitiesOf(kind).length;
+  }
+  /* 子页由种类声明生成，但只有真的实现了内容的种类才给页签：给一个点开是空的子页，
+     和给一个点了没有反应的按钮是同一种谎。没有实现的种类在总览里如实标注。 */
+  const hasKindSubview = kind => Boolean(document.querySelector(`#view-capabilities .subview[data-subview="${kind}"]`));
+  /* 一个种类拿到子页的条件：有东西可管或者已经有条目，且这个控制台实现了它的管理面。 */
+  const visibleKinds = () => CAPABILITY_KINDS.filter(kind =>
+    hasKindSubview(kind.id) && (kind.manageable || countOfKind(kind.id) > 0));
+
+  function renderCapabilityTabs() {
+    const host = document.getElementById('capTabs');
+    if (!host) return;
+    const current = host.querySelector('button.active')?.dataset.subview ?? 'overview';
+    const tabs = [{ id:'overview', label:'总览', count:null }]
+      .concat(visibleKinds().map(kind => ({ id:kind.id, label:kind.label, count:countOfKind(kind.id) })));
+    host.innerHTML = tabs.map(tab => {
+      const count = tab.count === null ? '' : ` · ${tab.count}`;
+      return `<button${tab.id === current ? ' class="active"' : ''} data-subview="${tab.id}">${esc(tab.label)}${count}</button>`;
+    }).join('');
+  }
+
+  /* 切子页：页签、子页、检查器三处一起变。页签是重绘出来的，所以用事件委托绑定。 */
+  function showCapabilitySubview(key) {
+    const host = document.getElementById('capTabs');
+    const button = host.querySelector(`button[data-subview="${key}"]`);
+    if (!button) return;
+    host.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === button));
+    document.querySelectorAll('#view-capabilities .subview').forEach(s => s.classList.toggle('active', s.dataset.subview === key));
+    markSelected(null);
+    const first = document.querySelector('#view-capabilities .subview.active .cap-head.clickable')
+      || document.querySelector('#view-capabilities .subview.active #capabilityAllRows tr.clickable')
+      || document.querySelector('#view-capabilities .subview.active tr.clickable');
+    if (first) { first.click(); return; }
+    setHint(PAGES.capabilities.hint);
+    document.getElementById('inspectorBody').innerHTML =
+      `<div class="insp-empty">「${esc(button.textContent.trim())}」当前没有可逐项检查的对象。子页仍然保留：它正是让内容从空到有的入口——例如在这里登记一个 MCP 服务器，它发布的工具随后就会出现。</div>`;
+  }
+
+  function kindStateChips(kind) {
+    if (kind.id === 'mcp') {
+      const published = publishedCapabilities().length;
+      return published
+        ? `<span class="chip warn" id="overviewMcpState">尚未接入 ${published}</span>`
+        : '<span class="chip warn" id="overviewMcpState">尚未配置</span>';
+    }
+    const items = capabilitiesOf(kind.id);
+    if (!items.length) return `<span class="chip warn" id="kindState-${kind.id}">${kind.manageable ? '尚无条目' : '尚未接入'}</span>`;
+    const disabled = items.filter(item => !item.enabled).length;
+    const missing = items.filter(item => item.enabled && availabilityOf(item).text === '缺少可执行文件').length;
+    const chips = [`<span class="chip ${items.length - disabled - missing ? 'ok' : 'warn'}" id="kindState-${kind.id}">可用 ${items.length - disabled - missing}</span>`];
+    if (missing) chips.push(`<span class="chip warn" id="kindState-${kind.id}m">缺少可执行文件 ${missing}</span>`);
+    if (disabled) chips.push(`<span class="chip warn" id="kindState-${kind.id}d">已停用 ${disabled}</span>`);
+    return chips.join(' ');
+  }
+
+  function renderKindRows() {
+    const host = document.getElementById('kindRows');
+    if (!host) return;
+    host.innerHTML = CAPABILITY_KINDS.map(kind => {
+      const count = countOfKind(kind.id);
+      const countCell = kind.id === 'mcp' ? `<td id="overviewMcpCount">${count}</td>` : `<td>${count}</td>`;
+      const management = !kind.manageable
+        ? '<span class="chip warn">无管理入口</span>'
+        : hasKindSubview(kind.id)
+          ? `${esc(kind.management)}；<b>${esc(kind.limits)}</b>`
+          : `<span class="chip warn">尚无管理界面</span> ${esc(kind.management)}`;
+      return `
+              <tr class="clickable" onclick="showKindDetail('${kind.id}', this)">
+                <td><b>${esc(kind.label)}</b> <span class="mono kind-id">${kind.id}</span></td>
+                <td><span class="chip${kind.expertScoped ? ' warn' : ''}">${esc(kind.scope)}</span></td>
+                ${countCell}
+                <td>${kindStateChips(kind)}</td>
+                <td>${management}</td>
+              </tr>`;
+    }).join('');
+  }
+
+  function renderKindCreation() {
+    const host = document.getElementById('kindCreation');
+    if (!host) return;
+    host.innerHTML = CAPABILITY_KINDS.map(kind =>
+      `<p class="sub" style="margin-top:8px"><b>${esc(kind.label)}</b>：${esc(kind.creation)}${esc(kind.note)}</p>`).join('');
+  }
+
+  function kindManageHtml(kind) {
+    return `<p class="sub"><b>这里可以改什么：</b>${esc(kind.canChange.join('、'))}。${esc(kind.limits)}。</p>
+      <p class="sub" style="margin-top:6px"><b>能力本身是怎么来的：</b>${esc(kind.creation)}${esc(kind.note)}</p>`;
+  }
+
+  /* 一致性：两个方向都列出来。只报一个数字，等于把「规则永远不命中」伪装成「没有问题」。 */
+  function renderConsistency() {
+    const platform = platformCapabilities();
+    const disabled = platform.filter(item => !item.enabled);
+    const published = publishedCapabilities();
+    const declaredScoped = [...new Set(EXPERTS.flatMap(expert => expert.mcpTools ?? []))];
+    const unregistered = DECLARED_CAPABILITIES.filter(id => !CAPABILITIES.some(item => item.id === id));
+    const undeclared = CAPABILITIES.map(item => item.id).filter(id => !DECLARED_CAPABILITIES.includes(id));
+    const danglingScoped = declaredScoped.filter(id => !published.some(item => item.capability === id));
+    const unusedScoped = published.map(item => item.capability)
+      .filter(id => !declaredScoped.includes(id) && !mcpAuthorisedExperts(id).length);
+
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    set('consistencyUsable', `${platform.length - disabled.length} 项`);
+    set('consistencyScoped', published.length ? `${published.length} 项（服务器已发布，平台尚未接入）` : '0 项');
+    set('consistencyDisabled', `${disabled.length} 项`);
+
+    const host = document.getElementById('consistencyMismatch');
+    if (!host) return;
+    host.innerHTML = [
+      unregistered.length
+        ? `<p class="hint">声明了、但运行时没有处理器：<b>${unregistered.map(esc).join('、')}</b>——引用它们的清单会被拒绝，运行期解析也会再次拒绝。</p>`
+        : `<p class="hint">声明词表里的 ${DECLARED_CAPABILITIES.length} 项能力都有对应处理器：没有「声明了但没实现」的能力。</p>`,
+      undeclared.length
+        ? `<p class="hint">注册了、但不在声明词表里：<b>${undeclared.map(esc).join('、')}</b>——这样的能力不会被任何清单引用到。</p>`
+        : '<p class="hint">也没有「注册了但未声明」的能力：每一个处理器都在声明词表里。</p>',
+      danglingScoped.length
+        ? `<p class="hint">专家清单声明了、却没有任何已登记服务器发布的专家级能力：<b>${danglingScoped.map(esc).join('、')}</b>——这些专家启用时会被拒绝。</p>`
+        : '',
+      unusedScoped.length
+        ? `<p class="hint">服务器已发布、但还没有专家在清单里声明：<b>${unusedScoped.map(esc).join('、')}</b>——登记不等于授权，能力不会因此变成平台级。</p>`
+        : '',
+      `<p class="hint">专家目录包含 ${EXPERTS.length} 个定义；草稿保存不代表已启用执行。</p>`
+    ].filter(Boolean).join('');
+  }
+
+  function renderCapabilityAll() {
+    const host = document.getElementById('capabilityAllRows');
+    if (!host) return;
+    const rows = CAPABILITIES.map(item => {
+      const availability = availabilityOf(item);
+      const usage = capabilityUsage(item.id);
+      const owner = usage.enabled.length ? usage.enabled.join('、')
+        : usage.draft.length ? `${usage.draft.join('、')}（草稿）` : '—';
+      return `
+              <tr class="clickable" onclick="inspectCapability('${item.id}', this)">
+                <td class="mono">${esc(item.id)}</td>
+                <td>${esc(KIND_LABEL[item.kind])}</td>
+                <td><span class="chip${kindById(item.kind)?.expertScoped ? ' warn' : ''}">${esc(scopeOf(item))}</span></td>
+                <td><span class="chip ${availability.chip}">${esc(availability.text)}</span></td>
+                <td>${esc(owner)}</td>
+              </tr>`;
+    });
+    publishedCapabilities().forEach(item => {
+      const usable = item.server.enabled && item.server.trusted;
+      const authorised = mcpAuthorisedExperts(item.capability);
+      rows.push(`
+              <tr class="clickable" onclick="inspectCapability('${item.capability}', this)">
+                <td class="mono">${esc(item.capability)}</td>
+                <td>MCP 工具</td>
+                <td><span class="chip warn">专家级</span></td>
+                <td><span class="chip warn">${usable ? '尚未接入' : '未启用 / 未信任'}</span></td>
+                <td>${authorised.length ? esc(authorised.join('、')) : '—'}</td>
+              </tr>`);
+    });
+    host.innerHTML = rows.join('');
+  }
+
+  function capabilityControls(item, prefix) {
+    const message = CAPABILITY_MESSAGES[item.id];
+    return `
+        <div class="controls">
+          <input id="${prefix}Note-${item.id}" value="${esc(item.note)}" aria-label="备注" />
+          <button class="btn" onclick="saveCapabilityNote('${item.id}')">保存备注</button>
+          <button class="btn" id="${prefix}Toggle-${item.id}" onclick="toggleCapability('${item.id}')">${item.enabled ? '停用' : '启用'}</button>
+        </div>
+        <p class="msg${message ? ' ' + message.kind : ''}" id="${prefix}Message-${item.id}">${message ? message.html : ''}</p>
+        <p class="requirement-line">${item.check}</p>`;
+  }
+
+  function commandCard(item) {
+    const availability = availabilityOf(item);
+    return `
+            <div class="cap">
+              <div class="cap-head clickable" onclick="inspectCapability('${item.id}', this)"><code>${esc(item.id)}</code><span class="chip ${availability.chip}" id="cmdStatus-${item.id}">${esc(availability.text)}</span></div>
+              <b class="cap-title">${esc(item.title)}</b>
+              <p>${esc(item.body)}</p>
+              <dl class="cap-meta">
+                <dt>执行器</dt><dd class="mono">${esc(item.executor)}</dd>
+                <dt>输入 / 授权</dt><dd>${esc(item.inputs)} · ${esc(item.grants)}</dd>
+                <dt>发布事实</dt><dd class="mono">${esc(item.facts)}</dd>
+                <dt>引用情况</dt><dd>${esc(usageText(item))}</dd>
+              </dl>
+              ${capabilityControls(item, 'cmd')}
+            </div>`;
+  }
+
+  function cliActiveHtml(item) {
+    const channel = item.cli;
+    return `${esc(channel.override || channel.declared)} <span class="chip${channel.override ? ' warn' : ''}">${channel.override ? '操作者覆盖' : '随能力默认'}</span>`;
+  }
+  function cliResolvedText(item) {
+    const channel = item.cli;
+    if (channel.found === true) return channel.resolved;
+    if (channel.found === false) return '未找到（不在 PATH 中，也不是存在的绝对路径）';
+    return '原型不做文件查找；真实实现按 PATH 或绝对路径解析';
+  }
+
+  function cliCard(item) {
+    const availability = availabilityOf(item);
+    return `
+            <div class="cap">
+              <div class="cap-head clickable" onclick="inspectCapability('${item.id}', this)"><code>${esc(item.id)}</code><span class="chip ${availability.chip}" id="cliStatus-${item.id}">${esc(availability.text)}</span></div>
+              <b class="cap-title">${esc(item.title)}</b>
+              <p>${esc(item.body)}</p>
+              <dl class="cap-meta">
+                <dt>声明二进制</dt><dd class="mono">${esc(item.declared)}</dd>
+                <dt>当前生效</dt><dd class="mono" id="cliActive-${item.id}">${cliActiveHtml(item)}</dd>
+                <dt>解析路径</dt><dd class="mono" id="cliResolved-${item.id}">${esc(cliResolvedText(item))}</dd>
+                <dt>调用方式</dt><dd class="mono">${esc(item.call)}</dd>
+                <dt>引用情况</dt><dd>${esc(usageText(item))}</dd>
+              </dl>
+              <div class="controls">
+                <input id="cliBinary-${item.id}" value="${esc(item.cli.override ?? '')}" placeholder="${esc(item.declared)} 或绝对路径" aria-label="二进制位置" />
+                <button class="btn primary" onclick="saveCliChannel('${item.id}')">保存位置</button>
+                <button class="btn" onclick="resetCliChannel('${item.id}')">恢复默认</button>
+                <button class="btn" onclick="probeCliChannel('${item.id}')">探测</button>
+              </div>
+              ${capabilityControls(item, 'cli')}
+            </div>`;
+  }
+
+  function renderKindCards(kind) {
+    const host = document.getElementById(`kindCards-${kind}`);
+    if (!host) return;
+    host.innerHTML = capabilitiesOf(kind).map(item => kind === 'cli' ? cliCard(item) : commandCard(item)).join('');
+  }
+
+  /* 能力详情由状态生成：停用、改二进制、被专家引用，检查器立刻跟着变——
+     过去这里是静态表，理由是「能力只有代码能改」，而 Phase 2e 之后这个前提已经不成立了。 */
+  function capabilityDetail(item) {
+    const kind = kindById(item.kind);
+    const availability = availabilityOf(item);
+    const usage = capabilityUsage(item.id);
+    const rows = [
+      ['种类', `${esc(kind?.label)} ${item.kind}`],
+      ['范围', esc(kind?.scope)],
+      ['可用状态', availability.text],
+      ['输入', esc(item.inputs ?? '—')],
+      ['授权', esc(item.grants ?? '—')],
+      ['执行器', `<span class="mono">${esc(item.executor ?? item.call ?? '—')}</span>`]
+    ];
+    if (item.kind === 'cli') {
+      rows.push(['当前生效', cliActiveHtml(item)]);
+      rows.push(['解析路径', `<span class="mono">${esc(cliResolvedText(item))}</span>`]);
+    }
+    rows.push(['发布事实', esc(item.facts ?? '—')]);
+    rows.push(['证据', esc(item.evidence ?? '—')]);
+    rows.push(['已启用专家', usage.enabled.length ? esc(usage.enabled.join('、')) : '暂无']);
+    rows.push(['草稿引用', usage.draft.length ? esc(usage.draft.join('、')) : '无']);
+    rows.push(['管理入口', kind?.manageable ? esc(kind.management) : '无（这一类既没有条目也没有管理入口）']);
+    return {
+      title: item.id, sub: item.title, chip: [availability.chip, availability.text],
+      meta: rows,
+      body: `${kind?.creation}${item.body}`
+    };
+  }
+
+  /* ------------------------------------------------------------------
+     渲染入口：一次把子页、总览、卡片与检查器可选对象都刷新到同一份状态。
+     ------------------------------------------------------------------ */
+  function renderCapabilities() {
+    renderCapabilityTabs();
+    renderKindRows();
+    renderKindCreation();
+    renderConsistency();
+    renderCapabilityAll();
+    // 有卡片容器的种类才逐个渲染能力卡片——容器是标记，内容来自状态。
+    CAPABILITY_KINDS.filter(kind => document.getElementById(`kindCards-${kind.id}`)).forEach(kind => {
+      const count = document.getElementById(`kindCount-${kind.id}`);
+      if (count) count.textContent = `${capabilitiesOf(kind.id).length} 项`;
+      const manage = document.getElementById(`kindManage-${kind.id}`);
+      if (manage) manage.innerHTML = kindManageHtml(kind);
+      renderKindCards(kind.id);
+    });
+    const badge = document.getElementById('mcpCount');
+    if (badge) badge.textContent = `${publishedCapabilities().length} 项`;
+    renderNodeCapabilityOptions();
+  }
+
+  function saveCapabilityNote(id) {
+    const item = capabilityById(id);
+    if (!item) return;
+    const input = document.getElementById(`cmdNote-${id}`) ?? document.getElementById(`cliNote-${id}`);
+    const value = input ? input.value.trim() : '';
+    if (value.length > 300) return setCapabilityMessage(id, 'err', '备注最多 300 字符。');
+    if (containsSecret(value)) return setCapabilityMessage(id, 'err', '备注里不要写凭据；平台不保存 Token 或密钥。');
+    item.note = value;
+    setCapabilityMessage(id, 'ok', value ? `备注已保存，会随能力目录一起返回：${esc(value)}` : '备注已清空。');
+  }
+
+  function toggleCapability(id) {
+    const item = capabilityById(id);
+    if (!item) return;
+    const usage = capabilityUsage(id);
+    if (item.enabled) {
+      if (usage.enabled.length) {
+        setCapabilityMessage(id, 'err',
+          `无法停用 ${esc(id)}：仍被已启用的专家引用——${esc(usage.enabled.join('、'))}。`
           + '停用会让它们的节点在执行时失败，因此后端会拒绝并点名这些专家；请先在专家清单里移除该能力节点。');
+        return;
       }
-      setting.enabled = false;
-      setMessage(`cmdMessage-${capability}`,'warn', users.draft.length
-        ? `已停用 ${capability}。草稿引用（${users.draft.join('、')}）不阻止停用，但它们启用时需要先重新启用这个能力。`
-        : `已停用 ${capability}。清单里引用它时会明确报「已在平台停用」，而不是「未实现的能力」。`);
+      item.enabled = false;
+      setCapabilityMessage(id, 'warn', usage.draft.length
+        ? `已停用 ${esc(id)}。草稿引用（${esc(usage.draft.join('、'))}）不阻止停用，但它们启用时需要先重新启用这个能力。`
+        : `已停用 ${esc(id)}。清单里引用它时会明确报「已在平台停用」，而不是「未实现的能力」。`);
     } else {
-      setting.enabled = true;
-      setMessage(`cmdMessage-${capability}`,'ok', `${capability} 已重新启用。`);
+      item.enabled = true;
+      setCapabilityMessage(id, 'ok', `${esc(id)} 已重新启用。`);
     }
-    renderCapabilitySetting(capability);
-    updateCapabilityCounts2();
+    renderCapabilities();
   }
 
-  function updateCapabilityCounts2() {
-    const disabled = Object.keys(CAPABILITY_SETTINGS).filter(name => !CAPABILITY_SETTINGS[name].enabled);
-    const usable = document.getElementById('consistencyUsable');
-    if (usable) usable.textContent = `${8 - disabled.length} 项`;
-    const state = document.getElementById('consistencyDisabled');
-    if (state) state.textContent = `${disabled.length} 项`;
-  }
-
-  const CLI_CHANNELS = {
-    'git-status': { declared:'git', override:null, resolved:'C:\\Program Files\\Git\\cmd\\git.exe', found:true },
-    'rg-search':  { declared:'rg',  override:'C:/tools/ripgrep/rg.exe', resolved:null, found:false },
-    'git-diff':   { declared:'git', override:null, resolved:'C:\\Program Files\\Git\\cmd\\git.exe', found:true }
-  };
-
-  function renderCliChannel(capability) {
-    const channel = CLI_CHANNELS[capability];
-    const active = channel.override || channel.declared;
-    const source = channel.override ? '操作者覆盖' : '随能力默认';
-    const activeCell = document.getElementById(`cliActive-${capability}`);
-    if (activeCell) activeCell.innerHTML = `${esc(active)} <span class="chip${channel.override ? ' warn' : ''}">${source}</span>`;
-    const resolvedCell = document.getElementById(`cliResolved-${capability}`);
-    if (resolvedCell) {
-      resolvedCell.textContent = channel.found === true ? channel.resolved
-        : channel.found === false ? '未找到（不在 PATH 中，也不是存在的绝对路径）'
-        : '原型不做文件查找；真实实现按 PATH 或绝对路径解析';
-    }
-    const status = document.getElementById(`cliStatus-${capability}`);
-    if (status) {
-      status.className = 'chip ' + (channel.found === true ? 'ok' : channel.found === false ? 'warn' : '');
-      status.textContent = channel.found === true ? '可用' : channel.found === false ? '缺少可执行文件' : '无法在原型中判定';
-    }
-    const input = document.getElementById(`cliBinary-${capability}`);
-    if (input) input.value = channel.override || '';
-  }
-
-  function saveCliChannel(capability) {
-    const channel = CLI_CHANNELS[capability];
-    const value = document.getElementById(`cliBinary-${capability}`).value.trim();
-    if (!value) return setMessage(`cliMessage-${capability}`,'info',
+  function saveCliChannel(id) {
+    const item = capabilityById(id);
+    if (!item) return;
+    const value = document.getElementById(`cliBinary-${id}`).value.trim();
+    if (!value) return setCapabilityMessage(id, 'info',
       '输入为空。要清掉覆盖值、回到随能力默认的二进制，请点「恢复默认」。');
-    if (value.startsWith('-')) return setMessage(`cliMessage-${capability}`,'err',
+    if (value.startsWith('-')) return setCapabilityMessage(id, 'err',
       '二进制位置不能以连字符开头：这里只填可执行文件的位置（PATH 中的名字或绝对路径），参数由代码决定。');
-    if (CONTROL_CHARS.test(value)) return setMessage(`cliMessage-${capability}`,'err','二进制位置不能包含控制字符。');
-    if (containsSecret(value)) return setMessage(`cliMessage-${capability}`,'err',
+    if (CONTROL_CHARS.test(value)) return setCapabilityMessage(id, 'err', '二进制位置不能包含控制字符。');
+    if (containsSecret(value)) return setCapabilityMessage(id, 'err',
       '二进制位置里不要放凭据；平台不保存 Token 与密钥，请通过环境变量注入。');
-    if (value.length > 300) return setMessage(`cliMessage-${capability}`,'err','二进制位置最多300字符。');
-    channel.override = value;
+    if (value.length > 300) return setCapabilityMessage(id, 'err', '二进制位置最多 300 字符。');
+    item.cli.override = value;
     // 覆盖值按次解析、即时生效；原型没有文件系统，因此不再断言能不能找到。
-    if (value !== channel.resolved) channel.found = null;
-    renderCliChannel(capability);
-    setMessage(`cliMessage-${capability}`,'ok',
-      `已保存覆盖值 ${value}。生效方式与后端一致：每次执行按次解析，不需要重启。原型不做文件查找，因此「解析路径」显示为未判定。`);
+    if (value !== item.cli.resolved) item.cli.found = null;
+    renderCapabilities();
+    setCapabilityMessage(id, 'ok',
+      `已保存覆盖值 ${esc(value)}。生效方式与后端一致：每次执行按次解析，不需要重启。原型不做文件查找，因此「解析路径」显示为未判定。`);
   }
 
-  function resetCliChannel(capability) {
-    const channel = CLI_CHANNELS[capability];
-    channel.override = null;
-    channel.found = null;
-    renderCliChannel(capability);
-    setMessage(`cliMessage-${capability}`,'ok',
-      `已清除覆盖值，回到随能力默认的 ${channel.declared}。原型不做文件查找，因此「解析路径」显示为未判定。`);
+  function resetCliChannel(id) {
+    const item = capabilityById(id);
+    if (!item) return;
+    item.cli.override = null;
+    item.cli.found = null;
+    renderCapabilities();
+    setCapabilityMessage(id, 'ok',
+      `已清除覆盖值，回到随能力默认的 ${esc(item.cli.declared)}。原型不做文件查找，因此「解析路径」显示为未判定。`);
   }
 
-  function probeCliChannel(capability) {
-    const channel = CLI_CHANNELS[capability];
-    const binary = channel.override || channel.declared;
-    setMessage(`cliMessage-${capability}`,'info',
-      `探测的真实效果：显式运行 ${binary} --version（短超时、输出脱敏），这是唯一为管理而执行二进制的地方。`
+  function probeCliChannel(id) {
+    const item = capabilityById(id);
+    if (!item) return;
+    const binary = item.cli.override || item.cli.declared;
+    setCapabilityMessage(id, 'info',
+      `探测的真实效果：显式运行 ${esc(binary)} --version（短超时、输出脱敏），这是唯一为管理而执行二进制的地方。`
       + '原型不启动任何进程，因此这里没有版本输出；渲染目录本身永远不执行二进制，只做查找。');
+  }
+
+  /* 专家可选的平台级能力：只有还启用的能选。被停用的单独成组列出来——
+     悄悄消失会让操作者疑惑「昨天还能用的专家为什么今天校验不过」。 */
+  function renderNodeCapabilityOptions() {
+    const select = document.getElementById('nodeCapability');
+    if (!select) return;
+    const previous = select.value;
+    const groups = [];
+    ['command','cli'].forEach(kind => {
+      const items = capabilitiesOf(kind).filter(item => item.enabled);
+      if (items.length) {
+        groups.push(`<optgroup label="${esc(KIND_LABEL[kind])}">`
+          + items.map(item => `<option value="${esc(item.id)}">${esc(item.title)}（${esc(item.id)}）</option>`).join('')
+          + '</optgroup>');
+      }
+    });
+    const usable = MCP_SERVERS.filter(server => server.enabled && server.trusted)
+      .flatMap(server => server.tools.map(tool => ({ id:`mcp.${server.id}.${tool}`, title:`${server.id} · ${tool}` })));
+    groups.push(usable.length
+      ? `<optgroup label="MCP 工具（需先在下方的授权里声明）">${usable.map(item => `<option value="${esc(item.id)}">${esc(item.title)}（${esc(item.id)}）</option>`).join('')}</optgroup>`
+      : '<optgroup label="MCP 工具（需先在下方的授权里声明）"><option disabled value="">（暂无可选）</option></optgroup>');
+    const off = CAPABILITIES.filter(item => !item.enabled);
+    if (off.length) {
+      groups.push(`<optgroup label="已在平台停用（需要先在能力目录重新启用）">`
+        + off.map(item => `<option disabled value="">${esc(item.id)} · 已停用</option>`).join('')
+        + '</optgroup>');
+    }
+    select.innerHTML = groups.join('');
+    if (previous && [...select.options].some(option => option.value === previous)) select.value = previous;
   }
 
   /* ==================================================================
@@ -2688,7 +3172,7 @@ LIMIT 20;</textarea>
   ];
   let selectedTaskId = 't1';
 
-  const STATUS_TEXT = { completed:['ok','已完成'], partial:['warn','部分完成'], running:['warn','执行中'], failed:['err','失败'] };
+  const STATUS_TEXT = { completed:['ok','已完成'], partial:['warn','部分完成'], running:['warn','执行中'], failed:['err','失败'], interrupted:['warn','已中断'] };
 
   function taskDetail(task) {
     const [chipKind, chipText] = STATUS_TEXT[task.status] || ['','—'];
@@ -2743,6 +3227,9 @@ LIMIT 20;</textarea>
         </tr>`;
       }).join('');
     }
+
+    // 「关闭窗口」那一块也读同一份任务状态，任务一变它就要跟着变。
+    renderCloseRunning();
   }
 
   function renderTimeline(task) {
@@ -2794,6 +3281,7 @@ LIMIT 20;</textarea>
       `已按原配置重新提交（新任务 ${copy.id}）。执行会生成一条新记录，旧记录与它的证据保持原样——不会覆盖历史。` +
       `真实控制台在这里调用的是 POST /api/experts/${source.expert}/execute，而不是把上一条任务改一遍。`);
     setTimeout(() => {
+      if (copy.status === 'interrupted') return; // 中断是终态，不再被定时器改写
       copy.status = source.status;
       copy.decision = source.decision; copy.model = source.model; copy.duration = source.duration;
       copy.steps = JSON.parse(JSON.stringify(source.steps));
@@ -2812,20 +3300,8 @@ LIMIT 20;</textarea>
   /* ==================================================================
      专家：定义是数据，能力的“存在”是代码。编辑走草稿，
      保存才提交——所以「未保存」是一个能看见的状态。
+     能力的清单、种类与启用状态都来自上面那份 CAPABILITIES，专家页不再自己维护一份副本。
      ================================================================== */
-  const PLATFORM_CAPABILITIES = [
-    { id:'sql.parse',            kind:'command', title:'解析 SQL 并抽取结构事实' },
-    { id:'knowledge.search',     kind:'command', title:'检索授权知识' },
-    { id:'database.schema.read', kind:'command', title:'读取脱敏表结构快照' },
-    { id:'database.index.read',  kind:'command', title:'读取脱敏索引快照' },
-    { id:'database.explain',     kind:'command', title:'分析执行计划快照' },
-    { id:'git-status',           kind:'cli',     title:'读取本地 Git 状态' },
-    { id:'git-diff',             kind:'cli',     title:'读取本地 Git 差异' },
-    { id:'rg-search',            kind:'cli',     title:'工作空间检索' }
-  ];
-  const KIND_LABEL = { command:'内置命令', cli:'本地 CLI', mcp:'MCP 工具', http:'HTTP 服务' };
-  const capabilityTitle = id => PLATFORM_CAPABILITIES.find(c => c.id === id)?.title
-    ?? (publishedCapability(id) ? `服务器 ${publishedCapability(id).server.id} 的工具 ${publishedCapability(id).tool}` : id);
 
   let RULE_PACKS = [
     { id:'sql-antipatterns', name:'SQL 结构反模式规则包', builtin:true, enabled:true, revision:1,
@@ -2939,17 +3415,8 @@ LIMIT 20;</textarea>
         <span class="chip ${e.enabled ? 'ok' : e.builtin ? 'info' : 'warn'}">${e.enabled ? '已启用' : e.builtin ? '内置' : '草稿'}</span>
       </button>`).join('');
 
-    const capability = document.getElementById('nodeCapability');
-    if (capability) {
-      const groups = [['command','内置命令'],['cli','本地 CLI'],['mcp','MCP 工具（需先在下方的授权里声明）']];
-      capability.innerHTML = groups.map(([kind, label]) => {
-        const items = kind === 'mcp'
-          ? MCP_SERVERS.filter(s => s.enabled && s.trusted).flatMap(s => s.tools.map(t => ({ id:`mcp.${s.id}.${t}`, title:`${s.id} · ${t}` })))
-          : PLATFORM_CAPABILITIES.filter(c => c.kind === kind).map(c => ({ id:c.id, title:c.title }));
-        if (!items.length) return `<optgroup label="${label}"><option disabled value="">（暂无可选）</option></optgroup>`;
-        return `<optgroup label="${label}">${items.map(i => `<option value="${esc(i.id)}">${esc(i.title)}（${esc(i.id)}）</option>`).join('')}</optgroup>`;
-      }).join('');
-    }
+    // 可选的平台级能力与「被平台停用」的清单都由能力目录那份状态生成（见 renderNodeCapabilityOptions）。
+    renderNodeCapabilityOptions();
   }
 
   function selectExpert(id, el) {
@@ -3168,7 +3635,7 @@ LIMIT 20;</textarea>
       chip: node.required ? ['info','必需'] : ['warn','可选'],
       meta:[['节点标识', `<span class="mono">${esc(node.id)}</span>`],
             ['能力', `<span class="mono">${esc(node.capability)}</span>`],
-            ['种类', KIND_LABEL[PLATFORM_CAPABILITIES.find(c => c.id === node.capability)?.kind || 'mcp']],
+            ['种类', KIND_LABEL[capabilityKind(node.capability) || 'mcp']],
             ['必需 / 可选', node.required ? '必需（失败会阻塞依赖它的节点）' : '可选（失败只返回部分结果）'],
             ['依赖', expertDraft.edges.filter(e => e.target === node.id).map(e => e.source).join('、') || '（没有上游）'],
             ['下游', expertDraft.edges.filter(e => e.source === node.id).map(e => e.target).join('、') || '（没有下游）']],
@@ -3182,7 +3649,7 @@ LIMIT 20;</textarea>
     host.innerHTML = expertDraft.nodes.length
       ? expertDraft.nodes.map(n => `
         <div class="node-row${n.id === selectedNodeId ? ' sel' : ''}" onclick="selectNode('${n.id}')">
-          <span><b>${esc(n.capability)}</b><small>${esc(n.id)} · ${esc(KIND_LABEL[PLATFORM_CAPABILITIES.find(c => c.id === n.capability)?.kind || 'mcp'])}</small></span>
+          <span><b>${esc(n.capability)}</b><small>${esc(n.id)} · ${esc(KIND_LABEL[capabilityKind(n.capability) || 'mcp'])}</small></span>
           <span class="node-caps">
             <select class="mini-select" onchange="event.stopPropagation();setNodeRequired('${n.id}', this.value)" aria-label="必需或可选">
               <option value="required"${n.required ? ' selected' : ''}>必需</option>
@@ -3673,7 +4140,7 @@ LIMIT 20;</textarea>
     if (!SEGMENT.test(id)) return setMessage('rulePackListMessage','err',`标识 ${id} 不合法：只允许小写字母、数字、下划线和连字符，且不超过 61 字符。`);
     if (packById(id)) return setMessage('rulePackListMessage','err',`规则包 ${id} 已经存在。`);
     if (!name) return setMessage('rulePackListMessage','err','名称不能为空。');
-    const unknown = requires.filter(c => !PLATFORM_CAPABILITIES.some(p => p.id === c));
+    const unknown = requires.filter(c => !capabilityById(c));
     if (unknown.length) return setMessage('rulePackListMessage','err',
       `需要的能力里有未注册项：${unknown.join('、')}。声明未注册的能力会被拒绝——它与「规则永远不命中」是同一类错误。`);
     RULE_PACKS.push({ id, name, builtin:false, enabled:false, revision:1, requires, rules:[] });
@@ -4046,6 +4513,637 @@ LIMIT 20;</textarea>
     if (el) el.textContent = text;
   }
 
+  /* ==================================================================
+     桌面外壳（slice 14）：运行目标、本地工作空间、后端连接、系统权限与审计。
+
+     这一页本身就是一条约束：外壳只提供平台服务，业务语义一律在后端。
+     它也是唯一能改变「运行目标」的地方——切到桌面端会画出窗口外框，
+     切回浏览器不是把控件藏起来，而是让控件不可用并把原因写在旁边。
+     ================================================================== */
+  const TARGETS = {
+    web: {
+      name:'浏览器',
+      note:'共享 Vue 应用部署在浏览器里：读不到本机目录、没有原生菜单、没有窗口生命周期，通知受浏览器权限限制。'
+    },
+    desktop: {
+      name:'桌面端（Tauri 2）',
+      note:'同一套界面放在 Tauri WebView 里：外壳提供选目录、原生菜单与窗口、通知、打开外部链接，并把每一次 OS 操作写进审计。'
+    }
+  };
+  let currentTarget = 'web';
+
+  /* 外壳能力。状态决定控件可用性；被挡住时原因写在控件旁边，
+     而不是留一个看起来能点的按钮（和专家页的「内置专家不可删除」同一条规矩）。 */
+  let PERMISSIONS = [
+    { id:'workspace-picker', name:'选择工作空间目录', tauri:'dialog:allow-open', scope:'仅目录选择对话框',
+      state:'granted', when:'首次使用时询问', usedBy:'本地工作空间 →「浏览本地目录…」',
+      consequence:'不能弹出原生目录对话框，工作空间只能沿用已有路径。' },
+    { id:'workspace-fs-read', name:'读取被授权的工作空间目录', tauri:'fs:allow-read-dir（限定目录）', scope:'仅被选中的目录，递归，只读',
+      state:'granted', when:'选中目录后授予', usedBy:'本地工作空间 → 写入启动配置；本地 CLI 能力的工作目录',
+      consequence:'git / rg 读不到工作目录，执行会失败而不是悄悄换一个目录。' },
+    { id:'notification', name:'发送系统通知', tauri:'notification:default', scope:'仅任务状态变化',
+      state:'granted', when:'首次发送时询问', usedBy:'窗口与菜单 →「发送系统通知」',
+      consequence:'任务完成或中断时没有系统通知，只能在界面里看到。' },
+    { id:'open-external', name:'打开外部链接', tauri:'opener:allow-open-url', scope:'仅 https，且在白名单内',
+      state:'granted', when:'启动时声明', usedBy:'帮助菜单 →「打开项目主页」',
+      consequence:'无法把链接交给系统浏览器，界面只能显示地址。' },
+    { id:'preferences', name:'保存非密钥本机偏好', tauri:'store:default', scope:'仅连接地址等非密钥项',
+      state:'granted', when:'启动时声明', usedBy:'后端连接 →「保存到本机偏好」',
+      consequence:'连接设置只对本次会话有效，重开要重新填。' },
+    { id:'sidecar-launch', name:'启动后端 sidecar', tauri:'shell:allow-execute（sidecar）', scope:'仅签名的后端启动器，参数固定',
+      state:'denied', when:'打包分发时由安装器声明', usedBy:'后端连接 →「打包 sidecar」模式',
+      consequence:'控制台不能自行启动本地后端，只能连一个已经启动的进程。' }
+  ];
+
+  const NEVER_PROVIDED = [
+    '任意命令执行：没有这样的能力，也就没有这样的按钮。',
+    'Node REPL / 任意 JavaScript 执行：渲染进程不开这种入口。',
+    '读取被授权目录以外的路径：文件系统权限按目录授予，越界即拒绝。',
+    '写文件：外壳只有只读范围，改代码必须经后端能力与审批。',
+    '以明文读取系统钥匙串：密钥由环境变量注入，不经过界面。'
+  ];
+
+  const WEB_BLOCKED = {
+    'workspace-picker':'浏览器读不到本机目录：Web 端的工作空间是远程或项目地址，要选本地目录请先切到桌面端。',
+    'preferences':'浏览器端不能持久化本机偏好：刷新页面就丢，要保存请切到桌面端。',
+    'sidecar-launch':'浏览器端没有外壳，谈不上启动 sidecar。'
+  };
+
+  let LOCAL_WORKSPACES = [
+    { path:'J:/Code/Engineering-Automation-Platform', name:'Engineering-Automation-Platform', last:'今天 16:40', exists:true },
+    { path:'J:/Code/orders-service', name:'orders-service', last:'昨天 10:12', exists:false }
+  ];
+  /* 原生目录对话框会返回什么——原型没有 Tauri 运行时，所以这里显式准备候选值，
+     并在审计里标注「模拟」。不假装真的弹过一次原生对话框。 */
+  const DIALOG_CANDIDATES = [
+    { path:'J:/Code/payments-api', exists:true },
+    { path:'J:/GeneralRepository', exists:true },
+    { path:'J:/Code/reporting-service', exists:false }
+  ];
+  let dialogCursor = 0;
+  let selectedLocalWorkspace = LOCAL_WORKSPACES[0].path;
+  let pendingWorkspace = null;                                     // 已写入启动配置、等后端重启
+  let runtimeWorkspace = 'J:/Code/Engineering-Automation-Platform'; // 后端进程当前的执行目录
+
+  let CONNECTION = { mode:'remote', baseUrl:'http://127.0.0.1:8080', savedIn:'session', savedAt:'—', lastProbe:null };
+
+  /* 与 application.yml 的 eap.llm.* 一一对应。控制台不给写入入口：
+     运行时没有修改配置的接口，做成表单只会存不下去。 */
+  const LLM_SETTINGS = [
+    { key:'enabled',               env:'EAP_LLM_ENABLED',               value:'false' },
+    { key:'base-url',              env:'EAP_LLM_BASE_URL',              value:'http://127.0.0.1:1234/v1' },
+    { key:'model',                 env:'EAP_LLM_MODEL',                 value:'local-model' },
+    { key:'temperature',           env:'EAP_LLM_TEMPERATURE',           value:'0.1' },
+    { key:'max-prompt-tokens',     env:'EAP_LLM_MAX_PROMPT_TOKENS',     value:'1800' },
+    { key:'max-completion-tokens', env:'EAP_LLM_MAX_COMPLETION_TOKENS', value:'700' },
+    { key:'cache-entries',         env:'EAP_LLM_CACHE_ENTRIES',         value:'64' },
+    { key:'connect-timeout-ms',    env:'EAP_LLM_CONNECT_TIMEOUT_MS',    value:'3000' },
+    { key:'read-timeout-ms',       env:'EAP_LLM_READ_TIMEOUT_MS',       value:'20000' }
+  ];
+
+  const PROJECT_URL = 'https://github.com/LiaoHan5426/Engineering-Automation-Platform';
+  const EXTERNAL_ALLOW = ['github.com', 'tauri.app', 'v2.tauri.app'];
+
+  let AUDIT = [];
+
+  const perm = id => PERMISSIONS.find(p => p.id === id);
+  const shellAllows = id => currentTarget === 'desktop' && perm(id)?.state === 'granted';
+  const setDisabled = (id, flag) => { const el = document.getElementById(id); if (el) el.disabled = !!flag; };
+
+  /* allowInWeb：该控件在浏览器端是否另有实现（浏览器通知权限 / window.open）。
+     没有替代实现的控件在 Web 端直接不可用，并说出具体原因，而不是笼统地写「不支持」。 */
+  function gateReason(permissionId, allowInWeb) {
+    if (currentTarget !== 'desktop') return allowInWeb ? '' : (WEB_BLOCKED[permissionId] || '浏览器端没有这项外壳能力。');
+    const p = perm(permissionId);
+    if (p && p.state !== 'granted') return `外壳能力 ${p.tauri} 未授予，${p.consequence}`;
+    return '';
+  }
+
+  const gateText = items => items.filter(i => i.reason).map(i => `● ${i.label}：${i.reason}`).join('  ');
+
+  /* 地址里的凭据是 user:pass@host 这种形态，containsSecret 匹配的是赋值型密钥（password=…），
+     抓不到它——所以单独解析一次 URL 的 userinfo。 */
+  function urlCredentials(url) {
+    try { const parsed = new URL(url); return Boolean(parsed.username || parsed.password); }
+    catch (error) { void error; return false; }
+  }
+
+  function audit(action, target, result) {
+    AUDIT.unshift({ time:new Date().toLocaleTimeString('zh-CN', { hour12:false }), action, target, result });
+    renderAudit();
+  }
+
+  function renderAudit() {
+    const host = document.getElementById('auditRows');
+    if (!host) return;
+    host.innerHTML = AUDIT.length
+      ? AUDIT.slice(0, 14).map(a => `<tr class="audit-row"><td class="mono">${esc(a.time)}</td><td>${esc(a.action)}</td><td class="path">${esc(a.target)}</td><td>${esc(a.result)}</td></tr>`).join('')
+      : '<tr><td colspan="4" class="hint">本次会话还没有外壳动作。上面的按钮点一下，这里就会留一条。</td></tr>';
+  }
+
+  function setTarget(target) {
+    if (!TARGETS[target] || target === currentTarget) return;
+    currentTarget = target;
+    document.body.classList.toggle('desktop-target', target === 'desktop');
+    renderShell();
+    audit('切换运行目标', TARGETS[target].name, '已生效（界面）');
+  }
+
+  function renderTarget() {
+    document.querySelectorAll('#targetSwitch button').forEach(b => b.classList.toggle('active', b.dataset.target === currentTarget));
+    const chip = document.getElementById('targetChip');
+    if (chip) {
+      chip.className = 'chip ' + (currentTarget === 'desktop' ? 'info' : '');
+      chip.textContent = currentTarget === 'desktop' ? '桌面端 · Tauri 2' : '浏览器';
+    }
+    const status = document.getElementById('statusTarget');
+    if (status) status.textContent = TARGETS[currentTarget].name;
+    const hint = document.getElementById('targetHint');
+    if (hint) hint.textContent = TARGETS[currentTarget].note;
+    const winChip = document.getElementById('windowTargetChip');
+    if (winChip) winChip.textContent = TARGETS[currentTarget].name;
+    const permChip = document.getElementById('permTargetChip');
+    if (permChip) permChip.textContent = TARGETS[currentTarget].name;
+  }
+
+  function renderNeverProvided() {
+    const host = document.getElementById('neverList');
+    if (!host) return;
+    host.innerHTML = NEVER_PROVIDED.map(x => `<li>${esc(x)}</li>`).join('');
+  }
+
+  function renderPermissions() {
+    const host = document.getElementById('permRows');
+    if (!host) return;
+    const web = currentTarget !== 'desktop';
+    host.innerHTML = PERMISSIONS.map(p => {
+      const granted = p.state === 'granted';
+      const chipKind = granted ? 'ok' : (p.state === 'denied' ? 'err' : 'warn');
+      const chipText = granted ? '已授予' : (p.state === 'denied' ? '已拒绝' : '未声明');
+      return `
+      <tr class="clickable" onclick="inspectPermission('${p.id}', this)">
+        <td><b>${esc(p.name)}</b></td>
+        <td class="mono">${esc(p.tauri)}</td>
+        <td>${esc(p.scope)}</td>
+        <td><span class="chip ${chipKind}">${chipText}</span></td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn ghost" id="permToggle-${p.id}" onclick="event.stopPropagation();togglePermission('${p.id}')">${granted ? '撤回' : '授予'}</button>
+        </td>
+      </tr>`;
+    }).join('');
+    PERMISSIONS.forEach(p => setDisabled('permToggle-' + p.id, web));
+    const gate = document.getElementById('permGate');
+    if (gate) gate.textContent = web
+      ? '● 授权操作：这些是桌面外壳的能力（Tauri capability），浏览器端没有外壳可授权——切到桌面端后这里可以逐项授予与撤回，并立刻影响依赖它的控件。'
+      : '';
+  }
+
+  function renderLocalWorkspaces() {
+    const host = document.getElementById('localWsRows');
+    if (!host) return;
+    host.innerHTML = LOCAL_WORKSPACES.length ? LOCAL_WORKSPACES.map(w => `
+      <tr class="clickable${w.path === selectedLocalWorkspace ? ' sel-row' : ''}" onclick="selectLocalWorkspace('${esc(w.path)}', this)">
+        <td class="path">${esc(w.path)}</td>
+        <td>${esc(w.name)}</td>
+        <td>${esc(w.last)}</td>
+        <td>${w.exists ? '<span class="chip ok">存在</span>' : '<span class="chip err">不存在</span>'}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn ghost" onclick="event.stopPropagation();forgetLocalWorkspace('${esc(w.path)}')">遗忘</button>
+        </td>
+      </tr>`).join('') : '<tr><td colspan="5" class="hint">还没有记录。选中一个本地目录后，它会出现在这里。</td></tr>';
+  }
+
+  function renderWsBinding() {
+    const host = document.getElementById('wsBinding');
+    if (!host) return;
+    const selected = LOCAL_WORKSPACES.find(w => w.path === selectedLocalWorkspace);
+    const applied = pendingWorkspace && pendingWorkspace === runtimeWorkspace;
+    host.innerHTML = `
+      <div class="kv"><dt>运行时当前执行目录</dt><dd class="path">${esc(runtimeWorkspace)}</dd></div>
+      <div class="kv"><dt>由什么决定</dt><dd><span class="mono">EAP_WORKSPACE</span> 环境变量；未设置时取后端进程的启动目录（含 <span class="mono">.git</span> 就用它，否则用它的父目录）。</dd></div>
+      <div class="kv"><dt>已选中</dt><dd class="path">${selected ? esc(selected.path) : '—'}</dd></div>
+      <div class="kv"><dt>待应用</dt><dd class="path">${pendingWorkspace ? esc(pendingWorkspace) : '—'}</dd></div>
+      <div class="kv"><dt>生效状态</dt><dd>${!pendingWorkspace ? '<span class="chip">未改动</span>' : (applied ? '<span class="chip ok">已生效（与运行时一致）</span>' : '<span class="chip warn">需要重启后端才生效</span>')}</dd></div>
+      <div class="kv"><dt>受影响的能力</dt><dd>本地 CLI：<span class="mono">git-status / git-diff / rg-search</span> 在这个目录里执行；内置命令不读磁盘，不受影响。</dd></div>
+      <div class="kv"><dt>文件系统授权</dt><dd>外壳只对 <span class="path">${selected ? esc(selected.path) : '（未选择）'}</span> 授予只读权限，目录之外一律拒绝。</dd></div>
+      <div class="kv"><dt>启动参数</dt><dd class="path">${pendingWorkspace ? esc(`EAP_WORKSPACE=${pendingWorkspace} java -jar eap-runtime.jar`) : '（未改动，沿用进程启动时的目录）'}</dd></div>`;
+    const status = document.getElementById('statusLocalWorkspace');
+    if (status) status.textContent = selected ? selected.path.split('/').pop() : '未选择';
+  }
+
+  function renderConnection() {
+    document.querySelectorAll('#connMode button').forEach(b => b.classList.toggle('active', b.dataset.mode === CONNECTION.mode));
+    const notes = {
+      remote:'远程后端：连接一台已经启动的运行时，可以在本机也可以是另一台机器。',
+      local:'本地运行时：后端以独立进程启动，控制台只连接它、不启动它——所以「重启」这一步要你在自己的终端里做。',
+      sidecar:'打包 sidecar：由外壳启动签名过的后端启动器。需要外壳能力 shell:allow-execute，当前未授予，所以这个模式还选不了。'
+    };
+    const note = document.getElementById('connModeNote');
+    if (note) note.textContent = notes[CONNECTION.mode];
+    const host = document.getElementById('connProbe');
+    if (!host) return;
+    const probe = CONNECTION.lastProbe;
+    host.innerHTML = `
+      <div class="management" style="margin-top:0">
+        <p class="sub"><b>最近一次探测</b></p>
+        ${probe ? `
+          <div class="kv"><dt>结果</dt><dd>${probe.ok ? `<span class="chip ok">HTTP ${probe.status}</span>` : '<span class="chip err">失败</span>'}</dd></div>
+          <div class="kv"><dt>端点</dt><dd class="path">${esc(probe.url)}</dd></div>
+          <div class="kv"><dt>耗时</dt><dd>${probe.ms} ms</dd></div>
+          <div class="kv"><dt>响应</dt><dd class="path">${esc(probe.detail)}</dd></div>`
+        : '<p class="hint">还没有探测过。点「测试连接」会对 <span class="mono">/api/health</span> 发一次真实请求，结果如实回显。</p>'}
+        <div class="kv"><dt>保存位置</dt><dd>${CONNECTION.savedIn === 'preference' ? '本机偏好（桌面外壳）' : '仅本次会话（未持久化）'}</dd></div>
+        <div class="kv"><dt>上次保存</dt><dd>${esc(CONNECTION.savedAt)}</dd></div>
+      </div>`;
+  }
+
+  function renderLlmRows() {
+    const host = document.getElementById('llmRows');
+    if (!host) return;
+    host.innerHTML = LLM_SETTINGS.map(s =>
+      `<tr><td class="mono">${esc(s.key)}</td><td class="mono">${esc(s.env)}</td><td class="mono">${esc(s.value)}</td></tr>`).join('');
+  }
+
+  function renderCloseRunning() {
+    const running = TASKS.filter(t => t.workspace === currentWorkspace && t.status === 'running');
+    const count = document.getElementById('closeRunningCount');
+    if (count) count.textContent = String(running.length);
+    const list = document.getElementById('closeRunningList');
+    if (list) list.textContent = running.length
+      ? `（${running.map(t => t.id).join('、')}）`
+      : '——当前没有执行中的任务。';
+  }
+
+  function renderGates() {
+    const web = currentTarget !== 'desktop';
+
+    const notifyReason = gateReason('notification', true);
+    const openReason = gateReason('open-external', true);
+    const windowGate = document.getElementById('windowGate');
+    if (windowGate) windowGate.textContent = gateText([
+      { label:'发送系统通知', reason:notifyReason },
+      { label:'打开项目主页', reason:openReason }
+    ]);
+    setDisabled('notifyButton', !!notifyReason);
+    setDisabled('openExternalButton', !!openReason);
+
+    const closeReason = web ? '浏览器端没有窗口生命周期：关闭标签页会话就结束了，没有「重开时恢复」这一步。' : '';
+    const closeGate = document.getElementById('closeGate');
+    if (closeGate) closeGate.textContent = closeReason ? `● 模拟关闭窗口：${closeReason}` : '';
+    setDisabled('closeWindowButton', !!closeReason);
+
+    const workspaceReason = gateReason('workspace-picker', false);
+    const workspaceGate = document.getElementById('workspaceGate');
+    if (workspaceGate) workspaceGate.textContent = workspaceReason ? `● 浏览本地目录：${workspaceReason}` : '';
+    setDisabled('browseWorkspaceButton', !!workspaceReason);
+
+    const bindReason = workspaceReason || gateReason('preferences', false);
+    const bindGate = document.getElementById('bindGate');
+    if (bindGate) bindGate.textContent = bindReason ? `● 写入启动配置：${bindReason}` : '';
+    setDisabled('bindWorkspaceButton', !!bindReason);
+
+    const saveReason = gateReason('preferences', false);
+    const probeReason = CONNECTION.mode === 'sidecar' ? gateReason('sidecar-launch', false) : '';
+    const connGate = document.getElementById('connGate');
+    if (connGate) connGate.textContent = gateText([
+      { label:'保存到本机偏好', reason:saveReason },
+      { label:'测试连接', reason:probeReason }
+    ]);
+    setDisabled('savePrefButton', !!saveReason);
+    setDisabled('testConnectionButton', !!probeReason);
+  }
+
+  function renderShell() {
+    renderTarget();
+    renderGates();
+    renderNeverProvided();
+    renderPermissions();
+    renderLocalWorkspaces();
+    renderWsBinding();
+    renderConnection();
+    renderLlmRows();
+    renderCloseRunning();
+    renderAudit();
+  }
+
+  /* ---------- 检查器：外壳能力 / 本地工作空间 ---------- */
+
+  function permissionDetail(p) {
+    const granted = p.state === 'granted';
+    return {
+      title:p.tauri, sub:p.name,
+      chip:granted ? ['ok', '已授予'] : (p.state === 'denied' ? ['err', '已拒绝'] : ['warn', '未声明']),
+      meta:[['能力标识', `<span class="mono">${esc(p.tauri)}</span>`], ['范围', esc(p.scope)],
+            ['授予时机', esc(p.when)], ['被谁使用', esc(p.usedBy)], ['撤回后果', esc(p.consequence)]],
+      body:'由外壳的 capability 文件声明，窗口只能使用被授予的操作。控制台不自行推测权限——撤回后依赖它的控件立刻不可用，并把原因写在控件旁边。'
+    };
+  }
+
+  function localWorkspaceDetail(w) {
+    return {
+      title:w.path, sub:w.name,
+      chip:w.exists ? ['ok', '目录存在'] : ['err', '目录不存在'],
+      meta:[['名称', esc(w.name)], ['上次打开', esc(w.last)], ['是否存在', w.exists ? '存在' : '不存在'],
+            ['选中后作用', '后端进程的执行目录（Path workspace）']],
+      body:w.exists
+        ? '选中后外壳把它写进启动配置作为 EAP_WORKSPACE，并只对该目录授予只读文件系统权限。运行时没有修改工作目录的接口，所以写入后需要重启后端进程才生效。'
+        : '该目录已不存在。外壳会重新询问，而不是回退到上一次的目录——静默回退会让 git / rg 在错误的目录里执行，而失败会发生在很久以后。'
+    };
+  }
+
+  function inspectPermission(id, el) { showDetail('permission', id, el); }
+
+  /* ---------- 外壳动作 ---------- */
+
+  function togglePermission(id) {
+    const p = perm(id);
+    if (!p) return;
+    if (currentTarget !== 'desktop') return setMessage('permMessage','err','浏览器端没有外壳能力可授予或撤回。先切到桌面端。');
+    p.state = p.state === 'granted' ? 'denied' : 'granted';
+    renderPermissions();
+    renderGates();
+    const rows = [...document.querySelectorAll('#permRows tr')];
+    const index = PERMISSIONS.findIndex(x => x.id === id);
+    if (rows[index]) showDetail('permission', id, rows[index]);
+    setMessage('permMessage', p.state === 'granted' ? 'ok' : 'warn', p.state === 'granted'
+      ? `已授予 <span class="mono">${esc(p.tauri)}</span>：依赖它的控件恢复可用。`
+      : `已撤回 <span class="mono">${esc(p.tauri)}</span>：${esc(p.consequence)}`);
+    audit(p.state === 'granted' ? '授予外壳能力' : '撤回外壳能力', p.tauri, p.state === 'granted' ? '已授予' : '已撤回，依赖控件已停用');
+  }
+
+  function chooseWorkspace() {
+    const reason = gateReason('workspace-picker', false);
+    if (reason) return setMessage('localWsMessage','err', reason);
+    const candidate = DIALOG_CANDIDATES[dialogCursor % DIALOG_CANDIDATES.length];
+    dialogCursor += 1;
+    if (!LOCAL_WORKSPACES.some(w => w.path === candidate.path)) {
+      LOCAL_WORKSPACES.push({ path:candidate.path, name:candidate.path.split('/').pop(), last:'刚刚（模拟对话框返回）', exists:candidate.exists });
+    }
+    selectedLocalWorkspace = candidate.path;
+    renderLocalWorkspaces();
+    const index = LOCAL_WORKSPACES.findIndex(w => w.path === candidate.path);
+    const rows = [...document.querySelectorAll('#localWsRows tr')];
+    if (rows[index]) showDetail('workspace', candidate.path, rows[index]);
+    audit('选择本地工作空间', candidate.path, `模拟原生对话框返回（原型没有 Tauri 运行时）；该目录${candidate.exists ? '存在' : '不存在'}`);
+    setMessage('localWsMessage', candidate.exists ? 'ok' : 'warn', candidate.exists
+      ? `原生目录对话框返回 <span class="mono">${esc(candidate.path)}</span>，已加入列表并选中。`
+      : `原生目录对话框返回 <span class="mono">${esc(candidate.path)}</span>，但该目录当前不存在。外壳会重新询问，而不是回退到上一次的目录——静默回退会让 git / rg 在错误的目录里执行。`);
+    renderWsBinding();
+  }
+
+  function selectLocalWorkspace(path, el) {
+    const w = LOCAL_WORKSPACES.find(x => x.path === path);
+    if (!w) return;
+    selectedLocalWorkspace = path;
+    renderLocalWorkspaces();
+    const rows = [...document.querySelectorAll('#localWsRows tr')];
+    const index = LOCAL_WORKSPACES.findIndex(x => x.path === path);
+    showDetail('workspace', path, rows[index] || el);
+    renderWsBinding();
+    setMessage('localWsMessage', w.exists ? 'info' : 'warn', w.exists
+      ? `已选中 <span class="mono">${esc(path)}</span>。要让它对运行时生效，点「写入启动配置」，然后重启后端进程。`
+      : `<span class="mono">${esc(path)}</span> 不存在：选中它不会让运行时切过去，只会让外壳在你下次选目录时重新询问。`);
+    audit('选中本地工作空间', path, w.exists ? '已选中' : '目录不存在，已如实提示');
+  }
+
+  function forgetLocalWorkspace(path) {
+    LOCAL_WORKSPACES = LOCAL_WORKSPACES.filter(w => w.path !== path);
+    if (selectedLocalWorkspace === path) selectedLocalWorkspace = LOCAL_WORKSPACES[0]?.path || null;
+    if (pendingWorkspace === path) pendingWorkspace = null;
+    renderLocalWorkspaces();
+    renderWsBinding();
+    renderGates();
+    audit('遗忘本地工作空间', path, '已从列表移除（磁盘上的目录不受影响）');
+    setMessage('localWsMessage','info', `已从列表移除 <span class="mono">${esc(path)}</span>。这只是控制台的记录，磁盘上的目录不受影响。`);
+  }
+
+  function bindWorkspace() {
+    const reason = gateReason('workspace-picker', false) || gateReason('preferences', false);
+    if (reason) return setMessage('wsBindingMessage','err', reason);
+    const w = LOCAL_WORKSPACES.find(x => x.path === selectedLocalWorkspace);
+    if (!w) return setMessage('wsBindingMessage','err','还没有选中本地目录，先点「浏览本地目录…」。');
+    if (!w.exists) return setMessage('wsBindingMessage','err', `选中的目录 <span class="mono">${esc(w.path)}</span> 不存在。写进启动配置只会让后端在启动时失败——先把目录找回来，或者换一个。`);
+    pendingWorkspace = w.path;
+    renderWsBinding();
+    audit('写入启动配置', `EAP_WORKSPACE=${w.path}`, '已写入本机偏好，等后端重启生效');
+    setMessage('wsBindingMessage', pendingWorkspace === runtimeWorkspace ? 'ok' : 'warn',
+      pendingWorkspace === runtimeWorkspace
+        ? `已写入本机偏好：<span class="mono">EAP_WORKSPACE=${esc(w.path)}</span>，与运行时当前执行目录一致，因此已经是生效状态。`
+        : `已写入本机偏好：<span class="mono">EAP_WORKSPACE=${esc(w.path)}</span>。运行时<b>没有</b>修改工作目录的接口，所以现在还没生效——要重启后端进程。`);
+  }
+
+  function reprobeRuntime() {
+    shellSubview('connection');
+    audit('重新探测运行时', CONNECTION.baseUrl + '/api/health', '见后端连接页的探测结果');
+    setMessage('wsBindingMessage','info','已转到「后端连接」并重新探测。能不能连上后端可以验证；运行时的执行目录没有查询接口，所以这里不猜它是哪一个——它由启动时的 EAP_WORKSPACE 决定。');
+    testConnection();
+  }
+
+  function setConnMode(mode) {
+    if (mode === CONNECTION.mode) return;
+    if (mode === 'sidecar' && !shellAllows('sidecar-launch')) {
+      setMessage('connMessage','err', `「打包 sidecar」需要外壳能力 ${perm('sidecar-launch').tauri}，当前未授予，所以这个模式还不能选——选了也不会改变任何状态。`);
+      audit('选择连接方式', '打包 sidecar', '被拒绝：外壳能力未授予');
+      return;
+    }
+    CONNECTION.mode = mode;
+    renderConnection();
+    renderGates();
+    audit('选择连接方式', mode, '已切换');
+    setMessage('connMessage','info', mode === 'local'
+      ? '已切到本地运行时：控制台只连接它，重启要在你自己的终端里做。'
+      : '已切到远程后端：请确认地址指向一台已启动的运行时。');
+  }
+
+  function saveConnection() {
+    const reason = gateReason('preferences', false);
+    if (reason) return setMessage('connMessage','err', reason);
+    const input = document.getElementById('connBaseUrl');
+    const url = (input?.value || '').trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(url)) return setMessage('connMessage','err','地址要以 http:// 或 https:// 开头。');
+    if (containsSecret(url) || urlCredentials(url)) return setMessage('connMessage','err','地址里不要包含凭据（user:pass@host）：本机偏好只存非密钥项，运行时也会拒绝这种地址。');
+    CONNECTION.baseUrl = url;
+    CONNECTION.savedIn = 'preference';
+    CONNECTION.savedAt = new Date().toLocaleTimeString('zh-CN', { hour12:false });
+    renderConnection();
+    audit('保存本机偏好', url, '已保存到外壳的非密钥偏好');
+    setMessage('connMessage','ok', `已保存 <span class="mono">${esc(url)}</span> 到本机偏好：下次启动会用它，且不保存任何凭据。`);
+  }
+
+  async function testConnection() {
+    const probeReason = CONNECTION.mode === 'sidecar' ? gateReason('sidecar-launch', false) : '';
+    if (probeReason) return setMessage('connMessage','err', probeReason);
+    const input = document.getElementById('connBaseUrl');
+    const url = (input?.value || CONNECTION.baseUrl || '').trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(url)) return setMessage('connMessage','err','地址要以 http:// 或 https:// 开头。');
+    if (containsSecret(url) || urlCredentials(url)) return setMessage('connMessage','err','地址里不要包含凭据（user:pass@host），运行时同样会拒绝它。');
+    CONNECTION.baseUrl = url;
+    const endpoint = url + '/api/health';
+    const button = document.getElementById('testConnectionButton');
+    if (button) button.disabled = true;
+    setMessage('connMessage','info', `正在探测 ${esc(endpoint)} …`);
+    const started = Date.now();
+    let result;
+    if (typeof fetch !== 'function') {
+      // 如实说明探测没有发生，而不是回一个编造的成功。
+      result = { ok:false, status:0, ms:0, detail:'当前环境没有 fetch（原型脚本运行在受限环境里），因此这次探测没有真正发出请求。' };
+      setMessage('connMessage','warn', result.detail);
+    } else {
+      try {
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), 4000) : null;
+        const response = await fetch(endpoint, controller ? { signal:controller.signal } : {});
+        if (timer) clearTimeout(timer);
+        const text = (await response.text()).slice(0, 200);
+        result = { ok:response.ok, status:response.status, ms:Date.now() - started, detail:text || '（空响应体）' };
+        setMessage('connMessage', response.ok ? 'ok' : 'warn',
+          `探测 ${esc(endpoint)}：HTTP ${response.status}，${result.ms} ms。${esc(text.slice(0, 120))}`);
+      } catch (error) {
+        const aborted = error && error.name === 'AbortError';
+        result = { ok:false, status:0, ms:Date.now() - started,
+          detail:`${error?.name || 'Error'}${aborted ? '（4 秒超时）' : ''}。浏览器端还要求后端允许 CORS；桌面端是直连，没有这一层。` };
+        setMessage('connMessage','err', `探测 ${esc(endpoint)} 失败：${esc(result.detail)} 这是真实结果，不是模拟——本机没启动后端时本来就会失败。`);
+      }
+    }
+    result.url = endpoint;
+    CONNECTION.lastProbe = result;
+    if (button) button.disabled = false;
+    renderConnection();
+    const chip = document.getElementById('runtimeChip');
+    if (chip) {
+      chip.className = 'chip ' + (result.ok ? 'ok' : 'err');
+      chip.innerHTML = `<span class="dot"></span>${result.ok ? '运行时已连接' : '运行时未连接'}`;
+    }
+    audit('探测后端', endpoint, result.ok ? `HTTP ${result.status}` : `失败（${result.detail.slice(0, 40)}）`);
+  }
+
+  function showPlatformInfo() {
+    const box = document.getElementById('platformInfoBox');
+    if (!box) return;
+    const nav = typeof navigator !== 'undefined' ? navigator : {};
+    const web = currentTarget !== 'desktop';
+    box.innerHTML = `
+      <div class="management">
+        <p class="sub"><b>getPlatformInfo() 的返回</b></p>
+        <div class="kv"><dt>运行目标</dt><dd>${esc(TARGETS[currentTarget].name)}</dd></div>
+        <div class="kv"><dt>平台</dt><dd class="path">${esc(nav.platform || '未知')}</dd></div>
+        <div class="kv"><dt>User agent</dt><dd class="path">${esc(nav.userAgent || '未知')}</dd></div>
+        <div class="kv"><dt>WebView</dt><dd>${web
+          ? '浏览器自带的 WebView。桌面端由操作系统提供 WebView2 / WKWebView / WebKitGTK，外壳只报告版本，不参与渲染决策。'
+          : '桌面端会返回 WebView2 / WKWebView / WebKitGTK 的版本。'}</dd></div>
+      </div>`;
+    setMessage('windowMessage','info','已显示当前环境信息。原型运行在浏览器里，所以这里如实是浏览器信息——不编造一个操作系统版本。');
+    audit('读取平台信息', 'getPlatformInfo()', '已显示');
+  }
+
+  function notifyDesktop() {
+    const reason = gateReason('notification', true);
+    if (reason) return setMessage('windowMessage','err', reason);
+    if (typeof Notification !== 'function') {
+      setMessage('windowMessage','warn','当前环境没有 Notification 接口（原型脚本运行在受限环境里），所以不会假装通知已经发出。');
+      audit('发送通知', '任务状态变化', '当前环境不支持 Notification');
+      return;
+    }
+    const body = '任务 t1 已完成：5 条发现，未消耗模型预算。';
+    if (Notification.permission === 'granted') {
+      new Notification('EAP 工程自动化平台', { body });
+      setMessage('windowMessage','ok','已发送系统通知，并在审计里留了一条。');
+      audit('发送通知', '任务状态变化', '已发送');
+    } else if (Notification.permission === 'denied') {
+      setMessage('windowMessage','err','系统通知权限已被拒绝：不会静默失败，而是明确告诉你通知不会到达。');
+      audit('发送通知', '任务状态变化', '被拒绝：权限为 denied');
+    } else {
+      const settle = result => setMessage('windowMessage', result === 'granted' ? 'ok' : 'warn',
+        `通知权限请求结果：${result}。${result === 'granted' ? '再点一次就会发出。' : '没有授权就不会发送。'}`);
+      const asked = Notification.requestPermission();
+      if (asked && typeof asked.then === 'function') asked.then(settle); else settle(asked);
+      audit('发送通知', '任务状态变化', '已请求权限');
+    }
+  }
+
+  function openExternal(url) {
+    const reason = gateReason('open-external', true);
+    if (reason) return setMessage('windowMessage','err', reason);
+    let parsed;
+    try { parsed = new URL(url); } catch (error) { void error; return setMessage('windowMessage','err', `不是合法的 URL：${esc(url)}`); }
+    if (parsed.protocol !== 'https:') return setMessage('windowMessage','err', `外壳只允许 https，${esc(url)} 被拒绝——http 或 file: 有可能被当成读取本地资源。`);
+    if (!EXTERNAL_ALLOW.includes(parsed.hostname)) return setMessage('windowMessage','err', `主机 ${esc(parsed.hostname)} 不在白名单里（${esc(EXTERNAL_ALLOW.join('、'))}），因此拒绝打开。白名单属于外壳声明的能力范围，界面不能临时放宽。`);
+    let opened = null;
+    try { opened = window.open(url, '_blank', 'noopener'); } catch (error) { void error; opened = null; }
+    audit('打开外部链接', url, opened ? '已交给系统浏览器' : '被当前环境拦截');
+    setMessage('windowMessage', opened ? 'ok' : 'warn', opened
+      ? `已请求打开 <span class="mono">${esc(url)}</span>：桌面端走外壳的 openExternal()，浏览器端走 window.open。`
+      : `请求打开 <span class="mono">${esc(url)}</span> 被当前环境拦截（弹窗被阻止，或没有用户手势）。这里如实回显，不假装已经打开。`);
+  }
+
+  function openExternalExample() { openExternal(PROJECT_URL); }
+
+  function simulateCloseWindow() {
+    if (currentTarget !== 'desktop') {
+      return setMessage('closeMessage','err','浏览器端没有窗口生命周期：关闭标签页会话就结束了，没有「重开时恢复」这一步。要演示关闭窗口的处理，先切到桌面端。');
+    }
+    const running = TASKS.filter(t => t.workspace === currentWorkspace && t.status === 'running');
+    if (!running.length) {
+      setMessage('closeMessage','info','当前没有执行中的任务，关闭窗口不会有任何状态损失。先运行一次分析再回来试。');
+      audit('关闭窗口', '无执行中任务', '无影响');
+      return;
+    }
+    running.forEach(t => { t.status = 'interrupted'; t.decision = '—'; t.model = '未调用'; });
+    renderTasks();
+    renderTimeline(TASKS.find(t => t.id === selectedTaskId));
+    renderCloseRunning();
+    setMessage('closeMessage','warn',
+      `已把 ${running.length} 条执行中的任务（${running.map(t => esc(t.id)).join('、')}）标记为「已中断」：状态不丢，重开后它们在任务页里可见、证据保留，可以直接「重新运行」重新提交。`);
+    audit('关闭窗口', running.map(t => t.id).join('、'), '执行中任务标记为已中断，状态未丢失');
+  }
+
+  /* ---------- 原生菜单：每一项都对应一个外壳服务，没有业务动作 ---------- */
+
+  function menuChooseWorkspace() { closeMenus(); setView('desktop'); shellSubview('workspace'); chooseWorkspace(); }
+  function menuCloseWindow() { closeMenus(); setView('desktop'); shellSubview('window'); simulateCloseWindow(); }
+  function menuGo(view) { closeMenus(); setView(view); }
+  function menuRefresh() { closeMenus(); refreshAll(); }
+  function menuPlatformInfo() { closeMenus(); setView('desktop'); shellSubview('window'); showPlatformInfo(); }
+  function menuOpenExternal() { closeMenus(); setView('desktop'); shellSubview('window'); openExternalExample(); }
+
+  /* 子页与能力目录同构：一次只渲染一个，并让检查器跟着走。
+     注意这里只是「取当前子页里可检查的对象」，不替操作者做动作——
+     审计日志记的是真实动作，切页签不该在里面留痕。 */
+  function shellPickActiveSubview() {
+    const sub = document.querySelector('#view-desktop .subview.active');
+    if (!sub) return false;
+    const permRow = sub.querySelector('#permRows tr.clickable');
+    if (permRow) { permRow.click(); return true; }
+    if (sub.dataset.subview === 'workspace' && selectedLocalWorkspace) {
+      const wsRows = [...sub.querySelectorAll('#localWsRows tr.clickable')];
+      const index = LOCAL_WORKSPACES.findIndex(w => w.path === selectedLocalWorkspace);
+      showDetail('workspace', selectedLocalWorkspace, wsRows[index] || wsRows[0] || null);
+      return true;
+    }
+    return false;
+  }
+
+  function shellSubview(key) {
+    document.querySelectorAll('#shellTabs button').forEach(b => b.classList.toggle('active', b.dataset.subview === key));
+    document.querySelectorAll('#view-desktop .subview').forEach(s => s.classList.toggle('active', s.dataset.subview === key));
+    markSelected(null);
+    if (shellPickActiveSubview()) return;
+    const label = document.querySelector(`#shellTabs button[data-subview="${key}"]`)?.textContent.trim() || key;
+    setHint(PAGES.desktop.hint);
+    document.getElementById('inspectorBody').innerHTML =
+      `<div class="insp-empty">「${esc(label)}」没有可逐项检查的对象：这一页的状态与说明都内联在卡片里。切到「系统权限与审计」或「本地工作空间」可以逐项检查。</div>`;
+  }
+
+  document.querySelectorAll('#targetSwitch button').forEach(btn => {
+    btn.addEventListener('click', () => setTarget(btn.dataset.target));
+  });
+  document.querySelectorAll('#connMode button').forEach(btn => {
+    btn.addEventListener('click', () => setConnMode(btn.dataset.mode));
+  });
+  document.querySelectorAll('#shellTabs button').forEach(btn => {
+    btn.addEventListener('click', () => shellSubview(btn.dataset.subview));
+  });
+
   function refreshAll() {
     renderWorkspaces();
     renderTasks();
@@ -4057,10 +5155,9 @@ LIMIT 20;</textarea>
     renderRuleDetail();
     renderKnowledge();
     renderKbPreview();
-    Object.keys(CAPABILITY_SETTINGS).forEach(renderCapabilitySetting);
-    Object.keys(CLI_CHANNELS).forEach(renderCliChannel);
-    updateCapabilityCounts2();
-    updateCapabilityCounts();
+    // 能力目录一次刷新到同一份状态：子页、数量、卡片、一致性、专家可选项全部重算。
+    renderCapabilities();
+    renderShell();
     const now = new Date();
     document.getElementById('lastRefresh').textContent = now.toLocaleTimeString('zh-CN', { hour12:false });
     setStatus('已刷新 · 全部面板重新读取运行时状态');
@@ -4085,9 +5182,9 @@ LIMIT 20;</textarea>
   setView('overview');
   renderProfiles();
   renderMcpServers();
-  Object.keys(CAPABILITY_SETTINGS).forEach(renderCapabilitySetting);
-  Object.keys(CLI_CHANNELS).forEach(renderCliChannel);
-  updateCapabilityCounts2();
+  // 子页签在 renderMcpServers 里已经由种类声明生成过一次；这里显式再算一遍，顺序不依赖调用方。
+  renderCapabilities();
+  renderShell();
 
   // clock
   const tick = () => { const d = new Date(); document.getElementById('clock').textContent = d.toLocaleTimeString('zh-CN', {hour12:false}); };
