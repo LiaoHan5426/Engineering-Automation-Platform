@@ -50,4 +50,34 @@ public class KnowledgeController {
     public record DocumentRequest(String title, String content) { }
     @GetMapping("/search")
     public Map<String, Object> search(@RequestParam String q, @RequestParam(defaultValue = "5") int limit) { return Map.of("query", q, "items", repository.search(q, Math.min(Math.max(limit, 1), 20))); }
+
+    @PutMapping("/{id}")
+    public Map<String, Object> rename(@PathVariable UUID id, @RequestBody BaseRequest request) {
+        if(SensitiveData.containsSecret(request.name())||SensitiveData.containsSecret(request.description()))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"名称或说明包含凭据，请脱敏后保存");
+        if (request.name() == null || request.name().isBlank() || request.name().length() > 200) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "知识库名称不能为空，最多200字符");
+        if (jdbc.update("UPDATE eap.knowledge_base SET name=?,description=? WHERE id=?", request.name(), request.description(), id) == 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "知识库不存在");
+        return Map.of("id", id, "status", "updated");
+    }
+
+    /** Refuses to delete a knowledge base that an enabled expert still depends on. */
+    @DeleteMapping("/{id}")
+    @Transactional
+    public Map<String, Object> remove(@PathVariable UUID id) {
+        var referenced = jdbc.queryForList("""
+                SELECT id FROM eap.expert_definition
+                WHERE enabled AND manifest->'knowledgeBases' @> to_jsonb(?::text)
+                """, id.toString());
+        if (!referenced.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "知识库正被已启用的专家引用：" + referenced);
+        if (jdbc.update("DELETE FROM eap.knowledge_base WHERE id=?", id) == 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "知识库不存在");
+        return Map.of("id", id, "status", "deleted");
+    }
+
+    @DeleteMapping("/{id}/documents/{documentId}")
+    @Transactional
+    public Map<String, Object> removeDocument(@PathVariable UUID id, @PathVariable UUID documentId) {
+        if (jdbc.update("DELETE FROM eap.knowledge_document WHERE id=? AND knowledge_base_id=?", documentId, id) == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "知识文档不存在");
+        }
+        return Map.of("id", documentId, "status", "deleted");
+    }
 }

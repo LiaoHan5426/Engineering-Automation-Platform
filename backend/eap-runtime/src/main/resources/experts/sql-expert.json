@@ -2,10 +2,12 @@
   "apiVersion": "eap/v1",
   "kind": "Expert",
   "id": "sql-expert",
-  "name": "SQL Expert",
+  "name": "SQL 专家",
+  "description": "对 SQL 做确定性的结构分析与索引/分页/谓词检查，只在证据不足时才按需请求模型复核。",
   "knowledgeBases": [],
+  "databaseProfiles": [],
   "steps": [
-    {"id": "parse", "label": "解析 SQL", "capability": "sql.parse", "required": true},
+    {"id": "parse", "label": "解析 SQL 并执行规则包", "capability": "sql.parse", "required": true},
     {"id": "knowledge", "label": "检索优化知识", "capability": "knowledge.search", "required": true},
     {"id": "schema", "label": "读取授权表结构", "capability": "database.schema.read", "required": false},
     {"id": "indexes", "label": "检查索引", "capability": "database.index.read", "required": false},
@@ -17,7 +19,6 @@
     {"source": "schema", "target": "indexes"},
     {"source": "indexes", "target": "explain"}
   ],
-  "capabilities": ["sql.parse", "knowledge.search", "database.schema.read", "database.index.read", "database.explain"],
-  "rules": ["database.credentials.never-expose", "candidate-sql.must-preserve-semantics"],
-  "escalation": { "provider": "local-model", "when": "confidence < 0.75" }
+  "rulePacks": ["sql-antipatterns"],
+  "rules": ["database.credentials.never-expose", "candidate-sql.must-preserve-semantics"]
 }

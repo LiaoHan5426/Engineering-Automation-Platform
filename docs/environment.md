@@ -1,110 +1,100 @@
 # Development environment
 
-## Available local services
+## What the current phase actually needs
 
-The current local development profile provides:
-
-| Service | Purpose | Required configuration |
+| Component | Required? | Purpose |
 |---|---|---|
-| PostgreSQL | Task state, Expert manifests, knowledge metadata, rules, audit records, vector index | JDBC URL, username, password, schema, vector extension |
-| RustFS | S3-compatible object storage for uploaded documents, artifacts, and evidence | endpoint, access key, secret key, bucket, region/path style |
+| JDK 25 + Maven 3.9+ | Yes | Build and run the Java runtime. |
+| PostgreSQL | Yes | Task records, expert definitions, knowledge base and grants (schema `eap`). |
+| Node.js + pnpm 12 + Vite+ | Yes | Build and run the frontend console. |
+| Git, ripgrep | Yes | Deterministic capabilities (`git-status`, `git-diff`, `rg-search`). Resolved on `PATH` by default; the location can be overridden per machine from the capability catalog (本地 CLI 页) without a restart. |
+| A local model endpoint (LM Studio / vLLM) | Optional | Only needed to exercise the optional model stage. |
+| RustFS / S3 object storage | No | Superseded for the current phase; see "Deferred" below. |
+| pgvector + embeddings | No | Superseded for the current phase; see "Deferred" below. |
 
-Do not commit the database password or RustFS credentials. Store them in a local environment file or secret manager.
+The previous revision of this document described an embedding + object-storage stack as
+"required". It is not. The current implementation uses PostgreSQL full-text search for knowledge
+retrieval and stores document text directly; it does not use vectors and does not require RustFS.
+This file now separates what runs from what is deferred.
 
-## PostgreSQL vector preparation
-
-The target schema is `eap`. The backend startup/migration should verify the schema exists and enable the vector extension through a controlled migration, for example:
-
-```sql
-CREATE SCHEMA IF NOT EXISTS eap;
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-
-### First embedding decision
-
-The first local model is **BAAI/bge-m3**, with dimension **1024**. It is a good default for this repository because the expected knowledge base contains Chinese and English engineering documents, and the same dimension can be used for one stable pgvector index. The local runtime is **LM Studio**, which exposes an OpenAI-compatible local API.
-
-### LM Studio setup
-
-1. In LM Studio, download and load a BGE-M3 embedding model.
-2. Start the local server, normally at `http://127.0.0.1:1234`.
-3. Confirm the model's API identifier in the LM Studio server model list.
-
-The backend calls the OpenAI-compatible endpoint:
-
-```http
-POST http://127.0.0.1:1234/v1/embeddings
-Content-Type: application/json
-
-{"model":"<lm-studio-bge-m3-id>","input":["Capability validation requires independent evidence."]}
-```
-
-The backend must verify that the response contains 1024 values per embedding before writing to PostgreSQL. LM Studio supports local REST and OpenAI-compatible endpoints, including embeddings. [LM Studio server](https://lmstudio.ai/docs/developer/core/server), [LM Studio REST endpoints](https://lmstudio.ai/docs/developer/rest/endpoints)
+## Application configuration
 
 ```text
-EAP_EMBEDDING_PROVIDER=lm-studio
-EAP_EMBEDDING_MODEL=text-embedding-bge-m3
-EAP_EMBEDDING_DIMENSIONS=1024
-EAP_EMBEDDING_ENDPOINT=http://127.0.0.1:1234/v1
-```
-
-Cloud embeddings remain a configuration option:
-
-```text
-EAP_EMBEDDING_PROVIDER=cloud
-EAP_EMBEDDING_MODEL=<cloud-model>
-EAP_EMBEDDING_API_KEY=<local-secret>
-EAP_EMBEDDING_ENDPOINT=<provider-endpoint>
-```
-
-The database column is `vector(1024)`. A future model with a different dimension must use a new embedding version/table or a deliberate re-embedding migration; silently changing the dimension is forbidden.
-
-## RustFS preparation
-
-The local RustFS bucket is `eap` and versioning is enabled. Use a non-admin access key restricted to this bucket. The application should store object keys and metadata in PostgreSQL, not binary content in database rows.
-
-Every uploaded document must persist the RustFS object version ID together with the object key, SHA-256, media type, parser status, and embedding version. A new object version creates a new immutable knowledge-document version; it must not silently overwrite an already indexed document.
-
-## Required application configuration
-
-```text
+# Database
 EAP_DB_URL=jdbc:postgresql://localhost:54321/postgres?currentSchema=eap
 EAP_DB_USERNAME=postgres
 EAP_DB_PASSWORD=<local-secret>
 EAP_DB_SCHEMA=eap
 
-EAP_STORAGE_ENDPOINT=http://localhost:9000
-EAP_STORAGE_ACCESS_KEY=<rustfs-access-key>
-EAP_STORAGE_SECRET_KEY=<rustfs-secret-key>
-EAP_STORAGE_BUCKET=eap
-EAP_STORAGE_REGION=us-east-1
-EAP_STORAGE_PATH_STYLE=true
+# Server
+EAP_SERVER_PORT=8080
+
+# Optional model stage (disabled by default; the pipeline is deterministic without it)
+EAP_LLM_ENABLED=false
+EAP_LLM_BASE_URL=http://127.0.0.1:1234/v1
+EAP_LLM_MODEL=local-model
+EAP_LLM_TEMPERATURE=0.1
+EAP_LLM_MAX_PROMPT_TOKENS=1800     # hard preprocessing budget
+EAP_LLM_MAX_COMPLETION_TOKENS=700
+EAP_LLM_CACHE_ENTRIES=64
+EAP_LLM_CONNECT_TIMEOUT_MS=3000
+EAP_LLM_READ_TIMEOUT_MS=20000
+EAP_LLM_ALLOW_REMOTE=false         # remote endpoints additionally require HTTPS
 ```
 
-## Still required before knowledge-base features
+Never commit `EAP_DB_PASSWORD`. Keep local secrets in an untracked local environment file or a
+secret manager, and inject them per environment.
 
-1. **Embedding runtime:** install and expose the local BGE-M3 model, then define batch size, timeout, and retry policy.
-2. **Vector policy:** define chunk size, overlap, supported file types, checksum, embedding version, and re-index behavior.
-3. **Migrations:** choose Flyway or Liquibase and make schema/vector/index changes repeatable.
-4. **Secrets:** define local `.env` handling and production secret injection; never use a committed password.
-5. **Authentication:** even a local system needs an owner/user identity before Expert, knowledge-base, and approval permissions are implemented.
+## Local model endpoint (optional)
 
-## Not required for the first local phase
+The model stage speaks the OpenAI-compatible `/chat/completions` API. For local development:
 
-- Redis or Kafka: use PostgreSQL task state and an in-process worker initially; add a queue only when concurrency or durability requires it.
-- Elasticsearch/OpenSearch: PostgreSQL plus pgvector is sufficient for the first knowledge-base search path.
-- Kubernetes: a single Java process, PostgreSQL, and RustFS are enough for local development.
-- LLM provider: deterministic capabilities can be implemented without one; add provider credentials only when escalation is enabled.
+1. In LM Studio (or vLLM), load a chat-capable model.
+2. Start the local server, normally at `http://127.0.0.1:1234`.
+3. Set `EAP_LLM_ENABLED=true`, `EAP_LLM_BASE_URL=http://127.0.0.1:1234/v1` and `EAP_LLM_MODEL=<id>`.
+
+`EndpointPolicy` allows loopback endpoints over `http` by default. A remote endpoint is only accepted
+when `EAP_LLM_ALLOW_REMOTE=true` **and** the scheme is `https`. This is enforced at construction time,
+so a misconfigured endpoint disables the provider instead of leaking data.
+
+## Database initialisation
+
+Flyway owns the `eap` schema and applies migrations `V1..V9` automatically on start. For a database
+that already contains a hand-built `eap` schema without a Flyway history, see
+[runtime-workflow.md](runtime-workflow.md) for the one-time adoption procedure
+(`EAP_ADOPT_EXISTING_SCHEMA=true`). Do not clean, repair or drop existing objects by hand.
+
+`V8` adds `eap.mcp_server` and `eap.expert_mcp_grant`. Both start empty: no MCP server is registered,
+no expert holds an MCP grant, and the capability catalog therefore reports zero `mcp` capabilities
+until an operator registers a server and an expert declares a tool.
+
+`V9` adds `eap.capability_setting` (the platform-wide on/off switch per capability) and
+`eap.cli_channel` (the per-machine binary override for a `cli` capability). Both start **empty on
+purpose**: an absent capability setting means *enabled* (the switch is opt-out), and an absent CLI
+channel means *use the binary the handler ships*, so an empty database is a fully working one.
+
+An empty database needs no adoption flag; it migrates from `V1` normally.
 
 ## Toolchain prerequisites
 
 - JDK 25
 - Maven 3.9+
-- Git and ripgrep
-- Node.js compatible with Vite+
-- pnpm 12.x and Vite+
-- Rust toolchain only when `apps/desktop` Tauri development starts
+- Git and ripgrep on `PATH`
+- Node.js compatible with Vite+, and pnpm 12.x
+- Rust toolchain only when desktop (`apps/desktop`, Tauri 2) development starts
 
-## Database initialization
+## Deferred (not required now)
 
-Apply `backend/db/migration/V1__knowledge_base.sql` with the selected migration tool. It creates `eap`, enables `vector`, and creates the initial knowledge-base/document/chunk tables and HNSW cosine index.
+These were part of an earlier plan and are explicitly deferred until a phase in
+[roadmap.md](roadmap.md) justifies them.
+
+- **Vector retrieval / embeddings.** V1 created a pgvector schema; V5 removed mandatory embeddings
+  because PostgreSQL full-text search was sufficient. Reintroduction (Phase 10) must define a stable
+  embedding version, dimension, migration and re-index policy — never a silent dimension change.
+- **Object storage (RustFS / S3).** Only useful once uploaded binaries must be versioned as immutable
+  evidence. Until then, document text is stored directly with a SHA-256 checksum.
+- **Redis / Kafka.** In-process work plus PostgreSQL is enough; add a queue only when concurrency or
+  durability demands it.
+- **Elasticsearch / OpenSearch.** PostgreSQL is sufficient for the current retrieval path.
+- **Kubernetes.** A single Java process, PostgreSQL and the frontend are enough for local
+  development.

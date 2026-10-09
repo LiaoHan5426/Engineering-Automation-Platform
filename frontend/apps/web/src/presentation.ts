@@ -28,6 +28,11 @@ export function statusLabel(status: string): string {
         "needs-context": "缺少上下文",
         "deterministic-workflow": "确定性流程",
         "deterministic-with-unverified-model-observation": "确定性流程 + 待验证模型观察",
+        enhance: "调用模型",
+        skip: "跳过模型",
+        skipped: "已跳过",
+        unavailable: "不可用",
+        "unverified-observation": "已调用（待验证）",
       } as Record<string, string>
     )[status] ?? status
   );

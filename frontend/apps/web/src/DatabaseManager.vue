@@ -40,13 +40,7 @@ async function refresh() {
 }
 function create() {
   if (!canLeave()) return;
-  id.value = null;
-  label.value = "";
-  engine.value = "PostgreSQL";
-  environment.value = "local";
-  tables.value = [];
-  indexes.value = [];
-  extra.value = {};
+  reset();
   editing.value = true;
   message.value = "";
   baseline.value = JSON.stringify(profile());
@@ -102,6 +96,39 @@ async function save() {
     busy.value = false;
   }
 }
+/**
+ * Deletion is a boundary, not a convenience: the backend refuses while an enabled expert still
+ * declares this profile, and the refusal reason is what the operator needs to see here.
+ */
+async function remove() {
+  if (busy.value || !id.value) return;
+  const target = label.value || id.value;
+  if (!window.confirm(`删除数据库资料「${target}」？该操作的引用授权会一并失效，且不可撤销。`)) return;
+  busy.value = true;
+  message.value = "";
+  try {
+    await runtimeApi.deleteDatabase(id.value);
+    await refresh();
+    reset();
+    message.value = "资料已删除；引用它的专家需要重新选择资料后才能启用";
+    emit("saved");
+  } catch (error) {
+    message.value = errorMessage(error);
+  } finally {
+    busy.value = false;
+  }
+}
+function reset() {
+  id.value = null;
+  label.value = "";
+  engine.value = "PostgreSQL";
+  environment.value = "local";
+  tables.value = [];
+  indexes.value = [];
+  extra.value = {};
+  editing.value = false;
+  baseline.value = "";
+}
 defineExpose({ refresh });
 onMounted(refresh);
 </script>
@@ -139,16 +166,27 @@ onMounted(refresh);
     <div class="eap-panel">
       <p v-if="message" class="feedback" role="status">{{ message }}</p>
       <p v-if="busy" role="status">正在处理…</p>
-      <p v-if="!editing" class="empty-state">选择资料查看或编辑，也可新建一个元数据快照。</p>
+      <p v-if="!editing" class="empty-state">选择资料查看、编辑或删除，也可新建一个元数据快照。</p>
       <form v-else @submit.prevent="save">
         <div class="manager-toolbar">
           <div>
             <h2>{{ label || "新数据库资料" }}</h2>
             <small>{{ dirty ? "有未保存修改" : "脱敏元数据快照" }}</small>
           </div>
-          <button class="eap-button eap-button--primary" :disabled="busy || !label.trim()">
-            {{ busy ? "保存中…" : "保存资料" }}
-          </button>
+          <div class="form-actions">
+            <button
+              v-if="id"
+              type="button"
+              class="eap-button eap-button--danger"
+              :disabled="busy"
+              @click="remove"
+            >
+              删除资料
+            </button>
+            <button class="eap-button eap-button--primary" :disabled="busy || !label.trim()">
+              {{ busy ? "保存中…" : "保存资料" }}
+            </button>
+          </div>
         </div>
         <p class="planning-note">
           只保存人工录入的结构快照。不要填写密码、Token 或 JDBC 地址；不会连接数据库或执行

@@ -1,0 +1,87 @@
+{
+  "apiVersion": "eap/v1",
+  "kind": "RulePack",
+  "id": "sql-snapshot-evidence",
+  "name": "快照与计划证据规则包",
+  "version": 1,
+  "description": "把人工登记的表结构/索引快照与用户提供的执行计划，和 SQL 结构事实放在一起判定。这个包演示了跨能力规则：单条规则可以同时读取 sql.parse、database.schema.read、database.index.read、database.explain 发布的事实，所以引用它的专家流程必须同时包含这些节点。",
+  "requires": {
+    "capabilities": ["sql.parse", "database.schema.read", "database.index.read", "database.explain"],
+    "note": "本包同时读取 SQL 结构事实、表结构快照事实、索引快照事实与执行计划事实，四种事实分别由这四项能力发布。缺少任何一项时对应规则会被标记为未判定，而不是静默不命中。"
+  },
+  "policy": {
+    "severityWeights": { "critical": 1.0, "high": 0.75, "medium": 0.45, "low": 0.2, "info": 0.05 },
+    "actionableWeight": 0.75,
+    "complexity": {
+      "weights": {
+        "metric.joinCount": 2,
+        "metric.subqueryCount": 2,
+        "metric.functionCount": 1,
+        "plan.nodeCount": 1
+      },
+      "multiTableFact": "table.count",
+      "multiTableAbove": 1,
+      "multiTableWeight": 1
+    },
+    "reviewComplexityThreshold": 4,
+    "cleanConfidence": 0.9,
+    "actionableConfidence": 0.85,
+    "partialConfidence": 0.5
+  },
+  "rules": [
+    {
+      "id": "plan.seq_scan",
+      "title": "计划出现顺序扫描",
+      "category": "执行计划",
+      "severity": "info",
+      "severityWhen": [
+        { "when": { "fact": "plan.filteredSeqScan", "op": "eq", "value": true }, "severity": "medium" }
+      ],
+      "when": { "fact": "plan.seqScan", "op": "eq", "value": true },
+      "evidence": "执行计划快照包含顺序扫描节点：{{plan.nodeTypes}}。",
+      "suggestion": "顺序扫描在有高选择性过滤时通常优于索引访问，也可能相反。请结合过滤选择性、估计行数与现有索引判断，不要仅因出现 Seq Scan 就新增索引。"
+    },
+    {
+      "id": "plan.scan_with_unstable_pagination",
+      "title": "计划扫描且分页缺少稳定排序",
+      "category": "执行计划",
+      "severity": "high",
+      "when": {
+        "all": [
+          { "fact": "plan.seqScan", "op": "eq", "value": true },
+          { "fact": "select.limit", "op": "eq", "value": true },
+          { "fact": "select.hasOrderBy", "op": "eq", "value": false }
+        ]
+      },
+      "evidence": "计划包含顺序扫描（{{plan.nodeTypes}}），同时查询使用 LIMIT 却没有 ORDER BY，返回行既不确定也可能随计划变化。",
+      "suggestion": "先补上稳定唯一的排序键，再评估是否需要用索引访问满足该顺序；为了改变计划而添加索引不是正确顺序。"
+    },
+    {
+      "id": "index.uncovered_join_column",
+      "title": "快照中无前导列匹配的索引",
+      "category": "索引快照",
+      "severity": "medium",
+      "when": { "fact": "index.uncoveredJoinColumn", "op": "exists" },
+      "evidence": "所选索引快照没有记录以 {{index.uncoveredJoinColumn}} 为前导列的索引（快照共 {{index.count}} 条）。",
+      "suggestion": "这不是实时缺失结论：先核对线上索引清单，再用执行计划确认连接访问路径是否真的需要该索引；没有高选择性过滤时顺序扫描可能更优。"
+    },
+    {
+      "id": "schema.unresolved_column",
+      "title": "快照无法定位关联列",
+      "category": "表结构快照",
+      "severity": "medium",
+      "when": { "fact": "schema.unresolvedColumn", "op": "exists" },
+      "evidence": "表结构快照未能唯一定位：{{schema.unresolvedColumn}}（快照共 {{schema.tableCount}} 张表）。",
+      "suggestion": "请用与 SQL 一致的完整表名与列名补全资料；在定位成功之前，不要据此给出索引或类型建议。"
+    },
+    {
+      "id": "schema.type_mismatch",
+      "title": "关联条件两侧登记类型不一致",
+      "category": "表结构快照",
+      "severity": "medium",
+      "when": { "fact": "schema.typeMismatch", "op": "exists" },
+      "evidence": "关联条件 {{schema.typeMismatch}} 两侧在快照中登记的类型不同。",
+      "suggestion": "核对类型转换规则与执行计划中的隐式转换；类型不一致可能让索引失效，也可能只是快照登记问题，需先用计划确认。"
+    }
+  ]
+}

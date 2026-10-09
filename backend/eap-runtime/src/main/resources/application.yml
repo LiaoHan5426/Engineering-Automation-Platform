@@ -22,7 +22,16 @@ management:
         include: health,info
 eap:
   llm:
+    # A model is consulted only when the deterministic result is not decisive or the operator
+    # explicitly requests it. Disabled by default; the pipeline stays fully deterministic.
     enabled: ${EAP_LLM_ENABLED:false}
     base-url: ${EAP_LLM_BASE_URL:http://127.0.0.1:1234/v1}
-    model: ${EAP_LLM_MODEL:text-embedding-bge-m3}
+    model: ${EAP_LLM_MODEL:local-model}
+    temperature: ${EAP_LLM_TEMPERATURE:0.1}
+    # Hard budget applied by the preprocessing stage before any request is sent.
+    max-prompt-tokens: ${EAP_LLM_MAX_PROMPT_TOKENS:1800}
+    max-completion-tokens: ${EAP_LLM_MAX_COMPLETION_TOKENS:700}
+    cache-entries: ${EAP_LLM_CACHE_ENTRIES:64}
+    connect-timeout-ms: ${EAP_LLM_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${EAP_LLM_READ_TIMEOUT_MS:20000}
 EAP_ADOPT_EXISTING_SCHEMA: true

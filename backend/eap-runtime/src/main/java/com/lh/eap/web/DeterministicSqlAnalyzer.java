@@ -1,56 +1,133 @@
 package com.lh.eap.web;
 
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import net.sf.jsqlparser.statement.select.*;
-import net.sf.jsqlparser.expression.*;
-import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
-import net.sf.jsqlparser.schema.*;
+import com.lh.eap.rules.RuleEngine;
+import com.lh.eap.rules.RulePack;
+import com.lh.eap.rules.RulePacks;
+import com.lh.eap.rules.SqlFactExtractor;
+import com.lh.eap.rules.SqlFactVocabulary;
 import java.util.*;
 
+/**
+ * SQL analysis facade.
+ *
+ * <p>It contains <em>no</em> domain rules, and it is deliberately split into two stages that the
+ * executor runs at different moments:
+ *
+ * <ol>
+ *   <li>{@link #extract(String)} — structural facts and parse metadata only. This is what the
+ *       {@code sql.parse} capability publishes, and it is available to the rest of the graph.</li>
+ *   <li>{@link #judge(Map, List, Set)} — runs the expert's rule packs over the <em>accumulated</em> fact
+ *       base, after every capability has had its turn. That is what lets one rule combine facts from
+ *       several capabilities (statement shape plus snapshot plus plan) instead of only from SQL.</li>
+ * </ol>
+ *
+ * <p>Which checks run, how severe they are and what they advise is decided entirely by the rule packs
+ * passed in — see {@code classpath:rules/*.json}. {@link #analyze(String, List)} keeps the two stages
+ * glued together for the standalone (non-expert) callers: dry-run and unit tests.
+ */
 final class DeterministicSqlAnalyzer {
-    private DeterministicSqlAnalyzer(){}
-    static Map<String,Object> analyze(String sql){
-        try{
-            var statement=CCJSqlParserUtil.parse(sql);
-            var findings=new ArrayList<String>();var suggestions=new ArrayList<String>();var keys=new ArrayList<String>();var tables=new ArrayList<String>();
-            var aliases=new HashMap<String,String>();var columns=new ArrayList<Map<String,String>>();
-            if(statement instanceof PlainSelect select){
-                if(select.getFromItem() instanceof Table table){tables.add(table.getFullyQualifiedName());alias(table,aliases);}
-                if(select.getJoins()!=null)for(var join:select.getJoins())if(join.getRightItem() instanceof Table table)alias(table,aliases);
-                if(select.getSelectItems().stream().anyMatch(item->item.getExpression() instanceof AllColumns||item.getExpression() instanceof AllTableColumns)){
-                    findings.add("projection.select_star");suggestions.add("当前投影包含通配符；请明确业务所需列，减少传输量并降低表结构变化风险。");
-                }
-                if(select.getJoins()!=null)for(var join:select.getJoins()){
-                    if(join.getRightItem() instanceof Table table)tables.add(table.getFullyQualifiedName());
-                    for(var on:join.getOnExpressions()) collectKeys(on,keys,columns,aliases);
-                    if(join.isCross() || (join.getOnExpressions().isEmpty()&&!join.isNatural()&&(join.getUsingColumns()==null||join.getUsingColumns().isEmpty()))){
-                        findings.add("join.cartesian");suggestions.add("检测到无显式关联条件的连接："+join.getRightItem()+"，请确认笛卡尔积是否符合业务语义。");
-                    }
-                }
-                if(select.getWhere()==null){
-                    findings.add("query.no_filter");suggestions.add("查询"+String.join("、",tables)+"没有 WHERE 条件。若需要返回全部关联结果，不能随意添加过滤或 LIMIT；应检查输出行数及连接行数放大。");
-                }
-                for(var key:keys){
-                    findings.add("join.equality");suggestions.add("关联条件 "+key+"：请核对连接列类型、唯一性和索引前导列，并用执行计划比较扫描与连接方式。没有高选择性过滤时，顺序扫描和哈希连接可能优于逐行索引查找，不能仅凭 JOIN 就创建索引。");
-                }
-                if(select.getOffset()!=null){findings.add("pagination.offset");suggestions.add("查询含 OFFSET；深分页需先确认稳定唯一排序，再比较基于游标的分页方案，不能直接改写而改变返回语义。");}
-            }
-            if(suggestions.isEmpty())suggestions.add("已解析 "+statement.getClass().getSimpleName()+"。当前没有足够结构或执行计划证据支持确定性改写，请提供业务语义及元数据。");
-            return Map.of("parseStatus","valid","statementType",statement.getClass().getSimpleName(),"normalizedSql",statement.toString(),"findings",findings,"suggestions",suggestions,"tables",tables,"joinKeys",keys,"joinColumns",columns);
-        }catch(Exception error){return Map.of("parseStatus","invalid","error","SQL 无法解析，请检查语法及数据库方言","suggestions",List.of("请修正 SQL 语法后重新分析；本次没有执行 SQL。"),"findings",List.of("syntax.invalid"));}
+    static final String ENGINE_VERSION = "sql-analyzer/4";
+
+    private DeterministicSqlAnalyzer() { }
+
+    /** Analyzes using the built-in rule packs, as if every fact producer had run. */
+    static Map<String, Object> analyze(String sql) {
+        return analyze(sql, RulePacks.builtin());
     }
-    private static void alias(Table table,Map<String,String> aliases){
-        aliases.put(table.getName(),table.getFullyQualifiedName());
-        if(table.getAlias()!=null)aliases.put(table.getAlias().getName(),table.getFullyQualifiedName());
+
+    /** Analyzes using exactly the given rule packs (already resolved from the expert manifest). */
+    static Map<String, Object> analyze(String sql, List<RulePack> packs) {
+        var result = extract(sql);
+        result.putAll(judge(result, packs, Set.of(SqlFactVocabulary.SQL_PARSE)));
+        return result;
     }
-    private static void collectKeys(Expression expression,List<String> keys,List<Map<String,String>> columns,Map<String,String> aliases){
-        if(expression instanceof EqualsTo equality && equality.getLeftExpression() instanceof Column left && equality.getRightExpression() instanceof Column right){
-            keys.add(equality.toString());
-            for(var column:List.of(left,right)){
-                var owner=column.getTable()==null?"":column.getTable().getName();
-                if(owner!=null&&aliases.containsKey(owner))columns.add(Map.of("table",aliases.get(owner),"column",column.getColumnName(),"condition",equality.toString()));
-            }
+
+    /** Stage 1: facts and structure. No severity, no advice, no judgement of any kind. */
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> extract(String sql) {
+        var extraction = SqlFactExtractor.extract(sql);
+        var result = new LinkedHashMap<String, Object>();
+        result.put("parseStatus", extraction.parseStatus());
+        result.put("statementType", extraction.statementType());
+        result.put("normalizedSql", extraction.normalizedSql());
+        result.put("engineVersion", ENGINE_VERSION);
+        if (extraction.error() != null) result.put("error", extraction.error());
+        result.put("tables", extraction.tables());
+        result.put("joinKeys", extraction.joinKeys());
+        result.put("joinColumns", extraction.joinColumns());
+        result.put("joinKeyAdvice", extraction.joinKeyAdvice());
+        result.put("facts", new LinkedHashMap<String, Object>(extraction.facts()));
+        return result;
+    }
+
+    /**
+     * Stage 2: judgement over the whole run's evidence.
+     *
+     * @param analysis              accumulated run evidence; {@code facts} is what rules are evaluated against
+     * @param packs                 resolved rule packs declared by the expert
+     * @param availableCapabilities capabilities that actually produced facts in this run
+     */
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> judge(Map<String, Object> analysis, List<RulePack> packs,
+                                    Set<String> availableCapabilities) {
+        var facts = (Map<String, Object>) analysis.getOrDefault("facts", Map.of());
+        var available = availableCapabilities == null ? null : Set.copyOf(availableCapabilities);
+        var outcome = RuleEngine.evaluate(RulePacks.merged(packs), facts, available);
+        boolean invalid = "invalid".equals(analysis.get("parseStatus"));
+
+        var suggestions = new ArrayList<String>();
+        var joinKeyAdvice = analysis.get("joinKeyAdvice");
+        if (joinKeyAdvice instanceof List<?> advice) advice.forEach(item -> suggestions.add(String.valueOf(item)));
+        suggestions.addAll(outcome.suggestions());
+        if (suggestions.isEmpty()) {
+            suggestions.add("已解析 " + analysis.getOrDefault("statementType", "语句")
+                    + "。当前没有足够结构证据支持确定性改写，请提供业务语义、表结构与执行计划。");
         }
-        if(expression instanceof BinaryExpression binary){collectKeys(binary.getLeftExpression(),keys,columns,aliases);collectKeys(binary.getRightExpression(),keys,columns,aliases);}
+
+        var result = new LinkedHashMap<String, Object>();
+        result.put("findings", outcome.findings());
+        result.put("rulesFired", outcome.fired());
+        result.put("blockedRules", outcome.blocked().stream().map(blocked -> {
+            var entry = new LinkedHashMap<String, Object>();
+            entry.put("rule", blocked.rule());
+            entry.put("missingFacts", blocked.missingFacts());
+            entry.put("missingCapabilities", blocked.missingCapabilities());
+            return entry;
+        }).toList());
+        result.put("ruleCapabilities", capabilityCheck(packs, available));
+        result.put("suggestions", List.copyOf(suggestions));
+        result.put("severityCounts", outcome.severityCounts());
+        result.put("complexity", outcome.complexity());
+        result.put("deterministicConfidence", invalid ? 1.0 : outcome.confidence());
+        result.put("requiresModelReview", !invalid && outcome.requiresModelReview());
+        result.put("summary", outcome.summary());
+        return result;
+    }
+
+    /**
+     * Which capabilities each referenced pack needs, and whether this run could supply them. This is
+     * the bridge between "rule pack requires capability" and "expert graph provides capability": the
+     * console shows it, and the executor turns an unmet requirement into an explicit degradation.
+     */
+    static List<Map<String, Object>> capabilityCheck(List<RulePack> packs, Set<String> availableCapabilities) {
+        var checks = new ArrayList<Map<String, Object>>();
+        for (var pack : packs) {
+            if (pack == null) continue;
+            var required = RulePacks.requiredCapabilities(pack);
+            var entry = new LinkedHashMap<String, Object>();
+            entry.put("id", pack.id());
+            entry.put("required", List.copyOf(required));
+            if (availableCapabilities == null) {
+                entry.put("met", true);
+                entry.put("missing", List.of());
+            } else {
+                var missing = new TreeSet<>(required);
+                missing.removeAll(availableCapabilities);
+                entry.put("met", missing.isEmpty());
+                entry.put("missing", List.copyOf(missing));
+            }
+            checks.add(entry);
+        }
+        return checks;
     }
 }

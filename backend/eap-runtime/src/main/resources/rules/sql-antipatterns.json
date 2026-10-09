@@ -1,0 +1,239 @@
+{
+  "apiVersion": "eap/v1",
+  "kind": "RulePack",
+  "id": "sql-antipatterns",
+  "name": "SQL 结构反模式规则包",
+  "version": 1,
+  "description": "对已解析的 SQL 做结构化检查。规则全部是数据：可复制、可编辑、可禁用，新增检查无需改动或重新部署代码。证据与建议可用 {{fact.key}} 引用事实。",
+  "requires": {
+    "capabilities": ["sql.parse"],
+    "note": "本包所有条件只读取 SQL 结构事实（parse.* / select.* / join.* / predicate.* / dml.* / table.* / metric.*），这些事实由 sql.parse 发布。引用本包的专家流程必须包含 sql.parse 节点，否则规则永远不会命中。"
+  },
+  "policy": {
+    "severityWeights": { "critical": 1.0, "high": 0.75, "medium": 0.45, "low": 0.2, "info": 0.05 },
+    "actionableWeight": 0.75,
+    "complexity": {
+      "weights": {
+        "metric.joinCount": 2,
+        "metric.subqueryCount": 2,
+        "metric.functionCount": 1,
+        "metric.unionCount": 1
+      },
+      "multiTableFact": "table.count",
+      "multiTableAbove": 1,
+      "multiTableWeight": 1
+    },
+    "reviewComplexityThreshold": 4,
+    "cleanConfidence": 0.9,
+    "actionableConfidence": 0.85,
+    "partialConfidence": 0.5
+  },
+  "rules": [
+    {
+      "id": "syntax.invalid",
+      "title": "语句无法解析",
+      "category": "语法",
+      "severity": "critical",
+      "when": { "fact": "parse.status", "op": "eq", "value": "invalid" },
+      "evidence": "解析器无法识别该语句。",
+      "suggestion": "请修正 SQL 语法后重新分析；本次没有执行 SQL。",
+      "confidence": 1.0
+    },
+    {
+      "id": "statement.unclassified",
+      "title": "未识别的语句类型",
+      "category": "结构",
+      "severity": "info",
+      "when": { "fact": "statement.classified", "op": "eq", "value": false },
+      "evidence": "已解析为 {{statement.type}}，平台暂未对该类型定义结构检查。",
+      "suggestion": "该语句类型暂不做确定性改写建议，请提供更具体的查询目标。"
+    },
+    {
+      "id": "projection.select_star",
+      "title": "投影使用通配符",
+      "category": "投影",
+      "severity": "low",
+      "severityWhen": [
+        { "when": { "fact": "join.count", "op": "gte", "value": 1 }, "severity": "medium" }
+      ],
+      "when": { "fact": "select.allColumns", "op": "eq", "value": true },
+      "evidence": "投影中包含 * 通配符。",
+      "suggestion": "明确列出业务所需列：减少传输量、避免列顺序或类型变化导致的隐式转换，并使覆盖索引成为可能。"
+    },
+    {
+      "id": "join.cartesian",
+      "title": "连接缺少关联条件",
+      "category": "连接",
+      "severity": "high",
+      "when": { "fact": "join.cartesian", "op": "eq", "value": true },
+      "evidence": "存在 {{join.cartesianCount}} 个没有显式关联条件的连接（或为 CROSS JOIN）。",
+      "suggestion": "确认笛卡尔积是否为业务所需；若非，请补齐关联条件，否则结果行数会按两表行数相乘放大。"
+    },
+    {
+      "id": "query.no_filter",
+      "title": "查询缺少过滤条件",
+      "category": "扫描",
+      "severity": "high",
+      "when": { "fact": "select.noWhere", "op": "eq", "value": true },
+      "evidence": "查询 {{table.list}} 没有 WHERE 条件。",
+      "suggestion": "若确需返回全部行，请显式说明并评估数据量；否则补充过滤条件以避免全表扫描与连接行数放大。"
+    },
+    {
+      "id": "set.union",
+      "title": "使用集合运算",
+      "category": "结构",
+      "severity": "medium",
+      "when": { "fact": "set.unionCount", "op": "gt", "value": 0 },
+      "evidence": "检测到 UNION / UNION ALL 集合运算，共 {{set.unionCount}} 个分支。",
+      "suggestion": "集合运算会去重或额外排序，可能掩盖连接行放大；确认是否真的需要去重（否则用 UNION ALL），并核实各分支代价。"
+    },
+    {
+      "id": "query.distinct",
+      "title": "使用 DISTINCT",
+      "category": "结构",
+      "severity": "low",
+      "when": { "fact": "select.distinct", "op": "eq", "value": true },
+      "evidence": "查询使用 DISTINCT 去重。",
+      "suggestion": "DISTINCT 常用来掩盖连接行放大；请确认放大是否由连接条件引起，优先修正连接或改用半连接，而不是依赖去重。"
+    },
+    {
+      "id": "dml.insert",
+      "title": "写入语句 INSERT",
+      "category": "写入",
+      "severity": "info",
+      "when": { "fact": "statement.type", "op": "eq", "value": "INSERT" },
+      "evidence": "检测到 INSERT 语句。",
+      "suggestion": "确认批量写入的事务边界与约束触发开销；平台不会执行该语句，请自行在业务侧验证。"
+    },
+    {
+      "id": "dml.no_filter",
+      "title": "写入语句缺少过滤条件",
+      "category": "写入",
+      "severity": "critical",
+      "when": { "fact": "dml.noFilter", "op": "eq", "value": true },
+      "evidence": "{{dml.kind}} 语句没有 WHERE 条件，将影响整表。",
+      "suggestion": "整表 {{dml.kind}} 风险极高：请补充过滤条件并在事务中先用 SELECT 校验影响行数与范围。"
+    },
+    {
+      "id": "dml.filtered",
+      "title": "写入语句包含过滤条件",
+      "category": "写入",
+      "severity": "info",
+      "when": {
+        "all": [
+          { "fact": "dml.kind", "op": "exists" },
+          { "fact": "dml.noFilter", "op": "eq", "value": false }
+        ]
+      },
+      "evidence": "{{dml.kind}} 语句包含过滤条件。",
+      "suggestion": "请在事务中先用等价 SELECT 校验影响范围，并确认涉及的索引与锁范围。"
+    },
+    {
+      "id": "query.limit_without_order",
+      "title": "分页缺少稳定排序",
+      "category": "分页",
+      "severity": "high",
+      "when": {
+        "all": [
+          { "fact": "select.limit", "op": "eq", "value": true },
+          { "fact": "select.hasOrderBy", "op": "eq", "value": false }
+        ]
+      },
+      "evidence": "LIMIT 没有配套 ORDER BY，返回行不确定。",
+      "suggestion": "分页必须配合稳定唯一的排序键，否则结果集顺序随机、翻页会丢行或重复。"
+    },
+    {
+      "id": "pagination.offset",
+      "title": "使用 OFFSET 分页",
+      "category": "分页",
+      "severity": "medium",
+      "severityWhen": [
+        { "when": { "fact": "select.deepOffset", "op": "eq", "value": true }, "severity": "high" }
+      ],
+      "when": { "fact": "select.offset", "op": "eq", "value": true },
+      "evidence": "查询包含 OFFSET 分页。",
+      "suggestion": "深分页先确认稳定唯一排序，再评估基于游标（键集）的分页方案；改写不能改变返回语义。"
+    },
+    {
+      "id": "order_by.expression",
+      "title": "排序键为表达式",
+      "category": "排序",
+      "severity": "medium",
+      "when": { "fact": "select.orderByExpression", "op": "eq", "value": true },
+      "evidence": "ORDER BY 使用表达式或函数。",
+      "suggestion": "排序键为表达式时无法直接使用索引排序；可评估表达式索引或调整排序键。"
+    },
+    {
+      "id": "predicate.disjunction",
+      "title": "条件中出现 OR",
+      "category": "谓词",
+      "severity": "medium",
+      "when": { "fact": "predicate.or", "op": "eq", "value": true },
+      "evidence": "条件中出现 OR 逻辑。",
+      "suggestion": "OR 常导致无法使用单一索引；可评估改写为 UNION ALL，或为各分支分别建立可用索引。"
+    },
+    {
+      "id": "predicate.negation",
+      "title": "条件中出现否定",
+      "category": "谓词",
+      "severity": "medium",
+      "when": { "fact": "predicate.not", "op": "eq", "value": true },
+      "evidence": "条件中使用 NOT / 否定表达式。",
+      "suggestion": "否定条件通常无法使用索引；确认能否改写为等价的肯定条件。"
+    },
+    {
+      "id": "predicate.like.leading_wildcard",
+      "title": "LIKE 前导通配符",
+      "category": "谓词",
+      "severity": "high",
+      "when": { "fact": "predicate.leadingWildcardLike", "op": "eq", "value": true },
+      "evidence": "LIKE 模式以前导通配符 % 开头。",
+      "suggestion": "前导通配符使普通 B-Tree 索引失效；可评估范围查询、反转列、全文检索或 trigram 索引。"
+    },
+    {
+      "id": "predicate.null_comparison",
+      "title": "与 NULL 做等值比较",
+      "category": "谓词",
+      "severity": "critical",
+      "when": { "fact": "predicate.nullComparison", "op": "eq", "value": true },
+      "evidence": "使用 = NULL / <> NULL 与空值比较。",
+      "suggestion": "与 NULL 的等值比较恒为未知，应改为 IS NULL / IS NOT NULL，否则结果可能始终为空。"
+    },
+    {
+      "id": "predicate.function_on_column",
+      "title": "函数包裹列",
+      "category": "谓词",
+      "severity": "high",
+      "when": { "fact": "predicate.functionOnColumn", "op": "exists" },
+      "evidence": "函数包裹了列：{{predicate.functionOnColumn}}。",
+      "suggestion": "在列上施加函数会使普通索引失效（非 sargable）；可评估改写为范围条件或建立表达式索引。"
+    },
+    {
+      "id": "predicate.explicit_cast",
+      "title": "条件中显式转型",
+      "category": "谓词",
+      "severity": "medium",
+      "when": { "fact": "predicate.explicitCast", "op": "eq", "value": true },
+      "evidence": "条件中对表达式显式转型。",
+      "suggestion": "确认参与比较两侧的类型一致，避免隐式或显式转换导致索引失效。"
+    },
+    {
+      "id": "predicate.in_subquery",
+      "title": "IN 使用子查询",
+      "category": "谓词",
+      "severity": "medium",
+      "when": { "fact": "predicate.inSubquery", "op": "eq", "value": true },
+      "evidence": "IN 使用子查询。",
+      "suggestion": "评估子查询能否改写为 JOIN 或半连接，避免重复执行与不必要的半连接开销。"
+    },
+    {
+      "id": "predicate.subquery",
+      "title": "条件中包含子查询",
+      "category": "谓词",
+      "severity": "medium",
+      "when": { "fact": "predicate.subquery", "op": "eq", "value": true },
+      "evidence": "条件中包含子查询。",
+      "suggestion": "相关子查询可能每行执行一次；评估能否改写为 JOIN 或预计算，并用执行计划核实。"
+    }
+  ]
+}

@@ -1,54 +1,114 @@
 package com.lh.eap.web;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
-import java.net.http.HttpClient;
-import java.time.Duration;
-import java.net.URI;
+import com.lh.eap.decision.DecisionProvider;
+import com.lh.eap.decision.RuleBasedDecisionProvider;
+import com.lh.eap.llm.LlmGateway;
+import com.lh.eap.llm.LlmProvider;
+import com.lh.eap.llm.PromptPreprocessor;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
-import java.util.*;
-
+/**
+ * The model advisor for the SQL expert.
+ *
+ * <p>It is intentionally a thin orchestration layer: the {@link DecisionProvider} decides whether a
+ * model is worth calling at all, the {@link PromptPreprocessor} compresses the deterministic evidence
+ * into a token-bounded prompt, and the {@link LlmGateway} performs a cached, fail-closed call. When
+ * any stage declines, the deterministic result is returned unchanged and the reason is reported.
+ *
+ * <p>Model output is always an unverified observation; it never mutates the deterministic analysis
+ * and never marks a task complete.
+ */
 @Service
 public class SqlExpertService {
-    private static final Logger log=LoggerFactory.getLogger(SqlExpertService.class);
-    private final boolean enabled;
-    private final String model;
-    private final RestClient client;
+    private static final Logger log = LoggerFactory.getLogger(SqlExpertService.class);
 
-    public SqlExpertService(@Value("${eap.llm.enabled:false}") boolean enabled, @Value("${eap.llm.base-url:http://127.0.0.1:1234/v1}") String baseUrl, @Value("${eap.llm.model:local-model}") String model,@Value("${EAP_LLM_ALLOW_REMOTE:false}") boolean allowRemote) {
-        boolean permitted=false;
-        try{
-            var uri=URI.create(baseUrl);
-            var local=Set.of("localhost","127.0.0.1","::1","[::1]").contains(Objects.toString(uri.getHost(),"").toLowerCase(Locale.ROOT));
-            permitted=uri.getUserInfo()==null&&(local&&Set.of("http","https").contains(Objects.toString(uri.getScheme(),""))||allowRemote&&"https".equals(uri.getScheme()));
-        }catch(IllegalArgumentException ignored){}
-        this.enabled = enabled&&permitted;
-        if(enabled&&!permitted)log.warn("Model enhancement disabled: endpoint is not permitted; deterministic capabilities remain available");
-        this.model = model;
-        var factory=new JdkClientHttpRequestFactory(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build());
-        factory.setReadTimeout(Duration.ofSeconds(8));
-        this.client = RestClient.builder().baseUrl(permitted?baseUrl:"http://127.0.0.1:1234/v1").requestFactory(factory).build();
+    private final PromptPreprocessor preprocessor;
+    private final LlmGateway gateway;
+    private final DecisionProvider decisions;
+    private final double temperature;
+    private final int maxTokens;
+
+    public SqlExpertService(PromptPreprocessor preprocessor, LlmGateway gateway, DecisionProvider decisions,
+                            @Value("${eap.llm.temperature:0.1}") double temperature,
+                            @Value("${eap.llm.max-completion-tokens:700}") int maxTokens) {
+        this.preprocessor = preprocessor;
+        this.gateway = gateway;
+        this.decisions = decisions;
+        this.temperature = temperature;
+        this.maxTokens = maxTokens;
     }
 
-    @SuppressWarnings("unchecked")
-    public Optional<String> analyze(String sql, List<String> checks) {
-        if (!enabled) return Optional.empty();
-        var body = Map.of("model", model, "temperature", 0.1, "messages", List.of(Map.of("role", "system", "content", "Analyze SQL performance and safety. Do not invent schema facts."), Map.of("role", "user", "content", "SQL:\n" + sql + "\nLocal checks:\n" + String.join("\n", checks))));
-        try {
-            var response = client.post().uri("/chat/completions").body(body).retrieve().body(Map.class);
-            if(response==null)return Optional.empty();
-            var choices = (List<Map<String, Object>>) response.get("choices");
-            if(choices==null||choices.isEmpty())return Optional.empty();
-            var message = (Map<String, Object>) choices.getFirst().get("message");
-            var content=message==null?null:message.get("content");
-            return content instanceof String text&&!text.isBlank()?Optional.of(text):Optional.empty();
-        } catch (RuntimeException ex) {
-            log.warn("Optional model enhancement failed: {}; deterministic results remain available",ex.getClass().getSimpleName());
-            return Optional.empty();
+    /** The routing + preprocessing + call outcome, always present so the caller can audit the decision. */
+    public record Outcome(boolean attempted, boolean succeeded, String decision, String rationale,
+                          String text, String provider, String model, long latencyMs,
+                          int promptTokens, int completionTokens, Map<String, Object> preprocessing) { }
+
+    public Outcome advise(PromptPreprocessor.SqlEvidence evidence, boolean userRequested) {
+        var analysis = evidence.analysis() == null ? Map.<String, Object>of() : evidence.analysis();
+        var decision = decisions.decide(new DecisionProvider.Request(
+                RuleBasedDecisionProvider.KIND_SQL_ENHANCE,
+                Map.of(
+                        "parseStatus", String.valueOf(analysis.getOrDefault("parseStatus", "invalid")),
+                        "requiresModelReview", Boolean.TRUE.equals(analysis.get("requiresModelReview")),
+                        "deterministicConfidence", analysis.getOrDefault("deterministicConfidence", 0.5),
+                        "userRequested", userRequested)));
+
+        var prepared = preprocessor.prepare(evidence);
+        var preprocessing = preprocessor.describe(prepared);
+
+        if (!decision.is(RuleBasedDecisionProvider.CHOICE_ENHANCE)) {
+            return new Outcome(false, false, decision.choice(), decision.rationale(),
+                    null, null, null, 0, 0, 0, preprocessing);
         }
+        if (!gateway.available()) {
+            return new Outcome(false, false, decision.choice(),
+                    decision.rationale() + "；但当前没有已启用且通过端点策略的模型，已回退确定性结果",
+                    null, null, null, 0, 0, 0, preprocessing);
+        }
+
+        var activeProvider = gateway.activeProviderId().orElse(null);
+        var request = new LlmProvider.Request(prepared.systemPrompt(), prepared.userPrompt(), temperature, maxTokens, null);
+        var result = gateway.complete(request);
+        if (result.isEmpty()) {
+            return new Outcome(true, false, decision.choice(), decision.rationale() + "；模型调用失败，已回退确定性结果",
+                    null, activeProvider, null, 0, 0, 0, preprocessing);
+        }
+        var response = result.get();
+        log.info("SQL model advice produced: provider={}, estimatedTokens={}, baselineTokens={}",
+                response.providerId(), prepared.estimatedTokens(), prepared.baselineTokens());
+        return new Outcome(true, true, decision.choice(), decision.rationale(),
+                response.text(), response.providerId(), response.model(), response.latencyMs(),
+                response.promptTokens(), response.completionTokens(), preprocessing);
+    }
+
+    /** A stable, ordered view for the API response. */
+    public static Map<String, Object> toResponse(Outcome outcome) {
+        var map = new LinkedHashMap<String, Object>();
+        if (outcome == null) {
+            map.put("decision", "unavailable");
+            map.put("rationale", "模型顾问未运行");
+            return map;
+        }
+        map.put("attempted", outcome.attempted());
+        map.put("succeeded", outcome.succeeded());
+        map.put("decision", outcome.decision());
+        map.put("rationale", outcome.rationale());
+        map.put("provider", outcome.provider());
+        map.put("model", outcome.model());
+        map.put("latencyMs", outcome.latencyMs());
+        map.put("promptTokens", outcome.promptTokens());
+        map.put("completionTokens", outcome.completionTokens());
+        map.put("preprocessing", outcome.preprocessing());
+        return map;
+    }
+
+    public Optional<String> providerId() {
+        return gateway.activeProviderId();
     }
 }

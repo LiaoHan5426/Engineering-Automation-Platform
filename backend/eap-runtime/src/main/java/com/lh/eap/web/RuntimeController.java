@@ -15,12 +15,14 @@ import java.util.*;
 public class RuntimeController {
     private static final Logger log = LoggerFactory.getLogger(RuntimeController.class);
     private final CapabilityRegistry registry;
+    private final CapabilityCatalog catalog;
     private final ProcessExecutor executor;
     private final Path workspace;
     private final TaskRepository taskRepository;
 
-    public RuntimeController(CapabilityRegistry registry, ProcessExecutor executor, Path workspace, TaskRepository taskRepository) {
+    public RuntimeController(CapabilityRegistry registry, CapabilityCatalog catalog, ProcessExecutor executor, Path workspace, TaskRepository taskRepository) {
         this.registry = registry;
+        this.catalog = catalog;
         this.executor = executor;
         this.workspace = workspace;
         this.taskRepository = taskRepository;
@@ -31,9 +33,13 @@ public class RuntimeController {
         return Map.of("status", "ok", "service", "eap-runtime");
     }
 
+    /**
+     * The capability catalog: one entry per capability with its kind (built-in command / local CLI /
+     * MCP tool / HTTP service), what it needs, what it publishes and which experts use it.
+     */
     @GetMapping("/capabilities")
-    public Map<String, List<String>> capabilities() {
-        return Map.of("capabilities", registry.all().stream().map(Capability::name).toList());
+    public Map<String, Object> capabilities() {
+        return catalog.catalog();
     }
 
     @GetMapping("/tasks")

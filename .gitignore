@@ -49,3 +49,4 @@ reports/
 # Local tooling state
 .codex-local/
 .claude/
+.workbuddy/
