@@ -55,6 +55,11 @@
   button, input, select, textarea { font: inherit; color: inherit; }
   :focus-visible { outline: none; box-shadow: var(--focus-ring); }
   button { cursor: pointer; border: 0; background: none; }
+  /* hidden 属性必须真的能藏住东西。
+     UA 的 [hidden]{display:none} 权重最低，任何声明了 display 的类（.chip 就是 display:flex）
+     都会把它压过去，于是「显式隐藏的元素照样画在屏幕上」——这是最难查的一类 bug，
+     因为 DOM 属性、断言和读屏软件都认为它已经藏起来了。所以这里必须带 !important 兜底。 */
+  [hidden] { display: none !important; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-thumb { background: #cfd8e5; border-radius: 8px; border: 2px solid var(--bg); }
 
@@ -421,7 +426,10 @@
   .doc-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: var(--sp-3); align-items: center; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; background: var(--surface); cursor: pointer; }
   .doc-row + .doc-row { margin-top: var(--sp-3); }
   .doc-row:hover { border-color: var(--border-strong); }
-  .doc-row.sel { border-color: var(--accent); background: var(--accent-soft); }
+  /* 与 .list-item.sel-row 同源：状态写出来了就要看得见。
+     这里曾用 .sel（检查器选中）而行的渲染写的是 .sel-row，两者对不上，
+     于是「当前预览的是哪一篇」在列表里没有任何视觉差别。 */
+  .doc-row.sel-row { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
   .doc-row b { font-size: 12.5px; }
   .doc-row small { display: block; color: var(--text-mute); font-size: 11.5px; margin-top: 2px; }
 
@@ -1116,7 +1124,13 @@ LIMIT 20;</textarea>
 
         <!-- 模式页：事实词表是「整个规则库」的声明，不属于任何一个包 -->
         <div class="subview" data-route="mode">
-        <div class="card" style="margin-top:16px">
+          <!-- 模式页也要有回头路：左侧导航点「规则库」会落到第一个条目，不是集合页 -->
+          <nav class="crumb" aria-label="当前位置">
+            <button class="crumb-back" onclick="go('rules')">← 规则库</button>
+            <span class="crumb-sep" aria-hidden="true">/</span>
+            <span class="crumb-here">事实与运算符词表</span>
+          </nav>
+        <div class="card">
           <h2>事实与运算符词表</h2>
           <p class="sub">规则只能引用这里声明的事实；写错事实名或运算符会在保存时被拒绝。每个事实都声明它由哪个能力产出——规则引用事实，就等于要求流程包含产出该事实的能力。</p>
           <p class="hint mono" style="margin-top:8px">运算符：eq · ne · gt · gte · lt · lte · in · contains · exists · absent · matches</p>
@@ -1249,6 +1263,11 @@ LIMIT 20;</textarea>
 
         <!-- 模式页：跨库检索是集合级入口，不属于任何一台库 -->
         <div class="subview" data-route="mode">
+          <nav class="crumb" aria-label="当前位置">
+            <button class="crumb-back" onclick="go('knowledge')">← 知识库</button>
+            <span class="crumb-sep" aria-hidden="true">/</span>
+            <span class="crumb-here">跨库检索</span>
+          </nav>
           <div class="card">
             <div><h2>跨库检索</h2><p class="sub" id="kbSearchScope">检索范围：—</p></div>
 <h2 style="margin-top:18px">检索</h2>
@@ -5272,7 +5291,7 @@ LIMIT 20;</textarea>
       <div class="kb" style="cursor:pointer" onclick="openSearchHit('${hit.base}','${hit.doc.id}')">
         <b>${esc(hit.base)} / ${esc(hit.doc.title)}</b>
         <p>${esc(hit.snippet)}</p>
-        <p class="hint">来源引用 ${i + 1} · 匹配 ${hit.score}/${terms.length} 个关键词 · 点击可在右侧打开全文</p>
+        <p class="hint">来源引用 ${i + 1} · 匹配 ${hit.score}/${terms.length} 个关键词 · 点击跳到该知识库的文档页打开全文</p>
       </div>`).join('');
   }
 
