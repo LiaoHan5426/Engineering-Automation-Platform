@@ -81,7 +81,9 @@ An empty database needs no adoption flag; it migrates from `V1` normally.
 - Maven 3.9+
 - Git and ripgrep on `PATH`
 - Node.js compatible with Vite+, and pnpm 12.x
-- Rust toolchain only when desktop (`apps/desktop`, Tauri 2) development starts
+- Nothing extra for desktop (`apps/desktop`, Electron): the Node.js and pnpm versions above already
+  run and package it. Signing and notarisation add platform tools (a certificate, `codesign`,
+  `signtool`) only when a distribution build is produced.
 
 ## Deferred (not required now)
 

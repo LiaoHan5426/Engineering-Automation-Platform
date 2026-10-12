@@ -161,13 +161,18 @@ flowchart LR
 - **CodingAgentProvider.** Adapters that call an external coding agent, whose output is treated as an
   unverified observation and revalidated.
 - **Multi-expert routing.** Selecting an expert from a goal; today the caller names one explicitly.
-- **Desktop shell.** Tauri 2 wrapping the same Vue app behind a `DesktopPlatform` contract —
-  [desktop-spec.md](desktop-spec.md).
+- **Desktop shell.** Electron wrapping the same Vue app behind a `DesktopPlatform` contract, with the
+  renderer left unprivileged (`nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`) and
+  OS access behind a preload allow-list — [desktop-spec.md](desktop-spec.md).
 
 ## Technology decisions
 
 - **Backend:** Java 25, Spring Boot 4.1, Maven, Spring MVC, JDBC (`JdbcTemplate`), Flyway, JUnit 5.
-  Single local process; Docker/Kubernetes/Spring Cloud are out of scope.
+  Single local process; Docker/Kubernetes/Spring Cloud are out of scope. **The platform is a
+  single-operator, single-machine tool** — see [running-context.md](running-context.md). That is a
+  terminal state, not a phase: there is no second user, so accounts, roles, tenants and an auth
+  layer are *not* planned future work. The threat model is therefore about what the operator
+  *imports* (third-party experts, MCP servers, model output), not about other people.
 - **SQL parsing:** JSQLParser 5.4. Parsing is local and deterministic.
 - **Model integration:** OpenAI-compatible HTTP only, behind `LlmProvider`. No provider SDK in
   `eap-api`.

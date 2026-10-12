@@ -127,9 +127,11 @@ ran — and is reported as *blocked*, not clean, when they did not.
 **Goal.** Make it impossible to hand an MCP tool to every expert by registering it globally.
 
 *(Added after review asked whether enabling MCP "for everything" would let different experts corrupt
-each other inside the server. It would: an MCP session carries a session id, cursors and an
-authenticated identity, so a shared session means expert B's call runs in expert A's state and audit
-context. The answer is a scope, not a convention.)*
+each other inside the server. It would: an MCP session carries a session id, cursors and negotiated
+state, so a shared session means expert B's call runs on expert A's negotiated results and silently
+misses rows behind A's half-consumed cursor. This holds regardless of how many people use the
+platform — the risk is the stateful external process you installed, not another operator. The answer
+is a scope, not a convention.)*
 
 Delivered:
 
@@ -210,7 +212,7 @@ appears in the catalog.
 
 **Exit criteria (to extend):** an MCP client, so a probe can report `verified: true` and a published
 tool can actually run; optional extra CLI arguments (deliberately not exposed yet, because they widen
-the argument-injection surface); and an audit trail for switch and override changes.
+the argument-injection surface); and an operation history entry for switch and override changes.
 
 ## Phase 3 — Independent validator and task state machine ⬜
 
@@ -246,7 +248,7 @@ container CRUD with scoped search, database CRUD, expert create/validate/activat
 Still prototype-only (tracked per slice in `docs/frontend-prototype.md`): inline rule editing,
 draft-based expert editing with a generated manifest, the finding actions (复制建议 / 查看候选改写 /
 标记忽略), the supplement composer, and the desktop shell page — delivery-target switch, local workspace
-picker, backend connection settings and shell permissions with an audit log (`docs/desktop-spec.md`
+picker, backend connection settings and shell permissions with an operation history (`docs/desktop-spec.md`
 describes the contract; `apps/desktop` itself is still ⬜).
 
 **Exit criteria:** the console renders live observations, the SQL findings with severity, the
@@ -321,11 +323,14 @@ domain advice; both are replaceable by editing configuration.
 
 **Goal.** Ship the same console as a desktop app behind a replaceable shell.
 
-Deliverables: `DesktopPlatform` contract; Tauri 2 adapter; scoped workspace selection; signed
-installers. See [desktop-spec.md](desktop-spec.md).
+Deliverables: `DesktopPlatform` contract; Electron adapter with the configured renderer posture
+(`nodeIntegration: false` / `contextIsolation: true` / `sandbox: true`) and a preload bridge that
+exposes named functions only; scoped workspace selection; signed installers. See
+[desktop-spec.md](desktop-spec.md).
 
 **Exit criteria:** identical task/evidence semantics on web and desktop; no shell or Node REPL
-exposed to the renderer.
+reachable from the renderer, and no direct `electron` / `fs` / `child_process` import in the renderer
+bundle.
 
 ## Phase 10 — Optional vector retrieval ⬜
 

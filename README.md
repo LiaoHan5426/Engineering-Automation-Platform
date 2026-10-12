@@ -67,7 +67,7 @@ Read [docs/expert-knowledge-rules.md](docs/expert-knowledge-rules.md) for the fu
 | [docs/expert-knowledge-rules.md](docs/expert-knowledge-rules.md) | Experts, knowledge bases and declarative rule packs. |
 | [docs/environment.md](docs/environment.md) | What the environment actually needs. |
 | [docs/runtime-workflow.md](docs/runtime-workflow.md) | Operator runbook, incl. schema adoption. |
-| [docs/desktop-spec.md](docs/desktop-spec.md) | Desktop shell plan (Tauri 2). |
+| [docs/desktop-spec.md](docs/desktop-spec.md) | Desktop shell plan (Electron, with a configured renderer posture). |
 
 ## Build and run
 

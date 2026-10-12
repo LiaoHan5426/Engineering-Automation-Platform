@@ -113,9 +113,11 @@ is stated where an operator would look for a "new capability" button.
 ### MCP tools are expert-scoped, not platform capabilities
 
 Registering an MCP tool globally would hand a session-bearing external service to every expert: two
-experts calling it would share the session id, cursors and authenticated identity of whichever
-connection existed, which mixes their state, their grants and their audit trail. The runtime therefore
-refuses to let an MCP tool be a platform capability.
+experts calling it would share the session id, cursors and negotiated state of whichever connection
+existed, so B would read through A's half-consumed cursor and silently miss rows. This is a property
+of the stateful process you registered, not of how many operators use the platform — see
+[running-context.md](running-context.md). The runtime therefore refuses to let an MCP tool be a
+platform capability.
 
 | Layer | Table / class | Behaviour |
 |---|---|---|

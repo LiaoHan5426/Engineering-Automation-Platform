@@ -337,11 +337,12 @@ not store tokens, and a location is not a secret store.
 This is the one place where "it is just another capability" is actively dangerous, so it is a scope
 rather than a convention.
 
-An MCP server keeps state per connection: a session id, cursors, negotiated capabilities, and the
-identity it was opened for. If the platform registered such a tool "for everyone" — the way it
-registers `sql.parse` — then two experts calling it would be served from the same session. Expert B's
-call could land in expert A's state and A's authenticated context, a cursor half-consumed by A would
-skip rows for B, and the audit trail would attribute both to whoever opened the connection. Routing
+An MCP server keeps state per connection: a session id, cursors and negotiated capabilities. If the
+platform registered such a tool "for everyone" — the way it registers `sql.parse` — then two experts
+calling it would be served from the same session. Expert B's call would land on A's negotiated state,
+and a cursor half-consumed by A would **silently skip rows for B** — no error, just missing data. This
+is a property of the stateful process itself and holds on a single-operator machine (see
+[running-context.md](running-context.md)); it is not about attributing actions to a person. Routing
 around that by "being careful" does not hold; the four rules below do, and each is enforced in code
 and pinned by a test:
 
