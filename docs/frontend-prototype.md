@@ -287,6 +287,34 @@ flowchart LR
 - **Closing the window is a state transition, not a shutdown.** Closing while a run is in flight marks it
   `已中断` — visible, filterable, evidence preserved, re-runnable — and the settle timer is not allowed to
   overwrite that with `已完成`.
+- **Every number on 概览 states where it comes from.** The overview is the one screen whose headline
+  figures look like they were computed, so they must actually be computed or explicitly labelled. Two
+  sources, and only two:
+  - *Derived from state* — 已注册能力 reads `CAPABILITIES` (switch one off and the card says `1 已停用`),
+    专家定义 reads `EXPERTS` (add one and the count follows). Both re-render from the source's own renderer,
+    so the overview can never hold a value the 能力目录 or 专家工作室 no longer has.
+  - *Windowed sample* — 近 7 日任务 and 模型调用占比 need a task table with timestamps, which the prototype
+    does not have. They come from `DEMO_HISTORY` (one declaration, not digits in the markup) and carry a
+    printed 口径 line. The point is not that the figures are demo data; it is that a reader can tell which
+    of the numbers would survive contact with a real backend.
+  Nothing else may be written into the card markup: `id="ovCapV">—<` is a placeholder for the script, and a
+  contract asserts all eight are still placeholders in the source. The 状态栏's 确定性覆盖 is the same
+  figure as the overview's 确定性直接完成, because two labels for one number is how they drift apart.
+
+### Why the collapsed blocks exist
+
+Ten `details.why` blocks carry the reasoning behind a screen (one per page, two on 概览). The summary is
+the question a reader would actually ask; the body is the answer. Two rules keep them from reading like
+leftovers:
+
+- **The summary is the question, nothing else.** `为什么 · 为什么模型不是第一步` duplicated the label and the
+  question and read like a botched find-and-replace; the marker is now drawn with borders rather than a font
+  glyph, because the original was a literal `U+0015` + `B8` in the stylesheet and the browser printed `B8`.
+- **The body may only assert what the code does.** The 工作空间 block used to claim it scoped tasks, experts
+  *and* material. Only the task list is filtered (`TASKS.filter(t => t.workspace === currentWorkspace)`);
+  experts, knowledge bases and database profiles have no workspace column in the backend schema. The block
+  now says so, and names the data-model change that would make the wider claim true instead of implying the
+  UI already does it.
 
 ## Implementation slices
 
@@ -346,3 +374,7 @@ not adopted yet are marked on the 原型 track alone.
     Desktop-only
     interactions that need no endpoint say so; the ones that map to the runtime name the call they
     would make. See `docs/desktop-spec.md` for the contract this is modelled on.
+15. ⬜ 应用 · ✅ 原型 — **概览页的数字有出处**: 已注册能力 / 专家定义 由 `CAPABILITIES` / `EXPERTS` 推导
+    （停用一个能力、新增一个专家，卡片跟着变）；近 7 日任务 / 模型调用占比 来自一处显式声明的窗口样本，
+    并在卡片下方印出口径。四张卡的数字都不得写进 HTML——契约断言它们留在源码里仍是占位符。
+    见上文「Every number on 概览 states where it comes from」。

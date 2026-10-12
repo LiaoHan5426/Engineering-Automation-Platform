@@ -260,8 +260,15 @@
     padding: var(--sp-4) var(--sp-5); font-weight: 600; font-size: var(--fs-mini);
   }
   details.why > summary::-webkit-details-marker { display: none; }
-  details.why > summary::before { content: 'B8'; color: var(--text-mute); }
-  details.why[open] > summary::before { content: 'BE'; }
+  /* 三角标用边框画，不写成字体里的一个字符：同一个码点换台机器可能没有字形，
+     屏幕上就是一个豆腐块——「收起状态也能读到结论」那条就白费了。 */
+  details.why > summary::before {
+    content: ''; flex: none; align-self: center; width: 0; height: 0;
+    border-left: 5px solid var(--text-mute);
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    transition: transform .15s;
+  }
+  details.why[open] > summary::before { transform: rotate(90deg); }
   details.why > summary:focus-visible { border-radius: var(--radius-sm); }
   details.why .why-body { padding: 0 var(--sp-5) var(--sp-5); font-size: var(--fs-mini); color: var(--text-soft); line-height: 1.75; }
   .insp-empty { border: 1px dashed var(--border-strong); border-radius: 9px; padding: var(--sp-5) 13px; font-size: 12.5px; color: var(--text-mute); line-height: 1.7; }
@@ -574,7 +581,7 @@
       <div class="menu" id="wsMenu" role="menu">
         <div class="menu-head">工作空间</div>
         <div id="wsOptions"></div>
-        <p class="hint" style="padding:8px 10px 6px;margin:0">工作空间决定列出的任务、专家与资料范围；能力目录与规则库是平台级的，不随工作空间变化。</p>
+        <p class="hint" style="padding:8px 10px 6px;margin:0">工作空间 = 当前分析的本机目录，切换是客户端的视图过滤（没有对应的后端接口）。<b>它只过滤任务列表</b>：专家定义、知识库与数据库资料目前不分工作空间，能力目录与规则包是平台级的。</p>
       </div>
     </div>
     <div class="spacer"></div>
@@ -611,23 +618,24 @@
           <p class="eyebrow">ENGINEERING AUTOMATION PLATFORM</p>
           <h1>概览</h1>
           <p>确定性能力优先处理；仅在证据不足时才压缩后调用模型。</p>
-          <details class="why"><summary>为什么 · 为什么模型不是第一步</summary><div class="why-body">确定性证据能定论时，模型根本不被询问；只有当证据不足或操作者主动要求时，才用压缩、限长、脱敏后的上下文问一次。模型的输出是<b>待验证的观察</b>：它不会改写任何发现，也不会把任务标记为完成。</div></details>
-          <details class="why"><summary>为什么 · 为什么要分工作空间</summary><div class="why-body">工作空间决定这里列出的任务、专家与资料范围；<b>能力目录与规则库是平台级的</b>，不随工作空间变化——否则同一条规则会在两个空间里出现两个版本，判定结果就不可比了。</div></details>
+          <details class="why"><summary>为什么模型不是第一步</summary><div class="why-body">确定性证据能定论时，模型根本不被询问；只有当证据不足或操作者主动要求时，才用压缩、限长、脱敏后的上下文问一次。模型的输出是<b>待验证的观察</b>：它不会改写任何发现，也不会把任务标记为完成。</div></details>
+          <details class="why"><summary>为什么要分工作空间</summary><div class="why-body">工作空间是「这次在哪个本机目录上分析」：本地 CLI 与 ripgrep 都在它的路径下执行，因此不同仓库的结论不会混在一起。切换只过滤任务列表——<b>专家定义、知识库与数据库资料目前是平台级的</b>（后端表里没有工作空间字段），要把它们按仓库分开是数据模型层面的改动，不是界面上加一个开关。规则包与能力目录更是平台级：同一条规则在两个空间里出现两个版本，判定结果就不可比了。</div></details>
         </div>
         <div class="grid-4">
-          <div class="metric"><div class="k">已注册能力</div><div class="v">8</div><div class="d">5 内置命令 · 3 本地 CLI</div></div>
-          <div class="metric"><div class="k">专家定义</div><div class="v">3</div><div class="d">1 内置 · 2 自定义</div></div>
-          <div class="metric"><div class="k">近 7 日任务</div><div class="v">128</div><div class="d up">↑ 12% 环比</div></div>
-          <div class="metric"><div class="k">模型调用占比</div><div class="v">6%</div><div class="d down">↓ 94% 未消耗模型</div></div>
+          <div class="metric"><div class="k">已注册能力</div><div class="v" id="ovCapV">—</div><div class="d" id="ovCapD">—</div></div>
+          <div class="metric"><div class="k">专家定义</div><div class="v" id="ovExpertV">—</div><div class="d" id="ovExpertD">—</div></div>
+          <div class="metric"><div class="k">近 7 日任务</div><div class="v" id="ovTaskV">—</div><div class="d up" id="ovTaskD">—</div></div>
+          <div class="metric"><div class="k">模型调用占比</div><div class="v" id="ovModelV">—</div><div class="d" id="ovModelD">—</div></div>
         </div>
+        <p class="hint" id="ovMetricScope">—</p>
 
         <div class="card" style="margin-top:16px">
           <h2>模型依赖与压缩效果</h2>
-          <p class="sub">每次模型调用前，证据都会被压缩到固定预算内，并记录压缩比。</p>
+          <p class="sub">每次模型调用前，证据都会被压缩到固定预算内，并记录压缩比。模型默认关闭（<span class="mono">EAP_LLM_ENABLED=false</span>），所以下面这三行是启用该能力后的样本，不是本机的调用统计。</p>
           <div class="bars">
-            <div class="bar-row"><span>确定性直接完成</span><div class="bar"><i class="det" style="width:94%"></i></div><span>94%</span></div>
-            <div class="bar-row"><span>压缩后调用模型</span><div class="bar"><i class="mod" style="width:6%"></i></div><span>6%</span></div>
-            <div class="bar-row"><span>平均压缩比</span><div class="bar"><i class="det" style="width:82%"></i></div><span>82%</span></div>
+            <div class="bar-row"><span>确定性直接完成</span><div class="bar"><i class="det" id="ovBarDet" style="width:0"></i></div><span id="ovBarDetV">—</span></div>
+            <div class="bar-row"><span>压缩后调用模型</span><div class="bar"><i class="mod" id="ovBarMod" style="width:0"></i></div><span id="ovBarModV">—</span></div>
+            <div class="bar-row"><span>平均压缩比</span><div class="bar"><i class="det" id="ovBarRatio" style="width:0"></i></div><span id="ovBarRatioV">—</span></div>
           </div>
         </div>
 
@@ -647,7 +655,7 @@
           <p class="eyebrow">SQL STUDIO</p>
           <h1>SQL 分析室</h1>
           <p>选择已启用专家，按显式依赖执行并返回逐节点证据；模型仅在需要时被压缩调用。</p>
-          <details class="why"><summary>为什么 · 为什么平台自己不执行你的 SQL</summary><div class="why-body">平台不连接业务数据库、不执行你输入的 SQL。EXPLAIN JSON 快照由你自行取得后粘贴——这样<b>没有凭据需要保管，也不存在误在上游库执行改写的可能</b>。代价是要你多贴一次，换来的是这条边界永远成立。</div></details>
+          <details class="why"><summary>为什么平台自己不执行你的 SQL</summary><div class="why-body">平台不连接业务数据库、不执行你输入的 SQL。EXPLAIN JSON 快照由你自行取得后粘贴——这样<b>没有凭据需要保管，也不存在误在上游库执行改写的可能</b>。代价是要你多贴一次，换来的是这条边界永远成立。</div></details>
         </div>
         <div class="grid-2">
           <div class="card">
@@ -805,7 +813,7 @@ LIMIT 20;</textarea>
           <p class="eyebrow">TASKS</p>
           <h1>任务与证据时间线</h1>
           <p>执行状态与实际工具输出分开呈现；完成状态不等于已证明性能提升。</p>
-          <details class="why"><summary>为什么 · 为什么「完成」不等于「已证明」</summary><div class="why-body">完成只说明流程每个节点都跑完了。要称为证明，需要有<b>独立的 before / after 证据</b>（执行计划或实测耗时），因此任务详情把执行状态与实际工具输出分开呈现，不让「跑完」顶替「有效」。</div></details>
+          <details class="why"><summary>为什么「完成」不等于「已证明」</summary><div class="why-body">完成只说明流程每个节点都跑完了。要称为证明，需要有<b>独立的 before / after 证据</b>（执行计划或实测耗时），因此任务详情把执行状态与实际工具输出分开呈现，不让「跑完」顶替「有效」。</div></details>
         </div>
 
         <div class="card">
@@ -852,7 +860,7 @@ LIMIT 20;</textarea>
             <p class="eyebrow">EXPERTS</p>
             <h1>专家工作室</h1>
             <p>添加能力节点、连接依赖、配置属性；保存只登记引用，启用后才授权读取。</p>
-            <details class="why"><summary>为什么 · 为什么保存只登记引用，授权要单独一步</summary><div class="why-body">保存清单只是<b>登记引用</b>；只有「启用并授权」之后运行时才允许读取对应知识库与资料，停用会一并撤销。两步分开是为了让「定义了什么」和「被允许读什么」可以分别检查。</div></details>
+            <details class="why"><summary>为什么保存只登记引用，授权要单独一步</summary><div class="why-body">保存清单只是<b>登记引用</b>；只有「启用并授权」之后运行时才允许读取对应知识库与资料，停用会一并撤销。两步分开是为了让「定义了什么」和「被允许读什么」可以分别检查。</div></details>
           </div>
           <div class="card">
             <div class="toolbar">
@@ -981,7 +989,7 @@ LIMIT 20;</textarea>
           <p class="eyebrow">RULE LIBRARY</p>
           <h1>规则库</h1>
           <p>规则是数据，不是代码：新增检查、调整严重级、改写证据与建议都只需编辑规则包，无需重新编译或部署。</p>
-          <details class="why"><summary>为什么 · 为什么规则是数据而不是代码</summary><div class="why-body">新增检查、调整严重级、改写证据与建议都只是编辑规则包，<b>不需要重新编译或部署</b>。规则读取事实、事实由能力产出，因此勾选规则包后流程必须包含产出这些事实的节点，否则保存与启用都会被拒绝。</div></details>
+          <details class="why"><summary>为什么规则是数据而不是代码</summary><div class="why-body">新增检查、调整严重级、改写证据与建议都只是编辑规则包，<b>不需要重新编译或部署</b>。规则读取事实、事实由能力产出，因此勾选规则包后流程必须包含产出这些事实的节点，否则保存与启用都会被拒绝。</div></details>
         </div>
         <!-- 集合页：规则包清单 + 集合级入口 -->
         <div class="subview active" data-route="list">
@@ -1200,7 +1208,7 @@ LIMIT 20;</textarea>
             <span class="mono">DELETE /api/knowledge/{id}/documents/{documentId}</span>、
             <span class="mono">GET /api/knowledge/search?q=</span>。删除知识库在被<b>已启用</b>专家引用时会被拒绝并点名专家。
           </p>
-          <details class="why"><summary>为什么 · 为什么检索命中必须带来源</summary><div class="why-body">每条命中都要能指出<b>来自哪一篇、哪一段</b>。检索是本地关键词 + PostgreSQL 全文检索，没有来源引用的结论在证据链里无法复核，也就不能作为规则的输入。</div></details>
+          <details class="why"><summary>为什么检索命中必须带来源</summary><div class="why-body">每条命中都要能指出<b>来自哪一篇、哪一段</b>。检索是本地关键词 + PostgreSQL 全文检索，没有来源引用的结论在证据链里无法复核，也就不能作为规则的输入。</div></details>
         </div>
         <!-- 集合页：知识库清单 + 集合级入口 -->
         <div class="subview active" data-route="list">
@@ -1294,7 +1302,7 @@ LIMIT 20;</textarea>
             <b>被已启用专家引用的资料会被拒绝删除，并点名专家</b>——资料消失会让在跑的专家指向一份不存在的快照，
             失败发生在执行时而不是保存时。
           </p>
-          <details class="why"><summary>为什么 · 为什么不保存密码</summary><div class="why-body">这里只登记<b>脱敏后的表结构、字段类型与索引前导列</b>：不保存密码、不连接业务数据库、不执行输入 SQL。一旦允许保存连接凭据，这个页面就会变成一个新的凭据仓库，而那不是它该承担的职责。</div></details>
+          <details class="why"><summary>为什么不保存密码</summary><div class="why-body">这里只登记<b>脱敏后的表结构、字段类型与索引前导列</b>：不保存密码、不连接业务数据库、不执行输入 SQL。一旦允许保存连接凭据，这个页面就会变成一个新的凭据仓库，而那不是它该承担的职责。</div></details>
         </div>
 
         <div class="card">
@@ -1332,7 +1340,7 @@ LIMIT 20;</textarea>
             每类能改什么由后端声明，界面不自行推测：内置命令只能启用/停用，本地 CLI 还能指定二进制位置，MCP 工具的服务器由操作者登记。
             <b>新增能力一律需要改代码</b>——发布哪些事实属于代码契约，不能由一次界面操作产生。
           </p>
-          <details class="why"><summary>为什么 · 为什么不能从界面新增一个能力</summary><div class="why-body"><b>发布哪些事实属于代码契约</b>，不能由一次界面操作产生：界面若凭空宣布一个能力，运行时并没有对应处理器，引用它的专家会在执行时才失败。这里能做的是启用/停用与配置，新增一律需要改代码。</div></details>
+          <details class="why"><summary>为什么不能从界面新增一个能力</summary><div class="why-body"><b>发布哪些事实属于代码契约</b>，不能由一次界面操作产生：界面若凭空宣布一个能力，运行时并没有对应处理器，引用它的专家会在执行时才失败。这里能做的是启用/停用与配置，新增一律需要改代码。</div></details>
         </div>
 
         <!-- 子页由 CAPABILITY_KINDS 生成：可管理或有条目的种类才出现，因此这里不放写死的页签。 -->
@@ -1492,7 +1500,7 @@ LIMIT 20;</textarea>
             <span class="mono">DesktopPlatform</span> 契约（<span class="mono">chooseWorkspace / showNotification / openExternal / getPlatformInfo</span>），
             不直接调用 Electron API——外壳是可替换的，Electron 只是当前实现。
           </p>
-          <details class="why"><summary>为什么 · 为什么操作历史写在主进程</summary><div class="why-body">渲染进程显示的是<b>不受信任的数据</b>——仓库内容、模型输出、MCP 返回。若由页面自己写记录，那么这份记录在需要回溯时就不可信。放在主进程写的代价是绕一层 IPC，换来的是它不能被页面篡改。</div></details>
+          <details class="why"><summary>为什么操作历史写在主进程</summary><div class="why-body">渲染进程显示的是<b>不受信任的数据</b>——仓库内容、模型输出、MCP 返回。若由页面自己写记录，那么这份记录在需要回溯时就不可信。放在主进程写的代价是绕一层 IPC，换来的是它不能被页面篡改。</div></details>
         </div>
 
         <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -1727,7 +1735,7 @@ LIMIT 20;</textarea>
     <span>工作空间：<b id="statusWorkspace">engineering-automation-platform</b></span>
     <span>本地目录：<b id="statusLocalWorkspace">未选择</b></span>
     <span>模型：<b>未启用</b></span>
-    <span>确定性覆盖：<b>100%</b></span>
+    <span>确定性覆盖：<b id="statusCoverage">—</b></span>
     <span>最近刷新：<b id="lastRefresh">—</b></span>
     <span>时钟：<b id="clock">--:--:--</b></span>
     <span class="spacer" style="flex:1"></span>
@@ -1900,6 +1908,7 @@ LIMIT 20;</textarea>
 
     // 页面自带的状态块要重新读一遍：否则显示的是上次离开这一页时的数字。
     if (view === 'desktop') renderShell();
+    if (view === 'overview') renderOverviewMetrics();
 
     if (!opts?.skipPick) DEFAULT_PICK[view]?.();
     finishInspector();
@@ -3593,6 +3602,8 @@ LIMIT 20;</textarea>
     const badge = document.getElementById('mcpCount');
     if (badge) badge.textContent = `${publishedCapabilities().length} 项`;
     renderNodeCapabilityOptions();
+    // 概览的能力卡读的就是这份 CAPABILITIES：来源重算一次，它就不能停在旧值上。
+    renderOverviewMetrics();
   }
 
   function saveCapabilityNote(id) {
@@ -3747,6 +3758,58 @@ LIMIT 20;</textarea>
     };
   }
 
+  /* ------------------------------------------------------------------
+     概览的四张卡有两类来源，两类都不写死在 HTML 里：
+     ① 能力 / 专家定义直接读状态，与它们各自的页面同源——停用一个能力、新增一个专家，
+        这里必须跟着变，否则同一件事在两个页面有两个答案；
+     ② 任务数与模型占比需要一个时间窗口内的样本，而原型既没有任务时间戳、也没有历史表。
+        样本因此显式声明在这里，并由卡片下方的口径说明点明它不是本机运行统计。
+     ------------------------------------------------------------------ */
+  const HISTORY_WINDOW = '近 7 日';
+  const DEMO_HISTORY = { tasks:128, tasksDelta:12, modelShare:6, compressionRatio:82, note:'演示样本' };
+
+  function renderOverviewMetrics() {
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    if (!document.getElementById('ovCapV')) return;
+
+    // ① 能力：与「能力目录」读同一份 CAPABILITIES。
+    const off = CAPABILITIES.filter(c => !c.enabled).length;
+    const kinds = CAPABILITY_KINDS
+      .map(k => [k.label, CAPABILITIES.filter(c => c.kind === k.id).length])
+      .filter(pair => pair[1] > 0)
+      .map(pair => pair[0] + ' ' + pair[1]).join(' · ');
+    set('ovCapV', String(CAPABILITIES.length));
+    set('ovCapD', (off ? off + ' 已停用 · ' : '') + kinds);
+
+    // ② 专家定义：与「专家工作室」读同一份 EXPERTS。
+    const builtin = EXPERTS.filter(e => e.builtin).length;
+    set('ovExpertV', String(EXPERTS.length));
+    set('ovExpertD', builtin + ' 内置 · ' + (EXPERTS.length - builtin) + ' 自定义 · '
+      + EXPERTS.filter(e => e.enabled).length + ' 已启用');
+
+    // ③④ 时间窗口样本。补数是「未调用模型」，不是趋势——不给它箭头。
+    const det = 100 - DEMO_HISTORY.modelShare;
+    set('ovTaskV', String(DEMO_HISTORY.tasks));
+    set('ovTaskD', '↑ ' + DEMO_HISTORY.tasksDelta + '% 环比');
+    set('ovModelV', DEMO_HISTORY.modelShare + '%');
+    set('ovModelD', det + '% 的任务未调用模型');
+    set('ovMetricScope', '能力与专家定义来自当前状态；任务数与模型占比是'
+      + HISTORY_WINDOW + '窗口的' + DEMO_HISTORY.note
+      + '——原型没有任务时间戳与历史表，真实控制台按任务表统计。');
+
+    const bar = (id, pct) => {
+      const el = document.getElementById(id);
+      if (el) el.style.width = pct + '%';
+      set(id + 'V', pct + '%');
+    };
+    bar('ovBarDet', det);
+    bar('ovBarMod', DEMO_HISTORY.modelShare);
+    bar('ovBarRatio', DEMO_HISTORY.compressionRatio);
+
+    // 状态栏与概览是同一个数，就不能是两个值。
+    set('statusCoverage', det + '%');
+  }
+
   function renderTasks() {
     const filter = document.getElementById('taskFilter')?.value || '';
     const rows = TASKS.filter(t => t.workspace === currentWorkspace && (!filter || t.status === filter));
@@ -3788,6 +3851,8 @@ LIMIT 20;</textarea>
 
     // 「关闭窗口」那一块也读同一份任务状态，任务一变它就要跟着变。
     renderCloseRunning();
+    // 概览的指标卡挂在任务渲染上：任何改变任务的路径都会走过这里。
+    renderOverviewMetrics();
   }
 
   function renderTimeline(task) {
@@ -3994,6 +4059,8 @@ LIMIT 20;</textarea>
 
     // 可选的平台级能力与「被平台停用」的清单都由能力目录那份状态生成（见 renderNodeCapabilityOptions）。
     renderNodeCapabilityOptions();
+    // 概览的专家卡读的就是这份 EXPERTS。
+    renderOverviewMetrics();
   }
 
   /* 点一行 = 导航到它的条目页（一步到达，不用自己找页签）。intent 让调用方显式指定落点。 */
