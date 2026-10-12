@@ -17,6 +17,8 @@
     --text-mute: #8a99ad;
     --accent: #2563eb;
     --accent-soft: #e8f0fe;
+    --accent-line: #93c5fd;
+    --accent-line-soft: #dbeafe;
     --rail: #0f1728;
     --rail-text: #b9c6da;
     --rail-active: #22314b;
@@ -26,7 +28,19 @@
     --info: #1d4ed8; --info-bg: #e0e7ff;
     --neutral: #52627a; --neutral-bg: #eef2f8;
     --radius: 10px;
+    --radius-sm: 6px;
     --shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06);
+
+    /* 间距刻度：页面留白一律取自这里，不再散落魔法数字 */
+    --sp-1: 4px; --sp-2: 6px; --sp-3: 8px; --sp-4: 10px; --sp-5: 12px;
+    --sp-6: 14px; --sp-7: 16px; --sp-8: 20px; --sp-9: 24px; --sp-10: 32px;
+
+    /* 字号刻度：正文 14px 为基准 */
+    --fs-tiny: 11px; --fs-small: 12px; --fs-mini: 13px; --fs-body: 14px; --fs-lead: 15px;
+    --fs-title: 17px; --fs-h1: 21px;
+
+    /* 焦点环：键盘可达性的唯一来源，不允许各处自定 outline */
+    --focus-ring: 0 0 0 3px rgba(37,99,235,.35);
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
@@ -35,10 +49,11 @@
     font-family: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
     background: var(--bg);
     color: var(--text);
-    font-size: 14px;
+    font-size: var(--fs-body);
     -webkit-font-smoothing: antialiased;
   }
   button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: none; box-shadow: var(--focus-ring); }
   button { cursor: pointer; border: 0; background: none; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-thumb { background: #cfd8e5; border-radius: 8px; border: 2px solid var(--bg); }
@@ -46,22 +61,22 @@
   /* ---------- shell ---------- */
   .app { display: grid; grid-template-rows: 56px 1fr 30px; height: 100vh; }
   .topbar {
-    display: flex; align-items: center; gap: 14px;
+    display: flex; align-items: center; gap: var(--sp-6);
     padding: 0 18px; background: var(--surface); border-bottom: 1px solid var(--border);
   }
-  .brand { display: flex; align-items: baseline; gap: 8px; font-weight: 800; letter-spacing: .02em; }
+  .brand { display: flex; align-items: baseline; gap: var(--sp-3); font-weight: 800; letter-spacing: .02em; }
   .brand b { font-size: 18px; }
-  .brand span { font-size: 12px; color: var(--text-mute); font-weight: 600; }
+  .brand span { font-size: var(--fs-small); color: var(--text-mute); font-weight: 600; }
   .ws {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px;
-    background: var(--surface-2); color: var(--text-soft); font-size: 13px;
+    display: inline-flex; align-items: center; gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-4); border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface-2); color: var(--text-soft); font-size: var(--fs-mini);
   }
   .ws b { color: var(--text); font-weight: 600; }
   .spacer { flex: 1; }
   .chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: var(--sp-2);
+    padding: 5px var(--sp-4); border-radius: 999px; font-size: var(--fs-small); font-weight: 700;
     background: var(--neutral-bg); color: var(--neutral);
   }
   .chip.ok { background: var(--ok-bg); color: var(--ok); }
@@ -69,7 +84,7 @@
   .chip.info { background: var(--info-bg); color: var(--info); }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
   .btn {
-    border-radius: 8px; padding: 8px 14px; font-weight: 600; font-size: 13px;
+    border-radius: 8px; padding: var(--sp-3) var(--sp-6); font-weight: 600; font-size: var(--fs-mini);
     background: var(--surface-3); color: var(--text);
   }
   .btn.primary { background: var(--accent); color: #fff; }
@@ -77,24 +92,24 @@
   .btn:disabled { opacity: .5; cursor: not-allowed; }
 
   .body { display: grid; grid-template-columns: 224px minmax(0,1fr) 340px; min-height: 0; }
-  .rail { background: var(--rail); color: var(--rail-text); padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; overflow: auto; }
-  .rail .eyebrow { color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: .14em; margin: 6px 8px 10px; }
+  .rail { background: var(--rail); color: var(--rail-text); padding: var(--sp-7) var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-1); overflow: auto; }
+  .rail .eyebrow { color: #64748b; font-size: var(--fs-tiny); font-weight: 700; letter-spacing: .14em; margin: var(--sp-2) var(--sp-3) var(--sp-4); }
   .rail button.nav {
-    display: flex; align-items: center; gap: 10px; width: 100%;
-    padding: 10px 12px; border-radius: 8px; color: var(--rail-text); font-weight: 600; text-align: left;
+    display: flex; align-items: center; gap: var(--sp-4); width: 100%;
+    padding: var(--sp-4) var(--sp-5); border-radius: 8px; color: var(--rail-text); font-weight: 600; text-align: left;
   }
-  .rail button.nav .ic { width: 18px; text-align: center; opacity: .9; }
+  .rail button.nav .icon { flex: none; opacity: .92; }
   .rail button.nav:hover { background: #182238; color: #fff; }
   .rail button.nav.active { background: var(--rail-active); color: #fff; }
-  .rail .foot { margin-top: auto; padding: 12px 10px 4px; font-size: 12px; color: #71829c; line-height: 1.7; }
+  .rail .foot { margin-top: auto; padding: var(--sp-5) var(--sp-4) var(--sp-1); font-size: var(--fs-small); color: #71829c; line-height: 1.7; }
   .rail .foot b { color: #a7b6cd; }
 
-  .workbench { padding: 22px 24px; overflow: auto; min-width: 0; }
-  .inspector { border-left: 1px solid var(--border); background: var(--surface); padding: 20px 18px; overflow: auto; }
+  .workbench { padding: 22px var(--sp-9); overflow: auto; min-width: 0; }
+  .inspector { border-left: 1px solid var(--border); background: var(--surface); padding: var(--sp-8) 18px; overflow: auto; }
   .statusbar {
     display: flex; align-items: center; gap: 18px; padding: 0 18px;
     background: var(--surface); border-top: 1px solid var(--border);
-    font-size: 12px; color: var(--text-mute);
+    font-size: var(--fs-small); color: var(--text-mute);
   }
   .statusbar b { color: var(--text-soft); font-weight: 600; }
 
@@ -103,136 +118,148 @@
   .view.active { display: block; animation: fade .18s ease; }
   @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .page-head { margin-bottom: 18px; }
-  .page-head .eyebrow { color: var(--text-mute); font-size: 11px; font-weight: 700; letter-spacing: .14em; margin: 0 0 6px; }
-  .page-head h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.02em; }
-  .page-head p { margin: 0; color: var(--text-soft); font-size: 13px; }
+  .page-head .eyebrow { color: var(--text-mute); font-size: var(--fs-tiny); font-weight: 700; letter-spacing: .14em; margin: 0 0 var(--sp-2); }
+  .page-head h1 { font-size: 22px; margin: 0 0 var(--sp-1); letter-spacing: -.02em; }
+  .page-head p { margin: 0; color: var(--text-soft); font-size: var(--fs-mini); }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
-  .card + .card { margin-top: 16px; }
-  .card h2 { margin: 0; font-size: 15px; }
-  .card .sub { color: var(--text-soft); font-size: 12px; margin: 6px 0 0; }
-  .grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; align-items: start; }
-  .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }
-  .row { display: flex; align-items: center; gap: 10px; }
-  label.field { display: block; margin: 14px 0 6px; font-weight: 600; font-size: 13px; }
+  .card + .card { margin-top: var(--sp-7); }
+  .card h2 { margin: 0; font-size: var(--fs-lead); }
+  .card .sub { color: var(--text-soft); font-size: var(--fs-small); margin: var(--sp-2) 0 0; }
+  .grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: var(--sp-7); align-items: start; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: var(--sp-6); }
+  .row { display: flex; align-items: center; gap: var(--sp-4); }
+  .field, label.field { display: block; margin: var(--sp-6) 0 var(--sp-2); font-weight: 600; font-size: var(--fs-mini); }
   .input, .select, .textarea {
     width: 100%; border: 1px solid var(--border-strong); border-radius: 8px;
-    padding: 10px 12px; background: #fff; outline: none;
+    padding: var(--sp-4) var(--sp-5); background: #fff; outline: none;
   }
   .input:focus, .select:focus, .textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .textarea { resize: vertical; }
   .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.6; }
-  .hint { color: var(--text-mute); font-size: 12px; line-height: 1.7; }
+  .hint { color: var(--text-mute); font-size: var(--fs-small); line-height: 1.7; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
   /* ---------- metrics ---------- */
-  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
-  .metric .k { color: var(--text-mute); font-size: 12px; font-weight: 600; }
-  .metric .v { font-size: 26px; font-weight: 800; margin: 8px 0 2px; letter-spacing: -.02em; }
-  .metric .d { font-size: 12px; color: var(--text-soft); }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--sp-7); box-shadow: var(--shadow); }
+  .metric .k { color: var(--text-mute); font-size: var(--fs-small); font-weight: 600; }
+  .metric .v { font-size: 26px; font-weight: 800; margin: var(--sp-3) 0 2px; letter-spacing: -.02em; }
+  .metric .d { font-size: var(--fs-small); color: var(--text-soft); }
   .metric .d.up { color: var(--ok); }
   .metric .d.down { color: var(--ok); }
 
-  .bars { display: grid; gap: 12px; margin-top: 8px; }
-  .bar-row { display: grid; grid-template-columns: 130px 1fr 46px; align-items: center; gap: 10px; font-size: 12.5px; }
+  .bars { display: grid; gap: var(--sp-5); margin-top: var(--sp-3); }
+  .bar-row { display: grid; grid-template-columns: 130px 1fr 46px; align-items: center; gap: var(--sp-4); font-size: 12.5px; }
   .bar { height: 10px; background: var(--surface-3); border-radius: 999px; overflow: hidden; }
   .bar > i { display: block; height: 100%; border-radius: 999px; }
   .bar > i.det { background: linear-gradient(90deg,#2563eb,#60a5fa); }
   .bar > i.mod { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
 
   /* ---------- table ---------- */
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: var(--fs-mini); }
+  th, td { text-align: left; padding: 11px var(--sp-5); border-bottom: 1px solid var(--border); }
   th { color: var(--text-mute); font-weight: 700; font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; background: var(--surface-2); }
   tr:last-child td { border-bottom: 0; }
   tbody tr:hover { background: var(--surface-2); }
   .clickable { cursor: pointer; }
 
   /* ---------- findings ---------- */
-  .sev { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+  .sev { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: var(--fs-tiny); font-weight: 800; letter-spacing: .02em; }
   .sev.critical { background: var(--danger-bg); color: var(--danger); }
   .sev.high { background: #ffedd5; color: #c2410c; }
   .sev.medium { background: var(--warn-bg); color: var(--warn); }
   .sev.low { background: var(--neutral-bg); color: var(--neutral); }
   .sev.info { background: var(--info-bg); color: var(--info); }
   .finding {
-    display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 13px 14px;
+    display: grid; grid-template-columns: auto 1fr; gap: var(--sp-5); padding: 13px var(--sp-6);
     border: 1px solid var(--border); border-radius: 9px; background: var(--surface); cursor: pointer;
   }
   .finding:hover { border-color: var(--border-strong); }
   .finding.sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .finding .code { font-weight: 700; font-size: 12.5px; }
   .finding .evidence { color: var(--text-soft); margin: 5px 0 0; font-size: 12.5px; line-height: 1.6; }
-  .finding .cat { color: var(--text-mute); font-size: 11.5px; margin-top: 4px; }
-  .findings { display: grid; gap: 10px; margin-top: 12px; }
+  .finding .cat { color: var(--text-mute); font-size: 11.5px; margin-top: var(--sp-1); }
+  .findings { display: grid; gap: var(--sp-4); margin-top: var(--sp-5); }
 
   /* ---------- pipeline ---------- */
-  .pipeline { display: flex; align-items: stretch; gap: 0; margin: 6px 0 2px; flex-wrap: wrap; }
+  .pipeline { display: flex; align-items: stretch; gap: 0; margin: var(--sp-2) 0 2px; flex-wrap: wrap; }
   .stage {
     flex: 1; min-width: 128px; border: 1px solid var(--border); border-radius: 9px;
-    padding: 11px 12px; background: var(--surface-2);
+    padding: 11px var(--sp-5); background: var(--surface-2);
   }
   .stage + .stage { margin-left: 26px; position: relative; }
   .stage + .stage::before {
     content: "→"; position: absolute; left: -22px; top: 50%; transform: translateY(-50%);
     color: var(--border-strong); font-weight: 800;
   }
-  .stage .n { font-size: 11px; color: var(--text-mute); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-  .stage .t { font-weight: 700; margin-top: 4px; font-size: 13px; }
-  .stage .s { font-size: 12px; color: var(--text-soft); margin-top: 3px; }
+  .stage .n { font-size: var(--fs-tiny); color: var(--text-mute); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .stage .t { font-weight: 700; margin-top: var(--sp-1); font-size: var(--fs-mini); }
+  .stage .s { font-size: var(--fs-small); color: var(--text-soft); margin-top: 3px; }
   .stage.done { border-color: #bfdbfe; background: #f0f7ff; }
   .stage.skip { border-style: dashed; opacity: .95; }
   .stage.model { border-color: #fde68a; background: #fffbeb; }
 
   /* ---------- timeline ---------- */
-  .timeline { display: grid; gap: 0; margin-top: 12px; }
-  .tl-item { display: grid; grid-template-columns: 22px 1fr; gap: 12px; }
+  .timeline { display: grid; gap: 0; margin-top: var(--sp-5); }
+  .tl-item { display: grid; grid-template-columns: 22px 1fr; gap: var(--sp-5); }
   .tl-rail { display: flex; flex-direction: column; align-items: center; }
   .tl-rail i { width: 10px; height: 10px; border-radius: 50%; background: var(--border-strong); margin-top: 5px; }
   .tl-rail i.ok { background: var(--ok); }
   .tl-rail i.warn { background: #f59e0b; }
-  .tl-rail .line { flex: 1; width: 2px; background: var(--border); margin: 4px 0; }
-  .tl-body { padding: 0 0 16px; }
-  .tl-body .t { font-weight: 700; font-size: 13px; }
+  .tl-rail .line { flex: 1; width: 2px; background: var(--border); margin: var(--sp-1) 0; }
+  .tl-body { padding: 0 0 var(--sp-7); }
+  .tl-body .t { font-weight: 700; font-size: var(--fs-mini); }
   .tl-body .m { color: var(--text-soft); font-size: 12.5px; margin-top: 3px; line-height: 1.6; }
-  .tl-body .meta { color: var(--text-mute); font-size: 11.5px; margin-top: 4px; }
+  .tl-body .meta { color: var(--text-mute); font-size: 11.5px; margin-top: var(--sp-1); }
 
   /* ---------- misc ---------- */
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .kbd { font-family: ui-monospace, monospace; font-size: 12px; background: var(--surface-3); border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; }
-  .empty { color: var(--text-mute); padding: 28px 12px; text-align: center; line-height: 1.8; }
-  .kb { border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 8px 8px 0; padding: 11px 14px; margin-top: 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-4); }
+  .kbd { font-family: ui-monospace, monospace; font-size: var(--fs-small); background: var(--surface-3); border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; }
+  .empty { color: var(--text-mute); padding: 28px var(--sp-5); text-align: center; line-height: 1.8; }
+  .kb { border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 8px 8px 0; padding: 11px var(--sp-6); margin-top: var(--sp-4); }
   .kb b { font-size: 12.5px; }
-  .kb p { margin: 6px 0 0; color: var(--text-soft); font-size: 12.5px; line-height: 1.7; }
-  .note { border-left: 3px solid #f59e0b; background: #fffbeb; border-radius: 0 8px 8px 0; padding: 11px 14px; font-size: 12.5px; color: #7a5b13; }
-  .cap { border: 1px solid var(--border); border-radius: 9px; padding: 14px; background: var(--surface); }
+  .kb p { margin: var(--sp-2) 0 0; color: var(--text-soft); font-size: 12.5px; line-height: 1.7; }
+  .note { border-left: 3px solid #f59e0b; background: #fffbeb; border-radius: 0 8px 8px 0; padding: 11px var(--sp-6); font-size: 12.5px; color: #7a5b13; }
+  .cap { border: 1px solid var(--border); border-radius: 9px; padding: var(--sp-6); background: var(--surface); }
   .cap code { font-weight: 700; }
-  .cap p { margin: 6px 0 0; color: var(--text-soft); font-size: 12.5px; }
-  .cap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-top: 12px; }
-  .cap-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-  .cap-title { display: block; margin-top: 8px; font-size: 12.5px; }
-  .cap-meta { margin: 10px 0 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; font-size: 11.5px; color: var(--text-soft); }
+  .cap p { margin: var(--sp-2) 0 0; color: var(--text-soft); font-size: 12.5px; }
+  .cap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--sp-5); margin-top: var(--sp-5); }
+  .cap-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+  .cap-title { display: block; margin-top: var(--sp-3); font-size: 12.5px; }
+  .cap-meta { margin: var(--sp-4) 0 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-1) var(--sp-4); font-size: 11.5px; color: var(--text-soft); }
   .cap-meta dt { color: var(--text-mute); white-space: nowrap; }
   .cap-meta dd { margin: 0; overflow-wrap: anywhere; }
-  .kind-id { color: var(--text-mute); font-size: 11.5px; font-weight: 500; margin-left: 6px; }
+  .kind-id { color: var(--text-mute); font-size: 11.5px; font-weight: 500; margin-left: var(--sp-2); }
   /* Capability page sub-navigation: one page per kind, plus the overview. */
-  .subtabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin: 14px 0 16px; flex-wrap: wrap; }
-  .subtabs button { border: 0; background: transparent; padding: 10px 14px; color: var(--text-soft); font-weight: 600; font-size: 13px; cursor: pointer; border-radius: 7px 7px 0 0; }
+  .subtabs { display: flex; gap: var(--sp-2); border-bottom: 1px solid var(--border); margin: var(--sp-6) 0 var(--sp-7); flex-wrap: wrap; }
+  .subtabs button { border: 0; background: transparent; padding: var(--sp-4) var(--sp-6); color: var(--text-soft); font-weight: 600; font-size: var(--fs-mini); cursor: pointer; border-radius: 7px 7px 0 0; }
   .subtabs button:hover { color: var(--text); background: var(--surface-2); }
   .subtabs button.active { color: var(--accent); border-bottom: 2px solid var(--accent); background: transparent; }
   .subview { display: none; }
   .subview.active { display: block; }
   /* inspector */
-  .insp-card { border: 1px solid var(--border); border-radius: 9px; padding: 13px 14px; background: var(--surface-2); }
-  .insp-caption { font-size: 11.5px; color: var(--text-mute); margin: 0 0 6px; }
+  .insp-card { border: 1px solid var(--border); border-radius: 9px; padding: 13px var(--sp-6); background: var(--surface-2); }
+  .insp-caption { font-size: 11.5px; color: var(--text-mute); margin: 0 0 var(--sp-2); }
   .insp-caption b { color: var(--text-soft); }
-  .insp-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed var(--border); }
+  .insp-row { display: flex; justify-content: space-between; gap: var(--sp-4); font-size: var(--fs-small); padding: var(--sp-1) 0; border-bottom: 1px dashed var(--border); }
   .insp-row:last-child { border-bottom: 0; }
   .insp-row span { color: var(--text-mute); flex: 0 0 auto; }
   .insp-row b { color: var(--text); font-weight: 600; text-align: right; word-break: break-word; }
-  .insp-body { margin: 10px 0 0; font-size: 12.5px; line-height: 1.7; color: var(--text-soft); }
-  .insp-list { margin: 10px 0 0; padding-left: 16px; font-size: 12px; line-height: 1.75; color: var(--text-soft); }
+  .insp-body { margin: var(--sp-4) 0 0; font-size: 12.5px; line-height: 1.7; color: var(--text-soft); }
+  .insp-list { margin: var(--sp-4) 0 0; padding-left: var(--sp-7); font-size: var(--fs-small); line-height: 1.75; color: var(--text-soft); }
   .insp-list li { margin-bottom: 2px; }
-  .insp-empty { border: 1px dashed var(--border-strong); border-radius: 9px; padding: 12px 13px; font-size: 12.5px; color: var(--text-mute); line-height: 1.7; }
+  /* 「为什么这样设计」折叠块：默认收起，标题本身是一句结论，
+     收起状态也能读到结论，展开只是给理由。 */
+  details.why { margin-top: var(--sp-5); border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+  details.why > summary {
+    cursor: pointer; list-style: none; display: flex; gap: var(--sp-3); align-items: baseline;
+    padding: var(--sp-4) var(--sp-5); font-weight: 600; font-size: var(--fs-mini);
+  }
+  details.why > summary::-webkit-details-marker { display: none; }
+  details.why > summary::before { content: 'B8'; color: var(--text-mute); }
+  details.why[open] > summary::before { content: 'BE'; }
+  details.why > summary:focus-visible { border-radius: var(--radius-sm); }
+  details.why .why-body { padding: 0 var(--sp-5) var(--sp-5); font-size: var(--fs-mini); color: var(--text-soft); line-height: 1.75; }
+  .insp-empty { border: 1px dashed var(--border-strong); border-radius: 9px; padding: var(--sp-5) 13px; font-size: 12.5px; color: var(--text-mute); line-height: 1.7; }
   .clickable { cursor: pointer; }
   .clickable:hover td { background: var(--surface-2); }
   .cap[data-insp], .list-item[data-insp], tr[data-insp] { cursor: pointer; }
@@ -245,44 +272,87 @@
   tr.sel-row td { background: var(--accent-soft); }
   tr.sel-row td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   .cap-head.clickable:hover code { color: var(--accent); text-decoration: underline; }
-  .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-  .controls input, .controls select { border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; background: var(--surface); color: var(--text); min-width: 210px; }
-  .btn { border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; font-size: 12.5px; background: var(--surface); color: var(--text); font-weight: 600; }
+  .controls { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-5); }
+  .controls input, .controls select { border: 1px solid var(--border); border-radius: 8px; padding: 7px var(--sp-4); font-size: 12.5px; background: var(--surface); color: var(--text); min-width: 210px; }
+  .btn { border: 1px solid var(--border); border-radius: 8px; padding: 7px var(--sp-5); font-size: 12.5px; background: var(--surface); color: var(--text); font-weight: 600; }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .management { border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px; margin-top: 12px; background: var(--surface-2); }
+  .management { border: 1px solid var(--border); border-radius: 9px; padding: var(--sp-5) var(--sp-6); margin-top: var(--sp-5); background: var(--surface-2); }
   .requirement-line { display: block; color: var(--text-mute); font-size: 11.5px; margin-top: 3px; }
-  .requirement { border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; background: var(--surface-2); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; margin-top: 8px; }
+  .requirement { border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; background: var(--surface-2); display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; font-size: 12.5px; margin-top: var(--sp-3); }
   .requirement .hint { margin: 0; }
-  .list { display: grid; gap: 8px; }
-  .list-item { border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px; background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; width: 100%; }
+  .list { display: grid; gap: var(--sp-3); }
+  .list-item { border: 1px solid var(--border); border-radius: 9px; padding: var(--sp-5) var(--sp-6); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-5); text-align: left; width: 100%; }
   .list-item:hover { border-color: var(--border-strong); }
   .list-item.active { border-color: var(--accent); background: var(--accent-soft); }
+  /* 「这一页正在显示哪个条目」也用 .sel-row，与 .sel（检查器在讲谁）分开。 */
+  .list-item.sel-row { border-color: var(--accent); background: var(--accent-soft); }
+  /* 行内分成两个点击目标：主区打开这一行，动作区是行上的其它操作。 */
+  .row-main { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-5); flex: 1 1 auto; background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+  .row-go { flex: 0 0 auto; font-size: 11.5px; color: var(--accent); white-space: nowrap; }
+  .row-actions { display: flex; align-items: center; gap: var(--sp-3); flex: 0 0 auto; }
+
+  /* ---------- 层级：面包屑 / 条目标题 / 条目内部子导航 ---------- */
+  .crumb { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-small); color: var(--text-mute); margin-bottom: var(--sp-3); }
+  .crumb-back { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; }
+  .crumb-back:hover { text-decoration: underline; }
+  .crumb-sep { color: var(--text-faint); }
+  .crumb-here { color: var(--text); font-weight: 600; }
+  .item-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-5); margin: var(--sp-1) 0 var(--sp-5); }
+  .item-title { font-size: 19px; line-height: 1.3; margin: 0; }
+  .item-sub { color: var(--text-mute); font-size: var(--fs-small); margin: var(--sp-1) 0 0; }
+  /* 条目内部的子导航比区域级页签轻一级：层级差要能读出来。 */
+  /* 画布配色：SVG 的 presentation attribute 不认 var()，所以一律走 class + CSS。
+     JS 侧因此一个色值都不写，改主题只需动这里。 */
+  .dag-empty { fill: var(--text-mute); }
+  .dag-edge { fill: none; stroke: var(--accent); stroke-width: 2; }
+  .dag-arrow { fill: var(--accent); }
+  .dag-node { cursor: pointer; }
+  .dag-box { fill: var(--surface); stroke: var(--accent-line); stroke-width: 2; }
+  .dag-box.sel { fill: var(--accent-line-soft); stroke: var(--accent); stroke-width: 2.5; }
+  .dag-box.optional { stroke-dasharray: 5 3; }
+  .dag-title { fill: var(--text); font-size: 11px; }
+  .dag-sub { fill: var(--text-mute); font-size: 9px; }
+  .subtabs.nested { margin: 0 0 var(--sp-5); border-bottom-color: var(--border); }
+  .subtabs.nested button { font-size: 12.5px; padding: var(--sp-2) var(--sp-4); }
+
+  /* ---------- 模态：确认一次不可撤销的动作 ---------- */
+  dialog#modal { border: 1px solid var(--border); border-radius: 12px; padding: 18px var(--sp-8); max-width: 460px; background: var(--surface); color: var(--text); }
+  dialog#modal::backdrop { background: rgba(15, 23, 42, .45); }
+  .modal-head { font-size: var(--fs-body); margin-bottom: var(--sp-3); }
+  .modal-text { font-size: 12.5px; line-height: 1.7; margin: 0; }
+  .modal-blocked {
+    margin: 0 var(--sp-7); color: var(--danger); background: var(--danger-bg);
+    border-radius: var(--radius-sm); padding: var(--sp-4) var(--sp-5); font-size: var(--fs-mini);
+  }
+  .modal-blocked:empty { display: none; }
+  .modal-impact { font-size: var(--fs-small); line-height: 1.7; color: var(--text-mute); margin: var(--sp-3) 0 0; }
+  .modal-foot { display: flex; justify-content: flex-end; gap: var(--sp-3); margin-top: var(--sp-7); }
 
   /* ---------- management feedback & row editors ---------- */
   /* 就地反馈：任何管理动作的结果都写在它自己的卡片里，而不是弹窗或静默。 */
-  .msg { border-radius: 8px; padding: 9px 12px; font-size: 12.5px; line-height: 1.6; margin-top: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .msg { border-radius: 8px; padding: 9px var(--sp-5); font-size: 12.5px; line-height: 1.6; margin-top: var(--sp-5); display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
   .msg:empty { display: none; }
   .msg.ok { background: var(--ok-bg); color: #14532d; }
   .msg.warn { background: var(--warn-bg); color: #7a4a06; }
   .msg.err { background: var(--danger-bg); color: #7f1d1d; }
   .msg.info { background: var(--info-bg); color: #1e3a8a; }
-  .meta-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) auto; gap: 8px; align-items: center; margin-top: 8px; }
-  .meta-row input, .meta-row select { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; background: var(--surface); color: var(--text); }
+  .meta-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) auto; gap: var(--sp-3); align-items: center; margin-top: var(--sp-3); }
+  .meta-row input, .meta-row select { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 7px var(--sp-4); font-size: 12.5px; background: var(--surface); color: var(--text); }
   .meta-row.cols-4 { grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1.3fr) auto; }
   .meta-row.cols-3 { grid-template-columns: minmax(0,1.1fr) minmax(0,.8fr) minmax(0,.9fr); }
-  .server-row { border: 1px solid var(--border); border-radius: 9px; padding: 13px 14px; background: var(--surface); }
-  .server-row + .server-row { margin-top: 10px; }
+  .server-row { border: 1px solid var(--border); border-radius: 9px; padding: 13px var(--sp-6); background: var(--surface); }
+  .server-row + .server-row { margin-top: var(--sp-4); }
   .btn.danger { border-color: #f3c9c9; color: #b91c1c; background: transparent; }
   .btn.danger:hover { background: #fef2f2; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-  table.tight td, table.tight th { padding: 8px 10px; }
+  .actions { display: flex; gap: var(--sp-3); flex-wrap: wrap; justify-content: flex-end; }
+  table.tight td, table.tight th { padding: var(--sp-3) var(--sp-4); }
   .list-item b { font-size: 13.5px; }
-  .list-item small { display: block; color: var(--text-mute); font-size: 12px; margin-top: 3px; }
+  .list-item small { display: block; color: var(--text-mute); font-size: var(--fs-small); margin-top: 3px; }
   .dag { width: 100%; height: 250px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; }
-  details summary { cursor: pointer; font-weight: 600; font-size: 13px; padding: 8px 0; }
-  pre.json { background: #0f1728; color: #cbd5e1; border-radius: 8px; padding: 12px; font-size: 11.5px; overflow: auto; max-height: 220px; line-height: 1.6; }
-  .rule-cond { font-size: 12.5px; color: var(--text-soft); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px; margin-top: 6px; }
-  .rule-cond b { color: var(--text); margin-right: 6px; }
+  details summary { cursor: pointer; font-weight: 600; font-size: var(--fs-mini); padding: var(--sp-3) 0; }
+  pre.json { background: #0f1728; color: #cbd5e1; border-radius: 8px; padding: var(--sp-5); font-size: 11.5px; overflow: auto; max-height: 220px; line-height: 1.6; }
+  .rule-cond { font-size: 12.5px; color: var(--text-soft); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: var(--sp-2) 9px; margin-top: var(--sp-2); }
+  .rule-cond b { color: var(--text); margin-right: var(--sp-2); }
   .rule-cond--sub { background: transparent; border-style: dashed; }
   .rule-suggestion { font-size: 12.5px; line-height: 1.6; color: var(--text); border-left: 3px solid var(--accent); padding-left: 9px; }
 
@@ -292,114 +362,166 @@
   .menu {
     position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 280px;
     background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px;
-    box-shadow: 0 12px 30px rgba(15,23,42,.14); padding: 6px; display: none;
+    box-shadow: 0 12px 30px rgba(15,23,42,.14); padding: var(--sp-2); display: none;
   }
   .menu.open { display: block; }
-  .menu .menu-head { font-size: 11px; color: var(--text-mute); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 8px 10px 4px; }
+  .menu .menu-head { font-size: var(--fs-tiny); color: var(--text-mute); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: var(--sp-3) var(--sp-4) var(--sp-1); }
   .menu button {
     display: block; width: 100%; text-align: left; border: 0; background: transparent;
-    padding: 9px 10px; border-radius: 7px; font-size: 12.5px; color: var(--text); cursor: pointer;
+    padding: 9px var(--sp-4); border-radius: 7px; font-size: 12.5px; color: var(--text); cursor: pointer;
   }
   .menu button:hover { background: var(--surface-2); }
   .menu button.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
   .menu button small { display: block; color: var(--text-mute); font-size: 11.5px; margin-top: 2px; font-weight: 500; }
 
   /* 可移除的授权/选中标签 */
-  .chip button { border: 0; background: transparent; color: inherit; font-weight: 800; margin-left: 6px; cursor: pointer; font-size: 12px; line-height: 1; }
+  .chip button { border: 0; background: transparent; color: inherit; font-weight: 800; margin-left: var(--sp-2); cursor: pointer; font-size: var(--fs-small); line-height: 1; }
   .chip button:hover { color: var(--danger); }
   .chip.sel-chip { background: var(--accent-soft); color: var(--accent); }
 
   /* 勾选式选择器：知识库 / 资料 / 规则包 / MCP 工具 */
-  .pick { display: grid; gap: 6px; margin-top: 10px; }
+  .pick { display: grid; gap: var(--sp-2); margin-top: var(--sp-4); }
   .pick label { display: flex; align-items: flex-start; gap: 9px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; font-size: 12.5px; background: var(--surface); }
   .pick label:hover { border-color: var(--border-strong); }
   .pick label.checked { border-color: var(--accent); background: var(--accent-soft); }
   .pick label.disabled { opacity: .55; cursor: not-allowed; }
   .pick input { margin-top: 2px; }
   .pick .pick-meta { display: block; color: var(--text-mute); font-size: 11.5px; margin-top: 2px; }
-  .pick-empty { color: var(--text-mute); font-size: 12px; line-height: 1.7; border: 1px dashed var(--border-strong); border-radius: 8px; padding: 10px 12px; margin-top: 10px; }
+  .pick-empty { color: var(--text-mute); font-size: var(--fs-small); line-height: 1.7; border: 1px dashed var(--border-strong); border-radius: 8px; padding: var(--sp-4) var(--sp-5); margin-top: var(--sp-4); }
+  /* 工具清单：一条工具一行，来源与验证状态各自成列，读得出「声明」与「已验证」不是一回事。 */
+  .tool-list { display: grid; gap: 5px; margin-top: var(--sp-3); }
+  .tool-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; border: 1px solid var(--border); border-radius: 8px; padding: 7px var(--sp-4); font-size: var(--fs-small); background: var(--surface); }
+  /* 按服务器分组：只改变阅读与勾选成本，不产生任何共享语义。 */
+  .pick-group { border: 1px solid var(--border); border-radius: 8px; padding: 9px var(--sp-4); margin-top: var(--sp-4); }
+  .pick-group-head { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; font-size: 12.5px; font-weight: 600; margin-bottom: 7px; }
 
   /* 工作流节点列表（与画布同一份状态） */
-  .node-list { display: grid; gap: 6px; margin-top: 10px; }
-  .node-row { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; background: var(--surface); cursor: pointer; }
+  .node-list { display: grid; gap: var(--sp-2); margin-top: var(--sp-4); }
+  .node-row { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: var(--sp-3); border: 1px solid var(--border); border-radius: 8px; padding: var(--sp-3) 11px; background: var(--surface); cursor: pointer; }
   .node-row:hover { border-color: var(--border-strong); }
   .node-row.sel { border-color: var(--accent); background: var(--accent-soft); }
   .node-row b { font-size: 12.5px; }
   .node-row small { display: block; color: var(--text-mute); font-size: 11.5px; margin-top: 2px; }
-  .node-caps { display: flex; gap: 6px; flex-wrap: wrap; }
-  .mini-select { border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12px; background: var(--surface); color: var(--text); }
+  .node-caps { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+  .mini-select { border: 1px solid var(--border); border-radius: 8px; padding: var(--sp-2) var(--sp-3); font-size: var(--fs-small); background: var(--surface); color: var(--text); }
 
   /* 候选改写：只展示差异，永远不自动执行 */
-  .diff { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; line-height: 1.7; }
-  .diff div { padding: 1px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .diff { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: var(--sp-4); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; line-height: 1.7; }
+  .diff div { padding: 1px var(--sp-4); white-space: pre-wrap; overflow-wrap: anywhere; }
   .diff .same { color: var(--text-soft); }
   .diff .del { background: #fef2f2; color: #991b1b; }
   .diff .add { background: #f0fdf4; color: #166534; }
 
   /* 规则行内编辑 */
-  .rule-editor { border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px; margin-top: 10px; background: var(--surface-2); }
-  .rule-editor textarea, .rule-editor select { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; background: var(--surface); color: var(--text); }
-  .rule-editor .row { margin-top: 8px; }
+  .rule-editor { border: 1px solid var(--border); border-radius: 9px; padding: var(--sp-5) var(--sp-6); margin-top: var(--sp-4); background: var(--surface-2); }
+  .rule-editor textarea, .rule-editor select { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: var(--sp-3) var(--sp-4); font-size: 12.5px; background: var(--surface); color: var(--text); }
+  .rule-editor .row { margin-top: var(--sp-3); }
 
   /* 文档行 */
-  .doc-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: center; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; background: var(--surface); cursor: pointer; }
-  .doc-row + .doc-row { margin-top: 8px; }
+  .doc-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: var(--sp-3); align-items: center; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; background: var(--surface); cursor: pointer; }
+  .doc-row + .doc-row { margin-top: var(--sp-3); }
   .doc-row:hover { border-color: var(--border-strong); }
   .doc-row.sel { border-color: var(--accent); background: var(--accent-soft); }
   .doc-row b { font-size: 12.5px; }
   .doc-row small { display: block; color: var(--text-mute); font-size: 11.5px; margin-top: 2px; }
 
-  .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: space-between; }
+  .toolbar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; justify-content: space-between; }
   .toolbar .controls { margin-top: 0; }
   .skeleton { color: var(--text-mute); font-size: 12.5px; line-height: 1.8; }
-  .spin { display: inline-block; width: 10px; height: 10px; border: 2px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -1px; margin-right: 6px; }
+  .spin { display: inline-block; width: 10px; height: 10px; border: 2px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -1px; margin-right: var(--sp-2); }
   @keyframes spin { to { transform: rotate(360deg); } }
   .ignored { opacity: .55; }
   .ignored .code::after { content: " · 已忽略"; color: var(--text-mute); font-weight: 600; }
 
   /* ---------- 桌面外壳：运行目标可切换 ---------- */
   .desktop-chrome { display: none; }
-  body.desktop-target .desktop-chrome { display: flex; align-items: center; gap: 14px; height: 34px; padding: 0 12px;
+  body.desktop-target .desktop-chrome { display: flex; align-items: center; gap: var(--sp-6); height: 34px; padding: 0 var(--sp-5);
     background: var(--surface-3); border-bottom: 1px solid var(--border-strong); }
   body.desktop-target .app { height: calc(100vh - 34px); }
-  .win-dots { display: flex; gap: 6px; flex: 0 0 auto; }
+  .win-dots { display: flex; gap: var(--sp-2); flex: 0 0 auto; }
   .win-dots i { width: 11px; height: 11px; border-radius: 50%; background: #d5dbe6; display: block; }
-  .win-title { font-size: 12px; font-weight: 700; color: var(--text-soft); white-space: nowrap; }
+  .win-title { font-size: var(--fs-small); font-weight: 700; color: var(--text-soft); white-space: nowrap; }
   .win-note { font-size: 11.5px; color: var(--text-mute); }
-  .win-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 11.5px; color: var(--text-mute); white-space: nowrap; }
-  .win-actions span { border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; background: var(--surface); }
+  .win-actions { margin-left: auto; display: flex; gap: var(--sp-3); align-items: center; font-size: 11.5px; color: var(--text-mute); white-space: nowrap; }
+  .win-actions span { border: 1px solid var(--border); border-radius: 6px; padding: 2px var(--sp-3); background: var(--surface); }
   .native-menu { display: flex; gap: 2px; flex: 0 0 auto; }
-  .native-menu > .menu-wrap > button { border-radius: 6px; padding: 4px 9px; font-size: 12.5px; font-weight: 600; color: var(--text-soft); }
+  .native-menu > .menu-wrap > button { border-radius: 6px; padding: var(--sp-1) 9px; font-size: 12.5px; font-weight: 600; color: var(--text-soft); }
   .native-menu > .menu-wrap > button:hover { background: var(--surface); }
 
   .segment { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
-  .segment button { padding: 6px 12px; font-size: 12.5px; font-weight: 600; color: var(--text-soft); border-right: 1px solid var(--border); }
+  .segment button { padding: var(--sp-2) var(--sp-5); font-size: 12.5px; font-weight: 600; color: var(--text-soft); border-right: 1px solid var(--border); }
   .segment button:last-child { border-right: 0; }
   .segment button:hover:not(.active) { background: var(--surface-2); }
   .segment button.active { background: var(--accent-soft); color: var(--accent); }
 
   /* 被挡住的原因就写在控件旁边，而不是留一个看起来能点的按钮 */
-  .gate { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 8px 10px; margin-top: 10px;
-    font-size: 12px; line-height: 1.65; color: var(--text-mute); background: var(--surface-2); }
+  .gate { border: 1px dashed var(--border-strong); border-radius: 8px; padding: var(--sp-3) var(--sp-4); margin-top: var(--sp-4);
+    font-size: var(--fs-small); line-height: 1.65; color: var(--text-mute); background: var(--surface-2); }
   .gate:empty { display: none; }
-  .path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
+  .path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-small); word-break: break-all; }
   .mono-input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
-  .audit-row td { font-size: 12px; }
-  .kv { display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 6px 12px; font-size: 12px; align-items: baseline; }
+  .history-row td { font-size: var(--fs-small); }
+  .kv { display: grid; grid-template-columns: 150px minmax(0,1fr); gap: var(--sp-2) var(--sp-5); font-size: var(--fs-small); align-items: baseline; }
   .kv dt { color: var(--text-mute); }
   .kv dd { margin: 0; color: var(--text); word-break: break-word; }
-  .kv + .kv { margin-top: 4px; }
+  .kv + .kv { margin-top: var(--sp-1); }
+
+  /* 宽屏：检查器常驻，开关没有意义 */
+  #inspectorToggle { display: none; }
+  .inspector-scrim { display: none; }
+
+  /* 抽屉：一次性事务（新建 / 编辑）的载体。它不常驻在页面上——
+     「登记资料」不是一个目的地，是一次动作，做完就该走。
+     列表留在原位，动作因此不会把上下文搬走。 */
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 96vw);
+    background: var(--surface); border-left: 1px solid var(--border);
+    box-shadow: -10px 0 34px rgba(16, 24, 40, .16);
+    display: flex; flex-direction: column; z-index: 70;
+    transform: translateX(100%); visibility: hidden;
+    transition: transform .18s ease, visibility .18s;
+  }
+  .drawer.on { transform: none; visibility: visible; }
+  .drawer-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: var(--sp-5); padding: var(--sp-7); border-bottom: 1px solid var(--border);
+  }
+  .drawer-head h2 { margin: 0 0 var(--sp-1); font-size: var(--fs-lead); }
+  .drawer-head .sub { margin: 0; }
+  .drawer-body { flex: 1; overflow: auto; padding: var(--sp-7); }
+  .drawer-foot {
+    display: flex; justify-content: flex-end; gap: var(--sp-3);
+    padding: var(--sp-5) var(--sp-7); border-top: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  /* 未保存拦截：不弹系统 confirm，也不静默丢弃。原因与两个出口都写在抽屉里。 */
+  .drawer-guard {
+    margin: 0 var(--sp-7) var(--sp-5); padding: var(--sp-5);
+    border: 1px solid var(--warn); border-radius: var(--radius-sm);
+    background: var(--warn-bg); color: var(--warn); font-size: var(--fs-mini);
+  }
+  .drawer-guard p { margin: 0 0 var(--sp-4); }
+
 
   @media (max-width: 1180px) {
     .body { grid-template-columns: 200px minmax(0,1fr); }
-    .inspector { display: none; }
     .grid-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    #inspectorToggle { display: inline-flex; }
+    /* 窄屏下检查器不占位：收起时完全不显示，打开时是右侧抽屉 */
+    .inspector { display: none; }
+    body.inspector-open .inspector {
+      display: block; position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 92vw);
+      z-index: 60; box-shadow: -8px 0 28px rgba(16,24,40,.16);
+    }
+    body.inspector-open .inspector-scrim {
+      display: block; position: fixed; inset: 0; z-index: 55; background: rgba(16,24,40,.34);
+    }
   }
 </style>
 </head>
 <body>
 <!-- 桌面外壳：只在「桌面端」运行目标下出现。每一项目录项都对应一个外壳服务，
-     而不是把 Tauri API 直接写进界面。窗口按钮由操作系统提供，外壳不实现。 -->
+     而不是把 Electron API 直接写进界面。窗口按钮由操作系统提供，外壳不实现。 -->
 <div class="desktop-chrome" id="desktopChrome">
   <div class="win-dots" title="窗口按钮由操作系统提供，外壳不实现它们"><i></i><i></i><i></i></div>
   <span class="win-title">EAP 工程自动化平台 — 桌面端</span>
@@ -432,7 +554,7 @@
       </div>
     </div>
   </nav>
-  <span class="win-note">外壳只提供平台服务：选目录、窗口与菜单、通知、打开外部链接、审计 —— 任务判定与专家授权始终在后端。</span>
+  <span class="win-note">外壳只提供平台服务：选目录、窗口与菜单、通知、打开外部链接、操作历史 —— 任务判定与专家授权始终在后端。</span>
   <div class="win-actions"><span>—</span><span>□</span><span>×</span>由操作系统实现</div>
 </div>
 
@@ -451,6 +573,7 @@
     <span class="chip ok" id="runtimeChip"><span class="dot"></span>运行时已连接</span>
     <span class="chip warn"><span class="dot"></span>模型：未启用 · 确定性优先</span>
     <span class="chip" id="targetChip">浏览器</span>
+    <button class="btn" id="inspectorToggle" aria-expanded="false" aria-controls="inspectorPanel" onclick="toggleInspector()">检查器</button>
     <button class="btn" id="refreshButton" onclick="refreshAll()">刷新</button>
     <button class="btn primary" onclick="runAnalysisFromTopbar()">运行分析</button>
   </header>
@@ -459,16 +582,16 @@
     <!-- left rail -->
     <nav class="rail" id="rail">
       <div class="eyebrow">工作空间</div>
-      <button class="nav active" data-view="overview"><span class="ic">⌂</span>概览</button>
-      <button class="nav" data-view="tasks"><span class="ic">▤</span>任务</button>
-      <button class="nav" data-view="sql"><span class="ic">▷</span>SQL 分析室</button>
-      <button class="nav" data-view="experts"><span class="ic">◈</span>专家工作室</button>
-      <button class="nav" data-view="rules"><span class="ic">▤</span>规则库</button>
-      <button class="nav" data-view="knowledge"><span class="ic">▢</span>知识库</button>
-      <button class="nav" data-view="databases"><span class="ic">▦</span>数据库资料</button>
-      <button class="nav" data-view="capabilities"><span class="ic">⚙</span>能力目录</button>
+      <button class="nav active" data-view="overview" aria-current="page"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.6" y="2.6" width="5.6" height="5.6" rx="1.4"/><rect x="9.8" y="2.6" width="5.6" height="5.6" rx="1.4"/><rect x="2.6" y="9.8" width="5.6" height="5.6" rx="1.4"/><rect x="9.8" y="9.8" width="5.6" height="5.6" rx="1.4"/></svg>概览</button>
+      <button class="nav" data-view="tasks" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 5.2l1.9 1.9L8 3.6"/><path d="M11 5.2h4"/><path d="M3 11.5h4"/><path d="M11 11.5h4"/><path d="M3 14.6h4"/><path d="M11 14.6h4"/></svg>任务</button>
+      <button class="nav" data-view="sql" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.4 4.2L3 9l3.4 4.8"/><path d="M11.6 4.2L15 9l-3.4 4.8"/><path d="M10.2 3.2l-2.4 11.6"/></svg>SQL 分析室</button>
+      <button class="nav" data-view="experts" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="4.2" r="2.1"/><circle cx="4.4" cy="13.9" r="2.1"/><circle cx="13.6" cy="13.9" r="2.1"/><path d="M9 6.3v2.6"/><path d="M7.6 10.3L5.7 12.2"/><path d="M10.4 10.3l1.9 1.9"/></svg>专家工作室</button>
+      <button class="nav" data-view="rules" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3.2" y="2.6" width="11.6" height="12.8" rx="2"/><path d="M6 6.4h6"/><path d="M6 9.3h6"/><path d="M6 12.2h3.4"/></svg>规则库</button>
+      <button class="nav" data-view="knowledge" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3.6h4.3A1.6 1.6 0 0 1 9 5.2v9.6a1.6 1.6 0 0 0-1.7-1.5H3z"/><path d="M15 3.6h-4.3A1.6 1.6 0 0 0 9 5.2v9.6a1.6 1.6 0 0 1 1.7-1.5H15z"/></svg>知识库</button>
+      <button class="nav" data-view="databases" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><ellipse cx="9" cy="3.8" rx="5.4" ry="1.8"/><path d="M3.6 3.8v3.4c0 1 2.4 1.8 5.4 1.8s5.4-.8 5.4-1.8V3.8"/><path d="M3.6 7.2v3.4c0 1 2.4 1.8 5.4 1.8s5.4-.8 5.4-1.8V7.2"/><path d="M3.6 10.6v3.6c0 1 2.4 1.8 5.4 1.8s5.4-.8 5.4-1.8v-3.6"/></svg>数据库资料</button>
+      <button class="nav" data-view="capabilities" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.6" y="2.6" width="12.8" height="12.8" rx="3"/><rect x="6.6" y="6.6" width="4.8" height="4.8" rx="1"/><path d="M9 2.6V6.6M9 11.4v4M2.6 9H6.6M11.4 9h4"/></svg>能力目录</button>
       <div class="eyebrow" style="margin-top:14px">运行环境</div>
-      <button class="nav" data-view="desktop"><span class="ic">▣</span>桌面外壳</button>
+      <button class="nav" data-view="desktop" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.1" y="3.2" width="13.8" height="9.8" rx="1.6"/><path d="M6.6 16.8h4.8"/><path d="M9 13v3.8"/></svg>桌面外壳</button>
       <div class="foot">确定性能力优先<br><b>结果必须有独立证据</b><br>模型仅作待验证观察</div>
     </nav>
 
@@ -480,6 +603,8 @@
           <p class="eyebrow">ENGINEERING AUTOMATION PLATFORM</p>
           <h1>概览</h1>
           <p>确定性能力优先处理；仅在证据不足时才压缩后调用模型。</p>
+          <details class="why"><summary>为什么 · 为什么模型不是第一步</summary><div class="why-body">确定性证据能定论时，模型根本不被询问；只有当证据不足或操作者主动要求时，才用压缩、限长、脱敏后的上下文问一次。模型的输出是<b>待验证的观察</b>：它不会改写任何发现，也不会把任务标记为完成。</div></details>
+          <details class="why"><summary>为什么 · 为什么要分工作空间</summary><div class="why-body">工作空间决定这里列出的任务、专家与资料范围；<b>能力目录与规则库是平台级的</b>，不随工作空间变化——否则同一条规则会在两个空间里出现两个版本，判定结果就不可比了。</div></details>
         </div>
         <div class="grid-4">
           <div class="metric"><div class="k">已注册能力</div><div class="v">8</div><div class="d">5 内置命令 · 3 本地 CLI</div></div>
@@ -514,18 +639,19 @@
           <p class="eyebrow">SQL STUDIO</p>
           <h1>SQL 分析室</h1>
           <p>选择已启用专家，按显式依赖执行并返回逐节点证据；模型仅在需要时被压缩调用。</p>
+          <details class="why"><summary>为什么 · 为什么平台自己不执行你的 SQL</summary><div class="why-body">平台不连接业务数据库、不执行你输入的 SQL。EXPLAIN JSON 快照由你自行取得后粘贴——这样<b>没有凭据需要保管，也不存在误在上游库执行改写的可能</b>。代价是要你多贴一次，换来的是这条边界永远成立。</div></details>
         </div>
         <div class="grid-2">
           <div class="card">
             <h2>分析输入</h2>
-            <label class="field">执行专家</label>
+            <label class="field" for="expertSelect">执行专家</label>
             <select class="select" id="expertSelect">
               <option>SQL Expert（内置 sql-expert）</option>
               <option>订单库 SQL 优化（自定义）</option>
             </select>
-            <label class="field">业务问题 / 目标</label>
-            <textarea class="textarea" rows="2">订单列表查询在数据量增长后明显变慢，希望确认是否缺少索引或可改写点。</textarea>
-            <label class="field">待分析 SQL</label>
+            <label class="field" for="fld572">业务问题 / 目标</label>
+            <textarea class="textarea" rows="2" id="fld572">订单列表查询在数据量增长后明显变慢，希望确认是否缺少索引或可改写点。</textarea>
+            <label class="field" for="sqlText">待分析 SQL</label>
             <textarea class="textarea code" rows="9" id="sqlText">SELECT o.id, o.amount, c.name
 FROM orders o
 JOIN customer c ON o.customer_id = c.id
@@ -534,10 +660,10 @@ ORDER BY o.created_at DESC
 LIMIT 20;</textarea>
             <details>
               <summary>可选上下文：数据库资料与执行计划</summary>
-              <label class="field">已授权资料</label>
-              <select class="select"><option>orders-prod（脱敏快照）</option><option>不使用数据库资料</option></select>
-              <label class="field">EXPLAIN JSON 快照</label>
-              <textarea class="textarea code" rows="4" placeholder="粘贴自行取得的 EXPLAIN JSON，平台不会自动执行 SQL"></textarea>
+              <label class="field" for="fld583">已授权资料</label>
+              <select class="select" id="fld583"><option>orders-prod（脱敏快照）</option><option>不使用数据库资料</option></select>
+              <label class="field" for="fld585">EXPLAIN JSON 快照</label>
+              <textarea class="textarea code" rows="4" placeholder="粘贴自行取得的 EXPLAIN JSON，平台不会自动执行 SQL" id="fld585"></textarea>
             </details>
             <label class="row" style="margin-top:14px;font-size:13px;color:var(--text-soft)">
               <input type="checkbox" id="requestModel" /> 显式请求模型增强（输出仍为待验证观察）
@@ -671,6 +797,7 @@ LIMIT 20;</textarea>
           <p class="eyebrow">TASKS</p>
           <h1>任务与证据时间线</h1>
           <p>执行状态与实际工具输出分开呈现；完成状态不等于已证明性能提升。</p>
+          <details class="why"><summary>为什么 · 为什么「完成」不等于「已证明」</summary><div class="why-body">完成只说明流程每个节点都跑完了。要称为证明，需要有<b>独立的 before / after 证据</b>（执行计划或实测耗时），因此任务详情把执行状态与实际工具输出分开呈现，不让「跑完」顶替「有效」。</div></details>
         </div>
 
         <div class="card">
@@ -711,27 +838,51 @@ LIMIT 20;</textarea>
 
       <!-- EXPERTS -->
       <section class="view" id="view-experts">
-        <div class="page-head">
-          <p class="eyebrow">EXPERTS</p>
-          <h1>专家工作室</h1>
-          <p>添加能力节点、连接依赖、配置属性；保存只登记引用，启用后才授权读取。</p>
-        </div>
-        <div class="grid-2">
-          <div>
-            <div class="card">
-              <div class="toolbar">
-                <div>
-                  <h2>专家</h2>
-                  <p class="sub">内置专家也是普通的定义行，复制成新标识后即可自由修改。</p>
-                </div>
-                <div class="controls">
-                  <button class="btn" onclick="newExpert()">＋ 新建</button>
-                  <button class="btn" onclick="copyExpert()">复制为自定义</button>
-                </div>
+        <!-- 集合页：专家清单。它自己是一页，不再和「某个专家的面」并排在同一行页签里。 -->
+        <div class="subview active" data-route="list" role="region" aria-label="专家清单">
+          <div class="page-head">
+            <p class="eyebrow">EXPERTS</p>
+            <h1>专家工作室</h1>
+            <p>添加能力节点、连接依赖、配置属性；保存只登记引用，启用后才授权读取。</p>
+            <details class="why"><summary>为什么 · 为什么保存只登记引用，授权要单独一步</summary><div class="why-body">保存清单只是<b>登记引用</b>；只有「启用并授权」之后运行时才允许读取对应知识库与资料，停用会一并撤销。两步分开是为了让「定义了什么」和「被允许读什么」可以分别检查。</div></details>
+          </div>
+          <div class="card">
+            <div class="toolbar">
+              <div>
+                <h2>专家</h2>
+                <p class="sub">内置专家也是普通的定义行，复制成新标识后即可自由修改。</p>
               </div>
-              <div class="list" id="expertList" style="margin-top:12px"></div>
-              <p class="msg" id="expertListMessage"></p>
+              <div class="controls">
+                <button class="btn" onclick="newExpert()">＋ 新建</button>
+                <button class="btn" onclick="copyExpert()">复制为自定义</button>
+              </div>
             </div>
+            <div class="list" id="expertList" style="margin-top:12px"></div>
+            <p class="msg" id="expertListMessage"></p>
+        </div>        </div>
+
+        <!-- 条目页：单个专家。它的面（流程 / 清单 / 授权）是这个条目内部的一层，
+        所以子导航画在条目标题之下，而不是与区域标题并排。 -->
+        <div class="subview" id="expertItem" data-route="item" role="region" aria-label="专家条目">
+          <nav class="crumb" aria-label="当前位置">
+            <button class="crumb-back" onclick="go('experts')">← 专家工作室</button>
+            <span class="crumb-sep" aria-hidden="true">/</span>
+            <span class="crumb-here" id="expertCrumbFace">流程</span>
+          </nav>
+          <div class="item-head">
+            <div>
+              <h1 class="item-title" id="expertEditorTitle">—</h1>
+              <p class="item-sub" id="expertEditorSub">尚未选择专家</p>
+            </div>
+            <span class="chip" id="expertStateChip">—</span>
+          </div>
+          <div class="subtabs nested" id="expertTabs" role="tablist" aria-label="这个专家的面">
+            <button role="tab" aria-selected="false" data-subview="flow">流程</button>
+            <button role="tab" aria-selected="false" data-subview="manifest">清单</button>
+            <button role="tab" aria-selected="false" data-subview="grants">授权</button>
+          </div>
+
+          <div class="subview active" data-subview="flow" role="tabpanel" aria-label="流程">
             <div class="card">
               <div class="toolbar">
                 <div>
@@ -748,66 +899,73 @@ LIMIT 20;</textarea>
               <p class="msg" id="dagMessage"></p>
               <div class="node-list" id="nodeList"></div>
               <p class="hint" style="margin-top:10px">新节点从当前所选节点连一条边；选中节点后可切换「必需 / 可选」。必需节点失败会阻塞依赖它的节点，可选节点失败只返回部分结果。</p>
+          </div>          </div>
+
+          <div class="subview" data-subview="manifest" role="tabpanel" aria-label="清单">
+            <div class="card">
+
+              <div class="toolbar">
+                <div>
+                  <h2>标识与名称</h2>
+                  <p class="sub">标识创建后不再修改；改名称不影响任何授权，也不会让已登记的引用失效。</p>
+                </div>
+              </div>
+              <p class="msg" id="expertMessage"></p>
+              <label class="field" for="expertIdInput">标识</label>
+              <input class="input" id="expertIdInput" maxlength="61" oninput="markExpertDirty()" />
+              <label class="field" for="expertNameInput">名称</label>
+              <input class="input" id="expertNameInput" maxlength="200" oninput="markExpertDirty()" />
+              <p class="requirement-line" id="expertIdNote">标识是显式引用（知识库、资料、规则包都按它记录），因此保存后不改标识；改名不影响任何授权。</p>
+
+              <details style="margin-top:16px">
+                <summary>高级：Manifest（按当前编辑内容实时生成）</summary>
+                <pre class="json" id="expertManifest"></pre>
+                <p class="hint">capabilities 不单独写入清单：<span class="mono">steps</span> 是能力引用的唯一来源，避免两份声明互相矛盾。这份预览就是保存时会提交的内容。</p>
+              </details>
+
+              <div class="row" style="margin-top:14px">
+                <button class="btn" onclick="validateExpert()">校验</button>
+                <button class="btn primary" onclick="saveExpertDraft()">保存草稿</button>
+                <button class="btn" id="expertActivateButton" onclick="toggleExpertActivation()">启用并授权</button>
+                <button class="btn danger" id="expertDeleteButton" onclick="askDeleteExpert()">删除专家</button>
+              </div>
+              <p class="msg" id="expertActionMessage"></p>
+              <p class="hint" id="expertDirtyNote">没有未保存的修改。</p>
             </div>
           </div>
-          <div class="card">
-            <div class="toolbar">
-              <div>
-                <h2 id="expertEditorTitle">专家信息</h2>
-                <p class="sub" id="expertEditorSub">尚未选择专家</p>
-              </div>
-              <span class="chip" id="expertStateChip">—</span>
+
+          <div class="subview" data-subview="grants" role="tabpanel" aria-label="授权">
+            <div class="card">
+              <h2 style="margin-top:18px">知识库与授权</h2>
+              <p class="hint">勾选只登记引用；点击「启用并授权」后运行时才允许读取。停用会一并撤销。</p>
+              <div class="pick" id="pickKnowledge"></div>
+
+              <h2 style="margin-top:18px">数据库资料（脱敏快照）</h2>
+              <p class="hint">资料决定 <span class="mono">database.*.read</span> 能读到什么；不勾选时该节点返回「没有可用快照」，而不是去连数据库。</p>
+              <div class="pick" id="pickProfiles"></div>
+
+              <h2 style="margin-top:18px">规则包（判定依据）</h2>
+              <p class="hint">规则读取事实、事实由能力产出：勾选规则包后，流程必须包含产出这些事实的能力节点。缺失时保存与启用都会被拒绝。</p>
+              <div class="pick" id="pickRulePacks"></div>
+
+              <h2 style="margin-top:18px">MCP 工具授权（专家级能力）</h2>
+              <p class="hint">
+                MCP 工具不会被平台全局启用：只有这里声明、并在启用时授权的工具，才会成为本专家的节点，且调用发生在本专家本次执行自己的会话里。平台未登记或未信任的服务器不会出现在可选项里。
+              </p>
+              <div class="pick" id="pickMcpTools"></div>
+
+              <h2 style="margin-top:18px">所需能力（由规则包推导）</h2>
+              <div class="chips" id="requiredCapabilities"></div>
+              <div class="note" id="requirementNote" style="margin-top:12px;display:none"></div>
+
+              <h2 style="margin-top:18px">强制规则</h2>
+              <div class="chips"><span class="chip">禁止泄露数据库凭据（强制）</span><span class="chip">候选 SQL 必须保持原语义</span></div>
+              <p class="hint">强制规则不由界面开关控制：它们是平台对每次执行无条件施加的约束。</p>
+
             </div>
-            <p class="msg" id="expertMessage"></p>
-            <label class="field">标识</label>
-            <input class="input" id="expertIdInput" maxlength="61" oninput="markExpertDirty()" />
-            <label class="field">名称</label>
-            <input class="input" id="expertNameInput" maxlength="200" oninput="markExpertDirty()" />
-            <p class="requirement-line" id="expertIdNote">标识是显式引用（知识库、资料、规则包都按它记录），因此保存后不改标识；改名不影响任何授权。</p>
-
-            <h2 style="margin-top:18px">知识库与授权</h2>
-            <p class="hint">勾选只登记引用；点击「启用并授权」后运行时才允许读取。停用会一并撤销。</p>
-            <div class="pick" id="pickKnowledge"></div>
-
-            <h2 style="margin-top:18px">数据库资料（脱敏快照）</h2>
-            <p class="hint">资料决定 <span class="mono">database.*.read</span> 能读到什么；不勾选时该节点返回「没有可用快照」，而不是去连数据库。</p>
-            <div class="pick" id="pickProfiles"></div>
-
-            <h2 style="margin-top:18px">规则包（判定依据）</h2>
-            <p class="hint">规则读取事实、事实由能力产出：勾选规则包后，流程必须包含产出这些事实的能力节点。缺失时保存与启用都会被拒绝。</p>
-            <div class="pick" id="pickRulePacks"></div>
-
-            <h2 style="margin-top:18px">MCP 工具授权（专家级能力）</h2>
-            <p class="hint">
-              MCP 工具不会被平台全局启用：只有这里声明、并在启用时授权的工具，才会成为本专家的节点，且调用发生在本专家本次执行自己的会话里。平台未登记或未信任的服务器不会出现在可选项里。
-            </p>
-            <div class="pick" id="pickMcpTools"></div>
-
-            <h2 style="margin-top:18px">所需能力（由规则包推导）</h2>
-            <div class="chips" id="requiredCapabilities"></div>
-            <div class="note" id="requirementNote" style="margin-top:12px;display:none"></div>
-
-            <h2 style="margin-top:18px">强制规则</h2>
-            <div class="chips"><span class="chip">禁止泄露数据库凭据（强制）</span><span class="chip">候选 SQL 必须保持原语义</span></div>
-            <p class="hint">强制规则不由界面开关控制：它们是平台对每次执行无条件施加的约束。</p>
-
-            <details style="margin-top:16px">
-              <summary>高级：Manifest（按当前编辑内容实时生成）</summary>
-              <pre class="json" id="expertManifest"></pre>
-              <p class="hint">capabilities 不单独写入清单：<span class="mono">steps</span> 是能力引用的唯一来源，避免两份声明互相矛盾。这份预览就是保存时会提交的内容。</p>
-            </details>
-
-            <div class="row" style="margin-top:14px">
-              <button class="btn" onclick="validateExpert()">校验</button>
-              <button class="btn primary" onclick="saveExpertDraft()">保存草稿</button>
-              <button class="btn" id="expertActivateButton" onclick="toggleExpertActivation()">启用并授权</button>
-              <button class="btn danger" id="expertDeleteButton" onclick="askDeleteExpert()">删除专家</button>
-            </div>
-            <p class="msg" id="expertActionMessage"></p>
-            <p class="hint" id="expertDirtyNote">没有未保存的修改。</p>
           </div>
         </div>
-      </section>
+        </section>
 
       <!-- RULE LIBRARY -->
       <section class="view" id="view-rules">
@@ -815,8 +973,10 @@ LIMIT 20;</textarea>
           <p class="eyebrow">RULE LIBRARY</p>
           <h1>规则库</h1>
           <p>规则是数据，不是代码：新增检查、调整严重级、改写证据与建议都只需编辑规则包，无需重新编译或部署。</p>
+          <details class="why"><summary>为什么 · 为什么规则是数据而不是代码</summary><div class="why-body">新增检查、调整严重级、改写证据与建议都只是编辑规则包，<b>不需要重新编译或部署</b>。规则读取事实、事实由能力产出，因此勾选规则包后流程必须包含产出这些事实的节点，否则保存与启用都会被拒绝。</div></details>
         </div>
-        <div class="grid-2">
+        <!-- 集合页：规则包清单 + 集合级入口 -->
+        <div class="subview active" data-route="list">
           <div class="card">
             <div class="toolbar">
               <div><h2>规则包</h2><p class="sub">内置包为只读，复制为新标识后即可编辑。</p></div>
@@ -827,11 +987,11 @@ LIMIT 20;</textarea>
             </div>
             <div class="list" id="rulePackList" style="margin-top:12px"></div>
             <div id="rulePackCreate" style="display:none;margin-top:12px">
-              <label class="field">标识（进入能力标识的一段）</label>
+              <label class="field" for="newPackId">标识（进入能力标识的一段）</label>
               <input class="input" id="newPackId" placeholder="my-team-sql-v2" maxlength="61" />
-              <label class="field">名称</label>
+              <label class="field" for="newPackName">名称</label>
               <input class="input" id="newPackName" placeholder="团队查询规范 v2" maxlength="200" />
-              <label class="field">需要的能力（逗号分隔，可留空）</label>
+              <label class="field" for="newPackRequires">需要的能力（逗号分隔，可留空）</label>
               <input class="input" id="newPackRequires" placeholder="sql.parse" />
               <div class="row" style="margin-top:10px">
                 <button class="btn primary" onclick="createRulePack()">创建规则包</button>
@@ -843,15 +1003,41 @@ LIMIT 20;</textarea>
               判定阈值也在规则包里：<span class="mono">policy.actionableWeight</span> 与
               <span class="mono">policy.reviewComplexityThreshold</span> 决定确定性证据何时不足、需要把压缩后的证据提交给模型。
             </p>
+            <div class="row" style="margin-top:12px">
+              <button class="btn" onclick="go('rules/facts')">查看事实与运算符词表 →</button>
+              <span class="hint">词表属于整个规则库，不是某个规则包的面。</span>
+            </div>
             <p class="hint">
               规则读取事实，事实由能力产出：<span class="mono">requires.capabilities</span> 声明本包需要哪些能力，
               引用它的专家流程必须包含对应节点，否则这些规则永远不会命中。
             </p>
           </div>
 
+
+        </div>
+
+        <!-- 条目页：一个规则包，以及它自己的两个面 -->
+        <div class="subview" id="ruleItem" data-route="item">
+          <nav class="crumb" aria-label="当前位置">
+            <button class="crumb-back" onclick="go('rules')">← 规则库</button>
+            <span class="crumb-sep" aria-hidden="true">/</span>
+            <span class="crumb-here" id="ruleCrumbFace">规则</span>
+          </nav>
+          <div class="item-head">
+            <div>
+              <h1 class="item-title" id="ruleItemTitle">—</h1>
+              <p class="item-sub" id="ruleItemSub">尚未选择规则包</p>
+            </div>
+            <span class="chip" id="ruleStateChip">—</span>
+          </div>
+          <div class="subtabs nested" id="ruleTabs" role="tablist" aria-label="这个规则包的面">
+            <button class="active" data-subview="rules" aria-selected="true" onclick="goRuleFace('rules')">规则</button>
+            <button data-subview="dry" aria-selected="false" onclick="goRuleFace('dry')">试算</button>
+          </div>
+          <div class="subview active" data-subview="rules" role="tabpanel" aria-label="规则">
           <div class="card">
             <div class="toolbar">
-              <div><h2>规则明细</h2><p class="sub" id="ruleDetailSub">未选择规则包</p></div>
+              <div><h2>规则</h2><p class="sub" id="ruleDetailSub">未选择规则包</p></div>
               <div class="controls">
                 <button class="btn" id="rulePackToggle" onclick="toggleRulePack()">启用</button>
                 <button class="btn danger" id="rulePackDelete" onclick="askDeleteRulePack()">删除规则包</button>
@@ -866,13 +1052,13 @@ LIMIT 20;</textarea>
                 <b id="ruleEditorTitle">新增规则</b>
                 <span class="hint" id="ruleEditorMode"></span>
               </div>
-              <label class="field">规则编号</label><input class="input" id="ruleCode" maxlength="120" placeholder="predicate.leading_wildcard" />
-              <label class="field">标题</label><input class="input" id="ruleTitle" maxlength="200" placeholder="LIKE 前导通配符" />
-              <label class="field">严重级</label>
+              <label class="field" for="ruleCode">规则编号</label><input class="input" id="ruleCode" maxlength="120" placeholder="predicate.leading_wildcard" />
+              <label class="field" for="ruleTitle">标题</label><input class="input" id="ruleTitle" maxlength="200" placeholder="LIKE 前导通配符" />
+              <label class="field" for="ruleSeverity">严重级</label>
               <select id="ruleSeverity">
                 <option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option>
               </select>
-              <label class="field">条件：事实 / 运算符 / 值</label>
+              <label class="field" for="ruleFact">条件：事实 / 运算符 / 值</label>
               <div class="meta-row cols-3">
                 <input id="ruleFact" placeholder="predicate.leadingWildcardLike" />
                 <select id="ruleOp">
@@ -880,9 +1066,9 @@ LIMIT 20;</textarea>
                 </select>
                 <input id="ruleValue" placeholder="true（「存在 / 不存在」可留空）" />
               </div>
-              <label class="field">证据文案（写事实，不写结论）</label>
+              <label class="field" for="ruleEvidence">证据文案（写事实，不写结论）</label>
               <textarea id="ruleEvidence" rows="2" placeholder="LIKE 模式以前导通配符 % 开头。"></textarea>
-              <label class="field">建议文案（必须保持原语义）</label>
+              <label class="field" for="ruleAdvice">建议文案（必须保持原语义）</label>
               <textarea id="ruleAdvice" rows="2" placeholder="前导通配符使普通 B-Tree 索引失效；可评估范围查询、反转列、全文检索或 trigram 索引。"></textarea>
               <div class="row" style="margin-top:10px">
                 <button class="btn primary" onclick="saveRule()">保存规则</button>
@@ -898,8 +1084,8 @@ LIMIT 20;</textarea>
               <span class="hint" id="ruleEditHint">规则是数据：改严重级、证据与建议都不需要改代码。</span>
             </div>
           </div>
-        </div>
-
+          </div>
+          <div class="subview" data-subview="dry" role="tabpanel" aria-label="试算">
         <div class="card" style="margin-top:16px">
           <div class="row" style="justify-content:space-between">
             <div><h2>试算（dry-run）</h2><p class="sub" id="drySub">用所选规则包判定一条 SQL，返回命中事实与发现；不保存、不执行。</p></div>
@@ -925,7 +1111,11 @@ LIMIT 20;</textarea>
             </tbody>
           </table>
         </div>
+          </div>
+        </div>
 
+        <!-- 模式页：事实词表是「整个规则库」的声明，不属于任何一个包 -->
+        <div class="subview" data-route="mode">
         <div class="card" style="margin-top:16px">
           <h2>事实与运算符词表</h2>
           <p class="sub">规则只能引用这里声明的事实；写错事实名或运算符会在保存时被拒绝。每个事实都声明它由哪个能力产出——规则引用事实，就等于要求流程包含产出该事实的能力。</p>
@@ -981,6 +1171,7 @@ LIMIT 20;</textarea>
             </tbody>
           </table>
         </div>
+        </div>
       </section>
 
       <!-- KNOWLEDGE -->
@@ -995,45 +1186,52 @@ LIMIT 20;</textarea>
             <span class="mono">DELETE /api/knowledge/{id}/documents/{documentId}</span>、
             <span class="mono">GET /api/knowledge/search?q=</span>。删除知识库在被<b>已启用</b>专家引用时会被拒绝并点名专家。
           </p>
+          <details class="why"><summary>为什么 · 为什么检索命中必须带来源</summary><div class="why-body">每条命中都要能指出<b>来自哪一篇、哪一段</b>。检索是本地关键词 + PostgreSQL 全文检索，没有来源引用的结论在证据链里无法复核，也就不能作为规则的输入。</div></details>
         </div>
-        <div class="grid-2">
+        <!-- 集合页：知识库清单 + 集合级入口 -->
+        <div class="subview active" data-route="list">
           <div class="card">
             <div class="toolbar">
               <div><h2>知识库</h2><p class="sub">知识库只是文本容器；授权发生在专家启用时。</p></div>
-              <div class="controls"><button class="btn" onclick="newKnowledgeBase()">＋ 新建知识库</button></div>
+              <div class="controls"><button class="btn" id="kbNewButton" onclick="newKnowledgeBase()">＋ 新建知识库</button></div>
             </div>
-            <div class="list" id="kbList" style="margin-top:12px"></div>
-            <div id="kbCreate" style="display:none;margin-top:12px">
-              <label class="field">知识库标识（进入能力标识的一段，只允许小写字母、数字、下划线和连字符）</label>
-              <input class="input" id="kbNewId" placeholder="orders-notes" maxlength="61" />
-              <label class="field">名称</label>
-              <input class="input" id="kbNewName" placeholder="订单库运维笔记" maxlength="200" />
-              <div class="row" style="margin-top:10px">
-                <button class="btn primary" onclick="createKnowledgeBase()">创建知识库</button>
-                <button class="btn" onclick="cancelKnowledgeBase()">取消</button>
-              </div>
+<div class="list" id="kbList" style="margin-top:12px"></div>
+            
+            <div class="row" style="margin-top:12px">
+              <button class="btn" onclick="go('knowledge/search')">跨库检索 →</button>
+              <span class="hint">检索属于整个知识库集合，不是某一台库的面。</span>
             </div>
             <p class="msg" id="kbMessage"></p>
-
-            <h2 style="margin-top:18px">检索</h2>
-            <div class="row">
-              <input class="input" id="kbQuery" placeholder="例如：前导通配符 索引" oninput="runKnowledgeSearch()" />
-              <button class="btn" onclick="runKnowledgeSearch()">检索</button>
-            </div>
-            <p class="hint" style="margin-top:8px" id="kbSearchHint">检索只命中授权范围内的文档；没有命中时返回零结果并说明原因，而不是放宽到全部知识库。</p>
-            <div id="kbSearchResults"></div>
           </div>
+        </div>
+
+        <!-- 条目页：一台知识库。主从对照留在同一页——拆成两级会把「列表 ⇄ 预览」的对照打散 -->
+        <div class="subview" id="kbItem" data-route="item">
+          <nav class="crumb" aria-label="当前位置">
+            <button class="crumb-back" onclick="go('knowledge')">← 知识库</button>
+            <span class="crumb-sep" aria-hidden="true">/</span>
+            <span class="crumb-here" id="kbCrumbFace">文档</span>
+          </nav>
+          <div class="item-head">
+            <div>
+              <h1 class="item-title" id="kbItemTitle">—</h1>
+              <p class="item-sub" id="kbItemSub">尚未选择知识库</p>
+            </div>
+            <span class="chip" id="kbStateChip">—</span>
+          </div>
+          <div class="grid-2" id="kbDocsGrid">
           <div class="card">
             <div class="toolbar">
-              <div><h2 id="kbDocTitle">文档</h2><p class="sub" id="kbDocSub">未选择知识库</p></div>
+              <div><h2>文档</h2><p class="sub" id="kbDocSub">未选择知识库</p></div>
               <div class="controls">
                 <button class="btn" id="kbRenameButton" onclick="renameKnowledgeBase()">重命名</button>
+                <button class="btn primary" id="kbAddDocButton" onclick="newDocument()">＋ 新增文档</button>
                 <button class="btn danger" id="kbDeleteButton" onclick="askDeleteKnowledgeBase()">删除知识库</button>
               </div>
             </div>
             <p class="msg" id="kbDocMessage"></p>
             <div id="kbRenameBox" style="display:none;margin-top:12px">
-              <label class="field">新名称</label>
+              <label class="field" for="kbRenameName">新名称</label>
               <input class="input" id="kbRenameName" maxlength="200" />
               <div class="row" style="margin-top:10px">
                 <button class="btn primary" onclick="applyRenameKnowledgeBase()">保存名称</button>
@@ -1041,17 +1239,25 @@ LIMIT 20;</textarea>
               </div>
             </div>
             <div id="kbDocs"></div>
-            <h3 style="margin-top:18px;font-size:13px">新增文档</h3>
             <p class="hint">文档按段落切分为 chunk 后写入索引；平台不会把整篇文档塞进模型上下文，检索结果始终带来源引用。</p>
-            <input class="input" id="docTitle" placeholder="文档标题，例如 index-guide.md" style="margin-top:8px" maxlength="200" />
-            <textarea class="textarea code" id="docContent" rows="5" placeholder="文档正文。不要粘贴凭据或连接串。" style="margin-top:8px"></textarea>
-            <div class="row" style="margin-top:10px">
-              <button class="btn primary" onclick="addDocument()">添加文档</button>
-              <span class="hint" id="docCountHint"></span>
-            </div>
             <h3 style="margin-top:18px;font-size:13px">文档预览</h3>
             <p class="sub" id="docPreviewTitle">未选择文档</p>
             <div id="docPreview" class="skeleton">在上面的文档列表中选择一篇以查看内容。</div>
+          </div>
+          </div>
+        </div>
+
+        <!-- 模式页：跨库检索是集合级入口，不属于任何一台库 -->
+        <div class="subview" data-route="mode">
+          <div class="card">
+            <div><h2>跨库检索</h2><p class="sub" id="kbSearchScope">检索范围：—</p></div>
+<h2 style="margin-top:18px">检索</h2>
+            <div class="row">
+              <input class="input" id="kbQuery" placeholder="例如：前导通配符 索引" oninput="runKnowledgeSearch()" />
+              <button class="btn" onclick="runKnowledgeSearch()">检索</button>
+            </div>
+            <p class="hint" style="margin-top:8px" id="kbSearchHint">检索只命中授权范围内的文档；没有命中时返回零结果并说明原因，而不是放宽到全部知识库。</p>
+            <div id="kbSearchResults"></div>
           </div>
         </div>
       </section>
@@ -1069,6 +1275,7 @@ LIMIT 20;</textarea>
             <b>被已启用专家引用的资料会被拒绝删除，并点名专家</b>——资料消失会让在跑的专家指向一份不存在的快照，
             失败发生在执行时而不是保存时。
           </p>
+          <details class="why"><summary>为什么 · 为什么不保存密码</summary><div class="why-body">这里只登记<b>脱敏后的表结构、字段类型与索引前导列</b>：不保存密码、不连接业务数据库、不执行输入 SQL。一旦允许保存连接凭据，这个页面就会变成一个新的凭据仓库，而那不是它该承担的职责。</div></details>
         </div>
 
         <div class="card">
@@ -1090,48 +1297,10 @@ LIMIT 20;</textarea>
           <p class="msg" id="profileListMessage"></p>
         </div>
 
-        <div class="card" id="profileEditor" style="display:none">
-          <div class="row" style="justify-content:space-between">
-            <div>
-              <h2 id="profileEditorTitle">登记新资料</h2>
-              <p class="sub">只保存人工录入的结构快照。不要填写密码、Token 或 JDBC 地址。</p>
-            </div>
-            <div class="actions">
-              <button class="btn" onclick="fillProfileExample()">填入示例</button>
-              <button class="btn" onclick="cancelProfile()">取消</button>
-              <button class="btn danger" id="profileDeleteButton" style="display:none" onclick="askDeleteProfile()">删除资料</button>
-              <button class="btn primary" onclick="saveProfile()">保存资料</button>
-            </div>
-          </div>
-          <p class="msg" id="profileMessage"></p>
-          <div class="grid-2" style="margin-top:6px">
-            <div>
-              <label class="field">资料名称</label>
-              <input class="input" id="profileLabel" maxlength="200" placeholder="orders-prod" />
-              <label class="field">数据库引擎</label>
-              <select class="select" id="profileEngine">
-                <option>PostgreSQL</option><option>MySQL</option><option>SQL Server</option><option>Oracle</option><option>SQLite</option>
-              </select>
-              <label class="field">环境</label>
-              <input class="input" id="profileEnvironment" maxlength="40" placeholder="生产（脱敏）" />
-              <p class="requirement-line">标识由后端生成（uuid），专家清单引用的是这个标识——所以「改标签」不会让已授权的专家失效。</p>
-            </div>
-            <div>
-              <div class="row" style="justify-content:space-between">
-                <label class="field" style="margin:0">表结构快照</label>
-                <button class="btn" onclick="addProfileTable()">＋ 添加表</button>
-              </div>
-              <div id="profileTableRows"></div>
-              <div class="row" style="justify-content:space-between;margin-top:14px">
-                <label class="field" style="margin:0">索引快照</label>
-                <button class="btn" onclick="addProfileIndex()">＋ 添加索引</button>
-              </div>
-              <div id="profileIndexRows"></div>
-              <p class="hint" id="profileStructureHint" style="margin-top:8px">索引列请按顺序填写：规则只回答「有没有以该列为前导的索引」，顺序错了结论就错了。</p>
-            </div>
-          </div>
-          <p class="requirement-line">保存后不会自动授权给任何专家：专家需要在专家工作室中显式选择这份资料，并在启用时才会写入读取授权。</p>
-        </div>
+        <p class="hint">
+          登记与编辑都不在页面上常驻表单：点「新建 / 编辑」会从右侧滑出抽屉，列表与检查器留在原位——
+          <b>动作不搬走上下文</b>。抽屉里没保存就关，会先问一次，而不是直接丢掉。
+        </p>
       </section>
 
       <!-- CAPABILITIES -->
@@ -1144,6 +1313,7 @@ LIMIT 20;</textarea>
             每类能改什么由后端声明，界面不自行推测：内置命令只能启用/停用，本地 CLI 还能指定二进制位置，MCP 工具的服务器由操作者登记。
             <b>新增能力一律需要改代码</b>——发布哪些事实属于代码契约，不能由一次界面操作产生。
           </p>
+          <details class="why"><summary>为什么 · 为什么不能从界面新增一个能力</summary><div class="why-body"><b>发布哪些事实属于代码契约</b>，不能由一次界面操作产生：界面若凭空宣布一个能力，运行时并没有对应处理器，引用它的专家会在执行时才失败。这里能做的是启用/停用与配置，新增一律需要改代码。</div></details>
         </div>
 
         <!-- 子页由 CAPABILITY_KINDS 生成：可管理或有条目的种类才出现，因此这里不放写死的页签。 -->
@@ -1254,12 +1424,16 @@ LIMIT 20;</textarea>
           </div>
           <div class="controls">
             <input id="mcpEndpoint" placeholder="启动命令：npx -y @modelcontextprotocol/server-filesystem" aria-label="启动命令或地址" />
-            <input id="mcpTools" placeholder="工具白名单：search, read" aria-label="工具白名单" />
+            <input id="mcpTools" placeholder="工具白名单：search, read" aria-label="工具白名单" oninput="renderMcpToolList()" />
             <button class="btn primary" id="mcpSubmit" onclick="saveMcpServer()">登记服务器</button>
             <button class="btn" onclick="loadMcpExample()">填入示例</button>
             <button class="btn" onclick="resetMcpForm()">清空</button>
           </div>
+          <div id="mcpToolList"></div>
           <p class="requirement-line">服务器标识与工具名都会拼进能力标识 <span class="mono">mcp.&lt;服务器&gt;.&lt;工具&gt;</span>，因此只允许小写字母、数字、下划线和连字符；不合法会在登记时当场拒绝，而不是等到专家引用时才报错。</p>
+          <p class="hint">上面这条输入框就是唯一真源，清单是它的解析视图：<b>移除一条即改写输入框</b>，不存在「输入框里有、清单里没有」的情况。
+            <b>这里没有逐工具的放行开关</b>——MCP Router 那种开关建立在「已发现的工具全集」之上，要先跑得了 <span class="mono">tools/list</span>。
+            平台尚无 MCP 客户端，工具一律是操作者声明，因此「声明了又不放行」等价于「没声明」；等协议发现可用，<span class="mono">source</span> 与 <span class="mono">verified</span> 才有第二种取值，那时再加放行位。</p>
           <p class="msg" id="mcpMessage"></p>
 
           <h3 style="margin-top:18px;font-size:13px">已登记的服务器</h3>
@@ -1274,7 +1448,7 @@ LIMIT 20;</textarea>
             <b>为什么不能全局启用</b>
             <span class="hint">
               一个 MCP 会话绑定着会话标识、游标与已认证身份。若平台把工具注册成对所有专家生效，两个专家就会共用同一会话：
-              B 的调用可能落在 A 的状态与授权上下文里，A 留下的半消费游标还会让 B 漏读数据，审计也无法区分是谁发起的。
+              B 的调用会落在 A 的协商结果上，A 留下的半消费游标还会让 B <b>静默漏读</b>——不报错，只是少读到数据。这是结构性问题，与使用人数无关。
               因此工具能力按 <span class="mono">mcp.&lt;服务器&gt;.&lt;工具&gt;</span> 命名，会话按
               <span class="mono">(执行, 专家, 服务器)</span> 三元组隔离，执行结束即关闭。
             </span>
@@ -1292,19 +1466,20 @@ LIMIT 20;</textarea>
         <div class="page-head">
           <p class="eyebrow">DESKTOP SHELL</p>
           <h1>桌面外壳与连接</h1>
-          <p>同一套界面有两个投放目标：浏览器部署与 Tauri 2 桌面外壳。外壳只提供平台服务——选目录、原生菜单与窗口、通知、打开外部链接、审计——<b>不含任务规划、判定、专家授权与校验逻辑</b>，那些始终在后端，因此两个目标语义一致。</p>
+          <p>同一套界面有两个投放目标，<b>两者都跑在本机</b>：本机浏览器访问 loopback 上的后端，与 Electron 桌面外壳。外壳只提供平台服务——选目录、原生菜单与窗口、通知、打开外部链接、操作历史——<b>不含任务规划、判定、专家授权与校验逻辑</b>，那些始终在后端，因此两个目标语义一致。</p>
           <p class="hint">
             这是原型里唯一能改变<b>运行目标</b>的地方：切到桌面端会画出窗口外框与原生菜单，并点亮只有外壳才有的控件；
             切回浏览器时这些控件不会消失，而是变成不可用并在旁边写出原因。界面只调用
             <span class="mono">DesktopPlatform</span> 契约（<span class="mono">chooseWorkspace / showNotification / openExternal / getPlatformInfo</span>），
-            不直接依赖 Tauri API——外壳是可替换的，Tauri 只是当前实现。
+            不直接调用 Electron API——外壳是可替换的，Electron 只是当前实现。
           </p>
+          <details class="why"><summary>为什么 · 为什么操作历史写在主进程</summary><div class="why-body">渲染进程显示的是<b>不受信任的数据</b>——仓库内容、模型输出、MCP 返回。若由页面自己写记录，那么这份记录在需要回溯时就不可信。放在主进程写的代价是绕一层 IPC，换来的是它不能被页面篡改。</div></details>
         </div>
 
         <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
           <div class="segment" id="targetSwitch">
             <button data-target="web" class="active">浏览器</button>
-            <button data-target="desktop">桌面端 · Tauri 2</button>
+            <button data-target="desktop">桌面端 · Electron</button>
           </div>
           <p class="hint" id="targetHint" style="margin:0;max-width:640px"></p>
         </div>
@@ -1313,7 +1488,7 @@ LIMIT 20;</textarea>
           <button class="active" data-subview="window">窗口与菜单</button>
           <button data-subview="workspace">本地工作空间</button>
           <button data-subview="connection">后端连接</button>
-          <button data-subview="permissions">系统权限与审计</button>
+          <button data-subview="permissions">系统权限与操作历史</button>
         </div>
         <p class="hint">页签与能力目录同构：一次只渲染一个子页，而不是把四段内容堆在一起。</p>
 
@@ -1379,7 +1554,7 @@ LIMIT 20;</textarea>
             <p class="gate" id="workspaceGate"></p>
             <p class="msg" id="localWsMessage"></p>
             <p class="hint" style="margin-top:10px">
-              选目录是外壳的活：Tauri 只把文件系统权限授予被选中的目录，目录之外一律拒绝。<b>执行什么命令、传什么参数仍然属于代码</b>（
+              选目录是外壳的活：外壳只把文件系统权限授予被选中的目录，主进程还会对返回的路径做前缀校验，目录之外一律拒绝。<b>执行什么命令、传什么参数仍然属于代码</b>（
               <span class="mono">ProcessExecutor</span> 以数组传参，不做 shell 拼接），选目录不会扩大这个边界。
             </p>
           </div>
@@ -1407,14 +1582,14 @@ LIMIT 20;</textarea>
             <p class="sub">第一版桌面端连接一个单独启动的本地后端；打包 Java 运行时作为签名 sidecar 的分发尚未启用。</p>
             <div class="grid-2" style="margin-top:12px">
               <div>
-                <label class="field">连接方式</label>
-                <div class="segment" id="connMode">
+                <span class="field" id="connModeLabel">连接方式</span>
+                <div class="segment" id="connMode" role="group" aria-labelledby="connModeLabel">
                   <button data-mode="remote" class="active">远程后端</button>
                   <button data-mode="local">本地运行时</button>
                   <button data-mode="sidecar">打包 sidecar</button>
                 </div>
                 <p class="requirement-line" id="connModeNote"></p>
-                <label class="field">后端地址</label>
+                <label class="field" for="connBaseUrl">后端地址</label>
                 <input class="input mono-input" id="connBaseUrl" value="http://127.0.0.1:8080" aria-label="后端地址" />
                 <p class="requirement-line">只能 http / https，且不能把凭据写进地址：运行时同样会拒绝 <span class="mono">user:pass@host</span>。</p>
               </div>
@@ -1441,23 +1616,23 @@ LIMIT 20;</textarea>
           </div>
         </div>
 
-        <!-- 系统权限与审计 -->
+        <!-- 系统权限与操作历史 -->
         <div class="subview" data-subview="permissions">
           <div class="card" style="margin-top:16px">
             <div class="row" style="justify-content:space-between">
               <div>
                 <h2>外壳能力与授权</h2>
-                <p class="sub">每一次 OS 操作都要对应一条显式能力（Tauri capability）并留痕。撤回一条授权，依赖它的控件会立刻不可用，并把原因写在控件旁边。</p>
+                <p class="sub">每一次 OS 操作都要对应一条显式外壳能力，并在主进程留痕。渲染进程没有 Node 权限——<span class="mono">nodeIntegration: false</span>、<span class="mono">contextIsolation: true</span>、<span class="mono">sandbox: true</span>，OS 能力只能经 preload 的具名函数到达，且每个入参在主进程重新校验。撤回一条授权，依赖它的控件会立刻不可用，并把原因写在控件旁边。</p>
               </div>
               <span class="chip" id="permTargetChip">浏览器</span>
             </div>
             <table class="facts" style="margin-top:12px">
-              <thead><tr><th>能力</th><th>标识</th><th>范围</th><th>状态</th><th style="text-align:right">操作</th></tr></thead>
+              <thead><tr><th>能力</th><th>实现</th><th>范围</th><th>状态</th><th style="text-align:right">操作</th></tr></thead>
               <tbody id="permRows"></tbody>
             </table>
             <p class="gate" id="permGate"></p>
             <p class="msg" id="permMessage"></p>
-            <p class="hint" style="margin-top:10px">点击任意一行，右侧检查器显示它的标识、范围、授予时机、被谁使用，以及撤回后会发生什么。状态由外壳的 capability 文件决定，界面不自行推测。</p>
+            <p class="hint" style="margin-top:10px">点击任意一行，右侧检查器显示它的标识、范围、授予时机、被谁使用，以及撤回后会发生什么。状态由外壳实际授予的能力决定，界面不自行推测。</p>
           </div>
 
           <div class="card">
@@ -1467,20 +1642,20 @@ LIMIT 20;</textarea>
           </div>
 
           <div class="card">
-            <h2>外壳审计日志</h2>
-            <p class="sub">本次会话里每一次外壳动作都会追加一条。真实外壳会写到本机日志文件并附带签名；原型只存在内存里，刷新页面即清空。</p>
+            <h2>外壳操作历史</h2>
+            <p class="sub">本次会话里每一次外壳动作都会追加一条。它回答的问题是「我做过什么、为什么这次结果和上次不一样」——<b>不是审计日志</b>：这台机器上只有一个操作者，不存在需要追责的第二方，所以这份记录不需要防篡改与签名，而应该反过来做得更详细（含改动前的值），才撑得起回溯与撤销。真实外壳会写到本机日志文件；原型只存在内存里，刷新页面即清空。</p>
             <table class="tight" style="margin-top:12px">
               <thead><tr><th>时间</th><th>动作</th><th>目标</th><th>结果</th></tr></thead>
-              <tbody id="auditRows"></tbody>
+              <tbody id="historyRows"></tbody>
             </table>
-            <p class="msg" id="auditMessage"></p>
+            <p class="msg" id="historyMessage"></p>
           </div>
         </div>
       </section>
     </main>
 
     <!-- inspector -->
-    <aside class="inspector">
+    <aside class="inspector" id="inspectorPanel">
       <div class="row" style="justify-content:space-between;gap:8px">
         <h2 style="font-size:14px;margin:0">检查器</h2>
         <span class="chip" id="inspPage">概览</span>
@@ -1502,9 +1677,34 @@ LIMIT 20;</textarea>
     </aside>
   </div>
 
+  <div class="inspector-scrim" id="inspectorScrim" onclick="setInspectorOpen(false)" aria-hidden="true"></div>
+
+  <aside class="drawer" id="drawer" role="dialog" aria-labelledby="drawerTitle" aria-hidden="true">
+    <header class="drawer-head">
+      <div>
+        <h2 id="drawerTitle">—</h2>
+        <p class="sub" id="drawerSub">—</p>
+      </div>
+      <span class="chip warn" id="dirtyTag" hidden>有未保存的修改</span>
+    </header>
+    <p class="msg" id="drawerMessage"></p>
+    <div class="drawer-body" id="drawerBody"></div>
+    <div class="drawer-guard" id="drawerConfirm" hidden>
+      <p>这个抽屉里有还没保存的改动。关掉会丢掉它们——内容只存在于这一页的内存里，没有草稿箱。</p>
+      <div class="row">
+        <button class="btn" onclick="cancelCloseDrawer()">继续编辑</button>
+        <button class="btn danger" onclick="forceCloseDrawer()">丢弃并关闭</button>
+      </div>
+    </div>
+    <footer class="drawer-foot">
+      <button class="btn" id="drawerCancel" onclick="requestCloseDrawer()">取消</button>
+      <button class="btn primary" id="drawerSubmit">保存</button>
+    </footer>
+  </aside>
+
   <footer class="statusbar">
     <span>状态：<b id="statusText">就绪</b></span>
-    <span>运行目标：<b id="statusTarget">浏览器</b></span>
+    <span>运行目标：<b id="statusTarget">本机浏览器</b></span>
     <span>工作空间：<b id="statusWorkspace">engineering-automation-platform</b></span>
     <span>本地目录：<b id="statusLocalWorkspace">未选择</b></span>
     <span>模型：<b>未启用</b></span>
@@ -1516,6 +1716,19 @@ LIMIT 20;</textarea>
   </footer>
 </div>
 
+<!-- 模态：只用于「确认一次不可撤销的动作」。正文必须写明影响面，
+     被阻断时确认按钮是「不可用但仍在」，并把原因写在旁边。 -->
+<dialog id="modal" aria-labelledby="modalTitle">
+  <div class="modal-head"><b id="modalTitle">确认</b></div>
+  <p class="modal-text" id="modalText"></p>
+  <p class="modal-impact" id="modalImpact"></p>
+  <p class="modal-blocked" id="modalBlocked"></p>
+  <div class="modal-foot">
+    <button class="btn" onclick="closeModal()">取消</button>
+    <button class="btn primary" id="modalOk">确认</button>
+  </div>
+</dialog>
+
 <script>
   /* ------------------------------------------------------------------
      检查器是「按页面取值」的：每个页面声明自己能检查什么，
@@ -1525,7 +1738,7 @@ LIMIT 20;</textarea>
     overview:     { name:'概览',       pipeline:true,  hint:'本页是聚合视图：点击「最近任务」中的一行，这里显示该任务的决策与证据来源。' },
     tasks:        { name:'任务',       pipeline:true,  hint:'点击左侧任一任务，这里显示执行时间线、状态机位置与证据来源。' },
     sql:          { name:'SQL 分析室', pipeline:true,  hint:'点击任意一条发现，这里显示严重级、证据与语义保持建议。' },
-    experts:      { name:'专家工作室', pipeline:false, hint:'点击任一专家，这里显示它引用的能力、知识库与 MCP 工具授权。' },
+    experts:      { name:'专家工作室', pipeline:false, hint:'点一个已登记的专家，直接进入它的条目页（默认停在「流程」——那是它的本体）；这里显示它引用的能力、知识库与 MCP 工具授权。新建或复制出来的专家先停在「清单」把标识与名称补上。' },
     rules:        { name:'规则库',     pipeline:false, hint:'点击任一规则包，这里显示它需要的能力与版本状态。' },
     knowledge:    { name:'知识库',     pipeline:false, hint:'点击任一知识库，这里显示文档数与检索方式。' },
     databases:    { name:'数据库资料', pipeline:false, hint:'点击「查看」，这里显示该资料的脱敏范围与索引覆盖。' },
@@ -1560,8 +1773,11 @@ LIMIT 20;</textarea>
       </div>`;
   }
 
+  /* 只清理 / 标记 .sel（检查器当前在讲哪个对象）。
+     状态驱动的「这一页正在显示哪个条目」用 .sel-row，由各自的 render 写出来，这里绝不碰——
+     否则重绘出来的高亮会被下一次 markSelected 立刻擦掉。 */
   function markSelected(el) {
-    document.querySelectorAll('.sel, .list-item.active').forEach(x => x.classList.remove('sel', 'active'));
+    document.querySelectorAll('.sel').forEach(x => x.classList.remove('sel'));
     if (!el) return;
     (el.closest('.cap') || el.closest('.server-row') || el.closest('tr') || el).classList.add('sel');
   }
@@ -1603,8 +1819,8 @@ LIMIT 20;</textarea>
      这些是函数声明（会提升），因此可以出现在 showDetail 之前。 */
   function inspectTask(id, el) { selectTask(id, el); }
   function inspectExpert(id, el) { selectExpert(id, el); }
-  function inspectRulePack(id, el) { selectRulePack(id, el); }
-  function inspectKnowledge(id, el) { selectKnowledge(id, el); }
+  function inspectRulePack(id, el) { go(`rules/${id}/rules`); }
+  function inspectKnowledge(id, el) { go(`knowledge/${id}/docs`); }
   const inspectCapability = (id, el) => showDetail('capability', id, el);
   const inspectMcpServer  = (id, el) => showDetail('mcpServer', id, el);
   /* 数据库资料多记一件事：选中的是哪一份，列表重绘时要把它高亮回来。 */
@@ -1618,9 +1834,13 @@ LIMIT 20;</textarea>
     overview:     () => document.querySelector('#view-overview tr.clickable')?.click(),
     tasks:        () => document.querySelector('#taskRows tr.clickable')?.click(),
     sql:          () => document.querySelector('#view-sql .finding')?.click(),
-    experts:      () => document.querySelector('#expertList .list-item')?.click(),
+    /* 集合页只选中、不替用户切页签：点进来应该停在这一页，而不是被送到某个条目里。 */
+    experts:      () => {
+      const row = document.querySelector('#expertList .list-item');
+      if (row) inspectExpert(row.dataset.expert, row);
+    },
     rules:        () => document.querySelector('#rulePackList .list-item')?.click(),
-    knowledge:    () => document.querySelector('#kbList .list-item')?.click(),
+    knowledge:    () => document.querySelector('#kbList .row-main')?.click(),
     databases:    () => document.querySelector('#profileRows tr.clickable')?.click(),
     capabilities: () => {
       // 概览子页里有两种可点行：种类汇总行与「全部能力」行。默认选后者——它是具体的条目。
@@ -1632,9 +1852,23 @@ LIMIT 20;</textarea>
     desktop: () => shellPickActiveSubview()
   };
 
-  function setView(view) {
+  function finishInspector() {
+    if (!document.getElementById('inspectorBody').innerHTML) {
+      document.getElementById('inspectorBody').innerHTML =
+        '<div class="insp-empty">本页没有可逐项检查的对象，检查器只显示页面级说明。请在其他页面选择具体条目。</div>';
+    }
+  }
+
+  /* 「选中哪个条目」属于路由要回答的事：放在这里会被默认选中项覆盖掉深链，
+     所以有路由的区域自己带 skipPick。 */
+  function setView(view, opts) {
     currentView = view;
-    document.querySelectorAll('#rail .nav').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    document.querySelectorAll('#rail .nav').forEach(b => {
+      const on = b.dataset.view === view;
+      b.classList.toggle('active', on);
+      // active 与 aria-current 同源：读屏看到的当前页与眼睛看到的必须是同一个
+      b.setAttribute('aria-current', on ? 'page' : 'false');
+    });
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById('view-' + view)?.classList.add('active');
 
@@ -1648,16 +1882,101 @@ LIMIT 20;</textarea>
     // 页面自带的状态块要重新读一遍：否则显示的是上次离开这一页时的数字。
     if (view === 'desktop') renderShell();
 
-    const pick = DEFAULT_PICK[view];
-    if (pick) pick();
-    if (!document.getElementById('inspectorBody').innerHTML) {
-      document.getElementById('inspectorBody').innerHTML =
-        '<div class="insp-empty">本页没有可逐项检查的对象，检查器只显示页面级说明。请在其他页面选择具体条目。</div>';
-    }
+    if (!opts?.skipPick) DEFAULT_PICK[view]?.();
+    finishInspector();
   }
 
+  /* ------------------------------------------------------------------
+     层级路由：URL 是唯一真源。
+
+     硬约束：只有 go() 写地址，applyRoute() 只读取地址并渲染，绝不回头改它。
+     于是「选中的页签」与「显示的内容」不可能对不上——它们是同一地址的两次读取。
+     hashchange 是异步的，所以 go() 先写地址、再立刻渲染，用 appliedRoute 让
+     随后到达的 hashchange 认出「已经渲染过」，不重复渲染。
+     ------------------------------------------------------------------ */
+  const routeKey = () => (location.hash || '').replace(/^#/, '') || 'overview';
+
+  function readRoute(area, parts) {
+    const seg = parts[1] || '';
+    if (!seg) return { kind: 'list' };
+    const item = area.itemOf(seg);
+    if (item) {
+      return {
+        kind: 'item', item,
+        face: area.faces.includes(parts[2]) ? parts[2] : area.defaultFace(item),
+        sub: parts[3] || null
+      };
+    }
+    if (area.modes.includes(seg)) return { kind: 'mode', mode: seg };
+    return { kind: 'missing', seg };
+  }
+
+  function showRoutePage(view, key) {
+    document.querySelectorAll(`#view-${view} > .subview[data-route]`).forEach(sv =>
+      sv.classList.toggle('active', sv.dataset.route === key));
+  }
+
+  /* 检查器抬头写清当前在哪一层（区域 · 条目内部的面），而不是只写区域名。 */
+  function setInspPage(view, face) {
+    const area = PAGES[view]?.name || '';
+    document.getElementById('inspPage').textContent = face ? `${area} · ${face}` : area;
+  }
+
+  const AREAS = {
+    experts: {
+      view: 'experts',
+      itemOf: id => committedExpert(id),
+      faces: ['flow', 'manifest', 'grants'],
+      modes: [],
+      defaultFace: item => expertLandingTab(item),
+      apply: applyExpertsRoute
+    },
+    rules: {
+      view: 'rules',
+      itemOf: id => packById(id),
+      faces: ['rules', 'dry'],
+      modes: ['facts'],
+      defaultFace: () => 'rules',
+      apply: applyRulesRoute
+    },
+    knowledge: {
+      view: 'knowledge',
+      itemOf: id => kbById(id),
+      faces: ['docs'],
+      modes: ['search'],
+      defaultFace: () => 'docs',
+      apply: applyKnowledgeRoute
+    }
+  };
+
+  let appliedRoute = null;
+  function applyRoute(raw) {
+    appliedRoute = raw;
+    const parts = String(raw || '').split('/');
+    const area = AREAS[parts[0]];
+    if (area) { area.apply(readRoute(area, parts)); return; }
+    setView(parts[0] || 'overview');
+  }
+
+  function go(raw) {
+    const target = String(raw);
+    if (routeKey() !== target) location.hash = target;
+    if (appliedRoute !== target) applyRoute(target);
+  }
+
+  window.addEventListener('hashchange', () => {
+    const raw = routeKey();
+    if (raw !== appliedRoute) applyRoute(raw);
+  });
+
   document.querySelectorAll('#rail .nav').forEach(btn => {
-    btn.addEventListener('click', () => setView(btn.dataset.view));
+    btn.addEventListener('click', () => go(btn.dataset.view));
+  });
+
+  /* 条目内部的子导航：切面就是换地址，不写审计，也不动「现在看的是谁」。 */
+  document.getElementById('expertTabs').addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (button) go(`experts/${selectedExpertId}/${button.dataset.subview}`);
   });
 
   /* 能力目录子页签：页签是重绘出来的（种类声明 + 条目数），所以用事件委托绑定一次。 */
@@ -2031,6 +2350,112 @@ LIMIT 20;</textarea>
     el.className = 'msg' + (kind ? ' ' + kind : '');
     el.innerHTML = esc(text) + (actions || '');
   }
+  /* 模态：一次确认。confirmName 用于需要把确认动作写成一个具名入口的场景
+     （例如删除资料），其余情况直接给 onConfirm。 */
+  function openModal({ title, text, impact, blocked, confirmLabel, confirmName, onConfirm }) {
+    const modal = document.getElementById('modal');
+    document.getElementById('modalTitle').innerHTML = title || '确认';
+    document.getElementById('modalText').innerHTML = text || '';
+    document.getElementById('modalImpact').innerHTML = impact || '';
+    // 被阻断时确认按钮「不可用但仍在」：让它消失会让人以为是自己点错了。
+    document.getElementById('modalBlocked').innerHTML = blocked || '';
+    const ok = document.getElementById('modalOk');
+    ok.textContent = confirmLabel || '确认';
+    ok.disabled = Boolean(blocked);
+    ok.removeAttribute('onclick');
+    if (confirmName) {
+      ok.setAttribute('onclick', `closeModal();${confirmName}()`);
+    } else {
+      ok.onclick = () => { closeModal(); onConfirm?.(); };
+    }
+    // showModal 在部分无头环境里不生效（open 不会被置位），兜一下，状态仍然以 open 属性为准。
+    try { modal.showModal(); } catch (error) { void error; }
+    if (!modal.open) modal.setAttribute('open', '');
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('modal');
+    try { modal.close(); } catch (error) { void error; }
+    modal.removeAttribute('open');
+  }
+
+  /* 窄屏检查器：开与关只有一份状态，遮罩与 Escape 都写它，
+     这样「点了没反应」这种摆设按钮不会出现。 */
+  function setInspectorOpen(open) {
+    document.body.classList.toggle('inspector-open', open);
+    document.getElementById('inspectorToggle')?.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function toggleInspector() {
+    setInspectorOpen(!document.body.classList.contains('inspector-open'));
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.body.classList.contains('inspector-open')) {
+      setInspectorOpen(false);
+      document.getElementById('inspectorToggle')?.focus();
+    }
+  });
+
+  /* ---- 抽屉 --------------------------------------------------------------
+     一次事务的载体。开与关只有一份状态；「有未保存改动」也只有一个来源，
+     这样「取消」到底是直接关还是先问一次，不会两种判断打架。 */
+  let drawerDirty = false;
+  let drawerKey = null;          // 抽屉里现在装的是哪种表单，用于决定要不要读回草稿
+
+  function openDrawer({ title, sub, body, submitLabel, onSubmit, key }) {
+    drawerKey = key || null;
+    drawerDirty = false;
+    document.getElementById('drawerTitle').textContent = title;
+    document.getElementById('drawerSub').textContent = sub || '';
+    document.getElementById('drawerBody').innerHTML = body;
+    setMessage('drawerMessage', '', '');
+    document.getElementById('dirtyTag').hidden = true;
+    document.getElementById('drawerConfirm').hidden = true;
+    const submit = document.getElementById('drawerSubmit');
+    submit.textContent = submitLabel || '保存';
+    submit.onclick = () => onSubmit?.();
+    document.getElementById('drawer').classList.add('on');
+    document.getElementById('drawer').setAttribute('aria-hidden', 'false');
+  }
+
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('on');
+    document.getElementById('drawer').setAttribute('aria-hidden', 'true');
+    document.getElementById('drawerBody').innerHTML = '';
+    document.getElementById('drawerConfirm').hidden = true;
+    document.getElementById('dirtyTag').hidden = true;
+    drawerDirty = false;
+    drawerKey = null;
+    draft = { id:null, label:'', engine:'PostgreSQL', environment:'', tables:[], indexes:[] };
+  }
+
+  function requestCloseDrawer() {
+    if (drawerDirty) {
+      document.getElementById('drawerConfirm').hidden = false;   // 先问，抽屉留着
+      return;
+    }
+    closeDrawer();
+  }
+
+  function cancelCloseDrawer() { document.getElementById('drawerConfirm').hidden = true; }
+  function forceCloseDrawer() { closeDrawer(); }
+
+  function markDrawerDirty() {
+    drawerDirty = true;
+    document.getElementById('dirtyTag').hidden = false;
+  }
+
+  /* 抽屉里的输入一律走委托：表单是每次打开重建的，逐个绑定会漏掉重绘后的新行。 */
+  document.getElementById('drawer').addEventListener('input', () => {
+    if (drawerKey === 'profile') syncDraftFromDom();
+    markDrawerDirty();
+  });
+  document.getElementById('drawer').addEventListener('change', () => {
+    if (drawerKey === 'profile') syncDraftFromDom();
+    markDrawerDirty();
+  });
+
   function reveal(el) {
     // 原型可能在没有布局的环境里被打开（例如测试），滚动失败不影响状态。
     try { el?.scrollIntoView({ behavior:'smooth', block:'start' }); } catch (error) { void error; }
@@ -2093,7 +2518,7 @@ LIMIT 20;</textarea>
     document.getElementById('profileRows').innerHTML = rows.map(p => {
       const blocking = enabledExpertsReferencing(p.id);
       return `
-      <tr class="clickable${selectedProfileId === p.id ? ' sel' : ''}" data-profile="${p.id}" onclick="inspectProfile('${p.id}', this)">
+      <tr class="clickable${selectedProfileId === p.id ? ' sel-row' : ''}" data-profile="${p.id}" onclick="inspectProfile('${p.id}', this)">
         <td><b>${esc(p.label)}</b></td>
         <td>${esc(p.engine)}</td>
         <td>${esc(p.environment)}</td>
@@ -2157,17 +2582,49 @@ LIMIT 20;</textarea>
     document.getElementById('profileLabel').value = draft.label;
     document.getElementById('profileEngine').value = draft.engine;
     document.getElementById('profileEnvironment').value = draft.environment;
-    document.getElementById('profileEditorTitle').textContent = draft.id ? `编辑资料 ${draft.label}` : '登记新资料';
-    document.getElementById('profileDeleteButton').style.display = draft.id ? 'inline-flex' : 'none';
+  }
+
+  /* 表单不常驻在页面上——它是抽屉里的内容，每次打开重建，
+     所以上一份的状态不会被带进下一份（见 closeDrawer 里重置 draft）。 */
+  function profileFormHtml() {
+    return `
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn" onclick="fillProfileExample()">填入示例</button>
+      </div>
+      <label class="field" for="profileLabel">资料名称</label>
+      <input class="input" id="profileLabel" maxlength="200" placeholder="orders-prod" />
+      <label class="field" for="profileEngine">数据库引擎</label>
+      <select class="select" id="profileEngine">
+        <option>PostgreSQL</option><option>MySQL</option><option>SQL Server</option><option>Oracle</option><option>SQLite</option>
+      </select>
+      <label class="field" for="profileEnvironment">环境</label>
+      <input class="input" id="profileEnvironment" maxlength="40" placeholder="生产（脱敏）" />
+      <p class="requirement-line">标识由后端生成（uuid），专家清单引用的是这个标识——所以「改标签」不会让已授权的专家失效。</p>
+
+      <div class="row" style="justify-content:space-between;margin-top:var(--sp-7)">
+        <span class="field" style="margin:0">表结构快照</span>
+        <button class="btn" onclick="addProfileTable()">＋ 添加表</button>
+      </div>
+      <div id="profileTableRows"></div>
+      <div class="row" style="justify-content:space-between;margin-top:var(--sp-7)">
+        <span class="field" style="margin:0">索引快照</span>
+        <button class="btn" onclick="addProfileIndex()">＋ 添加索引</button>
+      </div>
+      <div id="profileIndexRows"></div>
+      <p class="hint" id="profileStructureHint" style="margin-top:var(--sp-3)">索引列请按顺序填写：规则只回答「有没有以该列为前导的索引」，顺序错了结论就错了。</p>
+      <p class="requirement-line">保存后不会自动授权给任何专家：专家需要在专家工作室中显式选择这份资料，并在启用时才会写入读取授权。</p>`;
+  }
+
+  function openProfileDrawer(title, sub) {
+    openDrawer({ title, sub, body: profileFormHtml(), submitLabel: '保存资料',
+      onSubmit: saveProfile, key: 'profile' });
+    syncProfileInputs();
+    renderProfileDraft();
   }
 
   function newProfile() {
     draft = { id:null, label:'', engine:'PostgreSQL', environment:'', tables:[], indexes:[] };
-    document.getElementById('profileMessage').className = 'msg';
-    document.getElementById('profileMessage').textContent = '';
-    document.getElementById('profileEditor').style.display = 'block';
-    syncProfileInputs(); renderProfileDraft();
-    reveal(document.getElementById('profileEditor'));
+    openProfileDrawer('登记新资料', '只保存人工录入的结构快照。不要填写密码、Token 或 JDBC 地址。');
   }
 
   function editProfile(profileId) {
@@ -2176,18 +2633,12 @@ LIMIT 20;</textarea>
     draft = { id:p.id, label:p.label, engine:p.engine, environment:p.environment,
       tables:p.tables.map(t => ({ name:t.name, columnsText:t.columns.join(', ') })),
       indexes:p.indexes.map(i => ({ name:i.name, table:i.table, columnsText:i.columns.join(', '), unique:i.unique })) };
-    document.getElementById('profileEditor').style.display = 'block';
-    syncProfileInputs(); renderProfileDraft();
-    setMessage('profileMessage','info', `正在编辑「${p.label}」。保存会覆盖这份快照，但不会改变它的标识，因此已授权专家不会失效。`);
-    reveal(document.getElementById('profileEditor'));
+    openProfileDrawer(`编辑资料「${p.label}」`,
+      '保存会覆盖这份快照，但不会改变它的标识——已授权的专家因此不会失效。');
+    setMessage('drawerMessage','info', `正在编辑「${p.label}」。改完记得保存；关掉抽屉前会先问一次。`);
   }
 
-  function cancelProfile() {
-    draft = { id:null, label:'', engine:'PostgreSQL', environment:'', tables:[], indexes:[] };
-    document.getElementById('profileEditor').style.display = 'none';
-    document.getElementById('profileMessage').className = 'msg';
-    document.getElementById('profileMessage').textContent = '';
-  }
+  function cancelProfile() { forceCloseDrawer(); }
 
   function fillProfileExample() {
     draft = { id: draft.id, label:'orders-archive', engine:'PostgreSQL', environment:'归档（脱敏）',
@@ -2197,7 +2648,7 @@ LIMIT 20;</textarea>
       ],
       indexes:[{ name:'orders_2024_user_created_idx', table:'public.orders_2024', columnsText:'user_id, created_at', unique:false }] };
     syncProfileInputs(); renderProfileDraft();
-    setMessage('profileMessage','info','已填入一份示例快照：改成你的资料名后保存即可。索引列的顺序有意义——规则只回答「有没有以该列为前导的索引」。');
+    setMessage('drawerMessage','info','已填入一份示例快照：改成你的资料名后保存即可。索引列的顺序有意义——规则只回答「有没有以该列为前导的索引」。');
   }
 
   function addProfileTable() { syncDraftFromDom(); draft.tables.push({ name:'', columnsText:'' }); renderProfileDraft(); }
@@ -2210,18 +2661,18 @@ LIMIT 20;</textarea>
     const label = draft.label.trim();
     const environment = draft.environment.trim();
     const engine = draft.engine;
-    if (!label) return setMessage('profileMessage','err','请填写资料名称');
-    if (label.length > 200) return setMessage('profileMessage','err','资料名称最多200字符');
-    if (!environment) return setMessage('profileMessage','err','请填写环境，例如「生产（脱敏）」');
-    if (environment.length > 40) return setMessage('profileMessage','err','环境最多40字符');
+    if (!label) return setMessage('drawerMessage','err','请填写资料名称');
+    if (label.length > 200) return setMessage('drawerMessage','err','资料名称最多200字符');
+    if (!environment) return setMessage('drawerMessage','err','请填写环境，例如「生产（脱敏）」');
+    if (environment.length > 40) return setMessage('drawerMessage','err','环境最多40字符');
     if (draft.tables.some(t => !t.name.trim()))
-      return setMessage('profileMessage','err','请补齐表名：表结构快照的每一行都需要表名');
+      return setMessage('drawerMessage','err','请补齐表名：表结构快照的每一行都需要表名');
     if (draft.indexes.some(i => !i.name.trim() || !i.table.trim() || !splitList(i.columnsText).length))
-      return setMessage('profileMessage','err','请补齐索引名称、所属表与索引列（按顺序，逗号分隔）');
+      return setMessage('drawerMessage','err','请补齐索引名称、所属表与索引列（按顺序，逗号分隔）');
     const tables = draft.tables.map(t => ({ name:t.name.trim(), columns:splitList(t.columnsText) }));
     const indexes = draft.indexes.map(i => ({ name:i.name.trim(), table:i.table.trim(), columns:splitList(i.columnsText), unique:Boolean(i.unique) }));
     if (containsSecret(JSON.stringify({ label, engine, environment, tables, indexes })))
-      return setMessage('profileMessage','err','资料含凭据或连接字符串，禁止保存：平台不保存密码、Token 与 JDBC 地址，请脱敏后重试');
+      return setMessage('drawerMessage','err','资料含凭据或连接字符串，禁止保存：平台不保存密码、Token 与 JDBC 地址，请脱敏后重试');
     const isUpdate = Boolean(draft.id);
     if (isUpdate) {
       Object.assign(PROFILES.find(x => x.id === draft.id), { label, engine, environment, tables, indexes });
@@ -2230,10 +2681,13 @@ LIMIT 20;</textarea>
       PROFILES.unshift(created);
       draft.id = created.id;
     }
-    renderProfiles(); syncProfileInputs();
-    setMessage('profileMessage','ok', isUpdate
+    selectedProfileId = draft.id;          // 结果看得见：新行成为当前项
+    renderProfiles();
+    // 结果写在列表旁边，不写在抽屉里——抽屉马上就关了，写在那里等于没写。
+    setMessage('profileListMessage','ok', isUpdate
       ? `资料「${label}」已保存。修改不会自动重新授权，已启用专家持有的读取授权不受影响。`
-      : `资料「${label}」已登记，标识 ${draft.id}。它不会被自动授权给任何专家，也不会连接业务数据库。`);
+      : `资料「${label}」已登记，不会自动授权给任何专家，也不会连接业务数据库。`);
+    closeDrawer();
   }
 
   function askDeleteProfile(profileId) {
@@ -2241,14 +2695,22 @@ LIMIT 20;</textarea>
     const p = PROFILES.find(x => x.id === id);
     if (!p) return;
     const blocking = enabledExpertsReferencing(id);
-    if (blocking.length) {
-      return setMessage('profileListMessage','err',
-        `无法删除「${p.label}」：它正被已启用的专家引用——${blocking.join('、')}。`
-        + '删除会让这些专家指向一份不存在的快照，因此后端返回 409 并点名它们。请先停用这些专家，或在它们的清单中移除这份资料。');
-    }
-    setMessage('profileListMessage','warn', `确认删除资料「${p.label}」？该资料的读取授权会一并失效，且不可撤销。`,
-      `<button class="btn danger" onclick="confirmDeleteProfile('${id}')">确认删除</button>`
-      + `<button class="btn" onclick="setMessage('profileListMessage','','','')">取消</button>`);
+    const declared = Object.keys(PROFILE_REFERENCES).filter(e => PROFILE_REFERENCES[e].includes(id));
+    openModal({
+      title: `删除资料「${p.label}」？`,
+      text: '删除后这份脱敏快照与它的读取授权一并失效，且<b>不可撤销</b>。'
+        + '引用过它的专家需要重新选择资料后才能真正启用。',
+      impact: `影响面：这份资料登记了 ${p.tables.length} 张表、${p.indexes.length} 个索引；`
+        + `清单里引用它的专家：${declared.length ? esc(declared.join('、')) : '无'}。`,
+      blocked: blocking.length
+        ? `现在删不掉：它正被<b>已启用</b>的专家 ${esc(blocking.join('、'))} 引用。`
+          + '资料消失会让在跑的专家指向一份不存在的快照，失败发生在执行时而不是保存时，'
+          + '因此后端返回 <span class="mono">409</span> 并点名这些专家。'
+          + '请先停用它们，或在它们的清单中移除这份资料。'
+        : '',
+      confirmLabel: '确认删除',
+      onConfirm: () => confirmDeleteProfile(id)
+    });
   }
 
   function confirmDeleteProfile(profileId) {
@@ -2263,7 +2725,7 @@ LIMIT 20;</textarea>
       document.getElementById('inspectorBody').innerHTML =
         '<div class="insp-empty">这份资料已被删除。列表里的其他资料可以继续查看。</div>';
     }
-    if (draft.id === id) cancelProfile();
+    if (draft.id === id) closeDrawer();   // 不留一张指向已删除对象的表单
     renderProfiles();
     setMessage('profileListMessage','ok', `资料「${p.label}」已删除。引用过它的专家需要重新选择资料后才能真正启用。`);
   }
@@ -2314,14 +2776,71 @@ LIMIT 20;</textarea>
     endpoint:'npx -y @modelcontextprotocol/server-filesystem', tools:['search','read']
   };
 
+  /* 工具的形状。后端把 tools 存成 [{"name":...}]，注释写明「与 tools/list 返回的对象同形，将来可用真实
+     握手填充而不需要迁移」——这就是将来接协议发现的现成接缝。原型同样用对象：
+       source   declared（操作者手填）/ discovered（协议发现，目前不可能出现）
+       verified 是否经协议握手确认；平台没有 MCP 客户端，因此恒为 false。
+     没有 discovery 就没有「服务器发布了但我没放行」这个信息源，所以现在不做逐工具放行开关：
+     那会是一个没有依据的控件。 */
+  const mcpToolName = tool => typeof tool === 'string' ? tool : tool.name;
+  const mcpToolNames = server => (server?.tools ?? []).map(mcpToolName);
+  const declareTools = names => names.map(name => ({ name, source:'declared', verified:false }));
+
+  /* 目标状态只描述传输目标：启动命令找不找得到、地址格式对不对。
+     它绝不表示「已连接」——平台没有 MCP 客户端，那样写是谎言。 */
+  const PROBE_CHIP = {
+    unknown:   '<span class="chip">未探测</span>',
+    reachable: '<span class="chip ok">目标可达</span>',
+    missing:   '<span class="chip warn">目标不可达</span>'
+  };
+  const probeChip = server => PROBE_CHIP[server?.probeState ?? 'unknown'] ?? PROBE_CHIP.unknown;
+
   function mcpNote(id, kind, html) {
     MCP_NOTES[id] = { kind, html };
     renderMcpServers();
   }
 
+  /* 表单里的工具清单：从输入框解析出来，不另存一份数组。 */
+  function mcpToolDraft() {
+    const rows = [];
+    const seen = new Set();
+    (document.getElementById('mcpTools')?.value || '').split(',').forEach((piece, index) => {
+      const name = piece.trim();
+      if (!name || seen.has(name)) return;
+      seen.add(name);
+      rows.push({ name, index, valid: SEGMENT.test(name) });
+    });
+    return rows;
+  }
+
+  function renderMcpToolList() {
+    const host = document.getElementById('mcpToolList');
+    if (!host) return;
+    const draft = mcpToolDraft();
+    host.innerHTML = draft.length
+      ? '<div class="tool-list">' + draft.map(tool => `
+        <div class="tool-row">
+          <span class="mono">${esc(tool.name)}</span>
+          <span class="chip ${tool.valid ? '' : 'warn'}">${tool.valid ? '操作者声明' : '标识不合法'}</span>
+          <span class="chip warn">未经协议验证</span>
+          <span class="chip">将发布 mcp.&lt;服务器&gt;.${esc(tool.name)}</span>
+          <button class="btn" onclick="removeMcpToolAt(${tool.index})">移除</button>
+        </div>`).join('') + '</div>'
+      : '<p class="hint" style="margin-top:8px">工具清单为空：这个服务器不会发布任何能力。</p>';
+  }
+
+  function removeMcpToolAt(index) {
+    const input = document.getElementById('mcpTools');
+    if (!input) return;
+    const parts = input.value.split(',');
+    parts.splice(index, 1);
+    input.value = parts.map(piece => piece.trim()).filter(Boolean).join(', ');
+    renderMcpToolList();
+  }
+
   function mcpProblems(server) {
     const problems = [];
-    if (!server.tools.length) problems.push('工具白名单为空：该服务器不会发布任何能力');
+    if (!server.tools.length) problems.push('工具清单为空：该服务器不会发布任何能力');
     if (!server.enabled) problems.push('未启用：平台不会把它的工具交给任何专家');
     if (!server.trusted) problems.push('未信任：未信任的服务器不会被调用');
     return problems;
@@ -2331,7 +2850,7 @@ LIMIT 20;</textarea>
     const host = document.getElementById('mcpServers');
     document.getElementById('mcpEmpty').style.display = MCP_SERVERS.length ? 'none' : 'flex';
     host.innerHTML = MCP_SERVERS.map(server => {
-      const capabilities = server.tools.map(tool => `mcp.${server.id}.${tool}`);
+      const capabilities = mcpToolNames(server).map(tool => `mcp.${server.id}.${tool}`);
       const problems = mcpProblems(server);
       const note = MCP_NOTES[server.id];
       const authorised = [...new Set(capabilities.flatMap(capability => mcpAuthorisedExperts(capability)))];
@@ -2341,13 +2860,24 @@ LIMIT 20;</textarea>
         <div class="cap-head clickable" onclick="inspectMcpServer('${server.id}', this)">
           <span><b>${esc(server.name)}</b> <span class="mono kind-id">${esc(server.id)}</span>
             <span class="chip ${server.enabled ? 'ok' : 'warn'}">${server.enabled ? '已启用' : '未启用'}</span>
-            <span class="chip ${server.trusted ? 'ok' : 'warn'}">${server.trusted ? '已信任' : '未信任'}</span></span>
+            <span class="chip ${server.trusted ? 'ok' : 'warn'}">${server.trusted ? '已信任' : '未信任'}</span>
+            ${probeChip(server)}</span>
           <span class="chip">${server.tools.length} 个工具</span>
         </div>
         <dl class="cap-meta">
           <dt>传输方式</dt><dd class="mono">${esc(server.transport)}</dd>
           <dt>${server.transport === 'stdio' ? '启动命令' : '地址'}</dt><dd class="mono">${esc(server.endpoint)}</dd>
-          <dt>工具白名单</dt><dd class="mono">${server.tools.map(esc).join('、') || '（空）'}（操作者声明，未经协议验证）</dd>
+          <dt>目标状态</dt><dd>${probeChip(server)} <span class="hint">${server.probeState === 'reachable'
+            ? '传输目标可达（启动命令找得到 / 地址格式有效）。<b>这不是已连接</b>：平台没有 MCP 客户端，从未发起过协议握手。'
+            : server.probeState === 'missing' ? '传输目标不可达：该服务器即使被信任也不会可用。'
+            : '尚未探测：点「探测」只检查传输目标，不做连接测试。'}</span></dd>
+          <dt>工具清单</dt><dd>${server.tools.length ? `<div class="tool-list">${server.tools.map(tool => `
+            <div class="tool-row">
+              <span class="mono">${esc(mcpToolName(tool))}</span>
+              <span class="chip">${tool.source === 'discovered' ? '协议发现' : '操作者声明'}</span>
+              <span class="chip ${tool.verified ? 'ok' : 'warn'}">${tool.verified ? '已验证' : '未经协议验证'}</span>
+              <span class="chip">mcp.${esc(server.id)}.${esc(mcpToolName(tool))}</span>
+            </div>`).join('')}</div>` : '（空）该服务器不会发布任何能力'}</dd>
           <dt>发布的能力</dt><dd class="mono">${capabilities.map(esc).join('、') || '—'}${usable ? '' : ' <span class="chip warn">未启用 / 未信任期间不交给任何专家</span>'}</dd>
           <dt>已授权专家</dt><dd>${authorised.length ? esc(authorised.join('、')) : '暂无（需由专家清单声明 mcpTools）'}</dd>
         </dl>
@@ -2369,7 +2899,7 @@ LIMIT 20;</textarea>
   function renderMcpCapabilities() {
     const items = [];
     for (const server of MCP_SERVERS) {
-      for (const tool of server.tools) items.push({ capability:`mcp.${server.id}.${tool}`, server, tool });
+      for (const tool of mcpToolNames(server)) items.push({ capability:`mcp.${server.id}.${tool}`, server, tool });
     }
     document.getElementById('mcpCapabilityHint').style.display = items.length ? 'none' : 'block';
     document.getElementById('mcpCapabilities').innerHTML = items.map(item => `
@@ -2395,7 +2925,7 @@ LIMIT 20;</textarea>
 
   function publishedCapability(capabilityId) {
     for (const server of MCP_SERVERS) {
-      for (const tool of server.tools) {
+      for (const tool of mcpToolNames(server)) {
         if (`mcp.${server.id}.${tool}` === capabilityId) return { capability:capabilityId, server, tool };
       }
     }
@@ -2419,7 +2949,7 @@ LIMIT 20;</textarea>
   }
 
   function mcpServerDetail(server) {
-    const capabilities = server.tools.map(tool => `mcp.${server.id}.${tool}`);
+    const capabilities = mcpToolNames(server).map(tool => `mcp.${server.id}.${tool}`);
     const problems = mcpProblems(server);
     const authorised = [...new Set(capabilities.flatMap(capability => mcpAuthorisedExperts(capability)))];
     return {
@@ -2429,7 +2959,8 @@ LIMIT 20;</textarea>
         ['标识', `<span class="mono">${esc(server.id)}</span>`],
         ['传输方式', `<span class="mono">${esc(server.transport)}</span>`],
         [server.transport === 'stdio' ? '启动命令' : '地址', `<span class="mono">${esc(server.endpoint)}</span>`],
-        ['工具白名单', capabilities.length ? capabilities.map(esc).join('、') : '（空）'],
+        ['工具清单', capabilities.length ? capabilities.map(esc).join('、') : '（空）'],
+        ['目标状态', `${server.probeState === 'reachable' ? '目标可达' : server.probeState === 'missing' ? '目标不可达' : '未探测'}（只描述传输目标，不代表已连接）`],
         ['启用 / 信任', `${server.enabled ? '已启用' : '未启用'} / ${server.trusted ? '已信任' : '未信任'}`],
         ['已授权专家', authorised.length ? esc(authorised.join('、')) : '暂无（需由专家清单声明 mcpTools）'],
         ['管理入口', '本页可修改、启用、信任、探测、删除']
@@ -2451,7 +2982,8 @@ LIMIT 20;</textarea>
     document.getElementById('mcpServerName').value = MCP_EXAMPLE.name;
     document.getElementById('mcpTransport').value = MCP_EXAMPLE.transport;
     document.getElementById('mcpEndpoint').value = MCP_EXAMPLE.endpoint;
-    document.getElementById('mcpTools').value = MCP_EXAMPLE.tools.join(', ');
+    document.getElementById('mcpTools').value = mcpToolNames(MCP_EXAMPLE).join(', ');
+    renderMcpToolList();
     syncMcpPlaceholder();
     setMessage('mcpMessage','info','已填入示例。直接点「登记服务器」，它就会出现在下面的列表里——登记后仍然是未启用、未信任。');
   }
@@ -2463,6 +2995,7 @@ LIMIT 20;</textarea>
     document.getElementById('mcpTransport').value = 'stdio';
     document.getElementById('mcpEndpoint').value = '';
     document.getElementById('mcpTools').value = '';
+    renderMcpToolList();
     document.getElementById('mcpFormTitle').textContent = '登记 MCP 服务器';
     document.getElementById('mcpSubmit').textContent = '登记服务器';
     syncMcpPlaceholder();
@@ -2476,7 +3009,8 @@ LIMIT 20;</textarea>
     document.getElementById('mcpServerName').value = server.name;
     document.getElementById('mcpTransport').value = server.transport;
     document.getElementById('mcpEndpoint').value = server.endpoint;
-    document.getElementById('mcpTools').value = server.tools.join(', ');
+    document.getElementById('mcpTools').value = mcpToolNames(server).join(', ');
+    renderMcpToolList();
     document.getElementById('mcpFormTitle').textContent = `编辑服务器 ${server.id}`;
     document.getElementById('mcpSubmit').textContent = '保存修改';
     syncMcpPlaceholder();
@@ -2528,10 +3062,13 @@ LIMIT 20;</textarea>
         }
       }
     }
+    // 目标变了，上一次探测的结论就失效了：不能让旧的目标状态继续挂在新的地址上。
+    const targetChanged = !existing || existing.endpoint !== endpoint || existing.transport !== transport;
     const saved = {
-      id:serverId, name: name || serverId, transport, endpoint, tools,
+      id:serverId, name: name || serverId, transport, endpoint, tools: declareTools(tools),
       enabled: existing ? existing.enabled : false,
-      trusted: existing ? existing.trusted : false
+      trusted: existing ? existing.trusted : false,
+      probeState: targetChanged ? 'unknown' : (existing.probeState ?? 'unknown')
     };
     if (existing) Object.assign(existing, saved); else MCP_SERVERS.push(saved);
     resetMcpForm();
@@ -2555,19 +3092,21 @@ LIMIT 20;</textarea>
         : `已取消${label}。${field === 'enabled' ? '平台不会再把它的工具交给任何专家。' : '未信任的服务器不会被调用。'}`);
   }
 
+  /* 探测只检查传输目标，结果写进服务器对象——一次性提示会被重绘冲掉，能力目录也读不到。
+     措辞上绝不出现「已连接」：平台没有 MCP 客户端，那会是谎言。 */
   function probeMcpServer(serverId) {
     const server = MCP_SERVERS.find(x => x.id === serverId);
     if (!server) return;
-    if (server.transport === 'stdio') {
-      const command = server.endpoint.split(/\s+/)[0];
-      mcpNote(serverId, 'info',
-        `探测（原型只校验目标的形状）：启动命令首段 ${command} 非空且没有控制字符。`
-        + '真实实现会再对这一段做一次文件名查找——始终不启动进程。协议层未验证：平台尚无 MCP 客户端，工具白名单仍为操作者声明。');
-    } else {
-      mcpNote(serverId, 'info',
-        `探测（原型只校验地址格式）：${server.endpoint} 以 http(s):// 开头，格式有效。`
-        + '真实实现同样不会发起连接。协议层未验证：平台尚无 MCP 客户端，工具白名单仍为操作者声明。');
-    }
+    const command = (server.endpoint || '').split(/\s+/)[0] || '';
+    const reachable = server.transport === 'stdio'
+      ? Boolean(command) && !CONTROL_CHARS.test(server.endpoint)
+      : /^https?:\/\//.test(server.endpoint);
+    server.probeState = reachable ? 'reachable' : 'missing';
+    mcpNote(serverId, reachable ? 'info' : 'warn',
+      `探测：${server.transport === 'stdio'
+        ? `启动命令首段 ${esc(command) || '（空）'}，平台只做形状与字符检查，未启动进程。`
+        : `地址 ${esc(server.endpoint)} 格式有效，平台未发起连接。`}`
+      + '这是一次<b>传输目标检查，不是连接测试</b>：平台尚无 MCP 客户端，工具清单仍为操作者声明，未经协议验证。');
   }
 
   function askDeleteMcpServer(serverId) {
@@ -2587,7 +3126,7 @@ LIMIT 20;</textarea>
   function confirmDeleteMcpServer(serverId) {
     const server = MCP_SERVERS.find(x => x.id === serverId);
     if (!server) return;
-    const blocked = server.tools
+    const blocked = mcpToolNames(server)
       .map(tool => `mcp.${serverId}.${tool}`)
       .filter(capability => mcpAuthorisedExperts(capability).length);
     if (blocked.length) {
@@ -2721,7 +3260,7 @@ LIMIT 20;</textarea>
   const capabilitiesOf = kind => CAPABILITIES.filter(c => c.kind === kind);
   const platformCapabilities = () => CAPABILITIES.filter(c => !kindById(c.kind)?.expertScoped);
   function publishedCapabilities() {
-    return MCP_SERVERS.flatMap(server => server.tools.map(tool => ({ capability:`mcp.${server.id}.${tool}`, server, tool })));
+    return MCP_SERVERS.flatMap(server => mcpToolNames(server).map(tool => ({ capability:`mcp.${server.id}.${tool}`, server, tool })));
   }
   const capabilityTitle = id => capabilityById(id)?.title
     ?? (publishedCapability(id) ? `服务器 ${publishedCapability(id).server.id} 的工具 ${publishedCapability(id).tool}` : id);
@@ -3125,7 +3664,7 @@ LIMIT 20;</textarea>
       }
     });
     const usable = MCP_SERVERS.filter(server => server.enabled && server.trusted)
-      .flatMap(server => server.tools.map(tool => ({ id:`mcp.${server.id}.${tool}`, title:`${server.id} · ${tool}` })));
+      .flatMap(server => mcpToolNames(server).map(tool => ({ id:`mcp.${server.id}.${tool}`, title:`${server.id} · ${tool}` })));
     groups.push(usable.length
       ? `<optgroup label="MCP 工具（需先在下方的授权里声明）">${usable.map(item => `<option value="${esc(item.id)}">${esc(item.title)}（${esc(item.id)}）</option>`).join('')}</optgroup>`
       : '<optgroup label="MCP 工具（需先在下方的授权里声明）"><option disabled value="">（暂无可选）</option></optgroup>');
@@ -3406,17 +3945,117 @@ LIMIT 20;</textarea>
     };
   }
 
+  /* 进入场景决定默认落在哪个面：已登记的专家，它的本体是流程（进来就是看它干什么）；
+     新建 / 复制出来的，身份还没定下来，先停在清单把标识与名称补上。 */
+  function expertLandingTab(expert) {
+    return expert?.isNew ? 'manifest' : 'flow';
+  }
+
+  /* 行尾写出的去向与真实落点必须来自同一份判断，不允许各写一份——
+     否则标签与落点迟早对不上，又变成两份状态。 */
+  function expertGoLabel(expert) {
+    return expertLandingTab(expert) === 'flow' ? '查看流程 →' : '继续填写 →';
+  }
+
+  const EXPERT_FACE_LABEL = { flow: '流程', manifest: '清单', grants: '授权' };
+
   function renderExperts() {
     const host = document.getElementById('expertList');
     if (!host) return;
     host.innerHTML = EXPERTS.map(e => `
-      <button class="list-item${e.id === selectedExpertId ? ' active' : ''}" onclick="inspectExpert('${e.id}', this)">
-        <span><b>${esc(e.name)}</b><small>${esc(e.id)} · ${e.enabled ? '已启用' : e.builtin ? '内置模板' : '草稿'} · r${e.revision} · ${e.nodes.length} 个节点${e.isNew ? ' · 未保存' : ''}</small></span>
-        <span class="chip ${e.enabled ? 'ok' : e.builtin ? 'info' : 'warn'}">${e.enabled ? '已启用' : e.builtin ? '内置' : '草稿'}</span>
-      </button>`).join('');
+      <div class="list-item${e.id === selectedExpertId ? ' sel-row' : ''}" data-expert="${e.id}">
+        <button class="row-main" onclick="openExpert('${e.id}', this)">
+          <span><b>${esc(e.name)}</b><small>${esc(e.id)} · ${e.enabled ? '已启用' : e.builtin ? '内置模板' : '草稿'} · r${e.revision} · ${e.nodes.length} 个节点${e.isNew ? ' · 未保存' : ''}</small></span>
+          <span class="row-go">${expertGoLabel(e)}</span>
+        </button>
+        <div class="row-actions">
+          <span class="chip ${e.enabled ? 'ok' : e.builtin ? 'info' : 'warn'}">${e.enabled ? '已启用' : e.builtin ? '内置' : '草稿'}</span>
+        </div>
+      </div>`).join('');
 
     // 可选的平台级能力与「被平台停用」的清单都由能力目录那份状态生成（见 renderNodeCapabilityOptions）。
     renderNodeCapabilityOptions();
+  }
+
+  /* 点一行 = 导航到它的条目页（一步到达，不用自己找页签）。intent 让调用方显式指定落点。 */
+  function openExpert(id, el, intent) {
+    const expert = committedExpert(id);
+    if (!expert) return;
+    const face = intent || expertLandingTab(expert);
+    guardExpertDraft(() => {
+      const row = el?.closest('.list-item') || el;
+      if (selectedExpertId !== id || !expertDraft) selectExpert(id, row);
+      go(`experts/${id}/${face}`);
+    }, `切换到「${expert.name || id}」`);
+  }
+
+  /* 未保存草稿的离开守卫：只在「真的要换掉草稿」这一刻拦。
+     切区域、切面、回集合页都不动草稿，不该被拦。 */
+  function guardExpertDraft(onProceed, what) {
+    if (!expertDirty || !expertDraft) return onProceed();
+    const who = expertDraft.name || expertDraft.id;
+    openModal({
+      title: '放弃未保存的修改？',
+      text: `「<b>${esc(who)}</b>」有未保存的修改，${esc(what)}会丢掉它们。`,
+      impact: '草稿只存在于内存中：节点改动、名称与授权勾选都还没有提交。<br />要留下它们，先「保存草稿」，或直接「启用并授权」。',
+      confirmLabel: '放弃并继续',
+      onConfirm: () => { expertDirty = false; onProceed(); }
+    });
+  }
+
+  /* 切面：换地址、换可见面板、同步面包屑与检查器抬头；不动当前条目。 */
+  function expertTab(face) {
+    document.querySelectorAll('#expertItem .subview[data-subview]').forEach(sv =>
+      sv.classList.toggle('active', sv.dataset.subview === face));
+    document.querySelectorAll('#expertTabs button').forEach(b => {
+      const on = b.dataset.subview === face;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    const label = EXPERT_FACE_LABEL[face] || face;
+    document.getElementById('expertCrumbFace').textContent = label;
+    setInspPage('experts', label);
+  }
+
+  function applyExpertsRoute(route) {
+    setView('experts', { skipPick: true });
+    if (route.kind === 'missing') {
+      showRoutePage('experts', 'list');
+      setMessage('expertListMessage', 'err',
+        `地址指向的专家「${esc(route.seg)}」不在清单中，已回到专家清单。`);
+      if (selectedExpertId && committedExpert(selectedExpertId)) {
+        // 只把检查器切回这个专家：selectExpert 会重建草稿，那会把条目页上没保存的改动悄悄丢掉。
+        showDetail('expert', selectedExpertId, document.querySelector(`#expertList [data-expert="${selectedExpertId}"]`));
+      } else {
+        DEFAULT_PICK.experts();
+      }
+      finishInspector();
+      return;
+    }
+    if (route.kind === 'list') {
+      showRoutePage('experts', 'list');
+      // 集合页沿用当前选中的专家：回列表不该丢掉位置，更不该丢掉条目页上没保存的草稿。
+      if (selectedExpertId && committedExpert(selectedExpertId)) {
+        // 只把检查器切回这个专家：selectExpert 会重建草稿，那会把条目页上没保存的改动悄悄丢掉。
+        showDetail('expert', selectedExpertId, document.querySelector(`#expertList [data-expert="${selectedExpertId}"]`));
+      } else {
+        DEFAULT_PICK.experts();
+      }
+      finishInspector();
+      return;
+    }
+    showRoutePage('experts', 'item');
+    if (selectedExpertId !== route.item.id || !expertDraft) {
+      selectExpert(route.item.id, document.querySelector(`#expertList [data-expert="${route.item.id}"]`));
+    }
+    expertTab(route.face);
+    // setView 会清空检查器并填一段占位，所以这里不看「是否为空」，直接回指：
+    // 面是这个专家的面，检查器就必须是这个专家的卡片。
+    showDetail('expert', route.item.id, document.querySelector(`#expertList [data-expert="${route.item.id}"]`));
+    // 进条目页要重读一遍可授权的东西：服务器状态可能在别的页面被改过（例如撤回了某个 MCP 服务器的信任）。
+    // 只切可见性会让「清单」面继续显示已经不可授权的工具。
+    if (expertDraft) { renderExpertPickers(); renderExpertComposition(); renderExpertManifest(); }
+    finishInspector();
   }
 
   function selectExpert(id, el) {
@@ -3510,14 +4149,24 @@ LIMIT 20;</textarea>
         action: `onchange="toggleExpertPick('rulePacks','${p.id}')"`
       })).join('');
 
-    const published = MCP_SERVERS.filter(s => s.enabled && s.trusted)
-      .flatMap(s => s.tools.map(t => ({ capability:`mcp.${s.id}.${t}`, server:s.id, tool:t })));
-    document.getElementById('pickMcpTools').innerHTML = published.length
-      ? published.map(item => pickerRow({
-          checked: expertDraft.mcpTools.includes(item.capability), disabled: false, id: item.capability,
-          title: item.capability, meta: `由服务器 ${item.server} 发布 · 尚未接入（平台尚无 MCP 客户端）`,
-          action: `onchange="toggleExpertPick('mcpTools','${item.capability}')"`
-        })).join('')
+    /* 按服务器分组（参照 MCP Router 的 Project 呈现层）。分组只减少阅读与勾选成本，
+       不产生任何共享语义：每个专家执行时仍是自己的 (执行, 专家, 服务器) 会话。 */
+    const usableServers = MCP_SERVERS.filter(s => s.enabled && s.trusted);
+    document.getElementById('pickMcpTools').innerHTML = usableServers.length
+      ? usableServers.map(s => `
+        <div class="pick-group">
+          <div class="pick-group-head">服务器 ${esc(s.id)} · ${esc(s.name)}
+            <span class="chip ok">已启用</span><span class="chip ok">已信任</span>${probeChip(s)}
+            <span class="chip">${s.tools.length} 个工具</span></div>
+          ${s.tools.map(t => { const capability = `mcp.${s.id}.${mcpToolName(t)}`; return pickerRow({
+            checked: expertDraft.mcpTools.includes(capability), disabled: false, id: capability,
+            title: capability,
+            meta: `${t.source === 'discovered' ? '协议发现' : '操作者声明'} · ${t.verified ? '已验证' : '未经协议验证'} · 尚未接入（平台尚无 MCP 客户端）`,
+            action: `onchange="toggleExpertPick('mcpTools','${capability}')"`
+          }); }).join('')}
+        </div>`).join('')
+        + '<p class="hint" style="margin-top:8px">勾掉一项即从本专家的 <span class="mono">mcpTools</span> 移除该工具；'
+        + '按服务器分组只是呈现方式，<b>不共享会话</b>——每个专家执行时各自持有自己的 (执行, 专家, 服务器) 会话。</p>'
       : `<p class="pick-empty">没有可授权的工具：平台当前${MCP_SERVERS.length ? '没有「已启用且已信任」的服务器' : '没有登记任何 MCP 服务器'}。
           这是如实状态——目录不会因为「应该有 MCP」就虚构一个工具，也不会退化为「全部允许」。登记并启用、信任服务器后，它的工具会出现在这里。</p>`;
   }
@@ -3571,7 +4220,7 @@ LIMIT 20;</textarea>
     const edges = expertDraft.edges;
     if (!nodes.length) {
       svg.setAttribute('viewBox', '0 0 560 140');
-      svg.innerHTML = `<text x="280" y="76" text-anchor="middle" font-size="12" fill="#64748b">流程还没有节点：从下面的下拉框选一个能力添加。</text>`;
+      svg.innerHTML = `<text class="dag-empty" x="280" y="76" text-anchor="middle">流程还没有节点：从下面的下拉框选一个能力添加。</text>`;
       return;
     }
     const depth = {};
@@ -3595,12 +4244,12 @@ LIMIT 20;</textarea>
         pos[n.id] = { x: 30 + Number(d) * 150, y: 34 + i * 74, w: 128, h: 40 };
       });
     });
-    const arrow = `<defs><marker id="arw" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/></marker></defs>`;
+    const arrow = `<defs><marker id="arw" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path class="dag-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs>`;
     const lines = edges.map(e => {
       const a = pos[e.source], b = pos[e.target];
       if (!a || !b) return '';
       const x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x, y2 = b.y + b.h / 2;
-      return `<path d="M${x1},${y1} C ${x1 + 40},${y1} ${x2 - 40},${y2} ${x2},${y2}" stroke="#2563eb" stroke-width="2" fill="none" marker-end="url(#arw)"/>`;
+      return `<path class="dag-edge" d="M${x1},${y1} C ${x1 + 40},${y1} ${x2 - 40},${y2} ${x2},${y2}" marker-end="url(#arw)"/>`;
     }).join('');
     const boxes = nodes.map(n => {
       const p = pos[n.id];
@@ -3608,11 +4257,9 @@ LIMIT 20;</textarea>
       const missed = !expertDraft.rulePacks.length ? false
         : requiredCapabilitiesFor(expertDraft.rulePacks).includes(n.capability);
       return `<g class="dag-node" onclick="selectNode('${n.id}')" style="cursor:pointer">
-        <rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="8"
-          fill="${selected ? '#dbeafe' : '#fff'}" stroke="${selected ? '#2563eb' : '#93c5fd'}" stroke-width="${selected ? 2.5 : 2}"
-          ${n.required ? '' : 'stroke-dasharray="5 3"'} />
-        <text x="${p.x + p.w / 2}" y="${p.y + 17}" text-anchor="middle" font-size="11" fill="#172033">${esc(shortTitle(n.capability))}</text>
-        <text x="${p.x + p.w / 2}" y="${p.y + 31}" text-anchor="middle" font-size="9" fill="#64748b">${n.required ? '必需' : '可选'}${missed ? ' · 规则包所需' : ''}</text>
+        <rect class="dag-box${selected ? ' sel' : ''}${n.required ? '' : ' optional'}" x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="8" />
+        <text class="dag-title" x="${p.x + p.w / 2}" y="${p.y + 17}" text-anchor="middle">${esc(shortTitle(n.capability))}</text>
+        <text class="dag-sub" x="${p.x + p.w / 2}" y="${p.y + 31}" text-anchor="middle">${n.required ? '必需' : '可选'}${missed ? ' · 规则包所需' : ''}</text>
       </g>`;
     }).join('');
     svg.innerHTML = arrow + `<g>${lines}</g><g>${boxes}</g>`;
@@ -3831,7 +4478,14 @@ LIMIT 20;</textarea>
     setMessage('expertActionMessage','ok', `专家 ${esc(id)} 已删除。已启用专家引用过的能力不会因此被停用（引用方少了，不构成阻止理由）。`);
   }
 
+  /* 新建 / 复制都是「配置场景」：身份刚生成、还没确认，落在「清单」把标识与名称补上，
+     而不是直接扔进流程画布。守卫必须在改动 EXPERTS 之前——
+     否则用户点「取消」时新专家已经躺在列表里了。 */
   function newExpert() {
+    guardExpertDraft(createBlankExpert, '新建一个专家');
+  }
+
+  function createBlankExpert() {
     const draft = { id:'', name:'', builtin:false, enabled:false, revision:1, isNew:true,
       knowledge:[], profiles:[], rulePacks:[], mcpTools:[], nodes:[], edges:[] };
     let seq = EXPERTS.length + 1;
@@ -3839,12 +4493,17 @@ LIMIT 20;</textarea>
     draft.id = `expert-${seq}`;
     EXPERTS.push(draft);
     selectExpert(draft.id, null);
+    go(`experts/${draft.id}/manifest`);
     document.getElementById('expertNameInput').focus();
     setMessage('expertActionMessage','info',
       '新建了空专家：标识已填好（创建后不再修改），先填名称、再挑规则包与节点。它现在是「未保存」状态，保存前不会被执行。');
   }
 
   function copyExpert() {
+    guardExpertDraft(duplicateSelectedExpert, '复制出另一个专家');
+  }
+
+  function duplicateSelectedExpert() {
     const source = committedExpert(selectedExpertId);
     if (!source) return setMessage('expertListMessage','err','先选择一个要复制的专家。');
     let seq = 2;
@@ -3853,7 +4512,9 @@ LIMIT 20;</textarea>
     const copy = Object.assign(JSON.parse(JSON.stringify(source)), { id, name:`${source.name}（副本）`, builtin:false, enabled:false, revision:1, isNew:false });
     EXPERTS.push(copy);
     selectExpert(id, null);
-    setMessage('expertListMessage','ok', `已复制为 ${id}。副本是自定义专家，不继承任何授权（因为它还没启用），可以自由修改。`);
+    go(`experts/${id}/manifest`);
+    // 先跳转、再写消息：路由会清空集合页的消息，反序会把刚写好的结果一起抹掉。
+    setMessage('expertActionMessage','ok', `已复制为 ${id}。副本是自定义专家，不继承任何授权（因为它还没启用），可以自由修改。`);
   }
 
   function renderExpertManifest() {
@@ -3901,9 +4562,72 @@ LIMIT 20;</textarea>
     const host = document.getElementById('rulePackList');
     if (!host) return;
     host.innerHTML = RULE_PACKS.map(p => `
-      <button class="list-item${p.id === selectedRulePackId ? ' active' : ''}" onclick="inspectRulePack('${p.id}', this)">
+      <button class="list-item${p.id === selectedRulePackId ? ' sel-row' : ''}" data-pack="${p.id}" onclick="inspectRulePack('${p.id}', this)">
         <span><b>${esc(p.name)}</b><small class="mono">${esc(p.id)} · ${p.rules.length} 条规则 · ${p.builtin ? '内置只读' : p.enabled ? `已启用 · r${p.revision}` : '已停用'}</small><small class="requirement-line">需要能力：${esc(p.requires.join('、') || '（无）')}</small></span>
       </button>`).join('');
+  }
+
+  function goRuleFace(face) { go(`rules/${selectedRulePackId}/${face}`); }
+
+  function ruleTab(face) {
+    document.querySelectorAll('#ruleItem .subview[data-subview]')
+      .forEach(sv => sv.classList.toggle('active', sv.dataset.subview === face));
+    document.querySelectorAll('#ruleTabs button').forEach(b => {
+      const on = b.dataset.subview === face;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.getElementById('ruleCrumbFace').textContent = face === 'dry' ? '试算' : '规则';
+    setInspPage('rules', face === 'dry' ? '试算' : '规则');
+  }
+
+  function applyRulesRoute(route) {
+    setView('rules', { skipPick: true });
+    if (route.kind === 'missing') {
+      showRoutePage('rules', 'list');
+      setMessage('rulePackListMessage', 'err',
+        `地址指向的规则包「${esc(route.seg)}」不在库中，已回到规则包清单。`);
+      if (selectedRulePackId && packById(selectedRulePackId)) renderRuleDetail();
+      finishInspector();
+      return;
+    }
+    if (route.kind === 'mode') {
+      // 事实词表属于整个规则库：它没有一个「当前选中的那一行」，检查器要如实说出来。
+      showRoutePage('rules', 'mode');
+      setInspPage('rules', '事实词表');
+      document.getElementById('inspectorBody').innerHTML =
+        '<div class="insp-empty">事实词表是<b>整个规则库</b>的声明，不属于某一个规则包，'
+        + '因此这一页<b>没有「当前选中的那一行」</b>——要看某个包的规则或试算，请回到清单点进去。</div>';
+      return;
+    }
+    if (route.kind === 'list') {
+      showRoutePage('rules', 'list');
+      // 集合页沿用当前选中的包：回清单不该把位置丢掉。
+      if (selectedRulePackId && packById(selectedRulePackId)) {
+        renderRuleDetail();
+        showDetail('rulePack', selectedRulePackId,
+          document.querySelector(`#rulePackList [data-pack="${selectedRulePackId}"]`));
+      } else {
+        DEFAULT_PICK.rules();
+      }
+      finishInspector();
+      return;
+    }
+    showRoutePage('rules', 'item');
+    if (selectedRulePackId !== route.item.id) {
+      selectRulePack(route.item.id, document.querySelector(`#rulePackList [data-pack="${route.item.id}"]`));
+    }
+    const pack = route.item;
+    document.getElementById('ruleItemTitle').textContent = pack.name;
+    document.getElementById('ruleItemSub').textContent =
+      `${pack.id} · ${pack.rules.length} 条规则 · ${pack.builtin ? '内置只读' : pack.enabled ? '已启用' : '已停用'}`;
+    const chip = document.getElementById('ruleStateChip');
+    chip.textContent = pack.builtin ? '内置只读' : pack.enabled ? '已启用' : '已停用';
+    chip.className = 'chip ' + (pack.builtin ? 'info' : pack.enabled ? 'ok' : 'warn');
+    ruleTab(route.face);
+    // 同上：直接回指，不看占位。
+    showDetail('rulePack', pack.id, document.querySelector(`#rulePackList [data-pack="${pack.id}"]`));
+    finishInspector();
   }
 
   function selectRulePack(id, el) {
@@ -4115,7 +4839,9 @@ LIMIT 20;</textarea>
     RULE_PACKS = RULE_PACKS.filter(p => p.id !== id);
     selectedRulePackId = RULE_PACKS[0]?.id ?? null;
     renderRulePacks(); renderRuleDetail();
-    setMessage('ruleDetailMessage','ok', `规则包 ${esc(id)} 已删除。`);
+    // 这个包的地址已经不存在：先回到集合页，再把结果写在那里看得见的地方。
+    go('rules');
+    setMessage('rulePackListMessage','ok', `规则包 ${esc(id)} 已删除。`);
   }
 
   function newRulePack() {
@@ -4148,6 +4874,7 @@ LIMIT 20;</textarea>
     selectedRulePackId = id;
     renderRulePacks(); renderRuleDetail();
     if (selectedExpertId) renderExpertPickers();
+    go(`rules/${id}/rules`);
     setMessage('rulePackListMessage','ok', `规则包 ${id} 已创建（默认停用、0 条规则）。往里加规则后它才会命中任何东西。`);
   }
 
@@ -4161,6 +4888,7 @@ LIMIT 20;</textarea>
     RULE_PACKS.push(copy);
     selectedRulePackId = id;
     renderRulePacks(); renderRuleDetail();
+    go(`rules/${id}/rules`);
     setMessage('rulePackListMessage','ok', `已复制为 ${id}（默认停用）。副本是可编辑的自定义包，改它不会影响内置包。`);
   }
 
@@ -4202,12 +4930,82 @@ LIMIT 20;</textarea>
     if (!host) return;
     host.innerHTML = KNOWLEDGE.length
       ? KNOWLEDGE.map(b => `
-        <button class="list-item${b.id === selectedKbId ? ' active' : ''}" onclick="inspectKnowledge('${b.id}', this)">
-          <span><b>${esc(b.name)}</b><small>${b.documents.length} 篇文档 · ${esc(b.source)}</small></span>
-          ${authorisedExpertsForKb(b.id).length ? `<span class="chip ok">已授权 ${authorisedExpertsForKb(b.id).length}</span>` : ''}
-        </button>`).join('')
+        <div class="list-item${b.id === selectedKbId ? ' sel-row' : ''}" data-kb="${b.id}">
+          <span class="row-main" onclick="inspectKnowledge('${b.id}', this)">
+            <span><b>${esc(b.name)}</b><small>${b.documents.length} 篇文档 · ${esc(b.source)}</small></span>
+            ${authorisedExpertsForKb(b.id).length ? `<span class="chip ok">已授权 ${authorisedExpertsForKb(b.id).length}</span>` : ''}
+          </span>
+          <span class="row-actions">
+            <button class="btn ghost" onclick="renameKnowledgeBase('${b.id}')">重命名</button>
+            <button class="btn ghost danger" onclick="askDeleteKnowledgeBase('${b.id}')">删除</button>
+          </span>
+        </div>`).join('')
       : '<p class="pick-empty">还没有知识库。新建一个后，专家才能在启用时获得读取授权。</p>';
     renderKbDocs();
+  }
+
+  /* 检索范围：常驻说明，不是出错之后才出现。未授权的库不参与检索，
+     也不会因为「没命中」而放宽范围。 */
+  function renderKbSearchScope() {
+    const allowed = new Set(EXPERTS.filter(e => e.enabled).flatMap(e => e.knowledge));
+    const el = document.getElementById('kbSearchScope');
+    if (!el) return;
+    el.innerHTML = `检索范围：<b>已启用专家被授权的知识库</b>，共 ${allowed.size} 个（${[...allowed].join('、') || '无'}）。`
+      + '未授权的知识库不出现在结果里，也不会因为没有命中而放宽范围。';
+  }
+
+  function applyKnowledgeRoute(route) {
+    setView('knowledge', { skipPick: true });
+    if (route.kind === 'missing') {
+      showRoutePage('knowledge', 'list');
+      setMessage('kbMessage', 'err',
+        `地址指向的知识库「${esc(route.seg)}」不在清单中，已回到知识库清单。`);
+      if (selectedKbId && kbById(selectedKbId)) renderKnowledge();
+      finishInspector();
+      return;
+    }
+    if (route.kind === 'mode') {
+      // 检索不属于任何一台知识库：它没有一个「当前选中的那一行」。
+      showRoutePage('knowledge', 'mode');
+      setInspPage('knowledge', '跨库检索');
+      renderKbSearchScope();
+      document.getElementById('inspectorBody').innerHTML =
+        '<div class="insp-empty">跨库检索是<b>整个知识库集合</b>的入口，不属于任何一台知识库，'
+        + '因此这一页<b>没有「当前选中的那一行」</b>。点一条命中会跳到那台库的那篇文档。</div>';
+      return;
+    }
+    if (route.kind === 'list') {
+      showRoutePage('knowledge', 'list');
+      // 集合页沿用当前选中的库：回清单不该把位置丢掉。
+      if (selectedKbId && kbById(selectedKbId)) {
+        renderKnowledge();
+        showDetail('knowledge', selectedKbId, document.querySelector(`#kbList [data-kb="${selectedKbId}"]`));
+      } else {
+        DEFAULT_PICK.knowledge();
+      }
+      finishInspector();
+      return;
+    }
+    showRoutePage('knowledge', 'item');
+    if (selectedKbId !== route.item.id) {
+      selectKnowledge(route.item.id, document.querySelector(`#kbList [data-kb="${route.item.id}"]`));
+    }
+    const base = route.item;
+    document.getElementById('kbItemTitle').textContent = base.name;
+    document.getElementById('kbItemSub').textContent = `${base.id} · ${base.documents.length} 篇文档 · ${base.source}`;
+    const chip = document.getElementById('kbStateChip');
+    const authorised = authorisedExpertsForKb(base.id).length;
+    chip.textContent = authorised ? `已授权 ${authorised}` : '未授权';
+    chip.className = 'chip ' + (authorised ? 'ok' : 'info');
+    document.getElementById('kbCrumbFace').textContent = '文档';
+    setInspPage('knowledge', '文档');
+    // 地址里的第四段是「哪一篇」：刷新与前进后退都要回到同一篇。
+    const wanted = route.sub && base.documents.some(d => d.id === route.sub)
+      ? route.sub : (base.documents[0]?.id ?? null);
+    if (wanted !== selectedDocId) selectedDocId = wanted;
+    renderKbDocs(); renderKbPreview();
+    showDetail('knowledge', base.id, document.querySelector(`#kbList [data-kb="${base.id}"]`));
+    finishInspector();
   }
 
   function selectKnowledge(id, el) {
@@ -4228,25 +5026,22 @@ LIMIT 20;</textarea>
     const base = kbById(selectedKbId);
     const host = document.getElementById('kbDocs');
     const sub = document.getElementById('kbDocSub');
-    const title = document.getElementById('kbDocTitle');
-    const countHint = document.getElementById('docCountHint');
     if (!host) return;
+    // 没有知识库就没有「新增文档」这个动作：留一个能点的按钮等于承诺一件做不到的事。
+    document.getElementById('kbAddDocButton').disabled = !base;
     if (!base) {
-      title.textContent = '文档'; sub.textContent = '未选择知识库';
-      host.innerHTML = '<p class="hint">先在左侧选择一个知识库。</p>';
-      if (countHint) countHint.textContent = '';
+      sub.textContent = '未选择知识库';
+      host.innerHTML = '<p class="hint">先在集合页选择一台知识库。</p>';
       document.getElementById('kbRenameButton').disabled = true;
       document.getElementById('kbDeleteButton').disabled = true;
       return;
     }
-    title.textContent = `文档 · ${base.name}`;
     sub.textContent = `${base.id} · ${base.documents.length} 篇 · 检索会切分为 chunk 并附来源引用`;
     document.getElementById('kbRenameButton').disabled = false;
     document.getElementById('kbDeleteButton').disabled = false;
-    if (countHint) countHint.textContent = `${base.documents.length} 篇文档`;
     host.innerHTML = base.documents.length
       ? base.documents.map(d => `
-        <div class="doc-row${d.id === selectedDocId ? ' sel' : ''}" onclick="selectDocument('${d.id}')">
+        <div class="doc-row${d.id === selectedDocId ? ' sel-row' : ''}" onclick="selectDocument('${d.id}')">
           <span><b>${esc(d.title)}</b><small>${d.content.length} 字符 · ${esc(base.id)}</small></span>
           <button class="btn ghost danger" onclick="event.stopPropagation();askDeleteDocument('${d.id}')">删除</button>
         </div>`).join('')
@@ -4254,9 +5049,7 @@ LIMIT 20;</textarea>
   }
 
   function selectDocument(id) {
-    selectedDocId = id;
-    renderKbDocs();
-    renderKbPreview();
+    go(`knowledge/${selectedKbId}/docs/${id}`);
   }
 
   function renderKbPreview() {
@@ -4277,38 +5070,46 @@ LIMIT 20;</textarea>
   }
 
   function newKnowledgeBase() {
-    const box = document.getElementById('kbCreate');
-    box.style.display = box.style.display === 'block' ? 'none' : 'block';
-    if (box.style.display === 'block') {
-      document.getElementById('kbNewId').value = '';
-      document.getElementById('kbNewName').value = '';
-      reveal(box);
-    }
+    openDrawer({
+      title: '新建知识库',
+      sub: '标识进入能力标识的一段：只允许小写字母、数字、下划线和连字符，创建后不再修改。',
+      body: `
+        <label class="field" for="kbNewId">知识库标识</label>
+        <input class="input" id="kbNewId" placeholder="orders-notes" maxlength="61" />
+        <label class="field" for="kbNewName">名称</label>
+        <input class="input" id="kbNewName" placeholder="订单库运维笔记" maxlength="200" />
+        <p class="requirement-line">新建的库不会被自动授权给任何专家：授权发生在专家启用时，且必须显式勾选。</p>`,
+      submitLabel: '创建知识库',
+      onSubmit: createKnowledgeBase,
+      key: 'kb'
+    });
   }
 
   function cancelKnowledgeBase() {
-    document.getElementById('kbCreate').style.display = 'none';
+    forceCloseDrawer();
     document.getElementById('kbMessage').className = 'msg';
   }
 
   function createKnowledgeBase() {
     const id = document.getElementById('kbNewId').value.trim();
     const name = document.getElementById('kbNewName').value.trim();
-    if (!id) return setMessage('kbMessage','err','标识不能为空。');
-    if (!SEGMENT.test(id)) return setMessage('kbMessage','err',`标识 ${id} 不合法：只允许小写字母、数字、下划线和连字符，且不超过 61 字符。`);
-    if (kbById(id)) return setMessage('kbMessage','err',`知识库 ${id} 已经存在。`);
-    if (!name) return setMessage('kbMessage','err','名称不能为空。');
-    if (name.length > 200) return setMessage('kbMessage','err','名称最多 200 字符。');
+    if (!id) return setMessage('drawerMessage','err','标识不能为空。');
+    if (!SEGMENT.test(id)) return setMessage('drawerMessage','err',`标识 ${id} 不合法：只允许小写字母、数字、下划线和连字符，且不超过 61 字符。`);
+    if (kbById(id)) return setMessage('drawerMessage','err',`知识库 ${id} 已经存在。`);
+    if (!name) return setMessage('drawerMessage','err','名称不能为空。');
+    if (name.length > 200) return setMessage('drawerMessage','err','名称最多 200 字符。');
     KNOWLEDGE.push({ id, name, source:'manual', documents:[] });
-    document.getElementById('kbCreate').style.display = 'none';
     selectedKbId = id;
     selectedDocId = null;
     renderKnowledge(); renderKbDocs(); renderKbPreview();
     if (selectedExpertId) renderExpertPickers();
+    closeDrawer();
+    go(`knowledge/${id}/docs`);
     setMessage('kbMessage','ok', `知识库 ${id} 已创建（0 篇文档）。它还没有被授权给任何专家：授权在专家启用时写入。`);
   }
 
-  function renameKnowledgeBase() {
+  function renameKnowledgeBase(id) {
+    if (id) go(`knowledge/${id}/docs`);
     const base = kbById(selectedKbId);
     if (!base) return;
     const box = document.getElementById('kbRenameBox');
@@ -4335,17 +5136,25 @@ LIMIT 20;</textarea>
     setMessage('kbDocMessage','ok', `已从「${previous}」改名为「${name}」。标识 ${base.id} 不变，因此已授权的专家不受影响。`);
   }
 
-  function askDeleteKnowledgeBase() {
+  function askDeleteKnowledgeBase(id) {
+    if (id) go(`knowledge/${id}/docs`);
     const base = kbById(selectedKbId);
     if (!base) return;
     const blocking = authorisedExpertsForKb(base.id);
-    if (blocking.length) {
-      return setMessage('kbDocMessage','err',
-        `无法删除「${base.name}」：它正被已启用的专家授权读取——${blocking.map(e => e.id).join('、')}。删除会让这些专家的检索静默返回零结果，因此后端返回 409 并点名它们。请先停用这些专家，或在它们的清单里取消勾选这个知识库。`);
-    }
-    setMessage('kbDocMessage','warn', `确认删除知识库 ${esc(base.id)}（${base.documents.length} 篇文档）？文档与索引会一并移除。`,
-      `<button class="btn danger" onclick="confirmDeleteKnowledgeBase('${base.id}')">确认删除</button>
-       <button class="btn" onclick="setMessage('kbDocMessage','info','已取消删除。')">取消</button>`);
+    openModal({
+      title: `删除知识库「${base.name}」？`,
+      text: '删除后这个库、它的全部文档与 chunk 索引一并移除，且<b>不可撤销</b>。',
+      impact: `影响面：${esc(base.id)} 现有 ${base.documents.length} 篇文档；`
+        + '清单里引用它的专家需要重新选择知识库后才能真正启用。',
+      blocked: blocking.length
+        ? `现在删不掉：它正被<b>已启用</b>的专家 ${esc(blocking.map(e => e.id).join('、'))} 授权读取。`
+          + '删除会让这些专家的检索<b>静默返回零结果</b>——看起来像「没有问题」，其实是依据没了，'
+          + '因此后端返回 <span class="mono">409</span> 并点名这些专家。'
+          + '请先停用它们，或在它们的清单里取消勾选这个知识库。'
+        : '',
+      confirmLabel: '确认删除',
+      onConfirm: () => confirmDeleteKnowledgeBase(base.id)
+    });
   }
 
   function confirmDeleteKnowledgeBase(id) {
@@ -4355,26 +5164,46 @@ LIMIT 20;</textarea>
     else { selectedKbId = null; selectedDocId = null; }
     renderKnowledge(); renderKbDocs(); renderKbPreview();
     if (selectedExpertId) { renderExpertPickers(); renderExpertComposition(); renderExpertDag(); }
+    go('knowledge');
     setMessage('kbMessage','ok', `知识库 ${esc(id)} 已删除，它引用的文档同时移除。`);
+  }
+
+  function newDocument() {
+    const base = kbById(selectedKbId);
+    if (!base) return;
+    openDrawer({
+      title: `新增文档 → ${base.name}`,
+      sub: '文档按段落切分为 chunk 后写入索引；平台不会把整篇文档塞进模型上下文。',
+      body: `
+        <label class="field" for="docTitle">文档标题</label>
+        <input class="input" id="docTitle" placeholder="index-guide.md" maxlength="200" />
+        <label class="field" for="docContent">文档正文</label>
+        <textarea class="textarea code" id="docContent" rows="8" placeholder="文档正文。不要粘贴凭据或连接串。"></textarea>
+        <p class="requirement-line">正文里出现疑似凭据或连接串会被拒绝：知识库参与检索并把片段交给模型，凭据不能进这里。</p>`,
+      submitLabel: '添加文档',
+      onSubmit: addDocument,
+      key: 'kbDoc'
+    });
   }
 
   function addDocument() {
     const base = kbById(selectedKbId);
-    if (!base) return setMessage('kbDocMessage','err','先在左侧选择一个知识库。');
+    if (!base) return setMessage('kbDocMessage','err','先在集合页选择一台知识库。');
     const title = document.getElementById('docTitle').value.trim();
     const content = document.getElementById('docContent').value.trim();
-    if (!title) return setMessage('kbDocMessage','err','请填写文档标题。');
-    if (title.length > 200) return setMessage('kbDocMessage','err','文档标题最多 200 字符。');
-    if (!content) return setMessage('kbDocMessage','err','请填写文档正文。');
-    if (content.length > 20000) return setMessage('kbDocMessage','err','单篇文档最多 20000 字符。');
-    if (containsSecret(title + content)) return setMessage('kbDocMessage','err',
+    if (!title) return setMessage('drawerMessage','err','请填写文档标题。');
+    if (title.length > 200) return setMessage('drawerMessage','err','文档标题最多 200 字符。');
+    if (!content) return setMessage('drawerMessage','err','请填写文档正文。');
+    if (content.length > 20000) return setMessage('drawerMessage','err','单篇文档最多 20000 字符。');
+    if (containsSecret(title + content)) return setMessage('drawerMessage','err',
       '文档里出现了疑似凭据或连接串，拒绝写入：知识库会参与检索并把片段交给模型，凭据不能进这里。');
     const doc = { id:`d${Date.now().toString().slice(-6)}`, title, content };
     base.documents.unshift(doc);
-    document.getElementById('docTitle').value = '';
-    document.getElementById('docContent').value = '';
     selectedDocId = doc.id;
     renderKnowledge(); renderKbDocs(); renderKbPreview();
+    closeDrawer();
+    // 停在新建的那一篇上：地址指到它，刷新与回退都能回来。
+    go(`knowledge/${base.id}/docs/${doc.id}`);
     setMessage('kbDocMessage','ok', `文档「${title}」已加入 ${base.id}（现已 ${base.documents.length} 篇）。它按段落切分后进入索引；已授权的专家下次检索即可命中。`);
   }
 
@@ -4382,9 +5211,15 @@ LIMIT 20;</textarea>
     const base = kbById(selectedKbId);
     const doc = base?.documents.find(d => d.id === docId);
     if (!doc) return;
-    setMessage('kbDocMessage','warn', `确认从 ${esc(base.id)} 删除文档「${esc(doc.title)}」？`,
-      `<button class="btn danger" onclick="deleteDocument('${docId}')">确认删除</button>
-       <button class="btn" onclick="setMessage('kbDocMessage','info','已取消删除。')">取消</button>`);
+    openModal({
+      title: `删除文档「${doc.title}」？`,
+      text: '删除后文档与它的 chunk 索引一并移除，且<b>不可撤销</b>。',
+      impact: `影响面：${esc(base.id)} 将从 ${base.documents.length} 篇变为 ${base.documents.length - 1} 篇；`
+        + '已授权的专家下次检索不再命中这一篇。'
+        + '如果它曾经是某条建议的依据，那条建议的来源引用会随之失效。',
+      confirmLabel: '确认删除',
+      onConfirm: () => deleteDocument(docId)
+    });
   }
 
   function deleteDocument(docId) {
@@ -4442,20 +5277,15 @@ LIMIT 20;</textarea>
   }
 
   function openSearchHit(baseId, docId) {
-    selectedKbId = baseId;
-    selectedDocId = docId;
-    renderKnowledge(); renderKbDocs(); renderKbPreview();
     const base = kbById(baseId);
     const doc = base?.documents.find(d => d.id === docId);
     if (!doc) return;
-    markSelected(null);
-    renderDetail({
-      title: `${baseId} / ${doc.title}`, chip:['info', base.source],
-      meta:[['知识库', esc(baseId)],['来源', esc(base.source)],['字符数', String(doc.content.length)],
-            ['检索方式','本地关键词 + PostgreSQL 全文'],['引用方式','片段级引用，结论可回溯到这一篇']],
-      body:'这条结果来自检索，而不是模型记忆。平台只把命中的片段作为依据，并在建议里保留来源——便于你把结论回溯到具体文档。',
-      list: doc.content.split('\n').filter(Boolean).map(line => esc(line))
-    }, `已选中：检索结果 <b>${esc(baseId)} / ${esc(doc.title)}</b>`);
+    go(`knowledge/${baseId}/docs/${docId}`);
+    // 提示写在「跳过去之后看得见」的地方：留在检索页上等于没写，因为那一页已经不显示了。
+    setMessage('kbDocMessage','info',
+      `你是从检索结果跳过来的：<b>${esc(baseId)} / ${esc(doc.title)}</b>。`
+      + '命中片段见下方——结论可以回溯到这一篇，而不是模型的记忆。');
+    setStatus(`从检索结果跳到 ${baseId} / ${doc.title}`);
   }
 
   /* ==================================================================
@@ -4489,7 +5319,9 @@ LIMIT 20;</textarea>
 
   function closeMenus() {
     document.querySelectorAll('.menu.open').forEach(m => m.classList.remove('open'));
-    document.querySelectorAll('[aria-expanded]').forEach(b => b.setAttribute('aria-expanded','false'));
+    // 只清菜单按钮。曾经这里清的是所有 [aria-expanded]，结果把「检查器」开关这类
+    // 非菜单的展开控件一起压成 false——点开关，抽屉开了，无障碍状态却说没开。
+    document.querySelectorAll('[aria-haspopup="true"]').forEach(b => b.setAttribute('aria-expanded','false'));
   }
 
   document.addEventListener('click', event => { if (!event.target.closest('.menu-wrap')) closeMenus(); });
@@ -4514,7 +5346,7 @@ LIMIT 20;</textarea>
   }
 
   /* ==================================================================
-     桌面外壳（slice 14）：运行目标、本地工作空间、后端连接、系统权限与审计。
+     桌面外壳（slice 14）：运行目标、本地工作空间、后端连接、系统权限与操作历史。
 
      这一页本身就是一条约束：外壳只提供平台服务，业务语义一律在后端。
      它也是唯一能改变「运行目标」的地方——切到桌面端会画出窗口外框，
@@ -4522,12 +5354,12 @@ LIMIT 20;</textarea>
      ================================================================== */
   const TARGETS = {
     web: {
-      name:'浏览器',
-      note:'共享 Vue 应用部署在浏览器里：读不到本机目录、没有原生菜单、没有窗口生命周期，通知受浏览器权限限制。'
+      name:'本机浏览器',
+      note:'本机浏览器打开同一个 Vue 应用，后端是本机 loopback 上的进程——不是访问某个网站。读不到本机目录、没有原生菜单、没有窗口生命周期，通知受浏览器权限限制。'
     },
     desktop: {
-      name:'桌面端（Tauri 2）',
-      note:'同一套界面放在 Tauri WebView 里：外壳提供选目录、原生菜单与窗口、通知、打开外部链接，并把每一次 OS 操作写进审计。'
+      name:'桌面端（Electron）',
+      note:'同一套界面放在随包固定版本的 Chromium 里——这正是两个目标画面一致的前提。外壳提供选目录、原生菜单与窗口、通知、打开外部链接，并把每一次 OS 操作写进操作历史。'
     }
   };
   let currentTarget = 'web';
@@ -4535,29 +5367,29 @@ LIMIT 20;</textarea>
   /* 外壳能力。状态决定控件可用性；被挡住时原因写在控件旁边，
      而不是留一个看起来能点的按钮（和专家页的「内置专家不可删除」同一条规矩）。 */
   let PERMISSIONS = [
-    { id:'workspace-picker', name:'选择工作空间目录', tauri:'dialog:allow-open', scope:'仅目录选择对话框',
+    { id:'workspace-picker', name:'选择工作空间目录', impl:'主进程 dialog.showOpenDialog', scope:'仅目录选择对话框',
       state:'granted', when:'首次使用时询问', usedBy:'本地工作空间 →「浏览本地目录…」',
       consequence:'不能弹出原生目录对话框，工作空间只能沿用已有路径。' },
-    { id:'workspace-fs-read', name:'读取被授权的工作空间目录', tauri:'fs:allow-read-dir（限定目录）', scope:'仅被选中的目录，递归，只读',
+    { id:'workspace-fs-read', name:'读取被授权的工作空间目录', impl:'主进程 fs.opendir（限定目录）', scope:'仅被选中的目录，递归，只读',
       state:'granted', when:'选中目录后授予', usedBy:'本地工作空间 → 写入启动配置；本地 CLI 能力的工作目录',
       consequence:'git / rg 读不到工作目录，执行会失败而不是悄悄换一个目录。' },
-    { id:'notification', name:'发送系统通知', tauri:'notification:default', scope:'仅任务状态变化',
+    { id:'notification', name:'发送系统通知', impl:'主进程 new Notification()', scope:'仅任务状态变化',
       state:'granted', when:'首次发送时询问', usedBy:'窗口与菜单 →「发送系统通知」',
       consequence:'任务完成或中断时没有系统通知，只能在界面里看到。' },
-    { id:'open-external', name:'打开外部链接', tauri:'opener:allow-open-url', scope:'仅 https，且在白名单内',
+    { id:'open-external', name:'打开外部链接', impl:'主进程 shell.openExternal', scope:'仅 https，且在白名单内',
       state:'granted', when:'启动时声明', usedBy:'帮助菜单 →「打开项目主页」',
       consequence:'无法把链接交给系统浏览器，界面只能显示地址。' },
-    { id:'preferences', name:'保存非密钥本机偏好', tauri:'store:default', scope:'仅连接地址等非密钥项',
+    { id:'preferences', name:'保存非密钥本机偏好', impl:"主进程 app.getPath('userData')", scope:'仅连接地址等非密钥项',
       state:'granted', when:'启动时声明', usedBy:'后端连接 →「保存到本机偏好」',
       consequence:'连接设置只对本次会话有效，重开要重新填。' },
-    { id:'sidecar-launch', name:'启动后端 sidecar', tauri:'shell:allow-execute（sidecar）', scope:'仅签名的后端启动器，参数固定',
+    { id:'sidecar-launch', name:'启动后端 sidecar', impl:'主进程 child_process.spawn（固定 argv）', scope:'仅签名的后端启动器，参数固定',
       state:'denied', when:'打包分发时由安装器声明', usedBy:'后端连接 →「打包 sidecar」模式',
       consequence:'控制台不能自行启动本地后端，只能连一个已经启动的进程。' }
   ];
 
   const NEVER_PROVIDED = [
     '任意命令执行：没有这样的能力，也就没有这样的按钮。',
-    'Node REPL / 任意 JavaScript 执行：渲染进程不开这种入口。',
+    'nodeIntegration：渲染进程拿不到 require / fs / child_process，因此没有 Node REPL 这种入口。',
     '读取被授权目录以外的路径：文件系统权限按目录授予，越界即拒绝。',
     '写文件：外壳只有只读范围，改代码必须经后端能力与审批。',
     '以明文读取系统钥匙串：密钥由环境变量注入，不经过界面。'
@@ -4573,8 +5405,8 @@ LIMIT 20;</textarea>
     { path:'J:/Code/Engineering-Automation-Platform', name:'Engineering-Automation-Platform', last:'今天 16:40', exists:true },
     { path:'J:/Code/orders-service', name:'orders-service', last:'昨天 10:12', exists:false }
   ];
-  /* 原生目录对话框会返回什么——原型没有 Tauri 运行时，所以这里显式准备候选值，
-     并在审计里标注「模拟」。不假装真的弹过一次原生对话框。 */
+  /* 原生目录对话框会返回什么——原型跑在浏览器里、没有真实外壳，所以这里显式准备候选值，
+     并在操作历史里标注「模拟」。不假装真的弹过一次原生对话框。 */
   const DIALOG_CANDIDATES = [
     { path:'J:/Code/payments-api', exists:true },
     { path:'J:/GeneralRepository', exists:true },
@@ -4602,9 +5434,9 @@ LIMIT 20;</textarea>
   ];
 
   const PROJECT_URL = 'https://github.com/LiaoHan5426/Engineering-Automation-Platform';
-  const EXTERNAL_ALLOW = ['github.com', 'tauri.app', 'v2.tauri.app'];
+  const EXTERNAL_ALLOW = ['github.com', 'electronjs.org'];
 
-  let AUDIT = [];
+  let HISTORY = [];
 
   const perm = id => PERMISSIONS.find(p => p.id === id);
   const shellAllows = id => currentTarget === 'desktop' && perm(id)?.state === 'granted';
@@ -4615,7 +5447,7 @@ LIMIT 20;</textarea>
   function gateReason(permissionId, allowInWeb) {
     if (currentTarget !== 'desktop') return allowInWeb ? '' : (WEB_BLOCKED[permissionId] || '浏览器端没有这项外壳能力。');
     const p = perm(permissionId);
-    if (p && p.state !== 'granted') return `外壳能力 ${p.tauri} 未授予，${p.consequence}`;
+    if (p && p.state !== 'granted') return `外壳能力 ${p.impl} 未授予，${p.consequence}`;
     return '';
   }
 
@@ -4628,16 +5460,16 @@ LIMIT 20;</textarea>
     catch (error) { void error; return false; }
   }
 
-  function audit(action, target, result) {
-    AUDIT.unshift({ time:new Date().toLocaleTimeString('zh-CN', { hour12:false }), action, target, result });
-    renderAudit();
+  function record(action, target, result) {
+    HISTORY.unshift({ time:new Date().toLocaleTimeString('zh-CN', { hour12:false }), action, target, result });
+    renderHistory();
   }
 
-  function renderAudit() {
-    const host = document.getElementById('auditRows');
+  function renderHistory() {
+    const host = document.getElementById('historyRows');
     if (!host) return;
-    host.innerHTML = AUDIT.length
-      ? AUDIT.slice(0, 14).map(a => `<tr class="audit-row"><td class="mono">${esc(a.time)}</td><td>${esc(a.action)}</td><td class="path">${esc(a.target)}</td><td>${esc(a.result)}</td></tr>`).join('')
+    host.innerHTML = HISTORY.length
+      ? HISTORY.slice(0, 14).map(a => `<tr class="history-row"><td class="mono">${esc(a.time)}</td><td>${esc(a.action)}</td><td class="path">${esc(a.target)}</td><td>${esc(a.result)}</td></tr>`).join('')
       : '<tr><td colspan="4" class="hint">本次会话还没有外壳动作。上面的按钮点一下，这里就会留一条。</td></tr>';
   }
 
@@ -4646,7 +5478,7 @@ LIMIT 20;</textarea>
     currentTarget = target;
     document.body.classList.toggle('desktop-target', target === 'desktop');
     renderShell();
-    audit('切换运行目标', TARGETS[target].name, '已生效（界面）');
+    record('切换运行目标', TARGETS[target].name, '已生效（界面）');
   }
 
   function renderTarget() {
@@ -4654,7 +5486,7 @@ LIMIT 20;</textarea>
     const chip = document.getElementById('targetChip');
     if (chip) {
       chip.className = 'chip ' + (currentTarget === 'desktop' ? 'info' : '');
-      chip.textContent = currentTarget === 'desktop' ? '桌面端 · Tauri 2' : '浏览器';
+      chip.textContent = currentTarget === 'desktop' ? '桌面端 · Electron' : '本机浏览器';
     }
     const status = document.getElementById('statusTarget');
     if (status) status.textContent = TARGETS[currentTarget].name;
@@ -4683,7 +5515,7 @@ LIMIT 20;</textarea>
       return `
       <tr class="clickable" onclick="inspectPermission('${p.id}', this)">
         <td><b>${esc(p.name)}</b></td>
-        <td class="mono">${esc(p.tauri)}</td>
+        <td class="mono">${esc(p.impl)}</td>
         <td>${esc(p.scope)}</td>
         <td><span class="chip ${chipKind}">${chipText}</span></td>
         <td style="text-align:right;white-space:nowrap">
@@ -4694,7 +5526,7 @@ LIMIT 20;</textarea>
     PERMISSIONS.forEach(p => setDisabled('permToggle-' + p.id, web));
     const gate = document.getElementById('permGate');
     if (gate) gate.textContent = web
-      ? '● 授权操作：这些是桌面外壳的能力（Tauri capability），浏览器端没有外壳可授权——切到桌面端后这里可以逐项授予与撤回，并立刻影响依赖它的控件。'
+      ? '● 授权操作：这些是桌面外壳的能力（Electron 主进程调用点），浏览器端没有外壳可授权——切到桌面端后这里可以逐项授予与撤回，并立刻影响依赖它的控件。'
       : '';
   }
 
@@ -4823,7 +5655,7 @@ LIMIT 20;</textarea>
     renderConnection();
     renderLlmRows();
     renderCloseRunning();
-    renderAudit();
+    renderHistory();
   }
 
   /* ---------- 检查器：外壳能力 / 本地工作空间 ---------- */
@@ -4831,9 +5663,9 @@ LIMIT 20;</textarea>
   function permissionDetail(p) {
     const granted = p.state === 'granted';
     return {
-      title:p.tauri, sub:p.name,
+      title:p.impl, sub:p.name,
       chip:granted ? ['ok', '已授予'] : (p.state === 'denied' ? ['err', '已拒绝'] : ['warn', '未声明']),
-      meta:[['能力标识', `<span class="mono">${esc(p.tauri)}</span>`], ['范围', esc(p.scope)],
+      meta:[['能力标识', `<span class="mono">${esc(p.impl)}</span>`], ['范围', esc(p.scope)],
             ['授予时机', esc(p.when)], ['被谁使用', esc(p.usedBy)], ['撤回后果', esc(p.consequence)]],
       body:'由外壳的 capability 文件声明，窗口只能使用被授予的操作。控制台不自行推测权限——撤回后依赖它的控件立刻不可用，并把原因写在控件旁边。'
     };
@@ -4866,9 +5698,9 @@ LIMIT 20;</textarea>
     const index = PERMISSIONS.findIndex(x => x.id === id);
     if (rows[index]) showDetail('permission', id, rows[index]);
     setMessage('permMessage', p.state === 'granted' ? 'ok' : 'warn', p.state === 'granted'
-      ? `已授予 <span class="mono">${esc(p.tauri)}</span>：依赖它的控件恢复可用。`
-      : `已撤回 <span class="mono">${esc(p.tauri)}</span>：${esc(p.consequence)}`);
-    audit(p.state === 'granted' ? '授予外壳能力' : '撤回外壳能力', p.tauri, p.state === 'granted' ? '已授予' : '已撤回，依赖控件已停用');
+      ? `已授予 <span class="mono">${esc(p.impl)}</span>：依赖它的控件恢复可用。`
+      : `已撤回 <span class="mono">${esc(p.impl)}</span>：${esc(p.consequence)}`);
+    record(p.state === 'granted' ? '授予外壳能力' : '撤回外壳能力', p.impl, p.state === 'granted' ? '已授予' : '已撤回，依赖控件已停用');
   }
 
   function chooseWorkspace() {
@@ -4884,7 +5716,7 @@ LIMIT 20;</textarea>
     const index = LOCAL_WORKSPACES.findIndex(w => w.path === candidate.path);
     const rows = [...document.querySelectorAll('#localWsRows tr')];
     if (rows[index]) showDetail('workspace', candidate.path, rows[index]);
-    audit('选择本地工作空间', candidate.path, `模拟原生对话框返回（原型没有 Tauri 运行时）；该目录${candidate.exists ? '存在' : '不存在'}`);
+    record('选择本地工作空间', candidate.path, `模拟原生对话框返回（原型没有真实外壳）；该目录${candidate.exists ? '存在' : '不存在'}`);
     setMessage('localWsMessage', candidate.exists ? 'ok' : 'warn', candidate.exists
       ? `原生目录对话框返回 <span class="mono">${esc(candidate.path)}</span>，已加入列表并选中。`
       : `原生目录对话框返回 <span class="mono">${esc(candidate.path)}</span>，但该目录当前不存在。外壳会重新询问，而不是回退到上一次的目录——静默回退会让 git / rg 在错误的目录里执行。`);
@@ -4903,7 +5735,7 @@ LIMIT 20;</textarea>
     setMessage('localWsMessage', w.exists ? 'info' : 'warn', w.exists
       ? `已选中 <span class="mono">${esc(path)}</span>。要让它对运行时生效，点「写入启动配置」，然后重启后端进程。`
       : `<span class="mono">${esc(path)}</span> 不存在：选中它不会让运行时切过去，只会让外壳在你下次选目录时重新询问。`);
-    audit('选中本地工作空间', path, w.exists ? '已选中' : '目录不存在，已如实提示');
+    record('选中本地工作空间', path, w.exists ? '已选中' : '目录不存在，已如实提示');
   }
 
   function forgetLocalWorkspace(path) {
@@ -4913,7 +5745,7 @@ LIMIT 20;</textarea>
     renderLocalWorkspaces();
     renderWsBinding();
     renderGates();
-    audit('遗忘本地工作空间', path, '已从列表移除（磁盘上的目录不受影响）');
+    record('遗忘本地工作空间', path, '已从列表移除（磁盘上的目录不受影响）');
     setMessage('localWsMessage','info', `已从列表移除 <span class="mono">${esc(path)}</span>。这只是控制台的记录，磁盘上的目录不受影响。`);
   }
 
@@ -4925,7 +5757,7 @@ LIMIT 20;</textarea>
     if (!w.exists) return setMessage('wsBindingMessage','err', `选中的目录 <span class="mono">${esc(w.path)}</span> 不存在。写进启动配置只会让后端在启动时失败——先把目录找回来，或者换一个。`);
     pendingWorkspace = w.path;
     renderWsBinding();
-    audit('写入启动配置', `EAP_WORKSPACE=${w.path}`, '已写入本机偏好，等后端重启生效');
+    record('写入启动配置', `EAP_WORKSPACE=${w.path}`, '已写入本机偏好，等后端重启生效');
     setMessage('wsBindingMessage', pendingWorkspace === runtimeWorkspace ? 'ok' : 'warn',
       pendingWorkspace === runtimeWorkspace
         ? `已写入本机偏好：<span class="mono">EAP_WORKSPACE=${esc(w.path)}</span>，与运行时当前执行目录一致，因此已经是生效状态。`
@@ -4934,7 +5766,7 @@ LIMIT 20;</textarea>
 
   function reprobeRuntime() {
     shellSubview('connection');
-    audit('重新探测运行时', CONNECTION.baseUrl + '/api/health', '见后端连接页的探测结果');
+    record('重新探测运行时', CONNECTION.baseUrl + '/api/health', '见后端连接页的探测结果');
     setMessage('wsBindingMessage','info','已转到「后端连接」并重新探测。能不能连上后端可以验证；运行时的执行目录没有查询接口，所以这里不猜它是哪一个——它由启动时的 EAP_WORKSPACE 决定。');
     testConnection();
   }
@@ -4942,14 +5774,14 @@ LIMIT 20;</textarea>
   function setConnMode(mode) {
     if (mode === CONNECTION.mode) return;
     if (mode === 'sidecar' && !shellAllows('sidecar-launch')) {
-      setMessage('connMessage','err', `「打包 sidecar」需要外壳能力 ${perm('sidecar-launch').tauri}，当前未授予，所以这个模式还不能选——选了也不会改变任何状态。`);
-      audit('选择连接方式', '打包 sidecar', '被拒绝：外壳能力未授予');
+      setMessage('connMessage','err', `「打包 sidecar」需要外壳能力 ${perm('sidecar-launch').impl}，当前未授予，所以这个模式还不能选——选了也不会改变任何状态。`);
+      record('选择连接方式', '打包 sidecar', '被拒绝：外壳能力未授予');
       return;
     }
     CONNECTION.mode = mode;
     renderConnection();
     renderGates();
-    audit('选择连接方式', mode, '已切换');
+    record('选择连接方式', mode, '已切换');
     setMessage('connMessage','info', mode === 'local'
       ? '已切到本地运行时：控制台只连接它，重启要在你自己的终端里做。'
       : '已切到远程后端：请确认地址指向一台已启动的运行时。');
@@ -4966,7 +5798,7 @@ LIMIT 20;</textarea>
     CONNECTION.savedIn = 'preference';
     CONNECTION.savedAt = new Date().toLocaleTimeString('zh-CN', { hour12:false });
     renderConnection();
-    audit('保存本机偏好', url, '已保存到外壳的非密钥偏好');
+    record('保存本机偏好', url, '已保存到外壳的非密钥偏好');
     setMessage('connMessage','ok', `已保存 <span class="mono">${esc(url)}</span> 到本机偏好：下次启动会用它，且不保存任何凭据。`);
   }
 
@@ -5014,7 +5846,7 @@ LIMIT 20;</textarea>
       chip.className = 'chip ' + (result.ok ? 'ok' : 'err');
       chip.innerHTML = `<span class="dot"></span>${result.ok ? '运行时已连接' : '运行时未连接'}`;
     }
-    audit('探测后端', endpoint, result.ok ? `HTTP ${result.status}` : `失败（${result.detail.slice(0, 40)}）`);
+    record('探测后端', endpoint, result.ok ? `HTTP ${result.status}` : `失败（${result.detail.slice(0, 40)}）`);
   }
 
   function showPlatformInfo() {
@@ -5028,12 +5860,12 @@ LIMIT 20;</textarea>
         <div class="kv"><dt>运行目标</dt><dd>${esc(TARGETS[currentTarget].name)}</dd></div>
         <div class="kv"><dt>平台</dt><dd class="path">${esc(nav.platform || '未知')}</dd></div>
         <div class="kv"><dt>User agent</dt><dd class="path">${esc(nav.userAgent || '未知')}</dd></div>
-        <div class="kv"><dt>WebView</dt><dd>${web
-          ? '浏览器自带的 WebView。桌面端由操作系统提供 WebView2 / WKWebView / WebKitGTK，外壳只报告版本，不参与渲染决策。'
-          : '桌面端会返回 WebView2 / WKWebView / WebKitGTK 的版本。'}</dd></div>
+        <div class="kv"><dt>渲染器</dt><dd>${web
+          ? '本机浏览器自带的引擎。桌面端是打包进安装器的 Chromium，版本由构建固定——这是两个目标画面一致的前提，外壳只报告版本，不参与渲染决策。'
+          : '桌面端返回打包 Chromium 的版本（由构建固定，不随操作系统变化）。'}</dd></div>
       </div>`;
     setMessage('windowMessage','info','已显示当前环境信息。原型运行在浏览器里，所以这里如实是浏览器信息——不编造一个操作系统版本。');
-    audit('读取平台信息', 'getPlatformInfo()', '已显示');
+    record('读取平台信息', 'getPlatformInfo()', '已显示');
   }
 
   function notifyDesktop() {
@@ -5041,23 +5873,23 @@ LIMIT 20;</textarea>
     if (reason) return setMessage('windowMessage','err', reason);
     if (typeof Notification !== 'function') {
       setMessage('windowMessage','warn','当前环境没有 Notification 接口（原型脚本运行在受限环境里），所以不会假装通知已经发出。');
-      audit('发送通知', '任务状态变化', '当前环境不支持 Notification');
+      record('发送通知', '任务状态变化', '当前环境不支持 Notification');
       return;
     }
     const body = '任务 t1 已完成：5 条发现，未消耗模型预算。';
     if (Notification.permission === 'granted') {
       new Notification('EAP 工程自动化平台', { body });
-      setMessage('windowMessage','ok','已发送系统通知，并在审计里留了一条。');
-      audit('发送通知', '任务状态变化', '已发送');
+      setMessage('windowMessage','ok','已发送系统通知，并在操作历史里留了一条。');
+      record('发送通知', '任务状态变化', '已发送');
     } else if (Notification.permission === 'denied') {
       setMessage('windowMessage','err','系统通知权限已被拒绝：不会静默失败，而是明确告诉你通知不会到达。');
-      audit('发送通知', '任务状态变化', '被拒绝：权限为 denied');
+      record('发送通知', '任务状态变化', '被拒绝：权限为 denied');
     } else {
       const settle = result => setMessage('windowMessage', result === 'granted' ? 'ok' : 'warn',
         `通知权限请求结果：${result}。${result === 'granted' ? '再点一次就会发出。' : '没有授权就不会发送。'}`);
       const asked = Notification.requestPermission();
       if (asked && typeof asked.then === 'function') asked.then(settle); else settle(asked);
-      audit('发送通知', '任务状态变化', '已请求权限');
+      record('发送通知', '任务状态变化', '已请求权限');
     }
   }
 
@@ -5070,7 +5902,7 @@ LIMIT 20;</textarea>
     if (!EXTERNAL_ALLOW.includes(parsed.hostname)) return setMessage('windowMessage','err', `主机 ${esc(parsed.hostname)} 不在白名单里（${esc(EXTERNAL_ALLOW.join('、'))}），因此拒绝打开。白名单属于外壳声明的能力范围，界面不能临时放宽。`);
     let opened = null;
     try { opened = window.open(url, '_blank', 'noopener'); } catch (error) { void error; opened = null; }
-    audit('打开外部链接', url, opened ? '已交给系统浏览器' : '被当前环境拦截');
+    record('打开外部链接', url, opened ? '已交给系统浏览器' : '被当前环境拦截');
     setMessage('windowMessage', opened ? 'ok' : 'warn', opened
       ? `已请求打开 <span class="mono">${esc(url)}</span>：桌面端走外壳的 openExternal()，浏览器端走 window.open。`
       : `请求打开 <span class="mono">${esc(url)}</span> 被当前环境拦截（弹窗被阻止，或没有用户手势）。这里如实回显，不假装已经打开。`);
@@ -5085,7 +5917,7 @@ LIMIT 20;</textarea>
     const running = TASKS.filter(t => t.workspace === currentWorkspace && t.status === 'running');
     if (!running.length) {
       setMessage('closeMessage','info','当前没有执行中的任务，关闭窗口不会有任何状态损失。先运行一次分析再回来试。');
-      audit('关闭窗口', '无执行中任务', '无影响');
+      record('关闭窗口', '无执行中任务', '无影响');
       return;
     }
     running.forEach(t => { t.status = 'interrupted'; t.decision = '—'; t.model = '未调用'; });
@@ -5094,21 +5926,21 @@ LIMIT 20;</textarea>
     renderCloseRunning();
     setMessage('closeMessage','warn',
       `已把 ${running.length} 条执行中的任务（${running.map(t => esc(t.id)).join('、')}）标记为「已中断」：状态不丢，重开后它们在任务页里可见、证据保留，可以直接「重新运行」重新提交。`);
-    audit('关闭窗口', running.map(t => t.id).join('、'), '执行中任务标记为已中断，状态未丢失');
+    record('关闭窗口', running.map(t => t.id).join('、'), '执行中任务标记为已中断，状态未丢失');
   }
 
   /* ---------- 原生菜单：每一项都对应一个外壳服务，没有业务动作 ---------- */
 
   function menuChooseWorkspace() { closeMenus(); setView('desktop'); shellSubview('workspace'); chooseWorkspace(); }
   function menuCloseWindow() { closeMenus(); setView('desktop'); shellSubview('window'); simulateCloseWindow(); }
-  function menuGo(view) { closeMenus(); setView(view); }
+  function menuGo(view) { closeMenus(); go(view); }
   function menuRefresh() { closeMenus(); refreshAll(); }
   function menuPlatformInfo() { closeMenus(); setView('desktop'); shellSubview('window'); showPlatformInfo(); }
   function menuOpenExternal() { closeMenus(); setView('desktop'); shellSubview('window'); openExternalExample(); }
 
   /* 子页与能力目录同构：一次只渲染一个，并让检查器跟着走。
      注意这里只是「取当前子页里可检查的对象」，不替操作者做动作——
-     审计日志记的是真实动作，切页签不该在里面留痕。 */
+     操作历史记的是真实动作，切页签不该在里面留痕——理由不是合规，而是它要能被人读明白。 */
   function shellPickActiveSubview() {
     const sub = document.querySelector('#view-desktop .subview.active');
     if (!sub) return false;
@@ -5131,7 +5963,7 @@ LIMIT 20;</textarea>
     const label = document.querySelector(`#shellTabs button[data-subview="${key}"]`)?.textContent.trim() || key;
     setHint(PAGES.desktop.hint);
     document.getElementById('inspectorBody').innerHTML =
-      `<div class="insp-empty">「${esc(label)}」没有可逐项检查的对象：这一页的状态与说明都内联在卡片里。切到「系统权限与审计」或「本地工作空间」可以逐项检查。</div>`;
+      `<div class="insp-empty">「${esc(label)}」没有可逐项检查的对象：这一页的状态与说明都内联在卡片里。切到「系统权限与操作历史」或「本地工作空间」可以逐项检查。</div>`;
   }
 
   document.querySelectorAll('#targetSwitch button').forEach(btn => {
@@ -5179,7 +6011,8 @@ LIMIT 20;</textarea>
   renderRuleDetail();
   renderKnowledge();
   renderKbPreview();
-  setView('overview');
+  // 从地址进入：深链、刷新、桌面端通知点击都走这一条路。
+  applyRoute(routeKey());
   renderProfiles();
   renderMcpServers();
   // 子页签在 renderMcpServers 里已经由种类声明生成过一次；这里显式再算一遍，顺序不依赖调用方。

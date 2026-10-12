@@ -34,24 +34,35 @@ read the same snapshot the pages read, so the header can never disagree with the
 │ ▷ SQL 分析室  │   · 概览      指标卡 + 最近任务（行可点）      │ （本页无对象时）    │
 │ ◈ 专家工作室  │   · 任务      列表 | 时间线 | 证据 | 重新运行  │ severity: high      │
 │ ▢ 知识库      │   · SQL 分析室 输入 | 结果浏览 | 流水线       │ evidence: …         │
-│ ▤ 规则库      │   · 专家工作室 列表 | DAG | 草稿编辑          │ suggestion: …       │
-│ ▦ 数据库资料  │   · 规则库    规则包 | 规则 | 试算            │                     │
-│ ⚙ 能力目录    │   · 知识库    知识库 | 文档 | 检索            │ 当前任务的流水线    │
-│              │   · 数据库资料 资料表 | 新增 / 编辑 / 删除    │ deterministic ✓     │
+│ ▤ 规则库      │   · 专家工作室 集合页 → 条目页（流程/清单/授权）│ suggestion: …       │
+│ ▦ 数据库资料  │   · 规则库    集合页 → 条目页（规则/试算）    │                     │
+│ ⚙ 能力目录    │   · 知识库    集合页 → 条目页（文档）        │ 当前任务的流水线    │
+│              │   · 数据库资料 资料表（主结构不动）；        │ deterministic ✓     │
+│              │     新增 / 编辑进抽屉，删除走模态             │                     │
 │ 运行环境      │   · 能力目录  页签由种类声明生成：             │ decision: skip      │
 │ ▣ 桌面外壳    │               总览 | 内置命令 | 本地CLI        │ model: not called   │
 │              │               | MCP工具（HTTP 无页签）        │                     │
 │              │   · 桌面外壳  窗口与菜单 | 本地工作空间 |      │                     │
-│              │               后端连接 | 系统权限与审计       │                     │
+│              │               后端连接 | 系统权限与操作历史   │                     │
 ├──────────────┴──────────────────────────────────────────────┴─────────────────────┤
 │ 就绪  运行目标: 浏览器  工作空间: engineering-automation-platform  本地目录: 未选择  │
 └───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The rail has **one entry per page**; a page's sub-pages are tabs inside it, not rail entries. 能力目录
-and 桌面外壳 both work that way, and the 能力目录 tabs are generated from the runtime's kind declaration
-(see below) rather than written into the markup — so a kind that becomes manageable or non-empty appears
-on its own, and HTTP, which is neither, has no tab.
+The rail has **one entry per page**. 专家工作室 / 规则库 / 知识库 are **hierarchical routes**, not
+sibling tabs (see [navigation-structure-refactor.md](navigation-structure-refactor.md)): the URL is the
+single source of truth — `#<area>` is the collection page, `#<area>/<itemId>/<face>` is one item's face,
+and `#<area>/<mode>` is a collection-level working surface (事实词表, 跨库检索) that belongs to no item.
+刷新、深链、前进与后退 therefore all land on the same thing, and the selected tab can never disagree with
+what is displayed. 能力目录 and 桌面外壳 keep sibling tabs, because their sub-pages really are parallel
+destinations; the 能力目录 tabs are generated from the runtime's kind declaration (see below) rather than
+written into the markup — so a kind that becomes manageable or non-empty appears on its own, and HTTP,
+which is neither, has no tab.
+
+**One-off transactions go in a drawer, destructive ones through a modal.** 新建 / 编辑 slide in from the
+right (the list stays put, so the action never moves the context away); closing an unsaved drawer asks
+first instead of discarding silently. 删除 goes through a modal that names the impact and, when the
+backend refuses, keeps the confirm button present but disabled with the reason beside it.
 
 Choosing 桌面端 on the 桌面外壳 page wraps this same shell in a window frame with a native menu
 (文件 / 视图 / 帮助) and enables the platform services that only the shell can provide; the controls that
@@ -96,12 +107,12 @@ flowchart LR
   C --> C2[本地CLI: every capability gets binary override + enable/disable + probe]
   C --> C3[MCP工具: register / trust / allow-list / delete]
   C --> CS[Scope + registered MCP servers]
-  SH2[桌面外壳: 运行目标 / 本地工作空间 / 后端连接 / 权限与审计] --> DS[Delivery target: browser vs desktop]
+  SH2[桌面外壳: 运行目标 / 本地工作空间 / 后端连接 / 权限与操作历史] --> DS[Delivery target: local browser vs desktop]
   DS --> DC[Desktop shell: window, native menu, notifications, external link]
   DS --> LW[Local workspace picker -> Path workspace / EAP_WORKSPACE]
   DS --> CN[Backend connection + real /api/health probe]
   DS --> PM[Shell permissions -> gate the controls that depend on them]
-  PM --> AU[Audit log - actions only, never redraws]
+  PM --> AU[Operation history - actions only, never redraws]
 ```
 
 ## Interaction rules
@@ -145,6 +156,10 @@ flowchart LR
   delete, and the list of capabilities each server publishes. A disabled capability is rendered as
   `已停用`, never as `缺少可执行文件` / `未接入` — "switched off" is a decision, "broken" is a defect, and
   switching one off that an *enabled* expert runs is refused by name.
+  MCP 的管理与使用参照 `docs/mcp-management-design.md`：工具以对象清单形式保存
+  (`{name, source, verified}`)，服务器带 `probeState`（`unknown` / `reachable` / `missing`，
+  **只描述传输目标，绝不写成"已连接"**），专家侧授权按服务器分组呈现且明说不共享会话。
+  逐工具放行开关与调用记录被明确推迟到平台有 MCP 客户端之后。
 - **Capability requirements are visible at every level.** A rule pack shows 需要能力 (its
   `requires.capabilities`); the expert studio shows 所需能力 derived from the packs it references and
   warns when the graph has no node that can produce those facts; the SQL result shows a
@@ -249,7 +264,7 @@ flowchart LR
   menu, and switching back does **not** hide the desktop-only controls — it disables them and writes the
   reason next to them (浏览器读不到本机目录 / 没有窗口生命周期 / 不能持久化偏好). Nothing in the shell plans
   tasks, decides, authorises an expert or validates anything; the menu carries only platform services
-  (选目录 / 窗口 / 通知 / 打开外部链接 / 审计), and the console asserts that explicitly.
+  (选目录 / 窗口 / 通知 / 打开外部链接 / 操作历史), and the console asserts that explicitly.
 - **A local workspace is not the top-bar workspace.** The picker chooses a directory on disk, which is
   the backend process's execution directory (`Path workspace` ← `EAP_WORKSPACE`, otherwise the process
   start directory, or its parent when the start directory has no `.git`). The runtime exposes no way to
@@ -267,7 +282,8 @@ flowchart LR
 - **Revoking a shell permission disables what depends on it.** The permission table is the source of truth
   for the desktop-only controls, so revoking `dialog:allow-open` really disables 浏览本地目录 and names that
   capability in the reason; granting it back re-enables the control. Every shell action is appended to an
-  audit log — and switching a sub-tab appends nothing, because the log records actions, not redraws.
+  operation history — and switching a sub-tab appends nothing, because it records actions, not
+  redraws. (Not an *audit* log: there is one operator on one machine, see [running-context.md](running-context.md).)
 - **Closing the window is a state transition, not a shutdown.** Closing while a run is in flight marks it
   `已中断` — visible, filterable, evidence preserved, re-runnable — and the settle timer is not allowed to
   overwrite that with `已完成`.
@@ -319,13 +335,14 @@ not adopted yet are marked on the 原型 track alone.
     preview the chunks) and scoped search whose scope is stated on the page.
 13. ⬜ 应用 · ✅ 原型 — 刷新 / 工作空间 / status bar as real state, with the top-bar workspace switcher
     labelled client-side because tasks are not scoped by workspace on the server.
-14. ⬜ 应用 · ✅ 原型 — **桌面外壳**: a delivery-target switch (浏览器 / 桌面端 · Tauri 2) that draws the
+14. ⬜ 应用 · ✅ 原型 — **桌面外壳**: a delivery-target switch (浏览器 / 桌面端 · Electron) that draws the
     window frame and native menu, with desktop-only controls disabled *and explained* in browser mode;
     window/menu/notification/external-link services; the **local workspace picker** (recent list, a
-    missing directory handled honestly, the Tauri filesystem scope, and the distinction from the
+    missing directory handled honestly, the main-process filesystem scope, and the distinction from the
     top-bar workspace); **backend connection** settings (remote / local runtime / packaged sidecar,
     address validation, a real `GET /api/health` probe, non-secret preferences, and the LLM budget as a
-    read-only table); and **shell permissions + audit** (revoking a capability really disables the
-    control that depends on it, and every OS action is appended to an audit log). Desktop-only
+    read-only table); and **shell permissions + operation history** (revoking a capability really
+    disables the control that depends on it, and every OS action is appended to the history).
+    Desktop-only
     interactions that need no endpoint say so; the ones that map to the runtime name the call they
     would make. See `docs/desktop-spec.md` for the contract this is modelled on.
