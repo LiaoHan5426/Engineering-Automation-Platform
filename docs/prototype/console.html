@@ -581,7 +581,7 @@
       <div class="menu" id="wsMenu" role="menu">
         <div class="menu-head">工作空间</div>
         <div id="wsOptions"></div>
-        <p class="hint" style="padding:8px 10px 6px;margin:0">工作空间 = 当前分析的本机目录，切换是客户端的视图过滤（没有对应的后端接口）。<b>它只过滤任务列表</b>：专家定义、知识库与数据库资料目前不分工作空间，能力目录与规则包是平台级的。</p>
+        <p class="hint" style="padding:8px 10px 6px;margin:0">工作空间 = 当前分析的本机目录，切换是客户端的视图过滤（没有对应的后端接口）。<b>它区分的是任务列表</b>：专家定义、知识库与数据库资料是应用级的能力配置，能力目录与规则包是平台级的。</p>
       </div>
     </div>
     <div class="spacer"></div>
@@ -619,7 +619,7 @@
           <h1>概览</h1>
           <p>确定性能力优先处理；仅在证据不足时才压缩后调用模型。</p>
           <details class="why"><summary>为什么模型不是第一步</summary><div class="why-body">确定性证据能定论时，模型根本不被询问；只有当证据不足或操作者主动要求时，才用压缩、限长、脱敏后的上下文问一次。模型的输出是<b>待验证的观察</b>：它不会改写任何发现，也不会把任务标记为完成。</div></details>
-          <details class="why"><summary>为什么要分工作空间</summary><div class="why-body">工作空间是「这次在哪个本机目录上分析」：本地 CLI 与 ripgrep 都在它的路径下执行，因此不同仓库的结论不会混在一起。切换只过滤任务列表——<b>专家定义、知识库与数据库资料目前是平台级的</b>（后端表里没有工作空间字段），要把它们按仓库分开是数据模型层面的改动，不是界面上加一个开关。规则包与能力目录更是平台级：同一条规则在两个空间里出现两个版本，判定结果就不可比了。</div></details>
+          <details class="why"><summary>为什么要分工作空间</summary><div class="why-body">工作空间是「这次在哪个本机目录上分析」：本地 CLI 与 ripgrep 都在它的路径下执行，因此不同仓库的结论不会混在一起。按仓库区分的是<b>任务列表</b>——某个仓库下的一次次实际分析；<b>专家定义、知识库与数据库资料是应用级的能力配置</b>，不随仓库变化：否则同一份脱敏快照会在两个空间里各存一份、专家也要按仓库各配一遍，而它们描述的本来就是同一套环境。规则包与能力目录同理：同一条规则在两个空间里出现两个版本，判定结果就不可比了。</div></details>
         </div>
         <div class="grid-4">
           <div class="metric"><div class="k">已注册能力</div><div class="v" id="ovCapV">—</div><div class="d" id="ovCapD">—</div></div>

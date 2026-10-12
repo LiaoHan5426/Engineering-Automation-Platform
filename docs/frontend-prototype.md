@@ -312,9 +312,12 @@ leftovers:
   glyph, because the original was a literal `U+0015` + `B8` in the stylesheet and the browser printed `B8`.
 - **The body may only assert what the code does.** The 工作空间 block used to claim it scoped tasks, experts
   *and* material. Only the task list is filtered (`TASKS.filter(t => t.workspace === currentWorkspace)`);
-  experts, knowledge bases and database profiles have no workspace column in the backend schema. The block
-  now says so, and names the data-model change that would make the wider claim true instead of implying the
-  UI already does it.
+  experts, knowledge bases and database profiles are not, and no table in the backend schema has a workspace
+  column. That narrower scope is the intended one, not a gap: what a workspace separates is the **actual
+  scenario** — one repository's runs — while experts, knowledge bases and database profiles are
+  **application-level capability configuration** describing one environment, kept once rather than copied
+  per repository. The block and the workspace menu now say that, instead of implying the UI already scopes
+  more than it does.
 
 ## Implementation slices
 
