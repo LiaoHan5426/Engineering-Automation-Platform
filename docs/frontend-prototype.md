@@ -147,12 +147,15 @@ flowchart LR
   operator switched off and lists them separately with the reason (`disabledPlatform`), instead of letting
   an operator wire a node the runtime refuses to resolve.
 - **Each kind of capability has a management surface, and it is honest about its limits.** Every
-  capability of a manageable kind gets a card — no subset: 内置命令 renders all five, 本地 CLI all three.
-  Both offer enable/disable plus a note, and 内置命令 states that a new capability needs a handler bean and
-  a declaration — the console shows 新增能力一律需要改代码 instead of a button that cannot work. 本地 CLI
-  adds a binary override (shown with its resolved path and a `shipped` / `operator` source chip), a reset,
-  and an explicit 探测 action that runs `<binary> --version` once; nothing is executed while the page
-  renders. MCP 工具 offers full server management: registration form, per-server enable/trust/probe/edit/
+  capability of a manageable kind gets a card — no subset. Both 内置命令 and 本地 CLI offer enable/disable
+  plus a note. 内置命令 still requires a handler bean and a declaration. 本地 CLI uses a two-level model
+  behind one compact management surface: register the executable once, then list bounded operations with
+  fixed argument arrays below it. Git is therefore one program with preconfigured `git-status` and
+  `git-diff` operations, not two registrations of the same binary. Operators only open the advanced form
+  when adding another operation. Operator-registered operations emit only redacted stdout/stderr evidence;
+  publishing structured facts still requires code. Each program card also provides a
+  binary override, reset and explicit 探测 action that runs `<binary> --version` once; nothing is executed
+  while the page renders. MCP 工具 offers full server management: registration form, per-server enable/trust/probe/edit/
   delete, and the list of capabilities each server publishes. A disabled capability is rendered as
   `已停用`, never as `缺少可执行文件` / `未接入` — "switched off" is a decision, "broken" is a defect, and
   switching one off that an *enabled* expert runs is refused by name.
@@ -242,8 +245,8 @@ flowchart LR
   capabilities run; 重新运行 and 补充上下文 both name `POST /api/experts/{id}/execute` as what a real console
   would call, and the supplement composer states outright that the runtime has no supplement resource
   today, so a supplement is a new execution rather than an in-place rewrite of history. The inverse is
-  enforced too — no button is offered for something the runtime cannot do, so 新增能力一律需要改代码 is
-  stated on 内置命令 and the LLM settings are a read-only table rather than a form that could never
+  enforced too — 内置命令 does not offer creation, while operator-registered CLI capabilities are explicitly
+  limited to fixed argument arrays and redacted process evidence. LLM settings remain a read-only table rather than a form that could never
   submit. The one place the prototype *adds* capability, the desktop shell, is gated by a declared
   permission and the gate is printed next to the control.
 - **Model output is separated.** Model text is always rendered under an "unverified observation"

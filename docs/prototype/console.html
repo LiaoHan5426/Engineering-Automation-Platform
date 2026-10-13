@@ -112,11 +112,14 @@
   .workbench { padding: 22px var(--sp-9); overflow: auto; min-width: 0; }
   .inspector { border-left: 1px solid var(--border); background: var(--surface); padding: var(--sp-8) 18px; overflow: auto; }
   .statusbar {
-    display: flex; align-items: center; gap: 18px; padding: 0 18px;
+    display: flex; align-items: center; gap: 12px; padding: 0 18px;
     background: var(--surface); border-top: 1px solid var(--border);
-    font-size: var(--fs-small); color: var(--text-mute);
+    font-size: var(--fs-small); color: var(--text-mute); overflow-x: auto;
   }
+  .statusbar > span { flex: 0 0 auto; white-space: nowrap; }
+  .statusbar > .spacer { flex: 1 0 0; min-width: 0; }
   .statusbar b { color: var(--text-soft); font-weight: 600; }
+  @media (max-width: 1350px) { .statusbar .status-note { display: none; } }
 
   /* ---------- generic ---------- */
   .view { display: none; }
@@ -518,7 +521,7 @@
   .drawer-guard p { margin: 0 0 var(--sp-4); }
 
 
-  @media (max-width: 1180px) {
+  @media (max-width: 1360px) {
     .body { grid-template-columns: 200px minmax(0,1fr); }
     .grid-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
     #inspectorToggle { display: inline-flex; }
@@ -588,7 +591,7 @@
     <span class="chip ok" id="runtimeChip"><span class="dot"></span>运行时已连接</span>
     <span class="chip warn"><span class="dot"></span>模型：未启用 · 确定性优先</span>
     <span class="chip" id="targetChip">浏览器</span>
-    <button class="btn" id="inspectorToggle" aria-expanded="false" aria-controls="inspectorPanel" onclick="toggleInspector()">检查器</button>
+    <button class="btn" id="inspectorToggle" aria-expanded="false" aria-controls="inspectorPanel" onclick="toggleInspector()">查看详情</button>
     <button class="btn" id="refreshButton" onclick="refreshAll()">刷新</button>
     <button class="btn primary" onclick="runAnalysisFromTopbar()">运行分析</button>
   </header>
@@ -618,8 +621,6 @@
           <p class="eyebrow">ENGINEERING AUTOMATION PLATFORM</p>
           <h1>概览</h1>
           <p>确定性能力优先处理；仅在证据不足时才压缩后调用模型。</p>
-          <details class="why"><summary>为什么模型不是第一步</summary><div class="why-body">确定性证据能定论时，模型根本不被询问；只有当证据不足或操作者主动要求时，才用压缩、限长、脱敏后的上下文问一次。模型的输出是<b>待验证的观察</b>：它不会改写任何发现，也不会把任务标记为完成。</div></details>
-          <details class="why"><summary>为什么要分工作空间</summary><div class="why-body">工作空间是「这次在哪个本机目录上分析」：本地 CLI 与 ripgrep 都在它的路径下执行，因此不同仓库的结论不会混在一起。按仓库区分的是<b>任务列表</b>——某个仓库下的一次次实际分析；<b>专家定义、知识库与数据库资料是应用级的能力配置</b>，不随仓库变化：否则同一份脱敏快照会在两个空间里各存一份、专家也要按仓库各配一遍，而它们描述的本来就是同一套环境。规则包与能力目录同理：同一条规则在两个空间里出现两个版本，判定结果就不可比了。</div></details>
         </div>
         <div class="grid-4">
           <div class="metric"><div class="k">已注册能力</div><div class="v" id="ovCapV">—</div><div class="d" id="ovCapD">—</div></div>
@@ -628,6 +629,8 @@
           <div class="metric"><div class="k">模型调用占比</div><div class="v" id="ovModelV">—</div><div class="d" id="ovModelD">—</div></div>
         </div>
         <p class="hint" id="ovMetricScope">—</p>
+        <details class="why"><summary>为什么模型不是第一步</summary><div class="why-body">确定性证据能定论时，模型根本不被询问；只有当证据不足或操作者主动要求时，才用压缩、限长、脱敏后的上下文问一次。模型的输出是<b>待验证的观察</b>：它不会改写任何发现，也不会把任务标记为完成。</div></details>
+        <details class="why"><summary>为什么要分工作空间</summary><div class="why-body">工作空间是「这次在哪个本机目录上分析」：本地 CLI 与 ripgrep 都在它的路径下执行，因此不同仓库的结论不会混在一起。按仓库区分的是<b>任务列表</b>——某个仓库下的一次次实际分析；<b>专家定义、知识库与数据库资料是应用级的能力配置</b>，不随仓库变化：否则同一份脱敏快照会在两个空间里各存一份、专家也要按仓库各配一遍，而它们描述的本来就是同一套环境。规则包与能力目录同理：同一条规则在两个空间里出现两个版本，判定结果就不可比了。</div></details>
 
         <div class="card" style="margin-top:16px">
           <h2>模型依赖与压缩效果</h2>
@@ -641,7 +644,7 @@
 
         <div class="card" style="margin-top:16px">
           <h2>最近任务</h2>
-          <p class="sub">点击任意任务进入证据时间线（右侧检查器同步更新）。这里与「任务」页读同一份状态。</p>
+          <p class="sub">点击任意任务进入证据时间线；「上下文详情」同步补充该任务的状态与证据。这里与「任务」页读同一份状态。</p>
           <table>
             <thead><tr><th>目标</th><th>状态</th><th>决策</th><th>模型</th><th>耗时</th></tr></thead>
             <tbody id="overviewTaskRows"></tbody>
@@ -706,7 +709,7 @@ LIMIT 20;</textarea>
               <div class="stage skip clickable" onclick="showDecisionDetail()"><div class="n">2 · 决策</div><div class="t">skip</div><div class="s">证据已足够，跳过模型 · 点开看依据</div></div>
               <div class="stage"><div class="n">3 · 模型</div><div class="t">未调用</div><div class="s">节省 100% 消耗</div></div>
             </div>
-            <p class="hint">每条发现都可以在右侧检查器里操作：复制建议、查看候选改写（只展示差异，<b>不会自动执行</b>）、标记忽略。忽略只影响本页展示，不改动规则判定。</p>
+            <p class="hint">点击发现后，可在「上下文详情」中复制建议、查看候选改写（只展示差异，<b>不会自动执行</b>）、标记忽略。忽略只影响本页展示，不改动规则判定。</p>
 
             <div class="findings" id="findings">
               <div class="finding" data-id="f1" data-sev="high" data-code="predicate.function_on_column" data-cat="谓词" data-ev="函数包裹了列：UPPER。">
@@ -820,7 +823,7 @@ LIMIT 20;</textarea>
           <div class="toolbar">
             <div>
               <h2>任务历史</h2>
-              <p class="sub">一次分析 = 一条任务记录。点任一行，下面的执行时间线与右侧检查器一起切换。</p>
+              <p class="sub">一次分析 = 一条任务记录。点任一行，下面的执行时间线与「上下文详情」一起切换。</p>
             </div>
             <div class="controls">
               <select id="taskFilter" onchange="renderTasks()" aria-label="按状态筛选">
@@ -1325,7 +1328,7 @@ LIMIT 20;</textarea>
         </div>
 
         <p class="hint">
-          登记与编辑都不在页面上常驻表单：点「新建 / 编辑」会从右侧滑出抽屉，列表与检查器留在原位——
+          登记与编辑都不在页面上常驻表单：点「新建 / 编辑」会从右侧滑出抽屉，列表与上下文详情留在原位——
           <b>动作不搬走上下文</b>。抽屉里没保存就关，会先问一次，而不是直接丢掉。
         </p>
       </section>
@@ -1335,17 +1338,17 @@ LIMIT 20;</textarea>
         <div class="page-head">
           <p class="eyebrow">CAPABILITIES</p>
           <h1>能力目录</h1>
-          <p>按执行方式分成四类，每类都有自己的管理入口：内置命令在运行时内执行，本地 CLI 需要二进制存在，MCP 工具来自显式信任的服务器，HTTP 服务尚未接入。目录来自运行时与处理器声明，而不是专家定义里的名字清单。</p>
+<p>按执行方式分成四类，每类都有自己的管理入口：内置命令在运行时内执行，本地 CLI 按“程序 + 受控操作”登记，MCP 工具来自显式信任的服务器，HTTP 服务尚未接入。目录来自运行时注册表，而不是专家定义里的名字清单。</p>
           <p class="hint">
-            每类能改什么由后端声明，界面不自行推测：内置命令只能启用/停用，本地 CLI 还能指定二进制位置，MCP 工具的服务器由操作者登记。
-            <b>新增能力一律需要改代码</b>——发布哪些事实属于代码契约，不能由一次界面操作产生。
+每类能改什么由后端声明，界面不自行推测：内置命令只能启用/停用；本地 CLI 程序只登记一次，预置操作无需用户声明，也可按需增加固定参数操作；MCP 工具的服务器由操作者登记。
+手动增加的 CLI 操作只返回脱敏进程输出，<b>不会声明结构化事实</b>。
           </p>
-          <details class="why"><summary>为什么不能从界面新增一个能力</summary><div class="why-body"><b>发布哪些事实属于代码契约</b>，不能由一次界面操作产生：界面若凭空宣布一个能力，运行时并没有对应处理器，引用它的专家会在执行时才失败。这里能做的是启用/停用与配置，新增一律需要改代码。</div></details>
+          <details class="why"><summary>哪些能力可以手动注册</summary><div class="why-body">通用本地 CLI 可以登记为固定的<b>二进制 + 参数数组</b>，运行结果只包含退出码及脱敏 stdout / stderr。<b>发布结构化事实仍属于代码契约</b>：内置命令以及供规则判断的专用 CLI 必须有对应处理器，不能由界面凭空声明。</div></details>
         </div>
 
         <!-- 子页由 CAPABILITY_KINDS 生成：可管理或有条目的种类才出现，因此这里不放写死的页签。 -->
         <div class="subtabs" id="capTabs"></div>
-        <p class="hint">子页由运行时声明的种类生成：<b>可管理或有条目的种类才出现</b>。HTTP 服务两者都不是，因此没有子页，而不是给一个点了没有反应的页面。页签上的数字、总览里的状态、右侧检查器读的是同一份状态，改一处三处一起变。</p>
+        <p class="hint">子页由运行时声明的种类生成：<b>可管理或有条目的种类才出现</b>。HTTP 服务两者都不是，因此没有子页，而不是给一个点了没有反应的页面。页签上的数字、总览里的状态、上下文详情读的是同一份状态，改一处三处一起变。</p>
 
         <!-- 总览 -->
         <div class="subview active" data-subview="overview">
@@ -1372,7 +1375,7 @@ LIMIT 20;</textarea>
             <thead><tr><th>能力</th><th>种类</th><th>范围</th><th>状态</th><th>引用专家</th></tr></thead>
             <tbody id="capabilityAllRows"></tbody>
           </table>
-          <p class="hint" style="margin-top:10px">点击任意一行，右侧检查器显示该能力的种类、范围、可用状态与管理入口。可用状态与引用情况都由运行时回报，不在这里手工判断。</p>
+          <p class="hint" style="margin-top:10px">点击任意一行，「上下文详情」显示该能力的种类、范围、可用状态与管理入口。可用状态与引用情况都由运行时回报，不在这里手工判断。</p>
         </div>
         </div><!-- /总览 -->
 
@@ -1397,11 +1400,43 @@ LIMIT 20;</textarea>
           <div class="row" style="justify-content:space-between">
             <div>
               <h2>本地 CLI <span class="kind-id mono">cli</span> <span class="chip">平台级</span></h2>
-              <p class="sub">通过进程执行器调用本机可执行文件：参数数组传参，不做 shell 拼接；需要二进制存在。</p>
+              <p class="sub">先登记本机 CLI 程序，再在程序下维护可调用操作。一个程序只登记一次；例如 Git 下包含 status、diff 等操作。</p>
             </div>
-            <span class="chip" id="kindCount-cli">—</span>
+            <div class="actions">
+              <span class="chip" id="kindCount-cli">—</span>
+              <button class="btn" onclick="probeAllCliChannels()">探测全部</button>
+              <button class="btn primary" onclick="beginCliCreate()">＋ 注册 CLI 程序</button>
+            </div>
           </div>
           <div class="management" id="kindManage-cli"></div>
+          <section id="cliEditor" class="management" style="display:none">
+            <div class="row" style="justify-content:space-between">
+              <div><b id="cliFormTitle">注册 CLI 程序与首个操作</b><p class="hint">程序负责二进制位置与探测；操作负责能力标识和固定参数数组，不经过 shell。</p></div>
+              <button class="btn" onclick="closeCliEditor()">取消</button>
+            </div>
+            <div class="controls">
+              <input id="cliProgramId" placeholder="程序标识：eslint" aria-label="CLI 程序标识" />
+              <input id="cliProgramTitle" placeholder="程序名称：ESLint" aria-label="CLI 程序名称" />
+              <input id="cliBinary" placeholder="可执行文件：eslint" aria-label="CLI 可执行文件" />
+            </div>
+            <div class="controls">
+              <input id="cliId" placeholder="首个操作标识：repo.lint" aria-label="CLI 操作能力标识" />
+              <input id="cliTitle" placeholder="操作名称：仓库代码检查" aria-label="CLI 操作名称" />
+              <input id="cliArgs" placeholder="固定参数：--format json ." aria-label="CLI 固定参数" />
+              <input id="cliDescription" placeholder="用途说明" aria-label="CLI 用途说明" />
+              <button class="btn primary" id="cliSubmit" onclick="saveCliCapability()">注册程序与操作</button>
+            </div>
+            <p class="requirement-line">程序标识与操作标识保存后不可修改；同一程序可以继续增加操作。手动注册操作只产生脱敏 stdout / stderr 证据，不会冒充结构化事实。</p>
+            <p class="msg" id="cliRegistryMessage"></p>
+          </section>
+          <div class="controls" style="margin-top:12px">
+            <select id="cliStatusFilter" aria-label="筛选本地 CLI" onchange="renderKindCards('cli')">
+              <option value="all">全部状态</option>
+              <option value="problem">仅看需处理</option>
+              <option value="disabled">仅看已停用</option>
+            </select>
+            <span class="hint" id="cliFilterResult"></span>
+          </div>
           <div class="cap-grid" id="kindCards-cli"></div>
         </div>
         </div><!-- /本地 CLI -->
@@ -1414,16 +1449,22 @@ LIMIT 20;</textarea>
               <h2>MCP 工具 <span class="kind-id mono">mcp</span> <span class="chip warn">专家级</span></h2>
               <p class="sub">由 MCP 服务器发布的工具：不是平台能力，<b>不会全局启用</b>。必须由专家清单声明、启用时授权，并只在该专家本次执行的会话内调用。</p>
             </div>
-            <span class="chip" id="mcpCount">0 项</span>
+            <div class="actions">
+              <span class="chip" id="mcpServerCount">0 个服务器</span>
+              <span class="chip" id="mcpCount">0 个工具</span>
+              <button class="btn primary" onclick="beginMcpCreate()">＋ 登记服务器</button>
+            </div>
           </div>
           <div class="management">
-            <p class="sub"><b>这里可以改什么：</b>登记、修改、启用、信任、放行工具与删除服务器。</p>
-            <p class="sub" style="margin-top:6px"><b>能力本身是怎么来的：</b>服务器由外部提供，平台记录它的位置与工具白名单，再由专家逐工具声明授权。平台既不替服务器创建工具，也不把服务器返回的内容当作已验证事实。</p>
+            <p class="sub"><b>这里可以改什么：</b>登记、修改、启用、信任、维护工具声明清单与删除服务器。</p>
+            <p class="sub" style="margin-top:6px"><b>能力本身是怎么来的：</b>服务器由外部提供，平台记录它的位置与操作者声明的工具清单，再由专家逐工具声明授权。平台既不替服务器创建工具，也不把操作者声明当作协议验证结果。</p>
           </div>
 
-          <h3 style="margin-top:16px;font-size:13px">一个完整示例</h3>
-          <p class="hint">下面是「登记完成之后长什么样」的示例，<b>不是已登记的数据</b>：它演示字段怎么填、会发布出哪些能力标识，以及还差哪一步才能真正被调用。</p>
-          <div class="server-row" style="border-style:dashed">
+          <details class="why">
+            <summary>查看完整登记示例</summary>
+            <div class="why-body">
+            <p class="hint">下面是「登记完成之后长什么样」的示例，<b>不是已登记的数据</b>：它演示字段怎么填、会发布出哪些能力标识，以及还差哪一步才能真正被调用。</p>
+            <div class="server-row" style="border-style:dashed">
             <div class="cap-head">
               <span><b>本地文件检索</b> <span class="mono kind-id">files</span>
                 <span class="chip warn">示例</span> <span class="chip warn">未启用</span> <span class="chip warn">未信任</span></span>
@@ -1432,14 +1473,17 @@ LIMIT 20;</textarea>
             <dl class="cap-meta">
               <dt>传输方式</dt><dd class="mono">stdio（本机进程）</dd>
               <dt>启动命令</dt><dd class="mono">npx -y @modelcontextprotocol/server-filesystem</dd>
-              <dt>工具白名单</dt><dd class="mono">search、read（操作者声明，未经协议验证）</dd>
+              <dt>工具声明清单</dt><dd class="mono">search、read（操作者声明，未经协议验证）</dd>
               <dt>发布的能力</dt><dd class="mono">mcp.files.search、mcp.files.read</dd>
               <dt>还差什么</dt><dd>两步：① 启用并信任这个服务器；② 在专家清单的 <span class="mono">mcpTools</span> 里逐条声明工具。只登记不启用，能力目录里不会多出任何东西——这正是「不会全局启用」的含义。</dd>
             </dl>
-          </div>
+            </div>
+            </div>
+          </details>
 
+          <section id="mcpEditor" style="display:none">
           <h3 style="margin-top:18px;font-size:13px" id="mcpFormTitle">登记 MCP 服务器</h3>
-          <p class="hint">服务器由外部提供，平台只记录位置与工具白名单。<b>登记不等于启用</b>：默认不启用、不信任。地址里不要放 Token 或密钥，凭据请用环境变量注入。</p>
+          <p class="hint">服务器由外部提供，平台只记录位置与操作者声明的工具清单。<b>登记不等于启用</b>：默认不启用、不信任。地址里不要放 Token 或密钥，凭据请用环境变量注入。</p>
           <div class="controls">
             <input id="mcpServerId" placeholder="服务器标识：files" aria-label="服务器标识" />
             <input id="mcpServerName" placeholder="显示名称：本地文件检索" aria-label="显示名称" />
@@ -1451,10 +1495,14 @@ LIMIT 20;</textarea>
           </div>
           <div class="controls">
             <input id="mcpEndpoint" placeholder="启动命令：npx -y @modelcontextprotocol/server-filesystem" aria-label="启动命令或地址" />
-            <input id="mcpTools" placeholder="工具白名单：search, read" aria-label="工具白名单" oninput="renderMcpToolList()" />
             <button class="btn primary" id="mcpSubmit" onclick="saveMcpServer()">登记服务器</button>
             <button class="btn" onclick="loadMcpExample()">填入示例</button>
-            <button class="btn" onclick="resetMcpForm()">清空</button>
+            <button class="btn" onclick="closeMcpEditor()">取消</button>
+          </div>
+          <div class="controls">
+            <input id="mcpTools" placeholder="工具声明清单：search, read" aria-label="工具声明清单" oninput="renderMcpToolList()" />
+            <input id="mcpToolDraft" placeholder="新增单个工具：search" aria-label="新增工具名称" />
+            <button class="btn" onclick="addMcpTool()">＋ 添加工具</button>
           </div>
           <div id="mcpToolList"></div>
           <p class="requirement-line">服务器标识与工具名都会拼进能力标识 <span class="mono">mcp.&lt;服务器&gt;.&lt;工具&gt;</span>，因此只允许小写字母、数字、下划线和连字符；不合法会在登记时当场拒绝，而不是等到专家引用时才报错。</p>
@@ -1462,6 +1510,7 @@ LIMIT 20;</textarea>
             <b>这里没有逐工具的放行开关</b>——MCP Router 那种开关建立在「已发现的工具全集」之上，要先跑得了 <span class="mono">tools/list</span>。
             平台尚无 MCP 客户端，工具一律是操作者声明，因此「声明了又不放行」等价于「没声明」；等协议发现可用，<span class="mono">source</span> 与 <span class="mono">verified</span> 才有第二种取值，那时再加放行位。</p>
           <p class="msg" id="mcpMessage"></p>
+          </section>
 
           <h3 style="margin-top:18px;font-size:13px">已登记的服务器</h3>
           <div id="mcpServers"></div>
@@ -1483,7 +1532,7 @@ LIMIT 20;</textarea>
 
           <h3 style="margin-top:18px;font-size:13px">由服务器发布的能力</h3>
           <div id="mcpCapabilities"></div>
-          <p class="hint" id="mcpCapabilityHint">还没有任何服务器发布工具，因此没有专家级能力。登记服务器后，它的每个工具都会出现在这里，并如实标注「尚未接入」：平台尚无 MCP 客户端，白名单是操作者声明，节点暂时无法执行。</p>
+          <p class="hint" id="mcpCapabilityHint">还没有任何服务器发布工具，因此没有专家级能力。登记服务器后，声明清单中的每个工具都会出现在这里，并如实标注「尚未接入」：平台尚无 MCP 客户端，清单来自操作者声明，节点暂时无法执行。</p>
         </div>
         </div><!-- /MCP 工具 -->
       </section>
@@ -1659,7 +1708,7 @@ LIMIT 20;</textarea>
             </table>
             <p class="gate" id="permGate"></p>
             <p class="msg" id="permMessage"></p>
-            <p class="hint" style="margin-top:10px">点击任意一行，右侧检查器显示它的标识、范围、授予时机、被谁使用，以及撤回后会发生什么。状态由外壳实际授予的能力决定，界面不自行推测。</p>
+            <p class="hint" style="margin-top:10px">点击任意一行，「上下文详情」显示它的标识、范围、授予时机、被谁使用，以及撤回后会发生什么。状态由外壳实际授予的能力决定，界面不自行推测。</p>
           </div>
 
           <div class="card">
@@ -1684,10 +1733,10 @@ LIMIT 20;</textarea>
     <!-- inspector -->
     <aside class="inspector" id="inspectorPanel">
       <div class="row" style="justify-content:space-between;gap:8px">
-        <h2 style="font-size:14px;margin:0">检查器</h2>
+        <h2 style="font-size:14px;margin:0">上下文详情</h2>
         <span class="chip" id="inspPage">概览</span>
       </div>
-      <p class="hint" id="inspHint">选择一条发现或任务以查看证据。</p>
+      <p class="hint" id="inspHint">只补充当前选中对象的状态与证据，不在这里编辑。</p>
       <div id="inspectorBody" style="margin-top:14px"></div>
 
       <div id="inspPipeline">
@@ -1739,7 +1788,7 @@ LIMIT 20;</textarea>
     <span>最近刷新：<b id="lastRefresh">—</b></span>
     <span>时钟：<b id="clock">--:--:--</b></span>
     <span class="spacer" style="flex:1"></span>
-    <span>Apache-2.0 · 本页为原型，数据为演示用途</span>
+    <span class="status-note">Apache-2.0 · 本页为原型，数据为演示用途</span>
   </footer>
 </div>
 
@@ -1839,6 +1888,7 @@ LIMIT 20;</textarea>
     if (!d) return;
     markSelected(el);
     setHint(PAGES[currentView].hint);
+    document.getElementById('inspPipeline').style.display = kind === 'task' && PAGES[currentView].pipeline ? 'block' : 'none';
     renderDetail(d, `已选中：${SEL_LABEL[kind] || '条目'} <b>${d.title}</b>`);
   }
 
@@ -1856,33 +1906,29 @@ LIMIT 20;</textarea>
     showDetail('profile', id, el);
   }
 
-  /* 每个页面的默认选中项：切换页面后检查器立刻有内容，而不是空着或留着上一页的东西。 */
+  /* 集合页首次进入不替用户选择第一条；检查器先解释当前页面。
+     返回集合页时，各自的路由处理仍会恢复用户真实选择，不会丢草稿。 */
   const DEFAULT_PICK = {
-    overview:     () => document.querySelector('#view-overview tr.clickable')?.click(),
-    tasks:        () => document.querySelector('#taskRows tr.clickable')?.click(),
-    sql:          () => document.querySelector('#view-sql .finding')?.click(),
-    /* 集合页只选中、不替用户切页签：点进来应该停在这一页，而不是被送到某个条目里。 */
-    experts:      () => {
-      const row = document.querySelector('#expertList .list-item');
-      if (row) inspectExpert(row.dataset.expert, row);
-    },
-    rules:        () => document.querySelector('#rulePackList .list-item')?.click(),
-    knowledge:    () => document.querySelector('#kbList .row-main')?.click(),
-    databases:    () => document.querySelector('#profileRows tr.clickable')?.click(),
-    capabilities: () => {
-      // 概览子页里有两种可点行：种类汇总行与「全部能力」行。默认选后者——它是具体的条目。
-      const pick = document.querySelector('#view-capabilities .subview.active .cap-head.clickable')
-        || document.querySelector('#view-capabilities .subview.active #capabilityAllRows tr.clickable')
-        || document.querySelector('#view-capabilities .subview.active tr.clickable');
-      pick?.click();
-    },
+    experts: () => {}, rules: () => {}, knowledge: () => {},
     desktop: () => shellPickActiveSubview()
+  };
+
+  const EMPTY_INSPECTOR = {
+    overview: '尚未选择任务。点击「最近任务」中的一行，这里会显示该任务的决策与证据来源。',
+    tasks: '尚未选择任务。点击任务列表中的一行查看证据时间线。',
+    sql: '尚未运行 SQL 分析。提交一段 SQL 后，这里会显示本次分析的证据与决策。',
+    experts: '尚未选择专家。点击专家清单中的一项查看定义、授权与运行状态。',
+    rules: '尚未选择规则包。点击规则包清单中的一项查看规则与启用状态。',
+    knowledge: '尚未选择知识库。点击知识库清单中的一项查看来源、授权与文档。',
+    databases: '尚未选择数据库资料。点击列表中的一项查看连接范围与元数据状态。',
+    capabilities: '尚未选择能力。点击能力卡片查看标识、来源与可用状态。'
   };
 
   function finishInspector() {
     if (!document.getElementById('inspectorBody').innerHTML) {
       document.getElementById('inspectorBody').innerHTML =
-        '<div class="insp-empty">本页没有可逐项检查的对象，检查器只显示页面级说明。请在其他页面选择具体条目。</div>';
+        `<div class="insp-empty">${EMPTY_INSPECTOR[currentView] || '本页没有可逐项检查的对象，检查器只显示页面级说明。'}</div>`;
+      document.getElementById('inspPipeline').style.display = 'none';
     }
   }
 
@@ -1902,7 +1948,7 @@ LIMIT 20;</textarea>
     const page = PAGES[view];
     document.getElementById('inspPage').textContent = page.name;
     setHint(page.hint);
-    document.getElementById('inspPipeline').style.display = page.pipeline ? 'block' : 'none';
+    document.getElementById('inspPipeline').style.display = 'none';
     document.getElementById('inspectorBody').innerHTML = '';
     markSelected(null);
 
@@ -2118,6 +2164,7 @@ LIMIT 20;</textarea>
     const ignored = ignoredFindings.has(f.key);
     const rewrite = rewriteFor(f.title);
     setHint(PAGES[currentView].hint);
+    document.getElementById('inspPipeline').style.display = PAGES[currentView].pipeline ? 'block' : 'none';
     document.getElementById('inspectorBody').innerHTML = `
       <p class="insp-caption">已选中：一条发现 <b>${f.title}</b></p>
       <div class="insp-card${ignored ? ' ignored' : ''}">
@@ -2223,7 +2270,7 @@ LIMIT 20;</textarea>
           .concat(items.length
             ? [`当前条目：${items.map(item => item.id).join('、')}`]
             : ['当前没有条目，但子页仍然保留：它正是让内容从空到有的入口'])
-        : [kind.note, '将来接入时：按与 MCP 同样的形状（登记 + 白名单 + 专家授权）设计']
+        : [kind.note, '将来接入时：按与 MCP 同样的形状（登记 + 声明清单 + 专家授权）设计']
     }, `已选中：能力种类 <b>${kind.label}</b>`);
   }
 
@@ -2789,7 +2836,7 @@ LIMIT 20;</textarea>
   }
 
   /* ==================================================================
-     MCP 服务器登记：登记 / 修改 / 启用 / 信任 / 放行工具 / 删除 / 探测。
+     MCP 服务器登记：登记 / 修改 / 启用 / 信任 / 维护工具声明清单 / 删除 / 探测。
      校验规则与后端 McpServerService 一致（同一套标识字符集与凭据禁令）。
      ================================================================== */
   let MCP_SERVERS = [];
@@ -2866,6 +2913,21 @@ LIMIT 20;</textarea>
     renderMcpToolList();
   }
 
+  function addMcpTool() {
+    const draft = document.getElementById('mcpToolDraft');
+    const list = document.getElementById('mcpTools');
+    const name = draft?.value.trim() || '';
+    if (!name) return setMessage('mcpMessage','err','请先填写要添加的工具名称。');
+    if (!SEGMENT.test(name)) return setMessage('mcpMessage','err',
+      `工具名 ${esc(name)} 不合法：只允许小写字母、数字、下划线和连字符。`);
+    const tools = list.value.split(',').map(value => value.trim()).filter(Boolean);
+    if (tools.includes(name)) return setMessage('mcpMessage','info', `工具 ${esc(name)} 已在声明清单中。`);
+    list.value = [...tools, name].join(', ');
+    draft.value = '';
+    renderMcpToolList();
+    setMessage('mcpMessage','ok', `已把工具 ${esc(name)} 加入声明清单；保存服务器后才会写入登记。`);
+  }
+
   function mcpProblems(server) {
     const problems = [];
     if (!server.tools.length) problems.push('工具清单为空：该服务器不会发布任何能力');
@@ -2877,6 +2939,7 @@ LIMIT 20;</textarea>
   function renderMcpServers() {
     const host = document.getElementById('mcpServers');
     document.getElementById('mcpEmpty').style.display = MCP_SERVERS.length ? 'none' : 'flex';
+    document.getElementById('mcpServerCount').textContent = `${MCP_SERVERS.length} 个服务器`;
     host.innerHTML = MCP_SERVERS.map(server => {
       const capabilities = mcpToolNames(server).map(tool => `mcp.${server.id}.${tool}`);
       const problems = mcpProblems(server);
@@ -2967,12 +3030,12 @@ LIMIT 20;</textarea>
         ['种类', 'MCP 工具 mcp'],
         ['范围', '专家级 · 不会全局启用'],
         ['可用状态', '尚未接入：平台没有 MCP 客户端，节点无法执行'],
-        ['发布方式', `在服务器 ${esc(item.server.id)} 的登记里写进工具白名单`],
+        ['发布方式', `在服务器 ${esc(item.server.id)} 的登记里写进工具声明清单`],
         ['服务器状态', `${item.server.enabled ? '已启用' : '未启用'} · ${item.server.trusted ? '已信任' : '未信任'}`],
         ['授权方式', '专家清单 mcpTools 声明 + 启用时写入授权'],
-        ['管理入口', '能力目录 · MCP 工具子页：启用 / 信任 / 白名单 / 删除服务器']
+        ['管理入口', '能力目录 · MCP 工具子页：启用 / 信任 / 工具声明清单 / 删除服务器']
       ],
-      body:'这条能力出现在目录里，是因为服务器登记时把它写进了白名单——不是因为它被验证过。白名单是操作者声明，未经协议验证；平台也还没有 MCP 客户端，因此任何节点现在都无法执行它。'
+      body:'这条能力出现在目录里，是因为服务器登记时把它写进了工具声明清单——不是因为它被验证过。清单来自操作者声明，未经协议验证；平台也还没有 MCP 客户端，因此任何节点现在都无法执行它。'
     };
   }
 
@@ -2993,7 +3056,7 @@ LIMIT 20;</textarea>
         ['已授权专家', authorised.length ? esc(authorised.join('、')) : '暂无（需由专家清单声明 mcpTools）'],
         ['管理入口', '本页可修改、启用、信任、探测、删除']
       ],
-      body:'登记只记录位置与白名单；启用与信任是两件独立的事，只有同时成立，服务器才会把工具发布给声明过它的专家。',
+      body:'登记只记录位置与工具声明清单；启用与信任是两件独立的事，只有同时成立，服务器才会把工具发布给声明过它的专家。',
       list: problems.length ? problems.map(problem => `当前不可用：${esc(problem)}`) : ['该服务器已启用且已信任；若它的工具仍未被使用，是因为还没有专家在清单里声明它们。']
     };
   }
@@ -3006,6 +3069,7 @@ LIMIT 20;</textarea>
   }
 
   function loadMcpExample() {
+    document.getElementById('mcpEditor').style.display = 'block';
     document.getElementById('mcpServerId').value = MCP_EXAMPLE.id;
     document.getElementById('mcpServerName').value = MCP_EXAMPLE.name;
     document.getElementById('mcpTransport').value = MCP_EXAMPLE.transport;
@@ -3023,15 +3087,29 @@ LIMIT 20;</textarea>
     document.getElementById('mcpTransport').value = 'stdio';
     document.getElementById('mcpEndpoint').value = '';
     document.getElementById('mcpTools').value = '';
+    document.getElementById('mcpToolDraft').value = '';
     renderMcpToolList();
     document.getElementById('mcpFormTitle').textContent = '登记 MCP 服务器';
     document.getElementById('mcpSubmit').textContent = '登记服务器';
     syncMcpPlaceholder();
   }
 
+  function beginMcpCreate() {
+    resetMcpForm();
+    document.getElementById('mcpEditor').style.display = 'block';
+    setMessage('mcpMessage','info','正在登记新服务器。登记后默认不启用、不信任。');
+    reveal(document.getElementById('mcpFormTitle'));
+  }
+
+  function closeMcpEditor() {
+    resetMcpForm();
+    document.getElementById('mcpEditor').style.display = 'none';
+  }
+
   function editMcpServer(serverId) {
     const server = MCP_SERVERS.find(x => x.id === serverId);
     if (!server) return;
+    document.getElementById('mcpEditor').style.display = 'block';
     mcpEditingId = serverId;
     document.getElementById('mcpServerId').value = server.id;
     document.getElementById('mcpServerName').value = server.name;
@@ -3042,7 +3120,7 @@ LIMIT 20;</textarea>
     document.getElementById('mcpFormTitle').textContent = `编辑服务器 ${server.id}`;
     document.getElementById('mcpSubmit').textContent = '保存修改';
     syncMcpPlaceholder();
-    setMessage('mcpMessage','info', `正在编辑 ${server.id}。保存会覆盖名称、传输方式、地址与白名单；启用与信任状态保持不变。`);
+    setMessage('mcpMessage','info', `正在编辑 ${server.id}。保存会覆盖名称、传输方式、地址与工具声明清单；启用与信任状态保持不变。`);
     reveal(document.getElementById('mcpFormTitle'));
   }
 
@@ -3076,7 +3154,7 @@ LIMIT 20;</textarea>
       }
       if (!tools.includes(tool)) tools.push(tool);
     }
-    if (tools.length > 50) return fail('工具白名单最多50项');
+    if (tools.length > 50) return fail('工具声明清单最多50项');
     const existing = MCP_SERVERS.find(x => x.id === serverId);
     if (existing) {
       // 与后端同一条件：撤回信任或移除工具会让已授权的专家调用失败，因此必须在这里拦住。
@@ -3184,16 +3262,16 @@ LIMIT 20;</textarea>
       creation:'内置命令由代码注册：一个实现 CapabilityHandler 的 Bean，加上声明词表里的一处登记，并登记它发布的事实。',
       note:'新增内置命令要改代码并重新评审——这是刻意的：发布哪些事实属于代码契约。' },
     { id:'cli', label:'本地 CLI', scope:'平台级', expertScoped:false, manageable:true,
-      management:'CLI 通道：可覆盖二进制位置、启停并主动探测', limits:'不能改命令与参数',
-      canChange:['二进制位置（PATH 里的名字或绝对路径）','启用 / 停用','显式探测 <binary> --version'],
-      cannot:['命令行与参数（否则管理界面就成了任意命令执行）'],
-      creation:'本地 CLI 同样由代码注册：执行什么命令、传什么参数、发布哪些事实都写在能力代码里。',
-      note:'随机器变化的只有「这个二进制在哪」；覆盖值按次解析、即时生效，不需要重启。' },
+      management:'CLI 程序注册表：程序统一维护位置与探测，其下分别管理可调用操作', limits:'内置程序与操作不可删除；手动注册操作不发布结构化事实',
+      canChange:['注册 CLI 程序','为程序增加固定参数操作','启用 / 停用操作、探测程序与覆盖二进制位置'],
+      cannot:['为同一个操作重复注册程序','让手动注册操作冒充结构化事实提供器'],
+      creation:'先登记 CLI 程序，再登记它提供的操作；一个程序可以承载多个能力操作。',
+      note:'Git 只登记一次，git-status 与 git-diff 是其下两个操作；专家引用操作能力，而不是引用可执行文件。' },
     { id:'mcp', label:'MCP 工具', scope:'专家级', expertScoped:true, manageable:true,
-      management:'服务器登记：登记、修改、启用、信任、放行工具、删除', limits:'不能替服务器创建工具',
-      canChange:['服务器位置与工具白名单','启用与信任','删除服务器'],
+      management:'服务器登记：登记、修改、启用、信任、维护工具声明清单、删除', limits:'不能替服务器创建工具，也没有逐工具放行开关',
+      canChange:['服务器位置与工具声明清单','启用与信任','删除服务器'],
       cannot:['替服务器创建工具','把服务器返回的内容当成已验证事实'],
-      creation:'工具由外部 MCP 服务器发布：平台记录服务器位置与工具白名单，再由专家逐条声明授权。',
+      creation:'工具由外部 MCP 服务器发布：平台记录服务器位置与操作者声明的工具清单，再由专家逐条声明授权。',
       note:'工具按 mcp.<服务器>.<工具> 命名，会话按 (执行, 专家, 服务器) 三元组隔离。' },
     { id:'http', label:'HTTP 服务', scope:'专家级', expertScoped:true, manageable:false,
       management:null, limits:'无管理入口',
@@ -3207,10 +3285,17 @@ LIMIT 20;</textarea>
 
   /* 声明词表 = 代码里声明支持的能力（后端 ExpertGraph.CAPABILITIES 的形状）。
      与注册表不一致时，一致性面板会把差异逐条列出来，而不是只报一个数字。 */
-  const DECLARED_CAPABILITIES = ['database.explain','database.index.read','database.schema.read',
+  let DECLARED_CAPABILITIES = ['database.explain','database.index.read','database.schema.read',
     'git-diff','git-status','knowledge.search','rg-search','sql.parse'];
 
   /* 注册表 = 运行时真正有处理器的能力。界面能改的只有启用状态、备注与 CLI 二进制位置。 */
+  let CLI_PROGRAMS = [
+    { id:'git', title:'Git', declared:'git', override:null, resolved:'C:\\Program Files\\Git\\cmd\\git.exe', found:true, custom:false },
+    { id:'rg', title:'ripgrep', declared:'rg', override:'C:/tools/ripgrep/rg.exe', resolved:null, found:false, custom:false }
+  ];
+  const cliProgramById = id => CLI_PROGRAMS.find(program => program.id === id) ?? null;
+  const cliProgramOf = item => cliProgramById(item.programId);
+
   let CAPABILITIES = [
     { id:'sql.parse', kind:'command', title:'解析 SQL 并抽取结构事实',
       body:'用 JSQLParser 解析输入语句并发布投影、连接、谓词、分页等结构事实。不执行 SQL、不连接数据库、不判定对错。',
@@ -3246,28 +3331,28 @@ LIMIT 20;</textarea>
       facts:'5 项 · plan.loaded、plan.seqScan …', evidence:'扫描与连接节点类型',
       enabled:true, note:'本机没有快照来源，暂时停用',
       check:'停用是操作决定，不是「未实现」：清单引用已停用能力时，报错会说明它已被停用并指向这里重新启用；停用后它也不再出现在专家可选的平台级能力里。' },
-    { id:'git-status', kind:'cli', title:'读取本地 Git 状态', declared:'git',
+    { id:'git-status', kind:'cli', programId:'git', operation:'status', args:['status'], title:'读取本地 Git 状态', declared:'git',
       call:'ProcessExecutor · git status',
       body:'在工作空间内执行只读的 git status，输出先脱敏再入库。不修改工作区、不推送。',
       inputs:'工作空间目录', grants:'无需额外授权（平台级）',
       facts:'3 项 · vcs.branch、vcs.dirty …', evidence:'工作区改动概览',
-      cli:{ declared:'git', override:null, resolved:'C:\\Program Files\\Git\\cmd\\git.exe', found:true },
+      cli:cliProgramById('git'),
       enabled:true, note:'为什么停用/启用它',
       check:'探测会显式运行 <span class="mono">git --version</span>（短超时、输出脱敏）；这是唯一为管理而执行二进制的地方。渲染目录本身只做 PATH 查找，不执行任何东西。' },
-    { id:'git-diff', kind:'cli', title:'读取本地 Git 差异', declared:'git',
+    { id:'git-diff', kind:'cli', programId:'git', operation:'diff', args:['diff','--stat'], title:'读取本地 Git 差异', declared:'git',
       call:'ProcessExecutor · git diff --stat',
       body:'执行只读的 git diff，用于确认改动范围。不修改工作区、不推送。',
       inputs:'工作空间目录', grants:'无需额外授权（平台级）',
       facts:'3 项 · vcs.changedFiles、vcs.diffScope …', evidence:'改动文件清单与差异范围',
-      cli:{ declared:'git', override:null, resolved:'C:\\Program Files\\Git\\cmd\\git.exe', found:true },
+      cli:cliProgramById('git'),
       enabled:true, note:'为什么停用/启用它',
       check:'覆盖值随时生效、不需要重启：能力按次解析二进制；找不到时如实显示「缺少可执行文件」，而不是看起来正常。' },
-    { id:'rg-search', kind:'cli', title:'工作空间检索', declared:'rg',
+    { id:'rg-search', kind:'cli', programId:'rg', operation:'search', args:['--line-number','--hidden'], title:'工作空间检索', declared:'rg',
       call:'ProcessExecutor · rg --line-number --hidden',
       body:'用 ripgrep 在工作空间内做有界检索，定位代码或配置证据。忽略 .git，参数以数组传入。',
       inputs:'检索模式 + 作用目录', grants:'无需额外授权（平台级）',
       facts:'2 项 · search.matches、search.scope …', evidence:'命中的文件与行号',
-      cli:{ declared:'rg', override:'C:/tools/ripgrep/rg.exe', resolved:null, found:false },
+      cli:cliProgramById('rg'),
       enabled:true, note:'为什么停用/启用它',
       check:'这个覆盖值在本机不存在（不在 PATH 中，也不是存在的绝对路径），因此如实显示「缺少可执行文件」——停用与缺失是两件事，界面不会混为一谈。' }
   ];
@@ -3511,45 +3596,212 @@ LIMIT 20;</textarea>
             </div>`;
   }
 
-  function cliActiveHtml(item) {
-    const channel = item.cli;
-    return `${esc(channel.override || channel.declared)} <span class="chip${channel.override ? ' warn' : ''}">${channel.override ? '操作者覆盖' : '随能力默认'}</span>`;
+  function cliActiveHtml(itemOrProgram) {
+    const channel = itemOrProgram.kind === 'cli' ? cliProgramOf(itemOrProgram) : itemOrProgram;
+    return `${esc(channel.override || channel.declared)} <span class="chip${channel.override ? ' warn' : ''}">${channel.override ? '操作者覆盖' : '程序默认'}</span>`;
   }
-  function cliResolvedText(item) {
-    const channel = item.cli;
+  function cliResolvedText(itemOrProgram) {
+    const channel = itemOrProgram.kind === 'cli' ? cliProgramOf(itemOrProgram) : itemOrProgram;
     if (channel.found === true) return channel.resolved;
     if (channel.found === false) return '未找到（不在 PATH 中，也不是存在的绝对路径）';
     return '原型不做文件查找；真实实现按 PATH 或绝对路径解析';
   }
 
-  function cliCard(item) {
+  function cliOperationCard(item) {
     const availability = availabilityOf(item);
     return `
-            <div class="cap">
-              <div class="cap-head clickable" onclick="inspectCapability('${item.id}', this)"><code>${esc(item.id)}</code><span class="chip ${availability.chip}" id="cliStatus-${item.id}">${esc(availability.text)}</span></div>
+            <div class="management" style="margin-top:10px">
+              <div class="cap-head clickable" onclick="inspectCapability('${item.id}', this)"><span><code>${esc(item.id)}</code>${item.custom ? ' <span class="chip info">手动操作</span>' : ' <span class="chip">预置操作</span>'}</span><span class="chip ${availability.chip}" id="cliStatus-${item.id}">${esc(availability.text)}</span></div>
               <b class="cap-title">${esc(item.title)}</b>
               <p>${esc(item.body)}</p>
               <dl class="cap-meta">
-                <dt>声明二进制</dt><dd class="mono">${esc(item.declared)}</dd>
-                <dt>当前生效</dt><dd class="mono" id="cliActive-${item.id}">${cliActiveHtml(item)}</dd>
-                <dt>解析路径</dt><dd class="mono" id="cliResolved-${item.id}">${esc(cliResolvedText(item))}</dd>
-                <dt>调用方式</dt><dd class="mono">${esc(item.call)}</dd>
+                <dt>操作</dt><dd class="mono">${esc(item.operation || item.id)}</dd>
+                <dt>固定参数数组</dt><dd class="mono">${esc(JSON.stringify(item.args || []))}</dd>
                 <dt>引用情况</dt><dd>${esc(usageText(item))}</dd>
               </dl>
               <div class="controls">
-                <input id="cliBinary-${item.id}" value="${esc(item.cli.override ?? '')}" placeholder="${esc(item.declared)} 或绝对路径" aria-label="二进制位置" />
-                <button class="btn primary" onclick="saveCliChannel('${item.id}')">保存位置</button>
-                <button class="btn" onclick="resetCliChannel('${item.id}')">恢复默认</button>
-                <button class="btn" onclick="probeCliChannel('${item.id}')">探测</button>
+                ${item.custom ? `<button class="btn" onclick="editCliCapability('${item.id}')">编辑操作</button><button class="btn danger" onclick="askDeleteCliCapability('${item.id}')">删除操作</button>` : ''}
               </div>
               ${capabilityControls(item, 'cli')}
             </div>`;
   }
 
+  function cliProgramCard(program, operations) {
+    const available = operations.some(item => item.enabled) && program.found !== false;
+    return `<div class="cap">
+      <div class="cap-head"><span><code>${esc(program.id)}</code> <span class="chip${program.custom ? ' info' : ''}">${program.custom ? '手动注册程序' : '内置程序'}</span></span><span class="chip ${available ? 'ok' : 'warn'}">${program.found === false ? '缺少可执行文件' : `${operations.length} 个操作`}</span></div>
+      <b class="cap-title">${esc(program.title)}</b>
+      <dl class="cap-meta">
+        <dt>声明二进制</dt><dd class="mono">${esc(program.declared)}</dd>
+        <dt>当前生效</dt><dd class="mono" id="cliActive-${program.id}">${cliActiveHtml(program)}</dd>
+        <dt>解析路径</dt><dd class="mono">${esc(cliResolvedText(program))}</dd>
+      </dl>
+      <div class="controls">
+        <input id="cliBinary-${program.id}" value="${esc(program.override ?? '')}" placeholder="${esc(program.declared)} 或绝对路径" aria-label="${esc(program.title)} 二进制位置" />
+        <button class="btn primary" onclick="saveCliChannel('${program.id}')">保存位置</button>
+        <button class="btn" onclick="resetCliChannel('${program.id}')">恢复默认</button>
+        <button class="btn" onclick="probeCliChannel('${program.id}')">探测程序</button>
+        <button class="btn" onclick="beginCliOperationCreate('${program.id}')">＋ 增加操作</button>
+      </div>
+      <p class="hint" style="margin-top:12px"><b>可调用操作</b> · 专家清单引用下列能力标识，程序位置不会重复登记。</p>
+      ${operations.map(cliOperationCard).join('')}
+    </div>`;
+  }
+
   function renderKindCards(kind) {
     const host = document.getElementById(`kindCards-${kind}`);
     if (!host) return;
-    host.innerHTML = capabilitiesOf(kind).map(item => kind === 'cli' ? cliCard(item) : commandCard(item)).join('');
+    let items = capabilitiesOf(kind);
+    if (kind === 'cli') {
+      const filter = document.getElementById('cliStatusFilter')?.value || 'all';
+      if (filter === 'problem') items = items.filter(item => !item.enabled || availabilityOf(item).text !== '可用');
+      if (filter === 'disabled') items = items.filter(item => !item.enabled);
+      const result = document.getElementById('cliFilterResult');
+      if (result) result.textContent = `显示 ${items.length} / ${capabilitiesOf(kind).length} 项`;
+    }
+    host.innerHTML = (kind === 'cli'
+      ? CLI_PROGRAMS.map(program => {
+          const operations = items.filter(item => item.programId === program.id);
+          return operations.length ? cliProgramCard(program, operations) : '';
+        }).join('')
+      : items.map(commandCard).join(''))
+      || '<div class="insp-empty">当前筛选条件下没有本地 CLI 能力。</div>';
+  }
+
+  let cliEditingId = null;
+  let cliCreatingForProgram = null;
+
+  function resetCliForm() {
+    cliEditingId = null;
+    cliCreatingForProgram = null;
+    ['cliProgramId','cliProgramTitle','cliId','cliTitle','cliBinary','cliArgs','cliDescription'].forEach(id => document.getElementById(id).value = '');
+    ['cliProgramId','cliProgramTitle','cliId','cliBinary'].forEach(id => document.getElementById(id).disabled = false);
+    document.getElementById('cliFormTitle').textContent = '注册 CLI 程序与首个操作';
+    document.getElementById('cliSubmit').textContent = '注册程序与操作';
+    setMessage('cliRegistryMessage','','');
+  }
+
+  function beginCliCreate() {
+    resetCliForm();
+    document.getElementById('cliEditor').style.display = 'block';
+    reveal(document.getElementById('cliEditor'));
+  }
+
+  function beginCliOperationCreate(programId) {
+    resetCliForm();
+    const program = cliProgramById(programId);
+    if (!program) return;
+    cliCreatingForProgram = programId;
+    document.getElementById('cliEditor').style.display = 'block';
+    document.getElementById('cliProgramId').value = program.id;
+    document.getElementById('cliProgramId').disabled = true;
+    document.getElementById('cliProgramTitle').value = program.title;
+    document.getElementById('cliProgramTitle').disabled = true;
+    document.getElementById('cliBinary').value = program.declared;
+    document.getElementById('cliBinary').disabled = true;
+    document.getElementById('cliFormTitle').textContent = `为 ${program.title} 增加操作`;
+    document.getElementById('cliSubmit').textContent = '增加操作';
+    setMessage('cliRegistryMessage','info','复用现有程序位置，只需填写操作能力标识、名称和固定参数。');
+    reveal(document.getElementById('cliEditor'));
+  }
+
+  function closeCliEditor() {
+    resetCliForm();
+    document.getElementById('cliEditor').style.display = 'none';
+  }
+
+  function editCliCapability(id) {
+    const item = capabilityById(id);
+    if (!item?.custom) return;
+    cliEditingId = id;
+    const program = cliProgramOf(item);
+    document.getElementById('cliEditor').style.display = 'block';
+    document.getElementById('cliProgramId').value = program.id;
+    document.getElementById('cliProgramId').disabled = true;
+    document.getElementById('cliProgramTitle').value = program.title;
+    document.getElementById('cliProgramTitle').disabled = true;
+    document.getElementById('cliId').value = item.id;
+    document.getElementById('cliId').disabled = true;
+    document.getElementById('cliTitle').value = item.title;
+    document.getElementById('cliBinary').value = program.declared;
+    document.getElementById('cliBinary').disabled = true;
+    document.getElementById('cliArgs').value = (item.args || []).join(' ');
+    document.getElementById('cliDescription').value = item.body;
+    document.getElementById('cliFormTitle').textContent = `编辑 ${program.title} 操作 ${item.id}`;
+    document.getElementById('cliSubmit').textContent = '保存操作';
+    setMessage('cliRegistryMessage','info','程序和操作标识不可修改；二进制位置在程序卡片统一维护。');
+    reveal(document.getElementById('cliEditor'));
+  }
+
+  function saveCliCapability() {
+    const fail = text => setMessage('cliRegistryMessage','err',text);
+    const programId = document.getElementById('cliProgramId').value.trim();
+    const programTitle = document.getElementById('cliProgramTitle').value.trim();
+    const id = document.getElementById('cliId').value.trim();
+    const title = document.getElementById('cliTitle').value.trim();
+    const binary = document.getElementById('cliBinary').value.trim();
+    const argText = document.getElementById('cliArgs').value.trim();
+    const body = document.getElementById('cliDescription').value.trim();
+    if (!/^[a-z0-9][a-z0-9._-]{0,80}$/.test(programId)) return fail('程序标识格式不正确。');
+    if (!/^[a-z0-9][a-z0-9._-]{0,80}$/.test(id)) return fail('操作能力标识格式不正确。');
+    if (!programTitle || !title) return fail('程序名称和操作名称不能为空。');
+    if (!binary || binary.startsWith('-')) return fail('请填写有效的可执行文件名称或绝对路径。');
+    if ([binary,argText,body].some(value => CONTROL_CHARS.test(value))) return fail('注册内容不能包含控制字符。');
+    if ([binary,argText,body].some(containsSecret)) return fail('注册内容中不要填写 Token、密码或密钥；凭据请通过环境变量注入。');
+    if (title.length > 120 || binary.length > 300 || argText.length > 500 || body.length > 500) return fail('名称、路径、参数或说明超过长度限制。');
+    const args = argText ? argText.match(/"[^"]*"|'[^']*'|\S+/g).map(value => value.replace(/^("|')|("|')$/g,'')) : [];
+    const existing = capabilityById(id);
+    if (existing && !cliEditingId) return fail(`能力标识 ${esc(id)} 已存在，请换一个标识。`);
+    let program = cliProgramById(programId);
+    if (program && !cliEditingId && cliCreatingForProgram !== programId) return fail(`程序 ${esc(programId)} 已存在；请在该程序卡片下增加操作，而不是重复注册程序。`);
+    if (!program) {
+      program = { id:programId, title:programTitle, declared:binary, override:null, resolved:null, found:null, custom:true };
+      CLI_PROGRAMS.push(program);
+    }
+    const item = existing || { id, kind:'cli', enabled:true, note:'手动注册', custom:true };
+    Object.assign(item, {
+      programId, operation:id.split(/[.-]/).pop(), title, body: body || '操作者手动注册的本地 CLI 操作。', declared:program.declared, args,
+      inputs:'任务上下文（按固定参数数组调用）', grants:'无需额外授权（平台级）',
+      call:`ProcessExecutor · ${binary}${args.length ? ' ' + args.join(' ') : ''}`,
+      facts:'无（通用 CLI 不发布结构化事实）', evidence:'脱敏 stdout / stderr 与退出码',
+      cli:program,
+      check:'操作使用固定参数数组，不经过 shell；程序位置与探测由上级程序卡片统一管理。', custom:true
+    });
+    if (!existing) {
+      CAPABILITIES.push(item);
+      DECLARED_CAPABILITIES.push(id);
+    }
+    renderCapabilities();
+    closeCliEditor();
+    setCapabilityMessage(id,'ok', existing ? `CLI 操作 ${esc(id)} 已更新。` : `程序 ${esc(programId)} 及操作 ${esc(id)} 已注册。`);
+  }
+
+  function askDeleteCliCapability(id) {
+    const item = capabilityById(id);
+    if (!item?.custom) return;
+    setCapabilityMessage(id,'warn', `确认删除手动注册的 CLI 能力 ${esc(id)}？`
+      + `<button class="btn danger" onclick="confirmDeleteCliCapability('${id}')">确认删除</button>`
+      + `<button class="btn" onclick="cancelCliDelete('${id}')">取消</button>`);
+  }
+
+  function cancelCliDelete(id) {
+    delete CAPABILITY_MESSAGES[id];
+    renderKindCards('cli');
+  }
+
+  function confirmDeleteCliCapability(id) {
+    const item = capabilityById(id);
+    if (!item?.custom) return;
+    const usage = capabilityUsage(id);
+    if (usage.enabled.length) return setCapabilityMessage(id,'err',
+      `无法删除：仍被已启用专家 ${esc(usage.enabled.join('、'))} 引用。请先从专家流程中移除。`);
+    CAPABILITIES = CAPABILITIES.filter(capability => capability.id !== id);
+    if (item.cli?.custom && !CAPABILITIES.some(capability => capability.kind === 'cli' && capability.programId === item.programId)) {
+      CLI_PROGRAMS = CLI_PROGRAMS.filter(program => program.id !== item.programId);
+    }
+    DECLARED_CAPABILITIES = DECLARED_CAPABILITIES.filter(capabilityId => capabilityId !== id);
+    delete CAPABILITY_MESSAGES[id];
+    renderCapabilities();
   }
 
   /* 能力详情由状态生成：停用、改二进制、被专家引用，检查器立刻跟着变——
@@ -3600,7 +3852,7 @@ LIMIT 20;</textarea>
       renderKindCards(kind.id);
     });
     const badge = document.getElementById('mcpCount');
-    if (badge) badge.textContent = `${publishedCapabilities().length} 项`;
+    if (badge) badge.textContent = `${publishedCapabilities().length} 个工具`;
     renderNodeCapabilityOptions();
     // 概览的能力卡读的就是这份 CAPABILITIES：来源重算一次，它就不能停在旧值上。
     renderOverviewMetrics();
@@ -3640,42 +3892,52 @@ LIMIT 20;</textarea>
   }
 
   function saveCliChannel(id) {
-    const item = capabilityById(id);
-    if (!item) return;
+    const program = cliProgramById(id);
+    if (!program) return;
+    const notify = (kind, html) => capabilitiesOf('cli').filter(item => item.programId === id)
+      .forEach(item => setCapabilityMessage(item.id, kind, html));
     const value = document.getElementById(`cliBinary-${id}`).value.trim();
-    if (!value) return setCapabilityMessage(id, 'info',
-      '输入为空。要清掉覆盖值、回到随能力默认的二进制，请点「恢复默认」。');
-    if (value.startsWith('-')) return setCapabilityMessage(id, 'err',
+    if (!value) return notify('info', '输入为空。要清掉程序覆盖值，请点「恢复默认」。');
+    if (value.startsWith('-')) return notify('err',
       '二进制位置不能以连字符开头：这里只填可执行文件的位置（PATH 中的名字或绝对路径），参数由代码决定。');
-    if (CONTROL_CHARS.test(value)) return setCapabilityMessage(id, 'err', '二进制位置不能包含控制字符。');
-    if (containsSecret(value)) return setCapabilityMessage(id, 'err',
+    if (CONTROL_CHARS.test(value)) return notify('err', '二进制位置不能包含控制字符。');
+    if (containsSecret(value)) return notify('err',
       '二进制位置里不要放凭据；平台不保存 Token 与密钥，请通过环境变量注入。');
-    if (value.length > 300) return setCapabilityMessage(id, 'err', '二进制位置最多 300 字符。');
-    item.cli.override = value;
+    if (value.length > 300) return notify('err', '二进制位置最多 300 字符。');
+    program.override = value;
     // 覆盖值按次解析、即时生效；原型没有文件系统，因此不再断言能不能找到。
-    if (value !== item.cli.resolved) item.cli.found = null;
+    if (value !== program.resolved) program.found = null;
     renderCapabilities();
-    setCapabilityMessage(id, 'ok',
-      `已保存覆盖值 ${esc(value)}。生效方式与后端一致：每次执行按次解析，不需要重启。原型不做文件查找，因此「解析路径」显示为未判定。`);
+    notify('ok', `已保存程序覆盖值 ${esc(value)}；${esc(program.title)} 下全部操作共同生效。`);
   }
 
   function resetCliChannel(id) {
-    const item = capabilityById(id);
-    if (!item) return;
-    item.cli.override = null;
-    item.cli.found = null;
+    const program = cliProgramById(id);
+    if (!program) return;
+    program.override = null;
+    program.found = null;
     renderCapabilities();
-    setCapabilityMessage(id, 'ok',
-      `已清除覆盖值，回到随能力默认的 ${esc(item.cli.declared)}。原型不做文件查找，因此「解析路径」显示为未判定。`);
+    capabilitiesOf('cli').filter(item => item.programId === id).forEach(item => setCapabilityMessage(item.id, 'ok',
+      `已清除程序覆盖值，回到默认的 ${esc(program.declared)}；其下全部操作共同生效。`));
   }
 
   function probeCliChannel(id) {
-    const item = capabilityById(id);
-    if (!item) return;
-    const binary = item.cli.override || item.cli.declared;
-    setCapabilityMessage(id, 'info',
+    const program = cliProgramById(id);
+    if (!program) return;
+    const binary = program.override || program.declared;
+    capabilitiesOf('cli').filter(item => item.programId === id).forEach(item => setCapabilityMessage(item.id, 'info',
       `探测的真实效果：显式运行 ${esc(binary)} --version（短超时、输出脱敏），这是唯一为管理而执行二进制的地方。`
-      + '原型不启动任何进程，因此这里没有版本输出；渲染目录本身永远不执行二进制，只做查找。');
+      + '原型不启动任何进程；一次探测覆盖该程序下的全部操作。'));
+  }
+
+  function probeAllCliChannels() {
+    CLI_PROGRAMS.forEach(program => {
+      const binary = program.override || program.declared;
+      capabilitiesOf('cli').filter(item => item.programId === program.id).forEach(item => {
+        CAPABILITY_MESSAGES[item.id] = { kind:'info', html:`程序 ${esc(program.title)} 已加入探测：真实实现会显式运行 ${esc(binary)} --version；其下操作不重复探测。` };
+      });
+    });
+    renderCapabilities();
   }
 
   /* 专家可选的平台级能力：只有还启用的能选。被停用的单独成组列出来——
@@ -3739,7 +4001,9 @@ LIMIT 20;</textarea>
         { capability:'decision', title:'决策层 · DecisionProvider', detail:'没有需要判定的 SQL 事实 → skip。', meta:'不需要模型', state:'warn' }
       ] }
   ];
-  let selectedTaskId = 't1';
+  // 首次进入不替操作者选第一条：检查器先解释当前页面，选中只由点击产生。
+  // P5 的教训仍然成立——进入动作不许悄悄重置当前对象，所以「沿用选中项」只发生在操作者点过之后。
+  let selectedTaskId = null;
 
   const STATUS_TEXT = { completed:['ok','已完成'], partial:['warn','部分完成'], running:['warn','执行中'], failed:['err','失败'], interrupted:['warn','已中断'] };
 
@@ -3949,7 +4213,7 @@ LIMIT 20;</textarea>
         { code:'projection.select_star', title:'投影使用通配符', severity:'low', category:'投影', fact:'select.allColumns', op:'等于', value:'true', evidence:'投影中包含 * 通配符。', advice:'明确列出业务所需列。' }
       ] }
   ];
-  let selectedRulePackId = 'sql-antipatterns';
+  let selectedRulePackId = null;
   let editedRuleCode = null;
 
   /* 事实词表：规则只能引用这里声明的事实；写错事实名保存时会被拒绝。 */
@@ -3986,7 +4250,7 @@ LIMIT 20;</textarea>
       knowledge:[], profiles:[], rulePacks:[], mcpTools:[],
       nodes:[{ id:'git', capability:'git-status', required:true }], edges:[] }
   ];
-  let selectedExpertId = 'orders-sql';
+  let selectedExpertId = null;
   let selectedNodeId = null;
   let expertDraft = null;
   let expertDirty = false;
@@ -4467,7 +4731,7 @@ LIMIT 20;</textarea>
       .forEach(id => problems.push(`规则包 ${id} 已在平台停用：启用专家前需要先重新启用它`));
     expert.mcpTools.forEach(tool => {
       const published = publishedCapability(tool);
-      if (!published) problems.push(`${tool} 没有服务器发布：平台未登记该服务器，或它的白名单里没有这个工具`);
+      if (!published) problems.push(`${tool} 没有服务器发布：平台未登记该服务器，或它的工具声明清单里没有这个工具`);
       else if (!(published.server.enabled && published.server.trusted))
         problems.push(`${tool} 所在服务器 ${published.server.id} 未同时启用与信任`);
     });
@@ -4992,8 +5256,8 @@ LIMIT 20;</textarea>
         { id:'d5', title:'slow-query.md', content:'慢查询处置顺序：先确认过滤条件的选择性，再检查可用索引，最后才考虑改写语句。' }
       ] }
   ];
-  let selectedKbId = 'dba';
-  let selectedDocId = 'd1';
+  let selectedKbId = null;
+  let selectedDocId = null;
   let searchResults = null;
 
   function kbById(id) { return KNOWLEDGE.find(b => b.id === id); }
