@@ -1,35 +1,22 @@
 @import "tailwindcss";
 
 /* ============================================================
-   App shell tokens — shared UI tokens come from @eap/ui/styles.css
+   App shell — shared palette/themes come from @eap/style
    ============================================================ */
-:root {
-  --bg: #f4f6fb;
-  --surface: #fff;
-  --surface-2: #f8fafc;
-  --surface-3: #eef2f8;
-  --border: #e3e8f0;
-  --border-strong: #cbd5e1;
-  --text: #172033;
-  --text-soft: #5b6b82;
-  --text-mute: #8a99ad;
-  --accent: #2563eb;
-  --accent-soft: #e8f0fe;
+:root,
+[data-eap-theme="light"] {
   --rail: #0f1728;
   --rail-text: #b9c6da;
   --rail-active: #22314b;
-  --danger: #b91c1c;
-  --danger-bg: #fee2e2;
-  --warn: #b45309;
-  --warn-bg: #fef3c7;
-  --ok: #15803d;
-  --ok-bg: #dcfce7;
-  --info: #1d4ed8;
-  --info-bg: #e0e7ff;
-  --neutral: #52627a;
-  --neutral-bg: #eef2f8;
-  --radius: 10px;
-  --shadow: 0 1px 2px rgb(16 24 40 / 4%), 0 8px 24px rgb(16 24 40 / 6%);
+}
+
+[data-eap-theme="dark"] {
+  --rail: #020617;
+  --rail-text: #94a3b8;
+  --rail-active: #1e293b;
+}
+
+:root {
   font-family:
     Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
   color: var(--text);

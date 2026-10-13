@@ -1,4 +1,9 @@
-@import url("./foundation/tokens.css");
+/**
+ * Component styles only. Load a theme first, e.g.:
+ *   import "@eap/style/themes.css";
+ *   import { applyTheme } from "@eap/style";
+ *   applyTheme("light"); // or "dark"
+ */
 @import url("./button/button.css");
 @import url("./badge/badge.css");
 @import url("./feedback/feedback.css");

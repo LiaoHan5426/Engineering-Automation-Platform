@@ -1,0 +1,39 @@
+/**
+ * Dark theme token values.
+ * Activate with data-eap-theme="dark" on :root or a subtree.
+ */
+[data-eap-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0b1220;
+  --surface: #111827;
+  --surface-2: #0f172a;
+  --surface-3: #1e293b;
+  --border: #243044;
+  --border-strong: #334155;
+  --text: #e5eefc;
+  --text-soft: #94a3b8;
+  --text-mute: #64748b;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-soft: #1e3a5f;
+  --danger: #f87171;
+  --danger-bg: #3f1d1d;
+  --danger-border: #7f1d1d;
+  --warn: #fbbf24;
+  --warn-bg: #3b2f14;
+  --warn-text: #fde68a;
+  --ok: #4ade80;
+  --ok-bg: #14532d;
+  --ok-border: #166534;
+  --info: #93c5fd;
+  --info-bg: #1e3a5f;
+  --neutral: #94a3b8;
+  --neutral-bg: #1e293b;
+  --overlay: rgb(2 6 23 / 65%);
+  --radius: 12px;
+  --radius-control: 8px;
+  --shadow: 0 1px 2px rgb(0 0 0 / 35%);
+  --control-hover: #243044;
+  --on-accent: #fff;
+}

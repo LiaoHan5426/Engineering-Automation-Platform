@@ -1,8 +1,12 @@
 /**
- * @eap/ui design tokens — single source for component CSS variables.
- * Apps may override these on :root / a theme scope after importing @eap/ui/styles.css.
+ * Light theme token values.
+ * Applied on :root by default and when data-eap-theme="light".
  */
-:root {
+:root,
+[data-eap-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f4f6fb;
   --surface: #fff;
   --surface-2: #f8fafc;
   --surface-3: #eef2f7;
