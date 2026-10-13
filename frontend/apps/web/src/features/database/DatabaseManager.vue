@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { runtimeApi } from "@eap/runtime-client";
+import { ConfirmBox, EmptyState, Feedback, Button } from "@eap/ui";
 import { errorMessage } from "../../lib/presentation";
-import ConfirmBox from "../../components/ConfirmBox.vue";
 type Column = { name: string; type: string; nullable: boolean };
 type Table = { name: string; columns: Column[] };
 type Index = { name: string; table: string; columns: string[]; unique: boolean };
@@ -158,9 +158,7 @@ onMounted(refresh);
     <aside class="eap-panel manager-list">
       <div class="manager-toolbar">
         <h2>数据库资料</h2>
-        <button class="eap-button eap-button--primary" :disabled="busy" @click="create">
-          ＋ 新建资料
-        </button>
+        <Button variant="primary" :disabled="busy" @click="create"> ＋ 新建资料 </Button>
       </div>
       <input
         v-model="filter"
@@ -180,14 +178,14 @@ onMounted(refresh);
         <strong>{{ item.label }}</strong
         ><small>{{ item.engine }} · {{ item.environment }}</small>
       </button>
-      <p v-if="!items.length" class="empty-state">
+      <EmptyState v-if="!items.length">
         暂无资料。可登记脱敏表结构和索引，不需要提供连接凭据。
-      </p>
+      </EmptyState>
     </aside>
     <div class="eap-panel">
-      <p v-if="message" class="feedback" role="status">{{ message }}</p>
+      <Feedback v-if="message">{{ message }}</Feedback>
       <p v-if="busy" role="status">正在处理…</p>
-      <p v-if="!editing" class="empty-state">选择资料查看、编辑或删除，也可新建一个元数据快照。</p>
+      <EmptyState v-if="!editing">选择资料查看、编辑或删除，也可新建一个元数据快照。</EmptyState>
       <form v-else @submit.prevent="save">
         <div class="manager-toolbar">
           <div>
@@ -195,19 +193,19 @@ onMounted(refresh);
             <small>{{ dirty ? "有未保存修改" : "脱敏元数据快照" }}</small>
           </div>
           <div class="form-actions">
-            <button
+            <Button
+              variant="danger"
               v-if="id"
               type="button"
-              class="eap-button eap-button--danger"
               :disabled="busy || dirty"
               @click="askDelete"
             >
               删除资料
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
               v-if="dirty"
               type="button"
-              class="eap-button"
               :disabled="busy"
               @click="
                 baseline = JSON.stringify(profile());
@@ -215,16 +213,16 @@ onMounted(refresh);
               "
             >
               放弃修改
-            </button>
-            <button class="eap-button eap-button--primary" :disabled="busy || !label.trim()">
+            </Button>
+            <Button variant="primary" :disabled="busy || !label.trim()">
               {{ busy ? "保存中…" : "保存资料" }}
-            </button>
+            </Button>
           </div>
         </div>
-        <p class="planning-note">
+        <Feedback tone="warning">
           只保存人工录入的结构快照。不要填写密码、Token 或 JDBC 地址；不会连接数据库或执行
           SQL。专家使用资料前需要显式授权。
-        </p>
+        </Feedback>
         <fieldset :disabled="busy" class="metadata-fields">
           <label
             >资料名称<input
@@ -245,15 +243,15 @@ onMounted(refresh);
           /></label>
           <div class="manager-toolbar">
             <h3>表结构</h3>
-            <button
+            <Button
+              variant="secondary"
               type="button"
-              class="eap-button"
               @click="tables.push({ name: '', columns: [] })"
             >
               ＋ 添加表
-            </button>
+            </Button>
           </div>
-          <p v-if="!tables.length" class="empty-state">尚未登记表结构。</p>
+          <EmptyState v-if="!tables.length">尚未登记表结构。</EmptyState>
           <article v-for="(table, index) in tables" :key="index" class="observation">
             <div class="form-actions">
               <label class="grow"
@@ -262,9 +260,9 @@ onMounted(refresh);
                   class="workspace-input"
                   placeholder="schema.table"
                   required /></label
-              ><button type="button" class="eap-button" @click="tables.splice(index, 1)">
+              ><Button variant="secondary" type="button" @click="tables.splice(index, 1)">
                 移除表
-              </button>
+              </Button>
             </div>
             <div
               v-for="(column, columnIndex) in table.columns"
@@ -278,33 +276,33 @@ onMounted(refresh);
                   class="workspace-input"
                   placeholder="uuid / varchar / bigint" /></label
               ><label><input v-model="column.nullable" type="checkbox" />允许空值</label
-              ><button
+              ><Button
+                variant="secondary"
                 type="button"
-                class="eap-button"
                 @click="table.columns.splice(columnIndex, 1)"
               >
                 移除字段
-              </button>
+              </Button>
             </div>
-            <button
+            <Button
+              variant="secondary"
               type="button"
-              class="eap-button"
               @click="table.columns.push({ name: '', type: '', nullable: true })"
             >
               ＋ 添加字段
-            </button>
+            </Button>
           </article>
           <div class="manager-toolbar">
             <h3>索引信息</h3>
-            <button
+            <Button
+              variant="secondary"
               type="button"
-              class="eap-button"
               @click="indexes.push({ name: '', table: '', columns: [], unique: false })"
             >
               ＋ 添加索引
-            </button>
+            </Button>
           </div>
-          <p v-if="!indexes.length" class="empty-state">尚未登记索引，这不代表数据库没有索引。</p>
+          <EmptyState v-if="!indexes.length">尚未登记索引，这不代表数据库没有索引。</EmptyState>
           <article v-for="(index, position) in indexes" :key="position" class="observation">
             <label>索引名称<input v-model="index.name" class="workspace-input" required /></label
             ><label
@@ -327,9 +325,9 @@ onMounted(refresh);
             /></label>
             <div class="form-actions">
               <label><input v-model="index.unique" type="checkbox" />唯一索引</label
-              ><button type="button" class="eap-button" @click="indexes.splice(position, 1)">
+              ><Button variant="secondary" type="button" @click="indexes.splice(position, 1)">
                 移除索引
-              </button>
+              </Button>
             </div>
           </article>
           <datalist id="database-table-names">
@@ -348,7 +346,10 @@ onMounted(refresh);
       :busy="busy"
       :refusal="deleteRefusal"
       @confirm="remove"
-      @cancel="deleteOpen = false; deleteRefusal = ''"
+      @cancel="
+        deleteOpen = false;
+        deleteRefusal = '';
+      "
     />
   </section>
 </template>

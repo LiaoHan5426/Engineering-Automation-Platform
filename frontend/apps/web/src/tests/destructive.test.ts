@@ -1,9 +1,9 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { ConfirmBox } from "@eap/ui";
 import { createSSRApp } from "vue";
 import { renderToString } from "vue/server-renderer";
-import ConfirmBox from "../components/ConfirmBox.vue";
 import DatabaseManager from "../features/database/DatabaseManager.vue";
 import KnowledgeManager from "../features/knowledge/KnowledgeManager.vue";
 
@@ -35,7 +35,8 @@ describe("destructive actions", () => {
       for (const line of source.split("\n")) {
         // A mention inside a comment explains the rule; a call site is an invocation.
         const code = line.replace(/\/\/.*$/, "").replace(/\/\*.*?\*\//g, "");
-        if (/window\s*\.\s*(confirm|alert)\s*\(/.test(code)) offenders.push(relative(srcRoot, file));
+        if (/window\s*\.\s*(confirm|alert)\s*\(/.test(code))
+          offenders.push(relative(srcRoot, file));
       }
     }
     expect(offenders).toEqual([]);
@@ -55,7 +56,7 @@ describe("destructive actions", () => {
     expect(html).toContain("正被已启用的专家引用");
     // 确认按钮没有被移除——它在，只是 disabled。
     expect(html).toContain("删除规则包");
-    expect(html).toMatch(/<button[^>]*disabled[^>]*>\s*删除规则包/);
+    expect(html).toMatch(/<button[^>]*\bdisabled\b[^>]*>[\s\S]*?删除规则包/);
     expect(html).toContain("按钮仍在原位但已禁用");
   });
 

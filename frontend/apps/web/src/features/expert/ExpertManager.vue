@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, toRaw } from "vue";
 import { runtimeApi, type CapabilityItem, type CapabilityKindSummary } from "@eap/runtime-client";
+import { assertExpertId } from "@eap/expert-sdk";
+import { Button, ConfirmBox, EmptyState, Feedback } from "@eap/ui";
 import { errorMessage } from "../../lib/presentation";
-import { isExpertScoped as capabilityIsExpertScoped, offersAsNode, unknownDeclaredTools as findUnknownDeclaredTools, undeclaredScopedNodes as findUndeclaredScopedNodes } from "../capability/capabilityScope";
+import {
+  isExpertScoped as capabilityIsExpertScoped,
+  offersAsNode,
+  unknownDeclaredTools as findUnknownDeclaredTools,
+  undeclaredScopedNodes as findUndeclaredScopedNodes,
+} from "../capability/capabilityScope";
 type ExpertDefinition = {
   id: string;
   name: string;
@@ -85,9 +92,15 @@ const capabilityGroups = computed(() => {
   const scopedOptions = declaredMcpTools.value.map(
     (name) =>
       catalogCapabilityItems.value.find((item) => item.name === name) ??
-      ({ name, title: "专家级能力（已授权本专家）", kind: "mcp", scope: "expert" } as CapabilityItem),
+      ({
+        name,
+        title: "专家级能力（已授权本专家）",
+        kind: "mcp",
+        scope: "expert",
+      } as CapabilityItem),
   );
-  if (scopedOptions.length) groups.push({ label: "专家级（已授权本专家）", options: scopedOptions });
+  if (scopedOptions.length)
+    groups.push({ label: "专家级（已授权本专家）", options: scopedOptions });
   return groups;
 });
 const selectedRulePacks = ref<string[]>([]);
@@ -107,18 +120,25 @@ const expertScopedCapabilities = ref<string[]>([]);
  */
 const disabledPlatform = ref<string[]>([]);
 const expertScopedVocabulary = ref<string[]>([]);
-const mcpServers = ref<Array<{ id: string; name: string; trusted: boolean; enabled: boolean; tools: string[] }>>([]);
+const mcpServers = ref<
+  Array<{ id: string; name: string; trusted: boolean; enabled: boolean; tools: string[] }>
+>([]);
 const declaredMcpTools = ref<string[]>([]);
 const mcpToolToGrant = ref("");
 const mcpToolChoices = computed(() =>
   expertScopedVocabulary.value.filter((id) => !declaredMcpTools.value.includes(id)),
 );
 function isExpertScoped(capability: string) {
-  return capabilityIsExpertScoped(capability, catalogCapabilityItems.value, expertScopedVocabulary.value);
+  return capabilityIsExpertScoped(
+    capability,
+    catalogCapabilityItems.value,
+    expertScopedVocabulary.value,
+  );
 }
 function addMcpTool() {
   const next = mcpToolToGrant.value || mcpToolChoices.value[0];
-  if (next && !declaredMcpTools.value.includes(next)) declaredMcpTools.value = [...declaredMcpTools.value, next];
+  if (next && !declaredMcpTools.value.includes(next))
+    declaredMcpTools.value = [...declaredMcpTools.value, next];
   mcpToolToGrant.value = "";
 }
 function removeMcpTool(tool: string) {
@@ -129,7 +149,12 @@ function removeMcpTool(tool: string) {
 }
 /** Node capabilities that are expert-scoped but not declared — rejected by the backend, caught here. */
 const undeclaredScopedNodes = computed(() =>
-  findUndeclaredScopedNodes(steps.value, declaredMcpTools.value, catalogCapabilityItems.value, expertScopedVocabulary.value),
+  findUndeclaredScopedNodes(
+    steps.value,
+    declaredMcpTools.value,
+    catalogCapabilityItems.value,
+    expertScopedVocabulary.value,
+  ),
 );
 /** Declared tools the platform does not publish: a manifest cannot bring a server into existence. */
 const unknownDeclaredTools = computed(() =>
@@ -166,7 +191,6 @@ function beforeUnload(event: BeforeUnloadEvent) {
 }
 onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
 import WorkflowCanvas from "../../components/WorkflowCanvas.vue";
-import ConfirmBox from "../../components/ConfirmBox.vue";
 import { inspectGraph, type WorkflowNode } from "../../lib/workflowGraph";
 type Step = WorkflowNode;
 const items = ref<ExpertDefinition[]>([]);
@@ -270,7 +294,9 @@ function applyDefinition(item: ExpertDefinition, note?: string) {
   name.value = source.name;
   selectedKnowledge.value = [...(source.knowledgeBases ?? [])];
   selectedDatabases.value = [...(source.databaseProfiles ?? [])];
-  selectedRules.value = [...new Set(["database.credentials.never-expose", ...(source.rules ?? [])])];
+  selectedRules.value = [
+    ...new Set(["database.credentials.never-expose", ...(source.rules ?? [])]),
+  ];
   selectedRulePacks.value = [...((source.rulePacks as string[] | undefined) ?? [])];
   declaredMcpTools.value = [...((source.mcpTools as string[] | undefined) ?? [])];
   steps.value = structuredClone(
@@ -338,6 +364,16 @@ function definition() {
   };
 }
 async function submit(save: boolean) {
+  try {
+    assertExpertId(id.value);
+  } catch (error) {
+    message.value = error instanceof Error ? error.message : "专家 id 无效";
+    return;
+  }
+  if (!name.value.trim()) {
+    message.value = "请填写专家名称";
+    return;
+  }
   const graph = inspectGraph(steps.value, edges.value);
   if (graph.errors.length) {
     message.value = graph.errors.join("；");
@@ -487,14 +523,12 @@ onMounted(refreshData);
     <aside class="manager-list eap-panel">
       <div class="manager-toolbar">
         <h2>专家</h2>
-        <button class="eap-button eap-button--primary" :disabled="busy" @click="create">
-          ＋ 新建
-        </button>
+        <Button variant="primary" :disabled="busy" @click="create"> ＋ 新建 </Button>
       </div>
-      <p v-if="loadError" class="error-message" role="alert">{{ loadError }}</p>
-      <button
+      <Feedback v-if="loadError" tone="error">{{ loadError }}</Feedback>
+      <Button
+        variant="secondary"
         v-if="loadError"
-        class="eap-button"
         @click="
           load()
             .then(() => (loadError = ''))
@@ -502,7 +536,7 @@ onMounted(refreshData);
         "
       >
         重试加载
-      </button>
+      </Button>
       <input
         v-model="filter"
         class="workspace-input"
@@ -520,13 +554,13 @@ onMounted(refreshData);
         <strong>{{ item.name }}</strong
         ><small>{{ item.id }}</small>
       </button>
-      <p v-if="!visibleItems.length" class="empty-state">暂无匹配专家，点击新建开始配置。</p>
+      <EmptyState>暂无匹配专家，点击新建开始配置。</EmptyState>
     </aside>
     <div v-if="!editing" class="eap-panel empty-state">
       <h2>构建专家工作流</h2>
       <p>选择专家编辑流程，或创建一个新专家。</p>
       <p>添加能力节点 → 连接节点 → 配置属性 → 校验并保存</p>
-      <button class="eap-button eap-button--primary" @click="create">新建专家</button>
+      <Button variant="primary" @click="create">新建专家</Button>
     </div>
     <div v-else class="editor-workspace">
       <div class="eap-panel manager-toolbar">
@@ -543,38 +577,38 @@ onMounted(refreshData);
           }}</small>
         </div>
         <div>
-          <button v-if="original" class="eap-button" :disabled="busy" @click="copyExpert">
-            复制为新专家</button
-          ><button class="eap-button" :disabled="busy" @click="submit(false)">校验</button
-          ><button
-            class="eap-button eap-button--primary"
+          <Button variant="secondary" v-if="original" :disabled="busy" @click="copyExpert">
+            复制为新专家</Button
+          ><Button variant="secondary" :disabled="busy" @click="submit(false)">校验</Button
+          ><Button
+            variant="primary"
             :disabled="busy || isBuiltin || !id.trim() || !name.trim()"
             @click="submit(true)"
           >
             {{ busy ? "处理中…" : "保存草稿" }}
-          </button>
-          <button v-if="dirty" class="eap-button" :disabled="busy" @click="discardDraft">
+          </Button>
+          <Button variant="secondary" v-if="dirty" :disabled="busy" @click="discardDraft">
             放弃修改
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
             v-if="!isBuiltin && states[id]"
-            class="eap-button"
             :disabled="busy || dirty"
             @click="askActivate"
           >
             {{ enabled ? "停用并撤销授权" : "启用并授权" }}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
             v-if="enabled"
-            class="eap-button"
             :disabled="busy || dirty"
             @click="emit('run', id)"
           >
             进入运行工作台
-          </button>
+          </Button>
         </div>
       </div>
-      <p v-if="message" class="feedback" role="status">{{ message }}</p>
+      <Feedback v-if="message">{{ message }}</Feedback>
       <div class="editor-grid">
         <div class="eap-panel">
           <div class="manager-toolbar">
@@ -586,7 +620,7 @@ onMounted(refreshData);
                     {{ option.name }}<template v-if="option.title"> — {{ option.title }}</template>
                   </option>
                 </optgroup></select
-              ><button class="eap-button eap-button--primary" @click="addNode">＋ 添加节点</button>
+              ><Button variant="primary" @click="addNode">＋ 添加节点</Button>
               <button
                 v-if="steps.length > 1 && !edges.length"
                 class="eap-button"
@@ -597,11 +631,13 @@ onMounted(refreshData);
             </div>
           </div>
           <p v-if="disabledPlatform.length" class="hint">
-            以下能力已在「能力目录」中停用，因此不出现在上面的选择器里：<span class="mono">{{ disabledPlatform.join("、") }}</span>。
-            需要用到它们时，请先在能力目录中重新启用；停用状态会被后端在保存与启用时拒绝。
+            以下能力已在「能力目录」中停用，因此不出现在上面的选择器里：<span class="mono">{{
+              disabledPlatform.join("、")
+            }}</span
+            >。 需要用到它们时，请先在能力目录中重新启用；停用状态会被后端在保存与启用时拒绝。
           </p>
           <WorkflowCanvas :nodes="steps" :edges="edges" @select="selectedNode = $event" />
-          <p v-if="!steps.length" class="empty-state">点击添加节点开始编排。</p>
+          <EmptyState>点击添加节点开始编排。</EmptyState>
         </div>
         <aside class="eap-panel property-panel">
           <h3>专家信息</h3>
@@ -661,7 +697,9 @@ onMounted(refreshData);
               ><input v-model="selectedRulePacks" type="checkbox" :value="pack.id" />
               <span
                 >{{ pack.name }}
-                <span class="hint">· {{ pack.ruleCount }} 条规则{{ pack.shipped ? " · 内置" : "" }}</span>
+                <span class="hint"
+                  >· {{ pack.ruleCount }} 条规则{{ pack.shipped ? " · 内置" : "" }}</span
+                >
                 <small class="requirement-line">
                   需要能力：{{
                     pack.requires.length ? pack.requires.join("、") : "未声明（该包无法通过校验）"
@@ -673,16 +711,17 @@ onMounted(refreshData);
               没有可引用的规则包。请先到「规则库」复制或新建一个规则包；未引用规则包的专家只做解析与事实抽取。
             </p>
           </div>
-          <p v-if="missingCapabilities.length" class="eap-feedback eap-feedback--error">
+          <Feedback tone="error" v-if="missingCapabilities.length">
             所选规则包需要能力 <b>{{ missingCapabilities.join("、") }}</b
             >，但流程中没有对应的能力节点：这些规则依赖的事实不会被产出，规则永远不会命中。请添加对应节点，或取消勾选该规则包。
-          </p>
+          </Feedback>
           <small
             >规则包决定该专家命中哪些检查、严重级、证据与建议，并决定何时把压缩后的证据提交给模型；规则本身是数据，可在「规则库」中编辑与试算。规则包所需能力必须与流程节点一致，启用时后端会再次校验。</small
           >
           <h3>MCP 工具授权（专家级能力）</h3>
           <p class="hint">
-            MCP 工具不会被平台全局启用：只有这里声明、并在启用时授权的工具，才会成为本专家的节点，且调用发生在
+            MCP
+            工具不会被平台全局启用：只有这里声明、并在启用时授权的工具，才会成为本专家的节点，且调用发生在
             本专家本次执行自己的会话里。平台未登记或未信任的服务器不会出现在可选项里。
           </p>
           <div class="choice-list">
@@ -693,13 +732,20 @@ onMounted(refreshData);
             <p v-if="!declaredMcpTools.length" class="hint">未授权任何 MCP 工具。</p>
           </div>
           <div class="form-actions">
-            <select v-model="mcpToolToGrant" aria-label="选择要授权的 MCP 工具" :disabled="!mcpToolChoices.length">
+            <select
+              v-model="mcpToolToGrant"
+              aria-label="选择要授权的 MCP 工具"
+              :disabled="!mcpToolChoices.length"
+            >
               <option v-for="tool in mcpToolChoices" :key="tool" :value="tool">{{ tool }}</option>
             </select>
-            <button class="eap-button" :disabled="!mcpToolChoices.length" @click="addMcpTool">授权该工具</button>
+            <Button variant="secondary" :disabled="!mcpToolChoices.length" @click="addMcpTool">
+              授权该工具
+            </Button>
           </div>
           <p v-if="!mcpServers.length" class="hint">
-            当前没有登记任何 MCP 服务器，因此没有工具可授权（平台专家级能力 {{ expertScopedCapabilities.length }} 项）。这是如实状态，不是错误。
+            当前没有登记任何 MCP 服务器，因此没有工具可授权（平台专家级能力
+            {{ expertScopedCapabilities.length }} 项）。这是如实状态，不是错误。
           </p>
           <div v-else class="choice-list">
             <p v-for="server in mcpServers" :key="server.id" class="hint">
@@ -708,14 +754,14 @@ onMounted(refreshData);
               工具：<span class="mono">{{ server.tools.join("、") || "无" }}</span>
             </p>
           </div>
-          <p v-if="unknownDeclaredTools.length" class="eap-feedback eap-feedback--error">
+          <Feedback tone="error" v-if="unknownDeclaredTools.length">
             清单声明的工具 <b>{{ unknownDeclaredTools.join("、") }}</b> 未在任何已启用并信任的 MCP
             服务器中发布：清单不能凭名字让一个服务器存在。
-          </p>
-          <p v-if="undeclaredScopedNodes.length" class="eap-feedback eap-feedback--error">
+          </Feedback>
+          <Feedback tone="error" v-if="undeclaredScopedNodes.length">
             节点 <b>{{ undeclaredScopedNodes.map((step) => step.id).join("、") }}</b>
             使用了专家级能力但未声明授权，保存会被拒绝。请在上方授权对应工具，或移除该节点。
-          </p>
+          </Feedback>
           <h3>节点属性</h3>
           <template v-if="selectedStep"
             ><small>节点标识：{{ selectedStep.id }}</small
@@ -726,13 +772,12 @@ onMounted(refreshData);
                 class="workspace-input"
                 placeholder="sql.parse" /></label
             ><small v-if="isExpertScoped(selectedStep.capability)" class="requirement-line">
-              专家级能力：不会全局启用，只在本专家本次执行的会话内调用；移除授权后该节点会一并移除。
-            </small
+              专家级能力：不会全局启用，只在本专家本次执行的会话内调用；移除授权后该节点会一并移除。 </small
             ><label
               ><input v-model="selectedStep.required" type="checkbox" /> 失败时阻止后续执行</label
-            ><button class="eap-button" @click="removeNode">移除节点及连线</button></template
+            ><Button variant="secondary" @click="removeNode">移除节点及连线</Button></template
           >
-          <p v-else class="empty-state">点击画布上的节点标题查看属性。</p>
+          <EmptyState>点击画布上的节点标题查看属性。</EmptyState>
           <details>
             <summary>由草稿生成的 Manifest（只读）</summary>
             <p class="hint">
@@ -755,7 +800,10 @@ onMounted(refreshData);
       :busy="busy"
       :refusal="activateRefusal"
       @confirm="activate(!enabled)"
-      @cancel="activateOpen = false; activateRefusal = ''"
+      @cancel="
+        activateOpen = false;
+        activateRefusal = '';
+      "
     />
   </section>
 </template>

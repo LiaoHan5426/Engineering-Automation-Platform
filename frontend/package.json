@@ -1,13 +1,12 @@
 {
   "name": "engineering-automation-platform-frontend",
   "private": true,
-  "type": "module",
-  "packageManager": "pnpm@12.9.0",
   "workspaces": [
     "apps/*",
     "packages/*",
     "internal/*"
   ],
+  "type": "module",
   "scripts": {
     "typecheck": "vue-tsc --build",
     "check:boundaries": "node scripts/check-boundaries.ts",
@@ -34,5 +33,6 @@
     "vite-plus": "catalog:tooling",
     "vue": "catalog:frontend",
     "vue-tsc": "~3.3.11"
-  }
+  },
+  "packageManager": "pnpm@12.9.0"
 }

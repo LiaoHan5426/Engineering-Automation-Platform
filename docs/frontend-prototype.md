@@ -63,8 +63,8 @@ which is neither, has no tab.
 move the context away from the list it belongs to — the prototype slides the form in from the right, the
 app uses an inline panel in the same column (`pack-form` / the manager toolbars) because both satisfy the
 rule that matters: the list stays visible and the action does not become a page of its own. Closing an
-unsaved form asks first instead of discarding silently, and it does so **in the page**: `ConfirmBox.vue`
-is the one confirmation surface, `window.confirm` appears nowhere (asserted by
+unsaved form asks first instead of discarding silently, and it does so **in the page**: `@eap/ui`
+`ConfirmBox` is the one confirmation surface, `window.confirm` appears nowhere (asserted by
 `apps/web/src/tests/destructive.test.ts`, which reads the source rather than trusting a review). 删除 goes
 through that modal, which names the impact and, when the backend refuses, keeps the confirm button
 present but disabled with the reason beside it.

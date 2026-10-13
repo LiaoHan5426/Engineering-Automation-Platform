@@ -1,7 +1,7 @@
 {
   "name": "@eap/web",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vp dev",
@@ -9,6 +9,7 @@
     "preview": "vp preview"
   },
   "dependencies": {
+    "@eap/expert-sdk": "workspace:*",
     "@eap/runtime-client": "workspace:*",
     "@eap/ui": "workspace:*",
     "axios": "catalog:frontend",
@@ -17,12 +18,12 @@
     "vue-i18n": "catalog:frontend"
   },
   "devDependencies": {
-    "vite": "catalog:tooling",
-    "vite-plus": "catalog:tooling",
-    "@tailwindcss/vite": "catalog:frontend",
     "@eap/tsconfig": "workspace:*",
+    "@tailwindcss/vite": "catalog:frontend",
     "@types/nprogress": "catalog:tooling",
     "@vitejs/plugin-vue": "catalog:tooling",
-    "typescript": "catalog:tooling"
+    "typescript": "catalog:tooling",
+    "vite": "catalog:tooling",
+    "vite-plus": "catalog:tooling"
   }
 }

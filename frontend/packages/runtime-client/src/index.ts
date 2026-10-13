@@ -143,7 +143,12 @@ export type CliProbeResult = {
   message: string;
 };
 
-export type CliOperationRequest = { capabilityId: string; title: string; args: string[]; description: string };
+export type CliOperationRequest = {
+  capabilityId: string;
+  title: string;
+  args: string[];
+  description: string;
+};
 export type CliOperationItem = CliOperationRequest & { programId: string; builtin: boolean };
 export type CliProgramRequest = { id: string; name: string; binary: string };
 export type CliProgramItem = CliProgramRequest & {
@@ -221,7 +226,12 @@ export type BlockedRule = {
   missingFacts: string[];
   missingCapabilities: string[];
 };
-export type RuleCapabilityCheck = { id: string; required: string[]; met: boolean; missing: string[] };
+export type RuleCapabilityCheck = {
+  id: string;
+  required: string[];
+  met: boolean;
+  missing: string[];
+};
 export type DeterministicAnalysis = {
   parseStatus?: string;
   statementType?: string;
@@ -440,7 +450,9 @@ export const runtimeApi = {
       .then((r) => r.data),
   setRulePackActivation: (id: string, enabled: boolean) =>
     client
-      .put<RulePackWriteResult>("/rule-packs/" + encodeURIComponent(id) + "/activation", { enabled })
+      .put<RulePackWriteResult>("/rule-packs/" + encodeURIComponent(id) + "/activation", {
+        enabled,
+      })
       .then((r) => r.data),
   /** Refused by the backend while an enabled expert still references the pack, naming the experts. */
   deleteRulePack: (id: string) =>
@@ -508,15 +520,30 @@ export const runtimeApi = {
   health: () => get<RuntimeHealth>("/health"),
   capabilities: () => get<CapabilityResponse>("/capabilities"),
   cliPrograms: () => get<{ items: CliProgramItem[] }>("/cli-programs"),
-  registerCliProgram: (program: CliProgramRequest) => client.post("/cli-programs", program).then(r => r.data),
-  configureCliProgram: (id: string, binary: string) => client.put("/cli-programs/" + encodeURIComponent(id), { binary }).then(r => r.data),
-  deleteCliProgram: (id: string) => client.delete("/cli-programs/" + encodeURIComponent(id)).then(r => r.data),
-  probeCliProgram: (id: string) => client.post<CliProbeResult>("/cli-programs/" + encodeURIComponent(id) + "/probe").then(r => r.data),
+  registerCliProgram: (program: CliProgramRequest) =>
+    client.post("/cli-programs", program).then((r) => r.data),
+  configureCliProgram: (id: string, binary: string) =>
+    client.put("/cli-programs/" + encodeURIComponent(id), { binary }).then((r) => r.data),
+  deleteCliProgram: (id: string) =>
+    client.delete("/cli-programs/" + encodeURIComponent(id)).then((r) => r.data),
+  probeCliProgram: (id: string) =>
+    client
+      .post<CliProbeResult>("/cli-programs/" + encodeURIComponent(id) + "/probe")
+      .then((r) => r.data),
   saveCliOperation: (programId: string, operation: CliOperationRequest, editing: boolean) => {
-    const url = "/cli-programs/" + encodeURIComponent(programId) + "/operations/" + encodeURIComponent(operation.capabilityId);
-    return (editing ? client.put(url, operation) : client.post(url, operation)).then(r => r.data);
+    const url =
+      "/cli-programs/" +
+      encodeURIComponent(programId) +
+      "/operations/" +
+      encodeURIComponent(operation.capabilityId);
+    return (editing ? client.put(url, operation) : client.post(url, operation)).then((r) => r.data);
   },
-  deleteCliOperation: (programId: string, id: string) => client.delete("/cli-programs/" + encodeURIComponent(programId) + "/operations/" + encodeURIComponent(id)).then(r => r.data),
+  deleteCliOperation: (programId: string, id: string) =>
+    client
+      .delete(
+        "/cli-programs/" + encodeURIComponent(programId) + "/operations/" + encodeURIComponent(id),
+      )
+      .then((r) => r.data),
   /**
    * The one on/off switch, for any kind. Refused by the backend while an enabled expert runs the
    * capability, and the refusal names the experts.
@@ -547,7 +574,9 @@ export const runtimeApi = {
   deleteMcpServer: (id: string) =>
     client.delete("/mcp-servers/" + encodeURIComponent(id)).then((r) => r.data),
   probeMcpServer: (id: string) =>
-    client.post<McpProbeResult>("/mcp-servers/" + encodeURIComponent(id) + "/probe").then((r) => r.data),
+    client
+      .post<McpProbeResult>("/mcp-servers/" + encodeURIComponent(id) + "/probe")
+      .then((r) => r.data),
   createTask: (goal: string) =>
     client
       .post<TaskResult>("/tasks", { goal }, { timeout: 60_000 })

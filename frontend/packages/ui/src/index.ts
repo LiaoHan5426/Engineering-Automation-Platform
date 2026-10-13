@@ -5,3 +5,4 @@ export { default as MetricCard } from "./MetricCard.vue";
 export { default as Panel } from "./Panel.vue";
 export { default as EmptyState } from "./EmptyState.vue";
 export { default as Feedback } from "./Feedback.vue";
+export { default as ConfirmBox } from "./ConfirmBox.vue";

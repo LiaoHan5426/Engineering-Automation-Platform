@@ -56,7 +56,8 @@ export function undeclaredScopedNodes<T extends { id: string; capability: string
   vocabulary: string[] = [],
 ): T[] {
   return steps.filter(
-    (step) => isExpertScoped(step.capability, items, vocabulary) && !declared.includes(step.capability),
+    (step) =>
+      isExpertScoped(step.capability, items, vocabulary) && !declared.includes(step.capability),
   );
 }
 
@@ -69,10 +70,17 @@ export function unknownDeclaredTools(declared: string[], vocabulary: string[] = 
  * The capabilities selectable as nodes: platform capabilities, plus the expert-scoped ones this expert
  * declared. Order is preserved so the picker stays stable while editing.
  */
-export function selectableNodes(items: CapabilityLike[], declared: string[] = []): CapabilityLike[] {
+export function selectableNodes(
+  items: CapabilityLike[],
+  declared: string[] = [],
+): CapabilityLike[] {
   const platform = items.filter(isGloballySelectable);
   const scoped = declared
-    .map((name) => items.find((item) => item.name === name) ?? ({ name, scope: "expert", expertScoped: true } as CapabilityLike))
+    .map(
+      (name) =>
+        items.find((item) => item.name === name) ??
+        ({ name, scope: "expert", expertScoped: true } as CapabilityLike),
+    )
     .filter((item) => !platform.some((entry) => entry.name === item.name));
   return [...platform, ...scoped];
 }

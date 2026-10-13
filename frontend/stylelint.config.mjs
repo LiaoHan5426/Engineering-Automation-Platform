@@ -1,3 +1,3 @@
-import config from '@eap/stylelint-config'
+import config from "@eap/stylelint-config";
 
-export default config
+export default config;

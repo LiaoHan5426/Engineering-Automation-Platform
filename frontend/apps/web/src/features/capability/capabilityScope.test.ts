@@ -25,7 +25,10 @@ describe("capability scope rules", () => {
   });
 
   it("never offers an expert-scoped capability as an ordinary node", () => {
-    expect(items.filter(isGloballySelectable).map((item) => item.name)).toEqual(["sql.parse", "rg-search"]);
+    expect(items.filter(isGloballySelectable).map((item) => item.name)).toEqual([
+      "sql.parse",
+      "rg-search",
+    ]);
     const selectable = selectableNodes(items, [SCOPED]).map((item) => item.name);
     expect(selectable).toContain(SCOPED);
     expect(selectable.indexOf(SCOPED)).toBeGreaterThan(selectable.indexOf("sql.parse"));
@@ -37,7 +40,9 @@ describe("capability scope rules", () => {
       { id: "parse", capability: "sql.parse" },
       { id: "query", capability: SCOPED },
     ];
-    expect(undeclaredScopedNodes(steps, [], items, [SCOPED]).map((step) => step.id)).toEqual(["query"]);
+    expect(undeclaredScopedNodes(steps, [], items, [SCOPED]).map((step) => step.id)).toEqual([
+      "query",
+    ]);
     expect(undeclaredScopedNodes(steps, [SCOPED], items, [SCOPED])).toEqual([]);
   });
 
@@ -49,7 +54,9 @@ describe("capability scope rules", () => {
   it("never offers a switched-off platform capability as a node", () => {
     // A disabled capability still has an item (the catalogue lists it as 已停用), so filtering by scope
     // alone would offer a node the runtime refuses to resolve.
-    expect(items.filter((item) => offersAsNode(item, ["rg-search"])).map((item) => item.name)).toEqual(["sql.parse"]);
+    expect(
+      items.filter((item) => offersAsNode(item, ["rg-search"])).map((item) => item.name),
+    ).toEqual(["sql.parse"]);
     expect(items.filter((item) => offersAsNode(item, ["sql.parse", "rg-search"]))).toEqual([]);
     // Expert scope still wins, so a disabled list can never leak an MCP tool into the platform group.
     expect(offersAsNode(items[2]!, [])).toBe(false);

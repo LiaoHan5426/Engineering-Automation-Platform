@@ -8,9 +8,11 @@
 |---|---|---|
 | `@eap/web` | Vue 页面、交互与页面内状态 | 应用入口 |
 | `@eap/runtime-client` | HTTP 客户端、请求/响应 TypeScript 类型 | `@eap/runtime-client` |
-| `@eap/ui` | 通用展示组件 | `@eap/ui` |
-| `@eap/expert-sdk` | 专家清单编写工具 | `@eap/expert-sdk` |
+| `@eap/ui` | 通用展示组件与样式（Button、Badge、Panel、MetricCard、EmptyState、Feedback、ConfirmBox） | `@eap/ui` / `@eap/ui/styles.css` |
+| `@eap/expert-sdk` | 专家清单编写与 id 校验（控制台保存前复用 `assertExpertId`） | `@eap/expert-sdk` |
 | `@eap/tsconfig` | 工作区 TypeScript 基础配置 | `@eap/tsconfig/base.json` |
+
+`@eap/web` 通过包名导入 `@eap/ui` 与 `@eap/runtime-client`，不再在页面内复制确认框或指标卡。页面布局与工作台专用样式留在 `apps/web/src/style.css`；按钮、徽章、反馈、面板、指标与确认框的视觉规则由 `@eap/ui/styles.css` 提供。
 
 每个工作区目录都有 `package.json`；依赖写入包自身的 `dependencies` / `devDependencies`，本地包使用 `workspace:*`。页面从公开包名导入客户端，不使用跨包相对路径或其他包的 `src` 私有路径。TypeScript 项目引用用于类型构建，不替代包依赖声明。
 
@@ -19,7 +21,7 @@
 ```text
 apps/web/src
   App.vue / main.ts     壳层入口
-  components/           跨页面复用组件（确认框、流程图）
+  components/           应用内专用组件（流程图等；确认框已下沉到 @eap/ui）
   features/<area>/      能力、专家、知识库、数据库、规则等页面与局部逻辑
   lib/                  展示、脱敏、改写、工作流图、i18n 等共享工具
   tests/                跨页面契约测试（console / management / destructive）

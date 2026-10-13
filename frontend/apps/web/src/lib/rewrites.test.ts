@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 import { candidateRewrite, rewriteUnavailable } from "./rewrites";
 
-const SQL = "SELECT id FROM orders o JOIN customer c ON o.customer_id = c.id WHERE o.deleted_at = NULL";
+const SQL =
+  "SELECT id FROM orders o JOIN customer c ON o.customer_id = c.id WHERE o.deleted_at = NULL";
 
 describe("candidate rewrites are offered only where the change is decidable", () => {
   it("corrects a NULL equality comparison, which the statement alone decides", () => {
@@ -10,12 +11,17 @@ describe("candidate rewrites are offered only where the change is decidable", ()
     expect(candidate!.before).toBe(SQL);
     expect(candidate!.after).toContain("o.deleted_at IS NULL");
     // 其余部分必须逐字保持，改写不得顺手重排语句。
-    expect(candidate!.after).toContain("SELECT id FROM orders o JOIN customer c ON o.customer_id = c.id");
+    expect(candidate!.after).toContain(
+      "SELECT id FROM orders o JOIN customer c ON o.customer_id = c.id",
+    );
     expect(candidate!.limitation).toContain("不会执行");
   });
 
   it("maps negation to IS NOT NULL", () => {
-    const candidate = candidateRewrite("predicate.null_comparison", "SELECT 1 FROM t WHERE a <> NULL");
+    const candidate = candidateRewrite(
+      "predicate.null_comparison",
+      "SELECT 1 FROM t WHERE a <> NULL",
+    );
     expect(candidate!.after).toBe("SELECT 1 FROM t WHERE a IS NOT NULL");
   });
 

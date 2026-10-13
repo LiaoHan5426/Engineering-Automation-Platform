@@ -7,7 +7,7 @@ autoDedupe: true
 
 peerDependencyRules:
   allowedVersions:
-    vite: '>=1.0.0'
+    vite: ">=1.0.0"
 
 catalogs:
   frontend:
@@ -16,13 +16,13 @@ catalogs:
     axios: ^1.8.0
     nprogress: ^0.2.0
     tailwindcss: ^4.3.3
-    '@tailwindcss/vite': ^4.3.3
+    "@tailwindcss/vite": ^4.3.3
   tooling:
     vite-plus: ^1.1.0
     vite: npm:@voidzero-dev/vite-plus-core@^1.1.0
     typescript: ^6.0.0
-    '@vitejs/plugin-vue': ^6.0.9
-    '@types/nprogress': ^0.2.3
+    "@vitejs/plugin-vue": ^6.0.9
+    "@types/nprogress": ^0.2.3
   style:
     stylelint: ^16.26.1
     postcss-html: ^1.8.1

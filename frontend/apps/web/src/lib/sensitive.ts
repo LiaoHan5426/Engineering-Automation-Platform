@@ -9,7 +9,8 @@
  *
  * The two sets of patterns must stay in step, so the shapes here are the shapes the runtime rejects.
  */
-const ASSIGNMENT = /(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key)\s*[:=]\s*\S+/i;
+const ASSIGNMENT =
+  /(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key)\s*[:=]\s*\S+/i;
 const PRIVATE_KEY = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
 const BEARER = /\bbearer\s+[a-z0-9._-]{20,}/i;
 

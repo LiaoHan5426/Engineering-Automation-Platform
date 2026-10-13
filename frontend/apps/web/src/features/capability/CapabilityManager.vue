@@ -9,9 +9,9 @@ import {
   type McpServerItem,
   type McpServerRequest,
 } from "@eap/runtime-client";
+import { Button, ConfirmBox, Badge, Feedback } from "@eap/ui";
 import { errorMessage } from "../../lib/presentation";
 import CliProgramManager from "./CliProgramManager.vue";
-import ConfirmBox from "../../components/ConfirmBox.vue";
 
 const emit = defineEmits<{ (event: "saved"): void }>();
 
@@ -45,11 +45,14 @@ const deleteRefusal = ref("");
 const toolNames = computed(() => [...new Set(toolsDraft.value.split(/[,，\s]+/).filter(Boolean))]);
 function addTool() {
   const name = toolDraft.value.trim();
-  if (!/^[a-z0-9][a-z0-9_-]{0,60}$/.test(name)) return feedback("error", "工具名只允许小写字母、数字、下划线和连字符。");
+  if (!/^[a-z0-9][a-z0-9_-]{0,60}$/.test(name))
+    return feedback("error", "工具名只允许小写字母、数字、下划线和连字符。");
   toolsDraft.value = [...new Set([...toolNames.value, name])].join(", ");
   toolDraft.value = "";
 }
-function removeTool(name: string) { toolsDraft.value = toolNames.value.filter(tool => tool !== name).join(", "); }
+function removeTool(name: string) {
+  toolsDraft.value = toolNames.value.filter((tool) => tool !== name).join(", ");
+}
 
 const kinds = computed<CapabilityKindSummary[]>(() => catalog.value?.kinds ?? []);
 const items = computed<CapabilityItem[]>(() => catalog.value?.items ?? []);
@@ -88,7 +91,8 @@ async function refresh() {
     for (const item of items.value) {
       if (notesDraft.value[item.name] === undefined) notesDraft.value[item.name] = item.notes;
     }
-    if (!kinds.value.some((kind) => kind.id === tab.value) && tab.value !== "overview") tab.value = "overview";
+    if (!kinds.value.some((kind) => kind.id === tab.value) && tab.value !== "overview")
+      tab.value = "overview";
   } catch (error) {
     feedback("error", errorMessage(error));
   } finally {
@@ -120,7 +124,11 @@ async function toggle(item: CapabilityItem) {
 
 async function saveNote(item: CapabilityItem) {
   try {
-    await runtimeApi.setCapabilityActivation(item.name, item.enabled, notesDraft.value[item.name] ?? "");
+    await runtimeApi.setCapabilityActivation(
+      item.name,
+      item.enabled,
+      notesDraft.value[item.name] ?? "",
+    );
     feedback("success", `已保存 ${item.name} 的备注。`);
     await refresh();
   } catch (error) {
@@ -131,7 +139,10 @@ async function saveNote(item: CapabilityItem) {
 async function setServerActivation(server: McpServerItem, enabled: boolean, trusted: boolean) {
   try {
     await runtimeApi.setMcpServerActivation(server.id, enabled, trusted);
-    feedback("success", `${server.id} 已更新。注册不等于可用：只有同时启用并信任，其工具才会被发布。`);
+    feedback(
+      "success",
+      `${server.id} 已更新。注册不等于可用：只有同时启用并信任，其工具才会被发布。`,
+    );
     await refresh();
     emit("saved");
   } catch (error) {
@@ -213,21 +224,33 @@ async function submitServer() {
     <h1>能力目录</h1>
     <p>
       按执行方式分成四类，每类都有自己的管理入口：内置命令在运行时内执行，本地 CLI 需要二进制存在，
-      MCP 工具来自显式信任的服务器，HTTP 服务尚未接入。目录以运行时与处理器声明为准，不是专家定义里的名字清单。
+      MCP 工具来自显式信任的服务器，HTTP
+      服务尚未接入。目录以运行时与处理器声明为准，不是专家定义里的名字清单。
     </p>
     <p class="hint">
-      每类能改什么由后端声明，界面不自行推测：内置命令只能启用/停用，本地 CLI 程序可手动登记并增加固定参数操作，
-      MCP 工具的服务器由操作者登记。手动 CLI 操作返回脱敏进程证据；发布结构化事实由专用处理器实现。
+      每类能改什么由后端声明，界面不自行推测：内置命令只能启用/停用，本地 CLI
+      程序可手动登记并增加固定参数操作， MCP 工具的服务器由操作者登记。手动 CLI
+      操作返回脱敏进程证据；发布结构化事实由专用处理器实现。
     </p>
   </div>
 
-  <p v-if="message" class="eap-feedback" :class="messageKind === 'error' ? 'eap-feedback--error' : 'eap-feedback--success'" role="status">
+  <Feedback
+    tone="info"
+    v-if="message"
+    :class="messageKind === 'error' ? 'eap-feedback--error' : 'eap-feedback--success'"
+    role="status"
+  >
     {{ message }}
-  </p>
+  </Feedback>
 
   <nav class="manager-tabs" aria-label="能力种类">
     <button :class="{ active: tab === 'overview' }" @click="tab = 'overview'">总览</button>
-    <button v-for="kind in visibleKinds" :key="kind.id" :class="{ active: tab === kind.id }" @click="tab = kind.id">
+    <button
+      v-for="kind in visibleKinds"
+      :key="kind.id"
+      :class="{ active: tab === kind.id }"
+      @click="tab = kind.id"
+    >
       {{ kind.label }}<template v-if="kind.count"> · {{ kind.count }}</template>
     </button>
   </nav>
@@ -240,17 +263,22 @@ async function submitServer() {
         <div>
           <h2>
             {{ kind.label }} <span class="mono kind-id">{{ kind.id }}</span>
-            <span class="eap-badge" :class="kind.expertScoped ? 'eap-badge--warning' : 'eap-badge--neutral'">
+            <Badge
+              tone="neutral"
+              :class="kind.expertScoped ? 'eap-badge--warning' : 'eap-badge--neutral'"
+            >
               {{ kind.scopeLabel }}
-            </span>
-            <span v-if="!kind.manageable" class="eap-badge eap-badge--warning">无管理入口</span>
+            </Badge>
+            <Badge tone="warning" v-if="!kind.manageable">无管理入口</Badge>
           </h2>
           <p>{{ kind.description }}</p>
         </div>
-        <span class="eap-badge eap-badge--neutral">{{ kind.count }} 项</span>
+        <Badge tone="neutral">{{ kind.count }} 项</Badge>
       </header>
       <p class="hint">
-        当前状态：<template v-if="availabilityParts(kind).length">{{ availabilityParts(kind).join(" · ") }}</template
+        当前状态：<template v-if="availabilityParts(kind).length">{{
+          availabilityParts(kind).join(" · ")
+        }}</template
         ><template v-else>暂无能力</template>
       </p>
       <dl class="cap-meta">
@@ -260,25 +288,32 @@ async function submitServer() {
         <dd>{{ kind.management.creation }}</dd>
       </dl>
       <p v-if="kind.manageable" class="hint">
-        <button class="eap-button eap-button--ghost" @click="tab = kind.id">进入{{ kind.label }}管理</button>
+        <Button variant="ghost" @click="tab = kind.id"> 进入{{ kind.label }}管理 </Button>
       </p>
     </article>
 
     <article class="eap-panel panel-block">
       <h2>声明与注册一致性</h2>
-      <p v-if="!(catalog?.unregistered ?? []).length && !(catalog?.undeclared ?? []).length" class="hint">
+      <p
+        v-if="!(catalog?.unregistered ?? []).length && !(catalog?.undeclared ?? []).length"
+        class="hint"
+      >
         专家清单可引用的能力与运行时实际注册的处理器一一对应。
       </p>
-      <p v-if="(catalog?.unregistered ?? []).length" class="eap-feedback eap-feedback--error">
-        已声明但没有实现的能力：{{ (catalog?.unregistered ?? []).join("、") }}。专家清单引用它们会导致节点无法执行。
-      </p>
-      <p v-if="(catalog?.undeclared ?? []).length" class="eap-feedback eap-feedback--error">
-        已实现但未在声明词表中的能力：{{ (catalog?.undeclared ?? []).join("、") }}。专家清单无法引用它们。
-      </p>
+      <Feedback tone="error" v-if="(catalog?.unregistered ?? []).length">
+        已声明但没有实现的能力：{{
+          (catalog?.unregistered ?? []).join("、")
+        }}。专家清单引用它们会导致节点无法执行。
+      </Feedback>
+      <Feedback tone="error" v-if="(catalog?.undeclared ?? []).length">
+        已实现但未在声明词表中的能力：{{
+          (catalog?.undeclared ?? []).join("、")
+        }}。专家清单无法引用它们。
+      </Feedback>
       <p class="hint">
         可全局引用（平台级）{{ (catalog?.globallyUsable ?? []).length }} 项；专家级
-        {{ (catalog?.expertScoped ?? []).length }} 项，只能通过专家授权使用。
-        停用中的能力 {{ (catalog?.disabledCapabilities ?? []).length }} 项。
+        {{ (catalog?.expertScoped ?? []).length }} 项，只能通过专家授权使用。 停用中的能力
+        {{ (catalog?.disabledCapabilities ?? []).length }} 项。
       </p>
     </article>
 
@@ -301,9 +336,16 @@ async function submitServer() {
               <td>{{ item.kindLabel }}</td>
               <td>{{ item.scopeLabel }}</td>
               <td>
-                <span class="eap-badge" :class="availabilityClass(item.availability)">{{ item.availabilityLabel }}</span>
+                <Badge tone="neutral" :class="availabilityClass(item.availability)">{{
+                  item.availabilityLabel
+                }}</Badge>
               </td>
-              <td>{{ item.usedBy.join("、") || (item.declaredBy.length ? item.declaredBy.join("、") + "（草稿）" : "—") }}</td>
+              <td>
+                {{
+                  item.usedBy.join("、") ||
+                  (item.declaredBy.length ? item.declaredBy.join("、") + "（草稿）" : "—")
+                }}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -318,13 +360,16 @@ async function submitServer() {
         <div>
           <h2>
             {{ currentKind.label }} <span class="mono kind-id">{{ currentKind.id }}</span>
-            <span class="eap-badge" :class="currentKind.expertScoped ? 'eap-badge--warning' : 'eap-badge--neutral'">
+            <Badge
+              tone="neutral"
+              :class="currentKind.expertScoped ? 'eap-badge--warning' : 'eap-badge--neutral'"
+            >
               {{ currentKind.scopeLabel }}
-            </span>
+            </Badge>
           </h2>
           <p>{{ currentKind.description }}</p>
         </div>
-        <span class="eap-badge eap-badge--neutral">{{ currentKind.count }} 项</span>
+        <Badge tone="neutral">{{ currentKind.count }} 项</Badge>
       </header>
       <div class="requirement-block">
         <p class="requirement"><b>这里可以改什么：</b>{{ currentKind.management.description }}</p>
@@ -337,20 +382,30 @@ async function submitServer() {
       <article v-for="item in itemsOf('command')" :key="item.name" class="eap-panel panel-block">
         <header class="panel-head">
           <div>
-            <h2>{{ item.title }} <code class="mono">{{ item.name }}</code></h2>
+            <h2>
+              {{ item.title }} <code class="mono">{{ item.name }}</code>
+            </h2>
             <p>{{ item.summary }}</p>
           </div>
-          <span class="eap-badge" :class="availabilityClass(item.availability)">{{ item.availabilityLabel }}</span>
+          <Badge tone="neutral" :class="availabilityClass(item.availability)">{{
+            item.availabilityLabel
+          }}</Badge>
         </header>
         <dl class="cap-meta">
           <dt>执行器</dt>
           <dd class="mono">{{ item.executor }}</dd>
           <dt>发布事实</dt>
-          <dd class="mono">{{ item.facts.length }} 项<template v-if="item.facts.length"> · {{ item.facts.slice(0, 4).join("、") }}</template></dd>
+          <dd class="mono">
+            {{ item.facts.length }} 项<template v-if="item.facts.length">
+              · {{ item.facts.slice(0, 4).join("、") }}</template
+            >
+          </dd>
           <dt>引用情况</dt>
           <dd>
             <template v-if="item.usedBy.length">已启用专家：{{ item.usedBy.join("、") }}</template>
-            <template v-else-if="item.declaredBy.length">草稿引用：{{ item.declaredBy.join("、") }}（不影响停用）</template>
+            <template v-else-if="item.declaredBy.length"
+              >草稿引用：{{ item.declaredBy.join("、") }}（不影响停用）</template
+            >
             <template v-else>暂无专家引用</template>
           </dd>
         </dl>
@@ -361,14 +416,14 @@ async function submitServer() {
             placeholder="备注：为什么停用/启用它（会显示在目录里）"
             :aria-label="item.name + ' 的备注'"
           />
-          <button class="eap-button eap-button--ghost" @click="saveNote(item)">保存备注</button>
-          <button
-            class="eap-button"
+          <Button variant="ghost" @click="saveNote(item)">保存备注</Button>
+          <Button
+            variant="secondary"
             :class="item.enabled ? 'eap-button--secondary' : 'eap-button--primary'"
             @click="toggle(item)"
           >
             {{ item.enabled ? "停用" : "启用" }}
-          </button>
+          </Button>
         </div>
         <p v-if="item.usedBy.length" class="hint">
           仍被已启用专家引用时，后端会拒绝停用并点名这些专家——停用会让它们的节点在执行时失败。
@@ -380,25 +435,56 @@ async function submitServer() {
     </template>
 
     <!-- 本地 CLI -->
-    <CliProgramManager v-else-if="tab === 'cli'" :items="items" @saved="refresh(); emit('saved')" />
+    <CliProgramManager
+      v-else-if="tab === 'cli'"
+      :items="items"
+      @saved="
+        refresh();
+        emit('saved');
+      "
+    />
 
     <!-- MCP 工具 -->
     <template v-else-if="tab === 'mcp'">
       <article class="eap-panel panel-block">
-        <header class="panel-head"><div><h2>MCP 服务器</h2><p>{{ servers.length }} 个服务器 · {{ servers.reduce((count, server) => count + server.tools.length, 0) }} 个声明工具</p></div><button class="eap-button eap-button--primary" @click="resetForm(); serverEditor = true">＋ 登记服务器</button></header>
+        <header class="panel-head">
+          <div>
+            <h2>MCP 服务器</h2>
+            <p>
+              {{ servers.length }} 个服务器 ·
+              {{ servers.reduce((count, server) => count + server.tools.length, 0) }} 个声明工具
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            @click="
+              resetForm();
+              serverEditor = true;
+            "
+            >＋ 登记服务器</Button
+          >
+        </header>
       </article>
       <article v-if="serverEditor" class="eap-panel panel-block">
         <h2>{{ editing ? "编辑服务器 " + editing : "登记 MCP 服务器" }}</h2>
         <p class="hint">
           服务器由外部提供，平台只记录它的位置与工具声明清单。<b>登记不等于启用</b>：默认不启用、不信任；
-          即使启用并信任，专家仍须在清单里声明该工具、启用时写入授权，才可能被调用。
-          地址里不要放 Token 或密钥，凭据请用环境变量注入。
+          即使启用并信任，专家仍须在清单里声明该工具、启用时写入授权，才可能被调用。 地址里不要放
+          Token 或密钥，凭据请用环境变量注入。
         </p>
         <div class="editor-grid">
           <label class="field-label">
             服务器标识
-            <input v-model="form.id" class="workspace-input mono" :disabled="Boolean(editing)" placeholder="files" />
-            <small class="field-help">会拼进能力标识 mcp.&lt;服务器&gt;.&lt;工具&gt;，只允许小写字母、数字、下划线和连字符。</small>
+            <input
+              v-model="form.id"
+              class="workspace-input mono"
+              :disabled="Boolean(editing)"
+              placeholder="files"
+            />
+            <small class="field-help"
+              >会拼进能力标识
+              mcp.&lt;服务器&gt;.&lt;工具&gt;，只允许小写字母、数字、下划线和连字符。</small
+            >
           </label>
           <label class="field-label">
             显示名称
@@ -417,29 +503,55 @@ async function submitServer() {
             <input
               v-model="form.endpoint"
               class="workspace-input mono"
-              :placeholder="form.transport === 'stdio' ? 'npx -y @modelcontextprotocol/server-filesystem' : 'https://example.com/mcp'"
+              :placeholder="
+                form.transport === 'stdio'
+                  ? 'npx -y @modelcontextprotocol/server-filesystem'
+                  : 'https://example.com/mcp'
+              "
             />
           </label>
           <label class="field-label">
             工具声明清单
             <input v-model="toolsDraft" class="workspace-input mono" placeholder="search, read" />
-            <small class="field-help">工具名同样只能用小写字母、数字、下划线和连字符；清单是操作者声明，尚未与服务器协商。</small>
+            <small class="field-help"
+              >工具名同样只能用小写字母、数字、下划线和连字符；清单是操作者声明，尚未与服务器协商。</small
+            >
           </label>
         </div>
-        <div class="form-actions"><input v-model="toolDraft" class="workspace-input" aria-label="新增工具名称" placeholder="新增工具：search" /><button class="eap-button" @click="addTool">添加工具</button></div>
-        <div class="form-actions"><button v-for="tool in toolNames" :key="tool" class="eap-button eap-button--ghost" :aria-label="'移除工具 ' + tool" @click="removeTool(tool)">{{ tool }} ×</button></div>
+        <div class="form-actions">
+          <input
+            v-model="toolDraft"
+            class="workspace-input"
+            aria-label="新增工具名称"
+            placeholder="新增工具：search"
+          /><Button variant="secondary" @click="addTool">添加工具</Button>
+        </div>
+        <div class="form-actions">
+          <Button
+            variant="ghost"
+            v-for="tool in toolNames"
+            :key="tool"
+            :aria-label="'移除工具 ' + tool"
+            @click="removeTool(tool)"
+          >
+            {{ tool }} ×
+          </Button>
+        </div>
         <p class="hint">
           <label><input v-model="form.enabled" type="checkbox" /> 登记后即启用</label>
           <label><input v-model="form.trusted" type="checkbox" /> 登记后即信任</label>
         </p>
         <div class="form-actions">
-          <button class="eap-button eap-button--primary" @click="submitServer">{{ editing ? "保存修改" : "登记服务器" }}</button>
-          <button class="eap-button eap-button--ghost" @click="resetForm">取消</button>
+          <Button variant="primary" @click="submitServer">
+            {{ editing ? "保存修改" : "登记服务器" }}
+          </Button>
+          <Button variant="ghost" @click="resetForm">取消</Button>
         </div>
       </article>
 
       <p v-if="!servers.length" class="eap-panel panel-block hint">
-        尚未登记任何 MCP 服务器，因此没有专家级工具可被调用。这是如实状态，不是错误：目录不会因为「应该有」就列出不存在的能力。
+        尚未登记任何 MCP
+        服务器，因此没有专家级工具可被调用。这是如实状态，不是错误：目录不会因为「应该有」就列出不存在的能力。
       </p>
 
       <article v-for="server in servers" :key="server.id" class="eap-panel panel-block">
@@ -447,13 +559,16 @@ async function submitServer() {
           <div>
             <h2>
               {{ server.name }} <span class="mono kind-id">{{ server.id }}</span>
-              <span class="eap-badge" :class="server.usable ? 'eap-badge--success' : 'eap-badge--warning'">
+              <Badge
+                tone="neutral"
+                :class="server.usable ? 'eap-badge--success' : 'eap-badge--warning'"
+              >
                 {{ server.usable ? "可用于专家授权" : "不可用" }}
-              </span>
+              </Badge>
             </h2>
             <p class="mono">{{ server.transport }} · {{ server.endpoint || "（未填写地址）" }}</p>
           </div>
-          <span class="eap-badge eap-badge--neutral">{{ server.tools.length }} 个工具</span>
+          <Badge tone="neutral">{{ server.tools.length }} 个工具</Badge>
         </header>
         <dl class="cap-meta">
           <dt>工具声明清单</dt>
@@ -463,30 +578,42 @@ async function submitServer() {
           <dt>已授权专家</dt>
           <dd>{{ server.authorisedExperts.join("、") || "暂无（需由专家清单声明 mcpTools）" }}</dd>
         </dl>
-        <p v-for="problem in server.problems" :key="problem" class="requirement-line">{{ problem }}</p>
+        <p v-for="problem in server.problems" :key="problem" class="requirement-line">
+          {{ problem }}
+        </p>
         <div class="form-actions">
-          <button
-            class="eap-button"
+          <Button
+            variant="secondary"
             :class="server.enabled ? 'eap-button--secondary' : 'eap-button--primary'"
             @click="setServerActivation(server, !server.enabled, server.trusted)"
           >
             {{ server.enabled ? "停用" : "启用" }}
-          </button>
-          <button
-            class="eap-button"
+          </Button>
+          <Button
+            variant="secondary"
             :class="server.trusted ? 'eap-button--secondary' : 'eap-button--primary'"
             @click="setServerActivation(server, server.enabled, !server.trusted)"
           >
             {{ server.trusted ? "撤回信任" : "信任" }}
-          </button>
-          <button class="eap-button eap-button--ghost" @click="runServerProbe(server)">探测</button>
-          <button class="eap-button eap-button--ghost" @click="editServer(server)">编辑</button>
-          <button class="eap-button eap-button--ghost" @click="deletingServer = server; deleteRefusal = ''">删除</button>
+          </Button>
+          <Button variant="ghost" @click="runServerProbe(server)">探测</Button>
+          <Button variant="ghost" @click="editServer(server)">编辑</Button>
+          <Button
+            variant="ghost"
+            @click="
+              deletingServer = server;
+              deleteRefusal = '';
+            "
+          >
+            删除
+          </Button>
         </div>
         <div v-if="serverProbe[server.id]" class="dry-result">
           <p class="hint">{{ serverProbe[server.id]?.message }}</p>
           <p class="hint mono">
-            协议验证：{{ serverProbe[server.id]?.verified ? "已通过" : "未验证（MCP 客户端尚未实现）" }}
+            协议验证：{{
+              serverProbe[server.id]?.verified ? "已通过" : "未验证（MCP 客户端尚未实现）"
+            }}
           </p>
         </div>
         <p class="hint">撤回信任、停用或删除被已启用专家授权使用的服务器，后端会拒绝并点名专家。</p>
@@ -494,17 +621,21 @@ async function submitServer() {
 
       <article class="eap-panel panel-block">
         <h2>由服务器发布的能力</h2>
-        <p v-if="!itemsOf('mcp').length" class="hint">还没有任何服务器发布工具，因此没有专家级能力。</p>
+        <p v-if="!itemsOf('mcp').length" class="hint">
+          还没有任何服务器发布工具，因此没有专家级能力。
+        </p>
         <ul v-else class="list">
           <li v-for="item in itemsOf('mcp')" :key="item.name" class="list-item">
             <span>
               <b class="mono">{{ item.name }}</b>
               <small>{{ item.summary }}</small>
-              <small class="hint">已授权专家：{{ item.authorisedExperts.join("、") || "暂无" }}</small>
+              <small class="hint"
+                >已授权专家：{{ item.authorisedExperts.join("、") || "暂无" }}</small
+              >
             </span>
-            <span class="eap-badge" :class="availabilityClass(item.availability)">
+            <Badge tone="neutral" :class="availabilityClass(item.availability)">
               {{ item.availabilityLabel }}
-            </span>
+            </Badge>
           </li>
         </ul>
       </article>
@@ -517,8 +648,13 @@ async function submitServer() {
       </p>
       <ul v-if="itemsOf(currentKind?.id ?? '').length" class="list">
         <li v-for="item in itemsOf(currentKind?.id ?? '')" :key="item.name" class="list-item">
-          <span><b class="mono">{{ item.name }}</b><small>{{ item.summary }}</small></span>
-          <span class="eap-badge" :class="availabilityClass(item.availability)">{{ item.availabilityLabel }}</span>
+          <span
+            ><b class="mono">{{ item.name }}</b
+            ><small>{{ item.summary }}</small></span
+          >
+          <Badge tone="neutral" :class="availabilityClass(item.availability)">{{
+            item.availabilityLabel
+          }}</Badge>
         </li>
       </ul>
       <p v-else class="hint">该种类当前没有任何能力。</p>
@@ -528,5 +664,18 @@ async function submitServer() {
       已记录的开关设置：<span class="mono">{{ Object.keys(settings).join("、") }}</span>
     </p>
   </section>
-  <ConfirmBox v-if="deletingServer" :title="'删除 MCP 服务器 ' + deletingServer.id" :impact="['该服务器的 ' + deletingServer.tools.length + ' 个工具将从目录移除。', '已启用专家仍持有工具授权时无法删除。']" confirm-label="确认删除服务器" :busy="deletingServerBusy" :refusal="deleteRefusal" danger @confirm="removeServer(deletingServer)" @cancel="deletingServer = null" />
+  <ConfirmBox
+    v-if="deletingServer"
+    :title="'删除 MCP 服务器 ' + deletingServer.id"
+    :impact="[
+      '该服务器的 ' + deletingServer.tools.length + ' 个工具将从目录移除。',
+      '已启用专家仍持有工具授权时无法删除。',
+    ]"
+    confirm-label="确认删除服务器"
+    :busy="deletingServerBusy"
+    :refusal="deleteRefusal"
+    danger
+    @confirm="removeServer(deletingServer)"
+    @cancel="deletingServer = null"
+  />
 </template>

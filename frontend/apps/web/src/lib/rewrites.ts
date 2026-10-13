@@ -28,7 +28,8 @@ export type CandidateRewrite = {
 };
 
 /** The line every diff in this console carries. */
-export const CANDIDATE_REWRITE_NOTES = "候选改写只用于对照阅读：运行时不会执行它，也不会替换你输入的 SQL。";
+export const CANDIDATE_REWRITE_NOTES =
+  "候选改写只用于对照阅读：运行时不会执行它，也不会替换你输入的 SQL。";
 
 // Two literals rather than one `/g` regex: a global regex keeps `lastIndex` between `.test()` calls, so
 // the same object cannot be used to test and then replace.
@@ -64,7 +65,8 @@ const REASONS: Record<string, string> = {
   "pagination.offset": "改成键集分页需要知道排序键与游标语义，只改文本会改变返回结果。",
   "predicate.like.leading_wildcard":
     "前导通配符没有等价的语法改写：要改的是索引或查询形态（范围查询 / 全文检索）。",
-  "predicate.function_on_column": "把函数从列上移开需要知道函数与列之间的可逆关系，无法保证语义保持。",
+  "predicate.function_on_column":
+    "把函数从列上移开需要知道函数与列之间的可逆关系，无法保证语义保持。",
   "predicate.in_subquery": "子查询能否安全改写成 JOIN 取决于去重语义，需要执行计划核实。",
   "join.cartesian": "补关联条件需要知道业务关系；猜错的连接条件比笛卡尔积更危险。",
   "query.no_filter": "补过滤条件属于业务决定，平台不会替你决定应该返回哪些行。",
@@ -72,7 +74,8 @@ const REASONS: Record<string, string> = {
   "order_by.expression": "改排序键会改变返回顺序，不属于语义保持的改写。",
 };
 
-const DEFAULT_REASON = "该发现需要业务或结构上下文，文本级改写无法保证语义保持，因此控制台不提供候选改写。";
+const DEFAULT_REASON =
+  "该发现需要业务或结构上下文，文本级改写无法保证语义保持，因此控制台不提供候选改写。";
 
 export function rewriteUnavailable(code: string): string {
   return REASONS[code] ?? DEFAULT_REASON;

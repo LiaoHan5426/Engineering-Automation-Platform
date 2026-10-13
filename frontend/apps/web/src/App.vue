@@ -14,6 +14,7 @@ import {
   type TaskResult,
   type TaskStatistics,
 } from "@eap/runtime-client";
+import { EmptyState, Feedback, MetricCard, Button, Badge } from "@eap/ui";
 import { errorMessage, statusLabel } from "./lib/presentation";
 import { describeSecret } from "./lib/sensitive";
 import { CANDIDATE_REWRITE_NOTES, candidateRewrite, rewriteUnavailable } from "./lib/rewrites";
@@ -37,16 +38,31 @@ const currentView = computed(() => views.find((v) => v.id === activeView.value)!
  * 绝不把上一页的选中项留在那里。只有真正产出逐项结果（发现）的页面才显示选中卡片。
  */
 const INSPECTOR_PAGES: Record<string, { hint: string; pipeline?: boolean }> = {
-  overview: { hint: "聚合视图，本页没有可逐项检查的对象；四张卡的每个数字都在卡片下方注明出处，点击「最近任务」的一行可进入任务页查看证据。", pipeline: true },
-  tasks: { hint: "执行时间线、状态机位置与证据来源在本页内联展示；重新运行会新增一条记录，不覆盖历史。", pipeline: true },
-  sql: { hint: "点击任意一条发现，这里显示它的严重级、证据、语义保持建议与三个动作：复制建议 / 查看候选改写 / 标记忽略。", pipeline: true },
-  experts: { hint: "专家的能力引用、知识库与 MCP 工具授权在该专家面板内联展示；画布与清单都由当前草稿渲染。" },
-  rules: { hint: "规则包的条件、所需能力与试算结果在规则面板内联展示；自定义包可就地编辑规则，内置包需先复制。" },
+  overview: {
+    hint: "聚合视图，本页没有可逐项检查的对象；四张卡的每个数字都在卡片下方注明出处，点击「最近任务」的一行可进入任务页查看证据。",
+    pipeline: true,
+  },
+  tasks: {
+    hint: "执行时间线、状态机位置与证据来源在本页内联展示；重新运行会新增一条记录，不覆盖历史。",
+    pipeline: true,
+  },
+  sql: {
+    hint: "点击任意一条发现，这里显示它的严重级、证据、语义保持建议与三个动作：复制建议 / 查看候选改写 / 标记忽略。",
+    pipeline: true,
+  },
+  experts: {
+    hint: "专家的能力引用、知识库与 MCP 工具授权在该专家面板内联展示；画布与清单都由当前草稿渲染。",
+  },
+  rules: {
+    hint: "规则包的条件、所需能力与试算结果在规则面板内联展示；自定义包可就地编辑规则，内置包需先复制。",
+  },
   knowledge: { hint: "知识库与文档的增删改在面板内联完成；检索范围会写在检索框下方。" },
   databases: { hint: "表结构与索引快照在点击「查看」时于资料面板内联展示。" },
   capabilities: { hint: "能力的种类、范围、可用状态与管理入口在能力目录内联展开。" },
 };
-const inspector = computed(() => INSPECTOR_PAGES[activeView.value] ?? { hint: "本页没有可逐项检查的对象。" });
+const inspector = computed(
+  () => INSPECTOR_PAGES[activeView.value] ?? { hint: "本页没有可逐项检查的对象。" },
+);
 watch(activeView, (value) => {
   inspectorOpen.value = false;
   if (typeof location !== "undefined") location.hash = value;
@@ -70,10 +86,21 @@ const knowledgeManager = ref<{ refresh: () => Promise<void> } | null>(null);
 const databaseManager = ref<{ refresh: () => Promise<void> } | null>(null);
 const ruleManager = ref<{ refresh: () => Promise<void> } | null>(null);
 const registeredExperts = ref<
-  Array<{ id: string; name: string; databaseProfiles?: string[]; steps?: Array<{ capability: string }> }>
+  Array<{
+    id: string;
+    name: string;
+    databaseProfiles?: string[];
+    steps?: Array<{ capability: string }>;
+  }>
 >([]);
 const databaseInfo = ref<
-  Array<{ id: string; label: string; engine: string; environment: string; credentialsExposed: boolean }>
+  Array<{
+    id: string;
+    label: string;
+    engine: string;
+    environment: string;
+    credentialsExposed: boolean;
+  }>
 >([]);
 
 const history = ref<TaskResult[]>([]);
@@ -129,7 +156,9 @@ function readTags(): Record<string, string> {
 function readList(key: string): string[] {
   try {
     const parsed = JSON.parse(readStore(key, "[]")) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string")
+      : [];
   } catch {
     return [];
   }
@@ -152,7 +181,9 @@ const supplement = ref("");
 const supplementMessage = ref("");
 const ignoredFindings = ref<string[]>([]);
 const rewriteOpen = ref(false);
-function toggleRewrite() { rewriteOpen.value = !rewriteOpen.value; }
+function toggleRewrite() {
+  rewriteOpen.value = !rewriteOpen.value;
+}
 const inspectorMessage = ref("");
 const rerunBusy = ref(false);
 
@@ -166,7 +197,9 @@ const workspaceOptions = computed(() => [
 ]);
 /** 本机标注过的执行才属于当前工作空间；未标注的归入默认工作空间。 */
 const visibleHistory = computed(() =>
-  history.value.filter((entry) => (taskTags.value[entry.id] ?? DEFAULT_WORKSPACE) === workspace.value),
+  history.value.filter(
+    (entry) => (taskTags.value[entry.id] ?? DEFAULT_WORKSPACE) === workspace.value,
+  ),
 );
 const enabledExpertCount = computed(
   () => Object.values(expertStates.value).filter((state) => state.enabled).length,
@@ -187,8 +220,12 @@ const deterministicCoverageText = computed(() => {
 const windowDistribution = computed(() => {
   const source = stats.value;
   if (!source) return "";
-  const decisions = Object.entries(source.byDecision).map(([key, count]) => `${statusLabel(key)} ${count}`);
-  const statuses = Object.entries(source.byStatus).map(([key, count]) => `${statusLabel(key)} ${count}`);
+  const decisions = Object.entries(source.byDecision).map(
+    ([key, count]) => `${statusLabel(key)} ${count}`,
+  );
+  const statuses = Object.entries(source.byStatus).map(
+    ([key, count]) => `${statusLabel(key)} ${count}`,
+  );
   return [
     decisions.length ? "决策 " + decisions.join("、") : "",
     statuses.length ? "状态 " + statuses.join("、") : "",
@@ -204,7 +241,9 @@ const allowedDatabases = computed(() =>
       ?.databaseProfiles?.includes(profile.id),
   ),
 );
-const findings = computed<SqlFinding[]>(() => sqlResult.value?.deterministicAnalysis?.findings ?? []);
+const findings = computed<SqlFinding[]>(
+  () => sqlResult.value?.deterministicAnalysis?.findings ?? [],
+);
 const selectedExpertDef = computed(() =>
   registeredExperts.value.find((expert) => expert.id === selectedExpert.value),
 );
@@ -245,38 +284,56 @@ async function refresh() {
   refreshing.value = true;
   errors.value = {};
   const jobs = [
-    ["health", async () => {
-      const health = await runtimeApi.health();
-      runtimeStatus.value = health.status === "ok" ? "已连接" : "服务降级";
-    }],
-    ["capabilities", async () => {
-      const catalog = await runtimeApi.capabilities();
-      capabilities.value = catalog.capabilities;
-      capabilityItems.value = catalog.items ?? [];
-      capabilityKinds.value = catalog.kinds ?? [];
-    }],
-    ["databases", async () => {
-      databaseInfo.value = (await runtimeApi.databases()).items;
-    }],
-    ["experts", async () => {
-      const response = await runtimeApi.experts();
-      expertCount.value = response.items.length;
-      expertStates.value = response.states ?? {};
-      registeredExperts.value = response.items
-        .map((text) => JSON.parse(text))
-        .filter((expert) => response.states?.[expert.id]?.enabled);
-      if (!registeredExperts.value.some((expert) => expert.id === selectedExpert.value)) {
-        selectedExpert.value = registeredExperts.value[0]?.id ?? "";
-      }
-    }],
-    ["tasks", async () => {
-      history.value = (await runtimeApi.tasks()).items;
-    }],
+    [
+      "health",
+      async () => {
+        const health = await runtimeApi.health();
+        runtimeStatus.value = health.status === "ok" ? "已连接" : "服务降级";
+      },
+    ],
+    [
+      "capabilities",
+      async () => {
+        const catalog = await runtimeApi.capabilities();
+        capabilities.value = catalog.capabilities;
+        capabilityItems.value = catalog.items ?? [];
+        capabilityKinds.value = catalog.kinds ?? [];
+      },
+    ],
+    [
+      "databases",
+      async () => {
+        databaseInfo.value = (await runtimeApi.databases()).items;
+      },
+    ],
+    [
+      "experts",
+      async () => {
+        const response = await runtimeApi.experts();
+        expertCount.value = response.items.length;
+        expertStates.value = response.states ?? {};
+        registeredExperts.value = response.items
+          .map((text) => JSON.parse(text))
+          .filter((expert) => response.states?.[expert.id]?.enabled);
+        if (!registeredExperts.value.some((expert) => expert.id === selectedExpert.value)) {
+          selectedExpert.value = registeredExperts.value[0]?.id ?? "";
+        }
+      },
+    ],
+    [
+      "tasks",
+      async () => {
+        history.value = (await runtimeApi.tasks()).items;
+      },
+    ],
     // 概览的两个窗口数字来自运行时，而不是页面上写死的样本；取不到时如实报错，不退回占位值。
-    ["stats", async () => {
-      stats.value = await runtimeApi.stats();
-      statsError.value = "";
-    }],
+    [
+      "stats",
+      async () => {
+        stats.value = await runtimeApi.stats();
+        statsError.value = "";
+      },
+    ],
   ] as const;
   await Promise.all(
     jobs.map(async ([key, work]) => {
@@ -314,8 +371,9 @@ function switchWorkspace(id: string) {
   workspace.value = id;
   workspaceOpen.value = false;
   writeStore(WORKSPACE_KEY, id);
-  const count = history.value.filter((entry) => (taskTags.value[entry.id] ?? DEFAULT_WORKSPACE) === id)
-    .length;
+  const count = history.value.filter(
+    (entry) => (taskTags.value[entry.id] ?? DEFAULT_WORKSPACE) === id,
+  ).length;
   workspaceMessage.value =
     count > 0
       ? `已切换到工作空间 ${id}：本机标注在该空间的执行有 ${count} 条。`
@@ -380,7 +438,6 @@ async function rerunTask(entry: TaskResult) {
     rerunBusy.value = false;
   }
 }
-
 
 async function submitTask() {
   if (taskBusy.value || !goal.value.trim()) return;
@@ -621,7 +678,8 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
       <div class="brand"><b>EAP</b><span>工程自动化平台</span></div>
       <div class="menu-wrap">
         <button class="ws" :aria-expanded="workspaceOpen" @click="workspaceOpen = !workspaceOpen">
-          工作空间 <b>{{ workspace }}</b><span class="caret">▾</span>
+          工作空间 <b>{{ workspace }}</b
+          ><span class="caret">▾</span>
         </button>
         <div v-if="workspaceOpen" class="menu" role="menu">
           <div class="menu-head">工作空间（本机视图范围）</div>
@@ -641,9 +699,11 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
               aria-label="新工作空间名称"
               placeholder="例如 orders-service"
             />
-            <button class="eap-button eap-button--primary" :disabled="!newWorkspace.trim()">添加</button>
+            <Button variant="primary" :disabled="!newWorkspace.trim()"> 添加 </Button>
           </form>
-          <button v-else class="menu-add" @click="workspaceAdding = true">＋ 新建本机工作空间…</button>
+          <button v-else class="menu-add" @click="workspaceAdding = true">
+            ＋ 新建本机工作空间…
+          </button>
           <p class="menu-note">
             任务在服务端不按工作空间分表。这里只是把控制台本机标注过的执行分组；能力目录、规则库与
             知识库是应用级配置，不随它变化。决定本地 CLI 在哪里执行的是运行时进程的执行目录。
@@ -654,13 +714,22 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
       <span class="eap-chip" :class="runtimeStatus === '已连接' ? 'ok' : 'warn'">
         <i class="dot" />运行时{{ runtimeStatus }}
       </span>
-      <button v-if="activeView === 'sql' || activeView === 'tasks'" class="eap-button inspector-toggle" :aria-expanded="inspectorOpen" aria-controls="context-details" @click="inspectorOpen = !inspectorOpen">查看详情</button>
-      <button class="eap-button eap-button--secondary" :disabled="refreshing" @click="refresh">
+      <Button
+        variant="secondary"
+        v-if="activeView === 'sql' || activeView === 'tasks'"
+        :aria-expanded="inspectorOpen"
+        aria-controls="context-details"
+        @click="inspectorOpen = !inspectorOpen"
+        class="inspector-toggle"
+      >
+        查看详情
+      </Button>
+      <Button variant="secondary" :disabled="refreshing" @click="refresh">
         {{ refreshing ? "刷新中…" : "刷新" }}
-      </button>
-      <button class="eap-button eap-button--primary" :disabled="sqlBusy" @click="primaryAction">
+      </Button>
+      <Button variant="primary" :disabled="sqlBusy" @click="primaryAction">
         {{ sqlBusy ? "分析中…" : "运行分析" }}
-      </button>
+      </Button>
     </header>
     <p v-if="workspaceMessage" class="shell-message" role="status">{{ workspaceMessage }}</p>
 
@@ -675,15 +744,18 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
           :aria-current="activeView === view.id ? 'page' : undefined"
           @click="activeView = view.id"
         >
-          <span class="ic">{{ view.icon }}</span>{{ view.name }}
+          <span class="ic">{{ view.icon }}</span
+          >{{ view.name }}
         </button>
-        <div class="rail__foot">确定性能力优先<br /><b>结果必须有独立证据</b><br />模型仅作待验证观察</div>
+        <div class="rail__foot">
+          确定性能力优先<br /><b>结果必须有独立证据</b><br />模型仅作待验证观察
+        </div>
       </nav>
 
       <main class="workbench">
-        <p v-if="errors.health" class="eap-feedback eap-feedback--error" role="alert">
+        <Feedback tone="error" v-if="errors.health" role="alert">
           {{ errors.health }}
-        </p>
+        </Feedback>
 
         <!-- OVERVIEW -->
         <section v-if="activeView === 'overview'" class="view">
@@ -693,40 +765,44 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
             <p>确定性能力优先处理；仅在证据不足时才压缩后调用模型。</p>
           </div>
           <div class="metrics">
-            <article class="metric">
-              <span>已注册能力</span>
-              <strong>{{ capabilityItems.length || capabilities.length }}</strong>
-              <small>{{ kindSummary }}</small>
-              <small class="metric-source">
-                出处：/api/capabilities<template v-if="disabledCapabilityCount"> · {{ disabledCapabilityCount }} 已停用</template>
-              </small>
-            </article>
-            <article class="metric">
-              <span>专家定义</span>
-              <strong>{{ expertCount }}</strong>
-              <small>{{ enabledExpertCount }} 已启用 · 内置 + 自定义</small>
-              <small class="metric-source">出处：/api/experts</small>
-            </article>
-            <article class="metric">
-              <span>近 {{ stats?.windowDays ?? 7 }} 日任务</span>
-              <strong>{{ stats ? stats.tasksInWindow : "—" }}</strong>
-              <small v-if="stats">共 {{ stats.tasksTotal }} 条记录 · {{ stats.observationsInWindow }} 条工具观测</small>
-              <small v-else>统计接口不可用</small>
-              <small class="metric-source">出处：/api/stats，由 eap.task 实时聚合</small>
-            </article>
-            <article class="metric">
-              <span>模型调用占比</span>
-              <strong>{{ modelShareText }}</strong>
-              <small v-if="stats && stats.model.recordedRuns">
-                {{ stats.model.calls }} / {{ stats.model.recordedRuns }} 次执行真的调用了模型
-              </small>
-              <small v-else>还没有记录了模型走向的执行</small>
-              <small class="metric-source">出处：/api/stats · 分母只含记录了模型走向的执行</small>
-            </article>
+            <MetricCard
+              label="已注册能力"
+              :value="capabilityItems.length || capabilities.length"
+              :detail="kindSummary"
+              :source="
+                disabledCapabilityCount
+                  ? `出处：/api/capabilities · ${disabledCapabilityCount} 已停用`
+                  : '出处：/api/capabilities'
+              "
+            />
+            <MetricCard
+              label="专家定义"
+              :value="expertCount"
+              :detail="`${enabledExpertCount} 已启用 · 内置 + 自定义`"
+              source="出处：/api/experts"
+            />
+            <MetricCard
+              :label="`近 ${stats?.windowDays ?? 7} 日任务`"
+              :value="stats ? stats.tasksInWindow : '—'"
+              :detail="
+                stats
+                  ? `共 ${stats.tasksTotal} 条记录 · ${stats.observationsInWindow} 条工具观测`
+                  : '统计接口不可用'
+              "
+              source="出处：/api/stats，由 eap.task 实时聚合"
+            />
+            <MetricCard
+              label="模型调用占比"
+              :value="modelShareText"
+              :detail="
+                stats && stats.model.recordedRuns
+                  ? `${stats.model.calls} / ${stats.model.recordedRuns} 次执行真的调用了模型`
+                  : '还没有记录了模型走向的执行'
+              "
+              source="出处：/api/stats · 分母只含记录了模型走向的执行"
+            />
           </div>
-          <p v-if="statsError" class="eap-feedback eap-feedback--error" role="alert">
-            概览数字取不到：{{ statsError }}
-          </p>
+          <Feedback v-if="statsError" tone="error">概览数字取不到：{{ statsError }}</Feedback>
           <p v-else-if="stats" class="metric-note">{{ stats.note }}</p>
           <details class="why">
             <summary>为什么这四个数字可以不写死</summary>
@@ -736,11 +812,13 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
             </p>
             <p>
               近 {{ stats?.windowDays ?? 7 }} 日任务与模型调用占比读运行时的统计接口，而它是对
-              <code class="mono">eap.task</code> 的实时聚合：每次执行都会把「有没有真正调用模型」写进任务记录，
+              <code class="mono">eap.task</code>
+              的实时聚合：每次执行都会把「有没有真正调用模型」写进任务记录，
               所以这两个数字是算出来的，不是样本。
             </p>
             <p>
-              状态栏的「确定性覆盖」与这里的值是同一个（<b>{{ deterministicCoverageText }}</b>）——
+              状态栏的「确定性覆盖」与这里的值是同一个（<b>{{ deterministicCoverageText }}</b
+              >）——
               同一个数字有两处标签，就是它开始漂移的地方。还没有记录了模型走向的执行时显示「尚无记录」而不是
               0%：那两句话不是同一个断言。
             </p>
@@ -764,22 +842,39 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
               </div>
             </header>
             <table v-if="visibleHistory.length" class="data-table">
-              <thead><tr><th>目标</th><th>状态</th><th>决策</th><th>模型走向</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>目标</th>
+                  <th>状态</th>
+                  <th>决策</th>
+                  <th>模型走向</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr v-for="entry in visibleHistory.slice(0, 8)" :key="entry.id" class="clickable"
-                  @click="activeView = 'tasks'; selectHistory(entry)">
+                <tr
+                  v-for="entry in visibleHistory.slice(0, 8)"
+                  :key="entry.id"
+                  class="clickable"
+                  @click="
+                    activeView = 'tasks';
+                    selectHistory(entry);
+                  "
+                >
                   <td>{{ entry.goal }}</td>
-                  <td><span class="eap-badge eap-badge--neutral">{{ statusLabel(entry.status) }}</span></td>
+                  <td>
+                    <Badge tone="neutral">{{ statusLabel(entry.status) }}</Badge>
+                  </td>
                   <td>{{ statusLabel(entry.decision) }}</td>
                   <td>{{ modelEnhancementText(entry.modelEnhancement) }}</td>
                 </tr>
               </tbody>
             </table>
-            <p v-else-if="history.length" class="empty-state">
-              工作空间「{{ workspace }}」下没有本机标注过的执行；未标注的执行归入默认工作空间
-              （{{ DEFAULT_WORKSPACE }}）。
-            </p>
-            <p v-else class="empty-state">暂无任务记录。</p>
+            <EmptyState v-else-if="history.length">
+              工作空间「{{ workspace }}」下没有本机标注过的执行；未标注的执行归入默认工作空间 （{{
+                DEFAULT_WORKSPACE
+              }}）。
+            </EmptyState>
+            <EmptyState v-else>暂无任务记录。</EmptyState>
           </article>
         </section>
 
@@ -795,26 +890,43 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
               <h2>新建任务</h2>
               <form @submit.prevent="submitTask">
                 <label class="field-label" for="task-goal">你希望完成什么？</label>
-                <textarea id="task-goal" v-model="goal" class="workspace-input" rows="4" :disabled="taskBusy"
-                  placeholder="例如：检查当前仓库的 Git 状态" />
+                <textarea
+                  id="task-goal"
+                  v-model="goal"
+                  class="workspace-input"
+                  rows="4"
+                  :disabled="taskBusy"
+                  placeholder="例如：检查当前仓库的 Git 状态"
+                />
                 <div class="form-actions">
-                  <button type="submit" class="eap-button eap-button--primary" :disabled="taskBusy || !goal.trim()">
+                  <Button variant="primary" type="submit" :disabled="taskBusy || !goal.trim()">
                     {{ taskBusy ? "正在执行…" : "提交任务" }}
-                  </button>
-                  <button type="button" class="eap-button" :disabled="taskBusy" @click="goal = ''">清空</button>
+                  </Button>
+                  <Button variant="secondary" type="button" :disabled="taskBusy" @click="goal = ''">
+                    清空
+                  </Button>
                 </div>
               </form>
-              <p v-if="taskError" class="eap-feedback eap-feedback--error" role="alert">{{ taskError }}</p>
-              <p class="hint">尚无可靠的本地能力处理的需求会明确进入待规划状态，不会执行无关工具。</p>
+              <Feedback tone="error" v-if="taskError" role="alert">
+                {{ taskError }}
+              </Feedback>
+              <p class="hint">
+                尚无可靠的本地能力处理的需求会明确进入待规划状态，不会执行无关工具。
+              </p>
             </article>
             <article class="eap-panel">
               <h2>执行证据</h2>
               <div v-if="task" class="timeline">
                 <div class="result-heading">
                   <strong>{{ statusLabel(task.status) }}</strong>
-                  <span class="eap-badge" :class="task.decision === 'accepted' ? 'eap-badge--success' : 'eap-badge--warning'">
+                  <Badge
+                    tone="neutral"
+                    :class="
+                      task.decision === 'accepted' ? 'eap-badge--success' : 'eap-badge--warning'
+                    "
+                  >
                     {{ statusLabel(task.decision) }}
-                  </span>
+                  </Badge>
                 </div>
                 <p>{{ task.goal }}</p>
                 <small class="mono">任务编号：{{ task.id }}</small>
@@ -823,26 +935,33 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                   这一步也是概览「模型调用占比」的分母来源。
                 </p>
                 <div class="form-actions">
-                  <button class="eap-button" :disabled="rerunBusy" @click="rerunTask(task)">
+                  <Button variant="secondary" :disabled="rerunBusy" @click="rerunTask(task)">
                     {{ rerunBusy ? "重新提交中…" : "重新运行" }}
-                  </button>
+                  </Button>
                   <span class="hint">重新运行会新增一条执行记录，旧记录与它的证据保持原样。</span>
                 </div>
-                <p v-if="task.status === 'needs-planning'" class="planning-note">
-                  尚无可靠的本地能力处理此需求，没有执行无关工具。请补充具体操作目标，或进入 SQL 分析室。
-                </p>
-                <p v-if="!task.observations" class="planning-note">历史接口当前只返回任务摘要，未返回工具输出。</p>
+                <Feedback tone="warning" v-if="task.status === 'needs-planning'">
+                  尚无可靠的本地能力处理此需求，没有执行无关工具。请补充具体操作目标，或进入 SQL
+                  分析室。
+                </Feedback>
+                <Feedback tone="warning" v-if="!task.observations">
+                  历史接口当前只返回任务摘要，未返回工具输出。
+                </Feedback>
                 <div v-for="(item, index) in task.observations ?? []" :key="index" class="tl-item">
-                  <div class="tl-rail"><i :class="item.success ? 'ok' : 'warn'" /><span class="line" /></div>
+                  <div class="tl-rail">
+                    <i :class="item.success ? 'ok' : 'warn'" /><span class="line" />
+                  </div>
                   <div class="tl-body">
-                    <div class="t">{{ item.capability }} · {{ item.success ? "成功" : "失败" }}</div>
+                    <div class="t">
+                      {{ item.capability }} · {{ item.success ? "成功" : "失败" }}
+                    </div>
                     <div class="meta">退出码 {{ item.exitCode }}</div>
                     <pre v-if="item.stdout">{{ item.stdout }}</pre>
                     <pre v-if="item.stderr" class="err">{{ item.stderr }}</pre>
                   </div>
                 </div>
               </div>
-              <p v-else class="empty-state">提交任务或从下方历史选择，以查看证据。</p>
+              <EmptyState v-else>提交任务或从下方历史选择，以查看证据。</EmptyState>
             </article>
           </div>
           <article class="eap-panel panel-block">
@@ -853,22 +972,36 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
               </div>
             </header>
             <div class="list">
-              <button v-for="entry in visibleHistory" :key="entry.id" class="list-item" :class="{ active: task?.id === entry.id }"
-                :disabled="taskBusy" @click="selectHistory(entry)">
-                <span><b>{{ entry.goal }}</b><small>{{ statusLabel(entry.status) }} · {{ statusLabel(entry.decision) }} · 模型：{{ modelEnhancementText(entry.modelEnhancement) }}</small></span>
+              <button
+                v-for="entry in visibleHistory"
+                :key="entry.id"
+                class="list-item"
+                :class="{ active: task?.id === entry.id }"
+                :disabled="taskBusy"
+                @click="selectHistory(entry)"
+              >
+                <span
+                  ><b>{{ entry.goal }}</b
+                  ><small
+                    >{{ statusLabel(entry.status) }} · {{ statusLabel(entry.decision) }} · 模型：{{
+                      modelEnhancementText(entry.modelEnhancement)
+                    }}</small
+                  ></span
+                >
               </button>
             </div>
-            <p v-if="!visibleHistory.length && history.length" class="empty-state">
+            <EmptyState v-if="!visibleHistory.length && history.length">
               该工作空间下没有本机标注过的执行。切换工作空间或提交一条新任务即可。
-            </p>
-            <p v-else-if="!history.length" class="empty-state">暂无任务记录。</p>
+            </EmptyState>
+            <EmptyState v-else-if="!history.length">暂无任务记录。</EmptyState>
           </article>
           <details class="why">
             <summary>为什么「重新运行」不覆盖上一条记录</summary>
             <p>
               一次执行的价值一半在它的证据：哪些能力跑了、退出了什么码、哪些规则因为缺少事实而没有判定。
               覆盖上一条会让「和上次比变了什么」永久不可答，所以重新运行是新增一条记录（
-              <code class="mono">POST /api/experts/{id}/execute</code> 再一次），旧记录与证据原样留在历史里。
+              <code class="mono">POST /api/experts/{id}/execute</code>
+              再一次），旧记录与证据原样留在历史里。
             </p>
             <p>
               列表按当前工作空间过滤，是因为控制台把它当作「一个仓库的一次运行」的分组；任务在服务端没有
@@ -888,76 +1021,159 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
             <article class="eap-panel">
               <h2>分析输入</h2>
               <form @submit.prevent="analyzeSql">
-                <label v-if="needsPattern" class="field-label">本地检索目标
-                  <input v-model="searchPattern" class="workspace-input" :disabled="sqlBusy" placeholder="例如 TODO 或具体符号名" />
+                <label v-if="needsPattern" class="field-label"
+                  >本地检索目标
+                  <input
+                    v-model="searchPattern"
+                    class="workspace-input"
+                    :disabled="sqlBusy"
+                    placeholder="例如 TODO 或具体符号名"
+                  />
                 </label>
                 <label class="field-label" for="expert-selector">执行专家</label>
-                <select id="expert-selector" v-model="selectedExpert" class="workspace-input" :disabled="sqlBusy">
-                  <option v-for="expert in registeredExperts" :key="expert.id" :value="expert.id">{{ expert.name }}</option>
+                <select
+                  id="expert-selector"
+                  v-model="selectedExpert"
+                  class="workspace-input"
+                  :disabled="sqlBusy"
+                >
+                  <option v-for="expert in registeredExperts" :key="expert.id" :value="expert.id">
+                    {{ expert.name }}
+                  </option>
                 </select>
                 <label for="sql-question" class="field-label">业务问题 / 目标</label>
-                <textarea id="sql-question" v-model="sqlQuestion" class="workspace-input" rows="2" :disabled="sqlBusy"
-                  placeholder="描述慢查询现象、数据规模和期望结果" />
+                <textarea
+                  id="sql-question"
+                  v-model="sqlQuestion"
+                  class="workspace-input"
+                  rows="2"
+                  :disabled="sqlBusy"
+                  placeholder="描述慢查询现象、数据规模和期望结果"
+                />
                 <label for="sql-code" class="field-label">待分析 SQL</label>
-                <textarea id="sql-code" v-model="sql" class="workspace-input code-input" rows="10" :disabled="sqlBusy"
-                  spellcheck="false" placeholder="SELECT …（仅检索知识时可留空）" />
+                <textarea
+                  id="sql-code"
+                  v-model="sql"
+                  class="workspace-input code-input"
+                  rows="10"
+                  :disabled="sqlBusy"
+                  spellcheck="false"
+                  placeholder="SELECT …（仅检索知识时可留空）"
+                />
                 <details>
                   <summary>可选上下文：数据库资料与执行计划</summary>
                   <label class="field-label" for="database-selector">已授权资料</label>
-                  <select id="database-selector" v-model="selectedDatabase" class="workspace-input" :disabled="sqlBusy">
+                  <select
+                    id="database-selector"
+                    v-model="selectedDatabase"
+                    class="workspace-input"
+                    :disabled="sqlBusy"
+                  >
                     <option value="">不使用数据库资料</option>
-                    <option v-for="profile in allowedDatabases" :key="profile.id" :value="profile.id">{{ profile.label }}</option>
+                    <option
+                      v-for="profile in allowedDatabases"
+                      :key="profile.id"
+                      :value="profile.id"
+                    >
+                      {{ profile.label }}
+                    </option>
                   </select>
                   <p v-if="!allowedDatabases.length" class="hint">
                     当前专家没有已配置的数据库资料，请在专家工作室中选择资料后重新启用并授权。
                   </p>
                   <label class="field-label" for="explain-input">EXPLAIN JSON 快照</label>
-                  <textarea id="explain-input" v-model="explainText" class="workspace-input code-input" rows="4" :disabled="sqlBusy"
-                    placeholder="粘贴自行取得的 EXPLAIN JSON，平台不会自动执行 SQL" />
+                  <textarea
+                    id="explain-input"
+                    v-model="explainText"
+                    class="workspace-input code-input"
+                    rows="4"
+                    :disabled="sqlBusy"
+                    placeholder="粘贴自行取得的 EXPLAIN JSON，平台不会自动执行 SQL"
+                  />
                 </details>
                 <label class="row hint" style="margin-top: 12px">
                   <input v-model="enhanceModel" type="checkbox" :disabled="sqlBusy" />
                   显式请求模型增强（输出仍为待验证观察）
                 </label>
-                <p class="hint">不要粘贴密码、连接字符串或业务数据。默认只执行确定性流程，不调用模型，不自动连接数据库执行 SQL。</p>
+                <p class="hint">
+                  不要粘贴密码、连接字符串或业务数据。默认只执行确定性流程，不调用模型，不自动连接数据库执行
+                  SQL。
+                </p>
                 <div class="form-actions">
-                  <button type="submit" class="eap-button eap-button--primary"
-                    :disabled="sqlBusy || (!sql.trim() && !sqlQuestion.trim() && !searchPattern.trim())">
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    :disabled="
+                      sqlBusy || (!sql.trim() && !sqlQuestion.trim() && !searchPattern.trim())
+                    "
+                  >
                     {{ sqlBusy ? "正在分析…" : "开始分析" }}
-                  </button>
-                  <button type="button" class="eap-button" :disabled="sqlBusy"
-                    @click="sql = ''; sqlQuestion = ''; sqlResult = null; sqlError = ''; explainText = ''; selectedDatabase = ''; selectedFinding = null">
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    :disabled="sqlBusy"
+                    @click="
+                      sql = '';
+                      sqlQuestion = '';
+                      sqlResult = null;
+                      sqlError = '';
+                      explainText = '';
+                      selectedDatabase = '';
+                      selectedFinding = null;
+                    "
+                  >
                     清空
-                  </button>
+                  </Button>
                 </div>
               </form>
-              <p v-if="sqlError" class="eap-feedback eap-feedback--error" role="alert">{{ sqlError }}</p>
+              <Feedback tone="error" v-if="sqlError" role="alert">
+                {{ sqlError }}
+              </Feedback>
             </article>
 
             <article class="eap-panel" id="resultCard">
               <header class="panel-head">
-                <div><h2>分析结果</h2><p>建议、证据与模型走向分开展示</p></div>
-                <span v-if="sqlResult" class="eap-badge eap-badge--success">{{ statusLabel(sqlResult.status) }}</span>
+                <div>
+                  <h2>分析结果</h2>
+                  <p>建议、证据与模型走向分开展示</p>
+                </div>
+                <Badge tone="success" v-if="sqlResult">{{ statusLabel(sqlResult.status) }}</Badge>
               </header>
-              <p v-if="sqlBusy" class="eap-feedback" role="status">正在分析并检索知识…</p>
+              <Feedback tone="info" v-if="sqlBusy" role="status">正在分析并检索知识…</Feedback>
               <div v-else-if="sqlResult" class="result">
                 <div class="pipeline">
                   <div class="stage done">
-                    <div class="n">1 · 确定性</div><div class="t">已运行</div>
-                    <div class="s">{{ findings.length }} 条发现 · 置信度 {{ sqlResult.deterministicAnalysis?.deterministicConfidence ?? "—" }}</div>
+                    <div class="n">1 · 确定性</div>
+                    <div class="t">已运行</div>
+                    <div class="s">
+                      {{ findings.length }} 条发现 · 置信度
+                      {{ sqlResult.deterministicAnalysis?.deterministicConfidence ?? "—" }}
+                    </div>
                   </div>
-                  <button type="button" class="stage stage--clickable" :class="decision === 'enhance' ? 'model' : 'skip'"
-                    :aria-expanded="decisionOpen" @click="decisionOpen = !decisionOpen">
-                    <div class="n">2 · 决策</div><div class="t">{{ decisionText(decision) }}</div>
+                  <button
+                    type="button"
+                    class="stage stage--clickable"
+                    :class="decision === 'enhance' ? 'model' : 'skip'"
+                    :aria-expanded="decisionOpen"
+                    @click="decisionOpen = !decisionOpen"
+                  >
+                    <div class="n">2 · 决策</div>
+                    <div class="t">{{ decisionText(decision) }}</div>
                     <div class="s">
                       {{ sqlResult.modelAdvisor?.rationale ?? "点开看为什么没有到决策阶段" }}
                       <span class="link">{{ decisionOpen ? "收起" : "为什么？" }}</span>
                     </div>
                   </button>
-                  <div class="stage" :class="sqlResult.modelEnhancement === 'unverified-observation' ? 'model' : ''">
-                    <div class="n">3 · 模型</div><div class="t">{{ modelEnhancementText(sqlResult.modelEnhancement) }}</div>
+                  <div
+                    class="stage"
+                    :class="sqlResult.modelEnhancement === 'unverified-observation' ? 'model' : ''"
+                  >
+                    <div class="n">3 · 模型</div>
+                    <div class="t">{{ modelEnhancementText(sqlResult.modelEnhancement) }}</div>
                     <div class="s" v-if="compression?.compressionRatio != null">
-                      压缩比 {{ Math.round((compression.compressionRatio ?? 0) * 100) }}% · 预计 {{ compression.estimatedTokens }} tokens
+                      压缩比 {{ Math.round((compression.compressionRatio ?? 0) * 100) }}% · 预计
+                      {{ compression.estimatedTokens }} tokens
                     </div>
                     <div class="s" v-else>确定性完成，无需模型</div>
                   </div>
@@ -965,7 +1181,9 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                 <div v-if="decisionOpen" class="decision-panel">
                   <h4>{{ decisionExplanation.title }}</h4>
                   <ul class="advice-list">
-                    <li v-for="(line, index) in decisionExplanation.lines" :key="index">{{ line }}</li>
+                    <li v-for="(line, index) in decisionExplanation.lines" :key="index">
+                      {{ line }}
+                    </li>
                   </ul>
                   <p class="hint">
                     是否调用模型由运行时按规则决定，控制台改不了这个判断。若要显式请求一次模型复核，
@@ -975,10 +1193,19 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
 
                 <h3>发现（{{ findings.length }}）</h3>
                 <div class="findings">
-                  <button v-for="finding in findings" :key="finding.code" class="finding"
-                    :class="{ sel: selectedFinding?.code === finding.code, ignored: isFindingIgnored(finding.code) }"
-                    @click="selectFinding(finding)">
-                    <span class="sev" :class="finding.severity">{{ severityText(finding.severity) }}</span>
+                  <button
+                    v-for="finding in findings"
+                    :key="finding.code"
+                    class="finding"
+                    :class="{
+                      sel: selectedFinding?.code === finding.code,
+                      ignored: isFindingIgnored(finding.code),
+                    }"
+                    @click="selectFinding(finding)"
+                  >
+                    <span class="sev" :class="finding.severity">{{
+                      severityText(finding.severity)
+                    }}</span>
                     <span>
                       <span class="code mono">{{ finding.code }}</span>
                       <span v-if="isFindingIgnored(finding.code)" class="ignored-tag">已忽略</span>
@@ -986,17 +1213,19 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                       <span class="cat">类别：{{ finding.category }}</span>
                     </span>
                   </button>
-                  <p v-if="!findings.length" class="empty-state">
+                  <EmptyState v-if="!findings.length">
                     未触发确定性规则。这不代表 SQL 已通过优化检查，请补充表结构与执行计划。
-                  </p>
+                  </EmptyState>
                 </div>
 
                 <h3>适用规则包（{{ sqlResult.rulePacks?.length ?? 0 }}）</h3>
                 <div class="chips">
-                  <span v-for="pack in sqlResult.rulePacks ?? []" :key="pack.id" class="eap-badge eap-badge--neutral">
+                  <Badge tone="neutral" v-for="pack in sqlResult.rulePacks ?? []" :key="pack.id">
                     {{ pack.name }} · {{ pack.ruleCount }} 条规则
-                    <template v-if="pack.requires?.length"> · 需要 {{ pack.requires.join("、") }}</template>
-                  </span>
+                    <template v-if="pack.requires?.length">
+                      · 需要 {{ pack.requires.join("、") }}</template
+                    >
+                  </Badge>
                   <span v-if="!sqlResult.rulePacks?.length" class="hint">
                     该专家未声明规则包，本次仅做解析与事实抽取。
                   </span>
@@ -1010,9 +1239,12 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                   <div class="choice-list">
                     <div v-for="check in rulePackRequirements" :key="check.id" class="requirement">
                       <code class="mono">{{ check.id }}</code>
-                      <span class="eap-badge" :class="check.met ? 'eap-badge--success' : 'eap-badge--warning'">
+                      <Badge
+                        tone="neutral"
+                        :class="check.met ? 'eap-badge--success' : 'eap-badge--warning'"
+                      >
                         {{ check.met ? "能力齐备" : "缺少 " + check.missing.join("、") }}
-                      </span>
+                      </Badge>
                       <span class="hint">需要：{{ check.required.join("、") }}</span>
                     </div>
                   </div>
@@ -1020,9 +1252,10 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
 
                 <template v-if="blockedRules.length">
                   <h3>未判定的规则（{{ blockedRules.length }}）</h3>
-                  <p class="eap-feedback">
-                    下列规则依赖的能力本次没有执行，因此它们的证据缺失。这 <b>不等于</b> 没有发现问题。
-                  </p>
+                  <Feedback tone="info">
+                    下列规则依赖的能力本次没有执行，因此它们的证据缺失。这
+                    <b>不等于</b> 没有发现问题。
+                  </Feedback>
                   <ul class="advice-list">
                     <li v-for="item in blockedRules" :key="item.rule">
                       <code class="mono">{{ item.rule }}</code> · 缺少能力
@@ -1036,16 +1269,26 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                   <h3>补充上下文</h3>
                   <p class="hint">
                     运行时没有「补充」这个资源：补充上下文等于把新上下文并入目标后<b>再执行一次</b>
-                    （<code class="mono">POST /api/experts/{id}/execute</code>）。上一条记录与它的证据不会被改写，
+                    （<code class="mono">POST /api/experts/{id}/execute</code
+                    >）。上一条记录与它的证据不会被改写，
                     所以「补了什么、结果怎么变」在历史里可以对照。不要粘贴密码或连接串。
                   </p>
-                  <textarea v-model="supplement" class="workspace-input" rows="3" :disabled="sqlBusy"
-                    placeholder="例如：orders.customer_id 已有单列索引；订单表约 2000 万行，慢在分页" />
+                  <textarea
+                    v-model="supplement"
+                    class="workspace-input"
+                    rows="3"
+                    :disabled="sqlBusy"
+                    placeholder="例如：orders.customer_id 已有单列索引；订单表约 2000 万行，慢在分页"
+                  />
                   <div class="form-actions">
-                    <button type="button" class="eap-button" :disabled="sqlBusy || !supplement.trim()"
-                      @click="applySupplement">
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      :disabled="sqlBusy || !supplement.trim()"
+                      @click="applySupplement"
+                    >
                       {{ sqlBusy ? "执行中…" : "补入并重新分析" }}
-                    </button>
+                    </Button>
                     <span class="hint" role="status">{{ supplementMessage }}</span>
                   </div>
                 </section>
@@ -1054,7 +1297,12 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                   <summary>命中事实（{{ factEntries.length }}）</summary>
                   <p class="hint">发现来自这些结构事实；规则包只能引用词表中已声明的事实。</p>
                   <table class="data-table facts-table">
-                    <thead><tr><th>事实</th><th>值</th></tr></thead>
+                    <thead>
+                      <tr>
+                        <th>事实</th>
+                        <th>值</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       <tr v-for="[key, value] in factEntries" :key="key">
                         <td class="mono">{{ key }}</td>
@@ -1068,7 +1316,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                 <ol v-if="sqlResult.advice?.length" class="advice-list">
                   <li v-for="item in sqlResult.advice" :key="item">{{ item }}</li>
                 </ol>
-                <p v-else class="empty-state">本次没有返回可验证建议，请补充上下文。</p>
+                <EmptyState v-else>本次没有返回可验证建议，请补充上下文。</EmptyState>
 
                 <section v-if="sqlResult.expertAdvice">
                   <h3>模型观察（未验证）</h3>
@@ -1092,9 +1340,14 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                     <li v-for="node in sqlResult.nodes" :key="node.id">
                       <div class="result-heading">
                         <strong>{{ node.label }}</strong>
-                        <span class="eap-badge" :class="node.state === 'succeeded' ? 'eap-badge--success' : 'eap-badge--warning'">
+                        <Badge
+                          tone="neutral"
+                          :class="
+                            node.state === 'succeeded' ? 'eap-badge--success' : 'eap-badge--warning'
+                          "
+                        >
                           {{ statusLabel(node.state) }}
-                        </span>
+                        </Badge>
                       </div>
                       <small class="mono">{{ node.capability }}</small>
                       <p>{{ node.message }}</p>
@@ -1104,15 +1357,23 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
 
                 <details v-if="sqlResult.safety?.length">
                   <summary>安全与执行说明</summary>
-                  <ul><li v-for="item in sqlResult.safety" :key="item">{{ item }}</li></ul>
+                  <ul>
+                    <li v-for="item in sqlResult.safety" :key="item">{{ item }}</li>
+                  </ul>
                 </details>
 
                 <div class="form-actions">
-                  <button class="eap-button" :disabled="!sqlResult.advice?.length && !sqlResult.expertAdvice" @click="copyResult">复制建议</button>
+                  <Button
+                    variant="secondary"
+                    :disabled="!sqlResult.advice?.length && !sqlResult.expertAdvice"
+                    @click="copyResult"
+                  >
+                    复制建议
+                  </Button>
                   <span role="status" class="hint">{{ copyMessage }}</span>
                 </div>
               </div>
-              <div v-else class="empty-state">填写问题或 SQL 后开始分析，结果将在此显示。</div>
+              <EmptyState v-else>填写问题或 SQL 后开始分析，结果将在此显示。</EmptyState>
             </article>
           </div>
           <details class="why">
@@ -1132,10 +1393,25 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
 
         <!-- MANAGERS -->
         <KeepAlive>
-          <ExpertManager ref="expertManager" v-if="activeView === 'experts'" @saved="refresh"
-            @run="selectedExpert = $event; activeView = 'sql'" />
-          <KnowledgeManager ref="knowledgeManager" v-else-if="activeView === 'knowledge'" @saved="refresh" />
-          <DatabaseManager ref="databaseManager" v-else-if="activeView === 'databases'" @saved="refresh" />
+          <ExpertManager
+            ref="expertManager"
+            v-if="activeView === 'experts'"
+            @saved="refresh"
+            @run="
+              selectedExpert = $event;
+              activeView = 'sql';
+            "
+          />
+          <KnowledgeManager
+            ref="knowledgeManager"
+            v-else-if="activeView === 'knowledge'"
+            @saved="refresh"
+          />
+          <DatabaseManager
+            ref="databaseManager"
+            v-else-if="activeView === 'databases'"
+            @saved="refresh"
+          />
           <RuleManager ref="ruleManager" v-else-if="activeView === 'rules'" @saved="refresh" />
           <CapabilityManager
             ref="capabilityManager"
@@ -1143,39 +1419,51 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
             @saved="refresh"
           />
         </KeepAlive>
-
       </main>
 
       <!-- INSPECTOR -->
-      <button v-if="inspectorOpen" class="inspector-backdrop" aria-label="关闭上下文详情" @click="inspectorOpen = false"></button>
+      <button
+        v-if="inspectorOpen"
+        class="inspector-backdrop"
+        aria-label="关闭上下文详情"
+        @click="inspectorOpen = false"
+      ></button>
       <aside id="context-details" class="inspector" :class="{ 'inspector--open': inspectorOpen }">
         <div class="insp-head">
           <h2>上下文详情</h2>
           <span class="chip">{{ currentView.name }}</span>
-          <button class="eap-button inspector-toggle" @click="inspectorOpen = false">关闭</button>
+          <Button variant="secondary" @click="inspectorOpen = false" class="inspector-toggle"
+            >关闭</Button
+          >
         </div>
         <p class="hint">{{ inspector.hint }}</p>
 
         <template v-if="activeView === 'sql'">
           <p v-if="!selectedFinding" class="hint">尚未选择发现：点击上方结果中的任意一条。</p>
           <div v-else class="inspector-card">
-            <span class="sev" :class="selectedFinding.severity">{{ severityText(selectedFinding.severity) }}</span>
+            <span class="sev" :class="selectedFinding.severity">{{
+              severityText(selectedFinding.severity)
+            }}</span>
             <span v-if="isFindingIgnored(selectedFinding.code)" class="ignored-tag">已忽略</span>
             <div class="mono insp-code">{{ selectedFinding.code }}</div>
             <div class="hint">类别：{{ selectedFinding.category }}</div>
             <div class="insp-block"><b>证据</b><br />{{ selectedFinding.evidence }}</div>
-            <div class="insp-block"><b>建议（语义保持）</b><br />{{ selectedFinding.suggestion }}</div>
+            <div class="insp-block">
+              <b>建议（语义保持）</b><br />{{ selectedFinding.suggestion }}
+            </div>
             <div class="insp-block"><b>确定性置信度</b> {{ selectedFinding.confidence }}</div>
             <div class="form-actions insp-actions">
-              <button class="eap-button" @click="copyFindingAdvice(selectedFinding)">复制建议</button>
-              <button class="eap-button" :disabled="!findingRewrite" @click="toggleRewrite">
+              <Button variant="secondary" @click="copyFindingAdvice(selectedFinding)">
+                复制建议
+              </Button>
+              <Button variant="secondary" :disabled="!findingRewrite" @click="toggleRewrite">
                 {{ rewriteOpen ? "收起改写" : "查看候选改写" }}
-              </button>
-              <button class="eap-button" @click="toggleFindingIgnored(selectedFinding)">
+              </Button>
+              <Button variant="secondary" @click="toggleFindingIgnored(selectedFinding)">
                 {{ isFindingIgnored(selectedFinding.code) ? "取消忽略" : "标记忽略" }}
-              </button>
+              </Button>
             </div>
-            <p v-if="inspectorMessage" class="feedback" role="status">{{ inspectorMessage }}</p>
+            <Feedback v-if="inspectorMessage">{{ inspectorMessage }}</Feedback>
             <div v-if="rewriteOpen && findingRewrite" class="insp-block rew-box">
               <b>候选改写（未执行）</b>
               <p class="hint">{{ findingRewrite.note }}</p>
@@ -1205,30 +1493,56 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
         <template v-if="activeView === 'sql' && sqlResult && inspector.pipeline">
           <h2>当前任务的流水线走向</h2>
           <div class="pipeline pipeline--stack">
-            <div class="stage done"><div class="n">1 · 确定性证据</div><div class="t">已运行</div><div class="s">AST 解析 → 规则包判定（{{ sqlResult?.rulePacks?.length ?? 0 }} 个包）</div></div>
+            <div class="stage done">
+              <div class="n">1 · 确定性证据</div>
+              <div class="t">已运行</div>
+              <div class="s">
+                AST 解析 → 规则包判定（{{ sqlResult?.rulePacks?.length ?? 0 }} 个包）
+              </div>
+            </div>
             <div class="stage" :class="decision === 'enhance' ? 'model' : 'skip'">
-              <div class="n">2 · 决策</div><div class="t">{{ decisionText(decision) }}</div>
+              <div class="n">2 · 决策</div>
+              <div class="t">{{ decisionText(decision) }}</div>
               <div class="s">{{ sqlResult?.modelAdvisor?.rationale ?? "尚未运行分析" }}</div>
             </div>
-            <div class="stage" :class="sqlResult?.modelEnhancement === 'unverified-observation' ? 'model' : ''">
-              <div class="n">3 · 模型</div><div class="t">{{ modelEnhancementText(sqlResult?.modelEnhancement) }}</div>
-              <div class="s" v-if="compression?.compressionRatio != null">压缩比 {{ Math.round((compression.compressionRatio ?? 0) * 100) }}%</div>
+            <div
+              class="stage"
+              :class="sqlResult?.modelEnhancement === 'unverified-observation' ? 'model' : ''"
+            >
+              <div class="n">3 · 模型</div>
+              <div class="t">{{ modelEnhancementText(sqlResult?.modelEnhancement) }}</div>
+              <div class="s" v-if="compression?.compressionRatio != null">
+                压缩比 {{ Math.round((compression.compressionRatio ?? 0) * 100) }}%
+              </div>
               <div class="s" v-else>预算未消耗</div>
             </div>
           </div>
         </template>
 
         <h2>全局说明（与页面无关）</h2>
-        <p class="hint">输入与证据在平台侧脱敏；只读取显式授权的资料与知识库；未连接业务数据库；未执行输入 SQL；模型输出仅为待验证观察。</p>
+        <p class="hint">
+          输入与证据在平台侧脱敏；只读取显式授权的资料与知识库；未连接业务数据库；未执行输入
+          SQL；模型输出仅为待验证观察。
+        </p>
       </aside>
     </div>
 
     <footer class="statusbar">
-      <span>状态：<b>{{ runtimeStatus }}</b></span>
-      <span>工作空间：<b>{{ workspace }}</b></span>
-      <span>最近刷新：<b>{{ lastRefresh || "—" }}</b></span>
-      <span>确定性覆盖：<b>{{ deterministicCoverageText }}</b></span>
-      <span>模型调用（近 {{ stats?.windowDays ?? 7 }} 日）：<b>{{ modelShareText }}</b></span>
+      <span
+        >状态：<b>{{ runtimeStatus }}</b></span
+      >
+      <span
+        >工作空间：<b>{{ workspace }}</b></span
+      >
+      <span
+        >最近刷新：<b>{{ lastRefresh || "—" }}</b></span
+      >
+      <span
+        >确定性覆盖：<b>{{ deterministicCoverageText }}</b></span
+      >
+      <span
+        >模型调用（近 {{ stats?.windowDays ?? 7 }} 日）：<b>{{ modelShareText }}</b></span
+      >
       <span class="spacer" />
       <span>Apache-2.0</span>
     </footer>

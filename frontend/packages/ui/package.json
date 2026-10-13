@@ -1,9 +1,12 @@
 {
   "name": "@eap/ui",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "type": "module",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
   "dependencies": {
     "vue": "catalog:frontend"
   },

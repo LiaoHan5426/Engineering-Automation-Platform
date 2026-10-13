@@ -1,15 +1,15 @@
 {
   "name": "@eap/stylelint-config",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "exports": "./index.mjs",
-  "peerDependencies": {
-    "stylelint": "^16.26.1"
-  },
   "dependencies": {
     "postcss-html": "catalog:style",
     "stylelint-config-recess-order": "catalog:style",
     "stylelint-config-standard": "catalog:style"
+  },
+  "peerDependencies": {
+    "stylelint": "^16.26.1"
   }
 }

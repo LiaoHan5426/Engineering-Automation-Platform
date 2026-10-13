@@ -257,7 +257,7 @@ Two supporting changes made those numbers honest rather than decorative:
   `unavailable`, `NULL` = never reached the judgement stage), and `GET /api/stats?windowDays=7` returns
   `null` rather than `0` until at least one run has recorded a route. 概览 and the status bar's
   确定性覆盖 read that one value, so 「还没有运行过」 can never be printed as 「0%」.
-- every destructive action goes through `ConfirmBox.vue`, which names the impact and keeps the confirm
+- every destructive action goes through `@eap/ui` `ConfirmBox`, which names the impact and keeps the confirm
   button in place — disabled, with the reason beside it — when the backend refuses.
   `apps/web/src/tests/destructive.test.ts` asserts both, including that `window.confirm` appears nowhere in
   the console source.

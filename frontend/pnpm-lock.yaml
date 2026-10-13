@@ -258,6 +258,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@eap/expert-sdk':
+        specifier: workspace:*
+        version: link:../../packages/expert-sdk
       '@eap/runtime-client':
         specifier: workspace:*
         version: link:../../packages/runtime-client

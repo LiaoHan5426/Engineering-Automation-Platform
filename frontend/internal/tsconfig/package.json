@@ -2,5 +2,7 @@
   "name": "@eap/tsconfig",
   "version": "0.1.0",
   "private": true,
-  "exports": { "./base.json": "./base.json" }
+  "exports": {
+    "./base.json": "./base.json"
+  }
 }
