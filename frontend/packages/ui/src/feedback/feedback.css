@@ -1,0 +1,28 @@
+.eap-feedback {
+  padding: 11px 14px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--info);
+  background: var(--info-bg);
+  border-radius: var(--radius-control);
+}
+
+.eap-feedback--error {
+  color: var(--danger);
+  overflow-wrap: anywhere;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+}
+
+.eap-feedback--warning {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--warn-text);
+  background: var(--warn-bg);
+}
+
+.eap-feedback--success {
+  color: var(--ok);
+  background: var(--ok-bg);
+  border: 1px solid var(--ok-border);
+}

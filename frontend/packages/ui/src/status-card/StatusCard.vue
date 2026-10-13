@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Feedback from "./Feedback.vue";
+import Feedback from "../feedback/Feedback.vue";
 
 withDefaults(
   defineProps<{

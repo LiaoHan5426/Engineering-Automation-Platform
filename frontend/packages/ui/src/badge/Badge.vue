@@ -12,3 +12,5 @@ withDefaults(
     ><slot>{{ label }}</slot></span
   >
 </template>
+
+<style src="./badge.css"></style>

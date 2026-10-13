@@ -1,0 +1,13 @@
+.eap-empty {
+  padding: 26px 12px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-mute);
+  text-align: center;
+}
+
+.eap-empty strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-soft);
+}

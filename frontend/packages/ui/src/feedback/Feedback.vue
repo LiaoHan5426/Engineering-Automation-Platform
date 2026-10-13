@@ -17,3 +17,5 @@ withDefaults(defineProps<{ message?: string; tone?: "info" | "error" | "warning"
     <slot>{{ message }}</slot>
   </p>
 </template>
+
+<style src="./feedback.css"></style>

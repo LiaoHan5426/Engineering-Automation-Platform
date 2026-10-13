@@ -556,7 +556,7 @@ onMounted(refreshData);
       </button>
       <EmptyState>暂无匹配专家，点击新建开始配置。</EmptyState>
     </aside>
-    <div v-if="!editing" class="eap-panel empty-state">
+    <div v-if="!editing" class="eap-panel eap-empty">
       <h2>构建专家工作流</h2>
       <p>选择专家编辑流程，或创建一个新专家。</p>
       <p>添加能力节点 → 连接节点 → 配置属性 → 校验并保存</p>

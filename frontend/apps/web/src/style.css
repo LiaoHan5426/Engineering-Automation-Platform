@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 /* ============================================================
-   Design tokens
+   App shell tokens — shared UI tokens come from @eap/ui/styles.css
    ============================================================ */
 :root {
   --bg: #f4f6fb;
-  --surface: #ffffff;
+  --surface: #fff;
   --surface-2: #f8fafc;
   --surface-3: #eef2f8;
   --border: #e3e8f0;
@@ -29,7 +29,7 @@
   --neutral: #52627a;
   --neutral-bg: #eef2f8;
   --radius: 10px;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+  --shadow: 0 1px 2px rgb(16 24 40 / 4%), 0 8px 24px rgb(16 24 40 / 6%);
   font-family:
     Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
   color: var(--text);

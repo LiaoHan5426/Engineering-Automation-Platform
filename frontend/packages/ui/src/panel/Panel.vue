@@ -23,3 +23,5 @@ defineProps<{
     </div>
   </section>
 </template>
+
+<style src="./panel.css"></style>

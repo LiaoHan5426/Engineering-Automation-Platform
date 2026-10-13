@@ -1,0 +1,36 @@
+/**
+ * @eap/ui design tokens — single source for component CSS variables.
+ * Apps may override these on :root / a theme scope after importing @eap/ui/styles.css.
+ */
+:root {
+  --surface: #fff;
+  --surface-2: #f8fafc;
+  --surface-3: #eef2f7;
+  --border: #d8e0ec;
+  --border-strong: #cbd5e1;
+  --text: #152033;
+  --text-soft: #64748b;
+  --text-mute: #94a3b8;
+  --accent: #2563eb;
+  --accent-hover: #1d4fd0;
+  --accent-soft: #e8f0fe;
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+  --danger-border: #f3c9c9;
+  --warn: #a16207;
+  --warn-bg: #fff7e6;
+  --warn-text: #7a5b13;
+  --ok: #15803d;
+  --ok-bg: #ecfdf3;
+  --ok-border: #bbf7d0;
+  --info: #1d4ed8;
+  --info-bg: #eff6ff;
+  --neutral: #475569;
+  --neutral-bg: #e8eef7;
+  --overlay: rgb(15 23 40 / 45%);
+  --radius: 12px;
+  --radius-control: 8px;
+  --shadow: 0 1px 2px rgb(15 23 40 / 4%);
+  --control-hover: #e3e9f2;
+  --on-accent: #fff;
+}

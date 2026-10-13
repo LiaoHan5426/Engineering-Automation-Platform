@@ -12,7 +12,9 @@
 | `@eap/expert-sdk` | 专家清单编写与 id 校验（控制台保存前复用 `assertExpertId`） | `@eap/expert-sdk` |
 | `@eap/tsconfig` | 工作区 TypeScript 基础配置 | `@eap/tsconfig/base.json` |
 
-`@eap/web` 通过包名导入 `@eap/ui` 与 `@eap/runtime-client`，不再在页面内复制确认框或指标卡。页面布局与工作台专用样式留在 `apps/web/src/style.css`；按钮、徽章、反馈、面板、指标与确认框的视觉规则由 `@eap/ui/styles.css` 提供。
+`@eap/web` 通过包名导入 `@eap/ui` 与 `@eap/runtime-client`，不再在页面内复制确认框或指标卡。页面布局与工作台专用样式留在 `apps/web/src/style.css`；按钮、徽章、反馈、面板、指标与确认框的视觉规则由 `@eap/ui/styles.css` 聚合提供。
+
+`@eap/ui` 按组件分目录：每个组件目录含 `.vue` 与同名样式；`src/foundation/tokens.css` 为设计令牌底座；`src/styles.css` 先导入 tokens 再汇总组件样式；`src/index.ts` 再导出全部组件。类名统一 `eap-<block>` / `__` 元素 / `--` 修饰（如 `eap-button--primary`、`eap-confirm__dialog`）；`@eap/stylelint-config` 对 `packages/ui` 强制该 BEM 约定。
 
 每个工作区目录都有 `package.json`；依赖写入包自身的 `dependencies` / `devDependencies`，本地包使用 `workspace:*`。页面从公开包名导入客户端，不使用跨包相对路径或其他包的 `src` 私有路径。TypeScript 项目引用用于类型构建，不替代包依赖声明。
 

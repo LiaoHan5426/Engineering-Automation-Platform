@@ -11,3 +11,5 @@ defineProps<{ label: string; value: string | number; detail?: string; source?: s
     <slot />
   </article>
 </template>
+
+<style src="./metric-card.css"></style>

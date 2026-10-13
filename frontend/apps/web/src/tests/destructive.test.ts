@@ -65,12 +65,12 @@ describe("destructive actions", () => {
     // 未选中知识库时不渲染删除入口；确认模态更不会凭空出现。
     expect(html).toContain("知识工作台");
     expect(html).not.toContain("删除知识库");
-    expect(html).not.toContain("confirm-overlay");
+    expect(html).not.toContain("eap-confirm");
   });
 
   it("does not render a profile deletion entry until a profile is selected", async () => {
     const html = await renderToString(createSSRApp(DatabaseManager));
     expect(html).not.toContain("删除资料");
-    expect(html).not.toContain("confirm-overlay");
+    expect(html).not.toContain("eap-confirm");
   });
 });

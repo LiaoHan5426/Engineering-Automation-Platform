@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import Button from "./Button.vue";
-import Feedback from "./Feedback.vue";
+import Button from "../button/Button.vue";
+import Feedback from "../feedback/Feedback.vue";
 
 /**
  * The one confirmation surface in the console.
@@ -21,14 +21,14 @@ defineEmits<{ confirm: []; cancel: [] }>();
 </script>
 
 <template>
-  <div class="confirm-overlay" role="dialog" aria-modal="true" :aria-label="title">
-    <div class="confirm-box">
+  <div class="eap-confirm" role="dialog" aria-modal="true" :aria-label="title">
+    <div class="eap-confirm__dialog">
       <h3>{{ title }}</h3>
-      <ul class="confirm-impact">
+      <ul class="eap-confirm__impact">
         <li v-for="line in impact" :key="line">{{ line }}</li>
       </ul>
       <Feedback v-if="refusal" tone="error" :message="refusal" />
-      <div class="form-actions">
+      <div class="eap-confirm__actions">
         <Button
           :variant="danger ? 'danger' : 'primary'"
           :disabled="busy || !!refusal"
@@ -38,9 +38,11 @@ defineEmits<{ confirm: []; cancel: [] }>();
         </Button>
         <Button @click="$emit('cancel')">取消</Button>
       </div>
-      <p v-if="refusal" class="hint">
+      <p v-if="refusal" class="eap-confirm__hint">
         按钮仍在原位但已禁用：拒绝的原因在它旁边，而不是把它藏起来。
       </p>
     </div>
   </div>
 </template>
+
+<style src="./confirm-box.css"></style>

@@ -1,4 +1,8 @@
 /** @type {import('stylelint').Config} */
+const bemPattern = "^([a-z][a-z0-9]*)((--|__|-)[a-z0-9]+)*$";
+/** Block must be `eap-<name>`; element `__`; modifier `--`. */
+const eapBemPattern = "^eap(-[a-z0-9]+)+((--|__)[a-z0-9]+)*$";
+
 export default {
   extends: ["stylelint-config-standard", "stylelint-config-recess-order"],
   overrides: [
@@ -6,8 +10,28 @@ export default {
       files: ["**/*.vue"],
       customSyntax: "postcss-html",
     },
+    {
+      files: ["**/packages/ui/**/*.{css,vue}"],
+      rules: {
+        "selector-class-pattern": [
+          eapBemPattern,
+          {
+            message: (selector) =>
+              `Expected "${selector}" to follow eap BEM (eap-block, eap-block__elem, eap-block--mod)`,
+          },
+        ],
+      },
+    },
   ],
   rules: {
+    // Allow BEM modifiers/elements (e.g. eap-button--primary, eap-panel__body, form-actions).
+    "selector-class-pattern": [
+      // Longer separators first: otherwise "--primary" is eaten as "-" + invalid "-primary".
+      bemPattern,
+      {
+        message: (selector) => `Expected class selector "${selector}" to be kebab-case or BEM`,
+      },
+    ],
     "at-rule-no-unknown": [
       true,
       {

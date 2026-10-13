@@ -1,0 +1,11 @@
+{
+  "stylelint.enable": true,
+  "stylelint.configFile": "frontend/stylelint.config.mjs",
+  "stylelint.validate": [
+    "css",
+    "vue",
+    "postcss"
+  ],
+  "css.validate": false,
+  "scss.validate": false
+}

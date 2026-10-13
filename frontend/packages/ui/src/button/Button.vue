@@ -22,3 +22,5 @@ defineEmits<{ click: [MouseEvent] }>();
     <slot>{{ label }}</slot>
   </button>
 </template>
+
+<style src="./button.css"></style>
