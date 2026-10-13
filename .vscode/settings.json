@@ -1,6 +1,7 @@
 {
   "stylelint.enable": true,
-  "stylelint.configFile": "frontend/stylelint.config.mjs",
+  "stylelint.configFile": "${workspaceFolder}/frontend/stylelint.config.mjs",
+  "stylelint.cwd": "${workspaceFolder}/frontend",
   "stylelint.validate": [
     "css",
     "vue",

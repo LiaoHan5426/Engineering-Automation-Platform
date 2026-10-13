@@ -1,6 +1,5 @@
 import { createApp } from "vue";
 import { applyTheme, DEFAULT_THEME } from "@eap/style";
-import "@eap/style/themes.css";
 import "@eap/ui/styles.css";
 import App from "./App.vue";
 import "./style.css";

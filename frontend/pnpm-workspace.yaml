@@ -23,6 +23,8 @@ catalogs:
     typescript: ^6.0.0
     "@vitejs/plugin-vue": ^6.0.9
     "@types/nprogress": ^0.2.3
+  types:
+    "@types/node": ^24.13.4
   style:
     stylelint: ^16.26.1
     postcss-html: ^1.8.1

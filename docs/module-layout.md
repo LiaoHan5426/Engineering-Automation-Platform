@@ -8,14 +8,14 @@
 |---|---|---|
 | `@eap/web` | Vue 页面、交互与页面内状态 | 应用入口 |
 | `@eap/runtime-client` | HTTP 客户端、请求/响应 TypeScript 类型 | `@eap/runtime-client` |
-| `@eap/style` | 设计令牌与可切换主题（light/dark） | `@eap/style` / `@eap/style/themes.css` |
+| `@eap/style` | 设计令牌、可切换主题（light/dark）与文档底座 | `@eap/style` / `@eap/style/index.css` |
 | `@eap/ui` | 通用展示组件与组件样式（依赖 `@eap/style` 变量） | `@eap/ui` / `@eap/ui/styles.css` |
 | `@eap/expert-sdk` | 专家清单编写与 id 校验（控制台保存前复用 `assertExpertId`） | `@eap/expert-sdk` |
 | `@eap/tsconfig` | 工作区 TypeScript 基础配置 | `@eap/tsconfig/base.json` |
 
-`@eap/web` 通过包名导入 `@eap/style`、`@eap/ui` 与 `@eap/runtime-client`，不再在页面内复制确认框或指标卡。页面布局与工作台专用样式留在 `apps/web/src/style.css`；共享色板由 `@eap/style/themes.css` 提供，组件视觉规则由 `@eap/ui/styles.css` 聚合提供。
+`@eap/web` 通过包名导入 `@eap/style`、`@eap/ui` 与 `@eap/runtime-client`，不再在页面内复制确认框或指标卡。`apps/web/src/style.css` 先导入 `@eap/style` 的 light/dark 主题与 `base.css`，再写控制台布局与功能区样式；组件视觉规则由 `@eap/ui/styles.css` 提供。
 
-主题用法：先加载 `@eap/style/themes.css`，再 `applyTheme("light" | "dark")`（写入 `data-eap-theme`）。也可只导入单一主题文件，或在子树上设置 `data-eap-theme` 做局部主题。
+主题用法：加载主题 CSS 后调用 `applyTheme("light" | "dark")`（写入 `data-eap-theme`）。也可在子树上设置 `data-eap-theme`；无 Tailwind 的应用可直接用 `@eap/style/index.css`。
 
 `@eap/ui` 按组件分目录：每个组件目录含 `.vue` 与同名样式；`src/styles.css` 仅汇总组件样式（不内嵌主题）；`src/index.ts` 再导出全部组件。类名统一 `eap-<block>` / `__` 元素 / `--` 修饰（如 `eap-button--primary`、`eap-confirm__dialog`）；`@eap/stylelint-config` 对 `packages/ui` 强制该 BEM 约定。
 

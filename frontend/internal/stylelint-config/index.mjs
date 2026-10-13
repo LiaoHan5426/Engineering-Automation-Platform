@@ -38,6 +38,14 @@ export default {
         ignoreAtRules: ["apply", "custom-variant", "source", "theme", "utility", "variant"],
       },
     ],
+    // Keep real font family casing inside token stacks (Inter, Menlo, …).
+    "value-keyword-case": [
+      "lower",
+      {
+        ignoreProperties: ["/^--font(-|$)/", "font-family"],
+      },
+    ],
   },
+
   ignoreFiles: ["**/node_modules/**", "**/dist/**", "**/coverage/**"],
 };

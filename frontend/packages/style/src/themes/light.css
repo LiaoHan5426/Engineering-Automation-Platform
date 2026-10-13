@@ -32,9 +32,16 @@
   --neutral: #475569;
   --neutral-bg: #e8eef7;
   --overlay: rgb(15 23 40 / 45%);
+  --rail: #0f1728;
+  --rail-text: #b9c6da;
+  --rail-active: #22314b;
   --radius: 12px;
   --radius-control: 8px;
   --shadow: 0 1px 2px rgb(15 23 40 / 4%);
   --control-hover: #e3e9f2;
   --on-accent: #fff;
+  --focus-ring: #93c5fd;
+  --font-sans:
+    Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
