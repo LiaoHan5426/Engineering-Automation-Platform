@@ -1,5 +1,7 @@
 package com.lh.eap.capability;
 
+import com.lh.eap.application.service.CliChannels;
+
 import com.lh.eap.api.*;
 
 import java.util.*;

@@ -13,6 +13,10 @@ machine.
 | PUT | `/api/capabilities/{name}/activation` | Switch a whole capability **kind** on or off platform-wide (`{enabled, notes}`); refused while an enabled expert runs it. |
 | PUT | `/api/capabilities/{name}/cli` | Override the **binary** a `cli` capability runs (`{binary}`); applied live, no restart. |
 | POST | `/api/capabilities/{name}/cli/probe` | Explicitly run `<binary> --version` for the CLI capability — the only place a binary is executed for a management question. |
+| GET / POST | `/api/cli-programs` | List or register CLI programs; each executable is registered once. |
+| PUT / DELETE | `/api/cli-programs/{id}` | Configure the shared binary location, or delete a custom program after checking all operation references. |
+| POST | `/api/cli-programs/{id}/probe` | Probe the program once for all its operations. |
+| POST / PUT / DELETE | `/api/cli-programs/{id}/operations/{capabilityId}` | Maintain fixed-argument operations. Builtins cannot be deleted; enabled expert references block editing and deletion. |
 | GET | `/api/mcp-servers` | Registered MCP servers (`id`, transport, endpoint, allow-listed tools, trusted, enabled, problems). |
 | POST | `/api/mcp-servers` | Register a server (`id` validated against the `mcp.<server>.<tool>` segment shape; credentials in the endpoint refused). |
 | PUT | `/api/mcp-servers/{id}` | Edit a server's name, transport, endpoint or tool allow-list. |
@@ -51,7 +55,8 @@ declares all of it (`CapabilityHandler.kind()` / `scope()` / `describe()` / `ava
 - **`kind`** — `command` (in-process, no external dependency), `cli` (a local binary via
   `ProcessExecutor`, argument arrays only), `mcp` (a tool published by a trusted MCP server, whose
   output is an unverified observation) or `http` (an allow-listed remote endpoint). Today the runtime
-  registers 5 `command` and 3 `cli` capabilities and no `mcp`/`http` ones.
+  ships 5 `command` and 3 `cli` operations (Git status/diff and ripgrep search), and can register additional
+  fixed-argument CLI operations without restart. No MCP protocol client or HTTP handler is implemented.
 - **`scope`** — `platform` (registered once, any expert may run it) or `expert` (never globally
   enabled; see below). `kind` supplies the default: `mcp` and `http` are expert-scoped.
 - **descriptor** — `title`, `summary`, `inputs`, `grants`, `executor`, `facts` it publishes, `evidence`
@@ -83,7 +88,7 @@ operator may change — and, just as importantly, what they may not:
 | Kind | Entry point | What can be changed | What stays code |
 |---|---|---|---|
 | `command` | `SETTINGS` | Enable/disable, note | The handler itself: a capability is a `@Component CapabilityHandler` plus one declaration in `ExpertGraph.CAPABILITIES`. A test asserts the two are identical. |
-| `cli` | `CLI_CHANNEL` | Enable/disable, note, binary override, explicit probe | The command and argument array, and the facts it publishes. |
+| `cli` | `CLI_CHANNEL` | Register programs, add/edit/delete fixed-argument operations, enable/disable, shared binary override and program-level probe | Structured fact producers remain dedicated handlers. |
 | `mcp` | `SERVER_REGISTRY` | Register/edit/enable/trust/allow-list/delete servers, probe | The client that would speak the protocol. |
 | `http` | `NONE` | Nothing yet | The endpoint, its allow-list and its response mapping. |
 
@@ -105,10 +110,12 @@ from `LocalBinaries.resolve`, which only probes `PATH`. Running the binary happe
 operator presses 探测, and then only as `<binary> --version` with a short timeout and redacted,
 truncated output.
 
-Creation is not among the operations for any kind. `CapabilityManagementController.requireRegistered`
-returns a 404 explaining that a new capability needs a `CapabilityHandler` bean and a declaration in
-`ExpertGraph.CAPABILITIES` — the console says the same thing on the overview page, so the code contract
-is stated where an operator would look for a "new capability" button.
+Generic CLI operations are persisted in `eap.cli_operation` and executed by `CliOperationHandler`.
+The registry, catalog, expert picker and manifest validator read them live; restarting is unnecessary.
+They return redacted process output and exit codes, and publish no structural facts. Programs live in
+`eap.cli_program`, with shared location overrides in `eap.cli_channel`. V12 migrates old per-operation
+overrides; the legacy capability-level endpoints forward to the owning program. Builtin commands and
+structured fact providers still require reviewed handler code. See [module-layout.md](module-layout.md).
 
 ### MCP tools are expert-scoped, not platform capabilities
 

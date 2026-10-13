@@ -1,5 +1,8 @@
 package com.lh.eap.rules;
 
+import com.lh.eap.domain.model.CapabilityContext;
+import com.lh.eap.domain.expert.ExpertGraph;
+
 import java.util.*;
 
 /**
@@ -16,7 +19,7 @@ import java.util.*;
  * fire — the failure mode this contract exists to prevent.
  *
  * <p>{@link SqlFactExtractor} still owns the SQL half; the other producers are capability handlers.
- * Publishing a fact outside this list is rejected by {@link com.lh.eap.web.CapabilityContext#publish},
+ * Publishing a fact outside this list is rejected by {@link com.lh.eap.domain.model.CapabilityContext#publish},
  * and tests assert both directions of the contract.
  */
 public final class SqlFactVocabulary {

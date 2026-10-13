@@ -109,7 +109,7 @@ MCP Router 的 Project 是"把一组服务器共享给客户端"，这恰恰是 
 
 ### 阶段 3 · 前端 Vue
 
-- 模块：`frontend/apps/web/src/CapabilityManager.vue`、`ExpertManager.vue`、`api.ts`
+- 模块：`frontend/apps/web/src/features/capability/CapabilityManager.vue`、`features/expert/ExpertManager.vue`、`frontend/packages/runtime-client`
 - 内容：与原型同形的工具清单编辑器、目标状态、按服务器分组授权
 - 验收：`vp test run`
 

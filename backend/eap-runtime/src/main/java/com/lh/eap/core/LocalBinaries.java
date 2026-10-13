@@ -1,5 +1,7 @@
 package com.lh.eap.core;
 
+import com.lh.eap.application.service.CliChannels;
+
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;

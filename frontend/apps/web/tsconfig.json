@@ -1,8 +1,11 @@
 {
-  "extends": "../../internal/tsconfig/base.json",
+  "extends": "@eap/tsconfig/base.json",
   "compilerOptions": {
+    "types": ["vite/client"],
     "composite": true,
-    "noEmit": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./node_modules/.types",
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo"
   },
   "include": [
@@ -10,9 +13,7 @@
     "src/**/*.d.ts",
     "src/**/*.vue"
   ],
-  "references": [
-    {
-      "path": "../../packages/ui"
-    }
+  "exclude": [
+    "src/**/*.test.ts"
   ]
 }

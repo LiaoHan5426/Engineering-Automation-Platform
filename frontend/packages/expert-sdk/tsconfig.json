@@ -1,1 +1,6 @@
-{ "extends": "../../tsconfig.json", "include": ["src"] }
+{
+  "extends": "@eap/tsconfig/base.json",
+  "include": [
+    "src"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "@eap/runtime-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "build": "tsc --noEmit" },
+  "dependencies": { "axios": "catalog:frontend", "nprogress": "catalog:frontend" },
+  "devDependencies": { "@eap/tsconfig": "workspace:*", "@types/nprogress": "catalog:tooling", "typescript": "catalog:tooling", "vite": "catalog:tooling" }
+}

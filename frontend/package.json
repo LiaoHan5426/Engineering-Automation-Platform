@@ -1,6 +1,7 @@
 {
   "name": "engineering-automation-platform-frontend",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@12.9.0",
   "workspaces": [
     "apps/*",
@@ -8,6 +9,8 @@
     "internal/*"
   ],
   "scripts": {
+    "typecheck": "vue-tsc --build",
+    "check:boundaries": "node scripts/check-boundaries.ts",
     "dev": "vp dev",
     "build": "vp build",
     "check": "vp check",
@@ -18,9 +21,10 @@
     "clean": "node ./scripts/clean.mjs"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "catalog:tooling",
     "@eap/stylelint-config": "workspace:*",
+    "@eap/tsconfig": "workspace:*",
     "@tailwindcss/vite": "catalog:frontend",
+    "@vitejs/plugin-vue": "catalog:tooling",
     "postcss-html": "catalog:style",
     "stylelint": "catalog:style",
     "stylelint-config-recess-order": "catalog:style",
@@ -28,6 +32,7 @@
     "tailwindcss": "catalog:frontend",
     "vite": "catalog:tooling",
     "vite-plus": "catalog:tooling",
-    "vue": "catalog:frontend"
+    "vue": "catalog:frontend",
+    "vue-tsc": "~3.3.11"
   }
 }

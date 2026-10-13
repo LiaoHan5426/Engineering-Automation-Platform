@@ -451,6 +451,12 @@ label.row { font-size: 13px; }
 .insp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .insp-head h2 { margin: 0; }
 .insp-head .chip { flex: 0 0 auto; }
+.inspector-toggle, .inspector-backdrop { display: none; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.form-grid label { display: grid; gap: 6px; }
+.form-grid input, .form-grid textarea, .form-grid select { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: inherit; }
+.form-grid .wide { grid-column: 1 / -1; }
+@media (max-width: 680px) { .form-grid { grid-template-columns: 1fr; } }
 .statusbar {
   display: flex;
   align-items: center;
@@ -750,9 +756,26 @@ label.row { font-size: 13px; }
 /* ============================================================
    Responsive
    ============================================================ */
-@media (max-width: 1180px) {
+@media (max-width: 1360px) {
   .body { grid-template-columns: 200px minmax(0, 1fr); }
   .inspector { display: none; }
+  .inspector-toggle { display: inline-flex; }
+  .inspector--open {
+    display: block;
+    position: fixed;
+    inset: 58px 0 36px auto;
+    z-index: 61;
+    width: min(380px, 90vw);
+    box-shadow: -8px 0 28px rgb(0 0 0 / 20%);
+  }
+  .inspector-backdrop {
+    display: block;
+    position: fixed;
+    inset: 58px 0 36px;
+    z-index: 60;
+    border: 0;
+    background: rgb(0 0 0 / 25%);
+  }
   .workbench { padding: 18px; }
 }
 @media (max-width: 1000px) {
@@ -873,3 +896,424 @@ label.row { font-size: 13px; }
 .panel-block > .manager-tabs { margin-bottom: 0; }
 .panel-block .table-scroll { margin-top: 12px; }
 .eap-panel dt { color: var(--text-mute); }
+
+/* ============================================================
+   Console shell: the workspace scope, the shell message, status bar
+   ============================================================ */
+.menu-wrap {
+  position: relative;
+}
+
+.ws {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.ws b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ws .caret {
+  color: var(--text-mute);
+  font-size: 10px;
+}
+
+.menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  gap: 2px;
+  min-width: 320px;
+  max-width: 420px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.menu-head {
+  padding: 4px 8px;
+  color: var(--text-mute);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.menu > button {
+  padding: 7px 8px;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.menu > button:hover {
+  background: var(--surface-3);
+}
+
+.menu > button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.menu-add {
+  color: var(--accent);
+}
+
+.menu-form {
+  display: flex;
+  gap: 6px;
+  padding: 4px 8px 0;
+}
+
+.menu-note {
+  margin: 6px 8px 2px;
+  color: var(--text-mute);
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+
+.shell-message {
+  margin: 0;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--info-bg);
+  color: var(--info);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.metric-source {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-mute);
+  font-size: 11px;
+}
+
+.metric-note {
+  margin: 10px 0 0;
+  color: var(--text-mute);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* ============================================================
+   Why blocks: the summary is the question, the body is the answer
+   ============================================================ */
+details.why {
+  margin-top: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+details.why > summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  list-style: none;
+}
+
+details.why > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The marker is drawn with borders, never a font code point: a glyph is how the prototype ended up
+   printing a stray "B8" on every page. */
+details.why > summary::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid var(--text-mute);
+  transition: transform 0.15s ease;
+}
+
+details.why[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.why p {
+  margin: 10px 0 0;
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+
+/* ============================================================
+   SQL workbench: decision explanation, finding actions, candidate diff
+   ============================================================ */
+.stage--clickable {
+  text-align: left;
+  cursor: pointer;
+}
+
+.stage--clickable:hover {
+  border-color: var(--accent);
+}
+
+.stage .link {
+  margin-left: 6px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.decision-panel {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.decision-panel h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.decision-panel .advice-list {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+
+.decision-panel .hint {
+  margin-bottom: 0;
+}
+
+.ignored-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--neutral-bg);
+  color: var(--neutral);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* An ignored finding stays visible and stays in place: a review trail that deletes its own entries is
+   indistinguishable from a finding that never existed. */
+.finding.ignored {
+  opacity: 0.75;
+}
+
+.finding.ignored .code {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-mute);
+}
+
+.supplement {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.supplement h3 {
+  margin: 0 0 6px;
+}
+
+.supplement .form-actions {
+  align-items: center;
+}
+
+.insp-actions {
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.insp-actions .eap-button {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.rew-box {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.diff {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.diff-side {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.diff-tag {
+  display: block;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.diff-tag.del {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.diff-tag.add {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.diff-side pre {
+  margin: 0;
+  padding: 8px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ============================================================
+   Rule editor: the draft is visible state, not an invisible buffer
+   ============================================================ */
+.draft-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rule--draft {
+  border-color: var(--border-strong);
+}
+
+.rule-remove {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.rule-edit {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rule-edit label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.rule-edit .rule-cond {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.rule-edit .rule-cond .workspace-input {
+  width: auto;
+  min-width: 140px;
+  flex: 1 1 140px;
+}
+
+.pack-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.pack-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.advanced {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.validation-block {
+  margin: 8px 0;
+}
+
+.validation-block .eap-feedback {
+  margin: 0;
+}
+
+/* ============================================================
+   Confirmation modal: the impact is named, and a refusal stays visible
+   ============================================================ */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(15 23 40 / 45%);
+}
+
+.confirm-box {
+  width: min(520px, 100%);
+  padding: 18px 20px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.confirm-box h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.confirm-impact {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.8;
+}
+
+.confirm-box .form-actions {
+  margin-top: 14px;
+}
+
+.confirm-box .hint {
+  margin: 10px 0 0;
+}

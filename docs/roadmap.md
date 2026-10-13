@@ -195,7 +195,7 @@ Delivered:
   `mcp.<server>.<tool>`, transports are limited to `stdio` / `http` / `sse`, credentials in an endpoint
   are refused, and deletion is refused while an enabled expert holds a grant on one of the server's
   tools. The probe reports `verified: false`, because there is no protocol client yet.
-- Console (`CapabilityManager.vue`) + prototype: four sub-pages, per-capability enable/disable + note,
+- Console (`features/capability/CapabilityManager.vue`) + prototype: four sub-pages, per-capability enable/disable + note,
   a CLI page with binary override / reset / probe, an MCP page with a registration form and per-server
   management, and an explicit statement on the overview and command pages that **新增能力一律需要改代码**.
   `CapabilityManagementController.requireRegistered` returns a 404 explaining the same thing for any
@@ -240,16 +240,32 @@ dry-run.
 Delivered so far: high-fidelity HTML prototype (`docs/prototype/console.html`) that fixes the
 information architecture and pins down the *interaction* contract — every control changes visible state
 or explains why it cannot, and every action either names the real endpoint it would call or says it is
-client-side. The Vue app is aligned to it for: the eight-route shell with a page-scoped inspector, the
-results browser and pipeline routing block, read-only rule browsing with the dry-run and fact
-vocabulary, the four-page capability catalog with its management surfaces (Phase 2e), knowledge-base
-container CRUD with scoped search, database CRUD, expert create/validate/activate, and the task timeline.
+client-side. The Vue app is aligned to it on every slice except one: the eight-route shell with a
+page-scoped inspector, the results browser and pipeline routing block, the **rule editor** (inline
+severity/evidence/advice editing, add/remove, 复制为自定义 for a shipped pack, local mirror of the
+backend checks plus the real `POST /api/rule-packs/validate`, dry-run against the draft), the
+**draft-based expert editor** with a manifest generated from the same state as the canvas, the **finding
+actions** (复制建议 / 查看候选改写 / 标记忽略), the **supplement composer** (appended, never
+replacing), the shell's 刷新 / 工作空间 / status bar, the four-page capability catalog with its
+management surfaces (Phase 2e), knowledge-base
+container CRUD with scoped search,
+database CRUD, expert create/validate/activate, and the task timeline.
 
-Still prototype-only (tracked per slice in `docs/frontend-prototype.md`): inline rule editing,
-draft-based expert editing with a generated manifest, the finding actions (复制建议 / 查看候选改写 /
-标记忽略), the supplement composer, and the desktop shell page — delivery-target switch, local workspace
-picker, backend connection settings and shell permissions with an operation history (`docs/desktop-spec.md`
-describes the contract; `apps/desktop` itself is still ⬜).
+Two supporting changes made those numbers honest rather than decorative:
+
+- `eap.task.model_enhancement` records which route each run took (`unverified-observation` / `skipped` /
+  `unavailable`, `NULL` = never reached the judgement stage), and `GET /api/stats?windowDays=7` returns
+  `null` rather than `0` until at least one run has recorded a route. 概览 and the status bar's
+  确定性覆盖 read that one value, so 「还没有运行过」 can never be printed as 「0%」.
+- every destructive action goes through `ConfirmBox.vue`, which names the impact and keeps the confirm
+  button in place — disabled, with the reason beside it — when the backend refuses.
+  `apps/web/src/tests/destructive.test.ts` asserts both, including that `window.confirm` appears nowhere in
+  the console source.
+
+Still prototype-only: the **desktop shell page** — delivery-target switch, local workspace picker,
+backend connection settings and shell permissions with an operation history. `docs/desktop-spec.md`
+describes the contract; `apps/desktop` itself is still ⬜ because a shell is an Electron main process,
+not a page, and `electron` is not yet a dependency of the workspace.
 
 **Exit criteria:** the console renders live observations, the SQL findings with severity, the
 knowledge citations, the model-advisor routing block and the independent-validation state; `vp build`

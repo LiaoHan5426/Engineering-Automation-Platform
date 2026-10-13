@@ -59,10 +59,15 @@ destinations; the 能力目录 tabs are generated from the runtime's kind declar
 written into the markup — so a kind that becomes manageable or non-empty appears on its own, and HTTP,
 which is neither, has no tab.
 
-**One-off transactions go in a drawer, destructive ones through a modal.** 新建 / 编辑 slide in from the
-right (the list stays put, so the action never moves the context away); closing an unsaved drawer asks
-first instead of discarding silently. 删除 goes through a modal that names the impact and, when the
-backend refuses, keeps the confirm button present but disabled with the reason beside it.
+**One-off transactions keep the list put; destructive ones go through a modal.** 新建 / 编辑 must never
+move the context away from the list it belongs to — the prototype slides the form in from the right, the
+app uses an inline panel in the same column (`pack-form` / the manager toolbars) because both satisfy the
+rule that matters: the list stays visible and the action does not become a page of its own. Closing an
+unsaved form asks first instead of discarding silently, and it does so **in the page**: `ConfirmBox.vue`
+is the one confirmation surface, `window.confirm` appears nowhere (asserted by
+`apps/web/src/tests/destructive.test.ts`, which reads the source rather than trusting a review). 删除 goes
+through that modal, which names the impact and, when the backend refuses, keeps the confirm button
+present but disabled with the reason beside it.
 
 Choosing 桌面端 on the 桌面外壳 page wraps this same shell in a window frame with a native menu
 (文件 / 视图 / 帮助) and enables the platform services that only the shell can provide; the controls that
@@ -104,7 +109,7 @@ flowchart LR
   O --> C[Capability catalog]
   C --> C0[总览: per-kind table + management + consistency, all derived from state]
   C --> C1[内置命令: every capability gets enable/disable + note + code contract]
-  C --> C2[本地CLI: every capability gets binary override + enable/disable + probe]
+  C --> C2[本地CLI: one program registration + shared binary/probe + bounded operations]
   C --> C3[MCP工具: register / trust / allow-list / delete]
   C --> CS[Scope + registered MCP servers]
   SH2[桌面外壳: 运行目标 / 本地工作空间 / 后端连接 / 权限与操作历史] --> DS[Delivery target: local browser vs desktop]
@@ -195,8 +200,11 @@ flowchart LR
   refused while an enabled expert still references it, naming the experts. The dry-run runs against the
   pack you have selected, so what is tried is what is being edited.
 - **Knowledge is a container you can manage, and search is scoped.** Knowledge bases and documents are
-  created, renamed and deleted from the page; a new document is written into the selected base and a
-  preview shows the chunks that will be indexed. Search states its own scope — the union of the enabled
+  created, renamed and deleted from the page; a new document is written into the selected base, and the
+  document view shows the ordered concatenation of the chunks that were indexed — that concatenation is
+  what retrieval returns, and the page says so instead of implying a per-chunk editor the runtime does
+  not have. Deleting a base or a document goes through a modal that names what goes with it. Search
+  states its own scope — the union of the enabled
   experts' granted bases — and an ungranted base contributes **zero** results rather than falling back
   to everything, because deny-by-default has to be visible, not merely implemented. A query with no
   match explains its scope instead of showing a blank list, and a document that looks like it contains a
@@ -341,8 +349,8 @@ not adopted yet are marked on the 原型 track alone.
    MCP 工具), where the sub-pages, per-kind counts and per-capability cards are **derived from the kind
    declaration and the capability list** rather than written into the markup, so a switch-off updates the
    tab, the kind row, the full table, the card and the inspector together. Per-kind management surfaces —
-   enable/disable + note for every built-in command *and* every CLI capability, CLI binary override +
-   reset + probe, MCP server registration/trust/allow-list/delete — plus per-capability metadata,
+   enable/disable + note for built-in commands, CLI program registration and fixed-argument operations,
+   shared binary override/reset/probe, MCP server registration/trust/tool declaration/delete — plus per-capability metadata,
    availability, scope and declaration-consistency reporting in both directions (declared-but-unregistered
    and registered-but-undeclared, plus MCP published-but-undeclared and declared-but-unpublished). The
    expert studio shows the capabilities its rule packs require, the MCP tools the expert is authorised to
@@ -350,25 +358,48 @@ not adopted yet are marked on the 原型 track alone.
    reason.
 6. ✅ 应用 · ✅ 原型 — Live task state and evidence timeline: a run has an explicit state, the timeline
    is driven by the selected task, and re-running appends a row instead of overwriting one.
-7. ⬜ 应用 · ✅ 原型 — Rule editor: select a pack, edit a rule inline (severity / evidence / advice),
+7. ✅ 应用 · ✅ 原型 — Rule editor: select a pack, edit a rule inline (severity / evidence / advice),
    add and remove rules, refuse edits on a shipped pack with the 复制为自定义 remedy, and try the rule
-   pack being edited. The app still only lists and dry-runs.
-8. ⬜ 应用 · ✅ 原型 — Expert editor with a **generated** manifest preview, draft state (有未保存的修改),
+   pack being edited. The app keeps `draft` / `baseline` so 有未保存的修改 is a *visible state* rather
+   than a silent loss, runs a local mirror of the backend's own checks (unknown fact, missing
+   `requires` entry) **and then still calls `POST /api/rule-packs/validate`**, because the local half can
+   name the offending rule while only the server can see reserved identifiers and cross-pack references.
+   Compound conditions (`all` / `any` / `not`) and `policy` thresholds are edited in a JSON draft panel
+   rather than through a form that would cover only part of the manifest. `dry-run` posts the current
+   draft, so what is tried is what is being edited. Delete and enable/disable go through the shared
+   confirm modal; a refusal from the backend leaves the confirm button in place, disabled, with the
+   reason beside it.
+8. ✅ 应用 · ✅ 原型 — Expert editor with a **generated** manifest preview, draft state (有未保存的修改),
    knowledge / profile / rule-pack chips, MCP tool authorisation picker, a DAG canvas rendered from the
-   node list, and 校验 that mirrors the backend's own checks.
-9. ⬜ 应用 · ✅ 原型 — Decision panel, unjudged-rule list and supplement composer: the skipped decision
+   node list, and 校验 that mirrors the backend's own checks. The manifest panel is labelled
+   「由草稿生成的 Manifest（只读）」 and says why it cannot disagree with the canvas: all three read one
+   state. 启用/停用 lists what the action *grants or revokes* (knowledge bases, database profiles, MCP
+   tools) rather than showing a bare verb, and the refusal reason stays next to a disabled confirm
+   button. No `window.confirm` anywhere.
+9. ✅ 应用 · ✅ 原型 — Decision panel, unjudged-rule list and supplement composer: the skipped decision
    is clickable and explains why, an undecided run names the missing facts, and a supplement is
-   appended without erasing prior evidence.
-10. ⬜ 应用 · ✅ 原型 — Finding actions and diff viewer: 复制建议, 查看候选改写 (before/after diff that
+   appended without erasing prior evidence. A supplement is a **new** `POST /api/experts/{id}/execute`
+   appended to the history — never an edit of a previous run.
+10. ✅ 应用 · ✅ 原型 — Finding actions and diff viewer: 复制建议, 查看候选改写 (before/after diff that
     is never auto-executed and never replaces the input), 标记忽略 (records judgement without hiding
-    the finding or editing the pack).
+    the finding or editing the pack). A candidate rewrite is offered **only** when the change is decidable
+    from the statement alone (`= NULL` → `IS NULL`); every other case names the missing ingredient
+    instead of rendering a plausible-looking diff (`rewrites.ts`).
 11. ✅ 应用 · ✅ 原型 — MCP server registration UI (transport, allow-listed tools, trust). The backend
     registry is writable through `/api/mcp-servers`; the probe reports `verified: false` until an MCP
     client exists.
 12. ✅ 应用 · ✅ 原型 — Knowledge container management (create / rename / delete a base, add a document,
-    preview the chunks) and scoped search whose scope is stated on the page.
-13. ⬜ 应用 · ✅ 原型 — 刷新 / 工作空间 / status bar as real state, with the top-bar workspace switcher
-    labelled client-side because tasks are not scoped by workspace on the server.
+    delete a document) and scoped search whose scope is stated on the page. The document view shows the
+    ordered concatenation of the indexed chunks and says so, because that concatenation *is* what
+    retrieval returns; there is no per-chunk preview because the runtime stores no chunk boundaries in
+    the document listing. Deleting a base or a document names what goes with it (the base's documents,
+    the document's chunks) and keeps the confirm button visible when the backend refuses because an
+    enabled expert still grants it.
+13. ✅ 应用 · ✅ 原型 — 刷新 / 工作空间 / status bar as real state, with the top-bar workspace
+    switcher labelled client-side because tasks are not scoped by workspace on the server. The workspace
+    scope covers the task list only; expert definitions, knowledge and database profiles are
+    application-level configuration, and the page says so rather than implying a missing server field.
+    The status bar reads `状态 / 工作空间 / 最近刷新 / 确定性覆盖 / 模型调用（近 N 日）`.
 14. ⬜ 应用 · ✅ 原型 — **桌面外壳**: a delivery-target switch (浏览器 / 桌面端 · Electron) that draws the
     window frame and native menu, with desktop-only controls disabled *and explained* in browser mode;
     window/menu/notification/external-link services; the **local workspace picker** (recent list, a
@@ -380,7 +411,20 @@ not adopted yet are marked on the 原型 track alone.
     Desktop-only
     interactions that need no endpoint say so; the ones that map to the runtime name the call they
     would make. See `docs/desktop-spec.md` for the contract this is modelled on.
-15. ⬜ 应用 · ✅ 原型 — **概览页的数字有出处**: 已注册能力 / 专家定义 由 `CAPABILITIES` / `EXPERTS` 推导
-    （停用一个能力、新增一个专家，卡片跟着变）；近 7 日任务 / 模型调用占比 来自一处显式声明的窗口样本，
-    并在卡片下方印出口径。四张卡的数字都不得写进 HTML——契约断言它们留在源码里仍是占位符。
+    **Not started, and it cannot be a page.** The prototype draws the frame in CSS, but a real shell is
+    an Electron **main process**: `nodeIntegration:false` / `contextIsolation:true` / `sandbox:true`, a
+    preload that exposes named functions only (no `ipcRenderer` passthrough), main-process validation of
+    every argument, and the operation history written in main rather than in the renderer. There is no
+    `apps/desktop` in the workspace and `electron` is not a dependency, so the browser app has nothing to
+    bridge to. The order in `docs/desktop-spec.md` §Implementation order starts with extracting shared
+    UI/API packages (done: `packages/ui`, `packages/runtime-client`) and then adds `apps/desktop`; that step
+    also needs `vp install` outside the sandbox, which fails here on `J:\.pnpm-store` (`os error 5`).
+    Until then the honest state is: the 桌面外壳 route exists in the prototype, not in the app.
+15. ✅ 应用 · ✅ 原型 — **概览页的数字有出处**: 已注册能力 / 专家定义 由 `CAPABILITIES` / `EXPERTS` 推导
+    （停用一个能力、新增一个专家，卡片跟着变）；近 N 日任务 / 模型调用占比 来自**持久化的走向**而不是
+    采样 —— `eap.task.model_enhancement` 记录每次运行走的是 `unverified-observation` / `skipped` /
+    `unavailable`，`NULL` 表示**从未到达判定阶段**（规划任务没有模型可跳过，把它算成"确定性解决"会
+    抬高这个数字）。因此 `GET /api/stats?windowDays=7` 在还没有任何运行记录走向时返回 `null` 而不是
+    `0`——「还没有运行过」不是「0%」。四张卡的数字都不得写进 HTML——契约断言它们留在源码里仍是占位符。
+    状态栏的「确定性覆盖」与概览的卡片是**同一个值**：两个标签一个数字才会漂移。
     见上文「Every number on 概览 states where it comes from」。

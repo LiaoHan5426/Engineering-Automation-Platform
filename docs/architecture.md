@@ -14,7 +14,9 @@ is fixed here.
 frontend/            Vue 3 + TypeScript monorepo (Vite+ / pnpm)
   apps/web           browser console (product UI)
   packages/ui        shared presentational components
+  packages/runtime-client HTTP client and shared API types, exported through a package entry point
   packages/expert-sdk typed expert authoring DSL (compile-to-manifest, tooling only)
+  internal/tsconfig  shared TypeScript configuration, published as @eap/tsconfig
 backend/             Java 25 / Spring Boot / Maven reactor
   eap-api            stable contracts only: Capability, ExecutionContext, Observation, ProcessExecutor,
                      and the expert analysis model
@@ -23,11 +25,15 @@ backend/             Java 25 / Spring Boot / Maven reactor
                      rule engine and rule packs with capability requirements, expert orchestration,
                      knowledge retrieval, LLM preprocessing gateway, decision layer
   eap-runtime/src/main/resources/db/migration
-                     Flyway migrations (V1..V9)
+                     Flyway migrations (V1..V12)
 docs/                architecture, pipeline, roadmap, environment, expert/knowledge/rules, prototype
 ```
 
 `eap-api` contains no Spring and no LLM SDK. `eap-runtime` depends on `eap-api`.
+
+Runtime classes are separated into `web.controller`, `web.dto`, `application.service`,
+`persistence.mapper`, `domain.model`, `domain.expert`, `runtime.handler`, `runtime.sql`, and
+`runtime.mcp`. See [module-layout.md](module-layout.md) for the implemented boundaries and verification commands.
 
 ## What is implemented today
 
@@ -74,9 +80,10 @@ which experts use each capability — so the console renders facts about the run
 hard-coded list. A read-only catalog is only half a catalog, so each kind also declares **where an
 operator can change it** (`CapabilityManagement`): `command` capabilities can be switched on/off with a
 note, `cli` capabilities additionally take a binary override (applied live) and an explicit probe, and
-`mcp` servers have a full registration surface. Creating a capability is deliberately not among these
-operations — it needs a handler bean and a declaration, and the console says so rather than offering a
-button that cannot work. See [expert-knowledge-rules.md](expert-knowledge-rules.md) §3.
+`mcp` servers have a full registration surface. Local CLI programs can also be registered manually and
+given fixed-argument operations; Git is one program with preconfigured status/diff operations. Manual
+operations emit redacted process evidence. Structured fact producers still require a handler implementation.
+See [module-layout.md](module-layout.md) and [expert-knowledge-rules.md](expert-knowledge-rules.md) §3.
 
 **One switch per capability, absent means enabled, and disabled is not missing.** `eap.capability_setting`
 is opt-out (an unreadable table yields a working platform), switching off a capability an *enabled*
@@ -130,7 +137,7 @@ database and never executes user SQL.
 **Model gateway.** `LlmGateway` + `OpenAiCompatibleProvider` + `PromptPreprocessor` +
 `DecisionProvider` implement stages 3–5 of the pipeline. The model is off by default.
 
-**Persistence.** PostgreSQL schema `eap`, managed by Flyway (V1–V9). An adoption path exists for a
+**Persistence.** PostgreSQL schema `eap`, managed by Flyway (V1–V12). An adoption path exists for a
 pre-existing hand-built schema (`EAP_ADOPT_EXISTING_SCHEMA=true`), see
 [runtime-workflow.md](runtime-workflow.md).
 
@@ -200,10 +207,10 @@ flowchart LR
 - **A capability declares its kind, its scope, its description and its availability.** The console
   renders the catalog the runtime reports; it never infers capability metadata or invents capability
   groups.
-- **Every kind of capability has a management entry point, and its existence is still code.** Each kind
+- **Every kind of capability has a management entry point.** Each kind
   declares what an operator may change (enable/disable, binary override for `cli`, server registration
-  for `mcp`) and refuses the rest — creating a capability requires a handler bean plus a declaration, and
-  the console states that instead of hiding it. A capability switched off is reported as `disabled`, not
+  for `mcp`). Generic CLI operations are registered as fixed argument arrays and process evidence;
+  structured fact producers require reviewed code. A capability switched off is reported as `disabled`, not
   as missing, and is refused both at manifest validation and at run time.
 - **An expert-scoped capability (MCP tool, remote endpoint) is never globally enabled.** It is
   registered with the platform, declared by the expert, granted on activation, resolved per expert and
