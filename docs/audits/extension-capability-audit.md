@@ -1,6 +1,6 @@
 # 扩展能力审计（2026-10-23）
 
-基线 HEAD：`1b9a556a7bc29a6e87d6554325eadfa08adf5404`。本地已有 application.yml、App.vue、style.css、console.test.ts、roadmap、backend-architecture、frontend-prototype、navigation-structure-refactor、console.html 修改，以及 conversation-interaction.md 和 test-conversation-prototype.cjs 未跟踪文件；均不属于本次修改。
+基线 HEAD：`1b9a556a7bc29a6e87d6554325eadfa08adf5404`。当时本地已有 application.yml、App.vue、style.css、console.test.ts、roadmap、backend-architecture、frontend-prototype、navigation-structure-refactor、console.html 修改，以及 conversation-interaction.md 和 test-conversation-prototype.cjs 未跟踪文件；均不属于当次审计修改。此处保留历史文件名，不表示这些路径仍存在；旧交互评审现已合并到 [前端原型合同](../frontend-prototype.md)。
 
 已读取提供的 v1.5 文件：页首版本仍为 v1.4，末尾包含 v1.5 §2D；内部旧指令要求直接制作原型，与本轮用户授权边界冲突。本轮只治理指导文件和审计，不实施插件/Mission/Builder。代码和配置核对优先于文档“已完成”声明。
 

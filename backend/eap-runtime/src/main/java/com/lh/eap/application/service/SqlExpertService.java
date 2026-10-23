@@ -47,7 +47,14 @@ public class SqlExpertService {
     /** The routing + preprocessing + call outcome, always present so the caller can audit the decision. */
     public record Outcome(boolean attempted, boolean succeeded, String decision, String rationale,
                           String text, String provider, String model, long latencyMs,
-                          int promptTokens, int completionTokens, Map<String, Object> preprocessing) { }
+                          int promptTokens, int completionTokens, Map<String, Object> preprocessing, String error) {
+        public Outcome(boolean attempted, boolean succeeded, String decision, String rationale,
+                       String text, String provider, String model, long latencyMs, int promptTokens,
+                       int completionTokens, Map<String, Object> preprocessing) {
+            this(attempted, succeeded, decision, rationale, text, provider, model, latencyMs, promptTokens,
+                    completionTokens, preprocessing, "");
+        }
+    }
 
     public Outcome advise(PromptPreprocessor.SqlEvidence evidence, boolean userRequested) {
         var analysis = evidence.analysis() == null ? Map.<String, Object>of() : evidence.analysis();
@@ -68,18 +75,18 @@ public class SqlExpertService {
         }
         if (!gateway.available()) {
             return new Outcome(false, false, decision.choice(),
-                    decision.rationale() + "；但当前没有已启用且通过端点策略的模型，已回退确定性结果",
-                    null, null, null, 0, 0, 0, preprocessing);
+                    decision.rationale() + "；Spring AI 模型未配置或 SQL 增强未启用，已回退确定性结果",
+                    null, null, null, 0, 0, 0, preprocessing, "AI_NOT_CONFIGURED");
         }
 
         var activeProvider = gateway.activeProviderId().orElse(null);
         var request = new LlmProvider.Request(prepared.systemPrompt(), prepared.userPrompt(), temperature, maxTokens, null);
-        var result = gateway.complete(request);
-        if (result.isEmpty()) {
+        var result = gateway.completeWithEvidence(request);
+        if (!result.ok()) {
             return new Outcome(true, false, decision.choice(), decision.rationale() + "；模型调用失败，已回退确定性结果",
-                    null, activeProvider, null, 0, 0, 0, preprocessing);
+                    null, activeProvider, null, 0, 0, 0, preprocessing, result.error());
         }
-        var response = result.get();
+        var response = result;
         log.info("SQL model advice produced: provider={}, estimatedTokens={}, baselineTokens={}",
                 response.providerId(), prepared.estimatedTokens(), prepared.baselineTokens());
         return new Outcome(true, true, decision.choice(), decision.rationale(),
@@ -97,6 +104,7 @@ public class SqlExpertService {
         }
         map.put("attempted", outcome.attempted());
         map.put("succeeded", outcome.succeeded());
+        map.put("error", outcome.error());
         map.put("decision", outcome.decision());
         map.put("rationale", outcome.rationale());
         map.put("provider", outcome.provider());

@@ -124,5 +124,5 @@ MCP Router 的 Project 是"把一组服务器共享给客户端"，这恰恰是 
 ## 五、与既有文档的关系
 
 - `docs/architecture.md` §"专家级能力" 与 `docs/roadmap.md` Phase 2d：本方案不改变其中的约束，只补上管理与使用两侧的形状。
-- `docs/navigation-structure-refactor.md`：MCP 工具目前仍是能力目录下的子页；若后续按该方案做层级路由，
+- `frontend-prototype.md`：MCP 工具目前仍是能力目录下的子页；若后续按该方案做层级路由，
   MCP 页应成为 `#capabilities/mcp` 这样的集合级模式页，服务器条目再各自成页——本次不动。

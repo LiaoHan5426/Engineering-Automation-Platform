@@ -1,5 +1,39 @@
 # Roadmap
 
+## v1.6 local progress — 2026-10-23
+
+This status uses the local working tree, including uncommitted work, rather than the older GitHub
+baseline. The supplied `EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md`, section 0A,
+supersedes older proposals for custom model transport and tool loops. Its old GitHub-based code
+claims are historical; this roadmap uses a9b14bc plus local changes. The attachment is a target
+reference, not proof of implementation or authorization to execute all its stages.
+
+| Slice | Actual status / remaining gate |
+|---|---|
+| AGENTS governance and extension audit | Delivered; module guidance and acceptance matrix exist |
+| P1-A/B execution policy, evidence, lifecycle | Implemented with Windows native process tests; trusted local tools, no sandbox guarantee or restart recovery |
+| Spring AI | 2.0.2 / Boot 4.1.1 integration implemented; ChatClient, official tool loop, memory and read-only Git tested offline; no live provider acceptance |
+| SQL model enhancement | Deterministic rules/cache/fallback retained; production transport uses the Spring AI compatibility bridge; old connection settings require migration |
+| Test consolidation / generated cleanup | Legacy tests migrated plus shared Fake ChatModel; 190 total / 186 passed / 4 unchanged skips; initial 82-file cleanup followed by removal of 302 historical files and all 24 audit subdirectories; final conclusions and inventory retained |
+| Documentation | Single docs/README.md entry; old UI reviews and per-round Codex reports consolidated; 14 superseded documents/prototype files retired, valid decisions and active console prototype retained |
+| Codex P1-C | Adapter, model communication, process and Artifact evidence implemented; file delegation was denied, acceptance remains incomplete; investigation paused |
+| Chat workbench | Existing console/session UI retained; EngineeringChatService is not wired into that UI; no usable generic AI conversation is claimed |
+| Workspace plugins | Planned trusted built-ins; Chat and Builder are preinstalled Workspace Plugins in the target, not implemented registry instances |
+| Mission | Planned independent runtime/persistence/approval lifecycle; neither ChatMemory nor Expert DAG supplies it |
+| Builder | Planned GrapesJS manual editor, semantic schema and Vue preview/handoff; not implemented |
+| P1-D | Independent Diff/Build/Test validation remains unimplemented and separately gated |
+
+Next: implement the separately approved slices in the [S1 Chat integration design](decisions/s1-chat-spring-ai-design.md)
+after design review. This design is delivered; its API/UI is not implemented. Establish the trusted plugin shell and interactive
+Chat/Mission/Builder prototypes before large integration. Mission core lifecycle must remain independent
+of any board plugin. Builder repository delivery depends on Mission execution and independent P1-D
+verification; Electron follows those paths. EAP owns grants, engineering tools, execution records and
+Artifacts; Spring AI owns generic model/tool-calling infrastructure; Codex remains an independent
+external agent adapter. No parallel Provider or Agent Runtime framework is planned.
+
+See [Spring AI implementation](audits/spring-ai-integration-report.md) and
+[consolidation and cleanup](audits/spring-ai-consolidation-report.md) for validation and migration details.
+
 The roadmap is ordered so that each phase unlocks a **measurable** part of the value chain in
 [pipeline.md](pipeline.md): first make the deterministic stage real, then make the model stage cheap
 and optional, then make completion trustworthy, then make the product usable.
@@ -41,8 +75,9 @@ Delivered:
   (The ~15 checks themselves are no longer Java — see Phase 2b.)
 - `DecisionProvider` / `RuleBasedDecisionProvider`: route-or-skip with confidence and rationale.
 - `PromptPreprocessor`: token-bounded, structured prompt with a measured compression ratio.
-- `LlmGateway` + `OpenAiCompatibleProvider`: LRU cache, endpoint policy (loopback by default, remote
-  needs `EAP_LLM_ALLOW_REMOTE=true` + HTTPS), fail-closed.
+- `LlmGateway` + `OpenAiCompatibleProvider`: SQL LRU cache and fail-closed compatibility boundary;
+  Spring AI ChatClient owns transport. Explicit provider enablement replaces the old remote switch;
+  HTTPS (or loopback HTTP) is required. See environment.md for configuration migration.
 - Wired into `ExpertExecutionService`; the response now carries `modelAdvisor` (decision, rationale,
   preprocessing stats) and `analysisMode`.
 
@@ -299,10 +334,13 @@ not a page, and `electron` is not yet a dependency of the workspace.
 knowledge citations, the model-advisor routing block and the independent-validation state; narrow
 screens collapse to the same navigation order.
 
-**Verification gates** (all green as of 2026-10-15; run these after any change to the console or the
-runtime, and never trust a ✅ in this document that a gate cannot confirm):
+**Historical verification snapshot (2026-10-15).** These numbers describe that earlier checkout,
+not the current baseline. The current backend summary is 190 total / 186 passed / 4 conditional
+skips; commands come from [the development guide](agent-development-guide.md). The external
+verify-console.js script below is not a repository test entry and is retained only as a historical
+test record, not an executable acceptance requirement.
 
-| Gate | Command | Current |
+| Gate | Historical command | Historical result |
 |---|---|---|
 | Backend tests | `mvn -pl eap-runtime -am test` | 110 tests, 0 failures, 2 skipped (DB probe) |
 | Frontend tests | `vp test run` | 47 tests, 9 files |
@@ -322,13 +360,15 @@ append-only supplements; replan that reuses valid evidence and invalidates affec
 **Exit criteria:** state-machine tests cover complete / fail / escalate / awaiting-user / replan
 paths.
 
-## Phase 6 — CodingAgentProvider adapters ⬜
+## Phase 6 — External coding agent adapters (partial; independent acceptance pending)
 
 **Goal.** Escalate to an external coding agent only when deterministic capabilities cannot complete
 the task.
 
-Deliverables: `CodingAgentProvider` SPI with Codex / Claude / Hermes adapters behind policy gates;
-provider output routed back through the validator.
+The current code already has AgentAdapter / CodexAdapter and the P1-A/B execution foundation.
+Do not create another CodingAgentProvider registry from this old phase label. Codex file-delegation
+acceptance is still incomplete; other adapters and routing through independent P1-D validation remain
+planned. Spring AI is the generic model/tool-calling base, not this external-agent layer.
 
 **Exit criteria:** provider output never reaches `completed` without independent validation.
 

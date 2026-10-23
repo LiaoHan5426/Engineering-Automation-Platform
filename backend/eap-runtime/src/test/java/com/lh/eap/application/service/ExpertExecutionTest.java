@@ -120,6 +120,26 @@ class ExpertExecutionTest {
     @Test void gatewayWithoutProvidersIsNotUsedAndNeverBlocksDeterministicResult(){
         var gateway=new LlmGateway(List.of(),8);
         assertFalse(gateway.available());
+        var definitions=mock(ExpertDefinitionService.class);
+        var tasks=mock(TaskRepository.class);
+        var jdbc=mock(JdbcTemplate.class);
+        var manifest=new ExpertManifest("eap/v1","Expert","test","Test",List.of(),List.of(),
+                List.of(new ExpertManifest.Step("parse","Parse","sql.parse",true)),List.of(),
+                List.of("database.credentials.never-expose"),List.of());
+        when(definitions.require("test",true)).thenReturn(manifest);
+        when(definitions.knowledgeGrants("test")).thenReturn(List.of());
+        var sqlModel=new SqlExpertService(new com.lh.eap.llm.PromptPreprocessor(600),gateway,
+                new com.lh.eap.decision.RuleBasedDecisionProvider(),0.1,128);
+        var execution=new ExpertExecutionService(definitions,tasks,
+                handlers(mock(KnowledgeRepository.class),jdbc,definitions),new RulePackService(jdbc),Path.of("."),
+                sqlModel,new McpSessionRegistry());
+        var result=execution.execute("test",new ExpertExecutionService.Request("select id from users","inspect",null,null,true,null));
+        assertEquals("valid",((Map<?,?>)result.get("deterministicAnalysis")).get("parseStatus"));
+        assertEquals("AI_NOT_CONFIGURED",((Map<?,?>)result.get("modelAdvisor")).get("error"));
+        assertEquals("unavailable",result.get("modelEnhancement"));
+        assertEquals("deterministic-workflow",result.get("analysisMode"));
+        assertNull(result.get("expertAdvice"));
+        verify(tasks).save(any(),eq("inspect"),anyString(),anyString(),eq("unavailable"),anyList());
     }
 
     private static ExpertManifest manifestWithMcpNode(List<String> mcpTools){

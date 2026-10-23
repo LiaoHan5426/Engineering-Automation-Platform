@@ -106,7 +106,7 @@ class CliProgramsTest {
         when(mapper.program("git")).thenReturn(Optional.of(git));
         when(channels.binaryFor("git", "git")).thenReturn(javaBinary);
         var executor = mock(ProcessExecutor.class);
-        when(executor.run(eq("git-log"), any(), any())).thenReturn(new Observation("git-log", true, 0, "password=secret\ncommit", "", Map.of()));
+        when(executor.runManaged(any(), eq("git-log"), any(), any(), any())).thenReturn(new Observation("git-log", true, 0, "password=secret\ncommit", "", Map.of()));
         var facts = new LinkedHashMap<String,Object>();
         var evidence = new ArrayList<Map<String,Object>>();
         var step = new ExpertManifest.Step("log", "查看提交", "git-log", true);
@@ -115,6 +115,6 @@ class CliProgramsTest {
         assertTrue(facts.isEmpty());
         assertEquals(1, evidence.size());
         assertFalse(result.data().get("stdout").toString().contains("secret"));
-        verify(executor).run("git-log", Path.of("."), List.of(javaBinary,"log","--oneline"));
+        verify(executor).runManaged(any(), eq("git-log"), eq(Path.of(".").toAbsolutePath().normalize()), eq(List.of(javaBinary,"log","--oneline")), any());
     }
 }

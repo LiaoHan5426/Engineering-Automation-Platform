@@ -31,6 +31,29 @@ Run from repository root with the RTK prefix required by local instructions. Bac
 
 Classify each capability as fully implemented and verified, implemented with defects, partial flow, configuration/mock only, or absent. Independently record verification status; do not label an untested implementation fully verified.
 
+## Spring AI acceptance and test migration
+
+Generic model transport, messages, tool calling and memory use Spring AI 2.0.2 (Boot 4.1.1); do not
+add another Provider framework or tool loop. SQL's LlmProvider/Gateway remain compatibility and
+business caching/fallback only. Model tests inject the public ChatModel interface through the shared
+FakeChatModels fixture, never restore HTTP/JSON emulation to satisfy an old assertion. Preserve
+deterministic rule hits, skip/enhance decisions, no-model and failed-model fallback, successful-result
+conversion and cache isolation. Keep provider error codes observable without serializing exceptions.
+
+Chat tools must retain request/server grants, canonical workspace checks and Capability switches;
+test denial, result return, errors, isolated memory/evidence, framework call limits and timeout/cancel
+classification. Existing real process cancellation tests remain required and distinct from simulated
+model exceptions. A configured client is not a successful connection; no live paid model is invoked
+by default tests. Preserve the four explicit database/real-CLI/model test gates.
+
+Historical cleanup starts with an exact path manifest and reference/ownership check. Preserve final
+audit conclusions and evidence needed by current acceptance. Completed experiment directories may
+be retired together once their conclusions are consolidated and references updated; an old execution
+ID, hash or one-shot lock does not imply permanent retention. Keep active test gates and locks intact;
+removing retired outputs never authorizes rerunning a paid model. Do not clear the entire audits/Temp
+tree, Git metadata, global caches or ambiguous user files. Reproducible output belongs in build/Temp
+directories, with successful-check logs removed by default and failures retained as needed.
+
 ## Consistency and delivery
 
 Check links/paths and scripts when editing guidance. Module files specialize root guidance without duplicating its workflow. Target Plugin/Mission/Builder requirements do not authorize implementation. Record baseline dirty files and never include their changes as your work. Deliver file reasons, reuse/removal, commands/results/skips, risks, next plan and required decisions. Missing credentials, dependencies or protocol client are explicit unverified blockers, never passes.

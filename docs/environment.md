@@ -8,7 +8,7 @@
 | PostgreSQL | Yes | Task records, expert definitions, knowledge base and grants (schema `eap`). |
 | Node.js + pnpm 12 + Vite+ | Yes | Build and run the frontend console. |
 | Git, ripgrep | Yes | Deterministic capabilities (`git-status`, `git-diff`, `rg-search`). Resolved on `PATH` by default; the location can be overridden per machine from the capability catalog (本地 CLI 页) without a restart. |
-| A local model endpoint (LM Studio / vLLM) | Optional | Only needed to exercise the optional model stage. |
+| Spring AI official model provider | Optional | OpenAI Starter is installed; model use remains opt-in. No model is needed for offline tests. |
 | RustFS / S3 object storage | No | Superseded for the current phase; see "Deferred" below. |
 | pgvector + embeddings | No | Superseded for the current phase; see "Deferred" below. |
 
@@ -29,33 +29,48 @@ EAP_DB_SCHEMA=eap
 # Server
 EAP_SERVER_PORT=8080
 
-# Optional model stage (disabled by default; the pipeline is deterministic without it)
+# Spring AI connection (disabled by default; inject credentials separately)
+EAP_AI_PROVIDER=none              # openai enables the installed official provider
+EAP_AI_MODEL=gpt-4.1-mini         # configure an API model you are authorized to use
+EAP_AI_BASE_URL=https://api.openai.com
+OPENAI_API_KEY=<injected-only-when-enabled>
+EAP_AI_AUTHORIZED_ROOT=<server-approved-workspace-root>
+EAP_AI_ARTIFACT_ROOT=.eap-ai-artifacts
+
+# SQL business stage (separate from connection configuration)
 EAP_LLM_ENABLED=false
-EAP_LLM_BASE_URL=http://127.0.0.1:1234/v1
-EAP_LLM_MODEL=local-model
 EAP_LLM_TEMPERATURE=0.1
 EAP_LLM_MAX_PROMPT_TOKENS=1800     # hard preprocessing budget
 EAP_LLM_MAX_COMPLETION_TOKENS=700
 EAP_LLM_CACHE_ENTRIES=64
-EAP_LLM_CONNECT_TIMEOUT_MS=3000
-EAP_LLM_READ_TIMEOUT_MS=20000
-EAP_LLM_ALLOW_REMOTE=false         # remote endpoints additionally require HTTPS
 ```
 
 Never commit `EAP_DB_PASSWORD`. Keep local secrets in an untracked local environment file or a
 secret manager, and inject them per environment.
 
-## Local model endpoint (optional)
+## Spring AI connection migration
 
-The model stage speaks the OpenAI-compatible `/chat/completions` API. For local development:
+Spring AI 2.0.2's official OpenAI Starter owns transport, messages and tools. The backend uses
+`spring.ai.openai.*`; the environment variables above are application aliases. The default provider
+is `none`, and constructing a configured client never proves a successful connection. An enabled
+OpenAI connection without a key produces a clear configuration error. The CLI's ChatGPT credentials
+are not API credentials and are never read here.
 
-1. In LM Studio (or vLLM), load a chat-capable model.
-2. Start the local server, normally at `http://127.0.0.1:1234`.
-3. Set `EAP_LLM_ENABLED=true`, `EAP_LLM_BASE_URL=http://127.0.0.1:1234/v1` and `EAP_LLM_MODEL=<id>`.
+| Retired setting | Replacement |
+|---|---|
+| EAP_LLM_BASE_URL / eap.llm.base-url | EAP_AI_BASE_URL / spring.ai.openai.base-url |
+| EAP_LLM_MODEL / eap.llm.model | EAP_AI_MODEL / spring.ai.openai.chat.options.model |
+| EAP_LLM_CONNECT_TIMEOUT_MS / EAP_LLM_READ_TIMEOUT_MS | spring.ai.openai.timeout (30s default, SDK request timeout) |
+| EAP_LLM_ALLOW_REMOTE | Explicit EAP_AI_PROVIDER enablement; HTTPS required remotely; HTTP accepted only for loopback |
 
-`EndpointPolicy` allows loopback endpoints over `http` by default. A remote endpoint is only accepted
-when `EAP_LLM_ALLOW_REMOTE=true` **and** the scheme is `https`. This is enforced at construction time,
-so a misconfigured endpoint disables the provider instead of leaking data.
+Remove retired keys rather than setting both sets. When AI or SQL enhancement is requested, detecting
+these obsolete connection keys fails startup with property names and migration instructions, never
+secret values. With AI disabled, a migration warning is emitted and non-AI capabilities remain
+available. SQL's compression/token budget/cache/decision settings remain business settings.
+
+The current official provider has not been validated against arbitrary local OpenAI-compatible
+servers. Such a connection needs its own authorized integration test; do not declare it supported
+from a saved URL. The Chat workbench is not yet connected to this service.
 
 ## Database initialisation
 
@@ -81,9 +96,9 @@ An empty database needs no adoption flag; it migrates from `V1` normally.
 - Maven 3.9+
 - Git and ripgrep on `PATH`
 - Node.js compatible with Vite+, and pnpm 12.x
-- Nothing extra for desktop (`apps/desktop`, Electron): the Node.js and pnpm versions above already
-  run and package it. Signing and notarisation add platform tools (a certificate, `codesign`,
-  `signtool`) only when a distribution build is produced.
+- Electron is a target design; there is no implemented `apps/desktop` build/package command to run
+  today. The intended shell reuses the Node.js/pnpm toolchain; signing tools are a later delivery
+  requirement, not proof that a desktop app already exists.
 
 ## Deferred (not required now)
 

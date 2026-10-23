@@ -9,13 +9,20 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class LlmPipelineTest {
-    @Test void endpointPolicyIsLoopbackByDefaultAndHttpsOnlyWhenRemote(){
-        assertTrue(EndpointPolicy.permits("http://127.0.0.1:1234/v1",false));
-        assertTrue(EndpointPolicy.permits("http://localhost:1234/v1",false));
-        assertFalse(EndpointPolicy.permits("http://api.example.com/v1",false));
-        assertFalse(EndpointPolicy.permits("http://api.example.com/v1",true));
-        assertTrue(EndpointPolicy.permits("https://api.example.com/v1",true));
-        assertFalse(EndpointPolicy.permits("https://user:pass@api.example.com/v1",true));
+    @Test void sqlCompatibilityBridgeUsesSpringAiModelAndOptions(){
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        var model = com.lh.eap.ai.FakeChatModels.scripted(prompt -> {
+            calls.incrementAndGet();
+            assertEquals("offline-model", prompt.getOptions().getModel());
+            assertEquals(128, prompt.getOptions().getMaxTokens());
+            assertTrue(prompt.getContents().contains("system instruction"));
+            return com.lh.eap.ai.FakeChatModels.text("model observation");
+        });
+        var bridge = com.lh.eap.ai.FakeChatModels.sqlBridge(model);
+        assertTrue(bridge.available());
+        var result = bridge.complete(new LlmProvider.Request("system instruction", "question", 0.1, 128, null));
+        assertTrue(result.ok()); assertEquals("model observation", result.text());
+        assertEquals("offline-model", result.model()); assertEquals(1, calls.get());
     }
 
     @Test void preprocessingCompressesRequestAgainstNaiveBaseline(){

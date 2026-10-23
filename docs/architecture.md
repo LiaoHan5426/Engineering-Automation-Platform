@@ -59,7 +59,11 @@ flowchart TB
   Rules --> Decision[DecisionProvider: route or skip]
   Decision -->|enhance| Pre[PromptPreprocessor: compress]
   Pre --> GW[LlmGateway: cache + fail-closed]
-  GW --> Prov[OpenAiCompatibleProvider]
+  GW --> Prov[SQL compatibility bridge]
+  Prov --> SpringAI[Spring AI ChatClient / ChatModel]
+  ChatService[EngineeringChatService: service only, not wired to UI] --> SpringAI
+  ChatService --> Tools[Spring AI ToolCallingAdvisor / ToolCallingManager]
+  Tools --> Handlers
   Packs[(rule packs: classpath + eap.rule_pack)] --> Rules
   Catalog[CapabilityCatalog: kind, descriptor, availability, usedBy] -.-> UI
   Exec --> Store[(PostgreSQL: experts, tasks, knowledge, grants)]
@@ -136,6 +140,15 @@ database and never executes user SQL.
 
 **Model gateway.** `LlmGateway` + `OpenAiCompatibleProvider` + `PromptPreprocessor` +
 `DecisionProvider` implement stages 3–5 of the pipeline. The model is off by default.
+The provider class is a compatibility bridge to Spring AI 2.0.2; no custom HTTP/JSON model transport
+or model tool loop remains. `EngineeringChatService` uses Spring AI's official tool loop and window
+memory, with server-owned workspace permissions and existing Capability handlers. Memory is not an
+audit store or Mission Runtime. Chat UI integration remains pending; model configuration is not proof
+of successful connectivity. The external Codex adapter remains separate and its file-delegation
+acceptance is incomplete. See [roadmap.md](roadmap.md) for the v1.6 local status and remaining gates.
+The [S1 Chat design](decisions/s1-chat-spring-ai-design.md) specifies the proposed bounded HTTP/UI
+integration; those routes and UI are not implemented yet. Workspace plugins and Mission remain
+separate later stages, rather than consequences of adding ChatClient.
 
 **Persistence.** PostgreSQL schema `eap`, managed by Flyway (V1–V12). An adoption path exists for a
 pre-existing hand-built schema (`EAP_ADOPT_EXISTING_SCHEMA=true`), see
@@ -181,8 +194,11 @@ flowchart LR
   layer are *not* planned future work. The threat model is therefore about what the operator
   *imports* (third-party experts, MCP servers, model output), not about other people.
 - **SQL parsing:** JSQLParser 5.4. Parsing is local and deterministic.
-- **Model integration:** OpenAI-compatible HTTP only, behind `LlmProvider`. No provider SDK in
-  `eap-api`.
+- **Model integration:** Spring AI 2.0.2 BOM and official OpenAI Starter in runtime. ChatClient,
+  ChatModel, ToolCallingAdvisor/Manager and ChatMemory are framework responsibilities. LlmProvider is
+  retained only for SQL compatibility/cache/fallback; no provider SDK in `eap-api`. No duplicate
+  ModelProvider framework or Agent loop. Old eap.llm connection settings are rejected when AI is
+  enabled, with an explicit migration message; disabled AI remains usable without credentials.
 - **Frontend:** Vue 3, TypeScript, Vite+, pnpm workspace, Tailwind CSS 4 via the Vite plugin.
 - **Database:** PostgreSQL. Vector search is *not* part of the current phase (see
   [environment.md](environment.md)).

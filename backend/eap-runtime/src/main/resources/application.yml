@@ -2,6 +2,25 @@ server:
   address: 127.0.0.1
   port: ${EAP_SERVER_PORT:8080}
 spring:
+  ai:
+    model:
+      chat: ${EAP_AI_PROVIDER:none}
+      embedding: none
+      image: none
+      audio:
+        speech: none
+        transcription: none
+      moderation: none
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${EAP_AI_BASE_URL:https://api.openai.com}
+      chat:
+        options:
+          model: ${EAP_AI_MODEL:gpt-4.1-mini}
+      timeout: 30s
+      max-retries: 0
+    retry:
+      max-attempts: 1
   application:
     name: eap-runtime
   devtools:
@@ -21,19 +40,18 @@ management:
       exposure:
         include: health,info
 eap:
+  ai:
+    authorized-root: ${EAP_AI_AUTHORIZED_ROOT:}
+    artifact-root: ${EAP_AI_ARTIFACT_ROOT:.eap-ai-artifacts}
   llm:
     # A model is consulted only when the deterministic result is not decisive or the operator
     # explicitly requests it. Disabled by default; the pipeline stays fully deterministic.
     enabled: ${EAP_LLM_ENABLED:false}
-    base-url: ${EAP_LLM_BASE_URL:http://127.0.0.1:1234/v1}
-    model: ${EAP_LLM_MODEL:local-model}
     temperature: ${EAP_LLM_TEMPERATURE:0.1}
     # Hard budget applied by the preprocessing stage before any request is sent.
     max-prompt-tokens: ${EAP_LLM_MAX_PROMPT_TOKENS:1800}
     max-completion-tokens: ${EAP_LLM_MAX_COMPLETION_TOKENS:700}
     cache-entries: ${EAP_LLM_CACHE_ENTRIES:64}
-    connect-timeout-ms: ${EAP_LLM_CONNECT_TIMEOUT_MS:3000}
-    read-timeout-ms: ${EAP_LLM_READ_TIMEOUT_MS:20000}
 # EAP_ADOPT_EXISTING_SCHEMA is deliberately NOT set here. Adopting a pre-existing schema is a
 # one-time operator decision taken at the moment they have inspected it, so it belongs on the
 # command line or in the environment of that single start -- never in the committed config, where

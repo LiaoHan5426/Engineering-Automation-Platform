@@ -57,6 +57,10 @@ Read [docs/expert-knowledge-rules.md](docs/expert-knowledge-rules.md) for the fu
 
 ## Documentation
 
+Use the [documentation index](docs/README.md) to distinguish current implementation, target designs
+and retained historical acceptance. Superseded UI reviews and per-round Codex investigations are
+consolidated into the canonical documents rather than maintained as parallel instructions.
+
 | Document | Contents |
 |---|---|
 | [docs/pipeline.md](docs/pipeline.md) | The deterministic-first / model-last value chain. **Start here.** |
@@ -86,15 +90,17 @@ vp build
 vp dev
 ```
 
-The model stage is **off by default**. To enable it, point the runtime at an OpenAI-compatible local
-endpoint:
+The model stage is **off by default**. Generic model integration uses Spring AI 2.0.2. To enable
+the official OpenAI provider (credentials are injected from the environment, never committed):
 
 ```shell
-EAP_LLM_ENABLED=true EAP_LLM_BASE_URL=http://127.0.0.1:1234/v1 EAP_LLM_MODEL=<id> \
+EAP_AI_PROVIDER=openai EAP_AI_MODEL=<api-model-id> OPENAI_API_KEY=<injected-secret> EAP_LLM_ENABLED=true \
   mvn spring-boot:run -pl eap-runtime -am
 ```
 
-Remote endpoints require `EAP_LLM_ALLOW_REMOTE=true` and HTTPS. See
+`EAP_LLM_ENABLED` gates SQL enhancement; it does not configure a connection. Old connection variables
+require migration and are rejected when model use is enabled. Generic AI is currently a backend
+service, not an integrated Chat workbench. See
 [docs/environment.md](docs/environment.md).
 
 Licensed under Apache-2.0.

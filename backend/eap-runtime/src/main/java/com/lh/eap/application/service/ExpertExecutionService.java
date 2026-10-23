@@ -168,7 +168,7 @@ public class ExpertExecutionService {
         var decision=failed?"rejected":incomplete?"needs-review":"accepted";
         // One computation, two consumers: the response field and the persisted column must not be able to
         // disagree, or the overview would report a different route than the result page shows.
-        var modelEnhancement=modelOutcome==null?"unavailable":modelAdvice!=null?"unverified-observation":modelOutcome.attempted()?"unavailable":"skipped";
+        var modelEnhancement=modelOutcome==null?"unavailable":modelAdvice!=null?"unverified-observation":modelOutcome.attempted()||!modelOutcome.error().isEmpty()?"unavailable":"skipped";
         tasks.save(id,goal,status,decision,modelEnhancement,observations);
         var response=new LinkedHashMap<String,Object>();
         response.put("id",id);response.put("expertId",expertId);response.put("goal",goal);

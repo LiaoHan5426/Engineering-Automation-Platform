@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
- * The single entry point for model calls.
+ * SQL business cache and deterministic fallback compatibility boundary. Spring AI owns model calls.
  *
  * <p>Responsibilities:
  * <ul>
@@ -53,20 +53,26 @@ public class LlmGateway {
 
     /** Returns a cached or fresh result, or empty when no provider is usable. */
     public Optional<LlmProvider.Result> complete(LlmProvider.Request request) {
+        var result = completeWithEvidence(request);
+        return result.ok() ? Optional.of(result) : Optional.empty();
+    }
+
+    /** Preserve failure codes for SQL evidence without removing the Optional compatibility API. */
+    public LlmProvider.Result completeWithEvidence(LlmProvider.Request request) {
         var provider = providers.stream().filter(LlmProvider::available).findFirst().orElse(null);
-        if (provider == null) return Optional.empty();
-        var key = request.cacheKey() != null ? request.cacheKey() : digest(request);
+        if (provider == null) return LlmProvider.Result.failure("spring-ai", "AI_NOT_CONFIGURED");
+        var key = provider.id() + ":" + provider.model() + ":" + digest(request);
         var cached = cache.get(key);
         if (cached != null) {
             log.debug("Model cache hit for key {}", key.substring(0, Math.min(12, key.length())));
-            return Optional.of(cached);
+            return cached;
         }
         var result = provider.complete(request);
-        if (!result.ok()) return Optional.empty();
+        if (!result.ok()) return result;
         cache.put(key, result);
         log.info("Model call ok: provider={}, promptTokens={}, completionTokens={}, latencyMs={}",
                 result.providerId(), result.promptTokens(), result.completionTokens(), result.latencyMs());
-        return Optional.of(result);
+        return result;
     }
 
     public static String digest(LlmProvider.Request request) {
@@ -75,6 +81,9 @@ public class LlmGateway {
             digest.update(request.systemPrompt().getBytes(StandardCharsets.UTF_8));
             digest.update((byte) 0);
             digest.update(request.userPrompt().getBytes(StandardCharsets.UTF_8));
+            digest.update(Double.toString(request.temperature()).getBytes(StandardCharsets.UTF_8));
+            digest.update(Integer.toString(request.maxTokens()).getBytes(StandardCharsets.UTF_8));
+            if (request.cacheKey() != null) digest.update(request.cacheKey().getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException unavailable) {
             return Integer.toHexString(request.userPrompt().hashCode());

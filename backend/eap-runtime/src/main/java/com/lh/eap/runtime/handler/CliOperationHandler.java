@@ -1,6 +1,8 @@
 package com.lh.eap.runtime.handler;
 
 import com.lh.eap.api.ProcessExecutor;
+import com.lh.eap.api.CliExecution;
+import com.lh.eap.application.service.CliExecutionService;
 import com.lh.eap.application.service.CliChannels;
 import com.lh.eap.common.SensitiveData;
 import com.lh.eap.core.LocalBinaries;
@@ -37,15 +39,22 @@ public class CliOperationHandler implements CapabilityHandler {
         var program = mapper.program(op.programId()).orElseThrow();
         var binary = channels.binaryFor(program.id(), program.binary());
         if (LocalBinaries.resolve(binary).isEmpty()) return new NodeResult(false, false, "缺少可执行文件：" + binary, Map.of());
-        var command = new ArrayList<String>(); command.add(binary); command.addAll(op.args());
-        var observation = executor.run(op.capabilityId(), context.workspace(), List.copyOf(command));
-        var data = Map.<String, Object>of("programId", program.id(), "args", op.args(), "exitCode", observation.exitCode(),
-                "stdout", redact(observation.stdout()), "stderr", redact(observation.stderr()));
+        var environment = new LinkedHashMap<String,String>();
+        // Only native process bootstrap variables; never forward the whole host environment.
+        for (var name : List.of("SystemRoot", "WINDIR", "TEMP", "TMP", "PATH")) {
+            var value = System.getenv(name);
+            if (value != null) environment.put(name, value);
+        }
+        var request = new CliExecution.Request(UUID.randomUUID(), op.capabilityId(), context.workspace(),
+                op.args(), environment, CliExecution.Approval.NOT_REQUIRED);
+        var policy = new CliExecution.Policy(context.workspace(), LocalBinaries.resolve(binary).orElseThrow().toString(),
+                op.args(), environment.keySet(), Set.of(), true, false);
+        var result = new CliExecutionService(executor).execute(request, policy);
+        var observation = new com.lh.eap.api.Observation(op.capabilityId(), result.status() == CliExecution.Status.SUCCEEDED,
+                result.exitCode() == null ? -1 : result.exitCode(), result.stdout(), result.stderr(), Map.of());
+        var data = Map.<String, Object>of("programId", program.id(), "args", result.commandSummary().subList(1,result.commandSummary().size()), "exitCode", observation.exitCode(),
+                "stdout", observation.stdout(), "stderr", observation.stderr(), "execution", result);
         context.evidence().add(Map.of("source", op.capabilityId(), "programId", program.id(), "data", data));
         return new NodeResult(observation.success(), false, observation.success() ? "CLI 操作执行完成" : "CLI 操作执行失败", data);
-    }
-    private static String redact(String text) {
-        var safe = SensitiveData.redact(text);
-        return safe.length() > 8000 ? safe.substring(0, 8000) + "…" : safe;
     }
 }

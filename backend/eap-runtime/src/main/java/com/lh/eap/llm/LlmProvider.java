@@ -1,7 +1,7 @@
 package com.lh.eap.llm;
 
 /**
- * A model provider is the only place in the runtime that talks to a language model.
+ * Legacy SQL completion contract. Spring AI owns all model transport and tool calling.
  *
  * <p>Providers are optional and must fail closed: a timeout, an outage or a malformed response
  * yields a failed {@link Result} that the {@link LlmGateway} converts into "no model output",

@@ -126,8 +126,10 @@ measured outcome rather than a claim.
 
 `LlmGateway` selects the first available provider, serves identical prompts from an LRU cache so
 repeated analyses are free, and converts any failure into "no model output". `OpenAiCompatibleProvider`
-speaks the OpenAI-compatible API and enforces `EndpointPolicy`: loopback endpoints are allowed by
-default, remote endpoints require `EAP_LLM_ALLOW_REMOTE=true` **and** HTTPS.
+is now a compatibility bridge to Spring AI ChatClient. Explicit `EAP_AI_PROVIDER=openai` enables
+the official provider; HTTPS or loopback HTTP is required. Connection/model/credentials use
+`spring.ai.*`, not the retired EAP_LLM connection variables. Failure classifications are retained
+in the SQL response while deterministic output remains authoritative.
 
 Model output is an **unverified observation**. It is stored, rendered separately from deterministic
 findings, and never mutates the deterministic analysis or changes a task to `completed` on its own.
@@ -156,7 +158,7 @@ cd backend
 mvn -pl eap-runtime -am test
 
 # run the runtime with a local model (LM Studio / vLLM) and observe routing in logs
-EAP_LLM_ENABLED=true EAP_LLM_BASE_URL=http://127.0.0.1:1234/v1 \
+EAP_LLM_ENABLED=true EAP_AI_PROVIDER=openai EAP_AI_MODEL=<api-model-id> OPENAI_API_KEY=<injected-secret> \
   mvn spring-boot:run -pl eap-runtime -am
 ```
 

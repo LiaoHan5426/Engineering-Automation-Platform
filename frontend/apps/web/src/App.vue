@@ -1018,15 +1018,15 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                       >
                     </div>
                     <p v-if="streamMode === 'task'" class="hint">{{ task?.goal }}</p>
-                    <div class="form-actions" v-if="streamMode === 'task'">
-                      <Button variant="secondary" :disabled="rerunBusy" @click="rerunTask(task!)">
+                    <div class="form-actions" v-if="streamMode === 'task' && task">
+                      <Button variant="secondary" :disabled="rerunBusy" @click="rerunTask(task)">
                         {{ rerunBusy ? "重新提交中…" : "重新运行" }}
                       </Button>
                       <span class="hint">重新运行会新增一条执行记录，旧记录与它的证据保持原样。</span>
                     </div>
                   </div>
 
-                  <template v-if="streamMode === 'task'">
+                  <template v-if="streamMode === 'task' && task">
                     <div class="row stream-head">
                       <h2>执行过程</h2>
                     </div>
@@ -1063,7 +1063,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
 
                   <Feedback tone="info" v-if="sqlBusy" role="status">正在分析并检索知识…</Feedback>
 
-                  <article class="eap-panel" id="resultCard" v-if="streamMode === 'report'">
+                  <article class="eap-panel" id="resultCard" v-if="streamMode === 'report' && sqlResult">
                     <header class="panel-head">
                       <div>
                         <h2>分析结果</h2>

@@ -11,7 +11,11 @@ class DefaultProcessExecutorTest {
     @TempDir Path workspace;
     private List<String> command(String mode){
         return List.of(Path.of(System.getProperty("java.home"),"bin","java").toString(),
-                "-cp",System.getProperty("java.class.path"),Emitter.class.getName(),mode);
+                "-cp",probeClasspath(),Emitter.class.getName(),mode);
+    }
+    private String probeClasspath() {
+        try { return Path.of(Emitter.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toString(); }
+        catch (java.net.URISyntaxException invalid) { throw new IllegalStateException(invalid); }
     }
     @Test void drainsBothStreamsWithoutDeadlockAndCapsOutput(){
         var result=new DefaultProcessExecutor(Duration.ofSeconds(5)).run("test",workspace,command("both"));
