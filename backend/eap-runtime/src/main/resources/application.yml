@@ -34,4 +34,7 @@ eap:
     cache-entries: ${EAP_LLM_CACHE_ENTRIES:64}
     connect-timeout-ms: ${EAP_LLM_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${EAP_LLM_READ_TIMEOUT_MS:20000}
-EAP_ADOPT_EXISTING_SCHEMA: true
+# EAP_ADOPT_EXISTING_SCHEMA is deliberately NOT set here. Adopting a pre-existing schema is a
+# one-time operator decision taken at the moment they have inspected it, so it belongs on the
+# command line or in the environment of that single start -- never in the committed config, where
+# it would silently disable the guard in `MigrationConfiguration` for every future run.

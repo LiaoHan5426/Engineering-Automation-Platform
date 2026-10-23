@@ -16,6 +16,12 @@ cannot. The Vue app is aligned to it.
 
 ## Product shell
 
+> 2026-10-15 会话交互补充：新增默认入口 `#chat`，普通聊天与绑定工作区的会话独立于
+> `#sql` 分析工作台。会话不再等同于一次执行；管理配置如何选择、生效、失效与保留历史，
+> 以 [conversation-interaction.md](conversation-interaction.md) 为准。下方 studio 描述仅指
+> 分析工作台的执行记录与报表视图，不能作为持续会话模型。此变更目前仅落实在 HTML 原型，
+> Vue/Java 会话功能尚未实现。
+
 A three-column console. The workspace and runtime state stay visible; the inspector explains the
 currently selected item, and is **page-scoped**: on every page switch it resets to that page's own
 description instead of keeping the previous page's selection.
@@ -24,32 +30,52 @@ The shell is state too, not decoration — the workspace dropdown, 刷新, 运�
 read the same snapshot the pages read, so the header can never disagree with the body.
 
 ```text
-┌───────────────────────────────────────────────────────────────────────────────────┐
-│ EAP   工作空间 [engineering-automation-platform ▾]  ● 已连接 [浏览器] [刷新] [运行分析]│
-├──────────────┬──────────────────────────────────────────────┬─────────────────────┤
-│ 工作空间      │ 工作台                                        │ 检查器 · 当前页     │
-│              │                                              │                     │
-│ ⌂ 概览        │ 每页内容全部由状态渲染；控件要么改变可见状态，  │ 已选中：发现 / 任务 │
-│ ▤ 任务        │ 要么说明它为什么不能：                         │ 或：本页说明        │
-│ ▷ SQL 分析室  │   · 概览      指标卡 + 最近任务（行可点）      │ （本页无对象时）    │
-│ ◈ 专家工作室  │   · 任务      列表 | 时间线 | 证据 | 重新运行  │ severity: high      │
-│ ▢ 知识库      │   · SQL 分析室 输入 | 结果浏览 | 流水线       │ evidence: …         │
-│ ▤ 规则库      │   · 专家工作室 集合页 → 条目页（流程/清单/授权）│ suggestion: …       │
-│ ▦ 数据库资料  │   · 规则库    集合页 → 条目页（规则/试算）    │                     │
-│ ⚙ 能力目录    │   · 知识库    集合页 → 条目页（文档）        │ 当前任务的流水线    │
-│              │   · 数据库资料 资料表（主结构不动）；        │ deterministic ✓     │
-│              │     新增 / 编辑进抽屉，删除走模态             │                     │
-│ 运行环境      │   · 能力目录  页签由种类声明生成：             │ decision: skip      │
-│ ▣ 桌面外壳    │               总览 | 内置命令 | 本地CLI        │ model: not called   │
-│              │               | MCP工具（HTTP 无页签）        │                     │
-│              │   · 桌面外壳  窗口与菜单 | 本地工作空间 |      │                     │
-│              │               后端连接 | 系统权限与操作历史   │                     │
+┌──────────────┬──────────────────────────────────────────────┬─────────────────────┐
+│ EAP  工作空间 [engineering-automation ▾] ● 已连接 [浏览器] [刷新] [运行分析]      │
+├──────────────┼──────────────────────────────────────────────┼─────────────────────┤
+│ 工作         │ 每页内容全部由状态渲染；控件要么改变状态，   │ 检查器 · 当前页     │
+│ ◎ 会话       │ 普通聊天 / 工作区会话（新增原型，默认入口）  │ 按需查看上下文      │
+│ ▷ 分析工作台 │ 执行记录与完整报表，不再兼任会话列表         │ 已选中：发现        │
+│              │   · 分析工作台 任务列表 | 任务流 | 输入区    │ 或：本页说明        │
+│              │     （任务流：请求 → 执行过程 → 发现/报表）  │ （本页无对象时）    │
+│ 设置         │   · 专家定义  集合页 → 条目页                │ severity: high      │
+│ ◈ 专家定义   │      （流程 / 清单 / 授权）                  │ evidence: …         │
+│ ▤ 规则库     │   · 规则库    集合页 → 条目页（规则/试算）   │ suggestion: …       │
+│ ▢ 知识库     │   · 知识库    集合页 → 条目页（文档）        │                     │
+│ ▦ 数据库资料 │   · 数据库资料 资料表；新增与编辑进抽屉，    │ 当前任务的流水线    │
+│ ⚙ 能力目录   │      删除走模态                              │ deterministic ✓     │
+│ ▣ 桌面外壳   │   · 能力目录  页签由种类声明生成：总览 |     │ decision: skip      │
+│              │      内置命令 | 本地CLI | MCP工具            │ model: not called   │
+│              │      （HTTP 既不可管也为空，无页签）         │                     │
+│              │   · 桌面外壳  窗口与菜单 | 本地工作空间 |    │                     │
+│              │      后端连接 | 系统权限与操作历史           │                     │
 ├──────────────┴──────────────────────────────────────────────┴─────────────────────┤
-│ 就绪  运行目标: 浏览器  工作空间: engineering-automation-platform  本地目录: 未选择  │
-└───────────────────────────────────────────────────────────────────────────────────┘
+│ 就绪  运行目标: 浏览器  工作空间: engineering-automation  本地目录: 未选择        │
+└──────────────┴──────────────────────────────────────────────┴─────────────────────┘
 ```
 
-The rail has **one entry per page**. 专家工作室 / 规则库 / 知识库 are **hierarchical routes**, not
+**The rail is two groups, not one list.** 「工作」holds what the operator came here to do — the
+分析工作台. 「设置」holds the **application-level capability configuration**: 专家定义、规则库、知识库、
+数据库资料、能力目录 (and 桌面外壳). These are not peers of the work surfaces; they describe *the same
+environment* and do not vary by workspace (see [running-context.md](running-context.md)), so giving them
+the same weight as 分析工作台 would say that changing configuration and running an analysis are the same
+kind of action. That is a website's sitemap, not a tool's shell.
+
+**任务 is not a page — it is the workbench's execution list (2026-10-15).** An analysis and its evidence
+are two halves of the same thing; splitting them made the workbench a lone form and the task page a lone
+table. The workbench is now a **studio**: left = this workspace's task list (one run per entry), middle =
+the selected task's **stream** (request on top → execution record → findings/report; a local-CLI task
+says honestly that it produces no structured findings), bottom = the composer that starts the next
+analysis. 第一眼看到的是正在做的事和下一步的输入框，而不是一张配置表。
+
+**The analysis workbench is an execution surface, not the conversation landing page.** 分析工作台 contains an execution list, a
+stream and an input box, not a dashboard of counts. The four numbers that used to occupy a whole 概览
+page (已注册能力 / 专家定义 / 近 N 日任务 / 模型调用占比) now live in a **status strip** at the top of
+that page, with their provenance line intact and everything else folded into a 这些数字从哪来
+disclosure. Nothing was lost but the implication that a single operator opens their own local tool in
+order to read a dashboard.
+
+**One entry per page.** Within a group, 专家定义 / 规则库 / 知识库 are **hierarchical routes**, not
 sibling tabs (see [navigation-structure-refactor.md](navigation-structure-refactor.md)): the URL is the
 single source of truth — `#<area>` is the collection page, `#<area>/<itemId>/<face>` is one item's face,
 and `#<area>/<mode>` is a collection-level working surface (事实词表, 跨库检索) that belongs to no item.
@@ -77,9 +103,8 @@ cannot work in a browser stay in place, disabled, with the reason printed beside
 
 ```mermaid
 flowchart LR
-  SH[Shell: workspace / refresh / primary action / status bar] --> O
-  O[Overview] --> S[SQL Studio]
-  S --> R[Result browser]
+  SH[Shell: workspace / refresh / primary action / status bar] --> S
+  S[SQL workbench: status strip + input] --> R[Result browser]
   R --> F[Findings by severity]
   F --> FA[Finding actions: copy advice / candidate rewrite diff / mark ignored]
   R --> K[Knowledge citations]
@@ -267,7 +292,7 @@ flowchart LR
   previous page's selection. Only pages that actually produce per-item results (SQL findings today)
   render a selection card; on the others the panel states plainly what can be inspected and where that
   detail is shown instead of leaving a stale or generic prompt. The pipeline block appears only where
-  it means something (概览 / 任务 / SQL 分析室); the platform-wide safety note is explicitly labelled
+  it means something (分析工作台 / 任务); the platform-wide safety note is explicitly labelled
   全局说明（与页面无关） so it is not mistaken for page state.
 - **Narrow screens** collapse the inspector below the workbench and keep the same navigation order.
 - **The delivery target is state, and the shell is not the product.** 浏览器 and 桌面端 are two targets
@@ -298,23 +323,27 @@ flowchart LR
 - **Closing the window is a state transition, not a shutdown.** Closing while a run is in flight marks it
   `已中断` — visible, filterable, evidence preserved, re-runnable — and the settle timer is not allowed to
   overwrite that with `已完成`.
-- **Every number on 概览 states where it comes from.** The overview is the one screen whose headline
-  figures look like they were computed, so they must actually be computed or explicitly labelled. Two
-  sources, and only two:
+- **Every number on the status strip states where it comes from.** The strip is the one place whose
+  headline figures look like they were computed, so they must actually be computed or explicitly labelled.
+  Two sources, and only two:
   - *Derived from state* — 已注册能力 reads `CAPABILITIES` (switch one off and the card says `1 已停用`),
     专家定义 reads `EXPERTS` (add one and the count follows). Both re-render from the source's own renderer,
-    so the overview can never hold a value the 能力目录 or 专家工作室 no longer has.
+    so the strip can never hold a value the 能力目录 or 专家定义 no longer has.
   - *Windowed sample* — 近 7 日任务 and 模型调用占比 need a task table with timestamps, which the prototype
     does not have. They come from `DEMO_HISTORY` (one declaration, not digits in the markup) and carry a
     printed 口径 line. The point is not that the figures are demo data; it is that a reader can tell which
     of the numbers would survive contact with a real backend.
   Nothing else may be written into the card markup: `id="ovCapV">—<` is a placeholder for the script, and a
   contract asserts all eight are still placeholders in the source. The 状态栏's 确定性覆盖 is the same
-  figure as the overview's 确定性直接完成, because two labels for one number is how they drift apart.
+  figure as the strip's 确定性直接完成, because two labels for one number is how they drift apart.
+  (The strip is folded by default: the four numbers and their 口径 line stay visible, and the bars and
+  reasoning sit behind 这些数字从哪来. Folding is not hiding — the numbers are read before the disclosure
+  is opened.)
 
 ### Why the collapsed blocks exist
 
-Ten `details.why` blocks carry the reasoning behind a screen (one per page, two on 概览). The summary is
+Ten `details.why` blocks carry the reasoning behind a screen (one per page, two in the status strip). The
+summary is
 the question a reader would actually ask; the body is the answer. Two rules keep them from reading like
 leftovers:
 
@@ -337,12 +366,14 @@ Two tracks, because the prototype is deliberately ahead of the app. `原型` = t
 track when that track really behaves that way; interactions the prototype demonstrates but the app has
 not adopted yet are marked on the 原型 track alone.
 
-1. ✅ 应用 · ✅ 原型 — Shell and route model: Overview, Tasks, SQL Studio, Experts, Knowledge, Rules,
-   Databases, Capabilities, with a **page-scoped inspector** that resets on every route change and
-   reports the current page by name.
+1. ✅ 应用 · ✅ 原型 — Shell and route model: a rail split into **工作** (分析工作台，含任务列表与任务流) and **设置**
+   (专家定义, 规则库, 知识库, 数据库资料, 能力目录, 桌面外壳), **landing on the work surface** rather than
+   on a dashboard, with a **page-scoped inspector** that resets on every route change and reports the
+   current page by name.
 2. ✅ 应用 · ✅ 原型 — Typed API client aligned to the runtime response (`modelAdvisor`, structured
    findings).
-3. ✅ 应用 · ✅ 原型 — SQL Studio with a real results browser and the pipeline/routing block.
+3. ✅ 应用 · ✅ 原型 — SQL workbench with a real results browser, the pipeline/routing block, and the
+   status strip that carries the numbers the 概览 page used to own.
 4. ✅ 应用 · ✅ 原型 — Rule library: pack catalog, rule list with conditions and advice, dry-run, fact
    vocabulary grouped by producing capability, per-pack capability requirements.
 5. ✅ 应用 · ✅ 原型 — Capability catalog as **interactive** sub-pages (总览 / 内置命令 / 本地 CLI /
@@ -420,11 +451,13 @@ not adopted yet are marked on the 原型 track alone.
     UI/API packages (done: `packages/ui`, `packages/runtime-client`) and then adds `apps/desktop`; that step
     also needs `vp install` outside the sandbox, which fails here on `J:\.pnpm-store` (`os error 5`).
     Until then the honest state is: the 桌面外壳 route exists in the prototype, not in the app.
-15. ✅ 应用 · ✅ 原型 — **概览页的数字有出处**: 已注册能力 / 专家定义 由 `CAPABILITIES` / `EXPERTS` 推导
-    （停用一个能力、新增一个专家，卡片跟着变）；近 N 日任务 / 模型调用占比 来自**持久化的走向**而不是
+15. ✅ 应用 · ✅ 原型 — **状态条的数字有出处**: 已注册能力 / 专家定义 由 `CAPABILITIES` / `EXPERTS` 推导
+    （停用一个能力、新增一个专家，数字跟着变）；近 N 日任务 / 模型调用占比 来自**持久化的走向**而不是
     采样 —— `eap.task.model_enhancement` 记录每次运行走的是 `unverified-observation` / `skipped` /
     `unavailable`，`NULL` 表示**从未到达判定阶段**（规划任务没有模型可跳过，把它算成"确定性解决"会
     抬高这个数字）。因此 `GET /api/stats?windowDays=7` 在还没有任何运行记录走向时返回 `null` 而不是
-    `0`——「还没有运行过」不是「0%」。四张卡的数字都不得写进 HTML——契约断言它们留在源码里仍是占位符。
-    状态栏的「确定性覆盖」与概览的卡片是**同一个值**：两个标签一个数字才会漂移。
-    见上文「Every number on 概览 states where it comes from」。
+    `0`——「还没有运行过」不是「0%」。四个数字都不得写进 HTML——契约断言它们留在源码里仍是占位符。
+    状态栏的「确定性覆盖」与状态条里的「确定性直接完成」是**同一个值**：两个标签一个数字才会漂移。
+    这些数字原先独占一个「概览」落地页；2026-10-15 折叠进分析工作台顶部的状态条——**折叠不是藏起来**：
+    四个数字与口径那一行默认可见，柱状图与推理收在「这些数字从哪来」里。
+    见上文「Every number on the status strip states where it comes from」。

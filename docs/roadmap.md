@@ -190,6 +190,18 @@ Delivered:
   executes nothing while rendering. `POST /api/capabilities/{name}/cli/probe` runs `<binary> --version`
   once, with a short timeout and redacted, truncated output — the only place a binary is run to answer a
   management question.
+- **A local CLI is two levels, not one** (`eap.cli_program` + `eap.cli_operation`, V12): the program
+  is registered **once** and owns the binary location and the program-level `--version` probe; its
+  operations are separate rows, each a **fixed argument array** the expert references by capability id
+  (`git-status` = `["status"]`). Git is therefore one program with two operations, not two unrelated
+  commands each carrying its own copy of the binary path. An operator picks a shipped operation, or
+  registers one; **operator-authored operations return a redacted exit code and stdout/stderr and
+  publish no structural facts** — a process that happened to exit 0 has not thereby asserted anything a
+  rule may trust. V12 migrates pre-existing per-operation overrides into the owning program
+  (`DISTINCT ON`, preferring `git-status`) and deletes the old rows; the legacy capability-level
+  endpoints forward to the program rather than keeping a second source of truth. Deleting a program is
+  refused while an **enabled** expert references one of its operations, and deleting the last manual
+  operation removes the manual program with it.
 - `McpServerService` + `/api/mcp-servers` CRUD: register / edit / enable / trust / allow-list / delete /
   probe. Ids are validated **at the source** against the same segment shape `ExpertGraph` requires of
   `mcp.<server>.<tool>`, transports are limited to `stdio` / `http` / `sse`, credentials in an endpoint
@@ -240,23 +252,39 @@ dry-run.
 Delivered so far: high-fidelity HTML prototype (`docs/prototype/console.html`) that fixes the
 information architecture and pins down the *interaction* contract — every control changes visible state
 or explains why it cannot, and every action either names the real endpoint it would call or says it is
-client-side. The Vue app is aligned to it on every slice except one: the eight-route shell with a
-page-scoped inspector, the results browser and pipeline routing block, the **rule editor** (inline
+client-side. The Vue app is aligned to it on every slice except one: the shell with a page-scoped
+inspector, the results browser and pipeline routing block, the **rule editor** (inline
 severity/evidence/advice editing, add/remove, 复制为自定义 for a shipped pack, local mirror of the
 backend checks plus the real `POST /api/rule-packs/validate`, dry-run against the draft), the
 **draft-based expert editor** with a manifest generated from the same state as the canvas, the **finding
 actions** (复制建议 / 查看候选改写 / 标记忽略), the **supplement composer** (appended, never
 replacing), the shell's 刷新 / 工作空间 / status bar, the four-page capability catalog with its
-management surfaces (Phase 2e), knowledge-base
-container CRUD with scoped search,
-database CRUD, expert create/validate/activate, and the task timeline.
+management surfaces (Phase 2e, now including the two-level CLI program/operation registry),
+knowledge-base container CRUD with scoped search, database CRUD, expert create/validate/activate, and the
+task timeline.
+
+**The shell is grouped, not flat (2026-10-15).** The rail used to be eight peers, five of which were
+configuration, and the landing page was a dashboard. It is now two groups — 工作 (分析工作台) and
+设置 (专家定义, 规则库, 知识库, 数据库资料, 能力目录, 桌面外壳) — and the operator lands on the work
+surface. 专家定义、规则库、知识库、数据库资料 and 能力目录 are application-level capability
+configuration: they describe one environment and do not vary by workspace, so presenting them as peers of
+分析工作台 would say that reconfiguring the tool and running an analysis are the same kind of action.
+The 概览 page is gone as a destination; its four numbers moved into a status strip at the top of the
+workbench with their provenance line intact.
+
+**任务 is part of the workbench, not a second work entry (2026-10-15, same day).** Merging the two groups
+still left the work half looking like a backend: a lone form on the workbench and a lone table on the task
+page. An analysis and its evidence are two halves of one thing, so the workbench became a **studio** —
+left = this workspace's task list, middle = the selected task's stream (request → execution record →
+findings/report; a local-CLI task states plainly that it yields no structured findings), bottom = the
+composer that starts the next analysis. 顶栏「运行分析」与底部「开始分析」仍是同一个动作。
 
 Two supporting changes made those numbers honest rather than decorative:
 
 - `eap.task.model_enhancement` records which route each run took (`unverified-observation` / `skipped` /
   `unavailable`, `NULL` = never reached the judgement stage), and `GET /api/stats?windowDays=7` returns
-  `null` rather than `0` until at least one run has recorded a route. 概览 and the status bar's
-  确定性覆盖 read that one value, so 「还没有运行过」 can never be printed as 「0%」.
+  `null` rather than `0` until at least one run has recorded a route. The workbench status strip and the
+  status bar's 确定性覆盖 read that one value, so 「还没有运行过」 can never be printed as 「0%」.
 - every destructive action goes through `@eap/ui` `ConfirmBox`, which names the impact and keeps the confirm
   button in place — disabled, with the reason beside it — when the backend refuses.
   `apps/web/src/tests/destructive.test.ts` asserts both, including that `window.confirm` appears nowhere in
@@ -268,8 +296,20 @@ describes the contract; `apps/desktop` itself is still ⬜ because a shell is an
 not a page, and `electron` is not yet a dependency of the workspace.
 
 **Exit criteria:** the console renders live observations, the SQL findings with severity, the
-knowledge citations, the model-advisor routing block and the independent-validation state; `vp build`
-passes; narrow screens collapse to the same navigation order.
+knowledge citations, the model-advisor routing block and the independent-validation state; narrow
+screens collapse to the same navigation order.
+
+**Verification gates** (all green as of 2026-10-15; run these after any change to the console or the
+runtime, and never trust a ✅ in this document that a gate cannot confirm):
+
+| Gate | Command | Current |
+|---|---|---|
+| Backend tests | `mvn -pl eap-runtime -am test` | 110 tests, 0 failures, 2 skipped (DB probe) |
+| Frontend tests | `vp test run` | 47 tests, 9 files |
+| Frontend lint | `vp lint` | 0 warnings, 0 errors (49 files, 102 rules) |
+| Frontend build | `vp build` | clean, 136 modules |
+| Prototype contract | `node verify-console.js docs/prototype/console.html` | 498 assertions, 0 failed |
+| Runtime boot | `mvn -pl eap-runtime spring-boot:run` | `Started EapApplication` (~4s), `/api/health` → `ok` |
 
 ## Phase 5 — Master / supervisor and supplements ⬜
 

@@ -19,35 +19,55 @@ import { errorMessage, statusLabel } from "./lib/presentation";
 import { describeSecret } from "./lib/sensitive";
 import { CANDIDATE_REWRITE_NOTES, candidateRewrite, rewriteUnavailable } from "./lib/rewrites";
 
+/**
+ * 左栏分两组，因为这两类入口不是同一回事。
+ *
+ * 「工作」是操作者打开这个工具要做的事。「设置」是一套**应用级能力配置**：专家定义、
+ * 知识库、数据库资料、规则包与能力目录描述的都是同一个环境，不随工作空间变化
+ * （见 `docs/running-context.md`）。把它们与干活的面画成平级，等于说「改配置」和
+ * 「做一次分析」是同一类动作——那是一张网页站点地图，不是一个工具。
+ *
+ * 落地页是分析工作台而不是仪表盘：单人本机使用一个工具，是为了给它一段 SQL 看结论，
+ * 不是为了先看一遍计数。原来概览页的四个数字没有丢，它们压进了工作台顶部的状态条。
+ *
+ * 2026-10-15：「任务」不再是独立入口。任务与工作台本来就是同一件事的两半——一次分析的输入
+ * 与它的过程/结论；拆成两页时，工作台只剩一个表单，任务页只剩一张表，两边都不像在干活。
+ * 现在合成一页：左栏的任务列表是会话列表，中间是任务流，底部是输入框。
+ */
 const views = [
-  { id: "overview", name: "概览", icon: "⌂", hint: "运行时状态与最近任务" },
-  { id: "tasks", name: "任务", icon: "▤", hint: "提交需求并查看执行证据" },
-  { id: "sql", name: "SQL 分析室", icon: "▷", hint: "确定性分析与压缩后的模型观察" },
-  { id: "experts", name: "专家工作室", icon: "◈", hint: "编排能力节点、依赖与授权" },
-  { id: "rules", name: "规则库", icon: "▤", hint: "查看规则、条件与试算结果" },
-  { id: "knowledge", name: "知识库", icon: "▢", hint: "录入业务知识并带来源检索" },
-  { id: "databases", name: "数据库资料", icon: "▦", hint: "登记脱敏表结构与索引快照" },
-  { id: "capabilities", name: "能力目录", icon: "⚙", hint: "运行时实际注册的确定性工具" },
+  { id: "sql", name: "分析工作台", icon: "▷", group: "工作", hint: "任务列表、任务流与新的分析输入" },
+  { id: "experts", name: "专家定义", icon: "◈", group: "设置", hint: "编排能力节点、依赖与授权" },
+  { id: "rules", name: "规则库", icon: "▤", group: "设置", hint: "查看规则、条件与试算结果" },
+  { id: "knowledge", name: "知识库", icon: "▢", group: "设置", hint: "录入业务知识并带来源检索" },
+  { id: "databases", name: "数据库资料", icon: "▦", group: "设置", hint: "登记脱敏表结构与索引快照" },
+  { id: "capabilities", name: "能力目录", icon: "⚙", group: "设置", hint: "运行时实际注册的确定性工具" },
 ];
+/** 落地页：打开就是能干活的地方。 */
+const DEFAULT_VIEW = "sql";
 const hashView = typeof location !== "undefined" ? location.hash.slice(1) : "";
-const activeView = ref(views.some((v) => v.id === hashView) ? hashView : "overview");
+const activeView = ref(views.some((v) => v.id === hashView) ? hashView : DEFAULT_VIEW);
 const currentView = computed(() => views.find((v) => v.id === activeView.value)!);
+/** 左栏按 group 归堆，顺序沿用 views 的声明顺序（工作在前）。 */
+const viewGroups = computed(() => {
+  const groups: { label: string; items: typeof views }[] = [];
+  for (const view of views) {
+    let group = groups.find((g) => g.label === view.group);
+    if (!group) {
+      group = { label: view.group, items: [] };
+      groups.push(group);
+    }
+    group.items.push(view);
+  }
+  return groups;
+});
 
 /**
  * 检查器是「按页面取值」的：每个页面声明自己能检查什么，切换页面立刻回到该页的说明，
  * 绝不把上一页的选中项留在那里。只有真正产出逐项结果（发现）的页面才显示选中卡片。
  */
 const INSPECTOR_PAGES: Record<string, { hint: string; pipeline?: boolean }> = {
-  overview: {
-    hint: "聚合视图，本页没有可逐项检查的对象；四张卡的每个数字都在卡片下方注明出处，点击「最近任务」的一行可进入任务页查看证据。",
-    pipeline: true,
-  },
-  tasks: {
-    hint: "执行时间线、状态机位置与证据来源在本页内联展示；重新运行会新增一条记录，不覆盖历史。",
-    pipeline: true,
-  },
   sql: {
-    hint: "点击任意一条发现，这里显示它的严重级、证据、语义保持建议与三个动作：复制建议 / 查看候选改写 / 标记忽略。",
+    hint: "顶部状态条的四个数字都注明了出处（可展开查看口径）。点击任意一条发现，这里显示它的严重级、证据、语义保持建议与三个动作：复制建议 / 查看候选改写 / 标记忽略。",
     pipeline: true,
   },
   experts: {
@@ -108,13 +128,20 @@ const task = ref<TaskResult | null>(null);
 const goal = ref("");
 const taskBusy = ref(false);
 const taskError = ref("");
+/** 任务列表的状态筛选。空串 = 不筛。 */
+const taskStatusFilter = ref("");
+const TASK_STATUS_FILTERS = [
+  { value: "completed", label: "已完成" },
+  { value: "needs-planning", label: "待规划" },
+  { value: "failed", label: "执行失败" },
+];
+const composerGoal = ref<HTMLTextAreaElement | null>(null);
 
 const searchPattern = ref("");
 const selectedExpert = ref("");
 const selectedDatabase = ref("");
 const explainText = ref("");
 const enhanceModel = ref(false);
-const sqlQuestion = ref("");
 const sql = ref("");
 const sqlResult = ref<SqlAnalysis | null>(null);
 const sqlBusy = ref(false);
@@ -201,6 +228,33 @@ const visibleHistory = computed(() =>
     (entry) => (taskTags.value[entry.id] ?? DEFAULT_WORKSPACE) === workspace.value,
   ),
 );
+/** 任务列表 = 当前工作空间 + 状态筛选。筛选只作用在列表上，不改动任务本身。 */
+const filteredHistory = computed(() =>
+  taskStatusFilter.value
+    ? visibleHistory.value.filter((entry) => entry.status === taskStatusFilter.value)
+    : visibleHistory.value,
+);
+/** 「＋ 新的分析」把光标送回输入框：这是使用界面里唯一需要滚动的跳转。 */
+function focusComposer() {
+  try {
+    composerGoal.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch {
+    /* 无 scrollIntoView（SSR / 旧环境）时退化为直接聚焦 */
+  }
+  composerGoal.value?.focus();
+}
+/** 清空本次输入。它只清输入，不动已经产生的任务记录——那些是历史，不该被一个按钮抹掉。 */
+function clearComposer() {
+  goal.value = "";
+  sql.value = "";
+  searchPattern.value = "";
+  explainText.value = "";
+  selectedDatabase.value = "";
+  sqlResult.value = null;
+  selectedFinding.value = null;
+  sqlError.value = "";
+  copyMessage.value = "";
+}
 const enabledExpertCount = computed(
   () => Object.values(expertStates.value).filter((state) => state.enabled).length,
 );
@@ -251,6 +305,17 @@ const needsPattern = computed(() =>
   selectedExpertDef.value?.steps?.some((step) => step.capability === "rg-search"),
 );
 const decision = computed(() => sqlResult.value?.modelAdvisor?.decision ?? "unavailable");
+/**
+ * 任务流显示哪一种内容，由「选中任务」与「本次会话的分析结果」共同决定：
+ * - 选中的任务就是刚才那次分析（同一个 id）→ 回放完整报表（历史接口只返回摘要，报表只在会话里有）；
+ * - 选中的是本地能力任务 → 回放它的请求与工具观测；
+ * - 什么都没选 → 空态，把人引向左栏或底部输入框。
+ */
+const streamMode = computed<"empty" | "task" | "report">(() => {
+  if (sqlResult.value && (!task.value || task.value.id === sqlResult.value.id)) return "report";
+  if (task.value) return "task";
+  return "empty";
+});
 const compression = computed(() => sqlResult.value?.modelAdvisor?.preprocessing);
 const blockedRules = computed(() => sqlResult.value?.deterministicAnalysis?.blockedRules ?? []);
 const rulePackRequirements = computed(() => sqlResult.value?.rulePackRequirements ?? []);
@@ -406,19 +471,19 @@ function tagTask(id: string) {
 }
 
 /**
- * 顶栏的主按钮与 SQL 分析室是同一个动作——不是两个行为相近的入口。
+ * 顶栏的主按钮与 分析工作台是同一个动作——不是两个行为相近的入口。
  * 没有可分析的内容时它必须说出来，而不是安静地什么都不做。
  */
 function primaryAction() {
   activeView.value = "sql";
   if (!canAnalyze.value) {
-    sqlError.value = "还没有可分析的内容：请在 SQL 分析室填写业务问题、SQL 或本地检索目标。";
+    sqlError.value = "还没有可分析的内容：请在 分析工作台填写业务问题、SQL 或本地检索目标。";
     return;
   }
   void analyzeSql();
 }
 const canAnalyze = computed(
-  () => !!sql.value.trim() || !!sqlQuestion.value.trim() || !!searchPattern.value.trim(),
+  () => !!sql.value.trim() || !!goal.value.trim() || !!searchPattern.value.trim(),
 );
 
 /** 重新运行 = 用同样的目标再提交一次：新增一条记录，旧记录与它的证据保持原样。 */
@@ -477,7 +542,7 @@ async function analyzeSql() {
   // 运行时会在服务端拒绝含凭据的字段；在这里先拒绝，是为了能指出**哪一个字段**、以及它看起来是什么。
   const fields: Array<[string, string]> = [
     ["SQL", sql.value],
-    ["业务问题", sqlQuestion.value],
+    ["业务问题", goal.value],
     ["本地检索目标", searchPattern.value],
   ];
   for (const [label, value] of fields) {
@@ -505,7 +570,7 @@ async function analyzeSql() {
       if (!plan || typeof plan !== "object" || Array.isArray(plan))
         throw new Error("执行计划需要是 JSON 对象或 PostgreSQL EXPLAIN JSON 数组");
     }
-    const result = await runtimeApi.analyzeSql(sql.value, sqlQuestion.value, {
+    const result = await runtimeApi.analyzeSql(sql.value, goal.value, {
       expertId: selectedExpert.value,
       databaseId: selectedDatabase.value || undefined,
       explainPlan: plan,
@@ -514,6 +579,8 @@ async function analyzeSql() {
     });
     sqlResult.value = result;
     selectedFinding.value = null;
+    // 本次会话的报表要显示出来：清掉「选中的历史任务」，否则同屏会停在上一条任务的过程回放上。
+    task.value = null;
     // 这次执行和 /api/tasks 里那条记录是同一个 id（运行时用同一个 id 持久化）。
     if (result.id) tagTask(result.id);
     void refreshTasks();
@@ -542,7 +609,7 @@ async function applySupplement() {
     supplementMessage.value = `补充内容里含有${reason}。运行时会拒绝它，请改用环境变量或凭据存储。`;
     return;
   }
-  sqlQuestion.value = [sqlQuestion.value.trim(), text].filter(Boolean).join("\n\n");
+  goal.value = [goal.value.trim(), text].filter(Boolean).join("\n\n");
   supplement.value = "";
   await analyzeSql();
   supplementMessage.value = sqlError.value
@@ -716,7 +783,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
       </span>
       <Button
         variant="secondary"
-        v-if="activeView === 'sql' || activeView === 'tasks'"
+        v-if="activeView === 'sql'"
         :aria-expanded="inspectorOpen"
         aria-controls="context-details"
         @click="inspectorOpen = !inspectorOpen"
@@ -735,18 +802,20 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
 
     <div class="body">
       <nav class="rail" aria-label="主导航">
-        <div class="rail__eyebrow">工作空间</div>
-        <button
-          v-for="view in views"
-          :key="view.id"
-          class="nav"
-          :class="{ active: activeView === view.id }"
-          :aria-current="activeView === view.id ? 'page' : undefined"
-          @click="activeView = view.id"
-        >
-          <span class="ic">{{ view.icon }}</span
-          >{{ view.name }}
-        </button>
+        <template v-for="group in viewGroups" :key="group.label">
+          <div class="rail__eyebrow">{{ group.label }}</div>
+          <button
+            v-for="view in group.items"
+            :key="view.id"
+            class="nav"
+            :class="{ active: activeView === view.id }"
+            :aria-current="activeView === view.id ? 'page' : undefined"
+            @click="activeView = view.id"
+          >
+            <span class="ic">{{ view.icon }}</span
+            >{{ view.name }}
+          </button>
+        </template>
         <div class="rail__foot">
           确定性能力优先<br /><b>结果必须有独立证据</b><br />模型仅作待验证观察
         </div>
@@ -757,311 +826,531 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
           {{ errors.health }}
         </Feedback>
 
-        <!-- OVERVIEW -->
-        <section v-if="activeView === 'overview'" class="view">
+        <!--
+          分析工作台：使用界面，不是管理后台。
+          2026-10-15 任务不再是独立页面——一次分析的输入与它的过程/结论，本来就是同一件事的两半。
+        -->
+        <section v-if="activeView === 'sql'" class="view">
           <div class="page-head">
-            <p class="eyebrow">ENGINEERING AUTOMATION PLATFORM</p>
-            <h1>概览</h1>
-            <p>确定性能力优先处理；仅在证据不足时才压缩后调用模型。</p>
-          </div>
-          <div class="metrics">
-            <MetricCard
-              label="已注册能力"
-              :value="capabilityItems.length || capabilities.length"
-              :detail="kindSummary"
-              :source="
-                disabledCapabilityCount
-                  ? `出处：/api/capabilities · ${disabledCapabilityCount} 已停用`
-                  : '出处：/api/capabilities'
-              "
-            />
-            <MetricCard
-              label="专家定义"
-              :value="expertCount"
-              :detail="`${enabledExpertCount} 已启用 · 内置 + 自定义`"
-              source="出处：/api/experts"
-            />
-            <MetricCard
-              :label="`近 ${stats?.windowDays ?? 7} 日任务`"
-              :value="stats ? stats.tasksInWindow : '—'"
-              :detail="
-                stats
-                  ? `共 ${stats.tasksTotal} 条记录 · ${stats.observationsInWindow} 条工具观测`
-                  : '统计接口不可用'
-              "
-              source="出处：/api/stats，由 eap.task 实时聚合"
-            />
-            <MetricCard
-              label="模型调用占比"
-              :value="modelShareText"
-              :detail="
-                stats && stats.model.recordedRuns
-                  ? `${stats.model.calls} / ${stats.model.recordedRuns} 次执行真的调用了模型`
-                  : '还没有记录了模型走向的执行'
-              "
-              source="出处：/api/stats · 分母只含记录了模型走向的执行"
-            />
-          </div>
-          <Feedback v-if="statsError" tone="error">概览数字取不到：{{ statsError }}</Feedback>
-          <p v-else-if="stats" class="metric-note">{{ stats.note }}</p>
-          <details class="why">
-            <summary>为什么这四个数字可以不写死</summary>
+            <p class="eyebrow">WORKBENCH</p>
+            <h1>分析工作台</h1>
             <p>
-              已注册能力与专家定义分别读能力清单与专家清单：停用一个能力、新增一个专家，卡片跟着变，
-              所以它们不可能和「能力目录」「专家工作室」里的数字不一致。
+              左侧是本工作空间的分析任务：点一条任务，中间回放它的请求、执行过程与逐条发现；
+              底部的输入框直接开始一次新的分析。
             </p>
-            <p>
-              近 {{ stats?.windowDays ?? 7 }} 日任务与模型调用占比读运行时的统计接口，而它是对
-              <code class="mono">eap.task</code>
-              的实时聚合：每次执行都会把「有没有真正调用模型」写进任务记录，
-              所以这两个数字是算出来的，不是样本。
-            </p>
-            <p>
-              状态栏的「确定性覆盖」与这里的值是同一个（<b>{{ deterministicCoverageText }}</b
-              >）——
-              同一个数字有两处标签，就是它开始漂移的地方。还没有记录了模型走向的执行时显示「尚无记录」而不是
-              0%：那两句话不是同一个断言。
-            </p>
-          </details>
-          <article class="eap-panel panel-block">
-            <h2>确定性优先</h2>
-            <p class="hint">
-              平台先运行本地确定性能力并生成结构化证据；只有当确定性证据不足或操作者显式请求时，
-              才会把压缩后的证据提交给模型。模型输出始终是与确定性发现分开展示的待验证观察。
-            </p>
-            <p v-if="windowDistribution" class="hint">
-              近 {{ stats?.windowDays ?? 7 }} 日实际发生：{{ windowDistribution }}。
-              这是运行时真的做了什么，而不是设计意图。
-            </p>
-          </article>
-          <article class="eap-panel panel-block">
-            <header class="panel-head">
-              <div>
-                <h2>最近任务</h2>
-                <p>点击任务查看执行证据；列表按当前工作空间「{{ workspace }}」过滤。</p>
-              </div>
-            </header>
-            <table v-if="visibleHistory.length" class="data-table">
-              <thead>
-                <tr>
-                  <th>目标</th>
-                  <th>状态</th>
-                  <th>决策</th>
-                  <th>模型走向</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="entry in visibleHistory.slice(0, 8)"
-                  :key="entry.id"
-                  class="clickable"
-                  @click="
-                    activeView = 'tasks';
-                    selectHistory(entry);
-                  "
-                >
-                  <td>{{ entry.goal }}</td>
-                  <td>
-                    <Badge tone="neutral">{{ statusLabel(entry.status) }}</Badge>
-                  </td>
-                  <td>{{ statusLabel(entry.decision) }}</td>
-                  <td>{{ modelEnhancementText(entry.modelEnhancement) }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <EmptyState v-else-if="history.length">
-              工作空间「{{ workspace }}」下没有本机标注过的执行；未标注的执行归入默认工作空间 （{{
-                DEFAULT_WORKSPACE
-              }}）。
-            </EmptyState>
-            <EmptyState v-else>暂无任务记录。</EmptyState>
-          </article>
-        </section>
-
-        <!-- TASKS -->
-        <section v-if="activeView === 'tasks'" class="view">
-          <div class="page-head">
-            <p class="eyebrow">TASKS</p>
-            <h1>任务与证据时间线</h1>
-            <p>当前支持仓库状态、差异与本地检索；执行状态与实际工具输出分开呈现。</p>
-          </div>
-          <div class="grid-2">
-            <article class="eap-panel">
-              <h2>新建任务</h2>
-              <form @submit.prevent="submitTask">
-                <label class="field-label" for="task-goal">你希望完成什么？</label>
-                <textarea
-                  id="task-goal"
-                  v-model="goal"
-                  class="workspace-input"
-                  rows="4"
-                  :disabled="taskBusy"
-                  placeholder="例如：检查当前仓库的 Git 状态"
-                />
-                <div class="form-actions">
-                  <Button variant="primary" type="submit" :disabled="taskBusy || !goal.trim()">
-                    {{ taskBusy ? "正在执行…" : "提交任务" }}
-                  </Button>
-                  <Button variant="secondary" type="button" :disabled="taskBusy" @click="goal = ''">
-                    清空
-                  </Button>
-                </div>
-              </form>
-              <Feedback tone="error" v-if="taskError" role="alert">
-                {{ taskError }}
-              </Feedback>
-              <p class="hint">
-                尚无可靠的本地能力处理的需求会明确进入待规划状态，不会执行无关工具。
+            <details class="why">
+              <summary>为什么平台自己不执行你的 SQL</summary>
+              <p>
+                平台不连接业务数据库、也不执行你输入的 SQL。执行计划快照由你自行取得后粘贴——这样
+                <b>没有凭据需要保管，也不存在误在上游库执行改写的可能</b>。代价是要你多贴一次，
+                换来的是这条边界永远成立。
               </p>
-            </article>
-            <article class="eap-panel">
-              <h2>执行证据</h2>
-              <div v-if="task" class="timeline">
-                <div class="result-heading">
-                  <strong>{{ statusLabel(task.status) }}</strong>
+            </details>
+          </div>
+
+          <div class="status-strip">
+            <div class="metrics">
+              <MetricCard
+                label="已注册能力"
+                :value="capabilityItems.length || capabilities.length"
+                :detail="kindSummary"
+                :source="
+                  disabledCapabilityCount
+                    ? `出处：/api/capabilities · ${disabledCapabilityCount} 已停用`
+                    : '出处：/api/capabilities'
+                "
+              />
+              <MetricCard
+                label="专家定义"
+                :value="expertCount"
+                :detail="`${enabledExpertCount} 已启用 · 内置 + 自定义`"
+                source="出处：/api/experts"
+              />
+              <MetricCard
+                :label="`近 ${stats?.windowDays ?? 7} 日任务`"
+                :value="stats ? stats.tasksInWindow : '—'"
+                :detail="
+                  stats
+                    ? `共 ${stats.tasksTotal} 条记录 · ${stats.observationsInWindow} 条工具观测`
+                    : '统计接口不可用'
+                "
+                source="出处：/api/stats，由 eap.task 实时聚合"
+              />
+              <MetricCard
+                label="模型调用占比"
+                :value="modelShareText"
+                :detail="
+                  stats && stats.model.recordedRuns
+                    ? `${stats.model.calls} / ${stats.model.recordedRuns} 次执行真的调用了模型`
+                    : '还没有记录了模型走向的执行'
+                "
+                source="出处：/api/stats · 分母只含记录了模型走向的执行"
+              />
+            </div>
+            <Feedback v-if="statsError" tone="error">这几个数字取不到：{{ statsError }}</Feedback>
+            <p v-else-if="stats" class="metric-note">{{ stats.note }}</p>
+            <details class="status-more">
+              <summary>这些数字从哪来</summary>
+              <details class="why">
+                <summary>为什么这四个数字可以不写死</summary>
+                <p>
+              已注册能力与专家定义分别读能力清单与专家清单：停用一个能力、新增一个专家，这两个数字跟着变，
+              所以它们不可能和「能力目录」「专家定义」里的数字不一致。
+                </p>
+                <p>
+                  近 {{ stats?.windowDays ?? 7 }} 日任务与模型调用占比读运行时的统计接口，而它是对
+                  <code class="mono">eap.task</code>
+                  的实时聚合：每次执行都会把「有没有真正调用模型」写进任务记录，
+                  所以这两个数字是算出来的，不是样本。
+                </p>
+                <p>
+                  状态栏的「确定性覆盖」与这里的值是同一个（<b>{{ deterministicCoverageText }}</b
+                  >）——
+                  同一个数字有两处标签，就是它开始漂移的地方。还没有记录了模型走向的执行时显示「尚无记录」而不是
+                  0%：那两句话不是同一个断言。
+                </p>
+              </details>
+              <article class="eap-panel panel-block">
+                <h2>确定性优先</h2>
+                <p class="hint">
+                  平台先运行本地确定性能力并生成结构化证据；只有当确定性证据不足或操作者显式请求时，
+                  才会把压缩后的证据提交给模型。模型输出始终是与确定性发现分开展示的待验证观察。
+                </p>
+                <p v-if="windowDistribution" class="hint">
+                  近 {{ stats?.windowDays ?? 7 }} 日实际发生：{{ windowDistribution }}。
+                  这是运行时真的做了什么，而不是设计意图。
+                </p>
+              </article>
+            </details>
+          </div>
+
+          <!--
+            2026-10-15 使用界面重构：任务不再是独立页面。
+            左侧 = 本工作空间的**分析任务**（一次执行一条），中间 = 选中任务的任务流
+            （请求置顶 → 执行过程 → 逐条发现），底部 = 直接开始新分析的输入区。
+            这是使用界面而不是管理后台：第一眼看到的是正在做的事和下一步的输入框。
+          -->
+          <div class="studio">
+            <aside class="studio-tasks" aria-label="分析任务列表">
+              <div class="studio-side-head">
+                <div>
+                  <b>分析任务</b>
+                  <span class="hint">本工作空间 · 点一条回看全过程</span>
+                </div>
+                <Button variant="secondary" @click="focusComposer">＋ 新的分析</Button>
+              </div>
+              <select v-model="taskStatusFilter" class="workspace-input" aria-label="按状态筛选任务">
+                <option value="">全部状态</option>
+                <option v-for="option in TASK_STATUS_FILTERS" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+              <div class="task-list">
+                <button
+                  v-for="entry in filteredHistory"
+                  :key="entry.id"
+                  type="button"
+                  class="task-item"
+                  :class="{ 'sel-row': task?.id === entry.id }"
+                  :disabled="taskBusy"
+                  @click="selectHistory(entry)"
+                >
+                  <span class="task-item-main">
+                    <b>{{ entry.goal }}</b>
+                    <span class="hint mono">{{ entry.id }} · {{ statusLabel(entry.decision) }}</span>
+                  </span>
                   <Badge
                     tone="neutral"
                     :class="
-                      task.decision === 'accepted' ? 'eap-badge--success' : 'eap-badge--warning'
+                      entry.status === 'completed' ? 'eap-badge--success' : 'eap-badge--warning'
                     "
+                    >{{ statusLabel(entry.status) }}</Badge
                   >
-                    {{ statusLabel(task.decision) }}
-                  </Badge>
-                </div>
-                <p>{{ task.goal }}</p>
-                <small class="mono">任务编号：{{ task.id }}</small>
-                <p class="hint">
-                  模型走向：<b>{{ modelEnhancementText(task.modelEnhancement) }}</b> ·
-                  这一步也是概览「模型调用占比」的分母来源。
-                </p>
-                <div class="form-actions">
-                  <Button variant="secondary" :disabled="rerunBusy" @click="rerunTask(task)">
-                    {{ rerunBusy ? "重新提交中…" : "重新运行" }}
-                  </Button>
-                  <span class="hint">重新运行会新增一条执行记录，旧记录与它的证据保持原样。</span>
-                </div>
-                <Feedback tone="warning" v-if="task.status === 'needs-planning'">
-                  尚无可靠的本地能力处理此需求，没有执行无关工具。请补充具体操作目标，或进入 SQL
-                  分析室。
-                </Feedback>
-                <Feedback tone="warning" v-if="!task.observations">
-                  历史接口当前只返回任务摘要，未返回工具输出。
-                </Feedback>
-                <div v-for="(item, index) in task.observations ?? []" :key="index" class="tl-item">
-                  <div class="tl-rail">
-                    <i :class="item.success ? 'ok' : 'warn'" /><span class="line" />
-                  </div>
-                  <div class="tl-body">
-                    <div class="t">
-                      {{ item.capability }} · {{ item.success ? "成功" : "失败" }}
-                    </div>
-                    <div class="meta">退出码 {{ item.exitCode }}</div>
-                    <pre v-if="item.stdout">{{ item.stdout }}</pre>
-                    <pre v-if="item.stderr" class="err">{{ item.stderr }}</pre>
-                  </div>
-                </div>
+                </button>
               </div>
-              <EmptyState v-else>提交任务或从下方历史选择，以查看证据。</EmptyState>
-            </article>
-          </div>
-          <article class="eap-panel panel-block">
-            <header class="panel-head">
-              <div>
-                <h2>任务历史</h2>
-                <p>按当前工作空间「{{ workspace }}」过滤；未标注的执行归入默认工作空间。</p>
-              </div>
-            </header>
-            <div class="list">
-              <button
-                v-for="entry in visibleHistory"
-                :key="entry.id"
-                class="list-item"
-                :class="{ active: task?.id === entry.id }"
-                :disabled="taskBusy"
-                @click="selectHistory(entry)"
-              >
-                <span
-                  ><b>{{ entry.goal }}</b
-                  ><small
-                    >{{ statusLabel(entry.status) }} · {{ statusLabel(entry.decision) }} · 模型：{{
-                      modelEnhancementText(entry.modelEnhancement)
-                    }}</small
-                  ></span
-                >
-              </button>
-            </div>
-            <EmptyState v-if="!visibleHistory.length && history.length">
-              该工作空间下没有本机标注过的执行。切换工作空间或提交一条新任务即可。
-            </EmptyState>
-            <EmptyState v-else-if="!history.length">暂无任务记录。</EmptyState>
-          </article>
-          <details class="why">
-            <summary>为什么「重新运行」不覆盖上一条记录</summary>
-            <p>
-              一次执行的价值一半在它的证据：哪些能力跑了、退出了什么码、哪些规则因为缺少事实而没有判定。
-              覆盖上一条会让「和上次比变了什么」永久不可答，所以重新运行是新增一条记录（
-              <code class="mono">POST /api/experts/{id}/execute</code>
-              再一次），旧记录与证据原样留在历史里。
-            </p>
-            <p>
-              列表按当前工作空间过滤，是因为控制台把它当作「一个仓库的一次运行」的分组；任务在服务端没有
-              工作空间字段，所以这里只筛本机标注过的执行，未标注的归入默认工作空间。
-            </p>
-          </details>
-        </section>
+              <EmptyState v-if="!filteredHistory.length">
+                {{
+                  history.length
+                    ? '当前工作空间没有本机标注过的执行。切换到其它工作空间，或在下面开始一次新的分析。'
+                    : '还没有分析记录。在下面的输入框描述要分析的问题，或粘贴一段 SQL。'
+                }}
+              </EmptyState>
+              <Feedback tone="error" v-if="taskError" role="alert">{{ taskError }}</Feedback>
+            </aside>
 
-        <!-- SQL STUDIO -->
-        <section v-if="activeView === 'sql'" class="view">
-          <div class="page-head">
-            <p class="eyebrow">SQL STUDIO</p>
-            <h1>SQL 分析室</h1>
-            <p>选择已启用专家按显式依赖执行；模型仅在需要时被压缩调用，且作为待验证观察展示。</p>
-          </div>
-          <div class="grid-2">
-            <article class="eap-panel">
-              <h2>分析输入</h2>
-              <form @submit.prevent="analyzeSql">
-                <label v-if="needsPattern" class="field-label"
-                  >本地检索目标
-                  <input
-                    v-model="searchPattern"
-                    class="workspace-input"
-                    :disabled="sqlBusy"
-                    placeholder="例如 TODO 或具体符号名"
-                  />
-                </label>
-                <label class="field-label" for="expert-selector">执行专家</label>
-                <select
-                  id="expert-selector"
-                  v-model="selectedExpert"
-                  class="workspace-input"
-                  :disabled="sqlBusy"
-                >
-                  <option v-for="expert in registeredExperts" :key="expert.id" :value="expert.id">
-                    {{ expert.name }}
-                  </option>
-                </select>
-                <label for="sql-question" class="field-label">业务问题 / 目标</label>
+            <div class="studio-main">
+              <div class="studio-stream">
+                <div v-if="streamMode === 'empty'" class="stream-empty">
+                  <p class="stream-empty-title">尚未选择分析任务</p>
+                  <p class="hint">
+                    左侧点一条任务，回看它的请求、执行过程与发现；或在下面的输入框描述要分析的问题，
+                    直接开始一次新的分析。
+                  </p>
+                </div>
+                <template v-else>
+                  <div class="req-card">
+                    <div class="row stream-head">
+                      <div>
+                        <b>{{ streamMode === "report" ? sqlResult?.id : task?.id }}</b>
+                        <p class="hint mono">
+                          {{
+                            streamMode === "report"
+                              ? `专家流程 · 模型：${modelEnhancementText(sqlResult?.modelEnhancement)}`
+                              : `本地能力任务 · 模型：${modelEnhancementText(task?.modelEnhancement)}`
+                          }}
+                        </p>
+                      </div>
+                      <Badge
+                        tone="neutral"
+                        :class="
+                          (streamMode === 'report' ? sqlResult?.status : task?.status) ===
+                          'completed'
+                            ? 'eap-badge--success'
+                            : 'eap-badge--warning'
+                        "
+                        >{{
+                          statusLabel(
+                            streamMode === "report"
+                              ? (sqlResult?.status ?? "")
+                              : (task?.status ?? ""),
+                          )
+                        }}</Badge
+                      >
+                    </div>
+                    <p v-if="streamMode === 'task'" class="hint">{{ task?.goal }}</p>
+                    <div class="form-actions" v-if="streamMode === 'task'">
+                      <Button variant="secondary" :disabled="rerunBusy" @click="rerunTask(task!)">
+                        {{ rerunBusy ? "重新提交中…" : "重新运行" }}
+                      </Button>
+                      <span class="hint">重新运行会新增一条执行记录，旧记录与它的证据保持原样。</span>
+                    </div>
+                  </div>
+
+                  <template v-if="streamMode === 'task'">
+                    <div class="row stream-head">
+                      <h2>执行过程</h2>
+                    </div>
+                    <Feedback tone="warning" v-if="task.status === 'needs-planning'">
+                      尚无可靠的本地能力处理此需求，没有执行无关工具。请补充具体操作目标，或在下面的输入框贴上
+                      SQL。
+                    </Feedback>
+                    <Feedback tone="warning" v-if="!task.observations">
+                      历史接口当前只返回任务摘要，未返回工具输出。
+                    </Feedback>
+                    <div class="timeline">
+                      <div
+                        v-for="(item, index) in task.observations ?? []"
+                        :key="index"
+                        class="tl-item"
+                      >
+                        <div class="tl-rail">
+                          <i :class="item.success ? 'ok' : 'warn'" /><span class="line" />
+                        </div>
+                        <div class="tl-body">
+                          <div class="t">
+                            {{ item.capability }} · {{ item.success ? "成功" : "失败" }}
+                          </div>
+                          <div class="meta">退出码 {{ item.exitCode }}</div>
+                          <pre v-if="item.stdout">{{ item.stdout }}</pre>
+                          <pre v-if="item.stderr" class="err">{{ item.stderr }}</pre>
+                        </div>
+                      </div>
+                      <EmptyState v-if="!(task.observations ?? []).length">
+                        这一次执行没有返回工具输出。
+                      </EmptyState>
+                    </div>
+                  </template>
+
+                  <Feedback tone="info" v-if="sqlBusy" role="status">正在分析并检索知识…</Feedback>
+
+                  <article class="eap-panel" id="resultCard" v-if="streamMode === 'report'">
+                    <header class="panel-head">
+                      <div>
+                        <h2>分析结果</h2>
+                        <p>建议、证据与模型走向分开展示</p>
+                      </div>
+                      <Badge tone="success">{{ statusLabel(sqlResult.status) }}</Badge>
+                    </header>
+                    <div class="result">
+                      <div class="pipeline">
+                        <div class="stage done">
+                          <div class="n">1 · 确定性</div>
+                          <div class="t">已运行</div>
+                          <div class="s">
+                            {{ findings.length }} 条发现 · 置信度
+                            {{ sqlResult.deterministicAnalysis?.deterministicConfidence ?? "—" }}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          class="stage stage--clickable"
+                          :class="decision === 'enhance' ? 'model' : 'skip'"
+                          :aria-expanded="decisionOpen"
+                          @click="decisionOpen = !decisionOpen"
+                        >
+                          <div class="n">2 · 决策</div>
+                          <div class="t">{{ decisionText(decision) }}</div>
+                          <div class="s">
+                            {{ sqlResult.modelAdvisor?.rationale ?? "点开看为什么没有到决策阶段" }}
+                            <span class="link">{{ decisionOpen ? "收起" : "为什么？" }}</span>
+                          </div>
+                        </button>
+                        <div
+                          class="stage"
+                          :class="sqlResult.modelEnhancement === 'unverified-observation' ? 'model' : ''"
+                        >
+                          <div class="n">3 · 模型</div>
+                          <div class="t">{{ modelEnhancementText(sqlResult.modelEnhancement) }}</div>
+                          <div class="s" v-if="compression?.compressionRatio != null">
+                            压缩比 {{ Math.round((compression.compressionRatio ?? 0) * 100) }}% · 预计
+                            {{ compression.estimatedTokens }} tokens
+                          </div>
+                          <div class="s" v-else>确定性完成，无需模型</div>
+                        </div>
+                      </div>
+                      <div v-if="decisionOpen" class="decision-panel">
+                        <h4>{{ decisionExplanation.title }}</h4>
+                        <ul class="advice-list">
+                          <li v-for="(line, index) in decisionExplanation.lines" :key="index">
+                            {{ line }}
+                          </li>
+                        </ul>
+                        <p class="hint">
+                          是否调用模型由运行时按规则决定，控制台改不了这个判断。若要显式请求一次模型复核，
+                          请勾选左上方的「显式请求模型增强」并重新分析——那是一次新的执行。
+                        </p>
+                      </div>
+
+                      <h3>发现（{{ findings.length }}）</h3>
+                      <div class="findings">
+                        <button
+                          v-for="finding in findings"
+                          :key="finding.code"
+                          class="finding"
+                          :class="{
+                            sel: selectedFinding?.code === finding.code,
+                            ignored: isFindingIgnored(finding.code),
+                          }"
+                          @click="selectFinding(finding)"
+                        >
+                          <span class="sev" :class="finding.severity">{{
+                            severityText(finding.severity)
+                          }}</span>
+                          <span>
+                            <span class="code mono">{{ finding.code }}</span>
+                            <span v-if="isFindingIgnored(finding.code)" class="ignored-tag">已忽略</span>
+                            <p class="evidence">{{ finding.evidence }}</p>
+                            <span class="cat">类别：{{ finding.category }}</span>
+                          </span>
+                        </button>
+                        <EmptyState v-if="!findings.length">
+                          未触发确定性规则。这不代表 SQL 已通过优化检查，请补充表结构与执行计划。
+                        </EmptyState>
+                      </div>
+
+                      <h3>适用规则包（{{ sqlResult.rulePacks?.length ?? 0 }}）</h3>
+                      <div class="chips">
+                        <Badge tone="neutral" v-for="pack in sqlResult.rulePacks ?? []" :key="pack.id">
+                          {{ pack.name }} · {{ pack.ruleCount }} 条规则
+                          <template v-if="pack.requires?.length">
+                            · 需要 {{ pack.requires.join("、") }}</template
+                          >
+                        </Badge>
+                        <span v-if="!sqlResult.rulePacks?.length" class="hint">
+                          该专家未声明规则包，本次仅做解析与事实抽取。
+                        </span>
+                      </div>
+
+                      <template v-if="rulePackRequirements.length">
+                        <h3>规则包能力需求</h3>
+                        <p class="hint">
+                          规则读取事实，事实由能力产出。下面列出每个规则包需要的能力，以及本次流程是否真的执行了它们。
+                        </p>
+                        <div class="choice-list">
+                          <div v-for="check in rulePackRequirements" :key="check.id" class="requirement">
+                            <code class="mono">{{ check.id }}</code>
+                            <Badge
+                              tone="neutral"
+                              :class="check.met ? 'eap-badge--success' : 'eap-badge--warning'"
+                            >
+                              {{ check.met ? "能力齐备" : "缺少 " + check.missing.join("、") }}
+                            </Badge>
+                            <span class="hint">需要：{{ check.required.join("、") }}</span>
+                          </div>
+                        </div>
+                      </template>
+
+                      <template v-if="blockedRules.length">
+                        <h3>未判定的规则（{{ blockedRules.length }}）</h3>
+                        <Feedback tone="info">
+                          下列规则依赖的能力本次没有执行，因此它们的证据缺失。这
+                          <b>不等于</b> 没有发现问题。
+                        </Feedback>
+                        <ul class="advice-list">
+                          <li v-for="item in blockedRules" :key="item.rule">
+                            <code class="mono">{{ item.rule }}</code> · 缺少能力
+                            {{ item.missingCapabilities.join("、") }} · 相关事实
+                            {{ item.missingFacts.join("、") }}
+                          </li>
+                        </ul>
+                      </template>
+
+                      <section class="supplement">
+                        <h3>补充上下文</h3>
+                        <p class="hint">
+                          运行时没有「补充」这个资源：补充上下文等于把新上下文并入目标后<b>再执行一次</b>
+                          （<code class="mono">POST /api/experts/{id}/execute</code
+                          >）。上一条记录与它的证据不会被改写，
+                          所以「补了什么、结果怎么变」在历史里可以对照。不要粘贴密码或连接串。
+                        </p>
+                        <textarea
+                          v-model="supplement"
+                          class="workspace-input"
+                          rows="3"
+                          :disabled="sqlBusy"
+                          placeholder="例如：orders.customer_id 已有单列索引；订单表约 2000 万行，慢在分页"
+                        />
+                        <div class="form-actions">
+                          <Button
+                            variant="secondary"
+                            type="button"
+                            :disabled="sqlBusy || !supplement.trim()"
+                            @click="applySupplement"
+                          >
+                            {{ sqlBusy ? "执行中…" : "补入并重新分析" }}
+                          </Button>
+                          <span class="hint" role="status">{{ supplementMessage }}</span>
+                        </div>
+                      </section>
+
+                      <details v-if="factEntries.length">
+                        <summary>命中事实（{{ factEntries.length }}）</summary>
+                        <p class="hint">发现来自这些结构事实；规则包只能引用词表中已声明的事实。</p>
+                        <table class="data-table facts-table">
+                          <thead>
+                            <tr>
+                              <th>事实</th>
+                              <th>值</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="[key, value] in factEntries" :key="key">
+                              <td class="mono">{{ key }}</td>
+                              <td>{{ factText(value) }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </details>
+
+                      <h3>优化建议（确定性，语义保持）</h3>
+                      <ol v-if="sqlResult.advice?.length" class="advice-list">
+                        <li v-for="item in sqlResult.advice" :key="item">{{ item }}</li>
+                      </ol>
+                      <EmptyState v-else>本次没有返回可验证建议，请补充上下文。</EmptyState>
+
+                      <section v-if="sqlResult.expertAdvice">
+                        <h3>模型观察（未验证）</h3>
+                        <p class="preserve-text">{{ sqlResult.expertAdvice }}</p>
+                      </section>
+
+                      <details :open="!!sqlResult.knowledgeEvidence?.length">
+                        <summary>知识依据（{{ sqlResult.knowledgeEvidence?.length ?? 0 }}）</summary>
+                        <div v-for="(item, index) in sqlResult.knowledgeEvidence" :key="index" class="kb">
+                          <b>{{ item.knowledgeBase }} / {{ item.source }}</b>
+                          <p>{{ item.excerpt }}</p>
+                        </div>
+                        <p v-if="!sqlResult.knowledgeEvidence?.length" class="hint">
+                          没有返回匹配知识，可在知识库录入相关业务说明或验证案例。
+                        </p>
+                      </details>
+
+                      <details v-if="sqlResult.nodes?.length">
+                        <summary>流程执行记录</summary>
+                        <ol class="execution-list">
+                          <li v-for="node in sqlResult.nodes" :key="node.id">
+                            <div class="result-heading">
+                              <strong>{{ node.label }}</strong>
+                              <Badge
+                                tone="neutral"
+                                :class="
+                                  node.state === 'succeeded' ? 'eap-badge--success' : 'eap-badge--warning'
+                                "
+                              >
+                                {{ statusLabel(node.state) }}
+                              </Badge>
+                            </div>
+                            <small class="mono">{{ node.capability }}</small>
+                            <p>{{ node.message }}</p>
+                          </li>
+                        </ol>
+                      </details>
+
+                      <details v-if="sqlResult.safety?.length">
+                        <summary>安全与执行说明</summary>
+                        <ul>
+                          <li v-for="item in sqlResult.safety" :key="item">{{ item }}</li>
+                        </ul>
+                      </details>
+
+                      <div class="form-actions">
+                        <Button
+                          variant="secondary"
+                          :disabled="!sqlResult.advice?.length && !sqlResult.expertAdvice"
+                          @click="copyResult"
+                        >
+                          复制建议
+                        </Button>
+                        <span role="status" class="hint">{{ copyMessage }}</span>
+                      </div>
+                    </div>
+                  </article>
+                </template>
+              </div>
+
+              <div class="composer" id="composer">
+                <Feedback tone="error" v-if="sqlError" role="alert">{{ sqlError }}</Feedback>
+                <label class="field-label" for="composer-goal">业务问题 / 目标</label>
                 <textarea
-                  id="sql-question"
-                  v-model="sqlQuestion"
+                  id="composer-goal"
+                  ref="composerGoal"
+                  v-model="goal"
                   class="workspace-input"
                   rows="2"
                   :disabled="sqlBusy"
-                  placeholder="描述慢查询现象、数据规模和期望结果"
+                  placeholder="例如：订单列表查询在数据量增长后明显变慢，想确认是否缺索引或存在可改写点"
                 />
-                <label for="sql-code" class="field-label">待分析 SQL</label>
-                <textarea
-                  id="sql-code"
-                  v-model="sql"
-                  class="workspace-input code-input"
-                  rows="10"
-                  :disabled="sqlBusy"
-                  spellcheck="false"
-                  placeholder="SELECT …（仅检索知识时可留空）"
-                />
-                <details>
-                  <summary>可选上下文：数据库资料与执行计划</summary>
+                <details class="composer-more">
+                  <summary>完整输入：执行专家、待分析 SQL、数据库资料与模型</summary>
+                  <label class="field-label" for="expert-selector">执行专家</label>
+                  <select
+                    id="expert-selector"
+                    v-model="selectedExpert"
+                    class="workspace-input"
+                    :disabled="sqlBusy"
+                  >
+                    <option v-for="expert in registeredExperts" :key="expert.id" :value="expert.id">
+                      {{ expert.name }}
+                    </option>
+                  </select>
+                  <label v-if="needsPattern" class="field-label">
+                    本地检索目标
+                    <input
+                      v-model="searchPattern"
+                      class="workspace-input"
+                      :disabled="sqlBusy"
+                      placeholder="例如 TODO 或具体符号名"
+                    />
+                  </label>
+                  <label class="field-label" for="sql-code">待分析 SQL</label>
+                  <textarea
+                    id="sql-code"
+                    v-model="sql"
+                    class="workspace-input code-input"
+                    rows="9"
+                    :disabled="sqlBusy"
+                    spellcheck="false"
+                    placeholder="SELECT …（仅检索知识时可留空）"
+                  />
                   <label class="field-label" for="database-selector">已授权资料</label>
                   <select
                     id="database-selector"
@@ -1079,7 +1368,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                     </option>
                   </select>
                   <p v-if="!allowedDatabases.length" class="hint">
-                    当前专家没有已配置的数据库资料，请在专家工作室中选择资料后重新启用并授权。
+                    当前专家没有已配置的数据库资料，请在专家定义中选择资料后重新启用并授权。
                   </p>
                   <label class="field-label" for="explain-input">EXPLAIN JSON 快照</label>
                   <textarea
@@ -1091,291 +1380,36 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                     placeholder="粘贴自行取得的 EXPLAIN JSON，平台不会自动执行 SQL"
                   />
                 </details>
-                <label class="row hint" style="margin-top: 12px">
-                  <input v-model="enhanceModel" type="checkbox" :disabled="sqlBusy" />
-                  显式请求模型增强（输出仍为待验证观察）
-                </label>
-                <p class="hint">
-                  不要粘贴密码、连接字符串或业务数据。默认只执行确定性流程，不调用模型，不自动连接数据库执行
-                  SQL。
-                </p>
-                <div class="form-actions">
+                <div class="composer-bar">
+                  <label class="row composer-model">
+                    <input v-model="enhanceModel" type="checkbox" :disabled="sqlBusy" />
+                    显式请求模型增强（输出仍为待验证观察）
+                  </label>
+                  <span class="hint">默认不连接数据库、不执行 SQL；不要粘贴密码、连接串或业务数据。</span>
+                  <Button variant="secondary" type="button" :disabled="sqlBusy" @click="clearComposer">
+                    清空
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    :disabled="taskBusy || !goal.trim()"
+                    @click="submitTask"
+                  >
+                    {{ taskBusy ? "执行中…" : "交给本地能力" }}
+                  </Button>
                   <Button
                     variant="primary"
-                    type="submit"
-                    :disabled="
-                      sqlBusy || (!sql.trim() && !sqlQuestion.trim() && !searchPattern.trim())
-                    "
+                    type="button"
+                    :disabled="sqlBusy || !canAnalyze"
+                    @click="primaryAction"
                   >
                     {{ sqlBusy ? "正在分析…" : "开始分析" }}
                   </Button>
-                  <Button
-                    variant="secondary"
-                    type="button"
-                    :disabled="sqlBusy"
-                    @click="
-                      sql = '';
-                      sqlQuestion = '';
-                      sqlResult = null;
-                      sqlError = '';
-                      explainText = '';
-                      selectedDatabase = '';
-                      selectedFinding = null;
-                    "
-                  >
-                    清空
-                  </Button>
-                </div>
-              </form>
-              <Feedback tone="error" v-if="sqlError" role="alert">
-                {{ sqlError }}
-              </Feedback>
-            </article>
-
-            <article class="eap-panel" id="resultCard">
-              <header class="panel-head">
-                <div>
-                  <h2>分析结果</h2>
-                  <p>建议、证据与模型走向分开展示</p>
-                </div>
-                <Badge tone="success" v-if="sqlResult">{{ statusLabel(sqlResult.status) }}</Badge>
-              </header>
-              <Feedback tone="info" v-if="sqlBusy" role="status">正在分析并检索知识…</Feedback>
-              <div v-else-if="sqlResult" class="result">
-                <div class="pipeline">
-                  <div class="stage done">
-                    <div class="n">1 · 确定性</div>
-                    <div class="t">已运行</div>
-                    <div class="s">
-                      {{ findings.length }} 条发现 · 置信度
-                      {{ sqlResult.deterministicAnalysis?.deterministicConfidence ?? "—" }}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    class="stage stage--clickable"
-                    :class="decision === 'enhance' ? 'model' : 'skip'"
-                    :aria-expanded="decisionOpen"
-                    @click="decisionOpen = !decisionOpen"
-                  >
-                    <div class="n">2 · 决策</div>
-                    <div class="t">{{ decisionText(decision) }}</div>
-                    <div class="s">
-                      {{ sqlResult.modelAdvisor?.rationale ?? "点开看为什么没有到决策阶段" }}
-                      <span class="link">{{ decisionOpen ? "收起" : "为什么？" }}</span>
-                    </div>
-                  </button>
-                  <div
-                    class="stage"
-                    :class="sqlResult.modelEnhancement === 'unverified-observation' ? 'model' : ''"
-                  >
-                    <div class="n">3 · 模型</div>
-                    <div class="t">{{ modelEnhancementText(sqlResult.modelEnhancement) }}</div>
-                    <div class="s" v-if="compression?.compressionRatio != null">
-                      压缩比 {{ Math.round((compression.compressionRatio ?? 0) * 100) }}% · 预计
-                      {{ compression.estimatedTokens }} tokens
-                    </div>
-                    <div class="s" v-else>确定性完成，无需模型</div>
-                  </div>
-                </div>
-                <div v-if="decisionOpen" class="decision-panel">
-                  <h4>{{ decisionExplanation.title }}</h4>
-                  <ul class="advice-list">
-                    <li v-for="(line, index) in decisionExplanation.lines" :key="index">
-                      {{ line }}
-                    </li>
-                  </ul>
-                  <p class="hint">
-                    是否调用模型由运行时按规则决定，控制台改不了这个判断。若要显式请求一次模型复核，
-                    请勾选左上方的「显式请求模型增强」并重新分析——那是一次新的执行。
-                  </p>
-                </div>
-
-                <h3>发现（{{ findings.length }}）</h3>
-                <div class="findings">
-                  <button
-                    v-for="finding in findings"
-                    :key="finding.code"
-                    class="finding"
-                    :class="{
-                      sel: selectedFinding?.code === finding.code,
-                      ignored: isFindingIgnored(finding.code),
-                    }"
-                    @click="selectFinding(finding)"
-                  >
-                    <span class="sev" :class="finding.severity">{{
-                      severityText(finding.severity)
-                    }}</span>
-                    <span>
-                      <span class="code mono">{{ finding.code }}</span>
-                      <span v-if="isFindingIgnored(finding.code)" class="ignored-tag">已忽略</span>
-                      <p class="evidence">{{ finding.evidence }}</p>
-                      <span class="cat">类别：{{ finding.category }}</span>
-                    </span>
-                  </button>
-                  <EmptyState v-if="!findings.length">
-                    未触发确定性规则。这不代表 SQL 已通过优化检查，请补充表结构与执行计划。
-                  </EmptyState>
-                </div>
-
-                <h3>适用规则包（{{ sqlResult.rulePacks?.length ?? 0 }}）</h3>
-                <div class="chips">
-                  <Badge tone="neutral" v-for="pack in sqlResult.rulePacks ?? []" :key="pack.id">
-                    {{ pack.name }} · {{ pack.ruleCount }} 条规则
-                    <template v-if="pack.requires?.length">
-                      · 需要 {{ pack.requires.join("、") }}</template
-                    >
-                  </Badge>
-                  <span v-if="!sqlResult.rulePacks?.length" class="hint">
-                    该专家未声明规则包，本次仅做解析与事实抽取。
-                  </span>
-                </div>
-
-                <template v-if="rulePackRequirements.length">
-                  <h3>规则包能力需求</h3>
-                  <p class="hint">
-                    规则读取事实，事实由能力产出。下面列出每个规则包需要的能力，以及本次流程是否真的执行了它们。
-                  </p>
-                  <div class="choice-list">
-                    <div v-for="check in rulePackRequirements" :key="check.id" class="requirement">
-                      <code class="mono">{{ check.id }}</code>
-                      <Badge
-                        tone="neutral"
-                        :class="check.met ? 'eap-badge--success' : 'eap-badge--warning'"
-                      >
-                        {{ check.met ? "能力齐备" : "缺少 " + check.missing.join("、") }}
-                      </Badge>
-                      <span class="hint">需要：{{ check.required.join("、") }}</span>
-                    </div>
-                  </div>
-                </template>
-
-                <template v-if="blockedRules.length">
-                  <h3>未判定的规则（{{ blockedRules.length }}）</h3>
-                  <Feedback tone="info">
-                    下列规则依赖的能力本次没有执行，因此它们的证据缺失。这
-                    <b>不等于</b> 没有发现问题。
-                  </Feedback>
-                  <ul class="advice-list">
-                    <li v-for="item in blockedRules" :key="item.rule">
-                      <code class="mono">{{ item.rule }}</code> · 缺少能力
-                      {{ item.missingCapabilities.join("、") }} · 相关事实
-                      {{ item.missingFacts.join("、") }}
-                    </li>
-                  </ul>
-                </template>
-
-                <section class="supplement">
-                  <h3>补充上下文</h3>
-                  <p class="hint">
-                    运行时没有「补充」这个资源：补充上下文等于把新上下文并入目标后<b>再执行一次</b>
-                    （<code class="mono">POST /api/experts/{id}/execute</code
-                    >）。上一条记录与它的证据不会被改写，
-                    所以「补了什么、结果怎么变」在历史里可以对照。不要粘贴密码或连接串。
-                  </p>
-                  <textarea
-                    v-model="supplement"
-                    class="workspace-input"
-                    rows="3"
-                    :disabled="sqlBusy"
-                    placeholder="例如：orders.customer_id 已有单列索引；订单表约 2000 万行，慢在分页"
-                  />
-                  <div class="form-actions">
-                    <Button
-                      variant="secondary"
-                      type="button"
-                      :disabled="sqlBusy || !supplement.trim()"
-                      @click="applySupplement"
-                    >
-                      {{ sqlBusy ? "执行中…" : "补入并重新分析" }}
-                    </Button>
-                    <span class="hint" role="status">{{ supplementMessage }}</span>
-                  </div>
-                </section>
-
-                <details v-if="factEntries.length">
-                  <summary>命中事实（{{ factEntries.length }}）</summary>
-                  <p class="hint">发现来自这些结构事实；规则包只能引用词表中已声明的事实。</p>
-                  <table class="data-table facts-table">
-                    <thead>
-                      <tr>
-                        <th>事实</th>
-                        <th>值</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="[key, value] in factEntries" :key="key">
-                        <td class="mono">{{ key }}</td>
-                        <td>{{ factText(value) }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </details>
-
-                <h3>优化建议（确定性，语义保持）</h3>
-                <ol v-if="sqlResult.advice?.length" class="advice-list">
-                  <li v-for="item in sqlResult.advice" :key="item">{{ item }}</li>
-                </ol>
-                <EmptyState v-else>本次没有返回可验证建议，请补充上下文。</EmptyState>
-
-                <section v-if="sqlResult.expertAdvice">
-                  <h3>模型观察（未验证）</h3>
-                  <p class="preserve-text">{{ sqlResult.expertAdvice }}</p>
-                </section>
-
-                <details :open="!!sqlResult.knowledgeEvidence?.length">
-                  <summary>知识依据（{{ sqlResult.knowledgeEvidence?.length ?? 0 }}）</summary>
-                  <div v-for="(item, index) in sqlResult.knowledgeEvidence" :key="index" class="kb">
-                    <b>{{ item.knowledgeBase }} / {{ item.source }}</b>
-                    <p>{{ item.excerpt }}</p>
-                  </div>
-                  <p v-if="!sqlResult.knowledgeEvidence?.length" class="hint">
-                    没有返回匹配知识，可在知识库录入相关业务说明或验证案例。
-                  </p>
-                </details>
-
-                <details v-if="sqlResult.nodes?.length">
-                  <summary>流程执行记录</summary>
-                  <ol class="execution-list">
-                    <li v-for="node in sqlResult.nodes" :key="node.id">
-                      <div class="result-heading">
-                        <strong>{{ node.label }}</strong>
-                        <Badge
-                          tone="neutral"
-                          :class="
-                            node.state === 'succeeded' ? 'eap-badge--success' : 'eap-badge--warning'
-                          "
-                        >
-                          {{ statusLabel(node.state) }}
-                        </Badge>
-                      </div>
-                      <small class="mono">{{ node.capability }}</small>
-                      <p>{{ node.message }}</p>
-                    </li>
-                  </ol>
-                </details>
-
-                <details v-if="sqlResult.safety?.length">
-                  <summary>安全与执行说明</summary>
-                  <ul>
-                    <li v-for="item in sqlResult.safety" :key="item">{{ item }}</li>
-                  </ul>
-                </details>
-
-                <div class="form-actions">
-                  <Button
-                    variant="secondary"
-                    :disabled="!sqlResult.advice?.length && !sqlResult.expertAdvice"
-                    @click="copyResult"
-                  >
-                    复制建议
-                  </Button>
-                  <span role="status" class="hint">{{ copyMessage }}</span>
                 </div>
               </div>
-              <EmptyState v-else>填写问题或 SQL 后开始分析，结果将在此显示。</EmptyState>
-            </article>
+            </div>
           </div>
+
           <details class="why">
             <summary>为什么模型不是第一步</summary>
             <p>

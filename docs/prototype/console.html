@@ -155,12 +155,70 @@
   .metric .d.up { color: var(--ok); }
   .metric .d.down { color: var(--ok); }
 
+  /* 状态条：原「概览」页折到这里。四个数字与它们的口径都还在，但不再占一整个落地页——
+     单人本地工具打开就是为了分析，不是为了先看一张仪表盘。 */
+  .status-strip { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: var(--sp-6); margin-bottom: var(--sp-7); }
+  .status-strip .grid-4 { gap: var(--sp-5); }
+  .status-strip .metric { padding: var(--sp-5); box-shadow: none; }
+  .status-strip .metric .v { font-size: 21px; }
+  .status-strip .hint { margin-top: var(--sp-4); }
+  .status-more { margin-top: var(--sp-5); border-top: 1px solid var(--border); padding-top: var(--sp-4); }
+  .status-more > summary { cursor: pointer; font-size: var(--fs-small); font-weight: 600; color: var(--text-soft); }
+  .status-more-body { padding-top: var(--sp-4); }
+  .status-more-body .why { margin-top: var(--sp-4); }
+
   .bars { display: grid; gap: var(--sp-5); margin-top: var(--sp-3); }
   .bar-row { display: grid; grid-template-columns: 130px 1fr 46px; align-items: center; gap: var(--sp-4); font-size: 12.5px; }
   .bar { height: 10px; background: var(--surface-3); border-radius: 999px; overflow: hidden; }
   .bar > i { display: block; height: 100%; border-radius: 999px; }
   .bar > i.det { background: linear-gradient(90deg,#2563eb,#60a5fa); }
   .bar > i.mod { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
+
+  /* ---------- 工作台（studio）：任务列表 · 任务流 · 底部输入 ----------
+     2026-10-15 使用界面重构：第一眼是「正在做的事 + 下一步的输入」，
+     不是一张卡片墙。任务列表是会话列表的形状，选中态由状态渲染。 */
+  .studio { display: grid; grid-template-columns: 280px minmax(0,1fr); gap: var(--sp-7); align-items: start; }
+  .studio-tasks {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    position: sticky; top: var(--sp-5); max-height: calc(100vh - 170px);
+  }
+  .studio-side-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .studio-side-head b { font-size: var(--fs-lead); }
+  .studio-side-head .sub { display: block; color: var(--text-mute); font-size: var(--fs-small); margin-top: 2px; }
+  .task-list { display: flex; flex-direction: column; gap: 6px; overflow: auto; min-height: 60px; }
+  .task-item {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
+    text-align: left; font: inherit; color: inherit; cursor: pointer;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+  }
+  .task-item:hover { border-color: var(--border-strong); }
+  .task-item.sel-row { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .task-item.sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .task-item-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .task-item-main b { font-size: var(--fs-mini); line-height: 1.5; }
+  .task-item-main .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .studio-main { display: flex; flex-direction: column; min-width: 0; }
+  .studio-stream { min-height: 340px; }
+  .stream-empty {
+    background: var(--surface); border: 1px dashed var(--border-strong); border-radius: var(--radius);
+    padding: 40px 24px; text-align: center;
+  }
+  .stream-empty-title { font-weight: 700; margin: 0 0 6px; }
+  .req-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px 18px;
+  }
+  .composer {
+    margin-top: var(--sp-7); background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px;
+    position: sticky; bottom: var(--sp-5);
+  }
+  .composer-more { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; }
+  .composer-more > summary { cursor: pointer; font-size: var(--fs-small); font-weight: 600; color: var(--text-soft); }
+  .composer-bar { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .composer-bar .hint { flex: 1; min-width: 200px; }
+  .composer-model { font-size: 13px; color: var(--text-soft); white-space: nowrap; }
 
   /* ---------- table ---------- */
   table { width: 100%; border-collapse: collapse; font-size: var(--fs-mini); }
@@ -535,6 +593,25 @@
       display: block; position: fixed; inset: 0; z-index: 55; background: rgba(16,24,40,.34);
     }
   }
+/* Conversation is a work surface; execution reports remain in the analysis workbench. */
+.conversation-layout {display:grid;grid-template-columns:220px minmax(0,1fr);gap:20px;min-height:640px}
+.conversation-list {border-right:1px solid var(--line,#ddd);padding-right:16px}
+.conversation-list .btn {width:100%;margin-bottom:8px}
+.conversation-list .task-item {width:100%;text-align:left;margin-top:8px}
+.conversation-main {min-width:0;display:flex;flex-direction:column;gap:16px}
+.conversation-messages {flex:1;min-height:200px;max-height:55vh;overflow:auto;padding:8px 0}
+.conversation-message {padding:16px;margin:0 0 12px;border:1px solid var(--line,#ddd);border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.conversation-message.user {margin-left:12%;background:var(--surface,#f5f6f8)}
+body.conversation-view .body {grid-template-columns:200px minmax(0,1fr)}
+body.conversation-view .inspector {display:none}
+body.conversation-view #inspectorToggle {display:inline-flex}
+body.conversation-view.inspector-open .inspector {display:block;position:fixed;top:0;right:0;bottom:0;width:min(420px,92vw);z-index:60;background:var(--surface);box-shadow:-8px 0 28px rgba(16,24,40,.16)}
+body.conversation-view.inspector-open .inspector-scrim {display:block;position:fixed;inset:0;z-index:55;background:rgba(16,24,40,.34)}
+.conversation-message small {display:block;margin-bottom:8px;opacity:.7}
+.conversation-context {padding:14px;border:1px solid var(--line,#ddd);border-radius:10px}
+.conversation-context label {display:block;margin:10px 0}
+.conversation-context select {max-width:100%}
+@media(max-width:900px){.conversation-layout{grid-template-columns:1fr}.conversation-list{border-right:0;border-bottom:1px solid #ddd;padding-bottom:12px}.conversation-messages{max-height:none}}
 </style>
 </head>
 <body>
@@ -556,9 +633,7 @@
       <button onclick="toggleMenu('viewMenu', this)" aria-haspopup="true" aria-expanded="false">视图</button>
       <div class="menu" id="viewMenu" role="menu">
         <div class="menu-head">视图</div>
-        <button onclick="menuGo('overview')">概览</button>
-        <button onclick="menuGo('tasks')">任务与证据时间线</button>
-        <button onclick="menuGo('sql')">SQL 分析室</button>
+        <button onclick="menuGo('sql')">分析工作台</button>
         <button onclick="menuGo('desktop')">桌面外壳与连接</button>
         <button onclick="menuRefresh()">刷新运行时状态<small>重新读取全部面板</small></button>
       </div>
@@ -599,261 +674,149 @@
   <div class="body">
     <!-- left rail -->
     <nav class="rail" id="rail">
-      <div class="eyebrow">工作空间</div>
-      <button class="nav active" data-view="overview" aria-current="page"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.6" y="2.6" width="5.6" height="5.6" rx="1.4"/><rect x="9.8" y="2.6" width="5.6" height="5.6" rx="1.4"/><rect x="2.6" y="9.8" width="5.6" height="5.6" rx="1.4"/><rect x="9.8" y="9.8" width="5.6" height="5.6" rx="1.4"/></svg>概览</button>
-      <button class="nav" data-view="tasks" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 5.2l1.9 1.9L8 3.6"/><path d="M11 5.2h4"/><path d="M3 11.5h4"/><path d="M11 11.5h4"/><path d="M3 14.6h4"/><path d="M11 14.6h4"/></svg>任务</button>
-      <button class="nav" data-view="sql" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.4 4.2L3 9l3.4 4.8"/><path d="M11.6 4.2L15 9l-3.4 4.8"/><path d="M10.2 3.2l-2.4 11.6"/></svg>SQL 分析室</button>
-      <button class="nav" data-view="experts" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="4.2" r="2.1"/><circle cx="4.4" cy="13.9" r="2.1"/><circle cx="13.6" cy="13.9" r="2.1"/><path d="M9 6.3v2.6"/><path d="M7.6 10.3L5.7 12.2"/><path d="M10.4 10.3l1.9 1.9"/></svg>专家工作室</button>
-      <button class="nav" data-view="rules" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3.2" y="2.6" width="11.6" height="12.8" rx="2"/><path d="M6 6.4h6"/><path d="M6 9.3h6"/><path d="M6 12.2h3.4"/></svg>规则库</button>
-      <button class="nav" data-view="knowledge" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3.6h4.3A1.6 1.6 0 0 1 9 5.2v9.6a1.6 1.6 0 0 0-1.7-1.5H3z"/><path d="M15 3.6h-4.3A1.6 1.6 0 0 0 9 5.2v9.6a1.6 1.6 0 0 1 1.7-1.5H15z"/></svg>知识库</button>
-      <button class="nav" data-view="databases" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><ellipse cx="9" cy="3.8" rx="5.4" ry="1.8"/><path d="M3.6 3.8v3.4c0 1 2.4 1.8 5.4 1.8s5.4-.8 5.4-1.8V3.8"/><path d="M3.6 7.2v3.4c0 1 2.4 1.8 5.4 1.8s5.4-.8 5.4-1.8V7.2"/><path d="M3.6 10.6v3.6c0 1 2.4 1.8 5.4 1.8s5.4-.8 5.4-1.8v-3.6"/></svg>数据库资料</button>
-      <button class="nav" data-view="capabilities" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.6" y="2.6" width="12.8" height="12.8" rx="3"/><rect x="6.6" y="6.6" width="4.8" height="4.8" rx="1"/><path d="M9 2.6V6.6M9 11.4v4M2.6 9H6.6M11.4 9h4"/></svg>能力目录</button>
-      <div class="eyebrow" style="margin-top:14px">运行环境</div>
-      <button class="nav" data-view="desktop" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.1" y="3.2" width="13.8" height="9.8" rx="1.6"/><path d="M6.6 16.8h4.8"/><path d="M9 13v3.8"/></svg>桌面外壳</button>
+      <div class="eyebrow">工作</div>
+      <button class="nav" data-view="chat" aria-current="false">◎ 会话</button>
+<!-- 「任务」不再是独立导航页：任务列表内嵌在分析工作台里（2026-10-15 使用界面重构）。 -->
+<button class="nav active" data-view="sql" aria-current="page"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.4 4.2L3 9l3.4 4.8"/><path d="M11.6 4.2L15 9l-3.4 4.8"/><path d="M10.2 3.2l-2.4 11.6"/></svg>分析工作台</button>
+      <div class="eyebrow" style="margin-top:14px">设置</div>
+<button class="nav" data-view="experts" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="4.2" r="2.1"/><circle cx="4.4" cy="13.9" r="2.1"/><circle cx="13.6" cy="13.9" r="2.1"/><path d="M9 6.3v2.6"/><path d="M7.6 10.3L5.7 12.2"/><path d="M10.4 10.3l1.9 1.9"/></svg>专家定义</button>
+<button class="nav" data-view="rules" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3.2" y="2.6" width="11.6" height="12.8" rx="2"/><path d="M6 6.4h6"/><path d="M6 9.3h6"/><path d="M6 12.2h3.4"/></svg>规则库</button>
+<button class="nav" data-view="knowledge" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3.6h4.3A1.6 1.6 0 0 1 9 5.2v9.6a1.6 1.6 0 0 0-1.7-1.5H3z"/><path d="M15 3.6h-4.3A1.6 1.6 0 0 0 9 5.2v9.6a1.6 1.6 0 0 1 1.7-1.5H15z"/></svg>知识库</button>
+<button class="nav" data-view="databases" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><ellipse cx="9" cy="3.8" rx="5.4" ry="1.8"/><path d="M3.6 3.8v3.4c0 1 2.4 1.8 5.4 1.8s5.4-.8 5.4-1.8V3.8"/><path d="M3.6 7.2v3.4c0 1 2.4 1.8 5.4 1.8s5.4-.8 5.4-1.8V7.2"/><path d="M3.6 10.6v3.6c0 1 2.4 1.8 5.4 1.8s5.4-.8 5.4-1.8v-3.6"/></svg>数据库资料</button>
+<button class="nav" data-view="capabilities" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.6" y="2.6" width="12.8" height="12.8" rx="3"/><rect x="6.6" y="6.6" width="4.8" height="4.8" rx="1"/><path d="M9 2.6V6.6M9 11.4v4M2.6 9H6.6M11.4 9h4"/></svg>能力目录</button>
+<button class="nav" data-view="desktop" aria-current="false"><svg class="icon" viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.1" y="3.2" width="13.8" height="9.8" rx="1.6"/><path d="M6.6 16.8h4.8"/><path d="M9 13v3.8"/></svg>桌面外壳</button>
       <div class="foot">确定性能力优先<br><b>结果必须有独立证据</b><br>模型仅作待验证观察</div>
     </nav>
 
     <!-- workbench -->
     <main class="workbench">
-      <!-- OVERVIEW -->
-      <section class="view active" id="view-overview">
-        <div class="page-head">
-          <p class="eyebrow">ENGINEERING AUTOMATION PLATFORM</p>
-          <h1>概览</h1>
-          <p>确定性能力优先处理；仅在证据不足时才压缩后调用模型。</p>
-        </div>
-        <div class="grid-4">
-          <div class="metric"><div class="k">已注册能力</div><div class="v" id="ovCapV">—</div><div class="d" id="ovCapD">—</div></div>
-          <div class="metric"><div class="k">专家定义</div><div class="v" id="ovExpertV">—</div><div class="d" id="ovExpertD">—</div></div>
-          <div class="metric"><div class="k">近 7 日任务</div><div class="v" id="ovTaskV">—</div><div class="d up" id="ovTaskD">—</div></div>
-          <div class="metric"><div class="k">模型调用占比</div><div class="v" id="ovModelV">—</div><div class="d" id="ovModelD">—</div></div>
-        </div>
-        <p class="hint" id="ovMetricScope">—</p>
-        <details class="why"><summary>为什么模型不是第一步</summary><div class="why-body">确定性证据能定论时，模型根本不被询问；只有当证据不足或操作者主动要求时，才用压缩、限长、脱敏后的上下文问一次。模型的输出是<b>待验证的观察</b>：它不会改写任何发现，也不会把任务标记为完成。</div></details>
-        <details class="why"><summary>为什么要分工作空间</summary><div class="why-body">工作空间是「这次在哪个本机目录上分析」：本地 CLI 与 ripgrep 都在它的路径下执行，因此不同仓库的结论不会混在一起。按仓库区分的是<b>任务列表</b>——某个仓库下的一次次实际分析；<b>专家定义、知识库与数据库资料是应用级的能力配置</b>，不随仓库变化：否则同一份脱敏快照会在两个空间里各存一份、专家也要按仓库各配一遍，而它们描述的本来就是同一套环境。规则包与能力目录同理：同一条规则在两个空间里出现两个版本，判定结果就不可比了。</div></details>
-
-        <div class="card" style="margin-top:16px">
-          <h2>模型依赖与压缩效果</h2>
-          <p class="sub">每次模型调用前，证据都会被压缩到固定预算内，并记录压缩比。模型默认关闭（<span class="mono">EAP_LLM_ENABLED=false</span>），所以下面这三行是启用该能力后的样本，不是本机的调用统计。</p>
-          <div class="bars">
-            <div class="bar-row"><span>确定性直接完成</span><div class="bar"><i class="det" id="ovBarDet" style="width:0"></i></div><span id="ovBarDetV">—</span></div>
-            <div class="bar-row"><span>压缩后调用模型</span><div class="bar"><i class="mod" id="ovBarMod" style="width:0"></i></div><span id="ovBarModV">—</span></div>
-            <div class="bar-row"><span>平均压缩比</span><div class="bar"><i class="det" id="ovBarRatio" style="width:0"></i></div><span id="ovBarRatioV">—</span></div>
+      <section class="view" id="view-chat">
+        <div class="page-head"><p class="eyebrow">CONVERSATIONS</p><h1>会话</h1><p>普通聊天用于讨论；工作区会话围绕本机项目持续推进。一次会话可以关联多次执行，而不是一次运行就新建一条聊天。</p></div>
+        <p class="note">交互原型：消息与关联记录仅保留在本页内存，刷新即重置；回复为演示，不调用模型、不读取文件、不执行工具。真实会话服务尚未实现。</p>
+        <div class="conversation-layout">
+          <aside class="conversation-list" aria-label="会话列表">
+            <button class="btn primary" onclick="newConversation('plain')">＋ 普通聊天</button>
+            <button class="btn" onclick="newConversation('workspace')">＋ 工作区会话</button>
+            <p class="hint">会话创建后固定类型与工作区；切换顶部工作区不会搬移已有会话。</p>
+            <div id="conversationList"></div>
+          </aside>
+          <div class="conversation-main">
+            <div id="conversationHeading"></div>
+            <details class="conversation-context"><summary>本会话上下文与配置生效范围</summary><div id="conversationContext"></div></details>
+            <div id="conversationMessages" class="conversation-messages" role="log" aria-label="会话消息" aria-live="polite"></div>
+            <form onsubmit="sendConversationMessage(event)">
+              <label class="field" for="conversationInput">消息</label>
+              <textarea class="textarea" id="conversationInput" rows="3" required maxlength="4000" placeholder="提出问题，或补充当前会话的上下文。不会将你的内容当作系统指令。"></textarea>
+              <p id="conversationFeedback" class="msg" role="status"></p>
+              <div class="row" style="justify-content:space-between;flex-wrap:wrap"><button class="btn" type="button" onclick="prepareConversationAnalysis()">带入分析工作台</button><button class="btn primary" type="submit">发送消息（演示）</button></div>
+            </form>
           </div>
         </div>
-
-        <div class="card" style="margin-top:16px">
-          <h2>最近任务</h2>
-          <p class="sub">点击任意任务进入证据时间线；「上下文详情」同步补充该任务的状态与证据。这里与「任务」页读同一份状态。</p>
-          <table>
-            <thead><tr><th>目标</th><th>状态</th><th>决策</th><th>模型</th><th>耗时</th></tr></thead>
-            <tbody id="overviewTaskRows"></tbody>
-          </table>
-        </div>
       </section>
-
       <!-- SQL STUDIO -->
-      <section class="view" id="view-sql">
+      <!-- 2026-10-15 使用界面重构：任务不再是独立页面。左侧 = 本工作空间的任务列表，
+           中间 = 选中任务的任务流（请求置顶 → 执行过程 → 发现 → 结论），底部 = 新分析的输入区。
+           这是「使用界面」，不是管理后台：第一眼看到的是正在做的事和下一步的输入框。 -->
+      <section class="view active" id="view-sql">
         <div class="page-head">
-          <p class="eyebrow">SQL STUDIO</p>
-          <h1>SQL 分析室</h1>
-          <p>选择已启用专家，按显式依赖执行并返回逐节点证据；模型仅在需要时被压缩调用。</p>
+          <p class="eyebrow">WORKBENCH</p>
+          <h1>分析工作台</h1>
+          <p>左侧是本工作空间的分析任务：点一条任务，中间回放它的请求、执行过程与逐条发现；底部的输入框直接开始一次新的分析。</p>
           <details class="why"><summary>为什么平台自己不执行你的 SQL</summary><div class="why-body">平台不连接业务数据库、不执行你输入的 SQL。EXPLAIN JSON 快照由你自行取得后粘贴——这样<b>没有凭据需要保管，也不存在误在上游库执行改写的可能</b>。代价是要你多贴一次，换来的是这条边界永远成立。</div></details>
         </div>
-        <div class="grid-2">
-          <div class="card">
-            <h2>分析输入</h2>
-            <label class="field" for="expertSelect">执行专家</label>
-            <select class="select" id="expertSelect">
-              <option>SQL Expert（内置 sql-expert）</option>
-              <option>订单库 SQL 优化（自定义）</option>
+
+        <div class="status-strip" id="statusStrip">
+          <div class="grid-4">
+            <div class="metric"><div class="k">已注册能力</div><div class="v" id="ovCapV">—</div><div class="d" id="ovCapD">—</div></div>
+            <div class="metric"><div class="k">专家定义</div><div class="v" id="ovExpertV">—</div><div class="d" id="ovExpertD">—</div></div>
+            <div class="metric"><div class="k">近 7 日任务</div><div class="v" id="ovTaskV">—</div><div class="d up" id="ovTaskD">—</div></div>
+            <div class="metric"><div class="k">模型调用占比</div><div class="v" id="ovModelV">—</div><div class="d" id="ovModelD">—</div></div>
+          </div>
+          <p class="hint" id="ovMetricScope">—</p>
+          <details class="status-more">
+            <summary>这些数字从哪来，以及模型被用到哪一步</summary>
+            <div class="status-more-body">
+              <div class="bars">
+                <div class="bar-row"><span>确定性直接完成</span><div class="bar"><i class="det" id="ovBarDet" style="width:0"></i></div><span id="ovBarDetV">—</span></div>
+                <div class="bar-row"><span>压缩后调用模型</span><div class="bar"><i class="mod" id="ovBarMod" style="width:0"></i></div><span id="ovBarModV">—</span></div>
+                <div class="bar-row"><span>平均压缩比</span><div class="bar"><i class="det" id="ovBarRatio" style="width:0"></i></div><span id="ovBarRatioV">—</span></div>
+              </div>
+              <p class="sub">模型默认关闭（<span class="mono">EAP_LLM_ENABLED=false</span>），因此这三行是启用该能力后的样本，不是本机的调用统计。</p>
+              <details class="why"><summary>为什么模型不是第一步</summary><div class="why-body">确定性证据能定论时，模型根本不被询问；只有当证据不足或操作者主动要求时，才用压缩、限长、脱敏后的上下文问一次。模型的输出是<b>待验证的观察</b>：它不会改写任何发现，也不会把任务标记为完成。</div></details>
+              <details class="why"><summary>为什么要分工作空间</summary><div class="why-body">工作空间是「这次在哪个本机目录上分析」：本地 CLI 与 ripgrep 都在它的路径下执行，因此不同仓库的结论不会混在一起。按仓库区分的是<b>任务列表</b>——某个仓库下的一次次实际分析；<b>专家定义、知识库与数据库资料是应用级的能力配置</b>，不随仓库变化：否则同一份脱敏快照会在两个空间里各存一份、专家也要按仓库各配一遍，而它们描述的本来就是同一套环境。规则包与能力目录同理：同一条规则在两个空间里出现两个版本，判定结果就不可比了。</div></details>
+            </div>
+          </details>
+        </div>
+
+        <div class="studio">
+          <aside class="studio-tasks" aria-label="分析任务列表">
+            <div class="studio-side-head">
+              <div><b>分析任务</b><span class="sub">本工作空间 · 点一条回看全过程</span></div>
+              <button class="btn ghost" onclick="focusComposer()">＋ 新的分析</button>
+            </div>
+            <select class="select" id="taskFilter" onchange="renderTasks()" aria-label="按状态筛选">
+              <option value="">全部状态</option>
+              <option value="completed">已完成</option>
+              <option value="partial">部分完成</option>
+              <option value="running">执行中</option>
+              <option value="interrupted">已中断</option>
             </select>
-            <label class="field" for="fld572">业务问题 / 目标</label>
-            <textarea class="textarea" rows="2" id="fld572">订单列表查询在数据量增长后明显变慢，希望确认是否缺少索引或可改写点。</textarea>
-            <label class="field" for="sqlText">待分析 SQL</label>
-            <textarea class="textarea code" rows="9" id="sqlText">SELECT o.id, o.amount, c.name
+            <div class="task-list" id="taskRows"></div>
+            <p class="hint" id="taskEmpty" style="display:none">没有符合筛选条件的任务。</p>
+            <p class="msg" id="taskMessage"></p>
+          </aside>
+
+          <div class="studio-main">
+            <div class="studio-stream" id="studioStream">
+              <div class="stream-empty" id="streamEmpty">
+                <p class="stream-empty-title">尚未选择分析任务</p>
+                <p class="hint">左侧点一条任务，回看它的请求、执行过程与发现；或在下面的输入框描述要分析的问题，直接开始一次新的分析。</p>
+              </div>
+              <div id="taskStreamBody" hidden>
+                <div class="req-card" id="taskRequest"></div>
+                <div class="row" style="justify-content:space-between;margin-top:20px;align-items:baseline">
+                  <h2 style="margin:0">执行过程</h2>
+                  <span class="chip" id="timelineChip">—</span>
+                </div>
+                <p class="sub" id="timelineSub" style="margin:4px 0 0">尚未选择任务</p>
+                <div class="timeline" id="timeline"></div>
+                <div id="sqlResultBody" hidden></div>
+              </div>
+            </div>
+
+            <div class="composer" id="composer">
+              <p class="msg" id="sqlMessage"></p>
+              <label class="field" for="fld572">业务问题 / 目标</label>
+              <textarea class="textarea" rows="2" id="fld572">订单列表查询在数据量增长后明显变慢，希望确认是否缺少索引或可改写点。</textarea>
+              <details class="composer-more" id="composerMore">
+                <summary>完整输入：执行专家、待分析 SQL、资料与模型</summary>
+                <label class="field" for="expertSelect">执行专家</label>
+                <select class="select" id="expertSelect">
+                  <option>SQL Expert（内置 sql-expert）</option>
+                  <option>订单库 SQL 优化（自定义）</option>
+                </select>
+                <label class="field" for="sqlText">待分析 SQL</label>
+                <textarea class="textarea code" rows="9" id="sqlText">SELECT o.id, o.amount, c.name
 FROM orders o
 JOIN customer c ON o.customer_id = c.id
 WHERE upper(c.name) LIKE '%张%'
 ORDER BY o.created_at DESC
 LIMIT 20;</textarea>
-            <details>
-              <summary>可选上下文：数据库资料与执行计划</summary>
-              <label class="field" for="fld583">已授权资料</label>
-              <select class="select" id="fld583"><option>orders-prod（脱敏快照）</option><option>不使用数据库资料</option></select>
-              <label class="field" for="fld585">EXPLAIN JSON 快照</label>
-              <textarea class="textarea code" rows="4" placeholder="粘贴自行取得的 EXPLAIN JSON，平台不会自动执行 SQL" id="fld585"></textarea>
-            </details>
-            <label class="row" style="margin-top:14px;font-size:13px;color:var(--text-soft)">
-              <input type="checkbox" id="requestModel" /> 显式请求模型增强（输出仍为待验证观察）
-            </label>
-            <div class="row" style="margin-top:16px">
-              <button class="btn primary" id="runButton" onclick="runAnalysis()">开始分析</button>
-              <button class="btn" onclick="document.getElementById('resultCard').scrollIntoView({behavior:'smooth'})">查看结果</button>
-              <span class="hint">不要粘贴密码或连接串。默认不连接数据库、不执行 SQL。</span>
-            </div>
-            <p class="msg" id="sqlMessage"></p>
-          </div>
-
-          <div class="card" id="resultCard">
-            <div class="row" style="justify-content:space-between">
-              <div><h2>分析结果</h2><p class="sub">建议、证据与模型走向分开展示</p></div>
-              <span class="chip ok" id="sqlStatus">completed</span>
-            </div>
-            <p class="msg" id="sqlResultMessage"></p>
-
-            <div id="sqlResultBody">
-
-            <div class="pipeline" style="margin-top:14px" id="sqlPipeline">
-              <div class="stage done"><div class="n">1 · 确定性</div><div class="t">已完成</div><div class="s" id="sqlDeterministicNote">5 条发现 · 置信度 0.85</div></div>
-              <div class="stage skip clickable" onclick="showDecisionDetail()"><div class="n">2 · 决策</div><div class="t">skip</div><div class="s">证据已足够，跳过模型 · 点开看依据</div></div>
-              <div class="stage"><div class="n">3 · 模型</div><div class="t">未调用</div><div class="s">节省 100% 消耗</div></div>
-            </div>
-            <p class="hint">点击发现后，可在「上下文详情」中复制建议、查看候选改写（只展示差异，<b>不会自动执行</b>）、标记忽略。忽略只影响本页展示，不改动规则判定。</p>
-
-            <div class="findings" id="findings">
-              <div class="finding" data-id="f1" data-sev="high" data-code="predicate.function_on_column" data-cat="谓词" data-ev="函数包裹了列：UPPER。">
-                <span class="sev high">high</span>
-                <div>
-                  <div class="code">predicate.function_on_column</div>
-                  <p class="evidence">函数包裹了列：UPPER → c.name 上的普通索引无法使用（非 sargable）。</p>
-                  <div class="cat">类别：谓词</div>
-                </div>
-              </div>
-              <div class="finding" data-id="f2" data-sev="high" data-code="predicate.like.leading_wildcard" data-cat="谓词" data-ev="LIKE 模式以前导通配符 % 开头。">
-                <span class="sev high">high</span>
-                <div>
-                  <div class="code">predicate.like.leading_wildcard</div>
-                  <p class="evidence">模式 '%张%' 以 % 开头，前缀索引失效。</p>
-                  <div class="cat">类别：谓词</div>
-                </div>
-              </div>
-              <div class="finding" data-id="f3" data-sev="medium" data-code="projection.select_star" data-cat="投影" data-ev="投影中包含 * 通配符。">
-                <span class="sev medium">medium</span>
-                <div>
-                  <div class="code">projection.select_star（示例）</div>
-                  <p class="evidence">示例：投影包含通配符会阻碍覆盖索引与列裁剪。</p>
-                  <div class="cat">类别：投影</div>
-                </div>
-              </div>
-              <div class="finding" data-id="f4" data-sev="low" data-code="join.equality" data-cat="连接" data-ev="关联条件 o.customer_id = c.id">
-                <span class="sev low">low</span>
-                <div>
-                  <div class="code">join.equality</div>
-                  <p class="evidence">关联 o.customer_id = c.id：需核对类型、唯一性与索引前导列。</p>
-                  <div class="cat">类别：连接</div>
-                </div>
+                <label class="field" for="fld583">已授权资料</label>
+                <select class="select" id="fld583"><option>orders-prod（脱敏快照）</option><option>不使用数据库资料</option></select>
+                <label class="field" for="fld585">EXPLAIN JSON 快照</label>
+                <textarea class="textarea code" rows="4" placeholder="粘贴自行取得的 EXPLAIN JSON，平台不会自动执行 SQL" id="fld585"></textarea>
+              </details>
+              <div class="composer-bar">
+                <label class="row composer-model" for="requestModel"><input type="checkbox" id="requestModel" /> 显式请求模型增强（输出仍为待验证观察）</label>
+                <span class="hint">默认不连接数据库、不执行 SQL；不要粘贴密码或连接串。</span>
+                <button class="btn primary" id="runButton" onclick="runAnalysis()">开始分析</button>
               </div>
             </div>
-
-            <h2 style="margin-top:18px">适用规则包</h2>
-            <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
-              <span class="chip">SQL 结构反模式规则包 · 21 条规则 · 需要 sql.parse</span>
-              <span class="chip">团队查询规范 · 6 条规则 · 需要 sql.parse</span>
-            </div>
-
-            <h2 style="margin-top:18px">规则包能力需求</h2>
-            <p class="sub" style="margin-top:6px">规则读取事实，事实由能力产出。下面列出每个规则包需要的能力，以及本次流程是否真的执行了它们。</p>
-            <div class="requirement">
-              <code class="mono">sql-antipatterns</code><span class="chip ok">能力齐备</span>
-              <span class="hint">需要：sql.parse</span>
-            </div>
-            <div class="requirement">
-              <code class="mono">team-sql-snapshot</code><span class="chip warn">缺少 database.explain</span>
-              <span class="hint">需要：sql.parse、database.schema.read、database.index.read、database.explain</span>
-            </div>
-            <p class="hint clickable" style="margin-top:8px" onclick="showUnjudgedDetail()">
-              未判定的规则（1）：<span class="mono">plan.seq_scan</span> · 缺少能力 database.explain · 相关事实 plan.seqScan。
-              这 <b>不等于</b> 没有发现问题。<b>点开看怎么补。</b>
-            </p>
-
-            <details style="margin-top:12px">
-              <summary>命中事实（8）</summary>
-              <p class="sub" style="margin-top:8px">发现来自这些结构事实；规则包只能引用词表中已声明的事实，所以每条发现都可解释。</p>
-              <table>
-                <thead><tr><th>事实</th><th>值</th></tr></thead>
-                <tbody>
-                  <tr><td class="mono">join.count</td><td>1</td></tr>
-                  <tr><td class="mono">predicate.functionOnColumn</td><td>UPPER</td></tr>
-                  <tr><td class="mono">predicate.leadingWildcardLike</td><td>是</td></tr>
-                  <tr><td class="mono">select.allColumns</td><td>否</td></tr>
-                  <tr><td class="mono">table.list</td><td>orders、customer</td></tr>
-                </tbody>
-              </table>
-            </details>
-
-            <h2 style="margin-top:18px">优化建议（确定性，语义保持）</h2>
-            <ol style="padding-left:20px;line-height:1.9;margin:8px 0 0;font-size:13px;color:var(--text)">
-              <li>将 <span class="kbd">upper(c.name) LIKE '%张%'</span> 改为不可下推的表达式索引，或改用 <span class="kbd">c.name LIKE '张%'</span>（若业务允许前缀匹配）。</li>
-              <li>为 <span class="kbd">orders(created_at DESC)</span> 或 <span class="kbd">orders(customer_id, created_at)</span> 评估复合索引，配合稳定排序分页。</li>
-              <li>明确投影列，避免通配符，使覆盖索引成为可能。</li>
-            </ol>
-
-            <details style="margin-top:16px" open>
-              <summary>知识依据（2）</summary>
-              <div class="kb"><b>dba / index-guide.md</b><p>前导通配符与函数包裹列都会使 B-Tree 索引失效；优先考虑表达式索引或改写为范围条件。</p></div>
-              <div class="kb"><b>orders-runbook / pagination.md</b><p>分页必须配合稳定唯一排序键，否则翻页可能丢行或重复。</p></div>
-            </details>
-
-            <div class="note" style="margin-top:16px">模型未被调用：确定性证据已足以给出可执行建议（置信度 0.85）。若需模型复核，请勾选「显式请求模型增强」。</div>
-
-            <h2 style="margin-top:18px">补充上下文后重新判断</h2>
-            <p class="sub">发现「未判定」时，正确的动作是补上缺失的证据来源，而不是让模型猜。补充内容会作为上下文记录在任务里。</p>
-            <textarea class="textarea" id="supplementText" rows="3" placeholder="例如：粘贴 EXPLAIN JSON 快照，或补充「该表约 2000 万行，status 取值 6 种」"></textarea>
-            <div class="row" style="margin-top:10px">
-              <button class="btn " onclick="applySupplement()">补入上下文并重新判断</button>
-              <span class="hint">重新判断会生成一次新的执行记录；旧的发现保留在任务历史里，不会被覆盖。</span>
-            </div>
-            <p class="msg" id="supplementMessage"></p>
-            </div><!-- /sqlResultBody -->
           </div>
         </div>
       </section>
 
-      <!-- TASKS -->
-      <section class="view" id="view-tasks">
-        <div class="page-head">
-          <p class="eyebrow">TASKS</p>
-          <h1>任务与证据时间线</h1>
-          <p>执行状态与实际工具输出分开呈现；完成状态不等于已证明性能提升。</p>
-          <details class="why"><summary>为什么「完成」不等于「已证明」</summary><div class="why-body">完成只说明流程每个节点都跑完了。要称为证明，需要有<b>独立的 before / after 证据</b>（执行计划或实测耗时），因此任务详情把执行状态与实际工具输出分开呈现，不让「跑完」顶替「有效」。</div></details>
-        </div>
-
-        <div class="card">
-          <div class="toolbar">
-            <div>
-              <h2>任务历史</h2>
-              <p class="sub">一次分析 = 一条任务记录。点任一行，下面的执行时间线与「上下文详情」一起切换。</p>
-            </div>
-            <div class="controls">
-              <select id="taskFilter" onchange="renderTasks()" aria-label="按状态筛选">
-                <option value="">全部状态</option>
-                <option value="completed">已完成</option>
-                <option value="partial">部分完成</option>
-                <option value="running">执行中</option>
-                <option value="interrupted">已中断</option>
-              </select>
-            </div>
-          </div>
-          <table class="tight" style="margin-top:14px">
-            <thead><tr><th>目标</th><th>专家</th><th>状态</th><th>决策</th><th>模型</th><th>耗时</th><th style="text-align:right">操作</th></tr></thead>
-            <tbody id="taskRows"></tbody>
-          </table>
-          <p class="hint" id="taskEmpty" style="display:none">没有符合筛选条件的任务。</p>
-          <p class="msg" id="taskMessage"></p>
-        </div>
-
-        <div class="card">
-          <div class="row" style="justify-content:space-between">
-            <div>
-              <h2>执行时间线</h2>
-              <p class="sub" id="timelineSub">尚未选择任务</p>
-            </div>
-            <span class="chip" id="timelineChip">—</span>
-          </div>
-          <div class="timeline" id="timeline"></div>
-        </div>
-      </section>
 
       <!-- EXPERTS -->
       <section class="view" id="view-experts">
@@ -861,7 +824,7 @@ LIMIT 20;</textarea>
         <div class="subview active" data-route="list" role="region" aria-label="专家清单">
           <div class="page-head">
             <p class="eyebrow">EXPERTS</p>
-            <h1>专家工作室</h1>
+            <h1>专家定义</h1>
             <p>添加能力节点、连接依赖、配置属性；保存只登记引用，启用后才授权读取。</p>
             <details class="why"><summary>为什么保存只登记引用，授权要单独一步</summary><div class="why-body">保存清单只是<b>登记引用</b>；只有「启用并授权」之后运行时才允许读取对应知识库与资料，停用会一并撤销。两步分开是为了让「定义了什么」和「被允许读什么」可以分别检查。</div></details>
           </div>
@@ -884,7 +847,7 @@ LIMIT 20;</textarea>
         所以子导航画在条目标题之下，而不是与区域标题并排。 -->
         <div class="subview" id="expertItem" data-route="item" role="region" aria-label="专家条目">
           <nav class="crumb" aria-label="当前位置">
-            <button class="crumb-back" onclick="go('experts')">← 专家工作室</button>
+            <button class="crumb-back" onclick="go('experts')">← 专家定义</button>
             <span class="crumb-sep" aria-hidden="true">/</span>
             <span class="crumb-here" id="expertCrumbFace">流程</span>
           </nav>
@@ -1811,10 +1774,9 @@ LIMIT 20;</textarea>
      切换页面立刻重置，绝不把上一页的选中项留在那里。
      ------------------------------------------------------------------ */
   const PAGES = {
-    overview:     { name:'概览',       pipeline:true,  hint:'本页是聚合视图：点击「最近任务」中的一行，这里显示该任务的决策与证据来源。' },
-    tasks:        { name:'任务',       pipeline:true,  hint:'点击左侧任一任务，这里显示执行时间线、状态机位置与证据来源。' },
-    sql:          { name:'SQL 分析室', pipeline:true,  hint:'点击任意一条发现，这里显示严重级、证据与语义保持建议。' },
-    experts:      { name:'专家工作室', pipeline:false, hint:'点一个已登记的专家，直接进入它的条目页（默认停在「流程」——那是它的本体）；这里显示它引用的能力、知识库与 MCP 工具授权。新建或复制出来的专家先停在「清单」把标识与名称补上。' },
+    chat: {name:'会话', pipeline:false, hint:'普通聊天不继承仓库或工具授权。工作区会话绑定创建时的工作区，选择已启用专家后才可在其授权范围内准备执行。'},
+    sql:          { name:'分析工作台', pipeline:true,  hint:'左侧点一条任务回放它的全过程；点任意一条发现，这里显示它的严重级、证据、语义保持建议与三个动作：复制建议 / 查看候选改写 / 标记忽略。' },
+    experts:      { name:'专家定义',   pipeline:false, hint:'点一个已登记的专家，直接进入它的条目页（默认停在「流程」——那是它的本体）；这里显示它引用的能力、知识库与 MCP 工具授权。新建或复制出来的专家先停在「清单」把标识与名称补上。' },
     rules:        { name:'规则库',     pipeline:false, hint:'点击任一规则包，这里显示它需要的能力与版本状态。' },
     knowledge:    { name:'知识库',     pipeline:false, hint:'点击任一知识库，这里显示文档数与检索方式。' },
     databases:    { name:'数据库资料', pipeline:false, hint:'点击「查看」，这里显示该资料的脱敏范围与索引覆盖。' },
@@ -1828,7 +1790,7 @@ LIMIT 20;</textarea>
      （capabilityDetail / publishedCapabilityDetail），列表与检查器不可能互相矛盾。 */
   const DETAIL = {};
 
-  let currentView = 'overview';
+  let currentView = 'sql';
 
   function setHint(text) { document.getElementById('inspHint').textContent = text; }
 
@@ -1914,9 +1876,7 @@ LIMIT 20;</textarea>
   };
 
   const EMPTY_INSPECTOR = {
-    overview: '尚未选择任务。点击「最近任务」中的一行，这里会显示该任务的决策与证据来源。',
-    tasks: '尚未选择任务。点击任务列表中的一行查看证据时间线。',
-    sql: '尚未运行 SQL 分析。提交一段 SQL 后，这里会显示本次分析的证据与决策。',
+    sql: '尚未选择分析任务。左侧点一条任务回看它的全过程，或在底部输入框开始一次新的分析。',
     experts: '尚未选择专家。点击专家清单中的一项查看定义、授权与运行状态。',
     rules: '尚未选择规则包。点击规则包清单中的一项查看规则与启用状态。',
     knowledge: '尚未选择知识库。点击知识库清单中的一项查看来源、授权与文档。',
@@ -1936,6 +1896,7 @@ LIMIT 20;</textarea>
      所以有路由的区域自己带 skipPick。 */
   function setView(view, opts) {
     currentView = view;
+    document.body.classList.toggle('conversation-view', view === 'chat');
     document.querySelectorAll('#rail .nav').forEach(b => {
       const on = b.dataset.view === view;
       b.classList.toggle('active', on);
@@ -1954,7 +1915,8 @@ LIMIT 20;</textarea>
 
     // 页面自带的状态块要重新读一遍：否则显示的是上次离开这一页时的数字。
     if (view === 'desktop') renderShell();
-    if (view === 'overview') renderOverviewMetrics();
+    if (view === 'sql') renderOverviewMetrics();
+    if (view === 'chat') { setInspectorOpen(false); renderConversation(); }
 
     if (!opts?.skipPick) DEFAULT_PICK[view]?.();
     finishInspector();
@@ -1968,7 +1930,7 @@ LIMIT 20;</textarea>
      hashchange 是异步的，所以 go() 先写地址、再立刻渲染，用 appliedRoute 让
      随后到达的 hashchange 认出「已经渲染过」，不重复渲染。
      ------------------------------------------------------------------ */
-  const routeKey = () => (location.hash || '').replace(/^#/, '') || 'overview';
+  const routeKey = () => (location.hash || '').replace(/^#/, '') || 'chat';
 
   function readRoute(area, parts) {
     const seg = parts[1] || '';
@@ -2029,7 +1991,7 @@ LIMIT 20;</textarea>
     const parts = String(raw || '').split('/');
     const area = AREAS[parts[0]];
     if (area) { area.apply(readRoute(area, parts)); return; }
-    setView(parts[0] || 'overview');
+    setView(parts[0] || 'sql');
   }
 
   function go(raw) {
@@ -2059,7 +2021,7 @@ LIMIT 20;</textarea>
     if (button) showCapabilitySubview(button.dataset.subview);
   });
 
-  // 发现 → 检查器（SQL 分析室与规则库试算共用）。动态插入的发现也要能点，因此用统一的绑定函数。
+  // 发现 → 检查器（分析工作台与规则库试算共用）。动态插入的发现也要能点，因此用统一的绑定函数。
   function bindFindings(root) {
     root.querySelectorAll('.finding:not([data-bound])').forEach(el => {
       el.dataset.bound = '1';
@@ -2242,7 +2204,7 @@ LIMIT 20;</textarea>
       title:'未判定的规则：plan.seq_scan', chip:['warn','未判定'],
       meta:[['所属规则包','sql-snapshot-evidence'],['缺失能力','database.explain'],['相关事实','plan.seqScan'],
             ['当前状态','未判定 ≠ 通过'],['补足方式','给流程加上 database.explain 节点，并提供 EXPLAIN JSON 快照']],
-      body:'规则读取的事实没有被产出，因此这条规则既不命中也不被跳过——它被单独列为「未判定」。把缺失的能力节点补上（并在 SQL 分析室提供计划快照），它就会被真正判定。',
+      body:'规则读取的事实没有被产出，因此这条规则既不命中也不被跳过——它被单独列为「未判定」。把缺失的能力节点补上（并在 分析工作台提供计划快照），它就会被真正判定。',
       list:['缺少能力：database.explain（分析执行计划快照）','缺少事实：plan.seqScan、plan.nodeTypes','替代动作：若确实拿不到计划快照，取消勾选这个规则包——但请明确这是「放弃判定」']
     }, '已选中：<b>未判定的规则</b>');
   }
@@ -2281,25 +2243,39 @@ LIMIT 20;</textarea>
 
   function runAnalysis() {
     if (analysisRunning) return;
+    if (pendingConversationAnalysis) {
+      const origin = CONVERSATIONS.find(c => c.id === pendingConversationAnalysis.id);
+      const expert = origin && conversationExpert(origin);
+      if (!expert?.enabled || expert.revision !== pendingConversationAnalysis.revision || origin.workspace !== currentWorkspace)
+        return setMessage('sqlMessage','err','会话专家授权、修订或工作区已变化，请返回会话重新带入，不使用旧配置执行。');
+    }
     analysisRunning = true;
     const button = document.getElementById('runButton');
-    const status = document.getElementById('sqlStatus');
-    const body = document.getElementById('sqlResultBody');
     button.disabled = true;
     button.textContent = '分析中…';
-    status.className = 'chip warn';
-    status.textContent = 'running';
     setMessage('sqlMessage','info','正在执行：解析 SQL → 检索授权知识 → 读取脱敏快照 → 决策层判定。默认不连接数据库、不执行输入 SQL。');
-    setMessage('sqlResultMessage','info','流程执行中；结果会在完成后替换下方内容。');
-    if (body) body.style.opacity = '.45';
 
+    // 一次「开始分析」= 一条新任务：立即出现在左侧列表并选中，中间的任务流从这一刻开始回放。
+    const goal = (document.getElementById('fld572')?.value || '').trim();
+    const clause = goal.split(/[，。；\n]/)[0].slice(0, 24) || '未命名目标';
     const task = {
-      id:`t${Date.now().toString().slice(-6)}`, target:'优化订单关联查询（当前输入）', expert:'orders-sql',
+      id:`t${Date.now().toString().slice(-6)}`, target:`${clause}（当前输入）`, expert:'orders-sql',
       workspace: currentWorkspace, status:'running', decision:'—', model:'未调用', duration:'—',
-      nodes:0, findings:0, confidence:0, unjudged:0, steps:[]
+      nodes:0, findings:0, confidence:0, unjudged:0, report:null, steps:[]
     };
     TASKS.unshift(task);
+    if (pendingConversationAnalysis) {
+      const c = CONVERSATIONS.find(x => x.id === pendingConversationAnalysis.id);
+      task.expert = c.expertId;
+      c.links.push(task.id);
+      c.messages.push({role:'assistant',scope:conversationScope(c),text:'已关联演示任务 ' + task.id + '。这是原型模拟执行；可在会话中打开该记录，历史上下文不会被后续设置修改。'});
+      pendingConversationAnalysis = null;
+    }
+    selectedTaskId = task.id;
     renderTasks();
+    renderStream(task);
+    // jsdom 没有实现 scrollIntoView；原型里它是「把任务流滚到顶部」的提示，失败不影响状态。
+    try { document.getElementById('studioStream')?.scrollIntoView?.({ behavior:'smooth', block:'start' }); } catch (error) { void error; }
 
     setTimeout(() => {
       // 这条任务可能已经被「关闭窗口」标记为中断：中断是终态，不许定时器把它覆盖成完成。
@@ -2307,7 +2283,6 @@ LIMIT 20;</textarea>
         analysisRunning = false;
         button.disabled = false;
         button.textContent = '开始分析';
-        if (body) body.style.opacity = '1';
         return;
       }
       const requested = document.getElementById('requestModel')?.checked;
@@ -2327,21 +2302,20 @@ LIMIT 20;</textarea>
           ? { capability:'model', title:'模型增强 · LlmGateway', detail:'按你的显式请求压缩证据后调用模型；输出仅为待验证观察，不改变确定性发现。', meta:'压缩比 0.78 · 待验证观察', state:'warn' }
           : { capability:'decision', title:'决策层 · DecisionProvider', detail:'确定性证据已足够 → skip，未调用模型。', meta:'rule-based · 1ms', state:'warn' }
       ];
+      // 报表跟着这次执行走（原型里与 t1 同构；真实控制台这里是后端返回的执行结果）。
+      const report = JSON.parse(JSON.stringify(REPORT_T1));
+      task.report = report;
       analysisRunning = false;
       button.disabled = false;
       button.textContent = '开始分析';
-      status.className = 'chip ' + (requested ? 'warn' : 'ok');
-      status.textContent = requested ? 'partial' : 'completed';
-      if (body) body.style.opacity = '1';
+      renderTasks();
+      renderStream(task);
+      // 状态条芯片用执行状态原值（completed / partial），与任务列表的中文标签是同一状态的两个呈现。
+      const chip = document.getElementById('sqlStatus');
+      if (chip) { chip.className = 'chip ' + (requested ? 'warn' : 'ok'); chip.textContent = requested ? 'partial' : 'completed'; }
       setMessage('sqlMessage', requested ? 'warn' : 'ok', requested
         ? '分析完成：按显式请求调用了模型。模型输出是待验证观察，不会改变确定性发现，也不会把任务标记为完成。'
-        : '分析完成：确定性证据已足够，未消耗模型预算。完成不等于性能已被实测证明。');
-      setMessage('sqlResultMessage','ok','结果已更新，同时写入了任务历史（可在「任务」页看到这条新记录）。');
-      renderTasks();
-      renderTimeline(task);
-      selectedTaskId = task.id;
-      renderTasks();
-      reveal(document.getElementById('resultCard'));
+        : '分析完成：确定性证据已足够，未消耗模型预算。完成不等于性能已被实测证明。结果已写入左侧任务列表。');
     }, 420);
   }
 
@@ -2687,7 +2661,7 @@ LIMIT 20;</textarea>
       </div>
       <div id="profileIndexRows"></div>
       <p class="hint" id="profileStructureHint" style="margin-top:var(--sp-3)">索引列请按顺序填写：规则只回答「有没有以该列为前导的索引」，顺序错了结论就错了。</p>
-      <p class="requirement-line">保存后不会自动授权给任何专家：专家需要在专家工作室中显式选择这份资料，并在启用时才会写入读取授权。</p>`;
+      <p class="requirement-line">保存后不会自动授权给任何专家：专家需要在专家定义中显式选择这份资料，并在启用时才会写入读取授权。</p>`;
   }
 
   function openProfileDrawer(title, sub) {
@@ -3975,17 +3949,74 @@ LIMIT 20;</textarea>
      所以点任一行三处一起变，不会出现「列表换了、时间线还是上一条」。
      ================================================================== */
   const DEFAULT_WORKSPACE = 'engineering-automation-platform';
+  /* 任务的「报表」（发现、规则包需求、事实、建议、知识依据）不再是写死在 HTML 里的静态块：
+     它跟着任务走（task.report），选中谁就渲染谁的——否则选中 t3 时展示的还是 t1 的发现。 */
+  const REPORT_T1 = {
+    deterministicNote:'4 条发现 · 置信度 0.85',
+    decision:{ cls:'skip', label:'skip', sub:'证据已足够，跳过模型 · 点开看依据', clickable:true },
+    model:{ cls:'', label:'未调用', sub:'节省 100% 消耗' },
+    findings:[
+      { id:'f1', sev:'high', code:'predicate.function_on_column', cat:'谓词', ev:'函数包裹了列：UPPER → c.name 上的普通索引无法使用（非 sargable）。' },
+      { id:'f2', sev:'high', code:'predicate.like.leading_wildcard', cat:'谓词', ev:"模式 '%张%' 以 % 开头，前缀索引失效。" },
+      { id:'f3', sev:'medium', code:'projection.select_star', cat:'投影', ev:'示例：投影包含通配符会阻碍覆盖索引与列裁剪。', sample:true },
+      { id:'f4', sev:'low', code:'join.equality', cat:'连接', ev:'关联 o.customer_id = c.id：需核对类型、唯一性与索引前导列。' }
+    ],
+    packs:['SQL 结构反模式规则包 · 21 条规则 · 需要 sql.parse', '团队查询规范 · 6 条规则 · 需要 sql.parse'],
+    requirements:[
+      { id:'sql-antipatterns', need:'需要：sql.parse' },
+      { id:'team-sql-snapshot', warn:'缺少 database.explain', need:'需要：sql.parse、database.schema.read、database.index.read、database.explain' }
+    ],
+    unjudged:{ code:'plan.seq_scan', cap:'database.explain', fact:'plan.seqScan' },
+    facts:[['join.count','1'],['predicate.functionOnColumn','UPPER'],['predicate.leadingWildcardLike','是'],['select.allColumns','否'],['table.list','orders、customer']],
+    suggestions:[
+      '将 <span class="kbd">upper(c.name) LIKE \'%张%\'</span> 改为不可下推的表达式索引，或改用 <span class="kbd">c.name LIKE \'张%\'</span>（若业务允许前缀匹配）。',
+      '为 <span class="kbd">orders(created_at DESC)</span> 或 <span class="kbd">orders(customer_id, created_at)</span> 评估复合索引，配合稳定排序分页。',
+      '明确投影列，避免通配符，使覆盖索引成为可能。'
+    ],
+    kbs:[
+      { src:'dba / index-guide.md', txt:'前导通配符与函数包裹列都会使 B-Tree 索引失效；优先考虑表达式索引或改写为范围条件。' },
+      { src:'orders-runbook / pagination.md', txt:'分页必须配合稳定唯一排序键，否则翻页可能丢行或重复。' }
+    ],
+    note:'模型未被调用：确定性证据已足以给出可执行建议（置信度 0.85）。若需模型复核，请在底部输入区勾选「显式请求模型增强」。'
+  };
+  const REPORT_T3 = {
+    deterministicNote:'3 条发现 · 置信度 0.61',
+    decision:{ cls:'model', label:'needs-review', sub:'复杂度超过阈值 · 点开看依据', clickable:true },
+    model:{ cls:'model', label:'已调用', sub:'压缩比 0.82 · 输出为待验证观察' },
+    findings:[
+      { id:'g1', sev:'medium', code:'schema.type_mismatch', cat:'结构', ev:'关联列类型不一致：orders.customer_id 与 customer.id。' },
+      { id:'g2', sev:'low', code:'index.uncovered_join', cat:'连接', ev:'两个关联列中有一个没有前导索引。' },
+      { id:'g3', sev:'medium', code:'projection.select_star', cat:'投影', ev:'聚合查询的投影未按分组键收敛。', sample:true }
+    ],
+    packs:['SQL 结构反模式规则包 · 21 条规则 · 需要 sql.parse'],
+    requirements:[
+      { id:'sql-snapshot-evidence', warn:'缺少 database.explain', need:'需要：sql.parse、database.schema.read、database.index.read、database.explain' }
+    ],
+    unjudged:{ code:'plan.seq_scan', cap:'database.explain', fact:'plan.seqScan' },
+    facts:[['join.count','3'],['select.allColumns','是'],['table.list','orders、customer、order_item']],
+    suggestions:[
+      '统一关联列类型，或为转换后的表达式建索引：隐式转换会让索引失效。',
+      '为缺失前导索引的关联列评估索引；先确认过滤选择率。',
+      '聚合查询明确列出分组键与聚合列，减少中间结果集。'
+    ],
+    kbs:[
+      { src:'dba / index-guide.md', txt:'前导通配符与函数包裹列都会使 B-Tree 索引失效；优先考虑表达式索引或改写为范围条件。' }
+    ],
+    note:'模型输出已附加，但它是待验证观察：不改变上面的确定性发现，也不把任务标记为完成。'
+  };
   let TASKS = [
     { id:'t1', target:'优化订单关联查询（慢查询）', expert:'orders-sql', workspace:DEFAULT_WORKSPACE,
-      status:'completed', decision:'accepted', model:'未调用', duration:'0.42s', nodes:4, findings:5, confidence:0.85, unjudged:0,
+      status:'completed', decision:'accepted', model:'未调用', duration:'0.42s', nodes:4, findings:4, confidence:0.85, unjudged:0,
+      report:REPORT_T1,
       steps:[
-        { capability:'sql.parse', title:'解析 SQL · sql.parse', detail:'平台使用 SQL AST 独立解析输入，生成 5 条结构化发现。', meta:'exit 0 · 12ms', state:'ok' },
+        { capability:'sql.parse', title:'解析 SQL · sql.parse', detail:'平台使用 SQL AST 独立解析输入，生成 4 条结构化发现。', meta:'exit 0 · 12ms', state:'ok' },
         { capability:'knowledge.search', title:'检索优化知识 · knowledge.search', detail:'命中 2 条授权知识，已附来源引用。', meta:'local-keyword · 9ms', state:'ok' },
         { capability:'database.index.read', title:'读取授权索引快照 · database.index.read', detail:'读取人工登记的脱敏快照，非实时数据库状态。', meta:'snapshot · 4ms', state:'ok' },
         { capability:'decision', title:'决策层 · DecisionProvider', detail:'确定性证据已足够 → skip，未调用模型。', meta:'rule-based · 1ms', state:'warn' }
       ] },
     { id:'t3', target:'复杂多表聚合的性能复核', expert:'orders-sql', workspace:DEFAULT_WORKSPACE,
       status:'partial', decision:'needs-review', model:'已调用', duration:'2.10s', nodes:4, findings:3, confidence:0.61, unjudged:1,
+      report:REPORT_T3,
       steps:[
         { capability:'sql.parse', title:'解析 SQL · sql.parse', detail:'生成 3 条结构化发现。', meta:'exit 0 · 15ms', state:'ok' },
         { capability:'database.schema.read', title:'读取授权表结构 · database.schema.read', detail:'脱敏快照；有一处关联列类型不一致。', meta:'snapshot · 6ms', state:'warn' },
@@ -3995,6 +4026,7 @@ LIMIT 20;</textarea>
       ] },
     { id:'t2', target:'检查仓库 Git 状态与差异范围', expert:'sql-expert', workspace:DEFAULT_WORKSPACE,
       status:'completed', decision:'accepted', model:'未调用', duration:'0.18s', nodes:2, findings:0, confidence:1, unjudged:0,
+      report:null,
       steps:[
         { capability:'git-status', title:'读取本地 Git 状态 · git-status', detail:'只读执行 git status，输出先脱敏再入库。', meta:'exit 0 · 41ms', state:'ok' },
         { capability:'git-diff', title:'读取本地差异 · git-diff', detail:'3 个文件有改动；没有修改工作区，也没有推送。', meta:'exit 0 · 62ms', state:'ok' },
@@ -4045,7 +4077,7 @@ LIMIT 20;</textarea>
     set('ovCapV', String(CAPABILITIES.length));
     set('ovCapD', (off ? off + ' 已停用 · ' : '') + kinds);
 
-    // ② 专家定义：与「专家工作室」读同一份 EXPERTS。
+    // ② 专家定义：与「专家定义」读同一份 EXPERTS。
     const builtin = EXPERTS.filter(e => e.builtin).length;
     set('ovExpertV', String(EXPERTS.length));
     set('ovExpertD', builtin + ' 内置 · ' + (EXPERTS.length - builtin) + ' 自定义 · '
@@ -4077,46 +4109,139 @@ LIMIT 20;</textarea>
   function renderTasks() {
     const filter = document.getElementById('taskFilter')?.value || '';
     const rows = TASKS.filter(t => t.workspace === currentWorkspace && (!filter || t.status === filter));
-    const body = document.getElementById('taskRows');
-    if (!body) return;
-    body.innerHTML = rows.map(t => {
+    const host = document.getElementById('taskRows');
+    if (!host) return;
+    // 任务列表是「会话列表」形状：每条任务一个可点条目，选中态由状态渲染（.sel-row），不靠表格行。
+    host.innerHTML = rows.map(t => {
       const [chipKind, chipText] = STATUS_TEXT[t.status] || ['','—'];
       return `
-      <tr class="clickable${t.id === selectedTaskId ? ' sel-row' : ''}" onclick="inspectTask('${t.id}', this)">
-        <td><b>${esc(t.target)}</b><div class="hint mono">${esc(t.id)}</div></td>
-        <td>${esc(t.expert)}</td>
-        <td><span class="chip ${chipKind}">${chipText}</span></td>
-        <td>${esc(t.decision)}</td>
-        <td>${esc(t.model)}</td>
-        <td>${esc(t.duration)}</td>
-        <td style="text-align:right;white-space:nowrap">
-          <button class="btn ghost" onclick="event.stopPropagation();rerunTask('${t.id}')">重新运行</button>
-          <button class="btn ghost" onclick="event.stopPropagation();copyTaskId('${t.id}')">复制标识</button>
-        </td>
-      </tr>`;
+      <button type="button" class="task-item clickable${t.id === selectedTaskId ? ' sel-row' : ''}" data-task="${esc(t.id)}" onclick="inspectTask('${t.id}', this)">
+        <span class="task-item-main"><b>${esc(t.target)}</b><span class="hint mono">${esc(t.id)} · ${esc(t.expert)}</span></span>
+        <span class="chip ${chipKind}">${chipText}</span>
+      </button>`;
     }).join('');
     document.getElementById('taskEmpty').style.display = rows.length ? 'none' : 'block';
 
-    // 概览页的「最近任务」读同一份状态，避免两处显示不同的东西。
-    const overview = document.getElementById('overviewTaskRows');
-    if (overview) {
-      const recent = TASKS.filter(t => t.workspace === currentWorkspace).slice(0, 5);
-      overview.innerHTML = recent.map(t => {
-        const [chipKind, chipText] = STATUS_TEXT[t.status] || ['','—'];
-        return `<tr class="clickable${t.id === selectedTaskId ? ' sel-row' : ''}" onclick="inspectTask('${t.id}', this)">
-          <td>${esc(t.target)}</td>
-          <td><span class="chip ${chipKind}">${chipText}</span></td>
-          <td>${esc(t.decision)}</td>
-          <td>${esc(t.model)}</td>
-          <td>${esc(t.duration)}</td>
-        </tr>`;
-      }).join('');
-    }
-
-    // 「关闭窗口」那一块也读同一份任务状态，任务一变它就要跟着变。
+    // 概览页已并入状态条，但「关闭窗口」与状态条指标仍然读同一份任务状态。
     renderCloseRunning();
-    // 概览的指标卡挂在任务渲染上：任何改变任务的路径都会走过这里。
     renderOverviewMetrics();
+  }
+
+  /* ------------------------------------------------------------------
+     任务流：请求置顶 → 执行过程 → 报表（发现 / 需求 / 事实 / 建议 / 依据）。
+     选中谁就渲染谁；没有报表的任务（如本地 CLI 任务）只显示执行过程并说明原因。
+     ------------------------------------------------------------------ */
+  function renderStream(task) {
+    const empty = document.getElementById('streamEmpty');
+    const body = document.getElementById('taskStreamBody');
+    if (!empty || !body) return;
+    empty.hidden = true;
+    body.hidden = false;
+
+    const [chipKind, chipText] = STATUS_TEXT[task.status] || ['','—'];
+    document.getElementById('taskRequest').innerHTML = `
+      <div class="row" style="justify-content:space-between;gap:8px;align-items:flex-start">
+        <div style="min-width:0"><b>${esc(task.target)}</b>
+          <p class="hint mono" style="margin:4px 0 0">${esc(task.id)} · ${esc(task.expert)} · ${esc(task.workspace)} · 耗时 ${esc(task.duration)}</p></div>
+        <span class="chip ${chipKind}" id="sqlStatus">${esc(task.status)}</span>
+      </div>
+      <div class="row" style="margin-top:10px;gap:8px">
+        <button class="btn ghost" onclick="rerunTask('${task.id}')">重新运行</button>
+        <button class="btn ghost" onclick="copyTaskId('${task.id}')">复制标识</button>
+      </div>`;
+
+    const result = document.getElementById('sqlResultBody');
+    if (task.report) {
+      result.hidden = false;
+      result.innerHTML = renderReport(task);
+      bindFindings(result);
+    } else {
+      result.hidden = false;
+      result.innerHTML = '<div class="note" style="margin-top:18px">本任务没有 SQL 发现：它的证据是本地只读命令的输出（见上面的执行过程），不产出结构化事实。</div>';
+    }
+    renderTimeline(task);
+  }
+
+  function renderReport(task) {
+    const r = task.report;
+    const stage = (cls, n, t, s, clickable) =>
+      `<div class="stage ${cls}${clickable ? ' clickable' : ''}"${clickable ? ' onclick="showDecisionDetail()"' : ''}><div class="n">${n}</div><div class="t">${esc(t)}</div><div class="s">${esc(s)}</div></div>`;
+    return `
+      <div class="pipeline" style="margin-top:20px" id="sqlPipeline">
+        <div class="stage done"><div class="n">1 · 确定性</div><div class="t">已完成</div><div class="s" id="sqlDeterministicNote">${esc(r.deterministicNote)}</div></div>
+        ${stage(r.decision.cls, '2 · 决策', r.decision.label, r.decision.sub, r.decision.clickable)}
+        ${stage(r.model.cls, '3 · 模型', r.model.label, r.model.sub, false)}
+      </div>
+      <p class="hint">点击发现后，可在「上下文详情」中复制建议、查看候选改写（只展示差异，<b>不会自动执行</b>）、标记忽略。忽略只影响本页展示，不改动规则判定。</p>
+
+      <div class="findings" id="findings">
+        ${r.findings.map(f => `
+        <div class="finding" data-id="${esc(f.id)}" data-sev="${esc(f.sev)}" data-code="${esc(f.code)}" data-cat="${esc(f.cat)}" data-ev="${esc(f.ev)}">
+          <span class="sev ${esc(f.sev)}">${esc(f.sev)}</span>
+          <div>
+            <div class="code">${esc(f.code)}${f.sample ? '（示例）' : ''}</div>
+            <p class="evidence">${esc(f.ev)}</p>
+            <div class="cat">类别：${esc(f.cat)}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+
+      <h2 style="margin-top:18px">适用规则包</h2>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
+        ${r.packs.map(p => `<span class="chip">${esc(p)}</span>`).join('')}
+      </div>
+
+      <h2 style="margin-top:18px">规则包能力需求</h2>
+      <p class="sub" style="margin-top:6px">规则读取事实，事实由能力产出。下面列出每个规则包需要的能力，以及本次流程是否真的执行了它们。</p>
+      ${r.requirements.map(q => `
+      <div class="requirement">
+        <code class="mono">${esc(q.id)}</code><span class="chip ${q.warn ? 'warn' : 'ok'}">${q.warn ? esc(q.warn) : '能力齐备'}</span>
+        <span class="hint">${esc(q.need)}</span>
+      </div>`).join('')}
+      ${r.unjudged ? `
+      <p class="hint clickable" style="margin-top:8px" onclick="showUnjudgedDetail()">
+        未判定的规则（1）：<span class="mono">${esc(r.unjudged.code)}</span> · 缺少能力 ${esc(r.unjudged.cap)} · 相关事实 ${esc(r.unjudged.fact)}。
+        这 <b>不等于</b> 没有发现问题。<b>点开看怎么补。</b>
+      </p>` : ''}
+
+      <details style="margin-top:12px">
+        <summary>命中事实（${r.facts.length}）</summary>
+        <p class="sub" style="margin-top:8px">发现来自这些结构事实；规则包只能引用词表中已声明的事实，所以每条发现都可解释。</p>
+        <table>
+          <thead><tr><th>事实</th><th>值</th></tr></thead>
+          <tbody>
+            ${r.facts.map(([k, v]) => `<tr><td class="mono">${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </details>
+
+      <h2 style="margin-top:18px">优化建议（确定性，语义保持）</h2>
+      <ol style="padding-left:20px;line-height:1.9;margin:8px 0 0;font-size:13px;color:var(--text)">
+        ${r.suggestions.map(s => `<li>${s}</li>`).join('')}
+      </ol>
+
+      <details style="margin-top:16px" open>
+        <summary>知识依据（${r.kbs.length}）</summary>
+        ${r.kbs.map(k => `<div class="kb"><b>${esc(k.src)}</b><p>${esc(k.txt)}</p></div>`).join('')}
+      </details>
+
+      ${r.note ? `<div class="note" style="margin-top:16px">${r.note}</div>` : ''}
+
+      <h2 style="margin-top:18px">补充上下文后重新判断</h2>
+      <p class="sub">发现「未判定」时，正确的动作是补上缺失的证据来源，而不是让模型猜。补充内容会作为上下文记录在任务里。</p>
+      <textarea class="textarea" id="supplementText" rows="3" placeholder="例如：粘贴 EXPLAIN JSON 快照，或补充「该表约 2000 万行，status 取值 6 种」"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn " onclick="applySupplement()">补入上下文并重新判断</button>
+        <span class="hint">重新判断会生成一次新的执行记录；旧的发现保留在任务历史里，不会被覆盖。</span>
+      </div>
+      <p class="msg" id="supplementMessage"></p>`;
+  }
+
+  function focusComposer() {
+    const box = document.getElementById('composer');
+    const goal = document.getElementById('fld572');
+    try { box?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }); } catch (error) { void error; }
+    goal?.focus();
   }
 
   function renderTimeline(task) {
@@ -4150,7 +4275,7 @@ LIMIT 20;</textarea>
     if (!task) return;
     selectedTaskId = id;
     renderTasks();
-    renderTimeline(task);
+    renderStream(task);
     showDetail('task', id, el);
   }
 
@@ -4160,10 +4285,10 @@ LIMIT 20;</textarea>
     const copy = JSON.parse(JSON.stringify(source));
     copy.id = `t${Date.now().toString().slice(-6)}`;
     copy.status = 'running';
-    copy.decision = '—'; copy.model = '未调用'; copy.duration = '—'; copy.steps = [];
+    copy.decision = '—'; copy.model = '未调用'; copy.duration = '—'; copy.steps = []; copy.report = null;
     TASKS.unshift(copy);
     renderTasks();
-    renderTimeline(copy);
+    if (currentView === 'sql') renderStream(copy); else renderTimeline(copy);
     setMessage('taskMessage','info',
       `已按原配置重新提交（新任务 ${copy.id}）。执行会生成一条新记录，旧记录与它的证据保持原样——不会覆盖历史。` +
       `真实控制台在这里调用的是 POST /api/experts/${source.expert}/execute，而不是把上一条任务改一遍。`);
@@ -4172,8 +4297,9 @@ LIMIT 20;</textarea>
       copy.status = source.status;
       copy.decision = source.decision; copy.model = source.model; copy.duration = source.duration;
       copy.steps = JSON.parse(JSON.stringify(source.steps));
+      copy.report = source.report ? JSON.parse(JSON.stringify(source.report)) : null;
       renderTasks();
-      if (selectedTaskId === copy.id) renderTimeline(copy);
+      if (selectedTaskId === copy.id) renderStream(copy);
       setMessage('taskMessage','ok', `任务 ${copy.id} 已完成。历史记录仍然保留，可以对比两次执行的证据。`);
     }, 400);
   }
@@ -5682,7 +5808,15 @@ LIMIT 20;</textarea>
     currentWorkspace = id;
     renderWorkspaces();
     closeMenus();
+    // 任务是工作空间作用域的：选中的任务不属于新空间时，任务流一并回到空态——
+    // 不允许「列表已经是别的空间、中间还放着上一个空间的分析结果」这种错位。
+    const selected = TASKS.find(t => t.id === selectedTaskId);
+    if (!selected || selected.workspace !== id) selectedTaskId = null;
     renderTasks();
+    if (document.getElementById('streamEmpty')) {
+      document.getElementById('streamEmpty').hidden = !selectedTaskId ? false : true;
+      document.getElementById('taskStreamBody').hidden = !selectedTaskId;
+    }
     const visible = TASKS.filter(t => t.workspace === id).length;
     setStatus(`已切换到 ${id}`);
     setMessage('taskMessage','info',
@@ -6346,14 +6480,109 @@ LIMIT 20;</textarea>
   }
 
   function runAnalysisFromTopbar() {
-    setView('sql');
+    // 走路由而不是直接 setView：地址是唯一真源，顶栏按钮把人带到哪一页也必须体现在地址里。
+    go('sql');
     runAnalysis();
   }
 
   /* ------------------------------------------------------------------
      初始化：先渲染所有状态驱动面板，再进入默认视图。
      ------------------------------------------------------------------ */
+  // Conversation state is deliberately separate from TASKS (one conversation, many runs).
+  const CONVERSATIONS = [];
+  let activeConversationId = null;
+  let pendingConversationAnalysis = null;
+  const activeConversation = () => CONVERSATIONS.find(c => c.id === activeConversationId);
+  function newConversation(kind) {
+    const c = {id:demoUuid(), kind, workspace:kind === 'workspace' ? currentWorkspace : null,
+      expertId:'', messages:[], draft:'', links:[]};
+    CONVERSATIONS.unshift(c);
+    selectConversation(c.id);
+  }
+  function selectConversation(id) {
+    const previous = activeConversation();
+    if (previous) previous.draft = document.getElementById('conversationInput').value;
+    activeConversationId = id;
+    renderConversation();
+    document.getElementById('conversationInput').value = activeConversation()?.draft || '';
+  }
+  function conversationExpert(c) { return EXPERTS.find(e => e.id === c.expertId); }
+  function conversationScope(c) {
+    const e = conversationExpert(c);
+    return c.kind === 'plain' ? '普通聊天 · 无目录、无专家授权、无工具调用'
+      : `${c.workspace} · ${e ? `${e.name} r${e.revision} · ${e.enabled ? '已启用' : '已失效，禁止执行'}` : '尚未选择专家，不执行工具'}`;
+  }
+  function chooseConversationExpert(id) {
+    const c = activeConversation();
+    if (!c || c.kind !== 'workspace') return;
+    c.expertId = id;
+    renderConversation();
+  }
+  function renderConversation() {
+    const c = activeConversation();
+    document.getElementById('conversationList').innerHTML = CONVERSATIONS.map(item =>
+      `<button class="task-item${item.id === activeConversationId ? ' sel-row' : ''}" onclick="selectConversation('${item.id}')"><span><b>${esc(item.messages[0]?.text.slice(0,24) || (item.kind === 'plain' ? '新的普通聊天' : '新的工作区会话'))}</b><br><small>${esc(item.workspace || '不绑定工作区')} · ${item.messages.filter(m => m.role === 'user').length} 条输入</small></span></button>`).join('');
+    if (!c) return;
+    const e = conversationExpert(c);
+    document.getElementById('conversationHeading').innerHTML = `<h2>${c.kind === 'plain' ? '普通聊天' : '工作区会话'}</h2><p class="hint">${esc(conversationScope(c))}</p>${c.links.map(id => `<button class="btn ghost" onclick="openConversationTask('${id}')">查看演示执行 ${esc(id)}</button>`).join('')}`;
+    document.getElementById('conversationContext').innerHTML = c.kind === 'plain'
+      ? '<p>仅使用本会话消息。不会因为顶部选中了工作区就读取目录，也不会自动读取知识库、数据库资料或 CLI/MCP 配置。需要分析项目时，请新建工作区会话；原消息不会自动转移。</p>'
+      : `<p>绑定：<b>${esc(c.workspace)}</b>。这是客户端演示标记，不代表后端执行目录已切换；实际目录由 EAP_WORKSPACE / 桌面外壳确定，执行前必须核对。</p>
+        <label>本会话专家 <select class="select" onchange="chooseConversationExpert(this.value)"><option value="">不选择（只讨论）</option>${EXPERTS.map(x => `<option value="${esc(x.id)}" ${x.id === c.expertId ? 'selected' : ''} ${!x.enabled ? 'disabled' : ''}>${esc(x.name)} · r${x.revision}${x.enabled ? '' : ' · 草稿/停用'}</option>`).join('')}</select></label>
+        ${e ? `<p>知识库：${e.knowledge.map(esc).join('、') || '无'}<br>数据库资料：${e.profiles.map(id => esc(PROFILES.find(p => p.id === id)?.label || id)).join('、') || '无'}<br>规则包：${e.rulePacks.map(esc).join('、') || '无'}<br>流程能力：${e.nodes.map(n => esc(n.capability)).join('、') || '无'}<br>MCP：${e.mcpTools.map(esc).join('、') || '无'}</p>` : ''}
+        <p class="hint">以上是当前专家声明的范围，不代表本轮已经读取。知识命中片段、资料快照与工具输出须在实际执行后作为来源引用出现。规则由专家流程执行，不作为聊天指令；CLI/MCP 不能通过聊天绕过专家授权。</p>
+        <p class="hint">配置在下一次执行前重新校验；草稿不生效，停用或撤权后阻止新执行。每次执行应记录所用修订与实际证据，历史消息保留原快照，不随设置变化改写。</p>
+        <button class="btn ghost" onclick="go('experts')">管理专家与授权</button>`;
+    document.getElementById('conversationMessages').innerHTML = c.messages.length
+      ? c.messages.map(m => `<article class="conversation-message ${m.role}"><small>${m.role === 'user' ? '你' : '助手 · 原型演示'} · ${esc(m.scope)}</small>${esc(m.text)}</article>`).join('')
+      : '<div class="stream-empty"><p class="stream-empty-title">从一个问题开始</p><p>可以先讨论思路，再显式带入分析。选中专家仅限定可用范围，不会立即执行或读取资料。</p></div>';
+  }
+  function sendConversationMessage(event) {
+    event.preventDefault();
+    const c = activeConversation();
+    const box = document.getElementById('conversationInput');
+    const text = box.value.trim();
+    if (!c || !text) return;
+    if (containsSecret(text)) { document.getElementById('conversationFeedback').textContent = '内容可能包含凭据或连接串，请移除后发送。'; return; }
+    const scope = conversationScope(c);
+    c.messages.push({role:'user', text, scope});
+    c.messages.push({role:'assistant', scope, text:c.kind === 'plain'
+      ? '已追加到本次普通聊天（演示）。我没有读取项目或管理配置，也没有调用模型。若要基于项目证据分析，请新建工作区会话。'
+      : '已保留你的补充（演示）。选择已启用专家后，可将本会话用户输入带入分析工作台，核对结构化输入并手动启动。当前没有执行工具，也未读取上面列出的资料。'});
+    c.draft = ''; box.value = '';
+    document.getElementById('conversationFeedback').textContent = '消息已追加；未产生执行任务。';
+    renderConversation();
+    const host = document.getElementById('conversationMessages'); host.scrollTop = host.scrollHeight;
+  }
+  function prepareConversationAnalysis() {
+    const c = activeConversation(); const e = c && conversationExpert(c);
+    const fail = text => { document.getElementById('conversationFeedback').textContent = text; };
+    if (!c || c.kind !== 'workspace') return fail('普通聊天不能执行项目工具，请新建工作区会话。');
+    if (c.workspace !== currentWorkspace) return fail('顶部工作区与会话绑定不一致，请先切回 ' + c.workspace + '，不会静默切换执行目录。');
+    if (!e?.enabled) return fail('请先选择当前已启用并授权的专家；停用或草稿不可执行。');
+    const inputs = c.messages.filter(m => m.role === 'user').map(m => m.text);
+    if (!inputs.length) return fail('请先发送目标或上下文，再带入分析。未发送草稿不会自动提交。');
+    document.getElementById('fld572').value = inputs.join('\n\n');
+    // Do not carry SQL / database / model choices from a different analysis into this conversation.
+    document.getElementById('sqlText').value = '';
+    document.getElementById('fld585').value = '';
+    document.getElementById('requestModel').checked = false;
+    const expertSelect = document.getElementById('expertSelect');
+    expertSelect.innerHTML = `<option>${esc(e.name)}</option>`;
+    const profileSelect = document.getElementById('fld583');
+    profileSelect.innerHTML = '<option>不使用数据库资料</option>' + e.profiles.map(id => `<option>${esc(PROFILES.find(p => p.id === id)?.label || id)}</option>`).join('');
+    pendingConversationAnalysis = {id:c.id,revision:e.revision};
+    go('sql');
+    setMessage('sqlMessage','info','来自会话的用户输入已带入目标。拟使用专家：' + esc(e.name) + ' r' + e.revision + '。请核对执行专家、SQL、资料与模型开关后手动开始；本原型尚未实现会话与真实任务的关联服务。');
+    document.getElementById('composerMore').open = true;
+    focusComposer();
+  }
+  function openConversationTask(id) {
+    go('sql');
+    selectTask(id);
+  }
   renderWorkspaces();
+  newConversation('plain');
   renderTasks();
   renderTimeline(TASKS.find(t => t.id === selectedTaskId));
   renderExperts();

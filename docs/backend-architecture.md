@@ -250,6 +250,42 @@ sequenceDiagram
   API-->>User: result + routing + citations
 ```
 
+## Persistence and migrations
+
+Flyway owns the `eap` schema (`V1` … `V12`) and validation runs on every start, which fixes three
+rules for how migrations are written. `SchemaAndWiringTest` parses the migration files themselves and
+enforces the first and the third, because both failures are invisible until the application refuses to
+start.
+
+**Never edit an applied migration.** Once a version is in `flyway_schema_history`, changing its text
+changes its checksum and the next start fails validation. Tables created before the gap was noticed are
+therefore documented in a *later* migration: `V11__schema_comments.sql` carries the `COMMENT ON`
+statements for everything V1–V8 created, while V9 and V12 comment their own. `MigrationConfiguration`
+deliberately never repairs an old checksum — adopting a pre-existing schema is a one-time, explicit
+operator action gated behind `EAP_ADOPT_EXISTING_SCHEMA`, which is why that flag is not set in
+`application.yml`.
+
+**Every table and every column carries a `COMMENT ON`**, and a comment states what a value *means*
+rather than restating its name. Where a column is an enumeration, the comment lists the vocabulary and
+says why the values are distinct: `eap.task.model_enhancement` separates `NULL` (never reached the
+judgement stage) from `skipped` (a model existed but deterministic evidence was decisive), because
+merging the two would inflate the 确定性覆盖 figure the overview prints.
+
+**Do not use a PostgreSQL reserved word as an identifier.** A column named `binary` is rejected by the
+parser outright: it is catalogued as category **T** ("reserved, can be function or type name"), so
+`CREATE TABLE t (binary text)` is a syntax error, not a warning. A scan of `pg_get_keywords()` limited to
+category `'R'` will **miss** it — check `T` as well. The CLI channel column is therefore `binary_path`;
+the JSON field the console reads remains `binary`, because that is a wire name and not an identifier.
+
+## Spring wiring
+
+The console's unit tests construct services by hand, so a class the container cannot instantiate passes
+every test and only fails at boot. `SchemaAndWiringTest` therefore also asserts that any bean with more
+than one constructor marks exactly one of them `@Autowired`: without it the container finds no
+no-argument constructor and refuses to guess which overload was meant. Five services had this defect
+(`CapabilityCatalog`, `ExpertDefinitionService`, `GitInspectionHandler`, `WorkspaceSearchHandler`,
+`CliChannels`), which meant the runtime had been unable to start at all.
+
 ## Target state machine (Phase 3+, not yet enforced)
 
 ```mermaid
