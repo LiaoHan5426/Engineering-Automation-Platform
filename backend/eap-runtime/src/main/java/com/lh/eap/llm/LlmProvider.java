@@ -8,6 +8,8 @@ package com.lh.eap.llm;
  * never into a fabricated answer. Provider output is always an unverified observation.
  */
 public interface LlmProvider {
+    /** Capture dynamic selection once for this SQL completion and its cache key. */
+    default LlmProvider forRequest() { return this; }
     /** Stable provider identifier used in audit records. */
     String id();
 
@@ -16,6 +18,11 @@ public interface LlmProvider {
 
     /** Human-readable model identifier for audit records. */
     String model();
+
+    /** Cache partition. Includes the connection revision when a saved connection is in use. */
+    default String cacheScope() {
+        return id() + ":" + model();
+    }
 
     /** Perform a single completion. Implementations must honour their own timeouts. */
     Result complete(Request request);

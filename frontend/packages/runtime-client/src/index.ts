@@ -445,6 +445,40 @@ export type AiConversation = {
   conversationId: string;
   workspaceLabel: string;
   memory: string;
+  connectionId?: string | null;
+  connectionName?: string | null;
+  connectionRevision?: number | null;
+};
+export type ModelConnection = {
+  id: string;
+  name: string;
+  kind: string;
+  enabled: boolean;
+  baseUrl: string;
+  model: string;
+  secretPresent: boolean;
+  revision: number;
+  defaultSelected: boolean;
+  environment: boolean;
+  configurationRevision: string;
+};
+export type ModelConnectionList = { items: ModelConnection[]; effectiveDefaultId: string | null };
+export type ModelConnectionInput = {
+  name: string;
+  baseUrl: string;
+  model: string;
+  secret?: string;
+  enabled: boolean;
+  defaultSelected: boolean;
+};
+export type ConversationConnection = {
+  conversationId: string;
+  connectionId: string;
+  connectionName: string;
+  model: string;
+  endpoint: string;
+  revision: number;
+  memoryCleared: boolean;
 };
 export type AiArtifactSummary = {
   artifactId: string;
@@ -455,6 +489,7 @@ export type AiArtifactSummary = {
 };
 export type AiToolEvent = { sequence: number; code: string };
 export type AiMessageResult = {
+  proposal?: CodeProposal | null;
   executionId: string | null;
   answer: string;
   error: string;
@@ -464,6 +499,26 @@ export type AiMessageResult = {
   toolEvents: AiToolEvent[];
   artifactError: string;
   artifacts: AiArtifactSummary[];
+};
+
+export type TaskContext = {
+  mode: "chat" | "code";
+  expert: "general" | "sql" | "frontend";
+  instructions: string;
+  reasoning: "default" | "low" | "medium" | "high";
+  approval: "review" | "read_only";
+  files: Array<{ name: string; content: string }>;
+  prototypeVersionId: string;
+};
+export type CodeProposal = {
+  id: string;
+  conversationId: string;
+  workspace: string;
+  summary: string;
+  files: Array<{ path: string; before: string | null; content: string; baseHash: string }>;
+  applied: boolean;
+  writeAllowed: boolean;
+  verification: string;
 };
 
 const baseUrl = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8080/api";
@@ -738,14 +793,41 @@ export const runtimeApi = {
       states?: Record<string, { enabled: boolean; builtin: boolean; revision: number }>;
     }>("/experts"),
   aiStatus: () => get<AiStatus>("/ai/status"),
+  aiConversation: (id: string) => get<{ conversationId: string; workspaceLabel: string; memory: string; connectionId?: string | null }>("/ai/conversations/" + encodeURIComponent(id)),
+  deleteAiConversation: (id: string) => client.delete("/ai/conversations/" + encodeURIComponent(id)).then(() => undefined),
   openAiConversation: () =>
     client.post<AiConversation>("/ai/conversations", {}, { timeout: 10_000 }).then((response) => response.data),
-  sendAiMessage: (id: string, message: string, toolMode: AiToolMode) =>
+  sendAiMessage: (id: string, message: string, toolMode: AiToolMode, context?: TaskContext) =>
     client
       .post<AiMessageResult>(
         "/ai/conversations/" + encodeURIComponent(id) + "/messages",
-        { message, toolMode },
+        { message, toolMode, ...(context ? { context } : {}) },
         { timeout: 35_000 },
       )
+      .then((response) => response.data),
+  applyCodeProposal: (id: string, proposal: string) =>
+    client.post<{ id: string; written: string[]; verification: string }>(
+      "/ai/conversations/" + encodeURIComponent(id) + "/proposals/" + encodeURIComponent(proposal) + "/apply",
+      { confirmed: true },
+    ).then((response) => response.data),
+  modelConnections: () => get<ModelConnectionList>("/ai/connections"),
+  saveModelConnection: (input: ModelConnectionInput, id?: string) =>
+    client
+      .post<ModelConnection>(id ? "/ai/connections/" + encodeURIComponent(id) : "/ai/connections", input)
+      .then((response) => response.data),
+  setModelConnectionEnabled: (id: string, enabled: boolean) =>
+    client
+      .post<ModelConnection>("/ai/connections/" + encodeURIComponent(id) + "/enabled", { enabled })
+      .then((response) => response.data),
+  setDefaultModelConnection: (id: string) =>
+    client
+      .post<ModelConnection>("/ai/connections/" + encodeURIComponent(id) + "/default")
+      .then((response) => response.data),
+  assignConversationConnection: (id: string, connectionId: string, confirmTargetChange: boolean) =>
+    client
+      .post<ConversationConnection>("/ai/conversations/" + encodeURIComponent(id) + "/connection", {
+        connectionId,
+        confirmTargetChange,
+      })
       .then((response) => response.data),
 };

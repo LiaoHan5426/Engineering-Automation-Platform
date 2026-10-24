@@ -19,7 +19,7 @@ public final class EngineeringChatService {
     public record Request(String principal, UUID conversationId, Path workspace, boolean gitAllowed, String message) {
         public Request {
             if (principal == null || principal.isBlank() || conversationId == null || workspace == null
-                    || message == null || message.isBlank() || message.length() > 32000)
+                    || message == null || message.isBlank() || message.length() > 64000)
                 throw new IllegalArgumentException("Invalid chat request");
         }
     }
@@ -47,19 +47,32 @@ public final class EngineeringChatService {
     }
 
     public Outcome chat(Request request, boolean registerGitTool) {
+        return chat(request, registerGitTool, null);
+    }
+
+    public Outcome chat(Request request, boolean registerGitTool, ChatClient selected) {
+        return chat(request, registerGitTool, selected, TaskContext.EMPTY);
+    }
+
+    public Outcome chat(Request request, boolean registerGitTool, ChatClient selected, TaskContext context) {
+        var active = selected != null ? selected : client;
         var id = UUID.randomUUID();
         var started = Instant.now();
         var tool = new GitTool(id, request);
         String answer = "", error = "";
         var status = CliExecution.Status.SUCCEEDED;
         try {
-            if (client == null) {
+            if (active == null) {
                 error = "AI_NOT_CONFIGURED";
                 status = CliExecution.Status.REJECTED;
             } else {
                 // Length prefix avoids ambiguous principal/conversation concatenation.
                 String conversation = memoryKey(request.principal(), request.conversationId());
-                var prompt = client.prompt().user(request.message());
+                var prompt = active.prompt().system(context.systemInstructions()).user(request.message());
+                if (!context.reasoning().equals("default")) {
+                    prompt = prompt.options(org.springframework.ai.openai.OpenAiChatOptions.builder()
+                            .reasoningEffort(context.reasoning()));
+                }
                 if (registerGitTool) prompt = prompt.toolCallbacks(tool.callback());
                 var response = prompt.advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation)).call().chatResponse();
                 if (response == null || response.getResult() == null) {

@@ -127,4 +127,98 @@ describe("chat session", () => {
     expect(session.turns.value).toEqual([]);
     expect(JSON.stringify(session.transcripts.value)).not.toContain("模拟");
   });
+
+  it("holds the old conversation until a target change is confirmed", async () => {
+    let sent = 0;
+    let confirmed = 0;
+    const api: ChatApi = {
+      aiStatus: async () => status("configured_unverified"),
+      openAiConversation: async () => ({
+        conversationId: "c1",
+        workspaceLabel: "ws-abc",
+        memory: "memory",
+        connectionId: "old",
+      }),
+      sendAiMessage: async () => {
+        sent += 1;
+        return result();
+      },
+      modelConnections: async () => ({
+        items: [
+          {
+            id: "old",
+            name: "旧连接",
+            kind: "openai-compatible",
+            enabled: true,
+            baseUrl: "https://127.0.0.1:9/v1",
+            model: "old-model",
+            secretPresent: true,
+            revision: 1,
+            defaultSelected: true,
+            environment: false,
+            configurationRevision: "a",
+          },
+          {
+            id: "next",
+            name: "新连接",
+            kind: "openai-compatible",
+            enabled: true,
+            baseUrl: "https://127.0.0.1:10/v1",
+            model: "next-model",
+            secretPresent: true,
+            revision: 2,
+            defaultSelected: false,
+            environment: false,
+            configurationRevision: "b",
+          },
+        ],
+        effectiveDefaultId: "old",
+      }),
+      assignConversationConnection: async () => {
+        confirmed += 1;
+        return { connectionId: "next", memoryCleared: true, connectionName: "新连接", model: "next-model" };
+      },
+    };
+    const session = createChatSession(api);
+    await session.openConversation();
+    await session.refreshConnections();
+    session.chooseConversationConnection("next");
+    session.draft.value = "stay here";
+    await session.send();
+    expect(sent).toBe(0);
+    expect(confirmed).toBe(0);
+    expect(session.pendingConnectionId.value).toBe("next");
+    expect(session.targetNotice.value).toContain("新连接");
+    await session.confirmConnectionChange();
+    expect(confirmed).toBe(1);
+    expect(session.boundConnectionId.value).toBe("next");
+    expect(session.targetNotice.value).toBe("cleared");
+    await session.send();
+    expect(sent).toBe(1);
+  });
+});
+
+it('keeps independent drafts, binding and transcripts through switching, reload, archive and deletion', async () => {
+  let serial = 0; const deleted: string[] = []; const store = new Map<string,string>();
+  const storage = { getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => { store.set(key,value); } };
+  const api: ChatApi = { aiStatus: async () => status(), openAiConversation: async () => ({ conversationId: 'chat-' + ++serial, workspaceLabel: 'ws', memory: 'memory', connectionId: 'model-' + serial }), sendAiMessage: async () => result(), deleteAiConversation: async (id) => { deleted.push(id); } };
+  const session = createChatSession(api, storage);
+  await session.openConversation(); session.draft.value = 'First request'; await session.send(); session.draft.value = 'First draft';
+  await session.openConversation(); session.draft.value = 'Second draft';
+  await session.selectConversation('chat-1');
+  expect(session.draft.value).toBe('First draft'); expect(session.boundConnectionId.value).toBe('model-1'); expect(session.turns.value).toHaveLength(2);
+  session.renameConversation('chat-1', 'Renamed'); session.archiveConversation('chat-1', true);
+  expect(session.conversationId.value).toBeNull();
+  const restored = createChatSession(api, storage);
+  expect(restored.history.value.find(x => x.id === 'chat-1')?.archived).toBe(true);
+  restored.archiveConversation('chat-1', false); await restored.selectConversation('chat-1');
+  expect(restored.draft.value).toBe('First draft'); expect(restored.history.value.find(x => x.id === 'chat-1')?.title).toBe('Renamed');
+  await restored.deleteConversation('chat-1'); expect(deleted).toEqual(['chat-1']); expect(restored.transcripts.value['chat-1']).toBeUndefined();
+  await restored.selectConversation('chat-2'); expect(restored.draft.value).toBe('Second draft');
+});
+it('keeps expired history readable without sending or silently creating a replacement', async () => {
+  let sent = 0;
+  const api: ChatApi = { aiStatus: async () => status(), openAiConversation: async () => ({ conversationId: 'old', workspaceLabel: 'ws', memory: 'memory' }), aiConversation: async () => { throw { response: { status: 404 } }; }, sendAiMessage: async () => { sent++; return result(); } };
+  const session = createChatSession(api); await session.openConversation(); session.draft.value = 'kept'; await session.selectConversation('old'); await session.send();
+  expect(session.expired.value).toBe(true); expect(session.draft.value).toBe('kept'); expect(sent).toBe(0);
 });

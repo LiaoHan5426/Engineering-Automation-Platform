@@ -1,5 +1,11 @@
 # Architecture
 
+2026-10-24 implementation update: chat now accepts selected expert guidance, user-selected text files and
+saved prototype references, and can produce reviewable source proposals through the selected Spring AI
+connection. Writes are separately confirmed, workspace-bound and never imply build/test verification.
+The existing SQL workflow remains available; it is not the required entry for general engineering tasks.
+See [the bounded task slice](decisions/chat-engineering-task-slice.md) for actual scope and limitations.
+
 The platform is a cross-platform engineering console: a Vue frontend, a Java runtime, and optional
 Python tooling. Its defining decision is **deterministic-first, model-last** — see
 [pipeline.md](pipeline.md) for the value chain this architecture exists to serve.
@@ -195,10 +201,14 @@ flowchart LR
   *imports* (third-party experts, MCP servers, model output), not about other people.
 - **SQL parsing:** JSQLParser 5.4. Parsing is local and deterministic.
 - **Model integration:** Spring AI 2.0.2 BOM and official OpenAI Starter in runtime. ChatClient,
-  ChatModel, ToolCallingAdvisor/Manager and ChatMemory are framework responsibilities. LlmProvider is
-  retained only for SQL compatibility/cache/fallback; no provider SDK in `eap-api`. No duplicate
-  ModelProvider framework or Agent loop. Old eap.llm connection settings are rejected when AI is
-  enabled, with an explicit migration message; disabled AI remains usable without credentials.
+  ChatModel, ToolCallingAdvisor/Manager and ChatMemory are framework responsibilities. A saved local
+  OpenAI-compatible connection can be selected for chat; that setting is auxiliary and is not a
+  provider catalog, router, gateway, or authentication system. LlmProvider and its compression,
+  cache and fallback stay on the SQL compatibility bridge and are not applied to chat memory or to
+  Codex/Hermes. Those external agents keep their own runtime entry and configuration. No provider
+  SDK in `eap-api`. No duplicate ModelProvider framework or Agent loop. Old eap.llm connection
+  settings are rejected when AI is enabled, with an explicit migration message; deterministic local
+  tools and manual Builder remain usable when no model connection is configured.
 - **Frontend:** Vue 3, TypeScript, Vite+, pnpm workspace, Tailwind CSS 4 via the Vite plugin.
 - **Database:** PostgreSQL. Vector search is *not* part of the current phase (see
   [environment.md](environment.md)).

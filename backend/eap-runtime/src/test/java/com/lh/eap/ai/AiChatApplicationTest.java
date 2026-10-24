@@ -168,4 +168,43 @@ class AiChatApplicationTest {
                 .andExpect(jsonPath("$.memory").exists());
         assertEquals(0, calls.get());
     }
+
+    @Test void targetChangeNeedsConfirmationAndDoesNotReplayMemory() {
+        var seen = new java.util.ArrayList<String>();
+        var calls = new AtomicInteger();
+        var memory = MessageWindowChatMemory.builder().maxMessages(20).build();
+        var model = FakeChatModels.scripted(prompt -> {
+            calls.incrementAndGet();
+            seen.add(prompt.getInstructions().stream().map(message -> String.valueOf(message.getText())).reduce("", (a, b) -> a + "\n" + b));
+            return FakeChatModels.text("plain");
+        });
+        var connections = new ModelConnections(root.resolve("connections.json"), "none", "", "https://api.openai.com", "",
+                false, new ModelClientSource() {
+                    public org.springframework.ai.chat.client.ChatClient conversational(ModelConnectionSnapshot snapshot) {
+                        return EngineeringAiConfiguration.createClient(ChatClient.builder(model), memory);
+                    }
+                    public org.springframework.ai.chat.client.ChatClient completion(ModelConnectionSnapshot snapshot) {
+                        return conversational(snapshot);
+                    }
+                });
+        var saved = connections.create("desk", "https://127.0.0.1:9/v1", "desk-model", "sk-local-test-secret", true, true);
+        var handlers = new CapabilityHandlerRegistry(List.of());
+        var status = new AiConnectionStatus(handlers, root, null, "none", "", "", false, connections);
+        var chat = new EngineeringChatService(null, handlers, null, new FileExecutionArtifactStore(root.resolve("artifacts")));
+        var app = new AiChatApplication(status, new AiConversationRegistry(memory), chat, root, connections);
+        var id = app.open("{}").conversationId();
+        app.send(id, "{\"message\":\"private-marker\",\"toolMode\":\"none\"}");
+        connections.update(saved.id(), "desk", "https://127.0.0.1:9/v1", "other-model", "", true, true);
+        var rejected = assertThrows(ResponseStatusException.class,
+                () -> app.send(id, "{\"message\":\"next\",\"toolMode\":\"none\"}"));
+        assertEquals("TARGET_CHANGE_CONFIRMATION_REQUIRED", rejected.getReason());
+        assertEquals(1, calls.get());
+        var assigned = app.assign(id, "{\"connectionId\":\"" + saved.id() + "\",\"confirmTargetChange\":true}");
+        assertTrue(assigned.memoryCleared());
+        assertFalse(assigned.toString().contains("sk-local-test-secret"));
+        app.send(id, "{\"message\":\"after\",\"toolMode\":\"none\"}");
+        assertEquals(2, calls.get());
+        assertFalse(seen.get(1).contains("private-marker"));
+        assertEquals("available", app.status().state());
+    }
 }

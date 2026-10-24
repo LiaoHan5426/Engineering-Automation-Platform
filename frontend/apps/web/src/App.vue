@@ -5,6 +5,7 @@ import ExpertManager from "./features/expert/ExpertManager.vue";
 import KnowledgeManager from "./features/knowledge/KnowledgeManager.vue";
 import DatabaseManager from "./features/database/DatabaseManager.vue";
 import RuleManager from "./features/rule/RuleManager.vue";
+import ModelSettings from "./features/settings/ModelSettings.vue";
 import PluginCenter from "./features/plugins/PluginCenter.vue";
 import PluginSlot from "./features/plugins/PluginSlot.vue";
 import { createPluginHost } from "./features/plugins/host";
@@ -48,6 +49,7 @@ const shellPages = [
     group: "设置",
     hint: i18n.global.t("plugin.centerHint"),
   },
+  { id: "model-settings", name: i18n.global.t("composerUi.modelSettings"), icon: "⚙", group: "设置", hint: i18n.global.t("composerUi.modelSettingsHint") },
   { id: "experts", name: "专家定义", icon: "◈", group: "设置", hint: "编排能力节点、依赖与授权" },
   { id: "rules", name: "规则库", icon: "▤", group: "设置", hint: "查看规则、条件与试算结果" },
   { id: "knowledge", name: "知识库", icon: "▢", group: "设置", hint: "录入业务知识并带来源检索" },
@@ -816,13 +818,13 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
       <Button variant="secondary" :disabled="refreshing" @click="refresh">
         {{ refreshing ? "刷新中…" : "刷新" }}
       </Button>
-      <Button variant="primary" :disabled="sqlBusy" @click="primaryAction">
+      <Button v-if="activeView === 'sql'" variant="primary" :disabled="sqlBusy" @click="primaryAction">
         {{ sqlBusy ? "分析中…" : "运行分析" }}
       </Button>
     </header>
     <p v-if="workspaceMessage" class="shell-message" role="status">{{ workspaceMessage }}</p>
 
-    <div class="body">
+    <div class="body" :class="{ 'body--focused': ['chat', 'builder-alpha', 'builder-beta', 'model-settings'].includes(activeView) }">
       <nav class="rail" aria-label="主导航">
         <template v-for="group in viewGroups" :key="group.label">
           <div class="rail__eyebrow">{{ group.label }}</div>
@@ -852,7 +854,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
           分析工作台：使用界面，不是管理后台。
           2026-10-15 任务不再是独立页面——一次分析的输入与它的过程/结论，本来就是同一件事的两半。
         -->
-        <section v-if="activeView === 'sql'" class="view">
+        <section v-if="activeView === 'sql'" class="view work-page analysis-workspace">
           <div class="page-head">
             <p class="eyebrow">WORKBENCH</p>
             <h1>分析工作台</h1>
@@ -870,7 +872,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
             </details>
           </div>
 
-          <div class="status-strip">
+          <details class="status-strip work-overview"><summary>{{ i18n.global.t("workUi.overview") }} <span>{{ capabilityItems.length || capabilities.length }} {{ i18n.global.t("workUi.capabilities") }} · {{ expertCount }} {{ i18n.global.t("workUi.experts") }}</span></summary>
             <div class="metrics">
               <MetricCard
                 label="已注册能力"
@@ -944,7 +946,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                 </p>
               </article>
             </details>
-          </div>
+          </details>
 
           <!--
             2026-10-15 使用界面重构：任务不再是独立页面。
@@ -1447,6 +1449,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
           </details>
         </section>
 
+        <ModelSettings v-else-if="activeView === 'model-settings'" />
         <PluginCenter v-else-if="activeView === 'plugins'" :host="pluginHost" />
         <PluginSlot
           v-else-if="activeView === 'chat' || activeView === 'builder-alpha' || activeView === 'builder-beta'"

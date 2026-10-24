@@ -53,4 +53,5 @@ reports/
 
 # Local AI execution output; audited evidence is explicitly retained under docs/audits.
 .eap-ai-artifacts/
+.eap/
 /docs/audits/temp-probe-runner-*.ps1

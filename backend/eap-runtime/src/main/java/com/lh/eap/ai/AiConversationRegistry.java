@@ -1,5 +1,6 @@
 package com.lh.eap.ai;
 
+import org.springframework.ai.chat.client.ChatClient;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -48,6 +49,22 @@ public class AiConversationRegistry {
         }
     }
 
+    public Binding binding(UUID id) {
+        synchronized (lock) {
+            return require(id).binding;
+        }
+    }
+
+    public void bind(UUID id, Binding binding, boolean clearMemory) {
+        synchronized (lock) {
+            var session = require(id);
+            if (session.busy) throw new ResponseStatusException(HttpStatus.CONFLICT, "CONVERSATION_BUSY");
+            session.binding = binding;
+            session.touched = clock.get();
+            if (clearMemory) memory.clear(EngineeringChatService.memoryKey(PRINCIPAL, id));
+        }
+    }
+
     public Session require(UUID id) {
         synchronized (lock) {
             sweep();
@@ -77,6 +94,15 @@ public class AiConversationRegistry {
         }
     }
 
+    public void delete(UUID id) {
+        synchronized (lock) {
+            var session = sessions.get(id);
+            if (session == null) return;
+            if (session.busy) throw new ResponseStatusException(HttpStatus.CONFLICT, "CONVERSATION_BUSY");
+            drop(id);
+        }
+    }
+
     private void sweep() {
         Instant now = clock.get();
         var expired = sessions.values().stream()
@@ -103,12 +129,34 @@ public class AiConversationRegistry {
         public final String workspaceLabel;
         private Instant touched;
         private boolean busy;
+        private Binding binding;
 
         Session(UUID id, Path workspace, String workspaceLabel, Instant touched) {
             this.id = id;
             this.workspace = workspace;
             this.workspaceLabel = workspaceLabel;
             this.touched = touched;
+        }
+    }
+
+    public static final class Binding {
+        public final UUID connectionId;
+        public final long revision;
+        public final String name;
+        public final String model;
+        public final String endpoint;
+        public final String configurationRevision;
+        public final ChatClient client;
+
+        public Binding(UUID connectionId, long revision, String name, String model, String endpoint,
+                String configurationRevision, ChatClient client) {
+            this.connectionId = connectionId;
+            this.revision = revision;
+            this.name = name;
+            this.model = model;
+            this.endpoint = endpoint;
+            this.configurationRevision = configurationRevision;
+            this.client = client;
         }
     }
 }

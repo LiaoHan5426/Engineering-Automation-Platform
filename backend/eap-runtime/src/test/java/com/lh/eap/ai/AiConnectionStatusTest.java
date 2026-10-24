@@ -12,8 +12,6 @@ import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.beans.factory.ObjectProvider;
 
 class AiConnectionStatusTest {
     @TempDir Path root;
@@ -72,12 +70,8 @@ class AiConnectionStatusTest {
     }
 
     private AiConnectionStatus chat(CapabilityHandlerRegistry handlers, RuntimeWorkspace runtime) {
-        return new AiConnectionStatus(handlers, runtime, "none", "", "", new ObjectProvider<>() {
-            @Override public ChatModel getObject() { return null; }
-            @Override public ChatModel getObject(Object... args) { return null; }
-            @Override public ChatModel getIfAvailable() { return null; }
-            @Override public ChatModel getIfUnique() { return null; }
-        });
+        return new AiConnectionStatus(handlers, runtime.workspace(),
+                runtime.root().allowed() ? runtime.root().path() : null, "none", "", "", false);
     }
 
     @Test void revisionIgnoresUserinfoAndApiKeyMaterial() {

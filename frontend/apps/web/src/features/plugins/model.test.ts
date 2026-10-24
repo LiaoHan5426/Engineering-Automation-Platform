@@ -17,6 +17,8 @@ describe("plugin prototype store", () => {
   it("keeps shell hashes and gives the two builders different storage keys", () => {
     expect(isShellPage("sql")).toBe(true);
     expect(isShellPage("capabilities")).toBe(true);
+    expect(isShellPage("model-settings")).toBe(true);
+    expect(isKnownHash("model-settings")).toBe(true);
     expect(isShellPage("chat")).toBe(false);
     expect(isKnownHash("plugins")).toBe(true);
     expect(isKnownHash("builder-alpha")).toBe(true);

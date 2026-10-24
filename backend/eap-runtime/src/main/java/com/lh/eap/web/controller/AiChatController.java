@@ -2,6 +2,9 @@ package com.lh.eap.web.controller;
 
 import com.lh.eap.ai.AiChatApplication;
 import com.lh.eap.ai.AiConnectionStatus;
+import com.lh.eap.ai.ModelConnectionView;
+import com.lh.eap.ai.ModelConnections;
+import com.lh.eap.web.dto.AiConnectionAssignment;
 import com.lh.eap.web.dto.AiConversationResponse;
 import com.lh.eap.web.dto.AiMessageResponse;
 import java.util.UUID;
@@ -21,6 +24,12 @@ public class AiChatController {
         this.chat = chat;
     }
 
+    @GetMapping("/conversations/{id}")
+    public AiConversationResponse conversation(@PathVariable UUID id) { return chat.conversation(id); }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/conversations/{id}")
+    public void deleteConversation(@PathVariable UUID id) { chat.deleteConversation(id); }
+
     @GetMapping("/status")
     public AiConnectionStatus.Snapshot status() {
         return chat.status();
@@ -34,5 +43,41 @@ public class AiChatController {
     @PostMapping("/conversations/{id}/messages")
     public AiMessageResponse message(@PathVariable UUID id, @RequestBody(required = false) String body) {
         return chat.send(id, body);
+    }
+
+    @GetMapping("/connections")
+    public ModelConnections.Listing connections() {
+        return chat.connections();
+    }
+
+    @PostMapping("/conversations/{id}/proposals/{proposal}/apply")
+    public com.lh.eap.ai.CodeChangeService.Applied apply(@PathVariable UUID id, @PathVariable UUID proposal,
+            @RequestBody(required = false) String body) {
+        return chat.apply(id, proposal, body);
+    }
+
+    @PostMapping("/connections")
+    public ModelConnectionView create(@RequestBody(required = false) String body) {
+        return chat.saveConnection(null, body);
+    }
+
+    @PostMapping("/connections/{id}")
+    public ModelConnectionView update(@PathVariable UUID id, @RequestBody(required = false) String body) {
+        return chat.saveConnection(id, body);
+    }
+
+    @PostMapping("/connections/{id}/enabled")
+    public ModelConnectionView enabled(@PathVariable UUID id, @RequestBody(required = false) String body) {
+        return chat.setConnectionEnabled(id, body);
+    }
+
+    @PostMapping("/connections/{id}/default")
+    public ModelConnectionView chooseDefault(@PathVariable UUID id) {
+        return chat.setDefaultConnection(id);
+    }
+
+    @PostMapping("/conversations/{id}/connection")
+    public AiConnectionAssignment assign(@PathVariable UUID id, @RequestBody(required = false) String body) {
+        return chat.assign(id, body);
     }
 }

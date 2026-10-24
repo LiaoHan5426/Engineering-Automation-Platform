@@ -25,6 +25,7 @@
     "@vitejs/plugin-vue": "catalog:tooling",
     "typescript": "catalog:tooling",
     "vite": "catalog:tooling",
+    "vite-plugin-vue-mcp": "^0.3.2",
     "vite-plus": "catalog:tooling"
   }
 }

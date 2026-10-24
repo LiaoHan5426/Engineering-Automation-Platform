@@ -27,6 +27,22 @@ class AiConversationRegistryTest {
         public void clear(String conversationId) { cleared.add(conversationId); delegate.clear(conversationId); }
     }
 
+    @Test void deletionClearsOnlyItsMemoryAndRejectsBusySessions() {
+        var memory = new RecordingMemory();
+        var registry = new AiConversationRegistry(memory);
+        var first = registry.open(root, "ws").id;
+        var other = registry.open(root, "ws").id;
+        registry.exclusive(first, () -> {
+            assertEquals(409, assertThrows(ResponseStatusException.class, () -> registry.delete(first)).getStatusCode().value());
+            return null;
+        });
+        registry.delete(first);
+        assertEquals(404, assertThrows(ResponseStatusException.class, () -> registry.require(first)).getStatusCode().value());
+        assertNotNull(registry.require(other));
+        assertEquals(List.of(EngineeringChatService.memoryKey(AiConversationRegistry.PRINCIPAL, first)), memory.cleared);
+        registry.delete(first);
+    }
+
     @Test void idleSessionIsForgottenTogetherWithItsMemory() {
         var memory = new RecordingMemory();
         var now = new AtomicReference<>(Instant.parse("2026-10-24T00:00:00Z"));

@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * SQL business cache and deterministic fallback compatibility boundary. Spring AI owns model calls.
+ * The compression, cache and fallback rules here belong to the SQL bridge only. Chat memory and
+ * external agents do not use this gateway.
  *
  * <p>Responsibilities:
  * <ul>
@@ -59,9 +61,9 @@ public class LlmGateway {
 
     /** Preserve failure codes for SQL evidence without removing the Optional compatibility API. */
     public LlmProvider.Result completeWithEvidence(LlmProvider.Request request) {
-        var provider = providers.stream().filter(LlmProvider::available).findFirst().orElse(null);
+        var provider = providers.stream().map(LlmProvider::forRequest).filter(LlmProvider::available).findFirst().orElse(null);
         if (provider == null) return LlmProvider.Result.failure("spring-ai", "AI_NOT_CONFIGURED");
-        var key = provider.id() + ":" + provider.model() + ":" + digest(request);
+        var key = provider.cacheScope() + ":" + digest(request);
         var cached = cache.get(key);
         if (cached != null) {
             log.debug("Model cache hit for key {}", key.substring(0, Math.min(12, key.length())));

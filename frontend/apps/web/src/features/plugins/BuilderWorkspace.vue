@@ -214,6 +214,12 @@ function closeVersion() {
   delivery.value = null;
 }
 
+function useVersionInChat() {
+  if (!opened.value) return;
+  sessionStorage.setItem("eap.chat.prototype", opened.value.id);
+  window.location.hash = "chat";
+}
+
 async function createDelivery() {
   if (!opened.value || deliveryBusy.value) return;
   const versionId = opened.value.id;
@@ -245,14 +251,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="view" :data-testid="`builder-${instanceId}`">
+  <section class="view work-page builder-workspace" :data-testid="`builder-${instanceId}`">
     <div class="page-head">
       <p class="eyebrow">BUILDER</p>
       <h1>{{ instanceId === "alpha" ? t("plugin.builderAlpha") : t("plugin.builderBeta") }}</h1>
-      <p>{{ t("plugin.storage") }}</p>
+      <p>{{ t("workUi.builderSubtitle") }}</p>
     </div>
     <div class="builder-layout">
-      <form class="stack" @submit.prevent="save">
+      <form class="stack builder-editor" @submit.prevent="save">
+        <div class="section-heading"><h2>{{ t("workUi.draftEditor") }}</h2><span>{{ t("workUi.localDraft") }}</span></div>
         <p>
           <Badge tone="warning" :label="t('plugin.mock')" />
         </p>
@@ -272,14 +279,14 @@ onUnmounted(() => {
         <Button variant="primary" type="submit" data-testid="save-prototype">{{ t("plugin.save") }}</Button>
         <Feedback v-if="saved" tone="success">{{ t("plugin.saved") }}</Feedback>
       </form>
-      <PrototypePreview
-        :title="draft.draftTitle"
-        :body="draft.draftBody"
-        :presses="draft.buttonPresses"
-        @press="press"
-      />
+<section class="preview-frame">
+        <div class="section-heading"><h2>{{ t("workUi.livePreview") }}</h2><span>{{ t("workUi.vueComponent") }}</span></div>
+        <div class="preview-canvas"><PrototypePreview :title="draft.draftTitle" :body="draft.draftBody" :presses="draft.buttonPresses" @press="press" /></div>
+        <p class="hint">{{ t("workUi.previewHint") }}</p>
+      </section>
     </div>
-    <section class="stack" data-testid="prototype-version">
+    <section class="stack version-panel" data-testid="prototype-version">
+      <div class="section-heading"><h2>{{ t("workUi.versionsTitle") }}</h2><span>{{ t("workUi.versionStep") }}</span></div>
       <label>
         {{ t("plugin.versionAcceptance") }}
         <textarea v-model="acceptanceText" rows="3" data-testid="version-acceptance" />
@@ -289,12 +296,12 @@ onUnmounted(() => {
       </Button>
       <p v-if="versionNote" class="hint" data-testid="version-note">{{ versionNote }}</p>
       <p v-if="versionListError" class="hint" data-testid="version-list-error">{{ versionListError }}</p>
-      <ul v-if="versions.length">
+      <ul v-if="versions.length" class="version-list">
         <li v-for="item in versions" :key="item.id">
+          <div class="version-label"><strong>{{ item.title }}</strong><small>{{ item.sourceRef }} · {{ item.id.slice(0, 8) }}</small></div>
           <Button variant="secondary" type="button" data-testid="open-version" @click="openVersion(item.id)">
             {{ t("plugin.versionOpen") }}
           </Button>
-          {{ item.title }}
         </li>
       </ul>
       <div v-if="opened" data-testid="version-preview">
@@ -305,17 +312,23 @@ onUnmounted(() => {
           <li v-for="item in opened.acceptance" :key="item">{{ item }}</li>
         </ul>
         <p data-testid="version-hash">{{ t("plugin.versionHash", { hash: opened.contentHash }) }}</p>
+        <div class="version-actions">
+        <Button type="button" variant="primary" data-testid="prototype-to-code" @click="useVersionInChat">{{ t("task.useInChat") }}</Button>
         <Button variant="secondary" type="button" data-testid="close-version" @click="closeVersion">
           {{ t("plugin.versionClose") }}
         </Button>
         <Button variant="secondary" type="button" data-testid="create-delivery" :disabled="deliveryBusy" @click="createDelivery">
           {{ t("plugin.deliveryCreate") }}
         </Button>
+        </div>
         <p v-if="delivery" data-testid="delivery-sheet">
           {{ t("plugin.deliverySheet", { id: delivery.id, versionId: delivery.versionId }) }}
         </p>
       </div>
     </section>
+    <details class="builder-secondary">
+      <summary>{{ t("workUi.simulationDetails") }}</summary>
+      <p class="hint">{{ t("plugin.storage") }}</p>
     <section class="stack task" data-testid="mock-task">
       <p>
         <Badge tone="warning" :label="t('plugin.mock')" />
@@ -371,6 +384,7 @@ onUnmounted(() => {
       <Button data-testid="deliver-write" variant="danger" disabled>{{ t("plugin.deliver") }}</Button>
       <p class="hint">{{ t("plugin.deliverDenied") }}</p>
     </section>
+    </details>
   </section>
 </template>
 

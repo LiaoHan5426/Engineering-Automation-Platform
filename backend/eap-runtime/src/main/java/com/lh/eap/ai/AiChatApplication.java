@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -17,18 +18,30 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 public class AiChatApplication {
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private static final Set<String> MESSAGE_FIELDS = Set.of("message", "toolMode");
+    private static final Set<String> MESSAGE_FIELDS = Set.of("message", "toolMode", "context");
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.lh.eap.application.service.PrototypeVersionService prototypes;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private CodeChangeService codeChanges;
     private final AiConnectionStatus status;
     private final AiConversationRegistry conversations;
     private final EngineeringChatService chat;
     private final Path workspace;
+    private final ModelConnections connections;
 
     public AiChatApplication(AiConnectionStatus status, AiConversationRegistry conversations, EngineeringChatService chat,
             Path workspace) {
+        this(status, conversations, chat, workspace, null);
+    }
+
+    @Autowired
+    public AiChatApplication(AiConnectionStatus status, AiConversationRegistry conversations, EngineeringChatService chat,
+            Path workspace, ModelConnections connections) {
         this.status = status;
         this.conversations = conversations;
         this.chat = chat;
         this.workspace = workspace;
+        this.connections = connections;
     }
 
     public AiConnectionStatus.Snapshot status() {
@@ -38,11 +51,73 @@ public class AiChatApplication {
     public AiConversationResponse open(String json) {
         objectBody(json, Set.of());
         var session = conversations.open(workspace, status.workspaceLabel(workspace));
-        return new AiConversationResponse(session.id, session.workspaceLabel, AiConversationRegistry.MEMORY_NOTE);
+        if (connections != null) {
+            var selected = connections.effectiveDefault();
+            if (selected != null) conversations.bind(session.id, binding(selected), false);
+        }
+        return conversation(session.id);
+    }
+
+    public void deleteConversation(UUID id) { conversations.delete(id); }
+
+    public ModelConnections.Listing connections() {
+        if (connections == null) return new ModelConnections.Listing(java.util.List.of(), null);
+        return connections.list();
+    }
+
+    public ModelConnectionView saveConnection(UUID id, String json) {
+        if (connections == null) throw unavailable();
+        var body = objectBody(json, id == null
+                ? Set.of("name", "baseUrl", "model", "secret", "enabled", "defaultSelected")
+                : Set.of("name", "baseUrl", "model", "secret", "enabled", "defaultSelected"));
+        var name = text(body, "name");
+        var baseUrl = text(body, "baseUrl");
+        var model = text(body, "model");
+        var secret = body.get("secret") instanceof String value ? value : "";
+        boolean enabled = bool(body, "enabled", true);
+        boolean makeDefault = bool(body, "defaultSelected", false);
+        var saved = id == null
+                ? connections.create(name, baseUrl, model, secret, enabled, makeDefault)
+                : connections.update(id, name, baseUrl, model, secret, enabled, makeDefault);
+        return saved;
+    }
+
+    public ModelConnectionView setConnectionEnabled(UUID id, String json) {
+        if (connections == null) throw unavailable();
+        var body = objectBody(json, Set.of("enabled"));
+        return connections.setEnabled(id, bool(body, "enabled", false));
+    }
+
+    public ModelConnectionView setDefaultConnection(UUID id) {
+        if (connections == null) throw unavailable();
+        return connections.setDefault(id);
+    }
+
+    public com.lh.eap.web.dto.AiConnectionAssignment assign(UUID id, String json) {
+        if (connections == null) throw unavailable();
+        var body = objectBody(json, Set.of("connectionId", "confirmTargetChange"));
+        if (!(body.get("connectionId") instanceof String raw)) throw invalid();
+        final UUID connectionId;
+        try {
+            connectionId = UUID.fromString(raw);
+        } catch (IllegalArgumentException invalid) {
+            throw invalid();
+        }
+        boolean confirm = Boolean.TRUE.equals(body.get("confirmTargetChange"));
+        var target = connections.require(connectionId);
+        var current = conversations.binding(id);
+        boolean changed = current == null || !current.connectionId.equals(target.id) || current.revision != target.revision;
+        if (changed && current != null && !confirm)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "TARGET_CHANGE_CONFIRMATION_REQUIRED");
+        conversations.bind(id, binding(target), changed && current != null);
+        var bound = conversations.binding(id);
+        return new com.lh.eap.web.dto.AiConnectionAssignment(id, bound.connectionId, bound.name, bound.model,
+                bound.endpoint, bound.revision, changed && current != null);
     }
 
     public AiMessageResponse send(UUID id, String json) {
         var body = objectBody(json, MESSAGE_FIELDS);
+        var context = TaskContext.parse(body.get("context"));
         if (!(body.get("message") instanceof String message) || message.isBlank() || message.length() > 32000
                 || !(body.get("toolMode") instanceof String toolMode))
             throw invalid();
@@ -51,18 +126,85 @@ public class AiChatApplication {
             case "git_status" -> true;
             default -> throw invalid();
         };
-        var snapshot = status.read();
-        if ("disabled".equals(snapshot.state()) || "not_configured".equals(snapshot.state()))
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AI_NOT_CONFIGURED");
-        if (git && !status.gitStatusAvailable())
+        if (connections == null) {
+            var snapshot = status.read();
+            if ("disabled".equals(snapshot.state()) || "not_configured".equals(snapshot.state()))
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AI_NOT_CONFIGURED");
+        }
+        if (git && context.mode().equals("chat") && !status.gitStatusAvailable())
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "TOOL_NOT_GRANTED");
         var session = conversations.require(id);
         if (!session.workspace.equals(workspace))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "WORKSPACE_MISMATCH");
-        var outcome = conversations.exclusive(id, () -> chat.chat(new EngineeringChatService.Request(
-                AiConversationRegistry.PRINCIPAL, id, workspace, git, message), git));
-        if (!"AI_NOT_CONFIGURED".equals(outcome.error())) status.observe(outcome.error());
-        return message(outcome);
+        String prototype = "";
+        if (!context.prototypeVersionId().isBlank()) {
+            if (prototypes == null) throw unavailable();
+            final UUID versionId;
+            try { versionId = UUID.fromString(context.prototypeVersionId()); } catch (IllegalArgumentException invalid) { throw invalid(); }
+            prototype = JSON.writeValueAsString(prototypes.find(versionId));
+        }
+        String composed = context.userMessage(message, prototype);
+        if (composed.length() > 64000) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TASK_CONTEXT_TOO_LARGE");
+        var outcome = conversations.exclusive(id, () -> {
+            var current = conversations.binding(id);
+            if (connections != null) {
+                if (current == null) throw unavailable();
+                var live = connections.require(current.connectionId);
+                if (live.revision != current.revision) throw new ResponseStatusException(HttpStatus.CONFLICT, "TARGET_CHANGE_CONFIRMATION_REQUIRED");
+                if (!live.usable()) throw unavailable();
+                if (!context.reasoning().equals("default") && (!"api.openai.com".equals(java.net.URI.create(live.baseUrl).getHost())
+                        || !live.model.matches("(?i)^(o[134]|gpt-[56]).*")))
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "REASONING_OPTION_NOT_SUPPORTED");
+            }
+            var result = chat.chat(new EngineeringChatService.Request(
+                    AiConversationRegistry.PRINCIPAL, id, workspace, git, composed), git && context.mode().equals("chat"),
+                    current == null ? null : current.client, context);
+            if (current != null) status.observeRevision(current.configurationRevision, result.error());
+            else if (!"AI_NOT_CONFIGURED".equals(result.error())) status.observe(result.error());
+            return result;
+        });
+        var response = message(outcome);
+        if (context.mode().equals("code") && outcome.error().isEmpty() && codeChanges != null) {
+            var proposal = codeChanges.propose(id, outcome.answer(), context.approval().equals("review"));
+            return new AiMessageResponse(response.executionId(), proposal.summary(), response.error(), response.status(),
+                    response.approval(), response.verification(), response.toolEvents(), response.artifactError(), response.artifacts(), proposal);
+        }
+        return response;
+    }
+
+    public CodeChangeService.Applied apply(UUID conversation, UUID proposal, String json) {
+        var body = objectBody(json, Set.of("confirmed"));
+        if (codeChanges == null) throw unavailable();
+        return conversations.exclusive(conversation, () -> codeChanges.apply(conversation, proposal, Boolean.TRUE.equals(body.get("confirmed"))));
+    }
+
+    public AiConversationResponse conversation(UUID id) {
+        var bound = conversations.binding(id);
+        return new AiConversationResponse(id, conversations.require(id).workspaceLabel, AiConversationRegistry.MEMORY_NOTE,
+                bound == null ? null : bound.connectionId, bound == null ? null : bound.name,
+                bound == null ? null : bound.revision);
+    }
+
+    private AiConversationRegistry.Binding binding(ModelConnectionSnapshot snapshot) {
+        return new AiConversationRegistry.Binding(snapshot.id, snapshot.revision, snapshot.name, snapshot.model,
+                AiConnectionStatus.endpointIdentity(snapshot.baseUrl), snapshot.configurationRevision,
+                connections.chatClient(snapshot));
+    }
+
+    private static String text(java.util.Map<String, Object> body, String name) {
+        if (!(body.get(name) instanceof String value)) throw invalid();
+        return value;
+    }
+
+    private static boolean bool(java.util.Map<String, Object> body, String name, boolean fallback) {
+        var value = body.get(name);
+        if (value == null) return fallback;
+        if (value instanceof Boolean flag) return flag;
+        throw invalid();
+    }
+
+    private static ResponseStatusException unavailable() {
+        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AI_NOT_CONFIGURED");
     }
 
     private static AiMessageResponse message(EngineeringChatService.Outcome outcome) {
