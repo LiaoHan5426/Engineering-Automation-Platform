@@ -97,6 +97,11 @@ class MissionServiceTest {
             public Optional<Mission> findByHandoff(UUID handoffId) {
                 return Optional.empty();
             }
+
+            @Override
+            public void updateExecution(UUID id, String execution) {
+                throw new UnsupportedOperationException();
+            }
         });
         var failure = assertThrows(ResponseStatusException.class, () -> service.create(handoff.id()));
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, failure.getStatusCode());
@@ -164,6 +169,11 @@ class MissionServiceTest {
         public Optional<Mission> findByHandoff(UUID handoffId) {
             return rows.stream().filter(item -> item.handoffId().equals(handoffId)).findFirst();
         }
+
+        @Override
+        public void updateExecution(UUID id, String execution) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     /** Both callers enter insert before either row is visible, matching a unique-constraint race. */
@@ -204,6 +214,11 @@ class MissionServiceTest {
             synchronized (rows) {
                 return rows.stream().filter(item -> item.handoffId().equals(handoffId)).findFirst();
             }
+        }
+
+        @Override
+        public void updateExecution(UUID id, String execution) {
+            throw new UnsupportedOperationException();
         }
     }
 }

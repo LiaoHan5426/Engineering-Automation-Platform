@@ -1,8 +1,8 @@
 # Mission 单步执行：只读 git-status
 
-状态：契约已确认。本次确认不构成实施授权，不授权建表、加接口、执行能力、调度或仓库写入。日期：2026-10-24。
+状态：契约已确认。只读 git-status 已实现，并已收敛到共享运行时和 Git 能力入口。未知执行会阻塞下一次启动。人工解除机制尚未实现，因此这不是可恢复 Mission。调度、审批流、自动续跑、独立验证和仓库写入仍未实现。日期：2026-10-24。
 
-前置见 [P2 Mission 契约](p2-mission-contract.md)。持久任务壳已完成，执行生命周期尚未实现。
+前置见 [P2 Mission 契约](p2-mission-contract.md)。持久任务壳已完成。只读 git-status 单步执行已实现；调度、审批流、自动续跑和独立验证仍未实现。
 
 ## 现状证据
 
@@ -12,9 +12,9 @@
 | `eap.handoff` | 未执行意图。来源只有 `chat` 或 `builder`，`sourceRef` 是会话 id、`draft`、`builder-alpha` 或 `builder-beta` | 文件系统路径或授权 |
 | Builder `mockRepositoryLabel` | 浏览器本地字符串，例如「模拟 · ledger」 | 真实仓库路径或 `repository.write` |
 | `Path workspace` | 服务端 bean。`EAP_WORKSPACE` 优先，否则当前目录含 `.git` 时用当前目录，否则用父目录。见 `RuntimeConfiguration` | 浏览器提交的路径 |
-| `eap.ai.authorized-root` | 聊天里的只读 Git 只有在工作区实路径落在该根之内时才可用。根为空则 `gitStatusAvailable()` 为假 | 已经授予 Mission |
-| `git-status` | 已有 `GitCapability` 与 `GitInspectionHandler`。命令是参数数组 `git status`，工作区由平台注入，输出经 `SensitiveData.redact`。不改工作区、不推送 | 新的执行框架 |
-| `DefaultProcessExecutor` | 同一 bean 上取消、20 秒超时、状态快照都在进程内存，最多 256 条。`GitCapability.execute` 走 `run()`，调用方拿不到执行号，因此现在取消不了这一次 Git | 可跨重启的执行记录 |
+| `RuntimeWorkspace` | 工作区、授权根和显示标签的共享来源。新键 `eap.runtime.authorized-root` 与旧键 `eap.ai.authorized-root` 冲突时拒绝；两者都空时拒绝；不把根扩大到父目录或整盘。日常服务的根保持为空 | 操作者认证 |
+| `git-status` | `GitCapability.command()` 是唯一的参数数组构造。Mission 通过 `executeManaged(平台执行号)` 复用它。`execute()` 仍给聊天里不需要平台执行号的调用 | Mission 自己拼 `[binary, status]` |
+| `DefaultProcessExecutor` | 同一 bean 上取消、20 秒超时、状态快照都在进程内存，最多 256 条。平台执行号由调用方传入 `runManaged` | 跨重启进程接管 |
 | `CliExecution.Status` | `CREATED`、`RUNNING`、`CANCELLING`、`SUCCEEDED`、`FAILED`、`REJECTED`、`TIMED_OUT`、`CANCELLED`。验证枚举另有 `UNVERIFIED` | Mission 的 `completed` |
 | `eap.task` | `TaskService.createTask` 会立刻规划并可能执行能力，停用能力返回 409。重新运行会再执行 | Mission 的执行记录 |
 | `CapabilitySettings` | 缺记录视为启用。分析任务会检查停用；`GitInspectionHandler` 自己不检查 | Manifest 申请 |
@@ -55,7 +55,7 @@ Mission 当前只有交接来源。`sourceRef` 和模拟仓库标签都不能解
 
 ### 执行生命周期
 
-Mission 与单次 execution 分开。执行状态使用现有枚举，并增加重启专用的 `INTERRUPTED`。不默认重试，不续跑。终态是 `SUCCEEDED`、`FAILED`、`REJECTED`、`TIMED_OUT`、`CANCELLED`、`INTERRUPTED`。在途状态是 `CREATED`、`RUNNING`、`CANCELLING`。
+Mission 与单次 execution 分开。执行状态使用现有枚举。不默认重试，不续跑。终态是 `SUCCEEDED`、`FAILED`、`REJECTED`、`TIMED_OUT`、`CANCELLED`、`INTERRUPTED`。在途状态是 `CREATED`、`RUNNING`、`CANCELLING`。`INTERRUPTED` 只在同一次进程里已经拿到真实退出证据时使用。服务重启本身不写这个终态。
 
 同一 Mission 同时只允许一条在途执行。这由执行表上的部分唯一约束保证，范围是该 Mission 上状态属于在途的行。不能只做「先查再插」。两个启动同时通过校验时，后写入的一行触发约束冲突，服务端再读出已提交的在途行并返回它。冲突不是失败，也不插入第二行。
 
@@ -69,7 +69,7 @@ Mission 与单次 execution 分开。执行状态使用现有枚举，并增加�
 | `CREATED` 或 `RUNNING` | 操作者请求取消 | 先记取消请求并进入 `CANCELLING`。此时还不是 `CANCELLED` |
 | `CANCELLING` | 执行线程确认进程和子进程都已结束 | `CANCELLED` |
 | `CANCELLING` | 进程先于取消采纳已经退出 | 保留 `SUCCEEDED`、`FAILED` 或 `TIMED_OUT`，不改写成 `CANCELLED` |
-| 在途 | 服务进程重启，并按下面的残留进程规则处理完 | `INTERRUPTED`。不重新拉起 |
+| 在途 | 服务进程重启，且没有新的进程退出证据 | 行保持在途，写入未知原因。不重新拉起，也不写成 `INTERRUPTED` |
 | 任一终态 | 再次显式启动 | 新的执行号。旧行和旧证据不覆盖 |
 
 取消只作用于这一次执行，不删除 Mission、交接或证据。重复取消在 `CANCELLING` 期间返回当前行；终态之后返回该终态，不再改写。第一切片的 HTTP 可以同步等待这一次 Git，因为现有处理器就是同步的；等待期间页面不把结果说成 Mission 完成。
@@ -94,20 +94,17 @@ Mission 与单次 execution 分开。执行状态使用现有枚举，并增加�
 | 已插入 `CREATED`，`runManaged` 因执行器关闭、容量满或重复号而拒绝 | 同一行改为 `FAILED`，记下原因。此时还没有进程，投影一并改为 `failed` |
 | 进程已启动，但终态或证据还没写完服务就退出 | 留给重启规则，不在启动请求里假装已经结束 |
 
-`GitCapability.execute` 里的 `run()` 会自己生成执行号，Mission 启动不能走那条路径。
+`GitCapability.execute` 里的 `run()` 会自己生成执行号。Mission 启动走 `executeManaged(平台执行号)`，不走那条隐藏执行号的路径，也不自己拼命令。
 
 ### 重启与残留进程
 
-重启时先找出仍为在途的执行行。只把数据库改成 `INTERRUPTED` 不能当成进程已停止。也不能只凭进程号销毁：进程号会被操作系统复用。
+跨重启进程接管后移。重启时只找出仍为在途的执行行，写入未知原因：`结果未知：服务重启后无法确认进程树是否结束`。行保持 `CREATED`、`RUNNING` 或 `CANCELLING`，因此部分唯一索引继续挡住下一次启动。下一次显式点击返回这一条，不再跑 Git。未知执行会阻塞，直到它离开在途状态。
 
-进程启动后，执行行记下进程号、该进程的启动时间，以及归属。归属至少包括操作系统用户和可执行文件路径。重启时用 `ProcessHandle` 读取当前占有这个进程号的进程，再与记录比较：
+人工解除机制尚未实现。没有接口可以把这条未知行改成终态、清掉阻塞或从中断处继续。阻塞不等于可恢复 Mission，也不等于自动续跑。
 
-- 进程号还没写下：进程未曾启动。确认执行器里也没有这个执行号之后，才标 `INTERRUPTED`，原因是「未启动」。
-- 当前进程的启动时间、用户和可执行文件都与记录一致：才可以销毁这个进程及其子进程。确认它们不再存活之后，才标 `INTERRUPTED`，原因是「已核对并停止」。销毁失败则保持在途。
-- 进程号已经没有对应进程：没有可销毁的对象。标 `INTERRUPTED`，原因是「记录的进程号已经不在」。这不表示由本次恢复把它杀掉。
-- 进程还在，但启动时间、用户或可执行文件有任何一项对不上，或者这些信息读不到：不销毁。不标 `INTERRUPTED`。行保持在途，并记下无法确认的原因，例如进程号已复用、启动时间不符、用户不符或信息不完整。
+不把缺进程号、执行器不再跟踪、父进程号消失，或身份字段互相一致，当成进程树已经结束。这些情况都不销毁进程，也不写 `INTERRUPTED` 或 `CANCELLED`。同一次进程内的取消仍要等执行器观察到进程退出，才可以写成 `CANCELLED`。本切片没有进程查找或销毁组件。
 
-不重新拉起 Git，也不把中断改成成功。内存里的执行快照会随服务进程一起消失，不能代替上面的核对。
+已记下的进程号、启动时间和归属留在执行行上，供以后独立的接管能力使用。当前恢复路径不查找、不销毁进程。
 
 ### 投影
 
@@ -131,9 +128,9 @@ Mission 与单次 execution 分开。执行状态使用现有枚举，并增加�
 
 ## 首切片范围
 
-范围：上述迁移、执行表、对一条已有 Mission 显式启动一次 `git-status`、查询这一次执行、并发或重复的在途启动返回同一条、取消先进入 `CANCELLING` 并在进程结束后落终态、重启时先处理残留进程再标 `INTERRUPTED`。界面上的启动和结果必须跟创建 Mission 分开。成功文案只能表示这一次只读执行的进程结果。终态后的再次点击发起新执行。
+范围：上述迁移、执行表、对一条已有 Mission 显式启动一次 `git-status`、查询这一次执行、并发或重复的在途启动返回同一条、取消先进入 `CANCELLING` 并在进程结束后落终态。界面上的启动和结果必须跟创建 Mission 分开。成功文案只能表示这一次只读执行的进程结果。终态后的再次点击发起新执行。重启只记录未知并阻止自动重跑，不接管、不销毁残留进程。
 
-不做：`git-diff`、其他能力、模型、规划器、审批流、自动重试、自动续跑、独立验证、仓库写入、调度。
+不做：`git-diff`、其他能力、模型、规划器、审批流、自动重试、自动续跑、人工解除未知阻塞、可恢复 Mission、独立验证、仓库写入、调度。
 
 ## 验收方案
 
@@ -145,8 +142,8 @@ Mission 与单次 execution 分开。执行状态使用现有枚举，并增加�
 - `git-status` 解析不到、不是现有 Git 处理器，或在 `eap.capability_setting` 中停用时拒绝，不插入。请求里的身份、能力名或策略字段不能改变这三项检查。
 - 两个启动并发写入时，部分唯一约束只留下一条在途执行，另一个请求返回这一条。终态之后再次点击得到新的执行号，投影改跟新行，旧终态还在。
 - 进程失败或超时进入对应终态。取消请求先保持 `CANCELLING`；进程先退出时保留该退出终态，取消先被采纳时等到进程结束后才是 `CANCELLED`。Mission `status` 仍是 `created`，`verification` 仍是 `not_requested`。
-- 持久执行号与 `runManaged` 的执行号相同。插入之后、进程启动之前失败时，这一行成为 `FAILED`，没有第二条执行。
-- 重启时只有启动时间、用户和可执行文件都与记录一致的活进程才可以销毁；确认结束后才标 `INTERRUPTED`。对不上或信息不全时不销毁、不标中断，并记下原因。已终态执行保持原样，也不会自己再跑。
+- 持久执行号与 `GitCapability.executeManaged` 传入的执行号相同。插入之后、进程启动之前失败时，这一行成为 `FAILED`，没有第二条执行。
+- 重启后在途行保持原状态并写入未知原因，进程不被销毁。再次启动返回同一条，不插入新行，也不再跑 Git。缺进程号或父进程号消失都不是终态证据。已终态执行保持原样。
 - 启动前后 `eap.task` 的条数和既有任务 id 不变。`eap.handoff` 的检查约束和原交接内容不变。
 
 ## 已确认的实施约束
@@ -157,8 +154,8 @@ Mission 与单次 execution 分开。执行状态使用现有枚举，并增加�
 
 下面两项不能只引用本契约。实施时要有相应代码路径和测试；做不到就保持未执行，不能宣称这一步已经安全。
 
-`resolveFor(null, "git-status")` 今天的语义是：处理器存在、没有被停用，且不是专家范围能力时返回该处理器。它不检查操作者、授权根、参数模板或执行策略。测试必须证明启动同时拒绝这些情况，即使解析结果非空：授权根为空或路径越界、能力已停用、参数或环境不符合服务端策略、请求自报身份或授权。只断言「能解析到处理器」的测试不能当作授权通过。
+`resolveFor(null, "git-status")` 的语义是：处理器存在、没有被停用，且不是专家范围能力时返回该处理器。它不检查操作者、授权根或执行策略。测试必须证明启动同时拒绝这些情况，即使解析结果非空：授权根为空、两套根冲突、路径越界、能力已停用、请求自报身份或授权。只断言「能解析到处理器」的测试不能当作授权通过。命令和环境由 `GitCapability` 固定，Mission 不另拼参数。
 
-进程身份核验、子进程终止和退出确认必须有可执行的实现和测试。启动时间、用户或可执行文件不一致，或者这些信息读不到时，不销毁进程，执行保持未确认并记下原因，不能写成 `CANCELLED` 或 `INTERRUPTED`。只有身份一致且进程与子进程都已确认退出，才允许对应终态。无法在当前进程 API 上完成这项核验时，不得用只改数据库状态的实现代替。
+跨重启时不把缺进程号、父进程消失或身份一致写成进程树已结束。这些情况保持在途并记录未知，不销毁进程，也不自动重跑。同一次进程内，没有真实退出证据时不写 `CANCELLED` 或 `INTERRUPTED`。
 
-本次确认之后仍然不建表、不加接口、不执行 `git-status`，也不改交接和任务壳的现有写入。
+上述路径由 `RuntimeWorkspace`、`GitCapability.executeManaged`、`MissionGitAuthorization`、`MissionRunOutcome`，以及重启未知的服务测试和隔离验收覆盖。`local-operator` 只是审计标签。

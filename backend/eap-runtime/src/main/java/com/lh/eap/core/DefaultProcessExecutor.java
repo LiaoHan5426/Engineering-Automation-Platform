@@ -9,13 +9,14 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
 
-public final class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
+public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
     private static final class Execution {
         final UUID id;
         volatile CliExecution.Status status=CliExecution.Status.CREATED;
         volatile boolean cleanupComplete;
         volatile boolean released;
         Process process;
+        Map<String,Object> identity=Map.of();
         Execution(UUID id){this.id=id;}
         CliExecution.Snapshot snapshot(){return new CliExecution.Snapshot(id,status,cleanupComplete);}
     }
@@ -44,7 +45,11 @@ public final class DefaultProcessExecutor implements ProcessExecutor, AutoClosea
     public synchronized int activeCount(){return (int)executions.values().stream().filter(e->!e.released).count();}
     public synchronized List<CliExecution.Snapshot> snapshots(){return executions.values().stream().map(Execution::snapshot).toList();}
     @Override public Observation runManaged(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment){
-        return execute(id,capability,dir,command,Map.copyOf(environment));
+        return runManaged(id,capability,dir,command,environment,null);
+    }
+    public Observation runManaged(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment,
+                                  java.util.function.Consumer<Map<String,Object>> onStart){
+        return execute(id,capability,dir,command,Map.copyOf(environment),onStart);
     }
     private final Duration timeout;
     private static final int OUTPUT_LIMIT=1024*1024;
@@ -54,12 +59,13 @@ public final class DefaultProcessExecutor implements ProcessExecutor, AutoClosea
         this.timeout=timeout;
     }
     public Observation run(String capability,Path dir,List<String> command){
-        return execute(UUID.randomUUID(),capability,dir,command,null);
+        return execute(UUID.randomUUID(),capability,dir,command,null,null);
     }
     @Override public Observation runIsolated(String capability,Path dir,List<String> command,Map<String,String> environment){
-        return execute(UUID.randomUUID(),capability,dir,command,Map.copyOf(environment));
+        return execute(UUID.randomUUID(),capability,dir,command,Map.copyOf(environment),null);
     }
-    private Observation execute(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment){
+    private Observation execute(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment,
+                                java.util.function.Consumer<Map<String,Object>> onStart){
         var execution=new Execution(id);
         synchronized(this){
             if(closed)throw new IllegalStateException("Executor closed");
@@ -76,10 +82,15 @@ public final class DefaultProcessExecutor implements ProcessExecutor, AutoClosea
             var builder=new ProcessBuilder(command).directory(dir.toFile());
             if(environment!=null){builder.environment().clear();builder.environment().putAll(environment);}
             synchronized(execution){
-                if(execution.status==CliExecution.Status.CANCELLING){execution.status=CliExecution.Status.CANCELLED;return new Observation(capability,false,130,"","Cancelled before start",Map.of());}
+                if(execution.status==CliExecution.Status.CANCELLING){
+                    execution.status=CliExecution.Status.CANCELLED;
+                    return new Observation(capability,false,130,"","Cancelled before start",Map.of("processExited",false,"processNotStarted",true,"executorStatus","CANCELLED"));
+                }
                 process=builder.start();execution.process=process;execution.status=CliExecution.Status.RUNNING;
                 phases.put("started",Instant.now());
+                execution.identity=identityOf(process,command);
             }
+            if(onStart!=null) onStart.accept(execution.identity);
             process.getOutputStream().close();
             var running=process;
             var stdout=readers.submit(()->read(running.getInputStream()));
@@ -111,10 +122,17 @@ public final class DefaultProcessExecutor implements ProcessExecutor, AutoClosea
             phases.put("cleanupFinished",Instant.now());
             if(!cleaned)execution.status=CliExecution.Status.FAILED;
             var code=execution.status==CliExecution.Status.TIMED_OUT?124:execution.status==CliExecution.Status.CANCELLED?130:cleaned?process.exitValue():-1;
+            var metadata=new LinkedHashMap<String,Object>();
+            metadata.put("command",List.copyOf(command));
+            metadata.put("timeoutMillis",timeout.toMillis());
+            metadata.put("truncated",out.truncated()||err.truncated());
+            metadata.put("processExited",!process.isAlive());
+            metadata.put("processNotStarted",false);
+            metadata.put("executorStatus",execution.status.name());
+            if(execution.identity!=null) metadata.putAll(execution.identity);
+            metadata.put("trace",new CliExecution.Trace(phases,out.lines(),err.text(),out.truncated()||err.truncated(),""));
             return new Observation(capability,execution.status==CliExecution.Status.SUCCEEDED,code,
-                    out.text(),cleaned?err.text():"CLEANUP_FAILED",
-                    Map.of("command",List.copyOf(command),"timeoutMillis",timeout.toMillis(),"truncated",out.truncated()||err.truncated(),
-                            "trace",new CliExecution.Trace(phases,out.lines(),err.text(),out.truncated()||err.truncated(),"")));
+                    out.text(),cleaned?err.text():"CLEANUP_FAILED",metadata);
         }catch(InterruptedException error){
             execution.status=CliExecution.Status.CANCELLED;
             if(process!=null)terminate(process);Thread.currentThread().interrupt();
@@ -136,6 +154,17 @@ public final class DefaultProcessExecutor implements ProcessExecutor, AutoClosea
                 if(!execution.cleanupComplete)execution.status=CliExecution.Status.FAILED;
             }
         }
+    }
+    private static Map<String,Object> identityOf(Process process,List<String> command){
+        var handle=process.toHandle().info();
+        var identity=new LinkedHashMap<String,Object>();
+        identity.put("processPid",process.pid());
+        identity.put("processStartedAt",handle.startInstant().map(Instant::toString).orElse(""));
+        identity.put("processUser",handle.user().orElse(""));
+        var executable=handle.command().filter(value->!value.isBlank())
+                .orElse(command.isEmpty()?"":command.get(0));
+        identity.put("processExecutable",executable);
+        return identity;
     }
     private static void terminate(Process process){
         process.descendants().forEach(ProcessHandle::destroyForcibly);process.destroyForcibly();

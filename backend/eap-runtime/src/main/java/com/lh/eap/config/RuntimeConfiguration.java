@@ -6,13 +6,21 @@ import com.lh.eap.api.ProcessExecutor;
 import com.lh.eap.core.DefaultProcessExecutor;
 import com.lh.eap.application.service.CliChannels;
 import org.springframework.context.annotation.*;
+import org.springframework.core.env.Environment;
 import java.nio.file.*;
 
 @Configuration
 public class RuntimeConfiguration {
-    @Bean
+    @Bean(destroyMethod = "close")
     ProcessExecutor processExecutor() {
         return new DefaultProcessExecutor();
+    }
+
+    @Bean
+    RuntimeWorkspace runtimeWorkspace(Path workspace, Environment environment) {
+        return new RuntimeWorkspace(workspace,
+                environment.getProperty("eap.runtime.authorized-root", ""),
+                environment.getProperty("eap.ai.authorized-root", ""));
     }
 
     @Bean

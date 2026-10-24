@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { beginMission, missionShell } from "./mission";
+import { beginMission, missionLocked, missionShell } from "./mission";
 
 describe("mission shell", () => {
   it("accepts only the fixed unexecuted states", () => {
@@ -16,6 +16,20 @@ describe("mission shell", () => {
       approval: "not_requested",
       grant: "none",
       verification: "passed",
+    })).toBe(false);
+    expect(missionLocked({
+      status: "created",
+      execution: "succeeded",
+      approval: "not_requested",
+      grant: "none",
+      verification: "not_requested",
+    })).toBe(true);
+    expect(missionShell({
+      status: "created",
+      execution: "succeeded",
+      approval: "not_requested",
+      grant: "none",
+      verification: "not_requested",
     })).toBe(false);
   });
 

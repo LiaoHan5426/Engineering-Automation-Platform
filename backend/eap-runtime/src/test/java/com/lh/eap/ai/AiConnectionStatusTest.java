@@ -1,11 +1,19 @@
 package com.lh.eap.ai;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.lh.eap.capability.GitCapability;
+import com.lh.eap.config.RuntimeWorkspace;
+import com.lh.eap.core.CapabilityRegistry;
+import com.lh.eap.core.DefaultProcessExecutor;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
+import com.lh.eap.runtime.handler.GitInspectionHandler;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.beans.factory.ObjectProvider;
 
 class AiConnectionStatusTest {
     @TempDir Path root;
@@ -52,6 +60,24 @@ class AiConnectionStatusTest {
         assertNotEquals(previous, next.configurationRevision());
         assertEquals(AiConnectionStatus.revision("openai", "other-model", "https://api.openai.com/v1", false),
                 next.configurationRevision());
+    }
+
+    @Test void sharedRootDecisionDrivesChatGitAvailability(@TempDir Path other) throws Exception {
+        var handlers = new CapabilityHandlerRegistry(List.of(new GitInspectionHandler(
+                new CapabilityRegistry().register(new GitCapability("status")), new DefaultProcessExecutor())));
+        assertFalse(chat(handlers, new RuntimeWorkspace(root, " ", "")).gitStatusAvailable());
+        assertTrue(chat(handlers, new RuntimeWorkspace(root, "", root.toString())).gitStatusAvailable());
+        var nested = Files.createDirectory(root.resolve("repo"));
+        assertFalse(chat(handlers, new RuntimeWorkspace(root, nested.toString(), other.toString())).gitStatusAvailable());
+    }
+
+    private AiConnectionStatus chat(CapabilityHandlerRegistry handlers, RuntimeWorkspace runtime) {
+        return new AiConnectionStatus(handlers, runtime, "none", "", "", new ObjectProvider<>() {
+            @Override public ChatModel getObject() { return null; }
+            @Override public ChatModel getObject(Object... args) { return null; }
+            @Override public ChatModel getIfAvailable() { return null; }
+            @Override public ChatModel getIfUnique() { return null; }
+        });
     }
 
     @Test void revisionIgnoresUserinfoAndApiKeyMaterial() {

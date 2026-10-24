@@ -53,6 +53,14 @@ public class JdbcMissionStore implements MissionStore {
     }
 
     @Override
+    public void updateExecution(UUID id, String execution) {
+        var updated = jdbc.update("UPDATE eap.mission SET execution = ? WHERE id = ?", execution, id);
+        if (updated != 1) {
+            throw new org.springframework.dao.EmptyResultDataAccessException(1);
+        }
+    }
+
+    @Override
     public Optional<Mission> findByHandoff(UUID handoffId) {
         return jdbc.query(SELECT + " WHERE m.handoff_id = ?", (rs, row) -> map(rs), handoffId).stream().findFirst();
     }

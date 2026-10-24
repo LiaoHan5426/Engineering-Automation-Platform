@@ -5,7 +5,7 @@ import { Badge, Button, Feedback } from "@eap/ui";
 import { runtimeApi, type HandoffRecord, type MissionRecord } from "@eap/runtime-client";
 import { errorMessage } from "../../lib/presentation";
 import { beginHandoff, builderHandoff, handoffSucceeded } from "../handoff/handoff";
-import { beginMission, missionShell } from "../mission/mission";
+import { beginMission, missionLocked, missionShell } from "../mission/mission";
 import PrototypePreview from "./PrototypePreview.vue";
 import type { PluginHost } from "./host";
 import { GRANTS, MANIFESTS, type BuilderConfig } from "./model";
@@ -86,6 +86,27 @@ async function recordHandoff() {
     handoffNote.value = errorMessage(error);
   } finally {
     handoffBusy.value = false;
+  }
+}
+
+async function readGitStatus(missionId: string) {
+  const gate = { busy: missionBusy.value };
+  if (!beginMission(gate)) return;
+  missionBusy.value = true;
+  missionOk.value = false;
+  missionNote.value = "";
+  try {
+    const execution = await runtimeApi.startMissionGitStatus(missionId);
+    missionOk.value = execution.unconfirmedReason == null;
+    missionNote.value = execution.unconfirmedReason
+      ? t("plugin.missionRunPending", { id: execution.id, status: execution.status, reason: execution.unconfirmedReason })
+      : t("plugin.missionRunResult", { id: execution.id, status: execution.status, exitCode: execution.exitCode ?? "" });
+    await loadMissions();
+  } catch (error) {
+    missionOk.value = false;
+    missionNote.value = errorMessage(error);
+  } finally {
+    missionBusy.value = false;
   }
 }
 
@@ -186,9 +207,20 @@ onMounted(() => {
           >
             {{ t("plugin.mission") }}
           </Button>
-          <p v-if="linkedMission(item.id) && missionShell(linkedMission(item.id)!)" data-testid="mission-shell">
-            {{ t("plugin.missionShell", linkedMission(item.id)!) }}
-          </p>
+          <template v-if="linkedMission(item.id) && missionLocked(linkedMission(item.id)!)">
+            <p data-testid="mission-shell">
+              {{ missionShell(linkedMission(item.id)!) ? t("plugin.missionShell", linkedMission(item.id)!) : t("plugin.missionRunResult", { id: linkedMission(item.id)!.id, status: linkedMission(item.id)!.execution, exitCode: "" }) }}
+            </p>
+            <Button
+              variant="secondary"
+              type="button"
+              data-testid="builder-git-status"
+              :disabled="missionBusy"
+              @click="readGitStatus(linkedMission(item.id)!.id)"
+            >
+              {{ t("plugin.missionRun") }}
+            </Button>
+          </template>
           <p v-else-if="linkedMission(item.id)">{{ t("plugin.missionRejected") }}</p>
         </li>
       </ul>

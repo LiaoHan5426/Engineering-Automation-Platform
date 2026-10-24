@@ -123,6 +123,11 @@ class MissionControllerTest {
             public Optional<Mission> findByHandoff(UUID handoffId) {
                 return rows.stream().filter(item -> item.handoffId().equals(handoffId)).findFirst();
             }
+
+            @Override
+            public void updateExecution(UUID id, String execution) {
+                throw new UnsupportedOperationException();
+            }
         });
         return MockMvcBuilders.standaloneSetup(new MissionController(service))
                 .setControllerAdvice(new ApiErrorHandler())

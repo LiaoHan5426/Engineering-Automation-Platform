@@ -1,5 +1,6 @@
 package com.lh.eap.ai;
 
+import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -34,15 +35,14 @@ public class AiConnectionStatus {
     private String observedError = "";
 
     @Autowired
-    public AiConnectionStatus(CapabilityHandlerRegistry registry, Path workspace,
-            @Value("${eap.ai.authorized-root:}") String authorizedRoot,
+    public AiConnectionStatus(CapabilityHandlerRegistry registry, RuntimeWorkspace runtime,
             @Value("${spring.ai.model.chat:none}") String provider,
             @Value("${spring.ai.openai.chat.options.model:}") String model,
             @Value("${spring.ai.openai.base-url:}") String baseUrl,
             org.springframework.beans.factory.ObjectProvider<org.springframework.ai.chat.model.ChatModel> models) {
         this.registry = registry;
-        this.workspace = workspace;
-        this.authorizedRoot = authorizedRoot == null || authorizedRoot.isBlank() ? null : Path.of(authorizedRoot);
+        this.workspace = runtime.workspace();
+        this.authorizedRoot = runtime.root().allowed() ? runtime.root().path() : null;
         this.provider = provider == null || provider.isBlank() ? "none" : provider;
         this.model = model == null ? "" : model;
         this.baseUrl = baseUrl == null ? "" : baseUrl;
@@ -132,8 +132,7 @@ public class AiConnectionStatus {
     }
 
     public static String workspaceLabel(Path workspace) {
-        if (workspace == null) return "ws-unbound";
-        return "ws-" + sha256(workspace.toAbsolutePath().normalize().toString()).substring(0, 12);
+        return RuntimeWorkspace.label(workspace);
     }
 
     static String endpointIdentity(String baseUrl) {

@@ -19,7 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class AiConversationRegistry {
     public static final int MAX_CONVERSATIONS = 32;
     public static final Duration IDLE = Duration.ofMinutes(30);
-    public static final String PRINCIPAL = "local-operator";
+    public static final String PRINCIPAL = com.lh.eap.config.RuntimeWorkspace.OPERATOR_LABEL;
     public static final String MEMORY_NOTE = "内存窗口，重启后不可恢复，也不是任务审计。";
 
     private final ChatMemory memory;

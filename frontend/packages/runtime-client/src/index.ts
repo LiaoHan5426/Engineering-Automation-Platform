@@ -219,11 +219,23 @@ export type MissionRecord = {
   sourceRef: string;
   summary: string;
   status: "created";
-  execution: "not_started";
+  execution: "not_started" | "running" | "cancelling" | "succeeded" | "failed" | "timed_out" | "cancelled" | "interrupted";
   approval: "not_requested";
   grant: "none";
   verification: "not_requested";
   createdAt?: string;
+};
+export type MissionExecutionRecord = {
+  id: string;
+  missionId: string;
+  status: string;
+  capability: "git-status";
+  principal: "local-operator";
+  exitCode?: number | null;
+  exitEvidence?: string | null;
+  unconfirmedReason?: string | null;
+  approval: "NOT_REQUIRED";
+  cancelRequested?: boolean;
 };
 export type HandoffRecord = {
   id: string;
@@ -656,6 +668,10 @@ export const runtimeApi = {
   createMission: (handoffId: string) =>
     client
       .post<MissionRecord>("/missions", { handoffId })
+      .then((response) => response.data),
+  startMissionGitStatus: (missionId: string) =>
+    client
+      .post<MissionExecutionRecord>("/missions/" + encodeURIComponent(missionId) + "/executions", { missionId }, { timeout: 60_000 })
       .then((response) => response.data),
   analyzeSql: (
     sql: string,

@@ -72,4 +72,4 @@ Mission 不写入 `eap.task`，不调用 `TaskService`、`DeterministicTaskPlann
 
 验收：迁移与 `UNIQUE(handoff_id)` 在实际库生效；并发冲突返回同一 Mission；重启后同一 `handoffId` 仍指向它，来源摘要不变，`verification` 仍是 `not_requested`。交接不存在返回 404，非法请求返回 400，二者都不插入。数据库失败返回 500，界面不显示创建成功，也不显示“已完成”或“验证通过”。不验收调度、审批、取消、执行失败转移、终态后重建、重启后续跑、仓库写入或独立验证。
 
-第一切片已按本文件实施。调度、审批、取消、续跑、验证执行、终态后重建和仓库写入仍未做。只读单步执行契约已确认，见 [Mission 单步执行契约](mission-single-step-execution-contract.md)，实施尚未授权。
+第一切片已按本文件实施。只读 git-status 单步执行已另按 [Mission 单步执行契约](mission-single-step-execution-contract.md) 实施，并收敛到共享运行时和单一 Git 入口。未知执行会阻塞；人工解除机制尚未实现，不能算可恢复 Mission。调度、审批流、自动续跑、独立验证、终态后重建和仓库写入仍未做。

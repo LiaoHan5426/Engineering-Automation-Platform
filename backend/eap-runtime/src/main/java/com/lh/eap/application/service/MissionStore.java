@@ -12,4 +12,6 @@ public interface MissionStore {
     Optional<Mission> find(UUID id);
 
     Optional<Mission> findByHandoff(UUID handoffId);
+
+    void updateExecution(UUID id, String execution);
 }

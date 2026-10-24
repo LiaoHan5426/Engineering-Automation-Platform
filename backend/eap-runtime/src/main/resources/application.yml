@@ -40,6 +40,10 @@ management:
       exposure:
         include: health,info
 eap:
+  runtime:
+    # Shared authorized root. The legacy eap.ai.authorized-root key is only a fallback.
+    # If both are set to different directories, execution is refused instead of widened.
+    authorized-root: ${EAP_AUTHORIZED_ROOT:}
   ai:
     authorized-root: ${EAP_AI_AUTHORIZED_ROOT:}
     artifact-root: ${EAP_AI_ARTIFACT_ROOT:.eap-ai-artifacts}

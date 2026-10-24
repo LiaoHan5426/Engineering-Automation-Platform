@@ -5,7 +5,18 @@ export function beginMission(gate: { busy: boolean }): boolean {
   return true;
 }
 
-/** A stored shell. Anything else is not success, completion, or a passed verification. */
+const EXECUTION = new Set([
+  "not_started",
+  "running",
+  "cancelling",
+  "succeeded",
+  "failed",
+  "timed_out",
+  "cancelled",
+  "interrupted",
+]);
+
+/** A stored shell that has not been started. */
 export function missionShell(record: {
   status?: string;
   execution?: string;
@@ -19,5 +30,22 @@ export function missionShell(record: {
     record.approval === "not_requested" &&
     record.grant === "none" &&
     record.verification === "not_requested"
+  );
+}
+
+/** Locked mission columns. A changed execution projection is still the same shell. */
+export function missionLocked(record: {
+  status?: string;
+  execution?: string;
+  approval?: string;
+  grant?: string;
+  verification?: string;
+}): boolean {
+  return (
+    record.status === "created" &&
+    record.approval === "not_requested" &&
+    record.grant === "none" &&
+    record.verification === "not_requested" &&
+    EXECUTION.has(record.execution ?? "")
   );
 }

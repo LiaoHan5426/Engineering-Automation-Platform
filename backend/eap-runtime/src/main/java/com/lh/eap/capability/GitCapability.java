@@ -3,6 +3,7 @@ package com.lh.eap.capability;
 import com.lh.eap.application.service.CliChannels;
 
 import com.lh.eap.api.*;
+import com.lh.eap.core.LocalBinaries;
 
 import java.util.*;
 import java.util.function.Supplier;
@@ -32,9 +33,38 @@ public final class GitCapability implements Capability {
         return "git-" + operation;
     }
 
-    public Observation execute(ExecutionContext c, String... args) {
+    public String executable() {
+        return binary.get();
+    }
+
+    public boolean runnable() {
+        return LocalBinaries.resolve(binary.get()).isPresent();
+    }
+
+    /** The only argv constructor for this capability. Callers do not assemble git commands. */
+    public List<String> command(String... args) {
         var command = new ArrayList<>(List.of(binary.get(), operation));
         command.addAll(List.of(args));
-        return c.executor().run(name(), c.workspace(), command);
+        return List.copyOf(command);
+    }
+
+    public Observation execute(ExecutionContext c, String... args) {
+        return c.executor().run(name(), c.workspace(), command(args));
+    }
+
+    /** Runs this capability's own command under an existing platform execution id. */
+    public Observation executeManaged(UUID executionId, ExecutionContext context) {
+        if (!runnable()) throw new IllegalStateException("git binary is not available");
+        return context.executor().runManaged(executionId, name(), context.workspace(), command(), environment());
+    }
+
+    /** Environment for this read-only git invocation. It is not a global CLI policy. */
+    public static Map<String, String> environment() {
+        var environment = new LinkedHashMap<String, String>();
+        for (var name : List.of("SystemRoot", "WINDIR", "TEMP", "TMP", "PATH")) {
+            var value = System.getenv(name);
+            if (value != null) environment.put(name, value);
+        }
+        return environment;
     }
 }

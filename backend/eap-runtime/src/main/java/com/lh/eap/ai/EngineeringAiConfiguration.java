@@ -1,6 +1,7 @@
 package com.lh.eap.ai;
 
 import com.lh.eap.application.service.FileExecutionArtifactStore;
+import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import java.nio.file.Path;
 import org.springframework.ai.chat.client.ChatClient;
@@ -50,17 +51,16 @@ public class EngineeringAiConfiguration {
 
     @Bean
     EngineeringChatService engineeringChatService(ObjectProvider<ChatClient.Builder> builders, ObjectProvider<ChatModel> models,
-            ChatMemory memory, CapabilityHandlerRegistry registry,
+            ChatMemory memory, CapabilityHandlerRegistry registry, RuntimeWorkspace runtime,
             @Value("${spring.ai.model.chat:none}") String provider,
             @Value("${spring.ai.openai.api-key:}") String apiKey,
-            @Value("${eap.ai.authorized-root:}") String root,
             @Value("${eap.ai.artifact-root:.eap-ai-artifacts}") String artifactRoot) {
         if (provider.equals("openai") && apiKey.isBlank())
             throw new IllegalStateException("OpenAI configuration requires spring.ai.openai.api-key / OPENAI_API_KEY");
         var builder = models.getIfAvailable() == null ? null : builders.getIfAvailable();
         var client = builder == null ? null : createClient(builder, memory);
-        return new EngineeringChatService(client, registry, root.isBlank() ? null : Path.of(root),
-                new FileExecutionArtifactStore(Path.of(artifactRoot)));
+        var root = runtime.root().allowed() ? runtime.root().path() : null;
+        return new EngineeringChatService(client, registry, root, new FileExecutionArtifactStore(Path.of(artifactRoot)));
     }
 
     static ChatClient createClient(ChatClient.Builder builder, ChatMemory memory) {
