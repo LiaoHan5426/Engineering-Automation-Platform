@@ -372,6 +372,48 @@ export type SqlAnalysis = {
   }>;
 };
 
+export type AiConnectionState =
+  | "disabled"
+  | "not_configured"
+  | "configured_unverified"
+  | "available"
+  | "error";
+export type AiToolMode = "none" | "git_status";
+export type AiStatus = {
+  state: AiConnectionState;
+  provider: string;
+  model: string;
+  configurationRevision: string;
+  lastObservedAt: string | null;
+  errorCode: string;
+  tools: { git_status: boolean };
+  workspaceLabel: string;
+};
+export type AiConversation = {
+  conversationId: string;
+  workspaceLabel: string;
+  memory: string;
+};
+export type AiArtifactSummary = {
+  artifactId: string;
+  executionId: string;
+  kind: string;
+  sizeBytes: number;
+  sha256: string;
+};
+export type AiToolEvent = { sequence: number; code: string };
+export type AiMessageResult = {
+  executionId: string | null;
+  answer: string;
+  error: string;
+  status: string;
+  approval: string;
+  verification: string;
+  toolEvents: AiToolEvent[];
+  artifactError: string;
+  artifacts: AiArtifactSummary[];
+};
+
 const baseUrl = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8080/api";
 
 const client = axios.create({
@@ -611,4 +653,15 @@ export const runtimeApi = {
       items: string[];
       states?: Record<string, { enabled: boolean; builtin: boolean; revision: number }>;
     }>("/experts"),
+  aiStatus: () => get<AiStatus>("/ai/status"),
+  openAiConversation: () =>
+    client.post<AiConversation>("/ai/conversations", {}, { timeout: 10_000 }).then((response) => response.data),
+  sendAiMessage: (id: string, message: string, toolMode: AiToolMode) =>
+    client
+      .post<AiMessageResult>(
+        "/ai/conversations/" + encodeURIComponent(id) + "/messages",
+        { message, toolMode },
+        { timeout: 35_000 },
+      )
+      .then((response) => response.data),
 };

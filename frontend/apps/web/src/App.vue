@@ -5,6 +5,8 @@ import ExpertManager from "./features/expert/ExpertManager.vue";
 import KnowledgeManager from "./features/knowledge/KnowledgeManager.vue";
 import DatabaseManager from "./features/database/DatabaseManager.vue";
 import RuleManager from "./features/rule/RuleManager.vue";
+import ChatWorkspace from "./features/chat/ChatWorkspace.vue";
+import { i18n } from "./lib/i18n";
 import {
   runtimeApi,
   type CapabilityItem,
@@ -36,6 +38,7 @@ import { CANDIDATE_REWRITE_NOTES, candidateRewrite, rewriteUnavailable } from ".
  */
 const views = [
   { id: "sql", name: "分析工作台", icon: "▷", group: "工作", hint: "任务列表、任务流与新的分析输入" },
+  { id: "chat", name: i18n.global.t("chat.nav"), icon: "✉", group: "工作", hint: i18n.global.t("chat.hint") },
   { id: "experts", name: "专家定义", icon: "◈", group: "设置", hint: "编排能力节点、依赖与授权" },
   { id: "rules", name: "规则库", icon: "▤", group: "设置", hint: "查看规则、条件与试算结果" },
   { id: "knowledge", name: "知识库", icon: "▢", group: "设置", hint: "录入业务知识并带来源检索" },
@@ -70,6 +73,7 @@ const INSPECTOR_PAGES: Record<string, { hint: string; pipeline?: boolean }> = {
     hint: "顶部状态条的四个数字都注明了出处（可展开查看口径）。点击任意一条发现，这里显示它的严重级、证据、语义保持建议与三个动作：复制建议 / 查看候选改写 / 标记忽略。",
     pipeline: true,
   },
+  chat: { hint: i18n.global.t("chat.hint") },
   experts: {
     hint: "专家的能力引用、知识库与 MCP 工具授权在该专家面板内联展示；画布与清单都由当前草稿渲染。",
   },
@@ -1424,6 +1428,8 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
             </p>
           </details>
         </section>
+
+        <ChatWorkspace v-else-if="activeView === 'chat'" />
 
         <!-- MANAGERS -->
         <KeepAlive>

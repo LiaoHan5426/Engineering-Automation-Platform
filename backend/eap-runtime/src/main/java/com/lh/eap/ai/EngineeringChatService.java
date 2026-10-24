@@ -37,7 +37,16 @@ public final class EngineeringChatService {
         this.artifacts = artifacts;
     }
 
+    /** Existing callers keep the read-only Git tool registered; HTTP chooses per request. */
     public Outcome chat(Request request) {
+        return chat(request, true);
+    }
+
+    public static String memoryKey(String principal, UUID conversationId) {
+        return principal.length() + ":" + principal + ":" + conversationId;
+    }
+
+    public Outcome chat(Request request, boolean registerGitTool) {
         var id = UUID.randomUUID();
         var started = Instant.now();
         var tool = new GitTool(id, request);
@@ -49,9 +58,10 @@ public final class EngineeringChatService {
                 status = CliExecution.Status.REJECTED;
             } else {
                 // Length prefix avoids ambiguous principal/conversation concatenation.
-                String conversation = request.principal().length() + ":" + request.principal() + ":" + request.conversationId();
-                var response = client.prompt().user(request.message()).toolCallbacks(tool.callback())
-                        .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation)).call().chatResponse();
+                String conversation = memoryKey(request.principal(), request.conversationId());
+                var prompt = client.prompt().user(request.message());
+                if (registerGitTool) prompt = prompt.toolCallbacks(tool.callback());
+                var response = prompt.advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation)).call().chatResponse();
                 if (response == null || response.getResult() == null) {
                     error = "AI_EMPTY_RESPONSE";
                     status = CliExecution.Status.FAILED;

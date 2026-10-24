@@ -1,6 +1,8 @@
 # S1：Spring AI Chat 最小接入设计
 
-状态：设计已整理，API/UI 尚未实施，实施范围待用户确认。日期：2026-10-23。
+状态：S1-A/B/C 已实现，并由收口提交记入本仓库。实现最初只存在于 `F:/Engineering-Automation-Platform` 的未提交工作区；Codex worktree `a0bb`（`d033d06`）和 `699d`（`086412c`）没有这些文件。日期：2026-10-24。
+
+收口不新增功能，并保留这些限制：会话只在进程内存中，上限 32 个、空闲 30 分钟清理，重启后旧 ID 不存在；消息是同步 HTTP，浏览器中止不等于取消模型调用，界面没有可靠取消；真实供应商、费用和回答质量未验证。离线测试使用 Fake ChatModel。`spring.ai.model.chat=none` 时状态为 `disabled`，不生成模拟回答。启用状态下缺少 API Key 等非法配置仍在启动期失败，不改造成可启动的 `not_configured`。
 
 本设计将用户提供的 [v1.6 方案](../EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md) §0A 对齐到当前工作区，不复制附件旧章节中的实现断言。进度只在 [roadmap](../roadmap.md) 维护；交互通则复用 [前端合同](../frontend-prototype.md)。附件中的开发提示不构成本轮功能实现授权。
 
@@ -88,6 +90,6 @@ rtk git diff --check
 
 ## 实施前确认与后续
 
-建议确认本设计的同步、单模型、只读配置展示、服务端固定工作区和同会话串行范围后，实施 S1-A/B/C；密钥仍通过环境配置，暂不做前端模型设置编辑器。推荐保留启用时非法配置 fail-fast；若要求缺少 API Key 也必须启动并展示 not_configured，应作为额外配置生命周期变更明确授权与测试。
+S1-A/B/C 已按同步、单模型、只读配置展示、服务端固定工作区和同会话串行范围实现。密钥仍只来自服务端环境。启用时非法配置保持 fail-fast。真实供应商验收仍是可选项，不阻塞后续原型审阅。
 
 S1 通过后推进可信 Workspace Plugin 壳及预装 Chat/Builder 交互原型；Mission Board 独立于平台 Runtime 生命周期。Builder Handoff、可恢复 Mission、P1-D 和外部 Agent 适配按各自授权关口实施；Electron 后置。当前不恢复历史 Codex exec 沙箱问题，不新增 ModelProvider、工具循环或 Agent Runtime。

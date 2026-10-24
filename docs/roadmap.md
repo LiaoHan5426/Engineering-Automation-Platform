@@ -17,15 +17,16 @@ reference, not proof of implementation or authorization to execute all its stage
 | Test consolidation / generated cleanup | Legacy tests migrated plus shared Fake ChatModel; 190 total / 186 passed / 4 unchanged skips; initial 82-file cleanup followed by removal of 302 historical files and all 24 audit subdirectories; final conclusions and inventory retained |
 | Documentation | Single docs/README.md entry; old UI reviews and per-round Codex reports consolidated; 14 superseded documents/prototype files retired, valid decisions and active console prototype retained |
 | Codex P1-C | Adapter, model communication, process and Artifact evidence implemented; file delegation was denied, acceptance remains incomplete; investigation paused |
-| Chat workbench | Existing console/session UI retained; EngineeringChatService is not wired into that UI; no usable generic AI conversation is claimed |
-| Workspace plugins | Planned trusted built-ins; Chat and Builder are preinstalled Workspace Plugins in the target, not implemented registry instances |
+| Chat workbench | S1 wired on 2026-10-24: `GET /api/ai/status`, `POST /api/ai/conversations`, `POST /api/ai/conversations/{id}/messages`, and a `#chat` page. In-memory sessions, synchronous requests, no reliable cancel, no live provider acceptance. The landing page remains the SQL workbench |
+| Workspace plugins | Contract for review only in [S2 plugin ADR](decisions/s2-workspace-plugin-contract.md). Chat and Builder are still not registry instances; plugin implementation is not authorized |
 | Mission | Planned independent runtime/persistence/approval lifecycle; neither ChatMemory nor Expert DAG supplies it |
 | Builder | Planned GrapesJS manual editor, semantic schema and Vue preview/handoff; not implemented |
 | P1-D | Independent Diff/Build/Test validation remains unimplemented and separately gated |
 
-Next: implement the separately approved slices in the [S1 Chat integration design](decisions/s1-chat-spring-ai-design.md)
-after design review. This design is delivered; its API/UI is not implemented. Establish the trusted plugin shell and interactive
-Chat/Mission/Builder prototypes before large integration. Mission core lifecycle must remain independent
+Next: review the [S2 workspace plugin contract](decisions/s2-workspace-plugin-contract.md) before any plugin code.
+S1 is implemented; see [S1 Chat design](decisions/s1-chat-spring-ai-design.md). Its close-out on this worktree recorded
+`mvn -f backend/pom.xml test` as 205 passed, 0 failed, 4 skipped, and `pnpm --dir frontend test run` as 51 passed.
+That suite was not re-executed while writing this status note. Mission core lifecycle must remain independent
 of any board plugin. Builder repository delivery depends on Mission execution and independent P1-D
 verification; Electron follows those paths. EAP owns grants, engineering tools, execution records and
 Artifacts; Spring AI owns generic model/tool-calling infrastructure; Codex remains an independent

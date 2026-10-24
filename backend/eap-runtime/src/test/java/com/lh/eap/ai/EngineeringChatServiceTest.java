@@ -196,6 +196,13 @@ class EngineeringChatServiceTest {
         assertFalse(first.answer().contains("confidential")); assertFalse(first.answer().contains("hidden"));
         assertFalse(first.answer().contains("sk-testcredential"));
     }
+    @Test void ordinaryChatCanOmitTheGitTool() {
+        var calls = new AtomicInteger();
+        var outcome = service(p -> tool(), handler(calls, false)).chat(request(true), false);
+        assertEquals(0, calls.get());
+        assertNotEquals("TOOL_PERMISSION_DENIED", outcome.error());
+        assertFalse(outcome.execution().trace().stdoutLines().stream().anyMatch(line -> line.text().startsWith("TOOL_")));
+    }
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"timeout,AI_TIMED_OUT,TIMED_OUT", "cancel,AI_CANCELLED,CANCELLED"})
     void modelTimeoutAndCancellationKeepExecutionAndVerificationSeparate(String mode, String error, String status) {

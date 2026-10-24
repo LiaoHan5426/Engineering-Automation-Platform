@@ -58,6 +58,9 @@ describe("console information architecture", () => {
     const cfg = rail.indexOf("专家定义");
     expect(work).toBeGreaterThan(-1);
     expect(cfg).toBeGreaterThan(work);
+    const chat = rail.indexOf("对话");
+    expect(chat).toBeGreaterThan(work);
+    expect(cfg).toBeGreaterThan(chat);
   });
 
   it("keeps every configuration surface inside the settings group", async () => {
@@ -76,6 +79,7 @@ describe("console information architecture", () => {
     expect(html).toContain("开始分析");
     // 概览不再是一个独立的视图。
     expect(html).not.toContain('id="view-overview"');
+    expect(html).not.toContain("尚未建立对话");
   });
 
   it("folds the old overview numbers into a status strip on the workbench", async () => {

@@ -44,8 +44,13 @@ public class EngineeringAiConfiguration {
         };
     }
     @Bean
+    ChatMemory engineeringChatMemory() {
+        return MessageWindowChatMemory.builder().maxMessages(20).build();
+    }
+
+    @Bean
     EngineeringChatService engineeringChatService(ObjectProvider<ChatClient.Builder> builders, ObjectProvider<ChatModel> models,
-            CapabilityHandlerRegistry registry,
+            ChatMemory memory, CapabilityHandlerRegistry registry,
             @Value("${spring.ai.model.chat:none}") String provider,
             @Value("${spring.ai.openai.api-key:}") String apiKey,
             @Value("${eap.ai.authorized-root:}") String root,
@@ -53,7 +58,6 @@ public class EngineeringAiConfiguration {
         if (provider.equals("openai") && apiKey.isBlank())
             throw new IllegalStateException("OpenAI configuration requires spring.ai.openai.api-key / OPENAI_API_KEY");
         var builder = models.getIfAvailable() == null ? null : builders.getIfAvailable();
-        var memory = MessageWindowChatMemory.builder().maxMessages(20).build();
         var client = builder == null ? null : createClient(builder, memory);
         return new EngineeringChatService(client, registry, root.isBlank() ? null : Path.of(root),
                 new FileExecutionArtifactStore(Path.of(artifactRoot)));
