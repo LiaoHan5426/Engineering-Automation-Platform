@@ -133,13 +133,13 @@
 
 ## 2026-10-24 交付状态
 
-状态：实现及离线检查通过，隔离数据库验收、最终页面冒烟未执行。不标记验收完成。
+状态：实现及离线检查通过，最终页面冒烟已通过，隔离数据库验收未执行。不标记验收完成。
 
 离线证据仍是当时记录的结果，本轮没有重跑：`mvn -f backend/pom.xml test` 为 245 项、0 失败、5 跳过；其中 `PrototypeDeliveryAcceptanceTest` 因四个变量未设置而跳过，没有连接或迁移。V18 之后 `SchemaAndWiringTest` 5 项通过。前端 `typecheck`、`test run`（16 个文件、67 项通过）、`check:boundaries` 和 `build` 通过。授权根没有改。`backend/eap-runtime/pom.xml` 已在 `b3813a1`，expert-sdk 格式化已在 `4d1cf0d`。这两次提交独立于本切片其余 24 个文件，不再写成“排除未提交改动”。
 
 两项待办彼此独立，都不作为对方的前置条件：
 
-- 隔离数据库验收：只在明确授权的环境里显式设置 `EAP_RUN_CLI_INTEGRATION`、`EAP_DB_URL`、`EAP_DB_USERNAME`、`EAP_DB_PASSWORD` 后，单独运行 `PrototypeDeliveryAcceptanceTest`。没有该环境时保持跳过，不搜索、不读取日常凭据，不连接、不建库、不迁移、不清理。此前日常库验收不能代替。上次记录是四个变量未设置，且没有未跟踪的本地环境文件。
-- 最终页面冒烟：保存、重开、临时点击、关闭重开、重复生成交付单。保留已有草稿和记录，不连接 Agent，不改授权根。本轮未执行。
+- 隔离数据库验收：仍待办。2026-10-24 再次检查时，进程、用户和机器环境都没有 `EAP_RUN_CLI_INTEGRATION`、`EAP_DB_URL`、`EAP_DB_USERNAME`、`EAP_DB_PASSWORD`。没有读取日常凭据，没有连接、建库、迁移或清理，因此没有迁移、并发唯一、旧版本不变和清理结果。此前日常库验收不能代替。只在明确授权并显式设置这四个变量后单独运行 `PrototypeDeliveryAcceptanceTest`。
+- 最终页面冒烟：2026-10-24 在已运行的 `http://localhost:5173/#builder-alpha` 上通过。保存产生版本 `4dc9d40e-d25e-4d25-ae33-1da2403745f4`，重开后标题、正文和按钮次数为保存值 1。版本预览临时点击变为 2，活草稿仍是 1。关闭再打开回到 1，库中 `buttonPresses` 仍是 1，哈希仍是 `6654bb56f7e1647a2564ad9b41440cd08779003b50ebfc0315c5adbe7a1fd400`。连续两次生成交付单得到同一张 `dfb9990c-9ee0-4f3e-bb36-f0c9a0361d43`，页面写明仓库未绑定、基线未记录、Agent 未调用。原版本 `116967fb-fcc8-49ec-a8a4-2042ae80ecb0` 的哈希和验收条件未变。草稿仍是“模拟 · ledger / 结算页已改 / 手工改过的正文 / 已点击 1 次”。没有点击仓库写入，没有连接 Agent，没有改授权根。
 
 不为解除环境阻塞新增容器平台、数据库管理脚本、测试框架或其他底座。
