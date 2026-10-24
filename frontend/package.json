@@ -25,6 +25,7 @@
     "@tailwindcss/vite": "catalog:frontend",
     "@types/node": "catalog:types",
     "@vitejs/plugin-vue": "catalog:tooling",
+    "happy-dom": "^21.0.4",
     "postcss-html": "catalog:style",
     "stylelint": "catalog:style",
     "stylelint-config-recess-order": "catalog:style",

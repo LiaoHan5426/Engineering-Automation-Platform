@@ -237,6 +237,22 @@ export type MissionExecutionRecord = {
   approval: "NOT_REQUIRED";
   cancelRequested?: boolean;
 };
+export type PrototypeVersionRecord = {
+  id: string;
+  sourceRef: "builder-alpha" | "builder-beta";
+  title: string;
+  body: string;
+  buttonPresses: number;
+  interaction: string;
+  acceptance: string[];
+  contentHash: string;
+  createdAt?: string;
+};
+export type PrototypeDeliveryRecord = {
+  id: string;
+  versionId: string;
+  createdAt?: string;
+};
 export type HandoffRecord = {
   id: string;
   source: "chat" | "builder";
@@ -668,6 +684,24 @@ export const runtimeApi = {
   createMission: (handoffId: string) =>
     client
       .post<MissionRecord>("/missions", { handoffId })
+      .then((response) => response.data),
+  prototypeVersions: (sourceRef: "builder-alpha" | "builder-beta") =>
+    get<{ items: PrototypeVersionRecord[] }>("/prototype-versions?sourceRef=" + encodeURIComponent(sourceRef)),
+  savePrototypeVersion: (draft: {
+    sourceRef: "builder-alpha" | "builder-beta";
+    title: string;
+    body: string;
+    buttonPresses: number;
+    acceptance: string[];
+  }) =>
+    client
+      .post<PrototypeVersionRecord>("/prototype-versions", draft)
+      .then((response) => response.data),
+  prototypeVersion: (id: string) =>
+    get<PrototypeVersionRecord>("/prototype-versions/" + encodeURIComponent(id)),
+  createPrototypeDelivery: (versionId: string) =>
+    client
+      .post<PrototypeDeliveryRecord>("/prototype-deliveries", { versionId })
       .then((response) => response.data),
   startMissionGitStatus: (missionId: string) =>
     client

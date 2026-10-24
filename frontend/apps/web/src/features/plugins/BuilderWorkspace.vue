@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, onUnmounted, reactive, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge, Button, Feedback } from "@eap/ui";
-import { runtimeApi, type HandoffRecord, type MissionRecord } from "@eap/runtime-client";
+import { runtimeApi, type HandoffRecord, type MissionRecord, type PrototypeDeliveryRecord, type PrototypeVersionRecord } from "@eap/runtime-client";
 import { errorMessage } from "../../lib/presentation";
 import { beginHandoff, builderHandoff, handoffSucceeded } from "../handoff/handoff";
 import { beginMission, missionLocked, missionShell } from "../mission/mission";
 import PrototypePreview from "./PrototypePreview.vue";
+import { openVersionPreview, pressVersionPreview } from "./prototypeVersion";
 import type { PluginHost } from "./host";
 import { GRANTS, MANIFESTS, type BuilderConfig } from "./model";
 
@@ -22,6 +23,18 @@ const handoffBusy = ref(false);
 const missionNote = ref("");
 const missionOk = ref(false);
 const missionBusy = ref(false);
+const acceptanceText = ref("");
+const versions = ref<PrototypeVersionRecord[]>([]);
+const opened = ref<PrototypeVersionRecord | null>(null);
+const previewPresses = ref(0);
+const delivery = ref<PrototypeDeliveryRecord | null>(null);
+const versionBusy = ref(false);
+const deliveryBusy = ref(false);
+const versionNote = ref("");
+const versionListError = ref("");
+let openRequest = 0;
+let deliveryRequest = 0;
+let listRequest = 0;
 const requests = MANIFESTS.find((item) => item.id === "builder")!.requests;
 
 function save() {
@@ -133,9 +146,101 @@ async function createMission(handoffId: string) {
   }
 }
 
+async function loadVersions() {
+  if (typeof window === "undefined") return;
+  const request = ++listRequest;
+  try {
+    const page = await runtimeApi.prototypeVersions(`builder-${props.instanceId}`);
+    if (request !== listRequest) return;
+    versions.value = page.items;
+    versionListError.value = "";
+  } catch (error) {
+    if (request !== listRequest) return;
+    versionListError.value = errorMessage(error);
+  }
+}
+
+async function saveVersion() {
+  if (versionBusy.value) return;
+  versionBusy.value = true;
+  versionNote.value = "";
+  try {
+    const savedVersion = await runtimeApi.savePrototypeVersion({
+      sourceRef: `builder-${props.instanceId}`,
+      title: draft.draftTitle,
+      body: draft.draftBody,
+      buttonPresses: draft.buttonPresses,
+      acceptance: acceptanceText.value.split("\n"),
+    });
+    versionNote.value = savedVersion.id;
+    await loadVersions();
+  } catch (error) {
+    versionNote.value = errorMessage(error);
+  } finally {
+    versionBusy.value = false;
+  }
+}
+
+async function openVersion(id: string) {
+  const request = ++openRequest;
+  deliveryRequest += 1;
+  deliveryBusy.value = false;
+  try {
+    const version = await runtimeApi.prototypeVersion(id);
+    if (request !== openRequest) return;
+    opened.value = version;
+    previewPresses.value = openVersionPreview(version).presses;
+    delivery.value = null;
+  } catch (error) {
+    if (request !== openRequest) return;
+    versionNote.value = errorMessage(error);
+  }
+}
+
+function pressOpened() {
+  if (!opened.value) return;
+  previewPresses.value = pressVersionPreview({
+    title: opened.value.title,
+    body: opened.value.body,
+    presses: previewPresses.value,
+  }).presses;
+}
+
+function closeVersion() {
+  openRequest += 1;
+  deliveryRequest += 1;
+  deliveryBusy.value = false;
+  opened.value = null;
+  delivery.value = null;
+}
+
+async function createDelivery() {
+  if (!opened.value || deliveryBusy.value) return;
+  const versionId = opened.value.id;
+  const request = ++deliveryRequest;
+  deliveryBusy.value = true;
+  try {
+    const sheet = await runtimeApi.createPrototypeDelivery(versionId);
+    if (request !== deliveryRequest || opened.value?.id !== versionId) return;
+    delivery.value = sheet;
+  } catch (error) {
+    if (request !== deliveryRequest || opened.value?.id !== versionId) return;
+    versionNote.value = errorMessage(error);
+  } finally {
+    if (request === deliveryRequest) deliveryBusy.value = false;
+  }
+}
+
 onMounted(() => {
   void loadHandoffs();
   void loadMissions();
+  void loadVersions();
+});
+
+onUnmounted(() => {
+  openRequest += 1;
+  deliveryRequest += 1;
+  listRequest += 1;
 });
 </script>
 
@@ -174,6 +279,43 @@ onMounted(() => {
         @press="press"
       />
     </div>
+    <section class="stack" data-testid="prototype-version">
+      <label>
+        {{ t("plugin.versionAcceptance") }}
+        <textarea v-model="acceptanceText" rows="3" data-testid="version-acceptance" />
+      </label>
+      <Button variant="secondary" type="button" data-testid="save-version" :disabled="versionBusy" @click="saveVersion">
+        {{ t("plugin.versionSave") }}
+      </Button>
+      <p v-if="versionNote" class="hint" data-testid="version-note">{{ versionNote }}</p>
+      <p v-if="versionListError" class="hint" data-testid="version-list-error">{{ versionListError }}</p>
+      <ul v-if="versions.length">
+        <li v-for="item in versions" :key="item.id">
+          <Button variant="secondary" type="button" data-testid="open-version" @click="openVersion(item.id)">
+            {{ t("plugin.versionOpen") }}
+          </Button>
+          {{ item.title }}
+        </li>
+      </ul>
+      <div v-if="opened" data-testid="version-preview">
+        <p class="eyebrow">{{ t("plugin.versionPreview") }}</p>
+        <PrototypePreview :title="opened.title" :body="opened.body" :presses="previewPresses" @press="pressOpened" />
+        <p data-testid="version-interaction">{{ opened.interaction }}</p>
+        <ul>
+          <li v-for="item in opened.acceptance" :key="item">{{ item }}</li>
+        </ul>
+        <p data-testid="version-hash">{{ t("plugin.versionHash", { hash: opened.contentHash }) }}</p>
+        <Button variant="secondary" type="button" data-testid="close-version" @click="closeVersion">
+          {{ t("plugin.versionClose") }}
+        </Button>
+        <Button variant="secondary" type="button" data-testid="create-delivery" :disabled="deliveryBusy" @click="createDelivery">
+          {{ t("plugin.deliveryCreate") }}
+        </Button>
+        <p v-if="delivery" data-testid="delivery-sheet">
+          {{ t("plugin.deliverySheet", { id: delivery.id, versionId: delivery.versionId }) }}
+        </p>
+      </div>
+    </section>
     <section class="stack task" data-testid="mock-task">
       <p>
         <Badge tone="warning" :label="t('plugin.mock')" />
