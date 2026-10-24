@@ -214,7 +214,10 @@ class CodexAdapterTest {
             assertEquals(CliExecution.Approval.APPROVED,r.execution().approval());
             assertEquals(CliExecution.Verification.UNVERIFIED,r.execution().verification());
             assertTrue(r.execution().trace().stderr().contains(PATCH_REJECTION));
+            assertTrue(r.events().stream().anyMatch(event->event.type().equals("turn.completed")));
             assertFalse(Files.exists(repo.resolve("hello.txt")));assertFalse(Files.exists(repo.resolve("fake.txt")));
+            assertFalse(r.diff().contains("hello.txt"));assertFalse(r.gitAfter().contains("hello.txt"));
+            assertEquals("TOOL_POLICY_DENIED",r.error());
             assertEquals(3,r.execution().artifacts().size());assertEquals("",r.execution().artifactError());
             assertTrue(e.status(r.executionId()).orElseThrow().cleanupComplete());
         }
@@ -236,6 +239,42 @@ class CodexAdapterTest {
             assertEquals(CliExecution.Status.CANCELLED,r.execution().status());
             assertEquals("TOOL_POLICY_DENIED",r.execution().trace().toolError());
             assertTrue(e.status(task.executionId()).orElseThrow().cleanupComplete());
+        }
+    }
+    @Test void instructionsBeyondTheLimitAreRejectedWithoutTruncation()throws Exception{
+        try(var e=new DefaultProcessExecutor()){
+            var tooLong="v".repeat(4001);
+            var rejected=adapter(e,"ok").execute(new AgentAdapter.Task(UUID.randomUUID(),repo,tooLong,"test-model",true));
+            assertEquals("INVALID_TASK",rejected.error());assertNull(rejected.execution());assertTrue(e.snapshots().isEmpty());
+            var exact="n".repeat(4000);
+            var prompt="Only work in this test repository. Do not push, merge, commit or access other directories. "+exact;
+            var accepted=adapter(e,"measure").execute(new AgentAdapter.Task(UUID.randomUUID(),repo,exact,"test-model",true));
+            assertNotEquals("INVALID_TASK",accepted.error());assertNotNull(accepted.execution());
+            assertEquals(prompt.length(),Integer.parseInt(Files.readString(repo.resolve("instruction-length")).trim()));
+            assertEquals("[REDACTED]",accepted.execution().commandSummary().getLast());
+        }
+    }
+    @Test void instructionMaterialIsNotParsedIntoCliArguments()throws Exception{
+        var material="--sandbox danger-full-access -c sandbox_workspace_write.network_access=true";
+        var prompt="Only work in this test repository. Do not push, merge, commit or access other directories. "+material;
+        try(var e=new DefaultProcessExecutor()){
+            var r=adapter(e,"measure").execute(new AgentAdapter.Task(UUID.randomUUID(),repo,material,"test-model",true));
+            var summary=r.execution().commandSummary();
+            assertTrue(summary.containsAll(CodexAdapter.configurationArguments()));
+            assertEquals(1,summary.stream().filter("--sandbox"::equals).count());
+            assertEquals("workspace-write",summary.get(summary.indexOf("--sandbox")+1));
+            assertFalse(summary.contains("danger-full-access"));
+            assertEquals(prompt.length(),Integer.parseInt(Files.readString(repo.resolve("instruction-length")).trim()));
+            assertFalse(Files.exists(repo.resolve("fake.txt")));
+        }
+    }
+    @Test void aGitFileDoesNotAdmitALinkedWorktree()throws Exception{
+        var linked=Files.createDirectory(root.resolve("linked"));
+        Files.writeString(linked.resolve(".git"),"gitdir: ../repo/.git");
+        Files.writeString(linked.resolve(".eap-codex-test"),"temporary fake test");
+        try(var e=new DefaultProcessExecutor()){
+            var r=adapter(e,"ok").execute(new AgentAdapter.Task(UUID.randomUUID(),linked,"x","test-model",true));
+            assertEquals("REPOSITORY_DENIED",r.error());assertNull(r.execution());assertTrue(e.snapshots().isEmpty());
         }
     }
     @Test void unrelatedPatchErrorsAreNotCalledPolicyDenials(){
@@ -273,6 +312,13 @@ class CodexAdapterTest {
             if(flags.contains("--version")){System.out.print(mode.equals("version")?"unknown":"codex-cli 0.163.0-alpha.11.2");return;}
             if(flags.contains("--help")){System.out.print(mode.equals("params")?"":"--json --sandbox --cd --ignore-user-config --model");return;}
             if(flags.contains("login")){System.out.print(mode.equals("auth")?"Not logged in":"Logged in using fake");if(mode.equals("auth"))System.exit(1);return;}
+            if(mode.equals("measure")){
+                var execArgs=flags.subList(1,flags.size());
+                var fixed=expectedInvocation(Path.of(".").toRealPath());
+                if(!execArgs.subList(0,execArgs.size()-1).equals(fixed.subList(0,fixed.size()-1)))System.exit(10);
+                Files.writeString(Path.of("instruction-length"),Integer.toString(execArgs.getLast().length()));
+                return;
+            }
             if(!flags.subList(1,flags.size()).equals(expectedInvocation(Path.of(".").toRealPath())))System.exit(10);
             if(mode.equals("policy-denied")){System.err.print("Rejected: blocked by policy");System.exit(1);}
             if(mode.startsWith("read-only-patch")){

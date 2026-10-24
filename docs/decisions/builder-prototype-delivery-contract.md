@@ -87,15 +87,15 @@
 - 审批由调用方事先把 `Task.approved` 设为真；适配器配置 `approval_policy='never'`，不提供审批界面。交接和 Mission 的审批列仍固定为 `not_requested`。
 - 运行环境是 `ProcessExecutor` 和 `CliExecutionService`。取消只覆盖这一次进程。
 - 事件是本次解析出的 JSONL 行。`turn.completed` 不是平台验证通过。
-- 历史验收记录写明模型通信曾成功，真实文件委派未通过，调查暂停。本草案不重跑、不调用模型。
+- 历史结论以 `docs/audits/p1-c-real-delegation-20261023-report.md` 的最终归档为准：最终案例 CLI 退出 0，Artifact 核验通过，但补丁被 read-only sandbox / approval settings 拒绝，目标文件未生成。更早的超时不是所有案例的现状。调查暂停。本草案不重跑、不调用模型。
 
 以后确需编码 Agent 时，先复用受支持入口，不复制底座：
 
 | 入口 | 适合以后的哪一类需求 | 这一步为什么不用 |
 |---|---|---|
-| 现有 `CodexAdapter` / CLI `exec` | 一次性、隔离测试仓库里的 exec | 会启动 Agent，且文件写入验收未通过 |
-| Codex SDK | 以后的任务自动化 | 未安装、未验证；本步不需要工具循环 |
-| Codex app-server | 以后的深度客户端集成 | 须按锁定版本另核，不是本步缺口 |
+| 现有 `CodexAdapter` / 单次 CLI `exec` | 当前候选：一次性、独立临时仓库里的 exec | 不接生产交付入口。文件写入验收仍未通过 |
+| Codex SDK | 控制既有 Codex Agent 的程序化入口，不必然另造 EAP 工具循环 | 当前不引入。已有单次 CLI 覆盖本步候选，没有证据表明再加跨语言依赖或进程桥接有收益。不是因为 SDK 必然另造 Harness |
+| Codex app-server | 以后的深度客户端集成 | 本步不需要。不据此断言以后都不适用，启用前仍须按锁定版本另核 |
 | Hermes 或其他 Harness | 对方自己的受支持接口 | 不假定与 Codex 协议相同 |
 
 承担关系保持两层。EAP 决定是否委派、使用哪个原型版本、哪一个显式选定的仓库和基线，并把外部会话号关联到交付记录。Harness 承担自己的工具循环、上下文、会话、审批交互和运行环境。EAP 不镜像它的内部状态机。对方的完成事件不能写成平台验证通过；仓库变更仍由 EAP 独立查看 diff、构建和测试。
@@ -143,3 +143,23 @@
 - 最终页面冒烟：2026-10-24 在已运行的 `http://localhost:5173/#builder-alpha` 上通过。保存产生版本 `4dc9d40e-d25e-4d25-ae33-1da2403745f4`，重开后标题、正文和按钮次数为保存值 1。版本预览临时点击变为 2，活草稿仍是 1。关闭再打开回到 1，库中 `buttonPresses` 仍是 1，哈希仍是 `6654bb56f7e1647a2564ad9b41440cd08779003b50ebfc0315c5adbe7a1fd400`。连续两次生成交付单得到同一张 `dfb9990c-9ee0-4f3e-bb36-f0c9a0361d43`，页面写明仓库未绑定、基线未记录、Agent 未调用。原版本 `116967fb-fcc8-49ec-a8a4-2042ae80ecb0` 的哈希和验收条件未变。草稿仍是“模拟 · ledger / 结算页已改 / 手工改过的正文 / 已点击 1 次”。没有点击仓库写入，没有连接 Agent，没有改授权根。
 
 不为解除环境阻塞新增容器平台、数据库管理脚本、测试框架或其他底座。
+## 2026-10-24 外部 Agent 入口复核
+
+以下为现有 CodexAdapter 与历史归档的静态复核，不表示执行或付费试验授权。单次 CLI exec 可作为当前最小候选路径，但它仍是测试适配器：没有生产交付入口，固定测试目录规则和 CLI 版本也不是通用生产合同。
+
+- Codex SDK 是控制既有 Codex Agent 的程序化入口，不必然新增 EAP 工具循环。当前不引入它的理由是已有一次性 CLI 能满足本步候选需求，暂无证据证明增加跨语言依赖/进程桥接有收益；不是“SDK 必然另造 Harness”。app-server 的深度客户端能力当前也非必要，不据此断言以后均不适用。
+- 历史事实以 docs/audits/p1-c-real-delegation-20261023-report.md 的“后续真实文件委派最终归档”为准：最终案例 CLI 退出 0、Artifact 核验通过，但补丁被 read-only sandbox / approval settings 拒绝，文件未生成。更早超时不作为所有案例现状。实际有效只读来源仍未确定，不能将其归因于某个配置后直接扩大权限。
+- valid() 只筛选 testRoot 下带标记的真实目录，并要求 .git 是目录；不是完整沙箱、干净基线校验或 Git 工作树归属证明。常规 git worktree 的 .git 文件不会通过现检查。首个试点可继续限制独立临时克隆，不为“支持隔离”自动扩建工作树管理器或放宽准入。
+- 当前 Task 未携带不可变基线或版本关联，instructions 限 4000 字符；完整 Builder 内容不能假定可直接塞入，不能静默截断。实际交付桥接尚未具备，不先新增生产启动 API/表掩盖这个缺口。
+
+## 2026-10-24 离线调用合同
+
+单次 CLI `exec` 仍是当前候选。没有生产交付入口，没有新表、生产 API、SDK 或 Harness。沙箱参数未改。
+
+未来桥接只接受这些输入，并且都由受信调用方提供，不从交付单请求体读取：原型版本号、交付单号、显式批准的仓库路径、该仓库的基线、模型、平台执行号。版本的标题、正文和验收条件只作为任务材料，接在固定执行说明之后，作为同一个参数交给 CLI，不会被解析成额外的 CLI 参数。真正限制写入的是 CLI 和运行环境执行的策略。离线 `Fake` 替身只检查参数数组和错误分类，没有验证模型行为、提示注入防护或真实沙箱写入。材料超过 4000 字符时返回 `INVALID_TASK`，不截断后启动。`Task.approved`、`.eap-codex-test`、`turn.completed` 和 `git diff --stat` 都不是完成验证。
+
+首个试点继续只允许 `valid()` 已接受的独立临时仓库。`.git` 为文件的链接工作树被拒绝。不扩建 worktree 管理器。Git status 和 diff 只随 `Outcome` 留作证据，不能代替目标文件是否存在以及变更是否落在允许范围内的检查。
+
+进程退出成功而工具拒绝时，`Outcome.error` 与 `Trace.toolError` 都是 `TOOL_POLICY_DENIED`，进程状态仍是成功。`turn.completed` 且目标文件不存在时，错误保持拒绝，Git 证据不能把它改成成功。超时把 `Outcome.error` 记为 `TIMED_OUT`，策略拒绝仍留在 `Trace.toolError`，两者不互相覆盖。这些区分由 `CodexAdapterTest` 的离线 `Fake` 替身覆盖。2026-10-24 定向结果是 26 项、0 失败、0 跳过；这次只改名称和说明，没有重跑。替身没有验证模型行为、提示注入防护或真实沙箱写入。真实文件委派仍未通过。真正接线与真实模型调用另行授权。Builder 隔离数据库验收仍未执行，整体验收未完成。
+
+依据：[Codex SDK](https://learn.chatgpt.com/docs/codex-sdk)、[Codex 非交互模式](https://learn.chatgpt.com/docs/non-interactive-mode)。官方现行文档不能替代钉住的 alpha CLI 参数合同。
