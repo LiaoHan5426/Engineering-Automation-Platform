@@ -88,9 +88,9 @@ public final class CodexAdapter implements AgentAdapter {
             var v=codex(repo,"--version");
             if(v.status()!=Status.SUCCEEDED)return failure(task,"CLI_MISSING_OR_UNSTARTABLE",version,v,before);
             version=v.stdout().trim();
-            if(!version.equals("codex-cli 0.163.0-alpha.11.2"))return failure(task,"UNSUPPORTED_VERSION",version,null,before);
             var help=codex(repo,"exec","--help");
-            for(var flag:List.of("--json","--sandbox","--cd","--ignore-user-config","--model"))
+            if(help.status()!=Status.SUCCEEDED)return failure(task,"UNSUPPORTED_PARAMETERS",version,help,before);
+            for(var flag:List.of("--json","--sandbox","--cd","--ignore-user-config","--model","--ephemeral"))
                 if(!help.stdout().contains(flag))return failure(task,"UNSUPPORTED_PARAMETERS",version,help,before);
             var auth=codex(repo,"login","status");
             if(auth.status()!=Status.SUCCEEDED||!(auth.stdout()+auth.stderr()).contains("Logged in"))return failure(task,"NOT_AUTHENTICATED",version,auth,before);

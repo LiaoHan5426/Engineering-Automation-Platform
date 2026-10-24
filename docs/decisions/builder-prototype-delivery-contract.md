@@ -13,7 +13,7 @@
 | `eap.handoff` | 只插入 `id`、`source`、`source_ref`、脱敏 `summary` 和四个固定状态。没有更新接口 | Builder 把当时的标题和正文拼进 `summary`，`source_ref` 为 `builder-alpha` 或 `builder-beta`。Mission 用 `handoff_id` 唯一关联 | 原型版本、仓库、基线、Agent 任务 |
 | 模拟仓库标签 | 只留在浏览器草稿 | 交接请求体不允许这个字段 | 可信目标仓库 |
 | Mission | 任务壳加可选的只读 `git-status` 执行。`grant_state` 仍固定 `none` | 只指向一条交接 | 原型交付或仓库写入 |
-| `CodexAdapter` | 显式构造的 `codex exec` 调用。版本钉在 `codex-cli 0.163.0-alpha.11.2` | 不读取交接或 Builder | 本切片的交付执行器 |
+| `CodexAdapter` | 显式构造的 `codex exec` 调用。版本只记录为证据，按 `exec --help` 里实际使用的参数预检 | 不读取交接或 Builder | 本切片的交付执行器 |
 
 已有交接行的 `summary` 是当时提交的文本。服务端没有修改它的语句。后续草稿变化不会回写这些行；再次点击会另插一条交接，而不是改正旧行。
 
@@ -145,7 +145,7 @@
 不为解除环境阻塞新增容器平台、数据库管理脚本、测试框架或其他底座。
 ## 2026-10-24 外部 Agent 入口复核
 
-以下为现有 CodexAdapter 与历史归档的静态复核，不表示执行或付费试验授权。单次 CLI exec 可作为当前最小候选路径，但它仍是测试适配器：没有生产交付入口，固定测试目录规则和 CLI 版本也不是通用生产合同。
+以下为现有 CodexAdapter 与历史归档的静态复核，不表示执行或付费试验授权。单次 CLI exec 可作为当前最小候选路径，但它仍是测试适配器：没有生产交付入口。固定测试目录规则不是通用生产合同。CLI 版本只记录为证据。
 
 - Codex SDK 是控制既有 Codex Agent 的程序化入口，不必然新增 EAP 工具循环。当前不引入它的理由是已有一次性 CLI 能满足本步候选需求，暂无证据证明增加跨语言依赖/进程桥接有收益；不是“SDK 必然另造 Harness”。app-server 的深度客户端能力当前也非必要，不据此断言以后均不适用。
 - 历史事实以 docs/audits/p1-c-real-delegation-20261023-report.md 的“后续真实文件委派最终归档”为准：最终案例 CLI 退出 0、Artifact 核验通过，但补丁被 read-only sandbox / approval settings 拒绝，文件未生成。更早超时不作为所有案例现状。实际有效只读来源仍未确定，不能将其归因于某个配置后直接扩大权限。
@@ -162,4 +162,14 @@
 
 进程退出成功而工具拒绝时，`Outcome.error` 与 `Trace.toolError` 都是 `TOOL_POLICY_DENIED`，进程状态仍是成功。`turn.completed` 且目标文件不存在时，错误保持拒绝，Git 证据不能把它改成成功。超时把 `Outcome.error` 记为 `TIMED_OUT`，策略拒绝仍留在 `Trace.toolError`，两者不互相覆盖。这些区分由 `CodexAdapterTest` 的离线 `Fake` 替身覆盖。2026-10-24 定向结果是 26 项、0 失败、0 跳过；这次只改名称和说明，没有重跑。替身没有验证模型行为、提示注入防护或真实沙箱写入。真实文件委派仍未通过。真正接线与真实模型调用另行授权。Builder 隔离数据库验收仍未执行，整体验收未完成。
 
-依据：[Codex SDK](https://learn.chatgpt.com/docs/codex-sdk)、[Codex 非交互模式](https://learn.chatgpt.com/docs/non-interactive-mode)。官方现行文档不能替代钉住的 alpha CLI 参数合同。
+依据：[Codex SDK](https://learn.chatgpt.com/docs/codex-sdk)、[Codex 非交互模式](https://learn.chatgpt.com/docs/non-interactive-mode)。官方现行文档不能代替这一次调用实际使用的参数。
+
+## 2026-10-24 调用能力检查
+
+按调用能力检查，版本仅作证据。`--version` 只确认程序能启动，并把输出记入 `providerVersion`。版本不同不再返回 `UNSUPPORTED_VERSION`，也不新增版本白名单或版本管理框架。`exec --help` 必须成功，并包含这次实际使用的 `--json`、`--sandbox`、`--cd`、`--ignore-user-config`、`--model` 和 `--ephemeral`。帮助失败或缺少其中任一参数时返回 `UNSUPPORTED_PARAMETERS`，不改参数、不放宽沙箱、审批、网络或零重试。
+
+执行 d84dfabb-53b4-4787-9d75-9018ed562438 仍是当时的版本钉拒绝，没有工具拒绝或模型通信证据。历史 0.163 最终补丁拒绝，以及旧配置被拒绝的文案，留在历史报告里，当前测试不再断言它们。帮助文本和 `features list` 成功只证明参数或配置能被解析，不证明 `-c` 已构成沙箱限制、JSONL 完全兼容或真实文件写入通过。配置错误、未知事件和协议错误仍显式失败，不能当成成功。
+
+`CodexLocalConfigTest` 的跳过门控只有 `EAP_CODEX_CONFIG_CHECK=true`。门控不是 `true` 时测试跳过。门控打开后必须显式提供 `EAP_SMOKE_CODEX`；路径为空或缺失时测试失败，不再跳过。它使用临时 `CODEX_HOME`，把 `--version` 的输出记到测试临时目录，不要求 `eap.config.evidence`，也不改用户配置。真实模型 smoke 不因这次配置检查自动重跑。
+
+2026-10-24 收口定向结果：`CodexAdapterTest` 26 项通过，0 失败，0 跳过。`CodexLocalConfigTest` 1 项跳过，因为门控不是 `true`。当时也没有设置 `EAP_SMOKE_CODEX`，所以没有执行本地配置解析。没有调用模型，没有重跑真实 smoke。真实配置解析、沙箱限制和文件写入均未验证。隔离数据库验收仍未执行，整体验收未完成。

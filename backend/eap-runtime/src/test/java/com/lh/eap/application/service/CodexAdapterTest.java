@@ -44,8 +44,22 @@ class CodexAdapterTest {
     }
     @Test void rejectsMissingVersionAuthAndRepository(){
         try(var e=new DefaultProcessExecutor()){
-            assertEquals("UNSUPPORTED_VERSION",adapter(e,"version").execute(task()).error());
             assertEquals("UNSUPPORTED_PARAMETERS",adapter(e,"params").execute(task()).error());
+            var helpFailed=adapter(e,"help-fail").execute(task());
+            assertEquals("UNSUPPORTED_PARAMETERS",helpFailed.error());
+            assertNotEquals(CliExecution.Status.SUCCEEDED,helpFailed.execution().status());
+            assertFalse(Files.exists(repo.resolve("fake.txt")));
+            var missing=adapter(e,"no-ephemeral").execute(task());
+            assertEquals("UNSUPPORTED_PARAMETERS",missing.error());
+            assertTrue(missing.execution().commandSummary().contains("--help"));
+            assertFalse(missing.execution().commandSummary().contains("--ephemeral"));
+            assertFalse(missing.execution().commandSummary().contains("workspace-write"));
+            assertFalse(Files.exists(repo.resolve("fake.txt")));
+            var different=adapter(e,"version").execute(task());
+            assertEquals("",different.error());
+            assertEquals("unknown",different.providerVersion());
+            assertTrue(different.execution().commandSummary().contains("--ephemeral"));
+            assertTrue(different.execution().commandSummary().containsAll(CodexAdapter.configurationArguments()));
             assertEquals("NOT_AUTHENTICATED",adapter(e,"auth").execute(task()).error());
             assertEquals("CLI_MISSING_OR_UNSTARTABLE",new CodexAdapter(e,root,"missing-eap.exe",List.of(),"git",Map.of(),evidence()).execute(task()).error());
             assertEquals("REPOSITORY_DENIED",adapter(e,"ok").execute(new AgentAdapter.Task(UUID.randomUUID(),root,"x","test-model",true)).error());
@@ -310,7 +324,12 @@ class CodexAdapterTest {
         public static void main(String[]args)throws Exception{
             String mode=args[0];var flags=List.of(args);
             if(flags.contains("--version")){System.out.print(mode.equals("version")?"unknown":"codex-cli 0.163.0-alpha.11.2");return;}
-            if(flags.contains("--help")){System.out.print(mode.equals("params")?"":"--json --sandbox --cd --ignore-user-config --model");return;}
+            if(flags.contains("--help")){
+                if(mode.equals("help-fail")){System.err.print("help failed");System.exit(1);}
+                if(mode.equals("params")){System.out.print("");return;}
+                if(mode.equals("no-ephemeral")){System.out.print("--json --sandbox --cd --ignore-user-config --model");return;}
+                System.out.print("--json --sandbox --cd --ignore-user-config --model --ephemeral");return;
+            }
             if(flags.contains("login")){System.out.print(mode.equals("auth")?"Not logged in":"Logged in using fake");if(mode.equals("auth"))System.exit(1);return;}
             if(mode.equals("measure")){
                 var execArgs=flags.subList(1,flags.size());
