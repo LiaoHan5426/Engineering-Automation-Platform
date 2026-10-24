@@ -5,7 +5,10 @@ import ExpertManager from "./features/expert/ExpertManager.vue";
 import KnowledgeManager from "./features/knowledge/KnowledgeManager.vue";
 import DatabaseManager from "./features/database/DatabaseManager.vue";
 import RuleManager from "./features/rule/RuleManager.vue";
-import ChatWorkspace from "./features/chat/ChatWorkspace.vue";
+import PluginCenter from "./features/plugins/PluginCenter.vue";
+import PluginSlot from "./features/plugins/PluginSlot.vue";
+import { createPluginHost } from "./features/plugins/host";
+import { isKnownHash } from "./features/plugins/model";
 import { i18n } from "./lib/i18n";
 import {
   runtimeApi,
@@ -36,24 +39,38 @@ import { CANDIDATE_REWRITE_NOTES, candidateRewrite, rewriteUnavailable } from ".
  * 与它的过程/结论；拆成两页时，工作台只剩一个表单，任务页只剩一张表，两边都不像在干活。
  * 现在合成一页：左栏的任务列表是会话列表，中间是任务流，底部是输入框。
  */
-const views = [
+const shellPages = [
   { id: "sql", name: "分析工作台", icon: "▷", group: "工作", hint: "任务列表、任务流与新的分析输入" },
-  { id: "chat", name: i18n.global.t("chat.nav"), icon: "✉", group: "工作", hint: i18n.global.t("chat.hint") },
+  {
+    id: "plugins",
+    name: i18n.global.t("plugin.center"),
+    icon: "▣",
+    group: "设置",
+    hint: i18n.global.t("plugin.centerHint"),
+  },
   { id: "experts", name: "专家定义", icon: "◈", group: "设置", hint: "编排能力节点、依赖与授权" },
   { id: "rules", name: "规则库", icon: "▤", group: "设置", hint: "查看规则、条件与试算结果" },
   { id: "knowledge", name: "知识库", icon: "▢", group: "设置", hint: "录入业务知识并带来源检索" },
   { id: "databases", name: "数据库资料", icon: "▦", group: "设置", hint: "登记脱敏表结构与索引快照" },
   { id: "capabilities", name: "能力目录", icon: "⚙", group: "设置", hint: "运行时实际注册的确定性工具" },
 ];
-/** 落地页：打开就是能干活的地方。 */
+const pluginHost = createPluginHost();
+/** 落地页：打开就是能干活的地方。壳页面保持固定；插件入口由注册表按启停追加。 */
 const DEFAULT_VIEW = "sql";
+const pages = computed(() => [
+  ...shellPages.filter((page) => page.group === "工作"),
+  ...pluginHost.entries.value,
+  ...shellPages.filter((page) => page.group === "设置"),
+]);
 const hashView = typeof location !== "undefined" ? location.hash.slice(1) : "";
-const activeView = ref(views.some((v) => v.id === hashView) ? hashView : DEFAULT_VIEW);
-const currentView = computed(() => views.find((v) => v.id === activeView.value)!);
-/** 左栏按 group 归堆，顺序沿用 views 的声明顺序（工作在前）。 */
+const activeView = ref(isKnownHash(hashView) ? hashView : DEFAULT_VIEW);
+const currentView = computed(
+  () => pages.value.find((view) => view.id === activeView.value) ?? pluginHost.describe(activeView.value),
+);
+/** 左栏按 group 归堆。工作组里，分析工作台之后是已启用插件。 */
 const viewGroups = computed(() => {
-  const groups: { label: string; items: typeof views }[] = [];
-  for (const view of views) {
+  const groups: { label: string; items: typeof shellPages }[] = [];
+  for (const view of pages.value) {
     let group = groups.find((g) => g.label === view.group);
     if (!group) {
       group = { label: view.group, items: [] };
@@ -74,6 +91,7 @@ const INSPECTOR_PAGES: Record<string, { hint: string; pipeline?: boolean }> = {
     pipeline: true,
   },
   chat: { hint: i18n.global.t("chat.hint") },
+  plugins: { hint: i18n.global.t("plugin.centerHint") },
   experts: {
     hint: "专家的能力引用、知识库与 MCP 工具授权在该专家面板内联展示；画布与清单都由当前草稿渲染。",
   },
@@ -85,7 +103,7 @@ const INSPECTOR_PAGES: Record<string, { hint: string; pipeline?: boolean }> = {
   capabilities: { hint: "能力的种类、范围、可用状态与管理入口在能力目录内联展开。" },
 };
 const inspector = computed(
-  () => INSPECTOR_PAGES[activeView.value] ?? { hint: "本页没有可逐项检查的对象。" },
+  () => INSPECTOR_PAGES[activeView.value] ?? { hint: currentView.value.hint },
 );
 watch(activeView, (value) => {
   inspectorOpen.value = false;
@@ -93,7 +111,7 @@ watch(activeView, (value) => {
 });
 function hashChange() {
   const id = location.hash.slice(1);
-  if (views.some((v) => v.id === id)) activeView.value = id;
+  if (isKnownHash(id)) activeView.value = id;
 }
 
 const runtimeStatus = ref("检测中");
@@ -1429,7 +1447,12 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
           </details>
         </section>
 
-        <ChatWorkspace v-else-if="activeView === 'chat'" />
+        <PluginCenter v-else-if="activeView === 'plugins'" :host="pluginHost" />
+        <PluginSlot
+          v-else-if="activeView === 'chat' || activeView === 'builder-alpha' || activeView === 'builder-beta'"
+          :view-id="activeView"
+          :host="pluginHost"
+        />
 
         <!-- MANAGERS -->
         <KeepAlive>
