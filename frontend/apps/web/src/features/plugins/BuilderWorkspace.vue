@@ -2,9 +2,10 @@
 import { onMounted, reactive, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge, Button, Feedback } from "@eap/ui";
-import { runtimeApi, type HandoffRecord } from "@eap/runtime-client";
+import { runtimeApi, type HandoffRecord, type MissionRecord } from "@eap/runtime-client";
 import { errorMessage } from "../../lib/presentation";
 import { beginHandoff, builderHandoff, handoffSucceeded } from "../handoff/handoff";
+import { beginMission, missionShell } from "../mission/mission";
 import PrototypePreview from "./PrototypePreview.vue";
 import type { PluginHost } from "./host";
 import { GRANTS, MANIFESTS, type BuilderConfig } from "./model";
@@ -14,9 +15,13 @@ const { t } = useI18n();
 const draft = reactive(props.host.readBuilder(props.instanceId));
 const saved = ref(false);
 const handoffs = ref<HandoffRecord[]>([]);
+const missions = ref<MissionRecord[]>([]);
 const handoffNote = ref("");
 const handoffOk = ref(false);
 const handoffBusy = ref(false);
+const missionNote = ref("");
+const missionOk = ref(false);
+const missionBusy = ref(false);
 const requests = MANIFESTS.find((item) => item.id === "builder")!.requests;
 
 function save() {
@@ -32,6 +37,20 @@ function press() {
 function approve() {
   draft.mockApproval = "simulated";
   saved.value = false;
+}
+
+function linkedMission(handoffId: string) {
+  return missions.value.find((item) => item.handoffId === handoffId);
+}
+
+async function loadMissions() {
+  if (typeof window === "undefined") return;
+  try {
+    const page = await runtimeApi.missions();
+    missions.value = page.items;
+  } catch {
+    missions.value = [];
+  }
 }
 
 async function loadHandoffs() {
@@ -61,6 +80,7 @@ async function recordHandoff() {
     handoffOk.value = true;
     handoffNote.value = t("plugin.handoffDone", recorded);
     await loadHandoffs();
+    await loadMissions();
   } catch (error) {
     handoffOk.value = false;
     handoffNote.value = errorMessage(error);
@@ -69,8 +89,32 @@ async function recordHandoff() {
   }
 }
 
+async function createMission(handoffId: string) {
+  const gate = { busy: missionBusy.value };
+  if (!beginMission(gate)) return;
+  missionBusy.value = true;
+  missionOk.value = false;
+  missionNote.value = "";
+  try {
+    const saved = await runtimeApi.createMission(handoffId);
+    if (!missionShell(saved)) {
+      missionNote.value = t("plugin.missionRejected");
+      return;
+    }
+    missionOk.value = true;
+    missionNote.value = t("plugin.missionShell", saved);
+    await loadMissions();
+  } catch (error) {
+    missionOk.value = false;
+    missionNote.value = errorMessage(error);
+  } finally {
+    missionBusy.value = false;
+  }
+}
+
 onMounted(() => {
   void loadHandoffs();
+  void loadMissions();
 });
 </script>
 
@@ -131,8 +175,25 @@ onMounted(() => {
       <p class="hint">{{ t("plugin.handoffHint") }} {{ t("plugin.handoffRepeat") }}</p>
       <Feedback v-if="handoffNote" :tone="handoffOk ? 'info' : 'warning'">{{ handoffNote }}</Feedback>
       <ul v-if="handoffs.length">
-        <li v-for="item in handoffs" :key="item.id">{{ item.summary }} · {{ item.execution }} · {{ item.grant }}</li>
+        <li v-for="item in handoffs" :key="item.id">
+          <p>{{ item.summary }} · {{ item.execution }} · {{ item.grant }}</p>
+          <Button
+            variant="secondary"
+            type="button"
+            data-testid="builder-mission"
+            :disabled="missionBusy"
+            @click="createMission(item.id)"
+          >
+            {{ t("plugin.mission") }}
+          </Button>
+          <p v-if="linkedMission(item.id) && missionShell(linkedMission(item.id)!)" data-testid="mission-shell">
+            {{ t("plugin.missionShell", linkedMission(item.id)!) }}
+          </p>
+          <p v-else-if="linkedMission(item.id)">{{ t("plugin.missionRejected") }}</p>
+        </li>
       </ul>
+      <p class="hint">{{ t("plugin.missionHint") }} {{ t("plugin.missionRepeat") }}</p>
+      <Feedback v-if="missionNote" :tone="missionOk ? 'info' : 'warning'">{{ missionNote }}</Feedback>
       <Button data-testid="deliver-write" variant="danger" disabled>{{ t("plugin.deliver") }}</Button>
       <p class="hint">{{ t("plugin.deliverDenied") }}</p>
     </section>

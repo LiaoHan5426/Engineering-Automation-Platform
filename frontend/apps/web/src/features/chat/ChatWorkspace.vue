@@ -2,17 +2,22 @@
 import { onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge, Button, EmptyState, Feedback } from "@eap/ui";
-import { runtimeApi, type AiConnectionState, type HandoffRecord } from "@eap/runtime-client";
+import { runtimeApi, type AiConnectionState, type HandoffRecord, type MissionRecord } from "@eap/runtime-client";
 import { errorMessage } from "../../lib/presentation";
 import { chatHandoff, beginHandoff, handoffSucceeded } from "../handoff/handoff";
+import { beginMission, missionShell } from "../mission/mission";
 import { createChatSession } from "./chatSession";
 
 const { t } = useI18n();
 const session = createChatSession(runtimeApi);
 const handoffs = ref<HandoffRecord[]>([]);
+const missions = ref<MissionRecord[]>([]);
 const handoffNote = ref("");
 const handoffOk = ref(false);
 const handoffBusy = ref(false);
+const missionNote = ref("");
+const missionOk = ref(false);
+const missionBusy = ref(false);
 
 const stateKey: Record<AiConnectionState, string> = {
   disabled: "chat.disabled",
@@ -25,7 +30,22 @@ const stateKey: Record<AiConnectionState, string> = {
 onMounted(() => {
   void session.refreshStatus();
   void loadHandoffs();
+  void loadMissions();
 });
+
+function linkedMission(handoffId: string) {
+  return missions.value.find((item) => item.handoffId === handoffId);
+}
+
+async function loadMissions() {
+  if (typeof window === "undefined") return;
+  try {
+    const page = await runtimeApi.missions();
+    missions.value = page.items;
+  } catch {
+    missions.value = [];
+  }
+}
 
 async function loadHandoffs() {
   if (typeof window === "undefined") return;
@@ -53,11 +73,35 @@ async function recordHandoff() {
     handoffOk.value = true;
     handoffNote.value = t("plugin.handoffDone", saved);
     await loadHandoffs();
+    await loadMissions();
   } catch (error) {
     handoffOk.value = false;
     handoffNote.value = errorMessage(error);
   } finally {
     handoffBusy.value = false;
+  }
+}
+
+async function createMission(handoffId: string) {
+  const gate = { busy: missionBusy.value };
+  if (!beginMission(gate)) return;
+  missionBusy.value = true;
+  missionOk.value = false;
+  missionNote.value = "";
+  try {
+    const saved = await runtimeApi.createMission(handoffId);
+    if (!missionShell(saved)) {
+      missionNote.value = t("plugin.missionRejected");
+      return;
+    }
+    missionOk.value = true;
+    missionNote.value = t("plugin.missionShell", saved);
+    await loadMissions();
+  } catch (error) {
+    missionOk.value = false;
+    missionNote.value = errorMessage(error);
+  } finally {
+    missionBusy.value = false;
   }
 }
 </script>
@@ -160,7 +204,24 @@ async function recordHandoff() {
     <p class="hint">{{ t("plugin.handoffHint") }} {{ t("plugin.handoffRepeat") }}</p>
     <Feedback v-if="handoffNote" :tone="handoffOk ? 'info' : 'warning'">{{ handoffNote }}</Feedback>
     <ul v-if="handoffs.length">
-      <li v-for="item in handoffs" :key="item.id">{{ item.summary }} · {{ item.execution }} · {{ item.grant }}</li>
+      <li v-for="item in handoffs" :key="item.id">
+        <p>{{ item.summary }} · {{ item.execution }} · {{ item.grant }}</p>
+        <Button
+          variant="secondary"
+          type="button"
+          data-testid="chat-mission"
+          :disabled="missionBusy"
+          @click="createMission(item.id)"
+        >
+          {{ t("plugin.mission") }}
+        </Button>
+        <p v-if="linkedMission(item.id) && missionShell(linkedMission(item.id)!)" data-testid="mission-shell">
+          {{ t("plugin.missionShell", linkedMission(item.id)!) }}
+        </p>
+        <p v-else-if="linkedMission(item.id)">{{ t("plugin.missionRejected") }}</p>
+      </li>
     </ul>
+    <p class="hint">{{ t("plugin.missionHint") }} {{ t("plugin.missionRepeat") }}</p>
+    <Feedback v-if="missionNote" :tone="missionOk ? 'info' : 'warning'">{{ missionNote }}</Feedback>
   </section>
 </template>

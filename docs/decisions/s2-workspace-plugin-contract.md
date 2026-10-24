@@ -61,4 +61,4 @@ S1 的 `toolMode=git_status` 同样只是申请，实际放行仍须服务端授
 
 本轮范围对应 §0A.4 的 S2 与 §2B.9 的 P0/P1，并停在 P2 之前。首版使用真实 Vue 组件预览，GrapesJS 不在本契约范围内。Handoff、任务互通、后端继续推进任务、完整 Mission 调度、外部 Agent 和 Electron 留在原型验收之后。
 
-P0/P1 可点击原型已按本契约实现。随后的交接记录见 [P2 交接契约](p2-handoff-contract.md)：它写入独立的未执行意图，不读取模拟审批，也不启动 Mission。
+P0/P1 可点击原型已按本契约实现。随后的交接记录见 [P2 交接契约](p2-handoff-contract.md)：它写入独立的未执行意图，不读取模拟审批，也不启动 Mission。任务壳由单独动作创建，见 [P2 Mission 契约](p2-mission-contract.md)。

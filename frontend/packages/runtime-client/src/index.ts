@@ -212,6 +212,19 @@ export type TaskResult = {
   observations?: TaskObservation[];
   createdAt?: string;
 };
+export type MissionRecord = {
+  id: string;
+  handoffId: string;
+  source: "chat" | "builder";
+  sourceRef: string;
+  summary: string;
+  status: "created";
+  execution: "not_started";
+  approval: "not_requested";
+  grant: "none";
+  verification: "not_requested";
+  createdAt?: string;
+};
 export type HandoffRecord = {
   id: string;
   source: "chat" | "builder";
@@ -638,6 +651,11 @@ export const runtimeApi = {
   recordHandoff: (draft: { source: "chat" | "builder"; sourceRef: string; summary: string }) =>
     client
       .post<HandoffRecord>("/handoffs", draft)
+      .then((response) => response.data),
+  missions: () => get<{ items: MissionRecord[] }>("/missions"),
+  createMission: (handoffId: string) =>
+    client
+      .post<MissionRecord>("/missions", { handoffId })
       .then((response) => response.data),
   analyzeSql: (
     sql: string,

@@ -17,6 +17,6 @@
 
 已确认：保留合理的 Capability、Expert、Rule 实现；Skill 首版仅可信本地导入并保留版本、来源、依赖和作用域；Builder 首版仅 Vue 3/Vite，仓库适配采用可扩展接口；Mission Board 是独立插件，Runtime、调度、持久化和审批属于平台核心；首版仅可信内置插件，不开发市场或任意第三方动态加载。
 
-v1.6 补充：Spring AI 负责通用模型、工具调用和记忆，EAP 负责工程权限、执行证据和独立验证；Codex 等外部编码 Agent 继续独立适配。S1 已实现，限制见 [S1 Chat 设计](s1-chat-spring-ai-design.md)。S2 P0/P1 原型已按已确认的 [S2 插件契约](s2-workspace-plugin-contract.md) 实施。P2 只增加未执行的交接记录，见 [P2 交接契约](p2-handoff-contract.md)；Mission 调度仍后置。不恢复历史沙箱排查。
+v1.6 补充：Spring AI 负责通用模型、工具调用和记忆，EAP 负责工程权限、执行证据和独立验证；Codex 等外部编码 Agent 继续独立适配。S1 已实现，限制见 [S1 Chat 设计](s1-chat-spring-ai-design.md)。S2 P0/P1 原型已按已确认的 [S2 插件契约](s2-workspace-plugin-contract.md) 实施。P2 先增加未执行的交接记录，见 [P2 交接契约](p2-handoff-contract.md)。Mission 第一切片只建立未执行任务壳，见 [P2 Mission 契约](p2-mission-contract.md)；调度、审批、恢复和验证仍后置。不恢复历史沙箱排查。
 
 仍待具体实施时确认：隔离 PostgreSQL 集成验证的专用环境。知识检索暂不引入向量数据库，待质量评测决定。
