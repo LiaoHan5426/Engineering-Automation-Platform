@@ -23,7 +23,7 @@ reference, not proof of implementation or authorization to execute all its stage
 | Builder | GrapesJS editor, semantic schema and repository handoff are not implemented. The P0/P1 prototype only has a manual Vue preview |
 | P1-D | Independent Diff/Build/Test validation remains unimplemented and separately gated |
 
-Next: 持久任务壳已完成，执行生命周期尚未实现。契约见 [P2 mission contract](decisions/p2-mission-contract.md)。
+Next: 持久任务壳已完成，执行生命周期尚未实现。只读单步执行契约已确认，见 [Mission single-step contract](decisions/mission-single-step-execution-contract.md)，实施尚未授权。
 S1 is implemented; see [S1 Chat design](decisions/s1-chat-spring-ai-design.md). Its close-out on this worktree recorded
 `mvn -f backend/pom.xml test` as 205 passed, 0 failed, 4 skipped, and `pnpm --dir frontend test run` as 51 passed.
 That suite was not re-executed while writing this status note. The P0/P1 close-out on 2026-10-24 re-ran `pnpm --dir frontend test run` (12 files, 56 passed), `pnpm --dir frontend typecheck`, and `pnpm --dir frontend check:boundaries`. The backend suite was not re-run; the prototype does not change it. Build was verified in the implementation pass and was not repeated for this wording change. The P2 handoff close-out on 2026-10-24 re-ran `mvn -f backend/pom.xml test` (209 passed, 0 failed, 4 skipped), `pnpm --dir frontend test run` (13 files, 59 passed), and `pnpm --dir frontend build`. Live database checks are separate from those results. The mission-shell close-out on 2026-10-24 re-ran `mvn -f backend/pom.xml test` (216 passed, 0 failed, 4 skipped), `pnpm --dir frontend typecheck`, `pnpm --dir frontend test run` (14 files, 61 passed), `pnpm --dir frontend check:boundaries`, and `pnpm --dir frontend build`. Live database checks stay separate. Mission core lifecycle must remain independent
