@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge, Button, EmptyState, Feedback } from "@eap/ui";
-import { runtimeApi, type AiConnectionState } from "@eap/runtime-client";
+import { runtimeApi, type AiConnectionState, type HandoffRecord } from "@eap/runtime-client";
+import { errorMessage } from "../../lib/presentation";
+import { chatHandoff, beginHandoff, handoffSucceeded } from "../handoff/handoff";
 import { createChatSession } from "./chatSession";
 
 const { t } = useI18n();
 const session = createChatSession(runtimeApi);
+const handoffs = ref<HandoffRecord[]>([]);
+const handoffNote = ref("");
+const handoffOk = ref(false);
+const handoffBusy = ref(false);
 
 const stateKey: Record<AiConnectionState, string> = {
   disabled: "chat.disabled",
@@ -18,7 +24,42 @@ const stateKey: Record<AiConnectionState, string> = {
 
 onMounted(() => {
   void session.refreshStatus();
+  void loadHandoffs();
 });
+
+async function loadHandoffs() {
+  if (typeof window === "undefined") return;
+  try {
+    const page = await runtimeApi.handoffs();
+    handoffs.value = page.items.filter((item) => item.source === "chat");
+  } catch {
+    handoffs.value = [];
+  }
+}
+
+async function recordHandoff() {
+  const draft = chatHandoff(session.draft.value, session.conversationId.value);
+  const gate = { busy: handoffBusy.value };
+  if (!draft || !beginHandoff(gate)) return;
+  handoffBusy.value = true;
+  handoffOk.value = false;
+  handoffNote.value = "";
+  try {
+    const saved = await runtimeApi.recordHandoff(draft);
+    if (!handoffSucceeded(saved)) {
+      handoffNote.value = t("plugin.handoffRejected");
+      return;
+    }
+    handoffOk.value = true;
+    handoffNote.value = t("plugin.handoffDone", saved);
+    await loadHandoffs();
+  } catch (error) {
+    handoffOk.value = false;
+    handoffNote.value = errorMessage(error);
+  } finally {
+    handoffBusy.value = false;
+  }
+}
 </script>
 
 <template>
@@ -95,7 +136,7 @@ onMounted(() => {
     >
       <label>
         {{ t("chat.draft") }}
-        <textarea v-model="session.draft.value" rows="4" :disabled="!session.conversationId.value || session.sending.value" />
+        <textarea v-model="session.draft.value" rows="4" :disabled="session.sending.value" />
       </label>
       <Button
         variant="primary"
@@ -105,5 +146,21 @@ onMounted(() => {
         {{ session.sending.value ? t("chat.sending") : t("chat.send") }}
       </Button>
     </form>
+    <div class="chat-actions">
+      <Button
+        variant="secondary"
+        type="button"
+        data-testid="chat-handoff"
+        :disabled="handoffBusy || !session.draft.value.trim()"
+        @click="recordHandoff"
+      >
+        {{ t("plugin.handoff") }}
+      </Button>
+    </div>
+    <p class="hint">{{ t("plugin.handoffHint") }} {{ t("plugin.handoffRepeat") }}</p>
+    <Feedback v-if="handoffNote" :tone="handoffOk ? 'info' : 'warning'">{{ handoffNote }}</Feedback>
+    <ul v-if="handoffs.length">
+      <li v-for="item in handoffs" :key="item.id">{{ item.summary }} · {{ item.execution }} · {{ item.grant }}</li>
+    </ul>
   </section>
 </template>

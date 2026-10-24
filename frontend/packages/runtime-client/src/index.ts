@@ -212,6 +212,17 @@ export type TaskResult = {
   observations?: TaskObservation[];
   createdAt?: string;
 };
+export type HandoffRecord = {
+  id: string;
+  source: "chat" | "builder";
+  sourceRef: string;
+  summary: string;
+  status: "recorded";
+  execution: "not_started";
+  approval: "not_requested";
+  grant: "none";
+  createdAt?: string;
+};
 export type SqlFinding = {
   code: string;
   title?: string;
@@ -622,6 +633,11 @@ export const runtimeApi = {
   createTask: (goal: string) =>
     client
       .post<TaskResult>("/tasks", { goal }, { timeout: 60_000 })
+      .then((response) => response.data),
+  handoffs: () => get<{ items: HandoffRecord[] }>("/handoffs"),
+  recordHandoff: (draft: { source: "chat" | "builder"; sourceRef: string; summary: string }) =>
+    client
+      .post<HandoffRecord>("/handoffs", draft)
       .then((response) => response.data),
   analyzeSql: (
     sql: string,

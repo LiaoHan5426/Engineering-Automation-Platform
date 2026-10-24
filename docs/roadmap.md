@@ -18,15 +18,15 @@ reference, not proof of implementation or authorization to execute all its stage
 | Documentation | Single docs/README.md entry; old UI reviews and per-round Codex reports consolidated; 14 superseded documents/prototype files retired, valid decisions and active console prototype retained |
 | Codex P1-C | Adapter, model communication, process and Artifact evidence implemented; file delegation was denied, acceptance remains incomplete; investigation paused |
 | Chat workbench | S1 wired on 2026-10-24: `GET /api/ai/status`, `POST /api/ai/conversations`, `POST /api/ai/conversations/{id}/messages`, and a `#chat` page. In-memory sessions, synchronous requests, no reliable cancel, no live provider acceptance. The landing page remains the SQL workbench |
-| Workspace plugins | 原型已实现，自测通过，待用户交互验收。仅 P0/P1，见 [S2 plugin ADR](decisions/s2-workspace-plugin-contract.md)：插件中心、启停与恢复、两个 Builder 实例、Vue 预览，以及标明模拟的任务与审批。不是 S2 全部完成；Handoff、真实 Mission、外部 Agent、Electron、GrapesJS 未做 |
-| Mission | Planned independent runtime/persistence/approval lifecycle; neither ChatMemory nor Expert DAG supplies it |
+| Workspace plugins | 原型已实现，自测通过，待用户交互验收。仅 P0/P1，见 [S2 plugin ADR](decisions/s2-workspace-plugin-contract.md)。交接记录已实现，Mission 尚未实现 |
+| Mission | 交接记录已实现，Mission 尚未实现。记录只写入 `eap.handoff`，见 [P2 handoff contract](decisions/p2-handoff-contract.md)。没有调度、审批流转、恢复或自主执行 |
 | Builder | GrapesJS editor, semantic schema and repository handoff are not implemented. The P0/P1 prototype only has a manual Vue preview |
 | P1-D | Independent Diff/Build/Test validation remains unimplemented and separately gated |
 
-Next: 用户交互验收 S2 P0/P1 原型。通过前不接 Handoff 或真实 Mission。这不是 S2 全部完成。契约见 [S2 workspace plugin contract](decisions/s2-workspace-plugin-contract.md)。
+Next: 交接记录已实现，Mission 尚未实现。记录只写入 `eap.handoff`，不调度、不审批、不恢复、不自主执行。契约见 [P2 handoff contract](decisions/p2-handoff-contract.md)。
 S1 is implemented; see [S1 Chat design](decisions/s1-chat-spring-ai-design.md). Its close-out on this worktree recorded
 `mvn -f backend/pom.xml test` as 205 passed, 0 failed, 4 skipped, and `pnpm --dir frontend test run` as 51 passed.
-That suite was not re-executed while writing this status note. The P0/P1 close-out on 2026-10-24 re-ran `pnpm --dir frontend test run` (12 files, 56 passed), `pnpm --dir frontend typecheck`, and `pnpm --dir frontend check:boundaries`. The backend suite was not re-run; the prototype does not change it. Build was verified in the implementation pass and was not repeated for this wording change. Mission core lifecycle must remain independent
+That suite was not re-executed while writing this status note. The P0/P1 close-out on 2026-10-24 re-ran `pnpm --dir frontend test run` (12 files, 56 passed), `pnpm --dir frontend typecheck`, and `pnpm --dir frontend check:boundaries`. The backend suite was not re-run; the prototype does not change it. Build was verified in the implementation pass and was not repeated for this wording change. The P2 handoff close-out on 2026-10-24 re-ran `mvn -f backend/pom.xml test` (209 passed, 0 failed, 4 skipped), `pnpm --dir frontend test run` (13 files, 59 passed), and `pnpm --dir frontend build`. Live database checks are separate from those results. Mission core lifecycle must remain independent
 of any board plugin. Builder repository delivery depends on Mission execution and independent P1-D
 verification; Electron follows those paths. EAP owns grants, engineering tools, execution records and
 Artifacts; Spring AI owns generic model/tool-calling infrastructure; Codex remains an independent

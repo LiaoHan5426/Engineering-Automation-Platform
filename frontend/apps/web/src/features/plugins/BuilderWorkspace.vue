@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge, Button, Feedback } from "@eap/ui";
+import { runtimeApi, type HandoffRecord } from "@eap/runtime-client";
+import { errorMessage } from "../../lib/presentation";
+import { beginHandoff, builderHandoff, handoffSucceeded } from "../handoff/handoff";
 import PrototypePreview from "./PrototypePreview.vue";
 import type { PluginHost } from "./host";
 import { GRANTS, MANIFESTS, type BuilderConfig } from "./model";
@@ -10,6 +13,10 @@ const props = defineProps<{ instanceId: BuilderConfig["instanceId"]; host: Plugi
 const { t } = useI18n();
 const draft = reactive(props.host.readBuilder(props.instanceId));
 const saved = ref(false);
+const handoffs = ref<HandoffRecord[]>([]);
+const handoffNote = ref("");
+const handoffOk = ref(false);
+const handoffBusy = ref(false);
 const requests = MANIFESTS.find((item) => item.id === "builder")!.requests;
 
 function save() {
@@ -26,6 +33,45 @@ function approve() {
   draft.mockApproval = "simulated";
   saved.value = false;
 }
+
+async function loadHandoffs() {
+  if (typeof window === "undefined") return;
+  try {
+    const page = await runtimeApi.handoffs();
+    const sourceRef = `builder-${props.instanceId}`;
+    handoffs.value = page.items.filter((item) => item.source === "builder" && item.sourceRef === sourceRef);
+  } catch {
+    handoffs.value = [];
+  }
+}
+
+async function recordHandoff() {
+  const request = builderHandoff(props.instanceId, draft.draftTitle, draft.draftBody);
+  const gate = { busy: handoffBusy.value };
+  if (!request || !beginHandoff(gate)) return;
+  handoffBusy.value = true;
+  handoffOk.value = false;
+  handoffNote.value = "";
+  try {
+    const recorded = await runtimeApi.recordHandoff(request);
+    if (!handoffSucceeded(recorded)) {
+      handoffNote.value = t("plugin.handoffRejected");
+      return;
+    }
+    handoffOk.value = true;
+    handoffNote.value = t("plugin.handoffDone", recorded);
+    await loadHandoffs();
+  } catch (error) {
+    handoffOk.value = false;
+    handoffNote.value = errorMessage(error);
+  } finally {
+    handoffBusy.value = false;
+  }
+}
+
+onMounted(() => {
+  void loadHandoffs();
+});
 </script>
 
 <template>
@@ -73,6 +119,20 @@ function approve() {
       <p class="hint">{{ t("plugin.grants") }}：{{ GRANTS.length ? GRANTS.join("、") : t("plugin.noGrant") }}</p>
       <Button data-testid="mock-approve" variant="secondary" @click="approve">{{ t("plugin.approve") }}</Button>
       <Feedback v-if="draft.mockApproval === 'simulated'" tone="warning">{{ t("plugin.approved") }}</Feedback>
+      <Button
+        data-testid="builder-handoff"
+        variant="secondary"
+        type="button"
+        :disabled="handoffBusy || !draft.draftTitle.trim() && !draft.draftBody.trim()"
+        @click="recordHandoff"
+      >
+        {{ t("plugin.handoff") }}
+      </Button>
+      <p class="hint">{{ t("plugin.handoffHint") }} {{ t("plugin.handoffRepeat") }}</p>
+      <Feedback v-if="handoffNote" :tone="handoffOk ? 'info' : 'warning'">{{ handoffNote }}</Feedback>
+      <ul v-if="handoffs.length">
+        <li v-for="item in handoffs" :key="item.id">{{ item.summary }} · {{ item.execution }} · {{ item.grant }}</li>
+      </ul>
       <Button data-testid="deliver-write" variant="danger" disabled>{{ t("plugin.deliver") }}</Button>
       <p class="hint">{{ t("plugin.deliverDenied") }}</p>
     </section>
