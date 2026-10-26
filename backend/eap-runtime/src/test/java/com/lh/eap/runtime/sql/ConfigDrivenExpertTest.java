@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Proves the central architectural claim: an expert's judgement is configuration, not code.
+ * Proves the central architectural claim: an expert's judgment is configuration, not code.
  *
  * <p>These tests are written against rule packs that exist only inside the test. Nothing in
  * {@code src/main/java} mentions their ids, severities or wording, yet they drive the findings.

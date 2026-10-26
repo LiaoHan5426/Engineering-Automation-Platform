@@ -37,7 +37,8 @@ class CodexRealSmokeTest {
             report.put("helloExact",Files.isRegularFile(hello)&&Arrays.equals(Files.readAllBytes(hello),"Hello from EAP Codex exec probe".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             try(var files=Files.list(repo)){report.put("files",files.map(p->p.getFileName().toString()).sorted().toList());}
             for(var command:List.of(List.of("status","--porcelain=v1","--untracked-files=all"),List.of("remote","-v"),List.of("diff","--no-ext-diff"))){
-                var obs=executor.run("independent-inspection",repo,new ArrayList<>(){{add(git);addAll(command);}});
+                var args=new ArrayList<String>();args.add(git);args.addAll(command);
+                var obs=executor.run("independent-inspection",repo,args);
                 report.put(String.join(" ",command),obs.stdout());
             }
             report.put("helloContent",Files.isRegularFile(hello)?Files.readString(hello):"");

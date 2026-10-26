@@ -26,7 +26,7 @@ import tools.jackson.databind.json.JsonMapper;
  * the effect — no rebuild, no redeploy.
  *
  * <p>Shipped packs ({@code builtin}) are read-only and reserve their ids; copy one to a new id to
- * customise it. The dry-run endpoint lets the console show "what would these rules say about this
+ * customize it. The dry-run endpoint lets the console show "what would these rules say about this
  * SQL" before anything is saved.
  */
 @Service

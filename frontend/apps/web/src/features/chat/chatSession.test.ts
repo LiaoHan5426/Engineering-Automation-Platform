@@ -151,11 +151,11 @@ describe("chat session", () => {
             kind: "openai-compatible",
             enabled: true,
             baseUrl: "https://127.0.0.1:9/v1",
-            model: "old-model",
+            defaultModel: "old-model", models: [{ id: "old-model", reasoningEfforts: [] }], allowedModels: ["old-model"], discoveredAt: "", discoveryError: "",
             secretPresent: true,
             revision: 1,
             defaultSelected: true,
-            environment: false,
+
             configurationRevision: "a",
           },
           {
@@ -164,11 +164,11 @@ describe("chat session", () => {
             kind: "openai-compatible",
             enabled: true,
             baseUrl: "https://127.0.0.1:10/v1",
-            model: "next-model",
+            defaultModel: "next-model", models: [{ id: "next-model", reasoningEfforts: [] }], allowedModels: ["next-model"], discoveredAt: "", discoveryError: "",
             secretPresent: true,
             revision: 2,
             defaultSelected: false,
-            environment: false,
+
             configurationRevision: "b",
           },
         ],
@@ -182,7 +182,7 @@ describe("chat session", () => {
     const session = createChatSession(api);
     await session.openConversation();
     await session.refreshConnections();
-    session.chooseConversationConnection("next");
+    session.chooseConversationConnection("next", "next-model");
     session.draft.value = "stay here";
     await session.send();
     expect(sent).toBe(0);
@@ -221,4 +221,47 @@ it('keeps expired history readable without sending or silently creating a replac
   const api: ChatApi = { aiStatus: async () => status(), openAiConversation: async () => ({ conversationId: 'old', workspaceLabel: 'ws', memory: 'memory' }), aiConversation: async () => { throw { response: { status: 404 } }; }, sendAiMessage: async () => { sent++; return result(); } };
   const session = createChatSession(api); await session.openConversation(); session.draft.value = 'kept'; await session.selectConversation('old'); await session.send();
   expect(session.expired.value).toBe(true); expect(session.draft.value).toBe('kept'); expect(sent).toBe(0);
+});
+
+it('creates the first conversation on send and assigns an explicitly selected model without losing prototype context', async () => {
+  const requests: unknown[] = [];
+  const api: ChatApi = {
+    aiStatus: async () => status(),
+    openAiConversation: async () => ({ conversationId: 'first', workspaceLabel: 'ws', memory: 'memory' }),
+    assignConversationConnection: async (id, connection, confirmed, model) => {
+      requests.push([id, connection, confirmed, model]);
+      return { connectionId: connection, connectionName: 'desk', model, memoryCleared: false };
+    },
+    sendAiMessage: async (id, message, tool, context) => { requests.push([id, message, tool, context?.prototypeVersionId]); return result(); },
+  };
+  const session = createChatSession(api);
+  session.draft.value = 'Implement this prototype';
+  session.context.value.prototypeVersionId = 'saved-version';
+  session.context.value.mode = 'code';
+  session.chooseConversationConnection('desk', 'model-b');
+  await session.send();
+  expect(requests).toEqual([['first', 'desk', true, 'model-b'], ['first', 'Implement this prototype', 'none', 'saved-version']]);
+  expect(session.boundModel.value).toBe('model-b');
+  expect(session.turns.value[0].model).toBe('model-b');
+});
+
+it('preserves per-conversation context and restores the active conversation after returning from settings', async () => {
+  let serial = 0;
+  const store = new Map<string, string>();
+  const storage = { getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => { store.set(key, value); } };
+  const api: ChatApi = { aiStatus: async () => status(), openAiConversation: async () => ({ conversationId: 'c' + ++serial, workspaceLabel: 'ws', memory: 'memory', connectionId: 'desk', model: 'model-a' }), sendAiMessage: async () => result() };
+  const session = createChatSession(api, storage);
+  await session.openConversation();
+  session.context.value.instructions = 'Keep project conventions';
+  session.context.value.files = [{ name: 'reference.md', content: 'Reference' }];
+  await session.openConversation();
+  session.context.value.instructions = 'Another task';
+  await session.selectConversation('c1');
+  expect(session.context.value.instructions).toBe('Keep project conventions');
+  expect(session.context.value.files[0].name).toBe('reference.md');
+  const restored = createChatSession(api, storage);
+  await restored.restoreLastConversation();
+  expect(restored.conversationId.value).toBe('c1');
+  expect(restored.boundModel.value).toBe('model-a');
+  expect(restored.context.value.instructions).toBe('Keep project conventions');
 });

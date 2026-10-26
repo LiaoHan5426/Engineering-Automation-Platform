@@ -15,8 +15,7 @@ spring:
       api-key: ${OPENAI_API_KEY:}
       base-url: ${EAP_AI_BASE_URL:https://api.openai.com}
       chat:
-        options:
-          model: ${EAP_AI_MODEL:gpt-4.1-mini}
+        model: ${EAP_AI_MODEL:gpt-4.1-mini}
       timeout: 30s
       max-retries: 0
     retry:
@@ -29,7 +28,7 @@ spring:
   datasource:
     url: ${EAP_DB_URL:jdbc:postgresql://localhost:54321/postgres?currentSchema=eap}
     username: ${EAP_DB_USERNAME:postgres}
-    password: ${EAP_DB_PASSWORD:1269482226lh.}
+    password: ${EAP_DB_PASSWORD:}
   flyway:
     locations: classpath:db/migration
     schemas: eap
@@ -56,7 +55,3 @@ eap:
     max-prompt-tokens: ${EAP_LLM_MAX_PROMPT_TOKENS:1800}
     max-completion-tokens: ${EAP_LLM_MAX_COMPLETION_TOKENS:700}
     cache-entries: ${EAP_LLM_CACHE_ENTRIES:64}
-# EAP_ADOPT_EXISTING_SCHEMA is deliberately NOT set here. Adopting a pre-existing schema is a
-# one-time operator decision taken at the moment they have inspected it, so it belongs on the
-# command line or in the environment of that single start -- never in the committed config, where
-# it would silently disable the guard in `MigrationConfiguration` for every future run.

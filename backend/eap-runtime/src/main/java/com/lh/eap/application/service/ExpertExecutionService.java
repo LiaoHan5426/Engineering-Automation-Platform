@@ -33,7 +33,7 @@ import tools.jackson.databind.json.JsonMapper;
  * the graph in dependency order, and delegates every node to a registered {@link CapabilityHandler}.
  * It contains no per-capability logic, so adding a capability never touches this class.
  *
- * <p>Judgement is a stage of its own and runs <em>after</em> the graph: each capability publishes the
+ * <p>Judgment is a stage of its own and runs <em>after</em> the graph: each capability publishes the
  * facts it can prove, and the rule packs are then evaluated once over the accumulated fact base. That
  * ordering is what lets a single rule combine statement shape with snapshot and plan evidence, and it
  * is why a rule whose facts could not be produced is reported as blocked instead of as "no findings".
@@ -141,7 +141,7 @@ public class ExpertExecutionService {
             log.info("Expert execution {} node {}: capability={}, state={}",id,step.id(),step.capability(),state);
         }
 
-        // Judgement stage: one evaluation over every fact the graph managed to produce.
+        // Judgment stage: one evaluation over every fact the graph managed to produce.
         var judgement=DeterministicSqlAnalyzer.judge(analysis,resolvedPacks,executed);
         analysis.putAll(judgement);
         if(judgement.get("suggestions") instanceof List<?> suggestions) for(var item:suggestions) advice.add(String.valueOf(item));

@@ -33,7 +33,7 @@ public final class RulePacks {
         return JSON.writeValueAsString(pack);
     }
 
-    /** All built-in packs, ordered by resource name so behaviour is deterministic. */
+    /** All built-in packs, ordered by resource name so behavior is deterministic. */
     public static List<RulePack> builtin() {
         var result = cached;
         if (result != null) return result;
@@ -108,7 +108,7 @@ public final class RulePacks {
 
     /**
      * The capabilities a pack needs. Preference order: what the pack declared (validated against the
-     * derived set), otherwise what its facts imply — so an invalid hand-written pack still reports the
+     * derived set), otherwise what its facts imply — so an invalid handwritten pack still reports the
      * capabilities it would need instead of pretending it needs none.
      */
     public static Set<String> requiredCapabilities(RulePack pack) {
@@ -188,7 +188,7 @@ public final class RulePacks {
             }
         }
         var missing = new TreeSet<>(derived);
-        missing.removeAll(declared);
+        declared.forEach(missing::remove);
         if (!missing.isEmpty()) {
             errors.add("requires.capabilities 缺少规则实际依赖的能力：" + String.join("、", missing)
                     + "。这些规则引用了由它们产出的事实，缺失时对应规则永远不会命中。");

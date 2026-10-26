@@ -26,7 +26,8 @@ public final class SpringAiModelClientSource implements ModelClientSource {
         return ChatClient.builder(model(snapshot)).build();
     }
 
-    private static OpenAiChatModel model(ModelConnectionSnapshot snapshot) {
+    private static org.springframework.ai.chat.model.ChatModel model(ModelConnectionSnapshot snapshot) {
+        if (ModelConnections.CHATGPT_KIND.equals(snapshot.kind)) return new ChatGptPlanChatModel(snapshot);
         var options = OpenAiChatOptions.builder().baseUrl(snapshot.baseUrl).apiKey(snapshot.secret)
                 .timeout(Duration.ofSeconds(30)).maxRetries(0);
         options.model(snapshot.model);

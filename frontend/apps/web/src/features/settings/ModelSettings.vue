@@ -4,6 +4,20 @@ import { useI18n } from 'vue-i18n';
 import { Button, Feedback } from '@eap/ui';
 import { runtimeApi, type ModelConnection } from '@eap/runtime-client';
 import ConnectionDialog from './ConnectionDialog.vue';
+import ModelCatalogEditor from './ModelCatalogEditor.vue';
+import ChatGptAccountCard from './ChatGptAccountCard.vue';
+const accountLogin = ref<{ start: (id?: string) => Promise<void> } | null>(null);
+async function accountConnected(id: string) {
+  try { const result = await runtimeApi.refreshConnectionModels(id); await refreshConnections(); managing.value = result; }
+  catch (error) { connectionNote.value = errorMessage(error); await refreshConnections(); }
+}
+async function disconnect(item: ModelConnection) {
+  connectionBusy.value = true;
+  try { await runtimeApi.disconnectChatGpt(item.id); await refreshConnections(); }
+  catch (error) { connectionNote.value = errorMessage(error); }
+  finally { connectionBusy.value = false; }
+}
+const managing = ref<ModelConnection | null>(null);
 import { errorMessage } from '../../lib/presentation';
 const { t } = useI18n();
 const connections = ref<ModelConnection[]>([]);
@@ -17,7 +31,6 @@ const connectionBusy = ref(false);
 const form = ref({
   name: "",
   baseUrl: "https://api.openai.com",
-  model: "",
   secret: "",
   enabled: true,
   defaultSelected: true,
@@ -27,23 +40,21 @@ function presetChanged(event: Event) {
   const value = (event.target as HTMLSelectElement).value;
   if (value === 'custom') { form.value.baseUrl = ''; return; }
   form.value.baseUrl = value;
-  form.value.model = value.includes('deepseek') ? 'deepseek-chat' : 'gpt-4.1-mini';
+
 }
 function newConnection() {
   editorOpen.value = true;
   editingId.value = null;
-  form.value = { name: "", baseUrl: "https://api.openai.com", model: "gpt-4.1-mini", secret: "", enabled: true, defaultSelected: connections.value.length === 0 };
+  form.value = { name: "", baseUrl: "https://api.openai.com", secret: "", enabled: true, defaultSelected: connections.value.length === 0 };
   connectionNote.value = "";
 }
 
 function editConnection(item: ModelConnection) {
-  if (item.environment) return;
   editorOpen.value = true;
   editingId.value = item.id;
   form.value = {
     name: item.name,
     baseUrl: item.baseUrl,
-    model: item.model,
     secret: "",
     enabled: item.enabled,
     defaultSelected: item.defaultSelected,
@@ -57,11 +68,17 @@ async function saveConnection() {
   connectionOk.value = false;
   connectionNote.value = "";
   try {
-    const saved = await runtimeApi.saveModelConnection(
+    const previousRevision = connections.value.find(item => item.id === editingId.value)?.revision;
+    let saved = await runtimeApi.saveModelConnection(
       { ...form.value, secret: form.value.secret },
       editingId.value ?? undefined,
     );
     form.value.secret = "";
+    if (saved.enabled && previousRevision !== saved.revision) {
+      try { saved = await runtimeApi.refreshConnectionModels(saved.id); }
+      catch { connectionNote.value = t("modelUi.cached"); }
+    }
+    managing.value = saved;
     editingId.value = saved.id;
     connectionOk.value = true;
     connectionNote.value = t("chat.connectionSaved");
@@ -77,7 +94,7 @@ async function saveConnection() {
 }
 
 async function toggleConnection(item: ModelConnection) {
-  if (item.environment || connectionBusy.value) return;
+  if (connectionBusy.value) return;
   connectionBusy.value = true;
   try {
     await runtimeApi.setModelConnectionEnabled(item.id, !item.enabled);
@@ -91,7 +108,7 @@ async function toggleConnection(item: ModelConnection) {
 }
 
 async function makeDefault(item: ModelConnection) {
-  if (item.environment || connectionBusy.value) return;
+  if (connectionBusy.value) return;
   connectionBusy.value = true;
   try {
     await runtimeApi.setDefaultModelConnection(item.id);
@@ -108,23 +125,20 @@ async function makeDefault(item: ModelConnection) {
 <template>
 <section class="view work-page model-settings-workspace">
   <div class="page-head"><p class="eyebrow">SETTINGS</p><h1>{{ t('composerUi.modelSettings') }}</h1><p>{{ t('composerUi.modelSettingsHint') }}</p></div>
+    <ChatGptAccountCard ref="accountLogin" @connected="accountConnected" @changed="refreshConnections" />
     <section class="connection-settings-card" data-testid="model-connections">
       <div class="connection-list-heading"><h2>{{ t("chat.connections") }} <span class="hint">{{ connections.length }}</span></h2><Button type="button" variant="primary" :disabled="connectionBusy" @click="newConnection">＋ {{ t("composerUi.addConnection") }}</Button></div>
-      <p class="hint">{{ t("composerUi.multipleConnections") }}</p>
-      <p class="hint">{{ t("chat.connectionHint") }}</p>
+      <p class="hint" role="status">{{ t("modelUi.connectionHint") }}</p>
+
       <p v-if="!connections.length" class="connections-empty">{{ t("composerUi.noConnections") }}</p>
       <ul>
         <li v-for="item in connections" :key="item.id">
-          <div class="connection-identity"><strong>{{ item.name }}</strong><span>{{ item.model }}</span><small>{{ item.baseUrl }}</small></div>
+          <div class="connection-identity"><strong>{{ item.name }}</strong><span>{{ item.defaultModel || t("modelUi.pending") }}</span><small>{{ item.baseUrl }}</small></div>
           <span v-if="item.secretPresent"> · {{ t("hidden") }}</span>
           <span v-if="item.defaultSelected"> · {{ t("chat.connectionDefault") }}</span>
           <span v-if="!item.enabled"> · {{ t("chat.disabled") }}</span>
-          <template v-if="item.environment">
-            <span>{{ t("chat.connectionEnvironment") }}</span>
-          </template>
-          <template v-else>
-            <Button variant="secondary" type="button" :disabled="connectionBusy" @click="editConnection(item)">
-              {{ t("chat.connectionEdit") }}
+            <Button variant="secondary" type="button" :disabled="connectionBusy" @click="item.kind === 'chatgpt-plan' ? accountLogin?.start(item.id) : editConnection(item)">
+              {{ t(item.kind === 'chatgpt-plan' ? "authUi.reconnect" : "chat.connectionEdit") }}
             </Button>
             <Button variant="secondary" type="button" :disabled="connectionBusy" @click="toggleConnection(item)">
               {{ item.enabled ? t("chat.connectionDisable") : t("chat.connectionEnabled") }}
@@ -138,20 +152,21 @@ async function makeDefault(item: ModelConnection) {
             >
               {{ t("chat.connectionDefault") }}
             </Button>
-          </template>
+            <Button v-if="item.kind === 'chatgpt-plan'" type="button" variant="secondary" :disabled="connectionBusy" @click="disconnect(item)">{{ t("authUi.disconnect") }}</Button>
+            <Button variant="secondary" type="button" :disabled="connectionBusy" @click="managing = item">{{ t("modelUi.manage") }} · {{ item.allowedModels.length }}</Button>
         </li>
       </ul>
+      <ConnectionDialog v-if="managing" :title="t('modelUi.catalog')" :busy="true" @close="managing = null"><ModelCatalogEditor :connection="managing" @saved="refreshConnections" @close="managing = null" /></ConnectionDialog>
       <ConnectionDialog v-if="editorOpen" :title="editingId ? t('chat.connectionEdit') : t('composerUi.addConnection')" :busy="connectionBusy" @close="editorOpen = false; form.secret = ''">
       <form class="connection-form" @submit.prevent="saveConnection">
         <div class="connection-editor-heading"><h3>{{ editingId ? t("chat.connectionEdit") : t("composerUi.addConnection") }}</h3><Button type="button" variant="secondary" :disabled="connectionBusy" @click="editorOpen = false; form.secret = ''">{{ t("composerUi.close") }}</Button></div>
         <label>{{ t("task.preset") }}
           <select :value="form.baseUrl.includes('deepseek') ? 'https://api.deepseek.com' : form.baseUrl === 'https://api.openai.com' ? form.baseUrl : 'custom'" @change="presetChanged">
-            <option value="https://api.openai.com">OpenAI / GPT</option><option value="https://api.deepseek.com">DeepSeek</option><option value="custom">{{ t("composerUi.customConnection") }}</option>
+            <option value="https://api.openai.com">OpenAI API Key</option><option value="https://api.deepseek.com">DeepSeek API Key</option><option value="custom">{{ t("composerUi.customConnection") }}</option>
           </select>
         </label>
         <label>{{ t("chat.connectionName") }} <input v-model="form.name" required /></label>
         <label>{{ t("chat.connectionUrl") }} <input v-model="form.baseUrl" required /></label>
-        <label>{{ t("chat.connectionModel") }} <input v-model="form.model" required /></label>
         <label>
           {{ t("chat.connectionSecret") }}
           <input v-model="form.secret" type="password" autocomplete="new-password" :placeholder="editingId ? t('chat.connectionSecretKeep') : t('chat.connectionSecret')" />

@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
  * that the expert did not declare, and any capability the operator switched off in
  * {@link CapabilitySettings}. Handlers are shared stateless beans, so a platform capability cannot leak
  * state between experts; an expert-scoped one carries an external session, which is why it must be
- * authorised per expert rather than registered globally.
+ * authorized per expert rather than registered globally.
  */
 @Component
 public class CapabilityHandlerRegistry {
@@ -60,10 +60,10 @@ public class CapabilityHandlerRegistry {
      *
      * <p>Platform capabilities: yes, if an implementation exists and the operator has not switched it
      * off. Expert-scoped capabilities: only when the expert's manifest declares them — the declaration is
-     * the authorisation, and it is what activation records and what the graph validator checks.
+     * the authorization, and it is what activation records and what the graph validator checks.
      *
      * <p>A disabled capability resolves to nothing here rather than to an empty implementation: the
-     * caller reports "not authorised/disabled", and a node never appears to have run while doing nothing.
+     * caller reports "not authorized/disabled", and a node never appears to have run while doing nothing.
      */
     public Optional<CapabilityHandler> resolveFor(ExpertManifest manifest, String capability) {
         var handler = find(capability).orElse(null);

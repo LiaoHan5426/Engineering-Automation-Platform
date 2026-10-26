@@ -1,13 +1,11 @@
 package com.lh.eap.llm;
 
+import java.io.Serial;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,12 +35,7 @@ public class LlmGateway {
     public LlmGateway(List<LlmProvider> providers, @Value("${eap.llm.cache-entries:64}") int cacheCapacity) {
         this.providers = providers == null ? List.of() : providers;
         this.cacheCapacity = Math.max(1, cacheCapacity);
-        this.cache = java.util.Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<String, LlmProvider.Result> eldest) {
-                return size() > LlmGateway.this.cacheCapacity;
-            }
-        });
+        this.cache = Collections.synchronizedMap(new LruCache(this.cacheCapacity));
     }
 
     public boolean available() {
@@ -89,6 +82,24 @@ public class LlmGateway {
             return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException unavailable) {
             return Integer.toHexString(request.userPrompt().hashCode());
+        }
+    }
+
+    /** Access-order map that drops the least recently used entry past the configured capacity. */
+    private static final class LruCache extends LinkedHashMap<String, LlmProvider.Result> {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        private final int capacity;
+
+        private LruCache(int capacity) {
+            super(16, 0.75f, true);
+            this.capacity = capacity;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, LlmProvider.Result> eldest) {
+            return size() > capacity;
         }
     }
 }

@@ -109,12 +109,12 @@ public final class CodexAdapter implements AgentAdapter {
                 var line=receivedLine.text();
                 if(line.isBlank())continue;
                 try{
-                    var node=json.readTree(line);var type=node.path("type").asText("");
+                    var node=json.readTree(line);var type= node.path("type").asString("");
                     if(type.isEmpty())throw new IllegalArgumentException();
                     if(type.equals("turn.completed"))completed=true;
                     if(type.equals("turn.failed")||type.equals("error"))
                         error=modelRejected(line)?"MODEL_SERVER_REJECTED":"PROVIDER_ERROR";
-                    events.add(new AgentAdapter.Event(events.size()+1,type,clean(node.path("thread_id").asText("")),clean(line),receivedLine.receivedAt()));
+                    events.add(new AgentAdapter.Event(events.size()+1,type,clean(node.path("thread_id").asString("")),clean(line),receivedLine.receivedAt()));
                 }catch(RuntimeException malformed){error="INVALID_OR_TRUNCATED_JSONL";break;}
             }
             if(error.isEmpty()&&!completed)error="INCOMPLETE_PROTOCOL";

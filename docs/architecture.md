@@ -31,7 +31,7 @@ backend/             Java 25 / Spring Boot / Maven reactor
                      rule engine and rule packs with capability requirements, expert orchestration,
                      knowledge retrieval, LLM preprocessing gateway, decision layer
   eap-runtime/src/main/resources/db/migration
-                     Flyway migrations (V1..V12)
+                     Flyway development baseline (V1__initial_schema.sql)
 docs/                architecture, pipeline, roadmap, environment, expert/knowledge/rules, prototype
 ```
 
@@ -156,9 +156,10 @@ The [S1 Chat design](decisions/s1-chat-spring-ai-design.md) specifies the propos
 integration; those routes and UI are not implemented yet. Workspace plugins and Mission remain
 separate later stages, rather than consequences of adding ChatClient.
 
-**Persistence.** PostgreSQL schema `eap`, managed by Flyway (V1–V12). An adoption path exists for a
-pre-existing hand-built schema (`EAP_ADOPT_EXISTING_SCHEMA=true`), see
-[runtime-workflow.md](runtime-workflow.md).
+**Persistence.** PostgreSQL schema `eap`, managed by Flyway. The user-approved development reset
+consolidated V1–V18 into `V1__initial_schema.sql` on 2026-10-26. Existing development databases require
+an explicit reset; automatic legacy adoption was removed. Future changes use incremental migrations.
+See [runtime-workflow.md](runtime-workflow.md).
 
 ## What is planned (not yet implemented)
 

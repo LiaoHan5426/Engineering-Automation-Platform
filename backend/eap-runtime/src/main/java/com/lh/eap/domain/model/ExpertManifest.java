@@ -8,7 +8,7 @@ import tools.jackson.databind.json.JsonMapper;
  * The declarative definition of an expert.
  *
  * <p>An expert is data, not code. It declares which capabilities to run, which rule packs define its
- * judgement, and which knowledge bases it may consult. Nothing here is specialised for SQL: the same
+ * judgment, and which knowledge bases it may consult. Nothing here is specialized for SQL: the same
  * schema describes any expert, and a new expert can be added through the API without a code change.
  *
  * <ul>
@@ -16,7 +16,7 @@ import tools.jackson.databind.json.JsonMapper;
  *   <li>{@code rulePacks} — ids of declarative rule packs (built-in JSON or operator-authored).</li>
  *   <li>{@code knowledgeBases}/{@code databaseProfiles} — resource references, granted on activation.</li>
  *   <li>{@code mcpTools} — expert-scoped capabilities (MCP tools, remote endpoints) this expert is
- *       allowed to call. These are never enabled globally: the declaration here is the authorisation,
+ *       allowed to call. These are never enabled globally: the declaration here is the authorization,
  *       activation records it as a grant, and the graph may only contain nodes that appear in it.</li>
  *   <li>{@code rules} — platform invariants that must hold for every expert.</li>
  * </ul>
@@ -46,7 +46,7 @@ public record ExpertManifest(String apiVersion, String kind, String id, String n
     }
 
     /**
-     * Capabilities this expert explicitly authorised that are not platform-level. Shipped as
+     * Capabilities this expert explicitly authorized that are not platform-level. Shipped as
      * {@code mcpTools} in the manifest; kept behind an accessor so the rest of the runtime does not have
      * to know which transport an expert-scoped capability uses.
      */

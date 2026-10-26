@@ -1,0 +1,72 @@
+// @vitest-environment happy-dom
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { runtimeApi } from '@eap/runtime-client';
+import { createApp, h, nextTick, ref, type App } from 'vue';
+import { i18n } from '../lib/i18n';
+import DesktopNavigation from './DesktopNavigation.vue';
+import ScenarioWorkspace from './ScenarioWorkspace.vue';
+let app: App | undefined;
+let root: HTMLDivElement | undefined;
+afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); sessionStorage.clear(); });
+const pages = ['chat', 'sql', 'experts', 'model-settings', 'plugins', 'builder-alpha', 'builder-beta'].map(id => ({ id, name: id }));
+describe('desktop navigation', () => {
+  it('blocks code handoff when the saved-version catalog cannot be read', async () => {
+    vi.spyOn(runtimeApi, 'prototypeVersions').mockRejectedValue(new Error('offline'));
+    const navigate = vi.fn();
+    root = document.createElement('div'); document.body.append(root);
+    app = createApp({ render: () => h(ScenarioWorkspace, { builderEnabled: true, chatEnabled: true, onNavigate: navigate }) });
+    app.use(i18n).mount(root);
+    await vi.waitFor(() => expect(root!.querySelector('[role="alert"]')).not.toBeNull());
+    const develop = root.querySelector('[data-testid="scenario-develop"]') as HTMLButtonElement;
+    expect(develop.disabled).toBe(true);
+    develop.click();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('eap.chat.prototype')).toBeNull();
+  });
+  it('opens settings and scenes without losing access to existing tools', async () => {
+    const selected: string[] = [];
+    root = document.createElement('div'); document.body.append(root);
+    app = createApp({ render: () => h(DesktopNavigation, { activeView: 'sql', pages, onNavigate: id => selected.push(id) }) });
+    app.use(i18n).mount(root);
+    const buttons = root.querySelectorAll('.activity-bar button');
+    expect(buttons.length).toBe(5);
+    (buttons[4] as HTMLButtonElement).click(); await nextTick();
+    expect(selected.at(-1)).toBe('model-settings');
+    expect(root.querySelector('.desktop-sidebar')?.textContent).toContain('plugins');
+    (buttons[2] as HTMLButtonElement).click(); await nextTick();
+    expect(selected.at(-1)).toBe('scenes');
+    expect(root.querySelector('.desktop-sidebar')?.textContent).toContain('builder-alpha');
+    expect(root.querySelector('.desktop-sidebar')?.textContent).toContain('builder-beta');
+  });
+  it('restores the last page in an area and recognizes the work landing page', async () => {
+    const active = ref('work');
+    root = document.createElement('div'); document.body.append(root);
+    app = createApp({ render: () => h(DesktopNavigation, { activeView: active.value, pages, onNavigate: id => { active.value = id; } }) });
+    app.use(i18n).mount(root);
+    const buttons = root.querySelectorAll('.activity-bar button');
+    expect(buttons[1].getAttribute('aria-current')).toBe('page');
+    active.value = 'sql'; await nextTick();
+    (buttons[4] as HTMLButtonElement).click(); await nextTick();
+    (buttons[0] as HTMLButtonElement).click(); await nextTick();
+    expect(active.value).toBe('sql');
+  });
+  it('requires a saved version before entering code chat', async () => {
+    vi.spyOn(runtimeApi, 'prototypeVersions').mockResolvedValue({ items: [{ id: 'saved-version', sourceRef: 'builder-alpha', title: 'Saved', body: '', buttonPresses: 0, interaction: '', acceptance: [], contentHash: 'hash' }] });
+    const selected: string[] = [];
+    root = document.createElement('div'); document.body.append(root);
+    app = createApp({ render: () => h(ScenarioWorkspace, { builderEnabled: false, chatEnabled: true, onNavigate: id => selected.push(id) }) });
+    app.use(i18n).mount(root);
+    await vi.waitFor(() => expect(root!.querySelectorAll('option').length).toBeGreaterThan(1));
+    const buttons = root.querySelectorAll('button');
+    expect(buttons[0].disabled).toBe(true);
+    expect(buttons[1].disabled).toBe(true);
+    const develop = root.querySelector('[data-testid="scenario-develop"]') as HTMLButtonElement;
+    expect(develop.disabled).toBe(true);
+    const select = root.querySelector('select')!;
+    select.value = 'saved-version'; select.dispatchEvent(new Event('change')); await nextTick();
+    develop.click(); await nextTick();
+    expect(selected).toEqual(['chat']);
+    expect(sessionStorage.getItem('eap.chat.prototype')).toBe('saved-version');
+    expect(root.textContent).toContain('模拟');
+  });
+});

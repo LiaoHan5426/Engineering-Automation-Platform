@@ -448,25 +448,32 @@ export type AiConversation = {
   connectionId?: string | null;
   connectionName?: string | null;
   connectionRevision?: number | null;
+  model?: string | null;
 };
+export type ChatGptLoginAttempt = { loginId: string; authorizationUrl: string; expiresAt: string };
+export type ChatGptLoginState = { loginId: string; state: "waiting" | "exchanging" | "connected" | "permission_required" | "failed" | "expired" | "cancelled"; connectionId: string | null; error: string };
+export type ModelOption = { id: string; reasoningEfforts: Array<"low" | "medium" | "high"> };
+export type ModelSelection = { models: ModelOption[]; allowedModels: string[]; defaultModel: string };
 export type ModelConnection = {
   id: string;
   name: string;
   kind: string;
   enabled: boolean;
   baseUrl: string;
-  model: string;
+  defaultModel: string;
+  models: ModelOption[];
+  allowedModels: string[];
+  discoveredAt: string;
+  discoveryError: string;
   secretPresent: boolean;
   revision: number;
   defaultSelected: boolean;
-  environment: boolean;
   configurationRevision: string;
 };
 export type ModelConnectionList = { items: ModelConnection[]; effectiveDefaultId: string | null };
 export type ModelConnectionInput = {
   name: string;
   baseUrl: string;
-  model: string;
   secret?: string;
   enabled: boolean;
   defaultSelected: boolean;
@@ -802,7 +809,7 @@ export const runtimeApi = {
       .post<AiMessageResult>(
         "/ai/conversations/" + encodeURIComponent(id) + "/messages",
         { message, toolMode, ...(context ? { context } : {}) },
-        { timeout: 35_000 },
+        { timeout: 90_000 },
       )
       .then((response) => response.data),
   applyCodeProposal: (id: string, proposal: string) =>
@@ -810,6 +817,10 @@ export const runtimeApi = {
       "/ai/conversations/" + encodeURIComponent(id) + "/proposals/" + encodeURIComponent(proposal) + "/apply",
       { confirmed: true },
     ).then((response) => response.data),
+  startChatGptLogin: (connectionId?: string) => client.post<ChatGptLoginAttempt>("/ai/chatgpt/login" + (connectionId ? "?connectionId=" + encodeURIComponent(connectionId) : ""), {}).then(response => response.data),
+  chatGptLoginState: (id: string) => get<ChatGptLoginState>("/ai/chatgpt/login/" + encodeURIComponent(id)),
+  cancelChatGptLogin: (id: string) => client.delete("/ai/chatgpt/login/" + encodeURIComponent(id)),
+  disconnectChatGpt: (id: string) => client.delete("/ai/chatgpt/login/accounts/" + encodeURIComponent(id)),
   modelConnections: () => get<ModelConnectionList>("/ai/connections"),
   saveModelConnection: (input: ModelConnectionInput, id?: string) =>
     client
@@ -821,13 +832,16 @@ export const runtimeApi = {
       .then((response) => response.data),
   setDefaultModelConnection: (id: string) =>
     client
-      .post<ModelConnection>("/ai/connections/" + encodeURIComponent(id) + "/default")
+      .post<ModelConnection>("/ai/connections/" + encodeURIComponent(id) + "/default", {})
       .then((response) => response.data),
-  assignConversationConnection: (id: string, connectionId: string, confirmTargetChange: boolean) =>
+  refreshConnectionModels: (id: string) => client.post<ModelConnection>("/ai/connections/" + encodeURIComponent(id) + "/models/refresh", {}).then(response => response.data),
+  configureConnectionModels: (id: string, selection: ModelSelection) => client.post<ModelConnection>("/ai/connections/" + encodeURIComponent(id) + "/models", selection).then(response => response.data),
+  assignConversationConnection: (id: string, connectionId: string, confirmTargetChange: boolean, model: string) =>
     client
       .post<ConversationConnection>("/ai/conversations/" + encodeURIComponent(id) + "/connection", {
         connectionId,
         confirmTargetChange,
+        model,
       })
       .then((response) => response.data),
 };

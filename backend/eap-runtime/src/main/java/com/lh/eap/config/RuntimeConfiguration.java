@@ -2,7 +2,6 @@ package com.lh.eap.config;
 
 import com.lh.eap.capability.*;
 import com.lh.eap.core.CapabilityRegistry;
-import com.lh.eap.api.ProcessExecutor;
 import com.lh.eap.core.DefaultProcessExecutor;
 import com.lh.eap.application.service.CliChannels;
 import org.springframework.context.annotation.*;
@@ -12,7 +11,7 @@ import java.nio.file.*;
 @Configuration
 public class RuntimeConfiguration {
     @Bean(destroyMethod = "close")
-    ProcessExecutor processExecutor() {
+    DefaultProcessExecutor processExecutor() {
         return new DefaultProcessExecutor();
     }
 

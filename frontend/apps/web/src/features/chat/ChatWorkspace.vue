@@ -12,6 +12,9 @@ import TaskComposer from "./TaskComposer.vue";
 import type { CodeProposal } from "@eap/runtime-client";
 
 const { t } = useI18n();
+const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true });
+watch(() => props.active, active => { if (active) { void session.refreshConnections().catch(error => { historyNote.value = errorMessage(error); }); void session.refreshStatus(); } });
+const importingPrototype = !!sessionStorage.getItem("eap.chat.prototype");
 const session = createChatSession(runtimeApi, localStorage);
 const showArchived = ref(false);
 const historyOpen = ref(true);
@@ -40,11 +43,14 @@ const applied = ref<Record<string, string[]>>({});
 const applying = ref<string | null>(null);
 const proposalNote = ref("");
 const writeConfirmed = ref<Record<string, boolean>>({});
-const reasoningSupported = computed(() => {
-  const selected = session.connections.value.find((item) => item.id === session.boundConnectionId.value);
-  return !!selected && selected.baseUrl.includes("api.openai.com") && /^(o[134]|gpt-5|gpt-6)/i.test(selected.model);
-});
-watch(reasoningSupported, (supported) => { if (!supported) session.context.value.reasoning = "default"; });
+const modelChoices = computed(() => session.connections.value.filter(item => item.enabled).flatMap(item =>
+  item.models.filter(model => item.allowedModels.includes(model.id)).map(model => ({ key: JSON.stringify([item.id, model.id]), kind: item.kind, connectionId: item.id, name: item.name, model: model.id, efforts: model.reasoningEfforts }))));
+const modelSelection = computed(() => JSON.stringify([session.pendingConnectionId.value || session.boundConnectionId.value, session.pendingConnectionId.value ? session.pendingModel.value : session.boundModel.value]));
+const selectedModel = computed(() => modelChoices.value.find(item => item.connectionId === (session.pendingConnectionId.value || session.boundConnectionId.value) && item.model === (session.pendingConnectionId.value ? session.pendingModel.value : session.boundModel.value)));
+watch(selectedModel, model => { if (model?.kind === "chatgpt-plan") session.toolMode.value = "none"; });
+const reasoningEfforts = computed(() => selectedModel.value?.efforts ?? []);
+function chooseModel(key: string) { const target = modelChoices.value.find(item => item.key === key); if (target) session.chooseConversationConnection(target.connectionId, target.model); }
+watch(reasoningEfforts, values => { if (session.context.value.reasoning !== 'default' && !values.includes(session.context.value.reasoning)) session.context.value.reasoning = 'default'; });
 async function applyProposal(proposal: CodeProposal) {
   if (!writeConfirmed.value[proposal.id] || applying.value || session.context.value.approval === "read_only") return;
   applying.value = proposal.id;
@@ -72,9 +78,9 @@ const stateKey: Record<AiConnectionState, string> = {
   error: "chat.error",
 };
 
-onMounted(() => {
+onMounted(async () => {
   void session.refreshStatus();
-  void session.refreshConnections();
+  try { await session.refreshConnections(); if (!importingPrototype) await session.restoreLastConversation(); } catch (error) { historyNote.value = errorMessage(error); }
   void loadHandoffs();
   void loadMissions();
 });
@@ -178,7 +184,7 @@ async function createMission(handoffId: string) {
     <div class="page-head chat-page-head">
       <button class="history-toggle eap-button" type="button" :aria-expanded="historyOpen" @click="historyOpen = !historyOpen">☰ {{ t("historyUi.title") }}</button>
       <button type="button" class="records-toggle eap-button" popovertarget="chat-records-panel">{{ t("composerUi.records") }} ▾</button>
-      <div class="chat-top-actions">      <Button variant="secondary" :disabled="creating || session.phase.value !== 'ready'" @click="newConversation">
+      <div class="chat-top-actions">      <Button variant="secondary" :disabled="creating || session.opening.value || session.phase.value !== 'ready'" @click="newConversation">
         {{ t("chat.new") }}
       </Button>
 <a class="chat-config-link" href="#model-settings">⚙ {{ t("composerUi.modelSettings") }}</a></div>
@@ -189,6 +195,7 @@ async function createMission(handoffId: string) {
 
     <div class="chat-body">
     <aside v-if="historyOpen" class="conversation-sidebar" :aria-label="t('historyUi.title')">
+      <a class="conversation-analysis" href="#sql">{{ t("workUi.sqlPrompt") }} ↗</a>
       <div class="history-heading"><strong>{{ t('historyUi.title') }}</strong><button type="button" @click="historyOpen = false" :aria-label="t('composerUi.close')">×</button></div>
       <div class="history-tabs"><button type="button" :aria-pressed="!showArchived" @click="showArchived = false">{{ t('historyUi.active') }}</button><button type="button" :aria-pressed="showArchived" @click="showArchived = true">{{ t('historyUi.archived') }}</button></div>
       <p class="history-notice">{{ t('historyUi.localNotice') }}</p>
@@ -201,7 +208,7 @@ async function createMission(handoffId: string) {
     </aside>
     <div class="chat-main">
     <div class="chat-feed">
-    <Feedback v-if="historyNote && !deleteId" tone="warning">{{ historyNote }}</Feedback>
+    <Feedback v-if="historyNote && !deleteId && session.phase.value !== 'offline'" tone="warning">{{ historyNote }}</Feedback>
     <Feedback v-if="session.expired.value || archived" tone="warning">{{ archived ? t('historyUi.archiveNotice') : t('historyUi.expired') }}</Feedback>
     <Feedback v-if="session.phase.value === 'loading'" tone="info">{{ t("chat.loading") }}</Feedback>
     <Feedback v-else-if="session.phase.value === 'offline'" tone="error">{{ t("chat.offline") }}</Feedback>
@@ -236,6 +243,7 @@ async function createMission(handoffId: string) {
     <ol v-else class="chat-log">
       <li v-for="(turn, index) in session.turns.value" :key="index">
         <strong>{{ turn.role === "user" ? "You" : "Model" }}</strong>
+        <small v-if="turn.model"> · {{ turn.connectionName }} / {{ turn.model }} · {{ turn.reasoning === "default" ? t("task.modelDefault") : turn.reasoning }}</small>
         <p v-if="turn.text">{{ turn.text }}</p>
         <p v-else-if="turn.role === 'assistant'">{{ t("chat.noAnswer") }}</p>
         <p v-if="turn.error">{{ t("chat.toolError") }}：{{ turn.error }}</p>
@@ -269,7 +277,9 @@ async function createMission(handoffId: string) {
       </li>
     </ol>
 
-    <Feedback v-if="session.failure.value" tone="warning">{{ t("chat.keptDraft") }}</Feedback>
+    <Button v-if="session.failure.value === 'target-changed'" type="button" :disabled="!selectedModel || session.sending.value" @click="session.chooseConversationConnection(session.boundConnectionId.value!, session.boundModel.value)">{{ t('modelUi.reconnect') }}</Button>
+    <Feedback v-if="session.targetNotice.value === 'cleared'" tone="info">{{ t("chat.memoryCleared") }}</Feedback>
+    <Feedback v-if="session.failure.value" tone="warning">{{ t(session.failure.value === "target-changed" ? "modelUi.retryTarget" : session.failure.value === "model-unavailable" ? "modelUi.unavailable" : "chat.keptDraft") }}</Feedback>
     <Feedback v-if="proposalNote" tone="info">{{ proposalNote }}</Feedback>
     </div>
     <form
@@ -277,11 +287,11 @@ async function createMission(handoffId: string) {
       @submit.prevent="session.send()"
     >
       <label>
-        {{ t("chat.draft") }}
-        <textarea v-model="session.draft.value" rows="4" :disabled="session.sending.value || session.expired.value || archived" />
+        <span class="sr-only">{{ t("chat.draft") }}</span>
+        <textarea v-model="session.draft.value" :placeholder="t('chat.draft')" rows="3" :disabled="session.sending.value || session.opening.value || session.expired.value || archived" />
       </label>
-      <TaskComposer :context="session.context.value" :disabled="session.sending.value || session.expired.value || archived" :reasoning-supported="reasoningSupported" @update="session.context.value = $event">
-        <template #settings><div class="chat-tool-settings">      <Button
+      <TaskComposer :active="props.active" :context="session.context.value" :disabled="session.sending.value || session.opening.value || session.expired.value || archived" :reasoning-efforts="reasoningEfforts" @update="session.context.value = $event">
+        <template #settings><p v-if="selectedModel?.kind === 'chatgpt-plan'" class="hint">{{ t("authUi.toolsHint") }}</p><div class="chat-tool-settings">      <Button
         variant="secondary"
         :disabled="!session.conversationId.value"
         :aria-pressed="session.toolMode.value === 'none'"
@@ -291,7 +301,7 @@ async function createMission(handoffId: string) {
       </Button>
       <Button
         variant="secondary"
-        :disabled="!session.conversationId.value || !session.status.value?.tools.git_status"
+        :disabled="!session.conversationId.value || !session.status.value?.tools.git_status || selectedModel?.kind === 'chatgpt-plan'"
         :aria-pressed="session.toolMode.value === 'git_status'"
         @click="session.toolMode.value = 'git_status'"
       >
@@ -300,26 +310,27 @@ async function createMission(handoffId: string) {
 </div></template>
         <template #model>
       <label class="composer-model">
-        <span class="sr-only">{{ t("chat.conversationConnection") }}</span>
-        <select :value="session.pendingConnectionId.value || session.boundConnectionId.value || ''" :disabled="session.sending.value || !session.connections.value.length"
-          @change="session.chooseConversationConnection(($event.target as HTMLSelectElement).value)">
-          <option v-if="!session.connections.value.length" value="">{{ t("composerUi.noModel") }}</option>
-          <option v-for="item in session.connections.value" :key="item.id" :value="item.id" :disabled="!item.enabled">{{ item.name }} · {{ item.model }}</option>
+        <span class="sr-only">{{ t('modelUi.selection') }}</span>
+        <select :value="modelSelection" :disabled="session.sending.value || session.opening.value || !modelChoices.length" @change="chooseModel(($event.target as HTMLSelectElement).value)">
+          <option v-if="!modelChoices.some(item => item.key === modelSelection)" :value="modelSelection" disabled>{{ session.boundModel.value || t('modelUi.pending') }}</option>
+          <option v-for="item in modelChoices" :key="item.key" :value="item.key">{{ item.name }} · {{ item.model }}</option>
         </select>
       </label>
+      <small v-if="selectedModel?.kind === 'chatgpt-plan'">{{ t("authUi.planUsage") }}</small>
         </template>
         <template #send>
       <Button
         variant="primary"
         type="submit"
-        :disabled="session.expired.value || archived || !session.conversationId.value || session.sending.value || !session.draft.value.trim() || !!session.pendingConnectionId.value"
+        :disabled="session.expired.value || archived || session.sending.value || session.opening.value || !session.draft.value.trim() || (!!session.pendingConnectionId.value && !!session.conversationId.value) || !selectedModel"
       >
         {{ session.sending.value ? t("chat.sending") : t("chat.send") }}
       </Button>
         </template>
       </TaskComposer>
-      <Feedback v-if="session.pendingConnectionId.value" tone="warning">
+      <Feedback v-if="session.pendingConnectionId.value && session.conversationId.value" tone="warning">
         {{ t("chat.targetPrompt", { target: session.targetNotice.value }) }}
+        {{ t("modelUi.clearNotice") }}
         <Button type="button" variant="secondary" @click="session.confirmConnectionChange()">{{ t("chat.confirmTarget") }}</Button>
         <Button type="button" variant="secondary" @click="session.cancelConnectionChange()">{{ t("chat.cancelTarget") }}</Button>
       </Feedback>

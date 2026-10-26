@@ -259,5 +259,4 @@ public class CapabilityManagementController {
         return result;
     }
 
-    /** {@code notes} explains the state; an unexplained switch becomes folklore. */
 }

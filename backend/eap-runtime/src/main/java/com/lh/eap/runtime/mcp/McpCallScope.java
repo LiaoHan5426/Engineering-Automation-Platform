@@ -13,7 +13,7 @@ import java.util.UUID;
  * belongs to, and {@link McpSessionRegistry} refuses to hand a session to any other pair.
  *
  * @param executionId one expert execution (one run id in {@code task})
- * @param expertId    the expert whose grants authorise the call
+ * @param expertId    the expert whose grants authorize the call
  * @param serverId    the registered MCP server
  * @param capability  the expert-scoped capability id, {@code mcp.<server>.<tool>}
  */

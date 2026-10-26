@@ -9,7 +9,7 @@ import java.util.Map;
  *
  * <p>This is the data that defines an expert's "intelligence". A rule pack is authored as JSON
  * (ship-time under {@code classpath:rules/*.json} or run-time through the rule pack API) and is
- * interpreted by {@link RuleEngine}. Adding, editing, disabling or deleting a rule changes behaviour
+ * interpreted by {@link RuleEngine}. Adding, editing, disabling or deleting a rule changes behavior
  * without recompiling or redeploying anything — the code only extracts structural facts.
  *
  * <p><b>A pack must declare the capabilities it needs.</b> Its rules read facts, every fact is produced

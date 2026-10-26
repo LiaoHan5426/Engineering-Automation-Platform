@@ -7,6 +7,8 @@ import DatabaseManager from "./features/database/DatabaseManager.vue";
 import RuleManager from "./features/rule/RuleManager.vue";
 import ModelSettings from "./features/settings/ModelSettings.vue";
 import PluginCenter from "./features/plugins/PluginCenter.vue";
+import DesktopNavigation from "./features/DesktopNavigation.vue";
+import ScenarioWorkspace from "./features/ScenarioWorkspace.vue";
 import PluginSlot from "./features/plugins/PluginSlot.vue";
 import { createPluginHost } from "./features/plugins/host";
 import { isKnownHash } from "./features/plugins/model";
@@ -25,21 +27,7 @@ import { errorMessage, statusLabel } from "./lib/presentation";
 import { describeSecret } from "./lib/sensitive";
 import { CANDIDATE_REWRITE_NOTES, candidateRewrite, rewriteUnavailable } from "./lib/rewrites";
 
-/**
- * 左栏分两组，因为这两类入口不是同一回事。
- *
- * 「工作」是操作者打开这个工具要做的事。「设置」是一套**应用级能力配置**：专家定义、
- * 知识库、数据库资料、规则包与能力目录描述的都是同一个环境，不随工作空间变化
- * （见 `docs/running-context.md`）。把它们与干活的面画成平级，等于说「改配置」和
- * 「做一次分析」是同一类动作——那是一张网页站点地图，不是一个工具。
- *
- * 落地页是分析工作台而不是仪表盘：单人本机使用一个工具，是为了给它一段 SQL 看结论，
- * 不是为了先看一遍计数。原来概览页的四个数字没有丢，它们压进了工作台顶部的状态条。
- *
- * 2026-10-15：「任务」不再是独立入口。任务与工作台本来就是同一件事的两半——一次分析的输入
- * 与它的过程/结论；拆成两页时，工作台只剩一个表单，任务页只剩一张表，两边都不像在干活。
- * 现在合成一页：左栏的任务列表是会话列表，中间是任务流，底部是输入框。
- */
+/** Existing views remain available through the five-entry desktop shell. */
 const shellPages = [
   { id: "sql", name: "分析工作台", icon: "▷", group: "工作", hint: "任务列表、任务流与新的分析输入" },
   {
@@ -69,19 +57,7 @@ const activeView = ref(isKnownHash(hashView) ? hashView : DEFAULT_VIEW);
 const currentView = computed(
   () => pages.value.find((view) => view.id === activeView.value) ?? pluginHost.describe(activeView.value),
 );
-/** 左栏按 group 归堆。工作组里，分析工作台之后是已启用插件。 */
-const viewGroups = computed(() => {
-  const groups: { label: string; items: typeof shellPages }[] = [];
-  for (const view of pages.value) {
-    let group = groups.find((g) => g.label === view.group);
-    if (!group) {
-      group = { label: view.group, items: [] };
-      groups.push(group);
-    }
-    group.items.push(view);
-  }
-  return groups;
-});
+
 
 /**
  * 检查器是「按页面取值」的：每个页面声明自己能检查什么，切换页面立刻回到该页的说明，
@@ -764,10 +740,10 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
 </script>
 
 <template>
-  <div class="app">
+  <div class="app" :class="{ 'app--analysis': activeView === 'sql' }">
     <header class="topbar">
-      <div class="brand"><b>EAP</b><span>工程自动化平台</span></div>
-      <div class="menu-wrap">
+      <div class="brand" aria-label="工程自动化平台"><b>EAP</b></div>
+      <div v-if="activeView === 'sql'" class="menu-wrap">
         <button class="ws" :aria-expanded="workspaceOpen" @click="workspaceOpen = !workspaceOpen">
           工作空间 <b>{{ workspace }}</b
           ><span class="caret">▾</span>
@@ -801,6 +777,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
           </p>
         </div>
       </div>
+      <span class="desktop-page-title">{{ activeView === 'scenes' ? i18n.global.t('desktop.prototype') : activeView === 'work' ? i18n.global.t('desktop.work') : currentView.name }}</span>
       <div class="spacer" />
       <span class="eap-chip" :class="runtimeStatus === '已连接' ? 'ok' : 'warn'">
         <i class="dot" />运行时{{ runtimeStatus }}
@@ -824,29 +801,11 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
     </header>
     <p v-if="workspaceMessage" class="shell-message" role="status">{{ workspaceMessage }}</p>
 
-    <div class="body" :class="{ 'body--focused': ['chat', 'builder-alpha', 'builder-beta', 'model-settings'].includes(activeView) }">
-      <nav class="rail" aria-label="主导航">
-        <template v-for="group in viewGroups" :key="group.label">
-          <div class="rail__eyebrow">{{ group.label }}</div>
-          <button
-            v-for="view in group.items"
-            :key="view.id"
-            class="nav"
-            :class="{ active: activeView === view.id }"
-            :aria-current="activeView === view.id ? 'page' : undefined"
-            @click="activeView = view.id"
-          >
-            <span class="ic">{{ view.icon }}</span
-            >{{ view.name }}
-          </button>
-        </template>
-        <div class="rail__foot">
-          确定性能力优先<br /><b>结果必须有独立证据</b><br />模型仅作待验证观察
-        </div>
-      </nav>
+    <div class="body" :class="{ 'body--chat': activeView === 'chat', 'body--focused': activeView !== 'sql' }">
+      <DesktopNavigation :class="{ 'desktop-navigation--chat': activeView === 'chat' }" :active-view="activeView" :pages="pages" @navigate="activeView = $event" />
 
       <main class="workbench">
-        <Feedback tone="error" v-if="errors.health" role="alert">
+        <Feedback tone="error" v-if="errors.health && !['chat', 'model-settings'].includes(activeView)" role="alert">
           {{ errors.health }}
         </Feedback>
 
@@ -854,7 +813,9 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
           分析工作台：使用界面，不是管理后台。
           2026-10-15 任务不再是独立页面——一次分析的输入与它的过程/结论，本来就是同一件事的两半。
         -->
-        <section v-if="activeView === 'sql'" class="view work-page analysis-workspace">
+        <ScenarioWorkspace v-if="activeView === 'scenes'" :builder-enabled="pluginHost.installation.value.enabled.builder" :chat-enabled="pluginHost.installation.value.enabled.chat" @navigate="activeView = $event" />
+        <section v-else-if="activeView === 'work'" class="view"><h1>{{ i18n.global.t("desktop.work") }}</h1><p>{{ i18n.global.t("desktop.workPending") }}</p></section>
+        <section v-else-if="activeView === 'sql'" class="view work-page analysis-workspace">
           <div class="page-head">
             <p class="eyebrow">WORKBENCH</p>
             <h1>分析工作台</h1>
@@ -1451,11 +1412,6 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
 
         <ModelSettings v-else-if="activeView === 'model-settings'" />
         <PluginCenter v-else-if="activeView === 'plugins'" :host="pluginHost" />
-        <PluginSlot
-          v-else-if="activeView === 'chat' || activeView === 'builder-alpha' || activeView === 'builder-beta'"
-          :view-id="activeView"
-          :host="pluginHost"
-        />
 
         <!-- MANAGERS -->
         <KeepAlive>
@@ -1485,6 +1441,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
             @saved="refresh"
           />
         </KeepAlive>
+        <PluginSlot :view-id="activeView" :host="pluginHost" />
       </main>
 
       <!-- INSPECTOR -->
@@ -1593,7 +1550,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
       </aside>
     </div>
 
-    <footer class="statusbar">
+    <footer v-if="activeView === 'sql'" class="statusbar">
       <span
         >状态：<b>{{ runtimeStatus }}</b></span
       >

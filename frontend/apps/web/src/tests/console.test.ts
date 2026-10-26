@@ -2,18 +2,19 @@ import { describe, expect, it } from "vite-plus/test";
 import { createSSRApp } from "vue";
 import { renderToString } from "vue/server-renderer";
 import App from "../App.vue";
+import { i18n } from "../lib/i18n";
 
-const render = () => renderToString(createSSRApp(App));
+const render = () => renderToString(createSSRApp(App).use(i18n));
 
 describe("console shell", () => {
   it("renders the product console with navigation, pipeline and inspector", async () => {
     const html = await render();
     expect(html).toContain("工程自动化平台");
     expect(html).toContain("分析工作台");
-    expect(html).toContain("规则库");
+    expect(html).toContain("设置");
     expect(html).toContain("上下文详情");
     expect(html).not.toContain("流水线走向");
-    expect(html).toContain("确定性能力优先");
+    expect(html).not.toContain('class="rail"');
   });
 
   it("scopes the inspector to the current page instead of leaving one global panel", async () => {
@@ -33,41 +34,19 @@ describe("console shell", () => {
 // 信息架构：左栏不是一串平级入口，干活的面与配置是两组。
 // 起因同原型契约——八个入口平级，其中五个是配置，落地页还是一张仪表盘。
 // 2026-10-15：「任务」并入分析工作台，因为一次分析的输入与它的过程本来就是同一件事的两半。
-const railHtml = (html: string) => html.slice(html.indexOf('class="rail"'), html.indexOf("</nav>"));
+const railHtml = (html: string) => html.slice(html.indexOf('class="desktop-sidebar"'), html.indexOf("</aside>", html.indexOf('class="desktop-sidebar"')));
 
 describe("console information architecture", () => {
-  it("splits the rail into 工作 and 设置 instead of one flat list", async () => {
-    const rail = railHtml(await render());
-    expect(rail).toContain("工作");
-    expect(rail).toContain("设置");
-    // 分组标签是渲染出来的眉题，不是写死在别处的一段文字。
-    expect(rail).toContain("rail__eyebrow");
-  });
-
-  it("keeps 任务 out of the rail: it is the workbench's task list now", async () => {
+  it("provides five application entries and a contextual code sidebar", async () => {
     const html = await render();
-    // 不再是第二个平级入口——任务与它的流被并进工作台。
-    expect(railHtml(html)).not.toContain(">任务<");
-    expect(html).toContain("studio-tasks");
-    expect(html).toContain("分析任务");
-  });
-
-  it("puts the workbench before the configuration surfaces in the rail", async () => {
-    const rail = railHtml(await render());
-    const work = rail.indexOf("分析工作台");
-    const cfg = rail.indexOf("专家定义");
-    expect(work).toBeGreaterThan(-1);
-    expect(cfg).toBeGreaterThan(work);
-    const chat = rail.indexOf("对话");
-    expect(chat).toBeGreaterThan(work);
-    expect(cfg).toBeGreaterThan(chat);
-  });
-
-  it("keeps every configuration surface inside the settings group", async () => {
-    const html = await render();
-    for (const name of ["专家定义", "规则库", "知识库", "数据库资料", "能力目录"]) {
-      expect(html).toContain(name);
-    }
+    const activity = html.slice(html.indexOf('class="activity-bar"'), html.indexOf('</nav>'));
+    expect((activity.match(/<button/g) ?? []).length).toBe(5);
+    for (const name of ["code · 编程", "work · 办公", "场景", "专家", "设置"]) expect(activity).toContain(name);
+    const rail = railHtml(html);
+    expect(rail).toContain("分析工作台");
+    expect(rail).toContain("对话");
+    expect(rail).not.toContain("规则库");
+    expect(rail).not.toContain("专家定义");
   });
 
   it("lands on the workbench with a task stream and a composer, not a dashboard", async () => {

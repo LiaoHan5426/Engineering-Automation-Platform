@@ -41,7 +41,7 @@ public final class ExpertGraph {
 
     /**
      * Validates the graph, the capability requirements of the rule packs it references, and the
-     * authorisation of expert-scoped capabilities.
+     * authorization of expert-scoped capabilities.
      *
      * @param packRequirements      rule pack id → capabilities that pack needs in order to produce
      *                              findings. A pack whose capabilities have no node in this graph would
@@ -60,7 +60,7 @@ public final class ExpertGraph {
 
     /**
      * Validates the graph, the capability requirements of the rule packs it references, the
-     * authorisation of expert-scoped capabilities, and the operator's own switches.
+     * authorization of expert-scoped capabilities, and the operator's own switches.
      *
      * @param packRequirements   rule pack id → capabilities that pack needs in order to produce
      *                              findings. A pack whose capabilities have no node in this graph would
@@ -136,7 +136,7 @@ public final class ExpertGraph {
      * The expert-scope contract: an MCP tool (or any other expert-scoped capability) is never globally
      * enabled, so two things must hold before a graph may contain one.
      *
-     * <p>First, the expert must declare it — the declaration is the authorisation, and it is what
+     * <p>First, the expert must declare it — the declaration is the authorization, and it is what
      * activation records as a grant. Second, the platform must already know the tool, which means an
      * operator registered the server and allow-listed the tool: a manifest cannot bring a server into
      * existence by naming it.

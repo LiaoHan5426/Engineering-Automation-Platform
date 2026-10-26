@@ -17,9 +17,9 @@ import java.util.UUID;
  * the executor stay a thin scheduler instead of a growing {@code switch} over capability names.
  *
  * <p>{@code facts} is the shared structural evidence base of the whole run. Every capability publishes
- * the facts it is able to produce, and the judgement stage runs <em>after</em> the graph has finished,
+ * the facts it is able to produce, and the judgment stage runs <em>after</em> the graph has finished,
  * so a rule can combine facts from several capabilities. A capability that produced nothing
- * contributes nothing — it never silently invents evidence.
+ * contributes anything — it never silently invents evidence.
  *
  * <p>{@code executionId} identifies the single run this context belongs to. A capability that talks to
  * an external service must key its session on it (see {@link McpCallScope}), because a session that

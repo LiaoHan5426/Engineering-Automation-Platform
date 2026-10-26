@@ -17,12 +17,12 @@ import java.util.*;
  * Structural fact extractor.
  *
  * <p>This class is deliberately <em>rule-free</em>. It parses a statement and reports what is
- * structurally true about it — never what is wrong with it. All judgement (severity, wording,
+ * structurally true about it — never what is wrong with it. All judgment (severity, wording,
  * recommendation) belongs to the declarative rule packs interpreted by {@link RuleEngine}.
  *
  * <p>Consequences of this split:
  * <ul>
- *   <li>Adding a new anti-pattern check is a JSON edit, not a code change.</li>
+ *   <li>Adding a new antipattern check is a JSON edit, not a code change.</li>
  *   <li>The vocabulary below is the contract the rule packs are written against, so it is
  *       documented by {@link SqlFactVocabulary} and validated by tests.</li>
  *   <li>The extractor never executes SQL, never connects to a database and never invents schema facts.</li>
@@ -97,14 +97,14 @@ public final class SqlFactExtractor {
         if (select.getSelectItems() != null) {
             for (var item : select.getSelectItems()) {
                 var expression = item.getExpression();
-                if (expression instanceof AllColumns || expression instanceof AllTableColumns) star = true;
+                if (expression instanceof AllColumns) star = true;
                 if (expression instanceof Function) state.functions++;
             }
         }
         mergeFlag(state.facts, "select.allColumns", star);
         if (select.getJoins() != null) {
             for (var join : select.getJoins()) {
-                if (join.getRightItem() instanceof Table table) {
+                if (join.getFromItem() instanceof Table table) {
                     state.tables.add(table.getFullyQualifiedName());
                     alias(table, aliases);
                 }

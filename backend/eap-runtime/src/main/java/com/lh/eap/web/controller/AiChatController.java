@@ -76,6 +76,14 @@ public class AiChatController {
         return chat.setDefaultConnection(id);
     }
 
+    @PostMapping("/connections/{id}/models/refresh")
+    public ModelConnectionView refreshModels(@PathVariable UUID id) { return chat.refreshModels(id); }
+
+    @PostMapping("/connections/{id}/models")
+    public ModelConnectionView configureModels(@PathVariable UUID id, @RequestBody String body) {
+        return chat.configureModels(id, body);
+    }
+
     @PostMapping("/conversations/{id}/connection")
     public AiConnectionAssignment assign(@PathVariable UUID id, @RequestBody(required = false) String body) {
         return chat.assign(id, body);

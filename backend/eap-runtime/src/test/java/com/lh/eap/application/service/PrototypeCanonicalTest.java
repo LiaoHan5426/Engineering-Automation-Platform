@@ -1,12 +1,9 @@
 package com.lh.eap.application.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import java.util.List;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class PrototypeCanonicalTest {
     @Test
@@ -57,8 +54,8 @@ class PrototypeCanonicalTest {
         var current = PrototypeCanonical.json(content);
         var historical = historicalJson(content);
         assertNotEquals(historical, current);
-        assertEquals(true, current.contains("\\b") && current.contains("\\f"), current);
-        assertEquals(true, historical.contains("\\u0008") && historical.contains("\\u000c"), historical);
+        assertTrue(current.contains("\\b") && current.contains("\\f"), current);
+        assertTrue(historical.contains("\\u0008") && historical.contains("\\u000c"), historical);
         assertNotEquals(sha256(historical), content.hash());
         assertEquals(sha256(current), content.hash());
     }

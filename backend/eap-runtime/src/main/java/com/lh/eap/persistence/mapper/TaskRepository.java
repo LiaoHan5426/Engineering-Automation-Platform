@@ -21,7 +21,7 @@ public class TaskRepository {
      * Persist one execution together with the route it took.
      *
      * <p>{@code modelEnhancement} is the same vocabulary the execution response reports, so the console
-     * can compute how often a model call was actually spent. A caller with no judgement stage (the
+     * can compute how often a model call was actually spent. A caller with no judgment stage (the
      * planner tasks in {@link RuntimeController}) passes {@code null} rather than a value that would
      * look like a skipped model call.
      */
@@ -52,7 +52,7 @@ public class TaskRepository {
      * Counts for the overview, computed in the database rather than sampled in the browser.
      *
      * <p>Everything is windowed by the same {@code windowDays} so the cards on one screen describe one
-     * period; {@code tasksTotal} is the only all-time figure, and it is labelled as such.
+     * period; {@code tasksTotal} is the only all-time figure, and it is labeled as such.
      */
     public TaskStatistics statistics(int windowDays) {
         int days = Math.max(1, Math.min(windowDays, 365));

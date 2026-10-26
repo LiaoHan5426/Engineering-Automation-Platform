@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button, Feedback } from "@eap/ui";
 import { runtimeApi, type TaskContext, type PrototypeVersionRecord } from "@eap/runtime-client";
 
-const props = defineProps<{ context: TaskContext; disabled: boolean; reasoningSupported: boolean }>();
+const props = withDefaults(defineProps<{ active?: boolean; context: TaskContext; disabled: boolean; reasoningEfforts: Array<"low" | "medium" | "high"> }>(), { active: true });
+const reasoningSupported = computed(() => props.reasoningEfforts.length > 0);
 const emit = defineEmits<{ update: [context: TaskContext] }>();
 const { t } = useI18n();
 const menu = ref(false), settings = ref(false), category = ref("references"), note = ref("");
@@ -34,13 +35,17 @@ async function filesChanged(event: Event) {
   } catch (error) { note.value = error instanceof Error ? error.message : t("task.fileLimit"); }
   finally { input.value = ""; }
 }
-onMounted(async () => {
+function importPrototype() {
+  if (!props.active || props.disabled) return;
   const pending = sessionStorage.getItem("eap.chat.prototype");
   if (pending) {
     sessionStorage.removeItem("eap.chat.prototype");
     emit("update", { ...props.context, prototypeVersionId: pending, mode: "code", expert: "frontend" });
   }
-});
+}
+onMounted(importPrototype);
+watch(() => [props.active, props.disabled], importPrototype);
+watch(() => props.active, active => { if (!active) { menu.value = false; settings.value = false; } });
 async function loadVersions() {
   try {
     const pages = await Promise.all([runtimeApi.prototypeVersions("builder-alpha"), runtimeApi.prototypeVersions("builder-beta")]);
@@ -54,8 +59,16 @@ async function loadVersions() {
   <div ref="root" class="task-context" data-testid="task-context" @keydown.esc="menu = false; settings = false">
     <div class="context-toolbar">
       <Button variant="secondary" type="button" :disabled="disabled" :aria-label="t('task.context')" :aria-expanded="menu" @click="menu = !menu; settings = false">＋</Button>
-      <slot name="model" />
+      <label class="composer-quick">{{ t("desktop.mode") }}<select :value="context.mode" :disabled="disabled" @change="change('mode', ($event.target as HTMLSelectElement).value as TaskContext['mode'])"><option value="chat">{{ t("task.discuss") }}</option><option value="code">{{ t("task.generate") }}</option></select></label>
+      <label class="composer-quick">{{ t("desktop.policy") }}<select :value="context.approval" :disabled="disabled" @change="change('approval', ($event.target as HTMLSelectElement).value as TaskContext['approval'])"><option value="review">{{ t("task.review") }}</option><option value="read_only">{{ t("task.readOnly") }}</option></select></label>
       <Button class="composer-settings-button" variant="secondary" type="button" :disabled="disabled" :aria-expanded="settings" @click="settings = !settings; menu = false">⚙ {{ t('composerUi.settings') }}</Button>
+      <slot name="model" />
+
+      <label class="composer-quick">{{ t("task.reasoning") }}
+        <select :value="context.reasoning" :disabled="disabled || !reasoningSupported" @change="change('reasoning', ($event.target as HTMLSelectElement).value as TaskContext['reasoning'])">
+          <option value="default">{{ t("task.modelDefault") }}</option><option v-for="effort in reasoningEfforts" :key="effort" :value="effort">{{ t("task." + effort) }}</option>
+        </select>
+      </label>
       <slot name="send" />
     </div>
     <div v-if="menu" class="composer-popup" role="dialog" :aria-label="t('task.context')">
@@ -70,7 +83,7 @@ async function loadVersions() {
           <label>{{ t('task.version') }}<select :disabled="disabled" :value="context.prototypeVersionId" @change="change('prototypeVersionId', ($event.target as HTMLSelectElement).value)"><option value="">{{ t('task.noVersion') }}</option><option v-for="version in versions" :key="version.id" :value="version.id">{{ version.title }} · {{ version.id.slice(0, 8) }}</option></select></label>
         </template>
         <template v-else-if="category === 'experts'">
-      <label>{{ t("task.expert") }}
+      <label>{{ t("modelUi.guidanceRole") }}
         <select :value="context.expert" :disabled="disabled" @change="change('expert', ($event.target as HTMLSelectElement).value as TaskContext['expert'])">
           <option value="general">{{ t("task.general") }}</option><option value="sql">{{ t("task.sql") }}</option><option value="frontend">{{ t("task.frontend") }}</option>
         </select>
@@ -83,21 +96,6 @@ async function loadVersions() {
     <div v-if="settings" class="composer-popup composer-settings" role="dialog" :aria-label="t('composerUi.settings')">
       <h3>{{ t('composerUi.settings') }}</h3>
       <slot name="settings" />
-      <label>{{ t("task.mode") }}
-        <select :value="context.mode" :disabled="disabled" @change="change('mode', ($event.target as HTMLSelectElement).value as TaskContext['mode'])">
-          <option value="chat">{{ t("task.discuss") }}</option><option value="code">{{ t("task.generate") }}</option>
-        </select>
-      </label>
-      <label>{{ t("task.reasoning") }}
-        <select :value="context.reasoning" :disabled="disabled || !reasoningSupported" @change="change('reasoning', ($event.target as HTMLSelectElement).value as TaskContext['reasoning'])">
-          <option value="default">{{ t("task.modelDefault") }}</option><option value="low">{{ t("task.low") }}</option><option value="medium">{{ t("task.medium") }}</option><option value="high">{{ t("task.high") }}</option>
-        </select>
-      </label>
-      <label>{{ t("task.approval") }}
-        <select :value="context.approval" :disabled="disabled" @change="change('approval', ($event.target as HTMLSelectElement).value as TaskContext['approval'])">
-          <option value="review">{{ t("task.review") }}</option><option value="read_only">{{ t("task.readOnly") }}</option>
-        </select>
-      </label>
       <p v-if="!reasoningSupported" class="hint">{{ t('task.reasoningUnsupported') }}</p>
     </div>
     <div class="context-chips">

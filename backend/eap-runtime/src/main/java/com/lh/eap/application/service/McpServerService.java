@@ -133,7 +133,7 @@ public class McpServerService {
         var existing = rows().stream().filter(server -> server.id().equals(serverId)).findFirst().orElse(null);
         if (existing != null) {
             var withdrawn = new TreeSet<>(existing.tools());
-            withdrawn.removeAll(allowList);
+            allowList.forEach(withdrawn::remove);
             var becomesUnusable = existing.trusted() && existing.enabled() && (!trusted || !enabled);
             if (becomesUnusable) withdrawn.addAll(existing.tools());
             for (var tool : withdrawn) {

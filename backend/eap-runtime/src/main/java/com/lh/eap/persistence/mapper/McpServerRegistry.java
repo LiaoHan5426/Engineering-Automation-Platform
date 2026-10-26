@@ -76,7 +76,7 @@ public class McpServerRegistry {
 
     /**
      * The expert-scoped capability vocabulary: {@code mcp.<server>.<tool>} for every tool on the
-     * allow-list of a usable server. Empty is the honest answer for a fresh install.
+     * allow-list of a usable server. Empty is the honest answer for a fresh installation.
      */
     public Set<String> capabilityIds() {
         var result = new TreeSet<String>();

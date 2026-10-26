@@ -13,12 +13,11 @@ public final class ModelConnectionSnapshot {
     public final String model;
     public final String secret;
     public final long revision;
-    public final boolean environment;
     public final boolean defaultSelected;
     public final String configurationRevision;
 
     public ModelConnectionSnapshot(UUID id, String name, String kind, boolean enabled, String baseUrl, String model,
-            String secret, long revision, boolean environment, boolean defaultSelected, String configurationRevision) {
+            String secret, long revision, boolean defaultSelected, String configurationRevision) {
         this.id = id;
         this.name = name;
         this.kind = kind;
@@ -27,7 +26,6 @@ public final class ModelConnectionSnapshot {
         this.model = model;
         this.secret = secret;
         this.revision = revision;
-        this.environment = environment;
         this.defaultSelected = defaultSelected;
         this.configurationRevision = configurationRevision;
     }
@@ -39,7 +37,13 @@ public final class ModelConnectionSnapshot {
 
     public ModelConnectionView view() {
         return new ModelConnectionView(id, name, kind, enabled, baseUrl, model, secret != null && !secret.isBlank(),
-                revision, defaultSelected, environment, configurationRevision);
+                revision, defaultSelected, configurationRevision, java.util.List.of(), java.util.List.of(), "", "");
+    }
+
+    public ModelConnectionSnapshot withModel(String selected) {
+        if (model.equals(selected)) return this;
+        return new ModelConnectionSnapshot(id, name, kind, enabled, baseUrl, selected, secret, revision,
+                defaultSelected, configurationRevision + ":" + selected);
     }
 
     @Override

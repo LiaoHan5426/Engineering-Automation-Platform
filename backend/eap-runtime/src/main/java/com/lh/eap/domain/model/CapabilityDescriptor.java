@@ -10,7 +10,7 @@ import java.util.List;
  *
  * <p>Written by the handler itself, never inferred by the UI. An operator reading the catalog must be
  * able to answer seven questions without looking at code: what kind of thing is this, who may turn it
- * on, what must it be given, what must it be authorised for, what does it publish, what actually runs
+ * on, what must it be given, what must it be authorized for, what does it publish, what actually runs
  * it, and — for a local binary — which executable is expected.
  *
  * @param name     capability id referenced by expert manifests and rule packs
@@ -22,7 +22,7 @@ import java.util.List;
  * @param title    short human label
  * @param summary  one sentence on what it does and what it explicitly does not do
  * @param inputs   arguments the node/expert must supply
- * @param grants   authorisations consumed at run time (knowledge base, database profile, MCP tool, …)
+ * @param grants   authorizations consumed at run time (knowledge base, database profile, MCP tool, …)
  * @param executor what actually performs the work, e.g. {@code ProcessExecutor · git status}
  * @param binary   for a {@link CapabilityKind#CLI} capability, the executable it ships with; this is the
  *                 value an operator may override per machine ({@code CliChannels}), and it is declared

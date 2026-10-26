@@ -40,8 +40,8 @@ public final class CodeChangeService {
             var names = new HashSet<String>();
             int total = 0;
             for (var entry : entries) {
-                String name = entry.path("path").asText(""), content = entry.path("content").asText("");
-                if (!entry.path("content").isTextual() || !names.add(name)) throw rejected("INVALID_CODE_PROPOSAL");
+                String name = entry.path("path").asString(""), content = entry.path("content").asString("");
+                if (!entry.path("content").isString() || !names.add(name)) throw rejected("INVALID_CODE_PROPOSAL");
                 total += content.length();
                 if (total > 160000) throw rejected("CODE_PROPOSAL_TOO_LARGE");
                 Path path = target(name, false);
@@ -50,7 +50,7 @@ public final class CodeChangeService {
                 if (before != null && before.length() > 160000) throw rejected("EXISTING_FILE_TOO_LARGE");
                 files.add(new Change(name, before, content, hash(before)));
             }
-            var proposal = new Proposal(UUID.randomUUID(), conversation, runtime.workspace().toRealPath().toString(), root.path("summary").asText(""),
+            var proposal = new Proposal(UUID.randomUUID(), conversation, runtime.workspace().toRealPath().toString(), root.path("summary").asString(""),
                     List.copyOf(files), Instant.now(), false, writeAllowed, "not_requested");
             sweep();
             if (proposals.size() >= 32) proposals.remove(proposals.keySet().iterator().next());

@@ -79,13 +79,9 @@ MCP 服务器为每个连接保留状态：会话标识、游标与协商结果�
 
 先刷新 Maven 项目。Spring Boot 4 需要 Flyway Starter 和 PostgreSQL Flyway 模块，而不只是 flyway-core，参见[官方初始化说明](https://docs.spring.io/spring-boot/how-to/data-initialization.html)。
 
-当前手工建立的 eap schema 没有 Flyway 历史。首次接管启动时，在 IDE 运行配置增加环境变量：
+2026-10-26 用户确认当前开发库可重新初始化，V1–V18 已合并为 `V1__initial_schema.sql`。旧开发库需先停止应用，再对明确可丢弃的 EAP 库/schema 及其 Flyway 历史单独重建，然后由新 V1 初始化；不使用 repair 或伪造 baseline 绕过版本差异。
 
-    EAP_ADOPT_EXISTING_SCHEMA=true
-
-启动策略先检查预期旧表、字段和 embedding 可空状态，再登记基线并执行其后的迁移（当前至 V12）。不会 clean、repair、删除旧表数据或改写旧校验和。未显式允许接管时，已有表但缺少历史的库会停止启动并返回说明。
-
-若结构检查不通过，先核对数据库，不要强行接管或 repair。首次迁移成功后移除该环境变量。空库按普通 V1–V12 迁移启动，不需要接管变量。
+旧 `EAP_ADOPT_EXISTING_SCHEMA` / V5 接管逻辑已移除。启动不会自动清库，本次代码调整也未执行数据库重建。新基线不再安装 pgvector；配置中的数据库密码需通过环境注入。后续新增结构改动使用 V2 起的增量迁移。
 
 ## 验证范围
 

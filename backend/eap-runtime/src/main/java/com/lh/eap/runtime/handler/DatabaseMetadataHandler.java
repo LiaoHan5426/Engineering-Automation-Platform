@@ -3,7 +3,6 @@ package com.lh.eap.runtime.handler;
 import com.lh.eap.application.service.ExpertDefinitionService;
 import com.lh.eap.domain.model.CapabilityContext;
 import com.lh.eap.domain.model.CapabilityDescriptor;
-import com.lh.eap.domain.model.CapabilityKind;
 import com.lh.eap.domain.model.NodeResult;
 import com.lh.eap.runtime.sql.SqlMetadataInspector;
 import com.lh.eap.common.SensitiveData;
@@ -39,8 +38,6 @@ public class DatabaseMetadataHandler implements CapabilityHandler {
 
     @Override public Set<String> capabilities() { return Set.of(SCHEMA, INDEXES); }
 
-    @Override public CapabilityKind kind() { return CapabilityKind.COMMAND; }
-
     @Override public List<CapabilityDescriptor> describe() {
         return List.of(
                 new CapabilityDescriptor(SCHEMA, kind(),
@@ -63,7 +60,6 @@ public class DatabaseMetadataHandler implements CapabilityHandler {
                         true));
     }
 
-    @SuppressWarnings("unchecked")
     @Override public NodeResult handle(CapabilityContext context) {
         boolean schema = SCHEMA.equals(context.step().capability());
         var facts = SqlFactVocabulary.factsOf(context.step().capability()).stream()

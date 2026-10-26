@@ -2,7 +2,6 @@ package com.lh.eap.runtime.handler;
 
 import com.lh.eap.domain.model.CapabilityContext;
 import com.lh.eap.domain.model.CapabilityDescriptor;
-import com.lh.eap.domain.model.CapabilityKind;
 import com.lh.eap.domain.model.NodeResult;
 
 import com.lh.eap.rules.SqlFactVocabulary;
@@ -20,8 +19,6 @@ public class DatabaseExplainHandler implements CapabilityHandler {
     private static final String CAPABILITY = SqlFactVocabulary.DATABASE_EXPLAIN;
 
     @Override public Set<String> capabilities() { return Set.of(CAPABILITY); }
-
-    @Override public CapabilityKind kind() { return CapabilityKind.COMMAND; }
 
     @Override public List<CapabilityDescriptor> describe() {
         return List.of(new CapabilityDescriptor(CAPABILITY, kind(),

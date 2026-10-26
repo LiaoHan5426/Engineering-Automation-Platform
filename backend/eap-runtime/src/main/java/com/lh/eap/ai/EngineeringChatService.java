@@ -73,7 +73,7 @@ public final class EngineeringChatService {
                     prompt = prompt.options(org.springframework.ai.openai.OpenAiChatOptions.builder()
                             .reasoningEffort(context.reasoning()));
                 }
-                if (registerGitTool) prompt = prompt.toolCallbacks(tool.callback());
+                if (registerGitTool) prompt = prompt.tools(tool.callback());
                 var response = prompt.advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation)).call().chatResponse();
                 if (response == null || response.getResult() == null) {
                     error = "AI_EMPTY_RESPONSE";

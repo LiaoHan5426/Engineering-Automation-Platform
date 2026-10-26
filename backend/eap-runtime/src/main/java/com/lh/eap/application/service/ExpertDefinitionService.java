@@ -85,7 +85,7 @@ public class ExpertDefinitionService {
     }
 
     /**
-     * Structural validation plus the rule pack ↔ capability contract, the expert-scope authorisation and
+     * Structural validation plus the rule pack ↔ capability contract, the expert-scope authorization and
      * the operator's own capability switches.
      *
      * <p>An expert that references a rule pack without the capability nodes that pack needs would load

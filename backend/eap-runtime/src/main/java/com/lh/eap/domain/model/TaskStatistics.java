@@ -7,7 +7,7 @@ import java.util.Map;
  * How the platform actually behaved over a window, computed from the task table.
  *
  * <p>概览 is the one screen whose headline figures look like they were computed, so they must be either
- * computed or explicitly labelled. This record exists so they are computed: 近 N 日任务 and 模型调用占比
+ * computed or explicitly labeled. This record exists so they are computed: 近 N 日任务 and 模型调用占比
  * both come from {@code eap.task}, and the status bar's 确定性覆盖 is the same value as the overview's
  * 确定性直接完成 because both read {@link #deterministicShare()} — two labels for one figure is how they
  * drift apart.

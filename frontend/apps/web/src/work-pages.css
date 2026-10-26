@@ -1,5 +1,14 @@
 /* Four work surfaces: presentation only; domain state stays in existing features. */
-.app { height: 100dvh; min-height: 0; grid-template-rows: 56px minmax(0, 1fr) 30px; overflow: hidden; }
+.app {
+  --bg: #e1e6df; --surface: #faf9f4; --surface-2: #f1f2eb; --surface-3: #e8ede5;
+  --text: #34443b; --text-soft: #65756b; --text-mute: #7a887f;
+  --border: #dfe3d9; --border-strong: #cdd6ca;
+  --accent: #347f70; --accent-hover: #286858; --accent-soft: #e0ece4;
+  --control-hover: #e0e8de; --focus-ring: #86b9a7;
+  height: 100dvh; min-height: 0; grid-template-rows: 48px minmax(0, 1fr); overflow: hidden;
+  background: var(--bg); color: var(--text);
+}
+.app--analysis { grid-template-rows: 48px minmax(0, 1fr) 26px; }
 .body { min-height: 0; overflow: hidden; }
 .workbench { min-height: 0; overscroll-behavior: contain; }
 .statusbar { min-width: 0; overflow-x: auto; overflow-y: hidden; white-space: nowrap; }
@@ -7,7 +16,12 @@
 .body--focused { grid-template-columns: 212px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
 .body--focused > .inspector { display: none; }
 .body--focused .workbench { width: 100%; }
-.topbar { position: sticky; top: 0; z-index: 30; }
+.topbar { position: relative; z-index: 30; padding: 0 18px 0 20px; gap: 12px; border: 0; background: var(--bg); min-width: 0; }
+.topbar .brand b { color: #347f70; font-size: 15px; letter-spacing: .04em; }
+.topbar .eap-button { min-height: 30px; padding: 5px 11px; font-size: 12px; }
+.topbar .eap-chip { font-size: 11px; padding: 4px 9px; }
+.desktop-page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.shell-message { position: absolute; z-index: 40; top: 48px; left: 64px; right: 12px; }
 .rail { position: static; align-self: stretch; min-height: 0; height: 100%; }
 .work-page { min-width: 0; max-width: 1480px; margin: 0 auto; animation: none; }
 .work-page .page-head { margin-bottom: 22px; }
@@ -197,7 +211,7 @@
 .connections-empty { padding: 28px 16px; text-align: center; border: 1px dashed var(--border-strong); border-radius: 10px; color: var(--text-soft); }
 
 /* Conversation layout: fixed tools and composer; only the transcript scrolls. */
-.workbench:has(> .chat-workspace) { padding: 0; overflow: hidden; }
+.body--chat > .workbench { padding: 0; overflow: hidden; }
 .chat-workspace { height: 100%; width: 100%; max-width: none; display: flex; flex-direction: column; }
 .chat-workspace > .chat-page-head { flex: 0 0 auto; padding: 16px 28px; margin: 0; border-bottom: 1px solid var(--border); background: var(--surface); }
 .chat-workspace .chat-page-head .eyebrow, .chat-workspace .chat-page-head > p:last-child { display: none; }
@@ -268,3 +282,49 @@
 .conversation-menu { position: relative; flex: 0 0 auto; }
 .conversation-menu > div { position: absolute; z-index: 25; top: 100%; right: 0; min-width: 124px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; box-shadow: 0 8px 24px rgb(20 40 70 / 14%); }
 .conversation-menu button { padding: 8px; }
+
+/* Desktop shell: fixed activity rail and contextual navigation. */
+.body { grid-template-columns: 288px minmax(0, 1fr) 320px; grid-template-rows: minmax(0, 1fr); padding: 0 8px 8px 0; }
+.body--focused { grid-template-columns: 288px minmax(0, 1fr); }
+.body > .workbench { padding: 26px 30px; border-radius: 18px; background: var(--surface); overflow-x: hidden; }
+.body--chat > .workbench { padding: 0; }
+.body > .workbench > .eap-feedback { margin-bottom: 16px; font-size: 12px; }
+.model-settings-workspace { max-width: 980px; width: 100%; }
+.model-settings-workspace .page-head h1 { font-size: 24px; }
+.model-settings-workspace .eyebrow { display: none; }
+.model-settings-workspace .connection-panel { background: var(--surface); }
+.desktop-navigation--chat .desktop-sidebar { display: none; }
+.context-toolbar { flex-wrap: wrap; align-items: end; }
+.composer-quick { display: grid; gap: 4px; font-size: 11px; min-width: 100px; }
+.composer-quick select { max-width: 190px; }
+.composer-model { margin-left: auto; }
+.composer-manage { font-size: 11px; align-self: center; }
+@media (max-width: 1100px) { .body { grid-template-columns: 254px minmax(0, 1fr); } .body > .inspector { display:none; } }
+
+.body--chat { grid-template-columns: 64px minmax(0, 1fr); }
+@media (max-width: 680px) {
+  .body:not(.body--chat) { grid-template-columns: 204px minmax(0, 1fr); }
+  .body > .workbench { padding: 18px 16px; }
+  .body--chat > .workbench { padding: 0; }
+  .topbar .brand { display: none; }
+  .topbar { padding-inline: 12px; }
+}
+.chat-composer { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.chat-composer > label, .chat-composer .task-context { min-width: 0; }
+.chat-composer textarea { min-width: 0; max-width: 100%; }
+.conversation-analysis { display: block; margin-bottom: 16px; font-size: 12px; color: var(--accent); }
+.chat-workspace .context-toolbar label { min-width: 0; }
+.chat-workspace .context-toolbar select { max-width: 100%; }
+
+.chat-workspace .context-toolbar .composer-quick { min-width: 120px; flex: 0 0 auto; }
+.chat-workspace .context-toolbar .composer-model { min-width: 140px; flex: 1 1 140px; }
+.chat-workspace .context-toolbar .composer-settings-button { margin-left: 0; }
+
+.chat-main > .chat-composer { padding: 12px 16px; border-radius: 20px; box-shadow: 0 3px 14px rgb(44 65 49 / 7%); }
+.chat-main > .chat-composer > label { display: block; }
+.chat-main > .chat-composer > label > textarea { min-height: 76px; max-height: 22vh; padding: 6px 4px; border: 0; border-radius: 0; background: transparent; resize: vertical; }
+.chat-main > .chat-composer .task-context { padding-top: 6px; border-top: 0; }
+.chat-main > .chat-composer .context-toolbar { gap: 8px; }
+.chat-main > .chat-composer .composer-quick { min-width: 90px; }
+.chat-main > .chat-composer select { border: 0; background: var(--surface-2); padding: 7px 8px; }
+.conversation-sidebar { background: #ebece4; }

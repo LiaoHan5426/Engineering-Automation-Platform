@@ -117,7 +117,7 @@ class RuleRequirementsTest {
         assertEquals(List.of(), judged.get("findings"), "事实缺失时不能凭空产生发现");
         var blocked = (List<Map<String, Object>>) judged.get("blockedRules");
         assertEquals(pack.rules().size(), blocked.size(), "所有依赖未执行能力的规则都必须报为未判定");
-        assertTrue(blocked.stream().allMatch(entry -> !((List<String>) entry.get("missingCapabilities")).isEmpty()));
+        assertTrue(blocked.stream().noneMatch(entry -> ((List<String>) entry.get("missingCapabilities")).isEmpty()));
         assertTrue(String.valueOf(judged.get("summary")).contains("未能判定"),
                 "结论必须说明本次判定不完整：" + judged.get("summary"));
     }

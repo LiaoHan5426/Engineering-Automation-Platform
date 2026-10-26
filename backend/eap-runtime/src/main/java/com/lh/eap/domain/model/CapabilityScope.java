@@ -9,7 +9,7 @@ import java.util.List;
  * bean was immediately usable by every expert. That is wrong for anything that talks to an external
  * service with its own session: two experts calling the same MCP server would share whatever state that
  * server keeps for the connection (session id, cursors, cached schema, the auth context of whoever
- * opened it), and the second expert never authorised that. The tool would also be listed in the
+ * opened it), and the second expert never authorized that. The tool would also be listed in the
  * capability picker as if it were a platform command.
  *
  * <p>Scope makes the difference explicit, and it is a property of the handler, not a UI convention.

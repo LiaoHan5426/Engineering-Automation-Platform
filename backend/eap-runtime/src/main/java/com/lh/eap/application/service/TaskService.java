@@ -36,7 +36,7 @@ public class TaskService {
             log.info("Task {} requires planning: no deterministic capability matched", id);
             var result = new LinkedHashMap<String, Object>();
             result.put("id", id); result.put("goal", request.goal()); result.put("status", "needs-planning"); result.put("decision", "needs-review"); result.put("createdAt", Instant.now().toString()); result.put("observations", List.of());
-            // null, not "skipped": a planner task never reaches the judgement stage, and recording it as a
+            // null, not "skipped": a planner task never reaches the judgment stage, and recording it as a
             // skipped model call would inflate the deterministic coverage the overview reports.
             taskRepository.save(id, request.goal(), "needs-planning", "needs-review", null, List.of());
             return result;

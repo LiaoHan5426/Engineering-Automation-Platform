@@ -71,7 +71,7 @@ com.lh.eap
 
 手动操作被已启用专家引用时不能编辑或删除。删除手动程序会先检查其所有操作的引用；删除最后一个手动操作时同时移除所属手动程序。预置程序与预置操作不能删除。程序位置调整影响其下所有操作，登记、编辑和删除无需重启。
 
-V12 迁移为 Git/ripgrep 写入预置登记，并将旧能力级二进制覆盖值合并到程序级。若旧 Git status/diff 覆盖值冲突，迁移优先采用 status 的值。迁移不修改旧专家清单中的能力标识。旧能力级 CLI 接口仍保留，并转到所属程序配置。
+开发期迁移已合并为 `V1__initial_schema.sql`，直接写入 Git/ripgrep 程序及操作的预置登记。旧能力级覆盖值搬运语句已删除；旧能力级 CLI 接口仍保留，并转到所属程序配置。已有开发库需按确认范围重新初始化。
 
 ## 验证
 
@@ -91,6 +91,6 @@ rtk pnpm exec vp dev --config test/preview.config.ts
 
 浏览器 QA 地址为 `http://127.0.0.1:5187/`，使用独立的内存 API 样本，适合确认 CLI 分组、新增操作、MCP 表单和响应式详情抽屉。它不执行真实命令、不持久化数据，不能替代 PostgreSQL/Flyway 集成验证。正常开发继续使用应用的默认 Vite 配置和实际后端地址。
 
-`CliProgramIntegrationTest` 通过 `EAP_RUN_CLI_INTEGRATION=true` 显式开启，读取本机数据库连接配置并创建独立的临时测试库。测试先迁移到 V9、写入旧能力级覆盖值，再启动完整 Spring Boot 升级到 V12，验证 HTTP 登记、专家授权、真实 `java --version` 执行、引用保护与清理。结束后关闭应用并删除本次创建的临时测试库；不修改原业务库。`EAP_CHECK_SCHEMA=true` 则开启现有库的只读结构检查。
+`CliProgramIntegrationTest` 通过 `EAP_RUN_CLI_INTEGRATION=true` 显式开启，读取本机数据库连接配置并创建独立临时测试库。测试使用当前 V1 初始化并写入程序级覆盖值，再启动 Spring Boot，验证覆盖值保留、HTTP 登记、专家授权、真实 `java --version` 执行、引用保护与清理；不再测试已删除的 V9→V12 升级。结束后关闭应用并删除该临时测试库，不修改原业务库。`EAP_CHECK_SCHEMA=true` 开启现有库只读结构检查。
 
 包名迁移后的首次构建需要 `clean`，以清掉旧包名对应的 `.class`；否则 Spring 可能同时扫描旧、新两份 Bean。

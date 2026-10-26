@@ -57,7 +57,7 @@ public class CapabilityUsage {
             for (var step : manifest.steps() == null ? List.<ExpertManifest.Step>of() : manifest.steps()) {
                 if (step != null && step.capability() != null) capabilities.add(step.capability());
             }
-            // Declared expert-scoped tools count as usage too: an expert authorised for an MCP tool is
+            // Declared expert-scoped tools count as usage too: an expert authorized for an MCP tool is
             // depending on that server existing, exactly like a node depends on a command.
             capabilities.addAll(manifest.expertScopedCapabilities());
             for (var capability : capabilities) {

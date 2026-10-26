@@ -42,7 +42,8 @@ public class KnowledgeRepository {
         args.add(query);
         for(var term:terms){sql.append(" OR c.content ILIKE ? ESCAPE '\\'");args.add(like(term));}
         sql.append(")");
-        if(allowed!=null){sql.append(" AND b.id IN ("+String.join(",",Collections.nCopies(allowed.size(),"?"))+")");args.addAll(allowed);}
+        if(allowed!=null){
+            sql.append(" AND b.id IN (").append(String.join(",", Collections.nCopies(allowed.size(), "?"))).append(")");args.addAll(allowed);}
         sql.append(" ORDER BY score DESC,c.id LIMIT ?");args.add(Math.clamp(limit,1,20));
         return jdbc.query(sql.toString(),(rs,row)->{
             var content=rs.getString("content");

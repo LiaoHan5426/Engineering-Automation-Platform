@@ -2,7 +2,6 @@ package com.lh.eap.runtime.handler;
 
 import com.lh.eap.domain.model.CapabilityContext;
 import com.lh.eap.domain.model.CapabilityDescriptor;
-import com.lh.eap.domain.model.CapabilityKind;
 import com.lh.eap.domain.model.NodeResult;
 import com.lh.eap.runtime.sql.DeterministicSqlAnalyzer;
 
@@ -13,7 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * Structural SQL extraction.
  *
- * <p>The handler contains no domain rules and no judgement: it parses the statement, publishes the
+ * <p>The handler contains no domain rules and no judgment: it parses the statement, publishes the
  * structural facts it can prove, and leaves. Severity, wording and recommendations are produced later
  * by the rule packs the expert declared, evaluated once the whole graph has run — so a rule may combine
  * SQL shape with snapshot and plan facts.
@@ -23,8 +22,6 @@ public class SqlParseHandler implements CapabilityHandler {
     static final String CAPABILITY = SqlFactVocabulary.SQL_PARSE;
 
     @Override public Set<String> capabilities() { return Set.of(CAPABILITY); }
-
-    @Override public CapabilityKind kind() { return CapabilityKind.COMMAND; }
 
     @Override public List<CapabilityDescriptor> describe() {
         return List.of(new CapabilityDescriptor(CAPABILITY, kind(),

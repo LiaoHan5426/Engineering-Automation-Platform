@@ -24,7 +24,7 @@ public interface LlmProvider {
         return id() + ":" + model();
     }
 
-    /** Perform a single completion. Implementations must honour their own timeouts. */
+    /** Perform a single completion. Implementations must honor their own timeouts. */
     Result complete(Request request);
 
     /** A single completion request. Prompts are already preprocessed and token-bounded. */

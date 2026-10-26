@@ -40,9 +40,9 @@ class CliProgramIntegrationTest {
             try (var statement = admin.createStatement()) { statement.execute("CREATE DATABASE \"" + database + "\""); }
             try {
                 Flyway.configure().dataSource(testUrl,user,password).schemas("eap").defaultSchema("eap")
-                        .locations("classpath:db/migration").target("9").load().migrate();
-                try (var legacy = DriverManager.getConnection(testUrl,user,password); var statement = legacy.createStatement()) {
-                    statement.execute("INSERT INTO eap.cli_channel(capability,binary_path) VALUES ('git-status','legacy-status-binary'),('git-diff','legacy-diff-binary'),('rg-search','legacy-rg-binary')");
+                        .locations("classpath:db/migration").load().migrate();
+                try (var configured = DriverManager.getConnection(testUrl,user,password); var statement = configured.createStatement()) {
+                    statement.execute("INSERT INTO eap.cli_channel(capability,binary_path) VALUES ('git','configured-git-binary')");
                 }
                 try (var context = new SpringApplicationBuilder(EapApplication.class).run(
                         "--spring.datasource.url=" + testUrl, "--server.port=0", "--eap.llm.enabled=false", "--spring.devtools.restart.enabled=false")) {
@@ -51,7 +51,7 @@ class CliProgramIntegrationTest {
                     assertEquals(2, ((List<?>) initial.get("items")).size());
                     @SuppressWarnings("unchecked") var programViews = (List<Map<String,Object>>) initial.get("items");
                     @SuppressWarnings("unchecked") var gitChannel = (Map<String,Object>) programViews.stream().filter(p -> "git".equals(p.get("id"))).findFirst().orElseThrow().get("channel");
-                    assertEquals("legacy-status-binary", gitChannel.get("binary"), "升级时 Git status 覆盖值优先，不能丢失既有配置");
+                    assertEquals("configured-git-binary", gitChannel.get("binary"), "程序级覆盖值在应用启动后保持不变");
                     var javaBinary = Path.of(System.getProperty("java.home"), "bin", System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win") ? "java.exe" : "java").toString();
                     request("POST", "/cli-programs", Map.of("id", "qa-java", "name", "QA Java", "binary", javaBinary), 200);
                     var operation = Map.of("capabilityId", "qa.java-version", "title", "Java 版本", "args", List.of("--version"), "description", "只读版本检查");

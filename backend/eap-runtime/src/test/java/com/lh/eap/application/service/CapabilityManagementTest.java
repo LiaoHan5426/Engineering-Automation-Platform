@@ -317,7 +317,7 @@ class CapabilityManagementTest {
         verify(jdbc, never()).update(anyString(), any(), any(), any(), any(), any(), any(), any());
     }
 
-    /** Registering is not authorising: the server arrives disabled and untrusted. */
+    /** Registering is not authorizing: the server arrives disabled and untrusted. */
     @Test void aRegisteredServerIsStoredAsDisabledAndUntrusted() {
         var jdbc = mock(JdbcTemplate.class);
         mcpService(jdbc).save("files", "文件服务器", "stdio", "npx -y mcp-files", List.of("search", "read"), false, false);
@@ -327,7 +327,7 @@ class CapabilityManagementTest {
                 eq(false), eq(false), argThat((String json) -> json != null && json.contains("search") && json.contains("read")));
     }
 
-    /** A server an enabled expert is authorised for cannot be deleted out from under it. */
+    /** A server an enabled expert is authorized for cannot be deleted out from under it. */
     @Test void deletingAServerAnEnabledExpertUsesIsRefused() {
         var serverRow = new LinkedHashMap<String, Object>();
         serverRow.put("id", "files");
@@ -409,7 +409,6 @@ class CapabilityManagementTest {
         return (List<Map<String, Object>>) catalog.get("kinds");
     }
 
-    @SuppressWarnings("unchecked")
     private static Map<String, Object> kindOf(List<Map<String, Object>> kinds, String id) {
         return kinds.stream().filter(entry -> id.equals(entry.get("id"))).findFirst().orElseThrow();
     }

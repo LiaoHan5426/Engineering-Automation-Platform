@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
  * <p>Two sources, one contract:
  * <ul>
  *   <li><b>Shipped</b> packs live on the classpath ({@code rules/*.json}), are read-only and reserve
- *       their ids. Copy one to a new id to customise it.</li>
+ *       their ids. Copy one to a new id to customize it.</li>
  *   <li><b>Authored</b> packs live in {@code eap.rule_pack} and support full CRUD through the API.</li>
  * </ul>
  * Both are ordinary configuration, so an operator can change what an expert flags without a rebuild.

@@ -1,4 +1,5 @@
 import { createI18n } from "vue-i18n";
+import { desktopMessages, modelMessages, authMessages } from "./desktopMessages";
 
 export const i18n = createI18n({
   legacy: false,
@@ -6,8 +7,11 @@ export const i18n = createI18n({
   fallbackLocale: "en-US",
   messages: {
     "zh-CN": {
+      desktop: desktopMessages["zh-CN"],
+      modelUi: modelMessages["zh-CN"],
+      authUi: authMessages["zh-CN"],
       historyUi: { title: "会话", active: "最近", archived: "已归档", localNotice: "历史保存在此浏览器；服务端记忆超时或重启后失效。", storageError: "本地历史保存失败，请检查浏览器存储空间。", actions: "会话操作", rename: "重命名", restore: "恢复", archive: "归档", delete: "删除会话", empty: "暂无会话", expired: "服务端会话不可用。当前仅可查看本地历史，请新建会话继续。", archiveNotice: "已归档，仅供查看。恢复后可以继续有效会话。", deleteNotice: "删除此浏览器中的会话正文和草稿，并清理服务端会话记忆；此操作不可撤销，不删除独立的交接或 Mission。", save: "保存" },
-      composerUi: { records: "任务与记录", handoffs: "交接", noRecords: "暂无交接记录。可将当前输入记录为交接。", recordHelp: "交接与任务壳说明", addConnection: "新增连接", multipleConnections: "可以分别保存多个账号、端点和模型，例如 GPT、DeepSeek 或同一账号下的不同模型；在对话中选择使用。", noConnections: "尚无连接。点击「新增连接」添加第一个。", customConnection: "自定义兼容端点", modelSettings: "模型设置", modelSettingsHint: "配置连接、模型与默认项。对话中可直接选择已配置的模型。", close: "关闭", noModel: "未配置模型", settings: "对话设置", references: "引用", experts: "专家", guidance: "补充指令" },
+      composerUi: { records: "任务与记录", handoffs: "交接", noRecords: "暂无交接记录。可将当前输入记录为交接。", recordHelp: "交接与任务壳说明", addConnection: "新增连接", multipleConnections: "分别保存连接凭据，再为各连接选择允许使用的模型。", noConnections: "尚无连接。点击「新增连接」添加第一个。", customConnection: "自定义兼容端点", modelSettings: "模型设置", modelSettingsHint: "配置连接、模型与默认项。对话中可直接选择已配置的模型。", close: "关闭", noModel: "未配置模型", settings: "对话设置", references: "引用", experts: "专家", guidance: "补充指令" },
     workUi: {
         overview: "工作区概览", capabilities: "项能力", experts: "个专家", chatTitle: "工程对话", chatSubtitle: "描述目标，引用上下文，与专家一起完成需求。",
         chatWelcome: "今天要一起完成什么？", chatWelcomeBody: "选择模型和协作专家，加入文件或原型，从一个具体需求开始。",
@@ -24,7 +28,7 @@ export const i18n = createI18n({
         guidance: "本次专家指导（可编辑，不授予工具权限）", contextNotice: "文件内容会随下一次发送交给选定模型；最多 6 份文本文件、合计 24000 字符。不读取请求提供的磁盘路径。",
         fileLimit: "仅支持文本文件：最多 6 份，每份 16000 字符，合计 24000 字符。", versionUnavailable: "原型版本暂不可读取，可继续引用文件或直接描述需求。",
         codeNotice: "生成可审阅的源码候选。不会执行命令、安装依赖或自动写入；审阅后另行确认。",
-        reasoningUnsupported: "当前连接使用模型默认推理配置；只有已支持的 OpenAI 推理模型开放强度选择。",
+        reasoningUnsupported: "当前模型未配置推理档位，使用模型默认值。可在模型设置中按服务商文档配置。",
         connectionSettings: "模型连接设置 · 本机保存 / 切换", preset: "连接示例（不自动连接）", proposal: "待审阅代码",
         newFile: "新文件", modifiedFile: "修改文件", before: "当前内容", after: "候选内容", confirmWrite: "我已审阅这些文件，确认写入服务端绑定且已授权的工作区",
         apply: "确认应用这些文件", written: "源码已写入；尚未构建或测试。", verificationNotice: "这不是任务完成或验证通过。请运行项目构建 / 测试并审阅 Git diff。候选仅在本次进程内保留 30 分钟。",
@@ -45,7 +49,7 @@ export const i18n = createI18n({
         offline: "后端不可达。这不是模型已连接，也不会生成模拟回答。",
         notice: "发送会调用这条对话已确认的连接，可能产生费用。这里没有测试连接。",
         connections: "模型连接",
-        connectionHint: "这是工程工作台的辅助设置，只保存现有 OpenAI 兼容连接。保存、选择和切换都不调用模型，也不授予工具权限。环境配置只在还没有用户连接时作为默认。密钥只留在服务端。",
+        connectionHint: "连接保存端点与凭据；模型目录和允许列表独立配置。保存后只同步模型元数据，发送消息才调用模型生成内容。密钥只留在服务端。",
         connectionName: "名称",
         connectionUrl: "端点",
         connectionModel: "模型",
@@ -145,8 +149,11 @@ export const i18n = createI18n({
       },
     },
     "en-US": {
+      desktop: desktopMessages["en-US"],
+      modelUi: modelMessages["en-US"],
+      authUi: authMessages["en-US"],
       historyUi: { title: "Chats", active: "Recent", archived: "Archived", localNotice: "History stays in this browser. Server memory expires or resets on restart.", storageError: "Could not save local history. Check browser storage.", actions: "Chat actions", rename: "Rename", restore: "Restore", archive: "Archive", delete: "Delete chat", empty: "No chats", expired: "Server session unavailable. This is local history; create a new chat to continue.", archiveNotice: "Archived, read only. Restore to continue a valid session.", deleteNotice: "Permanently delete local messages and draft and clear server memory. Independent handoffs and Missions are retained.", save: "Save" },
-      composerUi: { records: "Tasks & records", handoffs: "Handoffs", noRecords: "No handoffs yet. Record the current input to create one.", recordHelp: "About handoffs and mission shells", addConnection: "Add connection", multipleConnections: "Save multiple accounts, endpoints and models, then select one in chat.", noConnections: "No connections yet. Add your first connection.", customConnection: "Custom compatible endpoint", modelSettings: "Model settings", modelSettingsHint: "Configure connections, models and defaults. Select configured models directly in chat.", close: "Close", noModel: "No model configured", settings: "Chat settings", references: "References", experts: "Experts", guidance: "Instructions" },
+      composerUi: { records: "Tasks & records", handoffs: "Handoffs", noRecords: "No handoffs yet. Record the current input to create one.", recordHelp: "About handoffs and mission shells", addConnection: "Add connection", multipleConnections: "Save credentials for each connection, then choose its allowed models.", noConnections: "No connections yet. Add your first connection.", customConnection: "Custom compatible endpoint", modelSettings: "Model settings", modelSettingsHint: "Configure connections, models and defaults. Select configured models directly in chat.", close: "Close", noModel: "No model configured", settings: "Chat settings", references: "References", experts: "Experts", guidance: "Instructions" },
     workUi: {
         overview: "Workspace overview", capabilities: "capabilities", experts: "experts", chatTitle: "Engineering chat", chatSubtitle: "Describe a goal, attach context and work with an expert.",
         chatWelcome: "What shall we build today?", chatWelcomeBody: "Choose a model and expert, attach files or a prototype, and start with a concrete task.",
@@ -161,7 +168,7 @@ export const i18n = createI18n({
         approval: "Write policy", review: "Review and confirm", readOnly: "Read only: do not apply", addFile: "Attach local files", loadVersions: "Load saved prototypes", version: "Prototype version", noVersion: "No prototype",
         guidance: "Expert guidance (editable; grants no tools)", contextNotice: "Selected text is sent to the selected model on your next message. Up to 6 files / 24000 characters. No caller-supplied disk paths are read.",
         fileLimit: "Text only: 6 files, 16000 characters each, 24000 total.", versionUnavailable: "Prototypes unavailable. You can still attach files or describe a task.",
-        codeNotice: "Generate source proposals for review. No commands, dependency installation or automatic writes.", reasoningUnsupported: "This connection uses model defaults. Effort selection is available only for supported OpenAI reasoning models.",
+        codeNotice: "Generate source proposals for review. No commands, dependency installation or automatic writes.", reasoningUnsupported: "No effort levels are configured for this model. Use the model default, or configure levels documented by your provider.",
         connectionSettings: "Local model connections", preset: "Example (does not connect)", proposal: "Code for review", newFile: "New file", modifiedFile: "Modified file", before: "Current", after: "Proposed",
         confirmWrite: "I reviewed these files and approve writing to the bound, authorized workspace", apply: "Apply reviewed files", written: "Source saved; build and tests have not run.",
         verificationNotice: "Not verified or completed. Run your build/tests and review git diff. Proposals expire after 30 minutes and do not survive restart.", useInChat: "Use version to generate code", newConnection: "New connection (keep existing)", optionalRecords: "Handoff and legacy task records (optional)",
@@ -181,7 +188,7 @@ export const i18n = createI18n({
         offline: "Backend unreachable. That is not a connected model, and no simulated answer is shown.",
         notice: "Sending calls the connection confirmed for this conversation and may incur a charge. There is no test-connection action.",
         connections: "Model connections",
-        connectionHint: "This is an auxiliary engineering-workbench setting for the existing OpenAI-compatible connection. Saving, selecting, or switching does not call a model or grant a tool. Environment settings are the default only while no user connection exists. The secret stays on the server.",
+        connectionHint: "Connections store endpoint credentials. Catalogs and model allowlists are configured separately. Saving syncs metadata only; sending generates content. Secrets stay on the server.",
         connectionName: "Name",
         connectionUrl: "Endpoint",
         connectionModel: "Model",

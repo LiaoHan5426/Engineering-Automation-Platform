@@ -42,8 +42,7 @@ public final class DeterministicSqlAnalyzer {
         return result;
     }
 
-    /** Stage 1: facts and structure. No severity, no advice, no judgement of any kind. */
-    @SuppressWarnings("unchecked")
+    /** Stage 1: facts and structure. No severity, no advice, no judgment of any kind. */
     public static Map<String, Object> extract(String sql) {
         var extraction = SqlFactExtractor.extract(sql);
         var result = new LinkedHashMap<String, Object>();
@@ -61,7 +60,7 @@ public final class DeterministicSqlAnalyzer {
     }
 
     /**
-     * Stage 2: judgement over the whole run's evidence.
+     * Stage 2: judgment over the whole run's evidence.
      *
      * @param analysis              accumulated run evidence; {@code facts} is what rules are evaluated against
      * @param packs                 resolved rule packs declared by the expert

@@ -178,8 +178,7 @@ class AiChatApplicationTest {
             seen.add(prompt.getInstructions().stream().map(message -> String.valueOf(message.getText())).reduce("", (a, b) -> a + "\n" + b));
             return FakeChatModels.text("plain");
         });
-        var connections = new ModelConnections(root.resolve("connections.json"), "none", "", "https://api.openai.com", "",
-                false, new ModelClientSource() {
+        var connections = new ModelConnections(root.resolve("connections.json"), false, new ModelClientSource() {
                     public org.springframework.ai.chat.client.ChatClient conversational(ModelConnectionSnapshot snapshot) {
                         return EngineeringAiConfiguration.createClient(ChatClient.builder(model), memory);
                     }
@@ -187,24 +186,32 @@ class AiChatApplicationTest {
                         return conversational(snapshot);
                     }
                 });
-        var saved = connections.create("desk", "https://127.0.0.1:9/v1", "desk-model", "sk-local-test-secret", true, true);
+        var saved = createConfigured(connections, "desk", "https://127.0.0.1:9/v1", "desk-model", "sk-local-test-secret", true, true);
         var handlers = new CapabilityHandlerRegistry(List.of());
         var status = new AiConnectionStatus(handlers, root, null, "none", "", "", false, connections);
         var chat = new EngineeringChatService(null, handlers, null, new FileExecutionArtifactStore(root.resolve("artifacts")));
         var app = new AiChatApplication(status, new AiConversationRegistry(memory), chat, root, connections);
         var id = app.open("{}").conversationId();
+        var unsupported = assertThrows(ResponseStatusException.class, () -> app.send(id, "{\"message\":\"reject\",\"toolMode\":\"none\",\"context\":{\"reasoning\":\"high\"}}"));
+        assertEquals("REASONING_OPTION_NOT_SUPPORTED", unsupported.getReason());
         app.send(id, "{\"message\":\"private-marker\",\"toolMode\":\"none\"}");
-        connections.update(saved.id(), "desk", "https://127.0.0.1:9/v1", "other-model", "", true, true);
+        connections.update(saved.id(), "desk", "https://127.0.0.1:9/v1", "changed-secret", true, true);
+        connections.configureModels(saved.id(), List.of(new ModelOption("other-model", List.of())), List.of("other-model"), "other-model");
         var rejected = assertThrows(ResponseStatusException.class,
                 () -> app.send(id, "{\"message\":\"next\",\"toolMode\":\"none\"}"));
         assertEquals("TARGET_CHANGE_CONFIRMATION_REQUIRED", rejected.getReason());
         assertEquals(1, calls.get());
-        var assigned = app.assign(id, "{\"connectionId\":\"" + saved.id() + "\",\"confirmTargetChange\":true}");
+        var assigned = app.assign(id, "{\"connectionId\":\"" + saved.id() + "\",\"model\":\"other-model\",\"confirmTargetChange\":true}");
         assertTrue(assigned.memoryCleared());
         assertFalse(assigned.toString().contains("sk-local-test-secret"));
         app.send(id, "{\"message\":\"after\",\"toolMode\":\"none\"}");
         assertEquals(2, calls.get());
         assertFalse(seen.get(1).contains("private-marker"));
         assertEquals("available", app.status().state());
+    }
+    private static ModelConnectionView createConfigured(ModelConnections connections, String name, String url, String model,
+            String secret, boolean enabled, boolean makeDefault) {
+        var saved = connections.create(name, url, secret, enabled, makeDefault);
+        return connections.configureModels(saved.id(), List.of(new ModelOption(model, List.of())), List.of(model), model);
     }
 }

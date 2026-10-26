@@ -74,21 +74,22 @@ from a saved URL. The Chat workbench is not yet connected to this service.
 
 ## Database initialisation
 
-Flyway owns the `eap` schema and applies migrations `V1..V9` automatically on start. For a database
-that already contains a hand-built `eap` schema without a Flyway history, see
-[runtime-workflow.md](runtime-workflow.md) for the one-time adoption procedure
-(`EAP_ADOPT_EXISTING_SCHEMA=true`). Do not clean, repair or drop existing objects by hand.
+Flyway owns the `eap` schema. On 2026-10-26, the user approved resetting disposable development
+databases and consolidating V1–V18 into `V1__initial_schema.sql`. This baseline creates 21 tables,
+four explicit indexes and the built-in Git/ripgrep programs and operations. Other configuration
+starts empty; absent capability settings mean enabled, and absent CLI overrides use default binaries.
 
-`V8` adds `eap.mcp_server` and `eap.expert_mcp_grant`. Both start empty: no MCP server is registered,
-no expert holds an MCP grant, and the capability catalog therefore reports zero `mcp` capabilities
-until an operator registers a server and an expert declares a tool.
+Only `backend/eap-runtime/src/main/resources/db/migration` is active; the obsolete `backend/db`
+copies were removed. Historical CLI override conversion, duplicate comments, transitional ALTERs
+and the V5 legacy-adoption strategy were removed. Unused pgvector setup and its vector column were
+removed; existing embedding metadata fields remain for the current mapper contract.
 
-`V9` adds `eap.capability_setting` (the platform-wide on/off switch per capability) and
-`eap.cli_channel` (the per-machine binary override for a `cli` capability). Both start **empty on
-purpose**: an absent capability setting means *enabled* (the switch is opt-out), and an absent CLI
-channel means *use the binary the handler ships*, so an empty database is a fully working one.
-
-An empty database needs no adoption flag; it migrates from `V1` normally.
+Existing V1–V18 development histories are not upgrade-compatible with this new baseline. Stop the
+application, explicitly reset only the confirmed disposable EAP database/schema and its Flyway
+history, then restart with injected database credentials. Do not use Flyway repair/baseline to hide
+the mismatch. Startup never resets the database automatically; `EAP_ADOPT_EXISTING_SCHEMA` is retired.
+Subsequent schema changes use V2 and later incremental migrations. This code change does not itself
+perform any database reset. Real empty-database migration acceptance must be reported separately.
 
 ## Toolchain prerequisites
 

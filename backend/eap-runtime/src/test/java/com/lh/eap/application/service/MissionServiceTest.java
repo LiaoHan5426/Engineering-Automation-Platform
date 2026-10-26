@@ -35,7 +35,7 @@ class MissionServiceTest {
         assertEquals("none", mission.grant());
         assertEquals("not_requested", mission.verification());
         assertEquals(mission, service.detail(mission.id()));
-        var sql = Files.readString(Path.of("src/main/resources/db/migration/V15__mission.sql"));
+        var sql = Files.readString(Path.of("src/main/resources/db/migration/V1__initial_schema.sql"));
         assertFalse(sql.contains("previous_mission"));
     }
 

@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
  * expert, what does it need to be given, what does it publish, is it runnable on this machine, and
  * which experts depend on it.
  *
- * <p>It now also answers the question that follows immediately afterwards — "and where do I change it?"
+ * <p>It now also answers the question that follows immediately afterward — "and where do I change it?"
  * — because a list you cannot act on is only half a catalog. Each kind carries its
  * {@link CapabilityManagement} surface (what can be changed, and how instances come into existence), and
  * the console builds its sub-navigation from that: a kind with a management surface gets a page even
@@ -92,7 +92,7 @@ public class CapabilityCatalog {
                 counts.merge(descriptor.kind().id(), 1, Integer::sum);
             }
         }
-        // A registered server publishes capabilities whether or not a handler exists for them. Listing
+        // A registered server publishes capabilities whether a handler exists for them. Listing
         // them keeps the MCP page meaningful the moment an operator registers a server, and the entry
         // says plainly that there is no implementation yet rather than appearing runnable.
         for (var server : serverViews) {
