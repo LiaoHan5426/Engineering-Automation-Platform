@@ -128,6 +128,30 @@ describe("chat session", () => {
     expect(JSON.stringify(session.transcripts.value)).not.toContain("模拟");
   });
 
+  it("clears the failed send once the same draft succeeds", async () => {
+    let calls = 0;
+    const api: ChatApi = {
+      aiStatus: async () => status("configured_unverified"),
+      openAiConversation: async () => ({ conversationId: "c1", workspaceLabel: "ws-abc", memory: "memory" }),
+      sendAiMessage: async () => {
+        calls += 1;
+        if (calls === 1) throw { response: { status: 500 } };
+        return result({ answer: "retried" });
+      },
+    };
+    const session = createChatSession(api);
+    await session.refreshStatus();
+    await session.openConversation();
+    session.draft.value = "hello";
+    await session.send();
+    expect(session.failure.value).toBe("failed");
+    expect(session.draft.value).toBe("hello");
+    await session.send();
+    expect(session.failure.value).toBe("");
+    expect(session.draft.value).toBe("");
+    expect(session.turns.value.map((turn) => turn.text)).toEqual(["hello", "retried"]);
+  });
+
   it("holds the old conversation until a target change is confirmed", async () => {
     let sent = 0;
     let confirmed = 0;
@@ -195,6 +219,28 @@ describe("chat session", () => {
     expect(session.targetNotice.value).toBe("cleared");
     await session.send();
     expect(sent).toBe(1);
+  });
+
+  it("says when a confirmed switch keeps server memory", async () => {
+    const api: ChatApi = {
+      aiStatus: async () => status("configured_unverified"),
+      openAiConversation: async () => ({ conversationId: "c1", workspaceLabel: "ws", memory: "memory", connectionId: "old", model: "same-model" }),
+      modelConnections: async () => ({
+        effectiveDefaultId: "old",
+        items: [
+          { id: "old", name: "旧连接", kind: "openai-compatible", enabled: true, baseUrl: "https://127.0.0.1:9/v1", defaultModel: "same-model", models: [{ id: "same-model", reasoningEfforts: [] }], allowedModels: ["same-model"], discoveredAt: "", discoveryError: "", secretPresent: true, revision: 1, defaultSelected: true, configurationRevision: "a" },
+          { id: "next", name: "新连接", kind: "openai-compatible", enabled: true, baseUrl: "https://127.0.0.1:10/v1", defaultModel: "same-model", models: [{ id: "same-model", reasoningEfforts: [] }], allowedModels: ["same-model"], discoveredAt: "", discoveryError: "", secretPresent: true, revision: 1, defaultSelected: false, configurationRevision: "b" },
+        ],
+      }),
+      assignConversationConnection: async () => ({ connectionId: "next", memoryCleared: false, connectionName: "新连接", model: "same-model" }),
+    };
+    const session = createChatSession(api);
+    await session.openConversation();
+    await session.refreshConnections();
+    session.chooseConversationConnection("next", "same-model");
+    await session.confirmConnectionChange();
+    expect(session.boundConnectionId.value).toBe("next");
+    expect(session.targetNotice.value).toBe("kept");
   });
 });
 
@@ -264,4 +310,20 @@ it('preserves per-conversation context and restores the active conversation afte
   expect(restored.conversationId.value).toBe('c1');
   expect(restored.boundModel.value).toBe('model-a');
   expect(restored.context.value.instructions).toBe('Keep project conventions');
+});
+
+it('keeps a new draft local until the first message', async () => {
+  let opened = 0;
+  const api: ChatApi = { aiStatus: async () => status(), openAiConversation: async () => { opened += 1; return { conversationId: 'made', workspaceLabel: 'ws', memory: 'memory' }; }, sendAiMessage: async () => result() };
+  const session = createChatSession(api);
+  await session.openConversation();
+  session.draft.value = '已有草稿';
+  session.beginDraft();
+  expect(opened).toBe(1);
+  expect(session.conversationId.value).toBeNull();
+  expect(session.draft.value).toBe('');
+  session.draft.value = '第一条';
+  await session.send();
+  expect(opened).toBe(2);
+  expect(session.history.value[0]?.title).toBe('第一条');
 });

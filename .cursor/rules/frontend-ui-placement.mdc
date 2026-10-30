@@ -1,0 +1,24 @@
+---
+description: EAP frontend UI/shared-module placement — primitives in @eap/ui; hooks/effects/layout/plugin per decision doc
+globs: frontend/**/*.{vue,ts,css,md}
+alwaysApply: false
+---
+
+# Frontend UI placement
+
+Normative doc: `docs/decisions/frontend-ui-shared-module-boundaries.md` (also `frontend/AGENTS.md`).
+
+## Do
+
+1. Search `@eap/ui` / planned shared modules before adding chrome.
+2. Put **all** basic components in `frontend/packages/ui` (export + BEM + `styles.css`).
+3. Assemble feature UI from `@eap/ui`; place multi-feature composites per L2/L3 in the decision doc.
+4. Stage `hooks` / `effects` / `layout` / `toggle` / `plugin` only as registered in that doc; extract `packages/*` only when §4 conditions hold.
+5. Run `check:boundaries` and targeted tests; update §3.2 staging when parking shared code.
+
+## Don't
+
+- Parallel Button/Dialog/Confirm shells inside `features/*`
+- Vague new packages (`shared-ui`, `components` at packages root) overlapping `@eap/ui`
+- Domain API hooks inside `@eap/ui` or `@eap/hooks`
+- Claiming planned packages as delivered without an approved slice

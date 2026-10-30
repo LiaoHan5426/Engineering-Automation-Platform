@@ -1,0 +1,98 @@
+.eap-dialog-root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--eap-index-dialog);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.eap-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  background: rgb(20 32 28 / 32%);
+}
+
+.eap-dialog-backdrop:disabled {
+  cursor: default;
+}
+
+.eap-dialog {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(85vh, 720px);
+  padding: 18px 20px;
+  overflow: auto;
+  color: var(--text, #37483e);
+  pointer-events: auto;
+  background: var(--surface, #faf9f4);
+  border: 1px solid var(--border, #e2e6da);
+  border-radius: 16px;
+  outline: none;
+  box-shadow: 0 18px 48px rgb(20 40 70 / 22%);
+}
+
+.eap-dialog--sm {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.eap-dialog--md {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.eap-dialog--lg {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+}
+
+.eap-dialog__header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.eap-dialog__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--text, #243028);
+  overflow-wrap: anywhere;
+}
+
+.eap-dialog__body {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.eap-dialog__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  .eap-dialog-root {
+    padding: 12px;
+  }
+
+  .eap-dialog,
+  .eap-dialog--sm,
+  .eap-dialog--md,
+  .eap-dialog--lg {
+    width: calc(100vw - 16px);
+    border-radius: 12px;
+  }
+}

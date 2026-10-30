@@ -9,6 +9,10 @@ import ModelSettings from "./features/settings/ModelSettings.vue";
 import PluginCenter from "./features/plugins/PluginCenter.vue";
 import DesktopNavigation from "./features/DesktopNavigation.vue";
 import ScenarioWorkspace from "./features/ScenarioWorkspace.vue";
+import ProjectBoard from "./features/shell/ProjectBoard.vue";
+import ExpertCatalog from "./features/shell/ExpertCatalog.vue";
+import { chatBinding, projectLabel, rememberPanel, sessionProjectId, workbench } from "./features/shell/workbench";
+import ChatWorkspace from "./features/chat/ChatWorkspace.vue";
 import PluginSlot from "./features/plugins/PluginSlot.vue";
 import { createPluginHost } from "./features/plugins/host";
 import { isKnownHash } from "./features/plugins/model";
@@ -22,10 +26,12 @@ import {
   type TaskResult,
   type TaskStatistics,
 } from "@eap/runtime-client";
-import { EmptyState, Feedback, MetricCard, Button, Badge } from "@eap/ui";
+import { Badge, Button, Checkbox, EmptyState, Feedback, Input, MetricCard, Select, Textarea } from "@eap/ui";
+import { Table, type TableColumn } from "@eap/plugin-table";
 import { errorMessage, statusLabel } from "./lib/presentation";
 import { describeSecret } from "./lib/sensitive";
 import { CANDIDATE_REWRITE_NOTES, candidateRewrite, rewriteUnavailable } from "./lib/rewrites";
+import { useMockServices } from "./lib/serviceConfig";
 
 /** Existing views remain available through the five-entry desktop shell. */
 const shellPages = [
@@ -46,7 +52,7 @@ const shellPages = [
 ];
 const pluginHost = createPluginHost();
 /** 落地页：打开就是能干活的地方。壳页面保持固定；插件入口由注册表按启停追加。 */
-const DEFAULT_VIEW = "sql";
+const DEFAULT_VIEW = "chat";
 const pages = computed(() => [
   ...shellPages.filter((page) => page.group === "工作"),
   ...pluginHost.entries.value,
@@ -54,6 +60,26 @@ const pages = computed(() => [
 ]);
 const hashView = typeof location !== "undefined" ? location.hash.slice(1) : "";
 const activeView = ref(isKnownHash(hashView) ? hashView : DEFAULT_VIEW);
+if (activeView.value === "work") { workbench.workMode = "work"; activeView.value = "chat"; }
+else if (hashView === 'chat') workbench.workMode = 'code';
+const narrow = ref(false);
+const shellTitle = computed(() => {
+  if (activeView.value === "chat") {
+    const binding = chatBinding.value;
+    return binding?.activeId
+      ? binding.history.find((item) => item.id === binding.activeId)?.title || i18n.global.t("desktop.freeChat")
+      : i18n.global.t("desktop.newChat");
+  }
+  if (activeView.value === "board") return i18n.global.t("desktop.board");
+  if (activeView.value === "expert-catalog") return i18n.global.t("desktop.experts");
+  if (activeView.value === "scenes") return i18n.global.t("desktop.scenes");
+  return currentView.value.name;
+});
+const chatContextLabel = computed(() => {
+  if (activeView.value !== "chat") return "";
+  const id = chatBinding.value?.activeId;
+  return projectLabel(id ? sessionProjectId(id) : workbench.selectedProjectId) || i18n.global.t("desktop.unbound");
+});
 const currentView = computed(
   () => pages.value.find((view) => view.id === activeView.value) ?? pluginHost.describe(activeView.value),
 );
@@ -83,16 +109,27 @@ const INSPECTOR_PAGES: Record<string, { hint: string; pipeline?: boolean }> = {
 const inspector = computed(
   () => INSPECTOR_PAGES[activeView.value] ?? { hint: currentView.value.hint },
 );
-watch(activeView, (value) => {
+const taskViews = new Set(["chat", "sql", "board"]);
+watch(activeView, (value, previous) => {
+  if (value === "work") { workbench.workMode = "work"; activeView.value = "chat"; return; }
   inspectorOpen.value = false;
-  if (typeof location !== "undefined") location.hash = value;
+  if (previous && taskViews.has(previous) && !taskViews.has(value)) workbench.origin = previous === 'chat' && workbench.workMode === 'work' ? 'work' : previous;
+  if (!taskViews.has(value)) workbench.panel = null;
+  if (typeof location !== "undefined") location.hash = value === "chat" && workbench.workMode === "work" ? "work" : value;
 });
 function hashChange() {
   const id = location.hash.slice(1);
+  if (id === 'chat') workbench.workMode = 'code';
+  if (id === "work") { workbench.workMode = "work"; activeView.value = "chat"; return; }
   if (isKnownHash(id)) activeView.value = id;
 }
+function onShellKey(event: KeyboardEvent) {
+  if (event.key === "Escape" && narrow.value) workbench.sidebarOpen = false;
+  if (event.key === "Escape" && workbench.panel) rememberPanel(chatBinding.value?.activeId ?? null, null);
+}
+watch(() => workbench.workMode, mode => { if (activeView.value === 'chat' && typeof location !== 'undefined') location.hash = mode === 'work' ? 'work' : 'chat'; });
 
-const runtimeStatus = ref("检测中");
+const runtimeStatus = ref(useMockServices ? i18n.global.t("preview.simulated") : "检测中");
 const refreshing = ref(false);
 const errors = ref<Record<string, string>>({});
 const capabilities = ref<string[]>([]);
@@ -135,7 +172,7 @@ const TASK_STATUS_FILTERS = [
   { value: "needs-planning", label: "待规划" },
   { value: "failed", label: "执行失败" },
 ];
-const composerGoal = ref<HTMLTextAreaElement | null>(null);
+const composerGoal = ref<{ focus: () => void; scrollIntoView: (options?: ScrollIntoViewOptions) => void } | null>(null);
 
 const searchPattern = ref("");
 const selectedExpert = ref("");
@@ -316,6 +353,33 @@ const streamMode = computed<"empty" | "task" | "report">(() => {
   if (task.value) return "task";
   return "empty";
 });
+/** Task-scoped SQL evidence strip — never a chat SessionPanel or settings overview. */
+const sqlEvidence = computed(() => {
+  if (streamMode.value === "empty") {
+    return { mode: "empty" as const };
+  }
+  if (streamMode.value === "report" && sqlResult.value) {
+    const result = sqlResult.value;
+    return {
+      mode: "report" as const,
+      id: result.id,
+      status: statusLabel(result.status),
+      findings: result.deterministicAnalysis?.findings?.length ?? 0,
+      model: modelEnhancementText(result.modelEnhancement),
+      observations: null as number | null,
+    };
+  }
+  const current = task.value;
+  if (!current) return { mode: "empty" as const };
+  return {
+    mode: "task" as const,
+    id: current.id,
+    status: statusLabel(current.status),
+    findings: null as number | null,
+    model: modelEnhancementText(current.modelEnhancement),
+    observations: current.observations?.length ?? 0,
+  };
+});
 const compression = computed(() => sqlResult.value?.modelAdvisor?.preprocessing);
 const blockedRules = computed(() => sqlResult.value?.deterministicAnalysis?.blockedRules ?? []);
 const rulePackRequirements = computed(() => sqlResult.value?.rulePackRequirements ?? []);
@@ -330,6 +394,13 @@ const kindSummary = computed(() => {
 });
 const factEntries = computed(() =>
   Object.entries(sqlResult.value?.deterministicAnalysis?.facts ?? {}),
+);
+const factColumns: TableColumn[] = [
+  { key: "key", title: "事实", mono: true },
+  { key: "value", title: "值" },
+];
+const factRows = computed(() =>
+  factEntries.value.map(([key, value]) => ({ key, value: factText(value) })),
 );
 function factText(value: unknown) {
   if (typeof value === "boolean") return value ? "是" : "否";
@@ -348,14 +419,7 @@ async function refresh() {
   if (refreshing.value) return;
   refreshing.value = true;
   errors.value = {};
-  const jobs = [
-    [
-      "health",
-      async () => {
-        const health = await runtimeApi.health();
-        runtimeStatus.value = health.status === "ok" ? "已连接" : "服务降级";
-      },
-    ],
+  const jobs: Array<[string, () => Promise<void>]> = [
     [
       "capabilities",
       async () => {
@@ -399,7 +463,16 @@ async function refresh() {
         statsError.value = "";
       },
     ],
-  ] as const;
+  ];
+  if (!useMockServices) {
+    jobs.unshift([
+      "health",
+      async () => {
+        const health = await runtimeApi.health();
+        runtimeStatus.value = health.status === "ok" ? "已连接" : "服务降级";
+      },
+    ]);
+  }
   await Promise.all(
     jobs.map(async ([key, work]) => {
       try {
@@ -734,15 +807,21 @@ function selectFinding(finding: SqlFinding) {
 
 onMounted(() => {
   window.addEventListener("hashchange", hashChange);
+  window.addEventListener("keydown", onShellKey);
+  const query = window.matchMedia("(max-width: 760px)");
+  const apply = () => { narrow.value = query.matches; if (query.matches) workbench.sidebarOpen = false; };
+  apply();
+  query.addEventListener("change", apply);
   void refresh();
 });
-onUnmounted(() => window.removeEventListener("hashchange", hashChange));
+onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window.removeEventListener("keydown", onShellKey); });
 </script>
 
 <template>
-  <div class="app" :class="{ 'app--analysis': activeView === 'sql' }">
+  <div class="app" :class="{ 'app--analysis': activeView === 'sql', 'drawer-open': narrow && workbench.sidebarOpen }">
     <header class="topbar">
-      <div class="brand" aria-label="工程自动化平台"><b>EAP</b></div>
+      <button type="button" class="sidebar-toggle" data-testid="open-sidebar" :aria-expanded="workbench.sidebarOpen" @click="workbench.sidebarOpen = !workbench.sidebarOpen">{{ workbench.sidebarOpen ? i18n.global.t('desktop.closeSidebar') : i18n.global.t('desktop.openSidebar') }}</button>
+      <div v-if="activeView === 'sql'" class="brand" aria-label="工程自动化平台"><b>EAP</b></div>
       <div v-if="activeView === 'sql'" class="menu-wrap">
         <button class="ws" :aria-expanded="workspaceOpen" @click="workspaceOpen = !workspaceOpen">
           工作空间 <b>{{ workspace }}</b
@@ -760,9 +839,8 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
             {{ option }}
           </button>
           <form v-if="workspaceAdding" class="menu-form" @submit.prevent="addWorkspace">
-            <input
+            <Input
               v-model="newWorkspace"
-              class="workspace-input"
               aria-label="新工作空间名称"
               placeholder="例如 orders-service"
             />
@@ -777,10 +855,10 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
           </p>
         </div>
       </div>
-      <span class="desktop-page-title">{{ activeView === 'scenes' ? i18n.global.t('desktop.prototype') : activeView === 'work' ? i18n.global.t('desktop.work') : currentView.name }}</span>
+      <span class="desktop-page-title">{{ shellTitle }}<template v-if="chatContextLabel"> · {{ chatContextLabel }}</template></span>
       <div class="spacer" />
-      <span class="eap-chip" :class="runtimeStatus === '已连接' ? 'ok' : 'warn'">
-        <i class="dot" />运行时{{ runtimeStatus }}
+      <span class="eap-chip" :class="useMockServices ? '' : runtimeStatus === '已连接' ? 'ok' : 'warn'" data-testid="runtime-chip">
+        <i class="dot" />{{ useMockServices ? runtimeStatus : `运行时${runtimeStatus}` }}
       </span>
       <Button
         variant="secondary"
@@ -788,24 +866,26 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
         :aria-expanded="inspectorOpen"
         aria-controls="context-details"
         @click="inspectorOpen = !inspectorOpen"
-        class="inspector-toggle"
+        class="inspector-toggle sql-top-secondary"
       >
         查看详情
       </Button>
-      <Button variant="secondary" :disabled="refreshing" @click="refresh">
+      <Button variant="secondary" v-if="activeView === 'sql'" class="sql-top-secondary" :disabled="refreshing" @click="refresh">
         {{ refreshing ? "刷新中…" : "刷新" }}
       </Button>
-      <Button v-if="activeView === 'sql'" variant="primary" :disabled="sqlBusy" @click="primaryAction">
+      <Button v-if="activeView === 'sql'" variant="primary" class="sql-top-primary" :disabled="sqlBusy" @click="primaryAction">
         {{ sqlBusy ? "分析中…" : "运行分析" }}
       </Button>
     </header>
+    <p v-if="chatBinding?.sending" class="send-in-flight" role="status" data-testid="send-in-flight">{{ i18n.global.t('desktop.sendingAway') }}</p>
     <p v-if="workspaceMessage" class="shell-message" role="status">{{ workspaceMessage }}</p>
 
-    <div class="body" :class="{ 'body--chat': activeView === 'chat', 'body--focused': activeView !== 'sql' }">
-      <DesktopNavigation :class="{ 'desktop-navigation--chat': activeView === 'chat' }" :active-view="activeView" :pages="pages" @navigate="activeView = $event" />
+    <div class="body" :class="{ 'body--chat': activeView === 'chat', 'body--sql': activeView === 'sql' }">
+      <DesktopNavigation :active-view="activeView" :pages="pages" @navigate="activeView = $event" />
+      <button v-if="narrow && workbench.sidebarOpen" type="button" class="sidebar-backdrop" data-testid="sidebar-backdrop" :aria-label="i18n.global.t('desktop.closeSidebar')" @click="workbench.sidebarOpen = false"></button>
 
       <main class="workbench">
-        <Feedback tone="error" v-if="errors.health && !['chat', 'model-settings'].includes(activeView)" role="alert">
+        <Feedback tone="error" v-if="errors.health && !['chat', 'board', 'scenes', 'expert-catalog', 'experts', 'model-settings'].includes(activeView)" role="alert">
           {{ errors.health }}
         </Feedback>
 
@@ -814,21 +894,35 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
           2026-10-15 任务不再是独立页面——一次分析的输入与它的过程/结论，本来就是同一件事的两半。
         -->
         <ScenarioWorkspace v-if="activeView === 'scenes'" :builder-enabled="pluginHost.installation.value.enabled.builder" :chat-enabled="pluginHost.installation.value.enabled.chat" @navigate="activeView = $event" />
-        <section v-else-if="activeView === 'work'" class="view"><h1>{{ i18n.global.t("desktop.work") }}</h1><p>{{ i18n.global.t("desktop.workPending") }}</p></section>
-        <section v-else-if="activeView === 'sql'" class="view work-page analysis-workspace">
+        <ProjectBoard v-else-if="activeView === 'board'" />
+        <ExpertCatalog v-else-if="activeView === 'expert-catalog'" @navigate="activeView = $event" />
+        <section v-else-if="activeView === 'sql'" class="view work-page analysis-workspace" data-testid="sql-workbench">
           <div class="page-head">
             <p class="eyebrow">WORKBENCH</p>
             <h1>分析工作台</h1>
-            <p>
-              左侧是本工作空间的分析任务：点一条任务，中间回放它的请求、执行过程与逐条发现；
-              底部的输入框直接开始一次新的分析。
-            </p>
-            <details class="why">
-              <summary>为什么平台自己不执行你的 SQL</summary>
+            <p class="sql-scope" data-testid="sql-scope" role="status">{{ i18n.global.t("workUi.sqlScope") }}</p>
+            <aside class="sql-evidence" data-testid="sql-evidence" role="status">
+              <p class="sql-evidence-scope">{{ i18n.global.t("workUi.sqlEvidenceScope") }}</p>
+              <p v-if="sqlEvidence.mode === 'empty'" data-testid="sql-evidence-empty">{{ i18n.global.t("workUi.sqlEvidenceEmpty") }}</p>
+              <template v-else>
+                <p data-testid="sql-evidence-task">{{ i18n.global.t("workUi.sqlEvidenceTask", { id: sqlEvidence.id, status: sqlEvidence.status }) }}</p>
+                <p v-if="sqlEvidence.findings != null" data-testid="sql-evidence-findings">{{ i18n.global.t("workUi.sqlEvidenceFindings", { count: sqlEvidence.findings }) }}</p>
+                <p v-else-if="sqlEvidence.observations != null" data-testid="sql-evidence-observations">{{ i18n.global.t("workUi.sqlEvidenceObservations", { count: sqlEvidence.observations }) }}</p>
+                <p v-else data-testid="sql-evidence-no-findings">{{ i18n.global.t("workUi.sqlEvidenceNoFindings") }}</p>
+                <p data-testid="sql-evidence-model">{{ i18n.global.t("workUi.sqlEvidenceModel", { model: sqlEvidence.model }) }}</p>
+              </template>
+            </aside>
+            <p class="sql-intro">{{ i18n.global.t("workUi.sqlIntro") }}</p>
+            <details class="why sql-boundary">
+              <summary>{{ i18n.global.t("workUi.sqlBoundary") }}</summary>
               <p>
                 平台不连接业务数据库、也不执行你输入的 SQL。执行计划快照由你自行取得后粘贴——这样
                 <b>没有凭据需要保管，也不存在误在上游库执行改写的可能</b>。代价是要你多贴一次，
                 换来的是这条边界永远成立。
+              </p>
+              <p>
+                左侧是本工作空间的分析任务：点一条任务，中间回放它的请求、执行过程与逐条发现；
+                底部的输入框直接开始一次新的分析。模型输出单独标为待验证观察，不会并入确定性发现。
               </p>
             </details>
           </div>
@@ -924,12 +1018,12 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                 </div>
                 <Button variant="secondary" @click="focusComposer">＋ 新的分析</Button>
               </div>
-              <select v-model="taskStatusFilter" class="workspace-input" aria-label="按状态筛选任务">
+              <Select v-model="taskStatusFilter" aria-label="按状态筛选任务">
                 <option value="">全部状态</option>
                 <option v-for="option in TASK_STATUS_FILTERS" :key="option.value" :value="option.value">
                   {{ option.label }}
                 </option>
-              </select>
+              </Select>
               <div class="task-list">
                 <button
                   v-for="entry in filteredHistory"
@@ -1188,9 +1282,8 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                           >）。上一条记录与它的证据不会被改写，
                           所以「补了什么、结果怎么变」在历史里可以对照。不要粘贴密码或连接串。
                         </p>
-                        <textarea
+                        <Textarea
                           v-model="supplement"
-                          class="workspace-input"
                           rows="3"
                           :disabled="sqlBusy"
                           placeholder="例如：orders.customer_id 已有单列索引；订单表约 2000 万行，慢在分页"
@@ -1211,20 +1304,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                       <details v-if="factEntries.length">
                         <summary>命中事实（{{ factEntries.length }}）</summary>
                         <p class="hint">发现来自这些结构事实；规则包只能引用词表中已声明的事实。</p>
-                        <table class="data-table facts-table">
-                          <thead>
-                            <tr>
-                              <th>事实</th>
-                              <th>值</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr v-for="[key, value] in factEntries" :key="key">
-                              <td class="mono">{{ key }}</td>
-                              <td>{{ factText(value) }}</td>
-                            </tr>
-                          </tbody>
-                        </table>
+                        <Table :columns="factColumns" :rows="factRows" row-key="key" />
                       </details>
 
                       <h3>优化建议（确定性，语义保持）</h3>
@@ -1295,11 +1375,10 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
               <div class="composer" id="composer">
                 <Feedback tone="error" v-if="sqlError" role="alert">{{ sqlError }}</Feedback>
                 <label class="field-label" for="composer-goal">业务问题 / 目标</label>
-                <textarea
+                <Textarea
                   id="composer-goal"
                   ref="composerGoal"
                   v-model="goal"
-                  class="workspace-input"
                   rows="2"
                   :disabled="sqlBusy"
                   placeholder="例如：订单列表查询在数据量增长后明显变慢，想确认是否缺索引或存在可改写点"
@@ -1307,40 +1386,37 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                 <details class="composer-more">
                   <summary>完整输入：执行专家、待分析 SQL、数据库资料与模型</summary>
                   <label class="field-label" for="expert-selector">执行专家</label>
-                  <select
+                  <Select
                     id="expert-selector"
                     v-model="selectedExpert"
-                    class="workspace-input"
                     :disabled="sqlBusy"
                   >
                     <option v-for="expert in registeredExperts" :key="expert.id" :value="expert.id">
                       {{ expert.name }}
                     </option>
-                  </select>
+                  </Select>
                   <label v-if="needsPattern" class="field-label">
                     本地检索目标
-                    <input
+                    <Input
                       v-model="searchPattern"
-                      class="workspace-input"
                       :disabled="sqlBusy"
                       placeholder="例如 TODO 或具体符号名"
                     />
                   </label>
                   <label class="field-label" for="sql-code">待分析 SQL</label>
-                  <textarea
+                  <Textarea
                     id="sql-code"
                     v-model="sql"
-                    class="workspace-input code-input"
+                    class="code-input"
                     rows="9"
                     :disabled="sqlBusy"
                     spellcheck="false"
                     placeholder="SELECT …（仅检索知识时可留空）"
                   />
                   <label class="field-label" for="database-selector">已授权资料</label>
-                  <select
+                  <Select
                     id="database-selector"
                     v-model="selectedDatabase"
-                    class="workspace-input"
                     :disabled="sqlBusy"
                   >
                     <option value="">不使用数据库资料</option>
@@ -1351,15 +1427,15 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                     >
                       {{ profile.label }}
                     </option>
-                  </select>
+                  </Select>
                   <p v-if="!allowedDatabases.length" class="hint">
                     当前专家没有已配置的数据库资料，请在专家定义中选择资料后重新启用并授权。
                   </p>
                   <label class="field-label" for="explain-input">EXPLAIN JSON 快照</label>
-                  <textarea
+                  <Textarea
                     id="explain-input"
                     v-model="explainText"
-                    class="workspace-input code-input"
+                    class="code-input"
                     rows="4"
                     :disabled="sqlBusy"
                     placeholder="粘贴自行取得的 EXPLAIN JSON，平台不会自动执行 SQL"
@@ -1367,7 +1443,7 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
                 </details>
                 <div class="composer-bar">
                   <label class="row composer-model">
-                    <input v-model="enhanceModel" type="checkbox" :disabled="sqlBusy" />
+                    <Checkbox v-model="enhanceModel" :disabled="sqlBusy" />
                     显式请求模型增强（输出仍为待验证观察）
                   </label>
                   <span class="hint">默认不连接数据库、不执行 SQL；不要粘贴密码、连接串或业务数据。</span>
@@ -1441,17 +1517,17 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
             @saved="refresh"
           />
         </KeepAlive>
-        <PluginSlot :view-id="activeView" :host="pluginHost" />
+        <PluginSlot :view-id="activeView" :host="pluginHost" :chat-view="ChatWorkspace" />
       </main>
 
       <!-- INSPECTOR -->
       <button
-        v-if="inspectorOpen"
+        v-if="inspectorOpen && activeView === 'sql'"
         class="inspector-backdrop"
         aria-label="关闭上下文详情"
         @click="inspectorOpen = false"
       ></button>
-      <aside id="context-details" class="inspector" :class="{ 'inspector--open': inspectorOpen }">
+      <aside v-if="activeView === 'sql'" id="context-details" class="inspector" :class="{ 'inspector--open': inspectorOpen }">
         <div class="insp-head">
           <h2>上下文详情</h2>
           <span class="chip">{{ currentView.name }}</span>
@@ -1541,12 +1617,6 @@ onUnmounted(() => window.removeEventListener("hashchange", hashChange));
             </div>
           </div>
         </template>
-
-        <h2>全局说明（与页面无关）</h2>
-        <p class="hint">
-          输入与证据在平台侧脱敏；只读取显式授权的资料与知识库；未连接业务数据库；未执行输入
-          SQL；模型输出仅为待验证观察。
-        </p>
       </aside>
     </div>
 

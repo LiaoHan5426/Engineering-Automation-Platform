@@ -18,8 +18,6 @@ function name(id: PluginId): string {
       <p class="eyebrow">PLUGINS</p>
       <h1>{{ t("plugin.center") }}</h1>
       <p>{{ t("plugin.centerHint") }}</p>
-      <p>{{ t("plugin.storage") }}</p>
-      <p>{{ t("plugin.chatMemory") }}</p>
     </div>
     <ul class="plugin-list">
       <li v-for="manifest in MANIFESTS" :key="manifest.id" :data-testid="`plugin-${manifest.id}`">

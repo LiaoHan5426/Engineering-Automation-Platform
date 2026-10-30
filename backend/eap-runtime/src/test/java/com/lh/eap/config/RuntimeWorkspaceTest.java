@@ -44,4 +44,20 @@ class RuntimeWorkspaceTest {
         assertTrue(label.startsWith("ws-"));
         assertFalse(label.contains(root.toString()));
     }
+
+    @Test
+    void colocatedBindsEmptyConfigToWorkspaceWithoutWidening() throws Exception {
+        var missing = new RuntimeWorkspace(root, "", "");
+        assertFalse(missing.root().allowed());
+        assertEquals("AUTHORIZED_ROOT_MISSING", missing.root().denial());
+
+        var bound = RuntimeWorkspace.colocated(root, "", "");
+        assertTrue(bound.root().allowed());
+        assertEquals(root.toRealPath(), bound.root().path());
+
+        var nested = Files.createDirectory(root.resolve("nested"));
+        var conflict = RuntimeWorkspace.colocated(root, nested.toString(), other.toString());
+        assertFalse(conflict.root().allowed());
+        assertEquals("ROOT_CONFLICT", conflict.root().denial());
+    }
 }

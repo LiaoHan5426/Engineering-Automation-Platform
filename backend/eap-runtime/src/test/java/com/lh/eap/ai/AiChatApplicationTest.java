@@ -189,7 +189,7 @@ class AiChatApplicationTest {
         var saved = createConfigured(connections, "desk", "https://127.0.0.1:9/v1", "desk-model", "sk-local-test-secret", true, true);
         var handlers = new CapabilityHandlerRegistry(List.of());
         var status = new AiConnectionStatus(handlers, root, null, "none", "", "", false, connections);
-        var chat = new EngineeringChatService(null, handlers, null, new FileExecutionArtifactStore(root.resolve("artifacts")));
+        var chat = new EngineeringChatService(null, handlers, (java.nio.file.Path) null, new FileExecutionArtifactStore(root.resolve("artifacts")));
         var app = new AiChatApplication(status, new AiConversationRegistry(memory), chat, root, connections);
         var id = app.open("{}").conversationId();
         var unsupported = assertThrows(ResponseStatusException.class, () -> app.send(id, "{\"message\":\"reject\",\"toolMode\":\"none\",\"context\":{\"reasoning\":\"high\"}}"));

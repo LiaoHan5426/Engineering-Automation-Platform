@@ -1,5 +1,281 @@
 # Roadmap
 
+## §0B.2 browser-verified layout corrections — 2026-10-28
+
+Built-in browser pass after image links restored. Large layout changes: summary docked as
+right rail (not fixed overlay); scene list→detail (frame-080/088); layered `+` menu and
+ask-policy label verified in UI. `ScenarioWorkspace` **5 passed**. Not full recording
+acceptance. See [§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## §0B.2 image-alignment UI corrections — 2026-10-28
+
+After restoring keyframe image links in §0B.2, corrected text-only drifts vs frames:
+layered `+` menu; approval options with honest disables; catalog-fail emphasis; scene
+local/market + cards + dep banner; expert category chips; board lane hints. Later same day
+re-verified in browser with structural changes above.
+
+## Electron 45 adaptation — 2026-10-28
+
+`@eap/desktop` pinned to **Electron 45.0.0** (Node ≥22.12). Sandbox preload is CJS
+(`preload.cjs` + `require('electron')`); main stays ESM. `check:preload` static guard;
+`electronMajor` on `DesktopPlatformInfo`. Verified: `electron --version` → v45.0.0;
+`check:preload` ok; `localBridge` **4 passed**. Still open: signed package / sidecar.
+See `frontend/apps/desktop/README.md` and [§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## GrapesJS / Electron / installer scaffolds — 2026-10-28
+
+Unblocks later work without claiming full product acceptance. Grapes: `PrototypeSchema` +
+`GrapesEditorScaffold` (dynamic grapesjs or honest offline scaffold; HTML ≠ Vue delivery).
+Electron: `frontend/apps/desktop` preload `window.eap` (chooseWorkspace / platform /
+openExternal / notify); later same day bumped to Electron 45 CJS preload. Installer:
+`scripts/eap_bootstrap.py` writes `.eap/local-bootstrap.json` and prints start/health
+steps (not an Agent host). Browser `#builder-alpha`: Grapes boundary + save Schema note.
+`prototypeSchema`+`GrapesEditorScaffold`+`localBridge` **7 passed**. Still open: component
+registry, signed desktop package, DB migrate/auto-start, list-dir, SQL e2e.
+See [§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## UI-02 server file-tree honesty + RV-01 SQL evidence + UI-01 zoom sample — 2026-10-28
+
+Sidebar「仓库文件观察」states server file tree is offline and never invents browseable
+folders; dirty basenames (≤8) are observations only. `#sql` adds `sql-evidence` scoped to
+the current analysis task (empty when none selected). Fixed `desktop.repoFiles` key clash
+with the sources panel. Browser: chat scope + dirty list; sql empty evidence; ~1024px
+(≈1280@125%) `#sql` no page horizontal overflow. `DesktopNavigation`+`SessionPanel`
+**16 passed**. Grapes/Electron/installer scaffolds delivered same day. Still open: real
+list-dir API, SQL e2e numbers. See [§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## UI-02 multi-group admin — 2026-10-28
+
+`localProjects` create/rename/remove local group labels (keep ≥1; delete clears session
+`projectId` → unbound, no file deletes). Sidebar「＋ 新分组」inline form states label-only;
+group「⋯」rename or inline delete confirm. Browser: create「Demo 分组」→ rename「演示仓」→
+confirm delete → only EAP remains. `localProjects`+`DesktopNavigation` **10 passed**.
+Not delivered: server file tree, SQL run numbers, GrapesJS, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## UI-02 local group project tree — 2026-10-27
+
+Code/Work sidebar `project-tree` states「本机分组树 · 不是仓库文件树」. Group nodes
+expand/collapse; children include demo task board + sessions, with empty「此分组暂无会话」.
+Selecting a group expands it. Browser: scope visible; expand EAP → board + empty
+sessions; open board → `#board`; collapse hides children. `DesktopNavigation`+`console`
+**14 passed**. Multi-group admin delivered 2026-10-28. Still open: server file tree, SQL
+run numbers, GrapesJS, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## UI-01 multi-page 708 matrix — 2026-10-27
+
+At ~708px: topbar hides brand/chip, shortens workspace label, keeps readable
+「打开侧栏」; SQL secondary actions hide so「运行分析」stays reachable; workbench
+padding 16×12. Board lanes scroll inside `.board-scroll` without page overflow;
+scenes/layout-draft/expert catalog tighten to single column. Browser matrix
+`#chat` `#board` `#scenes` `#expert-catalog` `#model-settings` `#sql`: no page
+horizontal overflow; scenes drawer+backdrop Esc-close works. Related FE tests
+**26 passed**. Not delivered: zoom matrix, full project tree, GrapesJS, Electron,
+installer. See [§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## MD-01 credentials → catalog → allowlist → chat — 2026-10-27
+
+`#model-settings` shows `model-pipeline`「凭据 → 目录 → 允许模型 → 对话选用」; catalog
+states sync never auto-checks. After save, discovery failure (`throw` or
+`discoveryError`) keeps the cached-catalog note and opens allowlist; success asks to
+choose allowed models. ~708px settings/dialog tightened. Browser: fake-key save shows
+cache + allowlist; manual `general-demo` → `#chat` picker only `MD01-Demo · general-demo`
+with model-default effort. `ModelSettings`+`ModelCatalogEditor`+`catalogNote` **8
+passed**. Not delivered: live vendor catalog/paid call, GrapesJS, Electron, installer.
+See [§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## UI-02 SQL deterministic scope — 2026-10-27
+
+`#sql` shows `sql-scope`「确定性分析工作面 · 不是对话摘要或变更面板」; long boundary
+copy lives in collapsed「工作面边界」. At ~708px the studio is single-column;「＋ 新的分析」
+scrolls the goal field and「开始分析」into view; no chat `session-panel`. Browser wide/narrow
+`#sql` confirmed. Not delivered: full project tree, live SQL end-to-end numbers, GrapesJS,
+Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## RV-01 panel cross-refresh — 2026-10-27
+
+`sessionPanels` persist to local `localStorage` (`eap.session-panels.v1`, mock-prefixed);
+`adoptScratch` carries the open panel onto the new conversation id. Refresh restores
+summary/changes/sources for the active session. While `/ai/status` is still loading,
+dirty no longer flashes `AUTHORIZED_ROOT_MISSING`. Browser: open summary → reload keeps
+it open above the composer; `#model-settings` has no panel → back to chat restores
+summary and draft. `workbench`+`runtimeIdentity` **16 passed**. Not delivered: SQL
+evidence surface, GrapesJS, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## UI-04 cross-refresh picks — 2026-10-27
+
+`sessionExtras` (scenario / experts / resources / project / execution / delivery)
+persist to local `localStorage` (`eap.session-extras.v1`, mock-prefixed) and reload on
+boot; catalog experts rehydrate from the in-app catalog. `welcomeKept` states refresh
+will not clear picks. Browser: select「原型到代码」+「文档整理」→ reload keeps
+selection, draft, and summary `文档整理@demo-1`. `workbench`+`WorkspaceWelcome`
+**12 passed**. Not delivered: panel cross-refresh, real expert tools, GrapesJS,
+Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## UI-01 narrow drawer + CP-03 short send — 2026-10-27
+
+At ~708px the project sidebar is a masked overlay (`sidebar-backdrop`) instead of
+squeezing the chat column; rail+workbench stay `64px + 1fr`. Close via topbar,
+Esc, or backdrop; after close composer ~620px wide and send stays in view.
+Utility bar keeps path+tools on one row; meter shortens to「文件 n/6 · 无 token」.
+Browser: open drawer → Esc/backdrop close keeps draft; execution popup Esc returns
+focus without clearing text. `TaskComposer`+`DesktopNavigation` **16 passed**. Not
+delivered: multi-page narrow matrix, zoom matrix, GrapesJS, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## RV-01 panel follows session — 2026-10-27
+
+Summary/changes/sources/terminal show `panel-session`「只反映当前会话，不是设置页证据」.
+Switching sessions clears the changes-panel file selection so the prior highlight cannot linger.
+Leaving chat/sql/board for settings closes the task panel (re-verified in browser). Browser:
+`#chat` summary shows the session bar; `#model-settings` has no `session-panel`.
+SessionPanel + workbench tests **14 passed**. Not delivered: cross-refresh panel restore, SQL
+evidence surface, GrapesJS, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## SC-02 scenario scope collapse — 2026-10-27
+
+Scene detail no longer dumps switch-boundary / preset / skills / MCP prose on first paint.
+Short chips show「技能未接通 · MCP 未接通」; full copy lives in collapsed `scene-scope`「场景职责」
+(auto-closes on scenario change). Missing deps still expose「查看位置」; globally disabled
+scenarios keep Apply disabled. Layout-draft boundary copy shortened. Browser `#scenes`:
+collapsed scope → expand shows no plugin install; disabled「文档编写」+ locate「全局禁用」.
+`ScenarioWorkspace` tests **4 passed**. Not delivered: real skills/MCP, GrapesJS, Electron,
+installer. See [§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## UI-01 collapse boundary notes — 2026-10-27
+
+Sidebar and scene delivery gate no longer dump long host/grant “comment-like” copy on first
+paint. Short status lines show path / process-bound / dirty basenames; honesty text lives in a
+collapsed `host-notes`「边界说明」with forced hide when closed. Risk-review / run-recovery /
+welcome hints shortened. Browser `#chat`: collapsed notes + short status; expand still shows
+host boundaries. `#scenes` gate uses the same pattern. Related FE tests **37 passed**. Not
+delivered: full narrow-viewport UI-01 matrix, GrapesJS, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## EX-01 expert trace + UI-04 keep picks + welcome reachability — 2026-10-27
+
+Fixed welcome expert pills overlapping the composer (clicks were intercepted). Chat feed gains
+bottom padding / scroll-padding and tighter welcome margins so pills stay clickable. Summary
+shows `expert-none` when empty and a styled `expert-trace` with `name@version` / guidance /
+resources when selected. `welcome-kept` states catalog round-trips will not clear or send.
+Browser: select「文档整理」→ summary `文档整理@demo-1` → `#expert-catalog` → back keeps
+selection and draft. SessionPanel + WorkspaceWelcome tests **11 passed**. Not delivered: real
+expert tool grants, cross-refresh persistence, GrapesJS, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## CT-01 run recovery + verification config + UI-04 draft hint — 2026-10-27
+
+Summary/terminal surfaces state that closing or refreshing will not resume a background Run
+(UI cache only; no invented continuation). Changes panel `VerificationChecks` shows live
+`verificationEnabled`/`verificationCommands` first (`eap.runtime.verification.enabled=false`
+when off) without treating idle checks as executed. Welcome `welcome-draft-hint` states that
+picking a scenario/expert does not send. Browser `#chat`: recovery copy on summary;「验证配置：未启用」
+on changes;「选择不会发送」on welcome. SessionPanel + WorkspaceWelcome tests **10 passed**.
+Not delivered: persistent Run / cross-restart recovery, enabling typecheck/test/build, GrapesJS,
+Electron, installer. See [§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## PB-01 live layout draft — 2026-10-27
+
+Live prototype-to-code design step embeds `LayoutDraft` (sidebar/popover/summary,
+save/reopen) with explicit「不是 GrapesJS」boundary; Builder also hosts the same draft and
+copies title/prompt into prototype fields on save. Browser `#scenes`: toggle all three
+interactions →「已操作」→ save → new draft timestamp listed. ScenarioWorkspace + workbench +
+builderView tests **13 passed**. Not delivered: GrapesJS/Schema editor, paid models, Electron,
+installer. See [§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## UI-02 session project honesty + CP-02 risk review — 2026-10-27
+
+Session summary separates UI project grouping from the local-service process path: unbound
+sessions say「未绑定项目分组（不伪装目录）」and never treat the process path as a session
+repository. Grant/policy surfaces state「风险审核未接入，只能逐次确认或只读」. Browser `#chat`
+summary + approval menu verified. SessionPanel + TaskComposer tests **17 passed**. Not
+delivered: full project tree / SQL workface, paid models, GrapesJS, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## SC-01 develop handoff — 2026-10-27
+
+Live「带入版本，进入代码对话」no longer dead-ends on `blocked=true`. When delivery gates
+are open it writes `eap.chat.prototype`, applies the prototype-to-code scenario extras
+(including delivery target path), switches to code mode, and navigates to chat — same import
+contract as Builder `useVersionInChat`. Selecting a saved version closes the missing-version
+gate; without a model, develop stays disabled. Browser `#scenes`: listed saved version
+`SC-01 browser version`, select → gate list only「没有可用的模型连接」. FE
+`ScenarioWorkspace` tests **4 passed**. Not delivered: paid model to finish the handoff live,
+GrapesJS, Electron, installer, enabling heavy verification. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## PB-04 safe verification probe — 2026-10-27
+
+`POST /api/ai/workspace/verification/probe` runs fixed `git --version` under the process-bound
+root without enabling configured typecheck/test/build. Scene gate shows「试跑验证探测」and reports
+exit code/summary while stating it is not apply verification success. First-paint prep shows
+「准备状态：加载中…」instead of a false missing baseline. Browser `#scenes`: probe →
+`git-version-probe · 退出码 0` + honesty copy; verification config stays off /
+`not_requested`. FE ScenarioWorkspace + mock tests **4 passed**;
+`EngineeringTaskFlowTest` **10 passed**. Not delivered: enabling heavy verification commands,
+paid models, GrapesJS, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## PB-04 acceptance checklist + CP-01 send gate — 2026-10-27
+
+Live delivery gate gains a session-local human acceptance checklist; checking all items only
+says「本机清单已勾选」and still denies typecheck/test/build success. Chat shows「尚未选择可用模型」
+with link to settings while send stays disabled. Stale dirty `AUTHORIZED_ROOT_MISSING` after bind
+is cleared when status root appears (`refreshRuntimeIdentityAndDirty`). Browser: `#chat` send
+disabled + settings link; `#scenes` checklist → human-done copy. Related FE tests **11 passed**.
+Not delivered: enabling verification commands, paid models, GrapesJS, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## SC-01 delivery gate guidance — 2026-10-27
+
+Scene gates follow live `/ai/status` model state (missing vs unverified advisory). Blocking gaps
+disable「应用到当前会话」/「带入版本」so empty chat is not the escape hatch; gate rows link to
+builder versions and model settings. Prep refresh button reloads identity/baseline/source/dirty.
+Browser `#scenes`: bind/baseline ready, apply disabled,「去模型设置」→ `#model-settings`, dirty 40
+after refresh. Related FE tests **11 passed**. Not delivered: enabling typecheck/test/build, paid
+models, GrapesJS acceptance, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## PB-04 verification config + live dependency honesty — 2026-10-27
+
+`/api/ai/status` exposes `verificationEnabled` / `verificationCommands` (default off). Scene page
+refreshes local-service identity on mount; delivery dependencies follow process-bound root and
+baseline instead of a stale “本机仓库授权 · 未配置”. Browser `#scenes` checked: bind/baseline
+「已提供」, verification「未启用」, `/#chat` preview + acceptance open, dirty count live. Related
+FE tests **17 passed**; `AiConnectionStatusTest` passed. Not delivered: enabling typecheck/test/build
+commands, GrapesJS acceptance, paid models, Electron, installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## PB-03/04 page-preview honesty — 2026-10-27
+
+Colocated UI can show a clickable local preview (`/#chat`) without claiming build/test or human
+acceptance. `pagePreview` refuses mock / non-local origins; SessionPanel, VerificationChecks,
+ScenarioWorkspace and PrototypeFlow share the same wording. Related `vp test` **13+ passed**
+(pagePreview / SessionPanel / PrototypeFlow / ScenarioWorkspace). Browser re-checked with the
+verification/dependency slice above. Not delivered: GrapesJS / real changed-page acceptance,
+enabled typecheck/test/build, paid models, Electron, Python installer. See
+[§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## PB-03 apply conflict UI — 2026-10-27
+
+Apply conflicts (`FILE_CHANGED_SINCE_PROPOSAL`) map to explicit copy via `applyFailureMessage`;
+`pendingWrite` gains `conflict` and clears the confirm checkbox. Frontend applyError/pendingWrite
+tests **4 passed**. Backend conflict rejection was already covered. Chat Git follows live
+`tools.git_status` (HTTP true); plan/agent stay disabled off-mock. Page-preview honesty landed in
+the slice above. Not delivered: paid models, enabled typecheck/test/build, Electron, Python
+installer. See [§0B.8](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md).
+
+## Dirty stdout deadlock + local-service bind — 2026-10-27
+
+Dirty `waitFor` stdout deadlock fixed; HTTP dirty `requested=true` (~242ms). Colocated empty
+`authorized-root` binds via `RuntimeWorkspace.colocated`. PB-02 `TARGET_PATH_REQUIRED` enforced.
+Earlier UI-03 host/`running-context` alignment remains in effect. Detail: §0B.8 in the v1.6 scheme.
+
 ## Chat engineering task slice — 2026-10-24
 
 Implemented in the working tree: selected model connection, text-file context, configurable expert guidance,

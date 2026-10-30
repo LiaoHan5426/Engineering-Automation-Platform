@@ -12,6 +12,9 @@
       "path": "./packages/ui"
     },
     {
+      "path": "./packages/plugin-table"
+    },
+    {
       "path": "./packages/runtime-client"
     },
     {

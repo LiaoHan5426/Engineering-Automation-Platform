@@ -1,0 +1,46 @@
+.eap-table {
+  width: 100%;
+  margin-top: 12px;
+
+  --vxe-ui-font-family: var(--eap-font-family);
+  --vxe-ui-font-color: var(--eap-text-color-regular);
+  --vxe-ui-font-size-small: var(--eap-font-size-sm);
+  --vxe-ui-layout-background-color: var(--eap-fill-color-blank);
+  --vxe-ui-table-border-color: var(--eap-border-color);
+  --vxe-ui-table-header-background-color: var(--eap-fill-color);
+  --vxe-ui-table-header-font-color: var(--eap-text-color-secondary);
+  --vxe-ui-table-row-hover-background-color: var(--eap-fill-color-hover);
+  --vxe-ui-table-row-line-height: 1.5;
+}
+
+.eap-table :where(th, td) {
+  padding: 0;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  background: transparent;
+  border-bottom: 0;
+}
+
+.eap-table .vxe-cell {
+  min-width: 0;
+}
+
+.eap-table__mono .vxe-cell {
+  font-family: var(--eap-font-family-mono);
+}
+
+.eap-table__wrap .vxe-cell--wrapper {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.eap-table__pager {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 8px;
+  font-size: var(--eap-font-size-sm);
+  color: var(--eap-text-color-secondary);
+}

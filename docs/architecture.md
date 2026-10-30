@@ -6,9 +6,11 @@ connection. Writes are separately confirmed, workspace-bound and never imply bui
 The existing SQL workflow remains available; it is not the required entry for general engineering tasks.
 See [the bounded task slice](decisions/chat-engineering-task-slice.md) for actual scope and limitations.
 
-The platform is a cross-platform engineering console: a Vue frontend, a Java runtime, and optional
-Python tooling. Its defining decision is **deterministic-first, model-last** — see
-[pipeline.md](pipeline.md) for the value chain this architecture exists to serve.
+The platform is a cross-platform engineering console: a Vue frontend, a **local Java service** on the
+operator's machine, and optional Python **install/bootstrap** tooling (not an agent host). Its
+defining decision is **deterministic-first, model-last** — see [pipeline.md](pipeline.md). Product
+placement (single-operator, colocated local service, no multi-tenant cloud) is constrained by
+[running-context.md](running-context.md).
 
 This document describes **what is implemented today** and, separately, **what is planned**. Earlier
 revisions of this file mixed both, which made it impossible to tell what actually runs. That mistake
@@ -19,10 +21,11 @@ is fixed here.
 ```text
 frontend/            Vue 3 + TypeScript monorepo (Vite+ / pnpm)
   apps/web           browser console (product UI)
-  packages/ui        shared presentational components
+  packages/ui        shared presentational primitives (all basic chrome)
   packages/runtime-client HTTP client and shared API types, exported through a package entry point
   packages/expert-sdk typed expert authoring DSL (compile-to-manifest, tooling only)
   internal/tsconfig  shared TypeScript configuration, published as @eap/tsconfig
+  (planned) hooks / effects / layout / plugin-* — see UI shared-module decision
 backend/             Java 25 / Spring Boot / Maven reactor
   eap-api            stable contracts only: Capability, ExecutionContext, Observation, ProcessExecutor,
                      and the expert analysis model
@@ -40,6 +43,9 @@ docs/                architecture, pipeline, roadmap, environment, expert/knowle
 Runtime classes are separated into `web.controller`, `web.dto`, `application.service`,
 `persistence.mapper`, `domain.model`, `domain.expert`, `runtime.handler`, `runtime.sql`, and
 `runtime.mcp`. See [module-layout.md](module-layout.md) for the implemented boundaries and verification commands.
+Frontend UI placement (primitives in `@eap/ui`, planned hooks/effects/layout/plugin modules, agent workflow)
+is normative in [frontend-ui-shared-module-boundaries.md](decisions/frontend-ui-shared-module-boundaries.md);
+planned packages are not implemented until an approved slice creates them.
 
 ## What is implemented today
 
@@ -195,11 +201,13 @@ flowchart LR
 ## Technology decisions
 
 - **Backend:** Java 25, Spring Boot 4.1, Maven, Spring MVC, JDBC (`JdbcTemplate`), Flyway, JUnit 5.
-  Single local process; Docker/Kubernetes/Spring Cloud are out of scope. **The platform is a
-  single-operator, single-machine tool** — see [running-context.md](running-context.md). That is a
-  terminal state, not a phase: there is no second user, so accounts, roles, tenants and an auth
-  layer are *not* planned future work. The threat model is therefore about what the operator
-  *imports* (third-party experts, MCP servers, model output), not about other people.
+  Single local process (the **local service**); Docker/Kubernetes/Spring Cloud and isolated cloud VMs
+  are out of scope. **The platform is a single-operator, single-machine tool** — see
+  [running-context.md](running-context.md). That is a terminal state, not a phase: there is no second
+  user, so accounts, roles, tenants and an auth layer are *not* planned future work. Model connection
+  settings and workspace binding may live in the local service data directory; they must not be
+  framed as a remote multi-tenant grant store. The threat model is about what the operator *imports*
+  (third-party experts, MCP servers, model output), not about other people.
 - **SQL parsing:** JSQLParser 5.4. Parsing is local and deterministic.
 - **Model integration:** Spring AI 2.0.2 BOM and official OpenAI Starter in runtime. ChatClient,
   ChatModel, ToolCallingAdvisor/Manager and ChatMemory are framework responsibilities. A saved local

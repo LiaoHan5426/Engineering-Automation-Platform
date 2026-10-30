@@ -3,6 +3,7 @@ package com.lh.eap.ai;
 import com.lh.eap.api.CliExecution;
 import com.lh.eap.application.service.ExecutionArtifactStore;
 import com.lh.eap.common.SensitiveData;
+import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.domain.model.CapabilityContext;
 import com.lh.eap.domain.model.ExpertManifest;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
@@ -26,13 +27,25 @@ public final class EngineeringChatService {
     public record Outcome(UUID executionId, String answer, String error, CliExecution.Result execution) {}
     private final ChatClient client;
     private final CapabilityHandlerRegistry registry;
+    private final RuntimeWorkspace runtime;
     private final Path authorizedRoot;
     private final ExecutionArtifactStore artifacts;
 
     public EngineeringChatService(ChatClient client, CapabilityHandlerRegistry registry, Path authorizedRoot,
                                   ExecutionArtifactStore artifacts) {
+        this(client, registry, null, authorizedRoot, artifacts);
+    }
+
+    public EngineeringChatService(ChatClient client, CapabilityHandlerRegistry registry, RuntimeWorkspace runtime,
+                                  ExecutionArtifactStore artifacts) {
+        this(client, registry, runtime, null, artifacts);
+    }
+
+    private EngineeringChatService(ChatClient client, CapabilityHandlerRegistry registry, RuntimeWorkspace runtime,
+                                   Path authorizedRoot, ExecutionArtifactStore artifacts) {
         this.client = client;
         this.registry = registry;
+        this.runtime = runtime;
         this.authorizedRoot = authorizedRoot;
         this.artifacts = artifacts;
     }
@@ -154,8 +167,12 @@ public final class EngineeringChatService {
             String code;
             String output;
             try {
-                if (!request.gitAllowed() || authorizedRoot == null) throw new SecurityException();
-                var root = authorizedRoot.toRealPath();
+                var decision = runtime != null ? runtime.root()
+                        : (authorizedRoot == null
+                                ? new RuntimeWorkspace.Decision(null, "AUTHORIZED_ROOT_MISSING")
+                                : new RuntimeWorkspace.Decision(authorizedRoot, null));
+                if (!request.gitAllowed() || !decision.allowed() || decision.path() == null) throw new SecurityException();
+                var root = decision.path().toRealPath();
                 var workspace = request.workspace().toRealPath();
                 if (!workspace.startsWith(root)) throw new SecurityException();
                 var handler = registry.resolveFor(null, "git-status").orElseThrow(SecurityException::new);

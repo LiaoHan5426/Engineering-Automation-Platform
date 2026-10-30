@@ -54,6 +54,12 @@ public class KnowledgeManagementService {
 
     public Map<String, Object> search(String q, int limit) { return Map.of("query", q, "items", repository.search(q, Math.min(Math.max(limit, 1), 20))); }
 
+    public Map<String, Object> search(String q, int limit, UUID baseId) {
+        if (baseId == null) return search(q, limit);
+        if (!mapper.exists(baseId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "知识库不存在");
+        return Map.of("query", q, "items", repository.searchAuthorized(q, Math.clamp(limit, 1, 20), List.of(baseId)));
+    }
+
     public Map<String, Object> rename(UUID id, KnowledgeBaseRequest request) {
         if(SensitiveData.containsSecret(request.name())||SensitiveData.containsSecret(request.description()))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"名称或说明包含凭据，请脱敏后保存");
         if (request.name() == null || request.name().isBlank() || request.name().length() > 200) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "知识库名称不能为空，最多200字符");

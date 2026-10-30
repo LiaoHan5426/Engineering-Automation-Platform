@@ -21,7 +21,7 @@ public class KnowledgeController {
     @PostMapping("/{id}/documents")
     public Map<String,Object> addDocument(@PathVariable UUID id, @RequestBody KnowledgeDocumentRequest request) throws java.security.NoSuchAlgorithmException { return service.addDocument(id,request); }
     @GetMapping("/search")
-    public Map<String,Object> search(@RequestParam String q, @RequestParam(defaultValue="5") int limit) { return service.search(q,limit); }
+    public Map<String,Object> search(@RequestParam String q, @RequestParam(defaultValue="5") int limit, @RequestParam(required=false) UUID baseId) { return service.search(q,limit,baseId); }
     @PutMapping("/{id}")
     public Map<String,Object> rename(@PathVariable UUID id, @RequestBody KnowledgeBaseRequest request) { return service.rename(id,request); }
     @DeleteMapping("/{id}")

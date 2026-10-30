@@ -11,6 +11,8 @@
     "typecheck": "vue-tsc --build",
     "check:boundaries": "node scripts/check-boundaries.ts",
     "dev": "vp dev",
+    "dev:mock": "vp dev apps/web --mode mock --host 127.0.0.1",
+    "dev:desktop": "pnpm --filter @eap/desktop dev",
     "build": "vp build",
     "check": "vp check",
     "test": "vp test",

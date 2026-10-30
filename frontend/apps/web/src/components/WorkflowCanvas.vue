@@ -126,7 +126,7 @@ function removeEdge(index: number) {
   <p v-if="nodes.length && graph.errors.length" class="graph-warning" role="status">
     {{ graph.errors.join("；") }}
   </p>
-  <div ref="canvas" class="workflow-canvas">
+  <div ref="canvas" class="workflow-canvas eap-scrollbar">
     <div :style="{ width: size.width * zoom + 'px', height: size.height * zoom + 'px' }">
       <div
         class="canvas-surface"

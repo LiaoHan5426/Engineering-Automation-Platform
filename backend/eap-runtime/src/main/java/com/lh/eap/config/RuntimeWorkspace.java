@@ -1,15 +1,17 @@
 package com.lh.eap.config;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import java.nio.charset.StandardCharsets;
 
 /**
- * Server-owned workspace, authorized root and local operator label.
- * Chat and Mission both read this. The label is for display and audit, not authentication.
+ * Process-local workspace identity for the colocated local Java service.
+ * <p>{@code authorized-root} is this JVM's process-bound workspace root. Browser paths and remote
+ * multi-tenant grant stores are not accepted here. When no explicit root is configured, production
+ * wiring may fall back to the detected process {@link #workspace()} via {@link #colocated}.
  */
 public final class RuntimeWorkspace {
     public static final String OPERATOR_LABEL = "local-operator";
@@ -26,6 +28,25 @@ public final class RuntimeWorkspace {
     public RuntimeWorkspace(Path workspace, String configuredRoot, String legacyRoot) {
         this.workspace = workspace;
         this.root = decide(configuredRoot, legacyRoot);
+    }
+
+    /**
+     * Colocated local-service factory: if both config keys are empty, bind the process root to the
+     * detected workspace directory. Explicit conflicts and invalid directories still deny. Does not
+     * widen to a parent of {@code workspace} or the whole disk.
+     */
+    public static RuntimeWorkspace colocated(Path workspace, String configuredRoot, String legacyRoot) {
+        var base = new RuntimeWorkspace(workspace, configuredRoot, legacyRoot);
+        if (base.root().allowed()) {
+            return base;
+        }
+        if (!"AUTHORIZED_ROOT_MISSING".equals(base.root().denial())) {
+            return base;
+        }
+        if (workspace == null || !Files.isDirectory(workspace)) {
+            return base;
+        }
+        return new RuntimeWorkspace(workspace, workspace.toAbsolutePath().normalize().toString(), "");
     }
 
     public Path workspace() {

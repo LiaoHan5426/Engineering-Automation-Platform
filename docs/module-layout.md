@@ -9,15 +9,18 @@
 | `@eap/web` | Vue 页面、交互与页面内状态 | 应用入口 |
 | `@eap/runtime-client` | HTTP 客户端、请求/响应 TypeScript 类型 | `@eap/runtime-client` |
 | `@eap/style` | 设计令牌、可切换主题（light/dark）与文档底座 | `@eap/style` / `@eap/style/index.css` |
-| `@eap/ui` | 通用展示组件与组件样式（依赖 `@eap/style` 变量） | `@eap/ui` / `@eap/ui/styles.css` |
+| `@eap/ui` | **全部**基础展示/交互原语与组件样式（依赖 `@eap/style`） | `@eap/ui` / `@eap/ui/styles.css` |
+| `@eap/plugin-table` | 纯表格插件。运行时只有 `vxe-table` 与 `@vxe-ui/core`，不注册 vxe-pc-ui 组件 | `@eap/plugin-table` / `@eap/plugin-table/styles.css` |
 | `@eap/expert-sdk` | 专家清单编写与 id 校验（控制台保存前复用 `assertExpertId`） | `@eap/expert-sdk` |
 | `@eap/tsconfig` | 工作区 TypeScript 基础配置 | `@eap/tsconfig/base.json` |
 
-`@eap/web` 通过包名导入 `@eap/style`、`@eap/ui` 与 `@eap/runtime-client`，不再在页面内复制确认框或指标卡。`apps/web/src/style.css` 先导入 `@eap/style` 的 light/dark 主题与 `base.css`，再写控制台布局与功能区样式；组件视觉规则由 `@eap/ui/styles.css` 提供。
+**规划中的共享模块**（hooks / effects / layout / toggle / plugin-sdk|runtime 等）：目标职责与 Agent 落点流程见 [frontend-ui-shared-module-boundaries.md](decisions/frontend-ui-shared-module-boundaries.md)。未建包前可按该文档暂存登记；禁止另起平行「共享 UI」包名。
+
+`@eap/web` 通过包名导入 `@eap/style`、`@eap/ui`、`@eap/plugin-table` 与 `@eap/runtime-client`，不再在页面内复制确认框、模态壳、指标卡或 `<table>`。入口只 `use(tablePlugin)`，不注册 vxe-pc-ui。模态统一用 `@eap/ui` `Dialog`（看板详情、ConnectionDialog）；破坏性确认继续用 `ConfirmBox`（z-index 高于 Dialog）。`apps/web/src/style.css` 先导入 `@eap/style` 的 light/dark 主题与 `base.css`，再写控制台布局与功能区样式；组件视觉规则由 `@eap/ui/styles.css` 提供。
 
 主题用法：加载主题 CSS 后调用 `applyTheme("light" | "dark")`（写入 `data-eap-theme`）。也可在子树上设置 `data-eap-theme`；无 Tailwind 的应用可直接用 `@eap/style/index.css`。
 
-`@eap/ui` 按组件分目录：每个组件目录含 `.vue` 与同名样式；`src/styles.css` 仅汇总组件样式（不内嵌主题）；`src/index.ts` 再导出全部组件。类名统一 `eap-<block>` / `__` 元素 / `--` 修饰（如 `eap-button--primary`、`eap-confirm__dialog`）；`@eap/stylelint-config` 对 `packages/ui` 强制该 BEM 约定。
+`@eap/ui` 按组件分目录：每个组件目录含 `.vue` 与同名样式；`src/styles.css` 仅汇总组件样式（不内嵌主题）；`src/index.ts` 再导出全部组件。类名统一 `eap-<block>` / `__` 元素 / `--` 修饰（如 `eap-button--primary`、`eap-confirm__dialog`）；`@eap/stylelint-config` 对 `packages/ui` 强制该 BEM 约定。换肤改 `--eap-*`，不改类名前缀，也不用 Sass 再生成一套变量。
 
 每个工作区目录都有 `package.json`；依赖写入包自身的 `dependencies` / `devDependencies`，本地包使用 `workspace:*`。页面从公开包名导入客户端，不使用跨包相对路径或其他包的 `src` 私有路径。TypeScript 项目引用用于类型构建，不替代包依赖声明。
 
@@ -26,7 +29,7 @@
 ```text
 apps/web/src
   App.vue / main.ts     壳层入口
-  components/           应用内专用组件（流程图等；确认框已下沉到 @eap/ui）
+  components/           跨 feature 组合：ConnectionDialog、SessionPanel、WorkspaceWelcome、RepositoryBrowser、WorkflowCanvas。领域状态仍在 features；基础控件在 @eap/ui
   features/<area>/      能力、专家、知识库、数据库、规则等页面与局部逻辑
   lib/                  展示、脱敏、改写、工作流图、i18n 等共享工具
   tests/                跨页面契约测试（console / management / destructive）

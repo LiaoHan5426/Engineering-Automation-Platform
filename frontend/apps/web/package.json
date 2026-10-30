@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
+    "dev:mock": "vp dev --mode mock",
     "build": "vp build",
     "preview": "vp preview"
   },
@@ -12,8 +13,10 @@
     "@eap/expert-sdk": "workspace:*",
     "@eap/runtime-client": "workspace:*",
     "@eap/style": "workspace:*",
+    "@eap/plugin-table": "workspace:*",
     "@eap/ui": "workspace:*",
     "axios": "catalog:frontend",
+    "grapesjs": "^0.22.7",
     "nprogress": "catalog:frontend",
     "vue": "catalog:frontend",
     "vue-i18n": "catalog:frontend"

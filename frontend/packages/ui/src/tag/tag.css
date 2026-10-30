@@ -1,0 +1,67 @@
+.eap-tag {
+  --eap-tag-color: var(--eap-color-primary);
+
+  display: inline-flex;
+  gap: var(--eap-space-1);
+  align-items: center;
+  max-width: 100%;
+  padding: var(--eap-space-1) var(--eap-space-3);
+  font: inherit;
+  font-size: var(--eap-font-size-sm);
+  line-height: 1.4;
+  color: var(--eap-tag-color);
+  white-space: nowrap;
+  cursor: default;
+  background: color-mix(in srgb, var(--eap-tag-color) 12%, var(--eap-fill-color-blank));
+  border: 1px solid color-mix(in srgb, var(--eap-tag-color) 35%, var(--eap-fill-color-blank));
+  border-radius: var(--eap-border-radius-round);
+}
+
+button.eap-tag {
+  cursor: pointer;
+}
+
+.eap-tag--sm {
+  padding: 2px var(--eap-space-2);
+  font-size: var(--eap-font-size-xs);
+}
+
+.eap-tag--primary {
+  --eap-tag-color: var(--eap-color-primary);
+}
+
+.eap-tag--success {
+  --eap-tag-color: var(--eap-color-success);
+}
+
+.eap-tag--warning {
+  --eap-tag-color: var(--eap-color-warning);
+}
+
+.eap-tag--danger {
+  --eap-tag-color: var(--eap-color-danger);
+}
+
+.eap-tag--info {
+  --eap-tag-color: var(--eap-color-info);
+}
+
+.eap-tag--plain {
+  background: var(--eap-fill-color-blank);
+}
+
+.eap-tag--dark {
+  color: var(--eap-color-white);
+  background: var(--eap-tag-color);
+  border-color: var(--eap-tag-color);
+}
+
+.eap-tag:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.eap-tag__close {
+  font-size: 1.05em;
+  line-height: 1;
+}

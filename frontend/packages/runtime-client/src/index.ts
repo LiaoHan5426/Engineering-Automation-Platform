@@ -440,6 +440,61 @@ export type AiStatus = {
   errorCode: string;
   tools: { git_status: boolean };
   workspaceLabel: string;
+  /** Absolute Java-process machine workspace directory when known; never a local group label. */
+  workspacePath?: string;
+  /**
+   * Optional co-located process-bound root on that same JVM machine; empty when denied/missing.
+   * Not a remote user directory grant.
+   */
+  authorizedRootPath?: string;
+  /** Denial code when authorizedRootPath is empty (e.g. AUTHORIZED_ROOT_MISSING, ROOT_CONFLICT). */
+  authorizedRootDenial?: string;
+  /**
+   * Always false when the runtime follows Cursor/Codex-style local hosting:
+   * the server does not persist operator directory grants.
+   */
+  storesUserDirectoryGrants?: boolean;
+  /** Post-apply verification flag from local-service config; false by default. */
+  verificationEnabled?: boolean;
+  /** Configured check names when verification is listed; empty means not_requested even if enabled. */
+  verificationCommands?: string[];
+};
+/** Read-only generation-prep baseline. Never includes file contents. */
+export type WorkspaceBaseline = {
+  path: string;
+  exists: boolean;
+  baseHash: string;
+  denial: string;
+};
+/** Read-only workspace excerpt for generation prep. Does not grant write authorization. */
+export type WorkspaceSource = {
+  path: string;
+  exists: boolean;
+  baseHash: string;
+  bytes: number;
+  excerpt: string;
+  denial: string;
+};
+export type WorkspaceFiles = { path: string; entries: Array<{ name: string; path: string; directory: boolean }>; truncated: boolean; denial: string };
+export type BoardTask = { id: string; projectId: string; title: string; column: 'planned' | 'ready' | 'running' | 'acceptance' | 'done'; notes: string; sessionId: string; revision: number; events: string[]; priority: 'none' | 'p0' | 'p1' | 'p2' };
+/** Read-only dirty-file summary. requested=false means git was not run. */
+export type WorkspaceDirty = {
+  requested: boolean;
+  denial: string;
+  count: number;
+  paths: string[];
+  detail: string;
+};
+/**
+ * Safe verification probe. requested=false means the probe did not run.
+ * Never marks apply verification as passed; never enables configured heavy checks.
+ */
+export type VerificationProbe = {
+  requested: boolean;
+  denial: string;
+  name: string;
+  exitCode: number | null;
+  summary: string;
 };
 export type AiConversation = {
   conversationId: string;
@@ -516,6 +571,8 @@ export type TaskContext = {
   approval: "review" | "read_only";
   files: Array<{ name: string; content: string }>;
   prototypeVersionId: string;
+  /** Workspace-relative page the server may read for generation prep; never a write grant. */
+  targetPath: string;
 };
 export type CodeProposal = {
   id: string;
@@ -667,8 +724,8 @@ export const runtimeApi = {
         "/knowledge/" + encodeURIComponent(baseId) + "/documents/" + encodeURIComponent(documentId),
       )
       .then((r) => r.data),
-  searchKnowledge: (q: string) =>
-    client.get("/knowledge/search", { params: { q } }).then((r) => r.data),
+  searchKnowledge: (q: string, baseId?: string) =>
+    client.get("/knowledge/search", { params: { q, baseId } }).then((r) => r.data),
   validateExpert: (definition: { id: string; name: string; manifest: string }) =>
     client.post("/experts/validate", definition).then((response) => response.data),
   saveExpert: (definition: { id: string; name: string; manifest: string }) =>
@@ -738,6 +795,9 @@ export const runtimeApi = {
       .post<TaskResult>("/tasks", { goal }, { timeout: 60_000 })
       .then((response) => response.data),
   handoffs: () => get<{ items: HandoffRecord[] }>("/handoffs"),
+  boardTasks: (projectId: string) => get<{ items: BoardTask[] }>('/board/tasks?projectId=' + encodeURIComponent(projectId)),
+  createBoardTask: (projectId: string, title: string, column: 'planned' | 'ready' = 'planned', sessionId = '') => client.post<BoardTask>('/board/tasks', { projectId, title, column, sessionId: String(sessionId ?? '').trim().slice(0, 120) }).then(response => response.data),
+  updateBoardTask: (id: string, update: { revision: number; column?: BoardTask['column']; notes?: string; priority?: BoardTask['priority'] }) => client.post<BoardTask>('/board/tasks/' + encodeURIComponent(id), update).then(response => response.data),
   recordHandoff: (draft: { source: "chat" | "builder"; sourceRef: string; summary: string }) =>
     client
       .post<HandoffRecord>("/handoffs", draft)
@@ -799,7 +859,24 @@ export const runtimeApi = {
       items: string[];
       states?: Record<string, { enabled: boolean; builtin: boolean; revision: number }>;
     }>("/experts"),
+  ...createChatApi(baseUrl, client),
+};
+
+export function createChatApi(baseURL: string, transport = axios.create({ baseURL, timeout: 10_000, headers: { Accept: "application/json" } })) {
+  const client = transport;
+  const get = <T>(path: string) => client.get<T>(path).then(response => response.data);
+  return {
   aiStatus: () => get<AiStatus>("/ai/status"),
+  workspaceBaseline: (path: string) =>
+    get<WorkspaceBaseline>("/ai/workspace/baseline?path=" + encodeURIComponent(path)),
+  workspaceSource: (path: string) =>
+    get<WorkspaceSource>("/ai/workspace/source?path=" + encodeURIComponent(path)),
+  workspaceDirty: () => get<WorkspaceDirty>("/ai/workspace/dirty"),
+  workspaceFiles: (path = '') => get<WorkspaceFiles>('/ai/workspace/files?path=' + encodeURIComponent(path)),
+  workspaceVerificationProbe: () =>
+    client
+      .post<VerificationProbe>("/ai/workspace/verification/probe", {})
+      .then((response) => response.data),
   aiConversation: (id: string) => get<{ conversationId: string; workspaceLabel: string; memory: string; connectionId?: string | null }>("/ai/conversations/" + encodeURIComponent(id)),
   deleteAiConversation: (id: string) => client.delete("/ai/conversations/" + encodeURIComponent(id)).then(() => undefined),
   openAiConversation: () =>
@@ -813,7 +890,7 @@ export const runtimeApi = {
       )
       .then((response) => response.data),
   applyCodeProposal: (id: string, proposal: string) =>
-    client.post<{ id: string; written: string[]; verification: string }>(
+    client.post<{ id: string; written: string[]; verification: string; checks: Array<{ name: string; exitCode: number | null; summary: string }> }>(
       "/ai/conversations/" + encodeURIComponent(id) + "/proposals/" + encodeURIComponent(proposal) + "/apply",
       { confirmed: true },
     ).then((response) => response.data),
@@ -844,4 +921,5 @@ export const runtimeApi = {
         model,
       })
       .then((response) => response.data),
-};
+  };
+}

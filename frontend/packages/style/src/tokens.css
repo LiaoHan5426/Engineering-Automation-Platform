@@ -1,0 +1,51 @@
+/**
+ * Compatibility aliases. Theme files assign `--eap-*` only.
+ * A product skin overrides `--eap-*` on a subtree (see `body` in the console).
+ * Short names are also redeclared there. A `:root` alias is computed once, so it
+ * does not follow a later `--eap-*` override on its own.
+ *
+ * Class names stay `eap-*`. That prefix is a static BEM contract, not a runtime
+ * namespace: stylelint checks it, and swapping it would rewrite every selector.
+ * Host customization is the `--eap-*` layer, the same role as Element Plus `--el-*`.
+ * Sass is not used. Shared color mixes use `color-mix()` so one token paints
+ * light, plain, and dark treatments without a second stylesheet language.
+ */
+:root {
+  --bg: var(--eap-bg-color);
+  --surface: var(--eap-fill-color-blank);
+  --surface-2: var(--eap-fill-color-light);
+  --surface-3: var(--eap-fill-color);
+  --border: var(--eap-border-color);
+  --border-strong: var(--eap-border-color-strong);
+  --text: var(--eap-text-color-primary);
+  --text-soft: var(--eap-text-color-secondary);
+  --text-mute: var(--eap-text-color-placeholder);
+  --accent: var(--eap-color-primary);
+  --accent-hover: var(--eap-color-primary-hover);
+  --accent-soft: var(--eap-color-primary-soft);
+  --danger: var(--eap-color-danger);
+  --danger-bg: var(--eap-color-danger-soft);
+  --danger-border: var(--eap-color-danger-border);
+  --warn: var(--eap-color-warning);
+  --warn-bg: var(--eap-color-warning-soft);
+  --warn-text: var(--eap-color-warning-text);
+  --ok: var(--eap-color-success);
+  --ok-bg: var(--eap-color-success-soft);
+  --ok-border: var(--eap-color-success-border);
+  --info: var(--eap-color-info);
+  --info-bg: var(--eap-color-info-soft);
+  --neutral: var(--eap-color-neutral);
+  --neutral-bg: var(--eap-color-neutral-soft);
+  --overlay: var(--eap-overlay-color);
+  --rail: var(--eap-rail-color);
+  --rail-text: var(--eap-rail-text);
+  --rail-active: var(--eap-rail-active);
+  --radius: var(--eap-border-radius-card);
+  --radius-control: var(--eap-border-radius-base);
+  --shadow: var(--eap-box-shadow);
+  --control-hover: var(--eap-fill-color-hover);
+  --on-accent: var(--eap-color-white);
+  --focus-ring: var(--eap-color-primary-focus);
+  --font-sans: var(--eap-font-family);
+  --font-mono: var(--eap-font-family-mono);
+}

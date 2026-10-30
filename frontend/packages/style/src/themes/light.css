@@ -1,47 +1,67 @@
 /**
- * Light theme token values.
- * Applied on :root by default and when data-eap-theme="light".
+ * Light theme. Override any `--eap-*` here or on a subtree to reskin the console.
  */
 :root,
 [data-eap-theme="light"] {
   color-scheme: light;
 
-  --bg: #f4f6fb;
-  --surface: #fff;
-  --surface-2: #f8fafc;
-  --surface-3: #eef2f7;
-  --border: #d8e0ec;
-  --border-strong: #cbd5e1;
-  --text: #152033;
-  --text-soft: #64748b;
-  --text-mute: #94a3b8;
-  --accent: #2563eb;
-  --accent-hover: #1d4fd0;
-  --accent-soft: #e8f0fe;
-  --danger: #b91c1c;
-  --danger-bg: #fef2f2;
-  --danger-border: #f3c9c9;
-  --warn: #a16207;
-  --warn-bg: #fff7e6;
-  --warn-text: #7a5b13;
-  --ok: #15803d;
-  --ok-bg: #ecfdf3;
-  --ok-border: #bbf7d0;
-  --info: #1d4ed8;
-  --info-bg: #eff6ff;
-  --neutral: #475569;
-  --neutral-bg: #e8eef7;
-  --overlay: rgb(15 23 40 / 45%);
-  --rail: #0f1728;
-  --rail-text: #b9c6da;
-  --rail-active: #22314b;
-  --radius: 12px;
-  --radius-control: 8px;
-  --shadow: 0 1px 2px rgb(15 23 40 / 4%);
-  --control-hover: #e3e9f2;
-  --on-accent: #fff;
-  --focus-ring: #93c5fd;
-  --font-sans:
+  --eap-color-white: #fff;
+  --eap-color-primary: #2563eb;
+  --eap-color-primary-hover: #1d4fd0;
+  --eap-color-primary-soft: #e8f0fe;
+  --eap-color-primary-focus: #93c5fd;
+  --eap-color-success: #15803d;
+  --eap-color-success-soft: #ecfdf3;
+  --eap-color-success-border: #bbf7d0;
+  --eap-color-warning: #a16207;
+  --eap-color-warning-soft: #fff7e6;
+  --eap-color-warning-text: #7a5b13;
+  --eap-color-danger: #b91c1c;
+  --eap-color-danger-soft: #fef2f2;
+  --eap-color-danger-border: #f3c9c9;
+  --eap-color-info: #1d4ed8;
+  --eap-color-info-soft: #eff6ff;
+  --eap-color-neutral: #475569;
+  --eap-color-neutral-soft: #e8eef7;
+  --eap-text-color-primary: #152033;
+  --eap-text-color-regular: #334155;
+  --eap-text-color-secondary: #64748b;
+  --eap-text-color-placeholder: #94a3b8;
+  --eap-bg-color: #f4f6fb;
+  --eap-fill-color-blank: #fff;
+  --eap-fill-color-light: #f8fafc;
+  --eap-fill-color: #eef2f7;
+  --eap-fill-color-hover: #e3e9f2;
+  --eap-overlay-color: rgb(15 23 40 / 45%);
+  --eap-border-color: #d8e0ec;
+  --eap-border-color-strong: #cbd5e1;
+  --eap-border-radius-sm: 4px;
+  --eap-border-radius-base: 8px;
+  --eap-border-radius-card: 12px;
+  --eap-border-radius-round: 999px;
+  --eap-font-family:
     Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --eap-font-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --eap-font-size-xs: 11px;
+  --eap-font-size-sm: 12px;
+  --eap-font-size-base: 14px;
+  --eap-font-size-md: 16px;
+  --eap-font-size-lg: 18px;
+  --eap-font-weight-primary: 600;
+  --eap-space-1: 4px;
+  --eap-space-2: 8px;
+  --eap-space-3: 12px;
+  --eap-space-4: 16px;
+  --eap-space-5: 24px;
+  --eap-size-small: 28px;
+  --eap-size-default: 32px;
+  --eap-index-popover: 40;
+  --eap-index-dialog: 50;
+  --eap-index-confirm: 60;
+  --eap-box-shadow: 0 1px 2px rgb(15 23 40 / 4%);
+  --eap-box-shadow-overlay: 0 10px 36px rgb(20 40 70 / 16%);
+  --eap-transition-duration: 0.2s;
+  --eap-rail-color: #0f1728;
+  --eap-rail-text: #b9c6da;
+  --eap-rail-active: #22314b;
 }

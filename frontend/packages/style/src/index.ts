@@ -1,4 +1,8 @@
-/** DOM attribute used to select an EAP theme on :root or any subtree. */
+/**
+ * Theme and token entry.
+ * Reskin by overriding `--eap-*` (see `tokens.css`). Do not fork component class names.
+ * The `eap-` class prefix is fixed BEM, not an Element Plus-style compile namespace.
+ */
 export const EAP_THEME_ATTR = "data-eap-theme";
 
 export const themes = ["light", "dark"] as const;

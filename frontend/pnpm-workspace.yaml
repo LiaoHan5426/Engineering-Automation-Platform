@@ -34,3 +34,7 @@ catalogs:
 allowBuilds:
   esbuild: true
   rolldown: true
+  electron: true
+
+minimumReleaseAgeExclude:
+  - "@vxe-ui/core@4.5.4"

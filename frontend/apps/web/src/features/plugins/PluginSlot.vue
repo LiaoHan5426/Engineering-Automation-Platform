@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, watch, type Component } from "vue";
 import { useI18n } from "vue-i18n";
-import ChatWorkspace from "../chat/ChatWorkspace.vue";
 import BuilderWorkspace from "./BuilderWorkspace.vue";
 import type { PluginHost } from "./host";
 import type { BuilderConfig } from "./model";
+import { useMockServices } from '../../lib/serviceConfig';
 
-const props = defineProps<{ viewId: string; host: PluginHost }>();
+const props = defineProps<{ viewId: string; host: PluginHost; chatView: Component }>();
 const { t } = useI18n();
 const visited = reactive(new Set<string>());
 const workspaceIds = ['chat', 'builder-alpha', 'builder-beta'] as const;
@@ -25,8 +25,8 @@ const enabled = computed(() =>
 
 <template>
   <template v-for="id in cachedViews" :key="id">
-    <ChatWorkspace v-if="id === 'chat'" v-show="viewId === id" :active="viewId === id" />
-    <BuilderWorkspace v-else v-show="viewId === id" :instance-id="id === 'builder-alpha' ? 'alpha' : 'beta'" :host="host" />
+    <component :is="chatView" v-if="id === 'chat'" v-show="viewId === id" :inert="viewId !== id" :aria-hidden="viewId !== id" :active="viewId === id" :mock="useMockServices" />
+    <BuilderWorkspace v-else v-show="viewId === id" :inert="viewId !== id" :aria-hidden="viewId !== id" :instance-id="id === 'builder-alpha' ? 'alpha' : 'beta'" :host="host" />
   </template>
   <section v-if="(viewId === 'chat' || instanceId) && !enabled" class="view" data-testid="plugin-disabled">
     <div class="page-head">

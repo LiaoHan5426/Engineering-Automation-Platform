@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { runtimeApi, type ChatGptLoginAttempt } from '@eap/runtime-client';
+import type { ChatGptLoginAttempt } from '@eap/runtime-client';
+import { modelApi as runtimeApi } from '../chat/chatService';
+import { useMockServices } from '../../lib/serviceConfig';
 import { Button, Feedback } from '@eap/ui';
 import { errorMessage } from '../../lib/presentation';
 const emit = defineEmits<{ connected: [id: string]; changed: [] }>();
 const { t } = useI18n();
 const attempt = ref<ChatGptLoginAttempt | null>(null);
 const busy = ref(false), note = ref('');
+const mockConsent = ref(false);
+const pendingConnectionId = ref<string | undefined>();
 let timer: ReturnType<typeof setTimeout> | undefined;
 let disposed = false;
-const storageKey = 'eap.chatgpt.pending-login';
+const storageKey = (useMockServices ? 'mock.' : '') + 'eap.chatgpt.pending-login';
 function remember(value: ChatGptLoginAttempt | null) {
   attempt.value = value;
   try { if (value) sessionStorage.setItem(storageKey, JSON.stringify(value)); else sessionStorage.removeItem(storageKey); } catch { /* Current attempt remains usable. */ }
@@ -31,13 +35,16 @@ async function poll() {
     if (Date.parse(current.expiresAt) > Date.now()) schedule(); else remember(null);
   }
 }
-async function start(connectionId?: string) {
+async function start(connectionId?: string, confirmed = false) {
+  if (useMockServices && !confirmed) { pendingConnectionId.value = connectionId; mockConsent.value = true; return; }
   if (busy.value || attempt.value) return;
   busy.value = true; note.value = '';
   try {
     const started = await runtimeApi.startChatGptLogin(connectionId);
     if (disposed) return;
-    remember(started); schedule();
+    remember(started);
+    if (useMockServices) { mockConsent.value = false; await poll(); return; }
+    schedule();
     // Keep a visible link if the browser blocks a popup after the async request.
     window.open(started.authorizationUrl, '_blank', 'noopener,noreferrer');
   } catch (error) { note.value = errorMessage(error); }
@@ -70,6 +77,11 @@ defineExpose({ start });
     <h2>{{ t('authUi.title') }}</h2>
     <p>{{ t('authUi.description') }}</p>
     <Button type="button" :disabled="busy || !!attempt" @click="start()">Continue with ChatGPT</Button>
+    <div v-if="mockConsent" class="authorization-pending" data-testid="mock-login-consent">
+      <p>{{ t('preview.loginConsent') }}</p>
+      <Button type="button" :disabled="busy" @click="start(pendingConnectionId, true)">{{ t('preview.loginConfirm') }}</Button>
+      <Button type="button" @click="mockConsent = false">{{ t('composerUi.close') }}</Button>
+    </div>
     <div v-if="attempt" class="authorization-pending">
       <p>{{ t('authUi.waiting') }}</p>
       <a :href="attempt.authorizationUrl" target="_blank" rel="noopener noreferrer">{{ t('authUi.openBrowser') }}</a>

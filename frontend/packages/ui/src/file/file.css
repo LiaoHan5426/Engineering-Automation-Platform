@@ -1,0 +1,10 @@
+.eap-file {
+  max-width: 100%;
+  font: inherit;
+  font-size: var(--eap-font-size-sm, 12px);
+}
+
+.eap-file:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

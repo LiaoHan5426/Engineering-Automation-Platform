@@ -34,7 +34,8 @@ EAP_AI_PROVIDER=none              # openai enables the installed official provid
 EAP_AI_MODEL=gpt-4.1-mini         # configure an API model you are authorized to use
 EAP_AI_BASE_URL=https://api.openai.com
 OPENAI_API_KEY=<injected-only-when-enabled>
-EAP_AI_AUTHORIZED_ROOT=<server-approved-workspace-root>
+EAP_AUTHORIZED_ROOT=<optional-override-of-process-workspace-root>
+EAP_AI_AUTHORIZED_ROOT=<legacy-fallback-same-as-EAP_AUTHORIZED_ROOT>
 EAP_AI_ARTIFACT_ROOT=.eap-ai-artifacts
 
 # SQL business stage (separate from connection configuration)
@@ -70,7 +71,12 @@ available. SQL's compression/token budget/cache/decision settings remain busines
 
 The current official provider has not been validated against arbitrary local OpenAI-compatible
 servers. Such a connection needs its own authorized integration test; do not declare it supported
-from a saved URL. The Chat workbench is not yet connected to this service.
+from a saved URL. Chat may use a saved OpenAI-compatible connection selected in settings; that path
+is auxiliary to engineering delivery — see [architecture.md](architecture.md) and
+[running-context.md](running-context.md). Prefer `EAP_AUTHORIZED_ROOT` for an explicit process-bound
+root. When both keys are empty, the colocated local service binds to the detected process workspace
+(git root / `user.dir`). Legacy `EAP_AI_AUTHORIZED_ROOT` is only a same-path fallback; conflicting
+paths refuse. This is not a remote multi-tenant grant store.
 
 ## Database initialisation
 
@@ -97,9 +103,8 @@ perform any database reset. Real empty-database migration acceptance must be rep
 - Maven 3.9+
 - Git and ripgrep on `PATH`
 - Node.js compatible with Vite+, and pnpm 12.x
-- Electron is a target design; there is no implemented `apps/desktop` build/package command to run
-  today. The intended shell reuses the Node.js/pnpm toolchain; signing tools are a later delivery
-  requirement, not proof that a desktop app already exists.
+- Electron **45.0.0** scaffold lives in `frontend/apps/desktop` (`dev` / `check:preload`); Node ≥22.12.
+  There is still no signed package / auto-update command. Signing tools remain a later delivery.
 
 ## Deferred (not required now)
 

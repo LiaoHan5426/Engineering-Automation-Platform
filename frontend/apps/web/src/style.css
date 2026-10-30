@@ -1,4 +1,5 @@
 /* Theme tokens + document base from @eap/style (must precede Tailwind rules). */
+@import url("@eap/style/tokens.css");
 @import url("@eap/style/themes/light.css");
 @import url("@eap/style/themes/dark.css");
 @import url("@eap/style/base.css");
@@ -206,28 +207,6 @@ ol {
   color: var(--text-soft);
 }
 
-.workspace-input {
-  box-sizing: border-box;
-  display: block;
-  width: 100%;
-  padding: 10px 12px;
-  margin: 0 0 4px;
-  resize: vertical;
-  background: #fff;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-}
-
-.workspace-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.workspace-input:disabled {
-  background: var(--surface-2);
-}
-
 .code-input {
   font-family: var(--font-mono);
   font-size: 12.5px;
@@ -240,6 +219,36 @@ ol {
   gap: 10px;
   align-items: center;
   margin-top: 14px;
+}
+
+.note-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.note-row > .eap-input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.note-row > .eap-button {
+  flex: none;
+}
+
+.eap-table .note-row,
+.cap-meta .note-row {
+  margin-top: 0;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .metadata-fields {
@@ -472,11 +481,6 @@ label.row {
 .form-grid select {
   width: 100%;
   min-width: 0;
-  padding: 9px 11px;
-  color: inherit;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
 }
 
 .form-grid .wide {
@@ -968,23 +972,7 @@ label.row {
 }
 
 .manager-tabs {
-  display: flex;
-  gap: 6px;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.manager-tabs button {
-  padding: 10px 14px;
-  font-weight: 600;
-  color: var(--text-soft);
-  background: transparent;
-  border: 0;
-}
-
-.manager-tabs button.active {
-  color: var(--accent);
-  border-bottom: 2px solid var(--accent);
 }
 
 .editor-workspace {
@@ -1277,14 +1265,6 @@ label.row {
   margin-top: 14px;
 }
 
-.facts-table {
-  width: 100%;
-}
-
-.facts-table td:first-child {
-  white-space: nowrap;
-}
-
 .fact-group {
   margin-top: 12px;
 }
@@ -1334,36 +1314,95 @@ label.row {
   color: var(--text-mute);
 }
 
-.cap-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.eap-panel > header.cap-head {
+  display: grid;
+  grid-template-areas: "title status tools" "note note note";
+  grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+  gap: 6px 16px;
   align-items: center;
-  justify-content: space-between;
+  margin-bottom: 0;
 }
 
-.cap-title {
-  display: block;
-  margin-top: 8px;
-  font-size: 12.5px;
+.cap-head__main {
+  display: contents;
+}
+
+.eap-panel > header.cap-head h2,
+.eap-panel > header.cap-head h3 {
+  grid-area: title;
+  min-width: 0;
+  margin: 0;
+}
+
+.eap-panel > header.cap-head p {
+  grid-area: note;
+  max-width: none;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.cap-head__scope {
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.cap-head__status {
+  display: flex;
+  flex-wrap: nowrap;
+  grid-area: status;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.cap-head__tools {
+  display: flex;
+  flex-wrap: nowrap;
+  grid-area: tools;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.cap-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--neutral);
+  white-space: nowrap;
+  background: var(--neutral-bg);
+  border-radius: 999px;
 }
 
 .cap-meta {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 4px 10px;
-  margin: 10px 0 0;
-  font-size: 11.5px;
-  color: var(--text-soft);
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 16px;
+  align-items: baseline;
+  padding-top: 12px;
+  margin: 12px 0 0;
+  border-top: 1px solid var(--border);
 }
 
-.cap-meta dt {
+.eap-panel .cap-meta dt {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
   color: var(--text-mute);
   white-space: nowrap;
 }
 
+.eap-panel .cap-meta dt::after {
+  content: "：";
+}
+
 .cap-meta dd {
   margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
   overflow-wrap: anywhere;
 }
 
@@ -1997,7 +2036,8 @@ details.why p {
   align-items: center;
 }
 
-.rule-edit .rule-cond .workspace-input {
+.rule-edit .rule-cond .eap-input,
+.rule-edit .rule-cond .eap-select {
   flex: 1 1 140px;
   width: auto;
   min-width: 140px;

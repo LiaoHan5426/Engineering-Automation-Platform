@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
 import { runtimeApi } from "@eap/runtime-client";
-import { ConfirmBox, Feedback, Button, EmptyState } from "@eap/ui";
+import { Button, ConfirmBox, EmptyState, Feedback, Input, Select, Tabs, Textarea } from "@eap/ui";
 import { errorMessage } from "../../lib/presentation";
 const filter = ref("");
 const bases = ref<Array<{ id: string; name: string; description: string; documents: number }>>([]);
@@ -14,6 +14,8 @@ const selected = ref(""),
   query = ref(""),
   message = ref("");
 const matches = ref<Array<{ source: string; excerpt: string }>>([]);
+const searchScope = ref("all");
+let selectionRequest = 0;
 const busy = ref(false);
 const creating = ref(false),
   composing = ref(false),
@@ -28,6 +30,7 @@ const discardOpen = ref(false);
 const pendingSelect = ref("");
 const hasDraft = () => composing.value && !!(title.value.trim() || content.value.trim());
 async function requestSelect(id: string) {
+  if (busy.value) return;
   if (id === selected.value) return;
   if (hasDraft()) {
     // 记住操作者本来想去哪：确认框确认的是这次跳转，而不是一个无来由的「确定」。
@@ -35,7 +38,8 @@ async function requestSelect(id: string) {
     discardOpen.value = true;
     return;
   }
-  await select(id);
+  if (!id) { composing.value = false; return; }
+  await action(() => select(id));
 }
 async function confirmDiscard() {
   discardOpen.value = false;
@@ -44,7 +48,7 @@ async function confirmDiscard() {
   composing.value = false;
   title.value = "";
   content.value = "";
-  if (target) await select(target);
+  if (target) await action(() => select(target));
   else message.value = "已放弃本次未保存的编辑，正文没有写入任何知识库。";
 }
 /** 命中的那一句就是操作者真正会丢掉的东西，所以它必须被说出来。 */
@@ -149,12 +153,16 @@ async function load() {
   bases.value = (await runtimeApi.knowledgeBases()).items;
 }
 async function select(id: string) {
+  const request = ++selectionRequest;
   const result = await runtimeApi.knowledgeDocuments(id);
+  if (request !== selectionRequest) return;
   selected.value = id;
   activeDocument.value = null;
   composing.value = false;
   editing.value = false;
   documents.value = result.items;
+  matches.value = [];
+  searched.value = false;
 }
 async function action(work: () => Promise<void>) {
   if (busy.value) return;
@@ -192,7 +200,7 @@ async function add() {
 }
 async function search() {
   await action(async () => {
-    matches.value = (await runtimeApi.searchKnowledge(query.value)).items;
+    matches.value = (await runtimeApi.searchKnowledge(query.value, searchScope.value === 'current' ? selected.value : undefined)).items;
     searched.value = true;
   });
 }
@@ -214,14 +222,14 @@ defineExpose({
         <Button variant="primary" :disabled="busy" @click="creating = !creating"> ＋ 新建 </Button>
       </div>
       <form v-if="creating" @submit.prevent="create">
-        <label>名称<input v-model="name" class="workspace-input" required /></label
-        ><label>说明<input v-model="description" class="workspace-input" /></label
-        ><Button variant="primary" :disabled="busy || !name.trim()"> 创建</Button
+        <label>名称<Input v-model="name" required /></label
+        ><label>说明<Input v-model="description" /></label
+        ><Button type="submit" variant="primary" :disabled="busy || !name.trim()"> 创建</Button
         ><Button variant="secondary" type="button" @click="creating = false">取消</Button>
       </form>
-      <input
+      <Input
         v-model="filter"
-        class="workspace-input"
+       
         placeholder="搜索知识库"
         aria-label="搜索知识库"
       /><button
@@ -232,7 +240,7 @@ defineExpose({
         class="manager-item"
         :class="{ active: selected === base.id }"
         :disabled="busy"
-        @click="action(() => requestSelect(base.id))"
+        @click="requestSelect(base.id)"
       >
         <strong>{{ base.name }}</strong
         ><small>{{ base.documents }} 篇文档 · {{ base.description || "暂无说明" }}</small>
@@ -278,23 +286,25 @@ defineExpose({
           </Button>
         </div>
       </div>
-      <div class="manager-tabs">
-        <button :class="{ active: tab === 'documents' }" @click="tab = 'documents'">文档</button
-        ><button :class="{ active: tab === 'search' }" @click="tab = 'search'">全库检索</button>
-      </div>
+      <Tabs
+        v-model="tab"
+        class="manager-tabs"
+        label="知识库内容"
+        :tabs="[
+          { id: 'documents', label: '文档' },
+          { id: 'search', label: '知识检索' },
+        ]"
+      />
       <Feedback v-if="message">{{ message }}</Feedback>
       <p v-if="busy" role="status">正在处理…</p>
 
       <form v-if="editing && selected" class="pack-form" @submit.prevent="renameBase">
-        <p class="hint">
-          名称与说明只影响这个知识库在控制台里的样子：它被哪些专家引用、检索来源怎么标注，都读这里。
-          改名不会移动或重写任何文档正文。
-        </p>
+        <p class="hint">改名不会改动已录入的文档。</p>
         <label
-          >名称<input v-model="editName" class="workspace-input" required maxlength="200" /></label
-        ><label>说明<input v-model="editDescription" class="workspace-input" /></label>
+          >名称<Input v-model="editName" required maxlength="200" /></label
+        ><label>说明<Input v-model="editDescription" /></label>
         <div class="form-actions">
-          <Button variant="primary" :disabled="busy || !editName.trim() || !renameDirty">
+          <Button type="submit" variant="primary" :disabled="busy || !editName.trim() || !renameDirty">
             保存
           </Button>
           <Button variant="secondary" type="button" :disabled="busy" @click="editing = false">
@@ -308,20 +318,17 @@ defineExpose({
         <EmptyState v-if="!selected">从左侧选择知识库，查看文档或录入新知识。</EmptyState>
         <form v-else-if="composing" @submit.prevent="add">
           <h3>录入知识文档</h3>
-          <p class="hint">
-            正文会按 1500 字符切分成段后入库，检索命中的是段而不是整篇。含密码、Token
-            或连接串的正文会被后端拒绝。
-          </p>
-          <label>标题<input v-model="title" class="workspace-input" required /></label
+          <p class="hint">不要写入密码、Token 或连接串。</p>
+          <label>标题<Input v-model="title" required /></label
           ><label
-            >正文<textarea
+            >正文<Textarea
               v-model="content"
-              class="workspace-input"
+             
               rows="12"
               required
               placeholder="表结构说明、业务规则或已验证优化案例"
-            ></textarea></label
-          ><Button variant="primary" :disabled="busy || !title.trim() || !content.trim()">
+            ></Textarea></label
+          ><Button type="submit" variant="primary" :disabled="busy || !title.trim() || !content.trim()">
             保存文档</Button
           ><Button variant="secondary" type="button" @click="requestSelect('')">取消</Button>
         </form>
@@ -352,9 +359,6 @@ defineExpose({
                 </Button>
               </div>
               <pre class="document-content">{{ activeDocument.content }}</pre>
-              <p class="hint">
-                正文是分段的拼接结果：检索命中的是段，所以这里看到的是全部段按顺序拼起来的样子。
-              </p>
             </article>
             <EmptyState v-else-if="documents.length">选择文档查看正文。</EmptyState>
           </div></template
@@ -362,12 +366,16 @@ defineExpose({
       </template>
       <template v-else
         ><form class="manager-toolbar" @submit.prevent="search">
-          <input
+          <Select v-model="searchScope" aria-label="检索范围" :disabled="busy" @change="matches = []; searched = false">
+            <option value="all">全部知识库</option>
+            <option value="current" :disabled="!selected">当前知识库</option>
+          </Select>
+          <Input
             v-model="query"
-            class="workspace-input"
+           
             aria-label="检索关键词"
-            placeholder="检索全部知识库中的关键词"
-          /><Button variant="primary" :disabled="busy || !query.trim()"> 检索 </Button>
+            :placeholder="searchScope === 'current' ? '检索当前知识库中的关键词' : '检索全部知识库中的关键词'"
+          /><Button type="submit" variant="primary" :disabled="busy || !query.trim()"> 检索 </Button>
         </form>
         <EmptyState v-if="searched && !matches.length && !busy">
           未找到匹配内容，请调整关键词。
@@ -376,8 +384,7 @@ defineExpose({
           <strong>{{ match.source }}</strong>
           <p>{{ match.excerpt }}</p>
         </article>
-        <small>当前使用全文检索，尚未启用向量检索。</small></template
-      >
+        </template>
     </div>
 
     <ConfirmBox

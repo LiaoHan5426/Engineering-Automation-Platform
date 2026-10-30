@@ -5,7 +5,7 @@ import { i18n } from '../../lib/i18n';
 import { createPluginHost } from './host';
 import PluginSlot from './PluginSlot.vue';
 
-vi.mock('../chat/ChatWorkspace.vue', () => ({ default: defineComponent({
+const ChatProbe = defineComponent({
   props: ['active'],
   setup() {
     const answer = ref('waiting');
@@ -13,7 +13,7 @@ vi.mock('../chat/ChatWorkspace.vue', () => ({ default: defineComponent({
       h('input'), h('button', { onClick: async () => { await pending; answer.value = 'finished'; } }, 'Send'), h('p', answer.value),
     ]);
   },
-}) }));
+});
 vi.mock('./BuilderWorkspace.vue', () => ({ default: defineComponent({
   props: ['instanceId'],
   setup(props) { return () => h('section', { 'data-testid': `builder-${props.instanceId}` }, [h('textarea')]); },
@@ -30,7 +30,7 @@ it('retains independent drafts and an in-flight response across areas, and relea
   const host = createPluginHost({ getItem: () => null, setItem: () => {} });
   host.setEnabled('chat', true); host.setEnabled('builder', true);
   root = document.createElement('div'); document.body.append(root);
-  app = createApp({ render: () => h(PluginSlot, { viewId: view.value, host }) }); app.use(i18n).mount(root);
+  app = createApp({ render: () => h(PluginSlot, { viewId: view.value, host, chatView: ChatProbe }) }); app.use(i18n).mount(root);
   const chat = root.querySelector('[data-testid="chat-probe"]') as HTMLElement;
   (chat.querySelector('input')!).value = 'chat draft';
   chat.querySelector('button')!.click();

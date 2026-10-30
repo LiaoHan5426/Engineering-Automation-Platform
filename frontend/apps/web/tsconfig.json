@@ -1,7 +1,9 @@
 {
   "extends": "@eap/tsconfig/base.json",
   "compilerOptions": {
-    "types": ["vite/client"],
+    "types": [
+      "vite/client"
+    ],
     "composite": true,
     "declaration": true,
     "emitDeclarationOnly": true,
@@ -14,8 +16,17 @@
     },
     {
       "path": "../../packages/ui"
+    },
+    {
+      "path": "../../packages/plugin-table"
     }
   ],
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
-  "exclude": ["src/**/*.test.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.vue"
+  ],
+  "exclude": [
+    "src/**/*.test.ts"
+  ]
 }

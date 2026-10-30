@@ -10,6 +10,9 @@ Root and module AGENTS files contain rules; this guide contains acceptance evide
 | Architecture | source-backed audit, alternatives, staged plan | explicit approval before large implementation |
 | Feature | approved contract and smallest end-to-end slice | relevant build/tests plus actual business behavior |
 | Defect | reproduction and affected boundary | cause corrected, relevant regression passes |
+| Frontend UI / shared module | placement decision per [frontend-ui-shared-module-boundaries](decisions/frontend-ui-shared-module-boundaries.md): search `@eap/ui` → classify L0–L5 → implement or register staging | no parallel Button/Dialog shells; boundaries + targeted tests; doc/§3.2 updated when adding a package or shared category |
+
+Frontend agents must follow `frontend/AGENTS.md` UI placement rules on every UI change. New primitives land in `@eap/ui` first; reusable composites and planned modules (`hooks`, `effects`, `layout`, `toggle`, `plugin`) use the decision doc—do not invent ad-hoc shared packages.
 
 ## Validation commands
 

@@ -50,6 +50,26 @@ public class AiChatApplication {
         return status.read();
     }
 
+    public CodeChangeService.Baseline baseline(String path) {
+        if (codeChanges == null) throw unavailable();
+        return codeChanges.inspectBaseline(path);
+    }
+
+    public CodeChangeService.SourceExcerpt source(String path) {
+        if (codeChanges == null) throw unavailable();
+        return codeChanges.inspectSource(path);
+    }
+
+    public CodeChangeService.DirtySummary dirty() {
+        if (codeChanges == null) throw unavailable();
+        return codeChanges.inspectDirty();
+    }
+
+    public CodeChangeService.VerificationProbe verificationProbe() {
+        if (codeChanges == null) throw unavailable();
+        return codeChanges.probeVerification();
+    }
+
     public AiConversationResponse open(String json) {
         objectBody(json, Set.of());
         var session = conversations.open(workspace, AiConnectionStatus.workspaceLabel(workspace));
@@ -168,8 +188,12 @@ public class AiChatApplication {
             try { versionId = UUID.fromString(context.prototypeVersionId()); } catch (IllegalArgumentException invalid) { throw invalid(); }
             prototype = JSON.writeValueAsString(prototypes.find(versionId));
         }
-        String composed = context.userMessage(message, prototype);
-        if (composed.length() > 64000) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TASK_CONTEXT_TOO_LARGE");
+        String draft = context.userMessage(message, prototype);
+        if (context.mode().equals("code") && !context.targetPath().isBlank() && codeChanges != null) {
+            draft = TaskContext.withWorkspaceSource(draft, codeChanges.inspectSource(context.targetPath()));
+        }
+        if (draft.length() > 64000) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TASK_CONTEXT_TOO_LARGE");
+        final String composed = draft;
         var outcome = conversations.exclusive(id, () -> {
             var current = conversations.binding(id);
             var selectedClient = current == null ? null : current.client;
@@ -196,7 +220,8 @@ public class AiChatApplication {
         });
         var response = message(outcome);
         if (context.mode().equals("code") && outcome.error().isEmpty() && codeChanges != null) {
-            var proposal = codeChanges.propose(id, outcome.answer(), context.approval().equals("review"));
+            var proposal = codeChanges.propose(id, outcome.answer(), context.approval().equals("review"),
+                    context.targetPath());
             return new AiMessageResponse(response.executionId(), proposal.summary(), response.error(), response.status(),
                     response.approval(), response.verification(), response.toolEvents(), response.artifactError(), response.artifacts(), proposal);
         }

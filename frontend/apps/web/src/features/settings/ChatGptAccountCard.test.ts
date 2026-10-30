@@ -4,6 +4,7 @@ import { createApp, h, nextTick, type App } from 'vue';
 import { runtimeApi } from '@eap/runtime-client';
 import { i18n } from '../../lib/i18n';
 import ChatGptAccountCard from './ChatGptAccountCard.vue';
+vi.mock('../../lib/serviceConfig', () => ({ useMockServices: false }));
 let app: App; let root: HTMLDivElement;
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); vi.useRealTimers(); sessionStorage.clear(); });
 async function flush() { for (let i = 0; i < 8; i++) await nextTick(); }

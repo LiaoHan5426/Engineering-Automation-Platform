@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch, toRaw } from "vue";
 import { runtimeApi, type CapabilityItem, type CapabilityKindSummary } from "@eap/runtime-client";
 import { assertExpertId } from "@eap/expert-sdk";
-import { Button, ConfirmBox, EmptyState, Feedback } from "@eap/ui";
+import { Button, Checkbox, ConfirmBox, EmptyState, Feedback, Input, Select } from "@eap/ui";
 import { errorMessage } from "../../lib/presentation";
 import {
   isExpertScoped as capabilityIsExpertScoped,
@@ -537,9 +537,9 @@ onMounted(refreshData);
       >
         重试加载
       </Button>
-      <input
+      <Input
         v-model="filter"
-        class="workspace-input"
+       
         aria-label="搜索专家"
         placeholder="搜索名称或标识"
       />
@@ -614,20 +614,13 @@ onMounted(refreshData);
           <div class="manager-toolbar">
             <h3>流程画布</h3>
             <div class="form-actions">
-              <select v-model="nodeCapability" aria-label="选择节点能力">
+              <Select v-model="nodeCapability" aria-label="选择节点能力">
                 <optgroup v-for="group in capabilityGroups" :key="group.label" :label="group.label">
                   <option v-for="option in group.options" :key="option.name" :value="option.name">
                     {{ option.name }}<template v-if="option.title"> — {{ option.title }}</template>
                   </option>
-                </optgroup></select
-              ><Button variant="primary" @click="addNode">＋ 添加节点</Button>
-              <button
-                v-if="steps.length > 1 && !edges.length"
-                class="eap-button"
-                @click="connectInOrder"
-              >
-                按当前排列串联
-              </button>
+                </optgroup></Select><Button variant="primary" @click="addNode">＋ 添加节点</Button>
+              <Button v-if="steps.length > 1 && !edges.length" @click="connectInOrder">按当前排列串联</Button>
             </div>
           </div>
           <p v-if="disabledPlatform.length" class="hint">
@@ -642,12 +635,12 @@ onMounted(refreshData);
         <aside class="eap-panel property-panel">
           <h3>专家信息</h3>
           <label
-            >标识<input v-model="id" class="workspace-input" placeholder="sql-reviewer" /></label
-          ><label>名称<input v-model="name" class="workspace-input" /></label>
+            >标识<Input v-model="id" placeholder="sql-reviewer" /></label
+          ><label>名称<Input v-model="name" /></label>
           <h3>知识库配置</h3>
           <div class="choice-list">
             <label v-for="base in library" :key="base.id"
-              ><input v-model="selectedKnowledge" type="checkbox" :value="base.id" />{{
+              ><Checkbox v-model="selectedKnowledge" :value="base.id" />{{
                 base.name
               }}</label
             ><label
@@ -655,7 +648,7 @@ onMounted(refreshData);
                 (key) => !library.some((item) => item.id === key),
               )"
               :key="base"
-              ><input v-model="selectedKnowledge" type="checkbox" :value="base" />{{
+              ><Checkbox v-model="selectedKnowledge" :value="base" />{{
                 base
               }}（未加载的定义引用）</label
             >
@@ -664,7 +657,7 @@ onMounted(refreshData);
           <h3>数据库资料授权</h3>
           <div class="choice-list">
             <label v-for="profile in databaseLibrary" :key="profile.id"
-              ><input v-model="selectedDatabases" type="checkbox" :value="profile.id" />{{
+              ><Checkbox v-model="selectedDatabases" :value="profile.id" />{{
                 profile.label
               }}</label
             >
@@ -673,9 +666,8 @@ onMounted(refreshData);
           <h3>规则配置</h3>
           <div class="choice-list">
             <label v-for="rule in ruleChoices" :key="rule.id"
-              ><input
+              ><Checkbox
                 v-model="selectedRules"
-                type="checkbox"
                 :value="rule.id"
                 :disabled="rule.id === 'database.credentials.never-expose'"
               />{{ rule.name }}</label
@@ -685,7 +677,7 @@ onMounted(refreshData);
                 (key) => !ruleChoices.some((item) => item.id === key),
               )"
               :key="rule"
-              ><input v-model="selectedRules" type="checkbox" :value="rule" />{{ rule }}</label
+              ><Checkbox v-model="selectedRules" :value="rule" />{{ rule }}</label
             >
           </div>
           <small
@@ -694,7 +686,7 @@ onMounted(refreshData);
           <h3>规则包（专家判定依据）</h3>
           <div class="choice-list">
             <label v-for="pack in rulePackChoices" :key="pack.id" class="pack-choice"
-              ><input v-model="selectedRulePacks" type="checkbox" :value="pack.id" />
+              ><Checkbox v-model="selectedRulePacks" :value="pack.id" />
               <span
                 >{{ pack.name }}
                 <span class="hint"
@@ -726,19 +718,19 @@ onMounted(refreshData);
           </p>
           <div class="choice-list">
             <label v-for="tool in declaredMcpTools" :key="tool"
-              ><input type="checkbox" checked @change="removeMcpTool(tool)" />
+              ><Checkbox :model-value="true" @change="removeMcpTool(tool)" />
               <span class="mono">{{ tool }}</span></label
             >
             <p v-if="!declaredMcpTools.length" class="hint">未授权任何 MCP 工具。</p>
           </div>
           <div class="form-actions">
-            <select
+            <Select
               v-model="mcpToolToGrant"
               aria-label="选择要授权的 MCP 工具"
               :disabled="!mcpToolChoices.length"
             >
               <option v-for="tool in mcpToolChoices" :key="tool" :value="tool">{{ tool }}</option>
-            </select>
+            </Select>
             <Button variant="secondary" :disabled="!mcpToolChoices.length" @click="addMcpTool">
               授权该工具
             </Button>
@@ -765,16 +757,16 @@ onMounted(refreshData);
           <h3>节点属性</h3>
           <template v-if="selectedStep"
             ><small>节点标识：{{ selectedStep.id }}</small
-            ><label>显示名称<input v-model="selectedStep.label" class="workspace-input" /></label
+            ><label>显示名称<Input v-model="selectedStep.label" /></label
             ><label
-              >调用能力<input
+              >调用能力<Input
                 v-model="selectedStep.capability"
-                class="workspace-input"
+               
                 placeholder="sql.parse" /></label
             ><small v-if="isExpertScoped(selectedStep.capability)" class="requirement-line">
               专家级能力：不会全局启用，只在本专家本次执行的会话内调用；移除授权后该节点会一并移除。 </small
             ><label
-              ><input v-model="selectedStep.required" type="checkbox" /> 失败时阻止后续执行</label
+              ><Checkbox v-model="selectedStep.required" /> 失败时阻止后续执行</label
             ><Button variant="secondary" @click="removeNode">移除节点及连线</Button></template
           >
           <EmptyState>点击画布上的节点标题查看属性。</EmptyState>

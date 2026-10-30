@@ -4,6 +4,7 @@ import { createApp, nextTick, type App } from "vue";
 import { runtimeApi, type PrototypeDeliveryRecord, type PrototypeVersionRecord } from "@eap/runtime-client";
 import { i18n } from "../../lib/i18n";
 import BuilderWorkspace from "./BuilderWorkspace.vue";
+vi.mock('grapesjs', () => { throw new Error('Canvas is browser-tested'); });
 import { createPluginHost, type PluginHost } from "./host";
 import { memoryStore } from "./model";
 

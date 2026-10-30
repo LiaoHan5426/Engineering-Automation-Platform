@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { runtimeApi } from "@eap/runtime-client";
-import { ConfirmBox, EmptyState, Feedback, Button } from "@eap/ui";
+import { Button, Checkbox, ConfirmBox, EmptyState, Feedback, Input, Select } from "@eap/ui";
 import { errorMessage } from "../../lib/presentation";
 type Column = { name: string; type: string; nullable: boolean };
 type Table = { name: string; columns: Column[] };
@@ -160,9 +160,9 @@ onMounted(refresh);
         <h2>数据库资料</h2>
         <Button variant="primary" :disabled="busy" @click="create"> ＋ 新建资料 </Button>
       </div>
-      <input
+      <Input
         v-model="filter"
-        class="workspace-input"
+       
         placeholder="搜索资料名称"
         aria-label="搜索数据库资料"
       /><button
@@ -214,7 +214,7 @@ onMounted(refresh);
             >
               放弃修改
             </Button>
-            <Button variant="primary" :disabled="busy || !label.trim()">
+            <Button type="submit" variant="primary" :disabled="busy || !label.trim()">
               {{ busy ? "保存中…" : "保存资料" }}
             </Button>
           </div>
@@ -225,21 +225,21 @@ onMounted(refresh);
         </Feedback>
         <fieldset :disabled="busy" class="metadata-fields">
           <label
-            >资料名称<input
+            >资料名称<Input
               v-model="label"
-              class="workspace-input"
+             
               required
               maxlength="200" /></label
           ><label
-            >数据库引擎<select v-model="engine" class="workspace-input">
+            >数据库引擎<Select v-model="engine">
               <option>PostgreSQL</option>
               <option>MySQL</option>
               <option>SQL Server</option>
               <option>Oracle</option>
               <option>SQLite</option>
-            </select></label
+            </Select></label
           ><label
-            >环境<input v-model="environment" class="workspace-input" required maxlength="40"
+            >环境<Input v-model="environment" required maxlength="40"
           /></label>
           <div class="manager-toolbar">
             <h3>表结构</h3>
@@ -255,9 +255,9 @@ onMounted(refresh);
           <article v-for="(table, index) in tables" :key="index" class="observation">
             <div class="form-actions">
               <label class="grow"
-                >表名<input
+                >表名<Input
                   v-model="table.name"
-                  class="workspace-input"
+                 
                   placeholder="schema.table"
                   required /></label
               ><Button variant="secondary" type="button" @click="tables.splice(index, 1)">
@@ -269,13 +269,13 @@ onMounted(refresh);
               :key="columnIndex"
               class="metadata-row"
             >
-              <label>字段名称<input v-model="column.name" class="workspace-input" required /></label
+              <label>字段名称<Input v-model="column.name" required /></label
               ><label
-                >类型<input
+                >类型<Input
                   v-model="column.type"
-                  class="workspace-input"
+                 
                   placeholder="uuid / varchar / bigint" /></label
-              ><label><input v-model="column.nullable" type="checkbox" />允许空值</label
+              ><label><Checkbox v-model="column.nullable" />允许空值</label
               ><Button
                 variant="secondary"
                 type="button"
@@ -304,17 +304,17 @@ onMounted(refresh);
           </div>
           <EmptyState v-if="!indexes.length">尚未登记索引，这不代表数据库没有索引。</EmptyState>
           <article v-for="(index, position) in indexes" :key="position" class="observation">
-            <label>索引名称<input v-model="index.name" class="workspace-input" required /></label
+            <label>索引名称<Input v-model="index.name" required /></label
             ><label
-              >所属表<input
+              >所属表<Input
                 v-model="index.table"
-                class="workspace-input"
+               
                 list="database-table-names"
                 required /></label
             ><label
-              >索引列（按顺序，逗号分隔）<input
+              >索引列（按顺序，逗号分隔）<Input
                 :value="index.columns.join(', ')"
-                class="workspace-input"
+               
                 required
                 @input="
                   index.columns = ($event.target as HTMLInputElement).value
@@ -324,7 +324,7 @@ onMounted(refresh);
                 "
             /></label>
             <div class="form-actions">
-              <label><input v-model="index.unique" type="checkbox" />唯一索引</label
+              <label><Checkbox v-model="index.unique" />唯一索引</label
               ><Button variant="secondary" type="button" @click="indexes.splice(position, 1)">
                 移除索引
               </Button>

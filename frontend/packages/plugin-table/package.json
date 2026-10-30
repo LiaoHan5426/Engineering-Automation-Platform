@@ -1,0 +1,22 @@
+{
+  "name": "@eap/plugin-table",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "dependencies": {
+    "@eap/style": "workspace:*",
+    "@eap/ui": "workspace:*",
+    "@vxe-ui/core": "~4.5.4",
+    "vue": "catalog:frontend",
+    "vxe-table": "~4.23.12"
+  },
+  "devDependencies": {
+    "@eap/tsconfig": "workspace:*",
+    "typescript": "catalog:tooling",
+    "vxe-pc-ui": "~4.20.33"
+  }
+}

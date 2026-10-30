@@ -55,3 +55,7 @@ reports/
 .eap-ai-artifacts/
 .eap/
 /docs/audits/temp-probe-runner-*.ps1
+
+# Unsanitized local UI references: keep Markdown links, never commit the media.
+/docs/assets/
+/docs/屏幕录制 2026-10-26 143418.mp4

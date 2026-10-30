@@ -3,14 +3,16 @@ import { computed, onMounted, ref, watch } from "vue";
 import {
   runtimeApi,
   type CapabilityItem,
+  type CapabilityKindSummary,
   type CliProgramItem,
   type CliOperationItem,
   type CliProbeResult,
 } from "@eap/runtime-client";
-import { Button, ConfirmBox, Feedback } from "@eap/ui";
+import { Badge, Button, ConfirmBox, Feedback, Input, Select, Textarea } from "@eap/ui";
+import { Table, type TableColumn } from "@eap/plugin-table";
 import { errorMessage } from "../../lib/presentation";
 
-const props = defineProps<{ items: CapabilityItem[] }>();
+const props = defineProps<{ items: CapabilityItem[]; kind: CapabilityKindSummary | null }>();
 const emit = defineEmits<{ saved: [] }>();
 const programs = ref<CliProgramItem[]>([]);
 const busy = ref(false);
@@ -27,6 +29,14 @@ const notesDraft = ref<Record<string, string>>({});
 const probes = ref<Record<string, CliProbeResult>>({});
 const pendingDelete = ref<{ programId: string; operationId?: string; title: string } | null>(null);
 const itemFor = (id: string) => props.items.find((item) => item.name === id);
+const operationColumns: TableColumn[] = [
+  { key: "operation", title: "操作", minWidth: 160, overflow: "wrap" },
+  { key: "args", title: "参数", mono: true, minWidth: 140 },
+  { key: "purpose", title: "用途", minWidth: 180 },
+  { key: "status", title: "状态 / 引用", minWidth: 120, overflow: "wrap" },
+  { key: "notes", title: "备注", minWidth: 260, overflow: "wrap" },
+  { key: "manage", title: "管理", minWidth: 140, overflow: "wrap" },
+];
 const visiblePrograms = computed(() =>
   programs.value.filter(
     (program) =>
@@ -160,179 +170,195 @@ async function remove() {
 </script>
 
 <template>
-  <article class="eap-panel panel-block">
-    <header class="panel-head">
-      <div>
-        <h2>CLI 程序</h2>
-        <p>一个程序登记一次。Git 已预置 status、diff 操作，可以直接在专家流程中选择。</p>
+  <article class="eap-panel panel-block cap-group">
+    <header class="cap-head">
+      <div class="cap-head__main">
+        <h2>
+          <Badge class="cap-head__scope" :tone="kind?.expertScoped ? 'warning' : 'neutral'">
+            {{ kind?.scopeLabel || "平台级" }}
+          </Badge>
+          {{ kind?.label || "本地 CLI" }} <span class="mono kind-id">{{ kind?.id || "cli" }}</span>
+        </h2>
+        <p>{{ kind?.description }}</p>
       </div>
-      <Button variant="primary" :disabled="busy" @click="programEditor = !programEditor"
-        >＋ 登记程序</Button
-      >
+      <div class="cap-head__status">
+        <span class="cap-status">
+          {{ programs.length }} 个程序 ·
+          {{ items.filter((item) => item.kind === "cli").length }} 个操作
+        </span>
+      </div>
+      <div class="cap-head__tools">
+        <Button variant="primary" size="sm" :disabled="busy" @click="programEditor = !programEditor">
+          ＋ 登记程序
+        </Button>
+      </div>
     </header>
     <Feedback v-if="message" :tone="failed ? 'error' : 'success'">{{ message }}</Feedback>
     <form v-if="programEditor" class="form-grid" @submit.prevent="register">
-      <label>程序标识<input v-model="programForm.id" required placeholder="eslint" /></label>
-      <label>程序名称<input v-model="programForm.name" required placeholder="ESLint" /></label>
+      <label>程序标识<Input v-model="programForm.id" required placeholder="eslint" /></label>
+      <label>程序名称<Input v-model="programForm.name" required placeholder="ESLint" /></label>
       <label
-        >可执行文件<input v-model="programForm.binary" required placeholder="eslint 或绝对路径"
+        >可执行文件<Input v-model="programForm.binary" required placeholder="eslint 或绝对路径"
       /></label>
       <div class="form-actions">
-        <Button variant="primary" :disabled="busy">登记程序</Button
+        <Button type="submit" variant="primary" :disabled="busy">登记程序</Button
         ><Button variant="secondary" type="button" @click="programEditor = false">取消</Button>
       </div>
     </form>
     <div class="form-actions">
       <label
-        >显示范围<select v-model="filter">
+        >显示范围<Select v-model="filter">
           <option value="all">全部</option>
           <option value="problem">需处理</option>
           <option value="disabled">包含已停用操作</option>
-        </select></label
-      ><span class="hint"
-        >{{ programs.length }} 个程序 ·
-        {{ items.filter((item) => item.kind === "cli").length }} 个操作</span
-      >
+        </Select></label>
     </div>
   </article>
   <article v-for="program in visiblePrograms" :key="program.id" class="eap-panel panel-block">
-    <header class="panel-head">
-      <div>
+    <header class="cap-head">
+      <div class="cap-head__main">
         <h2>
           {{ program.name }} <code>{{ program.id }}</code>
         </h2>
-        <p>
-          {{ program.operations.length }} 个操作 · {{ program.builtin ? "预置程序" : "手动程序" }}
-        </p>
+        <p>{{ program.builtin ? "预置程序，操作已随安装提供。" : "手动登记的程序。" }}</p>
       </div>
-      <Button
-        variant="ghost"
-        v-if="!program.builtin"
-        :disabled="busy"
-        @click="pendingDelete = { programId: program.id, title: program.name }"
-      >
-        删除程序
-      </Button>
+      <div class="cap-head__status">
+        <span class="cap-status">{{ program.operations.length }} 个操作</span>
+      </div>
+      <div class="cap-head__tools">
+        <Button variant="secondary" size="sm" :disabled="busy" @click="configure(program)">
+          保存位置
+        </Button>
+        <Button variant="secondary" size="sm" :disabled="busy" @click="configure(program, true)">
+          恢复默认
+        </Button>
+        <Button variant="secondary" size="sm" :disabled="busy" @click="probe(program)">
+          探测程序
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          v-if="!program.builtin"
+          :disabled="busy"
+          @click="pendingDelete = { programId: program.id, title: program.name }"
+        >
+          删除程序
+        </Button>
+      </div>
     </header>
     <dl class="cap-meta">
       <dt>默认程序</dt>
       <dd class="mono">{{ program.binary }}</dd>
       <dt>当前生效</dt>
-      <dd class="mono">{{ program.channel.binary }}</dd>
+      <dd>
+        <div class="note-row">
+          <Input
+            v-model="binaryDraft[program.id]"
+            class="mono"
+            :placeholder="program.binary"
+            :aria-label="program.name + ' 二进制位置'"
+          />
+        </div>
+      </dd>
       <dt>解析路径</dt>
       <dd class="mono">{{ program.channel.resolvedPath ?? "缺少可执行文件" }}</dd>
     </dl>
-    <div class="form-actions">
-      <input
-        v-model="binaryDraft[program.id]"
-        class="workspace-input mono"
-        :placeholder="program.binary"
-        :aria-label="program.name + ' 二进制位置'"
-      /><Button variant="secondary" :disabled="busy" @click="configure(program)">保存位置</Button
-      ><Button variant="secondary" :disabled="busy" @click="configure(program, true)">
-        恢复默认</Button
-      ><Button variant="secondary" :disabled="busy" @click="probe(program)">探测程序</Button>
-    </div>
     <pre v-if="probes[program.id]" class="mono dry-result"
       >{{ probes[program.id]?.message
       }}{{ probes[program.id]?.output ? "\n" + probes[program.id]?.output : "" }}</pre>
-    <header class="panel-head">
-      <h3>可调用操作</h3>
-      <Button variant="ghost" :disabled="busy" @click="addOperation(program)"> ＋ 增加操作 </Button>
+    <header class="cap-head">
+      <div class="cap-head__main">
+        <h3>可调用操作</h3>
+      </div>
+      <div class="cap-head__tools">
+        <Button variant="ghost" size="sm" :disabled="busy" @click="addOperation(program)">
+          ＋ 增加操作
+        </Button>
+      </div>
     </header>
     <form v-if="operationProgram === program.id" class="form-grid" @submit.prevent="saveOperation">
       <label
-        >能力标识<input
+        >能力标识<Input
           v-model="operationForm.capabilityId"
           :disabled="operationEditing"
           required
           placeholder="git-log" /></label
       ><label
-        >操作名称<input v-model="operationForm.title" required placeholder="查看最近提交"
+        >操作名称<Input v-model="operationForm.title" required placeholder="查看最近提交"
       /></label>
       <label class="wide"
-        >固定参数数组<textarea
+        >固定参数数组<Textarea
           v-model="operationForm.args"
           class="mono"
           required
           placeholder='["log", "--oneline", "-10"]'
-        ></textarea></label
-      ><label class="wide">用途说明<input v-model="operationForm.description" /></label>
+        ></Textarea></label
+      ><label class="wide">用途说明<Input v-model="operationForm.description" /></label>
       <p class="hint wide">
         手动操作返回脱敏进程输出和退出码。被已启用专家引用的操作须先解除引用，才能修改或删除。
       </p>
       <div class="form-actions">
-        <Button variant="primary" :disabled="busy">保存操作</Button
+        <Button type="submit" variant="primary" :disabled="busy">保存操作</Button
         ><Button variant="secondary" type="button" @click="operationProgram = ''">取消</Button>
       </div>
     </form>
-    <div class="table-scroll">
-      <table class="facts-table">
-        <thead>
-          <tr>
-            <th>操作</th>
-            <th>参数</th>
-            <th>状态 / 引用</th>
-            <th>管理</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="operation in program.operations" :key="operation.capabilityId">
-            <td>
-              {{ operation.title }}<br /><code>{{ operation.capabilityId }}</code
-              ><br /><span class="hint">{{ operation.builtin ? "预置操作" : "手动操作" }}</span>
-              <details>
-                <summary>用途与备注</summary>
-                <p class="hint">{{ operation.description || "暂无用途说明" }}</p>
-                <input
-                  v-model="notesDraft[operation.capabilityId]"
-                  class="workspace-input"
-                  :aria-label="operation.capabilityId + ' 备注'"
-                /><Button variant="secondary" :disabled="busy" @click="saveNote(operation)">
-                  保存备注
-                </Button>
-              </details>
-            </td>
-            <td class="mono">{{ JSON.stringify(operation.args) }}</td>
-            <td>
-              {{ itemFor(operation.capabilityId)?.availabilityLabel ?? "加载中" }}<br /><span
-                class="hint"
-                >{{
-                  itemFor(operation.capabilityId)?.usedBy.join("、") || "无已启用专家引用"
-                }}</span
-              >
-            </td>
-            <td>
-              <div class="form-actions">
-                <Button variant="secondary" :disabled="busy" @click="toggle(operation)">
-                  {{ itemFor(operation.capabilityId)?.enabled ? "停用" : "启用" }}</Button
-                ><Button
-                  variant="secondary"
-                  v-if="!operation.builtin"
-                  :disabled="busy"
-                  @click="addOperation(program, operation)"
-                >
-                  编辑</Button
-                ><Button
-                  variant="ghost"
-                  v-if="!operation.builtin"
-                  :disabled="busy"
-                  @click="
-                    pendingDelete = {
-                      programId: program.id,
-                      operationId: operation.capabilityId,
-                      title: operation.title,
-                    }
-                  "
-                >
-                  删除
-                </Button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <Table
+      v-if="program.operations.length"
+      :columns="operationColumns"
+      :rows="program.operations"
+      row-key="capabilityId"
+    >
+      <template #operation="{ row }">
+        {{ row.title }}<br /><code>{{ row.capabilityId }}</code
+        ><br /><span class="hint">{{ row.builtin ? "预置操作" : "手动操作" }}</span>
+      </template>
+      <template #purpose="{ row }">
+        {{ row.description || "暂无用途说明" }}
+      </template>
+      <template #notes="{ row }">
+        <div class="note-row">
+          <Input v-model="notesDraft[row.capabilityId]" :aria-label="row.capabilityId + ' 备注'" />
+          <Button variant="secondary" size="sm" :disabled="busy" @click="saveNote(row)">保存备注</Button>
+        </div>
+      </template>
+      <template #args="{ row }">{{ JSON.stringify(row.args) }}</template>
+      <template #status="{ row }">
+        {{ itemFor(row.capabilityId)?.availabilityLabel ?? "加载中" }}<br /><span class="hint">{{
+          itemFor(row.capabilityId)?.usedBy.join("、") || "无已启用专家引用"
+        }}</span>
+      </template>
+      <template #manage="{ row }">
+        <div class="table-actions">
+          <Button variant="secondary" size="sm" :disabled="busy" @click="toggle(row)">
+            {{ itemFor(row.capabilityId)?.enabled ? "停用" : "启用" }}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            v-if="!row.builtin"
+            :disabled="busy"
+            @click="addOperation(program, row)"
+          >
+            编辑
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            v-if="!row.builtin"
+            :disabled="busy"
+            @click="
+              pendingDelete = {
+                programId: program.id,
+                operationId: row.capabilityId,
+                title: row.title,
+              }
+            "
+          >
+            删除
+          </Button>
+        </div>
+      </template>
+    </Table>
     <p v-if="!program.operations.length" class="hint">
       程序已登记。增加一个固定参数操作后，即可在专家流程中使用。
     </p>

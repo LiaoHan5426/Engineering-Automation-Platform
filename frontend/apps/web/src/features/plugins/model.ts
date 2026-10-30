@@ -9,6 +9,8 @@ export const SHELL_PAGE_IDS = [
   "databases",
   "capabilities",
   "model-settings",
+  "board",
+  "expert-catalog",
 ] as const;
 
 export const INSTALLATION_KEY = "eap.plugin.installation";

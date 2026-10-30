@@ -59,8 +59,8 @@ public class EngineeringAiConfiguration {
             throw new IllegalStateException("OpenAI configuration requires spring.ai.openai.api-key / OPENAI_API_KEY");
         var builder = models.getIfAvailable() == null ? null : builders.getIfAvailable();
         var client = builder == null ? null : createClient(builder, memory);
-        var root = runtime.root().allowed() ? runtime.root().path() : null;
-        return new EngineeringChatService(client, registry, root, new FileExecutionArtifactStore(Path.of(artifactRoot)));
+        // Process-bound root comes from RuntimeWorkspace (env only). No server-side user grant store.
+        return new EngineeringChatService(client, registry, runtime, new FileExecutionArtifactStore(Path.of(artifactRoot)));
     }
 
     static ChatClient createClient(ChatClient.Builder builder, ChatMemory memory) {

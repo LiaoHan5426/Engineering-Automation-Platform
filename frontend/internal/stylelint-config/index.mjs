@@ -42,7 +42,7 @@ export default {
     "value-keyword-case": [
       "lower",
       {
-        ignoreProperties: ["/^--font(-|$)/", "font-family"],
+        ignoreProperties: ["/^--font(-|$)/", "/^--eap-font-family/", "font-family"],
       },
     ],
   },

@@ -1,0 +1,12 @@
+.eap-checkbox {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--eap-color-primary, #347f70);
+  vertical-align: -2px;
+}
+
+.eap-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

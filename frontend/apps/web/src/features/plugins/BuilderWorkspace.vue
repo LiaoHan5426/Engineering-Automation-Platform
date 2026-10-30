@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from "vue";
+import { defineAsyncComponent, onMounted, onUnmounted, reactive, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { Badge, Button, Feedback } from "@eap/ui";
+import { Badge, Button, Feedback, Input, Textarea } from "@eap/ui";
 import { runtimeApi, type HandoffRecord, type MissionRecord, type PrototypeDeliveryRecord, type PrototypeVersionRecord } from "@eap/runtime-client";
 import { errorMessage } from "../../lib/presentation";
 import { beginHandoff, builderHandoff, handoffSucceeded } from "../handoff/handoff";
@@ -10,6 +10,10 @@ import PrototypePreview from "./PrototypePreview.vue";
 import { openVersionPreview, pressVersionPreview } from "./prototypeVersion";
 import type { PluginHost } from "./host";
 import { GRANTS, MANIFESTS, type BuilderConfig } from "./model";
+import type { LayoutDraft as LayoutDraftRecord } from "../shell/workbench";
+
+const LayoutDraft = defineAsyncComponent(() => import("../shell/LayoutDraft.vue"));
+const GrapesEditorScaffold = defineAsyncComponent(() => import("../shell/GrapesEditorScaffold.vue"));
 
 const props = defineProps<{ instanceId: BuilderConfig["instanceId"]; host: PluginHost }>();
 const { t } = useI18n();
@@ -40,6 +44,13 @@ const requests = MANIFESTS.find((item) => item.id === "builder")!.requests;
 function save() {
   props.host.saveBuilder({ ...draft });
   saved.value = true;
+}
+
+/** Layout interaction draft is local-only; copy title/prompt into the prototype fields when useful. */
+function onLayoutSaved(layout: LayoutDraftRecord) {
+  if (layout.title?.trim()) draft.draftTitle = layout.title.trim().slice(0, 80);
+  if (layout.placeholder?.trim()) draft.draftBody = layout.placeholder.trim().slice(0, 400);
+  saved.value = false;
 }
 
 function press() {
@@ -257,6 +268,10 @@ onUnmounted(() => {
       <h1>{{ instanceId === "alpha" ? t("plugin.builderAlpha") : t("plugin.builderBeta") }}</h1>
       <p>{{ t("workUi.builderSubtitle") }}</p>
     </div>
+    <section data-testid="builder-layout-draft">
+      <LayoutDraft @saved="onLayoutSaved" />
+      <GrapesEditorScaffold />
+    </section>
     <div class="builder-layout">
       <form class="stack builder-editor" @submit.prevent="save">
         <div class="section-heading"><h2>{{ t("workUi.draftEditor") }}</h2><span>{{ t("workUi.localDraft") }}</span></div>
@@ -265,16 +280,15 @@ onUnmounted(() => {
         </p>
         <label>
           {{ t("plugin.repo") }}
-          <input v-model="draft.mockRepositoryLabel" data-testid="mock-repository" @input="saved = false" />
+          <Input v-model="draft.mockRepositoryLabel" data-testid="mock-repository" @input="saved = false" />
         </label>
-        <p class="hint">{{ t("plugin.repoNote") }}</p>
         <label>
           {{ t("plugin.title") }}
-          <input v-model="draft.draftTitle" data-testid="draft-title" @input="saved = false" />
+          <Input v-model="draft.draftTitle" data-testid="draft-title" @input="saved = false" />
         </label>
         <label>
           {{ t("plugin.body") }}
-          <textarea v-model="draft.draftBody" rows="5" data-testid="draft-body" @input="saved = false" />
+          <Textarea v-model="draft.draftBody" rows="5" data-testid="draft-body" @input="saved = false" />
         </label>
         <Button variant="primary" type="submit" data-testid="save-prototype">{{ t("plugin.save") }}</Button>
         <Feedback v-if="saved" tone="success">{{ t("plugin.saved") }}</Feedback>
@@ -289,7 +303,7 @@ onUnmounted(() => {
       <div class="section-heading"><h2>{{ t("workUi.versionsTitle") }}</h2><span>{{ t("workUi.versionStep") }}</span></div>
       <label>
         {{ t("plugin.versionAcceptance") }}
-        <textarea v-model="acceptanceText" rows="3" data-testid="version-acceptance" />
+        <Textarea v-model="acceptanceText" rows="3" data-testid="version-acceptance" />
       </label>
       <Button variant="secondary" type="button" data-testid="save-version" :disabled="versionBusy" @click="saveVersion">
         {{ t("plugin.versionSave") }}

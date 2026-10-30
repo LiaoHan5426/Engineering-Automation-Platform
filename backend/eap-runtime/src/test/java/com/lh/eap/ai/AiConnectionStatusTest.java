@@ -21,14 +21,55 @@ class AiConnectionStatusTest {
                 provider, "offline-model", "https://api.openai.com", modelPresent);
     }
 
-    @Test void disabledDoesNotBecomeAvailableAndDoesNotNeedAModelCall() {
+    @Test void disabledDoesNotBecomeAvailableAndDoesNotNeedAModelCall() throws Exception {
         var status = status("none", false, null);
         assertEquals("disabled", status.read().state());
         status.observe("");
         assertEquals("disabled", status.read().state());
         assertNull(status.read().lastObservedAt());
         assertFalse(status.read().workspaceLabel().contains(root.toString()));
+        assertEquals(root.toRealPath().toString(), status.read().workspacePath());
+        assertEquals("", status.read().authorizedRootPath());
+        assertEquals("AUTHORIZED_ROOT_MISSING", status.read().authorizedRootDenial());
+        assertFalse(status.read().storesUserDirectoryGrants());
         assertFalse(status.read().configurationRevision().isBlank());
+    }
+
+    @Test void authorizedRootIsSeparateFromWorkspaceLabel(@TempDir Path other) throws Exception {
+        var status = status("openai", true, root);
+        var snapshot = status.read();
+        assertEquals(root.toRealPath().toString(), snapshot.workspacePath());
+        assertEquals(root.toRealPath().toString(), snapshot.authorizedRootPath());
+        assertEquals("", snapshot.authorizedRootDenial());
+        assertFalse(snapshot.storesUserDirectoryGrants());
+        assertFalse(snapshot.workspaceLabel().contains(root.toString()));
+        var conflict = new AiConnectionStatus(new CapabilityHandlerRegistry(List.of()), root, null, "ROOT_CONFLICT",
+                "none", "", "", false, null);
+        assertEquals("ROOT_CONFLICT", conflict.read().authorizedRootDenial());
+        assertEquals("", conflict.read().authorizedRootPath());
+        assertFalse(conflict.read().storesUserDirectoryGrants());
+        assertNotEquals(other.toString(), conflict.read().workspacePath());
+    }
+
+    @Test void snapshotNeverClaimsServerStoresUserDirectoryGrants() {
+        assertFalse(status("none", false, null).read().storesUserDirectoryGrants());
+        assertFalse(status("openai", true, root).read().storesUserDirectoryGrants());
+    }
+
+    @Test void snapshotReportsVerificationConfigWithoutClaimingChecksRan() {
+        var off = status("none", false, null).read();
+        assertFalse(off.verificationEnabled());
+        assertTrue(off.verificationCommands().isEmpty());
+        var props = new CodeVerificationProperties();
+        props.setEnabled(true);
+        var command = new CodeVerificationProperties.Command();
+        command.setName("git-version");
+        command.setRun(List.of("git", "--version"));
+        props.setCommands(List.of(command));
+        var on = new AiConnectionStatus(new CapabilityHandlerRegistry(List.of()), root, root, "",
+                "none", "", "", false, null, props).read();
+        assertTrue(on.verificationEnabled());
+        assertEquals(List.of("git-version"), on.verificationCommands());
     }
 
     @Test void missingModelBeanIsNotConfigured() {
@@ -71,7 +112,9 @@ class AiConnectionStatusTest {
 
     private AiConnectionStatus chat(CapabilityHandlerRegistry handlers, RuntimeWorkspace runtime) {
         return new AiConnectionStatus(handlers, runtime.workspace(),
-                runtime.root().allowed() ? runtime.root().path() : null, "none", "", "", false);
+                runtime.root().allowed() ? runtime.root().path() : null,
+                runtime.root().allowed() ? "" : runtime.root().denial(),
+                "none", "", "", false, null);
     }
 
     @Test void revisionIgnoresUserinfoAndApiKeyMaterial() {

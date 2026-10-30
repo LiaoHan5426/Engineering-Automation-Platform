@@ -27,21 +27,20 @@ describe("management page initialization", () => {
   it("opens knowledge management with a clear selection prompt", async () => {
     const html = await renderToString(createSSRApp(KnowledgeManager));
     expect(html).toContain("知识工作台");
-    expect(html).toContain("全库检索");
+    expect(html).toContain("知识检索");
   });
-  it("states that a rule pack must declare the capabilities it needs", async () => {
+  it("opens the rule library without the architecture essay", async () => {
     const html = await renderToString(createSSRApp(RuleManager));
     expect(html).toContain("规则库");
-    expect(html).toContain("requires.capabilities");
-    expect(html).toContain("规则读取事实，事实由能力产出");
+    expect(html).toContain("事实与运算符词表");
+    expect(html).not.toContain("规则是数据，不是代码");
   });
-  it("opens the capability catalog with a page per kind and says what is code", async () => {
+  it("opens the capability catalog without the architecture essay", async () => {
     const html = await renderToString(createSSRApp(CapabilityManager));
     expect(html).toContain("能力目录");
     expect(html).toContain("总览");
-    // The one answer the catalog must never be vague about: a new capability is code, not a form.
-    expect(html).toContain("手动 CLI 操作返回脱敏进程证据");
-    expect(html).toContain("每类能改什么由后端声明");
+    expect(html).not.toContain("每类能改什么由后端声明");
+    expect(html).not.toContain("手动 CLI 操作返回脱敏进程证据");
   });
   it("renders one capability sub-page at a time instead of stacking them", async () => {
     const html = await renderToString(createSSRApp(CapabilityManager));

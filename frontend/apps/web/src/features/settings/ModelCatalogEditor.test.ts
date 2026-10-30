@@ -4,6 +4,7 @@ import { createApp, h, nextTick, type App } from 'vue';
 import { runtimeApi, type ModelConnection } from '@eap/runtime-client';
 import { i18n } from '../../lib/i18n';
 import ModelCatalogEditor from './ModelCatalogEditor.vue';
+vi.mock('../../lib/serviceConfig', () => ({ useMockServices: false }));
 let app: App;
 let root: HTMLDivElement;
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); });
@@ -26,6 +27,7 @@ it('saves allowed models and explicitly configured effort separately from connec
 it('merges synced models without silently enabling them and retains local selections after a failed refresh', async () => {
   vi.spyOn(runtimeApi, 'refreshConnectionModels').mockResolvedValue({ ...connection, models: [...connection.models, { id: 'model-b', reasoningEfforts: [] }], discoveryError: 'MODEL_DISCOVERY_HTTP_401' });
   await mount();
+  expect(root.querySelector('[data-testid="allowlist-hint"]')?.textContent).toContain('不会自动勾选');
   const allowed = root.querySelector('.catalog-model input') as HTMLInputElement;
   allowed.checked = true; allowed.dispatchEvent(new Event('change')); await flush();
   (root.querySelector('.catalog-actions button') as HTMLButtonElement).click(); await flush();
@@ -33,5 +35,5 @@ it('merges synced models without silently enabling them and retains local select
   expect(choices.length).toBe(2);
   expect((choices[0] as HTMLInputElement).checked).toBe(true);
   expect((choices[1] as HTMLInputElement).checked).toBe(false);
-  expect(root.textContent).toContain('MODEL_DISCOVERY_HTTP_401');
+  expect(root.querySelector('[data-testid="catalog-cached"]')?.textContent).toContain('MODEL_DISCOVERY_HTTP_401');
 });

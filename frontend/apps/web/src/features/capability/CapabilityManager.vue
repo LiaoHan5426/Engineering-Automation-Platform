@@ -9,7 +9,8 @@ import {
   type McpServerItem,
   type McpServerRequest,
 } from "@eap/runtime-client";
-import { Button, ConfirmBox, Badge, Feedback } from "@eap/ui";
+import { Badge, Button, Checkbox, ConfirmBox, Feedback, Input, Select, Tabs } from "@eap/ui";
+import { Table, type TableColumn } from "@eap/plugin-table";
 import { errorMessage } from "../../lib/presentation";
 import CliProgramManager from "./CliProgramManager.vue";
 
@@ -56,8 +57,22 @@ function removeTool(name: string) {
 
 const kinds = computed<CapabilityKindSummary[]>(() => catalog.value?.kinds ?? []);
 const items = computed<CapabilityItem[]>(() => catalog.value?.items ?? []);
+const capabilityColumns: TableColumn[] = [
+  { key: "name", title: "能力", mono: true },
+  { key: "kindLabel", title: "种类" },
+  { key: "scopeLabel", title: "范围" },
+  { key: "availability", title: "状态" },
+  { key: "experts", title: "引用专家" },
+];
 /** A kind earns a tab when it can be managed or has entries; HTTP currently has neither. */
 const visibleKinds = computed(() => kinds.value.filter((kind) => kind.visible));
+const capabilityTabs = computed(() => [
+  { id: "overview", label: "总览" },
+  ...visibleKinds.value.map((kind) => ({
+    id: kind.id,
+    label: kind.count ? `${kind.label} · ${kind.count}` : kind.label,
+  })),
+]);
 const currentKind = computed(() => kinds.value.find((kind) => kind.id === tab.value) ?? null);
 const servers = computed<McpServerItem[]>(() => catalog.value?.mcpServers ?? []);
 const settings = computed(() => catalog.value?.settings ?? {});
@@ -222,16 +237,6 @@ async function submitServer() {
   <div class="page-head">
     <p class="eyebrow">CAPABILITIES</p>
     <h1>能力目录</h1>
-    <p>
-      按执行方式分成四类，每类都有自己的管理入口：内置命令在运行时内执行，本地 CLI 需要二进制存在，
-      MCP 工具来自显式信任的服务器，HTTP
-      服务尚未接入。目录以运行时与处理器声明为准，不是专家定义里的名字清单。
-    </p>
-    <p class="hint">
-      每类能改什么由后端声明，界面不自行推测：内置命令只能启用/停用，本地 CLI
-      程序可手动登记并增加固定参数操作， MCP 工具的服务器由操作者登记。手动 CLI
-      操作返回脱敏进程证据；发布结构化事实由专用处理器实现。
-    </p>
   </div>
 
   <Feedback
@@ -243,161 +248,116 @@ async function submitServer() {
     {{ message }}
   </Feedback>
 
-  <nav class="manager-tabs" aria-label="能力种类">
-    <button :class="{ active: tab === 'overview' }" @click="tab = 'overview'">总览</button>
-    <button
-      v-for="kind in visibleKinds"
-      :key="kind.id"
-      :class="{ active: tab === kind.id }"
-      @click="tab = kind.id"
-    >
-      {{ kind.label }}<template v-if="kind.count"> · {{ kind.count }}</template>
-    </button>
-  </nav>
+  <Tabs v-model="tab" class="manager-tabs" label="能力种类" :tabs="capabilityTabs" />
 
   <!-- 总览 -->
   <section v-if="tab === 'overview'" class="view">
     <p v-if="loading && !catalog" class="hint">正在读取能力目录…</p>
     <article v-for="kind in kinds" :key="kind.id" class="eap-panel panel-block cap-group">
-      <header class="panel-head">
-        <div>
+      <header class="cap-head">
+        <div class="cap-head__main">
           <h2>
-            {{ kind.label }} <span class="mono kind-id">{{ kind.id }}</span>
-            <Badge
-              tone="neutral"
-              :class="kind.expertScoped ? 'eap-badge--warning' : 'eap-badge--neutral'"
-            >
+            <Badge class="cap-head__scope" :tone="kind.expertScoped ? 'warning' : 'neutral'">
               {{ kind.scopeLabel }}
             </Badge>
-            <Badge tone="warning" v-if="!kind.manageable">无管理入口</Badge>
+            {{ kind.label }} <span class="mono kind-id">{{ kind.id }}</span>
           </h2>
           <p>{{ kind.description }}</p>
         </div>
-        <Badge tone="neutral">{{ kind.count }} 项</Badge>
+        <div class="cap-head__status">
+          <Badge tone="warning" v-if="!kind.manageable">无管理入口</Badge>
+          <span class="cap-status">{{
+            availabilityParts(kind).join(" · ") || "暂无能力"
+          }}</span>
+        </div>
+        <div v-if="kind.manageable" class="cap-head__tools">
+          <Button variant="secondary" size="sm" @click="tab = kind.id">进入管理</Button>
+        </div>
       </header>
-      <p class="hint">
-        当前状态：<template v-if="availabilityParts(kind).length">{{
-          availabilityParts(kind).join(" · ")
-        }}</template
-        ><template v-else>暂无能力</template>
-      </p>
-      <dl class="cap-meta">
-        <dt>管理入口</dt>
-        <dd>{{ kind.management.label }}：{{ kind.management.description }}</dd>
-        <dt>如何产生</dt>
-        <dd>{{ kind.management.creation }}</dd>
-      </dl>
-      <p v-if="kind.manageable" class="hint">
-        <Button variant="ghost" @click="tab = kind.id"> 进入{{ kind.label }}管理 </Button>
-      </p>
     </article>
 
-    <article class="eap-panel panel-block">
-      <h2>声明与注册一致性</h2>
-      <p
-        v-if="!(catalog?.unregistered ?? []).length && !(catalog?.undeclared ?? []).length"
-        class="hint"
-      >
-        专家清单可引用的能力与运行时实际注册的处理器一一对应。
-      </p>
+    <article
+      v-if="(catalog?.unregistered ?? []).length || (catalog?.undeclared ?? []).length"
+      class="eap-panel panel-block"
+    >
+      <h2>能力声明不一致</h2>
       <Feedback tone="error" v-if="(catalog?.unregistered ?? []).length">
-        已声明但没有实现的能力：{{
-          (catalog?.unregistered ?? []).join("、")
-        }}。专家清单引用它们会导致节点无法执行。
+        已声明但没有实现：{{ (catalog?.unregistered ?? []).join("、") }}。引用它们的专家节点无法执行。
       </Feedback>
       <Feedback tone="error" v-if="(catalog?.undeclared ?? []).length">
-        已实现但未在声明词表中的能力：{{
-          (catalog?.undeclared ?? []).join("、")
-        }}。专家清单无法引用它们。
+        已实现但未声明：{{ (catalog?.undeclared ?? []).join("、") }}。专家清单无法引用它们。
       </Feedback>
-      <p class="hint">
-        可全局引用（平台级）{{ (catalog?.globallyUsable ?? []).length }} 项；专家级
-        {{ (catalog?.expertScoped ?? []).length }} 项，只能通过专家授权使用。 停用中的能力
-        {{ (catalog?.disabledCapabilities ?? []).length }} 项。
-      </p>
     </article>
 
     <article class="eap-panel panel-block">
       <h2>全部能力</h2>
-      <div class="table-scroll">
-        <table class="facts-table">
-          <thead>
-            <tr>
-              <th>能力</th>
-              <th>种类</th>
-              <th>范围</th>
-              <th>状态</th>
-              <th>引用专家</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in items" :key="item.name">
-              <td class="mono">{{ item.name }}</td>
-              <td>{{ item.kindLabel }}</td>
-              <td>{{ item.scopeLabel }}</td>
-              <td>
-                <Badge tone="neutral" :class="availabilityClass(item.availability)">{{
-                  item.availabilityLabel
-                }}</Badge>
-              </td>
-              <td>
-                {{
-                  item.usedBy.join("、") ||
-                  (item.declaredBy.length ? item.declaredBy.join("、") + "（草稿）" : "—")
-                }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <Table :columns="capabilityColumns" :rows="items" row-key="name">
+        <template #availability="{ row }">
+          <Badge tone="neutral" :class="availabilityClass(row.availability)">{{
+            row.availabilityLabel
+          }}</Badge>
+        </template>
+        <template #experts="{ row }">
+          {{
+            row.usedBy.join("、") ||
+            (row.declaredBy.length ? row.declaredBy.join("、") + "（草稿）" : "—")
+          }}
+        </template>
+      </Table>
     </article>
   </section>
 
   <!-- 某一类 -->
   <section v-else class="view">
-    <article v-if="currentKind" class="eap-panel panel-block">
-      <header class="panel-head">
-        <div>
+    <article v-if="currentKind && tab !== 'cli'" class="eap-panel panel-block cap-group">
+      <header class="cap-head">
+        <div class="cap-head__main">
           <h2>
-            {{ currentKind.label }} <span class="mono kind-id">{{ currentKind.id }}</span>
-            <Badge
-              tone="neutral"
-              :class="currentKind.expertScoped ? 'eap-badge--warning' : 'eap-badge--neutral'"
-            >
+            <Badge class="cap-head__scope" :tone="currentKind.expertScoped ? 'warning' : 'neutral'">
               {{ currentKind.scopeLabel }}
             </Badge>
+            {{ currentKind.label }} <span class="mono kind-id">{{ currentKind.id }}</span>
           </h2>
           <p>{{ currentKind.description }}</p>
         </div>
-        <Badge tone="neutral">{{ currentKind.count }} 项</Badge>
+        <div class="cap-head__status">
+          <span class="cap-status">{{ currentKind.count }} 项</span>
+        </div>
       </header>
-      <div class="requirement-block">
-        <p class="requirement"><b>这里可以改什么：</b>{{ currentKind.management.description }}</p>
-        <p class="requirement"><b>能力本身是怎么来的：</b>{{ currentKind.management.creation }}</p>
-      </div>
     </article>
 
     <!-- 内置命令 -->
     <template v-if="tab === 'command'">
-      <article v-for="item in itemsOf('command')" :key="item.name" class="eap-panel panel-block">
-        <header class="panel-head">
-          <div>
+      <article v-for="item in itemsOf('command')" :key="item.name" class="eap-panel panel-block cap-group">
+        <header class="cap-head">
+          <div class="cap-head__main">
             <h2>
               {{ item.title }} <code class="mono">{{ item.name }}</code>
             </h2>
             <p>{{ item.summary }}</p>
           </div>
-          <Badge tone="neutral" :class="availabilityClass(item.availability)">{{
-            item.availabilityLabel
-          }}</Badge>
+          <div class="cap-head__status">
+            <Badge tone="neutral" :class="availabilityClass(item.availability)">{{
+              item.availabilityLabel
+            }}</Badge>
+          </div>
+          <div class="cap-head__tools">
+            <Button
+              :variant="item.enabled ? 'secondary' : 'primary'"
+              size="sm"
+              @click="toggle(item)"
+            >
+              {{ item.enabled ? "停用" : "启用" }}
+            </Button>
+          </div>
         </header>
         <dl class="cap-meta">
           <dt>执行器</dt>
-          <dd class="mono">{{ item.executor }}</dd>
+          <dd>{{ item.executor }}</dd>
           <dt>发布事实</dt>
-          <dd class="mono">
+          <dd>
             {{ item.facts.length }} 项<template v-if="item.facts.length">
-              · {{ item.facts.slice(0, 4).join("、") }}</template
+              · <span class="mono">{{ item.facts.slice(0, 4).join("、") }}</span></template
             >
           </dd>
           <dt>引用情况</dt>
@@ -409,21 +369,13 @@ async function submitServer() {
             <template v-else>暂无专家引用</template>
           </dd>
         </dl>
-        <div class="form-actions">
-          <input
+        <div class="note-row">
+          <Input
             v-model="notesDraft[item.name]"
-            class="workspace-input"
             placeholder="备注：为什么停用/启用它（会显示在目录里）"
             :aria-label="item.name + ' 的备注'"
           />
-          <Button variant="ghost" @click="saveNote(item)">保存备注</Button>
-          <Button
-            variant="secondary"
-            :class="item.enabled ? 'eap-button--secondary' : 'eap-button--primary'"
-            @click="toggle(item)"
-          >
-            {{ item.enabled ? "停用" : "启用" }}
-          </Button>
+          <Button variant="ghost" size="sm" @click="saveNote(item)">保存备注</Button>
         </div>
         <p v-if="item.usedBy.length" class="hint">
           仍被已启用专家引用时，后端会拒绝停用并点名这些专家——停用会让它们的节点在执行时失败。
@@ -438,6 +390,7 @@ async function submitServer() {
     <CliProgramManager
       v-else-if="tab === 'cli'"
       :items="items"
+      :kind="currentKind"
       @saved="
         refresh();
         emit('saved');
@@ -447,62 +400,61 @@ async function submitServer() {
     <!-- MCP 工具 -->
     <template v-else-if="tab === 'mcp'">
       <article class="eap-panel panel-block">
-        <header class="panel-head">
-          <div>
+        <header class="cap-head">
+          <div class="cap-head__main">
             <h2>MCP 服务器</h2>
-            <p>
-              {{ servers.length }} 个服务器 ·
-              {{ servers.reduce((count, server) => count + server.tools.length, 0) }} 个声明工具
-            </p>
+            <p>登记服务器地址和它声明的工具。默认不启用。</p>
           </div>
-          <Button
-            variant="primary"
-            @click="
-              resetForm();
-              serverEditor = true;
-            "
-            >＋ 登记服务器</Button
-          >
+          <div class="cap-head__status">
+            <span class="cap-status">
+              {{ servers.length }} 个服务器 ·
+              {{ servers.reduce((count, server) => count + server.tools.length, 0) }} 个工具
+            </span>
+          </div>
+          <div class="cap-head__tools">
+            <Button
+              variant="primary"
+              size="sm"
+              @click="
+                resetForm();
+                serverEditor = true;
+              "
+              >＋ 登记服务器</Button
+            >
+          </div>
         </header>
       </article>
       <article v-if="serverEditor" class="eap-panel panel-block">
         <h2>{{ editing ? "编辑服务器 " + editing : "登记 MCP 服务器" }}</h2>
-        <p class="hint">
-          服务器由外部提供，平台只记录它的位置与工具声明清单。<b>登记不等于启用</b>：默认不启用、不信任；
-          即使启用并信任，专家仍须在清单里声明该工具、启用时写入授权，才可能被调用。 地址里不要放
-          Token 或密钥，凭据请用环境变量注入。
-        </p>
+        <p class="hint">地址中不要填写 Token 或密钥。</p>
         <div class="editor-grid">
           <label class="field-label">
             服务器标识
-            <input
+            <Input
               v-model="form.id"
-              class="workspace-input mono"
+              class="mono"
               :disabled="Boolean(editing)"
               placeholder="files"
             />
-            <small class="field-help"
-              >会拼进能力标识
-              mcp.&lt;服务器&gt;.&lt;工具&gt;，只允许小写字母、数字、下划线和连字符。</small
-            >
+            <small class="field-help">只允许小写字母、数字、下划线和连字符。</small>
           </label>
           <label class="field-label">
             显示名称
-            <input v-model="form.name" class="workspace-input" placeholder="文件服务器" />
+            <Input v-model="form.name" placeholder="文件服务器" />
           </label>
           <label class="field-label">
             传输方式
-            <select v-model="form.transport" class="workspace-input">
+            <Select v-model="form.transport">
               <option value="stdio">stdio（本机进程）</option>
               <option value="http">http（远端地址）</option>
               <option value="sse">sse（远端事件流）</option>
-            </select>
+            </Select>
           </label>
           <label class="field-label">
             {{ form.transport === "stdio" ? "启动命令" : "服务地址" }}
-            <input
+            <Input
               v-model="form.endpoint"
-              class="workspace-input mono"
+              class="mono"
               :placeholder="
                 form.transport === 'stdio'
                   ? 'npx -y @modelcontextprotocol/server-filesystem'
@@ -512,16 +464,16 @@ async function submitServer() {
           </label>
           <label class="field-label">
             工具声明清单
-            <input v-model="toolsDraft" class="workspace-input mono" placeholder="search, read" />
+            <Input v-model="toolsDraft" class="mono" placeholder="search, read" />
             <small class="field-help"
               >工具名同样只能用小写字母、数字、下划线和连字符；清单是操作者声明，尚未与服务器协商。</small
             >
           </label>
         </div>
         <div class="form-actions">
-          <input
+          <Input
             v-model="toolDraft"
-            class="workspace-input"
+           
             aria-label="新增工具名称"
             placeholder="新增工具：search"
           /><Button variant="secondary" @click="addTool">添加工具</Button>
@@ -538,8 +490,8 @@ async function submitServer() {
           </Button>
         </div>
         <p class="hint">
-          <label><input v-model="form.enabled" type="checkbox" /> 登记后即启用</label>
-          <label><input v-model="form.trusted" type="checkbox" /> 登记后即信任</label>
+          <label><Checkbox v-model="form.enabled" /> 登记后即启用</label>
+          <label><Checkbox v-model="form.trusted" /> 登记后即信任</label>
         </p>
         <div class="form-actions">
           <Button variant="primary" @click="submitServer">
@@ -555,20 +507,19 @@ async function submitServer() {
       </p>
 
       <article v-for="server in servers" :key="server.id" class="eap-panel panel-block">
-        <header class="panel-head">
-          <div>
+        <header class="cap-head">
+          <div class="cap-head__main">
             <h2>
               {{ server.name }} <span class="mono kind-id">{{ server.id }}</span>
-              <Badge
-                tone="neutral"
-                :class="server.usable ? 'eap-badge--success' : 'eap-badge--warning'"
-              >
-                {{ server.usable ? "可用于专家授权" : "不可用" }}
-              </Badge>
             </h2>
             <p class="mono">{{ server.transport }} · {{ server.endpoint || "（未填写地址）" }}</p>
           </div>
-          <Badge tone="neutral">{{ server.tools.length }} 个工具</Badge>
+          <div class="cap-head__status">
+            <Badge :tone="server.usable ? 'success' : 'warning'">
+              {{ server.usable ? "可用于专家授权" : "不可用" }}
+            </Badge>
+            <span class="cap-status">{{ server.tools.length }} 个工具</span>
+          </div>
         </header>
         <dl class="cap-meta">
           <dt>工具声明清单</dt>
@@ -611,9 +562,7 @@ async function submitServer() {
         <div v-if="serverProbe[server.id]" class="dry-result">
           <p class="hint">{{ serverProbe[server.id]?.message }}</p>
           <p class="hint mono">
-            协议验证：{{
-              serverProbe[server.id]?.verified ? "已通过" : "未验证（MCP 客户端尚未实现）"
-            }}
+            连通检查：{{ serverProbe[server.id]?.verified ? "已通过" : "未通过" }}
           </p>
         </div>
         <p class="hint">撤回信任、停用或删除被已启用专家授权使用的服务器，后端会拒绝并点名专家。</p>
@@ -643,9 +592,7 @@ async function submitServer() {
 
     <!-- 其他种类：还没有管理入口，如实说明，不给出一个点了没有反应的界面 -->
     <article v-else class="eap-panel panel-block">
-      <p class="hint">
-        {{ currentKind?.management.creation ?? "该种类还没有管理入口。" }}
-      </p>
+      <p class="hint">该种类还没有管理入口。</p>
       <ul v-if="itemsOf(currentKind?.id ?? '').length" class="list">
         <li v-for="item in itemsOf(currentKind?.id ?? '')" :key="item.name" class="list-item">
           <span

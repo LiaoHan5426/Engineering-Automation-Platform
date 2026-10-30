@@ -40,9 +40,20 @@ management:
         include: health,info
 eap:
   runtime:
-    # Shared authorized root. The legacy eap.ai.authorized-root key is only a fallback.
-    # If both are set to different directories, execution is refused instead of widened.
+    # Process-bound workspace root for the colocated local Java service.
+    # Empty: RuntimeConfiguration falls back to the detected process workspace (git/user.dir).
+    # Legacy eap.ai.authorized-root is only a fallback; conflicting paths refuse instead of widening.
+    # Does not accept browser/remote multi-tenant directory-grant POSTs.
     authorized-root: ${EAP_AUTHORIZED_ROOT:}
+    # Post-apply checks on the local-service machine. Off by default; empty list → verification=not_requested.
+    verification:
+      enabled: ${EAP_VERIFICATION_ENABLED:false}
+      timeout-seconds: ${EAP_VERIFICATION_TIMEOUT_SECONDS:120}
+      commands: []
+      # Enable with EAP_VERIFICATION_ENABLED=true and e.g.:
+      # - name: git-version
+      #   run: [git, --version]
+      # Heavy typecheck/test/build must be opted in explicitly; do not enable casually against the live repo.
   ai:
     authorized-root: ${EAP_AI_AUTHORIZED_ROOT:}
     artifact-root: ${EAP_AI_ARTIFACT_ROOT:.eap-ai-artifacts}

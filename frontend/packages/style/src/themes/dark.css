@@ -1,46 +1,42 @@
 /**
- * Dark theme token values.
- * Activate with data-eap-theme="dark" on :root or a subtree.
+ * Dark theme. Same `--eap-*` names as light, so a skin does not fork the component CSS.
  */
 [data-eap-theme="dark"] {
   color-scheme: dark;
 
-  --bg: #0b1220;
-  --surface: #111827;
-  --surface-2: #0f172a;
-  --surface-3: #1e293b;
-  --border: #243044;
-  --border-strong: #334155;
-  --text: #e5eefc;
-  --text-soft: #94a3b8;
-  --text-mute: #64748b;
-  --accent: #3b82f6;
-  --accent-hover: #60a5fa;
-  --accent-soft: #1e3a5f;
-  --danger: #f87171;
-  --danger-bg: #3f1d1d;
-  --danger-border: #7f1d1d;
-  --warn: #fbbf24;
-  --warn-bg: #3b2f14;
-  --warn-text: #fde68a;
-  --ok: #4ade80;
-  --ok-bg: #14532d;
-  --ok-border: #166534;
-  --info: #93c5fd;
-  --info-bg: #1e3a5f;
-  --neutral: #94a3b8;
-  --neutral-bg: #1e293b;
-  --overlay: rgb(2 6 23 / 65%);
-  --rail: #020617;
-  --rail-text: #94a3b8;
-  --rail-active: #1e293b;
-  --radius: 12px;
-  --radius-control: 8px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 35%);
-  --control-hover: #243044;
-  --on-accent: #fff;
-  --focus-ring: #60a5fa;
-  --font-sans:
-    Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --eap-color-white: #fff;
+  --eap-color-primary: #3b82f6;
+  --eap-color-primary-hover: #60a5fa;
+  --eap-color-primary-soft: #1e3a5f;
+  --eap-color-primary-focus: #60a5fa;
+  --eap-color-success: #4ade80;
+  --eap-color-success-soft: #14532d;
+  --eap-color-success-border: #166534;
+  --eap-color-warning: #fbbf24;
+  --eap-color-warning-soft: #3b2f14;
+  --eap-color-warning-text: #fde68a;
+  --eap-color-danger: #f87171;
+  --eap-color-danger-soft: #3f1d1d;
+  --eap-color-danger-border: #7f1d1d;
+  --eap-color-info: #93c5fd;
+  --eap-color-info-soft: #1e3a5f;
+  --eap-color-neutral: #94a3b8;
+  --eap-color-neutral-soft: #1e293b;
+  --eap-text-color-primary: #e5eefc;
+  --eap-text-color-regular: #cbd5e1;
+  --eap-text-color-secondary: #94a3b8;
+  --eap-text-color-placeholder: #64748b;
+  --eap-bg-color: #0b1220;
+  --eap-fill-color-blank: #111827;
+  --eap-fill-color-light: #0f172a;
+  --eap-fill-color: #1e293b;
+  --eap-fill-color-hover: #243044;
+  --eap-overlay-color: rgb(2 6 23 / 65%);
+  --eap-border-color: #243044;
+  --eap-border-color-strong: #334155;
+  --eap-box-shadow: 0 1px 2px rgb(0 0 0 / 35%);
+  --eap-box-shadow-overlay: 0 10px 36px rgb(0 0 0 / 45%);
+  --eap-rail-color: #020617;
+  --eap-rail-text: #94a3b8;
+  --eap-rail-active: #1e293b;
 }

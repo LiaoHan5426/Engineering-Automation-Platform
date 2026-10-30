@@ -11,3 +11,13 @@
 @import url("./metric-card/metric-card.css");
 @import url("./empty-state/empty-state.css");
 @import url("./confirm-box/confirm-box.css");
+@import url("./dialog/dialog.css");
+@import url("./field/field.css");
+@import url("./checkbox/checkbox.css");
+@import url("./switch/switch.css");
+@import url("./file/file.css");
+@import url("./slider/slider.css");
+@import url("./scrollbar/scrollbar.css");
+@import url("./tabs/tabs.css");
+@import url("./popover/popover.css");
+@import url("./tag/tag.css");

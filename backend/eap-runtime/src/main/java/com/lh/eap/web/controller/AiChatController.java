@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -33,6 +34,41 @@ public class AiChatController {
     @GetMapping("/status")
     public AiConnectionStatus.Snapshot status() {
         return chat.status();
+    }
+
+    @GetMapping("/workspace/baseline")
+    public com.lh.eap.ai.CodeChangeService.Baseline baseline(@RequestParam("path") String path) {
+        return chat.baseline(path);
+    }
+
+    @GetMapping("/workspace/source")
+    public com.lh.eap.ai.CodeChangeService.SourceExcerpt source(@RequestParam("path") String path) {
+        return chat.source(path);
+    }
+
+    @GetMapping("/workspace/dirty")
+    public com.lh.eap.ai.CodeChangeService.DirtySummary dirty() {
+        return chat.dirty();
+    }
+
+    /**
+     * Safe read-only {@code git --version} probe. Does not enable configured typecheck/test/build
+     * and never marks apply verification as passed.
+     */
+    @PostMapping("/workspace/verification/probe")
+    public com.lh.eap.ai.CodeChangeService.VerificationProbe verificationProbe() {
+        return chat.verificationProbe();
+    }
+
+    /**
+     * Refuse a browser/remote multi-tenant directory-grant store.
+     * Colocated workspace binding uses process configuration ({@code authorized-root}), not this POST.
+     */
+    @PostMapping("/workspace/grants")
+    public void refuseUserDirectoryGrants() {
+        throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.METHOD_NOT_ALLOWED,
+                "USER_DIRECTORY_GRANTS_NOT_STORED_ON_SERVER");
     }
 
     @PostMapping("/conversations")

@@ -62,7 +62,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const draft = ref("");
   const expired = ref(false);
   const toolMode = ref<AiToolMode>("none");
-  const context = ref<TaskContext>({ mode: "chat", expert: "general", instructions: "", reasoning: "default", approval: "review", files: [], prototypeVersionId: "" });
+  const emptyContext = (): TaskContext => ({ mode: "chat", expert: "general", instructions: "", reasoning: "default", approval: "review", files: [], prototypeVersionId: "", targetPath: "" });
+  const context = ref<TaskContext>(emptyContext());
   const failure = ref("");
   const inflight = ref<Record<string, number>>({});
   const connections = ref<ModelConnection[]>([]);
@@ -121,6 +122,16 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     }
   }
 
+  function beginDraft() {
+    conversationId.value = null;
+    draft.value = "";
+    expired.value = false;
+    failure.value = "";
+    pendingConnectionId.value = null;
+    targetNotice.value = "";
+    context.value = emptyContext();
+  }
+
   async function openConversation() {
     if (opening.value) throw new Error("CONVERSATION_BUSY");
     opening.value = true;
@@ -134,7 +145,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     memoryNote.value = created.memory;
     boundConnectionId.value = created.connectionId ?? null;
     boundModel.value = created.model ?? "";
-    context.value = { mode: "chat", expert: "general", instructions: "", reasoning: "default", approval: "review", files: [], prototypeVersionId: "" };
+    context.value = emptyContext();
     pendingConnectionId.value = null;
     targetNotice.value = "";
     if (!transcripts.value[created.conversationId]) {
@@ -156,7 +167,9 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     boundModel.value = item?.model ?? "";
     pendingConnectionId.value = null;
     targetNotice.value = '';
-    context.value = item?.context ? structuredClone(JSON.parse(JSON.stringify(item.context))) : { mode: 'chat', expert: 'general', instructions: '', reasoning: 'default', approval: 'review', files: [], prototypeVersionId: '' };
+    context.value = item?.context
+      ? { ...emptyContext(), ...structuredClone(JSON.parse(JSON.stringify(item.context))) }
+      : emptyContext();
     failure.value = '';
     expired.value = !!item?.expired;
     if (api.aiConversation) {
@@ -217,7 +230,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     failure.value = "";
     const item = history.value.find(x => x.id === id); if (item) { item.connectionId = assigned.connectionId; item.model = assigned.model; }
     pendingConnectionId.value = null;
-    targetNotice.value = assigned.memoryCleared ? "cleared" : "";
+    targetNotice.value = assigned.memoryCleared ? "cleared" : "kept";
   }
 
   function cancelConnectionChange() {
@@ -272,7 +285,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         artifactError: result.artifactError,
         artifacts: result.artifacts ?? [],
       });
-      if (!result.error) { if (entry && entry.draft === text) entry.draft = ""; if (conversationId.value === id && draft.value === text) draft.value = ""; }
+      if (!result.error) { if (entry && entry.draft === text) entry.draft = ""; if (conversationId.value === id && draft.value === text) draft.value = ""; if (conversationId.value === id) failure.value = ""; }
       if (conversationId.value === id && result.error) failure.value = "kept";
     } catch (error) {
       if (inflight.value[id] !== current) return;
@@ -305,6 +318,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     refreshStatus,
     restoreLastConversation,
     openConversation,
+    beginDraft,
     selectConversation,
     send,
     connections,

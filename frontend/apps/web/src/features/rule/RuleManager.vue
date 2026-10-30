@@ -11,7 +11,8 @@ import {
   type RuleRequirements,
   type RuleValidation,
 } from "@eap/runtime-client";
-import { ConfirmBox, EmptyState, Feedback, Button, Badge } from "@eap/ui";
+import { Badge, Button, ConfirmBox, EmptyState, Feedback, Input, Select, Textarea } from "@eap/ui";
+import { Table, type TableColumn } from "@eap/plugin-table";
 import { errorMessage } from "../../lib/presentation";
 import { derivedCapabilities, requirementGaps, unknownFacts } from "./ruleDraft";
 
@@ -51,6 +52,19 @@ const selectedPack = computed(() => packs.value.find((pack) => pack.id === selec
 const draftText = computed(() => (draft.value ? JSON.stringify(draft.value, null, 2) : ""));
 const dirty = computed(() => !!draft.value && !shipped.value && draftText.value !== baseline.value);
 const matchedFacts = computed(() => Object.entries(dry.value?.facts ?? {}));
+const matchedRows = computed(() =>
+  matchedFacts.value.map(([key, value]) => ({ key, value: displayValue(value) })),
+);
+const factColumns: TableColumn[] = [
+  { key: "key", title: "事实", mono: true },
+  { key: "type", title: "类型" },
+  { key: "group", title: "类别" },
+  { key: "description", title: "含义" },
+];
+const matchedColumns: TableColumn[] = [
+  { key: "key", title: "事实", mono: true },
+  { key: "value", title: "值" },
+];
 const draftDerived = computed(() =>
   draft.value ? derivedCapabilities(draft.value, facts.value) : [],
 );
@@ -250,7 +264,7 @@ async function validateDraft() {
   if (!draft.value || busy.value) return;
   if (!canEdit.value) {
     message.value =
-      "内置规则包是只读的：请先「复制为自定义」，在副本上改。就地修改会在下次升级时被静默覆盖。";
+      "内置包只读。请先复制为自定义再修改。";
     return;
   }
   if (localProblems.value.length) {
@@ -290,7 +304,7 @@ async function saveDraft() {
       draft.value.name,
       draftText.value,
     );
-    message.value = `已保存，revision 现在是 ${result.revision ?? "?"}。这个数字每次保存都会自增，就是「规则是数据」的证据。`;
+    message.value = `已保存，修订号 ${result.revision ?? "?"}。`;
     await refresh();
     emit("saved");
   } catch (cause) {
@@ -467,10 +481,6 @@ defineExpose({ refresh });
     <div class="page-head">
       <p class="eyebrow">RULE LIBRARY</p>
       <h1>规则库</h1>
-      <p>
-        规则是数据，不是代码：新增、调整严重级、改写证据与建议都只需编辑规则包，无需重新编译或部署。
-        试算使用与运行时相同的判定引擎，且不会执行 SQL、不会保存任何内容。
-      </p>
     </div>
 
     <Feedback tone="error" v-if="error" role="alert">{{ error }}</Feedback>
@@ -519,20 +529,18 @@ defineExpose({ refresh });
                 ? "从空白模板创建一个规则包。"
                 : `从当前选中的「${draft?.name ?? ""}」复制一个可编辑的副本。`
             }}
-            内置标识是保留标识，后端拒绝在其下写入，所以副本是修改内置规则包的唯一方式。
           </p>
           <label
             >新标识
-            <input
+            <Input
               v-model="newPackId"
-              class="workspace-input"
+             
               placeholder="my-team-sql"
               aria-label="新规则包标识"
             />
           </label>
-          <p class="hint">标识规则：<code class="mono">^[a-z0-9][a-z0-9_-]{0,60}$</code></p>
           <div class="form-actions">
-            <Button variant="primary" :disabled="busy || !newPackId.trim()"> 创建 </Button>
+            <Button type="submit" variant="primary" :disabled="busy || !newPackId.trim()"> 创建 </Button>
             <Button variant="secondary" type="button" @click="newPackOpen = false">取消</Button>
           </div>
         </form>
@@ -560,15 +568,6 @@ defineExpose({ refresh });
           </button>
         </div>
         <EmptyState v-if="!packs.length && !loading">没有可用的规则包。</EmptyState>
-        <p class="hint">
-          规则包的判定阈值也在这里：<code class="mono">policy.actionableWeight</code> 与
-          <code class="mono">reviewComplexityThreshold</code>
-          决定确定性证据何时不足、需要把压缩后的证据提交给模型。
-        </p>
-        <p class="hint">
-          规则读取事实，事实由能力产出：<code class="mono">requires.capabilities</code>
-          声明本包需要哪些能力， 引用它的专家流程必须包含对应节点，否则这些规则永远不会命中。
-        </p>
       </article>
 
       <article class="eap-panel">
@@ -625,10 +624,7 @@ defineExpose({ refresh });
             </Button>
           </div>
 
-          <p v-if="shipped" class="hint">
-            内置规则包由代码随版本发布，标识是保留标识：后端会拒绝在这个标识下写入。
-            任何编辑入口都会说明这一点，并提供「复制为自定义」——就地修改会在下次升级时被静默覆盖。
-          </p>
+          <p v-if="shipped" class="hint">内置包只读。要修改请先复制为自定义。</p>
 
           <ul v-if="localProblems.length" class="rule-errors">
             <li v-for="problem in localProblems" :key="problem">{{ problem }}</li>
@@ -662,18 +658,11 @@ defineExpose({ refresh });
               · 按事实推导：<b>{{ requirements.derived.join("、") }}</b>
             </p>
             <p v-if="dirty" class="hint">
-              当前草稿推导出的能力：<b>{{ draftDerived.join("、") || "（无）" }}</b
-              >。 声明可以比它更宽，但不能更窄——更窄会让「规则永不命中」看起来像「没有问题」。
+              当前草稿需要的能力：<b>{{ draftDerived.join("、") || "（无）" }}</b>
             </p>
             <Feedback tone="error" v-if="declaredRequirementMismatch.length">
-              requires.capabilities 缺少规则实际依赖的能力：{{
-                declaredRequirementMismatch.join("、")
-              }}。保存时会被拒绝。
+              还缺少这些能力：{{ declaredRequirementMismatch.join("、") }}。保存时会被拒绝。
             </Feedback>
-            <p v-else class="hint">
-              事实来源与声明一致，因此引用本包的专家流程必须包含
-              {{ requirements.declared.join("、") }} 节点。
-            </p>
             <p v-if="draft.requires?.note" class="hint">{{ draft.requires.note }}</p>
           </div>
 
@@ -716,49 +705,49 @@ defineExpose({ refresh });
 
             <div v-else class="rule-edit">
               <label
-                >标题<input
+                >标题<Input
                   :value="rule.title ?? ''"
-                  class="workspace-input"
+                 
                   @input="rule.title = eventValue($event)"
               /></label>
               <label
                 >严重级
-                <select
+                <Select
                   :value="rule.severity ?? 'medium'"
-                  class="workspace-input"
+                 
                   @change="rule.severity = eventValue($event)"
                 >
                   <option v-for="level in severityOptions" :key="level" :value="level">
                     {{ severityText(level) }}
                   </option>
-                </select>
+                </Select>
               </label>
               <div class="rule-cond">
                 <b>当</b>
                 <template v-if="isLeaf(rule.when)">
-                  <select
+                  <Select
                     :value="conditionFact(rule)"
-                    class="workspace-input"
+                   
                     aria-label="事实"
                     @change="setConditionFact(rule, eventValue($event))"
                   >
                     <option v-for="fact in facts" :key="fact.key" :value="fact.key">
                       {{ fact.key }}
                     </option>
-                  </select>
-                  <select
+                  </Select>
+                  <Select
                     :value="conditionOp(rule)"
-                    class="workspace-input"
+                   
                     aria-label="运算符"
                     @change="setConditionOp(rule, eventValue($event))"
                   >
                     <option v-for="operator in operators" :key="operator" :value="operator">
                       {{ operatorText[operator] ?? operator }}
                     </option>
-                  </select>
-                  <input
+                  </Select>
+                  <Input
                     :value="conditionValue(rule)"
-                    class="workspace-input"
+                   
                     aria-label="比较值"
                     @input="setConditionValue(rule, eventValue($event))"
                   />
@@ -777,18 +766,18 @@ defineExpose({ refresh });
               </div>
               <label
                 >证据模板
-                <textarea
+                <Textarea
                   :value="rule.evidence ?? ''"
-                  class="workspace-input"
+                 
                   rows="2"
                   @input="rule.evidence = eventValue($event)"
                 />
               </label>
               <label
                 >建议
-                <textarea
+                <Textarea
                   :value="rule.suggestion ?? ''"
-                  class="workspace-input"
+                 
                   rows="2"
                   @input="rule.suggestion = eventValue($event)"
                 />
@@ -813,9 +802,9 @@ defineExpose({ refresh });
                 只能在这里改——与其做一个覆盖不了全部字段的
                 结构化表单，不如把真实清单摊开，并用「校验」判定。
               </p>
-              <textarea
+              <Textarea
                 v-model="advancedText"
-                class="workspace-input code-input"
+                class="code-input"
                 rows="14"
                 spellcheck="false"
                 aria-label="规则包 JSON 草稿"
@@ -837,10 +826,10 @@ defineExpose({ refresh });
       </header>
       <form @submit.prevent="runDryRun">
         <label class="field-label" for="dry-sql">待试算 SQL</label>
-        <textarea
+        <Textarea
           id="dry-sql"
           v-model="drySql"
-          class="workspace-input code-input"
+          class="code-input"
           rows="4"
           spellcheck="false"
           :disabled="dryBusy || !draft"
@@ -904,20 +893,7 @@ defineExpose({ refresh });
           </div>
 
           <h3>命中的事实（{{ matchedFacts.length }}）</h3>
-          <table class="data-table facts-table">
-            <thead>
-              <tr>
-                <th>事实</th>
-                <th>值</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="[key, value] in matchedFacts" :key="key">
-                <td class="mono">{{ key }}</td>
-                <td>{{ displayValue(value) }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <Table :columns="matchedColumns" :rows="matchedRows" row-key="key" />
         </template>
         <ul v-else class="rule-errors">
           <li v-for="item in dry.errors" :key="item">{{ item }}</li>
@@ -929,36 +905,15 @@ defineExpose({ refresh });
       <header class="panel-head">
         <div>
           <h2>事实与运算符词表</h2>
-          <p>规则只能引用这里声明的事实；写错事实名或运算符会在保存时被拒绝。</p>
+          <p>写错事实名或运算符会在保存时被拒绝。</p>
         </div>
       </header>
-      <p class="hint">
-        每个事实都声明它由哪个能力产出。规则引用某条事实，就等于要求专家流程包含产出该事实的能力节点——
-        这正是<code class="mono">requires.capabilities</code> 的校验依据。
-      </p>
       <p class="hint mono">运算符：{{ operators.join(" · ") }}</p>
       <div v-for="[producer, items] in factsByProducer" :key="producer" class="fact-group">
         <h3>
           {{ producer }} <span class="kind-id mono">产出 {{ items.length }} 项事实</span>
         </h3>
-        <table class="data-table facts-table">
-          <thead>
-            <tr>
-              <th>事实</th>
-              <th>类型</th>
-              <th>类别</th>
-              <th>含义</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="fact in items" :key="fact.key">
-              <td class="mono">{{ fact.key }}</td>
-              <td>{{ fact.type }}</td>
-              <td>{{ fact.group }}</td>
-              <td>{{ fact.description }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <Table :columns="factColumns" :rows="items" row-key="key" />
       </div>
     </article>
 

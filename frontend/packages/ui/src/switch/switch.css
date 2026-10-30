@@ -1,0 +1,39 @@
+.eap-switch {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  width: 36px;
+  height: 20px;
+  padding: 2px;
+  cursor: pointer;
+  background: var(--eap-fill-color-dark, #c5d0c4);
+  border: 0;
+  border-radius: 999px;
+}
+
+.eap-switch[aria-checked="true"] {
+  background: var(--eap-color-primary, #347f70);
+}
+
+.eap-switch__thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  background: var(--eap-fill-color-blank, #fff);
+  border-radius: 50%;
+  transform: translateX(0);
+}
+
+.eap-switch[aria-checked="true"] .eap-switch__thumb {
+  transform: translateX(16px);
+}
+
+.eap-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.eap-switch:focus-visible {
+  outline: 2px solid var(--eap-color-primary-focus, #347f70);
+  outline-offset: 2px;
+}
