@@ -87,6 +87,18 @@ public class BoardTaskService {
         return find(id, update.projectId(), false);
     }
 
+    /** Only the evidence service may request these transitions, inside its task/workspace transaction. */
+    Task deliveryTransition(Task current, String target) {
+        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Delivery transition requires transaction");
+        boolean submit = current.column().equals("ready") && target.equals("acceptance");
+        boolean decide = current.column().equals("acceptance") && Set.of("done", "ready").contains(target);
+        if (!submit && !decide) throw conflict("BOARD_EXECUTION_EVIDENCE_REQUIRED");
+        if (hasActiveExecution(current.id())) throw conflict("BOARD_EXECUTION_ACTIVE");
+        var events = new ArrayList<>(current.events()); events.add(target);
+        if (jdbc.update("UPDATE eap.board_task SET column_id=?,revision=revision+1,events=?::jsonb WHERE id=? AND revision=?", target, JSON.writeValueAsString(events), current.id(), current.revision()) != 1) throw conflict("BOARD_REVISION_CONFLICT");
+        return find(current.id(), current.projectId(), false);
+    }
+
     // Separate statement after locking the task: a waiter needs a fresh READ COMMITTED snapshot.
     boolean hasActiveExecution(UUID id) {
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=? AND " + ACTIVE + ")", Boolean.class, id));

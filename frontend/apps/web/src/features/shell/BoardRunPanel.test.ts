@@ -27,6 +27,23 @@ beforeEach(() => {
   vi.spyOn(runtimeApi, 'startBoardRun').mockResolvedValue(run());
 });
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); vi.useRealTimers(); });
+it('opens source delivery for the selected Run and refreshes the authoritative task after close', async () => {
+  const earlier = run(); earlier.execution.id = 'run-earlier';
+  vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability, items: [run(), earlier] });
+  vi.spyOn(runtimeApi, 'boardDelivery').mockResolvedValue({ record: null, prepareAllowed: true, reason: '' });
+  const changed = vi.fn(); await mount(changed);
+  expect(button('board-run-delivery')).not.toBeNull();
+  const select = root.querySelector('[data-testid=board-run-select]') as HTMLSelectElement;
+  select.value = 'run-earlier'; select.dispatchEvent(new Event('change'));
+  await vi.waitFor(() => expect(root.querySelector('[data-testid=board-run-record]')?.textContent).toContain('run-earlier'));
+  button('board-run-delivery').click();
+  await vi.waitFor(() => expect(runtimeApi.boardDelivery).toHaveBeenCalledWith(task.id, 'run-earlier', task.projectId));
+  expect(document.querySelector('[data-testid=board-delivery-dialog]')?.textContent).toContain('run-earlier');
+  (document.querySelector('[data-eap-dialog-close]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-delivery-dialog]')).toBeNull());
+  expect(changed).toHaveBeenCalledTimes(1);
+  expect(runtimeApi.startBoardRun).not.toHaveBeenCalled();
+});
 it('opens independent verification only from the selected Run rather than mixing it into task preparation', async () => {
   const earlier = run(); earlier.execution.id = 'run-earlier';
   vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability, items: [run(), earlier] });

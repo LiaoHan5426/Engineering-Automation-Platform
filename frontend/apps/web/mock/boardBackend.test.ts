@@ -53,6 +53,18 @@ it('never fabricates verification plans or results for a nonexistent mock Run', 
   expect(await api.handle('POST', route + '/plan', { projectId: 'group', workspacePath: '/sample' })).toMatchObject({ status: 404, data: { detail: 'BOARD_RUN_NOT_FOUND' } });
   expect(await api.handle('POST', route, { projectId: 'group', workspacePath: '/sample', planHash: 'hash' })).toMatchObject({ status: 404, data: { detail: 'BOARD_RUN_NOT_FOUND' } });
 });
+it('never fabricates delivery or acceptance for a mock Run and retains project scope', async () => {
+  const api = createMockChatBackend();
+  const task = (await api.handle('POST', '/board/tasks', { requestId: randomUUID(), projectId: 'group', title: 'draft' })).data as BoardTask;
+  const route = '/board/tasks/' + task.id + '/runs/' + randomUUID() + '/delivery';
+  expect(await api.handle('GET', route + '?projectId=group')).toMatchObject({ status: 404, data: { detail: 'BOARD_RUN_NOT_FOUND' } });
+  for (const suffix of ['', '/decision']) {
+    expect(await api.handle('POST', route + suffix, { projectId: 'group', revision: 1 })).toMatchObject({ status: 404, data: { detail: 'BOARD_RUN_NOT_FOUND' } });
+    expect(await api.handle('POST', route + suffix, { projectId: 'other', revision: 1 })).toMatchObject({ status: 404, data: { detail: 'BOARD_TASK_NOT_FOUND' } });
+  }
+  expect(await api.handle('GET', route + '?projectId=other')).toMatchObject({ status: 404, data: { detail: 'BOARD_TASK_NOT_FOUND' } });
+  expect((await api.handle('GET', '/board/tasks?projectId=group')).data).toMatchObject({ items: [{ column: 'planned', revision: 1 }] });
+});
 it('links only existing saved versions with project and revision checks', async () => {
   const api = createMockChatBackend();
   const version = (await api.handle('POST', '/prototype-versions', { sourceRef: 'builder-alpha', title: 'design', body: 'saved', buttonPresses: 0, acceptance: [] })).data as { id: string };

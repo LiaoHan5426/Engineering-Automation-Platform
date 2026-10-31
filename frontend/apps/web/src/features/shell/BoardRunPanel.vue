@@ -8,6 +8,7 @@ import { useMockServices } from '../../lib/serviceConfig';
 import PrototypeVersionViewer from './PrototypeVersionViewer.vue';
 import BoardRunReview from './BoardRunReview.vue';
 import BoardRunVerification from './BoardRunVerification.vue';
+import BoardRunDelivery from './BoardRunDelivery.vue';
 import type { BoardRun } from '@eap/runtime-client';
 import { readRunRequest, writeRunRequest } from './boardRunRequest';
 const props = defineProps<{ task: BoardTask; disabled?: boolean }>();
@@ -18,6 +19,7 @@ const pending = ref<BoardRunStart | null>(null);
 const viewing = ref<{ id: string; contentHash: string } | null>(null);
 const reviewing = ref<BoardRun | null>(null);
 const verifying = ref<BoardRun | null>(null);
+const delivering = ref<BoardRun | null>(null);
 const selectedRunId = ref('');
 const selectedRun = computed(() => page.value?.items.find(run => run.execution.id === selectedRunId.value));
 const store = (() => { try { return sessionStorage; } catch { return null; } })();
@@ -87,7 +89,7 @@ async function start() {
 }
 watch(() => props.task.id, () => {
   selectedRunId.value = '';
-  generation++; stopPolling(); viewing.value = null; reviewing.value = null; verifying.value = null; attempts = 0; page.value = null; loading.value = false; starting.value = false; confirming.value = false;
+  generation++; stopPolling(); viewing.value = null; reviewing.value = null; verifying.value = null; delivering.value = null; attempts = 0; page.value = null; loading.value = false; starting.value = false; confirming.value = false;
   pending.value = readRunRequest(store, props.task.id, props.task.projectId, useMockServices);
   note.value = pending.value ? t('boardRun.uncertain') : '';
   void refresh();
@@ -121,7 +123,7 @@ onBeforeUnmount(() => { generation++; stopPolling(); });
       <p>{{ t('boardRun.workspace') }}：{{ run.execution.workspacePath }}</p>
       <p v-if="run.execution.exitCode != null">{{ t('boardRun.exitCode') }}：{{ run.execution.exitCode }} · {{ run.execution.exitEvidence }}</p>
       <p v-if="run.execution.status === 'SUCCEEDED'">{{ t('boardRun.notAccepted') }}</p>
-      <div class="board-run__actions"><Button size="sm" data-testid="board-run-review" @click="reviewing = run">{{ t('boardReview.open') }}</Button><Button size="sm" data-testid="board-run-verification" @click="verifying = run">{{ t('boardVerification.open') }}</Button></div>
+      <div class="board-run__actions"><Button size="sm" data-testid="board-run-review" @click="reviewing = run">{{ t('boardReview.open') }}</Button><Button size="sm" data-testid="board-run-verification" @click="verifying = run">{{ t('boardVerification.open') }}</Button><Button size="sm" data-testid="board-run-delivery" @click="delivering = run">{{ t('boardDelivery.open') }}</Button></div>
       <div v-if="run.task.prototype" class="board-run__prototype" data-testid="board-run-prototype"><p>{{ t('boardPrototype.runVersion') }}：{{ run.task.prototype.title || run.task.prototype.id }}</p><code>{{ run.task.prototype.id }}<br>SHA-256: {{ run.task.prototype.contentHash }}</code><Button size="sm" data-testid="board-run-prototype-view" @click="viewing = run.task.prototype">{{ t('boardPrototype.view') }}</Button></div>
       <p v-else>{{ t('boardPrototype.runNone') }}</p>
       <Collapse><template #summary>{{ t('boardRun.snapshot') }}</template><p>{{ run.task.title }}</p><p>{{ run.task.goal }}</p><p>{{ run.task.acceptanceCriteria }}</p></Collapse>
@@ -130,6 +132,7 @@ onBeforeUnmount(() => { generation++; stopPolling(); });
     <PrototypeVersionViewer v-if="viewing" :version-id="viewing.id" :expected-hash="viewing.contentHash" @close="viewing = null" />
     <BoardRunReview v-if="reviewing" :key="reviewing.execution.id" :task-id="task.id" :project-id="task.projectId" :run="reviewing" @close="reviewing = null" />
     <BoardRunVerification v-if="verifying" :key="verifying.execution.id" :task-id="task.id" :project-id="task.projectId" :run="verifying" @changed="emit('changed')" @close="verifying = null; emit('changed')" />
+    <BoardRunDelivery v-if="delivering" :key="delivering.execution.id" :task="task" :disabled="disabled" :run="delivering" @changed="emit('changed')" @close="delivering = null; emit('changed')" />
     <ConfirmBox v-if="confirming" :title="t('boardRun.confirm')" :impact="[page?.availability.workspacePath ?? '', 'git status', t('boardRun.hint')]" :confirm-label="t('boardRun.start')" :refusal="canStart ? undefined : t('boardRun.prepare')" :danger="false" @confirm="start" @cancel="confirming = false" />
   </section>
 </template>

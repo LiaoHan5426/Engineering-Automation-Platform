@@ -85,7 +85,15 @@ const selectedProject = computed(() => previewProjects.value.find(item => item.i
 let ticket = 0;
 async function load() {
   const current = ++ticket; busy.value = true;
-  try { const page = await runtimeApi.boardTasks(projectId.value); if (current === ticket) rows.value = page.items; }
+  try {
+    const page = await runtimeApi.boardTasks(projectId.value);
+    if (current === ticket) {
+      // Check against the old snapshot at response time, including edits made while loading.
+      const preserveDraft = dirty.value || stale.value;
+      rows.value = page.items;
+      if (!preserveDraft) useLatest();
+    }
+  }
   catch { if (current === ticket) note.value = t('desktop.boardLoadFailed'); }
   finally { if (current === ticket) busy.value = false; }
 }

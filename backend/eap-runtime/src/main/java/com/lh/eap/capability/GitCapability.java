@@ -92,6 +92,43 @@ public final class GitCapability implements Capability {
         return List.copyOf(command);
     }
 
+    /** Literal object inspection: no worktree filters, textconv, external diff or shell. */
+    public List<String> deliveryCommand(String step, String object) {
+        var command = safePrefix(Set.of());
+        if (object == null || !object.matches("[a-f0-9]{40}|[a-f0-9]{64}")) throw new IllegalArgumentException("Invalid captured object");
+        command.addAll(List.of("--no-replace-objects", "-c", "protocol.allow=never"));
+        switch (step) {
+            case "tree" -> command.addAll(List.of("ls-tree", "-r", "-z", object, "--", "frontend/"));
+            case "blob" -> command.addAll(List.of("cat-file", "blob", object));
+            default -> throw new IllegalArgumentException("Invalid delivery inspection");
+        }
+        return List.copyOf(command);
+    }
+
+    /** Metadata only: these commands never invoke conversion/diff helpers or trust index freshness. */
+    public List<String> deliveryConversionCommand(String step, List<String> paths) {
+        var command = safePrefix(Set.of());
+        command.addAll(List.of("--no-replace-objects", "--literal-pathspecs", "-c", "protocol.allow=never"));
+        switch (step) {
+            case "autocrlf" -> command.addAll(List.of("config", "--default", "false", "--get", "core.autocrlf"));
+            case "autocrlf-bool" -> command.addAll(List.of("config", "--type=bool", "--default", "false", "--get", "core.autocrlf"));
+            case "index-eol", "attributes" -> {
+                if (paths.isEmpty() || paths.size() > 64 || paths.stream().mapToInt(String::length).sum() > 16000)
+                    throw new IllegalArgumentException("Invalid conversion paths");
+                command.addAll("index-eol".equals(step) ? List.of("ls-files", "--eol", "-z", "--")
+                    : List.of("check-attr", "-z", "text", "eol", "crlf", "filter", "ident", "working-tree-encoding", "--"));
+                for (String path : paths) {
+                    if (!path.startsWith("frontend/") || path.indexOf('\0') >= 0 || path.length() > 4096
+                            || Arrays.asList(path.split("/", -1)).stream().anyMatch(part -> part.isEmpty() || part.equals("..") || part.equals(".")))
+                        throw new IllegalArgumentException("Invalid conversion path");
+                    command.add(path);
+                }
+            }
+            default -> throw new IllegalArgumentException("Invalid delivery conversion inspection");
+        }
+        return List.copyOf(command);
+    }
+
     public Observation execute(ExecutionContext c, String... args) {
         command(args); // Reject unsupported options before starting any process.
         try {

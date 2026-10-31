@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import { createApp, type App } from 'vue';
 import { AxiosError } from 'axios';
-import { runtimeApi, type BoardTask, type PrototypeVersionRecord } from '@eap/runtime-client';
+import { runtimeApi, type BoardTask, type BoardRun, type BoardDelivery, type PrototypeVersionRecord } from '@eap/runtime-client';
 import { createMockChatBackend } from '../../../mock/chatBackend';
 import { i18n } from '../../lib/i18n';
 import PreviewBoard from './PreviewBoard.vue';
@@ -25,6 +25,64 @@ beforeEach(() => {
   vi.spyOn(runtimeApi, 'updateBoardTask').mockImplementation((id, body) => call('POST', '/board/tasks/' + id, body));
 });
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); workbench.pendingBoardDraft = null; chatBinding.value = null; });
+it.each(['ACCEPT', 'REJECT'] as const)('keeps the full board → panel → delivery chain usable after submission for %s', async decision => {
+  await mountBoard(); await createTask();
+  let authoritative = (await runtimeApi.boardTasks(vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0].projectId)).items[0]!;
+  authoritative = { ...authoritative, column: 'ready' };
+  const run: BoardRun = { requestId: 'run-request', taskRevision: authoritative.revision, task: { title: authoritative.title, goal: authoritative.goal, acceptanceCriteria: authoritative.acceptanceCriteria }, execution: { id: 'run-a', missionId: 'mission-a', status: 'SUCCEEDED', capability: 'git-status', principal: 'local-operator', approval: 'NOT_REQUIRED', workspacePath: 'F:/repo', workspaceLabel: 'repo', executable: 'git', stdout: '', stderr: '', startedAt: '2026-11-01T00:00:00Z', finishedAt: '2026-11-01T00:00:01Z' } };
+  let saved: BoardDelivery | null = null;
+  vi.mocked(runtimeApi.boardTasks).mockImplementation(async () => ({ items: [{ ...authoritative }] }));
+  vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability: { allowed: true, workspacePath: 'F:/repo', workspaceLabel: 'repo', reason: '' }, items: [run] });
+  vi.spyOn(runtimeApi, 'boardDelivery').mockImplementation(async () => ({ record: saved, prepareAllowed: !saved, reason: '' }));
+  vi.spyOn(runtimeApi, 'submitBoardDelivery').mockImplementation(async (_task, _run, request) => {
+    authoritative = { ...authoritative, column: 'acceptance', revision: authoritative.revision + 1 };
+    saved = { id: 'delivery-a', source: 'EXTERNAL_MANUAL', requestId: request.requestId, taskRevision: request.revision, submittedRevision: authoritative.revision, workspacePath: 'F:/repo', baseCommit: 'base', verificationId: 'verification-a', sourceHash: 'hash', prototypeVersionId: null, goal: authoritative.goal, acceptanceCriteria: authoritative.acceptanceCriteria, note: request.note, files: [], createdAt: '2026-11-01T00:05:00Z', decision: null };
+    return saved;
+  });
+  vi.spyOn(runtimeApi, 'decideBoardDelivery').mockImplementation(async (_task, _run, request) => {
+    authoritative = { ...authoritative, column: decision === 'ACCEPT' ? 'done' : 'ready', revision: authoritative.revision + 1 };
+    saved = { ...saved!, decision: { ...request, id: 'decision-a', operator: 'local-operator', createdAt: '2026-11-01T00:10:00Z' } };
+    return saved;
+  });
+  const button = (id: string) => document.querySelector(`[data-testid=${id}]`) as HTMLButtonElement;
+  const confirm = async (id: string) => {
+    await vi.waitFor(() => expect(button(id)?.disabled).toBe(false)); button(id).click();
+    await vi.waitFor(() => expect(document.querySelector('.eap-confirm__actions button:first-child')).not.toBeNull());
+    (document.querySelector('.eap-confirm__actions button:first-child') as HTMLButtonElement).click();
+  };
+  button('board-tab-runs').click();
+  await vi.waitFor(() => expect(button('board-run-delivery')).not.toBeNull()); button('board-run-delivery').click();
+  await vi.waitFor(() => expect(button('delivery-submit')).not.toBeNull());
+  fill('[data-testid=delivery-paths]', 'frontend/App.vue'); await confirm('delivery-submit');
+  await vi.waitFor(() => expect(root.querySelector('[data-testid=lane-acceptance] .board-card')).not.toBeNull());
+  expect(document.querySelector('[data-testid=board-conflict]')).toBeNull();
+  await vi.waitFor(() => expect((document.querySelector('[data-testid=delivery-criteria]') as HTMLInputElement)?.disabled).toBe(false));
+  (document.querySelector('[data-testid=delivery-criteria]') as HTMLInputElement).click();
+  (document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).click();
+  fill('[data-testid=delivery-comment]', 'Human review');
+  await confirm(decision === 'ACCEPT' ? 'delivery-accept' : 'delivery-reject');
+  await vi.waitFor(() => expect(runtimeApi.decideBoardDelivery).toHaveBeenCalledWith(authoritative.id, run.execution.id, expect.objectContaining({ decision, revision: saved!.submittedRevision })));
+  await vi.waitFor(() => expect(root.querySelector(`[data-testid=lane-${decision === 'ACCEPT' ? 'done' : 'ready'}] .board-card`)).not.toBeNull());
+  expect(document.querySelector('[data-testid=delivery-decision]')?.textContent).toContain('decision-a');
+  expect(document.querySelector('[data-testid=board-conflict]')).toBeNull();
+});
+it('retains dirty task fields and their revision when panel refresh completes after editing starts', async () => {
+  await mountBoard(); await createTask();
+  const task = (await runtimeApi.boardTasks(vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0].projectId)).items[0]!;
+  let complete!: (page: { items: BoardTask[] }) => void;
+  vi.mocked(runtimeApi.boardTasks).mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+  (document.querySelector('[data-testid=board-tab-runs]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(runtimeApi.boardRuns).toHaveBeenCalledTimes(1));
+  (document.querySelector('[data-testid=board-run-refresh]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(complete).toBeTypeOf('function'));
+  fill('[data-testid=task-goal]', 'local draft while refresh is pending');
+  complete({ items: [{ ...task, revision: task.revision + 1, goal: 'new authoritative goal' }] });
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-conflict]')).not.toBeNull());
+  expect((document.querySelector('[data-testid=task-goal]') as HTMLTextAreaElement).value).toBe('local draft while refresh is pending');
+  expect((document.querySelector('[data-testid=board-save-fields]') as HTMLButtonElement).disabled).toBe(true);
+  expect((document.querySelector('[data-testid=board-run-start]') as HTMLButtonElement).disabled).toBe(true);
+  expect(runtimeApi.updateBoardTask).not.toHaveBeenCalled();
+});
 it('separates preparation, prototype and runs without losing edits or restarting requests', async () => {
   await mountBoard(); await createTask();
   expect(document.querySelector('[data-testid=board-detail-tabs]')).not.toBeNull();

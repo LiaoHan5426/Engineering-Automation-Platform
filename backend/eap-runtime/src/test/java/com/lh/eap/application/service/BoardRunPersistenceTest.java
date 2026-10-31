@@ -356,6 +356,125 @@ class BoardRunPersistenceTest {
         assertThrows(org.springframework.dao.DuplicateKeyException.class, () -> jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=?::jsonb WHERE execution_id=?", json, otherRun.execution().id()));
         org.mockito.Mockito.verifyNoInteractions(process); assertTrue(queue.isEmpty());
     }
+    @Test void externalDeliveryPersistsEvidenceAndOnlyExplicitAcceptanceCompletesTask() throws Exception {
+        verificationFixture();
+        assertEquals(0, executor.runIsolated("fixture", repo, List.of("git", "add", "frontend"), GitCapability.environment()).exitCode());
+        assertEquals(0, executor.runIsolated("fixture", repo, List.of("git", "-c", "user.name=EAP Test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "frontend baseline"), GitCapability.environment()).exitCode());
+        Files.writeString(repo.resolve("frontend/source.ts"), "export const source = 2;");
+        var task = task(); var run = runs.start(task.id(), request(task)); queue.remove().run();
+        var verification = verification(passingVerificationProcess(), queue::add);
+        var plan = verification.plan(task.id(), run.execution().id(), new BoardVerificationService.Request(project, repo.toRealPath().toString()));
+        verification.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash())); queue.remove().run();
+        assertEquals("PASSED", verification.get(task.id(), run.execution().id(), project).record().status(), verification.get(task.id(), run.execution().id(), project).record().reason());
+        var type = assertDoesNotThrow(() -> Class.forName("com.lh.eap.application.service.BoardDeliveryService"), "delivery service missing");
+        var service = type.getConstructors()[0].newInstance(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), verification, new BoardDeliveryCapture(executor, new BoardVerificationSource()));
+        var requestType = Class.forName(type.getName()+"$Request");
+        var request = requestType.getConstructors()[0].newInstance(project, 1L, plan.workspacePath(), UUID.randomUUID(), List.of("frontend/source.ts"), "manual edit");
+        var delivery = type.getMethod("submit", UUID.class, UUID.class, requestType).invoke(service, task.id(), run.execution().id(), request);
+        assertEquals(delivery, type.getMethod("submit", UUID.class, UUID.class, requestType).invoke(service, task.id(), run.execution().id(), request));
+        var tree = tools.jackson.databind.json.JsonMapper.builder().build().valueToTree(delivery);
+        assertEquals("EXTERNAL_MANUAL", tree.get("source").asText());
+        assertEquals("export const source = 1;", tree.get("files").get(0).get("before").asText());
+        assertEquals("acceptance", tasks.find(task.id(), project, false).column());
+        assertEquals(2, tasks.find(task.id(), project, false).revision());
+        assertEquals("BOARD_EXECUTION_EVIDENCE_REQUIRED", rejects(() -> tasks.update(task.id(), new BoardTaskService.Update(project, 2, "done", null, null, null, null))).getReason());
+        var decisionType = Class.forName(type.getName()+"$Decide");
+        var decision = decisionType.getConstructors()[0].newInstance(project, 2L, UUID.randomUUID(), UUID.fromString(tree.get("id").asText()), "ACCEPT", true, true, "reviewed locally");
+        var saved = type.getMethod("decide", UUID.class, UUID.class, decisionType).invoke(service, task.id(), run.execution().id(), decision);
+        assertEquals(saved, type.getMethod("decide", UUID.class, UUID.class, decisionType).invoke(service, task.id(), run.execution().id(), decision));
+        assertEquals("done", tasks.find(task.id(), project, false).column()); assertEquals(3, tasks.find(task.id(), project, false).revision());
+    }
+    private record DeliveryFixture(BoardTaskService.Task task, UUID execution, BoardDeliveryService service, BoardDeliveryService.Request request, BoardVerificationService verification) {}
+    private DeliveryFixture deliveryFixture(com.lh.eap.api.ProcessExecutor captureExecutor) throws Exception {
+        verificationFixture();
+        assertEquals(0, executor.runIsolated("fixture", repo, List.of("git", "add", "frontend"), GitCapability.environment()).exitCode());
+        assertEquals(0, executor.runIsolated("fixture", repo, List.of("git", "-c", "user.name=EAP Test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "frontend baseline"), GitCapability.environment()).exitCode());
+        Files.writeString(repo.resolve("frontend/source.ts"), "export const source = 2;");
+        var task = task(); var run = runs.start(task.id(), request(task)); queue.remove().run();
+        var verification = verification(passingVerificationProcess(), queue::add);
+        var plan = verification.plan(task.id(), run.execution().id(), new BoardVerificationService.Request(project, repo.toRealPath().toString()));
+        verification.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash())); queue.remove().run();
+        assertEquals("PASSED", verification.get(task.id(), run.execution().id(), project).record().status());
+        return new DeliveryFixture(task, run.execution().id(), new BoardDeliveryService(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), verification, new BoardDeliveryCapture(captureExecutor, new BoardVerificationSource())), new BoardDeliveryService.Request(project, 1, plan.workspacePath(), UUID.randomUUID(), List.of("frontend/source.ts"), "manual change"), verification);
+    }
+    @Test void deliveryUnknownPersistsAfterOuterRollbackAndBlocksTheWorkspace() throws Exception {
+        var process = org.mockito.Mockito.mock(com.lh.eap.api.ProcessExecutor.class);
+        org.mockito.Mockito.when(process.runIsolated(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyMap()))
+            .thenReturn(new com.lh.eap.api.Observation("git-status", false, -1, "", "", Map.of("processTreeCleanup", false)));
+        var fixture = deliveryFixture(process);
+        var outer = new org.springframework.transaction.support.TransactionTemplate(context.getBean(PlatformTransactionManager.class));
+        assertEquals("BOARD_VERIFICATION_PROCESS_UNKNOWN", rejects(() -> outer.execute(status -> fixture.service().submit(fixture.task().id(), fixture.execution(), fixture.request()))).getReason());
+        assertEquals("UNKNOWN", fixture.verification().get(fixture.task().id(), fixture.execution(), project).record().status());
+        assertTrue(tasks.hasActiveWorkspace(fixture.request().workspacePath()));
+        assertNull(fixture.service().get(fixture.task().id(), fixture.execution(), project).record());
+        assertEquals("ready", tasks.find(fixture.task().id(), project, false).column());
+    }
+    @Test void deliveryRejectAllowsStaleSourceButAcceptAndOrdinaryEditingDoNot() throws Exception {
+        var f = deliveryFixture(executor); var delivery = f.service().submit(f.task().id(), f.execution(), f.request());
+        Files.writeString(repo.resolve("frontend/source.ts"), "export const source = 3;");
+        assertEquals("BOARD_EXECUTION_EVIDENCE_REQUIRED", rejects(() -> tasks.update(f.task().id(), new BoardTaskService.Update(project, 2, null, "changed", null, null, null))).getReason());
+        assertEquals("BOARD_EXECUTION_EVIDENCE_REQUIRED", rejects(() -> context.getBean(BoardPrototypeService.class).select(f.task().id(), new BoardPrototypeService.Selection(project, 2, null))).getReason());
+        var accept = new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "ACCEPT", true, true, "checked");
+        assertEquals("BOARD_DELIVERY_SOURCE_STALE", rejects(() -> f.service().decide(f.task().id(), f.execution(), accept)).getReason());
+        assertNull(f.service().get(f.task().id(), f.execution(), project).record().decision());
+        var reject = new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "REJECT", false, false, "source changed");
+        assertEquals("REJECT", f.service().decide(f.task().id(), f.execution(), reject).decision().decision());
+        assertEquals("ready", tasks.find(f.task().id(), project, false).column());
+        assertEquals(delivery.files(), f.service().get(f.task().id(), f.execution(), project).record().files());
+        assertEquals("BOARD_DELIVERY_REQUEST_CONFLICT", rejects(() -> f.service().decide(f.task().id(), f.execution(), accept)).getReason());
+    }
+    @Test void concurrentDeliveryDecisionsSerializeAndOnlyOneRevisionIsApplied() throws Exception {
+        var f = deliveryFixture(executor); var delivery = f.service().submit(f.task().id(), f.execution(), f.request());
+        var barrier = new CyclicBarrier(2);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var calls = java.util.stream.IntStream.range(0,2).mapToObj(i -> pool.submit(() -> {
+                barrier.await(5, TimeUnit.SECONDS);
+                try { return f.service().decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "REJECT", false, false, "not accepted")).decision().decision(); }
+                catch (ResponseStatusException denied) { return denied.getReason(); }
+            })).toList();
+            assertEquals(Set.of("REJECT", "BOARD_DELIVERY_REQUEST_CONFLICT"), Set.of(calls.get(0).get(20,TimeUnit.SECONDS), calls.get(1).get(20,TimeUnit.SECONDS)));
+        }
+        assertEquals(3, tasks.find(f.task().id(), project, false).revision());
+    }
+    @Test void deliveryReadsAndIdempotentRetriesNeverRunProcessesAndAreScoped() throws Exception {
+        var f = deliveryFixture(executor); var delivery = f.service().submit(f.task().id(), f.execution(), f.request());
+        var process = org.mockito.Mockito.mock(com.lh.eap.api.ProcessExecutor.class);
+        var service = new BoardDeliveryService(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), f.verification(), new BoardDeliveryCapture(process,new BoardVerificationSource()));
+        assertEquals(delivery, service.get(f.task().id(), f.execution(), project).record());
+        assertEquals(delivery, service.submit(f.task().id(), f.execution(), f.request()));
+        assertEquals(404, rejects(() -> service.get(f.task().id(), f.execution(), project+"-foreign")).getStatusCode().value());
+        assertEquals(404, rejects(() -> service.get(f.task().id(), UUID.randomUUID(), project)).getStatusCode().value());
+        assertEquals("BOARD_DELIVERY_REQUEST_CONFLICT", rejects(() -> service.submit(f.task().id(), f.execution(), new BoardDeliveryService.Request(project,1,f.request().workspacePath(),f.request().requestId(),f.request().paths(),"different"))).getReason());
+        assertThrows(IllegalArgumentException.class, () -> service.decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",false,true,"unchecked")));
+        assertThrows(IllegalArgumentException.class, () -> service.decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"REJECT",false,false," ")));
+        org.mockito.Mockito.verifyNoInteractions(process);
+    }
+    @Test void deliveryCannotReuseVerificationAfterTaskOrPrototypeChange() throws Exception {
+        var f = deliveryFixture(executor);
+        tasks.update(f.task().id(), new BoardTaskService.Update(project,1,null,null,null,"new goal",null));
+        var request = new BoardDeliveryService.Request(project,2,f.request().workspacePath(),UUID.randomUUID(),f.request().paths(),"manual");
+        assertEquals("BOARD_DELIVERY_TASK_STALE", rejects(() -> f.service().submit(f.task().id(),f.execution(),request)).getReason());
+        assertFalse(f.service().get(f.task().id(),f.execution(),project).prepareAllowed());
+    }
+    @Test void acceptanceUnknownPreservesDeliveryAndDurablyBlocksFurtherDecisions() throws Exception {
+        var f = deliveryFixture(executor); var delivery = f.service().submit(f.task().id(),f.execution(),f.request());
+        var process = org.mockito.Mockito.mock(com.lh.eap.api.ProcessExecutor.class);
+        org.mockito.Mockito.when(process.runIsolated(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.anyList(),org.mockito.ArgumentMatchers.anyMap())).thenThrow(new IllegalStateException("unconfirmed"));
+        var service = new BoardDeliveryService(jdbc,tasks,executions,git,context.getBean(CapabilityRegistry.class),f.verification(),new BoardDeliveryCapture(process,new BoardVerificationSource()));
+        var accept = new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"checked");
+        assertEquals("BOARD_VERIFICATION_PROCESS_UNKNOWN",rejects(() -> service.decide(f.task().id(),f.execution(),accept)).getReason());
+        assertEquals(delivery,service.get(f.task().id(),f.execution(),project).record());
+        assertTrue(tasks.hasActiveWorkspace(f.request().workspacePath()));
+        assertEquals("acceptance",tasks.find(f.task().id(),project,false).column());
+        assertEquals("BOARD_EXECUTION_ACTIVE",rejects(() -> service.decide(f.task().id(),f.execution(),new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"REJECT",false,false,"unknown"))).getReason());
+    }
+    @Test void acceptanceRechecksEvidencePathsAndNestedRepositoryBoundaries() throws Exception {
+        var f=deliveryFixture(executor); var delivery=f.service().submit(f.task().id(),f.execution(),f.request());
+        Files.createDirectories(repo.resolve("frontend/.git"));
+        var accept=new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"reviewed");
+        assertEquals("BOARD_DELIVERY_PATH_DENIED", rejects(()->f.service().decide(f.task().id(),f.execution(),accept)).getReason());
+        assertEquals("acceptance",tasks.find(f.task().id(),project,false).column());
+    }
     @AfterEach void cleanup() {
         executor.close();
         if (jdbc != null) {

@@ -1,0 +1,51 @@
+import { beforeEach, expect, it } from 'vite-plus/test';
+import { readDeliveryRequest, writeDeliveryRequest, type PendingDeliveryRequest } from './boardDeliveryRequest';
+import { readRunRequest } from './boardRunRequest';
+const values = new Map<string, string>();
+const store = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };
+const submission = { projectId: 'project-a', revision: 3, workspacePath: 'F:/repo', requestId: '12345678-1234-1234-1234-123456789abc', paths: ['frontend/App.vue'], note: 'literal note' };
+const decision = { projectId: submission.projectId, revision: 4, workspacePath: submission.workspacePath, requestId: submission.requestId, decisionRequest: { projectId: submission.projectId, revision: 4, requestId: submission.requestId, deliveryId: 'delivery-a', decision: 'ACCEPT' as const, criteriaConfirmed: true, previewConfirmed: true, comment: 'literal comment' } };
+const read = () => readDeliveryRequest(store, 'task-a', 'run-a', 'project-a', false);
+beforeEach(() => values.clear());
+it.each([submission, decision, { ...submission, rejectionCode: 'BOARD_DELIVERY_REQUEST_CONFLICT' }])('round trips the exact immutable request and conflict state', request => {
+  expect(writeDeliveryRequest(store, 'task-a', 'run-a', false, request)).toBe(true);
+  expect(read()).toEqual(request);
+});
+it('isolates task, Run, project, mode and the ordinary Run request journal', () => {
+  writeDeliveryRequest(store, 'task-a', 'run-a', false, submission);
+  for (const [task, run, project, mock] of [['task-b', 'run-a', 'project-a', false], ['task-a', 'run-b', 'project-a', false], ['task-a', 'run-a', 'project-b', false], ['task-a', 'run-a', 'project-a', true]] as const) {
+    expect(readDeliveryRequest(store, task, run, project, mock)).toBeNull();
+  }
+  expect(readRunRequest(store, 'task-a', 'project-a', false)).toBeNull();
+  writeDeliveryRequest(store, 'task-a', 'run-b', false, decision);
+  writeDeliveryRequest(store, 'task-a', 'run-a', false, null);
+  expect(read()).toBeNull();
+  expect(readDeliveryRequest(store, 'task-a', 'run-b', 'project-a', false)).toEqual(decision);
+});
+it.each([
+  { ...submission, revision: 0 }, { ...submission, revision: 1.5 }, { ...submission, requestId: 'not-a-uuid' },
+  { ...submission, workspacePath: '' }, { ...submission, note: null }, { ...submission, paths: [] },
+  { ...submission, paths: ['frontend/App.vue', 'frontend/App.vue'] },
+  { ...submission, paths: [' frontend/App.vue'] }, { ...submission, paths: ['frontend/../secret.ts'] },
+  { ...submission, paths: ['backend/Foo.ts'] }, { ...submission, paths: ['frontend/config.json'] },
+  { ...submission, paths: ['frontend\\App.vue'] }, { ...submission, paths: [7] },
+  { ...submission, paths: Array.from({ length: 9 }, (_, i) => `frontend/File${i}.ts`) },
+  { ...submission, rejectionCode: 123 },
+  { ...decision, paths: submission.paths, note: submission.note },
+  { ...decision, decisionRequest: null },
+  ...[{ deliveryId: '' }, { projectId: 'other' }, { requestId: 'different' }, { revision: 99 }, { decision: 'OTHER' }, { criteriaConfirmed: 'yes' }, { previewConfirmed: null }, { comment: 7 }].map(change => ({ ...decision, decisionRequest: { ...decision.decisionRequest, ...change } })),
+])('fails closed for malformed persisted payload %# without repairing it', invalid => {
+  // Seed invalid storage intentionally, bypassing the TypeScript caller contract.
+  writeDeliveryRequest(store, 'task-a', 'run-a', false, invalid as unknown as PendingDeliveryRequest);
+  expect(read()).toBeNull();
+});
+it('handles corrupt JSON and inaccessible storage without issuing any request', () => {
+  writeDeliveryRequest(store, 'task-a', 'run-a', false, submission);
+  for (const key of values.keys()) values.set(key, '{bad json');
+  expect(read()).toBeNull();
+  expect(readDeliveryRequest(null, 'task-a', 'run-a', 'project-a', false)).toBeNull();
+  const broken = { getItem: () => { throw new Error('denied'); }, setItem: () => { throw new Error('quota'); }, removeItem: () => { throw new Error('denied'); } };
+  expect(readDeliveryRequest(broken, 'task-a', 'run-a', 'project-a', false)).toBeNull();
+  expect(writeDeliveryRequest(broken, 'task-a', 'run-a', false, submission)).toBe(false);
+  expect(writeDeliveryRequest(broken, 'task-a', 'run-a', false, null)).toBe(false);
+});

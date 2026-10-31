@@ -45,7 +45,7 @@ public class BoardVerificationSource {
                 @Override public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
                     check(path, attrs);
                     if (attrs.isDirectory()) throw denied("BOARD_VERIFICATION_SOURCE_LIMIT");
-                    if (excluded(path)) return FileVisitResult.CONTINUE;
+                    if (hidden(path) || !sourcePath(root.relativize(path).toString().replace('\\', '/'))) return FileVisitResult.CONTINUE;
                     if (!attrs.isRegularFile()) throw denied("BOARD_VERIFICATION_SOURCE_UNREADABLE");
                     if (files.size() >= 4096 || attrs.size() > 4L * 1024 * 1024 || totals[0] + attrs.size() > 32L * 1024 * 1024) throw denied("BOARD_VERIFICATION_SOURCE_LIMIT");
                     var hash = digest(); long count = 0;
@@ -70,11 +70,17 @@ public class BoardVerificationSource {
         } catch (IOException failure) { throw denied("BOARD_VERIFICATION_SOURCE_UNREADABLE"); }
     }
     private static boolean hidden(Path path) throws IOException { return path.getFileName().toString().startsWith(".") || Files.isHidden(path); }
-    private static boolean excluded(Path path) throws IOException {
-        String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
-        if (hidden(path) || name.endsWith(".tsbuildinfo") || name.matches("application.*\\.(yml|yaml|properties)") || name.matches(".*(credential|secret|password|passwd|private[-_]?key|api[-_]?key|certificate|keystore).*")) return true;
-        if (name.matches(".*tokens?\\.(json|yaml|yml|txt|lock)")) return true;
-        int dot = name.lastIndexOf('.'); return dot < 0 || !EXTENSIONS.contains(name.substring(dot + 1));
+    /** The same pure path policy for current source and absent tree entries; never reads content. */
+    static boolean sourcePath(String path) {
+        if (!path.startsWith("frontend/")) return false;
+        String[] parts = path.toLowerCase(Locale.ROOT).split("/", -1);
+        for (int i = 0; i < parts.length; i++) {
+            if (parts[i].isEmpty() || parts[i].startsWith(".") || (i < parts.length - 1 && DIRECTORIES.contains(parts[i]))) return false;
+        }
+        String name = parts[parts.length - 1];
+        if (name.endsWith(".tsbuildinfo") || name.matches("application.*\\.(yml|yaml|properties)") || name.matches(".*(credential|secret|password|passwd|private[-_]?key|api[-_]?key|certificate|keystore).*")) return false;
+        if (name.matches(".*tokens?\\.(json|yaml|yml|txt|lock)")) return false;
+        int dot = name.lastIndexOf('.'); return dot >= 0 && EXTENSIONS.contains(name.substring(dot + 1));
     }
     private static MessageDigest digest() {
         try { return MessageDigest.getInstance("SHA-256"); }

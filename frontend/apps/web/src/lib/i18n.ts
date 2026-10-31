@@ -1,6 +1,7 @@
 import { builderMessages } from "./builderMessages";
 import { boardPrototypeMessages } from "./boardPrototypeMessages";
 import { boardReviewMessages } from "./boardReviewMessages";
+import { boardDeliveryMessages } from "./boardDeliveryMessages";
 import { boardVerificationMessages } from "./boardVerificationMessages";
 import { boardRunMessages } from "./boardRunMessages";
 import { appearanceMessages } from "./appearanceMessages";
@@ -18,6 +19,7 @@ export const i18n = createI18n({
       boardPrototype: boardPrototypeMessages["zh-CN"],
       boardReview: boardReviewMessages["zh-CN"],
       boardVerification: boardVerificationMessages["zh-CN"],
+      boardDelivery: boardDeliveryMessages["zh-CN"],
       boardRun: boardRunMessages["zh-CN"],
       appearance: appearanceMessages["zh-CN"],
       preview: previewMessages['zh-CN'],
@@ -188,6 +190,7 @@ export const i18n = createI18n({
       boardPrototype: boardPrototypeMessages["en-US"],
       boardReview: boardReviewMessages["en-US"],
       boardVerification: boardVerificationMessages["en-US"],
+      boardDelivery: boardDeliveryMessages["en-US"],
       boardRun: boardRunMessages["en-US"],
       appearance: appearanceMessages["en-US"],
       preview: previewMessages['en-US'],

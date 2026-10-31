@@ -110,7 +110,7 @@ public class BoardVerificationService {
         });
     }
     private record Observation<T>(T value, ResponseStatusException failure) {}
-    private <T> T observePreflight(UUID taskId, UUID executionId, String workspace, Supplier<T> action) {
+    <T> T observePreflight(UUID taskId, UUID executionId, String workspace, Supplier<T> action) {
         var observed = transaction.execute(status -> {
             var started = Instant.now();
             try { return new Observation<>(action.get(), null); }
@@ -118,7 +118,11 @@ public class BoardVerificationService {
                 if (!"BOARD_VERIFICATION_PROCESS_UNKNOWN".equals(failure.getReason())) throw failure;
                 // Keep the task/workspace locks until this identity commits. No plan was obtained.
                 var unknown = new Record(UUID.randomUUID(), "UNKNOWN", failure.getReason(), null, List.of(), null, started, null, workspace);
-                if (jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=?::jsonb WHERE task_id=? AND execution_id=? AND verification_snapshot IS NULL", JSON.writeValueAsString(unknown), taskId, executionId) != 1) throw denied("BOARD_VERIFICATION_REQUEST_CONFLICT");
+                if (jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=?::jsonb WHERE task_id=? AND execution_id=? AND verification_snapshot IS NULL", JSON.writeValueAsString(unknown), taskId, executionId) != 1) {
+                    // Delivery reuses a completed verification's identity/interlock, retaining all
+                    // original plan/check evidence. A new unconfirmed read invalidates eligibility.
+                    if (jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=jsonb_set(jsonb_set(jsonb_set(verification_snapshot,'{status}','\"UNKNOWN\"'::jsonb),'{reason}','\"BOARD_DELIVERY_PROCESS_UNKNOWN\"'::jsonb),'{finishedAt}','null'::jsonb) WHERE task_id=? AND execution_id=? AND verification_snapshot->>'status'='PASSED'", taskId, executionId) != 1) throw denied("BOARD_VERIFICATION_REQUEST_CONFLICT");
+                }
                 return new Observation<T>(null, failure);
             }
         });

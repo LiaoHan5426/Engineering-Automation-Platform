@@ -492,6 +492,12 @@ export type BoardVerificationStatus = 'QUEUED' | 'RUNNING' | 'PASSED' | 'FAILED'
 export type BoardVerificationCheck = Omit<BoardVerificationCommand, 'timeoutSeconds'> & { status: BoardVerificationStatus | 'TIMED_OUT'; exitCode: number | null; stdout: string; stderr: string; truncated: boolean; processTreeCleanup: boolean; startedAt: string; finishedAt: string | null };
 export type BoardVerificationRecord = { id: string; status: BoardVerificationStatus; reason: string; plan: BoardVerificationPlan | null; workspacePath?: string | null; checks: BoardVerificationCheck[]; sourceAfter: BoardVerificationSource | null; startedAt: string; finishedAt: string | null };
 export type BoardVerificationPage = { record: BoardVerificationRecord | null; prepareAllowed: boolean; reason: string };
+export type BoardDeliveryRequest = BoardRunStart & { paths: string[]; note: string };
+export type BoardDeliveryDecisionRequest = { projectId: string; revision: number; requestId: string; deliveryId: string; decision: 'ACCEPT' | 'REJECT'; criteriaConfirmed: boolean; previewConfirmed: boolean; comment: string };
+export type BoardDeliveryDecision = Omit<BoardDeliveryDecisionRequest, 'projectId' | 'revision' | 'deliveryId'> & { id: string; operator: 'local-operator'; createdAt: string };
+export type BoardDeliveryFile = { path: string; beforeHash: string; afterHash: string; before: string; after: string };
+export type BoardDelivery = { id: string; source: 'EXTERNAL_MANUAL'; requestId: string; taskRevision: number; submittedRevision: number; workspacePath: string; baseCommit: string; verificationId: string; sourceHash: string; prototypeVersionId: string | null; goal: string; acceptanceCriteria: string; note: string; files: BoardDeliveryFile[]; createdAt: string; decision: BoardDeliveryDecision | null };
+export type BoardDeliveryPage = { record: BoardDelivery | null; prepareAllowed: boolean; reason: string };
 
 /** Read-only dirty-file summary. requested=false means git was not run. */
 export type WorkspaceDirty = {
@@ -819,6 +825,9 @@ export const runtimeApi = {
   boardVerification: (taskId: string, executionId: string, projectId: string) => get<BoardVerificationPage>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/verification?projectId=' + encodeURIComponent(projectId)),
   planBoardVerification: (taskId: string, executionId: string, request: { projectId: string; workspacePath: string }) => client.post<BoardVerificationPlan>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/verification/plan', request, { timeout: 90_000 }).then(response => response.data),
   startBoardVerification: (taskId: string, executionId: string, request: { projectId: string; workspacePath: string; planHash: string }) => client.post<BoardVerificationRecord>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/verification', request, { timeout: 90_000 }).then(response => response.data),
+  boardDelivery: (taskId: string, executionId: string, projectId: string) => get<BoardDeliveryPage>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/delivery?projectId=' + encodeURIComponent(projectId)),
+  submitBoardDelivery: (taskId: string, executionId: string, request: BoardDeliveryRequest) => client.post<BoardDelivery>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/delivery', request, { timeout: 90_000 }).then(response => response.data),
+  decideBoardDelivery: (taskId: string, executionId: string, request: BoardDeliveryDecisionRequest) => client.post<BoardDelivery>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/delivery/decision', request, { timeout: 90_000 }).then(response => response.data),
   startBoardRun: (id: string, request: BoardRunStart) => client.post<BoardRun>('/board/tasks/' + encodeURIComponent(id) + '/runs', request).then(response => response.data),
   createBoardTask: (draft: BoardTaskDraft) => client.post<BoardTask>('/board/tasks', draft).then(response => response.data),
   updateBoardTask: (id: string, update: { projectId: string; revision: number; column?: BoardTask['column']; notes?: string; priority?: BoardTask['priority']; goal?: string; acceptanceCriteria?: string }) => client.post<BoardTask>('/board/tasks/' + encodeURIComponent(id), update).then(response => response.data),
