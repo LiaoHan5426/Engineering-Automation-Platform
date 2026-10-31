@@ -28,7 +28,8 @@ public class BoardTaskService {
                         String goal, String acceptanceCriteria, UUID requestId) {}
     public record Update(String projectId, long revision, String column, String notes, String priority,
                          String goal, String acceptanceCriteria) {}
-    private static final String SELECT = "SELECT b.*, EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=b.id AND e.status IN ('CREATED','RUNNING','CANCELLING')) AS execution_active FROM eap.board_task b";
+    private static final String ACTIVE = "(e.status IN ('CREATED','RUNNING','CANCELLING') OR r.verification_snapshot->>'status' IN ('QUEUED','RUNNING','UNKNOWN'))";
+    private static final String SELECT = "SELECT b.*, EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=b.id AND " + ACTIVE + ") AS execution_active FROM eap.board_task b";
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final RowMapper<Task> ROW = (rs, row) -> new Task(rs.getObject("id", UUID.class),
             rs.getString("project_id"), rs.getString("title"), rs.getString("column_id"), rs.getString("notes"),
@@ -88,7 +89,18 @@ public class BoardTaskService {
 
     // Separate statement after locking the task: a waiter needs a fresh READ COMMITTED snapshot.
     boolean hasActiveExecution(UUID id) {
-        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=? AND e.status IN ('CREATED','RUNNING','CANCELLING'))", Boolean.class, id));
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=? AND " + ACTIVE + ")", Boolean.class, id));
+    }
+    // All callers acquire the task row first, then this workspace lock: never the opposite order.
+    void lockWorkspace(String workspace) {
+        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Workspace reservation requires a transaction");
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(lower(?), 791621))", rs -> { }, workspace);
+    }
+    boolean hasActiveWorkspace(String workspace) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE lower(e.workspace_path)=lower(?) AND " + ACTIVE + ")", Boolean.class, workspace));
+    }
+    boolean hasActiveVerification(String workspace) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r WHERE lower(COALESCE(r.verification_snapshot->'plan'->>'workspacePath', r.verification_snapshot->>'workspacePath'))=lower(?) AND r.verification_snapshot->>'status' IN ('QUEUED','RUNNING','UNKNOWN'))", Boolean.class, workspace));
     }
     Task find(UUID id, String projectId, boolean lock) {
         var rows = jdbc.query(SELECT + " WHERE id=? AND project_id=?" + (lock ? " FOR UPDATE" : ""), ROW, id, projectId);

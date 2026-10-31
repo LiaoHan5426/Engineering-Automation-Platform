@@ -232,7 +232,8 @@ class BoardRunPersistenceTest {
         var settings = org.mockito.Mockito.mock(CapabilitySettings.class);
         var denied = new BoardReviewService(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), context.getBean(CapabilityHandlerRegistry.class), settings, context.getBean(GitReviewCapture.class));
         assertEquals("CAPABILITY_DISABLED", denied.get(task.id(), run.execution().id(), project).reason());
-        assertEquals("CAPABILITY_DISABLED", rejects(() -> denied.collect(task.id(), run.execution().id(), request)).getReason());
+        var transaction = new org.springframework.transaction.support.TransactionTemplate(context.getBean(PlatformTransactionManager.class));
+        assertEquals("CAPABILITY_DISABLED", rejects(() -> transaction.execute(status -> denied.collect(task.id(), run.execution().id(), request))).getReason());
         assertNull(reviews.get(task.id(), run.execution().id(), project).evidence());
     }
     @Test void missingBaselineIsStoredAsFailedEvidenceWithoutTaskCompletion() throws Exception {
@@ -242,6 +243,118 @@ class BoardRunPersistenceTest {
         assertEquals("FAILED", evidence.snapshot().status()); assertEquals("NOT_RUN", evidence.snapshot().check().status());
         assertEquals(evidence, reviews.get(task.id(), run.execution().id(), project).evidence());
         assertEquals("ready", tasks.list(project).getFirst().column());
+    }
+    private BoardVerificationService verification(com.lh.eap.api.ProcessExecutor process, java.util.concurrent.Executor dispatcher) {
+        var channels = org.mockito.Mockito.mock(CliChannels.class);
+        var binary = LocalBinaries.resolve("git").orElseThrow().toString();
+        org.mockito.Mockito.when(channels.channel("vp", "vp")).thenReturn(new CliChannels.Channel("vp", binary, "operator", binary, com.lh.eap.domain.model.CapabilityAvailability.AVAILABLE));
+        return new BoardVerificationService(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), context.getBean(CapabilitySettings.class),
+            new BoardVerificationPlanSupport(executor, channels, new BoardVerificationSource()), process, context.getBean(PlatformTransactionManager.class), dispatcher);
+    }
+    private void verificationFixture() throws Exception {
+        commitReviewBaseline(); Files.createDirectories(repo.resolve("frontend/node_modules"));
+        Files.writeString(repo.resolve("frontend/package.json"), "{}"); Files.writeString(repo.resolve("frontend/source.ts"), "export const source = 1;");
+    }
+    private com.lh.eap.api.ProcessExecutor passingVerificationProcess() {
+        var process = org.mockito.Mockito.mock(com.lh.eap.api.ProcessExecutor.class);
+        org.mockito.Mockito.when(process.runIsolated(org.mockito.ArgumentMatchers.eq("vp"), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyMap()))
+            .thenReturn(new com.lh.eap.api.Observation("vp", true, 0, "fixture check", "", Map.of("executorStatus", "SUCCEEDED", "processExited", true, "processTreeCleanup", true)));
+        return process;
+    }
+    @Test void verificationPersistsOnceBlocksTaskAndPrototypeAndReplaysWithoutTaskCompletion() throws Exception {
+        verificationFixture(); var task = task(); var run = runs.start(task.id(), request(task)); queue.remove().run();
+        var process = passingVerificationProcess(); var service = verification(process, queue::add);
+        var plan = service.plan(task.id(), run.execution().id(), new BoardVerificationService.Request(project, repo.toRealPath().toString()));
+        var request = new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash());
+        var first = service.start(task.id(), run.execution().id(), request);
+        assertEquals("QUEUED", first.status()); assertEquals(first, service.start(task.id(), run.execution().id(), request)); assertEquals(1, queue.size());
+        assertTrue(tasks.list(project).getFirst().executionActive());
+        assertEquals("BOARD_EXECUTION_ACTIVE", rejects(() -> tasks.update(task.id(), new BoardTaskService.Update(project, 1, "planned", null, null, null, null))).getReason());
+        assertEquals("BOARD_EXECUTION_ACTIVE", rejects(() -> context.getBean(BoardPrototypeService.class).select(task.id(), new BoardPrototypeService.Selection(project, 1, null))).getReason());
+        assertEquals("BOARD_EXECUTION_ACTIVE", rejects(() -> context.getBean(BoardReviewService.class).collect(task.id(), run.execution().id(), new BoardReviewService.Request(project, plan.workspacePath()))).getReason());
+        assertEquals(404, rejects(() -> service.get(task.id(), run.execution().id(), project + "-foreign")).getStatusCode().value());
+        assertEquals(404, rejects(() -> service.get(task.id(), UUID.randomUUID(), project)).getStatusCode().value());
+        var worker = queue.remove(); worker.run(); worker.run();
+        var saved = verification(process, queue::add).get(task.id(), run.execution().id(), project).record();
+        assertEquals("PASSED", saved.status()); assertEquals(3, saved.checks().size()); assertFalse(tasks.list(project).getFirst().executionActive());
+        assertEquals(saved, service.start(task.id(), run.execution().id(), request)); assertEquals("ready", tasks.list(project).getFirst().column());
+        org.mockito.Mockito.verify(process, org.mockito.Mockito.times(3)).runIsolated(org.mockito.ArgumentMatchers.eq("vp"), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyMap());
+        assertEquals("BOARD_VERIFICATION_REQUEST_CONFLICT", rejects(() -> service.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), "e".repeat(64)))).getReason());
+    }
+    @Test void concurrentVerificationIsDeduplicatedAndWorkspaceConstraintBlocksOtherTasks() throws Exception {
+        verificationFixture(); var one = task(); var first = runs.start(one.id(), request(one)); queue.remove().run();
+        var two = task(); var second = runs.start(two.id(), request(two)); queue.remove().run();
+        var service = verification(passingVerificationProcess(), queue::add);
+        var plan = service.plan(one.id(), first.execution().id(), new BoardVerificationService.Request(project, repo.toRealPath().toString()));
+        var request = new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash()); var barrier = new CyclicBarrier(2);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var calls = java.util.stream.IntStream.range(0, 2).mapToObj(index -> pool.submit(() -> { barrier.await(5, TimeUnit.SECONDS); return service.start(one.id(), first.execution().id(), request); })).toList();
+            assertEquals(calls.get(0).get(30, TimeUnit.SECONDS), calls.get(1).get(30, TimeUnit.SECONDS));
+        }
+        assertEquals(1, queue.size());
+        assertEquals("BOARD_VERIFICATION_WORKSPACE_BUSY", rejects(() -> service.start(two.id(), second.execution().id(), request)).getReason());
+        assertEquals("BOARD_VERIFICATION_WORKSPACE_BUSY", rejects(() -> runs.start(two.id(), new BoardRunService.Start(project, 1, UUID.randomUUID(), plan.workspacePath()))).getReason());
+        assertEquals("BOARD_VERIFICATION_WORKSPACE_BUSY", rejects(() -> context.getBean(BoardReviewService.class).collect(two.id(), second.execution().id(), new BoardReviewService.Request(project, plan.workspacePath()))).getReason());
+        var persisted = jdbc.queryForObject("SELECT verification_snapshot::text FROM eap.board_task_run WHERE execution_id=?", String.class, first.execution().id());
+        assertThrows(org.springframework.dao.DuplicateKeyException.class, () -> jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=?::jsonb WHERE execution_id=?", persisted, second.execution().id()));
+    }
+    @Test void restartUnknownPreservesVerificationProgressAndNeverDispatchesAgain() throws Exception {
+        verificationFixture(); var task = task(); var run = runs.start(task.id(), request(task)); queue.remove().run();
+        var process = passingVerificationProcess(); var service = verification(process, queue::add);
+        var plan = service.plan(task.id(), run.execution().id(), new BoardVerificationService.Request(project, repo.toRealPath().toString()));
+        service.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash()));
+        // Execute the production recovery SQL scoped strictly to this test's row, never other users' work.
+        var scoped = org.mockito.Mockito.mock(JdbcTemplate.class);
+        org.mockito.Mockito.doAnswer(call -> jdbc.update((String)call.getArgument(0) + " AND task_id=?", task.id())).when(scoped).update(org.mockito.ArgumentMatchers.anyString());
+        new BoardVerificationService(scoped, tasks, executions, git, context.getBean(CapabilityRegistry.class), context.getBean(CapabilitySettings.class), org.mockito.Mockito.mock(BoardVerificationPlanSupport.class), process, context.getBean(PlatformTransactionManager.class), queue::add).markRestartUnknown();
+        queue.remove().run();
+        assertEquals("UNKNOWN", service.get(task.id(), run.execution().id(), project).record().status());
+        assertTrue(tasks.list(project).getFirst().executionActive());
+        org.mockito.Mockito.verifyNoInteractions(process);
+    }
+    @Test void queuedVerificationDetectsEditedSourceBeforeExecutingAnyChecks() throws Exception {
+        verificationFixture(); var task = task(); var run = runs.start(task.id(), request(task)); queue.remove().run();
+        var process = passingVerificationProcess(); var service = verification(process, queue::add);
+        var plan = service.plan(task.id(), run.execution().id(), new BoardVerificationService.Request(project, repo.toRealPath().toString()));
+        service.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash()));
+        Files.writeString(repo.resolve("frontend/source.ts"), "export const source = 2;"); queue.remove().run();
+        assertEquals("STALE", service.get(task.id(), run.execution().id(), project).record().status());
+        org.mockito.Mockito.verifyNoInteractions(process); assertFalse(tasks.list(project).getFirst().executionActive());
+    }
+    @Test void preflightPlanUnknownSurvivesOuterRollbackAndBlocksWorkspace() throws Exception {
+        assertPreflightUnknownPersists(false);
+    }
+    @Test void preflightStartUnknownSurvivesOuterRollbackAndBlocksWorkspace() throws Exception {
+        assertPreflightUnknownPersists(true);
+    }
+    private void assertPreflightUnknownPersists(boolean start) throws Exception {
+        var task = task(); var run = runs.start(task.id(), request(task)); queue.remove().run();
+        var other = task(); var otherRun = runs.start(other.id(), request(other)); queue.remove().run();
+        var plans = org.mockito.Mockito.mock(BoardVerificationPlanSupport.class);
+        org.mockito.Mockito.when(plans.availability()).thenReturn("");
+        org.mockito.Mockito.when(plans.prepare(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+            .thenThrow(BoardVerificationSource.denied("BOARD_VERIFICATION_PROCESS_UNKNOWN"));
+        var process = passingVerificationProcess();
+        var settings = org.mockito.Mockito.mock(CapabilitySettings.class);
+        org.mockito.Mockito.when(settings.enabled(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+        var service = new BoardVerificationService(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), settings,
+            plans, process, context.getBean(PlatformTransactionManager.class), queue::add);
+        var workspace = repo.toRealPath().toString();
+        var outer = new org.springframework.transaction.support.TransactionTemplate(context.getBean(PlatformTransactionManager.class));
+        assertEquals("BOARD_VERIFICATION_PROCESS_UNKNOWN", rejects(() -> outer.execute(status -> {
+            if (start) return service.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, workspace, "a".repeat(64)));
+            return service.plan(task.id(), run.execution().id(), new BoardVerificationService.Request(project, workspace));
+        })).getReason());
+        var page = service.get(task.id(), run.execution().id(), project);
+        assertEquals("UNKNOWN", page.record().status()); assertFalse(page.prepareAllowed());
+        assertNull(page.record().plan()); assertEquals(workspace, page.record().workspacePath());
+        assertTrue(tasks.find(task.id(), project, false).executionActive());
+        assertTrue(tasks.hasActiveWorkspace(workspace));
+        assertEquals("BOARD_EXECUTION_ACTIVE", rejects(() -> tasks.update(task.id(), new BoardTaskService.Update(project, 1, "planned", null, null, null, null))).getReason());
+        assertEquals("BOARD_VERIFICATION_WORKSPACE_BUSY", rejects(() -> service.plan(other.id(), otherRun.execution().id(), new BoardVerificationService.Request(project, workspace))).getReason());
+        var json = jdbc.queryForObject("SELECT verification_snapshot::text FROM eap.board_task_run WHERE execution_id=?", String.class, run.execution().id());
+        assertThrows(org.springframework.dao.DuplicateKeyException.class, () -> jdbc.update("UPDATE eap.board_task_run SET verification_snapshot=?::jsonb WHERE execution_id=?", json, otherRun.execution().id()));
+        org.mockito.Mockito.verifyNoInteractions(process); assertTrue(queue.isEmpty());
     }
     @AfterEach void cleanup() {
         executor.close();

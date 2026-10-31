@@ -7,6 +7,7 @@ import { runtimeApi, type BoardRunPage, type BoardRunStart, type BoardTask } fro
 import { useMockServices } from '../../lib/serviceConfig';
 import PrototypeVersionViewer from './PrototypeVersionViewer.vue';
 import BoardRunReview from './BoardRunReview.vue';
+import BoardRunVerification from './BoardRunVerification.vue';
 import type { BoardRun } from '@eap/runtime-client';
 import { readRunRequest, writeRunRequest } from './boardRunRequest';
 const props = defineProps<{ task: BoardTask; disabled?: boolean }>();
@@ -16,10 +17,12 @@ const page = ref<BoardRunPage | null>(null), loading = ref(false), starting = re
 const pending = ref<BoardRunStart | null>(null);
 const viewing = ref<{ id: string; contentHash: string } | null>(null);
 const reviewing = ref<BoardRun | null>(null);
+const verifying = ref<BoardRun | null>(null);
 const selectedRunId = ref('');
 const selectedRun = computed(() => page.value?.items.find(run => run.execution.id === selectedRunId.value));
 const store = (() => { try { return sessionStorage; } catch { return null; } })();
-const open = computed(() => page.value?.items.some(run => ['CREATED', 'RUNNING', 'CANCELLING'].includes(run.execution.status)) ?? props.task.executionActive);
+const missionOpen = computed(() => !!page.value?.items.some(run => ['CREATED', 'RUNNING', 'CANCELLING'].includes(run.execution.status)));
+const open = computed(() => props.task.executionActive || missionOpen.value);
 const pollingNeeded = computed(() => page.value?.items.some(run => ['CREATED', 'RUNNING', 'CANCELLING'].includes(run.execution.status) && !run.execution.unconfirmedReason));
 const canStart = computed(() => !props.disabled && !loading.value && !starting.value && !open.value && props.task.column === 'ready' && props.task.preparationIssues.length === 0 && !!page.value?.availability.allowed && !pending.value);
 let generation = 0, attempts = 0;
@@ -34,7 +37,7 @@ async function refresh(manual = false) {
   if (manual) attempts = 0;
   stopPolling(); loading.value = true;
   const current = generation, id = props.task.id, projectId = props.task.projectId;
-  const wasOpen = open.value;
+  const wasOpen = missionOpen.value;
   try {
     const data = await runtimeApi.boardRuns(id, projectId);
     if (current !== generation) return;
@@ -43,7 +46,8 @@ async function refresh(manual = false) {
     if (pending.value && data.items.some(run => run.requestId === pending.value?.requestId)) {
       writeRunRequest(store, id, useMockServices, null); pending.value = null; note.value = t('boardRun.recovered');
     }
-    if (wasOpen !== open.value || props.task.executionActive !== open.value) emit('changed');
+    // Re-read authoritative task activity on manual refresh; Git completion alone cannot clear verification.
+    if (manual || wasOpen !== missionOpen.value || (!props.task.executionActive && missionOpen.value)) emit('changed');
   } catch { if (current === generation) note.value = t('boardRun.loadFailed'); }
   finally {
     if (current === generation) {
@@ -83,7 +87,7 @@ async function start() {
 }
 watch(() => props.task.id, () => {
   selectedRunId.value = '';
-  generation++; stopPolling(); viewing.value = null; reviewing.value = null; attempts = 0; page.value = null; loading.value = false; starting.value = false; confirming.value = false;
+  generation++; stopPolling(); viewing.value = null; reviewing.value = null; verifying.value = null; attempts = 0; page.value = null; loading.value = false; starting.value = false; confirming.value = false;
   pending.value = readRunRequest(store, props.task.id, props.task.projectId, useMockServices);
   note.value = pending.value ? t('boardRun.uncertain') : '';
   void refresh();
@@ -117,7 +121,7 @@ onBeforeUnmount(() => { generation++; stopPolling(); });
       <p>{{ t('boardRun.workspace') }}：{{ run.execution.workspacePath }}</p>
       <p v-if="run.execution.exitCode != null">{{ t('boardRun.exitCode') }}：{{ run.execution.exitCode }} · {{ run.execution.exitEvidence }}</p>
       <p v-if="run.execution.status === 'SUCCEEDED'">{{ t('boardRun.notAccepted') }}</p>
-      <div><Button size="sm" data-testid="board-run-review" @click="reviewing = run">{{ t('boardReview.open') }}</Button></div>
+      <div class="board-run__actions"><Button size="sm" data-testid="board-run-review" @click="reviewing = run">{{ t('boardReview.open') }}</Button><Button size="sm" data-testid="board-run-verification" @click="verifying = run">{{ t('boardVerification.open') }}</Button></div>
       <div v-if="run.task.prototype" class="board-run__prototype" data-testid="board-run-prototype"><p>{{ t('boardPrototype.runVersion') }}：{{ run.task.prototype.title || run.task.prototype.id }}</p><code>{{ run.task.prototype.id }}<br>SHA-256: {{ run.task.prototype.contentHash }}</code><Button size="sm" data-testid="board-run-prototype-view" @click="viewing = run.task.prototype">{{ t('boardPrototype.view') }}</Button></div>
       <p v-else>{{ t('boardPrototype.runNone') }}</p>
       <Collapse><template #summary>{{ t('boardRun.snapshot') }}</template><p>{{ run.task.title }}</p><p>{{ run.task.goal }}</p><p>{{ run.task.acceptanceCriteria }}</p></Collapse>
@@ -125,6 +129,7 @@ onBeforeUnmount(() => { generation++; stopPolling(); });
     </article>
     <PrototypeVersionViewer v-if="viewing" :version-id="viewing.id" :expected-hash="viewing.contentHash" @close="viewing = null" />
     <BoardRunReview v-if="reviewing" :key="reviewing.execution.id" :task-id="task.id" :project-id="task.projectId" :run="reviewing" @close="reviewing = null" />
+    <BoardRunVerification v-if="verifying" :key="verifying.execution.id" :task-id="task.id" :project-id="task.projectId" :run="verifying" @changed="emit('changed')" @close="verifying = null; emit('changed')" />
     <ConfirmBox v-if="confirming" :title="t('boardRun.confirm')" :impact="[page?.availability.workspacePath ?? '', 'git status', t('boardRun.hint')]" :confirm-label="t('boardRun.start')" :refusal="canStart ? undefined : t('boardRun.prepare')" :danger="false" @confirm="start" @cancel="confirming = false" />
   </section>
 </template>

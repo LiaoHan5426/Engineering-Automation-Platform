@@ -70,6 +70,8 @@ public class BoardRunService {
             }
             if (task.revision() != request.revision()) throw conflict("BOARD_REVISION_CONFLICT");
             if (tasks.hasActiveExecution(taskId)) throw conflict("BOARD_EXECUTION_ACTIVE");
+            tasks.lockWorkspace(request.workspacePath());
+            if (tasks.hasActiveVerification(request.workspacePath())) throw conflict("BOARD_VERIFICATION_WORKSPACE_BUSY");
             if (!"ready".equals(task.column()) || !task.preparationIssues().isEmpty()) throw conflict("BOARD_PREPARATION_REQUIRED");
             var handoff = new Handoff(UUID.randomUUID(), "board", task.id().toString(), task.title(), "recorded", "not_started", "not_requested", "none", Instant.now());
             handoffs.insert(handoff);

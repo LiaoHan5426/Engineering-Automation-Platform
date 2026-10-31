@@ -10,9 +10,9 @@ const availability = { allowed: true, workspacePath: 'F:/authorized/sample', wor
 const run = (status = 'SUCCEEDED'): BoardRun => ({ requestId: '08a79b0a-af5a-4e54-8bd9-499f9f147b77', taskRevision: 3, task: { title: task.title, goal: task.goal, acceptanceCriteria: task.acceptanceCriteria }, execution: { id: 'run-1', missionId: 'mission-1', status, capability: 'git-status', principal: 'local-operator', approval: 'NOT_REQUIRED', workspacePath: availability.workspacePath, workspaceLabel: 'sample', executable: 'git', stdout: 'untracked evidence.txt', stderr: '', startedAt: '2026-10-31T08:00:00Z', finishedAt: null, exitCode: status === 'SUCCEEDED' ? 0 : null } });
 let app: App, root: HTMLDivElement;
 let current = ref(task);
-async function mount() {
+async function mount(onChanged?: () => void) {
   root = document.createElement('div'); document.body.append(root);
-  app = createApp({ render: () => h(BoardRunPanel, { task: current.value }) }); app.use(i18n).mount(root);
+  app = createApp({ render: () => h(BoardRunPanel, { task: current.value, onChanged }) }); app.use(i18n).mount(root);
   await vi.waitFor(() => expect(root.querySelector('[data-testid=board-run-workspace]')).not.toBeNull());
 }
 const button = (id: string) => document.querySelector(`[data-testid=${id}]`) as HTMLButtonElement;
@@ -27,6 +27,55 @@ beforeEach(() => {
   vi.spyOn(runtimeApi, 'startBoardRun').mockResolvedValue(run());
 });
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); vi.useRealTimers(); });
+it('opens independent verification only from the selected Run rather than mixing it into task preparation', async () => {
+  const earlier = run(); earlier.execution.id = 'run-earlier';
+  vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability, items: [run(), earlier] });
+  vi.spyOn(runtimeApi, 'boardVerification').mockResolvedValue({ record: null, prepareAllowed: true, reason: '' });
+  await mount();
+  expect(button('board-run-verification')).not.toBeNull();
+  expect(document.querySelector('[data-testid=board-verification-dialog]')).toBeNull();
+  const select = root.querySelector('[data-testid=board-run-select]') as HTMLSelectElement;
+  select.value = 'run-earlier'; select.dispatchEvent(new Event('change'));
+  await vi.waitFor(() => expect(root.querySelector('[data-testid=board-run-record]')?.textContent).toContain('run-earlier'));
+  button('board-run-verification').click();
+  await vi.waitFor(() => expect(runtimeApi.boardVerification).toHaveBeenCalledWith(task.id, 'run-earlier', task.projectId));
+  expect(document.querySelector('[data-testid=board-verification-dialog]')?.textContent).toContain('run-earlier');
+  expect(runtimeApi.boardVerification).toHaveBeenCalledTimes(1);
+  expect(runtimeApi.startBoardRun).not.toHaveBeenCalled();
+});
+it('keeps start blocked by a task-level verification even when its Git Run has finished', async () => {
+  current.value = { ...task, executionActive: true };
+  vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability, items: [run()] });
+  await mount();
+  expect(button('board-run-start').disabled).toBe(true);
+});
+it('reconciles parent task activity on manual refresh after verification closes and finishes', async () => {
+  current.value = { ...task, executionActive: true };
+  vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability, items: [run()] });
+  vi.spyOn(runtimeApi, 'boardVerification').mockResolvedValue({ record: null, prepareAllowed: false, reason: 'BOARD_EXECUTION_ACTIVE' });
+  const tasks = vi.spyOn(runtimeApi, 'boardTasks').mockResolvedValue({ items: [{ ...task, executionActive: true }] });
+  await mount(async () => { current.value = (await runtimeApi.boardTasks(task.projectId)).items[0]!; });
+  button('board-run-verification').click();
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-verification-dialog]')).not.toBeNull());
+  (document.querySelector('[data-eap-dialog-close]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(tasks).toHaveBeenCalledTimes(1));
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-verification-dialog]')).toBeNull());
+  expect(current.value.executionActive).toBe(true);
+  expect(button('board-run-start').disabled).toBe(true);
+
+  button('board-run-refresh').click();
+  await vi.waitFor(() => expect(runtimeApi.boardRuns).toHaveBeenCalledTimes(2));
+  await vi.waitFor(() => expect(button('board-run-refresh').disabled).toBe(false));
+  expect(current.value.executionActive).toBe(true);
+  expect(button('board-run-start').disabled).toBe(true);
+
+  tasks.mockResolvedValue({ items: [{ ...task, executionActive: false }] });
+  button('board-run-refresh').click();
+  await vi.waitFor(() => expect(runtimeApi.boardRuns).toHaveBeenCalledTimes(3));
+  await vi.waitFor(() => expect(current.value.executionActive).toBe(false));
+  await vi.waitFor(() => expect(button('board-run-start').disabled).toBe(false));
+  expect(runtimeApi.startBoardRun).not.toHaveBeenCalled();
+});
 it('reviews one selected run at a time and retains that selection after refreshing', async () => {
   const latest = run(), earlier = run('FAILED');
   earlier.execution.id = 'run-earlier'; earlier.execution.stdout = 'earlier failed output';
@@ -54,7 +103,7 @@ it('requires explicit confirmation of the server directory and shows actual outp
   (document.querySelector('.eap-confirm__actions button:first-child') as HTMLButtonElement).click();
   await vi.waitFor(() => expect(runtimeApi.startBoardRun).toHaveBeenCalledWith(task.id, expect.objectContaining({ projectId: task.projectId, revision: 3, workspacePath: availability.workspacePath, requestId: expect.any(String) })));
   await vi.waitFor(() => expect(root.textContent).toContain('untracked evidence.txt'));
-  expect(root.textContent).toContain('任务仍未经过独立验证和人工验收');
+  expect(root.textContent).toContain('仅代表只读仓库检查；独立验证请查看对应记录，人工验收另行确认');
   expect(current.value.column).toBe('ready');
 });
 it('retains the same request across an unknown outcome and remount', async () => {

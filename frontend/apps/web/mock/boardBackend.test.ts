@@ -45,6 +45,14 @@ it('reports incomplete preparation and refuses ready without changing the saved 
   expect((await api.handle('POST', '/board/tasks/' + task.id, { projectId: 'group', revision: 2, goal: '' })).status).toBe(409);
 });
 
+it('never fabricates verification plans or results for a nonexistent mock Run', async () => {
+  const api = createMockChatBackend();
+  const task = (await api.handle('POST', '/board/tasks', { requestId: randomUUID(), projectId: 'group', title: 'draft' })).data as BoardTask;
+  const route = '/board/tasks/' + task.id + '/runs/' + randomUUID() + '/verification';
+  expect(await api.handle('GET', route + '?projectId=group')).toMatchObject({ status: 404, data: { detail: 'BOARD_RUN_NOT_FOUND' } });
+  expect(await api.handle('POST', route + '/plan', { projectId: 'group', workspacePath: '/sample' })).toMatchObject({ status: 404, data: { detail: 'BOARD_RUN_NOT_FOUND' } });
+  expect(await api.handle('POST', route, { projectId: 'group', workspacePath: '/sample', planHash: 'hash' })).toMatchObject({ status: 404, data: { detail: 'BOARD_RUN_NOT_FOUND' } });
+});
 it('links only existing saved versions with project and revision checks', async () => {
   const api = createMockChatBackend();
   const version = (await api.handle('POST', '/prototype-versions', { sourceRef: 'builder-alpha', title: 'design', body: 'saved', buttonPresses: 0, acceptance: [] })).data as { id: string };

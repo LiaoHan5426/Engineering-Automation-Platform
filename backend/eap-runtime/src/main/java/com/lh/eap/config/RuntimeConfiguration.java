@@ -11,8 +11,14 @@ import java.nio.file.*;
 @Configuration
 public class RuntimeConfiguration {
     @Bean(destroyMethod = "close")
+    @Primary
     DefaultProcessExecutor processExecutor() {
         return new DefaultProcessExecutor();
+    }
+
+    @Bean(destroyMethod = "close")
+    DefaultProcessExecutor boardVerificationProcessExecutor() {
+        return new DefaultProcessExecutor(java.time.Duration.ofSeconds(120));
     }
 
     @Bean

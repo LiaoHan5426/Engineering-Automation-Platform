@@ -485,6 +485,13 @@ export type BoardRun = { requestId: string; taskRevision: number; task: { title:
 export type BoardRunPage = { availability: { allowed: boolean; workspacePath: string; workspaceLabel: string; reason: string }; items: BoardRun[] };
 export type BoardReviewEvidence = { contentHash: string; snapshot: { workspacePath: string; baseCommit: string; headAfter: string; startedAt: string; finishedAt: string; status: 'CAPTURED' | 'INCOMPLETE' | 'FAILED' | 'CHANGED'; issues: string[]; repositoryStatus: string; diff: string; check: { status: 'NOT_RUN' | 'PASSED' | 'FAILED' | 'INCOMPLETE' | 'STALE'; exitCode: number | null; output: string }; steps: Array<{ name: string; command: string[]; exitCode: number; processStatus: string; truncated: boolean; stderr: string }> } };
 export type BoardReviewPage = { evidence: BoardReviewEvidence | null; captureAllowed: boolean; reason: string };
+export type BoardVerificationSource = { scope: string; contentHash: string; files: Array<{ path: string; contentHash: string; bytes: number }>; exclusions: string[] };
+export type BoardVerificationCommand = { id: string; command: string[]; workingDirectory: string; timeoutSeconds: number };
+export type BoardVerificationPlan = { planHash: string; workspacePath: string; baseCommit: string; source: BoardVerificationSource; commands: BoardVerificationCommand[] };
+export type BoardVerificationStatus = 'QUEUED' | 'RUNNING' | 'PASSED' | 'FAILED' | 'STALE' | 'UNKNOWN';
+export type BoardVerificationCheck = Omit<BoardVerificationCommand, 'timeoutSeconds'> & { status: BoardVerificationStatus | 'TIMED_OUT'; exitCode: number | null; stdout: string; stderr: string; truncated: boolean; processTreeCleanup: boolean; startedAt: string; finishedAt: string | null };
+export type BoardVerificationRecord = { id: string; status: BoardVerificationStatus; reason: string; plan: BoardVerificationPlan | null; workspacePath?: string | null; checks: BoardVerificationCheck[]; sourceAfter: BoardVerificationSource | null; startedAt: string; finishedAt: string | null };
+export type BoardVerificationPage = { record: BoardVerificationRecord | null; prepareAllowed: boolean; reason: string };
 
 /** Read-only dirty-file summary. requested=false means git was not run. */
 export type WorkspaceDirty = {
@@ -809,6 +816,9 @@ export const runtimeApi = {
   boardRuns: (id: string, projectId: string) => get<BoardRunPage>('/board/tasks/' + encodeURIComponent(id) + '/runs?projectId=' + encodeURIComponent(projectId)),
   boardReview: (taskId: string, executionId: string, projectId: string) => get<BoardReviewPage>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/review?projectId=' + encodeURIComponent(projectId)),
   captureBoardReview: (taskId: string, executionId: string, request: { projectId: string; workspacePath: string }) => client.post<BoardReviewEvidence>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/review', request, { timeout: 90_000 }).then(response => response.data),
+  boardVerification: (taskId: string, executionId: string, projectId: string) => get<BoardVerificationPage>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/verification?projectId=' + encodeURIComponent(projectId)),
+  planBoardVerification: (taskId: string, executionId: string, request: { projectId: string; workspacePath: string }) => client.post<BoardVerificationPlan>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/verification/plan', request, { timeout: 90_000 }).then(response => response.data),
+  startBoardVerification: (taskId: string, executionId: string, request: { projectId: string; workspacePath: string; planHash: string }) => client.post<BoardVerificationRecord>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/verification', request, { timeout: 90_000 }).then(response => response.data),
   startBoardRun: (id: string, request: BoardRunStart) => client.post<BoardRun>('/board/tasks/' + encodeURIComponent(id) + '/runs', request).then(response => response.data),
   createBoardTask: (draft: BoardTaskDraft) => client.post<BoardTask>('/board/tasks', draft).then(response => response.data),
   updateBoardTask: (id: string, update: { projectId: string; revision: number; column?: BoardTask['column']; notes?: string; priority?: BoardTask['priority']; goal?: string; acceptanceCriteria?: string }) => client.post<BoardTask>('/board/tasks/' + encodeURIComponent(id), update).then(response => response.data),

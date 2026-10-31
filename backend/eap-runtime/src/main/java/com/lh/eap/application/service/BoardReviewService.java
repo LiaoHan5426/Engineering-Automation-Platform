@@ -44,6 +44,8 @@ public class BoardReviewService {
         if (!request.workspacePath().equals(run.workspacePath())) throw conflict("BOARD_WORKSPACE_CHANGED");
         if (saved != null) return saved; // A retry reads the original observation, never re-scans changed files.
         if (tasks.hasActiveExecution(taskId)) throw conflict("BOARD_EXECUTION_ACTIVE");
+        tasks.lockWorkspace(run.workspacePath());
+        if (tasks.hasActiveVerification(run.workspacePath())) throw conflict("BOARD_VERIFICATION_WORKSPACE_BUSY");
         var reason = denial(executionId);
         if (!reason.isEmpty()) throw conflict(reason);
         var evidence = capture.capture(Path.of(run.workspacePath()), capability());
