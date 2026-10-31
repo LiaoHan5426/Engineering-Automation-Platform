@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { BoardTask } from '@eap/runtime-client';
 
 /** Contract simulation only. State is lost when the mock server restarts. */
-export function createBoardBackend() {
+export function createBoardBackend(versionExists: (id: string) => boolean = () => false) {
   const tasks: BoardTask[] = [];
   const requests = new Map<string, { fingerprint: string; task: BoardTask }>();
   const result = (status: number, data: unknown) => ({ status, data });
@@ -18,6 +18,29 @@ export function createBoardBackend() {
   return {
     handle(method: string, url: URL, body: Record<string, unknown>) {
       const path = url.pathname;
+      const reviewPath = /^\/board\/tasks\/([^/]+)\/runs\/([^/]+)\/review$/.exec(path);
+      if (reviewPath) {
+        const projectId = method === 'GET' ? url.searchParams.get('projectId') : body.projectId;
+        if (!tasks.some(task => task.id === reviewPath[1] && task.projectId === projectId)) return error(404, 'BOARD_TASK_NOT_FOUND');
+        return error(404, 'BOARD_RUN_NOT_FOUND'); // Mock never creates Runs or repository evidence.
+      }
+      const prototypePath = /^\/board\/tasks\/([^/]+)\/prototype$/.exec(path);
+      if (prototypePath && method === 'POST') {
+        if (Object.keys(body).sort().join(',') !== 'projectId,revision,versionId') return error(400, 'INVALID_BOARD_PROTOTYPE_REQUEST');
+        if (!validText(body.projectId, 120) || !String(body.projectId).trim() || !Number.isSafeInteger(body.revision) || Number(body.revision) < 1) return error(400, 'INVALID_BOARD_FIELD');
+        const task = tasks.find(item => item.id === prototypePath[1] && item.projectId === body.projectId);
+        if (!task) return error(404, 'BOARD_TASK_NOT_FOUND');
+        if (task.revision !== body.revision) return error(409, 'BOARD_REVISION_CONFLICT');
+        if (task.executionActive) return error(409, 'BOARD_EXECUTION_ACTIVE');
+        if (!['planned', 'ready'].includes(task.column)) return error(409, 'BOARD_EXECUTION_EVIDENCE_REQUIRED');
+        const versionId = body.versionId ?? null;
+        if (versionId !== null && (typeof versionId !== 'string' || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(versionId))) return error(400, 'INVALID_PROTOTYPE_VERSION');
+        if (versionId !== null && !versionExists(String(versionId))) return error(404, 'PROTOTYPE_VERSION_NOT_FOUND');
+        if (task.prototypeVersionId !== versionId) {
+          task.prototypeVersionId = versionId as string | null; task.revision++; task.events.push(versionId === null ? 'prototype_unlinked' : 'prototype_linked');
+        }
+        return result(200, present(task));
+      }
       const runPath = /^\/board\/tasks\/([^/]+)\/runs$/.exec(path);
       if (runPath) {
         const projectId = method === 'GET' ? url.searchParams.get('projectId') : body.projectId;
@@ -41,7 +64,7 @@ export function createBoardBackend() {
         const key = JSON.stringify([body.projectId, body.requestId]);
         const prior = requests.get(key);
         if (prior) return prior.fingerprint === fingerprint ? result(200, present(prior.task)) : error(409, 'BOARD_REQUEST_CONFLICT');
-        const task: BoardTask = { id: randomUUID(), projectId: String(body.projectId), title: String(body.title).trim(), column: column as BoardTask['column'], goal: String(goal), acceptanceCriteria: String(acceptanceCriteria), sessionId: String(sessionId), notes: '', priority: 'none', revision: 1, events: ['created'], executionActive: false, preparationIssues: [], allowedColumns: [] };
+        const task: BoardTask = { id: randomUUID(), projectId: String(body.projectId), title: String(body.title).trim(), column: column as BoardTask['column'], goal: String(goal), acceptanceCriteria: String(acceptanceCriteria), sessionId: String(sessionId), notes: '', priority: 'none', revision: 1, events: ['created'], executionActive: false, prototypeVersionId: null, preparationIssues: [], allowedColumns: [] };
         tasks.unshift(task); requests.set(key, { fingerprint, task });
         return result(200, present(task));
       }

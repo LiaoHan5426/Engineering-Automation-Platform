@@ -8,11 +8,13 @@ import { chatBinding, workbench, type BoardColumn } from './workbench';
 import { localProjectState } from './localProjects';
 import { useMockServices } from '../../lib/serviceConfig';
 import BoardRunPanel from './BoardRunPanel.vue';
+import BoardPrototypePanel from './BoardPrototypePanel.vue';
 import { readBoardEdit, writeBoardEdit, readBoardCreate, writeBoardCreate } from './boardEdits';
 const { t } = useI18n();
 const columns: BoardColumn[] = ['planned', 'ready', 'running', 'acceptance', 'done'];
 const query = ref(''), selectedId = ref(''), creating = ref(false), title = ref(''), note = ref('');
 const priorityFilter = ref<'all' | 'p0' | 'p1' | 'p2'>('all');
+const prototypePending = ref(false);
 const busy = ref(false), rows = ref<BoardTask[]>([]);
 const draftNotes = ref(''), draftGoal = ref(''), draftCriteria = ref('');
 const draftRevision = ref(0);
@@ -106,6 +108,12 @@ watch(projectId, () => {
   }
   void load();
 }, { immediate: true });
+function prototypeSaved(task: BoardTask) {
+  // The user may have started editing task fields while this independent request was pending.
+  const preserveDraft = dirty.value;
+  replace(task);
+  if (!preserveDraft) useLatest();
+}
 function replace(task: BoardTask) { rows.value = rows.value.map(item => item.id === task.id ? task : item); }
 async function move(id: string, column: BoardColumn) {
   if (busy.value) return;
@@ -257,9 +265,10 @@ function open(task: BoardTask) {
         <label>{{ t('preview.taskNotes') }}<Textarea v-model="draftNotes" data-testid="task-notes" :disabled="busy || selected.executionActive" rows="4" maxlength="4000" /></label>
         <div class="detail-save"><span v-if="dirty" role="status">{{ t('desktop.boardUnsaved') }}</span><Button variant="primary" size="sm" :disabled="busy || selected.executionActive || !dirty || stale" data-testid="board-save-fields" @click="saveNotes">{{ t('historyUi.save') }}</Button></div>
         <div class="task-moves"><Button v-for="column in columns" :key="column" size="sm" :disabled="busy || dirty || stale || selected.column === column || !selected.allowedColumns.includes(column)" @click="move(selected.id, column)">{{ t('desktop.' + column) }}</Button><Button size="sm" :disabled="busy || selected.executionActive" @click="open(selected)">{{ t('preview.openConversation') }} ↗</Button></div>
-        <BoardRunPanel :key="selected.id" :task="selected" :disabled="busy || dirty || stale" @changed="load" />
-        <Collapse class="board-evidence"><template #summary>{{ t('desktop.boardEvidenceDetails') }}</template><ul class="task-evidence" data-testid="task-links"><li>{{ t('desktop.linkGoal', { title: selected.goal || '—' }) }}</li><li>{{ t('desktop.boardCriteria') }}：{{ selected.acceptanceCriteria || '—' }}</li><li>{{ t('desktop.linkRun') }}</li></ul><ul class="task-evidence" data-testid="task-evidence"><li>{{ t('desktop.evidenceDesign') }}</li><li>{{ t('desktop.evidenceRun') }}</li><li>{{ t('desktop.evidenceDiff') }}</li><li>{{ t('desktop.evidenceChecks') }}</li><li>{{ t('desktop.acceptanceOpen') }}</li></ul></Collapse>
-        <p>{{ t('preview.events') }}：{{ selected.events.map(item => item === 'created' ? t('preview.createTask') : item === 'notes_updated' ? t('desktop.boardSaved') : item === 'preparation_updated' ? t('desktop.boardPreparationUpdated') : item === 'priority_updated' ? t('desktop.boardPriorityUpdated') : t('desktop.' + item)).join(' → ') }}</p>
+        <BoardPrototypePanel :key="selected.id + '-prototype'" :task="selected" :disabled="busy || dirty || stale" @saved="prototypeSaved" @refresh="load" @pending="prototypePending = $event" />
+        <BoardRunPanel :key="selected.id" :task="selected" :disabled="busy || dirty || stale || prototypePending" @changed="load" />
+        <Collapse class="board-evidence"><template #summary>{{ t('desktop.boardEvidenceDetails') }}</template><ul class="task-evidence" data-testid="task-links"><li>{{ t('desktop.linkGoal', { title: selected.goal || '—' }) }}</li><li>{{ t('desktop.boardCriteria') }}：{{ selected.acceptanceCriteria || '—' }}</li><li>{{ t('desktop.linkRun') }}</li></ul><ul class="task-evidence" data-testid="task-evidence"><li>{{ selected.prototypeVersionId ? t('boardPrototype.designLinked') : t('desktop.evidenceDesign') }}</li><li>{{ t('desktop.evidenceRun') }}</li><li>{{ t('desktop.evidenceDiff') }}</li><li>{{ t('desktop.evidenceChecks') }}</li><li>{{ t('desktop.acceptanceOpen') }}</li></ul></Collapse>
+        <p>{{ t('preview.events') }}：{{ selected.events.map(item => item === 'created' ? t('preview.createTask') : item === 'notes_updated' ? t('desktop.boardSaved') : item === 'prototype_linked' ? t('boardPrototype.linked') : item === 'prototype_unlinked' ? t('boardPrototype.unlinked') : item === 'preparation_updated' ? t('desktop.boardPreparationUpdated') : item === 'priority_updated' ? t('desktop.boardPriorityUpdated') : t('desktop.' + item)).join(' → ') }}</p>
       </div>
     </Dialog>
     <ConfirmBox v-if="pendingAction" :title="t('desktop.boardUnsaved')" :impact="[t('desktop.boardDiscardImpact')]" :confirm-label="t('desktop.boardDiscard')" @confirm="discardEdits" @cancel="pendingAction = null" />

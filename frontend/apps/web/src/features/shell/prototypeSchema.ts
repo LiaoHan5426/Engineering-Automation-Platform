@@ -143,7 +143,11 @@ export function schemaFromGrapesProject(
 
 export function loadPrototypeSchema(storage: Storage | undefined = typeof localStorage === "undefined" ? undefined : localStorage): PrototypeSchema | null {
   const raw = storage?.getItem(STORAGE_KEY);
-  if (!raw) return null;
+  return raw ? parsePrototypeSchema(raw) : null;
+}
+
+/** Validate saved schema content before rendering; never load editor data into the application DOM. */
+export function parsePrototypeSchema(raw: string): PrototypeSchema | null {
   try {
     const parsed = JSON.parse(raw) as PrototypeSchema;
     let nodes = 0;

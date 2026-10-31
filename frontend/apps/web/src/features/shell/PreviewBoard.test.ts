@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import { createApp, type App } from 'vue';
 import { AxiosError } from 'axios';
-import { runtimeApi } from '@eap/runtime-client';
+import { runtimeApi, type BoardTask, type PrototypeVersionRecord } from '@eap/runtime-client';
 import { createMockChatBackend } from '../../../mock/chatBackend';
 import { i18n } from '../../lib/i18n';
 import PreviewBoard from './PreviewBoard.vue';
@@ -18,12 +18,36 @@ beforeEach(() => {
   sessionStorage.clear();
   const mock = createMockChatBackend();
   const call = async (method: string, path: string, body = {}) => { const reply = await mock.handle(method, path, body); if (reply.status >= 400) throw new AxiosError('rejected', undefined, undefined, undefined, { status: reply.status, data: reply.data } as never); return JSON.parse(JSON.stringify(reply.data)); };
+  vi.spyOn(runtimeApi, 'prototypeVersions').mockResolvedValue({ items: [] });
   vi.spyOn(runtimeApi, 'boardRuns').mockResolvedValue({ availability: { allowed: false, workspacePath: '', workspaceLabel: '', reason: 'MOCK_RUN_NOT_AVAILABLE' }, items: [] });
   vi.spyOn(runtimeApi, 'boardTasks').mockImplementation(id => call('GET', '/board/tasks?projectId=' + id));
   vi.spyOn(runtimeApi, 'createBoardTask').mockImplementation(draft => call('POST', '/board/tasks', draft));
   vi.spyOn(runtimeApi, 'updateBoardTask').mockImplementation((id, body) => call('POST', '/board/tasks/' + id, body));
 });
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); workbench.pendingBoardDraft = null; chatBinding.value = null; });
+it('preserves goal edits made while a prototype link save is awaiting its response', async () => {
+  const version: PrototypeVersionRecord = { id: 'design-a', sourceRef: 'builder-alpha', title: '设计 A', body: 'saved text', buttonPresses: 0, interaction: '', acceptance: [], contentHash: 'hash-a', createdAt: '2026-10-31T08:00:00Z' };
+  vi.mocked(runtimeApi.prototypeVersions).mockImplementation(async source => ({ items: source === 'builder-alpha' ? [version] : [] }));
+  let complete!: (saved: BoardTask) => void;
+  vi.spyOn(runtimeApi, 'setBoardPrototype').mockImplementation(() => new Promise(resolve => { complete = resolve; }));
+  await mountBoard(); await createTask();
+  const task = (await runtimeApi.boardTasks(vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0].projectId)).items[0]!;
+  const select = document.querySelector('[data-testid=board-prototype-select]') as HTMLSelectElement;
+  await vi.waitFor(() => expect(select.options).toHaveLength(2));
+  select.value = version.id; select.dispatchEvent(new Event('change'));
+  const save = document.querySelector('[data-testid=board-prototype-save]') as HTMLButtonElement;
+  await vi.waitFor(() => expect(save.disabled).toBe(false)); save.click();
+  await vi.waitFor(() => expect(runtimeApi.setBoardPrototype).toHaveBeenCalledTimes(1));
+  fill('[data-testid=task-goal]', '保存关联期间输入的新目标');
+  complete({ ...task, prototypeVersionId: version.id, revision: task.revision + 1 });
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-prototype-current]')?.textContent).toContain('设计 A'));
+  expect((document.querySelector('[data-testid=task-goal]') as HTMLTextAreaElement).value).toBe('保存关联期间输入的新目标');
+  expect(document.querySelector('[data-testid=board-conflict]')).not.toBeNull();
+  expect((document.querySelector('[data-testid=board-save-fields]') as HTMLButtonElement).disabled).toBe(true);
+  (document.querySelector('[data-testid=board-keep-draft]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect((document.querySelector('[data-testid=board-save-fields]') as HTMLButtonElement).disabled).toBe(false));
+  expect(runtimeApi.updateBoardTask).not.toHaveBeenCalled();
+});
 it('persists backlog task edits through the service and refuses invented execution', async () => {
   root = document.createElement('div'); document.body.append(root); app = createApp(PreviewBoard); app.use(i18n).mount(root);
   await vi.waitFor(() => expect(runtimeApi.boardTasks).toHaveBeenCalled());

@@ -47,7 +47,7 @@ Chat tools must retain request/server grants, canonical workspace checks and Cap
 test denial, result return, errors, isolated memory/evidence, framework call limits and timeout/cancel
 classification. Existing real process cancellation tests remain required and distinct from simulated
 model exceptions. A configured client is not a successful connection; no live paid model is invoked
-by default tests. Preserve existing database/real-CLI/model test gates. Board preparation and controlled Run persistence use `EAP_RUN_BOARD_PERSISTENCE=true`; Mission Git acceptance uses `EAP_RUN_MISSION_GIT_ACCEPTANCE=true`. Both use an existing migrated local database and own/clean only their generated sample rows; they do not create/drop/reset databases. See [board preparation evidence](decisions/board-task-preparation-2026-10-31.md) and [controlled Run evidence](decisions/board-controlled-run-2026-10-31.md).
+by default tests. Preserve existing database/real-CLI/model test gates. Board preparation, controlled Run and prototype reference persistence use `EAP_RUN_BOARD_PERSISTENCE=true`; Mission Git acceptance uses `EAP_RUN_MISSION_GIT_ACCEPTANCE=true`. Both use an existing migrated local database and own/clean only their generated sample rows; they do not create/drop/reset databases. See [board preparation evidence](decisions/board-task-preparation-2026-10-31.md), [controlled Run evidence](decisions/board-controlled-run-2026-10-31.md) and [prototype reference evidence](decisions/board-prototype-link-2026-10-31.md).
 
 Historical cleanup starts with an exact path manifest and reference/ownership check. Preserve final
 audit conclusions and evidence needed by current acceptance. Completed experiment directories may

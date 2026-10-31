@@ -1,0 +1,28 @@
+export const boardReviewMessages = {
+  'zh-CN': {
+    recovered: '已找回服务端保存的快照，没有重复采集。',
+    title: '仓库审阅快照', open: '查看 Diff 与检查', hint: '查看或采集当前仓库的独立观察，并关联到此 Run。采集时间可能晚于运行结束，这些改动不一定由本次 Run 产生。',
+    loading: '正在读取保存的审阅记录…', capture: '采集审阅快照', refresh: '重读保存记录', blocked: '当前不能采集', saving: '正在采集基线、Diff 和空白检查，请稍候…', loadFailed: '无法读取审阅记录，请重试。', uncertain: '采集结果尚未确认，已尝试重读。若没有记录，可重试；已保存的快照不会被覆盖。',
+    confirm: '确认采集仓库审阅', confirmScope: '读取当前 HEAD、已跟踪文件差异及状态，执行 git diff --check；结果经脱敏保存。', once: '每个 Run 保存一份不可变快照。重新采集新的仓库状态需要新 Run。',
+    capturedAt: '采集时间', base: '采集基线', headAfter: '结束时 HEAD', hash: '保存记录 SHA-256', diff: '已跟踪文件 Diff', repositoryStatus: '采集时 Git 状态', noDiff: '未采集到可显示的文本差异，请结合采集状态和缺口判断。',
+    scope: 'Diff 比较采集基线与工作区，包含已暂存及未暂存的已跟踪内容；不展开未跟踪文件、子模块或二进制内容。前后两次比对用于发现采集期间变化，不是原子仓库快照。',
+    checkTitle: 'git diff --check（仅空白检查）', notAccepted: '构建、类型检查、测试与人工验收尚未在此接入；本记录不会推进任务到待验收或已完成。', steps: '实际命令与退出证据',
+    status: { CAPTURED: '已采集', INCOMPLETE: '已采集，存在缺口', FAILED: '采集失败', CHANGED: '采集期间仓库发生变化' },
+    reason: { BOARD_EXECUTION_ACTIVE: '任务存在运行中或结果未知的执行。', BOARD_REVIEW_RUN_NOT_SUCCEEDED: '本次 Run 尚未成功结束。', BOARD_WORKSPACE_CHANGED: '当前目录或 Git 程序与本次 Run 不一致。', CAPABILITY_DISABLED: 'Git 读取能力已停用。', CAPABILITY_UNRESOLVED: 'Git 读取能力未就绪。', BINARY_MISSING: 'Git 程序不可用。', AUTHORIZED_ROOT_MISSING: '服务端没有可用的授权目录。', WORKSPACE_ESCAPES_ROOT: '当前目录超出授权范围。', UNAVAILABLE: '请检查运行状态和仓库读取权限。' },
+    check: { PASSED: '空白检查通过', FAILED: '空白检查未通过', NOT_RUN: '尚未执行', INCOMPLETE: '输出不完整，不能判为通过', STALE: '仓库已变化，结果需重新核对' },
+    issue: { FILTERS_DISABLED: '已禁用 Git 内容过滤器；依赖过滤器的内容需另行核对。', FILTER_CONFIGURATION_UNSUPPORTED: '过滤器配置无法安全处理，已停止采集。', UNTRACKED_NOT_INCLUDED: '存在未跟踪文件，其内容未包含在 Diff。', BINARY_NOT_EXPANDED: '二进制差异未展开。', OUTPUT_TRUNCATED: '输出达到上限，保存内容不完整。', CONTENT_REDACTED: '敏感字段已脱敏，显示内容并非原始补丁。', WORKSPACE_CHANGED_DURING_CAPTURE: '采集前后结果不同，不能作为一致版本的证据。', REPOSITORY_ROOT_MISMATCH: '工作目录不是所授权仓库根，已停止采集。', BASE_COMMIT_UNAVAILABLE: '没有可用的 HEAD 基线。', CAPTURE_TIME_LIMIT: '采集达到时间上限。', CAPTURE_FAILED: '采集异常，未完成全部步骤。', GIT_STEP_FAILED: 'Git 步骤失败、超时或退出状态未确认。' },
+  },
+  'en-US': {
+    recovered: 'Recovered the saved snapshot without repeating capture.',
+    title: 'Repository review snapshot', open: 'View Diff and checks', hint: 'Read or capture a current repository observation linked to this Run. Capture may happen later; these changes are not necessarily produced by this Run.',
+    loading: 'Loading saved review…', capture: 'Capture review snapshot', refresh: 'Reload saved record', blocked: 'Capture unavailable', saving: 'Capturing baseline, Diff and whitespace check…', loadFailed: 'Cannot load review. Retry.', uncertain: 'Capture outcome is unconfirmed. Reload attempted; retry if no record exists. Saved snapshots are never overwritten.',
+    confirm: 'Confirm repository review capture', confirmScope: 'Read HEAD, tracked changes and status; run git diff --check and save redacted observations.', once: 'Each Run keeps one immutable snapshot. Start a new Run to capture a newer repository state.',
+    capturedAt: 'Captured at', base: 'Capture baseline', headAfter: 'Final HEAD', hash: 'Saved record SHA-256', diff: 'Tracked file Diff', repositoryStatus: 'Captured Git status', noDiff: 'No displayable text diff captured. Check capture status and gaps.',
+    scope: 'Compares the captured baseline with the worktree, including staged and unstaged tracked content. Untracked file content, submodules and binary content are excluded. Repeated reads detect changes; this is not an atomic repository snapshot.',
+    checkTitle: 'git diff --check (whitespace only)', notAccepted: 'Build, typecheck, tests and human acceptance are not connected here. This record does not advance task completion.', steps: 'Executed commands and exit evidence',
+    status: { CAPTURED: 'Captured', INCOMPLETE: 'Captured with gaps', FAILED: 'Capture failed', CHANGED: 'Repository changed during capture' },
+    reason: { BOARD_EXECUTION_ACTIVE: 'The task has an active or unknown execution.', BOARD_REVIEW_RUN_NOT_SUCCEEDED: 'This Run has not succeeded.', BOARD_WORKSPACE_CHANGED: 'Current workspace or Git executable differs from this Run.', CAPABILITY_DISABLED: 'Git read capability is disabled.', CAPABILITY_UNRESOLVED: 'Git read capability is unavailable.', BINARY_MISSING: 'Git executable is unavailable.', AUTHORIZED_ROOT_MISSING: 'No authorized directory is available.', WORKSPACE_ESCAPES_ROOT: 'Workspace is outside the authorized boundary.', UNAVAILABLE: 'Check Run state and repository read access.' },
+    check: { PASSED: 'Whitespace check passed', FAILED: 'Whitespace check failed', NOT_RUN: 'Not run', INCOMPLETE: 'Incomplete output; cannot claim success', STALE: 'Repository changed; recheck required' },
+    issue: { FILTERS_DISABLED: 'Git content filters were disabled; filter-dependent content needs separate review.', FILTER_CONFIGURATION_UNSUPPORTED: 'Filter configuration cannot be handled safely; capture stopped.', UNTRACKED_NOT_INCLUDED: 'Untracked file contents are excluded.', BINARY_NOT_EXPANDED: 'Binary differences are not expanded.', OUTPUT_TRUNCATED: 'Output limit reached; saved content is incomplete.', CONTENT_REDACTED: 'Sensitive fields redacted; display is not a raw patch.', WORKSPACE_CHANGED_DURING_CAPTURE: 'Repeated observations differ; this is not consistent-version evidence.', REPOSITORY_ROOT_MISMATCH: 'Workspace is not the authorized repository root; capture stopped.', BASE_COMMIT_UNAVAILABLE: 'No usable HEAD baseline.', CAPTURE_TIME_LIMIT: 'Capture time limit reached.', CAPTURE_FAILED: 'Capture interrupted; steps incomplete.', GIT_STEP_FAILED: 'Git step failed, timed out or has unconfirmed exit.' },
+  },
+};

@@ -19,12 +19,13 @@ import tools.jackson.databind.json.JsonMapper;
 @Service
 public class BoardRunService {
     public record Start(String projectId, long revision, UUID requestId, String workspacePath) {}
-    public record Snapshot(String title, String goal, String acceptanceCriteria) {}
+    public record Snapshot(String title, String goal, String acceptanceCriteria, BoardPrototypeService.Reference prototype) {}
     public record Run(UUID requestId, long taskRevision, Snapshot task, MissionExecution execution) {}
     public record Page(MissionGitExecutionService.Availability availability, List<Run> items) {}
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private final JdbcTemplate jdbc;
     private final BoardTaskService tasks;
+    private final BoardPrototypeService prototypes;
     private final HandoffStore handoffs;
     private final MissionService missions;
     private final MissionExecutionStore executions;
@@ -35,15 +36,15 @@ public class BoardRunService {
 
     @Autowired
     public BoardRunService(JdbcTemplate jdbc, BoardTaskService tasks, HandoffStore handoffs, MissionService missions,
-                           MissionExecutionStore executions, MissionGitExecutionService git, PlatformTransactionManager manager) {
-        this(jdbc, tasks, handoffs, missions, executions, git, manager,
+                           MissionExecutionStore executions, MissionGitExecutionService git, PlatformTransactionManager manager, BoardPrototypeService prototypes) {
+        this(jdbc, tasks, handoffs, missions, executions, git, manager, prototypes,
             new ThreadPoolExecutor(2, 2, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(16),
                 Thread.ofPlatform().daemon().name("board-git-", 0).factory(), new ThreadPoolExecutor.AbortPolicy()), true);
     }
     BoardRunService(JdbcTemplate jdbc, BoardTaskService tasks, HandoffStore handoffs, MissionService missions,
-                    MissionExecutionStore executions, MissionGitExecutionService git, PlatformTransactionManager manager,
+                    MissionExecutionStore executions, MissionGitExecutionService git, PlatformTransactionManager manager, BoardPrototypeService prototypes,
                     Executor dispatcher, boolean ownsDispatcher) {
-        this.jdbc = jdbc; this.tasks = tasks; this.handoffs = handoffs; this.missions = missions;
+        this.jdbc = jdbc; this.tasks = tasks; this.prototypes = prototypes; this.handoffs = handoffs; this.missions = missions;
         this.executions = executions; this.git = git; this.transaction = new TransactionTemplate(manager);
         this.dispatcher = dispatcher; this.ownedDispatcher = ownsDispatcher ? (ExecutorService) dispatcher : null;
     }
@@ -75,7 +76,7 @@ public class BoardRunService {
             var mission = missions.create(handoff.id());
             // Authorization is rechecked here, and again in the worker before any process starts.
             var execution = git.reserve(mission.id(), UUID.randomUUID(), request.workspacePath());
-            var snapshot = new Snapshot(task.title(), task.goal(), task.acceptanceCriteria());
+            var snapshot = new Snapshot(task.title(), task.goal(), task.acceptanceCriteria(), prototypes.reference(task.prototypeVersionId()));
             jdbc.update("INSERT INTO eap.board_task_run(execution_id,task_id,request_id,task_revision,task_snapshot) VALUES (?,?,?,?,?::jsonb)",
                     execution.id(), taskId, request.requestId(), task.revision(), JSON.writeValueAsString(snapshot));
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

@@ -27,3 +27,7 @@ Mock 状态只保存在开发进程内存里，重启后浏览器里的旧模拟
 看板真实持久化、并发与页面验证范围见 [任务准备切片](../../../../docs/decisions/board-task-preparation-2026-10-31.md)。
 
 看板 `/board/tasks/{id}/runs` 的 mock 只返回空记录及 `MOCK_RUN_NOT_AVAILABLE`，启动明确拒绝，不模拟执行成功；真实受控执行范围见 [后续切片](../../../../docs/decisions/board-controlled-run-2026-10-31.md)。
+
+Run 的 `/board/tasks/{id}/runs/{executionId}/review` 在 mock 中按项目核对任务后返回 `BOARD_RUN_NOT_FOUND`；mock 没有真实 Run，因此不会生成模拟 Diff 或检查成功。真实采集与重放合同见 [仓库审阅切片](../../../../docs/decisions/board-run-review-2026-10-31.md)。
+
+看板 `/board/tasks/{id}/prototype` 关联接口只接受 projectId、revision 和 versionId（null 解除），校验版本确实存在、项目和并发版本，拒绝伪造正文/哈希；关联会增加任务 revision 并记录事件，重复相同选择不增加。版本正文继续从统一原型 API 读取，mock 同样不因关联而模拟执行或验收。真实数据库与 Run 快照边界见 [原型关联切片](../../../../docs/decisions/board-prototype-link-2026-10-31.md)。

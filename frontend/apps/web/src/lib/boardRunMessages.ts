@@ -1,7 +1,7 @@
 export const boardRunMessages = {
   'zh-CN': {
     title: '仓库检查与运行记录', hint: '在服务端绑定的工作区执行只读 git status。任务目标不会交给模型，检查结果不代表任务完成。',
-    workspace: '实际工作目录', unavailable: '当前无法运行', prepare: '请先保存目标和验收条件并移入待处理；有未保存修改时不能启动。',
+    workspace: '实际工作目录', unavailable: '当前无法运行', prepare: '请先保存目标和验收条件并移入待处理；有未保存修改或未确认的原型关联时不能启动。',
     start: '运行只读检查', retry: '重试原启动请求', refresh: '刷新运行记录', confirm: '确认本次仓库检查',
     cancellation: '页面关闭后服务端继续处理。本轮暂不提供看板取消操作；执行超时或结果未知会单独显示。',
     empty: '暂无运行记录。', version: '任务版本 {version}', exitCode: '退出码', snapshot: '本次任务快照', output: '执行输出',
@@ -14,7 +14,7 @@ export const boardRunMessages = {
   },
   'en-US': {
     title: 'Repository checks and runs', hint: 'Runs read-only git status in the server-bound workspace. The task goal is not sent to a model; this check does not complete the task.',
-    workspace: 'Actual working directory', unavailable: 'Execution unavailable', prepare: 'Save the goal and criteria and move the task to ready. Unsent edits must be resolved before starting.',
+    workspace: 'Actual working directory', unavailable: 'Execution unavailable', prepare: 'Save the goal and criteria and move the task to ready. Unsent edits and prototype selections must be resolved before starting.',
     start: 'Run read-only check', retry: 'Retry original start', refresh: 'Refresh runs', confirm: 'Confirm repository check',
     cancellation: 'The server continues after this page closes. Board cancellation is not available in this slice; timeouts and unknown outcomes are shown separately.',
     empty: 'No runs yet.', version: 'Task version {version}', exitCode: 'Exit code', snapshot: 'Task snapshot', output: 'Execution output',

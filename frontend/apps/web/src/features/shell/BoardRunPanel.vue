@@ -5,12 +5,17 @@ import { isAxiosError } from 'axios';
 import { Button, Badge, Collapse, ConfirmBox } from '@eap/ui';
 import { runtimeApi, type BoardRunPage, type BoardRunStart, type BoardTask } from '@eap/runtime-client';
 import { useMockServices } from '../../lib/serviceConfig';
+import PrototypeVersionViewer from './PrototypeVersionViewer.vue';
+import BoardRunReview from './BoardRunReview.vue';
+import type { BoardRun } from '@eap/runtime-client';
 import { readRunRequest, writeRunRequest } from './boardRunRequest';
 const props = defineProps<{ task: BoardTask; disabled?: boolean }>();
 const emit = defineEmits<{ changed: [] }>();
 const { t } = useI18n();
 const page = ref<BoardRunPage | null>(null), loading = ref(false), starting = ref(false), confirming = ref(false), note = ref('');
 const pending = ref<BoardRunStart | null>(null);
+const viewing = ref<{ id: string; contentHash: string } | null>(null);
+const reviewing = ref<BoardRun | null>(null);
 const store = (() => { try { return sessionStorage; } catch { return null; } })();
 const open = computed(() => page.value?.items.some(run => ['CREATED', 'RUNNING', 'CANCELLING'].includes(run.execution.status)) ?? props.task.executionActive);
 const pollingNeeded = computed(() => page.value?.items.some(run => ['CREATED', 'RUNNING', 'CANCELLING'].includes(run.execution.status) && !run.execution.unconfirmedReason));
@@ -73,7 +78,7 @@ async function start() {
   }
 }
 watch(() => props.task.id, () => {
-  generation++; stopPolling(); attempts = 0; page.value = null; loading.value = false; starting.value = false; confirming.value = false;
+  generation++; stopPolling(); viewing.value = null; reviewing.value = null; attempts = 0; page.value = null; loading.value = false; starting.value = false; confirming.value = false;
   pending.value = readRunRequest(store, props.task.id, props.task.projectId, useMockServices);
   note.value = pending.value ? t('boardRun.uncertain') : '';
   void refresh();
@@ -102,12 +107,18 @@ onBeforeUnmount(() => { generation++; stopPolling(); });
       <p>{{ t('boardRun.workspace') }}：{{ run.execution.workspacePath }}</p>
       <p v-if="run.execution.exitCode != null">{{ t('boardRun.exitCode') }}：{{ run.execution.exitCode }} · {{ run.execution.exitEvidence }}</p>
       <p v-if="run.execution.status === 'SUCCEEDED'">{{ t('boardRun.notAccepted') }}</p>
+      <div><Button size="sm" data-testid="board-run-review" @click="reviewing = run">{{ t('boardReview.open') }}</Button></div>
+      <div v-if="run.task.prototype" class="board-run__prototype" data-testid="board-run-prototype"><p>{{ t('boardPrototype.runVersion') }}：{{ run.task.prototype.title || run.task.prototype.id }}</p><code>{{ run.task.prototype.id }}<br>SHA-256: {{ run.task.prototype.contentHash }}</code><Button size="sm" data-testid="board-run-prototype-view" @click="viewing = run.task.prototype">{{ t('boardPrototype.view') }}</Button></div>
+      <p v-else>{{ t('boardPrototype.runNone') }}</p>
       <Collapse><template #summary>{{ t('boardRun.snapshot') }}</template><p>{{ run.task.title }}</p><p>{{ run.task.goal }}</p><p>{{ run.task.acceptanceCriteria }}</p></Collapse>
       <Collapse :open="true"><template #summary>{{ t('boardRun.output') }}</template><pre>{{ run.execution.stdout || '—' }}</pre><pre v-if="run.execution.stderr">{{ run.execution.stderr }}</pre></Collapse>
     </article>
+    <PrototypeVersionViewer v-if="viewing" :version-id="viewing.id" :expected-hash="viewing.contentHash" @close="viewing = null" />
+    <BoardRunReview v-if="reviewing" :key="reviewing.execution.id" :task-id="task.id" :project-id="task.projectId" :run="reviewing" @close="reviewing = null" />
     <ConfirmBox v-if="confirming" :title="t('boardRun.confirm')" :impact="[page?.availability.workspacePath ?? '', 'git status', t('boardRun.hint')]" :confirm-label="t('boardRun.start')" :refusal="canStart ? undefined : t('boardRun.prepare')" :danger="false" @confirm="start" @cancel="confirming = false" />
   </section>
 </template>
 <style scoped>
 .board-run{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--border);min-width:0}.board-run h3{margin:0;font-size:14px}.board-run p{white-space:pre-wrap;overflow-wrap:anywhere}.board-run__actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.board-run__item{display:grid;gap:10px;padding:12px;border:1px solid var(--border);border-radius:10px;min-width:0}.board-run code{overflow-wrap:anywhere;font-size:11px}.board-run pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;padding:10px;margin:8px 0;color:var(--eap-code-text);background:var(--eap-code-bg);border-radius:8px;font-size:11px}
+.board-run__prototype{display:grid;gap:8px;justify-items:start}
 </style>

@@ -17,7 +17,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class BoardTaskService {
     public record Task(UUID id, String projectId, String title, String column, String notes,
                        String sessionId, long revision, List<String> events, String priority,
-                       String goal, String acceptanceCriteria, boolean executionActive) {
+                       String goal, String acceptanceCriteria, boolean executionActive, UUID prototypeVersionId) {
         @JsonProperty public List<String> preparationIssues() { return missing(goal, acceptanceCriteria); }
         @JsonProperty public List<String> allowedColumns() {
             if (executionActive || !Set.of("planned", "ready").contains(column)) return List.of();
@@ -33,7 +33,7 @@ public class BoardTaskService {
     private static final RowMapper<Task> ROW = (rs, row) -> new Task(rs.getObject("id", UUID.class),
             rs.getString("project_id"), rs.getString("title"), rs.getString("column_id"), rs.getString("notes"),
             rs.getString("session_id"), rs.getLong("revision"), Arrays.asList(JSON.readValue(rs.getString("events"), String[].class)),
-            rs.getString("priority"), rs.getString("goal"), rs.getString("acceptance_criteria"), rs.getBoolean("execution_active"));
+            rs.getString("priority"), rs.getString("goal"), rs.getString("acceptance_criteria"), rs.getBoolean("execution_active"), rs.getObject("prototype_version_id", UUID.class));
     private final JdbcTemplate jdbc;
     public BoardTaskService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 

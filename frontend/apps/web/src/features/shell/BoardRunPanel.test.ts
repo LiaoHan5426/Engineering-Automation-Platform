@@ -5,7 +5,7 @@ import { AxiosError } from 'axios';
 import { runtimeApi, type BoardRun, type BoardRunPage, type BoardTask } from '@eap/runtime-client';
 import { i18n } from '../../lib/i18n';
 import BoardRunPanel from './BoardRunPanel.vue';
-const task: BoardTask = { id: 'task-a', projectId: 'project-a', title: '检查仓库', column: 'ready', goal: '收集证据', acceptanceCriteria: '人工核对输出', notes: '', priority: 'none', sessionId: '', revision: 3, events: ['created'], executionActive: false, preparationIssues: [], allowedColumns: ['planned', 'ready'] };
+const task: BoardTask = { id: 'task-a', projectId: 'project-a', title: '检查仓库', column: 'ready', goal: '收集证据', acceptanceCriteria: '人工核对输出', notes: '', priority: 'none', sessionId: '', revision: 3, events: ['created'], executionActive: false, prototypeVersionId: null, preparationIssues: [], allowedColumns: ['planned', 'ready'] };
 const availability = { allowed: true, workspacePath: 'F:/authorized/sample', workspaceLabel: 'sample', reason: '' };
 const run = (status = 'SUCCEEDED'): BoardRun => ({ requestId: '08a79b0a-af5a-4e54-8bd9-499f9f147b77', taskRevision: 3, task: { title: task.title, goal: task.goal, acceptanceCriteria: task.acceptanceCriteria }, execution: { id: 'run-1', missionId: 'mission-1', status, capability: 'git-status', principal: 'local-operator', approval: 'NOT_REQUIRED', workspacePath: availability.workspacePath, workspaceLabel: 'sample', executable: 'git', stdout: 'untracked evidence.txt', stderr: '', startedAt: '2026-10-31T08:00:00Z', finishedAt: null, exitCode: status === 'SUCCEEDED' ? 0 : null } });
 let app: App, root: HTMLDivElement;

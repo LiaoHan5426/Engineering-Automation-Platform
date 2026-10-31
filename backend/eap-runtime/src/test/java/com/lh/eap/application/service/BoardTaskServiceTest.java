@@ -15,7 +15,7 @@ class BoardTaskServiceTest {
     private final BoardTaskService service = new BoardTaskService(jdbc);
     private final UUID id = UUID.randomUUID();
     private BoardTaskService.Task task(String column, String goal, String criteria) {
-        return new BoardTaskService.Task(id, "group", "task", column, "", "", 3, List.of("created"), "none", goal, criteria, false);
+        return new BoardTaskService.Task(id, "group", "task", column, "", "", 3, List.of("created"), "none", goal, criteria, false, null);
     }
     private BoardTaskService.Update update(String project, long revision, String column, String goal, String criteria) {
         return new BoardTaskService.Update(project, revision, column, null, null, goal, criteria);

@@ -44,3 +44,16 @@ it('reports incomplete preparation and refuses ready without changing the saved 
   expect((await api.handle('POST', '/board/tasks/' + task.id, { projectId: 'group', revision: 1, column: 'ready', goal: 'goal', acceptanceCriteria: 'checks' })).status).toBe(200);
   expect((await api.handle('POST', '/board/tasks/' + task.id, { projectId: 'group', revision: 2, goal: '' })).status).toBe(409);
 });
+
+it('links only existing saved versions with project and revision checks', async () => {
+  const api = createMockChatBackend();
+  const version = (await api.handle('POST', '/prototype-versions', { sourceRef: 'builder-alpha', title: 'design', body: 'saved', buttonPresses: 0, acceptance: [] })).data as { id: string };
+  const task = (await api.handle('POST', '/board/tasks', { requestId: randomUUID(), projectId: 'group', title: 'draft' })).data as BoardTask;
+  const route = '/board/tasks/' + task.id + '/prototype';
+  expect((await api.handle('POST', route, { projectId: 'group', revision: 1 })).status).toBe(400);
+  expect((await api.handle('POST', route, { projectId: 'group', revision: 1, versionId: randomUUID() })).status).toBe(404);
+  expect((await api.handle('POST', route, { projectId: 'other', revision: 1, versionId: version.id })).status).toBe(404);
+  expect((await api.handle('POST', route, { projectId: 'group', revision: 1, versionId: version.id })).data).toMatchObject({ prototypeVersionId: version.id, revision: 2 });
+  expect((await api.handle('POST', route, { projectId: 'group', revision: 1, versionId: null })).status).toBe(409);
+  expect((await api.handle('POST', route, { projectId: 'group', revision: 2, versionId: null })).data).toMatchObject({ prototypeVersionId: null, revision: 3 });
+});

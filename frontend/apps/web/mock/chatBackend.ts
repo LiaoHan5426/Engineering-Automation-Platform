@@ -22,7 +22,7 @@ export function createMockChatBackend() {
   const modelBackend = createModelBackend(connections);
   const knowledgeBackend = createKnowledgeBackend();
   const databaseBackend = createDatabaseBackend();
-  const boardBackend = createBoardBackend();
+  const boardBackend = createBoardBackend(id => versions.some(version => version.id === id));
   const effective = () => connections.items.find(item => item.id === connections.effectiveDefaultId && item.enabled && item.allowedModels.includes(item.defaultModel))
     ?? connections.items.find(item => item.enabled && item.allowedModels.includes(item.defaultModel));
   return {

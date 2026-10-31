@@ -477,11 +477,14 @@ export type WorkspaceSource = {
 };
 export type WorkspaceFiles = { path: string; entries: Array<{ name: string; path: string; directory: boolean }>; truncated: boolean; denial: string };
 export type BoardColumn = 'planned' | 'ready' | 'running' | 'acceptance' | 'done';
-export type BoardTask = { id: string; projectId: string; title: string; column: BoardColumn; notes: string; sessionId: string; revision: number; events: string[]; priority: 'none' | 'p0' | 'p1' | 'p2'; goal: string; acceptanceCriteria: string; executionActive: boolean; preparationIssues: Array<'goal' | 'acceptanceCriteria'>; allowedColumns: BoardColumn[] };
+export type BoardTask = { id: string; projectId: string; title: string; column: BoardColumn; notes: string; sessionId: string; revision: number; events: string[]; priority: 'none' | 'p0' | 'p1' | 'p2'; goal: string; acceptanceCriteria: string; executionActive: boolean; prototypeVersionId: string | null; preparationIssues: Array<'goal' | 'acceptanceCriteria'>; allowedColumns: BoardColumn[] };
 export type BoardTaskDraft = { projectId: string; title: string; column: 'planned' | 'ready'; sessionId: string; goal: string; acceptanceCriteria: string; requestId: string };
+export type BoardPrototypeReference = { id: string; sourceRef: string; title: string; contentHash: string; createdAt: string };
 export type BoardRunStart = { projectId: string; revision: number; requestId: string; workspacePath: string };
-export type BoardRun = { requestId: string; taskRevision: number; task: { title: string; goal: string; acceptanceCriteria: string }; execution: MissionExecutionRecord & { workspacePath: string; workspaceLabel: string; executable: string; stdout: string | null; stderr: string | null; startedAt: string; finishedAt: string | null } };
+export type BoardRun = { requestId: string; taskRevision: number; task: { title: string; goal: string; acceptanceCriteria: string; prototype?: BoardPrototypeReference | null }; execution: MissionExecutionRecord & { workspacePath: string; workspaceLabel: string; executable: string; stdout: string | null; stderr: string | null; startedAt: string; finishedAt: string | null } };
 export type BoardRunPage = { availability: { allowed: boolean; workspacePath: string; workspaceLabel: string; reason: string }; items: BoardRun[] };
+export type BoardReviewEvidence = { contentHash: string; snapshot: { workspacePath: string; baseCommit: string; headAfter: string; startedAt: string; finishedAt: string; status: 'CAPTURED' | 'INCOMPLETE' | 'FAILED' | 'CHANGED'; issues: string[]; repositoryStatus: string; diff: string; check: { status: 'NOT_RUN' | 'PASSED' | 'FAILED' | 'INCOMPLETE' | 'STALE'; exitCode: number | null; output: string }; steps: Array<{ name: string; command: string[]; exitCode: number; processStatus: string; truncated: boolean; stderr: string }> } };
+export type BoardReviewPage = { evidence: BoardReviewEvidence | null; captureAllowed: boolean; reason: string };
 
 /** Read-only dirty-file summary. requested=false means git was not run. */
 export type WorkspaceDirty = {
@@ -802,7 +805,10 @@ export const runtimeApi = {
       .then((response) => response.data),
   handoffs: () => get<{ items: HandoffRecord[] }>("/handoffs"),
   boardTasks: (projectId: string) => get<{ items: BoardTask[] }>('/board/tasks?projectId=' + encodeURIComponent(projectId)),
+  setBoardPrototype: (id: string, selection: { projectId: string; revision: number; versionId: string | null }) => client.post<BoardTask>('/board/tasks/' + encodeURIComponent(id) + '/prototype', selection).then(response => response.data),
   boardRuns: (id: string, projectId: string) => get<BoardRunPage>('/board/tasks/' + encodeURIComponent(id) + '/runs?projectId=' + encodeURIComponent(projectId)),
+  boardReview: (taskId: string, executionId: string, projectId: string) => get<BoardReviewPage>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/review?projectId=' + encodeURIComponent(projectId)),
+  captureBoardReview: (taskId: string, executionId: string, request: { projectId: string; workspacePath: string }) => client.post<BoardReviewEvidence>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/review', request, { timeout: 90_000 }).then(response => response.data),
   startBoardRun: (id: string, request: BoardRunStart) => client.post<BoardRun>('/board/tasks/' + encodeURIComponent(id) + '/runs', request).then(response => response.data),
   createBoardTask: (draft: BoardTaskDraft) => client.post<BoardTask>('/board/tasks', draft).then(response => response.data),
   updateBoardTask: (id: string, update: { projectId: string; revision: number; column?: BoardTask['column']; notes?: string; priority?: BoardTask['priority']; goal?: string; acceptanceCriteria?: string }) => client.post<BoardTask>('/board/tasks/' + encodeURIComponent(id), update).then(response => response.data),
