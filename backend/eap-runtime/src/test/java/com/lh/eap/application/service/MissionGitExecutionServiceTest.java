@@ -75,6 +75,7 @@ class MissionGitExecutionServiceTest {
         }
 
         @Override public void insertOpen(MissionExecution execution) { rows.add(execution); }
+        @Override public boolean claimCreated(UUID id) { throw new UnsupportedOperationException("This fixture tests synchronous execution only"); }
         @Override public Optional<MissionExecution> open(UUID missionId) {
             return rows.stream().filter(row -> row.missionId().equals(missionId))
                     .filter(row -> "CREATED".equals(row.status()) || "RUNNING".equals(row.status()) || "CANCELLING".equals(row.status()))

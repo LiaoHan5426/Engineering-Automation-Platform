@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="T extends object">
 import { computed, ref, watch } from "vue";
 import { VxeColumn, VxeTable } from "vxe-table";
-import { Button } from "@eap/ui";
+import { Pagination } from "@eap/ui";
 import type { TableColumn, TableOverflow } from "./columns";
 
 const props = withDefaults(
@@ -98,21 +98,7 @@ function text(row: T, key: string) {
         </template>
       </VxeColumn>
     </VxeTable>
-    <nav v-if="pageCount > 1" class="eap-table__pager" aria-label="表格分页">
-      <Button type="button" size="sm" variant="secondary" :disabled="page <= 1" @click="page -= 1">
-        上一页
-      </Button>
-      <span>{{ page }} / {{ pageCount }}</span>
-      <Button
-        type="button"
-        size="sm"
-        variant="secondary"
-        :disabled="page >= pageCount"
-        @click="page += 1"
-      >
-        下一页
-      </Button>
-    </nav>
+    <Pagination v-if="pageCount > 1" v-model="page" class="eap-table__pager" :total="rows.length" :page-size="pageSize" label="表格分页" />
   </div>
 </template>
 

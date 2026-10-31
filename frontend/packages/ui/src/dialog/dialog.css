@@ -11,12 +11,12 @@
 .eap-dialog-backdrop {
   position: absolute;
   inset: 0;
-  margin: 0;
   padding: 0;
-  border: 0;
-  cursor: pointer;
+  margin: 0;
   pointer-events: auto;
+  cursor: pointer;
   background: rgb(20 32 28 / 32%);
+  border: 0;
 }
 
 .eap-dialog-backdrop:disabled {
@@ -32,12 +32,12 @@
   max-height: min(85vh, 720px);
   padding: 18px 20px;
   overflow: auto;
-  color: var(--text, #37483e);
+  color: var(--eap-text-color-primary, #37483e);
   pointer-events: auto;
-  background: var(--surface, #faf9f4);
-  border: 1px solid var(--border, #e2e6da);
-  border-radius: 16px;
   outline: none;
+  background: var(--eap-fill-color-blank, #faf9f4);
+  border: 1px solid var(--eap-border-color, #e2e6da);
+  border-radius: 16px;
   box-shadow: 0 18px 48px rgb(20 40 70 / 22%);
 }
 
@@ -66,14 +66,14 @@
   font-size: 18px;
   font-weight: 650;
   line-height: 1.35;
-  color: var(--text, #243028);
+  color: var(--eap-text-color-primary, #243028);
   overflow-wrap: anywhere;
 }
 
 .eap-dialog__body {
-  min-width: 0;
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .eap-dialog__footer {
@@ -83,7 +83,7 @@
   justify-content: flex-end;
 }
 
-@media (max-width: 760px) {
+@media (width <= 760px) {
   .eap-dialog-root {
     padding: 12px;
   }

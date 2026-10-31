@@ -116,7 +116,7 @@ describe('desktop navigation', () => {
     const renameButton = [...document.querySelectorAll('.session-menu button')].find((el) => el.textContent === '重命名') as HTMLButtonElement;
     renameButton.click(); await nextTick();
     expect(rename).toHaveBeenCalledWith('in-project');
-    expect(document.querySelector('.session-menu')).toBeNull();
+    await vi.waitFor(() => expect(document.querySelector('.session-menu')).toBeNull());
     expect(unbound?.textContent).toContain('随便问问');
     expect(unbound?.querySelector('.nav.child small')).toBeNull();
     (root.querySelector('[data-testid="archived-sessions"]') as HTMLButtonElement).click(); await nextTick();

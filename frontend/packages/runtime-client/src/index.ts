@@ -215,7 +215,7 @@ export type TaskResult = {
 export type MissionRecord = {
   id: string;
   handoffId: string;
-  source: "chat" | "builder";
+  source: "chat" | "builder" | "board";
   sourceRef: string;
   summary: string;
   status: "created";
@@ -255,7 +255,7 @@ export type PrototypeDeliveryRecord = {
 };
 export type HandoffRecord = {
   id: string;
-  source: "chat" | "builder";
+  source: "chat" | "builder" | "board";
   sourceRef: string;
   summary: string;
   status: "recorded";
@@ -476,7 +476,13 @@ export type WorkspaceSource = {
   denial: string;
 };
 export type WorkspaceFiles = { path: string; entries: Array<{ name: string; path: string; directory: boolean }>; truncated: boolean; denial: string };
-export type BoardTask = { id: string; projectId: string; title: string; column: 'planned' | 'ready' | 'running' | 'acceptance' | 'done'; notes: string; sessionId: string; revision: number; events: string[]; priority: 'none' | 'p0' | 'p1' | 'p2' };
+export type BoardColumn = 'planned' | 'ready' | 'running' | 'acceptance' | 'done';
+export type BoardTask = { id: string; projectId: string; title: string; column: BoardColumn; notes: string; sessionId: string; revision: number; events: string[]; priority: 'none' | 'p0' | 'p1' | 'p2'; goal: string; acceptanceCriteria: string; executionActive: boolean; preparationIssues: Array<'goal' | 'acceptanceCriteria'>; allowedColumns: BoardColumn[] };
+export type BoardTaskDraft = { projectId: string; title: string; column: 'planned' | 'ready'; sessionId: string; goal: string; acceptanceCriteria: string; requestId: string };
+export type BoardRunStart = { projectId: string; revision: number; requestId: string; workspacePath: string };
+export type BoardRun = { requestId: string; taskRevision: number; task: { title: string; goal: string; acceptanceCriteria: string }; execution: MissionExecutionRecord & { workspacePath: string; workspaceLabel: string; executable: string; stdout: string | null; stderr: string | null; startedAt: string; finishedAt: string | null } };
+export type BoardRunPage = { availability: { allowed: boolean; workspacePath: string; workspaceLabel: string; reason: string }; items: BoardRun[] };
+
 /** Read-only dirty-file summary. requested=false means git was not run. */
 export type WorkspaceDirty = {
   requested: boolean;
@@ -796,9 +802,11 @@ export const runtimeApi = {
       .then((response) => response.data),
   handoffs: () => get<{ items: HandoffRecord[] }>("/handoffs"),
   boardTasks: (projectId: string) => get<{ items: BoardTask[] }>('/board/tasks?projectId=' + encodeURIComponent(projectId)),
-  createBoardTask: (projectId: string, title: string, column: 'planned' | 'ready' = 'planned', sessionId = '') => client.post<BoardTask>('/board/tasks', { projectId, title, column, sessionId: String(sessionId ?? '').trim().slice(0, 120) }).then(response => response.data),
-  updateBoardTask: (id: string, update: { revision: number; column?: BoardTask['column']; notes?: string; priority?: BoardTask['priority'] }) => client.post<BoardTask>('/board/tasks/' + encodeURIComponent(id), update).then(response => response.data),
-  recordHandoff: (draft: { source: "chat" | "builder"; sourceRef: string; summary: string }) =>
+  boardRuns: (id: string, projectId: string) => get<BoardRunPage>('/board/tasks/' + encodeURIComponent(id) + '/runs?projectId=' + encodeURIComponent(projectId)),
+  startBoardRun: (id: string, request: BoardRunStart) => client.post<BoardRun>('/board/tasks/' + encodeURIComponent(id) + '/runs', request).then(response => response.data),
+  createBoardTask: (draft: BoardTaskDraft) => client.post<BoardTask>('/board/tasks', draft).then(response => response.data),
+  updateBoardTask: (id: string, update: { projectId: string; revision: number; column?: BoardTask['column']; notes?: string; priority?: BoardTask['priority']; goal?: string; acceptanceCriteria?: string }) => client.post<BoardTask>('/board/tasks/' + encodeURIComponent(id), update).then(response => response.data),
+  recordHandoff: (draft: { source: "chat" | "builder" | "board"; sourceRef: string; summary: string }) =>
     client
       .post<HandoffRecord>("/handoffs", draft)
       .then((response) => response.data),

@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch, toRaw } from "vue";
 import { runtimeApi, type CapabilityItem, type CapabilityKindSummary } from "@eap/runtime-client";
 import { assertExpertId } from "@eap/expert-sdk";
-import { Button, Checkbox, ConfirmBox, EmptyState, Feedback, Input, Select } from "@eap/ui";
+import { Button, Checkbox, ConfirmBox, EmptyState, Feedback, Input, Select, Collapse } from "@eap/ui";
 import { errorMessage } from "../../lib/presentation";
 import {
   isExpertScoped as capabilityIsExpertScoped,
@@ -543,17 +543,17 @@ onMounted(refreshData);
         aria-label="搜索专家"
         placeholder="搜索名称或标识"
       />
-      <button
+      <Button variant="navigation"
         v-for="item in visibleItems"
         :key="item.id"
         class="manager-item"
-        :class="{ active: id === item.id }"
+        :active="id === item.id"
         :disabled="busy"
         @click="edit(item)"
       >
         <strong>{{ item.name }}</strong
         ><small>{{ item.id }}</small>
-      </button>
+      </Button>
       <EmptyState>暂无匹配专家，点击新建开始配置。</EmptyState>
     </aside>
     <div v-if="!editing" class="eap-panel eap-empty">
@@ -770,14 +770,14 @@ onMounted(refreshData);
             ><Button variant="secondary" @click="removeNode">移除节点及连线</Button></template
           >
           <EmptyState>点击画布上的节点标题查看属性。</EmptyState>
-          <details>
-            <summary>由草稿生成的 Manifest（只读）</summary>
+          <Collapse>
+            <template #summary>由草稿生成的 Manifest（只读）</template>
             <p class="hint">
               这段清单由当前草稿即时生成，不是固定样例：它与画布、授权区和规则包引用读的是同一份状态，
               所以不可能声明编辑器里没有的东西。保存时提交给后端的就是它。
             </p>
             <pre>{{ definition().manifest }}</pre>
-          </details>
+          </Collapse>
           <small>保存修改会停用专家并撤销原授权，确认新配置后需要重新启用。</small>
         </aside>
       </div>

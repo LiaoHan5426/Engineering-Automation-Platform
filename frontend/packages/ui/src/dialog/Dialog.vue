@@ -19,6 +19,8 @@ const props = withDefaults(
     showClose?: boolean;
     closeLabel?: string;
     closeTestId?: string;
+    /** Keep a subtree theme by targeting a portal host inside that subtree. */
+    teleportTo?: string | HTMLElement;
   }>(),
   {
     busy: false,
@@ -26,6 +28,7 @@ const props = withDefaults(
     showHeader: true,
     showClose: true,
     closeLabel: "关闭",
+    teleportTo: "body",
   },
 );
 const emit = defineEmits<{ close: [] }>();
@@ -42,7 +45,7 @@ const { onKeydown } = useFocusTrap(panel, {
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport :to="teleportTo">
     <div class="eap-dialog-root" data-testid="eap-dialog" v-bind="attrs">
       <button type="button" class="eap-dialog-backdrop" :aria-label="closeLabel" :disabled="busy" @click="dismiss" />
       <section

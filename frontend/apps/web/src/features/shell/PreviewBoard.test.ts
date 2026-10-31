@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import { createApp, type App } from 'vue';
+import { AxiosError } from 'axios';
 import { runtimeApi } from '@eap/runtime-client';
 import { createMockChatBackend } from '../../../mock/chatBackend';
 import { i18n } from '../../lib/i18n';
@@ -8,12 +9,18 @@ import PreviewBoard from './PreviewBoard.vue';
 import { chatBinding, workbench, type ChatBinding } from './workbench';
 vi.mock('node:url', () => ({ fileURLToPath: () => '/mock/workspace/' }));
 let app: App, root: HTMLDivElement;
+const fill = (selector: string, value: string) => { const input = document.querySelector(selector) as HTMLInputElement; input.value = value; input.dispatchEvent(new Event('input')); };
+const prepare = () => { fill('[data-testid=board-new-goal]', '完成任务目标'); fill('[data-testid=board-new-criteria]', '构建与检查通过'); };
+async function mountBoard() { root = document.createElement('div'); document.body.append(root); app = createApp(PreviewBoard); app.use(i18n).mount(root); await vi.waitFor(() => expect((root.querySelector('[data-testid=board-create-task]') as HTMLButtonElement).disabled).toBe(false)); }
+async function createTask() { (root.querySelector('[data-testid=board-create-task]') as HTMLButtonElement).click(); await vi.waitFor(() => expect(root.querySelector('form')).not.toBeNull()); fill('form input', '并发准备任务'); prepare(); (root.querySelector('form') as HTMLFormElement).requestSubmit(); await vi.waitFor(() => expect(detail()).not.toBeNull()); }
 const detail = () => document.querySelector('[data-testid=board-detail]') as HTMLElement | null;
 beforeEach(() => {
+  sessionStorage.clear();
   const mock = createMockChatBackend();
-  const call = async (method: string, path: string, body = {}) => { const reply = await mock.handle(method, path, body); if (reply.status >= 400) throw new Error('rejected'); return JSON.parse(JSON.stringify(reply.data)); };
+  const call = async (method: string, path: string, body = {}) => { const reply = await mock.handle(method, path, body); if (reply.status >= 400) throw new AxiosError('rejected', undefined, undefined, undefined, { status: reply.status, data: reply.data } as never); return JSON.parse(JSON.stringify(reply.data)); };
+  vi.spyOn(runtimeApi, 'boardRuns').mockResolvedValue({ availability: { allowed: false, workspacePath: '', workspaceLabel: '', reason: 'MOCK_RUN_NOT_AVAILABLE' }, items: [] });
   vi.spyOn(runtimeApi, 'boardTasks').mockImplementation(id => call('GET', '/board/tasks?projectId=' + id));
-  vi.spyOn(runtimeApi, 'createBoardTask').mockImplementation((projectId, title, column, sessionId = '') => call('POST', '/board/tasks', { projectId, title, column, sessionId }));
+  vi.spyOn(runtimeApi, 'createBoardTask').mockImplementation(draft => call('POST', '/board/tasks', draft));
   vi.spyOn(runtimeApi, 'updateBoardTask').mockImplementation((id, body) => call('POST', '/board/tasks/' + id, body));
 });
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); workbench.pendingBoardDraft = null; chatBinding.value = null; });
@@ -24,6 +31,7 @@ it('persists backlog task edits through the service and refuses invented executi
   Array.from(root.querySelectorAll('button')).find(item => item.textContent?.includes('新建任务'))!.click();
   await vi.waitFor(() => expect(root.querySelector('form')).not.toBeNull());
   const input = root.querySelector('form input') as HTMLInputElement; input.value = '验收任务'; input.dispatchEvent(new Event('input'));
+  prepare();
   (root.querySelector('form') as HTMLFormElement).requestSubmit();
   await vi.waitFor(() => expect(root.querySelector('[data-testid=lane-planned]')?.textContent).toContain('验收任务'));
   await vi.waitFor(() => expect(detail()).not.toBeNull());
@@ -31,13 +39,13 @@ it('persists backlog task edits through the service and refuses invented executi
   const move = (name: string) => Array.from(detail()!.querySelectorAll('.task-moves button')).find(item => item.textContent === name)!.click();
   move('进行中'); expect(runtimeApi.updateBoardTask).not.toHaveBeenCalled();
   move('待处理'); await vi.waitFor(() => expect(root.querySelector('[data-testid=lane-ready]')?.textContent).toContain('验收任务'));
-  const notes = detail()!.querySelector('textarea') as HTMLTextAreaElement; notes.value = '保存备注'; notes.dispatchEvent(new Event('input'));
+  const notes = detail()!.querySelector('[data-testid=task-notes]') as HTMLTextAreaElement; notes.value = '保存备注'; notes.dispatchEvent(new Event('input'));
   await vi.waitFor(() => expect((Array.from(detail()!.querySelectorAll('button')).find(item => item.textContent === '保存') as HTMLButtonElement).disabled).toBe(false));
   Array.from(detail()!.querySelectorAll('button')).find(item => item.textContent === '保存')!.click();
   await vi.waitFor(() => expect(root.textContent).toMatch(/备注已保存|任务修改已保存|Notes saved|Task fields saved/));
   move('已完成'); expect(root.querySelector('[data-testid=lane-done]')?.textContent).not.toContain('验收任务');
   const args = vi.mocked(runtimeApi.createBoardTask).mock.calls[0]!;
-  const persisted = await runtimeApi.boardTasks(args[0]); expect(persisted.items[0]?.notes).toBe('保存备注');
+  const persisted = await runtimeApi.boardTasks(args[0].projectId); expect(persisted.items[0]?.notes).toBe('保存备注');
 });
 
 it('filters by notes and saved priority using the same service contract', async () => {
@@ -49,10 +57,11 @@ it('filters by notes and saved priority using the same service contract', async 
   const input = root.querySelector('form input') as HTMLInputElement;
   input.value = '优先级筛选任务';
   input.dispatchEvent(new Event('input'));
+  prepare();
   (root.querySelector('form') as HTMLFormElement).requestSubmit();
   await vi.waitFor(() => expect(root.textContent).toContain('优先级筛选任务'));
   await vi.waitFor(() => expect(detail()).not.toBeNull());
-  const notes = detail()!.querySelector('textarea') as HTMLTextAreaElement;
+  const notes = detail()!.querySelector('[data-testid=task-notes]') as HTMLTextAreaElement;
   notes.value = '标签:迁移验收';
   notes.dispatchEvent(new Event('input'));
   const rank = detail()!.querySelector('[data-testid=task-priority]') as HTMLSelectElement;
@@ -89,8 +98,9 @@ it('links the active conversation id on create without inventing execution', asy
   await vi.waitFor(() => expect(root.querySelector('[data-testid=board-link-session]')?.textContent).toMatch(/关联当前对话|Link current/));
   const input = root.querySelector('[data-testid=board-create-form] input:not([type=checkbox])') as HTMLInputElement;
   input.value = '关联会话任务'; input.dispatchEvent(new Event('input'));
+  prepare();
   (root.querySelector('[data-testid=board-create-form]') as HTMLFormElement).requestSubmit();
-  await vi.waitFor(() => expect(runtimeApi.createBoardTask).toHaveBeenCalledWith(expect.any(String), '关联会话任务', 'planned', 'conv-link-9'));
+  await vi.waitFor(() => expect(runtimeApi.createBoardTask).toHaveBeenCalledWith(expect.objectContaining({ title: '关联会话任务', column: 'planned', sessionId: 'conv-link-9', requestId: expect.any(String) })));
   await vi.waitFor(() => expect(root.querySelector('[data-testid=card-session]')?.textContent).toMatch(/会话|Session/));
   await vi.waitFor(() => expect(document.querySelector('[data-testid=task-session]')?.textContent).toMatch(/已关联|Linked/));
   expect(root.querySelector('[data-testid=card-priority]')?.className).toMatch(/prio-none/);
@@ -103,14 +113,70 @@ it('opens task detail as a modal and protects unsaved edits on close', async () 
   (root.querySelector('[data-testid=lane-ready] [data-testid=lane-add-task]') as HTMLButtonElement).click();
   await vi.waitFor(() => expect(root.querySelector('form input')).not.toBeNull());
   const title = root.querySelector('form input') as HTMLInputElement; title.value = '待处理列创建'; title.dispatchEvent(new Event('input'));
+  prepare();
   (root.querySelector('form') as HTMLFormElement).requestSubmit();
   await vi.waitFor(() => expect(root.querySelector('[data-testid=lane-ready] .board-card')?.textContent).toContain('待处理列创建'));
   await vi.waitFor(() => expect(document.querySelector('[data-testid=board-detail-dialog] [role=dialog]')).not.toBeNull());
-  const notes = detail()!.querySelector('textarea') as HTMLTextAreaElement; notes.value = '尚未保存'; notes.dispatchEvent(new Event('input'));
+  const notes = detail()!.querySelector('[data-testid=task-notes]') as HTMLTextAreaElement; notes.value = '尚未保存'; notes.dispatchEvent(new Event('input'));
   (document.querySelector('[data-testid=board-close-detail]') as HTMLButtonElement).click();
   await vi.waitFor(() => expect(document.querySelector('[data-confirm-cancel]')).not.toBeNull());
   (document.querySelector('[data-confirm-cancel]') as HTMLButtonElement).click();
   await vi.waitFor(() => expect(document.querySelector('[data-confirm-cancel]')).toBeNull());
-  expect((detail()!.querySelector('textarea') as HTMLTextAreaElement).value).toBe('尚未保存');
+  expect((detail()!.querySelector('[data-testid=task-notes]') as HTMLTextAreaElement).value).toBe('尚未保存');
   expect(runtimeApi.updateBoardTask).not.toHaveBeenCalled();
+});
+
+it('preserves the draft revision on conflict and requires an explicit resolution before saving', async () => {
+  await mountBoard(); await createTask();
+  const draft = vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0];
+  const task = (await runtimeApi.boardTasks(draft.projectId)).items[0]!;
+  fill('[data-testid=task-goal]', '本地未提交目标');
+  await runtimeApi.updateBoardTask(task.id, { projectId: task.projectId, revision: task.revision, goal: '另一个窗口保存的目标' });
+  (document.querySelector('[data-testid=board-save-fields]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-conflict]')?.textContent).toContain('另一个窗口保存的目标'));
+  expect((document.querySelector('[data-testid=task-goal]') as HTMLTextAreaElement).value).toBe('本地未提交目标');
+  expect((document.querySelector('[data-testid=board-save-fields]') as HTMLButtonElement).disabled).toBe(true);
+  // Reopening must not silently rebase the cached draft onto the new revision.
+  app.unmount(); root.remove(); await mountBoard();
+  (root.querySelector('.board-card') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-conflict]')).not.toBeNull());
+  (document.querySelector('[data-testid=board-keep-draft]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect((document.querySelector('[data-testid=board-save-fields]') as HTMLButtonElement).disabled).toBe(false));
+  (document.querySelector('[data-testid=board-save-fields]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-conflict]')).toBeNull());
+  await vi.waitFor(async () => expect((await runtimeApi.boardTasks(task.projectId)).items[0]!.goal).toBe('本地未提交目标'));
+});
+it('retries the identical creation after a lost response and renders only one persisted task', async () => {
+  await mountBoard();
+  const original = vi.mocked(runtimeApi.createBoardTask).getMockImplementation()!;
+  vi.mocked(runtimeApi.createBoardTask).mockImplementationOnce(async draft => { await original(draft); throw new AxiosError('connection lost'); });
+  (root.querySelector('[data-testid=board-create-task]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(root.querySelector('form')).not.toBeNull());
+  fill('form input', '未知创建结果'); prepare();
+  (root.querySelector('form') as HTMLFormElement).requestSubmit();
+  await vi.waitFor(() => expect(root.textContent).toContain('创建结果尚未确认'));
+  expect((root.querySelector('form input') as HTMLInputElement).disabled).toBe(true);
+  app.unmount(); root.remove(); await mountBoard();
+  expect((root.querySelector('form input') as HTMLInputElement).value).toBe('未知创建结果');
+  (root.querySelector('form') as HTMLFormElement).requestSubmit();
+  await vi.waitFor(() => expect(root.querySelectorAll('.board-card')).toHaveLength(1));
+  const calls = vi.mocked(runtimeApi.createBoardTask).mock.calls;
+  expect(calls[0]![0]).toEqual(calls[1]![0]);
+  expect((await runtimeApi.boardTasks(calls[0]![0].projectId)).items).toHaveLength(1);
+});
+it('allows an incomplete planned draft but disables ready and preserves preparation after reopening', async () => {
+  await mountBoard();
+  (root.querySelector('[data-testid=board-create-task]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(root.querySelector('form')).not.toBeNull());
+  fill('form input', '待补全'); (root.querySelector('form') as HTMLFormElement).requestSubmit();
+  await vi.waitFor(() => expect(detail()).not.toBeNull());
+  const ready = () => Array.from(detail()!.querySelectorAll('.task-moves button')).find(item => item.textContent === '待处理') as HTMLButtonElement;
+  expect(ready().disabled).toBe(true);
+  fill('[data-testid=task-goal]', '明确目标'); fill('[data-testid=task-criteria]', '可复现检查');
+  await vi.waitFor(() => expect((document.querySelector('[data-testid=board-save-fields]') as HTMLButtonElement).disabled).toBe(false));
+  (document.querySelector('[data-testid=board-save-fields]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(ready().disabled).toBe(false)); ready().click();
+  await vi.waitFor(() => expect(root.querySelector('[data-testid=lane-ready] .board-card')).not.toBeNull());
+  app.unmount(); root.remove(); await mountBoard(); (root.querySelector('.board-card') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect((document.querySelector('[data-testid=task-criteria]') as HTMLTextAreaElement)?.value).toBe('可复现检查'));
 });

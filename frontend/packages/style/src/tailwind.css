@@ -1,0 +1,26 @@
+/* Optional Tailwind 4 bridge. Import AFTER tailwindcss; never process with Sass. */
+@theme inline {
+  --color-background: var(--eap-bg-color);
+  --color-foreground: var(--eap-text-color-primary);
+  --color-card: var(--eap-fill-color-blank);
+  --color-card-foreground: var(--eap-text-color-primary);
+  --color-popover: var(--eap-fill-color-blank);
+  --color-popover-foreground: var(--eap-text-color-primary);
+  --color-primary: var(--eap-color-primary);
+  --color-primary-foreground: var(--eap-color-on-primary);
+  --color-secondary: var(--eap-fill-color);
+  --color-secondary-foreground: var(--eap-text-color-primary);
+  --color-muted: var(--eap-fill-color-light);
+  --color-muted-foreground: var(--eap-text-color-secondary);
+  --color-accent: var(--eap-color-primary-soft);
+  --color-accent-foreground: var(--eap-text-color-primary);
+  --color-destructive: var(--eap-color-danger);
+  --color-border: var(--eap-border-color);
+  --color-input: var(--eap-border-color-strong);
+  --color-ring: var(--eap-color-primary-focus);
+  --radius-sm: var(--eap-border-radius-sm);
+  --radius-md: var(--eap-border-radius-base);
+  --radius-lg: var(--eap-border-radius-card);
+}
+
+@custom-variant dark (&:where([data-eap-theme="dark"], [data-eap-theme="dark"] *));

@@ -2,7 +2,8 @@
 withDefaults(
   defineProps<{
     label?: string;
-    variant?: "primary" | "secondary" | "ghost" | "danger";
+    variant?: "primary" | "secondary" | "ghost" | "danger" | "link" | "navigation" | "activity" | "chip" | "icon" | "card" | "backdrop" | "custom";
+    active?: boolean;
     size?: "sm" | "md";
     disabled?: boolean;
     type?: "button" | "submit" | "reset";
@@ -14,9 +15,9 @@ defineEmits<{ click: [MouseEvent] }>();
 
 <template>
   <button
-    class="eap-button"
-    :class="[`eap-button--${variant}`, `eap-button--${size}`]"
+    :class="variant === 'custom' ? 'eap-button-custom' : ['eap-button', `eap-button--${variant}`, `eap-button--${size}`]"
     :disabled="disabled"
+    :data-active="active || undefined"
     :type="type"
     @click="$emit('click', $event)"
   >

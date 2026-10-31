@@ -9,6 +9,7 @@ export const SHELL_PAGE_IDS = [
   "databases",
   "capabilities",
   "model-settings",
+  "appearance",
   "board",
   "expert-catalog",
 ] as const;

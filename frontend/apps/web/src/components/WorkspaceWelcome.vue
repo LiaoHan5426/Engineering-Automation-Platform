@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n';
 import { addExpert, currentExtras, expertCatalog, removeExpert, scenarios, workbench } from '../features/shell/workbench';
 import { pendingScenarioDependencies } from '../features/shell/scenarioDependencies';
 import { identityAuthorized, runtimeIdentity } from '../features/shell/runtimeIdentity';
-import { Input } from "@eap/ui";
+import { Input, Button } from "@eap/ui";
 import type { Scenario } from '../features/shell/workbench';
 defineEmits<{ scenario: [id: string] }>();
 withDefaults(defineProps<{ compact?: boolean }>(), { compact: false });
@@ -39,7 +39,7 @@ function toggleExpert(id: string) {
     <p v-if="extras.scenarioId || extras.experts.length" class="hint welcome-soft" data-testid="welcome-kept">{{ t('desktop.welcomeKept') }}</p>
     <Input v-model="search" class="scene-search" type="search" :placeholder="t('preview.search')" :aria-label="t('preview.search')" />
     <div class="preview-scene-grid" data-testid="work-scenes">
-      <button
+      <Button variant="card"
         v-for="item in availableScenes"
         :key="item.id"
         type="button"
@@ -56,12 +56,12 @@ function toggleExpert(id: string) {
         <span>◇</span><strong>{{ item.name }}</strong><small>{{ item.summary }}</small>
         <small v-if="pending(item).length" class="scene-dep-note">{{ t('desktop.pendingDependencyCheck') }} · {{ pending(item).slice(0, 3).join('、') }}</small>
         <i v-if="extras.scenarioId === item.id" aria-hidden="true">✓</i>
-      </button>
+      </Button>
     </div>
     <div class="welcome-section-head"><h2>{{ t('preview.experts') }}</h2><a href="#expert-catalog">{{ t('preview.manageExperts') }} →</a></div>
     <Input v-model="expertSearch" class="scene-search" type="search" data-testid="expert-search" :placeholder="t('desktop.searchExperts')" :aria-label="t('desktop.searchExperts')" />
     <div class="expert-pills">
-      <button
+      <Button size="sm" variant="chip"
         v-for="expert in availableExperts"
         :key="expert.id"
         type="button"
@@ -74,7 +74,7 @@ function toggleExpert(id: string) {
         <span>◉</span> {{ expert.name }}
         <template v-if="expert.comingSoon"> · {{ t('desktop.expertOnTheWay') }}</template>
         <template v-else>{{ extras.experts.some(item => item.id === expert.id) ? ' ×' : ' ＋' }}</template>
-      </button>
+      </Button>
     </div>
   </div>
 </template>

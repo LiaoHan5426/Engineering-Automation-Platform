@@ -195,15 +195,15 @@ onUnmounted(() => { disposed = true; editor?.destroy?.(); editor = null; });
 </template>
 
 <style scoped>
-.grapes-scaffold{display:grid;gap:10px;padding:14px;border:1px dashed #c9d3c8;border-radius:12px;background:#f7f8f3}
+.grapes-scaffold{display:grid;gap:10px;padding:14px;border:1px dashed var(--border-strong);border-radius:12px;background:var(--surface-2)}
 header{display:flex;justify-content:space-between;gap:8px;align-items:center}
-h2{margin:0;font-size:15px;color:#37483e}
-header span,.hint{font-size:12px;color:#68746e}
-.title-field{display:grid;gap:4px;font-size:12px;color:#526258}
+h2{margin:0;font-size:15px;color:var(--accent)}
+header span,.hint{font-size:12px;color:var(--text-soft)}
+.title-field{display:grid;gap:4px;font-size:12px;color:var(--text-soft)}
 .title-field input{font:inherit;width:100%}
-.grapes-canvas{min-height:200px;border:1px solid #d5ddd4;border-radius:10px;background:#fff;overflow:auto}
+.grapes-canvas{min-height:200px;border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow:auto}
 .grapes-canvas :deep(.gjs-cv-canvas){width:100%;height:100%;top:0}.editor-controls{display:flex;gap:8px;flex-wrap:wrap}.editor-controls label{display:grid;gap:5px;width:100%;font-size:12px}.editor-controls input{width:100%}
-.grapes-canvas[data-mode="offline"],.grapes-canvas[data-mode="loading"]{min-height:120px;background:repeating-linear-gradient(-45deg,#faf9f4,#faf9f4 8px,#f0f2ec 8px,#f0f2ec 16px)}
-.offline-panel{margin:0;padding:10px;border-radius:8px;background:#eef2ea;font-size:12px;line-height:1.5;color:#526258}
+.grapes-canvas[data-mode="offline"],.grapes-canvas[data-mode="loading"]{min-height:120px;background:repeating-linear-gradient(-45deg,var(--surface),var(--surface) 8px,var(--surface-2) 8px,var(--surface-2) 16px)}
+.offline-panel{margin:0;padding:10px;border-radius:8px;background:var(--surface-2);font-size:12px;line-height:1.5;color:var(--text-soft)}
 .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 </style>

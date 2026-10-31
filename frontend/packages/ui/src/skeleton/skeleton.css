@@ -1,0 +1,12 @@
+.eap-skeleton {
+  display: block;
+  width: 100%;
+  height: 1em;
+  background: var(--eap-fill-color);
+  border-radius: var(--eap-border-radius-sm);
+}
+.eap-skeleton--animated { animation: eap-skeleton-pulse 1.5s ease-in-out infinite alternate; }
+
+@keyframes eap-skeleton-pulse { to { opacity: 0.45; } }
+
+@media (prefers-reduced-motion: reduce) { .eap-skeleton--animated { animation: none; } }

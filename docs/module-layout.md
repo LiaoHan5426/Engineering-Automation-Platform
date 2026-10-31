@@ -20,6 +20,14 @@
 
 主题用法：加载主题 CSS 后调用 `applyTheme("light" | "dark")`（写入 `data-eap-theme`）。也可在子树上设置 `data-eap-theme`；无 Tailwind 的应用可直接用 `@eap/style/index.css`。
 
+`applyAppearance({ theme, skin, density, layout })` 配置皮肤/密度/布局尺寸，`applyTokens` 覆盖局部 Token；`@eap/style/tailwind.css` 提供可选 Tailwind 4 映射，不引入 Sass。`WorkbenchFrame` 暂存于 `packages/ui/src/layout` 并用于 Chat 网格，业务 SessionPanel 保持在应用。通用复合 UI（Collapse、Descriptions、Pagination）和基础定义统一由 `@eap/ui` 导出，明确的跨仓库复用需求不必等待第二消费者。复制依赖与契约见 [`packages/ui/README.md`](../frontend/packages/ui/README.md)。
+
+`features/settings/AppearanceSettings.vue`（`#appearance`）组装公共 Segmented/Slider/Splitter/Tooltip；偏好模型与本地存储在同目录 `appearance.ts`，由 main 初始化，支持系统主题、跨标签页同步、版本/范围校验和恢复默认。存储失败展示提示，不将 web 策略写入 `@eap/style`。RepositoryBrowser 保留仓库 API 与懒加载，树键盘/选择行为使用 `@eap/ui` Tree；Chat 文件浮层使用 Drawer，复用 Dialog 的焦点和叠层。
+
+`@eap/ui` 内部依赖固定的 `reka-ui@2.11.0`，供 Tree、Segmented、Splitter、Tooltip 使用；shadcn-vue 首个源码接入为 TooltipContent，提交、改动说明和 MIT 许可存于 `packages/ui/src/tooltip`。这些依赖不得从应用模板直接引用。
+
+后续开发统一使用公共 Button 语义变体、ActionCard、DropdownMenu、SvgActionPath 与 anchored Popover；侧栏/聊天菜单定位和关闭、composer 浮层避让/焦点已归 UI 包，领域动作仍由应用传入。应用禁止 custom 变体和原生交互 role 模拟控件；宿主颜色取 style Token（含终端/代码），设计模型数据保留原值。当前 38 个 UI 组件的契约与可复制依赖见 UI README；前后端业务按 v1.6 与现有接口边界推进，本次 UI 收敛不代表规划中的后端业务已实现。
+
 `@eap/ui` 按组件分目录：每个组件目录含 `.vue` 与同名样式；`src/styles.css` 仅汇总组件样式（不内嵌主题）；`src/index.ts` 再导出全部组件。类名统一 `eap-<block>` / `__` 元素 / `--` 修饰（如 `eap-button--primary`、`eap-confirm__dialog`）；`@eap/stylelint-config` 对 `packages/ui` 强制该 BEM 约定。换肤改 `--eap-*`，不改类名前缀，也不用 Sass 再生成一套变量。
 
 每个工作区目录都有 `package.json`；依赖写入包自身的 `dependencies` / `devDependencies`，本地包使用 `workspace:*`。页面从公开包名导入客户端，不使用跨包相对路径或其他包的 `src` 私有路径。TypeScript 项目引用用于类型构建，不替代包依赖声明。

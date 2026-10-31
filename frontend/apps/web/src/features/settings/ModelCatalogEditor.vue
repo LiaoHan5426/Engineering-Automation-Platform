@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { ModelConnection, ModelOption } from '@eap/runtime-client';
 import { modelApi as runtimeApi } from '../chat/chatService';
-import { Button, Checkbox, Feedback, Input, Select } from '@eap/ui';
+import { Button, Checkbox, Feedback, Input, Select, Collapse } from "@eap/ui";
 import { errorMessage } from '../../lib/presentation';
 const props = defineProps<{ connection: ModelConnection }>();
 const emit = defineEmits<{ saved: []; close: []; busy: [value: boolean] }>();
@@ -59,7 +59,7 @@ async function save() {
       <p v-if="!models.length">{{ t('modelUi.empty') }}</p>
       <div v-for="model in visible" :key="model.id" class="catalog-model">
         <label><Checkbox :model-value="allowed.includes(model.id)" :disabled="busy" @update:model-value="toggle(model.id, $event === true)" />{{ model.id }}</label>
-        <details><summary>{{ t('modelUi.efforts') }}</summary><label v-for="effort in ['low', 'medium', 'high']" :key="effort"><Checkbox v-model="model.reasoningEfforts" :value="effort" :disabled="busy" />{{ t('task.' + effort) }}</label></details>
+        <Collapse><template #summary>{{ t('modelUi.efforts') }}</template><label v-for="effort in ['low', 'medium', 'high']" :key="effort"><Checkbox v-model="model.reasoningEfforts" :value="effort" :disabled="busy" />{{ t('task.' + effort) }}</label></Collapse>
       </div>
     </div>
     <label>{{ t('modelUi.default') }}<Select v-model="defaultModel" :disabled="busy"><option v-if="!allowed.length" value="">{{ t('modelUi.choose') }}</option><option v-for="id in allowed" :key="id" :value="id">{{ id }}</option></Select></label>
@@ -68,5 +68,5 @@ async function save() {
   </form>
 </template>
 <style scoped>
-.model-catalog{display:grid;gap:16px}.model-catalog h2{font-size:18px}.model-catalog p,.model-catalog .hint{font-size:12px;line-height:1.7;color:var(--text-soft);margin:0}.model-catalog>label{display:grid;gap:6px}.model-catalog input:not([type=checkbox]),.model-catalog select{min-width:0}.catalog-actions,.catalog-manual{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.catalog-manual input{flex:1}.catalog-actions span{font-size:12px}.catalog-models{max-height:min(280px,42dvh);overflow:auto;border:1px solid var(--border);border-radius:8px}.catalog-model{padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.catalog-model label{display:inline-flex;align-items:center;gap:6px;overflow-wrap:anywhere}.catalog-model summary{font-size:12px}.catalog-model details label{margin-right:12px}@media(max-width:760px){.catalog-models{max-height:min(240px,36dvh)}.catalog-model{padding:10px}}
+.model-catalog{display:grid;gap:16px}.model-catalog h2{font-size:18px}.model-catalog p,.model-catalog .hint{font-size:12px;line-height:1.7;color:var(--text-soft);margin:0}.model-catalog>label{display:grid;gap:6px}.model-catalog input:not([type=checkbox]),.model-catalog select{min-width:0}.catalog-actions,.catalog-manual{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.catalog-manual input{flex:1}.catalog-actions span{font-size:12px}.catalog-models{max-height:min(280px,42dvh);overflow:auto;border:1px solid var(--border);border-radius:8px}.catalog-model{padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.catalog-model label{display:inline-flex;align-items:center;gap:6px;overflow-wrap:anywhere}.catalog-model :deep(summary){font-size:12px}.catalog-model details label{margin-right:12px}@media(max-width:760px){.catalog-models{max-height:min(240px,36dvh)}.catalog-model{padding:10px}}
 </style>

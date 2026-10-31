@@ -1,0 +1,16 @@
+.eap-tooltip {
+  z-index: calc(var(--eap-index-confirm) + 1);
+  max-width: min(320px, calc(100vw - 24px));
+  padding: var(--eap-space-2) var(--eap-space-3);
+  font-size: var(--eap-font-size-sm);
+  color: var(--eap-text-color-primary);
+  overflow-wrap: anywhere;
+  background: var(--eap-fill-color-blank);
+  border: 1px solid var(--eap-border-color);
+  border-radius: var(--eap-border-radius-base);
+  box-shadow: var(--eap-box-shadow-overlay);
+}
+
+.eap-tooltip__arrow {
+  fill: var(--eap-fill-color-blank);
+}

@@ -26,7 +26,7 @@ const { t } = useI18n();
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  border: 1px solid var(--eap-line, #d7dde5);
+  border: 1px solid var(--eap-line, var(--border));
   border-radius: 12px;
 }
 </style>

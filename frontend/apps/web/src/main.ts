@@ -1,5 +1,5 @@
 import { createApp } from "vue";
-import { applyTheme, DEFAULT_THEME } from "@eap/style";
+import { initializeAppearance } from "./features/settings/appearance";
 import { tablePlugin } from "@eap/plugin-table";
 import "@eap/ui/styles.css";
 import "@eap/plugin-table/styles.css";
@@ -8,6 +8,7 @@ import "./style.css";
 import "./work-pages.css";
 import { i18n } from "./lib/i18n";
 
-applyTheme(DEFAULT_THEME);
+const disposeAppearance = initializeAppearance();
+if (import.meta.hot) import.meta.hot.dispose(disposeAppearance);
 
 createApp(App).use(tablePlugin).use(i18n).mount("#app");

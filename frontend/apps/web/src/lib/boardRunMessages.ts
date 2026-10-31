@@ -1,0 +1,28 @@
+export const boardRunMessages = {
+  'zh-CN': {
+    title: '仓库检查与运行记录', hint: '在服务端绑定的工作区执行只读 git status。任务目标不会交给模型，检查结果不代表任务完成。',
+    workspace: '实际工作目录', unavailable: '当前无法运行', prepare: '请先保存目标和验收条件并移入待处理；有未保存修改时不能启动。',
+    start: '运行只读检查', retry: '重试原启动请求', refresh: '刷新运行记录', confirm: '确认本次仓库检查',
+    cancellation: '页面关闭后服务端继续处理。本轮暂不提供看板取消操作；执行超时或结果未知会单独显示。',
+    empty: '暂无运行记录。', version: '任务版本 {version}', exitCode: '退出码', snapshot: '本次任务快照', output: '执行输出',
+    notAccepted: '仓库检查成功；任务仍未经过独立验证和人工验收。', unknown: '结果待确认', unknownHint: '当前记录阻止再次启动；不会自动接管或重跑遗留进程。',
+    status: { CREATED: '已接收', RUNNING: '检查进行中', CANCELLING: '已请求取消', SUCCEEDED: '检查成功', FAILED: '检查失败', REJECTED: '执行被拒绝', TIMED_OUT: '执行超时', CANCELLED: '已确认取消', INTERRUPTED: '已确认中断' },
+    recovered: '已找到原启动请求对应的运行记录。', loadFailed: '读取运行记录失败。已有结果保留，可手动刷新。', pollPaused: '自动刷新已暂停，请手动核对运行记录。',
+    stale: '任务已有新版本，请刷新并确认最新任务内容。', active: '已有运行或待确认记录', workspaceChanged: '服务端工作目录已变化，请重新确认。', requestConflict: '启动请求身份与内容不一致，请核对运行记录。',
+    failed: '启动被拒绝，请核对任务状态、工作目录和服务端授权。', storageFailed: '无法保存启动请求恢复信息，请检查浏览器会话存储。',
+    started: '服务端已接收检查请求。', uncertain: '启动结果尚未确认。先刷新核对记录，重试将使用同一请求身份。',
+  },
+  'en-US': {
+    title: 'Repository checks and runs', hint: 'Runs read-only git status in the server-bound workspace. The task goal is not sent to a model; this check does not complete the task.',
+    workspace: 'Actual working directory', unavailable: 'Execution unavailable', prepare: 'Save the goal and criteria and move the task to ready. Unsent edits must be resolved before starting.',
+    start: 'Run read-only check', retry: 'Retry original start', refresh: 'Refresh runs', confirm: 'Confirm repository check',
+    cancellation: 'The server continues after this page closes. Board cancellation is not available in this slice; timeouts and unknown outcomes are shown separately.',
+    empty: 'No runs yet.', version: 'Task version {version}', exitCode: 'Exit code', snapshot: 'Task snapshot', output: 'Execution output',
+    notAccepted: 'Repository check succeeded. Independent verification and human acceptance are still pending.', unknown: 'Outcome unknown', unknownHint: 'This record blocks another start. Orphaned processes are not automatically adopted or restarted.',
+    status: { CREATED: 'Accepted', RUNNING: 'Checking', CANCELLING: 'Cancellation requested', SUCCEEDED: 'Check succeeded', FAILED: 'Check failed', REJECTED: 'Rejected', TIMED_OUT: 'Timed out', CANCELLED: 'Cancellation confirmed', INTERRUPTED: 'Interruption confirmed' },
+    recovered: 'Found the run associated with the original request.', loadFailed: 'Cannot read runs. Previous results are preserved; refresh to retry.', pollPaused: 'Automatic refresh paused. Refresh manually to check the current state.',
+    stale: 'The task has a newer version. Refresh and review its content.', active: 'An active or unconfirmed run exists', workspaceChanged: 'The server workspace changed. Review it before starting again.', requestConflict: 'The request identity conflicts with its content. Check the run history.',
+    failed: 'Start rejected. Check the task state, working directory and server authorization.', storageFailed: 'Cannot save request recovery information. Check browser session storage.',
+    started: 'The server accepted the check.', uncertain: 'Start outcome is unknown. Refresh the run history first; retries retain the same request identity.',
+  },
+};

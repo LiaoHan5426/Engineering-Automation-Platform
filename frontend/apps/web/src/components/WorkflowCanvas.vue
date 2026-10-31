@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { SvgActionPath, Button } from "@eap/ui";
 import { computed, ref, useId } from "vue";
 import { inspectGraph, type WorkflowNode, type WorkflowEdge } from "../lib/workflowGraph";
 const props = defineProps<{ nodes: WorkflowNode[]; edges: WorkflowEdge[] }>();
@@ -96,22 +97,22 @@ function removeEdge(index: number) {
 <template>
   <div class="canvas-tools">
     <span>输出 → 输入：箭头表示依赖方向，名称不决定顺序。</span
-    ><button @click="layout">自动布局</button><button @click="fit">查看全图</button>
-    <button
+    ><Button size="sm" variant="secondary" @click="layout">自动布局</Button><Button size="sm" variant="secondary" @click="fit">查看全图</Button>
+    <Button size="sm" variant="secondary"
       aria-label="缩小画布"
       :disabled="zoom <= 0.25"
       @click="zoom = Math.max(0.25, zoom - 0.1)"
     >
-      −</button
+      −</Button
     ><span>{{ Math.round(zoom * 100) }}%</span
-    ><button
+    ><Button size="sm" variant="secondary"
       aria-label="放大画布"
       :disabled="zoom >= 1.5"
       @click="zoom = Math.min(1.5, zoom + 0.1)"
     >
-      ＋</button
-    ><button @click="zoom = 1">原始大小</button
-    ><button
+      ＋</Button
+    ><Button size="sm" variant="secondary" @click="zoom = 1">原始大小</Button
+    ><Button size="sm" variant="secondary"
       v-if="source"
       @click="
         source = '';
@@ -119,7 +120,7 @@ function removeEdge(index: number) {
       "
     >
       取消连线
-    </button>
+    </Button>
   </div>
   <p v-if="source" role="status">已选源节点，请点击目标节点左侧的输入端口。</p>
   <p v-if="feedback" role="alert">{{ feedback }}</p>
@@ -148,30 +149,18 @@ function removeEdge(index: number) {
               orient="auto"
               markerUnits="userSpaceOnUse"
             >
-              <path d="M0,0 L10,5 L0,10 z" fill="#2563eb" />
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)" />
             </marker>
           </defs>
           <g v-for="(edge, index) in edges" :key="edge.source + '-' + edge.target">
             <path
               :d="path(edge)"
               fill="none"
-              stroke="#2563eb"
+              stroke="var(--accent)"
               stroke-width="3"
               :marker-end="'url(#' + marker + ')'"
             />
-            <path
-              :d="path(edge)"
-              fill="none"
-              stroke="transparent"
-              stroke-width="18"
-              tabindex="0"
-              role="button"
-              :aria-label="'删除连线 ' + edge.source + ' 到 ' + edge.target"
-              @keydown.delete.prevent="removeEdge(index)"
-              @keydown.enter.prevent="removeEdge(index)"
-            >
-              <title>选中后按 Delete 删除连线</title>
-            </path>
+            <SvgActionPath :d="path(edge)" :label="'删除连线 ' + edge.source + ' 到 ' + edge.target" delete-key @activate="removeEdge(index)" />
           </g>
         </svg>
         <article
@@ -181,14 +170,14 @@ function removeEdge(index: number) {
           :class="{ selected: selected === node.id, connecting: source === node.id }"
           :style="{ left: position(node.id).x + 'px', top: position(node.id).y + 'px' }"
         >
-          <button
+          <Button size="sm" variant="icon"
             class="port input"
             :aria-label="'连接到 ' + (node.label || node.capability)"
             title="输入：点击接收连线"
             @click="connect(node.id)"
           >
             ●
-          </button>
+          </Button>
           <div
             class="node-handle"
             @pointerdown="start($event, node)"
@@ -200,7 +189,7 @@ function removeEdge(index: number) {
             ><strong>{{ node.label || node.capability || "待选择能力" }}</strong>
           </div>
           <code>{{ node.capability }}</code>
-          <button
+          <Button size="sm" variant="link"
             class="node-properties"
             @click="
               selected = node.id;
@@ -208,8 +197,8 @@ function removeEdge(index: number) {
             "
           >
             配置节点
-          </button>
-          <button
+          </Button>
+          <Button size="sm" variant="icon"
             class="port output"
             :aria-label="'从 ' + (node.label || node.capability) + ' 连线'"
             title="输出：点击开始连线"
@@ -219,7 +208,7 @@ function removeEdge(index: number) {
             "
           >
             ●
-          </button>
+          </Button>
         </article>
       </div>
     </div>
@@ -238,18 +227,18 @@ function removeEdge(index: number) {
   flex: 1;
 }
 .graph-warning {
-  color: #92400e;
-  background: #fffbeb;
+  color: var(--warn-text);
+  background: var(--warn-bg);
   padding: 10px;
   border-radius: 8px;
 }
 .workflow-canvas {
   height: 470px;
   overflow: auto;
-  background-color: #f8fafc;
-  background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+  background-color: var(--surface-2);
+  background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
   background-size: 20px 20px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
 }
 .canvas-surface {
@@ -259,8 +248,8 @@ function removeEdge(index: number) {
   position: absolute;
   width: 200px;
   height: 120px;
-  background: white;
-  border: 2px solid #93c5fd;
+  background: var(--surface);
+  border: 2px solid var(--focus-ring);
   border-radius: 10px;
   box-sizing: border-box;
   padding: 12px;
@@ -269,7 +258,7 @@ function removeEdge(index: number) {
 }
 .workflow-node.selected,
 .workflow-node.connecting {
-  border-color: #2563eb;
+  border-color: var(--accent);
 }
 .node-handle {
   cursor: grab;
@@ -278,7 +267,7 @@ function removeEdge(index: number) {
   gap: 4px;
 }
 .node-handle small {
-  color: #64748b;
+  color: var(--text-soft);
 }
 .node-handle strong {
   font-size: 14px;
@@ -288,22 +277,13 @@ function removeEdge(index: number) {
 }
 .workflow-node code {
   font-size: 11px;
-  color: #64748b;
-}
-.node-properties {
-  font-size: 12px;
+  color: var(--text-soft);
 }
 .port {
   position: absolute;
   top: 44px;
   width: 24px;
   height: 28px;
-  color: #2563eb;
-  background: white;
-  border: 1px solid #93c5fd;
-  border-radius: 50%;
-  padding: 0;
-  cursor: crosshair;
 }
 .input {
   left: -14px;
@@ -315,12 +295,5 @@ svg {
   position: absolute;
   top: 0;
   left: 0;
-}
-svg path[role="button"] {
-  cursor: pointer;
-}
-svg path[role="button"]:focus {
-  stroke: #2563eb55;
-  outline: none;
 }
 </style>

@@ -232,19 +232,19 @@ defineExpose({
        
         placeholder="搜索知识库"
         aria-label="搜索知识库"
-      /><button
+      /><Button variant="navigation"
         v-for="base in bases.filter((base) =>
           (base.name + base.description).toLowerCase().includes(filter.toLowerCase()),
         )"
         :key="base.id"
         class="manager-item"
-        :class="{ active: selected === base.id }"
+        :active="selected === base.id"
         :disabled="busy"
         @click="requestSelect(base.id)"
       >
         <strong>{{ base.name }}</strong
         ><small>{{ base.documents }} 篇文档 · {{ base.description || "暂无说明" }}</small>
-      </button>
+      </Button>
       <EmptyState v-if="!bases.length && !busy">
         还没有知识库，创建后即可录入业务知识。
       </EmptyState>
@@ -335,16 +335,16 @@ defineExpose({
         <template v-else-if="selected"
           ><div class="document-grid">
             <div>
-              <button
+              <Button variant="navigation"
                 v-for="doc in documents"
                 :key="doc.id"
                 class="manager-item"
-                :class="{ active: activeDocument?.id === doc.id }"
+                :active="activeDocument?.id === doc.id"
                 @click="activeDocument = doc"
               >
                 <strong>{{ doc.title }}</strong
                 ><small>{{ doc.content?.length || 0 }} 字符</small>
-              </button>
+              </Button>
               <EmptyState v-if="!documents.length">暂无文档，点击录入文档添加知识。</EmptyState>
             </div>
             <article v-if="activeDocument">

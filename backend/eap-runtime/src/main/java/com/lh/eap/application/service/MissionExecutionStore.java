@@ -8,6 +8,9 @@ import java.util.UUID;
 public interface MissionExecutionStore {
     void insertOpen(MissionExecution execution);
 
+    /** Atomically claim a queued run; unknown/recovered rows must never be launched again. */
+    boolean claimCreated(UUID id);
+
     Optional<MissionExecution> open(UUID missionId);
 
     Optional<MissionExecution> find(UUID id);

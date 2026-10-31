@@ -545,11 +545,11 @@ defineExpose({ refresh });
           </div>
         </form>
         <div class="list">
-          <button
+          <Button variant="navigation"
             v-for="pack in packs"
             :key="pack.id"
             class="list-item"
-            :class="{ active: pack.id === selectedId }"
+            :active="pack.id === selectedId"
             :disabled="busy"
             @click="selectPack(pack.id)"
           >
@@ -565,7 +565,7 @@ defineExpose({ refresh });
                 需要能力：{{ pack.requires?.length ? pack.requires.join("、") : "未声明" }}
               </small>
             </span>
-          </button>
+          </Button>
         </div>
         <EmptyState v-if="!packs.length && !loading">没有可用的规则包。</EmptyState>
       </article>

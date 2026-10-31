@@ -1,3 +1,5 @@
+import { boardRunMessages } from "./boardRunMessages";
+import { appearanceMessages } from "./appearanceMessages";
 import { createI18n } from "vue-i18n";
 import { previewMessages } from "./previewMessages";
 import { desktopMessages, modelMessages, authMessages } from "./desktopMessages";
@@ -8,6 +10,8 @@ export const i18n = createI18n({
   fallbackLocale: "en-US",
   messages: {
     "zh-CN": {
+      boardRun: boardRunMessages["zh-CN"],
+      appearance: appearanceMessages["zh-CN"],
       preview: previewMessages['zh-CN'],
       desktop: desktopMessages["zh-CN"],
       modelUi: modelMessages["zh-CN"],
@@ -172,6 +176,8 @@ export const i18n = createI18n({
       },
     },
     "en-US": {
+      boardRun: boardRunMessages["en-US"],
+      appearance: appearanceMessages["en-US"],
       preview: previewMessages['en-US'],
       desktop: desktopMessages["en-US"],
       modelUi: modelMessages["en-US"],

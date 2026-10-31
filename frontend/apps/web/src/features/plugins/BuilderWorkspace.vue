@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent, onMounted, onUnmounted, reactive, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { Badge, Button, Feedback, Input, Textarea } from "@eap/ui";
+import { Badge, Button, Feedback, Input, Textarea, Collapse } from "@eap/ui";
 import { runtimeApi, type HandoffRecord, type MissionRecord, type PrototypeDeliveryRecord, type PrototypeVersionRecord } from "@eap/runtime-client";
 import { errorMessage } from "../../lib/presentation";
 import { beginHandoff, builderHandoff, handoffSucceeded } from "../handoff/handoff";
@@ -340,8 +340,8 @@ onUnmounted(() => {
         </p>
       </div>
     </section>
-    <details class="builder-secondary">
-      <summary>{{ t("workUi.simulationDetails") }}</summary>
+    <Collapse class="builder-secondary">
+      <template #summary>{{ t("workUi.simulationDetails") }}</template>
       <p class="hint">{{ t("plugin.storage") }}</p>
     <section class="stack task" data-testid="mock-task">
       <p>
@@ -398,7 +398,7 @@ onUnmounted(() => {
       <Button data-testid="deliver-write" variant="danger" disabled>{{ t("plugin.deliver") }}</Button>
       <p class="hint">{{ t("plugin.deliverDenied") }}</p>
     </section>
-    </details>
+    </Collapse>
   </section>
 </template>
 

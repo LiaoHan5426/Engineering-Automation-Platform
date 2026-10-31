@@ -1,10 +1,10 @@
+@import url("@eap/style/themes.css");
 /* Theme tokens + document base from @eap/style (must precede Tailwind rules). */
-@import url("@eap/style/tokens.css");
-@import url("@eap/style/themes/light.css");
-@import url("@eap/style/themes/dark.css");
 @import url("@eap/style/base.css");
 /* stylelint-disable-next-line import-notation -- Tailwind v4 requires a bare string import. */
 @import "tailwindcss";
+/* stylelint-disable-next-line import-notation -- Tailwind resolves its bridge before emitting rules. */
+@import "@eap/style/tailwind.css";
 
 /* ============================================================
    Console layout & feature styles only
@@ -118,13 +118,13 @@ ol {
   color: var(--danger);
   overflow-wrap: anywhere;
   background: var(--danger-bg);
-  border: 1px solid #fecaca;
+  border: 1px solid var(--danger-border);
 }
 
 .planning-note {
   font-size: 12.5px;
   line-height: 1.7;
-  color: #7a5b13;
+  color: var(--warn-text);
   background: var(--warn-bg);
 }
 
@@ -158,20 +158,6 @@ ol {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 12px 14px;
-  text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-}
-
-.list-item:hover {
-  border-color: var(--border-strong);
-}
-
-.list-item.active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
 }
 
 .list-item b {
@@ -318,12 +304,6 @@ label.row {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  padding: 6px 10px;
-  font-size: 13px;
-  color: var(--text-soft);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
 }
 
 .ws b {
@@ -380,7 +360,7 @@ label.row {
   margin: 6px 8px 10px;
   font-size: 11px;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-soft);
   letter-spacing: 0.14em;
 }
 
@@ -389,12 +369,6 @@ label.row {
   gap: 10px;
   align-items: center;
   width: 100%;
-  padding: 10px 12px;
-  font-weight: 600;
-  color: var(--rail-text);
-  text-align: left;
-  background: transparent;
-  border-radius: 8px;
 }
 
 .rail .nav .ic {
@@ -403,26 +377,16 @@ label.row {
   opacity: 0.9;
 }
 
-.rail .nav:hover {
-  color: #fff;
-  background: #182238;
-}
-
-.rail .nav.active {
-  color: #fff;
-  background: var(--rail-active);
-}
-
 .rail__foot {
   padding: 12px 10px 4px;
   margin-top: auto;
   font-size: 12px;
   line-height: 1.7;
-  color: #71829c;
+  color: var(--text-mute);
 }
 
 .rail__foot b {
-  color: #a7b6cd;
+  color: var(--text-mute);
 }
 
 .workbench {
@@ -630,8 +594,8 @@ label.row {
 }
 
 .stage.done {
-  background: #f0f7ff;
-  border-color: #bfdbfe;
+  background: var(--info-bg);
+  border-color: var(--focus-ring);
 }
 
 .stage.skip {
@@ -639,8 +603,8 @@ label.row {
 }
 
 .stage.model {
-  background: #fffbeb;
-  border-color: #fde68a;
+  background: var(--warn-bg);
+  border-color: var(--eap-color-warning-border);
 }
 
 .findings {
@@ -707,8 +671,8 @@ label.row {
 }
 
 .sev.high {
-  color: #c2410c;
-  background: #ffedd5;
+  color: var(--danger);
+  background: var(--warn-bg);
 }
 
 .sev.medium {
@@ -749,9 +713,9 @@ label.row {
   padding: 11px 14px;
   margin-top: 12px;
   font-size: 12.5px;
-  color: #7a5b13;
-  background: #fffbeb;
-  border-left: 3px solid #f59e0b;
+  color: var(--warn-text);
+  background: var(--warn-bg);
+  border-left: 3px solid var(--warn);
   border-radius: 0 8px 8px 0;
 }
 
@@ -773,7 +737,7 @@ label.row {
 .execution-list li {
   padding: 10px 14px;
   background: var(--surface-2);
-  border-left: 3px solid #93c5fd;
+  border-left: 3px solid var(--focus-ring);
   border-radius: 6px;
 }
 
@@ -834,7 +798,7 @@ label.row {
 }
 
 .tl-rail i.warn {
-  background: #f59e0b;
+  background: var(--warn);
 }
 
 .tl-rail .line {
@@ -945,21 +909,7 @@ label.row {
   display: grid;
   gap: 5px;
   width: 100%;
-  padding: 13px 14px;
   margin-bottom: 8px;
-  text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-}
-
-.manager-item:hover {
-  border-color: var(--border-strong);
-}
-
-.manager-item.active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
 }
 
 .manager-item small {
@@ -1117,7 +1067,7 @@ label.row {
     z-index: 61;
     display: block;
     width: min(380px, 90vw);
-    box-shadow: -8px 0 28px rgb(0 0 0 / 20%);
+    box-shadow: -8px 0 28px color-mix(in srgb, var(--text) 20%, transparent);
   }
 
   .inspector-backdrop {
@@ -1125,8 +1075,6 @@ label.row {
     inset: 58px 0 36px;
     z-index: 60;
     display: block;
-    background: rgb(0 0 0 / 25%);
-    border: 0;
   }
 
   .workbench {
@@ -1168,7 +1116,6 @@ label.row {
 
   .rail .nav {
     width: auto;
-    padding: 8px 10px;
   }
 
   .statusbar {
@@ -1456,7 +1403,7 @@ label.row {
   color: var(--ok);
   overflow-wrap: anywhere;
   background: var(--ok-bg);
-  border: 1px solid #bbf7d0;
+  border: 1px solid var(--ok-border);
 }
 
 /* The management block states what the page can change and how a capability of this kind comes into
@@ -1488,12 +1435,6 @@ label.row {
   display: inline-flex;
   gap: 6px;
   align-items: center;
-  padding: 5px 10px;
-  font-size: 12px;
-  color: var(--text-soft);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
 }
 
 .ws b {
@@ -1506,21 +1447,7 @@ label.row {
   color: var(--text-mute);
 }
 
-.menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 40;
-  display: grid;
-  gap: 2px;
-  min-width: 320px;
-  max-width: 420px;
-  padding: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
+.menu {display:grid;gap:4px;width:min(340px,calc(100vw - 24px));max-height:var(--reka-popover-content-available-height)}
 
 .menu-head {
   padding: 4px 8px;
@@ -1528,28 +1455,6 @@ label.row {
   font-weight: 700;
   color: var(--text-mute);
   letter-spacing: 0.06em;
-}
-
-.menu > button {
-  padding: 7px 8px;
-  font-size: 12.5px;
-  color: var(--text);
-  text-align: left;
-  border-radius: 8px;
-}
-
-.menu > button:hover {
-  background: var(--surface-3);
-}
-
-.menu > button.active {
-  font-weight: 600;
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.menu-add {
-  color: var(--accent);
 }
 
 .menu-form {
@@ -1679,22 +1584,6 @@ label.row {
   align-items: flex-start;
   gap: 8px;
   width: 100%;
-  padding: 10px 11px;
-  text-align: left;
-  cursor: pointer;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-}
-
-.task-item:hover {
-  background: var(--surface-2);
-}
-
-/* 写出来的状态必须可见：渲染器输出 .sel-row 就要有对应规则。 */
-.task-item.sel-row {
-  background: var(--surface-3);
-  border-color: var(--border-strong);
 }
 
 .task-item-main {
@@ -1857,18 +1746,6 @@ details.why p {
   color: var(--text-soft);
 }
 
-/* ============================================================
-   SQL workbench: decision explanation, finding actions, candidate diff
-   ============================================================ */
-.stage--clickable {
-  text-align: left;
-  cursor: pointer;
-}
-
-.stage--clickable:hover {
-  border-color: var(--accent);
-}
-
 .stage .link {
   margin-left: 6px;
   color: var(--accent);
@@ -1940,11 +1817,6 @@ details.why p {
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 12px;
-}
-
-.insp-actions .eap-button {
-  padding: 5px 9px;
-  font-size: 12px;
 }
 
 .rew-box {

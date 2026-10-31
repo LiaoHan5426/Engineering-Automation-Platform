@@ -2,8 +2,8 @@
   width: 100%;
   min-width: 0;
   margin: 0;
-  accent-color: var(--eap-color-primary, #347f70);
   vertical-align: middle;
+  accent-color: var(--eap-color-primary, #347f70);
 }
 
 .eap-slider:disabled {

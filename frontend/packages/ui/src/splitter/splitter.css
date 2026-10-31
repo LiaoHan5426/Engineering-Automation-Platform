@@ -1,0 +1,24 @@
+.eap-splitter {
+  min-width: 0;
+  min-height: 0;
+}
+
+.eap-splitter__panel {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.eap-splitter__handle {
+  flex: 0 0 8px;
+  background: var(--eap-border-color);
+}
+
+.eap-splitter__handle:hover, .eap-splitter__handle[data-state="drag"] {
+  background: var(--eap-color-primary-focus);
+}
+
+.eap-splitter__handle:focus-visible {
+  outline: 2px solid var(--eap-color-primary);
+  outline-offset: -2px;
+}

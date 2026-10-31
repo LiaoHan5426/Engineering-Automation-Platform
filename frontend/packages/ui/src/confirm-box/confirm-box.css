@@ -5,15 +5,15 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: var(--overlay);
+  background: var(--eap-overlay-color);
 }
 
 .eap-confirm__dialog {
   width: min(520px, 100%);
   padding: 18px 20px;
-  background: var(--surface);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: var(--eap-fill-color-blank);
+  border-radius: var(--eap-border-radius-card);
+  box-shadow: var(--eap-box-shadow);
 }
 
 .eap-confirm__dialog h3 {
@@ -26,7 +26,7 @@
   margin: 0;
   font-size: 12.5px;
   line-height: 1.8;
-  color: var(--text-soft);
+  color: var(--eap-text-color-secondary);
 }
 
 .eap-confirm__actions {
@@ -39,5 +39,5 @@
 .eap-confirm__hint {
   margin: 10px 0 0;
   font-size: 12px;
-  color: var(--text-mute);
+  color: var(--eap-text-color-placeholder);
 }

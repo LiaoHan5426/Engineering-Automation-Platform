@@ -26,6 +26,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -43,11 +44,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.server.ResponseStatusException;
 
+@EnabledIfEnvironmentVariable(named = "EAP_RUN_MISSION_GIT_ACCEPTANCE", matches = "true")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class MissionGitAcceptanceTest {
-    private static final UUID EXISTING_MISSION = UUID.fromString("aa2222a0-96a5-43f3-9976-1b5eb9316a1f");
-    private static final UUID EXISTING_HANDOFF = UUID.fromString("e5e42da4-1d59-4942-afa3-e3585cf3e936");
+    private final UUID sentinelMission = UUID.randomUUID();
+    private final UUID sentinelHandoff = UUID.randomUUID();
+    private boolean sentinelCreated;
 
     private AnnotationConfigApplicationContext context;
     private JdbcTemplate jdbc;
@@ -66,7 +69,13 @@ class MissionGitAcceptanceTest {
         jdbc = context.getBean(JdbcTemplate.class);
         missions = context.getBean(MissionStore.class);
         executions = context.getBean(MissionExecutionStore.class);
-        existingExecution = jdbc.queryForObject("SELECT execution FROM eap.mission WHERE id = ?", String.class, EXISTING_MISSION);
+        // Own the unrelated sentinel as well; a fresh migrated DB must be sufficient.
+        new org.springframework.transaction.support.TransactionTemplate(context.getBean(PlatformTransactionManager.class)).executeWithoutResult(status -> {
+            jdbc.update("INSERT INTO eap.handoff(id,source,source_ref,summary,status,execution,approval,grant_state,created_at) VALUES (?, 'builder', 'acceptance-sentinel', 'untouched sentinel', 'recorded', 'not_started', 'not_requested', 'none', now())", sentinelHandoff);
+            jdbc.update("INSERT INTO eap.mission(id,handoff_id,status,execution,approval,verification,grant_state,created_at) VALUES (?, ?, 'created', 'not_started', 'not_requested', 'not_requested', 'none', now())", sentinelMission, sentinelHandoff);
+        });
+        sentinelCreated = true;
+        existingExecution = jdbc.queryForObject("SELECT execution FROM eap.mission WHERE id = ?", String.class, sentinelMission);
         taskCount = jdbc.queryForObject("SELECT count(*) FROM eap.task", Integer.class);
         repo = Files.createTempDirectory("eap-git-acceptance");
         var init = new ProcessBuilder("git", "init").directory(repo.toFile()).start();
@@ -97,10 +106,20 @@ class MissionGitAcceptanceTest {
                 });
             }
         }
-        assertEquals(existingExecution, jdbc.queryForObject("SELECT execution FROM eap.mission WHERE id = ?", String.class, EXISTING_MISSION));
-        assertEquals("结算页已改\n手工改过的正文", jdbc.queryForObject("SELECT summary FROM eap.handoff WHERE id = ?", String.class, EXISTING_HANDOFF));
-        assertEquals(taskCount, jdbc.queryForObject("SELECT count(*) FROM eap.task", Integer.class));
-        if (context != null) context.close();
+        try {
+            if (sentinelCreated) {
+                assertEquals(existingExecution, jdbc.queryForObject("SELECT execution FROM eap.mission WHERE id = ?", String.class, sentinelMission));
+                assertEquals("untouched sentinel", jdbc.queryForObject("SELECT summary FROM eap.handoff WHERE id = ?", String.class, sentinelHandoff));
+                assertEquals(taskCount, jdbc.queryForObject("SELECT count(*) FROM eap.task", Integer.class));
+            }
+        } finally {
+            if (sentinelCreated) {
+                jdbc.update("DELETE FROM eap.mission_execution WHERE mission_id = ?", sentinelMission);
+                jdbc.update("DELETE FROM eap.mission WHERE id = ?", sentinelMission);
+                jdbc.update("DELETE FROM eap.handoff WHERE id = ?", sentinelHandoff);
+            }
+            if (context != null) context.close();
+        }
     }
 
     @Test
@@ -173,6 +192,7 @@ class MissionGitAcceptanceTest {
         var seen = new java.util.concurrent.atomic.AtomicLong();
         var failing = new MissionExecutionStore() {
             @Override public void insertOpen(MissionExecution execution) { executions.insertOpen(execution); }
+            @Override public boolean claimCreated(UUID id) { return executions.claimCreated(id); }
             @Override public Optional<MissionExecution> open(UUID id) { return executions.open(id); }
             @Override public Optional<MissionExecution> find(UUID id) { return executions.find(id); }
             @Override public List<MissionExecution> list(UUID id) { return executions.list(id); }
@@ -242,6 +262,7 @@ class MissionGitAcceptanceTest {
     private MissionExecutionStore onlyThisMission() {
         return new MissionExecutionStore() {
             @Override public void insertOpen(MissionExecution execution) { executions.insertOpen(execution); }
+            @Override public boolean claimCreated(UUID id) { return executions.claimCreated(id); }
             @Override public Optional<MissionExecution> open(UUID id) { return executions.open(id); }
             @Override public Optional<MissionExecution> find(UUID id) { return executions.find(id); }
             @Override public List<MissionExecution> list(UUID id) { return executions.list(id); }

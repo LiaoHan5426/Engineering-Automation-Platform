@@ -1,0 +1,5 @@
+.eap-progress {
+  width: 100%;
+  height: var(--eap-space-2);
+  accent-color: var(--eap-color-primary);
+}

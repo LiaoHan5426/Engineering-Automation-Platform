@@ -1,0 +1,12 @@
+.eap-descriptions {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: var(--eap-space-2) var(--eap-space-4);
+  margin: 0;
+}
+.eap-descriptions__label { color: var(--eap-text-color-secondary); }
+
+.eap-descriptions__value {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

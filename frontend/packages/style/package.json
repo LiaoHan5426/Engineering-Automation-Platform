@@ -13,7 +13,10 @@
     "./tokens.css": "./src/tokens.css",
     "./themes.css": "./src/themes.css",
     "./themes/light.css": "./src/themes/light.css",
-    "./themes/dark.css": "./src/themes/dark.css"
+    "./themes/dark.css": "./src/themes/dark.css",
+    "./layout.css": "./src/layout.css",
+    "./tailwind.css": "./src/tailwind.css",
+    "./skins/console.css": "./src/skins/console.css"
   },
   "scripts": {
     "build": "tsc --noEmit"

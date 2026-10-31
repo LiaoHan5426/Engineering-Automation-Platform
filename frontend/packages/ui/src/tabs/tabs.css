@@ -8,16 +8,16 @@
   padding: 6px 12px;
   font: inherit;
   font-size: 12px;
-  color: var(--text-soft, #526258);
+  color: var(--eap-text-color-secondary, #526258);
   cursor: pointer;
-  background: var(--surface-2, #f3f5f0);
-  border: 1px solid var(--border, #d5ddd4);
+  background: var(--eap-fill-color-light, #f3f5f0);
+  border: 1px solid var(--eap-border-color, #d5ddd4);
   border-radius: 8px;
 }
 
 .eap-tabs__tab[aria-selected="true"] {
   font-weight: 650;
-  color: var(--on-accent, #fff);
-  background: var(--text, #37483e);
-  border-color: var(--text, #37483e);
+  color: var(--eap-color-on-primary);
+  background: var(--eap-color-primary);
+  border-color: var(--eap-color-primary);
 }

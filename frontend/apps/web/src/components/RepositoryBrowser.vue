@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button, Tree, type TreeNode } from "@eap/ui";
 /**
  * Authorized file tree shared by the session rail and the composer picker.
  * Stays an app composite: it calls the workspace API, so it is not an @eap/ui primitive.
@@ -100,21 +101,22 @@ async function open(path: string) {
   }
 }
 
-type Row = { entry: Entry; depth: number };
 const needle = computed(() => props.filter.trim().toLowerCase());
-const rows = computed(() => {
-  const out: Row[] = [];
-  const walk = (entries: Entry[], depth: number) => {
-    for (const entry of entries) {
+const nodes = computed(() => {
+  function map(entries: Entry[]): TreeNode[] {
+    return entries.flatMap(entry => {
+      const branch = branches.value[entry.path];
+      const isOpen = entry.directory && expanded.value[entry.path] && branch && !branch.denial;
       const match = !needle.value || entry.name.toLowerCase().includes(needle.value) || entry.path.toLowerCase().includes(needle.value);
-      const open = entry.directory && expanded.value[entry.path] && branches.value[entry.path] && !branches.value[entry.path]!.denial;
-      if (match || open) out.push({ entry, depth });
-      if (open) walk(branches.value[entry.path]!.entries, depth + 1);
-    }
-  };
-  walk(roots.value, 0);
-  return out;
+      if (!match && !isOpen) return [];
+      return [{ id: entry.path, label: entry.name, children: entry.directory ? map(branch?.denial ? [] : branch?.entries ?? []) : undefined,
+        disabled: busy.value || !!loadingPaths.value[entry.path], testId: `${entry.directory ? 'repo-dir-' : 'repo-file-'}${entry.path}` }];
+    });
+  }
+  return map(roots.value);
 });
+const expandedKeys = computed(() => Object.keys(expanded.value).filter(key => expanded.value[key]));
+function selectNode(node: TreeNode) { if (!node.children) void open(node.id); }
 
 onMounted(() => { void loadRoot(); });
 </script>
@@ -123,53 +125,33 @@ onMounted(() => { void loadRoot(); });
   <section class="repository-browser" data-testid="repository-browser">
     <header>
       <strong>{{ t('desktop.repoFiles') }}</strong>
-      <button type="button" data-testid="repo-refresh" :disabled="busy" @click="loadRoot">{{ t('desktop.fileRefresh') }}</button>
+      <Button variant="secondary" size="sm" type="button" data-testid="repo-refresh" :disabled="busy" @click="loadRoot">{{ t('desktop.fileRefresh') }}</Button>
     </header>
     <p class="hint" data-testid="repo-tree-hint">{{ t('desktop.fileTreeExpandHint') }}</p>
     <p v-if="busy && !roots.length" role="status">{{ t('desktop.fileLoading') }}</p>
     <p v-if="error" role="alert">{{ error }}</p>
-    <ul v-if="roots.length && !rootMeta.denial" class="repo-tree eap-scrollbar" data-testid="repo-tree">
-      <li v-for="{ entry, depth } in rows" :key="entry.path" :style="{ '--depth': depth }">
-        <button
-          v-if="entry.directory"
-          type="button"
-          class="tree-dir"
-          :data-testid="'repo-dir-' + entry.path"
-          :aria-expanded="!!expanded[entry.path]"
-          :disabled="busy || !!loadingPaths[entry.path]"
-          @click="toggleDirectory(entry.path)"
-        >
-          <span class="caret" aria-hidden="true">{{ loadingPaths[entry.path] ? '…' : expanded[entry.path] ? '▾' : '▸' }}</span>
-          <span>{{ entry.name }}</span>
-        </button>
-        <button
-          v-else
-          type="button"
-          class="tree-file"
-          :data-testid="'repo-file-' + entry.path"
-          :disabled="busy"
-          :aria-pressed="source?.path === entry.path"
-          @click="open(entry.path)"
-        >
-          <span class="caret file" aria-hidden="true">▤</span>
-          <span>{{ entry.name }}</span>
-        </button>
-        <p v-if="entry.directory && expanded[entry.path] && branches[entry.path]?.truncated" class="hint nested">{{ t('desktop.fileTruncated') }}</p>
-        <p v-if="entry.directory && expanded[entry.path] && branches[entry.path]?.denial" class="hint nested" role="status">{{ describeDenial(branches[entry.path]!.denial) }}</p>
-      </li>
-    </ul>
+    <Tree v-if="roots.length && !rootMeta.denial" class="repo-tree eap-scrollbar" data-testid="repo-tree"
+      :items="nodes" :label="t('desktop.repoFiles')" :expanded="expandedKeys" :model-value="source?.path" manual-expand
+      @select="selectNode" @toggle="node => toggleDirectory(node.id)">
+      <template #default="{ node }">
+        <span>{{ loadingPaths[node.id] ? '… ' : '' }}{{ node.label }}
+          <small v-if="expanded[node.id] && branches[node.id]?.truncated">{{ t('desktop.fileTruncated') }}</small>
+          <small v-if="expanded[node.id] && branches[node.id]?.denial" role="status">{{ describeDenial(branches[node.id]!.denial) }}</small>
+        </span>
+      </template>
+    </Tree>
     <p v-if="rootMeta.truncated" class="hint">{{ t('desktop.fileTruncated') }}</p>
     <article v-if="source && !error" data-testid="repo-source">
       <strong>{{ source.path }}</strong>
       <small>SHA-256 · {{ source.baseHash }}</small>
       <pre>{{ source.excerpt }}</pre>
-      <button
+      <Button variant="secondary" size="sm"
         v-if="selectable"
         type="button"
         data-testid="reference-workspace-source"
         :disabled="disabled || busy || !source.exists || !source.excerpt || !source.baseHash"
         @click="emit('select', { ...source! })"
-      >{{ t('desktop.referenceSource') }}</button>
+      >{{ t('desktop.referenceSource') }}</Button>
       <p v-if="selectable" class="hint">{{ t('desktop.referenceSourceHint') }}</p>
     </article>
   </section>
@@ -178,22 +160,11 @@ onMounted(() => { void loadRoot(); });
 <style scoped>
 .repository-browser{display:grid;gap:10px;min-width:0;min-height:0}
 header{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-header strong{font-size:13px;color:#243028}
+header strong{font-size:13px;color:var(--text)}
 header button{margin-left:auto}
-button{border:1px solid #d0dbcd;border-radius:8px;padding:6px 10px;background:#edf2e9;color:#3c6355;cursor:pointer;font:inherit;font-size:12px}
-button:disabled{opacity:.55;cursor:default}
-button:hover:not(:disabled){background:#e1ebe4}
-.repo-tree{margin:0;padding:0;list-style:none;max-height:min(420px,48vh);overflow:auto;border:1px solid #e8ebe3;border-radius:10px;background:#faf9f4}
-.repo-tree li{margin:0}
-.tree-dir,.tree-file{display:flex;align-items:center;gap:6px;width:100%;text-align:left;background:transparent;border:0;border-radius:0;padding:7px 10px;padding-left:calc(10px + var(--depth) * 14px);color:#243028}
-.tree-dir + .tree-file,.tree-file + .tree-dir,.tree-dir + .tree-dir,.tree-file + .tree-file{border-top:1px solid #eef1ea}
-.tree-dir:hover:not(:disabled),.tree-file:hover:not(:disabled){background:#e7f3ee;color:#287b6c}
-.tree-file[aria-pressed="true"]{background:#e7f3ee;color:#287b6c}
-.caret{display:inline-block;width:1em;flex:0 0 auto;color:#7a887f}
-.caret.file{color:#9aa69c}
-.hint.nested{margin:0;padding:2px 10px 8px;padding-left:calc(26px + var(--depth) * 14px)}
-small{display:block;overflow-wrap:anywhere;font-size:10px;color:#778478;margin:8px 0}
-pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:min(280px,32vh);overflow:auto;background:#f0f2eb;padding:12px;border-radius:8px;font-size:11px}
-.hint{margin:0;font-size:11px;line-height:1.5;color:#778478}
-[role=alert]{margin:0;padding:8px 10px;border-radius:8px;background:#fef3f2;border:1px solid #fecdca;color:#b42318;font-size:12px}
+.repo-tree{margin:0;padding:0;list-style:none;max-height:min(420px,48vh);overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+small{display:block;overflow-wrap:anywhere;font-size:10px;color:var(--text-mute);margin:8px 0}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:min(280px,32vh);overflow:auto;background:var(--surface-2);padding:12px;border-radius:8px;font-size:11px}
+.hint{margin:0;font-size:11px;line-height:1.5;color:var(--text-mute)}
+[role=alert]{margin:0;padding:8px 10px;border-radius:8px;background:var(--danger-bg);border:1px solid var(--danger-border);color:var(--danger);font-size:12px}
 </style>

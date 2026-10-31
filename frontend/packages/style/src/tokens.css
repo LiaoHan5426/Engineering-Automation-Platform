@@ -1,16 +1,16 @@
-/**
- * Compatibility aliases. Theme files assign `--eap-*` only.
- * A product skin overrides `--eap-*` on a subtree (see `body` in the console).
- * Short names are also redeclared there. A `:root` alias is computed once, so it
- * does not follow a later `--eap-*` override on its own.
- *
- * Class names stay `eap-*`. That prefix is a static BEM contract, not a runtime
- * namespace: stylelint checks it, and swapping it would rewrite every selector.
- * Host customization is the `--eap-*` layer, the same role as Element Plus `--el-*`.
- * Sass is not used. Shared color mixes use `color-mix()` so one token paints
- * light, plain, and dark treatments without a second stylesheet language.
- */
-:root {
+/* Rebind aliases at each customization scope; CSS variables resolve on that element. */
+:root,
+[data-eap-theme],
+[data-eap-skin],
+[data-eap-density],
+[data-eap-tokens] {
+  --eap-color-warning-border: color-mix(in srgb, var(--eap-color-warning) 35%, var(--eap-fill-color-blank));
+  --eap-chart-accent: var(--eap-color-info);
+  --eap-chart-accent-soft: var(--eap-color-info-soft);
+  --eap-code-bg: var(--eap-fill-color-light);
+  --eap-code-surface: var(--eap-fill-color);
+  --eap-code-text: var(--eap-text-color-primary);
+  --eap-code-muted: var(--eap-text-color-secondary);
   --bg: var(--eap-bg-color);
   --surface: var(--eap-fill-color-blank);
   --surface-2: var(--eap-fill-color-light);
@@ -44,7 +44,7 @@
   --radius-control: var(--eap-border-radius-base);
   --shadow: var(--eap-box-shadow);
   --control-hover: var(--eap-fill-color-hover);
-  --on-accent: var(--eap-color-white);
+  --on-accent: var(--eap-color-on-primary);
   --focus-ring: var(--eap-color-primary-focus);
   --font-sans: var(--eap-font-family);
   --font-mono: var(--eap-font-family-mono);

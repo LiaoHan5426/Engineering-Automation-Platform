@@ -20,6 +20,10 @@ Mock 只替换 HTTP 响应，不另做一套页面。界面始终调用 runtime 
 
 Mock 状态只保存在开发进程内存里，重启后浏览器里的旧模拟会话会过期。看板已提供 `/board/tasks` 的任务草稿、备注、revision 与状态变更响应，与真实数据库接口共用 UI；不启动 Run，不允许无证据进入 running/done。原型版本复用 `/prototype-versions`，工程与语义 Schema 存在版本正文中；目录接口 `/ai/workspace/files` 的 mock 只提供夹具，不读取仓库。
 
-看板初始列可为 planned/ready，创建时禁止执行态；优先级支持 none/p0/p1/p2，和备注一样受 revision 校验，保存后进入事件记录。优先级筛选使用接口返回字段。浏览器中的未提交编辑按任务及真实/mock来源隔离缓存，只在明确保存时调用服务；mock重启后不存在的任务不因本机缓存复活。
+看板合同集中在 `boardBackend.ts`：planned 可暂存，ready 需要非空 goal/acceptanceCriteria，创建时禁止执行态；创建要求 UUID requestId，同项目同请求去重、内容不一致返回 409；更新要求 projectId + revision，服务端返回 preparationIssues/allowedColumns。优先级支持 none/p0/p1/p2，和备注一样受 revision 校验，保存后进入事件记录。优先级筛选使用接口返回字段。浏览器中的未提交编辑按任务及真实/mock来源隔离缓存，只在明确保存时调用服务；mock重启后不存在的任务不因本机缓存复活。
 
 参考 [Vben backend-mock](https://github.com/vbenjs/vue-vben-admin/tree/main/apps/backend-mock) 的分层：用接口服务支撑同一套前端。这里复用 Vite 中间件，不引入 Nitro，也不另起第二个 UI 进程。
+
+看板真实持久化、并发与页面验证范围见 [任务准备切片](../../../../docs/decisions/board-task-preparation-2026-10-31.md)。
+
+看板 `/board/tasks/{id}/runs` 的 mock 只返回空记录及 `MOCK_RUN_NOT_AVAILABLE`，启动明确拒绝，不模拟执行成功；真实受控执行范围见 [后续切片](../../../../docs/decisions/board-controlled-run-2026-10-31.md)。

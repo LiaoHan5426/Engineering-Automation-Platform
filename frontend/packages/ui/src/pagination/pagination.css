@@ -1,0 +1,8 @@
+.eap-pagination {
+  display: flex;
+  gap: var(--eap-space-2);
+  align-items: center;
+  justify-content: flex-end;
+  font-size: var(--eap-font-size-sm);
+  color: var(--eap-text-color-secondary);
+}

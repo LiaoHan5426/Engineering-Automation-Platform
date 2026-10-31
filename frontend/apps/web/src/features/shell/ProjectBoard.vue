@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue';
-// Scheduling is not available yet: both service modes use the same labeled local board.
+// Both service modes use the same preparation contract; scheduling is not connected.
 const PreviewBoard = defineAsyncComponent(() => import('./PreviewBoard.vue'));
 </script>
 <template><PreviewBoard /></template>

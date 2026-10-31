@@ -39,8 +39,8 @@ describe("engineering task composer", () => {
     const context = await mount();
     (element!.querySelector('[data-testid="composer-add"]') as HTMLButtonElement).click(); await nextTick();
     (element!.querySelector('[data-testid="pick-workspace-file"]') as HTMLButtonElement).click();
-    await vi.waitFor(() => expect(element!.querySelector('[data-testid="repository-browser"] li button')).not.toBeNull());
-    (element!.querySelector('[data-testid="repository-browser"] li button') as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(element!.querySelector('[data-testid="repository-browser"] [role="treeitem"]')).not.toBeNull());
+    (element!.querySelector('[data-testid="repository-browser"] [role="treeitem"]') as HTMLButtonElement).click();
     await vi.waitFor(() => expect(element!.querySelector('[data-testid="reference-workspace-source"]')).not.toBeNull());
     (element!.querySelector('[data-testid="reference-workspace-source"]') as HTMLButtonElement).click(); await nextTick();
     expect(context.value.files).toEqual([{ name: 'frontend/Example.vue', content: 'Repository source excerpt: frontend/Example.vue\nSHA-256: source-baseline\nselected source excerpt' }]);
@@ -119,9 +119,9 @@ describe("engineering task composer", () => {
     expect((element!.querySelector('[data-testid="execution-agent"]') as HTMLButtonElement).disabled).toBe(true);
     expect((element!.querySelector('[data-testid="execution-plugin"]') as HTMLButtonElement).disabled).toBe(true);
     expect(element!.querySelector('[data-testid="execution-plugin"]')?.textContent).toMatch(/插件创造|Plugin create/);
-    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-    await nextTick();
-    expect(element!.querySelector('.composer-popup')).toBeNull();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }));
+    await vi.waitFor(() => expect(element!.querySelector('.composer-popup')).toBeNull());
   });
 
   it("opens the model menu once when asked and does not change the draft context", async () => {
@@ -162,28 +162,16 @@ describe("engineering task composer", () => {
     expect(element!.textContent).toContain("图片和录屏不会被读取");
   });
 
-  it("flips a popup below the toolbar when the top of the window is too short", async () => {
+  it("anchors the shared popover to the toolbar control", async () => {
     await mount();
     const button = element!.querySelector('[data-testid="execution-mode"]') as HTMLButtonElement;
-    const rect = (top: number, left: number) => () => ({ top, bottom: top + 32, left, right: left + 80, width: 80, height: 32, x: left, y: top, toJSON() { return {}; } }) as DOMRect;
-    button.getBoundingClientRect = rect(40, 16);
-    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
-    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1000 });
-    button.click();
-    await nextTick();
-    const popup = element!.querySelector(".composer-popup") as HTMLElement;
-    expect(popup.style.position).toBe('fixed');
-    expect(popup.style.top).toBe('80px');
-    expect(popup.style.transform).toBe('none');
-    button.click();
-    await nextTick();
-    button.getBoundingClientRect = rect(640, 800);
-    button.click();
-    await nextTick();
-    const raised = element!.querySelector(".composer-popup") as HTMLElement;
-    expect(raised.style.transform).toBe('translateY(-100%)');
-    expect(parseFloat(raised.style.left) + parseFloat(raised.style.width)).toBeLessThan(window.innerWidth);
-    expect(parseFloat(raised.style.top) - parseFloat(raised.style.maxHeight)).toBeGreaterThanOrEqual(0);
+    button.click(); await nextTick();
+    expect(element!.querySelector('[data-reka-popper-content-wrapper]')).not.toBeNull();
+    const popup = element!.querySelector('.composer-popup')!;
+    expect(popup.getAttribute('role')).toBe('dialog');
+    expect(popup.getAttribute('aria-label')).toBeTruthy();
+    button.click(); await nextTick();
+    expect(element!.querySelector('.composer-popup')).toBeNull();
   });
 
   it("searches the add menu, selects a labeled demo skill, and keeps the draft", async () => {
@@ -267,7 +255,7 @@ describe("engineering task composer", () => {
     (element!.querySelector("[data-testid=context-meter]") as HTMLButtonElement).click();
     await nextTick();
     expect(element!.querySelector("[data-testid=composer-add-menu]")).not.toBeNull();
-    expect(element!.querySelector("[data-testid=composer-cat-files]")?.getAttribute("aria-selected")).toBe("true");
+    expect(element!.querySelector("[data-testid=composer-cat-files]")?.getAttribute("aria-pressed")).toBe("true");
     (element!.querySelector("[data-testid=model-picker]") as HTMLButtonElement).click();
     await nextTick();
     expect(element!.querySelector("[data-testid=model-effort-head]")?.textContent).toContain("模型默认");

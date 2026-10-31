@@ -1,0 +1,31 @@
+.eap-dialog-root.eap-drawer {
+  padding: 0;
+}
+
+.eap-drawer .eap-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--eap-layout-rail-width, 360px), 100vw);
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.eap-drawer .eap-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.eap-drawer .eap-dialog__header, .eap-drawer .eap-dialog__footer {
+  flex: 0 0 auto;
+}
+
+.eap-drawer--end {
+  justify-items: end;
+}
+
+.eap-drawer--start {
+  justify-items: start;
+}

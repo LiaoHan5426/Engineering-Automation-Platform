@@ -18,6 +18,7 @@ const props = defineProps<{
   refusal?: string;
   busy?: boolean;
   danger?: boolean;
+  teleportTo?: string | HTMLElement;
 }>();
 const emit = defineEmits<{ confirm: []; cancel: [] }>();
 const root = ref<HTMLElement | null>(null);
@@ -30,7 +31,7 @@ const { onKeydown } = useFocusTrap(root, {
 </script>
 
 <template>
-  <Teleport to="body" :disabled="!portaled">
+  <Teleport :to="teleportTo ?? 'body'" :disabled="!portaled">
   <div ref="root" class="eap-confirm" role="dialog" aria-modal="true" :aria-label="title" @keydown="onKeydown">
     <div class="eap-confirm__dialog">
       <h3>{{ title }}</h3>

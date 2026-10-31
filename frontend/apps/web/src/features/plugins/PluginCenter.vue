@@ -55,7 +55,7 @@ function name(id: PluginId): string {
   gap: 8px;
   align-items: flex-start;
   padding: 16px;
-  border: 1px solid var(--eap-line, #d7dde5);
+  border: 1px solid var(--eap-line, var(--border));
   border-radius: 12px;
 }
 </style>

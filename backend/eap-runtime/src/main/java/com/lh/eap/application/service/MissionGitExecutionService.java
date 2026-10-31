@@ -54,7 +54,7 @@ public class MissionGitExecutionService {
     }
 
     public MissionExecution start(UUID missionId) {
-        requireMission(missionId);
+        if ("board".equals(requireMission(missionId).source())) throw new ResponseStatusException(HttpStatus.CONFLICT, "BOARD_RUN_ENDPOINT_REQUIRED");
         var open = executions.open(missionId);
         if (open.isPresent()) return open.get();
         var prepared = authorize();
@@ -72,8 +72,57 @@ public class MissionGitExecutionService {
         } catch (DataAccessException failure) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务暂不可用，请检查数据库、迁移和后端日志");
         }
+        return executePrepared(created, prepared);
+    }
+
+    public record Availability(boolean allowed, String workspacePath, String workspaceLabel, String reason) {}
+
+    /** Read-only server policy preview; client paths never grant access. */
+    public Availability availability() {
         try {
-            var observation = capability.executeManaged(id, new ExecutionContext(prepared.workspace(), executor));
+            var prepared = authorize();
+            return new Availability(true, prepared.workspace().toString(), prepared.label(), "");
+        } catch (ResponseStatusException denied) {
+            return new Availability(false, runtime.workspace() == null ? "" : runtime.workspace().toAbsolutePath().normalize().toString(), runtime.workspaceLabel(), denied.getReason());
+        }
+    }
+
+    /** Called inside the board's transaction, before dispatching any process. */
+    public MissionExecution reserve(UUID missionId, UUID id, String confirmedWorkspace) {
+        requireMission(missionId);
+        var prepared = authorize();
+        if (!prepared.workspace().toString().equals(confirmedWorkspace)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "BOARD_WORKSPACE_CHANGED");
+        }
+        var now = Instant.now();
+        var created = new MissionExecution(id, missionId, "CREATED", "git-status", runtime.operatorLabel(),
+                prepared.workspace().toString(), prepared.label(), prepared.capability().executable(), prepared.policy(),
+                null, null, null, null, now, null, null, null, null, null, null, false, "NOT_REQUIRED", now);
+        executions.insertOpen(created);
+        return created;
+    }
+
+    /** A persisted queue entry may run once, only in the JVM that accepted it. */
+    public MissionExecution runReserved(UUID executionId) {
+        var created = executions.find(executionId).orElseThrow();
+        if (!executions.claimCreated(executionId)) return executions.find(executionId).orElseThrow();
+        final Prepared prepared;
+        try {
+            prepared = authorize();
+            if (!prepared.workspace().toString().equals(created.workspacePath()) || !prepared.capability().executable().equals(created.executable())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "BOARD_WORKSPACE_CHANGED");
+            }
+        } catch (ResponseStatusException denied) {
+            executions.failSameRow(executionId, created.missionId(), denied.getReason());
+            return executions.find(executionId).orElseThrow();
+        }
+        return executePrepared(created, prepared);
+    }
+
+    private MissionExecution executePrepared(MissionExecution created, Prepared prepared) {
+        var id = created.id(); var missionId = created.missionId();
+        try {
+            var observation = prepared.capability().executeManaged(id, new ExecutionContext(prepared.workspace(), executor));
             remember(id, observation.metadata());
             return complete(id, missionId, observation);
         } catch (RuntimeException rejected) {
@@ -85,6 +134,7 @@ public class MissionGitExecutionService {
     }
 
     public MissionExecution cancel(UUID missionId, UUID executionId) {
+        if ("board".equals(requireMission(missionId).source())) throw new ResponseStatusException(HttpStatus.CONFLICT, "BOARD_CANCEL_NOT_AVAILABLE");
         var execution = executions.find(executionId)
                 .filter(row -> row.missionId().equals(missionId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "执行不存在"));

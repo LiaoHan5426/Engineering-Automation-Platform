@@ -165,19 +165,19 @@ onMounted(refresh);
        
         placeholder="搜索资料名称"
         aria-label="搜索数据库资料"
-      /><button
+      /><Button variant="navigation"
         v-for="item in items.filter((item) =>
           item.label.toLowerCase().includes(filter.toLowerCase()),
         )"
         :key="item.id"
         class="manager-item"
-        :class="{ active: id === item.id }"
+        :active="id === item.id"
         :disabled="busy"
         @click="select(item.id)"
       >
         <strong>{{ item.label }}</strong
         ><small>{{ item.engine }} · {{ item.environment }}</small>
-      </button>
+      </Button>
       <EmptyState v-if="!items.length">
         暂无资料。可登记脱敏表结构和索引，不需要提供连接凭据。
       </EmptyState>

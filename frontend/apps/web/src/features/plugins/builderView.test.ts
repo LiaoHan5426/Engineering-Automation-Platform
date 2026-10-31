@@ -30,6 +30,6 @@ describe("plugin prototype views", () => {
     expect(html).toContain("repository.write");
     expect(html).toContain("授予");
     expect(html).toContain("无");
-    expect(html).toContain("浏览器本地原型存储");
+    expect(html).toContain(i18n.global.t("plugin.centerHint"));
   });
 });

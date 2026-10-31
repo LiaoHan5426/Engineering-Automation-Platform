@@ -48,7 +48,7 @@ describe("console shell", () => {
 // 信息架构：左栏不是一串平级入口，干活的面与配置是两组。
 // 起因同原型契约——八个入口平级，其中五个是配置，落地页还是一张仪表盘。
 // 2026-10-15：「任务」并入分析工作台，因为一次分析的输入与它的过程本来就是同一件事的两半。
-const railHtml = (html: string) => html.slice(html.indexOf('class="desktop-sidebar"'), html.indexOf("</aside>", html.indexOf('class="desktop-sidebar"')));
+const railHtml = (html: string) => html.match(/<aside\b[^>]*class="[^"]*\bdesktop-sidebar\b[^>]*>[\s\S]*?<\/aside>/)?.[0] ?? "";
 
 describe("console information architecture", () => {
   it("provides five application entries and a contextual code sidebar", async () => {
@@ -67,7 +67,7 @@ describe("console information architecture", () => {
   it("lands on the code workspace with a composer, not a dashboard", async () => {
     const html = await render();
     expect(html).toContain("preview-composer");
-    expect(html).toContain('class="composer-draft"');
+    expect(html).toMatch(/<textarea[^>]*class="[^"]*\bcomposer-draft\b/);
     expect(html).not.toContain("studio-stream");
     expect(html).not.toContain('id="view-overview"');
     expect(html).not.toContain("尚未建立对话");

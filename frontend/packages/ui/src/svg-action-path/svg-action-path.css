@@ -1,0 +1,15 @@
+.eap-svg-action-path {
+  cursor: pointer;
+  fill: none;
+  stroke: transparent;
+  stroke-width: 18;
+}
+
+.eap-svg-action-path:focus-visible {
+  outline: none;
+  stroke: color-mix(in srgb, var(--eap-color-primary) 35%, transparent);
+}
+
+.eap-svg-action-path[aria-disabled="true"] {
+  cursor: default;
+}

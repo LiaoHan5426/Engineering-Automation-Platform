@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { inspectUiStyles, inspectUiTemplate } from "./ui-boundaries.ts";
 const root = process.cwd();
 const problems: string[] = [];
 function walk(dir: string): string[] {
@@ -20,10 +21,21 @@ for (const group of ["apps", "packages", "internal"]) {
     }
     const pkg = JSON.parse(fs.readFileSync(manifest, "utf8"));
     const dependencies = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies };
-    for (const file of walk(packageRoot).filter((file) => /\.(?:ts|vue|mjs)$/.test(file))) {
+    for (const file of walk(packageRoot).filter((file) => /\.(?:ts|vue|mjs|css)$/.test(file))) {
       const source = fs.readFileSync(file, "utf8");
+      if (group === "apps" && file.endsWith(".vue")) {
+        problems.push(...inspectUiTemplate(source, path.relative(root, file)));
+      }
+      if (file.endsWith(".css")) {
+        if (group === "apps") problems.push(...inspectUiStyles(source, path.relative(root, file)));
+        continue;
+      }
       for (const match of source.matchAll(/(?:from\s+|import\s*\(|import\s+)["']([^"']+)["']/g)) {
         const target = match[1]!;
+        if (group === "apps" && /^(reka-ui|radix-vue|shadcn-vue|vxe-table|vxe-pc-ui|@vxe-ui\/)/.test(target))
+          problems.push(`${file}: use the @eap/ui or @eap/plugin-table public adapter for ${target}`);
+        if (pkg.name === "@eap/ui" && /^@eap\//.test(target) && !/^@eap\/style(?:\/|$)/.test(target))
+          problems.push(`${file}: @eap/ui must not depend on domain package ${target}`);
         if (target.startsWith(".")) {
           const resolved = path.resolve(path.dirname(file), target);
           const relative = path.relative(packageRoot, resolved);
@@ -45,4 +57,4 @@ for (const group of ["apps", "packages", "internal"]) {
 if (problems.length) {
   console.error(problems.join("\n"));
   process.exitCode = 1;
-} else console.warn("Workspace manifests, declared dependencies and package import boundaries OK.");
+} else console.warn("Workspace dependencies, package boundaries and app UI templates OK.");

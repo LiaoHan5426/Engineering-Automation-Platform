@@ -1,0 +1,19 @@
+:root {
+  --eap-layout-sidebar-width: 288px;
+  --eap-layout-rail-width: 360px;
+  --eap-layout-content-max-width: 1480px;
+}
+
+[data-eap-density="compact"] {
+  --eap-size-default: 28px;
+  --eap-space-2: 6px;
+  --eap-space-3: 10px;
+  --eap-space-4: 12px;
+}
+
+[data-eap-density="comfortable"] {
+  --eap-size-default: 32px;
+  --eap-space-2: 8px;
+  --eap-space-3: 12px;
+  --eap-space-4: 16px;
+}

@@ -3,9 +3,9 @@
   max-height: min(420px, 70vh);
   padding: 14px;
   overflow: auto;
-  color: var(--text, #37483e);
-  background: var(--surface, #faf9f4);
-  border: 1px solid var(--border-strong, #cdd6ca);
+  color: var(--eap-text-color-primary, #37483e);
+  background: var(--eap-fill-color-blank, #faf9f4);
+  border: 1px solid var(--eap-border-color-strong, #cdd6ca);
   border-radius: 12px;
   box-shadow: 0 10px 36px rgb(20 40 70 / 16%);
 }

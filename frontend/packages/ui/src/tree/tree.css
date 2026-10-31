@@ -1,0 +1,34 @@
+.eap-tree {
+  padding: 0;
+  margin: 0;
+  color: var(--eap-text-color-primary);
+  list-style: none;
+}
+
+.eap-tree__item {
+  display: flex;
+  gap: var(--eap-space-2);
+  align-items: center;
+  padding: var(--eap-space-2);
+  cursor: pointer;
+  border-radius: var(--eap-border-radius-sm);
+}
+
+.eap-tree__item:hover, .eap-tree__item[data-selected] {
+  background: var(--eap-color-primary-soft);
+}
+
+.eap-tree__item:focus-visible {
+  outline: 2px solid var(--eap-color-primary-focus);
+  outline-offset: -2px;
+}
+
+.eap-tree__item[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.eap-tree__marker {
+  flex: 0 0 1em;
+  color: var(--eap-text-color-secondary);
+}

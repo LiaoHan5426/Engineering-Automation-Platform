@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { Button, Feedback, FileInput, Input, Popover, Select, Tag, Textarea } from "@eap/ui";
+import { Button, Feedback, FileInput, Input, Popover, Segmented, Select, Tag, Textarea } from "@eap/ui";
 import { runtimeApi, type TaskContext, type PrototypeVersionRecord, type WorkspaceSource } from "@eap/runtime-client";
 import RepositoryBrowser from '../../components/RepositoryBrowser.vue';
 import { pendingScenarioDependencies } from '../shell/scenarioDependencies';
 import { identityAuthorized, runtimeIdentity } from '../shell/runtimeIdentity';
 import { assignSessionProject, addExpert, currentExtras, expertCatalog, localProjects, projectLabel, removeExpert, scenarios, sessionKey, setExecutionMode, toggleResource, workbench } from "../shell/workbench";
 import { acceptFiles, FILE_CAP, type IncomingFile } from "./acceptFiles";
-import { popupPlacement } from './popupPlacement';
 
 const props = withDefaults(defineProps<{ active?: boolean; preview?: boolean; context: TaskContext; disabled: boolean; refreshingModels?: boolean; reasoningEfforts: Array<"low" | "medium" | "high">; modelLabel?: string }>(), { active: true, preview: false, refreshingModels: false, modelLabel: "" });
 const reasoningSupported = computed(() => props.reasoningEfforts.length > 0);
@@ -32,6 +31,9 @@ const counts = computed(() => ({
   skills: props.preview ? currentExtras().resources.filter((id) => id.startsWith("skill:")).length : 0,
   mcp: props.preview ? currentExtras().resources.filter((id) => id.startsWith("mcp:")).length : 0,
 }));
+function selectCategory(value: string) {
+  if (menuCategories.includes(value as typeof category.value)) category.value = value as typeof category.value;
+}
 function categoryLabel(tab: (typeof menuCategories)[number]) {
   if (tab === "files") return t("composerUi.files");
   if (tab === "instructions") return t("composerUi.guidance");
@@ -61,11 +63,8 @@ function changeScopeProject(id: string) {
   assignSessionProject(sessionKey(), next);
 }
 const root = ref<HTMLElement | null>(null);
-const popupStyle = ref<Record<string, string>>({});
-function positionPopup(button: HTMLElement | null) {
-  if (!button) return;
-  popupStyle.value = popupPlacement(button.getBoundingClientRect(), { width: window.innerWidth, height: window.innerHeight });
-}
+const popupAnchor = shallowRef<HTMLElement | null>(null);
+function positionPopup(button: HTMLElement | null) { popupAnchor.value = button; }
 function placePopup(event: Event) {
   const button = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
   positionPopup(button);
@@ -76,9 +75,6 @@ function closePopups() {
   const field = root.value?.closest("form")?.querySelector("textarea");
   if (field instanceof HTMLElement) field.focus();
 }
-function dismiss(event: Event) { if (!root.value?.contains(event.target as Node)) hidePopups(); }
-onMounted(() => { document.addEventListener("pointerdown", dismiss); window.addEventListener('resize', hidePopups); });
-onUnmounted(() => { document.removeEventListener("pointerdown", dismiss); window.removeEventListener('resize', hidePopups); });
 const versions = ref<PrototypeVersionRecord[]>([]);
 const filesInput = ref<{ click: () => void } | null>(null);
 const selectedVersion = computed(() => versions.value.find((version) => version.id === props.context.prototypeVersionId));
@@ -194,7 +190,7 @@ async function loadVersions() {
 </script>
 
 <template>
-  <div ref="root" class="composer-stack" @paste="onPaste" @keydown.esc.stop.prevent="closePopups">
+  <div ref="root" class="composer-stack" @paste="onPaste">
     <div class="composer-scope" data-testid="composer-scope">
       <label>
         <span class="sr-only">{{ t("desktop.composerScope") }}</span>
@@ -221,28 +217,28 @@ async function loadVersions() {
       </Tag>
       <div class="bar-picker">
         <Button variant="secondary" type="button" data-testid="execution-mode" :disabled="disabled" :aria-expanded="executionOpen" @click="placePopup($event); executionOpen = !executionOpen; menu = false; policyOpen = false; modelOpen = false">{{ t("desktop.execution" + (workbench.executionMode === "chat" ? "Chat" : workbench.executionMode === "plan" ? "Plan" : "Agent")) }}</Button>
-        <Popover v-if="executionOpen" class="composer-popup execution-menu" :style="popupStyle" :label="t('desktop.executionChat')">
-          <button type="button" data-testid="execution-chat" :aria-pressed="workbench.executionMode === 'chat'" @click="chooseExecution('chat')">{{ t("desktop.executionChat") }} · {{ t("desktop.executionChatHint") }}</button>
-          <button type="button" data-testid="execution-plan" :aria-pressed="workbench.executionMode === 'plan'" :disabled="!preview" :title="preview ? undefined : t('desktop.executionModeOff')" @click="chooseExecution('plan')">{{ t("desktop.executionPlan") }} · {{ t("desktop.executionPlanHint") }}<template v-if="!preview"> · {{ t("desktop.executionModeOff") }}</template></button>
-          <button type="button" data-testid="execution-agent" :aria-pressed="workbench.executionMode === 'agent'" :disabled="!preview" :title="preview ? undefined : t('desktop.executionModeOff')" @click="chooseExecution('agent')">{{ t("desktop.executionAgent") }} · {{ t("desktop.executionAgentHint") }}<template v-if="!preview"> · {{ t("desktop.executionModeOff") }}</template></button>
-          <button type="button" data-testid="execution-plugin" disabled :title="t('desktop.executionModeOff')">{{ t("desktop.executionPlugin") }} · {{ t("desktop.executionPluginHint") }} · {{ t("desktop.executionModeOff") }}</button>
+        <Popover v-if="executionOpen" :anchor="popupAnchor" :return-focus-to="root?.closest('form')?.querySelector('textarea')" side="top" @close="executionOpen = false" class="composer-popup execution-menu" :label="t('desktop.executionChat')">
+          <Button variant="navigation" type="button" data-testid="execution-chat" :aria-pressed="workbench.executionMode === 'chat'" @click="chooseExecution('chat')">{{ t("desktop.executionChat") }} · {{ t("desktop.executionChatHint") }}</Button>
+          <Button variant="navigation" type="button" data-testid="execution-plan" :aria-pressed="workbench.executionMode === 'plan'" :disabled="!preview" :title="preview ? undefined : t('desktop.executionModeOff')" @click="chooseExecution('plan')">{{ t("desktop.executionPlan") }} · {{ t("desktop.executionPlanHint") }}<template v-if="!preview"> · {{ t("desktop.executionModeOff") }}</template></Button>
+          <Button variant="navigation" type="button" data-testid="execution-agent" :aria-pressed="workbench.executionMode === 'agent'" :disabled="!preview" :title="preview ? undefined : t('desktop.executionModeOff')" @click="chooseExecution('agent')">{{ t("desktop.executionAgent") }} · {{ t("desktop.executionAgentHint") }}<template v-if="!preview"> · {{ t("desktop.executionModeOff") }}</template></Button>
+          <Button variant="navigation" type="button" data-testid="execution-plugin" disabled :title="t('desktop.executionModeOff')">{{ t("desktop.executionPlugin") }} · {{ t("desktop.executionPluginHint") }} · {{ t("desktop.executionModeOff") }}</Button>
         </Popover>
       </div>
       <div class="bar-picker">
         <Button variant="secondary" type="button" data-testid="approval-policy" :disabled="disabled" :aria-expanded="policyOpen" @click="placePopup($event); policyOpen = !policyOpen; menu = false; executionOpen = false; modelOpen = false">{{ context.approval === "read_only" ? t("task.readOnlyShort") : t("task.askPolicy") }}</Button>
-        <Popover v-if="policyOpen" class="composer-popup execution-menu" :style="popupStyle" :label="t('task.askPolicy')" data-testid="approval-menu">
+        <Popover v-if="policyOpen" :anchor="popupAnchor" :return-focus-to="root?.closest('form')?.querySelector('textarea')" side="top" @close="policyOpen = false" class="composer-popup execution-menu" :label="t('task.askPolicy')" data-testid="approval-menu">
           <p class="hint" data-testid="risk-review-off">{{ t("desktop.riskReviewOff") }}</p>
-          <button type="button" data-testid="approval-review" :aria-pressed="context.approval !== 'read_only'" @click="choosePolicy('review')">{{ t("task.askPolicy") }} · {{ t("task.askPolicyHint") }}</button>
-          <button type="button" data-testid="approval-ai-review" disabled>{{ t("task.aiReview") }} · {{ t("desktop.aiReviewHint") }}</button>
-          <button type="button" data-testid="approval-read-only" :aria-pressed="context.approval === 'read_only'" @click="choosePolicy('read_only')">{{ t("task.readOnlyShort") }} · {{ t("task.readOnlyHint") }}</button>
-          <button type="button" data-testid="approval-full" disabled>{{ t("task.fullAccess") }} · {{ t("task.fullAccessOff") }}</button>
-          <button type="button" data-testid="approval-tool-perms" disabled>{{ t("task.toolPerms") }} · {{ t("desktop.notConnected") }}</button>
+          <Button variant="navigation" type="button" data-testid="approval-review" :aria-pressed="context.approval !== 'read_only'" @click="choosePolicy('review')">{{ t("task.askPolicy") }} · {{ t("task.askPolicyHint") }}</Button>
+          <Button variant="navigation" type="button" data-testid="approval-ai-review" disabled>{{ t("task.aiReview") }} · {{ t("desktop.aiReviewHint") }}</Button>
+          <Button variant="navigation" type="button" data-testid="approval-read-only" :aria-pressed="context.approval === 'read_only'" @click="choosePolicy('read_only')">{{ t("task.readOnlyShort") }} · {{ t("task.readOnlyHint") }}</Button>
+          <Button variant="navigation" type="button" data-testid="approval-full" disabled>{{ t("task.fullAccess") }} · {{ t("task.fullAccessOff") }}</Button>
+          <Button variant="navigation" type="button" data-testid="approval-tool-perms" disabled>{{ t("task.toolPerms") }} · {{ t("desktop.notConnected") }}</Button>
         </Popover>
       </div>
-      <button type="button" class="context-meter" data-testid="context-meter" :disabled="disabled" :aria-expanded="menu" :title="t('desktop.contextMeterHint', contextCount)" @click="openContextMenu($event)">{{ t("desktop.contextMeter", contextCount) }}</button>
+      <Button size="sm" variant="link" type="button" class="context-meter" data-testid="context-meter" :disabled="disabled" :aria-expanded="menu" :title="t('desktop.contextMeterHint', contextCount)" @click="openContextMenu($event)">{{ t("desktop.contextMeter", contextCount) }}</Button>
       <div class="bar-picker model-picker">
         <Button variant="secondary" type="button" data-testid="model-picker" :disabled="disabled" :aria-expanded="modelOpen" @click="placePopup($event); modelOpen = !modelOpen; menu = false; executionOpen = false; policyOpen = false">{{ modelLabel || t("modelUi.pending") }} · {{ effortLabel }}</Button>
-        <Popover v-if="modelOpen" class="composer-popup model-menu" :style="popupStyle" :label="t('modelUi.selection')">
+        <Popover v-if="modelOpen" :anchor="popupAnchor" :return-focus-to="root?.closest('form')?.querySelector('textarea')" side="top" @close="modelOpen = false" class="composer-popup model-menu" :label="t('modelUi.selection')">
           <div class="model-effort-head" data-testid="model-effort-head">
             <strong>{{ effortLabel }}</strong>
             <small>{{ modelLabel || t("modelUi.pending") }}</small>
@@ -250,32 +246,24 @@ async function loadVersions() {
           <slot name="model" />
           <p class="effort-caption">{{ t("desktop.effortHeading") }}</p>
           <div class="effort-row">
-            <button type="button" :aria-pressed="shownEffort === 'default'" :disabled="disabled" @click="chooseEffort('default')">{{ t("task.modelDefault") }}</button>
-            <button v-for="effort in reasoningEfforts" :key="effort" type="button" :data-testid="'effort-' + effort" :aria-pressed="shownEffort === effort" :disabled="disabled" @click="chooseEffort(effort)">{{ t("task." + effort) }}</button>
+            <Button size="sm" variant="chip" type="button" :aria-pressed="shownEffort === 'default'" :disabled="disabled" @click="chooseEffort('default')">{{ t("task.modelDefault") }}</Button>
+            <Button size="sm" variant="chip" v-for="effort in reasoningEfforts" :key="effort" type="button" :data-testid="'effort-' + effort" :aria-pressed="shownEffort === effort" :disabled="disabled" @click="chooseEffort(effort)">{{ t("task." + effort) }}</Button>
           </div>
           <p v-if="!reasoningSupported" class="hint">{{ t("task.reasoningUnsupported") }}</p>
-          <button type="button" data-testid="model-refresh" :disabled="disabled || refreshingModels" :aria-busy="refreshingModels" @click="emit('refresh')">{{ t(refreshingModels ? "desktop.catalogRefreshing" : "desktop.refreshModels") }}</button>
+          <Button size="sm" variant="secondary" type="button" data-testid="model-refresh" :disabled="disabled || refreshingModels" :aria-busy="refreshingModels" @click="emit('refresh')">{{ t(refreshingModels ? "desktop.catalogRefreshing" : "desktop.refreshModels") }}</Button>
           <slot name="settings" />
         </Popover>
       </div>
       <slot name="send" />
     </div>
-    <Popover v-if="menu" class="composer-popup composer-add-menu" :style="popupStyle" :label="t('task.context')" data-testid="composer-add-menu">
+    <Popover v-if="menu" :anchor="popupAnchor" :return-focus-to="root?.closest('form')?.querySelector('textarea')" side="top" @close="menu = false" class="composer-popup composer-add-menu" :label="t('task.context')" data-testid="composer-add-menu">
       <Input v-model="query" class="composer-search" type="search" data-testid="composer-search" :aria-label="searchPlaceholder" :placeholder="searchPlaceholder" />
       <div class="composer-layers">
-        <div class="composer-categories" role="listbox" :aria-label="t('task.context')">
-          <button v-for="tab in menuCategories" :key="tab" type="button" role="option" :data-testid="'composer-cat-' + tab" :aria-selected="category === tab" @click="category = tab">
-            <span>{{ categoryLabel(tab) }}</span>
-            <small>{{ counts[tab] }}</small>
-          </button>
-          <button type="button" role="option" data-testid="composer-cat-unattended" disabled :aria-selected="false">
-            <span>{{ t("desktop.unattended") }}</span>
-            <small>{{ t("desktop.unattendedOff") }}</small>
-          </button>
-        </div>
+        <Segmented :model-value="category" @update:model-value="selectCategory" class="composer-categories" orientation="vertical" :label="t('task.context')"
+          :options="[...menuCategories.map(tab => ({ value: tab, label: categoryLabel(tab), description: String(counts[tab]), testId: 'composer-cat-' + tab })), { value: 'unattended', label: t('desktop.unattended'), description: t('desktop.unattendedOff'), disabled: true, testId: 'composer-cat-unattended' }]" />
         <div class="composer-popup-content">
           <template v-if="category === 'files'">
-            <button type="button" class="menu-choice" data-testid="pick-workspace-file" :disabled="disabled" :aria-expanded="workspacePicker" @click="workspacePicker = !workspacePicker">{{ t('composerUi.workspacePick') }}</button>
+            <Button variant="navigation" type="button" class="menu-choice" data-testid="pick-workspace-file" :disabled="disabled" :aria-expanded="workspacePicker" @click="workspacePicker = !workspacePicker">{{ t('composerUi.workspacePick') }}</Button>
             <RepositoryBrowser v-if="workspacePicker" selectable :disabled="disabled" @select="referenceSource" />
             <FileInput ref="filesInput" multiple :accept="preview ? '.vue,.ts,.tsx,.js,.jsx,.json,.md,.txt,.sql,.java,.css,.html,.png,.jpg,.jpeg,.webp,.mp4' : '.vue,.ts,.tsx,.js,.jsx,.json,.md,.txt,.sql,.java,.css,.html'" hidden @change="filesChanged" />
             <Button type="button" variant="secondary" data-testid="upload-local-file" :disabled="disabled" @click="filesInput?.click()">{{ t('composerUi.uploadLocal') }}</Button>
@@ -294,16 +282,16 @@ async function loadVersions() {
               </Select>
             </label>
             <p class="hint" data-testid="expert-kind">{{ t("desktop.collab") }}。{{ t("desktop.expertDisconnected") }}</p>
-            <button v-for="expert in visibleExperts" :key="expert.id" type="button" class="menu-choice expert-choice" :aria-pressed="currentExtras().experts.some(item => item.id === expert.id)" :disabled="disabled" @click="chooseExpert(expert.id)">
+            <Button variant="navigation" v-for="expert in visibleExperts" :key="expert.id" type="button" class="menu-choice expert-choice" :aria-pressed="currentExtras().experts.some(item => item.id === expert.id)" :disabled="disabled" @click="chooseExpert(expert.id)">
               <span>{{ expert.name }} <small>{{ expert.category }} · {{ expert.version }}</small></span>
               <small>{{ t("desktop.expertGuidance") }}：{{ expert.guidance }}</small>
               <small>{{ t("desktop.expertResources") }}：{{ expert.resources }}</small>
-            </button>
-            <button type="button" class="menu-choice" data-testid="manage-experts" @click="manageExperts">{{ t('composerUi.manageExperts') }}</button>
+            </Button>
+            <Button variant="navigation" type="button" class="menu-choice" data-testid="manage-experts" @click="manageExperts">{{ t('composerUi.manageExperts') }}</Button>
           </template>
           <template v-else-if="category === 'skills' || category === 'mcp'">
             <p class="hint" data-testid="resource-empty">{{ preview ? t('preview.resourceHint') : t(category === 'skills' ? 'desktop.skillsEmpty' : 'desktop.mcpEmpty') }}</p>
-            <button v-for="item in (preview ? visibleResources : [])" :key="item.id" type="button" class="menu-choice" :aria-pressed="currentExtras().resources.includes(item.id)" :disabled="disabled" @click="toggleResource(item.id)">{{ t(item.label) }} · {{ t('preview.simulated') }}</button>
+            <Button variant="navigation" v-for="item in (preview ? visibleResources : [])" :key="item.id" type="button" class="menu-choice" :aria-pressed="currentExtras().resources.includes(item.id)" :disabled="disabled" @click="toggleResource(item.id)">{{ t(item.label) }} · {{ t('preview.simulated') }}</Button>
           </template>
           <label v-else>{{ t('task.guidance') }}<Textarea :disabled="disabled" :model-value="context.instructions" rows="3" maxlength="4000" @input="change('instructions', ($event.target as HTMLTextAreaElement).value)" /></label>
           <p class="hint">{{ t('task.contextNotice') }}</p>
@@ -323,45 +311,32 @@ async function loadVersions() {
 .composer-scope :deep(.eap-select) { max-width: min(280px, 70vw); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
 .task-context { min-width: 0; }
-.context-toolbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 10px; }
+.context-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.context-toolbar > .bar-picker { flex-shrink: 0; }
 .context-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .model-picker { min-width: 0; }
 .model-picker :deep(.eap-button) { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .execution-picker, .bar-picker { position: static; }
 .execution-menu { display: grid; gap: 6px; }
-.execution-menu button { text-align: left; padding: 8px; border: 0; background: transparent; border-radius: 8px; }
-.execution-menu button[aria-pressed="true"] { background: #e7f3ee; color: #287b6c; }
-.execution-menu button:disabled { color: #7a887f; }
-.composer-add-menu { min-width: min(420px, 92vw); }
+.composer-add-menu { min-width: 0; }
 .composer-layers { display: grid; grid-template-columns: minmax(110px, 34%) minmax(0, 1fr); gap: 10px; align-items: start; min-width: 0; }
 .composer-popup-content { min-width: 0; overflow-wrap: anywhere; }
 .composer-popup-content :is(input,select,textarea) { min-width: 0; max-width: 100%; }
-.composer-categories { display: grid; gap: 2px; }
-.composer-categories button { display: flex; justify-content: space-between; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 10px; border-radius: 8px; cursor: pointer; font: inherit; }
-.composer-categories button[aria-selected="true"] { background: #e7f3ee; color: #287b6c; }
-.composer-categories small { color: #7a887f; }
-.context-meter { margin-left: auto; border: 0; background: transparent; padding: 4px 6px; border-radius: 8px; font: inherit; font-size: 11px; color: #68746e; cursor: pointer; white-space: nowrap; }
-.context-meter:hover:not(:disabled) { background: #e7f3ee; color: #287b6c; }
-.context-meter:disabled { cursor: not-allowed; opacity: 0.65; }
-.context-meter[aria-expanded="true"] { background: #e7f3ee; color: #287b6c; }
-.model-effort-head { display: grid; gap: 2px; padding: 4px 8px 8px; border-bottom: 1px solid #e4ebe4; margin-bottom: 6px; }
-.model-effort-head strong { font-size: 14px; color: #24352c; }
-.model-effort-head small { color: #7a887f; font-size: 12px; }
-.effort-caption { margin: 4px 8px 0; font-size: 11px; color: #7a887f; }
+.context-meter { margin-left: auto; white-space: nowrap; }
+.model-effort-head { display: grid; gap: 2px; padding: 4px 8px 8px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.model-effort-head strong { font-size: 14px; color: var(--text); }
+.model-effort-head small { color: var(--text-mute); font-size: 12px; }
+.effort-caption { margin: 4px 8px 0; font-size: 11px; color: var(--text-mute); }
 .context-toolbar label { display: grid; gap: 5px; font-size: 12px; }
-.context-toolbar select { padding: 7px; border: 1px solid #dce3ee; border-radius: 8px; background: var(--color-surface, white); }
-.context-menu { display: grid; gap: 12px; padding: 16px; margin: 12px 0; background: #f6f8fc; border-radius: 12px; }
+.context-toolbar select { padding: 7px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.context-menu { display: grid; gap: 12px; padding: 16px; margin: 12px 0; background: var(--surface-2); border-radius: 12px; }
 .context-menu textarea { width: 100%; display: block; }
 .context-chips { margin: 10px 0; }
-.composer-search { width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #dce3ee; border-radius: 8px; }
-.menu-choice { display: flex; justify-content: space-between; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px; border-radius: 8px; cursor: pointer; }
+.composer-search { width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; }
+.menu-choice { display: flex; justify-content: space-between; gap: 8px; width: 100%; }
 .expert-choice { display: grid; justify-content: start; }
-.menu-choice[aria-pressed="true"] { background: #e7f3ee; }
-.menu-choice small { color: #7a887f; }
+.menu-choice small { color: var(--text-mute); }
 .effort-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.effort-row button, .model-menu > button { border: 0; background: transparent; text-align: left; padding: 8px; border-radius: 8px; cursor: pointer; }
-.effort-row button[aria-pressed="true"] { background: #e7f3ee; }
 .model-picker { margin-left: 0; }
-.composer-categories button:disabled { opacity: .55; cursor: default; }
-.composer-add { min-width: 34px; padding-inline: 10px; font-size: 16px; line-height: 1; }
+.composer-add { min-width: 34px; }
 </style>

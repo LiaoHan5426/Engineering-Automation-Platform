@@ -1,0 +1,25 @@
+/* Opt-in product palette; dark mode remains controlled by themes/dark.css. */
+:root[data-eap-skin="console"]:not([data-eap-theme="dark"]),
+[data-eap-skin="console"][data-eap-theme="light"] {
+  --eap-bg-color: #e1e6df;
+  --eap-fill-color-blank: #faf9f4;
+  --eap-fill-color-light: #f1f2eb;
+  --eap-fill-color: #e8ede5;
+  --eap-text-color-primary: #34443b;
+  --eap-text-color-secondary: #65756b;
+  --eap-text-color-placeholder: #7a887f;
+  --eap-border-color: #dfe3d9;
+  --eap-border-color-strong: #cdd6ca;
+  --eap-color-primary: #347f70;
+  --eap-color-primary-hover: #286858;
+  --eap-color-primary-soft: #e0ece4;
+  --eap-fill-color-hover: #e0e8de;
+  --eap-color-primary-focus: #86b9a7;
+}
+
+[data-eap-skin="console"][data-eap-theme="dark"] {
+  --eap-color-primary: #69c5ac;
+  --eap-color-primary-hover: #91d9c5;
+  --eap-color-primary-soft: #1b3932;
+  --eap-color-primary-focus: #69c5ac;
+}

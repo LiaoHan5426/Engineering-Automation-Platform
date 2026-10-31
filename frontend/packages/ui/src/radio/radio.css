@@ -1,0 +1,16 @@
+.eap-radio {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  accent-color: var(--eap-color-primary);
+}
+
+.eap-radio:focus-visible {
+  outline: 3px solid var(--eap-color-primary-focus);
+  outline-offset: 2px;
+}
+
+.eap-radio:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

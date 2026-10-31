@@ -1,0 +1,10 @@
+:where(.eap-collapse__summary) {
+  padding-block: var(--eap-space-2);
+  font-weight: var(--eap-font-weight-primary);
+  cursor: pointer;
+}
+
+.eap-collapse__summary:focus-visible {
+  outline: 3px solid var(--eap-color-primary-focus);
+  outline-offset: 2px;
+}

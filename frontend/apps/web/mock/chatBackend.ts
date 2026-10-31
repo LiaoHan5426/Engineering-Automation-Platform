@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createModelBackend } from './modelBackend';
 import { createKnowledgeBackend } from './knowledgeBackend';
 import { createDatabaseBackend } from './databaseBackend';
+import { createBoardBackend } from './boardBackend';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..');
 
@@ -14,13 +15,14 @@ export function createMockChatBackend() {
   const conversations = new Map<string, AiConversation>();
   const proposals = new Map<string, CodeProposal>();
   const versions: Array<Record<string, unknown>> = [];
-  const boardTasks: Array<{ id: string; projectId: string; title: string; column: string; notes: string; sessionId: string; revision: number; events: string[]; priority: string }> = [];
+
   const models = [{ id: 'reasoning-demo', reasoningEfforts: ['low', 'medium', 'high'] as Array<'low' | 'medium' | 'high'> }, { id: 'general-demo', reasoningEfforts: [] }];
   const connections: ModelConnectionList = { effectiveDefaultId: 'mock-local', items: [{ id: 'mock-local', name: 'Mock · 本地模拟', kind: 'mock', enabled: true, baseUrl: 'http://mock.local', defaultModel: models[0]!.id, models, allowedModels: models.map(item => item.id), discoveredAt: '', discoveryError: '', secretPresent: false, revision: 1, defaultSelected: true, configurationRevision: 'mock-1' }] };
   function result(status: number, data: unknown) { return { status, data }; }
   const modelBackend = createModelBackend(connections);
   const knowledgeBackend = createKnowledgeBackend();
   const databaseBackend = createDatabaseBackend();
+  const boardBackend = createBoardBackend();
   const effective = () => connections.items.find(item => item.id === connections.effectiveDefaultId && item.enabled && item.allowedModels.includes(item.defaultModel))
     ?? connections.items.find(item => item.enabled && item.allowedModels.includes(item.defaultModel));
   return {
@@ -34,29 +36,8 @@ export function createMockChatBackend() {
       if (requestUrl.searchParams.has('connectionId')) body.connectionId = requestUrl.searchParams.get('connectionId');
       const configured = modelBackend.handle(method, path, body);
       if (configured) return configured;
-      if (path === '/board/tasks' && method === 'GET') return result(200, { items: boardTasks.filter(item => item.projectId === requestUrl.searchParams.get('projectId')) });
-      if (path === '/board/tasks' && method === 'POST') {
-        if (typeof body.projectId !== 'string' || !body.projectId.trim() || body.projectId.length > 120 || typeof body.title !== 'string' || !body.title.trim() || body.title.length > 200) return result(400, { error: 'INVALID_BOARD_FIELD' });
-        const column = body.column ?? 'planned';
-        if (!['planned', 'ready'].includes(String(column))) return result(400, { error: 'INVALID_BOARD_INITIAL_COLUMN' });
-        const sessionId = typeof body.sessionId === 'string' ? body.sessionId.trim().slice(0, 120) : '';
-        const task = { id: randomUUID(), projectId: String(body.projectId), title: String(body.title).trim(), column: String(column), notes: '', sessionId, revision: 1, events: ['created'], priority: 'none' };
-        boardTasks.unshift(task); return result(200, task);
-      }
-      if (path.startsWith('/board/tasks/') && method === 'POST') {
-        const task = boardTasks.find(item => item.id === path.slice('/board/tasks/'.length));
-        if (!task) return result(404, { error: 'BOARD_TASK_NOT_FOUND' });
-        if (body.revision !== task.revision) return result(409, { error: 'BOARD_REVISION_CONFLICT' });
-        const target = String(body.column ?? task.column);
-        if (!(target === task.column || (task.column === 'planned' && target === 'ready') || (task.column === 'ready' && target === 'planned'))) return result(409, { error: 'BOARD_EXECUTION_EVIDENCE_REQUIRED' });
-        const notes = String(body.notes ?? task.notes); if (notes.length > 4000) return result(400, { error: 'BOARD_NOTES_TOO_LONG' });
-        const priority = body.priority ?? task.priority;
-        if (!['none', 'p0', 'p1', 'p2'].includes(String(priority))) return result(400, { error: 'INVALID_BOARD_PRIORITY' });
-        if (target !== task.column) task.events.push(target);
-        if (notes !== task.notes) task.events.push('notes_updated');
-        if (priority !== task.priority) task.events.push('priority_updated');
-        task.column = target; task.notes = notes; task.priority = String(priority); task.revision++; return result(200, task);
-      }
+      const board = boardBackend.handle(method, requestUrl, body);
+      if (board) return board;
       if (path === '/prototype-versions' && method === 'GET') return result(200, { items: versions.filter(item => item.sourceRef === requestUrl.searchParams.get('sourceRef')) });
       if (path === '/prototype-versions' && method === 'POST') {
         if (!['builder-alpha', 'builder-beta'].includes(String(body.sourceRef)) || typeof body.body !== 'string' || body.body.length > 160000) return result(400, { error: 'INVALID_PROTOTYPE' });

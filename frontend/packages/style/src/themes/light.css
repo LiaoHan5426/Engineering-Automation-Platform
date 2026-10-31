@@ -6,6 +6,7 @@
   color-scheme: light;
 
   --eap-color-white: #fff;
+  --eap-color-on-primary: #fff;
   --eap-color-primary: #2563eb;
   --eap-color-primary-hover: #1d4fd0;
   --eap-color-primary-soft: #e8f0fe;

@@ -45,6 +45,11 @@ public class JdbcMissionExecutionStore implements MissionExecutionStore {
     }
 
     @Override
+    public boolean claimCreated(UUID id) {
+        return jdbc.update("UPDATE eap.mission_execution SET status='RUNNING' WHERE id=? AND status='CREATED' AND unconfirmed_reason IS NULL", id) == 1;
+    }
+
+    @Override
     public Optional<MissionExecution> open(UUID missionId) {
         return jdbc.query(SELECT + " WHERE mission_id = ? AND status IN ('CREATED', 'RUNNING', 'CANCELLING')",
                 (rs, row) -> map(rs), missionId).stream().findFirst();

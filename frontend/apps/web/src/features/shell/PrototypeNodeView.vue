@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Textarea } from '@eap/ui';
+import { Textarea, Button } from "@eap/ui";
 import type { PrototypeNode } from './prototypeSchema';
 defineProps<{ node: PrototypeNode }>();
 const clicks = ref(0), value = ref('');
@@ -21,7 +21,7 @@ function listItems(node: PrototypeNode): string[] {
     class="schema-heading"
     :style="node.props.style as Record<string, string>"
   >{{ node.props.text }}</component>
-  <div v-else-if="node.kind === 'button'"><button type="button" @click="clicks++">{{ node.props.label || 'Action' }}</button><output v-if="clicks" aria-live="polite">{{ clicks }}</output></div>
+  <div v-else-if="node.kind === 'button'"><Button size="sm" variant="secondary" type="button" @click="clicks++">{{ node.props.label || 'Action' }}</Button><output v-if="clicks" aria-live="polite">{{ clicks }}</output></div>
   <a
     v-else-if="node.kind === 'link'"
     class="schema-link"
@@ -41,5 +41,5 @@ function listItems(node: PrototypeNode): string[] {
   <p v-else role="alert">Unsupported: {{ node.kind }}</p>
 </template>
 <style scoped>
-.schema-section{display:grid;gap:12px;padding:12px;border:1px dashed #cdd8cb;border-radius:8px}p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.schema-heading{margin:0;overflow-wrap:anywhere;color:#243028;letter-spacing:-.02em}h1.schema-heading{font-size:22px}h2.schema-heading{font-size:18px}h3.schema-heading{font-size:15px}button{padding:8px 14px;border:1px solid #b2c8bc;border-radius:8px;background:#e1ede6;color:#286e5d;cursor:pointer}.schema-link{color:#287b6c;font-weight:650;text-decoration:underline;cursor:pointer}output{margin-left:12px}textarea{min-height:64px;width:100%}.schema-list{margin:0;padding-left:1.25em;color:#243028;line-height:1.55}.schema-list li{margin:2px 0}
+.schema-section{display:grid;gap:12px;padding:12px;border:1px dashed var(--border-strong);border-radius:8px}p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.schema-heading{margin:0;overflow-wrap:anywhere;color:var(--text);letter-spacing:-.02em}h1.schema-heading{font-size:22px}h2.schema-heading{font-size:18px}h3.schema-heading{font-size:15px}.schema-link{color:var(--accent);font-weight:650;text-decoration:underline;cursor:pointer}output{margin-left:12px}textarea{min-height:64px;width:100%}.schema-list{margin:0;padding-left:1.25em;color:var(--text);line-height:1.55}.schema-list li{margin:2px 0}
 </style>

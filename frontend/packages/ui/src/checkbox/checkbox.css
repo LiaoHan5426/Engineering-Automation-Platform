@@ -2,8 +2,8 @@
   width: 14px;
   height: 14px;
   margin: 0;
-  accent-color: var(--eap-color-primary, #347f70);
   vertical-align: -2px;
+  accent-color: var(--eap-color-primary, #347f70);
 }
 
 .eap-checkbox:disabled {

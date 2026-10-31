@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import { Button, Checkbox, Input, Select, Tabs, Tag, Textarea } from "@eap/ui";
+import { ActionCard, Button, Checkbox, Input, Select, Tabs, Tag, Textarea, Collapse } from "@eap/ui";
 import { computed, defineAsyncComponent, nextTick, onMounted, reactive, ref, watch } from "vue";
 import { runtimeApi, type PrototypeVersionRecord, type VerificationProbe, type WorkspaceBaseline, type WorkspaceSource } from "@eap/runtime-client";
 const LayoutDraft = defineAsyncComponent(() => import('./shell/LayoutDraft.vue'));
@@ -327,7 +327,7 @@ onMounted(() => {
         <h1>{{ t("desktop.scenes") }}</h1>
         <p>{{ t("desktop.scenarioIntro") }}</p>
       </div>
-      <button type="button" class="scene-back-chat" data-testid="back-to-chat-from-scenes" @click="emit('navigate', workbench.origin || (workbench.workMode === 'work' ? 'work' : 'chat'))">{{ t("desktop.backToChat") }}</button>
+      <Button size="sm" variant="link" type="button" class="scene-back-chat" data-testid="back-to-chat-from-scenes" @click="emit('navigate', workbench.origin || (workbench.workMode === 'work' ? 'work' : 'chat'))">{{ t("desktop.backToChat") }}</Button>
     </header>
     <Tabs
       v-model="sceneTab"
@@ -342,27 +342,27 @@ onMounted(() => {
     <p v-if="sceneTab === 'market'" class="hint" data-testid="scene-market-empty">{{ t("desktop.marketEmpty") }}</p>
     <div v-else-if="sceneView === 'list'" class="scene-catalog" data-testid="scene-catalog">
       <div class="scene-catalog-toolbar">
-        <button type="button" class="create-scene" data-testid="create-scene" @click="createBlankScene">＋ {{ t("desktop.createScene") }}</button>
+        <Button size="sm" variant="primary" type="button" class="create-scene" data-testid="create-scene" @click="createBlankScene">＋ {{ t("desktop.createScene") }}</Button>
       </div>
       <p v-if="sceneNotice" class="hint" role="status" data-testid="scene-notice">{{ sceneNotice }}</p>
       <ul class="scene-list" data-testid="scene-card-grid">
         <li v-for="scene in scenarios" :key="scene.id">
-          <article class="scene-card" :class="{ disabled: scene.status === 'disabled' }" :data-scene-id="scene.id" role="button" tabindex="0" @click="openSceneDetail(scene.id)" @keydown.enter.prevent="openSceneDetail(scene.id)">
+          <ActionCard class="scene-card" :label="scene.name" :data-scene-id="scene.id" @activate="openSceneDetail(scene.id)">
             <strong>{{ scene.name }}</strong>
             <small>{{ scene.modes.map((mode) => mode === "code" ? "Code" : "Work").join(" · ") }} · {{ sceneKindLabel(scene) }}</small>
             <span>{{ scene.summary }}</span>
-            <div class="scene-card-actions" @click.stop>
-              <button type="button" class="scene-link" data-testid="scene-open-detail" :data-scene-id="scene.id" @click="openSceneDetail(scene.id)">{{ t("desktop.sceneOpenDetailShort") }}</button>
-              <button type="button" class="scene-link" data-testid="scene-copy" :data-scene-id="scene.id" :title="t('preview.copyScene')" @click="chooseScenario(scene.id); copyScenario()">{{ t('desktop.sceneCopyShort') }}</button>
-              <button
+            <template #actions>
+              <Button size="sm" variant="link" type="button" class="scene-link" data-testid="scene-open-detail" :data-scene-id="scene.id" @click="openSceneDetail(scene.id)">{{ t("desktop.sceneOpenDetailShort") }}</Button>
+              <Button size="sm" variant="link" type="button" class="scene-link" data-testid="scene-copy" :data-scene-id="scene.id" :title="t('preview.copyScene')" @click="chooseScenario(scene.id); copyScenario()">{{ t('desktop.sceneCopyShort') }}</Button>
+              <Button size="sm" variant="link"
                 v-if="scene.builtin === false"
                 type="button"
                 class="scene-link scene-delete"
                 data-testid="scene-delete"
                 :data-scene-id="scene.id"
                 @click="removeCustomScene(scene.id)"
-              >{{ t("desktop.sceneDelete") }}</button>
-              <button
+              >{{ t("desktop.sceneDelete") }}</Button>
+              <Button size="sm" variant="link"
                 v-else
                 type="button"
                 class="scene-link scene-delete"
@@ -370,9 +370,9 @@ onMounted(() => {
                 :data-scene-id="scene.id"
                 disabled
                 :title="t('desktop.sceneDeleteOff')"
-              >{{ t("desktop.sceneDelete") }}</button>
-            </div>
-          </article>
+              >{{ t("desktop.sceneDelete") }}</Button>
+            </template>
+          </ActionCard>
         </li>
       </ul>
     </div>
@@ -488,8 +488,8 @@ onMounted(() => {
           </ul>
         </template>
 
-        <details v-if="activeScenario.workflow === 'prototype-to-code'" class="live-builder-details" open>
-          <summary>{{ t('desktop.openVersions') }}</summary>
+        <Collapse v-if="activeScenario.workflow === 'prototype-to-code'" class="live-builder-details" open>
+          <template #summary>{{ t('desktop.openVersions') }}</template>
           <ol class="scenario-steps">
             <li data-testid="scenario-design-step">
               <h2>{{ t("desktop.design") }}</h2>
@@ -557,7 +557,7 @@ onMounted(() => {
             </ul>
             <p v-if="blocked || prepBlocked" role="status" data-testid="scene-blocked">{{ t("desktop.sceneBlocked") }} {{ liveRepoLine }}。{{ t("desktop.verificationOpen") }}</p>
           </section>
-        </details>
+        </Collapse>
       </article>
     </div>
     <Button v-if="!builderEnabled || !chatEnabled" type="button" size="sm" @click="emit('navigate', 'plugins')">{{ t("desktop.enablePlugins") }}</Button>
@@ -569,54 +569,40 @@ onMounted(() => {
 .scene-head,.draft-actions{display:flex;justify-content:space-between;gap:12px;align-items:start}
 h1,h2,h3{margin:0}
 .scene-tabs{display:flex;gap:8px;flex-wrap:wrap}
-.scene-tabs :deep(button[aria-selected="true"]){background:#d8e2d7;border-color:#91b6a0}
 .scene-catalog{display:grid;gap:12px}
 .scene-catalog-toolbar{display:flex;justify-content:flex-end}
-button:not(.eap-button),select:not(.eap-select){padding:8px 12px;border:1px solid #aebfb5;border-radius:8px;background:#e1ede6}
-button:not(.eap-button){cursor:pointer}
-button:not(.eap-button):disabled{opacity:.5;cursor:default}
-button.active{background:#d8e2d7}
-button.create-scene{border:0;border-radius:10px;background:#2f6f5e;color:#fff;padding:8px 14px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
-button.create-scene:hover{background:#286354}
 .scene-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
 .scene-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;padding:0;list-style:none;align-content:start}
-.scene-card{display:grid;gap:8px;width:100%;text-align:left;padding:16px;border:1px solid #dce2d9;border-radius:14px;background:#fff;min-height:168px;cursor:pointer;box-shadow:0 1px 0 rgb(36 48 40 / 4%)}
-.scene-card:hover{border-color:#91b6a0}
-.scene-card.disabled{opacity:.55}
+.scene-card{min-height:168px}
 .scene-card strong{font-size:16px}
-.scene-card span{font-size:12px;color:#68746e;line-height:1.55}
-.scene-card-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:auto;padding-top:8px;align-items:center}
-button.scene-link{margin:0;padding:0;border:0;background:transparent;font:inherit;font-size:12px;color:#287b6c;cursor:pointer}
+.scene-card span{font-size:12px;color:var(--text-soft);line-height:1.55}
+button.scene-link{margin:0}
 button.scene-link:hover{text-decoration:underline}
-button.scene-delete{color:#a33b3b}
-button.scene-delete:disabled{opacity:.45;cursor:not-allowed;text-decoration:none}
-button.scene-back-chat{border:1px solid #d5ddd4;border-radius:8px;background:#f7f8f3;padding:7px 12px;font:inherit;font-size:12px;color:#37483e;cursor:pointer}
-.scene-tabs :deep(button){border:1px solid #d5ddd4;border-radius:999px;background:#f3f5f0;padding:6px 14px;font:inherit;font-size:12px;color:#526258;cursor:pointer}
-.scene-tabs :deep(button[aria-selected="true"]){background:#37483e;border-color:#37483e;color:#fff;font-weight:650}
+button.scene-delete:disabled{text-decoration:none}
 .scene-detail-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .scene-detail-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.scene-config{display:grid;gap:10px;margin:0;padding:12px;border:1px solid #d5ddd4;border-radius:12px;background:#f7f8f3}
-.scene-config>label{display:grid;gap:4px;font-size:12px;color:#526258}
+.scene-config{display:grid;gap:10px;margin:0;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
+.scene-config>label{display:grid;gap:4px;font-size:12px;color:var(--text-soft)}
 .scene-config :deep(.eap-input),.scene-config :deep(.eap-textarea),.scene-config :deep(.eap-select){width:100%;min-width:0}
-.scene-modes,.scene-policy-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0;padding:10px 12px;border:1px solid #d5ddd4;border-radius:10px;background:#f3f5f0}
-.scene-modes label,.scene-policy-row label{display:flex;align-items:center;gap:6px;font-size:12px;color:#526258}
+.scene-modes,.scene-policy-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
+.scene-modes label,.scene-policy-row label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-soft)}
 .scene-policy-row label{display:grid;gap:4px}
 .scene-policy-row select{width:100%;min-width:0;font:inherit;font-size:12px}
 .scene-meta{display:flex;flex-wrap:wrap;gap:6px;margin:0}
-.scene-meta span{padding:3px 8px;border:1px solid #d5ddd4;border-radius:999px;background:#f3f5f0;font-size:11px;color:#526258}
-.dep-banner{display:grid;gap:8px;padding:12px;border:1px solid #e6c98a;border-radius:10px;background:#fff8e8}
-.dep-banner p{margin:0;font-size:12px;color:#6a5520;line-height:1.55}
+.scene-meta span{padding:3px 8px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);font-size:11px;color:var(--text-soft)}
+.dep-banner{display:grid;gap:8px;padding:12px;border:1px solid var(--eap-color-warning-border);border-radius:10px;background:var(--warn-bg)}
+.dep-banner p{margin:0;font-size:12px;color:var(--warn-text);line-height:1.55}
 .dep-banner-actions{display:flex;flex-wrap:wrap;gap:8px}
-.scene-detail{display:grid;gap:10px;padding:16px;border:1px solid #dce2d9;border-radius:16px;background:#faf9f4}
+.scene-detail{display:grid;gap:10px;padding:16px;border:1px solid var(--border);border-radius:16px;background:var(--surface)}
 .scenario-steps{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding:0;list-style:none}
-.scenario-steps li,.gate{padding:14px;background:#f6f7f3;border:1px solid #dce2d9;border-radius:12px}
-.scope-status{display:flex;flex-wrap:wrap;gap:6px;margin:0;font-size:11px;color:#68746e}
-.scope-status span{padding:3px 8px;border:1px solid #d5ddd4;border-radius:999px;background:#f3f5f0}
-.dep-where{margin:6px 0 0;font-size:11px;color:#68746e;line-height:1.5}
-small{display:block;color:#68746e;font-size:11px}
-.scene-config{display:grid;gap:12px;min-width:0;padding:16px;border:1px solid #cdd6ca;border-radius:10px}.scene-config label{display:grid;gap:7px;font-size:12px}
+.scenario-steps li,.gate{padding:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px}
+.scope-status{display:flex;flex-wrap:wrap;gap:6px;margin:0;font-size:11px;color:var(--text-soft)}
+.scope-status span{padding:3px 8px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2)}
+.dep-where{margin:6px 0 0;font-size:11px;color:var(--text-soft);line-height:1.5}
+small{display:block;color:var(--text-soft);font-size:11px}
+.scene-config{display:grid;gap:12px;min-width:0;padding:16px;border:1px solid var(--border-strong);border-radius:10px}.scene-config label{display:grid;gap:7px;font-size:12px}
 .hint,p{line-height:1.55}
-.acceptance-checklist{display:grid;gap:8px;margin:12px 0 0;padding:12px;border:1px dashed #c5d0c4;border-radius:10px;background:#f7f8f3}
+.acceptance-checklist{display:grid;gap:8px;margin:12px 0 0;padding:12px;border:1px dashed var(--border-strong);border-radius:10px;background:var(--surface-2)}
 .acceptance-checklist legend{font-size:12px;padding:0 4px}
 .acceptance-checklist label{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5}
 .acceptance-checklist input{margin-top:2px;flex-shrink:0}

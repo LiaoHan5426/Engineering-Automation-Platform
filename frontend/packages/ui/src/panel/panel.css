@@ -1,10 +1,10 @@
 .eap-panel {
   min-width: 0;
   padding: 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: var(--eap-fill-color-blank);
+  border: 1px solid var(--eap-border-color);
+  border-radius: var(--eap-border-radius-card);
+  box-shadow: var(--eap-box-shadow);
 }
 
 .eap-panel > header {
@@ -22,7 +22,7 @@
 .eap-panel > header p {
   margin: 5px 0 0;
   font-size: 12px;
-  color: var(--text-soft);
+  color: var(--eap-text-color-secondary);
 }
 
 .eap-panel__body {

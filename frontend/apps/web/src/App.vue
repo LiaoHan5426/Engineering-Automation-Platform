@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { defineAsyncComponent, computed, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import CapabilityManager from "./features/capability/CapabilityManager.vue";
 import ExpertManager from "./features/expert/ExpertManager.vue";
 import KnowledgeManager from "./features/knowledge/KnowledgeManager.vue";
 import DatabaseManager from "./features/database/DatabaseManager.vue";
 import RuleManager from "./features/rule/RuleManager.vue";
 import ModelSettings from "./features/settings/ModelSettings.vue";
+const AppearanceSettings = defineAsyncComponent(() => import("./features/settings/AppearanceSettings.vue"));
 import PluginCenter from "./features/plugins/PluginCenter.vue";
 import DesktopNavigation from "./features/DesktopNavigation.vue";
 import ScenarioWorkspace from "./features/ScenarioWorkspace.vue";
@@ -26,7 +27,7 @@ import {
   type TaskResult,
   type TaskStatistics,
 } from "@eap/runtime-client";
-import { Badge, Button, Checkbox, EmptyState, Feedback, Input, MetricCard, Select, Textarea } from "@eap/ui";
+import { Popover, Badge, Button, Checkbox, EmptyState, Feedback, Input, MetricCard, Select, Textarea, Collapse } from "@eap/ui";
 import { Table, type TableColumn } from "@eap/plugin-table";
 import { errorMessage, statusLabel } from "./lib/presentation";
 import { describeSecret } from "./lib/sensitive";
@@ -35,6 +36,7 @@ import { useMockServices } from "./lib/serviceConfig";
 
 /** Existing views remain available through the five-entry desktop shell. */
 const shellPages = [
+  { id: "appearance", name: i18n.global.t("appearance.title"), icon: "◐", group: "设置", hint: i18n.global.t("appearance.hint") },
   { id: "sql", name: "分析工作台", icon: "▷", group: "工作", hint: "任务列表、任务流与新的分析输入" },
   {
     id: "plugins",
@@ -233,6 +235,7 @@ const newWorkspace = ref("");
 const knownWorkspaces = ref<string[]>(readList(WORKSPACES_KEY));
 const taskTags = ref<Record<string, string>>(readTags());
 const workspaceOpen = ref(false);
+const workspaceAnchor = shallowRef<HTMLElement | null>(null);
 const workspaceMessage = ref("");
 const lastRefresh = ref("");
 const stats = ref<TaskStatistics | null>(null);
@@ -820,40 +823,39 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
 <template>
   <div class="app" :class="{ 'app--analysis': activeView === 'sql', 'drawer-open': narrow && workbench.sidebarOpen }">
     <header class="topbar">
-      <button type="button" class="sidebar-toggle" data-testid="open-sidebar" :aria-expanded="workbench.sidebarOpen" @click="workbench.sidebarOpen = !workbench.sidebarOpen">{{ workbench.sidebarOpen ? i18n.global.t('desktop.closeSidebar') : i18n.global.t('desktop.openSidebar') }}</button>
+      <Button size="sm" variant="ghost" type="button" class="sidebar-toggle" data-testid="open-sidebar" :aria-expanded="workbench.sidebarOpen" @click="workbench.sidebarOpen = !workbench.sidebarOpen">{{ workbench.sidebarOpen ? i18n.global.t('desktop.closeSidebar') : i18n.global.t('desktop.openSidebar') }}</Button>
       <div v-if="activeView === 'sql'" class="brand" aria-label="工程自动化平台"><b>EAP</b></div>
       <div v-if="activeView === 'sql'" class="menu-wrap">
-        <button class="ws" :aria-expanded="workspaceOpen" @click="workspaceOpen = !workspaceOpen">
+        <Button size="sm" variant="ghost" class="ws" :aria-expanded="workspaceOpen" @click="workspaceAnchor = $event.currentTarget as HTMLElement; workspaceOpen = !workspaceOpen">
           工作空间 <b>{{ workspace }}</b
           ><span class="caret">▾</span>
-        </button>
-        <div v-if="workspaceOpen" class="menu" role="menu">
+        </Button>
+        <Popover v-if="workspaceOpen" class="menu" :anchor="workspaceAnchor" label="工作空间（本机视图范围）" @close="workspaceOpen = false">
           <div class="menu-head">工作空间（本机视图范围）</div>
-          <button
+          <Button size="sm" variant="secondary"
             v-for="option in workspaceOptions"
             :key="option"
-            :class="{ active: option === workspace }"
-            role="menuitem"
+            :active="option === workspace"
             @click="switchWorkspace(option)"
           >
             {{ option }}
-          </button>
+          </Button>
           <form v-if="workspaceAdding" class="menu-form" @submit.prevent="addWorkspace">
             <Input
               v-model="newWorkspace"
               aria-label="新工作空间名称"
               placeholder="例如 orders-service"
             />
-            <Button variant="primary" :disabled="!newWorkspace.trim()"> 添加 </Button>
+            <Button variant="primary" type="submit" :disabled="!newWorkspace.trim()"> 添加 </Button>
           </form>
-          <button v-else class="menu-add" @click="workspaceAdding = true">
+          <Button size="sm" variant="secondary" v-else class="menu-add" @click="workspaceAdding = true">
             ＋ 新建本机工作空间…
-          </button>
+          </Button>
           <p class="menu-note">
             任务在服务端不按工作空间分表。这里只是把控制台本机标注过的执行分组；能力目录、规则库与
             知识库是应用级配置，不随它变化。决定本地 CLI 在哪里执行的是运行时进程的执行目录。
           </p>
-        </div>
+        </Popover>
       </div>
       <span class="desktop-page-title">{{ shellTitle }}<template v-if="chatContextLabel"> · {{ chatContextLabel }}</template></span>
       <div class="spacer" />
@@ -882,10 +884,10 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
 
     <div class="body" :class="{ 'body--chat': activeView === 'chat', 'body--sql': activeView === 'sql' }">
       <DesktopNavigation :active-view="activeView" :pages="pages" @navigate="activeView = $event" />
-      <button v-if="narrow && workbench.sidebarOpen" type="button" class="sidebar-backdrop" data-testid="sidebar-backdrop" :aria-label="i18n.global.t('desktop.closeSidebar')" @click="workbench.sidebarOpen = false"></button>
+      <Button variant="backdrop" v-if="narrow && workbench.sidebarOpen" type="button" class="sidebar-backdrop" data-testid="sidebar-backdrop" :aria-label="i18n.global.t('desktop.closeSidebar')" @click="workbench.sidebarOpen = false"></Button>
 
       <main class="workbench">
-        <Feedback tone="error" v-if="errors.health && !['chat', 'board', 'scenes', 'expert-catalog', 'experts', 'model-settings'].includes(activeView)" role="alert">
+        <Feedback tone="error" v-if="errors.health && !['chat', 'board', 'scenes', 'expert-catalog', 'experts', 'model-settings', 'appearance'].includes(activeView)" role="alert">
           {{ errors.health }}
         </Feedback>
 
@@ -913,8 +915,8 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
               </template>
             </aside>
             <p class="sql-intro">{{ i18n.global.t("workUi.sqlIntro") }}</p>
-            <details class="why sql-boundary">
-              <summary>{{ i18n.global.t("workUi.sqlBoundary") }}</summary>
+            <Collapse class="why sql-boundary">
+              <template #summary>{{ i18n.global.t("workUi.sqlBoundary") }}</template>
               <p>
                 平台不连接业务数据库、也不执行你输入的 SQL。执行计划快照由你自行取得后粘贴——这样
                 <b>没有凭据需要保管，也不存在误在上游库执行改写的可能</b>。代价是要你多贴一次，
@@ -924,10 +926,10 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                 左侧是本工作空间的分析任务：点一条任务，中间回放它的请求、执行过程与逐条发现；
                 底部的输入框直接开始一次新的分析。模型输出单独标为待验证观察，不会并入确定性发现。
               </p>
-            </details>
+            </Collapse>
           </div>
 
-          <details class="status-strip work-overview"><summary>{{ i18n.global.t("workUi.overview") }} <span>{{ capabilityItems.length || capabilities.length }} {{ i18n.global.t("workUi.capabilities") }} · {{ expertCount }} {{ i18n.global.t("workUi.experts") }}</span></summary>
+          <Collapse class="status-strip work-overview"><template #summary>{{ i18n.global.t("workUi.overview") }} <span>{{ capabilityItems.length || capabilities.length }} {{ i18n.global.t("workUi.capabilities") }} · {{ expertCount }} {{ i18n.global.t("workUi.experts") }}</span></template>
             <div class="metrics">
               <MetricCard
                 label="已注册能力"
@@ -968,10 +970,10 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
             </div>
             <Feedback v-if="statsError" tone="error">这几个数字取不到：{{ statsError }}</Feedback>
             <p v-else-if="stats" class="metric-note">{{ stats.note }}</p>
-            <details class="status-more">
-              <summary>这些数字从哪来</summary>
-              <details class="why">
-                <summary>为什么这四个数字可以不写死</summary>
+            <Collapse class="status-more">
+              <template #summary>这些数字从哪来</template>
+              <Collapse class="why">
+                <template #summary>为什么这四个数字可以不写死</template>
                 <p>
               已注册能力与专家定义分别读能力清单与专家清单：停用一个能力、新增一个专家，这两个数字跟着变，
               所以它们不可能和「能力目录」「专家定义」里的数字不一致。
@@ -988,7 +990,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                   同一个数字有两处标签，就是它开始漂移的地方。还没有记录了模型走向的执行时显示「尚无记录」而不是
                   0%：那两句话不是同一个断言。
                 </p>
-              </details>
+              </Collapse>
               <article class="eap-panel panel-block">
                 <h2>确定性优先</h2>
                 <p class="hint">
@@ -1000,8 +1002,8 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                   这是运行时真的做了什么，而不是设计意图。
                 </p>
               </article>
-            </details>
-          </details>
+            </Collapse>
+          </Collapse>
 
           <!--
             2026-10-15 使用界面重构：任务不再是独立页面。
@@ -1025,7 +1027,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                 </option>
               </Select>
               <div class="task-list">
-                <button
+                <Button variant="navigation"
                   v-for="entry in filteredHistory"
                   :key="entry.id"
                   type="button"
@@ -1045,7 +1047,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                     "
                     >{{ statusLabel(entry.status) }}</Badge
                   >
-                </button>
+                </Button>
               </div>
               <EmptyState v-if="!filteredHistory.length">
                 {{
@@ -1160,7 +1162,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                             {{ sqlResult.deterministicAnalysis?.deterministicConfidence ?? "—" }}
                           </div>
                         </div>
-                        <button
+                        <Button variant="card"
                           type="button"
                           class="stage stage--clickable"
                           :class="decision === 'enhance' ? 'model' : 'skip'"
@@ -1173,7 +1175,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                             {{ sqlResult.modelAdvisor?.rationale ?? "点开看为什么没有到决策阶段" }}
                             <span class="link">{{ decisionOpen ? "收起" : "为什么？" }}</span>
                           </div>
-                        </button>
+                        </Button>
                         <div
                           class="stage"
                           :class="sqlResult.modelEnhancement === 'unverified-observation' ? 'model' : ''"
@@ -1202,7 +1204,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
 
                       <h3>发现（{{ findings.length }}）</h3>
                       <div class="findings">
-                        <button
+                        <Button variant="card"
                           v-for="finding in findings"
                           :key="finding.code"
                           class="finding"
@@ -1221,7 +1223,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                             <p class="evidence">{{ finding.evidence }}</p>
                             <span class="cat">类别：{{ finding.category }}</span>
                           </span>
-                        </button>
+                        </Button>
                         <EmptyState v-if="!findings.length">
                           未触发确定性规则。这不代表 SQL 已通过优化检查，请补充表结构与执行计划。
                         </EmptyState>
@@ -1301,11 +1303,11 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                         </div>
                       </section>
 
-                      <details v-if="factEntries.length">
-                        <summary>命中事实（{{ factEntries.length }}）</summary>
+                      <Collapse v-if="factEntries.length">
+                        <template #summary>命中事实（{{ factEntries.length }}）</template>
                         <p class="hint">发现来自这些结构事实；规则包只能引用词表中已声明的事实。</p>
                         <Table :columns="factColumns" :rows="factRows" row-key="key" />
-                      </details>
+                      </Collapse>
 
                       <h3>优化建议（确定性，语义保持）</h3>
                       <ol v-if="sqlResult.advice?.length" class="advice-list">
@@ -1318,8 +1320,8 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                         <p class="preserve-text">{{ sqlResult.expertAdvice }}</p>
                       </section>
 
-                      <details :open="!!sqlResult.knowledgeEvidence?.length">
-                        <summary>知识依据（{{ sqlResult.knowledgeEvidence?.length ?? 0 }}）</summary>
+                      <Collapse :open="!!sqlResult.knowledgeEvidence?.length">
+                        <template #summary>知识依据（{{ sqlResult.knowledgeEvidence?.length ?? 0 }}）</template>
                         <div v-for="(item, index) in sqlResult.knowledgeEvidence" :key="index" class="kb">
                           <b>{{ item.knowledgeBase }} / {{ item.source }}</b>
                           <p>{{ item.excerpt }}</p>
@@ -1327,10 +1329,10 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                         <p v-if="!sqlResult.knowledgeEvidence?.length" class="hint">
                           没有返回匹配知识，可在知识库录入相关业务说明或验证案例。
                         </p>
-                      </details>
+                      </Collapse>
 
-                      <details v-if="sqlResult.nodes?.length">
-                        <summary>流程执行记录</summary>
+                      <Collapse v-if="sqlResult.nodes?.length">
+                        <template #summary>流程执行记录</template>
                         <ol class="execution-list">
                           <li v-for="node in sqlResult.nodes" :key="node.id">
                             <div class="result-heading">
@@ -1348,14 +1350,14 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                             <p>{{ node.message }}</p>
                           </li>
                         </ol>
-                      </details>
+                      </Collapse>
 
-                      <details v-if="sqlResult.safety?.length">
-                        <summary>安全与执行说明</summary>
+                      <Collapse v-if="sqlResult.safety?.length">
+                        <template #summary>安全与执行说明</template>
                         <ul>
                           <li v-for="item in sqlResult.safety" :key="item">{{ item }}</li>
                         </ul>
-                      </details>
+                      </Collapse>
 
                       <div class="form-actions">
                         <Button
@@ -1383,8 +1385,8 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                   :disabled="sqlBusy"
                   placeholder="例如：订单列表查询在数据量增长后明显变慢，想确认是否缺索引或存在可改写点"
                 />
-                <details class="composer-more">
-                  <summary>完整输入：执行专家、待分析 SQL、数据库资料与模型</summary>
+                <Collapse class="composer-more">
+                  <template #summary>完整输入：执行专家、待分析 SQL、数据库资料与模型</template>
                   <label class="field-label" for="expert-selector">执行专家</label>
                   <Select
                     id="expert-selector"
@@ -1440,7 +1442,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                     :disabled="sqlBusy"
                     placeholder="粘贴自行取得的 EXPLAIN JSON，平台不会自动执行 SQL"
                   />
-                </details>
+                </Collapse>
                 <div class="composer-bar">
                   <label class="row composer-model">
                     <Checkbox v-model="enhanceModel" :disabled="sqlBusy" />
@@ -1471,8 +1473,8 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
             </div>
           </div>
 
-          <details class="why">
-            <summary>为什么模型不是第一步</summary>
+          <Collapse class="why">
+            <template #summary>为什么模型不是第一步</template>
             <p>
               平台先跑本地确定性能力：解析 SQL、抽取结构事实、按规则包判定。只有当确定性证据不足、
               或操作者显式请求时，才把<b>压缩后</b>的证据提交给模型。上面的决策阶段会说明这一次为什么
@@ -1483,9 +1485,10 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
               它既不修改发现，也不自动完成任何任务。候选改写也一样：可以对照阅读，但不会被执行，
               也不会替换你输入的 SQL。
             </p>
-          </details>
+          </Collapse>
         </section>
 
+        <AppearanceSettings v-else-if="activeView === 'appearance'" />
         <ModelSettings v-else-if="activeView === 'model-settings'" />
         <PluginCenter v-else-if="activeView === 'plugins'" :host="pluginHost" />
 
@@ -1521,12 +1524,12 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
       </main>
 
       <!-- INSPECTOR -->
-      <button
+      <Button variant="backdrop"
         v-if="inspectorOpen && activeView === 'sql'"
         class="inspector-backdrop"
         aria-label="关闭上下文详情"
         @click="inspectorOpen = false"
-      ></button>
+      ></Button>
       <aside v-if="activeView === 'sql'" id="context-details" class="inspector" :class="{ 'inspector--open': inspectorOpen }">
         <div class="insp-head">
           <h2>上下文详情</h2>
