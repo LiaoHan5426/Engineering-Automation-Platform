@@ -78,13 +78,14 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
         var descendants=new LinkedHashMap<Long,ProcessHandle>();
         var readers=Executors.newVirtualThreadPerTaskExecutor();
         var phases=new LinkedHashMap<String,Instant>();
+        Observation observation;
         try{
             var builder=new ProcessBuilder(command).directory(dir.toFile());
             if(environment!=null){builder.environment().clear();builder.environment().putAll(environment);}
             synchronized(execution){
                 if(execution.status==CliExecution.Status.CANCELLING){
                     execution.status=CliExecution.Status.CANCELLED;
-                    return new Observation(capability,false,130,"","Cancelled before start",Map.of("processExited",false,"processNotStarted",true,"executorStatus","CANCELLED"));
+                    return new Observation(capability,false,130,"","Cancelled before start",Map.of("processExited",false,"processNotStarted",true,"processTreeCleanup",true,"executorStatus","CANCELLED"));
                 }
                 process=builder.start();execution.process=process;execution.status=CliExecution.Status.RUNNING;
                 phases.put("started",Instant.now());
@@ -109,13 +110,11 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
                 if(execution.status==CliExecution.Status.CANCELLING)execution.status=CliExecution.Status.CANCELLED;
                 if(execution.status==CliExecution.Status.RUNNING)execution.status=process.exitValue()==0?CliExecution.Status.SUCCEEDED:CliExecution.Status.FAILED;
             }
-            process.descendants().forEach(p->descendants.put(p.pid(),p));
             phases.put("cleanupStarted",Instant.now());
-            descendants.values().forEach(ProcessHandle::destroyForcibly);
-            if(process.isAlive())terminate(process);
+            boolean cleanupAttempted=terminate(process,descendants);
             process.waitFor(2,TimeUnit.SECONDS);
             for(var child:descendants.values())try{child.onExit().get(2,TimeUnit.SECONDS);}catch(ExecutionException|TimeoutException ignored){}
-            boolean cleaned=!process.isAlive()&&descendants.values().stream().noneMatch(ProcessHandle::isAlive);
+            boolean cleaned=cleanupAttempted&&!process.isAlive()&&descendants.values().stream().noneMatch(ProcessHandle::isAlive);
             if(!process.isAlive())phases.putIfAbsent("exitObserved",Instant.now());
             var out=stdout.get(3,TimeUnit.SECONDS);var err=stderr.get(3,TimeUnit.SECONDS);
             process.getInputStream().close();process.getErrorStream().close();readers.shutdownNow();
@@ -127,33 +126,42 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
             metadata.put("timeoutMillis",timeout.toMillis());
             metadata.put("truncated",out.truncated()||err.truncated());
             metadata.put("processExited",!process.isAlive());
+            metadata.put("processTreeCleanup",cleaned);
             metadata.put("processNotStarted",false);
             metadata.put("executorStatus",execution.status.name());
             if(execution.identity!=null) metadata.putAll(execution.identity);
             metadata.put("trace",new CliExecution.Trace(phases,out.lines(),err.text(),out.truncated()||err.truncated(),""));
-            return new Observation(capability,execution.status==CliExecution.Status.SUCCEEDED,code,
+            observation=new Observation(capability,execution.status==CliExecution.Status.SUCCEEDED,code,
                     out.text(),cleaned?err.text():"CLEANUP_FAILED",metadata);
         }catch(InterruptedException error){
             execution.status=CliExecution.Status.CANCELLED;
-            if(process!=null)terminate(process);Thread.currentThread().interrupt();
-            return new Observation(capability,false,130,"","Interrupted",Map.of());
+            Thread.currentThread().interrupt();
+            observation=new Observation(capability,false,130,"","Interrupted",Map.of());
         }catch(IOException|ExecutionException|TimeoutException error){
             execution.status=CliExecution.Status.FAILED;
-            if(process!=null)terminate(process);
-            return new Observation(capability,false,-1,"","Process execution failed: "+error.getClass().getSimpleName(),Map.of());
+            observation=new Observation(capability,false,-1,"","Process execution failed: "+error.getClass().getSimpleName(),Map.of());
         }finally{
-            descendants.values().forEach(ProcessHandle::destroyForcibly);
+            boolean cleanupAttempted=terminate(process,descendants);
             if(process!=null){
-                if(process.isAlive())terminate(process);
                 try{process.getInputStream().close();process.getErrorStream().close();process.getOutputStream().close();}catch(IOException ignored){}
             }
             readers.shutdownNow();
             synchronized(execution){
-                execution.cleanupComplete=(process==null||!process.isAlive())&&descendants.values().stream().noneMatch(ProcessHandle::isAlive);
+                execution.cleanupComplete=cleanupAttempted&&(process==null||!process.isAlive())&&descendants.values().stream().noneMatch(ProcessHandle::isAlive);
                 execution.process=null;execution.released=true;
                 if(!execution.cleanupComplete)execution.status=CliExecution.Status.FAILED;
             }
         }
+        // Observation copies metadata, so publish evidence only after the final cleanup attempt.
+        var metadata=new LinkedHashMap<String,Object>(observation.metadata());
+        metadata.putAll(execution.identity);
+        metadata.put("executorStatus",execution.status.name());
+        metadata.put("processExited",process!=null&&!process.isAlive());
+        metadata.put("processNotStarted",process==null);
+        boolean cleaned=execution.cleanupComplete&&!Boolean.FALSE.equals(metadata.get("processTreeCleanup"));
+        metadata.put("processTreeCleanup",cleaned);
+        return new Observation(capability,observation.success()&&cleaned,observation.exitCode(),
+                observation.stdout(),observation.stderr(),metadata);
     }
     private static Map<String,Object> identityOf(Process process,List<String> command){
         var handle=process.toHandle().info();
@@ -166,8 +174,17 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
         identity.put("processExecutable",executable);
         return identity;
     }
-    private static void terminate(Process process){
-        process.descendants().forEach(ProcessHandle::destroyForcibly);process.destroyForcibly();
+    private static boolean terminate(Process process,Map<Long,ProcessHandle> descendants){
+        boolean attempted=true;
+        // Retain handles before terminating the parent; children can become reparented afterwards.
+        if(process!=null)try{process.descendants().forEach(p->descendants.put(p.pid(),p));}
+        catch(RuntimeException failure){attempted=false;}
+        for(var child:descendants.values())try{child.destroyForcibly();}
+        catch(RuntimeException failure){attempted=false;}
+        // One failed child must not prevent cleanup of the remaining tree or escape as a rejection.
+        if(process!=null)try{if(process.isAlive())process.destroyForcibly();}
+        catch(RuntimeException failure){attempted=false;}
+        return attempted;
     }
     private record Output(String text,boolean truncated,List<CliExecution.ReceivedLine> lines){}
     private static Output read(InputStream stream)throws IOException{

@@ -1,5 +1,6 @@
 export const boardRunMessages = {
   'zh-CN': {
+    preparationTab: '任务准备', prototypeTab: '原型版本', runsTab: '执行与审阅', chooseRun: '选择运行记录',
     title: '仓库检查与运行记录', hint: '在服务端绑定的工作区执行只读 git status。任务目标不会交给模型，检查结果不代表任务完成。',
     workspace: '实际工作目录', unavailable: '当前无法运行', prepare: '请先保存目标和验收条件并移入待处理；有未保存修改或未确认的原型关联时不能启动。',
     start: '运行只读检查', retry: '重试原启动请求', refresh: '刷新运行记录', confirm: '确认本次仓库检查',
@@ -13,6 +14,7 @@ export const boardRunMessages = {
     started: '服务端已接收检查请求。', uncertain: '启动结果尚未确认。先刷新核对记录，重试将使用同一请求身份。',
   },
   'en-US': {
+    preparationTab: 'Preparation', prototypeTab: 'Prototype', runsTab: 'Runs and review', chooseRun: 'Select a run',
     title: 'Repository checks and runs', hint: 'Runs read-only git status in the server-bound workspace. The task goal is not sent to a model; this check does not complete the task.',
     workspace: 'Actual working directory', unavailable: 'Execution unavailable', prepare: 'Save the goal and criteria and move the task to ready. Unsent edits and prototype selections must be resolved before starting.',
     start: 'Run read-only check', retry: 'Retry original start', refresh: 'Refresh runs', confirm: 'Confirm repository check',

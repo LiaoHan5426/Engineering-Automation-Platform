@@ -213,15 +213,20 @@ class EngineeringTaskFlowTest {
         runGit(root, "add", "README.md");
         runGit(root, "commit", "-m", "init");
         Files.writeString(root.resolve("README.md"), "changed\n");
-        String porcelain = CodeChangeService.ProcessDirtyRunner.INSTANCE.porcelain(root);
-        assertTrue(porcelain.contains("README.md"));
+        var settings = org.mockito.Mockito.mock(com.lh.eap.application.service.CapabilitySettings.class);
+        org.mockito.Mockito.when(settings.enabled("git-status")).thenReturn(true);
+        var registry = new com.lh.eap.core.CapabilityRegistry().register(new com.lh.eap.capability.GitCapability("status"));
+        try (var executor = new com.lh.eap.core.DefaultProcessExecutor()) {
+            var runner = new CapabilityDirtyRunner(settings, registry, executor);
+            assertTrue(runner.porcelain(root).contains("README.md"));
+            var dirty = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), null, runner).inspectDirty();
+            assertTrue(dirty.requested(), dirty.detail());
+            assertEquals("", dirty.denial());
+            assertTrue(dirty.count() >= 1);
+        }
         var version = CodeVerificationService.ProcessRunner.INSTANCE.run(root, List.of("git", "--version"), 10);
         assertEquals(0, version.exitCode());
         assertTrue(version.output().toLowerCase().contains("git"));
-        var dirty = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), "")).inspectDirty();
-        assertTrue(dirty.requested());
-        assertEquals("", dirty.denial());
-        assertTrue(dirty.count() >= 1);
     }
 
     @Test void verificationProbeRunsWithoutEnablingConfiguredChecks() throws Exception {

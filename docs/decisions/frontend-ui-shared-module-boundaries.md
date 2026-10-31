@@ -66,7 +66,8 @@ apps/web/src
 | ActionCard / DropdownMenu / SvgActionPath | `packages/ui/src/action-card`、`dropdown-menu`、`svg-action-path` | 已落地 `@eap/ui`；共享主/次操作隔离、菜单键盘/定位、SVG 操作无障碍 | 领域回调、图数据仍在应用 |
 | 浮层定位 / 关闭 / 焦点 | `packages/ui/src/popover`、`dropdown-menu`，内部 Reka | 已从 DesktopNavigation、ChatWorkspace、TaskComposer 移出通用行为；删除私有 popupPlacement | 保持公共契约，无领域数据，不新建平行包 |
 | PluginSlot | `features/plugins`；聊天页由 `App.vue` 以 `chatView` 注入，避免插件 feature 引用聊天 `.vue` | `@eap/plugin-sdk` + runtime | 用户批准插件迁移切片后 |
-| 场景页引用 shell 原型组件 | `features/ScenarioWorkspace.vue` → `features/shell/LayoutDraft.vue`、`GrapesEditorScaffold.vue` | 仍属原型 feature；下一次改原型壳时再上提 | 第二处复用同一编辑器壳时迁 `components/` 或 `@eap/prototype-*` |
+| 原型版本内容展示 | `components/PrototypeVersionContent.vue`；解析与语义节点留 `features/shell` 原型域 | Builder 与任务/Run 共用语义预览；旧文本版本兼容，未知映射明确阻塞；不是基础 UI | 第二宿主复用完整原型域时再迁 `@eap/prototype-*` |
+| 场景原型工作面 | `features/ScenarioWorkspace.vue` 只组装版本选择与开发准备，设计器经既有 Builder 入口打开 | 不再复制挂载 LayoutDraft/GrapesJS；场景返回状态留应用层 | 无新增共享包 |
 
 ## 4. 何时新建 `packages/*`
 

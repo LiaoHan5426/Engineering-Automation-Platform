@@ -49,6 +49,10 @@ watch(() => props.task.id, () => { ticket++; busy.value = false; viewing.value =
 watch(() => props.task.prototypeVersionId, () => {
   linked.value = versions.value.find(item => item.id === props.task.prototypeVersionId) ?? null;
 });
+watch(() => props.task.revision, () => {
+  // A task-only edit needs no prototype decision. Keep explicit conflict resolution for a pending choice.
+  if (!busy.value && !changed.value) selectionRevision.value = props.task.revision;
+});
 watch([changed, busy, stale], () => emit('pending', changed.value || busy.value || stale.value), { immediate: true });
 onBeforeUnmount(() => { ticket++; emit('pending', false); });
 </script>

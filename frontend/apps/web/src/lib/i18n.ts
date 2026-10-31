@@ -1,3 +1,4 @@
+import { builderMessages } from "./builderMessages";
 import { boardPrototypeMessages } from "./boardPrototypeMessages";
 import { boardReviewMessages } from "./boardReviewMessages";
 import { boardRunMessages } from "./boardRunMessages";
@@ -12,6 +13,7 @@ export const i18n = createI18n({
   fallbackLocale: "en-US",
   messages: {
     "zh-CN": {
+      builder: builderMessages["zh-CN"],
       boardPrototype: boardPrototypeMessages["zh-CN"],
       boardReview: boardReviewMessages["zh-CN"],
       boardRun: boardRunMessages["zh-CN"],
@@ -180,6 +182,7 @@ export const i18n = createI18n({
       },
     },
     "en-US": {
+      builder: builderMessages["en-US"],
       boardPrototype: boardPrototypeMessages["en-US"],
       boardReview: boardReviewMessages["en-US"],
       boardRun: boardRunMessages["en-US"],

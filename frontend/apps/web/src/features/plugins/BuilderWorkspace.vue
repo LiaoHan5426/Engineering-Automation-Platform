@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, onUnmounted, reactive, ref } from "vue";
+import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { Badge, Button, Feedback, Input, Textarea, Collapse } from "@eap/ui";
+import { Badge, Button, Feedback, Input, Textarea, Collapse, Tabs } from "@eap/ui";
 import { runtimeApi, type HandoffRecord, type MissionRecord, type PrototypeDeliveryRecord, type PrototypeVersionRecord } from "@eap/runtime-client";
 import { errorMessage } from "../../lib/presentation";
 import { beginHandoff, builderHandoff, handoffSucceeded } from "../handoff/handoff";
 import { beginMission, missionLocked, missionShell } from "../mission/mission";
 import PrototypePreview from "./PrototypePreview.vue";
+import PrototypeVersionContent from '../../components/PrototypeVersionContent.vue';
+import { prototypeVersionDesign } from '../shell/prototypeVersionDesign';
+import { scenarioWorkspaceState } from '../shell/scenarioWorkspaceState';
 import { openVersionPreview, pressVersionPreview } from "./prototypeVersion";
 import type { PluginHost } from "./host";
 import { GRANTS, MANIFESTS, type BuilderConfig } from "./model";
@@ -17,6 +20,22 @@ const GrapesEditorScaffold = defineAsyncComponent(() => import("../shell/GrapesE
 
 const props = defineProps<{ instanceId: BuilderConfig["instanceId"]; host: PluginHost }>();
 const { t } = useI18n();
+const surface = ref("design");
+const visited = reactive({ legacy: false });
+watch(surface, (next) => {
+  if (next === "legacy" && !visited.legacy) {
+    visited.legacy = true;
+    void loadHandoffs();
+    void loadMissions();
+  }
+});
+function backToScenes() { window.location.hash = "scenes"; }
+async function publishedVersion(id: string) {
+  scenarioWorkspaceState.versionId = id;
+  await loadVersions();
+  await openVersion(id);
+  surface.value = 'versions';
+}
 const draft = reactive(props.host.readBuilder(props.instanceId));
 const saved = ref(false);
 const handoffs = ref<HandoffRecord[]>([]);
@@ -30,6 +49,7 @@ const missionBusy = ref(false);
 const acceptanceText = ref("");
 const versions = ref<PrototypeVersionRecord[]>([]);
 const opened = ref<PrototypeVersionRecord | null>(null);
+const designBlocked = computed(() => !!opened.value && prototypeVersionDesign(opened.value.body).blocked);
 const previewPresses = ref(0);
 const delivery = ref<PrototypeDeliveryRecord | null>(null);
 const versionBusy = ref(false);
@@ -226,13 +246,13 @@ function closeVersion() {
 }
 
 function useVersionInChat() {
-  if (!opened.value) return;
+  if (!opened.value || designBlocked.value) return;
   sessionStorage.setItem("eap.chat.prototype", opened.value.id);
   window.location.hash = "chat";
 }
 
 async function createDelivery() {
-  if (!opened.value || deliveryBusy.value) return;
+  if (!opened.value || deliveryBusy.value || designBlocked.value) return;
   const versionId = opened.value.id;
   const request = ++deliveryRequest;
   deliveryBusy.value = true;
@@ -249,8 +269,6 @@ async function createDelivery() {
 }
 
 onMounted(() => {
-  void loadHandoffs();
-  void loadMissions();
   void loadVersions();
 });
 
@@ -266,11 +284,21 @@ onUnmounted(() => {
     <div class="page-head">
       <p class="eyebrow">BUILDER</p>
       <h1>{{ instanceId === "alpha" ? t("plugin.builderAlpha") : t("plugin.builderBeta") }}</h1>
-      <p>{{ t("workUi.builderSubtitle") }}</p>
+      <p>{{ t("builder.subtitle") }}</p>
+      <Button variant="secondary" data-testid="builder-back-scenes" @click="backToScenes">{{ t("builder.backScenes") }}</Button>
     </div>
+    <Tabs v-model="surface" :label="t('builder.surfaces')" :tabs="[
+      { id: 'design', label: t('builder.design'), testId: 'builder-tab-design' },
+      { id: 'versions', label: t('builder.versions'), testId: 'builder-tab-versions' },
+      { id: 'legacy', label: t('builder.legacy'), testId: 'builder-tab-legacy' },
+    ]" />
+    <section v-show="surface === 'design'" :inert="surface !== 'design'" data-testid="builder-design-panel" :aria-label="t('builder.design')">
+      <GrapesEditorScaffold :source-ref="`builder-${instanceId}`" @published="publishedVersion" />
+    </section>
+    <section v-if="visited.legacy" v-show="surface === 'legacy'" :inert="surface !== 'legacy'" data-testid="builder-legacy-panel" :aria-label="t('builder.legacy')">
+      <p class="hint">{{ t('builder.legacyHint') }}</p>
     <section data-testid="builder-layout-draft">
       <LayoutDraft @saved="onLayoutSaved" />
-      <GrapesEditorScaffold />
     </section>
     <div class="builder-layout">
       <form class="stack builder-editor" @submit.prevent="save">
@@ -299,8 +327,6 @@ onUnmounted(() => {
         <p class="hint">{{ t("workUi.previewHint") }}</p>
       </section>
     </div>
-    <section class="stack version-panel" data-testid="prototype-version">
-      <div class="section-heading"><h2>{{ t("workUi.versionsTitle") }}</h2><span>{{ t("workUi.versionStep") }}</span></div>
       <label>
         {{ t("plugin.versionAcceptance") }}
         <Textarea v-model="acceptanceText" rows="3" data-testid="version-acceptance" />
@@ -308,6 +334,11 @@ onUnmounted(() => {
       <Button variant="secondary" type="button" data-testid="save-version" :disabled="versionBusy" @click="saveVersion">
         {{ t("plugin.versionSave") }}
       </Button>
+    </section>
+    <section v-show="surface === 'versions'" :inert="surface !== 'versions'" class="stack version-panel" data-testid="prototype-version" :aria-label="t('builder.versions')">
+      <div class="section-heading"><h2>{{ t("workUi.versionsTitle") }}</h2><span>{{ t("workUi.versionStep") }}</span></div>
+      <Button size="sm" @click="loadVersions">{{ t('desktop.refreshVersions') }}</Button>
+      <p v-if="!versions.length && !versionListError" class="hint">{{ t('desktop.noVersions') }}</p>
       <p v-if="versionNote" class="hint" data-testid="version-note">{{ versionNote }}</p>
       <p v-if="versionListError" class="hint" data-testid="version-list-error">{{ versionListError }}</p>
       <ul v-if="versions.length" class="version-list">
@@ -320,18 +351,18 @@ onUnmounted(() => {
       </ul>
       <div v-if="opened" data-testid="version-preview">
         <p class="eyebrow">{{ t("plugin.versionPreview") }}</p>
-        <PrototypePreview :title="opened.title" :body="opened.body" :presses="previewPresses" @press="pressOpened" />
+        <PrototypeVersionContent :version="opened"><template #legacy><PrototypePreview :title="opened.title" :body="opened.body" :presses="previewPresses" @press="pressOpened" /></template></PrototypeVersionContent>
         <p data-testid="version-interaction">{{ opened.interaction }}</p>
         <ul>
           <li v-for="item in opened.acceptance" :key="item">{{ item }}</li>
         </ul>
         <p data-testid="version-hash">{{ t("plugin.versionHash", { hash: opened.contentHash }) }}</p>
         <div class="version-actions">
-        <Button type="button" variant="primary" data-testid="prototype-to-code" @click="useVersionInChat">{{ t("task.useInChat") }}</Button>
+        <Button type="button" variant="primary" data-testid="prototype-to-code" :disabled="designBlocked" @click="useVersionInChat">{{ t("task.useInChat") }}</Button>
         <Button variant="secondary" type="button" data-testid="close-version" @click="closeVersion">
           {{ t("plugin.versionClose") }}
         </Button>
-        <Button variant="secondary" type="button" data-testid="create-delivery" :disabled="deliveryBusy" @click="createDelivery">
+        <Button variant="secondary" type="button" data-testid="create-delivery" :disabled="deliveryBusy || designBlocked" @click="createDelivery">
           {{ t("plugin.deliveryCreate") }}
         </Button>
         </div>
@@ -340,7 +371,7 @@ onUnmounted(() => {
         </p>
       </div>
     </section>
-    <Collapse class="builder-secondary">
+    <Collapse v-if="visited.legacy" v-show="surface === 'legacy'" class="builder-secondary">
       <template #summary>{{ t("workUi.simulationDetails") }}</template>
       <p class="hint">{{ t("plugin.storage") }}</p>
     <section class="stack task" data-testid="mock-task">

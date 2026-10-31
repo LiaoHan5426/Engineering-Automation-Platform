@@ -8,16 +8,17 @@ import { createPluginHost } from "./host";
 import { memoryStore } from "./model";
 
 describe("plugin prototype views", () => {
-  it("renders two labeled mock repositories and a real Vue preview", async () => {
+  it("renders separate Builder design instances without stacking legacy demonstrations", async () => {
     const host = createPluginHost(memoryStore());
     const alpha = await renderToString(createSSRApp(BuilderWorkspace, { instanceId: "alpha", host }).use(i18n));
     const beta = await renderToString(createSSRApp(BuilderWorkspace, { instanceId: "beta", host }).use(i18n));
 
-    expect(alpha).toContain("模拟 · ledger");
-    expect(beta).toContain("模拟 · catalog");
-    expect(alpha).toContain("data-testid=\"vue-preview\"");
-    expect(alpha).toContain("模拟任务");
-    expect(alpha).toContain("未授予 repository.write");
+    expect(alpha).toContain('data-testid="builder-alpha"');
+    expect(beta).toContain('data-testid="builder-beta"');
+    expect(alpha).toContain('data-testid="grapes-scaffold"');
+    expect(alpha).toContain('data-testid="builder-tab-legacy"');
+    expect(alpha).not.toContain('data-testid="mock-task"');
+    expect(alpha).not.toContain('data-testid="builder-layout-draft"');
     expect(alpha).not.toContain("已交付");
   });
 

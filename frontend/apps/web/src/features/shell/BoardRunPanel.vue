@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { isAxiosError } from 'axios';
-import { Button, Badge, Collapse, ConfirmBox } from '@eap/ui';
+import { Button, Badge, Collapse, ConfirmBox, Select } from '@eap/ui';
 import { runtimeApi, type BoardRunPage, type BoardRunStart, type BoardTask } from '@eap/runtime-client';
 import { useMockServices } from '../../lib/serviceConfig';
 import PrototypeVersionViewer from './PrototypeVersionViewer.vue';
@@ -16,6 +16,8 @@ const page = ref<BoardRunPage | null>(null), loading = ref(false), starting = re
 const pending = ref<BoardRunStart | null>(null);
 const viewing = ref<{ id: string; contentHash: string } | null>(null);
 const reviewing = ref<BoardRun | null>(null);
+const selectedRunId = ref('');
+const selectedRun = computed(() => page.value?.items.find(run => run.execution.id === selectedRunId.value));
 const store = (() => { try { return sessionStorage; } catch { return null; } })();
 const open = computed(() => page.value?.items.some(run => ['CREATED', 'RUNNING', 'CANCELLING'].includes(run.execution.status)) ?? props.task.executionActive);
 const pollingNeeded = computed(() => page.value?.items.some(run => ['CREATED', 'RUNNING', 'CANCELLING'].includes(run.execution.status) && !run.execution.unconfirmedReason));
@@ -37,6 +39,7 @@ async function refresh(manual = false) {
     const data = await runtimeApi.boardRuns(id, projectId);
     if (current !== generation) return;
     page.value = data;
+    if (!data.items.some(run => run.execution.id === selectedRunId.value)) selectedRunId.value = data.items[0]?.execution.id ?? '';
     if (pending.value && data.items.some(run => run.requestId === pending.value?.requestId)) {
       writeRunRequest(store, id, useMockServices, null); pending.value = null; note.value = t('boardRun.recovered');
     }
@@ -64,9 +67,10 @@ async function start() {
   const current = generation, id = props.task.id;
   starting.value = true; note.value = '';
   try {
-    await runtimeApi.startBoardRun(id, { ...pending.value });
+    const launched = await runtimeApi.startBoardRun(id, { ...pending.value });
     writeRunRequest(store, id, useMockServices, null);
     if (current !== generation) return;
+    selectedRunId.value = launched.execution.id;
     pending.value = null; note.value = t('boardRun.started'); emit('changed');
   } catch (error) {
     if (current !== generation) return;
@@ -78,6 +82,7 @@ async function start() {
   }
 }
 watch(() => props.task.id, () => {
+  selectedRunId.value = '';
   generation++; stopPolling(); viewing.value = null; reviewing.value = null; attempts = 0; page.value = null; loading.value = false; starting.value = false; confirming.value = false;
   pending.value = readRunRequest(store, props.task.id, props.task.projectId, useMockServices);
   note.value = pending.value ? t('boardRun.uncertain') : '';
@@ -100,7 +105,12 @@ onBeforeUnmount(() => { generation++; stopPolling(); });
     <p v-if="note" role="status" data-testid="board-run-note">{{ note }}</p>
     <p>{{ t('boardRun.cancellation') }}</p>
     <p v-if="page && !page.items.length">{{ t('boardRun.empty') }}</p>
-    <article v-for="run in page?.items ?? []" :key="run.execution.id" class="board-run__item" data-testid="board-run-record">
+    <label v-if="page?.items.length" class="board-run__selection">{{ t('boardRun.chooseRun') }}
+      <Select v-model="selectedRunId" data-testid="board-run-select">
+        <option v-for="item in page.items" :key="item.execution.id" :value="item.execution.id">{{ t(item.execution.unconfirmedReason ? 'boardRun.unknown' : 'boardRun.status.' + item.execution.status) }} · {{ item.execution.id.slice(0, 8) }} · {{ item.execution.startedAt }}</option>
+      </Select>
+    </label>
+    <article v-for="run in selectedRun ? [selectedRun] : []" :key="run.execution.id" class="board-run__item" data-testid="board-run-record">
       <div class="board-run__actions"><Badge>{{ t(run.execution.unconfirmedReason ? 'boardRun.unknown' : 'boardRun.status.' + run.execution.status) }}</Badge><code>{{ run.execution.id }}</code></div>
       <p>{{ t('boardRun.version', { version: run.taskRevision }) }} · {{ run.execution.startedAt }}</p>
       <p v-if="run.execution.unconfirmedReason" role="alert">{{ run.execution.unconfirmedReason }} · {{ t('boardRun.unknownHint') }}</p>
@@ -121,4 +131,5 @@ onBeforeUnmount(() => { generation++; stopPolling(); });
 <style scoped>
 .board-run{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--border);min-width:0}.board-run h3{margin:0;font-size:14px}.board-run p{white-space:pre-wrap;overflow-wrap:anywhere}.board-run__actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.board-run__item{display:grid;gap:10px;padding:12px;border:1px solid var(--border);border-radius:10px;min-width:0}.board-run code{overflow-wrap:anywhere;font-size:11px}.board-run pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;padding:10px;margin:8px 0;color:var(--eap-code-text);background:var(--eap-code-bg);border-radius:8px;font-size:11px}
 .board-run__prototype{display:grid;gap:8px;justify-items:start}
+.board-run__selection{display:grid;gap:6px;min-width:0;font-size:12px}.board-run__selection :deep(.eap-select){width:100%;max-width:100%}
 </style>

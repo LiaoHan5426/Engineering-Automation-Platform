@@ -3,18 +3,14 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Button, Collapse, Dialog } from '@eap/ui';
 import { runtimeApi, type PrototypeVersionRecord } from '@eap/runtime-client';
-import PrototypeSchemaPreview from './PrototypeSchemaPreview.vue';
-import { parsePrototypeSchema } from './prototypeSchema';
+import PrototypeVersionContent from '../../components/PrototypeVersionContent.vue';
 const props = defineProps<{ versionId: string; expectedHash?: string }>();
 const emit = defineEmits<{ close: [] }>();
 const { t } = useI18n();
 const version = ref<PrototypeVersionRecord | null>(null), loading = ref(false), error = ref('');
 let ticket = 0;
 const mismatch = computed(() => !!version.value && !!props.expectedHash && version.value.contentHash !== props.expectedHash);
-const schema = computed(() => {
-  if (!version.value || mismatch.value) return null;
-  try { const data = JSON.parse(version.value.body); return data.format === 'eap-prototype-v1' ? parsePrototypeSchema(JSON.stringify(data.schema)) : null; } catch { return null; }
-});
+
 async function load() {
   const current = ++ticket; loading.value = true; version.value = null; error.value = '';
   try { const data = await runtimeApi.prototypeVersion(props.versionId); if (current === ticket) version.value = data; }
@@ -35,8 +31,7 @@ onBeforeUnmount(() => ticket++);
       <p v-if="mismatch" role="alert">{{ t('boardPrototype.hashMismatch') }}</p>
       <template v-else>
         <p>{{ t('boardPrototype.previewHint') }}</p>
-        <PrototypeSchemaPreview v-if="schema" :key="version.id" :schema="schema" />
-        <p v-else>{{ t('boardPrototype.textOnly') }}</p>
+        <PrototypeVersionContent :version="version" />
         <Collapse><template #summary>{{ t('boardPrototype.savedContent') }}</template><pre>{{ version.body }}</pre></Collapse>
         <p>{{ t('boardPrototype.savedChecks') }}</p>
         <ul><li v-for="(item, index) in version.acceptance" :key="index">{{ item }}</li></ul>

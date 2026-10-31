@@ -54,6 +54,19 @@ it('blocks changing a design during an active or unknown run', async () => {
   await mount(); expect(button('board-prototype-select').disabled).toBe(true); expect(button('board-prototype-save').disabled).toBe(true);
   expect(root.textContent).toContain('暂时不能变更原型关联'); expect(runtimeApi.setBoardPrototype).not.toHaveBeenCalled();
 });
+it('does not block execution after unrelated task edits when the prototype selection is unchanged', async () => {
+  current.value = { ...task, prototypeVersionId: a.id };
+  await mount();
+  current.value = { ...current.value, revision: 2, column: 'planned' };
+  await vi.waitFor(() => expect(button('board-prototype-select').disabled).toBe(false));
+  expect(button('board-prototype-adopt')).toBeNull();
+  choose(b.id);
+  await vi.waitFor(() => expect(button('board-prototype-save').disabled).toBe(false));
+  current.value = { ...current.value, revision: 3 };
+  await vi.waitFor(() => expect(button('board-prototype-adopt')).not.toBeNull());
+  expect((button('board-prototype-select') as unknown as HTMLSelectElement).value).toBe(b.id);
+  expect(runtimeApi.setBoardPrototype).not.toHaveBeenCalled();
+});
 it('can reopen a linked older version missing from the latest version list', async () => {
   current.value = { ...task, prototypeVersionId: a.id };
   vi.mocked(runtimeApi.prototypeVersions).mockImplementation(async source => ({ items: source === 'builder-alpha' ? [b] : [] }));

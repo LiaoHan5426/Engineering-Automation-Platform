@@ -17,6 +17,7 @@ import {
 } from "./prototypeSchema";
 
 const { t } = useI18n();
+const props = withDefaults(defineProps<{ sourceRef?: 'builder-alpha' | 'builder-beta' }>(), { sourceRef: 'builder-alpha' });
 const emit = defineEmits<{ saved: [schema: PrototypeSchema]; published: [id: string] }>();
 
 const canvas = ref<HTMLElement | null>(null);
@@ -35,7 +36,7 @@ async function publish() {
   save(); if (!canAutoDeliver(schema.value)) return;
   publishing.value = true;
   try {
-    const version = await runtimeApi.savePrototypeVersion({ sourceRef: 'builder-alpha', title: schema.value.title, body: JSON.stringify({ format: 'eap-prototype-v1', schema: schema.value }), buttonPresses: 0, acceptance: ['semantic-preview'] });
+    const version = await runtimeApi.savePrototypeVersion({ sourceRef: props.sourceRef, title: schema.value.title, body: JSON.stringify({ format: 'eap-prototype-v1', schema: schema.value }), buttonPresses: 0, acceptance: ['semantic-preview'] });
     note.value = t('desktop.grapesPublished', { id: version.id }); emit('published', version.id);
   } catch { note.value = t('desktop.grapesPublishFailed'); }
   finally { publishing.value = false; }

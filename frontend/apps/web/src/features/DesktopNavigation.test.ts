@@ -9,10 +9,12 @@ import { createApp, h, nextTick, ref, type App } from 'vue';
 import { i18n } from '../lib/i18n';
 import DesktopNavigation from './DesktopNavigation.vue';
 import ScenarioWorkspace from './ScenarioWorkspace.vue';
+import { resetScenarioWorkspaceState } from './shell/scenarioWorkspaceState';
 vi.mock('grapesjs', () => { throw new Error('Canvas is browser-tested'); });
 let app: App | undefined;
 let root: HTMLDivElement | undefined;
 beforeEach(() => {
+  resetScenarioWorkspaceState();
   vi.spyOn(runtimeApi, 'aiStatus').mockRejectedValue(new Error('No local service in unit tests'));
   vi.spyOn(runtimeApi, 'workspaceDirty').mockResolvedValue({ requested: false, denial: 'AUTHORIZED_ROOT_MISSING', count: 0, paths: [], detail: '' });
   vi.spyOn(runtimeApi, 'workspaceSource').mockResolvedValue({ path: '', exists: false, baseHash: '', bytes: 0, excerpt: '', denial: 'SOURCE_UNAVAILABLE' });
@@ -53,6 +55,8 @@ describe('desktop navigation', () => {
     app.use(i18n).mount(root);
     await nextTick();
     (root.querySelector('[data-testid="scene-open-detail"][data-scene-id="prototype-to-code"]') as HTMLButtonElement).click();
+    await nextTick();
+    (root.querySelector('[data-testid="scene-enter-workflow"]') as HTMLButtonElement).click();
     await vi.waitFor(() => expect(root!.querySelector('[role="alert"]')).not.toBeNull());
     const develop = root.querySelector('[data-testid="scenario-develop"]') as HTMLButtonElement;
     expect(develop.disabled).toBe(true);
@@ -81,6 +85,21 @@ describe('desktop navigation', () => {
     expect(selected.at(-1)).toBe('expert-catalog');
     expect(root.querySelector('[data-testid="project-tree"]')).not.toBeNull();
     expect(root.querySelector('[data-testid="back-to-chat"]')).toBeNull();
+  });
+  it.each(['builder-alpha', 'builder-beta'])('keeps %s inside scenes after arriving from settings or code', async (id) => {
+    const active = ref('model-settings');
+    root = document.createElement('div'); document.body.append(root);
+    app = createApp({ render: () => h(DesktopNavigation, { activeView: active.value, pages, onNavigate: (next: string) => { active.value = next; } }) });
+    app.use(i18n).mount(root);
+    active.value = id; await nextTick();
+    const buttons = root.querySelectorAll<HTMLButtonElement>('.activity-bar button');
+    expect(buttons).toHaveLength(5);
+    expect(buttons[2].getAttribute('aria-current')).toBe('page');
+    buttons[0].click(); await nextTick();
+    active.value = id; await nextTick();
+    expect(buttons[2].getAttribute('aria-current')).toBe('page');
+    buttons[2].click(); await nextTick();
+    expect(active.value).toBe('scenes');
   });
   it('places a local-group session apart from an unbound chat', async () => {
     workbench.selectedProjectId = 'local-eap';
@@ -286,12 +305,14 @@ describe('desktop navigation', () => {
     app.use(i18n).mount(root);
     await nextTick();
     (root.querySelector('[data-testid="scene-open-detail"][data-scene-id="prototype-to-code"]') as HTMLButtonElement).click();
+    await nextTick();
+    (root.querySelector('[data-testid="scene-enter-workflow"]') as HTMLButtonElement).click();
     await vi.waitFor(() => expect(root!.querySelectorAll('option').length).toBeGreaterThan(1));
     expect((root.querySelector('[data-testid="scenario-open-prototype"]') as HTMLButtonElement).disabled).toBe(true);
     expect((root.querySelector('[data-testid="scenario-open-versions"]') as HTMLButtonElement).disabled).toBe(true);
     const develop = root.querySelector('[data-testid="scenario-develop"]') as HTMLButtonElement;
     expect(develop.disabled).toBe(true);
-    const select = root.querySelector('select')!;
+    const select = root.querySelector('[data-testid="scenario-version"]') as HTMLSelectElement;
     select.value = 'saved-version'; select.dispatchEvent(new Event('change')); await nextTick();
     develop.click(); await nextTick();
     expect(selected).toEqual([]);

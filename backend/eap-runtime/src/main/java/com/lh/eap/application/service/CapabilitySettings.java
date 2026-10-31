@@ -1,11 +1,12 @@
 package com.lh.eap.application.service;
 
-import com.lh.eap.persistence.mapper.McpServerRegistry;
 import com.lh.eap.persistence.mapper.CapabilityUsage;
 
 import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The one on/off switch for every capability, whatever its kind.
@@ -15,9 +16,9 @@ import org.springframework.stereotype.Service;
  * snapshot source, an operator may want a stricter baseline. That decision — plus a note explaining it —
  * lives here, in one table, rather than being spread across the CLI channel and the MCP registry.
  *
- * <p><b>Absent means enabled.</b> Settings are an opt-out: a capability nobody configured must be
- * runnable, otherwise a fresh install would silently offer nothing. Failing closed is right for trust
- * decisions (see {@code McpServerRegistry}) and wrong for a switch whose default is "on".
+ * <p><b>Absent means enabled only after a successful query.</b> Settings are an opt-out: a capability
+ * nobody configured is runnable. An unavailable authoritative store is not an empty settings table;
+ * readers must refuse execution instead of silently bypassing an operator's persisted switch.
  *
  * <p>The refusal rule is the same one rule packs and knowledge bases already follow: a capability that an
  * <em>enabled</em> expert runs cannot be switched off, because doing so would turn a working expert into
@@ -37,16 +38,18 @@ public class CapabilitySettings {
 
     public record Setting(String capability, boolean enabled, String notes, String updatedAt) { }
 
-    /** Every stored setting. An empty map means "nothing has been configured", i.e. everything is on. */
+    /** Every stored setting. Only a successful empty query means "nothing has been configured". */
     public Map<String, Setting> all() {
         var result = new LinkedHashMap<String, Setting>();
         List<Map<String, Object>> rows;
         try {
+            if (jdbc == null) throw new IllegalStateException("Settings store unavailable");
             rows = jdbc.queryForList("SELECT capability,enabled,notes,updated_at FROM eap.capability_setting");
+            if (rows == null) throw new IllegalStateException("Settings query returned no result");
         } catch (RuntimeException error) {
-            return result;
+            // Stable refusal reason; never expose driver messages or connection details to callers.
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CAPABILITY_SETTINGS_UNAVAILABLE");
         }
-        if (rows == null) return result;
         for (var row : rows) {
             var capability = text(row.get("capability"));
             if (capability == null) continue;

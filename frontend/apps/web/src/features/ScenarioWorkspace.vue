@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import { ActionCard, Button, Checkbox, Input, Select, Tabs, Tag, Textarea, Collapse } from "@eap/ui";
-import { computed, defineAsyncComponent, nextTick, onMounted, reactive, ref, watch } from "vue";
+import { ActionCard, Button, Checkbox, Input, Select, Tabs, Tag, Textarea } from "@eap/ui";
+import { computed, nextTick, onBeforeUnmount, reactive, ref, toRef, watch } from "vue";
 import { runtimeApi, type PrototypeVersionRecord, type VerificationProbe, type WorkspaceBaseline, type WorkspaceSource } from "@eap/runtime-client";
-const LayoutDraft = defineAsyncComponent(() => import('./shell/LayoutDraft.vue'));
-const GrapesEditorScaffold = defineAsyncComponent(() => import('./shell/GrapesEditorScaffold.vue'));
+
+import { scenarioWorkspaceState } from './shell/scenarioWorkspaceState';
 import { DELIVERY_TARGET_PATH, applyScenario, chatBinding, currentExtras, rememberPanel, scenarios, workbench, type Scenario } from "./shell/workbench";
 import {
   ACCEPTANCE_ITEMS,
@@ -25,16 +25,17 @@ const props = defineProps<{ builderEnabled: boolean; chatEnabled: boolean }>();
 const emit = defineEmits<{ navigate: [id: string] }>();
 const { t } = useI18n();
 const versions = ref<PrototypeVersionRecord[]>([]);
-const selected = ref("");
+const selected = toRef(scenarioWorkspaceState, 'versionId');
 const loading = ref(false);
 const error = ref("");
 const blocked = ref(false);
 const located = ref("");
 const sceneTab = ref<"local" | "market">("local");
 /** frame-080 list vs frame-088 detail — not a permanent split that buries the card grid. */
-const sceneView = ref<"list" | "detail">("list");
+const sceneView = toRef(scenarioWorkspaceState, 'view');
+const workflowTab = toRef(scenarioWorkspaceState, 'workflowTab');
 /** frame-088 detail sections: basics / tools / skills / MCP. */
-const detailTab = ref<"basic" | "tools" | "skills" | "mcp">("basic");
+const detailTab = toRef(scenarioWorkspaceState, 'detailTab');
 const baseline = ref<WorkspaceBaseline | null>(null);
 const source = ref<WorkspaceSource | null>(null);
 const prepSettled = ref(false);
@@ -46,7 +47,8 @@ async function locateDependencyConfiguration() {
   if (!dependency) return;
   located.value = dependency.name;
   if (activeScenario.value.workflow === 'prototype-to-code') {
-    await refreshPrep();
+    sceneView.value = 'workflow';
+    workflowTab.value = 'preparation';
     await nextTick(); preparation.value?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
   } else if (dependency.name.includes('仓库')) {
     rememberPanel(chatBinding.value?.activeId ?? null, 'files');
@@ -141,7 +143,7 @@ const gates = computed(() =>
     processBound: identityAuthorized(runtimeIdentity.value),
     baselineReady: baselineReady.value,
     sourceReady: sourceReady.value,
-    versionSelected: !!selected.value,
+    versionSelected: !loading.value && !error.value && versions.value.some(item => item.id === selected.value),
     connectionState: runtimeIdentity.value?.connectionState || "",
     model: runtimeIdentity.value?.model || "",
   }),
@@ -154,7 +156,8 @@ const prepBlocked = computed(
 );
 function gateAction(action: "versions" | "model" | "builder" | undefined) {
   if (action === "model") emit("navigate", "model-settings");
-  else if (action === "builder" || action === "versions") emit("navigate", "builder-alpha");
+  else if (action === "versions") workflowTab.value = 'versions';
+  else if (action === "builder") emit("navigate", "builder-alpha");
 }
 const liveRepoLine = computed(() => {
   const path = identityPath(runtimeIdentity.value);
@@ -232,11 +235,14 @@ watch(
   { deep: true },
 );
 
+let disposed = false;
 async function loadVersions() {
+  if (loading.value) return;
   loading.value = true;
   error.value = "";
   try {
     const pages = await Promise.all([runtimeApi.prototypeVersions("builder-alpha"), runtimeApi.prototypeVersions("builder-beta")]);
+    if (disposed) return;
     versions.value = pages.flatMap((page) => page.items);
     if (!versions.value.some((item) => item.id === selected.value)) selected.value = "";
   } catch { error.value = t("task.versionUnavailable"); }
@@ -289,13 +295,17 @@ function apply() {
   if (!applyScenario(scene.id)) return;
   emit("navigate", workbench.origin || "chat");
 }
+const refreshingPrep = ref(false);
 async function refreshPrep() {
+  if (sceneView.value !== 'workflow' || refreshingPrep.value) return;
+  refreshingPrep.value = true;
   prepSettled.value = false;
   try {
     await refreshRuntimeIdentityAndDirty();
     await Promise.all([loadVersions(), loadBaseline(), loadSource()]);
   } finally {
     prepSettled.value = true;
+    refreshingPrep.value = false;
   }
 }
 async function runVerificationProbe() {
@@ -315,9 +325,12 @@ async function runVerificationProbe() {
     probeBusy.value = false;
   }
 }
-onMounted(() => {
-  void refreshPrep();
-});
+watch([sceneView, workflowTab], ([view, tab]) => {
+  if (view !== 'workflow') return;
+  if (tab === 'preparation') void refreshPrep();
+  else void loadVersions();
+}, { immediate: true });
+onBeforeUnmount(() => { disposed = true; });
 </script>
 
 <template>
@@ -376,7 +389,7 @@ onMounted(() => {
         </li>
       </ul>
     </div>
-    <div v-else class="scene-layout scene-layout-detail" data-testid="scene-detail-view">
+    <div v-else-if="sceneView === 'detail'" class="scene-layout scene-layout-detail" data-testid="scene-detail-view">
       <article class="scene-detail">
         <div class="scene-detail-head">
           <Button type="button" size="sm" data-testid="scene-back-list" @click="backToSceneList">{{ t("desktop.backToScenes") }}</Button>
@@ -408,6 +421,7 @@ onMounted(() => {
             :title="t('desktop.sceneDeleteOff')"
           >{{ t("desktop.sceneDelete") }}</Button>
         </div>
+        <Button v-if="activeScenario.workflow === 'prototype-to-code'" variant="primary" data-testid="scene-enter-workflow" @click="sceneView = 'workflow'">{{ t('desktop.enterPrototypeWorkflow') }}</Button>
         <Tabs
           v-model="detailTab"
           class="scene-detail-tabs"
@@ -488,18 +502,25 @@ onMounted(() => {
           </ul>
         </template>
 
-        <Collapse v-if="activeScenario.workflow === 'prototype-to-code'" class="live-builder-details" open>
-          <template #summary>{{ t('desktop.openVersions') }}</template>
-          <ol class="scenario-steps">
-            <li data-testid="scenario-design-step">
+      </article>
+    </div>
+    <div v-else-if="sceneView === 'workflow'" class="scene-layout" data-testid="scene-workflow-view">
+      <header class="scene-detail-head">
+        <Button size="sm" data-testid="workflow-back-detail" @click="sceneView = 'detail'">{{ t('desktop.backToSceneConfiguration') }}</Button>
+        <h2>{{ activeScenario.name }} · {{ t('desktop.prototypeWorkflow') }}</h2>
+      </header>
+      <Tabs v-model="workflowTab" :label="t('desktop.prototypeWorkflow')" :tabs="[
+        { id: 'versions', label: t('desktop.workflowDesignVersions'), testId: 'workflow-tab-versions' },
+        { id: 'preparation', label: t('desktop.workflowPreparation'), testId: 'workflow-tab-preparation' },
+      ]" />
+      <section v-show="workflowTab === 'versions'" :inert="workflowTab !== 'versions'" class="workflow-section" data-testid="workflow-versions">
+            <section data-testid="scenario-design-step">
               <h2>{{ t("desktop.design") }}</h2>
               <p>{{ t("desktop.designHint") }}</p>
-              <LayoutDraft />
-              <GrapesEditorScaffold @published="async id => { await loadVersions(); selected = id; }" />
+
               <Button type="button" size="sm" data-testid="scenario-open-prototype" :disabled="!builderEnabled" @click="emit('navigate', 'builder-alpha')">{{ t("desktop.layoutDraftOpenBuilder") }}</Button>
-            </li>
-            <li><h2>{{ t("desktop.preview") }}</h2><p>{{ t("desktop.previewHint") }}</p><Button type="button" size="sm" data-testid="scenario-open-versions" :disabled="!builderEnabled" @click="emit('navigate', 'builder-alpha')">{{ t("desktop.openVersions") }}</Button></li>
-            <li><h2>{{ t("desktop.develop") }}</h2><p>{{ t("desktop.developHint") }}</p>
+            </section>
+            <section><h2>{{ t("desktop.preview") }}</h2><p>{{ t("desktop.previewHint") }}</p><Button type="button" size="sm" data-testid="scenario-open-versions" :disabled="!builderEnabled" @click="emit('navigate', 'builder-alpha')">{{ t("desktop.openVersions") }}</Button>
               <label>{{ t("desktop.chooseVersion") }}
                 <Select v-model="selected" :disabled="loading || !!error" data-testid="scenario-version">
                   <option value="">{{ t("desktop.chooseVersion") }}</option>
@@ -509,13 +530,15 @@ onMounted(() => {
               <p v-if="error" role="alert">{{ error }}</p>
               <p v-else-if="!loading && !versions.length">{{ t("desktop.noVersions") }}</p>
               <Button type="button" size="sm" :disabled="loading" @click="loadVersions">{{ t("desktop.refreshVersions") }}</Button>
+            </section>
+      </section>
+      <section v-show="workflowTab === 'preparation'" :inert="workflowTab !== 'preparation'" class="workflow-section" data-testid="workflow-preparation">
+              <h2>{{ t("desktop.develop") }}</h2><p>{{ t("desktop.developHint") }}</p>
               <Button type="button" variant="primary" size="sm" :disabled="!chatEnabled || !selected || loading || !!error || prepBlocked" data-testid="scenario-develop" @click="develop">{{ t("desktop.openCode") }}</Button>
-            </li>
-          </ol>
           <section ref="preparation" class="gate" data-testid="delivery-gate">
             <h2>{{ t("desktop.gateTitle") }}</h2>
             <p>{{ t("desktop.gateBody") }}</p>
-            <Button type="button" size="sm" data-testid="refresh-prep" @click="refreshPrep">{{ t("desktop.refreshPrep") }}</Button>
+            <Button type="button" size="sm" data-testid="refresh-prep" :disabled="refreshingPrep" @click="refreshPrep">{{ t("desktop.refreshPrep") }}</Button>
             <p data-testid="live-repo-identity">{{ liveRepoLine }}</p>
             <p data-testid="live-intended-path">{{ liveIntendedLine }}</p>
             <p data-testid="live-local-grant">{{ liveGrantLine }}</p>
@@ -557,8 +580,7 @@ onMounted(() => {
             </ul>
             <p v-if="blocked || prepBlocked" role="status" data-testid="scene-blocked">{{ t("desktop.sceneBlocked") }} {{ liveRepoLine }}。{{ t("desktop.verificationOpen") }}</p>
           </section>
-        </Collapse>
-      </article>
+      </section>
     </div>
     <Button v-if="!builderEnabled || !chatEnabled" type="button" size="sm" @click="emit('navigate', 'plugins')">{{ t("desktop.enablePlugins") }}</Button>
   </section>
@@ -572,6 +594,7 @@ h1,h2,h3{margin:0}
 .scene-catalog{display:grid;gap:12px}
 .scene-catalog-toolbar{display:flex;justify-content:flex-end}
 .scene-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.workflow-section{display:grid;gap:16px;min-width:0}.workflow-section>section{display:grid;gap:12px;min-width:0;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.workflow-section :deep(.eap-button){justify-self:start}.workflow-section p{margin:0;overflow-wrap:anywhere}
 .scene-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;padding:0;list-style:none;align-content:start}
 .scene-card{min-height:168px}
 .scene-card strong{font-size:16px}

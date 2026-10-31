@@ -25,6 +25,31 @@ beforeEach(() => {
   vi.spyOn(runtimeApi, 'updateBoardTask').mockImplementation((id, body) => call('POST', '/board/tasks/' + id, body));
 });
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); workbench.pendingBoardDraft = null; chatBinding.value = null; });
+it('separates preparation, prototype and runs without losing edits or restarting requests', async () => {
+  await mountBoard(); await createTask();
+  expect(document.querySelector('[data-testid=board-detail-tabs]')).not.toBeNull();
+  expect(runtimeApi.boardRuns).not.toHaveBeenCalled();
+  expect(runtimeApi.prototypeVersions).not.toHaveBeenCalled();
+  fill('[data-testid=task-goal]', '切换工作面仍保留的目标');
+  const tab = (id: string) => (document.querySelector(`[data-testid=board-tab-${id}]`) as HTMLButtonElement).click();
+  tab('prototype');
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-prototype-panel]')).not.toBeNull());
+  expect((document.querySelector('[data-testid=board-preparation-section]') as HTMLElement).style.display).toBe('none');
+  tab('runs');
+  await vi.waitFor(() => expect(runtimeApi.boardRuns).toHaveBeenCalledTimes(1));
+  const runs = document.querySelector('[data-testid=board-run-panel]');
+  expect((document.querySelector('[data-testid=board-run-start]') as HTMLButtonElement).disabled).toBe(true);
+  tab('preparation');
+  await vi.waitFor(() => expect((document.querySelector('[data-testid=board-preparation-section]') as HTMLElement).style.display).not.toBe('none'));
+  expect((document.querySelector('[data-testid=task-goal]') as HTMLTextAreaElement).value).toBe('切换工作面仍保留的目标');
+  tab('runs');
+  await vi.waitFor(() => expect((document.querySelector('[data-testid=board-runs-section]') as HTMLElement).style.display).not.toBe('none'));
+  expect(document.querySelector('[data-testid=board-run-panel]')).toBe(runs);
+  expect(runtimeApi.boardRuns).toHaveBeenCalledTimes(1);
+  expect(runtimeApi.updateBoardTask).not.toHaveBeenCalled();
+  (document.querySelector('[data-testid=board-close-detail]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(document.querySelector('[data-confirm-cancel]')).not.toBeNull());
+});
 it('preserves goal edits made while a prototype link save is awaiting its response', async () => {
   const version: PrototypeVersionRecord = { id: 'design-a', sourceRef: 'builder-alpha', title: '设计 A', body: 'saved text', buttonPresses: 0, interaction: '', acceptance: [], contentHash: 'hash-a', createdAt: '2026-10-31T08:00:00Z' };
   vi.mocked(runtimeApi.prototypeVersions).mockImplementation(async source => ({ items: source === 'builder-alpha' ? [version] : [] }));
@@ -32,12 +57,15 @@ it('preserves goal edits made while a prototype link save is awaiting its respon
   vi.spyOn(runtimeApi, 'setBoardPrototype').mockImplementation(() => new Promise(resolve => { complete = resolve; }));
   await mountBoard(); await createTask();
   const task = (await runtimeApi.boardTasks(vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0].projectId)).items[0]!;
+  (document.querySelector('[data-testid=board-tab-prototype]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-prototype-select]')).not.toBeNull());
   const select = document.querySelector('[data-testid=board-prototype-select]') as HTMLSelectElement;
   await vi.waitFor(() => expect(select.options).toHaveLength(2));
   select.value = version.id; select.dispatchEvent(new Event('change'));
   const save = document.querySelector('[data-testid=board-prototype-save]') as HTMLButtonElement;
   await vi.waitFor(() => expect(save.disabled).toBe(false)); save.click();
   await vi.waitFor(() => expect(runtimeApi.setBoardPrototype).toHaveBeenCalledTimes(1));
+  (document.querySelector('[data-testid=board-tab-preparation]') as HTMLButtonElement).click();
   fill('[data-testid=task-goal]', '保存关联期间输入的新目标');
   complete({ ...task, prototypeVersionId: version.id, revision: task.revision + 1 });
   await vi.waitFor(() => expect(document.querySelector('[data-testid=board-prototype-current]')?.textContent).toContain('设计 A'));

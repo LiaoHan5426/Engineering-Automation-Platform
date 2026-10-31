@@ -2,7 +2,7 @@ package com.lh.eap.application.service;
 
 import java.util.Map;
 
-/** Maps an executor observation onto a durable status. Cancel and interrupt need exit evidence. */
+/** Maps executor observations onto durable statuses only with process-tree termination evidence. */
 public final class MissionRunOutcome {
     public record Outcome(String status, String projection, String exitEvidence, String unconfirmedReason, Integer exitCode) {
         public boolean terminal() {
@@ -17,19 +17,22 @@ public final class MissionRunOutcome {
         var exited = Boolean.TRUE.equals(facts.get("processExited"));
         var notStarted = Boolean.TRUE.equals(facts.get("processNotStarted"));
         var code = facts.get("exitCode") instanceof Integer value ? value : null;
-        if ("CANCELLED".equals(memoryStatus) || (cancelRequested && "CANCELLING".equals(memoryStatus))) {
-            if (notStarted) {
+        if (Boolean.FALSE.equals(facts.get("processTreeCleanup"))) {
+            return unconfirmed("进程树清理未确认");
+        }
+        if (notStarted && !exited && !facts.containsKey("processPid")) {
+            if ("FAILED".equals(memoryStatus)) return terminal("FAILED", "failed", "进程尚未启动", code);
+            if ("CANCELLED".equals(memoryStatus) || (cancelRequested && "CANCELLING".equals(memoryStatus))) {
                 return terminal("CANCELLED", "cancelled", "进程尚未启动", code);
             }
-            if (!exited) {
-                return unconfirmed("没有进程退出证据");
-            }
-            return terminal("CANCELLED", "cancelled", "进程已退出", code);
+            return unconfirmed("无法确认终态");
         }
-        if (cancelRequested && ("SUCCEEDED".equals(memoryStatus) || "FAILED".equals(memoryStatus) || "TIMED_OUT".equals(memoryStatus))) {
-            return completed(memoryStatus, exited, code);
+        if (!exited) return unconfirmed("没有进程退出证据");
+        if (!Boolean.TRUE.equals(facts.get("processTreeCleanup"))) return unconfirmed("进程树清理未确认");
+        if ("CANCELLED".equals(memoryStatus) || (cancelRequested && "CANCELLING".equals(memoryStatus))) {
+            return terminal("CANCELLED", "cancelled", "进程树已清理", code);
         }
-        return completed(memoryStatus, exited, code);
+        return completed(memoryStatus, code);
     }
 
     public static Outcome interrupted(String evidence) {
@@ -43,13 +46,11 @@ public final class MissionRunOutcome {
         return new Outcome(null, null, null, reason, null);
     }
 
-    private static Outcome completed(String memoryStatus, boolean exited, Integer code) {
+    private static Outcome completed(String memoryStatus, Integer code) {
         return switch (memoryStatus) {
-            case "SUCCEEDED" -> terminal("SUCCEEDED", "succeeded", exited ? "进程已退出" : "退出码", code);
-            case "FAILED" -> terminal("FAILED", "failed", exited ? "进程已退出" : "执行器拒绝", code);
-            case "TIMED_OUT" -> exited
-                    ? terminal("TIMED_OUT", "timed_out", "进程已退出", code)
-                    : unconfirmed("超时但没有进程退出证据");
+            case "SUCCEEDED" -> terminal("SUCCEEDED", "succeeded", "进程树已清理", code);
+            case "FAILED" -> terminal("FAILED", "failed", "进程树已清理", code);
+            case "TIMED_OUT" -> terminal("TIMED_OUT", "timed_out", "进程树已清理", code);
             default -> unconfirmed("无法确认终态");
         };
     }

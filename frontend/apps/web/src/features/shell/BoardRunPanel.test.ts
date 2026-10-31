@@ -27,6 +27,24 @@ beforeEach(() => {
   vi.spyOn(runtimeApi, 'startBoardRun').mockResolvedValue(run());
 });
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); vi.useRealTimers(); });
+it('reviews one selected run at a time and retains that selection after refreshing', async () => {
+  const latest = run(), earlier = run('FAILED');
+  earlier.execution.id = 'run-earlier'; earlier.execution.stdout = 'earlier failed output';
+  vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability, items: [latest, earlier] });
+  await mount();
+  expect(root.querySelectorAll('[data-testid=board-run-record]')).toHaveLength(1);
+  expect(root.textContent).toContain('untracked evidence.txt');
+  expect(root.textContent).not.toContain('earlier failed output');
+  const select = root.querySelector('[data-testid=board-run-select]') as HTMLSelectElement;
+  select.value = 'run-earlier'; select.dispatchEvent(new Event('change'));
+  await vi.waitFor(() => expect(root.textContent).toContain('earlier failed output'));
+  expect(root.textContent).not.toContain('untracked evidence.txt');
+  button('board-run-refresh').click();
+  await vi.waitFor(() => expect(runtimeApi.boardRuns).toHaveBeenCalledTimes(2));
+  expect(select.value).toBe('run-earlier');
+  expect(root.querySelectorAll('[data-testid=board-run-record]')).toHaveLength(1);
+  expect(runtimeApi.startBoardRun).not.toHaveBeenCalled();
+});
 it('requires explicit confirmation of the server directory and shows actual output without completing the task', async () => {
   await mount(); button('board-run-start').click();
   await vi.waitFor(() => expect(document.querySelector('.eap-confirm__actions button:first-child')).not.toBeNull());

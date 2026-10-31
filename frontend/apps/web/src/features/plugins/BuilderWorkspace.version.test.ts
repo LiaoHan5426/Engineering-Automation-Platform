@@ -7,6 +7,7 @@ import BuilderWorkspace from "./BuilderWorkspace.vue";
 vi.mock('grapesjs', () => { throw new Error('Canvas is browser-tested'); });
 import { createPluginHost, type PluginHost } from "./host";
 import { memoryStore } from "./model";
+import { emptyPrototypeSchema } from '../shell/prototypeSchema';
 
 function deferred<T>() {
   let resolve: (value: T) => void = () => {};
@@ -52,7 +53,7 @@ describe("builder version preview", () => {
     vi.restoreAllMocks();
   });
 
-  async function mount(items: PrototypeVersionRecord[] = []) {
+  async function mount(items: PrototypeVersionRecord[] = [], surface = "versions") {
     vi.spyOn(runtimeApi, "handoffs").mockResolvedValue({ items: [] });
     vi.spyOn(runtimeApi, "missions").mockResolvedValue({ items: [] });
     vi.spyOn(runtimeApi, "prototypeVersions").mockResolvedValue({ items });
@@ -63,8 +64,42 @@ describe("builder version preview", () => {
     app.use(i18n);
     app.mount(root);
     await settled();
+    root.querySelector<HTMLButtonElement>(`[data-testid="builder-tab-${surface}"]`)?.click();
+    await settled();
     return { host, root };
   }
+
+  async function tab(id: string) {
+    root!.querySelector<HTMLButtonElement>(`[data-testid="builder-tab-${id}"]`)!.click();
+    await settled();
+  }
+
+  it("starts with only design and lazily retains drafts across the three shared tabs", async () => {
+    await mount([], "design");
+    expect(root!.querySelectorAll('.eap-tabs [role="tab"]')).toHaveLength(3);
+    await vi.waitFor(() => expect(root!.querySelector('[data-testid="grapes-title"]')).not.toBeNull());
+    expect(root!.querySelector('[data-testid="builder-layout-draft"]')).toBeNull();
+    expect(root!.querySelector('[data-testid="draft-title"]')).toBeNull();
+    expect(runtimeApi.handoffs).not.toHaveBeenCalled();
+    const design = root!.querySelector<HTMLInputElement>('[data-testid="grapes-title"]')!;
+    design.value = "未保存设计";
+    design.dispatchEvent(new Event("input"));
+    await tab("legacy");
+    const legacy = root!.querySelector<HTMLInputElement>('[data-testid="draft-title"]')!;
+    legacy.value = "未保存旧草稿";
+    legacy.dispatchEvent(new Event("input"));
+    expect(runtimeApi.handoffs).toHaveBeenCalledOnce();
+    await tab("versions");
+    expect(root!.querySelector<HTMLElement>('[data-testid="builder-design-panel"]')!.style.display).toBe("none");
+    await tab("design");
+    expect(root!.querySelector('[data-testid="grapes-title"]')).toBe(design);
+    expect(design.value).toBe("未保存设计");
+    await tab("legacy");
+    expect(root!.querySelector('[data-testid="draft-title"]')).toBe(legacy);
+    expect(legacy.value).toBe("未保存旧草稿");
+    root!.querySelector<HTMLButtonElement>('[data-testid="builder-back-scenes"]')!.click();
+    expect(window.location.hash).toBe("#scenes");
+  });
 
   function openButton(title: string) {
     const item = [...root!.querySelectorAll('[data-testid="prototype-version"] li')].find((entry) =>
@@ -89,6 +124,34 @@ describe("builder version preview", () => {
     expect(root!.querySelector('[data-testid="version-preview"]')?.textContent).toContain("版本乙");
     expect(root!.querySelector('[data-testid="version-preview"]')?.textContent).not.toContain("版本甲");
     expect(host!.readBuilder("alpha").buttonPresses).toBe(0);
+  });
+
+  it('renders semantic versions with real interactions instead of the legacy counter', async () => {
+    const schema = emptyPrototypeSchema('语义设计');
+    schema.root.children = [{ id: 'action', kind: 'button', props: { label: '语义按钮' }, children: [] }];
+    const semantic = { ...version('semantic', '语义设计'), body: JSON.stringify({ format: 'eap-prototype-v1', schema }) };
+    await mount([semantic]);
+    vi.spyOn(runtimeApi, 'prototypeVersion').mockResolvedValue(semantic);
+    openButton('语义设计').click(); await settled();
+    const preview = root!.querySelector('[data-testid=version-preview]')!;
+    expect(preview.querySelector('[data-testid=semantic-preview]')).not.toBeNull();
+    expect(preview.querySelector('[data-testid=preview-button]')).toBeNull();
+    (preview.querySelector('[data-testid=semantic-preview] button') as HTMLButtonElement).click();
+    await settled(); expect(preview.querySelector('output')?.textContent).toBe('1');
+    expect(host!.readBuilder('alpha').buttonPresses).toBe(0);
+  });
+
+  it('blocks unsupported semantic versions instead of treating them as legacy demos', async () => {
+    const schema = emptyPrototypeSchema('未知设计');
+    schema.root.children = [{ id: 'unknown', kind: 'unsupported', props: {}, children: [] }];
+    const semantic = { ...version('unknown', '未知设计'), body: JSON.stringify({ format: 'eap-prototype-v1', schema }) };
+    await mount([semantic]);
+    vi.spyOn(runtimeApi, 'prototypeVersion').mockResolvedValue(semantic);
+    openButton('未知设计').click(); await settled();
+    expect(root!.querySelector('[data-testid=version-design-blocked]')).not.toBeNull();
+    expect((root!.querySelector('[data-testid=prototype-to-code]') as HTMLButtonElement).disabled).toBe(true);
+    expect((root!.querySelector('[data-testid=create-delivery]') as HTMLButtonElement).disabled).toBe(true);
+    expect(root!.querySelector('[data-testid=version-preview] [data-testid=preview-button]')).toBeNull();
   });
 
   it("does not reopen a preview when the response arrives after close or unmount", async () => {
@@ -150,6 +213,7 @@ describe("builder version preview", () => {
     const reloaded = deferred<{ items: PrototypeVersionRecord[] }>();
     listed.resolve({ items: [version("a", "版本甲")] });
     await settled();
+    await tab("legacy");
     vi.spyOn(runtimeApi, "prototypeVersions").mockImplementation(() => reloaded.promise);
     vi.spyOn(runtimeApi, "savePrototypeVersion").mockResolvedValue(version("saved", "已保存"));
     root.querySelector<HTMLButtonElement>('[data-testid="save-version"]')!.click();
@@ -176,9 +240,7 @@ describe("builder version preview", () => {
     await settled();
     root!.querySelector<HTMLButtonElement>('[data-testid="version-preview"] [data-testid="preview-button"]')!.click();
     await settled();
-    const counts = [...root!.querySelectorAll('[data-testid="press-count"]')].map((node) => node.textContent);
-    expect(counts[0]).toContain("0");
-    expect(counts[1]).toContain("3");
+    expect(root!.querySelector('[data-testid="version-preview"] [data-testid="press-count"]')?.textContent).toContain("3");
     expect(host!.readBuilder("alpha")).toMatchObject({
       draftTitle: "结算页",
       buttonPresses: 0,
@@ -188,8 +250,7 @@ describe("builder version preview", () => {
     root!.querySelector<HTMLButtonElement>('[data-testid="close-version"]')!.click();
     openButton("版本甲").click();
     await settled();
-    const reopened = [...root!.querySelectorAll('[data-testid="press-count"]')].map((node) => node.textContent);
-    expect(reopened[1]).toContain("2");
+    expect(root!.querySelector('[data-testid="version-preview"] [data-testid="press-count"]')?.textContent).toContain("2");
     expect(host!.readBuilder("alpha").buttonPresses).toBe(0);
   });
 });

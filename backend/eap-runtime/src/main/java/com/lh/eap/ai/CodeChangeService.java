@@ -43,21 +43,23 @@ public final class CodeChangeService {
     private final CodeVerificationService verification;
     private final DirtyRunner dirtyRunner;
     private final Map<UUID, Proposal> proposals = new LinkedHashMap<>();
+    private final Map<UUID, Applied> appliedResults = new HashMap<>();
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final Set<String> EXTENSIONS = Set.of("vue", "ts", "tsx", "js", "jsx", "css", "html", "json", "md", "sql", "java");
     private static final int SOURCE_EXCERPT_LIMIT = 4000;
     private static final int DIRTY_PATH_LIMIT = 40;
-    public CodeChangeService(RuntimeWorkspace runtime) { this(runtime, null, ProcessDirtyRunner.INSTANCE); }
+    public CodeChangeService(RuntimeWorkspace runtime) { this(runtime, null, null); }
     public CodeChangeService(RuntimeWorkspace runtime, CodeVerificationService verification) {
-        this(runtime, verification, ProcessDirtyRunner.INSTANCE);
+        this(runtime, verification, null);
     }
     @org.springframework.beans.factory.annotation.Autowired
     public CodeChangeService(RuntimeWorkspace runtime,
             @org.springframework.beans.factory.annotation.Autowired(required = false) CodeVerificationService verification,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) DirtyRunner dirtyRunner) {
+            DirtyRunner dirtyRunner) {
         this.runtime = runtime;
         this.verification = verification;
-        this.dirtyRunner = dirtyRunner == null ? ProcessDirtyRunner.INSTANCE : dirtyRunner;
+        // Compatibility constructors have no execution authority. Production requires the shared runner.
+        this.dirtyRunner = dirtyRunner == null ? workspace -> null : dirtyRunner;
     }
 
     /**
@@ -65,7 +67,7 @@ public final class CodeChangeService {
      * Requires an authorized root that covers the workspace; never returns file body.
      */
     public Baseline inspectBaseline(String relative) {
-        String path = relative == null ? "" : relative.trim();
+        String path = relative == null ? "" : relative;
         if (!runtime.root().allowed()) {
             String denial = runtime.root().denial();
             return new Baseline(path, false, "", denial == null || denial.isBlank() ? "AUTHORIZED_ROOT_MISSING" : denial);
@@ -160,7 +162,7 @@ public final class CodeChangeService {
      * Does not require authorized-root and never enables writes.
      */
     public SourceExcerpt inspectSource(String relative) {
-        String path = relative == null ? "" : relative.trim();
+        String path = relative == null ? "" : relative;
         try {
             Path file = target(path, false);
             if (!Files.exists(file)) return new SourceExcerpt(path, false, "absent", 0, "", "");
@@ -198,6 +200,7 @@ public final class CodeChangeService {
             if (!entries.isArray() || entries.size() < 1 || entries.size() > 8) throw rejected("INVALID_CODE_PROPOSAL");
             var files = new ArrayList<Change>();
             var names = new HashSet<String>();
+            var targets = new ArrayList<Path>();
             int total = 0;
             for (var entry : entries) {
                 String name = entry.path("path").asString(""), content = entry.path("content").asString("");
@@ -205,6 +208,12 @@ public final class CodeChangeService {
                 total += content.length();
                 if (total > 160000) throw rejected("CODE_PROPOSAL_TOO_LARGE");
                 Path path = target(name, false);
+                for (Path previous : targets) {
+                    if (previous.equals(path) || (Files.exists(previous) && Files.exists(path) && Files.isSameFile(previous, path))) {
+                        throw rejected("INVALID_CODE_PROPOSAL");
+                    }
+                }
+                targets.add(path);
                 if (Files.exists(path) && Files.size(path) > 640000) throw rejected("EXISTING_FILE_TOO_LARGE");
                 String before = Files.exists(path) ? Files.readString(path, StandardCharsets.UTF_8) : null;
                 if (before != null && before.length() > 160000) throw rejected("EXISTING_FILE_TOO_LARGE");
@@ -217,7 +226,11 @@ public final class CodeChangeService {
             var proposal = new Proposal(UUID.randomUUID(), conversation, runtime.workspace().toRealPath().toString(), root.path("summary").asString(""),
                     List.copyOf(files), Instant.now(), false, writeAllowed, "not_requested");
             sweep();
-            if (proposals.size() >= 32) proposals.remove(proposals.keySet().iterator().next());
+            if (proposals.size() >= 32) {
+                UUID oldest = proposals.keySet().iterator().next();
+                proposals.remove(oldest);
+                appliedResults.remove(oldest);
+            }
             proposals.put(proposal.id(), proposal);
             return proposal;
         } catch (ResponseStatusException expected) { throw expected; }
@@ -231,7 +244,7 @@ public final class CodeChangeService {
         if (proposal == null || !proposal.conversationId().equals(conversation)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "UNKNOWN_CODE_PROPOSAL");
         if (!proposal.writeAllowed()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "READ_ONLY_PROPOSAL");
         if (proposal.applied()) {
-            return new Applied(id, proposal.files().stream().map(Change::path).toList(), proposal.verification(), List.of());
+            return appliedResults.get(id);
         }
         var written = new ArrayList<String>();
         try {
@@ -260,8 +273,10 @@ public final class CodeChangeService {
                     ? verification.run(runtime.workspace().toRealPath())
                     : List.<CodeVerificationService.Check>of();
             String status = checks.isEmpty() ? "not_requested" : "requested";
+            var result = new Applied(id, List.copyOf(written), status, List.copyOf(checks));
+            appliedResults.put(id, result);
             proposals.put(id, new Proposal(proposal.id(), conversation, proposal.workspace(), proposal.summary(), proposal.files(), proposal.createdAt(), true, true, status));
-            return new Applied(id, List.copyOf(written), status, checks);
+            return result;
         } catch (ResponseStatusException failure) { throw failure; }
         catch (IOException failure) {
             // Do not claim transactional filesystem writes or roll back user files blindly.
@@ -272,9 +287,14 @@ public final class CodeChangeService {
     private Path target(String relative, boolean writing) throws IOException {
         if (relative.isBlank() || relative.length() > 240 || relative.contains("\\") || relative.contains(":")) throw rejected("INVALID_CODE_PATH");
         var parts = relative.split("/", -1);
-        for (String part : parts) if (part.isBlank() || part.startsWith(".") || part.equals("node_modules") || part.equals("target") || part.equals("dist")) throw rejected("INVALID_CODE_PATH");
+        for (String part : parts) {
+            String key = part.toLowerCase(Locale.ROOT);
+            if (part.isBlank() || part.startsWith(".") || part.endsWith(".") || part.endsWith(" ")
+                    || key.equals("node_modules") || key.equals("target") || key.equals("dist")) throw rejected("INVALID_CODE_PATH");
+        }
         String extension = relative.substring(relative.lastIndexOf('.') + 1);
-        if (!EXTENSIONS.contains(extension) || relative.endsWith("package.json") || relative.endsWith("pom.xml")) throw rejected("SOURCE_FILES_ONLY");
+        String policyPath = relative.toLowerCase(Locale.ROOT);
+        if (!EXTENSIONS.contains(extension) || policyPath.endsWith("package.json") || policyPath.endsWith("pom.xml")) throw rejected("SOURCE_FILES_ONLY");
         Path workspace = runtime.workspace().toRealPath();
         if (writing && (!runtime.root().allowed() || !workspace.startsWith(runtime.root().path())))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "WORKSPACE_WRITE_NOT_AUTHORIZED");
@@ -286,7 +306,10 @@ public final class CodeChangeService {
         if (Files.exists(candidate) && !Files.isRegularFile(candidate)) throw rejected("INVALID_CODE_PATH");
         return candidate;
     }
-    private void sweep() { proposals.values().removeIf(item -> item.createdAt().isBefore(Instant.now().minusSeconds(1800))); }
+    private void sweep() {
+        proposals.values().removeIf(item -> item.createdAt().isBefore(Instant.now().minusSeconds(1800)));
+        appliedResults.keySet().retainAll(proposals.keySet());
+    }
     private static String hash(String value) {
         if (value == null) return "absent";
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))); }
@@ -305,32 +328,5 @@ public final class CodeChangeService {
     }
     private static ResponseStatusException rejected(String code) { return new ResponseStatusException(HttpStatus.BAD_REQUEST, code); }
 
-    enum ProcessDirtyRunner implements DirtyRunner {
-        INSTANCE;
-        @Override
-        public String porcelain(Path workspace) throws Exception {
-            var process = new ProcessBuilder("git", "status", "--porcelain", "-unormal")
-                    .directory(workspace.toFile())
-                    .redirectErrorStream(true)
-                    .start();
-            // Drain stdout while waiting — large porcelain can fill the pipe and deadlock waitFor.
-            var stdout = new java.io.ByteArrayOutputStream();
-            var reader = Thread.startVirtualThread(() -> {
-                try {
-                    process.getInputStream().transferTo(stdout);
-                } catch (IOException ignored) {
-                    // Process exit / destroy closes the stream.
-                }
-            });
-            boolean finished = process.waitFor(20, java.util.concurrent.TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                reader.join(1_000);
-                throw new IOException("GIT_STATUS_TIMEOUT");
-            }
-            reader.join(1_000);
-            if (process.exitValue() != 0) throw new IOException("GIT_STATUS_EXIT_" + process.exitValue());
-            return stdout.toString(StandardCharsets.UTF_8);
-        }
-    }
+
 }

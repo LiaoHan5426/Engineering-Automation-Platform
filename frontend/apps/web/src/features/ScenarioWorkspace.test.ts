@@ -7,6 +7,7 @@ import ScenarioWorkspace from "./ScenarioWorkspace.vue";
 vi.mock('grapesjs', () => { throw new Error('Canvas is browser-tested'); });
 import { applyRuntimeIdentity, runtimeIdentity } from "./shell/runtimeIdentity";
 import { currentExtras, scenarios, workbench } from "./shell/workbench";
+import { resetScenarioWorkspaceState } from './shell/scenarioWorkspaceState';
 
 const readyStatus = {
   state: "available" as const,
@@ -31,6 +32,7 @@ const preview = workbench.preview;
 
 afterEach(() => {
   app?.unmount();
+  resetScenarioWorkspaceState();
   root?.remove();
   vi.restoreAllMocks();
   runtimeIdentity.value = null;
@@ -67,6 +69,63 @@ async function openSelectedDetail() {
   open?.click();
   await nextTick();
 }
+
+async function openWorkflow() {
+  await openSelectedDetail();
+  (root!.querySelector('[data-testid="scene-enter-workflow"]') as HTMLButtonElement).click();
+  await nextTick();
+  (root!.querySelector('[data-testid="workflow-tab-preparation"]') as HTMLButtonElement).click();
+  await nextTick();
+}
+
+it('restores the scene workflow and version selection after navigating away and back', async () => {
+  workbench.selectedScenario = 'prototype-to-code';
+  await mount();
+  const saved = { id: 'retained', sourceRef: 'builder-alpha', title: 'Retained', body: 'text', buttonPresses: 0, interaction: '', acceptance: [], contentHash: 'hash' };
+  vi.mocked(runtimeApi.prototypeVersions).mockResolvedValue({ items: [saved] });
+  await openWorkflow();
+  await vi.waitFor(() => expect(root!.querySelectorAll('[data-testid="scenario-version"] option').length).toBeGreaterThan(1));
+  const select = root!.querySelector('[data-testid="scenario-version"]') as HTMLSelectElement;
+  select.value = saved.id; select.dispatchEvent(new Event('change')); await nextTick();
+  app!.unmount(); root!.remove();
+  root = document.createElement('div'); document.body.append(root);
+  app = createApp(ScenarioWorkspace, { builderEnabled: true, chatEnabled: true }); app.use(i18n).mount(root);
+  await vi.waitFor(() => expect(root!.querySelector('[data-testid="scene-workflow-view"]')).not.toBeNull());
+  await vi.waitFor(() => expect((root!.querySelector('[data-testid="scenario-version"]') as HTMLSelectElement).value).toBe(saved.id));
+  expect(root!.querySelector('[data-testid="workflow-tab-preparation"]')?.getAttribute('aria-selected')).toBe('true');
+  expect(workbench.selectedScenario).toBe('prototype-to-code');
+});
+
+it('keeps catalog and configuration separate from an explicit, tabbed prototype workflow', async () => {
+  workbench.selectedScenario = 'prototype-to-code';
+  await mount();
+  await openSelectedDetail();
+  expect(runtimeApi.workspaceBaseline).not.toHaveBeenCalled();
+  expect(runtimeApi.workspaceSource).not.toHaveBeenCalled();
+  expect(root!.querySelector('[data-testid="grapes-scaffold"]')).toBeNull();
+  expect(root!.querySelector('[data-testid="delivery-gate"]')).toBeNull();
+  (root!.querySelector('[data-testid="scene-enter-workflow"]') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(root!.querySelector('[data-testid="scenario-open-prototype"]')).not.toBeNull());
+  expect(root!.querySelector('[data-testid="scene-detail-view"]')).toBeNull();
+  expect(root!.querySelector('[data-testid="grapes-scaffold"]')).toBeNull();
+  expect(root!.querySelector('[data-testid="workflow-tab-versions"]')?.getAttribute('aria-selected')).toBe('true');
+  expect(runtimeApi.workspaceBaseline).not.toHaveBeenCalled();
+  expect(runtimeApi.workspaceSource).not.toHaveBeenCalled();
+  (root!.querySelector('[data-testid="workflow-tab-preparation"]') as HTMLButtonElement).click();
+  await nextTick();
+  await vi.waitFor(() => expect(runtimeApi.workspaceBaseline).toHaveBeenCalled());
+  expect(runtimeApi.workspaceSource).toHaveBeenCalled();
+  expect(root!.querySelector('[data-testid="delivery-gate"]')).not.toBeNull();
+  expect((root!.querySelector('[data-testid="workflow-versions"]') as HTMLElement).style.display).toBe('none');
+  expect(root!.querySelector('[data-testid="workflow-versions"]')?.hasAttribute('inert')).toBe(true);
+  (root!.querySelector('[data-testid="workflow-tab-versions"]') as HTMLButtonElement).click();
+  await nextTick();
+  expect((root!.querySelector('[data-testid="workflow-preparation"]') as HTMLElement).style.display).toBe('none');
+  (root!.querySelector('[data-testid="workflow-back-detail"]') as HTMLButtonElement).click();
+  await nextTick();
+  expect(root!.querySelector('[data-testid="scene-basic-fields"]')).not.toBeNull();
+  expect(root!.querySelector('[data-testid="delivery-gate"]')).toBeNull();
+});
 
 it('opens copied scenes for editing and keeps at least one supported work mode', async () => {
   await mount();
@@ -212,14 +271,14 @@ it("keeps preset delete disabled and removes only in-page custom scenes", async 
 it('uses the same design and delivery surface in mock mode without bypassing gates', async () => {
   workbench.selectedScenario = 'prototype-to-code';
   await mount();
-  await openSelectedDetail();
+  await openWorkflow();
   await vi.waitFor(() => expect(root!.querySelector('[data-testid="delivery-gate"]')).not.toBeNull());
   expect(root!.querySelector('[data-testid="prototype-flow"]')).toBeNull();
-  await vi.waitFor(() => expect(root!.querySelector('[data-testid="layout-draft"]')).not.toBeNull());
+  expect(root!.querySelector('[data-testid="grapes-scaffold"]')).toBeNull();
   expect(root!.querySelector('[data-testid="scenario-version"]')).not.toBeNull();
   expect((root!.querySelector('[data-testid="scenario-develop"]') as HTMLButtonElement).disabled).toBe(true);
   expect(runtimeApi.prototypeVersions).toHaveBeenCalled();
-  expect(runtimeApi.workspaceBaseline).toHaveBeenCalled();
+  await vi.waitFor(() => expect(runtimeApi.workspaceBaseline).toHaveBeenCalled());
 });
 
 it("keeps the mock prototype flow out of live service mode", async () => {
@@ -291,23 +350,21 @@ it("keeps the mock prototype flow out of live service mode", async () => {
   app = createApp({ render: () => h(ScenarioWorkspace, { builderEnabled: true, chatEnabled: true, onNavigate: () => {} }) });
   app.use(i18n).mount(root);
   await nextTick();
-  await openSelectedDetail();
+  await openWorkflow();
   await vi.waitFor(() => expect(root!.querySelector('[data-testid="live-baseline"]')?.textContent).toContain("abc123def456"));
   await vi.waitFor(() => expect(root!.querySelector('[data-testid="live-source"]')?.textContent).toContain("1200"));
   expect(root.querySelector('[data-testid="live-source-excerpt"]')?.textContent).toContain("<script setup");
   expect(root.querySelector('[data-testid="prototype-flow"]')).toBeNull();
   expect(root.querySelector('[data-testid="delivery-gate"]')).toBeTruthy();
-  await vi.waitFor(() => expect(root!.querySelector('[data-testid="layout-draft"]')).toBeTruthy());
+  expect(root!.querySelector('[data-testid="grapes-scaffold"]')).toBeNull();
   expect(root.querySelector('[data-testid="layout-draft-boundary"]')).toBeNull();
-  expect(root.querySelector('[data-testid="scene-scope-status"]')?.textContent).toMatch(/技能未接通|Skills off/);
-  expect(root.querySelector('[data-testid="scene-scope-status"]')?.textContent).toMatch(/MCP 未接通|MCP off/);
+
   expect(root.querySelector('[data-testid="scene-scope"]')).toBeNull();
   expect(root.querySelector('[data-testid="delivery-gate"]')?.textContent).not.toMatch(/源码：未读取|Source: not read/);
   expect(root.querySelector('[data-testid="live-repo-identity"]')?.textContent).toMatch(/进程绑定根|process-bound/i);
   expect(root.querySelector('[data-testid="host-notes"]')).toBeNull();
   expect(root.querySelector('[data-testid="no-user-grant-store"]')).toBeNull();
-  expect(root.querySelector('[data-testid="scene-dependencies"]')?.textContent).toMatch(/本地服务进程绑定根 · 已提供|process-bound root · Provided/i);
-  expect(root.querySelector('[data-testid="scene-dependencies"]')?.textContent).toMatch(/生成前文件快照 · 已提供|Provided/i);
+
   expect(root.querySelector('[data-testid="delivery-gate"]')?.textContent).not.toMatch(/本机文件桥未接通：使用方|Local file bridge is missing: operator/);
   await vi.waitFor(() => expect(root!.querySelector('[data-testid="live-dirty"]')?.textContent).toMatch(/脏文件：无|clean|no dirty/i));
   expect(root.querySelector('[data-testid="live-verification"]')?.textContent).toMatch(/未启用|verification\.enabled=false|Verification config: off/i);
@@ -325,6 +382,12 @@ it("keeps the mock prototype flow out of live service mode", async () => {
   expect(root.querySelector('[data-testid="delivery-gate-list"]')?.textContent).toMatch(/没有可用的模型连接|No usable model connection/);
   expect(root.querySelector('[data-testid="gate-open-versions"]')).toBeTruthy();
   expect(root.querySelector('[data-testid="gate-open-model"]')).toBeTruthy();
+  expect((root.querySelector('[data-testid="scenario-develop"]') as HTMLButtonElement).disabled).toBe(true);
+  (root.querySelector('[data-testid="workflow-back-detail"]') as HTMLButtonElement).click(); await nextTick();
+  expect(root.querySelector('[data-testid="scene-scope-status"]')?.textContent).toMatch(/技能未接通|Skills off/);
+  expect(root.querySelector('[data-testid="scene-scope-status"]')?.textContent).toMatch(/MCP 未接通|MCP off/);
+  expect(root.querySelector('[data-testid="scene-dependencies"]')?.textContent).toMatch(/本地服务进程绑定根 · 已提供|process-bound root · Provided/i);
+  expect(root.querySelector('[data-testid="scene-dependencies"]')?.textContent).toMatch(/生成前文件快照 · 已提供|Provided/i);
   expect((root.querySelector('[data-testid="apply-scenario"]') as HTMLButtonElement).disabled).toBe(true);
   expect(root.querySelector('[data-testid="prep-blocked"]')).toBeTruthy();
 });
@@ -381,7 +444,7 @@ it("hands a selected prototype version into code chat when delivery gates are op
   });
   app.use(i18n).mount(root);
   await nextTick();
-  await openSelectedDetail();
+  await openWorkflow();
   await vi.waitFor(() => expect(root!.querySelectorAll('[data-testid="scenario-version"] option').length).toBeGreaterThan(1));
   await vi.waitFor(() => expect(root!.querySelector('[data-testid="live-baseline"]')?.textContent).toContain("abc123def456"));
   const select = root.querySelector('[data-testid="scenario-version"]') as HTMLSelectElement;

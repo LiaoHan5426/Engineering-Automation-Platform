@@ -123,7 +123,9 @@ function runProjectMenu(id: string, action?: (id: string) => void) {
 }
 
 watch(() => props.activeView, (id) => {
-  const match: Area | undefined = id === "scenes" || id === "work"
+  const match: Area | undefined = id === "builder-alpha" || id === "builder-beta"
+    ? "scenes"
+    : id === "scenes" || id === "work"
     ? id
     : id === "board" || id === "chat" || id === "sql"
       ? workbench.workMode

@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { runtimeApi, type BoardTask, type BoardTaskDraft } from '@eap/runtime-client';
-import { Button, Checkbox, ConfirmBox, Dialog, Input, Select, Textarea, Collapse } from "@eap/ui";
+import { Button, Checkbox, ConfirmBox, Dialog, Input, Select, Textarea, Collapse, Tabs } from "@eap/ui";
 import { isAxiosError } from 'axios';
 import { chatBinding, workbench, type BoardColumn } from './workbench';
 import { localProjectState } from './localProjects';
@@ -15,6 +15,9 @@ const columns: BoardColumn[] = ['planned', 'ready', 'running', 'acceptance', 'do
 const query = ref(''), selectedId = ref(''), creating = ref(false), title = ref(''), note = ref('');
 const priorityFilter = ref<'all' | 'p0' | 'p1' | 'p2'>('all');
 const prototypePending = ref(false);
+const detailTab = ref('preparation');
+const visitedDetailTabs = ref(new Set<string>(['preparation']));
+watch(detailTab, tab => visitedDetailTabs.value.add(tab));
 const busy = ref(false), rows = ref<BoardTask[]>([]);
 const draftNotes = ref(''), draftGoal = ref(''), draftCriteria = ref('');
 const draftRevision = ref(0);
@@ -88,6 +91,9 @@ async function load() {
 }
 function switchProject(id: string) { if (createRequest.value) return; guarded(() => { projectId.value = id; selectedId.value = ''; note.value = ''; creating.value = false; }); }
 watch(selectedId, () => {
+  detailTab.value = 'preparation';
+  visitedDetailTabs.value = new Set(['preparation']);
+  prototypePending.value = false;
   const task = selected.value;
   const cached = task ? readBoardEdit(draftStore, task.id, useMockServices) : null;
   draftNotes.value = cached?.notes ?? task?.notes ?? '';
@@ -241,11 +247,18 @@ function open(task: BoardTask) {
       :busy="busy || !!pendingAction"
       :close-label="t('preview.close')"
       close-test-id="board-close-detail"
-      size="md"
+      size="lg"
       data-testid="board-detail-dialog"
       @close="closeDetail"
     >
       <div class="board-detail" data-testid="board-detail">
+        <Tabs v-model="detailTab" :label="selected.title" data-testid="board-detail-tabs" :tabs="[
+          { id: 'preparation', label: t('boardRun.preparationTab'), testId: 'board-tab-preparation' },
+          { id: 'prototype', label: t('boardRun.prototypeTab'), testId: 'board-tab-prototype' },
+          { id: 'runs', label: t('boardRun.runsTab'), testId: 'board-tab-runs' },
+        ]" />
+        <p v-if="dirty && detailTab !== 'preparation'" role="status">{{ t('desktop.boardUnsaved') }}</p>
+        <section v-show="detailTab === 'preparation'" class="board-detail-section" data-testid="board-preparation-section" :inert="detailTab !== 'preparation'">
         <p data-testid="task-link">{{ t('desktop.boardProject') }}：{{ selectedProject?.name }} · {{ selectedProject?.directory || '—' }}</p>
         <p data-testid="task-session">
           {{ t('desktop.boardSession') }}：
@@ -265,10 +278,15 @@ function open(task: BoardTask) {
         <label>{{ t('preview.taskNotes') }}<Textarea v-model="draftNotes" data-testid="task-notes" :disabled="busy || selected.executionActive" rows="4" maxlength="4000" /></label>
         <div class="detail-save"><span v-if="dirty" role="status">{{ t('desktop.boardUnsaved') }}</span><Button variant="primary" size="sm" :disabled="busy || selected.executionActive || !dirty || stale" data-testid="board-save-fields" @click="saveNotes">{{ t('historyUi.save') }}</Button></div>
         <div class="task-moves"><Button v-for="column in columns" :key="column" size="sm" :disabled="busy || dirty || stale || selected.column === column || !selected.allowedColumns.includes(column)" @click="move(selected.id, column)">{{ t('desktop.' + column) }}</Button><Button size="sm" :disabled="busy || selected.executionActive" @click="open(selected)">{{ t('preview.openConversation') }} ↗</Button></div>
-        <BoardPrototypePanel :key="selected.id + '-prototype'" :task="selected" :disabled="busy || dirty || stale" @saved="prototypeSaved" @refresh="load" @pending="prototypePending = $event" />
+        </section>
+        <section v-if="visitedDetailTabs.has('prototype')" v-show="detailTab === 'prototype'" class="board-detail-section" :inert="detailTab !== 'prototype'">
+          <BoardPrototypePanel :key="selected.id + '-prototype'" :task="selected" :disabled="busy || dirty || stale" @saved="prototypeSaved" @refresh="load" @pending="prototypePending = $event" />
+        </section>
+        <section v-if="visitedDetailTabs.has('runs')" v-show="detailTab === 'runs'" class="board-detail-section" data-testid="board-runs-section" :inert="detailTab !== 'runs'">
         <BoardRunPanel :key="selected.id" :task="selected" :disabled="busy || dirty || stale || prototypePending" @changed="load" />
         <Collapse class="board-evidence"><template #summary>{{ t('desktop.boardEvidenceDetails') }}</template><ul class="task-evidence" data-testid="task-links"><li>{{ t('desktop.linkGoal', { title: selected.goal || '—' }) }}</li><li>{{ t('desktop.boardCriteria') }}：{{ selected.acceptanceCriteria || '—' }}</li><li>{{ t('desktop.linkRun') }}</li></ul><ul class="task-evidence" data-testid="task-evidence"><li>{{ selected.prototypeVersionId ? t('boardPrototype.designLinked') : t('desktop.evidenceDesign') }}</li><li>{{ t('desktop.evidenceRun') }}</li><li>{{ t('desktop.evidenceDiff') }}</li><li>{{ t('desktop.evidenceChecks') }}</li><li>{{ t('desktop.acceptanceOpen') }}</li></ul></Collapse>
         <p>{{ t('preview.events') }}：{{ selected.events.map(item => item === 'created' ? t('preview.createTask') : item === 'notes_updated' ? t('desktop.boardSaved') : item === 'prototype_linked' ? t('boardPrototype.linked') : item === 'prototype_unlinked' ? t('boardPrototype.unlinked') : item === 'preparation_updated' ? t('desktop.boardPreparationUpdated') : item === 'priority_updated' ? t('desktop.boardPriorityUpdated') : t('desktop.' + item)).join(' → ') }}</p>
+        </section>
       </div>
     </Dialog>
     <ConfirmBox v-if="pendingAction" :title="t('desktop.boardUnsaved')" :impact="[t('desktop.boardDiscardImpact')]" :confirm-label="t('desktop.boardDiscard')" @confirm="discardEdits" @cancel="pendingAction = null" />
@@ -284,6 +302,7 @@ function open(task: BoardTask) {
 .board-tools label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-soft)}h2>.planned{background:var(--text-mute)}h2>.ready{background:var(--accent)}h2>.running{background:var(--warn)}h2>.acceptance{background:var(--eap-chart-accent)}h2>.done{background:var(--accent)}.board-card{display:grid;gap:8px}.card-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.board-card .priority{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:650;letter-spacing:.02em}.prio-none{background:var(--surface-2);color:var(--text-mute)}.prio-p0{background:var(--danger-bg);color:var(--danger)}.prio-p1{background:var(--warn-bg);color:var(--warn-text)}.prio-p2{background:var(--accent-soft);color:var(--accent)}.card-session{font-size:10px;color:var(--text-soft);background:var(--surface-2);border-radius:999px;padding:2px 7px}.board-card strong{font-weight:600;font-size:13px;line-height:1.5;overflow-wrap:anywhere}.board-card>span{font-size:10px;color:var(--text-mute)}.empty-lane{text-align:center;font-size:11px;color:var(--text-mute);margin:auto 0;padding:24px 0}.task-evidence{margin:0;padding-left:18px;font-size:12px;color:var(--text-soft);line-height:1.7}.board-notice{font-size:12px;color:var(--text-soft);line-height:1.7}.link-session{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-soft)}.link-session input{width:14px;height:14px;flex:0 0 14px;padding:0;accent-color:var(--accent)}
 @media(max-width:760px){header{flex-wrap:wrap;gap:10px}h1{font-size:20px}.board-lanes{grid-template-columns:repeat(5,minmax(148px,72vw));gap:10px;padding-bottom:4px}.board-lane{padding:10px}.board-scroll{scrollbar-gutter:stable}}.new-task-form{align-items:end}.new-task-form label{display:grid;gap:6px;font-size:12px}.board-tools label{display:grid;gap:5px;font-size:12px;min-width:0}.board-tools :deep(.eap-select){max-width:min(320px,100%)}
 .board-detail{display:grid;gap:12px;min-width:0}
+.board-detail-section{display:grid;gap:12px;min-width:0}
 .board-detail label{display:grid;gap:8px;font-size:12px;color:var(--text-soft)}
 .board-detail p{margin:0;font-size:12px;color:var(--text-soft);line-height:1.7;overflow-wrap:anywhere}
 .board-detail code{font:11px/1.4 ui-monospace,monospace;padding:1px 5px;border-radius:4px;background:var(--surface-3);color:var(--accent)}
