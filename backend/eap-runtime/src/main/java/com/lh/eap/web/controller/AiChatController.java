@@ -81,6 +81,11 @@ public class AiChatController {
         return chat.send(id, body);
     }
 
+    @PostMapping("/expert-context/preview")
+    public com.lh.eap.ai.ExpertKnowledgeContextService.Context previewExpertContext(@RequestBody(required = false) String body) {
+        return chat.previewExpertContext(body);
+    }
+
     @GetMapping("/connections")
     public ModelConnections.Listing connections() {
         return chat.connections();

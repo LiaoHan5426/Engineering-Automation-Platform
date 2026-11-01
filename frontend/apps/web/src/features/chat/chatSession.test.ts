@@ -39,6 +39,50 @@ function deferred<T>() {
 }
 
 describe("chat session", () => {
+  it.each([false, true])('records rejected-request memory clearing only for its conversation (switched=%s)', async switched => {
+    let reject!: (reason: unknown) => void;
+    let sequence = 0;
+    const session = createChatSession({ aiStatus: async () => status(), openAiConversation: async () => ({ conversationId: `c${++sequence}`, workspaceLabel: '', memory: '' }), sendAiMessage: () => new Promise<AiMessageResult>((_resolve, fail) => { reject = fail; }) });
+    await session.openConversation(); session.draft.value = 'keep draft'; session.context.value.knowledgeExpertRef = { id: 'saved', revision: 4 };
+    const pending = session.send();
+    if (switched) { await session.openConversation(); session.draft.value = 'other draft'; }
+    reject({ response: { status: 409, data: { detail: 'EXPERT_CONTEXT_STALE', knowledgeMemoryCleared: true } } });
+    await pending;
+    if (switched) {
+      expect(session.knowledgeMemoryCleared.value).toBe(false);
+      expect(session.draft.value).toBe('other draft'); expect(session.failure.value).toBe('');
+      await session.selectConversation('c1');
+    } else expect(session.failure.value).toBe('knowledge-failed');
+    expect(session.knowledgeMemoryCleared.value).toBe(true);
+    expect(session.turns.value).toEqual([]); expect(session.expired.value).toBe(false);
+    expect(session.pendingConnectionId.value).toBeNull();
+    expect(session.draft.value).toBe('keep draft'); expect(session.context.value.knowledgeExpertRef).toEqual({ id: 'saved', revision: 4 });
+  });
+  it.each([400, 403, 404, 409, 503])('classifies INVALID_EXPERT_CONTEXT before transport recovery (%s)', async http => {
+    const session = createChatSession({ aiStatus: async () => status(), openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }), sendAiMessage: async () => { throw { response: { status: http, data: { detail: 'INVALID_EXPERT_CONTEXT' } } }; } });
+    await session.openConversation(); session.draft.value = 'keep draft'; session.context.value.knowledgeExpertRef = { id: 'saved', revision: 4 };
+    await session.send();
+    expect(session.failure.value).toBe('knowledge-failed'); expect(session.expired.value).toBe(false);
+    expect(session.pendingConnectionId.value).toBeNull(); expect(session.turns.value).toEqual([]);
+    expect(session.draft.value).toBe('keep draft'); expect(session.context.value.knowledgeExpertRef).toEqual({ id: 'saved', revision: 4 });
+  });
+  it.each([404, 409, 403, 503])('treats EXPERT_CONTEXT errors as knowledge failures, not model/expiry (%s)', async http => {
+    const session = createChatSession({ aiStatus: async () => status(), openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }), sendAiMessage: async () => { throw { response: { status: http, data: { detail: 'EXPERT_CONTEXT_UNAVAILABLE' } } }; } });
+    await session.openConversation(); session.draft.value = 'keep draft'; session.context.value.knowledgeExpertRef = { id: 'saved', revision: 4 };
+    await session.send();
+    expect(session.failure.value).toBe('knowledge-failed'); expect(session.expired.value).toBe(false); expect(session.pendingConnectionId.value).toBeNull();
+    expect(session.draft.value).toBe('keep draft'); expect(session.context.value.knowledgeExpertRef).toEqual({ id: 'saved', revision: 4 });
+  });
+  it('preserves returned resource evidence and safety clearing on the assistant turn and local replay', async () => {
+    const evidence = { expertRef: { id: 'saved', revision: 4 }, status: 'no_matches' as const, references: [] };
+    let saved = '';
+    const storage = { getItem: () => saved || null, setItem: (_key: string, value: string) => { saved = value; } };
+    const api = { aiStatus: async () => status(), openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }), sendAiMessage: async () => result({ knowledgeContext: evidence, knowledgeMemoryCleared: true }) };
+    const session = createChatSession(api, storage); await session.openConversation(); session.draft.value = 'question'; await session.send();
+    expect(session.turns.value[1]).toMatchObject({ knowledgeContext: evidence, knowledgeMemoryCleared: true });
+    const replay = createChatSession(api, storage); await replay.restoreLastConversation();
+    expect(replay.turns.value[1]).toMatchObject({ knowledgeContext: evidence, knowledgeMemoryCleared: true });
+  });
   it.each([
     [409, 'CODE_GENERATION_BASELINE_CHANGED', 'generation-stale'],
     [400, 'CODE_GENERATION_TARGET_REQUIRED', 'generation-blocked'],

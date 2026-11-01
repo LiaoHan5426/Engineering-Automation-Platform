@@ -574,7 +574,14 @@ export type AiArtifactSummary = {
   sha256: string;
 };
 export type AiToolEvent = { sequence: number; code: string };
+export type KnowledgeContext = {
+  expertRef: KnowledgeExpertRef;
+  status: 'ready' | 'no_matches';
+  references: Array<{ id: string; source: string; knowledgeBase: string; excerpt: string; retrievalMode: string; knowledgeBaseId?: string; documentId?: string }>;
+};
 export type AiMessageResult = {
+  knowledgeContext?: KnowledgeContext | null;
+  knowledgeMemoryCleared?: boolean;
   proposal?: CodeProposal | null;
   executionId: string | null;
   answer: string;
@@ -588,7 +595,9 @@ export type AiMessageResult = {
 };
 
 export type CodeTaskRef = { projectId: string; taskId: string; revision: number };
+export type KnowledgeExpertRef = { id: string; revision: number };
 export type TaskContext = {
+  knowledgeExpertRef?: KnowledgeExpertRef;
   taskRef?: CodeTaskRef;
   mode: "chat" | "code";
   expert: "general" | "sql" | "frontend";
@@ -917,6 +926,8 @@ export function createChatApi(baseURL: string, transport = axios.create({ baseUR
   const get = <T>(path: string) => client.get<T>(path).then(response => response.data);
   return {
   aiStatus: () => get<AiStatus>("/ai/status"),
+  previewExpertContext: (expertRef: KnowledgeExpertRef, query: string) =>
+    client.post<KnowledgeContext>('/ai/expert-context/preview', { expertRef, query }).then(response => response.data),
   workspaceBaseline: (path: string) =>
     get<WorkspaceBaseline>("/ai/workspace/baseline?path=" + encodeURIComponent(path)),
   workspaceSource: (path: string) =>

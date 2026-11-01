@@ -1,3 +1,4 @@
+import { knowledgeContextMessages } from './knowledgeContextMessages';
 import { builderMessages } from "./builderMessages";
 import { generationMessages } from "./generationMessages";
 import { applicationMessages } from "./applicationMessages";
@@ -17,6 +18,7 @@ export const i18n = createI18n({
   fallbackLocale: "en-US",
   messages: {
     "zh-CN": {
+      knowledgeContext: knowledgeContextMessages['zh-CN'],
       builder: builderMessages["zh-CN"],
       generation: generationMessages["zh-CN"],
       application: applicationMessages["zh-CN"],
@@ -190,6 +192,7 @@ export const i18n = createI18n({
       },
     },
     "en-US": {
+      knowledgeContext: knowledgeContextMessages['en-US'],
       builder: builderMessages["en-US"],
       generation: generationMessages["en-US"],
       application: applicationMessages["en-US"],

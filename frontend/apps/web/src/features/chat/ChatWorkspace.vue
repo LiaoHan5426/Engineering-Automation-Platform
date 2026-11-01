@@ -470,6 +470,14 @@ onMounted(async () => {
         <ul v-if="turn.toolEvents.length">
           <li v-for="event in turn.toolEvents" :key="event.sequence">{{ event.sequence }}. {{ event.code }}</li>
         </ul>
+        <section v-if="turn.knowledgeContext" data-testid="turn-knowledge">
+          <h3>{{ t('knowledgeContext.title') }} · {{ turn.knowledgeContext.expertRef.id }} · r{{ turn.knowledgeContext.expertRef.revision }}</h3>
+          <p>{{ t(mock || turn.status === 'mock_completed' ? 'knowledgeContext.mock' : 'knowledgeContext.provided') }}</p>
+          <p>{{ t('knowledgeContext.excerpts') }}</p>
+          <p v-if="turn.knowledgeContext.status === 'no_matches'">{{ t('knowledgeContext.no_matches') }}</p>
+          <ul><li v-for="reference in turn.knowledgeContext.references" :key="reference.id"><strong>{{ reference.id }} · {{ reference.source }} · {{ reference.knowledgeBase }}</strong><p>{{ reference.retrievalMode }} · {{ reference.knowledgeBaseId }} · {{ reference.documentId }}</p><pre>{{ reference.excerpt }}</pre></li></ul>
+        </section>
+        <Feedback v-if="turn.knowledgeMemoryCleared" tone="info">{{ t(mock || turn.status === 'mock_completed' ? 'knowledgeContext.mock' : 'knowledgeContext.cleared') }}</Feedback>
         <ul v-if="turn.artifacts.length">
           <li v-for="artifact in turn.artifacts" :key="artifact.sha256">
             {{ artifact.kind }} · {{ artifact.sizeBytes }} · {{ artifact.sha256 }}
@@ -484,7 +492,9 @@ onMounted(async () => {
     <Button v-if="session.failure.value === 'model-unavailable' || session.failure.value === 'target-change-failed'" type="button" data-testid="locate-model" :title="t('desktop.locateModelNote')" @click="workbench.modelMenuToken += 1">{{ t('desktop.locateModel') }}</Button>
     <Feedback v-if="session.targetNotice.value === 'cleared'" tone="info">{{ t("chat.memoryCleared") }}</Feedback>
     <Feedback v-if="session.targetNotice.value === 'kept'" tone="info">{{ t("modelUi.memoryKept") }}</Feedback>
-    <Feedback v-if="session.failure.value.startsWith('generation-')" tone="warning">{{ t('generation.' + session.failure.value) }}</Feedback>
+    <Feedback v-if="session.knowledgeMemoryCleared.value" tone="info">{{ t(mock ? 'knowledgeContext.mock' : 'knowledgeContext.cleared') }}</Feedback>
+    <Feedback v-if="session.failure.value.startsWith('knowledge-')" tone="warning">{{ t('knowledgeContext.' + session.failure.value.slice('knowledge-'.length)) }}</Feedback>
+    <Feedback v-else-if="session.failure.value.startsWith('generation-')" tone="warning">{{ t('generation.' + session.failure.value) }}</Feedback>
     <Feedback v-else-if="session.failure.value" tone="warning">{{ t(session.failure.value === "target-changed" ? "modelUi.retryTarget" : session.failure.value === "model-unavailable" ? "modelUi.unavailable" : session.failure.value === "not-configured" ? "chat.notConfigured" : session.failure.value === "target-change-failed" ? "chat.targetChangeFailed" : "desktop.retrySame") }}</Feedback>
     <Button v-if="session.failure.value === 'generation-stale'" data-testid="retry-generation" :disabled="session.sending.value || !session.draft.value.trim()" @click="sendTask">{{ t('generation.retry') }}</Button>
     <Feedback v-if="proposalNote" tone="info">{{ proposalNote }}</Feedback>
@@ -495,7 +505,7 @@ onMounted(async () => {
       data-testid="chat-composer"
       @submit.prevent="sendTask"
     >
-      <TaskComposer :active="props.active" :preview="mock" :refreshing-models="modelsRefreshing" :model-label="selectedModel ? selectedModel.model : ''" :context="session.context.value" :disabled="session.sending.value || session.opening.value || session.expired.value || archived" :reasoning-efforts="reasoningEfforts" @update="session.context.value = $event" @refresh="refreshModels">
+      <TaskComposer :draft="session.draft.value" :tool-mode="session.toolMode.value" :active="props.active" :preview="mock" :refreshing-models="modelsRefreshing" :model-label="selectedModel ? selectedModel.model : ''" :context="session.context.value" :disabled="session.sending.value || session.opening.value || session.expired.value || archived" :reasoning-efforts="reasoningEfforts" @update="session.context.value = $event" @refresh="refreshModels">
         <template #draft>
         <label>
         <span class="sr-only">{{ t("chat.draft") }}</span>

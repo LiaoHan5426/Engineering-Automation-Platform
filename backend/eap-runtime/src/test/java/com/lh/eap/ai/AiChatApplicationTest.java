@@ -31,6 +31,18 @@ import org.springframework.web.server.ResponseStatusException;
 class AiChatApplicationTest {
     @TempDir Path root;
 
+    @Test void expertPreviewHasAStrictIdentityOnlyRequestAndDoesNotCallAModel() throws Exception {
+        var calls = new AtomicInteger();
+        var app = app(p -> { calls.incrementAndGet(); return FakeChatModels.text("not called"); }, true, null, null);
+        for (String body : List.of("{}", "{\"expertRef\":null,\"query\":\"marker\"}",
+                "{\"expertRef\":{\"id\":\"expert-a\",\"revision\":2},\"query\":\"marker\",\"references\":[]}",
+                "{\"expertRef\":{\"id\":\"expert-a\",\"revision\":2,\"grants\":[]},\"query\":\"marker\"}")) {
+            mvc(app).perform(post("/api/ai/expert-context/preview").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        assertEquals(0, calls.get());
+    }
+
     CapabilityHandler handler(AtomicInteger calls) {
         return new CapabilityHandler() {
             public Set<String> capabilities() { return Set.of("git-status"); }

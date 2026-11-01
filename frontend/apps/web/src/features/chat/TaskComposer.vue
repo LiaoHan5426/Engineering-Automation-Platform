@@ -4,16 +4,23 @@ import { useI18n } from "vue-i18n";
 import { Button, Feedback, FileInput, Input, Popover, Segmented, Select, Tag, Textarea } from "@eap/ui";
 import { runtimeApi, type TaskContext, type PrototypeVersionRecord, type WorkspaceSource } from "@eap/runtime-client";
 import RepositoryBrowser from '../../components/RepositoryBrowser.vue';
+import KnowledgeExpertSelector from './KnowledgeExpertSelector.vue';
 import { pendingScenarioDependencies } from '../shell/scenarioDependencies';
 import { identityAuthorized, runtimeIdentity } from '../shell/runtimeIdentity';
 import { assignSessionProject, addExpert, currentExtras, expertCatalog, localProjects, projectLabel, removeExpert, scenarios, sessionKey, setExecutionMode, toggleResource, workbench } from "../shell/workbench";
 import { acceptFiles, FILE_CAP, type IncomingFile } from "./acceptFiles";
 
-const props = withDefaults(defineProps<{ active?: boolean; preview?: boolean; context: TaskContext; disabled: boolean; refreshingModels?: boolean; reasoningEfforts: Array<"low" | "medium" | "high">; modelLabel?: string }>(), { active: true, preview: false, refreshingModels: false, modelLabel: "" });
+const props = withDefaults(defineProps<{ active?: boolean; preview?: boolean; draft?: string; toolMode?: string; context: TaskContext; disabled: boolean; refreshingModels?: boolean; reasoningEfforts: Array<"low" | "medium" | "high">; modelLabel?: string }>(), { active: true, preview: false, draft: '', toolMode: 'none', refreshingModels: false, modelLabel: "" });
 const reasoningSupported = computed(() => props.reasoningEfforts.length > 0);
 const shownEffort = computed(() => props.context.reasoning !== "default" && props.reasoningEfforts.includes(props.context.reasoning) ? props.context.reasoning : "default");
 const emit = defineEmits<{ update: [context: TaskContext]; refresh: [] }>();
 const { t } = useI18n();
+const knowledgeRemoved = ref(false);
+function removeKnowledge() {
+  const { knowledgeExpertRef: _ref, ...context } = props.context;
+  emit('update', context); knowledgeRemoved.value = true;
+}
+watch(() => props.context.mode, mode => { if (mode !== 'chat' && props.context.knowledgeExpertRef) removeKnowledge(); });
 const menu = ref(false), executionOpen = ref(false), policyOpen = ref(false), modelOpen = ref(false), category = ref<"files" | "instructions" | "actions" | "experts" | "skills" | "mcp">("files"), note = ref(""), query = ref("");
 const workspacePicker = ref(false), versionsBusy = ref(false);
 /** Layered + menu mirrors §0B.2 frame-024: files / instructions / actions / experts / skills / MCP. */
@@ -195,6 +202,10 @@ async function loadVersions() {
 
 <template>
   <div ref="root" class="composer-stack" @paste="onPaste">
+    <KnowledgeExpertSelector v-if="active && context.mode === 'chat'" :selected="context.knowledgeExpertRef" :draft="draft" :disabled="disabled" :blocked="toolMode !== 'none'" :mock="preview" @select="change('knowledgeExpertRef', $event); knowledgeRemoved = false" @remove="removeKnowledge" />
+    <p v-if="context.knowledgeExpertRef">{{ t('knowledgeContext.limit') }}</p>
+    <Feedback v-if="context.knowledgeExpertRef && toolMode !== 'none'" tone="warning">{{ t('knowledgeContext.unavailable') }}</Feedback>
+    <Feedback v-if="knowledgeRemoved" tone="info" data-testid="knowledge-removed">{{ t('knowledgeContext.removed') }}</Feedback>
     <div class="composer-scope" data-testid="composer-scope">
       <label>
         <span class="sr-only">{{ t("desktop.composerScope") }}</span>

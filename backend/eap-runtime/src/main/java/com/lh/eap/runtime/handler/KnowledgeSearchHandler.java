@@ -35,8 +35,8 @@ public class KnowledgeSearchHandler implements CapabilityHandler {
 
     @SuppressWarnings("unchecked")
     @Override public NodeResult handle(CapabilityContext context) {
-        var query = context.question() + " " + String.join(" ",
-                (List<String>) context.analysis().getOrDefault("tables", List.of()));
+        var tables = String.join(" ", (List<String>) context.analysis().getOrDefault("tables", List.of()));
+        var query = context.question() + (tables.isEmpty() ? "" : " " + tables);
         if (!((List<?>) context.analysis().getOrDefault("joinKeys", List.of())).isEmpty()) {
             query += " join 关联 索引";
         }

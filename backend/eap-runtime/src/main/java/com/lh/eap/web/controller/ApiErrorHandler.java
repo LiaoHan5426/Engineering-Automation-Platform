@@ -16,6 +16,9 @@ public class ApiErrorHandler {
     @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
     public ProblemDetail expected(org.springframework.web.server.ResponseStatusException error){
         var result=ProblemDetail.forStatusAndDetail(error.getStatusCode(),SensitiveData.redact(error.getReason()));
+        var properties = error.getBody().getProperties();
+        if (properties != null && properties.get("knowledgeMemoryCleared") instanceof Boolean cleared)
+            result.setProperty("knowledgeMemoryCleared", cleared);
         return result;
     }
     @ExceptionHandler({IllegalArgumentException.class,HttpMessageNotReadableException.class})

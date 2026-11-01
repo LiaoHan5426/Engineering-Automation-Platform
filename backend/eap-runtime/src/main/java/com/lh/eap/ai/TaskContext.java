@@ -9,8 +9,13 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** User-selected context, never an authority to run tools or change policy. */
 public record TaskContext(String mode, String expert, String instructions, String reasoning,
-                          String approval, List<Attachment> files, String prototypeVersionId, String targetPath, TaskRef taskRef) {
+                          String approval, List<Attachment> files, String prototypeVersionId, String targetPath, TaskRef taskRef,
+                          KnowledgeExpertRef knowledgeExpertRef) {
     public record TaskRef(String projectId, java.util.UUID taskId, long revision) {}
+    public TaskContext(String mode, String expert, String instructions, String reasoning, String approval,
+                       List<Attachment> files, String prototypeVersionId, String targetPath, TaskRef taskRef) {
+        this(mode, expert, instructions, reasoning, approval, files, prototypeVersionId, targetPath, taskRef, null);
+    }
     public TaskContext(String mode, String expert, String instructions, String reasoning, String approval,
                        List<Attachment> files, String prototypeVersionId, String targetPath) {
         this(mode, expert, instructions, reasoning, approval, files, prototypeVersionId, targetPath, null);
@@ -21,7 +26,7 @@ public record TaskContext(String mode, String expert, String instructions, Strin
     public static TaskContext parse(Object value) {
         if (value == null) return EMPTY;
         if (!(value instanceof Map<?, ?> data) || data.keySet().stream().anyMatch(key ->
-                !Set.of("mode", "expert", "instructions", "reasoning", "approval", "files", "prototypeVersionId", "targetPath", "taskRef").contains(key))) throw invalid();
+                !Set.of("mode", "expert", "instructions", "reasoning", "approval", "files", "prototypeVersionId", "targetPath", "taskRef", "knowledgeExpertRef").contains(key))) throw invalid();
         String mode = text(data, "mode", "chat"), expert = text(data, "expert", "general");
         String reasoning = text(data, "reasoning", "default"), approval = text(data, "approval", "review");
         if (!Set.of("chat", "code").contains(mode) || !Set.of("general", "sql", "frontend").contains(expert)
@@ -54,7 +59,12 @@ public record TaskContext(String mode, String expert, String instructions, Strin
                     || !(revision instanceof Integer || revision instanceof Long) || ((Number) revision).longValue() < 1) throw invalid();
             ref = new TaskRef(project, java.util.UUID.fromString(task), ((Number) revision).longValue());
         }
-        return new TaskContext(mode, expert, instructions, reasoning, approval, List.copyOf(files), prototype, target, ref);
+        KnowledgeExpertRef knowledgeRef = null;
+        if (data.containsKey("knowledgeExpertRef")) {
+            if (!mode.equals("chat")) throw KnowledgeExpertRef.invalid();
+            knowledgeRef = KnowledgeExpertRef.parse(data.get("knowledgeExpertRef"));
+        }
+        return new TaskContext(mode, expert, instructions, reasoning, approval, List.copyOf(files), prototype, target, ref, knowledgeRef);
     }
 
     public String systemInstructions() {

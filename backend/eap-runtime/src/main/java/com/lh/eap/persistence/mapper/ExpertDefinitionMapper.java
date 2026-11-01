@@ -7,6 +7,10 @@ import org.springframework.stereotype.Repository;
 public class ExpertDefinitionMapper {
     private final JdbcTemplate jdbc;
     public ExpertDefinitionMapper(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    /** Shares activation's row lock; call inside the context resolver's short transaction. */
+    public Optional<Map<String,Object>> lockForKnowledge(String id) {
+        return jdbc.queryForList("SELECT id,manifest::text AS manifest,enabled,revision FROM eap.expert_definition WHERE id=? FOR SHARE", id).stream().findFirst();
+    }
     public List<Map<String,Object>> list() { return jdbc.queryForList("SELECT id,manifest::text AS manifest,enabled,revision,builtin FROM eap.expert_definition ORDER BY builtin DESC, updated_at DESC"); }
     public void saveDraft(String id,String name,String manifest) {
         jdbc.update("INSERT INTO eap.expert_definition(id,name,manifest) VALUES (?,?,?::jsonb) ON CONFLICT(id) DO UPDATE SET name=excluded.name,manifest=excluded.manifest,enabled=false,revision=expert_definition.revision+1,updated_at=now()",id,name,manifest);

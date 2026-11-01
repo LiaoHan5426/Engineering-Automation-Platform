@@ -6,6 +6,7 @@ import { createModelBackend } from './modelBackend';
 import { createKnowledgeBackend } from './knowledgeBackend';
 import { createDatabaseBackend } from './databaseBackend';
 import { createBoardBackend } from './boardBackend';
+import { mockExpertPage, mockExpertContext, mockExpertPreview, validMockExpertRef } from './expertContext';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..');
 
@@ -29,6 +30,8 @@ export function createMockChatBackend() {
     async handle(method: string, path: string, body: Record<string, unknown> = {}) {
       const requestUrl = new URL(path, 'http://mock.local');
       path = requestUrl.pathname;
+      if (method === 'GET' && path === '/experts') return result(200, mockExpertPage);
+      if (method === 'POST' && path === '/ai/expert-context/preview') return mockExpertPreview(body);
       const knowledge = knowledgeBackend.handle(method, requestUrl, body);
       if (knowledge) return knowledge;
       const database = databaseBackend.handle(method, requestUrl, body);
@@ -128,14 +131,23 @@ export function createMockChatBackend() {
         item.model = String(body.model); item.connectionId = target.id; return result(200, { ...item, connectionName: target.name, memoryCleared });
       }
       if (method === 'POST' && suffix === '/messages') {
+        const context = body.context as TaskContext | undefined;
+        const hasKnowledge = context && 'knowledgeExpertRef' in context;
+        if (hasKnowledge) {
+          // Runtime parses the identity/mode before send fields, and resolves only after both checks.
+          if (('mode' in context && context.mode !== 'chat') || !validMockExpertRef(context.knowledgeExpertRef)) return result(400, { detail: 'INVALID_EXPERT_CONTEXT' });
+          if (typeof body.message !== 'string' || !body.message.trim() || body.message.length > 32000 || typeof body.toolMode !== 'string') return result(400, { detail: 'INVALID_CHAT_REQUEST' });
+          if (body.toolMode !== 'none') return result(400, { detail: 'EXPERT_CONTEXT_MODE_UNSUPPORTED' });
+        }
         const target = connections.items.find(value => value.id === item.connectionId && value.enabled && value.allowedModels.includes(item.model ?? ''));
         if (!target) return result(403, { error: 'MODEL_NOT_ALLOWED' });
-        const context = body.context as TaskContext | undefined;
+        const knowledge = hasKnowledge ? mockExpertContext(context.knowledgeExpertRef, body.message) : undefined;
+        if (knowledge && knowledge.status !== 200) return knowledge;
         if (context && 'taskRef' in context) return result(409, { detail: 'MOCK_TASK_BINDING_UNAVAILABLE' });
         if (typeof body.message !== 'string' || !body.message.trim()) return result(400, { error: 'EMPTY_MESSAGE' });
         const proposal: CodeProposal | null = context?.mode === 'code' && context.approval !== 'read_only' ? { id: `proposal-${++sequence}`, conversationId: id, workspace: repoRoot, summary: '模拟候选：仅供交互验收', files: [{ path: 'Example.vue', before: '<h1>Workspace</h1>', content: '<h1>EAP Workspace</h1>', baseHash: '' }], applied: false, writeAllowed: false, verification: 'not_requested' } : null;
         if (proposal) proposals.set(proposal.id, proposal);
-        return result(200, { executionId: null, answer: proposal ? '模拟候选已准备，请查看变更并确认。不会修改真实文件。' : '这是 mock 服务返回的模拟回答。场景、专家和模型选择使用与真实服务相同的交互流程；未调用真实模型。', error: '', status: 'mock_completed', approval: context?.approval ?? 'review', verification: 'not_requested', toolEvents: [], artifactError: '', artifacts: [], proposal } satisfies AiMessageResult);
+        return result(200, { knowledgeContext: knowledge && 'expertRef' in knowledge.data ? knowledge.data : null, executionId: null, answer: proposal ? '模拟候选已准备，请查看变更并确认。不会修改真实文件。' : '这是 mock 服务返回的模拟回答。场景、专家和模型选择使用与真实服务相同的交互流程；未调用真实模型。', error: '', status: 'mock_completed', approval: context?.approval ?? 'review', verification: 'not_requested', toolEvents: [], artifactError: '', artifacts: [], proposal } satisfies AiMessageResult);
       }
       if (method === 'GET' && /^\/proposals\/[^/]+$/.test(suffix ?? '')) return result(404, { error: 'MOCK_DURABLE_APPLICATION_UNAVAILABLE' });
       const apply = suffix?.match(/^\/proposals\/([^/]+)\/apply$/);
