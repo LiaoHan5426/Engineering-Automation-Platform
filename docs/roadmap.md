@@ -1,5 +1,25 @@
 # Roadmap
 
+## 当前路线图 — 基线 main / 2b0fe26
+
+本节为独立规划同步；没有修改业务代码或重跑运行验收。以[v1.6当前合同与进度](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md)、[完整接续台账](decisions/planning-completion-tracker-2026-11-01.md)及[界面验收清单](decisions/frontend-adjustment-acceptance-2026-10-28.md)为当前执行依据。下面带日期的旧记录是历史快照，不能把当时“尚无GrapesJS/list-dir/Run/Skill”继续当作当前待办。
+
+| 主线 | 已交付的限定范围 | 下一关口 |
+|---|---|---|
+| 桌面式工作台 | 五入口、场景/Builder/看板分面、真实文件树、共享UI与主题；`1f38cd8`等 | 全页面真实缩放/焦点/错误矩阵及用户体验接受 |
+| 原型与源码 | GrapesJS八类语义映射/版本；单目标生成前基线、持久候选与应用、目录互锁；`f6aed04`/`f614272` | 更多必要映射、多文件约束、真实供应商自身改页验收 |
+| 交付证据 | Run独立三项检查、源码交付、持久接受/拒绝、POST_HOC/PREBOUND；`04edef5`～`69892f3` | 经授权在EAP内走完实际页面改造与用户接受；Git Run不是源码作者 |
+| 资源 | 单专家授权知识及旧记忆隔离 `c9d23a7`；Skill文本版本/启停/按需Chat引用 `2b0fe26` | MCP真实协议、场景资源整合、规划/Agent和Work执行；Skill目录导入延期 |
+| 桌面发行 | Electron安全preload壳、bootstrap引导脚手架 | Windows sidecar、一体启停/迁移、安装包验证和签名发行决定 |
+
+最近代码阶段验证：前端92文件/525项通过；后端647项、0失败/错误、6条件跳过；typecheck/build/boundaries通过。实库、浏览器和独立复核范围见[Skill阶段记录](decisions/skill-text-import-2026-11-01.md)。这些是已有运行证据，不是本次文档更新重跑，不代表所有规划、真实模型或用户最终验收完成。
+
+推进原则：复用已完成能力，不重建会话/任务/模型循环；工程自身改页、资源能力和桌面产品化分别设验收关口，不把市场或完整调度器作为前置。提交前同步主方案对应行、台账与decision，保留application.yml本地修改；测试决定不能替用户接受。
+
+## 历史路线图与阶段证据
+
+以下保留原记录和当时测试数字，历史“下一步”由上面的当前路线图取代；旧双入口/Builder一级入口等由v1.6 §0B覆盖。
+
 ## §0B.2 browser-verified layout corrections — 2026-10-28
 
 Built-in browser pass after image links restored. Large layout changes: summary docked as
