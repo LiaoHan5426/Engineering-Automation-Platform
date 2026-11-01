@@ -367,9 +367,9 @@ class BoardRunPersistenceTest {
         verification.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash())); queue.remove().run();
         assertEquals("PASSED", verification.get(task.id(), run.execution().id(), project).record().status(), verification.get(task.id(), run.execution().id(), project).record().reason());
         var type = assertDoesNotThrow(() -> Class.forName("com.lh.eap.application.service.BoardDeliveryService"), "delivery service missing");
-        var service = type.getConstructors()[0].newInstance(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), verification, new BoardDeliveryCapture(executor, new BoardVerificationSource()));
+        var service = type.getConstructor(JdbcTemplate.class, BoardTaskService.class, MissionExecutionStore.class, MissionGitExecutionService.class, CapabilityRegistry.class, BoardVerificationService.class, BoardDeliveryCapture.class).newInstance(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), verification, new BoardDeliveryCapture(executor, new BoardVerificationSource()));
         var requestType = Class.forName(type.getName()+"$Request");
-        var request = requestType.getConstructors()[0].newInstance(project, 1L, plan.workspacePath(), UUID.randomUUID(), List.of("frontend/source.ts"), "manual edit");
+        var request = requestType.getConstructor(String.class, long.class, String.class, UUID.class, List.class, String.class).newInstance(project, 1L, plan.workspacePath(), UUID.randomUUID(), List.of("frontend/source.ts"), "manual edit");
         var delivery = type.getMethod("submit", UUID.class, UUID.class, requestType).invoke(service, task.id(), run.execution().id(), request);
         assertEquals(delivery, type.getMethod("submit", UUID.class, UUID.class, requestType).invoke(service, task.id(), run.execution().id(), request));
         var tree = tools.jackson.databind.json.JsonMapper.builder().build().valueToTree(delivery);
@@ -386,15 +386,19 @@ class BoardRunPersistenceTest {
     }
     private record DeliveryFixture(BoardTaskService.Task task, UUID execution, BoardDeliveryService service, BoardDeliveryService.Request request, BoardVerificationService verification) {}
     private DeliveryFixture deliveryFixture(com.lh.eap.api.ProcessExecutor captureExecutor) throws Exception {
+        return deliveryFixture(captureExecutor, () -> {});
+    }
+    private DeliveryFixture deliveryFixture(com.lh.eap.api.ProcessExecutor captureExecutor, Runnable beforeRun) throws Exception {
         verificationFixture();
         assertEquals(0, executor.runIsolated("fixture", repo, List.of("git", "add", "frontend"), GitCapability.environment()).exitCode());
         assertEquals(0, executor.runIsolated("fixture", repo, List.of("git", "-c", "user.name=EAP Test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "frontend baseline"), GitCapability.environment()).exitCode());
         Files.writeString(repo.resolve("frontend/source.ts"), "export const source = 2;");
-        var task = task(); var run = runs.start(task.id(), request(task)); queue.remove().run();
-        var verification = verification(passingVerificationProcess(), queue::add);
-        var plan = verification.plan(task.id(), run.execution().id(), new BoardVerificationService.Request(project, repo.toRealPath().toString()));
-        verification.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash())); queue.remove().run();
-        assertEquals("PASSED", verification.get(task.id(), run.execution().id(), project).record().status());
+                beforeRun.run();
+                var task = task(); var run = runs.start(task.id(), request(task)); queue.remove().run();
+                var verification = verification(passingVerificationProcess(), queue::add);
+                var plan = verification.plan(task.id(), run.execution().id(), new BoardVerificationService.Request(project, repo.toRealPath().toString()));
+                verification.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash())); queue.remove().run();
+                assertEquals("PASSED", verification.get(task.id(), run.execution().id(), project).record().status());
         return new DeliveryFixture(task, run.execution().id(), new BoardDeliveryService(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), verification, new BoardDeliveryCapture(captureExecutor, new BoardVerificationSource())), new BoardDeliveryService.Request(project, 1, plan.workspacePath(), UUID.randomUUID(), List.of("frontend/source.ts"), "manual change"), verification);
     }
     @Test void deliveryUnknownPersistsAfterOuterRollbackAndBlocksTheWorkspace() throws Exception {
@@ -524,11 +528,98 @@ class BoardRunPersistenceTest {
         assertEquals(evidence, verification.get(task.id(), run.execution().id(), project).record());
         assertEquals("ready", tasks.list(project).getFirst().column());
     }
+    private record AppliedDeliveryFixture(DeliveryFixture fixture, BoardDeliveryService.Request request, com.lh.eap.ai.CodeChangeService.Proposal proposal) {}
+    private AppliedDeliveryFixture appliedDeliveryFixture() throws Exception {
+        assertTrue(jdbc.queryForObject("SELECT pg_get_constraintdef(oid) LIKE '%CHAT_APPLIED_POST_HOC%' FROM pg_constraint WHERE conname='board_delivery_shape' AND conrelid='eap.board_task_run'::regclass", Boolean.class), "V15 not loaded: application delivery persistence is blocked; do not reset/repair the database");
+        var conversation = UUID.randomUUID();
+        var proposal = new java.util.concurrent.atomic.AtomicReference<com.lh.eap.ai.CodeChangeService.Proposal>();
+        var principal = com.lh.eap.ai.AiConversationRegistry.PRINCIPAL;
+        var f = deliveryFixture(executor, () -> {
+            var changes = codeChanges();
+            var generation = changes.prepareGeneration(principal, conversation, "frontend/source.ts", "", "");
+            proposal.set(changes.proposePrepared(principal, conversation, generation.id(), "{\"files\":[{\"path\":\"frontend/source.ts\",\"content\":\"export const source = 3;\"}]}", true));
+            assertEquals("APPLIED", changes.apply(principal, conversation, proposal.get().id(), true).status());
+            var persisted = codeStore().find(principal, conversation, proposal.get().id()).orElseThrow();
+            assertNotNull(persisted.startedAt()); assertNotNull(persisted.finishedAt());
+        });
+        var request = new BoardDeliveryService.Request(project, 1, f.request().workspacePath(), UUID.randomUUID(), f.request().paths(), "explicit post hoc test", new BoardDeliveryService.ApplicationRef(conversation, proposal.get().id()));
+        return new AppliedDeliveryFixture(f, request, proposal.get());
+    }
+    @Test void appliedChatDeliveryPersistsPostHocEvidenceAndReplaysAfterReconstruction() throws Exception {
+        var fixture = appliedDeliveryFixture(); var f = fixture.fixture(); var request = fixture.request();
+        var service = applicationDeliveryService(f, executor);
+        var delivery = service.submit(f.task().id(), f.execution(), request);
+        var json = tools.jackson.databind.json.JsonMapper.builder().build().valueToTree(delivery);
+        assertEquals("CHAT_APPLIED_POST_HOC", delivery.source());
+        assertEquals("POST_HOC", json.path("applicationEvidence").path("association").asString());
+        assertEquals(fixture.proposal().id().toString(), json.path("applicationEvidence").path("proposalId").asString());
+        assertEquals("acceptance", tasks.find(f.task().id(), project, false).column());
+        var noProcesses = org.mockito.Mockito.mock(com.lh.eap.api.ProcessExecutor.class);
+        var reopened = applicationDeliveryService(f, noProcesses);
+        assertEquals(delivery, reopened.get(f.task().id(), f.execution(), project).record());
+        assertEquals(delivery, reopened.submit(f.task().id(), f.execution(), request));
+        org.mockito.Mockito.verifyNoInteractions(noProcesses);
+        var accept = new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "ACCEPT", true, true, "isolated fixture, not user acceptance");
+        var decided = service.decide(f.task().id(), f.execution(), accept);
+        assertEquals(json.path("applicationEvidence"), tools.jackson.databind.json.JsonMapper.builder().build().valueToTree(decided).path("applicationEvidence"));
+        assertEquals(decided, reopened.decide(f.task().id(), f.execution(), accept));
+        assertEquals("done", tasks.find(f.task().id(), project, false).column());
+        org.mockito.Mockito.verifyNoInteractions(noProcesses);
+    }
+    @Test void linkedDeliveryDenialsAndTaskTransitionFailureLeaveNoPartialEvidence() throws Exception {
+        var fixture = appliedDeliveryFixture(); var f = fixture.fixture(); var request = fixture.request();
+        var service = applicationDeliveryService(f, executor);
+        var foreign = new BoardDeliveryService.Request(project,1,request.workspacePath(),request.requestId(),request.paths(),request.note(),new BoardDeliveryService.ApplicationRef(UUID.randomUUID(),fixture.proposal().id()));
+        assertEquals("BOARD_DELIVERY_APPLICATION_NOT_FOUND",rejects(() -> service.submit(f.task().id(),f.execution(),foreign)).getReason());
+        assertNull(service.get(f.task().id(),f.execution(),project).record()); assertEquals(1,tasks.find(f.task().id(),project,false).revision());
+        var failingTasks=org.mockito.Mockito.mock(BoardTaskService.class,org.mockito.AdditionalAnswers.delegatesTo(tasks));
+        org.mockito.Mockito.doThrow(new IllegalStateException("test transition failure")).when(failingTasks).deliveryTransition(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.eq("acceptance"));
+        var failed=new BoardDeliveryService(jdbc,failingTasks,executions,git,context.getBean(CapabilityRegistry.class),f.verification(),new BoardDeliveryCapture(executor,new BoardVerificationSource()),new BoardApplicationEvidence(codeStore(),new com.lh.eap.ai.JdbcCodeGenerationStore(jdbc,context.getBean(PlatformTransactionManager.class))));
+        assertThrows(IllegalStateException.class,() -> failed.submit(f.task().id(),f.execution(),request));
+        assertNull(service.get(f.task().id(),f.execution(),project).record()); assertEquals("ready",tasks.find(f.task().id(),project,false).column());
+        assertEquals("CHAT_APPLIED_POST_HOC",service.submit(f.task().id(),f.execution(),request).source());
+    }
+    @Test void acceptRechecksDurableResultWhileRejectPreservesOriginalEvidence() throws Exception {
+        var fixture=appliedDeliveryFixture(); var f=fixture.fixture(); var service=applicationDeliveryService(f,executor);
+        var delivery=service.submit(f.task().id(),f.execution(),fixture.request());
+        jdbc.update("UPDATE eap.code_proposal SET result=jsonb_set(result,'{afterHash}',to_jsonb(?::text)) WHERE id=?", "f".repeat(64),fixture.proposal().id());
+        var accept=new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"isolated test");
+        assertEquals("BOARD_DELIVERY_APPLICATION_SOURCE_MISMATCH",rejects(() -> service.decide(f.task().id(),f.execution(),accept)).getReason());
+        assertEquals(delivery,service.get(f.task().id(),f.execution(),project).record()); assertEquals(2,tasks.find(f.task().id(),project,false).revision());
+        var process=org.mockito.Mockito.mock(com.lh.eap.api.ProcessExecutor.class);
+        var reject=new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"REJECT",false,false,"isolated stale application fixture");
+        var decided=applicationDeliveryService(f,process).decide(f.task().id(),f.execution(),reject);
+        assertEquals(delivery.applicationEvidence(),decided.applicationEvidence()); assertEquals("ready",tasks.find(f.task().id(),project,false).column()); org.mockito.Mockito.verifyNoInteractions(process);
+    }
+    @Test void v15RequiresCompletePostHocEvidenceAndRetainsExternalManual() throws Exception {
+        var fixture=appliedDeliveryFixture(); var f=fixture.fixture(); var service=applicationDeliveryService(f,executor);
+        var delivery=service.submit(f.task().id(),f.execution(),fixture.request());
+        var json=tools.jackson.databind.json.JsonMapper.builder().build();
+        var original=json.valueToTree(delivery);
+        for (String field:List.of("association","conversationId","proposalId","generationId","targetPath","generationBaseHash","appliedAfterHash","generationCapturedAt","prototypeVersionId","prototypeContentHash","associatedAt","operator")) {
+            var invalid=original.deepCopy(); ((tools.jackson.databind.node.ObjectNode)invalid.get("applicationEvidence")).remove(field);
+            assertThrows(org.springframework.dao.DataIntegrityViolationException.class,() -> jdbc.update("UPDATE eap.board_task_run SET delivery_snapshot=?::jsonb WHERE execution_id=?",json.writeValueAsString(invalid),f.execution()),field);
+        }
+        for (String expression:List.of("delivery_snapshot - 'applicationEvidence'", "jsonb_set(delivery_snapshot,'{applicationEvidence}','null'::jsonb)", "jsonb_set(delivery_snapshot,'{source}','\"EXTERNAL_MANUAL\"'::jsonb)", "jsonb_set(delivery_snapshot,'{applicationEvidence,appliedAfterHash}','\"fake\"'::jsonb)"))
+            assertThrows(org.springframework.dao.DataIntegrityViolationException.class,() -> jdbc.update("UPDATE eap.board_task_run SET delivery_snapshot="+expression+" WHERE execution_id=?",f.execution()));
+        assertEquals(delivery,service.get(f.task().id(),f.execution(),project).record());
+        // The historical manual shape, with no applicationEvidence key, remains valid.
+        jdbc.update("UPDATE eap.board_task_run SET delivery_snapshot=jsonb_set(delivery_snapshot - 'applicationEvidence','{source}','\"EXTERNAL_MANUAL\"'::jsonb) WHERE execution_id=?",f.execution());
+        assertEquals("EXTERNAL_MANUAL",service.get(f.task().id(),f.execution(),project).record().source());
+    }
+    private BoardDeliveryService applicationDeliveryService(DeliveryFixture f, com.lh.eap.api.ProcessExecutor process) throws Exception {
+        return BoardDeliveryService.class.getConstructor(JdbcTemplate.class, BoardTaskService.class, MissionExecutionStore.class,
+            MissionGitExecutionService.class, CapabilityRegistry.class, BoardVerificationService.class, BoardDeliveryCapture.class, BoardApplicationEvidence.class)
+            .newInstance(jdbc, tasks, executions, git, context.getBean(CapabilityRegistry.class), f.verification(), new BoardDeliveryCapture(process, new BoardVerificationSource()),
+                new BoardApplicationEvidence(codeStore(), new com.lh.eap.ai.JdbcCodeGenerationStore(jdbc, context.getBean(PlatformTransactionManager.class))));
+    }
     @AfterEach void cleanup() {
         executor.close();
         if (jdbc != null) {
             if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT to_regclass('eap.code_proposal') IS NOT NULL", Boolean.class)))
                 jdbc.update("DELETE FROM eap.code_proposal WHERE principal=?", project);
+            jdbc.update("DELETE FROM eap.code_proposal WHERE workspace=?", repo.toAbsolutePath().toString());
+            jdbc.update("DELETE FROM eap.code_generation WHERE workspace=?", repo.toAbsolutePath().toString());
             jdbc.update("DELETE FROM eap.code_generation WHERE principal=?", project);
             var missionIds = jdbc.queryForList("SELECT e.mission_id FROM eap.board_task_run r JOIN eap.board_task t ON t.id=r.task_id JOIN eap.mission_execution e ON e.id=r.execution_id WHERE t.project_id=?", UUID.class, project);
             jdbc.update("DELETE FROM eap.board_task_run WHERE task_id IN (SELECT id FROM eap.board_task WHERE project_id=?)", project);

@@ -28,6 +28,8 @@ it('reads a durable application on mount without posting again', async () => {
   const notify = await mount();
   await vi.waitFor(() => expect(host.textContent).toContain('已写入并记录'));
   expect(notify).toHaveBeenCalledWith(applied);
+  expect(host.querySelector('[data-testid=application-identities]')?.textContent).toContain('c1');
+  expect(host.querySelector('[data-testid=application-identities]')?.textContent).toContain('p1');
   expect(button('proposal-apply')).toBeNull();
   expect(runtimeApi.applyCodeProposal).not.toHaveBeenCalled();
 });

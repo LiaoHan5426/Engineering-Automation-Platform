@@ -6,7 +6,11 @@ import java.util.UUID;
 /** Durable single-file proposal authority. No task/run attribution is inferred. */
 public interface CodeProposalStore {
     record Stored(String principal, CodeChangeService.Proposal proposal, String status,
-                  CodeChangeService.Applied result, String reason) {}
+                  CodeChangeService.Applied result, String reason, java.time.Instant startedAt, java.time.Instant finishedAt) {
+        public Stored(String principal, CodeChangeService.Proposal proposal, String status, CodeChangeService.Applied result, String reason) {
+            this(principal, proposal, status, result, reason, null, null);
+        }
+    }
     void save(String principal, CodeChangeService.Proposal proposal);
     Optional<Stored> find(String principal, UUID conversation, UUID id);
     /** Independently commit PROPOSED -> APPLYING under the shared workspace lock. */

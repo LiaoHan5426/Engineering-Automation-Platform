@@ -11,6 +11,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class BoardDeliveryControllerTest {
+    @Test void acceptsOnlyExplicitUuidApplicationReference() throws Exception {
+        var service = mock(BoardDeliveryService.class);
+        var mvc = MockMvcBuilders.standaloneSetup(new BoardDeliveryController(service)).setControllerAdvice(new ApiErrorHandler()).build();
+        String endpoint = "/api/board/tasks/"+UUID.randomUUID()+"/runs/"+UUID.randomUUID()+"/delivery";
+        String ref = "{\"conversationId\":\""+UUID.randomUUID()+"\",\"proposalId\":\""+UUID.randomUUID()+"\"}";
+        String body = "{\"projectId\":\"p\",\"revision\":1,\"workspacePath\":\"repo\",\"requestId\":\""+UUID.randomUUID()+"\",\"paths\":[\"frontend/source.ts\"],\"note\":\"post hoc\",\"applicationRef\":"+ref+"}";
+        mvc.perform(post(endpoint).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
+        verify(service).submit(any(), any(), argThat(request -> tools.jackson.databind.json.JsonMapper.builder().build().valueToTree(request).has("applicationRef")));
+        clearInvocations(service);
+        for (String invalid : List.of(body.replace(ref,"null"), body.replace(ref,"{}"), body.replace("\"proposalId\":", "\"source\":\"CHAT_APPLIED_POST_HOC\",\"proposalId\":"), body.replace(ref,"{\"conversationId\":\"1-1-1-1-1\",\"proposalId\":\"1-1-1-1-1\"}")))
+            mvc.perform(post(endpoint).contentType(MediaType.APPLICATION_JSON).content(invalid)).andExpect(status().isBadRequest());
+        verifyNoInteractions(service);
+    }
     @Test void exactContractRejectsFabricatedEvidenceAndCoercedValuesBeforeCallingService() throws Exception {
         var type = assertDoesNotThrow(() -> Class.forName("com.lh.eap.web.controller.BoardDeliveryController"));
         var service = mock(BoardDeliveryService.class);

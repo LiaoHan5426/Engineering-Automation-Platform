@@ -1,5 +1,9 @@
 export const boardDeliveryMessages = {
   'zh-CN': {
+    linkApplication: '关联已应用的 Chat 候选（事后关联）', conversationId: '会话 ID', proposalId: '候选 ID',
+    applicationInvalid: '关联仅支持一个文件及两个完整 UUID；不自动修正身份或路径。',
+    applicationEvidence: '已应用候选的关联证据', generationBaseline: '生成前工作树基线（不是下方 Git 基线）', appliedHash: '应用后源码 SHA-256',
+    postHocHint: '操作者将已应用 Chat 候选事后关联本任务。此 Run 仅检查仓库，不是代码实现者；关联不证明生成时已绑定任务，也不证明整个 Git 差异均由 Chat 创作。提交不自动验证或接受。',
     invalidPaths: '请输入 1–8 个不重复的 frontend/ 源码路径。不能含空格、反斜杠或父目录；不会自动修正路径。文件存在性与完整范围由服务端核对。',
     accept: '接受交付', reject: '拒绝交付', confirmAccept: '确认人工接受此交付', confirmReject: '确认拒绝此交付', acceptImpact: '服务端重新核对源码与版本，接受成功后任务进入已完成。', rejectImpact: '保留证据与拒绝理由，任务返回就绪；不撤销源码修改。',
     criteria: '我已逐项核对并确认验收标准', preview: '我已实际查看并确认交互预览', comment: '验收说明（拒绝时必填）', humanStatement: '以下勾选是本地操作者的人工声明，不是自动测试或平台预览通过的事实。每份交付只能决定一次。', decision: { ACCEPT: '已人工接受', REJECT: '已人工拒绝' },
@@ -12,6 +16,10 @@ export const boardDeliveryMessages = {
     blocked: '当前不可提交', loadFailed: '无法读取交付记录。保留已保存证据，写操作暂停；请刷新后重试。',
   },
   'en-US': {
+    linkApplication: 'Link an applied Chat candidate (post-hoc)', conversationId: 'Conversation ID', proposalId: 'Proposal ID',
+    applicationInvalid: 'Linking requires one file and two complete UUIDs. Identities and paths are never repaired automatically.',
+    applicationEvidence: 'Linked application evidence', generationBaseline: 'Pre-generation working-tree baseline (not the Git baseline below)', appliedHash: 'Applied source SHA-256',
+    postHocHint: 'The operator associates an applied Chat candidate with this task after the fact. This Run only inspected the repository; it did not implement code. This does not establish task binding at generation time or authorship of the entire Git diff. Submission never automatically verifies or accepts.',
     invalidPaths: 'Enter 1–8 distinct frontend/ source paths without spaces, backslashes or parent traversal. Paths are never repaired automatically. The server checks file existence and complete scope.',
     accept: 'Accept delivery', reject: 'Reject delivery', confirmAccept: 'Confirm human acceptance', confirmReject: 'Confirm rejection', acceptImpact: 'The server rechecks source and versions. Successful acceptance moves the task to done.', rejectImpact: 'Evidence and rejection reasons are retained; the task returns to ready. Source changes are not reverted.',
     criteria: 'I checked and confirm every acceptance criterion', preview: 'I actually reviewed and confirm the interactive preview', comment: 'Review comment (required for rejection)', humanStatement: 'These checkboxes are statements by the local operator, not automated test or platform preview results. Each delivery can be decided only once.', decision: { ACCEPT: 'Accepted by a human', REJECT: 'Rejected by a human' },

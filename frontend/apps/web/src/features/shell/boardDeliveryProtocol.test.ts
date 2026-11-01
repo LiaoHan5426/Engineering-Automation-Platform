@@ -24,3 +24,9 @@ it('uses the scoped delivery routes and sends only the explicit source and decis
     { url: route + '/decision', method: 'post', data: JSON.stringify(decision) },
   ]);
 });
+it('preserves the optional application reference without adding source or hashes', async () => {
+  captured.length = 0;
+  const request = { projectId: 'p', revision: 1, workspacePath: 'F:/repo', requestId: '12345678-1234-1234-1234-123456789abc', paths: ['frontend/App.vue'], note: '', applicationRef: { conversationId: '22345678-1234-1234-1234-123456789abc', proposalId: '32345678-1234-1234-1234-123456789abc' } };
+  await runtimeApi.submitBoardDelivery('task', 'run', request);
+  expect(captured).toEqual([{ url: '/board/tasks/task/runs/run/delivery', method: 'post', data: JSON.stringify(request) }]);
+});

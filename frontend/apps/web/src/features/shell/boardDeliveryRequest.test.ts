@@ -7,6 +7,15 @@ const submission = { projectId: 'project-a', revision: 3, workspacePath: 'F:/rep
 const decision = { projectId: submission.projectId, revision: 4, workspacePath: submission.workspacePath, requestId: submission.requestId, decisionRequest: { projectId: submission.projectId, revision: 4, requestId: submission.requestId, deliveryId: 'delivery-a', decision: 'ACCEPT' as const, criteriaConfirmed: true, previewConfirmed: true, comment: 'literal comment' } };
 const read = () => readDeliveryRequest(store, 'task-a', 'run-a', 'project-a', false);
 beforeEach(() => values.clear());
+it('keeps the exact post-hoc application reference in the request journal', () => {
+  const request = { ...submission, applicationRef: { conversationId: submission.requestId, proposalId: '22345678-1234-1234-1234-123456789abc' } };
+  writeDeliveryRequest(store, 'task-a', 'run-a', false, request);
+  expect(read()).toEqual(request);
+});
+it.each([null, {}, { conversationId: 'bad', proposalId: submission.requestId }, { conversationId: submission.requestId, proposalId: submission.requestId, source: 'fake' }])('rejects malformed stored application references without normalizing them', applicationRef => {
+  writeDeliveryRequest(store, 'task-a', 'run-a', false, { ...submission, applicationRef } as unknown as PendingDeliveryRequest);
+  expect(read()).toBeNull();
+});
 it.each([submission, decision, { ...submission, rejectionCode: 'BOARD_DELIVERY_REQUEST_CONFLICT' }])('round trips the exact immutable request and conflict state', request => {
   expect(writeDeliveryRequest(store, 'task-a', 'run-a', false, request)).toBe(true);
   expect(read()).toEqual(request);

@@ -22,10 +22,39 @@ beforeEach(() => {
   vi.spyOn(runtimeApi, 'decideBoardDelivery').mockResolvedValue(record);
 });
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); });
+it('submits a single explicit post-hoc application reference without inventing hashes or changing the original retry', async () => {
+  vi.mocked(runtimeApi.boardDelivery).mockResolvedValue({ record: null, prepareAllowed: true, reason: '' });
+  vi.mocked(runtimeApi.submitBoardDelivery).mockRejectedValue(new Error('response lost'));
+  await mount(); await input('delivery-paths', 'frontend/App.vue');
+  const toggle = document.querySelector('[data-testid=delivery-link-application]') as HTMLInputElement;
+  expect(toggle).not.toBeNull(); toggle.click(); await Promise.resolve();
+  const applicationRef = { conversationId: '12345678-1234-1234-1234-123456789abc', proposalId: '22345678-1234-1234-1234-123456789abc' };
+  await input('delivery-conversation-id', applicationRef.conversationId); await input('delivery-proposal-id', applicationRef.proposalId);
+  expect(document.body.textContent).toContain('事后关联');
+  await confirm();
+  await vi.waitFor(() => expect(runtimeApi.submitBoardDelivery).toHaveBeenCalledTimes(1));
+  const original = vi.mocked(runtimeApi.submitBoardDelivery).mock.calls[0]![2];
+  expect(original).toEqual({ projectId: task.projectId, revision: 3, workspacePath: run.execution.workspacePath, requestId: expect.any(String), paths: ['frontend/App.vue'], note: '', applicationRef });
+  app.unmount(); root.remove(); await mount();
+  await vi.waitFor(() => expect(button('delivery-retry').disabled).toBe(false));
+  button('delivery-retry').click();
+  await vi.waitFor(() => expect(runtimeApi.submitBoardDelivery).toHaveBeenCalledTimes(2));
+  expect(vi.mocked(runtimeApi.submitBoardDelivery).mock.calls[1]![2]).toEqual(original);
+  expect(runtimeApi.decideBoardDelivery).not.toHaveBeenCalled();
+});
 async function input(id: string, value: string) {
   const field = document.querySelector(`[data-testid=${id}]`) as HTMLTextAreaElement;
   expect(field).not.toBeNull(); field.value = value; field.dispatchEvent(new Event('input')); await Promise.resolve();
 }
+it('replays post-hoc evidence and separates the generation baseline from the Git baseline', async () => {
+  const applicationEvidence = { association: 'POST_HOC' as const, conversationId: 'c', proposalId: 'p', generationId: 'g', targetPath: 'frontend/App.vue', generationBaseHash: 'generation-before', appliedAfterHash: 'after-hash', generationCapturedAt: '2026-11-01T00:00:00Z', prototypeVersionId: null, prototypeContentHash: null, associatedAt: '2026-11-01T00:05:00Z', operator: 'local-operator' as const };
+  vi.mocked(runtimeApi.boardDelivery).mockResolvedValue({ record: { ...record, source: 'CHAT_APPLIED_POST_HOC', applicationEvidence }, prepareAllowed: false, reason: '' });
+  await mount();
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=delivery-application-evidence]')).not.toBeNull());
+  expect(document.body.textContent).toContain('事后关联'); expect(document.body.textContent).toContain('generation-before');
+  expect(document.body.textContent).toContain('before-hash'); expect(document.body.textContent).toContain('不是下方 Git 基线');
+  expect(runtimeApi.submitBoardDelivery).not.toHaveBeenCalled(); expect(runtimeApi.decideBoardDelivery).not.toHaveBeenCalled();
+});
 async function confirm(id = 'delivery-submit') {
   await vi.waitFor(() => expect(button(id)?.disabled).toBe(false)); button(id).click();
   await vi.waitFor(() => expect(document.querySelector('.eap-confirm__actions button:first-child')).not.toBeNull());

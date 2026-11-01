@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
-import { Dialog, Button, Textarea, ConfirmBox, Collapse, Checkbox } from '@eap/ui';
+import { Dialog, Button, Input, Textarea, ConfirmBox, Collapse, Checkbox } from '@eap/ui';
 import { runtimeApi, type BoardRun, type BoardTask, type BoardDeliveryPage } from '@eap/runtime-client';
 import { isAxiosError } from 'axios';
-import { readDeliveryRequest, writeDeliveryRequest, validDeliveryPaths, type PendingDeliveryRequest } from './boardDeliveryRequest';
+import { readDeliveryRequest, writeDeliveryRequest, validDeliveryPaths, validApplicationRef, type PendingDeliveryRequest } from './boardDeliveryRequest';
 import { useMockServices } from '../../lib/serviceConfig';
 import { useI18n } from 'vue-i18n';
 const props = defineProps<{ task: BoardTask; run: BoardRun; disabled?: boolean }>();
@@ -11,6 +11,9 @@ const emit = defineEmits<{ close: []; changed: [] }>();
 const { t } = useI18n();
 const page = ref<BoardDeliveryPage | null>(null), loading = ref(false), note = ref('');
 const pathsText = ref(''), deliveryNote = ref(''), confirming = ref(false), sending = ref(false);
+const linkApplication = ref(false), conversationId = ref(''), proposalId = ref('');
+const applicationRef = computed(() => ({ conversationId: conversationId.value, proposalId: proposalId.value }));
+const applicationValid = computed(() => !linkApplication.value || (validApplicationRef(applicationRef.value) && paths.value.length === 1));
 const pending = ref<PendingDeliveryRequest | null>(null), fresh = ref(false);
 const criteriaConfirmed = ref(false), previewConfirmed = ref(false), comment = ref('');
 const deciding = ref<'ACCEPT' | 'REJECT' | null>(null);
@@ -19,7 +22,7 @@ const record = computed(() => page.value?.record);
 const paths = computed(() => pathsText.value.split(/\r?\n/).filter(path => path !== ''));
 const validPaths = computed(() => validDeliveryPaths(paths.value));
 const busy = computed(() => loading.value || sending.value);
-const canSubmit = computed(() => fresh.value && !pending.value && !busy.value && !props.disabled && !props.task.executionActive && page.value?.prepareAllowed && !record.value && validPaths.value);
+const canSubmit = computed(() => fresh.value && !pending.value && !busy.value && !props.disabled && !props.task.executionActive && page.value?.prepareAllowed && !record.value && validPaths.value && applicationValid.value);
 const canDecide = computed(() => fresh.value && !pending.value && !busy.value && !props.disabled && !props.task.executionActive && props.task.column === 'acceptance' && !!record.value && !record.value.decision);
 const canAccept = computed(() => canDecide.value && props.task.revision === record.value?.submittedRevision && criteriaConfirmed.value && previewConfirmed.value);
 const canReject = computed(() => canDecide.value && !!comment.value.trim());
@@ -48,7 +51,7 @@ async function load(manual = false, confirmedRequestId?: string) {
 async function submit() {
   confirming.value = false;
   if (!canSubmit.value) return;
-  const request = { projectId: props.task.projectId, revision: props.task.revision, workspacePath: props.run.execution.workspacePath, requestId: crypto.randomUUID(), paths: paths.value, note: deliveryNote.value };
+  const request = { projectId: props.task.projectId, revision: props.task.revision, workspacePath: props.run.execution.workspacePath, requestId: crypto.randomUUID(), paths: paths.value, note: deliveryNote.value, ...(linkApplication.value ? { applicationRef: { ...applicationRef.value } } : {}) };
   if (!writeDeliveryRequest(store, props.task.id, props.run.execution.id, useMockServices, request)) { note.value = t('boardDelivery.storageFailed'); return; }
   pending.value = request;
   await sendPending();
@@ -69,7 +72,7 @@ async function sendPending() {
   let rejected = false, confirmedRequestId: string | undefined;
   try {
     if ('decisionRequest' in request) await runtimeApi.decideBoardDelivery(props.task.id, props.run.execution.id, { ...request.decisionRequest });
-    else await runtimeApi.submitBoardDelivery(props.task.id, props.run.execution.id, { projectId: request.projectId, revision: request.revision, workspacePath: request.workspacePath, requestId: request.requestId, paths: [...request.paths], note: request.note });
+    else await runtimeApi.submitBoardDelivery(props.task.id, props.run.execution.id, { projectId: request.projectId, revision: request.revision, workspacePath: request.workspacePath, requestId: request.requestId, paths: [...request.paths], note: request.note, ...(request.applicationRef ? { applicationRef: { ...request.applicationRef } } : {}) });
     confirmedRequestId = request.requestId;
   } catch (error) {
     if (current !== generation) return;
@@ -107,6 +110,8 @@ watch([() => props.task.id, () => props.task.projectId, () => props.run.executio
     pending.value = readDeliveryRequest(store, props.task.id, props.run.execution.id, props.task.projectId, useMockServices);
     pathsText.value = pending.value && 'paths' in pending.value ? pending.value.paths.join('\n') : '';
     deliveryNote.value = pending.value && 'paths' in pending.value ? pending.value.note : '';
+    const savedRef = pending.value && 'paths' in pending.value ? pending.value.applicationRef : null;
+    linkApplication.value = !!savedRef; conversationId.value = savedRef?.conversationId ?? ''; proposalId.value = savedRef?.proposalId ?? '';
     const pendingDecision = pending.value && 'decisionRequest' in pending.value ? pending.value.decisionRequest : null;
     comment.value = pendingDecision?.comment ?? '';
     criteriaConfirmed.value = pendingDecision?.criteriaConfirmed ?? false;
@@ -123,13 +128,19 @@ onBeforeUnmount(() => { generation++; });
   <Dialog :title="t('boardDelivery.title')" :close-label="t('preview.close')" :busy="sending" size="lg" data-testid="board-delivery-dialog" @close="emit('close')">
     <div class="delivery">
     <p><code>{{ run.execution.id }}</code> · {{ run.execution.workspacePath }}</p>
-    <p>{{ t('boardDelivery.hint') }}</p><p>{{ t('boardDelivery.boundary') }}</p>
+    <p>{{ t(record?.source === 'CHAT_APPLIED_POST_HOC' || (!record && linkApplication) ? 'boardDelivery.postHocHint' : 'boardDelivery.hint') }}</p><p>{{ t('boardDelivery.boundary') }}</p>
     <p v-if="pending?.rejectionCode" role="alert">{{ t('boardDelivery.contentConflict') }} · {{ pending.rejectionCode }}</p>
     <p v-else-if="note" role="status">{{ note }}</p>
     <p v-if="page && !page.prepareAllowed && !record" role="status">{{ t('boardDelivery.blocked') }} · {{ page.reason }}</p>
     <Button :disabled="busy" data-testid="delivery-refresh" @click="load(true)">{{ t('boardDelivery.refresh') }}</Button>
     <Button v-if="pending" :disabled="busy || disabled || !!pending.rejectionCode" data-testid="delivery-retry" @click="retry">{{ t('boardDelivery.retry') }}</Button>
     <section v-if="!record" class="delivery">
+      <label><Checkbox v-model="linkApplication" :disabled="busy || disabled || !!pending" data-testid="delivery-link-application" />{{ t('boardDelivery.linkApplication') }}</label>
+      <template v-if="linkApplication">
+        <label>{{ t('boardDelivery.conversationId') }}<Input v-model="conversationId" :disabled="busy || disabled || !!pending" data-testid="delivery-conversation-id" /></label>
+        <label>{{ t('boardDelivery.proposalId') }}<Input v-model="proposalId" :disabled="busy || disabled || !!pending" data-testid="delivery-proposal-id" /></label>
+        <p v-if="!applicationValid">{{ t('boardDelivery.applicationInvalid') }}</p>
+      </template>
       <label>{{ t('boardDelivery.paths') }}<Textarea v-model="pathsText" :disabled="busy || disabled || !!pending" data-testid="delivery-paths" /></label>
       <p v-if="pathsText && !validPaths" role="status">{{ t('boardDelivery.invalidPaths') }}</p>
       <label>{{ t('boardDelivery.note') }}<Textarea v-model="deliveryNote" :disabled="busy || disabled || !!pending" data-testid="delivery-note-input" /></label>
@@ -137,6 +148,14 @@ onBeforeUnmount(() => { generation++; });
     </section>
     <section v-if="record" class="delivery" data-testid="delivery-record">
       <p>{{ record.source }} · <code>{{ record.id }}</code> · {{ record.createdAt }}</p>
+      <Collapse v-if="record.applicationEvidence" data-testid="delivery-application-evidence">
+        <template #summary>{{ t('boardDelivery.applicationEvidence') }}</template>
+        <p>{{ t('boardDelivery.postHocHint') }}</p>
+        <p>{{ t('boardDelivery.conversationId') }}：<code>{{ record.applicationEvidence.conversationId }}</code><br>{{ t('boardDelivery.proposalId') }}：<code>{{ record.applicationEvidence.proposalId }}</code></p>
+        <p>{{ record.applicationEvidence.targetPath }} · {{ record.applicationEvidence.generationId }}</p>
+        <p>{{ t('boardDelivery.generationBaseline') }}：<code>{{ record.applicationEvidence.generationBaseHash }}</code><br>{{ t('boardDelivery.appliedHash') }}：<code>{{ record.applicationEvidence.appliedAfterHash }}</code></p>
+        <p>{{ record.applicationEvidence.operator }} · {{ record.applicationEvidence.associatedAt }}</p>
+      </Collapse>
       <p>{{ t('boardDelivery.verification') }}：<code>{{ record.verificationId }}</code></p>
       <p>HEAD：<code>{{ record.baseCommit }}</code><br>SHA-256：<code>{{ record.sourceHash }}</code></p>
       <p>{{ record.goal }}</p><p>{{ record.acceptanceCriteria }}</p><p>{{ record.note }}</p>
@@ -157,7 +176,7 @@ onBeforeUnmount(() => { generation++; });
     </section>
     <section v-if="record?.decision" data-testid="delivery-decision"><h3>{{ t('boardDelivery.decision.' + record.decision.decision) }}</h3><code>{{ record.decision.id }}</code><p>{{ record.decision.operator }} · {{ record.decision.createdAt }}</p><p>{{ record.decision.comment }}</p></section>
     <ConfirmBox v-if="deciding" :title="t(deciding === 'ACCEPT' ? 'boardDelivery.confirmAccept' : 'boardDelivery.confirmReject')" :impact="[record?.id ?? '', record?.acceptanceCriteria ?? '', comment, t('boardDelivery.humanStatement'), t(deciding === 'ACCEPT' ? 'boardDelivery.acceptImpact' : 'boardDelivery.rejectImpact')]" :confirm-label="t(deciding === 'ACCEPT' ? 'boardDelivery.accept' : 'boardDelivery.reject')" :refusal="(deciding === 'ACCEPT' ? canAccept : canReject) ? undefined : t('boardDelivery.blocked')" @confirm="decide" @cancel="deciding = null" />
-    <ConfirmBox v-if="confirming" :title="t('boardDelivery.confirmSubmit')" :impact="[run.execution.workspacePath, ...paths, deliveryNote, t('boardDelivery.hint')]" :confirm-label="t('boardDelivery.submit')" :refusal="canSubmit ? undefined : t('boardDelivery.blocked')" @confirm="submit" @cancel="confirming = false" />
+    <ConfirmBox v-if="confirming" :title="t('boardDelivery.confirmSubmit')" :impact="[run.execution.workspacePath, ...paths, deliveryNote, ...(linkApplication ? [conversationId, proposalId, t('boardDelivery.postHocHint')] : [t('boardDelivery.hint')])]" :confirm-label="t('boardDelivery.submit')" :refusal="canSubmit ? undefined : t('boardDelivery.blocked')" @confirm="submit" @cancel="confirming = false" />
     </div>
   </Dialog>
 </template>

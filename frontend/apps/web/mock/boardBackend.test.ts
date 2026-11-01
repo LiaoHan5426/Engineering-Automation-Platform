@@ -59,6 +59,7 @@ it('never fabricates delivery or acceptance for a mock Run and retains project s
   const route = '/board/tasks/' + task.id + '/runs/' + randomUUID() + '/delivery';
   expect(await api.handle('GET', route + '?projectId=group')).toMatchObject({ status: 404, data: { detail: 'BOARD_RUN_NOT_FOUND' } });
   for (const suffix of ['', '/decision']) {
+    expect(await api.handle('POST', route + suffix, { projectId: 'group', revision: 1, applicationRef: { conversationId: randomUUID(), proposalId: randomUUID() } })).toMatchObject({ status: 404, data: { detail: 'BOARD_RUN_NOT_FOUND' } });
     expect(await api.handle('POST', route + suffix, { projectId: 'group', revision: 1 })).toMatchObject({ status: 404, data: { detail: 'BOARD_RUN_NOT_FOUND' } });
     expect(await api.handle('POST', route + suffix, { projectId: 'other', revision: 1 })).toMatchObject({ status: 404, data: { detail: 'BOARD_TASK_NOT_FOUND' } });
   }

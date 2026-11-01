@@ -53,6 +53,7 @@ onBeforeUnmount(() => { generation++; });
     <Feedback v-if="note" tone="warning">{{ note }}</Feedback>
     <p v-if="state?.reason"><code>{{ state.reason }}</code></p>
     <p v-if="state?.status === 'APPLIED' && state.result?.afterHash">SHA-256：<code>{{ state.result.afterHash }}</code></p>
+    <p v-if="state?.status === 'APPLIED'" data-testid="application-identities">{{ t('boardDelivery.conversationId') }}：<code>{{ proposal.conversationId }}</code><br>{{ t('boardDelivery.proposalId') }}：<code>{{ proposal.id }}</code></p>
     <template v-if="state?.status === 'PROPOSED'">
       <label><Checkbox v-model="confirmed" :disabled="readOnly || loading || writing || !state.proposal.writeAllowed" /> {{ t('task.confirmWrite') }}</label>
       <Button variant="primary" data-testid="proposal-apply" :disabled="!confirmed || readOnly || loading || writing || !state.proposal.writeAllowed" @click="apply">{{ t('task.apply') }}</Button>

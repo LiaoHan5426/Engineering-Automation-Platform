@@ -43,7 +43,8 @@ public class JdbcCodeProposalStore implements CodeProposalStore {
         return jdbc.query("SELECT * FROM eap.code_proposal WHERE id=? AND principal=? AND conversation_id=?", (rs, row) ->
                 new Stored(rs.getString("principal"), JSON.readValue(rs.getString("proposal"), CodeChangeService.Proposal.class),
                         rs.getString("status"), rs.getString("result") == null ? null : JSON.readValue(rs.getString("result"), CodeChangeService.Applied.class),
-                        rs.getString("reason")), id, principal, conversation).stream().findFirst();
+                        rs.getString("reason"), rs.getTimestamp("started_at") == null ? null : rs.getTimestamp("started_at").toInstant(),
+                        rs.getTimestamp("finished_at") == null ? null : rs.getTimestamp("finished_at").toInstant()), id, principal, conversation).stream().findFirst();
     }
     @Override public boolean claim(String principal, UUID conversation, UUID id) {
         return Boolean.TRUE.equals(transaction.execute(tx -> {

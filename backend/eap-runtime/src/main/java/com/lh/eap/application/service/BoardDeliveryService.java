@@ -6,6 +6,7 @@ import com.lh.eap.common.SensitiveData;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
@@ -13,10 +14,20 @@ import static com.lh.eap.application.service.BoardVerificationSource.denied;
 
 @Service
 public class BoardDeliveryService {
-    public record Request(String projectId, long revision, String workspacePath, UUID requestId, List<String> paths, String note) {}
+    public record ApplicationRef(UUID conversationId, UUID proposalId) {}
+    public record Request(String projectId, long revision, String workspacePath, UUID requestId, List<String> paths, String note,
+                          @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) ApplicationRef applicationRef) {
+        public Request(String projectId, long revision, String workspacePath, UUID requestId, List<String> paths, String note) {
+            this(projectId, revision, workspacePath, requestId, paths, note, null);
+        }
+    }
     public record Decide(String projectId, long revision, UUID requestId, UUID deliveryId, String decision, boolean criteriaConfirmed, boolean previewConfirmed, String comment) {}
     public record Decision(UUID id, UUID requestId, String decision, boolean criteriaConfirmed, boolean previewConfirmed, String comment, String operator, Instant createdAt) {}
-    public record Delivery(UUID id, String source, UUID requestId, long taskRevision, long submittedRevision, String workspacePath, String baseCommit, UUID verificationId, String sourceHash, UUID prototypeVersionId, String goal, String acceptanceCriteria, String note, List<BoardDeliveryCapture.File> files, Instant createdAt, Decision decision) {}
+    public record Delivery(UUID id, String source, UUID requestId, long taskRevision, long submittedRevision, String workspacePath, String baseCommit, UUID verificationId, String sourceHash, UUID prototypeVersionId, String goal, String acceptanceCriteria, String note, List<BoardDeliveryCapture.File> files, Instant createdAt, Decision decision, BoardApplicationEvidence.Evidence applicationEvidence) {
+        public Delivery(UUID id, String source, UUID requestId, long taskRevision, long submittedRevision, String workspacePath, String baseCommit, UUID verificationId, String sourceHash, UUID prototypeVersionId, String goal, String acceptanceCriteria, String note, List<BoardDeliveryCapture.File> files, Instant createdAt, Decision decision) {
+            this(id, source, requestId, taskRevision, submittedRevision, workspacePath, baseCommit, verificationId, sourceHash, prototypeVersionId, goal, acceptanceCriteria, note, files, createdAt, decision, null);
+        }
+    }
     public record Page(Delivery record, boolean prepareAllowed, String reason) {}
     private record Stored(Delivery delivery, String requestHash, String decisionHash, long revision, BoardRunService.Snapshot task, BoardVerificationService.Record verification) {}
     private static final JsonMapper JSON = JsonMapper.builder().build();
@@ -27,8 +38,13 @@ public class BoardDeliveryService {
     private final CapabilityRegistry registry;
     private final BoardVerificationService verification;
     private final BoardDeliveryCapture capture;
+    private final BoardApplicationEvidence applications;
     public BoardDeliveryService(JdbcTemplate jdbc, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, BoardVerificationService verification, BoardDeliveryCapture capture) {
-        this.jdbc=jdbc; this.tasks=tasks; this.executions=executions; this.git=git; this.registry=registry; this.verification=verification; this.capture=capture;
+        this(jdbc, tasks, executions, git, registry, verification, capture, null);
+    }
+    @Autowired
+    public BoardDeliveryService(JdbcTemplate jdbc, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, BoardVerificationService verification, BoardDeliveryCapture capture, BoardApplicationEvidence applications) {
+        this.jdbc=jdbc; this.tasks=tasks; this.executions=executions; this.git=git; this.registry=registry; this.verification=verification; this.capture=capture; this.applications=applications;
     }
     public Page get(UUID taskId, UUID executionId, String projectId) {
         project(projectId); var task = tasks.find(taskId, projectId, false); var saved = read(taskId, executionId);
@@ -39,6 +55,7 @@ public class BoardDeliveryService {
     public Delivery submit(UUID taskId, UUID executionId, Request request) {
         project(request.projectId()); BoardDeliveryCapture.validatePaths(request.paths()); text(request.note());
         if (request.revision()<1 || request.requestId()==null || request.workspacePath()==null || request.workspacePath().isBlank() || request.workspacePath().length()>2048) throw new IllegalArgumentException("INVALID_BOARD_DELIVERY_REQUEST");
+        if (request.applicationRef()!=null && (request.applicationRef().conversationId()==null || request.applicationRef().proposalId()==null)) throw new IllegalArgumentException("INVALID_BOARD_DELIVERY_REQUEST");
         String fingerprint = fingerprint(request);
         return verification.observePreflight(taskId, executionId, request.workspacePath(), () -> {
             var task = tasks.find(taskId, request.projectId(), true); var stored = read(taskId, executionId);
@@ -52,7 +69,9 @@ public class BoardDeliveryService {
             if (!plan.workspacePath().equals(request.workspacePath())) throw denied("BOARD_WORKSPACE_CHANGED");
             lock(task, request.workspacePath()); requireBound(executionId, request.workspacePath());
             var files = capture.capture(Path.of(request.workspacePath()), capability(), plan.baseCommit(), plan.source(), request.paths());
-            var delivery = new Delivery(UUID.randomUUID(), "EXTERNAL_MANUAL", request.requestId(), task.revision(), task.revision()+1, request.workspacePath(), plan.baseCommit(), record.id(), plan.source().contentHash(), task.prototypeVersionId(), task.goal(), task.acceptanceCriteria(), SensitiveData.redact(request.note()), files, Instant.now(), null);
+            var now = Instant.now();
+            var evidence = request.applicationRef()==null ? null : applicationEvidence(request.applicationRef(), request.workspacePath(), stored, files, now);
+            var delivery = new Delivery(UUID.randomUUID(), evidence==null ? "EXTERNAL_MANUAL" : "CHAT_APPLIED_POST_HOC", request.requestId(), task.revision(), task.revision()+1, request.workspacePath(), plan.baseCommit(), record.id(), plan.source().contentHash(), task.prototypeVersionId(), task.goal(), task.acceptanceCriteria(), SensitiveData.redact(request.note()), files, now, null, evidence);
             jdbc.update("UPDATE eap.board_task_run SET delivery_snapshot=?::jsonb,delivery_request_hash=? WHERE task_id=? AND execution_id=?", JSON.writeValueAsString(delivery), fingerprint, taskId, executionId);
             tasks.deliveryTransition(task, "acceptance"); return delivery;
         });
@@ -78,12 +97,21 @@ public class BoardDeliveryService {
                 if (!sameTask(task, stored, delivery.taskRevision()) || !passed(stored.verification()) || !stored.verification().id().equals(delivery.verificationId()) || !stored.verification().plan().baseCommit().equals(delivery.baseCommit()) || !stored.verification().plan().source().contentHash().equals(delivery.sourceHash()) || delivery.files().isEmpty()) throw denied("BOARD_DELIVERY_STALE");
                 var currentFiles = capture.capture(Path.of(delivery.workspacePath()), capability(), delivery.baseCommit(), stored.verification().plan().source(), delivery.files().stream().map(BoardDeliveryCapture.File::path).toList());
                 if (!currentFiles.equals(delivery.files())) throw denied("BOARD_DELIVERY_STALE");
+                if ("CHAT_APPLIED_POST_HOC".equals(delivery.source())) {
+                    var evidence = delivery.applicationEvidence();
+                    if (evidence==null || !evidence.equals(applicationEvidence(new ApplicationRef(evidence.conversationId(), evidence.proposalId()), delivery.workspacePath(), stored, currentFiles, evidence.associatedAt())))
+                        throw denied("BOARD_DELIVERY_APPLICATION_STALE");
+                }
             }
             var decision = new Decision(UUID.randomUUID(), request.requestId(), request.decision(), request.criteriaConfirmed(), request.previewConfirmed(), SensitiveData.redact(request.comment()), "local-operator", Instant.now());
-            var result = new Delivery(delivery.id(), delivery.source(), delivery.requestId(), delivery.taskRevision(), delivery.submittedRevision(), delivery.workspacePath(), delivery.baseCommit(), delivery.verificationId(), delivery.sourceHash(), delivery.prototypeVersionId(), delivery.goal(), delivery.acceptanceCriteria(), delivery.note(), delivery.files(), delivery.createdAt(), decision);
+            var result = new Delivery(delivery.id(), delivery.source(), delivery.requestId(), delivery.taskRevision(), delivery.submittedRevision(), delivery.workspacePath(), delivery.baseCommit(), delivery.verificationId(), delivery.sourceHash(), delivery.prototypeVersionId(), delivery.goal(), delivery.acceptanceCriteria(), delivery.note(), delivery.files(), delivery.createdAt(), decision, delivery.applicationEvidence());
             jdbc.update("UPDATE eap.board_task_run SET delivery_snapshot=?::jsonb,delivery_decision_hash=? WHERE task_id=? AND execution_id=?", JSON.writeValueAsString(result), fingerprint(request), taskId, executionId);
             tasks.deliveryTransition(task, request.decision().equals("ACCEPT") ? "done" : "ready"); return result;
         });
+    }
+    private BoardApplicationEvidence.Evidence applicationEvidence(ApplicationRef ref, String workspace, Stored stored, List<BoardDeliveryCapture.File> files, Instant at) {
+        if (applications==null) throw denied("BOARD_DELIVERY_APPLICATION_UNAVAILABLE");
+        return applications.associate(ref, workspace, stored.task().prototype(), stored.verification(), files, at);
     }
     private void lock(BoardTaskService.Task task, String workspace) {
         if (tasks.hasActiveExecution(task.id())) throw denied("BOARD_EXECUTION_ACTIVE");
