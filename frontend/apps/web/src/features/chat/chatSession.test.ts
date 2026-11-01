@@ -39,6 +39,39 @@ function deferred<T>() {
 }
 
 describe("chat session", () => {
+  it.each([
+    [409, 'CODE_GENERATION_BASELINE_CHANGED', 'generation-stale'],
+    [400, 'CODE_GENERATION_TARGET_REQUIRED', 'generation-blocked'],
+    [400, 'CODE_GENERATION_SCOPE_MISMATCH', 'generation-blocked'],
+    [503, 'CODE_GENERATION_CONTEXT_UNAVAILABLE', 'generation-unavailable'],
+    [400, 'CODE_PROPOSAL_TOO_LARGE', 'generation-too-large'],
+  ])('keeps the draft and distinguishes source preparation failure %s %s from a model switch', async (http, code, expected) => {
+    const api: ChatApi = {
+      aiStatus: async () => status('configured_unverified'),
+      openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: 'ws-abc', memory: 'memory' }),
+      sendAiMessage: async () => { throw { response: { status: http, data: { detail: code } } }; },
+    };
+    const session = createChatSession(api);
+    await session.openConversation(); session.context.value.mode = 'code';
+    session.context.value.targetPath = 'frontend/App.vue'; session.draft.value = 'Keep my source edits';
+    await session.send();
+    expect(session.failure.value).toBe(expected);
+    expect(session.draft.value).toBe('Keep my source edits');
+    expect(session.turns.value).toEqual([]);
+    expect(session.pendingConnectionId.value).toBeNull();
+  });
+  it('keeps an oversized code response as an explicit failure without a partial candidate', async () => {
+    const api: ChatApi = {
+      aiStatus: async () => status('configured_unverified'),
+      openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: 'ws', memory: '' }),
+      sendAiMessage: async () => result({ error: 'CODE_PROPOSAL_TOO_LARGE', status: 'FAILED', answer: '', proposal: null }),
+    };
+    const session = createChatSession(api); await session.openConversation(); session.draft.value = 'Keep draft';
+    await session.send();
+    expect(session.failure.value).toBe('generation-too-large');
+    expect(session.draft.value).toBe('Keep draft');
+    expect(session.turns.value.at(-1)?.proposal).toBeNull();
+  });
   it("loads status without sending a message", async () => {
     let sent = 0;
     const api: ChatApi = {

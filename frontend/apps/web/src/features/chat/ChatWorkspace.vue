@@ -11,6 +11,7 @@ import WorkspaceWelcome from "../../components/WorkspaceWelcome.vue";
 import { chatService, chatStorage } from './chatService';
 import { preview } from '../shell/preview';
 import TaskComposer from "./TaskComposer.vue";
+import GenerationBaseline from "./GenerationBaseline.vue";
 import type { CodeProposal } from "@eap/runtime-client";
 import { catalogRefreshNote, type CatalogNote } from "./catalogNote";
 import { readFeedScroll, saveFeedScroll } from "./feedScroll";
@@ -429,6 +430,7 @@ onMounted(async () => {
         <p v-if="turn.artifactError">{{ t("chat.artifactFailed") }}：{{ turn.artifactError }}</p>
         <section v-if="turn.proposal" class="code-proposal write-request" data-testid="code-proposal">
           <h3>{{ t("desktop.writeRequest", { count: turn.proposal.files.length }) }}</h3>
+          <GenerationBaseline :generation="turn.proposal.generation" />
           <p v-if="!refused[turn.proposal.id]" class="hint" data-testid="turn-pending">{{ t(turnPending(turn)) }}</p>
           <Collapse v-for="file in turn.proposal.files" :key="file.path">
             <template #summary>{{ file.path }} · {{ file.before == null ? t('task.newFile') : t('task.modifiedFile') }} · {{ t('desktop.fileBaseline') }}：{{ file.baseHash || t('desktop.summaryUnknown') }}</template>
@@ -464,7 +466,9 @@ onMounted(async () => {
     <Button v-if="session.failure.value === 'model-unavailable' || session.failure.value === 'target-change-failed'" type="button" data-testid="locate-model" :title="t('desktop.locateModelNote')" @click="workbench.modelMenuToken += 1">{{ t('desktop.locateModel') }}</Button>
     <Feedback v-if="session.targetNotice.value === 'cleared'" tone="info">{{ t("chat.memoryCleared") }}</Feedback>
     <Feedback v-if="session.targetNotice.value === 'kept'" tone="info">{{ t("modelUi.memoryKept") }}</Feedback>
-    <Feedback v-if="session.failure.value" tone="warning">{{ t(session.failure.value === "target-changed" ? "modelUi.retryTarget" : session.failure.value === "model-unavailable" ? "modelUi.unavailable" : session.failure.value === "not-configured" ? "chat.notConfigured" : session.failure.value === "target-change-failed" ? "chat.targetChangeFailed" : "desktop.retrySame") }}</Feedback>
+    <Feedback v-if="session.failure.value.startsWith('generation-')" tone="warning">{{ t('generation.' + session.failure.value) }}</Feedback>
+    <Feedback v-else-if="session.failure.value" tone="warning">{{ t(session.failure.value === "target-changed" ? "modelUi.retryTarget" : session.failure.value === "model-unavailable" ? "modelUi.unavailable" : session.failure.value === "not-configured" ? "chat.notConfigured" : session.failure.value === "target-change-failed" ? "chat.targetChangeFailed" : "desktop.retrySame") }}</Feedback>
+    <Button v-if="session.failure.value === 'generation-stale'" data-testid="retry-generation" :disabled="session.sending.value || !session.draft.value.trim()" @click="sendTask">{{ t('generation.retry') }}</Button>
     <Feedback v-if="proposalNote" tone="info">{{ proposalNote }}</Feedback>
     <p v-if="effortReset" class="hint" data-testid="effort-reset">{{ t("desktop.effortReset", { effort: t("task." + effortReset) }) }}</p>
     </InfiniteScroll>

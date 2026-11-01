@@ -5,6 +5,7 @@ import { runtimeApi, type TaskContext } from "@eap/runtime-client";
 import { i18n } from "../../lib/i18n";
 import TaskComposer from "./TaskComposer.vue";
 import { workbench } from "../shell/workbench";
+import { createChatSession, type ChatApi } from './chatSession';
 
 let app: App | undefined;
 let element: HTMLDivElement | undefined;
@@ -21,6 +22,25 @@ async function mount() {
   return context;
 }
 describe("engineering task composer", () => {
+  it('selects a code target without a prototype and sends the exact target in the shared DTO', async () => {
+    const send = vi.fn(async () => ({ executionId: 'test', answer: 'test only', error: '', status: 'SUCCEEDED', approval: 'NOT_REQUIRED', verification: 'UNVERIFIED', toolEvents: [], artifacts: [], artifactError: '' }));
+    const api = { openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: 'ws', memory: '' }), sendAiMessage: send } as unknown as ChatApi;
+    const session = createChatSession(api); await session.openConversation(); session.draft.value = 'Adjust this existing page';
+    element = document.createElement('div'); document.body.append(element);
+    app = createApp({ render: () => h(TaskComposer, { context: session.context.value, disabled: false, reasoningEfforts: [], onUpdate: (value: TaskContext) => { session.context.value = value; } }) });
+    app.use(i18n).mount(element); await nextTick();
+    (element.querySelector('[data-testid=composer-add]') as HTMLButtonElement).click(); await nextTick();
+    (element.querySelector('[data-testid=composer-cat-actions]') as HTMLButtonElement).click(); await nextTick();
+    const mode = element.querySelector('.composer-popup-content select') as HTMLSelectElement;
+    mode.value = 'code'; mode.dispatchEvent(new Event('change', { bubbles: true })); await nextTick();
+    const target = element.querySelector('[data-testid=generation-target]') as HTMLInputElement;
+    expect(target).not.toBeNull();
+    target.value = 'frontend/apps/web/src/Example.vue'; target.dispatchEvent(new Event('input', { bubbles: true })); await nextTick();
+    expect(session.context.value.prototypeVersionId).toBe(''); expect(session.draft.value).toBe('Adjust this existing page');
+    expect(send).not.toHaveBeenCalled();
+    await session.send();
+    expect(send.mock.calls[0]).toEqual(['c1', 'Adjust this existing page', 'none', expect.objectContaining({ mode: 'code', targetPath: 'frontend/apps/web/src/Example.vue', prototypeVersionId: '' })]);
+  });
   it('shows a disabled busy refresh action while a catalog request is in progress', async () => {
     const refresh = vi.fn(), busy = ref(true);
     element = document.createElement('div'); document.body.append(element);

@@ -31,7 +31,7 @@ class EngineeringTaskFlowTest {
         var service = new EngineeringChatService(client, handlers, (Path) null, new FileExecutionArtifactStore(root.resolve("artifacts")));
         var status = new AiConnectionStatus(handlers, root, null, "openai", "offline", "https://api.openai.com", true);
         var app = new AiChatApplication(status, new AiConversationRegistry(memory), service, root);
-        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""));
+        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), null, null, new InMemoryCodeGenerationStore());
         ReflectionTestUtils.setField(app, "codeChanges", changes);
         var versions = org.mockito.Mockito.mock(com.lh.eap.application.service.PrototypeVersionService.class);
         var versionId = UUID.fromString("116967fb-fcc8-49ec-a8a4-2042ae80ecb0");
@@ -58,6 +58,8 @@ class EngineeringTaskFlowTest {
         assertTrue(observed.get().getUserMessage().getText().contains("<workspace-source path=\"src/features/chat/TaskComposer.vue\""));
         assertTrue(observed.get().getUserMessage().getText().contains("<script setup>existing</script>"));
         assertNotNull(response.proposal());
+        assertEquals(versionId.toString(), response.proposal().generation().prototypeVersionId());
+        assertEquals("hash", response.proposal().generation().prototypeContentHash());
         assertEquals("src/features/chat/TaskComposer.vue", response.proposal().files().getFirst().path());
         assertThrows(ResponseStatusException.class, () -> app.apply(id, response.proposal().id(), "{\"confirmed\":false}"));
         var result = app.apply(id, response.proposal().id(), "{\"confirmed\":true}");

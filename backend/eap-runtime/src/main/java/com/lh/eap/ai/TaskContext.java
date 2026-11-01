@@ -54,12 +54,12 @@ public record TaskContext(String mode, String expert, String instructions, Strin
     private String codeConstraints() {
         StringBuilder text = new StringBuilder();
         text.append("\nReturn ONLY a JSON object: {\"summary\":\"...\",\"files\":[{\"path\":\"relative/path\",\"content\":\"complete file content\"}]}. ");
-        text.append("Return 1 to 8 source files with relative paths. No shell commands, dependencies, lockfiles or secrets. ");
+        text.append("Return exactly one source file at the bound target path. No shell commands, dependencies, lockfiles or secrets. ");
         text.append("Preserve existing imports, script/setup structure, and shared UI packages already used in the project. ");
         text.append("When <workspace-source> is present, edit that existing file instead of inventing a new page shell. ");
         if (!targetPath.isBlank()) {
             text.append("The delivery target path is `").append(targetPath)
-                    .append("`. The files array MUST include that exact path; do not replace it with a new unrelated component. ");
+                    .append("`. The files array MUST include that exact path and no other path; do not replace it with a new unrelated component. ");
         }
         text.append("Match the user's existing project. Code is a proposal, never claim it was written or tested.");
         return text.toString();
@@ -82,7 +82,7 @@ public record TaskContext(String mode, String expert, String instructions, Strin
                 .append("\" bytes=\"").append(excerpt.bytes())
                 .append("\" hash=\"").append(excerpt.baseHash().replace("\"", ""))
                 .append("\" denial=\"").append(excerpt.denial().replace("\"", "")).append("\">\n");
-        if (!excerpt.excerpt().isBlank()) result.append(excerpt.excerpt()).append("\n");
+        if (excerpt.exists()) result.append(excerpt.excerpt()).append("\n");
         result.append("</workspace-source>");
         return result.toString();
     }

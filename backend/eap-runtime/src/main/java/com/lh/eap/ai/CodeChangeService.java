@@ -16,8 +16,15 @@ import tools.jackson.databind.json.JsonMapper;
 @Service
 public final class CodeChangeService {
     public record Change(String path, String before, String content, String baseHash) {}
+    public record Generation(UUID id, String targetPath, String baseHash, Instant capturedAt,
+                             String prototypeVersionId, String prototypeContentHash) {}
     public record Proposal(UUID id, UUID conversationId, String workspace, String summary, List<Change> files, Instant createdAt,
-                           boolean applied, boolean writeAllowed, String verification) {}
+                           boolean applied, boolean writeAllowed, String verification, Generation generation) {
+        public Proposal(UUID id, UUID conversationId, String workspace, String summary, List<Change> files, Instant createdAt,
+                        boolean applied, boolean writeAllowed, String verification) {
+            this(id, conversationId, workspace, summary, files, createdAt, applied, writeAllowed, verification, null);
+        }
+    }
     public record Applied(UUID id, List<String> written, String verification, List<CodeVerificationService.Check> checks) {}
     /** Read-only snapshot for delivery gates. Does not return file contents. */
     public record Baseline(String path, boolean exists, String baseHash, String denial) {}
@@ -42,22 +49,32 @@ public final class CodeChangeService {
     private final RuntimeWorkspace runtime;
     private final CodeVerificationService verification;
     private final DirtyRunner dirtyRunner;
+    private final CodeGenerationStore generations;
     private final Map<UUID, Proposal> proposals = new LinkedHashMap<>();
     private final Map<UUID, Applied> appliedResults = new HashMap<>();
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final Set<String> EXTENSIONS = Set.of("vue", "ts", "tsx", "js", "jsx", "css", "html", "json", "md", "sql", "java");
     private static final int SOURCE_EXCERPT_LIMIT = 4000;
+    static final int MAX_PROPOSAL_CONTENT_CHARS = 160000;
+    // JSON can encode each UTF-16 code unit as six characters; reserve bounded envelope space.
+    static final int MAX_PROPOSAL_RESPONSE_CHARS = 6 * MAX_PROPOSAL_CONTENT_CHARS + 16384;
     private static final int DIRTY_PATH_LIMIT = 40;
     public CodeChangeService(RuntimeWorkspace runtime) { this(runtime, null, null); }
     public CodeChangeService(RuntimeWorkspace runtime, CodeVerificationService verification) {
         this(runtime, verification, null);
     }
-    @org.springframework.beans.factory.annotation.Autowired
     public CodeChangeService(RuntimeWorkspace runtime,
             @org.springframework.beans.factory.annotation.Autowired(required = false) CodeVerificationService verification,
             DirtyRunner dirtyRunner) {
+        this(runtime, verification, dirtyRunner, null);
+    }
+    @org.springframework.beans.factory.annotation.Autowired
+    public CodeChangeService(RuntimeWorkspace runtime,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) CodeVerificationService verification,
+            DirtyRunner dirtyRunner, CodeGenerationStore generations) {
         this.runtime = runtime;
         this.verification = verification;
+        this.generations = generations;
         // Compatibility constructors have no execution authority. Production requires the shared runner.
         this.dirtyRunner = dirtyRunner == null ? workspace -> null : dirtyRunner;
     }
@@ -192,12 +209,29 @@ public final class CodeChangeService {
      * the proposal must include that relative path so candidates cannot abandon the bound page shell.
      */
     public synchronized Proposal propose(UUID conversation, String answer, boolean writeAllowed, String expectedTargetPath) {
+        return parseProposal(conversation, answer, writeAllowed, expectedTargetPath, null);
+    }
+
+    public synchronized Proposal proposePrepared(String principal, UUID conversation, UUID generationId,
+                                                String answer, boolean writeAllowed) {
+        var snapshot = loadGeneration(generationId);
+        if (!snapshot.principal().equals(principal) || !snapshot.conversationId().equals(conversation))
+            throw rejected("CODE_GENERATION_SCOPE_MISMATCH");
+        verifyGeneration(snapshot);
+        return parseProposal(conversation, answer, writeAllowed, snapshot.targetPath(), snapshot);
+    }
+
+    private Proposal parseProposal(UUID conversation, String answer, boolean writeAllowed, String expectedTargetPath,
+                                   CodeGenerationStore.Snapshot generation) {
         try {
+            if (answer.length() > MAX_PROPOSAL_RESPONSE_CHARS) throw rejected("CODE_PROPOSAL_TOO_LARGE");
             String value = answer.strip();
             if (value.startsWith("```")) value = value.substring(value.indexOf('\n') + 1, value.lastIndexOf("```")).strip();
             var root = JSON.readTree(value);
             var entries = root.path("files");
             if (!entries.isArray() || entries.size() < 1 || entries.size() > 8) throw rejected("INVALID_CODE_PROPOSAL");
+            if (generation != null && (entries.size() != 1 || !entries.get(0).path("path").asString("").equals(generation.targetPath())))
+                throw rejected("CODE_GENERATION_SCOPE_MISMATCH");
             var files = new ArrayList<Change>();
             var names = new HashSet<String>();
             var targets = new ArrayList<Path>();
@@ -206,7 +240,7 @@ public final class CodeChangeService {
                 String name = entry.path("path").asString(""), content = entry.path("content").asString("");
                 if (!entry.path("content").isString() || !names.add(name)) throw rejected("INVALID_CODE_PROPOSAL");
                 total += content.length();
-                if (total > 160000) throw rejected("CODE_PROPOSAL_TOO_LARGE");
+                if (total > MAX_PROPOSAL_CONTENT_CHARS) throw rejected("CODE_PROPOSAL_TOO_LARGE");
                 Path path = target(name, false);
                 for (Path previous : targets) {
                     if (previous.equals(path) || (Files.exists(previous) && Files.exists(path) && Files.isSameFile(previous, path))) {
@@ -215,7 +249,7 @@ public final class CodeChangeService {
                 }
                 targets.add(path);
                 if (Files.exists(path) && Files.size(path) > 640000) throw rejected("EXISTING_FILE_TOO_LARGE");
-                String before = Files.exists(path) ? Files.readString(path, StandardCharsets.UTF_8) : null;
+                String before = generation != null ? generation.source() : Files.exists(path) ? Files.readString(path, StandardCharsets.UTF_8) : null;
                 if (before != null && before.length() > 160000) throw rejected("EXISTING_FILE_TOO_LARGE");
                 files.add(new Change(name, before, content, hash(before)));
             }
@@ -224,7 +258,8 @@ public final class CodeChangeService {
                 throw rejected("TARGET_PATH_REQUIRED");
             }
             var proposal = new Proposal(UUID.randomUUID(), conversation, runtime.workspace().toRealPath().toString(), root.path("summary").asString(""),
-                    List.copyOf(files), Instant.now(), false, writeAllowed, "not_requested");
+                    List.copyOf(files), Instant.now(), false, writeAllowed, "not_requested", generation == null ? null : generation.reference());
+            if (generation != null) verifyGeneration(generation);
             sweep();
             if (proposals.size() >= 32) {
                 UUID oldest = proposals.keySet().iterator().next();
@@ -275,7 +310,7 @@ public final class CodeChangeService {
             String status = checks.isEmpty() ? "not_requested" : "requested";
             var result = new Applied(id, List.copyOf(written), status, List.copyOf(checks));
             appliedResults.put(id, result);
-            proposals.put(id, new Proposal(proposal.id(), conversation, proposal.workspace(), proposal.summary(), proposal.files(), proposal.createdAt(), true, true, status));
+            proposals.put(id, new Proposal(proposal.id(), conversation, proposal.workspace(), proposal.summary(), proposal.files(), proposal.createdAt(), true, true, status, proposal.generation()));
             return result;
         } catch (ResponseStatusException failure) { throw failure; }
         catch (IOException failure) {
@@ -284,11 +319,72 @@ public final class CodeChangeService {
         }
     }
 
+    /** Capture once, persist before model invocation, and use these exact UTF-8 bytes as context. */
+    public CodeGenerationStore.Snapshot prepareGeneration(String principal, UUID conversation, String relative,
+                                                          String prototypeVersionId, String prototypeContentHash) {
+        if (relative == null || relative.isBlank()) throw rejected("CODE_GENERATION_TARGET_REQUIRED");
+        if (generations == null) throw contextUnavailable();
+        if (prototypeVersionId == null || prototypeContentHash == null
+                || prototypeVersionId.isBlank() != prototypeContentHash.isBlank()) throw contextUnavailable();
+        try {
+            String source = generationSource(relative);
+            var snapshot = new CodeGenerationStore.Snapshot(UUID.randomUUID(), principal, conversation,
+                    runtime.workspace().toRealPath().toString(), relative, hash(source), source,
+                    prototypeVersionId, prototypeContentHash, Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+            generations.save(snapshot);
+            if (!snapshot.equals(loadGeneration(snapshot.id()))) throw contextUnavailable();
+            return snapshot;
+        } catch (ResponseStatusException expected) { throw expected; }
+        catch (Exception failure) { throw contextUnavailable(); }
+    }
+
+    private CodeGenerationStore.Snapshot loadGeneration(UUID id) {
+        if (generations == null) throw contextUnavailable();
+        try { return generations.find(id).orElseThrow(CodeChangeService::contextUnavailable); }
+        catch (Exception failure) { throw contextUnavailable(); }
+    }
+
+    private void verifyGeneration(CodeGenerationStore.Snapshot snapshot) {
+        try {
+            if (!runtime.workspace().toRealPath().toString().equals(snapshot.workspace()))
+                throw rejected("CODE_GENERATION_SCOPE_MISMATCH");
+            if (!hash(generationSource(snapshot.targetPath())).equals(snapshot.baseHash()))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "CODE_GENERATION_BASELINE_CHANGED");
+        } catch (ResponseStatusException expected) { throw expected; }
+        catch (Exception failure) { throw contextUnavailable(); }
+    }
+
+    private String generationSource(String relative) throws IOException {
+        Path path = target(relative, false);
+        // PB02 is deliberately a complete single-file context, not a truncated excerpt.
+        if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return null;
+        byte[] bytes;
+        try (var input = Files.newInputStream(path, LinkOption.NOFOLLOW_LINKS)) { bytes = input.readNBytes(24001); }
+        if (bytes.length > 24000) throw contextUnavailable();
+        String source = StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+        if (source.indexOf('\0') >= 0 || unsafeSource(source)) throw contextUnavailable();
+        target(relative, false); // recheck workspace/symlink boundaries after the read
+        return source;
+    }
+
+    private static boolean unsafeSource(String source) {
+        String lower = source.toLowerCase(Locale.ROOT);
+        return com.lh.eap.common.SensitiveData.containsSecret(source)
+                || lower.contains("[redacted") || lower.contains("«redacted")
+                || lower.contains("private key-----") || lower.matches("(?s).*bearer\\s+[a-z0-9._~+/-]{8,}.*");
+    }
+
+    private static ResponseStatusException contextUnavailable() {
+        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_GENERATION_CONTEXT_UNAVAILABLE");
+    }
+
     private Path target(String relative, boolean writing) throws IOException {
         if (relative.isBlank() || relative.length() > 240 || relative.contains("\\") || relative.contains(":")) throw rejected("INVALID_CODE_PATH");
         var parts = relative.split("/", -1);
         for (String part : parts) {
             String key = part.toLowerCase(Locale.ROOT);
+            if (key.matches(".*(credential|secret|password|passwd|private[-_]?key|api[-_]?key|certificate|keystore).*")
+                    || key.matches(".*tokens?\\.(json|yaml|yml|txt|lock)")) throw rejected("SOURCE_FILES_ONLY");
             if (part.isBlank() || part.startsWith(".") || part.endsWith(".") || part.endsWith(" ")
                     || key.equals("node_modules") || key.equals("target") || key.equals("dist")) throw rejected("INVALID_CODE_PATH");
         }

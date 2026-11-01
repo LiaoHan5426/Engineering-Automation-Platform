@@ -92,7 +92,23 @@ public final class EngineeringChatService {
                     error = "AI_EMPTY_RESPONSE";
                     status = CliExecution.Status.FAILED;
                 } else {
-                    answer = redact(response.getResult().getOutput().getText());
+                    String text = response.getResult().getOutput().getText();
+                    if (context.mode().equals("code")) {
+                        // A JSON proposal must stay complete. Never apply the ordinary-chat clip.
+                        if (text != null && text.length() > CodeChangeService.MAX_PROPOSAL_RESPONSE_CHARS) {
+                            error = "CODE_PROPOSAL_TOO_LARGE";
+                            status = CliExecution.Status.FAILED;
+                        } else {
+                            answer = redactComplete(text);
+                            if (answer.length() > CodeChangeService.MAX_PROPOSAL_RESPONSE_CHARS) {
+                                answer = "";
+                                error = "CODE_PROPOSAL_TOO_LARGE";
+                                status = CliExecution.Status.FAILED;
+                            }
+                        }
+                    } else {
+                        answer = redact(text);
+                    }
                     if (org.springframework.ai.model.tool.ToolCallLimitExceededException.FINISH_REASON
                             .equals(response.getResult().getMetadata().getFinishReason())) tool.error = "TOOL_CALL_LIMIT";
                 }
@@ -132,10 +148,13 @@ public final class EngineeringChatService {
     }
 
     private static String redact(String value) {
-        String text = SensitiveData.redact(value);
-        text = text.replaceAll("(?i)Bearer\\s+[^\\s\"']+", "Bearer [REDACTED]")
-                .replaceAll("sk-[A-Za-z0-9_-]+", "[REDACTED]");
+        String text = redactComplete(value);
         return text.length() > 16384 ? text.substring(0, 16384) : text;
+    }
+
+    private static String redactComplete(String value) {
+        String text = SensitiveData.redact(value);
+        return text.replaceAll("(?i)Bearer\\s+[^\\s\"']+", "Bearer [REDACTED]");
     }
 
     public final class GitTool {

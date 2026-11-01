@@ -44,6 +44,18 @@ function httpStatus(error: unknown): number | undefined {
   return typeof status === "number" ? status : undefined;
 }
 
+function generationFailure(error: unknown): string | undefined {
+  const code = (error as { response?: { data?: { detail?: unknown } } } | null)?.response?.data?.detail;
+  if (typeof code !== 'string') return undefined;
+  return ({
+    CODE_GENERATION_BASELINE_CHANGED: 'generation-stale',
+    CODE_GENERATION_TARGET_REQUIRED: 'generation-blocked',
+    CODE_GENERATION_SCOPE_MISMATCH: 'generation-blocked',
+    CODE_GENERATION_CONTEXT_UNAVAILABLE: 'generation-unavailable',
+    CODE_PROPOSAL_TOO_LARGE: 'generation-too-large',
+  } as Record<string, string>)[code];
+}
+
 export type ConversationHistory = { id: string; title: string; archived: boolean; updatedAt: string; draft: string; workspaceLabel: string; memory: string; connectionId: string | null; model?: string; context?: TaskContext; expired?: boolean };
 export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem' | 'setItem'>) {
   const history = ref<ConversationHistory[]>([]);
@@ -286,11 +298,11 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         artifacts: result.artifacts ?? [],
       });
       if (!result.error) { if (entry && entry.draft === text) entry.draft = ""; if (conversationId.value === id && draft.value === text) draft.value = ""; if (conversationId.value === id) failure.value = ""; }
-      if (conversationId.value === id && result.error) failure.value = "kept";
+      if (conversationId.value === id && result.error) failure.value = result.error === 'CODE_PROPOSAL_TOO_LARGE' ? 'generation-too-large' : "kept";
     } catch (error) {
       if (inflight.value[id] !== current) return;
       if (httpStatus(error) === 404) { if (entry) entry.expired = true; if (conversationId.value === id) expired.value = true; }
-      if (conversationId.value === id) failure.value = httpStatus(error) === 409 ? "target-changed" : httpStatus(error) === 403 ? "model-unavailable" : httpStatus(error) === 503 ? "not-configured" : "failed";
+      if (conversationId.value === id) failure.value = generationFailure(error) ?? (httpStatus(error) === 409 ? "target-changed" : httpStatus(error) === 403 ? "model-unavailable" : httpStatus(error) === 503 ? "not-configured" : "failed");
     } finally {
       if (inflight.value[id] === current) {
         const next = { ...inflight.value };

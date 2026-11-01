@@ -1,0 +1,28 @@
+export const generationMessages = {
+  'zh-CN': {
+    title: '生成前快照', missing: '未关联生成前持久快照（旧记录或模拟候选）。',
+    target: '唯一生成目标', captured: '采集时间', prototype: '来源原型',
+    targetPlaceholder: '仓库相对路径，例如 frontend/apps/web/src/Example.vue',
+    targetHelp: '无需关联原型。只生成此文件；附件不自动成为目标，路径与完整源码由服务端校验。',
+    absent: '目标不存在（新增文件）',
+    'generation-too-large': '候选超过完整响应或源码内容上限，已拒绝，不会应用截断内容。草稿保留，请缩小需求范围。',
+    boundary: '此记录只证明生成前的输入基线，不代表写入、测试或人工验收。',
+    'generation-stale': '生成期间目标源码已变化，候选已拒绝，当前修改和草稿保留。请核对源码后显式重新生成。',
+    'generation-blocked': '生成需要明确的单个目标及完整可读取的源码。请检查目标路径；额外文件不会被自动授权。',
+    'generation-unavailable': '无法保存或读取生成前上下文，已阻止继续生成。草稿保留，请核对本地服务后再试。',
+    retry: '核对源码后重新生成',
+  },
+  'en-US': {
+    title: 'Pre-generation snapshot', missing: 'No persisted pre-generation snapshot (legacy or simulated candidate).',
+    target: 'Single generation target', captured: 'Captured at', prototype: 'Source prototype',
+    targetPlaceholder: 'Repository-relative path, e.g. frontend/apps/web/src/Example.vue',
+    targetHelp: 'No prototype required. Generate only this file; attachments do not select a target. The server validates the path and complete source.',
+    absent: 'Target absent (new file)',
+    'generation-too-large': 'Candidate exceeds the complete response or source content limit. Rejected without applying truncated content. Draft preserved; reduce the requested scope.',
+    boundary: 'This records the input baseline only, not file application, tests, or human acceptance.',
+    'generation-stale': 'Target source changed during generation. Candidate rejected; edits and draft preserved. Review the source before explicitly generating again.',
+    'generation-blocked': 'Generation requires one explicit target and complete readable source. Check the path; additional files are not automatically authorized.',
+    'generation-unavailable': 'Cannot save or read generation context. Generation is blocked and the draft is preserved. Check the local service before retrying.',
+    retry: 'Review source and regenerate',
+  },
+};

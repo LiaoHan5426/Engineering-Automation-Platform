@@ -203,6 +203,34 @@ class EngineeringChatServiceTest {
         assertNotEquals("TOOL_PERMISSION_DENIED", outcome.error());
         assertFalse(outcome.execution().trace().stdoutLines().stream().anyMatch(line -> line.text().startsWith("TOOL_")));
     }
+    @Test void ordinaryChatStillRedactsAndClipsAtItsOriginalLimit() {
+        var outcome = service(p -> text("sk-proj-synthetic-credential " + "x".repeat(20000)), null)
+                .chat(request(false), false);
+        assertEquals("", outcome.error());
+        assertEquals(("[REDACTED] " + "x".repeat(20000)).substring(0, 16384), outcome.answer());
+        assertEquals(16384, outcome.answer().length());
+        assertEquals(CliExecution.Status.SUCCEEDED, outcome.execution().status());
+    }
+    @Test void gitToolOutputKeepsItsOriginalBound() {
+        var calls = new AtomicInteger();
+        CapabilityHandler handler = new CapabilityHandler() {
+            public Set<String> capabilities() { return Set.of("git-status"); }
+            public NodeResult handle(CapabilityContext context) {
+                return new NodeResult(true, false, "ok", Map.of("stdout", "x".repeat(20000)));
+            }
+        };
+        var outcome = service(p -> {
+            if (calls.getAndIncrement() == 0) return tool();
+            var result = p.getInstructions().stream().filter(ToolResponseMessage.class::isInstance)
+                    .map(ToolResponseMessage.class::cast).flatMap(m -> m.getResponses().stream()).findFirst().orElseThrow();
+            // Spring AI serializes the String tool result as a JSON string.
+            assertEquals(16384, tools.jackson.databind.json.JsonMapper.builder().build()
+                    .readTree(result.responseData()).asString().length());
+            return text("bounded");
+        }, handler).chat(request(true));
+        assertEquals("bounded", outcome.answer());
+        assertEquals("", outcome.error());
+    }
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"timeout,AI_TIMED_OUT,TIMED_OUT", "cancel,AI_CANCELLED,CANCELLED"})
     void modelTimeoutAndCancellationKeepExecutionAndVerificationSeparate(String mode, String error, String status) {

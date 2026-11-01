@@ -120,6 +120,7 @@ class CapabilityDirtyRunnerTest {
         context.registerBean(CapabilitySettings.class, () -> settings);
         context.registerBean(CapabilityRegistry.class, () -> registry);
         context.registerBean(ProcessExecutor.class, () -> executor);
+        context.registerBean(CodeGenerationStore.class, InMemoryCodeGenerationStore::new);
         context.register(CodeChangeService.class, Class.forName(candidates.iterator().next().getBeanClassName()));
         context.refresh();
         return context;

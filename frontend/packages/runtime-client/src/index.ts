@@ -596,12 +596,21 @@ export type TaskContext = {
   /** Workspace-relative page the server may read for generation prep; never a write grant. */
   targetPath: string;
 };
+export type CodeGenerationSnapshot = {
+  id: string;
+  targetPath: string;
+  baseHash: string;
+  capturedAt: string;
+  prototypeVersionId: string;
+  prototypeContentHash: string;
+};
 export type CodeProposal = {
   id: string;
   conversationId: string;
   workspace: string;
   summary: string;
   files: Array<{ path: string; before: string | null; content: string; baseHash: string }>;
+  generation?: CodeGenerationSnapshot | null;
   applied: boolean;
   writeAllowed: boolean;
   verification: string;

@@ -182,15 +182,22 @@ public class AiChatApplication {
         if (!session.workspace.equals(workspace))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "WORKSPACE_MISMATCH");
         String prototype = "";
+        String prototypeContentHash = "";
         if (!context.prototypeVersionId().isBlank()) {
             if (prototypes == null) throw unavailable();
             final UUID versionId;
             try { versionId = UUID.fromString(context.prototypeVersionId()); } catch (IllegalArgumentException invalid) { throw invalid(); }
-            prototype = JSON.writeValueAsString(prototypes.find(versionId));
+            var version = prototypes.find(versionId);
+            prototype = JSON.writeValueAsString(version);
+            prototypeContentHash = version.contentHash();
         }
         String draft = context.userMessage(message, prototype);
-        if (context.mode().equals("code") && !context.targetPath().isBlank() && codeChanges != null) {
-            draft = TaskContext.withWorkspaceSource(draft, codeChanges.inspectSource(context.targetPath()));
+        CodeGenerationStore.Snapshot generation = null;
+        if (context.mode().equals("code")) {
+            if (codeChanges == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_GENERATION_CONTEXT_UNAVAILABLE");
+            generation = codeChanges.prepareGeneration(AiConversationRegistry.PRINCIPAL, id, context.targetPath(),
+                    context.prototypeVersionId(), prototypeContentHash);
+            draft = TaskContext.withWorkspaceSource(draft, generation.sourceContext());
         }
         if (draft.length() > 64000) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TASK_CONTEXT_TOO_LARGE");
         final String composed = draft;
@@ -220,8 +227,8 @@ public class AiChatApplication {
         });
         var response = message(outcome);
         if (context.mode().equals("code") && outcome.error().isEmpty() && codeChanges != null) {
-            var proposal = codeChanges.propose(id, outcome.answer(), context.approval().equals("review"),
-                    context.targetPath());
+            var proposal = codeChanges.proposePrepared(AiConversationRegistry.PRINCIPAL, id, generation.id(),
+                    outcome.answer(), context.approval().equals("review"));
             return new AiMessageResponse(response.executionId(), proposal.summary(), response.error(), response.status(),
                     response.approval(), response.verification(), response.toolEvents(), response.artifactError(), response.artifacts(), proposal);
         }

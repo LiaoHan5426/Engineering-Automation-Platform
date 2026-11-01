@@ -86,7 +86,7 @@ function change<K extends keyof TaskContext>(key: K, value: TaskContext[K]) {
       prototypeVersionId: versionId,
       mode: versionId ? "code" : props.context.mode,
       expert: versionId ? "frontend" : props.context.expert,
-      targetPath: versionId ? workbench.deliveryTargetPath : "",
+      targetPath: versionId ? (props.context.targetPath || workbench.deliveryTargetPath) : props.context.targetPath,
     });
     return;
   }
@@ -207,6 +207,11 @@ async function loadVersions() {
       <Tag v-for="expert in currentExtras().experts" :key="expert.id" closable :disabled="disabled" @click="removeExpert(expert.id)" @close="removeExpert(expert.id)">{{ t('desktop.collab') }}：{{ expert.name }}</Tag>
       <Tag v-for="id in currentExtras().resources" :key="id" closable type="success" :disabled="disabled" @click="toggleResource(id)" @close="toggleResource(id)">{{ t(demoResources.find(item => item.id === id)?.label || 'preview.simulated') }}</Tag>
     </div>
+    <label v-if="context.mode === 'code'" class="generation-target">
+      <span>{{ t('generation.target') }}</span>
+      <Input data-testid="generation-target" :model-value="context.targetPath" :disabled="disabled" maxlength="240" :placeholder="t('generation.targetPlaceholder')" @update:model-value="change('targetPath', $event)" />
+      <small>{{ t('generation.targetHelp') }}</small>
+    </label>
     <slot name="draft" />
     <div class="task-context" data-testid="task-context">
     <div class="context-toolbar">
@@ -307,6 +312,8 @@ async function loadVersions() {
 
 <style scoped>
 .composer-stack { display: grid; gap: 8px; }
+.generation-target { display:grid; gap:4px; min-width:0; font-size:12px; }
+.generation-target small { color:var(--text-mute); overflow-wrap:anywhere; }
 .composer-scope { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 2px 0; }
 .composer-scope :deep(.eap-select) { max-width: min(280px, 70vw); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }

@@ -52,6 +52,23 @@ class AiChatApplicationTest {
         return new AiChatApplication(status, new AiConversationRegistry(memory), chat, root);
     }
 
+    @Test void codeGenerationRejectsSourceEditedInsideModelCall() throws Exception {
+        java.nio.file.Files.writeString(root.resolve("Page.vue"), "original");
+        var app = app(prompt -> {
+            assertTrue(prompt.getUserMessage().getText().contains("original"));
+            try { java.nio.file.Files.writeString(root.resolve("Page.vue"), "concurrent user edit"); }
+            catch (java.io.IOException failure) { throw new java.io.UncheckedIOException(failure); }
+            return FakeChatModels.text("{\"files\":[{\"path\":\"Page.vue\",\"content\":\"candidate\"}]}");
+        }, true, root, null);
+        org.springframework.test.util.ReflectionTestUtils.setField(app, "codeChanges",
+                new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, root.toString(), ""), null, null, new InMemoryCodeGenerationStore()));
+        var id = app.open("{}").conversationId();
+        var failure = assertThrows(ResponseStatusException.class, () -> app.send(id,
+                "{\"message\":\"edit\",\"toolMode\":\"none\",\"context\":{\"mode\":\"code\",\"targetPath\":\"Page.vue\"}}"));
+        assertEquals("CODE_GENERATION_BASELINE_CHANGED", failure.getReason());
+        assertEquals("concurrent user edit", java.nio.file.Files.readString(root.resolve("Page.vue")));
+    }
+
     MockMvc mvc(AiChatApplication app) {
         return MockMvcBuilders.standaloneSetup(new AiChatController(app)).setControllerAdvice(new ApiErrorHandler())
                 .addFilters(new AiBrowserRequestGuard()).build();
