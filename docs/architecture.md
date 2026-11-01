@@ -45,7 +45,7 @@ docs/                architecture, pipeline, roadmap, environment, expert/knowle
 modules also declare direct dependencies for types they use. Only runtime uses Boot repackage.
 The engine is an engineering implementation module, not a claim of framework-free domain purity.
 The existing Spring/JDBC/HTTP-exception coupling is retained; SQL model calls still use the existing
-provider contract implemented by the AI module. See [module split and verification](decisions/backend-runtime-modules-2026-11-01.md).
+provider contract implemented by the AI module. See [module split and verification](records/architecture-history.md#backend-runtime-modules).
 
 Classes retain their package identities except shared DTOs now under `application.dto` and AI responses under `ai.dto`. They include `web.controller`, `application.service`,
 `persistence.mapper`, `domain.model`, `domain.expert`, `runtime.handler`, `runtime.sql`, and

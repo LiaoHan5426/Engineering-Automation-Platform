@@ -9,7 +9,7 @@
 随着页面与能力增多，禁止在 `features/*` 内复制按钮、弹窗、焦点陷阱、布局壳等基础实现，也禁止无规划地新增平行包或「顺手」堆共享工具。  
 约定：**基础组件和无领域依赖的复合 UI 先入 `@eap/ui`；领域组合件先判层再落点；跨域基础设施用独立模块（或受控子树）统一规划。**
 
-2026-10-31 修订：用户明确需要将源码复制到其他仓库，允许先实现已规划的完整基础定义，不再要求先出现本仓库第二消费者。组件复杂度不是迁出 `@eap/ui` 的依据；Pagination、Descriptions 等通用组合仍在 UI 包。禁止空壳及无验证的完成声明。审计、分阶段实施与证据见 [本轮记录](frontend-ui-consolidation-2026-10-31.md)。
+2026-10-31 修订：用户明确需要将源码复制到其他仓库，允许先实现已规划的完整基础定义，不再要求先出现本仓库第二消费者。组件复杂度不是迁出 `@eap/ui` 的依据；Pagination、Descriptions 等通用组合仍在 UI 包。禁止空壳及无验证的完成声明。审计、分阶段实施与证据见 [本轮记录](../records/frontend-history.md#frontend-ui-consolidation)。
 
 ## 2. 分层（由内到外）
 
@@ -156,7 +156,7 @@ apps/web/src
 
 **源码复制**：见 [`packages/ui/README.md`](../../frontend/packages/ui/README.md)。必须带齐相对依赖、hooks、CSS 与 Token，目标库重建公开导出和验证；不复制应用业务状态。第三方源码保留版本、许可证与改动说明。
 
-**shadcn-vue 状态**：已按需纳入 TooltipContent，固定上游提交 `4d6963aa8a482be7609cb05d3f8b7fe42082b634`，保留 SOURCE.md/MIT LICENSE 并适配 EAP API/Token；`reka-ui@2.11.0` 只声明在 UI 包。不是全部组件迁移。Tailwind 4 使用标准 CSS，不引入 Sass；不运行 CLI init 覆盖现有主题。参考与审计证据见 [本轮记录](frontend-ui-consolidation-2026-10-31.md)。
+**shadcn-vue 状态**：已按需纳入 TooltipContent，固定上游提交 `4d6963aa8a482be7609cb05d3f8b7fe42082b634`，保留 SOURCE.md/MIT LICENSE 并适配 EAP API/Token；`reka-ui@2.11.0` 只声明在 UI 包。不是全部组件迁移。Tailwind 4 使用标准 CSS，不引入 Sass；不运行 CLI init 覆盖现有主题。参考与审计证据见 [本轮记录](../records/frontend-history.md#frontend-ui-consolidation)。
 
 **主题变量**：组件直接读取 `--eap-*`；短名在主题、自定义 Token 作用域重新绑定。`applyAppearance` 设置 theme/skin/density 与 sidebarWidth/railWidth/contentMaxWidth，`applyTokens` 设置局部 Token。控制台皮肤已从 body 迁至 `@eap/style/skins/console.css`，不会覆盖 dark。Dialog/ConfirmBox/Popover/Drawer/Tooltip/DropdownMenu 的 `teleportTo` 可指定子树 portal host；局部主题或模态中的浮层需选对宿主。`tailwind.css` 是可选 Tailwind 4 映射，标准 CSS 消费者无需 Tailwind。宿主 CSS 中的固定颜色已改用语义 Token，终端/代码使用 `--eap-code-*`；浅深色按钮前景使用 `--eap-color-on-primary`。Grapes/Schema 数据和布局草案颜色选项属于设计内容，保留其颜色值。
 

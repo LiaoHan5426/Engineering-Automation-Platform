@@ -5,12 +5,12 @@ import { runtimeApi } from '@eap/runtime-client';
 import { i18n } from '../../lib/i18n';
 import ChatWorkspace from './ChatWorkspace.vue';
 import { chatBinding, workbench } from '../shell/workbench';
+import { mockChatStartup } from './chatStartup.fixture';
 let app: App, host: HTMLDivElement;
 afterEach(() => { app?.unmount(); host?.remove(); vi.restoreAllMocks(); localStorage.clear(); sessionStorage.clear(); workbench.pendingBoardDraft = null; workbench.sessionExtras = {}; chatBinding.value = null; });
 it('requires explicit adoption and cancels without consuming or overwriting; adoption replaces the task context as a unit', async () => {
   localStorage.clear(); sessionStorage.clear();
-  vi.spyOn(runtimeApi, 'aiStatus').mockResolvedValue({ state: 'disabled', provider: 'none', model: '', configurationRevision: '', lastObservedAt: null, errorCode: '', tools: { git_status: false }, workspaceLabel: '' });
-  vi.spyOn(runtimeApi, 'modelConnections').mockResolvedValue({ items: [], effectiveDefaultId: null });
+  mockChatStartup();
   const send = vi.spyOn(runtimeApi, 'sendAiMessage'), create = vi.spyOn(runtimeApi, 'openAiConversation');
   host = document.createElement('div'); document.body.append(host);
   app = createApp(ChatWorkspace); app.use(i18n).mount(host);

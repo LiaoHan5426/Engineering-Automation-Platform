@@ -1,12 +1,13 @@
 # EAP 文档入口
 
-文档描述分为当前实现、目标设计和历史验收。代码与可重复测试是实现事实；目标方案和过去的测试数字不代表当前验收通过。
+文档按“当前合同 → 当前进度 → 完整记录”分层。代码与可重复测试是实现事实；目标方案、历史数字和Mock不代表当前验收。
 
 ## 建议阅读顺序
 
 | 目的 | 文档 |
 |---|---|
-| 看当前进度和后续关口 | [roadmap](roadmap.md) |
+| 看当前进度和后续关口 | [路线图](roadmap.md)、[完整规划状态](planning-status.md) |
+| 查阶段实施与验证的完整记录 | [主题记录总览](records/README.md) |
 | **约束：个人本机 + 本地服务（必读）** | [running-context](running-context.md) |
 | 理解平台架构和 Spring AI 边界 | [architecture](architecture.md) |
 | 配置环境、迁移旧模型属性 | [environment](environment.md) |
@@ -19,9 +20,9 @@
 
 ## 产品原型与目标设计
 
-- [v1.6 Spring AI 产品与技术架构调整方案](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md)：保留的原始目标方案与 §0B 进度；其中历史实现描述以当前代码、roadmap 和 [running-context](running-context.md) 为准。
+- [v1.6 当前产品与技术合同](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md)：现行五入口、交互、执行边界与验收；完整历史已分离至[方案历史](records/product-plan-history.md)。
 - [前端原型及交互合同](frontend-prototype.md)：已合并旧知识库 IA、层级导航、会话交互说明，以及 2026-10-26 五入口工作台决策。仅保留一份 [控制台 HTML 原型](prototype/console.html)，演示行为不等于后端实现。
-- [Electron 设计](desktop-spec.md)：目标方案，桌面壳尚未交付。
+- [Electron 设计](desktop-spec.md)：已有安全preload壳，sidecar、一体安装与发行尚未完成。
 - [MCP 管理设计](mcp-management-design.md)：登记/授权与真实协议调用必须分开。
 - [扩展边界决策](decisions/extension-boundaries.md)、[CLI/Codex 分阶段设计](decisions/p1-cli-codex-design.md)、[工具接入与运行边界](decisions/tool-integration-runtime-boundaries.md)：有效决策；工作区/配置口径以 [running-context](running-context.md) 为准。
 - [S1 Spring AI Chat 接入设计](decisions/s1-chat-spring-ai-design.md)：v1.6 最小 API/UI 方案；**实现与限制以 roadmap 与 chat-engineering-task-slice 为准**（勿把本 README 旧「尚未实施」句当作现状）。
@@ -30,12 +31,12 @@
 
 - [Spring AI 集成](audits/spring-ai-integration-report.md)、[统一化与清理](audits/spring-ai-consolidation-report.md)。
 - [扩展能力审计](audits/extension-capability-audit.md)、[P0 基线](audits/p0-validation-report.md)。
-- [P1-A](audits/p1-a-implementation-report.md)、[P1-B](audits/p1-b-implementation-report.md)、[P1-C 当前实现](audits/p1-c-implementation-report.md)。
-- [Codex 执行证据](audits/p1-c-execution-evidence-closure-report.md)、[真实委派结论](audits/p1-c-real-delegation-20261023-report.md)、[Windows 沙箱历史结论](audits/p1-c-windows-sandbox-compatibility-diagnosis.md)。
+- [P1-A](records/external-execution-history.md#p1-a-implementation-report)、[P1-B](records/external-execution-history.md#p1-b-implementation-report)、[P1-C 当前实现](records/external-execution-history.md#p1-c-implementation-report)。
+- [Codex 执行证据](records/external-execution-history.md#p1-c-execution-evidence-closure-report)、[真实委派结论](records/external-execution-history.md#p1-c-real-delegation-20261023-report)、[Windows 沙箱历史结论](records/external-execution-history.md#p1-c-windows-sandbox-compatibility-diagnosis)。
 
 ## 文档维护
 
-根目录保留长期使用说明与唯一进度入口；**约束性定位以 `running-context.md` 为唯一事实源**；decisions 保存有效架构决策（已并入正文的决策仅保留短重定向）；audits 只保留最终验收/故障结论；prototype 保留仍被引用的交互原型。相同主题优先更新现有文档，避免逐轮增加评审或排查报告。
+根目录保留长期使用说明和当前进度；**约束性定位以 `running-context.md` 为唯一事实源**。decisions 保存有效决策，records 按主题维护完整阶段记录，audits 保留未被主题总览取代的专项结论。日期写进章节，不再新建日期报告；合并时更新链接及稳定锚点，保留失败、跳过、授权和未完成证据。历史指令不重新生效。测试删改必须记录过时原因与覆盖去向，不以数量减少为质量指标。
 
 ### 2026-10-27 合并说明
 

@@ -5,37 +5,11 @@ import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.core.env.StandardEnvironment;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.*;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** Existing LOCAL migrated database only. No service lifecycle, migration or schema reset. */
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_BOARD_PERSISTENCE", matches = "true")
-class CodeProposalPersistenceTest {
-    @TempDir Path root;
-    JdbcTemplate jdbc;
-    DriverManagerDataSource dataSource;
-    DataSourceTransactionManager manager;
-    final String principal = "proposal-test-" + UUID.randomUUID();
-    final UUID conversation = UUID.randomUUID();
-    @BeforeEach void connect() throws Exception {
-        var env = new StandardEnvironment();
-        for (var source : new org.springframework.boot.env.YamlPropertySourceLoader().load("application", new org.springframework.core.io.ClassPathResource("application.yml"))) env.getPropertySources().addLast(source);
-        String url = env.getProperty("spring.datasource.url", "");
-        assertTrue(url.startsWith("jdbc:postgresql://localhost:") || url.startsWith("jdbc:postgresql://127.0.0.1:"), "Existing local DB required");
-        dataSource = new DriverManagerDataSource(url, env.getProperty("spring.datasource.username"), env.getProperty("spring.datasource.password"));
-        jdbc = new JdbcTemplate(dataSource); manager = new DataSourceTransactionManager(dataSource);
-    }
-    CodeProposalStore store() {
-        return new JdbcCodeProposalStore(jdbc, manager);
-    }
-    CodeChangeService service(CodeProposalStore store) {
-        return new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, root.toString(), ""), null, null,
-                new JdbcCodeGenerationStore(jdbc, manager), store);
-    }
+class CodeProposalPersistenceTest extends CodeProposalPersistenceFixture {
     CodeChangeService.Proposal propose(CodeChangeService service, boolean writable) {
         var generation = service.prepareGeneration(principal, conversation, "Page.vue", "", "");
         return service.proposePrepared(principal, conversation, generation.id(),
@@ -131,11 +105,5 @@ class CodeProposalPersistenceTest {
             tx.setRollbackOnly();
         });
         assertEquals("APPLIED", store().find(principal, conversation, saved.id()).orElseThrow().status());
-    }
-    @AfterEach void cleanup() {
-        if (jdbc == null) return;
-        if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT to_regclass('eap.code_proposal') IS NOT NULL", Boolean.class)))
-            jdbc.update("DELETE FROM eap.code_proposal WHERE principal=?", principal);
-        jdbc.update("DELETE FROM eap.code_generation WHERE principal=?", principal);
     }
 }

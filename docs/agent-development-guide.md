@@ -47,7 +47,7 @@ Chat tools must retain request/server grants, canonical workspace checks and Cap
 test denial, result return, errors, isolated memory/evidence, framework call limits and timeout/cancel
 classification. Existing real process cancellation tests remain required and distinct from simulated
 model exceptions. A configured client is not a successful connection; no live paid model is invoked
-by default tests. Preserve existing database/real-CLI/model test gates. Board preparation, controlled Run and prototype reference persistence use `EAP_RUN_BOARD_PERSISTENCE=true`; Mission Git acceptance uses `EAP_RUN_MISSION_GIT_ACCEPTANCE=true`. Both use an existing migrated local database and own/clean only their generated sample rows; they do not create/drop/reset databases. See [board preparation evidence](decisions/board-task-preparation-2026-10-31.md), [controlled Run evidence](decisions/board-controlled-run-2026-10-31.md) and [prototype reference evidence](decisions/board-prototype-link-2026-10-31.md).
+by default tests. Preserve existing database/real-CLI/model test gates. Board preparation, controlled Run and prototype reference persistence use `EAP_RUN_BOARD_PERSISTENCE=true`; Mission Git acceptance uses `EAP_RUN_MISSION_GIT_ACCEPTANCE=true`. Both use an existing migrated local database and own/clean only their generated sample rows; they do not create/drop/reset databases. See [board preparation evidence](records/delivery-history.md#board-task-preparation), [controlled Run evidence](records/delivery-history.md#board-controlled-run) and [prototype reference evidence](records/delivery-history.md#board-prototype-link).
 
 Historical cleanup starts with an exact path manifest and reference/ownership check. Preserve final
 audit conclusions and evidence needed by current acceptance. Completed experiment directories may
@@ -57,6 +57,29 @@ removing retired outputs never authorizes rerunning a paid model. Do not clear t
 tree, Git metadata, global caches or ambiguous user files. Reproducible output belongs in build/Temp
 directories, with successful-check logs removed by default and failures retained as needed.
 
+## Test and documentation maintenance
+
+- Remove an obsolete test only after tracing the assertion to current production behavior and naming its retained or replacement coverage. A gated test is not obsolete merely because this machine skips it. Keep authorization, concurrency, UNKNOWN, transactions, real-process and persistence regressions.
+- Share setup only where contracts genuinely match. Fixtures must not contain inherited test methods: subclassing a test class reruns its tests and inflates reports. Do not replace behavior tests with source-string or class-name guesses.
+- Keep current work items in `planning-status.md`, a short sequence in `roadmap.md`, and complete dated evidence in topic-based `records/*-history.md`. Preserve source-to-section mappings, media and failure evidence; update Markdown links/anchors when retiring files. Dates belong in chapters, not new report filenames.
+
+### 本轮整理记录（基线82aa504）
+
+| 范围 | 调整原因与覆盖去向 |
+|---|---|
+| 后端候选持久化 | `CodeTaskBindingPersistenceTest`继承测试类导致5项重复执行；抽出无@Test的`CodeProposalPersistenceFixture`。原5项持久候选测试正文不变，绑定专属6项保留，UNKNOWN/并发/事务/真实文件检查不删 |
+| 后端装配 | 删除按参数包名前缀猜测可注入的断言，改由`CapabilityCatalogTest`真实Spring context refresh验证；全模块构造器扫描保留 |
+| Mission历史断言 | 删除V1中不含`previous_mission`的源码字符串检查；任务创建/关联/状态/并发唯一冲突/DB失败及迁移保护保留 |
+| 前端模式检查 | 删除仅切`workbench.preview`却未切真实服务模式的伪双来源测试及Welcome重复执行；有效页面断言合并保留；模式配置/隔离由serviceConfig、chatService、chatHttp测试覆盖 |
+| 前端局部夹具 | 三个Chat集成测试共用启动状态/模型目录夹具；发送、失败及证据mock仍各自显式配置，原assertion保留 |
+| 文档 | 24份阶段文件并入5个主题完整记录，日期台账改为`planning-status.md`；旧路线和台账完整保存在路线历史。主方案分离现行合同与完整历史，不删除设计参考素材 |
+
+父任务本轮执行：双门控`mvn -f backend/pom.xml clean verify`、前端`test run/typecheck/check:boundaries/build`均通过。统计以本次调用日志为准：后端647项、0失败/错误、6条件跳过（原652减5次继承重复）；前端97文件/572项通过（原574减2项无效重复）。跳过的环境/权限门禁保留；大chunk和Node localStorage实验告警未掩盖。未改生产逻辑、已应用迁移或用户配置，未重启服务、未调用真实模型。本轮不重新宣称浏览器/用户体验验收。
+
 ## Consistency and delivery
+
+文档独立复核确认27份来源全文（24份阶段记录、旧路线/台账、完整主方案）归一化后内容一致，27个验收ID及核心合同保留。9处旧裸引用已修正并通过补充复核；本地Markdown链接与锚点校验通过。docs内Markdown从59份整理为43份；当前主方案1685→446行、路线图750→31行，原文均可在主题历史追溯，不以删除证据换取简短。
+
+本轮测试精简的独立只读审查通过：原候选持久化测试体、迁出的初始化/工厂/清理、任务绑定断言，以及Welcome断言均程序化比对保留。原preview循环确实不消费实际服务来源。Spring context refresh只证明该测试装配成功，不是完整运行时启动或setter行为验收；审查读取已有日志，不冒充另一次全量执行。父任务链式命令退出0确认类型/边界/构建通过。
 
 Check links/paths and scripts when editing guidance. Module files specialize root guidance without duplicating its workflow. Target Plugin/Mission/Builder requirements do not authorize implementation. Record baseline dirty files and never include their changes as your work. Deliver file reasons, reuse/removal, commands/results/skips, risks, next plan and required decisions. Missing credentials, dependencies or protocol client are explicit unverified blockers, never passes.

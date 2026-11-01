@@ -3,12 +3,12 @@ import { createSSRApp } from "vue";
 import { renderToString } from "vue/server-renderer";
 import App from "../App.vue";
 import { i18n } from "../lib/i18n";
-import { workbench, chatBinding, type ChatBinding } from '../features/shell/workbench';
+import { chatBinding, type ChatBinding } from '../features/shell/workbench';
 
 const render = () => renderToString(createSSRApp(App).use(i18n));
 
 describe("console shell", () => {
-  it("renders the product console with navigation, pipeline and inspector", async () => {
+  it("renders navigation without the SQL pipeline and inspector on the chat landing page", async () => {
     const html = await render();
     expect(html).toContain('data-testid="project-tree"');
     expect(html).not.toContain("本机分组树 · 不是仓库文件树");
@@ -66,8 +66,14 @@ describe("console information architecture", () => {
 
   it("lands on the code workspace with a composer, not a dashboard", async () => {
     const html = await render();
+    expect(html).toContain('data-testid="chat-workspace"');
+    expect(html).toContain('data-testid="workspace-welcome"');
     expect(html).toContain("preview-composer");
     expect(html).toMatch(/<textarea[^>]*class="[^"]*\bcomposer-draft\b/);
+    expect(html).not.toContain('data-testid="preview-workspace"');
+    expect(html).not.toContain('使用真实服务');
+    expect(html).not.toContain('使用演示数据');
+    expect(html).not.toContain('preview-switch');
     expect(html).not.toContain("studio-stream");
     expect(html).not.toContain('id="view-overview"');
     expect(html).not.toContain("尚未建立对话");
@@ -78,22 +84,5 @@ describe("console information architecture", () => {
     expect(html).not.toContain("status-strip");
     expect(html).not.toContain("模型调用占比");
     expect(html).not.toContain("确定性覆盖");
-  });
-  it('uses the same workspace, navigation and composer for both HTTP sources', async () => {
-    const original = workbench.preview;
-    try {
-      workbench.preview = true; const mock = await render();
-      workbench.preview = false; const live = await render();
-      for (const html of [mock, live]) {
-        expect(html).toContain('data-testid="chat-workspace"');
-        expect(html).toContain('data-testid="workspace-welcome"');
-        expect(html).toContain('class="chat-composer preview-composer preview-input-box"');
-        expect(html).not.toContain('data-testid="preview-workspace"');
-        expect(html).not.toContain('使用真实服务');
-        expect(html).not.toContain('使用演示数据');
-        expect(html).not.toContain('preview-switch');
-      }
-      expect(railHtml(mock)).toEqual(railHtml(live));
-    } finally { workbench.preview = original; }
   });
 });

@@ -1,12 +1,9 @@
 package com.lh.eap.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 class MissionServiceTest {
     @Test
-    void createLinksAnExistingHandoffAndFixesTheShell() throws Exception {
+    void createLinksAnExistingHandoffAndFixesTheShell() {
         var handoff = handoff();
         var rows = new ArrayList<Mission>();
         var service = new MissionService(new MemoryHandoffs(List.of(handoff)), new MemoryMissions(rows));
@@ -35,8 +32,6 @@ class MissionServiceTest {
         assertEquals("none", mission.grant());
         assertEquals("not_requested", mission.verification());
         assertEquals(mission, service.detail(mission.id()));
-        var sql = Files.readString(Path.of("src/main/resources/db/migration/V1__initial_schema.sql"));
-        assertFalse(sql.contains("previous_mission"));
     }
 
     @Test

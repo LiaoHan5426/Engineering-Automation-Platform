@@ -10,7 +10,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_BOARD_PERSISTENCE", matches = "true")
-class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceTest {
+class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
     UUID taskId;
     UUID chatId;
     final String project = "prebound-test-" + UUID.randomUUID();

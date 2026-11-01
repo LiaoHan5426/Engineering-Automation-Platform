@@ -27,6 +27,21 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 class CapabilityCatalogTest {
 
+    @Test void productionConstructorAndSetterAreResolvedBySpring() {
+        try (var context = new org.springframework.context.annotation.AnnotationConfigApplicationContext()) {
+            context.registerBean(CapabilityHandlerRegistry.class, CapabilityCatalogTest::registry);
+            context.registerBean(JdbcTemplate.class, () -> mock(JdbcTemplate.class));
+            context.registerBean(com.lh.eap.persistence.mapper.McpServerRegistry.class,
+                    () -> mock(com.lh.eap.persistence.mapper.McpServerRegistry.class));
+            context.registerBean(com.lh.eap.persistence.mapper.CliProgramMapper.class,
+                    () -> mock(com.lh.eap.persistence.mapper.CliProgramMapper.class));
+            context.registerBean(CliProgramService.class, () -> mock(CliProgramService.class));
+            context.register(CapabilityCatalog.class);
+            assertDoesNotThrow(context::refresh);
+            assertNotNull(context.getBean(CapabilityCatalog.class));
+        }
+    }
+
     private static CapabilityHandlerRegistry registry() {
         return new CapabilityHandlerRegistry(List.of(
                 new SqlParseHandler(),

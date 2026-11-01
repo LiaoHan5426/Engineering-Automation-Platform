@@ -4,9 +4,9 @@ For the module boundaries and what is implemented today, read [architecture.md](
 This file is the runtime *reference*: the HTTP surface, the execution flow, and the target state
 machine.
 
-Current boundaries: model transport uses Spring AI; EngineeringChatService has no Chat-workbench
-HTTP integration yet. The state machine near the end is still a target, not an implemented Mission
-Runtime. See [roadmap](roadmap.md) for the current status and [module-layout](module-layout.md) for
+Current boundaries: model transport uses Spring AI and the controlled Chat HTTP API is wired.
+Persistent Mission/Run and limited delivery evidence exist; the general autonomous state machine
+near the end remains a target. See [roadmap](roadmap.md) for current scope and [module-layout](module-layout.md) for
 source locations and build commands. This API reference is retained because it is not a duplicate
 of the platform overview or module layout.
 

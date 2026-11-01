@@ -17,7 +17,7 @@
 
 **规划中的共享模块**（hooks / effects / layout / toggle / plugin-sdk|runtime 等）：目标职责与 Agent 落点流程见 [frontend-ui-shared-module-boundaries.md](decisions/frontend-ui-shared-module-boundaries.md)。未建包前可按该文档暂存登记；禁止另起平行「共享 UI」包名。
 
-图标统一方案及迁移/验证范围见[图标决策](decisions/frontend-icons-2026-11-01.md)。`@eap/ui`允许依赖`@eap/icons`这一纯视觉叶子包；Button/Tooltip等交互仍由UI拥有，图标不访问HTTP或运行时加载远程资源。
+图标统一方案及迁移/验证范围见[图标决策](records/frontend-history.md#frontend-icons)。`@eap/ui`允许依赖`@eap/icons`这一纯视觉叶子包；Button/Tooltip等交互仍由UI拥有，图标不访问HTTP或运行时加载远程资源。
 
 `@eap/web` 通过包名导入 `@eap/style`、`@eap/ui`、`@eap/plugin-table` 与 `@eap/runtime-client`，不再在页面内复制确认框、模态壳、指标卡或 `<table>`。入口只 `use(tablePlugin)`，不注册 vxe-pc-ui。模态统一用 `@eap/ui` `Dialog`（看板详情、ConnectionDialog）；破坏性确认继续用 `ConfirmBox`（z-index 高于 Dialog）。`apps/web/src/style.css` 先导入 `@eap/style` 的 light/dark 主题与 `base.css`，再写控制台布局与功能区样式；组件视觉规则由 `@eap/ui/styles.css` 提供。
 
@@ -62,7 +62,7 @@ apps/web/src
 | eap-web | Controllers、请求防护、CORS、SkillController | ai/engine/api |
 | eap-runtime | EapApplication、启动Bean装配/专家播种、迁移和跨模块集成测试 | 唯一Boot可执行jar |
 
-原有包名除DTO外保留，下面是包职责而非所有类仍位于runtime。rules资源在engine、chat资源在ai，experts播种和Flyway在runtime。详细迁移/验证及IDEA重导入要求见[拆分决策](decisions/backend-runtime-modules-2026-11-01.md)。
+原有包名除DTO外保留，下面是包职责而非所有类仍位于runtime。rules资源在engine、chat资源在ai，experts播种和Flyway在runtime。详细迁移/验证及IDEA重导入要求见[拆分决策](records/architecture-history.md#backend-runtime-modules)。
 
 ```text
 com.lh.eap

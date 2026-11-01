@@ -5,6 +5,7 @@ import { runtimeApi } from "@eap/runtime-client";
 import { i18n } from "../../lib/i18n";
 import ChatWorkspace from "./ChatWorkspace.vue";
 import { chatBinding, workbench } from "../shell/workbench";
+import { mockChatStartup } from './chatStartup.fixture';
 let app: App, host: HTMLDivElement;
 afterEach(() => {
   app?.unmount();
@@ -61,20 +62,7 @@ it("replays server-prepared Skill evidence as escaped text and one unified memor
       },
     }),
   );
-  vi.spyOn(runtimeApi, "aiStatus").mockResolvedValue({
-    state: "disabled",
-    provider: "none",
-    model: "",
-    configurationRevision: "",
-    lastObservedAt: null,
-    errorCode: "",
-    tools: { git_status: false },
-    workspaceLabel: "",
-  });
-  vi.spyOn(runtimeApi, "modelConnections").mockResolvedValue({
-    effectiveDefaultId: null,
-    items: [],
-  });
+  mockChatStartup();
   vi.spyOn(runtimeApi, "aiConversation").mockResolvedValue({
     workspaceLabel: "",
     memory: "",

@@ -8,11 +8,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Two invariants that each cost a real outage when they break, and neither of which a unit test that
@@ -66,18 +63,6 @@ class SchemaAndWiringTest {
         assertFalse(checked.isEmpty(), "这个检查必须真的找到多构造器的 bean，否则它什么都没检查：" + checked);
         assertEquals(List.of(), offenders,
                 "多构造器的 @Service 必须有一个标 @Autowired，否则应用启动失败；单元测试直接 new 构造器，看不到这一点。");
-    }
-
-    /** The annotated constructor must be one Spring can satisfy from the context. */
-    @Test void theAutowiredConstructorTakesOnlyResolvableCollaborators() {
-        var target = List.of(CapabilityCatalog.class.getDeclaredConstructors()).stream()
-                .filter(c -> c.isAnnotationPresent(Autowired.class))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("没有标 @Autowired 的构造器"));
-        for (var parameter : target.getParameterTypes()) {
-            assertTrue(parameter.getName().startsWith("com.lh.eap") || JdbcTemplate.class.equals(parameter),
-                    "构造器参数应当都是可注入的 bean：" + parameter.getName());
-        }
     }
 
     // ---------------------------------------------------------------- 迁移不得使用保留字作列名

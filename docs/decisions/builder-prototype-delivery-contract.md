@@ -87,7 +87,7 @@
 - 审批由调用方事先把 `Task.approved` 设为真；适配器配置 `approval_policy='never'`，不提供审批界面。交接和 Mission 的审批列仍固定为 `not_requested`。
 - 运行环境是 `ProcessExecutor` 和 `CliExecutionService`。取消只覆盖这一次进程。
 - 事件是本次解析出的 JSONL 行。`turn.completed` 不是平台验证通过。
-- 历史结论以 `docs/audits/p1-c-real-delegation-20261023-report.md` 的最终归档为准：最终案例 CLI 退出 0，Artifact 核验通过，但补丁被 read-only sandbox / approval settings 拒绝，目标文件未生成。更早的超时不是所有案例的现状。调查暂停。本草案不重跑、不调用模型。
+- 历史结论以 `docs/records/external-execution-history.md#p1-c-real-delegation-20261023-report` 的最终归档为准：最终案例 CLI 退出 0，Artifact 核验通过，但补丁被 read-only sandbox / approval settings 拒绝，目标文件未生成。更早的超时不是所有案例的现状。调查暂停。本草案不重跑、不调用模型。
 
 以后确需编码 Agent 时，先复用受支持入口，不复制底座：
 
@@ -148,7 +148,7 @@
 以下为现有 CodexAdapter 与历史归档的静态复核，不表示执行或付费试验授权。单次 CLI exec 可作为当前最小候选路径，但它仍是测试适配器：没有生产交付入口。固定测试目录规则不是通用生产合同。CLI 版本只记录为证据。
 
 - Codex SDK 是控制既有 Codex Agent 的程序化入口，不必然新增 EAP 工具循环。当前不引入它的理由是已有一次性 CLI 能满足本步候选需求，暂无证据证明增加跨语言依赖/进程桥接有收益；不是“SDK 必然另造 Harness”。app-server 的深度客户端能力当前也非必要，不据此断言以后均不适用。
-- 历史事实以 docs/audits/p1-c-real-delegation-20261023-report.md 的“后续真实文件委派最终归档”为准：最终案例 CLI 退出 0、Artifact 核验通过，但补丁被 read-only sandbox / approval settings 拒绝，文件未生成。更早超时不作为所有案例现状。实际有效只读来源仍未确定，不能将其归因于某个配置后直接扩大权限。
+- 历史事实以 [阶段记录](../records/external-execution-history.md#p1-c-real-delegation-20261023-report) 的“后续真实文件委派最终归档”为准：最终案例 CLI 退出 0、Artifact 核验通过，但补丁被 read-only sandbox / approval settings 拒绝，文件未生成。更早超时不作为所有案例现状。实际有效只读来源仍未确定，不能将其归因于某个配置后直接扩大权限。
 - valid() 只筛选 testRoot 下带标记的真实目录，并要求 .git 是目录；不是完整沙箱、干净基线校验或 Git 工作树归属证明。常规 git worktree 的 .git 文件不会通过现检查。首个试点可继续限制独立临时克隆，不为“支持隔离”自动扩建工作树管理器或放宽准入。
 - 当前 Task 未携带不可变基线或版本关联，instructions 限 4000 字符；完整 Builder 内容不能假定可直接塞入，不能静默截断。实际交付桥接尚未具备，不先新增生产启动 API/表掩盖这个缺口。
 

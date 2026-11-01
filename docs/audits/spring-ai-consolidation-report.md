@@ -151,7 +151,7 @@ workspace-fd1ec9631d86458d8d8c0e1fe8a1462c
 
 另删9个冗余根文件：6份已归并的权限/预检中间报告，以及沙箱写入一次性脚本、只读规则匹配脚本和规则结果副本。具体名称、大小、原Git状态及引用见清单。删除前逐项检查绝对目标路径限定在docs/audits、无Git元数据、无symlink/junction；没有执行git clean、清理系统Temp或修改ACL。
 
-保留20份有用报告及1份现有清理清单：Spring AI集成/收敛报告、extension-capability-audit、P0和P1-A/B/C实施及契约结论等。Windows已结束实验结论归并到 [沙箱诊断最终报告](p1-c-windows-sandbox-compatibility-diagnosis.md)，真实补丁拒绝/生命周期/Artifact结论归并到 [委派最终报告](p1-c-real-delegation-20261023-report.md)。旧raw JSONL与副本不再被误认为永久保留要求。未发现额外需要删除的用途不明目录；没有处理目标目录之外的用户文件。
+保留20份有用报告及1份现有清理清单：Spring AI集成/收敛报告、extension-capability-audit、P0和P1-A/B/C实施及契约结论等。Windows已结束实验结论归并到 [沙箱诊断最终报告](../records/external-execution-history.md#p1-c-windows-sandbox-compatibility-diagnosis)，真实补丁拒绝/生命周期/Artifact结论归并到 [委派最终报告](../records/external-execution-history.md#p1-c-real-delegation-20261023-report)。旧raw JSONL与副本不再被误认为永久保留要求。未发现额外需要删除的用途不明目录；没有处理目标目录之外的用户文件。
 
 本次Git变化：未删除已跟踪资源；主要删除此前未跟踪或被忽略的实验产物。保留报告和清单为原有工作区文件的增量更新，3个脚本只调整输出/保留方式；路线图仅同步清理进度，开发指南同步保留规则。原有未提交生产代码、测试及前端修改不属于本次工作，未覆盖、暂存、提交或推送。
 
@@ -204,7 +204,7 @@ audits/sandbox-snapshot-tool-repair-report.md
 
 - 旧知识库IA、会话和导航评审演进关系已结束，将目的地/事务/确认、未保存状态、专家授权、会话与运行分离等有效规则合并到 [前端原型合同](../frontend-prototype.md)。过时页签方案及私有verify-console.js运行路径不再与当前方案并列。
 - 无引用的知识库结构HTML只是旧提案；仍被scripts/test-conversation-prototype.cjs引用的console.html保留，SHA-256与整理前一致，未改变其内嵌脚本或交互。
-- Codex配置、显式模型、支持证据、重试边界、非交互审批、错误与Artifact合同合并到 [P1-C实施结论](p1-c-implementation-report.md)。真实文件委派仍未通过、有效只读来源未知，不因整理改变验收状态。
+- Codex配置、显式模型、支持证据、重试边界、非交互审批、错误与Artifact合同合并到 [P1-C实施结论](../records/external-execution-history.md#p1-c-implementation-report)。真实文件委派仍未通过、有效只读来源未知，不因整理改变验收状态。
 - 保留architecture（平台概览）、module-layout（源码与包边界）和backend-architecture（API/执行参考），三者职责不同，不按标题相似误删。保留decisions、运行指南、专家规则、MCP设计、Electron目标设计和Spring AI最终报告。
 - 更正roadmap中2026-10-15测试表的历史属性，明确外部verify-console.js不是仓库当前命令；外部编码Agent使用已有AgentAdapter/CodexAdapter，不再要求创建重复CodingAgentProvider。environment不再宣称尚不存在的apps/desktop已可构建。
 
