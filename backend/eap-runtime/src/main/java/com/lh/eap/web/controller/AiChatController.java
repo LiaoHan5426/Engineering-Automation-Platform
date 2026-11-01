@@ -92,6 +92,11 @@ public class AiChatController {
         return chat.apply(id, proposal, body);
     }
 
+    @GetMapping("/conversations/{id}/proposals/{proposal}")
+    public com.lh.eap.ai.CodeChangeService.ProposalStatus proposal(@PathVariable UUID id, @PathVariable UUID proposal) {
+        return chat.proposal(id, proposal);
+    }
+
     @PostMapping("/connections")
     public ModelConnectionView create(@RequestBody(required = false) String body) {
         return chat.saveConnection(null, body);

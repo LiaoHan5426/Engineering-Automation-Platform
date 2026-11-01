@@ -12,6 +12,7 @@ import { chatService, chatStorage } from './chatService';
 import { preview } from '../shell/preview';
 import TaskComposer from "./TaskComposer.vue";
 import GenerationBaseline from "./GenerationBaseline.vue";
+import ProposalApplication from "./ProposalApplication.vue";
 import type { CodeProposal } from "@eap/runtime-client";
 import { catalogRefreshNote, type CatalogNote } from "./catalogNote";
 import { readFeedScroll, saveFeedScroll } from "./feedScroll";
@@ -443,7 +444,8 @@ onMounted(async () => {
           <Button v-if="!applied[turn.proposal.id] && !refused[turn.proposal.id]" type="button" data-testid="refuse-write" @click="refuseProposal(turn.proposal.id)">{{ t("desktop.refuseWrite") }}</Button>
           </div>
           <p v-if="refused[turn.proposal.id]" class="hint" data-testid="refused-write">{{ t("desktop.refusedWrite") }}</p>
-          <template v-if="!applied[turn.proposal.id] && !refused[turn.proposal.id] && baselineReady(turn.proposal)">
+          <ProposalApplication v-if="turn.proposal.generation && !mock" :proposal="turn.proposal" :read-only="session.context.value.approval === 'read_only' || !!refused[turn.proposal.id] || session.expired.value || archived" @applied="result => { applied[turn.proposal!.id] = result.written; appliedVerification[turn.proposal!.id] = result.verification; appliedChecks[turn.proposal!.id] = result.checks; }" />
+          <template v-else-if="!applied[turn.proposal.id] && !refused[turn.proposal.id] && baselineReady(turn.proposal)">
             <label><Checkbox v-model="writeConfirmed[turn.proposal.id]" /> {{ t("task.confirmWrite") }}</label>
             <Button type="button" variant="primary" :disabled="!writeConfirmed[turn.proposal.id] || !!applying || !turn.proposal.writeAllowed || session.context.value.approval === 'read_only'" @click="applyProposal(turn.proposal)">{{ t("task.apply") }}</Button>
           </template>

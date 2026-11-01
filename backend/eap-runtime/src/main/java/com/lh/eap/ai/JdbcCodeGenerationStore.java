@@ -11,7 +11,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Insert-only production adapter. Commit completes before a model can observe source context. */
 @Repository
-public final class JdbcCodeGenerationStore implements CodeGenerationStore {
+public class JdbcCodeGenerationStore implements CodeGenerationStore {
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transaction;
     public JdbcCodeGenerationStore(JdbcTemplate jdbc, PlatformTransactionManager manager) {

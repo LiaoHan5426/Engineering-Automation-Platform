@@ -475,9 +475,61 @@ class BoardRunPersistenceTest {
         assertEquals("BOARD_DELIVERY_PATH_DENIED", rejects(()->f.service().decide(f.task().id(),f.execution(),accept)).getReason());
         assertEquals("acceptance",tasks.find(f.task().id(),project,false).column());
     }
+    private com.lh.eap.ai.JdbcCodeProposalStore codeStore() {
+        return new com.lh.eap.ai.JdbcCodeProposalStore(jdbc, context.getBean(PlatformTransactionManager.class));
+    }
+    private com.lh.eap.ai.CodeChangeService codeChanges() {
+        return new com.lh.eap.ai.CodeChangeService(new RuntimeWorkspace(repo, repo.toString(), ""), null, null,
+                new com.lh.eap.ai.JdbcCodeGenerationStore(jdbc, context.getBean(PlatformTransactionManager.class)), codeStore());
+    }
+    private com.lh.eap.ai.CodeChangeService.Proposal codeProposal(UUID conversation) {
+        var changes = codeChanges(); var generation = changes.prepareGeneration(project, conversation, "Page.vue", "", "");
+        return changes.proposePrepared(project, conversation, generation.id(),
+                "{\"files\":[{\"path\":\"Page.vue\",\"content\":\"candidate\"}]}", true);
+    }
+    @Test void codeIntentBlocksBoardRunVerificationReviewDeliveryAndRestartPreservesPassedEvidence() throws Exception {
+        var fixture = deliveryFixture(executor);
+        var other = task(); var otherRun = runs.start(other.id(), request(other)); queue.remove().run();
+        var third = task(); var thirdRequest = request(third);
+        var conversation = UUID.randomUUID(); var proposal = codeProposal(conversation);
+        assertTrue(codeStore().claim(project, conversation, proposal.id()));
+        assertEquals("CODE_WORKSPACE_BUSY", rejects(() -> runs.start(third.id(), thirdRequest)).getReason());
+        assertEquals("CODE_WORKSPACE_BUSY", rejects(() -> fixture.verification().plan(other.id(), otherRun.execution().id(),
+                new BoardVerificationService.Request(project, thirdRequest.workspacePath()))).getReason());
+        assertEquals("CODE_WORKSPACE_BUSY", rejects(() -> context.getBean(BoardReviewService.class).collect(other.id(), otherRun.execution().id(),
+                new BoardReviewService.Request(project, thirdRequest.workspacePath()))).getReason());
+        assertEquals("BOARD_VERIFICATION_WORKSPACE_BUSY", rejects(() -> fixture.service().submit(fixture.task().id(), fixture.execution(), fixture.request())).getReason());
+        var original = fixture.verification().get(fixture.task().id(), fixture.execution(), project).record();
+        assertEquals("PASSED", original.status());
+        codeChanges().recoverInterruptedApplications();
+        assertEquals("UNKNOWN", codeStore().find(project, conversation, proposal.id()).orElseThrow().status());
+        assertEquals(original, fixture.verification().get(fixture.task().id(), fixture.execution(), project).record());
+        assertEquals("CODE_WORKSPACE_BUSY", rejects(() -> runs.start(third.id(), thirdRequest)).getReason());
+        assertFalse(Files.exists(repo.resolve("Page.vue")));
+    }
+    @Test void activeBoardRunAndVerificationBlockCodeApplyAndCompletedVerificationDoesNotBecomeAttribution() throws Exception {
+        verificationFixture(); var task = task(); var request = request(task); var run = runs.start(task.id(), request);
+        var conversation = UUID.randomUUID(); var proposal = codeProposal(conversation);
+        assertEquals("CODE_WORKSPACE_BUSY", rejects(() -> codeChanges().apply(project, conversation, proposal.id(), true)).getReason());
+        assertEquals("PROPOSED", codeStore().find(project, conversation, proposal.id()).orElseThrow().status());
+        queue.remove().run();
+        var verification = verification(passingVerificationProcess(), queue::add);
+        var plan = verification.plan(task.id(), run.execution().id(), new BoardVerificationService.Request(project, request.workspacePath()));
+        verification.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash()));
+        assertEquals("CODE_WORKSPACE_BUSY", rejects(() -> codeChanges().apply(project, conversation, proposal.id(), true)).getReason());
+        assertFalse(Files.exists(repo.resolve("Page.vue")));
+        queue.remove().run();
+        var evidence = verification.get(task.id(), run.execution().id(), project).record();
+        assertEquals("APPLIED", codeChanges().apply(project, conversation, proposal.id(), true).status());
+        assertEquals(evidence, verification.get(task.id(), run.execution().id(), project).record());
+        assertEquals("ready", tasks.list(project).getFirst().column());
+    }
     @AfterEach void cleanup() {
         executor.close();
         if (jdbc != null) {
+            if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT to_regclass('eap.code_proposal') IS NOT NULL", Boolean.class)))
+                jdbc.update("DELETE FROM eap.code_proposal WHERE principal=?", project);
+            jdbc.update("DELETE FROM eap.code_generation WHERE principal=?", project);
             var missionIds = jdbc.queryForList("SELECT e.mission_id FROM eap.board_task_run r JOIN eap.board_task t ON t.id=r.task_id JOIN eap.mission_execution e ON e.id=r.execution_id WHERE t.project_id=?", UUID.class, project);
             jdbc.update("DELETE FROM eap.board_task_run WHERE task_id IN (SELECT id FROM eap.board_task WHERE project_id=?)", project);
             for (var id : missionIds) {

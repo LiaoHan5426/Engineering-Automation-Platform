@@ -616,6 +616,9 @@ export type CodeProposal = {
   verification: string;
 };
 
+export type CodeApplied = { id: string; written: string[]; verification: string; checks: Array<{ name: string; exitCode: number | null; summary: string }>; status?: string; afterHash?: string; reason?: string };
+export type CodeProposalState = { proposal: CodeProposal; status: 'PROPOSED' | 'APPLYING' | 'APPLIED' | 'FAILED' | 'UNKNOWN'; result: CodeApplied | null; reason: string };
+
 const baseUrl = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8080/api";
 
 const client = axios.create({
@@ -932,10 +935,12 @@ export function createChatApi(baseURL: string, transport = axios.create({ baseUR
       )
       .then((response) => response.data),
   applyCodeProposal: (id: string, proposal: string) =>
-    client.post<{ id: string; written: string[]; verification: string; checks: Array<{ name: string; exitCode: number | null; summary: string }> }>(
+    client.post<CodeApplied>(
       "/ai/conversations/" + encodeURIComponent(id) + "/proposals/" + encodeURIComponent(proposal) + "/apply",
       { confirmed: true },
     ).then((response) => response.data),
+  codeProposal: (id: string, proposal: string) => get<CodeProposalState>(
+    '/ai/conversations/' + encodeURIComponent(id) + '/proposals/' + encodeURIComponent(proposal)),
   startChatGptLogin: (connectionId?: string) => client.post<ChatGptLoginAttempt>("/ai/chatgpt/login" + (connectionId ? "?connectionId=" + encodeURIComponent(connectionId) : ""), {}).then(response => response.data),
   chatGptLoginState: (id: string) => get<ChatGptLoginState>("/ai/chatgpt/login/" + encodeURIComponent(id)),
   cancelChatGptLogin: (id: string) => client.delete("/ai/chatgpt/login/" + encodeURIComponent(id)),

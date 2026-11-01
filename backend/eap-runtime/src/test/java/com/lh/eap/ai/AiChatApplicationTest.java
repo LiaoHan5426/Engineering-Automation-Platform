@@ -61,7 +61,7 @@ class AiChatApplicationTest {
             return FakeChatModels.text("{\"files\":[{\"path\":\"Page.vue\",\"content\":\"candidate\"}]}");
         }, true, root, null);
         org.springframework.test.util.ReflectionTestUtils.setField(app, "codeChanges",
-                new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, root.toString(), ""), null, null, new InMemoryCodeGenerationStore()));
+                new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, root.toString(), ""), null, null, new InMemoryCodeGenerationStore(), new InMemoryCodeProposalStore()));
         var id = app.open("{}").conversationId();
         var failure = assertThrows(ResponseStatusException.class, () -> app.send(id,
                 "{\"message\":\"edit\",\"toolMode\":\"none\",\"context\":{\"mode\":\"code\",\"targetPath\":\"Page.vue\"}}"));

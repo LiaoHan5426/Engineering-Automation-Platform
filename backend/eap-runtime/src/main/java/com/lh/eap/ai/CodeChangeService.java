@@ -25,7 +25,13 @@ public final class CodeChangeService {
             this(id, conversationId, workspace, summary, files, createdAt, applied, writeAllowed, verification, null);
         }
     }
-    public record Applied(UUID id, List<String> written, String verification, List<CodeVerificationService.Check> checks) {}
+    public record Applied(UUID id, List<String> written, String verification, List<CodeVerificationService.Check> checks,
+                          String status, String afterHash, String reason) {
+        public Applied(UUID id, List<String> written, String verification, List<CodeVerificationService.Check> checks) {
+            this(id, written, verification, checks, "APPLIED", null, "");
+        }
+    }
+    public record ProposalStatus(Proposal proposal, String status, Applied result, String reason) {}
     /** Read-only snapshot for delivery gates. Does not return file contents. */
     public record Baseline(String path, boolean exists, String baseHash, String denial) {}
     /**
@@ -50,6 +56,7 @@ public final class CodeChangeService {
     private final CodeVerificationService verification;
     private final DirtyRunner dirtyRunner;
     private final CodeGenerationStore generations;
+    private final CodeProposalStore durable;
     private final Map<UUID, Proposal> proposals = new LinkedHashMap<>();
     private final Map<UUID, Applied> appliedResults = new HashMap<>();
     private static final JsonMapper JSON = JsonMapper.builder().build();
@@ -68,13 +75,19 @@ public final class CodeChangeService {
             DirtyRunner dirtyRunner) {
         this(runtime, verification, dirtyRunner, null);
     }
-    @org.springframework.beans.factory.annotation.Autowired
     public CodeChangeService(RuntimeWorkspace runtime,
             @org.springframework.beans.factory.annotation.Autowired(required = false) CodeVerificationService verification,
             DirtyRunner dirtyRunner, CodeGenerationStore generations) {
+        this(runtime, verification, dirtyRunner, generations, null);
+    }
+    @org.springframework.beans.factory.annotation.Autowired
+    public CodeChangeService(RuntimeWorkspace runtime,
+                             @org.springframework.beans.factory.annotation.Autowired(required = false) CodeVerificationService verification,
+                             DirtyRunner dirtyRunner, CodeGenerationStore generations, CodeProposalStore durable) {
         this.runtime = runtime;
         this.verification = verification;
         this.generations = generations;
+        this.durable = durable;
         // Compatibility constructors have no execution authority. Production requires the shared runner.
         this.dirtyRunner = dirtyRunner == null ? workspace -> null : dirtyRunner;
     }
@@ -218,6 +231,7 @@ public final class CodeChangeService {
         if (!snapshot.principal().equals(principal) || !snapshot.conversationId().equals(conversation))
             throw rejected("CODE_GENERATION_SCOPE_MISMATCH");
         verifyGeneration(snapshot);
+        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_PROPOSAL_STORE_UNAVAILABLE");
         return parseProposal(conversation, answer, writeAllowed, snapshot.targetPath(), snapshot);
     }
 
@@ -260,6 +274,16 @@ public final class CodeChangeService {
             var proposal = new Proposal(UUID.randomUUID(), conversation, runtime.workspace().toRealPath().toString(), root.path("summary").asString(""),
                     List.copyOf(files), Instant.now(), false, writeAllowed, "not_requested", generation == null ? null : generation.reference());
             if (generation != null) verifyGeneration(generation);
+            if (generation != null) {
+                try {
+                    durable.save(generation.principal(), proposal);
+                    var saved = durable.find(generation.principal(), conversation, proposal.id()).orElseThrow();
+                    if (!saved.proposal().equals(proposal)) throw new IllegalStateException("proposal readback mismatch");
+                    return saved.proposal();
+                } catch (Exception failure) {
+                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_PROPOSAL_STORE_UNAVAILABLE");
+                }
+            }
             sweep();
             if (proposals.size() >= 32) {
                 UUID oldest = proposals.keySet().iterator().next();
@@ -273,6 +297,7 @@ public final class CodeChangeService {
     }
 
     public synchronized Applied apply(UUID conversation, UUID id, boolean confirmed) {
+        if (durable != null) return apply(AiConversationRegistry.PRINCIPAL, conversation, id, confirmed);
         if (!confirmed) throw rejected("WRITE_CONFIRMATION_REQUIRED");
         sweep();
         var proposal = proposals.get(id);
@@ -316,6 +341,83 @@ public final class CodeChangeService {
         catch (IOException failure) {
             // Do not claim transactional filesystem writes or roll back user files blindly.
             throw new ResponseStatusException(HttpStatus.CONFLICT, "CODE_WRITE_FAILED; written=" + String.join(",", written));
+        }
+    }
+
+    public ProposalStatus proposal(String principal, UUID conversation, UUID id) {
+        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_PROPOSAL_STORE_UNAVAILABLE");
+        var row = durable.find(principal, conversation, id).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "UNKNOWN_CODE_PROPOSAL"));
+        return new ProposalStatus(row.proposal(), row.status(), row.result(), row.reason());
+    }
+
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void recoverInterruptedApplications() throws IOException {
+        if (durable != null) durable.recoverInterrupted(runtime.workspace().toRealPath().toString());
+    }
+
+    /** Production single-file apply: intent commits before filesystem effects; never runs verification. */
+    public Applied apply(String principal, UUID conversation, UUID id, boolean confirmed) {
+        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_PROPOSAL_STORE_UNAVAILABLE");
+        return durable.withoutTransaction(() -> applyDurable(principal, conversation, id, confirmed));
+    }
+    private Applied applyDurable(String principal, UUID conversation, UUID id, boolean confirmed) {
+        if (!confirmed) throw rejected("WRITE_CONFIRMATION_REQUIRED");
+        var saved = proposal(principal, conversation, id);
+        if (saved.status().equals("APPLIED")) return saved.result();
+        if (!saved.status().equals("PROPOSED")) throw new ResponseStatusException(HttpStatus.CONFLICT, "CODE_APPLICATION_" + saved.status());
+        var proposal = saved.proposal();
+        if (!proposal.writeAllowed()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "READ_ONLY_PROPOSAL");
+        if (!durable.claim(principal, conversation, id)) {
+            var current = proposal(principal, conversation, id);
+            if (current.status().equals("APPLIED")) return current.result();
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "CODE_APPLICATION_" + current.status());
+        }
+        boolean effectStarted = false;
+        Path temp = null;
+        try {
+            var snapshot = loadGeneration(proposal.generation().id());
+            if (!snapshot.principal().equals(principal) || !snapshot.conversationId().equals(conversation)
+                    || !snapshot.workspace().equals(proposal.workspace()) || proposal.files().size() != 1)
+                throw rejected("CODE_GENERATION_SCOPE_MISMATCH");
+            var file = proposal.files().getFirst();
+            if (!file.path().equals(snapshot.targetPath()) || !file.baseHash().equals(snapshot.baseHash())
+                    || !Objects.equals(file.before(), snapshot.source())) throw rejected("CODE_GENERATION_SCOPE_MISMATCH");
+            Path path = target(snapshot.targetPath(), true);
+            if (!runtime.workspace().toRealPath().toString().equals(snapshot.workspace())) throw rejected("WORKSPACE_CHANGED");
+            if (!hash(generationSource(snapshot.targetPath())).equals(snapshot.baseHash()))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "FILE_CHANGED_SINCE_PROPOSAL");
+            effectStarted = true;
+            Files.createDirectories(path.getParent());
+            temp = Files.createTempFile(path.getParent(), ".eap-code-", ".tmp");
+            Files.writeString(temp, file.content(), StandardCharsets.UTF_8);
+            // Bounded last check, NOT OS compare-and-swap against an external editor.
+            path = target(snapshot.targetPath(), true);
+            if (!hash(generationSource(snapshot.targetPath())).equals(snapshot.baseHash()))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "FILE_CHANGED_SINCE_PROPOSAL");
+            if (snapshot.source() == null) Files.move(temp, path); // no replace: concurrent creation must fail
+            else Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            target(snapshot.targetPath(), true);
+            byte[] afterBytes;
+            try (var input = Files.newInputStream(path, LinkOption.NOFOLLOW_LINKS)) { afterBytes = input.readNBytes(640001); }
+            if (afterBytes.length > 640000) throw new IOException("readback too large");
+            String after = hash(StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(afterBytes)).toString());
+            target(snapshot.targetPath(), true);
+            if (!after.equals(hash(file.content()))) throw new IOException("readback mismatch");
+            var result = new Applied(id, List.of(snapshot.targetPath()), "not_requested", List.of(), "APPLIED", after, "");
+            durable.finish(principal, conversation, id, "APPLIED", result, "");
+            var persisted = proposal(principal, conversation, id);
+            if (!persisted.status().equals("APPLIED") || !result.equals(persisted.result())) throw new IllegalStateException("result readback mismatch");
+            return persisted.result();
+        } catch (Exception failure) {
+            String reason = effectStarted ? "CODE_APPLICATION_UNKNOWN"
+                    : failure instanceof ResponseStatusException denied ? denied.getReason() : "CODE_APPLICATION_FAILED";
+            try { durable.finish(principal, conversation, id, effectStarted ? "UNKNOWN" : "FAILED", null, reason); }
+            catch (RuntimeException ignored) { /* APPLYING remains a durable interlock; no blind retry or rollback. */ }
+            if (!effectStarted && failure instanceof ResponseStatusException denied) throw denied;
+            throw new ResponseStatusException(HttpStatus.CONFLICT, reason);
+        } finally {
+            if (temp != null) try { Files.deleteIfExists(temp); } catch (IOException ignored) { /* no target rollback */ }
         }
     }
 
@@ -397,6 +499,7 @@ public final class CodeChangeService {
         Path candidate = workspace;
         for (String part : parts) {
             candidate = candidate.resolve(part);
+            if (Files.exists(candidate.resolve(".git"), LinkOption.NOFOLLOW_LINKS)) throw rejected("CODE_NESTED_REPOSITORY");
             if (Files.isSymbolicLink(candidate) || (Files.exists(candidate) && !candidate.toRealPath().startsWith(workspace))) throw rejected("CODE_PATH_ESCAPES_WORKSPACE");
         }
         if (Files.exists(candidate) && !Files.isRegularFile(candidate)) throw rejected("INVALID_CODE_PATH");

@@ -22,6 +22,7 @@ it('uses the shared runtime HTTP client for models, conversation, message and pr
     const response = await api.sendAiMessage(conversation.conversationId, 'Review a candidate', 'none', { mode: 'code', expert: 'frontend', instructions: '', reasoning: 'default', approval: 'review', files: [], prototypeVersionId: '', targetPath: '' });
     expect(response.proposal?.files[0]?.path).toBe('Example.vue');
     expect(response.proposal?.files[0]?.baseHash).toBe('');
+    await expect(api.codeProposal(conversation.conversationId, response.proposal!.id)).rejects.toMatchObject({ response: { status: 404, data: { error: 'MOCK_DURABLE_APPLICATION_UNAVAILABLE' } } });
     await expect(api.applyCodeProposal(conversation.conversationId, response.proposal!.id)).rejects.toMatchObject({ response: { status: 409 } });
     await api.deleteAiConversation(conversation.conversationId);
     await expect(api.aiConversation(conversation.conversationId)).rejects.toMatchObject({ response: { status: 404 } });

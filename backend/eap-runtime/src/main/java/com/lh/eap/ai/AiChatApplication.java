@@ -238,7 +238,14 @@ public class AiChatApplication {
     public CodeChangeService.Applied apply(UUID conversation, UUID proposal, String json) {
         var body = objectBody(json, Set.of("confirmed"));
         if (codeChanges == null) throw unavailable();
-        return conversations.exclusive(conversation, () -> codeChanges.apply(conversation, proposal, Boolean.TRUE.equals(body.get("confirmed"))));
+        return conversations.exclusive(conversation, () -> codeChanges.apply(AiConversationRegistry.PRINCIPAL,
+                conversation, proposal, Boolean.TRUE.equals(body.get("confirmed"))));
+    }
+
+    public CodeChangeService.ProposalStatus proposal(UUID conversation, UUID proposal) {
+        conversations.require(conversation);
+        if (codeChanges == null) throw unavailable();
+        return codeChanges.proposal(AiConversationRegistry.PRINCIPAL, conversation, proposal);
     }
 
     public AiConversationResponse conversation(UUID id) {

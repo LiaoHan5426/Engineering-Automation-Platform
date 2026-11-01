@@ -136,6 +136,7 @@ export function createMockChatBackend() {
         if (proposal) proposals.set(proposal.id, proposal);
         return result(200, { executionId: null, answer: proposal ? '模拟候选已准备，请查看变更并确认。不会修改真实文件。' : '这是 mock 服务返回的模拟回答。场景、专家和模型选择使用与真实服务相同的交互流程；未调用真实模型。', error: '', status: 'mock_completed', approval: context?.approval ?? 'review', verification: 'not_requested', toolEvents: [], artifactError: '', artifacts: [], proposal } satisfies AiMessageResult);
       }
+      if (method === 'GET' && /^\/proposals\/[^/]+$/.test(suffix ?? '')) return result(404, { error: 'MOCK_DURABLE_APPLICATION_UNAVAILABLE' });
       const apply = suffix?.match(/^\/proposals\/([^/]+)\/apply$/);
       if (method === 'POST' && apply) {
         const proposal = proposals.get(decodeURIComponent(apply[1]!));

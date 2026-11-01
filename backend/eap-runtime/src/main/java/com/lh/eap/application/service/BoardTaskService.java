@@ -105,13 +105,15 @@ public class BoardTaskService {
     }
     // All callers acquire the task row first, then this workspace lock: never the opposite order.
     void lockWorkspace(String workspace) {
-        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Workspace reservation requires a transaction");
-        jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(lower(?), 791621))", rs -> { }, workspace);
+        WorkspaceInterlock.lock(jdbc, workspace);
+        if (WorkspaceInterlock.codeActive(jdbc, workspace)) throw conflict("CODE_WORKSPACE_BUSY");
     }
     boolean hasActiveWorkspace(String workspace) {
+        if (WorkspaceInterlock.codeActive(jdbc, workspace)) return true;
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE lower(e.workspace_path)=lower(?) AND " + ACTIVE + ")", Boolean.class, workspace));
     }
     boolean hasActiveVerification(String workspace) {
+        if (WorkspaceInterlock.codeActive(jdbc, workspace)) return true;
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r WHERE lower(COALESCE(r.verification_snapshot->'plan'->>'workspacePath', r.verification_snapshot->>'workspacePath'))=lower(?) AND r.verification_snapshot->>'status' IN ('QUEUED','RUNNING','UNKNOWN'))", Boolean.class, workspace));
     }
     Task find(UUID id, String projectId, boolean lock) {
