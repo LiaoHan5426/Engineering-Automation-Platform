@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import { ActionCard, Button, Checkbox, Input, Select, Tabs, Tag, Textarea } from "@eap/ui";
+import { IconPlus } from '@eap/ui';
 import { computed, nextTick, onBeforeUnmount, reactive, ref, toRef, watch } from "vue";
 import { runtimeApi, type PrototypeVersionRecord, type VerificationProbe, type WorkspaceBaseline, type WorkspaceSource } from "@eap/runtime-client";
 
@@ -355,7 +356,7 @@ onBeforeUnmount(() => { disposed = true; });
     <p v-if="sceneTab === 'market'" class="hint" data-testid="scene-market-empty">{{ t("desktop.marketEmpty") }}</p>
     <div v-else-if="sceneView === 'list'" class="scene-catalog" data-testid="scene-catalog">
       <div class="scene-catalog-toolbar">
-        <Button size="sm" variant="primary" type="button" class="create-scene" data-testid="create-scene" @click="createBlankScene">＋ {{ t("desktop.createScene") }}</Button>
+        <Button size="sm" variant="primary" type="button" class="create-scene" data-testid="create-scene" @click="createBlankScene"><IconPlus /> {{ t("desktop.createScene") }}</Button>
       </div>
       <p v-if="sceneNotice" class="hint" role="status" data-testid="scene-notice">{{ sceneNotice }}</p>
       <ul class="scene-list" data-testid="scene-card-grid">

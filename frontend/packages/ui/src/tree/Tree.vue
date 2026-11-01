@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { IconChevronDown, IconChevronRight } from "@eap/icons";
 import { TreeItem, TreeRoot, type TreeItemSelectEvent as SelectEvent, type TreeItemToggleEvent as ToggleEvent } from "reka-ui";
 import type { TreeNode } from "./types";
 const props = defineProps<{ items: TreeNode[]; label: string; disabled?: boolean; manualExpand?: boolean }>();
@@ -32,7 +33,11 @@ function toggle(event: ToggleEvent<TreeNode>) {
     <TreeItem v-for="item in flattenItems" :key="item._id" v-slot="{ isExpanded }" v-bind="item.bind"
       class="eap-tree__item" :disabled="item.value.disabled" :data-testid="item.value.testId"
       :style="{ paddingInlineStart: `${(item.level - 1) * 16 + 8}px` }" @select="select" @toggle="toggle">
-      <span class="eap-tree__marker" aria-hidden="true">{{ item.hasChildren ? (isExpanded ? '▾' : '▸') : '·' }}</span>
+      <span class="eap-tree__marker" aria-hidden="true">
+        <IconChevronDown v-if="item.hasChildren && isExpanded" size="1em" />
+        <IconChevronRight v-else-if="item.hasChildren" size="1em" />
+        <template v-else>·</template>
+      </span>
       <slot :node="item.value" :expanded="isExpanded">{{ item.value.label }}</slot>
     </TreeItem>
   </TreeRoot>

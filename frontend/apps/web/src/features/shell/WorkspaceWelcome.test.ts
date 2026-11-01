@@ -19,6 +19,10 @@ for (const preview of [false, true]) {
     expect(root.querySelector('[data-testid="welcome-draft-hint"]')?.textContent).toMatch(/选择不会发送|Choosing does not send/);
     expect(root.querySelector('[data-testid="welcome-kept"]')).toBeNull();
     expect(root.querySelector('[data-testid="expert-search"]')).not.toBeNull();
+    expect(root.querySelector('.welcome-spark svg[aria-hidden="true"]')).not.toBeNull();
+    expect(root.querySelector('.preview-scene-grid button > span svg[aria-hidden="true"]')).not.toBeNull();
+    expect(root.querySelector('.expert-pills button > span svg[aria-hidden="true"]')).not.toBeNull();
+    expect(root.querySelector('.expert-pills button svg.lucide-plus')).not.toBeNull();
     const expertSearch = root.querySelector('[data-testid="expert-search"]') as HTMLInputElement;
     expertSearch.value = '文档';
     expertSearch.dispatchEvent(new Event('input'));
@@ -35,6 +39,7 @@ for (const preview of [false, true]) {
     expect(currentExtras().experts.map(item => item.id)).toEqual(['writer']);
     await nextTick();
     expect(root.querySelector('[data-testid="welcome-kept"]')?.textContent).toMatch(/刷新|refresh|不会清空|will not clear/);
+    expect(root.querySelector('.expert-pills button.selected svg.lucide-x')).not.toBeNull();
     buttons.find(item => item.textContent?.includes('文档整理'))!.click();
     expect(currentExtras().experts).toEqual([]);
     expect(root.textContent).toContain('文档编写');
@@ -57,6 +62,7 @@ it('keeps scenario and expert picks after remount (catalog round-trip)', async (
   expect(root.querySelector('[data-testid="welcome-kept"]')?.textContent).toMatch(/不会清空|will not clear/);
   expect(root.querySelector('.expert-pills button.selected')?.textContent).toMatch(/文档整理/);
   expect(root.querySelector('.preview-scene-grid button.selected')?.textContent).toMatch(/项目文档编写/);
+  expect(root.querySelector('.preview-scene-grid button.selected i svg[aria-hidden="true"]')).not.toBeNull();
 });
 it('keeps the work scene and expert chooser beside an existing transcript', async () => {
   workbench.workMode = 'work';

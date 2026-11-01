@@ -62,6 +62,8 @@ button.eap-tag {
 }
 
 .eap-tag__close {
+  display: inline-flex;
+  align-items: center;
   font-size: 1.05em;
   line-height: 1;
 }

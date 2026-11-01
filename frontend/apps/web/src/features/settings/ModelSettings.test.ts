@@ -19,6 +19,9 @@ it('adds a second connection without updating the first, and only edits when exp
   expect(root.textContent).toContain('模型设置');
   expect(root.querySelectorAll('li')).toHaveLength(1);
   expect(document.querySelector('form')).toBeNull();
+  const addConnection = root.querySelector('.connection-list-heading button') as HTMLButtonElement;
+  expect(addConnection.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  expect(addConnection.textContent?.trim()).toBe(i18n.global.t('composerUi.addConnection'));
   (root.querySelector('.connection-list-heading button') as HTMLButtonElement).click(); await flush();
   const inputs = document.querySelectorAll('form input');
   (inputs[0] as HTMLInputElement).value = 'DeepSeek'; inputs[0].dispatchEvent(new Event('input'));

@@ -24,6 +24,8 @@
 
 **默认落点**：找不到合适层时，**先加 `@eap/ui` 原语或留在当前 feature**；只有满足 §4 抽包条件才新建 `packages/*`。
 
+图标模块例外说明（用户明确要求）：`@eap/icons`为纯视觉资源叶子包，不与`@eap/ui`交互原语竞争。**按用户补充，页面统一从`@eap/ui`导入`Icon`（支持类型化name），可选静态命名导出也走UI；禁止页面直接依赖`@eap/icons`或第三方图标库。**设计画布/流程连线SVG属于领域图形，不机械替换。首片逐步迁移，不把字符审计未覆盖的历史页面写成全库完成。
+
 ## 3. 规划中的统一模块位置
 
 下列名称是**规划落点**。未建包前，允许在 `@eap/ui` 或 `apps/web/src/lib` 以**同名目录**暂存，但必须在本文件「暂存登记」中注明。再次复用时复核依赖；通用 UI/layout 可以继续在 UI 受控子树维护，独立依赖或生命周期明确时才抽包。
@@ -31,6 +33,7 @@
 | 模块 / 包名（规划） | 职责 | 典型内容 | 依赖方向 |
 |---|---|---|---|
 | `@eap/style` | Design token 与主题 | light/dark、`applyTheme` | 无前端业务包 |
+| `@eap/icons` | UI内部纯SVG资源和尺寸/线宽/可访问性契约 | 静态Lucide白名单，currentColor继承主题；不联网 | Vue + 固定版本Lucide；无UI/路由/API依赖，仅UI接入，应用用`@eap/ui`的Icon |
 | `@eap/ui` | **全部**基础/无领域复合 UI 与 BEM 样式 | 实现以 §6 与 index.ts 为准 | Vue + `@eap/style`；按需声明内部交互依赖 |
 | `@eap/hooks` | 无 UI 强绑定的 Vue composable | `useFocusTrap`、`useEscClose`、`useMediaQuery`、本地偏好键读写（无业务实体） | Vue；**不**依赖 runtime-client |
 | `@eap/effects` | 动效 / 过渡 / 可访问性反馈原语 | 统一 transition 名、reduced-motion 包装、加载 shimmer 类 | 优先纯 CSS/小工具；可被 `@eap/ui` 引用 |

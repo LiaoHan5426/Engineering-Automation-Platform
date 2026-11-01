@@ -132,7 +132,8 @@ describe("engineering task composer", () => {
     (element!.querySelector('[data-testid="model-picker"]') as HTMLButtonElement).click();
     await nextTick();
     expect(element!.querySelector('[data-testid="effort-low"]')).toBeNull();
-    expect(element!.textContent).toContain("未配置推理档位");
+    expect(element!.querySelector('.effort-row')).toBeNull();
+    expect(element!.querySelector('[data-testid="model-setup-link"]')).not.toBeNull();
     (element!.querySelector('[data-testid="execution-mode"]') as HTMLButtonElement).click();
     await nextTick();
     expect((element!.querySelector('[data-testid="execution-plan"]') as HTMLButtonElement).disabled).toBe(true);
@@ -157,7 +158,7 @@ describe("engineering task composer", () => {
     const context = ref(empty());
     element = document.createElement("div");
     document.body.append(element);
-    app = createApp({ render: () => h(TaskComposer, { context: context.value, disabled: false, reasoningEfforts: ["high"], onUpdate: (value: TaskContext) => { context.value = value; } }) });
+    app = createApp({ render: () => h(TaskComposer, { context: context.value, disabled: false, modelLabel: 'reasoning-model', reasoningEfforts: ["high"], onUpdate: (value: TaskContext) => { context.value = value; } }) });
     app.use(i18n).mount(element);
     await nextTick();
     (element!.querySelector('[data-testid="model-picker"]') as HTMLButtonElement).click();

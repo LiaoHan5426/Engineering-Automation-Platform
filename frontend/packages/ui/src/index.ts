@@ -1,4 +1,8 @@
 export { default as Button } from "./button/Button.vue";
+export { default as Icon } from './icon/Icon.vue';
+export type { IconName } from './icon/icons';
+// Optional named imports share the same UI entry; applications never depend on the resource package.
+export { IconPlus, IconX, IconChevronDown, IconChevronRight, IconCheck, IconEllipsis, IconArrowUp, IconArrowLeft, IconPaperclip, IconInfo, IconTriangleAlert, IconCode, IconBriefcase, IconLayers, IconUsers, IconSettings, IconSparkles, IconCircleUser, IconTerminal, IconFile, IconFolder, IconRefreshCw, IconLoaderCircle } from '@eap/icons';
 export { default as Badge } from "./badge/Badge.vue";
 export { default as Feedback } from "./feedback/Feedback.vue";
 export { default as Panel } from "./panel/Panel.vue";

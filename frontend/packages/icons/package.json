@@ -1,0 +1,18 @@
+{
+  "name": "@eap/icons",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@lucide/vue": "1.66.0",
+    "vue": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@eap/tsconfig": "workspace:*",
+    "typescript": "catalog:tooling",
+    "vite-plus": "catalog:tooling"
+  }
+}

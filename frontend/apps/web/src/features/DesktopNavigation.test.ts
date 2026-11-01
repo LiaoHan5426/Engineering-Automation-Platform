@@ -46,6 +46,22 @@ afterEach(() => {
 });
 const pages = ['chat', 'sql', 'experts', 'model-settings', 'plugins', 'builder-alpha', 'builder-beta'].map(id => ({ id, name: id }));
 describe('desktop navigation', () => {
+  it('groups sidebar creation, search, conversations and secondary tools in a clear order', async () => {
+    root = document.createElement('div'); document.body.append(root);
+    app = createApp({ render: () => h(DesktopNavigation, { activeView: 'chat', pages }) });
+    app.use(i18n).mount(root); await nextTick();
+    const sidebar = root.querySelector('.desktop-sidebar')!;
+    const sections = [...sidebar.children].map(node => node.getAttribute('data-testid')).filter(Boolean);
+    expect(sections).toEqual(['new-chat', 'sidebar-filter', 'project-tree', 'unbound-sessions', 'sidebar-tools']);
+    expect(sidebar.querySelector('[data-testid="new-project"]')?.closest('.sidebar-section-head')).not.toBeNull();
+    expect(sidebar.querySelector('[data-testid="new-free-chat"]')?.closest('.sidebar-section-head')).not.toBeNull();
+    expect(sidebar.querySelector('[data-testid="unbound-sessions"]')?.textContent).not.toContain('没有选中分组时');
+    expect(sidebar.querySelector('[data-testid="sidebar-tools"] [data-testid="archived-sessions"]')).not.toBeNull();
+    expect(sidebar.querySelector('[data-testid="sidebar-tools"] [data-testid="today-journal"]')).not.toBeNull();
+    expect(root.querySelectorAll('.activity-bar svg.eap-icon')).toHaveLength(5);
+    expect(sidebar.querySelector('[data-testid="new-chat"] svg.eap-icon')).not.toBeNull();
+    expect(sidebar.querySelector('[data-testid="new-project"] svg.eap-icon')).not.toBeNull();
+  });
   it('routes Skills as a settings child without a sixth primary entry', async () => {
     expect(isKnownHash('skills')).toBe(true);
     const navigate=vi.fn();root=document.createElement('div');document.body.append(root);
@@ -178,6 +194,8 @@ describe('desktop navigation', () => {
     (project.querySelector('[data-testid="project-expand"]') as HTMLButtonElement).click(); await nextTick();
     expect(project.getAttribute('data-expanded')).toBe('true');
     expect(project.querySelector('[data-testid="project-empty"]')?.textContent).toMatch(/暂无会话|No sessions/);
+    expect(project.querySelector('[data-testid="open-board"]')?.textContent?.trim()).toBe('任务看板');
+    expect(project.querySelectorAll('.tree-branch-label')).toHaveLength(0);
     (project.querySelector('[data-testid="open-board"]') as HTMLButtonElement).click(); await nextTick();
     expect(navigated.at(-1)).toBe('board');
     expect(workbench.sidebarOpen).toBe(false);

@@ -359,6 +359,25 @@ importers:
         specifier: catalog:tooling
         version: 6.0.3
 
+  packages/icons:
+    dependencies:
+      '@lucide/vue':
+        specifier: 1.66.0
+        version: 1.66.0(vue@3.5.44(typescript@6.0.3))
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.44(typescript@6.0.3)
+    devDependencies:
+      '@eap/tsconfig':
+        specifier: workspace:*
+        version: link:../../internal/tsconfig
+      typescript:
+        specifier: catalog:tooling
+        version: 6.0.3
+      vite-plus:
+        specifier: catalog:tooling
+        version: 1.4.0(@types/node@24.19.2)(@vitest/ui@5.0.5)(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.13)(happy-dom@21.0.4)(jiti@2.7.0)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))
+
   packages/plugin-table:
     dependencies:
       '@eap/style':
@@ -420,6 +439,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@eap/icons':
+        specifier: workspace:*
+        version: link:../icons
       '@eap/style':
         specifier: workspace:*
         version: link:../style
@@ -436,6 +458,9 @@ importers:
       typescript:
         specifier: catalog:tooling
         version: 6.0.3
+      vite-plus:
+        specifier: catalog:tooling
+        version: 1.4.0(@types/node@24.19.2)(@vitest/ui@5.0.5)(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.13)(happy-dom@21.0.4)(jiti@2.7.0)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))
 
 packages:
 
@@ -584,6 +609,11 @@ packages:
 
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
+
+  '@lucide/vue@1.66.0':
+    resolution: {integrity: sha512-cyALYgAzCD2uZ557pM5I/dmFAyTKqtwY7PrdU67gzITkTH+V635u7Uv7VBpQ5hqvmlGqRtbqSDx08LCJHU+GAw==}
+    peerDependencies:
+      vue: '>=3.0.1'
 
   '@modelcontextprotocol/sdk@1.32.1':
     resolution: {integrity: sha512-2DdE+SJDtzLEEWzY1ZjY7Q+VcPhcV1KisD3zI4u0XZyktsjHum1mwbMI+JaulUBi2OZk+KJAi2uPXzxichPkdw==}
@@ -2930,6 +2960,10 @@ snapshots:
       keyv: 5.6.0
 
   '@keyv/serialize@1.1.1': {}
+
+  '@lucide/vue@1.66.0(vue@3.5.44(typescript@6.0.3))':
+    dependencies:
+      vue: 3.5.44(typescript@6.0.3)
 
   '@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@3.25.76)':
     dependencies:

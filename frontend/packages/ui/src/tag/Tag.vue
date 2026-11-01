@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { IconX } from "@eap/icons";
+
 withDefaults(
   defineProps<{
     type?: "primary" | "success" | "warning" | "danger" | "info";
@@ -32,7 +34,7 @@ function onClose(event: MouseEvent) {
     @click="onClick"
   >
     <slot />
-    <span v-if="closable" class="eap-tag__close" aria-hidden="true" @click="onClose">×</span>
+    <span v-if="closable" class="eap-tag__close" aria-hidden="true" @click="onClose"><IconX size="1em" /></span>
   </component>
 </template>
 

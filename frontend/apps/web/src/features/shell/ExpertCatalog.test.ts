@@ -23,11 +23,15 @@ it('shows and toggles the current task selection from the expert card', async ()
   const add = root.querySelector('[data-testid="expert-add"]') as HTMLButtonElement;
   expect(add.getAttribute('aria-pressed')).toBe('false');
   add.click(); await nextTick();
+  expect(add.querySelector('svg.lucide-check[aria-hidden="true"]')).not.toBeNull();
+  expect(add.getAttribute('aria-label')).toBe(i18n.global.t('desktop.removeExpert'));
   expect(add.getAttribute('aria-pressed')).toBe('true');
   expect(currentExtras().experts).toHaveLength(1);
   add.click(); await nextTick();
   expect(add.getAttribute('aria-pressed')).toBe('false');
   expect(currentExtras().experts).toHaveLength(0);
+  expect(add.querySelector('svg.lucide-plus[aria-hidden="true"]')).not.toBeNull();
+  expect(add.getAttribute('aria-label')).toBe(i18n.global.t('desktop.addExpert'));
 });
 
 it("exposes my-experts in the header and filters by category chips", async () => {

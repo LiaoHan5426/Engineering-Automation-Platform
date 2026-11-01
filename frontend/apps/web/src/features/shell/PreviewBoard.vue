@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { runtimeApi, type BoardTask, type BoardTaskDraft } from '@eap/runtime-client';
 import { Button, Checkbox, ConfirmBox, Dialog, Input, Select, Textarea, Collapse, Tabs } from "@eap/ui";
+import { IconPlus } from '@eap/ui';
 import { isAxiosError } from 'axios';
 import { chatBinding, workbench, type BoardColumn } from './workbench';
 import { localProjectState } from './localProjects';
@@ -194,7 +195,7 @@ function open(task: BoardTask) {
         <p>{{ t('preview.boardHint') }}</p>
         <p class="board-unattended" data-testid="board-unattended-badge">{{ t('desktop.boardUnattendedBadge') }}</p>
       </div>
-      <Button variant="primary" :disabled="busy" data-testid="board-create-task" @click="startCreate()">＋ {{ t('preview.createTask') }}</Button>
+      <Button variant="primary" :disabled="busy" data-testid="board-create-task" @click="startCreate()"><IconPlus /> {{ t('preview.createTask') }}</Button>
     </header>
     <form v-if="creating" class="new-task-form" data-testid="board-create-form" @submit.prevent="create">
       <label>{{ t('desktop.' + createColumn) }}<Input v-model="title" required maxlength="200" :disabled="busy || !!createRequest" :placeholder="t('preview.taskTitle')" :aria-label="t('preview.taskTitle')" autofocus /></label>
@@ -246,7 +247,7 @@ function open(task: BoardTask) {
           <span v-if="task.preparationIssues.length" class="preparation-missing">{{ t('desktop.boardPreparationMissing') }}</span>
           <span :title="task.id">{{ task.id.slice(0, 8) }}</span>
         </Button>
-        <Button size="sm" variant="link" v-if="column === 'planned' || column === 'ready'" type="button" class="lane-add" :disabled="busy" data-testid="lane-add-task" @click="startCreate(column)">＋ {{ t('desktop.boardAddTask') }}</Button>
+        <Button size="sm" variant="link" v-if="column === 'planned' || column === 'ready'" type="button" class="lane-add" :disabled="busy" data-testid="lane-add-task" @click="startCreate(column)"><IconPlus /> {{ t('desktop.boardAddTask') }}</Button>
         <p v-if="!tasks.some(item => item.column === column)" class="empty-lane">{{ t('preview.noTasks') }}</p>
       </section>
     </div></div>

@@ -2,6 +2,7 @@
   "extends": "@eap/tsconfig/base.json",
   "files": [],
   "references": [
+    { "path": "./packages/icons" },
     {
       "path": "./apps/web"
     },

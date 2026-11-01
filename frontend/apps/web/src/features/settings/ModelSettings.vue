@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Button, Checkbox, Feedback, Input, Select } from '@eap/ui';
+import { IconPlus } from '@eap/ui';
 import type { ModelConnection } from '@eap/runtime-client';
 import { modelApi as runtimeApi } from '../chat/chatService';
 import { useMockServices } from '../../lib/serviceConfig';
@@ -136,7 +137,7 @@ async function makeDefault(item: ModelConnection) {
     <div class="model-overview"><span>{{ t('chat.connections') }} <strong>{{ connections.length }}</strong></span><span>{{ t('modelUi.allowedCount') }} <strong>{{ allowedCount }}</strong></span></div>
     <ChatGptAccountCard ref="accountLogin" @connected="accountConnected" @changed="refreshConnections" />
     <section class="connection-settings-card" data-testid="model-connections">
-      <div class="connection-list-heading"><h2>{{ t("chat.connections") }} <span class="hint">{{ connections.length }}</span></h2><Button type="button" variant="primary" :disabled="connectionBusy" @click="newConnection">＋ {{ t("composerUi.addConnection") }}</Button></div>
+      <div class="connection-list-heading"><h2>{{ t("chat.connections") }} <span class="hint">{{ connections.length }}</span></h2><Button type="button" variant="primary" :disabled="connectionBusy" @click="newConnection"><IconPlus /> {{ t("composerUi.addConnection") }}</Button></div>
       <p class="hint" role="status">{{ t("modelUi.connectionHint") }}</p>
 
       <p v-if="!connections.length" class="connections-empty">{{ t("composerUi.noConnections") }}</p>

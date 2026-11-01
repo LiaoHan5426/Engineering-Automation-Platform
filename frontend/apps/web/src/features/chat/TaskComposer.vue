@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button, Feedback, FileInput, Input, Popover, Segmented, Select, Tag, Textarea } from "@eap/ui";
+import { IconPlus, IconChevronDown, IconCheck, IconPaperclip, IconLayers, IconTriangleAlert, Icon } from '@eap/ui';
 import { runtimeApi, type TaskContext, type PrototypeVersionRecord, type WorkspaceSource } from "@eap/runtime-client";
 import RepositoryBrowser from '../../components/RepositoryBrowser.vue';
 import KnowledgeExpertSelector from './KnowledgeExpertSelector.vue';
@@ -11,7 +12,7 @@ import { identityAuthorized, runtimeIdentity } from '../shell/runtimeIdentity';
 import { assignSessionProject, addExpert, currentExtras, expertCatalog, localProjects, projectLabel, removeExpert, scenarios, sessionKey, setExecutionMode, toggleResource, workbench } from "../shell/workbench";
 import { acceptFiles, FILE_CAP, type IncomingFile } from "./acceptFiles";
 
-const props = withDefaults(defineProps<{ active?: boolean; preview?: boolean; draft?: string; toolMode?: string; context: TaskContext; disabled: boolean; refreshingModels?: boolean; reasoningEfforts: Array<"low" | "medium" | "high">; modelLabel?: string }>(), { active: true, preview: false, draft: '', toolMode: 'none', refreshingModels: false, modelLabel: "" });
+const props = withDefaults(defineProps<{ active?: boolean; preview?: boolean; draft?: string; toolMode?: string; context: TaskContext; disabled: boolean; refreshingModels?: boolean; reasoningEfforts: Array<"low" | "medium" | "high">; modelLabel?: string; modelOptionsAvailable?: boolean }>(), { active: true, preview: false, draft: '', toolMode: 'none', refreshingModels: false, modelLabel: "", modelOptionsAvailable: true });
 const reasoningSupported = computed(() => props.reasoningEfforts.length > 0);
 const shownEffort = computed(() => props.context.reasoning !== "default" && props.reasoningEfforts.includes(props.context.reasoning) ? props.context.reasoning : "default");
 const emit = defineEmits<{ update: [context: TaskContext]; refresh: [] }>();
@@ -227,8 +228,8 @@ async function loadVersions() {
       <Tag v-if="context.knowledgeExpertRef" closable type="info" data-testid="knowledge-remove" :aria-label="t('knowledgeContext.remove') + ': ' + context.knowledgeExpertRef.id + ' · r' + context.knowledgeExpertRef.revision" :disabled="disabled" @click="removeKnowledge" @close="removeKnowledge">{{ context.knowledgeExpertRef.id }} · r{{ context.knowledgeExpertRef.revision }}</Tag>
       <Tag v-if="context.skillRef" closable type="success" data-testid="skill-remove" :aria-label="t('skill.remove') + ': ' + context.skillRef.id + ' · ' + context.skillRef.version + ' · r' + context.skillRef.stateRevision" :disabled="disabled" @click="removeSkill" @close="removeSkill">{{ context.skillRef.id }} · {{ context.skillRef.version }} · r{{ context.skillRef.stateRevision }}</Tag>
       <Tag v-if="context.expert !== 'general'" closable type="info" :disabled="disabled" @click="change('expert', 'general')" @close="change('expert', 'general')">{{ t('task.' + context.expert) }}</Tag>
-      <Tag v-for="(file, index) in context.files" :key="index" closable type="info" :disabled="disabled" @click="change('files', context.files.filter((_, i) => i !== index))" @close="change('files', context.files.filter((_, i) => i !== index))">📎 {{ file.name }}</Tag>
-      <Tag v-if="context.prototypeVersionId" closable type="info" :disabled="disabled" @click="change('prototypeVersionId', '')" @close="change('prototypeVersionId', '')">▧ {{ selectedVersion?.title || context.prototypeVersionId.slice(0, 8) }}</Tag>
+      <Tag v-for="(file, index) in context.files" :key="index" closable type="info" :disabled="disabled" @click="change('files', context.files.filter((_, i) => i !== index))" @close="change('files', context.files.filter((_, i) => i !== index))"><IconPaperclip />{{ file.name }}</Tag>
+      <Tag v-if="context.prototypeVersionId" closable type="info" :disabled="disabled" @click="change('prototypeVersionId', '')" @close="change('prototypeVersionId', '')"><IconLayers />{{ selectedVersion?.title || context.prototypeVersionId.slice(0, 8) }}</Tag>
       <Tag v-for="expert in currentExtras().experts" :key="expert.id" closable :disabled="disabled" @click="removeExpert(expert.id)" @close="removeExpert(expert.id)">{{ t('desktop.collab') }}：{{ expert.name }}</Tag>
       <Tag v-for="id in currentExtras().resources" :key="id" closable type="success" :disabled="disabled" @click="toggleResource(id)" @close="toggleResource(id)">{{ t(demoResources.find(item => item.id === id)?.label || 'preview.simulated') }}</Tag>
     </div>
@@ -244,53 +245,64 @@ async function loadVersions() {
     <slot name="draft" />
     <div class="task-context" data-testid="task-context">
     <div class="context-toolbar">
-      <Button variant="secondary" type="button" data-testid="composer-add" class="composer-add" :disabled="disabled" :aria-label="t('task.context')" :aria-expanded="menu" @click="placePopup($event); menu = !menu; policyOpen = false; executionOpen = false; modelOpen = false">＋</Button>
+      <Button variant="secondary" type="button" data-testid="composer-add" class="composer-add" :disabled="disabled" :aria-label="t('task.context')" :aria-expanded="menu" @click="placePopup($event); menu = !menu; policyOpen = false; executionOpen = false; modelOpen = false"><IconPlus /></Button>
       <Tag v-if="activeScene" closable :type="sceneMissingDeps.length ? 'warning' : 'success'" data-testid="composer-scene-chip" :title="sceneMissingDeps.length ? t('desktop.pendingDependencyCheck') + ' · ' + sceneMissingDeps.join('、') : undefined" :disabled="disabled" @click="currentExtras().scenarioId = null" @close="currentExtras().scenarioId = null">
-        <span v-if="sceneMissingDeps.length" aria-hidden="true">⚠</span>
+        <IconTriangleAlert v-if="sceneMissingDeps.length" />
         {{ t('desktop.scenes') }}：{{ activeScene.name }}
       </Tag>
       <div class="bar-picker">
-        <Button variant="secondary" type="button" data-testid="execution-mode" :disabled="disabled" :aria-expanded="executionOpen" @click="placePopup($event); executionOpen = !executionOpen; menu = false; policyOpen = false; modelOpen = false">{{ t("desktop.execution" + (workbench.executionMode === "chat" ? "Chat" : workbench.executionMode === "plan" ? "Plan" : "Agent")) }}</Button>
+        <Button variant="secondary" type="button" data-testid="execution-mode" :disabled="disabled" :aria-expanded="executionOpen" @click="placePopup($event); executionOpen = !executionOpen; menu = false; policyOpen = false; modelOpen = false">{{ t("desktop.execution" + (workbench.executionMode === "chat" ? "Chat" : workbench.executionMode === "plan" ? "Plan" : "Agent")) }}<IconChevronDown /></Button>
         <Popover v-if="executionOpen" :anchor="popupAnchor" :return-focus-to="root?.closest('form')?.querySelector('textarea')" side="top" @close="executionOpen = false" class="composer-popup execution-menu" :label="t('desktop.executionChat')">
-          <Button variant="navigation" type="button" data-testid="execution-chat" :aria-pressed="workbench.executionMode === 'chat'" @click="chooseExecution('chat')">{{ t("desktop.executionChat") }} · {{ t("desktop.executionChatHint") }}</Button>
+          <h3>{{ t('desktop.executionChoiceTitle') }}</h3>
+          <p class="hint" data-testid="execution-availability">{{ t(preview ? 'desktop.executionDemoHint' : 'desktop.executionAvailability') }}</p>
+          <Button variant="navigation" type="button" data-testid="execution-chat" :aria-pressed="workbench.executionMode === 'chat'" @click="chooseExecution('chat')">{{ t("desktop.executionChat") }} · {{ t("desktop.executionChatHint") }}<IconCheck v-if="workbench.executionMode === 'chat'" class="choice-check" /></Button>
           <Button variant="navigation" type="button" data-testid="execution-plan" :aria-pressed="workbench.executionMode === 'plan'" :disabled="!preview" :title="preview ? undefined : t('desktop.executionModeOff')" @click="chooseExecution('plan')">{{ t("desktop.executionPlan") }} · {{ t("desktop.executionPlanHint") }}<template v-if="!preview"> · {{ t("desktop.executionModeOff") }}</template></Button>
           <Button variant="navigation" type="button" data-testid="execution-agent" :aria-pressed="workbench.executionMode === 'agent'" :disabled="!preview" :title="preview ? undefined : t('desktop.executionModeOff')" @click="chooseExecution('agent')">{{ t("desktop.executionAgent") }} · {{ t("desktop.executionAgentHint") }}<template v-if="!preview"> · {{ t("desktop.executionModeOff") }}</template></Button>
           <Button variant="navigation" type="button" data-testid="execution-plugin" disabled :title="t('desktop.executionModeOff')">{{ t("desktop.executionPlugin") }} · {{ t("desktop.executionPluginHint") }} · {{ t("desktop.executionModeOff") }}</Button>
         </Popover>
       </div>
       <div class="bar-picker">
-        <Button variant="secondary" type="button" data-testid="approval-policy" :disabled="disabled" :aria-expanded="policyOpen" @click="placePopup($event); policyOpen = !policyOpen; menu = false; executionOpen = false; modelOpen = false">{{ context.approval === "read_only" ? t("task.readOnlyShort") : t("task.askPolicy") }}</Button>
+        <Button variant="secondary" type="button" data-testid="approval-policy" :disabled="disabled" :aria-expanded="policyOpen" @click="placePopup($event); policyOpen = !policyOpen; menu = false; executionOpen = false; modelOpen = false">{{ context.approval === "read_only" ? t("task.readOnlyShort") : t("task.askPolicy") }}<IconChevronDown /></Button>
         <Popover v-if="policyOpen" :anchor="popupAnchor" :return-focus-to="root?.closest('form')?.querySelector('textarea')" side="top" @close="policyOpen = false" class="composer-popup execution-menu" :label="t('task.askPolicy')" data-testid="approval-menu">
+          <h3>{{ t('task.approval') }}</h3>
           <p class="hint" data-testid="risk-review-off">{{ t("desktop.riskReviewOff") }}</p>
-          <Button variant="navigation" type="button" data-testid="approval-review" :aria-pressed="context.approval !== 'read_only'" @click="choosePolicy('review')">{{ t("task.askPolicy") }} · {{ t("task.askPolicyHint") }}</Button>
+          <Button variant="navigation" type="button" data-testid="approval-review" :aria-pressed="context.approval !== 'read_only'" @click="choosePolicy('review')">{{ t("task.askPolicy") }} · {{ t("task.askPolicyHint") }}<IconCheck v-if="context.approval !== 'read_only'" class="choice-check" /></Button>
           <Button variant="navigation" type="button" data-testid="approval-ai-review" disabled>{{ t("task.aiReview") }} · {{ t("desktop.aiReviewHint") }}</Button>
-          <Button variant="navigation" type="button" data-testid="approval-read-only" :aria-pressed="context.approval === 'read_only'" @click="choosePolicy('read_only')">{{ t("task.readOnlyShort") }} · {{ t("task.readOnlyHint") }}</Button>
+          <Button variant="navigation" type="button" data-testid="approval-read-only" :aria-pressed="context.approval === 'read_only'" @click="choosePolicy('read_only')">{{ t("task.readOnlyShort") }} · {{ t("task.readOnlyHint") }}<IconCheck v-if="context.approval === 'read_only'" class="choice-check" /></Button>
           <Button variant="navigation" type="button" data-testid="approval-full" disabled>{{ t("task.fullAccess") }} · {{ t("task.fullAccessOff") }}</Button>
           <Button variant="navigation" type="button" data-testid="approval-tool-perms" disabled>{{ t("task.toolPerms") }} · {{ t("desktop.notConnected") }}</Button>
         </Popover>
       </div>
-      <Button size="sm" variant="link" type="button" class="context-meter" data-testid="context-meter" :disabled="disabled" :aria-expanded="menu" :title="t('desktop.contextMeterHint', contextCount)" @click="openContextMenu($event)">{{ t("desktop.contextMeter", contextCount) }}</Button>
+      <Button size="sm" variant="icon" type="button" class="context-meter" data-testid="context-meter" :disabled="disabled" :aria-expanded="menu" :aria-label="t('desktop.contextMeterHint', contextCount)" :title="t('desktop.contextMeterHint', contextCount)" @click="openContextMenu($event)">
+        <Icon name="info" :size="22" />
+        <span class="sr-only">{{ t("desktop.contextMeter", contextCount) }}</span>
+      </Button>
+      <div class="composer-submit-controls">
       <div class="bar-picker model-picker">
-        <Button variant="secondary" type="button" data-testid="model-picker" :disabled="disabled" :aria-expanded="modelOpen" @click="placePopup($event); modelOpen = !modelOpen; menu = false; executionOpen = false; policyOpen = false">{{ modelLabel || t("modelUi.pending") }} · {{ effortLabel }}</Button>
+        <Button variant="secondary" type="button" data-testid="model-picker" :disabled="disabled" :aria-expanded="modelOpen" :title="modelLabel || t('modelUi.pending')" @click="placePopup($event); modelOpen = !modelOpen; menu = false; executionOpen = false; policyOpen = false"><span class="model-label">{{ modelLabel || t("modelUi.pending") }}<template v-if="modelLabel && reasoningSupported"> · {{ effortLabel }}</template></span><IconChevronDown /></Button>
         <Popover v-if="modelOpen" :anchor="popupAnchor" :return-focus-to="root?.closest('form')?.querySelector('textarea')" side="top" @close="modelOpen = false" class="composer-popup model-menu" :label="t('modelUi.selection')">
           <div class="model-effort-head" data-testid="model-effort-head">
-            <strong>{{ effortLabel }}</strong>
-            <small>{{ modelLabel || t("modelUi.pending") }}</small>
+            <strong>{{ t('modelUi.selection') }}</strong>
+            <small v-if="modelLabel">{{ modelLabel }}<template v-if="reasoningSupported"> · {{ effortLabel }}</template></small>
           </div>
           <slot name="model" />
-          <p class="effort-caption">{{ t("desktop.effortHeading") }}</p>
-          <div class="effort-row">
+          <p v-if="modelLabel && reasoningSupported" class="effort-caption">{{ t("desktop.effortHeading") }}</p>
+          <div v-if="modelLabel && reasoningSupported" class="effort-row">
             <Button size="sm" variant="chip" type="button" :aria-pressed="shownEffort === 'default'" :disabled="disabled" @click="chooseEffort('default')">{{ t("task.modelDefault") }}</Button>
             <Button size="sm" variant="chip" v-for="effort in reasoningEfforts" :key="effort" type="button" :data-testid="'effort-' + effort" :aria-pressed="shownEffort === effort" :disabled="disabled" @click="chooseEffort(effort)">{{ t("task." + effort) }}</Button>
           </div>
-          <p v-if="!reasoningSupported" class="hint">{{ t("task.reasoningUnsupported") }}</p>
-          <Button size="sm" variant="secondary" type="button" data-testid="model-refresh" :disabled="disabled || refreshingModels" :aria-busy="refreshingModels" @click="emit('refresh')">{{ t(refreshingModels ? "desktop.catalogRefreshing" : "desktop.refreshModels") }}</Button>
+          <p v-if="modelLabel && !reasoningSupported" class="hint">{{ t("task.reasoningUnsupported") }}</p>
+          <a href="#model-settings" data-testid="model-setup-link" class="model-setup-link" @click="closePopups">{{ t('desktop.locateSettings') }}</a>
+          <Button v-if="modelOptionsAvailable" size="sm" variant="secondary" type="button" data-testid="model-refresh" :disabled="disabled || refreshingModels" :aria-busy="refreshingModels" @click="emit('refresh')">{{ t(refreshingModels ? "desktop.catalogRefreshing" : "desktop.refreshModels") }}</Button>
           <slot name="settings" />
         </Popover>
       </div>
       <slot name="send" />
+      </div>
     </div>
+    <div v-if="$slots.status" class="composer-status"><slot name="status" /></div>
     <Popover v-if="menu" :anchor="popupAnchor" :return-focus-to="root?.closest('form')?.querySelector('textarea')" side="top" @close="menu = false" class="composer-popup composer-add-menu" :label="t('task.context')" data-testid="composer-add-menu">
+      <p class="hint" data-testid="context-usage-detail">{{ t('desktop.contextMeter', contextCount) }}</p>
       <Input v-model="query" class="composer-search" type="search" data-testid="composer-search" :aria-label="searchPlaceholder" :placeholder="searchPlaceholder" />
       <div class="composer-layers">
         <Segmented :model-value="category" @update:model-value="selectCategory" class="composer-categories" orientation="vertical" :label="t('task.context')"
@@ -351,16 +363,31 @@ async function loadVersions() {
 .task-context { min-width: 0; }
 .context-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .context-toolbar > .bar-picker { flex-shrink: 0; }
+.composer-submit-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; min-width: 0; max-width: 100%; }
+.composer-submit-controls .model-picker { flex: 1 1 auto; min-width: 0; }
+.composer-submit-controls .model-picker > :deep(button) { display: inline-flex; max-width: 100%; min-width: 0; }
+.model-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.composer-submit-controls > :deep(button[type="submit"]) { flex: 0 0 34px; margin-left: 0; }
+.composer-status { margin-top: 8px; font-size: 11px; color: var(--text-mute); line-height: 1.5; }
+.composer-status :deep(p) { margin: 0; overflow-wrap: anywhere; }
+.composer-status :deep(a) { white-space: nowrap; }
 .context-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .model-picker { min-width: 0; }
 .model-picker :deep(.eap-button) { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .execution-picker, .bar-picker { position: static; }
 .execution-menu { display: grid; gap: 6px; }
+.execution-menu h3 { margin: 2px 8px; font-size: 13px; }
+.execution-menu > :deep(button) { white-space: normal; text-align: start; line-height: 1.6; padding: 8px 12px; }
+.choice-check { margin-left: auto; }
+.context-toolbar > .bar-picker > button { padding: 5px 8px; font-size: 12px; font-weight: 500; }
 .composer-add-menu { min-width: 0; }
 .composer-layers { display: grid; grid-template-columns: minmax(110px, 34%) minmax(0, 1fr); gap: 10px; align-items: start; min-width: 0; }
 .composer-popup-content { min-width: 0; overflow-wrap: anywhere; }
 .composer-popup-content :is(input,select,textarea) { min-width: 0; max-width: 100%; }
 .context-meter { margin-left: auto; white-space: nowrap; }
+.context-toolbar > .context-meter { flex: 0 0 32px; width: 32px; min-width: 32px; height: 32px; padding: 4px; }
+.model-menu { display: grid; gap: 8px; }
+.model-setup-link { color: var(--accent); font-size: 12px; padding: 4px 8px; }
 .model-effort-head { display: grid; gap: 2px; padding: 4px 8px 8px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
 .model-effort-head strong { font-size: 14px; color: var(--text); }
 .model-effort-head small { color: var(--text-mute); font-size: 12px; }

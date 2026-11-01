@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } f
 import { useI18n } from "vue-i18n";
 import { DropdownMenu, Badge, Button, Checkbox, ConfirmBox, Feedback, InfiniteScroll, Input, Textarea, Collapse, WorkbenchFrame, Drawer } from "@eap/ui";
 import { type AiConnectionState } from "@eap/runtime-client";
+import { IconEllipsis, Icon } from '@eap/ui';
 import { errorMessage } from "../../lib/presentation";
 import { createChatSession } from "./chatSession";
 import ConnectionDialog from "../../components/ConnectionDialog.vue";
@@ -421,7 +422,7 @@ onMounted(async () => {
           { id: 'export', label: t('desktop.moreExport'), disabled: true, description: t('desktop.moreExportOff') },
           { id: 'share', label: t('desktop.moreShare'), disabled: true, description: t('desktop.moreShareOff') },
         ]">
-          <Button size="sm" variant="icon" type="button" class="shell-tool" data-testid="ribbon-more" :aria-label="t('desktop.moreActions')">⋯</Button>
+          <Button size="sm" variant="icon" type="button" class="shell-tool" data-testid="ribbon-more" :aria-label="t('desktop.moreActions')"><IconEllipsis /></Button>
         </DropdownMenu>
       </div>
 
@@ -514,7 +515,7 @@ onMounted(async () => {
       data-testid="chat-composer"
       @submit.prevent="sendTask"
     >
-      <TaskComposer :draft="session.draft.value" :tool-mode="session.toolMode.value" :active="props.active" :preview="mock" :refreshing-models="modelsRefreshing" :model-label="selectedModel ? selectedModel.model : ''" :context="session.context.value" :disabled="session.sending.value || session.opening.value || session.expired.value || archived" :reasoning-efforts="reasoningEfforts" @update="session.context.value = $event" @refresh="refreshModels">
+      <TaskComposer :draft="session.draft.value" :tool-mode="session.toolMode.value" :active="props.active" :preview="mock" :refreshing-models="modelsRefreshing" :model-options-available="modelChoices.length > 0" :model-label="selectedModel ? selectedModel.model : ''" :context="session.context.value" :disabled="session.sending.value || session.opening.value || session.expired.value || archived" :reasoning-efforts="reasoningEfforts" @update="session.context.value = $event" @refresh="refreshModels">
         <template #draft>
         <label>
         <span class="sr-only">{{ t("chat.draft") }}</span>
@@ -540,16 +541,18 @@ onMounted(async () => {
           </div>
         </template>
         <template #model>
-      <p class="hint" data-testid="model-switch-notice">{{ session.conversationId.value ? t("modelUi.switchAhead") : t("modelUi.switchNew") }}</p>
-      <p v-if="!modelChoices.length" class="hint">{{ t('modelUi.pending') }}</p>
+      <p v-if="session.conversationId.value && modelChoices.length" class="hint" data-testid="model-switch-notice">{{ t("modelUi.switchAhead") }}</p>
+      <p v-if="!modelChoices.length" class="hint" data-testid="model-empty">{{ t('desktop.modelEmptyHelp') }}</p>
       <Button variant="navigation" v-for="item in modelChoices" :key="item.key" type="button" class="menu-choice" :aria-pressed="item.key === modelSelection" @click="chooseModel(item.key)">{{ item.name }} · {{ item.model }}</Button>
       <small v-if="selectedModel?.kind === 'chatgpt-plan'">{{ t("authUi.planUsage") }}</small>
         </template>
-        <template #send>
-      <p v-if="!mock && !selectedModel" class="hint" data-testid="send-needs-model">
+        <template v-if="!mock && !selectedModel" #status>
+      <p class="hint" data-testid="send-needs-model">
         {{ t("desktop.sendNeedsModel") }}
         <a data-testid="send-open-settings" href="#model-settings" :title="t('desktop.locateSettingsNote')">{{ t("desktop.locateSettings") }}</a>
       </p>
+        </template>
+        <template #send>
       <Button
         class="composer-send"
         variant="primary"
@@ -559,7 +562,7 @@ onMounted(async () => {
         :title="session.sending.value ? t('chat.sending') : t('chat.send')"
         :disabled="(!mock && (workbench.executionMode === 'agent' || workbench.executionMode === 'plan')) || session.expired.value || archived || session.sending.value || session.opening.value || !session.draft.value.trim() || (!!session.pendingConnectionId.value && !!session.conversationId.value) || !selectedModel"
       >
-        <span class="composer-send-arrow" aria-hidden="true">{{ session.sending.value ? '…' : '↑' }}</span>
+        <Icon :name="session.sending.value ? 'loader-circle' : 'arrow-up'" class="composer-send-arrow" :size="18" />
         <span class="sr-only">{{ session.sending.value ? t("chat.sending") : t("chat.send") }}</span>
       </Button>
         </template>

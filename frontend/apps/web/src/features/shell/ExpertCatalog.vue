@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Input, Button } from "@eap/ui";
+import { IconCheck, IconPlus } from '@eap/ui';
 import { addExpert, currentExtras, expertCatalog, removeExpert, workbench } from "./workbench";
 
 const emit = defineEmits<{ navigate: [id: string] }>();
@@ -50,7 +51,7 @@ function add(id: string) {
       <li v-for="expert in visible" :key="expert.id" class="expert-card">
         <div class="expert-card-head">
           <h2>{{ expert.name }}<template v-if="expert.comingSoon">（{{ t("desktop.expertOnTheWay") }}）</template></h2>
-          <Button size="sm" variant="icon" v-if="!expert.comingSoon" type="button" class="expert-add" data-testid="expert-add" :aria-pressed="currentExtras().experts.some(item => item.id === expert.id)" :aria-label="t(currentExtras().experts.some(item => item.id === expert.id) ? 'desktop.removeExpert' : 'desktop.addExpert')" :title="t(currentExtras().experts.some(item => item.id === expert.id) ? 'desktop.removeExpert' : 'desktop.addExpert')" @click="add(expert.id)">{{ currentExtras().experts.some(item => item.id === expert.id) ? '✓' : '＋' }}</Button>
+          <Button size="sm" variant="icon" v-if="!expert.comingSoon" type="button" class="expert-add" data-testid="expert-add" :aria-pressed="currentExtras().experts.some(item => item.id === expert.id)" :aria-label="t(currentExtras().experts.some(item => item.id === expert.id) ? 'desktop.removeExpert' : 'desktop.addExpert')" :title="t(currentExtras().experts.some(item => item.id === expert.id) ? 'desktop.removeExpert' : 'desktop.addExpert')" @click="add(expert.id)"><IconCheck v-if="currentExtras().experts.some(item => item.id === expert.id)" /><IconPlus v-else /></Button>
           <span v-else class="expert-soon" data-testid="expert-coming-soon">{{ t("desktop.expertOnTheWay") }}</span>
         </div>
         <p>{{ expert.category }} · {{ expert.version }} · {{ t("desktop.demo") }}</p>

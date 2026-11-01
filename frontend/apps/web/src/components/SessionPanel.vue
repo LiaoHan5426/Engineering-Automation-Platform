@@ -168,18 +168,15 @@ const previewLine = computed(() =>
     </div>
     <div v-else-if="mode === 'terminal'" class="terminal-surface" data-testid="terminal-surface">
       <header>
-        <div class="terminal-tabs" :aria-label="t('desktop.terminal')">
-          <span class="terminal-tab">{{ sessionTitle || t('desktop.terminal') }}</span>
-          <span class="terminal-tab-add" aria-hidden="true">＋</span>
-        </div>
+        <strong>{{ t('desktop.terminal') }}</strong>
         <div class="terminal-actions">
-          <small>UTF-8</small>
-          <Button size="sm" variant="link" type="button" class="terminal-stop" data-testid="terminal-stop" disabled :title="t('desktop.terminalStopOff')">{{ t("desktop.terminalStop") }}</Button>
           <Button size="sm" variant="link" type="button" data-testid="close-terminal" :aria-label="t('desktop.panelClose')" @click="emit('close')">{{ t("desktop.panelClose") }}</Button>
         </div>
       </header>
-      <p class="hint terminal-hint" data-testid="run-recovery-off">{{ t("desktop.terminalDockHint") }} · {{ t("desktop.runRecoveryOff") }}</p>
-      <pre data-testid="terminal-output">{{ t("desktop.terminalOff") }}</pre>
+      <div class="terminal-empty" data-testid="terminal-unavailable">
+        <strong>{{ t('desktop.terminalUnavailable') }}</strong>
+        <p>{{ t('desktop.terminalRecordsHint') }}</p>
+      </div>
     </div>
     <div v-else-if="mode === 'files'" class="files-browser">
       <header>
@@ -246,6 +243,9 @@ const previewLine = computed(() =>
 .panel-session{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;margin:0 0 10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);font-size:11px;line-height:1.45;color:var(--text-soft)}
 .panel-session strong{font-size:12px;font-weight:650;color:var(--text);overflow-wrap:anywhere}
 .panel-session-close{margin-left:auto}
+.terminal-empty{display:grid;gap:6px;padding:18px 10px;font-size:12px;color:var(--text-soft)}
+.terminal-empty strong{color:var(--text);font-weight:500}
+.terminal-empty p{margin:0;line-height:1.6;overflow-wrap:anywhere}
 .summary-cards{display:grid;gap:10px}
 .summary-card{display:grid;gap:6px;width:100%;margin:0}
 .summary-card-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:650}

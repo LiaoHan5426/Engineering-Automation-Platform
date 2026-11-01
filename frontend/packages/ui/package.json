@@ -8,12 +8,14 @@
     "./styles.css": "./src/styles.css"
   },
   "dependencies": {
+    "@eap/icons": "workspace:*",
     "@eap/style": "workspace:*",
     "reka-ui": "2.11.0",
     "vue": "catalog:frontend"
   },
   "devDependencies": {
     "@eap/tsconfig": "workspace:*",
+    "vite-plus": "catalog:tooling",
     "typescript": "catalog:tooling"
   }
 }

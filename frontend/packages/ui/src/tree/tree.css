@@ -29,6 +29,8 @@
 }
 
 .eap-tree__marker {
+  display: inline-flex;
   flex: 0 0 1em;
+  align-items: center;
   color: var(--eap-text-color-secondary);
 }

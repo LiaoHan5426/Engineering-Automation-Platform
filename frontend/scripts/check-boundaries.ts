@@ -34,7 +34,13 @@ for (const group of ["apps", "packages", "internal"]) {
         const target = match[1]!;
         if (group === "apps" && /^(reka-ui|radix-vue|shadcn-vue|vxe-table|vxe-pc-ui|@vxe-ui\/)/.test(target))
           problems.push(`${file}: use the @eap/ui or @eap/plugin-table public adapter for ${target}`);
-        if (pkg.name === "@eap/ui" && /^@eap\//.test(target) && !/^@eap\/style(?:\/|$)/.test(target))
+        if (group === "apps" && /^@eap\/icons(?:\/|$)/.test(target))
+          problems.push(`${file}: use Icon from @eap/ui, not ${target}`);
+        if (pkg.name !== "@eap/icons" && /^(?:@lucide\/|lucide-|@iconify\/|unplugin-icons(?:\/|$))/.test(target))
+          problems.push(`${file}: third-party icons belong inside @eap/icons`);
+        if (pkg.name === "@eap/icons" && /^@eap\//.test(target))
+          problems.push(`${file}: @eap/icons must remain a visual leaf`);
+        if (pkg.name === "@eap/ui" && /^@eap\//.test(target) && !/^@eap\/(?:style|icons)(?:\/|$)/.test(target))
           problems.push(`${file}: @eap/ui must not depend on domain package ${target}`);
         if (target.startsWith(".")) {
           const resolved = path.resolve(path.dirname(file), target);

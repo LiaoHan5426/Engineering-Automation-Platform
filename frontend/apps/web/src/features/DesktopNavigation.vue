@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Input, DropdownMenu, Button, type MenuAction } from "@eap/ui";
+import { IconCode, IconBriefcase, IconLayers, IconUsers, IconSettings, IconPlus, IconEllipsis, IconChevronRight, IconArrowLeft } from '@eap/ui';
 import {
   chatBinding,
   createLocalProject,
@@ -17,6 +18,7 @@ const props = defineProps<{ activeView: string; pages: { id: string; name: strin
 const emit = defineEmits<{ navigate: [id: string] }>();
 const { t } = useI18n();
 type Area = "code" | "work" | "scenes" | "experts" | "settings";
+const areaIcons = { code: IconCode, work: IconBriefcase, scenes: IconLayers, experts: IconUsers, settings: IconSettings };
 const area = ref<Area>("code");
 const lastView = new Map<Area, string>();
 const query = ref("");
@@ -279,15 +281,18 @@ onUnmounted(() => {
 <template>
   <div class="desktop-navigation">
     <nav class="activity-bar" :aria-label="t('desktop.navigation')">
-      <Button variant="activity" v-for="(path, key) in { code: 'm8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16', work: 'M9 6V4h6v2M3 7h18v13H3zM3 11l9 3 9-3m-9 1v4', scenes: 'm12 3 10 5-10 5L2 8zM2 12l10 5 10-5M2 16l10 5 10-5', experts: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-4M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8m8 0a4 4 0 0 1 0 8', settings: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2' }" :key="key" type="button" :active="area === key" :aria-current="area === key ? 'page' : undefined" @click="select(key)"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path :d="path" /></svg>{{ t("desktop." + key) }}</Button>
+      <Button variant="activity" v-for="(icon, key) in areaIcons" :key="key" type="button" :active="area === key" :aria-current="area === key ? 'page' : undefined" @click="select(key)"><component :is="icon" :size="22" />{{ t("desktop." + key) }}</Button>
     </nav>
     <aside class="desktop-sidebar eap-scrollbar">
-      <Button v-if="area === 'experts' || area === 'settings'" variant="navigation" type="button" class="nav" data-testid="back-to-source-session" @click="returnToSourceSession">← {{ t("desktop.backToSourceSession") }}</Button>
+      <Button v-if="area === 'experts' || area === 'settings'" variant="navigation" type="button" class="nav" data-testid="back-to-source-session" @click="returnToSourceSession"><IconArrowLeft />{{ t("desktop.backToSourceSession") }}</Button>
       <template v-if="area === 'code' || area === 'work' || area === 'scenes' || area === 'experts'">
-        <Button variant="navigation" type="button" class="nav primary" data-testid="new-chat" :title="t('desktop.newChatHint')" :aria-pressed="activeView === 'chat' && !chatBinding?.activeId" @click="startChat(sessionMode())">＋ {{ t("desktop.newChat") }}</Button>
+        <Button variant="navigation" type="button" class="nav primary" data-testid="new-chat" :title="t('desktop.newChatHint')" :aria-pressed="activeView === 'chat' && !chatBinding?.activeId" @click="startChat(sessionMode())"><IconPlus />{{ t("desktop.newChat") }}</Button>
+        <Input v-model="sidebarFilter" class="sidebar-filter" type="search" data-testid="sidebar-filter" :aria-label="t('desktop.sidebarFilter')" :placeholder="t('desktop.sidebarFilter')" />
         <section class="tree-project" data-testid="project-tree">
-          <Input v-model="sidebarFilter" class="sidebar-filter" type="search" data-testid="sidebar-filter" :aria-label="t('desktop.sidebarFilter')" :placeholder="t('desktop.sidebarFilter')" />
-          <Button variant="navigation" type="button" class="nav" data-testid="new-project" @click="startNewProject">＋ {{ t("desktop.newProject") }}</Button>
+          <div class="sidebar-section-head">
+            <h2>{{ t('desktop.projectGroups') }}</h2>
+            <Button size="sm" variant="icon" type="button" data-testid="new-project" :aria-label="t('desktop.newProject')" :title="t('desktop.newProject')" @click="startNewProject"><IconPlus /><span class="sr-only">{{ t('desktop.newProject') }}</span></Button>
+          </div>
           <form v-if="draftingProject" class="project-edit" data-testid="project-create" @submit.prevent="confirmNewProject">
             <Input v-model="draftProjectLabel" maxlength="80" :placeholder="t('desktop.projectNamePlaceholder')" :aria-label="t('desktop.projectNamePlaceholder')" data-testid="project-create-input" />
             <div class="project-edit-actions">
@@ -310,7 +315,7 @@ onUnmounted(() => {
                 :aria-expanded="isProjectExpanded(project.id)"
                 :aria-label="project.label"
                 @click="toggleProjectExpand(project.id, $event)"
-              ><span class="tree-caret" :data-open="isProjectExpanded(project.id) ? 'true' : 'false'" aria-hidden="true"></span></Button>
+              ><IconChevronRight class="tree-caret" :data-open="isProjectExpanded(project.id) ? 'true' : 'false'" /></Button>
               <form v-if="renamingProjectId === project.id" class="project-edit tree-rename" data-testid="project-rename" @submit.prevent="confirmRenameProject">
                 <Input v-model="renameProjectLabel" maxlength="80" :aria-label="t('desktop.renameProject')" data-testid="project-rename-input" />
                 <div class="project-edit-actions">
@@ -323,7 +328,7 @@ onUnmounted(() => {
                   <span>{{ project.label }}</span>
                   <small>{{ t("desktop.projectSessions", { count: sessionsFor(project.id).length }) }}</small>
                 </Button>
-                <DropdownMenu :open="openProjectMenuId === project.id" @update:open="setProjectMenu(project.id, $event)" :items="projectActions()" :label="t('desktop.projectActions')" class="project-menu" data-testid="project-menu" @select="projectAction(project.id, $event)"><Button size="sm" variant="icon" type="button" class="tree-more" data-testid="project-actions" :aria-label="t('desktop.projectActions')">⋯</Button></DropdownMenu>
+                <DropdownMenu :open="openProjectMenuId === project.id" @update:open="setProjectMenu(project.id, $event)" :items="projectActions()" :label="t('desktop.projectActions')" class="project-menu" data-testid="project-menu" @select="projectAction(project.id, $event)"><Button size="sm" variant="icon" type="button" class="tree-more" data-testid="project-actions" :aria-label="t('desktop.projectActions')"><IconEllipsis /></Button></DropdownMenu>
               </template>
             </div>
             <div v-if="pendingDeleteProjectId === project.id" class="project-edit" data-testid="project-delete-confirm" role="status">
@@ -334,31 +339,31 @@ onUnmounted(() => {
               </div>
             </div>
             <div v-if="isProjectExpanded(project.id)" class="tree-children" data-testid="project-children">
-              <p class="tree-branch-label">{{ t("desktop.projectTasks") }}</p>
-              <Button variant="navigation" type="button" class="nav child tree-child" :active="activeView === 'board'" data-testid="open-board" @click="open('board')">{{ t("desktop.board") }} <small>{{ t("desktop.boardDraftRecord") }}</small></Button>
-              <p class="tree-branch-label">{{ t("historyUi.title") }}</p>
+              <Button variant="navigation" type="button" class="nav child tree-child" :active="activeView === 'board'" data-testid="open-board" @click="open('board')">{{ t("desktop.board") }}</Button>
+              <p v-if="sessionsFor(project.id).length" class="tree-branch-label">{{ t("historyUi.title") }}</p>
               <div v-for="item in sessionsFor(project.id)" :key="item.id" class="session-row">
                 <Button variant="navigation" type="button" class="nav child tree-child" :active="activeView === 'chat' && chatBinding?.activeId === item.id" @click="chooseConversation(item.id)"><span>{{ item.title || t("desktop.freeChat") }}</span><small v-if="sessionStamp(item.updatedAt)">{{ sessionStamp(item.updatedAt) }}</small></Button>
-                <DropdownMenu :open="openMenuId === item.id" @update:open="setSessionMenu(item.id, $event)" :items="sessionActions(item)" :label="t('historyUi.actions')" class="session-menu" @select="sessionAction(item.id, $event)"><Button size="sm" variant="icon" type="button" class="tree-more" data-testid="session-actions" :aria-label="t('historyUi.actions')">⋯</Button></DropdownMenu>
+                <DropdownMenu :open="openMenuId === item.id" @update:open="setSessionMenu(item.id, $event)" :items="sessionActions(item)" :label="t('historyUi.actions')" class="session-menu" @select="sessionAction(item.id, $event)"><Button size="sm" variant="icon" type="button" class="tree-more" data-testid="session-actions" :aria-label="t('historyUi.actions')"><IconEllipsis /></Button></DropdownMenu>
               </div>
               <p v-if="!sessionsFor(project.id).length" class="hint tree-empty" data-testid="project-empty">{{ t("desktop.projectNoSessions") }}</p>
             </div>
           </div>
         </section>
         <section data-testid="unbound-sessions">
-          <h2>{{ t("desktop.freeChat") }}</h2>
-          <p class="hint">{{ t("desktop.unboundHint") }}</p>
+          <div class="sidebar-section-head">
+            <h2 :title="t('desktop.unboundHint')">{{ t("desktop.freeChat") }}</h2>
+            <Button size="sm" variant="icon" type="button" data-testid="new-free-chat" :aria-label="t('desktop.newFreeChat')" :title="t('desktop.newFreeChat')" @click="startFreeChat"><IconPlus /><span class="sr-only">{{ t('desktop.newFreeChat') }}</span></Button>
+          </div>
           <p v-if="!sessionsFor(null).length" class="hint tree-empty" data-testid="free-chat-empty">{{ t("desktop.freeChatEmpty") }}</p>
           <div v-for="item in sessionsFor(null)" :key="item.id" class="session-row">
             <Button variant="navigation" type="button" class="nav child" :active="activeView === 'chat' && chatBinding?.activeId === item.id" @click="chooseConversation(item.id)"><span>{{ item.title || t("desktop.freeChat") }}</span><small v-if="sessionStamp(item.updatedAt)">{{ sessionStamp(item.updatedAt) }}</small></Button>
-            <DropdownMenu :open="openMenuId === item.id" @update:open="setSessionMenu(item.id, $event)" :items="sessionActions(item)" :label="t('historyUi.actions')" class="session-menu" @select="sessionAction(item.id, $event)"><Button size="sm" variant="icon" type="button" class="tree-more" data-testid="session-actions" :aria-label="t('historyUi.actions')">⋯</Button></DropdownMenu>
+            <DropdownMenu :open="openMenuId === item.id" @update:open="setSessionMenu(item.id, $event)" :items="sessionActions(item)" :label="t('historyUi.actions')" class="session-menu" @select="sessionAction(item.id, $event)"><Button size="sm" variant="icon" type="button" class="tree-more" data-testid="session-actions" :aria-label="t('historyUi.actions')"><IconEllipsis /></Button></DropdownMenu>
           </div>
-          <Button variant="navigation" type="button" class="nav" data-testid="today-journal" :title="t('desktop.todayJournalHint')" @click="startTodayJournal">{{ t("desktop.todayJournal") }}</Button>
-          <Button variant="navigation" type="button" class="nav primary" data-testid="new-free-chat" @click="startFreeChat">＋ {{ t("desktop.newFreeChat") }}</Button>
+        </section>
+        <section class="sidebar-tools" data-testid="sidebar-tools">
           <Button variant="navigation" type="button" class="nav" data-testid="archived-sessions" :aria-pressed="showArchived" @click="showArchived = !showArchived">{{ showArchived ? t('historyUi.active') : t('historyUi.archived') }}</Button>
           <p v-if="showArchived && !conversations.length" class="hint">{{ t('historyUi.empty') }}</p>
-        </section>
-        <section>
+          <Button variant="navigation" type="button" class="nav" data-testid="today-journal" :title="t('desktop.todayJournalHint')" @click="startTodayJournal">{{ t("desktop.todayJournal") }}</Button>
           <Button variant="navigation" v-if="analysis" type="button" class="nav" :active="activeView === 'sql'" @click="open('sql')">{{ analysis.name }}</Button>
         </section>
       </template>
@@ -376,27 +381,33 @@ onUnmounted(() => {
 .desktop-navigation{display:flex;min-height:0;height:100%;overflow:hidden;color:var(--text)}
 .activity-bar{width:64px;flex:0 0 64px;display:flex;flex-direction:column;gap:8px;padding:10px 6px;background:var(--bg)}
 .activity-bar button{display:grid;gap:5px;justify-items:center;min-width:0}
-.activity-bar button svg{width:22px;height:26px}.activity-bar button:last-child{margin-top:auto}
+.activity-bar button:last-child{margin-top:auto}
 .desktop-sidebar{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;overflow:auto;padding:16px 12px;background:var(--surface-2);border-right:1px solid var(--border)}
 .desktop-sidebar h2{margin:8px 8px 0;color:var(--text-soft);font-size:12px;font-weight:650}
-.sidebar-filter{display:block;width:calc(100% - 16px);margin:6px 8px 4px}
+.sidebar-filter{display:block;width:100%;margin:0 0 8px}
+.desktop-sidebar > *{flex-shrink:0}
+.sidebar-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px}
+.sidebar-section-head h2{margin:0 8px}
+.sidebar-section-head > button{flex:0 0 28px;width:28px;height:28px;min-width:28px}
+.sidebar-tools{display:grid;gap:2px;margin-top:auto;padding-top:10px;border-top:1px solid var(--border)}
 .hint{padding:0 8px;font-size:12px;color:var(--text-soft);line-height:1.55}
 .tree-node{margin:4px 0;padding:2px 0;border-radius:10px}
-.tree-node[data-expanded="true"]{background:var(--surface-3)}
+.tree-node[data-expanded="true"]{background:transparent}
 .tree-node-head{display:flex;align-items:center;gap:2px;min-width:0;min-height:36px}
 .tree-toggle{flex:0 0 28px;width:28px;height:28px;display:grid;place-items:center;align-self:center}
-.tree-caret{width:8px;height:8px;border-right:2px solid currentcolor;border-bottom:2px solid currentcolor;transform:rotate(-45deg);margin-left:-1px}
-.tree-caret[data-open="true"]{transform:rotate(45deg);margin-top:-4px;margin-left:0}
-.tree-project-label{display:flex!important;flex-direction:column;align-items:flex-start;gap:0;flex:1;min-width:0}
+.tree-caret{transition:transform .15s}
+.tree-caret[data-open="true"]{transform:rotate(90deg)}
+.tree-project-label{display:flex!important;flex-direction:column;align-items:flex-start;gap:2px;flex:1;min-width:0;padding:6px 8px}
+.tree-project-label > span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tree-project-label small{color:var(--text-mute);font-size:10px;font-weight:400;line-height:1.2}
 .tree-more{flex:0 0 28px;width:28px;height:28px;display:grid;place-items:center;align-self:center}
 .project-edit{display:grid;gap:6px;margin:4px 0 8px;padding:8px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2)}
 .project-edit.tree-rename{flex:1;min-width:0;margin:0}
 .project-edit :deep(.eap-input){width:100%}
 .project-edit-actions{display:flex;flex-wrap:wrap;gap:6px}
-.tree-children{margin:2px 4px 8px 12px;padding:4px 0 4px 8px;border-left:2px solid var(--border-strong);display:grid;gap:2px}
+.tree-children{margin:4px 2px 8px 14px;padding:0 0 0 12px;border-left:1px solid var(--border);display:grid;gap:4px}
 .tree-branch-label{margin:6px 0 2px;padding:0 8px;font-size:10px;font-weight:650;color:var(--text-mute);letter-spacing:.02em}
-.tree-empty{margin:2px 0 6px;padding-left:8px;font-size:11px}
+.tree-empty{margin:4px 0;padding:0 8px;font-size:11px;overflow-wrap:anywhere}
 .tree-child{padding-left:10px!important}
 .status-compact{margin:2px 10px 6px;font-size:11px;color:var(--text-soft)}
 .desktop-sidebar .nav{width:100%}

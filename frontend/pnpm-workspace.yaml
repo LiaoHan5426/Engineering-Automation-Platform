@@ -1,6 +1,6 @@
 packages:
   - apps/*
-  - packages/*
+  - packages/* # includes the shared @eap/icons visual leaf package
   - internal/*
 
 autoDedupe: true

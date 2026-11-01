@@ -8,6 +8,7 @@ import { addExpert, currentExtras, expertCatalog, removeExpert, scenarios, workb
 import { pendingScenarioDependencies } from '../features/shell/scenarioDependencies';
 import { identityAuthorized, runtimeIdentity } from '../features/shell/runtimeIdentity';
 import { Input, Button } from "@eap/ui";
+import { IconCheck, IconCircleUser, IconLayers, IconPlus, IconSparkles, IconX } from '@eap/ui';
 import type { Scenario } from '../features/shell/workbench';
 defineEmits<{ scenario: [id: string] }>();
 withDefaults(defineProps<{ compact?: boolean }>(), { compact: false });
@@ -31,7 +32,7 @@ function toggleExpert(id: string) {
 <template>
   <div class="preview-welcome" :class="{ 'welcome-compact': compact }" data-testid="workspace-welcome">
     <template v-if="!compact">
-      <span class="welcome-spark">✦</span>
+      <span class="welcome-spark"><IconSparkles :size="30" /></span>
       <h1>{{ t(workbench.workMode === 'work' ? 'preview.workTitle' : 'preview.codeTitle') }}</h1>
     </template>
     <div class="welcome-section-head"><h2>{{ t('preview.scenes') }}</h2><a href="#scenes">{{ t('preview.manageScenes') }} →</a></div>
@@ -53,9 +54,9 @@ function toggleExpert(id: string) {
             : item.summary"
         @click="$emit('scenario', item.id)"
       >
-        <span>◇</span><strong>{{ item.name }}</strong><small>{{ item.summary }}</small>
+        <span><IconLayers /></span><strong>{{ item.name }}</strong><small>{{ item.summary }}</small>
         <small v-if="pending(item).length" class="scene-dep-note">{{ t('desktop.pendingDependencyCheck') }} · {{ pending(item).slice(0, 3).join('、') }}</small>
-        <i v-if="extras.scenarioId === item.id" aria-hidden="true">✓</i>
+        <i v-if="extras.scenarioId === item.id" aria-hidden="true"><IconCheck /></i>
       </Button>
     </div>
     <div class="welcome-section-head"><h2>{{ t('preview.experts') }}</h2><a href="#expert-catalog">{{ t('preview.manageExperts') }} →</a></div>
@@ -71,9 +72,9 @@ function toggleExpert(id: string) {
         :title="expert.comingSoon ? t('desktop.comingSoon') : undefined"
         @click="toggleExpert(expert.id)"
       >
-        <span>◉</span> {{ expert.name }}
+        <span><IconCircleUser /></span> {{ expert.name }}
         <template v-if="expert.comingSoon"> · {{ t('desktop.expertOnTheWay') }}</template>
-        <template v-else>{{ extras.experts.some(item => item.id === expert.id) ? ' ×' : ' ＋' }}</template>
+        <template v-else><IconX v-if="extras.experts.some(item => item.id === expert.id)" /><IconPlus v-else /></template>
       </Button>
     </div>
   </div>

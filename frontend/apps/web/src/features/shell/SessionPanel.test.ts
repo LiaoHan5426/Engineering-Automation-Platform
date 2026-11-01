@@ -32,8 +32,8 @@ it("replaces the summary when the active session changes", async () => {
   expect(root.textContent).toContain("候选 1 个文件");
   expect(root.textContent).toContain("基线未知，不能把候选当成可以写入");
   expect(root.textContent).toContain("notes.md");
-  expect(root.querySelector('[data-testid="panel-session"]')?.textContent).toMatch(/只反映当前会话|Shows this session only/);
-  expect(root.querySelector('[data-testid="session-project"]')?.textContent).toMatch(/本机项目分组：EAP|Local project group: EAP/);
+  expect(root.querySelector('[data-testid="panel-session"] span')?.textContent).toBe('当前会话');
+  expect(root.querySelector('[data-testid="session-project"]')?.textContent).toBe('项目分组：EAP');
   expect(root.querySelector('[data-testid="expert-none"]')?.textContent).toMatch(/未加入协作专家|No collaborator expert/);
   expect(root.querySelector('[data-testid="risk-review-off"]')?.textContent).toMatch(/风险审核未接入|Risk review is not connected/);
   expect(root.querySelector('[data-testid="run-recovery-off"]')?.textContent).toMatch(/不会恢复后台 Run|will not resume a background Run/);
@@ -45,8 +45,8 @@ it("replaces the summary when the active session changes", async () => {
   expect(root.textContent).toContain("无候选");
   expect(root.textContent).toContain("这次回复没有待确认的写入");
   expect(root.textContent).not.toContain("基线未知");
-  expect(root.querySelector('[data-testid="panel-session"]')?.textContent).toMatch(/只反映当前会话|Shows this session only/);
-  expect(root.querySelector('[data-testid="session-project"]')?.textContent).toMatch(/未绑定项目分组|no project group/);
+  expect(root.querySelector('[data-testid="panel-session"] span')?.textContent).toBe('当前会话');
+  expect(root.querySelector('[data-testid="session-project"]')?.textContent).toBe('未选择项目分组');
   chatBinding.value = binding({ activeId: "b", proposalFiles: ["src/App.vue"], writeRefused: true });
   await nextTick();
   expect(root.textContent).toContain("这次写入已拒绝，不会应用");
@@ -75,6 +75,22 @@ it("lists this session's steps and clears them with the session", async () => {
   expect(next).toContain("无候选");
   expect(next).not.toContain("草稿仍在输入框");
   expect(next).toContain("无执行号");
+});
+
+it('shows an unavailable terminal without fake session controls and can close it', async () => {
+  chatBinding.value = binding({ activeId: 'a' });
+  const close = vi.fn();
+  root = document.createElement('div'); document.body.append(root);
+  app = createApp({ render: () => h(SessionPanel, { mode: 'terminal', onClose: close }) });
+  app.use(i18n).mount(root); await nextTick();
+  expect(root.textContent).toContain('终端尚未开放');
+  expect(root.textContent).toContain('任务看板');
+  expect(root.querySelector('.terminal-tab-add')).toBeNull();
+  expect(root.querySelector('[data-testid="terminal-stop"]')).toBeNull();
+  expect(root.textContent).not.toContain('UTF-8');
+  expect(root.querySelector('pre')).toBeNull();
+  (root.querySelector('[data-testid="close-terminal"]') as HTMLButtonElement).click();
+  expect(close).toHaveBeenCalledOnce();
 });
 
 it("shows an empty background state as 暂无 without inventing a run", async () => {
@@ -194,7 +210,7 @@ it("keeps candidate, applied and unread directory changes apart", async () => {
   expect(text).toContain("/#chat");
   expect(text).toContain("交互验收：未完成");
   expect(text).toContain("不能显示完成");
-  expect(root.querySelector('[data-testid="panel-session"]')?.textContent).toMatch(/只反映当前会话|Shows this session only/);
+  expect(root.querySelector('[data-testid="panel-session"] span')?.textContent).toBe('当前会话');
   (root.querySelector(".codex-file") as HTMLButtonElement).click();
   await nextTick();
   expect(root.querySelector(".codex-file[aria-pressed='true']")?.textContent).toContain("src/App.vue");

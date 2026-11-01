@@ -78,6 +78,18 @@ async function openWorkflow() {
   await nextTick();
 }
 
+it('renders a decorative create icon while keeping scene creation local', async () => {
+  await mount();
+  const create = root!.querySelector('[data-testid="create-scene"]') as HTMLButtonElement;
+  expect(create).not.toBeNull();
+  expect(create.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  expect(create.textContent?.trim()).toBe(i18n.global.t('desktop.createScene'));
+  create.click(); await nextTick();
+  expect(root!.querySelector('[data-testid="scene-detail-view"]')).not.toBeNull();
+  expect(scenarios.find(item => item.id === workbench.selectedScenario)?.builtin).toBe(false);
+  expect(runtimeApi.prototypeVersions).not.toHaveBeenCalled();
+});
+
 it('restores the scene workflow and version selection after navigating away and back', async () => {
   workbench.selectedScenario = 'prototype-to-code';
   await mount();

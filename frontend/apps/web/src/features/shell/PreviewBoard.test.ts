@@ -25,6 +25,21 @@ beforeEach(() => {
   vi.spyOn(runtimeApi, 'updateBoardTask').mockImplementation((id, body) => call('POST', '/board/tasks/' + id, body));
 });
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); workbench.pendingBoardDraft = null; chatBinding.value = null; });
+it('renders decorative create icons without submitting a task when opening the form', async () => {
+  await mountBoard();
+  const create = root.querySelector('[data-testid="board-create-task"]') as HTMLButtonElement;
+  expect(create.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  expect(create.textContent?.trim()).toBe(i18n.global.t('preview.createTask'));
+  const laneAdds = [...root.querySelectorAll<HTMLButtonElement>('[data-testid="lane-add-task"]')];
+  expect(laneAdds).toHaveLength(2);
+  for (const add of laneAdds) {
+    expect(add.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(add.textContent?.trim()).toBe(i18n.global.t('desktop.boardAddTask'));
+  }
+  create.click();
+  await vi.waitFor(() => expect(root.querySelector('[data-testid="board-create-form"]')).not.toBeNull());
+  expect(runtimeApi.createBoardTask).not.toHaveBeenCalled();
+});
 it('hands off only the saved ready task identity and never derives it from sessionId', async () => {
   await mountBoard(); await createTask();
   const project = vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0].projectId;

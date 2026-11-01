@@ -25,10 +25,69 @@ async function mount(initial = empty()) {
   app = createApp({ render: () => h('form', [h(TaskComposer, {
     context: context.value, draft: draft.value, active: active.value, disabled: disabled.value, toolMode: toolMode.value, reasoningEfforts: [],
     onUpdate: (value: TaskContext) => { context.value = value; },
-  }, { draft: () => h('textarea', { value: draft.value, 'data-testid': 'draft' }) })]) });
+  }, {
+    draft: () => h('textarea', { value: draft.value, 'data-testid': 'draft' }),
+    send: () => h('button', { type: 'submit', 'data-testid': 'layout-send' }, 'Send'),
+    status: () => h('p', { 'data-testid': 'layout-status' }, 'Choose a model'),
+  })]) });
   app.use(i18n).mount(host); await nextTick();
   return { context, active, disabled, toolMode, draft, catalog };
 }
+
+it('keeps model and send together and places status outside the wrapping controls', async () => {
+  await mount();
+  const group = host.querySelector('.composer-submit-controls');
+  expect(group).not.toBeNull();
+  expect(group!.contains(button('model-picker'))).toBe(true);
+  expect(group!.contains(button('layout-send'))).toBe(true);
+  const status = host.querySelector('[data-testid="layout-status"]');
+  expect(status).not.toBeNull();
+  expect(status!.closest('.context-toolbar')).toBeNull();
+  expect(status!.closest('.task-context')).not.toBeNull();
+});
+
+it('uses shared decorative icons for the composer controls', async () => {
+  await mount();
+  for (const id of ['composer-add', 'execution-mode', 'approval-policy', 'context-meter', 'model-picker']) {
+    const icon = button(id).querySelector('svg.eap-icon');
+    expect(icon, id).not.toBeNull();
+    expect(icon!.getAttribute('aria-hidden')).toBe('true');
+  }
+});
+
+it('shows model setup instead of reasoning controls when no model is selected', async () => {
+  await mount();
+  expect(button('model-picker').textContent).not.toContain('模型默认');
+  await click('model-picker');
+  expect(document.querySelector('[data-testid="model-setup-link"]')).not.toBeNull();
+  expect(document.querySelector('.effort-row')).toBeNull();
+});
+
+it('uses an unmetered circular context entry without inventing token usage', async () => {
+  await mount();
+  const meter = button('context-meter');
+  expect(meter.querySelector('svg')).not.toBeNull();
+  expect(meter.getAttribute('aria-valuenow')).toBeNull();
+  expect(meter.getAttribute('aria-label')).toContain('不统计 token');
+  await click('context-meter');
+  expect(document.querySelector('[data-testid="context-usage-detail"]')?.textContent).toContain('文件 0/6');
+  expect(document.querySelector('[data-testid="composer-add-menu"]')).not.toBeNull();
+});
+
+it('explains unavailable execution modes while allowing real approval changes', async () => {
+  const { context } = await mount();
+  await click('execution-mode');
+  expect(document.querySelector('[data-testid="execution-availability"]')?.textContent).toContain('仅聊天可用');
+  expect(button('execution-plan').disabled).toBe(true);
+  await click('approval-policy');
+  expect(document.querySelector('[data-testid="approval-menu"] h3')?.textContent).toBe('写入策略');
+  await click('approval-read-only');
+  expect(context.value.approval).toBe('read_only');
+  await click('approval-policy');
+  expect(button('approval-read-only').getAttribute('aria-pressed')).toBe('true');
+  await click('approval-review');
+  expect(context.value.approval).toBe('review');
+});
 
 it.each(['knowledge', 'skill'] as const)('renders selected %s as a compact accessible removable chip, not permanent guidance', async kind => {
   const selected = kind === 'knowledge' ? { knowledgeExpertRef: expertRef } : { skillRef, skillResourcePaths: ['guide.txt'] };
