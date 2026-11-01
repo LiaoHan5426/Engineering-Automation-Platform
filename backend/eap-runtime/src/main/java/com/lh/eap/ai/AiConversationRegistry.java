@@ -94,14 +94,17 @@ public class AiConversationRegistry {
         }
     }
 
-    /** Called only by a turn holding exclusive(). Once knowledge was selected, every later turn
-     * clears memory, including ordinary chat and refused requests. Derived model text is sensitive too. */
-    boolean clearKnowledgeMemory(UUID id, boolean selected) {
+    /** Compatibility name for the unified sensitive-context memory guard. */
+    boolean clearKnowledgeMemory(UUID id, boolean selected) { return clearContextMemory(id, selected); }
+
+    /** Called only under exclusive(). Knowledge/Skill material and derived answers stay sticky-sensitive:
+     * every later turn clears memory before parsing, including removals and refused requests. */
+    boolean clearContextMemory(UUID id, boolean selected) {
         synchronized (lock) {
             var session = require(id);
-            if (!session.busy) throw new IllegalStateException("Knowledge memory requires exclusive turn");
-            session.knowledgeSensitive |= selected;
-            if (!session.knowledgeSensitive) return false;
+            if (!session.busy) throw new IllegalStateException("Context memory requires exclusive turn");
+            session.contextSensitive |= selected;
+            if (!session.contextSensitive) return false;
             memory.clear(EngineeringChatService.memoryKey(PRINCIPAL, id));
             return true;
         }
@@ -143,7 +146,7 @@ public class AiConversationRegistry {
         private Instant touched;
         private boolean busy;
         private Binding binding;
-        private boolean knowledgeSensitive;
+        private boolean contextSensitive;
 
         Session(UUID id, Path workspace, String workspaceLabel, Instant touched) {
             this.id = id;

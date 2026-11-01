@@ -580,6 +580,8 @@ export type KnowledgeContext = {
   references: Array<{ id: string; source: string; knowledgeBase: string; excerpt: string; retrievalMode: string; knowledgeBaseId?: string; documentId?: string }>;
 };
 export type AiMessageResult = {
+  skillContext?: SkillContext | null;
+  contextMemoryCleared?: boolean;
   knowledgeContext?: KnowledgeContext | null;
   knowledgeMemoryCleared?: boolean;
   proposal?: CodeProposal | null;
@@ -596,7 +598,17 @@ export type AiMessageResult = {
 
 export type CodeTaskRef = { projectId: string; taskId: string; revision: number };
 export type KnowledgeExpertRef = { id: string; revision: number };
+export type SkillRef = { id: string; version: string; digest: string; stateRevision: number };
+export type SkillResource = { path: string; mediaType: 'text/markdown' | 'text/plain'; content: string };
+export type SkillImportInput = { rawSkillMd: string; version: string; sourceLabel: string; resources: SkillResource[]; requiredCapabilities: string[] };
+export type SkillDependency = { id: string; status: string };
+export type SkillSummary = SkillRef & { description: string; enabled: boolean; sourceLabel: string; createdAt: string; dependencies: SkillDependency[] };
+export type SkillSnapshot = Omit<SkillSummary, 'createdAt'> & SkillImportInput & { createdAt: string | null; schemaVersion: 1; entry: 'SKILL.md'; instructions: string; scope: string; trust: { operator: string; confirmedAt: string } | null };
+export type SkillSaveRequest = { input: SkillImportInput; expectedDigest: string; confirmed: true };
+export type SkillContext = { skillRef: SkillRef; instructions: string; resources: SkillResource[]; dependencies: SkillDependency[] };
 export type TaskContext = {
+  skillRef?: SkillRef;
+  skillResourcePaths?: string[];
   knowledgeExpertRef?: KnowledgeExpertRef;
   taskRef?: CodeTaskRef;
   mode: "chat" | "code";
@@ -926,6 +938,12 @@ export function createChatApi(baseURL: string, transport = axios.create({ baseUR
   const get = <T>(path: string) => client.get<T>(path).then(response => response.data);
   return {
   aiStatus: () => get<AiStatus>("/ai/status"),
+  skills: () => get<{ items: SkillSummary[] }>('/skills'),
+  skill: (id: string, version: string) => get<SkillSnapshot>(`/skills/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}`),
+  previewSkill: (input: SkillImportInput) => client.post<SkillSnapshot>('/skills/preview', input).then(response => response.data),
+  saveSkill: (request: SkillSaveRequest) => client.post<SkillSnapshot>('/skills', request).then(response => response.data),
+  activateSkill: (id: string, version: string, request: { enabled: boolean; stateRevision: number }) => client.post<SkillSnapshot>(`/skills/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}/activation`, request).then(response => response.data),
+  previewSkillContext: (skillRef: SkillRef, resourcePaths: string[]) => client.post<SkillContext>('/skills/context/preview', { skillRef, resourcePaths }).then(response => response.data),
   previewExpertContext: (expertRef: KnowledgeExpertRef, query: string) =>
     client.post<KnowledgeContext>('/ai/expert-context/preview', { expertRef, query }).then(response => response.data),
   workspaceBaseline: (path: string) =>

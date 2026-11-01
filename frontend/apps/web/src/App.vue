@@ -6,6 +6,7 @@ import KnowledgeManager from "./features/knowledge/KnowledgeManager.vue";
 import DatabaseManager from "./features/database/DatabaseManager.vue";
 import RuleManager from "./features/rule/RuleManager.vue";
 import ModelSettings from "./features/settings/ModelSettings.vue";
+const SkillManager = defineAsyncComponent(() => import('./features/settings/SkillManager.vue'));
 const AppearanceSettings = defineAsyncComponent(() => import("./features/settings/AppearanceSettings.vue"));
 import PluginCenter from "./features/plugins/PluginCenter.vue";
 import DesktopNavigation from "./features/DesktopNavigation.vue";
@@ -36,6 +37,7 @@ import { useMockServices } from "./lib/serviceConfig";
 
 /** Existing views remain available through the five-entry desktop shell. */
 const shellPages = [
+  { id: 'skills', name: i18n.global.t('skill.title'), icon: '◇', group: '设置', hint: i18n.global.t('skill.hint') },
   { id: "appearance", name: i18n.global.t("appearance.title"), icon: "◐", group: "设置", hint: i18n.global.t("appearance.hint") },
   { id: "sql", name: "分析工作台", icon: "▷", group: "工作", hint: "任务列表、任务流与新的分析输入" },
   {
@@ -1494,9 +1496,10 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
 
         <!-- MANAGERS -->
         <KeepAlive>
+          <SkillManager v-if="activeView === 'skills'" />
           <ExpertManager
             ref="expertManager"
-            v-if="activeView === 'experts'"
+            v-else-if="activeView === 'experts'"
             @saved="refresh"
             @run="
               selectedExpert = $event;

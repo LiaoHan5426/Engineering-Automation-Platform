@@ -32,7 +32,7 @@ const renamingProjectId = ref<string | null>(null);
 const renameProjectLabel = ref("");
 const pendingDeleteProjectId = ref<string | null>(null);
 const codeIds = ["chat", "sql", "board"];
-const settingsIds = ["model-settings", "appearance", "plugins", "rules", "knowledge", "databases", "capabilities"];
+const settingsIds = ["model-settings", "appearance", "skills", "plugins", "rules", "knowledge", "databases", "capabilities"];
 const expertIds = ["expert-catalog", "experts"];
 function isProjectExpanded(id: string) {
   if (expandedProjects.value[id] != null) return expandedProjects.value[id]!;

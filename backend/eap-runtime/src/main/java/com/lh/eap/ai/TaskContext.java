@@ -10,7 +10,11 @@ import tools.jackson.databind.json.JsonMapper;
 /** User-selected context, never an authority to run tools or change policy. */
 public record TaskContext(String mode, String expert, String instructions, String reasoning,
                           String approval, List<Attachment> files, String prototypeVersionId, String targetPath, TaskRef taskRef,
-                          KnowledgeExpertRef knowledgeExpertRef) {
+                          KnowledgeExpertRef knowledgeExpertRef, com.lh.eap.skill.SkillRef skillRef, List<String> skillResourcePaths) {
+    public TaskContext(String mode, String expert, String instructions, String reasoning, String approval,
+                       List<Attachment> files, String prototypeVersionId, String targetPath, TaskRef taskRef, KnowledgeExpertRef knowledgeExpertRef) {
+        this(mode, expert, instructions, reasoning, approval, files, prototypeVersionId, targetPath, taskRef, knowledgeExpertRef, null, List.of());
+    }
     public record TaskRef(String projectId, java.util.UUID taskId, long revision) {}
     public TaskContext(String mode, String expert, String instructions, String reasoning, String approval,
                        List<Attachment> files, String prototypeVersionId, String targetPath, TaskRef taskRef) {
@@ -26,7 +30,7 @@ public record TaskContext(String mode, String expert, String instructions, Strin
     public static TaskContext parse(Object value) {
         if (value == null) return EMPTY;
         if (!(value instanceof Map<?, ?> data) || data.keySet().stream().anyMatch(key ->
-                !Set.of("mode", "expert", "instructions", "reasoning", "approval", "files", "prototypeVersionId", "targetPath", "taskRef", "knowledgeExpertRef").contains(key))) throw invalid();
+                !Set.of("mode", "expert", "instructions", "reasoning", "approval", "files", "prototypeVersionId", "targetPath", "taskRef", "knowledgeExpertRef", "skillRef", "skillResourcePaths").contains(key))) throw invalid();
         String mode = text(data, "mode", "chat"), expert = text(data, "expert", "general");
         String reasoning = text(data, "reasoning", "default"), approval = text(data, "approval", "review");
         if (!Set.of("chat", "code").contains(mode) || !Set.of("general", "sql", "frontend").contains(expert)
@@ -48,6 +52,17 @@ public record TaskContext(String mode, String expert, String instructions, Strin
         String target = text(data, "targetPath", "");
         if (instructions.length() > 4000 || prototype.length() > 36 || target.length() > 260) throw invalid();
         if (target.contains("..") || target.indexOf('\\') >= 0 || target.startsWith("/")) throw invalid();
+        com.lh.eap.skill.SkillRef skillRef = null;
+        List<String> skillPaths = List.of();
+        if (data.containsKey("skillRef")) {
+            skillRef = com.lh.eap.skill.SkillRef.parse(data.get("skillRef"));
+            if (!mode.equals("chat") || data.containsKey("knowledgeExpertRef") || data.containsKey("taskRef"))
+                throw com.lh.eap.skill.SkillTextParser.invalid("SKILL_CONTEXT_MODE_UNSUPPORTED");
+        }
+        if (data.containsKey("skillResourcePaths")) {
+            if (skillRef == null) throw com.lh.eap.skill.SkillTextParser.invalid("INVALID_SKILL_RESOURCE_PATHS");
+            skillPaths = com.lh.eap.skill.SkillRef.paths(data.get("skillResourcePaths"));
+        }
         TaskRef ref = null;
         if (data.containsKey("taskRef")) {
             if (!mode.equals("code") || !(data.get("taskRef") instanceof Map<?,?> fields)
@@ -64,7 +79,7 @@ public record TaskContext(String mode, String expert, String instructions, Strin
             if (!mode.equals("chat")) throw KnowledgeExpertRef.invalid();
             knowledgeRef = KnowledgeExpertRef.parse(data.get("knowledgeExpertRef"));
         }
-        return new TaskContext(mode, expert, instructions, reasoning, approval, List.copyOf(files), prototype, target, ref, knowledgeRef);
+        return new TaskContext(mode, expert, instructions, reasoning, approval, List.copyOf(files), prototype, target, ref, knowledgeRef, skillRef, skillPaths);
     }
 
     public String systemInstructions() {

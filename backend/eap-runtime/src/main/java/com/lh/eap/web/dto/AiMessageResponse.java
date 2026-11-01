@@ -6,7 +6,15 @@ import java.util.UUID;
 public record AiMessageResponse(UUID executionId, String answer, String error, String status, String approval,
                                 String verification, List<AiToolEvent> toolEvents, String artifactError,
                                 List<AiArtifactSummary> artifacts, com.lh.eap.ai.CodeChangeService.Proposal proposal,
-                                com.lh.eap.ai.ExpertKnowledgeContextService.Context knowledgeContext, boolean knowledgeMemoryCleared) {
+                                com.lh.eap.ai.ExpertKnowledgeContextService.Context knowledgeContext, boolean knowledgeMemoryCleared,
+                                com.lh.eap.skill.SkillService.Context skillContext, boolean contextMemoryCleared) {
+    public AiMessageResponse(UUID executionId, String answer, String error, String status, String approval,
+            String verification, List<AiToolEvent> toolEvents, String artifactError, List<AiArtifactSummary> artifacts,
+            com.lh.eap.ai.CodeChangeService.Proposal proposal, com.lh.eap.ai.ExpertKnowledgeContextService.Context knowledgeContext,
+            boolean knowledgeMemoryCleared) {
+        this(executionId, answer, error, status, approval, verification, toolEvents, artifactError, artifacts, proposal,
+                knowledgeContext, knowledgeMemoryCleared, null, knowledgeMemoryCleared);
+    }
     public AiMessageResponse(UUID executionId, String answer, String error, String status, String approval,
             String verification, List<AiToolEvent> toolEvents, String artifactError, List<AiArtifactSummary> artifacts,
             com.lh.eap.ai.CodeChangeService.Proposal proposal) {

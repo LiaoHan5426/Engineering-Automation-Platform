@@ -8,6 +8,7 @@ import { runtimeApi } from '@eap/runtime-client';
 import { createApp, h, nextTick, ref, type App } from 'vue';
 import { i18n } from '../lib/i18n';
 import DesktopNavigation from './DesktopNavigation.vue';
+import { isKnownHash } from './plugins/model';
 import ScenarioWorkspace from './ScenarioWorkspace.vue';
 import { resetScenarioWorkspaceState } from './shell/scenarioWorkspaceState';
 vi.mock('grapesjs', () => { throw new Error('Canvas is browser-tested'); });
@@ -45,6 +46,13 @@ afterEach(() => {
 });
 const pages = ['chat', 'sql', 'experts', 'model-settings', 'plugins', 'builder-alpha', 'builder-beta'].map(id => ({ id, name: id }));
 describe('desktop navigation', () => {
+  it('routes Skills as a settings child without a sixth primary entry', async () => {
+    expect(isKnownHash('skills')).toBe(true);
+    const navigate=vi.fn();root=document.createElement('div');document.body.append(root);
+    app=createApp({render:()=>h(DesktopNavigation,{activeView:'skills',pages:[...pages,{id:'skills',name:'Skills'}],onNavigate:navigate})});app.use(i18n).mount(root);await nextTick();
+    const primary=root.querySelectorAll<HTMLButtonElement>('.activity-bar button');expect(primary).toHaveLength(5);expect(primary[4]!.getAttribute('aria-current')).toBe('page');
+    const child=[...root.querySelectorAll<HTMLButtonElement>('.desktop-sidebar button')].find(button=>button.textContent?.includes('Skills'));expect(child).toBeDefined();child!.click();expect(navigate).toHaveBeenCalledWith('skills');
+  });
   it('blocks code handoff when the saved-version catalog cannot be read', async () => {
     vi.spyOn(runtimeApi, 'prototypeVersions').mockRejectedValue(new Error('offline'));
     vi.spyOn(runtimeApi, 'workspaceBaseline').mockResolvedValue({ path: 'x', exists: false, baseHash: '', denial: 'AUTHORIZED_ROOT_MISSING' });

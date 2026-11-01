@@ -5,6 +5,7 @@ import { Button, Feedback, FileInput, Input, Popover, Segmented, Select, Tag, Te
 import { runtimeApi, type TaskContext, type PrototypeVersionRecord, type WorkspaceSource } from "@eap/runtime-client";
 import RepositoryBrowser from '../../components/RepositoryBrowser.vue';
 import KnowledgeExpertSelector from './KnowledgeExpertSelector.vue';
+import SkillSelector from './SkillSelector.vue';
 import { pendingScenarioDependencies } from '../shell/scenarioDependencies';
 import { identityAuthorized, runtimeIdentity } from '../shell/runtimeIdentity';
 import { assignSessionProject, addExpert, currentExtras, expertCatalog, localProjects, projectLabel, removeExpert, scenarios, sessionKey, setExecutionMode, toggleResource, workbench } from "../shell/workbench";
@@ -16,6 +17,11 @@ const shownEffort = computed(() => props.context.reasoning !== "default" && prop
 const emit = defineEmits<{ update: [context: TaskContext]; refresh: [] }>();
 const { t } = useI18n();
 const knowledgeRemoved = ref(false);
+const skillRemoved = ref(false);
+const skillSelector = ref<InstanceType<typeof SkillSelector>>();
+watch(() => props.context, () => skillSelector.value?.close(), {flush:'sync'});
+const skillBlocked = computed(() => props.context.mode !== 'chat' || props.toolMode !== 'none' || !!props.context.knowledgeExpertRef || !!props.context.taskRef);
+function removeSkill() { const {skillRef:_ref,skillResourcePaths:_paths,...context}=props.context;emit('update',context);skillRemoved.value=true; }
 function removeKnowledge() {
   const { knowledgeExpertRef: _ref, ...context } = props.context;
   emit('update', context); knowledgeRemoved.value = true;
@@ -35,7 +41,7 @@ const counts = computed(() => ({
   experts: currentExtras().experts.length + (props.context.expert === "general" ? 0 : 1),
   instructions: props.context.instructions.trim() ? 1 : 0,
   actions: 0,
-  skills: props.preview ? currentExtras().resources.filter((id) => id.startsWith("skill:")).length : 0,
+  skills: props.context.skillRef ? 1 : 0,
   mcp: props.preview ? currentExtras().resources.filter((id) => id.startsWith("mcp:")).length : 0,
 }));
 function selectCategory(value: string) {
@@ -202,7 +208,10 @@ async function loadVersions() {
 
 <template>
   <div ref="root" class="composer-stack" @paste="onPaste">
-    <KnowledgeExpertSelector v-if="active && context.mode === 'chat'" :selected="context.knowledgeExpertRef" :draft="draft" :disabled="disabled" :blocked="toolMode !== 'none'" :mock="preview" @select="change('knowledgeExpertRef', $event); knowledgeRemoved = false" @remove="removeKnowledge" />
+    <SkillSelector v-if="active" ref="skillSelector" :trigger="false" :disabled="disabled" :blocked="skillBlocked" :mock="preview" @select="(skillRef, skillResourcePaths) => { emit('update', { ...context, skillRef, skillResourcePaths }); skillRemoved = false; }" />
+    <KnowledgeExpertSelector v-if="active && context.mode === 'chat'" :selected="context.knowledgeExpertRef" :draft="draft" :disabled="disabled" :blocked="toolMode !== 'none' || !!context.skillRef" :mock="preview" @select="change('knowledgeExpertRef', $event); knowledgeRemoved = false" @remove="removeKnowledge" />
+    <div v-if="context.skillRef"><span>{{ context.skillRef.id }} · {{ context.skillRef.version }} · r{{ context.skillRef.stateRevision }}</span><Button type="button" data-testid="skill-remove" :disabled="disabled" @click="removeSkill">{{ t('skill.remove') }}</Button><p>{{ t('skill.boundary') }}</p></div>
+    <Feedback v-if="skillRemoved" tone="info">{{ t('skill.removed') }}</Feedback>
     <p v-if="context.knowledgeExpertRef">{{ t('knowledgeContext.limit') }}</p>
     <Feedback v-if="context.knowledgeExpertRef && toolMode !== 'none'" tone="warning">{{ t('knowledgeContext.unavailable') }}</Feedback>
     <Feedback v-if="knowledgeRemoved" tone="info" data-testid="knowledge-removed">{{ t('knowledgeContext.removed') }}</Feedback>
@@ -313,8 +322,9 @@ async function loadVersions() {
             </Button>
             <Button variant="navigation" type="button" class="menu-choice" data-testid="manage-experts" @click="manageExperts">{{ t('composerUi.manageExperts') }}</Button>
           </template>
-          <template v-else-if="category === 'skills' || category === 'mcp'">
-            <p class="hint" data-testid="resource-empty">{{ preview ? t('preview.resourceHint') : t(category === 'skills' ? 'desktop.skillsEmpty' : 'desktop.mcpEmpty') }}</p>
+          <template v-else-if="category === 'skills'"><Button type="button" data-testid="skill-open" :disabled="disabled || skillBlocked" @click="menu = false; skillSelector?.show()">{{ t('skill.choose') }}</Button><p v-if="skillBlocked">{{ t('skill.unavailable') }}</p></template>
+          <template v-else-if="category === 'mcp'">
+            <p class="hint" data-testid="resource-empty">{{ preview ? t('preview.resourceHint') : t('desktop.mcpEmpty') }}</p>
             <Button variant="navigation" v-for="item in (preview ? visibleResources : [])" :key="item.id" type="button" class="menu-choice" :aria-pressed="currentExtras().resources.includes(item.id)" :disabled="disabled" @click="toggleResource(item.id)">{{ t(item.label) }} · {{ t('preview.simulated') }}</Button>
           </template>
           <label v-else>{{ t('task.guidance') }}<Textarea :disabled="disabled" :model-value="context.instructions" rows="3" maxlength="4000" @input="change('instructions', ($event.target as HTMLTextAreaElement).value)" /></label>

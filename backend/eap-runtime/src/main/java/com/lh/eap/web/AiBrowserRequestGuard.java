@@ -11,9 +11,11 @@ import java.util.Set;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.http.server.PathContainer;
+import org.springframework.http.server.RequestPath;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/** Browser boundary for chat posts only. Loopback binding alone is not the origin check. */
+/** Browser boundary for chat and Skill posts. Loopback binding alone is not the origin check. */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class AiBrowserRequestGuard extends OncePerRequestFilter {
@@ -21,12 +23,37 @@ public class AiBrowserRequestGuard extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !"POST".equalsIgnoreCase(request.getMethod()) || !request.getRequestURI().startsWith("/api/ai/");
+        return !"POST".equalsIgnoreCase(request.getMethod());
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
+        // Use the same decoded, matrix-free segments as Spring MVC's PathPattern routing.
+        // Raw startsWith checks miss /api/skills;x and encoded literal path segments.
+        PathContainer path;
+        try {
+            path = RequestPath.parse(request.getRequestURI(), request.getContextPath()).pathWithinApplication();
+        } catch (IllegalArgumentException malformed) {
+            reject(response, 400, "PATH_REJECTED");
+            return;
+        }
+        var segments = path.elements().stream().filter(PathContainer.PathSegment.class::isInstance)
+                .map(PathContainer.PathSegment.class::cast).map(PathContainer.PathSegment::valueToMatch).toList();
+        if (segments.isEmpty() || !"api".equals(segments.getFirst())) {
+            chain.doFilter(request, response);
+            return;
+        }
+        // API writes do not support matrix parameters, even with otherwise trusted headers.
+        String rawPath = path.value().toLowerCase(Locale.ROOT);
+        if (rawPath.contains(";") || rawPath.contains("%3b")) {
+            reject(response, 400, "PATH_REJECTED");
+            return;
+        }
+        if (segments.size() < 2 || !("ai".equals(segments.get(1)) || "skills".equals(segments.get(1)))) {
+            chain.doFilter(request, response);
+            return;
+        }
         String header = request.getHeader("Host");
         String hostName = header == null || header.isBlank() ? request.getServerName() : host(header);
         if (!loopback(hostName) || !loopback(request.getServerName())) {

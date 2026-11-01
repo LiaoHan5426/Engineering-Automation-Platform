@@ -23,6 +23,8 @@ export type ChatApi = {
 };
 
 export type ChatTurn = {
+  skillContext?: AiMessageResult['skillContext'];
+  contextMemoryCleared?: boolean;
   knowledgeContext?: AiMessageResult['knowledgeContext'];
   knowledgeMemoryCleared?: boolean;
   proposal?: CodeProposal | null;
@@ -49,6 +51,7 @@ function httpStatus(error: unknown): number | undefined {
 function generationFailure(error: unknown): string | undefined {
   const code = (error as { response?: { data?: { detail?: unknown } } } | null)?.response?.data?.detail;
   if (typeof code !== 'string') return undefined;
+  if (code.startsWith('SKILL_') || code.startsWith('INVALID_SKILL_')) return 'skill-failed';
   if (code === 'INVALID_EXPERT_CONTEXT' || code.startsWith('EXPERT_CONTEXT_')) return 'knowledge-failed';
   return ({
     CODE_GENERATION_BASELINE_CHANGED: 'generation-stale',
@@ -67,7 +70,7 @@ function generationFailure(error: unknown): string | undefined {
   } as Record<string, string>)[code];
 }
 
-export type ConversationHistory = { id: string; title: string; archived: boolean; updatedAt: string; draft: string; workspaceLabel: string; memory: string; connectionId: string | null; model?: string; context?: TaskContext; expired?: boolean; knowledgeMemoryCleared?: boolean };
+export type ConversationHistory = { id: string; title: string; archived: boolean; updatedAt: string; draft: string; workspaceLabel: string; memory: string; connectionId: string | null; model?: string; context?: TaskContext; expired?: boolean; knowledgeMemoryCleared?: boolean; contextMemoryCleared?: boolean };
 export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem' | 'setItem'>) {
   const history = ref<ConversationHistory[]>([]);
   const storageError = ref(false);
@@ -126,6 +129,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
 
   const turns = computed(() => (conversationId.value ? transcripts.value[conversationId.value] ?? [] : []));
   const knowledgeMemoryCleared = computed(() => history.value.find(item => item.id === conversationId.value)?.knowledgeMemoryCleared === true);
+  const contextMemoryCleared = computed(() => history.value.find(item => item.id === conversationId.value)?.contextMemoryCleared === true);
   const sending = computed(() => (conversationId.value ? inflight.value[conversationId.value] != null : false));
 
   async function restoreLastConversation() {
@@ -264,6 +268,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
 
   async function send() {
     if (opening.value) return;
+    if(context.value.skillRef && (context.value.mode!=='chat' || toolMode.value!=='none' || context.value.knowledgeExpertRef || context.value.taskRef)){failure.value='skill-unavailable';return;}
     if (context.value.knowledgeExpertRef) {
       if (context.value.mode !== 'chat' || toolMode.value !== 'none') { failure.value = 'knowledge-unavailable'; return; }
       if (draft.value.length > 500) { failure.value = 'knowledge-limit'; return; }
@@ -288,6 +293,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     try {
       const result = await api.sendAiMessage(id, text, mode, { ...context.value, files: context.value.files.map((file) => ({ ...file })) });
       if (inflight.value[id] !== current) return;
+      if (entry && result.contextMemoryCleared) entry.contextMemoryCleared = true;
       append(id, {
         ...requestMetadata,
         role: "user",
@@ -303,6 +309,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       append(id, {
         ...requestMetadata,
         role: "assistant",
+        skillContext: result.skillContext,
+        contextMemoryCleared: result.contextMemoryCleared,
         knowledgeContext: result.knowledgeContext,
         knowledgeMemoryCleared: result.knowledgeMemoryCleared,
         proposal: result.proposal,
@@ -319,6 +327,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       if (conversationId.value === id && result.error) failure.value = result.error === 'CODE_PROPOSAL_TOO_LARGE' ? 'generation-too-large' : "kept";
     } catch (error) {
       if (inflight.value[id] !== current) return;
+      if (entry && (error as { response?: { data?: { contextMemoryCleared?: unknown } } } | null)?.response?.data?.contextMemoryCleared === true) entry.contextMemoryCleared = true;
       if (entry && (error as { response?: { data?: { knowledgeMemoryCleared?: unknown } } } | null)?.response?.data?.knowledgeMemoryCleared === true) entry.knowledgeMemoryCleared = true;
       if (httpStatus(error) === 404 && !generationFailure(error)) { if (entry) entry.expired = true; if (conversationId.value === id) expired.value = true; }
       if (conversationId.value === id) failure.value = generationFailure(error) ?? (httpStatus(error) === 409 ? "target-changed" : httpStatus(error) === 403 ? "model-unavailable" : httpStatus(error) === 503 ? "not-configured" : "failed");
@@ -340,6 +349,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     workspaceLabel,
     memoryNote,
     knowledgeMemoryCleared,
+    contextMemoryCleared,
     transcripts,
     turns,
     draft,

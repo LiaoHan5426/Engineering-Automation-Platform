@@ -19,6 +19,8 @@ public class ApiErrorHandler {
         var properties = error.getBody().getProperties();
         if (properties != null && properties.get("knowledgeMemoryCleared") instanceof Boolean cleared)
             result.setProperty("knowledgeMemoryCleared", cleared);
+        if (properties != null && properties.get("contextMemoryCleared") instanceof Boolean cleared)
+            result.setProperty("contextMemoryCleared", cleared);
         return result;
     }
     @ExceptionHandler({IllegalArgumentException.class,HttpMessageNotReadableException.class})

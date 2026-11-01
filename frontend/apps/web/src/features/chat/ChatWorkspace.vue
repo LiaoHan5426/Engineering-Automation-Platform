@@ -477,7 +477,14 @@ onMounted(async () => {
           <p v-if="turn.knowledgeContext.status === 'no_matches'">{{ t('knowledgeContext.no_matches') }}</p>
           <ul><li v-for="reference in turn.knowledgeContext.references" :key="reference.id"><strong>{{ reference.id }} · {{ reference.source }} · {{ reference.knowledgeBase }}</strong><p>{{ reference.retrievalMode }} · {{ reference.knowledgeBaseId }} · {{ reference.documentId }}</p><pre>{{ reference.excerpt }}</pre></li></ul>
         </section>
-        <Feedback v-if="turn.knowledgeMemoryCleared" tone="info">{{ t(mock || turn.status === 'mock_completed' ? 'knowledgeContext.mock' : 'knowledgeContext.cleared') }}</Feedback>
+        <section v-if="turn.skillContext" data-testid="turn-skill">
+          <h3>{{ t('skill.title') }} · {{ turn.skillContext.skillRef.id }} · {{ turn.skillContext.skillRef.version }} · r{{ turn.skillContext.skillRef.stateRevision }}</h3>
+          <p>{{ t('skill.evidence') }}</p><p v-if="mock || turn.status === 'mock_completed'">{{ t('skill.mock') }}</p>
+          <code>{{ turn.skillContext.skillRef.digest }}</code><pre>{{ turn.skillContext.instructions }}</pre>
+          <div v-for="resource in turn.skillContext.resources" :key="resource.path"><strong>{{ resource.path }}</strong><pre>{{ resource.content }}</pre></div>
+          <p>{{ t('skill.dependencies') }}: {{ turn.skillContext.dependencies }}</p>
+        </section>
+        <Feedback v-if="turn.knowledgeMemoryCleared && !turn.contextMemoryCleared && !session.contextMemoryCleared.value" tone="info">{{ t(mock || turn.status === 'mock_completed' ? 'knowledgeContext.mock' : 'knowledgeContext.cleared') }}</Feedback>
         <ul v-if="turn.artifacts.length">
           <li v-for="artifact in turn.artifacts" :key="artifact.sha256">
             {{ artifact.kind }} · {{ artifact.sizeBytes }} · {{ artifact.sha256 }}
@@ -492,10 +499,12 @@ onMounted(async () => {
     <Button v-if="session.failure.value === 'model-unavailable' || session.failure.value === 'target-change-failed'" type="button" data-testid="locate-model" :title="t('desktop.locateModelNote')" @click="workbench.modelMenuToken += 1">{{ t('desktop.locateModel') }}</Button>
     <Feedback v-if="session.targetNotice.value === 'cleared'" tone="info">{{ t("chat.memoryCleared") }}</Feedback>
     <Feedback v-if="session.targetNotice.value === 'kept'" tone="info">{{ t("modelUi.memoryKept") }}</Feedback>
-    <Feedback v-if="session.knowledgeMemoryCleared.value" tone="info">{{ t(mock ? 'knowledgeContext.mock' : 'knowledgeContext.cleared') }}</Feedback>
+    <Feedback v-if="session.contextMemoryCleared.value" data-testid="context-cleared" tone="info">{{ t(mock ? 'skill.mock' : 'skill.cleared') }}</Feedback>
+    <Feedback v-else-if="session.knowledgeMemoryCleared.value" tone="info">{{ t(mock ? 'knowledgeContext.mock' : 'knowledgeContext.cleared') }}</Feedback>
+    <Feedback v-if="session.failure.value.startsWith('skill-')" tone="warning">{{ t('skill.' + session.failure.value.slice('skill-'.length)) }}</Feedback>
     <Feedback v-if="session.failure.value.startsWith('knowledge-')" tone="warning">{{ t('knowledgeContext.' + session.failure.value.slice('knowledge-'.length)) }}</Feedback>
     <Feedback v-else-if="session.failure.value.startsWith('generation-')" tone="warning">{{ t('generation.' + session.failure.value) }}</Feedback>
-    <Feedback v-else-if="session.failure.value" tone="warning">{{ t(session.failure.value === "target-changed" ? "modelUi.retryTarget" : session.failure.value === "model-unavailable" ? "modelUi.unavailable" : session.failure.value === "not-configured" ? "chat.notConfigured" : session.failure.value === "target-change-failed" ? "chat.targetChangeFailed" : "desktop.retrySame") }}</Feedback>
+    <Feedback v-else-if="session.failure.value && !session.failure.value.startsWith('skill-')" tone="warning">{{ t(session.failure.value === "target-changed" ? "modelUi.retryTarget" : session.failure.value === "model-unavailable" ? "modelUi.unavailable" : session.failure.value === "not-configured" ? "chat.notConfigured" : session.failure.value === "target-change-failed" ? "chat.targetChangeFailed" : "desktop.retrySame") }}</Feedback>
     <Button v-if="session.failure.value === 'generation-stale'" data-testid="retry-generation" :disabled="session.sending.value || !session.draft.value.trim()" @click="sendTask">{{ t('generation.retry') }}</Button>
     <Feedback v-if="proposalNote" tone="info">{{ proposalNote }}</Feedback>
     <p v-if="effortReset" class="hint" data-testid="effort-reset">{{ t("desktop.effortReset", { effort: t("task." + effortReset) }) }}</p>

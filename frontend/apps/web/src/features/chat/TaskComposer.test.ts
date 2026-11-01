@@ -194,7 +194,7 @@ describe("engineering task composer", () => {
     expect(element!.querySelector('.composer-popup')).toBeNull();
   });
 
-  it("searches the add menu, selects a labeled demo skill, and keeps the draft", async () => {
+  it("replaces the demo skill toggle with the real selector entry and keeps the draft", async () => {
     const context = ref(empty());
     element = document.createElement("div");
     document.body.append(element);
@@ -217,12 +217,10 @@ describe("engineering task composer", () => {
     search.value = "";
     search.dispatchEvent(new Event("input"));
     await nextTick();
-    const skill = element.querySelector('.composer-popup-content [aria-pressed="false"]') as HTMLButtonElement;
-    expect(skill.textContent).toContain("模拟");
-    skill.click();
-    await nextTick();
-    expect(skill.getAttribute("aria-pressed")).toBe("true");
-    expect(element.querySelector('[data-testid="composer-cat-skills"]')?.textContent).toContain("1");
+    expect(element.querySelector('.composer-popup-content [aria-pressed]')).toBeNull();
+    const skill = element.querySelector('[data-testid="skill-open"]') as HTMLButtonElement;
+    expect(skill).not.toBeNull();expect(skill.textContent).toContain('选择技能版本');
+    expect(context.value).not.toHaveProperty('skillRef');
     expect(draft.value).toBe("保留正文");
     (element.querySelector('[data-testid="composer-cat-experts"]') as HTMLButtonElement).click();
     await nextTick();

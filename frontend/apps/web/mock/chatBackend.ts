@@ -1,4 +1,4 @@
-import type { AiConversation, AiMessageResult, AiStatus, CodeProposal, ModelConnectionList, TaskContext, VerificationProbe, WorkspaceBaseline, WorkspaceDirty, WorkspaceSource } from '@eap/runtime-client';
+import type { AiConversation, AiMessageResult, AiStatus, CodeProposal, ModelConnectionList, TaskContext, VerificationProbe, WorkspaceBaseline, WorkspaceDirty, WorkspaceSource, SkillContext } from '@eap/runtime-client';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,6 +6,7 @@ import { createModelBackend } from './modelBackend';
 import { createKnowledgeBackend } from './knowledgeBackend';
 import { createDatabaseBackend } from './databaseBackend';
 import { createBoardBackend } from './boardBackend';
+import { createSkillBackend, validSkillTaskFields } from './skillBackend';
 import { mockExpertPage, mockExpertContext, mockExpertPreview, validMockExpertRef } from './expertContext';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..');
@@ -14,6 +15,7 @@ export function createMockChatBackend() {
   let sequence = 0;
   const instanceId = randomUUID();
   const conversations = new Map<string, AiConversation>();
+  const sensitiveConversations = new Set<string>();
   const proposals = new Map<string, CodeProposal>();
   const versions: Array<Record<string, unknown>> = [];
 
@@ -22,6 +24,7 @@ export function createMockChatBackend() {
   function result(status: number, data: unknown) { return { status, data }; }
   const modelBackend = createModelBackend(connections);
   const knowledgeBackend = createKnowledgeBackend();
+  const skillBackend = createSkillBackend();
   const databaseBackend = createDatabaseBackend();
   const boardBackend = createBoardBackend(id => versions.some(version => version.id === id));
   const effective = () => connections.items.find(item => item.id === connections.effectiveDefaultId && item.enabled && item.allowedModels.includes(item.defaultModel))
@@ -30,6 +33,8 @@ export function createMockChatBackend() {
     async handle(method: string, path: string, body: Record<string, unknown> = {}) {
       const requestUrl = new URL(path, 'http://mock.local');
       path = requestUrl.pathname;
+      const skill = skillBackend.handle(method,path,body);
+      if(skill)return skill;
       if (method === 'GET' && path === '/experts') return result(200, mockExpertPage);
       if (method === 'POST' && path === '/ai/expert-context/preview') return mockExpertPreview(body);
       const knowledge = knowledgeBackend.handle(method, requestUrl, body);
@@ -132,22 +137,39 @@ export function createMockChatBackend() {
       }
       if (method === 'POST' && suffix === '/messages') {
         const context = body.context as TaskContext | undefined;
+        let cleared=sensitiveConversations.has(id);
+        const reply=(status:number,data:Record<string,unknown>)=>result(status,{...data,contextMemoryCleared:cleared,knowledgeMemoryCleared:cleared});
+        const hasSkill=!!context && typeof context==='object' && 'skillRef' in context;
+        const hasPaths=!!context && typeof context==='object' && 'skillResourcePaths' in context;
+        if((hasSkill || hasPaths) && Object.keys(context!).some(key=>!['mode','expert','instructions','reasoning','approval','files','prototypeVersionId','targetPath','taskRef','knowledgeExpertRef','skillRef','skillResourcePaths'].includes(key)))return reply(400,{detail:'INVALID_TASK_CONTEXT'});
+        if((hasSkill || hasPaths) && !validSkillTaskFields(context as unknown as Record<string,unknown>))return reply(400,{detail:'INVALID_TASK_CONTEXT'});
+        const selection={skillRef:context?.skillRef,resourcePaths:hasPaths?context!.skillResourcePaths:[]};
+        if(hasSkill){
+          const invalid=skillBackend.validate({...selection,resourcePaths:[]});if(invalid)return reply(invalid.status,invalid.data);
+          if((context.mode!==undefined && context.mode!=='chat') || 'knowledgeExpertRef' in context || 'taskRef' in context)return reply(400,{detail:'SKILL_CONTEXT_MODE_UNSUPPORTED'});
+          const invalidPaths=skillBackend.validate(selection);if(invalidPaths)return reply(invalidPaths.status,invalidPaths.data);
+          sensitiveConversations.add(id);cleared=true;
+          if(typeof body.message!=='string' || !body.message.trim() || body.message.length>32000 || typeof body.toolMode!=='string')return reply(400,{detail:'INVALID_CHAT_REQUEST'});
+          if(body.toolMode!=='none')return reply(400,{detail:'SKILL_CONTEXT_MODE_UNSUPPORTED'});
+        }else if(hasPaths)return reply(400,{detail:'INVALID_SKILL_RESOURCE_PATHS'});
         const hasKnowledge = context && 'knowledgeExpertRef' in context;
         if (hasKnowledge) {
           // Runtime parses the identity/mode before send fields, and resolves only after both checks.
-          if (('mode' in context && context.mode !== 'chat') || !validMockExpertRef(context.knowledgeExpertRef)) return result(400, { detail: 'INVALID_EXPERT_CONTEXT' });
-          if (typeof body.message !== 'string' || !body.message.trim() || body.message.length > 32000 || typeof body.toolMode !== 'string') return result(400, { detail: 'INVALID_CHAT_REQUEST' });
-          if (body.toolMode !== 'none') return result(400, { detail: 'EXPERT_CONTEXT_MODE_UNSUPPORTED' });
+          if (('mode' in context && context.mode !== 'chat') || !validMockExpertRef(context.knowledgeExpertRef)) return reply(400, { detail: 'INVALID_EXPERT_CONTEXT' });
+          if (typeof body.message !== 'string' || !body.message.trim() || body.message.length > 32000 || typeof body.toolMode !== 'string') return reply(400, { detail: 'INVALID_CHAT_REQUEST' });
+          if (body.toolMode !== 'none') return reply(400, { detail: 'EXPERT_CONTEXT_MODE_UNSUPPORTED' });
         }
         const target = connections.items.find(value => value.id === item.connectionId && value.enabled && value.allowedModels.includes(item.model ?? ''));
-        if (!target) return result(403, { error: 'MODEL_NOT_ALLOWED' });
+        if (!target) return reply(403, { error: 'MODEL_NOT_ALLOWED' });
         const knowledge = hasKnowledge ? mockExpertContext(context.knowledgeExpertRef, body.message) : undefined;
-        if (knowledge && knowledge.status !== 200) return knowledge;
-        if (context && 'taskRef' in context) return result(409, { detail: 'MOCK_TASK_BINDING_UNAVAILABLE' });
-        if (typeof body.message !== 'string' || !body.message.trim()) return result(400, { error: 'EMPTY_MESSAGE' });
+        if (knowledge && knowledge.status !== 200) return reply(knowledge.status,knowledge.data);
+        if (context && 'taskRef' in context) return reply(409, { detail: 'MOCK_TASK_BINDING_UNAVAILABLE' });
+        if (typeof body.message !== 'string' || !body.message.trim()) return reply(400, { error: 'EMPTY_MESSAGE' });
+        const skill=hasSkill?skillBackend.handle('POST','/skills/context/preview',selection):undefined;
+        if(skill && skill.status!==200)return reply(skill.status,skill.data as Record<string,unknown>);
         const proposal: CodeProposal | null = context?.mode === 'code' && context.approval !== 'read_only' ? { id: `proposal-${++sequence}`, conversationId: id, workspace: repoRoot, summary: '模拟候选：仅供交互验收', files: [{ path: 'Example.vue', before: '<h1>Workspace</h1>', content: '<h1>EAP Workspace</h1>', baseHash: '' }], applied: false, writeAllowed: false, verification: 'not_requested' } : null;
         if (proposal) proposals.set(proposal.id, proposal);
-        return result(200, { knowledgeContext: knowledge && 'expertRef' in knowledge.data ? knowledge.data : null, executionId: null, answer: proposal ? '模拟候选已准备，请查看变更并确认。不会修改真实文件。' : '这是 mock 服务返回的模拟回答。场景、专家和模型选择使用与真实服务相同的交互流程；未调用真实模型。', error: '', status: 'mock_completed', approval: context?.approval ?? 'review', verification: 'not_requested', toolEvents: [], artifactError: '', artifacts: [], proposal } satisfies AiMessageResult);
+        return reply(200, { skillContext:skill?skill.data as SkillContext:null, knowledgeContext: knowledge && 'expertRef' in knowledge.data ? knowledge.data : null, executionId: null, answer: proposal ? '模拟候选已准备，请查看变更并确认。不会修改真实文件。' : '这是 mock 服务返回的模拟回答。场景、专家和模型选择使用与真实服务相同的交互流程；未调用真实模型。', error: '', status: 'mock_completed', approval: context?.approval ?? 'review', verification: 'not_requested', toolEvents: [], artifactError: '', artifacts: [], proposal } satisfies AiMessageResult);
       }
       if (method === 'GET' && /^\/proposals\/[^/]+$/.test(suffix ?? '')) return result(404, { error: 'MOCK_DURABLE_APPLICATION_UNAVAILABLE' });
       const apply = suffix?.match(/^\/proposals\/([^/]+)\/apply$/);

@@ -1,4 +1,5 @@
 import { knowledgeContextMessages } from './knowledgeContextMessages';
+import { skillMessages } from './skillMessages';
 import { builderMessages } from "./builderMessages";
 import { generationMessages } from "./generationMessages";
 import { applicationMessages } from "./applicationMessages";
@@ -19,6 +20,7 @@ export const i18n = createI18n({
   messages: {
     "zh-CN": {
       knowledgeContext: knowledgeContextMessages['zh-CN'],
+      skill: skillMessages['zh-CN'],
       builder: builderMessages["zh-CN"],
       generation: generationMessages["zh-CN"],
       application: applicationMessages["zh-CN"],
@@ -193,6 +195,7 @@ export const i18n = createI18n({
     },
     "en-US": {
       knowledgeContext: knowledgeContextMessages['en-US'],
+      skill: skillMessages['en-US'],
       builder: builderMessages["en-US"],
       generation: generationMessages["en-US"],
       application: applicationMessages["en-US"],

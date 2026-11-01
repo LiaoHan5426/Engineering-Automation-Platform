@@ -39,6 +39,23 @@ function deferred<T>() {
 }
 
 describe("chat session", () => {
+  it.each(['code','knowledge','tool','task'])('blocks incompatible Skill %s without sending or mutating its draft',async mode=>{
+    let called=false;const session=createChatSession({aiStatus:async()=>status(),openAiConversation:async()=>({conversationId:'guard',workspaceLabel:'',memory:''}),sendAiMessage:async()=>{called=true;return result();}});
+    await session.openConversation();session.draft.value='retain';session.context.value.skillRef={id:'guide',version:'1.0.0',digest:'a'.repeat(64),stateRevision:2};
+    if(mode==='code')session.context.value.mode='code';if(mode==='knowledge')session.context.value.knowledgeExpertRef={id:'expert',revision:1};if(mode==='tool')session.toolMode.value='git_status';if(mode==='task')session.context.value.taskRef={projectId:'p',taskId:'00000000-0000-0000-0000-000000000001',revision:1};
+    await session.send();expect(called).toBe(false);expect(session.failure.value).toBe('skill-unavailable');expect(session.draft.value).toBe('retain');expect(session.context.value.skillRef?.version).toBe('1.0.0');
+  });
+  it.each([false,true])('records Skill context clearing without leaking a late turn into another conversation (rejected=%s)',async rejected=>{
+    let resolve!:(value:AiMessageResult)=>void,reject!:(error:unknown)=>void,sequence=0;
+    const session=createChatSession({aiStatus:async()=>status(),openAiConversation:async()=>({conversationId:`s${++sequence}`,workspaceLabel:'',memory:''}),sendAiMessage:()=>new Promise<AiMessageResult>((ok,fail)=>{resolve=ok;reject=fail;})});
+    await session.openConversation();session.draft.value='retain';const skillRef={id:'guide',version:'1.0.0',digest:'a'.repeat(64),stateRevision:2};session.context.value.skillRef=skillRef;
+    const pending=session.send();await session.openConversation();session.draft.value='other';
+    const evidence={skillRef,instructions:'prepared only',resources:[],dependencies:[]};
+    if(rejected)reject({response:{status:404,data:{detail:'SKILL_NOT_FOUND',contextMemoryCleared:true}}});else resolve(result({skillContext:evidence,contextMemoryCleared:true}));await pending;
+    expect(session.contextMemoryCleared.value).toBe(false);expect(session.draft.value).toBe('other');expect(session.turns.value).toEqual([]);
+    await session.selectConversation('s1');expect(session.contextMemoryCleared.value).toBe(true);expect(session.expired.value).toBe(false);
+    if(rejected){expect(session.draft.value).toBe('retain');expect(session.turns.value).toEqual([]);}else expect(session.turns.value[1]).toMatchObject({skillContext:evidence,contextMemoryCleared:true});
+  });
   it.each([false, true])('records rejected-request memory clearing only for its conversation (switched=%s)', async switched => {
     let reject!: (reason: unknown) => void;
     let sequence = 0;
