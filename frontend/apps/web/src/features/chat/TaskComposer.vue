@@ -19,7 +19,8 @@ const { t } = useI18n();
 const knowledgeRemoved = ref(false);
 const skillRemoved = ref(false);
 const skillSelector = ref<InstanceType<typeof SkillSelector>>();
-watch(() => props.context, () => skillSelector.value?.close(), {flush:'sync'});
+const knowledgeSelector = ref<InstanceType<typeof KnowledgeExpertSelector>>();
+watch(() => props.context, () => { skillSelector.value?.close(); knowledgeSelector.value?.close(); }, {flush:'sync'});
 const skillBlocked = computed(() => props.context.mode !== 'chat' || props.toolMode !== 'none' || !!props.context.knowledgeExpertRef || !!props.context.taskRef);
 function removeSkill() { const {skillRef:_ref,skillResourcePaths:_paths,...context}=props.context;emit('update',context);skillRemoved.value=true; }
 function removeKnowledge() {
@@ -64,7 +65,7 @@ const searchPlaceholder = computed(() => {
 });
 const hasExtraChips = computed(() => {
   const extras = currentExtras();
-  return props.context.expert !== "general" || props.context.files.length > 0 || Boolean(props.context.prototypeVersionId) || extras.experts.length > 0 || extras.resources.length > 0;
+  return !!props.context.knowledgeExpertRef || !!props.context.skillRef || props.context.expert !== "general" || props.context.files.length > 0 || Boolean(props.context.prototypeVersionId) || extras.experts.length > 0 || extras.resources.length > 0;
 });
 const activeScene = computed(() => scenarios.find((item) => item.id === currentExtras().scenarioId) ?? null);
 const sceneMissingDeps = computed(() => pendingScenarioDependencies(activeScene.value?.dependencies ?? [], identityAuthorized(runtimeIdentity.value)));
@@ -209,10 +210,8 @@ async function loadVersions() {
 <template>
   <div ref="root" class="composer-stack" @paste="onPaste">
     <SkillSelector v-if="active" ref="skillSelector" :trigger="false" :disabled="disabled" :blocked="skillBlocked" :mock="preview" @select="(skillRef, skillResourcePaths) => { emit('update', { ...context, skillRef, skillResourcePaths }); skillRemoved = false; }" />
-    <KnowledgeExpertSelector v-if="active && context.mode === 'chat'" :selected="context.knowledgeExpertRef" :draft="draft" :disabled="disabled" :blocked="toolMode !== 'none' || !!context.skillRef" :mock="preview" @select="change('knowledgeExpertRef', $event); knowledgeRemoved = false" @remove="removeKnowledge" />
-    <div v-if="context.skillRef"><span>{{ context.skillRef.id }} · {{ context.skillRef.version }} · r{{ context.skillRef.stateRevision }}</span><Button type="button" data-testid="skill-remove" :disabled="disabled" @click="removeSkill">{{ t('skill.remove') }}</Button><p>{{ t('skill.boundary') }}</p></div>
+    <KnowledgeExpertSelector v-if="active && context.mode === 'chat'" ref="knowledgeSelector" :trigger="false" :selected="context.knowledgeExpertRef" :draft="draft" :disabled="disabled" :blocked="toolMode !== 'none' || !!context.skillRef" :mock="preview" @select="change('knowledgeExpertRef', $event); knowledgeRemoved = false" />
     <Feedback v-if="skillRemoved" tone="info">{{ t('skill.removed') }}</Feedback>
-    <p v-if="context.knowledgeExpertRef">{{ t('knowledgeContext.limit') }}</p>
     <Feedback v-if="context.knowledgeExpertRef && toolMode !== 'none'" tone="warning">{{ t('knowledgeContext.unavailable') }}</Feedback>
     <Feedback v-if="knowledgeRemoved" tone="info" data-testid="knowledge-removed">{{ t('knowledgeContext.removed') }}</Feedback>
     <div class="composer-scope" data-testid="composer-scope">
@@ -225,6 +224,8 @@ async function loadVersions() {
       </label>
     </div>
     <div v-if="hasExtraChips" class="context-chips">
+      <Tag v-if="context.knowledgeExpertRef" closable type="info" data-testid="knowledge-remove" :aria-label="t('knowledgeContext.remove') + ': ' + context.knowledgeExpertRef.id + ' · r' + context.knowledgeExpertRef.revision" :disabled="disabled" @click="removeKnowledge" @close="removeKnowledge">{{ context.knowledgeExpertRef.id }} · r{{ context.knowledgeExpertRef.revision }}</Tag>
+      <Tag v-if="context.skillRef" closable type="success" data-testid="skill-remove" :aria-label="t('skill.remove') + ': ' + context.skillRef.id + ' · ' + context.skillRef.version + ' · r' + context.skillRef.stateRevision" :disabled="disabled" @click="removeSkill" @close="removeSkill">{{ context.skillRef.id }} · {{ context.skillRef.version }} · r{{ context.skillRef.stateRevision }}</Tag>
       <Tag v-if="context.expert !== 'general'" closable type="info" :disabled="disabled" @click="change('expert', 'general')" @close="change('expert', 'general')">{{ t('task.' + context.expert) }}</Tag>
       <Tag v-for="(file, index) in context.files" :key="index" closable type="info" :disabled="disabled" @click="change('files', context.files.filter((_, i) => i !== index))" @close="change('files', context.files.filter((_, i) => i !== index))">📎 {{ file.name }}</Tag>
       <Tag v-if="context.prototypeVersionId" closable type="info" :disabled="disabled" @click="change('prototypeVersionId', '')" @close="change('prototypeVersionId', '')">▧ {{ selectedVersion?.title || context.prototypeVersionId.slice(0, 8) }}</Tag>
@@ -309,6 +310,7 @@ async function loadVersions() {
             <label>{{ t("task.goal") }}<Select :model-value="context.mode" :disabled="disabled" @change="change('mode', ($event.target as HTMLSelectElement).value as TaskContext['mode'])"><option value="chat">{{ t("task.discuss") }}</option><option value="code">{{ t("task.generate") }}</option></Select></label>
           </template>
           <template v-else-if="category === 'experts'">
+            <Button v-if="context.mode === 'chat'" type="button" data-testid="knowledge-open" :disabled="disabled || toolMode !== 'none' || !!context.skillRef" @click="menu = false; knowledgeSelector?.show()">{{ t('knowledgeContext.open') }}</Button>
             <label>{{ t("modelUi.guidanceRole") }}
               <Select :model-value="context.expert" :disabled="disabled" @change="change('expert', ($event.target as HTMLSelectElement).value as TaskContext['expert'])">
                 <option value="general">{{ t("task.general") }}</option><option value="sql">{{ t("task.sql") }}</option><option value="frontend">{{ t("task.frontend") }}</option>

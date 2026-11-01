@@ -22,8 +22,14 @@ async function setup() {
   app.use(i18n).mount(host); await nextTick();
   return { session, send, preview };
 }
-async function selectCandidate() {
+async function openKnowledge() {
+  button('composer-add').click(); await nextTick();
+  button('composer-cat-experts').click(); await nextTick();
   button('knowledge-open').click();
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=knowledge-dialog]')).not.toBeNull());
+}
+async function selectCandidate() {
+  await openKnowledge();
   await vi.waitFor(() => expect(document.querySelector('[data-testid=knowledge-candidate-saved]')).not.toBeNull());
   button('knowledge-candidate-saved').click(); await nextTick();
 }
@@ -37,9 +43,9 @@ it.each(['success', 'failure'])('ignores old catalog %s after closing and reopen
   const old = deferred<Awaited<ReturnType<typeof runtimeApi.experts>>>();
   const fresh = deferred<Awaited<ReturnType<typeof runtimeApi.experts>>>();
   vi.mocked(runtimeApi.experts).mockReset().mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise);
-  button('knowledge-open').click(); await nextTick();
+  await openKnowledge(); await nextTick();
   button('knowledge-cancel').click(); await nextTick();
-  button('knowledge-open').click(); await nextTick();
+  await openKnowledge(); await nextTick();
   const page = (revision: number) => ({ items: [JSON.stringify({ id: 'saved', name: 'Saved expert' })], states: { saved: { enabled: true, builtin: false, revision } } });
   fresh.resolve(page(5)); await fresh.promise; await nextTick();
   expect(button('knowledge-candidate-saved').textContent).toContain('r5');
@@ -55,8 +61,8 @@ it.each(['success', 'failure'])('keeps a fresh catalog loading when old catalog 
   const old = deferred<Awaited<ReturnType<typeof runtimeApi.experts>>>();
   const fresh = deferred<Awaited<ReturnType<typeof runtimeApi.experts>>>();
   vi.mocked(runtimeApi.experts).mockReset().mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise);
-  button('knowledge-open').click(); await nextTick(); button('knowledge-cancel').click(); await nextTick();
-  button('knowledge-open').click(); await nextTick();
+  await openKnowledge(); await nextTick(); button('knowledge-cancel').click(); await nextTick();
+  await openKnowledge(); await nextTick();
   if (outcome === 'success') old.resolve({ items: [], states: {} }); else old.reject(new Error('old catalog failed'));
   await old.promise.catch(() => {}); await nextTick();
   expect(document.body.textContent).toContain('正在读取专家目录'); expect(button('knowledge-use').disabled).toBe(true);
@@ -98,6 +104,7 @@ it('invalidates preview on draft changes, never truncates long drafts and refuse
   button('knowledge-use').click(); await nextTick(); await session.send();
   expect(send).not.toHaveBeenCalled(); expect(session.draft.value).toHaveLength(501);
   session.draft.value = 'short'; session.toolMode.value = 'git_status'; await nextTick();
+  button('composer-add').click(); await nextTick(); button('composer-cat-experts').click(); await nextTick();
   expect(button('knowledge-open').disabled).toBe(true);
   await session.send(); expect(send).not.toHaveBeenCalled();
   expect(host.textContent).toContain('PREBOUND'); expect(preview).toHaveBeenCalledTimes(1);
@@ -110,7 +117,7 @@ it('retains the original revision on preview conflict and does not reconnect or 
   const { session, preview, send } = await setup(); await selectCandidate(); button('knowledge-use').click(); await nextTick();
   vi.mocked(runtimeApi.experts).mockResolvedValue({ items: [JSON.stringify({ id: 'saved', name: 'Saved expert' })], states: { saved: { enabled: true, builtin: false, revision: 5 } } });
   preview.mockRejectedValue({ response: { status: 409, data: { detail: 'EXPERT_CONTEXT_STALE' } } });
-  button('knowledge-open').click(); await nextTick(); button('knowledge-preview').click();
+  await openKnowledge(); await nextTick(); button('knowledge-preview').click();
   await vi.waitFor(() => expect(document.body.textContent).toContain('不会自动升级版本'));
   expect(preview).toHaveBeenCalledWith(expertRef, 'original question');
   expect(session.context.value.knowledgeExpertRef).toEqual(expertRef);

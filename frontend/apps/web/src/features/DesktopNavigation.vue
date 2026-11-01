@@ -151,6 +151,12 @@ function open(id: string) {
 function sessionMode(): "code" | "work" {
   return workbench.workMode === "work" ? "work" : "code";
 }
+function returnToSourceSession() {
+  // App records Work chat as "work"; returning must not create/select a session.
+  const origin = workbench.origin;
+  emit("navigate", codeIds.includes(origin) || origin === "work" ? origin : sessionMode() === "work" ? "work" : "chat");
+  workbench.sidebarOpen = false;
+}
 function startChat(mode: "code" | "work") {
   workbench.workMode = mode;
   if (chatBinding.value) chatBinding.value.create();
@@ -276,6 +282,7 @@ onUnmounted(() => {
       <Button variant="activity" v-for="(path, key) in { code: 'm8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16', work: 'M9 6V4h6v2M3 7h18v13H3zM3 11l9 3 9-3m-9 1v4', scenes: 'm12 3 10 5-10 5L2 8zM2 12l10 5 10-5M2 16l10 5 10-5', experts: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-4M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8m8 0a4 4 0 0 1 0 8', settings: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2' }" :key="key" type="button" :active="area === key" :aria-current="area === key ? 'page' : undefined" @click="select(key)"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path :d="path" /></svg>{{ t("desktop." + key) }}</Button>
     </nav>
     <aside class="desktop-sidebar eap-scrollbar">
+      <Button v-if="area === 'experts' || area === 'settings'" variant="navigation" type="button" class="nav" data-testid="back-to-source-session" @click="returnToSourceSession">← {{ t("desktop.backToSourceSession") }}</Button>
       <template v-if="area === 'code' || area === 'work' || area === 'scenes' || area === 'experts'">
         <Button variant="navigation" type="button" class="nav primary" data-testid="new-chat" :title="t('desktop.newChatHint')" :aria-pressed="activeView === 'chat' && !chatBinding?.activeId" @click="startChat(sessionMode())">＋ {{ t("desktop.newChat") }}</Button>
         <section class="tree-project" data-testid="project-tree">

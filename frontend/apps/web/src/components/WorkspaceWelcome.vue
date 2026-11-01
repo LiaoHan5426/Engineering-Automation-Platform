@@ -78,3 +78,23 @@ function toggleExpert(id: string) {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* The conversation column shrinks when a rail opens, independently of viewport width. */
+.preview-scene-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+.preview-scene-grid > button {
+  min-width: 0;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  overflow-wrap: anywhere;
+}
+.preview-scene-grid > button > * { min-width: 0; }
+.welcome-section-head { flex-wrap: wrap; gap: 8px; }
+.preview-welcome .expert-pills > button {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+</style>

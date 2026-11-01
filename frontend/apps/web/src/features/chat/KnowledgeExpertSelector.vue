@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Button, Dialog, Feedback, Input } from '@eap/ui';
 import { runtimeApi, type KnowledgeContext, type KnowledgeExpertRef } from '@eap/runtime-client';
-const props = defineProps<{ selected?: KnowledgeExpertRef; draft: string; disabled: boolean; blocked: boolean; mock: boolean }>();
+const props = defineProps<{ selected?: KnowledgeExpertRef; draft: string; disabled: boolean; blocked: boolean; mock: boolean; trigger?: boolean }>();
 const emit = defineEmits<{ select: [ref: KnowledgeExpertRef]; remove: [] }>();
 const { t } = useI18n();
 const open = ref(false), loading = ref(false), busy = ref(false), failed = ref(false), search = ref('');
@@ -21,6 +21,7 @@ watch(() => props.disabled || props.blocked, disabled => { if (disabled) close()
 onBeforeUnmount(close);
 const visible = computed(() => experts.value.filter(item => `${item.name} ${item.id}`.toLowerCase().includes(search.value.trim().toLowerCase())));
 async function show() {
+  if (props.disabled || props.blocked) return;
   const ticket = ++catalogTicket;
   invalidatePreview(); experts.value = [];
   open.value = true; loading.value = true; failed.value = false; result.value = undefined; search.value = '';
@@ -48,12 +49,14 @@ async function preview() {
 }
 function choose(item: { id: string; revision: number }) { invalidatePreview(); candidate.value = { id: item.id, revision: item.revision }; }
 function use() { if (candidate.value) { emit('select', { ...candidate.value }); close(); } }
+defineExpose({ show, close });
 </script>
 <template>
-  <div class="knowledge-selector">
+  <div v-if="trigger !== false" class="knowledge-selector">
     <Button type="button" size="sm" data-testid="knowledge-open" :disabled="disabled || blocked" @click="show">{{ t('knowledgeContext.open') }}</Button>
     <span v-if="selected">{{ selected.id }} · r{{ selected.revision }}</span>
     <Button v-if="selected" type="button" size="sm" data-testid="knowledge-remove" :disabled="disabled" @click="emit('remove')">{{ t('knowledgeContext.remove') }}</Button>
+  </div>
     <Dialog v-if="open" data-testid="knowledge-dialog" :title="t('knowledgeContext.title')" :busy="busy" @close="close">
       <p>{{ t('knowledgeContext.boundary') }}</p>
       <Feedback v-if="mock" tone="info">{{ t('knowledgeContext.mock') }}</Feedback>
@@ -77,7 +80,6 @@ function use() { if (candidate.value) { emit('select', { ...candidate.value }); 
         <Button type="button" data-testid="knowledge-cancel" :disabled="busy" @click="close">{{ t('knowledgeContext.cancel') }}</Button>
       </template>
     </Dialog>
-  </div>
 </template>
 <style scoped>
 .knowledge-selector { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }

@@ -87,6 +87,7 @@ describe('desktop navigation', () => {
     expect(root.querySelector('[data-testid="project-tree"]')).not.toBeNull();
     expect(root.querySelector('[data-testid="new-chat"]')).not.toBeNull();
     expect(root.querySelector('[data-testid="back-to-chat"]')).toBeNull();
+    expect(root.querySelector('[data-testid="back-to-source-session"]')).toBeNull();
     expect(root.querySelector('.desktop-sidebar')?.textContent).not.toMatch(/返回来源会话|Back to source session/);
     expect(root.querySelector('.desktop-sidebar')?.textContent).not.toContain('原型到代码');
     (buttons[3] as HTMLButtonElement).click(); await nextTick();

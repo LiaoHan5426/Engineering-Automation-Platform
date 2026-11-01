@@ -56,6 +56,7 @@ it.each([
   await vi.waitFor(() => expect(host.querySelector('.composer-draft')).not.toBeNull());
   const draft = host.querySelector('.composer-draft') as HTMLTextAreaElement;
   draft.value = 'original question'; draft.dispatchEvent(new Event('input', { bubbles: true })); await nextTick();
+  button('composer-add').click(); await nextTick(); button('composer-cat-experts').click(); await nextTick();
   button('knowledge-open').click(); await vi.waitFor(() => expect(document.querySelector('[data-testid=knowledge-candidate-saved]')).not.toBeNull());
   button('knowledge-candidate-saved').click(); await nextTick(); button('knowledge-preview').click();
   await vi.waitFor(() => expect(document.querySelector('[data-testid=knowledge-preview-result]')).not.toBeNull());

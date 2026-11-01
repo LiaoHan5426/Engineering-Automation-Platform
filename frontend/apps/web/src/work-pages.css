@@ -38,7 +38,8 @@
 }
 .work-page label { color: var(--text-soft); font-size: 12px; font-weight: 600; }
 .work-page input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; vertical-align: middle; margin-right: 5px; }
-.work-page .eap-button { min-height: 36px; white-space: nowrap; }
+.work-page .eap-button { min-height: 36px; }
+.work-page .eap-button:not(.eap-button--card) { white-space: nowrap; }
 .work-page .eap-feedback { overflow-wrap: anywhere; }
 .work-overview { padding: 0 16px; margin-bottom: 18px; }
 .work-overview > summary { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; color: var(--text-soft); }
