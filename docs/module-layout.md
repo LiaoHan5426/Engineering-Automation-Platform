@@ -49,10 +49,23 @@ apps/web/src
 
 ## 后端层次
 
+### Maven模块归属（runtime拆分）
+
+| 模块 | 实现归属 | 依赖边界 |
+|---|---|---|
+| eap-api | 既有能力/执行稳定契约 | 无Spring/模型SDK |
+| eap-engine | 工程服务、规则/专家、进程、任务/Run/验证、持久化、工作区与普通application.dto | api；不引用ai或web实现 |
+| eap-ai | Chat/模型、源码生成与应用、Skill、SQL模型桥及看板源码证据整合；ai.dto | engine/api；不引用web实现 |
+| eap-web | Controllers、请求防护、CORS、SkillController | ai/engine/api |
+| eap-runtime | EapApplication、启动Bean装配/专家播种、迁移和跨模块集成测试 | 唯一Boot可执行jar |
+
+原有包名除DTO外保留，下面是包职责而非所有类仍位于runtime。rules资源在engine、chat资源在ai，experts播种和Flyway在runtime。详细迁移/验证及IDEA重导入要求见[拆分决策](decisions/backend-runtime-modules-2026-11-01.md)。
+
 ```text
 com.lh.eap
-  web.controller       HTTP 路由与状态码
-  web.dto              API 请求对象
+  web.controller       HTTP 路由与状态码（eap-web）
+  application.dto      跨应用/HTTP的普通请求合同（eap-engine）
+  ai.dto               AI响应合同（eap-ai）
   application.service  管理校验、生命周期、任务与专家编排
   persistence.mapper   JDBC 查询、写入和持久化映射
   domain.model         能力、专家、CLI 程序/操作和节点结果

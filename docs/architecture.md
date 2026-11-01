@@ -29,18 +29,25 @@ frontend/            Vue 3 + TypeScript monorepo (Vite+ / pnpm)
 backend/             Java 25 / Spring Boot / Maven reactor
   eap-api            stable contracts only: Capability, ExecutionContext, Observation, ProcessExecutor,
                      and the expert analysis model
-  eap-runtime        Spring Boot app: capability handler registry and catalog (kind, scope, descriptor,
-                     availability, management entry point), process execution, HTTP API, declarative
-                     rule engine and rule packs with capability requirements, expert orchestration,
-                     knowledge retrieval, LLM preprocessing gateway, decision layer
+  eap-engine         deterministic services, capability/process execution, rules/experts,
+                     task/Run verification, persistence, workspace and application DTOs
+  eap-ai             Spring AI/chat/model adapters, source generation/application, Skill services,
+                     and board delivery integration with AI snapshots
+  eap-web            HTTP controllers, browser-request guard, CORS
+  eap-runtime        only executable Boot host: startup wiring, built-in resources, migrations,
+                     and cross-module acceptance tests
   eap-runtime/src/main/resources/db/migration
                      Flyway development baseline (V1__initial_schema.sql)
 docs/                architecture, pipeline, roadmap, environment, expert/knowledge/rules, prototype
 ```
 
-`eap-api` contains no Spring and no LLM SDK. `eap-runtime` depends on `eap-api`.
+`eap-api` contains no Spring and no LLM SDK. Dependency direction is runtime → web → ai → engine → api;
+modules also declare direct dependencies for types they use. Only runtime uses Boot repackage.
+The engine is an engineering implementation module, not a claim of framework-free domain purity.
+The existing Spring/JDBC/HTTP-exception coupling is retained; SQL model calls still use the existing
+provider contract implemented by the AI module. See [module split and verification](decisions/backend-runtime-modules-2026-11-01.md).
 
-Runtime classes are separated into `web.controller`, `web.dto`, `application.service`,
+Classes retain their package identities except shared DTOs now under `application.dto` and AI responses under `ai.dto`. They include `web.controller`, `application.service`,
 `persistence.mapper`, `domain.model`, `domain.expert`, `runtime.handler`, `runtime.sql`, and
 `runtime.mcp`. See [module-layout.md](module-layout.md) for the implemented boundaries and verification commands.
 Frontend UI placement (primitives in `@eap/ui`, planned hooks/effects/layout/plugin modules, agent workflow)
@@ -73,7 +80,7 @@ flowchart TB
   Pre --> GW[LlmGateway: cache + fail-closed]
   GW --> Prov[SQL compatibility bridge]
   Prov --> SpringAI[Spring AI ChatClient / ChatModel]
-  ChatService[EngineeringChatService: service only, not wired to UI] --> SpringAI
+  ChatService[EngineeringChatService via controlled Chat API] --> SpringAI
   ChatService --> Tools[Spring AI ToolCallingAdvisor / ToolCallingManager]
   Tools --> Handlers
   Packs[(rule packs: classpath + eap.rule_pack)] --> Rules

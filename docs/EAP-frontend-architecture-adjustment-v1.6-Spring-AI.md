@@ -1363,12 +1363,15 @@ MVP 仅支持**设计 → 代码单向生成 + 代码状态回写**，不要承�
 
 ## 4. 目标技术架构与决策
 
+**后端模块调整（2026-11-01）**：保留同一Java服务与Spring AI，将原runtime拆为api/engine/ai/web/runtime五模块；runtime只留启动/装配，普通DTO归application.dto、AI响应归ai.dto。干净reactor verify 652项、0失败/错误、6条件跳过，启动包四个依赖jar与19份原迁移已核；最终独立审查/提交状态见[拆分记录](decisions/backend-runtime-modules-2026-11-01.md)。IDEA需重新导入Maven并重启本机运行配置，不能把旧DevTools进程视作新模块启动验收。
+
 | 领域 | 当前情况 | 目标/决策 | 优先级 |
 |---|---|---|---|
 | Vue/Vite+ | 已采用 | **保留** Vue 3 + TS + Vite+；确保当前 Vite+ 版本与 Electron 构建兼容 | 保留 |
 | pnpm workspace | 已采用 pnpm 12 | **保留当前锁定版本**；不要无理由降级 pnpm 11 或重建 monorepo | 保留 |
 | 组件与主题 | `@eap/ui` + `@eap/style`，原语不足 | 扩展组件 API 和 Token；按需引入 **Reka UI** 无样式可访问性原语 / shadcn-vue **按需源码纳入并适配**，不要全量替换 | P0 |
 | 图标 | 页面里存在字符图标 | 统一 Lucide Vue 图标与大小/语义 | P0 |
+| 后端模块 | api/engine/ai/web/runtime五模块；runtime仅启动与装配；干净verify 652项、6条件跳过 | 保留单进程和既有业务合同；IDEA重导入并核对启动，不承诺全领域无框架耦合 | 结构验证通过 |
 | 导航 | 根组件 hash 切页 | 使用 **Vue Router** 管理可深链、多层路由与导航守卫；迁移期间兼容旧 hash 链接 | P0 |
 | 服务器状态 | 根组件集中请求 | 拆 composable + 领域 services；如存在缓存/并发复杂度再评估 `@tanstack/vue-query` | P0 |
 | UI 状态 | 根组件大量 `ref` | 页面本地 state + composable；跨页面会话/工作区状态引入 **Pinia**；服务器数据不机械复制到 Pinia | P0 |

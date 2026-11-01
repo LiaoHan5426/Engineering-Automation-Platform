@@ -13,6 +13,9 @@
     <packaging>pom</packaging>
     <modules>
         <module>eap-api</module>
+        <module>eap-engine</module>
+        <module>eap-ai</module>
+        <module>eap-web</module>
         <module>eap-runtime</module>
     </modules>
     <properties>

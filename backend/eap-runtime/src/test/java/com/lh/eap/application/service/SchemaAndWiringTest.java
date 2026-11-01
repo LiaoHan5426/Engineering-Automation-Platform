@@ -36,9 +36,10 @@ class SchemaAndWiringTest {
      * here was found only by booting the application, and four more were waiting behind it.
      */
     @Test void everyMultiConstructorBeanSaysWhichConstructorTheContainerShouldUse() throws IOException {
-        var root = Path.of("src", "main", "java");
         var offenders = new ArrayList<String>();
         var checked = new ArrayList<String>();
+        for (String module : List.of("eap-engine", "eap-ai", "eap-web", "eap-runtime")) {
+        var root = Path.of("..", module, "src", "main", "java");
         try (var files = Files.walk(root)) {
             for (var file : files.filter(path -> path.toString().endsWith(".java")).toList()) {
                 var source = Files.readString(file);
@@ -60,6 +61,7 @@ class SchemaAndWiringTest {
                     offenders.add(name + "（" + constructors + " 个构造器，无 @Autowired）");
                 }
             }
+        }
         }
         assertFalse(checked.isEmpty(), "这个检查必须真的找到多构造器的 bean，否则它什么都没检查：" + checked);
         assertEquals(List.of(), offenders,
