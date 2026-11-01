@@ -70,8 +70,8 @@ public class BoardDeliveryService {
             lock(task, request.workspacePath()); requireBound(executionId, request.workspacePath());
             var files = capture.capture(Path.of(request.workspacePath()), capability(), plan.baseCommit(), plan.source(), request.paths());
             var now = Instant.now();
-            var evidence = request.applicationRef()==null ? null : applicationEvidence(request.applicationRef(), request.workspacePath(), stored, files, now);
-            var delivery = new Delivery(UUID.randomUUID(), evidence==null ? "EXTERNAL_MANUAL" : "CHAT_APPLIED_POST_HOC", request.requestId(), task.revision(), task.revision()+1, request.workspacePath(), plan.baseCommit(), record.id(), plan.source().contentHash(), task.prototypeVersionId(), task.goal(), task.acceptanceCriteria(), SensitiveData.redact(request.note()), files, now, null, evidence);
+            var evidence = request.applicationRef()==null ? null : applicationEvidence(request.applicationRef(), request.workspacePath(), stored, files, now, task);
+            var delivery = new Delivery(UUID.randomUUID(), evidence==null ? "EXTERNAL_MANUAL" : "PREBOUND".equals(evidence.association()) ? "CHAT_APPLIED_PREBOUND" : "CHAT_APPLIED_POST_HOC", request.requestId(), task.revision(), task.revision()+1, request.workspacePath(), plan.baseCommit(), record.id(), plan.source().contentHash(), task.prototypeVersionId(), task.goal(), task.acceptanceCriteria(), SensitiveData.redact(request.note()), files, now, null, evidence);
             jdbc.update("UPDATE eap.board_task_run SET delivery_snapshot=?::jsonb,delivery_request_hash=? WHERE task_id=? AND execution_id=?", JSON.writeValueAsString(delivery), fingerprint, taskId, executionId);
             tasks.deliveryTransition(task, "acceptance"); return delivery;
         });
@@ -97,9 +97,9 @@ public class BoardDeliveryService {
                 if (!sameTask(task, stored, delivery.taskRevision()) || !passed(stored.verification()) || !stored.verification().id().equals(delivery.verificationId()) || !stored.verification().plan().baseCommit().equals(delivery.baseCommit()) || !stored.verification().plan().source().contentHash().equals(delivery.sourceHash()) || delivery.files().isEmpty()) throw denied("BOARD_DELIVERY_STALE");
                 var currentFiles = capture.capture(Path.of(delivery.workspacePath()), capability(), delivery.baseCommit(), stored.verification().plan().source(), delivery.files().stream().map(BoardDeliveryCapture.File::path).toList());
                 if (!currentFiles.equals(delivery.files())) throw denied("BOARD_DELIVERY_STALE");
-                if ("CHAT_APPLIED_POST_HOC".equals(delivery.source())) {
+                if (Set.of("CHAT_APPLIED_POST_HOC", "CHAT_APPLIED_PREBOUND").contains(delivery.source())) {
                     var evidence = delivery.applicationEvidence();
-                    if (evidence==null || !evidence.equals(applicationEvidence(new ApplicationRef(evidence.conversationId(), evidence.proposalId()), delivery.workspacePath(), stored, currentFiles, evidence.associatedAt())))
+                    if (evidence==null || !evidence.equals(applicationEvidence(new ApplicationRef(evidence.conversationId(), evidence.proposalId()), delivery.workspacePath(), stored, currentFiles, evidence.associatedAt(), task)))
                         throw denied("BOARD_DELIVERY_APPLICATION_STALE");
                 }
             }
@@ -109,9 +109,11 @@ public class BoardDeliveryService {
             tasks.deliveryTransition(task, request.decision().equals("ACCEPT") ? "done" : "ready"); return result;
         });
     }
-    private BoardApplicationEvidence.Evidence applicationEvidence(ApplicationRef ref, String workspace, Stored stored, List<BoardDeliveryCapture.File> files, Instant at) {
+    private BoardApplicationEvidence.Evidence applicationEvidence(ApplicationRef ref, String workspace, Stored stored, List<BoardDeliveryCapture.File> files, Instant at, BoardTaskService.Task task) {
         if (applications==null) throw denied("BOARD_DELIVERY_APPLICATION_UNAVAILABLE");
-        return applications.associate(ref, workspace, stored.task().prototype(), stored.verification(), files, at);
+        // Run revision is the original delivery revision, not the post-submit current task revision.
+        return applications.associate(ref, workspace, stored.task().prototype(), stored.verification(), files, at,
+                new com.lh.eap.ai.TaskContext.TaskRef(task.projectId(), task.id(), stored.revision()), stored.task());
     }
     private void lock(BoardTaskService.Task task, String workspace) {
         if (tasks.hasActiveExecution(task.id())) throw denied("BOARD_EXECUTION_ACTIVE");

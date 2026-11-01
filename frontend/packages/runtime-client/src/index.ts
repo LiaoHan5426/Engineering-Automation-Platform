@@ -493,12 +493,12 @@ export type BoardVerificationCheck = Omit<BoardVerificationCommand, 'timeoutSeco
 export type BoardVerificationRecord = { id: string; status: BoardVerificationStatus; reason: string; plan: BoardVerificationPlan | null; workspacePath?: string | null; checks: BoardVerificationCheck[]; sourceAfter: BoardVerificationSource | null; startedAt: string; finishedAt: string | null };
 export type BoardVerificationPage = { record: BoardVerificationRecord | null; prepareAllowed: boolean; reason: string };
 export type BoardApplicationRef = { conversationId: string; proposalId: string };
-export type BoardApplicationEvidence = BoardApplicationRef & { association: 'POST_HOC'; generationId: string; targetPath: string; generationBaseHash: string; appliedAfterHash: string; generationCapturedAt: string; prototypeVersionId: string | null; prototypeContentHash: string | null; associatedAt: string; operator: 'local-operator' };
+export type BoardApplicationEvidence = BoardApplicationRef & { association: 'POST_HOC' | 'PREBOUND'; taskBinding?: CodeTaskRef | null; generationId: string; targetPath: string; generationBaseHash: string; appliedAfterHash: string; generationCapturedAt: string; prototypeVersionId: string | null; prototypeContentHash: string | null; associatedAt: string; operator: 'local-operator' };
 export type BoardDeliveryRequest = BoardRunStart & { paths: string[]; note: string; applicationRef?: BoardApplicationRef };
 export type BoardDeliveryDecisionRequest = { projectId: string; revision: number; requestId: string; deliveryId: string; decision: 'ACCEPT' | 'REJECT'; criteriaConfirmed: boolean; previewConfirmed: boolean; comment: string };
 export type BoardDeliveryDecision = Omit<BoardDeliveryDecisionRequest, 'projectId' | 'revision' | 'deliveryId'> & { id: string; operator: 'local-operator'; createdAt: string };
 export type BoardDeliveryFile = { path: string; beforeHash: string; afterHash: string; before: string; after: string };
-export type BoardDelivery = { id: string; source: 'EXTERNAL_MANUAL' | 'CHAT_APPLIED_POST_HOC'; applicationEvidence?: BoardApplicationEvidence | null; requestId: string; taskRevision: number; submittedRevision: number; workspacePath: string; baseCommit: string; verificationId: string; sourceHash: string; prototypeVersionId: string | null; goal: string; acceptanceCriteria: string; note: string; files: BoardDeliveryFile[]; createdAt: string; decision: BoardDeliveryDecision | null };
+export type BoardDelivery = { id: string; source: 'EXTERNAL_MANUAL' | 'CHAT_APPLIED_POST_HOC' | 'CHAT_APPLIED_PREBOUND'; applicationEvidence?: BoardApplicationEvidence | null; requestId: string; taskRevision: number; submittedRevision: number; workspacePath: string; baseCommit: string; verificationId: string; sourceHash: string; prototypeVersionId: string | null; goal: string; acceptanceCriteria: string; note: string; files: BoardDeliveryFile[]; createdAt: string; decision: BoardDeliveryDecision | null };
 export type BoardDeliveryPage = { record: BoardDelivery | null; prepareAllowed: boolean; reason: string };
 
 /** Read-only dirty-file summary. requested=false means git was not run. */
@@ -587,7 +587,9 @@ export type AiMessageResult = {
   artifacts: AiArtifactSummary[];
 };
 
+export type CodeTaskRef = { projectId: string; taskId: string; revision: number };
 export type TaskContext = {
+  taskRef?: CodeTaskRef;
   mode: "chat" | "code";
   expert: "general" | "sql" | "frontend";
   instructions: string;
@@ -599,6 +601,7 @@ export type TaskContext = {
   targetPath: string;
 };
 export type CodeGenerationSnapshot = {
+  taskBinding?: CodeTaskRef | null;
   id: string;
   targetPath: string;
   baseHash: string;

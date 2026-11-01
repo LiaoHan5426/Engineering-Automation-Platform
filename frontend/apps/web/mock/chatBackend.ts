@@ -131,6 +131,7 @@ export function createMockChatBackend() {
         const target = connections.items.find(value => value.id === item.connectionId && value.enabled && value.allowedModels.includes(item.model ?? ''));
         if (!target) return result(403, { error: 'MODEL_NOT_ALLOWED' });
         const context = body.context as TaskContext | undefined;
+        if (context && 'taskRef' in context) return result(409, { detail: 'MOCK_TASK_BINDING_UNAVAILABLE' });
         if (typeof body.message !== 'string' || !body.message.trim()) return result(400, { error: 'EMPTY_MESSAGE' });
         const proposal: CodeProposal | null = context?.mode === 'code' && context.approval !== 'read_only' ? { id: `proposal-${++sequence}`, conversationId: id, workspace: repoRoot, summary: '模拟候选：仅供交互验收', files: [{ path: 'Example.vue', before: '<h1>Workspace</h1>', content: '<h1>EAP Workspace</h1>', baseHash: '' }], applied: false, writeAllowed: false, verification: 'not_requested' } : null;
         if (proposal) proposals.set(proposal.id, proposal);

@@ -389,12 +389,15 @@ class BoardRunPersistenceTest {
         return deliveryFixture(captureExecutor, () -> {});
     }
     private DeliveryFixture deliveryFixture(com.lh.eap.api.ProcessExecutor captureExecutor, Runnable beforeRun) throws Exception {
+        return deliveryFixture(captureExecutor, task -> beforeRun.run());
+    }
+    private DeliveryFixture deliveryFixture(com.lh.eap.api.ProcessExecutor captureExecutor, java.util.function.Consumer<BoardTaskService.Task> beforeRun) throws Exception {
         verificationFixture();
         assertEquals(0, executor.runIsolated("fixture", repo, List.of("git", "add", "frontend"), GitCapability.environment()).exitCode());
         assertEquals(0, executor.runIsolated("fixture", repo, List.of("git", "-c", "user.name=EAP Test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "frontend baseline"), GitCapability.environment()).exitCode());
         Files.writeString(repo.resolve("frontend/source.ts"), "export const source = 2;");
-                beforeRun.run();
-                var task = task(); var run = runs.start(task.id(), request(task)); queue.remove().run();
+                var task = task(); beforeRun.accept(task);
+                var run = runs.start(task.id(), request(task)); queue.remove().run();
                 var verification = verification(passingVerificationProcess(), queue::add);
                 var plan = verification.plan(task.id(), run.execution().id(), new BoardVerificationService.Request(project, repo.toRealPath().toString()));
                 verification.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash())); queue.remove().run();
@@ -544,6 +547,71 @@ class BoardRunPersistenceTest {
         });
         var request = new BoardDeliveryService.Request(project, 1, f.request().workspacePath(), UUID.randomUUID(), f.request().paths(), "explicit post hoc test", new BoardDeliveryService.ApplicationRef(conversation, proposal.get().id()));
         return new AppliedDeliveryFixture(f, request, proposal.get());
+    }
+    @Test void preboundDeliveryUsesOriginalTaskRevisionAndAcceptsAfterSubmitIncrement() throws Exception {
+        var conversation = UUID.randomUUID();
+        var proposal = new java.util.concurrent.atomic.AtomicReference<com.lh.eap.ai.CodeChangeService.Proposal>();
+        var principal = com.lh.eap.ai.AiConversationRegistry.PRINCIPAL;
+        var f = deliveryFixture(executor, task -> {
+            var changes = codeChanges();
+            var generation = changes.prepareGeneration(principal, conversation, "frontend/source.ts", "", "",
+                    new com.lh.eap.ai.TaskContext.TaskRef(project, task.id(), task.revision()));
+            proposal.set(changes.proposePrepared(principal, conversation, generation.id(), "{\"files\":[{\"path\":\"frontend/source.ts\",\"content\":\"export const source = 3;\"}]}", true));
+            assertEquals("APPLIED", changes.apply(principal, conversation, proposal.get().id(), true).status());
+        });
+        var request = new BoardDeliveryService.Request(project, 1, f.request().workspacePath(), UUID.randomUUID(), f.request().paths(), "prebound fixture",
+                new BoardDeliveryService.ApplicationRef(conversation, proposal.get().id()));
+        var service = applicationDeliveryService(f, executor);
+        var delivery = service.submit(f.task().id(), f.execution(), request);
+        assertEquals("CHAT_APPLIED_PREBOUND", delivery.source());
+        assertEquals("PREBOUND", delivery.applicationEvidence().association());
+        assertEquals(tools.jackson.databind.json.JsonMapper.builder().build().valueToTree(proposal.get().generation()).path("taskBinding"),
+                tools.jackson.databind.json.JsonMapper.builder().build().valueToTree(delivery.applicationEvidence()).path("taskBinding"));
+        assertEquals(2, tasks.find(f.task().id(), project, false).revision());
+        for (String expression : List.of("delivery_snapshot #- '{applicationEvidence,taskBinding}'",
+                "jsonb_set(delivery_snapshot,'{applicationEvidence,association}','\"POST_HOC\"'::jsonb)",
+                "jsonb_set(delivery_snapshot,'{applicationEvidence,taskBinding,revision}','2'::jsonb)"))
+            assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> jdbc.update(
+                    "UPDATE eap.board_task_run SET delivery_snapshot=" + expression + " WHERE execution_id=?", f.execution()));
+        var accepted = service.decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "ACCEPT", true, true, "test only"));
+        assertEquals("ACCEPT", accepted.decision().decision());
+        assertEquals(delivery.applicationEvidence(), accepted.applicationEvidence());
+    }
+    @Test void boundApplicationCannotBeAttachedToAnotherTaskWithIdenticalTextAndRevision() throws Exception {
+        var conversation = UUID.randomUUID();
+        var proposal = new java.util.concurrent.atomic.AtomicReference<com.lh.eap.ai.CodeChangeService.Proposal>();
+        var principal = com.lh.eap.ai.AiConversationRegistry.PRINCIPAL;
+        var f = deliveryFixture(executor, ignored -> {
+            var original = task(); var changes = codeChanges();
+            var generation = changes.prepareGeneration(principal, conversation, "frontend/source.ts", "", "",
+                    new com.lh.eap.ai.TaskContext.TaskRef(project, original.id(), original.revision()));
+            proposal.set(changes.proposePrepared(principal, conversation, generation.id(), "{\"files\":[{\"path\":\"frontend/source.ts\",\"content\":\"export const source = 3;\"}]}", true));
+            changes.apply(principal, conversation, proposal.get().id(), true);
+        });
+        var request = new BoardDeliveryService.Request(project, 1, f.request().workspacePath(), UUID.randomUUID(), f.request().paths(), "mismatch fixture",
+                new BoardDeliveryService.ApplicationRef(conversation, proposal.get().id()));
+        var service = applicationDeliveryService(f, executor);
+        assertEquals("BOARD_DELIVERY_APPLICATION_TASK_MISMATCH", rejects(() -> service.submit(f.task().id(), f.execution(), request)).getReason());
+        assertNull(f.service().get(f.task().id(), f.execution(), project).record());
+        assertEquals("ready", tasks.find(f.task().id(), project, false).column());
+    }
+
+    @Test void boundApplyingAndUnknownBlockPrototypeRunAndVerificationOnSameTask() throws Exception {
+        var f = deliveryFixture(executor); var task = f.task(); var conversation = UUID.randomUUID();
+        var unverifiedRun = runs.start(task.id(), request(task)); queue.remove().run();
+        var changes = codeChanges();
+        var generation = changes.prepareGeneration(project, conversation, "frontend/source.ts", "", "",
+                new com.lh.eap.ai.TaskContext.TaskRef(project, task.id(), task.revision()));
+        var proposal = changes.proposePrepared(project, conversation, generation.id(), "{\"files\":[{\"path\":\"frontend/source.ts\",\"content\":\"export const source = 3;\"}]}", true);
+        assertTrue(codeStore().claim(project, conversation, proposal.id()));
+        for (String status : List.of("APPLYING", "UNKNOWN")) {
+            assertTrue(tasks.list(project).getFirst().executionActive());
+            assertEquals("BOARD_EXECUTION_ACTIVE", rejects(() -> context.getBean(BoardPrototypeService.class).select(task.id(), new BoardPrototypeService.Selection(project, 1, null))).getReason());
+            var request = request(task);
+            assertEquals("BOARD_EXECUTION_ACTIVE", rejects(() -> runs.start(task.id(), request)).getReason());
+            assertEquals("BOARD_EXECUTION_ACTIVE", rejects(() -> f.verification().plan(task.id(), unverifiedRun.execution().id(), new BoardVerificationService.Request(project, request.workspacePath()))).getReason());
+            if (status.equals("APPLYING")) changes.recoverInterruptedApplications();
+        }
     }
     @Test void appliedChatDeliveryPersistsPostHocEvidenceAndReplaysAfterReconstruction() throws Exception {
         var fixture = appliedDeliveryFixture(); var f = fixture.fixture(); var request = fixture.request();

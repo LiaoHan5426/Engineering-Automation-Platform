@@ -17,7 +17,11 @@ import tools.jackson.databind.json.JsonMapper;
 public final class CodeChangeService {
     public record Change(String path, String before, String content, String baseHash) {}
     public record Generation(UUID id, String targetPath, String baseHash, Instant capturedAt,
-                             String prototypeVersionId, String prototypeContentHash) {}
+                             String prototypeVersionId, String prototypeContentHash, TaskContext.TaskRef taskBinding) {
+        public Generation(UUID id, String targetPath, String baseHash, Instant capturedAt, String prototypeVersionId, String prototypeContentHash) {
+            this(id, targetPath, baseHash, capturedAt, prototypeVersionId, prototypeContentHash, null);
+        }
+    }
     public record Proposal(UUID id, UUID conversationId, String workspace, String summary, List<Change> files, Instant createdAt,
                            boolean applied, boolean writeAllowed, String verification, Generation generation) {
         public Proposal(UUID id, UUID conversationId, String workspace, String summary, List<Change> files, Instant createdAt,
@@ -424,18 +428,27 @@ public final class CodeChangeService {
     /** Capture once, persist before model invocation, and use these exact UTF-8 bytes as context. */
     public CodeGenerationStore.Snapshot prepareGeneration(String principal, UUID conversation, String relative,
                                                           String prototypeVersionId, String prototypeContentHash) {
+        return prepareGeneration(principal, conversation, relative, prototypeVersionId, prototypeContentHash, null);
+    }
+    public CodeGenerationStore.Snapshot prepareGeneration(String principal, UUID conversation, String relative,
+                                                          String prototypeVersionId, String prototypeContentHash, TaskContext.TaskRef taskRef) {
         if (relative == null || relative.isBlank()) throw rejected("CODE_GENERATION_TARGET_REQUIRED");
         if (generations == null) throw contextUnavailable();
         if (prototypeVersionId == null || prototypeContentHash == null
-                || prototypeVersionId.isBlank() != prototypeContentHash.isBlank()) throw contextUnavailable();
+                || (taskRef == null && prototypeVersionId.isBlank() != prototypeContentHash.isBlank())) throw contextUnavailable();
         try {
-            String source = generationSource(relative);
-            var snapshot = new CodeGenerationStore.Snapshot(UUID.randomUUID(), principal, conversation,
-                    runtime.workspace().toRealPath().toString(), relative, hash(source), source,
-                    prototypeVersionId, prototypeContentHash, Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
-            generations.save(snapshot);
+            String workspace = runtime.workspace().toRealPath().toString();
+            var snapshot = generations.capture(taskRef, workspace, prototypeVersionId, task -> {
+                try {
+                    String source = generationSource(relative);
+                    String prototypeHash = task == null ? prototypeContentHash : task.prototype() == null ? "" : task.prototype().contentHash();
+                    return new CodeGenerationStore.Snapshot(UUID.randomUUID(), principal, conversation,
+                            workspace, relative, hash(source), source, prototypeVersionId, prototypeHash,
+                            Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS), task);
+                } catch (IOException failure) { throw contextUnavailable(); }
+            });
             if (!snapshot.equals(loadGeneration(snapshot.id()))) throw contextUnavailable();
-            return snapshot;
+            return loadGeneration(snapshot.id());
         } catch (ResponseStatusException expected) { throw expected; }
         catch (Exception failure) { throw contextUnavailable(); }
     }

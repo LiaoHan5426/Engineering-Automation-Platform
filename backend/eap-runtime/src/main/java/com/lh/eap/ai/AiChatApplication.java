@@ -183,7 +183,7 @@ public class AiChatApplication {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "WORKSPACE_MISMATCH");
         String prototype = "";
         String prototypeContentHash = "";
-        if (!context.prototypeVersionId().isBlank()) {
+        if (context.taskRef() == null && !context.prototypeVersionId().isBlank()) {
             if (prototypes == null) throw unavailable();
             final UUID versionId;
             try { versionId = UUID.fromString(context.prototypeVersionId()); } catch (IllegalArgumentException invalid) { throw invalid(); }
@@ -196,7 +196,12 @@ public class AiChatApplication {
         if (context.mode().equals("code")) {
             if (codeChanges == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_GENERATION_CONTEXT_UNAVAILABLE");
             generation = codeChanges.prepareGeneration(AiConversationRegistry.PRINCIPAL, id, context.targetPath(),
-                    context.prototypeVersionId(), prototypeContentHash);
+                    context.prototypeVersionId(), prototypeContentHash, context.taskRef());
+            if (generation.taskSnapshot() != null) {
+                var task = generation.taskSnapshot();
+                draft = context.userMessage(message, task.prototype() == null ? "" : JSON.writeValueAsString(task.prototype()))
+                        + "\n\n<saved-task>\n" + JSON.writeValueAsString(task) + "\n</saved-task>";
+            }
             draft = TaskContext.withWorkspaceSource(draft, generation.sourceContext());
         }
         if (draft.length() > 64000) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TASK_CONTEXT_TOO_LARGE");

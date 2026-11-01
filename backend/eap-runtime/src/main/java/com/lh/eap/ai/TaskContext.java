@@ -9,14 +9,19 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** User-selected context, never an authority to run tools or change policy. */
 public record TaskContext(String mode, String expert, String instructions, String reasoning,
-                          String approval, List<Attachment> files, String prototypeVersionId, String targetPath) {
+                          String approval, List<Attachment> files, String prototypeVersionId, String targetPath, TaskRef taskRef) {
+    public record TaskRef(String projectId, java.util.UUID taskId, long revision) {}
+    public TaskContext(String mode, String expert, String instructions, String reasoning, String approval,
+                       List<Attachment> files, String prototypeVersionId, String targetPath) {
+        this(mode, expert, instructions, reasoning, approval, files, prototypeVersionId, targetPath, null);
+    }
     public record Attachment(String name, String content) {}
     public static final TaskContext EMPTY = new TaskContext("chat", "general", "", "default", "review", List.of(), "", "");
 
     public static TaskContext parse(Object value) {
         if (value == null) return EMPTY;
         if (!(value instanceof Map<?, ?> data) || data.keySet().stream().anyMatch(key ->
-                !Set.of("mode", "expert", "instructions", "reasoning", "approval", "files", "prototypeVersionId", "targetPath").contains(key))) throw invalid();
+                !Set.of("mode", "expert", "instructions", "reasoning", "approval", "files", "prototypeVersionId", "targetPath", "taskRef").contains(key))) throw invalid();
         String mode = text(data, "mode", "chat"), expert = text(data, "expert", "general");
         String reasoning = text(data, "reasoning", "default"), approval = text(data, "approval", "review");
         if (!Set.of("chat", "code").contains(mode) || !Set.of("general", "sql", "frontend").contains(expert)
@@ -38,7 +43,18 @@ public record TaskContext(String mode, String expert, String instructions, Strin
         String target = text(data, "targetPath", "");
         if (instructions.length() > 4000 || prototype.length() > 36 || target.length() > 260) throw invalid();
         if (target.contains("..") || target.indexOf('\\') >= 0 || target.startsWith("/")) throw invalid();
-        return new TaskContext(mode, expert, instructions, reasoning, approval, List.copyOf(files), prototype, target);
+        TaskRef ref = null;
+        if (data.containsKey("taskRef")) {
+            if (!mode.equals("code") || !(data.get("taskRef") instanceof Map<?,?> fields)
+                    || !fields.keySet().equals(Set.of("projectId", "taskId", "revision"))) throw invalid();
+            String project = text(fields, "projectId", ""), task = text(fields, "taskId", "");
+            Object revision = fields.get("revision");
+            if (project.isBlank() || project.length() > 120
+                    || !task.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+                    || !(revision instanceof Integer || revision instanceof Long) || ((Number) revision).longValue() < 1) throw invalid();
+            ref = new TaskRef(project, java.util.UUID.fromString(task), ((Number) revision).longValue());
+        }
+        return new TaskContext(mode, expert, instructions, reasoning, approval, List.copyOf(files), prototype, target, ref);
     }
 
     public String systemInstructions() {

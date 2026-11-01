@@ -79,6 +79,10 @@ const versions = ref<PrototypeVersionRecord[]>([]);
 const filesInput = ref<{ click: () => void } | null>(null);
 const selectedVersion = computed(() => versions.value.find((version) => version.id === props.context.prototypeVersionId));
 function change<K extends keyof TaskContext>(key: K, value: TaskContext[K]) {
+  if (key === 'mode' && value === 'chat') {
+    const { taskRef: _taskRef, ...context } = props.context;
+    emit('update', { ...context, mode: 'chat' }); return;
+  }
   if (key === "prototypeVersionId") {
     const versionId = String(value ?? "");
     emit("update", {
@@ -212,6 +216,10 @@ async function loadVersions() {
       <Input data-testid="generation-target" :model-value="context.targetPath" :disabled="disabled" maxlength="240" :placeholder="t('generation.targetPlaceholder')" @update:model-value="change('targetPath', $event)" />
       <small>{{ t('generation.targetHelp') }}</small>
     </label>
+    <div v-if="context.taskRef" data-testid="composer-task-binding" class="generation-target">
+      <span>{{ t('generation.taskBinding') }}：{{ context.taskRef.projectId }} · {{ context.taskRef.taskId }} · r{{ context.taskRef.revision }}</span>
+      <Button size="sm" :disabled="disabled" @click="emit('update', (({ taskRef, ...rest }) => rest)(context))">{{ t('generation.removeTask') }}</Button>
+    </div>
     <slot name="draft" />
     <div class="task-context" data-testid="task-context">
     <div class="context-toolbar">

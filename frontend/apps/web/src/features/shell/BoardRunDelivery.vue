@@ -128,7 +128,7 @@ onBeforeUnmount(() => { generation++; });
   <Dialog :title="t('boardDelivery.title')" :close-label="t('preview.close')" :busy="sending" size="lg" data-testid="board-delivery-dialog" @close="emit('close')">
     <div class="delivery">
     <p><code>{{ run.execution.id }}</code> · {{ run.execution.workspacePath }}</p>
-    <p>{{ t(record?.source === 'CHAT_APPLIED_POST_HOC' || (!record && linkApplication) ? 'boardDelivery.postHocHint' : 'boardDelivery.hint') }}</p><p>{{ t('boardDelivery.boundary') }}</p>
+    <p>{{ t(record?.source === 'CHAT_APPLIED_PREBOUND' ? 'boardDelivery.preboundHint' : record?.source === 'CHAT_APPLIED_POST_HOC' ? 'boardDelivery.postHocHint' : (!record && linkApplication) ? 'boardDelivery.linkHint' : 'boardDelivery.hint') }}</p><p>{{ t('boardDelivery.boundary') }}</p>
     <p v-if="pending?.rejectionCode" role="alert">{{ t('boardDelivery.contentConflict') }} · {{ pending.rejectionCode }}</p>
     <p v-else-if="note" role="status">{{ note }}</p>
     <p v-if="page && !page.prepareAllowed && !record" role="status">{{ t('boardDelivery.blocked') }} · {{ page.reason }}</p>
@@ -150,7 +150,8 @@ onBeforeUnmount(() => { generation++; });
       <p>{{ record.source }} · <code>{{ record.id }}</code> · {{ record.createdAt }}</p>
       <Collapse v-if="record.applicationEvidence" data-testid="delivery-application-evidence">
         <template #summary>{{ t('boardDelivery.applicationEvidence') }}</template>
-        <p>{{ t('boardDelivery.postHocHint') }}</p>
+        <p>{{ t(record.applicationEvidence.association === 'PREBOUND' ? 'boardDelivery.preboundHint' : 'boardDelivery.postHocHint') }}</p>
+        <p v-if="record.applicationEvidence.taskBinding" data-testid="delivery-task-binding">{{ t('generation.taskBinding') }}：{{ record.applicationEvidence.taskBinding.projectId }} · {{ record.applicationEvidence.taskBinding.taskId }} · r{{ record.applicationEvidence.taskBinding.revision }}</p>
         <p>{{ t('boardDelivery.conversationId') }}：<code>{{ record.applicationEvidence.conversationId }}</code><br>{{ t('boardDelivery.proposalId') }}：<code>{{ record.applicationEvidence.proposalId }}</code></p>
         <p>{{ record.applicationEvidence.targetPath }} · {{ record.applicationEvidence.generationId }}</p>
         <p>{{ t('boardDelivery.generationBaseline') }}：<code>{{ record.applicationEvidence.generationBaseHash }}</code><br>{{ t('boardDelivery.appliedHash') }}：<code>{{ record.applicationEvidence.appliedAfterHash }}</code></p>
@@ -176,7 +177,7 @@ onBeforeUnmount(() => { generation++; });
     </section>
     <section v-if="record?.decision" data-testid="delivery-decision"><h3>{{ t('boardDelivery.decision.' + record.decision.decision) }}</h3><code>{{ record.decision.id }}</code><p>{{ record.decision.operator }} · {{ record.decision.createdAt }}</p><p>{{ record.decision.comment }}</p></section>
     <ConfirmBox v-if="deciding" :title="t(deciding === 'ACCEPT' ? 'boardDelivery.confirmAccept' : 'boardDelivery.confirmReject')" :impact="[record?.id ?? '', record?.acceptanceCriteria ?? '', comment, t('boardDelivery.humanStatement'), t(deciding === 'ACCEPT' ? 'boardDelivery.acceptImpact' : 'boardDelivery.rejectImpact')]" :confirm-label="t(deciding === 'ACCEPT' ? 'boardDelivery.accept' : 'boardDelivery.reject')" :refusal="(deciding === 'ACCEPT' ? canAccept : canReject) ? undefined : t('boardDelivery.blocked')" @confirm="decide" @cancel="deciding = null" />
-    <ConfirmBox v-if="confirming" :title="t('boardDelivery.confirmSubmit')" :impact="[run.execution.workspacePath, ...paths, deliveryNote, ...(linkApplication ? [conversationId, proposalId, t('boardDelivery.postHocHint')] : [t('boardDelivery.hint')])]" :confirm-label="t('boardDelivery.submit')" :refusal="canSubmit ? undefined : t('boardDelivery.blocked')" @confirm="submit" @cancel="confirming = false" />
+    <ConfirmBox v-if="confirming" :title="t('boardDelivery.confirmSubmit')" :impact="[run.execution.workspacePath, ...paths, deliveryNote, ...(linkApplication ? [conversationId, proposalId, t('boardDelivery.linkHint')] : [t('boardDelivery.hint')])]" :confirm-label="t('boardDelivery.submit')" :refusal="canSubmit ? undefined : t('boardDelivery.blocked')" @confirm="submit" @cancel="confirming = false" />
     </div>
   </Dialog>
 </template>

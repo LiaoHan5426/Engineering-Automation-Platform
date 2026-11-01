@@ -28,12 +28,21 @@ async function read() {
 async function apply() {
   if (loading.value || writing.value || !confirmed.value || props.readOnly || !state.value?.proposal.writeAllowed || state.value.status !== 'PROPOSED') return;
   const token = generation; writing.value = true; confirmed.value = false; note.value = '';
+  let refusal = '';
   try { await runtimeApi.applyCodeProposal(props.proposal.conversationId, props.proposal.id); }
-  catch { if (token === generation) note.value = t('application.uncertain'); }
+  catch (error) {
+    const code = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+    if (['BOARD_REVISION_CONFLICT', 'CODE_TASK_PROTOTYPE_MISMATCH', 'CODE_TASK_SNAPSHOT_CHANGED', 'BOARD_TASK_NOT_FOUND'].includes(code ?? '')) refusal = t('generation.generation-task-stale');
+    else if (['BOARD_EXECUTION_ACTIVE', 'BOARD_PREPARATION_REQUIRED', 'CODE_WORKSPACE_BUSY'].includes(code ?? '')) refusal = t('generation.generation-task-blocked');
+    if (token === generation) note.value = t('application.uncertain');
+  }
   finally {
     if (token === generation) {
       await read();
-      if (token === generation) writing.value = false;
+      if (token === generation) {
+        writing.value = false;
+        if (refusal && state.value?.status === 'PROPOSED') note.value = refusal;
+      }
     }
   }
 }

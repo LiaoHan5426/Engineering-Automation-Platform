@@ -14,7 +14,7 @@ class BoardVerificationPersistenceContractTest {
         var jdbc = mock(JdbcTemplate.class); var tasks = new BoardTaskService(jdbc); var id = UUID.randomUUID();
         var task = new BoardTaskService.Task(id, "p", "title", "ready", "", "", 1, List.of(), "none", "goal", "criteria", false, null);
         when(jdbc.query(anyString(), any(RowMapper.class), eq(id), eq("p"))).thenReturn(List.of(task));
-        when(jdbc.queryForObject(anyString(), eq(Boolean.class), eq(id))).thenAnswer(call -> ((String)call.getArgument(0)).contains("verification_snapshot") && ((String)call.getArgument(0)).contains("UNKNOWN"));
+        when(jdbc.queryForObject(anyString(), eq(Boolean.class), eq(id), eq(id))).thenAnswer(call -> ((String)call.getArgument(0)).contains("verification_snapshot") && ((String)call.getArgument(0)).contains("UNKNOWN"));
         var denied = assertThrows(ResponseStatusException.class, () -> tasks.update(id, new BoardTaskService.Update("p", 1, "planned", null, null, null, null)));
         assertEquals("BOARD_EXECUTION_ACTIVE", denied.getReason());
         verify(jdbc, never()).update(anyString(), any(Object[].class));

@@ -55,6 +55,16 @@ it('replays post-hoc evidence and separates the generation baseline from the Git
   expect(document.body.textContent).toContain('before-hash'); expect(document.body.textContent).toContain('不是下方 Git 基线');
   expect(runtimeApi.submitBoardDelivery).not.toHaveBeenCalled(); expect(runtimeApi.decideBoardDelivery).not.toHaveBeenCalled();
 });
+it('renders server PREBOUND evidence with its original task revision, never as post-hoc authorship', async () => {
+  const applicationEvidence = { association: 'PREBOUND' as const, taskBinding: { projectId: 'project-a', taskId: 'task-a', revision: 3 }, conversationId: 'c', proposalId: 'p', generationId: 'g', targetPath: 'frontend/App.vue', generationBaseHash: 'generation-before', appliedAfterHash: 'after-hash', generationCapturedAt: '2026-11-01T00:00:00Z', prototypeVersionId: null, prototypeContentHash: null, associatedAt: '2026-11-01T00:05:00Z', operator: 'local-operator' as const };
+  vi.mocked(runtimeApi.boardDelivery).mockResolvedValue({ record: { ...record, source: 'CHAT_APPLIED_PREBOUND', applicationEvidence }, prepareAllowed: false, reason: '' });
+  await mount();
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=delivery-task-binding]')).not.toBeNull());
+  expect(document.body.textContent).toContain('生成前已绑定');
+  expect(document.body.textContent).not.toContain('操作者将已应用 Chat 候选事后关联');
+  expect(document.querySelector('[data-testid=delivery-task-binding]')?.textContent).toContain('r3');
+  expect(runtimeApi.submitBoardDelivery).not.toHaveBeenCalled(); expect(runtimeApi.decideBoardDelivery).not.toHaveBeenCalled();
+});
 async function confirm(id = 'delivery-submit') {
   await vi.waitFor(() => expect(button(id)?.disabled).toBe(false)); button(id).click();
   await vi.waitFor(() => expect(document.querySelector('.eap-confirm__actions button:first-child')).not.toBeNull());

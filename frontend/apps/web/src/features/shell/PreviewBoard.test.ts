@@ -25,6 +25,21 @@ beforeEach(() => {
   vi.spyOn(runtimeApi, 'updateBoardTask').mockImplementation((id, body) => call('POST', '/board/tasks/' + id, body));
 });
 afterEach(() => { app?.unmount(); root?.remove(); vi.restoreAllMocks(); workbench.pendingBoardDraft = null; chatBinding.value = null; });
+it('hands off only the saved ready task identity and never derives it from sessionId', async () => {
+  await mountBoard(); await createTask();
+  const project = vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0].projectId;
+  let saved = (await runtimeApi.boardTasks(project)).items[0]!;
+  saved = await runtimeApi.updateBoardTask(saved.id, { projectId: project, revision: saved.revision, column: 'ready' });
+  [...root.querySelectorAll('button')].find(b => b.textContent === i18n.global.t('desktop.boardRefresh'))!.click();
+  await vi.waitFor(() => expect(root.querySelector('[data-testid=lane-ready] .board-card')).not.toBeNull());
+  (root.querySelector('[data-testid=lane-ready] .board-card') as HTMLButtonElement).click();
+  await vi.waitFor(() => expect(detail()).not.toBeNull());
+  const open = [...detail()!.querySelectorAll('button')].find(b => b.textContent?.includes('↗'))!;
+  open.click();
+  await vi.waitFor(() => expect(workbench.pendingBoardDraft?.taskRef).toEqual({ projectId: project, taskId: saved.id, revision: saved.revision }));
+  expect(workbench.pendingBoardDraft?.sessionId).toBe('');
+  expect(workbench.pendingBoardDraft?.prototypeVersionId).toBe('');
+});
 it.each(['ACCEPT', 'REJECT'] as const)('keeps the full board → panel → delivery chain usable after submission for %s', async decision => {
   await mountBoard(); await createTask();
   let authoritative = (await runtimeApi.boardTasks(vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0].projectId)).items[0]!;

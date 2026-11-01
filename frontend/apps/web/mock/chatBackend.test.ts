@@ -4,6 +4,13 @@ import { fileURLToPath } from 'node:url';
 import { createMockChatBackend } from './chatBackend';
 import type { AiConversation, AiMessageResult, AiStatus, ModelConnectionList } from '@eap/runtime-client';
 
+it('refuses task-bound generation instead of simulating durable PREBOUND evidence', async () => {
+  const api = createMockChatBackend();
+  const conversation = (await api.handle('POST', '/ai/conversations')).data as AiConversation;
+  const reply = await api.handle('POST', '/ai/conversations/' + conversation.conversationId + '/messages', { message: 'Bound task', context: { mode: 'code', taskRef: { projectId: 'p', taskId: '12345678-1234-1234-1234-123456789abc', revision: 1 } } });
+  expect(reply).toMatchObject({ status: 409, data: { detail: 'MOCK_TASK_BINDING_UNAVAILABLE' } });
+});
+
 it('serves the chat contract and model whitelist without an external backend', async () => {
   const api = createMockChatBackend();
   const list = (await api.handle('GET', '/ai/connections')).data as ModelConnectionList;

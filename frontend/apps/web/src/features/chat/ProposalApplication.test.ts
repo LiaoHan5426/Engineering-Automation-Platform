@@ -53,6 +53,16 @@ it.each(['APPLYING', 'UNKNOWN', 'FAILED'])('does not offer a new write for %s ev
   await mount(); await vi.waitFor(() => expect(host.querySelector('[data-testid=proposal-status]')).not.toBeNull());
   expect(button('proposal-apply')).toBeNull(); expect(host.querySelector('input[type=checkbox]')).toBeNull();
 });
+it('retains a task revision refusal after rereading a still-proposed record', async () => {
+  vi.mocked(runtimeApi.applyCodeProposal).mockRejectedValue({ response: { status: 409, data: { detail: 'BOARD_REVISION_CONFLICT' } } });
+  await mount(); await vi.waitFor(() => expect(button('proposal-apply')).not.toBeNull());
+  (host.querySelector('input[type=checkbox]') as HTMLInputElement).click();
+  await vi.waitFor(() => expect(button('proposal-apply').disabled).toBe(false)); button('proposal-apply').click();
+  await vi.waitFor(() => expect(runtimeApi.codeProposal).toHaveBeenCalledTimes(2));
+  await vi.waitFor(() => expect(host.textContent).toContain(i18n.global.t('generation.generation-task-stale')));
+  expect(button('proposal-apply').disabled).toBe(true);
+  expect(runtimeApi.applyCodeProposal).toHaveBeenCalledTimes(1);
+});
 it('blocks applying after a read failure and requires a fresh confirmation after recovery', async () => {
   vi.mocked(runtimeApi.codeProposal).mockRejectedValueOnce(new Error('offline'));
   await mount(); await vi.waitFor(() => expect(host.textContent).toContain('无法核对持久写入记录'));

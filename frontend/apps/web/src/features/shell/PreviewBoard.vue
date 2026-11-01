@@ -177,9 +177,10 @@ async function create() {
   } finally { busy.value = false; }
 }
 function open(task: BoardTask) {
+  if (busy.value || dirty.value || stale.value || task.executionActive) return;
   guarded(() => {
   // Seed chat draft only; never invent a fake conversation id from the task id.
-  workbench.pendingBoardDraft = { sessionId: task.sessionId || '', title: [task.title, task.goal, task.acceptanceCriteria ? t('desktop.boardCriteria') + '：\n' + task.acceptanceCriteria : ''].filter(Boolean).join('\n\n') };
+  workbench.pendingBoardDraft = { sessionId: task.sessionId || '', title: [task.title, task.goal, task.acceptanceCriteria ? t('desktop.boardCriteria') + '：\n' + task.acceptanceCriteria : ''].filter(Boolean).join('\n\n'), ...(task.column === 'ready' && !task.preparationIssues.length ? { taskRef: { projectId: task.projectId, taskId: task.id, revision: task.revision }, prototypeVersionId: task.prototypeVersionId ?? '' } : {}) };
   window.location.hash = workbench.workMode === 'work' ? 'work' : 'chat';
   });
 }

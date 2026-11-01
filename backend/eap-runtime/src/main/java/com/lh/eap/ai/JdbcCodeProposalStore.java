@@ -14,10 +14,21 @@ public class JdbcCodeProposalStore implements CodeProposalStore {
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transaction;
     private final TransactionTemplate nonTransactional;
+    private final CodeGenerationStore generations;
+    private final com.lh.eap.application.service.BoardCodeTaskBinding tasks;
     public JdbcCodeProposalStore(JdbcTemplate jdbc, PlatformTransactionManager manager) {
+        this(jdbc, manager, new JdbcCodeGenerationStore(jdbc, manager),
+                new com.lh.eap.application.service.BoardCodeTaskBinding(new com.lh.eap.application.service.BoardTaskService(jdbc),
+                        new com.lh.eap.persistence.mapper.JdbcPrototypeVersionStore(jdbc)));
+    }
+    @org.springframework.beans.factory.annotation.Autowired
+    public JdbcCodeProposalStore(JdbcTemplate jdbc, PlatformTransactionManager manager, CodeGenerationStore generations,
+                                 com.lh.eap.application.service.BoardCodeTaskBinding tasks) {
         this.jdbc = jdbc;
+        this.generations = generations; this.tasks = tasks;
         transaction = new TransactionTemplate(manager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         transaction.setTimeout(10);
         nonTransactional = new TransactionTemplate(manager);
         nonTransactional.setPropagationBehavior(TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
@@ -49,10 +60,16 @@ public class JdbcCodeProposalStore implements CodeProposalStore {
     @Override public boolean claim(String principal, UUID conversation, UUID id) {
         return Boolean.TRUE.equals(transaction.execute(tx -> {
             var row = find(principal, conversation, id).orElseThrow();
+            if (!row.status().equals("PROPOSED")) return false;
+            // Derive the lock from immutable source evidence, not a caller/summary-selected task.
+            var generation = generations.find(row.proposal().generation().id()).orElseThrow();
+            var binding = generation.taskSnapshot();
+            if (binding != null) tasks.lock(binding.binding());
             var workspace = row.proposal().workspace();
             com.lh.eap.application.service.WorkspaceInterlock.lock(jdbc, workspace);
             row = find(principal, conversation, id).orElseThrow();
             if (!row.status().equals("PROPOSED")) return false;
+            if (binding != null) tasks.validateLocked(binding);
             if (com.lh.eap.application.service.WorkspaceInterlock.codeActive(jdbc, workspace)
                     || com.lh.eap.application.service.WorkspaceInterlock.boardActive(jdbc, workspace))
                 throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "CODE_WORKSPACE_BUSY");

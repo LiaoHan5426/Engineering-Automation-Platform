@@ -1,6 +1,8 @@
 export const boardDeliveryMessages = {
   'zh-CN': {
-    linkApplication: '关联已应用的 Chat 候选（事后关联）', conversationId: '会话 ID', proposalId: '候选 ID',
+    linkApplication: '关联已应用的 Chat 候选', conversationId: '会话 ID', proposalId: '候选 ID',
+    linkHint: '服务端从原始生成记录判断生成前绑定或事后关联，不接受客户端选择归因类型。提交不自动验证或接受。',
+    preboundHint: '生成前已绑定任务及版本，服务端核对原始快照与本次交付。此 Run 仍仅检查仓库，不是代码实现者；不证明整个 Git 差异均由 Chat 创作，提交不自动验证或接受。',
     applicationInvalid: '关联仅支持一个文件及两个完整 UUID；不自动修正身份或路径。',
     applicationEvidence: '已应用候选的关联证据', generationBaseline: '生成前工作树基线（不是下方 Git 基线）', appliedHash: '应用后源码 SHA-256',
     postHocHint: '操作者将已应用 Chat 候选事后关联本任务。此 Run 仅检查仓库，不是代码实现者；关联不证明生成时已绑定任务，也不证明整个 Git 差异均由 Chat 创作。提交不自动验证或接受。',
@@ -16,7 +18,9 @@ export const boardDeliveryMessages = {
     blocked: '当前不可提交', loadFailed: '无法读取交付记录。保留已保存证据，写操作暂停；请刷新后重试。',
   },
   'en-US': {
-    linkApplication: 'Link an applied Chat candidate (post-hoc)', conversationId: 'Conversation ID', proposalId: 'Proposal ID',
+    linkApplication: 'Link an applied Chat candidate', conversationId: 'Conversation ID', proposalId: 'Proposal ID',
+    linkHint: 'The server distinguishes prebound and post-hoc association from the original generation record. Clients cannot select attribution. Submission does not verify or accept.',
+    preboundHint: 'Task and revision were bound before generation and checked against this delivery. The Run only inspected the repository; it did not implement code. This does not establish authorship of the entire Git diff. Submission never automatically verifies or accepts.',
     applicationInvalid: 'Linking requires one file and two complete UUIDs. Identities and paths are never repaired automatically.',
     applicationEvidence: 'Linked application evidence', generationBaseline: 'Pre-generation working-tree baseline (not the Git baseline below)', appliedHash: 'Applied source SHA-256',
     postHocHint: 'The operator associates an applied Chat candidate with this task after the fact. This Run only inspected the repository; it did not implement code. This does not establish task binding at generation time or authorship of the entire Git diff. Submission never automatically verifies or accepts.',

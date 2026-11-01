@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from "vue";
 import { useI18n } from "vue-i18n";
-import { DropdownMenu, Badge, Button, Checkbox, Feedback, InfiniteScroll, Input, Textarea, Collapse, WorkbenchFrame, Drawer } from "@eap/ui";
+import { DropdownMenu, Badge, Button, Checkbox, ConfirmBox, Feedback, InfiniteScroll, Input, Textarea, Collapse, WorkbenchFrame, Drawer } from "@eap/ui";
 import { type AiConnectionState } from "@eap/runtime-client";
 import { errorMessage } from "../../lib/presentation";
 import { createChatSession } from "./chatSession";
@@ -13,6 +13,7 @@ import { preview } from '../shell/preview';
 import TaskComposer from "./TaskComposer.vue";
 import GenerationBaseline from "./GenerationBaseline.vue";
 import ProposalApplication from "./ProposalApplication.vue";
+import { adoptBoardTaskDraft } from './boardTaskDraft';
 import type { CodeProposal } from "@eap/runtime-client";
 import { catalogRefreshNote, type CatalogNote } from "./catalogNote";
 import { readFeedScroll, saveFeedScroll } from "./feedScroll";
@@ -114,11 +115,24 @@ const manageTitle = ref('');
 const deleteId = ref<string | null>(null);
 const historyNote = ref('');
 const boardNote = ref("");
+const adoptingBoardDraft = ref(false);
+function adoptPendingBoardDraft() {
+  if (!props.active || session.sending.value || session.opening.value) return;
+  const pending = takeBoardDraft(true);
+  if (!pending) return;
+  adoptingBoardDraft.value = false;
+  const adopted = adoptBoardTaskDraft(pending);
+  session.beginDraft();
+  session.draft.value = adopted.text; session.context.value = adopted.context;
+  workbench.executionMode = 'chat';
+  session.toolMode.value = 'none';
+  workbench.sessionExtras.scratch = { projectId: pending.taskRef?.projectId ?? null, scenarioId: null, experts: [], resources: [], executionMode: 'chat' };
+  boardNote.value = '';
+}
 watch(() => [props.active, workbench.pendingBoardDraft] as const, () => {
-  const draft = takeBoardDraft(props.active);
+  const draft = props.active ? workbench.pendingBoardDraft : null;
   if (draft) {
-    if (!session.conversationId.value && !session.draft.value.trim()) session.draft.value = draft.title;
-    boardNote.value = t("desktop.boardDraftKept", { title: draft.title });
+    boardNote.value = t('generation.pendingTask');
   }
 }, { immediate: true });
 const deleting = ref(false);
@@ -419,6 +433,8 @@ onMounted(async () => {
     <Feedback v-if="session.storageError.value" tone="warning">{{ t('historyUi.storageError') }}</Feedback>
     <Feedback v-if="historyNote && !deleteId && session.phase.value !== 'offline'" tone="warning">{{ historyNote }}</Feedback>
     <p v-if="boardNote" class="hint" role="status" data-testid="board-draft-note">{{ boardNote }}</p>
+    <Button v-if="workbench.pendingBoardDraft" data-testid="adopt-board-draft" :disabled="session.sending.value || session.opening.value" @click="adoptingBoardDraft = true">{{ t('generation.adoptTask') }}</Button>
+    <ConfirmBox v-if="adoptingBoardDraft && workbench.pendingBoardDraft" :title="t('generation.adoptTask')" :impact="[workbench.pendingBoardDraft.title, t('generation.adoptTaskImpact')]" :confirm-label="t('generation.adoptTask')" @confirm="adoptPendingBoardDraft" @cancel="adoptingBoardDraft = false" />
     <Feedback v-if="session.expired.value || archived" tone="warning">{{ archived ? t('historyUi.archiveNotice') : t('historyUi.expired') }}</Feedback>
     <p v-if="session.toolMode.value === 'git_status'" class="hint">{{ t("chat.gitWarning") }}</p>
 

@@ -1,5 +1,6 @@
 import { reactive, shallowRef, watch } from "vue";
-import type { CodeProposal } from '@eap/runtime-client';
+import type { CodeProposal, CodeTaskRef } from '@eap/runtime-client';
+export type BoardTaskDraft = { sessionId: string; title: string; taskRef?: CodeTaskRef; prototypeVersionId?: string };
 import { useMockServices } from '../../lib/serviceConfig';
 
 export type ExecutionMode = "chat" | "plan" | "agent";
@@ -254,7 +255,7 @@ export const workbench = reactive({
   get selectedProjectId() { return localProjectState.selectedId; },
   set selectedProjectId(id: string | null) { selectLocalProject(id); },
   pendingMockHandoff: false,
-  pendingBoardDraft: null as { sessionId: string; title: string } | null,
+  pendingBoardDraft: null as BoardTaskDraft | null,
   modelMenuToken: 0,
   policyMenuToken: 0,
   notice: "",

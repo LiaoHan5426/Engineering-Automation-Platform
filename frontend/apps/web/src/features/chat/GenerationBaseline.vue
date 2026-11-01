@@ -14,6 +14,7 @@ const { t } = useI18n();
       <p v-if="generation.baseHash === 'absent'">{{ t('generation.absent') }}</p>
       <p v-else>SHA-256：<code>{{ generation.baseHash }}</code></p>
       <p>{{ t('generation.captured') }}：{{ generation.capturedAt }}</p>
+      <p v-if="generation.taskBinding">{{ t('generation.taskBinding') }}：{{ generation.taskBinding.projectId }} · {{ generation.taskBinding.taskId }} · r{{ generation.taskBinding.revision }}</p>
       <p v-if="generation.prototypeVersionId">{{ t('generation.prototype') }}：<code>{{ generation.prototypeVersionId }} · {{ generation.prototypeContentHash }}</code></p>
       <p>{{ t('generation.boundary') }}</p>
     </div>

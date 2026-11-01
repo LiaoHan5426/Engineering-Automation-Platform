@@ -45,6 +45,14 @@ describe("chat session", () => {
     [400, 'CODE_GENERATION_SCOPE_MISMATCH', 'generation-blocked'],
     [503, 'CODE_GENERATION_CONTEXT_UNAVAILABLE', 'generation-unavailable'],
     [400, 'CODE_PROPOSAL_TOO_LARGE', 'generation-too-large'],
+    [409, 'BOARD_REVISION_CONFLICT', 'generation-task-stale'],
+    [409, 'CODE_TASK_PROTOTYPE_MISMATCH', 'generation-task-stale'],
+    [409, 'CODE_TASK_SNAPSHOT_CHANGED', 'generation-task-stale'],
+    [409, 'CODE_WORKSPACE_BUSY', 'generation-task-blocked'],
+    [409, 'BOARD_EXECUTION_ACTIVE', 'generation-task-blocked'],
+    [409, 'BOARD_PREPARATION_REQUIRED', 'generation-task-blocked'],
+    [404, 'BOARD_TASK_NOT_FOUND', 'generation-task-stale'],
+    [409, 'MOCK_TASK_BINDING_UNAVAILABLE', 'generation-task-mock'],
   ])('keeps the draft and distinguishes source preparation failure %s %s from a model switch', async (http, code, expected) => {
     const api: ChatApi = {
       aiStatus: async () => status('configured_unverified'),
@@ -54,11 +62,14 @@ describe("chat session", () => {
     const session = createChatSession(api);
     await session.openConversation(); session.context.value.mode = 'code';
     session.context.value.targetPath = 'frontend/App.vue'; session.draft.value = 'Keep my source edits';
+    session.context.value.taskRef = { projectId: 'p', taskId: '12345678-1234-1234-1234-123456789abc', revision: 2 };
     await session.send();
     expect(session.failure.value).toBe(expected);
     expect(session.draft.value).toBe('Keep my source edits');
     expect(session.turns.value).toEqual([]);
     expect(session.pendingConnectionId.value).toBeNull();
+    expect(session.expired.value).toBe(false);
+    expect(session.context.value.taskRef?.revision).toBe(2);
   });
   it('keeps an oversized code response as an explicit failure without a partial candidate', async () => {
     const api: ChatApi = {

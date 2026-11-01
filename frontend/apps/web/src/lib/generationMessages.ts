@@ -1,6 +1,11 @@
 export const generationMessages = {
   'zh-CN': {
+    pendingTask: '有一份任务草稿待采用。当前输入未改，也没有发送；确认后整体带入任务及原型。',
     title: '生成前快照', missing: '未关联生成前持久快照（旧记录或模拟候选）。',
+    'generation-task-stale': '任务或原型版本已变化。草稿和旧绑定保留，请回看板核对后显式采用新版本；不会自动更新版本或重试。',
+    'generation-task-blocked': '任务尚未准备完整或已有执行/未知应用。草稿保留，请回看板核对阻塞原因。',
+    'generation-task-mock': '模拟服务不生成持久任务绑定证据。草稿保留；可显式移除绑定后仅演示普通对话。',
+    adoptTask: '采用任务草稿并新建对话', adoptTaskImpact: '整体采用任务文本、版本身份及原型；当前未发送草稿将被替换，不自动发送。目标文件需明确填写；服务端会再次核对任务版本。', taskBinding: '生成前任务绑定', removeTask: '移除任务绑定（保留草稿）',
     target: '唯一生成目标', captured: '采集时间', prototype: '来源原型',
     targetPlaceholder: '仓库相对路径，例如 frontend/apps/web/src/Example.vue',
     targetHelp: '无需关联原型。只生成此文件；附件不自动成为目标，路径与完整源码由服务端校验。',
@@ -13,7 +18,12 @@ export const generationMessages = {
     retry: '核对源码后重新生成',
   },
   'en-US': {
+    pendingTask: 'A task draft is ready to adopt. Current input is unchanged and nothing was sent. Confirm to adopt task and prototype together.',
     title: 'Pre-generation snapshot', missing: 'No persisted pre-generation snapshot (legacy or simulated candidate).',
+    'generation-task-stale': 'The task or prototype revision changed. Draft and original binding are retained. Review the board and explicitly adopt the new revision; no automatic retry or revision update.',
+    'generation-task-blocked': 'Task preparation or an active/unknown operation blocks generation. Draft retained; inspect the board.',
+    'generation-task-mock': 'Mock cannot produce durable task-binding evidence. Draft retained; explicitly remove the binding to demonstrate ordinary chat only.',
+    adoptTask: 'Adopt task draft in a new conversation', adoptTaskImpact: 'Adopt task text, version identity and prototype together. This replaces the unsent draft without sending. Specify a target file; the server rechecks task revision.', taskBinding: 'Pre-generation task binding', removeTask: 'Remove task binding (keep draft)',
     target: 'Single generation target', captured: 'Captured at', prototype: 'Source prototype',
     targetPlaceholder: 'Repository-relative path, e.g. frontend/apps/web/src/Example.vue',
     targetHelp: 'No prototype required. Generate only this file; attachments do not select a target. The server validates the path and complete source.',

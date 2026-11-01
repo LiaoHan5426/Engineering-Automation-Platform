@@ -6,13 +6,20 @@ import java.util.*;
 import org.springframework.stereotype.Service;
 import static com.lh.eap.application.service.BoardVerificationSource.denied;
 
-/** Read-only durable Chat evidence. Association is post hoc, never generation-time Task authorship. */
+/** Read-only durable Chat evidence; PREBOUND requires an original immutable task snapshot. */
 @Service
 public class BoardApplicationEvidence {
     public record Evidence(String association, UUID conversationId, UUID proposalId, UUID generationId,
                            String targetPath, String generationBaseHash, String appliedAfterHash,
                            Instant generationCapturedAt, String prototypeVersionId, String prototypeContentHash,
-                           Instant associatedAt, String operator) {}
+                           Instant associatedAt, String operator, TaskContext.TaskRef taskBinding) {
+        public Evidence(String association, UUID conversationId, UUID proposalId, UUID generationId, String targetPath,
+                        String generationBaseHash, String appliedAfterHash, Instant generationCapturedAt,
+                        String prototypeVersionId, String prototypeContentHash, Instant associatedAt, String operator) {
+            this(association, conversationId, proposalId, generationId, targetPath, generationBaseHash, appliedAfterHash,
+                    generationCapturedAt, prototypeVersionId, prototypeContentHash, associatedAt, operator, null);
+        }
+    }
     private final CodeProposalStore proposals;
     private final CodeGenerationStore generations;
     public BoardApplicationEvidence(CodeProposalStore proposals, CodeGenerationStore generations) {
@@ -20,6 +27,11 @@ public class BoardApplicationEvidence {
     }
     public Evidence associate(BoardDeliveryService.ApplicationRef ref, String workspace, BoardPrototypeService.Reference prototype,
                               BoardVerificationService.Record verification, List<BoardDeliveryCapture.File> files, Instant associatedAt) {
+        return associate(ref, workspace, prototype, verification, files, associatedAt, null, null);
+    }
+    public Evidence associate(BoardDeliveryService.ApplicationRef ref, String workspace, BoardPrototypeService.Reference prototype,
+                              BoardVerificationService.Record verification, List<BoardDeliveryCapture.File> files, Instant associatedAt,
+                              TaskContext.TaskRef target, BoardRunService.Snapshot runTask) {
         var row = proposals.find(AiConversationRegistry.PRINCIPAL, ref.conversationId(), ref.proposalId())
             .orElseThrow(() -> denied("BOARD_DELIVERY_APPLICATION_NOT_FOUND"));
         var proposal = row.proposal();
@@ -52,9 +64,16 @@ public class BoardApplicationEvidence {
         if (!Objects.equals(emptyToNull(generation.prototypeVersionId()), prototype == null ? null : prototype.id().toString())
                 || !Objects.equals(emptyToNull(generation.prototypeContentHash()), prototype == null ? null : prototype.contentHash()))
             throw denied("BOARD_DELIVERY_APPLICATION_PROTOTYPE_MISMATCH");
-        return new Evidence("POST_HOC", ref.conversationId(), ref.proposalId(), generation.id(), generation.targetPath(),
+        var task = generation.taskSnapshot();
+        if (task != null && (target == null || !task.binding().equals(target) || runTask == null
+                || !task.title().equals(runTask.title()) || !task.goal().equals(runTask.goal())
+                || !task.acceptanceCriteria().equals(runTask.acceptanceCriteria())
+                || !Objects.equals(task.prototype() == null ? null : new BoardPrototypeService.Reference(task.prototype().id(),
+                    task.prototype().sourceRef(), task.prototype().title(), task.prototype().contentHash(), task.prototype().createdAt()), runTask.prototype())))
+            throw denied("BOARD_DELIVERY_APPLICATION_TASK_MISMATCH");
+        return new Evidence(task == null ? "POST_HOC" : "PREBOUND", ref.conversationId(), ref.proposalId(), generation.id(), generation.targetPath(),
             generation.baseHash(), row.result().afterHash(), generation.capturedAt(), emptyToNull(generation.prototypeVersionId()),
-            emptyToNull(generation.prototypeContentHash()), associatedAt, AiConversationRegistry.PRINCIPAL);
+            emptyToNull(generation.prototypeContentHash()), associatedAt, AiConversationRegistry.PRINCIPAL, task == null ? null : task.binding());
     }
     private static String emptyToNull(String value) { return value == null || value.isEmpty() ? null : value; }
 }

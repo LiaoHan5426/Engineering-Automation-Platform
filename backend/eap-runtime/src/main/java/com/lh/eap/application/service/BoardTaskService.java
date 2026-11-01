@@ -29,7 +29,8 @@ public class BoardTaskService {
     public record Update(String projectId, long revision, String column, String notes, String priority,
                          String goal, String acceptanceCriteria) {}
     private static final String ACTIVE = "(e.status IN ('CREATED','RUNNING','CANCELLING') OR r.verification_snapshot->>'status' IN ('QUEUED','RUNNING','UNKNOWN'))";
-    private static final String SELECT = "SELECT b.*, EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=b.id AND " + ACTIVE + ") AS execution_active FROM eap.board_task b";
+    private static final String CODE_ACTIVE = "SELECT 1 FROM eap.code_proposal p JOIN eap.code_generation g ON g.id=p.generation_id WHERE p.status IN ('APPLYING','UNKNOWN') AND g.task_id=";
+    private static final String SELECT = "SELECT b.*, (EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=b.id AND " + ACTIVE + ") OR EXISTS (" + CODE_ACTIVE + "b.id)) AS execution_active FROM eap.board_task b";
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final RowMapper<Task> ROW = (rs, row) -> new Task(rs.getObject("id", UUID.class),
             rs.getString("project_id"), rs.getString("title"), rs.getString("column_id"), rs.getString("notes"),
@@ -101,7 +102,7 @@ public class BoardTaskService {
 
     // Separate statement after locking the task: a waiter needs a fresh READ COMMITTED snapshot.
     boolean hasActiveExecution(UUID id) {
-        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=? AND " + ACTIVE + ")", Boolean.class, id));
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=? AND " + ACTIVE + ") OR EXISTS (" + CODE_ACTIVE + "?)", Boolean.class, id, id));
     }
     // All callers acquire the task row first, then this workspace lock: never the opposite order.
     void lockWorkspace(String workspace) {

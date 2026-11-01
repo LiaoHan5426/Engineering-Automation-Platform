@@ -48,7 +48,7 @@ class BoardDeliveryApplicationTest {
         when(git.availability()).thenReturn(new MissionGitExecutionService.Availability(true,"repo","repo",""));
         when(verification.observePreflight(eq(taskId),eq(run),eq("repo"),any())).thenAnswer(call -> ((Supplier<?>)call.getArgument(3)).get());
         when(capture.capture(any(),any(),anyString(),any(),anyList())).thenReturn(files);
-        when(applications.associate(eq(ref),eq("repo"),isNull(),any(),eq(files),any())).thenReturn(evidence);
+        when(applications.associate(eq(ref),eq("repo"),isNull(),any(),eq(files),any(),any(),any())).thenReturn(evidence);
         when(jdbc.query(anyString(),any(RowMapper.class),eq(taskId),eq(run))).thenAnswer(call -> {
             var rs=mock(ResultSet.class); when(rs.getString(1)).thenReturn(saved); when(rs.getString(2)).thenReturn(requestHash); when(rs.getString(3)).thenReturn(decisionHash); when(rs.getLong(4)).thenReturn(1L);
             when(rs.getString(5)).thenReturn(json.writeValueAsString(new BoardRunService.Snapshot("title","goal","criteria",null))); when(rs.getString(6)).thenReturn(json.writeValueAsString(record));
@@ -59,7 +59,7 @@ class BoardDeliveryApplicationTest {
     @Test void capturesExplicitPostHocEvidenceAndReplaysWithoutProcessesOrSourceLookup() {
         var service=service(); var delivery=service.submit(taskId,run,request(true));
         assertEquals("CHAT_APPLIED_POST_HOC",delivery.source()); assertEquals(evidence,delivery.applicationEvidence()); assertEquals("acceptance",task.column());
-        var order=inOrder(tasks,capture,applications); order.verify(tasks).find(taskId,"p",true); order.verify(tasks).lockWorkspace("repo"); order.verify(capture).capture(any(),any(),anyString(),any(),anyList()); order.verify(applications).associate(eq(ref),eq("repo"),isNull(),any(),eq(files),any());
+        var order=inOrder(tasks,capture,applications); order.verify(tasks).find(taskId,"p",true); order.verify(tasks).lockWorkspace("repo"); order.verify(capture).capture(any(),any(),anyString(),any(),anyList()); order.verify(applications).associate(eq(ref),eq("repo"),isNull(),any(),eq(files),any(),any(),any());
         clearInvocations(capture,applications);
         assertEquals(delivery,service().submit(taskId,run,request(true))); assertEquals(delivery,service().get(taskId,run,"p").record()); verifyNoInteractions(capture,applications);
         assertEquals("BOARD_DELIVERY_REQUEST_CONFLICT",assertThrows(ResponseStatusException.class,()->service().submit(taskId,run,request(false))).getReason());
@@ -74,7 +74,7 @@ class BoardDeliveryApplicationTest {
     }
     @Test void acceptanceRevalidatesPersistentApplicationButRejectionDoesNotCaptureOrLookup() {
         var delivery=service().submit(taskId,run,request(true));
-        when(applications.associate(any(),anyString(),any(),any(),anyList(),any())).thenThrow(BoardVerificationSource.denied("BOARD_DELIVERY_APPLICATION_NOT_APPLIED"));
+        when(applications.associate(any(),anyString(),any(),any(),anyList(),any(),any(),any())).thenThrow(BoardVerificationSource.denied("BOARD_DELIVERY_APPLICATION_NOT_APPLIED"));
         var accept=new BoardDeliveryService.Decide("p",2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"test only");
         assertEquals("BOARD_DELIVERY_APPLICATION_NOT_APPLIED",assertThrows(ResponseStatusException.class,()->service().decide(taskId,run,accept)).getReason());
         assertEquals("acceptance",task.column()); assertNull(service().get(taskId,run,"p").record().decision());

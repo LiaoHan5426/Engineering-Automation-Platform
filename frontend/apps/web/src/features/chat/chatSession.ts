@@ -53,6 +53,14 @@ function generationFailure(error: unknown): string | undefined {
     CODE_GENERATION_SCOPE_MISMATCH: 'generation-blocked',
     CODE_GENERATION_CONTEXT_UNAVAILABLE: 'generation-unavailable',
     CODE_PROPOSAL_TOO_LARGE: 'generation-too-large',
+    BOARD_REVISION_CONFLICT: 'generation-task-stale',
+    CODE_TASK_PROTOTYPE_MISMATCH: 'generation-task-stale',
+    CODE_TASK_SNAPSHOT_CHANGED: 'generation-task-stale',
+    CODE_WORKSPACE_BUSY: 'generation-task-blocked',
+    BOARD_EXECUTION_ACTIVE: 'generation-task-blocked',
+    BOARD_PREPARATION_REQUIRED: 'generation-task-blocked',
+    BOARD_TASK_NOT_FOUND: 'generation-task-stale',
+    MOCK_TASK_BINDING_UNAVAILABLE: 'generation-task-mock',
   } as Record<string, string>)[code];
 }
 
@@ -301,7 +309,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       if (conversationId.value === id && result.error) failure.value = result.error === 'CODE_PROPOSAL_TOO_LARGE' ? 'generation-too-large' : "kept";
     } catch (error) {
       if (inflight.value[id] !== current) return;
-      if (httpStatus(error) === 404) { if (entry) entry.expired = true; if (conversationId.value === id) expired.value = true; }
+      if (httpStatus(error) === 404 && !generationFailure(error)) { if (entry) entry.expired = true; if (conversationId.value === id) expired.value = true; }
       if (conversationId.value === id) failure.value = generationFailure(error) ?? (httpStatus(error) === 409 ? "target-changed" : httpStatus(error) === 403 ? "model-unavailable" : httpStatus(error) === 503 ? "not-configured" : "failed");
     } finally {
       if (inflight.value[id] === current) {

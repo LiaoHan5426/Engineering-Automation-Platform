@@ -21,6 +21,8 @@ class BoardApplicationEvidenceTest {
     private BoardVerificationSource.Source source = new BoardVerificationSource.Source("frontend", "source", List.of(new BoardVerificationSource.File(generation.targetPath(), applied.afterHash(), 5)), List.of());
     private List<BoardDeliveryCapture.File> files = List.of(new BoardDeliveryCapture.File(generation.targetPath(), generation.baseHash(), applied.afterHash(), "before", "after"));
     private BoardPrototypeService.Reference prototype;
+    private TaskContext.TaskRef target;
+    private BoardRunService.Snapshot runTask;
     private String principal = AiConversationRegistry.PRINCIPAL, status = "APPLIED";
     private Instant finished = now.plusSeconds(1), started = now;
     private final BoardApplicationEvidence service = new BoardApplicationEvidence(proposals, generations);
@@ -29,7 +31,7 @@ class BoardApplicationEvidenceTest {
         when(generations.find(any())).thenReturn(Optional.of(generation));
         var plan = new BoardVerificationPlanSupport.Plan("plan", "repo", "base", source, List.of());
         var verification = new BoardVerificationService.Record(UUID.randomUUID(), "PASSED", "", plan, List.of(), source, now.plusSeconds(2), now.plusSeconds(3));
-        return service.associate(new BoardDeliveryService.ApplicationRef(conversation, id), "repo", prototype, verification, files, now.plusSeconds(4));
+        return service.associate(new BoardDeliveryService.ApplicationRef(conversation, id), "repo", prototype, verification, files, now.plusSeconds(4), target, runTask);
     }
     @Test void persistentAppliedEvidenceCanBeAssociatedWithoutLiveConversation() {
         var evidence = associate();
@@ -45,6 +47,28 @@ class BoardApplicationEvidenceTest {
         proposal=new CodeChangeService.Proposal(id,conversation,"repo","",proposal.files(),now,false,true,"",generation.reference());
         finished=now.plusSeconds(2);
         var evidence=associate(); assertEquals(version.toString(),evidence.prototypeVersionId()); assertEquals(hash,evidence.prototypeContentHash());
+    }
+    @Test void preboundAssociationRetainsOriginalSummaryAndDoesNotClaimRunAuthorship() {
+        bindTask();
+        var evidence = associate();
+        assertEquals("PREBOUND", evidence.association()); assertEquals(target, evidence.taskBinding());
+        assertEquals(generation.reference().taskBinding(), evidence.taskBinding());
+    }
+    private void bindTask() {
+        var task = new CodeGenerationStore.TaskSnapshot("project", UUID.randomUUID(), 3, "title", "goal", "criteria", null);
+        target = task.binding(); runTask = new BoardRunService.Snapshot("title", "goal", "criteria", null);
+        generation = new CodeGenerationStore.Snapshot(generation.id(), principal, conversation, "repo", generation.targetPath(), generation.baseHash(), generation.source(), "", "", now, task);
+        proposal = new CodeChangeService.Proposal(id, conversation, "repo", "candidate", proposal.files(), now, false, true, "not_requested", generation.reference());
+    }
+    @ParameterizedTest @ValueSource(strings={"project", "task", "revision", "missingTarget", "missingRun", "title", "goal", "criteria", "prototype"})
+    void preboundMismatchIsRejectedInsteadOfDowngradedToPostHoc(String mutation) {
+        bindTask();
+        target = mutation.equals("missingTarget") ? null : new TaskContext.TaskRef(mutation.equals("project") ? "foreign" : target.projectId(),
+                mutation.equals("task") ? UUID.randomUUID() : target.taskId(), mutation.equals("revision") ? 4 : target.revision());
+        runTask = mutation.equals("missingRun") ? null : new BoardRunService.Snapshot(mutation.equals("title") ? "other" : "title",
+                mutation.equals("goal") ? "other" : "goal", mutation.equals("criteria") ? "other" : "criteria",
+                mutation.equals("prototype") ? new BoardPrototypeService.Reference(UUID.randomUUID(), "builder-alpha", "test", "a".repeat(64), now) : null);
+        assertEquals("BOARD_DELIVERY_APPLICATION_TASK_MISMATCH", assertThrows(ResponseStatusException.class, this::associate).getReason());
     }
     @Test void missingApplicationTimesFailClosed() {
         started=null; finished=null;
