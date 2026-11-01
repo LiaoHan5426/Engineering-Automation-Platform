@@ -1,6 +1,6 @@
 # 源码交付证据与人工验收切片
 
-状态：实施合同，未交付。承接 v1.6 §0B.7、§0B.11 及 Run 独立验证。
+状态：本阶段实现、回归、独立审查及真实服务交付/测试决定回放通过。承接 v1.6 §0B.7、§0B.11 及 Run 独立验证；仅 EXTERNAL_MANUAL 交付，不是平台自动源码实现或用户最终产品验收。
 
 ## 实施与审查状态
 
@@ -11,6 +11,16 @@
 真实成功联调需要一个明确且小于 8 文件的基线：当前实现本身超过范围，不能扩大交付上限或用不完整选择绕过保护。实现代码经独立复核后先形成本地检查点，再在该基线上建立明确标记的临时 HTML 交互样例，用真实 Run/三项验证/源码采集/脚本化测试决定走通链路。仅测试样例允许代理执行 ACCEPT/REJECT，说明必须写明不是用户产品验收。最终联调与文档完成后再推送；application.yml 不进入任何提交，临时样例不进入产品提交。
 
 再次复核发现两个边界未闭合：前端冲突测试采用非真实错误码、Git autocrlf 显式空字符串与无值布尔混淆。前者父任务已将提交/决定及本地日志校验统一为后端真实 `BOARD_DELIVERY_REQUEST_CONFLICT`，先复现 3 项失败，再修复至相关 53 项通过、类型通过；后者正在补真实 Git 回归。此前全量通过不覆盖这两个未测边界，阶段继续保持未交付。
+
+### 最终结果（覆盖上述过程状态）
+
+- 两项最后缺陷已修并经独立只读复核通过：真实冲突码持久保护；空 autocrlf 按 Git typed bool 区分，4 项实 Git 回归，未执行任何自定义转换 helper。
+- 父任务最终命令：`EAP_RUN_BOARD_PERSISTENCE=true EAP_RUN_MISSION_GIT_ACCEPTANCE=true rtk proxy mvn -f backend/pom.xml test`：456 项，450 通过、6 条件跳过、0 失败/错误。真实数据库 Run 27 项，真实 Git 采集 41 项。`rtk proxy pnpm --dir frontend test run`：78 文件/354 项；typecheck、check:boundaries、build、diff --check 均通过。保留大 chunk 和 Node 实验警告。
+- 本地实现检查点 `a63d27e` 后，创建唯一未跟踪 `frontend/apps/web/delivery-acceptance-fixture.html`，页面明确“非产品验收”，真实浏览器点击计数到 1。分别从两条测试任务启动只读 Run、确认真实 typecheck/test/build，三项均退出 0、清理已确认、源码前后相同；没有 Fake 验证结果注入生产。
+- ACCEPT 样例：Task `c2c423ad-6a85-4907-858d-0e46a0ed3d7e`，Run `2bd6ee1c-de18-471c-bb49-4868a3064735`，verification `64fb1fa7-5294-44b0-b304-a17617249af1`，delivery `48e56a8c-5f0b-4695-a2da-f12d35271cad`，decision `8542f58d-5833-4423-8aa8-5b82616af995`。提交后 revision=2、acceptance，原窗口勾选可用；显式测试决定后 done/revision=3。说明固定写明代理自动化测试，不代表用户最终验收。
+- REJECT 样例：Task `e6261f07-3a27-4acf-9d5e-78158e6c0b80`，Run `3a462c95-f962-48cd-bb6d-c636574064ef`，verification `9b08eb45-d4a3-47b8-96c0-7f9ada2741dd`，delivery `b02d7597-0ab0-490a-8380-e8e0f6d8f738`。保存后故意改变临时源码；接受返回 `BOARD_DELIVERY_SOURCE_STALE`，原证据不变；填写理由后拒绝成功，decision `73fb2623-31aa-4716-8511-0f86a8bffbcf`，task ready/revision=3。
+- 两条记录重新加载页面均回放原决定ID，无提交按钮，不重跑执行。浏览器为本机独立 Chromium；本阶段不冒充内置预览的完整点击验收。临时 HTML 已定向移除，未提交；其源码与哈希保留在测试交付记录，仅代表当时快照。
+- application.yml 未修改/提交；未调用模型、未启停用户服务、未手工重置或修复数据库。V11/V12 已由开发环境应用，并经实库 CRUD/约束测试验证。
 
 ## 范围与归属
 
