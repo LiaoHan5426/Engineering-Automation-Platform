@@ -1,10 +1,10 @@
 <script setup lang="ts">
 withDefaults(
-  defineProps<{ label?: string; tone?: "neutral" | "success" | "warning" | "danger" }>(),
+  defineProps<{ label?: string; tone?: 'neutral' | 'success' | 'warning' | 'danger' }>(),
   {
-    tone: "neutral",
+    tone: 'neutral',
   },
-);
+)
 </script>
 
 <template>

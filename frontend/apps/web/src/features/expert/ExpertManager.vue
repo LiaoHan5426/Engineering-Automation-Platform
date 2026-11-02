@@ -1,76 +1,85 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, toRaw } from "vue";
-import { runtimeApi, type CapabilityItem, type CapabilityKindSummary } from "@eap/runtime-client";
-import { assertExpertId } from "@eap/expert-sdk";
-import { Button, Checkbox, ConfirmBox, EmptyState, Feedback, Input, Select, Collapse } from "@eap/ui";
-import { errorMessage } from "../../lib/presentation";
+import { ref, onMounted, onUnmounted, computed, watch, toRaw } from 'vue'
+import { runtimeApi, type CapabilityItem, type CapabilityKindSummary } from '@eap/runtime-client'
+import { assertExpertId } from '@eap/expert-sdk'
+import {
+  Button,
+  Checkbox,
+  ConfirmBox,
+  EmptyState,
+  Feedback,
+  Input,
+  Select,
+  Collapse,
+} from '@eap/ui'
+import { errorMessage } from '../../lib/presentation'
 import {
   isExpertScoped as capabilityIsExpertScoped,
   offersAsNode,
   unknownDeclaredTools as findUnknownDeclaredTools,
   undeclaredScopedNodes as findUndeclaredScopedNodes,
-} from "../capability/capabilityScope";
+} from '../capability/capabilityScope'
 type ExpertDefinition = {
-  id: string;
-  name: string;
-  knowledgeBases?: string[];
-  databaseProfiles?: string[];
-  steps?: Step[];
-  edges?: Array<{ source: string; target: string }>;
-  capabilities?: string[];
-  rules?: string[];
-  rulePacks?: string[];
+  id: string
+  name: string
+  knowledgeBases?: string[]
+  databaseProfiles?: string[]
+  steps?: Step[]
+  edges?: Array<{ source: string; target: string }>
+  capabilities?: string[]
+  rules?: string[]
+  rulePacks?: string[]
   /** Expert-scoped capabilities (MCP tools) this expert is authorised to call. */
-  mcpTools?: string[];
-  [key: string]: unknown;
-};
-const emit = defineEmits<{ saved: []; run: [id: string] }>();
-const original = ref<ExpertDefinition | null>(null);
-const baseline = ref("");
-const library = ref<Array<{ id: string; name: string }>>([]);
-const selectedKnowledge = ref<string[]>([]);
-const selectedDatabases = ref<string[]>([]);
-const databaseLibrary = ref<Array<{ id: string; label: string }>>([]);
-const states = ref<Record<string, { enabled: boolean; builtin: boolean; revision: number }>>({});
-const enabled = computed(() => states.value[id.value]?.enabled === true);
-const isBuiltin = computed(() => states.value[id.value]?.builtin === true);
-const selectedRules = ref<string[]>(["database.credentials.never-expose"]);
+  mcpTools?: string[]
+  [key: string]: unknown
+}
+const emit = defineEmits<{ saved: []; run: [id: string] }>()
+const original = ref<ExpertDefinition | null>(null)
+const baseline = ref('')
+const library = ref<Array<{ id: string; name: string }>>([])
+const selectedKnowledge = ref<string[]>([])
+const selectedDatabases = ref<string[]>([])
+const databaseLibrary = ref<Array<{ id: string; label: string }>>([])
+const states = ref<Record<string, { enabled: boolean; builtin: boolean; revision: number }>>({})
+const enabled = computed(() => states.value[id.value]?.enabled === true)
+const isBuiltin = computed(() => states.value[id.value]?.builtin === true)
+const selectedRules = ref<string[]>(['database.credentials.never-expose'])
 const ruleChoices = [
-  { id: "database.credentials.never-expose", name: "禁止泄露数据库凭据" },
-  { id: "candidate-sql.must-preserve-semantics", name: "候选 SQL 必须保持原语义" },
-];
-const loadError = ref("");
-const nodeCapability = ref("sql.parse");
+  { id: 'database.credentials.never-expose', name: '禁止泄露数据库凭据' },
+  { id: 'candidate-sql.must-preserve-semantics', name: '候选 SQL 必须保持原语义' },
+]
+const loadError = ref('')
+const nodeCapability = ref('sql.parse')
 const fallbackCapabilities = [
-  "sql.parse",
-  "knowledge.search",
-  "database.schema.read",
-  "database.index.read",
-  "database.explain",
-  "git-status",
-  "git-diff",
-  "rg-search",
-];
+  'sql.parse',
+  'knowledge.search',
+  'database.schema.read',
+  'database.index.read',
+  'database.explain',
+  'git-status',
+  'git-diff',
+  'rg-search',
+]
 // Capabilities and rule packs come from the backend catalog so the editor can never offer an
 // option the runtime cannot execute or resolve.
-const catalogCapabilities = ref<string[]>([]);
-const catalogCapabilityItems = ref<CapabilityItem[]>([]);
-const capabilityKinds = ref<CapabilityKindSummary[]>([]);
+const catalogCapabilities = ref<string[]>([])
+const catalogCapabilityItems = ref<CapabilityItem[]>([])
+const capabilityKinds = ref<CapabilityKindSummary[]>([])
 const nodeOptions = computed(() =>
   catalogCapabilities.value.length ? catalogCapabilities.value : fallbackCapabilities,
-);
+)
 /**
  * Capabilities offered to the editor, grouped by how they are executed (built-in command / local CLI /
  * MCP tool / HTTP service). Grouping is what keeps an operator from wiring a CLI node into an
  * environment that has no such binary.
  */
 const capabilityGroups = computed(() => {
-  const groups: Array<{ label: string; options: CapabilityItem[] }> = [];
+  const groups: Array<{ label: string; options: CapabilityItem[] }> = []
   if (catalogCapabilityItems.value.length) {
     groups.push(
       ...capabilityKinds.value
         .map((kind) => ({
-          label: kind.label + "（" + kind.id + " · " + kind.scopeLabel + "）",
+          label: kind.label + '（' + kind.id + ' · ' + kind.scopeLabel + '）',
           // Expert-scoped capabilities are deliberately excluded here: the platform has them, this
           // expert does not — that is the whole point of the authorisation block below. Switched-off
           // platform capabilities are excluded too: the runtime refuses to resolve them, and the
@@ -80,12 +89,12 @@ const capabilityGroups = computed(() => {
           ),
         }))
         .filter((group) => group.options.length),
-    );
+    )
   } else {
     groups.push({
-      label: "能力",
-      options: nodeOptions.value.map((name) => ({ name, title: "", kind: "" }) as CapabilityItem),
-    });
+      label: '能力',
+      options: nodeOptions.value.map((name) => ({ name, title: '', kind: '' }) as CapabilityItem),
+    })
   }
   // A declared expert-scoped tool becomes selectable as a node — and only a declared one does, which is
   // exactly the difference between "the platform has it" and "this expert may call it".
@@ -94,58 +103,57 @@ const capabilityGroups = computed(() => {
       catalogCapabilityItems.value.find((item) => item.name === name) ??
       ({
         name,
-        title: "专家级能力（已授权本专家）",
-        kind: "mcp",
-        scope: "expert",
+        title: '专家级能力（已授权本专家）',
+        kind: 'mcp',
+        scope: 'expert',
       } as CapabilityItem),
-  );
-  if (scopedOptions.length)
-    groups.push({ label: "专家级（已授权本专家）", options: scopedOptions });
-  return groups;
-});
-const selectedRulePacks = ref<string[]>([]);
+  )
+  if (scopedOptions.length) groups.push({ label: '专家级（已授权本专家）', options: scopedOptions })
+  return groups
+})
+const selectedRulePacks = ref<string[]>([])
 const rulePackChoices = ref<
   Array<{ id: string; name: string; ruleCount: number; shipped: boolean; requires: string[] }>
->([]);
+>([])
 /**
  * Expert-scoped capabilities (MCP tools, remote endpoints). The platform never enables them globally,
  * so they are not offered as ordinary nodes: the expert declares them here, activation records the
  * grant, and only then can a node use one — in this expert's own session.
  */
-const expertScopedCapabilities = ref<string[]>([]);
+const expertScopedCapabilities = ref<string[]>([])
 /**
  * Platform capabilities the operator switched off in the capability catalog. The picker filters them
  * out through {@code offersAsNode}, and the reason is shown below the selector, because a silently
  * missing option is indistinguishable from a broken one.
  */
-const disabledPlatform = ref<string[]>([]);
-const expertScopedVocabulary = ref<string[]>([]);
+const disabledPlatform = ref<string[]>([])
+const expertScopedVocabulary = ref<string[]>([])
 const mcpServers = ref<
   Array<{ id: string; name: string; trusted: boolean; enabled: boolean; tools: string[] }>
->([]);
-const declaredMcpTools = ref<string[]>([]);
-const mcpToolToGrant = ref("");
+>([])
+const declaredMcpTools = ref<string[]>([])
+const mcpToolToGrant = ref('')
 const mcpToolChoices = computed(() =>
   expertScopedVocabulary.value.filter((id) => !declaredMcpTools.value.includes(id)),
-);
+)
 function isExpertScoped(capability: string) {
   return capabilityIsExpertScoped(
     capability,
     catalogCapabilityItems.value,
     expertScopedVocabulary.value,
-  );
+  )
 }
 function addMcpTool() {
-  const next = mcpToolToGrant.value || mcpToolChoices.value[0];
+  const next = mcpToolToGrant.value || mcpToolChoices.value[0]
   if (next && !declaredMcpTools.value.includes(next))
-    declaredMcpTools.value = [...declaredMcpTools.value, next];
-  mcpToolToGrant.value = "";
+    declaredMcpTools.value = [...declaredMcpTools.value, next]
+  mcpToolToGrant.value = ''
 }
 function removeMcpTool(tool: string) {
-  declaredMcpTools.value = declaredMcpTools.value.filter((entry) => entry !== tool);
+  declaredMcpTools.value = declaredMcpTools.value.filter((entry) => entry !== tool)
   // A node whose authorisation just disappeared would be rejected on save anyway; drop it here so the
   // graph never looks runnable when it is not.
-  steps.value = steps.value.filter((step) => step.capability !== tool);
+  steps.value = steps.value.filter((step) => step.capability !== tool)
 }
 /** Node capabilities that are expert-scoped but not declared — rejected by the backend, caught here. */
 const undeclaredScopedNodes = computed(() =>
@@ -155,200 +163,198 @@ const undeclaredScopedNodes = computed(() =>
     catalogCapabilityItems.value,
     expertScopedVocabulary.value,
   ),
-);
+)
 /** Declared tools the platform does not publish: a manifest cannot bring a server into existence. */
 const unknownDeclaredTools = computed(() =>
   findUnknownDeclaredTools(declaredMcpTools.value, expertScopedVocabulary.value),
-);
+)
 /**
  * Capabilities the currently selected rule packs need but the graph does not provide. Without this the
  * expert would save fine and simply never produce those findings.
  */
-const graphCapabilities = computed(() => new Set(steps.value.map((step) => step.capability)));
+const graphCapabilities = computed(() => new Set(steps.value.map((step) => step.capability)))
 const missingCapabilities = computed(() => {
-  const needed = new Set<string>();
+  const needed = new Set<string>()
   for (const id of selectedRulePacks.value) {
-    const pack = rulePackChoices.value.find((entry) => entry.id === id);
-    for (const capability of pack?.requires ?? []) needed.add(capability);
+    const pack = rulePackChoices.value.find((entry) => entry.id === id)
+    for (const capability of pack?.requires ?? []) needed.add(capability)
   }
-  return [...needed].filter((capability) => !graphCapabilities.value.has(capability)).sort();
-});
-const dirty = computed(() => editing.value && baseline.value !== definition().manifest);
+  return [...needed].filter((capability) => !graphCapabilities.value.has(capability)).sort()
+})
+const dirty = computed(() => editing.value && baseline.value !== definition().manifest)
 /**
  * 离开编辑器前不静默丢弃草稿，也不用 `window.confirm`：它阻塞页面、无法被行为断言，
  * 而且说不清「丢掉的到底是哪一版」。这里改为拒绝离开，并把「保存 / 放弃」两个选择放在页面上。
  */
 function guardLeave() {
-  if (!dirty.value) return true;
-  message.value = "当前修改尚未保存：请先「保存草稿」，或点「放弃修改」明确丢弃这一版。";
-  return false;
+  if (!dirty.value) return true
+  message.value = '当前修改尚未保存：请先「保存草稿」，或点「放弃修改」明确丢弃这一版。'
+  return false
 }
 function beforeUnload(event: BeforeUnloadEvent) {
   if (dirty.value) {
-    event.preventDefault();
-    event.returnValue = "";
+    event.preventDefault()
+    event.returnValue = ''
   }
 }
-onUnmounted(() => window.removeEventListener("beforeunload", beforeUnload));
-import WorkflowCanvas from "../../components/WorkflowCanvas.vue";
-import { inspectGraph, type WorkflowNode } from "../../lib/workflowGraph";
-type Step = WorkflowNode;
-const items = ref<ExpertDefinition[]>([]);
-const id = ref("");
-const name = ref("");
+onUnmounted(() => window.removeEventListener('beforeunload', beforeUnload))
+import WorkflowCanvas from '../../components/WorkflowCanvas.vue'
+import { inspectGraph, type WorkflowNode } from '../../lib/workflowGraph'
+type Step = WorkflowNode
+const items = ref<ExpertDefinition[]>([])
+const id = ref('')
+const name = ref('')
 
-const steps = ref<Step[]>([]);
-const message = ref("");
-const busy = ref(false);
-const editing = ref(false);
-const selectedNode = ref("");
-const selectedStep = computed(() => steps.value.find((step) => step.id === selectedNode.value));
-const filter = ref("");
+const steps = ref<Step[]>([])
+const message = ref('')
+const busy = ref(false)
+const editing = ref(false)
+const selectedNode = ref('')
+const selectedStep = computed(() => steps.value.find((step) => step.id === selectedNode.value))
+const filter = ref('')
 const visibleItems = computed(() =>
   items.value.filter((item) =>
     (item.name + item.id).toLowerCase().includes(filter.value.toLowerCase()),
   ),
-);
+)
 function addNode() {
   const node = {
     id: crypto.randomUUID(),
     label: nodeCapability.value,
     capability: nodeCapability.value,
     required: true,
-  };
-  steps.value.push(node);
-  selectedNode.value = node.id;
+  }
+  steps.value.push(node)
+  selectedNode.value = node.id
 }
 function connectInOrder() {
-  if (edges.value.length || steps.value.length < 2) return;
+  if (edges.value.length || steps.value.length < 2) return
   edges.value = steps.value.slice(1).map((step, index) => ({
     source: steps.value[index]!.id,
     target: step.id,
-  }));
-  message.value = "已按当前列表排列创建串行依赖，请检查箭头方向；此后执行顺序由连线定义。";
+  }))
+  message.value = '已按当前列表排列创建串行依赖，请检查箭头方向；此后执行顺序由连线定义。'
 }
 function removeNode() {
-  const node = selectedNode.value;
-  steps.value = steps.value.filter((step) => step.id !== node);
-  edges.value = edges.value.filter((edge) => edge.source !== node && edge.target !== node);
-  selectedNode.value = "";
+  const node = selectedNode.value
+  steps.value = steps.value.filter((step) => step.id !== node)
+  edges.value = edges.value.filter((edge) => edge.source !== node && edge.target !== node)
+  selectedNode.value = ''
 }
-const edges = ref<Array<{ source: string; target: string }>>([]);
+const edges = ref<Array<{ source: string; target: string }>>([])
 watch(dirty, (value) => {
-  if (value) window.addEventListener("beforeunload", beforeUnload);
-  else window.removeEventListener("beforeunload", beforeUnload);
-});
+  if (value) window.addEventListener('beforeunload', beforeUnload)
+  else window.removeEventListener('beforeunload', beforeUnload)
+})
 async function load() {
-  const response = await runtimeApi.experts();
-  states.value = response.states ?? {};
-  items.value = response.items.map((text) => JSON.parse(text) as ExpertDefinition);
+  const response = await runtimeApi.experts()
+  states.value = response.states ?? {}
+  items.value = response.items.map((text) => JSON.parse(text) as ExpertDefinition)
   try {
-    const catalog = await runtimeApi.expertCatalog();
-    catalogCapabilities.value = catalog.capabilities ?? [];
-    catalogCapabilityItems.value = catalog.capabilityItems ?? [];
-    capabilityKinds.value = catalog.capabilityKinds ?? [];
-    expertScopedCapabilities.value = catalog.expertScoped ?? [];
-    disabledPlatform.value = catalog.disabledPlatform ?? [];
-    expertScopedVocabulary.value = catalog.expertScopedVocabulary ?? [];
-    mcpServers.value = catalog.mcpServers ?? [];
+    const catalog = await runtimeApi.expertCatalog()
+    catalogCapabilities.value = catalog.capabilities ?? []
+    catalogCapabilityItems.value = catalog.capabilityItems ?? []
+    capabilityKinds.value = catalog.capabilityKinds ?? []
+    expertScopedCapabilities.value = catalog.expertScoped ?? []
+    disabledPlatform.value = catalog.disabledPlatform ?? []
+    expertScopedVocabulary.value = catalog.expertScopedVocabulary ?? []
+    mcpServers.value = catalog.mcpServers ?? []
     rulePackChoices.value = (catalog.rulePacks ?? []).map((pack) => ({
       id: pack.id,
       name: pack.name,
       ruleCount: pack.ruleCount,
       shipped: pack.shipped,
       requires: pack.requires ?? [],
-    }));
+    }))
   } catch {
-    catalogCapabilities.value = [];
-    catalogCapabilityItems.value = [];
-    capabilityKinds.value = [];
-    rulePackChoices.value = [];
-    disabledPlatform.value = [];
+    catalogCapabilities.value = []
+    catalogCapabilityItems.value = []
+    capabilityKinds.value = []
+    rulePackChoices.value = []
+    disabledPlatform.value = []
   }
 }
 function create() {
-  if (!guardLeave()) return;
-  original.value = null;
-  editing.value = true;
-  selectedNode.value = "";
-  id.value = "";
-  name.value = "";
-  selectedKnowledge.value = [];
-  selectedDatabases.value = [];
-  selectedRules.value = ["database.credentials.never-expose"];
-  selectedRulePacks.value = [];
-  declaredMcpTools.value = [];
-  steps.value = [];
-  edges.value = [];
-  message.value = "";
-  baseline.value = definition().manifest;
+  if (!guardLeave()) return
+  original.value = null
+  editing.value = true
+  selectedNode.value = ''
+  id.value = ''
+  name.value = ''
+  selectedKnowledge.value = []
+  selectedDatabases.value = []
+  selectedRules.value = ['database.credentials.never-expose']
+  selectedRulePacks.value = []
+  declaredMcpTools.value = []
+  steps.value = []
+  edges.value = []
+  message.value = ''
+  baseline.value = definition().manifest
 }
 /** Load a definition into the editor. `note` overrides the message, so a discard can explain itself. */
 function applyDefinition(item: ExpertDefinition, note?: string) {
-  const source = toRaw(item);
-  original.value = structuredClone(source);
-  editing.value = true;
-  selectedNode.value = "";
-  edges.value = structuredClone(source.edges ?? []);
-  id.value = source.id;
-  name.value = source.name;
-  selectedKnowledge.value = [...(source.knowledgeBases ?? [])];
-  selectedDatabases.value = [...(source.databaseProfiles ?? [])];
-  selectedRules.value = [
-    ...new Set(["database.credentials.never-expose", ...(source.rules ?? [])]),
-  ];
-  selectedRulePacks.value = [...((source.rulePacks as string[] | undefined) ?? [])];
-  declaredMcpTools.value = [...((source.mcpTools as string[] | undefined) ?? [])];
+  const source = toRaw(item)
+  original.value = structuredClone(source)
+  editing.value = true
+  selectedNode.value = ''
+  edges.value = structuredClone(source.edges ?? [])
+  id.value = source.id
+  name.value = source.name
+  selectedKnowledge.value = [...(source.knowledgeBases ?? [])]
+  selectedDatabases.value = [...(source.databaseProfiles ?? [])]
+  selectedRules.value = [...new Set(['database.credentials.never-expose', ...(source.rules ?? [])])]
+  selectedRulePacks.value = [...((source.rulePacks as string[] | undefined) ?? [])]
+  declaredMcpTools.value = [...((source.mcpTools as string[] | undefined) ?? [])]
   steps.value = structuredClone(
     source.steps ??
       (source.capabilities ?? []).map((capability: string, index: number) => ({
-        id: "step-" + (index + 1),
+        id: 'step-' + (index + 1),
         capability,
         required: true,
       })),
-  );
+  )
   if (source.steps && source.edges === undefined) {
     edges.value = steps.value.slice(1).map((step, index) => ({
       source: steps.value[index]!.id,
       target: step.id,
-    }));
-    message.value = "旧版顺序步骤已转换为显式依赖连线，请确认后保存草稿。";
+    }))
+    message.value = '旧版顺序步骤已转换为显式依赖连线，请确认后保存草稿。'
   } else {
     message.value =
-      note ?? (!source.steps ? "该定义仅有能力清单，没有执行顺序；请手动连接节点。" : "");
+      note ?? (!source.steps ? '该定义仅有能力清单，没有执行顺序；请手动连接节点。' : '')
   }
-  baseline.value = definition().manifest;
+  baseline.value = definition().manifest
 }
 function edit(item: ExpertDefinition) {
-  if (!guardLeave()) return;
-  applyDefinition(item);
+  if (!guardLeave()) return
+  applyDefinition(item)
 }
 /** 明确放弃未保存的修改，而不是把它藏在一个确认框后面。 */
 function discardDraft() {
   if (!original.value) {
-    message.value = "这是尚未保存的新专家：点「新建」可以清空重来。";
-    return;
+    message.value = '这是尚未保存的新专家：点「新建」可以清空重来。'
+    return
   }
-  applyDefinition(original.value, "已放弃未保存的修改，回到上次保存的版本。");
+  applyDefinition(original.value, '已放弃未保存的修改，回到上次保存的版本。')
 }
 function copyExpert() {
-  if (!original.value) return;
-  id.value = original.value.id + "-copy";
-  name.value = original.value.name + "（副本）";
-  message.value = "已复制，请修改标识后保存为新专家。";
+  if (!original.value) return
+  id.value = original.value.id + '-copy'
+  name.value = original.value.name + '（副本）'
+  message.value = '已复制，请修改标识后保存为新专家。'
 }
 function definition() {
   // `steps` is the single source of truth for capabilities; a duplicate `capabilities` array used to be
   // written here and could silently disagree with the graph.
-  const base = { ...((original.value ?? {}) as Record<string, unknown>) };
-  delete base.capabilities;
+  const base = { ...((original.value ?? {}) as Record<string, unknown>) }
+  delete base.capabilities
   return {
     id: id.value,
     name: name.value,
     manifest: JSON.stringify({
       ...base,
-      apiVersion: "eap/v1",
-      kind: "Expert",
+      apiVersion: 'eap/v1',
+      kind: 'Expert',
       id: id.value,
       name: name.value,
       knowledgeBases: selectedKnowledge.value,
@@ -361,126 +367,126 @@ function definition() {
       // then resolvable for this expert's nodes.
       mcpTools: declaredMcpTools.value,
     }),
-  };
+  }
 }
 async function submit(save: boolean) {
   try {
-    assertExpertId(id.value);
+    assertExpertId(id.value)
   } catch (error) {
-    message.value = error instanceof Error ? error.message : "专家 id 无效";
-    return;
+    message.value = error instanceof Error ? error.message : '专家 id 无效'
+    return
   }
   if (!name.value.trim()) {
-    message.value = "请填写专家名称";
-    return;
+    message.value = '请填写专家名称'
+    return
   }
-  const graph = inspectGraph(steps.value, edges.value);
+  const graph = inspectGraph(steps.value, edges.value)
   if (graph.errors.length) {
-    message.value = graph.errors.join("；");
-    return;
+    message.value = graph.errors.join('；')
+    return
   }
   if (missingCapabilities.value.length) {
     message.value =
-      "所选规则包需要能力 " +
-      missingCapabilities.value.join("、") +
-      "，但流程中没有对应节点：这些规则永远不会命中。请添加对应能力节点，或取消勾选对应规则包。";
-    return;
+      '所选规则包需要能力 ' +
+      missingCapabilities.value.join('、') +
+      '，但流程中没有对应节点：这些规则永远不会命中。请添加对应能力节点，或取消勾选对应规则包。'
+    return
   }
   if (unknownDeclaredTools.value.length) {
     message.value =
-      "以下能力是专家级能力（MCP/远端工具），但平台尚未登记对应服务器并放行其工具：" +
-      unknownDeclaredTools.value.join("、") +
-      "。清单不能让一个服务器存在，请先在能力目录登记服务器与工具白名单。";
-    return;
+      '以下能力是专家级能力（MCP/远端工具），但平台尚未登记对应服务器并放行其工具：' +
+      unknownDeclaredTools.value.join('、') +
+      '。清单不能让一个服务器存在，请先在能力目录登记服务器与工具白名单。'
+    return
   }
   if (undeclaredScopedNodes.value.length) {
     message.value =
-      "节点 " +
-      undeclaredScopedNodes.value.map((step) => step.id).join("、") +
-      " 使用了专家级能力，但本专家清单未声明授权：MCP 工具不会全局启用，请先在下方勾选对应工具。";
-    return;
+      '节点 ' +
+      undeclaredScopedNodes.value.map((step) => step.id).join('、') +
+      ' 使用了专家级能力，但本专家清单未声明授权：MCP 工具不会全局启用，请先在下方勾选对应工具。'
+    return
   }
   if (save && isBuiltin.value) {
-    message.value = "内置专家不可覆盖，请点击复制为新专家。";
-    return;
+    message.value = '内置专家不可覆盖，请点击复制为新专家。'
+    return
   }
-  const ids = new Set(steps.value.map((step) => step.id));
+  const ids = new Set(steps.value.map((step) => step.id))
   if (ids.size !== steps.value.length || steps.value.some((step) => !step.id || !step.capability)) {
-    message.value = "节点标识必须唯一，节点能力不能为空";
-    return;
+    message.value = '节点标识必须唯一，节点能力不能为空'
+    return
   }
   if (edges.value.some((edge) => !ids.has(edge.source) || !ids.has(edge.target))) {
-    message.value = "连线引用了已删除的节点，请移除该连线";
-    return;
+    message.value = '连线引用了已删除的节点，请移除该连线'
+    return
   }
-  const pending = new Set(ids);
-  const ordered: Step[] = [];
+  const pending = new Set(ids)
+  const ordered: Step[] = []
   while (pending.size) {
     const next = steps.value.find(
       (step) =>
         pending.has(step.id) &&
         !edges.value.some((edge) => edge.target === step.id && pending.has(edge.source)),
-    );
+    )
     if (!next) {
-      message.value = "流程存在循环连线，请调整后保存";
-      return;
+      message.value = '流程存在循环连线，请调整后保存'
+      return
     }
-    ordered.push(next);
-    pending.delete(next.id);
+    ordered.push(next)
+    pending.delete(next.id)
   }
-  steps.value = ordered;
-  busy.value = true;
-  const submitted = definition();
+  steps.value = ordered
+  busy.value = true
+  const submitted = definition()
   try {
     const result = save
       ? await runtimeApi.saveExpert(submitted)
-      : await runtimeApi.validateExpert(submitted);
+      : await runtimeApi.validateExpert(submitted)
     message.value = save
-      ? "草稿已保存"
+      ? '草稿已保存'
       : result.valid
-        ? "定义校验通过"
-        : (result.errors ?? []).join("；");
+        ? '定义校验通过'
+        : (result.errors ?? []).join('；')
     if (save) {
-      baseline.value = submitted.manifest;
-      await load();
-      emit("saved");
+      baseline.value = submitted.manifest
+      await load()
+      emit('saved')
     }
   } catch (error) {
-    message.value = errorMessage(error);
+    message.value = errorMessage(error)
   } finally {
-    busy.value = false;
+    busy.value = false
   }
 }
 async function refreshData() {
   try {
-    await load();
-    loadError.value = "";
+    await load()
+    loadError.value = ''
   } catch (error) {
-    loadError.value = errorMessage(error);
+    loadError.value = errorMessage(error)
   }
   try {
-    library.value = (await runtimeApi.knowledgeBases()).items;
+    library.value = (await runtimeApi.knowledgeBases()).items
   } catch (error) {
-    message.value = "知识库列表加载失败：" + errorMessage(error);
+    message.value = '知识库列表加载失败：' + errorMessage(error)
   }
   try {
-    databaseLibrary.value = (await runtimeApi.databases()).items;
+    databaseLibrary.value = (await runtimeApi.databases()).items
   } catch (error) {
-    message.value = "资料或能力目录加载失败：" + errorMessage(error);
+    message.value = '资料或能力目录加载失败：' + errorMessage(error)
   }
 }
-const activateOpen = ref(false);
-const activateRefusal = ref("");
+const activateOpen = ref(false)
+const activateRefusal = ref('')
 /**
  * 启用即授权，所以确认框里列的是**会获得的权限**，而不是一个动词；停用同理——它撤销的是这些授权。
  */
 const activationImpact = computed(() => {
-  const knowledge = selectedKnowledge.value.join("、") || "无";
-  const databases = selectedDatabases.value.join("、") || "无";
-  const tools = declaredMcpTools.value.join("、") || "无";
+  const knowledge = selectedKnowledge.value.join('、') || '无'
+  const databases = selectedDatabases.value.join('、') || '无'
+  const tools = declaredMcpTools.value.join('、') || '无'
   return enabled.value
     ? [
-        "停用后本专家不再运行，已授予的资料读取授权会被撤销。",
+        '停用后本专家不再运行，已授予的资料读取授权会被撤销。',
         `撤销知识库读取：${knowledge}`,
         `撤销脱敏数据库资料读取：${databases}`,
         `撤销 MCP 工具授权：${tools}`,
@@ -488,35 +494,35 @@ const activationImpact = computed(() => {
     : [
         `知识库读取：${knowledge}`,
         `脱敏数据库资料读取：${databases}`,
-        `执行流程中声明的能力：${steps.value.map((step) => step.capability).join("、") || "无"}`,
+        `执行流程中声明的能力：${steps.value.map((step) => step.capability).join('、') || '无'}`,
         `MCP 工具：${tools}（仅本专家可用，不向其他专家开放）`,
-      ];
-});
+      ]
+})
 
 function askActivate() {
-  activateRefusal.value = "";
-  activateOpen.value = true;
+  activateRefusal.value = ''
+  activateOpen.value = true
 }
 
 async function activate(value: boolean) {
-  if (busy.value || dirty.value) return;
-  busy.value = true;
-  activateRefusal.value = "";
+  if (busy.value || dirty.value) return
+  busy.value = true
+  activateRefusal.value = ''
   try {
-    await runtimeApi.activateExpert(id.value, value);
-    await load();
-    activateOpen.value = false;
-    message.value = value ? "专家已启用并获得所选资料读取授权" : "专家已停用，资料读取授权已撤销";
-    emit("saved");
+    await runtimeApi.activateExpert(id.value, value)
+    await load()
+    activateOpen.value = false
+    message.value = value ? '专家已启用并获得所选资料读取授权' : '专家已停用，资料读取授权已撤销'
+    emit('saved')
   } catch (error) {
     // 后端拒绝（例如流程引用了已停用的能力）时，原因留在对话框里，确认按钮保持原位但禁用。
-    activateRefusal.value = errorMessage(error);
+    activateRefusal.value = errorMessage(error)
   } finally {
-    busy.value = false;
+    busy.value = false
   }
 }
-defineExpose({ refresh: refreshData });
-onMounted(refreshData);
+defineExpose({ refresh: refreshData })
+onMounted(refreshData)
 </script>
 <template>
   <section class="manager-workspace">
@@ -537,13 +543,9 @@ onMounted(refreshData);
       >
         重试加载
       </Button>
-      <Input
-        v-model="filter"
-       
-        aria-label="搜索专家"
-        placeholder="搜索名称或标识"
-      />
-      <Button variant="navigation"
+      <Input v-model="filter" aria-label="搜索专家" placeholder="搜索名称或标识" />
+      <Button
+        variant="navigation"
         v-for="item in visibleItems"
         :key="item.id"
         class="manager-item"
@@ -565,15 +567,15 @@ onMounted(refreshData);
     <div v-else class="editor-workspace">
       <div class="eap-panel manager-toolbar">
         <div>
-          <h2>{{ name || "新专家" }}</h2>
+          <h2>{{ name || '新专家' }}</h2>
           <small>{{
             isBuiltin
-              ? "内置模板 · 请复制后保存"
+              ? '内置模板 · 请复制后保存'
               : dirty
-                ? "草稿 · 有未保存修改"
+                ? '草稿 · 有未保存修改'
                 : enabled
-                  ? "已启用 · 读取授权已生效"
-                  : "草稿 · 尚未启用运行"
+                  ? '已启用 · 读取授权已生效'
+                  : '草稿 · 尚未启用运行'
           }}</small>
         </div>
         <div>
@@ -585,7 +587,7 @@ onMounted(refreshData);
             :disabled="busy || isBuiltin || !id.trim() || !name.trim()"
             @click="submit(true)"
           >
-            {{ busy ? "处理中…" : "保存草稿" }}
+            {{ busy ? '处理中…' : '保存草稿' }}
           </Button>
           <Button variant="secondary" v-if="dirty" :disabled="busy" @click="discardDraft">
             放弃修改
@@ -596,7 +598,7 @@ onMounted(refreshData);
             :disabled="busy || dirty"
             @click="askActivate"
           >
-            {{ enabled ? "停用并撤销授权" : "启用并授权" }}
+            {{ enabled ? '停用并撤销授权' : '启用并授权' }}
           </Button>
           <Button
             variant="secondary"
@@ -619,13 +621,16 @@ onMounted(refreshData);
                   <option v-for="option in group.options" :key="option.name" :value="option.name">
                     {{ option.name }}<template v-if="option.title"> — {{ option.title }}</template>
                   </option>
-                </optgroup></Select><Button variant="primary" @click="addNode">＋ 添加节点</Button>
-              <Button v-if="steps.length > 1 && !edges.length" @click="connectInOrder">按当前排列串联</Button>
+                </optgroup></Select
+              ><Button variant="primary" @click="addNode">＋ 添加节点</Button>
+              <Button v-if="steps.length > 1 && !edges.length" @click="connectInOrder"
+                >按当前排列串联</Button
+              >
             </div>
           </div>
           <p v-if="disabledPlatform.length" class="hint">
             以下能力已在「能力目录」中停用，因此不出现在上面的选择器里：<span class="mono">{{
-              disabledPlatform.join("、")
+              disabledPlatform.join('、')
             }}</span
             >。 需要用到它们时，请先在能力目录中重新启用；停用状态会被后端在保存与启用时拒绝。
           </p>
@@ -634,15 +639,12 @@ onMounted(refreshData);
         </div>
         <aside class="eap-panel property-panel">
           <h3>专家信息</h3>
-          <label
-            >标识<Input v-model="id" placeholder="sql-reviewer" /></label
+          <label>标识<Input v-model="id" placeholder="sql-reviewer" /></label
           ><label>名称<Input v-model="name" /></label>
           <h3>知识库配置</h3>
           <div class="choice-list">
             <label v-for="base in library" :key="base.id"
-              ><Checkbox v-model="selectedKnowledge" :value="base.id" />{{
-                base.name
-              }}</label
+              ><Checkbox v-model="selectedKnowledge" :value="base.id" />{{ base.name }}</label
             ><label
               v-for="base in selectedKnowledge.filter(
                 (key) => !library.some((item) => item.id === key),
@@ -690,11 +692,11 @@ onMounted(refreshData);
               <span
                 >{{ pack.name }}
                 <span class="hint"
-                  >· {{ pack.ruleCount }} 条规则{{ pack.shipped ? " · 内置" : "" }}</span
+                  >· {{ pack.ruleCount }} 条规则{{ pack.shipped ? ' · 内置' : '' }}</span
                 >
                 <small class="requirement-line">
                   需要能力：{{
-                    pack.requires.length ? pack.requires.join("、") : "未声明（该包无法通过校验）"
+                    pack.requires.length ? pack.requires.join('、') : '未声明（该包无法通过校验）'
                   }}
                 </small></span
               ></label
@@ -704,7 +706,7 @@ onMounted(refreshData);
             </p>
           </div>
           <Feedback tone="error" v-if="missingCapabilities.length">
-            所选规则包需要能力 <b>{{ missingCapabilities.join("、") }}</b
+            所选规则包需要能力 <b>{{ missingCapabilities.join('、') }}</b
             >，但流程中没有对应的能力节点：这些规则依赖的事实不会被产出，规则永远不会命中。请添加对应节点，或取消勾选该规则包。
           </Feedback>
           <small
@@ -742,16 +744,16 @@ onMounted(refreshData);
           <div v-else class="choice-list">
             <p v-for="server in mcpServers" :key="server.id" class="hint">
               <b>{{ server.name }}</b> <span class="mono">{{ server.id }}</span> ·
-              {{ server.trusted && server.enabled ? "已启用并信任" : "未启用或未信任" }} ·
-              工具：<span class="mono">{{ server.tools.join("、") || "无" }}</span>
+              {{ server.trusted && server.enabled ? '已启用并信任' : '未启用或未信任' }} ·
+              工具：<span class="mono">{{ server.tools.join('、') || '无' }}</span>
             </p>
           </div>
           <Feedback tone="error" v-if="unknownDeclaredTools.length">
-            清单声明的工具 <b>{{ unknownDeclaredTools.join("、") }}</b> 未在任何已启用并信任的 MCP
+            清单声明的工具 <b>{{ unknownDeclaredTools.join('、') }}</b> 未在任何已启用并信任的 MCP
             服务器中发布：清单不能凭名字让一个服务器存在。
           </Feedback>
           <Feedback tone="error" v-if="undeclaredScopedNodes.length">
-            节点 <b>{{ undeclaredScopedNodes.map((step) => step.id).join("、") }}</b>
+            节点 <b>{{ undeclaredScopedNodes.map((step) => step.id).join('、') }}</b>
             使用了专家级能力但未声明授权，保存会被拒绝。请在上方授权对应工具，或移除该节点。
           </Feedback>
           <h3>节点属性</h3>
@@ -759,14 +761,10 @@ onMounted(refreshData);
             ><small>节点标识：{{ selectedStep.id }}</small
             ><label>显示名称<Input v-model="selectedStep.label" /></label
             ><label
-              >调用能力<Input
-                v-model="selectedStep.capability"
-               
-                placeholder="sql.parse" /></label
+              >调用能力<Input v-model="selectedStep.capability" placeholder="sql.parse" /></label
             ><small v-if="isExpertScoped(selectedStep.capability)" class="requirement-line">
               专家级能力：不会全局启用，只在本专家本次执行的会话内调用；移除授权后该节点会一并移除。 </small
-            ><label
-              ><Checkbox v-model="selectedStep.required" /> 失败时阻止后续执行</label
+            ><label><Checkbox v-model="selectedStep.required" /> 失败时阻止后续执行</label
             ><Button variant="secondary" @click="removeNode">移除节点及连线</Button></template
           >
           <EmptyState>点击画布上的节点标题查看属性。</EmptyState>
@@ -793,8 +791,10 @@ onMounted(refreshData);
       :refusal="activateRefusal"
       @confirm="activate(!enabled)"
       @cancel="
-        activateOpen = false;
-        activateRefusal = '';
+        () => {
+          activateOpen = false
+          activateRefusal = ''
+        }
       "
     />
   </section>

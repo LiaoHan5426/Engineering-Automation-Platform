@@ -14,7 +14,8 @@
   border-radius: var(--eap-border-radius-sm);
 }
 
-.eap-tree__item:hover, .eap-tree__item[data-selected] {
+.eap-tree__item:hover,
+.eap-tree__item[data-selected] {
   background: var(--eap-color-primary-soft);
 }
 

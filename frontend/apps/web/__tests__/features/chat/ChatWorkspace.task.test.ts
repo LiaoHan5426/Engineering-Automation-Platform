@@ -1,0 +1,83 @@
+// @vitest-environment happy-dom
+import { afterEach, expect, it, vi } from 'vite-plus/test'
+import { createApp, nextTick, type App } from 'vue'
+import { runtimeApi } from '@eap/runtime-client'
+import { i18n } from '../../../src/lib/i18n'
+import ChatWorkspace from '../../../src/features/chat/ChatWorkspace.vue'
+import { chatBinding, workbench } from '../../../src/features/shell/workbench'
+import { mockChatStartup } from './chatStartup.fixture.ts'
+let app: App, host: HTMLDivElement
+afterEach(() => {
+  app?.unmount()
+  host?.remove()
+  vi.restoreAllMocks()
+  localStorage.clear()
+  sessionStorage.clear()
+  workbench.pendingBoardDraft = null
+  workbench.sessionExtras = {}
+  chatBinding.value = null
+})
+it('requires explicit adoption and cancels without consuming or overwriting; adoption replaces the task context as a unit', async () => {
+  localStorage.clear()
+  sessionStorage.clear()
+  mockChatStartup()
+  const send = vi.spyOn(runtimeApi, 'sendAiMessage'),
+    create = vi.spyOn(runtimeApi, 'openAiConversation')
+  host = document.createElement('div')
+  document.body.append(host)
+  app = createApp(ChatWorkspace)
+  app.use(i18n).mount(host)
+  await vi.waitFor(() => expect(host.querySelector('.composer-draft')).not.toBeNull())
+  const input = host.querySelector('.composer-draft') as HTMLTextAreaElement
+  input.value = 'Existing unsent draft'
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  workbench.sessionExtras.scratch = {
+    scenarioId: 'old-scene',
+    experts: [],
+    resources: ['old-resource'],
+    projectId: 'other-project',
+    delivery: { versionId: 'old-design', pagePath: 'old.vue', pageLabel: 'old' },
+  }
+  const taskRef = {
+    projectId: 'new-project',
+    taskId: '12345678-1234-1234-1234-123456789abc',
+    revision: 3,
+  }
+  workbench.pendingBoardDraft = {
+    sessionId: '',
+    title: 'New saved task',
+    taskRef,
+    prototypeVersionId: '',
+  }
+  await nextTick()
+  expect(host.querySelector('[data-testid=board-draft-note]')?.textContent).toBe(
+    i18n.global.t('generation.pendingTask'),
+  )
+  expect(input.value).toBe('Existing unsent draft')
+  expect(workbench.pendingBoardDraft).not.toBeNull()
+  ;(host.querySelector('[data-testid=adopt-board-draft]') as HTMLButtonElement).click()
+  await nextTick()
+  ;(document.querySelector('[data-confirm-cancel]') as HTMLButtonElement).click()
+  await nextTick()
+  expect(input.value).toBe('Existing unsent draft')
+  expect(workbench.pendingBoardDraft?.taskRef).toEqual(taskRef)
+  ;(host.querySelector('[data-testid=adopt-board-draft]') as HTMLButtonElement).click()
+  await nextTick()
+  ;(document.querySelector('.eap-confirm__actions button') as HTMLButtonElement).click()
+  await nextTick()
+  expect(input.value).toBe('New saved task')
+  expect(workbench.pendingBoardDraft).toBeNull()
+  expect(host.querySelector('[data-testid=composer-task-binding]')?.textContent).toContain(
+    taskRef.taskId,
+  )
+  expect((host.querySelector('[data-testid=generation-target]') as HTMLInputElement).value).toBe('')
+  expect(workbench.sessionExtras.scratch).toMatchObject({
+    projectId: 'new-project',
+    scenarioId: null,
+    resources: [],
+    experts: [],
+  })
+  expect(workbench.sessionExtras.scratch?.delivery).toBeUndefined()
+  expect(send).not.toHaveBeenCalled()
+  expect(create).not.toHaveBeenCalled()
+})

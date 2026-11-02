@@ -42,6 +42,7 @@
 | `@eap/plugin-sdk` / `@eap/plugin-runtime` | 工作台插件契约与可信运行时 | Manifest、贡献点、启停、槽位 | 见 v1.6 §2B；**不等于** Skill/MCP |
 | `@eap/plugin-table` | 纯表格插件（vxe-table + `@vxe-ui/core`） | `Table`；分页用 `@eap/ui` Pagination | 不 `app.use` vxe-pc-ui，不把表格实现放进 `@eap/ui`。vxe-pc-ui 只作类型依赖 |
 | `@eap/runtime-client` | HTTP 与 DTO | API 客户端 | 被 feature / 可选 L3 使用；**不被** `@eap/ui` 依赖 |
+| `@eap/vsh`（工程工具，非运行时层） | `scripts/vsh`集中前端规范门禁 | 包exports/依赖、UI/测试落点、循环检查与CLI | Node/TypeScript/Vue编译器和独立扫描器；不进入UI/应用生产依赖，不承载领域状态 |
 | `@eap/prototype-*` | Grapes / Schema / 预览 | 见 v1.6 §3A | 懒加载；不进全站主包 |
 
 ### 3.1 `apps/web` 内允许的共享位置

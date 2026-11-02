@@ -1,0 +1,12 @@
+{
+  "extends": "@eap/tsconfig/base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "lib": ["ES2022"]
+  },
+  "include": ["src/**/*.ts", "__tests__/**/*.ts"]
+}

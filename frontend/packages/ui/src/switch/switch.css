@@ -11,7 +11,7 @@
   border-radius: 999px;
 }
 
-.eap-switch[aria-checked="true"] {
+.eap-switch[aria-checked='true'] {
   background: var(--eap-color-primary, #347f70);
 }
 
@@ -24,7 +24,7 @@
   transform: translateX(0);
 }
 
-.eap-switch[aria-checked="true"] .eap-switch__thumb {
+.eap-switch[aria-checked='true'] .eap-switch__thumb {
   transform: translateX(16px);
 }
 

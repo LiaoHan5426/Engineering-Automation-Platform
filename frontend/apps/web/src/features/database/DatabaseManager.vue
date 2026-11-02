@@ -1,93 +1,93 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { runtimeApi } from "@eap/runtime-client";
-import { Button, Checkbox, ConfirmBox, EmptyState, Feedback, Input, Select } from "@eap/ui";
-import { errorMessage } from "../../lib/presentation";
-type Column = { name: string; type: string; nullable: boolean };
-type Table = { name: string; columns: Column[] };
-type Index = { name: string; table: string; columns: string[]; unique: boolean };
-const emit = defineEmits<{ saved: [] }>();
-const items = ref<Array<{ id: string; label: string; engine: string; environment: string }>>([]);
+import { computed, onMounted, ref } from 'vue'
+import { runtimeApi } from '@eap/runtime-client'
+import { Button, Checkbox, ConfirmBox, EmptyState, Feedback, Input, Select } from '@eap/ui'
+import { errorMessage } from '../../lib/presentation'
+type Column = { name: string; type: string; nullable: boolean }
+type Table = { name: string; columns: Column[] }
+type Index = { name: string; table: string; columns: string[]; unique: boolean }
+const emit = defineEmits<{ saved: [] }>()
+const items = ref<Array<{ id: string; label: string; engine: string; environment: string }>>([])
 const id = ref<string | null>(null),
-  label = ref(""),
-  engine = ref("PostgreSQL"),
-  environment = ref("local"),
-  filter = ref(""),
-  message = ref(""),
+  label = ref(''),
+  engine = ref('PostgreSQL'),
+  environment = ref('local'),
+  filter = ref(''),
+  message = ref(''),
   busy = ref(false),
-  editing = ref(false);
+  editing = ref(false)
 const tables = ref<Table[]>([]),
   indexes = ref<Index[]>([]),
   extra = ref<Record<string, unknown>>({}),
-  baseline = ref("");
+  baseline = ref('')
 function profile() {
   return {
     label: label.value,
     engine: engine.value,
     environment: environment.value,
     metadata: { ...extra.value, tables: tables.value, indexes: indexes.value },
-  };
+  }
 }
-const dirty = computed(() => editing.value && JSON.stringify(profile()) !== baseline.value);
+const dirty = computed(() => editing.value && JSON.stringify(profile()) !== baseline.value)
 /**
  * 离开编辑器前不静默丢弃草稿，也不用 `window.confirm`：它阻塞页面、无法被行为断言，
  * 而且说不清「丢掉的到底是哪一版」。这里改为拒绝离开，并把「保存 / 放弃」两个选择放在页面上。
  */
 function guardLeave() {
-  if (!dirty.value) return true;
-  message.value = "资料有未保存修改：请先「保存资料」，或点「放弃修改」明确丢弃这一版。";
-  return false;
+  if (!dirty.value) return true
+  message.value = '资料有未保存修改：请先「保存资料」，或点「放弃修改」明确丢弃这一版。'
+  return false
 }
-const deleteOpen = ref(false);
-const deleteRefusal = ref("");
+const deleteOpen = ref(false)
+const deleteRefusal = ref('')
 /** 删除要列的是后果，不是动词：哪份资料、还剩几张表结构快照、谁在引用它。 */
 const deleteImpact = computed(() => [
   `「${label.value || id.value}」登记的 ${tables.value.length} 张表结构与 ${indexes.value.length} 条索引会一并删除，无法恢复。`,
-  "若仍被某个已启用的专家引用，后端会拒绝这次删除并点名该专家。",
-  "删除不会改动任何规则包或专家定义；引用它的专家需要重新选择资料后才能启用。",
-]);
+  '若仍被某个已启用的专家引用，后端会拒绝这次删除并点名该专家。',
+  '删除不会改动任何规则包或专家定义；引用它的专家需要重新选择资料后才能启用。',
+])
 async function askDelete() {
-  if (!id.value || busy.value) return;
-  deleteRefusal.value = "";
-  deleteOpen.value = true;
+  if (!id.value || busy.value) return
+  deleteRefusal.value = ''
+  deleteOpen.value = true
 }
 async function refresh() {
   try {
-    items.value = (await runtimeApi.databases()).items;
+    items.value = (await runtimeApi.databases()).items
   } catch (error) {
-    message.value = errorMessage(error);
+    message.value = errorMessage(error)
   }
 }
 function create() {
-  if (!guardLeave()) return;
-  reset();
-  editing.value = true;
-  message.value = "";
-  baseline.value = JSON.stringify(profile());
+  if (!guardLeave()) return
+  reset()
+  editing.value = true
+  message.value = ''
+  baseline.value = JSON.stringify(profile())
 }
 async function select(key: string) {
-  if (!guardLeave()) return;
-  busy.value = true;
-  message.value = "";
+  if (!guardLeave()) return
+  busy.value = true
+  message.value = ''
   try {
-    const item = await runtimeApi.database(key);
-    id.value = item.id;
-    label.value = item.label;
-    engine.value = item.engine;
-    environment.value = item.environment;
-    extra.value = { ...item.metadata };
-    tables.value = (item.metadata.tables ?? []) as Table[];
-    indexes.value = (item.metadata.indexes ?? []) as Index[];
-    editing.value = true;
-    baseline.value = JSON.stringify(profile());
+    const item = await runtimeApi.database(key)
+    id.value = item.id
+    label.value = item.label
+    engine.value = item.engine
+    environment.value = item.environment
+    extra.value = { ...item.metadata }
+    tables.value = (item.metadata.tables ?? []) as Table[]
+    indexes.value = (item.metadata.indexes ?? []) as Index[]
+    editing.value = true
+    baseline.value = JSON.stringify(profile())
   } catch (error) {
-    message.value = errorMessage(error);
+    message.value = errorMessage(error)
   } finally {
-    busy.value = false;
+    busy.value = false
   }
 }
 async function save() {
-  if (busy.value) return;
+  if (busy.value) return
   if (
     !label.value.trim() ||
     tables.value.some(
@@ -97,23 +97,23 @@ async function save() {
       (index) => !index.name.trim() || !index.table.trim() || !index.columns.length,
     )
   ) {
-    message.value = "请补齐资料名称、表名、字段名称和索引信息";
-    return;
+    message.value = '请补齐资料名称、表名、字段名称和索引信息'
+    return
   }
-  const submitted = profile();
-  busy.value = true;
-  message.value = "";
+  const submitted = profile()
+  busy.value = true
+  message.value = ''
   try {
-    const result = await runtimeApi.saveDatabase(id.value, submitted);
-    id.value = result.id;
-    baseline.value = JSON.stringify(submitted);
-    message.value = "资料已保存；不会自动授权给专家或连接业务数据库";
-    await refresh();
-    emit("saved");
+    const result = await runtimeApi.saveDatabase(id.value, submitted)
+    id.value = result.id
+    baseline.value = JSON.stringify(submitted)
+    message.value = '资料已保存；不会自动授权给专家或连接业务数据库'
+    await refresh()
+    emit('saved')
   } catch (error) {
-    message.value = errorMessage(error);
+    message.value = errorMessage(error)
   } finally {
-    busy.value = false;
+    busy.value = false
   }
 }
 /**
@@ -123,35 +123,35 @@ async function save() {
  * itself.
  */
 async function remove() {
-  if (busy.value || !id.value) return;
-  busy.value = true;
-  deleteRefusal.value = "";
+  if (busy.value || !id.value) return
+  busy.value = true
+  deleteRefusal.value = ''
   try {
-    await runtimeApi.deleteDatabase(id.value);
-    await refresh();
-    reset();
-    deleteOpen.value = false;
-    message.value = "资料已删除；引用它的专家需要重新选择资料后才能启用";
-    emit("saved");
+    await runtimeApi.deleteDatabase(id.value)
+    await refresh()
+    reset()
+    deleteOpen.value = false
+    message.value = '资料已删除；引用它的专家需要重新选择资料后才能启用'
+    emit('saved')
   } catch (error) {
-    deleteRefusal.value = errorMessage(error);
+    deleteRefusal.value = errorMessage(error)
   } finally {
-    busy.value = false;
+    busy.value = false
   }
 }
 function reset() {
-  id.value = null;
-  label.value = "";
-  engine.value = "PostgreSQL";
-  environment.value = "local";
-  tables.value = [];
-  indexes.value = [];
-  extra.value = {};
-  editing.value = false;
-  baseline.value = "";
+  id.value = null
+  label.value = ''
+  engine.value = 'PostgreSQL'
+  environment.value = 'local'
+  tables.value = []
+  indexes.value = []
+  extra.value = {}
+  editing.value = false
+  baseline.value = ''
 }
-defineExpose({ refresh });
-onMounted(refresh);
+defineExpose({ refresh })
+onMounted(refresh)
 </script>
 <template>
   <section class="manager-workspace">
@@ -160,12 +160,8 @@ onMounted(refresh);
         <h2>数据库资料</h2>
         <Button variant="primary" :disabled="busy" @click="create"> ＋ 新建资料 </Button>
       </div>
-      <Input
-        v-model="filter"
-       
-        placeholder="搜索资料名称"
-        aria-label="搜索数据库资料"
-      /><Button variant="navigation"
+      <Input v-model="filter" placeholder="搜索资料名称" aria-label="搜索数据库资料" /><Button
+        variant="navigation"
         v-for="item in items.filter((item) =>
           item.label.toLowerCase().includes(filter.toLowerCase()),
         )"
@@ -189,8 +185,8 @@ onMounted(refresh);
       <form v-else @submit.prevent="save">
         <div class="manager-toolbar">
           <div>
-            <h2>{{ label || "新数据库资料" }}</h2>
-            <small>{{ dirty ? "有未保存修改" : "脱敏元数据快照" }}</small>
+            <h2>{{ label || '新数据库资料' }}</h2>
+            <small>{{ dirty ? '有未保存修改' : '脱敏元数据快照' }}</small>
           </div>
           <div class="form-actions">
             <Button
@@ -208,14 +204,16 @@ onMounted(refresh);
               type="button"
               :disabled="busy"
               @click="
-                baseline = JSON.stringify(profile());
-                message = '已放弃未保存的修改，回到上次保存的版本。';
+                () => {
+                  baseline = JSON.stringify(profile())
+                  message = '已放弃未保存的修改，回到上次保存的版本。'
+                }
               "
             >
               放弃修改
             </Button>
             <Button type="submit" variant="primary" :disabled="busy || !label.trim()">
-              {{ busy ? "保存中…" : "保存资料" }}
+              {{ busy ? '保存中…' : '保存资料' }}
             </Button>
           </div>
         </div>
@@ -224,12 +222,7 @@ onMounted(refresh);
           SQL。专家使用资料前需要显式授权。
         </Feedback>
         <fieldset :disabled="busy" class="metadata-fields">
-          <label
-            >资料名称<Input
-              v-model="label"
-             
-              required
-              maxlength="200" /></label
+          <label>资料名称<Input v-model="label" required maxlength="200" /></label
           ><label
             >数据库引擎<Select v-model="engine">
               <option>PostgreSQL</option>
@@ -238,9 +231,7 @@ onMounted(refresh);
               <option>Oracle</option>
               <option>SQLite</option>
             </Select></label
-          ><label
-            >环境<Input v-model="environment" required maxlength="40"
-          /></label>
+          ><label>环境<Input v-model="environment" required maxlength="40" /></label>
           <div class="manager-toolbar">
             <h3>表结构</h3>
             <Button
@@ -255,11 +246,7 @@ onMounted(refresh);
           <article v-for="(table, index) in tables" :key="index" class="observation">
             <div class="form-actions">
               <label class="grow"
-                >表名<Input
-                  v-model="table.name"
-                 
-                  placeholder="schema.table"
-                  required /></label
+                >表名<Input v-model="table.name" placeholder="schema.table" required /></label
               ><Button variant="secondary" type="button" @click="tables.splice(index, 1)">
                 移除表
               </Button>
@@ -271,10 +258,7 @@ onMounted(refresh);
             >
               <label>字段名称<Input v-model="column.name" required /></label
               ><label
-                >类型<Input
-                  v-model="column.type"
-                 
-                  placeholder="uuid / varchar / bigint" /></label
+                >类型<Input v-model="column.type" placeholder="uuid / varchar / bigint" /></label
               ><label><Checkbox v-model="column.nullable" />允许空值</label
               ><Button
                 variant="secondary"
@@ -306,15 +290,10 @@ onMounted(refresh);
           <article v-for="(index, position) in indexes" :key="position" class="observation">
             <label>索引名称<Input v-model="index.name" required /></label
             ><label
-              >所属表<Input
-                v-model="index.table"
-               
-                list="database-table-names"
-                required /></label
+              >所属表<Input v-model="index.table" list="database-table-names" required /></label
             ><label
               >索引列（按顺序，逗号分隔）<Input
                 :value="index.columns.join(', ')"
-               
                 required
                 @input="
                   index.columns = ($event.target as HTMLInputElement).value
@@ -347,8 +326,10 @@ onMounted(refresh);
       :refusal="deleteRefusal"
       @confirm="remove"
       @cancel="
-        deleteOpen = false;
-        deleteRefusal = '';
+        () => {
+          deleteOpen = false
+          deleteRefusal = ''
+        }
       "
     />
   </section>

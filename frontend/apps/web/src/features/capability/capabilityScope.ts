@@ -7,12 +7,12 @@
  * server with the platform handed it to every expert.
  */
 export type CapabilityLike = {
-  name: string;
-  kind?: string;
-  scope?: string;
-  expertScoped?: boolean;
-  title?: string;
-};
+  name: string
+  kind?: string
+  scope?: string
+  expertScoped?: boolean
+  title?: string
+}
 
 /** True when only an expert that declared this capability may run it. */
 export function isExpertScoped(
@@ -22,15 +22,15 @@ export function isExpertScoped(
 ): boolean {
   // The id namespace carries the scope: `mcp.<server>.<tool>` is expert-scoped even when the platform
   // does not publish it yet, which is exactly the case the editor must not present as runnable.
-  if (capability.startsWith("mcp.")) return true;
-  if (vocabulary.includes(capability)) return true;
-  const item = items.find((entry) => entry.name === capability);
-  return item?.expertScoped === true || item?.scope === "expert";
+  if (capability.startsWith('mcp.')) return true
+  if (vocabulary.includes(capability)) return true
+  const item = items.find((entry) => entry.name === capability)
+  return item?.expertScoped === true || item?.scope === 'expert'
 }
 
 /** Whether the editor may offer this capability as an ordinary platform node. */
 export function isGloballySelectable(item: CapabilityLike): boolean {
-  return !(item.expertScoped === true || item.scope === "expert");
+  return !(item.expertScoped === true || item.scope === 'expert')
 }
 
 /**
@@ -42,7 +42,7 @@ export function isGloballySelectable(item: CapabilityLike): boolean {
  * why the editor prints the disabled list instead of just omitting it.
  */
 export function offersAsNode(item: CapabilityLike, disabled: string[] = []): boolean {
-  return isGloballySelectable(item) && !disabled.includes(item.name);
+  return isGloballySelectable(item) && !disabled.includes(item.name)
 }
 
 /**
@@ -58,12 +58,12 @@ export function undeclaredScopedNodes<T extends { id: string; capability: string
   return steps.filter(
     (step) =>
       isExpertScoped(step.capability, items, vocabulary) && !declared.includes(step.capability),
-  );
+  )
 }
 
 /** Declared tools the platform does not publish: a manifest cannot bring a server into existence. */
 export function unknownDeclaredTools(declared: string[], vocabulary: string[] = []): string[] {
-  return declared.filter((tool) => !vocabulary.includes(tool));
+  return declared.filter((tool) => !vocabulary.includes(tool))
 }
 
 /**
@@ -74,13 +74,13 @@ export function selectableNodes(
   items: CapabilityLike[],
   declared: string[] = [],
 ): CapabilityLike[] {
-  const platform = items.filter(isGloballySelectable);
+  const platform = items.filter(isGloballySelectable)
   const scoped = declared
     .map(
       (name) =>
         items.find((item) => item.name === name) ??
-        ({ name, scope: "expert", expertScoped: true } as CapabilityLike),
+        ({ name, scope: 'expert', expertScoped: true } as CapabilityLike),
     )
-    .filter((item) => !platform.some((entry) => entry.name === item.name));
-  return [...platform, ...scoped];
+    .filter((item) => !platform.some((entry) => entry.name === item.name))
+  return [...platform, ...scoped]
 }

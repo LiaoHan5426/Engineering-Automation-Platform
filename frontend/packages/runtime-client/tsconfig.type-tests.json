@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./node_modules/.type-tests",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.type-tests.tsbuildinfo"
+  },
+  "include": ["__tests__/**/*.typecheck.ts"],
+  "references": [{ "path": "./tsconfig.json" }]
+}

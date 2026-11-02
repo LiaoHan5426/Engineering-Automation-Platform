@@ -1,0 +1,32 @@
+{
+  "name": "@eap/vsh",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "vsh": "./bin/vsh.mjs"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "circular-dependency-scanner": "3.1.0",
+    "typescript": "catalog:tooling",
+    "vue": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@eap/tsconfig": "workspace:*",
+    "@types/node": "catalog:types",
+    "vite-plus": "catalog:tooling"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

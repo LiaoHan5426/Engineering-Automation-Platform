@@ -2,7 +2,7 @@
  * Light theme. Override any `--eap-*` here or on a subtree to reskin the console.
  */
 :root,
-[data-eap-theme="light"] {
+[data-eap-theme='light'] {
   color-scheme: light;
 
   --eap-color-white: #fff;
@@ -41,7 +41,7 @@
   --eap-border-radius-card: 12px;
   --eap-border-radius-round: 999px;
   --eap-font-family:
-    Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+    Inter, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', ui-sans-serif, system-ui, sans-serif;
   --eap-font-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --eap-font-size-xs: 11px;
   --eap-font-size-sm: 12px;

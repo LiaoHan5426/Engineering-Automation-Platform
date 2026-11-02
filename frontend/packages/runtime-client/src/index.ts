@@ -1,7 +1,25 @@
-import axios from "axios";
-import NProgress from "nprogress";
+import axios from 'axios'
+import NProgress from 'nprogress'
 
-export type RuntimeHealth = { status: string; service: string };
+export type RuntimeHealth = { status: string; service: string }
+/** Configuration, never runtime permission or execution evidence. */
+export type ScenarioConfiguration = {
+  name: string
+  status: 'partial' | 'missing' | 'disabled'
+  modes: Array<'code' | 'work'>
+  summary: string
+  instructions: string
+  tools: string[]
+  skills: string[]
+  mcp: string[]
+  dependencies: Array<{
+    name: string
+    state: 'installed' | 'missing' | 'unconfigured' | 'denied'
+    where: string
+  }>
+  workflow?: 'prototype-to-code' | null
+}
+export type ScenarioSnapshot = { id: string; revision: number; definition: ScenarioConfiguration }
 /** How a capability gets things done: built-in command, local CLI, MCP tool or HTTP service. */
 /**
  * What an operator can do about a capability of a given kind.
@@ -10,172 +28,172 @@ export type RuntimeHealth = { status: string; service: string };
  * Both come from the runtime so the UI never promises an edit the backend would refuse.
  */
 export type CapabilityManagement = {
-  id: string;
-  label: string;
-  description: string;
-  creation: string;
-  manageable: boolean;
-};
-export type CapabilityAvailabilityCounts = Record<string, number> & { total?: number };
+  id: string
+  label: string
+  description: string
+  creation: string
+  manageable: boolean
+}
+export type CapabilityAvailabilityCounts = Record<string, number> & { total?: number }
 export type CapabilityKindSummary = {
-  id: string;
-  label: string;
-  description: string;
-  count: number;
+  id: string
+  label: string
+  description: string
+  count: number
   /** Scope this kind is born with: platform-level or expert-level. */
-  scope: string;
-  scopeLabel: string;
-  expertScoped: boolean;
-  management: CapabilityManagement;
-  manageable: boolean;
+  scope: string
+  scopeLabel: string
+  expertScoped: boolean
+  management: CapabilityManagement
+  manageable: boolean
   /** A kind earns a sub-page when it can be managed or has entries. */
-  visible: boolean;
-  availability: CapabilityAvailabilityCounts;
-};
+  visible: boolean
+  availability: CapabilityAvailabilityCounts
+}
 /** A registered MCP server, as far as the platform is willing to trust it. */
 export type McpServerItem = {
-  id: string;
-  name: string;
-  transport: string;
-  endpoint: string;
-  trusted: boolean;
-  enabled: boolean;
-  usable: boolean;
-  tools: string[];
-  capabilities: string[];
+  id: string
+  name: string
+  transport: string
+  endpoint: string
+  trusted: boolean
+  enabled: boolean
+  usable: boolean
+  tools: string[]
+  capabilities: string[]
   /** Experts granted one of its tools on activation. */
-  authorisedExperts: string[];
+  authorisedExperts: string[]
   /** Enabled experts that depend on one of its tools. */
-  enabledExperts: string[];
+  enabledExperts: string[]
   /** Why it is not callable, computed rather than stored. */
-  problems: string[];
-};
+  problems: string[]
+}
 /** Where the binary of a local CLI capability actually lives on this machine. */
 export type CapabilityCliChannel = {
-  binary: string;
+  binary: string
   /** `shipped` (the handler's default) or `operator` (an override). */
-  source: string;
-  shipped: boolean;
-  overridden: boolean;
-  resolvedPath: string | null;
-  found: boolean;
-  availability: string;
-  availabilityLabel: string;
-};
+  source: string
+  shipped: boolean
+  overridden: boolean
+  resolvedPath: string | null
+  found: boolean
+  availability: string
+  availabilityLabel: string
+}
 export type CapabilitySetting = {
-  capability: string;
-  enabled: boolean;
-  notes: string;
-  updatedAt: string;
-};
+  capability: string
+  enabled: boolean
+  notes: string
+  updatedAt: string
+}
 export type CapabilityItem = {
-  programId?: string;
-  builtin?: boolean;
-  args?: string[];
-  name: string;
-  kind: string;
-  kindLabel: string;
-  management: CapabilityManagement;
+  programId?: string
+  builtin?: boolean
+  args?: string[]
+  name: string
+  kind: string
+  kindLabel: string
+  management: CapabilityManagement
   /** platform = the runtime may enable it for every expert; expert = only an expert that declared it may run it. */
-  scope: string;
-  scopeLabel: string;
-  expertScoped: boolean;
+  scope: string
+  scopeLabel: string
+  expertScoped: boolean
   /** False for a capability an MCP server publishes without a handler behind it. */
-  registered: boolean;
-  title: string;
-  summary: string;
-  inputs: string[];
-  grants: string[];
-  executor: string;
+  registered: boolean
+  title: string
+  summary: string
+  inputs: string[]
+  grants: string[]
+  executor: string
   /** For a local CLI capability: the executable it ships with, before any override. */
-  binary?: string | null;
-  facts: string[];
-  evidence: string[];
-  readOnly: boolean;
-  enabled: boolean;
-  disabled: boolean;
-  notes: string;
-  availability: string;
-  availabilityLabel: string;
+  binary?: string | null
+  facts: string[]
+  evidence: string[]
+  readOnly: boolean
+  enabled: boolean
+  disabled: boolean
+  notes: string
+  availability: string
+  availabilityLabel: string
   /** True only for a platform-scoped capability that is switched on and whose dependency is present. */
-  globallyRunnable: boolean;
-  cli?: CapabilityCliChannel;
+  globallyRunnable: boolean
+  cli?: CapabilityCliChannel
   /** Why a published-but-unimplemented capability cannot run yet. */
-  problems?: string[];
+  problems?: string[]
   /** Experts that were granted this expert-scoped capability on activation. */
-  authorisedExperts: string[];
+  authorisedExperts: string[]
   /** Experts that are enabled and reference this capability. */
-  usedBy: string[];
+  usedBy: string[]
   /** Experts that reference it, including drafts. */
-  declaredBy: string[];
-};
+  declaredBy: string[]
+}
 export type CapabilityResponse = {
-  cliPrograms?: CliProgramItem[];
-  items: CapabilityItem[];
-  kinds: CapabilityKindSummary[];
-  capabilities: string[];
+  cliPrograms?: CliProgramItem[]
+  items: CapabilityItem[]
+  kinds: CapabilityKindSummary[]
+  capabilities: string[]
   /** Platform capabilities an expert editor may offer as an ordinary node. */
-  globallyUsable: string[];
+  globallyUsable: string[]
   /** Platform capabilities the operator switched off, so the editor can explain their absence. */
-  disabledPlatform: string[];
+  disabledPlatform: string[]
   /** Capabilities that must be granted per expert; never globally enabled. */
-  expertScoped: string[];
-  platformScoped: string[];
+  expertScoped: string[]
+  platformScoped: string[]
   /** Expert-scoped capability ids the platform currently publishes (registered + trusted MCP servers). */
-  expertScopedVocabulary: string[];
-  mcpServers: McpServerItem[];
-  settings: Record<string, CapabilitySetting>;
-  disabledCapabilities: string[];
-  scopeNotes?: Record<string, string>;
-  declared: string[];
-  unregistered: string[];
-  undeclared: string[];
-};
+  expertScopedVocabulary: string[]
+  mcpServers: McpServerItem[]
+  settings: Record<string, CapabilitySetting>
+  disabledCapabilities: string[]
+  scopeNotes?: Record<string, string>
+  declared: string[]
+  unregistered: string[]
+  undeclared: string[]
+}
 export type CliProbeResult = {
-  capability: string;
-  binary: string;
-  source: string;
-  resolvedPath: string | null;
-  executed: boolean;
-  exitCode?: number;
-  success?: boolean;
-  output?: string;
-  message: string;
-};
+  capability: string
+  binary: string
+  source: string
+  resolvedPath: string | null
+  executed: boolean
+  exitCode?: number
+  success?: boolean
+  output?: string
+  message: string
+}
 
 export type CliOperationRequest = {
-  capabilityId: string;
-  title: string;
-  args: string[];
-  description: string;
-};
-export type CliOperationItem = CliOperationRequest & { programId: string; builtin: boolean };
-export type CliProgramRequest = { id: string; name: string; binary: string };
+  capabilityId: string
+  title: string
+  args: string[]
+  description: string
+}
+export type CliOperationItem = CliOperationRequest & { programId: string; builtin: boolean }
+export type CliProgramRequest = { id: string; name: string; binary: string }
 export type CliProgramItem = CliProgramRequest & {
-  builtin: boolean;
-  channel: { binary: string; source: string; resolvedPath: string | null };
-  operations: CliOperationItem[];
-};
+  builtin: boolean
+  channel: { binary: string; source: string; resolvedPath: string | null }
+  operations: CliOperationItem[]
+}
 export type McpProbeResult = {
-  id: string;
-  checked: boolean;
-  transport?: string;
-  target?: string;
+  id: string
+  checked: boolean
+  transport?: string
+  target?: string
   /** Always false until an MCP protocol client exists: a declared tool list is not a verified one. */
-  verified?: boolean;
-  targetResolved?: string | null;
-  reachable?: boolean;
-  message: string;
-};
+  verified?: boolean
+  targetResolved?: string | null
+  reachable?: boolean
+  message: string
+}
 export type McpServerRequest = {
-  id: string;
-  name: string;
-  transport: string;
-  endpoint: string;
-  tools: string[];
-  trusted: boolean;
-  enabled: boolean;
-};
+  id: string
+  name: string
+  transport: string
+  endpoint: string
+  tools: string[]
+  trusted: boolean
+  enabled: boolean
+}
 /**
  * Real counts behind the overview's headline figures, computed by the runtime from the task table.
  *
@@ -183,638 +201,914 @@ export type McpServerRequest = {
  * "no runs yet" is not the same claim as "0%", and only one of them is honest.
  */
 export type TaskStatistics = {
-  windowDays: number;
-  tasksTotal: number;
-  tasksInWindow: number;
-  observationsInWindow: number;
-  byStatus: Record<string, number>;
-  byDecision: Record<string, number>;
-  model: { recordedRuns: number; calls: number; share: number | null };
-  deterministicShare: number | null;
-  source: string;
-  note: string;
-};
+  windowDays: number
+  tasksTotal: number
+  tasksInWindow: number
+  observationsInWindow: number
+  byStatus: Record<string, number>
+  byDecision: Record<string, number>
+  model: { recordedRuns: number; calls: number; share: number | null }
+  deterministicShare: number | null
+  source: string
+  note: string
+}
 export type TaskObservation = {
-  capability: string;
-  success: boolean;
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-  metadata?: { nodeId?: string; state?: string; required?: boolean; expertId?: string };
-};
+  capability: string
+  success: boolean
+  exitCode: number
+  stdout: string
+  stderr: string
+  metadata?: { nodeId?: string; state?: string; required?: boolean; expertId?: string }
+}
 export type TaskResult = {
-  id: string;
-  goal: string;
-  status: string;
-  decision: string;
+  id: string
+  goal: string
+  status: string
+  decision: string
   /** Which route the judgement stage took: `unverified-observation` / `skipped` / `unavailable`, or "" when the run never reached it. */
-  modelEnhancement?: string;
-  observations?: TaskObservation[];
-  createdAt?: string;
-};
+  modelEnhancement?: string
+  observations?: TaskObservation[]
+  createdAt?: string
+}
 export type MissionRecord = {
-  id: string;
-  handoffId: string;
-  source: "chat" | "builder" | "board";
-  sourceRef: string;
-  summary: string;
-  status: "created";
-  execution: "not_started" | "running" | "cancelling" | "succeeded" | "failed" | "timed_out" | "cancelled" | "interrupted";
-  approval: "not_requested";
-  grant: "none";
-  verification: "not_requested";
-  createdAt?: string;
-};
+  id: string
+  handoffId: string
+  source: 'chat' | 'builder' | 'board'
+  sourceRef: string
+  summary: string
+  status: 'created'
+  execution:
+    | 'not_started'
+    | 'running'
+    | 'cancelling'
+    | 'succeeded'
+    | 'failed'
+    | 'timed_out'
+    | 'cancelled'
+    | 'interrupted'
+  approval: 'not_requested'
+  grant: 'none'
+  verification: 'not_requested'
+  createdAt?: string
+}
 export type MissionExecutionRecord = {
-  id: string;
-  missionId: string;
-  status: string;
-  capability: "git-status";
-  principal: "local-operator";
-  exitCode?: number | null;
-  exitEvidence?: string | null;
-  unconfirmedReason?: string | null;
-  approval: "NOT_REQUIRED";
-  cancelRequested?: boolean;
-};
+  id: string
+  missionId: string
+  status: string
+  capability: 'git-status'
+  principal: 'local-operator'
+  exitCode?: number | null
+  exitEvidence?: string | null
+  unconfirmedReason?: string | null
+  approval: 'NOT_REQUIRED'
+  cancelRequested?: boolean
+}
 export type PrototypeVersionRecord = {
-  id: string;
-  sourceRef: "builder-alpha" | "builder-beta";
-  title: string;
-  body: string;
-  buttonPresses: number;
-  interaction: string;
-  acceptance: string[];
-  contentHash: string;
-  createdAt?: string;
-};
+  id: string
+  sourceRef: 'builder-alpha' | 'builder-beta'
+  title: string
+  body: string
+  buttonPresses: number
+  interaction: string
+  acceptance: string[]
+  contentHash: string
+  createdAt?: string
+}
 export type PrototypeDeliveryRecord = {
-  id: string;
-  versionId: string;
-  createdAt?: string;
-};
+  id: string
+  versionId: string
+  createdAt?: string
+}
 export type HandoffRecord = {
-  id: string;
-  source: "chat" | "builder" | "board";
-  sourceRef: string;
-  summary: string;
-  status: "recorded";
-  execution: "not_started";
-  approval: "not_requested";
-  grant: "none";
-  createdAt?: string;
-};
+  id: string
+  source: 'chat' | 'builder' | 'board'
+  sourceRef: string
+  summary: string
+  status: 'recorded'
+  execution: 'not_started'
+  approval: 'not_requested'
+  grant: 'none'
+  createdAt?: string
+}
 export type SqlFinding = {
-  code: string;
-  title?: string;
-  category: string;
-  severity: string;
-  evidence: string;
-  suggestion: string;
-  confidence: number;
-};
+  code: string
+  title?: string
+  category: string
+  severity: string
+  evidence: string
+  suggestion: string
+  confidence: number
+}
 export type BlockedRule = {
-  rule: string;
-  missingFacts: string[];
-  missingCapabilities: string[];
-};
+  rule: string
+  missingFacts: string[]
+  missingCapabilities: string[]
+}
 export type RuleCapabilityCheck = {
-  id: string;
-  required: string[];
-  met: boolean;
-  missing: string[];
-};
+  id: string
+  required: string[]
+  met: boolean
+  missing: string[]
+}
 export type DeterministicAnalysis = {
-  parseStatus?: string;
-  statementType?: string;
-  normalizedSql?: string;
-  engineVersion?: string;
-  findings?: SqlFinding[];
-  rulesFired?: string[];
-  blockedRules?: BlockedRule[];
-  ruleCapabilities?: RuleCapabilityCheck[];
-  suggestions?: string[];
-  tables?: string[];
-  joinKeys?: string[];
-  joinColumns?: Array<Record<string, string>>;
-  severityCounts?: Record<string, number>;
-  complexity?: number;
-  deterministicConfidence?: number;
-  requiresModelReview?: boolean;
-  summary?: string;
-  error?: string;
-  facts?: Record<string, unknown>;
-};
+  parseStatus?: string
+  statementType?: string
+  normalizedSql?: string
+  engineVersion?: string
+  findings?: SqlFinding[]
+  rulesFired?: string[]
+  blockedRules?: BlockedRule[]
+  ruleCapabilities?: RuleCapabilityCheck[]
+  suggestions?: string[]
+  tables?: string[]
+  joinKeys?: string[]
+  joinColumns?: Array<Record<string, string>>
+  severityCounts?: Record<string, number>
+  complexity?: number
+  deterministicConfidence?: number
+  requiresModelReview?: boolean
+  summary?: string
+  error?: string
+  facts?: Record<string, unknown>
+}
 export type RulePackSummary = {
-  id: string;
-  name: string;
-  description?: string | null;
-  version?: number | null;
-  ruleCount: number;
-  shipped: boolean;
-  editable: boolean;
-  enabled: boolean;
-  revision: number;
+  id: string
+  name: string
+  description?: string | null
+  version?: number | null
+  ruleCount: number
+  shipped: boolean
+  editable: boolean
+  enabled: boolean
+  revision: number
   /** Capabilities this pack needs in order to produce findings. */
-  requires?: string[];
-  requiredFacts?: string[];
-};
-export type RuleRequirements = { declared: string[]; derived: string[]; facts?: string[] };
+  requires?: string[]
+  requiredFacts?: string[]
+}
+export type RuleRequirements = { declared: string[]; derived: string[]; facts?: string[] }
 /** A saved pack's detail: the manifest as text, plus whether the editor may change it. */
 export type RulePackDetail = {
-  manifest: string;
-  shipped: boolean;
-  editable: boolean;
-  requirements?: RuleRequirements;
-};
+  manifest: string
+  shipped: boolean
+  editable: boolean
+  requirements?: RuleRequirements
+}
 /** What the backend says about a candidate manifest — the same checks that gate a save. */
-export type RuleValidation = { valid: boolean; errors: string[]; requirements?: RuleRequirements };
-export type RulePackWriteResult = { id: string; revision?: number; enabled?: boolean };
+export type RuleValidation = { valid: boolean; errors: string[]; requirements?: RuleRequirements }
+export type RulePackWriteResult = { id: string; revision?: number; enabled?: boolean }
 export type RuleCondition = {
-  fact?: string;
-  op?: string;
-  value?: unknown;
-  all?: RuleCondition[];
-  any?: RuleCondition[];
-  not?: RuleCondition;
-};
+  fact?: string
+  op?: string
+  value?: unknown
+  all?: RuleCondition[]
+  any?: RuleCondition[]
+  not?: RuleCondition
+}
 export type RuleDefinition = {
-  id: string;
-  title?: string;
-  category?: string;
-  severity?: string;
-  when?: RuleCondition;
-  severityWhen?: Array<{ when?: RuleCondition; severity?: string }>;
-  evidence?: string;
-  suggestion?: string;
-  confidence?: number;
-};
+  id: string
+  title?: string
+  category?: string
+  severity?: string
+  when?: RuleCondition
+  severityWhen?: Array<{ when?: RuleCondition; severity?: string }>
+  evidence?: string
+  suggestion?: string
+  confidence?: number
+}
 export type RulePackManifest = {
-  apiVersion?: string;
-  kind?: string;
-  id: string;
-  name: string;
-  version?: number;
-  description?: string;
-  requires?: { capabilities?: string[]; note?: string };
-  rules?: RuleDefinition[];
-};
+  apiVersion?: string
+  kind?: string
+  id: string
+  name: string
+  version?: number
+  description?: string
+  requires?: { capabilities?: string[]; note?: string }
+  rules?: RuleDefinition[]
+}
 export type RuleFact = {
-  key: string;
-  type: string;
-  group: string;
-  description: string;
+  key: string
+  type: string
+  group: string
+  description: string
   /** Capability that publishes this fact; a rule pack referencing it therefore needs that capability. */
-  producedBy: string;
-};
+  producedBy: string
+}
 export type DryRunResult = {
-  valid: boolean;
-  errors: string[];
-  parseStatus?: string;
-  facts?: Record<string, unknown>;
-  findings?: SqlFinding[];
-  rulesFired?: string[];
-  blockedRules?: BlockedRule[];
-  severityCounts?: Record<string, number>;
-  complexity?: number;
-  summary?: string;
-  requirements?: RuleRequirements;
-  factProducers?: Record<string, string>;
-};
+  valid: boolean
+  errors: string[]
+  parseStatus?: string
+  facts?: Record<string, unknown>
+  findings?: SqlFinding[]
+  rulesFired?: string[]
+  blockedRules?: BlockedRule[]
+  severityCounts?: Record<string, number>
+  complexity?: number
+  summary?: string
+  requirements?: RuleRequirements
+  factProducers?: Record<string, string>
+}
 export type ModelAdvisor = {
-  attempted?: boolean;
-  succeeded?: boolean;
-  decision?: string;
-  rationale?: string;
-  provider?: string | null;
-  model?: string | null;
-  latencyMs?: number;
-  promptTokens?: number;
-  completionTokens?: number;
+  attempted?: boolean
+  succeeded?: boolean
+  decision?: string
+  rationale?: string
+  provider?: string | null
+  model?: string | null
+  latencyMs?: number
+  promptTokens?: number
+  completionTokens?: number
   preprocessing?: {
-    estimatedTokens?: number;
-    baselineTokens?: number;
-    compressionRatio?: number;
-    includedSections?: string[];
-    droppedSections?: string[];
-  };
-};
+    estimatedTokens?: number
+    baselineTokens?: number
+    compressionRatio?: number
+    includedSections?: string[]
+    droppedSections?: string[]
+  }
+}
 export type SqlAnalysis = {
-  modelEnhancement?: string;
-  id?: string;
-  nodes?: Array<{ id: string; label: string; capability: string; state: string; message: string }>;
-  status: string;
-  sql: string;
-  advice: string[];
-  safety: string[];
-  expertAdvice: string | null;
-  analysisMode: string;
-  message?: string;
-  deterministicAnalysis?: DeterministicAnalysis;
-  modelAdvisor?: ModelAdvisor;
-  rulePacks?: Array<{ id: string; name: string; ruleCount: number; requires?: string[] }>;
+  modelEnhancement?: string
+  id?: string
+  nodes?: Array<{ id: string; label: string; capability: string; state: string; message: string }>
+  status: string
+  sql: string
+  advice: string[]
+  safety: string[]
+  expertAdvice: string | null
+  analysisMode: string
+  message?: string
+  deterministicAnalysis?: DeterministicAnalysis
+  modelAdvisor?: ModelAdvisor
+  rulePacks?: Array<{ id: string; name: string; ruleCount: number; requires?: string[] }>
   /** Per-pack check of whether this run could produce the facts the pack depends on. */
-  rulePackRequirements?: RuleCapabilityCheck[];
-  executedCapabilities?: string[];
+  rulePackRequirements?: RuleCapabilityCheck[]
+  executedCapabilities?: string[]
   knowledgeEvidence?: Array<{
-    source: string;
-    knowledgeBase: string;
-    score: number;
-    excerpt: string;
-  }>;
-};
+    source: string
+    knowledgeBase: string
+    score: number
+    excerpt: string
+  }>
+}
 
 export type AiConnectionState =
-  | "disabled"
-  | "not_configured"
-  | "configured_unverified"
-  | "available"
-  | "error";
-export type AiToolMode = "none" | "git_status";
+  | 'disabled'
+  | 'not_configured'
+  | 'configured_unverified'
+  | 'available'
+  | 'error'
+export type AiToolMode = 'none' | 'git_status'
 export type AiStatus = {
-  state: AiConnectionState;
-  provider: string;
-  model: string;
-  configurationRevision: string;
-  lastObservedAt: string | null;
-  errorCode: string;
-  tools: { git_status: boolean };
-  workspaceLabel: string;
+  state: AiConnectionState
+  provider: string
+  model: string
+  configurationRevision: string
+  lastObservedAt: string | null
+  errorCode: string
+  tools: { git_status: boolean }
+  workspaceLabel: string
   /** Absolute Java-process machine workspace directory when known; never a local group label. */
-  workspacePath?: string;
+  workspacePath?: string
   /**
    * Optional co-located process-bound root on that same JVM machine; empty when denied/missing.
    * Not a remote user directory grant.
    */
-  authorizedRootPath?: string;
+  authorizedRootPath?: string
   /** Denial code when authorizedRootPath is empty (e.g. AUTHORIZED_ROOT_MISSING, ROOT_CONFLICT). */
-  authorizedRootDenial?: string;
+  authorizedRootDenial?: string
   /**
    * Always false when the runtime follows Cursor/Codex-style local hosting:
    * the server does not persist operator directory grants.
    */
-  storesUserDirectoryGrants?: boolean;
+  storesUserDirectoryGrants?: boolean
   /** Post-apply verification flag from local-service config; false by default. */
-  verificationEnabled?: boolean;
+  verificationEnabled?: boolean
   /** Configured check names when verification is listed; empty means not_requested even if enabled. */
-  verificationCommands?: string[];
-};
+  verificationCommands?: string[]
+}
 /** Read-only generation-prep baseline. Never includes file contents. */
 export type WorkspaceBaseline = {
-  path: string;
-  exists: boolean;
-  baseHash: string;
-  denial: string;
-};
+  path: string
+  exists: boolean
+  baseHash: string
+  denial: string
+}
 /** Read-only workspace excerpt for generation prep. Does not grant write authorization. */
 export type WorkspaceSource = {
-  path: string;
-  exists: boolean;
-  baseHash: string;
-  bytes: number;
-  excerpt: string;
-  denial: string;
-};
-export type WorkspaceFiles = { path: string; entries: Array<{ name: string; path: string; directory: boolean }>; truncated: boolean; denial: string };
-export type BoardColumn = 'planned' | 'ready' | 'running' | 'acceptance' | 'done';
-export type BoardTask = { id: string; projectId: string; title: string; column: BoardColumn; notes: string; sessionId: string; revision: number; events: string[]; priority: 'none' | 'p0' | 'p1' | 'p2'; goal: string; acceptanceCriteria: string; executionActive: boolean; prototypeVersionId: string | null; preparationIssues: Array<'goal' | 'acceptanceCriteria'>; allowedColumns: BoardColumn[] };
-export type BoardTaskDraft = { projectId: string; title: string; column: 'planned' | 'ready'; sessionId: string; goal: string; acceptanceCriteria: string; requestId: string };
-export type BoardPrototypeReference = { id: string; sourceRef: string; title: string; contentHash: string; createdAt: string };
-export type BoardRunStart = { projectId: string; revision: number; requestId: string; workspacePath: string };
-export type BoardRun = { requestId: string; taskRevision: number; task: { title: string; goal: string; acceptanceCriteria: string; prototype?: BoardPrototypeReference | null }; execution: MissionExecutionRecord & { workspacePath: string; workspaceLabel: string; executable: string; stdout: string | null; stderr: string | null; startedAt: string; finishedAt: string | null } };
-export type BoardRunPage = { availability: { allowed: boolean; workspacePath: string; workspaceLabel: string; reason: string }; items: BoardRun[] };
-export type BoardReviewEvidence = { contentHash: string; snapshot: { workspacePath: string; baseCommit: string; headAfter: string; startedAt: string; finishedAt: string; status: 'CAPTURED' | 'INCOMPLETE' | 'FAILED' | 'CHANGED'; issues: string[]; repositoryStatus: string; diff: string; check: { status: 'NOT_RUN' | 'PASSED' | 'FAILED' | 'INCOMPLETE' | 'STALE'; exitCode: number | null; output: string }; steps: Array<{ name: string; command: string[]; exitCode: number; processStatus: string; truncated: boolean; stderr: string }> } };
-export type BoardReviewPage = { evidence: BoardReviewEvidence | null; captureAllowed: boolean; reason: string };
-export type BoardVerificationSource = { scope: string; contentHash: string; files: Array<{ path: string; contentHash: string; bytes: number }>; exclusions: string[] };
-export type BoardVerificationCommand = { id: string; command: string[]; workingDirectory: string; timeoutSeconds: number };
-export type BoardVerificationPlan = { planHash: string; workspacePath: string; baseCommit: string; source: BoardVerificationSource; commands: BoardVerificationCommand[] };
-export type BoardVerificationStatus = 'QUEUED' | 'RUNNING' | 'PASSED' | 'FAILED' | 'STALE' | 'UNKNOWN';
-export type BoardVerificationCheck = Omit<BoardVerificationCommand, 'timeoutSeconds'> & { status: BoardVerificationStatus | 'TIMED_OUT'; exitCode: number | null; stdout: string; stderr: string; truncated: boolean; processTreeCleanup: boolean; startedAt: string; finishedAt: string | null };
-export type BoardVerificationRecord = { id: string; status: BoardVerificationStatus; reason: string; plan: BoardVerificationPlan | null; workspacePath?: string | null; checks: BoardVerificationCheck[]; sourceAfter: BoardVerificationSource | null; startedAt: string; finishedAt: string | null };
-export type BoardVerificationPage = { record: BoardVerificationRecord | null; prepareAllowed: boolean; reason: string };
-export type BoardApplicationRef = { conversationId: string; proposalId: string };
-export type BoardApplicationEvidence = BoardApplicationRef & { association: 'POST_HOC' | 'PREBOUND'; taskBinding?: CodeTaskRef | null; generationId: string; targetPath: string; generationBaseHash: string; appliedAfterHash: string; generationCapturedAt: string; prototypeVersionId: string | null; prototypeContentHash: string | null; associatedAt: string; operator: 'local-operator' };
-export type BoardDeliveryRequest = BoardRunStart & { paths: string[]; note: string; applicationRef?: BoardApplicationRef };
-export type BoardDeliveryDecisionRequest = { projectId: string; revision: number; requestId: string; deliveryId: string; decision: 'ACCEPT' | 'REJECT'; criteriaConfirmed: boolean; previewConfirmed: boolean; comment: string };
-export type BoardDeliveryDecision = Omit<BoardDeliveryDecisionRequest, 'projectId' | 'revision' | 'deliveryId'> & { id: string; operator: 'local-operator'; createdAt: string };
-export type BoardDeliveryFile = { path: string; beforeHash: string; afterHash: string; before: string; after: string };
-export type BoardDelivery = { id: string; source: 'EXTERNAL_MANUAL' | 'CHAT_APPLIED_POST_HOC' | 'CHAT_APPLIED_PREBOUND'; applicationEvidence?: BoardApplicationEvidence | null; requestId: string; taskRevision: number; submittedRevision: number; workspacePath: string; baseCommit: string; verificationId: string; sourceHash: string; prototypeVersionId: string | null; goal: string; acceptanceCriteria: string; note: string; files: BoardDeliveryFile[]; createdAt: string; decision: BoardDeliveryDecision | null };
-export type BoardDeliveryPage = { record: BoardDelivery | null; prepareAllowed: boolean; reason: string };
+  path: string
+  exists: boolean
+  baseHash: string
+  bytes: number
+  excerpt: string
+  denial: string
+}
+export type WorkspaceFiles = {
+  path: string
+  entries: Array<{ name: string; path: string; directory: boolean }>
+  truncated: boolean
+  denial: string
+}
+export type BoardColumn = 'planned' | 'ready' | 'running' | 'acceptance' | 'done'
+export type BoardTask = {
+  id: string
+  projectId: string
+  title: string
+  column: BoardColumn
+  notes: string
+  sessionId: string
+  revision: number
+  events: string[]
+  priority: 'none' | 'p0' | 'p1' | 'p2'
+  goal: string
+  acceptanceCriteria: string
+  executionActive: boolean
+  prototypeVersionId: string | null
+  preparationIssues: Array<'goal' | 'acceptanceCriteria'>
+  allowedColumns: BoardColumn[]
+}
+export type BoardTaskDraft = {
+  projectId: string
+  title: string
+  column: 'planned' | 'ready'
+  sessionId: string
+  goal: string
+  acceptanceCriteria: string
+  requestId: string
+}
+export type BoardPrototypeReference = {
+  id: string
+  sourceRef: string
+  title: string
+  contentHash: string
+  createdAt: string
+}
+export type BoardRunStart = {
+  projectId: string
+  revision: number
+  requestId: string
+  workspacePath: string
+}
+export type BoardRun = {
+  requestId: string
+  taskRevision: number
+  task: {
+    title: string
+    goal: string
+    acceptanceCriteria: string
+    prototype?: BoardPrototypeReference | null
+  }
+  execution: MissionExecutionRecord & {
+    workspacePath: string
+    workspaceLabel: string
+    executable: string
+    stdout: string | null
+    stderr: string | null
+    startedAt: string
+    finishedAt: string | null
+  }
+}
+export type BoardRunPage = {
+  availability: { allowed: boolean; workspacePath: string; workspaceLabel: string; reason: string }
+  items: BoardRun[]
+}
+export type BoardReviewEvidence = {
+  contentHash: string
+  snapshot: {
+    workspacePath: string
+    baseCommit: string
+    headAfter: string
+    startedAt: string
+    finishedAt: string
+    status: 'CAPTURED' | 'INCOMPLETE' | 'FAILED' | 'CHANGED'
+    issues: string[]
+    repositoryStatus: string
+    diff: string
+    check: {
+      status: 'NOT_RUN' | 'PASSED' | 'FAILED' | 'INCOMPLETE' | 'STALE'
+      exitCode: number | null
+      output: string
+    }
+    steps: Array<{
+      name: string
+      command: string[]
+      exitCode: number
+      processStatus: string
+      truncated: boolean
+      stderr: string
+    }>
+  }
+}
+export type BoardReviewPage = {
+  evidence: BoardReviewEvidence | null
+  captureAllowed: boolean
+  reason: string
+}
+export type BoardVerificationSource = {
+  scope: string
+  contentHash: string
+  files: Array<{ path: string; contentHash: string; bytes: number }>
+  exclusions: string[]
+}
+export type BoardVerificationCommand = {
+  id: string
+  command: string[]
+  workingDirectory: string
+  timeoutSeconds: number
+}
+export type BoardVerificationPlan = {
+  planHash: string
+  workspacePath: string
+  baseCommit: string
+  source: BoardVerificationSource
+  commands: BoardVerificationCommand[]
+}
+export type BoardVerificationStatus =
+  | 'QUEUED'
+  | 'RUNNING'
+  | 'PASSED'
+  | 'FAILED'
+  | 'STALE'
+  | 'UNKNOWN'
+export type BoardVerificationCheck = Omit<BoardVerificationCommand, 'timeoutSeconds'> & {
+  status: BoardVerificationStatus | 'TIMED_OUT'
+  exitCode: number | null
+  stdout: string
+  stderr: string
+  truncated: boolean
+  processTreeCleanup: boolean
+  startedAt: string
+  finishedAt: string | null
+}
+export type BoardVerificationRecord = {
+  id: string
+  status: BoardVerificationStatus
+  reason: string
+  plan: BoardVerificationPlan | null
+  workspacePath?: string | null
+  checks: BoardVerificationCheck[]
+  sourceAfter: BoardVerificationSource | null
+  startedAt: string
+  finishedAt: string | null
+}
+export type BoardVerificationPage = {
+  record: BoardVerificationRecord | null
+  prepareAllowed: boolean
+  reason: string
+}
+export type BoardApplicationRef = { conversationId: string; proposalId: string }
+export type BoardApplicationEvidence = BoardApplicationRef & {
+  association: 'POST_HOC' | 'PREBOUND'
+  taskBinding?: CodeTaskRef | null
+  generationId: string
+  targetPath: string
+  generationBaseHash: string
+  appliedAfterHash: string
+  generationCapturedAt: string
+  prototypeVersionId: string | null
+  prototypeContentHash: string | null
+  associatedAt: string
+  operator: 'local-operator'
+}
+export type BoardDeliveryRequest = BoardRunStart & {
+  paths: string[]
+  note: string
+  applicationRef?: BoardApplicationRef
+}
+export type BoardDeliveryDecisionRequest = {
+  projectId: string
+  revision: number
+  requestId: string
+  deliveryId: string
+  decision: 'ACCEPT' | 'REJECT'
+  criteriaConfirmed: boolean
+  previewConfirmed: boolean
+  comment: string
+}
+export type BoardDeliveryDecision = Omit<
+  BoardDeliveryDecisionRequest,
+  'projectId' | 'revision' | 'deliveryId'
+> & { id: string; operator: 'local-operator'; createdAt: string }
+export type BoardDeliveryFile = {
+  path: string
+  beforeHash: string
+  afterHash: string
+  before: string
+  after: string
+}
+export type BoardDelivery = {
+  id: string
+  source: 'EXTERNAL_MANUAL' | 'CHAT_APPLIED_POST_HOC' | 'CHAT_APPLIED_PREBOUND'
+  applicationEvidence?: BoardApplicationEvidence | null
+  requestId: string
+  taskRevision: number
+  submittedRevision: number
+  workspacePath: string
+  baseCommit: string
+  verificationId: string
+  sourceHash: string
+  prototypeVersionId: string | null
+  goal: string
+  acceptanceCriteria: string
+  note: string
+  files: BoardDeliveryFile[]
+  createdAt: string
+  decision: BoardDeliveryDecision | null
+}
+export type BoardDeliveryPage = {
+  record: BoardDelivery | null
+  prepareAllowed: boolean
+  reason: string
+}
 
 /** Read-only dirty-file summary. requested=false means git was not run. */
 export type WorkspaceDirty = {
-  requested: boolean;
-  denial: string;
-  count: number;
-  paths: string[];
-  detail: string;
-};
+  requested: boolean
+  denial: string
+  count: number
+  paths: string[]
+  detail: string
+}
 /**
  * Safe verification probe. requested=false means the probe did not run.
  * Never marks apply verification as passed; never enables configured heavy checks.
  */
 export type VerificationProbe = {
-  requested: boolean;
-  denial: string;
-  name: string;
-  exitCode: number | null;
-  summary: string;
-};
+  requested: boolean
+  denial: string
+  name: string
+  exitCode: number | null
+  summary: string
+}
 export type AiConversation = {
-  conversationId: string;
-  workspaceLabel: string;
-  memory: string;
-  connectionId?: string | null;
-  connectionName?: string | null;
-  connectionRevision?: number | null;
-  model?: string | null;
-};
-export type ChatGptLoginAttempt = { loginId: string; authorizationUrl: string; expiresAt: string };
-export type ChatGptLoginState = { loginId: string; state: "waiting" | "exchanging" | "connected" | "permission_required" | "failed" | "expired" | "cancelled"; connectionId: string | null; error: string };
-export type ModelOption = { id: string; reasoningEfforts: Array<"low" | "medium" | "high"> };
-export type ModelSelection = { models: ModelOption[]; allowedModels: string[]; defaultModel: string };
+  conversationId: string
+  workspaceLabel: string
+  memory: string
+  connectionId?: string | null
+  connectionName?: string | null
+  connectionRevision?: number | null
+  model?: string | null
+}
+export type ChatGptLoginAttempt = { loginId: string; authorizationUrl: string; expiresAt: string }
+export type ChatGptLoginState = {
+  loginId: string
+  state:
+    | 'waiting'
+    | 'exchanging'
+    | 'connected'
+    | 'permission_required'
+    | 'failed'
+    | 'expired'
+    | 'cancelled'
+  connectionId: string | null
+  error: string
+}
+export type ModelOption = { id: string; reasoningEfforts: Array<'low' | 'medium' | 'high'> }
+export type ModelSelection = {
+  models: ModelOption[]
+  allowedModels: string[]
+  defaultModel: string
+}
 export type ModelConnection = {
-  id: string;
-  name: string;
-  kind: string;
-  enabled: boolean;
-  baseUrl: string;
-  defaultModel: string;
-  models: ModelOption[];
-  allowedModels: string[];
-  discoveredAt: string;
-  discoveryError: string;
-  secretPresent: boolean;
-  revision: number;
-  defaultSelected: boolean;
-  configurationRevision: string;
-};
-export type ModelConnectionList = { items: ModelConnection[]; effectiveDefaultId: string | null };
+  id: string
+  name: string
+  kind: string
+  enabled: boolean
+  baseUrl: string
+  defaultModel: string
+  models: ModelOption[]
+  allowedModels: string[]
+  discoveredAt: string
+  discoveryError: string
+  secretPresent: boolean
+  revision: number
+  defaultSelected: boolean
+  configurationRevision: string
+}
+export type ModelConnectionList = { items: ModelConnection[]; effectiveDefaultId: string | null }
 export type ModelConnectionInput = {
-  name: string;
-  baseUrl: string;
-  secret?: string;
-  enabled: boolean;
-  defaultSelected: boolean;
-};
+  name: string
+  baseUrl: string
+  secret?: string
+  enabled: boolean
+  defaultSelected: boolean
+}
 export type ConversationConnection = {
-  conversationId: string;
-  connectionId: string;
-  connectionName: string;
-  model: string;
-  endpoint: string;
-  revision: number;
-  memoryCleared: boolean;
-};
+  conversationId: string
+  connectionId: string
+  connectionName: string
+  model: string
+  endpoint: string
+  revision: number
+  memoryCleared: boolean
+}
 export type AiArtifactSummary = {
-  artifactId: string;
-  executionId: string;
-  kind: string;
-  sizeBytes: number;
-  sha256: string;
-};
-export type AiToolEvent = { sequence: number; code: string };
+  artifactId: string
+  executionId: string
+  kind: string
+  sizeBytes: number
+  sha256: string
+}
+export type AiToolEvent = { sequence: number; code: string }
 export type KnowledgeContext = {
-  expertRef: KnowledgeExpertRef;
-  status: 'ready' | 'no_matches';
-  references: Array<{ id: string; source: string; knowledgeBase: string; excerpt: string; retrievalMode: string; knowledgeBaseId?: string; documentId?: string }>;
-};
+  expertRef: KnowledgeExpertRef
+  status: 'ready' | 'no_matches'
+  references: Array<{
+    id: string
+    source: string
+    knowledgeBase: string
+    excerpt: string
+    retrievalMode: string
+    knowledgeBaseId?: string
+    documentId?: string
+  }>
+}
 export type AiMessageResult = {
-  skillContext?: SkillContext | null;
-  contextMemoryCleared?: boolean;
-  knowledgeContext?: KnowledgeContext | null;
-  knowledgeMemoryCleared?: boolean;
-  proposal?: CodeProposal | null;
-  executionId: string | null;
-  answer: string;
-  error: string;
-  status: string;
-  approval: string;
-  verification: string;
-  toolEvents: AiToolEvent[];
-  artifactError: string;
-  artifacts: AiArtifactSummary[];
-};
+  skillContext?: SkillContext | null
+  contextMemoryCleared?: boolean
+  knowledgeContext?: KnowledgeContext | null
+  knowledgeMemoryCleared?: boolean
+  proposal?: CodeProposal | null
+  executionId: string | null
+  answer: string
+  error: string
+  status: string
+  approval: string
+  verification: string
+  toolEvents: AiToolEvent[]
+  artifactError: string
+  artifacts: AiArtifactSummary[]
+}
 
-export type CodeTaskRef = { projectId: string; taskId: string; revision: number };
-export type KnowledgeExpertRef = { id: string; revision: number };
-export type SkillRef = { id: string; version: string; digest: string; stateRevision: number };
-export type SkillResource = { path: string; mediaType: 'text/markdown' | 'text/plain'; content: string };
-export type SkillImportInput = { rawSkillMd: string; version: string; sourceLabel: string; resources: SkillResource[]; requiredCapabilities: string[] };
-export type SkillDependency = { id: string; status: string };
-export type SkillSummary = SkillRef & { description: string; enabled: boolean; sourceLabel: string; createdAt: string; dependencies: SkillDependency[] };
-export type SkillSnapshot = Omit<SkillSummary, 'createdAt'> & SkillImportInput & { createdAt: string | null; schemaVersion: 1; entry: 'SKILL.md'; instructions: string; scope: string; trust: { operator: string; confirmedAt: string } | null };
-export type SkillSaveRequest = { input: SkillImportInput; expectedDigest: string; confirmed: true };
-export type SkillContext = { skillRef: SkillRef; instructions: string; resources: SkillResource[]; dependencies: SkillDependency[] };
+export type CodeTaskRef = { projectId: string; taskId: string; revision: number }
+export type KnowledgeExpertRef = { id: string; revision: number }
+export type SkillRef = { id: string; version: string; digest: string; stateRevision: number }
+export type SkillResource = {
+  path: string
+  mediaType: 'text/markdown' | 'text/plain'
+  content: string
+}
+export type SkillImportInput = {
+  rawSkillMd: string
+  version: string
+  sourceLabel: string
+  resources: SkillResource[]
+  requiredCapabilities: string[]
+}
+export type SkillDependency = { id: string; status: string }
+export type SkillSummary = SkillRef & {
+  description: string
+  enabled: boolean
+  sourceLabel: string
+  createdAt: string
+  dependencies: SkillDependency[]
+}
+export type SkillSnapshot = Omit<SkillSummary, 'createdAt'> &
+  SkillImportInput & {
+    createdAt: string | null
+    schemaVersion: 1
+    entry: 'SKILL.md'
+    instructions: string
+    scope: string
+    trust: { operator: string; confirmedAt: string } | null
+  }
+export type SkillSaveRequest = { input: SkillImportInput; expectedDigest: string; confirmed: true }
+export type SkillContext = {
+  skillRef: SkillRef
+  instructions: string
+  resources: SkillResource[]
+  dependencies: SkillDependency[]
+}
 export type TaskContext = {
-  skillRef?: SkillRef;
-  skillResourcePaths?: string[];
-  knowledgeExpertRef?: KnowledgeExpertRef;
-  taskRef?: CodeTaskRef;
-  mode: "chat" | "code";
-  expert: "general" | "sql" | "frontend";
-  instructions: string;
-  reasoning: "default" | "low" | "medium" | "high";
-  approval: "review" | "read_only";
-  files: Array<{ name: string; content: string }>;
-  prototypeVersionId: string;
+  skillRef?: SkillRef
+  skillResourcePaths?: string[]
+  knowledgeExpertRef?: KnowledgeExpertRef
+  taskRef?: CodeTaskRef
+  mode: 'chat' | 'code'
+  expert: 'general' | 'sql' | 'frontend'
+  instructions: string
+  reasoning: 'default' | 'low' | 'medium' | 'high'
+  approval: 'review' | 'read_only'
+  files: Array<{ name: string; content: string }>
+  prototypeVersionId: string
   /** Workspace-relative page the server may read for generation prep; never a write grant. */
-  targetPath: string;
-};
+  targetPath: string
+}
 export type CodeGenerationSnapshot = {
-  taskBinding?: CodeTaskRef | null;
-  id: string;
-  targetPath: string;
-  baseHash: string;
-  capturedAt: string;
-  prototypeVersionId: string;
-  prototypeContentHash: string;
-};
+  taskBinding?: CodeTaskRef | null
+  id: string
+  targetPath: string
+  baseHash: string
+  capturedAt: string
+  prototypeVersionId: string
+  prototypeContentHash: string
+}
 export type CodeProposal = {
-  id: string;
-  conversationId: string;
-  workspace: string;
-  summary: string;
-  files: Array<{ path: string; before: string | null; content: string; baseHash: string }>;
-  generation?: CodeGenerationSnapshot | null;
-  applied: boolean;
-  writeAllowed: boolean;
-  verification: string;
-};
+  id: string
+  conversationId: string
+  workspace: string
+  summary: string
+  files: Array<{ path: string; before: string | null; content: string; baseHash: string }>
+  generation?: CodeGenerationSnapshot | null
+  applied: boolean
+  writeAllowed: boolean
+  verification: string
+}
 
-export type CodeApplied = { id: string; written: string[]; verification: string; checks: Array<{ name: string; exitCode: number | null; summary: string }>; status?: string; afterHash?: string; reason?: string };
-export type CodeProposalState = { proposal: CodeProposal; status: 'PROPOSED' | 'APPLYING' | 'APPLIED' | 'FAILED' | 'UNKNOWN'; result: CodeApplied | null; reason: string };
+export type CodeApplied = {
+  id: string
+  written: string[]
+  verification: string
+  checks: Array<{ name: string; exitCode: number | null; summary: string }>
+  status?: string
+  afterHash?: string
+  reason?: string
+}
+export type CodeProposalState = {
+  proposal: CodeProposal
+  status: 'PROPOSED' | 'APPLYING' | 'APPLIED' | 'FAILED' | 'UNKNOWN'
+  result: CodeApplied | null
+  reason: string
+}
 
-const baseUrl = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8080/api";
+const baseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080/api'
 
 const client = axios.create({
   baseURL: baseUrl,
   timeout: 10_000,
-  headers: { Accept: "application/json" },
-});
+  headers: { Accept: 'application/json' },
+})
 
 client.interceptors.request.use((config) => {
-  if (pendingRequests++ === 0) NProgress.start();
-  return config;
-});
+  if (pendingRequests++ === 0) NProgress.start()
+  return config
+})
 client.interceptors.response.use(
   (response) => {
-    finishRequest();
-    return response;
+    finishRequest()
+    return response
   },
   (error) => {
-    finishRequest();
-    return Promise.reject(error);
+    finishRequest()
+    return Promise.reject(error)
   },
-);
+)
 
-let pendingRequests = 0;
+let pendingRequests = 0
 function finishRequest() {
-  pendingRequests = Math.max(0, pendingRequests - 1);
-  if (!pendingRequests) NProgress.done();
+  pendingRequests = Math.max(0, pendingRequests - 1)
+  if (!pendingRequests) NProgress.done()
 }
 
 async function get<T>(path: string): Promise<T> {
-  return (await client.get<T>(path)).data;
+  return (await client.get<T>(path)).data
 }
 
 export const runtimeApi = {
-  task: (id: string) => get<TaskResult>("/tasks/" + encodeURIComponent(id)),
+  scenarios: () => get<{ items: ScenarioSnapshot[] }>('/scenarios'),
+  scenario: (id: string) => get<ScenarioSnapshot>('/scenarios/' + encodeURIComponent(id)),
+  saveScenario: (id: string, revision: number, definition: ScenarioConfiguration) =>
+    client
+      .put<ScenarioSnapshot>('/scenarios/' + encodeURIComponent(id), { revision, definition })
+      .then((r) => r.data),
+  deleteScenario: (id: string, revision: number) =>
+    client
+      .delete('/scenarios/' + encodeURIComponent(id), { params: { revision } })
+      .then((r) => r.data),
+  task: (id: string) => get<TaskResult>('/tasks/' + encodeURIComponent(id)),
   expertCatalog: () =>
     get<{
       /** Platform capabilities only: what may be used as an ordinary node. */
-      capabilities: string[];
-      capabilityItems?: CapabilityItem[];
-      capabilityKinds?: CapabilityKindSummary[];
-      platformScoped?: string[];
+      capabilities: string[]
+      capabilityItems?: CapabilityItem[]
+      capabilityKinds?: CapabilityKindSummary[]
+      platformScoped?: string[]
       /** Platform capabilities the operator switched off, so the picker's omissions are explainable. */
-      disabledPlatform?: string[];
+      disabledPlatform?: string[]
       /** Expert-scoped capabilities; a node using one must be declared in mcpTools. */
-      expertScoped?: string[];
-      expertScopedVocabulary?: string[];
-      mcpServers?: McpServerItem[];
-      scopeNotes?: Record<string, string>;
-      rules: string[];
-      rulePacks?: RulePackSummary[];
-      facts?: RuleFact[];
-    }>("/experts/catalog"),
-  rulePacks: () => get<{ items: RulePackSummary[] }>("/rule-packs"),
+      expertScoped?: string[]
+      expertScopedVocabulary?: string[]
+      mcpServers?: McpServerItem[]
+      scopeNotes?: Record<string, string>
+      rules: string[]
+      rulePacks?: RulePackSummary[]
+      facts?: RuleFact[]
+    }>('/experts/catalog'),
+  rulePacks: () => get<{ items: RulePackSummary[] }>('/rule-packs'),
   rulePack: (id: string) =>
     get<{ manifest: string; shipped: boolean; editable: boolean; requirements?: RuleRequirements }>(
-      "/rule-packs/" + encodeURIComponent(id),
+      '/rule-packs/' + encodeURIComponent(id),
     ),
   ruleVocabulary: () =>
-    get<{ facts: RuleFact[]; operators: string[]; producers?: string[] }>("/rule-packs/vocabulary"),
+    get<{ facts: RuleFact[]; operators: string[]; producers?: string[] }>('/rule-packs/vocabulary'),
   dryRunRulePack: (sql: string, manifest: string) =>
-    client.post<DryRunResult>("/rule-packs/dry-run", { sql, manifest }).then((r) => r.data),
+    client.post<DryRunResult>('/rule-packs/dry-run', { sql, manifest }).then((r) => r.data),
   /** Validate a candidate pack without saving it — the same checks that gate a save. */
   validateRulePack: (manifest: string) =>
-    client.post<RuleValidation>("/rule-packs/validate", { manifest }).then((r) => r.data),
+    client.post<RuleValidation>('/rule-packs/validate', { manifest }).then((r) => r.data),
   /**
    * Create a pack. Shipped ids are reserved, so copying a shipped pack *is* this call with a new id —
    * which is why the editor's only remedy on a read-only pack is 复制为自定义.
    */
   createRulePack: (name: string, manifest: string) =>
-    client.post<RulePackWriteResult>("/rule-packs", { name, manifest }).then((r) => r.data),
+    client.post<RulePackWriteResult>('/rule-packs', { name, manifest }).then((r) => r.data),
   /** Overwrite an authored pack. The manifest's own id must match; the revision increments server-side. */
   updateRulePack: (id: string, name: string, manifest: string) =>
     client
-      .put<RulePackWriteResult>("/rule-packs/" + encodeURIComponent(id), { id, name, manifest })
+      .put<RulePackWriteResult>('/rule-packs/' + encodeURIComponent(id), { id, name, manifest })
       .then((r) => r.data),
   setRulePackActivation: (id: string, enabled: boolean) =>
     client
-      .put<RulePackWriteResult>("/rule-packs/" + encodeURIComponent(id) + "/activation", {
+      .put<RulePackWriteResult>('/rule-packs/' + encodeURIComponent(id) + '/activation', {
         enabled,
       })
       .then((r) => r.data),
   /** Refused by the backend while an enabled expert still references the pack, naming the experts. */
   deleteRulePack: (id: string) =>
-    client.delete("/rule-packs/" + encodeURIComponent(id)).then((r) => r.data),
+    client.delete('/rule-packs/' + encodeURIComponent(id)).then((r) => r.data),
   /** Real counts behind the overview's headline figures. Nothing here is sampled. */
-  stats: (windowDays = 7) => get<TaskStatistics>("/stats?windowDays=" + windowDays),
+  stats: (windowDays = 7) => get<TaskStatistics>('/stats?windowDays=' + windowDays),
   activateExpert: (id: string, enabled: boolean) =>
     client
-      .put("/experts/" + encodeURIComponent(id) + "/activation", { enabled })
+      .put('/experts/' + encodeURIComponent(id) + '/activation', { enabled })
       .then((r) => r.data),
   database: (id: string) =>
     get<{
-      id: string;
-      label: string;
-      engine: string;
-      environment: string;
-      metadata: Record<string, unknown>;
-    }>("/databases/" + encodeURIComponent(id)),
+      id: string
+      label: string
+      engine: string
+      environment: string
+      metadata: Record<string, unknown>
+    }>('/databases/' + encodeURIComponent(id)),
   saveDatabase: (
     id: string | null,
     profile: {
-      label: string;
-      engine: string;
-      environment: string;
-      metadata: Record<string, unknown>;
+      label: string
+      engine: string
+      environment: string
+      metadata: Record<string, unknown>
     },
   ) =>
     (id
-      ? client.put("/databases/" + encodeURIComponent(id), profile)
-      : client.post("/databases", profile)
+      ? client.put('/databases/' + encodeURIComponent(id), profile)
+      : client.post('/databases', profile)
     ).then((r) => r.data),
   deleteDatabase: (id: string) =>
     client
-      .delete<{ id: string; status: string }>("/databases/" + encodeURIComponent(id))
+      .delete<{ id: string; status: string }>('/databases/' + encodeURIComponent(id))
       .then((r) => r.data),
-  tasks: () => get<{ items: TaskResult[] }>("/tasks"),
+  tasks: () => get<{ items: TaskResult[] }>('/tasks'),
   knowledgeBases: () =>
     get<{ items: Array<{ id: string; name: string; description: string; documents: number }> }>(
-      "/knowledge",
+      '/knowledge',
     ),
   createKnowledgeBase: (name: string, description: string) =>
-    client.post("/knowledge", { name, description }).then((r) => r.data),
+    client.post('/knowledge', { name, description }).then((r) => r.data),
   knowledgeDocuments: (id: string) =>
     get<{ items: Array<{ id: string; title: string; content: string }> }>(
-      "/knowledge/" + id + "/documents",
+      '/knowledge/' + id + '/documents',
     ),
   addKnowledgeDocument: (id: string, title: string, content: string) =>
-    client.post("/knowledge/" + id + "/documents", { title, content }).then((r) => r.data),
+    client.post('/knowledge/' + id + '/documents', { title, content }).then((r) => r.data),
   renameKnowledgeBase: (id: string, name: string, description: string) =>
-    client.put("/knowledge/" + encodeURIComponent(id), { name, description }).then((r) => r.data),
+    client.put('/knowledge/' + encodeURIComponent(id), { name, description }).then((r) => r.data),
   deleteKnowledgeBase: (id: string) =>
-    client.delete("/knowledge/" + encodeURIComponent(id)).then((r) => r.data),
+    client.delete('/knowledge/' + encodeURIComponent(id)).then((r) => r.data),
   deleteKnowledgeDocument: (baseId: string, documentId: string) =>
     client
       .delete(
-        "/knowledge/" + encodeURIComponent(baseId) + "/documents/" + encodeURIComponent(documentId),
+        '/knowledge/' + encodeURIComponent(baseId) + '/documents/' + encodeURIComponent(documentId),
       )
       .then((r) => r.data),
   searchKnowledge: (q: string, baseId?: string) =>
-    client.get("/knowledge/search", { params: { q, baseId } }).then((r) => r.data),
+    client.get('/knowledge/search', { params: { q, baseId } }).then((r) => r.data),
   validateExpert: (definition: { id: string; name: string; manifest: string }) =>
-    client.post("/experts/validate", definition).then((response) => response.data),
+    client.post('/experts/validate', definition).then((response) => response.data),
   saveExpert: (definition: { id: string; name: string; manifest: string }) =>
-    client.post("/experts", definition).then((response) => response.data),
-  health: () => get<RuntimeHealth>("/health"),
-  capabilities: () => get<CapabilityResponse>("/capabilities"),
-  cliPrograms: () => get<{ items: CliProgramItem[] }>("/cli-programs"),
+    client.post('/experts', definition).then((response) => response.data),
+  health: () => get<RuntimeHealth>('/health'),
+  capabilities: () => get<CapabilityResponse>('/capabilities'),
+  cliPrograms: () => get<{ items: CliProgramItem[] }>('/cli-programs'),
   registerCliProgram: (program: CliProgramRequest) =>
-    client.post("/cli-programs", program).then((r) => r.data),
+    client.post('/cli-programs', program).then((r) => r.data),
   configureCliProgram: (id: string, binary: string) =>
-    client.put("/cli-programs/" + encodeURIComponent(id), { binary }).then((r) => r.data),
+    client.put('/cli-programs/' + encodeURIComponent(id), { binary }).then((r) => r.data),
   deleteCliProgram: (id: string) =>
-    client.delete("/cli-programs/" + encodeURIComponent(id)).then((r) => r.data),
+    client.delete('/cli-programs/' + encodeURIComponent(id)).then((r) => r.data),
   probeCliProgram: (id: string) =>
     client
-      .post<CliProbeResult>("/cli-programs/" + encodeURIComponent(id) + "/probe")
+      .post<CliProbeResult>('/cli-programs/' + encodeURIComponent(id) + '/probe')
       .then((r) => r.data),
   saveCliOperation: (programId: string, operation: CliOperationRequest, editing: boolean) => {
     const url =
-      "/cli-programs/" +
+      '/cli-programs/' +
       encodeURIComponent(programId) +
-      "/operations/" +
-      encodeURIComponent(operation.capabilityId);
-    return (editing ? client.put(url, operation) : client.post(url, operation)).then((r) => r.data);
+      '/operations/' +
+      encodeURIComponent(operation.capabilityId)
+    return (editing ? client.put(url, operation) : client.post(url, operation)).then((r) => r.data)
   },
   deleteCliOperation: (programId: string, id: string) =>
     client
       .delete(
-        "/cli-programs/" + encodeURIComponent(programId) + "/operations/" + encodeURIComponent(id),
+        '/cli-programs/' + encodeURIComponent(programId) + '/operations/' + encodeURIComponent(id),
       )
       .then((r) => r.data),
   /**
@@ -823,184 +1117,385 @@ export const runtimeApi = {
    */
   setCapabilityActivation: (name: string, enabled: boolean, notes: string) =>
     client
-      .put("/capabilities/" + encodeURIComponent(name) + "/activation", { enabled, notes })
+      .put('/capabilities/' + encodeURIComponent(name) + '/activation', { enabled, notes })
       .then((r) => r.data),
   /** Point a local CLI capability at a specific binary; blank restores the shipped default. */
   setCliChannel: (name: string, binary: string) =>
     client
-      .put("/capabilities/" + encodeURIComponent(name) + "/cli", { binary })
+      .put('/capabilities/' + encodeURIComponent(name) + '/cli', { binary })
       .then((r) => r.data),
   /** Explicitly run `<binary> --version`. The only place a binary is executed for a management check. */
   probeCliChannel: (name: string) =>
     client
-      .post<CliProbeResult>("/capabilities/" + encodeURIComponent(name) + "/cli/probe")
+      .post<CliProbeResult>('/capabilities/' + encodeURIComponent(name) + '/cli/probe')
       .then((r) => r.data),
-  mcpServers: () => get<{ items: McpServerItem[] }>("/mcp-servers"),
+  mcpServers: () => get<{ items: McpServerItem[] }>('/mcp-servers'),
   saveMcpServer: (server: McpServerRequest) =>
-    client.post("/mcp-servers", server).then((r) => r.data),
+    client.post('/mcp-servers', server).then((r) => r.data),
   updateMcpServer: (id: string, server: McpServerRequest) =>
-    client.put("/mcp-servers/" + encodeURIComponent(id), server).then((r) => r.data),
+    client.put('/mcp-servers/' + encodeURIComponent(id), server).then((r) => r.data),
   setMcpServerActivation: (id: string, enabled: boolean, trusted: boolean) =>
     client
-      .put("/mcp-servers/" + encodeURIComponent(id) + "/activation", { enabled, trusted })
+      .put('/mcp-servers/' + encodeURIComponent(id) + '/activation', { enabled, trusted })
       .then((r) => r.data),
   deleteMcpServer: (id: string) =>
-    client.delete("/mcp-servers/" + encodeURIComponent(id)).then((r) => r.data),
+    client.delete('/mcp-servers/' + encodeURIComponent(id)).then((r) => r.data),
   probeMcpServer: (id: string) =>
     client
-      .post<McpProbeResult>("/mcp-servers/" + encodeURIComponent(id) + "/probe")
+      .post<McpProbeResult>('/mcp-servers/' + encodeURIComponent(id) + '/probe')
       .then((r) => r.data),
   createTask: (goal: string) =>
     client
-      .post<TaskResult>("/tasks", { goal }, { timeout: 60_000 })
+      .post<TaskResult>('/tasks', { goal }, { timeout: 60_000 })
       .then((response) => response.data),
-  handoffs: () => get<{ items: HandoffRecord[] }>("/handoffs"),
-  boardTasks: (projectId: string) => get<{ items: BoardTask[] }>('/board/tasks?projectId=' + encodeURIComponent(projectId)),
-  setBoardPrototype: (id: string, selection: { projectId: string; revision: number; versionId: string | null }) => client.post<BoardTask>('/board/tasks/' + encodeURIComponent(id) + '/prototype', selection).then(response => response.data),
-  boardRuns: (id: string, projectId: string) => get<BoardRunPage>('/board/tasks/' + encodeURIComponent(id) + '/runs?projectId=' + encodeURIComponent(projectId)),
-  boardReview: (taskId: string, executionId: string, projectId: string) => get<BoardReviewPage>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/review?projectId=' + encodeURIComponent(projectId)),
-  captureBoardReview: (taskId: string, executionId: string, request: { projectId: string; workspacePath: string }) => client.post<BoardReviewEvidence>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/review', request, { timeout: 90_000 }).then(response => response.data),
-  boardVerification: (taskId: string, executionId: string, projectId: string) => get<BoardVerificationPage>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/verification?projectId=' + encodeURIComponent(projectId)),
-  planBoardVerification: (taskId: string, executionId: string, request: { projectId: string; workspacePath: string }) => client.post<BoardVerificationPlan>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/verification/plan', request, { timeout: 90_000 }).then(response => response.data),
-  startBoardVerification: (taskId: string, executionId: string, request: { projectId: string; workspacePath: string; planHash: string }) => client.post<BoardVerificationRecord>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/verification', request, { timeout: 90_000 }).then(response => response.data),
-  boardDelivery: (taskId: string, executionId: string, projectId: string) => get<BoardDeliveryPage>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/delivery?projectId=' + encodeURIComponent(projectId)),
-  submitBoardDelivery: (taskId: string, executionId: string, request: BoardDeliveryRequest) => client.post<BoardDelivery>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/delivery', request, { timeout: 90_000 }).then(response => response.data),
-  decideBoardDelivery: (taskId: string, executionId: string, request: BoardDeliveryDecisionRequest) => client.post<BoardDelivery>('/board/tasks/' + encodeURIComponent(taskId) + '/runs/' + encodeURIComponent(executionId) + '/delivery/decision', request, { timeout: 90_000 }).then(response => response.data),
-  startBoardRun: (id: string, request: BoardRunStart) => client.post<BoardRun>('/board/tasks/' + encodeURIComponent(id) + '/runs', request).then(response => response.data),
-  createBoardTask: (draft: BoardTaskDraft) => client.post<BoardTask>('/board/tasks', draft).then(response => response.data),
-  updateBoardTask: (id: string, update: { projectId: string; revision: number; column?: BoardTask['column']; notes?: string; priority?: BoardTask['priority']; goal?: string; acceptanceCriteria?: string }) => client.post<BoardTask>('/board/tasks/' + encodeURIComponent(id), update).then(response => response.data),
-  recordHandoff: (draft: { source: "chat" | "builder" | "board"; sourceRef: string; summary: string }) =>
+  handoffs: () => get<{ items: HandoffRecord[] }>('/handoffs'),
+  boardTasks: (projectId: string) =>
+    get<{ items: BoardTask[] }>('/board/tasks?projectId=' + encodeURIComponent(projectId)),
+  setBoardPrototype: (
+    id: string,
+    selection: { projectId: string; revision: number; versionId: string | null },
+  ) =>
     client
-      .post<HandoffRecord>("/handoffs", draft)
+      .post<BoardTask>('/board/tasks/' + encodeURIComponent(id) + '/prototype', selection)
       .then((response) => response.data),
-  missions: () => get<{ items: MissionRecord[] }>("/missions"),
+  boardRuns: (id: string, projectId: string) =>
+    get<BoardRunPage>(
+      '/board/tasks/' + encodeURIComponent(id) + '/runs?projectId=' + encodeURIComponent(projectId),
+    ),
+  boardReview: (taskId: string, executionId: string, projectId: string) =>
+    get<BoardReviewPage>(
+      '/board/tasks/' +
+        encodeURIComponent(taskId) +
+        '/runs/' +
+        encodeURIComponent(executionId) +
+        '/review?projectId=' +
+        encodeURIComponent(projectId),
+    ),
+  captureBoardReview: (
+    taskId: string,
+    executionId: string,
+    request: { projectId: string; workspacePath: string },
+  ) =>
+    client
+      .post<BoardReviewEvidence>(
+        '/board/tasks/' +
+          encodeURIComponent(taskId) +
+          '/runs/' +
+          encodeURIComponent(executionId) +
+          '/review',
+        request,
+        { timeout: 90_000 },
+      )
+      .then((response) => response.data),
+  boardVerification: (taskId: string, executionId: string, projectId: string) =>
+    get<BoardVerificationPage>(
+      '/board/tasks/' +
+        encodeURIComponent(taskId) +
+        '/runs/' +
+        encodeURIComponent(executionId) +
+        '/verification?projectId=' +
+        encodeURIComponent(projectId),
+    ),
+  planBoardVerification: (
+    taskId: string,
+    executionId: string,
+    request: { projectId: string; workspacePath: string },
+  ) =>
+    client
+      .post<BoardVerificationPlan>(
+        '/board/tasks/' +
+          encodeURIComponent(taskId) +
+          '/runs/' +
+          encodeURIComponent(executionId) +
+          '/verification/plan',
+        request,
+        { timeout: 90_000 },
+      )
+      .then((response) => response.data),
+  startBoardVerification: (
+    taskId: string,
+    executionId: string,
+    request: { projectId: string; workspacePath: string; planHash: string },
+  ) =>
+    client
+      .post<BoardVerificationRecord>(
+        '/board/tasks/' +
+          encodeURIComponent(taskId) +
+          '/runs/' +
+          encodeURIComponent(executionId) +
+          '/verification',
+        request,
+        { timeout: 90_000 },
+      )
+      .then((response) => response.data),
+  boardDelivery: (taskId: string, executionId: string, projectId: string) =>
+    get<BoardDeliveryPage>(
+      '/board/tasks/' +
+        encodeURIComponent(taskId) +
+        '/runs/' +
+        encodeURIComponent(executionId) +
+        '/delivery?projectId=' +
+        encodeURIComponent(projectId),
+    ),
+  submitBoardDelivery: (taskId: string, executionId: string, request: BoardDeliveryRequest) =>
+    client
+      .post<BoardDelivery>(
+        '/board/tasks/' +
+          encodeURIComponent(taskId) +
+          '/runs/' +
+          encodeURIComponent(executionId) +
+          '/delivery',
+        request,
+        { timeout: 90_000 },
+      )
+      .then((response) => response.data),
+  decideBoardDelivery: (
+    taskId: string,
+    executionId: string,
+    request: BoardDeliveryDecisionRequest,
+  ) =>
+    client
+      .post<BoardDelivery>(
+        '/board/tasks/' +
+          encodeURIComponent(taskId) +
+          '/runs/' +
+          encodeURIComponent(executionId) +
+          '/delivery/decision',
+        request,
+        { timeout: 90_000 },
+      )
+      .then((response) => response.data),
+  startBoardRun: (id: string, request: BoardRunStart) =>
+    client
+      .post<BoardRun>('/board/tasks/' + encodeURIComponent(id) + '/runs', request)
+      .then((response) => response.data),
+  createBoardTask: (draft: BoardTaskDraft) =>
+    client.post<BoardTask>('/board/tasks', draft).then((response) => response.data),
+  updateBoardTask: (
+    id: string,
+    update: {
+      projectId: string
+      revision: number
+      column?: BoardTask['column']
+      notes?: string
+      priority?: BoardTask['priority']
+      goal?: string
+      acceptanceCriteria?: string
+    },
+  ) =>
+    client
+      .post<BoardTask>('/board/tasks/' + encodeURIComponent(id), update)
+      .then((response) => response.data),
+  recordHandoff: (draft: {
+    source: 'chat' | 'builder' | 'board'
+    sourceRef: string
+    summary: string
+  }) => client.post<HandoffRecord>('/handoffs', draft).then((response) => response.data),
+  missions: () => get<{ items: MissionRecord[] }>('/missions'),
   createMission: (handoffId: string) =>
-    client
-      .post<MissionRecord>("/missions", { handoffId })
-      .then((response) => response.data),
-  prototypeVersions: (sourceRef: "builder-alpha" | "builder-beta") =>
-    get<{ items: PrototypeVersionRecord[] }>("/prototype-versions?sourceRef=" + encodeURIComponent(sourceRef)),
+    client.post<MissionRecord>('/missions', { handoffId }).then((response) => response.data),
+  prototypeVersions: (sourceRef: 'builder-alpha' | 'builder-beta') =>
+    get<{ items: PrototypeVersionRecord[] }>(
+      '/prototype-versions?sourceRef=' + encodeURIComponent(sourceRef),
+    ),
   savePrototypeVersion: (draft: {
-    sourceRef: "builder-alpha" | "builder-beta";
-    title: string;
-    body: string;
-    buttonPresses: number;
-    acceptance: string[];
+    sourceRef: 'builder-alpha' | 'builder-beta'
+    title: string
+    body: string
+    buttonPresses: number
+    acceptance: string[]
   }) =>
     client
-      .post<PrototypeVersionRecord>("/prototype-versions", draft)
+      .post<PrototypeVersionRecord>('/prototype-versions', draft)
       .then((response) => response.data),
   prototypeVersion: (id: string) =>
-    get<PrototypeVersionRecord>("/prototype-versions/" + encodeURIComponent(id)),
+    get<PrototypeVersionRecord>('/prototype-versions/' + encodeURIComponent(id)),
   createPrototypeDelivery: (versionId: string) =>
     client
-      .post<PrototypeDeliveryRecord>("/prototype-deliveries", { versionId })
+      .post<PrototypeDeliveryRecord>('/prototype-deliveries', { versionId })
       .then((response) => response.data),
   startMissionGitStatus: (missionId: string) =>
     client
-      .post<MissionExecutionRecord>("/missions/" + encodeURIComponent(missionId) + "/executions", { missionId }, { timeout: 60_000 })
+      .post<MissionExecutionRecord>(
+        '/missions/' + encodeURIComponent(missionId) + '/executions',
+        { missionId },
+        { timeout: 60_000 },
+      )
       .then((response) => response.data),
   analyzeSql: (
     sql: string,
-    question = "",
+    question = '',
     options: {
-      expertId?: string;
-      databaseId?: string;
-      explainPlan?: Record<string, unknown>;
-      enhanceWithModel?: boolean;
-      pattern?: string;
+      expertId?: string
+      databaseId?: string
+      explainPlan?: Record<string, unknown>
+      enhanceWithModel?: boolean
+      pattern?: string
     } = {},
   ) =>
     client
-      .post<SqlAnalysis>("/sql/analyze", { sql, question, ...options }, { timeout: 90_000 })
+      .post<SqlAnalysis>('/sql/analyze', { sql, question, ...options }, { timeout: 90_000 })
       .then((response) => response.data),
   databases: () =>
     get<{
       items: Array<{
-        id: string;
-        label: string;
-        engine: string;
-        environment: string;
-        credentialsExposed: boolean;
-      }>;
-      policy: string;
-    }>("/databases"),
+        id: string
+        label: string
+        engine: string
+        environment: string
+        credentialsExposed: boolean
+      }>
+      policy: string
+    }>('/databases'),
   experts: () =>
     get<{
-      items: string[];
-      states?: Record<string, { enabled: boolean; builtin: boolean; revision: number }>;
-    }>("/experts"),
+      items: string[]
+      states?: Record<string, { enabled: boolean; builtin: boolean; revision: number }>
+    }>('/experts'),
   ...createChatApi(baseUrl, client),
-};
+}
 
-export function createChatApi(baseURL: string, transport = axios.create({ baseURL, timeout: 10_000, headers: { Accept: "application/json" } })) {
-  const client = transport;
-  const get = <T>(path: string) => client.get<T>(path).then(response => response.data);
+export function createChatApi(
+  baseURL: string,
+  transport = axios.create({ baseURL, timeout: 10_000, headers: { Accept: 'application/json' } }),
+) {
+  const client = transport
+  const get = <T>(path: string) => client.get<T>(path).then((response) => response.data)
   return {
-  aiStatus: () => get<AiStatus>("/ai/status"),
-  skills: () => get<{ items: SkillSummary[] }>('/skills'),
-  skill: (id: string, version: string) => get<SkillSnapshot>(`/skills/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}`),
-  previewSkill: (input: SkillImportInput) => client.post<SkillSnapshot>('/skills/preview', input).then(response => response.data),
-  saveSkill: (request: SkillSaveRequest) => client.post<SkillSnapshot>('/skills', request).then(response => response.data),
-  activateSkill: (id: string, version: string, request: { enabled: boolean; stateRevision: number }) => client.post<SkillSnapshot>(`/skills/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}/activation`, request).then(response => response.data),
-  previewSkillContext: (skillRef: SkillRef, resourcePaths: string[]) => client.post<SkillContext>('/skills/context/preview', { skillRef, resourcePaths }).then(response => response.data),
-  previewExpertContext: (expertRef: KnowledgeExpertRef, query: string) =>
-    client.post<KnowledgeContext>('/ai/expert-context/preview', { expertRef, query }).then(response => response.data),
-  workspaceBaseline: (path: string) =>
-    get<WorkspaceBaseline>("/ai/workspace/baseline?path=" + encodeURIComponent(path)),
-  workspaceSource: (path: string) =>
-    get<WorkspaceSource>("/ai/workspace/source?path=" + encodeURIComponent(path)),
-  workspaceDirty: () => get<WorkspaceDirty>("/ai/workspace/dirty"),
-  workspaceFiles: (path = '') => get<WorkspaceFiles>('/ai/workspace/files?path=' + encodeURIComponent(path)),
-  workspaceVerificationProbe: () =>
-    client
-      .post<VerificationProbe>("/ai/workspace/verification/probe", {})
-      .then((response) => response.data),
-  aiConversation: (id: string) => get<{ conversationId: string; workspaceLabel: string; memory: string; connectionId?: string | null }>("/ai/conversations/" + encodeURIComponent(id)),
-  deleteAiConversation: (id: string) => client.delete("/ai/conversations/" + encodeURIComponent(id)).then(() => undefined),
-  openAiConversation: () =>
-    client.post<AiConversation>("/ai/conversations", {}, { timeout: 10_000 }).then((response) => response.data),
-  sendAiMessage: (id: string, message: string, toolMode: AiToolMode, context?: TaskContext) =>
-    client
-      .post<AiMessageResult>(
-        "/ai/conversations/" + encodeURIComponent(id) + "/messages",
-        { message, toolMode, ...(context ? { context } : {}) },
-        { timeout: 90_000 },
-      )
-      .then((response) => response.data),
-  applyCodeProposal: (id: string, proposal: string) =>
-    client.post<CodeApplied>(
-      "/ai/conversations/" + encodeURIComponent(id) + "/proposals/" + encodeURIComponent(proposal) + "/apply",
-      { confirmed: true },
-    ).then((response) => response.data),
-  codeProposal: (id: string, proposal: string) => get<CodeProposalState>(
-    '/ai/conversations/' + encodeURIComponent(id) + '/proposals/' + encodeURIComponent(proposal)),
-  startChatGptLogin: (connectionId?: string) => client.post<ChatGptLoginAttempt>("/ai/chatgpt/login" + (connectionId ? "?connectionId=" + encodeURIComponent(connectionId) : ""), {}).then(response => response.data),
-  chatGptLoginState: (id: string) => get<ChatGptLoginState>("/ai/chatgpt/login/" + encodeURIComponent(id)),
-  cancelChatGptLogin: (id: string) => client.delete("/ai/chatgpt/login/" + encodeURIComponent(id)),
-  disconnectChatGpt: (id: string) => client.delete("/ai/chatgpt/login/accounts/" + encodeURIComponent(id)),
-  modelConnections: () => get<ModelConnectionList>("/ai/connections"),
-  saveModelConnection: (input: ModelConnectionInput, id?: string) =>
-    client
-      .post<ModelConnection>(id ? "/ai/connections/" + encodeURIComponent(id) : "/ai/connections", input)
-      .then((response) => response.data),
-  setModelConnectionEnabled: (id: string, enabled: boolean) =>
-    client
-      .post<ModelConnection>("/ai/connections/" + encodeURIComponent(id) + "/enabled", { enabled })
-      .then((response) => response.data),
-  setDefaultModelConnection: (id: string) =>
-    client
-      .post<ModelConnection>("/ai/connections/" + encodeURIComponent(id) + "/default", {})
-      .then((response) => response.data),
-  refreshConnectionModels: (id: string) => client.post<ModelConnection>("/ai/connections/" + encodeURIComponent(id) + "/models/refresh", {}).then(response => response.data),
-  configureConnectionModels: (id: string, selection: ModelSelection) => client.post<ModelConnection>("/ai/connections/" + encodeURIComponent(id) + "/models", selection).then(response => response.data),
-  assignConversationConnection: (id: string, connectionId: string, confirmTargetChange: boolean, model: string) =>
-    client
-      .post<ConversationConnection>("/ai/conversations/" + encodeURIComponent(id) + "/connection", {
-        connectionId,
-        confirmTargetChange,
-        model,
-      })
-      .then((response) => response.data),
-  };
+    aiStatus: () => get<AiStatus>('/ai/status'),
+    skills: () => get<{ items: SkillSummary[] }>('/skills'),
+    skill: (id: string, version: string) =>
+      get<SkillSnapshot>(
+        `/skills/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}`,
+      ),
+    previewSkill: (input: SkillImportInput) =>
+      client.post<SkillSnapshot>('/skills/preview', input).then((response) => response.data),
+    saveSkill: (request: SkillSaveRequest) =>
+      client.post<SkillSnapshot>('/skills', request).then((response) => response.data),
+    activateSkill: (
+      id: string,
+      version: string,
+      request: { enabled: boolean; stateRevision: number },
+    ) =>
+      client
+        .post<SkillSnapshot>(
+          `/skills/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}/activation`,
+          request,
+        )
+        .then((response) => response.data),
+    previewSkillContext: (skillRef: SkillRef, resourcePaths: string[]) =>
+      client
+        .post<SkillContext>('/skills/context/preview', { skillRef, resourcePaths })
+        .then((response) => response.data),
+    previewExpertContext: (expertRef: KnowledgeExpertRef, query: string) =>
+      client
+        .post<KnowledgeContext>('/ai/expert-context/preview', { expertRef, query })
+        .then((response) => response.data),
+    workspaceBaseline: (path: string) =>
+      get<WorkspaceBaseline>('/ai/workspace/baseline?path=' + encodeURIComponent(path)),
+    workspaceSource: (path: string) =>
+      get<WorkspaceSource>('/ai/workspace/source?path=' + encodeURIComponent(path)),
+    workspaceDirty: () => get<WorkspaceDirty>('/ai/workspace/dirty'),
+    workspaceFiles: (path = '') =>
+      get<WorkspaceFiles>('/ai/workspace/files?path=' + encodeURIComponent(path)),
+    workspaceVerificationProbe: () =>
+      client
+        .post<VerificationProbe>('/ai/workspace/verification/probe', {})
+        .then((response) => response.data),
+    aiConversation: (id: string) =>
+      get<{
+        conversationId: string
+        workspaceLabel: string
+        memory: string
+        connectionId?: string | null
+      }>('/ai/conversations/' + encodeURIComponent(id)),
+    deleteAiConversation: (id: string) =>
+      client.delete('/ai/conversations/' + encodeURIComponent(id)).then(() => undefined),
+    openAiConversation: () =>
+      client
+        .post<AiConversation>('/ai/conversations', {}, { timeout: 10_000 })
+        .then((response) => response.data),
+    sendAiMessage: (id: string, message: string, toolMode: AiToolMode, context?: TaskContext) =>
+      client
+        .post<AiMessageResult>(
+          '/ai/conversations/' + encodeURIComponent(id) + '/messages',
+          { message, toolMode, ...(context ? { context } : {}) },
+          { timeout: 90_000 },
+        )
+        .then((response) => response.data),
+    applyCodeProposal: (id: string, proposal: string) =>
+      client
+        .post<CodeApplied>(
+          '/ai/conversations/' +
+            encodeURIComponent(id) +
+            '/proposals/' +
+            encodeURIComponent(proposal) +
+            '/apply',
+          { confirmed: true },
+        )
+        .then((response) => response.data),
+    codeProposal: (id: string, proposal: string) =>
+      get<CodeProposalState>(
+        '/ai/conversations/' +
+          encodeURIComponent(id) +
+          '/proposals/' +
+          encodeURIComponent(proposal),
+      ),
+    startChatGptLogin: (connectionId?: string) =>
+      client
+        .post<ChatGptLoginAttempt>(
+          '/ai/chatgpt/login' +
+            (connectionId ? '?connectionId=' + encodeURIComponent(connectionId) : ''),
+          {},
+        )
+        .then((response) => response.data),
+    chatGptLoginState: (id: string) =>
+      get<ChatGptLoginState>('/ai/chatgpt/login/' + encodeURIComponent(id)),
+    cancelChatGptLogin: (id: string) =>
+      client.delete('/ai/chatgpt/login/' + encodeURIComponent(id)),
+    disconnectChatGpt: (id: string) =>
+      client.delete('/ai/chatgpt/login/accounts/' + encodeURIComponent(id)),
+    modelConnections: () => get<ModelConnectionList>('/ai/connections'),
+    saveModelConnection: (input: ModelConnectionInput, id?: string) =>
+      client
+        .post<ModelConnection>(
+          id ? '/ai/connections/' + encodeURIComponent(id) : '/ai/connections',
+          input,
+        )
+        .then((response) => response.data),
+    setModelConnectionEnabled: (id: string, enabled: boolean) =>
+      client
+        .post<ModelConnection>('/ai/connections/' + encodeURIComponent(id) + '/enabled', {
+          enabled,
+        })
+        .then((response) => response.data),
+    setDefaultModelConnection: (id: string) =>
+      client
+        .post<ModelConnection>('/ai/connections/' + encodeURIComponent(id) + '/default', {})
+        .then((response) => response.data),
+    refreshConnectionModels: (id: string) =>
+      client
+        .post<ModelConnection>('/ai/connections/' + encodeURIComponent(id) + '/models/refresh', {})
+        .then((response) => response.data),
+    configureConnectionModels: (id: string, selection: ModelSelection) =>
+      client
+        .post<ModelConnection>('/ai/connections/' + encodeURIComponent(id) + '/models', selection)
+        .then((response) => response.data),
+    assignConversationConnection: (
+      id: string,
+      connectionId: string,
+      confirmTargetChange: boolean,
+      model: string,
+    ) =>
+      client
+        .post<ConversationConnection>(
+          '/ai/conversations/' + encodeURIComponent(id) + '/connection',
+          {
+            connectionId,
+            confirmTargetChange,
+            model,
+          },
+        )
+        .then((response) => response.data),
+  }
 }

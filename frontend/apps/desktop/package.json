@@ -10,11 +10,11 @@
     "start": "electron src/main.mjs",
     "check:preload": "node src/check-preload.cjs"
   },
-  "engines": {
-    "node": ">=22.12.0"
-  },
   "dependencies": {},
   "devDependencies": {
     "electron": "45.0.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

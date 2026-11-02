@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { IconX } from "@eap/icons";
+import { IconX } from '@eap/icons'
 
 withDefaults(
   defineProps<{
-    type?: "primary" | "success" | "warning" | "danger" | "info";
-    effect?: "light" | "plain" | "dark";
-    size?: "sm" | "md";
-    closable?: boolean;
-    disabled?: boolean;
+    type?: 'primary' | 'success' | 'warning' | 'danger' | 'info'
+    effect?: 'light' | 'plain' | 'dark'
+    size?: 'sm' | 'md'
+    closable?: boolean
+    disabled?: boolean
   }>(),
-  { type: "primary", effect: "light", size: "md", closable: false, disabled: false },
-);
-const emit = defineEmits<{ close: [MouseEvent]; click: [MouseEvent] }>();
+  { type: 'primary', effect: 'light', size: 'md', closable: false, disabled: false },
+)
+const emit = defineEmits<{ close: [MouseEvent]; click: [MouseEvent] }>()
 
 function onClick(event: MouseEvent) {
-  if (event.defaultPrevented) return;
-  emit("click", event);
+  if (event.defaultPrevented) return
+  emit('click', event)
 }
 function onClose(event: MouseEvent) {
-  event.preventDefault();
-  event.stopPropagation();
-  emit("close", event);
+  event.preventDefault()
+  event.stopPropagation()
+  emit('close', event)
 }
 </script>
 
@@ -34,7 +34,9 @@ function onClose(event: MouseEvent) {
     @click="onClick"
   >
     <slot />
-    <span v-if="closable" class="eap-tag__close" aria-hidden="true" @click="onClose"><IconX size="1em" /></span>
+    <span v-if="closable" class="eap-tag__close" aria-hidden="true" @click="onClose"
+      ><IconX size="1em"
+    /></span>
   </component>
 </template>
 

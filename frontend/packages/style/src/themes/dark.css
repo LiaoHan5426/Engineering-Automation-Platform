@@ -1,7 +1,7 @@
 /**
  * Dark theme. Same `--eap-*` names as light, so a skin does not fork the component CSS.
  */
-[data-eap-theme="dark"] {
+[data-eap-theme='dark'] {
   color-scheme: dark;
 
   --eap-color-white: #fff;

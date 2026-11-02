@@ -1,122 +1,131 @@
 <script setup lang="ts">
-import { SvgActionPath, Button } from "@eap/ui";
-import { computed, ref, useId } from "vue";
-import { inspectGraph, type WorkflowNode, type WorkflowEdge } from "../lib/workflowGraph";
-const props = defineProps<{ nodes: WorkflowNode[]; edges: WorkflowEdge[] }>();
-const emit = defineEmits<{ select: [id: string] }>();
-const selected = ref(""),
-  source = ref(""),
-  feedback = ref("");
-const drag = ref<{ id: string; x: number; y: number } | null>(null);
-const marker = useId();
-const canvas = ref<HTMLElement | null>(null);
-const zoom = ref(1);
+import { SvgActionPath, Button } from '@eap/ui'
+import { computed, ref, useId } from 'vue'
+import { inspectGraph, type WorkflowNode, type WorkflowEdge } from '../lib/workflowGraph'
+const props = defineProps<{ nodes: WorkflowNode[]; edges: WorkflowEdge[] }>()
+const emit = defineEmits<{ select: [id: string] }>()
+const selected = ref(''),
+  source = ref(''),
+  feedback = ref('')
+const drag = ref<{ id: string; x: number; y: number } | null>(null)
+const marker = useId()
+const canvas = ref<HTMLElement | null>(null)
+const zoom = ref(1)
 function fit() {
   if (canvas.value)
-    zoom.value = Math.min(1, Math.max(0.25, (canvas.value.clientWidth - 20) / size.value.width));
+    zoom.value = Math.min(1, Math.max(0.25, (canvas.value.clientWidth - 20) / size.value.width))
 }
-const graph = computed(() => inspectGraph(props.nodes, props.edges));
+const graph = computed(() => inspectGraph(props.nodes, props.edges))
 const positions = computed(() => {
-  const rows = new Map<number, number>();
+  const rows = new Map<number, number>()
   return new Map(
     props.nodes.map((node) => {
-      const level = graph.value.levels.get(node.id) ?? 0;
-      const row = rows.get(level) ?? 0;
-      rows.set(level, row + 1);
-      return [node.id, { x: node.x ?? 50 + level * 280, y: node.y ?? 70 + row * 170 }];
+      const level = graph.value.levels.get(node.id) ?? 0
+      const row = rows.get(level) ?? 0
+      rows.set(level, row + 1)
+      return [node.id, { x: node.x ?? 50 + level * 280, y: node.y ?? 70 + row * 170 }]
     }),
-  );
-});
+  )
+})
 function position(id: string) {
-  return positions.value.get(id) ?? { x: 0, y: 0 };
+  return positions.value.get(id) ?? { x: 0, y: 0 }
 }
 const size = computed(() => ({
   width: Math.max(900, ...[...positions.value.values()].map((p) => p.x + 260)),
   height: Math.max(450, ...[...positions.value.values()].map((p) => p.y + 180)),
-}));
+}))
 function path(edge: WorkflowEdge) {
   const a = position(edge.source),
-    b = position(edge.target);
+    b = position(edge.target)
   const x = a.x + 200,
     y = a.y + 60,
     endX = b.x - 8,
-    endY = b.y + 60;
-  const bend = Math.max(55, Math.abs(endX - x) / 2);
-  return `M ${x} ${y} C ${x + bend} ${y}, ${endX - bend} ${endY}, ${endX} ${endY}`;
+    endY = b.y + 60
+  const bend = Math.max(55, Math.abs(endX - x) / 2)
+  return `M ${x} ${y} C ${x + bend} ${y}, ${endX - bend} ${endY}, ${endX} ${endY}`
 }
 function start(event: PointerEvent, node: WorkflowNode) {
-  selected.value = node.id;
-  emit("select", node.id);
-  const p = position(node.id);
+  selected.value = node.id
+  emit('select', node.id)
+  const p = position(node.id)
   drag.value = {
     id: node.id,
     x: event.clientX - p.x * zoom.value,
     y: event.clientY - p.y * zoom.value,
-  };
-  (event.currentTarget as Element).setPointerCapture(event.pointerId);
+  }
+  ;(event.currentTarget as Element).setPointerCapture(event.pointerId)
 }
 function move(event: PointerEvent) {
-  const node = props.nodes.find((node) => node.id === drag.value?.id);
+  const node = props.nodes.find((node) => node.id === drag.value?.id)
   if (node && drag.value) {
-    node.x = Math.max(20, (event.clientX - drag.value.x) / zoom.value);
-    node.y = Math.max(20, (event.clientY - drag.value.y) / zoom.value);
+    node.x = Math.max(20, (event.clientX - drag.value.x) / zoom.value)
+    node.y = Math.max(20, (event.clientY - drag.value.y) / zoom.value)
   }
 }
 function connect(target: string) {
   if (!source.value) {
-    feedback.value = "请先点击源节点的输出端口";
-    return;
+    feedback.value = '请先点击源节点的输出端口'
+    return
   }
-  const edge = { source: source.value, target };
+  const edge = { source: source.value, target }
   if (
     edge.source === target ||
     props.edges.some((e) => e.source === edge.source && e.target === target)
   ) {
-    feedback.value = "不能自连或重复连接";
-    return;
+    feedback.value = '不能自连或重复连接'
+    return
   }
-  const errors = inspectGraph(props.nodes, [...props.edges, edge]).errors;
-  if (errors.includes("流程存在循环连线")) {
-    feedback.value = "该连接会产生循环，已阻止";
-    return;
+  const errors = inspectGraph(props.nodes, [...props.edges, edge]).errors
+  if (errors.includes('流程存在循环连线')) {
+    feedback.value = '该连接会产生循环，已阻止'
+    return
   }
-  props.edges.push(edge);
-  source.value = "";
-  feedback.value = "";
+  props.edges.push(edge)
+  source.value = ''
+  feedback.value = ''
 }
 function layout() {
   for (const node of props.nodes) {
-    delete node.x;
-    delete node.y;
+    delete node.x
+    delete node.y
   }
 }
 function removeEdge(index: number) {
-  props.edges.splice(index, 1);
+  props.edges.splice(index, 1)
 }
 </script>
 <template>
   <div class="canvas-tools">
     <span>输出 → 输入：箭头表示依赖方向，名称不决定顺序。</span
-    ><Button size="sm" variant="secondary" @click="layout">自动布局</Button><Button size="sm" variant="secondary" @click="fit">查看全图</Button>
-    <Button size="sm" variant="secondary"
+    ><Button size="sm" variant="secondary" @click="layout">自动布局</Button
+    ><Button size="sm" variant="secondary" @click="fit">查看全图</Button>
+    <Button
+      size="sm"
+      variant="secondary"
       aria-label="缩小画布"
       :disabled="zoom <= 0.25"
       @click="zoom = Math.max(0.25, zoom - 0.1)"
     >
       −</Button
     ><span>{{ Math.round(zoom * 100) }}%</span
-    ><Button size="sm" variant="secondary"
+    ><Button
+      size="sm"
+      variant="secondary"
       aria-label="放大画布"
       :disabled="zoom >= 1.5"
       @click="zoom = Math.min(1.5, zoom + 0.1)"
     >
       ＋</Button
     ><Button size="sm" variant="secondary" @click="zoom = 1">原始大小</Button
-    ><Button size="sm" variant="secondary"
+    ><Button
+      size="sm"
+      variant="secondary"
       v-if="source"
       @click="
-        source = '';
-        feedback = '';
+        () => {
+          source = ''
+          feedback = ''
+        }
       "
     >
       取消连线
@@ -125,7 +134,7 @@ function removeEdge(index: number) {
   <p v-if="source" role="status">已选源节点，请点击目标节点左侧的输入端口。</p>
   <p v-if="feedback" role="alert">{{ feedback }}</p>
   <p v-if="nodes.length && graph.errors.length" class="graph-warning" role="status">
-    {{ graph.errors.join("；") }}
+    {{ graph.errors.join('；') }}
   </p>
   <div ref="canvas" class="workflow-canvas eap-scrollbar">
     <div :style="{ width: size.width * zoom + 'px', height: size.height * zoom + 'px' }">
@@ -160,7 +169,12 @@ function removeEdge(index: number) {
               stroke-width="3"
               :marker-end="'url(#' + marker + ')'"
             />
-            <SvgActionPath :d="path(edge)" :label="'删除连线 ' + edge.source + ' 到 ' + edge.target" delete-key @activate="removeEdge(index)" />
+            <SvgActionPath
+              :d="path(edge)"
+              :label="'删除连线 ' + edge.source + ' 到 ' + edge.target"
+              delete-key
+              @activate="removeEdge(index)"
+            />
           </g>
         </svg>
         <article
@@ -170,7 +184,9 @@ function removeEdge(index: number) {
           :class="{ selected: selected === node.id, connecting: source === node.id }"
           :style="{ left: position(node.id).x + 'px', top: position(node.id).y + 'px' }"
         >
-          <Button size="sm" variant="icon"
+          <Button
+            size="sm"
+            variant="icon"
             class="port input"
             :aria-label="'连接到 ' + (node.label || node.capability)"
             title="输入：点击接收连线"
@@ -185,26 +201,34 @@ function removeEdge(index: number) {
             @pointerup="drag = null"
             @pointercancel="drag = null"
           >
-            <small>{{ edges.some((e) => e.target === node.id) ? "依赖完成后执行" : "入口" }}</small
-            ><strong>{{ node.label || node.capability || "待选择能力" }}</strong>
+            <small>{{ edges.some((e) => e.target === node.id) ? '依赖完成后执行' : '入口' }}</small
+            ><strong>{{ node.label || node.capability || '待选择能力' }}</strong>
           </div>
           <code>{{ node.capability }}</code>
-          <Button size="sm" variant="link"
+          <Button
+            size="sm"
+            variant="link"
             class="node-properties"
             @click="
-              selected = node.id;
-              emit('select', node.id);
+              () => {
+                selected = node.id
+                emit('select', node.id)
+              }
             "
           >
             配置节点
           </Button>
-          <Button size="sm" variant="icon"
+          <Button
+            size="sm"
+            variant="icon"
             class="port output"
             :aria-label="'从 ' + (node.label || node.capability) + ' 连线'"
             title="输出：点击开始连线"
             @click="
-              source = node.id;
-              feedback = '';
+              () => {
+                source = node.id
+                feedback = ''
+              }
             "
           >
             ●

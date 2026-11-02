@@ -12,13 +12,13 @@ Electron shell **scaffold** for EAP. Implements the `window.eap` preload surface
 
 Current target: **Electron ^45.0.0** (Chromium 156 / Node 24).
 
-| Topic | Adaptation |
-|---|---|
-| Sandboxed preload | Must be **CommonJS** (`src/preload.cjs` + `require('electron')`). ESM `import` is not supported in sandbox preload. |
-| Main process | Remains ESM (`src/main.mjs`) |
-| Removed sandbox shims | Do not use `Buffer` / `require('url'|'timers'|'events')` in preload; use WHATWG `URL` in main when validating |
-| Popups | `setWindowOpenHandler` denies; Electron 45 would otherwise inherit sandbox onto guest windows |
-| Node engine | `>=22.12.0` (Electron 45 requirement) |
+| Topic                 | Adaptation                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Sandboxed preload     | Must be **CommonJS** (`src/preload.cjs` + `require('electron')`). ESM `import` is not supported in sandbox preload. |
+| Main process          | Remains ESM (`src/main.mjs`)                                                                                        |
+| Removed sandbox shims | Do not use `Buffer` / `require('url'                                                                                | 'timers' | 'events')`in preload; use WHATWG`URL` in main when validating |
+| Popups                | `setWindowOpenHandler` denies; Electron 45 would otherwise inherit sandbox onto guest windows                       |
+| Node engine           | `>=22.12.0` (Electron 45 requirement)                                                                               |
 
 ```bash
 pnpm --filter @eap/desktop run check:preload

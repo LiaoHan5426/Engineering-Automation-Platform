@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref } from 'vue'
 import {
   runtimeApi,
   type CapabilityItem,
@@ -8,132 +8,132 @@ import {
   type McpProbeResult,
   type McpServerItem,
   type McpServerRequest,
-} from "@eap/runtime-client";
-import { Badge, Button, Checkbox, ConfirmBox, Feedback, Input, Select, Tabs } from "@eap/ui";
-import { Table, type TableColumn } from "@eap/plugin-table";
-import { errorMessage } from "../../lib/presentation";
-import CliProgramManager from "./CliProgramManager.vue";
+} from '@eap/runtime-client'
+import { Badge, Button, Checkbox, ConfirmBox, Feedback, Input, Select, Tabs } from '@eap/ui'
+import { Table, type TableColumn } from '@eap/plugin-table'
+import { errorMessage } from '../../lib/presentation'
+import CliProgramManager from './CliProgramManager.vue'
 
-const emit = defineEmits<{ (event: "saved"): void }>();
+const emit = defineEmits<{ (event: 'saved'): void }>()
 
-const catalog = ref<CapabilityResponse | null>(null);
-const loading = ref(false);
-const message = ref("");
-const messageKind = ref<"error" | "success">("success");
-const tab = ref("overview");
+const catalog = ref<CapabilityResponse | null>(null)
+const loading = ref(false)
+const message = ref('')
+const messageKind = ref<'error' | 'success'>('success')
+const tab = ref('overview')
 
 /** Drafts, keyed by capability: a note explains a switch, a binary points a CLI capability at a file. */
-const notesDraft = ref<Record<string, string>>({});
-const serverProbe = ref<Record<string, McpProbeResult>>({});
+const notesDraft = ref<Record<string, string>>({})
+const serverProbe = ref<Record<string, McpProbeResult>>({})
 
 const blankForm = (): McpServerRequest => ({
-  id: "",
-  name: "",
-  transport: "stdio",
-  endpoint: "",
+  id: '',
+  name: '',
+  transport: 'stdio',
+  endpoint: '',
   tools: [],
   trusted: false,
   enabled: false,
-});
-const form = ref<McpServerRequest>(blankForm());
-const toolsDraft = ref("");
-const editing = ref("");
-const serverEditor = ref(false);
-const toolDraft = ref("");
-const deletingServer = ref<McpServerItem | null>(null);
-const deletingServerBusy = ref(false);
-const deleteRefusal = ref("");
-const toolNames = computed(() => [...new Set(toolsDraft.value.split(/[,，\s]+/).filter(Boolean))]);
+})
+const form = ref<McpServerRequest>(blankForm())
+const toolsDraft = ref('')
+const editing = ref('')
+const serverEditor = ref(false)
+const toolDraft = ref('')
+const deletingServer = ref<McpServerItem | null>(null)
+const deletingServerBusy = ref(false)
+const deleteRefusal = ref('')
+const toolNames = computed(() => [...new Set(toolsDraft.value.split(/[,，\s]+/).filter(Boolean))])
 function addTool() {
-  const name = toolDraft.value.trim();
+  const name = toolDraft.value.trim()
   if (!/^[a-z0-9][a-z0-9_-]{0,60}$/.test(name))
-    return feedback("error", "工具名只允许小写字母、数字、下划线和连字符。");
-  toolsDraft.value = [...new Set([...toolNames.value, name])].join(", ");
-  toolDraft.value = "";
+    return feedback('error', '工具名只允许小写字母、数字、下划线和连字符。')
+  toolsDraft.value = [...new Set([...toolNames.value, name])].join(', ')
+  toolDraft.value = ''
 }
 function removeTool(name: string) {
-  toolsDraft.value = toolNames.value.filter((tool) => tool !== name).join(", ");
+  toolsDraft.value = toolNames.value.filter((tool) => tool !== name).join(', ')
 }
 
-const kinds = computed<CapabilityKindSummary[]>(() => catalog.value?.kinds ?? []);
-const items = computed<CapabilityItem[]>(() => catalog.value?.items ?? []);
+const kinds = computed<CapabilityKindSummary[]>(() => catalog.value?.kinds ?? [])
+const items = computed<CapabilityItem[]>(() => catalog.value?.items ?? [])
 const capabilityColumns: TableColumn[] = [
-  { key: "name", title: "能力", mono: true },
-  { key: "kindLabel", title: "种类" },
-  { key: "scopeLabel", title: "范围" },
-  { key: "availability", title: "状态" },
-  { key: "experts", title: "引用专家" },
-];
+  { key: 'name', title: '能力', mono: true },
+  { key: 'kindLabel', title: '种类' },
+  { key: 'scopeLabel', title: '范围' },
+  { key: 'availability', title: '状态' },
+  { key: 'experts', title: '引用专家' },
+]
 /** A kind earns a tab when it can be managed or has entries; HTTP currently has neither. */
-const visibleKinds = computed(() => kinds.value.filter((kind) => kind.visible));
+const visibleKinds = computed(() => kinds.value.filter((kind) => kind.visible))
 const capabilityTabs = computed(() => [
-  { id: "overview", label: "总览" },
+  { id: 'overview', label: '总览' },
   ...visibleKinds.value.map((kind) => ({
     id: kind.id,
     label: kind.count ? `${kind.label} · ${kind.count}` : kind.label,
   })),
-]);
-const currentKind = computed(() => kinds.value.find((kind) => kind.id === tab.value) ?? null);
-const servers = computed<McpServerItem[]>(() => catalog.value?.mcpServers ?? []);
-const settings = computed(() => catalog.value?.settings ?? {});
+])
+const currentKind = computed(() => kinds.value.find((kind) => kind.id === tab.value) ?? null)
+const servers = computed<McpServerItem[]>(() => catalog.value?.mcpServers ?? [])
+const settings = computed(() => catalog.value?.settings ?? {})
 
 function itemsOf(kindId: string) {
-  return items.value.filter((item) => item.kind === kindId);
+  return items.value.filter((item) => item.kind === kindId)
 }
 /** Labels for availability states, taken from the runtime so the UI cannot invent its own wording. */
 const availabilityLabels = computed(() => {
-  const labels: Record<string, string> = {};
-  for (const item of items.value) labels[item.availability] = item.availabilityLabel;
-  return labels;
-});
+  const labels: Record<string, string> = {}
+  for (const item of items.value) labels[item.availability] = item.availabilityLabel
+  return labels
+})
 function availabilityParts(kind: CapabilityKindSummary) {
   return Object.entries(kind.availability)
-    .filter(([id, count]) => id !== "total" && Number(count) > 0)
-    .map(([id, count]) => `${availabilityLabels.value[id] ?? id} ${count}`);
+    .filter(([id, count]) => id !== 'total' && Number(count) > 0)
+    .map(([id, count]) => `${availabilityLabels.value[id] ?? id} ${count}`)
 }
 function availabilityClass(value: string) {
-  return value === "available" ? "eap-badge--success" : "eap-badge--warning";
+  return value === 'available' ? 'eap-badge--success' : 'eap-badge--warning'
 }
-function feedback(kind: "error" | "success", text: string) {
-  messageKind.value = kind;
-  message.value = text;
+function feedback(kind: 'error' | 'success', text: string) {
+  messageKind.value = kind
+  message.value = text
 }
 
 async function refresh() {
-  loading.value = true;
+  loading.value = true
   try {
-    catalog.value = await runtimeApi.capabilities();
+    catalog.value = await runtimeApi.capabilities()
     for (const item of items.value) {
-      if (notesDraft.value[item.name] === undefined) notesDraft.value[item.name] = item.notes;
+      if (notesDraft.value[item.name] === undefined) notesDraft.value[item.name] = item.notes
     }
-    if (!kinds.value.some((kind) => kind.id === tab.value) && tab.value !== "overview")
-      tab.value = "overview";
+    if (!kinds.value.some((kind) => kind.id === tab.value) && tab.value !== 'overview')
+      tab.value = 'overview'
   } catch (error) {
-    feedback("error", errorMessage(error));
+    feedback('error', errorMessage(error))
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
-onMounted(refresh);
-defineExpose({ refresh });
+onMounted(refresh)
+defineExpose({ refresh })
 
 /** The switch every kind shares. The backend refuses it while an enabled expert depends on the capability. */
 async function toggle(item: CapabilityItem) {
-  const next = !item.enabled;
+  const next = !item.enabled
   if (!next && item.usedBy.length) {
     feedback(
-      "error",
-      `能力 ${item.name} 正被已启用专家引用：${item.usedBy.join("、")}。后端会拒绝停用，请先停用这些专家或从它们的流程中移除该节点。`,
-    );
-    return;
+      'error',
+      `能力 ${item.name} 正被已启用专家引用：${item.usedBy.join('、')}。后端会拒绝停用，请先停用这些专家或从它们的流程中移除该节点。`,
+    )
+    return
   }
   try {
-    await runtimeApi.setCapabilityActivation(item.name, next, notesDraft.value[item.name] ?? "");
-    feedback("success", `${item.name} 已${next ? "启用" : "停用"}。`);
-    await refresh();
-    emit("saved");
+    await runtimeApi.setCapabilityActivation(item.name, next, notesDraft.value[item.name] ?? '')
+    feedback('success', `${item.name} 已${next ? '启用' : '停用'}。`)
+    await refresh()
+    emit('saved')
   } catch (error) {
-    feedback("error", errorMessage(error));
+    feedback('error', errorMessage(error))
   }
 }
 
@@ -142,58 +142,58 @@ async function saveNote(item: CapabilityItem) {
     await runtimeApi.setCapabilityActivation(
       item.name,
       item.enabled,
-      notesDraft.value[item.name] ?? "",
-    );
-    feedback("success", `已保存 ${item.name} 的备注。`);
-    await refresh();
+      notesDraft.value[item.name] ?? '',
+    )
+    feedback('success', `已保存 ${item.name} 的备注。`)
+    await refresh()
   } catch (error) {
-    feedback("error", errorMessage(error));
+    feedback('error', errorMessage(error))
   }
 }
 
 async function setServerActivation(server: McpServerItem, enabled: boolean, trusted: boolean) {
   try {
-    await runtimeApi.setMcpServerActivation(server.id, enabled, trusted);
+    await runtimeApi.setMcpServerActivation(server.id, enabled, trusted)
     feedback(
-      "success",
+      'success',
       `${server.id} 已更新。注册不等于可用：只有同时启用并信任，其工具才会被发布。`,
-    );
-    await refresh();
-    emit("saved");
+    )
+    await refresh()
+    emit('saved')
   } catch (error) {
-    feedback("error", errorMessage(error));
+    feedback('error', errorMessage(error))
   }
 }
 
 async function runServerProbe(server: McpServerItem) {
   try {
-    const result = await runtimeApi.probeMcpServer(server.id);
-    serverProbe.value = { ...serverProbe.value, [server.id]: result };
-    feedback(result.reachable ? "success" : "error", result.message);
+    const result = await runtimeApi.probeMcpServer(server.id)
+    serverProbe.value = { ...serverProbe.value, [server.id]: result }
+    feedback(result.reachable ? 'success' : 'error', result.message)
   } catch (error) {
-    feedback("error", errorMessage(error));
+    feedback('error', errorMessage(error))
   }
 }
 
 async function removeServer(server: McpServerItem) {
-  deletingServerBusy.value = true;
+  deletingServerBusy.value = true
   try {
-    await runtimeApi.deleteMcpServer(server.id);
-    feedback("success", `${server.id} 已删除。`);
-    await refresh();
-    emit("saved");
-    deletingServer.value = null;
+    await runtimeApi.deleteMcpServer(server.id)
+    feedback('success', `${server.id} 已删除。`)
+    await refresh()
+    emit('saved')
+    deletingServer.value = null
   } catch (error) {
-    feedback("error", errorMessage(error));
-    deleteRefusal.value = errorMessage(error);
+    feedback('error', errorMessage(error))
+    deleteRefusal.value = errorMessage(error)
   } finally {
-    deletingServerBusy.value = false;
+    deletingServerBusy.value = false
   }
 }
 
 function editServer(server: McpServerItem) {
-  serverEditor.value = true;
-  editing.value = server.id;
+  serverEditor.value = true
+  editing.value = server.id
   form.value = {
     id: server.id,
     name: server.name,
@@ -202,33 +202,33 @@ function editServer(server: McpServerItem) {
     tools: [...server.tools],
     trusted: server.trusted,
     enabled: server.enabled,
-  };
-  toolsDraft.value = server.tools.join(", ");
-  tab.value = "mcp";
+  }
+  toolsDraft.value = server.tools.join(', ')
+  tab.value = 'mcp'
 }
 
 function resetForm() {
-  serverEditor.value = false;
-  editing.value = "";
-  form.value = blankForm();
-  toolsDraft.value = "";
+  serverEditor.value = false
+  editing.value = ''
+  form.value = blankForm()
+  toolsDraft.value = ''
 }
 
 async function submitServer() {
   const tools = toolsDraft.value
     .split(/[,，\s]+/)
     .map((tool) => tool.trim())
-    .filter(Boolean);
-  const payload: McpServerRequest = { ...form.value, tools };
+    .filter(Boolean)
+  const payload: McpServerRequest = { ...form.value, tools }
   try {
-    if (editing.value) await runtimeApi.updateMcpServer(editing.value, payload);
-    else await runtimeApi.saveMcpServer(payload);
-    feedback("success", `已保存 ${payload.id}。服务器默认不启用、不信任，专家仍需逐工具声明授权。`);
-    resetForm();
-    await refresh();
-    emit("saved");
+    if (editing.value) await runtimeApi.updateMcpServer(editing.value, payload)
+    else await runtimeApi.saveMcpServer(payload)
+    feedback('success', `已保存 ${payload.id}。服务器默认不启用、不信任，专家仍需逐工具声明授权。`)
+    resetForm()
+    await refresh()
+    emit('saved')
   } catch (error) {
-    feedback("error", errorMessage(error));
+    feedback('error', errorMessage(error))
   }
 }
 </script>
@@ -266,9 +266,7 @@ async function submitServer() {
         </div>
         <div class="cap-head__status">
           <Badge tone="warning" v-if="!kind.manageable">无管理入口</Badge>
-          <span class="cap-status">{{
-            availabilityParts(kind).join(" · ") || "暂无能力"
-          }}</span>
+          <span class="cap-status">{{ availabilityParts(kind).join(' · ') || '暂无能力' }}</span>
         </div>
         <div v-if="kind.manageable" class="cap-head__tools">
           <Button variant="secondary" size="sm" @click="tab = kind.id">进入管理</Button>
@@ -282,10 +280,12 @@ async function submitServer() {
     >
       <h2>能力声明不一致</h2>
       <Feedback tone="error" v-if="(catalog?.unregistered ?? []).length">
-        已声明但没有实现：{{ (catalog?.unregistered ?? []).join("、") }}。引用它们的专家节点无法执行。
+        已声明但没有实现：{{
+          (catalog?.unregistered ?? []).join('、')
+        }}。引用它们的专家节点无法执行。
       </Feedback>
       <Feedback tone="error" v-if="(catalog?.undeclared ?? []).length">
-        已实现但未声明：{{ (catalog?.undeclared ?? []).join("、") }}。专家清单无法引用它们。
+        已实现但未声明：{{ (catalog?.undeclared ?? []).join('、') }}。专家清单无法引用它们。
       </Feedback>
     </article>
 
@@ -299,8 +299,8 @@ async function submitServer() {
         </template>
         <template #experts="{ row }">
           {{
-            row.usedBy.join("、") ||
-            (row.declaredBy.length ? row.declaredBy.join("、") + "（草稿）" : "—")
+            row.usedBy.join('、') ||
+            (row.declaredBy.length ? row.declaredBy.join('、') + '（草稿）' : '—')
           }}
         </template>
       </Table>
@@ -328,7 +328,11 @@ async function submitServer() {
 
     <!-- 内置命令 -->
     <template v-if="tab === 'command'">
-      <article v-for="item in itemsOf('command')" :key="item.name" class="eap-panel panel-block cap-group">
+      <article
+        v-for="item in itemsOf('command')"
+        :key="item.name"
+        class="eap-panel panel-block cap-group"
+      >
         <header class="cap-head">
           <div class="cap-head__main">
             <h2>
@@ -347,7 +351,7 @@ async function submitServer() {
               size="sm"
               @click="toggle(item)"
             >
-              {{ item.enabled ? "停用" : "启用" }}
+              {{ item.enabled ? '停用' : '启用' }}
             </Button>
           </div>
         </header>
@@ -357,14 +361,14 @@ async function submitServer() {
           <dt>发布事实</dt>
           <dd>
             {{ item.facts.length }} 项<template v-if="item.facts.length">
-              · <span class="mono">{{ item.facts.slice(0, 4).join("、") }}</span></template
+              · <span class="mono">{{ item.facts.slice(0, 4).join('、') }}</span></template
             >
           </dd>
           <dt>引用情况</dt>
           <dd>
-            <template v-if="item.usedBy.length">已启用专家：{{ item.usedBy.join("、") }}</template>
+            <template v-if="item.usedBy.length">已启用专家：{{ item.usedBy.join('、') }}</template>
             <template v-else-if="item.declaredBy.length"
-              >草稿引用：{{ item.declaredBy.join("、") }}（不影响停用）</template
+              >草稿引用：{{ item.declaredBy.join('、') }}（不影响停用）</template
             >
             <template v-else>暂无专家引用</template>
           </dd>
@@ -392,8 +396,10 @@ async function submitServer() {
       :items="items"
       :kind="currentKind"
       @saved="
-        refresh();
-        emit('saved');
+        () => {
+          refresh()
+          emit('saved')
+        }
       "
     />
 
@@ -416,8 +422,10 @@ async function submitServer() {
               variant="primary"
               size="sm"
               @click="
-                resetForm();
-                serverEditor = true;
+                () => {
+                  resetForm()
+                  serverEditor = true
+                }
               "
               >＋ 登记服务器</Button
             >
@@ -425,7 +433,7 @@ async function submitServer() {
         </header>
       </article>
       <article v-if="serverEditor" class="eap-panel panel-block">
-        <h2>{{ editing ? "编辑服务器 " + editing : "登记 MCP 服务器" }}</h2>
+        <h2>{{ editing ? '编辑服务器 ' + editing : '登记 MCP 服务器' }}</h2>
         <p class="hint">地址中不要填写 Token 或密钥。</p>
         <div class="editor-grid">
           <label class="field-label">
@@ -451,7 +459,7 @@ async function submitServer() {
             </Select>
           </label>
           <label class="field-label">
-            {{ form.transport === "stdio" ? "启动命令" : "服务地址" }}
+            {{ form.transport === 'stdio' ? '启动命令' : '服务地址' }}
             <Input
               v-model="form.endpoint"
               class="mono"
@@ -473,7 +481,6 @@ async function submitServer() {
         <div class="form-actions">
           <Input
             v-model="toolDraft"
-           
             aria-label="新增工具名称"
             placeholder="新增工具：search"
           /><Button variant="secondary" @click="addTool">添加工具</Button>
@@ -495,7 +502,7 @@ async function submitServer() {
         </p>
         <div class="form-actions">
           <Button variant="primary" @click="submitServer">
-            {{ editing ? "保存修改" : "登记服务器" }}
+            {{ editing ? '保存修改' : '登记服务器' }}
           </Button>
           <Button variant="ghost" @click="resetForm">取消</Button>
         </div>
@@ -512,22 +519,22 @@ async function submitServer() {
             <h2>
               {{ server.name }} <span class="mono kind-id">{{ server.id }}</span>
             </h2>
-            <p class="mono">{{ server.transport }} · {{ server.endpoint || "（未填写地址）" }}</p>
+            <p class="mono">{{ server.transport }} · {{ server.endpoint || '（未填写地址）' }}</p>
           </div>
           <div class="cap-head__status">
             <Badge :tone="server.usable ? 'success' : 'warning'">
-              {{ server.usable ? "可用于专家授权" : "不可用" }}
+              {{ server.usable ? '可用于专家授权' : '不可用' }}
             </Badge>
             <span class="cap-status">{{ server.tools.length }} 个工具</span>
           </div>
         </header>
         <dl class="cap-meta">
           <dt>工具声明清单</dt>
-          <dd class="mono">{{ server.tools.join("、") || "空（不会发布任何能力）" }}</dd>
+          <dd class="mono">{{ server.tools.join('、') || '空（不会发布任何能力）' }}</dd>
           <dt>发布的能力</dt>
-          <dd class="mono">{{ server.capabilities.join("、") || "—" }}</dd>
+          <dd class="mono">{{ server.capabilities.join('、') || '—' }}</dd>
           <dt>已授权专家</dt>
-          <dd>{{ server.authorisedExperts.join("、") || "暂无（需由专家清单声明 mcpTools）" }}</dd>
+          <dd>{{ server.authorisedExperts.join('、') || '暂无（需由专家清单声明 mcpTools）' }}</dd>
         </dl>
         <p v-for="problem in server.problems" :key="problem" class="requirement-line">
           {{ problem }}
@@ -538,22 +545,24 @@ async function submitServer() {
             :class="server.enabled ? 'eap-button--secondary' : 'eap-button--primary'"
             @click="setServerActivation(server, !server.enabled, server.trusted)"
           >
-            {{ server.enabled ? "停用" : "启用" }}
+            {{ server.enabled ? '停用' : '启用' }}
           </Button>
           <Button
             variant="secondary"
             :class="server.trusted ? 'eap-button--secondary' : 'eap-button--primary'"
             @click="setServerActivation(server, server.enabled, !server.trusted)"
           >
-            {{ server.trusted ? "撤回信任" : "信任" }}
+            {{ server.trusted ? '撤回信任' : '信任' }}
           </Button>
           <Button variant="ghost" @click="runServerProbe(server)">探测</Button>
           <Button variant="ghost" @click="editServer(server)">编辑</Button>
           <Button
             variant="ghost"
             @click="
-              deletingServer = server;
-              deleteRefusal = '';
+              () => {
+                deletingServer = server
+                deleteRefusal = ''
+              }
             "
           >
             删除
@@ -562,7 +571,7 @@ async function submitServer() {
         <div v-if="serverProbe[server.id]" class="dry-result">
           <p class="hint">{{ serverProbe[server.id]?.message }}</p>
           <p class="hint mono">
-            连通检查：{{ serverProbe[server.id]?.verified ? "已通过" : "未通过" }}
+            连通检查：{{ serverProbe[server.id]?.verified ? '已通过' : '未通过' }}
           </p>
         </div>
         <p class="hint">撤回信任、停用或删除被已启用专家授权使用的服务器，后端会拒绝并点名专家。</p>
@@ -579,7 +588,7 @@ async function submitServer() {
               <b class="mono">{{ item.name }}</b>
               <small>{{ item.summary }}</small>
               <small class="hint"
-                >已授权专家：{{ item.authorisedExperts.join("、") || "暂无" }}</small
+                >已授权专家：{{ item.authorisedExperts.join('、') || '暂无' }}</small
               >
             </span>
             <Badge tone="neutral" :class="availabilityClass(item.availability)">
@@ -608,7 +617,7 @@ async function submitServer() {
     </article>
 
     <p v-if="Object.keys(settings).length" class="hint">
-      已记录的开关设置：<span class="mono">{{ Object.keys(settings).join("、") }}</span>
+      已记录的开关设置：<span class="mono">{{ Object.keys(settings).join('、') }}</span>
     </p>
   </section>
   <ConfirmBox

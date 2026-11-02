@@ -141,3 +141,33 @@
 
 最终独立复核通过：指定三项缺陷已关闭，独立实际定向后端54项和前端43项通过，未发现该范围确证回归；结合上述父任务全量及真实数据库/浏览器证据，文本导入首片达到阶段交付条件。前文审查中/未通过表述为过程记录，不再是当前结论。提交前已同步主方案§0B.9/§2C.1及完整台账，目录/仓库导入、脚本执行、通用mock YAML解析和真实模型效果明确保留未完成/不支持。
 <!-- record:end docs/decisions/skill-text-import-2026-11-01.md -->
+
+<a id="scenario-configuration"></a>
+## 场景自定义配置持久化（2026-11-02）
+
+范围：SC-01/SC-02 的可变配置切片，不关闭原型交付、完整资源整合或用户接受。基线`712829c`；开始已有`application.yml`及`AiChatApplicationTest.java`两处用户修改，均未编辑或纳入本轮成果。没有提交/推送、付费模型调用或手动启停用户服务。
+
+### 实现与复用
+
+- 保留原`ScenarioWorkspace`与`workbench.scenarios`及所有内置预设；新增L4场景目录状态，基础操作复用`@eap/ui` Button/Input/Textarea/Tag，HTTP复用runtime-client，不新增UI原语、共享包或资源注册中心。
+- 现有内存复制/新建升级为显式保存：本地草稿→`PUT /api/scenarios/{custom-id}`→单条`GET`读回；启动`GET /api/scenarios`使副本恢复到原有场景选择器。未保存内容仍只在内存。失败/冲突保留草稿，不回退mock，也不因保存自动发送或执行。
+- 后端engine持有有界DTO/JDBC服务，web持有HTTP；新增V20场景表，revision原子CAS和删除墓碑拒绝并发旧写及删除后重建。内置ID保留，不保存/修改预设。配置revision是可变记录版本，不是不可变原型版本或执行权限。
+- 工具/Skill/MCP标签及依赖是配置声明，不触发安装、激活、协议调用或授权。扩展现有浏览器Origin/Host边界到场景PUT/DELETE；删除无JSON正文但仍校验来源。mock同路由/DTO/CAS，且明确仅开发服务内存。
+- V20已被用户现有开发服务正常加载后，全量架构检查指出缺少列注释；用V21追加注释，未改写已应用V20或旧迁移，不执行clean/repair/reset。
+
+### 执行证据
+
+| 检查 | 本轮结果 |
+|---|---|
+| `rtk proxy mvn -f backend/pom.xml test -q` | 最终退出0；Surefire汇总661项、0失败/错误、68条件跳过。此命令未开启原有实库/Mission环境门禁，不与历史双门禁647项直接比较 |
+| `EAP_RUN_BOARD_PERSISTENCE=true rtk proxy mvn -f backend/pom.xml -pl eap-runtime -am test -Dtest=ScenarioServiceTest,ScenarioApiTest,ScenarioPersistenceTest,SchemaAndWiringTest -Dsurefire.failIfNoSpecifiedTests=false -q` | 11项通过，其中2项真实PostgreSQL覆盖保存重开/删除/墓碑和并发CAS仅一赢家；仅清理本测试随机行，不创建/删除数据库 |
+| `rtk proxy pnpm --dir frontend test run --maxWorkers=4` | 99文件578项通过；相关Scenario/SkillManager定向39项通过 |
+| `rtk proxy pnpm --dir frontend typecheck`、`check:boundaries`、`build`（同一前缀） | 均退出0；保留Node localStorage实验警告及既有大chunk警告，未调整阈值掩盖 |
+| 实际页面与API | 用户既有`vp dev`5173代理IDEA后端8080：新建→编辑→保存并读回r1→真实Page.reload恢复；模拟另一页面通过真实API更新r2后，本页保存收到冲突并保留本地新名称；刷新后可读r2，UI删除后单条GET404且目录不再含样例 |
+| 尺寸限定检查 | 场景配置冲突页708×800无全页横溢、保存按钮可达；目录1280×800无全页横溢。不是全页面/真实系统缩放完整矩阵 |
+
+过程失败保留：首次全量后端180秒超时；增加时限后发现1项列注释门禁失败，V21修复后全量通过。前端一次默认并发复跑中，SkillManager首项5秒超时造成22项级联失败；未改该组件/测试或放宽超时，定向39项与限制4 worker的全量578项复跑通过。不能用首次通过隐藏该不稳定性。
+
+内置预览已打开同一真实地址，但`drive_preview`返回渲染控制桥无响应；改用browser工具访问同一服务，未宣称内置面板点击已通过。浏览器默认会话后来出现port文件权限错误，独立命名会话恢复后完成删除及404读回。验收样例`custom-5a64ce94-2817-4007-b0ae-b21f85c65151`已软删除；保留墓碑用于防ABA，不影响用户其他数据。未把自动化点击视为用户最终接受。
+
+独立只读审查未通过：首次保存已提交但响应丢失时，客户端revision仍为0，随后的删除会当成未保存草稿直接移除本地内容而未删除服务端。需补逐场景未知结果核对与回归，阶段仍阻断；本轮用户已转向前端测试目录治理，业务修复未混入。完整场景资源引用、模型自身改页、MCP协议、规划/Agent、Work执行与桌面发行仍未完成。

@@ -4,7 +4,11 @@
 [data-eap-skin],
 [data-eap-density],
 [data-eap-tokens] {
-  --eap-color-warning-border: color-mix(in srgb, var(--eap-color-warning) 35%, var(--eap-fill-color-blank));
+  --eap-color-warning-border: color-mix(
+    in srgb,
+    var(--eap-color-warning) 35%,
+    var(--eap-fill-color-blank)
+  );
   --eap-chart-accent: var(--eap-color-info);
   --eap-chart-accent-soft: var(--eap-color-info-soft);
   --eap-code-bg: var(--eap-fill-color-light);

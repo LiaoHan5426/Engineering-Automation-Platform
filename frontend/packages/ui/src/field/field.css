@@ -33,7 +33,9 @@
   background-position:
     calc(100% - 15px) center,
     calc(100% - 10px) center;
-  background-size: 5px 5px, 5px 5px;
+  background-size:
+    5px 5px,
+    5px 5px;
 }
 
 .eap-select option,

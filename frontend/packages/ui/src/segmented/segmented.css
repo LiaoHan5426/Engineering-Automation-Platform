@@ -7,8 +7,6 @@
   border-radius: var(--eap-border-radius-base);
 }
 
-
-
 .eap-segmented__item small {
   font-size: var(--eap-font-size-xs);
 }
@@ -21,7 +19,7 @@
   border-radius: var(--eap-border-radius-sm);
 }
 
-.eap-segmented__item[data-state="on"] {
+.eap-segmented__item[data-state='on'] {
   color: var(--eap-color-primary);
   background: var(--eap-color-primary-soft);
 }
@@ -35,12 +33,12 @@
   opacity: 0.55;
 }
 
-.eap-segmented[data-orientation="vertical"] {
+.eap-segmented[data-orientation='vertical'] {
   flex-direction: column;
   align-items: stretch;
 }
 
-.eap-segmented[data-orientation="vertical"] .eap-segmented__item {
+.eap-segmented[data-orientation='vertical'] .eap-segmented__item {
   display: flex;
   gap: var(--eap-space-2);
   justify-content: space-between;

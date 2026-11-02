@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 import com.lh.eap.application.service.FileExecutionArtifactStore;
 import com.lh.eap.domain.model.CapabilityContext;
 import com.lh.eap.domain.model.NodeResult;
@@ -12,11 +13,13 @@ import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import com.lh.eap.web.AiBrowserRequestGuard;
 import com.lh.eap.web.controller.AiChatController;
 import com.lh.eap.web.controller.ApiErrorHandler;
+
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.chat.client.ChatClient;
@@ -29,11 +32,16 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
 class AiChatApplicationTest {
-    @TempDir Path root;
+    @TempDir
+    Path root;
 
-    @Test void expertPreviewHasAStrictIdentityOnlyRequestAndDoesNotCallAModel() throws Exception {
+    @Test
+    void expertPreviewHasAStrictIdentityOnlyRequestAndDoesNotCallAModel() throws Exception {
         var calls = new AtomicInteger();
-        var app = app(p -> { calls.incrementAndGet(); return FakeChatModels.text("not called"); }, true, null, null);
+        var app = app(p -> {
+            calls.incrementAndGet();
+            return FakeChatModels.text("not called");
+        }, true, null, null);
         for (String body : List.of("{}", "{\"expertRef\":null,\"query\":\"marker\"}",
                 "{\"expertRef\":{\"id\":\"expert-a\",\"revision\":2},\"query\":\"marker\",\"references\":[]}",
                 "{\"expertRef\":{\"id\":\"expert-a\",\"revision\":2,\"grants\":[]},\"query\":\"marker\"}")) {
@@ -45,7 +53,10 @@ class AiChatApplicationTest {
 
     CapabilityHandler handler(AtomicInteger calls) {
         return new CapabilityHandler() {
-            public Set<String> capabilities() { return Set.of("git-status"); }
+            public Set<String> capabilities() {
+                return Set.of("git-status");
+            }
+
             public com.lh.eap.domain.model.NodeResult handle(CapabilityContext context) {
                 calls.incrementAndGet();
                 return new NodeResult(true, false, "ok", java.util.Map.of("stdout", "?? noted.txt"));
@@ -64,12 +75,16 @@ class AiChatApplicationTest {
         return new AiChatApplication(status, new AiConversationRegistry(memory), chat, root);
     }
 
-    @Test void codeGenerationRejectsSourceEditedInsideModelCall() throws Exception {
+    @Test
+    void codeGenerationRejectsSourceEditedInsideModelCall() throws Exception {
         java.nio.file.Files.writeString(root.resolve("Page.vue"), "original");
         var app = app(prompt -> {
             assertTrue(prompt.getUserMessage().getText().contains("original"));
-            try { java.nio.file.Files.writeString(root.resolve("Page.vue"), "concurrent user edit"); }
-            catch (java.io.IOException failure) { throw new java.io.UncheckedIOException(failure); }
+            try {
+                java.nio.file.Files.writeString(root.resolve("Page.vue"), "concurrent user edit");
+            } catch (java.io.IOException failure) {
+                throw new java.io.UncheckedIOException(failure);
+            }
             return FakeChatModels.text("{\"files\":[{\"path\":\"Page.vue\",\"content\":\"candidate\"}]}");
         }, true, root, null);
         org.springframework.test.util.ReflectionTestUtils.setField(app, "codeChanges",
@@ -86,9 +101,13 @@ class AiChatApplicationTest {
                 .addFilters(new AiBrowserRequestGuard()).build();
     }
 
-    @Test void statusIsReadWithoutCallingTheModel() throws Exception {
+    @Test
+    void statusIsReadWithoutCallingTheModel() throws Exception {
         var calls = new AtomicInteger();
-        var app = app(p -> { calls.incrementAndGet(); return FakeChatModels.text("should-not-run"); }, true, null, null);
+        var app = app(p -> {
+            calls.incrementAndGet();
+            return FakeChatModels.text("should-not-run");
+        }, true, null, null);
         mvc(app).perform(get("/api/ai/status")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.state").value("configured_unverified"))
                 .andExpect(jsonPath("$.tools.git_status").value(false))
@@ -96,9 +115,13 @@ class AiChatApplicationTest {
         assertEquals(0, calls.get());
     }
 
-    @Test void disabledSendDoesNotInventAnAnswer() {
+    @Test
+    void disabledSendDoesNotInventAnAnswer() {
         var calls = new AtomicInteger();
-        var app = app(p -> { calls.incrementAndGet(); return FakeChatModels.text("invented"); }, false, null, null);
+        var app = app(p -> {
+            calls.incrementAndGet();
+            return FakeChatModels.text("invented");
+        }, false, null, null);
         var id = app.open("{}").conversationId();
         var error = assertThrows(ResponseStatusException.class, () -> app.send(id, "{\"message\":\"hi\",\"toolMode\":\"none\"}"));
         assertEquals(503, error.getStatusCode().value());
@@ -107,9 +130,13 @@ class AiChatApplicationTest {
         assertEquals("disabled", app.status().state());
     }
 
-    @Test void forgedGrantIdentityAndPathAreRejectedBeforeTheModel() {
+    @Test
+    void forgedGrantIdentityAndPathAreRejectedBeforeTheModel() {
         var calls = new AtomicInteger();
-        var app = app(p -> { calls.incrementAndGet(); return FakeChatModels.text("no"); }, true, null, null);
+        var app = app(p -> {
+            calls.incrementAndGet();
+            return FakeChatModels.text("no");
+        }, true, null, null);
         var id = app.open("{}").conversationId();
         for (var body : List.of(
                 "{\"message\":\"hi\",\"toolMode\":\"none\",\"gitAllowed\":true}",
@@ -124,7 +151,8 @@ class AiChatApplicationTest {
         assertThrows(ResponseStatusException.class, () -> app.send(UUID.randomUUID(), "{\"message\":\"hi\",\"toolMode\":\"none\"}"));
     }
 
-    @Test void ordinaryChatDoesNotRegisterGitAndGitRequestIsNotAGrant() {
+    @Test
+    void ordinaryChatDoesNotRegisterGitAndGitRequestIsNotAGrant() {
         var calls = new AtomicInteger();
         var turns = new AtomicInteger();
         var app = app(p -> {
@@ -147,7 +175,8 @@ class AiChatApplicationTest {
         assertEquals(64, sent.artifacts().getFirst().sha256().length());
     }
 
-    @Test void conversationsDoNotShareMemory() {
+    @Test
+    void conversationsDoNotShareMemory() {
         var seen = new java.util.ArrayList<String>();
         var app = app(p -> {
             seen.add(p.getInstructions().stream().map(message -> String.valueOf(message.getText())).reduce("", (a, b) -> a + "\n" + b));
@@ -162,7 +191,8 @@ class AiChatApplicationTest {
         assertFalse(seen.get(1).contains("private-marker"));
     }
 
-    @Test void grantedGitStatusUsesTheExistingHandler() {
+    @Test
+    void grantedGitStatusUsesTheExistingHandler() {
         var calls = new AtomicInteger();
         var turns = new AtomicInteger();
         var app = app(p -> {
@@ -184,21 +214,26 @@ class AiChatApplicationTest {
         assertEquals("available", app.status().state());
     }
 
-    @Test void badOriginAndContentTypeNeverReachTheModel() throws Exception {
+    @Test
+    void badOriginAndContentTypeNeverReachTheModel() throws Exception {
         var calls = new AtomicInteger();
-        var mvc = mvc(app(p -> { calls.incrementAndGet(); return FakeChatModels.text("no"); }, true, null, null));
+        var mvc = mvc(app(p -> {
+            calls.incrementAndGet();
+            return FakeChatModels.text("no");
+        }, true, null, null));
         mvc.perform(post("/api/ai/conversations").contentType(MediaType.APPLICATION_JSON).content("{}")
-                .header("Origin", "http://evil.example")).andExpect(status().isForbidden())
+                        .header("Origin", "http://evil.example")).andExpect(status().isForbidden())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("ORIGIN_REJECTED")));
         mvc.perform(post("/api/ai/conversations").contentType(MediaType.TEXT_PLAIN).content("{}")
                 .header("Origin", "http://localhost:5173")).andExpect(status().isUnsupportedMediaType());
         mvc.perform(post("/api/ai/conversations").contentType(MediaType.APPLICATION_JSON).content("{}")
-                .header("Origin", "http://127.0.0.1:5173")).andExpect(status().isOk())
+                        .header("Origin", "http://127.0.0.1:5173")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.memory").exists());
         assertEquals(0, calls.get());
     }
 
-    @Test void targetChangeNeedsConfirmationAndDoesNotReplayMemory() {
+    @Test
+    void targetChangeNeedsConfirmationAndDoesNotReplayMemory() {
         var seen = new java.util.ArrayList<String>();
         var calls = new AtomicInteger();
         var memory = MessageWindowChatMemory.builder().maxMessages(20).build();
@@ -208,13 +243,14 @@ class AiChatApplicationTest {
             return FakeChatModels.text("plain");
         });
         var connections = new ModelConnections(root.resolve("connections.json"), false, new ModelClientSource() {
-                    public org.springframework.ai.chat.client.ChatClient conversational(ModelConnectionSnapshot snapshot) {
-                        return EngineeringAiConfiguration.createClient(ChatClient.builder(model), memory);
-                    }
-                    public org.springframework.ai.chat.client.ChatClient completion(ModelConnectionSnapshot snapshot) {
-                        return conversational(snapshot);
-                    }
-                });
+            public org.springframework.ai.chat.client.ChatClient conversational(ModelConnectionSnapshot snapshot) {
+                return EngineeringAiConfiguration.createClient(ChatClient.builder(model), memory);
+            }
+
+            public org.springframework.ai.chat.client.ChatClient completion(ModelConnectionSnapshot snapshot) {
+                return conversational(snapshot);
+            }
+        });
         var saved = createConfigured(connections, "desk", "https://127.0.0.1:9/v1", "desk-model", "sk-local-test-secret", true, true);
         var handlers = new CapabilityHandlerRegistry(List.of());
         var status = new AiConnectionStatus(handlers, root, null, "none", "", "", false, connections);
@@ -238,8 +274,9 @@ class AiChatApplicationTest {
         assertFalse(seen.get(1).contains("private-marker"));
         assertEquals("available", app.status().state());
     }
+
     private static ModelConnectionView createConfigured(ModelConnections connections, String name, String url, String model,
-            String secret, boolean enabled, boolean makeDefault) {
+                                                        String secret, boolean enabled, boolean makeDefault) {
         var saved = connections.create(name, url, secret, enabled, makeDefault);
         return connections.configureModels(saved.id(), List.of(new ModelOption(model, List.of())), List.of(model), model);
     }

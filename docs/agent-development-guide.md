@@ -59,6 +59,8 @@ directories, with successful-check logs removed by default and failures retained
 
 ## Test and documentation maintenance
 
+- Frontend tests belong in each package's root `__tests__/`, sibling to `src/`; engineering tools use `frontend/scripts/vsh/__tests__/`. Test-only fixtures, snapshots, browser QA configuration and compile-time contracts follow the same ownership. See [test layout](decisions/frontend-test-layout.md) for discovery, separate type-contract checks, lint/fmt and packaging gates. Never move type contracts out of the compiler graph or production mocks into test-only directories.
+
 - Remove an obsolete test only after tracing the assertion to current production behavior and naming its retained or replacement coverage. A gated test is not obsolete merely because this machine skips it. Keep authorization, concurrency, UNKNOWN, transactions, real-process and persistence regressions.
 - Share setup only where contracts genuinely match. Fixtures must not contain inherited test methods: subclassing a test class reruns its tests and inflates reports. Do not replace behavior tests with source-string or class-name guesses.
 - Keep current work items in `planning-status.md`, a short sequence in `roadmap.md`, and complete dated evidence in topic-based `records/*-history.md`. Preserve source-to-section mappings, media and failure evidence; update Markdown links/anchors when retiring files. Dates belong in chapters, not new report filenames.

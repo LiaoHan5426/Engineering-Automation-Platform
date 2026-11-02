@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@eap/expert-sdk": "workspace:*",
+    "@eap/plugin-table": "workspace:*",
     "@eap/runtime-client": "workspace:*",
     "@eap/style": "workspace:*",
-    "@eap/plugin-table": "workspace:*",
     "@eap/ui": "workspace:*",
     "axios": "catalog:frontend",
     "grapesjs": "^0.22.7",
@@ -26,6 +26,7 @@
     "@tailwindcss/vite": "catalog:frontend",
     "@types/nprogress": "catalog:tooling",
     "@vitejs/plugin-vue": "catalog:tooling",
+    "tailwindcss": "catalog:frontend",
     "typescript": "catalog:tooling",
     "vite": "catalog:tooling",
     "vite-plugin-vue-mcp": "^0.3.2",

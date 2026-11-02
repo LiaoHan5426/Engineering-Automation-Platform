@@ -15,7 +15,7 @@ import org.springframework.http.server.PathContainer;
 import org.springframework.http.server.RequestPath;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/** Browser boundary for chat and Skill posts. Loopback binding alone is not the origin check. */
+/** Browser boundary for chat, Skill and scenario writes. Loopback alone is not an origin check. */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class AiBrowserRequestGuard extends OncePerRequestFilter {
@@ -23,7 +23,7 @@ public class AiBrowserRequestGuard extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !"POST".equalsIgnoreCase(request.getMethod());
+        return !Set.of("POST", "PUT", "DELETE").contains(request.getMethod().toUpperCase(Locale.ROOT));
     }
 
     @Override
@@ -50,7 +50,7 @@ public class AiBrowserRequestGuard extends OncePerRequestFilter {
             reject(response, 400, "PATH_REJECTED");
             return;
         }
-        if (segments.size() < 2 || !("ai".equals(segments.get(1)) || "skills".equals(segments.get(1)))) {
+        if (segments.size() < 2 || !("ai".equals(segments.get(1)) || "skills".equals(segments.get(1)) || "scenarios".equals(segments.get(1)))) {
             chain.doFilter(request, response);
             return;
         }
@@ -66,7 +66,7 @@ public class AiBrowserRequestGuard extends OncePerRequestFilter {
             return;
         }
         String type = request.getContentType();
-        if (type == null || !type.toLowerCase(Locale.ROOT).startsWith("application/json")) {
+        if (!"DELETE".equalsIgnoreCase(request.getMethod()) && (type == null || !type.toLowerCase(Locale.ROOT).startsWith("application/json"))) {
             reject(response, 415, "CONTENT_TYPE_REJECTED");
             return;
         }

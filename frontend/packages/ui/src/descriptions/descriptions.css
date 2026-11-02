@@ -4,7 +4,9 @@
   gap: var(--eap-space-2) var(--eap-space-4);
   margin: 0;
 }
-.eap-descriptions__label { color: var(--eap-text-color-secondary); }
+.eap-descriptions__label {
+  color: var(--eap-text-color-secondary);
+}
 
 .eap-descriptions__value {
   margin: 0;

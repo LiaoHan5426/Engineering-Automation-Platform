@@ -10,13 +10,13 @@
  * The two sets of patterns must stay in step, so the shapes here are the shapes the runtime rejects.
  */
 const ASSIGNMENT =
-  /(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key)\s*[:=]\s*\S+/i;
-const PRIVATE_KEY = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
-const BEARER = /\bbearer\s+[a-z0-9._-]{20,}/i;
+  /(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key)\s*[:=]\s*\S+/i
+const PRIVATE_KEY = /-----BEGIN [A-Z ]*PRIVATE KEY-----/
+const BEARER = /\bbearer\s+[a-z0-9._-]{20,}/i
 
 /** True when the value carries something that must not be stored or persisted. */
 export function containsSecret(value: string | null | undefined): boolean {
-  return describeSecret(value) !== null;
+  return describeSecret(value) !== null
 }
 
 /**
@@ -26,13 +26,13 @@ export function containsSecret(value: string | null | undefined): boolean {
  * and a `password=` assignment are different mistakes with different fixes.
  */
 export function describeSecret(value: string | null | undefined): string | null {
-  if (!value) return null;
-  if (PRIVATE_KEY.test(value)) return "看起来是私钥内容";
-  if (BEARER.test(value)) return "看起来是 Bearer 令牌";
-  const credentials = urlCredentials(value);
-  if (credentials) return `地址中的凭据（${credentials}）`;
-  if (ASSIGNMENT.test(value)) return "疑似密钥赋值（如 password=… / api_key=…）";
-  return null;
+  if (!value) return null
+  if (PRIVATE_KEY.test(value)) return '看起来是私钥内容'
+  if (BEARER.test(value)) return '看起来是 Bearer 令牌'
+  const credentials = urlCredentials(value)
+  if (credentials) return `地址中的凭据（${credentials}）`
+  if (ASSIGNMENT.test(value)) return '疑似密钥赋值（如 password=… / api_key=…）'
+  return null
 }
 
 /**
@@ -43,12 +43,12 @@ export function describeSecret(value: string | null | undefined): string | null 
  * the shape an operator actually pastes into an endpoint field. The runtime refuses it; so does this.
  */
 export function urlCredentials(value: string): string | null {
-  let url: URL;
+  let url: URL
   try {
-    url = new URL(value.trim());
+    url = new URL(value.trim())
   } catch {
-    return null;
+    return null
   }
-  if (!url.username && !url.password) return null;
-  return `${url.username}:${url.password}`;
+  if (!url.username && !url.password) return null
+  return `${url.username}:${url.password}`
 }

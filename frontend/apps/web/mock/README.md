@@ -2,10 +2,10 @@
 
 Mock 只替换 HTTP 响应，不另做一套页面。界面始终调用 runtime client 的 `/api` 契约。
 
-| 命令 | 行为 |
-|---|---|
-| `vp run dev` | 开发服务把 `/api` 代理到 `http://127.0.0.1:8080`（IDEA 中的 Java） |
-| `vp run dev:mock` | 在 `frontend` 目录启动 `apps/web`，同一条 `/api` 由 Vite 内存 mock 应答 |
+| 命令                                     | 行为                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------- |
+| `vp run dev`                             | 开发服务把 `/api` 代理到 `http://127.0.0.1:8080`（IDEA 中的 Java）      |
+| `vp run dev:mock`                        | 在 `frontend` 目录启动 `apps/web`，同一条 `/api` 由 Vite 内存 mock 应答 |
 | `VITE_USE_MOCK=true` 后执行 `vp run dev` | 与 `dev:mock` 相同。PowerShell：`$env:VITE_USE_MOCK='true'; vp run dev` |
 
 生产构建不注册 mock，也不读取该开关。`vp run preview` 仍是构建产物预览，不是界面 mock。
@@ -15,6 +15,8 @@ Mock 只替换 HTTP 响应，不另做一套页面。界面始终调用 runtime 
 当前覆盖 `/ai/status`、连接创建/编辑/启停/默认设置、模型发现与允许目录保存、模拟账号授权/断开、会话创建/读取/删除、模型切换、消息和候选确认。
 响应复用 runtime-client DTO。候选确认只修改内存标记，`mock_only_not_executed` 不代表文件写入或测试通过。
 未实现端点返回 404，不转发到 Java，也不调用模型。
+
+`/scenarios`及`/scenarios/{id}`支持同DTO的自定义场景读取、显式保存、revision CAS与删除墓碑；内置ID、非法字段和过期revision被拒绝。状态仅在开发服务内存，重启清空，不是数据库持久化证据。场景保存不激活Skill/MCP、不授权工具、不发送任务。
 
 知识库 `/knowledge` 提供库/文档的增删改、计数和带可选 `baseId` 的检索；数据库资料 `/databases` 提供元数据快照 CRUD。两者使用与 Java 相同的页面和客户端，拒绝凭据输入，删除后内存检索结果同步消失。知识 mock 仅用关键字包含匹配，不模拟 PostgreSQL 排名，也尚未覆盖启用专家引用导致的删除拒绝；这些边界不能作为真实授权或检索质量证据。原型场景不再按服务来源选择不同组件，统一设计/版本/准备流程；mock 缺少授权根或基线时同样阻止交付。
 

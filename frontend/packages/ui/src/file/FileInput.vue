@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { computed, ref, useAttrs } from "vue";
+import { computed, ref, useAttrs } from 'vue'
 
-defineOptions({ inheritAttrs: false });
+defineOptions({ inheritAttrs: false })
 
-defineProps<{ disabled?: boolean }>();
-const emit = defineEmits<{ change: [Event] }>();
-const attrs = useAttrs();
-const root = ref<HTMLInputElement | null>(null);
+defineProps<{ disabled?: boolean }>()
+const emit = defineEmits<{ change: [Event] }>()
+const attrs = useAttrs()
+const root = ref<HTMLInputElement | null>(null)
 const extra = computed(() => {
-  const { class: _class, onChange: _onChange, ...rest } = attrs;
-  return rest;
-});
+  const { class: _class, onChange: _onChange, ...rest } = attrs
+  return rest
+})
 
 function onChange(event: Event) {
-  emit("change", event);
+  emit('change', event)
 }
 
-defineExpose({ click: () => root.value?.click() });
+defineExpose({ click: () => root.value?.click() })
 </script>
 
 <template>

@@ -14,6 +14,7 @@
 | `@eap/plugin-table` | 纯表格插件。运行时只有 `vxe-table` 与 `@vxe-ui/core`，不注册 vxe-pc-ui 组件 | `@eap/plugin-table` / `@eap/plugin-table/styles.css` |
 | `@eap/expert-sdk` | 专家清单编写与 id 校验（控制台保存前复用 `assertExpertId`） | `@eap/expert-sdk` |
 | `@eap/tsconfig` | 工作区 TypeScript 基础配置 | `@eap/tsconfig/base.json` |
+| `@eap/vsh` | 前端规范工具：包入口/依赖/UI/测试目录及循环检查；位于`scripts/vsh` | `vsh` CLI / `@eap/vsh` |
 
 **规划中的共享模块**（hooks / effects / layout / toggle / plugin-sdk|runtime 等）：目标职责与 Agent 落点流程见 [frontend-ui-shared-module-boundaries.md](decisions/frontend-ui-shared-module-boundaries.md)。未建包前可按该文档暂存登记；禁止另起平行「共享 UI」包名。
 
@@ -43,12 +44,16 @@ apps/web/src
   components/           跨 feature 组合：ConnectionDialog、SessionPanel、WorkspaceWelcome、RepositoryBrowser、WorkflowCanvas。领域状态仍在 features；基础控件在 @eap/ui
   features/<area>/      能力、专家、知识库、数据库、规则等页面与局部逻辑
   lib/                  展示、脱敏、改写、工作流图、i18n 等共享工具
-  tests/                跨页面契约测试（console / management / destructive）
+
 ```
 
 工作区使用 Vite+；工具目录里的 `vite` 统一指向 `npm:@voidzero-dev/vite-plus-core` 别名。子包通过同一 catalog 声明构建依赖，避免独立 Vite 与 Vite+ 的命令分发冲突。
 
+测试统一位于每个应用/包根`__tests__/`，与`src/`同级：例如`apps/web/__tests__/features/`、`apps/web/__tests__/integration/`、`packages/ui/__tests__/`。测试专用夹具、快照和类型合同一起隔离；工程工具测试位于`frontend/scripts/vsh/__tests__/`。测试发现、编译/打包边界及lint/fmt命令以[测试目录决策](decisions/frontend-test-layout.md)为准，不再沿用src/tests或组件旁测试落点。
+
 `pnpm run check:boundaries` 检查缺失清单、未声明的包依赖，以及越过包根目录的相对导入。构建工具和测试依赖同样在使用它们的包中声明，共享 Stylelint 配置通过 peer dependency 声明宿主的 `stylelint`。`pnpm run typecheck` 构建 Vue 与公共子包的类型，声明产物写入各包的 `node_modules/.types`。
+
+检查实现统一在`@eap/vsh`；跨包只允许声明的依赖及公开`exports`，禁止相对/绝对路径、file URL、私有深层入口和别名绕过。`check:architecture`汇总边界与循环；根`check`先运行该门禁再运行既有Vite+检查。实现/依赖采用与失败口径见[工具边界决策](decisions/frontend-tooling-boundaries.md)。
 
 ## 后端层次
 

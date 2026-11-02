@@ -2,6 +2,9 @@
   "name": "@eap/ui",
   "version": "0.1.0",
   "private": true,
+  "files": [
+    "src"
+  ],
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
@@ -15,7 +18,7 @@
   },
   "devDependencies": {
     "@eap/tsconfig": "workspace:*",
-    "vite-plus": "catalog:tooling",
-    "typescript": "catalog:tooling"
+    "typescript": "catalog:tooling",
+    "vite-plus": "catalog:tooling"
   }
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ message?: string; tone?: "info" | "error" | "warning" | "success" }>(), {
-  tone: "info",
-});
+withDefaults(defineProps<{ message?: string; tone?: 'info' | 'error' | 'warning' | 'success' }>(), {
+  tone: 'info',
+})
 </script>
 
 <template>

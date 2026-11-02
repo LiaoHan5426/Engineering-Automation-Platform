@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref } from 'vue'
 import {
   runtimeApi,
   type DryRunResult,
@@ -10,80 +10,80 @@ import {
   type RulePackSummary,
   type RuleRequirements,
   type RuleValidation,
-} from "@eap/runtime-client";
-import { Badge, Button, ConfirmBox, EmptyState, Feedback, Input, Select, Textarea } from "@eap/ui";
-import { Table, type TableColumn } from "@eap/plugin-table";
-import { errorMessage } from "../../lib/presentation";
-import { derivedCapabilities, requirementGaps, unknownFacts } from "./ruleDraft";
+} from '@eap/runtime-client'
+import { Badge, Button, ConfirmBox, EmptyState, Feedback, Input, Select, Textarea } from '@eap/ui'
+import { Table, type TableColumn } from '@eap/plugin-table'
+import { errorMessage } from '../../lib/presentation'
+import { derivedCapabilities, requirementGaps, unknownFacts } from './ruleDraft'
 
-const emit = defineEmits<{ saved: [] }>();
+const emit = defineEmits<{ saved: [] }>()
 
-const packs = ref<RulePackSummary[]>([]);
-const facts = ref<RuleFact[]>([]);
-const operators = ref<string[]>([]);
-const selectedId = ref("");
+const packs = ref<RulePackSummary[]>([])
+const facts = ref<RuleFact[]>([])
+const operators = ref<string[]>([])
+const selectedId = ref('')
 /** The edited manifest. For a shipped pack this is a read-only copy of it. */
-const draft = ref<RulePackManifest | null>(null);
+const draft = ref<RulePackManifest | null>(null)
 /** The manifest as loaded, formatted the same way `draftText` is, so `dirty` compares like with like. */
-const baseline = ref("");
-const shipped = ref(false);
-const requirements = ref<RuleRequirements | null>(null);
-const loading = ref(false);
-const busy = ref(false);
-const error = ref("");
-const message = ref("");
-const validation = ref<RuleValidation | null>(null);
+const baseline = ref('')
+const shipped = ref(false)
+const requirements = ref<RuleRequirements | null>(null)
+const loading = ref(false)
+const busy = ref(false)
+const error = ref('')
+const message = ref('')
+const validation = ref<RuleValidation | null>(null)
 
-const newPackOpen = ref(false);
-const newPackId = ref("");
-const newPackFromBlank = ref(true);
-const advancedOpen = ref(false);
-const advancedText = ref("");
-const deleteOpen = ref(false);
-const deleteRefusal = ref("");
+const newPackOpen = ref(false)
+const newPackId = ref('')
+const newPackFromBlank = ref(true)
+const advancedOpen = ref(false)
+const advancedText = ref('')
+const deleteOpen = ref(false)
+const deleteRefusal = ref('')
 
-const drySql = ref("");
-const dryBusy = ref(false);
-const dryError = ref("");
-const dry = ref<DryRunResult | null>(null);
+const drySql = ref('')
+const dryBusy = ref(false)
+const dryError = ref('')
+const dry = ref<DryRunResult | null>(null)
 
-const rules = computed<RuleDefinition[]>(() => draft.value?.rules ?? []);
-const selectedPack = computed(() => packs.value.find((pack) => pack.id === selectedId.value));
-const draftText = computed(() => (draft.value ? JSON.stringify(draft.value, null, 2) : ""));
-const dirty = computed(() => !!draft.value && !shipped.value && draftText.value !== baseline.value);
-const matchedFacts = computed(() => Object.entries(dry.value?.facts ?? {}));
+const rules = computed<RuleDefinition[]>(() => draft.value?.rules ?? [])
+const selectedPack = computed(() => packs.value.find((pack) => pack.id === selectedId.value))
+const draftText = computed(() => (draft.value ? JSON.stringify(draft.value, null, 2) : ''))
+const dirty = computed(() => !!draft.value && !shipped.value && draftText.value !== baseline.value)
+const matchedFacts = computed(() => Object.entries(dry.value?.facts ?? {}))
 const matchedRows = computed(() =>
   matchedFacts.value.map(([key, value]) => ({ key, value: displayValue(value) })),
-);
+)
 const factColumns: TableColumn[] = [
-  { key: "key", title: "事实", mono: true },
-  { key: "type", title: "类型" },
-  { key: "group", title: "类别" },
-  { key: "description", title: "含义" },
-];
+  { key: 'key', title: '事实', mono: true },
+  { key: 'type', title: '类型' },
+  { key: 'group', title: '类别' },
+  { key: 'description', title: '含义' },
+]
 const matchedColumns: TableColumn[] = [
-  { key: "key", title: "事实", mono: true },
-  { key: "value", title: "值" },
-];
+  { key: 'key', title: '事实', mono: true },
+  { key: 'value', title: '值' },
+]
 const draftDerived = computed(() =>
   draft.value ? derivedCapabilities(draft.value, facts.value) : [],
-);
+)
 
 /** Facts grouped by the capability that publishes them — the axis requirements are derived from. */
 const factsByProducer = computed(() => {
-  const groups = new Map<string, RuleFact[]>();
+  const groups = new Map<string, RuleFact[]>()
   for (const fact of facts.value) {
-    const list = groups.get(fact.producedBy) ?? [];
-    list.push(fact);
-    groups.set(fact.producedBy, list);
+    const list = groups.get(fact.producedBy) ?? []
+    list.push(fact)
+    groups.set(fact.producedBy, list)
   }
-  return [...groups.entries()].sort((left, right) => left[0].localeCompare(right[0]));
-});
+  return [...groups.entries()].sort((left, right) => left[0].localeCompare(right[0]))
+})
 const declaredRequirementMismatch = computed(() => {
-  const declared = [...(requirements.value?.declared ?? [])].sort();
-  const derived = [...(requirements.value?.derived ?? [])].sort();
-  return derived.filter((capability) => !declared.includes(capability));
-});
+  const declared = [...(requirements.value?.declared ?? [])].sort()
+  const derived = [...(requirements.value?.derived ?? [])].sort()
+  return derived.filter((capability) => !declared.includes(capability))
+})
 
 /**
  * The same checks the backend applies, run locally so a bad edit is refused at the field.
@@ -92,67 +92,67 @@ const declaredRequirementMismatch = computed(() => {
  * every keystroke teaches the author nothing, and a round trip cannot name which rule is at fault.
  */
 const localProblems = computed(() => {
-  const manifest = draft.value;
-  if (!manifest) return [];
-  const problems: string[] = [];
-  const unknown = unknownFacts(manifest, facts.value);
+  const manifest = draft.value
+  if (!manifest) return []
+  const problems: string[] = []
+  const unknown = unknownFacts(manifest, facts.value)
   if (unknown.length)
     problems.push(
-      `引用了词表之外的事实：${unknown.join("、")}。引用未知事实的规则永远不会命中，保存会被拒绝。`,
-    );
-  const gaps = requirementGaps(manifest, facts.value);
+      `引用了词表之外的事实：${unknown.join('、')}。引用未知事实的规则永远不会命中，保存会被拒绝。`,
+    )
+  const gaps = requirementGaps(manifest, facts.value)
   if (gaps.length)
-    problems.push(`requires.capabilities 未覆盖规则实际依赖的能力：${gaps.join("、")}。`);
-  if (!manifest.id?.trim()) problems.push("规则包缺少 id。");
-  if (!manifest.name?.trim()) problems.push("规则包缺少名称。");
-  if (!rules.value.length) problems.push("规则包至少需要一条规则。");
-  return problems;
-});
-const canEdit = computed(() => !!draft.value && !shipped.value);
+    problems.push(`requires.capabilities 未覆盖规则实际依赖的能力：${gaps.join('、')}。`)
+  if (!manifest.id?.trim()) problems.push('规则包缺少 id。')
+  if (!manifest.name?.trim()) problems.push('规则包缺少名称。')
+  if (!rules.value.length) problems.push('规则包至少需要一条规则。')
+  return problems
+})
+const canEdit = computed(() => !!draft.value && !shipped.value)
 
-const severityOptions = ["critical", "high", "medium", "low", "info"];
+const severityOptions = ['critical', 'high', 'medium', 'low', 'info']
 const operatorText: Record<string, string> = {
-  eq: "等于",
-  ne: "不等于",
-  gt: "大于",
-  gte: "大于等于",
-  lt: "小于",
-  lte: "小于等于",
-  in: "属于",
-  contains: "包含",
-  exists: "存在",
-  absent: "不存在",
-  matches: "匹配正则",
-};
+  eq: '等于',
+  ne: '不等于',
+  gt: '大于',
+  gte: '大于等于',
+  lt: '小于',
+  lte: '小于等于',
+  in: '属于',
+  contains: '包含',
+  exists: '存在',
+  absent: '不存在',
+  matches: '匹配正则',
+}
 const severityLabel: Record<string, string> = {
-  critical: "严重",
-  high: "高",
-  medium: "中",
-  low: "低",
-  info: "提示",
-};
+  critical: '严重',
+  high: '高',
+  medium: '中',
+  low: '低',
+  info: '提示',
+}
 
 function severityText(value?: string) {
-  return value ? (severityLabel[value] ?? value) : "—";
+  return value ? (severityLabel[value] ?? value) : '—'
 }
 function literal(value: unknown) {
-  if (value === undefined || value === null) return "—";
-  if (typeof value === "string") return `"${value}"`;
-  return JSON.stringify(value);
+  if (value === undefined || value === null) return '—'
+  if (typeof value === 'string') return `"${value}"`
+  return JSON.stringify(value)
 }
 function conditionText(condition?: RuleCondition): string {
-  if (!condition) return "总是命中";
-  if (condition.all?.length) return condition.all.map(conditionText).join(" 且 ");
-  if (condition.any?.length) return condition.any.map(conditionText).join(" 或 ");
-  if (condition.not) return `非（${conditionText(condition.not)}）`;
-  if (!condition.fact) return "未定义条件";
-  const op = condition.op ?? "eq";
-  return `${condition.fact} ${operatorText[op] ?? op} ${literal(condition.value)}`;
+  if (!condition) return '总是命中'
+  if (condition.all?.length) return condition.all.map(conditionText).join(' 且 ')
+  if (condition.any?.length) return condition.any.map(conditionText).join(' 或 ')
+  if (condition.not) return `非（${conditionText(condition.not)}）`
+  if (!condition.fact) return '未定义条件'
+  const op = condition.op ?? 'eq'
+  return `${condition.fact} ${operatorText[op] ?? op} ${literal(condition.value)}`
 }
 function displayValue(value: unknown) {
-  if (value === null || value === undefined) return "—";
-  if (typeof value === "boolean") return value ? "是" : "否";
-  return String(value);
+  if (value === null || value === undefined) return '—'
+  if (typeof value === 'boolean') return value ? '是' : '否'
+  return String(value)
 }
 /**
  * Template-safe accessors for a condition.
@@ -161,7 +161,7 @@ function displayValue(value: unknown) {
  * non-null assertion is a syntax error there. Reading through a function also keeps the read-only guard
  * honest: a shipped pack's condition is never assigned.
  */
-const eventValue = (event: Event) => (event.target as HTMLInputElement | HTMLSelectElement).value;
+const eventValue = (event: Event) => (event.target as HTMLInputElement | HTMLSelectElement).value
 function isLeaf(condition?: RuleCondition) {
   return (
     !!condition &&
@@ -169,88 +169,88 @@ function isLeaf(condition?: RuleCondition) {
     !condition.any?.length &&
     !condition.not &&
     !!condition.fact
-  );
+  )
 }
 function isCompound(condition?: RuleCondition) {
-  return !!condition && (!!condition.all?.length || !!condition.any?.length || !!condition.not);
+  return !!condition && (!!condition.all?.length || !!condition.any?.length || !!condition.not)
 }
 function conditionFact(rule: RuleDefinition) {
-  return rule.when?.fact ?? "";
+  return rule.when?.fact ?? ''
 }
 function conditionOp(rule: RuleDefinition) {
-  return rule.when?.op ?? "eq";
+  return rule.when?.op ?? 'eq'
 }
 function conditionValue(rule: RuleDefinition) {
-  const value = rule.when?.value;
-  return value === undefined || value === null ? "" : String(value);
+  const value = rule.when?.value
+  return value === undefined || value === null ? '' : String(value)
 }
 function setConditionFact(rule: RuleDefinition, value: string) {
-  if (rule.when && canEdit.value) rule.when.fact = value;
+  if (rule.when && canEdit.value) rule.when.fact = value
 }
 function setConditionOp(rule: RuleDefinition, value: string) {
-  if (rule.when && canEdit.value) rule.when.op = value;
+  if (rule.when && canEdit.value) rule.when.op = value
 }
 function setConditionValue(rule: RuleDefinition, value: string) {
-  if (rule.when && canEdit.value) rule.when.value = value;
+  if (rule.when && canEdit.value) rule.when.value = value
 }
 function resetCondition(rule: RuleDefinition) {
-  if (!canEdit.value) return;
-  rule.when = { fact: facts.value[0]?.key ?? "", op: "eq", value: true };
+  if (!canEdit.value) return
+  rule.when = { fact: facts.value[0]?.key ?? '', op: 'eq', value: true }
 }
 function producerOf(factKey: string) {
-  return facts.value.find((fact) => fact.key === factKey)?.producedBy ?? "—";
+  return facts.value.find((fact) => fact.key === factKey)?.producedBy ?? '—'
 }
 
 async function refresh() {
-  if (loading.value) return;
-  loading.value = true;
-  error.value = "";
+  if (loading.value) return
+  loading.value = true
+  error.value = ''
   try {
     const [catalog, vocabulary] = await Promise.all([
       runtimeApi.rulePacks(),
       runtimeApi.ruleVocabulary(),
-    ]);
-    packs.value = catalog.items;
-    facts.value = vocabulary.facts;
-    operators.value = vocabulary.operators;
-    const keep = packs.value.some((pack) => pack.id === selectedId.value);
-    await selectPack(keep ? selectedId.value : (packs.value[0]?.id ?? ""));
+    ])
+    packs.value = catalog.items
+    facts.value = vocabulary.facts
+    operators.value = vocabulary.operators
+    const keep = packs.value.some((pack) => pack.id === selectedId.value)
+    await selectPack(keep ? selectedId.value : (packs.value[0]?.id ?? ''))
   } catch (cause) {
-    error.value = errorMessage(cause);
+    error.value = errorMessage(cause)
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
 async function selectPack(id: string) {
   if (!id) {
-    selectedId.value = "";
-    draft.value = null;
-    baseline.value = "";
-    shipped.value = false;
-    requirements.value = null;
-    return;
+    selectedId.value = ''
+    draft.value = null
+    baseline.value = ''
+    shipped.value = false
+    requirements.value = null
+    return
   }
-  selectedId.value = id;
-  error.value = "";
-  validation.value = null;
-  dry.value = null;
-  dryError.value = "";
-  advancedOpen.value = false;
-  deleteOpen.value = false;
-  deleteRefusal.value = "";
+  selectedId.value = id
+  error.value = ''
+  validation.value = null
+  dry.value = null
+  dryError.value = ''
+  advancedOpen.value = false
+  deleteOpen.value = false
+  deleteRefusal.value = ''
   try {
-    const detail = await runtimeApi.rulePack(id);
-    const manifest = JSON.parse(detail.manifest) as RulePackManifest;
-    draft.value = manifest;
-    baseline.value = JSON.stringify(manifest, null, 2);
-    shipped.value = detail.shipped;
-    requirements.value = detail.requirements ?? null;
+    const detail = await runtimeApi.rulePack(id)
+    const manifest = JSON.parse(detail.manifest) as RulePackManifest
+    draft.value = manifest
+    baseline.value = JSON.stringify(manifest, null, 2)
+    shipped.value = detail.shipped
+    requirements.value = detail.requirements ?? null
   } catch (cause) {
-    draft.value = null;
-    baseline.value = "";
-    requirements.value = null;
-    error.value = errorMessage(cause);
+    draft.value = null
+    baseline.value = ''
+    requirements.value = null
+    error.value = errorMessage(cause)
   }
 }
 
@@ -261,85 +261,84 @@ async function selectPack(id: string) {
  * 而且它还会检查浏览器看不到的东西（保留标识、跨表引用）。二者不一致时以后端为准。
  */
 async function validateDraft() {
-  if (!draft.value || busy.value) return;
+  if (!draft.value || busy.value) return
   if (!canEdit.value) {
-    message.value =
-      "内置包只读。请先复制为自定义再修改。";
-    return;
+    message.value = '内置包只读。请先复制为自定义再修改。'
+    return
   }
   if (localProblems.value.length) {
-    message.value = localProblems.value.join("；");
-    validation.value = null;
-    return;
+    message.value = localProblems.value.join('；')
+    validation.value = null
+    return
   }
-  busy.value = true;
-  message.value = "";
+  busy.value = true
+  message.value = ''
   try {
-    validation.value = await runtimeApi.validateRulePack(draftText.value);
+    validation.value = await runtimeApi.validateRulePack(draftText.value)
     message.value = validation.value.valid
-      ? "定义校验通过（本地镜像与后端一致）。"
-      : (validation.value.errors ?? []).join("；");
+      ? '定义校验通过（本地镜像与后端一致）。'
+      : (validation.value.errors ?? []).join('；')
   } catch (cause) {
-    message.value = errorMessage(cause);
+    message.value = errorMessage(cause)
   } finally {
-    busy.value = false;
+    busy.value = false
   }
 }
 
 async function saveDraft() {
-  if (!draft.value || !selectedId.value || busy.value) return;
+  if (!draft.value || !selectedId.value || busy.value) return
   if (!canEdit.value) {
-    message.value = "内置规则包不可就地修改：请先复制为自定义。";
-    return;
+    message.value = '内置规则包不可就地修改：请先复制为自定义。'
+    return
   }
   if (localProblems.value.length) {
-    message.value = localProblems.value.join("；");
-    return;
+    message.value = localProblems.value.join('；')
+    return
   }
-  busy.value = true;
-  message.value = "";
+  busy.value = true
+  message.value = ''
   try {
     const result = await runtimeApi.updateRulePack(
       selectedId.value,
       draft.value.name,
       draftText.value,
-    );
-    message.value = `已保存，修订号 ${result.revision ?? "?"}。`;
-    await refresh();
-    emit("saved");
+    )
+    message.value = `已保存，修订号 ${result.revision ?? '?'}。`
+    await refresh()
+    emit('saved')
   } catch (cause) {
-    message.value = errorMessage(cause);
+    message.value = errorMessage(cause)
   } finally {
-    busy.value = false;
+    busy.value = false
   }
 }
 
 function discardDraft() {
-  if (!draft.value) return;
-  draft.value = JSON.parse(baseline.value) as RulePackManifest;
-  message.value = "已放弃未保存的修改，回到上次保存的版本。";
+  if (!draft.value) return
+  draft.value = JSON.parse(baseline.value) as RulePackManifest
+  message.value = '已放弃未保存的修改，回到上次保存的版本。'
 }
 
 function addRule() {
-  if (!draft.value || !canEdit.value) return;
-  if (!draft.value.rules) draft.value.rules = [];
-  let index = draft.value.rules.length + 1;
-  while (draft.value.rules.some((rule) => rule.id === `custom.${index}`)) index += 1;
+  if (!draft.value || !canEdit.value) return
+  if (!draft.value.rules) draft.value.rules = []
+  let index = draft.value.rules.length + 1
+  while (draft.value.rules.some((rule) => rule.id === `custom.${index}`)) index += 1
   draft.value.rules.push({
     id: `custom.${index}`,
-    title: "自定义检查",
-    category: "custom",
-    severity: "medium",
-    when: { fact: facts.value[0]?.key ?? "", op: "exists", value: true },
-    evidence: "请填写这条规则命中的证据描述：它要能被独立核对。",
-    suggestion: "请填写语义保持的改进建议：改写不得改变查询语义。",
+    title: '自定义检查',
+    category: 'custom',
+    severity: 'medium',
+    when: { fact: facts.value[0]?.key ?? '', op: 'exists', value: true },
+    evidence: '请填写这条规则命中的证据描述：它要能被独立核对。',
+    suggestion: '请填写语义保持的改进建议：改写不得改变查询语义。',
     confidence: 0.6,
-  });
+  })
 }
 
 function removeRule(index: number) {
-  if (!draft.value || !canEdit.value) return;
-  draft.value.rules = (draft.value.rules ?? []).filter((_, position) => position !== index);
+  if (!draft.value || !canEdit.value) return
+  draft.value.rules = (draft.value.rules ?? []).filter((_, position) => position !== index)
 }
 
 /**
@@ -349,131 +348,131 @@ function removeRule(index: number) {
  * 它要么被拒绝，要么在下次升级时被覆盖。副本是唯一诚实的答案。
  */
 async function createFromDraft() {
-  const id = newPackId.value.trim();
+  const id = newPackId.value.trim()
   if (!id) {
-    message.value = "请填写新规则包标识（小写字母、数字、- 或 _）。";
-    return;
+    message.value = '请填写新规则包标识（小写字母、数字、- 或 _）。'
+    return
   }
-  if (!newPackFromBlank && !draft.value) return;
+  if (!newPackFromBlank && !draft.value) return
   const source: RulePackManifest = newPackFromBlank
     ? {
-        apiVersion: "eap/v1",
-        kind: "RulePack",
+        apiVersion: 'eap/v1',
+        kind: 'RulePack',
         id,
-        name: "自定义规则包",
+        name: '自定义规则包',
         version: 1,
-        description: "由控制台创建",
-        requires: { capabilities: ["sql.parse"] },
+        description: '由控制台创建',
+        requires: { capabilities: ['sql.parse'] },
         rules: [
           {
-            id: "custom.1",
-            title: "自定义检查",
-            category: "custom",
-            severity: "medium",
-            when: { fact: facts.value[0]?.key ?? "", op: "exists", value: true },
-            evidence: "请填写这条规则命中的证据描述。",
-            suggestion: "请填写语义保持的改进建议。",
+            id: 'custom.1',
+            title: '自定义检查',
+            category: 'custom',
+            severity: 'medium',
+            when: { fact: facts.value[0]?.key ?? '', op: 'exists', value: true },
+            evidence: '请填写这条规则命中的证据描述。',
+            suggestion: '请填写语义保持的改进建议。',
             confidence: 0.6,
           },
         ],
       }
-    : { ...draft.value!, id, name: `${draft.value!.name}（副本）` };
-  busy.value = true;
-  message.value = "";
+    : { ...draft.value!, id, name: `${draft.value!.name}（副本）` }
+  busy.value = true
+  message.value = ''
   try {
-    await runtimeApi.createRulePack(source.name, JSON.stringify(source, null, 2));
+    await runtimeApi.createRulePack(source.name, JSON.stringify(source, null, 2))
     message.value = newPackFromBlank
       ? `已创建 ${id}，现在可以编辑它。`
-      : `已复制为 ${id}：副本可以改，原始内置包保持只读，升级时不会被你的改动覆盖。`;
-    newPackOpen.value = false;
-    newPackId.value = "";
-    await refresh();
-    await selectPack(id);
-    emit("saved");
+      : `已复制为 ${id}：副本可以改，原始内置包保持只读，升级时不会被你的改动覆盖。`
+    newPackOpen.value = false
+    newPackId.value = ''
+    await refresh()
+    await selectPack(id)
+    emit('saved')
   } catch (cause) {
-    message.value = errorMessage(cause);
+    message.value = errorMessage(cause)
   } finally {
-    busy.value = false;
+    busy.value = false
   }
 }
 
 async function togglePack() {
-  const pack = selectedPack.value;
-  if (!pack || pack.shipped || busy.value) return;
-  busy.value = true;
-  message.value = "";
+  const pack = selectedPack.value
+  if (!pack || pack.shipped || busy.value) return
+  busy.value = true
+  message.value = ''
   try {
-    await runtimeApi.setRulePackActivation(pack.id, !pack.enabled);
+    await runtimeApi.setRulePackActivation(pack.id, !pack.enabled)
     message.value = pack.enabled
       ? `已停用 ${pack.id}。停用后引用它的专家会失去这些规则，所以被已启用专家引用时后端会拒绝。`
-      : `已启用 ${pack.id}。`;
-    await refresh();
-    emit("saved");
+      : `已启用 ${pack.id}。`
+    await refresh()
+    emit('saved')
   } catch (cause) {
-    message.value = errorMessage(cause);
+    message.value = errorMessage(cause)
   } finally {
-    busy.value = false;
+    busy.value = false
   }
 }
 
 async function deletePack() {
-  const pack = selectedPack.value;
-  if (!pack || busy.value) return;
-  busy.value = true;
-  deleteRefusal.value = "";
+  const pack = selectedPack.value
+  if (!pack || busy.value) return
+  busy.value = true
+  deleteRefusal.value = ''
   try {
-    await runtimeApi.deleteRulePack(pack.id);
-    message.value = `已删除 ${pack.id}。`;
-    deleteOpen.value = false;
-    await refresh();
-    emit("saved");
+    await runtimeApi.deleteRulePack(pack.id)
+    message.value = `已删除 ${pack.id}。`
+    deleteOpen.value = false
+    await refresh()
+    emit('saved')
   } catch (cause) {
     // 后端拒绝时保留对话框与按钮，把原因写在旁边 —— 控件不消失，才解释得清。
-    deleteRefusal.value = errorMessage(cause);
+    deleteRefusal.value = errorMessage(cause)
   } finally {
-    busy.value = false;
+    busy.value = false
   }
 }
 
 function openAdvanced() {
-  advancedText.value = draftText.value;
-  advancedOpen.value = true;
+  advancedText.value = draftText.value
+  advancedOpen.value = true
 }
 function applyAdvanced() {
   try {
-    const parsed = JSON.parse(advancedText.value) as RulePackManifest;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
-      throw new Error("清单必须是一个 JSON 对象");
-    if (!Array.isArray(parsed.rules)) throw new Error("清单必须包含 rules 数组");
-    draft.value = { ...parsed, id: parsed.id ?? selectedId.value };
-    message.value = "已应用到草稿；复合条件可以在保存前用「校验」复核。";
+    const parsed = JSON.parse(advancedText.value) as RulePackManifest
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+      throw new Error('清单必须是一个 JSON 对象')
+    if (!Array.isArray(parsed.rules)) throw new Error('清单必须包含 rules 数组')
+    draft.value = { ...parsed, id: parsed.id ?? selectedId.value }
+    message.value = '已应用到草稿；复合条件可以在保存前用「校验」复核。'
   } catch (cause) {
-    message.value = "JSON 无法解析为规则包草稿：" + errorMessage(cause);
+    message.value = 'JSON 无法解析为规则包草稿：' + errorMessage(cause)
   }
 }
 
 async function runDryRun() {
-  if (dryBusy.value || !drySql.value.trim() || !draft.value) return;
+  if (dryBusy.value || !drySql.value.trim() || !draft.value) return
   if (localProblems.value.length) {
-    dryError.value = localProblems.value.join("；");
-    dry.value = null;
-    return;
+    dryError.value = localProblems.value.join('；')
+    dry.value = null
+    return
   }
-  dryBusy.value = true;
-  dryError.value = "";
-  dry.value = null;
+  dryBusy.value = true
+  dryError.value = ''
+  dry.value = null
   try {
     // 试算用的是**当前草稿**：试的东西就是正在改的东西。
-    dry.value = await runtimeApi.dryRunRulePack(drySql.value, draftText.value);
+    dry.value = await runtimeApi.dryRunRulePack(drySql.value, draftText.value)
   } catch (cause) {
-    dryError.value = errorMessage(cause);
+    dryError.value = errorMessage(cause)
   } finally {
-    dryBusy.value = false;
+    dryBusy.value = false
   }
 }
 
-onMounted(refresh);
-defineExpose({ refresh });
+onMounted(refresh)
+defineExpose({ refresh })
 </script>
 
 <template>
@@ -495,15 +494,17 @@ defineExpose({ refresh });
           </div>
           <div class="form-actions">
             <Button variant="secondary" :disabled="loading" @click="refresh">
-              {{ loading ? "加载中…" : "刷新" }}
+              {{ loading ? '加载中…' : '刷新' }}
             </Button>
             <Button
               variant="primary"
               :disabled="busy"
               @click="
-                newPackFromBlank = true;
-                newPackId = '';
-                newPackOpen = !newPackOpen;
+                () => {
+                  newPackFromBlank = true
+                  newPackId = ''
+                  newPackOpen = !newPackOpen
+                }
               "
             >
               ＋ 新建
@@ -513,9 +514,11 @@ defineExpose({ refresh });
               v-if="draft"
               :disabled="busy"
               @click="
-                newPackFromBlank = false;
-                newPackId = '';
-                newPackOpen = !newPackOpen;
+                () => {
+                  newPackFromBlank = false
+                  newPackId = ''
+                  newPackOpen = !newPackOpen
+                }
               "
             >
               复制为自定义
@@ -526,26 +529,24 @@ defineExpose({ refresh });
           <p class="hint">
             {{
               newPackFromBlank
-                ? "从空白模板创建一个规则包。"
-                : `从当前选中的「${draft?.name ?? ""}」复制一个可编辑的副本。`
+                ? '从空白模板创建一个规则包。'
+                : `从当前选中的「${draft?.name ?? ''}」复制一个可编辑的副本。`
             }}
           </p>
           <label
             >新标识
-            <Input
-              v-model="newPackId"
-             
-              placeholder="my-team-sql"
-              aria-label="新规则包标识"
-            />
+            <Input v-model="newPackId" placeholder="my-team-sql" aria-label="新规则包标识" />
           </label>
           <div class="form-actions">
-            <Button type="submit" variant="primary" :disabled="busy || !newPackId.trim()"> 创建 </Button>
+            <Button type="submit" variant="primary" :disabled="busy || !newPackId.trim()">
+              创建
+            </Button>
             <Button variant="secondary" type="button" @click="newPackOpen = false">取消</Button>
           </div>
         </form>
         <div class="list">
-          <Button variant="navigation"
+          <Button
+            variant="navigation"
             v-for="pack in packs"
             :key="pack.id"
             class="list-item"
@@ -558,11 +559,11 @@ defineExpose({ refresh });
               <small>
                 <code class="mono">{{ pack.id }}</code>
                 · {{ pack.ruleCount }} 条规则 ·
-                {{ pack.shipped ? "内置只读" : pack.enabled ? "已启用" : "已停用" }}
+                {{ pack.shipped ? '内置只读' : pack.enabled ? '已启用' : '已停用' }}
                 <template v-if="!pack.shipped"> · r{{ pack.revision }}</template>
               </small>
               <small class="requirement-line">
-                需要能力：{{ pack.requires?.length ? pack.requires.join("、") : "未声明" }}
+                需要能力：{{ pack.requires?.length ? pack.requires.join('、') : '未声明' }}
               </small>
             </span>
           </Button>
@@ -573,12 +574,12 @@ defineExpose({ refresh });
       <article class="eap-panel">
         <header class="panel-head">
           <div>
-            <h2>{{ draft?.name ?? "规则明细" }}</h2>
+            <h2>{{ draft?.name ?? '规则明细' }}</h2>
             <p v-if="draft">
               <code class="mono">{{ draft.id }}</code>
               <template v-if="selectedPack"> · revision {{ selectedPack.revision }}</template>
               <template v-if="selectedPack">
-                · {{ selectedPack.enabled ? "已启用" : "已停用" }}</template
+                · {{ selectedPack.enabled ? '已启用' : '已停用' }}</template
               >
             </p>
             <p v-else>选择左侧规则包以查看其规则。</p>
@@ -588,25 +589,25 @@ defineExpose({ refresh });
             v-if="draft"
             :class="shipped ? 'eap-badge--neutral' : 'eap-badge--success'"
           >
-            {{ shipped ? "内置只读" : "可编辑" }}
+            {{ shipped ? '内置只读' : '可编辑' }}
           </Badge>
         </header>
 
         <template v-if="draft">
           <div class="draft-line">
             <Badge tone="neutral" :class="dirty ? 'eap-badge--warning' : 'eap-badge--neutral'">
-              {{ shipped ? "内置只读（修改请先复制）" : dirty ? "有未保存的修改" : "已保存" }}
+              {{ shipped ? '内置只读（修改请先复制）' : dirty ? '有未保存的修改' : '已保存' }}
             </Badge>
             <template v-if="!shipped">
               <Button variant="secondary" :disabled="busy" @click="validateDraft">校验</Button>
               <Button variant="primary" :disabled="busy || !dirty" @click="saveDraft">
-                {{ busy ? "处理中…" : "保存草稿" }}
+                {{ busy ? '处理中…' : '保存草稿' }}
               </Button>
               <Button variant="secondary" :disabled="busy || !dirty" @click="discardDraft">
                 放弃修改
               </Button>
               <Button variant="secondary" :disabled="busy || dirty" @click="togglePack">
-                {{ selectedPack?.enabled ? "停用" : "启用" }}
+                {{ selectedPack?.enabled ? '停用' : '启用' }}
               </Button>
               <Button variant="danger" :disabled="busy" @click="deleteOpen = true"> 删除 </Button>
             </template>
@@ -615,9 +616,11 @@ defineExpose({ refresh });
               v-else
               :disabled="busy"
               @click="
-                newPackFromBlank = false;
-                newPackId = '';
-                newPackOpen = true;
+                () => {
+                  newPackFromBlank = false
+                  newPackId = ''
+                  newPackOpen = true
+                }
               "
             >
               复制为自定义
@@ -633,8 +636,8 @@ defineExpose({ refresh });
             <Feedback class="hint" :tone="validation.valid ? 'info' : 'error'">
               {{
                 validation.valid
-                  ? "后端校验通过。"
-                  : "后端校验未通过：" + validation.errors.join("；")
+                  ? '后端校验通过。'
+                  : '后端校验未通过：' + validation.errors.join('；')
               }}
             </Feedback>
           </div>
@@ -648,20 +651,20 @@ defineExpose({ refresh });
                   declaredRequirementMismatch.length ? 'eap-badge--warning' : 'eap-badge--success'
                 "
               >
-                {{ declaredRequirementMismatch.length ? "声明不完整" : "声明完整" }}
+                {{ declaredRequirementMismatch.length ? '声明不完整' : '声明完整' }}
               </Badge>
             </div>
             <p class="hint">
               已保存版本声明：<b>{{
-                requirements.declared.length ? requirements.declared.join("、") : "未声明"
+                requirements.declared.length ? requirements.declared.join('、') : '未声明'
               }}</b>
-              · 按事实推导：<b>{{ requirements.derived.join("、") }}</b>
+              · 按事实推导：<b>{{ requirements.derived.join('、') }}</b>
             </p>
             <p v-if="dirty" class="hint">
-              当前草稿需要的能力：<b>{{ draftDerived.join("、") || "（无）" }}</b>
+              当前草稿需要的能力：<b>{{ draftDerived.join('、') || '（无）' }}</b>
             </p>
             <Feedback tone="error" v-if="declaredRequirementMismatch.length">
-              还缺少这些能力：{{ declaredRequirementMismatch.join("、") }}。保存时会被拒绝。
+              还缺少这些能力：{{ declaredRequirementMismatch.join('、') }}。保存时会被拒绝。
             </Feedback>
             <p v-if="draft.requires?.note" class="hint">{{ draft.requires.note }}</p>
           </div>
@@ -686,7 +689,7 @@ defineExpose({ refresh });
             </div>
             <div class="mono rule-code">
               {{ rule.id }}<template v-if="rule.category"> · {{ rule.category }}</template>
-              <template v-if="rule.when"> · 依赖 {{ producerOf(rule.when.fact ?? "") }}</template>
+              <template v-if="rule.when"> · 依赖 {{ producerOf(rule.when.fact ?? '') }}</template>
             </div>
 
             <template v-if="shipped">
@@ -705,16 +708,12 @@ defineExpose({ refresh });
 
             <div v-else class="rule-edit">
               <label
-                >标题<Input
-                  :value="rule.title ?? ''"
-                 
-                  @input="rule.title = eventValue($event)"
+                >标题<Input :value="rule.title ?? ''" @input="rule.title = eventValue($event)"
               /></label>
               <label
                 >严重级
                 <Select
                   :value="rule.severity ?? 'medium'"
-                 
                   @change="rule.severity = eventValue($event)"
                 >
                   <option v-for="level in severityOptions" :key="level" :value="level">
@@ -727,7 +726,6 @@ defineExpose({ refresh });
                 <template v-if="isLeaf(rule.when)">
                   <Select
                     :value="conditionFact(rule)"
-                   
                     aria-label="事实"
                     @change="setConditionFact(rule, eventValue($event))"
                   >
@@ -737,7 +735,6 @@ defineExpose({ refresh });
                   </Select>
                   <Select
                     :value="conditionOp(rule)"
-                   
                     aria-label="运算符"
                     @change="setConditionOp(rule, eventValue($event))"
                   >
@@ -747,7 +744,6 @@ defineExpose({ refresh });
                   </Select>
                   <Input
                     :value="conditionValue(rule)"
-                   
                     aria-label="比较值"
                     @input="setConditionValue(rule, eventValue($event))"
                   />
@@ -768,7 +764,6 @@ defineExpose({ refresh });
                 >证据模板
                 <Textarea
                   :value="rule.evidence ?? ''"
-                 
                   rows="2"
                   @input="rule.evidence = eventValue($event)"
                 />
@@ -777,7 +772,6 @@ defineExpose({ refresh });
                 >建议
                 <Textarea
                   :value="rule.suggestion ?? ''"
-                 
                   rows="2"
                   @input="rule.suggestion = eventValue($event)"
                 />
@@ -794,7 +788,7 @@ defineExpose({ refresh });
               variant="secondary"
               @click="advancedOpen ? (advancedOpen = false) : openAdvanced()"
             >
-              {{ advancedOpen ? "收起 JSON 草稿" : "编辑 JSON 草稿" }}
+              {{ advancedOpen ? '收起 JSON 草稿' : '编辑 JSON 草稿' }}
             </Button>
             <template v-if="advancedOpen">
               <p class="hint">
@@ -837,16 +831,18 @@ defineExpose({ refresh });
         />
         <div class="form-actions">
           <Button variant="primary" type="submit" :disabled="dryBusy || !drySql.trim() || !draft">
-            {{ dryBusy ? "试算中…" : "试算" }}
+            {{ dryBusy ? '试算中…' : '试算' }}
           </Button>
           <Button
             variant="secondary"
             type="button"
             :disabled="dryBusy"
             @click="
-              drySql = '';
-              dry = null;
-              dryError = '';
+              () => {
+                drySql = ''
+                dry = null
+                dryError = ''
+              }
             "
           >
             清空
@@ -863,16 +859,16 @@ defineExpose({ refresh });
           </p>
           <p v-if="dry.requirements" class="hint">
             试算按「全部能力都可用」执行；该包声明需要
-            <b>{{ dry.requirements.declared.join("、") || "未声明" }}</b
-            >，事实推导需要 <b>{{ dry.requirements.derived.join("、") }}</b
+            <b>{{ dry.requirements.declared.join('、') || '未声明' }}</b
+            >，事实推导需要 <b>{{ dry.requirements.derived.join('、') }}</b
             >。
           </p>
           <div v-if="dry.blockedRules?.length" class="eap-feedback">
             有 {{ dry.blockedRules.length }} 条规则因缺少事实产出能力而未判定：
             {{
               dry.blockedRules
-                .map((item) => item.rule + "（" + item.missingCapabilities.join("、") + "）")
-                .join("；")
+                .map((item) => item.rule + '（' + item.missingCapabilities.join('、') + '）')
+                .join('；')
             }}
           </div>
           <div class="findings">
@@ -908,7 +904,7 @@ defineExpose({ refresh });
           <p>写错事实名或运算符会在保存时被拒绝。</p>
         </div>
       </header>
-      <p class="hint mono">运算符：{{ operators.join(" · ") }}</p>
+      <p class="hint mono">运算符：{{ operators.join(' · ') }}</p>
       <div v-for="[producer, items] in factsByProducer" :key="producer" class="fact-group">
         <h3>
           {{ producer }} <span class="kind-id mono">产出 {{ items.length }} 项事实</span>
@@ -931,8 +927,10 @@ defineExpose({ refresh });
       :refusal="deleteRefusal"
       @confirm="deletePack"
       @cancel="
-        deleteOpen = false;
-        deleteRefusal = '';
+        () => {
+          deleteOpen = false
+          deleteRefusal = ''
+        }
       "
     />
   </section>

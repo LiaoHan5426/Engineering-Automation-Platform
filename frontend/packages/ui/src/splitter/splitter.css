@@ -14,7 +14,8 @@
   background: var(--eap-border-color);
 }
 
-.eap-splitter__handle:hover, .eap-splitter__handle[data-state="drag"] {
+.eap-splitter__handle:hover,
+.eap-splitter__handle[data-state='drag'] {
   background: var(--eap-color-primary-focus);
 }
 

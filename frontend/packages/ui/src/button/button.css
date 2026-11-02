@@ -29,7 +29,7 @@
   opacity: 0.55;
 }
 
-.eap-button:is([aria-pressed="true"], [data-active="true"]) {
+.eap-button:is([aria-pressed='true'], [data-active='true']) {
   color: var(--eap-color-primary);
   background: var(--eap-color-primary-soft);
 }
@@ -133,11 +133,12 @@
   border-radius: var(--eap-border-radius-card);
 }
 
-.eap-button--navigation:is([aria-pressed="true"], [data-active="true"]) {
+.eap-button--navigation:is([aria-pressed='true'], [data-active='true']) {
   box-shadow: inset 3px 0 0 var(--eap-color-primary);
 }
 
-.eap-button--backdrop, .eap-button--backdrop:hover:not(:disabled) {
+.eap-button--backdrop,
+.eap-button--backdrop:hover:not(:disabled) {
   position: fixed;
   padding: 0;
   background: var(--eap-overlay-color);

@@ -18,7 +18,8 @@
   overflow: auto;
 }
 
-.eap-drawer .eap-dialog__header, .eap-drawer .eap-dialog__footer {
+.eap-drawer .eap-dialog__header,
+.eap-drawer .eap-dialog__footer {
   flex: 0 0 auto;
 }
 

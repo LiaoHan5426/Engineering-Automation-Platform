@@ -1,24 +1,32 @@
 <script setup lang="ts">
-import { defineAsyncComponent, computed, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
-import CapabilityManager from "./features/capability/CapabilityManager.vue";
-import ExpertManager from "./features/expert/ExpertManager.vue";
-import KnowledgeManager from "./features/knowledge/KnowledgeManager.vue";
-import DatabaseManager from "./features/database/DatabaseManager.vue";
-import RuleManager from "./features/rule/RuleManager.vue";
-import ModelSettings from "./features/settings/ModelSettings.vue";
-const SkillManager = defineAsyncComponent(() => import('./features/settings/SkillManager.vue'));
-const AppearanceSettings = defineAsyncComponent(() => import("./features/settings/AppearanceSettings.vue"));
-import PluginCenter from "./features/plugins/PluginCenter.vue";
-import DesktopNavigation from "./features/DesktopNavigation.vue";
-import ScenarioWorkspace from "./features/ScenarioWorkspace.vue";
-import ProjectBoard from "./features/shell/ProjectBoard.vue";
-import ExpertCatalog from "./features/shell/ExpertCatalog.vue";
-import { chatBinding, projectLabel, rememberPanel, sessionProjectId, workbench } from "./features/shell/workbench";
-import ChatWorkspace from "./features/chat/ChatWorkspace.vue";
-import PluginSlot from "./features/plugins/PluginSlot.vue";
-import { createPluginHost } from "./features/plugins/host";
-import { isKnownHash } from "./features/plugins/model";
-import { i18n } from "./lib/i18n";
+import { defineAsyncComponent, computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import CapabilityManager from './features/capability/CapabilityManager.vue'
+import ExpertManager from './features/expert/ExpertManager.vue'
+import KnowledgeManager from './features/knowledge/KnowledgeManager.vue'
+import DatabaseManager from './features/database/DatabaseManager.vue'
+import RuleManager from './features/rule/RuleManager.vue'
+import ModelSettings from './features/settings/ModelSettings.vue'
+const SkillManager = defineAsyncComponent(() => import('./features/settings/SkillManager.vue'))
+const AppearanceSettings = defineAsyncComponent(
+  () => import('./features/settings/AppearanceSettings.vue'),
+)
+import PluginCenter from './features/plugins/PluginCenter.vue'
+import DesktopNavigation from './features/DesktopNavigation.vue'
+import ScenarioWorkspace from './features/ScenarioWorkspace.vue'
+import ProjectBoard from './features/shell/ProjectBoard.vue'
+import ExpertCatalog from './features/shell/ExpertCatalog.vue'
+import {
+  chatBinding,
+  projectLabel,
+  rememberPanel,
+  sessionProjectId,
+  workbench,
+} from './features/shell/workbench'
+import ChatWorkspace from './features/chat/ChatWorkspace.vue'
+import PluginSlot from './features/plugins/PluginSlot.vue'
+import { createPluginHost } from './features/plugins/host'
+import { isKnownHash } from './features/plugins/model'
+import { i18n } from './lib/i18n'
 import {
   runtimeApi,
   type CapabilityItem,
@@ -27,67 +35,122 @@ import {
   type SqlFinding,
   type TaskResult,
   type TaskStatistics,
-} from "@eap/runtime-client";
-import { Popover, Badge, Button, Checkbox, EmptyState, Feedback, Input, MetricCard, Select, Textarea, Collapse } from "@eap/ui";
-import { Table, type TableColumn } from "@eap/plugin-table";
-import { errorMessage, statusLabel } from "./lib/presentation";
-import { describeSecret } from "./lib/sensitive";
-import { CANDIDATE_REWRITE_NOTES, candidateRewrite, rewriteUnavailable } from "./lib/rewrites";
-import { useMockServices } from "./lib/serviceConfig";
+} from '@eap/runtime-client'
+import {
+  Popover,
+  Badge,
+  Button,
+  Checkbox,
+  EmptyState,
+  Feedback,
+  Input,
+  MetricCard,
+  Select,
+  Textarea,
+  Collapse,
+} from '@eap/ui'
+import { Table, type TableColumn } from '@eap/plugin-table'
+import { errorMessage, statusLabel } from './lib/presentation'
+import { describeSecret } from './lib/sensitive'
+import { CANDIDATE_REWRITE_NOTES, candidateRewrite, rewriteUnavailable } from './lib/rewrites'
+import { useMockServices } from './lib/serviceConfig'
 
 /** Existing views remain available through the five-entry desktop shell. */
 const shellPages = [
-  { id: 'skills', name: i18n.global.t('skill.title'), icon: '◇', group: '设置', hint: i18n.global.t('skill.hint') },
-  { id: "appearance", name: i18n.global.t("appearance.title"), icon: "◐", group: "设置", hint: i18n.global.t("appearance.hint") },
-  { id: "sql", name: "分析工作台", icon: "▷", group: "工作", hint: "任务列表、任务流与新的分析输入" },
   {
-    id: "plugins",
-    name: i18n.global.t("plugin.center"),
-    icon: "▣",
-    group: "设置",
-    hint: i18n.global.t("plugin.centerHint"),
+    id: 'skills',
+    name: i18n.global.t('skill.title'),
+    icon: '◇',
+    group: '设置',
+    hint: i18n.global.t('skill.hint'),
   },
-  { id: "model-settings", name: i18n.global.t("composerUi.modelSettings"), icon: "⚙", group: "设置", hint: i18n.global.t("composerUi.modelSettingsHint") },
-  { id: "experts", name: "专家定义", icon: "◈", group: "设置", hint: "编排能力节点、依赖与授权" },
-  { id: "rules", name: "规则库", icon: "▤", group: "设置", hint: "查看规则、条件与试算结果" },
-  { id: "knowledge", name: "知识库", icon: "▢", group: "设置", hint: "录入业务知识并带来源检索" },
-  { id: "databases", name: "数据库资料", icon: "▦", group: "设置", hint: "登记脱敏表结构与索引快照" },
-  { id: "capabilities", name: "能力目录", icon: "⚙", group: "设置", hint: "运行时实际注册的确定性工具" },
-];
-const pluginHost = createPluginHost();
+  {
+    id: 'appearance',
+    name: i18n.global.t('appearance.title'),
+    icon: '◐',
+    group: '设置',
+    hint: i18n.global.t('appearance.hint'),
+  },
+  {
+    id: 'sql',
+    name: '分析工作台',
+    icon: '▷',
+    group: '工作',
+    hint: '任务列表、任务流与新的分析输入',
+  },
+  {
+    id: 'plugins',
+    name: i18n.global.t('plugin.center'),
+    icon: '▣',
+    group: '设置',
+    hint: i18n.global.t('plugin.centerHint'),
+  },
+  {
+    id: 'model-settings',
+    name: i18n.global.t('composerUi.modelSettings'),
+    icon: '⚙',
+    group: '设置',
+    hint: i18n.global.t('composerUi.modelSettingsHint'),
+  },
+  { id: 'experts', name: '专家定义', icon: '◈', group: '设置', hint: '编排能力节点、依赖与授权' },
+  { id: 'rules', name: '规则库', icon: '▤', group: '设置', hint: '查看规则、条件与试算结果' },
+  { id: 'knowledge', name: '知识库', icon: '▢', group: '设置', hint: '录入业务知识并带来源检索' },
+  {
+    id: 'databases',
+    name: '数据库资料',
+    icon: '▦',
+    group: '设置',
+    hint: '登记脱敏表结构与索引快照',
+  },
+  {
+    id: 'capabilities',
+    name: '能力目录',
+    icon: '⚙',
+    group: '设置',
+    hint: '运行时实际注册的确定性工具',
+  },
+]
+const pluginHost = createPluginHost()
 /** 落地页：打开就是能干活的地方。壳页面保持固定；插件入口由注册表按启停追加。 */
-const DEFAULT_VIEW = "chat";
+const DEFAULT_VIEW = 'chat'
 const pages = computed(() => [
-  ...shellPages.filter((page) => page.group === "工作"),
+  ...shellPages.filter((page) => page.group === '工作'),
   ...pluginHost.entries.value,
-  ...shellPages.filter((page) => page.group === "设置"),
-]);
-const hashView = typeof location !== "undefined" ? location.hash.slice(1) : "";
-const activeView = ref(isKnownHash(hashView) ? hashView : DEFAULT_VIEW);
-if (activeView.value === "work") { workbench.workMode = "work"; activeView.value = "chat"; }
-else if (hashView === 'chat') workbench.workMode = 'code';
-const narrow = ref(false);
+  ...shellPages.filter((page) => page.group === '设置'),
+])
+const hashView = typeof location !== 'undefined' ? location.hash.slice(1) : ''
+const activeView = ref(isKnownHash(hashView) ? hashView : DEFAULT_VIEW)
+if (activeView.value === 'work') {
+  workbench.workMode = 'work'
+  activeView.value = 'chat'
+} else if (hashView === 'chat') workbench.workMode = 'code'
+const narrow = ref(false)
 const shellTitle = computed(() => {
-  if (activeView.value === "chat") {
-    const binding = chatBinding.value;
+  if (activeView.value === 'chat') {
+    const binding = chatBinding.value
     return binding?.activeId
-      ? binding.history.find((item) => item.id === binding.activeId)?.title || i18n.global.t("desktop.freeChat")
-      : i18n.global.t("desktop.newChat");
+      ? binding.history.find((item) => item.id === binding.activeId)?.title ||
+          i18n.global.t('desktop.freeChat')
+      : i18n.global.t('desktop.newChat')
   }
-  if (activeView.value === "board") return i18n.global.t("desktop.board");
-  if (activeView.value === "expert-catalog") return i18n.global.t("desktop.experts");
-  if (activeView.value === "scenes") return i18n.global.t("desktop.scenes");
-  return currentView.value.name;
-});
+  if (activeView.value === 'board') return i18n.global.t('desktop.board')
+  if (activeView.value === 'expert-catalog') return i18n.global.t('desktop.experts')
+  if (activeView.value === 'scenes') return i18n.global.t('desktop.scenes')
+  return currentView.value.name
+})
 const chatContextLabel = computed(() => {
-  if (activeView.value !== "chat") return "";
-  const id = chatBinding.value?.activeId;
-  return projectLabel(id ? sessionProjectId(id) : workbench.selectedProjectId) || i18n.global.t("desktop.unbound");
-});
+  if (activeView.value !== 'chat') return ''
+  const id = chatBinding.value?.activeId
+  return (
+    projectLabel(id ? sessionProjectId(id) : workbench.selectedProjectId) ||
+    i18n.global.t('desktop.unbound')
+  )
+})
 const currentView = computed(
-  () => pages.value.find((view) => view.id === activeView.value) ?? pluginHost.describe(activeView.value),
-);
-
+  () =>
+    pages.value.find((view) => view.id === activeView.value) ??
+    pluginHost.describe(activeView.value),
+)
 
 /**
  * 检查器是「按页面取值」的：每个页面声明自己能检查什么，切换页面立刻回到该页的说明，
@@ -95,166 +158,186 @@ const currentView = computed(
  */
 const INSPECTOR_PAGES: Record<string, { hint: string; pipeline?: boolean }> = {
   sql: {
-    hint: "顶部状态条的四个数字都注明了出处（可展开查看口径）。点击任意一条发现，这里显示它的严重级、证据、语义保持建议与三个动作：复制建议 / 查看候选改写 / 标记忽略。",
+    hint: '顶部状态条的四个数字都注明了出处（可展开查看口径）。点击任意一条发现，这里显示它的严重级、证据、语义保持建议与三个动作：复制建议 / 查看候选改写 / 标记忽略。',
     pipeline: true,
   },
-  chat: { hint: i18n.global.t("chat.hint") },
-  plugins: { hint: i18n.global.t("plugin.centerHint") },
+  chat: { hint: i18n.global.t('chat.hint') },
+  plugins: { hint: i18n.global.t('plugin.centerHint') },
   experts: {
-    hint: "专家的能力引用、知识库与 MCP 工具授权在该专家面板内联展示；画布与清单都由当前草稿渲染。",
+    hint: '专家的能力引用、知识库与 MCP 工具授权在该专家面板内联展示；画布与清单都由当前草稿渲染。',
   },
   rules: {
-    hint: "规则包的条件、所需能力与试算结果在规则面板内联展示；自定义包可就地编辑规则，内置包需先复制。",
+    hint: '规则包的条件、所需能力与试算结果在规则面板内联展示；自定义包可就地编辑规则，内置包需先复制。',
   },
-  knowledge: { hint: "知识库与文档的增删改在面板内联完成；检索范围会写在检索框下方。" },
-  databases: { hint: "表结构与索引快照在点击「查看」时于资料面板内联展示。" },
-  capabilities: { hint: "能力的种类、范围、可用状态与管理入口在能力目录内联展开。" },
-};
+  knowledge: { hint: '知识库与文档的增删改在面板内联完成；检索范围会写在检索框下方。' },
+  databases: { hint: '表结构与索引快照在点击「查看」时于资料面板内联展示。' },
+  capabilities: { hint: '能力的种类、范围、可用状态与管理入口在能力目录内联展开。' },
+}
 const inspector = computed(
   () => INSPECTOR_PAGES[activeView.value] ?? { hint: currentView.value.hint },
-);
-const taskViews = new Set(["chat", "sql", "board"]);
+)
+const taskViews = new Set(['chat', 'sql', 'board'])
 watch(activeView, (value, previous) => {
-  if (value === "work") { workbench.workMode = "work"; activeView.value = "chat"; return; }
-  inspectorOpen.value = false;
-  if (previous && taskViews.has(previous) && !taskViews.has(value)) workbench.origin = previous === 'chat' && workbench.workMode === 'work' ? 'work' : previous;
-  if (!taskViews.has(value)) workbench.panel = null;
-  if (typeof location !== "undefined") location.hash = value === "chat" && workbench.workMode === "work" ? "work" : value;
-});
+  if (value === 'work') {
+    workbench.workMode = 'work'
+    activeView.value = 'chat'
+    return
+  }
+  inspectorOpen.value = false
+  if (previous && taskViews.has(previous) && !taskViews.has(value))
+    workbench.origin = previous === 'chat' && workbench.workMode === 'work' ? 'work' : previous
+  if (!taskViews.has(value)) workbench.panel = null
+  if (typeof location !== 'undefined')
+    location.hash = value === 'chat' && workbench.workMode === 'work' ? 'work' : value
+})
 function hashChange() {
-  const id = location.hash.slice(1);
-  if (id === 'chat') workbench.workMode = 'code';
-  if (id === "work") { workbench.workMode = "work"; activeView.value = "chat"; return; }
-  if (isKnownHash(id)) activeView.value = id;
+  const id = location.hash.slice(1)
+  if (id === 'chat') workbench.workMode = 'code'
+  if (id === 'work') {
+    workbench.workMode = 'work'
+    activeView.value = 'chat'
+    return
+  }
+  if (isKnownHash(id)) activeView.value = id
 }
 function onShellKey(event: KeyboardEvent) {
-  if (event.key === "Escape" && narrow.value) workbench.sidebarOpen = false;
-  if (event.key === "Escape" && workbench.panel) rememberPanel(chatBinding.value?.activeId ?? null, null);
+  if (event.key === 'Escape' && narrow.value) workbench.sidebarOpen = false
+  if (event.key === 'Escape' && workbench.panel)
+    rememberPanel(chatBinding.value?.activeId ?? null, null)
 }
-watch(() => workbench.workMode, mode => { if (activeView.value === 'chat' && typeof location !== 'undefined') location.hash = mode === 'work' ? 'work' : 'chat'; });
+watch(
+  () => workbench.workMode,
+  (mode) => {
+    if (activeView.value === 'chat' && typeof location !== 'undefined')
+      location.hash = mode === 'work' ? 'work' : 'chat'
+  },
+)
 
-const runtimeStatus = ref(useMockServices ? i18n.global.t("preview.simulated") : "检测中");
-const refreshing = ref(false);
-const errors = ref<Record<string, string>>({});
-const capabilities = ref<string[]>([]);
-const capabilityItems = ref<CapabilityItem[]>([]);
-const capabilityKinds = ref<CapabilityKindSummary[]>([]);
-const expertCount = ref(0);
-const capabilityManager = ref<{ refresh: () => Promise<void> } | null>(null);
-const inspectorOpen = ref(false);
-const expertManager = ref<{ refresh: () => Promise<void> } | null>(null);
-const knowledgeManager = ref<{ refresh: () => Promise<void> } | null>(null);
-const databaseManager = ref<{ refresh: () => Promise<void> } | null>(null);
-const ruleManager = ref<{ refresh: () => Promise<void> } | null>(null);
+const runtimeStatus = ref(useMockServices ? i18n.global.t('preview.simulated') : '检测中')
+const refreshing = ref(false)
+const errors = ref<Record<string, string>>({})
+const capabilities = ref<string[]>([])
+const capabilityItems = ref<CapabilityItem[]>([])
+const capabilityKinds = ref<CapabilityKindSummary[]>([])
+const expertCount = ref(0)
+const capabilityManager = ref<{ refresh: () => Promise<void> } | null>(null)
+const inspectorOpen = ref(false)
+const expertManager = ref<{ refresh: () => Promise<void> } | null>(null)
+const knowledgeManager = ref<{ refresh: () => Promise<void> } | null>(null)
+const databaseManager = ref<{ refresh: () => Promise<void> } | null>(null)
+const ruleManager = ref<{ refresh: () => Promise<void> } | null>(null)
 const registeredExperts = ref<
   Array<{
-    id: string;
-    name: string;
-    databaseProfiles?: string[];
-    steps?: Array<{ capability: string }>;
+    id: string
+    name: string
+    databaseProfiles?: string[]
+    steps?: Array<{ capability: string }>
   }>
->([]);
+>([])
 const databaseInfo = ref<
   Array<{
-    id: string;
-    label: string;
-    engine: string;
-    environment: string;
-    credentialsExposed: boolean;
+    id: string
+    label: string
+    engine: string
+    environment: string
+    credentialsExposed: boolean
   }>
->([]);
+>([])
 
-const history = ref<TaskResult[]>([]);
-const task = ref<TaskResult | null>(null);
-const goal = ref("");
-const taskBusy = ref(false);
-const taskError = ref("");
+const history = ref<TaskResult[]>([])
+const task = ref<TaskResult | null>(null)
+const goal = ref('')
+const taskBusy = ref(false)
+const taskError = ref('')
 /** 任务列表的状态筛选。空串 = 不筛。 */
-const taskStatusFilter = ref("");
+const taskStatusFilter = ref('')
 const TASK_STATUS_FILTERS = [
-  { value: "completed", label: "已完成" },
-  { value: "needs-planning", label: "待规划" },
-  { value: "failed", label: "执行失败" },
-];
-const composerGoal = ref<{ focus: () => void; scrollIntoView: (options?: ScrollIntoViewOptions) => void } | null>(null);
+  { value: 'completed', label: '已完成' },
+  { value: 'needs-planning', label: '待规划' },
+  { value: 'failed', label: '执行失败' },
+]
+const composerGoal = ref<{
+  focus: () => void
+  scrollIntoView: (options?: ScrollIntoViewOptions) => void
+} | null>(null)
 
-const searchPattern = ref("");
-const selectedExpert = ref("");
-const selectedDatabase = ref("");
-const explainText = ref("");
-const enhanceModel = ref(false);
-const sql = ref("");
-const sqlResult = ref<SqlAnalysis | null>(null);
-const sqlBusy = ref(false);
-const sqlError = ref("");
-const copyMessage = ref("");
-const selectedFinding = ref<SqlFinding | null>(null);
+const searchPattern = ref('')
+const selectedExpert = ref('')
+const selectedDatabase = ref('')
+const explainText = ref('')
+const enhanceModel = ref(false)
+const sql = ref('')
+const sqlResult = ref<SqlAnalysis | null>(null)
+const sqlBusy = ref(false)
+const sqlError = ref('')
+const copyMessage = ref('')
+const selectedFinding = ref<SqlFinding | null>(null)
 
 /**
  * 工作空间在服务端不是 task 的字段——这是已定的范围，不是缺口：真正决定本地 CLI 在哪里执行的是
  * 运行时进程的执行目录（`EAP_WORKSPACE`）。所以顶栏这个下拉只是**本机视图范围**：它只过滤控制台
  * 自己标注过的执行，能力目录 / 规则库 / 知识库是应用级配置，不随它变化。切换会说明这一点。
  */
-const DEFAULT_WORKSPACE = "engineering-automation-platform";
-const WORKSPACE_KEY = "eap.console.workspace";
-const WORKSPACES_KEY = "eap.console.workspaces";
-const TASK_TAGS_KEY = "eap.console.task-workspaces";
+const DEFAULT_WORKSPACE = 'engineering-automation-platform'
+const WORKSPACE_KEY = 'eap.console.workspace'
+const WORKSPACES_KEY = 'eap.console.workspaces'
+const TASK_TAGS_KEY = 'eap.console.task-workspaces'
 function readStore(key: string, fallback: string) {
   try {
-    return localStorage.getItem(key) ?? fallback;
+    return localStorage.getItem(key) ?? fallback
   } catch {
     // 无 localStorage（SSR / 隐私模式）时退化为内存状态，而不是让整个页面加载失败。
-    return fallback;
+    return fallback
   }
 }
 function writeStore(key: string, value: string) {
   try {
-    localStorage.setItem(key, value);
+    localStorage.setItem(key, value)
   } catch {
     /* 同上：写不进去只影响持久化，不影响本次会话 */
   }
 }
 function readTags(): Record<string, string> {
   try {
-    return JSON.parse(readStore(TASK_TAGS_KEY, "{}")) as Record<string, string>;
+    return JSON.parse(readStore(TASK_TAGS_KEY, '{}')) as Record<string, string>
   } catch {
-    return {};
+    return {}
   }
 }
 function readList(key: string): string[] {
   try {
-    const parsed = JSON.parse(readStore(key, "[]")) as unknown;
+    const parsed = JSON.parse(readStore(key, '[]')) as unknown
     return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === "string")
-      : [];
+      ? parsed.filter((item): item is string => typeof item === 'string')
+      : []
   } catch {
-    return [];
+    return []
   }
 }
-const workspace = ref(readStore(WORKSPACE_KEY, DEFAULT_WORKSPACE));
-const workspaceAdding = ref(false);
-const newWorkspace = ref("");
-const knownWorkspaces = ref<string[]>(readList(WORKSPACES_KEY));
-const taskTags = ref<Record<string, string>>(readTags());
-const workspaceOpen = ref(false);
-const workspaceAnchor = shallowRef<HTMLElement | null>(null);
-const workspaceMessage = ref("");
-const lastRefresh = ref("");
-const stats = ref<TaskStatistics | null>(null);
-const statsError = ref("");
-const expertStates = ref<Record<string, { enabled: boolean; builtin: boolean }>>({});
+const workspace = ref(readStore(WORKSPACE_KEY, DEFAULT_WORKSPACE))
+const workspaceAdding = ref(false)
+const newWorkspace = ref('')
+const knownWorkspaces = ref<string[]>(readList(WORKSPACES_KEY))
+const taskTags = ref<Record<string, string>>(readTags())
+const workspaceOpen = ref(false)
+const workspaceAnchor = shallowRef<HTMLElement | null>(null)
+const workspaceMessage = ref('')
+const lastRefresh = ref('')
+const stats = ref<TaskStatistics | null>(null)
+const statsError = ref('')
+const expertStates = ref<Record<string, { enabled: boolean; builtin: boolean }>>({})
 
 /** 决策阶段的展开说明；「跳过模型」必须能说出为什么，而不是只显示一个词。 */
-const decisionOpen = ref(false);
-const supplement = ref("");
-const supplementMessage = ref("");
-const ignoredFindings = ref<string[]>([]);
-const rewriteOpen = ref(false);
+const decisionOpen = ref(false)
+const supplement = ref('')
+const supplementMessage = ref('')
+const ignoredFindings = ref<string[]>([])
+const rewriteOpen = ref(false)
 function toggleRewrite() {
-  rewriteOpen.value = !rewriteOpen.value;
+  rewriteOpen.value = !rewriteOpen.value
 }
-const inspectorMessage = ref("");
-const rerunBusy = ref(false);
+const inspectorMessage = ref('')
+const rerunBusy = ref(false)
 
 const workspaceOptions = computed(() => [
   ...new Set([
@@ -263,72 +346,72 @@ const workspaceOptions = computed(() => [
     ...Object.values(taskTags.value),
     workspace.value,
   ]),
-]);
+])
 /** 本机标注过的执行才属于当前工作空间；未标注的归入默认工作空间。 */
 const visibleHistory = computed(() =>
   history.value.filter(
     (entry) => (taskTags.value[entry.id] ?? DEFAULT_WORKSPACE) === workspace.value,
   ),
-);
+)
 /** 任务列表 = 当前工作空间 + 状态筛选。筛选只作用在列表上，不改动任务本身。 */
 const filteredHistory = computed(() =>
   taskStatusFilter.value
     ? visibleHistory.value.filter((entry) => entry.status === taskStatusFilter.value)
     : visibleHistory.value,
-);
+)
 /** 「＋ 新的分析」把光标送回输入框：这是使用界面里唯一需要滚动的跳转。 */
 function focusComposer() {
   try {
-    composerGoal.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+    composerGoal.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   } catch {
     /* 无 scrollIntoView（SSR / 旧环境）时退化为直接聚焦 */
   }
-  composerGoal.value?.focus();
+  composerGoal.value?.focus()
 }
 /** 清空本次输入。它只清输入，不动已经产生的任务记录——那些是历史，不该被一个按钮抹掉。 */
 function clearComposer() {
-  goal.value = "";
-  sql.value = "";
-  searchPattern.value = "";
-  explainText.value = "";
-  selectedDatabase.value = "";
-  sqlResult.value = null;
-  selectedFinding.value = null;
-  sqlError.value = "";
-  copyMessage.value = "";
+  goal.value = ''
+  sql.value = ''
+  searchPattern.value = ''
+  explainText.value = ''
+  selectedDatabase.value = ''
+  sqlResult.value = null
+  selectedFinding.value = null
+  sqlError.value = ''
+  copyMessage.value = ''
 }
 const enabledExpertCount = computed(
   () => Object.values(expertStates.value).filter((state) => state.enabled).length,
-);
+)
 const disabledCapabilityCount = computed(
   () => capabilityItems.value.filter((item) => item.disabled).length,
-);
+)
 /** 概览「模型调用占比」：null 表示还没有记录了模型走向的执行，不是 0%。 */
 const modelShareText = computed(() => {
-  const share = stats.value?.model.share ?? null;
-  return share === null ? "尚无记录" : `${Math.round(share * 100)}%`;
-});
+  const share = stats.value?.model.share ?? null
+  return share === null ? '尚无记录' : `${Math.round(share * 100)}%`
+})
 const deterministicCoverageText = computed(() => {
-  const share = stats.value?.deterministicShare ?? null;
-  return share === null ? "尚无记录" : `${Math.round(share * 100)}%`;
-});
+  const share = stats.value?.deterministicShare ?? null
+  return share === null ? '尚无记录' : `${Math.round(share * 100)}%`
+})
 /** 近 N 日实际发生了什么——决策与状态的分布，来自同一份统计，不是设计意图。 */
 const windowDistribution = computed(() => {
-  const source = stats.value;
-  if (!source) return "";
+  const source = stats.value
+  if (!source) return ''
   const decisions = Object.entries(source.byDecision).map(
     ([key, count]) => `${statusLabel(key)} ${count}`,
-  );
+  )
   const statuses = Object.entries(source.byStatus).map(
     ([key, count]) => `${statusLabel(key)} ${count}`,
-  );
+  )
   return [
-    decisions.length ? "决策 " + decisions.join("、") : "",
-    statuses.length ? "状态 " + statuses.join("、") : "",
+    decisions.length ? '决策 ' + decisions.join('、') : '',
+    statuses.length ? '状态 ' + statuses.join('、') : '',
   ]
     .filter(Boolean)
-    .join(" · ");
-});
+    .join(' · ')
+})
 
 const allowedDatabases = computed(() =>
   databaseInfo.value.filter((profile) =>
@@ -336,193 +419,193 @@ const allowedDatabases = computed(() =>
       .find((expert) => expert.id === selectedExpert.value)
       ?.databaseProfiles?.includes(profile.id),
   ),
-);
+)
 const findings = computed<SqlFinding[]>(
   () => sqlResult.value?.deterministicAnalysis?.findings ?? [],
-);
+)
 const selectedExpertDef = computed(() =>
   registeredExperts.value.find((expert) => expert.id === selectedExpert.value),
-);
+)
 const needsPattern = computed(() =>
-  selectedExpertDef.value?.steps?.some((step) => step.capability === "rg-search"),
-);
-const decision = computed(() => sqlResult.value?.modelAdvisor?.decision ?? "unavailable");
+  selectedExpertDef.value?.steps?.some((step) => step.capability === 'rg-search'),
+)
+const decision = computed(() => sqlResult.value?.modelAdvisor?.decision ?? 'unavailable')
 /**
  * 任务流显示哪一种内容，由「选中任务」与「本次会话的分析结果」共同决定：
  * - 选中的任务就是刚才那次分析（同一个 id）→ 回放完整报表（历史接口只返回摘要，报表只在会话里有）；
  * - 选中的是本地能力任务 → 回放它的请求与工具观测；
  * - 什么都没选 → 空态，把人引向左栏或底部输入框。
  */
-const streamMode = computed<"empty" | "task" | "report">(() => {
-  if (sqlResult.value && (!task.value || task.value.id === sqlResult.value.id)) return "report";
-  if (task.value) return "task";
-  return "empty";
-});
+const streamMode = computed<'empty' | 'task' | 'report'>(() => {
+  if (sqlResult.value && (!task.value || task.value.id === sqlResult.value.id)) return 'report'
+  if (task.value) return 'task'
+  return 'empty'
+})
 /** Task-scoped SQL evidence strip — never a chat SessionPanel or settings overview. */
 const sqlEvidence = computed(() => {
-  if (streamMode.value === "empty") {
-    return { mode: "empty" as const };
+  if (streamMode.value === 'empty') {
+    return { mode: 'empty' as const }
   }
-  if (streamMode.value === "report" && sqlResult.value) {
-    const result = sqlResult.value;
+  if (streamMode.value === 'report' && sqlResult.value) {
+    const result = sqlResult.value
     return {
-      mode: "report" as const,
+      mode: 'report' as const,
       id: result.id,
       status: statusLabel(result.status),
       findings: result.deterministicAnalysis?.findings?.length ?? 0,
       model: modelEnhancementText(result.modelEnhancement),
       observations: null as number | null,
-    };
+    }
   }
-  const current = task.value;
-  if (!current) return { mode: "empty" as const };
+  const current = task.value
+  if (!current) return { mode: 'empty' as const }
   return {
-    mode: "task" as const,
+    mode: 'task' as const,
     id: current.id,
     status: statusLabel(current.status),
     findings: null as number | null,
     model: modelEnhancementText(current.modelEnhancement),
     observations: current.observations?.length ?? 0,
-  };
-});
-const compression = computed(() => sqlResult.value?.modelAdvisor?.preprocessing);
-const blockedRules = computed(() => sqlResult.value?.deterministicAnalysis?.blockedRules ?? []);
-const rulePackRequirements = computed(() => sqlResult.value?.rulePackRequirements ?? []);
+  }
+})
+const compression = computed(() => sqlResult.value?.modelAdvisor?.preprocessing)
+const blockedRules = computed(() => sqlResult.value?.deterministicAnalysis?.blockedRules ?? [])
+const rulePackRequirements = computed(() => sqlResult.value?.rulePackRequirements ?? [])
 /** "5 内置命令 · 3 本地 CLI" — capability kinds summarised for the overview metric. */
 const kindSummary = computed(() => {
   const parts = capabilityKinds.value
     .filter((kind) => kind.count > 0)
-    .map((kind) => `${kind.count} ${kind.label}`);
-  const scoped = capabilityItems.value.filter((item) => item.expertScoped).length;
-  if (scoped) parts.push(`${scoped} 专家级`);
-  return parts.length ? parts.join(" · ") : "本地确定性能力";
-});
+    .map((kind) => `${kind.count} ${kind.label}`)
+  const scoped = capabilityItems.value.filter((item) => item.expertScoped).length
+  if (scoped) parts.push(`${scoped} 专家级`)
+  return parts.length ? parts.join(' · ') : '本地确定性能力'
+})
 const factEntries = computed(() =>
   Object.entries(sqlResult.value?.deterministicAnalysis?.facts ?? {}),
-);
+)
 const factColumns: TableColumn[] = [
-  { key: "key", title: "事实", mono: true },
-  { key: "value", title: "值" },
-];
+  { key: 'key', title: '事实', mono: true },
+  { key: 'value', title: '值' },
+]
 const factRows = computed(() =>
   factEntries.value.map(([key, value]) => ({ key, value: factText(value) })),
-);
+)
 function factText(value: unknown) {
-  if (typeof value === "boolean") return value ? "是" : "否";
-  if (value === null || value === undefined) return "—";
-  return String(value);
+  if (typeof value === 'boolean') return value ? '是' : '否'
+  if (value === null || value === undefined) return '—'
+  return String(value)
 }
 
 watch(selectedExpert, () => {
-  selectedDatabase.value = "";
-  searchPattern.value = "";
-  sqlResult.value = null;
-  selectedFinding.value = null;
-});
+  selectedDatabase.value = ''
+  searchPattern.value = ''
+  sqlResult.value = null
+  selectedFinding.value = null
+})
 
 async function refresh() {
-  if (refreshing.value) return;
-  refreshing.value = true;
-  errors.value = {};
+  if (refreshing.value) return
+  refreshing.value = true
+  errors.value = {}
   const jobs: Array<[string, () => Promise<void>]> = [
     [
-      "capabilities",
+      'capabilities',
       async () => {
-        const catalog = await runtimeApi.capabilities();
-        capabilities.value = catalog.capabilities;
-        capabilityItems.value = catalog.items ?? [];
-        capabilityKinds.value = catalog.kinds ?? [];
+        const catalog = await runtimeApi.capabilities()
+        capabilities.value = catalog.capabilities
+        capabilityItems.value = catalog.items ?? []
+        capabilityKinds.value = catalog.kinds ?? []
       },
     ],
     [
-      "databases",
+      'databases',
       async () => {
-        databaseInfo.value = (await runtimeApi.databases()).items;
+        databaseInfo.value = (await runtimeApi.databases()).items
       },
     ],
     [
-      "experts",
+      'experts',
       async () => {
-        const response = await runtimeApi.experts();
-        expertCount.value = response.items.length;
-        expertStates.value = response.states ?? {};
+        const response = await runtimeApi.experts()
+        expertCount.value = response.items.length
+        expertStates.value = response.states ?? {}
         registeredExperts.value = response.items
           .map((text) => JSON.parse(text))
-          .filter((expert) => response.states?.[expert.id]?.enabled);
+          .filter((expert) => response.states?.[expert.id]?.enabled)
         if (!registeredExperts.value.some((expert) => expert.id === selectedExpert.value)) {
-          selectedExpert.value = registeredExperts.value[0]?.id ?? "";
+          selectedExpert.value = registeredExperts.value[0]?.id ?? ''
         }
       },
     ],
     [
-      "tasks",
+      'tasks',
       async () => {
-        history.value = (await runtimeApi.tasks()).items;
+        history.value = (await runtimeApi.tasks()).items
       },
     ],
     // 概览的两个窗口数字来自运行时，而不是页面上写死的样本；取不到时如实报错，不退回占位值。
     [
-      "stats",
+      'stats',
       async () => {
-        stats.value = await runtimeApi.stats();
-        statsError.value = "";
+        stats.value = await runtimeApi.stats()
+        statsError.value = ''
       },
     ],
-  ];
+  ]
   if (!useMockServices) {
     jobs.unshift([
-      "health",
+      'health',
       async () => {
-        const health = await runtimeApi.health();
-        runtimeStatus.value = health.status === "ok" ? "已连接" : "服务降级";
+        const health = await runtimeApi.health()
+        runtimeStatus.value = health.status === 'ok' ? '已连接' : '服务降级'
       },
-    ]);
+    ])
   }
   await Promise.all(
     jobs.map(async ([key, work]) => {
       try {
-        await work();
+        await work()
       } catch (error) {
-        errors.value[key] = errorMessage(error);
-        if (key === "health") runtimeStatus.value = "未连接";
-        if (key === "stats") statsError.value = errorMessage(error);
+        errors.value[key] = errorMessage(error)
+        if (key === 'health') runtimeStatus.value = '未连接'
+        if (key === 'stats') statsError.value = errorMessage(error)
       }
     }),
-  );
-  if (activeView.value === "experts") await expertManager.value?.refresh();
-  if (activeView.value === "knowledge") await knowledgeManager.value?.refresh();
-  if (activeView.value === "databases") await databaseManager.value?.refresh();
-  if (activeView.value === "rules") await ruleManager.value?.refresh();
-  if (activeView.value === "capabilities") await capabilityManager.value?.refresh();
-  lastRefresh.value = new Date().toLocaleTimeString("zh-CN", { hour12: false });
-  refreshing.value = false;
+  )
+  if (activeView.value === 'experts') await expertManager.value?.refresh()
+  if (activeView.value === 'knowledge') await knowledgeManager.value?.refresh()
+  if (activeView.value === 'databases') await databaseManager.value?.refresh()
+  if (activeView.value === 'rules') await ruleManager.value?.refresh()
+  if (activeView.value === 'capabilities') await capabilityManager.value?.refresh()
+  lastRefresh.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  refreshing.value = false
 }
 
 /** 一次执行结束后只重读任务与统计：它们是刚才这次运行真正改变的东西。 */
 async function refreshTasks() {
   try {
-    history.value = (await runtimeApi.tasks()).items;
-    stats.value = await runtimeApi.stats();
-    statsError.value = "";
+    history.value = (await runtimeApi.tasks()).items
+    stats.value = await runtimeApi.stats()
+    statsError.value = ''
   } catch (error) {
-    statsError.value = errorMessage(error);
+    statsError.value = errorMessage(error)
   }
-  lastRefresh.value = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+  lastRefresh.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
 }
 
 function switchWorkspace(id: string) {
-  workspace.value = id;
-  workspaceOpen.value = false;
-  writeStore(WORKSPACE_KEY, id);
+  workspace.value = id
+  workspaceOpen.value = false
+  writeStore(WORKSPACE_KEY, id)
   const count = history.value.filter(
     (entry) => (taskTags.value[entry.id] ?? DEFAULT_WORKSPACE) === id,
-  ).length;
+  ).length
   workspaceMessage.value =
     count > 0
       ? `已切换到工作空间 ${id}：本机标注在该空间的执行有 ${count} 条。`
       : `已切换到工作空间 ${id}：还没有标注在该空间的执行。` +
-        "任务在服务端不按工作空间分表，所以这里只过滤控制台本机标注过的运行；" +
-        "本地执行目录请在「运行环境 → 桌面外壳 → 本地工作空间」查看（该页尚未在应用中实现）。";
+        '任务在服务端不按工作空间分表，所以这里只过滤控制台本机标注过的运行；' +
+        '本地执行目录请在「运行环境 → 桌面外壳 → 本地工作空间」查看（该页尚未在应用中实现）。'
 }
 
 /**
@@ -532,20 +615,20 @@ function switchWorkspace(id: string) {
  * 工作空间会在切走后消失——那会看起来像是控制台把它弄丢了。
  */
 function addWorkspace() {
-  const name = newWorkspace.value.trim();
-  if (!name) return;
+  const name = newWorkspace.value.trim()
+  if (!name) return
   if (!knownWorkspaces.value.includes(name)) {
-    knownWorkspaces.value = [...knownWorkspaces.value, name];
-    writeStore(WORKSPACES_KEY, JSON.stringify(knownWorkspaces.value));
+    knownWorkspaces.value = [...knownWorkspaces.value, name]
+    writeStore(WORKSPACES_KEY, JSON.stringify(knownWorkspaces.value))
   }
-  workspaceAdding.value = false;
-  newWorkspace.value = "";
-  switchWorkspace(name);
+  workspaceAdding.value = false
+  newWorkspace.value = ''
+  switchWorkspace(name)
 }
 
 function tagTask(id: string) {
-  taskTags.value = { ...taskTags.value, [id]: workspace.value };
-  writeStore(TASK_TAGS_KEY, JSON.stringify(taskTags.value));
+  taskTags.value = { ...taskTags.value, [id]: workspace.value }
+  writeStore(TASK_TAGS_KEY, JSON.stringify(taskTags.value))
 }
 
 /**
@@ -553,100 +636,100 @@ function tagTask(id: string) {
  * 没有可分析的内容时它必须说出来，而不是安静地什么都不做。
  */
 function primaryAction() {
-  activeView.value = "sql";
+  activeView.value = 'sql'
   if (!canAnalyze.value) {
-    sqlError.value = "还没有可分析的内容：请在 分析工作台填写业务问题、SQL 或本地检索目标。";
-    return;
+    sqlError.value = '还没有可分析的内容：请在 分析工作台填写业务问题、SQL 或本地检索目标。'
+    return
   }
-  void analyzeSql();
+  void analyzeSql()
 }
 const canAnalyze = computed(
   () => !!sql.value.trim() || !!goal.value.trim() || !!searchPattern.value.trim(),
-);
+)
 
 /** 重新运行 = 用同样的目标再提交一次：新增一条记录，旧记录与它的证据保持原样。 */
 async function rerunTask(entry: TaskResult) {
-  if (rerunBusy.value) return;
-  rerunBusy.value = true;
-  taskError.value = "";
+  if (rerunBusy.value) return
+  rerunBusy.value = true
+  taskError.value = ''
   try {
-    const rerun = await runtimeApi.createTask(entry.goal);
-    tagTask(rerun.id);
-    await refreshTasks();
-    task.value = rerun;
-    workspaceMessage.value = "";
+    const rerun = await runtimeApi.createTask(entry.goal)
+    tagTask(rerun.id)
+    await refreshTasks()
+    task.value = rerun
+    workspaceMessage.value = ''
   } catch (error) {
-    taskError.value = errorMessage(error);
+    taskError.value = errorMessage(error)
   } finally {
-    rerunBusy.value = false;
+    rerunBusy.value = false
   }
 }
 
 async function submitTask() {
-  if (taskBusy.value || !goal.value.trim()) return;
-  taskBusy.value = true;
-  taskError.value = "";
-  task.value = null;
+  if (taskBusy.value || !goal.value.trim()) return
+  taskBusy.value = true
+  taskError.value = ''
+  task.value = null
   try {
-    task.value = await runtimeApi.createTask(goal.value);
-    tagTask(task.value.id);
-    history.value = [task.value, ...history.value.filter((t) => t.id !== task.value!.id)];
-    void refreshTasks();
+    task.value = await runtimeApi.createTask(goal.value)
+    tagTask(task.value.id)
+    history.value = [task.value, ...history.value.filter((t) => t.id !== task.value!.id)]
+    void refreshTasks()
   } catch (error) {
-    taskError.value = errorMessage(error);
+    taskError.value = errorMessage(error)
   } finally {
-    taskBusy.value = false;
+    taskBusy.value = false
   }
 }
 async function selectHistory(entry: TaskResult) {
-  if (taskBusy.value) return;
-  taskBusy.value = true;
-  taskError.value = "";
-  task.value = null;
+  if (taskBusy.value) return
+  taskBusy.value = true
+  taskError.value = ''
+  task.value = null
   try {
-    task.value = await runtimeApi.task(entry.id);
+    task.value = await runtimeApi.task(entry.id)
   } catch (error) {
-    taskError.value = errorMessage(error);
+    taskError.value = errorMessage(error)
   } finally {
-    taskBusy.value = false;
+    taskBusy.value = false
   }
 }
 async function analyzeSql() {
-  if (sqlBusy.value) return;
+  if (sqlBusy.value) return
   if (!canAnalyze.value) {
-    sqlError.value = "请先填写业务问题、SQL 或本地检索目标。";
-    return;
+    sqlError.value = '请先填写业务问题、SQL 或本地检索目标。'
+    return
   }
   // 运行时会在服务端拒绝含凭据的字段；在这里先拒绝，是为了能指出**哪一个字段**、以及它看起来是什么。
   const fields: Array<[string, string]> = [
-    ["SQL", sql.value],
-    ["业务问题", goal.value],
-    ["本地检索目标", searchPattern.value],
-  ];
+    ['SQL', sql.value],
+    ['业务问题', goal.value],
+    ['本地检索目标', searchPattern.value],
+  ]
   for (const [label, value] of fields) {
-    const reason = describeSecret(value);
+    const reason = describeSecret(value)
     if (reason) {
-      sqlError.value = `${label}里含有${reason}。平台不接收凭据，请改用环境变量或凭据存储。`;
-      return;
+      sqlError.value = `${label}里含有${reason}。平台不接收凭据，请改用环境变量或凭据存储。`
+      return
     }
   }
-  sqlBusy.value = true;
-  sqlError.value = "";
-  sqlResult.value = null;
-  selectedFinding.value = null;
-  copyMessage.value = "";
-  inspectorMessage.value = "";
-  rewriteOpen.value = false;
-  ignoredFindings.value = [];
-  decisionOpen.value = false;
-  supplementMessage.value = "";
+  sqlBusy.value = true
+  sqlError.value = ''
+  sqlResult.value = null
+  selectedFinding.value = null
+  copyMessage.value = ''
+  inspectorMessage.value = ''
+  rewriteOpen.value = false
+  ignoredFindings.value = []
+  decisionOpen.value = false
+  supplementMessage.value = ''
   try {
-    let plan: Record<string, unknown> | undefined;
+    let plan: Record<string, unknown> | undefined
     if (explainText.value.trim()) {
-      const parsed = JSON.parse(explainText.value);
-      plan = Array.isArray(parsed) ? parsed[0] : parsed;
-      if (!plan || typeof plan !== "object" || Array.isArray(plan))
-        throw new Error("执行计划需要是 JSON 对象或 PostgreSQL EXPLAIN JSON 数组");
+      const parsed = JSON.parse(explainText.value)
+      plan = Array.isArray(parsed) ? parsed[0] : parsed
+      if (!plan || typeof plan !== 'object' || Array.isArray(plan))
+        throw new Error('执行计划需要是 JSON 对象或 PostgreSQL EXPLAIN JSON 数组')
     }
     const result = await runtimeApi.analyzeSql(sql.value, goal.value, {
       expertId: selectedExpert.value,
@@ -654,18 +737,18 @@ async function analyzeSql() {
       explainPlan: plan,
       enhanceWithModel: enhanceModel.value,
       pattern: searchPattern.value || undefined,
-    });
-    sqlResult.value = result;
-    selectedFinding.value = null;
+    })
+    sqlResult.value = result
+    selectedFinding.value = null
     // 本次会话的报表要显示出来：清掉「选中的历史任务」，否则同屏会停在上一条任务的过程回放上。
-    task.value = null;
+    task.value = null
     // 这次执行和 /api/tasks 里那条记录是同一个 id（运行时用同一个 id 持久化）。
-    if (result.id) tagTask(result.id);
-    void refreshTasks();
+    if (result.id) tagTask(result.id)
+    void refreshTasks()
   } catch (error) {
-    sqlError.value = errorMessage(error);
+    sqlError.value = errorMessage(error)
   } finally {
-    sqlBusy.value = false;
+    sqlBusy.value = false
   }
 }
 
@@ -677,63 +760,63 @@ async function analyzeSql() {
  * 这一点，而不是把它画成一个会覆盖上一条结果的按钮。
  */
 async function applySupplement() {
-  const text = supplement.value.trim();
+  const text = supplement.value.trim()
   if (!text) {
-    supplementMessage.value = "请先填写要补充的上下文。";
-    return;
+    supplementMessage.value = '请先填写要补充的上下文。'
+    return
   }
-  const reason = describeSecret(text);
+  const reason = describeSecret(text)
   if (reason) {
-    supplementMessage.value = `补充内容里含有${reason}。运行时会拒绝它，请改用环境变量或凭据存储。`;
-    return;
+    supplementMessage.value = `补充内容里含有${reason}。运行时会拒绝它，请改用环境变量或凭据存储。`
+    return
   }
-  goal.value = [goal.value.trim(), text].filter(Boolean).join("\n\n");
-  supplement.value = "";
-  await analyzeSql();
+  goal.value = [goal.value.trim(), text].filter(Boolean).join('\n\n')
+  supplement.value = ''
+  await analyzeSql()
   supplementMessage.value = sqlError.value
-    ? "补充上下文后重新执行失败：" + sqlError.value
-    : "已把补充上下文并入目标并重新执行了一次（POST /api/experts/{id}/execute）。上一条记录与它的证据保持原样，便于对照。";
+    ? '补充上下文后重新执行失败：' + sqlError.value
+    : '已把补充上下文并入目标并重新执行了一次（POST /api/experts/{id}/execute）。上一条记录与它的证据保持原样，便于对照。'
 }
 async function copyResult() {
-  if (!sqlResult.value) return;
+  if (!sqlResult.value) return
   try {
     await navigator.clipboard.writeText(
-      [...(sqlResult.value.advice ?? []), sqlResult.value.expertAdvice ?? ""].join("\n\n"),
-    );
-    copyMessage.value = "建议已复制";
+      [...(sqlResult.value.advice ?? []), sqlResult.value.expertAdvice ?? ''].join('\n\n'),
+    )
+    copyMessage.value = '建议已复制'
   } catch {
-    copyMessage.value = "复制失败，请手动选择建议文本复制";
+    copyMessage.value = '复制失败，请手动选择建议文本复制'
   }
 }
 
 const severityLabel: Record<string, string> = {
-  critical: "严重",
-  high: "高",
-  medium: "中",
-  low: "低",
-  info: "提示",
-};
+  critical: '严重',
+  high: '高',
+  medium: '中',
+  low: '低',
+  info: '提示',
+}
 const decisionLabels: Record<string, string> = {
-  enhance: "调用模型",
-  skip: "跳过模型",
-  unavailable: "不可用",
-};
+  enhance: '调用模型',
+  skip: '跳过模型',
+  unavailable: '不可用',
+}
 const modelLabels: Record<string, string> = {
-  "unverified-observation": "已调用（待验证）",
-  skipped: "已跳过",
-  unavailable: "不可用",
-  "not-requested": "未请求",
+  'unverified-observation': '已调用（待验证）',
+  skipped: '已跳过',
+  unavailable: '不可用',
+  'not-requested': '未请求',
   /** 计划型任务从未到判定阶段：这不是「跳过了模型」，而是根本没有可跳过的阶段。 */
-  "": "未到判定阶段",
-};
+  '': '未到判定阶段',
+}
 function severityText(value: string) {
-  return severityLabel[value] ?? value;
+  return severityLabel[value] ?? value
 }
 function decisionText(value: string) {
-  return decisionLabels[value] ?? value;
+  return decisionLabels[value] ?? value
 }
 function modelEnhancementText(value?: string) {
-  return modelLabels[value ?? ""] ?? "—";
+  return modelLabels[value ?? ''] ?? '—'
 }
 
 /**
@@ -743,32 +826,32 @@ function modelEnhancementText(value?: string) {
  * `modelAdvisor`。没有到决策阶段时也要说清楚是在哪里停下的，而不是留一个空阶段。
  */
 const decisionExplanation = computed(() => {
-  const advisor = sqlResult.value?.modelAdvisor;
+  const advisor = sqlResult.value?.modelAdvisor
   if (!advisor) {
     return {
-      title: "本次没有到决策阶段",
+      title: '本次没有到决策阶段',
       lines: [
-        "决策阶段只在确定性解析通过之后运行；解析未通过或必需节点失败时，流程在更早的地方就停下了。",
-        `本次状态：${sqlResult.value ? statusLabel(sqlResult.value.status) : "尚未分析"}`,
+        '决策阶段只在确定性解析通过之后运行；解析未通过或必需节点失败时，流程在更早的地方就停下了。',
+        `本次状态：${sqlResult.value ? statusLabel(sqlResult.value.status) : '尚未分析'}`,
       ],
-    };
+    }
   }
-  const lines: string[] = [];
-  if (advisor.rationale) lines.push(advisor.rationale);
-  if (advisor.decision === "skip")
-    lines.push("跳过不是省事：确定性证据已经足以判定，调用模型只会增加成本与不确定性。");
-  if (advisor.attempted === false) lines.push("本次没有尝试调用模型。");
+  const lines: string[] = []
+  if (advisor.rationale) lines.push(advisor.rationale)
+  if (advisor.decision === 'skip')
+    lines.push('跳过不是省事：确定性证据已经足以判定，调用模型只会增加成本与不确定性。')
+  if (advisor.attempted === false) lines.push('本次没有尝试调用模型。')
   if (advisor.provider || advisor.model)
-    lines.push(`提供方 ${advisor.provider ?? "—"} · 模型 ${advisor.model ?? "—"}`);
+    lines.push(`提供方 ${advisor.provider ?? '—'} · 模型 ${advisor.model ?? '—'}`)
   if (advisor.latencyMs !== undefined)
     lines.push(
-      `耗时 ${advisor.latencyMs} ms · 提示 ${advisor.promptTokens ?? "—"} / 补全 ${advisor.completionTokens ?? "—"} tokens`,
-    );
-  return { title: decisionText(advisor.decision ?? "unavailable"), lines };
-});
+      `耗时 ${advisor.latencyMs} ms · 提示 ${advisor.promptTokens ?? '—'} / 补全 ${advisor.completionTokens ?? '—'} tokens`,
+    )
+  return { title: decisionText(advisor.decision ?? 'unavailable'), lines }
+})
 
 function isFindingIgnored(code: string) {
-  return ignoredFindings.value.includes(code);
+  return ignoredFindings.value.includes(code)
 }
 
 /**
@@ -778,63 +861,107 @@ function isFindingIgnored(code: string) {
 function toggleFindingIgnored(finding: SqlFinding) {
   ignoredFindings.value = isFindingIgnored(finding.code)
     ? ignoredFindings.value.filter((code) => code !== finding.code)
-    : [...ignoredFindings.value, finding.code];
+    : [...ignoredFindings.value, finding.code]
   inspectorMessage.value = isFindingIgnored(finding.code)
     ? `已标记忽略 ${finding.code}：只影响本次查看，规则包与证据都没有改动。`
-    : `已取消 ${finding.code} 的忽略标记。`;
+    : `已取消 ${finding.code} 的忽略标记。`
 }
 
 async function copyFindingAdvice(finding: SqlFinding) {
   try {
-    await navigator.clipboard.writeText(finding.suggestion);
-    inspectorMessage.value = "建议已复制（语义保持，未执行）";
+    await navigator.clipboard.writeText(finding.suggestion)
+    inspectorMessage.value = '建议已复制（语义保持，未执行）'
   } catch {
-    inspectorMessage.value = "复制失败，请手动选择建议文本复制";
+    inspectorMessage.value = '复制失败，请手动选择建议文本复制'
   }
 }
 
 /** 只有能从语句本身判定的改写才给候选；其余给「为什么没有」，不给一个看起来像改写的 diff。 */
 const findingRewrite = computed(() =>
   selectedFinding.value
-    ? candidateRewrite(selectedFinding.value.code, sqlResult.value?.sql ?? "")
+    ? candidateRewrite(selectedFinding.value.code, sqlResult.value?.sql ?? '')
     : null,
-);
+)
 const findingRewriteUnavailable = computed(() =>
-  selectedFinding.value ? rewriteUnavailable(selectedFinding.value.code) : "",
-);
+  selectedFinding.value ? rewriteUnavailable(selectedFinding.value.code) : '',
+)
 
 function selectFinding(finding: SqlFinding) {
-  selectedFinding.value = finding;
-  inspectorOpen.value = true;
-  rewriteOpen.value = false;
-  inspectorMessage.value = "";
+  selectedFinding.value = finding
+  inspectorOpen.value = true
+  rewriteOpen.value = false
+  inspectorMessage.value = ''
 }
 
 onMounted(() => {
-  window.addEventListener("hashchange", hashChange);
-  window.addEventListener("keydown", onShellKey);
-  const query = window.matchMedia("(max-width: 760px)");
-  const apply = () => { narrow.value = query.matches; if (query.matches) workbench.sidebarOpen = false; };
-  apply();
-  query.addEventListener("change", apply);
-  void refresh();
-});
-onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window.removeEventListener("keydown", onShellKey); });
+  window.addEventListener('hashchange', hashChange)
+  window.addEventListener('keydown', onShellKey)
+  const query = window.matchMedia('(max-width: 760px)')
+  const apply = () => {
+    narrow.value = query.matches
+    if (query.matches) workbench.sidebarOpen = false
+  }
+  apply()
+  query.addEventListener('change', apply)
+  void refresh()
+})
+onUnmounted(() => {
+  window.removeEventListener('hashchange', hashChange)
+  window.removeEventListener('keydown', onShellKey)
+})
 </script>
 
 <template>
-  <div class="app" :class="{ 'app--analysis': activeView === 'sql', 'drawer-open': narrow && workbench.sidebarOpen }">
+  <div
+    class="app"
+    :class="{
+      'app--analysis': activeView === 'sql',
+      'drawer-open': narrow && workbench.sidebarOpen,
+    }"
+  >
     <header class="topbar">
-      <Button size="sm" variant="ghost" type="button" class="sidebar-toggle" data-testid="open-sidebar" :aria-expanded="workbench.sidebarOpen" @click="workbench.sidebarOpen = !workbench.sidebarOpen">{{ workbench.sidebarOpen ? i18n.global.t('desktop.closeSidebar') : i18n.global.t('desktop.openSidebar') }}</Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        type="button"
+        class="sidebar-toggle"
+        data-testid="open-sidebar"
+        :aria-expanded="workbench.sidebarOpen"
+        @click="workbench.sidebarOpen = !workbench.sidebarOpen"
+        >{{
+          workbench.sidebarOpen
+            ? i18n.global.t('desktop.closeSidebar')
+            : i18n.global.t('desktop.openSidebar')
+        }}</Button
+      >
       <div v-if="activeView === 'sql'" class="brand" aria-label="工程自动化平台"><b>EAP</b></div>
       <div v-if="activeView === 'sql'" class="menu-wrap">
-        <Button size="sm" variant="ghost" class="ws" :aria-expanded="workspaceOpen" @click="workspaceAnchor = $event.currentTarget as HTMLElement; workspaceOpen = !workspaceOpen">
+        <Button
+          size="sm"
+          variant="ghost"
+          class="ws"
+          :aria-expanded="workspaceOpen"
+          @click="
+            ($event) => {
+              workspaceAnchor = $event.currentTarget as HTMLElement
+              workspaceOpen = !workspaceOpen
+            }
+          "
+        >
           工作空间 <b>{{ workspace }}</b
           ><span class="caret">▾</span>
         </Button>
-        <Popover v-if="workspaceOpen" class="menu" :anchor="workspaceAnchor" label="工作空间（本机视图范围）" @close="workspaceOpen = false">
+        <Popover
+          v-if="workspaceOpen"
+          class="menu"
+          :anchor="workspaceAnchor"
+          label="工作空间（本机视图范围）"
+          @close="workspaceOpen = false"
+        >
           <div class="menu-head">工作空间（本机视图范围）</div>
-          <Button size="sm" variant="secondary"
+          <Button
+            size="sm"
+            variant="secondary"
             v-for="option in workspaceOptions"
             :key="option"
             :active="option === workspace"
@@ -850,7 +977,13 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
             />
             <Button variant="primary" type="submit" :disabled="!newWorkspace.trim()"> 添加 </Button>
           </form>
-          <Button size="sm" variant="secondary" v-else class="menu-add" @click="workspaceAdding = true">
+          <Button
+            size="sm"
+            variant="secondary"
+            v-else
+            class="menu-add"
+            @click="workspaceAdding = true"
+          >
             ＋ 新建本机工作空间…
           </Button>
           <p class="menu-note">
@@ -859,9 +992,16 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
           </p>
         </Popover>
       </div>
-      <span class="desktop-page-title">{{ shellTitle }}<template v-if="chatContextLabel"> · {{ chatContextLabel }}</template></span>
+      <span class="desktop-page-title"
+        >{{ shellTitle
+        }}<template v-if="chatContextLabel"> · {{ chatContextLabel }}</template></span
+      >
       <div class="spacer" />
-      <span class="eap-chip" :class="useMockServices ? '' : runtimeStatus === '已连接' ? 'ok' : 'warn'" data-testid="runtime-chip">
+      <span
+        class="eap-chip"
+        :class="useMockServices ? '' : runtimeStatus === '已连接' ? 'ok' : 'warn'"
+        data-testid="runtime-chip"
+      >
         <i class="dot" />{{ useMockServices ? runtimeStatus : `运行时${runtimeStatus}` }}
       </span>
       <Button
@@ -874,22 +1014,67 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
       >
         查看详情
       </Button>
-      <Button variant="secondary" v-if="activeView === 'sql'" class="sql-top-secondary" :disabled="refreshing" @click="refresh">
-        {{ refreshing ? "刷新中…" : "刷新" }}
+      <Button
+        variant="secondary"
+        v-if="activeView === 'sql'"
+        class="sql-top-secondary"
+        :disabled="refreshing"
+        @click="refresh"
+      >
+        {{ refreshing ? '刷新中…' : '刷新' }}
       </Button>
-      <Button v-if="activeView === 'sql'" variant="primary" class="sql-top-primary" :disabled="sqlBusy" @click="primaryAction">
-        {{ sqlBusy ? "分析中…" : "运行分析" }}
+      <Button
+        v-if="activeView === 'sql'"
+        variant="primary"
+        class="sql-top-primary"
+        :disabled="sqlBusy"
+        @click="primaryAction"
+      >
+        {{ sqlBusy ? '分析中…' : '运行分析' }}
       </Button>
     </header>
-    <p v-if="chatBinding?.sending" class="send-in-flight" role="status" data-testid="send-in-flight">{{ i18n.global.t('desktop.sendingAway') }}</p>
+    <p
+      v-if="chatBinding?.sending"
+      class="send-in-flight"
+      role="status"
+      data-testid="send-in-flight"
+    >
+      {{ i18n.global.t('desktop.sendingAway') }}
+    </p>
     <p v-if="workspaceMessage" class="shell-message" role="status">{{ workspaceMessage }}</p>
 
-    <div class="body" :class="{ 'body--chat': activeView === 'chat', 'body--sql': activeView === 'sql' }">
+    <div
+      class="body"
+      :class="{ 'body--chat': activeView === 'chat', 'body--sql': activeView === 'sql' }"
+    >
       <DesktopNavigation :active-view="activeView" :pages="pages" @navigate="activeView = $event" />
-      <Button variant="backdrop" v-if="narrow && workbench.sidebarOpen" type="button" class="sidebar-backdrop" data-testid="sidebar-backdrop" :aria-label="i18n.global.t('desktop.closeSidebar')" @click="workbench.sidebarOpen = false"></Button>
+      <Button
+        variant="backdrop"
+        v-if="narrow && workbench.sidebarOpen"
+        type="button"
+        class="sidebar-backdrop"
+        data-testid="sidebar-backdrop"
+        :aria-label="i18n.global.t('desktop.closeSidebar')"
+        @click="workbench.sidebarOpen = false"
+      ></Button>
 
       <main class="workbench">
-        <Feedback tone="error" v-if="errors.health && !['chat', 'board', 'scenes', 'expert-catalog', 'experts', 'model-settings', 'appearance'].includes(activeView)" role="alert">
+        <Feedback
+          tone="error"
+          v-if="
+            errors.health &&
+            ![
+              'chat',
+              'board',
+              'scenes',
+              'expert-catalog',
+              'experts',
+              'model-settings',
+              'appearance',
+            ].includes(activeView)
+          "
+          role="alert"
+        >
           {{ errors.health }}
         </Feedback>
 
@@ -897,28 +1082,66 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
           分析工作台：使用界面，不是管理后台。
           2026-10-15 任务不再是独立页面——一次分析的输入与它的过程/结论，本来就是同一件事的两半。
         -->
-        <ScenarioWorkspace v-if="activeView === 'scenes'" :builder-enabled="pluginHost.installation.value.enabled.builder" :chat-enabled="pluginHost.installation.value.enabled.chat" @navigate="activeView = $event" />
+        <ScenarioWorkspace
+          v-if="activeView === 'scenes'"
+          :builder-enabled="pluginHost.installation.value.enabled.builder"
+          :chat-enabled="pluginHost.installation.value.enabled.chat"
+          @navigate="activeView = $event"
+        />
         <ProjectBoard v-else-if="activeView === 'board'" />
-        <ExpertCatalog v-else-if="activeView === 'expert-catalog'" @navigate="activeView = $event" />
-        <section v-else-if="activeView === 'sql'" class="view work-page analysis-workspace" data-testid="sql-workbench">
+        <ExpertCatalog
+          v-else-if="activeView === 'expert-catalog'"
+          @navigate="activeView = $event"
+        />
+        <section
+          v-else-if="activeView === 'sql'"
+          class="view work-page analysis-workspace"
+          data-testid="sql-workbench"
+        >
           <div class="page-head">
             <p class="eyebrow">WORKBENCH</p>
             <h1>分析工作台</h1>
-            <p class="sql-scope" data-testid="sql-scope" role="status">{{ i18n.global.t("workUi.sqlScope") }}</p>
+            <p class="sql-scope" data-testid="sql-scope" role="status">
+              {{ i18n.global.t('workUi.sqlScope') }}
+            </p>
             <aside class="sql-evidence" data-testid="sql-evidence" role="status">
-              <p class="sql-evidence-scope">{{ i18n.global.t("workUi.sqlEvidenceScope") }}</p>
-              <p v-if="sqlEvidence.mode === 'empty'" data-testid="sql-evidence-empty">{{ i18n.global.t("workUi.sqlEvidenceEmpty") }}</p>
+              <p class="sql-evidence-scope">{{ i18n.global.t('workUi.sqlEvidenceScope') }}</p>
+              <p v-if="sqlEvidence.mode === 'empty'" data-testid="sql-evidence-empty">
+                {{ i18n.global.t('workUi.sqlEvidenceEmpty') }}
+              </p>
               <template v-else>
-                <p data-testid="sql-evidence-task">{{ i18n.global.t("workUi.sqlEvidenceTask", { id: sqlEvidence.id, status: sqlEvidence.status }) }}</p>
-                <p v-if="sqlEvidence.findings != null" data-testid="sql-evidence-findings">{{ i18n.global.t("workUi.sqlEvidenceFindings", { count: sqlEvidence.findings }) }}</p>
-                <p v-else-if="sqlEvidence.observations != null" data-testid="sql-evidence-observations">{{ i18n.global.t("workUi.sqlEvidenceObservations", { count: sqlEvidence.observations }) }}</p>
-                <p v-else data-testid="sql-evidence-no-findings">{{ i18n.global.t("workUi.sqlEvidenceNoFindings") }}</p>
-                <p data-testid="sql-evidence-model">{{ i18n.global.t("workUi.sqlEvidenceModel", { model: sqlEvidence.model }) }}</p>
+                <p data-testid="sql-evidence-task">
+                  {{
+                    i18n.global.t('workUi.sqlEvidenceTask', {
+                      id: sqlEvidence.id,
+                      status: sqlEvidence.status,
+                    })
+                  }}
+                </p>
+                <p v-if="sqlEvidence.findings != null" data-testid="sql-evidence-findings">
+                  {{ i18n.global.t('workUi.sqlEvidenceFindings', { count: sqlEvidence.findings }) }}
+                </p>
+                <p
+                  v-else-if="sqlEvidence.observations != null"
+                  data-testid="sql-evidence-observations"
+                >
+                  {{
+                    i18n.global.t('workUi.sqlEvidenceObservations', {
+                      count: sqlEvidence.observations,
+                    })
+                  }}
+                </p>
+                <p v-else data-testid="sql-evidence-no-findings">
+                  {{ i18n.global.t('workUi.sqlEvidenceNoFindings') }}
+                </p>
+                <p data-testid="sql-evidence-model">
+                  {{ i18n.global.t('workUi.sqlEvidenceModel', { model: sqlEvidence.model }) }}
+                </p>
               </template>
             </aside>
-            <p class="sql-intro">{{ i18n.global.t("workUi.sqlIntro") }}</p>
+            <p class="sql-intro">{{ i18n.global.t('workUi.sqlIntro') }}</p>
             <Collapse class="why sql-boundary">
-              <template #summary>{{ i18n.global.t("workUi.sqlBoundary") }}</template>
+              <template #summary>{{ i18n.global.t('workUi.sqlBoundary') }}</template>
               <p>
                 平台不连接业务数据库、也不执行你输入的 SQL。执行计划快照由你自行取得后粘贴——这样
                 <b>没有凭据需要保管，也不存在误在上游库执行改写的可能</b>。代价是要你多贴一次，
@@ -931,7 +1154,15 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
             </Collapse>
           </div>
 
-          <Collapse class="status-strip work-overview"><template #summary>{{ i18n.global.t("workUi.overview") }} <span>{{ capabilityItems.length || capabilities.length }} {{ i18n.global.t("workUi.capabilities") }} · {{ expertCount }} {{ i18n.global.t("workUi.experts") }}</span></template>
+          <Collapse class="status-strip work-overview"
+            ><template #summary
+              >{{ i18n.global.t('workUi.overview') }}
+              <span
+                >{{ capabilityItems.length || capabilities.length }}
+                {{ i18n.global.t('workUi.capabilities') }} · {{ expertCount }}
+                {{ i18n.global.t('workUi.experts') }}</span
+              ></template
+            >
             <div class="metrics">
               <MetricCard
                 label="已注册能力"
@@ -977,8 +1208,8 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
               <Collapse class="why">
                 <template #summary>为什么这四个数字可以不写死</template>
                 <p>
-              已注册能力与专家定义分别读能力清单与专家清单：停用一个能力、新增一个专家，这两个数字跟着变，
-              所以它们不可能和「能力目录」「专家定义」里的数字不一致。
+                  已注册能力与专家定义分别读能力清单与专家清单：停用一个能力、新增一个专家，这两个数字跟着变，
+                  所以它们不可能和「能力目录」「专家定义」里的数字不一致。
                 </p>
                 <p>
                   近 {{ stats?.windowDays ?? 7 }} 日任务与模型调用占比读运行时的统计接口，而它是对
@@ -1024,12 +1255,17 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
               </div>
               <Select v-model="taskStatusFilter" aria-label="按状态筛选任务">
                 <option value="">全部状态</option>
-                <option v-for="option in TASK_STATUS_FILTERS" :key="option.value" :value="option.value">
+                <option
+                  v-for="option in TASK_STATUS_FILTERS"
+                  :key="option.value"
+                  :value="option.value"
+                >
                   {{ option.label }}
                 </option>
               </Select>
               <div class="task-list">
-                <Button variant="navigation"
+                <Button
+                  variant="navigation"
                   v-for="entry in filteredHistory"
                   :key="entry.id"
                   type="button"
@@ -1040,7 +1276,9 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                 >
                   <span class="task-item-main">
                     <b>{{ entry.goal }}</b>
-                    <span class="hint mono">{{ entry.id }} · {{ statusLabel(entry.decision) }}</span>
+                    <span class="hint mono"
+                      >{{ entry.id }} · {{ statusLabel(entry.decision) }}</span
+                    >
                   </span>
                   <Badge
                     tone="neutral"
@@ -1074,10 +1312,10 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                   <div class="req-card">
                     <div class="row stream-head">
                       <div>
-                        <b>{{ streamMode === "report" ? sqlResult?.id : task?.id }}</b>
+                        <b>{{ streamMode === 'report' ? sqlResult?.id : task?.id }}</b>
                         <p class="hint mono">
                           {{
-                            streamMode === "report"
+                            streamMode === 'report'
                               ? `专家流程 · 模型：${modelEnhancementText(sqlResult?.modelEnhancement)}`
                               : `本地能力任务 · 模型：${modelEnhancementText(task?.modelEnhancement)}`
                           }}
@@ -1093,9 +1331,9 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                         "
                         >{{
                           statusLabel(
-                            streamMode === "report"
-                              ? (sqlResult?.status ?? "")
-                              : (task?.status ?? ""),
+                            streamMode === 'report'
+                              ? (sqlResult?.status ?? '')
+                              : (task?.status ?? ''),
                           )
                         }}</Badge
                       >
@@ -1103,9 +1341,11 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                     <p v-if="streamMode === 'task'" class="hint">{{ task?.goal }}</p>
                     <div class="form-actions" v-if="streamMode === 'task' && task">
                       <Button variant="secondary" :disabled="rerunBusy" @click="rerunTask(task)">
-                        {{ rerunBusy ? "重新提交中…" : "重新运行" }}
+                        {{ rerunBusy ? '重新提交中…' : '重新运行' }}
                       </Button>
-                      <span class="hint">重新运行会新增一条执行记录，旧记录与它的证据保持原样。</span>
+                      <span class="hint"
+                        >重新运行会新增一条执行记录，旧记录与它的证据保持原样。</span
+                      >
                     </div>
                   </div>
 
@@ -1131,7 +1371,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                         </div>
                         <div class="tl-body">
                           <div class="t">
-                            {{ item.capability }} · {{ item.success ? "成功" : "失败" }}
+                            {{ item.capability }} · {{ item.success ? '成功' : '失败' }}
                           </div>
                           <div class="meta">退出码 {{ item.exitCode }}</div>
                           <pre v-if="item.stdout">{{ item.stdout }}</pre>
@@ -1146,7 +1386,11 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
 
                   <Feedback tone="info" v-if="sqlBusy" role="status">正在分析并检索知识…</Feedback>
 
-                  <article class="eap-panel" id="resultCard" v-if="streamMode === 'report' && sqlResult">
+                  <article
+                    class="eap-panel"
+                    id="resultCard"
+                    v-if="streamMode === 'report' && sqlResult"
+                  >
                     <header class="panel-head">
                       <div>
                         <h2>分析结果</h2>
@@ -1161,10 +1405,11 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                           <div class="t">已运行</div>
                           <div class="s">
                             {{ findings.length }} 条发现 · 置信度
-                            {{ sqlResult.deterministicAnalysis?.deterministicConfidence ?? "—" }}
+                            {{ sqlResult.deterministicAnalysis?.deterministicConfidence ?? '—' }}
                           </div>
                         </div>
-                        <Button variant="card"
+                        <Button
+                          variant="card"
                           type="button"
                           class="stage stage--clickable"
                           :class="decision === 'enhance' ? 'model' : 'skip'"
@@ -1174,19 +1419,23 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                           <div class="n">2 · 决策</div>
                           <div class="t">{{ decisionText(decision) }}</div>
                           <div class="s">
-                            {{ sqlResult.modelAdvisor?.rationale ?? "点开看为什么没有到决策阶段" }}
-                            <span class="link">{{ decisionOpen ? "收起" : "为什么？" }}</span>
+                            {{ sqlResult.modelAdvisor?.rationale ?? '点开看为什么没有到决策阶段' }}
+                            <span class="link">{{ decisionOpen ? '收起' : '为什么？' }}</span>
                           </div>
                         </Button>
                         <div
                           class="stage"
-                          :class="sqlResult.modelEnhancement === 'unverified-observation' ? 'model' : ''"
+                          :class="
+                            sqlResult.modelEnhancement === 'unverified-observation' ? 'model' : ''
+                          "
                         >
                           <div class="n">3 · 模型</div>
-                          <div class="t">{{ modelEnhancementText(sqlResult.modelEnhancement) }}</div>
+                          <div class="t">
+                            {{ modelEnhancementText(sqlResult.modelEnhancement) }}
+                          </div>
                           <div class="s" v-if="compression?.compressionRatio != null">
-                            压缩比 {{ Math.round((compression.compressionRatio ?? 0) * 100) }}% · 预计
-                            {{ compression.estimatedTokens }} tokens
+                            压缩比 {{ Math.round((compression.compressionRatio ?? 0) * 100) }}% ·
+                            预计 {{ compression.estimatedTokens }} tokens
                           </div>
                           <div class="s" v-else>确定性完成，无需模型</div>
                         </div>
@@ -1206,7 +1455,8 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
 
                       <h3>发现（{{ findings.length }}）</h3>
                       <div class="findings">
-                        <Button variant="card"
+                        <Button
+                          variant="card"
                           v-for="finding in findings"
                           :key="finding.code"
                           class="finding"
@@ -1221,7 +1471,9 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                           }}</span>
                           <span>
                             <span class="code mono">{{ finding.code }}</span>
-                            <span v-if="isFindingIgnored(finding.code)" class="ignored-tag">已忽略</span>
+                            <span v-if="isFindingIgnored(finding.code)" class="ignored-tag"
+                              >已忽略</span
+                            >
                             <p class="evidence">{{ finding.evidence }}</p>
                             <span class="cat">类别：{{ finding.category }}</span>
                           </span>
@@ -1233,10 +1485,14 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
 
                       <h3>适用规则包（{{ sqlResult.rulePacks?.length ?? 0 }}）</h3>
                       <div class="chips">
-                        <Badge tone="neutral" v-for="pack in sqlResult.rulePacks ?? []" :key="pack.id">
+                        <Badge
+                          tone="neutral"
+                          v-for="pack in sqlResult.rulePacks ?? []"
+                          :key="pack.id"
+                        >
                           {{ pack.name }} · {{ pack.ruleCount }} 条规则
                           <template v-if="pack.requires?.length">
-                            · 需要 {{ pack.requires.join("、") }}</template
+                            · 需要 {{ pack.requires.join('、') }}</template
                           >
                         </Badge>
                         <span v-if="!sqlResult.rulePacks?.length" class="hint">
@@ -1250,15 +1506,19 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                           规则读取事实，事实由能力产出。下面列出每个规则包需要的能力，以及本次流程是否真的执行了它们。
                         </p>
                         <div class="choice-list">
-                          <div v-for="check in rulePackRequirements" :key="check.id" class="requirement">
+                          <div
+                            v-for="check in rulePackRequirements"
+                            :key="check.id"
+                            class="requirement"
+                          >
                             <code class="mono">{{ check.id }}</code>
                             <Badge
                               tone="neutral"
                               :class="check.met ? 'eap-badge--success' : 'eap-badge--warning'"
                             >
-                              {{ check.met ? "能力齐备" : "缺少 " + check.missing.join("、") }}
+                              {{ check.met ? '能力齐备' : '缺少 ' + check.missing.join('、') }}
                             </Badge>
-                            <span class="hint">需要：{{ check.required.join("、") }}</span>
+                            <span class="hint">需要：{{ check.required.join('、') }}</span>
                           </div>
                         </div>
                       </template>
@@ -1272,8 +1532,8 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                         <ul class="advice-list">
                           <li v-for="item in blockedRules" :key="item.rule">
                             <code class="mono">{{ item.rule }}</code> · 缺少能力
-                            {{ item.missingCapabilities.join("、") }} · 相关事实
-                            {{ item.missingFacts.join("、") }}
+                            {{ item.missingCapabilities.join('、') }} · 相关事实
+                            {{ item.missingFacts.join('、') }}
                           </li>
                         </ul>
                       </template>
@@ -1281,7 +1541,9 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                       <section class="supplement">
                         <h3>补充上下文</h3>
                         <p class="hint">
-                          运行时没有「补充」这个资源：补充上下文等于把新上下文并入目标后<b>再执行一次</b>
+                          运行时没有「补充」这个资源：补充上下文等于把新上下文并入目标后<b
+                            >再执行一次</b
+                          >
                           （<code class="mono">POST /api/experts/{id}/execute</code
                           >）。上一条记录与它的证据不会被改写，
                           所以「补了什么、结果怎么变」在历史里可以对照。不要粘贴密码或连接串。
@@ -1299,7 +1561,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                             :disabled="sqlBusy || !supplement.trim()"
                             @click="applySupplement"
                           >
-                            {{ sqlBusy ? "执行中…" : "补入并重新分析" }}
+                            {{ sqlBusy ? '执行中…' : '补入并重新分析' }}
                           </Button>
                           <span class="hint" role="status">{{ supplementMessage }}</span>
                         </div>
@@ -1323,8 +1585,14 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                       </section>
 
                       <Collapse :open="!!sqlResult.knowledgeEvidence?.length">
-                        <template #summary>知识依据（{{ sqlResult.knowledgeEvidence?.length ?? 0 }}）</template>
-                        <div v-for="(item, index) in sqlResult.knowledgeEvidence" :key="index" class="kb">
+                        <template #summary
+                          >知识依据（{{ sqlResult.knowledgeEvidence?.length ?? 0 }}）</template
+                        >
+                        <div
+                          v-for="(item, index) in sqlResult.knowledgeEvidence"
+                          :key="index"
+                          class="kb"
+                        >
                           <b>{{ item.knowledgeBase }} / {{ item.source }}</b>
                           <p>{{ item.excerpt }}</p>
                         </div>
@@ -1342,7 +1610,9 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                               <Badge
                                 tone="neutral"
                                 :class="
-                                  node.state === 'succeeded' ? 'eap-badge--success' : 'eap-badge--warning'
+                                  node.state === 'succeeded'
+                                    ? 'eap-badge--success'
+                                    : 'eap-badge--warning'
                                 "
                               >
                                 {{ statusLabel(node.state) }}
@@ -1390,11 +1660,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                 <Collapse class="composer-more">
                   <template #summary>完整输入：执行专家、待分析 SQL、数据库资料与模型</template>
                   <label class="field-label" for="expert-selector">执行专家</label>
-                  <Select
-                    id="expert-selector"
-                    v-model="selectedExpert"
-                    :disabled="sqlBusy"
-                  >
+                  <Select id="expert-selector" v-model="selectedExpert" :disabled="sqlBusy">
                     <option v-for="expert in registeredExperts" :key="expert.id" :value="expert.id">
                       {{ expert.name }}
                     </option>
@@ -1418,11 +1684,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                     placeholder="SELECT …（仅检索知识时可留空）"
                   />
                   <label class="field-label" for="database-selector">已授权资料</label>
-                  <Select
-                    id="database-selector"
-                    v-model="selectedDatabase"
-                    :disabled="sqlBusy"
-                  >
+                  <Select id="database-selector" v-model="selectedDatabase" :disabled="sqlBusy">
                     <option value="">不使用数据库资料</option>
                     <option
                       v-for="profile in allowedDatabases"
@@ -1450,8 +1712,15 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                     <Checkbox v-model="enhanceModel" :disabled="sqlBusy" />
                     显式请求模型增强（输出仍为待验证观察）
                   </label>
-                  <span class="hint">默认不连接数据库、不执行 SQL；不要粘贴密码、连接串或业务数据。</span>
-                  <Button variant="secondary" type="button" :disabled="sqlBusy" @click="clearComposer">
+                  <span class="hint"
+                    >默认不连接数据库、不执行 SQL；不要粘贴密码、连接串或业务数据。</span
+                  >
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    :disabled="sqlBusy"
+                    @click="clearComposer"
+                  >
                     清空
                   </Button>
                   <Button
@@ -1460,7 +1729,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                     :disabled="taskBusy || !goal.trim()"
                     @click="submitTask"
                   >
-                    {{ taskBusy ? "执行中…" : "交给本地能力" }}
+                    {{ taskBusy ? '执行中…' : '交给本地能力' }}
                   </Button>
                   <Button
                     variant="primary"
@@ -1468,7 +1737,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                     :disabled="sqlBusy || !canAnalyze"
                     @click="primaryAction"
                   >
-                    {{ sqlBusy ? "正在分析…" : "开始分析" }}
+                    {{ sqlBusy ? '正在分析…' : '开始分析' }}
                   </Button>
                 </div>
               </div>
@@ -1502,8 +1771,10 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
             v-else-if="activeView === 'experts'"
             @saved="refresh"
             @run="
-              selectedExpert = $event;
-              activeView = 'sql';
+              ($event) => {
+                selectedExpert = $event
+                activeView = 'sql'
+              }
             "
           />
           <KnowledgeManager
@@ -1527,13 +1798,19 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
       </main>
 
       <!-- INSPECTOR -->
-      <Button variant="backdrop"
+      <Button
+        variant="backdrop"
         v-if="inspectorOpen && activeView === 'sql'"
         class="inspector-backdrop"
         aria-label="关闭上下文详情"
         @click="inspectorOpen = false"
       ></Button>
-      <aside v-if="activeView === 'sql'" id="context-details" class="inspector" :class="{ 'inspector--open': inspectorOpen }">
+      <aside
+        v-if="activeView === 'sql'"
+        id="context-details"
+        class="inspector"
+        :class="{ 'inspector--open': inspectorOpen }"
+      >
         <div class="insp-head">
           <h2>上下文详情</h2>
           <span class="chip">{{ currentView.name }}</span>
@@ -1562,10 +1839,10 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
                 复制建议
               </Button>
               <Button variant="secondary" :disabled="!findingRewrite" @click="toggleRewrite">
-                {{ rewriteOpen ? "收起改写" : "查看候选改写" }}
+                {{ rewriteOpen ? '收起改写' : '查看候选改写' }}
               </Button>
               <Button variant="secondary" @click="toggleFindingIgnored(selectedFinding)">
-                {{ isFindingIgnored(selectedFinding.code) ? "取消忽略" : "标记忽略" }}
+                {{ isFindingIgnored(selectedFinding.code) ? '取消忽略' : '标记忽略' }}
               </Button>
             </div>
             <Feedback v-if="inspectorMessage">{{ inspectorMessage }}</Feedback>
@@ -1588,8 +1865,8 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
             <p v-else class="hint">
               {{
                 findingRewrite
-                  ? "该发现有一条可从语句本身判定的候选改写；点「查看候选改写」对照阅读。"
-                  : "没有候选改写：" + findingRewriteUnavailable
+                  ? '该发现有一条可从语句本身判定的候选改写；点「查看候选改写」对照阅读。'
+                  : '没有候选改写：' + findingRewriteUnavailable
               }}
             </p>
           </div>
@@ -1608,7 +1885,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
             <div class="stage" :class="decision === 'enhance' ? 'model' : 'skip'">
               <div class="n">2 · 决策</div>
               <div class="t">{{ decisionText(decision) }}</div>
-              <div class="s">{{ sqlResult?.modelAdvisor?.rationale ?? "尚未运行分析" }}</div>
+              <div class="s">{{ sqlResult?.modelAdvisor?.rationale ?? '尚未运行分析' }}</div>
             </div>
             <div
               class="stage"
@@ -1634,7 +1911,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", hashChange); window
         >工作空间：<b>{{ workspace }}</b></span
       >
       <span
-        >最近刷新：<b>{{ lastRefresh || "—" }}</b></span
+        >最近刷新：<b>{{ lastRefresh || '—' }}</b></span
       >
       <span
         >确定性覆盖：<b>{{ deterministicCoverageText }}</b></span

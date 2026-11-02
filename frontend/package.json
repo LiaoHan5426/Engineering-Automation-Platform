@@ -4,17 +4,22 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "internal/*"
+    "internal/*",
+    "scripts/*"
   ],
   "type": "module",
   "scripts": {
-    "typecheck": "vue-tsc --build",
-    "check:boundaries": "node scripts/check-boundaries.ts",
+    "typecheck": "vue-tsc --build && pnpm --filter @eap/vsh typecheck",
+    "check:boundaries": "vsh check-boundaries",
+    "check:circular": "vsh check-circular",
+    "check:architecture": "vsh check",
+    "lint:tests": "vp lint scripts/vsh/__tests__ apps/web/__tests__ packages/ui/__tests__ packages/icons/__tests__ packages/runtime-client/__tests__",
+    "fmt:tests": "vp fmt \"**/__tests__/**/*.ts\" --check",
     "dev": "vp dev",
     "dev:mock": "vp dev apps/web --mode mock --host 127.0.0.1",
     "dev:desktop": "pnpm --filter @eap/desktop dev",
     "build": "vp build",
-    "check": "vp check",
+    "check": "vsh check && vp check",
     "test": "vp test",
     "preview": "vp preview",
     "stylelint": "stylelint \"**/*.{css,vue}\"",
@@ -24,6 +29,7 @@
   "devDependencies": {
     "@eap/stylelint-config": "workspace:*",
     "@eap/tsconfig": "workspace:*",
+    "@eap/vsh": "workspace:*",
     "@tailwindcss/vite": "catalog:frontend",
     "@types/node": "catalog:types",
     "@vitejs/plugin-vue": "catalog:tooling",

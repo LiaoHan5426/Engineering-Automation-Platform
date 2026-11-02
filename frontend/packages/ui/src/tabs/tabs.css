@@ -15,7 +15,7 @@
   border-radius: 8px;
 }
 
-.eap-tabs__tab[aria-selected="true"] {
+.eap-tabs__tab[aria-selected='true'] {
   font-weight: 650;
   color: var(--eap-color-on-primary);
   background: var(--eap-color-primary);

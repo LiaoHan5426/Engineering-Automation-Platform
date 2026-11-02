@@ -9,7 +9,9 @@ import { Button, Collapse, Pagination } from '@eap/ui'
 import { applyAppearance, applyTokens } from '@eap/style'
 
 applyAppearance({
-  theme: 'dark', skin: 'console', density: 'compact',
+  theme: 'dark',
+  skin: 'console',
+  density: 'compact',
   layout: { sidebarWidth: 280, railWidth: 400, contentMaxWidth: 1440 },
 })
 applyTokens({ '--eap-color-primary': '#59bfa5' })
@@ -29,28 +31,28 @@ Icon的原生attrs透传仅供可信宿主使用，不是输入清洗器；不�
 
 颜色继承`currentColor`，尺寸/线宽可统一配置`--eap-icon-size`和`--eap-icon-stroke-width`；属性可局部覆盖。同一UI入口可选提供`IconPlus`等静态命名组件，适合不需要按名称切换的场景。`Icon`使用有界本地图标集合，不含整个Lucide库；动态名称意味着该小集合会入包，不承诺按名称摇树。资源依赖和ISC许可见[图标说明](../icons/README.md)。
 
-| 导出 | 可复制目录 / 额外依赖 | 契约 |
-|---|---|---|
-| Button | `button/` | 默认 type=button；variant/size/disabled/active；click 和原生 attrs；普通操作 primary/secondary/ghost/danger，文字操作 link，导航 navigation/activity，选项 chip，图标 icon，可点击表面 card，遮罩 backdrop；应用禁止 custom |
-| Icon / IconName | `icon/` + `@eap/icons` | 统一名称、size/strokeWidth/label；本地SVG、主题继承；图标不实现交互行为 |
-| Collapse | `collapse/` | summary prop/slot、default 内容、open / update:open / toggle；不传 open 时由原生 details 控制 |
-| Pagination | `pagination/` + `button/` | v-model 页码、total、pageSize、disabled、label/previousLabel/nextLabel；越界纠正，不发请求 |
-| Radio | `radio/` | v-model string/number、value、name（必填）、disabled；宿主提供 label；同组共用 name |
-| Descriptions | `descriptions/` | items: key/label/value；按 key 自定义值插槽；dl/dt/dd 语义 |
-| Skeleton | `skeleton/` | animated；装饰性隐藏于辅助技术，加载状态由宿主提供；宽高可覆盖，尊重 reduced-motion |
-| Progress | `progress/` | 必填 label；value/max；无 value 为不确定进度，数值夹在 0..max |
-| Divider | `divider/` | orientation、decorative；separator 语义 |
-| WorkbenchFrame | `layout/` | rail、railSide；default 主区、rail 和 overlay 槽；尺寸用 layout Token。窄屏为单列，消费者负责 rail 的浮层/隐藏行为；不含拖拽、持久化、领域面板 |
-| DatePicker | `date-picker/` + `field/` | 必填 label；v-model 为 YYYY-MM-DD 或空字符串；浏览器日期选择器、min/max/disabled/required；不做时区转换或日期区间选择 |
-| Tree / TreeNode | `tree/` + `reka-ui@2.11.0` + `@eap/icons` | items 的 id 唯一；v-model 选中 id、v-model:expanded id 数组；select(node)、toggle(node,nextOpen)；children 为空数组仍是可加载分支，缺失为叶子；manualExpand 将展开交给宿主；内置键盘导航，异步加载/请求/过滤归宿主 |
-| Tooltip | `tooltip/`（含 SOURCE.md、LICENSE）+ `reka-ui@2.11.0` | text、side、delay、teleportTo；default 槽须为单个可聚焦触发元素；hover/focus 打开、Escape 关闭；操作菜单用 DropdownMenu，混合内容用 Popover |
-| Segmented | `segmented/` + `reka-ui@2.11.0` | 必填 label/options/v-model string；单选 ToggleGroup、水平/垂直方向、箭头导航、禁用；重复点击保持已选值；option 支持 description/testId；宿主确保 model 对应有效 option |
-| Splitter | `splitter/` + `reka-ui@2.11.0` | 必填 label；v-model 为 start 面板百分比，默认 50；min/max 默认 15/85，要求 0≤min≤max≤100；水平/垂直、disabled、start/end 槽；支持鼠标与键盘调整；容器尺寸和持久化由宿主提供 |
-| Drawer | `drawer/` + Dialog 依赖闭包 | title、side=start/end、busy、showHeader、closeLabel、teleportTo；default/footer 槽和 close 事件；复用 Dialog 焦点/叠层；showHeader=false 时宿主提供可见关闭控件 |
-| ActionCard | `action-card/` + `button/` | label 必填、disabled/selected；activate 事件；default 只放展示内容，actions 槽放独立操作；主操作是覆盖卡片的原生按钮，操作槽与其为兄弟节点，避免嵌套按钮和重复触发 |
-| DropdownMenu / MenuAction | `dropdown-menu/` + `reka-ui@2.11.0` | label/items，v-model:open、select(id)、align/teleportTo；default 槽单个可聚焦触发组件；items 含 id/label/disabled/destructive/description/testId；共享箭头/Home/End/输入匹配、碰撞定位、外部点击/Escape 关闭与焦点恢复；原生禁用语义 |
-| SvgActionPath | `svg-action-path/` | 放在 svg 内；d/label 必填、disabled、deleteKey；activate(MouseEvent/KeyboardEvent)；click/Enter/Space，以及启用时 Delete；不会自己修改领域图数据 |
-| Popover | `popover/` + `reka-ui@2.11.0` | label、anchor、side/align、returnFocusTo、teleport/teleportTo、close 事件；传 anchor 后为非模态混合内容浮层，统一避让、外部关闭与焦点恢复；无 anchor 时仅为静态 region 壳，不能冒充菜单键盘行为 |
+| 导出                      | 可复制目录 / 额外依赖                                 | 契约                                                                                                                                                                                                                                 |
+| ------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Button                    | `button/`                                             | 默认 type=button；variant/size/disabled/active；click 和原生 attrs；普通操作 primary/secondary/ghost/danger，文字操作 link，导航 navigation/activity，选项 chip，图标 icon，可点击表面 card，遮罩 backdrop；应用禁止 custom          |
+| Icon / IconName           | `icon/` + `@eap/icons`                                | 统一名称、size/strokeWidth/label；本地SVG、主题继承；图标不实现交互行为                                                                                                                                                              |
+| Collapse                  | `collapse/`                                           | summary prop/slot、default 内容、open / update:open / toggle；不传 open 时由原生 details 控制                                                                                                                                        |
+| Pagination                | `pagination/` + `button/`                             | v-model 页码、total、pageSize、disabled、label/previousLabel/nextLabel；越界纠正，不发请求                                                                                                                                           |
+| Radio                     | `radio/`                                              | v-model string/number、value、name（必填）、disabled；宿主提供 label；同组共用 name                                                                                                                                                  |
+| Descriptions              | `descriptions/`                                       | items: key/label/value；按 key 自定义值插槽；dl/dt/dd 语义                                                                                                                                                                           |
+| Skeleton                  | `skeleton/`                                           | animated；装饰性隐藏于辅助技术，加载状态由宿主提供；宽高可覆盖，尊重 reduced-motion                                                                                                                                                  |
+| Progress                  | `progress/`                                           | 必填 label；value/max；无 value 为不确定进度，数值夹在 0..max                                                                                                                                                                        |
+| Divider                   | `divider/`                                            | orientation、decorative；separator 语义                                                                                                                                                                                              |
+| WorkbenchFrame            | `layout/`                                             | rail、railSide；default 主区、rail 和 overlay 槽；尺寸用 layout Token。窄屏为单列，消费者负责 rail 的浮层/隐藏行为；不含拖拽、持久化、领域面板                                                                                       |
+| DatePicker                | `date-picker/` + `field/`                             | 必填 label；v-model 为 YYYY-MM-DD 或空字符串；浏览器日期选择器、min/max/disabled/required；不做时区转换或日期区间选择                                                                                                                |
+| Tree / TreeNode           | `tree/` + `reka-ui@2.11.0` + `@eap/icons`             | items 的 id 唯一；v-model 选中 id、v-model:expanded id 数组；select(node)、toggle(node,nextOpen)；children 为空数组仍是可加载分支，缺失为叶子；manualExpand 将展开交给宿主；内置键盘导航，异步加载/请求/过滤归宿主                   |
+| Tooltip                   | `tooltip/`（含 SOURCE.md、LICENSE）+ `reka-ui@2.11.0` | text、side、delay、teleportTo；default 槽须为单个可聚焦触发元素；hover/focus 打开、Escape 关闭；操作菜单用 DropdownMenu，混合内容用 Popover                                                                                          |
+| Segmented                 | `segmented/` + `reka-ui@2.11.0`                       | 必填 label/options/v-model string；单选 ToggleGroup、水平/垂直方向、箭头导航、禁用；重复点击保持已选值；option 支持 description/testId；宿主确保 model 对应有效 option                                                               |
+| Splitter                  | `splitter/` + `reka-ui@2.11.0`                        | 必填 label；v-model 为 start 面板百分比，默认 50；min/max 默认 15/85，要求 0≤min≤max≤100；水平/垂直、disabled、start/end 槽；支持鼠标与键盘调整；容器尺寸和持久化由宿主提供                                                          |
+| Drawer                    | `drawer/` + Dialog 依赖闭包                           | title、side=start/end、busy、showHeader、closeLabel、teleportTo；default/footer 槽和 close 事件；复用 Dialog 焦点/叠层；showHeader=false 时宿主提供可见关闭控件                                                                      |
+| ActionCard                | `action-card/` + `button/`                            | label 必填、disabled/selected；activate 事件；default 只放展示内容，actions 槽放独立操作；主操作是覆盖卡片的原生按钮，操作槽与其为兄弟节点，避免嵌套按钮和重复触发                                                                   |
+| DropdownMenu / MenuAction | `dropdown-menu/` + `reka-ui@2.11.0`                   | label/items，v-model:open、select(id)、align/teleportTo；default 槽单个可聚焦触发组件；items 含 id/label/disabled/destructive/description/testId；共享箭头/Home/End/输入匹配、碰撞定位、外部点击/Escape 关闭与焦点恢复；原生禁用语义 |
+| SvgActionPath             | `svg-action-path/`                                    | 放在 svg 内；d/label 必填、disabled、deleteKey；activate(MouseEvent/KeyboardEvent)；click/Enter/Space，以及启用时 Delete；不会自己修改领域图数据                                                                                     |
+| Popover                   | `popover/` + `reka-ui@2.11.0`                         | label、anchor、side/align、returnFocusTo、teleport/teleportTo、close 事件；传 anchor 后为非模态混合内容浮层，统一避让、外部关闭与焦点恢复；无 anchor 时仅为静态 region 壳，不能冒充菜单键盘行为                                      |
 
 既有 Dialog/ConfirmBox 还依赖 `button/`、`hooks/useFocusTrap.ts`；ConfirmBox 依赖 `feedback/`。Tag 的关闭标记与 Tree 的分支箭头使用 `@eap/icons` 命名导出；复制时带上该叶子包及其声明依赖，不改为直接导入第三方图标。图标继承 currentColor，默认装饰性隐藏且不可聚焦；原控件保留名称、事件和键盘行为。Dialog/Drawer 的关闭文案与 ConfirmBox 的确认/取消文案不是字符图标，保持原样。其他组件的依赖以其相对 import 为准；InfiniteScroll 需 Scrollbar。所有组件还需 style 主题 Token；复制时带上 `packages/style/src` 或由宿主完整实现对应 `--eap-*`。
 

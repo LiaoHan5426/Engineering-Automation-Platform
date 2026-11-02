@@ -3,6 +3,7 @@
   "files": [],
   "references": [
     { "path": "./packages/icons" },
+    { "path": "./packages/runtime-client/tsconfig.type-tests.json" },
     {
       "path": "./apps/web"
     },

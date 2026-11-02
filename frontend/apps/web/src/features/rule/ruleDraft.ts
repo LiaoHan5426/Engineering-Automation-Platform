@@ -1,4 +1,4 @@
-import type { RuleCondition, RuleFact, RulePackManifest } from "@eap/runtime-client";
+import type { RuleCondition, RuleFact, RulePackManifest } from '@eap/runtime-client'
 
 /**
  * What a rule pack draft implies, computed in the browser so the editor can refuse a bad edit at the
@@ -15,41 +15,41 @@ import type { RuleCondition, RuleFact, RulePackManifest } from "@eap/runtime-cli
  * "there was nothing to find", which is the failure this whole screen exists to prevent.
  */
 export function referencedFacts(manifest: RulePackManifest): string[] {
-  const keys = new Set<string>();
+  const keys = new Set<string>()
   const walk = (condition?: RuleCondition) => {
-    if (!condition) return;
-    for (const nested of condition.all ?? []) walk(nested);
-    for (const nested of condition.any ?? []) walk(nested);
-    if (condition.not) walk(condition.not);
-    if (condition.fact) keys.add(condition.fact);
-  };
-  for (const rule of manifest.rules ?? []) {
-    walk(rule.when);
-    for (const override of rule.severityWhen ?? []) walk(override.when);
+    if (!condition) return
+    for (const nested of condition.all ?? []) walk(nested)
+    for (const nested of condition.any ?? []) walk(nested)
+    if (condition.not) walk(condition.not)
+    if (condition.fact) keys.add(condition.fact)
   }
-  return [...keys].sort();
+  for (const rule of manifest.rules ?? []) {
+    walk(rule.when)
+    for (const override of rule.severityWhen ?? []) walk(override.when)
+  }
+  return [...keys].sort()
 }
 
 /** Capabilities implied by the facts a draft reads, via the vocabulary's producer index. */
 export function derivedCapabilities(manifest: RulePackManifest, facts: RuleFact[]): string[] {
-  const producers = new Map(facts.map((fact) => [fact.key, fact.producedBy]));
+  const producers = new Map(facts.map((fact) => [fact.key, fact.producedBy]))
   return [
     ...new Set(
       referencedFacts(manifest)
         .map((key) => producers.get(key))
         .filter((producer): producer is string => !!producer),
     ),
-  ].sort();
+  ].sort()
 }
 
 /** Facts the draft names that the vocabulary does not declare — a rule that can never fire. */
 export function unknownFacts(manifest: RulePackManifest, facts: RuleFact[]): string[] {
-  const known = new Set(facts.map((fact) => fact.key));
-  return referencedFacts(manifest).filter((key) => !known.has(key));
+  const known = new Set(facts.map((fact) => fact.key))
+  return referencedFacts(manifest).filter((key) => !known.has(key))
 }
 
 /** Capabilities the facts imply but `requires.capabilities` does not declare. */
 export function requirementGaps(manifest: RulePackManifest, facts: RuleFact[]): string[] {
-  const declared = new Set(manifest.requires?.capabilities ?? []);
-  return derivedCapabilities(manifest, facts).filter((capability) => !declared.has(capability));
+  const declared = new Set(manifest.requires?.capabilities ?? [])
+  return derivedCapabilities(manifest, facts).filter((capability) => !declared.has(capability))
 }

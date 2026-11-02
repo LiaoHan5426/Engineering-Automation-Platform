@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { useI18n } from "vue-i18n";
-import { Badge, Button } from "@eap/ui";
+import { useI18n } from 'vue-i18n'
+import { Badge, Button } from '@eap/ui'
 
-defineProps<{ title: string; body: string; presses: number }>();
-defineEmits<{ press: [] }>();
+defineProps<{ title: string; body: string; presses: number }>()
+defineEmits<{ press: [] }>()
 
-const { t } = useI18n();
+const { t } = useI18n()
 </script>
 
 <template>
@@ -14,9 +14,9 @@ const { t } = useI18n();
     <h2>{{ title }}</h2>
     <p>{{ body }}</p>
     <Button data-testid="preview-button" variant="primary" @click="$emit('press')">
-      {{ t("plugin.press") }}
+      {{ t('plugin.press') }}
     </Button>
-    <p data-testid="press-count">{{ t("plugin.presses", { n: presses }) }}</p>
+    <p data-testid="press-count">{{ t('plugin.presses', { n: presses }) }}</p>
   </article>
 </template>
 

@@ -29,6 +29,10 @@
 
 @media (width <= 1000px) {
   .eap-workbench-frame--rail,
-  .eap-workbench-frame--rail.eap-workbench-frame--start { grid-template-columns: minmax(0, 1fr); }
-  .eap-workbench-frame--start > :first-child { grid-column: 1; }
+  .eap-workbench-frame--rail.eap-workbench-frame--start {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .eap-workbench-frame--start > :first-child {
+    grid-column: 1;
+  }
 }

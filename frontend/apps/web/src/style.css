@@ -1,10 +1,10 @@
-@import url("@eap/style/themes.css");
+@import url('@eap/style/themes.css');
 /* Theme tokens + document base from @eap/style (must precede Tailwind rules). */
-@import url("@eap/style/base.css");
+@import url('@eap/style/base.css');
 /* stylelint-disable-next-line import-notation -- Tailwind v4 requires a bare string import. */
-@import "tailwindcss";
+@import 'tailwindcss';
 /* stylelint-disable-next-line import-notation -- Tailwind resolves its bridge before emitting rules. */
-@import "@eap/style/tailwind.css";
+@import '@eap/style/tailwind.css';
 
 /* ============================================================
    Console layout & feature styles only
@@ -568,7 +568,7 @@ label.row {
   left: -22px;
   font-weight: 800;
   color: var(--border-strong);
-  content: "→";
+  content: '→';
   transform: translateY(-50%);
 }
 
@@ -1263,7 +1263,7 @@ label.row {
 
 .eap-panel > header.cap-head {
   display: grid;
-  grid-template-areas: "title status tools" "note note note";
+  grid-template-areas: 'title status tools' 'note note note';
   grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
   gap: 6px 16px;
   align-items: center;
@@ -1342,7 +1342,7 @@ label.row {
 }
 
 .eap-panel .cap-meta dt::after {
-  content: "：";
+  content: '：';
 }
 
 .cap-meta dd {
@@ -1447,7 +1447,12 @@ label.row {
   color: var(--text-mute);
 }
 
-.menu {display:grid;gap:4px;width:min(340px,calc(100vw - 24px));max-height:var(--reka-popover-content-available-height)}
+.menu {
+  display: grid;
+  gap: 4px;
+  width: min(340px, calc(100vw - 24px));
+  max-height: var(--reka-popover-content-available-height);
+}
 
 .menu-head {
   padding: 4px 8px;
@@ -1728,7 +1733,7 @@ details.why > summary::-webkit-details-marker {
 details.why > summary::before {
   width: 0;
   height: 0;
-  content: "";
+  content: '';
   border-top: 4px solid transparent;
   border-bottom: 4px solid transparent;
   border-left: 5px solid var(--text-mute);

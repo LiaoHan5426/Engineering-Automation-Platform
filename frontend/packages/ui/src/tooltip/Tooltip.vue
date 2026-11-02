@@ -1,7 +1,15 @@
 <script setup lang="ts">
-import { TooltipProvider, TooltipRoot, TooltipTrigger } from "reka-ui";
-import TooltipContent from "./TooltipContent.vue";
-withDefaults(defineProps<{ text: string; delay?: number; side?: "top" | "right" | "bottom" | "left"; teleportTo?: string | HTMLElement }>(), { delay: 300, side: "top", teleportTo: "body" });
+import { TooltipProvider, TooltipRoot, TooltipTrigger } from 'reka-ui'
+import TooltipContent from './TooltipContent.vue'
+withDefaults(
+  defineProps<{
+    text: string
+    delay?: number
+    side?: 'top' | 'right' | 'bottom' | 'left'
+    teleportTo?: string | HTMLElement
+  }>(),
+  { delay: 300, side: 'top', teleportTo: 'body' },
+)
 </script>
 <template>
   <TooltipProvider :delay-duration="delay">

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 defineProps<{
-  title?: string;
-  description?: string;
+  title?: string
+  description?: string
   /** Extra class on the root section (e.g. manager-list, panel-block). */
-  panelClass?: string | string[] | Record<string, boolean>;
-}>();
+  panelClass?: string | string[] | Record<string, boolean>
+}>()
 </script>
 
 <template>

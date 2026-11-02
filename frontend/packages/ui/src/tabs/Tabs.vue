@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { computed, useAttrs } from "vue";
+import { computed, useAttrs } from 'vue'
 
-defineOptions({ inheritAttrs: false });
+defineOptions({ inheritAttrs: false })
 
-const model = defineModel<string>({ required: true });
+const model = defineModel<string>({ required: true })
 defineProps<{
-  label: string;
-  tabs: Array<{ id: string; label: string; testId?: string }>;
-}>();
-const attrs = useAttrs();
+  label: string
+  tabs: Array<{ id: string; label: string; testId?: string }>
+}>()
+const attrs = useAttrs()
 const extra = computed(() => {
-  const { class: _class, role: _role, "aria-label": _label, ...rest } = attrs;
-  return rest;
-});
+  const { class: _class, role: _role, 'aria-label': _label, ...rest } = attrs
+  return rest
+})
 </script>
 
 <template>

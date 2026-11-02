@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import Feedback from "../feedback/Feedback.vue";
+import Feedback from '../feedback/Feedback.vue'
 
 withDefaults(
   defineProps<{
-    status?: string;
-    label?: string;
-    tone?: "info" | "error" | "warning" | "success";
+    status?: string
+    label?: string
+    tone?: 'info' | 'error' | 'warning' | 'success'
   }>(),
-  { status: "就绪", label: "运行时状态", tone: "info" },
-);
+  { status: '就绪', label: '运行时状态', tone: 'info' },
+)
 </script>
 
 <template>

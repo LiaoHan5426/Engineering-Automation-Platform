@@ -1,35 +1,37 @@
 <script setup lang="ts">
-import { computed, useAttrs } from "vue";
+import { computed, useAttrs } from 'vue'
 
-defineOptions({ inheritAttrs: false });
+defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
-  modelValue?: boolean | readonly unknown[];
-  value?: unknown;
-  disabled?: boolean;
-}>();
+  modelValue?: boolean | readonly unknown[]
+  value?: unknown
+  disabled?: boolean
+}>()
 const emit = defineEmits<{
-  "update:modelValue": [boolean | unknown[]];
-  change: [Event];
-}>();
-const attrs = useAttrs();
+  'update:modelValue': [boolean | unknown[]]
+  change: [Event]
+}>()
+const attrs = useAttrs()
 const extra = computed(() => {
-  const { class: _class, onChange: _onChange, checked: _checked, ...rest } = attrs;
-  return rest;
-});
+  const { class: _class, onChange: _onChange, checked: _checked, ...rest } = attrs
+  return rest
+})
 const checked = computed(() =>
-  Array.isArray(props.modelValue) ? props.modelValue.includes(props.value) : Boolean(props.modelValue),
-);
+  Array.isArray(props.modelValue)
+    ? props.modelValue.includes(props.value)
+    : Boolean(props.modelValue),
+)
 
 function onChange(event: Event) {
-  const next = (event.target as HTMLInputElement).checked;
+  const next = (event.target as HTMLInputElement).checked
   if (Array.isArray(props.modelValue)) {
-    const list = props.modelValue.filter((item) => item !== props.value);
-    emit("update:modelValue", next ? [...list, props.value] : list);
+    const list = props.modelValue.filter((item) => item !== props.value)
+    emit('update:modelValue', next ? [...list, props.value] : list)
   } else {
-    emit("update:modelValue", next);
+    emit('update:modelValue', next)
   }
-  emit("change", event);
+  emit('change', event)
 }
 </script>
 

@@ -1,0 +1,40 @@
+import { describe, expect, it } from 'vite-plus/test'
+import { createSSRApp } from 'vue'
+import { renderToString } from 'vue/server-renderer'
+import { i18n } from '../../../src/lib/i18n'
+import BuilderWorkspace from '../../../src/features/plugins/BuilderWorkspace.vue'
+import PluginCenter from '../../../src/features/plugins/PluginCenter.vue'
+import { createPluginHost } from '../../../src/features/plugins/host'
+import { memoryStore } from '../../../src/features/plugins/model'
+
+describe('plugin prototype views', () => {
+  it('renders separate Builder design instances without stacking legacy demonstrations', async () => {
+    const host = createPluginHost(memoryStore())
+    const alpha = await renderToString(
+      createSSRApp(BuilderWorkspace, { instanceId: 'alpha', host }).use(i18n),
+    )
+    const beta = await renderToString(
+      createSSRApp(BuilderWorkspace, { instanceId: 'beta', host }).use(i18n),
+    )
+
+    expect(alpha).toContain('data-testid="builder-alpha"')
+    expect(beta).toContain('data-testid="builder-beta"')
+    expect(alpha).toContain('data-testid="grapes-scaffold"')
+    expect(alpha).toContain('data-testid="builder-tab-legacy"')
+    expect(alpha).not.toContain('data-testid="mock-task"')
+    expect(alpha).not.toContain('data-testid="builder-layout-draft"')
+    expect(alpha).not.toContain('已交付')
+  })
+
+  it('lists the preinstalled plugins with requests and no grants', async () => {
+    const host = createPluginHost(memoryStore())
+    const html = await renderToString(createSSRApp(PluginCenter, { host }).use(i18n))
+    expect(html).toContain('插件中心')
+    expect(html).toContain('对话')
+    expect(html).toContain('构建工作台')
+    expect(html).toContain('repository.write')
+    expect(html).toContain('授予')
+    expect(html).toContain('无')
+    expect(html).toContain(i18n.global.t('plugin.centerHint'))
+  })
+})

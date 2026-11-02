@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import { computed, useAttrs } from "vue";
+import { computed, useAttrs } from 'vue'
 
-defineOptions({ inheritAttrs: false });
+defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
-  modelValue?: boolean;
-  disabled?: boolean;
-}>();
+  modelValue?: boolean
+  disabled?: boolean
+}>()
 const emit = defineEmits<{
-  "update:modelValue": [boolean];
-  change: [boolean];
-}>();
-const attrs = useAttrs();
+  'update:modelValue': [boolean]
+  change: [boolean]
+}>()
+const attrs = useAttrs()
 const extra = computed(() => {
-  const { class: _class, onClick: _onClick, ...rest } = attrs;
-  return rest;
-});
+  const { class: _class, onClick: _onClick, ...rest } = attrs
+  return rest
+})
 
 function toggle() {
-  if (props.disabled) return;
-  const next = !props.modelValue;
-  emit("update:modelValue", next);
-  emit("change", next);
+  if (props.disabled) return
+  const next = !props.modelValue
+  emit('update:modelValue', next)
+  emit('change', next)
 }
 </script>
 
