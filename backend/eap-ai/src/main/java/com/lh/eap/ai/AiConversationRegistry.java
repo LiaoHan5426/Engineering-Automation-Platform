@@ -22,21 +22,31 @@ public class AiConversationRegistry {
     public static final Duration IDLE = Duration.ofMinutes(30);
     public static final String PRINCIPAL = com.lh.eap.config.RuntimeWorkspace.OPERATOR_LABEL;
     public static final String MEMORY_NOTE =
-            "展示历史≠模型窗口≠任务工作记忆≠绑定；模型窗口重启不可恢复；敏感上下文仍逐轮清空，派生工作记忆一并失效。";
+            "展示历史≠模型窗口≠任务工作记忆≠绑定；模型窗口重启不可恢复；本地工作记忆可按会话ID落盘恢复，敏感清空/换模仍会使派生工作记忆失效。";
 
     private final ChatMemory memory;
     private final Supplier<Instant> clock;
+    private final WorkingMemoryStore workingMemoryStore;
     private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
     private final Object lock = new Object();
 
     @Autowired
+    public AiConversationRegistry(ChatMemory memory, WorkingMemoryStore workingMemoryStore) {
+        this(memory, Instant::now, workingMemoryStore);
+    }
+
     public AiConversationRegistry(ChatMemory memory) {
-        this(memory, Instant::now);
+        this(memory, Instant::now, null);
     }
 
     public AiConversationRegistry(ChatMemory memory, Supplier<Instant> clock) {
+        this(memory, clock, null);
+    }
+
+    public AiConversationRegistry(ChatMemory memory, Supplier<Instant> clock, WorkingMemoryStore workingMemoryStore) {
         this.memory = memory;
         this.clock = clock;
+        this.workingMemoryStore = workingMemoryStore;
     }
 
     public Session open(Path workspace, String workspaceLabel) {
@@ -72,7 +82,8 @@ public class AiConversationRegistry {
                 victim.ifPresent(old -> drop(old.id));
                 session = new Session(id, workspace, workspaceLabel, clock.get());
                 sessions.put(id, session);
-                // Rebuilt sessions start with empty task working memory; UI history is not replayed here.
+                restoreWorkingMemory(session);
+                // Model ChatMemory stays empty after reset; UI history is not replayed here.
             }
             var bound = session.binding;
             return new com.lh.eap.ai.dto.AiConversationReconnectResponse(id, session.workspaceLabel, MEMORY_NOTE,
@@ -96,6 +107,7 @@ public class AiConversationRegistry {
             if (clearMemory) {
                 memory.clear(EngineeringChatService.memoryKey(PRINCIPAL, id));
                 session.workingMemory.invalidate("MODEL_OR_BINDING_SWITCH", clock.get());
+                persistWorkingMemory(session);
             }
         }
     }
@@ -115,6 +127,7 @@ public class AiConversationRegistry {
             if (session.busy) throw new ResponseStatusException(HttpStatus.CONFLICT, "CONVERSATION_BUSY");
             session.workingMemory.replace(goal, constraints, facts, evidenceRefs, dependencyKeys, clock.get());
             session.touched = clock.get();
+            persistWorkingMemory(session);
             return session.workingMemory.snapshot();
         }
     }
@@ -203,6 +216,7 @@ public class AiConversationRegistry {
             memory.clear(EngineeringChatService.memoryKey(PRINCIPAL, id));
             // Keep sticky clear protection; derived working-memory facts cannot outlive cleared model window.
             session.workingMemory.invalidate("DERIVED_CONTEXT_CLEARED", clock.get());
+            persistWorkingMemory(session);
             return true;
         }
     }
@@ -210,9 +224,12 @@ public class AiConversationRegistry {
     public void delete(UUID id) {
         synchronized (lock) {
             var session = sessions.get(id);
-            if (session == null) return;
+            if (session == null) {
+                if (workingMemoryStore != null) workingMemoryStore.delete(id);
+                return;
+            }
             if (session.busy) throw new ResponseStatusException(HttpStatus.CONFLICT, "CONVERSATION_BUSY");
-            drop(id);
+            drop(id, true);
         }
     }
 
@@ -236,8 +253,30 @@ public class AiConversationRegistry {
     }
 
     private void drop(UUID id) {
+        drop(id, false);
+    }
+
+    private void drop(UUID id, boolean purgeWorkingMemoryStore) {
         var removed = sessions.remove(id);
         if (removed != null) memory.clear(EngineeringChatService.memoryKey(PRINCIPAL, id));
+        if (purgeWorkingMemoryStore && workingMemoryStore != null) workingMemoryStore.delete(id);
+    }
+
+    private void restoreWorkingMemory(Session session) {
+        if (workingMemoryStore == null) return;
+        workingMemoryStore.load(session.id).ifPresent(snapshot -> {
+            if (!snapshot.invalidation().isBlank()) {
+                session.workingMemory.invalidate(snapshot.invalidation(), snapshot.updatedAt());
+            } else {
+                session.workingMemory.replace(snapshot.goal(), snapshot.constraints(), snapshot.facts(),
+                        snapshot.evidenceRefs(), snapshot.dependencyKeys(), snapshot.updatedAt());
+            }
+        });
+    }
+
+    private void persistWorkingMemory(Session session) {
+        if (workingMemoryStore == null) return;
+        workingMemoryStore.save(session.id, session.workingMemory.snapshot());
     }
 
     public static final class Session {

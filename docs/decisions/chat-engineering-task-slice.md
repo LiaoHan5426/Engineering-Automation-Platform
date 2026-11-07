@@ -85,4 +85,8 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 
 ## 任务工作记忆 UI/PUT（2026-11-07，离线通过）
 
-`PUT /api/ai/conversations/{id}/working-memory` 写入目标/约束/事实引用（无正文）；聊天区展示分层说明并可保存目标。`WorkingMemoryApiTest` 与 `workingMemorySession` 通过。仍非跨重启持久。
+`PUT /api/ai/conversations/{id}/working-memory` 写入目标/约束/事实引用（无正文）；聊天区展示分层说明并可保存目标。`WorkingMemoryApiTest` 与 `workingMemorySession` 通过。
+
+## 任务工作记忆本地持久（2026-11-07，离线通过）
+
+`FileWorkingMemoryStore` 落盘至 `.eap/working-memory`；进程重启后同会话 ID reconnect 恢复工作记忆、不恢复模型窗口；显式删除清盘。`WorkingMemoryPersistenceTest` 通过。

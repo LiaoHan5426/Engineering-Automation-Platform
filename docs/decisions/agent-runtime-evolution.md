@@ -15,7 +15,7 @@
 | 范围 | 源码事实与定位 | 未完成 / 不得推断 |
 |---|---|---|
 | 模型与工具循环 | `backend/pom.xml` 使用 Boot 4.1.1 / Spring AI 2.0.2；`EngineeringAiConfiguration` 使用官方 Memory/ToolCalling Advisor | 配置成功不证明供应商效果；不据此添加第二套循环 |
-| 会话记忆 | 20条 `MessageWindowChatMemory`；**MEM-01 首片** `TaskWorkingMemory` 与模型窗口分层，敏感清空/换模失效 | 非跨重启持久；UI 历史仍在浏览器；长期记忆未启动；清空保护未取消 |
+| 会话记忆 | 20条模型窗口；**MEM-01** 工作记忆分层+PUT/UI+`.eap/working-memory` 同 ID 恢复 | 模型窗口仍非跨重启；UI 历史在浏览器；长期记忆未启动；清空保护未取消 |
 | 敏感上下文 | `AiConversationRegistry.clearContextMemory`：知识/Skill一旦使用，后续每轮先清空模型记忆，包括移除资源和被拒请求 | 连续对话被主动牺牲；不能简单取消清空，派生回答也可能保留撤权知识 |
 | 检索 | PostgreSQL FTS/关键词 + 专家授权引用；**KR-01 首片**：`RetrievalBaseline`/`KeywordRetrievalProbe` 预定题集与离线阈值 | 无向量；实库 FTS 同题对照/延迟成本仍缺；引用不证明模型正确使用；KR-02 未触发 |
 | 上下文 | `TaskContext`/`AiChatApplication` 拼装；**CE-01 首片**：`ContextBudget` 字符预算/输出预留/超限观测（CHAR_ESTIMATE） | 非 provider token；无压缩选择策略；ChatMemory 未精确计量（标 UNKNOWN）；派生失效仍靠清空保护 |
@@ -49,7 +49,9 @@
 
 **KR-01 首片（2026-11-07，离线）**：`RetrievalBaseline.fixtureCases` 预定 7 题（direct/identifier/chinese/empty/authz/update）；阈值 `DIRECT_RECALL_AT_K_THRESHOLD=1.0`、`CHINESE_RECALL_AT_K_THRESHOLD=1.0`、authz/empty 失败数=0。`KeywordRetrievalProbe` 复用 `KnowledgeRepository.terms`，计量标 `KEYWORD_PROBE`，**不是** PostgreSQL `ts_rank` 等价证明。`RetrievalBaselineTest` 5 项通过。实库对照与延迟/成本仍待；未启动 KR-02。
 
-**MEM-01 首片（2026-11-07，离线）**：`TaskWorkingMemory` 保存目标/约束/事实引用/证据引用/依赖键（无正文）；与 `display_history`/`model_window`/`binding` 分层。`clearContextMemory` 与换模 `bind(..., clearMemory=true)` 失效工作记忆；sticky 清空保护不取消。会话响应附带快照。`TaskWorkingMemoryTest` 通过。非跨重启持久，无自动长期抽取。
+**MEM-01 首片（2026-11-07，离线）**：`TaskWorkingMemory` 保存目标/约束/事实引用/证据引用/依赖键（无正文）；与 `display_history`/`model_window`/`binding` 分层。`clearContextMemory` 与换模 `bind(..., clearMemory=true)` 失效工作记忆；sticky 清空保护不取消。会话响应附带快照。`TaskWorkingMemoryTest` 通过。
+
+**MEM-01 本地持久（2026-11-07，离线）**：`FileWorkingMemoryStore` 写入 `<workspace>/.eap/working-memory/<id>.json`；同 ID reconnect 可恢复工作记忆且**不**恢复 ChatMemory；空闲驱逐不删盘，显式 DELETE 才清盘；失效原因可落盘回读。`WorkingMemoryPersistenceTest` 3 项通过。无自动长期抽取。
 
 ## 4. 协议与框架选择
 
@@ -179,7 +181,7 @@ TC-02首片先人工读取某个编辑器实例的当前草稿/选中状态，�
 | TC-02 / P1 | TC-01职责合同后验证前端交互实例，协调实际Host而非等待完整SDK | 人工读取草稿/选中状态、多实例/revision/关闭断线、保存版本区别；模型反向调用另行评审 |
 | MCP-01 | **部分交付**：stdio Client 传输 + 假子进程协议闭环；复用授权/会话 | 外接官方只读包实网、分页发现、http/sse；拒绝/超时/隔离已有离线证据 |
 | PL-01 | 现有看板可信贡献迁移；不改Task/Run语义 | 激活回滚、启停/刷新恢复、实例隔离、在途停用、依赖缺失；无第二状态源 |
-| MEM-01 | **部分交付**：工作记忆状态机 + PUT API + 聊天目标 UI；敏感清空/换模失效；清空保护保留 | 跨重启持久、任务/Run 深度关联、对抗用例替代清空；长期自动抽取延期 |
+| MEM-01 | **部分交付**：状态机+PUT/UI+本地文件同 ID 重连恢复；敏感清空/换模失效落盘；显式删除清盘 | 任务/Run 深度关联、对抗用例替代清空；长期自动抽取延期 |
 | TM-01 | FS-01后做一个受管工具，复用CLI登记 | 锁版本/校验、失败回滚、实际调用、在途卸载阻止；不更改系统工具 |
 | PL-02 / SC-03 | PL-01后迁移原型编辑器并声明场景依赖；复用现有版本/交付链 | 缺依赖提示、配置保留、停用不丢版本；设计→候选→应用→验证→人工接受仍独立 |
 | KR-02 / FW-01 | 基线证明检索不足或框架阻碍后，独立批准对照 | 相同样例指标与兼容/迁移代价，采用/拒绝依据；不默认换框架或加向量库 |
