@@ -406,8 +406,8 @@ function open(task: BoardTask) {
       data-testid="board-create-form"
       @submit.prevent="create"
     >
-      <label
-        >{{ t('desktop.' + createColumn)
+      <label class="new-task-form__title"
+        >{{ t('preview.taskTitle')
         }}<Input
           v-model="title"
           required
@@ -422,7 +422,7 @@ function open(task: BoardTask) {
         }}<Textarea
           v-model="newGoal"
           data-testid="board-new-goal"
-          rows="2"
+          rows="4"
           maxlength="4000"
           :required="createColumn === 'ready'"
           :disabled="busy || !!createRequest"
@@ -432,7 +432,7 @@ function open(task: BoardTask) {
         }}<Textarea
           v-model="newCriteria"
           data-testid="board-new-criteria"
-          rows="2"
+          rows="4"
           maxlength="4000"
           :required="createColumn === 'ready'"
           :disabled="busy || !!createRequest"
@@ -445,16 +445,19 @@ function open(task: BoardTask) {
       <p v-else class="board-notice" data-testid="board-link-none">
         {{ t('desktop.boardLinkNone') }}
       </p>
-      <Button type="submit" variant="primary" size="sm" :disabled="busy || !title.trim()">{{
-        t(createRequest ? 'desktop.boardRetryCreate' : 'preview.save')
-      }}</Button>
-      <Button
-        type="button"
-        size="sm"
-        :disabled="busy || !!createRequest"
-        @click="creating = false"
-        >{{ t('preview.close') }}</Button
-      >
+      <div class="new-task-form__actions">
+        <Button type="submit" variant="primary" size="sm" :disabled="busy || !title.trim()">{{
+          t(createRequest ? 'desktop.boardRetryCreate' : 'preview.save')
+        }}</Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          :disabled="busy || !!createRequest"
+          @click="creating = false"
+          >{{ t('preview.close') }}</Button
+        >
+      </div>
     </form>
     <div class="board-tools">
       <label
@@ -834,10 +837,13 @@ function open(task: BoardTask) {
   min-height: 100%;
 }
 header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 20px;
+  align-items: end;
+}
+header > div {
+  min-width: 0;
 }
 h1 {
   font-size: 24px;
@@ -846,19 +852,26 @@ h1 {
 header p {
   font-size: 12px;
   color: var(--text-mute);
+  max-width: 62ch;
+  line-height: 1.55;
 }
 .eyebrow {
   font-size: 10px;
 }
 .board-tools {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  align-items: end;
+  gap: 12px 16px;
   flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
 }
 .board-tools > span {
   font-size: 11px;
   color: var(--text-mute);
+  align-self: center;
 }
 :deep(.eap-input),
 input:not(.eap-input) {
@@ -866,7 +879,6 @@ input:not(.eap-input) {
   width: 100%;
   min-width: 0;
 }
-.new-task-form,
 .task-moves {
   display: flex;
   gap: 8px;
@@ -956,19 +968,6 @@ h2 > span {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   border: 0;
-}
-.board-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-}
-.board-tools label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-soft);
 }
 h2 > .planned {
   background: var(--text-mute);
@@ -1091,21 +1090,59 @@ h2 > .done {
   }
 }
 .new-task-form {
-  align-items: end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px 16px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
 }
 .new-task-form label {
   display: grid;
   gap: 6px;
   font-size: 12px;
+  color: var(--text-soft);
+  min-width: 0;
+}
+.new-task-form__title {
+  grid-column: 1 / -1;
+}
+.new-task-form .preparation-field {
+  flex: unset;
+  min-width: 0;
+}
+.new-task-form :deep(.eap-input),
+.new-task-form :deep(.eap-textarea) {
+  max-width: none;
+  width: 100%;
+}
+.new-task-form :deep(.eap-textarea) {
+  min-height: 96px;
+  resize: vertical;
+}
+.new-task-form .board-notice,
+.new-task-form .link-session,
+.new-task-form__actions {
+  grid-column: 1 / -1;
+}
+.new-task-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 .board-tools label {
   display: grid;
   gap: 5px;
   font-size: 12px;
   min-width: 0;
+  color: var(--text-soft);
 }
 .board-tools :deep(.eap-select) {
-  max-width: min(320px, 100%);
+  max-width: min(360px, 100%);
+  min-width: 160px;
 }
 .board-detail {
   display: grid;
@@ -1169,13 +1206,13 @@ h2 > .done {
   font-weight: 600;
   color: var(--text-soft);
 }
-.new-task-form .preparation-field {
-  flex: 1 1 280px;
-  min-width: 0;
-}
 .new-task-form .board-notice {
-  flex-basis: 100%;
   margin: 0;
+}
+@media (max-width: 760px) {
+  .new-task-form {
+    grid-template-columns: 1fr;
+  }
 }
 .preparation-missing {
   color: var(--warn-text);

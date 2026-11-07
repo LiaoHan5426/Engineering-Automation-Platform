@@ -411,8 +411,14 @@ async function submitServer() {
         <div class="cap-head__main">
           <h2>本机数据布局（FS-01）</h2>
           <p>
-            只读盘点逻辑路径与迁移就绪候选；不执行物理迁移。physicalMigration=
-            {{ dataLayout.physicalMigration ? 'true' : 'false' }}。
+            只读盘点逻辑路径与迁移就绪候选；不执行物理迁移。
+          </p>
+          <p class="hint cap-head__flags" data-testid="data-layout-physical-migration">
+            physicalMigration
+            <Badge
+              :tone="dataLayout.physicalMigration ? 'warning' : 'neutral'"
+              :label="dataLayout.physicalMigration ? 'true' : 'false'"
+            />
           </p>
           <p class="hint" data-testid="data-layout-inventory">
             盘点 {{ dataLayout.inventory?.total ?? dataLayout.entries.length }} · 存在
@@ -437,15 +443,17 @@ async function submitServer() {
             {{ dataLayout.inventory.byKind.other }}
           </p>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          data-testid="data-layout-refresh"
-          :disabled="dataLayoutBusy || loading"
-          @click="refreshDataLayout"
-        >
-          刷新盘点
-        </Button>
+        <div class="cap-head__tools">
+          <Button
+            variant="secondary"
+            size="sm"
+            data-testid="data-layout-refresh"
+            :disabled="dataLayoutBusy || loading"
+            @click="refreshDataLayout"
+          >
+            刷新盘点
+          </Button>
+        </div>
       </header>
       <ul class="trusted-tool-list" data-testid="data-layout-entries">
         <li
@@ -943,25 +951,28 @@ async function submitServer() {
         </header>
         <section v-if="productionMatrix.length" data-testid="mcp-production-matrix">
           <h3>官方只读生产矩阵</h3>
-          <ul>
+          <p class="hint">生产授权范围；call 验证与仅 list 分开标明，不表示已对本机执行。</p>
+          <ul class="mcp-matrix-list">
             <li
               v-for="entry in productionMatrix"
               :key="entry.packageAtVersion"
-              class="mono"
+              class="mcp-matrix-item"
               :data-testid="`mcp-matrix-${entry.packageName}`"
             >
-              {{ entry.packageAtVersion }} · 首选 {{ entry.preferredTool }}
-              <p class="hint">
-                已 call 验证
-                {{ (entry.callVerifiedTools ?? entry.readonlyTools).join('、') || '—' }}
-              </p>
-              <p
-                v-if="entry.listOnlyTools?.length"
-                class="hint"
-                :data-testid="`mcp-matrix-list-only-${entry.packageName}`"
-              >
-                仅 list（未 call） {{ entry.listOnlyTools.join('、') }}
-              </p>
+              <p class="mcp-matrix-item__title mono">{{ entry.packageAtVersion }}</p>
+              <div class="mcp-matrix-item__meta">
+                <Badge tone="neutral" :label="`首选 ${entry.preferredTool}`" />
+                <Badge
+                  tone="success"
+                  :label="`已 call ${(entry.callVerifiedTools ?? entry.readonlyTools).join('、') || '—'}`"
+                />
+                <Badge
+                  v-if="entry.listOnlyTools?.length"
+                  tone="warning"
+                  :label="`仅 list ${entry.listOnlyTools.join('、')}`"
+                  :data-testid="`mcp-matrix-list-only-${entry.packageName}`"
+                />
+              </div>
             </li>
           </ul>
         </section>

@@ -1126,9 +1126,12 @@
   flex: 1 1 0;
   min-height: 0;
   overflow: auto;
-  padding: 16px max(24px, calc((100% - 980px) / 2)) 28px;
+  padding: 16px max(24px, calc((100% - 980px) / 2)) 20px;
   overscroll-behavior: contain;
   scroll-padding-bottom: 120px;
+}
+.chat-main > .chat-feed {
+  padding-bottom: 8px;
 }
 .chat-feed .preview-welcome {
   padding-bottom: 8px;
@@ -1348,10 +1351,12 @@
   min-height: 0;
 }
 .chat-main > .chat-composer {
+  position: relative;
+  z-index: 2;
   flex: 0 0 auto;
   width: calc(100% - 40px);
   max-width: 980px;
-  margin: 12px auto 20px;
+  margin: 8px auto 20px;
   padding: 14px 16px;
   background: var(--surface);
   border: 1px solid var(--border-strong);

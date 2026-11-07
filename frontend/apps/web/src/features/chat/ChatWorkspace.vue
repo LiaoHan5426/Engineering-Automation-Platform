@@ -741,135 +741,41 @@ onMounted(async () => {
     data-testid="chat-workspace"
   >
     <div class="page-head chat-page-head live-utilities">
-      <div v-if="session.phase.value === 'loading'" class="session-status">
-        <p class="hint">{{ t('chat.loading') }}</p>
-      </div>
-      <div v-else-if="session.phase.value === 'offline'" class="session-status">
-        <p class="hint">{{ t('chat.offline') }}</p>
-      </div>
-      <div v-else class="session-status">
-        <Badge
-          v-if="!mock"
-          :tone="statusTone()"
-          :label="t(stateKey[session.status.value?.state ?? 'disabled'])"
-        />
-        <p v-if="session.status.value?.errorCode" class="hint">
-          {{ session.status.value.errorCode }}
-        </p>
-        <p
-          class="hint session-path"
-          data-testid="session-workspace-path"
-          :title="
-            [
-              displayWorkspacePath ? `${t('chat.workspace')}：${displayWorkspacePath}` : '',
-              session.status.value?.workspaceLabel
-                ? `id：${session.status.value.workspaceLabel}`
-                : '',
-              session.memoryNote.value ? `${t('chat.memory')}：${session.memoryNote.value}` : '',
-            ]
-              .filter(Boolean)
-              .join(' · ')
-          "
-        >
-          {{ displayWorkspacePath }}
-        </p>
-        <section
-          v-if="session.conversationId.value"
-          class="working-memory"
-          data-testid="working-memory"
-        >
-          <h3>{{ t('workingMemory.title') }}</h3>
-          <p class="hint">{{ t('workingMemory.note') }}</p>
-          <Feedback
-            v-if="session.workingMemory.value?.invalidation"
-            tone="warning"
-            data-testid="working-memory-invalidation"
-          >
-            {{ t('workingMemory.invalidation') }}：{{ session.workingMemory.value.invalidation }}
-          </Feedback>
-          <p
-            v-if="session.workingMemory.value?.invalidation"
-            class="hint"
-            data-testid="working-memory-sticky-retained"
-          >
-            {{ t('workingMemory.stickyClearRetained') }}
+      <div class="live-utilities__row">
+        <div v-if="session.phase.value === 'loading'" class="session-status">
+          <p class="hint">{{ t('chat.loading') }}</p>
+        </div>
+        <div v-else-if="session.phase.value === 'offline'" class="session-status">
+          <p class="hint">{{ t('chat.offline') }}</p>
+        </div>
+        <div v-else class="session-status">
+          <Badge
+            v-if="!mock"
+            :tone="statusTone()"
+            :label="t(stateKey[session.status.value?.state ?? 'disabled'])"
+          />
+          <p v-if="session.status.value?.errorCode" class="hint">
+            {{ session.status.value.errorCode }}
           </p>
           <p
-            v-else-if="session.workingMemory.value?.goal"
-            class="hint"
-            data-testid="working-memory-goal-text"
-          >
-            {{ t('workingMemory.goal') }}：{{ session.workingMemory.value.goal }}
-          </p>
-          <p
-            v-else-if="!hasWorkingMemoryMaterial"
-            class="hint"
-            data-testid="working-memory-empty"
-          >
-            {{ t('workingMemory.empty') }}
-          </p>
-          <p
-            v-if="session.workingMemory.value?.constraints?.length"
-            class="hint"
-            data-testid="working-memory-constraints"
-          >
-            {{ t('workingMemory.constraints') }}：{{
-              session.workingMemory.value.constraints.join(' · ')
-            }}
-          </p>
-          <p
-            v-if="session.workingMemory.value?.facts?.length"
-            class="hint"
-            data-testid="working-memory-facts"
-          >
-            {{ t('workingMemory.facts') }}：{{
-              session.workingMemory.value.facts
-                .map((fact) => `${fact.kind}:${fact.id}${fact.revisionOrDigest ? '@' + fact.revisionOrDigest : ''}`)
+            class="hint session-path"
+            data-testid="session-workspace-path"
+            :title="
+              [
+                displayWorkspacePath ? `${t('chat.workspace')}：${displayWorkspacePath}` : '',
+                session.status.value?.workspaceLabel
+                  ? `id：${session.status.value.workspaceLabel}`
+                  : '',
+                session.memoryNote.value ? `${t('chat.memory')}：${session.memoryNote.value}` : '',
+              ]
+                .filter(Boolean)
                 .join(' · ')
-            }}
-          </p>
-          <p
-            v-if="session.workingMemory.value?.layers?.length"
-            class="hint"
-            data-testid="working-memory-layers"
+            "
           >
-            {{ t('workingMemory.layers') }}：{{ session.workingMemory.value.layers.join(' · ') }}
+            {{ displayWorkspacePath }}
           </p>
-          <p
-            v-if="session.workingMemory.value?.dependencyKeys?.length"
-            class="hint"
-            data-testid="working-memory-dependencies"
-          >
-            {{ t('workingMemory.dependencies') }}：{{
-              session.workingMemory.value.dependencyKeys.join(' · ')
-            }}
-          </p>
-          <p
-            v-if="session.workingMemory.value?.evidenceRefs?.length"
-            class="hint"
-            data-testid="working-memory-evidence"
-          >
-            {{ t('workingMemory.evidence') }}：{{
-              session.workingMemory.value.evidenceRefs.join(' · ')
-            }}
-          </p>
-          <form class="working-memory-form" @submit.prevent="saveWorkingGoal">
-            <Input
-              v-model="workingGoalDraft"
-              data-testid="working-memory-goal"
-              :placeholder="t('workingMemory.goalPlaceholder')"
-            />
-            <Button
-              size="sm"
-              type="submit"
-              data-testid="working-memory-save"
-              :disabled="!workingGoalDraft.trim() || session.sending.value"
-              >{{ t('workingMemory.saveGoal') }}</Button
-            >
-          </form>
-        </section>
-      </div>
-      <div class="session-tools">
+        </div>
+        <div class="session-tools">
         <Button
           size="sm"
           variant="ghost"
@@ -962,7 +868,107 @@ onMounted(async () => {
             ><IconEllipsis
           /></Button>
         </DropdownMenu>
+        </div>
       </div>
+      <section
+        v-if="session.conversationId.value"
+        class="working-memory"
+        data-testid="working-memory"
+      >
+        <h3>{{ t('workingMemory.title') }}</h3>
+        <p class="hint">{{ t('workingMemory.note') }}</p>
+        <Feedback
+          v-if="session.workingMemory.value?.invalidation"
+          tone="warning"
+          data-testid="working-memory-invalidation"
+        >
+          {{ t('workingMemory.invalidation') }}：{{ session.workingMemory.value.invalidation }}
+        </Feedback>
+        <p
+          v-if="session.workingMemory.value?.invalidation"
+          class="hint"
+          data-testid="working-memory-sticky-retained"
+        >
+          {{ t('workingMemory.stickyClearRetained') }}
+        </p>
+        <p
+          v-else-if="session.workingMemory.value?.goal"
+          class="hint"
+          data-testid="working-memory-goal-text"
+        >
+          {{ t('workingMemory.goal') }}：{{ session.workingMemory.value.goal }}
+        </p>
+        <p
+          v-else-if="!hasWorkingMemoryMaterial"
+          class="hint"
+          data-testid="working-memory-empty"
+        >
+          {{ t('workingMemory.empty') }}
+        </p>
+        <p
+          v-if="session.workingMemory.value?.constraints?.length"
+          class="hint"
+          data-testid="working-memory-constraints"
+        >
+          {{ t('workingMemory.constraints') }}：{{
+            session.workingMemory.value.constraints.join(' · ')
+          }}
+        </p>
+        <p
+          v-if="session.workingMemory.value?.facts?.length"
+          class="hint"
+          data-testid="working-memory-facts"
+        >
+          {{ t('workingMemory.facts') }}：{{
+            session.workingMemory.value.facts
+              .map(
+                (fact) =>
+                  `${fact.kind}:${fact.id}${fact.revisionOrDigest ? '@' + fact.revisionOrDigest : ''}`,
+              )
+              .join(' · ')
+          }}
+        </p>
+        <p
+          v-if="session.workingMemory.value?.layers?.length"
+          class="hint"
+          data-testid="working-memory-layers"
+        >
+          {{ t('workingMemory.layers') }}：{{ session.workingMemory.value.layers.join(' · ') }}
+        </p>
+        <p
+          v-if="session.workingMemory.value?.dependencyKeys?.length"
+          class="hint"
+          data-testid="working-memory-dependencies"
+        >
+          {{ t('workingMemory.dependencies') }}：{{
+            session.workingMemory.value.dependencyKeys.join(' · ')
+          }}
+        </p>
+        <p
+          v-if="session.workingMemory.value?.evidenceRefs?.length"
+          class="hint"
+          data-testid="working-memory-evidence"
+        >
+          {{ t('workingMemory.evidence') }}：{{
+            session.workingMemory.value.evidenceRefs.join(' · ')
+          }}
+        </p>
+        <form class="working-memory-form" @submit.prevent="saveWorkingGoal">
+          <Input
+            v-model="workingGoalDraft"
+            data-testid="working-memory-goal"
+            :placeholder="t('workingMemory.goalPlaceholder')"
+          />
+          <Button
+            size="sm"
+            type="submit"
+            variant="secondary"
+            data-testid="working-memory-save"
+            :disabled="!workingGoalDraft.trim() || session.sending.value"
+            >{{ t('workingMemory.saveGoal') }}</Button
+          >
+        </form>
+      </section>
     </div>
 
     <WorkbenchFrame
@@ -1809,17 +1815,26 @@ onMounted(async () => {
 }
 .live-utilities {
   display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 8px;
-  padding: 8px 24px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 8px 24px 12px;
   margin: 0;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
   min-width: 0;
 }
+.live-utilities__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
 .session-status {
   min-width: 0;
+  flex: 1 1 auto;
 }
 .session-tools {
   display: flex;
@@ -1831,16 +1846,63 @@ onMounted(async () => {
 .session-tools .shell-tool {
   white-space: nowrap;
 }
+.working-memory {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2, var(--panel-bg));
+}
+.working-memory h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.working-memory > .hint {
+  margin: 0;
+  max-width: 72ch;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.working-memory-form {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+.working-memory-form :deep(.eap-input) {
+  flex: 1 1 auto;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+}
+.working-memory-form :deep(.eap-button) {
+  flex: 0 0 auto;
+}
 
 @media (max-width: 760px) {
   .live-utilities {
-    padding: 8px 12px;
-    gap: 6px;
+    padding: 8px 12px 10px;
+    gap: 8px;
+  }
+  .live-utilities__row {
     flex-wrap: wrap;
   }
   .session-tools {
     max-width: 100%;
     margin-left: 0;
+    flex-wrap: wrap;
+  }
+  .working-memory {
+    max-width: none;
+  }
+  .working-memory-form {
     flex-wrap: wrap;
   }
 }
