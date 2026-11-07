@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main`（待提交 MCP-01 Streamable-HTTP GET/Last-Event-ID 续传；含 `995e810` 生产白名单）。历史全量数字仅为既往证据。本轮：SSE 断流后按 `Last-Event-ID` GET 续传；`StreamableHttpMcpTransportTest` 5 项通过。无 UI，未做浏览器验收。更多官方包矩阵仍待。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 3b0cfcd`（MCP-01 Streamable-HTTP GET/Last-Event-ID 续传；含 `995e810` 生产白名单）。历史全量数字仅为既往证据。本轮：SSE 断流后按 `Last-Event-ID` GET 续传；`StreamableHttpMcpTransportTest` 5 项通过。无 UI，未做浏览器验收。更多官方包矩阵仍待。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
