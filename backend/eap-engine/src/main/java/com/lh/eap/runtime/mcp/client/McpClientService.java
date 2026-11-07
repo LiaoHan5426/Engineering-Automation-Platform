@@ -66,6 +66,7 @@ public class McpClientService {
         var tool = toolName(scope.serverId(), capability);
         authorize(scope);
         ensureReadOnly(tool);
+        ensureProductionGrant(scope.serverId(), tool);
         var session = openSession(scope);
         try {
             if (!(session.client().listTools().stream().anyMatch(item -> tool.equals(String.valueOf(item.get("name")))))) {
@@ -156,6 +157,15 @@ public class McpClientService {
         var lowered = tool.toLowerCase();
         if (lowered.contains("write") || lowered.contains("delete") || lowered.contains("exec")) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "MCP_TOOL_NOT_READ_ONLY");
+        }
+    }
+
+    private void ensureProductionGrant(String serverId, String tool) {
+        var server = registry.find(serverId).orElse(null);
+        if (server == null) return;
+        if (!McpProductionAllowlist.matchesOfficialReadonly(server.endpoint())) return;
+        if (!McpProductionAllowlist.productionGranted(server.endpoint(), tool)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "MCP_PRODUCTION_TOOL_NOT_ALLOWED");
         }
     }
 

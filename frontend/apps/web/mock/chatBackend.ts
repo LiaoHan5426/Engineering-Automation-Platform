@@ -20,6 +20,7 @@ import { createDatabaseBackend } from './databaseBackend'
 import { createBoardBackend } from './boardBackend'
 import { createSkillBackend, validSkillTaskFields } from './skillBackend'
 import { createScenarioBackend } from './scenarioBackend'
+import { createMockCapabilityBackend } from './capabilityBackend'
 import {
   mockExpertPage,
   mockExpertContext,
@@ -30,6 +31,7 @@ import {
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..')
 
 export function createMockChatBackend() {
+  const capabilityBackend = createMockCapabilityBackend()
   let sequence = 0
   const instanceId = randomUUID()
   const conversations = new Map<string, AiConversation>()
@@ -105,6 +107,8 @@ export function createMockChatBackend() {
       if (configured) return configured
       const board = boardBackend.handle(method, requestUrl, body)
       if (board) return board
+      const capability = capabilityBackend.handle(method, path)
+      if (capability) return capability
       if (path === '/prototype-versions' && method === 'GET')
         return result(200, {
           items: versions.filter(

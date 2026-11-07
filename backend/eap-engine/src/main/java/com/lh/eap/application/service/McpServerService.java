@@ -4,6 +4,7 @@ import com.lh.eap.persistence.mapper.McpServerRegistry;
 import com.lh.eap.persistence.mapper.CapabilityUsage;
 import com.lh.eap.domain.expert.ExpertGraph;
 import com.lh.eap.common.SensitiveData;
+import com.lh.eap.runtime.mcp.client.McpProductionAllowlist;
 
 import com.lh.eap.core.LocalBinaries;
 import java.util.*;
@@ -38,7 +39,8 @@ import org.springframework.stereotype.Service;
 public class McpServerService {
     /** Same shape {@link ExpertGraph} requires of a capability id segment, enforced at the source. */
     static final Pattern SEGMENT = Pattern.compile("[a-z0-9][a-z0-9_-]{0,60}");
-    static final Set<String> TRANSPORTS = Set.of("stdio", "http", "sse");
+    /** Delegates to {@link McpProductionAllowlist#TRANSPORTS} (includes streamable-http). */
+    static final Set<String> TRANSPORTS = McpProductionAllowlist.TRANSPORTS;
 
     private final JdbcTemplate jdbc;
     private final McpServerRegistry registry;
@@ -71,6 +73,9 @@ public class McpServerService {
             entry.put("enabled", row.enabled());
             entry.put("usable", row.trusted() && row.enabled());
             entry.put("tools", row.tools());
+            var productionTools = McpProductionAllowlist.productionGrantedTools(row.endpoint(), row.tools());
+            entry.put("productionGrantedTools", productionTools);
+            entry.put("productionGranted", !productionTools.isEmpty());
             var capabilities = row.tools().stream().map(tool -> McpServerRegistry.capabilityId(id, tool)).toList();
             entry.put("capabilities", capabilities);
             var authorised = new LinkedHashSet<String>();
@@ -103,15 +108,17 @@ public class McpServerService {
         }
         var label = name == null || name.isBlank() ? serverId : name.trim();
         if (label.length() > 200) throw new IllegalArgumentException("服务器名称最多200字符");
-        var channel = transport == null || transport.isBlank() ? "stdio" : transport.trim().toLowerCase(Locale.ROOT);
-        if (!TRANSPORTS.contains(channel)) throw new IllegalArgumentException("传输方式只能是 stdio、http 或 sse");
+        var channel = McpProductionAllowlist.normalizeTransport(transport);
+        if (!McpProductionAllowlist.isAllowedTransport(channel)) {
+            throw new IllegalArgumentException("传输方式只能是 stdio、http、sse 或 streamable-http");
+        }
         var location = endpoint == null ? "" : endpoint.trim();
         if ("stdio".equals(channel)) {
             if (location.isEmpty()) throw new IllegalArgumentException("stdio 服务器必须填写启动命令");
             if (location.length() > 300) throw new IllegalArgumentException("启动命令最多300字符");
         } else {
             if (!location.startsWith("http://") && !location.startsWith("https://")) {
-                throw new IllegalArgumentException("http/sse 服务器必须填写 http:// 或 https:// 开头的地址");
+                throw new IllegalArgumentException("http/sse/streamable-http 服务器必须填写 http:// 或 https:// 开头的地址");
             }
             if (location.length() > 300) throw new IllegalArgumentException("地址最多300字符");
         }
@@ -129,6 +136,7 @@ public class McpServerService {
             if (!allowList.contains(tool)) allowList.add(tool);
         }
         if (allowList.size() > 50) throw new IllegalArgumentException("工具白名单最多50项");
+        McpProductionAllowlist.requireTrustedGrant(channel, location, allowList, trusted);
 
         var existing = rows().stream().filter(server -> server.id().equals(serverId)).findFirst().orElse(null);
         if (existing != null) {
@@ -220,10 +228,15 @@ public class McpServerService {
         result.put("checked", true);
         result.put("targetResolved", server.endpoint());
         result.put("reachable", true);
+        var productionTools = McpProductionAllowlist.productionGrantedTools(server.endpoint(), server.tools());
+        result.put("productionGrantedTools", productionTools);
+        result.put("productionGranted", !productionTools.isEmpty());
         if ("http".equals(server.transport())) {
             result.put("message", "远端地址格式有效；http JSON-RPC 传输已接入客户端，本探测仍非协议握手；工具白名单仍为操作者声明，未经协议验证。");
         } else if ("sse".equals(server.transport())) {
             result.put("message", "远端地址格式有效；legacy SSE 传输已接入客户端，本探测仍非协议握手；工具白名单仍为操作者声明，未经协议验证。");
+        } else if ("streamable-http".equals(server.transport()) || "streamable_http".equals(server.transport())) {
+            result.put("message", "远端地址格式有效；Streamable-HTTP 传输已接入客户端，本探测仍非协议握手；工具白名单仍为操作者声明，未经协议验证。");
         } else {
             result.put("message", "远端地址格式有效；未知传输尚未接入客户端，工具白名单仍为操作者声明，未经协议验证。");
         }
@@ -236,6 +249,10 @@ public class McpServerService {
         if (row.tools().isEmpty()) problems.add("工具白名单为空：该服务器不会发布任何能力");
         if (!row.enabled()) problems.add("未启用：平台不会把它的工具交给任何专家");
         if (!row.trusted()) problems.add("未信任：未信任的服务器不会被调用");
+        if (row.trusted()
+                && McpProductionAllowlist.productionGrantedTools(row.endpoint(), row.tools()).isEmpty()) {
+            problems.add("信任为操作者声明：未命中官方只读生产白名单，不视为生产授予");
+        }
         return List.copyOf(problems);
     }
 

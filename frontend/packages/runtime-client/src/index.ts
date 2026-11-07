@@ -89,6 +89,10 @@ export type McpServerItem = {
   enabled: boolean
   usable: boolean
   tools: string[]
+  /** Tools that hit the locked official production allowlist (subset of tools). */
+  productionGrantedTools?: string[]
+  /** True when at least one tool is production-granted. */
+  productionGranted?: boolean
   capabilities: string[]
   /** Experts granted one of its tools on activation. */
   authorisedExperts: string[]

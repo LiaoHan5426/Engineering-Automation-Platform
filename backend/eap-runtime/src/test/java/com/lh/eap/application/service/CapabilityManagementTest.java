@@ -314,7 +314,22 @@ class CapabilityManagementTest {
         assertTrue(assertThrows(IllegalArgumentException.class,
                 () -> service.save("files", "x", "carrier-pigeon", "x", List.of("search"), false, false))
                 .getMessage().contains("传输方式"));
+        assertTrue(assertThrows(IllegalArgumentException.class,
+                () -> service.save("official", "x", "stdio",
+                        com.lh.eap.runtime.mcp.client.OfficialReadonlyMcpLock.endpoint(),
+                        List.of("search"), true, true))
+                .getMessage().contains("MCP_PRODUCTION_TOOL_NOT_ALLOWED"));
         verify(jdbc, never()).update(anyString(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    /** Streamable-HTTP is a registered production transport; tools stay operator-declared until verified. */
+    @Test void streamableHttpRegistrationIsAccepted() {
+        var jdbc = mock(JdbcTemplate.class);
+        mcpService(jdbc).save("stream", "Streamable", "streamable-http",
+                "http://127.0.0.1:9/mcp", List.of("echo"), false, false);
+        verify(jdbc).update(argThat((String sql) -> sql != null && sql.contains("mcp_server")),
+                eq("stream"), eq("Streamable"), eq("streamable-http"), eq("http://127.0.0.1:9/mcp"),
+                eq(false), eq(false), argThat((String json) -> json != null && json.contains("echo")));
     }
 
     /** Registering is not authorizing: the server arrives disabled and untrusted. */

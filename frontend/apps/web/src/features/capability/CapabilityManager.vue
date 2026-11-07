@@ -501,10 +501,11 @@ async function submitServer() {
           </label>
           <label class="field-label">
             传输方式
-            <Select v-model="form.transport">
+            <Select v-model="form.transport" data-testid="mcp-transport">
               <option value="stdio">stdio（本机进程）</option>
               <option value="http">http（远端地址）</option>
               <option value="sse">sse（远端事件流）</option>
+              <option value="streamable-http">streamable-http（远端可流式）</option>
             </Select>
           </label>
           <label class="field-label">
@@ -580,6 +581,14 @@ async function submitServer() {
         <dl class="cap-meta">
           <dt>工具声明清单</dt>
           <dd class="mono">{{ server.tools.join('、') || '空（不会发布任何能力）' }}</dd>
+          <dt>生产授予工具</dt>
+          <dd class="mono" data-testid="mcp-production-granted">
+            {{
+              server.productionGrantedTools?.length
+                ? server.productionGrantedTools.join('、')
+                : '无（操作者声明，非官方生产白名单）'
+            }}
+          </dd>
           <dt>发布的能力</dt>
           <dd class="mono">{{ server.capabilities.join('、') || '—' }}</dd>
           <dt>已授权专家</dt>
