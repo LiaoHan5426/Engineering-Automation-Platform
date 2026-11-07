@@ -69,6 +69,8 @@
 
 **MEM-01 失效 mock UI（2026-11-07，mock 浏览器）**：发送含「记忆失效验收」或 `__INVALIDATE_WORKING_MEMORY__` 时 mock 会话工作记忆写 `invalidation=DEPENDENCY_CHANGED` 并清空目标/约束/事实；Chat 面板 `working-memory-invalidation` Feedback 展示。有目标/约束/事实/证据/失效原因时不叠空态。`:5174` 已验。不取消 sticky 清空，不宣称真实依赖同步。
 
+**MEM-01 sticky 诚实提示（2026-11-07，mock 浏览器）**：失效 Feedback 下追加 `working-memory-sticky-retained`，明示 sticky 清空保护仍保留、不恢复 ChatMemory。`:5174` 已验。
+
 ## 4. 协议与框架选择
 
 - MCP连接工具/资源；A2A面向独立Agent互操作；内部静态DAG不必套通信协议，也不是自主规划。
@@ -81,7 +83,9 @@
 - **MCP-01 生产授权白名单（2026-11-07）**：`McpProductionAllowlist` 锁定允许传输（含 streamable-http）与官方只读包 `echo`；信任官方包时拒绝越权工具；list/probe 回传 `productionGrantedTools`；调用路径再校验。非官方信任仍为操作者声明。`McpProductionAllowlistTest` 通过。
 - **MCP-01 Streamable-HTTP GET 续传（2026-11-07）**：`StreamableHttpMcpTransport` 记录 SSE `id`/`retry`；POST SSE 未拿到匹配响应时带 `Last-Event-ID` GET 续传；`StreamableHttpMcpTransportTest` 含断流重连用例。不宣称常驻 listen 线程。
 - **MCP-01 官方只读包矩阵（2026-11-07）**：锁定 everything/`echo`、sequential-thinking/`sequentialthinking`、memory/`read_graph` 与 **filesystem@2025.11.25/`list_directory`+`get_file_info`+`search_files`+`list_allowed_directories`+`directory_tree`**（门禁 stdio 附加允许根；实 call list+info+search+allowed；`directory_tree` 因上游 structuredContent 校验失败仅 tools/list 证明）；生产白名单与能力页共用；mock/真机已验五工具文案。追加包须先验工具存在。
+- **MCP-01 callVerified/listOnly 视图（2026-11-07）**：矩阵 `toView` 附加 `callVerifiedTools`/`listOnlyTools`；能力页分开展示；filesystem `directory_tree` 标仅 list。mock/真机已验。
 - **FS-01 kind/byteSize（2026-11-07）**：data-layout 条目报告 `kind`（missing/file/directory/other）；仅常规文件附带 `byteSize`，目录不递归计量。mock/真机浏览器已验。
+- **FS-01 inventory.byKind（2026-11-07）**：`inventory.byKind` 汇总 file/directory/missing/other；能力页展示。不递归扫盘。mock/真机已验。
 - **TC-01 调用摘要（2026-11-07）**：能力页在 stdout 前展示 capability/成功/exitCode/本地 `observedAt`；不宣称服务端时钟合同。mock/真机已验。
 - **SC-01 mock 保存断连（2026-11-07）**：mock `mockOutcome=save-lost` 先落盘 revision 再 502；前端「模拟保存断连」触发核对→`unknown`；`:5174` 已验。不等于用户产品接受。
 - **TD-01 清除探测缓存（2026-11-07）**：`POST /api/runtime/trusted-tools/probe-cache/clear` 清空内存+`.eap/cache/trusted-tool-probes.json`；能力页按钮；不改绑定/启停；mock/真机浏览器已验版本回未知。
@@ -236,11 +240,11 @@ mock 可信目录返回启用 `git-status`；`invoke` 默认成功 stdout，`moc
 |---|---|---|
 | 先保留缺陷门禁 | 场景保存UNKNOWN后的删除核对仍阻断；已有自身改页验收线独立推进 | 结果未知不误报删除/完成；原有交付证据保留 |
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + **派生清空 `DERIVED_CLEARED_BEFORE_SEND` mock（浏览器已验）**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
-| FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + **inventory 计数**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
+| FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + inventory + candidateCounts + **byKind**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测写回 + 持久化 + 清除探测缓存 + probeCache + **newestProbedAt**（mock/真机已验） | 更多依赖绑定与用户接受；不执行未知脚本、不整盘扫描或自动授权 |
 | TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消/unknown；调用摘要（exit/观测时间/elapsedMs）+ 失败 detail | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
 | TC-02 / P1 | TC-01职责合同后验证前端交互实例，协调实际Host而非等待完整SDK | 人工读取草稿/选中状态、多实例/revision/关闭断线、保存版本区别；模型反向调用另行评审 |
-| MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（everything + sequential-thinking + memory + filesystem/`list_directory`+`get_file_info`+`search_files`+`list_allowed_directories`+`directory_tree`）+ http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传；mock/真机已验五工具 | 继续追加已验证官方包；常驻 GET listen 未做 |
+| MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（含 filesystem 五工具）+ **callVerified/listOnly 视图** + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；mock/真机已验 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/持久化回滚 + 依赖缺失/激活失败呈现（mock 浏览器已验）；不改 Task/Run | 真实服务探测与用户接受；在途停用完整矩阵；无第二状态源；外部安装器延期 |
 | MEM-01 | **部分交付**：状态机+PUT/UI（约束/事实展示）+本地持久+Task/Run+知识/Skill 依赖对抗失效；敏感清空/换模/换任务/换依赖失效；显式删除清盘；mock 验目标/约束 + **DEPENDENCY_CHANGED 失效 UI** | sticky 清空仍保留；用户产品接受仍待；长期自动抽取延期 |
 | TM-01 | FS-01后做一个受管工具，复用CLI登记 | 锁版本/校验、失败回滚、实际调用、在途卸载阻止；不更改系统工具 |

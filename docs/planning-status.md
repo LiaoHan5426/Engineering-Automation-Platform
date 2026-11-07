@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / 4fcf114`（三切片并行：TD-01 newestProbedAt + TC-01 失败 detail/耗时呈现 + CE-01 COMPRESSION_NOT_ENABLED）。历史全量数字仅为既往证据。本轮：① TD-01 `probeCache.newestProbedAt`；② TC-01 失败提示含稳定 detail + 客户端 `elapsedMs`，失败不再与成功摘要叠示；③ CE-01 预算备注恒含 `COMPRESSION_NOT_ENABLED`。离线：TrustedToolCatalog/ContextBudget 定向通过；capability/chat mock 17/0。浏览器 mock `:5174` 已验最近探测时间、取消 detail、压缩备注；真机 `:5173` 已验 newestProbedAt 与成功摘要耗时。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 09cef65`（三切片并行：FS-01 inventory.byKind + MCP-01 callVerified/listOnly + MEM-01 sticky 诚实提示）。历史全量数字仅为既往证据。本轮：① FS-01 `inventory.byKind` file/directory/missing/other；② MCP-01 矩阵视图区分 `callVerifiedTools`/`listOnlyTools`（filesystem `directory_tree` 仅 list）；③ MEM-01 失效 Feedback 下追加 sticky 清空仍保留说明。离线：layout/matrix 定向通过；capability mock 15/0。浏览器 mock `:5174` 已验 byKind、list-only、sticky 文案；真机 `:5173` 已验 byKind 与 directory_tree 仅 list。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
@@ -33,15 +33,15 @@
 | CT-01 生命周期 | 记录回放/UNKNOWN阻塞保留；同ID重连+草稿重试保留；**本轮追加**：聊天主路径改为 SSE（`answer.delta`/`tool`/`final`）、`POST …/cancel`、执行快照游标、前端投影去重/缺序回归；`ChatExecutionStreamTest` 4项及前端 eventProjector/reconnect/wireApi 离线通过 | 用户重启后浏览器流式/取消/重连验收；不重放历史或宣称模型记忆恢复；跨重启进程接管仍待 |
 | RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与测试接受/拒绝决定已有刷新回放 | EAP自身改页完整证据、SQL实际任务证据及用户接受；不重复开发已有决定回放 |
 | Skill | 文本上传/粘贴+显式文本资源、不可变版本、CAS启停/回退、按需预览与Chat精确引用首片已实现；安全/保存恢复缺陷修复后父任务前端525项、后端647项（6跳过）、实库/浏览器及独立复核通过；见 [阶段记录](records/resource-history.md#skill-text-import) | 目录/仓库导入延期；不执行脚本或授予工具权限，不支持通用mock YAML解析；真实供应商效果与用户最终验收待定 |
-| MCP-01 / P0 | **部分交付**：stdio/http/SSE/Streamable-HTTP/白名单/GET 续传；官方矩阵 filesystem/`list_directory`+`get_file_info`+`search_files`+`list_allowed_directories`+`directory_tree`（门禁实 call 前四；tree 仅 list；`:5174`/`:5173` 已验文案） | 常驻 GET listen 未做；继续追加包 |
+| MCP-01 / P0 | **部分交付**：stdio/http/SSE/Streamable-HTTP/白名单/GET 续传；官方矩阵四包；**本轮**：视图区分 `callVerifiedTools`/`listOnlyTools`（`directory_tree` 仅 list；`:5174`/`:5173` 已验） | 常驻 GET listen 未做；继续追加包 |
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理 | 检索更新删除/来源与专家范围，SQL真实任务，CLI生命周期回归；不扩第二套执行器 |
 | PL-01 / P0 看板插件首片 | **部分交付**：board 可信预装启停/持久化回滚；**本轮**：服务依赖缺失与激活失败 sticky 呈现、刷新保留 Builder 实例；8 项离线 + mock 浏览器已验；不停 Task/Run | 真实服务探测与用户接受仍待；外部安装器延期 |
 | PL-02 / P1 设计器插件 | GrapesJS/Schema/版本已有；尚未按通用贡献机制迁移 | PL-01后复用现有设计器、版本和核心API，验证停用不丢草稿/版本；外部任意JS安装延期 |
 | SC-03 / P1 场景组合 | 原型到代码已有独立配置/设计/准备/交付切片，不是单个插件 | 依赖PL-01，设计器迁移与PL-02协调；声明所需插件/服务/资源、缺依赖不可用；应用不安装/授权/发送；SC-01 保存断连浏览器接受仍独立 |
 | CE-01 / P0 上下文工程 | **部分交付**：预算观测/用量 UI/超限；历史未计量；派生清空；**本轮**：备注恒含 `COMPRESSION_NOT_ENABLED`（`:5174` 已验） | 真实 token/压缩策略、ChatMemory 精确计量、用户产品接受；不记录敏感正文 |
 | KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；实库对照；排序质量样本；`productionSampleCases`；**本轮**：对照测口令回退 `EAP_DB_PASSWORD`/`SPRING_DATASOURCE_PASSWORD`（不写入仓库） | 实库开启 `EAP_RUN_BOARD_PERSISTENCE`+口令跑 FTS 排序对照；不足证据前不启 KR-02 |
-| MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；约束/事实；失效 Feedback；**本轮**：有材料不叠空态 +「记忆失效验收」→`DEPENDENCY_CHANGED`（`:5174` 已验） | sticky 清空仍保留；用户产品接受仍待；自动长期抽取延期 |
-| FS-01 / P0 目录与临时资源 | **部分交付**：data-layout + migrationReadiness + kind/byteSize + inventory；**本轮**：`candidateCounts` present/absent/total（`:5174`/`:5173` 已验）；`physicalMigration=false` | 旧数据物理迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
+| MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；约束/事实；失效 Feedback/空态纠偏；**本轮**：失效下 sticky 清空仍保留诚实提示（`:5174` 已验） | sticky 清空仍不可取消；用户产品接受仍待；自动长期抽取延期 |
+| FS-01 / P0 目录与临时资源 | **部分交付**：data-layout + migrationReadiness + kind/byteSize + inventory + candidateCounts；**本轮**：`inventory.byKind`（`:5174`/`:5173` 已验）；`physicalMigration=false` | 旧数据物理迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
 | TM-01 / P1 受管工具 | CLI程序/固定操作可登记和配置路径；依赖PATH/指定文件，无安装版本管理 | 依赖FS-01，选择一个可信便携工具或venv；锁版本/校验/安装回滚、实际调用/在途保护；保留系统引用，不静默或全局安装 |
 | TD-01 / P0 自动发现与绑定 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测 + 持久化 + 清除缓存 + counts 摘要；**本轮**：`newestProbedAt`（`:5174`/`:5173` 已验） | 真实本机 git 重启验收与用户接受仍待；更多依赖绑定仍待；不整盘扫描 |
 | TC-01 / P0 工具调用与呈现 | **部分交付**：git-status + mock 拒绝/超时/取消/unknown + 调用摘要 + 失败 detail；**本轮**：失败提示含 detail/`elapsedMs`，失败不与成功摘要叠示（`:5174`/`:5173` 已验） | 真实拒绝/超时/取消与用户接受仍待；不开放任意 Capability 执行口 |

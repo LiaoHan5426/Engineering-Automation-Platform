@@ -23,9 +23,9 @@ CT-01追加[显式重连与重试](decisions/chat-engineering-task-slice.md#会�
 | 原型与源码 | GrapesJS语义预览/版本、单目标生成前基线、持久候选和受控应用、目录互锁 | 更多必要映射、多文件约束、授权后的真实供应商自身改页验收 |
 | 交付证据 | Run独立检查、源码交付、持久接受/拒绝、POST_HOC/PREBOUND关联 | 在EAP内完成实际改页与用户验收；Git Run不是源码作者 |
 | 资源 | 单专家授权知识与旧记忆隔离；Skill文本版本、启停及按需引用 | MCP真实initialize/list/call、规划/Agent/Work执行；Skill目录/仓库导入 |
-| 上下文/记忆/检索 | **CE-01/KR-01/MCP-01（矩阵含 memory+filesystem 五工具）/MEM-01 离线首片**；CE 派生清空/`COMPRESSION_NOT_ENABLED` 与 MEM 失效 Feedback mock 已验 | 实库跑 FTS 排序对照；CE-01 真实 token/压缩策略仍缺；KR-02 证据触发 |
-| 工具/目录 | 程序与固定操作登记、路径发现、工作区/文件树；**FS-01 盘点+刷新+kind/byteSize+inventory+candidateCounts（mock/真机已验）**；不是安装器 | 批准后的物理迁移/读回/失败恢复；TM-01一个受管工具；前端预览与本机执行分界 |
-| 工具发现/使用 | TD-01 探测持久化+清除缓存+probeCache/**newestProbedAt**已验；TC-01 含 unknown+调用摘要+失败 detail/**elapsedMs**；SC-01 mock 保存断连 unknown 已验；无通用前端实例调用合同 | 真实拒绝/超时/取消与用户接受；TC-02前端实例首片；发现、可调用、执行与业务验证分开 |
+| 上下文/记忆/检索 | **CE-01/KR-01/MCP-01（矩阵 callVerified/listOnly）/MEM-01**；CE 压缩未启用备注与 MEM sticky 诚实提示 mock 已验 | 实库跑 FTS 排序对照；CE-01 真实 token/压缩策略仍缺；KR-02 证据触发 |
+| 工具/目录 | 程序与固定操作登记、路径发现、工作区/文件树；**FS-01 盘点+刷新+kind/byteSize+inventory+candidateCounts+byKind（mock/真机已验）**；不是安装器 | 批准后的物理迁移/读回/失败恢复；TM-01一个受管工具；前端预览与本机执行分界 |
+| 工具发现/使用 | TD-01 探测持久化+清除缓存+probeCache/newestProbedAt已验；TC-01 含 unknown+调用摘要+失败 detail/elapsedMs；SC-01 mock 保存断连 unknown 已验；无通用前端实例调用合同 | 真实拒绝/超时/取消与用户接受；TC-02前端实例首片；发现、可调用、执行与业务验证分开 |
 | 插件/场景 | PL-01 看板启停/回滚 + **依赖缺失/激活失败 mock 呈现已验**；设计器业务已存在 | 真实服务探测与用户接受；PL-02设计器/SC-03场景依赖；核心生命周期不依赖插件存活 |
 | 桌面发行 | Electron安全preload壳、bootstrap引导脚手架 | Windows sidecar、一体启停/迁移、安装包验证；签名另需发行决定与凭据 |
 
