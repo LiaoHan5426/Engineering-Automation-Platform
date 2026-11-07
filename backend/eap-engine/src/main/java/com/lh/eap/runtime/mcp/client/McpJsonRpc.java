@@ -37,6 +37,16 @@ public final class McpJsonRpc {
         }
     }
 
+    /** Returns the JSON-RPC id if present; notifications yield {@code null}. */
+    public static Object idOf(String json) {
+        try {
+            var tree = JSON.readValue(json, Map.class);
+            return tree.get("id");
+        } catch (RuntimeException failure) {
+            throw new McpProtocolException("无法解析 JSON-RPC id", -1, failure);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     public static Map<String, Object> parseResponse(String json) {
         try {

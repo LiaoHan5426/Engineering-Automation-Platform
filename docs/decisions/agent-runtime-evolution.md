@@ -21,7 +21,7 @@
 | 上下文 | `TaskContext`/`AiChatApplication` 拼装；**CE-01 首片**：`ContextBudget` 字符预算/输出预留/超限观测（CHAR_ESTIMATE） | 非 provider token；无压缩选择策略；ChatMemory 未精确计量（标 UNKNOWN）；派生失效仍靠清空保护 |
 | 工具调用 | Java Handler可直接执行本地逻辑；CLI经 `CliOperationHandler` / `CliExecutionService` / `DefaultProcessExecutor`，使用argv与cwd；Chat当前受控工具为只读gitStatus | 不是所有工具都走Shell，也不是目录中的工具都向模型开放；cwd限制不是OS沙箱 |
 | CLI管理 | `CliProgramService` / `/api/cli-programs` 与 `CliProgramManager.vue` 可登记程序、路径及固定参数操作；`LocalBinaries` 查PATH或指定文件 | 登记不安装；缺少受管版本、来源、更新、回滚、卸载与依赖管理 |
-| MCP | 登记/授权/会话隔离；stdio + 分页 + 官方包 + **http JSON-RPC POST** | sse/Streamable-HTTP 未接；工具白名单仍为操作者声明；生产授权矩阵仍待 |
+| MCP | 登记/授权/会话隔离；stdio + 分页 + 官方包 + http JSON-RPC + **legacy SSE** | Streamable-HTTP 未接；工具白名单仍为操作者声明；生产授权矩阵仍待 |
 | 目录 | 有工作区绑定、只读文件树、受控应用；默认连接 `.eap/model-connections.json`、AI产物 `.eap-ai-artifacts` 为相对位置 | 缺统一数据/缓存/工具/任务临时目录合同与旧数据迁移；不是完全没有目录能力 |
 | 前端与桌面 | 浏览器有草稿/偏好存储；`frontend/apps/desktop/src/main.mjs` 提供安全壳和选目录 | UI中的scratch键不是磁盘目录；未接通统一临时资源服务或工具安装器 |
 | 插件 | `features/plugins/model.ts` 固定chat/builder，`host.ts` 生成入口，`PluginSlot.vue` 直接导入组件 | 是可信预装原型，不是通用插件SDK、外部安装器或第三方隔离；Manifest申请不是授权 |
@@ -65,7 +65,8 @@
 - MCP首片：EAP作为Client，锁定SDK及一个只读服务器版本，验证initialize、分页发现、schema、授权call、拒绝、协议错误、超时、连接清理和跨专家/执行隔离。先核对现有stdio/http/sse登记格式与目标传输映射，不直接将旧http字段视为已支持Streamable HTTP。
 - **MCP-01 stdio（2026-11-07）**：`StdioMcpCommand` 解析登记 endpoint（禁 shell/元字符）；`StdioMcpTransport` 子进程逐行 JSON-RPC、通知无响应、超时 `MCP_TIMEOUT`、close 时 destroy；`McpClientService` 在无内存传输时按 registry `transport=stdio`+endpoint 启动。假子进程 `FakeStdioMcpServerMain` 验证 initialize→list→call→清理。http/sse 仍 `MCP_TRANSPORT_UNSUPPORTED`。
 - **MCP-01 分页与官方只读包（2026-11-07）**：`McpProtocolClient.listTools` 跟随 `nextCursor`（页数上限 32）。锁定 `@modelcontextprotocol/server-everything@2.2.1`（`OfficialReadonlyMcpLock`）；`EAP_RUN_MCP_OFFICIAL=true` 下 `OfficialReadonlyMcpStdioTest` 完成 initialize→分页 list→`echo` call→清理。不宣称生产授权或 http/sse。
-- **MCP-01 http JSON-RPC（2026-11-07）**：`HttpMcpTransport`/`HttpMcpEndpoint` 对 registry `transport=http` 做单端点 POST（禁 userinfo、不跟随重定向）；本地 HttpServer 对照 initialize/list/call。`sse` 仍 `MCP_TRANSPORT_UNSUPPORTED`。不宣称 Streamable-HTTP/SSE 事件流。
+- **MCP-01 http JSON-RPC（2026-11-07）**：`HttpMcpTransport`/`HttpMcpEndpoint` 对 registry `transport=http` 做单端点 POST（禁 userinfo、不跟随重定向）；本地 HttpServer 对照 initialize/list/call。不宣称 Streamable-HTTP。
+- **MCP-01 legacy SSE（2026-11-07）**：`SseMcpTransport` 对 `transport=sse`：GET 收 `endpoint` 事件，POST 到消息 URL，经 SSE `message` 按 JSON-RPC id 配对；`SseMcpTransportTest` 通过。不宣称 Streamable-HTTP。
 - 本地stdio进程的argv、cwd、环境和生命周期仍须约束；远端目标的认证/网络范围独立处理。MCP Roots及工具只读标注不是强制沙箱。不先将已有Java/CLI能力全部包装为MCP Server。
 - A2A与EAP作为MCP Server延期至明确互操作需求；不得为对齐教材章节而全部实施。
 - LangChain4j对照仅在自主协作等明确需求，或Spring AI出现可复现阻碍时启动。相同模型、业务样例、授权和验收合同下比较复杂度、正确性、token成本、延迟、取消/错误处理、兼容性与迁移回归；不预设胜者。具体版本、Java25/Boot4.1.1兼容性及模块稳定性待实验验证。
@@ -187,7 +188,7 @@ TC-02首片先人工读取某个编辑器实例的当前草稿/选中状态，�
 | TD-01 / P0 | 可信定义发现与已知CLI绑定，先复用现有Git能力；受管包/MCP/插件来源随对应切片接入 | 无需重复录入、路径来源/冲突/未知版本、停用保留、失效与执行快照；不执行未知脚本、不整盘扫描或自动授权 |
 | TC-01 / P0 | 明确输入输出/入口/范围/策略及结果契约；从目录选择已有只读Git能力并实际调用/呈现 | 无权限拒绝、参数/范围重校验、真实结果、适配缺失通用呈现、错误/超时/取消语义；不新增任意执行口 |
 | TC-02 / P1 | TC-01职责合同后验证前端交互实例，协调实际Host而非等待完整SDK | 人工读取草稿/选中状态、多实例/revision/关闭断线、保存版本区别；模型反向调用另行评审 |
-| MCP-01 | **部分交付**：stdio + 分页 + 官方包 + http JSON-RPC；假子进程与拒绝/超时/隔离已有证据 | sse/Streamable-HTTP、生产授权白名单与更多官方包矩阵 |
+| MCP-01 | **部分交付**：stdio + 分页 + 官方包 + http JSON-RPC + legacy SSE；假子进程与拒绝/超时/隔离已有证据 | Streamable-HTTP、生产授权白名单与更多官方包矩阵 |
 | PL-01 | 现有看板可信贡献迁移；不改Task/Run语义 | 激活回滚、启停/刷新恢复、实例隔离、在途停用、依赖缺失；无第二状态源 |
 | MEM-01 | **部分交付**：状态机+PUT/UI+本地持久+Task/Run+知识/Skill 依赖对抗失效（`WorkingMemoryAdversarialTest`）；敏感清空/换模/换任务/换依赖失效；显式删除清盘 | sticky 清空仍保留；长期自动抽取延期 |
 | TM-01 | FS-01后做一个受管工具，复用CLI登记 | 锁版本/校验、失败回滚、实际调用、在途卸载阻止；不更改系统工具 |

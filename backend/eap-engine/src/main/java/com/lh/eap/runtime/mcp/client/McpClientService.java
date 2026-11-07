@@ -115,12 +115,20 @@ public class McpClientService {
             if ("http".equals(transport)) {
                 return HttpMcpTransport.connect(server.endpoint());
             }
+            if ("sse".equals(transport)) {
+                return SseMcpTransport.connect(server.endpoint());
+            }
             throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "MCP_TRANSPORT_UNSUPPORTED");
         } catch (IllegalArgumentException invalid) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage());
         } catch (IOException failure) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "stdio".equals(transport) ? "MCP_STDIO_START_FAILED" : "MCP_HTTP_START_FAILED");
+            var code = switch (transport) {
+                case "stdio" -> "MCP_STDIO_START_FAILED";
+                case "http" -> "MCP_HTTP_START_FAILED";
+                case "sse" -> "MCP_SSE_START_FAILED";
+                default -> "MCP_TRANSPORT_START_FAILED";
+            };
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, code);
         }
     }
 

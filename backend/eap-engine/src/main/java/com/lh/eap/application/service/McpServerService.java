@@ -222,8 +222,10 @@ public class McpServerService {
         result.put("reachable", true);
         if ("http".equals(server.transport())) {
             result.put("message", "远端地址格式有效；http JSON-RPC 传输已接入客户端，本探测仍非协议握手；工具白名单仍为操作者声明，未经协议验证。");
+        } else if ("sse".equals(server.transport())) {
+            result.put("message", "远端地址格式有效；legacy SSE 传输已接入客户端，本探测仍非协议握手；工具白名单仍为操作者声明，未经协议验证。");
         } else {
-            result.put("message", "远端地址格式有效；sse 传输尚未接入客户端，工具白名单仍为操作者声明，未经协议验证。");
+            result.put("message", "远端地址格式有效；未知传输尚未接入客户端，工具白名单仍为操作者声明，未经协议验证。");
         }
         return result;
     }

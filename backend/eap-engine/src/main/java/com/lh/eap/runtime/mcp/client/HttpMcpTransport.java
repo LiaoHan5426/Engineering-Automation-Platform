@@ -11,7 +11,7 @@ import java.util.Objects;
 
 /**
  * MCP JSON-RPC over a single HTTP POST endpoint (request/response).
- * Not SSE/Streamable-HTTP event streams; those remain unsupported.
+ * Legacy SSE uses {@link SseMcpTransport}; Streamable-HTTP remains unsupported.
  */
 public final class HttpMcpTransport implements McpTransport {
     private final URI endpoint;
