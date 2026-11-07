@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main`（待提交 MEM-01 约束/事实 UI；含 `762c1fd` KR 延迟、`08e3b21` MCP SSE、`27fec41` WM 注入）。历史全量数字仅为既往证据。本轮：工作记忆面板展示约束/事实；保存目标保留既有 constraints/facts/evidence/dependencyKeys；`workingMemorySession` 3 项通过；mock `:5174` 浏览器已验目标保存与约束展示。用户产品接受仍待。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / b68515b`（MEM-01 约束/事实 UI；含 `762c1fd` KR 延迟、`08e3b21` MCP SSE、`27fec41` WM 注入）。历史全量数字仅为既往证据。本轮：工作记忆面板展示约束/事实；保存目标保留既有 constraints/facts/evidence/dependencyKeys；`workingMemorySession` 3 项通过；mock `:5174` 浏览器已验目标保存与约束展示。用户产品接受仍待。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
