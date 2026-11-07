@@ -1111,9 +1111,16 @@ async function get<T>(path: string): Promise<T> {
 export const runtimeApi = {
   scenarios: () => get<{ items: ScenarioSnapshot[] }>('/scenarios'),
   scenario: (id: string) => get<ScenarioSnapshot>('/scenarios/' + encodeURIComponent(id)),
-  saveScenario: (id: string, revision: number, definition: ScenarioConfiguration) =>
+  saveScenario: (
+    id: string,
+    revision: number,
+    definition: ScenarioConfiguration,
+    options?: { mockOutcome?: 'save-lost' },
+  ) =>
     client
-      .put<ScenarioSnapshot>('/scenarios/' + encodeURIComponent(id), { revision, definition })
+      .put<ScenarioSnapshot>('/scenarios/' + encodeURIComponent(id), { revision, definition }, {
+        params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
+      })
       .then((r) => r.data),
   deleteScenario: (id: string, revision: number) =>
     client
@@ -1245,6 +1252,13 @@ export const runtimeApi = {
           signal: options?.signal,
           params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
         },
+      )
+      .then((r) => r.data),
+  clearTrustedToolProbeCache: () =>
+    client
+      .post<{ cleared: number; remaining: number; message: string }>(
+        '/runtime/trusted-tools/probe-cache/clear',
+        {},
       )
       .then((r) => r.data),
   invokeTrustedGitStatus: (options?: {

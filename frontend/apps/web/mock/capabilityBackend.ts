@@ -44,10 +44,10 @@ export function createMockCapabilityBackend() {
       version: '2025.11.25',
       packageAtVersion: '@modelcontextprotocol/server-filesystem@2025.11.25',
       endpoint: 'npx -y @modelcontextprotocol/server-filesystem@2025.11.25',
-      readonlyTools: ['list_directory', 'directory_tree'],
-      preferredTool: 'list_directory',
-    },
-  ]
+      readonlyTools: ['list_directory', 'get_file_info', 'directory_tree'],
+        preferredTool: 'list_directory',
+      },
+    ]
   const mcpServers = [
     {
       id: 'official-readonly',
@@ -280,6 +280,29 @@ export function createMockCapabilityBackend() {
             success: true,
             message: tool.probeNote,
             output: tool.detectedVersion,
+          },
+        }
+      }
+      if (method === 'POST' && route === '/runtime/trusted-tools/probe-cache/clear') {
+        const cleared = persistedTrustedProbes.size
+        persistedTrustedProbes.clear()
+        for (const tool of trustedTools) {
+          tool.versionStatus = 'unknown'
+          tool.detectedVersion = ''
+          tool.probedAt = ''
+          tool.probeNote = ''
+          if (tool.bindingStatus === 'ready') {
+            tool.bindingNote = '二进制已解析；版本未知（目录不自动探测）。'
+          } else if (tool.bindingStatus === 'disabled') {
+            tool.bindingNote = '已停用快照：定义与绑定保留，调用入口拒绝执行。'
+          }
+        }
+        return {
+          status: 200,
+          data: {
+            cleared,
+            remaining: 0,
+            message: '已清除版本探测缓存；目录不再显示已知版本，直至下次显式探测。',
           },
         }
       }

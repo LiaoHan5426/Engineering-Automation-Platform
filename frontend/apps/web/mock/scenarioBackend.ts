@@ -68,6 +68,10 @@ export function createScenarioBackend() {
         return result(409, { detail: 'SCENARIO_STALE' })
       const saved = { id, revision: (revision as number) + 1, definition: structuredClone(d) }
       records.set(id, saved)
+      // Mock-only: persist then drop the HTTP response so the client must reconcile → unknown.
+      if (url.searchParams.get('mockOutcome') === 'save-lost') {
+        return result(502, { detail: 'MOCK_SAVE_RESPONSE_LOST' })
+      }
       return result(200, saved)
     },
   }

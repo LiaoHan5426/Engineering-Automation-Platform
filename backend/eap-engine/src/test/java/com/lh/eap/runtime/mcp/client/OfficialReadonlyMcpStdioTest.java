@@ -110,9 +110,11 @@ class OfficialReadonlyMcpStdioTest {
                         () -> "missing " + toolName + " in " + tools.stream()
                                 .map(tool -> tool.get("name")).toList());
             }
-            // Call the preferred readonly tool; directory_tree is grant-listed after tools/list proof only.
-            var listed = client.callTool(entry.preferredTool(), Map.of("path", allowRoot.toString()));
+            // Call verified readonly tools; directory_tree stays list-only (upstream structuredContent bug).
+            var listed = client.callTool("list_directory", Map.of("path", allowRoot.toString()));
             assertNotEquals(Boolean.TRUE, listed.get("isError"));
+            var info = client.callTool("get_file_info", Map.of("path", allowRoot.toString()));
+            assertNotEquals(Boolean.TRUE, info.get("isError"));
             client.close();
             assertFalse(transport.alive());
         }

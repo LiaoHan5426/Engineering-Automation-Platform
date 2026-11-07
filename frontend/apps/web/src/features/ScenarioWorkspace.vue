@@ -594,6 +594,15 @@ onMounted(() => {
             >{{ t('desktop.sceneStoreSave') }}</Button
           >
           <Button
+            v-if="workbench.preview && activeScenario.builtin === false"
+            variant="secondary"
+            size="sm"
+            data-testid="scene-save-lost"
+            :disabled="scenarioCatalog.state.busy"
+            @click="scenarioCatalog.save(activeScenario, 'save-lost')"
+            >{{ t('desktop.sceneStoreSaveLost') }}</Button
+          >
+          <Button
             v-if="activeScenario.builtin === false"
             variant="danger"
             size="sm"

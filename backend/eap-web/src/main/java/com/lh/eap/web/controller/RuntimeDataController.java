@@ -40,6 +40,12 @@ public class RuntimeDataController {
         return trustedTools.probeVersion(id);
     }
 
+    /** TD-01: drop durable probe snapshots; bindings and enablement unchanged. */
+    @PostMapping("/trusted-tools/probe-cache/clear")
+    public Map<String, Object> clearTrustedToolProbeCache() {
+        return trustedTools.clearProbeCache();
+    }
+
     @PostMapping("/trusted-tools/git-status/invoke")
     public Map<String, Object> invokeGitStatus() {
         return gitStatus.invoke();

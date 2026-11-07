@@ -30,3 +30,23 @@ it('keeps the mock CAS and deletion contract without claiming database persisten
     items: [],
   })
 })
+
+it('persists then returns 502 for mockOutcome=save-lost so clients can reconcile unknown', () => {
+  const backend = createScenarioBackend()
+  const url = new URL('http://mock.local/scenarios/custom-lost?mockOutcome=save-lost')
+  const definition = {
+    name: 'Lost',
+    status: 'partial',
+    modes: ['code'],
+    summary: '',
+    instructions: '',
+    tools: [],
+    skills: [],
+    mcp: [],
+    dependencies: [],
+  }
+  expect(backend.handle('PUT', url, { revision: 0, definition })?.status).toBe(502)
+  const read = backend.handle('GET', new URL('http://mock.local/scenarios/custom-lost'), {})
+  expect(read?.status).toBe(200)
+  expect(read?.data).toMatchObject({ id: 'custom-lost', revision: 1 })
+})

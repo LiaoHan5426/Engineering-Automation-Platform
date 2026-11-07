@@ -107,6 +107,15 @@ class TrustedToolCatalogServiceTest {
         assertEquals("known", status.get("versionStatus"));
         assertEquals("git version 2.45.1", status.get("detectedVersion"));
         assertTrue(String.valueOf(status.get("bindingNote")).contains("持久化"));
+
+        var cleared = second.clearProbeCache();
+        assertEquals(1, cleared.get("cleared"));
+        assertEquals(0, cleared.get("remaining"));
+        var third = new TrustedToolCatalogService(registry(), settings(), channels, store);
+        var afterClear = (List<Map<String, Object>>) third.catalog().get("items");
+        var unknown = afterClear.stream().filter(row -> "git-status".equals(row.get("id"))).findFirst().orElseThrow();
+        assertEquals("unknown", unknown.get("versionStatus"));
+        assertEquals("", unknown.get("detectedVersion"));
     }
 
     private static CapabilityHandlerRegistry registry() {

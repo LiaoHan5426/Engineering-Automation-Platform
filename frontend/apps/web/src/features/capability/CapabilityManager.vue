@@ -44,6 +44,7 @@ const dataLayoutBusy = ref(false)
 const trustedGitResult = ref<TrustedGitStatusResult | null>(null)
 const trustedBusy = ref(false)
 const trustedProbeBusy = ref(false)
+const probeCacheBusy = ref(false)
 const trustedFailure = ref<TrustedToolInvokeFailure | null>(null)
 const trustedAbort = ref<AbortController | null>(null)
 const mockTrustedScenarios = import.meta.env.MODE === 'mock'
@@ -204,6 +205,19 @@ async function runTrustedVersionProbe(
     feedback('error', errorMessage(error))
   } finally {
     trustedProbeBusy.value = false
+  }
+}
+
+async function clearTrustedProbeCache() {
+  probeCacheBusy.value = true
+  try {
+    const result = await runtimeApi.clearTrustedToolProbeCache()
+    feedback('success', result.message)
+    await refresh()
+  } catch (error) {
+    feedback('error', errorMessage(error))
+  } finally {
+    probeCacheBusy.value = false
   }
 }
 
@@ -459,6 +473,15 @@ async function submitServer() {
       </ul>
       <p v-else class="hint">暂无可信只读工具定义。</p>
       <div class="trusted-tool-actions">
+        <Button
+          variant="secondary"
+          size="sm"
+          data-testid="trusted-tool-probe-cache-clear"
+          :disabled="probeCacheBusy || trustedProbeBusy || trustedBusy || loading"
+          @click="clearTrustedProbeCache"
+        >
+          清除探测缓存
+        </Button>
         <Button
           v-if="mockTrustedScenarios"
           variant="secondary"

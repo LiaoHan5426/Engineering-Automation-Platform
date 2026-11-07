@@ -28,8 +28,12 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     const filesystem = matrix.find(
       (item) => item.packageAtVersion === '@modelcontextprotocol/server-filesystem@2025.11.25',
     ) as { readonlyTools?: string[] } | undefined
-    expect(filesystem?.readonlyTools).toEqual(['list_directory', 'directory_tree'])
-  })
+    expect(filesystem?.readonlyTools).toEqual([
+      'list_directory',
+      'get_file_info',
+      'directory_tree',
+    ])
+    })
 
   it('lists enabled git-status in the trusted catalog', async () => {
     const backend = createMockCapabilityBackend()
@@ -85,6 +89,20 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     expect(status?.versionStatus).toBe('known')
     expect(status?.detectedVersion).toContain('2.45.1')
     expect(status?.bindingNote).toContain('持久化')
+  })
+
+  it('clears durable probe cache back to unknown without inventing versions', async () => {
+    const backend = createMockCapabilityBackend()
+    await backend.handle('POST', '/runtime/trusted-tools/git-status/probe-version')
+    const cleared = await backend.handle('POST', '/runtime/trusted-tools/probe-cache/clear')
+    expect(cleared?.status).toBe(200)
+    expect(cleared?.data).toMatchObject({ remaining: 0 })
+    const catalog = await backend.handle('GET', '/runtime/trusted-tools')
+    const items = (
+      catalog?.data as { items: Array<{ id: string; versionStatus: string; detectedVersion: string }> }
+    ).items
+    expect(items.find((item) => item.id === 'git-status')?.versionStatus).toBe('unknown')
+    expect(items.find((item) => item.id === 'git-status')?.detectedVersion).toBe('')
   })
 
   it('maps mock version probe failure and conflict without inventing a version', async () => {

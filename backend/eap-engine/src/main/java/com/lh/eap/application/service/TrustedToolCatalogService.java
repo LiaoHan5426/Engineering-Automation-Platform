@@ -204,6 +204,20 @@ public class TrustedToolCatalogService {
         fields.put("probeNote", "");
     }
 
+    /**
+     * Explicit operator action: drop durable probe snapshots so versions return to unknown until the
+     * next probe. Does not change binding, enablement, or binary resolution.
+     */
+    public Map<String, Object> clearProbeCache() {
+        var cleared = probes.size();
+        probes.clear();
+        persistProbes();
+        return Map.of(
+                "cleared", cleared,
+                "remaining", probes.size(),
+                "message", "已清除版本探测缓存；目录不再显示已知版本，直至下次显式探测。");
+    }
+
     private void persistProbes() {
         if (probeStore != null) {
             probeStore.save(probes);
