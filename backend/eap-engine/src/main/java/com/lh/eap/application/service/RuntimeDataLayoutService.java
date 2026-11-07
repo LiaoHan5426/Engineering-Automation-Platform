@@ -47,10 +47,18 @@ public class RuntimeDataLayoutService {
         entries.add(entry("logs", dataRoot.resolve("logs"), "有界运行记录（目标布局）"));
         entries.add(entry("tools", dataRoot.resolve("tools"), "受管工具目录（目标布局）"));
         entries.add(entry("tasks", dataRoot.resolve("tasks"), "任务临时与产物（目标布局）"));
-        return Map.of(
-                "entries", List.copyOf(entries),
-                "physicalMigration", false,
-                "migrationReadiness", migrationReadiness(connections, artifacts, probeCache));
+        var snapshot = List.copyOf(entries);
+        long present = snapshot.stream().filter(row -> Boolean.TRUE.equals(row.get("exists"))).count();
+        var inventory = new LinkedHashMap<String, Object>();
+        inventory.put("present", present);
+        inventory.put("missing", snapshot.size() - present);
+        inventory.put("total", snapshot.size());
+        var layout = new LinkedHashMap<String, Object>();
+        layout.put("entries", snapshot);
+        layout.put("physicalMigration", false);
+        layout.put("inventory", Map.copyOf(inventory));
+        layout.put("migrationReadiness", migrationReadiness(connections, artifacts, probeCache));
+        return Map.copyOf(layout);
     }
 
     private Map<String, Object> migrationReadiness(Path connections, Path artifacts, Path probeCache) {

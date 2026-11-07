@@ -16,6 +16,7 @@ import { Badge, Button, Checkbox, ConfirmBox, Feedback, Input, Select, Tabs } fr
 import { Table, type TableColumn } from '@eap/plugin-table'
 import { errorMessage } from '../../lib/presentation'
 import {
+  trustedToolInvokeDetail,
   trustedToolInvokeFailure,
   trustedToolInvokeFailureMessage,
   type TrustedToolInvokeFailure,
@@ -178,10 +179,24 @@ async function runTrustedGitStatus(
   } catch (error) {
     if (controller.signal.aborted) {
       trustedFailure.value = 'cancelled'
+      trustedGitResult.value = {
+        capability: 'git-status',
+        success: false,
+        message: '已取消本次可信工具调用。',
+        detail: 'CLIENT_ABORTED',
+        observedAt: new Date().toISOString(),
+      }
       feedback('error', '已取消本次可信工具调用。')
       return
     }
     trustedFailure.value = trustedToolInvokeFailure(error)
+    trustedGitResult.value = {
+      capability: 'git-status',
+      success: false,
+      message: trustedToolInvokeFailureMessage(error),
+      detail: trustedToolInvokeDetail(error),
+      observedAt: new Date().toISOString(),
+    }
     feedback('error', trustedToolInvokeFailureMessage(error))
   } finally {
     if (trustedAbort.value === controller) trustedAbort.value = null
@@ -373,6 +388,18 @@ async function submitServer() {
           <p>
             只读盘点逻辑路径与迁移就绪候选；不执行物理迁移。physicalMigration=
             {{ dataLayout.physicalMigration ? 'true' : 'false' }}。
+          </p>
+          <p class="hint" data-testid="data-layout-inventory">
+            盘点 {{ dataLayout.inventory?.total ?? dataLayout.entries.length }} · 存在
+            {{
+              dataLayout.inventory?.present ??
+              dataLayout.entries.filter((entry) => entry.exists).length
+            }}
+            · 未创建
+            {{
+              dataLayout.inventory?.missing ??
+              dataLayout.entries.filter((entry) => !entry.exists).length
+            }}
           </p>
         </div>
         <Button
@@ -572,6 +599,9 @@ async function submitServer() {
       >
         {{ trustedGitResult.capability }} ·
         {{ trustedGitResult.success ? '成功' : '失败' }}
+        <template v-if="trustedGitResult.detail">
+          · {{ trustedGitResult.detail }}</template
+        >
         <template v-if="trustedGitResult.exitCode != null">
           · exit {{ trustedGitResult.exitCode }}</template
         >

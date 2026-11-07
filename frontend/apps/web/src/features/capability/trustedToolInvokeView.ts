@@ -49,3 +49,15 @@ export function trustedToolInvokeFailureMessage(error: unknown): string {
   if (kind === 'unknown') return '可信工具调用结果未知（连接中断）；未确认是否已执行，请核对后再试。'
   return errorMessage(error)
 }
+
+/** Stable detail code for invoke summary; never includes stdout/stderr bodies. */
+export function trustedToolInvokeDetail(error: unknown): string {
+  const detail = String(responseOf(error)?.data?.detail ?? '').trim()
+  if (detail) return detail
+  const kind = trustedToolInvokeFailure(error)
+  if (kind === 'denied') return 'CAPABILITY_DISABLED'
+  if (kind === 'timeout') return 'TRUSTED_TOOL_TIMEOUT'
+  if (kind === 'cancelled') return 'CLIENT_ABORTED'
+  if (kind === 'unknown') return 'TRUSTED_TOOL_UNKNOWN'
+  return 'TRUSTED_TOOL_FAILED'
+}

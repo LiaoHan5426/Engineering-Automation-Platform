@@ -51,6 +51,22 @@ class RuntimeDataLayoutServiceTest {
     }
 
     @Test
+    void reportsInventoryCountsWithoutScanning() throws Exception {
+        Files.createDirectories(workspace.resolve(".eap"));
+        var runtime = RuntimeWorkspace.colocated(workspace, workspace.toString(), "");
+        var service = new RuntimeDataLayoutService(runtime, workspace, ".eap-ai-artifacts", ".eap/model-connections.json");
+        var inventory = (java.util.Map<?, ?>) service.layout().get("inventory");
+        assertNotNull(inventory);
+        var entries = (java.util.List<?>) service.layout().get("entries");
+        assertEquals(entries.size(), ((Number) inventory.get("total")).intValue());
+        assertEquals(
+                ((Number) inventory.get("present")).intValue() + ((Number) inventory.get("missing")).intValue(),
+                ((Number) inventory.get("total")).intValue());
+        assertTrue(((Number) inventory.get("present")).intValue() >= 2);
+        assertTrue(((Number) inventory.get("missing")).intValue() >= 1);
+    }
+
+    @Test
     void reportsKindAndByteSizeForProbeCacheFileWithoutScanning() throws Exception {
         var probe = workspace.resolve(".eap").resolve("cache").resolve("trusted-tool-probes.json");
         Files.createDirectories(probe.getParent());

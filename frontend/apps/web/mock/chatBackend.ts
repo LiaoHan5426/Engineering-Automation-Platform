@@ -38,6 +38,8 @@ export function mockContextBudget(message: string): ContextBudgetObservation {
   const outputReserve = 16384
   const historyNotMetered =
     message.includes('历史未计量验收') || message.includes('__CHAT_MEMORY_NOT_METERED__')
+  const derivedCleared =
+    message.includes('派生清空验收') || message.includes('__DERIVED_CLEARED__')
   return {
     platformLimit,
     outputReserve,
@@ -67,7 +69,9 @@ export function mockContextBudget(message: string): ContextBudgetObservation {
     ],
     notes: historyNotMetered
       ? ['CHAT_MEMORY_NOT_METERED', 'mock：会话历史未精确计量，非真实 token']
-      : ['mock：字符估算，非真实 token'],
+      : derivedCleared
+        ? ['DERIVED_CLEARED_BEFORE_SEND', 'mock：派生材料触发清空后发送，非真实 token']
+        : ['mock：字符估算，非真实 token'],
   }
 }
 
@@ -560,6 +564,9 @@ export function createMockChatBackend() {
             proposals.set(proposal.id, proposal)
             proposalStates.set(proposal.id, { status: 'PROPOSED', reason: '' })
           }
+          const derivedCleared =
+            body.message.includes('派生清空验收') || body.message.includes('__DERIVED_CLEARED__')
+          if (derivedCleared) cleared = true
           return reply(200, {
             skillContext: skill ? (skill.data as SkillContext) : null,
             knowledgeContext: knowledge && 'expertRef' in knowledge.data ? knowledge.data : null,

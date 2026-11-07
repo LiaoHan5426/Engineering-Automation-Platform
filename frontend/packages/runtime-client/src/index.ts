@@ -27,9 +27,17 @@ export type DataLayoutMigrationReadiness = {
   candidates: DataLayoutMigrationCandidate[]
 }
 
+export type DataLayoutInventory = {
+  present: number
+  missing: number
+  total: number
+}
+
 export type DataLayoutResponse = {
   entries: DataLayoutEntry[]
   physicalMigration: boolean
+  /** FS-01 observational counts over entries; not a migration progress meter. */
+  inventory?: DataLayoutInventory
   migrationReadiness?: DataLayoutMigrationReadiness
 }
 
@@ -80,6 +88,8 @@ export type TrustedGitStatusResult = {
   stdout?: string
   stderr?: string
   exitCode?: number
+  /** Stable failure/detail code when success is false (e.g. CAPABILITY_DISABLED). */
+  detail?: string
   /** Client-local observation time; not a server clock contract. */
   observedAt?: string
 }

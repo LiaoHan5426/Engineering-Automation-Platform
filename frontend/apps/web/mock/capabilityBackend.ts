@@ -342,34 +342,48 @@ export function createMockCapabilityBackend() {
         return { status: 200, data: { items: mcpServers, productionMatrix } }
       }
       if (method === 'GET' && route === '/runtime/data-layout') {
+        const entries = [
+          {
+            logical: 'data-root',
+            resolved: '/mock/.eap',
+            exists: true,
+            kind: 'directory',
+            note: '本机应用数据根（mock）',
+          },
+          {
+            logical: 'cache/trusted-tool-probes',
+            resolved: '/mock/.eap/cache/trusted-tool-probes.json',
+            exists: true,
+            kind: 'file',
+            byteSize: 48,
+            note: 'TD-01 版本探测持久缓存（mock）',
+          },
+          {
+            logical: 'artifacts/ai',
+            resolved: '/mock/.eap-ai-artifacts',
+            exists: true,
+            kind: 'directory',
+            note: 'AI 执行产物目录（mock）',
+          },
+          {
+            logical: 'logs',
+            resolved: '/mock/.eap/logs',
+            exists: false,
+            kind: 'missing',
+            note: '有界运行记录（mock 未创建）',
+          },
+        ]
+        const present = entries.filter((entry) => entry.exists).length
         return {
           status: 200,
           data: {
             physicalMigration: false,
-            entries: [
-              {
-                logical: 'data-root',
-                resolved: '/mock/.eap',
-                exists: true,
-                kind: 'directory',
-                note: '本机应用数据根（mock）',
-              },
-              {
-                logical: 'cache/trusted-tool-probes',
-                resolved: '/mock/.eap/cache/trusted-tool-probes.json',
-                exists: true,
-                kind: 'file',
-                byteSize: 48,
-                note: 'TD-01 版本探测持久缓存（mock）',
-              },
-              {
-                logical: 'artifacts/ai',
-                resolved: '/mock/.eap-ai-artifacts',
-                exists: true,
-                kind: 'directory',
-                note: 'AI 执行产物目录（mock）',
-              },
-            ],
+            entries,
+            inventory: {
+              present,
+              missing: entries.length - present,
+              total: entries.length,
+            },
             migrationReadiness: {
               status: 'candidates_present',
               physicalMigration: false,

@@ -138,6 +138,13 @@ it('serves the chat contract and model whitelist without an external backend', a
       (source) => source.source === 'history' && source.metering === 'UNKNOWN',
     ),
   ).toBe(true)
+  const derivedCleared = (
+    await api.handle('POST', conversationPath + '/messages', {
+      message: '派生清空验收',
+    })
+  ).data as AiMessageResult
+  expect(derivedCleared.contextMemoryCleared).toBe(true)
+  expect(derivedCleared.contextBudget?.notes).toContain('DERIVED_CLEARED_BEFORE_SEND')
   await api.handle('PUT', conversationPath + '/working-memory', {
     goal: '记忆失效前目标',
     constraints: ['示例约束：复用现有组件'],

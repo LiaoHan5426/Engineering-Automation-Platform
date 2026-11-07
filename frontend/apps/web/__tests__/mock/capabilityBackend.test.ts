@@ -8,16 +8,21 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     expect(reply?.status).toBe(200)
     expect(reply?.data).toMatchObject({
       physicalMigration: false,
+      inventory: { present: 3, missing: 1, total: 4 },
       migrationReadiness: { approved: false, physicalMigration: false },
     })
     const entries = (
       reply?.data as {
-        entries: Array<{ logical: string; kind?: string; byteSize?: number }>
+        entries: Array<{ logical: string; kind?: string; byteSize?: number; exists: boolean }>
       }
     ).entries
     const probe = entries.find((item) => item.logical === 'cache/trusted-tool-probes')
     expect(probe).toMatchObject({ kind: 'file', byteSize: 48 })
     expect(entries.find((item) => item.logical === 'data-root')?.kind).toBe('directory')
+    expect(entries.find((item) => item.logical === 'logs')).toMatchObject({
+      exists: false,
+      kind: 'missing',
+    })
   })
 
   it('returns exitCode on successful mock git-status invoke', async () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  trustedToolInvokeDetail,
   trustedToolInvokeFailure,
   trustedToolInvokeFailureMessage,
 } from '../../../src/features/capability/trustedToolInvokeView'
@@ -50,5 +51,15 @@ describe('trustedToolInvokeView', () => {
         response: { status: 520, data: { detail: 'TRUSTED_TOOL_UNKNOWN' } },
       }),
     ).toContain('未知')
+  })
+
+  it('exposes stable detail codes for invoke summary', () => {
+    expect(
+      trustedToolInvokeDetail({
+        isAxiosError: true,
+        response: { status: 403, data: { detail: 'CAPABILITY_DISABLED' } },
+      }),
+    ).toBe('CAPABILITY_DISABLED')
+    expect(trustedToolInvokeDetail({ name: 'AbortError' })).toBe('CLIENT_ABORTED')
   })
 })
