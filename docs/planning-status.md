@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main`（待提交 MCP-01 矩阵追加 sequential-thinking；含 `3d9528b` PL-01）。历史全量数字仅为既往证据。本轮：`OfficialReadonlyMcpMatrix` 追加 `@modelcontextprotocol/server-sequential-thinking@0.6.2`/`sequentialthinking`（stdio tools/list+call 先验）；矩阵/白名单/门禁 stdio 9 项通过；mock 能力页展示 2 条矩阵，浏览器已验。不宣称任意包可装。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 33bb07a`（MCP-01 矩阵追加 sequential-thinking；含 `3d9528b` PL-01）。历史全量数字仅为既往证据。本轮：`OfficialReadonlyMcpMatrix` 追加 `@modelcontextprotocol/server-sequential-thinking@0.6.2`/`sequentialthinking`（stdio tools/list+call 先验）；矩阵/白名单/门禁 stdio 9 项通过；mock 能力页展示 2 条矩阵，浏览器已验。不宣称任意包可装。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
