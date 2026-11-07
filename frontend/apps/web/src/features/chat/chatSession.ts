@@ -4,11 +4,13 @@ import type {
   AiMessageResult,
   AiStatus,
   AiToolMode,
+  ContextBudgetObservation,
   ModelConnection,
   ModelConnectionList,
   TaskContext,
   CodeProposal,
 } from '@eap/runtime-client'
+import { contextBudgetFromError } from './contextBudgetView'
 
 export type ChatApi = {
   reconnectAiConversation?: (
@@ -68,6 +70,7 @@ export type ChatTurn = {
   contextMemoryCleared?: boolean
   knowledgeContext?: AiMessageResult['knowledgeContext']
   knowledgeMemoryCleared?: boolean
+  contextBudget?: ContextBudgetObservation | null
   executionId?: string | null
   proposal?: CodeProposal | null
   model?: string
@@ -97,6 +100,8 @@ function generationFailure(error: unknown): string | undefined {
   if (code.startsWith('SKILL_') || code.startsWith('INVALID_SKILL_')) return 'skill-failed'
   if (code === 'INVALID_EXPERT_CONTEXT' || code.startsWith('EXPERT_CONTEXT_'))
     return 'knowledge-failed'
+  if (code === 'CONTEXT_BUDGET_EXCEEDED' || code === 'TASK_CONTEXT_TOO_LARGE')
+    return 'context-budget-exceeded'
   return (
     {
       AI_PROTOCOL_TOOLS_UNAVAILABLE: 'protocol-tools-unavailable',
@@ -174,6 +179,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   })
   const context = ref<TaskContext>(emptyContext())
   const failure = ref('')
+  const lastContextBudget = ref<ContextBudgetObservation | null>(null)
   const inflight = ref<Record<string, number>>({})
   const abortControllers = ref<Record<string, AbortController>>({})
   const connections = ref<ModelConnection[]>([])
@@ -695,6 +701,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       if (inflight.value[id] !== current) return
       if (entry && result.contextMemoryCleared) entry.contextMemoryCleared = true
       const turns = transcripts.value[id] ? [...transcripts.value[id]!] : []
+      if (result.contextBudget) lastContextBudget.value = result.contextBudget
       turns[assistantIndex] = {
         ...requestMetadata,
         role: 'assistant',
@@ -702,6 +709,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         contextMemoryCleared: result.contextMemoryCleared,
         knowledgeContext: result.knowledgeContext,
         knowledgeMemoryCleared: result.knowledgeMemoryCleared,
+        contextBudget: result.contextBudget ?? null,
         executionId: result.executionId,
         proposal: result.proposal,
         text: result.answer,
@@ -725,7 +733,9 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
             ? 'cancelled'
             : result.error === 'CODE_PROPOSAL_TOO_LARGE'
               ? 'generation-too-large'
-              : 'kept'
+              : result.error === 'CONTEXT_BUDGET_EXCEEDED' || result.error === 'TASK_CONTEXT_TOO_LARGE'
+                ? 'context-budget-exceeded'
+                : 'kept'
     } catch (error) {
       if (inflight.value[id] !== current) return
       if ((error as { name?: string } | null)?.name === 'AbortError') {
@@ -744,6 +754,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
           ?.data?.knowledgeMemoryCleared === true
       )
         entry.knowledgeMemoryCleared = true
+      const budget = contextBudgetFromError(error)
+      if (budget) lastContextBudget.value = budget
       if (httpStatus(error) === 404 && !generationFailure(error)) {
         if (conversationId.value === id) await recheckConversation()
       }
@@ -813,6 +825,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     toolMode,
     context,
     failure,
+    lastContextBudget,
     sending,
     refreshStatus,
     restoreLastConversation,

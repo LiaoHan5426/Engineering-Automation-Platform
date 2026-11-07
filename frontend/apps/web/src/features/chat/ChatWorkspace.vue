@@ -19,6 +19,7 @@ import { type AiConnectionState } from '@eap/runtime-client'
 import { IconEllipsis, Icon } from '@eap/ui'
 import { errorMessage } from '../../lib/presentation'
 import { createChatSession } from './chatSession'
+import { includedSourceSummary } from './contextBudgetView'
 import ConnectionDialog from '../../components/ConnectionDialog.vue'
 import SessionPanel from '../../components/SessionPanel.vue'
 import WorkspaceFileTreeRail from '../../components/WorkspaceFileTreeRail.vue'
@@ -1130,6 +1131,27 @@ onMounted(async () => {
                 </div>
                 <p>{{ t('skill.dependencies') }}: {{ turn.skillContext.dependencies }}</p>
               </section>
+              <section v-if="turn.contextBudget" data-testid="turn-context-budget">
+                <h3>{{ t('contextBudget.title') }}</h3>
+                <p>
+                  {{ t('contextBudget.used') }} {{ turn.contextBudget.usedChars }} ·
+                  {{ t('contextBudget.remaining') }} {{ turn.contextBudget.remainingChars }} ·
+                  {{ t('contextBudget.reserve') }} {{ turn.contextBudget.outputReserve }}
+                </p>
+                <p>
+                  {{ t('contextBudget.metering') }}：{{
+                    turn.contextBudget.metering === 'UNKNOWN'
+                      ? t('contextBudget.unknown')
+                      : t('contextBudget.charEstimate')
+                  }}
+                </p>
+                <p v-if="includedSourceSummary(turn.contextBudget)">
+                  {{ t('contextBudget.sources') }}：{{ includedSourceSummary(turn.contextBudget) }}
+                </p>
+                <p v-if="turn.contextBudget.notes.length">
+                  {{ t('contextBudget.notes') }}：{{ turn.contextBudget.notes.join(' · ') }}
+                </p>
+              </section>
               <Feedback
                 v-if="
                   turn.knowledgeMemoryCleared &&
@@ -1222,6 +1244,23 @@ onMounted(async () => {
           <Feedback v-if="session.failure.value.startsWith('knowledge-')" tone="warning">{{
             t('knowledgeContext.' + session.failure.value.slice('knowledge-'.length))
           }}</Feedback>
+          <Feedback
+            v-else-if="session.failure.value === 'context-budget-exceeded'"
+            data-testid="context-budget-exceeded"
+            tone="warning"
+          >
+            <p>{{ t('contextBudget.exceeded') }}</p>
+            <p v-if="session.lastContextBudget.value">
+              {{
+                t('contextBudget.exceededDetail', {
+                  used: session.lastContextBudget.value.usedChars,
+                  platform: session.lastContextBudget.value.platformLimit,
+                  reserve: session.lastContextBudget.value.outputReserve,
+                  metering: session.lastContextBudget.value.metering,
+                })
+              }}
+            </p>
+          </Feedback>
           <Feedback
             v-else-if="session.failure.value === 'protocol-tools-unavailable'"
             tone="warning"

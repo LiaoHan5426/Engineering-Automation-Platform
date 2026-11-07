@@ -74,3 +74,7 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 ## 上下文预算 CE-01 首片（2026-11-07，离线通过）
 
 在既有 `AiChatApplication` 拼装路径接入 `ContextBudget`：按 CHAR_ESTIMATE 计量 system + 已组装 user material，预留输出字符，超限返回 `CONTEXT_BUDGET_EXCEEDED`（ProblemDetail 携带来源用量，无正文）。history 标 `CHAT_MEMORY_NOT_METERED`；知识/Skill 触发的记忆清空记 `DERIVED_CLEARED_BEFORE_SEND`。成功响应附带可观测 `contextBudget`。旧硬限 `TASK_CONTEXT_TOO_LARGE` 由该合同替代。`ContextBudgetTest` 5 项通过。不宣称 provider token、压缩策略或 MEM-01。
+
+## 上下文预算 UI（2026-11-07，离线通过）
+
+聊天回合展示 `contextBudget` 用量摘要（已用/剩余/预留/计量/来源明细，无正文）；超限映射 `context-budget-exceeded` 并展示可读 Feedback。`contextBudgetView` 单测覆盖成功挂载与错误观测解析。浏览器人工接受仍待。
