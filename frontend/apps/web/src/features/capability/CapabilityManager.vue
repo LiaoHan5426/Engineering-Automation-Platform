@@ -40,6 +40,7 @@ const message = ref('')
 const messageKind = ref<'error' | 'success'>('success')
 const tab = ref('overview')
 const trustedTools = ref<TrustedToolItem[]>([])
+const trustedProbeCache = ref<{ cached: number; known: number; failed: number } | null>(null)
 const dataLayout = ref<DataLayoutResponse | null>(null)
 const dataLayoutBusy = ref(false)
 const trustedGitResult = ref<TrustedGitStatusResult | null>(null)
@@ -134,6 +135,12 @@ async function refresh() {
     catalog.value = await runtimeApi.capabilities()
     const trusted = await runtimeApi.trustedTools()
     trustedTools.value = trusted.items
+    trustedProbeCache.value = trusted.probeCache ?? {
+      cached: trusted.items.filter((item) => item.versionStatus === 'known' || item.versionStatus === 'probe_failed')
+        .length,
+      known: trusted.items.filter((item) => item.versionStatus === 'known').length,
+      failed: trusted.items.filter((item) => item.versionStatus === 'probe_failed').length,
+    }
     await refreshDataLayout()
     for (const item of items.value) {
       if (notesDraft.value[item.name] === undefined) notesDraft.value[item.name] = item.notes
@@ -450,6 +457,23 @@ async function submitServer() {
           {{ dataLayout.migrationReadiness.approved ? '是' : '否' }} ·
           {{ dataLayout.migrationReadiness.note }}
         </p>
+        <p class="hint" data-testid="data-layout-candidate-counts">
+          候选
+          {{
+            dataLayout.migrationReadiness.candidateCounts?.total ??
+            dataLayout.migrationReadiness.candidates.length
+          }}
+          · 现有
+          {{
+            dataLayout.migrationReadiness.candidateCounts?.present ??
+            dataLayout.migrationReadiness.candidates.filter((row) => row.present).length
+          }}
+          · 缺失
+          {{
+            dataLayout.migrationReadiness.candidateCounts?.absent ??
+            dataLayout.migrationReadiness.candidates.filter((row) => !row.present).length
+          }}
+        </p>
         <ul>
           <li
             v-for="candidate in dataLayout.migrationReadiness.candidates"
@@ -515,12 +539,26 @@ async function submitServer() {
         </li>
       </ul>
       <p v-else class="hint">暂无可信只读工具定义。</p>
+      <p
+        v-if="trustedProbeCache"
+        class="hint"
+        data-testid="trusted-tool-probe-cache-summary"
+      >
+        探测缓存 {{ trustedProbeCache.cached }} · 已知 {{ trustedProbeCache.known }} · 失败
+        {{ trustedProbeCache.failed }}（目录 GET 不自动探测）
+      </p>
       <div class="trusted-tool-actions">
         <Button
           variant="secondary"
           size="sm"
           data-testid="trusted-tool-probe-cache-clear"
-          :disabled="probeCacheBusy || trustedProbeBusy || trustedBusy || loading"
+          :disabled="
+            probeCacheBusy ||
+            trustedProbeBusy ||
+            trustedBusy ||
+            loading ||
+            (trustedProbeCache?.cached ?? 0) === 0
+          "
           @click="clearTrustedProbeCache"
         >
           清除探测缓存
@@ -598,20 +636,21 @@ async function submitServer() {
         data-testid="trusted-git-status-summary"
       >
         {{ trustedGitResult.capability }} ·
-        {{ trustedGitResult.success ? '成功' : '失败' }}
-        <template v-if="trustedGitResult.detail">
-          · {{ trustedGitResult.detail }}</template
-        >
-        <template v-if="trustedGitResult.exitCode != null">
-          · exit {{ trustedGitResult.exitCode }}</template
-        >
-        <template v-if="trustedGitResult.observedAt">
-          · 观测于 {{ trustedGitResult.observedAt }}</template
+        {{ trustedGitResult.success ? '成功' : '失败'
+        }}<template v-if="trustedGitResult.detail"
+          > · {{ trustedGitResult.detail }}</template
+        ><template v-if="trustedGitResult.exitCode != null"
+          > · exit {{ trustedGitResult.exitCode }}</template
+        ><template v-if="trustedGitResult.observedAt"
+          > · 观测于 {{ trustedGitResult.observedAt }}</template
         >
       </p>
-      <pre v-if="trustedGitResult" class="trusted-git-result" data-testid="trusted-git-status-result">{{
-        trustedGitResult.stdout ?? trustedGitResult.message
-      }}</pre>
+      <pre
+        v-if="trustedGitResult?.success && (trustedGitResult.stdout || trustedGitResult.message)"
+        class="trusted-git-result"
+        data-testid="trusted-git-status-result"
+        >{{ trustedGitResult.stdout || trustedGitResult.message }}</pre
+      >
       <p
         v-if="trustedFailure === 'denied'"
         class="hint"

@@ -25,6 +25,11 @@ class TrustedToolCatalogServiceTest {
     void catalogSurfacesDisabledConflictAndUnknownVersionBindings() {
         var catalog = new TrustedToolCatalogService(registry(), settings(), channels()).catalog();
         assertEquals("capability-handlers", catalog.get("source"));
+        var probeCache = (Map<String, Object>) catalog.get("probeCache");
+        assertNotNull(probeCache);
+        assertEquals(0, ((Number) probeCache.get("cached")).intValue());
+        assertEquals(0, ((Number) probeCache.get("known")).intValue());
+        assertEquals(0, ((Number) probeCache.get("failed")).intValue());
         var items = (List<Map<String, Object>>) catalog.get("items");
         assertEquals(3, items.size());
 
@@ -54,12 +59,17 @@ class TrustedToolCatalogServiceTest {
         assertEquals("git version 2.45.1", result.get("detectedVersion"));
         assertEquals(true, result.get("success"));
 
-        var items = (List<Map<String, Object>>) service.catalog().get("items");
+        var catalog = service.catalog();
+        var items = (List<Map<String, Object>>) catalog.get("items");
         var status = items.stream().filter(row -> "git-status".equals(row.get("id"))).findFirst().orElseThrow();
         assertEquals("known", status.get("versionStatus"));
         assertEquals("git version 2.45.1", status.get("detectedVersion"));
         assertFalse(String.valueOf(status.get("probedAt")).isBlank());
         assertTrue(String.valueOf(status.get("bindingNote")).contains("显式探测"));
+        var probeCache = (Map<String, Object>) catalog.get("probeCache");
+        assertEquals(1, ((Number) probeCache.get("cached")).intValue());
+        assertEquals(1, ((Number) probeCache.get("known")).intValue());
+        assertEquals(0, ((Number) probeCache.get("failed")).intValue());
     }
 
     @Test

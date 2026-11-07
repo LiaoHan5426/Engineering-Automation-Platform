@@ -74,7 +74,19 @@ public class TrustedToolCatalogService {
                 items.add(item(descriptor, handler.scope().id(), settings.enabled(descriptor.name())));
             }
         }
-        return Map.of("items", List.copyOf(items), "source", "capability-handlers");
+        long known = probes.values().stream().filter(probe -> "known".equals(probe.versionStatus())).count();
+        long failed = probes.values().stream()
+                .filter(probe -> "probe_failed".equals(probe.versionStatus()))
+                .count();
+        var probeCache = new LinkedHashMap<String, Object>();
+        probeCache.put("cached", probes.size());
+        probeCache.put("known", known);
+        probeCache.put("failed", failed);
+        var catalog = new LinkedHashMap<String, Object>();
+        catalog.put("items", List.copyOf(items));
+        catalog.put("source", "capability-handlers");
+        catalog.put("probeCache", Map.copyOf(probeCache));
+        return Map.copyOf(catalog);
     }
 
     /**

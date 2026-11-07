@@ -220,9 +220,23 @@ export function createMockCapabilityBackend() {
         }
       }
       if (method === 'GET' && route === '/runtime/trusted-tools') {
+        const known = [...persistedTrustedProbes.values()].filter(
+          (row) => row.versionStatus === 'known',
+        ).length
+        const failed = [...persistedTrustedProbes.values()].filter(
+          (row) => row.versionStatus === 'probe_failed',
+        ).length
         return {
           status: 200,
-          data: { items: trustedTools, source: 'mock-capability-handlers' },
+          data: {
+            items: trustedTools,
+            source: 'mock-capability-handlers',
+            probeCache: {
+              cached: persistedTrustedProbes.size,
+              known,
+              failed,
+            },
+          },
         }
       }
       if (method === 'POST' && /^\/runtime\/trusted-tools\/[^/]+\/probe-version$/.test(route)) {
@@ -389,6 +403,7 @@ export function createMockCapabilityBackend() {
               physicalMigration: false,
               approved: false,
               note: '只读盘点旧/现路径存在性；未批准不执行物理迁移或删除。',
+              candidateCounts: { present: 2, absent: 1, total: 3 },
               candidates: [
                 {
                   id: 'legacy-ai-artifacts',
@@ -401,6 +416,12 @@ export function createMockCapabilityBackend() {
                   resolved: '/mock/.eap/cache/trusted-tool-probes.json',
                   present: true,
                   note: 'TD-01 探测缓存已按目标 cache 布局落盘；不是物理迁移动作',
+                },
+                {
+                  id: 'model-connections',
+                  resolved: '/mock/.eap/model-connections.json',
+                  present: false,
+                  note: '模型连接登记（mock 未创建）',
                 },
               ],
             },

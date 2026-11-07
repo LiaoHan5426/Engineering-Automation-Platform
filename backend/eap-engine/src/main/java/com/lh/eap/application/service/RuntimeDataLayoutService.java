@@ -72,13 +72,18 @@ public class RuntimeDataLayoutService {
         addCandidate(candidates, "trusted-tool-probes", probeCache,
                 "TD-01 探测缓存已按目标 cache 布局落盘；不是物理迁移动作",
                 exists(probeCache));
-        var present = candidates.stream().anyMatch(row -> Boolean.TRUE.equals(row.get("present")));
+        var presentCount = candidates.stream().filter(row -> Boolean.TRUE.equals(row.get("present"))).count();
         var readiness = new LinkedHashMap<String, Object>();
-        readiness.put("status", present ? "candidates_present" : "inventory_only");
+        readiness.put("status", presentCount > 0 ? "candidates_present" : "inventory_only");
         readiness.put("physicalMigration", false);
         readiness.put("approved", false);
         readiness.put("note", "只读盘点旧/现路径存在性；未批准不执行物理迁移或删除。");
         readiness.put("candidates", List.copyOf(candidates));
+        var counts = new LinkedHashMap<String, Object>();
+        counts.put("present", presentCount);
+        counts.put("absent", candidates.size() - presentCount);
+        counts.put("total", candidates.size());
+        readiness.put("candidateCounts", Map.copyOf(counts));
         return Map.copyOf(readiness);
     }
 

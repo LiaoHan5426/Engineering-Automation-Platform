@@ -19,12 +19,20 @@ export type DataLayoutMigrationCandidate = {
   note: string
 }
 
+export type DataLayoutCandidateCounts = {
+  present: number
+  absent: number
+  total: number
+}
+
 export type DataLayoutMigrationReadiness = {
   status: string
   physicalMigration: boolean
   approved: boolean
   note: string
   candidates: DataLayoutMigrationCandidate[]
+  /** Observational present/absent over candidates; not migration progress. */
+  candidateCounts?: DataLayoutCandidateCounts
 }
 
 export type DataLayoutInventory = {
@@ -68,7 +76,18 @@ export type TrustedToolItem = {
   probeNote?: string
   bindingNote?: string
 }
-export type TrustedToolResponse = { items: TrustedToolItem[]; source: string }
+export type TrustedToolProbeCacheSummary = {
+  cached: number
+  known: number
+  failed: number
+}
+
+export type TrustedToolResponse = {
+  items: TrustedToolItem[]
+  source: string
+  /** Durable probe snapshot counts; catalog GET never auto-probes. */
+  probeCache?: TrustedToolProbeCacheSummary
+}
 
 export type TrustedToolVersionProbeResult = {
   id: string

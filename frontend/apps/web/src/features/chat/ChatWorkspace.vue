@@ -144,6 +144,19 @@ async function saveWorkingGoal() {
     session.failure.value = 'failed'
   }
 }
+/** True when any non-layer working-memory field is present; avoids empty+constraints clash. */
+const hasWorkingMemoryMaterial = computed(() => {
+  const memory = session.workingMemory.value
+  if (!memory) return false
+  return Boolean(
+    memory.goal ||
+      memory.invalidation ||
+      memory.constraints?.length ||
+      memory.facts?.length ||
+      memory.dependencyKeys?.length ||
+      memory.evidenceRefs?.length,
+  )
+})
 const visibleTurns = computed(() => {
   const all = session.turns.value
   const start = Math.max(0, all.length - shownTurns.value)
@@ -767,17 +780,27 @@ onMounted(async () => {
         >
           <h3>{{ t('workingMemory.title') }}</h3>
           <p class="hint">{{ t('workingMemory.note') }}</p>
-          <p
+          <Feedback
             v-if="session.workingMemory.value?.invalidation"
-            class="hint"
+            tone="warning"
             data-testid="working-memory-invalidation"
           >
             {{ t('workingMemory.invalidation') }}：{{ session.workingMemory.value.invalidation }}
-          </p>
-          <p v-else-if="session.workingMemory.value?.goal" class="hint" data-testid="working-memory-goal-text">
+          </Feedback>
+          <p
+            v-else-if="session.workingMemory.value?.goal"
+            class="hint"
+            data-testid="working-memory-goal-text"
+          >
             {{ t('workingMemory.goal') }}：{{ session.workingMemory.value.goal }}
           </p>
-          <p v-else class="hint">{{ t('workingMemory.empty') }}</p>
+          <p
+            v-else-if="!hasWorkingMemoryMaterial"
+            class="hint"
+            data-testid="working-memory-empty"
+          >
+            {{ t('workingMemory.empty') }}
+          </p>
           <p
             v-if="session.workingMemory.value?.constraints?.length"
             class="hint"

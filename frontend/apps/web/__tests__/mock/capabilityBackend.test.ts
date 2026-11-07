@@ -9,7 +9,11 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     expect(reply?.data).toMatchObject({
       physicalMigration: false,
       inventory: { present: 3, missing: 1, total: 4 },
-      migrationReadiness: { approved: false, physicalMigration: false },
+      migrationReadiness: {
+        approved: false,
+        physicalMigration: false,
+        candidateCounts: { present: 2, absent: 1, total: 3 },
+      },
     })
     const entries = (
       reply?.data as {
@@ -33,6 +37,17 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
       success: true,
       exitCode: 0,
     })
+  })
+
+  it('exposes probeCache summary that grows after explicit probe', async () => {
+    const backend = createMockCapabilityBackend()
+    await backend.handle('POST', '/runtime/trusted-tools/probe-cache/clear')
+    const before = await backend.handle('GET', '/runtime/trusted-tools')
+    expect(before?.data).toMatchObject({ probeCache: { cached: 0, known: 0, failed: 0 } })
+    await backend.handle('POST', '/runtime/trusted-tools/git-status/probe-version')
+    const after = await backend.handle('GET', '/runtime/trusted-tools')
+    expect(after?.data).toMatchObject({ probeCache: { cached: 1, known: 1, failed: 0 } })
+    await backend.handle('POST', '/runtime/trusted-tools/probe-cache/clear')
   })
 
   it('exposes four official readonly matrix packages including filesystem', async () => {
@@ -68,6 +83,7 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
 
   it('exposes binding status snapshots for ready disabled and conflict tools', async () => {
     const backend = createMockCapabilityBackend()
+    await backend.handle('POST', '/runtime/trusted-tools/probe-cache/clear')
     const reply = await backend.handle('GET', '/runtime/trusted-tools')
     const items = (
       reply?.data as {

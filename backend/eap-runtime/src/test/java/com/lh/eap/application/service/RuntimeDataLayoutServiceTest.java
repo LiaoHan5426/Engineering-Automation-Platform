@@ -35,6 +35,11 @@ class RuntimeDataLayoutServiceTest {
         assertEquals(false, readinessMap.get("physicalMigration"));
         assertEquals(false, readinessMap.get("approved"));
         assertTrue(readinessMap.get("candidates") instanceof java.util.List<?>);
+        var counts = (java.util.Map<?, ?>) readinessMap.get("candidateCounts");
+        assertNotNull(counts);
+        assertEquals(
+                ((Number) counts.get("present")).intValue() + ((Number) counts.get("absent")).intValue(),
+                ((Number) counts.get("total")).intValue());
     }
 
     @Test
