@@ -788,6 +788,13 @@ onMounted(async () => {
             {{ t('workingMemory.invalidation') }}：{{ session.workingMemory.value.invalidation }}
           </Feedback>
           <p
+            v-if="session.workingMemory.value?.invalidation"
+            class="hint"
+            data-testid="working-memory-sticky-retained"
+          >
+            {{ t('workingMemory.stickyClearRetained') }}
+          </p>
+          <p
             v-else-if="session.workingMemory.value?.goal"
             class="hint"
             data-testid="working-memory-goal-text"

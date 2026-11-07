@@ -8,7 +8,12 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     expect(reply?.status).toBe(200)
     expect(reply?.data).toMatchObject({
       physicalMigration: false,
-      inventory: { present: 3, missing: 1, total: 4 },
+      inventory: {
+        present: 3,
+        missing: 1,
+        total: 4,
+        byKind: { file: 1, directory: 2, missing: 1, other: 0 },
+      },
       migrationReadiness: {
         approved: false,
         physicalMigration: false,
@@ -72,7 +77,11 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     ])
     const filesystem = matrix.find(
       (item) => item.packageAtVersion === '@modelcontextprotocol/server-filesystem@2025.11.25',
-    ) as { readonlyTools?: string[] } | undefined
+    ) as {
+      readonlyTools?: string[]
+      callVerifiedTools?: string[]
+      listOnlyTools?: string[]
+    }
     expect(filesystem?.readonlyTools).toEqual([
       'list_directory',
       'get_file_info',
@@ -80,7 +89,14 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
       'list_allowed_directories',
       'directory_tree',
     ])
-    })
+    expect(filesystem?.callVerifiedTools).toEqual([
+      'list_directory',
+      'get_file_info',
+      'search_files',
+      'list_allowed_directories',
+    ])
+    expect(filesystem?.listOnlyTools).toEqual(['directory_tree'])
+  })
 
   it('lists enabled git-status in the trusted catalog', async () => {
     const backend = createMockCapabilityBackend()

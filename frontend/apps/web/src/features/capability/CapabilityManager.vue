@@ -418,6 +418,16 @@ async function submitServer() {
               dataLayout.entries.filter((entry) => !entry.exists).length
             }}
           </p>
+          <p
+            v-if="dataLayout.inventory?.byKind"
+            class="hint"
+            data-testid="data-layout-inventory-by-kind"
+          >
+            类型 文件 {{ dataLayout.inventory.byKind.file }} · 目录
+            {{ dataLayout.inventory.byKind.directory }} · 缺失
+            {{ dataLayout.inventory.byKind.missing }} · 其他
+            {{ dataLayout.inventory.byKind.other }}
+          </p>
         </div>
         <Button
           variant="secondary"
@@ -898,9 +908,24 @@ async function submitServer() {
         <section v-if="productionMatrix.length" data-testid="mcp-production-matrix">
           <h3>官方只读生产矩阵</h3>
           <ul>
-            <li v-for="entry in productionMatrix" :key="entry.packageAtVersion" class="mono">
-              {{ entry.packageAtVersion }} · 工具 {{ entry.readonlyTools.join('、') }} · 首选
-              {{ entry.preferredTool }}
+            <li
+              v-for="entry in productionMatrix"
+              :key="entry.packageAtVersion"
+              class="mono"
+              :data-testid="`mcp-matrix-${entry.packageName}`"
+            >
+              {{ entry.packageAtVersion }} · 首选 {{ entry.preferredTool }}
+              <p class="hint">
+                已 call 验证
+                {{ (entry.callVerifiedTools ?? entry.readonlyTools).join('、') || '—' }}
+              </p>
+              <p
+                v-if="entry.listOnlyTools?.length"
+                class="hint"
+                :data-testid="`mcp-matrix-list-only-${entry.packageName}`"
+              >
+                仅 list（未 call） {{ entry.listOnlyTools.join('、') }}
+              </p>
             </li>
           </ul>
         </section>

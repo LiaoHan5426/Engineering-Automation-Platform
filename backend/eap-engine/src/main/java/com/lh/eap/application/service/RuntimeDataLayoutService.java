@@ -49,10 +49,17 @@ public class RuntimeDataLayoutService {
         entries.add(entry("tasks", dataRoot.resolve("tasks"), "任务临时与产物（目标布局）"));
         var snapshot = List.copyOf(entries);
         long present = snapshot.stream().filter(row -> Boolean.TRUE.equals(row.get("exists"))).count();
+        var byKind = new LinkedHashMap<String, Object>();
+        for (String kind : List.of("file", "directory", "missing", "other")) {
+            byKind.put(
+                    kind,
+                    snapshot.stream().filter(row -> kind.equals(String.valueOf(row.get("kind")))).count());
+        }
         var inventory = new LinkedHashMap<String, Object>();
         inventory.put("present", present);
         inventory.put("missing", snapshot.size() - present);
         inventory.put("total", snapshot.size());
+        inventory.put("byKind", Map.copyOf(byKind));
         var layout = new LinkedHashMap<String, Object>();
         layout.put("entries", snapshot);
         layout.put("physicalMigration", false);

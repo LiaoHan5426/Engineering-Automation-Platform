@@ -69,6 +69,16 @@ class RuntimeDataLayoutServiceTest {
                 ((Number) inventory.get("total")).intValue());
         assertTrue(((Number) inventory.get("present")).intValue() >= 2);
         assertTrue(((Number) inventory.get("missing")).intValue() >= 1);
+        var byKind = (java.util.Map<?, ?>) inventory.get("byKind");
+        assertNotNull(byKind);
+        assertEquals(
+                ((Number) byKind.get("file")).intValue()
+                        + ((Number) byKind.get("directory")).intValue()
+                        + ((Number) byKind.get("missing")).intValue()
+                        + ((Number) byKind.get("other")).intValue(),
+                ((Number) inventory.get("total")).intValue());
+        assertTrue(((Number) byKind.get("directory")).intValue() >= 1);
+        assertTrue(((Number) byKind.get("missing")).intValue() >= 1);
     }
 
     @Test

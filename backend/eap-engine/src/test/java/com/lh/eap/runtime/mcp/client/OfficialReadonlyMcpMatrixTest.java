@@ -65,6 +65,17 @@ class OfficialReadonlyMcpMatrixTest {
         assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "list_allowed_directories"));
         assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "directory_tree"));
         assertFalse(McpProductionAllowlist.productionGranted(entry.endpoint(), "write_file"));
+        assertEquals(List.of("directory_tree"), entry.listOnlyTools());
+        assertEquals(
+                List.of(
+                        "list_directory",
+                        "get_file_info",
+                        "search_files",
+                        "list_allowed_directories"),
+                entry.callVerifiedTools());
+        var view = entry.toView();
+        assertEquals(List.of("directory_tree"), view.get("listOnlyTools"));
+        assertEquals(entry.callVerifiedTools(), view.get("callVerifiedTools"));
     }
 
     @Test

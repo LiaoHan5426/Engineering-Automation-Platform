@@ -22,6 +22,8 @@ export function createMockCapabilityBackend() {
       endpoint: 'npx -y @modelcontextprotocol/server-everything@2.2.1',
       readonlyTools: ['echo'],
       preferredTool: 'echo',
+      callVerifiedTools: ['echo'],
+      listOnlyTools: [] as string[],
     },
     {
       packageName: '@modelcontextprotocol/server-sequential-thinking',
@@ -30,6 +32,8 @@ export function createMockCapabilityBackend() {
       endpoint: 'npx -y @modelcontextprotocol/server-sequential-thinking@0.6.2',
       readonlyTools: ['sequentialthinking'],
       preferredTool: 'sequentialthinking',
+      callVerifiedTools: ['sequentialthinking'],
+      listOnlyTools: [] as string[],
     },
     {
       packageName: '@modelcontextprotocol/server-memory',
@@ -38,6 +42,8 @@ export function createMockCapabilityBackend() {
       endpoint: 'npx -y @modelcontextprotocol/server-memory@2025.11.25',
       readonlyTools: ['read_graph'],
       preferredTool: 'read_graph',
+      callVerifiedTools: ['read_graph'],
+      listOnlyTools: [] as string[],
     },
     {
       packageName: '@modelcontextprotocol/server-filesystem',
@@ -45,15 +51,22 @@ export function createMockCapabilityBackend() {
       packageAtVersion: '@modelcontextprotocol/server-filesystem@2025.11.25',
       endpoint: 'npx -y @modelcontextprotocol/server-filesystem@2025.11.25',
       readonlyTools: [
-          'list_directory',
-          'get_file_info',
-          'search_files',
-          'list_allowed_directories',
-          'directory_tree',
-        ],
-        preferredTool: 'list_directory',
-      },
-    ]
+        'list_directory',
+        'get_file_info',
+        'search_files',
+        'list_allowed_directories',
+        'directory_tree',
+      ],
+      preferredTool: 'list_directory',
+      callVerifiedTools: [
+        'list_directory',
+        'get_file_info',
+        'search_files',
+        'list_allowed_directories',
+      ],
+      listOnlyTools: ['directory_tree'],
+    },
+  ]
   const mcpServers = [
     {
       id: 'official-readonly',
@@ -402,6 +415,12 @@ export function createMockCapabilityBackend() {
               present,
               missing: entries.length - present,
               total: entries.length,
+              byKind: {
+                file: entries.filter((entry) => entry.kind === 'file').length,
+                directory: entries.filter((entry) => entry.kind === 'directory').length,
+                missing: entries.filter((entry) => entry.kind === 'missing').length,
+                other: entries.filter((entry) => entry.kind === 'other').length,
+              },
             },
             migrationReadiness: {
               status: 'candidates_present',

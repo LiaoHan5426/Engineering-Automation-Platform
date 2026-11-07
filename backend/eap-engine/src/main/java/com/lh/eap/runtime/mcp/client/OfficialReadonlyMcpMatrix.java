@@ -10,7 +10,12 @@ import java.util.Optional;
  * Entries grow deliberately; each pins package@version and an allow-listed tool set.
  */
 public final class OfficialReadonlyMcpMatrix {
-    public record Entry(String packageName, String version, List<String> readonlyTools, String preferredTool) {
+    public record Entry(
+            String packageName,
+            String version,
+            List<String> readonlyTools,
+            String preferredTool,
+            List<String> listOnlyTools) {
         public Entry {
             packageName = packageName == null ? "" : packageName.trim();
             version = version == null ? "" : version.trim();
@@ -18,6 +23,11 @@ public final class OfficialReadonlyMcpMatrix {
             preferredTool = preferredTool == null || preferredTool.isBlank()
                     ? (readonlyTools.isEmpty() ? "" : readonlyTools.getFirst())
                     : preferredTool.trim();
+            listOnlyTools = listOnlyTools == null ? List.of() : List.copyOf(listOnlyTools);
+        }
+
+        public Entry(String packageName, String version, List<String> readonlyTools, String preferredTool) {
+            this(packageName, version, readonlyTools, preferredTool, List.of());
         }
 
         public String packageAtVersion() {
@@ -32,6 +42,11 @@ public final class OfficialReadonlyMcpMatrix {
             return List.of(npxExecutable, "-y", packageAtVersion());
         }
 
+        /** Tools gate-proven via tools/call; excludes {@link #listOnlyTools()}. */
+        public List<String> callVerifiedTools() {
+            return readonlyTools.stream().filter(tool -> !listOnlyTools.contains(tool)).toList();
+        }
+
         public Map<String, Object> toView() {
             var view = new LinkedHashMap<String, Object>();
             view.put("packageName", packageName);
@@ -40,6 +55,8 @@ public final class OfficialReadonlyMcpMatrix {
             view.put("endpoint", endpoint());
             view.put("readonlyTools", readonlyTools);
             view.put("preferredTool", preferredTool);
+            view.put("callVerifiedTools", callVerifiedTools());
+            view.put("listOnlyTools", listOnlyTools);
             return Map.copyOf(view);
         }
     }
@@ -78,7 +95,8 @@ public final class OfficialReadonlyMcpMatrix {
                             "search_files",
                             "list_allowed_directories",
                             "directory_tree"),
-                    "list_directory"));
+                    "list_directory",
+                    List.of("directory_tree")));
 
     private OfficialReadonlyMcpMatrix() {}
 

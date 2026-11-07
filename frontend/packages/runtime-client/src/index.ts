@@ -35,10 +35,19 @@ export type DataLayoutMigrationReadiness = {
   candidateCounts?: DataLayoutCandidateCounts
 }
 
+export type DataLayoutInventoryByKind = {
+  file: number
+  directory: number
+  missing: number
+  other: number
+}
+
 export type DataLayoutInventory = {
   present: number
   missing: number
   total: number
+  /** Observational kind tallies over entries; not recursive disk scan. */
+  byKind?: DataLayoutInventoryByKind
 }
 
 export type DataLayoutResponse = {
@@ -268,6 +277,10 @@ export type CapabilityResponse = {
     endpoint: string
     readonlyTools: string[]
     preferredTool: string
+    /** Gate-proven via tools/call. */
+    callVerifiedTools?: string[]
+    /** Present in tools/list only; not call-verified (e.g. upstream schema bugs). */
+    listOnlyTools?: string[]
   }>
   settings: Record<string, CapabilitySetting>
   disabledCapabilities: string[]
