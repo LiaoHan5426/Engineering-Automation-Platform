@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main`（待提交 MCP-01 Streamable-HTTP；含 `b68515b` MEM 约束/事实 UI、`762c1fd` KR 延迟、`08e3b21` MCP SSE）。历史全量数字仅为既往证据。本轮：`StreamableHttpMcpTransport` 双 Accept + Session 头 + JSON/SSE 响应；`StreamableHttpMcpTransportTest` 3 项与既有 HTTP/SSE 共 6 项通过。生产授权白名单与 GET 续传仍待。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 0c2aefb`（MCP-01 Streamable-HTTP；含 `b68515b` MEM 约束/事实 UI、`762c1fd` KR 延迟、`08e3b21` MCP SSE）。历史全量数字仅为既往证据。本轮：`StreamableHttpMcpTransport` 双 Accept + Session 头 + JSON/SSE 响应；`StreamableHttpMcpTransportTest` 3 项与既有 HTTP/SSE 共 6 项通过。生产授权白名单与 GET 续传仍待。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
