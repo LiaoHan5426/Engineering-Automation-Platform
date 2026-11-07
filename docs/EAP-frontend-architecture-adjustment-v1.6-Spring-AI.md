@@ -386,7 +386,7 @@ sequenceDiagram
 | CE-01 / P0 | 有拼装与字符限制就算上下文工程 | 在既有路径统一预算、来源、选择及失效合同 | **部分交付**：`ContextBudget` 在现有拼装路径按 CHAR_ESTIMATE 计量 system/user，预留输出、超限 `CONTEXT_BUDGET_EXCEEDED`（带来源明细无正文）、history 标 UNKNOWN、派生清空记 `DERIVED_CLEARED_BEFORE_SEND`；响应可观测 `contextBudget`；`ContextBudgetTest` 5 项通过。仍缺：真实 token 计量、压缩策略、ChatMemory 精确计量与浏览器用量呈现；不宣称 MEM-01 |
 | KR-01 / P0；KR-02 / 条件后续 | 没向量库等于没检索 | 先评测已有FTS/关键词，证明不足再比较增强 | **部分交付（KR-01）**：预定 fixture 题集 + `RetrievalBaseline`/`KeywordRetrievalProbe`（复用 `KnowledgeRepository.terms`）；直召/标识符/中文 recall@5 阈值=1.0、空结果与越权零泄漏；`RetrievalBaselineTest` 5 项通过。仍缺：实库 PostgreSQL FTS 同题对照、延迟/成本账、引用可追溯生产样本；**KR-02 未触发** |
 | MEM-01 / P1 | 窗口持久化等于完整记忆 | 历史/绑定恢复、任务工作记忆分层，依赖CE-01 | **待实施**：重启/删除/模型切换/撤权与版本失效；保留清空保护直到替代验证，自动长期抽取延期 |
-| MCP-01 / P0 | 登记/探测等于协议执行 | 既有授权/会话桥接一个只读服务器 | **部分交付**：进程内 JSON-RPC Client 闭环与拒绝/超时离线通过；真实 stdio/远端 server 仍待 |
+| MCP-01 / P0 | 登记/探测等于协议执行 | 既有授权/会话桥接一个只读服务器 | **部分交付**：进程内 Client + **stdio 传输**（`StdioMcpTransport`/`StdioMcpCommand`，registry endpoint 映射、超时/destroy）；假子进程 initialize/list/call 通过；http/sse 仍未接入；外部官方 MCP 包实网验收仍待 |
 | FS-01 / P0 | 工作区树等于应用目录管理；UI scratch等于磁盘目录 | 数据根、缓存/产物/任务临时资源归属，浏览器与本机执行分界 | **部分交付**：只读 data-layout 盘点 API 与文档路径表；物理迁移未批准 |
 | TM-01 / P1 | 程序登记等于安装与版本管理 | FS-01后增加一个可信受管工具，系统引用保留 | **待实施**：锁版本/校验/失败回滚、实际调用、在途卸载阻止；不改系统工具 |
 | TD-01 / P0 | 每个工具都要手填，或发现程序就认定能执行 | 可信定义自动汇总、已知依赖绑定，未知候选需适配 | **部分交付**：可信工具目录含 git-status；冲突/停用快照仍待 |

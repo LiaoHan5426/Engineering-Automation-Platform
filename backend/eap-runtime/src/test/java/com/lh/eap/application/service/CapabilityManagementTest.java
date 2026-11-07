@@ -352,7 +352,7 @@ class CapabilityManagementTest {
         verify(jdbc, never()).update(argThat((String sql) -> sql != null && sql.startsWith("DELETE FROM eap.mcp_server")), eq("files"));
     }
 
-    /** The probe says what it did not do: no protocol client exists, so the tool list stays a claim. */
+    /** The probe says what it did not do: no initialize handshake, so the tool list stays a claim. */
     @Test void theServerProbeReportsThatToolListsAreUnverified() {
         var serverRow = new LinkedHashMap<String, Object>();
         serverRow.put("id", "files");

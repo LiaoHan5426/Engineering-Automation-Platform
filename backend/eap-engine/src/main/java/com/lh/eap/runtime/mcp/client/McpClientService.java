@@ -3,8 +3,9 @@ package com.lh.eap.runtime.mcp.client;
 import com.lh.eap.persistence.mapper.McpServerRegistry;
 import com.lh.eap.runtime.mcp.McpCallScope;
 import com.lh.eap.runtime.mcp.McpSessionRegistry;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Duration;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -99,10 +100,23 @@ public class McpClientService {
 
     private McpTransport transportFor(String serverId) {
         var factory = inMemoryTransports.get(serverId);
-        if (factory == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "MCP_TRANSPORT_NOT_REGISTERED");
+        if (factory != null) return factory.get();
+        var server = registry.find(serverId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "MCP_SERVER_NOT_FOUND"));
+        if (!server.usable()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "MCP_SERVER_NOT_USABLE");
         }
-        return factory.get();
+        if (!"stdio".equalsIgnoreCase(server.transport())) {
+            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "MCP_TRANSPORT_UNSUPPORTED");
+        }
+        try {
+            var argv = StdioMcpCommand.parse(server.endpoint());
+            return StdioMcpTransport.start(argv, Path.of("").toAbsolutePath().normalize());
+        } catch (IllegalArgumentException invalid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage());
+        } catch (IOException failure) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "MCP_STDIO_START_FAILED");
+        }
     }
 
     private void authorize(McpCallScope scope) {

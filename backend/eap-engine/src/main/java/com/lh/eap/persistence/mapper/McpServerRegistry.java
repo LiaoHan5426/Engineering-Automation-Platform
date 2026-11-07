@@ -35,9 +35,10 @@ public class McpServerRegistry {
     }
 
     /** A registered server, as far as the platform is willing to trust it. */
-    public record McpServer(String id, String name, String transport, boolean trusted, boolean enabled,
+    public record McpServer(String id, String name, String transport, String endpoint, boolean trusted, boolean enabled,
                             List<String> tools) {
         public McpServer {
+            endpoint = endpoint == null ? "" : endpoint;
             tools = tools == null ? List.of() : List.copyOf(tools);
         }
 
@@ -52,7 +53,8 @@ public class McpServerRegistry {
     public List<McpServer> servers() {
         List<Map<String, Object>> rows;
         try {
-            rows = jdbc.queryForList("SELECT id,name,transport,trusted,enabled,tools::text AS tools FROM eap.mcp_server ORDER BY id");
+            rows = jdbc.queryForList(
+                    "SELECT id,name,transport,endpoint,trusted,enabled,tools::text AS tools FROM eap.mcp_server ORDER BY id");
         } catch (RuntimeException error) {
             return List.of();
         }
@@ -63,10 +65,16 @@ public class McpServerRegistry {
             if (id == null) continue;
             result.add(new McpServer(id, Objects.toString(row.get("name"), id),
                     Objects.toString(row.get("transport"), "stdio"),
+                    Objects.toString(row.get("endpoint"), ""),
                     Boolean.TRUE.equals(row.get("trusted")), Boolean.TRUE.equals(row.get("enabled")),
                     tools(row.get("tools"))));
         }
         return List.copyOf(result);
+    }
+
+    public Optional<McpServer> find(String serverId) {
+        if (serverId == null || serverId.isBlank()) return Optional.empty();
+        return servers().stream().filter(server -> server.id().equals(serverId)).findFirst();
     }
 
     /** Servers that are enabled and trusted, i.e. the only ones whose tools may be called at all. */

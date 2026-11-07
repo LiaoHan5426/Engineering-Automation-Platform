@@ -187,11 +187,10 @@ public class McpServerService {
     }
 
     /**
-     * Check the transport target. Explicitly <em>not</em> a connection test.
+     * Check the transport target. Explicitly <em>not</em> a protocol handshake.
      *
-     * <p>The MCP protocol client does not exist yet, so this can only answer "is the thing we would
-     * launch reachable", and it says so in the result. The tool list remains an operator declaration:
-     * showing it as a verified discovery would be a lie that survives into a capability id.
+     * <p>Stdio probe only resolves the launch binary. Tool allow-lists remain operator declarations until
+     * {@code McpClientService} completes initialize/list/call against a trusted enabled server.
      */
     public Map<String, Object> probe(String id) {
         var serverId = required(id, "服务器标识");
@@ -213,7 +212,7 @@ public class McpServerService {
             result.put("targetResolved", resolved.map(Object::toString).orElse(null));
             result.put("reachable", resolved.isPresent());
             result.put("message", resolved.isPresent()
-                    ? "启动命令存在：" + resolved.get() + "。平台未连接该服务器，工具白名单仍为操作者声明，未经协议验证。"
+                    ? "启动命令存在：" + resolved.get() + "。探测未执行 initialize；工具白名单仍为操作者声明，未经协议验证。"
                     : "启动命令 " + command + " 未在 PATH 中找到：该服务器即使被信任也不会可用。"
                             + "平台未执行该命令，只做了文件查找；工具白名单仍为操作者声明，未经协议验证。");
             return result;
@@ -221,7 +220,7 @@ public class McpServerService {
         result.put("checked", true);
         result.put("targetResolved", server.endpoint());
         result.put("reachable", true);
-        result.put("message", "远端地址格式有效，平台未发起连接（MCP 客户端尚未实现），工具白名单仍为操作者声明，未经协议验证。");
+        result.put("message", "远端地址格式有效；http/sse 传输尚未接入客户端，工具白名单仍为操作者声明，未经协议验证。");
         return result;
     }
 
@@ -234,10 +233,7 @@ public class McpServerService {
         return List.copyOf(problems);
     }
 
-    /**
-     * The raw rows, including {@code endpoint}, which {@link McpServerRegistry} does not need and
-     * deliberately does not expose to the runtime.
-     */
+    /** Catalog rows including endpoint for management UI; runtime client also reads endpoint via registry. */
     private List<Stored> rows() {
         List<Map<String, Object>> rows;
         try {
