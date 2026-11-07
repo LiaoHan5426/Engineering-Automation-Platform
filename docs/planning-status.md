@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main`（待提交 MCP-01 生产授权白名单；含 `0c2aefb` Streamable-HTTP、`b68515b` MEM UI）。历史全量数字仅为既往证据。本轮：`McpProductionAllowlist`（传输含 streamable-http；官方只读包 `echo` 为生产授予）；登记/调用拒绝官方包越权工具；能力页展示生产授予；`McpProductionAllowlistTest` 4 项 + `CapabilityManagementTest` 相关项通过。GET 续传仍待。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 995e810`（MCP-01 生产授权白名单；含 `0c2aefb` Streamable-HTTP、`b68515b` MEM UI）。历史全量数字仅为既往证据。本轮：`McpProductionAllowlist`（传输含 streamable-http；官方只读包 `echo` 为生产授予）；登记/调用拒绝官方包越权工具；能力页展示生产授予；`McpProductionAllowlistTest` 4 项 + `CapabilityManagementTest` 相关项通过；mock `:5174` 浏览器验生产授予 `echo` 与 streamable-http 选项。GET 续传仍待。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
