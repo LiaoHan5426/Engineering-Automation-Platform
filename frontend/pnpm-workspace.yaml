@@ -8,7 +8,9 @@ autoDedupe: true
 
 peerDependencyRules:
   allowedVersions:
-    vite: '>=1.0.0'
+    vite: '*'
+  allowAny:
+    - vite
 
 catalogs:
   frontend:
@@ -16,11 +18,11 @@ catalogs:
     vue-i18n: ^11.1.0
     axios: ^1.8.0
     nprogress: ^0.2.0
-    tailwindcss: ^4.3.3
-    '@tailwindcss/vite': ^4.3.3
+    tailwindcss: ^4.3.4
+    '@tailwindcss/vite': ^4.3.4
   tooling:
-    vite-plus: ^1.4.0
-    vite: npm:@voidzero-dev/vite-plus-core@^1.4.0
+    vite-plus: 1.5.0
+    vite: npm:@voidzero-dev/vite-plus-core@1.5.0
     typescript: ^6.0.3
     '@vitejs/plugin-vue': ^6.0.10
     '@types/nprogress': ^0.2.3
@@ -29,7 +31,7 @@ catalogs:
   style:
     stylelint: ^16.26.1
     postcss-html: ^1.8.1
-    stylelint-config-recess-order: ^7.8.2
+    stylelint-config-recess-order: ^7.10.0
     stylelint-config-standard: ^38.0.0
 
 allowBuilds:
@@ -39,3 +41,5 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - '@vxe-ui/core@4.5.4'
+overrides:
+  vite@*: catalog:tooling

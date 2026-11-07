@@ -161,13 +161,16 @@ database and never executes user SQL.
 `DecisionProvider` implement stages 3–5 of the pipeline. The model is off by default.
 The provider class is a compatibility bridge to Spring AI 2.0.2; no custom HTTP/JSON model transport
 or model tool loop remains. `EngineeringChatService` uses Spring AI's official tool loop and window
-memory, with server-owned workspace permissions and existing Capability handlers. Memory is not an
-audit store or Mission Runtime. Chat UI integration remains pending; model configuration is not proof
-of successful connectivity. The external Codex adapter remains separate and its file-delegation
-acceptance is incomplete. See [roadmap.md](roadmap.md) for the v1.6 local status and remaining gates.
-The [S1 Chat design](decisions/s1-chat-spring-ai-design.md) specifies the proposed bounded HTTP/UI
-integration; those routes and UI are not implemented yet. Workspace plugins and Mission remain
-separate later stages, rather than consequences of adding ChatClient.
+memory, with server-owned workspace permissions and existing Capability handlers. Memory is not a
+durable history store or Mission Runtime. The controlled Chat HTTP/UI integration is implemented;
+model configuration is not proof of successful connectivity or accepted engineering delivery.
+Knowledge/Skill use makes a session sticky-sensitive: subsequent turns clear model memory,
+including derived answers, until a replacement invalidation policy is verified. Window memory and
+the session registry are in-memory, not restart recovery. The external Codex adapter remains separate.
+See [roadmap.md](roadmap.md) for current gates; [S1 Chat design](decisions/s1-chat-spring-ai-design.md)
+is the historical bounded slice, not evidence that today's HTTP/UI routes are absent. Fixed bundled
+Chat/Builder plugin prototypes and persistent Task/Run delivery slices exist; a general plugin
+installer, autonomous planning and full process recovery do not follow from those slices.
 
 **Persistence.** PostgreSQL schema `eap`, managed by Flyway. The user-approved development reset
 consolidated V1–V18 into `V1__initial_schema.sql` on 2026-10-26. Existing development databases require
@@ -191,8 +194,9 @@ flowchart LR
   Provider[CodingAgentProvider: Codex / Claude / Hermes] -.output as observation.-> Observation
 ```
 
-- **Independent validator.** Reads the VCS diff independently of any agent claim, rebuilds and reruns
-  tests before a task may be marked `completed`.
+- **Independent validation expansion.** Bounded Run checks, source delivery and persisted accept/reject
+  decisions already exist. General executor/target coverage and a real-provider EAP page delivery
+  remain open; read diff, rebuild and rerun tests independently of agent claims.
 - **Master / supervisor.** A platform-owned decision layer that aggregates evidence, maps it to
   acceptance criteria, and owns the task state machine (`planned → running → expert-review →
   validating → completed | replanning | awaiting-user | escalated`).
@@ -201,11 +205,34 @@ flowchart LR
 - **CodingAgentProvider.** Adapters that call an external coding agent, whose output is treated as an
   unverified observation and revalidated.
 - **Multi-expert routing.** Selecting an expert from a goal; today the caller names one explicitly.
-- **Desktop shell.** Electron wrapping the same Vue app behind a `DesktopPlatform` contract, with the
+- **Desktop packaging.** A safe Electron/preload scaffold already wraps the same Vue app; sidecar,
+  integrated startup/recovery and installer acceptance remain planned. Preserve the `DesktopPlatform` contract with the
   renderer left unprivileged (`nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`) and
   OS access behind a preload allow-list — [desktop-spec.md](desktop-spec.md).
 
 ## Technology decisions
+
+### Agent/runtime review (2026-11-05; planning only)
+
+[Agent/runtime evolution](decisions/agent-runtime-evolution.md) records source evidence and bounded
+exit criteria. Keep Spring AI; compare LangChain4j only for an explicit collaboration need or
+reproducible framework blocker. Both document memory, RAG and MCP support; missing application
+wiring does not establish a framework limitation. Do not maintain parallel model/tool loops.
+
+- Separate transcript, model window, task working memory, long-term facts and ephemeral retrieved
+  context. Define token/output budgets, source/version dependencies and derived-content revocation
+  before relaxing sensitive-session clearing. Evaluate existing FTS/keyword retrieval before vectors.
+- Tool execution may be Java logic, registered local CLI or future MCP; registration is not
+  installation. Add one versioned managed-tool slice only after data-root/resource ownership is
+  defined. Reuse Capability/CLI/ProcessExecutor; argv/cwd/TEMP limits are not an OS sandbox.
+- Plan stable config/tools/task-scratch/artifacts/cache/log locations with old-data migration and
+  UNKNOWN retention. Pure UI previews use browser resources when sufficient; real disk/process work
+  uses narrow local-runtime interfaces. Never expose arbitrary fs/shell to the renderer.
+- Make board/editor views trusted contributions, while core owns Task/Run, persistence, policy,
+  execution and verification. Prototype-to-code is a scenario composing plugins/services, not a
+  plugin-owned executor. General external installation and third-party isolation remain deferred.
+- MCP Client first: one real read-only server, discovery/call/denial/error/timeout/isolation/cleanup.
+  A2A concerns independent agents; neither internal DAG nor every local tool needs a protocol wrapper.
 
 - **Backend:** Java 25, Spring Boot 4.1, Maven, Spring MVC, JDBC (`JdbcTemplate`), Flyway, JUnit 5.
   Single local process (the **local service**); Docker/Kubernetes/Spring Cloud and isolated cloud VMs

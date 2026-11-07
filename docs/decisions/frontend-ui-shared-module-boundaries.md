@@ -174,6 +174,7 @@ apps/web/src
 - **Plugin**：UI 工作台插件走 `@eap/plugin-sdk` / runtime；Skill、MCP、CLI 不是 UI 插件包。  
 - **Prototype**：Grapes 与 Schema 在 `@eap/prototype-*`；预览应注册/复用 `@eap/ui` 适配器，禁止把设计器 HTML 当生产源码。  
 - 上述包**目标结构**，实施以用户批准切片为准，本文件只锁定**落点规则**以免无序膨胀。
+- 2026-11-05细化：[插件演进合同](agent-runtime-evolution.md#6-核心插件与场景)。先以现有看板验证可信贡献/启停/服务依赖，再迁设计器；“原型到代码”为场景组合。现有`features/plugins`固定Host不是通用安装器；不提前建空SDK，不改变五入口或核心Task/Run生命周期。纯前端预览不强制建磁盘目录，需本机资源时通过Host窄接口申请；外部任意JS包另行评审。
 
 ## 8. 运行时观测：`vite-plugin-vue-mcp`（辅助，非落点源）
 

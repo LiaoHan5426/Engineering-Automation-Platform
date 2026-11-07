@@ -32,6 +32,83 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
 class AiChatApplicationTest {
+    @Test void responsesRefusesGitBeforeModelInvocationAndDoesNotAdvertiseTools() {
+        var calls = new AtomicInteger();
+        var memory = MessageWindowChatMemory.builder().build();
+        var connections = new ModelConnections(root.resolve("tools.json"), true, new ModelClientSource() {
+            public ChatClient conversational(ModelConnectionSnapshot snapshot) {
+                return ChatClient.builder(FakeChatModels.scripted(p -> { calls.incrementAndGet(); return FakeChatModels.text("unexpected"); })).build();
+            }
+            public ChatClient completion(ModelConnectionSnapshot snapshot) { return conversational(snapshot); }
+        });
+        var saved = connections.create("desk", "https://127.0.0.1:9/v1", "test-key", true, true, "responses");
+        connections.configureModels(saved.id(), List.of(new ModelOption("m", List.of())), List.of("m"), "m");
+        var handlers = new CapabilityHandlerRegistry(List.of(handler(new AtomicInteger())));
+        var app = new AiChatApplication(new AiConnectionStatus(handlers, root, root, "none", "", "", false, connections),
+                new AiConversationRegistry(memory), new EngineeringChatService(null, handlers, root,
+                new FileExecutionArtifactStore(root.resolve("artifacts"))), root, connections);
+        var id = app.open("{}").conversationId();
+        assertEquals("AI_PROTOCOL_TOOLS_UNAVAILABLE", assertThrows(ResponseStatusException.class,
+                () -> app.send(id, "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}")).getReason());
+        assertEquals(0, calls.get());
+        assertFalse(app.status().tools().get("git_status"));
+        var ungranted = new AiChatApplication(new AiConnectionStatus(handlers, root, null, "none", "", "", false, connections),
+                new AiConversationRegistry(memory), new EngineeringChatService(null, handlers, (Path) null,
+                new FileExecutionArtifactStore(root.resolve("ungranted-artifacts"))), root, connections);
+        var ungrantedId = ungranted.open("{}").conversationId();
+        assertEquals("AI_PROTOCOL_TOOLS_UNAVAILABLE", assertThrows(ResponseStatusException.class,
+                () -> ungranted.send(ungrantedId, "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}")).getReason());
+    }
+
+    @Test void explicitWireApiPersistsAndProtocolChangesKeepCatalogButRequireRebinding() throws Exception {
+        var memory = MessageWindowChatMemory.builder().maxMessages(20).build();
+        var connections = new ModelConnections(root.resolve("wire.json"), false, new ModelClientSource() {
+            public ChatClient conversational(ModelConnectionSnapshot snapshot) {
+                return EngineeringAiConfiguration.createClient(ChatClient.builder(FakeChatModels.scripted(p -> FakeChatModels.text("offline"))), memory);
+            }
+            public ChatClient completion(ModelConnectionSnapshot snapshot) { return conversational(snapshot); }
+        });
+        var handlers = new CapabilityHandlerRegistry(List.of());
+        var app = new AiChatApplication(new AiConnectionStatus(handlers, root, null, "none", "", "", false, connections),
+                new AiConversationRegistry(memory), new EngineeringChatService(null, handlers, (Path) null,
+                new FileExecutionArtifactStore(root.resolve("artifacts"))), root, connections);
+        String body = "{\"name\":\"desk\",\"baseUrl\":\"https://127.0.0.1:9/v1\",\"secret\":\"test-key\",\"defaultSelected\":true}";
+        var saved = app.saveConnection(null, body);
+        connections.configureModels(saved.id(), List.of(new ModelOption("m", List.of("high"))), List.of("m"), "m");
+        var before = connections.require(saved.id());
+        var client = connections.chatClient(before);
+        var id = app.open("{}").conversationId();
+        var changed = app.saveConnection(saved.id(), body.replace("}", ",\"wireApi\":\"responses\"}"));
+        assertEquals(saved.revision() + 1, changed.revision());
+        assertEquals(List.of("m"), changed.allowedModels());
+        assertEquals("m", changed.defaultModel());
+        assertNotEquals(before.configurationRevision, changed.configurationRevision());
+        assertNotSame(client, connections.chatClient(connections.require(saved.id())));
+        assertEquals(changed.revision(), app.saveConnection(saved.id(), body).revision());
+        mvc(app).perform(get("/api/ai/connections")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].wireApi").value("responses"));
+        var reloaded = new ModelConnections(root.resolve("wire.json"), false, new SpringAiModelClientSource(memory));
+        assertEquals("responses", tools.jackson.databind.json.JsonMapper.builder().build()
+                .readTree(tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(reloaded.list()))
+                .get("items").get(0).get("wireApi").asText());
+        assertEquals("TARGET_CHANGE_CONFIRMATION_REQUIRED", assertThrows(ResponseStatusException.class,
+                () -> app.send(id, "{\"message\":\"next\",\"toolMode\":\"none\"}")).getReason());
+        assertTrue(app.assign(id, "{\"connectionId\":\"" + saved.id() + "\",\"model\":\"m\",\"confirmTargetChange\":true}").memoryCleared());
+        for (String value : List.of("\"Responses\"", "\" responses\"", "\"\"", "null", "true", "4")) {
+            mvc(app).perform(post("/api/ai/connections").contentType(MediaType.APPLICATION_JSON)
+                    .content(body.replace("}", ",\"wireApi\":" + value + "}"))).andExpect(status().isBadRequest());
+            mvc(app).perform(post("/api/ai/connections/" + saved.id()).contentType(MediaType.APPLICATION_JSON)
+                    .content(body.replace("}", ",\"wireApi\":" + value + "}"))).andExpect(status().isBadRequest());
+        }
+        mvc(app).perform(post("/api/ai/connections/" + saved.id()).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.wireApi").value("responses"));
+        mvc(app).perform(post("/api/ai/connections").contentType(MediaType.APPLICATION_JSON)
+                .content(body.replace("}", ",\"wireApi\":\"responses\"}")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.wireApi").value("responses"));
+        mvc(app).perform(post("/api/ai/connections").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.wireApi").value("chat-completions"));
+    }
+
     @TempDir
     Path root;
 

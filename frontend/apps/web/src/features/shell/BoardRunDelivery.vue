@@ -3,6 +3,7 @@ import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { Dialog, Button, Input, Textarea, ConfirmBox, Collapse, Checkbox } from '@eap/ui'
 import {
   runtimeApi,
+  proposalRefused,
   type BoardRun,
   type BoardTask,
   type BoardDeliveryPage,
@@ -45,6 +46,19 @@ const criteriaConfirmed = ref(false),
   previewConfirmed = ref(false),
   comment = ref('')
 const deciding = ref<'ACCEPT' | 'REJECT' | null>(null)
+const linkedProposalStatus = ref<string | null>(null)
+async function loadLinkedProposalStatus(conversation: string, proposal: string) {
+  if (useMockServices) {
+    linkedProposalStatus.value = null
+    return
+  }
+  try {
+    const state = await runtimeApi.codeProposal(conversation, proposal)
+    linkedProposalStatus.value = state.status
+  } catch {
+    linkedProposalStatus.value = null
+  }
+}
 const store = (() => {
   try {
     return sessionStorage
@@ -53,6 +67,23 @@ const store = (() => {
   }
 })()
 const record = computed(() => page.value?.record)
+watch(
+  () => {
+    const evidence = record.value?.applicationEvidence
+    if (evidence) return [evidence.conversationId, evidence.proposalId] as const
+    if (linkApplication.value && validApplicationRef(applicationRef.value))
+      return [conversationId.value, proposalId.value] as const
+    return null
+  },
+  (ids) => {
+    if (!ids) {
+      linkedProposalStatus.value = null
+      return
+    }
+    void loadLinkedProposalStatus(ids[0], ids[1])
+  },
+  { immediate: true },
+)
 const paths = computed(() => pathsText.value.split(/\r?\n/).filter((path) => path !== ''))
 const validPaths = computed(() => validDeliveryPaths(paths.value))
 const busy = computed(() => loading.value || sending.value)
@@ -417,6 +448,13 @@ onBeforeUnmount(() => {
             ><br />{{ t('boardDelivery.proposalId') }}：<code>{{
               record.applicationEvidence.proposalId
             }}</code>
+          </p>
+          <p
+            v-if="linkedProposalStatus"
+            data-testid="delivery-proposal-status"
+            :data-refused="proposalRefused(linkedProposalStatus)"
+          >
+            {{ t('application.status.' + linkedProposalStatus) }}
           </p>
           <p>
             {{ record.applicationEvidence.targetPath }} ·

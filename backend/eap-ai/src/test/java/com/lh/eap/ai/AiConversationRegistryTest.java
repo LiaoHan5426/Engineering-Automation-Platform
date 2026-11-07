@@ -27,6 +27,143 @@ class AiConversationRegistryTest {
         public void clear(String conversationId) { cleared.add(conversationId); delegate.clear(conversationId); }
     }
 
+    @Test void expiredForeignSessionCannotBeRecreatedInAnotherWorkspace() {
+        var memory = new RecordingMemory();
+        var now = new AtomicReference<>(Instant.parse("2026-10-24T00:00:00Z"));
+        var registry = new AiConversationRegistry(memory, now::get);
+        registry.open(root, "ws");
+        now.set(now.get().plusSeconds(60));
+        var live = registry.open(root, "ws");
+        now.set(now.get().plusSeconds(1801));
+        // Both targets are now expired: a foreign workspace must never recover the UUID.
+        var mismatch = assertThrows(ResponseStatusException.class,
+                () -> registry.reconnect(live.id, root.resolve("other"), "other"));
+        assertEquals("WORKSPACE_MISMATCH", mismatch.getReason());
+        assertTrue(memory.cleared.isEmpty());
+    }
+
+    @Test void reconnectPreservesLiveBindingMemorySensitivityAndRejectsBusyWithoutMutation() {
+        var memory = new RecordingMemory();
+        var registry = new AiConversationRegistry(memory);
+        var session = registry.open(root, "ws");
+        var binding = new AiConversationRegistry.Binding(UUID.randomUUID(), 7, "chosen", "model", "endpoint", "revision", null);
+        registry.bind(session.id, binding, false);
+        registry.exclusive(session.id, () -> {
+            registry.clearContextMemory(session.id, true);
+            return null;
+        });
+        var key = EngineeringChatService.memoryKey(AiConversationRegistry.PRINCIPAL, session.id);
+        memory.add(key, new org.springframework.ai.chat.messages.UserMessage("retained"));
+        memory.cleared.clear();
+        var result = registry.reconnect(session.id, root, "ws");
+        assertFalse(result.contextReset());
+        assertEquals(binding.connectionId, result.connectionId());
+        assertEquals(7L, result.connectionRevision());
+        assertEquals("model", result.model());
+        assertSame(binding, registry.binding(session.id));
+        assertEquals(1, memory.get(key).size());
+        registry.exclusive(session.id, () -> {
+            assertEquals("CONVERSATION_BUSY", assertThrows(ResponseStatusException.class,
+                    () -> registry.reconnect(session.id, root, "ws")).getReason());
+            assertTrue(memory.cleared.isEmpty());
+            assertTrue(registry.clearContextMemory(session.id, false));
+            return null;
+        });
+        assertTrue(memory.get(key).isEmpty());
+    }
+
+    @Test void expiredReconnectUsesSameIdClearsMemoryAndDropsBinding() {
+        var memory = new RecordingMemory();
+        var now = new AtomicReference<>(Instant.parse("2026-10-24T00:00:00Z"));
+        var registry = new AiConversationRegistry(memory, now::get);
+        var session = registry.open(root, "ws");
+        registry.bind(session.id, new AiConversationRegistry.Binding(UUID.randomUUID(), 1, "old", "m", "e", "r", null), false);
+        var key = EngineeringChatService.memoryKey(AiConversationRegistry.PRINCIPAL, session.id);
+        memory.add(key, new org.springframework.ai.chat.messages.UserMessage("expired"));
+        now.set(now.get().plusSeconds(1801));
+        var response = registry.reconnect(session.id, root, "ws");
+        assertTrue(response.contextReset());
+        assertEquals(session.id, response.conversationId());
+        assertNull(response.connectionId());
+        assertTrue(memory.get(key).isEmpty());
+        assertNotSame(session, registry.require(session.id));
+    }
+
+    @Test void concurrentReconnectCreatesOnlyOneSessionAndClearsOnlyOnce() throws Exception {
+        var memory = new RecordingMemory();
+        var registry = new AiConversationRegistry(memory);
+        var id = UUID.randomUUID();
+        var start = new CountDownLatch(1);
+        try (var workers = java.util.concurrent.Executors.newFixedThreadPool(8)) {
+            var results = new ArrayList<java.util.concurrent.Future<Boolean>>();
+            for (int i = 0; i < 16; i++) results.add(workers.submit(() -> {
+                start.await();
+                return registry.reconnect(id, root, "ws").contextReset();
+            }));
+            start.countDown();
+            int resets = 0;
+            for (var result : results) if (result.get(5, java.util.concurrent.TimeUnit.SECONDS)) resets++;
+            assertEquals(1, resets);
+        }
+        assertEquals(1, memory.cleared.size());
+        assertEquals(id, registry.require(id).id);
+    }
+
+    @Test void reconnectAtCapEvictsOnlyOldestIdleAndRejectsWhenAllBusy() {
+        var memory = new RecordingMemory();
+        var now = new AtomicReference<>(Instant.parse("2026-10-24T00:00:00Z"));
+        var registry = new AiConversationRegistry(memory, now::get);
+        var ids = new ArrayList<UUID>();
+        for (int i = 0; i < AiConversationRegistry.MAX_CONVERSATIONS; i++) {
+            ids.add(registry.open(root, "ws").id);
+            now.set(now.get().plusSeconds(1));
+        }
+        var recovered = UUID.randomUUID();
+        assertTrue(registry.reconnect(recovered, root, "ws").contextReset());
+        assertEquals(404, assertThrows(ResponseStatusException.class, () -> registry.require(ids.removeFirst())).getStatusCode().value());
+        ids.add(recovered);
+        holdAll(registry, ids, 0, () -> {
+            var missing = UUID.randomUUID();
+            assertEquals("CONVERSATION_LIMIT", assertThrows(ResponseStatusException.class,
+                    () -> registry.reconnect(missing, root, "ws")).getReason());
+            assertEquals(404, assertThrows(ResponseStatusException.class, () -> registry.require(missing)).getStatusCode().value());
+        });
+    }
+
+    private void holdAll(AiConversationRegistry registry, List<UUID> ids, int index, Runnable action) {
+        if (index == ids.size()) { action.run(); return; }
+        registry.exclusive(ids.get(index), () -> { holdAll(registry, ids, index + 1, action); return null; });
+    }
+
+    @Test void failedOrphanClearDoesNotPublishSessionOrEvictCapacityVictim() {
+        var memory = org.mockito.Mockito.mock(ChatMemory.class);
+        var registry = new AiConversationRegistry(memory);
+        var ids = new ArrayList<UUID>();
+        for (int i = 0; i < AiConversationRegistry.MAX_CONVERSATIONS; i++) ids.add(registry.open(root, "ws").id);
+        var missing = UUID.randomUUID();
+        var key = EngineeringChatService.memoryKey(AiConversationRegistry.PRINCIPAL, missing);
+        org.mockito.Mockito.doThrow(new IllegalStateException("memory unavailable")).when(memory).clear(key);
+        assertThrows(IllegalStateException.class, () -> registry.reconnect(missing, root, "ws"));
+        for (var id : ids) assertNotNull(registry.require(id));
+        assertEquals(404, assertThrows(ResponseStatusException.class, () -> registry.require(missing)).getStatusCode().value());
+        org.mockito.Mockito.doNothing().when(memory).clear(key);
+        assertTrue(registry.reconnect(missing, root, "ws").contextReset());
+    }
+
+    @Test void liveReconnectDoesNotSweepUnrelatedExpiredSessionsOrRefreshItsLifetime() {
+        var memory = new RecordingMemory();
+        var now = new AtomicReference<>(Instant.parse("2026-10-24T00:00:00Z"));
+        var registry = new AiConversationRegistry(memory, now::get);
+        registry.open(root, "ws");
+        now.set(now.get().plusSeconds(60));
+        var live = registry.open(root, "ws");
+        now.set(now.get().plusSeconds(1741));
+        assertFalse(registry.reconnect(live.id, root, "ws").contextReset());
+        assertTrue(memory.cleared.isEmpty());
+        now.set(now.get().plusSeconds(60));
+        assertTrue(registry.reconnect(live.id, root, "ws").contextReset());
+    }
+
     @Test void deletionClearsOnlyItsMemoryAndRejectsBusySessions() {
         var memory = new RecordingMemory();
         var registry = new AiConversationRegistry(memory);

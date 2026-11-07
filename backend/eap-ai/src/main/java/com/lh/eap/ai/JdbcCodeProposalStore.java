@@ -91,4 +91,11 @@ public class JdbcCodeProposalStore implements CodeProposalStore {
                 throw new IllegalStateException("proposal claim lost");
         });
     }
+    @Override public void refuse(String principal, UUID conversation, UUID id, String reason) {
+        transaction.executeWithoutResult(tx -> {
+            if (jdbc.update("UPDATE eap.code_proposal SET status='REFUSED',reason=?,finished_at=now() WHERE id=? AND principal=? AND conversation_id=? AND status='PROPOSED'",
+                    reason, id, principal, conversation) != 1)
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "CODE_APPLICATION_" + find(principal, conversation, id).map(Stored::status).orElse("UNKNOWN"));
+        });
+    }
 }

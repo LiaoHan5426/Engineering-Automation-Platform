@@ -21,6 +21,7 @@ import { errorMessage } from '../../lib/presentation'
 import { createChatSession } from './chatSession'
 import ConnectionDialog from '../../components/ConnectionDialog.vue'
 import SessionPanel from '../../components/SessionPanel.vue'
+import WorkspaceFileTreeRail from '../../components/WorkspaceFileTreeRail.vue'
 import WorkspaceWelcome from '../../components/WorkspaceWelcome.vue'
 import { chatService, chatStorage } from './chatService'
 import { preview } from '../shell/preview'
@@ -34,6 +35,8 @@ import { readFeedScroll, saveFeedScroll } from './feedScroll'
 import { outgoingInstructions } from './outgoing'
 import { applyFailureCode, applyFailureMessage } from './applyError'
 import { pendingWrite } from './pendingWrite'
+import { refusedFromState } from './proposalRefusal'
+import { proposalRefused } from '@eap/runtime-client'
 import { reasoningForModel, type ReasoningLevel } from './reasoningChoice'
 import {
   adoptScratch,
@@ -46,6 +49,8 @@ import {
   restorePanel,
   scenarios,
   takeBoardDraft,
+  toggleWorkspaceTree,
+  openCandidateDiff,
   workbench,
 } from '../shell/workbench'
 import {
@@ -260,12 +265,20 @@ const railMode = computed(() => {
 const filesOverlayOpen = computed(() => workbench.panel === 'files')
 /** Terminal docks under the conversation and shrinks height — not a right rail. */
 const terminalDockOpen = computed(() => workbench.panel === 'terminal')
+const workspaceTreeOpen = computed(() => workbench.workspaceTreeOpen)
 function choosePanel(id: 'summary' | 'changes' | 'files' | 'terminal') {
   moreOpen.value = false
   rememberPanel(session.conversationId.value, workbench.panel === id ? null : id)
 }
 const canRibbonRetry = computed(() => {
   const failure = session.failure.value
+  if (
+    session.expired.value ||
+    session.sessionUnavailable.value ||
+    session.checkingConversation.value ||
+    session.reconnecting.value
+  )
+    return false
   if (failure !== 'failed' && failure !== 'kept' && failure !== 'not-configured') return false
   if (session.sending.value || !session.draft.value.trim()) return false
   if (!props.mock && (workbench.executionMode === 'agent' || workbench.executionMode === 'plan'))
@@ -274,6 +287,14 @@ const canRibbonRetry = computed(() => {
 })
 function closePanel() {
   rememberPanel(session.conversationId.value, null)
+}
+function viewProposalDiff(path: string) {
+  openCandidateDiff(session.conversationId.value, path)
+  void nextTick(() => {
+    document.querySelector<HTMLElement>('[data-testid="changes-rail"]')?.scrollIntoView({
+      block: 'nearest',
+    })
+  })
 }
 function openFromSummary(target: 'changes' | 'files' | 'terminal' | 'composer' | 'policy') {
   if (target === 'policy') {
@@ -293,6 +314,35 @@ function openFromSummary(target: 'changes' | 'files' | 'terminal' | 'composer' |
 const archived = computed(
   () => !!session.history.value.find((x) => x.id === session.conversationId.value)?.archived,
 )
+const reconnectConfirmId = ref<string | null>(null)
+const reconnectActionBusy = ref(false)
+const reconnectLabel = computed(() =>
+  t(session.draft.value.trim() ? 'historyUi.reconnectRetry' : 'historyUi.reconnect'),
+)
+watch(
+  () => session.conversationId.value,
+  () => {
+    reconnectConfirmId.value = null
+  },
+)
+async function confirmReconnect() {
+  const id = reconnectConfirmId.value
+  if (!id || reconnectActionBusy.value || id !== session.conversationId.value) return
+  reconnectActionBusy.value = true
+  try {
+    const result = await session.reconnectConversation()
+    reconnectConfirmId.value = null
+    if (
+      result?.readyToRetry &&
+      props.active &&
+      session.conversationId.value === id &&
+      session.draft.value.trim()
+    )
+      await sendTask()
+  } finally {
+    reconnectActionBusy.value = false
+  }
+}
 function statusTone() {
   if (session.expired.value || archived.value) return 'warning'
   if (props.mock) return 'neutral'
@@ -312,14 +362,55 @@ async function removeConversation() {
   }
 }
 const refused = ref<Record<string, boolean>>({})
+const refusing = ref<string | null>(null)
+const refuseNote = ref('')
 const conflicted = ref<Record<string, boolean>>({})
 const applied = ref<Record<string, string[]>>({})
 const appliedVerification = ref<Record<string, string>>({})
 const appliedChecks = ref<
   Record<string, Array<{ name: string; exitCode: number | null; summary: string }>>
 >({})
-function refuseProposal(id: string) {
-  refused.value = { ...refused.value, [id]: true }
+function syncRefused(id: string, value: boolean) {
+  refused.value = { ...refused.value, [id]: value }
+}
+async function hydrateProposalRefusal(proposal: CodeProposal) {
+  if (props.mock || refused.value[proposal.id]) return
+  try {
+    const state = await api.codeProposal(proposal.conversationId, proposal.id)
+    if (refusedFromState(state)) syncRefused(proposal.id, true)
+  } catch {
+    /* durable status unavailable in this mode */
+  }
+}
+watch(
+  () =>
+    session.turns.value
+      .map((turn) => turn.proposal)
+      .filter((proposal): proposal is CodeProposal => !!proposal),
+  (proposals) => {
+    for (const proposal of proposals) void hydrateProposalRefusal(proposal)
+  },
+  { immediate: true },
+)
+async function refuseProposal(turn: { proposal?: CodeProposal | null; executionId?: string | null }) {
+  const proposal = turn.proposal
+  if (!proposal || refused.value[proposal.id] || refusing.value) return
+  if (props.mock) {
+    syncRefused(proposal.id, true)
+    return
+  }
+  refusing.value = proposal.id
+  refuseNote.value = ''
+  try {
+    const state = await api.refuseCodeProposal(proposal.conversationId, proposal.id, {
+      executionId: turn.executionId ?? null,
+    })
+    syncRefused(proposal.id, proposalRefused(state.status))
+  } catch (error) {
+    refuseNote.value = errorMessage(error)
+  } finally {
+    if (refusing.value === proposal.id) refusing.value = null
+  }
 }
 const applying = ref<string | null>(null)
 const proposalNote = ref('')
@@ -333,6 +424,8 @@ const modelChoices = computed(() =>
         .map((model) => ({
           key: JSON.stringify([item.id, model.id]),
           kind: item.kind,
+          wireApi:
+            item.kind === 'chatgpt-plan' ? 'responses' : (item.wireApi ?? 'chat-completions'),
           connectionId: item.id,
           name: item.name,
           model: model.id,
@@ -355,9 +448,6 @@ const selectedModel = computed(() =>
         (session.pendingConnectionId.value ? session.pendingModel.value : session.boundModel.value),
   ),
 )
-watch(selectedModel, (model) => {
-  if (model?.kind === 'chatgpt-plan') session.toolMode.value = 'none'
-})
 const reasoningEfforts = computed(() => selectedModel.value?.efforts ?? [])
 const boundEfforts = computed(
   () =>
@@ -525,27 +615,25 @@ async function sendTask() {
   const guidance = extras.experts.map((item) => item.guidance).join('\n')
   const sceneInstructions =
     scenarios.find((item) => item.id === extras.scenarioId)?.instructions || ''
-  const original = session.context.value.instructions
-  const originalMode = session.context.value.mode
-  const originalApproval = session.context.value.approval
+  const requestContext = {
+    ...session.context.value,
+    files: session.context.value.files.map((file) => ({ ...file })),
+  }
   if (workbench.executionMode === 'plan') {
-    session.context.value.mode = 'chat'
-    session.context.value.approval = 'read_only'
+    requestContext.mode = 'chat'
+    requestContext.approval = 'read_only'
     session.toolMode.value = 'none'
-  } else if (workbench.executionMode === 'agent') session.context.value.mode = 'code'
-  session.context.value.instructions = outgoingInstructions({
-    instructions: original,
+  } else if (workbench.executionMode === 'agent') requestContext.mode = 'code'
+  requestContext.instructions = outgoingInstructions({
+    instructions: requestContext.instructions,
     scene: sceneInstructions,
     guidance,
     plan: workbench.executionMode === 'plan',
   })
   const before = session.conversationId.value
   try {
-    await session.send()
+    await session.send(requestContext)
   } finally {
-    session.context.value.instructions = original
-    session.context.value.mode = originalMode
-    session.context.value.approval = originalApproval
     if (!before && session.conversationId.value) {
       adoptScratch(session.conversationId.value)
       assignSessionProject(session.conversationId.value, workbench.selectedProjectId)
@@ -671,6 +759,17 @@ onMounted(async () => {
           variant="ghost"
           type="button"
           class="shell-tool"
+          data-testid="open-workspace-tree"
+          :aria-pressed="workspaceTreeOpen"
+          :title="t('desktop.workspaceTreeHint')"
+          @click="toggleWorkspaceTree()"
+          >{{ t('desktop.workspaceTree') }}</Button
+        >
+        <Button
+          size="sm"
+          variant="ghost"
+          type="button"
+          class="shell-tool"
           data-testid="open-summary"
           :aria-pressed="workbench.panel === 'summary'"
           @click="choosePanel('summary')"
@@ -742,10 +841,20 @@ onMounted(async () => {
     <WorkbenchFrame
       :rail="!!railMode"
       class="chat-body"
-      :class="{ 'has-rail': !!railMode, 'has-terminal-dock': terminalDockOpen }"
+      :class="{
+        'has-rail': !!railMode,
+        'has-terminal-dock': terminalDockOpen,
+        'has-workspace-tree': workspaceTreeOpen,
+      }"
       data-testid="chat-body"
     >
-      <div class="chat-main" data-testid="chat-main">
+      <WorkbenchFrame
+        :rail="workspaceTreeOpen"
+        rail-side="start"
+        class="chat-workspace-split"
+        data-testid="chat-workspace-split"
+      >
+        <div class="chat-main" data-testid="chat-main">
         <InfiniteScroll
           ref="feedPort"
           class="chat-feed preview-feed"
@@ -783,6 +892,62 @@ onMounted(async () => {
           />
           <Feedback v-if="session.expired.value || archived" tone="warning">{{
             archived ? t('historyUi.archiveNotice') : t('historyUi.expired')
+          }}</Feedback>
+          <Button
+            v-if="session.expired.value && !archived"
+            data-testid="reconnect-session"
+            :disabled="
+              session.reconnecting.value ||
+              reconnectActionBusy ||
+              session.checkingConversation.value
+            "
+            @click="reconnectConfirmId = session.conversationId.value"
+            >{{ reconnectLabel }}</Button
+          >
+          <ConfirmBox
+            v-if="reconnectConfirmId"
+            :title="reconnectLabel"
+            :impact="[t('historyUi.reconnectImpact'), t('historyUi.reconnectLocal')]"
+            :confirm-label="reconnectLabel"
+            :busy="reconnectActionBusy"
+            @confirm="confirmReconnect"
+            @cancel="reconnectConfirmId = null"
+          />
+          <Feedback v-if="session.sessionUnavailable.value" tone="warning">{{
+            t('historyUi.probeFailed')
+          }}</Feedback>
+          <Button
+            v-if="session.sessionUnavailable.value || (session.expired.value && !archived)"
+            data-testid="recheck-session"
+            :disabled="
+              session.checkingConversation.value ||
+              session.reconnecting.value ||
+              reconnectActionBusy
+            "
+            @click="session.recheckConversation()"
+            >{{ t('historyUi.recheck') }}</Button
+          >
+          <Feedback
+            v-if="
+              session.failure.value === 'reconnect-failed' ||
+              session.failure.value === 'workspace-changed'
+            "
+            data-testid="reconnect-error"
+            tone="warning"
+            >{{
+              t(
+                session.failure.value === 'workspace-changed'
+                  ? 'historyUi.workspaceChanged'
+                  : 'historyUi.reconnectFailed',
+              )
+            }}</Feedback
+          >
+          <Feedback v-if="session.reconnectNotice.value" tone="info">{{
+            t(
+              session.reconnectNotice.value === 'reset'
+                ? 'historyUi.contextReset'
+                : 'historyUi.contextKept',
+            )
           }}</Feedback>
           <p v-if="session.toolMode.value === 'git_status'" class="hint">
             {{ t('chat.gitWarning') }}
@@ -825,6 +990,14 @@ onMounted(async () => {
                     }}</template
                   >
                   <div class="code-comparison">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      type="button"
+                      data-testid="open-proposal-diff"
+                      @click="viewProposalDiff(file.path)"
+                      >{{ t('desktop.openProposalDiff') }}</Button
+                    >
                     <div>
                       <strong>{{ t('task.before') }}</strong>
                       <pre>{{ file.before ?? t('task.newFile') }}</pre>
@@ -840,10 +1013,19 @@ onMounted(async () => {
                     v-if="!applied[turn.proposal.id] && !refused[turn.proposal.id]"
                     type="button"
                     data-testid="refuse-write"
-                    @click="refuseProposal(turn.proposal.id)"
+                    :disabled="!!refusing"
+                    @click="refuseProposal(turn)"
                     >{{ t('desktop.refuseWrite') }}</Button
                   >
                 </div>
+                <p
+                  v-if="refuseNote && refusing === turn.proposal.id"
+                  class="hint"
+                  role="alert"
+                  data-testid="refuse-write-error"
+                >
+                  {{ refuseNote }}
+                </p>
                 <p v-if="refused[turn.proposal.id]" class="hint" data-testid="refused-write">
                   {{ t('desktop.refusedWrite') }}
                 </p>
@@ -985,9 +1167,11 @@ onMounted(async () => {
           >
           <Button
             v-if="
-              session.failure.value === 'failed' ||
-              session.failure.value === 'kept' ||
-              session.failure.value === 'not-configured'
+              !session.expired.value &&
+              (session.failure.value === 'failed' ||
+                session.failure.value === 'kept' ||
+                session.failure.value === 'cancelled' ||
+                session.failure.value === 'not-configured')
             "
             type="button"
             data-testid="retry-send"
@@ -1038,11 +1222,20 @@ onMounted(async () => {
           <Feedback v-if="session.failure.value.startsWith('knowledge-')" tone="warning">{{
             t('knowledgeContext.' + session.failure.value.slice('knowledge-'.length))
           }}</Feedback>
+          <Feedback
+            v-else-if="session.failure.value === 'protocol-tools-unavailable'"
+            tone="warning"
+            >{{ t('modelUi.protocolToolsUnavailable') }}</Feedback
+          >
           <Feedback v-else-if="session.failure.value.startsWith('generation-')" tone="warning">{{
             t('generation.' + session.failure.value)
           }}</Feedback>
           <Feedback
-            v-else-if="session.failure.value && !session.failure.value.startsWith('skill-')"
+            v-else-if="
+              session.failure.value &&
+              !session.failure.value.startsWith('skill-') &&
+              !['reconnect-failed', 'workspace-changed'].includes(session.failure.value)
+            "
             tone="warning"
             >{{
               t(
@@ -1085,7 +1278,10 @@ onMounted(async () => {
             :model-label="selectedModel ? selectedModel.model : ''"
             :context="session.context.value"
             :disabled="
-              session.sending.value || session.opening.value || session.expired.value || archived
+              session.sending.value ||
+              session.opening.value ||
+              session.reconnecting.value ||
+              archived
             "
             :reasoning-efforts="reasoningEfforts"
             @update="session.context.value = $event"
@@ -1110,7 +1306,7 @@ onMounted(async () => {
                   :disabled="
                     session.sending.value ||
                     session.opening.value ||
-                    session.expired.value ||
+                    session.reconnecting.value ||
                     archived
                   "
                 />
@@ -1154,8 +1350,8 @@ onMounted(async () => {
                   })
                 }}
               </p>
-              <p v-if="selectedModel?.kind === 'chatgpt-plan'" class="hint">
-                {{ t('authUi.toolsHint') }}
+              <p v-if="selectedModel?.wireApi === 'responses'" class="hint">
+                {{ t('modelUi.protocolToolsUnavailable') }}
               </p></template
             >
             <template #tools>
@@ -1177,7 +1373,7 @@ onMounted(async () => {
                   type="button"
                   :disabled="
                     !session.status.value?.tools.git_status ||
-                    selectedModel?.kind === 'chatgpt-plan'
+                    selectedModel?.wireApi === 'responses'
                   "
                   :aria-pressed="session.toolMode.value === 'git_status'"
                   @click="session.toolMode.value = 'git_status'"
@@ -1223,37 +1419,51 @@ onMounted(async () => {
             </template>
             <template #send>
               <Button
+                v-if="session.sending.value"
+                class="composer-send"
+                variant="secondary"
+                type="button"
+                data-testid="cancel-message"
+                :aria-label="t('chat.cancel')"
+                :title="t('chat.cancel')"
+                @click="session.cancelSend()"
+              >
+                <Icon name="x" class="composer-send-arrow" :size="18" />
+                <span class="sr-only">{{ t('chat.cancel') }}</span>
+              </Button>
+              <Button
+                v-else
                 class="composer-send"
                 variant="primary"
                 type="submit"
                 data-testid="send-message"
-                :aria-label="session.sending.value ? t('chat.sending') : t('chat.send')"
-                :title="session.sending.value ? t('chat.sending') : t('chat.send')"
+                :aria-label="t('chat.send')"
+                :title="t('chat.send')"
                 :disabled="
                   (!mock &&
                     (workbench.executionMode === 'agent' || workbench.executionMode === 'plan')) ||
                   session.expired.value ||
                   archived ||
-                  session.sending.value ||
+                  session.reconnecting.value ||
+                  session.checkingConversation.value ||
+                  session.sessionUnavailable.value ||
                   session.opening.value ||
                   !session.draft.value.trim() ||
                   (!!session.pendingConnectionId.value && !!session.conversationId.value) ||
                   !selectedModel
                 "
               >
-                <Icon
-                  :name="session.sending.value ? 'loader-circle' : 'arrow-up'"
-                  class="composer-send-arrow"
-                  :size="18"
-                />
-                <span class="sr-only">{{
-                  session.sending.value ? t('chat.sending') : t('chat.send')
-                }}</span>
+                <Icon name="arrow-up" class="composer-send-arrow" :size="18" />
+                <span class="sr-only">{{ t('chat.send') }}</span>
               </Button>
             </template>
           </TaskComposer>
           <Feedback
-            v-if="session.pendingConnectionId.value && session.conversationId.value"
+            v-if="
+              session.pendingConnectionId.value &&
+              session.conversationId.value &&
+              !session.expired.value
+            "
             tone="warning"
           >
             {{ t('chat.targetPrompt', { target: session.targetNotice.value }) }}
@@ -1274,7 +1484,11 @@ onMounted(async () => {
           @close="closePanel"
           @open="openFromSummary"
         />
-      </div>
+        </div>
+        <template v-if="workspaceTreeOpen" #rail>
+          <WorkspaceFileTreeRail @close="toggleWorkspaceTree(false)" />
+        </template>
+      </WorkbenchFrame>
       <SessionPanel
         v-if="railMode"
         class="session-rail eap-scrollbar"
@@ -1452,6 +1666,11 @@ onMounted(async () => {
     margin-left: 0;
     flex-wrap: wrap;
   }
+}
+.chat-workspace-split {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .chat-main {
   display: flex;

@@ -1047,7 +1047,12 @@ onUnmounted(() => {
       class="body"
       :class="{ 'body--chat': activeView === 'chat', 'body--sql': activeView === 'sql' }"
     >
-      <DesktopNavigation :active-view="activeView" :pages="pages" @navigate="activeView = $event" />
+      <DesktopNavigation
+        :active-view="activeView"
+        :pages="pages"
+        :board-enabled="pluginHost.boardContributionVisible.value"
+        @navigate="activeView = $event"
+      />
       <Button
         variant="backdrop"
         v-if="narrow && workbench.sidebarOpen"
@@ -1088,7 +1093,19 @@ onUnmounted(() => {
           :chat-enabled="pluginHost.installation.value.enabled.chat"
           @navigate="activeView = $event"
         />
-        <ProjectBoard v-else-if="activeView === 'board'" />
+        <ProjectBoard
+          v-else-if="activeView === 'board' && pluginHost.boardContributionVisible.value"
+        />
+        <section
+          v-else-if="activeView === 'board' && !pluginHost.boardContributionVisible.value"
+          class="view"
+          data-testid="board-contribution-disabled"
+        >
+          <div class="page-head">
+            <h1>{{ i18n.global.t('plugin.hiddenTitle') }}</h1>
+            <p>{{ i18n.global.t('plugin.hiddenBody') }}</p>
+          </div>
+        </section>
         <ExpertCatalog
           v-else-if="activeView === 'expert-catalog'"
           @navigate="activeView = $event"

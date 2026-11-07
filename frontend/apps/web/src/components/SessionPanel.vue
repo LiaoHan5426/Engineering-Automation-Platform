@@ -7,6 +7,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import VerificationChecks from '../features/shell/VerificationChecks.vue'
 import RepositoryBrowser from './RepositoryBrowser.vue'
+import ProposalDiffView from './ProposalDiffView.vue'
 import { Input, Button, Collapse } from '@eap/ui'
 import { pendingWrite } from '../features/chat/pendingWrite'
 import { pagePreviewMessageKey, resolvePagePreview } from '../features/shell/pagePreview'
@@ -71,6 +72,25 @@ const selectedFile = computed(
 watch(sessionKey, () => {
   selectedPath.value = ''
 })
+watch(
+  () => workbench.diffFocusPath,
+  (path) => {
+    if (!path || props.mode !== 'changes') return
+    selectedPath.value = path
+    workbench.diffFocusPath = ''
+  },
+  { flush: 'post' },
+)
+watch(
+  () => props.mode,
+  (mode) => {
+    const path = workbench.diffFocusPath
+    if (mode === 'changes' && path) {
+      selectedPath.value = path
+      workbench.diffFocusPath = ''
+    }
+  },
+)
 /** UI project group for this session — never invents a directory from the process path. */
 const sessionProjectLine = computed(() => {
   // Drafts use scratch extras until the first send creates a conversation id.
@@ -390,16 +410,11 @@ const previewLine = computed(() =>
               selectedFile.baseHash || t('desktop.summaryUnknown')
             }}</small
           >
-          <div class="codex-diff">
-            <section>
-              <small>{{ t('task.before') }}</small>
-              <pre>{{ selectedFile.before ?? t('task.newFile') }}</pre>
-            </section>
-            <section>
-              <small>{{ t('task.after') }}</small>
-              <pre class="added">{{ selectedFile.content }}</pre>
-            </section>
-          </div>
+          <ProposalDiffView
+            :path="selectedFile.path"
+            :before="selectedFile.before"
+            :after="selectedFile.content"
+          />
           <p v-if="!selectedFile.baseHash.trim()" class="hint">{{ t('desktop.applyBlocked') }}</p>
           <p v-else class="hint">{{ t('desktop.recheckOnApply') }}</p>
           <p class="hint">{{ t('desktop.earlierChanges') }}</p>

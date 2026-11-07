@@ -6,8 +6,12 @@ import com.lh.eap.ai.ModelConnectionView;
 import com.lh.eap.ai.ModelConnections;
 import com.lh.eap.application.dto.AiConnectionAssignment;
 import com.lh.eap.ai.dto.AiConversationResponse;
-import com.lh.eap.ai.dto.AiMessageResponse;
+import com.lh.eap.ai.dto.ChatExecutionEvent;
+import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/ai")
@@ -76,9 +82,46 @@ public class AiChatController {
         return chat.open(body);
     }
 
-    @PostMapping("/conversations/{id}/messages")
-    public AiMessageResponse message(@PathVariable UUID id, @RequestBody(required = false) String body) {
-        return chat.send(id, body);
+    @PostMapping("/conversations/{id}/reconnect")
+    public com.lh.eap.ai.dto.AiConversationReconnectResponse reconnect(@PathVariable UUID id,
+            @RequestBody(required = false) String body) {
+        return chat.reconnect(id, body);
+    }
+
+    /**
+     * Primary chat path: SSE execution events on the request thread.
+     * Validation failures thrown before the first event keep HTTP 4xx JSON error semantics.
+     * The final frame carries the full message envelope in {@code payload}.
+     */
+    @PostMapping(
+            value = "/conversations/{id}/messages",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter message(@PathVariable UUID id, @RequestBody(required = false) String body) {
+        var emitter = new SseEmitter(120_000L);
+        try {
+            chat.send(id, body, event -> sendEvent(emitter, event));
+            emitter.complete();
+        } catch (ResponseStatusException rejected) {
+            throw rejected;
+        } catch (RuntimeException failure) {
+            emitter.completeWithError(failure);
+        }
+        return emitter;
+    }
+
+    @PostMapping("/conversations/{id}/cancel")
+    public Map<String, Object> cancel(@PathVariable UUID id) {
+        return chat.cancel(id);
+    }
+
+    @GetMapping("/conversations/{id}/executions/{executionId}/snapshot")
+    public com.lh.eap.ai.dto.ChatExecutionSnapshot snapshot(
+            @PathVariable UUID id,
+            @PathVariable UUID executionId,
+            @RequestParam(name = "afterSequence", defaultValue = "0") long afterSequence) {
+        if (afterSequence < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CURSOR_INVALID");
+        return chat.executionSnapshot(id, executionId, afterSequence);
     }
 
     @PostMapping("/expert-context/preview")
@@ -100,6 +143,12 @@ public class AiChatController {
     @GetMapping("/conversations/{id}/proposals/{proposal}")
     public com.lh.eap.ai.CodeChangeService.ProposalStatus proposal(@PathVariable UUID id, @PathVariable UUID proposal) {
         return chat.proposal(id, proposal);
+    }
+
+    @PostMapping("/conversations/{id}/proposals/{proposal}/refuse")
+    public com.lh.eap.ai.CodeChangeService.ProposalStatus refuseProposal(@PathVariable UUID id, @PathVariable UUID proposal,
+            @RequestBody(required = false) String body) {
+        return chat.refuseProposal(id, proposal, body);
     }
 
     @PostMapping("/connections")
@@ -133,5 +182,13 @@ public class AiChatController {
     @PostMapping("/conversations/{id}/connection")
     public AiConnectionAssignment assign(@PathVariable UUID id, @RequestBody(required = false) String body) {
         return chat.assign(id, body);
+    }
+
+    private static void sendEvent(SseEmitter emitter, ChatExecutionEvent event) {
+        try {
+            emitter.send(SseEmitter.event().id(event.eventId().toString()).name(event.type()).data(event));
+        } catch (IOException closed) {
+            throw new ResponseStatusException(HttpStatus.REQUEST_TIMEOUT, "SSE_CLOSED");
+        }
     }
 }

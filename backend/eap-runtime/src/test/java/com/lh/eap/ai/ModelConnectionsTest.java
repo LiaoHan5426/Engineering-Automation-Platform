@@ -13,6 +13,27 @@ import org.springframework.ai.chat.client.ChatClient;
 import tools.jackson.databind.json.JsonMapper;
 
 class ModelConnectionsTest {
+    @Test void preProtocolStoresDefaultToChatCompletionsWhileChatGptPlanRemainsResponses() throws Exception {
+        var id = java.util.UUID.randomUUID();
+        java.nio.file.Files.writeString(root.resolve("connections.json"), """
+                {"connections":[{"id":"%s","name":"old","kind":"openai-compatible","enabled":true,
+                "baseUrl":"https://127.0.0.1:9/v1","secret":"test-key","revision":4}]}
+                """.formatted(id));
+        var connections = connections("", "", "");
+        assertEquals("chat-completions", connections.list().items().getFirst().wireApi());
+        assertEquals("chat-completions", connections.require(id).wireApi);
+        var updated = connections.update(id, "renamed", "https://127.0.0.1:9/v1", "", true, false);
+        assertEquals(4, updated.revision());
+        assertEquals("chat-completions", updated.wireApi());
+        var oauthId = java.util.UUID.randomUUID();
+        connections.registerOAuth(oauthId, "test-client");
+        var plan = connections.list().items().stream().filter(item -> item.id().equals(oauthId)).findFirst().orElseThrow();
+        assertEquals("responses", plan.wireApi());
+        assertEquals(ModelConnections.CHATGPT_KIND, plan.kind());
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> connections.update(oauthId, "bad", "https://127.0.0.1:9/v1", "test-key", true, false, "chat-completions"));
+    }
+
     private static final String SECRET = "sk-local-test-secret";
     @TempDir Path root;
 

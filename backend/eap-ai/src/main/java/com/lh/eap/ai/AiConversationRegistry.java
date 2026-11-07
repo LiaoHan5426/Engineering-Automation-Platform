@@ -49,6 +49,36 @@ public class AiConversationRegistry {
         }
     }
 
+    /** Atomic same-ID recovery and response snapshot. Existing live state is never rebound or touched. */
+    public com.lh.eap.ai.dto.AiConversationReconnectResponse reconnect(UUID id, Path workspace, String workspaceLabel) {
+        synchronized (lock) {
+            var session = sessions.get(id);
+            if (session != null) {
+                if (!session.workspace.equals(workspace))
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "WORKSPACE_MISMATCH");
+                if (session.busy)
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "CONVERSATION_BUSY");
+                if (Duration.between(session.touched, clock.get()).compareTo(IDLE) > 0) session = null;
+            }
+            boolean reset = session == null;
+            if (reset) {
+                sweep();
+                var victim = sessions.size() >= MAX_CONVERSATIONS ? oldestIdle() : java.util.Optional.<Session>empty();
+                if (sessions.size() >= MAX_CONVERSATIONS && victim.isEmpty())
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "CONVERSATION_LIMIT");
+                // Clear orphan memory before publishing a replacement, including after a failed clear.
+                memory.clear(EngineeringChatService.memoryKey(PRINCIPAL, id));
+                victim.ifPresent(old -> drop(old.id));
+                session = new Session(id, workspace, workspaceLabel, clock.get());
+                sessions.put(id, session);
+            }
+            var bound = session.binding;
+            return new com.lh.eap.ai.dto.AiConversationReconnectResponse(id, session.workspaceLabel, MEMORY_NOTE,
+                    bound == null ? null : bound.connectionId, bound == null ? null : bound.name,
+                    bound == null ? null : bound.revision, bound == null ? null : bound.model, reset);
+        }
+    }
+
     public Binding binding(UUID id) {
         synchronized (lock) {
             return require(id).binding;
@@ -79,6 +109,9 @@ public class AiConversationRegistry {
             var session = require(id);
             if (session.busy) throw new ResponseStatusException(HttpStatus.CONFLICT, "CONVERSATION_BUSY");
             session.busy = true;
+            session.cancelRequested = false;
+            session.worker = Thread.currentThread();
+            session.activeExecutionId = null;
             session.touched = clock.get();
         }
         try {
@@ -88,9 +121,47 @@ public class AiConversationRegistry {
                 var session = sessions.get(id);
                 if (session != null) {
                     session.busy = false;
+                    session.cancelRequested = false;
+                    session.worker = null;
+                    session.activeExecutionId = null;
                     session.touched = clock.get();
                 }
             }
+        }
+    }
+
+    /** Request cooperative cancel of the in-flight exclusive turn. Idle conversations are a no-op success. */
+    public boolean cancel(UUID id) {
+        synchronized (lock) {
+            var session = sessions.get(id);
+            if (session == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "UNKNOWN_CONVERSATION");
+            if (!session.busy) return false;
+            session.cancelRequested = true;
+            if (session.worker != null) session.worker.interrupt();
+            session.touched = clock.get();
+            return true;
+        }
+    }
+
+    public boolean cancelRequested(UUID id) {
+        synchronized (lock) {
+            var session = sessions.get(id);
+            return session != null && session.cancelRequested;
+        }
+    }
+
+    public void bindExecution(UUID id, UUID executionId) {
+        synchronized (lock) {
+            var session = require(id);
+            if (!session.busy) throw new IllegalStateException("Execution bind requires exclusive turn");
+            session.activeExecutionId = executionId;
+        }
+    }
+
+    public UUID activeExecutionId(UUID id) {
+        synchronized (lock) {
+            var session = sessions.get(id);
+            return session == null ? null : session.activeExecutionId;
         }
     }
 
@@ -128,10 +199,14 @@ public class AiConversationRegistry {
     }
 
     private boolean evictOldestIdle() {
-        var oldest = sessions.values().stream().filter(session -> !session.busy)
-                .min(Comparator.comparing(session -> session.touched));
+        var oldest = oldestIdle();
         oldest.ifPresent(session -> drop(session.id));
         return oldest.isPresent();
+    }
+
+    private java.util.Optional<Session> oldestIdle() {
+        return sessions.values().stream().filter(session -> !session.busy)
+                .min(Comparator.comparing(session -> session.touched));
     }
 
     private void drop(UUID id) {
@@ -145,6 +220,9 @@ public class AiConversationRegistry {
         public final String workspaceLabel;
         private Instant touched;
         private boolean busy;
+        private boolean cancelRequested;
+        private Thread worker;
+        private UUID activeExecutionId;
         private Binding binding;
         private boolean contextSensitive;
 

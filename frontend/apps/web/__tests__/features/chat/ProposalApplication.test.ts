@@ -106,6 +106,15 @@ it('retains a task revision refusal after rereading a still-proposed record', as
   expect(button('proposal-apply').disabled).toBe(true)
   expect(runtimeApi.applyCodeProposal).toHaveBeenCalledTimes(1)
 })
+it('shows server refusal as board-visible review evidence', async () => {
+  vi.mocked(runtimeApi.codeProposal).mockResolvedValue(state('REFUSED') as never)
+  await mount()
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=proposal-refused-review]')).not.toBeNull(),
+  )
+  expect(host.textContent).toContain(i18n.global.t('application.status.REFUSED'))
+  expect(button('proposal-apply')).toBeNull()
+})
 it('blocks applying after a read failure and requires a fresh confirmation after recovery', async () => {
   vi.mocked(runtimeApi.codeProposal).mockRejectedValueOnce(new Error('offline'))
   await mount()

@@ -363,6 +363,9 @@ export const workbench = reactive({
     accent: '#347f70',
   },
   sessionPanels: {} as Record<string, PanelId>,
+  workspaceTreeOpen: false,
+  /** Cleared after SessionPanel consumes it when the changes rail opens. */
+  diffFocusPath: '',
 })
 
 export function sessionKey() {
@@ -376,6 +379,17 @@ export function rememberPanel(id: string | null, panel: PanelId) {
 
 export function restorePanel(id: string | null) {
   workbench.panel = workbench.sessionPanels[id ?? 'scratch'] ?? null
+}
+
+/** UI preference: docked read-only workspace tree on the chat workbench (no write grant). */
+export function toggleWorkspaceTree(open?: boolean) {
+  workbench.workspaceTreeOpen = open ?? !workbench.workspaceTreeOpen
+}
+
+/** Open the changes rail and focus a candidate path from proposal before/content diff. */
+export function openCandidateDiff(conversationId: string | null, path: string) {
+  workbench.diffFocusPath = path
+  rememberPanel(conversationId, 'changes')
 }
 
 export function rememberSessionExecution(id: string | null) {

@@ -68,14 +68,22 @@ public final class EngineeringChatService {
     }
 
     public Outcome chat(Request request, boolean registerGitTool, ChatClient selected, TaskContext context) {
+        return chat(request, registerGitTool, selected, context, UUID.randomUUID(), () -> false);
+    }
+
+    public Outcome chat(Request request, boolean registerGitTool, ChatClient selected, TaskContext context,
+            UUID executionId, java.util.function.BooleanSupplier cancelled) {
         var active = selected != null ? selected : client;
-        var id = UUID.randomUUID();
+        var id = executionId == null ? UUID.randomUUID() : executionId;
         var started = Instant.now();
         var tool = new GitTool(id, request);
         String answer = "", error = "";
         var status = CliExecution.Status.SUCCEEDED;
         try {
-            if (active == null) {
+            if (cancelled != null && cancelled.getAsBoolean()) {
+                error = "AI_CANCELLED";
+                status = CliExecution.Status.CANCELLED;
+            } else if (active == null) {
                 error = "AI_NOT_CONFIGURED";
                 status = CliExecution.Status.REJECTED;
             } else {
@@ -88,7 +96,12 @@ public final class EngineeringChatService {
                 }
                 if (registerGitTool) prompt = prompt.tools(tool.callback());
                 var response = prompt.advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation)).call().chatResponse();
-                if (response == null || response.getResult() == null) {
+                if ((cancelled != null && cancelled.getAsBoolean()) || Thread.currentThread().isInterrupted()) {
+                    Thread.interrupted();
+                    error = "AI_CANCELLED";
+                    status = CliExecution.Status.CANCELLED;
+                    answer = "";
+                } else if (response == null || response.getResult() == null) {
                     error = "AI_EMPTY_RESPONSE";
                     status = CliExecution.Status.FAILED;
                 } else {

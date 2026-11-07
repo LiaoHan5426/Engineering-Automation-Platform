@@ -8,7 +8,9 @@ defineProps<{ host: PluginHost }>()
 const { t } = useI18n()
 
 function name(id: PluginId): string {
-  return id === 'chat' ? t('plugin.chat') : t('plugin.builder')
+  if (id === 'chat') return t('plugin.chat')
+  if (id === 'board') return t('desktop.board')
+  return t('plugin.builder')
 }
 </script>
 

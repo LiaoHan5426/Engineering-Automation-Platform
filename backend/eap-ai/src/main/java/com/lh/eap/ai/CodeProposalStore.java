@@ -17,6 +17,8 @@ public interface CodeProposalStore {
     boolean claim(String principal, UUID conversation, UUID id);
     /** Independently commit a terminal observation, only from APPLYING. */
     void finish(String principal, UUID conversation, UUID id, String status, CodeChangeService.Applied result, String reason);
+    /** Operator decline before apply intent is claimed. */
+    void refuse(String principal, UUID conversation, UUID id, String reason);
     void recoverInterrupted(String workspace);
     <T> T withoutTransaction(java.util.function.Supplier<T> action);
 }

@@ -3,11 +3,14 @@ package com.lh.eap.ai;
 import com.lh.eap.api.CliExecution;
 import com.lh.eap.ai.dto.AiConversationResponse;
 import com.lh.eap.ai.dto.AiMessageResponse;
+import com.lh.eap.ai.dto.ChatExecutionEvent;
+import com.lh.eap.ai.dto.ChatExecutionSnapshot;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,20 +37,27 @@ public class AiChatApplication {
     private final EngineeringChatService chat;
     private final Path workspace;
     private final ModelConnections connections;
+    private final ChatExecutionJournal journal;
 
     public AiChatApplication(AiConnectionStatus status, AiConversationRegistry conversations, EngineeringChatService chat,
             Path workspace) {
-        this(status, conversations, chat, workspace, null);
+        this(status, conversations, chat, workspace, null, new ChatExecutionJournal());
+    }
+
+    public AiChatApplication(AiConnectionStatus status, AiConversationRegistry conversations, EngineeringChatService chat,
+            Path workspace, ModelConnections connections) {
+        this(status, conversations, chat, workspace, connections, new ChatExecutionJournal());
     }
 
     @Autowired
     public AiChatApplication(AiConnectionStatus status, AiConversationRegistry conversations, EngineeringChatService chat,
-            Path workspace, ModelConnections connections) {
+            Path workspace, ModelConnections connections, ChatExecutionJournal journal) {
         this.status = status;
         this.conversations = conversations;
         this.chat = chat;
         this.workspace = workspace;
         this.connections = connections;
+        this.journal = journal == null ? new ChatExecutionJournal() : journal;
     }
 
     public AiConnectionStatus.Snapshot status() {
@@ -84,6 +94,18 @@ public class AiChatApplication {
         return conversation(session.id);
     }
 
+    public com.lh.eap.ai.dto.AiConversationReconnectResponse reconnect(UUID id, String json) {
+        var fields = Set.of("confirmContextReset", "expectedWorkspaceLabel");
+        var body = objectBody(json, fields);
+        if (!body.keySet().equals(fields) || !Boolean.TRUE.equals(body.get("confirmContextReset"))
+                || !(body.get("expectedWorkspaceLabel") instanceof String label) || label.isBlank()) throw invalid();
+        var currentLabel = AiConnectionStatus.workspaceLabel(workspace);
+        // Validate before registry sweep: even rejected recovery must not expire or clear any session.
+        if (!currentLabel.equals(label))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "CONVERSATION_WORKSPACE_CHANGED");
+        return conversations.reconnect(id, workspace, currentLabel);
+    }
+
     public void deleteConversation(UUID id) { conversations.delete(id); }
 
     public ModelConnections.Listing connections() {
@@ -93,17 +115,16 @@ public class AiChatApplication {
 
     public ModelConnectionView saveConnection(UUID id, String json) {
         if (connections == null) throw unavailable();
-        var body = objectBody(json, id == null
-                ? Set.of("name", "baseUrl", "secret", "enabled", "defaultSelected")
-                : Set.of("name", "baseUrl", "secret", "enabled", "defaultSelected"));
+        var body = objectBody(json, Set.of("name", "baseUrl", "secret", "enabled", "defaultSelected", "wireApi"));
+        var wireApi = body.containsKey("wireApi") ? text(body, "wireApi") : null;
         var name = text(body, "name");
         var baseUrl = text(body, "baseUrl");
         var secret = body.get("secret") instanceof String value ? value : "";
         boolean enabled = bool(body, "enabled", true);
         boolean makeDefault = bool(body, "defaultSelected", false);
         var saved = id == null
-                ? connections.create(name, baseUrl, secret, enabled, makeDefault)
-                : connections.update(id, name, baseUrl, secret, enabled, makeDefault);
+                ? connections.create(name, baseUrl, secret, enabled, makeDefault, wireApi)
+                : connections.update(id, name, baseUrl, secret, enabled, makeDefault, wireApi);
         return saved;
     }
 
@@ -176,13 +197,17 @@ public class AiChatApplication {
     }
 
     public AiMessageResponse send(UUID id, String json) {
+        return send(id, json, event -> {});
+    }
+
+    public AiMessageResponse send(UUID id, String json, Consumer<ChatExecutionEvent> sink) {
         return conversations.exclusive(id, () -> {
             boolean cleared = conversations.clearContextMemory(id, false);
             try {
                 var body = objectBody(json, MESSAGE_FIELDS);
                 var context = TaskContext.parse(body.get("context"));
                 if ((context.knowledgeExpertRef() != null || context.skillRef() != null) && !cleared) cleared = conversations.clearContextMemory(id, true);
-                return sendExclusive(id, body, context, cleared);
+                return sendExclusive(id, body, context, cleared, sink == null ? event -> {} : sink);
             } catch (ResponseStatusException rejected) {
                 rejected.getBody().setProperty("knowledgeMemoryCleared", cleared);
                 rejected.getBody().setProperty("contextMemoryCleared", cleared);
@@ -196,7 +221,19 @@ public class AiChatApplication {
         });
     }
 
-    private AiMessageResponse sendExclusive(UUID id, Map<String,Object> body, TaskContext context, boolean memoryCleared) {
+    public Map<String, Object> cancel(UUID id) {
+        boolean requested = conversations.cancel(id);
+        UUID executionId = conversations.activeExecutionId(id);
+        return Map.of("cancelled", requested, "executionId", executionId == null ? "" : executionId.toString());
+    }
+
+    public ChatExecutionSnapshot executionSnapshot(UUID conversationId, UUID executionId, long afterSequence) {
+        conversations.require(conversationId);
+        return journal.snapshot(conversationId, executionId, afterSequence);
+    }
+
+    private AiMessageResponse sendExclusive(UUID id, Map<String,Object> body, TaskContext context, boolean memoryCleared,
+            Consumer<ChatExecutionEvent> sink) {
         if (!(body.get("message") instanceof String message) || message.isBlank() || message.length() > 32000
                 || !(body.get("toolMode") instanceof String toolMode))
             throw invalid();
@@ -214,7 +251,7 @@ public class AiChatApplication {
             if ("disabled".equals(snapshot.state()) || "not_configured".equals(snapshot.state()))
                 throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AI_NOT_CONFIGURED");
         }
-        if (git && context.mode().equals("chat") && !status.gitStatusAvailable())
+        if (connections == null && git && context.mode().equals("chat") && !status.gitStatusAvailable())
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "TOOL_NOT_GRANTED");
         var session = conversations.require(id);
         if (!session.workspace.equals(workspace))
@@ -252,8 +289,10 @@ public class AiChatApplication {
             if (live.revision != current.revision) throw new ResponseStatusException(HttpStatus.CONFLICT, "TARGET_CHANGE_CONFIRMATION_REQUIRED");
             live = connections.requireModel(current.connectionId, current.model);
             if (!live.usable()) throw unavailable();
-            if (git && ModelConnections.CHATGPT_KIND.equals(live.kind))
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CHATGPT_PLAN_TOOLS_UNAVAILABLE");
+            if (git && "responses".equals(live.wireApi))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "AI_PROTOCOL_TOOLS_UNAVAILABLE");
+            if (git && context.mode().equals("chat") && !status.gitStatusAvailable())
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "TOOL_NOT_GRANTED");
             selectedClient = connections.chatClient(live);
             selectedRevision = live.configurationRevision;
             if (!connections.supportsReasoning(current.connectionId, current.model, context.reasoning()))
@@ -276,22 +315,71 @@ public class AiChatApplication {
                     + JSON.writeValueAsString(skillContext);
         }
         if (material.length() > 64000) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TASK_CONTEXT_TOO_LARGE");
-        var outcome = chat.chat(new EngineeringChatService.Request(
-                AiConversationRegistry.PRINCIPAL, id, workspace, git, material), git && context.mode().equals("chat"),
-                selectedClient, context);
+        if (conversations.cancelRequested(id)) throw cancelled();
+        var executionId = UUID.randomUUID();
+        conversations.bindExecution(id, executionId);
+        var emitter = journal.open(executionId, id);
+        emitter.onEvent(sink);
+        emitter.emit("status", "", "", "RUNNING", null);
+        EngineeringChatService.Outcome outcome;
+        try {
+            outcome = chat.chat(new EngineeringChatService.Request(
+                    AiConversationRegistry.PRINCIPAL, id, workspace, git, material), git && context.mode().equals("chat"),
+                    selectedClient, context, executionId, () -> conversations.cancelRequested(id));
+        } catch (RuntimeException failure) {
+            if (conversations.cancelRequested(id) || Thread.currentThread().isInterrupted()) {
+                Thread.interrupted();
+                emitter.emit("status", "", "AI_CANCELLED", "CANCELLED", null);
+                emitter.emit("final", "", "AI_CANCELLED", "CANCELLED", Map.of("error", "AI_CANCELLED"));
+                emitter.complete("CANCELLED");
+                throw cancelled();
+            }
+            throw failure;
+        }
         if (current != null) status.observeRevision(selectedRevision, outcome.error());
         else if (!"AI_NOT_CONFIGURED".equals(outcome.error())) status.observe(outcome.error());
+        if (!outcome.answer().isBlank()) {
+            for (String chunk : chunkAnswer(outcome.answer())) {
+                if (conversations.cancelRequested(id)) {
+                    emitter.emit("status", "", "AI_CANCELLED", "CANCELLED", null);
+                    emitter.emit("final", "", "AI_CANCELLED", "CANCELLED", Map.of("error", "AI_CANCELLED"));
+                    emitter.complete("CANCELLED");
+                    throw cancelled();
+                }
+                emitter.emit("answer.delta", chunk, "", "RUNNING", null);
+            }
+        }
         var base = message(outcome);
+        for (var tool : base.toolEvents()) {
+            emitter.emit("tool", "", tool.code(), base.status(), Map.of("sequence", tool.sequence()));
+        }
         var response = new AiMessageResponse(base.executionId(), base.answer(), base.error(), base.status(), base.approval(),
                 base.verification(), base.toolEvents(), base.artifactError(), base.artifacts(), base.proposal(), knowledge, memoryCleared, skillContext, memoryCleared);
         if (context.mode().equals("code") && outcome.error().isEmpty() && codeChanges != null) {
             var proposal = codeChanges.proposePrepared(AiConversationRegistry.PRINCIPAL, id, generation.id(),
                     outcome.answer(), context.approval().equals("review"));
-            return new AiMessageResponse(response.executionId(), proposal.summary(), response.error(), response.status(),
+            response = new AiMessageResponse(response.executionId(), proposal.summary(), response.error(), response.status(),
                     response.approval(), response.verification(), response.toolEvents(), response.artifactError(), response.artifacts(), proposal,
                     response.knowledgeContext(), response.knowledgeMemoryCleared(), response.skillContext(), response.contextMemoryCleared());
+            emitter.emit("approval", proposal.summary(), "", response.status(), proposal);
         }
+        if (!response.error().isBlank()) emitter.emit("error", "", response.error(), response.status(), null);
+        emitter.emit("final", response.answer(), response.error(), response.status(), response);
+        emitter.complete(response.status());
         return response;
+    }
+
+    private static ResponseStatusException cancelled() {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "AI_CANCELLED");
+    }
+
+    private static java.util.List<String> chunkAnswer(String answer) {
+        if (answer.length() <= 64) return java.util.List.of(answer);
+        var chunks = new java.util.ArrayList<String>();
+        for (int i = 0; i < answer.length(); i += 64) {
+            chunks.add(answer.substring(i, Math.min(answer.length(), i + 64)));
+        }
+        return chunks;
     }
 
     public CodeChangeService.Applied apply(UUID conversation, UUID proposal, String json) {
@@ -305,6 +393,24 @@ public class AiChatApplication {
         conversations.require(conversation);
         if (codeChanges == null) throw unavailable();
         return codeChanges.proposal(AiConversationRegistry.PRINCIPAL, conversation, proposal);
+    }
+
+    public CodeChangeService.ProposalStatus refuseProposal(UUID conversation, UUID proposal, String json) {
+        conversations.require(conversation);
+        if (codeChanges == null) throw unavailable();
+        var body = objectBody(json == null ? "{}" : json, Set.of("executionId"));
+        UUID executionId = null;
+        if (body.get("executionId") instanceof String value && !value.isBlank()) {
+            try {
+                executionId = UUID.fromString(value);
+            } catch (IllegalArgumentException invalid) {
+                throw invalid();
+            }
+        }
+        var status = conversations.exclusive(conversation, () ->
+                codeChanges.refuse(AiConversationRegistry.PRINCIPAL, conversation, proposal));
+        if (executionId != null) journal.recordRefusal(conversation, executionId, "REFUSED");
+        return status;
     }
 
     public AiConversationResponse conversation(UUID id) {

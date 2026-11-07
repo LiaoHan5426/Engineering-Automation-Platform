@@ -30,4 +30,10 @@ class InMemoryCodeProposalStore implements CodeProposalStore {
         return Optional.ofNullable(rows.get(id)).filter(row -> row.principal().equals(principal)
                 && row.proposal().conversationId().equals(conversation));
     }
+    @Override public synchronized void refuse(String principal, UUID conversation, UUID id, String reason) {
+        var row = find(principal, conversation, id).orElseThrow();
+        if (!row.status().equals("PROPOSED"))
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "CODE_APPLICATION_" + row.status());
+        rows.put(id, new Stored(principal, row.proposal(), "REFUSED", null, reason));
+    }
 }

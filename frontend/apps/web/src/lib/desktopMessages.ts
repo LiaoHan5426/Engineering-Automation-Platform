@@ -229,7 +229,7 @@ export const desktopMessages = {
     sceneKindCustom: '自定义配置',
     searchExperts: '搜索专家名称、简介或标签',
     executionBlocked: '当前执行模式未接通，发送已停用。草稿仍保留。',
-    sendingAway: '发送仍在进行，这次请求不能取消。离开页面不会中断它；刷新或重启后不会继续。',
+    sendingAway: '发送仍在进行。可用输入区取消按钮请求中止；离开页面不会中断服务端轮次，刷新或重启后也不会继续。',
     skills: '技能',
     mcp: 'MCP',
     skillsEmpty: '技能目录未接通；场景里列出技能不会安装或授权。',
@@ -263,7 +263,7 @@ export const desktopMessages = {
     pendingRefused: '这次写入已拒绝，不会应用',
     refuseWrite: '拒绝这次写入',
     writeRequest: '请求写入 {count} 个文件',
-    refusedWrite: '已拒绝这次写入。草稿仍在，没有发送，也没有改文件。刷新后这页的拒绝记录会消失。',
+    refusedWrite: '已拒绝这次写入。服务端已记录，看板引用同一候选时也会读到拒绝态。没有改文件。',
     refreshModels: '刷新目录',
     catalogCached: '刷新失败，当前展示缓存。缓存时间：{time}。错误：{error}。可再次刷新。',
     effortHeading: '推理强度',
@@ -350,6 +350,10 @@ export const desktopMessages = {
     fileTreeExpandHint: '展开目录查看子项。',
     panelClose: '关闭面板',
     filesOverlayTitle: '源文件',
+    workspaceTree: '工作区',
+    workspaceTreeHint: '只读文件树；展开目录浏览授权范围，不授予写入。',
+    openProposalDiff: '查看 Diff',
+    diffFallbackNote: 'Monaco 未加载，当前为只读双栏文本对比。',
     terminalDockHint: '终端停靠在对话下方；未接通时不显示伪日志，也不授予任意 shell。',
     referenceSource: '引用此源码摘录',
     pendingDependencyCheck: '待检查依赖',
@@ -757,7 +761,7 @@ export const desktopMessages = {
     executionBlocked:
       'This execution mode is not connected. Sending is disabled. The draft is kept.',
     sendingAway:
-      'This send is still running and cannot be cancelled. Leaving the page does not stop it. A refresh or restart will not continue it.',
+      'This send is still running. Use the composer cancel button to request abort; leaving the page does not stop the server turn, and a refresh or restart will not continue it.',
     skills: 'Skills',
     mcp: 'MCP',
     skillsEmpty:
@@ -798,7 +802,7 @@ export const desktopMessages = {
     refuseWrite: 'Refuse this write',
     writeRequest: 'Asks to write {count} file(s)',
     refusedWrite:
-      'This write was refused. The draft is still here. Nothing was sent and no file was changed. This page forgets the refusal after a refresh.',
+      'This write was refused. The server recorded it; the board reads the same status when it references this proposal. No file was changed.',
     refreshModels: 'Refresh catalog',
     catalogCached:
       'Refresh failed; showing cached catalog. Cache time: {time}. Error: {error}. Refresh again to retry.',
@@ -895,6 +899,10 @@ export const desktopMessages = {
     fileTreeExpandHint: 'Expand folders in the tree to reveal children.',
     panelClose: 'Close panel',
     filesOverlayTitle: 'Sources',
+    workspaceTree: 'Workspace',
+    workspaceTreeHint: 'Read-only file tree; expand folders within the authorized root. Viewing grants no write.',
+    openProposalDiff: 'View diff',
+    diffFallbackNote: 'Monaco is unavailable; showing a read-only two-column text diff.',
     terminalDockHint:
       'Terminal docks under the conversation. When disconnected it shows no fake logs and grants no arbitrary shell.',
     referenceSource: 'Reference this source excerpt',
@@ -1082,6 +1090,9 @@ export const desktopMessages = {
 
 export const modelMessages = {
   'zh-CN': {
+    wireApi: '请求协议',
+    protocolToolsUnavailable:
+      'Responses 通道当前仅支持文本对话及代码提案，不支持 Git 工具。请选择无工具模式后再发送；草稿和目标保持不变。',
     catalog: '允许使用的模型',
     reconnect: '重新确认当前模型配置',
     discoveryHint:
@@ -1122,6 +1133,9 @@ export const modelMessages = {
   },
   'en-US': {
     catalog: 'Allowed models',
+    wireApi: 'Wire API',
+    protocolToolsUnavailable:
+      'Responses currently supports text chat and code proposals, not Git tools. Select no tools before sending; your draft and target are unchanged.',
     reconnect: 'Confirm current model configuration again',
     discoveryHint:
       'Sync retrieves model IDs only, without generating content. Select and save models to show them in the composer.',

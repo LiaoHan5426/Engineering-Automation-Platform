@@ -17,6 +17,7 @@
     "@eap/ui": "workspace:*",
     "axios": "catalog:frontend",
     "grapesjs": "^0.22.7",
+    "monaco-editor": "^0.57.0",
     "nprogress": "catalog:frontend",
     "vue": "catalog:frontend",
     "vue-i18n": "catalog:frontend"

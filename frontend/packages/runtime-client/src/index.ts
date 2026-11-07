@@ -2,6 +2,35 @@ import axios from 'axios'
 import NProgress from 'nprogress'
 
 export type RuntimeHealth = { status: string; service: string }
+
+export type DataLayoutEntry = {
+  logical: string
+  resolved: string
+  exists: boolean
+  note: string
+}
+export type DataLayoutResponse = { entries: DataLayoutEntry[]; physicalMigration: boolean }
+
+export type TrustedToolItem = {
+  id: string
+  title: string
+  kind: string
+  scope: string
+  readOnly: boolean
+  enabled: boolean
+  invocation: string
+  summary: string
+}
+export type TrustedToolResponse = { items: TrustedToolItem[]; source: string }
+
+export type TrustedGitStatusResult = {
+  capability: string
+  success: boolean
+  message: string
+  stdout?: string
+  stderr?: string
+  exitCode?: number
+}
 /** Configuration, never runtime permission or execution evidence. */
 export type ScenarioConfiguration = {
   name: string
@@ -771,6 +800,7 @@ export type ModelConnection = {
   id: string
   name: string
   kind: string
+  wireApi?: ModelWireApi
   enabled: boolean
   baseUrl: string
   defaultModel: string
@@ -783,10 +813,12 @@ export type ModelConnection = {
   defaultSelected: boolean
   configurationRevision: string
 }
+export type ModelWireApi = 'chat-completions' | 'responses'
 export type ModelConnectionList = { items: ModelConnection[]; effectiveDefaultId: string | null }
 export type ModelConnectionInput = {
   name: string
   baseUrl: string
+  wireApi?: ModelWireApi
   secret?: string
   enabled: boolean
   defaultSelected: boolean
@@ -808,6 +840,28 @@ export type AiArtifactSummary = {
   sha256: string
 }
 export type AiToolEvent = { sequence: number; code: string }
+export type ChatExecutionEvent = {
+  eventId: string
+  sequence: number
+  executionId: string
+  conversationId: string
+  taskId?: string | null
+  type: string
+  protocolVersion: string
+  occurredAt: string
+  text: string
+  code: string
+  status: string
+  payload?: unknown
+}
+export type ChatExecutionSnapshot = {
+  executionId: string
+  conversationId: string
+  latestSequence: number
+  complete: boolean
+  status: string
+  events: ChatExecutionEvent[]
+}
 export type KnowledgeContext = {
   expertRef: KnowledgeExpertRef
   status: 'ready' | 'no_matches'
@@ -924,9 +978,13 @@ export type CodeApplied = {
 }
 export type CodeProposalState = {
   proposal: CodeProposal
-  status: 'PROPOSED' | 'APPLYING' | 'APPLIED' | 'FAILED' | 'UNKNOWN'
+  status: 'PROPOSED' | 'APPLYING' | 'APPLIED' | 'FAILED' | 'UNKNOWN' | 'REFUSED'
   result: CodeApplied | null
   reason: string
+}
+
+export function proposalRefused(status: string | null | undefined): boolean {
+  return status === 'REFUSED'
 }
 
 const baseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080/api'
@@ -1085,6 +1143,10 @@ export const runtimeApi = {
   saveExpert: (definition: { id: string; name: string; manifest: string }) =>
     client.post('/experts', definition).then((response) => response.data),
   health: () => get<RuntimeHealth>('/health'),
+  dataLayout: () => get<DataLayoutResponse>('/runtime/data-layout'),
+  trustedTools: () => get<TrustedToolResponse>('/runtime/trusted-tools'),
+  invokeTrustedGitStatus: () =>
+    client.post<TrustedGitStatusResult>('/runtime/trusted-tools/git-status/invoke').then((r) => r.data),
   capabilities: () => get<CapabilityResponse>('/capabilities'),
   cliPrograms: () => get<{ items: CliProgramItem[] }>('/cli-programs'),
   registerCliProgram: (program: CliProgramRequest) =>
@@ -1355,6 +1417,116 @@ export const runtimeApi = {
   ...createChatApi(baseUrl, client),
 }
 
+async function postChatSse(
+  baseURL: string,
+  path: string,
+  body: unknown,
+  options?: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void },
+): Promise<AiMessageResult> {
+  const response = await fetch(joinUrl(baseURL, path), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    },
+    body: JSON.stringify(body),
+    signal: options?.signal,
+  })
+  if (!response.ok) {
+    let detail = 'AI_PROVIDER_ERROR'
+    let data: Record<string, unknown> = {}
+    try {
+      data = (await response.json()) as Record<string, unknown>
+      if (typeof data.detail === 'string') detail = data.detail
+    } catch {
+      // Keep generic detail when the error body is not JSON.
+    }
+    const error = Object.assign(new Error(detail), {
+      response: { status: response.status, data: { ...data, detail } },
+    })
+    throw error
+  }
+  if (!response.body) {
+    throw Object.assign(new Error('AI_EMPTY_RESPONSE'), {
+      response: { status: 502, data: { detail: 'AI_EMPTY_RESPONSE' } },
+    })
+  }
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let finalResult: AiMessageResult | null = null
+  let answer = ''
+  let executionId: string | null = null
+  const toolEvents: AiToolEvent[] = []
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const chunks = buffer.split(/\n\n/)
+    buffer = chunks.pop() ?? ''
+    for (const chunk of chunks) {
+      const event = parseSseChunk(chunk)
+      if (!event) continue
+      options?.onEvent?.(event)
+      executionId = event.executionId || executionId
+      if (event.type === 'answer.delta') answer += event.text ?? ''
+      if (event.type === 'tool') {
+        const sequence =
+          typeof (event.payload as { sequence?: number } | null)?.sequence === 'number'
+            ? (event.payload as { sequence: number }).sequence
+            : event.sequence
+        toolEvents.push({ sequence, code: event.code || event.text })
+      }
+      if (event.type === 'final') {
+        const payload = event.payload as AiMessageResult | null
+        finalResult = payload
+          ? {
+              ...payload,
+              executionId: payload.executionId ?? event.executionId,
+              answer: payload.answer ?? event.text ?? answer,
+              error: payload.error ?? event.code ?? '',
+              toolEvents: payload.toolEvents ?? toolEvents,
+            }
+          : {
+              executionId: event.executionId,
+              answer: event.text || answer,
+              error: event.code || '',
+              status: event.status || '',
+              approval: '',
+              verification: '',
+              toolEvents,
+              artifactError: '',
+              artifacts: [],
+            }
+      }
+    }
+  }
+  if (!finalResult) {
+    throw Object.assign(new Error('AI_RESPONSE_INCOMPLETE'), {
+      response: { status: 502, data: { detail: 'AI_RESPONSE_INCOMPLETE' } },
+    })
+  }
+  return finalResult
+}
+
+function joinUrl(baseURL: string, path: string): string {
+  return baseURL.replace(/\/$/, '') + (path.startsWith('/') ? path : '/' + path)
+}
+
+function parseSseChunk(chunk: string): ChatExecutionEvent | null {
+  const lines = chunk.split(/\r?\n/)
+  let data = ''
+  for (const line of lines) {
+    if (line.startsWith('data:')) data += line.slice(5).trimStart()
+  }
+  if (!data) return null
+  try {
+    return JSON.parse(data) as ChatExecutionEvent
+  } catch {
+    return null
+  }
+}
+
 export function createChatApi(
   baseURL: string,
   transport = axios.create({ baseURL, timeout: 10_000, headers: { Accept: 'application/json' } }),
@@ -1403,26 +1575,50 @@ export function createChatApi(
         .post<VerificationProbe>('/ai/workspace/verification/probe', {})
         .then((response) => response.data),
     aiConversation: (id: string) =>
-      get<{
-        conversationId: string
-        workspaceLabel: string
-        memory: string
-        connectionId?: string | null
-      }>('/ai/conversations/' + encodeURIComponent(id)),
+      get<AiConversation>('/ai/conversations/' + encodeURIComponent(id)),
+    reconnectAiConversation: (id: string, expectedWorkspaceLabel: string) =>
+      client
+        .post<AiConversation & { contextReset: boolean }>(
+          '/ai/conversations/' + encodeURIComponent(id) + '/reconnect',
+          { confirmContextReset: true, expectedWorkspaceLabel },
+          { timeout: 10_000 },
+        )
+        .then((response) => response.data),
     deleteAiConversation: (id: string) =>
       client.delete('/ai/conversations/' + encodeURIComponent(id)).then(() => undefined),
     openAiConversation: () =>
       client
         .post<AiConversation>('/ai/conversations', {}, { timeout: 10_000 })
         .then((response) => response.data),
-    sendAiMessage: (id: string, message: string, toolMode: AiToolMode, context?: TaskContext) =>
+    sendAiMessage: (
+      id: string,
+      message: string,
+      toolMode: AiToolMode,
+      context?: TaskContext,
+      options?: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void },
+    ) =>
+      postChatSse(
+        baseURL,
+        '/ai/conversations/' + encodeURIComponent(id) + '/messages',
+        { message, toolMode, ...(context ? { context } : {}) },
+        options,
+      ),
+    cancelAiConversation: (id: string) =>
       client
-        .post<AiMessageResult>(
-          '/ai/conversations/' + encodeURIComponent(id) + '/messages',
-          { message, toolMode, ...(context ? { context } : {}) },
-          { timeout: 90_000 },
+        .post<{ cancelled: boolean; executionId: string }>(
+          '/ai/conversations/' + encodeURIComponent(id) + '/cancel',
+          {},
         )
         .then((response) => response.data),
+    executionSnapshot: (id: string, executionId: string, afterSequence = 0) =>
+      get<ChatExecutionSnapshot>(
+        '/ai/conversations/' +
+          encodeURIComponent(id) +
+          '/executions/' +
+          encodeURIComponent(executionId) +
+          '/snapshot?afterSequence=' +
+          encodeURIComponent(String(afterSequence)),
+      ),
     applyCodeProposal: (id: string, proposal: string) =>
       client
         .post<CodeApplied>(
@@ -1441,6 +1637,21 @@ export function createChatApi(
           '/proposals/' +
           encodeURIComponent(proposal),
       ),
+    refuseCodeProposal: (
+      id: string,
+      proposal: string,
+      request?: { executionId?: string | null },
+    ) =>
+      client
+        .post<CodeProposalState>(
+          '/ai/conversations/' +
+            encodeURIComponent(id) +
+            '/proposals/' +
+            encodeURIComponent(proposal) +
+            '/refuse',
+          request ?? {},
+        )
+        .then((response) => response.data),
     startChatGptLogin: (connectionId?: string) =>
       client
         .post<ChatGptLoginAttempt>(

@@ -126,8 +126,10 @@ public class AiConnectionStatus {
             refresh();
             String revision = currentRevision();
             var mark = observed.get(revision);
+            var selected = connections == null ? null : connections.effectiveDefault();
+            boolean toolsSupported = selected == null || !"responses".equals(selected.wireApi);
             return new Snapshot(currentState(mark), provider, model, revision, mark == null ? null : mark.at,
-                    mark == null ? "" : mark.error, Map.of("git_status", gitStatusAvailable()), workspaceLabel(workspace),
+                    mark == null ? "" : mark.error, Map.of("git_status", toolsSupported && gitStatusAvailable()), workspaceLabel(workspace),
                     connectionId, connectionName, pathText(workspace), pathText(authorizedRoot), authorizedRootDenial,
                     false, verificationEnabled, verificationCommands);
         }

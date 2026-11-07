@@ -17,11 +17,13 @@ export const SHELL_PAGE_IDS = [
 
 export const INSTALLATION_KEY = 'eap.plugin.installation'
 
-export type PluginId = 'chat' | 'builder'
+export type PluginId = 'chat' | 'builder' | 'board'
 
 export interface Installation {
   enabled: Record<PluginId, boolean>
 }
+
+export type BoardContributionId = 'board'
 
 export interface PermissionRequest {
   id: string
@@ -69,6 +71,15 @@ export const MANIFESTS: readonly PluginManifest[] = [
       { id: 'mission.create', optional: true },
     ],
   },
+  {
+    id: 'board',
+    version: '0.1.0',
+    requests: [
+      { id: 'workspace.read', optional: false },
+      { id: 'task.read', optional: false },
+      { id: 'run.read', optional: false },
+    ],
+  },
 ]
 
 const BUILDER_SEEDS: readonly BuilderConfig[] = [
@@ -92,7 +103,7 @@ const BUILDER_SEEDS: readonly BuilderConfig[] = [
   },
 ]
 
-const DEFAULT_INSTALLATION: Installation = { enabled: { chat: true, builder: true } }
+const DEFAULT_INSTALLATION: Installation = { enabled: { chat: true, builder: true, board: true } }
 
 export function instanceKey(pluginId: PluginId, instanceId: string): string {
   return `eap.plugin.instance.${pluginId}.${instanceId}`
@@ -114,6 +125,7 @@ export function enabledHashes(installation: Installation): string[] {
   const hashes: string[] = []
   if (installation.enabled.chat) hashes.push('chat')
   if (installation.enabled.builder) hashes.push('builder-alpha', 'builder-beta')
+  if (installation.enabled.board) hashes.push('board')
   return hashes
 }
 
@@ -160,6 +172,7 @@ export function readInstallation(store: KeyValueStore): Installation {
       enabled: {
         chat: parsed.enabled?.chat !== false,
         builder: parsed.enabled?.builder !== false,
+        board: parsed.enabled?.board !== false,
       },
     }
   } catch {
@@ -171,7 +184,11 @@ export function writeInstallation(store: KeyValueStore, installation: Installati
   store.setItem(
     INSTALLATION_KEY,
     JSON.stringify({
-      enabled: { chat: installation.enabled.chat, builder: installation.enabled.builder },
+      enabled: {
+        chat: installation.enabled.chat,
+        builder: installation.enabled.builder,
+        board: installation.enabled.board,
+      },
     }),
   )
 }

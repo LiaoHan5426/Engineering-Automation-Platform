@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv } from 'vite-plus'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { VueMcp } from 'vite-plugin-vue-mcp'
@@ -13,6 +13,9 @@ export default defineConfig(({ command, mode }) => {
     flag: process.env.VITE_USE_MOCK || env.VITE_USE_MOCK,
   })
   return {
+    optimizeDeps: {
+      include: ['monaco-editor'],
+    },
     plugins: [
       vue(),
       tailwindcss(),

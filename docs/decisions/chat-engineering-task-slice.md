@@ -43,3 +43,30 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 切换通过 GET /api/ai/conversations/{id} 确认服务端会话是否有效，并恢复该会话自己的草稿与绑定；服务端超时或重启后，本地正文仍可查看，但不能宣称模型上下文恢复，也不自动重建或重发。归档只隐藏最近列表入口，不延长服务端记忆寿命。
 
 确认删除后，DELETE /api/ai/conversations/{id} 清理对应服务端会话及其 ChatMemory，再删除本地正文和草稿；忙碌会话拒绝删除。删除不级联交接、Mission 或仓库文件。前端正在生成时禁止归档/删除。历史存储失败有可见提示，不报告已持久保存。
+
+## 会话失效与显式重试（2026-11-05，实现与离线回归通过）
+
+旧“只可查看历史，请新建会话”将模型调用失败、暂时离线与服务端会话丢失混在一起，导致重启后原草稿无法继续。新合同保留“不自动重建/重发”，但不能据此永久锁死用户：
+
+- 模型返回失败而会话仍有效：原会话可编辑草稿并重试，不新建会话、不替换模型。
+- 暂时无法检查会话：允许重新检查连接，不把网络错误或无关404永久标成会话丢失。
+- 确认会话丢失：显式提供重新连接/重新连接并重试，确认对话框说明服务端模型记忆将从空开始，本地历史不自动重放；无草稿时只重连，不发送空请求。
+- 重连保留本地会话ID、项目关联、正文、草稿、附件/指引、模型选择与工作面状态，不另造一条用户会话。服务端仅在会话缺失时重建同ID空会话；已有会话不清空记忆/绑定，忙碌时拒绝。新会话不自动使用当前全局默认模型，先显式绑定用户选中的原目标；不可用时允许用户选择但不静默降级。
+- `POST /api/ai/conversations/{id}/reconnect`严格接收`{confirmContextReset:true,expectedWorkspaceLabel:<原会话标签>}`；重建前核对当前进程工作区标签，不信任浏览器路径或悄悄换仓库。工作区变化、缺目标、重绑定失败、网络中断均保留数据并停止发送；双击/并发不重复创建或提交。
+- 用户确认后，仅重试当前草稿一次，沿用正常任务组合/审批路径；不重放历史模型工具、旧候选应用或UNKNOWN写入。重连不等于恢复模型记忆、持久Mission或跨重启进程接管。
+
+父任务独立检查代码差异后执行`rtk proxy mvn -f backend/pom.xml test`：四个有测试模块摘要聚合673项、0失败/错误、68条件跳过；日志在受管scratch的`reconnect-parent-backend.log`。未开启数据库/真实模型门禁。新增HTTP/注册表回归覆盖同ID重建、已有会话记忆/绑定/敏感标记保留、工作区变化、忙碌、容量及清理失败不发布新会话。
+
+前端根`check`首次发现新增组件测试1处格式问题，仅格式化该文件后，根检查384格式文件、300 lint文件零问题；随后`rtk proxy pnpm --dir frontend test run --maxWorkers=2`全量110文件632项通过，`typecheck`和`build`通过，根架构检查包含边界门禁。组件测试点击确认/取消/双击并验证调用次数及项目/滚动保留；会话测试覆盖模型缺失/禁用/移除、重连/绑定失败、切换竞态、瞬时离线及无关404。真实与mock使用同一路由/请求合同。
+
+未重启用户服务、未调用真实模型、未提交推送。Node localStorage、Mockito/JDK及构建大chunk告警保留。上述为自动化组件/回环HTTP证据，不宣称真实浏览器用户接受或模型故障已恢复；本地记录续接不等于完整ChatMemory持久化。已有服务需由用户重启加载后使用该入口。
+
+## 聊天 SSE 执行事件与取消（2026-11-07，离线通过，浏览器待验）
+
+破坏性合同：`POST /api/ai/conversations/{id}/messages` 主路径改为 `text/event-stream`（`consumes=application/json`）。校验失败仍在首帧前抛出 HTTP 4xx JSON；成功路径按序推送 `status` / `answer.delta` / `tool` / `approval` / `error` / `final`（`final.payload` 为完整消息信封）。配套：
+
+- `POST /api/ai/conversations/{id}/cancel`（JSON `{}`）：协作取消进行中的 exclusive 轮次；空闲为 no-op。
+- `GET /api/ai/conversations/{id}/executions/{executionId}/snapshot?afterSequence=`：进程内游标补齐；非法游标 `CURSOR_INVALID`。
+- 前端 `runtime-client` 用 fetch 消费 SSE；`eventProjector` 按 `executionId+sequence` 去重并记录缺序；发送中可取消。
+
+离线证据：`ChatExecutionStreamTest` 4 项；前端 eventProjector/reconnect/wireApi 等定向通过。不宣称跨重启持久事件日志或真实供应商流式验收。

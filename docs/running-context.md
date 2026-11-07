@@ -58,6 +58,10 @@ Java 存连接与执行命令。
 
 ## Python 安装器范围（首轮目标）
 
+2026-11-05规划补充：应用数据根、受管工具与临时资源按[本地目录合同](decisions/agent-runtime-evolution.md#5-工具供给与本地目录)推进（FS-01→TM-01），尚未实施。配置、工具版本、任务scratch、持久产物、可重建缓存与日志分开；用户工作区不随卸载清除。先盘点`.eap`及`.eap-ai-artifacts`等相对位置并验证迁移/失败恢复，不静默改变默认值。物理路径、可移植模式、保留期与限额在具体切片确认。
+
+浏览器内的预览、校验和有界转换无需强制落盘；内存/Worker/Blob及按需浏览器存储不是仓库权限。真实磁盘/本机程序资源由Java或Electron具名接口统一管理，每项资源一个生命周期负责人；运行中/UNKNOWN不能按TTL直接删除。系统CLI引用与受管工具安装分开，bootstrap探测不是安装成功，模型不得静默安装依赖。本轮不实施安装器或修改本机目录。
+
 - **已有脚手架（2026-10-28）**：[`scripts/eap_bootstrap.py`](../scripts/eap_bootstrap.py) 探测 Java/Node/pnpm、写入 `.eap/local-bootstrap.json`、打印启停与健康检查；明确非 Agent 宿主。
 - 仍缺：检测/创建可 gitignore 的工具 venv（**不**将 `.venv` 提交为产品运行依赖）；数据库或内嵌库迁移；模型 API Key 写入本机服务配置；一体拉起 Java/UI 与失败重试。
 - 明确不做：云部署编排、多租户安装器、隔离云执行环境、Agent/调模型宿主。

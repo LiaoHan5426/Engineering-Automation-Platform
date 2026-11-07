@@ -24,7 +24,11 @@ import {
   workbench,
 } from './shell/workbench'
 
-const props = defineProps<{ activeView: string; pages: { id: string; name: string }[] }>()
+const props = defineProps<{
+  activeView: string
+  pages: { id: string; name: string }[]
+  boardEnabled?: boolean
+}>()
 const emit = defineEmits<{ navigate: [id: string] }>()
 const { t } = useI18n()
 type Area = 'code' | 'work' | 'scenes' | 'experts' | 'settings'
@@ -589,6 +593,7 @@ onUnmounted(() => {
               data-testid="project-children"
             >
               <Button
+                v-if="props.boardEnabled !== false"
                 variant="navigation"
                 type="button"
                 class="nav child tree-child"

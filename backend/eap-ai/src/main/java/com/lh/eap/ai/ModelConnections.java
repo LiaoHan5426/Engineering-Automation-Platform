@@ -74,12 +74,18 @@ public final class ModelConnections {
 
     public ModelConnectionView create(String name, String baseUrl, String secret, boolean enabled,
             boolean makeDefault) {
+        return create(name, baseUrl, secret, enabled, makeDefault, null);
+    }
+
+    public ModelConnectionView create(String name, String baseUrl, String secret, boolean enabled,
+            boolean makeDefault, String wireApi) {
         synchronized (lock) {
             var stored = new ArrayList<>(read());
             if (stored.size() >= LIMIT) throw status(HttpStatus.CONFLICT, "CONNECTION_LIMIT");
             var row = new Row();
             row.id = UUID.randomUUID();
             row.kind = KIND;
+            row.wireApi = checkedWireApi(wireApi);
             row.revision = 1;
             fill(row, name, baseUrl, secret);
             row.enabled = enabled;
@@ -93,17 +99,25 @@ public final class ModelConnections {
 
     public ModelConnectionView update(UUID id, String name, String baseUrl, String secret, boolean enabled,
             boolean makeDefault) {
+        return update(id, name, baseUrl, secret, enabled, makeDefault, null);
+    }
+
+    public ModelConnectionView update(UUID id, String name, String baseUrl, String secret, boolean enabled,
+            boolean makeDefault, String wireApi) {
         synchronized (lock) {
             var stored = new ArrayList<>(read());
             var row = find(stored, id);
             if (!KIND.equals(row.kind)) throw status(HttpStatus.BAD_REQUEST, "CONNECTION_TYPE_MISMATCH");
             var nextSecret = secret == null || secret.isBlank() ? row.secret : secret;
+            var nextWireApi = checkedWireApi(wireApi == null ? row.wireApi : wireApi);
+            boolean protocolChanged = !checkedWireApi(row.wireApi).equals(nextWireApi);
             boolean material = !row.baseUrl.equals(normalizeUrl(baseUrl))
                     || !row.secret.equals(checkedSecret(nextSecret));
             fill(row, name, baseUrl, nextSecret);
+            row.wireApi = nextWireApi;
             if (material) { row.models = List.of(); row.allowedModels = List.of(); row.defaultModel = ""; row.discoveredAt = ""; row.discoveryError = ""; }
             row.enabled = enabled;
-            if (material) row.revision++;
+            if (material || protocolChanged) row.revision++;
             row.defaultSelected = makeDefault;
             if (makeDefault) {
                 stored.forEach(item -> item.defaultSelected = false);
@@ -315,7 +329,7 @@ public final class ModelConnections {
         return new ModelConnectionView(basic.id(), basic.name(), basic.kind(), basic.enabled(), basic.baseUrl(), basic.defaultModel(),
                 basic.secretPresent(), basic.revision(), basic.defaultSelected(), basic.configurationRevision(),
                 models(row), row.allowedModels == null ? List.of() : row.allowedModels,
-                row.discoveredAt == null ? "" : row.discoveredAt, row.discoveryError == null ? "" : row.discoveryError);
+                row.discoveredAt == null ? "" : row.discoveredAt, row.discoveryError == null ? "" : row.discoveryError, basic.wireApi());
     }
 
     private ModelConnectionSnapshot effective(List<Row> stored) {
@@ -327,14 +341,21 @@ public final class ModelConnections {
     private ModelConnectionSnapshot snapshot(Row row) {
         var credential = CHATGPT_KIND.equals(row.kind) ? row.oauth != null && row.oauth.planGranted() ? row.oauth.accessToken() : "" : row.secret;
         return snapshot(row.id, row.name, row.kind, row.enabled, row.baseUrl, row.defaultModel, credential, row.revision,
-                row.defaultSelected, fingerprint(credential));
+                row.defaultSelected, fingerprint(credential), CHATGPT_KIND.equals(row.kind) ? "responses" : checkedWireApi(row.wireApi));
     }
 
     private ModelConnectionSnapshot snapshot(UUID id, String name, String kind, boolean enabled, String baseUrl,
-            String model, String secret, long revision, boolean defaultSelected, String fingerprint) {
-        var configuration = AiConnectionStatus.revision("openai", model, baseUrl, rootConfigured, fingerprint);
+            String model, String secret, long revision, boolean defaultSelected, String fingerprint, String wireApi) {
+        var configuration = AiConnectionStatus.revision("openai:" + wireApi, model, baseUrl, rootConfigured, fingerprint);
         return new ModelConnectionSnapshot(id, name, kind, enabled, baseUrl, model, secret, revision,
-                defaultSelected, configuration);
+                defaultSelected, configuration, wireApi);
+    }
+
+    static String checkedWireApi(String value) {
+        if (value == null) return "chat-completions";
+        if (!java.util.Set.of("chat-completions", "responses").contains(value))
+            throw status(HttpStatus.BAD_REQUEST, "INVALID_WIRE_API");
+        return value;
     }
 
     private void fill(Row row, String name, String baseUrl, String secret) {
@@ -414,6 +435,7 @@ public final class ModelConnections {
         public UUID id;
         public String name;
         public String kind;
+        public String wireApi;
         public boolean enabled;
         public String baseUrl;
         public String defaultModel = "";

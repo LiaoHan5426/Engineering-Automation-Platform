@@ -2,6 +2,10 @@ import type { ModelConnectionList, ModelConnection, ModelOption } from '@eap/run
 
 /** In-memory configuration API. Credentials are never retained or transmitted. */
 export function createModelBackend(connections: ModelConnectionList) {
+  for (const item of connections.items)
+    item.wireApi = item.kind === 'chatgpt-plan' ? 'responses' : (item.wireApi ?? 'chat-completions')
+  const validProtocol = (body: Record<string, unknown>) =>
+    !('wireApi' in body) || body.wireApi === 'chat-completions' || body.wireApi === 'responses'
   let sequence = 0
   const logins = new Map<string, string>()
   const reply = (status: number, data: unknown) => ({ status, data })
@@ -30,6 +34,8 @@ export function createModelBackend(connections: ModelConnectionList) {
       id: `config-${++sequence}`,
       name: String(body.name),
       kind,
+      wireApi:
+        kind === 'chatgpt-plan' || body.wireApi === 'responses' ? 'responses' : 'chat-completions',
       baseUrl: String(body.baseUrl),
       enabled: body.enabled !== false,
       defaultModel: '',
@@ -87,6 +93,7 @@ export function createModelBackend(connections: ModelConnectionList) {
           : reply(404, { error: 'LOGIN_NOT_FOUND' })
       }
       if (method === 'POST' && path === '/ai/connections') {
+        if (!validProtocol(body)) return reply(400, { detail: 'INVALID_WIRE_API' })
         if (!String(body.name ?? '').trim() || !/^https?:\/\//.test(String(body.baseUrl)))
           return reply(400, { error: 'INVALID_CONNECTION' })
         return reply(200, create(body))
@@ -98,13 +105,32 @@ export function createModelBackend(connections: ModelConnectionList) {
       if (method !== 'POST') return undefined
       const suffix = match[2]
       if (!suffix) {
+        if (!validProtocol(body)) return reply(400, { detail: 'INVALID_WIRE_API' })
+        if (item.kind === 'chatgpt-plan') return reply(400, { detail: 'CONNECTION_TYPE_MISMATCH' })
         if (!String(body.name ?? '').trim() || !/^https?:\/\//.test(String(body.baseUrl)))
           return reply(400, { error: 'INVALID_CONNECTION' })
+        const material =
+          item.baseUrl !== String(body.baseUrl) ||
+          (typeof body.secret === 'string' && !!body.secret.trim())
+        const protocolChanged = 'wireApi' in body && body.wireApi !== item.wireApi
+        if (material) {
+          item.models = []
+          item.allowedModels = []
+          item.defaultModel = ''
+          item.discoveredAt = ''
+          item.discoveryError = ''
+        }
         item.name = String(body.name)
         item.baseUrl = String(body.baseUrl)
+        if ('wireApi' in body) item.wireApi = body.wireApi as ModelConnection['wireApi']
         item.enabled = body.enabled !== false
         if (body.secret) item.secretPresent = true
+        item.defaultSelected = body.defaultSelected === true
         if (body.defaultSelected) selectDefault(item.id)
+        else if (connections.effectiveDefaultId === item.id) connections.effectiveDefaultId = null
+        if (material || protocolChanged) item.revision++
+        item.configurationRevision = `mock-${item.id}-${item.revision}-${item.wireApi}`
+        return reply(200, item)
       } else if (suffix === '/enabled') item.enabled = body.enabled === true
       else if (suffix === '/default') selectDefault(item.id)
       else if (suffix === '/models/refresh') {
@@ -138,6 +164,7 @@ export function createModelBackend(connections: ModelConnectionList) {
         item.defaultModel = String(body.defaultModel)
       } else return undefined
       item.revision++
+      item.configurationRevision = `mock-${item.id}-${item.revision}-${item.wireApi}`
       return reply(200, item)
     },
   }

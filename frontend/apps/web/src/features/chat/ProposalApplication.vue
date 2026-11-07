@@ -31,7 +31,7 @@ async function read() {
     )
       throw new Error('Identity mismatch')
     if (
-      !['PROPOSED', 'APPLYING', 'APPLIED', 'FAILED', 'UNKNOWN'].includes(record.status) ||
+      !['PROPOSED', 'APPLYING', 'APPLIED', 'FAILED', 'UNKNOWN', 'REFUSED'].includes(record.status) ||
       (record.status === 'APPLIED') !== (record.result != null) ||
       (record.result &&
         (record.result.id !== record.proposal.id ||
@@ -141,6 +141,9 @@ onBeforeUnmount(() => {
     <p v-if="state?.status === 'APPLIED'" data-testid="application-identities">
       {{ t('boardDelivery.conversationId') }}：<code>{{ proposal.conversationId }}</code
       ><br />{{ t('boardDelivery.proposalId') }}：<code>{{ proposal.id }}</code>
+    </p>
+    <p v-if="state?.status === 'REFUSED'" data-testid="proposal-refused-review">
+      {{ t('application.refusedReview') }}
     </p>
     <template v-if="state?.status === 'PROPOSED'">
       <label

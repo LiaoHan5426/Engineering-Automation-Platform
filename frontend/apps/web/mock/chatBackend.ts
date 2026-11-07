@@ -33,8 +33,11 @@ export function createMockChatBackend() {
   let sequence = 0
   const instanceId = randomUUID()
   const conversations = new Map<string, AiConversation>()
+  const bindingRevisions = new Map<string, number>()
+  const busy = new Set<string>()
   const sensitiveConversations = new Set<string>()
   const proposals = new Map<string, CodeProposal>()
+  const proposalStates = new Map<string, { status: string; reason: string }>()
   const versions: Array<Record<string, unknown>> = []
 
   const models = [
@@ -213,17 +216,44 @@ export function createMockChatBackend() {
           model: target.defaultModel,
         }
         conversations.set(item.conversationId, item)
+        bindingRevisions.set(item.conversationId, target.revision)
         return result(200, item)
       }
       const match = path.match(/^\/ai\/conversations\/([^/]+)(.*)$/)
       if (!match) return result(404, { error: 'MOCK_ENDPOINT_NOT_IMPLEMENTED' })
       const id = decodeURIComponent(match[1]!),
         suffix = match[2]
-      const item = conversations.get(id)
+      let item = conversations.get(id)
+      if (method === 'POST' && suffix === '/reconnect') {
+        if (
+          Object.keys(body).length !== 2 ||
+          body.confirmContextReset !== true ||
+          typeof body.expectedWorkspaceLabel !== 'string'
+        )
+          return result(400, { detail: 'INVALID_RECONNECT_REQUEST' })
+        if (body.expectedWorkspaceLabel !== 'ws-mock-local')
+          return result(409, { detail: 'CONVERSATION_WORKSPACE_CHANGED' })
+        if (busy.has(id)) return result(409, { detail: 'CONVERSATION_BUSY' })
+        const contextReset = !item
+        if (!item) {
+          item = {
+            conversationId: id,
+            workspaceLabel: 'ws-mock-local',
+            memory: '模拟数据，不调用模型、不读写仓库',
+            connectionId: null,
+            model: null,
+          }
+          conversations.set(id, item)
+        }
+        return result(200, { ...item, contextReset })
+      }
       if (!item) return result(404, { error: 'MOCK_CONVERSATION_NOT_FOUND' })
+      if (method !== 'GET' && busy.has(id)) return result(409, { detail: 'CONVERSATION_BUSY' })
       if (method === 'GET' && !suffix) return result(200, item)
       if (method === 'DELETE' && !suffix) {
         conversations.delete(id)
+        bindingRevisions.delete(id)
+        sensitiveConversations.delete(id)
         return result(200, {})
       }
       if (method === 'POST' && suffix === '/connection') {
@@ -232,167 +262,241 @@ export function createMockChatBackend() {
         )
         if (!target || !target.allowedModels.includes(String(body.model)))
           return result(403, { error: 'MODEL_NOT_ALLOWED' })
-        const memoryCleared = item.connectionId !== target.id || item.model !== String(body.model)
+        const memoryCleared =
+          item.connectionId !== target.id ||
+          item.model !== String(body.model) ||
+          bindingRevisions.get(id) !== target.revision
+        if (memoryCleared && body.confirmTargetChange !== true)
+          return result(409, { detail: 'TARGET_CHANGE_CONFIRMATION_REQUIRED' })
         item.model = String(body.model)
         item.connectionId = target.id
+        bindingRevisions.set(id, target.revision)
         return result(200, { ...item, connectionName: target.name, memoryCleared })
       }
-      if (method === 'POST' && suffix === '/messages') {
-        const context = body.context as TaskContext | undefined
-        let cleared = sensitiveConversations.has(id)
-        const reply = (status: number, data: Record<string, unknown>) =>
-          result(status, {
-            ...data,
-            contextMemoryCleared: cleared,
-            knowledgeMemoryCleared: cleared,
-          })
-        const hasSkill = !!context && typeof context === 'object' && 'skillRef' in context
-        const hasPaths = !!context && typeof context === 'object' && 'skillResourcePaths' in context
-        if (
-          (hasSkill || hasPaths) &&
-          Object.keys(context!).some(
-            (key) =>
-              ![
-                'mode',
-                'expert',
-                'instructions',
-                'reasoning',
-                'approval',
-                'files',
-                'prototypeVersionId',
-                'targetPath',
-                'taskRef',
-                'knowledgeExpertRef',
-                'skillRef',
-                'skillResourcePaths',
-              ].includes(key),
-          )
-        )
-          return reply(400, { detail: 'INVALID_TASK_CONTEXT' })
-        if (
-          (hasSkill || hasPaths) &&
-          !validSkillTaskFields(context as unknown as Record<string, unknown>)
-        )
-          return reply(400, { detail: 'INVALID_TASK_CONTEXT' })
-        const selection = {
-          skillRef: context?.skillRef,
-          resourcePaths: hasPaths ? context!.skillResourcePaths : [],
-        }
-        if (hasSkill) {
-          const invalid = skillBackend.validate({ ...selection, resourcePaths: [] })
-          if (invalid) return reply(invalid.status, invalid.data)
-          if (
-            (context.mode !== undefined && context.mode !== 'chat') ||
-            'knowledgeExpertRef' in context ||
-            'taskRef' in context
-          )
-            return reply(400, { detail: 'SKILL_CONTEXT_MODE_UNSUPPORTED' })
-          const invalidPaths = skillBackend.validate(selection)
-          if (invalidPaths) return reply(invalidPaths.status, invalidPaths.data)
-          sensitiveConversations.add(id)
-          cleared = true
-          if (
-            typeof body.message !== 'string' ||
-            !body.message.trim() ||
-            body.message.length > 32000 ||
-            typeof body.toolMode !== 'string'
-          )
-            return reply(400, { detail: 'INVALID_CHAT_REQUEST' })
-          if (body.toolMode !== 'none')
-            return reply(400, { detail: 'SKILL_CONTEXT_MODE_UNSUPPORTED' })
-        } else if (hasPaths) return reply(400, { detail: 'INVALID_SKILL_RESOURCE_PATHS' })
-        const hasKnowledge = context && 'knowledgeExpertRef' in context
-        if (hasKnowledge) {
-          // Runtime parses the identity/mode before send fields, and resolves only after both checks.
-          if (
-            ('mode' in context && context.mode !== 'chat') ||
-            !validMockExpertRef(context.knowledgeExpertRef)
-          )
-            return reply(400, { detail: 'INVALID_EXPERT_CONTEXT' })
-          if (
-            typeof body.message !== 'string' ||
-            !body.message.trim() ||
-            body.message.length > 32000 ||
-            typeof body.toolMode !== 'string'
-          )
-            return reply(400, { detail: 'INVALID_CHAT_REQUEST' })
-          if (body.toolMode !== 'none')
-            return reply(400, { detail: 'EXPERT_CONTEXT_MODE_UNSUPPORTED' })
-        }
-        const target = connections.items.find(
-          (value) =>
-            value.id === item.connectionId &&
-            value.enabled &&
-            value.allowedModels.includes(item.model ?? ''),
-        )
-        if (!target) return reply(403, { error: 'MODEL_NOT_ALLOWED' })
-        const knowledge = hasKnowledge
-          ? mockExpertContext(context.knowledgeExpertRef, body.message)
-          : undefined
-        if (knowledge && knowledge.status !== 200) return reply(knowledge.status, knowledge.data)
-        if (context && 'taskRef' in context)
-          return reply(409, { detail: 'MOCK_TASK_BINDING_UNAVAILABLE' })
-        if (typeof body.message !== 'string' || !body.message.trim())
-          return reply(400, { error: 'EMPTY_MESSAGE' })
-        const skill = hasSkill
-          ? skillBackend.handle('POST', '/skills/context/preview', selection)
-          : undefined
-        if (skill && skill.status !== 200)
-          return reply(skill.status, skill.data as Record<string, unknown>)
-        const proposal: CodeProposal | null =
-          context?.mode === 'code' && context.approval !== 'read_only'
-            ? {
-                id: `proposal-${++sequence}`,
-                conversationId: id,
-                workspace: repoRoot,
-                summary: '模拟候选：仅供交互验收',
-                files: [
-                  {
-                    path: 'Example.vue',
-                    before: '<h1>Workspace</h1>',
-                    content: '<h1>EAP Workspace</h1>',
-                    baseHash: '',
-                  },
-                ],
-                applied: false,
-                writeAllowed: false,
-                verification: 'not_requested',
-              }
-            : null
-        if (proposal) proposals.set(proposal.id, proposal)
-        return reply(200, {
-          skillContext: skill ? (skill.data as SkillContext) : null,
-          knowledgeContext: knowledge && 'expertRef' in knowledge.data ? knowledge.data : null,
-          executionId: null,
-          answer: proposal
-            ? '模拟候选已准备，请查看变更并确认。不会修改真实文件。'
-            : '这是 mock 服务返回的模拟回答。场景、专家和模型选择使用与真实服务相同的交互流程；未调用真实模型。',
-          error: '',
-          status: 'mock_completed',
-          approval: context?.approval ?? 'review',
-          verification: 'not_requested',
-          toolEvents: [],
-          artifactError: '',
-          artifacts: [],
-          proposal,
-        } satisfies AiMessageResult)
+      if (method === 'POST' && suffix === '/cancel') {
+        const wasBusy = busy.has(id)
+        busy.delete(id)
+        return result(200, { cancelled: wasBusy, executionId: wasBusy ? `mock-exec-${id}` : '' })
       }
-      if (method === 'GET' && /^\/proposals\/[^/]+$/.test(suffix ?? ''))
-        return result(404, { error: 'MOCK_DURABLE_APPLICATION_UNAVAILABLE' })
-      const apply = suffix?.match(/^\/proposals\/([^/]+)\/apply$/)
+      if (method === 'GET' && suffix?.startsWith('/executions/') && suffix.endsWith('/snapshot')) {
+        return result(200, {
+          executionId: suffix.split('/')[2],
+          conversationId: id,
+          latestSequence: 0,
+          complete: true,
+          status: 'SUCCEEDED',
+          events: [],
+        })
+      }
+      if (method === 'POST' && suffix === '/messages') {
+        busy.add(id)
+        try {
+          // Yield a microtask only: mock turns are exclusive, without timers or model calls.
+          await Promise.resolve()
+          const context = body.context as TaskContext | undefined
+          let cleared = sensitiveConversations.has(id)
+          const reply = (status: number, data: Record<string, unknown>) =>
+            result(status, {
+              ...data,
+              contextMemoryCleared: cleared,
+              knowledgeMemoryCleared: cleared,
+            })
+          const hasSkill = !!context && typeof context === 'object' && 'skillRef' in context
+          const hasPaths =
+            !!context && typeof context === 'object' && 'skillResourcePaths' in context
+          if (
+            (hasSkill || hasPaths) &&
+            Object.keys(context!).some(
+              (key) =>
+                ![
+                  'mode',
+                  'expert',
+                  'instructions',
+                  'reasoning',
+                  'approval',
+                  'files',
+                  'prototypeVersionId',
+                  'targetPath',
+                  'taskRef',
+                  'knowledgeExpertRef',
+                  'skillRef',
+                  'skillResourcePaths',
+                ].includes(key),
+            )
+          )
+            return reply(400, { detail: 'INVALID_TASK_CONTEXT' })
+          if (
+            (hasSkill || hasPaths) &&
+            !validSkillTaskFields(context as unknown as Record<string, unknown>)
+          )
+            return reply(400, { detail: 'INVALID_TASK_CONTEXT' })
+          const selection = {
+            skillRef: context?.skillRef,
+            resourcePaths: hasPaths ? context!.skillResourcePaths : [],
+          }
+          if (hasSkill) {
+            const invalid = skillBackend.validate({ ...selection, resourcePaths: [] })
+            if (invalid) return reply(invalid.status, invalid.data)
+            if (
+              (context.mode !== undefined && context.mode !== 'chat') ||
+              'knowledgeExpertRef' in context ||
+              'taskRef' in context
+            )
+              return reply(400, { detail: 'SKILL_CONTEXT_MODE_UNSUPPORTED' })
+            const invalidPaths = skillBackend.validate(selection)
+            if (invalidPaths) return reply(invalidPaths.status, invalidPaths.data)
+            sensitiveConversations.add(id)
+            cleared = true
+            if (
+              typeof body.message !== 'string' ||
+              !body.message.trim() ||
+              body.message.length > 32000 ||
+              typeof body.toolMode !== 'string'
+            )
+              return reply(400, { detail: 'INVALID_CHAT_REQUEST' })
+            if (body.toolMode !== 'none')
+              return reply(400, { detail: 'SKILL_CONTEXT_MODE_UNSUPPORTED' })
+          } else if (hasPaths) return reply(400, { detail: 'INVALID_SKILL_RESOURCE_PATHS' })
+          const hasKnowledge = context && 'knowledgeExpertRef' in context
+          if (hasKnowledge) {
+            // Runtime parses the identity/mode before send fields, and resolves only after both checks.
+            if (
+              ('mode' in context && context.mode !== 'chat') ||
+              !validMockExpertRef(context.knowledgeExpertRef)
+            )
+              return reply(400, { detail: 'INVALID_EXPERT_CONTEXT' })
+            if (
+              typeof body.message !== 'string' ||
+              !body.message.trim() ||
+              body.message.length > 32000 ||
+              typeof body.toolMode !== 'string'
+            )
+              return reply(400, { detail: 'INVALID_CHAT_REQUEST' })
+            if (body.toolMode !== 'none')
+              return reply(400, { detail: 'EXPERT_CONTEXT_MODE_UNSUPPORTED' })
+          }
+          const target = connections.items.find(
+            (value) =>
+              value.id === item.connectionId &&
+              value.enabled &&
+              value.allowedModels.includes(item.model ?? ''),
+          )
+          if (!target) return reply(403, { error: 'MODEL_NOT_ALLOWED' })
+          if (bindingRevisions.get(id) !== target.revision)
+            return reply(409, { detail: 'MODEL_TARGET_CHANGED' })
+          if (
+            body.toolMode !== undefined &&
+            !['none', 'git_status'].includes(String(body.toolMode))
+          )
+            return reply(400, { detail: 'INVALID_CHAT_REQUEST' })
+          if (
+            body.toolMode === 'git_status' &&
+            (target.kind === 'chatgpt-plan' || target.wireApi === 'responses')
+          )
+            return reply(400, { detail: 'AI_PROTOCOL_TOOLS_UNAVAILABLE' })
+          const knowledge = hasKnowledge
+            ? mockExpertContext(context.knowledgeExpertRef, body.message)
+            : undefined
+          if (knowledge && knowledge.status !== 200) return reply(knowledge.status, knowledge.data)
+          if (context && 'taskRef' in context)
+            return reply(409, { detail: 'MOCK_TASK_BINDING_UNAVAILABLE' })
+          if (typeof body.message !== 'string' || !body.message.trim())
+            return reply(400, { error: 'EMPTY_MESSAGE' })
+          const skill = hasSkill
+            ? skillBackend.handle('POST', '/skills/context/preview', selection)
+            : undefined
+          if (skill && skill.status !== 200)
+            return reply(skill.status, skill.data as Record<string, unknown>)
+          const proposal: CodeProposal | null =
+            context?.mode === 'code' && context.approval !== 'read_only'
+              ? {
+                  id: `proposal-${++sequence}`,
+                  conversationId: id,
+                  workspace: repoRoot,
+                  summary: '模拟候选：仅供交互验收',
+                  files: [
+                    {
+                      path: 'Example.vue',
+                      before: '<h1>Workspace</h1>',
+                      content: '<h1>EAP Workspace</h1>',
+                      baseHash: '',
+                    },
+                  ],
+                  applied: false,
+                  writeAllowed: false,
+                  verification: 'not_requested',
+                }
+              : null
+          if (proposal) {
+            proposals.set(proposal.id, proposal)
+            proposalStates.set(proposal.id, { status: 'PROPOSED', reason: '' })
+          }
+          return reply(200, {
+            skillContext: skill ? (skill.data as SkillContext) : null,
+            knowledgeContext: knowledge && 'expertRef' in knowledge.data ? knowledge.data : null,
+            executionId: `mock-exec-${++sequence}`,
+            answer: proposal
+              ? '模拟候选已准备，请查看变更并确认。不会修改真实文件。'
+              : '这是 mock 服务返回的模拟回答。场景、专家和模型选择使用与真实服务相同的交互流程；未调用真实模型。',
+            error: '',
+            status: 'mock_completed',
+            approval: context?.approval ?? 'review',
+            verification: 'not_requested',
+            toolEvents: [],
+            artifactError: '',
+            artifacts: [],
+            proposal,
+          } satisfies AiMessageResult)
+        } finally {
+          busy.delete(id)
+        }
+      }
+      const proposalRoute = suffix?.match(/^\/proposals\/([^/]+)(?:\/(apply|refuse))?$/)
+      if (method === 'GET' && proposalRoute && !proposalRoute[2]) {
+        const proposal = proposals.get(decodeURIComponent(proposalRoute[1]!))
+        if (!proposal || proposal.conversationId !== id)
+          return result(404, { error: 'MOCK_PROPOSAL_NOT_FOUND' })
+        const saved = proposalStates.get(proposal.id) ?? { status: 'PROPOSED', reason: '' }
+        return result(200, {
+          proposal,
+          status: saved.status,
+          result: null,
+          reason: saved.reason,
+        })
+      }
+      const apply = proposalRoute?.[2] === 'apply' ? proposalRoute : null
       if (method === 'POST' && apply) {
         const proposal = proposals.get(decodeURIComponent(apply[1]!))
         if (!proposal || proposal.conversationId !== id)
           return result(404, { error: 'MOCK_PROPOSAL_NOT_FOUND' })
+        const saved = proposalStates.get(proposal.id) ?? { status: 'PROPOSED', reason: '' }
+        if (saved.status === 'REFUSED') return result(409, { detail: 'CODE_APPLICATION_REFUSED' })
         if (body.confirmed !== true) return result(403, { error: 'CONFIRMATION_REQUIRED' })
         if (proposal.files.some((file) => !file.baseHash.trim()))
           return result(409, { error: 'BASELINE_UNKNOWN' })
         proposal.applied = true
+        proposalStates.set(proposal.id, { status: 'APPLIED', reason: '' })
         return result(200, {
           id: proposal.id,
           written: proposal.files.map((file) => file.path),
           verification: 'mock_only_not_executed',
           checks: [],
+        })
+      }
+      const refuse = proposalRoute?.[2] === 'refuse' ? proposalRoute : null
+      if (method === 'POST' && refuse) {
+        const proposal = proposals.get(decodeURIComponent(refuse[1]!))
+        if (!proposal || proposal.conversationId !== id)
+          return result(404, { error: 'MOCK_PROPOSAL_NOT_FOUND' })
+        const saved = proposalStates.get(proposal.id) ?? { status: 'PROPOSED', reason: '' }
+        if (saved.status !== 'PROPOSED')
+          return result(409, { detail: `CODE_APPLICATION_${saved.status}` })
+        proposalStates.set(proposal.id, { status: 'REFUSED', reason: 'OPERATOR_REFUSED' })
+        return result(200, {
+          proposal,
+          status: 'REFUSED',
+          result: null,
+          reason: 'OPERATOR_REFUSED',
         })
       }
       return result(404, { error: 'MOCK_ENDPOINT_NOT_IMPLEMENTED' })

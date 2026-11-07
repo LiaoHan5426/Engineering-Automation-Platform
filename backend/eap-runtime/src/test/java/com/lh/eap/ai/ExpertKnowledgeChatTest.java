@@ -158,15 +158,15 @@ class ExpertKnowledgeChatTest {
         assertTrue(seen.isEmpty());
         when(f.knowledge.searchAuthorized(anyString(), anyInt(), anyList())).thenReturn(List.of(evidence("fresh-secret")));
         var id = app.open("{}").conversationId();
-        h.mvc(app).perform(post("/api/ai/conversations/" + id + "/messages").contentType(MediaType.APPLICATION_JSON).content(SEND))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.knowledgeContext.references[0].excerpt").value("fresh-secret"))
-                .andExpect(jsonPath("$.knowledgeMemoryCleared").value(true));
+        var withKnowledge = app.send(id, SEND);
+        assertEquals("fresh-secret", withKnowledge.knowledgeContext().references().getFirst().excerpt());
+        assertTrue(withKnowledge.knowledgeMemoryCleared());
         assertTrue(seen.getFirst().getUserMessage().getText().contains("fresh-secret"));
         assertFalse(seen.getFirst().getSystemMessage().getText().contains("fresh-secret"));
         assertFalse(seen.getFirst().toString().contains("old-secret"));
-        h.mvc(app).perform(post("/api/ai/conversations/" + id + "/messages").contentType(MediaType.APPLICATION_JSON).content(PLAIN))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.knowledgeMemoryCleared").value(true))
-                .andExpect(jsonPath("$.knowledgeContext").doesNotExist());
+        var plain = app.send(id, PLAIN);
+        assertTrue(plain.knowledgeMemoryCleared());
+        assertNull(plain.knowledgeContext());
         assertFalse(seen.getLast().toString().contains("fresh-secret"));
         assertFalse(seen.getLast().toString().contains("derived-sensitive-answer"));
     }

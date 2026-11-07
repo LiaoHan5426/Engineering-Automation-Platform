@@ -39,9 +39,9 @@ class SkillChatTest {
         var registry = (AiConversationRegistry)ReflectionTestUtils.getField(app,"conversations");
         var memory = (org.springframework.ai.chat.memory.ChatMemory)ReflectionTestUtils.getField(registry,"memory");
         memory.add(EngineeringChatService.memoryKey(AiConversationRegistry.PRINCIPAL,id),new org.springframework.ai.chat.messages.UserMessage("previous-private"));
-        h.mvc(app).perform(post("/api/ai/conversations/"+id+"/messages").contentType(MediaType.APPLICATION_JSON).content(SEND))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.skillContext.instructions").value("skill-private-guidance"))
-                .andExpect(jsonPath("$.contextMemoryCleared").value(true));
+        var sent = app.send(id, SEND);
+        assertEquals("skill-private-guidance", sent.skillContext().instructions());
+        assertTrue(sent.contextMemoryCleared());
         assertTrue(prompts.getLast().getUserMessage().getText().contains("resource-private"));
         assertFalse(prompts.getLast().getSystemMessage().getText().contains("skill-private"));
         assertFalse(prompts.getLast().toString().contains("previous-private"));

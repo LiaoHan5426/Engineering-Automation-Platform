@@ -23,6 +23,7 @@ export interface NavItem {
 export interface PluginHost {
   installation: Ref<Installation>
   entries: ComputedRef<NavItem[]>
+  boardContributionVisible: ComputedRef<boolean>
   setEnabled(pluginId: PluginId, enabled: boolean): void
   readBuilder(instanceId: BuilderConfig['instanceId']): BuilderConfig
   saveBuilder(config: BuilderConfig): void
@@ -42,6 +43,15 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
         icon: '✉',
         group: '工作',
         hint: t('plugin.chatHint'),
+      })
+    }
+    if (installation.value.enabled.board) {
+      items.push({
+        id: 'board',
+        name: t('desktop.board'),
+        icon: '▤',
+        group: '工作',
+        hint: t('plugin.boardHint'),
       })
     }
     if (installation.value.enabled.builder) {
@@ -89,12 +99,22 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
     return { id, name: t('plugin.chat'), icon: '✉', group: '工作', hint: t('plugin.hiddenBody') }
   }
 
+  const boardContributionVisible = computed(() => installation.value.enabled.board)
+
   return {
     installation,
     entries,
+    boardContributionVisible,
     setEnabled(pluginId, enabled) {
-      installation.value = { enabled: { ...installation.value.enabled, [pluginId]: enabled } }
-      writeInstallation(store, installation.value)
+      const previous = installation.value
+      const next: Installation = { enabled: { ...previous.enabled, [pluginId]: enabled } }
+      installation.value = next
+      try {
+        writeInstallation(store, next)
+      } catch {
+        installation.value = previous
+        throw new Error('PLUGIN_INSTALLATION_PERSIST_FAILED')
+      }
     },
     readBuilder: (instanceId) => readBuilder(store, instanceId),
     saveBuilder(config) {

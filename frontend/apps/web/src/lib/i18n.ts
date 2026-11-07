@@ -46,7 +46,19 @@ export const i18n = createI18n({
         archive: '归档',
         delete: '删除会话',
         empty: '暂无会话',
-        expired: '服务端会话不可用。当前仅可查看本地历史，请新建会话继续。',
+        expired: '服务端会话已失效。本地历史和草稿仍保留，可确认后重新连接。',
+        reconnect: '重新连接',
+        reconnectRetry: '重新连接并重试',
+        reconnectImpact: '重新连接可能重置服务端模型上下文；已失效的模型记忆无法恢复。',
+        reconnectLocal:
+          '保留当前本地会话、历史和草稿，不会自动重放历史消息、工具或提案；有草稿时仅发送当前草稿一次。',
+        reconnectFailed: '重新连接失败，草稿和引用未更改。请检查服务后重试，或重新检查会话。',
+        workspaceChanged:
+          '服务端当前运行在不同工作区，已拒绝重新连接。请切回原工作区后重试；本地历史、草稿和项目关联保持不变。',
+        probeFailed: '暂时无法检查服务端会话，尚未确认会话失效。草稿仍可编辑。',
+        recheck: '重新检查会话',
+        contextReset: '已重新连接。服务端模型上下文已重置，本地历史未重放。',
+        contextKept: '已重新连接现有服务端会话，本次重连未重置模型上下文。',
         archiveNotice: '已归档，仅供查看。恢复后可以继续有效会话。',
         deleteNotice:
           '删除此浏览器中的会话正文和草稿，并清理服务端会话记忆；此操作不可撤销，不删除独立的交接或 Mission。',
@@ -222,6 +234,8 @@ export const i18n = createI18n({
         new: '新建会话',
         send: '发送',
         sending: '发送中…',
+        cancel: '取消发送',
+        cancelled: '已取消本次发送',
         empty: '尚未建立对话。新建会话后再发送。',
         draft: '描述你想让 AI 完成的任务…',
         draftWork: '描述你想让 AI 完成的工作…',
@@ -244,7 +258,9 @@ export const i18n = createI18n({
       },
       plugin: {
         center: '插件中心',
-        centerHint: '预装 Chat 与 Builder 在这里启停。禁用只隐藏导航，不删除已保存的实例配置。',
+        centerHint:
+          '预装 Chat、看板与 Builder 在这里启停。禁用只隐藏导航，不删除已保存的实例配置，也不停止 Task/Run。',
+        boardHint: '项目任务看板贡献。停用只隐藏入口，不改变后端任务与运行数据。',
         storage: '这是浏览器本地原型存储，不是服务端配置修订、审计或可恢复任务。',
         chatMemory:
           'Chat 的启停只影响导航。对话文本仍只在服务端进程内存中，这里不保存，也不能在后端重启后恢复。',
@@ -340,7 +356,23 @@ export const i18n = createI18n({
         delete: 'Delete chat',
         empty: 'No chats',
         expired:
-          'Server session unavailable. This is local history; create a new chat to continue.',
+          'Server session expired. Local history and draft are retained; confirm to reconnect.',
+        reconnect: 'Reconnect',
+        reconnectRetry: 'Reconnect and retry',
+        reconnectImpact:
+          'Reconnecting may reset server model context. Expired model memory cannot be recovered.',
+        reconnectLocal:
+          'Keep this local conversation, history and draft. History, tools and proposals are not replayed; only the current nonempty draft is sent once.',
+        reconnectFailed:
+          'Reconnect failed. Draft and attachments are unchanged. Check the service and retry, or recheck the session.',
+        workspaceChanged:
+          'The server is running in a different workspace. Reconnect was refused. Switch back to the original workspace and retry; local history, draft and project associations are unchanged.',
+        probeFailed:
+          'Could not check the server session. Expiry is not confirmed. You can still edit the draft.',
+        recheck: 'Recheck session',
+        contextReset:
+          'Reconnected. Server model context was reset; local history was not replayed.',
+        contextKept: 'Reconnected to the existing server session without resetting model context.',
         archiveNotice: 'Archived, read only. Restore to continue a valid session.',
         deleteNotice:
           'Permanently delete local messages and draft and clear server memory. Independent handoffs and Missions are retained.',
@@ -535,6 +567,8 @@ export const i18n = createI18n({
         new: 'New session',
         send: 'Send',
         sending: 'Sending…',
+        cancel: 'Cancel send',
+        cancelled: 'This send was cancelled',
         empty: 'No session yet. Create one before sending.',
         draft: 'Describe the task you want AI to complete…',
         draftWork: 'Describe the work you want AI to complete…',
@@ -560,7 +594,9 @@ export const i18n = createI18n({
       plugin: {
         center: 'Plugin center',
         centerHint:
-          'Enable or disable the preinstalled Chat and Builder plugins. Disabling hides navigation and keeps saved instance configuration.',
+          'Enable or disable the preinstalled Chat, board, and Builder plugins. Disabling hides navigation and keeps saved configuration; Task/Run data is unchanged.',
+        boardHint:
+          'Project board contribution. Disabling hides the entry without stopping backend task or run data.',
         storage:
           'This is browser-local prototype storage, not a server configuration revision, an audit record, or a recoverable mission.',
         chatMemory:

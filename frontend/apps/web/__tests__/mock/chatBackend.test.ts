@@ -83,6 +83,7 @@ it('serves the chat contract and model whitelist without an external backend', a
   const switched = await api.handle('POST', conversationPath + '/connection', {
     connectionId: 'mock-local',
     model: 'general-demo',
+    confirmTargetChange: true,
   })
   expect(switched.status).toBe(200)
   expect((switched.data as { memoryCleared: boolean }).memoryCleared).toBe(true)

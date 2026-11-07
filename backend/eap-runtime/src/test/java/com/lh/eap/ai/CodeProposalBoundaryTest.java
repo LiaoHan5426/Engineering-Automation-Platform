@@ -157,4 +157,23 @@ class CodeProposalBoundaryTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
         assertTrue(proposals.rows.containsKey(saved.id()));
     }
+    @Test void operatorRefusalIsPersistedAndBlocksApply() throws Exception {
+        var fixture = new AiChatApplicationTest(); fixture.root = root;
+        var app = fixture.app(prompt -> FakeChatModels.text("unused"), true, root, null);
+        org.springframework.test.util.ReflectionTestUtils.setField(app, "codeChanges", service());
+        var id = app.open("{}").conversationId();
+        var generation = service().prepareGeneration(AiConversationRegistry.PRINCIPAL, id, "Page.vue", "", "");
+        var saved = service().proposePrepared(AiConversationRegistry.PRINCIPAL, id, generation.id(),
+                "{\"files\":[{\"path\":\"Page.vue\",\"content\":\"candidate\"}]}", true);
+        var mvc = fixture.mvc(app);
+        String url = "/api/ai/conversations/" + id + "/proposals/" + saved.id();
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(url + "/refuse")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status").value("REFUSED"));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(url))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status").value("REFUSED"));
+        assertEquals("REFUSED", proposals.rows.get(saved.id()).status());
+        assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> service().apply(id, saved.id(), true));
+    }
 }

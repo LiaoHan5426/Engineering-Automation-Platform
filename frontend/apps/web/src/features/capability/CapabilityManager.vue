@@ -8,6 +8,8 @@ import {
   type McpProbeResult,
   type McpServerItem,
   type McpServerRequest,
+  type TrustedGitStatusResult,
+  type TrustedToolItem,
 } from '@eap/runtime-client'
 import { Badge, Button, Checkbox, ConfirmBox, Feedback, Input, Select, Tabs } from '@eap/ui'
 import { Table, type TableColumn } from '@eap/plugin-table'
@@ -21,6 +23,9 @@ const loading = ref(false)
 const message = ref('')
 const messageKind = ref<'error' | 'success'>('success')
 const tab = ref('overview')
+const trustedTools = ref<TrustedToolItem[]>([])
+const trustedGitResult = ref<TrustedGitStatusResult | null>(null)
+const trustedBusy = ref(false)
 
 /** Drafts, keyed by capability: a note explains a switch, a binary points a CLI capability at a file. */
 const notesDraft = ref<Record<string, string>>({})
@@ -103,6 +108,8 @@ async function refresh() {
   loading.value = true
   try {
     catalog.value = await runtimeApi.capabilities()
+    const trusted = await runtimeApi.trustedTools()
+    trustedTools.value = trusted.items
     for (const item of items.value) {
       if (notesDraft.value[item.name] === undefined) notesDraft.value[item.name] = item.notes
     }
@@ -112,6 +119,19 @@ async function refresh() {
     feedback('error', errorMessage(error))
   } finally {
     loading.value = false
+  }
+}
+
+async function runTrustedGitStatus() {
+  trustedBusy.value = true
+  trustedGitResult.value = null
+  try {
+    trustedGitResult.value = await runtimeApi.invokeTrustedGitStatus()
+    feedback(trustedGitResult.value.success ? 'success' : 'error', trustedGitResult.value.message)
+  } catch (error) {
+    feedback('error', errorMessage(error))
+  } finally {
+    trustedBusy.value = false
   }
 }
 onMounted(refresh)
@@ -252,6 +272,35 @@ async function submitServer() {
 
   <!-- 总览 -->
   <section v-if="tab === 'overview'" class="view">
+    <article class="eap-panel panel-block" data-testid="trusted-tools-panel">
+      <header class="cap-head">
+        <div class="cap-head__main">
+          <h2>可信工具目录（TD-01）</h2>
+          <p>自动汇总内置只读能力定义；下方可触发一次受控 git-status，不开放任意执行口。</p>
+        </div>
+      </header>
+      <ul v-if="trustedTools.length" class="trusted-tool-list">
+        <li v-for="tool in trustedTools" :key="tool.id" :data-testid="`trusted-tool-${tool.id}`">
+          <strong class="mono">{{ tool.id }}</strong> · {{ tool.title }}
+          <Badge :tone="tool.enabled ? 'success' : 'warning'" :label="tool.enabled ? '已启用' : '已停用'" />
+        </li>
+      </ul>
+      <p v-else class="hint">暂无可信只读工具定义。</p>
+      <div class="trusted-tool-actions">
+        <Button
+          variant="secondary"
+          size="sm"
+          data-testid="trusted-git-status-invoke"
+          :disabled="trustedBusy || !trustedTools.some((tool) => tool.id === 'git-status' && tool.enabled)"
+          @click="runTrustedGitStatus"
+        >
+          触发只读 git status
+        </Button>
+      </div>
+      <pre v-if="trustedGitResult" class="trusted-git-result" data-testid="trusted-git-status-result">{{
+        trustedGitResult.stdout ?? trustedGitResult.message
+      }}</pre>
+    </article>
     <p v-if="loading && !catalog" class="hint">正在读取能力目录…</p>
     <article v-for="kind in kinds" :key="kind.id" class="eap-panel panel-block cap-group">
       <header class="cap-head">

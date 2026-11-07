@@ -78,6 +78,18 @@ root. When both keys are empty, the colocated local service binds to the detecte
 (git root / `user.dir`). Legacy `EAP_AI_AUTHORIZED_ROOT` is only a same-path fallback; conflicting
 paths refuse. This is not a remote multi-tenant grant store.
 
+## Ordinary API wire protocol
+
+Saved API-key connections expose an explicit `wireApi` selection in Settings: `chat-completions`
+(legacy/default) or `responses`. Use the provider's documented protocol; do not append `/responses`
+to a base URL already ending in `/v1`. The Responses text/code-proposal slice uses the existing
+official SDK adapter with `store:false`, not ChatGPT OAuth or another agent's credentials. Git tools
+are unavailable for this protocol. Saving a protocol change preserves a same-endpoint model catalog
+but requires explicit conversation rebind/cleared model memory before retrying. Restart the Java
+service to load changed code; this implementation did not restart it or modify saved connections.
+Local HTTP tests do not establish live provider/WAF compatibility. See
+[model protocol contract](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验).
+
 ## Database initialisation
 
 Flyway owns the `eap` schema. On 2026-10-26, the user approved resetting disposable development

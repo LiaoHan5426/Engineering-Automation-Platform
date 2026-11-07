@@ -4,7 +4,7 @@
 
 ## 连接、目录、使用配置和会话
 
-连接表单只保存名称、端点、API Key、启用状态及默认连接标记。创建连接不要求模型，也不填入预设模型。
+连接表单保存名称、端点、API Key、启用状态及默认连接标记。2026-11-05协议修复新增显式wireApi选择，合同见下节；创建连接仍不要求模型，也不填入预设模型。
 
 模型目录是独立配置：保存新凭据后前端明确请求同步，也可手动同步或添加模型 ID。允许列表和新会话默认模型必须通过单独保存生效。新发现的模型不会自动启用。
 
@@ -42,3 +42,22 @@
 本地页面连接用户在 IDEA 中启动的后端，未另启服务进程。没有在真实配置中写入演示连接，没有调用真实付费模型。
 
 ChatGPT 账号登录已增加独立通道，见 [ChatGPT 账号接入](chatgpt-account-sign-in.md)。真实账号授权、真实供应商调用及 Electron 交付仍需分别验收。API Key 和订阅登录分开管理。
+
+## 普通API连接的协议选择（2026-11-05，实现与离线回归通过，实网待验）
+
+用户提供的服务接入配置明确为`wire_api = "responses"`。修复前普通`openai-compatible`连接统一通过OpenAiChatModel发Chat Completions，只有订阅通道使用Responses；端点与模型目录存在不证明推理协议兼容。此前本机无凭据Java请求得到Cloudflare HTML 403，只证明该探测被网关拦截，不能认定真实认证请求同因，也不能据此认定密钥无权限。
+
+- 普通连接显式保存`wireApi: "chat-completions" | "responses"`；旧数据缺字段默认Chat Completions，不猜域名/模型、不自动降级重试。普通连接创建默认Chat Completions，更新未传协议则保留原值；非法值拒绝。
+- 切换协议属于实质连接变更：提升revision并隔离客户端与会话指纹，按现有机制重新确认/清空模型记忆；同端点仅改协议不清空目录和允许模型。不得静默迁移既有会话或重发草稿。
+- Responses普通API继续使用该连接API Key，复用现有官方SDK窄适配，不冒充ChatGPT订阅登录，不读取Codex或其他应用认证文件。ChatGPT账号通道保持固定Responses和原有OAuth语义。
+- 首片仅文本聊天/代码提案，发送instructions、历史input、显式推理档位及store=false，通过流式完成事件判断结果；失败/不完整流不标成功。不新增模型工具循环，也不将Chat Completions工具直接发送到Responses；前后端明确拒绝Git工具组合。
+- 不改用户已保存连接、密钥、application.yml，不为验证而调用真实付费模型或重启用户服务。普通API认证继续为Bearer Key；用户配置中的`requires_openai_auth = true`不是订阅OAuth，也不是允许读取其他应用凭据。
+
+### 验证与使用
+
+- `OpenAiResponsesProtocolTest`以本地HTTP服务器验证真实`/v1/responses`、Bearer测试Key、instructions/历史/reasoning、store=false、流完成与失败/截断、无协议降级；旧连接仍调用`/v1/chat/completions`。另有保存/重读、revision、协议非法值、工具拒绝和重新绑定清空回归。提案测试确认返回候选但未写入目标文件。
+- 父任务执行`rtk proxy mvn -f backend/pom.xml test`：四个有测试模块摘要聚合664项，0失败/错误，68条件跳过；未开启实库、Mission或真实模型门禁。不是664项全部实际执行，也不是供应商恢复证据。
+- 父任务执行`rtk proxy pnpm --dir frontend test run --maxWorkers=2`：107文件613项通过；`typecheck`、`check:boundaries`、`build`通过。根`check`首次发现本次9文件格式问题，仅格式化这9文件后，根检查381格式文件、297 lint文件零问题；格式化后再次运行全量613项、typecheck及build均通过。保留Node localStorage、Mockito/JDK动态agent及大chunk告警，不将格式化工具成功等同业务通过。当前11份变更文档的131处本地引用/锚点及UTF-8无BOM检查通过，`git diff --check`通过。
+- 实际接入需先由用户在IDEA重启后端加载新代码，再在设置编辑原API连接、将协议设为Responses并保存。地址不追加`/responses`（保留`/v1`），密钥留空表示保留。仅协议变更保留目录/允许模型；回会话明确确认重新绑定，工具设为无，再由用户重试原草稿。不自动创建其他供应商连接或重发请求。
+- 后续CT-01修复补充：重启后若原服务端会话已丢失，使用[重新连接并重试](chat-engineering-task-slice.md#会话失效与显式重试2026-11-05实现与离线回归通过)确认入口，不再要求手工新建用户会话。保留本地历史/草稿/选择，但不把历史自动发给模型；工作区或模型不符合条件时明确阻断。
+- 未验证：真实端点认证/Cloudflare规则、供应商响应兼容性及浏览器交互接受；仍不能宣布原故障已完全恢复。403目前仍为通用权限分类，网关HTML与供应商JSON的诊断细分是剩余缺口，不借此记录或输出原始凭据/正文。

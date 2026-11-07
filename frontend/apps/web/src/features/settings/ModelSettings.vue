@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button, Checkbox, Feedback, Input, Select } from '@eap/ui'
 import { IconPlus } from '@eap/ui'
-import type { ModelConnection } from '@eap/runtime-client'
+import type { ModelConnection, ModelWireApi } from '@eap/runtime-client'
 import { modelApi as runtimeApi } from '../chat/chatService'
 import { useMockServices } from '../../lib/serviceConfig'
 import ConnectionDialog from '../../components/ConnectionDialog.vue'
@@ -64,6 +64,7 @@ const connectionOk = ref(false)
 const connectionBusy = ref(false)
 const form = ref({
   name: '',
+  wireApi: 'chat-completions' as ModelWireApi,
   baseUrl: 'https://api.openai.com',
   secret: '',
   enabled: true,
@@ -90,6 +91,7 @@ function newConnection() {
   editingId.value = null
   form.value = {
     name: '',
+    wireApi: 'chat-completions',
     baseUrl: 'https://api.openai.com',
     secret: '',
     enabled: true,
@@ -103,6 +105,7 @@ function editConnection(item: ModelConnection) {
   editingId.value = item.id
   form.value = {
     name: item.name,
+    wireApi: item.wireApi ?? 'chat-completions',
     baseUrl: item.baseUrl,
     secret: '',
     enabled: item.enabled,
@@ -117,14 +120,19 @@ async function saveConnection() {
   connectionOk.value = false
   connectionNote.value = ''
   try {
-    const previousRevision = connections.value.find((item) => item.id === editingId.value)?.revision
+    const previous = connections.value.find((item) => item.id === editingId.value)
+    const protocolOnly =
+      previous &&
+      previous.baseUrl === form.value.baseUrl &&
+      !form.value.secret.trim() &&
+      (previous.wireApi ?? 'chat-completions') !== form.value.wireApi
     let saved = await runtimeApi.saveModelConnection(
       { ...form.value, secret: form.value.secret },
       editingId.value ?? undefined,
     )
     form.value.secret = ''
     let catalogCached = false
-    if (saved.enabled && previousRevision !== saved.revision) {
+    if (saved.enabled && previous?.revision !== saved.revision && !protocolOnly) {
       try {
         saved = await runtimeApi.refreshConnectionModels(saved.id)
         if (saved.discoveryError?.trim()) catalogCached = true
@@ -219,6 +227,14 @@ async function makeDefault(item: ModelConnection) {
             <strong>{{ item.name }}</strong
             ><span>{{ item.defaultModel || t('modelUi.pending') }}</span
             ><small>{{ item.baseUrl }}</small>
+            <small>
+              {{ t('modelUi.wireApi') }}:
+              {{
+                item.kind === 'chatgpt-plan' || item.wireApi === 'responses'
+                  ? 'Responses'
+                  : 'Chat Completions'
+              }}
+            </small>
           </div>
           <span v-if="item.secretPresent"> · {{ t('hidden') }}</span>
           <span v-if="item.defaultSelected"> · {{ t('chat.connectionDefault') }}</span>
@@ -316,6 +332,16 @@ async function makeDefault(item: ModelConnection) {
           </label>
           <label>{{ t('chat.connectionName') }} <Input v-model="form.name" required /></label>
           <label>{{ t('chat.connectionUrl') }} <Input v-model="form.baseUrl" required /></label>
+          <label>
+            {{ t('modelUi.wireApi') }}
+            <Select v-model="form.wireApi" data-testid="wire-api" :disabled="connectionBusy">
+              <option value="chat-completions">Chat Completions</option>
+              <option value="responses">Responses</option>
+            </Select>
+          </label>
+          <p v-if="form.wireApi === 'responses'" class="hint">
+            {{ t('modelUi.protocolToolsUnavailable') }}
+          </p>
           <label>
             {{ t('chat.connectionSecret') }}
             <Input

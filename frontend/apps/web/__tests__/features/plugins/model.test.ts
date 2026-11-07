@@ -55,13 +55,13 @@ describe('plugin prototype store', () => {
     alpha.draftTitle = '保留'
     alpha.mockApproval = 'simulated'
     writeBuilder(store, alpha)
-    writeInstallation(store, { enabled: { chat: true, builder: false } })
+    writeInstallation(store, { enabled: { chat: true, builder: false, board: true } })
 
     expect(enabledHashes(readInstallation(store))).not.toContain('builder-alpha')
     expect(readBuilder(store, 'alpha').draftTitle).toBe('保留')
     expect(readBuilder(store, 'alpha').mockApproval).toBe('simulated')
 
-    writeInstallation(store, { enabled: { chat: false, builder: true } })
+    writeInstallation(store, { enabled: { chat: false, builder: true, board: false } })
     expect(enabledHashes(readInstallation(store))).toEqual(['builder-alpha', 'builder-beta'])
     expect(readBuilder(store, 'alpha').draftTitle).toBe('保留')
     expect(GRANTS).toEqual([])

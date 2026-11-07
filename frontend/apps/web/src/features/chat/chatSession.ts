@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import type {
+  AiConversation,
   AiMessageResult,
   AiStatus,
   AiToolMode,
@@ -10,6 +11,10 @@ import type {
 } from '@eap/runtime-client'
 
 export type ChatApi = {
+  reconnectAiConversation?: (
+    id: string,
+    expectedWorkspaceLabel: string,
+  ) => Promise<AiConversation & { contextReset: boolean }>
   aiConversation?: (id: string) => Promise<{
     workspaceLabel: string
     memory: string
@@ -30,7 +35,20 @@ export type ChatApi = {
     message: string,
     toolMode: AiToolMode,
     context?: TaskContext,
+    options?: {
+      signal?: AbortSignal
+      onEvent?: (event: {
+        type: string
+        text: string
+        code: string
+        status: string
+        sequence: number
+        executionId: string
+        payload?: unknown
+      }) => void
+    },
   ) => Promise<AiMessageResult>
+  cancelAiConversation?: (id: string) => Promise<{ cancelled: boolean; executionId: string }>
   modelConnections?: () => Promise<ModelConnectionList>
   assignConversationConnection?: (
     id: string,
@@ -50,6 +68,7 @@ export type ChatTurn = {
   contextMemoryCleared?: boolean
   knowledgeContext?: AiMessageResult['knowledgeContext']
   knowledgeMemoryCleared?: boolean
+  executionId?: string | null
   proposal?: CodeProposal | null
   model?: string
   connectionName?: string
@@ -80,6 +99,7 @@ function generationFailure(error: unknown): string | undefined {
     return 'knowledge-failed'
   return (
     {
+      AI_PROTOCOL_TOOLS_UNAVAILABLE: 'protocol-tools-unavailable',
       CODE_GENERATION_BASELINE_CHANGED: 'generation-stale',
       CODE_GENERATION_TARGET_REQUIRED: 'generation-blocked',
       CODE_GENERATION_SCOPE_MISMATCH: 'generation-blocked',
@@ -134,6 +154,13 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const transcripts = ref<Record<string, ChatTurn[]>>({})
   const draft = ref('')
   const expired = ref(false)
+  const reconnectingIds = ref<Record<string, boolean>>({})
+  const reconnecting = computed(() => !!reconnectingIds.value[conversationId.value ?? ''])
+  const reconnectNotice = ref('')
+  const reconnectResults = ref<Record<string, AiConversation & { contextReset: boolean }>>({})
+  const sessionUnavailable = ref(false)
+  const checkingConversation = ref(false)
+  let selectionVersion = 0
   const toolMode = ref<AiToolMode>('none')
   const emptyContext = (): TaskContext => ({
     mode: 'chat',
@@ -148,6 +175,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const context = ref<TaskContext>(emptyContext())
   const failure = ref('')
   const inflight = ref<Record<string, number>>({})
+  const abortControllers = ref<Record<string, AbortController>>({})
   const connections = ref<ModelConnection[]>([])
   const boundConnectionId = ref<string | null>(null)
   const pendingConnectionId = ref<string | null>(null)
@@ -275,6 +303,10 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   }
 
   function beginDraft() {
+    selectionVersion++
+    sessionUnavailable.value = false
+    checkingConversation.value = false
+    reconnectNotice.value = ''
     conversationId.value = null
     draft.value = ''
     expired.value = false
@@ -301,6 +333,9 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         model: created.model ?? '',
       })
       conversationId.value = created.conversationId
+      selectionVersion++
+      sessionUnavailable.value = false
+      checkingConversation.value = false
       draft.value = ''
       expired.value = false
       workspaceLabel.value = created.workspaceLabel
@@ -322,6 +357,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
 
   async function selectConversation(id: string) {
     if (!transcripts.value[id]) return
+    selectionVersion++
+    reconnectNotice.value = ''
     conversationId.value = id
     const item = history.value.find((x) => x.id === id)
     draft.value = item?.draft ?? ''
@@ -336,24 +373,40 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       : emptyContext()
     failure.value = ''
     expired.value = !!item?.expired
-    if (api.aiConversation) {
-      expired.value = true
-      try {
-        const live = await api.aiConversation(id)
-        if (conversationId.value !== id) return
-        boundConnectionId.value = live.connectionId ?? null
-        boundModel.value = live.model ?? ''
-        expired.value = false
-        if (item) {
-          item.connectionId = live.connectionId ?? null
-          item.model = live.model ?? ''
-          item.expired = false
-        }
-      } catch (error) {
-        if (conversationId.value !== id) return
-        expired.value = true
-        if (item && httpStatus(error) === 404) item.expired = true
+    sessionUnavailable.value = false
+    await recheckConversation()
+  }
+
+  async function recheckConversation() {
+    const id = conversationId.value
+    if (!id || !api.aiConversation || reconnecting.value) return false
+    const item = history.value.find((row) => row.id === id)
+    const version = selectionVersion
+    const active = () => conversationId.value === id && selectionVersion === version
+    checkingConversation.value = true
+    try {
+      const live = await api.aiConversation(id)
+      if (!active()) return false
+      boundConnectionId.value = live.connectionId ?? null
+      boundModel.value = live.model ?? ''
+      expired.value = false
+      sessionUnavailable.value = false
+      if (item) {
+        item.connectionId = live.connectionId ?? null
+        item.model = live.model ?? ''
+        item.expired = false
       }
+      return true
+    } catch (error) {
+      if (!active()) return false
+      if (httpStatus(error) === 404) {
+        expired.value = true
+        if (item) item.expired = true
+        sessionUnavailable.value = false
+      } else sessionUnavailable.value = true
+      return false
+    } finally {
+      if (active()) checkingConversation.value = false
     }
   }
 
@@ -378,7 +431,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   }
 
   function chooseConversationConnection(id: string, model: string) {
-    if (sending.value) return
+    if (sending.value || reconnecting.value) return
     if (
       id === boundConnectionId.value &&
       model === boundModel.value &&
@@ -430,20 +483,99 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     targetNotice.value = ''
   }
 
-  async function send() {
-    if (opening.value) return
+  async function reconnectConversation() {
+    const id = conversationId.value
+    const item = history.value.find((row) => row.id === id)
     if (
-      context.value.skillRef &&
-      (context.value.mode !== 'chat' ||
+      !id ||
+      !item ||
+      item.archived ||
+      inflight.value[id] != null ||
+      reconnectingIds.value[id] ||
+      !api.reconnectAiConversation ||
+      !api.assignConversationConnection
+    )
+      return
+    const targetId = pendingConnectionId.value || item.connectionId
+    const model = pendingConnectionId.value ? pendingModel.value : item.model
+    const target = connections.value.find((row) => row.id === targetId && row.enabled)
+    if (
+      !targetId ||
+      !model ||
+      !target?.allowedModels.includes(model) ||
+      !target.models.some((row) => row.id === model)
+    ) {
+      failure.value = 'model-unavailable'
+      return
+    }
+    const version = selectionVersion
+    const active = () => conversationId.value === id && selectionVersion === version
+    reconnectingIds.value = { ...reconnectingIds.value, [id]: true }
+    try {
+      const result = await api.reconnectAiConversation(id, item.workspaceLabel)
+      reconnectResults.value = { ...reconnectResults.value, [id]: result }
+      if (!active()) return { ...result, readyToRetry: false }
+      const assigned = await api.assignConversationConnection(id, targetId, true, model)
+      item.connectionId = assigned.connectionId
+      item.model = assigned.model
+      item.expired = false
+      if (active()) {
+        boundConnectionId.value = assigned.connectionId
+        boundModel.value = assigned.model
+        pendingConnectionId.value = null
+        targetNotice.value = ''
+        expired.value = false
+        sessionUnavailable.value = false
+        failure.value = ''
+        reconnectNotice.value = result.contextReset || assigned.memoryCleared ? 'reset' : 'kept'
+      }
+      return { ...result, readyToRetry: active() }
+    } catch (error) {
+      if (active())
+        failure.value =
+          (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ===
+          'CONVERSATION_WORKSPACE_CHANGED'
+            ? 'workspace-changed'
+            : 'reconnect-failed'
+      return
+    } finally {
+      const next = { ...reconnectingIds.value }
+      delete next[id]
+      reconnectingIds.value = next
+    }
+  }
+
+  async function send(outgoingContext?: TaskContext) {
+    if (
+      opening.value ||
+      reconnecting.value ||
+      checkingConversation.value ||
+      sessionUnavailable.value
+    )
+      return
+    const requestContext = outgoingContext ?? context.value
+    const selected = connections.value.find(
+      (item) => item.id === (pendingConnectionId.value || boundConnectionId.value),
+    )
+    if (
+      toolMode.value !== 'none' &&
+      (selected?.kind === 'chatgpt-plan' || selected?.wireApi === 'responses')
+    ) {
+      failure.value = 'protocol-tools-unavailable'
+      return
+    }
+    if (
+      requestContext.skillRef &&
+      (requestContext.mode !== 'chat' ||
         toolMode.value !== 'none' ||
-        context.value.knowledgeExpertRef ||
-        context.value.taskRef)
+        requestContext.knowledgeExpertRef ||
+        requestContext.taskRef)
     ) {
       failure.value = 'skill-unavailable'
       return
     }
-    if (context.value.knowledgeExpertRef) {
-      if (context.value.mode !== 'chat' || toolMode.value !== 'none') {
+    if (requestContext.knowledgeExpertRef) {
+      if (requestContext.mode !== 'chat' || toolMode.value !== 'none') {
         failure.value = 'knowledge-unavailable'
         return
       }
@@ -493,37 +625,84 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       model: boundModel.value,
       connectionName:
         connections.value.find((item) => item.id === boundConnectionId.value)?.name ?? '',
-      reasoning: context.value.reasoning,
+      reasoning: requestContext.reasoning,
     }
     const mode = toolMode.value
     const current = ++ticket
+    const controller = new AbortController()
+    abortControllers.value = { ...abortControllers.value, [id]: controller }
     inflight.value = { ...inflight.value, [id]: current }
+    append(id, {
+      ...requestMetadata,
+      role: 'user',
+      text,
+      error: '',
+      status: '',
+      approval: '',
+      verification: '',
+      toolEvents: [],
+      artifactError: '',
+      artifacts: [],
+    })
+    const assistantIndex =
+      (transcripts.value[id]?.length ?? 0)
+    append(id, {
+      ...requestMetadata,
+      role: 'assistant',
+      text: '',
+      error: '',
+      status: 'RUNNING',
+      approval: '',
+      verification: '',
+      toolEvents: [],
+      artifactError: '',
+      artifacts: [],
+    })
     try {
-      const result = await api.sendAiMessage(id, text, mode, {
-        ...context.value,
-        files: context.value.files.map((file) => ({ ...file })),
-      })
+      const result = await api.sendAiMessage(
+        id,
+        text,
+        mode,
+        {
+          ...requestContext,
+          files: requestContext.files.map((file) => ({ ...file })),
+        },
+        {
+          signal: controller.signal,
+          onEvent: (event) => {
+            if (inflight.value[id] !== current) return
+            const turns = transcripts.value[id]
+            if (!turns || !turns[assistantIndex]) return
+            const next = [...turns]
+            const turn = { ...next[assistantIndex]! }
+            if (event.type === 'answer.delta') turn.text = (turn.text || '') + (event.text || '')
+            if (event.type === 'tool') {
+              turn.toolEvents = [
+                ...turn.toolEvents,
+                {
+                  sequence: event.sequence,
+                  code: event.code || event.text,
+                },
+              ]
+            }
+            if (event.status) turn.status = event.status
+            if (event.type === 'error') turn.error = event.code || event.text || turn.error
+            next[assistantIndex] = turn
+            transcripts.value = { ...transcripts.value, [id]: next }
+          },
+        },
+      )
       if (inflight.value[id] !== current) return
       if (entry && result.contextMemoryCleared) entry.contextMemoryCleared = true
-      append(id, {
-        ...requestMetadata,
-        role: 'user',
-        text,
-        error: '',
-        status: '',
-        approval: '',
-        verification: '',
-        toolEvents: [],
-        artifactError: '',
-        artifacts: [],
-      })
-      append(id, {
+      const turns = transcripts.value[id] ? [...transcripts.value[id]!] : []
+      turns[assistantIndex] = {
         ...requestMetadata,
         role: 'assistant',
         skillContext: result.skillContext,
         contextMemoryCleared: result.contextMemoryCleared,
         knowledgeContext: result.knowledgeContext,
         knowledgeMemoryCleared: result.knowledgeMemoryCleared,
+        executionId: result.executionId,
         proposal: result.proposal,
         text: result.answer,
         error: result.error,
@@ -533,16 +712,26 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         toolEvents: result.toolEvents ?? [],
         artifactError: result.artifactError,
         artifacts: result.artifacts ?? [],
-      })
+      }
+      transcripts.value = { ...transcripts.value, [id]: turns }
       if (!result.error) {
         if (entry && entry.draft === text) entry.draft = ''
         if (conversationId.value === id && draft.value === text) draft.value = ''
         if (conversationId.value === id) failure.value = ''
       }
       if (conversationId.value === id && result.error)
-        failure.value = result.error === 'CODE_PROPOSAL_TOO_LARGE' ? 'generation-too-large' : 'kept'
+        failure.value =
+          result.error === 'AI_CANCELLED'
+            ? 'cancelled'
+            : result.error === 'CODE_PROPOSAL_TOO_LARGE'
+              ? 'generation-too-large'
+              : 'kept'
     } catch (error) {
       if (inflight.value[id] !== current) return
+      if ((error as { name?: string } | null)?.name === 'AbortError') {
+        if (conversationId.value === id) failure.value = 'cancelled'
+        return
+      }
       if (
         entry &&
         (error as { response?: { data?: { contextMemoryCleared?: unknown } } } | null)?.response
@@ -556,24 +745,42 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       )
         entry.knowledgeMemoryCleared = true
       if (httpStatus(error) === 404 && !generationFailure(error)) {
-        if (entry) entry.expired = true
-        if (conversationId.value === id) expired.value = true
+        if (conversationId.value === id) await recheckConversation()
       }
       if (conversationId.value === id)
         failure.value =
           generationFailure(error) ??
-          (httpStatus(error) === 409
-            ? 'target-changed'
-            : httpStatus(error) === 403
-              ? 'model-unavailable'
-              : httpStatus(error) === 503
-                ? 'not-configured'
-                : 'failed')
+          ((error as { response?: { data?: { detail?: string } } } | null)?.response?.data
+            ?.detail === 'AI_CANCELLED'
+            ? 'cancelled'
+            : httpStatus(error) === 409
+              ? 'target-changed'
+              : httpStatus(error) === 403
+                ? 'model-unavailable'
+                : httpStatus(error) === 503
+                  ? 'not-configured'
+                  : 'failed')
     } finally {
+      const nextAbort = { ...abortControllers.value }
+      delete nextAbort[id]
+      abortControllers.value = nextAbort
       if (inflight.value[id] === current) {
         const next = { ...inflight.value }
         delete next[id]
         inflight.value = next
+      }
+    }
+  }
+
+  async function cancelSend() {
+    const id = conversationId.value
+    if (!id || inflight.value[id] == null) return
+    abortControllers.value[id]?.abort()
+    if (api.cancelAiConversation) {
+      try {
+        await api.cancelAiConversation(id)
+      } catch {
+        // Local abort still stops the UI spinner even if the cancel POST fails.
       }
     }
   }
@@ -583,6 +790,12 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     history,
     storageError,
     expired,
+    reconnecting,
+    reconnectNotice,
+    reconnectResults,
+    sessionUnavailable,
+    checkingConversation,
+    recheckConversation,
     renameConversation,
     archiveConversation,
     deleteConversation,
@@ -607,6 +820,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     beginDraft,
     selectConversation,
     send,
+    cancelSend,
     connections,
     boundConnectionId,
     boundModel,
@@ -617,5 +831,6 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     chooseConversationConnection,
     confirmConnectionChange,
     cancelConnectionChange,
+    reconnectConversation,
   }
 }

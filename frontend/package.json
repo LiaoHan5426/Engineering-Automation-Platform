@@ -43,7 +43,7 @@
     "vite": "catalog:tooling",
     "vite-plus": "catalog:tooling",
     "vue": "catalog:frontend",
-    "vue-tsc": "~3.3.13"
+    "vue-tsc": "~3.3.14"
   },
   "packageManager": "pnpm@12.9.0"
 }

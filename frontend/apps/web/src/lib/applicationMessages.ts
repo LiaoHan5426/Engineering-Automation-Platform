@@ -6,7 +6,9 @@ export const applicationMessages = {
       APPLIED: '已写入并记录',
       FAILED: '写入未完成',
       UNKNOWN: '写入结果未知，目录保持阻塞',
+      REFUSED: '已人工拒绝',
     },
+    refusedReview: '审阅证据：服务端已拒绝该候选，会话与看板读取同一状态。',
     refresh: '核对写入记录',
     loading: '正在读取持久写入记录…',
     readFailed: '无法核对持久写入记录，暂不能继续写入。请重读；不会自动重试写入。',
@@ -21,7 +23,10 @@ export const applicationMessages = {
       APPLIED: 'Written and recorded',
       FAILED: 'Write not completed',
       UNKNOWN: 'Write outcome unknown; workspace blocked',
+      REFUSED: 'Refused by operator',
     },
+    refusedReview:
+      'Review evidence: the server recorded this refusal; chat and board read the same status.',
     refresh: 'Check application record',
     loading: 'Reading durable application record…',
     readFailed:

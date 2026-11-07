@@ -7,7 +7,7 @@ export type PendingWrite =
   | 'refused'
   | 'conflict'
 
-/** Names the write that is actually waiting. An empty hash is not a write that can be confirmed. Refusal/conflict are local decisions and do not imply the file was written. */
+/** Names the write that is actually waiting. An empty hash is not a write that can be confirmed. Refusal follows the durable server record when available. */
 export function pendingWrite(input: {
   policy: string
   files: ReadonlyArray<{ baseHash?: string }>

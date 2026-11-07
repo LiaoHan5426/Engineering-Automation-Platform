@@ -355,6 +355,15 @@ public final class CodeChangeService {
         return new ProposalStatus(row.proposal(), row.status(), row.result(), row.reason());
     }
 
+    public ProposalStatus refuse(String principal, UUID conversation, UUID id) {
+        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_PROPOSAL_STORE_UNAVAILABLE");
+        return durable.withoutTransaction(() -> {
+            proposal(principal, conversation, id);
+            durable.refuse(principal, conversation, id, "OPERATOR_REFUSED");
+            return proposal(principal, conversation, id);
+        });
+    }
+
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
     public void recoverInterruptedApplications() throws IOException {
         if (durable != null) durable.recoverInterrupted(runtime.workspace().toRealPath().toString());

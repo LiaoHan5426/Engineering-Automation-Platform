@@ -8,6 +8,7 @@ public final class ModelConnectionSnapshot {
     public final UUID id;
     public final String name;
     public final String kind;
+    public final String wireApi;
     public final boolean enabled;
     public final String baseUrl;
     public final String model;
@@ -18,9 +19,16 @@ public final class ModelConnectionSnapshot {
 
     public ModelConnectionSnapshot(UUID id, String name, String kind, boolean enabled, String baseUrl, String model,
             String secret, long revision, boolean defaultSelected, String configurationRevision) {
+        this(id, name, kind, enabled, baseUrl, model, secret, revision, defaultSelected, configurationRevision,
+                ModelConnections.CHATGPT_KIND.equals(kind) ? "responses" : "chat-completions");
+    }
+
+    public ModelConnectionSnapshot(UUID id, String name, String kind, boolean enabled, String baseUrl, String model,
+            String secret, long revision, boolean defaultSelected, String configurationRevision, String wireApi) {
         this.id = id;
         this.name = name;
         this.kind = kind;
+        this.wireApi = ModelConnections.CHATGPT_KIND.equals(kind) ? "responses" : ModelConnections.checkedWireApi(wireApi);
         this.enabled = enabled;
         this.baseUrl = baseUrl;
         this.model = model;
@@ -37,13 +45,13 @@ public final class ModelConnectionSnapshot {
 
     public ModelConnectionView view() {
         return new ModelConnectionView(id, name, kind, enabled, baseUrl, model, secret != null && !secret.isBlank(),
-                revision, defaultSelected, configurationRevision, java.util.List.of(), java.util.List.of(), "", "");
+                revision, defaultSelected, configurationRevision, java.util.List.of(), java.util.List.of(), "", "", wireApi);
     }
 
     public ModelConnectionSnapshot withModel(String selected) {
         if (model.equals(selected)) return this;
         return new ModelConnectionSnapshot(id, name, kind, enabled, baseUrl, selected, secret, revision,
-                defaultSelected, configurationRevision + ":" + selected);
+                defaultSelected, configurationRevision + ":" + selected, wireApi);
     }
 
     @Override
