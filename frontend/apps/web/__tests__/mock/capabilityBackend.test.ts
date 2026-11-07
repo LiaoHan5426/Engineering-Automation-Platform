@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { createMockCapabilityBackend } from '../../mock/capabilityBackend'
 
 describe('mock capabilityBackend trusted git (TC-01)', () => {

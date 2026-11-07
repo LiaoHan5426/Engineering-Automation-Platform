@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import 'grapesjs/dist/css/grapes.min.css'
 import PrototypeSchemaPreview from './PrototypeSchemaPreview.vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Input, Select, Slider } from '@eap/ui'
+import { Button, Feedback, Input, Select, Slider } from '@eap/ui'
+import {
+  readEditorInspection,
+  sameInspectionTarget,
+  type EditorInspectionResult,
+  type EditorInspectionTarget,
+} from './editorInspection'
 import { runtimeApi } from '@eap/runtime-client'
 import {
   canAutoDeliver,
@@ -17,9 +23,13 @@ import {
 } from './prototypeSchema'
 
 const { t } = useI18n()
-const props = withDefaults(defineProps<{ sourceRef?: 'builder-alpha' | 'builder-beta' }>(), {
-  sourceRef: 'builder-alpha',
-})
+const props = withDefaults(
+  defineProps<{ sourceRef?: 'builder-alpha' | 'builder-beta'; active?: boolean }>(),
+  {
+    sourceRef: 'builder-alpha',
+    active: true,
+  },
+)
 const emit = defineEmits<{ saved: [schema: PrototypeSchema]; published: [id: string] }>()
 
 const canvas = ref<HTMLElement | null>(null)
@@ -28,6 +38,52 @@ const status = ref<'loading' | 'ready' | 'offline'>('loading')
 const note = ref('')
 const selectedText = ref('')
 const selected = ref(false)
+const instanceId = crypto.randomUUID()
+const documentId = ref(crypto.randomUUID())
+const revision = ref(0)
+const inspection = ref<EditorInspectionResult | null>(null)
+const inspectionTarget = computed<EditorInspectionTarget>(() => ({
+  instanceId,
+  documentId: documentId.value,
+  sourceRef: props.sourceRef,
+  revision: revision.value,
+}))
+const inspectionStale = computed(
+  () =>
+    inspection.value?.status === 'ok' &&
+    !sameInspectionTarget(inspection.value.target, inspectionTarget.value),
+)
+function changed() {
+  revision.value += 1
+}
+function switchDocument() {
+  documentId.value = crypto.randomUUID()
+  changed()
+  inspection.value = null
+}
+watch(title, changed, { flush: 'sync' })
+watch(() => props.sourceRef, switchDocument, { flush: 'sync' })
+watch(
+  () => props.active,
+  () => {
+    inspection.value = null
+  },
+  { flush: 'sync' },
+)
+function inspect() {
+  inspection.value = readEditorInspection(
+    inspectionTarget.value,
+    () =>
+      !disposed && props.active && status.value === 'ready' && editor
+        ? inspectionTarget.value
+        : null,
+    () => ({
+      title: title.value,
+      project: editor!.getProjectData(),
+      selection: editor!.getSelected()?.toJSON() ?? null,
+    }),
+  )
+}
 const layout = ref('block'),
   spacing = ref(12)
 function updateLayout() {
@@ -40,6 +96,7 @@ function updateLayout() {
 let activeComponent: import('grapesjs').Component | undefined
 const publishing = ref(false)
 function newDesign() {
+  switchDocument()
   editor?.setComponents([])
   schema.value = emptyPrototypeSchema(title.value)
   selected.value = false
@@ -130,6 +187,7 @@ const versions = ref(loadPrototypeVersions())
 function reopen(id: string) {
   const version = versions.value.find((item) => item.id === id)
   if (!version) return
+  switchDocument()
   schema.value = JSON.parse(JSON.stringify(version))
   title.value = version.title
   editor?.loadProjectData(version.grapesProject as import('grapesjs').ProjectData)
@@ -192,7 +250,8 @@ async function mountEditor() {
         ],
       },
     })
-    const syncSelection = () =>
+    const syncSelection = () => {
+      changed()
       queueMicrotask(() => {
         if (disposed) return
         const component = editor?.getSelected()
@@ -201,8 +260,19 @@ async function mountEditor() {
           selected.value = true
           selectedText.value =
             component.get('content') || component.getInnerHTML().replace(/<[^>]*>/g, '')
+        } else {
+          activeComponent = undefined
+          selected.value = false
+          selectedText.value = ''
         }
       })
+    }
+    editor.on('update', changed)
+    editor.on('destroy', () => {
+      inspection.value = null
+      status.value = 'offline'
+      editor = null
+    })
     editor.on('component:selected', syncSelection)
     editor.on('component:deselected', syncSelection)
     if (
@@ -270,6 +340,7 @@ onMounted(() => {
 })
 onUnmounted(() => {
   disposed = true
+  inspection.value = null
   editor?.destroy?.()
   editor = null
 })
@@ -308,7 +379,9 @@ onUnmounted(() => {
       :data-mode="status"
     />
     <div v-if="status === 'ready'" class="editor-controls">
-      <Button type="button" size="sm" @click="newDesign">{{ t('desktop.grapesNew') }}</Button>
+      <Button type="button" size="sm" data-testid="grapes-new" @click="newDesign">{{
+        t('desktop.grapesNew')
+      }}</Button>
       <Button
         v-for="kind in ['section', 'text', 'heading', 'button', 'link', 'list', 'input'] as const"
         :key="kind"
@@ -338,6 +411,32 @@ onUnmounted(() => {
       /></label>
     </div>
     <PrototypeSchemaPreview :schema="schema" />
+    <section class="inspection-panel" data-testid="grapes-inspection">
+      <p class="hint">{{ t('desktop.grapesInspectBoundary') }}</p>
+      <p class="hint" data-testid="grapes-inspection-target">
+        {{ props.sourceRef }} · {{ instanceId }} · {{ documentId }} · revision {{ revision }}
+      </p>
+      <Button
+        size="sm"
+        class="inspection-trigger"
+        data-testid="grapes-inspect"
+        :disabled="status !== 'ready' || !props.active"
+        @click="inspect"
+      >
+        {{ t('desktop.grapesInspect') }}
+      </Button>
+      <Feedback v-if="inspectionStale" tone="warning" data-testid="grapes-inspection-stale">{{
+        t('desktop.grapesInspectStale')
+      }}</Feedback>
+      <pre
+        v-if="inspection?.status === 'ok'"
+        class="inspection-result eap-scrollbar"
+        data-testid="grapes-inspection-result"
+        >{{ JSON.stringify(inspection, null, 2) }}</pre>
+      <Feedback v-else-if="inspection" tone="warning" data-testid="grapes-inspection-error">{{
+        t('desktop.grapesInspectError.' + inspection.status)
+      }}</Feedback>
+    </section>
     <p v-if="status === 'offline'" class="offline-panel" data-testid="grapes-offline-panel">
       {{ t('desktop.grapesOfflineBody') }}
     </p>
@@ -453,5 +552,23 @@ header span,
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+}
+.inspection-panel {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.inspection-panel .hint {
+  overflow-wrap: anywhere;
+}
+.inspection-trigger {
+  justify-self: start;
+}
+.inspection-result {
+  max-height: 280px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
 }
 </style>

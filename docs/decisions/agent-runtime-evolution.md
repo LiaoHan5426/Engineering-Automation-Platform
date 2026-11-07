@@ -1,6 +1,6 @@
 # Agent 能力、本地运行环境与插件演进
 
-状态：2026-11-05 技术路线回顾；源码检查基线 `main / 119391f`。本轮授权为文档与规划调整，不是框架迁移、工具安装、第三方代码加载、数据库迁移或真实模型调用授权。下列切片均待实施与验收；保留既有交付和未关闭缺陷。
+状态：有效合同与增量实现记录。2026-11-05 文档回顾基线 `main / 119391f` 是历史快照；当前完成范围按 §7 与台账。2026-11-07 接续 `b582891` 获授权推进 TC-01/TC-02 两项、浏览器验证后提交（不推送）；不授权框架迁移、工具安装、第三方代码加载、数据库迁移或真实模型调用。保留既有交付和未关闭缺陷。
 
 ## 1. 结论与适用范围
 
@@ -207,6 +207,28 @@ TC-02首片先人工读取某个编辑器实例的当前草稿/选中状态，�
 
 mock 可信目录返回启用 `git-status`；`invoke` 默认成功 stdout，`mockOutcome=denied|timeout|cancelled` 映射 403/504/499；能力页区分成功结果与拒绝/超时/取消提示，busy 时提供 Abort 取消。`capabilityBackend`/`trustedToolInvokeView` 7 项通过；mock `:5174` 浏览器已验。不宣称真实 git、不开放任意执行口。
 
+#### TC-01 停止等待与 TC-02 实例检查（2026-11-07，接续 b582891）
+
+上段 Abort 文案为历史实现，本轮纠正：同步 git-status HTTP 入口没有服务端取消确认协议，客户端 Abort/等待超时只能判 UNKNOWN；按钮称「停止等待」，`CLIENT_WAIT_ABORTED` 明示未确认后台进程取消。服务器 499 与其 `TRUSTED_TOOL_CANCELLED` 保持独立。离页中止等待，不终止后台执行；不自动重试。mock `:5174` 与真机 `:5173` 已验停止等待无取消成功/成功摘要，mock 499 保留取消提示。未新增取消 API，真实进程终止仍待。
+
+TC-02 首片直接读取实际 GrapesJS `getProjectData` / 当前选中组件，不以 Java 保存版本或 mock 替代。目标包含 `instanceId/documentId/sourceRef/revision`，同步读取前后核验；快照上限 24,000 UTF-16 code units，超限拒绝而非截断。编辑/选择变更标过期，新建/重开更换文档，离开设计页与销毁清空；没有持久化、网络读取、反向 RPC、隐藏实例或模型授权。复用 `@eap/ui` Button/Feedback，领域逻辑留 shell，无新共享类别或包。
+
+真机浏览器已验未保存内容与选中状态、编辑后过期、设计/版本切换清空、新建 documentId 更新；390px DOM 无横溢，桌面截图复核后将检查按钮由整行拉伸改为内容宽。多实例隔离、前后 revision 冲突、关闭/失败/超限由离线回归覆盖；远程断线/Agent反向调用/用户产品接受未验收。验证全量与已知基线失败见台账，本切片不关闭总体质量门禁。
+
+父任务实跑（仓库根）：`rtk proxy pnpm --dir frontend typecheck`、`check:boundaries`、`check:architecture`、`build` 通过；定向 `test run apps/web/__tests__/features/capability apps/web/__tests__/features/shell/editorInspection.test.ts apps/web/__tests__/features/shell/GrapesEditor.inspection.test.ts apps/web/__tests__/features/shell/scenarioCatalog.test.ts apps/web/__tests__/mock/capabilityBackend.test.ts` 为8文件49项通过。`test run --reporter=json` 为699项/665通过/34失败，按文件与fullName比对无新增失败名；基线副本存在额外环境失败，不作为等价全量环境。改动文件 `vp lint` 退出0，有既有mock optional-chaining七处warning；大chunk与Node localStorage告警保留。后端未改未跑，不冒充后端或真实进程生命周期验收。
+
+TC-01 独立只读审查通过：取消/未知分类、同步busy守卫与卸载局部状态边界未发现阻断；审查者复跑2文件7项通过。不将 signal abort 当后台终止证明；同tick重复点击、停止后再次调用及相邻完成竞态尚无专用组件回归，作为非阻断覆盖缺口保留。
+
+TC-02 首次独立审查发现P1：`v-show`缓存的Host未传一级导航active，返回仍有旧JSON。已补真实PluginSlot→Builder→Grapes导航回归，原代码RED、active透传后GREEN；alpha→beta/settings/chat离页清空检查且禁用，返回保留标题/实例/文档但需重新读取。真机设置→场景→设计器复验 `before=true/离页result=false,disabled=true/返回result=false,disabled=false`，实例保持一致。此修复仅使观察失效，不销毁草稿或终止任务。
+
+TC-02 定向独立复核通过，原P1关闭：审查者复跑2文件10项、typecheck及architecture通过，确认真实组件链传递完整。快照24,000限制在序列化后检查，只承诺返回载荷上限，不宣称计算/内存有界；用户产品接受仍待。
+
+用户报告c1错误后追加测试安全修复：根`vite.config.ts` test setup安装worker内socket保护，只允许当前测试创建且仍监听的loopback端口，拒绝开发8080与外网；不改生产请求和后端UUID校验。fetch/Axios/XHR拒绝及自建HTTP fixture成功共5项通过，最终含plugins/网络保护的定向18文件80项通过。隔离后全量`test run --maxWorkers=2 --reporter=json`为705项/671通过/34失败，失败名无新增；无限并发曾649/56（SkillManager超时级联），其独立25项通过，不隐藏该失败。保护是测试内误联网防线，非OS沙箱，不约束外部子进程。
+
+上段为初次保护快照。独立审查另发现同步XHR经happy-dom子进程绕过、同端口跨IPv4/IPv6扩大授权两个缺口；已按RED→GREEN修复：同步XHR在open阶段拒绝（安全哨兵证明execFileSync零调用），按精确literal地址+端口登记，不许localhost/DNS/wildcard推导，IPv4临时fixture成功而同端口IPv6请求拒绝。最终隔离回归2文件7项、定向18文件82项通过；限并发完整回归707项/673通过/34失败，未关闭原质量欠账。不声称保护任意显式子进程或构成OS沙箱。
+
+测试保护最终定向独立复核通过：同步XHR与地址归属两个阻断关闭，审查者复跑2文件7项通过；提醒的旧暂存版本已由父任务重新暂存并核对工作树/暂存差异，提交仅采用已复核修复。TC-01、TC-02与测试保护的限定审查均通过，不升级为整体产品或全量回归通过。
+
 #### PL-01 依赖缺失与激活失败呈现（2026-11-07）
 
 看板声明服务依赖 `runtime.board-api`；缺失时隐藏贡献入口并提示，不停 Task/Run。预备激活失败后启用会回滚安装状态并 sticky 显示原因；刷新安装状态不覆盖 Builder 实例草稿。`pluginRuntimeView`/`host` 8 项通过；mock `:5174` 浏览器已验。真实服务探测与外部安装器仍待。
@@ -245,8 +267,8 @@ mock 可信目录返回启用 `git-status`；`invoke` 默认成功 stdout，`moc
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + 派生清空 + **备注 Badge**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
 | FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + inventory + candidateCounts + **byKind**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测写回 + 持久化 + 清除探测缓存 + probeCache + newestProbedAt + **绑定状态计数**（mock/真机已验） | 更多依赖绑定与用户接受；不执行未知脚本、不整盘扫描或自动授权 |
-| TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消/unknown；调用摘要 + 失败 detail/`elapsedMs` + **长 stdout Collapse** | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
-| TC-02 / P1 | TC-01职责合同后验证前端交互实例，协调实际Host而非等待完整SDK | 人工读取草稿/选中状态、多实例/revision/关闭断线、保存版本区别；模型反向调用另行评审 |
+| TC-01 / P0 | **部分交付**：目录→只读 git-status、失败摘要与长 stdout；本轮 HTTP 停止等待/客户端超时判 UNKNOWN，服务端 499 独立 | 真实 git 拒绝/超时/进程取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
+| TC-02 / P1 | **部分交付**：实际 Grapes 实例人工读取草稿/选中状态，实例/文档/revision 核验、有界快照、过期与离页清空 | 多实例/冲突/超限离线覆盖，真机已验读取/过期/切页/新建；用户接受、远程断线与模型反向调用仍独立，不建设反向 RPC |
 | MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（含 filesystem 五工具）+ **callVerified/listOnly 视图** + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；mock/真机已验 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/持久化回滚 + 依赖缺失/激活失败呈现（mock 浏览器已验）；不改 Task/Run | 真实服务探测与用户接受；在途停用完整矩阵；无第二状态源；外部安装器延期 |
 | MEM-01 | **部分交付**：状态机+PUT/UI（约束/事实展示）+本地持久+Task/Run+知识/Skill 依赖对抗失效；敏感清空/换模/换任务/换依赖失效；显式删除清盘；mock 验目标/约束 + **DEPENDENCY_CHANGED 失效 UI** | sticky 清空仍保留；用户产品接受仍待；长期自动抽取延期 |

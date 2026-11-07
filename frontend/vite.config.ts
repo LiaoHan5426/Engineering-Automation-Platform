@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   test: {
+    setupFiles: ['./apps/web/__tests__/networkSetup.ts'],
     include: ['**/__tests__/**/*.{test,spec}.{ts,tsx,js,jsx,mts,cts}'],
   },
   defaultPackage: {

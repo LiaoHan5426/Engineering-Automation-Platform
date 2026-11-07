@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   runtimeApi,
   type CapabilityItem,
@@ -12,7 +12,17 @@ import {
   type TrustedGitStatusResult,
   type TrustedToolItem,
 } from '@eap/runtime-client'
-import { Badge, Button, Checkbox, Collapse, ConfirmBox, Feedback, Input, Select, Tabs } from '@eap/ui'
+import {
+  Badge,
+  Button,
+  Checkbox,
+  Collapse,
+  ConfirmBox,
+  Feedback,
+  Input,
+  Select,
+  Tabs,
+} from '@eap/ui'
 import { Table, type TableColumn } from '@eap/plugin-table'
 import { errorMessage } from '../../lib/presentation'
 import {
@@ -149,8 +159,9 @@ async function refresh() {
     const trusted = await runtimeApi.trustedTools()
     trustedTools.value = trusted.items
     trustedProbeCache.value = trusted.probeCache ?? {
-      cached: trusted.items.filter((item) => item.versionStatus === 'known' || item.versionStatus === 'probe_failed')
-        .length,
+      cached: trusted.items.filter(
+        (item) => item.versionStatus === 'known' || item.versionStatus === 'probe_failed',
+      ).length,
       known: trusted.items.filter((item) => item.versionStatus === 'known').length,
       failed: trusted.items.filter((item) => item.versionStatus === 'probe_failed').length,
     }
@@ -181,7 +192,7 @@ async function refreshDataLayout() {
 async function runTrustedGitStatus(
   mockOutcome?: 'success' | 'denied' | 'timeout' | 'cancelled' | 'unknown',
 ) {
-  trustedAbort.value?.abort()
+  if (trustedBusy.value) return
   const controller = new AbortController()
   trustedAbort.value = controller
   trustedBusy.value = true
@@ -200,19 +211,7 @@ async function runTrustedGitStatus(
     feedback(trustedGitResult.value.success ? 'success' : 'error', trustedGitResult.value.message)
   } catch (error) {
     const elapsedMs = Math.max(0, Date.now() - startedAt)
-    if (controller.signal.aborted) {
-      trustedFailure.value = 'cancelled'
-      trustedGitResult.value = {
-        capability: 'git-status',
-        success: false,
-        message: '已取消本次可信工具调用。',
-        detail: 'CLIENT_ABORTED',
-        observedAt: new Date().toISOString(),
-        elapsedMs,
-      }
-      feedback('error', '已取消本次可信工具调用。')
-      return
-    }
+
     trustedFailure.value = trustedToolInvokeFailure(error)
     trustedGitResult.value = {
       capability: 'git-status',
@@ -265,6 +264,7 @@ async function clearTrustedProbeCache() {
 }
 
 onMounted(refresh)
+onBeforeUnmount(() => trustedAbort.value?.abort())
 defineExpose({ refresh })
 
 /** The switch every kind shares. The backend refuses it while an enabled expert depends on the capability. */
@@ -402,17 +402,11 @@ async function submitServer() {
 
   <!-- 总览 -->
   <section v-if="tab === 'overview'" class="view">
-    <article
-      v-if="dataLayout"
-      class="eap-panel panel-block"
-      data-testid="data-layout-panel"
-    >
+    <article v-if="dataLayout" class="eap-panel panel-block" data-testid="data-layout-panel">
       <header class="cap-head">
         <div class="cap-head__main">
           <h2>本机数据布局（FS-01）</h2>
-          <p>
-            只读盘点逻辑路径与迁移就绪候选；不执行物理迁移。
-          </p>
+          <p>只读盘点逻辑路径与迁移就绪候选；不执行物理迁移。</p>
           <p class="hint cap-head__flags" data-testid="data-layout-physical-migration">
             physicalMigration
             <Badge
@@ -483,10 +477,7 @@ async function submitServer() {
           <p v-if="entry.note" class="hint">{{ entry.note }}</p>
         </li>
       </ul>
-      <section
-        v-if="dataLayout.migrationReadiness"
-        data-testid="data-layout-migration-readiness"
-      >
+      <section v-if="dataLayout.migrationReadiness" data-testid="data-layout-migration-readiness">
         <h3>迁移就绪盘点</h3>
         <p class="hint">
           状态 {{ dataLayout.migrationReadiness.status }} · 已批准
@@ -533,17 +524,12 @@ async function submitServer() {
           </p>
         </div>
       </header>
-      <p
-        v-if="trustedTools.length"
-        class="hint"
-        data-testid="trusted-tool-binding-counts"
-      >
+      <p v-if="trustedTools.length" class="hint" data-testid="trusted-tool-binding-counts">
         绑定 {{ trustedBindingCounts.total }} · 就绪 {{ trustedBindingCounts.ready }} · 停用
         {{ trustedBindingCounts.disabled }} · 冲突 {{ trustedBindingCounts.conflict }} · 缺二进制
-        {{ trustedBindingCounts.missingBinary }} · 版本未知
-        {{ trustedBindingCounts.unknownVersion
-        }}<template v-if="trustedBindingCounts.other"
-          > · 其他 {{ trustedBindingCounts.other }}</template
+        {{ trustedBindingCounts.missingBinary }} · 版本未知 {{ trustedBindingCounts.unknownVersion
+        }}<template v-if="trustedBindingCounts.other">
+          · 其他 {{ trustedBindingCounts.other }}</template
         >
       </p>
       <ul v-if="trustedTools.length" class="trusted-tool-list">
@@ -588,15 +574,11 @@ async function submitServer() {
         </li>
       </ul>
       <p v-else class="hint">暂无可信只读工具定义。</p>
-      <p
-        v-if="trustedProbeCache"
-        class="hint"
-        data-testid="trusted-tool-probe-cache-summary"
-      >
+      <p v-if="trustedProbeCache" class="hint" data-testid="trusted-tool-probe-cache-summary">
         探测缓存 {{ trustedProbeCache.cached }} · 已知 {{ trustedProbeCache.known }} · 失败
         {{ trustedProbeCache.failed
-        }}<template v-if="trustedProbeCache.newestProbedAt"
-          > · 最近 {{ trustedProbeCache.newestProbedAt }}</template
+        }}<template v-if="trustedProbeCache.newestProbedAt">
+          · 最近 {{ trustedProbeCache.newestProbedAt }}</template
         >
         （目录 GET 不自动探测）
       </p>
@@ -630,7 +612,9 @@ async function submitServer() {
           variant="secondary"
           size="sm"
           data-testid="trusted-git-status-invoke"
-          :disabled="trustedBusy || !trustedTools.some((tool) => tool.id === 'git-status' && tool.enabled)"
+          :disabled="
+            trustedBusy || !trustedTools.some((tool) => tool.id === 'git-status' && tool.enabled)
+          "
           @click="runTrustedGitStatus()"
         >
           触发只读 git status
@@ -642,7 +626,7 @@ async function submitServer() {
           data-testid="trusted-git-status-cancel"
           @click="cancelTrustedGitStatus"
         >
-          取消调用
+          停止等待
         </Button>
         <template v-if="mockTrustedScenarios">
           <Button
@@ -688,16 +672,14 @@ async function submitServer() {
         class="hint"
         data-testid="trusted-git-status-summary"
       >
-        {{ trustedGitResult.capability }} ·
-        {{ trustedGitResult.success ? '成功' : '失败'
-        }}<template v-if="trustedGitResult.detail"
-          > · {{ trustedGitResult.detail }}</template
-        ><template v-if="trustedGitResult.exitCode != null"
-          > · exit {{ trustedGitResult.exitCode }}</template
-        ><template v-if="trustedGitResult.elapsedMs != null"
-          > · {{ trustedGitResult.elapsedMs }} ms</template
-        ><template v-if="trustedGitResult.observedAt"
-          > · 观测于 {{ trustedGitResult.observedAt }}</template
+        {{ trustedGitResult.capability }} · {{ trustedGitResult.success ? '成功' : '失败'
+        }}<template v-if="trustedGitResult.detail"> · {{ trustedGitResult.detail }}</template
+        ><template v-if="trustedGitResult.exitCode != null">
+          · exit {{ trustedGitResult.exitCode }}</template
+        ><template v-if="trustedGitResult.elapsedMs != null">
+          · {{ trustedGitResult.elapsedMs }} ms</template
+        ><template v-if="trustedGitResult.observedAt">
+          · 观测于 {{ trustedGitResult.observedAt }}</template
         >
       </p>
       <Collapse
@@ -719,30 +701,19 @@ async function submitServer() {
         v-else-if="trustedGitResult?.success && trustedGitStdout"
         class="trusted-git-result"
         data-testid="trusted-git-status-result"
-        >{{ trustedGitStdout }}</pre
-      >
-      <p
-        v-if="trustedFailure === 'denied'"
-        class="hint"
-        data-testid="trusted-git-status-denied"
-      >
-        能力已停用或未授权，已拒绝本次只读调用<template
-          v-if="trustedGitResult?.detail"
-          > · {{ trustedGitResult.detail }}</template
-        ><template v-if="trustedGitResult?.elapsedMs != null"
-          > · {{ trustedGitResult.elapsedMs }} ms</template
+        >{{ trustedGitStdout }}</pre>
+      <p v-if="trustedFailure === 'denied'" class="hint" data-testid="trusted-git-status-denied">
+        能力已停用或未授权，已拒绝本次只读调用<template v-if="trustedGitResult?.detail">
+          · {{ trustedGitResult.detail }}</template
+        ><template v-if="trustedGitResult?.elapsedMs != null">
+          · {{ trustedGitResult.elapsedMs }} ms</template
         >。
       </p>
-      <p
-        v-if="trustedFailure === 'timeout'"
-        class="hint"
-        data-testid="trusted-git-status-timeout"
-      >
-        可信工具调用超时，未修改工作区<template
-          v-if="trustedGitResult?.detail"
-          > · {{ trustedGitResult.detail }}</template
-        ><template v-if="trustedGitResult?.elapsedMs != null"
-          > · {{ trustedGitResult.elapsedMs }} ms</template
+      <p v-if="trustedFailure === 'timeout'" class="hint" data-testid="trusted-git-status-timeout">
+        可信工具调用超时，未修改工作区<template v-if="trustedGitResult?.detail">
+          · {{ trustedGitResult.detail }}</template
+        ><template v-if="trustedGitResult?.elapsedMs != null">
+          · {{ trustedGitResult.elapsedMs }} ms</template
         >。
       </p>
       <p
@@ -750,23 +721,17 @@ async function submitServer() {
         class="hint"
         data-testid="trusted-git-status-cancelled"
       >
-        已取消本次可信工具调用<template
-          v-if="trustedGitResult?.detail"
-          > · {{ trustedGitResult.detail }}</template
-        ><template v-if="trustedGitResult?.elapsedMs != null"
-          > · {{ trustedGitResult.elapsedMs }} ms</template
+        已取消本次可信工具调用<template v-if="trustedGitResult?.detail">
+          · {{ trustedGitResult.detail }}</template
+        ><template v-if="trustedGitResult?.elapsedMs != null">
+          · {{ trustedGitResult.elapsedMs }} ms</template
         >。
       </p>
-      <p
-        v-if="trustedFailure === 'unknown'"
-        class="hint"
-        data-testid="trusted-git-status-unknown"
-      >
-        可信工具调用结果未知（连接中断）；未确认是否已执行，请核对后再试<template
-          v-if="trustedGitResult?.detail"
-          > · {{ trustedGitResult.detail }}</template
-        ><template v-if="trustedGitResult?.elapsedMs != null"
-          > · {{ trustedGitResult.elapsedMs }} ms</template
+      <p v-if="trustedFailure === 'unknown'" class="hint" data-testid="trusted-git-status-unknown">
+        {{ trustedGitResult?.message
+        }}<template v-if="trustedGitResult?.detail"> · {{ trustedGitResult.detail }}</template
+        ><template v-if="trustedGitResult?.elapsedMs != null">
+          · {{ trustedGitResult.elapsedMs }} ms</template
         >。
       </p>
     </article>

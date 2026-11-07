@@ -59,6 +59,8 @@ directories, with successful-check logs removed by default and failures retained
 
 ## Test and documentation maintenance
 
+- 前端根 Vitest setup 默认阻止访问非本 worker 创建的 TCP 目标（含 IDEA `:8080`、Vite `:5173/:5174` 与外网），仅放行测试自身监听的精确literal loopback地址+端口，localhost/DNS/wildcard不扩展授权；同步XHR直接拒绝，避免happy-dom隐式子进程绕过。传输测试使用 `server.listen(0, '127.0.0.1')` 并清理，不使用正在运行的开发服务、真实会话或模型。`EAP_TEST_NETWORK_BLOCKED` 是夹具漏网诊断，不应通过移除 guard 或放行真实后端来“修绿”；应补正确的请求 mock/测试自有服务。此防线不约束显式外部子进程，不是 OS 沙箱。
+
 - Frontend tests belong in each package's root `__tests__/`, sibling to `src/`; engineering tools use `frontend/scripts/vsh/__tests__/`. Test-only fixtures, snapshots, browser QA configuration and compile-time contracts follow the same ownership. See [test layout](decisions/frontend-test-layout.md) for discovery, separate type-contract checks, lint/fmt and packaging gates. Never move type contracts out of the compiler graph or production mocks into test-only directories.
 
 - Remove an obsolete test only after tracing the assertion to current production behavior and naming its retained or replacement coverage. A gated test is not obsolete merely because this machine skips it. Keep authorization, concurrency, UNKNOWN, transactions, real-process and persistence regressions.

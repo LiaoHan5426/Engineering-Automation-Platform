@@ -56,6 +56,7 @@ const enabled = computed(() =>
       :inert="viewId !== id"
       :aria-hidden="viewId !== id"
       :instance-id="id === 'builder-alpha' ? 'alpha' : 'beta'"
+      :active="viewId === id"
       :host="host"
     />
   </template>

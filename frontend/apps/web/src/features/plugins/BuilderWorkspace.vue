@@ -24,7 +24,10 @@ import type { LayoutDraft as LayoutDraftRecord } from '../shell/workbench'
 const LayoutDraft = defineAsyncComponent(() => import('../shell/LayoutDraft.vue'))
 const GrapesEditorScaffold = defineAsyncComponent(() => import('../shell/GrapesEditorScaffold.vue'))
 
-const props = defineProps<{ instanceId: BuilderConfig['instanceId']; host: PluginHost }>()
+const props = withDefaults(
+  defineProps<{ instanceId: BuilderConfig['instanceId']; host: PluginHost; active?: boolean }>(),
+  { active: true },
+)
 const { t } = useI18n()
 const surface = ref('design')
 const visited = reactive({ legacy: false })
@@ -324,7 +327,11 @@ onUnmounted(() => {
       data-testid="builder-design-panel"
       :aria-label="t('builder.design')"
     >
-      <GrapesEditorScaffold :source-ref="`builder-${instanceId}`" @published="publishedVersion" />
+      <GrapesEditorScaffold
+        :source-ref="`builder-${instanceId}`"
+        :active="props.active && surface === 'design'"
+        @published="publishedVersion"
+      />
     </section>
     <section
       v-if="visited.legacy"

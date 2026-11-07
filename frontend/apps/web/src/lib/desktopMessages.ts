@@ -232,7 +232,8 @@ export const desktopMessages = {
     sceneKindCustom: '自定义配置',
     searchExperts: '搜索专家名称、简介或标签',
     executionBlocked: '当前执行模式未接通，发送已停用。草稿仍保留。',
-    sendingAway: '发送仍在进行。可用输入区取消按钮请求中止；离开页面不会中断服务端轮次，刷新或重启后也不会继续。',
+    sendingAway:
+      '发送仍在进行。可用输入区取消按钮请求中止；离开页面不会中断服务端轮次，刷新或重启后也不会继续。',
     skills: '技能',
     mcp: 'MCP',
     skillsEmpty: '技能目录未接通；场景里列出技能不会安装或授权。',
@@ -347,6 +348,16 @@ export const desktopMessages = {
     grapesLayout: '组件布局',
     grapesSpacing: '间距与内边距',
     grapesPublish: '保存交付版本',
+    grapesInspect: '只读检查当前编辑器',
+    grapesInspectBoundary:
+      '来源：当前浏览器 GrapesJS 实例的未保存草稿和选中状态。仅人工读取，不保存、不调用 Java。revision 是本实例草稿/选中状态序号，不是 Java 已保存版本 ID；已保存版本请到「交付版本」读取。结果最多 24,000 字符，离开设计页丢弃，返回后需重新检查。',
+    grapesInspectStale: '此结果已过期：草稿或选中状态已改变，请重新检查。',
+    grapesInspectError: {
+      unavailable: '实例不可用或工作面已关闭，未读取任何替代版本。',
+      conflict: '实例、文档或 revision 冲突，结果已丢弃，请重新检查。',
+      'too-large': '草稿超出 24,000 字符限额；未展示截断结果，也未保存。',
+      failed: '读取失败，未保存、未回退到本地或 Java 版本。',
+    },
     grapesPublished: '交付版本已保存：{id}（尚未生成或写入代码）',
     grapesPublishFailed: '交付版本保存失败，本机草案仍保留。',
     fileReadOnly: '只读浏览进程授权范围；查看文件不授予写入权限。',
@@ -898,6 +909,16 @@ export const desktopMessages = {
     grapesLayout: 'Component layout',
     grapesSpacing: 'Gap and padding',
     grapesPublish: 'Save delivery version',
+    grapesInspect: 'Inspect current editor (read only)',
+    grapesInspectBoundary:
+      'Source: unsaved draft and selection in this browser GrapesJS instance. Manual read only; no save or Java call. Revision is the local draft/selection sequence, not a saved Java version ID; read saved versions under Delivery versions. Limit: 24,000 characters. Leaving Design discards the result; inspect again on return.',
+    grapesInspectStale: 'This result is stale: draft or selection changed. Inspect again.',
+    grapesInspectError: {
+      unavailable: 'Instance unavailable or surface closed. No substitute version was read.',
+      conflict: 'Instance, document or revision conflict. Result discarded; inspect again.',
+      'too-large': 'Draft exceeds 24,000 characters. No truncated result shown or saved.',
+      failed: 'Read failed. Nothing saved; no local or Java version fallback.',
+    },
     grapesPublished: 'Delivery version saved: {id} (no code generated or written)',
     grapesPublishFailed: 'Delivery save failed. The local draft remains available.',
     fileReadOnly:
@@ -906,7 +927,8 @@ export const desktopMessages = {
     panelClose: 'Close panel',
     filesOverlayTitle: 'Sources',
     workspaceTree: 'Workspace',
-    workspaceTreeHint: 'Read-only file tree; expand folders within the authorized root. Viewing grants no write.',
+    workspaceTreeHint:
+      'Read-only file tree; expand folders within the authorized root. Viewing grants no write.',
     openProposalDiff: 'View diff',
     diffFallbackNote: 'Monaco is unavailable; showing a read-only two-column text diff.',
     terminalDockHint:

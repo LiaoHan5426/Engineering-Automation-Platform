@@ -74,7 +74,7 @@ export function createScenarioCatalog(scenes: Scenario[]) {
         return true
       } catch (error) {
         if (statusOf(error) === 409) {
-          fail(error, 'conflict')
+          fail(error, 'save')
           return false
         }
         // Save may have landed while the response/readback was lost — reconcile before treating as draft.

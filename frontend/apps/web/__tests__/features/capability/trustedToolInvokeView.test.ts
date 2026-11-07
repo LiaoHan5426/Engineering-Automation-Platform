@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import {
   trustedStdoutNeedsCollapse,
   trustedStdoutPreview,
@@ -27,7 +27,7 @@ describe('trustedToolInvokeView', () => {
         response: { status: 499, data: { detail: 'TRUSTED_TOOL_CANCELLED' } },
       }),
     ).toBe('cancelled')
-    expect(trustedToolInvokeFailure({ name: 'AbortError' })).toBe('cancelled')
+    expect(trustedToolInvokeFailure({ name: 'AbortError' })).toBe('unknown')
     expect(
       trustedToolInvokeFailure({
         response: { status: 520, data: { detail: 'TRUSTED_TOOL_UNKNOWN' } },
@@ -62,14 +62,28 @@ describe('trustedToolInvokeView', () => {
         response: { status: 403, data: { detail: 'CAPABILITY_DISABLED' } },
       }),
     ).toBe('CAPABILITY_DISABLED')
-    expect(trustedToolInvokeDetail({ name: 'AbortError' })).toBe('CLIENT_ABORTED')
+    expect(trustedToolInvokeDetail({ name: 'AbortError' })).toBe('CLIENT_WAIT_ABORTED')
+    expect(trustedToolInvokeDetail({ response: { status: 499 } })).toBe('TRUSTED_TOOL_CANCELLED')
+  })
+
+  it('does not treat stopping HTTP wait as confirmed process cancellation', () => {
+    for (const error of [{ name: 'AbortError' }, { isAxiosError: true, code: 'ERR_CANCELED' }]) {
+      expect(trustedToolInvokeFailure(error)).toBe('unknown')
+      expect(trustedToolInvokeFailureMessage(error)).toContain('已停止等待')
+      expect(trustedToolInvokeFailureMessage(error)).toContain('未确认后台进程已取消')
+      expect(trustedToolInvokeDetail(error)).toBe('CLIENT_WAIT_ABORTED')
+    }
+    expect(trustedToolInvokeFailure({ isAxiosError: true, code: 'ECONNABORTED' })).toBe('unknown')
+    expect(trustedToolInvokeFailureMessage({ isAxiosError: true, code: 'ECONNABORTED' })).toContain(
+      '结果未知',
+    )
   })
 
   it('collapses long stdout and keeps short output inline', () => {
     expect(trustedStdoutNeedsCollapse('ok')).toBe(false)
-    expect(trustedStdoutNeedsCollapse(Array.from({ length: 8 }, (_, i) => `L${i}`).join('\n'))).toBe(
-      true,
-    )
+    expect(
+      trustedStdoutNeedsCollapse(Array.from({ length: 8 }, (_, i) => `L${i}`).join('\n')),
+    ).toBe(true)
     expect(trustedStdoutNeedsCollapse('x'.repeat(480))).toBe(true)
     expect(trustedStdoutPreview('a\nb\nc\nd\ne', 3)).toBe('a · b · c · …')
   })
