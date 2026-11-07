@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / 5785715`（KR-01 台账同步）+ 本轮 MEM-01 对抗失效（未提交）。历史全量数字仅为既往证据。本轮离线：`WorkingMemoryAdversarialTest` 通过；sticky 清空未取消。浏览器/用户接受仍待。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / b08f3f3`（MEM-01 对抗失效）。历史全量数字仅为既往证据。本轮离线：`WorkingMemoryAdversarialTest` 通过；sticky 清空未取消。浏览器/用户接受仍待。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
