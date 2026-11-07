@@ -87,6 +87,14 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 
 提交前限定独立只读审查通过：未发现本轮阻断缺陷，确认关键授权/UNKNOWN断言没有删除或放宽；审查者重跑受影响11文件130项通过及diff检查通过。审查当时尚未看到规划更新的提醒，由父任务在提交前同步本决定、主方案CT-01验收行、台账与路线图并核对暂存范围关闭。独立定向结果不重复计为另一轮全量执行。
 
+### SSE 接收边界（接续 fdcda56）
+
+复用fetch公开接口，按LF/CRLF空行分帧，支持分隔符跨read、UTF-8跨字节与多行data按LF拼接；注释/无data帧忽略，未知事件类型兼容。畸形JSON、基本事件信封或实际消费的final字段拒绝为502/`AI_RESPONSE_INVALID`，不再跳过坏帧再接受后续成功。完整final即返回，取消reader并释放锁，不等待HTTP EOF、不消费后续事件；清理错误不覆盖原错误。兼容null/缺省及稀疏取消payload，不改变后端协议或将失败升级成功。
+
+单帧上限1,048,576个解码后UTF-16 code units（含metadata，不含空行分隔符），跨read最多额外暂留3个分隔符字符；另有当前read chunk瞬时空间，不宣称总流或进程内存上限。超限502/`AI_RESPONSE_TOO_LARGE`；EOF无完整final为502/`AI_RESPONSE_INCOMPLETE`；错误不附原始正文。真实临时loopback HTTP定向25项通过，包含final后连接不关闭、回调异常清理、部分输出后中断。指定预览mock5174发送成功且清草稿，未调用真实供应商；畸形/超限/取消边界由离线HTTP证明，不冒充真机模型验收。
+
+本轮与PL-01并行后父任务全量130文件752项通过，typecheck/architecture/build通过；施工中全量曾碰到新final-open RED与PL scope校验RED，均是本轮实施证据，不充当干净HEAD基线。保留既有networkGuard、localStorage和构建大chunk告警。
+
 ## 上下文预算 CE-01 首片（2026-11-07，离线通过）
 
 在既有 `AiChatApplication` 拼装路径接入 `ContextBudget`：按 CHAR_ESTIMATE 计量 system + 已组装 user material，预留输出字符，超限返回 `CONTEXT_BUDGET_EXCEEDED`（ProblemDetail 携带来源用量，无正文）。history 标 `CHAT_MEMORY_NOT_METERED`；知识/Skill 触发的记忆清空记 `DERIVED_CLEARED_BEFORE_SEND`。成功响应附带可观测 `contextBudget`。旧硬限 `TASK_CONTEXT_TOO_LARGE` 由该合同替代。`ContextBudgetTest` 5 项通过。不宣称 provider token、压缩策略或 MEM-01。

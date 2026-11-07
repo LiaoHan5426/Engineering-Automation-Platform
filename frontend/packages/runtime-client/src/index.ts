@@ -1633,77 +1633,128 @@ async function postChatSse(
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
-  let finalResult: AiMessageResult | null = null
   let answer = ''
-  let executionId: string | null = null
   const toolEvents: AiToolEvent[] = []
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const chunks = buffer.split(/\n\n/)
-    buffer = chunks.pop() ?? ''
-    for (const chunk of chunks) {
-      const event = parseSseChunk(chunk)
-      if (!event) continue
-      options?.onEvent?.(event)
-      executionId = event.executionId || executionId
-      if (event.type === 'answer.delta') answer += event.text ?? ''
-      if (event.type === 'tool') {
-        const sequence =
-          typeof (event.payload as { sequence?: number } | null)?.sequence === 'number'
-            ? (event.payload as { sequence: number }).sequence
-            : event.sequence
-        toolEvents.push({ sequence, code: event.code || event.text })
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      let separator: RegExpExecArray | null
+      while ((separator = /\r?\n\r?\n/.exec(buffer))) {
+        if (separator.index > CHAT_SSE_FRAME_LIMIT) throw chatStreamError('AI_RESPONSE_TOO_LARGE')
+        const chunk = buffer.slice(0, separator.index)
+        buffer = buffer.slice(separator.index + separator[0].length)
+        const event = parseSseChunk(chunk)
+        if (!event) continue
+        options?.onEvent?.(event)
+        if (event.type === 'answer.delta') answer += event.text ?? ''
+        if (event.type === 'tool') {
+          const sequence =
+            typeof (event.payload as { sequence?: number } | null)?.sequence === 'number'
+              ? (event.payload as { sequence: number }).sequence
+              : event.sequence
+          toolEvents.push({ sequence, code: event.code || event.text })
+        }
+        if (event.type === 'final') {
+          const payload = event.payload as AiMessageResult | null
+          return {
+            approval: '',
+            verification: '',
+            artifactError: '',
+            artifacts: [],
+            ...payload,
+            executionId: payload?.executionId ?? event.executionId,
+            answer: payload?.answer ?? (event.text || answer),
+            error: payload?.error ?? event.code,
+            status: payload?.status ?? event.status,
+            toolEvents: payload?.toolEvents ?? toolEvents,
+          }
+        }
       }
-      if (event.type === 'final') {
-        const payload = event.payload as AiMessageResult | null
-        finalResult = payload
-          ? {
-              ...payload,
-              executionId: payload.executionId ?? event.executionId,
-              answer: payload.answer ?? event.text ?? answer,
-              error: payload.error ?? event.code ?? '',
-              toolEvents: payload.toolEvents ?? toolEvents,
-            }
-          : {
-              executionId: event.executionId,
-              answer: event.text || answer,
-              error: event.code || '',
-              status: event.status || '',
-              approval: '',
-              verification: '',
-              toolEvents,
-              artifactError: '',
-              artifacts: [],
-            }
+      // A separator may straddle reads. Reserve at most three provisional code units.
+      if (buffer.replace(/(?:\r?\n\r?|\r)$/, '').length > CHAT_SSE_FRAME_LIMIT) {
+        throw chatStreamError('AI_RESPONSE_TOO_LARGE')
       }
     }
+    throw chatStreamError('AI_RESPONSE_INCOMPLETE')
+  } finally {
+    // Stop waiting at final or failure; cleanup must not replace the original error.
+    await reader.cancel().catch(() => undefined)
+    try {
+      reader.releaseLock()
+    } catch {
+      // A cleanup error must not hide a provider, parser or caller error.
+    }
   }
-  if (!finalResult) {
-    throw Object.assign(new Error('AI_RESPONSE_INCOMPLETE'), {
-      response: { status: 502, data: { detail: 'AI_RESPONSE_INCOMPLETE' } },
-    })
-  }
-  return finalResult
 }
+
+// Per frame, not per stream; decoded UTF-16 code units, separator excluded.
+const CHAT_SSE_FRAME_LIMIT = 1_048_576
 
 function joinUrl(baseURL: string, path: string): string {
   return baseURL.replace(/\/$/, '') + (path.startsWith('/') ? path : '/' + path)
 }
 
+function chatStreamError(detail: string): Error {
+  return Object.assign(new Error(detail), {
+    response: { status: 502, data: { detail } },
+  })
+}
+
+function isStreamRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
 function parseSseChunk(chunk: string): ChatExecutionEvent | null {
-  const lines = chunk.split(/\r?\n/)
-  let data = ''
-  for (const line of lines) {
-    if (line.startsWith('data:')) data += line.slice(5).trimStart()
+  const data: string[] = []
+  for (const line of chunk.split(/\r?\n/)) {
+    if (line === 'data') data.push('')
+    else if (line.startsWith('data:')) {
+      // SSE removes at most one space and joins data fields with LF.
+      data.push(line.slice(5).replace(/^ /, ''))
+    }
   }
-  if (!data) return null
+  if (!data.length) return null // Comments and non-data fields are not execution events.
+  let event: unknown
   try {
-    return JSON.parse(data) as ChatExecutionEvent
+    event = JSON.parse(data.join('\n'))
   } catch {
-    return null
+    throw chatStreamError('AI_RESPONSE_INVALID')
   }
+  // Validate only the execution envelope and fields consumed by this transport.
+  // Event types and optional domain payloads remain extensible.
+  if (
+    !isStreamRecord(event) ||
+    !['eventId', 'executionId', 'conversationId', 'type', 'protocolVersion'].every(
+      (key) => typeof event[key] === 'string' && event[key] !== '',
+    ) ||
+    !['occurredAt', 'text', 'code', 'status'].every((key) => typeof event[key] === 'string') ||
+    !Number.isSafeInteger(event.sequence) ||
+    (event.sequence as number) < 0
+  )
+    throw chatStreamError('AI_RESPONSE_INVALID')
+  if (event.type === 'final' && event.payload != null) {
+    const payload = event.payload
+    if (
+      !isStreamRecord(payload) ||
+      !['answer', 'error', 'status', 'approval', 'verification', 'artifactError'].every(
+        (key) => payload[key] === undefined || typeof payload[key] === 'string',
+      ) ||
+      (payload.executionId != null && typeof payload.executionId !== 'string') ||
+      (payload.toolEvents !== undefined &&
+        (!Array.isArray(payload.toolEvents) ||
+          !payload.toolEvents.every(
+            (tool) =>
+              isStreamRecord(tool) &&
+              Number.isSafeInteger(tool.sequence) &&
+              typeof tool.code === 'string',
+          ))) ||
+      (payload.artifacts !== undefined && !Array.isArray(payload.artifacts))
+    )
+      throw chatStreamError('AI_RESPONSE_INVALID')
+  }
+  return event as ChatExecutionEvent
 }
 
 export function createChatApi(

@@ -1,4 +1,5 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
+import { runtimeApi } from '@eap/runtime-client'
 import { i18n } from '../../lib/i18n'
 import {
   browserStore,
@@ -16,6 +17,7 @@ import {
   PLUGIN_SERVICE_DEPENDENCIES,
   pluginRuntimeObservation,
   type PluginRuntimeObservation,
+  type DependencyCheck,
 } from './pluginRuntimeView'
 
 export interface NavItem {
@@ -37,6 +39,9 @@ export interface PluginHost {
   boardContributionVisible: ComputedRef<boolean>
   services: Ref<Record<string, boolean>>
   activationFailure: Ref<PluginActivationFailure | null>
+  boardDependencyCheck: Ref<DependencyCheck>
+  checkBoardDependencies(projectId: string): Promise<void>
+  cancelBoardDependencyCheck(): void
   runtimeOf(pluginId: PluginId): PluginRuntimeObservation
   setEnabled(pluginId: PluginId, enabled: boolean): void
   setServiceAvailable(serviceId: string, available: boolean): void
@@ -49,6 +54,7 @@ export interface PluginHost {
 }
 
 function defaultServices(): Record<string, boolean> {
+  // Legacy contribution availability assumptions, NOT verified service observations.
   const services: Record<string, boolean> = {}
   for (const deps of Object.values(PLUGIN_SERVICE_DEPENDENCIES)) {
     for (const dep of deps) services[dep.id] = true
@@ -61,28 +67,43 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
   const services = ref(defaultServices())
   const activationFailure = ref<PluginActivationFailure | null>(null)
   const pendingActivationFailure = ref<string | null>(null)
+  const boardDependencyCheck = ref<DependencyCheck>({
+    status: 'unchecked',
+    source: '',
+    observedAt: null,
+    reason: '',
+  })
   const t = i18n.global.t
+  let checkGeneration = 0
 
   function runtimeOf(pluginId: PluginId): PluginRuntimeObservation {
-    return pluginRuntimeObservation({
+    const observation = pluginRuntimeObservation({
       pluginId,
       enabled: installation.value.enabled[pluginId],
       services: services.value,
       activationError:
         activationFailure.value?.pluginId === pluginId ? activationFailure.value.message : null,
     })
+    if (pluginId === 'board' && observation.kind === 'ready') {
+      const status = boardDependencyCheck.value.status
+      if (status !== 'available')
+        return {
+          ...observation,
+          kind:
+            status === 'checking'
+              ? 'dependency_checking'
+              : status === 'failed'
+                ? 'dependency_check_failed'
+                : 'dependency_unchecked',
+          message: boardDependencyCheck.value.reason,
+        }
+    }
+    return observation
   }
 
   const entries = computed(() => {
     const items: NavItem[] = []
-    if (
-      contributionVisible(
-        'chat',
-        installation.value.enabled.chat,
-        services.value,
-        null,
-      )
-    ) {
+    if (contributionVisible('chat', installation.value.enabled.chat, services.value, null)) {
       items.push({
         id: 'chat',
         name: t('plugin.chat'),
@@ -107,14 +128,7 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
         hint: t('plugin.boardHint'),
       })
     }
-    if (
-      contributionVisible(
-        'builder',
-        installation.value.enabled.builder,
-        services.value,
-        null,
-      )
-    ) {
+    if (contributionVisible('builder', installation.value.enabled.builder, services.value, null)) {
       items.push(
         {
           id: 'builder-alpha',
@@ -174,10 +188,52 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
     boardContributionVisible,
     services,
     activationFailure,
+    boardDependencyCheck,
+    async checkBoardDependencies(projectId) {
+      if (
+        boardDependencyCheck.value.status === 'checking' ||
+        !projectId.trim() ||
+        projectId.length > 120
+      )
+        return
+      const generation = ++checkGeneration
+      const source = 'GET /api/board/tasks?projectId=' + encodeURIComponent(projectId)
+      boardDependencyCheck.value = { status: 'checking', source, observedAt: null, reason: '' }
+      try {
+        const page = await runtimeApi.boardTasks(projectId)
+        if (!page || !Array.isArray(page.items)) throw new Error('INVALID_BOARD_TASK_LIST_RESPONSE')
+        if (generation !== checkGeneration) return
+        boardDependencyCheck.value = {
+          status: 'available',
+          source,
+          observedAt: new Date().toISOString(),
+          reason: '',
+        }
+      } catch (error) {
+        if (generation !== checkGeneration) return
+        // A failed read is not proof that the dependency does not exist.
+        boardDependencyCheck.value = {
+          status: 'failed',
+          source,
+          observedAt: new Date().toISOString(),
+          reason: error instanceof Error ? error.message : 'DEPENDENCY_CHECK_FAILED',
+        }
+      }
+    },
     runtimeOf,
+    cancelBoardDependencyCheck() {
+      ++checkGeneration
+      if (boardDependencyCheck.value.status === 'checking') {
+        boardDependencyCheck.value = {
+          status: 'unchecked',
+          source: '',
+          observedAt: null,
+          reason: '',
+        }
+      }
+    },
     setServiceAvailable(serviceId, available) {
       services.value = { ...services.value, [serviceId]: available }
-      if (available && activationFailure.value) activationFailure.value = null
     },
     armActivationFailure(message) {
       pendingActivationFailure.value = message

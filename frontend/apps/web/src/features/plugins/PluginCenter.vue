@@ -1,12 +1,23 @@
 <script setup lang="ts">
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Badge, Button } from '@eap/ui'
+import { Badge, Button, Input } from '@eap/ui'
+import { pluginCheckMessages } from '../../lib/pluginMessages'
 import type { PluginHost } from './host'
 import { GRANTS, MANIFESTS, type PluginId } from './model'
 import { PLUGIN_SERVICE_DEPENDENCIES } from './pluginRuntimeView'
 
-defineProps<{ host: PluginHost }>()
-const { t } = useI18n()
+const props = defineProps<{ host: PluginHost }>()
+const { t } = useI18n({ useScope: 'local', messages: pluginCheckMessages })
+const projectId = ref('')
+const observationStale = computed(() => {
+  const observation = props.host.boardDependencyCheck.value
+  return (
+    !!observation.source &&
+    observation.source !== 'GET /api/board/tasks?projectId=' + encodeURIComponent(projectId.value)
+  )
+})
+onBeforeUnmount(() => props.host.cancelBoardDependencyCheck())
 const mockPluginScenarios = import.meta.env.MODE === 'mock'
 
 function name(id: PluginId): string {
@@ -16,6 +27,9 @@ function name(id: PluginId): string {
 }
 
 function runtimeLabel(kind: string): string {
+  if (kind === 'dependency_unchecked') return t('check.unchecked')
+  if (kind === 'dependency_checking') return t('check.checking')
+  if (kind === 'dependency_check_failed') return t('check.failed')
   if (kind === 'ready') return t('plugin.runtimeReady')
   if (kind === 'disabled') return t('plugin.disabled')
   if (kind === 'dependency_missing') return t('plugin.dependencyMissing')
@@ -115,6 +129,47 @@ function toggle(host: PluginHost, id: PluginId) {
         <p class="hint">
           {{ t('plugin.requests') }}：{{ manifest.requests.map((item) => item.id).join('、') }}
         </p>
+        <section
+          v-if="manifest.id === 'board'"
+          data-testid="plugin-dependency-observation"
+          aria-live="polite"
+        >
+          <label for="plugin-check-project">{{ t('check.project') }}</label>
+          <Input
+            id="plugin-check-project"
+            v-model="projectId"
+            data-testid="plugin-check-project"
+            :maxlength="120"
+            :disabled="host.boardDependencyCheck.value.status === 'checking'"
+          />
+          <p class="hint">{{ t('check.projectHint') }}</p>
+          <Button
+            variant="secondary"
+            data-testid="plugin-check-dependencies"
+            :disabled="
+              !projectId.trim() ||
+              projectId.length > 120 ||
+              host.boardDependencyCheck.value.status === 'checking'
+            "
+            @click="host.checkBoardDependencies(projectId)"
+            >{{ t('check.action') }}</Button
+          >
+          <p>{{ t(`check.${host.boardDependencyCheck.value.status}`) }}</p>
+          <p v-if="observationStale" class="hint" data-testid="plugin-check-stale">
+            {{ t('check.stale') }}
+          </p>
+          <p v-if="host.boardDependencyCheck.value.source" class="hint">
+            {{ t('check.source', { source: host.boardDependencyCheck.value.source }) }}
+          </p>
+          <p v-if="host.boardDependencyCheck.value.observedAt" class="hint">
+            {{ t('check.time', { time: host.boardDependencyCheck.value.observedAt }) }}
+          </p>
+          <p v-if="host.boardDependencyCheck.value.reason" class="hint">
+            {{ t('check.reason', { reason: host.boardDependencyCheck.value.reason }) }}
+          </p>
+          <p class="hint">{{ t('check.scope') }}</p>
+          <p v-if="mockPluginScenarios" class="hint">{{ t('check.simulated') }}</p>
+        </section>
         <p class="hint">
           {{ t('plugin.grants') }}：{{ GRANTS.length ? GRANTS.join('、') : t('plugin.noGrant') }}
         </p>

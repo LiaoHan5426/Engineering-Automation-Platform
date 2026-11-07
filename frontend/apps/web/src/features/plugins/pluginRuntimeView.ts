@@ -5,11 +5,8 @@ export type PluginServiceDependency = {
   label: string
 }
 
-/** Declared runtime services a plugin needs; missing ≠ disabled installation flag. */
-export const PLUGIN_SERVICE_DEPENDENCIES: Record<
-  PluginId,
-  readonly PluginServiceDependency[]
-> = {
+/** Declared runtime services; contribution assumptions are not read observations. */
+export const PLUGIN_SERVICE_DEPENDENCIES: Record<PluginId, readonly PluginServiceDependency[]> = {
   chat: [],
   builder: [],
   board: [{ id: 'runtime.board-api', label: '看板 Task/Run API' }],
@@ -17,6 +14,9 @@ export const PLUGIN_SERVICE_DEPENDENCIES: Record<
 
 export type PluginRuntimeKind =
   | 'ready'
+  | 'dependency_unchecked'
+  | 'dependency_checking'
+  | 'dependency_check_failed'
   | 'disabled'
   | 'dependency_missing'
   | 'activation_failed'
@@ -25,6 +25,14 @@ export type PluginRuntimeObservation = {
   kind: PluginRuntimeKind
   missingDependencies: PluginServiceDependency[]
   message: string
+}
+
+/** Scoped read observation; not installation, activation or full Run verification. */
+export type DependencyCheck = {
+  status: 'unchecked' | 'checking' | 'available' | 'failed'
+  source: string
+  observedAt: string | null
+  reason: string
 }
 
 export function missingDependenciesFor(
