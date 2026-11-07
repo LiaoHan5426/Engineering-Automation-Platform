@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main`（待提交 PL-01 依赖缺失/激活失败呈现；含 `29abc58` TC-01 mock 呈现与 `4fa6f80` CE-01）。历史全量数字仅为既往证据。本轮：看板声明 `runtime.board-api`；依赖缺失隐藏入口；激活失败回滚并可 sticky 提示；刷新不丢 Builder 实例草稿；`host`/`pluginRuntimeView` 8 项离线；mock `:5174` 浏览器已验依赖缺失/激活失败/恢复就绪。不停 Task/Run，外部安装器延期。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 3d9528b`（PL-01 依赖缺失/激活失败呈现；含 `29abc58` TC-01 与 `4fa6f80` CE-01）。历史全量数字仅为既往证据。本轮：看板声明 `runtime.board-api`；依赖缺失隐藏入口；激活失败回滚并可 sticky 提示；刷新不丢 Builder 实例草稿；`host`/`pluginRuntimeView` 8 项离线；mock `:5174` 浏览器已验依赖缺失/激活失败/恢复就绪。不停 Task/Run，外部安装器延期。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
