@@ -154,6 +154,7 @@ public class CapabilityCatalog {
         result.put("platformScoped", new ArrayList<>(handlers.platformNames()));
         result.put("expertScopedVocabulary", new ArrayList<>(mcpServers.capabilityIds()));
         result.put("mcpServers", serverViews);
+        result.put("mcpProductionMatrix", com.lh.eap.runtime.mcp.client.OfficialReadonlyMcpMatrix.views());
         result.put("mcpTools", serverViews.stream().map(server -> {
             var entry = new LinkedHashMap<String, Object>();
             entry.put("id", server.get("id"));

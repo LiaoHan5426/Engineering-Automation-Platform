@@ -1,12 +1,13 @@
 package com.lh.eap.runtime.mcp.client;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
 /**
- * Production grant matrix for MCP-01: allowed transports plus the locked official read-only stdio package.
+ * Production grant matrix for MCP-01: allowed transports plus {@link OfficialReadonlyMcpMatrix}.
  * Operator trust of other endpoints remains allowed, but is not marked production-granted.
  */
 public final class McpProductionAllowlist {
@@ -31,29 +32,32 @@ public final class McpProductionAllowlist {
     }
 
     public static boolean matchesOfficialReadonly(String endpoint) {
-        if (endpoint == null || endpoint.isBlank()) return false;
-        var trimmed = endpoint.trim();
-        if (trimmed.equals(OfficialReadonlyMcpLock.endpoint())) return true;
-        return trimmed.contains(OfficialReadonlyMcpLock.packageAtVersion());
+        return OfficialReadonlyMcpMatrix.findByEndpoint(endpoint).isPresent();
     }
 
     public static List<String> officialReadonlyTools() {
-        return List.of(OfficialReadonlyMcpLock.READONLY_TOOL);
+        var tools = new LinkedHashSet<String>();
+        for (var entry : OfficialReadonlyMcpMatrix.ENTRIES) {
+            tools.addAll(entry.readonlyTools());
+        }
+        return List.copyOf(tools);
     }
 
     public static boolean productionGranted(String endpoint, String tool) {
         if (tool == null || tool.isBlank()) return false;
-        return matchesOfficialReadonly(endpoint) && officialReadonlyTools().contains(tool.trim());
+        return OfficialReadonlyMcpMatrix.findByEndpoint(endpoint)
+                .map(entry -> entry.readonlyTools().contains(tool.trim()))
+                .orElse(false);
     }
 
     public static List<String> productionGrantedTools(String endpoint, List<String> tools) {
-        if (tools == null || tools.isEmpty() || !matchesOfficialReadonly(endpoint)) return List.of();
+        if (tools == null || tools.isEmpty()) return List.of();
         return tools.stream().filter(tool -> productionGranted(endpoint, tool)).toList();
     }
 
     /**
-     * Validates transport always; when trusting the locked official package, tools must be a subset of
-     * the production tool list.
+     * Validates transport always; when trusting a matrix package, tools must be a subset of that
+     * entry's readonly tools.
      */
     public static void requireTrustedGrant(String transport, String endpoint, List<String> tools, boolean trusted) {
         var channel = normalizeTransport(transport);
@@ -61,15 +65,17 @@ public final class McpProductionAllowlist {
             throw new IllegalArgumentException("传输方式只能是 stdio、http、sse 或 streamable-http");
         }
         if (!trusted) return;
-        if (!matchesOfficialReadonly(endpoint)) return;
-        var allowed = Set.copyOf(officialReadonlyTools());
+        var matched = OfficialReadonlyMcpMatrix.findByEndpoint(endpoint);
+        if (matched.isEmpty()) return;
+        var entry = matched.get();
+        var allowed = Set.copyOf(entry.readonlyTools());
         for (var tool : tools == null ? List.<String>of() : tools) {
             if (tool == null || tool.isBlank()) continue;
             if (!allowed.contains(tool.trim())) {
                 throw new IllegalArgumentException(
                         "MCP_PRODUCTION_TOOL_NOT_ALLOWED：" + tool.trim()
                                 + " 不在官方只读生产白名单 " + allowed
-                                + "（" + OfficialReadonlyMcpLock.packageAtVersion() + "）");
+                                + "（" + entry.packageAtVersion() + "）");
             }
         }
         Objects.requireNonNull(endpoint);

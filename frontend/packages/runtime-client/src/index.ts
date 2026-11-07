@@ -175,6 +175,15 @@ export type CapabilityResponse = {
   /** Expert-scoped capability ids the platform currently publishes (registered + trusted MCP servers). */
   expertScopedVocabulary: string[]
   mcpServers: McpServerItem[]
+  /** Locked official read-only package matrix used for production grants. */
+  mcpProductionMatrix?: Array<{
+    packageName: string
+    version: string
+    packageAtVersion: string
+    endpoint: string
+    readonlyTools: string[]
+    preferredTool: string
+  }>
   settings: Record<string, CapabilitySetting>
   disabledCapabilities: string[]
   scopeNotes?: Record<string, string>

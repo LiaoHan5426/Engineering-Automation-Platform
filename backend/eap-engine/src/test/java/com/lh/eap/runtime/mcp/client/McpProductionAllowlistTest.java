@@ -14,7 +14,7 @@ class McpProductionAllowlistTest {
     }
 
     @Test
-    void marksOfficialReadonlyEndpointAsProductionGrantedForEchoOnly() {
+    void marksOfficialReadonlyEndpointAsProductionGrantedForMatrixTools() {
         var endpoint = OfficialReadonlyMcpLock.endpoint();
         assertTrue(McpProductionAllowlist.matchesOfficialReadonly(endpoint));
         assertTrue(McpProductionAllowlist.productionGranted(endpoint, "echo"));

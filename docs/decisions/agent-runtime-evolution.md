@@ -21,7 +21,7 @@
 | 上下文 | `TaskContext`/`AiChatApplication` 拼装；**CE-01 首片**：`ContextBudget` 字符预算/输出预留/超限观测（CHAR_ESTIMATE） | 非 provider token；无压缩选择策略；ChatMemory 未精确计量（标 UNKNOWN）；派生失效仍靠清空保护 |
 | 工具调用 | Java Handler可直接执行本地逻辑；CLI经 `CliOperationHandler` / `CliExecutionService` / `DefaultProcessExecutor`，使用argv与cwd；Chat当前受控工具为只读gitStatus | 不是所有工具都走Shell，也不是目录中的工具都向模型开放；cwd限制不是OS沙箱 |
 | CLI管理 | `CliProgramService` / `/api/cli-programs` 与 `CliProgramManager.vue` 可登记程序、路径及固定参数操作；`LocalBinaries` 查PATH或指定文件 | 登记不安装；缺少受管版本、来源、更新、回滚、卸载与依赖管理 |
-| MCP | 登记/授权/会话隔离；stdio + 分页 + 官方包 + http + legacy SSE + Streamable-HTTP；生产白名单；**GET/Last-Event-ID 续传** | 常驻 GET listen 未做；非官方信任仍为操作者声明；更多官方包矩阵仍待 |
+| MCP | 登记/授权/会话隔离；stdio + 分页 + **官方只读包矩阵** + http + legacy SSE + Streamable-HTTP；生产白名单；GET/Last-Event-ID 续传 | 常驻 GET listen 未做；非官方信任仍为操作者声明；矩阵仍可追加已验证包 |
 | 目录 | 有工作区绑定、只读文件树、受控应用；默认连接 `.eap/model-connections.json`、AI产物 `.eap-ai-artifacts` 为相对位置 | 缺统一数据/缓存/工具/任务临时目录合同与旧数据迁移；不是完全没有目录能力 |
 | 前端与桌面 | 浏览器有草稿/偏好存储；`frontend/apps/desktop/src/main.mjs` 提供安全壳和选目录 | UI中的scratch键不是磁盘目录；未接通统一临时资源服务或工具安装器 |
 | 插件 | `features/plugins/model.ts` 固定chat/builder，`host.ts` 生成入口，`PluginSlot.vue` 直接导入组件 | 是可信预装原型，不是通用插件SDK、外部安装器或第三方隔离；Manifest申请不是授权 |
@@ -49,7 +49,9 @@
 
 **KR-01 首片（2026-11-07，离线）**：`RetrievalBaseline.fixtureCases` 预定 7 题（direct/identifier/chinese/empty/authz/update）；阈值 `DIRECT_RECALL_AT_K_THRESHOLD=1.0`、`CHINESE_RECALL_AT_K_THRESHOLD=1.0`、authz/empty 失败数=0。`KeywordRetrievalProbe` 复用 `KnowledgeRepository.terms`，计量标 `KEYWORD_PROBE`，**不是** PostgreSQL `ts_rank` 等价证明。`RetrievalBaselineTest` 5 项通过。实库对照与延迟/成本仍待；未启动 KR-02。
 
-**KR-01 实库适配（2026-11-07，离线）**：`PostgresKnowledgeRetrieval` 将 `searchAuthorized` 行映射为 baseline Hit（含 `knowledgeBaseId`）；计量标 `POSTGRES_FTS`。`PostgresKnowledgeRetrievalTest` 通过。`RetrievalBaselineDbContrastTest` 在 `EAP_RUN_BOARD_PERSISTENCE=true` 下播种同题 fixture 对照阈值；本机缺口令时跳过，不宣称已跑通实库。未启动 KR-02。
+**KR-01 实库适配（2026-11-07，离线）**：`PostgresKnowledgeRetrieval` 将 `searchAuthorized` 行映射为 baseline Hit（含 `knowledgeBaseId`）；计量标 `POSTGRES_FTS`。`PostgresKnowledgeRetrievalTest` 通过。`RetrievalBaselineDbContrastTest` 在 `EAP_RUN_BOARD_PERSISTENCE=true` 下播种同题 fixture 对照阈值；本机缺口令时跳过。未启动 KR-02。
+
+**KR-01 本机实库对照（2026-11-07）**：用 IDEA 运行配置中的本机口令（未写入仓库）执行 `RetrievalBaselineDbContrastTest`：**1 通过**，同题阈值与 `KEYWORD_PROBE` 对照满足。排序质量/生产样本仍待；未启动 KR-02。
 
 **KR-01 延迟观测（2026-11-07，离线）**：`RetrievalBaseline.CaseResult.durationMs` 与 `Report.totalSearchDurationMs` 记录每题检索耗时；不设通过阈值（成本账证据），`RetrievalBaselineTest` 校验汇总一致。未启动 KR-02。
 
@@ -74,6 +76,7 @@
 - **MCP-01 Streamable-HTTP（2026-11-07）**：`StreamableHttpMcpTransport` 对 `transport=streamable-http`：POST 带双 Accept，接受 JSON 或 SSE 响应，捕获/回传 `MCP-Session-Id`，close 时尽力 DELETE；`StreamableHttpMcpTransportTest` 通过。不宣称生产授权或 GET 续传。
 - **MCP-01 生产授权白名单（2026-11-07）**：`McpProductionAllowlist` 锁定允许传输（含 streamable-http）与官方只读包 `echo`；信任官方包时拒绝越权工具；list/probe 回传 `productionGrantedTools`；调用路径再校验。非官方信任仍为操作者声明。`McpProductionAllowlistTest` 通过。
 - **MCP-01 Streamable-HTTP GET 续传（2026-11-07）**：`StreamableHttpMcpTransport` 记录 SSE `id`/`retry`；POST SSE 未拿到匹配响应时带 `Last-Event-ID` GET 续传；`StreamableHttpMcpTransportTest` 含断流重连用例。不宣称常驻 listen 线程。
+- **MCP-01 官方只读包矩阵（2026-11-07）**：`OfficialReadonlyMcpMatrix` 可扩展 Entry；当前锁定 `@modelcontextprotocol/server-everything@2.2.1`/`echo`；生产白名单与能力页 `mcpProductionMatrix` 共用；`OfficialReadonlyMcpMatrixTest` + 门禁 stdio 通过。追加包须先验工具存在。
 - 本地stdio进程的argv、cwd、环境和生命周期仍须约束；远端目标的认证/网络范围独立处理。MCP Roots及工具只读标注不是强制沙箱。不先将已有Java/CLI能力全部包装为MCP Server。
 - A2A与EAP作为MCP Server延期至明确互操作需求；不得为对齐教材章节而全部实施。
 - LangChain4j对照仅在自主协作等明确需求，或Spring AI出现可复现阻碍时启动。相同模型、业务样例、授权和验收合同下比较复杂度、正确性、token成本、延迟、取消/错误处理、兼容性与迁移回归；不预设胜者。具体版本、Java25/Boot4.1.1兼容性及模块稳定性待实验验证。
@@ -195,7 +198,7 @@ TC-02首片先人工读取某个编辑器实例的当前草稿/选中状态，�
 | TD-01 / P0 | 可信定义发现与已知CLI绑定，先复用现有Git能力；受管包/MCP/插件来源随对应切片接入 | 无需重复录入、路径来源/冲突/未知版本、停用保留、失效与执行快照；不执行未知脚本、不整盘扫描或自动授权 |
 | TC-01 / P0 | 明确输入输出/入口/范围/策略及结果契约；从目录选择已有只读Git能力并实际调用/呈现 | 无权限拒绝、参数/范围重校验、真实结果、适配缺失通用呈现、错误/超时/取消语义；不新增任意执行口 |
 | TC-02 / P1 | TC-01职责合同后验证前端交互实例，协调实际Host而非等待完整SDK | 人工读取草稿/选中状态、多实例/revision/关闭断线、保存版本区别；模型反向调用另行评审 |
-| MCP-01 | **部分交付**：stdio + 分页 + 官方包 + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传；假子进程与拒绝/超时/隔离已有证据 | 更多官方包矩阵；常驻 GET listen 未做 |
+| MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵 + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传；假子进程与拒绝/超时/隔离已有证据 | 追加已验证官方包条目；常驻 GET listen 未做 |
 | PL-01 | 现有看板可信贡献迁移；不改Task/Run语义 | 激活回滚、启停/刷新恢复、实例隔离、在途停用、依赖缺失；无第二状态源 |
 | MEM-01 | **部分交付**：状态机+PUT/UI（约束/事实展示）+本地持久+Task/Run+知识/Skill 依赖对抗失效；敏感清空/换模/换任务/换依赖失效；显式删除清盘；mock 浏览器验目标/约束 | sticky 清空仍保留；用户产品接受仍待；长期自动抽取延期 |
 | TM-01 | FS-01后做一个受管工具，复用CLI登记 | 锁版本/校验、失败回滚、实际调用、在途卸载阻止；不更改系统工具 |

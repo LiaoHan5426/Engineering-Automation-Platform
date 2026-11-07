@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / 3b0cfcd`（MCP-01 Streamable-HTTP GET/Last-Event-ID 续传；含 `995e810` 生产白名单）。历史全量数字仅为既往证据。本轮：SSE 断流后按 `Last-Event-ID` GET 续传；`StreamableHttpMcpTransportTest` 5 项通过。无 UI，未做浏览器验收。更多官方包矩阵仍待。`application.yml` 本地密钥不得提交。
+当前工作基线：`main`（待提交官方只读包矩阵 + KR-01 实库对照证据；含 `3b0cfcd` GET 续传）。历史全量数字仅为既往证据。本轮：`OfficialReadonlyMcpMatrix`（可扩展 Entry，当前 everything@2.2.1/`echo`）；`RetrievalBaselineDbContrastTest` 实库 1 项通过（IDEA 本机口令，未写入仓库）；能力页展示生产矩阵，mock 浏览器已验。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
@@ -33,13 +33,13 @@
 | CT-01 生命周期 | 记录回放/UNKNOWN阻塞保留；同ID重连+草稿重试保留；**本轮追加**：聊天主路径改为 SSE（`answer.delta`/`tool`/`final`）、`POST …/cancel`、执行快照游标、前端投影去重/缺序回归；`ChatExecutionStreamTest` 4项及前端 eventProjector/reconnect/wireApi 离线通过 | 用户重启后浏览器流式/取消/重连验收；不重放历史或宣称模型记忆恢复；跨重启进程接管仍待 |
 | RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与测试接受/拒绝决定已有刷新回放 | EAP自身改页完整证据、SQL实际任务证据及用户接受；不重复开发已有决定回放 |
 | Skill | 文本上传/粘贴+显式文本资源、不可变版本、CAS启停/回退、按需预览与Chat精确引用首片已实现；安全/保存恢复缺陷修复后父任务前端525项、后端647项（6跳过）、实库/浏览器及独立复核通过；见 [阶段记录](records/resource-history.md#skill-text-import) | 目录/仓库导入延期；不执行脚本或授予工具权限，不支持通用mock YAML解析；真实供应商效果与用户最终验收待定 |
-| MCP-01 / P0 | **部分交付**：stdio + 分页 + 官方包 + http + legacy SSE + Streamable-HTTP；生产白名单；**GET/Last-Event-ID 续传**（断流重连） | 更多官方包矩阵；常驻 GET listen 后台未做 |
+| MCP-01 / P0 | **部分交付**：stdio + 分页 + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；**官方只读包矩阵**（`OfficialReadonlyMcpMatrix`，当前 everything@2.2.1/`echo`） | 追加更多已验证包条目；常驻 GET listen 未做 |
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理 | 检索更新删除/来源与专家范围，SQL真实任务，CLI生命周期回归；不扩第二套执行器 |
 | PL-01 / P0 看板插件首片 | **部分交付**：board 纳入可信预装 Manifest/Host，启停隐藏导航、持久化失败回滚；插件单测 19 项通过；不停 Task/Run | 服务依赖/激活失败矩阵与刷新实例隔离的浏览器验收；外部安装器延期 |
 | PL-02 / P1 设计器插件 | GrapesJS/Schema/版本已有；尚未按通用贡献机制迁移 | PL-01后复用现有设计器、版本和核心API，验证停用不丢草稿/版本；外部任意JS安装延期 |
 | SC-03 / P1 场景组合 | 原型到代码已有独立配置/设计/准备/交付切片，不是单个插件 | 依赖PL-01，设计器迁移与PL-02协调；声明所需插件/服务/资源、缺依赖不可用；应用不安装/授权/发送；SC-01未知保存删除缺陷仍阻断 |
 | CE-01 / P0 上下文工程 | **部分交付**：后端预算观测 + 前端回合用量摘要与超限 Feedback；`contextBudgetView` 单测通过 | 真实 token/压缩、ChatMemory 精确计量、浏览器人工接受；MEM-01 仍后续；不记录敏感正文 |
-| KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS` 适配；**延迟观测**：每题 `durationMs` 与报告 `totalSearchDurationMs`；`RetrievalBaselineTest` 通过；实库对照门禁测试已挂载 | IDEA/`EAP_DB_PASSWORD` 实库同题跑通记录、排序质量；不足证据前不启 KR-02 |
+| KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；**实库对照**：`RetrievalBaselineDbContrastTest` 在本机 PostgreSQL 同题通过（IDEA 口令，未入库） | 排序质量/生产样本仍待；不足证据前不启 KR-02 |
 | MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；**约束/事实展示**：Chat 面板 `constraints`/`facts`、保存目标不丢字段；`workingMemorySession` 3 项；mock 浏览器验目标/约束 | sticky 清空仍保留；用户产品接受仍待；自动长期抽取延期 |
 | FS-01 / P0 目录与临时资源 | **部分交付**：`GET /api/runtime/data-layout` 只读盘点 + 决策文档逻辑路径表；不做物理迁移 | 旧数据迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
 | TM-01 / P1 受管工具 | CLI程序/固定操作可登记和配置路径；依赖PATH/指定文件，无安装版本管理 | 依赖FS-01，选择一个可信便携工具或venv；锁版本/校验/安装回滚、实际调用/在途保护；保留系统引用，不静默或全局安装 |
@@ -69,7 +69,7 @@ CP-03用户标注Comment 1已做限定调整：模型/发送成组靠右，缺�
 后续只安排剩余关口，不从头重复上述切片；技术细节与退出矩阵见[技术路线决定](decisions/agent-runtime-evolution.md#7-分阶段切片与退出门禁)：
 
 1. **工程交付验收线**：用户确认目标页面、设计、允许范围和真实供应商/Agent调用后，复用PREBOUND与现有应用/验证/决定链走一次EAP自身改页；授权未具备时保持待验收，不伪造模型结果。
-2. **上下文与资源能力线**：CE-01/KR-01(含 FTS+延迟观测)/MCP-01(stdio+官方包+http+legacy SSE+Streamable-HTTP+生产白名单+GET 续传)/MEM-01（含对抗失效与约束/事实 UI）离线首片已落地；下一步 IDEA 实库同题跑通，或更多官方包矩阵。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
+2. **上下文与资源能力线**：CE-01/KR-01(含 FTS+延迟观测+本机实库对照)/MCP-01(stdio+官方矩阵+http+legacy SSE+Streamable-HTTP+生产白名单+GET 续传)/MEM-01（含对抗失效与约束/事实 UI）离线首片已落地；下一步追加官方矩阵包条目，或 KR-01 排序质量样本。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
 3. **工具与本地环境线**：TD-01自动汇总可信定义/已知依赖绑定，与TC-01调用/呈现合同共同从现有Git首片验证；TC-02后续人工验证前端实例，反向Agent调用另批。发现不等于授权，Java执行不需前端复制实现。FS-01先确认数据/临时目录和旧数据迁移，再做TM-01一个受管工具，不把安装作为系统工具调用的前置。sidecar/包验证独立推进；签名待凭据/发行决定。
 4. **可信插件与场景线**：PL-01先迁现有看板贡献，不改核心Task/Run；再做PL-02设计器与SC-03场景依赖，保留版本/候选/产物和五入口合同。外部安装器/市场/第三方隔离延期；不先建空SDK。
 5. **总体质量与接受**：持续全页面真实系统缩放/焦点/错误矩阵、SQL/CLI剩余业务回归、其他mock合同复核和构建包体积评估；最终由用户逐项接受。资源和桌面不必成为单页面交付的前置。

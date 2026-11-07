@@ -1,5 +1,15 @@
 /** Minimal capability/MCP catalog for mock mode browser checks. */
 export function createMockCapabilityBackend() {
+  const productionMatrix = [
+    {
+      packageName: '@modelcontextprotocol/server-everything',
+      version: '2.2.1',
+      packageAtVersion: '@modelcontextprotocol/server-everything@2.2.1',
+      endpoint: 'npx -y @modelcontextprotocol/server-everything@2.2.1',
+      readonlyTools: ['echo'],
+      preferredTool: 'echo',
+    },
+  ]
   const mcpServers = [
     {
       id: 'official-readonly',
@@ -54,6 +64,7 @@ export function createMockCapabilityBackend() {
             platformScoped: [],
             expertScopedVocabulary: ['mcp.official-readonly.echo'],
             mcpServers,
+            mcpProductionMatrix: productionMatrix,
             settings: {},
             disabledCapabilities: [],
             declared: [],
@@ -66,7 +77,7 @@ export function createMockCapabilityBackend() {
         return { status: 200, data: { items: [] } }
       }
       if (method === 'GET' && path === '/mcp-servers') {
-        return { status: 200, data: { items: mcpServers } }
+        return { status: 200, data: { items: mcpServers, productionMatrix } }
       }
       return null
     },

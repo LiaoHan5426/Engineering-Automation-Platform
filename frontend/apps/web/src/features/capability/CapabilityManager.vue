@@ -80,6 +80,7 @@ const capabilityTabs = computed(() => [
 ])
 const currentKind = computed(() => kinds.value.find((kind) => kind.id === tab.value) ?? null)
 const servers = computed<McpServerItem[]>(() => catalog.value?.mcpServers ?? [])
+const productionMatrix = computed(() => catalog.value?.mcpProductionMatrix ?? [])
 const settings = computed(() => catalog.value?.settings ?? {})
 
 function itemsOf(kindId: string) {
@@ -480,6 +481,15 @@ async function submitServer() {
             >
           </div>
         </header>
+        <section v-if="productionMatrix.length" data-testid="mcp-production-matrix">
+          <h3>官方只读生产矩阵</h3>
+          <ul>
+            <li v-for="entry in productionMatrix" :key="entry.packageAtVersion" class="mono">
+              {{ entry.packageAtVersion }} · 工具 {{ entry.readonlyTools.join('、') }} · 首选
+              {{ entry.preferredTool }}
+            </li>
+          </ul>
+        </section>
       </article>
       <article v-if="serverEditor" class="eap-panel panel-block">
         <h2>{{ editing ? '编辑服务器 ' + editing : '登记 MCP 服务器' }}</h2>

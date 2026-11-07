@@ -139,7 +139,9 @@ public class CapabilityManagementController {
 
     @GetMapping("/mcp-servers")
     public Map<String, Object> mcpServers() {
-        return Map.of("items", mcp.list());
+        return Map.of(
+                "items", mcp.list(),
+                "productionMatrix", com.lh.eap.runtime.mcp.client.OfficialReadonlyMcpMatrix.views());
     }
 
     /** Register a server, or update one that is already registered. */

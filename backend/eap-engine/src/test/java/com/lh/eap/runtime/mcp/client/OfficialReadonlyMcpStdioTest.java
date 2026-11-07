@@ -39,6 +39,8 @@ class OfficialReadonlyMcpStdioTest {
                             .map(tool -> tool.get("name")).toList());
             var result = client.callTool(OfficialReadonlyMcpLock.READONLY_TOOL, Map.of("message", "eap-readonly"));
             assertNotEquals(Boolean.TRUE, result.get("isError"));
+            assertEquals(1, OfficialReadonlyMcpMatrix.ENTRIES.size());
+            assertEquals(OfficialReadonlyMcpMatrix.primary().preferredTool(), OfficialReadonlyMcpLock.READONLY_TOOL);
             client.close();
             assertFalse(transport.alive());
         }
