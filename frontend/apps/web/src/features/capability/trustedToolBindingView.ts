@@ -62,3 +62,49 @@ export function bindingDetail(tool: TrustedToolItem): string {
   if (tool.bindingNote) parts.push(tool.bindingNote)
   return parts.join(' · ')
 }
+
+export type BindingStatusCounts = {
+  total: number
+  ready: number
+  disabled: number
+  conflict: number
+  missingBinary: number
+  unknownVersion: number
+  other: number
+}
+
+/** Aggregate binding statuses for the trusted-tools panel summary. */
+export function bindingStatusCounts(tools: TrustedToolItem[]): BindingStatusCounts {
+  const counts: BindingStatusCounts = {
+    total: tools.length,
+    ready: 0,
+    disabled: 0,
+    conflict: 0,
+    missingBinary: 0,
+    unknownVersion: 0,
+    other: 0,
+  }
+  for (const tool of tools) {
+    switch (tool.bindingStatus) {
+      case 'ready':
+        counts.ready += 1
+        break
+      case 'disabled':
+        counts.disabled += 1
+        break
+      case 'conflict':
+        counts.conflict += 1
+        break
+      case 'missing_binary':
+        counts.missingBinary += 1
+        break
+      case 'unknown_version':
+        counts.unknownVersion += 1
+        break
+      default:
+        counts.other += 1
+        break
+    }
+  }
+  return counts
+}

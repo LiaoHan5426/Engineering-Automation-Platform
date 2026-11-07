@@ -1323,6 +1323,34 @@ label.row {
   border-radius: 999px;
 }
 
+.trusted-git-result {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  max-height: 240px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  background: var(--surface-2, var(--panel-bg));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.trusted-git-result--collapse {
+  max-height: none;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.trusted-git-result--collapse .trusted-git-result__body {
+  margin: 8px 0 0;
+  max-height: 320px;
+}
+
 .cap-meta {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);

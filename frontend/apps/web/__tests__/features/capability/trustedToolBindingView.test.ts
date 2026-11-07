@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 import {
   bindingDetail,
+  bindingStatusCounts,
   bindingStatusLabel,
   bindingStatusTone,
   canProbeVersion,
@@ -32,6 +33,65 @@ describe('trustedToolBindingView', () => {
         bindingNote: '版本未知（目录不自动探测）。',
       }),
     ).toContain('shipped')
+  })
+
+  it('aggregates binding status counts for the trusted-tools summary', () => {
+    expect(
+      bindingStatusCounts([
+        {
+          id: 'git-status',
+          title: 'Git',
+          kind: 'cli',
+          scope: 'platform',
+          readOnly: true,
+          enabled: true,
+          invocation: '',
+          summary: '',
+          bindingStatus: 'ready',
+        },
+        {
+          id: 'git-diff',
+          title: 'Diff',
+          kind: 'cli',
+          scope: 'platform',
+          readOnly: true,
+          enabled: false,
+          invocation: '',
+          summary: '',
+          bindingStatus: 'disabled',
+        },
+        {
+          id: 'broken-cli',
+          title: 'Broken',
+          kind: 'cli',
+          scope: 'platform',
+          readOnly: true,
+          enabled: true,
+          invocation: '',
+          summary: '',
+          bindingStatus: 'conflict',
+        },
+        {
+          id: 'missing',
+          title: 'Missing',
+          kind: 'cli',
+          scope: 'platform',
+          readOnly: true,
+          enabled: true,
+          invocation: '',
+          summary: '',
+          bindingStatus: 'missing_binary',
+        },
+      ]),
+    ).toEqual({
+      total: 4,
+      ready: 1,
+      disabled: 1,
+      conflict: 1,
+      missingBinary: 1,
+      unknownVersion: 0,
+      other: 0,
+    })
   })
 
   it('allows probe only for ready CLI tools and surfaces writeback detail', () => {

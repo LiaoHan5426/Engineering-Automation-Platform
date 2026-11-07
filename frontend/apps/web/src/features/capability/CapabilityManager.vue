@@ -12,10 +12,12 @@ import {
   type TrustedGitStatusResult,
   type TrustedToolItem,
 } from '@eap/runtime-client'
-import { Badge, Button, Checkbox, ConfirmBox, Feedback, Input, Select, Tabs } from '@eap/ui'
+import { Badge, Button, Checkbox, Collapse, ConfirmBox, Feedback, Input, Select, Tabs } from '@eap/ui'
 import { Table, type TableColumn } from '@eap/plugin-table'
 import { errorMessage } from '../../lib/presentation'
 import {
+  trustedStdoutNeedsCollapse,
+  trustedStdoutPreview,
   trustedToolInvokeDetail,
   trustedToolInvokeFailure,
   trustedToolInvokeFailureMessage,
@@ -23,6 +25,7 @@ import {
 } from './trustedToolInvokeView'
 import {
   bindingDetail,
+  bindingStatusCounts,
   bindingStatusLabel,
   bindingStatusTone,
   canProbeVersion,
@@ -91,6 +94,11 @@ function removeTool(name: string) {
 
 const kinds = computed<CapabilityKindSummary[]>(() => catalog.value?.kinds ?? [])
 const items = computed<CapabilityItem[]>(() => catalog.value?.items ?? [])
+const trustedBindingCounts = computed(() => bindingStatusCounts(trustedTools.value))
+const trustedGitStdout = computed(
+  () => trustedGitResult.value?.stdout || trustedGitResult.value?.message || '',
+)
+const trustedGitStdoutCollapsed = computed(() => trustedStdoutNeedsCollapse(trustedGitStdout.value))
 const capabilityColumns: TableColumn[] = [
   { key: 'name', title: '能力', mono: true },
   { key: 'kindLabel', title: '种类' },
@@ -517,6 +525,19 @@ async function submitServer() {
           </p>
         </div>
       </header>
+      <p
+        v-if="trustedTools.length"
+        class="hint"
+        data-testid="trusted-tool-binding-counts"
+      >
+        绑定 {{ trustedBindingCounts.total }} · 就绪 {{ trustedBindingCounts.ready }} · 停用
+        {{ trustedBindingCounts.disabled }} · 冲突 {{ trustedBindingCounts.conflict }} · 缺二进制
+        {{ trustedBindingCounts.missingBinary }} · 版本未知
+        {{ trustedBindingCounts.unknownVersion
+        }}<template v-if="trustedBindingCounts.other"
+          > · 其他 {{ trustedBindingCounts.other }}</template
+        >
+      </p>
       <ul v-if="trustedTools.length" class="trusted-tool-list">
         <li v-for="tool in trustedTools" :key="tool.id" :data-testid="`trusted-tool-${tool.id}`">
           <strong class="mono">{{ tool.id }}</strong> · {{ tool.title }}
@@ -671,11 +692,26 @@ async function submitServer() {
           > · 观测于 {{ trustedGitResult.observedAt }}</template
         >
       </p>
+      <Collapse
+        v-if="trustedGitResult?.success && trustedGitStdout && trustedGitStdoutCollapsed"
+        class="trusted-git-result trusted-git-result--collapse"
+        data-testid="trusted-git-status-result-collapse"
+      >
+        <template #summary>
+          <span data-testid="trusted-git-status-result-summary">
+            长输出已折叠（{{ trustedGitStdout.length }} 字符）· 预览
+            {{ trustedStdoutPreview(trustedGitStdout) }}
+          </span>
+        </template>
+        <pre class="trusted-git-result__body" data-testid="trusted-git-status-result">{{
+          trustedGitStdout
+        }}</pre>
+      </Collapse>
       <pre
-        v-if="trustedGitResult?.success && (trustedGitResult.stdout || trustedGitResult.message)"
+        v-else-if="trustedGitResult?.success && trustedGitStdout"
         class="trusted-git-result"
         data-testid="trusted-git-status-result"
-        >{{ trustedGitResult.stdout || trustedGitResult.message }}</pre
+        >{{ trustedGitStdout }}</pre
       >
       <p
         v-if="trustedFailure === 'denied'"

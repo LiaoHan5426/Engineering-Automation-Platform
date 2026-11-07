@@ -61,3 +61,24 @@ export function trustedToolInvokeDetail(error: unknown): string {
   if (kind === 'unknown') return 'TRUSTED_TOOL_UNKNOWN'
   return 'TRUSTED_TOOL_FAILED'
 }
+
+/** Long stdout collapses behind a summary; short results stay inline. */
+export const TRUSTED_STDOUT_COLLAPSE_LINES = 8
+export const TRUSTED_STDOUT_COLLAPSE_CHARS = 480
+
+export function trustedStdoutNeedsCollapse(text: string | undefined | null): boolean {
+  const body = String(text ?? '')
+  if (!body) return false
+  if (body.length >= TRUSTED_STDOUT_COLLAPSE_CHARS) return true
+  const lines = body.split(/\r?\n/).length
+  return lines >= TRUSTED_STDOUT_COLLAPSE_LINES
+}
+
+export function trustedStdoutPreview(text: string | undefined | null, maxLines = 3): string {
+  const body = String(text ?? '').trimEnd()
+  if (!body) return ''
+  const lines = body.split(/\r?\n/).filter((line) => line.length > 0)
+  const head = lines.slice(0, maxLines).join(' · ')
+  if (lines.length <= maxLines) return head
+  return `${head} · …`
+}

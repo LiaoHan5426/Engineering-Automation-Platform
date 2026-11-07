@@ -19,7 +19,7 @@ import { type AiConnectionState } from '@eap/runtime-client'
 import { IconEllipsis, Icon } from '@eap/ui'
 import { errorMessage } from '../../lib/presentation'
 import { createChatSession } from './chatSession'
-import { includedSourceSummary } from './contextBudgetView'
+import { contextBudgetNoteTone, includedSourceSummary } from './contextBudgetView'
 import ConnectionDialog from '../../components/ConnectionDialog.vue'
 import SessionPanel from '../../components/SessionPanel.vue'
 import WorkspaceFileTreeRail from '../../components/WorkspaceFileTreeRail.vue'
@@ -1274,9 +1274,21 @@ onMounted(async () => {
                 <p v-if="includedSourceSummary(turn.contextBudget)">
                   {{ t('contextBudget.sources') }}：{{ includedSourceSummary(turn.contextBudget) }}
                 </p>
-                <p v-if="turn.contextBudget.notes.length">
-                  {{ t('contextBudget.notes') }}：{{ turn.contextBudget.notes.join(' · ') }}
-                </p>
+                <div
+                  v-if="turn.contextBudget.notes.length"
+                  class="context-budget-notes"
+                  data-testid="turn-context-budget-notes"
+                >
+                  <span class="context-budget-notes__label">{{ t('contextBudget.notes') }}：</span>
+                  <Badge
+                    v-for="note in turn.contextBudget.notes"
+                    :key="note"
+                    class="context-budget-notes__badge"
+                    :tone="contextBudgetNoteTone(note)"
+                    :label="note"
+                    :data-testid="`context-budget-note-${note}`"
+                  />
+                </div>
               </section>
               <Feedback
                 v-if="

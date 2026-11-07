@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  trustedStdoutNeedsCollapse,
+  trustedStdoutPreview,
   trustedToolInvokeDetail,
   trustedToolInvokeFailure,
   trustedToolInvokeFailureMessage,
@@ -61,5 +63,14 @@ describe('trustedToolInvokeView', () => {
       }),
     ).toBe('CAPABILITY_DISABLED')
     expect(trustedToolInvokeDetail({ name: 'AbortError' })).toBe('CLIENT_ABORTED')
+  })
+
+  it('collapses long stdout and keeps short output inline', () => {
+    expect(trustedStdoutNeedsCollapse('ok')).toBe(false)
+    expect(trustedStdoutNeedsCollapse(Array.from({ length: 8 }, (_, i) => `L${i}`).join('\n'))).toBe(
+      true,
+    )
+    expect(trustedStdoutNeedsCollapse('x'.repeat(480))).toBe(true)
+    expect(trustedStdoutPreview('a\nb\nc\nd\ne', 3)).toBe('a · b · c · …')
   })
 })

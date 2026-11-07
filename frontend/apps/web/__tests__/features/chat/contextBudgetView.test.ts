@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 import {
   contextBudgetFromError,
+  contextBudgetNoteTone,
   includedSourceSummary,
   isContextBudgetObservation,
 } from '../../../src/features/chat/contextBudgetView'
@@ -42,6 +43,14 @@ describe('context budget view', () => {
     expect(isContextBudgetObservation({ usedChars: 1 })).toBe(false)
     expect(includedSourceSummary(budget)).toContain('system:400')
     expect(includedSourceSummary(budget)).toContain('files:100')
+  })
+
+  it('maps stable CE notes to warning badges and keeps prose neutral', () => {
+    expect(contextBudgetNoteTone('COMPRESSION_NOT_ENABLED')).toBe('warning')
+    expect(contextBudgetNoteTone('CHAT_MEMORY_NOT_METERED')).toBe('warning')
+    expect(contextBudgetNoteTone('DERIVED_CLEARED_BEFORE_SEND')).toBe('warning')
+    expect(contextBudgetNoteTone('CONTEXT_BUDGET_EXCEEDED')).toBe('danger')
+    expect(contextBudgetNoteTone('mock：会话历史未精确计量，非真实 token')).toBe('neutral')
   })
 
   it('maps CONTEXT_BUDGET_EXCEEDED with observation on the session', async () => {
