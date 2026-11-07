@@ -126,6 +126,30 @@ it('serves the chat contract and model whitelist without an external backend', a
     detail: 'CONTEXT_BUDGET_EXCEEDED',
     contextBudget: { remainingChars: 0, metering: 'CHAR_ESTIMATE' },
   })
+  const historyNotMetered = (
+    await api.handle('POST', conversationPath + '/messages', {
+      message: '历史未计量验收',
+    })
+  ).data as AiMessageResult
+  expect(historyNotMetered.contextBudget?.metering).toBe('UNKNOWN')
+  expect(historyNotMetered.contextBudget?.notes).toContain('CHAT_MEMORY_NOT_METERED')
+  expect(
+    historyNotMetered.contextBudget?.sources.some(
+      (source) => source.source === 'history' && source.metering === 'UNKNOWN',
+    ),
+  ).toBe(true)
+  await api.handle('PUT', conversationPath + '/working-memory', {
+    goal: '记忆失效前目标',
+    constraints: ['示例约束：复用现有组件'],
+  })
+  const invalidated = await api.handle('POST', conversationPath + '/messages', {
+    message: '记忆失效验收',
+  })
+  expect(invalidated.status).toBe(200)
+  const afterInvalidate = (await api.handle('GET', conversationPath)).data as AiConversation
+  expect(afterInvalidate.workingMemory?.invalidation).toBe('DEPENDENCY_CHANGED')
+  expect(afterInvalidate.workingMemory?.goal).toBe('')
+  expect(afterInvalidate.workingMemory?.constraints).toEqual([])
   await api.handle('DELETE', conversationPath)
   expect((await api.handle('GET', conversationPath)).status).toBe(404)
   expect((await api.handle('POST', '/unknown')).status).toBe(404)

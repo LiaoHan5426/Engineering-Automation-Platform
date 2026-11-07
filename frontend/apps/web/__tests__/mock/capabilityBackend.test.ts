@@ -48,6 +48,7 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
       'list_directory',
       'get_file_info',
       'search_files',
+      'list_allowed_directories',
       'directory_tree',
     ])
     })

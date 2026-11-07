@@ -66,13 +66,18 @@ public final class OfficialReadonlyMcpMatrix {
                     "2025.11.25",
                     List.of("read_graph"),
                     "read_graph"),
-            // Filesystem server; production grant: list_directory + get_file_info + search_files
-            // (gate-called) + directory_tree (tools/list only — upstream structuredContent bug).
+            // Filesystem server; production grant: list_directory + get_file_info + search_files +
+            // list_allowed_directories (gate-called) + directory_tree (list-only; upstream schema bug).
             // Stdio gate appends an allow-listed directory argument (package requires ≥1 path).
             new Entry(
                     "@modelcontextprotocol/server-filesystem",
                     "2025.11.25",
-                    List.of("list_directory", "get_file_info", "search_files", "directory_tree"),
+                    List.of(
+                            "list_directory",
+                            "get_file_info",
+                            "search_files",
+                            "list_allowed_directories",
+                            "directory_tree"),
                     "list_directory"));
 
     private OfficialReadonlyMcpMatrix() {}

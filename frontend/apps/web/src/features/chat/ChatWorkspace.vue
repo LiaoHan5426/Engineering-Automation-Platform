@@ -767,7 +767,11 @@ onMounted(async () => {
         >
           <h3>{{ t('workingMemory.title') }}</h3>
           <p class="hint">{{ t('workingMemory.note') }}</p>
-          <p v-if="session.workingMemory.value?.invalidation" class="hint">
+          <p
+            v-if="session.workingMemory.value?.invalidation"
+            class="hint"
+            data-testid="working-memory-invalidation"
+          >
             {{ t('workingMemory.invalidation') }}：{{ session.workingMemory.value.invalidation }}
           </p>
           <p v-else-if="session.workingMemory.value?.goal" class="hint" data-testid="working-memory-goal-text">

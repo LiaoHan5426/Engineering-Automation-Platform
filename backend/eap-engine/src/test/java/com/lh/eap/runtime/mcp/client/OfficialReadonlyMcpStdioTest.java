@@ -118,6 +118,8 @@ class OfficialReadonlyMcpStdioTest {
             var searched = client.callTool(
                     "search_files", Map.of("path", allowRoot.toString(), "pattern", "*"));
             assertNotEquals(Boolean.TRUE, searched.get("isError"));
+            var allowed = client.callTool("list_allowed_directories", Map.of());
+            assertNotEquals(Boolean.TRUE, allowed.get("isError"));
             client.close();
             assertFalse(transport.alive());
         }

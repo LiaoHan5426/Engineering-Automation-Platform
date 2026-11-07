@@ -36,6 +36,8 @@ export function mockContextBudget(message: string): ContextBudgetObservation {
   const used = Math.min(32000, Math.max(120, message.length * 4 + 800))
   const platformLimit = 96000
   const outputReserve = 16384
+  const historyNotMetered =
+    message.includes('历史未计量验收') || message.includes('__CHAT_MEMORY_NOT_METERED__')
   return {
     platformLimit,
     outputReserve,
@@ -43,7 +45,7 @@ export function mockContextBudget(message: string): ContextBudgetObservation {
     usedChars: used,
     materialChars: Math.max(80, message.length * 2),
     remainingChars: Math.max(0, platformLimit - outputReserve - used),
-    metering: 'CHAR_ESTIMATE',
+    metering: historyNotMetered ? 'UNKNOWN' : 'CHAR_ESTIMATE',
     sources: [
       { source: 'system', chars: 400, metering: 'CHAR_ESTIMATE', disposition: 'included' },
       {
@@ -52,8 +54,20 @@ export function mockContextBudget(message: string): ContextBudgetObservation {
         metering: 'CHAR_ESTIMATE',
         disposition: 'included',
       },
+      ...(historyNotMetered
+        ? [
+            {
+              source: 'history',
+              chars: 0,
+              metering: 'UNKNOWN' as const,
+              disposition: 'included' as const,
+            },
+          ]
+        : []),
     ],
-    notes: ['mock：字符估算，非真实 token'],
+    notes: historyNotMetered
+      ? ['CHAT_MEMORY_NOT_METERED', 'mock：会话历史未精确计量，非真实 token']
+      : ['mock：字符估算，非真实 token'],
   }
 }
 
@@ -499,6 +513,23 @@ export function createMockChatBackend() {
               detail: 'CONTEXT_BUDGET_EXCEEDED',
               contextBudget,
             })
+          }
+          if (
+            body.message.includes('记忆失效验收') ||
+            body.message.includes('__INVALIDATE_WORKING_MEMORY__')
+          ) {
+            if (item.workingMemory) {
+              item.workingMemory = {
+                ...item.workingMemory,
+                goal: '',
+                constraints: [],
+                facts: [],
+                evidenceRefs: [],
+                dependencyKeys: [],
+                invalidation: 'DEPENDENCY_CHANGED',
+                updatedAt: new Date().toISOString(),
+              }
+            }
           }
           const skill = hasSkill
             ? skillBackend.handle('POST', '/skills/context/preview', selection)

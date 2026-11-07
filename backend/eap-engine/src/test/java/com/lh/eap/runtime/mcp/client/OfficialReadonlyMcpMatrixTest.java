@@ -44,12 +44,17 @@ class OfficialReadonlyMcpMatrixTest {
     }
 
     @Test
-    void fourthEntryPinsFilesystemReadonlyListInfoSearchAndTree() {
+    void fourthEntryPinsFilesystemReadonlyToolsIncludingAllowedDirs() {
         var entry = OfficialReadonlyMcpMatrix.ENTRIES.get(3);
         assertEquals("@modelcontextprotocol/server-filesystem", entry.packageName());
         assertEquals("2025.11.25", entry.version());
         assertEquals(
-                List.of("list_directory", "get_file_info", "search_files", "directory_tree"),
+                List.of(
+                        "list_directory",
+                        "get_file_info",
+                        "search_files",
+                        "list_allowed_directories",
+                        "directory_tree"),
                 entry.readonlyTools());
         assertEquals("list_directory", entry.preferredTool());
         assertTrue(OfficialReadonlyMcpMatrix.findByEndpoint(
@@ -57,6 +62,7 @@ class OfficialReadonlyMcpMatrixTest {
         assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "list_directory"));
         assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "get_file_info"));
         assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "search_files"));
+        assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "list_allowed_directories"));
         assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "directory_tree"));
         assertFalse(McpProductionAllowlist.productionGranted(entry.endpoint(), "write_file"));
     }
