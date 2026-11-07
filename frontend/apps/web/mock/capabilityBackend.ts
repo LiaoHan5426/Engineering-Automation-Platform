@@ -44,7 +44,7 @@ export function createMockCapabilityBackend() {
       version: '2025.11.25',
       packageAtVersion: '@modelcontextprotocol/server-filesystem@2025.11.25',
       endpoint: 'npx -y @modelcontextprotocol/server-filesystem@2025.11.25',
-      readonlyTools: ['list_directory'],
+      readonlyTools: ['list_directory', 'directory_tree'],
       preferredTool: 'list_directory',
     },
   ]

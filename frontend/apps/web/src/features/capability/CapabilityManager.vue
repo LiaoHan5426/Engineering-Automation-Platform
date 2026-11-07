@@ -40,6 +40,7 @@ const messageKind = ref<'error' | 'success'>('success')
 const tab = ref('overview')
 const trustedTools = ref<TrustedToolItem[]>([])
 const dataLayout = ref<DataLayoutResponse | null>(null)
+const dataLayoutBusy = ref(false)
 const trustedGitResult = ref<TrustedGitStatusResult | null>(null)
 const trustedBusy = ref(false)
 const trustedProbeBusy = ref(false)
@@ -131,11 +132,7 @@ async function refresh() {
     catalog.value = await runtimeApi.capabilities()
     const trusted = await runtimeApi.trustedTools()
     trustedTools.value = trusted.items
-    try {
-      dataLayout.value = await runtimeApi.dataLayout()
-    } catch {
-      dataLayout.value = null
-    }
+    await refreshDataLayout()
     for (const item of items.value) {
       if (notesDraft.value[item.name] === undefined) notesDraft.value[item.name] = item.notes
     }
@@ -145,6 +142,17 @@ async function refresh() {
     feedback('error', errorMessage(error))
   } finally {
     loading.value = false
+  }
+}
+
+async function refreshDataLayout() {
+  dataLayoutBusy.value = true
+  try {
+    dataLayout.value = await runtimeApi.dataLayout()
+  } catch {
+    dataLayout.value = null
+  } finally {
+    dataLayoutBusy.value = false
   }
 }
 
@@ -350,6 +358,15 @@ async function submitServer() {
             {{ dataLayout.physicalMigration ? 'true' : 'false' }}。
           </p>
         </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          data-testid="data-layout-refresh"
+          :disabled="dataLayoutBusy || loading"
+          @click="refreshDataLayout"
+        >
+          刷新盘点
+        </Button>
       </header>
       <ul class="trusted-tool-list" data-testid="data-layout-entries">
         <li

@@ -44,15 +44,16 @@ class OfficialReadonlyMcpMatrixTest {
     }
 
     @Test
-    void fourthEntryPinsFilesystemListDirectoryOnly() {
+    void fourthEntryPinsFilesystemListDirectoryAndDirectoryTreeOnly() {
         var entry = OfficialReadonlyMcpMatrix.ENTRIES.get(3);
         assertEquals("@modelcontextprotocol/server-filesystem", entry.packageName());
         assertEquals("2025.11.25", entry.version());
-        assertEquals(List.of("list_directory"), entry.readonlyTools());
+        assertEquals(List.of("list_directory", "directory_tree"), entry.readonlyTools());
         assertEquals("list_directory", entry.preferredTool());
         assertTrue(OfficialReadonlyMcpMatrix.findByEndpoint(
                 entry.endpoint() + " " + Path.of(".eap", "mcp-fs-readonly")).isPresent());
         assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "list_directory"));
+        assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "directory_tree"));
         assertFalse(McpProductionAllowlist.productionGranted(entry.endpoint(), "write_file"));
     }
 

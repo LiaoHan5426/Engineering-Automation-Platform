@@ -25,6 +25,10 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
       '@modelcontextprotocol/server-memory@2025.11.25',
       '@modelcontextprotocol/server-filesystem@2025.11.25',
     ])
+    const filesystem = matrix.find(
+      (item) => item.packageAtVersion === '@modelcontextprotocol/server-filesystem@2025.11.25',
+    ) as { readonlyTools?: string[] } | undefined
+    expect(filesystem?.readonlyTools).toEqual(['list_directory', 'directory_tree'])
   })
 
   it('lists enabled git-status in the trusted catalog', async () => {

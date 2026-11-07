@@ -105,11 +105,14 @@ class OfficialReadonlyMcpStdioTest {
             var client = new McpProtocolClient(transport, Duration.ofSeconds(90));
             client.initialize();
             var tools = client.listTools();
-            assertTrue(tools.stream().anyMatch(tool -> entry.preferredTool().equals(tool.get("name"))),
-                    () -> "missing " + entry.preferredTool() + " in " + tools.stream()
-                            .map(tool -> tool.get("name")).toList());
-            var result = client.callTool(entry.preferredTool(), Map.of("path", allowRoot.toString()));
-            assertNotEquals(Boolean.TRUE, result.get("isError"));
+            for (var toolName : entry.readonlyTools()) {
+                assertTrue(tools.stream().anyMatch(tool -> toolName.equals(tool.get("name"))),
+                        () -> "missing " + toolName + " in " + tools.stream()
+                                .map(tool -> tool.get("name")).toList());
+            }
+            // Call the preferred readonly tool; directory_tree is grant-listed after tools/list proof only.
+            var listed = client.callTool(entry.preferredTool(), Map.of("path", allowRoot.toString()));
+            assertNotEquals(Boolean.TRUE, listed.get("isError"));
             client.close();
             assertFalse(transport.alive());
         }

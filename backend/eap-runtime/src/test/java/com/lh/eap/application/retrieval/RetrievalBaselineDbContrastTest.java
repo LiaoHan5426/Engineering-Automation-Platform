@@ -40,8 +40,12 @@ class RetrievalBaselineDbContrastTest {
         }
         String url = env.getProperty("spring.datasource.url");
         assertTrue(url != null && (url.startsWith("jdbc:postgresql://localhost:") || url.startsWith("jdbc:postgresql://127.0.0.1:")));
-        String password = env.getProperty("spring.datasource.password");
-        assumeTrue(password != null && !password.isBlank(), "local datasource password required for KR-01 DB contrast");
+        String password = firstNonBlank(
+                env.getProperty("spring.datasource.password"),
+                System.getenv("EAP_DB_PASSWORD"),
+                System.getenv("SPRING_DATASOURCE_PASSWORD"));
+        assumeTrue(password != null && !password.isBlank(),
+                "local datasource password required for KR-01 DB contrast (application.yml or EAP_DB_PASSWORD)");
         var dataSource = new DriverManagerDataSource(
                 url, env.getProperty("spring.datasource.username"), password);
         jdbc = new JdbcTemplate(dataSource);
@@ -128,5 +132,13 @@ class RetrievalBaselineDbContrastTest {
         assertTrue(dbReport.meetsDeclaredThresholds(), () -> "FTS ranking contrast failed: " + dbReport.results());
         assertTrue(dbReport.results().stream().allMatch(RetrievalBaseline.CaseResult::passed),
                 () -> "ranking case failures: " + dbReport.results());
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) return null;
+        for (var value : values) {
+            if (value != null && !value.isBlank()) return value.trim();
+        }
+        return null;
     }
 }
