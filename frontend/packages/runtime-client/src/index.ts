@@ -8,6 +8,9 @@ export type DataLayoutEntry = {
   resolved: string
   exists: boolean
   note: string
+  /** FS-01 observational kind; directories never carry recursive byteSize. */
+  kind?: 'missing' | 'file' | 'directory' | 'other' | string
+  byteSize?: number
 }
 export type DataLayoutMigrationCandidate = {
   id: string
@@ -77,6 +80,8 @@ export type TrustedGitStatusResult = {
   stdout?: string
   stderr?: string
   exitCode?: number
+  /** Client-local observation time; not a server clock contract. */
+  observedAt?: string
 }
 /** Configuration, never runtime permission or execution evidence. */
 export type ScenarioConfiguration = {

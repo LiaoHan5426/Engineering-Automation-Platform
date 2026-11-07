@@ -102,11 +102,31 @@ public class RuntimeDataLayoutService {
         if (path == null) {
             row.put("resolved", "");
             row.put("exists", false);
+            row.put("kind", "missing");
             return row;
         }
         var normalized = path.toAbsolutePath().normalize();
         row.put("resolved", normalized.toString());
-        row.put("exists", Files.exists(normalized));
+        var exists = Files.exists(normalized);
+        row.put("exists", exists);
+        if (!exists) {
+            row.put("kind", "missing");
+            return row;
+        }
+        if (Files.isDirectory(normalized)) {
+            row.put("kind", "directory");
+            return row;
+        }
+        if (Files.isRegularFile(normalized)) {
+            row.put("kind", "file");
+            try {
+                row.put("byteSize", Files.size(normalized));
+            } catch (Exception ignored) {
+                // Size is observational; existence already reported.
+            }
+            return row;
+        }
+        row.put("kind", "other");
         return row;
     }
 

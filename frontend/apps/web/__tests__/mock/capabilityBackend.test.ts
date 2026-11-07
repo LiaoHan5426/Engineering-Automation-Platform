@@ -10,8 +10,24 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
       physicalMigration: false,
       migrationReadiness: { approved: false, physicalMigration: false },
     })
-    const entries = (reply?.data as { entries: Array<{ logical: string }> }).entries
-    expect(entries.some((item) => item.logical === 'cache/trusted-tool-probes')).toBe(true)
+    const entries = (
+      reply?.data as {
+        entries: Array<{ logical: string; kind?: string; byteSize?: number }>
+      }
+    ).entries
+    const probe = entries.find((item) => item.logical === 'cache/trusted-tool-probes')
+    expect(probe).toMatchObject({ kind: 'file', byteSize: 48 })
+    expect(entries.find((item) => item.logical === 'data-root')?.kind).toBe('directory')
+  })
+
+  it('returns exitCode on successful mock git-status invoke', async () => {
+    const backend = createMockCapabilityBackend()
+    const reply = await backend.handle('POST', '/runtime/trusted-tools/git-status/invoke')
+    expect(reply?.data).toMatchObject({
+      capability: 'git-status',
+      success: true,
+      exitCode: 0,
+    })
   })
 
   it('exposes four official readonly matrix packages including filesystem', async () => {
@@ -31,6 +47,7 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     expect(filesystem?.readonlyTools).toEqual([
       'list_directory',
       'get_file_info',
+      'search_files',
       'directory_tree',
     ])
     })

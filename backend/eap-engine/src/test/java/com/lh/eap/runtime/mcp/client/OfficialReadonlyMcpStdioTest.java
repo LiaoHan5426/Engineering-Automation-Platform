@@ -115,6 +115,9 @@ class OfficialReadonlyMcpStdioTest {
             assertNotEquals(Boolean.TRUE, listed.get("isError"));
             var info = client.callTool("get_file_info", Map.of("path", allowRoot.toString()));
             assertNotEquals(Boolean.TRUE, info.get("isError"));
+            var searched = client.callTool(
+                    "search_files", Map.of("path", allowRoot.toString(), "pattern", "*"));
+            assertNotEquals(Boolean.TRUE, searched.get("isError"));
             client.close();
             assertFalse(transport.alive());
         }

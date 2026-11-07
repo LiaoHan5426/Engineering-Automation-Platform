@@ -167,10 +167,13 @@ async function runTrustedGitStatus(
   trustedGitResult.value = null
   trustedFailure.value = null
   try {
-    trustedGitResult.value = await runtimeApi.invokeTrustedGitStatus({
-      mockOutcome: mockTrustedScenarios ? mockOutcome : undefined,
-      signal: controller.signal,
-    })
+    trustedGitResult.value = {
+      ...(await runtimeApi.invokeTrustedGitStatus({
+        mockOutcome: mockTrustedScenarios ? mockOutcome : undefined,
+        signal: controller.signal,
+      })),
+      observedAt: new Date().toISOString(),
+    }
     feedback(trustedGitResult.value.success ? 'success' : 'error', trustedGitResult.value.message)
   } catch (error) {
     if (controller.signal.aborted) {
@@ -393,6 +396,19 @@ async function submitServer() {
             :tone="entry.exists ? 'success' : 'neutral'"
             :label="entry.exists ? '存在' : '未创建'"
           />
+          <Badge
+            v-if="entry.kind"
+            tone="neutral"
+            :label="entry.kind"
+            :data-testid="`data-layout-kind-${entry.logical}`"
+          />
+          <span
+            v-if="entry.kind === 'file' && entry.byteSize != null"
+            class="hint mono"
+            :data-testid="`data-layout-bytes-${entry.logical}`"
+          >
+            {{ entry.byteSize }} B
+          </span>
           <p class="hint mono">{{ entry.resolved || '—' }}</p>
           <p v-if="entry.note" class="hint">{{ entry.note }}</p>
         </li>
@@ -549,6 +565,20 @@ async function submitServer() {
           </Button>
         </template>
       </div>
+      <p
+        v-if="trustedGitResult"
+        class="hint"
+        data-testid="trusted-git-status-summary"
+      >
+        {{ trustedGitResult.capability }} ·
+        {{ trustedGitResult.success ? '成功' : '失败' }}
+        <template v-if="trustedGitResult.exitCode != null">
+          · exit {{ trustedGitResult.exitCode }}</template
+        >
+        <template v-if="trustedGitResult.observedAt">
+          · 观测于 {{ trustedGitResult.observedAt }}</template
+        >
+      </p>
       <pre v-if="trustedGitResult" class="trusted-git-result" data-testid="trusted-git-status-result">{{
         trustedGitResult.stdout ?? trustedGitResult.message
       }}</pre>

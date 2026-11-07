@@ -49,4 +49,30 @@ class RuntimeDataLayoutServiceTest {
                 && "legacy-ai-artifacts".equals(String.valueOf(row.get("id")))
                 && Boolean.TRUE.equals(row.get("present"))));
     }
+
+    @Test
+    void reportsKindAndByteSizeForProbeCacheFileWithoutScanning() throws Exception {
+        var probe = workspace.resolve(".eap").resolve("cache").resolve("trusted-tool-probes.json");
+        Files.createDirectories(probe.getParent());
+        Files.writeString(probe, "{\"schema\":\"trusted-tool-probes/v1\",\"probes\":{}}");
+        var runtime = RuntimeWorkspace.colocated(workspace, workspace.toString(), "");
+        var service = new RuntimeDataLayoutService(runtime, workspace, ".eap-ai-artifacts", ".eap/model-connections.json");
+        var entries = (java.util.List<?>) service.layout().get("entries");
+        var probeRow = entries.stream()
+                .filter(item -> item instanceof java.util.Map<?, ?> row
+                        && "cache/trusted-tool-probes".equals(String.valueOf(row.get("logical"))))
+                .map(item -> (java.util.Map<?, ?>) item)
+                .findFirst()
+                .orElseThrow();
+        assertEquals("file", probeRow.get("kind"));
+        assertTrue(((Number) probeRow.get("byteSize")).longValue() > 0);
+        var cacheRow = entries.stream()
+                .filter(item -> item instanceof java.util.Map<?, ?> row
+                        && "cache".equals(String.valueOf(row.get("logical"))))
+                .map(item -> (java.util.Map<?, ?>) item)
+                .findFirst()
+                .orElseThrow();
+        assertEquals("directory", cacheRow.get("kind"));
+        assertFalse(cacheRow.containsKey("byteSize"));
+    }
 }
