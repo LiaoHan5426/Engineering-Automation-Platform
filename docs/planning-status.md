@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main /`（三切片并行：SC-01 保存未知态 + TC-01 调用未知呈现 + MCP filesystem；提交后回填 SHA）。历史全量数字仅为既往证据。本轮：① SC-01 save 失败后 GET 核对——远端 revision 变化标 `unknown`；② TC-01 `unknown` 失败分类 + mock「模拟结果未知」；③ MCP-01 矩阵追加 filesystem@2025.11.25/`list_directory`（门禁 stdio 附允许根通过）。浏览器 mock `:5174` 已验未知文案与矩阵四包；真机 `:5173` 已验真实 git-status 调用成功（矩阵第四包需后端热重载后可见）。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / fe7f0d2`（三切片并行：SC-01 保存未知态 + TC-01 调用未知呈现 + MCP filesystem）。历史全量数字仅为既往证据。本轮：① SC-01 save 失败后 GET 核对——远端 revision 变化标 `unknown`；② TC-01 `unknown` 失败分类 + mock「模拟结果未知」；③ MCP-01 矩阵追加 filesystem@2025.11.25/`list_directory`（门禁 stdio 附允许根通过）。浏览器 mock `:5174` 已验未知文案与矩阵四包；真机 `:5173` 已验真实 git-status 调用成功（矩阵第四包需后端热重载后可见）。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
