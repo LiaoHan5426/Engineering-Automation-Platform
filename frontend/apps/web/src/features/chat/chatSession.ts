@@ -23,6 +23,7 @@ export type ChatApi = {
     memory: string
     connectionId?: string | null
     model?: string | null
+    workingMemory?: TaskWorkingMemorySnapshot | null
   }>
   deleteAiConversation?: (id: string) => Promise<void>
   aiStatus: () => Promise<AiStatus>
@@ -32,6 +33,7 @@ export type ChatApi = {
     memory: string
     connectionId?: string | null
     model?: string | null
+    workingMemory?: TaskWorkingMemorySnapshot | null
   }>
   sendAiMessage: (
     id: string,
@@ -754,6 +756,16 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         artifacts: result.artifacts ?? [],
       }
       transcripts.value = { ...transcripts.value, [id]: turns }
+      if (api.aiConversation && conversationId.value === id) {
+        try {
+          const live = await api.aiConversation(id)
+          if (inflight.value[id] === current && conversationId.value === id) {
+            workingMemory.value = live.workingMemory ?? workingMemory.value
+          }
+        } catch {
+          /* association refresh is best-effort; send result already applied */
+        }
+      }
       if (!result.error) {
         if (entry && entry.draft === text) entry.draft = ''
         if (conversationId.value === id && draft.value === text) draft.value = ''

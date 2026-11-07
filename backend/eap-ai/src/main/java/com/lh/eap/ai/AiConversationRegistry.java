@@ -195,6 +195,45 @@ public class AiConversationRegistry {
         }
     }
 
+    /**
+     * Under exclusive turn: associate Task/Run with working memory (dependencyKeys + evidenceRefs).
+     * A different {@code task:} dependency invalidates prior content then rebinds. Does not copy board state machines.
+     */
+    public TaskWorkingMemory.Snapshot linkTaskAndExecution(UUID id, TaskContext.TaskRef taskRef, UUID executionId) {
+        synchronized (lock) {
+            var session = require(id);
+            if (!session.busy) throw new IllegalStateException("Task/Run link requires exclusive turn");
+            if (taskRef == null || executionId == null) {
+                throw new IllegalArgumentException("taskRef and executionId required");
+            }
+            String taskKey = TaskWorkingMemory.dependencyTask(
+                    taskRef.projectId(), taskRef.taskId().toString(), taskRef.revision());
+            var current = session.workingMemory.snapshot();
+            boolean conflict = current.dependencyKeys().stream()
+                    .anyMatch(key -> key.startsWith("task:") && !key.equals(taskKey));
+            if (conflict) {
+                session.workingMemory.invalidate("TASK_BINDING_CHANGED", clock.get());
+                current = session.workingMemory.snapshot();
+            }
+            var deps = new java.util.LinkedHashSet<>(current.dependencyKeys());
+            deps.add(taskKey);
+            var evidence = new java.util.ArrayList<>(current.evidenceRefs());
+            String execRef = TaskWorkingMemory.evidenceExecution(executionId);
+            if (!evidence.contains(execRef)) evidence.add(execRef);
+            boolean wiped = !current.invalidation().isBlank();
+            session.workingMemory.replace(
+                    wiped ? "" : current.goal(),
+                    wiped ? java.util.List.of() : current.constraints(),
+                    wiped ? java.util.List.of() : current.facts(),
+                    evidence,
+                    deps,
+                    clock.get());
+            session.touched = clock.get();
+            persistWorkingMemory(session);
+            return session.workingMemory.snapshot();
+        }
+    }
+
     public UUID activeExecutionId(UUID id) {
         synchronized (lock) {
             var session = sessions.get(id);

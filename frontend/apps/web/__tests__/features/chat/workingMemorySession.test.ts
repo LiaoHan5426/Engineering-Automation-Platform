@@ -65,4 +65,55 @@ describe('working memory session', () => {
     await session.recheckConversation()
     expect(session.workingMemory.value?.goal).toBe('交付登录页')
   })
+
+  it('refreshes working memory after send when task/run association updates', async () => {
+    let stored: TaskWorkingMemorySnapshot = {
+      ...emptyMemory,
+      goal: '交付登录页',
+    }
+    const api = {
+      aiStatus: async () => status(),
+      openAiConversation: async () => ({
+        conversationId: 'c2',
+        workspaceLabel: 'ws',
+        memory: '分层说明',
+        workingMemory: stored,
+        connectionId: 'conn-1',
+        model: 'gpt',
+      }),
+      aiConversation: async () => ({
+        conversationId: 'c2',
+        workspaceLabel: 'ws',
+        memory: '分层说明',
+        workingMemory: stored,
+        connectionId: 'conn-1',
+        model: 'gpt',
+      }),
+      sendAiMessage: async () => {
+        stored = {
+          ...stored,
+          dependencyKeys: ['task:proj:t1:1'],
+          evidenceRefs: ['execution:e1'],
+          updatedAt: '2026-11-07T02:00:00Z',
+        }
+        return {
+          executionId: 'e1',
+          answer: 'ok',
+          error: '',
+          status: 'SUCCEEDED',
+          approval: '',
+          verification: '',
+          toolEvents: [],
+          artifactError: '',
+          artifacts: [],
+        }
+      },
+    } satisfies ChatApi
+    const session = createChatSession(api)
+    await session.openConversation()
+    session.draft.value = '继续'
+    await session.send()
+    expect(session.workingMemory.value?.dependencyKeys).toContain('task:proj:t1:1')
+    expect(session.workingMemory.value?.evidenceRefs).toContain('execution:e1')
+  })
 })

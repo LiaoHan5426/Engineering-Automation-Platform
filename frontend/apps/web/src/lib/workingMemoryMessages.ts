@@ -11,7 +11,7 @@ export const workingMemoryMessages = {
     empty: '尚无任务工作记忆（不等于模型窗口或浏览器历史）。',
     saveGoal: '保存目标',
     goalPlaceholder: '本会话当前目标（不写入模型正文）',
-    note: '工作记忆与展示历史、模型窗口分离；敏感清空或换模后失效。',
+    note: '工作记忆与展示历史、模型窗口分离；带任务发送时写入依赖键与执行证据；敏感清空、换模或换任务后失效。',
   },
   'en-US': {
     title: 'Task working memory',
@@ -25,6 +25,6 @@ export const workingMemoryMessages = {
     empty: 'No task working memory yet (not the model window or browser history).',
     saveGoal: 'Save goal',
     goalPlaceholder: 'Current session goal (not injected as model body)',
-    note: 'Working memory is separate from display history and the model window; it clears on sensitive wipe or model switch.',
+    note: 'Working memory is separate from display history and the model window; task sends write dependency keys and execution evidence; it clears on sensitive wipe, model switch, or task switch.',
   },
 } as const

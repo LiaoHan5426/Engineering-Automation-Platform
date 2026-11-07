@@ -74,4 +74,37 @@ class TaskWorkingMemoryTest {
         assertEquals(200, snap.evidenceRefs().getFirst().length());
         assertFalse(snap.toString().contains("secret-body"));
     }
+
+    @Test
+    void linkTaskAndExecutionAssociatesRunAndInvalidatesOnTaskSwitch() {
+        var store = new FileWorkingMemoryStore(root.resolve("wm-link"));
+        var registry = new AiConversationRegistry(MessageWindowChatMemory.builder().maxMessages(20).build(),
+                java.time.Instant::now, store);
+        var session = registry.open(root, "ws");
+        registry.putWorkingMemory(session.id, "交付登录", List.of("复用组件"), List.of(), List.of(), Set.of());
+        var taskA = new TaskContext.TaskRef("proj", UUID.randomUUID(), 1);
+        var exec1 = UUID.randomUUID();
+        var linked = registry.exclusive(session.id, () -> registry.linkTaskAndExecution(session.id, taskA, exec1));
+        assertEquals("交付登录", linked.goal());
+        assertTrue(linked.dependencyKeys().contains(
+                TaskWorkingMemory.dependencyTask(taskA.projectId(), taskA.taskId().toString(), taskA.revision())));
+        assertTrue(linked.evidenceRefs().contains(TaskWorkingMemory.evidenceExecution(exec1)));
+
+        var exec2 = UUID.randomUUID();
+        var sameTask = registry.exclusive(session.id, () -> registry.linkTaskAndExecution(session.id, taskA, exec2));
+        assertEquals(2, sameTask.evidenceRefs().size());
+        assertTrue(sameTask.evidenceRefs().contains(TaskWorkingMemory.evidenceExecution(exec2)));
+        assertEquals("交付登录", sameTask.goal());
+
+        var taskB = new TaskContext.TaskRef("proj", UUID.randomUUID(), 1);
+        var switched = registry.exclusive(session.id,
+                () -> registry.linkTaskAndExecution(session.id, taskB, UUID.randomUUID()));
+        assertTrue(switched.goal().isBlank());
+        assertEquals(1, switched.dependencyKeys().size());
+        assertTrue(switched.dependencyKeys().contains(
+                TaskWorkingMemory.dependencyTask(taskB.projectId(), taskB.taskId().toString(), taskB.revision())));
+        assertEquals(1, switched.evidenceRefs().size());
+        assertTrue(store.load(session.id).isPresent());
+        assertEquals(switched.dependencyKeys(), store.load(session.id).orElseThrow().dependencyKeys());
+    }
 }

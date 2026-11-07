@@ -90,3 +90,7 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 ## 任务工作记忆本地持久（2026-11-07，离线通过）
 
 `FileWorkingMemoryStore` 落盘至 `.eap/working-memory`；进程重启后同会话 ID reconnect 恢复工作记忆、不恢复模型窗口；显式删除清盘。`WorkingMemoryPersistenceTest` 通过。
+
+## 任务工作记忆 Task/Run 关联（2026-11-07，离线通过）
+
+发送路径在 exclusive 下 `linkTaskAndExecution`：`taskRef` 写入 `dependencyKeys`（`task:project:id:rev`），本回合 `executionId` 写入 `evidenceRefs`（`execution:<uuid>`）；已有不同 `task:` 键时先 `TASK_BINDING_CHANGED` 失效再重绑。不复制看板任务状态机。聊天区展示依赖/证据；发送后刷新会话工作记忆。`TaskWorkingMemoryTest` 关联项与 `workingMemorySession` 刷新项通过。

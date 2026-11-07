@@ -140,6 +140,10 @@ public final class TaskWorkingMemory {
         return "task:" + projectId + ":" + taskId + ":" + revision;
     }
 
+    public static String evidenceExecution(java.util.UUID executionId) {
+        return "execution:" + Objects.requireNonNull(executionId, "executionId");
+    }
+
     private static String bound(String value, int limit) {
         if (value == null) return "";
         var text = value.trim();

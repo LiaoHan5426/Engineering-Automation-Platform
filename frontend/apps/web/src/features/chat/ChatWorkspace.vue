@@ -774,6 +774,24 @@ onMounted(async () => {
           >
             {{ t('workingMemory.layers') }}：{{ session.workingMemory.value.layers.join(' · ') }}
           </p>
+          <p
+            v-if="session.workingMemory.value?.dependencyKeys?.length"
+            class="hint"
+            data-testid="working-memory-dependencies"
+          >
+            {{ t('workingMemory.dependencies') }}：{{
+              session.workingMemory.value.dependencyKeys.join(' · ')
+            }}
+          </p>
+          <p
+            v-if="session.workingMemory.value?.evidenceRefs?.length"
+            class="hint"
+            data-testid="working-memory-evidence"
+          >
+            {{ t('workingMemory.evidence') }}：{{
+              session.workingMemory.value.evidenceRefs.join(' · ')
+            }}
+          </p>
           <form class="working-memory-form" @submit.prevent="saveWorkingGoal">
             <Input
               v-model="workingGoalDraft"

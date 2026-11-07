@@ -345,6 +345,9 @@ public class AiChatApplication {
         if (conversations.cancelRequested(id)) throw cancelled();
         var executionId = UUID.randomUUID();
         conversations.bindExecution(id, executionId);
+        if (context.taskRef() != null) {
+            conversations.linkTaskAndExecution(id, context.taskRef(), executionId);
+        }
         var emitter = journal.open(executionId, id);
         emitter.onEvent(sink);
         emitter.emit("status", "", "", "RUNNING", null);
