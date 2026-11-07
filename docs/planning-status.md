@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main`（待提交 TD-01 绑定状态呈现；含 `6b927a4` KR-01 排序样本）。历史全量数字仅为既往证据。本轮：可信目录输出 `bindingStatus`/`versionStatus`（ready/disabled/conflict + 版本未知）；目录不自动探测版本；mock 三态 + 能力页浏览器已验。不整盘扫描、不静默回退覆盖路径。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 9306d1c`（TD-01 绑定冲突/停用快照呈现；含 `6b927a4` KR-01 排序样本）。历史全量数字仅为既往证据。本轮：可信目录输出 `bindingStatus`/`versionStatus`（ready/disabled/conflict + 版本未知）；目录不自动探测版本；mock 三态 + 能力页浏览器已验。不整盘扫描、不静默回退覆盖路径。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
