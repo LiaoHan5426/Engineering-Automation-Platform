@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / 847d597`（三切片并行：MCP `list_allowed_directories` + CE-01 历史未计量 mock + MEM-01 失效 mock）。历史全量数字仅为既往证据。本轮：① MCP-01 filesystem 追加 `list_allowed_directories`（门禁实 call list+info+search+allowed；tree 仍仅 list）；② CE-01 mock 回合可触发 `CHAT_MEMORY_NOT_METERED`/`UNKNOWN` 计量与 history 来源；③ MEM-01 mock 发送「记忆失效验收」写 `DEPENDENCY_CHANGED` 并展示失效。离线：Matrix+Stdio 6/0、chatBackend/capabilityBackend 定向通过。浏览器 mock `:5174` 已验矩阵五工具文案、历史未计量备注、已失效 DEPENDENCY_CHANGED；真机 `:5173` 已验矩阵含 `list_allowed_directories`。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 34ddd06`（三切片并行：CE-01 派生清空 mock + FS-01 盘点计数 + TC-01 失败 detail 摘要）。历史全量数字仅为既往证据。本轮：① CE-01「派生清空验收」→`DERIVED_CLEARED_BEFORE_SEND`+`contextMemoryCleared`；② FS-01 `inventory` present/missing/total（不扫盘）；③ TC-01 调用失败摘要含稳定 detail（如 `CAPABILITY_DISABLED`）。离线：layout 4/0、chat/capability/trustedToolInvoke 定向通过。浏览器 mock `:5174` 已验盘点 4/3/1、失败摘要 CAPABILITY_DISABLED、派生清空备注；真机 `:5173` 已验盘点计数（10/5/5）。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
@@ -38,13 +38,13 @@
 | PL-01 / P0 看板插件首片 | **部分交付**：board 可信预装启停/持久化回滚；**本轮**：服务依赖缺失与激活失败 sticky 呈现、刷新保留 Builder 实例；8 项离线 + mock 浏览器已验；不停 Task/Run | 真实服务探测与用户接受仍待；外部安装器延期 |
 | PL-02 / P1 设计器插件 | GrapesJS/Schema/版本已有；尚未按通用贡献机制迁移 | PL-01后复用现有设计器、版本和核心API，验证停用不丢草稿/版本；外部任意JS安装延期 |
 | SC-03 / P1 场景组合 | 原型到代码已有独立配置/设计/准备/交付切片，不是单个插件 | 依赖PL-01，设计器迁移与PL-02协调；声明所需插件/服务/资源、缺依赖不可用；应用不安装/授权/发送；SC-01 保存断连浏览器接受仍独立 |
-| CE-01 / P0 上下文工程 | **部分交付**：后端预算观测 + 前端回合用量摘要与超限 Feedback；mock 预算/超限；**本轮**：`历史未计量验收`→`CHAT_MEMORY_NOT_METERED`/`UNKNOWN`+history:0（`:5174` 已验） | 真实 token/压缩、ChatMemory 精确计量、用户产品接受；不记录敏感正文 |
+| CE-01 / P0 上下文工程 | **部分交付**：预算观测/用量 UI/超限；历史未计量 mock；**本轮**：`派生清空验收`→`DERIVED_CLEARED_BEFORE_SEND`（`:5174` 已验） | 真实 token/压缩、ChatMemory 精确计量、用户产品接受；不记录敏感正文 |
 | KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；实库对照；排序质量样本；`productionSampleCases`；**本轮**：对照测口令回退 `EAP_DB_PASSWORD`/`SPRING_DATASOURCE_PASSWORD`（不写入仓库） | 实库开启 `EAP_RUN_BOARD_PERSISTENCE`+口令跑 FTS 排序对照；不足证据前不启 KR-02 |
 | MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；约束/事实展示；**本轮**：mock「记忆失效验收」→`DEPENDENCY_CHANGED` UI（`:5174` 已验） | sticky 清空仍保留；用户产品接受仍待；自动长期抽取延期 |
-| FS-01 / P0 目录与临时资源 | **部分交付**：data-layout + migrationReadiness + 刷新盘点；**本轮**：条目 `kind`/`byteSize`（文件才计量，不递归；mock/真机已验）；`physicalMigration=false` | 旧数据物理迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
+| FS-01 / P0 目录与临时资源 | **部分交付**：data-layout + migrationReadiness + kind/byteSize；**本轮**：`inventory` present/missing/total（`:5174`/`:5173` 已验）；`physicalMigration=false` | 旧数据物理迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
 | TM-01 / P1 受管工具 | CLI程序/固定操作可登记和配置路径；依赖PATH/指定文件，无安装版本管理 | 依赖FS-01，选择一个可信便携工具或venv；锁版本/校验/安装回滚、实际调用/在途保护；保留系统引用，不静默或全局安装 |
 | TD-01 / P0 自动发现与绑定 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测 + 持久化；**本轮**：清除探测缓存 API/UI（mock/真机已验，版本回未知）；目录仍不自动探测 | 真实本机 git 重启验收与用户接受仍待；更多依赖绑定仍待；不整盘扫描 |
-| TC-01 / P0 工具调用与呈现 | **部分交付**：git-status + mock 拒绝/超时/取消/unknown；**本轮**：调用结果摘要（capability/成功/exit/观测时间；mock/真机已验） | 真实拒绝/超时/取消与用户接受仍待；不开放任意 Capability 执行口 |
+| TC-01 / P0 工具调用与呈现 | **部分交付**：git-status + mock 拒绝/超时/取消/unknown + 调用摘要；**本轮**：失败摘要含稳定 detail（如 `CAPABILITY_DISABLED`；`:5174` 已验） | 真实拒绝/超时/取消与用户接受仍待；不开放任意 Capability 执行口 |
 | TC-02 / P1 前端实例能力 | 尚无通用交互实例工具合同；Java保存版本不等于编辑器未保存草稿 | **待实施**：TC-01合同后先人工读取，协调实际插件Host；实例/文档/revision绑定、切页/关闭/断线与结果未知；后端Agent反向调用另评审，不依赖隐藏组件后台存活 |
 | KR-02 / FW-01 条件后续 | 当前保留Spring AI，未采用向量增强或LangChain4j迁移 | KR-01证明检索不足再评估增强；明确协作需求/可复现框架阻碍后独立批准同条件对照，记录兼容/正确性/成本/取消与迁移回归；不长期双循环 |
 | 桌面与安装器 | Electron45 preload壳、bootstrap检测脚手架 | Windows sidecar、一体启动/停止、迁移失败/恢复、包验证；签名需要用户凭据及发行决定 |

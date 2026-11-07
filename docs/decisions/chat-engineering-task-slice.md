@@ -81,7 +81,7 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 
 ## 上下文预算 mock 合同与浏览器（2026-11-07，mock 通过）
 
-`mock/chatBackend` 成功 SSE/`final` 附带确定性 `CHAR_ESTIMATE` 观测；消息含 `预算超限验收` 或 `__CONTEXT_BUDGET_EXCEEDED__` 时 HTTP 400 + `CONTEXT_BUDGET_EXCEEDED` + `contextBudget`（无正文）。消息含 `历史未计量验收` 或 `__CHAT_MEMORY_NOT_METERED__` 时计量为 `UNKNOWN`、来源含 `history`、备注含 `CHAT_MEMORY_NOT_METERED`。`chatBackend`/`contextBudgetView` 定向通过。mock `:5174` 浏览器：普通发送可见 `turn-context-budget`；超限关键字可见 Feedback；历史未计量可见未知计量与备注。不宣称真实 token、压缩策略或用户产品接受。
+`mock/chatBackend` 成功 SSE/`final` 附带确定性 `CHAR_ESTIMATE` 观测；消息含 `预算超限验收` 或 `__CONTEXT_BUDGET_EXCEEDED__` 时 HTTP 400 + `CONTEXT_BUDGET_EXCEEDED` + `contextBudget`（无正文）。消息含 `历史未计量验收` 或 `__CHAT_MEMORY_NOT_METERED__` 时计量为 `UNKNOWN`、来源含 `history`、备注含 `CHAT_MEMORY_NOT_METERED`。消息含 `派生清空验收` 或 `__DERIVED_CLEARED__` 时备注含 `DERIVED_CLEARED_BEFORE_SEND` 且 `contextMemoryCleared=true`。`chatBackend`/`contextBudgetView` 定向通过。mock `:5174` 浏览器：普通发送可见 `turn-context-budget`；超限关键字可见 Feedback；历史未计量/派生清空备注已验。不宣称真实 token、压缩策略或用户产品接受。
 
 ## 任务工作记忆失效 mock（2026-11-07，mock 通过）
 

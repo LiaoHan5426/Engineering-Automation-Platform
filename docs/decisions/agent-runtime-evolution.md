@@ -230,10 +230,10 @@ mock 可信目录返回启用 `git-status`；`invoke` 默认成功 stdout，`moc
 | 顺序 / ID | 最小范围与依赖 | 退出证据 |
 |---|---|---|
 | 先保留缺陷门禁 | 场景保存UNKNOWN后的删除核对仍阻断；已有自身改页验收线独立推进 | 结果未知不误报删除/完成；原有交付证据保留 |
-| CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + **历史未计量 `CHAT_MEMORY_NOT_METERED` mock（浏览器已验）**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS 适配；每题延迟观测 + 本机实库对照 + 排序质量样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
-| FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + **kind/byteSize**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
+| CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + **派生清空 `DERIVED_CLEARED_BEFORE_SEND` mock（浏览器已验）**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
+| FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + **inventory 计数**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测写回 + 持久化 + **清除探测缓存**（mock/真机已验） | 更多依赖绑定与用户接受；不执行未知脚本、不整盘扫描或自动授权 |
-| TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消/unknown；**调用摘要**（exit/观测时间） | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
+| TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消/unknown；调用摘要（exit/观测时间）+ **失败 detail 码** | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
 | TC-02 / P1 | TC-01职责合同后验证前端交互实例，协调实际Host而非等待完整SDK | 人工读取草稿/选中状态、多实例/revision/关闭断线、保存版本区别；模型反向调用另行评审 |
 | MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（everything + sequential-thinking + memory + filesystem/`list_directory`+`get_file_info`+`search_files`+`list_allowed_directories`+`directory_tree`）+ http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传；mock/真机已验五工具 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/持久化回滚 + 依赖缺失/激活失败呈现（mock 浏览器已验）；不改 Task/Run | 真实服务探测与用户接受；在途停用完整矩阵；无第二状态源；外部安装器延期 |
