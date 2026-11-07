@@ -22,7 +22,7 @@ public class AiConversationRegistry {
     public static final Duration IDLE = Duration.ofMinutes(30);
     public static final String PRINCIPAL = com.lh.eap.config.RuntimeWorkspace.OPERATOR_LABEL;
     public static final String MEMORY_NOTE =
-            "展示历史≠模型窗口≠任务工作记忆≠绑定；模型窗口重启不可恢复；本地工作记忆可按会话ID落盘恢复，敏感清空/换模仍会使派生工作记忆失效。";
+            "展示历史≠模型窗口≠任务工作记忆≠绑定；模型窗口重启不可恢复；本地工作记忆可按会话ID落盘恢复；敏感清空/换模/换任务/换知识·Skill 依赖会使派生工作记忆失效；sticky 清空保护仍保留。";
 
     private final ChatMemory memory;
     private final Supplier<Instant> clock;
@@ -220,6 +220,45 @@ public class AiConversationRegistry {
             var evidence = new java.util.ArrayList<>(current.evidenceRefs());
             String execRef = TaskWorkingMemory.evidenceExecution(executionId);
             if (!evidence.contains(execRef)) evidence.add(execRef);
+            boolean wiped = !current.invalidation().isBlank();
+            session.workingMemory.replace(
+                    wiped ? "" : current.goal(),
+                    wiped ? java.util.List.of() : current.constraints(),
+                    wiped ? java.util.List.of() : current.facts(),
+                    evidence,
+                    deps,
+                    clock.get());
+            session.touched = clock.get();
+            persistWorkingMemory(session);
+            return session.workingMemory.snapshot();
+        }
+    }
+
+    /**
+     * Under exclusive turn: sync {@code knowledge:}/{@code skill:} dependency keys.
+     * A stale key of those prefixes triggers {@code DEPENDENCY_CHANGED} then rebinds.
+     * Does not cancel sticky ChatMemory clear protection.
+     */
+    public TaskWorkingMemory.Snapshot syncMaterialDependencies(UUID id, java.util.Set<String> materialKeys) {
+        synchronized (lock) {
+            var session = require(id);
+            if (!session.busy) throw new IllegalStateException("Material dependency sync requires exclusive turn");
+            var wanted = java.util.Set.copyOf(materialKeys == null ? java.util.Set.of() : materialKeys);
+            for (var key : wanted) {
+                if (key == null || !(key.startsWith("knowledge:") || key.startsWith("skill:"))) {
+                    throw new IllegalArgumentException("MATERIAL_DEPENDENCY_KEY");
+                }
+            }
+            var current = session.workingMemory.snapshot();
+            boolean conflict = current.dependencyKeys().stream()
+                    .anyMatch(key -> (key.startsWith("knowledge:") || key.startsWith("skill:")) && !wanted.contains(key));
+            if (conflict) {
+                session.workingMemory.invalidate("DEPENDENCY_CHANGED", clock.get());
+                current = session.workingMemory.snapshot();
+            }
+            var deps = new java.util.LinkedHashSet<>(current.dependencyKeys());
+            deps.addAll(wanted);
+            var evidence = new java.util.ArrayList<>(current.evidenceRefs());
             boolean wiped = !current.invalidation().isBlank();
             session.workingMemory.replace(
                     wiped ? "" : current.goal(),

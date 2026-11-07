@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / ab43fa2`（KR-01 `POSTGRES_FTS` 适配）。历史全量数字仅为既往证据。本轮离线：`RetrievalBaselineTest`+`PostgresKnowledgeRetrievalTest` 通过；实库对照因本机 datasource 口令空而 Assumptions 跳过。浏览器/用户接受仍待。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 5785715`（KR-01 台账同步）+ 本轮 MEM-01 对抗失效（未提交）。历史全量数字仅为既往证据。本轮离线：`WorkingMemoryAdversarialTest` 通过；sticky 清空未取消。浏览器/用户接受仍待。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
@@ -40,7 +40,7 @@
 | SC-03 / P1 场景组合 | 原型到代码已有独立配置/设计/准备/交付切片，不是单个插件 | 依赖PL-01，设计器迁移与PL-02协调；声明所需插件/服务/资源、缺依赖不可用；应用不安装/授权/发送；SC-01未知保存删除缺陷仍阻断 |
 | CE-01 / P0 上下文工程 | **部分交付**：后端预算观测 + 前端回合用量摘要与超限 Feedback；`contextBudgetView` 单测通过 | 真实 token/压缩、ChatMemory 精确计量、浏览器人工接受；MEM-01 仍后续；不记录敏感正文 |
 | KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`；**实库适配**：`PostgresKnowledgeRetrieval`（`POSTGRES_FTS`）映射 `knowledgeBaseId`；`PostgresKnowledgeRetrievalTest` 通过；`RetrievalBaselineDbContrastTest` 需 `EAP_RUN_BOARD_PERSISTENCE`+本机口令 | 本机实库同题跑通记录、排序/延迟成本；不足证据前不启 KR-02 |
-| MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久；**任务/Run 关联**：`taskRef`→`dependencyKeys`、`executionId`→`evidenceRefs`，换任务 `TASK_BINDING_CHANGED`；`TaskWorkingMemoryTest` 关联项与前端发送后刷新通过 | 对抗用例替代清空、浏览器接受；自动长期抽取延期；不复制看板状态机 |
+| MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；**对抗失效**：知识/Skill `DEPENDENCY_CHANGED`、PUT 不取消 sticky、重连不复活模型窗；`WorkingMemoryAdversarialTest` 通过 | sticky 清空仍保留（未达替代门槛）；浏览器接受；自动长期抽取延期 |
 | FS-01 / P0 目录与临时资源 | **部分交付**：`GET /api/runtime/data-layout` 只读盘点 + 决策文档逻辑路径表；不做物理迁移 | 旧数据迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
 | TM-01 / P1 受管工具 | CLI程序/固定操作可登记和配置路径；依赖PATH/指定文件，无安装版本管理 | 依赖FS-01，选择一个可信便携工具或venv；锁版本/校验/安装回滚、实际调用/在途保护；保留系统引用，不静默或全局安装 |
 | TD-01 / P0 自动发现与绑定 | **部分交付**：`TrustedToolCatalogService` 汇总 git-status 等可信定义；`GET /api/runtime/trusted-tools` | 冲突/未知版本/停用快照与更多依赖绑定；不整盘扫描 |
@@ -69,7 +69,7 @@ CP-03用户标注Comment 1已做限定调整：模型/发送成组靠右，缺�
 后续只安排剩余关口，不从头重复上述切片；技术细节与退出矩阵见[技术路线决定](decisions/agent-runtime-evolution.md#7-分阶段切片与退出门禁)：
 
 1. **工程交付验收线**：用户确认目标页面、设计、允许范围和真实供应商/Agent调用后，复用PREBOUND与现有应用/验证/决定链走一次EAP自身改页；授权未具备时保持待验收，不伪造模型结果。
-2. **上下文与资源能力线**：CE-01/KR-01(含 FTS 适配)/MCP-01(stdio)/MEM-01（含 UI/本地持久/任务·Run 关联）离线首片已落地；下一步本机实库对照跑通、外接官方只读 MCP、或 MEM-01 对抗失效用例。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
+2. **上下文与资源能力线**：CE-01/KR-01(含 FTS 适配)/MCP-01(stdio)/MEM-01（含对抗失效）离线首片已落地；下一步本机 KR-01 实库同题跑通、或外接官方只读 MCP。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
 3. **工具与本地环境线**：TD-01自动汇总可信定义/已知依赖绑定，与TC-01调用/呈现合同共同从现有Git首片验证；TC-02后续人工验证前端实例，反向Agent调用另批。发现不等于授权，Java执行不需前端复制实现。FS-01先确认数据/临时目录和旧数据迁移，再做TM-01一个受管工具，不把安装作为系统工具调用的前置。sidecar/包验证独立推进；签名待凭据/发行决定。
 4. **可信插件与场景线**：PL-01先迁现有看板贡献，不改核心Task/Run；再做PL-02设计器与SC-03场景依赖，保留版本/候选/产物和五入口合同。外部安装器/市场/第三方隔离延期；不先建空SDK。
 5. **总体质量与接受**：持续全页面真实系统缩放/焦点/错误矩阵、SQL/CLI剩余业务回归、其他mock合同复核和构建包体积评估；最终由用户逐项接受。资源和桌面不必成为单页面交付的前置。

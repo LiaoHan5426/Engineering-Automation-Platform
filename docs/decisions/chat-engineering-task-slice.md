@@ -94,3 +94,7 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 ## 任务工作记忆 Task/Run 关联（2026-11-07，离线通过）
 
 发送路径在 exclusive 下 `linkTaskAndExecution`：`taskRef` 写入 `dependencyKeys`（`task:project:id:rev`），本回合 `executionId` 写入 `evidenceRefs`（`execution:<uuid>`）；已有不同 `task:` 键时先 `TASK_BINDING_CHANGED` 失效再重绑。不复制看板任务状态机。聊天区展示依赖/证据；发送后刷新会话工作记忆。`TaskWorkingMemoryTest` 关联项与 `workingMemorySession` 刷新项通过。
+
+## 任务工作记忆对抗失效（2026-11-07，离线通过）
+
+`syncMaterialDependencies` 同步知识/Skill 依赖键；陈旧键 `DEPENDENCY_CHANGED`。`WorkingMemoryAdversarialTest`：PUT 不取消 sticky 清空、重连不复活模型窗/失效目标、Skill/任务切换丢弃派生内容。sticky 清空保护保留，不宣称可替代清空。
