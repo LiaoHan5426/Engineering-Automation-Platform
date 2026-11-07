@@ -93,6 +93,9 @@
 - **TD-01 newestProbedAt（2026-11-07）**：`probeCache.newestProbedAt` 取缓存中最新 ISO 探测时间；空缓存为空串。mock/真机已验。
 - **TC-01 失败呈现与耗时（2026-11-07）**：失败提示附带稳定 detail 与客户端 `elapsedMs`；有 typed failure 时不再叠成功摘要行。mock/真机已验。
 - **CE-01 COMPRESSION_NOT_ENABLED（2026-11-07）**：`ContextBudget.enforce` 恒记备注；mock 同步。诚实声明未启用压缩，非压缩实现。`:5174` 已验。
+- **CE-01 预算备注 Badge（2026-11-07）**：Chat 用量区将 notes 拆为 Badge；稳定码 `COMPRESSION_NOT_ENABLED`/`CHAT_MEMORY_NOT_METERED`/`DERIVED_CLEARED_BEFORE_SEND` 为 warning，`CONTEXT_BUDGET_*` 为 danger，自由文案中性。`:5174` 已验。
+- **TC-01 长 stdout 折叠（2026-11-07）**：成功结果 ≥8 行或 ≥480 字符时用 `@eap/ui` Collapse；摘要单行预览；短输出仍内联。mock 加长 stdout；`:5174`/`:5173` 已验。
+- **TD-01 绑定状态计数（2026-11-07）**：能力页汇总 ready/disabled/conflict/missing_binary/unknown_version/other；前端聚合，不改探测合同。`:5174`/`:5173` 已验。
 - **FS-01 迁移候选计数（2026-11-07）**：`migrationReadiness.candidateCounts`（present/absent/total）；能力页与 inventory 并列展示。mock/真机已验；不执行物理迁移。
 - **KR-01 生产形排序样本（2026-11-07）**：`RetrievalBaseline.productionSampleCases`（较长操作员措辞，`expectedMaxRank≤2`）+ 离线 `KEYWORD_PROBE_PRODUCTION_SAMPLE`；`RetrievalBaselineDbContrastTest` 增加 gated Postgres FTS 排序对照；口令回退 `application.yml` / `EAP_DB_PASSWORD` / `SPRING_DATASOURCE_PASSWORD`。不启 KR-02。
 - **SC-01 保存未知态核对（2026-11-07）**：`scenarioCatalog.save` 在非 409 失败后 GET 核对；远端 revision 相对保存前前进则标 `unknown` 并采用远端 revision；404 保持 `save`。
@@ -239,10 +242,10 @@ mock 可信目录返回启用 `git-status`；`invoke` 默认成功 stdout，`moc
 | 顺序 / ID | 最小范围与依赖 | 退出证据 |
 |---|---|---|
 | 先保留缺陷门禁 | 场景保存UNKNOWN后的删除核对仍阻断；已有自身改页验收线独立推进 | 结果未知不误报删除/完成；原有交付证据保留 |
-| CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + **派生清空 `DERIVED_CLEARED_BEFORE_SEND` mock（浏览器已验）**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
+| CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + 派生清空 + **备注 Badge**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
 | FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + inventory + candidateCounts + **byKind**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
-| TD-01 / P0 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测写回 + 持久化 + 清除探测缓存 + probeCache + **newestProbedAt**（mock/真机已验） | 更多依赖绑定与用户接受；不执行未知脚本、不整盘扫描或自动授权 |
-| TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消/unknown；调用摘要（exit/观测时间/elapsedMs）+ 失败 detail | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
+| TD-01 / P0 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测写回 + 持久化 + 清除探测缓存 + probeCache + newestProbedAt + **绑定状态计数**（mock/真机已验） | 更多依赖绑定与用户接受；不执行未知脚本、不整盘扫描或自动授权 |
+| TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消/unknown；调用摘要 + 失败 detail/`elapsedMs` + **长 stdout Collapse** | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
 | TC-02 / P1 | TC-01职责合同后验证前端交互实例，协调实际Host而非等待完整SDK | 人工读取草稿/选中状态、多实例/revision/关闭断线、保存版本区别；模型反向调用另行评审 |
 | MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（含 filesystem 五工具）+ **callVerified/listOnly 视图** + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；mock/真机已验 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/持久化回滚 + 依赖缺失/激活失败呈现（mock 浏览器已验）；不改 Task/Run | 真实服务探测与用户接受；在途停用完整矩阵；无第二状态源；外部安装器延期 |
