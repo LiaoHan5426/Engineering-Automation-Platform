@@ -92,5 +92,8 @@ class RetrievalBaselineDbContrastTest {
         assertTrue(dbReport.meetsDeclaredThresholds(), () -> "DB contrast failed: " + dbReport.results());
         assertTrue(dbReport.results().stream().allMatch(RetrievalBaseline.CaseResult::passed),
                 () -> "case failures: " + dbReport.results());
+        assertTrue(dbReport.totalSearchDurationMs() >= 0);
+        assertEquals(dbReport.results().stream().mapToLong(RetrievalBaseline.CaseResult::durationMs).sum(),
+                dbReport.totalSearchDurationMs());
     }
 }

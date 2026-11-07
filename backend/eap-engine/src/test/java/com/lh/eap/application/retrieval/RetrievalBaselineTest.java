@@ -25,6 +25,9 @@ class RetrievalBaselineTest {
         assertEquals(0, report.emptyFailures());
         assertTrue(report.meetsDeclaredThresholds());
         assertTrue(report.results().stream().allMatch(RetrievalBaseline.CaseResult::passed));
+        assertTrue(report.totalSearchDurationMs() >= 0);
+        assertEquals(report.results().stream().mapToLong(RetrievalBaseline.CaseResult::durationMs).sum(),
+                report.totalSearchDurationMs());
     }
 
     @Test

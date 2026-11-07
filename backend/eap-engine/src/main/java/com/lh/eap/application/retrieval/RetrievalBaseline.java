@@ -54,7 +54,12 @@ public final class RetrievalBaseline {
             int expectedCount,
             Integer bestRank,
             int returned,
-            String failure) {}
+            String failure,
+            long durationMs) {
+        public CaseResult {
+            if (durationMs < 0) durationMs = 0;
+        }
+    }
 
     public record Report(
             String metering,
@@ -62,7 +67,12 @@ public final class RetrievalBaseline {
             double directRecallAtK,
             double chineseRecallAtK,
             int authzFailures,
-            int emptyFailures) {
+            int emptyFailures,
+            long totalSearchDurationMs) {
+        public Report {
+            if (totalSearchDurationMs < 0) totalSearchDurationMs = 0;
+        }
+
         public boolean meetsDeclaredThresholds() {
             return directRecallAtK >= DIRECT_RECALL_AT_K_THRESHOLD
                     && chineseRecallAtK >= CHINESE_RECALL_AT_K_THRESHOLD
@@ -83,8 +93,12 @@ public final class RetrievalBaseline {
         var results = new ArrayList<CaseResult>();
         int directHit = 0, directTotal = 0, chineseHit = 0, chineseTotal = 0;
         int authzFailures = 0, emptyFailures = 0;
+        long totalMs = 0;
         for (var testCase : cases) {
+            long started = System.nanoTime();
             List<Hit> hits = List.copyOf(search.apply(testCase));
+            long durationMs = Math.max(0, (System.nanoTime() - started) / 1_000_000L);
+            totalMs += durationMs;
             if (hits.size() > testCase.topK()) hits = hits.subList(0, testCase.topK());
 
             boolean unauthorized = hits.stream().anyMatch(hit ->
@@ -92,7 +106,7 @@ public final class RetrievalBaseline {
                             && !testCase.allowedBases().contains(UUID.fromString(hit.knowledgeBaseId())));
             if (unauthorized) {
                 authzFailures++;
-                results.add(failed(testCase, hits, "UNAUTHORIZED_HIT"));
+                results.add(failed(testCase, hits, "UNAUTHORIZED_HIT", durationMs));
                 continue;
             }
 
@@ -100,7 +114,7 @@ public final class RetrievalBaseline {
                 boolean ok = hits.isEmpty();
                 if (!ok) emptyFailures++;
                 results.add(new CaseResult(testCase.id(), testCase.kind(), ok, 0, 0, null, hits.size(),
-                        ok ? "" : "EXPECTED_EMPTY"));
+                        ok ? "" : "EXPECTED_EMPTY", durationMs));
                 continue;
             }
 
@@ -109,7 +123,7 @@ public final class RetrievalBaseline {
                 boolean leaked = hits.stream().anyMatch(hit -> testCase.expectedSources().contains(hit.source()));
                 if (leaked) authzFailures++;
                 results.add(new CaseResult(testCase.id(), testCase.kind(), !leaked, leaked ? 1 : 0,
-                        testCase.expectedSources().size(), null, hits.size(), leaked ? "LEAK" : ""));
+                        testCase.expectedSources().size(), null, hits.size(), leaked ? "LEAK" : "", durationMs));
                 continue;
             }
 
@@ -130,16 +144,16 @@ public final class RetrievalBaseline {
                 if (passed) chineseHit++;
             }
             results.add(new CaseResult(testCase.id(), testCase.kind(), passed, hitCount,
-                    testCase.expectedSources().size(), best, hits.size(), passed ? "" : "MISS"));
+                    testCase.expectedSources().size(), best, hits.size(), passed ? "" : "MISS", durationMs));
         }
         double direct = directTotal == 0 ? 1.0 : (double) directHit / directTotal;
         double chinese = chineseTotal == 0 ? 1.0 : (double) chineseHit / chineseTotal;
-        return new Report(metering, List.copyOf(results), direct, chinese, authzFailures, emptyFailures);
+        return new Report(metering, List.copyOf(results), direct, chinese, authzFailures, emptyFailures, totalMs);
     }
 
-    private static CaseResult failed(Case testCase, List<Hit> hits, String failure) {
+    private static CaseResult failed(Case testCase, List<Hit> hits, String failure, long durationMs) {
         return new CaseResult(testCase.id(), testCase.kind(), false, 0, testCase.expectedSources().size(),
-                null, hits.size(), failure);
+                null, hits.size(), failure, durationMs);
     }
 
     /** Predetermined fixture set for the offline keyword probe corpus. */

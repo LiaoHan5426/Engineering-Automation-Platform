@@ -17,7 +17,7 @@
 | 模型与工具循环 | `backend/pom.xml` 使用 Boot 4.1.1 / Spring AI 2.0.2；`EngineeringAiConfiguration` 使用官方 Memory/ToolCalling Advisor | 配置成功不证明供应商效果；不据此添加第二套循环 |
 | 会话记忆 | 20条模型窗口；**MEM-01** 工作记忆分层+PUT/UI+本地持久+Task/Run+知识/Skill 依赖对抗失效 | 模型窗口仍非跨重启；UI 历史在浏览器；长期记忆未启动；sticky 清空保护未取消 |
 | 敏感上下文 | `AiConversationRegistry.clearContextMemory`：知识/Skill一旦使用，后续每轮先清空模型记忆，包括移除资源和被拒请求 | 连续对话被主动牺牲；不能简单取消清空，派生回答也可能保留撤权知识 |
-| 检索 | PostgreSQL FTS/关键词 + 专家授权引用；**KR-01**：离线 `KEYWORD_PROBE` + `PostgresKnowledgeRetrieval`/`POSTGRES_FTS` 适配 | 无向量；本机实库同题跑通/延迟成本仍缺；引用不证明模型正确使用；KR-02 未触发 |
+| 检索 | PostgreSQL FTS/关键词 + 专家授权引用；**KR-01**：离线 `KEYWORD_PROBE` + `POSTGRES_FTS` 适配 + 每题延迟观测 | 无向量；本机实库同题跑通/排序质量仍缺；引用不证明模型正确使用；KR-02 未触发 |
 | 上下文 | `TaskContext`/`AiChatApplication` 拼装；**CE-01 首片**：`ContextBudget` 字符预算/输出预留/超限观测（CHAR_ESTIMATE） | 非 provider token；无压缩选择策略；ChatMemory 未精确计量（标 UNKNOWN）；派生失效仍靠清空保护 |
 | 工具调用 | Java Handler可直接执行本地逻辑；CLI经 `CliOperationHandler` / `CliExecutionService` / `DefaultProcessExecutor`，使用argv与cwd；Chat当前受控工具为只读gitStatus | 不是所有工具都走Shell，也不是目录中的工具都向模型开放；cwd限制不是OS沙箱 |
 | CLI管理 | `CliProgramService` / `/api/cli-programs` 与 `CliProgramManager.vue` 可登记程序、路径及固定参数操作；`LocalBinaries` 查PATH或指定文件 | 登记不安装；缺少受管版本、来源、更新、回滚、卸载与依赖管理 |
@@ -50,6 +50,8 @@
 **KR-01 首片（2026-11-07，离线）**：`RetrievalBaseline.fixtureCases` 预定 7 题（direct/identifier/chinese/empty/authz/update）；阈值 `DIRECT_RECALL_AT_K_THRESHOLD=1.0`、`CHINESE_RECALL_AT_K_THRESHOLD=1.0`、authz/empty 失败数=0。`KeywordRetrievalProbe` 复用 `KnowledgeRepository.terms`，计量标 `KEYWORD_PROBE`，**不是** PostgreSQL `ts_rank` 等价证明。`RetrievalBaselineTest` 5 项通过。实库对照与延迟/成本仍待；未启动 KR-02。
 
 **KR-01 实库适配（2026-11-07，离线）**：`PostgresKnowledgeRetrieval` 将 `searchAuthorized` 行映射为 baseline Hit（含 `knowledgeBaseId`）；计量标 `POSTGRES_FTS`。`PostgresKnowledgeRetrievalTest` 通过。`RetrievalBaselineDbContrastTest` 在 `EAP_RUN_BOARD_PERSISTENCE=true` 下播种同题 fixture 对照阈值；本机缺口令时跳过，不宣称已跑通实库。未启动 KR-02。
+
+**KR-01 延迟观测（2026-11-07，离线）**：`RetrievalBaseline.CaseResult.durationMs` 与 `Report.totalSearchDurationMs` 记录每题检索耗时；不设通过阈值（成本账证据），`RetrievalBaselineTest` 校验汇总一致。未启动 KR-02。
 
 **MEM-01 首片（2026-11-07，离线）**：`TaskWorkingMemory` 保存目标/约束/事实引用/证据引用/依赖键（无正文）；与 `display_history`/`model_window`/`binding` 分层。`clearContextMemory` 与换模 `bind(..., clearMemory=true)` 失效工作记忆；sticky 清空保护不取消。会话响应附带快照。`TaskWorkingMemoryTest` 通过。
 
@@ -183,7 +185,7 @@ TC-02首片先人工读取某个编辑器实例的当前草稿/选中状态，�
 | 顺序 / ID | 最小范围与依赖 | 退出证据 |
 |---|---|---|
 | 先保留缺陷门禁 | 场景保存UNKNOWN后的删除核对仍阻断；已有自身改页验收线独立推进 | 结果未知不误报删除/完成；原有交付证据保留 |
-| CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS 适配与门禁对照测试 | CE-01 剩余 token/压缩/Memory 计量；本机实库同题跑通与延迟成本；KR-02 仅证据触发 |
+| CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS 适配；每题延迟观测 | CE-01 剩余 token/压缩/Memory 计量；本机实库同题跑通与排序质量；KR-02 仅证据触发 |
 | FS-01 | 数据根、目录归属与前端/本机执行分界；盘点旧数据 | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | 可信定义发现与已知CLI绑定，先复用现有Git能力；受管包/MCP/插件来源随对应切片接入 | 无需重复录入、路径来源/冲突/未知版本、停用保留、失效与执行快照；不执行未知脚本、不整盘扫描或自动授权 |
 | TC-01 / P0 | 明确输入输出/入口/范围/策略及结果契约；从目录选择已有只读Git能力并实际调用/呈现 | 无权限拒绝、参数/范围重校验、真实结果、适配缺失通用呈现、错误/超时/取消语义；不新增任意执行口 |
