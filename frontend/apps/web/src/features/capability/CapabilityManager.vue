@@ -19,6 +19,12 @@ import {
   trustedToolInvokeFailureMessage,
   type TrustedToolInvokeFailure,
 } from './trustedToolInvokeView'
+import {
+  bindingDetail,
+  bindingStatusLabel,
+  bindingStatusTone,
+  versionStatusLabel,
+} from './trustedToolBindingView'
 import CliProgramManager from './CliProgramManager.vue'
 
 const emit = defineEmits<{ (event: 'saved'): void }>()
@@ -311,7 +317,23 @@ async function submitServer() {
       <ul v-if="trustedTools.length" class="trusted-tool-list">
         <li v-for="tool in trustedTools" :key="tool.id" :data-testid="`trusted-tool-${tool.id}`">
           <strong class="mono">{{ tool.id }}</strong> · {{ tool.title }}
-          <Badge :tone="tool.enabled ? 'success' : 'warning'" :label="tool.enabled ? '已启用' : '已停用'" />
+          <span :data-testid="`trusted-tool-binding-${tool.id}`">
+            <Badge
+              :tone="bindingStatusTone(tool.bindingStatus)"
+              :label="bindingStatusLabel(tool.bindingStatus)"
+            />
+          </span>
+          <Badge
+            :tone="tool.versionStatus === 'known' ? 'success' : 'warning'"
+            :label="versionStatusLabel(tool.versionStatus)"
+          />
+          <p
+            v-if="bindingDetail(tool)"
+            class="hint"
+            :data-testid="`trusted-tool-binding-detail-${tool.id}`"
+          >
+            {{ bindingDetail(tool) }}
+          </p>
         </li>
       </ul>
       <p v-else class="hint">暂无可信只读工具定义。</p>

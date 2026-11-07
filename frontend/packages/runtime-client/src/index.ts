@@ -11,6 +11,14 @@ export type DataLayoutEntry = {
 }
 export type DataLayoutResponse = { entries: DataLayoutEntry[]; physicalMigration: boolean }
 
+export type TrustedToolBindingStatus =
+  | 'ready'
+  | 'disabled'
+  | 'missing_binary'
+  | 'conflict'
+  | 'unknown_version'
+export type TrustedToolVersionStatus = 'unknown' | 'known' | 'not_applicable'
+
 export type TrustedToolItem = {
   id: string
   title: string
@@ -20,6 +28,12 @@ export type TrustedToolItem = {
   enabled: boolean
   invocation: string
   summary: string
+  bindingStatus?: TrustedToolBindingStatus | string
+  bindingSource?: string
+  binary?: string
+  resolvedPath?: string
+  versionStatus?: TrustedToolVersionStatus | string
+  bindingNote?: string
 }
 export type TrustedToolResponse = { items: TrustedToolItem[]; source: string }
 

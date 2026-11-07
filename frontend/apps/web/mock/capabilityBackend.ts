@@ -39,16 +39,56 @@ export function createMockCapabilityBackend() {
     },
   ]
 
-  const trustedGitTool = {
-    id: 'git-status',
-    title: 'Git status（只读）',
-    kind: 'cli',
-    scope: 'platform',
-    readOnly: true,
-    enabled: true,
-    invocation: 'POST /api/runtime/trusted-tools/git-status/invoke',
-    summary: '只读检查工作区状态；不修改文件。',
-  }
+  const trustedTools = [
+    {
+      id: 'git-status',
+      title: 'Git status（只读）',
+      kind: 'cli',
+      scope: 'platform',
+      readOnly: true,
+      enabled: true,
+      invocation: 'POST /api/runtime/trusted-tools/git-status/invoke',
+      summary: '只读检查工作区状态；不修改文件。',
+      bindingStatus: 'ready',
+      bindingSource: 'shipped',
+      binary: 'git',
+      resolvedPath: '/mock/bin/git',
+      versionStatus: 'unknown',
+      bindingNote: '二进制已解析；版本未知（目录不自动探测）。',
+    },
+    {
+      id: 'git-diff',
+      title: 'Git diff（只读）',
+      kind: 'cli',
+      scope: 'platform',
+      readOnly: true,
+      enabled: false,
+      invocation: '',
+      summary: '只读检查工作区差异；不修改文件。',
+      bindingStatus: 'disabled',
+      bindingSource: 'shipped',
+      binary: 'git',
+      resolvedPath: '/mock/bin/git',
+      versionStatus: 'unknown',
+      bindingNote: '已停用快照：定义与绑定保留，调用入口拒绝执行。',
+    },
+    {
+      id: 'broken-cli',
+      title: '冲突覆盖样例',
+      kind: 'cli',
+      scope: 'platform',
+      readOnly: true,
+      enabled: true,
+      invocation: '',
+      summary: 'mock：操作员覆盖路径不可用，演示绑定冲突。',
+      bindingStatus: 'conflict',
+      bindingSource: 'operator',
+      binary: '/missing/mock-git',
+      resolvedPath: '',
+      versionStatus: 'unknown',
+      bindingNote: '操作员覆盖路径不可用，未静默回退到随附二进制。',
+    },
+  ]
 
   function parseOutcome(path: string): TrustedGitMockOutcome {
     const query = path.includes('?') ? path.slice(path.indexOf('?') + 1) : ''
@@ -110,7 +150,7 @@ export function createMockCapabilityBackend() {
       if (method === 'GET' && route === '/runtime/trusted-tools') {
         return {
           status: 200,
-          data: { items: [trustedGitTool], source: 'mock-capability-handlers' },
+          data: { items: trustedTools, source: 'mock-capability-handlers' },
         }
       }
       if (method === 'POST' && route === '/runtime/trusted-tools/git-status/invoke') {

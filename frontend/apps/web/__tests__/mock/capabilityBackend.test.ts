@@ -21,6 +21,20 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     expect(items.some((item) => item.id === 'git-status' && item.enabled)).toBe(true)
   })
 
+  it('exposes binding status snapshots for ready disabled and conflict tools', async () => {
+    const backend = createMockCapabilityBackend()
+    const reply = await backend.handle('GET', '/runtime/trusted-tools')
+    const items = (
+      reply?.data as {
+        items: Array<{ id: string; bindingStatus: string; versionStatus: string }>
+      }
+    ).items
+    expect(items.find((item) => item.id === 'git-status')?.bindingStatus).toBe('ready')
+    expect(items.find((item) => item.id === 'git-status')?.versionStatus).toBe('unknown')
+    expect(items.find((item) => item.id === 'git-diff')?.bindingStatus).toBe('disabled')
+    expect(items.find((item) => item.id === 'broken-cli')?.bindingStatus).toBe('conflict')
+  })
+
   it('returns a successful mock git-status payload', async () => {
     const backend = createMockCapabilityBackend()
     const reply = await backend.handle('POST', '/runtime/trusted-tools/git-status/invoke')
