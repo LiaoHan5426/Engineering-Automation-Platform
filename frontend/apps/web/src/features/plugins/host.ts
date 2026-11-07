@@ -11,6 +11,12 @@ import {
   type KeyValueStore,
   type PluginId,
 } from './model'
+import {
+  contributionVisible,
+  PLUGIN_SERVICE_DEPENDENCIES,
+  pluginRuntimeObservation,
+  type PluginRuntimeObservation,
+} from './pluginRuntimeView'
 
 export interface NavItem {
   id: string
@@ -20,23 +26,63 @@ export interface NavItem {
   hint: string
 }
 
+export type PluginActivationFailure = {
+  pluginId: PluginId
+  message: string
+}
+
 export interface PluginHost {
   installation: Ref<Installation>
   entries: ComputedRef<NavItem[]>
   boardContributionVisible: ComputedRef<boolean>
+  services: Ref<Record<string, boolean>>
+  activationFailure: Ref<PluginActivationFailure | null>
+  runtimeOf(pluginId: PluginId): PluginRuntimeObservation
   setEnabled(pluginId: PluginId, enabled: boolean): void
+  setServiceAvailable(serviceId: string, available: boolean): void
+  /** Mock/test only: next board enable attempt fails activation and rolls back. */
+  armActivationFailure(message: string): void
+  refreshFromStore(): void
   readBuilder(instanceId: BuilderConfig['instanceId']): BuilderConfig
   saveBuilder(config: BuilderConfig): void
   describe(id: string): NavItem
 }
 
+function defaultServices(): Record<string, boolean> {
+  const services: Record<string, boolean> = {}
+  for (const deps of Object.values(PLUGIN_SERVICE_DEPENDENCIES)) {
+    for (const dep of deps) services[dep.id] = true
+  }
+  return services
+}
+
 export function createPluginHost(store: KeyValueStore = browserStore()): PluginHost {
   const installation = ref(readInstallation(store))
+  const services = ref(defaultServices())
+  const activationFailure = ref<PluginActivationFailure | null>(null)
+  const pendingActivationFailure = ref<string | null>(null)
   const t = i18n.global.t
+
+  function runtimeOf(pluginId: PluginId): PluginRuntimeObservation {
+    return pluginRuntimeObservation({
+      pluginId,
+      enabled: installation.value.enabled[pluginId],
+      services: services.value,
+      activationError:
+        activationFailure.value?.pluginId === pluginId ? activationFailure.value.message : null,
+    })
+  }
 
   const entries = computed(() => {
     const items: NavItem[] = []
-    if (installation.value.enabled.chat) {
+    if (
+      contributionVisible(
+        'chat',
+        installation.value.enabled.chat,
+        services.value,
+        null,
+      )
+    ) {
       items.push({
         id: 'chat',
         name: t('plugin.chat'),
@@ -45,7 +91,14 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
         hint: t('plugin.chatHint'),
       })
     }
-    if (installation.value.enabled.board) {
+    if (
+      contributionVisible(
+        'board',
+        installation.value.enabled.board,
+        services.value,
+        activationFailure.value?.pluginId === 'board' ? activationFailure.value.message : null,
+      )
+    ) {
       items.push({
         id: 'board',
         name: t('desktop.board'),
@@ -54,7 +107,14 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
         hint: t('plugin.boardHint'),
       })
     }
-    if (installation.value.enabled.builder) {
+    if (
+      contributionVisible(
+        'builder',
+        installation.value.enabled.builder,
+        services.value,
+        null,
+      )
+    ) {
       items.push(
         {
           id: 'builder-alpha',
@@ -99,19 +159,68 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
     return { id, name: t('plugin.chat'), icon: '✉', group: '工作', hint: t('plugin.hiddenBody') }
   }
 
-  const boardContributionVisible = computed(() => installation.value.enabled.board)
+  const boardContributionVisible = computed(() =>
+    contributionVisible(
+      'board',
+      installation.value.enabled.board,
+      services.value,
+      activationFailure.value?.pluginId === 'board' ? activationFailure.value.message : null,
+    ),
+  )
 
   return {
     installation,
     entries,
     boardContributionVisible,
+    services,
+    activationFailure,
+    runtimeOf,
+    setServiceAvailable(serviceId, available) {
+      services.value = { ...services.value, [serviceId]: available }
+      if (available && activationFailure.value) activationFailure.value = null
+    },
+    armActivationFailure(message) {
+      pendingActivationFailure.value = message
+    },
+    refreshFromStore() {
+      installation.value = readInstallation(store)
+    },
     setEnabled(pluginId, enabled) {
       const previous = installation.value
       const next: Installation = { enabled: { ...previous.enabled, [pluginId]: enabled } }
       installation.value = next
       try {
-        writeInstallation(store, next)
-      } catch {
+        if (enabled && pluginId === 'board') {
+          const missing = pluginRuntimeObservation({
+            pluginId: 'board',
+            enabled: true,
+            services: services.value,
+            activationError: null,
+          })
+          if (missing.kind === 'dependency_missing') {
+            installation.value = previous
+            activationFailure.value = null
+            throw new Error('PLUGIN_DEPENDENCY_MISSING')
+          }
+          if (pendingActivationFailure.value) {
+            const message = pendingActivationFailure.value
+            pendingActivationFailure.value = null
+            installation.value = previous
+            activationFailure.value = { pluginId: 'board', message }
+            throw new Error('PLUGIN_ACTIVATION_FAILED')
+          }
+          activationFailure.value = null
+        }
+        if (!enabled && pluginId === 'board') activationFailure.value = null
+        writeInstallation(store, installation.value)
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          (error.message === 'PLUGIN_DEPENDENCY_MISSING' ||
+            error.message === 'PLUGIN_ACTIVATION_FAILED')
+        ) {
+          throw error
+        }
         installation.value = previous
         throw new Error('PLUGIN_INSTALLATION_PERSIST_FAILED')
       }
