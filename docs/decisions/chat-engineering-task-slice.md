@@ -82,3 +82,7 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 ## 任务工作记忆 MEM-01 首片（2026-11-07，离线通过）
 
 `TaskWorkingMemory` 与 ChatMemory/浏览器展示历史分层；敏感上下文清空与模型切换会使工作记忆失效，不取消 sticky 清空保护。会话 GET 返回 `workingMemory` 快照与更新后的 `MEMORY_NOTE`。`TaskWorkingMemoryTest` 通过。不宣称跨重启恢复或自动长期记忆。
+
+## 任务工作记忆 UI/PUT（2026-11-07，离线通过）
+
+`PUT /api/ai/conversations/{id}/working-memory` 写入目标/约束/事实引用（无正文）；聊天区展示分层说明并可保存目标。`WorkingMemoryApiTest` 与 `workingMemorySession` 通过。仍非跨重启持久。

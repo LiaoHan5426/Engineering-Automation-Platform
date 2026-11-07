@@ -67,6 +67,7 @@ const props = withDefaults(defineProps<{ active?: boolean; mock?: boolean }>(), 
   active: true,
   mock: false,
 })
+const workingGoalDraft = ref('')
 const feedPort = ref<{ getEl: () => HTMLElement | null } | null>(null)
 const shownTurns = ref(40)
 const loadingOlder = ref(false)
@@ -126,6 +127,16 @@ const session = createChatSession(
   api,
   typeof localStorage === 'undefined' ? undefined : chatStorage(props.mock, localStorage),
 )
+async function saveWorkingGoal() {
+  const goal = workingGoalDraft.value.trim()
+  if (!goal) return
+  try {
+    await session.saveWorkingMemory({ goal })
+    workingGoalDraft.value = ''
+  } catch {
+    session.failure.value = 'failed'
+  }
+}
 const visibleTurns = computed(() => {
   const all = session.turns.value
   const start = Math.max(0, all.length - shownTurns.value)
@@ -742,6 +753,42 @@ onMounted(async () => {
         >
           {{ displayWorkspacePath }}
         </p>
+        <section
+          v-if="session.conversationId.value"
+          class="working-memory"
+          data-testid="working-memory"
+        >
+          <h3>{{ t('workingMemory.title') }}</h3>
+          <p class="hint">{{ t('workingMemory.note') }}</p>
+          <p v-if="session.workingMemory.value?.invalidation" class="hint">
+            {{ t('workingMemory.invalidation') }}：{{ session.workingMemory.value.invalidation }}
+          </p>
+          <p v-else-if="session.workingMemory.value?.goal" class="hint">
+            {{ t('workingMemory.goal') }}：{{ session.workingMemory.value.goal }}
+          </p>
+          <p v-else class="hint">{{ t('workingMemory.empty') }}</p>
+          <p
+            v-if="session.workingMemory.value?.layers?.length"
+            class="hint"
+            data-testid="working-memory-layers"
+          >
+            {{ t('workingMemory.layers') }}：{{ session.workingMemory.value.layers.join(' · ') }}
+          </p>
+          <form class="working-memory-form" @submit.prevent="saveWorkingGoal">
+            <Input
+              v-model="workingGoalDraft"
+              data-testid="working-memory-goal"
+              :placeholder="t('workingMemory.goalPlaceholder')"
+            />
+            <Button
+              size="sm"
+              type="submit"
+              data-testid="working-memory-save"
+              :disabled="!workingGoalDraft.trim() || session.sending.value"
+              >{{ t('workingMemory.saveGoal') }}</Button
+            >
+          </form>
+        </section>
       </div>
       <div class="session-tools">
         <Button

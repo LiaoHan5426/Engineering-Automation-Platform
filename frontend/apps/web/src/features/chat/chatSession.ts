@@ -8,6 +8,7 @@ import type {
   ModelConnection,
   ModelConnectionList,
   TaskContext,
+  TaskWorkingMemorySnapshot,
   CodeProposal,
 } from '@eap/runtime-client'
 import { contextBudgetFromError } from './contextBudgetView'
@@ -51,6 +52,16 @@ export type ChatApi = {
     },
   ) => Promise<AiMessageResult>
   cancelAiConversation?: (id: string) => Promise<{ cancelled: boolean; executionId: string }>
+  putWorkingMemory?: (
+    id: string,
+    body: {
+      goal?: string
+      constraints?: string[]
+      facts?: Array<{ kind: string; id: string; revisionOrDigest: string }>
+      evidenceRefs?: string[]
+      dependencyKeys?: string[]
+    },
+  ) => Promise<TaskWorkingMemorySnapshot>
   modelConnections?: () => Promise<ModelConnectionList>
   assignConversationConnection?: (
     id: string,
@@ -156,6 +167,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const conversationId = ref<string | null>(null)
   const workspaceLabel = ref('')
   const memoryNote = ref('')
+  const workingMemory = ref<TaskWorkingMemorySnapshot | null>(null)
   const transcripts = ref<Record<string, ChatTurn[]>>({})
   const draft = ref('')
   const expired = ref(false)
@@ -346,6 +358,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       expired.value = false
       workspaceLabel.value = created.workspaceLabel
       memoryNote.value = created.memory
+      workingMemory.value = created.workingMemory ?? null
       boundConnectionId.value = created.connectionId ?? null
       boundModel.value = created.model ?? ''
       context.value = emptyContext()
@@ -361,6 +374,20 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     }
   }
 
+  async function saveWorkingMemory(body: {
+    goal?: string
+    constraints?: string[]
+    facts?: Array<{ kind: string; id: string; revisionOrDigest: string }>
+    evidenceRefs?: string[]
+    dependencyKeys?: string[]
+  }) {
+    const id = conversationId.value
+    if (!id || !api.putWorkingMemory) return null
+    const snapshot = await api.putWorkingMemory(id, body)
+    workingMemory.value = snapshot
+    return snapshot
+  }
+
   async function selectConversation(id: string) {
     if (!transcripts.value[id]) return
     selectionVersion++
@@ -370,6 +397,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     draft.value = item?.draft ?? ''
     workspaceLabel.value = item?.workspaceLabel ?? ''
     memoryNote.value = item?.memory ?? ''
+    workingMemory.value = null
     boundConnectionId.value = item?.connectionId ?? null
     boundModel.value = item?.model ?? ''
     pendingConnectionId.value = null
@@ -395,12 +423,16 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       if (!active()) return false
       boundConnectionId.value = live.connectionId ?? null
       boundModel.value = live.model ?? ''
+      memoryNote.value = live.memory || memoryNote.value
+      workingMemory.value = live.workingMemory ?? null
+      if (live.workspaceLabel) workspaceLabel.value = live.workspaceLabel
       expired.value = false
       sessionUnavailable.value = false
       if (item) {
         item.connectionId = live.connectionId ?? null
         item.model = live.model ?? ''
         item.expired = false
+        item.memory = live.memory || item.memory
       }
       return true
     } catch (error) {
@@ -817,6 +849,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     conversationId,
     workspaceLabel,
     memoryNote,
+    workingMemory,
+    saveWorkingMemory,
     knowledgeMemoryCleared,
     contextMemoryCleared,
     transcripts,

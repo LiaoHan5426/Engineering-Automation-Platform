@@ -1,5 +1,6 @@
 import { knowledgeContextMessages } from './knowledgeContextMessages'
 import { contextBudgetMessages } from './contextBudgetMessages'
+import { workingMemoryMessages } from './workingMemoryMessages'
 import { skillMessages } from './skillMessages'
 import { builderMessages } from './builderMessages'
 import { generationMessages } from './generationMessages'
@@ -22,6 +23,7 @@ export const i18n = createI18n({
     'zh-CN': {
       knowledgeContext: knowledgeContextMessages['zh-CN'],
       contextBudget: contextBudgetMessages['zh-CN'],
+      workingMemory: workingMemoryMessages['zh-CN'],
       skill: skillMessages['zh-CN'],
       builder: builderMessages['zh-CN'],
       generation: generationMessages['zh-CN'],
@@ -332,6 +334,7 @@ export const i18n = createI18n({
     'en-US': {
       knowledgeContext: knowledgeContextMessages['en-US'],
       contextBudget: contextBudgetMessages['en-US'],
+      workingMemory: workingMemoryMessages['en-US'],
       skill: skillMessages['en-US'],
       builder: builderMessages['en-US'],
       generation: generationMessages['en-US'],

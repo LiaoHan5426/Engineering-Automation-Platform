@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -33,6 +34,12 @@ public class AiChatController {
 
     @GetMapping("/conversations/{id}")
     public AiConversationResponse conversation(@PathVariable UUID id) { return chat.conversation(id); }
+
+    @PutMapping(value = "/conversations/{id}/working-memory", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public com.lh.eap.ai.TaskWorkingMemory.Snapshot putWorkingMemory(@PathVariable UUID id,
+            @RequestBody(required = false) String body) {
+        return chat.putWorkingMemory(id, body);
+    }
 
     @org.springframework.web.bind.annotation.DeleteMapping("/conversations/{id}")
     public void deleteConversation(@PathVariable UUID id) { chat.deleteConversation(id); }

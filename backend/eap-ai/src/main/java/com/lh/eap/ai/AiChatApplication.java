@@ -450,6 +450,41 @@ public class AiChatApplication {
                 conversations.workingMemory(id));
     }
 
+    public TaskWorkingMemory.Snapshot putWorkingMemory(UUID id, String json) {
+        var body = objectBody(json, Set.of("goal", "constraints", "facts", "evidenceRefs", "dependencyKeys"));
+        String goal = body.containsKey("goal") ? text(body, "goal") : "";
+        var constraints = stringList(body.get("constraints"), 16);
+        var evidence = stringList(body.get("evidenceRefs"), 32);
+        var dependencies = new java.util.LinkedHashSet<>(stringList(body.get("dependencyKeys"), 32));
+        var facts = new java.util.ArrayList<TaskWorkingMemory.FactRef>();
+        if (body.containsKey("facts")) {
+            if (!(body.get("facts") instanceof java.util.List<?> entries) || entries.size() > 32) throw invalid();
+            for (var entry : entries) {
+                if (!(entry instanceof Map<?, ?> row) || !row.keySet().equals(Set.of("kind", "id", "revisionOrDigest")))
+                    throw invalid();
+                if (!(row.get("kind") instanceof String kind) || !(row.get("id") instanceof String factId)
+                        || !(row.get("revisionOrDigest") instanceof String revision)) throw invalid();
+                try {
+                    facts.add(new TaskWorkingMemory.FactRef(kind, factId, revision));
+                } catch (IllegalArgumentException bad) {
+                    throw invalid();
+                }
+            }
+        }
+        return conversations.putWorkingMemory(id, goal, constraints, facts, evidence, dependencies);
+    }
+
+    private static java.util.List<String> stringList(Object raw, int limit) {
+        if (raw == null) return java.util.List.of();
+        if (!(raw instanceof java.util.List<?> entries) || entries.size() > limit) throw invalid();
+        var values = new java.util.ArrayList<String>();
+        for (var entry : entries) {
+            if (!(entry instanceof String text)) throw invalid();
+            values.add(text);
+        }
+        return values;
+    }
+
     private AiConversationRegistry.Binding binding(ModelConnectionSnapshot snapshot) {
         return new AiConversationRegistry.Binding(snapshot.id, snapshot.revision, snapshot.name, snapshot.model,
                 AiConnectionStatus.endpointIdentity(snapshot.baseUrl), snapshot.configurationRevision,

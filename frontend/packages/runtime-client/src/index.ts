@@ -1604,6 +1604,22 @@ export function createChatApi(
         .then((response) => response.data),
     aiConversation: (id: string) =>
       get<AiConversation>('/ai/conversations/' + encodeURIComponent(id)),
+    putWorkingMemory: (
+      id: string,
+      body: {
+        goal?: string
+        constraints?: string[]
+        facts?: Array<{ kind: string; id: string; revisionOrDigest: string }>
+        evidenceRefs?: string[]
+        dependencyKeys?: string[]
+      },
+    ) =>
+      client
+        .put<TaskWorkingMemorySnapshot>(
+          '/ai/conversations/' + encodeURIComponent(id) + '/working-memory',
+          body,
+        )
+        .then((response) => response.data),
     reconnectAiConversation: (id: string, expectedWorkspaceLabel: string) =>
       client
         .post<AiConversation & { contextReset: boolean }>(

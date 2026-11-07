@@ -211,9 +211,19 @@ export function createMockChatBackend() {
         const item: AiConversation = {
           conversationId: `mock-${instanceId}-${++sequence}`,
           workspaceLabel: 'ws-mock-local',
-          memory: '模拟数据，不调用模型、不读写仓库',
+          memory: '展示历史≠模型窗口≠任务工作记忆≠绑定（模拟）',
           connectionId: target.id,
           model: target.defaultModel,
+          workingMemory: {
+            goal: '',
+            constraints: [],
+            facts: [],
+            evidenceRefs: [],
+            dependencyKeys: [],
+            invalidation: '',
+            updatedAt: new Date().toISOString(),
+            layers: ['display_history', 'model_window', 'task_working', 'binding'],
+          },
         }
         conversations.set(item.conversationId, item)
         bindingRevisions.set(item.conversationId, target.revision)
@@ -250,6 +260,38 @@ export function createMockChatBackend() {
       if (!item) return result(404, { error: 'MOCK_CONVERSATION_NOT_FOUND' })
       if (method !== 'GET' && busy.has(id)) return result(409, { detail: 'CONVERSATION_BUSY' })
       if (method === 'GET' && !suffix) return result(200, item)
+      if (method === 'PUT' && suffix === '/working-memory') {
+        const allowed = new Set(['goal', 'constraints', 'facts', 'evidenceRefs', 'dependencyKeys'])
+        if (Object.keys(body).some((key) => !allowed.has(key)))
+          return result(400, { detail: 'INVALID_CHAT_REQUEST' })
+        const snapshot = {
+          goal: typeof body.goal === 'string' ? body.goal : '',
+          constraints: Array.isArray(body.constraints)
+            ? body.constraints.filter((value): value is string => typeof value === 'string')
+            : [],
+          facts: Array.isArray(body.facts)
+            ? body.facts.filter(
+                (value): value is { kind: string; id: string; revisionOrDigest: string } =>
+                  !!value &&
+                  typeof value === 'object' &&
+                  typeof (value as { kind?: unknown }).kind === 'string' &&
+                  typeof (value as { id?: unknown }).id === 'string' &&
+                  typeof (value as { revisionOrDigest?: unknown }).revisionOrDigest === 'string',
+              )
+            : [],
+          evidenceRefs: Array.isArray(body.evidenceRefs)
+            ? body.evidenceRefs.filter((value): value is string => typeof value === 'string')
+            : [],
+          dependencyKeys: Array.isArray(body.dependencyKeys)
+            ? body.dependencyKeys.filter((value): value is string => typeof value === 'string')
+            : [],
+          invalidation: '',
+          updatedAt: new Date().toISOString(),
+          layers: ['display_history', 'model_window', 'task_working', 'binding'],
+        }
+        item.workingMemory = snapshot
+        return result(200, snapshot)
+      }
       if (method === 'DELETE' && !suffix) {
         conversations.delete(id)
         bindingRevisions.delete(id)
@@ -271,6 +313,18 @@ export function createMockChatBackend() {
         item.model = String(body.model)
         item.connectionId = target.id
         bindingRevisions.set(id, target.revision)
+        if (memoryCleared && item.workingMemory) {
+          item.workingMemory = {
+            ...item.workingMemory,
+            goal: '',
+            constraints: [],
+            facts: [],
+            evidenceRefs: [],
+            dependencyKeys: [],
+            invalidation: 'MODEL_OR_BINDING_SWITCH',
+            updatedAt: new Date().toISOString(),
+          }
+        }
         return result(200, { ...item, connectionName: target.name, memoryCleared })
       }
       if (method === 'POST' && suffix === '/cancel') {
