@@ -767,6 +767,16 @@ export type VerificationProbe = {
   exitCode: number | null
   summary: string
 }
+export type TaskWorkingMemorySnapshot = {
+  goal: string
+  constraints: string[]
+  facts: Array<{ kind: string; id: string; revisionOrDigest: string }>
+  evidenceRefs: string[]
+  dependencyKeys: string[]
+  invalidation: string
+  updatedAt: string
+  layers: string[]
+}
 export type AiConversation = {
   conversationId: string
   workspaceLabel: string
@@ -775,6 +785,7 @@ export type AiConversation = {
   connectionName?: string | null
   connectionRevision?: number | null
   model?: string | null
+  workingMemory?: TaskWorkingMemorySnapshot | null
 }
 export type ChatGptLoginAttempt = { loginId: string; authorizationUrl: string; expiresAt: string }
 export type ChatGptLoginState = {

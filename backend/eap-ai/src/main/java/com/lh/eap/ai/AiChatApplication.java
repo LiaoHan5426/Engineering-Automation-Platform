@@ -446,7 +446,8 @@ public class AiChatApplication {
         var bound = conversations.binding(id);
         return new AiConversationResponse(id, conversations.require(id).workspaceLabel, AiConversationRegistry.MEMORY_NOTE,
                 bound == null ? null : bound.connectionId, bound == null ? null : bound.name,
-                bound == null ? null : bound.revision, bound == null ? null : bound.model);
+                bound == null ? null : bound.revision, bound == null ? null : bound.model,
+                conversations.workingMemory(id));
     }
 
     private AiConversationRegistry.Binding binding(ModelConnectionSnapshot snapshot) {

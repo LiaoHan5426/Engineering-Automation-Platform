@@ -21,7 +21,8 @@ public class AiConversationRegistry {
     public static final int MAX_CONVERSATIONS = 32;
     public static final Duration IDLE = Duration.ofMinutes(30);
     public static final String PRINCIPAL = com.lh.eap.config.RuntimeWorkspace.OPERATOR_LABEL;
-    public static final String MEMORY_NOTE = "内存窗口，重启后不可恢复，也不是任务审计。";
+    public static final String MEMORY_NOTE =
+            "展示历史≠模型窗口≠任务工作记忆≠绑定；模型窗口重启不可恢复；敏感上下文仍逐轮清空，派生工作记忆一并失效。";
 
     private final ChatMemory memory;
     private final Supplier<Instant> clock;
@@ -71,6 +72,7 @@ public class AiConversationRegistry {
                 victim.ifPresent(old -> drop(old.id));
                 session = new Session(id, workspace, workspaceLabel, clock.get());
                 sessions.put(id, session);
+                // Rebuilt sessions start with empty task working memory; UI history is not replayed here.
             }
             var bound = session.binding;
             return new com.lh.eap.ai.dto.AiConversationReconnectResponse(id, session.workspaceLabel, MEMORY_NOTE,
@@ -91,7 +93,29 @@ public class AiConversationRegistry {
             if (session.busy) throw new ResponseStatusException(HttpStatus.CONFLICT, "CONVERSATION_BUSY");
             session.binding = binding;
             session.touched = clock.get();
-            if (clearMemory) memory.clear(EngineeringChatService.memoryKey(PRINCIPAL, id));
+            if (clearMemory) {
+                memory.clear(EngineeringChatService.memoryKey(PRINCIPAL, id));
+                session.workingMemory.invalidate("MODEL_OR_BINDING_SWITCH", clock.get());
+            }
+        }
+    }
+
+    public TaskWorkingMemory.Snapshot workingMemory(UUID id) {
+        synchronized (lock) {
+            return require(id).workingMemory.snapshot();
+        }
+    }
+
+    /** Replace task working memory. Does not write ChatMemory or UI transcripts. */
+    public TaskWorkingMemory.Snapshot putWorkingMemory(UUID id, String goal, java.util.List<String> constraints,
+            java.util.List<TaskWorkingMemory.FactRef> facts, java.util.List<String> evidenceRefs,
+            java.util.Set<String> dependencyKeys) {
+        synchronized (lock) {
+            var session = require(id);
+            if (session.busy) throw new ResponseStatusException(HttpStatus.CONFLICT, "CONVERSATION_BUSY");
+            session.workingMemory.replace(goal, constraints, facts, evidenceRefs, dependencyKeys, clock.get());
+            session.touched = clock.get();
+            return session.workingMemory.snapshot();
         }
     }
 
@@ -177,6 +201,8 @@ public class AiConversationRegistry {
             session.contextSensitive |= selected;
             if (!session.contextSensitive) return false;
             memory.clear(EngineeringChatService.memoryKey(PRINCIPAL, id));
+            // Keep sticky clear protection; derived working-memory facts cannot outlive cleared model window.
+            session.workingMemory.invalidate("DERIVED_CONTEXT_CLEARED", clock.get());
             return true;
         }
     }
@@ -225,6 +251,7 @@ public class AiConversationRegistry {
         private UUID activeExecutionId;
         private Binding binding;
         private boolean contextSensitive;
+        private final TaskWorkingMemory.State workingMemory = TaskWorkingMemory.State.empty();
 
         Session(UUID id, Path workspace, String workspaceLabel, Instant touched) {
             this.id = id;
