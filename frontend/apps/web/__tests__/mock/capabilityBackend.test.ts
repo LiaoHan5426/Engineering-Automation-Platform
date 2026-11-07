@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { createMockCapabilityBackend } from '../../mock/capabilityBackend'
 
 describe('mock capabilityBackend trusted git (TC-01)', () => {
+  it('exposes FS-01 data-layout migration readiness without physical migration', async () => {
+    const backend = createMockCapabilityBackend()
+    const reply = await backend.handle('GET', '/runtime/data-layout')
+    expect(reply?.status).toBe(200)
+    expect(reply?.data).toMatchObject({
+      physicalMigration: false,
+      migrationReadiness: { approved: false, physicalMigration: false },
+    })
+    const entries = (reply?.data as { entries: Array<{ logical: string }> }).entries
+    expect(entries.some((item) => item.logical === 'cache/trusted-tool-probes')).toBe(true)
+  })
+
   it('exposes three official readonly matrix packages including memory', async () => {
     const backend = createMockCapabilityBackend()
     const reply = await backend.handle('GET', '/capabilities')

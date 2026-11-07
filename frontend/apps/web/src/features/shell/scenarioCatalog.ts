@@ -7,7 +7,7 @@ export function createScenarioCatalog(scenes: Scenario[]) {
   const state = reactive({
     busy: false,
     loaded: false,
-    error: '' as '' | 'load' | 'save' | 'delete' | 'conflict',
+    error: '' as '' | 'load' | 'save' | 'delete' | 'conflict' | 'unknown',
     savedId: '',
   })
   const revisions = new Map<string, number>()
@@ -17,11 +17,11 @@ export function createScenarioCatalog(scenes: Scenario[]) {
     delete fields.builtin
     return JSON.parse(JSON.stringify(fields))
   }
-  const fail = (error: unknown, fallback: 'load' | 'save' | 'delete') => {
-    state.error =
-      (error as { response?: { status?: number } })?.response?.status === 409
-        ? 'conflict'
-        : fallback
+  const statusOf = (error: unknown) =>
+    (error as { response?: { status?: number } })?.response?.status
+  const fail = (error: unknown, fallback: 'load' | 'save' | 'delete' | 'unknown') => {
+    const status = statusOf(error)
+    state.error = status === 409 ? 'conflict' : fallback
   }
   return {
     state,
@@ -79,8 +79,24 @@ export function createScenarioCatalog(scenes: Scenario[]) {
       state.error = ''
       state.savedId = ''
       try {
-        const revision = revisions.get(scene.id)
-        if (revision) await runtimeApi.deleteScenario(scene.id, revision)
+        let revision = revisions.get(scene.id) ?? 0
+        if (revision <= 0) {
+          // Save may have landed while the response was lost; never treat that as a local-only draft.
+          try {
+            const remote = await runtimeApi.scenario(scene.id)
+            revision = remote.revision
+            revisions.set(scene.id, revision)
+          } catch (error) {
+            if (statusOf(error) !== 404) {
+              fail(error, 'unknown')
+              return false
+            }
+            revision = 0
+          }
+        }
+        if (revision > 0) {
+          await runtimeApi.deleteScenario(scene.id, revision)
+        }
         const index = scenes.findIndex((item) => item.id === scene.id)
         if (index >= 0) scenes.splice(index, 1)
         revisions.delete(scene.id)

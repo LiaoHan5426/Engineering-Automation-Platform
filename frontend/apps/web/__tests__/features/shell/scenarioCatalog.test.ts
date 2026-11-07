@@ -66,3 +66,39 @@ it('never turns a failed catalog request into mock data or a saved status', asyn
   expect(catalog.state.loaded).toBe(false)
   expect(scenes).toEqual([])
 })
+
+it('reconciles lost save writeback before deleting a zero-revision custom scene', async () => {
+  const scene: Scenario = { ...definition, id: snapshot.id, builtin: false }
+  const scenes = reactive<Scenario[]>([scene])
+  const catalog = createScenarioCatalog(scenes)
+  const read = vi.spyOn(runtimeApi, 'scenario').mockResolvedValue(snapshot)
+  const del = vi.spyOn(runtimeApi, 'deleteScenario').mockResolvedValue(undefined as never)
+  expect(catalog.revision(snapshot.id)).toBe(0)
+  expect(await catalog.remove(scenes[0]!)).toBe(true)
+  expect(read).toHaveBeenCalledWith(snapshot.id)
+  expect(del).toHaveBeenCalledWith(snapshot.id, 1)
+  expect(scenes).toEqual([])
+})
+
+it('keeps the local scene when zero-revision delete reconciliation is unknown', async () => {
+  const scene: Scenario = { ...definition, id: 'orphan-draft', builtin: false }
+  const scenes = reactive<Scenario[]>([scene])
+  const catalog = createScenarioCatalog(scenes)
+  vi.spyOn(runtimeApi, 'scenario').mockRejectedValue({ response: { status: 500 } })
+  const del = vi.spyOn(runtimeApi, 'deleteScenario')
+  expect(await catalog.remove(scenes[0]!)).toBe(false)
+  expect(catalog.state.error).toBe('unknown')
+  expect(del).not.toHaveBeenCalled()
+  expect(scenes).toHaveLength(1)
+})
+
+it('removes a pure local draft when the server has no matching scene', async () => {
+  const scene: Scenario = { ...definition, id: 'pure-draft', builtin: false }
+  const scenes = reactive<Scenario[]>([scene])
+  const catalog = createScenarioCatalog(scenes)
+  vi.spyOn(runtimeApi, 'scenario').mockRejectedValue({ response: { status: 404 } })
+  const del = vi.spyOn(runtimeApi, 'deleteScenario')
+  expect(await catalog.remove(scenes[0]!)).toBe(true)
+  expect(del).not.toHaveBeenCalled()
+  expect(scenes).toEqual([])
+})

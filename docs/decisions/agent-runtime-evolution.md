@@ -78,7 +78,8 @@
 - **MCP-01 Streamable-HTTP（2026-11-07）**：`StreamableHttpMcpTransport` 对 `transport=streamable-http`：POST 带双 Accept，接受 JSON 或 SSE 响应，捕获/回传 `MCP-Session-Id`，close 时尽力 DELETE；`StreamableHttpMcpTransportTest` 通过。不宣称生产授权或 GET 续传。
 - **MCP-01 生产授权白名单（2026-11-07）**：`McpProductionAllowlist` 锁定允许传输（含 streamable-http）与官方只读包 `echo`；信任官方包时拒绝越权工具；list/probe 回传 `productionGrantedTools`；调用路径再校验。非官方信任仍为操作者声明。`McpProductionAllowlistTest` 通过。
 - **MCP-01 Streamable-HTTP GET 续传（2026-11-07）**：`StreamableHttpMcpTransport` 记录 SSE `id`/`retry`；POST SSE 未拿到匹配响应时带 `Last-Event-ID` GET 续传；`StreamableHttpMcpTransportTest` 含断流重连用例。不宣称常驻 listen 线程。
-- **MCP-01 官方只读包矩阵（2026-11-07）**：`OfficialReadonlyMcpMatrix` 可扩展 Entry；锁定 `@modelcontextprotocol/server-everything@2.2.1`/`echo`、`@modelcontextprotocol/server-sequential-thinking@0.6.2`/`sequentialthinking` 与 **`@modelcontextprotocol/server-memory@2025.11.25`/`read_graph`（仅只读工具）**；生产白名单与能力页 `mcpProductionMatrix` 共用；矩阵/白名单单测通过；门禁 stdio 含第三包用例（需 `EAP_RUN_MCP_OFFICIAL`）；mock 浏览器已验三条目。追加包须先验工具存在。
+- **MCP-01 官方只读包矩阵（2026-11-07）**：`OfficialReadonlyMcpMatrix` 可扩展 Entry；锁定 `@modelcontextprotocol/server-everything@2.2.1`/`echo`、`@modelcontextprotocol/server-sequential-thinking@0.6.2`/`sequentialthinking` 与 **`@modelcontextprotocol/server-memory@2025.11.25`/`read_graph`（仅只读工具）**；生产白名单与能力页 `mcpProductionMatrix` 共用；矩阵/白名单单测通过；**`EAP_RUN_MCP_OFFICIAL` 门禁实跑 memory/`read_graph` 通过**；mock 浏览器已验三条目。追加包须先验工具存在。
+- **KR-01 生产形排序样本（2026-11-07）**：`RetrievalBaseline.productionSampleCases`（较长操作员措辞，`expectedMaxRank≤2`）+ 离线 `KEYWORD_PROBE_PRODUCTION_SAMPLE`；`RetrievalBaselineDbContrastTest` 增加 gated Postgres FTS 排序对照。不启 KR-02。
 - 本地stdio进程的argv、cwd、环境和生命周期仍须约束；远端目标的认证/网络范围独立处理。MCP Roots及工具只读标注不是强制沙箱。不先将已有Java/CLI能力全部包装为MCP Server。
 - A2A与EAP作为MCP Server延期至明确互操作需求；不得为对齐教材章节而全部实施。
 - LangChain4j对照仅在自主协作等明确需求，或Spring AI出现可复现阻碍时启动。相同模型、业务样例、授权和验收合同下比较复杂度、正确性、token成本、延迟、取消/错误处理、兼容性与迁移回归；不预设胜者。具体版本、Java25/Boot4.1.1兼容性及模块稳定性待实验验证。
@@ -96,7 +97,9 @@
 
 **FS-01 首片盘点（2026-11-07，只读探测）**：`GET /api/runtime/data-layout` 返回下列逻辑项的解析路径与 `exists`，不执行迁移。默认相对进程工作区（`EAP_WORKSPACE` 或含 `.git` 的 `user.dir`）展开。
 
-**FS-01 迁移就绪盘点（2026-11-07）**：同接口附加 `migrationReadiness`（`status`/`candidates`/`approved=false`/`physicalMigration=false`），盘点 legacy 产物路径、连接登记与 `cache/trusted-tool-probes` 是否存在；不移动、不删除、不改默认路径。`RuntimeDataLayoutServiceTest` 覆盖；无前端盘点页，浏览器跳过。
+**FS-01 迁移就绪盘点（2026-11-07）**：同接口附加 `migrationReadiness`（`status`/`candidates`/`approved=false`/`physicalMigration=false`），盘点 legacy 产物路径、连接登记与 `cache/trusted-tool-probes` 是否存在；不移动、不删除、不改默认路径。`RuntimeDataLayoutServiceTest` 覆盖。
+
+**FS-01 能力页盘点 UI（2026-11-07）**：能力总览只读展示 entries + migrationReadiness；mock `:5174` 与真机 `:5173` 浏览器已验；真机探测后 `trusted-tool-probes` 转为 present。
 
 | 逻辑路径 | 含义 |
 |---|---|

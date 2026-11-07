@@ -8,6 +8,7 @@ import {
   type McpProbeResult,
   type McpServerItem,
   type McpServerRequest,
+  type DataLayoutResponse,
   type TrustedGitStatusResult,
   type TrustedToolItem,
 } from '@eap/runtime-client'
@@ -38,6 +39,7 @@ const message = ref('')
 const messageKind = ref<'error' | 'success'>('success')
 const tab = ref('overview')
 const trustedTools = ref<TrustedToolItem[]>([])
+const dataLayout = ref<DataLayoutResponse | null>(null)
 const trustedGitResult = ref<TrustedGitStatusResult | null>(null)
 const trustedBusy = ref(false)
 const trustedProbeBusy = ref(false)
@@ -129,6 +131,11 @@ async function refresh() {
     catalog.value = await runtimeApi.capabilities()
     const trusted = await runtimeApi.trustedTools()
     trustedTools.value = trusted.items
+    try {
+      dataLayout.value = await runtimeApi.dataLayout()
+    } catch {
+      dataLayout.value = null
+    }
     for (const item of items.value) {
       if (notesDraft.value[item.name] === undefined) notesDraft.value[item.name] = item.notes
     }
@@ -330,6 +337,58 @@ async function submitServer() {
 
   <!-- 总览 -->
   <section v-if="tab === 'overview'" class="view">
+    <article
+      v-if="dataLayout"
+      class="eap-panel panel-block"
+      data-testid="data-layout-panel"
+    >
+      <header class="cap-head">
+        <div class="cap-head__main">
+          <h2>本机数据布局（FS-01）</h2>
+          <p>
+            只读盘点逻辑路径与迁移就绪候选；不执行物理迁移。physicalMigration=
+            {{ dataLayout.physicalMigration ? 'true' : 'false' }}。
+          </p>
+        </div>
+      </header>
+      <ul class="trusted-tool-list" data-testid="data-layout-entries">
+        <li
+          v-for="entry in dataLayout.entries"
+          :key="entry.logical"
+          :data-testid="`data-layout-entry-${entry.logical}`"
+        >
+          <strong class="mono">{{ entry.logical }}</strong>
+          <Badge
+            :tone="entry.exists ? 'success' : 'neutral'"
+            :label="entry.exists ? '存在' : '未创建'"
+          />
+          <p class="hint mono">{{ entry.resolved || '—' }}</p>
+          <p v-if="entry.note" class="hint">{{ entry.note }}</p>
+        </li>
+      </ul>
+      <section
+        v-if="dataLayout.migrationReadiness"
+        data-testid="data-layout-migration-readiness"
+      >
+        <h3>迁移就绪盘点</h3>
+        <p class="hint">
+          状态 {{ dataLayout.migrationReadiness.status }} · 已批准
+          {{ dataLayout.migrationReadiness.approved ? '是' : '否' }} ·
+          {{ dataLayout.migrationReadiness.note }}
+        </p>
+        <ul>
+          <li
+            v-for="candidate in dataLayout.migrationReadiness.candidates"
+            :key="candidate.id"
+            class="mono"
+            :data-testid="`data-layout-candidate-${candidate.id}`"
+          >
+            {{ candidate.id }} · {{ candidate.present ? 'present' : 'absent' }} ·
+            {{ candidate.resolved || '—' }}
+          </li>
+        </ul>
+      </section>
+    </article>
     <article class="eap-panel panel-block" data-testid="trusted-tools-panel">
       <header class="cap-head">
         <div class="cap-head__main">

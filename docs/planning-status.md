@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / 004d2b4`（三切片并行：MCP memory 矩阵 + TD-01 探测持久化 + FS-01 迁移就绪盘点）。历史全量数字仅为既往证据。本轮：① MCP-01 追加 `@modelcontextprotocol/server-memory@2025.11.25`/`read_graph`（矩阵/白名单/mock；门禁 stdio 用例已加，未开 `EAP_RUN_MCP_OFFICIAL`）；② TD-01 探测写回 `.eap/cache/trusted-tool-probes.json`，重建目录可读；③ FS-01 `migrationReadiness` 只读候选盘点（`physicalMigration=false`）。能力页浏览器已验矩阵三包 + 持久化写回文案/离页回读。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
+当前工作基线：`main /`（三切片并行：SC-01 删除核对 + FS-01 盘点 UI + KR-01 生产形排序样本；提交后回填 SHA）。历史全量数字仅为既往证据。本轮：① SC-01 `revision=0` 删除前 GET 核对（远端存在则 CAS 删除，404 才本地草稿，未知态保留草稿不误报）；② FS-01 能力总览只读 data-layout/`migrationReadiness` 面板；③ KR-01 `productionSampleCases` 离线排序 + gated FTS 排序对照用例；另：`EAP_RUN_MCP_OFFICIAL` 实跑 memory/`read_graph` 通过。浏览器 mock `:5174` 与真机 `:5173` 已验 FS-01 盘点；真机探测写回后 cache 文件 present。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
@@ -18,7 +18,7 @@
 | UI-03 本地服务身份 | 本机绑定和只读能力已有验证 | Electron目录选择与打包环境复核；不把分组标签当权限 |
 | 统一图标 | `@eap/ui` Icon/name入口与内部本地Lucide资源包已实现，首批工作台/Tag/Tree迁移；全量574项、类型/边界/构建、真实浅深主题及最终独立审查通过，见[记录](records/frontend-history.md#frontend-icons) | 其余管理页面/历史演示字符按语义迁移，不将领域SVG/正文标点机械替换；不是全仓清零 |
 | UI-04 Code/Work | 共用会话和选择保存 | 实际办公任务执行，不只角色指引 |
-| SC-01/02 场景 | 配置、设计、版本、准备已分面；自定义配置显式保存/读回、revision CAS、刷新恢复及软删除保护已实现并经实库与实际页面验证，见[记录](records/resource-history.md#scenario-configuration)；独立审查发现首次保存响应丢失后删除会误报成功，阶段仍阻断 | 修复未知保存结果与删除核对；真实交付及依赖授权闭环、完整资源引用合同与用户接受；不把可变配置revision当不可变设计版本。本轮仅迁测试目录，不混入业务修复 |
+| SC-01/02 场景 | 配置、设计、版本、准备已分面；自定义配置显式保存/读回、revision CAS、刷新恢复及软删除保护已实现并经实库与实际页面验证，见[记录](records/resource-history.md#scenario-configuration)；**本轮**：零 revision 删除前远端核对（成功/404/未知三态），离线 3 项回归 | 保存中途断连的完整未知态矩阵与用户接受仍待；真实交付及依赖授权闭环、完整资源引用合同；不把可变配置revision当不可变设计版本 |
 | CP-01/02/03 输入与策略 | 目标/模式/审批分别建模，未接通模式禁用；媒体对照修正知识/Skill常驻堆叠，＋入口/紧凑引用/弹窗说明，四视口发送可达，见[记录](records/frontend-history.md#reference-ui-review) | 规划/Agent真实执行；禁止用标签替代策略；不以局部布局通过代替全体验接受 |
 | MD-01 模型连接 | 凭据/目录/白名单/强度已有；追加普通API显式wireApi及Responses文本/代码提案，协议变更revision/重绑定、Git拒绝和前端/mock合同已实现并通过离线回归，见[决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验) | 用户重启加载、编辑原连接选择Responses并确认会话绑定后真实重试；真实网关/认证和浏览器接受未验，不自动付费探测；Responses工具及403网关诊断仍缺，不宣称原故障已恢复 |
 | EX-01 专家 | 指引/版本/资源可见，现有DAG保留；单专家授权知识→Chat接线、撤权/旧记忆隔离及实库范围回归已通过，见 [阶段记录](records/resource-history.md#expert-knowledge-chat) | 完整配置角色/其余资源及真实供应商效果仍待；不执行DAG或自动获得工具权限 |
@@ -33,15 +33,15 @@
 | CT-01 生命周期 | 记录回放/UNKNOWN阻塞保留；同ID重连+草稿重试保留；**本轮追加**：聊天主路径改为 SSE（`answer.delta`/`tool`/`final`）、`POST …/cancel`、执行快照游标、前端投影去重/缺序回归；`ChatExecutionStreamTest` 4项及前端 eventProjector/reconnect/wireApi 离线通过 | 用户重启后浏览器流式/取消/重连验收；不重放历史或宣称模型记忆恢复；跨重启进程接管仍待 |
 | RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与测试接受/拒绝决定已有刷新回放 | EAP自身改页完整证据、SQL实际任务证据及用户接受；不重复开发已有决定回放 |
 | Skill | 文本上传/粘贴+显式文本资源、不可变版本、CAS启停/回退、按需预览与Chat精确引用首片已实现；安全/保存恢复缺陷修复后父任务前端525项、后端647项（6跳过）、实库/浏览器及独立复核通过；见 [阶段记录](records/resource-history.md#skill-text-import) | 目录/仓库导入延期；不执行脚本或授予工具权限，不支持通用mock YAML解析；真实供应商效果与用户最终验收待定 |
-| MCP-01 / P0 | **部分交付**：stdio + 分页 + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；**官方只读包矩阵** everything/`echo` + sequential-thinking/`sequentialthinking` + **本轮** memory@2025.11.25/`read_graph`（矩阵/白名单/mock 浏览器已验；门禁 stdio 用例已加） | 门禁实跑 `EAP_RUN_MCP_OFFICIAL` 验 memory；继续追加已验证包；常驻 GET listen 未做 |
+| MCP-01 / P0 | **部分交付**：stdio + 分页 + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；官方只读包矩阵含 memory@2025.11.25/`read_graph`；**本轮** `EAP_RUN_MCP_OFFICIAL` 门禁实跑 memory 通过 | 继续追加已验证包；常驻 GET listen 未做 |
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理 | 检索更新删除/来源与专家范围，SQL真实任务，CLI生命周期回归；不扩第二套执行器 |
 | PL-01 / P0 看板插件首片 | **部分交付**：board 可信预装启停/持久化回滚；**本轮**：服务依赖缺失与激活失败 sticky 呈现、刷新保留 Builder 实例；8 项离线 + mock 浏览器已验；不停 Task/Run | 真实服务探测与用户接受仍待；外部安装器延期 |
 | PL-02 / P1 设计器插件 | GrapesJS/Schema/版本已有；尚未按通用贡献机制迁移 | PL-01后复用现有设计器、版本和核心API，验证停用不丢草稿/版本；外部任意JS安装延期 |
 | SC-03 / P1 场景组合 | 原型到代码已有独立配置/设计/准备/交付切片，不是单个插件 | 依赖PL-01，设计器迁移与PL-02协调；声明所需插件/服务/资源、缺依赖不可用；应用不安装/授权/发送；SC-01未知保存删除缺陷仍阻断 |
 | CE-01 / P0 上下文工程 | **部分交付**：后端预算观测 + 前端回合用量摘要与超限 Feedback；**本轮**：mock 回合附带 `contextBudget`、显式超限触发；`chatBackend`/`contextBudgetView` 5 项；mock 浏览器验用量摘要与超限 Feedback | 真实 token/压缩、ChatMemory 精确计量、用户产品接受；MEM-01 仍后续；不记录敏感正文 |
-| KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；实库对照；**本轮**：排序质量样本（干扰语料 + `expectedMaxRank`/`rankingPassRate`，7 项离线） | 生产样本/真实 FTS 排序对照仍待；不足证据前不启 KR-02 |
+| KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；实库对照；排序质量样本；**本轮**：`productionSampleCases` 离线排序（8 项）+ gated Postgres FTS 排序对照用例 | 实库开启 `EAP_RUN_BOARD_PERSISTENCE` 跑 FTS 排序对照；不足证据前不启 KR-02 |
 | MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；**约束/事实展示**：Chat 面板 `constraints`/`facts`、保存目标不丢字段；`workingMemorySession` 3 项；mock 浏览器验目标/约束 | sticky 清空仍保留；用户产品接受仍待；自动长期抽取延期 |
-| FS-01 / P0 目录与临时资源 | **部分交付**：`GET /api/runtime/data-layout` 只读盘点 + **本轮** `migrationReadiness` 候选存在性（含 `cache/trusted-tool-probes`）；`physicalMigration=false`/`approved=false`；无 UI，浏览器跳过 | 旧数据物理迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
+| FS-01 / P0 目录与临时资源 | **部分交付**：data-layout + migrationReadiness；**本轮**：能力总览只读盘点面板；mock `:5174` 与真机 `:5173` 浏览器已验；`physicalMigration=false` | 旧数据物理迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
 | TM-01 / P1 受管工具 | CLI程序/固定操作可登记和配置路径；依赖PATH/指定文件，无安装版本管理 | 依赖FS-01，选择一个可信便携工具或venv；锁版本/校验/安装回滚、实际调用/在途保护；保留系统引用，不静默或全局安装 |
 | TD-01 / P0 自动发现与绑定 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测；**本轮**：探测结果持久化至 `.eap/cache/trusted-tool-probes.json`（路径变化失效；目录仍不自动探测）；后端 5 项 + 前端 10 项 + mock 浏览器已验离页回读 | 真实本机 git 重启验收与用户接受仍待；更多依赖绑定仍待；不整盘扫描 |
 | TC-01 / P0 工具调用与呈现 | **部分交付**：目录→只读 git-status 调用 API + 能力页入口；**本轮**：mock 目录启用 + 成功/拒绝/超时/取消呈现与 Abort 取消；7 项离线 + mock 浏览器已验 | 真实 git 拒绝/超时/取消与用户接受仍待；不开放任意 Capability 执行口 |

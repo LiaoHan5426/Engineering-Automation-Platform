@@ -221,4 +221,23 @@ public final class RetrievalBaseline {
                         Set.of("chat/context-budget.md"), Set.of(authorizedBase), DEFAULT_TOP_K, false, 1)
         );
     }
+
+    /**
+     * Production-shaped ranking samples: longer operator phrasing with distractors still present.
+     * Used for offline keyword contrast and gated Postgres FTS ranking contrast; not live traffic.
+     */
+    public static List<Case> productionSampleCases(UUID authorizedBase) {
+        Objects.requireNonNull(authorizedBase, "authorizedBase");
+        return List.of(
+                new Case("prod-rank-git-status", "ranking",
+                        "在受权工作区里只读查看 git status，不要修改文件",
+                        Set.of("tools/git-status.md"), Set.of(authorizedBase), DEFAULT_TOP_K, false, 2),
+                new Case("prod-rank-wire-api", "ranking",
+                        "普通 API 连接要显式选择 Responses 协议 wireApi",
+                        Set.of("models/wire-api.md"), Set.of(authorizedBase), DEFAULT_TOP_K, false, 2),
+                new Case("prod-rank-context-budget", "ranking",
+                        "聊天回合上下文预算超限时如何提示用户",
+                        Set.of("chat/context-budget.md"), Set.of(authorizedBase), DEFAULT_TOP_K, false, 2)
+        );
+    }
 }

@@ -301,6 +301,54 @@ export function createMockCapabilityBackend() {
       if (method === 'GET' && route === '/mcp-servers') {
         return { status: 200, data: { items: mcpServers, productionMatrix } }
       }
+      if (method === 'GET' && route === '/runtime/data-layout') {
+        return {
+          status: 200,
+          data: {
+            physicalMigration: false,
+            entries: [
+              {
+                logical: 'data-root',
+                resolved: '/mock/.eap',
+                exists: true,
+                note: '本机应用数据根（mock）',
+              },
+              {
+                logical: 'cache/trusted-tool-probes',
+                resolved: '/mock/.eap/cache/trusted-tool-probes.json',
+                exists: true,
+                note: 'TD-01 版本探测持久缓存（mock）',
+              },
+              {
+                logical: 'artifacts/ai',
+                resolved: '/mock/.eap-ai-artifacts',
+                exists: true,
+                note: 'AI 执行产物目录（mock）',
+              },
+            ],
+            migrationReadiness: {
+              status: 'candidates_present',
+              physicalMigration: false,
+              approved: false,
+              note: '只读盘点旧/现路径存在性；未批准不执行物理迁移或删除。',
+              candidates: [
+                {
+                  id: 'legacy-ai-artifacts',
+                  resolved: '/mock/.eap-ai-artifacts',
+                  present: true,
+                  note: '当前配置的 AI 产物路径；目标归属仍待批准后迁入 data-root/artifacts',
+                },
+                {
+                  id: 'trusted-tool-probes',
+                  resolved: '/mock/.eap/cache/trusted-tool-probes.json',
+                  present: true,
+                  note: 'TD-01 探测缓存已按目标 cache 布局落盘；不是物理迁移动作',
+                },
+              ],
+            },
+          },
+        }
+      }
       return null
     },
   }

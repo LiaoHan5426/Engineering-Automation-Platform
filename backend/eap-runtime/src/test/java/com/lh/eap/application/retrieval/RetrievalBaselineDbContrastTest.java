@@ -96,4 +96,37 @@ class RetrievalBaselineDbContrastTest {
         assertEquals(dbReport.results().stream().mapToLong(RetrievalBaseline.CaseResult::durationMs).sum(),
                 dbReport.totalSearchDurationMs());
     }
+
+    @Test
+    void postgresFtsRankingContrastAgainstProductionShapedSamples() {
+        tx.executeWithoutResult(status -> {
+            try {
+                for (var document : KeywordRetrievalProbe.rankingCorpus(authorized, foreign).documents()) {
+                    if (document.id().startsWith("d8") || document.id().startsWith("d9")
+                            || document.id().startsWith("d10")) {
+                        knowledge.addDocument(document.knowledgeBaseId(),
+                                new KnowledgeDocumentRequest(document.source(), document.content()));
+                    }
+                }
+            } catch (Exception failure) {
+                throw new AssertionError(failure);
+            }
+        });
+        var offline = KeywordRetrievalProbe.rankingCorpus(authorized, foreign);
+        var offlineReport = RetrievalBaseline.evaluate(
+                RetrievalBaseline.productionSampleCases(authorized),
+                testCase -> offline.search(testCase.query(), testCase.topK(), testCase.allowedBases()),
+                "KEYWORD_PROBE_PRODUCTION_SAMPLE");
+        assertTrue(offlineReport.meetsDeclaredThresholds());
+
+        var postgres = new PostgresKnowledgeRetrieval(new KnowledgeRepository(jdbc));
+        var dbReport = RetrievalBaseline.evaluate(
+                RetrievalBaseline.productionSampleCases(authorized),
+                testCase -> postgres.search(testCase.query(), testCase.topK(), testCase.allowedBases()),
+                PostgresKnowledgeRetrieval.METERING);
+        assertEquals(PostgresKnowledgeRetrieval.METERING, dbReport.metering());
+        assertTrue(dbReport.meetsDeclaredThresholds(), () -> "FTS ranking contrast failed: " + dbReport.results());
+        assertTrue(dbReport.results().stream().allMatch(RetrievalBaseline.CaseResult::passed),
+                () -> "ranking case failures: " + dbReport.results());
+    }
 }

@@ -92,6 +92,25 @@ class RetrievalBaselineTest {
     }
 
     @Test
+    void productionSampleRankingMeetsDeclaredThresholdAgainstDistractors() {
+        var authorized = UUID.randomUUID();
+        var foreign = UUID.randomUUID();
+        var probe = KeywordRetrievalProbe.rankingCorpus(authorized, foreign);
+        var report = RetrievalBaseline.evaluate(
+                RetrievalBaseline.productionSampleCases(authorized),
+                testCase -> probe.search(testCase.query(), testCase.topK(), testCase.allowedBases()),
+                "KEYWORD_PROBE_PRODUCTION_SAMPLE");
+        assertEquals("KEYWORD_PROBE_PRODUCTION_SAMPLE", report.metering());
+        assertEquals(1.0, report.rankingPassRate());
+        assertTrue(report.meetsDeclaredThresholds());
+        assertTrue(report.results().stream().allMatch(RetrievalBaseline.CaseResult::passed));
+        for (var result : report.results()) {
+            assertNotNull(result.bestRank());
+            assertTrue(result.bestRank() <= 2);
+        }
+    }
+
+    @Test
     void rankingFailureWhenGoldIsNotFirst() {
         var authorized = UUID.randomUUID();
         var probe = new KeywordRetrievalProbe(List.of(
