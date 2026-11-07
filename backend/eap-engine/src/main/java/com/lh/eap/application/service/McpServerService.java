@@ -220,7 +220,11 @@ public class McpServerService {
         result.put("checked", true);
         result.put("targetResolved", server.endpoint());
         result.put("reachable", true);
-        result.put("message", "远端地址格式有效；http/sse 传输尚未接入客户端，工具白名单仍为操作者声明，未经协议验证。");
+        if ("http".equals(server.transport())) {
+            result.put("message", "远端地址格式有效；http JSON-RPC 传输已接入客户端，本探测仍非协议握手；工具白名单仍为操作者声明，未经协议验证。");
+        } else {
+            result.put("message", "远端地址格式有效；sse 传输尚未接入客户端，工具白名单仍为操作者声明，未经协议验证。");
+        }
         return result;
     }
 

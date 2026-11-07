@@ -386,7 +386,7 @@ sequenceDiagram
 | CE-01 / P0 | 有拼装与字符限制就算上下文工程 | 在既有路径统一预算、来源、选择及失效合同 | **部分交付**：后端 `ContextBudget` + 前端回合用量摘要/`CONTEXT_BUDGET_EXCEEDED` 可读提示（无正文）；`ContextBudgetTest` 与 `contextBudgetView` 离线通过。仍缺：真实 token、压缩策略、ChatMemory 精确计量；不宣称 MEM-01 |
 | KR-01 / P0；KR-02 / 条件后续 | 没向量库等于没检索 | 先评测已有FTS/关键词，证明不足再比较增强 | **部分交付（KR-01）**：fixture + `KEYWORD_PROBE`；**实库适配** `PostgresKnowledgeRetrieval`/`POSTGRES_FTS`（含 `knowledgeBaseId`）与 `PostgresKnowledgeRetrievalTest`；`RetrievalBaselineDbContrastTest` 门禁挂载。仍缺：本机实库同题跑通证据、延迟/成本、引用生产样本；**KR-02 未触发** |
 | MEM-01 / P1 | 窗口持久化等于完整记忆 | 历史/绑定恢复、任务工作记忆分层，依赖CE-01 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；**对抗失效**（知识/Skill `DEPENDENCY_CHANGED`、`WorkingMemoryAdversarialTest`）。仍缺：以对抗证据取消 sticky 清空；自动长期抽取延期 |
-| MCP-01 / P0 | 登记/探测等于协议执行 | 既有授权/会话桥接一个只读服务器 | **部分交付**：stdio Client + **tools/list 分页**；锁定 `@modelcontextprotocol/server-everything@2.2.1`，`OfficialReadonlyMcpStdioTest`（echo）通过；http/sse 仍未接入；生产授权矩阵仍待 |
+| MCP-01 / P0 | 登记/探测等于协议执行 | 既有授权/会话桥接一个只读服务器 | **部分交付**：stdio + 分页 + 官方包 + **http JSON-RPC**（`HttpMcpTransportTest`）；sse/Streamable-HTTP 仍未接入；生产授权矩阵仍待 |
 | FS-01 / P0 | 工作区树等于应用目录管理；UI scratch等于磁盘目录 | 数据根、缓存/产物/任务临时资源归属，浏览器与本机执行分界 | **部分交付**：只读 data-layout 盘点 API 与文档路径表；物理迁移未批准 |
 | TM-01 / P1 | 程序登记等于安装与版本管理 | FS-01后增加一个可信受管工具，系统引用保留 | **待实施**：锁版本/校验/失败回滚、实际调用、在途卸载阻止；不改系统工具 |
 | TD-01 / P0 | 每个工具都要手填，或发现程序就认定能执行 | 可信定义自动汇总、已知依赖绑定，未知候选需适配 | **部分交付**：可信工具目录含 git-status；冲突/停用快照仍待 |

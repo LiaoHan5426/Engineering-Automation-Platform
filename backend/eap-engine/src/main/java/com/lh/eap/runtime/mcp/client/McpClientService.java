@@ -106,16 +106,21 @@ public class McpClientService {
         if (!server.usable()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "MCP_SERVER_NOT_USABLE");
         }
-        if (!"stdio".equalsIgnoreCase(server.transport())) {
-            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "MCP_TRANSPORT_UNSUPPORTED");
-        }
+        var transport = server.transport() == null ? "" : server.transport().trim().toLowerCase();
         try {
-            var argv = StdioMcpCommand.parse(server.endpoint());
-            return StdioMcpTransport.start(argv, Path.of("").toAbsolutePath().normalize());
+            if ("stdio".equals(transport)) {
+                var argv = StdioMcpCommand.parse(server.endpoint());
+                return StdioMcpTransport.start(argv, Path.of("").toAbsolutePath().normalize());
+            }
+            if ("http".equals(transport)) {
+                return HttpMcpTransport.connect(server.endpoint());
+            }
+            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "MCP_TRANSPORT_UNSUPPORTED");
         } catch (IllegalArgumentException invalid) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage());
         } catch (IOException failure) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "MCP_STDIO_START_FAILED");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "stdio".equals(transport) ? "MCP_STDIO_START_FAILED" : "MCP_HTTP_START_FAILED");
         }
     }
 
