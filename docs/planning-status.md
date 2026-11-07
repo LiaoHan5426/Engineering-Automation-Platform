@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main`（待提交 CE-01 mock 回合预算）；上一基线 `3ee7489`（官方只读包矩阵 + KR-01 实库对照）。历史全量数字仅为既往证据。本轮：mock Chat 成功回合附带 `CHAR_ESTIMATE` `contextBudget`；关键字 `预算超限验收`/`__CONTEXT_BUDGET_EXCEEDED__` 返回 400 + 超限观测；`chatBackend`/`contextBudgetView` 5 项离线通过；mock `:5174` 浏览器已验 `turn-context-budget` 与 `context-budget-exceeded`。不宣称真实 token 或用户产品接受。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 4fa6f80`（CE-01 mock 回合预算展示与超限；含 `3ee7489` 官方矩阵与 KR-01 实库对照）。历史全量数字仅为既往证据。本轮：mock Chat 成功回合附带 `CHAR_ESTIMATE` `contextBudget`；关键字 `预算超限验收`/`__CONTEXT_BUDGET_EXCEEDED__` 返回 400 + 超限观测；`chatBackend`/`contextBudgetView` 5 项离线通过；mock `:5174` 浏览器已验 `turn-context-budget` 与 `context-budget-exceeded`。不宣称真实 token 或用户产品接受。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
