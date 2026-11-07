@@ -3,6 +3,7 @@ import type {
   AiMessageResult,
   AiStatus,
   CodeProposal,
+  ContextBudgetObservation,
   ModelConnectionList,
   TaskContext,
   VerificationProbe,
@@ -29,6 +30,32 @@ import {
 } from './expertContext'
 
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..')
+
+/** Deterministic CE-01 observation for mock turns; not real token metering. */
+export function mockContextBudget(message: string): ContextBudgetObservation {
+  const used = Math.min(32000, Math.max(120, message.length * 4 + 800))
+  const platformLimit = 96000
+  const outputReserve = 16384
+  return {
+    platformLimit,
+    outputReserve,
+    inputMaterialLimit: 64000,
+    usedChars: used,
+    materialChars: Math.max(80, message.length * 2),
+    remainingChars: Math.max(0, platformLimit - outputReserve - used),
+    metering: 'CHAR_ESTIMATE',
+    sources: [
+      { source: 'system', chars: 400, metering: 'CHAR_ESTIMATE', disposition: 'included' },
+      {
+        source: 'user',
+        chars: Math.max(80, message.length * 2),
+        metering: 'CHAR_ESTIMATE',
+        disposition: 'included',
+      },
+    ],
+    notes: ['mock：字符估算，非真实 token'],
+  }
+}
 
 export function createMockChatBackend() {
   const capabilityBackend = createMockCapabilityBackend()
@@ -460,6 +487,16 @@ export function createMockChatBackend() {
             return reply(409, { detail: 'MOCK_TASK_BINDING_UNAVAILABLE' })
           if (typeof body.message !== 'string' || !body.message.trim())
             return reply(400, { error: 'EMPTY_MESSAGE' })
+          if (body.message.includes('预算超限验收') || body.message.includes('__CONTEXT_BUDGET_EXCEEDED__')) {
+            const contextBudget = mockContextBudget(body.message)
+            contextBudget.usedChars = contextBudget.platformLimit
+            contextBudget.remainingChars = 0
+            contextBudget.notes = ['mock：显式触发 CONTEXT_BUDGET_EXCEEDED']
+            return reply(400, {
+              detail: 'CONTEXT_BUDGET_EXCEEDED',
+              contextBudget,
+            })
+          }
           const skill = hasSkill
             ? skillBackend.handle('POST', '/skills/context/preview', selection)
             : undefined
@@ -504,6 +541,7 @@ export function createMockChatBackend() {
             artifactError: '',
             artifacts: [],
             proposal,
+            contextBudget: mockContextBudget(body.message),
           } satisfies AiMessageResult)
         } finally {
           busy.delete(id)

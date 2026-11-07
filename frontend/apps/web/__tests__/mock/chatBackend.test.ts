@@ -116,6 +116,16 @@ it('serves the chat contract and model whitelist without an external backend', a
     })
   ).data as AiMessageResult
   expect(readOnly.proposal).toBeNull()
+  expect(readOnly.contextBudget?.metering).toBe('CHAR_ESTIMATE')
+  expect(readOnly.contextBudget?.usedChars).toBeGreaterThan(0)
+  const exceeded = await api.handle('POST', conversationPath + '/messages', {
+    message: '预算超限验收',
+  })
+  expect(exceeded.status).toBe(400)
+  expect(exceeded.data).toMatchObject({
+    detail: 'CONTEXT_BUDGET_EXCEEDED',
+    contextBudget: { remainingChars: 0, metering: 'CHAR_ESTIMATE' },
+  })
   await api.handle('DELETE', conversationPath)
   expect((await api.handle('GET', conversationPath)).status).toBe(404)
   expect((await api.handle('POST', '/unknown')).status).toBe(404)

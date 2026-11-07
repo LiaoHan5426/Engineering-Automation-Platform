@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / 3ee7489`（官方只读包矩阵 + KR-01 实库对照；含 `3b0cfcd` GET 续传）。历史全量数字仅为既往证据。本轮：`OfficialReadonlyMcpMatrix`（可扩展 Entry，当前 everything@2.2.1/`echo`）；`RetrievalBaselineDbContrastTest` 实库 1 项通过（IDEA 本机口令，未写入仓库）；能力页展示生产矩阵，mock 浏览器已验。`application.yml` 本地密钥不得提交。
+当前工作基线：`main`（待提交 CE-01 mock 回合预算）；上一基线 `3ee7489`（官方只读包矩阵 + KR-01 实库对照）。历史全量数字仅为既往证据。本轮：mock Chat 成功回合附带 `CHAR_ESTIMATE` `contextBudget`；关键字 `预算超限验收`/`__CONTEXT_BUDGET_EXCEEDED__` 返回 400 + 超限观测；`chatBackend`/`contextBudgetView` 5 项离线通过；mock `:5174` 浏览器已验 `turn-context-budget` 与 `context-budget-exceeded`。不宣称真实 token 或用户产品接受。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
@@ -38,7 +38,7 @@
 | PL-01 / P0 看板插件首片 | **部分交付**：board 纳入可信预装 Manifest/Host，启停隐藏导航、持久化失败回滚；插件单测 19 项通过；不停 Task/Run | 服务依赖/激活失败矩阵与刷新实例隔离的浏览器验收；外部安装器延期 |
 | PL-02 / P1 设计器插件 | GrapesJS/Schema/版本已有；尚未按通用贡献机制迁移 | PL-01后复用现有设计器、版本和核心API，验证停用不丢草稿/版本；外部任意JS安装延期 |
 | SC-03 / P1 场景组合 | 原型到代码已有独立配置/设计/准备/交付切片，不是单个插件 | 依赖PL-01，设计器迁移与PL-02协调；声明所需插件/服务/资源、缺依赖不可用；应用不安装/授权/发送；SC-01未知保存删除缺陷仍阻断 |
-| CE-01 / P0 上下文工程 | **部分交付**：后端预算观测 + 前端回合用量摘要与超限 Feedback；`contextBudgetView` 单测通过 | 真实 token/压缩、ChatMemory 精确计量、浏览器人工接受；MEM-01 仍后续；不记录敏感正文 |
+| CE-01 / P0 上下文工程 | **部分交付**：后端预算观测 + 前端回合用量摘要与超限 Feedback；**本轮**：mock 回合附带 `contextBudget`、显式超限触发；`chatBackend`/`contextBudgetView` 5 项；mock 浏览器验用量摘要与超限 Feedback | 真实 token/压缩、ChatMemory 精确计量、用户产品接受；MEM-01 仍后续；不记录敏感正文 |
 | KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；**实库对照**：`RetrievalBaselineDbContrastTest` 在本机 PostgreSQL 同题通过（IDEA 口令，未入库） | 排序质量/生产样本仍待；不足证据前不启 KR-02 |
 | MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；**约束/事实展示**：Chat 面板 `constraints`/`facts`、保存目标不丢字段；`workingMemorySession` 3 项；mock 浏览器验目标/约束 | sticky 清空仍保留；用户产品接受仍待；自动长期抽取延期 |
 | FS-01 / P0 目录与临时资源 | **部分交付**：`GET /api/runtime/data-layout` 只读盘点 + 决策文档逻辑路径表；不做物理迁移 | 旧数据迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
@@ -69,7 +69,7 @@ CP-03用户标注Comment 1已做限定调整：模型/发送成组靠右，缺�
 后续只安排剩余关口，不从头重复上述切片；技术细节与退出矩阵见[技术路线决定](decisions/agent-runtime-evolution.md#7-分阶段切片与退出门禁)：
 
 1. **工程交付验收线**：用户确认目标页面、设计、允许范围和真实供应商/Agent调用后，复用PREBOUND与现有应用/验证/决定链走一次EAP自身改页；授权未具备时保持待验收，不伪造模型结果。
-2. **上下文与资源能力线**：CE-01/KR-01(含 FTS+延迟观测+本机实库对照)/MCP-01(stdio+官方矩阵+http+legacy SSE+Streamable-HTTP+生产白名单+GET 续传)/MEM-01（含对抗失效与约束/事实 UI）离线首片已落地；下一步追加官方矩阵包条目，或 KR-01 排序质量样本。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
+2. **上下文与资源能力线**：CE-01（含 mock 预算展示/超限）/KR-01(含 FTS+延迟观测+本机实库对照)/MCP-01(stdio+官方矩阵+http+legacy SSE+Streamable-HTTP+生产白名单+GET 续传)/MEM-01（含对抗失效与约束/事实 UI）离线首片已落地；下一步追加官方矩阵包条目，或 TC-01 拒绝/超时/取消呈现与浏览器验收，或 KR-01 排序质量样本。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
 3. **工具与本地环境线**：TD-01自动汇总可信定义/已知依赖绑定，与TC-01调用/呈现合同共同从现有Git首片验证；TC-02后续人工验证前端实例，反向Agent调用另批。发现不等于授权，Java执行不需前端复制实现。FS-01先确认数据/临时目录和旧数据迁移，再做TM-01一个受管工具，不把安装作为系统工具调用的前置。sidecar/包验证独立推进；签名待凭据/发行决定。
 4. **可信插件与场景线**：PL-01先迁现有看板贡献，不改核心Task/Run；再做PL-02设计器与SC-03场景依赖，保留版本/候选/产物和五入口合同。外部安装器/市场/第三方隔离延期；不先建空SDK。
 5. **总体质量与接受**：持续全页面真实系统缩放/焦点/错误矩阵、SQL/CLI剩余业务回归、其他mock合同复核和构建包体积评估；最终由用户逐项接受。资源和桌面不必成为单页面交付的前置。

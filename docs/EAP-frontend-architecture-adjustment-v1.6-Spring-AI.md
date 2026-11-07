@@ -383,7 +383,7 @@ sequenceDiagram
 | PB-04 / P0 | 写入成功等于界面调整完成 | Diff→应用→类型/测试/构建→页面预览→人工交互验收 | **部分交付**：Run独立typecheck/test/build真实三项联调、同源源码/交付证据和持久人工接受/拒绝机制已交付（04edef5及后续交付切片）。仍缺：EAP自身真实模型改页→预览→用户接受整链验收；测试人工决定不等于用户已接受 |
 | CT-01 / P1 | 页面保留等于任务恢复，或会话失效只能手工新建 | 区分 UI缓存、模型记忆、请求和持久Run；显式重连后可重试当前草稿 | **部分交付**：看板持久回放/UNKNOWN阻塞保留；同ID重连及草稿重试保留；**本轮**：聊天 SSE 事件流、`cancel`、执行快照游标与前端投影去重/缺序离线通过。保留本地上下文但不重放历史；仍缺真实浏览器流式/取消接受及跨重启进程接管 |
 | RV-01 / P1 | SQL检查器等于全局摘要 | 任务/会话相关摘要、文件Diff、验证和来源 | **部分交付**：会话摘要/变更右栏、源文件浮层、终端底栏各守职责；看板按Run选择审阅/验证，源码交付与接受/拒绝独立工作面且持久回放；设置不挂任务面板。仍缺：SQL实际任务证据、完整自身改页证据及用户接受；Chat终端未因此获得任意shell能力 |
-| CE-01 / P0 | 有拼装与字符限制就算上下文工程 | 在既有路径统一预算、来源、选择及失效合同 | **部分交付**：后端 `ContextBudget` + 前端回合用量摘要/`CONTEXT_BUDGET_EXCEEDED` 可读提示（无正文）；`ContextBudgetTest` 与 `contextBudgetView` 离线通过。仍缺：真实 token、压缩策略、ChatMemory 精确计量；不宣称 MEM-01 |
+| CE-01 / P0 | 有拼装与字符限制就算上下文工程 | 在既有路径统一预算、来源、选择及失效合同 | **部分交付**：后端 `ContextBudget` + 前端回合用量摘要/`CONTEXT_BUDGET_EXCEEDED` 可读提示（无正文）；mock 回合附带预算与显式超限；`ContextBudgetTest`/`contextBudgetView`/`chatBackend` 离线通过；mock 浏览器已验。仍缺：真实 token、压缩策略、ChatMemory 精确计量、用户接受；不宣称 MEM-01 |
 | KR-01 / P0；KR-02 / 条件后续 | 没向量库等于没检索 | 先评测已有FTS/关键词，证明不足再比较增强 | **部分交付（KR-01）**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；**本机实库对照通过**（`RetrievalBaselineDbContrastTest`）。仍缺：排序质量、生产样本；**KR-02 未触发** |
 | MEM-01 / P1 | 窗口持久化等于完整记忆 | 历史/绑定恢复、任务工作记忆分层，依赖CE-01 | **部分交付**：分层+PUT/UI（约束/事实展示）+本地持久+Task/Run；对抗失效；mock 浏览器验目标/约束。仍缺：以对抗证据取消 sticky 清空；用户产品接受；自动长期抽取延期 |
 | MCP-01 / P0 | 登记/探测等于协议执行 | 既有授权/会话桥接一个只读服务器 | **部分交付**：stdio + 分页 + **官方只读包矩阵** + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传；追加包条目与常驻 listen 仍待 |

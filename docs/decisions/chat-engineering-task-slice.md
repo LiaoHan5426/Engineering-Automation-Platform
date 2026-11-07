@@ -77,7 +77,11 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 
 ## 上下文预算 UI（2026-11-07，离线通过）
 
-聊天回合展示 `contextBudget` 用量摘要（已用/剩余/预留/计量/来源明细，无正文）；超限映射 `context-budget-exceeded` 并展示可读 Feedback。`contextBudgetView` 单测覆盖成功挂载与错误观测解析。浏览器人工接受仍待。
+聊天回合展示 `contextBudget` 用量摘要（已用/剩余/预留/计量/来源明细，无正文）；超限映射 `context-budget-exceeded` 并展示可读 Feedback。`contextBudgetView` 单测覆盖成功挂载与错误观测解析。
+
+## 上下文预算 mock 合同与浏览器（2026-11-07，mock 通过）
+
+`mock/chatBackend` 成功 SSE/`final` 附带确定性 `CHAR_ESTIMATE` 观测；消息含 `预算超限验收` 或 `__CONTEXT_BUDGET_EXCEEDED__` 时 HTTP 400 + `CONTEXT_BUDGET_EXCEEDED` + `contextBudget`（无正文）。`chatBackend`/`contextBudgetView` 共 5 项通过。mock `:5174` 浏览器：普通发送可见 `turn-context-budget`（字符估算标注）；超限关键字可见 `context-budget-exceeded` Feedback。不宣称真实 token、压缩策略或用户产品接受。
 
 ## 任务工作记忆 MEM-01 首片（2026-11-07，离线通过）
 
