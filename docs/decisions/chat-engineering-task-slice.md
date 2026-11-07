@@ -70,3 +70,7 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 - 前端 `runtime-client` 用 fetch 消费 SSE；`eventProjector` 按 `executionId+sequence` 去重并记录缺序；发送中可取消。
 
 离线证据：`ChatExecutionStreamTest` 4 项；前端 eventProjector/reconnect/wireApi 等定向通过。不宣称跨重启持久事件日志或真实供应商流式验收。
+
+## 上下文预算 CE-01 首片（2026-11-07，离线通过）
+
+在既有 `AiChatApplication` 拼装路径接入 `ContextBudget`：按 CHAR_ESTIMATE 计量 system + 已组装 user material，预留输出字符，超限返回 `CONTEXT_BUDGET_EXCEEDED`（ProblemDetail 携带来源用量，无正文）。history 标 `CHAT_MEMORY_NOT_METERED`；知识/Skill 触发的记忆清空记 `DERIVED_CLEARED_BEFORE_SEND`。成功响应附带可观测 `contextBudget`。旧硬限 `TASK_CONTEXT_TOO_LARGE` 由该合同替代。`ContextBudgetTest` 5 项通过。不宣称 provider token、压缩策略或 MEM-01。

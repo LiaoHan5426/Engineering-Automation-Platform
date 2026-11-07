@@ -7,13 +7,21 @@ public record AiMessageResponse(UUID executionId, String answer, String error, S
                                 String verification, List<AiToolEvent> toolEvents, String artifactError,
                                 List<AiArtifactSummary> artifacts, com.lh.eap.ai.CodeChangeService.Proposal proposal,
                                 com.lh.eap.ai.ExpertKnowledgeContextService.Context knowledgeContext, boolean knowledgeMemoryCleared,
-                                com.lh.eap.skill.SkillService.Context skillContext, boolean contextMemoryCleared) {
+                                com.lh.eap.skill.SkillService.Context skillContext, boolean contextMemoryCleared,
+                                com.lh.eap.ai.ContextBudget.Observation contextBudget) {
+    public AiMessageResponse(UUID executionId, String answer, String error, String status, String approval,
+            String verification, List<AiToolEvent> toolEvents, String artifactError, List<AiArtifactSummary> artifacts,
+            com.lh.eap.ai.CodeChangeService.Proposal proposal, com.lh.eap.ai.ExpertKnowledgeContextService.Context knowledgeContext,
+            boolean knowledgeMemoryCleared, com.lh.eap.skill.SkillService.Context skillContext, boolean contextMemoryCleared) {
+        this(executionId, answer, error, status, approval, verification, toolEvents, artifactError, artifacts, proposal,
+                knowledgeContext, knowledgeMemoryCleared, skillContext, contextMemoryCleared, null);
+    }
     public AiMessageResponse(UUID executionId, String answer, String error, String status, String approval,
             String verification, List<AiToolEvent> toolEvents, String artifactError, List<AiArtifactSummary> artifacts,
             com.lh.eap.ai.CodeChangeService.Proposal proposal, com.lh.eap.ai.ExpertKnowledgeContextService.Context knowledgeContext,
             boolean knowledgeMemoryCleared) {
         this(executionId, answer, error, status, approval, verification, toolEvents, artifactError, artifacts, proposal,
-                knowledgeContext, knowledgeMemoryCleared, null, knowledgeMemoryCleared);
+                knowledgeContext, knowledgeMemoryCleared, null, knowledgeMemoryCleared, null);
     }
     public AiMessageResponse(UUID executionId, String answer, String error, String status, String approval,
             String verification, List<AiToolEvent> toolEvents, String artifactError, List<AiArtifactSummary> artifacts,

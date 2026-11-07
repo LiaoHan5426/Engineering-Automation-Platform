@@ -18,7 +18,7 @@
 | 会话记忆 | `backend/eap-ai/src/main/java/com/lh/eap/ai/EngineeringAiConfiguration.java` 的 `engineeringChatMemory` 为20条消息窗口；`AiConversationRegistry` 为内存会话 | 非跨重启恢复、完整历史、任务工作记忆或长期记忆 |
 | 敏感上下文 | `AiConversationRegistry.clearContextMemory`：知识/Skill一旦使用，后续每轮先清空模型记忆，包括移除资源和被拒请求 | 连续对话被主动牺牲；不能简单取消清空，派生回答也可能保留撤权知识 |
 | 检索 | `backend/eap-engine/src/main/java/com/lh/eap/persistence/mapper/KnowledgeRepository.java` 使用 PostgreSQL 全文与关键词；`ExpertKnowledgeContextService` 限定专家授权并返回来源 | 无向量检索；尚无统一质量基线；返回引用不证明模型使用或正确引用 |
-| 上下文 | `TaskContext` 及 `AiChatApplication` 拼装指导、附件、原型、源码、知识或Skill，并校验长度/组合 | 尚无统一token预算、选择、压缩与依赖失效策略；字符限额不是token计量 |
+| 上下文 | `TaskContext`/`AiChatApplication` 拼装；**CE-01 首片**：`ContextBudget` 字符预算/输出预留/超限观测（CHAR_ESTIMATE） | 非 provider token；无压缩选择策略；ChatMemory 未精确计量（标 UNKNOWN）；派生失效仍靠清空保护 |
 | 工具调用 | Java Handler可直接执行本地逻辑；CLI经 `CliOperationHandler` / `CliExecutionService` / `DefaultProcessExecutor`，使用argv与cwd；Chat当前受控工具为只读gitStatus | 不是所有工具都走Shell，也不是目录中的工具都向模型开放；cwd限制不是OS沙箱 |
 | CLI管理 | `CliProgramService` / `/api/cli-programs` 与 `CliProgramManager.vue` 可登记程序、路径及固定参数操作；`LocalBinaries` 查PATH或指定文件 | 登记不安装；缺少受管版本、来源、更新、回滚、卸载与依赖管理 |
 | MCP | `McpServerService` 登记/目标探测，已有授权与会话隔离 | 未实现实际协议客户端；人工工具列表不是真实发现 |
@@ -167,7 +167,7 @@ TC-02首片先人工读取某个编辑器实例的当前草稿/选中状态，�
 | 顺序 / ID | 最小范围与依赖 | 退出证据 |
 |---|---|---|
 | 先保留缺陷门禁 | 场景保存UNKNOWN后的删除核对仍阻断；已有自身改页验收线独立推进 | 结果未知不误报删除/完成；原有交付证据保留 |
-| CE-01 / KR-01 | 定义上下文/失效合同与真实检索基线；复用现有检索与拼装 | token/字符语义明确、预算/来源可解释、撤权派生内容反例及质量指标 |
+| CE-01 / KR-01 | **CE-01 部分交付**：字符预算/来源观测/超限拒绝/派生清空笔记；KR-01 仍待预定问题集与检索基线 | CE-01：CHAR_ESTIMATE≠token、来源可解释、超限带观测、观测无正文；KR-01：召回/引用/更新删除/越权阈值仍缺 |
 | FS-01 | 数据根、目录归属与前端/本机执行分界；盘点旧数据 | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | 可信定义发现与已知CLI绑定，先复用现有Git能力；受管包/MCP/插件来源随对应切片接入 | 无需重复录入、路径来源/冲突/未知版本、停用保留、失效与执行快照；不执行未知脚本、不整盘扫描或自动授权 |
 | TC-01 / P0 | 明确输入输出/入口/范围/策略及结果契约；从目录选择已有只读Git能力并实际调用/呈现 | 无权限拒绝、参数/范围重校验、真实结果、适配缺失通用呈现、错误/超时/取消语义；不新增任意执行口 |

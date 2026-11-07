@@ -875,11 +875,28 @@ export type KnowledgeContext = {
     documentId?: string
   }>
 }
+export type ContextBudgetObservation = {
+  platformLimit: number
+  outputReserve: number
+  inputMaterialLimit: number
+  usedChars: number
+  materialChars: number
+  remainingChars: number
+  metering: 'CHAR_ESTIMATE' | 'UNKNOWN' | string
+  sources: Array<{
+    source: string
+    chars: number
+    metering: string
+    disposition: string
+  }>
+  notes: string[]
+}
 export type AiMessageResult = {
   skillContext?: SkillContext | null
   contextMemoryCleared?: boolean
   knowledgeContext?: KnowledgeContext | null
   knowledgeMemoryCleared?: boolean
+  contextBudget?: ContextBudgetObservation | null
   proposal?: CodeProposal | null
   executionId: string | null
   answer: string
