@@ -1,30 +1,49 @@
 package com.lh.eap.application.service;
 
+import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.domain.model.CapabilityAvailability;
 import com.lh.eap.domain.model.CapabilityDescriptor;
 import com.lh.eap.runtime.handler.CapabilityHandler;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
+import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * TD-01: aggregate built-in capability handler definitions with binding snapshot fields.
- * Does not execute binaries to render the catalog; version remains unknown until an explicit probe.
+ * Catalog GET never runs binaries; version stays unknown until an explicit probe writeback.
  */
 @Service
 public class TrustedToolCatalogService {
+    private static final int DETECTED_VERSION_LIMIT = 120;
+
     private final CapabilityHandlerRegistry handlers;
     private final CapabilitySettings settings;
     private final CliChannels channels;
+    private final RuntimeWorkspace runtime;
+    private final ConcurrentHashMap<String, VersionProbe> probes = new ConcurrentHashMap<>();
 
+    @Autowired
     public TrustedToolCatalogService(CapabilityHandlerRegistry handlers, CapabilitySettings settings,
-                                     CliChannels channels) {
+                                     CliChannels channels, RuntimeWorkspace runtime) {
         this.handlers = handlers;
         this.settings = settings;
         this.channels = channels == null ? CliChannels.defaults() : channels;
+        this.runtime = runtime;
+    }
+
+    /** Test helper when RuntimeWorkspace is irrelevant. */
+    TrustedToolCatalogService(CapabilityHandlerRegistry handlers, CapabilitySettings settings,
+                              CliChannels channels) {
+        this(handlers, settings, channels, null);
     }
 
     public Map<String, Object> catalog() {
@@ -36,6 +55,55 @@ public class TrustedToolCatalogService {
             }
         }
         return Map.of("items", List.copyOf(items), "source", "capability-handlers");
+    }
+
+    /**
+     * Explicit operator action: run {@code <binary> --version} once and write the result back into the
+     * in-process catalog cache. Does not authorize execution of arbitrary capabilities.
+     */
+    public Map<String, Object> probeVersion(String toolId) {
+        var descriptor = requireDescriptor(toolId);
+        if (!descriptor.hasBinary()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "VERSION_PROBE_NOT_APPLICABLE");
+        }
+        var enabled = settings.enabled(toolId);
+        var channel = channels.channel(toolId, descriptor.binary());
+        var binding = classifyBinding(enabled, channel);
+        if ("disabled".equals(binding)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "CAPABILITY_DISABLED");
+        }
+        if ("conflict".equals(binding) || "missing_binary".equals(binding)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "BINDING_" + binding.toUpperCase());
+        }
+
+        var probe = channels.probe(toolId, descriptor.binary(), probeWorkspace());
+        var executed = Boolean.TRUE.equals(probe.get("executed"));
+        var success = Boolean.TRUE.equals(probe.get("success"));
+        var output = text(probe.get("output"));
+        var now = Instant.now().toString();
+        var resolved = channel.resolvedPath() == null ? "" : channel.resolvedPath();
+
+        VersionProbe snapshot;
+        if (executed && success) {
+            var version = firstLine(output);
+            snapshot = new VersionProbe("known", version, now, resolved, "显式探测成功；进程内写回，目录 GET 不自动重探。");
+        } else {
+            var note = text(probe.get("message"));
+            if (note.isEmpty()) note = "显式探测未成功；版本保持未知态写入 probe_failed。";
+            snapshot = new VersionProbe("probe_failed", "", now, resolved, note);
+        }
+        probes.put(toolId, snapshot);
+
+        var payload = new LinkedHashMap<String, Object>();
+        payload.put("id", toolId);
+        payload.put("versionStatus", snapshot.versionStatus());
+        payload.put("detectedVersion", snapshot.detectedVersion());
+        payload.put("probedAt", snapshot.probedAt());
+        payload.put("resolvedPath", snapshot.resolvedPath());
+        payload.put("success", "known".equals(snapshot.versionStatus()));
+        payload.put("message", snapshot.probeNote());
+        payload.put("output", output);
+        return Map.copyOf(payload);
     }
 
     private Map<String, Object> item(CapabilityDescriptor descriptor, String scope, boolean enabled) {
@@ -60,6 +128,8 @@ public class TrustedToolCatalogService {
             fields.put("binary", "");
             fields.put("resolvedPath", "");
             fields.put("versionStatus", "not_applicable");
+            fields.put("detectedVersion", "");
+            fields.put("probedAt", "");
             fields.put("bindingNote", enabled ? "" : "已停用；定义保留在目录中，不停用不等于删除。");
             return fields;
         }
@@ -67,30 +137,97 @@ public class TrustedToolCatalogService {
         fields.put("bindingSource", channel.source());
         fields.put("binary", channel.binary() == null ? "" : channel.binary());
         fields.put("resolvedPath", channel.resolvedPath() == null ? "" : channel.resolvedPath());
-        // Catalog render never runs --version; unknown until operator probes.
-        fields.put("versionStatus", "unknown");
-        if (!enabled) {
-            fields.put("bindingStatus", "disabled");
+        var binding = classifyBinding(enabled, channel);
+        fields.put("bindingStatus", binding);
+        applyVersionFields(fields, descriptor.name(), channel.resolvedPath() == null ? "" : channel.resolvedPath(), binding);
+        if ("disabled".equals(binding)) {
             fields.put("bindingNote", "已停用快照：定义与绑定保留，调用入口拒绝执行。");
             return fields;
         }
-        if (channel.availability() == CapabilityAvailability.MISSING_BINARY) {
-            if (channel.overridden()) {
-                fields.put("bindingStatus", "conflict");
-                fields.put("bindingNote", "操作员覆盖路径不可用，未静默回退到随附二进制。");
-            } else {
-                fields.put("bindingStatus", "missing_binary");
-                fields.put("bindingNote", "未找到可执行文件：" + channel.binary());
-            }
+        if ("conflict".equals(binding)) {
+            fields.put("bindingNote", "操作员覆盖路径不可用，未静默回退到随附二进制。");
             return fields;
         }
-        fields.put("bindingStatus", "ready");
-        fields.put("bindingNote", "二进制已解析；版本未知（目录不自动探测）。");
+        if ("missing_binary".equals(binding)) {
+            fields.put("bindingNote", "未找到可执行文件：" + channel.binary());
+            return fields;
+        }
+        if ("unknown".equals(fields.get("versionStatus"))) {
+            fields.put("bindingNote", "二进制已解析；版本未知（目录不自动探测）。");
+        } else if ("probe_failed".equals(fields.get("versionStatus"))) {
+            fields.put("bindingNote", String.valueOf(fields.get("probeNote")));
+        } else {
+            fields.put("bindingNote", "二进制已解析；版本已由显式探测写回。");
+        }
         return fields;
+    }
+
+    private void applyVersionFields(Map<String, Object> fields, String toolId, String resolvedPath, String binding) {
+        var cached = probes.get(toolId);
+        if (cached != null && "ready".equals(binding) && resolvedPath.equals(cached.resolvedPath())) {
+            fields.put("versionStatus", cached.versionStatus());
+            fields.put("detectedVersion", cached.detectedVersion());
+            fields.put("probedAt", cached.probedAt());
+            fields.put("probeNote", cached.probeNote());
+            return;
+        }
+        if (cached != null && !resolvedPath.equals(cached.resolvedPath())) {
+            probes.remove(toolId);
+        }
+        fields.put("versionStatus", "unknown");
+        fields.put("detectedVersion", "");
+        fields.put("probedAt", "");
+        fields.put("probeNote", "");
+    }
+
+    private static String classifyBinding(boolean enabled, CliChannels.Channel channel) {
+        if (!enabled) return "disabled";
+        if (channel.availability() == CapabilityAvailability.MISSING_BINARY) {
+            return channel.overridden() ? "conflict" : "missing_binary";
+        }
+        return "ready";
+    }
+
+    private CapabilityDescriptor requireDescriptor(String toolId) {
+        if (toolId == null || toolId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TOOL_ID_REQUIRED");
+        }
+        for (CapabilityHandler handler : handlers.all()) {
+            for (CapabilityDescriptor descriptor : handler.describe()) {
+                if (toolId.equals(descriptor.name()) && descriptor.readOnly()) {
+                    return descriptor;
+                }
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRUSTED_TOOL_NOT_FOUND");
+    }
+
+    private Path probeWorkspace() {
+        if (runtime != null && runtime.root().allowed() && runtime.root().path() != null) {
+            return runtime.root().path();
+        }
+        if (runtime != null && runtime.workspace() != null) {
+            return runtime.workspace();
+        }
+        return Path.of(".").toAbsolutePath().normalize();
     }
 
     private static String invocationFor(String capability) {
         if ("git-status".equals(capability)) return "POST /api/runtime/trusted-tools/git-status/invoke";
         return "";
     }
+
+    private static String firstLine(String output) {
+        if (output == null || output.isBlank()) return "";
+        var line = output.lines().map(String::trim).filter(part -> !part.isEmpty()).findFirst().orElse("");
+        if (line.length() <= DETECTED_VERSION_LIMIT) return line;
+        return line.substring(0, DETECTED_VERSION_LIMIT) + "…";
+    }
+
+    private static String text(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    record VersionProbe(String versionStatus, String detectedVersion, String probedAt,
+                        String resolvedPath, String probeNote) {}
 }

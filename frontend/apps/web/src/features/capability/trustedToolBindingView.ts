@@ -29,7 +29,29 @@ export function bindingStatusTone(
 export function versionStatusLabel(status: string | undefined): string {
   if (status === 'known') return '版本已知'
   if (status === 'not_applicable') return '无版本'
+  if (status === 'probe_failed') return '探测失败'
   return '版本未知'
+}
+
+export function versionStatusTone(
+  status: string | undefined,
+): 'success' | 'warning' | 'danger' | 'neutral' {
+  if (status === 'known') return 'success'
+  if (status === 'probe_failed') return 'danger'
+  if (status === 'not_applicable') return 'neutral'
+  return 'warning'
+}
+
+export function canProbeVersion(tool: TrustedToolItem): boolean {
+  return tool.bindingStatus === 'ready' && tool.kind === 'cli' && tool.versionStatus !== 'not_applicable'
+}
+
+export function versionDetail(tool: TrustedToolItem): string {
+  const parts: string[] = []
+  if (tool.detectedVersion) parts.push(`探测版本 ${tool.detectedVersion}`)
+  if (tool.probedAt) parts.push(`探测于 ${tool.probedAt}`)
+  if (tool.versionStatus === 'probe_failed' && tool.probeNote) parts.push(tool.probeNote)
+  return parts.join(' · ')
 }
 
 export function bindingDetail(tool: TrustedToolItem): string {

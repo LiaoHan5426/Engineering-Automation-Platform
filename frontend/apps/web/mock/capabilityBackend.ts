@@ -1,5 +1,6 @@
 /** Minimal capability/MCP catalog for mock mode browser checks. */
 export type TrustedGitMockOutcome = 'success' | 'denied' | 'timeout' | 'cancelled'
+export type TrustedVersionProbeOutcome = 'success' | 'fail' | 'conflict' | 'disabled'
 
 export function createMockCapabilityBackend() {
   const productionMatrix = [
@@ -39,7 +40,27 @@ export function createMockCapabilityBackend() {
     },
   ]
 
-  const trustedTools = [
+  type MockTrustedTool = {
+    id: string
+    title: string
+    kind: string
+    scope: string
+    readOnly: boolean
+    enabled: boolean
+    invocation: string
+    summary: string
+    bindingStatus: string
+    bindingSource: string
+    binary: string
+    resolvedPath: string
+    versionStatus: string
+    detectedVersion?: string
+    probedAt?: string
+    probeNote?: string
+    bindingNote: string
+  }
+
+  const trustedTools: MockTrustedTool[] = [
     {
       id: 'git-status',
       title: 'Git status（只读）',
@@ -98,6 +119,14 @@ export function createMockCapabilityBackend() {
     return 'success'
   }
 
+  function parseProbeOutcome(path: string): TrustedVersionProbeOutcome {
+    const query = path.includes('?') ? path.slice(path.indexOf('?') + 1) : ''
+    const params = new URLSearchParams(query)
+    const raw = (params.get('mockOutcome') || 'success').trim().toLowerCase()
+    if (raw === 'fail' || raw === 'conflict' || raw === 'disabled') return raw
+    return 'success'
+  }
+
   function pathnameOnly(path: string): string {
     return path.includes('?') ? path.slice(0, path.indexOf('?')) : path
   }
@@ -151,6 +180,56 @@ export function createMockCapabilityBackend() {
         return {
           status: 200,
           data: { items: trustedTools, source: 'mock-capability-handlers' },
+        }
+      }
+      if (method === 'POST' && /^\/runtime\/trusted-tools\/[^/]+\/probe-version$/.test(route)) {
+        const id = route.split('/')[3]
+        const tool = trustedTools.find((item) => item.id === id)
+        if (!tool) return { status: 404, data: { detail: 'TRUSTED_TOOL_NOT_FOUND' } }
+        const outcome = parseProbeOutcome(path)
+        if (outcome === 'disabled' || tool.bindingStatus === 'disabled') {
+          return { status: 403, data: { detail: 'CAPABILITY_DISABLED' } }
+        }
+        if (outcome === 'conflict' || tool.bindingStatus === 'conflict') {
+          return { status: 409, data: { detail: 'BINDING_CONFLICT' } }
+        }
+        if (outcome === 'fail') {
+          tool.versionStatus = 'probe_failed'
+          tool.detectedVersion = ''
+          tool.probedAt = '2026-11-07T04:00:00Z'
+          tool.probeNote = 'mock：显式探测失败，未伪造版本。'
+          tool.bindingNote = tool.probeNote
+          return {
+            status: 200,
+            data: {
+              id,
+              versionStatus: 'probe_failed',
+              detectedVersion: '',
+              probedAt: tool.probedAt,
+              resolvedPath: tool.resolvedPath,
+              success: false,
+              message: tool.probeNote,
+              output: '',
+            },
+          }
+        }
+        tool.versionStatus = 'known'
+        tool.detectedVersion = 'git version 2.45.1 (mock)'
+        tool.probedAt = '2026-11-07T04:00:00Z'
+        tool.probeNote = 'mock：显式探测成功；进程内写回。'
+        tool.bindingNote = '二进制已解析；版本已由显式探测写回。'
+        return {
+          status: 200,
+          data: {
+            id,
+            versionStatus: 'known',
+            detectedVersion: tool.detectedVersion,
+            probedAt: tool.probedAt,
+            resolvedPath: tool.resolvedPath,
+            success: true,
+            message: tool.probeNote,
+            output: tool.detectedVersion,
+          },
         }
       }
       if (method === 'POST' && route === '/runtime/trusted-tools/git-status/invoke') {

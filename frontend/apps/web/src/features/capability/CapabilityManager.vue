@@ -23,7 +23,10 @@ import {
   bindingDetail,
   bindingStatusLabel,
   bindingStatusTone,
+  canProbeVersion,
+  versionDetail,
   versionStatusLabel,
+  versionStatusTone,
 } from './trustedToolBindingView'
 import CliProgramManager from './CliProgramManager.vue'
 
@@ -37,6 +40,7 @@ const tab = ref('overview')
 const trustedTools = ref<TrustedToolItem[]>([])
 const trustedGitResult = ref<TrustedGitStatusResult | null>(null)
 const trustedBusy = ref(false)
+const trustedProbeBusy = ref(false)
 const trustedFailure = ref<TrustedToolInvokeFailure | null>(null)
 const trustedAbort = ref<AbortController | null>(null)
 const mockTrustedScenarios = import.meta.env.MODE === 'mock'
@@ -169,6 +173,25 @@ async function runTrustedGitStatus(
 function cancelTrustedGitStatus() {
   trustedAbort.value?.abort()
 }
+
+async function runTrustedVersionProbe(
+  toolId: string,
+  mockOutcome?: 'success' | 'fail' | 'conflict' | 'disabled',
+) {
+  trustedProbeBusy.value = true
+  try {
+    const result = await runtimeApi.probeTrustedToolVersion(toolId, {
+      mockOutcome: mockTrustedScenarios ? mockOutcome : undefined,
+    })
+    feedback(result.success ? 'success' : 'error', result.message)
+    await refresh()
+  } catch (error) {
+    feedback('error', errorMessage(error))
+  } finally {
+    trustedProbeBusy.value = false
+  }
+}
+
 onMounted(refresh)
 defineExpose({ refresh })
 
@@ -311,7 +334,10 @@ async function submitServer() {
       <header class="cap-head">
         <div class="cap-head__main">
           <h2>可信工具目录（TD-01）</h2>
-          <p>自动汇总内置只读能力定义；下方可触发一次受控 git-status，不开放任意执行口。</p>
+          <p>
+            自动汇总内置只读能力定义；版本需显式探测写回，目录渲染不自动执行二进制。下方可触发一次受控
+            git-status，不开放任意执行口。
+          </p>
         </div>
       </header>
       <ul v-if="trustedTools.length" class="trusted-tool-list">
@@ -323,10 +349,12 @@ async function submitServer() {
               :label="bindingStatusLabel(tool.bindingStatus)"
             />
           </span>
-          <Badge
-            :tone="tool.versionStatus === 'known' ? 'success' : 'warning'"
-            :label="versionStatusLabel(tool.versionStatus)"
-          />
+          <span :data-testid="`trusted-tool-version-${tool.id}`">
+            <Badge
+              :tone="versionStatusTone(tool.versionStatus)"
+              :label="versionStatusLabel(tool.versionStatus)"
+            />
+          </span>
           <p
             v-if="bindingDetail(tool)"
             class="hint"
@@ -334,10 +362,37 @@ async function submitServer() {
           >
             {{ bindingDetail(tool) }}
           </p>
+          <p
+            v-if="versionDetail(tool)"
+            class="hint"
+            :data-testid="`trusted-tool-version-detail-${tool.id}`"
+          >
+            {{ versionDetail(tool) }}
+          </p>
+          <Button
+            v-if="canProbeVersion(tool)"
+            variant="secondary"
+            size="sm"
+            :data-testid="`trusted-tool-probe-${tool.id}`"
+            :disabled="trustedProbeBusy || trustedBusy"
+            @click="runTrustedVersionProbe(tool.id)"
+          >
+            探测版本
+          </Button>
         </li>
       </ul>
       <p v-else class="hint">暂无可信只读工具定义。</p>
       <div class="trusted-tool-actions">
+        <Button
+          v-if="mockTrustedScenarios"
+          variant="secondary"
+          size="sm"
+          data-testid="trusted-tool-probe-fail"
+          :disabled="trustedProbeBusy || trustedBusy"
+          @click="runTrustedVersionProbe('git-status', 'fail')"
+        >
+          模拟探测失败
+        </Button>
         <Button
           variant="secondary"
           size="sm"

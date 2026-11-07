@@ -5,6 +5,7 @@ import com.lh.eap.application.service.TrustedGitStatusService;
 import com.lh.eap.application.service.TrustedToolCatalogService;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,6 +32,12 @@ public class RuntimeDataController {
     @GetMapping("/trusted-tools")
     public Map<String, Object> trustedTools() {
         return trustedTools.catalog();
+    }
+
+    /** TD-01: explicit {@code --version} probe with in-process catalog writeback. */
+    @PostMapping("/trusted-tools/{id}/probe-version")
+    public Map<String, Object> probeTrustedToolVersion(@PathVariable String id) {
+        return trustedTools.probeVersion(id);
     }
 
     @PostMapping("/trusted-tools/git-status/invoke")

@@ -135,6 +135,10 @@ EAP应用数据根/
 
 `TrustedToolCatalogService` 在 `GET /api/runtime/trusted-tools` 附加 `bindingStatus`/`bindingSource`/`binary`/`resolvedPath`/`versionStatus`/`bindingNote`。目录渲染只做路径解析，不执行 `--version`（版本保持 `unknown`）。操作员覆盖不可用标 `conflict`，不停用静默回退；停用保留定义快照。`TrustedToolCatalogServiceTest` 与 mock 能力页浏览器已验 ready/disabled/conflict。
 
+#### TD-01 显式版本探测写回（2026-11-07）
+
+`POST /api/runtime/trusted-tools/{id}/probe-version` 复用 `CliChannels.probe` 有界 `--version`（参数数组、短超时、输出截断脱敏）。成功写回进程内缓存 `versionStatus=known` + `detectedVersion`/`probedAt`；失败写 `probe_failed` 且不伪造版本；disabled→403、conflict/missing_binary→409。目录 GET 合并同路径缓存，路径变化失效；仍不在渲染时自动探测。mock 能力页浏览器已验成功写回与探测失败。无持久化探测表、不整盘扫描、不开放任意执行口。
+
 | 来源 | 发现与绑定方式 | 限制 |
 |---|---|---|
 | Java内置能力 | 汇总Spring中已有CapabilityHandler声明 | 不将任意Bean自动暴露为模型工具 |
@@ -209,7 +213,7 @@ mock 可信目录返回启用 `git-status`；`invoke` 默认成功 stdout，`moc
 | 先保留缺陷门禁 | 场景保存UNKNOWN后的删除核对仍阻断；已有自身改页验收线独立推进 | 结果未知不误报删除/完成；原有交付证据保留 |
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 回合预算/超限（浏览器已验）；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS 适配；每题延迟观测 + 本机实库对照 + 排序质量样本 | CE-01 剩余 token/压缩/Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
 | FS-01 | 数据根、目录归属与前端/本机执行分界；盘点旧数据 | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
-| TD-01 / P0 | **部分交付**：可信定义汇总 + 绑定快照（ready/disabled/conflict/missing_binary）+ 版本未知（目录不自动探测；mock 浏览器已验） | 真实 `--version` 探测写回、更多依赖绑定；不执行未知脚本、不整盘扫描或自动授权 |
+| TD-01 / P0 | **部分交付**：可信定义汇总 + 绑定快照 + 显式 `--version` 探测写回（known/probe_failed；目录不自动探测；mock 浏览器已验） | 持久化探测缓存、更多依赖绑定与用户接受；不执行未知脚本、不整盘扫描或自动授权 |
 | TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消呈现与 Abort 取消（浏览器已验） | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
 | TC-02 / P1 | TC-01职责合同后验证前端交互实例，协调实际Host而非等待完整SDK | 人工读取草稿/选中状态、多实例/revision/关闭断线、保存版本区别；模型反向调用另行评审 |
 | MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（everything + sequential-thinking）+ http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传 | 继续追加已验证官方包；常驻 GET listen 未做 |

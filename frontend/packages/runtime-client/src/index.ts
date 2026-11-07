@@ -17,7 +17,7 @@ export type TrustedToolBindingStatus =
   | 'missing_binary'
   | 'conflict'
   | 'unknown_version'
-export type TrustedToolVersionStatus = 'unknown' | 'known' | 'not_applicable'
+export type TrustedToolVersionStatus = 'unknown' | 'known' | 'not_applicable' | 'probe_failed'
 
 export type TrustedToolItem = {
   id: string
@@ -33,9 +33,23 @@ export type TrustedToolItem = {
   binary?: string
   resolvedPath?: string
   versionStatus?: TrustedToolVersionStatus | string
+  detectedVersion?: string
+  probedAt?: string
+  probeNote?: string
   bindingNote?: string
 }
 export type TrustedToolResponse = { items: TrustedToolItem[]; source: string }
+
+export type TrustedToolVersionProbeResult = {
+  id: string
+  versionStatus: TrustedToolVersionStatus | string
+  detectedVersion?: string
+  probedAt?: string
+  resolvedPath?: string
+  success: boolean
+  message: string
+  output?: string
+}
 
 export type TrustedGitStatusResult = {
   capability: string
@@ -1200,6 +1214,20 @@ export const runtimeApi = {
   health: () => get<RuntimeHealth>('/health'),
   dataLayout: () => get<DataLayoutResponse>('/runtime/data-layout'),
   trustedTools: () => get<TrustedToolResponse>('/runtime/trusted-tools'),
+  probeTrustedToolVersion: (
+    id: string,
+    options?: { mockOutcome?: 'success' | 'fail' | 'conflict' | 'disabled'; signal?: AbortSignal },
+  ) =>
+    client
+      .post<TrustedToolVersionProbeResult>(
+        '/runtime/trusted-tools/' + encodeURIComponent(id) + '/probe-version',
+        {},
+        {
+          signal: options?.signal,
+          params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
+        },
+      )
+      .then((r) => r.data),
   invokeTrustedGitStatus: (options?: {
     mockOutcome?: 'success' | 'denied' | 'timeout' | 'cancelled'
     signal?: AbortSignal

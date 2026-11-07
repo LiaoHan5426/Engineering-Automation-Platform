@@ -35,6 +35,36 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     expect(items.find((item) => item.id === 'broken-cli')?.bindingStatus).toBe('conflict')
   })
 
+  it('writes known version back into the mock catalog after an explicit probe', async () => {
+    const backend = createMockCapabilityBackend()
+    const probe = await backend.handle('POST', '/runtime/trusted-tools/git-status/probe-version')
+    expect(probe?.status).toBe(200)
+    expect(probe?.data).toMatchObject({
+      id: 'git-status',
+      versionStatus: 'known',
+      detectedVersion: 'git version 2.45.1 (mock)',
+      success: true,
+    })
+    const catalog = await backend.handle('GET', '/runtime/trusted-tools')
+    const items = (
+      catalog?.data as { items: Array<{ id: string; versionStatus: string; detectedVersion: string }> }
+    ).items
+    expect(items.find((item) => item.id === 'git-status')?.versionStatus).toBe('known')
+    expect(items.find((item) => item.id === 'git-status')?.detectedVersion).toContain('2.45.1')
+  })
+
+  it('maps mock version probe failure and conflict without inventing a version', async () => {
+    const backend = createMockCapabilityBackend()
+    const failed = await backend.handle(
+      'POST',
+      '/runtime/trusted-tools/git-status/probe-version?mockOutcome=fail',
+    )
+    expect(failed?.status).toBe(200)
+    expect(failed?.data).toMatchObject({ versionStatus: 'probe_failed', detectedVersion: '', success: false })
+    const conflict = await backend.handle('POST', '/runtime/trusted-tools/broken-cli/probe-version')
+    expect(conflict?.status).toBe(409)
+  })
+
   it('returns a successful mock git-status payload', async () => {
     const backend = createMockCapabilityBackend()
     const reply = await backend.handle('POST', '/runtime/trusted-tools/git-status/invoke')
