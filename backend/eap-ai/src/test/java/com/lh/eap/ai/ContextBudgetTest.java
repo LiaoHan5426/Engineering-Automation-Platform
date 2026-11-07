@@ -21,6 +21,7 @@ class ContextBudgetTest {
         assertEquals(5, observation.materialChars());
         assertTrue(observation.remainingChars() > 0);
         assertTrue(observation.notes().contains("DERIVED_CLEARED_BEFORE_SEND"));
+        assertTrue(observation.notes().contains("COMPRESSION_NOT_ENABLED"));
         assertEquals("CHAT_MEMORY_NOT_METERED",
                 observation.sources().stream().filter(s -> s.source().equals("history")).findFirst().orElseThrow().disposition());
         assertEquals(100, observation.sources().stream().filter(s -> s.source().equals("files")).findFirst().orElseThrow().chars());

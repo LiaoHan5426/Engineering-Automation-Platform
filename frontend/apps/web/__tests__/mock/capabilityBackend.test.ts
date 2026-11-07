@@ -43,10 +43,19 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     const backend = createMockCapabilityBackend()
     await backend.handle('POST', '/runtime/trusted-tools/probe-cache/clear')
     const before = await backend.handle('GET', '/runtime/trusted-tools')
-    expect(before?.data).toMatchObject({ probeCache: { cached: 0, known: 0, failed: 0 } })
+    expect(before?.data).toMatchObject({
+      probeCache: { cached: 0, known: 0, failed: 0, newestProbedAt: '' },
+    })
     await backend.handle('POST', '/runtime/trusted-tools/git-status/probe-version')
     const after = await backend.handle('GET', '/runtime/trusted-tools')
-    expect(after?.data).toMatchObject({ probeCache: { cached: 1, known: 1, failed: 0 } })
+    expect(after?.data).toMatchObject({
+      probeCache: {
+        cached: 1,
+        known: 1,
+        failed: 0,
+        newestProbedAt: '2026-11-07T04:00:00Z',
+      },
+    })
     await backend.handle('POST', '/runtime/trusted-tools/probe-cache/clear')
   })
 

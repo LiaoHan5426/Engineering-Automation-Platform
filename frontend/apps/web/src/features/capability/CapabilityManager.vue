@@ -40,7 +40,12 @@ const message = ref('')
 const messageKind = ref<'error' | 'success'>('success')
 const tab = ref('overview')
 const trustedTools = ref<TrustedToolItem[]>([])
-const trustedProbeCache = ref<{ cached: number; known: number; failed: number } | null>(null)
+const trustedProbeCache = ref<{
+  cached: number
+  known: number
+  failed: number
+  newestProbedAt?: string
+} | null>(null)
 const dataLayout = ref<DataLayoutResponse | null>(null)
 const dataLayoutBusy = ref(false)
 const trustedGitResult = ref<TrustedGitStatusResult | null>(null)
@@ -174,6 +179,7 @@ async function runTrustedGitStatus(
   trustedBusy.value = true
   trustedGitResult.value = null
   trustedFailure.value = null
+  const startedAt = Date.now()
   try {
     trustedGitResult.value = {
       ...(await runtimeApi.invokeTrustedGitStatus({
@@ -181,9 +187,11 @@ async function runTrustedGitStatus(
         signal: controller.signal,
       })),
       observedAt: new Date().toISOString(),
+      elapsedMs: Math.max(0, Date.now() - startedAt),
     }
     feedback(trustedGitResult.value.success ? 'success' : 'error', trustedGitResult.value.message)
   } catch (error) {
+    const elapsedMs = Math.max(0, Date.now() - startedAt)
     if (controller.signal.aborted) {
       trustedFailure.value = 'cancelled'
       trustedGitResult.value = {
@@ -192,6 +200,7 @@ async function runTrustedGitStatus(
         message: '已取消本次可信工具调用。',
         detail: 'CLIENT_ABORTED',
         observedAt: new Date().toISOString(),
+        elapsedMs,
       }
       feedback('error', '已取消本次可信工具调用。')
       return
@@ -203,6 +212,7 @@ async function runTrustedGitStatus(
       message: trustedToolInvokeFailureMessage(error),
       detail: trustedToolInvokeDetail(error),
       observedAt: new Date().toISOString(),
+      elapsedMs,
     }
     feedback('error', trustedToolInvokeFailureMessage(error))
   } finally {
@@ -545,7 +555,11 @@ async function submitServer() {
         data-testid="trusted-tool-probe-cache-summary"
       >
         探测缓存 {{ trustedProbeCache.cached }} · 已知 {{ trustedProbeCache.known }} · 失败
-        {{ trustedProbeCache.failed }}（目录 GET 不自动探测）
+        {{ trustedProbeCache.failed
+        }}<template v-if="trustedProbeCache.newestProbedAt"
+          > · 最近 {{ trustedProbeCache.newestProbedAt }}</template
+        >
+        （目录 GET 不自动探测）
       </p>
       <div class="trusted-tool-actions">
         <Button
@@ -631,7 +645,7 @@ async function submitServer() {
         </template>
       </div>
       <p
-        v-if="trustedGitResult"
+        v-if="trustedGitResult && (trustedGitResult.success || !trustedFailure)"
         class="hint"
         data-testid="trusted-git-status-summary"
       >
@@ -641,6 +655,8 @@ async function submitServer() {
           > · {{ trustedGitResult.detail }}</template
         ><template v-if="trustedGitResult.exitCode != null"
           > · exit {{ trustedGitResult.exitCode }}</template
+        ><template v-if="trustedGitResult.elapsedMs != null"
+          > · {{ trustedGitResult.elapsedMs }} ms</template
         ><template v-if="trustedGitResult.observedAt"
           > · 观测于 {{ trustedGitResult.observedAt }}</template
         >
@@ -656,28 +672,48 @@ async function submitServer() {
         class="hint"
         data-testid="trusted-git-status-denied"
       >
-        能力已停用或未授权，已拒绝本次只读调用。
+        能力已停用或未授权，已拒绝本次只读调用<template
+          v-if="trustedGitResult?.detail"
+          > · {{ trustedGitResult.detail }}</template
+        ><template v-if="trustedGitResult?.elapsedMs != null"
+          > · {{ trustedGitResult.elapsedMs }} ms</template
+        >。
       </p>
       <p
         v-if="trustedFailure === 'timeout'"
         class="hint"
         data-testid="trusted-git-status-timeout"
       >
-        可信工具调用超时，未修改工作区。
+        可信工具调用超时，未修改工作区<template
+          v-if="trustedGitResult?.detail"
+          > · {{ trustedGitResult.detail }}</template
+        ><template v-if="trustedGitResult?.elapsedMs != null"
+          > · {{ trustedGitResult.elapsedMs }} ms</template
+        >。
       </p>
       <p
         v-if="trustedFailure === 'cancelled'"
         class="hint"
         data-testid="trusted-git-status-cancelled"
       >
-        已取消本次可信工具调用。
+        已取消本次可信工具调用<template
+          v-if="trustedGitResult?.detail"
+          > · {{ trustedGitResult.detail }}</template
+        ><template v-if="trustedGitResult?.elapsedMs != null"
+          > · {{ trustedGitResult.elapsedMs }} ms</template
+        >。
       </p>
       <p
         v-if="trustedFailure === 'unknown'"
         class="hint"
         data-testid="trusted-git-status-unknown"
       >
-        可信工具调用结果未知（连接中断）；未确认是否已执行，请核对后再试。
+        可信工具调用结果未知（连接中断）；未确认是否已执行，请核对后再试<template
+          v-if="trustedGitResult?.detail"
+          > · {{ trustedGitResult.detail }}</template
+        ><template v-if="trustedGitResult?.elapsedMs != null"
+          > · {{ trustedGitResult.elapsedMs }} ms</template
+        >。
       </p>
     </article>
     <p v-if="loading && !catalog" class="hint">正在读取能力目录…</p>

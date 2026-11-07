@@ -235,6 +235,11 @@ export function createMockCapabilityBackend() {
               cached: persistedTrustedProbes.size,
               known,
               failed,
+              newestProbedAt: [...persistedTrustedProbes.values()]
+                .map((row) => row.probedAt)
+                .filter((at) => !!at)
+                .sort()
+                .at(-1) ?? '',
             },
           },
         }

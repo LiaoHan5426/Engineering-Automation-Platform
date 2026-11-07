@@ -118,6 +118,7 @@ it('serves the chat contract and model whitelist without an external backend', a
   expect(readOnly.proposal).toBeNull()
   expect(readOnly.contextBudget?.metering).toBe('CHAR_ESTIMATE')
   expect(readOnly.contextBudget?.usedChars).toBeGreaterThan(0)
+  expect(readOnly.contextBudget?.notes).toContain('COMPRESSION_NOT_ENABLED')
   const exceeded = await api.handle('POST', conversationPath + '/messages', {
     message: '预算超限验收',
   })

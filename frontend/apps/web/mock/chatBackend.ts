@@ -67,11 +67,14 @@ export function mockContextBudget(message: string): ContextBudgetObservation {
           ]
         : []),
     ],
-    notes: historyNotMetered
-      ? ['CHAT_MEMORY_NOT_METERED', 'mock：会话历史未精确计量，非真实 token']
-      : derivedCleared
-        ? ['DERIVED_CLEARED_BEFORE_SEND', 'mock：派生材料触发清空后发送，非真实 token']
-        : ['mock：字符估算，非真实 token'],
+    notes: [
+      'COMPRESSION_NOT_ENABLED',
+      ...(historyNotMetered
+        ? ['CHAT_MEMORY_NOT_METERED', 'mock：会话历史未精确计量，非真实 token']
+        : derivedCleared
+          ? ['DERIVED_CLEARED_BEFORE_SEND', 'mock：派生材料触发清空后发送，非真实 token']
+          : ['mock：字符估算，非真实 token']),
+    ],
   }
 }
 

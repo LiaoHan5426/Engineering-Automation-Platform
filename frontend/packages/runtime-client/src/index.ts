@@ -80,6 +80,8 @@ export type TrustedToolProbeCacheSummary = {
   cached: number
   known: number
   failed: number
+  /** ISO timestamp of the newest durable probe; empty when cache is empty. */
+  newestProbedAt?: string
 }
 
 export type TrustedToolResponse = {
@@ -111,6 +113,8 @@ export type TrustedGitStatusResult = {
   detail?: string
   /** Client-local observation time; not a server clock contract. */
   observedAt?: string
+  /** Client-local elapsed milliseconds for this invoke attempt. */
+  elapsedMs?: number
 }
 /** Configuration, never runtime permission or execution evidence. */
 export type ScenarioConfiguration = {

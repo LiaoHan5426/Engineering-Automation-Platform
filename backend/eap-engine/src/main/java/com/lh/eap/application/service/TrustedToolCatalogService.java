@@ -78,10 +78,16 @@ public class TrustedToolCatalogService {
         long failed = probes.values().stream()
                 .filter(probe -> "probe_failed".equals(probe.versionStatus()))
                 .count();
+        String newestProbedAt = probes.values().stream()
+                .map(VersionProbe::probedAt)
+                .filter(at -> at != null && !at.isBlank())
+                .max(String::compareTo)
+                .orElse("");
         var probeCache = new LinkedHashMap<String, Object>();
         probeCache.put("cached", probes.size());
         probeCache.put("known", known);
         probeCache.put("failed", failed);
+        probeCache.put("newestProbedAt", newestProbedAt);
         var catalog = new LinkedHashMap<String, Object>();
         catalog.put("items", List.copyOf(items));
         catalog.put("source", "capability-handlers");

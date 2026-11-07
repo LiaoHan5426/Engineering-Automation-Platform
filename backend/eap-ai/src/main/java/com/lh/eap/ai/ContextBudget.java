@@ -64,6 +64,7 @@ public final class ContextBudget {
         }
 
         public Observation enforce() {
+            note("COMPRESSION_NOT_ENABLED");
             int material = included("user");
             int used = included("system") + material;
             boolean hasUnknown = sources.values().stream().anyMatch(s -> METERING_UNKNOWN.equals(s.metering()));

@@ -30,6 +30,7 @@ class TrustedToolCatalogServiceTest {
         assertEquals(0, ((Number) probeCache.get("cached")).intValue());
         assertEquals(0, ((Number) probeCache.get("known")).intValue());
         assertEquals(0, ((Number) probeCache.get("failed")).intValue());
+        assertEquals("", probeCache.get("newestProbedAt"));
         var items = (List<Map<String, Object>>) catalog.get("items");
         assertEquals(3, items.size());
 
@@ -70,6 +71,7 @@ class TrustedToolCatalogServiceTest {
         assertEquals(1, ((Number) probeCache.get("cached")).intValue());
         assertEquals(1, ((Number) probeCache.get("known")).intValue());
         assertEquals(0, ((Number) probeCache.get("failed")).intValue());
+        assertEquals(result.get("probedAt"), probeCache.get("newestProbedAt"));
     }
 
     @Test
