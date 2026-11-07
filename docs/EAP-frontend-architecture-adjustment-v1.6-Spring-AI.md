@@ -1,6 +1,6 @@
 # Engineering Automation Platform：当前产品与架构合同
 
-> 整理基线：本地 HEAD `82aa504`；主方案只调整文档结构，同轮测试精简及重新验证见[开发指南](agent-development-guide.md#本轮整理记录基线82aa504)。未调用模型、未重跑浏览器验收或启停服务。适用：本地桌面工程工作台的增量开发与验收。
+> 当前工作基线：`main / 119391f`（2026-11-05）；技术路线回顾仅调整文档，后续因用户报告模型故障增加普通API显式Responses协议修复，限定实现与离线回归见[模型协议决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验)。未调用真实付费模型或启停用户服务。此前 `82aa504` 的整理与测试证据保留在[开发指南](agent-development-guide.md#本轮整理记录基线82aa504)，不是本轮执行结果。适用：本地桌面工程工作台的增量开发与验收。
 > **优先级：用户最新明确要求 → 本文 §0B 产品合同 → §0A 技术/执行边界 → 历史资料。** 五个固定一级入口 `code · 编程 / work · 办公 / 场景 / 专家 / 设置`；旧双入口、Builder 第六入口、M0/完整 Mission 前置、插件任意扩展一级导航均不再生效。
 > 本地确定性工具优先，必要时使用 LLM/外部 Agent，结果独立验证。原型先可点击并经人确认，再按实际缺口渐进实施；不授权全量重写、任意工具调用或第三方代码注入。
 
@@ -15,6 +15,10 @@
 | 源码与交付 | 单目标生成前持久基线、候选与应用读回、目录互锁、POST_HOC/PREBOUND、独立验证及持久接受/拒绝 | 真实供应商生成→应用→实际页面→用户接受整链；未知人工核对/取消；Git Run不归因为代码作者 |
 | 专家与Skill | 单专家授权知识检索/旧记忆隔离；Skill文本导入、不可变版本、启停与无工具Chat显式引用 | 完整角色/资源整合、Skill目录/仓库导入、MCP真实协议、规划/Agent与Work执行；不执行脚本或自动授予工具权限 |
 | 后端与桌面 | api/engine/ai/web/runtime五模块；Electron安全preload与安装引导脚手架 | IDEA重新导入/实际重启与完整生产启动；Windows sidecar、一体启停/迁移、打包签名和人工验收 |
+| Agent上下文与记忆 | Spring AI20条消息窗口；知识全文/关键词检索；授权知识/Skill使用后逐轮清空模型记忆 | CE-01/KR-01基线、MEM-01恢复/工作记忆；派生内容撤权失效先于放开记忆；不默认换框架或引入向量库 |
+| 本地工具与目录 | Java/CLI能力与程序操作登记、PATH/指定路径发现、工作区绑定和只读文件树 | FS-01统一数据/临时资源归属与迁移合同、TM-01一个受管工具；登记不等于安装，cwd不是OS沙箱 |
+| 工具发现与使用 | Handler/CLI管理与特定业务调用已存在，前端交互实例没有通用调用合同 | TD-01可信定义/依赖自动绑定；TC-01运行时调用与呈现，TC-02前端实例；发现不等于授权或业务完成 |
+| 功能插件与场景组合 | 固定Chat/Builder可信预装Host与启停原型；看板/原型服务已有业务切片 | PL-01看板贡献首片、PL-02/SC-03设计器与场景依赖；不是外部安装器或任意JS隔离 |
 
 **既有验证基线（不是本次执行）**：[后端拆分记录](records/architecture-history.md#backend-runtime-modules)记录干净reactor verify **652项、0失败/错误、6条件跳过**，启动包四个依赖jar和19份迁移已核；[图标记录](records/frontend-history.md#frontend-icons)记录前端 **97文件/574项**及类型/边界/构建通过、限定浏览器主题检查和最终独立复核。较早525/647等数字只在历史中保留。Fake模型、真实数据库、服务浏览器、真实供应商及用户接受分别记录；不计算掩盖这些差异的“整体完成百分比”。
 
@@ -62,6 +66,7 @@ Workspace Plugin：Vue UI 扩展层，不等于 Spring AI Tool / MCP / Skill
 - 模型状态至少区分`disabled / not_configured / configured_unverified / available / error`；只有真实验证才显示available，配置存在不等于连接成功，不自动计费探测。Fake ChatModel验证普通对话/工具/拒绝/错误/SQL回退，不替代供应商能力验收。
 - 用户可在本地设置配置、启停和切换连接/外部Agent；Spring AI官方集成和程序化构建承载模型协议，旧环境属性不是唯一产品事实源。迁移见[环境说明](environment.md)。凭据由本地服务保护，不进入浏览器、Trace或Artifact；浏览器不直连供应商。
 - Chat复用`EngineeringChatService`与受控API，显示所选模型、真实/模拟与工具授权结果；多供应商按需接官方Starter，OpenAI-compatible不保证所有供应商语义。Codex/Hermes有独立入口与配置，不走普通ChatModel，不套用SQL缓存/压缩。
+- 普通API连接显式选择`chat-completions / responses`，不由域名猜测；旧数据默认前者。Responses复用官方SDK与Spring AI记忆/调用边界，首片仅文本/代码提案、不支持Git工具；协议变更提升revision并须重新确认会话，禁止自动降级重试或迁移凭据。账号认证与wire协议分开，实网恢复仍待用户验收。
 - 模型只提出工具请求，EAP负责权限、路径、参数、执行和证据；保持工具调用上限。内存ChatMemory不是持久会话、任务审计或可恢复Mission；SQL规则、缓存与失败回退保留，规则输出不能标成模型分析。
 - 已有CLI直接复用Capability / Handler / ProcessExecutor；命令模板属于能力，进程生命周期属于执行器，Task/Mission只关联和投影。Chat/Expert/看板不为同一Git操作另拼命令或另建执行器；参数数组、超时、限额、环境策略、脱敏及真实进程回归须保留。
 - Java默认是**本机本地服务**，UI与执行共置；可保存本机连接及工作区绑定。UI标签/intendedPath不是写权限，不静默扩到父目录/整盘；不做远端多租户实例代持异机路径/密钥或隔离云VM。Python只作安装引导，不作Agent宿主。见[运行环境](running-context.md)。
@@ -73,6 +78,18 @@ Workspace Plugin：Vue UI 扩展层，不等于 Spring AI Tool / MCP / Skill
 - Electron共享Vue UI；`nodeIntegration:false`、`contextIsolation:true`、`sandbox:true`、webSecurity开启。preload只暴露具名方法，不暴露通用IPC、任意文件访问/shell；Main验证路径/参数/权限。Web缺能力返回unsupported；安装、签名和各目标OS须真实验证，脚手架不等于桌面产品交付。
 
 更多执行边界见[工具接入决定](decisions/tool-integration-runtime-boundaries.md)、[扩展边界](decisions/extension-boundaries.md)、[桌面规范](desktop-spec.md)。旧S0–S3、CLI/扩展静态审计及详细设计只在[历史§0A](records/product-plan-history.md#section-0a)和[历史§2C](records/product-plan-history.md#section-2c)保留，不作重复实施指令。
+
+### 0A.4 Agent能力与本地运行环境演进
+
+规范细节与源码依据见[技术路线回顾决定](decisions/agent-runtime-evolution.md)。当前继续Spring AI，LangChain4j仅在明确自主协作需求或可复现框架阻碍后做同条件对照；记忆/RAG/MCP的应用缺口不证明框架不支持。不长期并存两套模型工具循环。
+
+- 对话历史、模型窗口、任务工作记忆、长期记忆与本轮检索材料分开。现有知识/Skill逐轮清空保护保留，替代方案须处理派生回答/摘要的撤权与版本失效；不只增加持久Store就宣称可恢复。
+- 上下文在现有拼装路径统一预算、来源、相关性选择、输出预留与可解释限额；检索先建立真实问题/预期来源基线，再决定向量、混合检索或重排。字符上限不是token用量。
+- MCP首片是一个只读服务器的真实Client闭环；A2A面向独立Agent协作，内部DAG不必套协议。Server、A2A与自主多Agent按需求另批，不按教材章节全部实现。
+- 系统工具引用与EAP受管工具并存，后者锁版本、校验、安装回滚、在途保护；仍复用现有CLI/Capability/Executor。安装需明确动作，不允许模型静默下载或全局安装。
+- TD-01分离可信工具定义与本机路径/连接/实例绑定，自动汇总已声明能力、探测已知依赖，未知来源仅候选导入；不扫描整盘或运行未知脚本，主动探测与低副作用检查分开，保留停用/授权及在途快照。TC-01/TC-02明确Java运行时、前端Host交互实例及Electron具名能力；调用入口/Schema/范围/审批、结果与贡献呈现分离，不新增绕过策略的任意执行口。先已有Git真实调用，再人工验证草稿实例；反向Agent调用另评审。细则见[工具发现](decisions/agent-runtime-evolution.md#54-工具发现与本机绑定td-01)及[调用合同](decisions/agent-runtime-evolution.md#55-调用执行归属与呈现tc-01--tc-02)。
+- 本机数据根分配置、工具、任务scratch、产物、缓存和日志；先盘点旧相对路径并验证迁移/恢复。资源须有归属、限额/保留期与清理责任，运行中/UNKNOWN不自动回收，用户仓库不随插件或工具卸载删除。
+- 纯预览/校验/有界转换优先浏览器内存/Worker/Blob，按需评估IndexedDB/OPFS；本机程序、授权工作区、离页执行与持久交付走本地运行时。渲染页只用窄接口，不开放任意fs/shell。浏览器scratch状态不是磁盘目录。
 
 <a id="section-0b"></a>
 ## 0B. 桌面界面、交互与交付合同
@@ -214,6 +231,8 @@ flowchart LR
 
 场景列表先做本地可用、部分缺依赖、禁用三态；详情展示已安装/未安装、已配置/未连接、允许/询问/禁止。全局启用只是可用上限，场景默认选择和会话授权不能绕过它。预设可只读、允许复制为用户配置。市场是后续入口，未实现时隐藏或明确空态，不制作假可安装结果。专家入口优先“可选用/可管理”，无需为匹配录屏先做市场。
 
+**插件化演进**：看板UI与原型设计器可作为可信功能插件；“原型到代码”是引用插件及核心服务的场景，不是单一前端插件。Task/Run、审批、执行、目录和验证不随插件停用而消失。先以现有看板收敛版本/兼容、贡献点、activate/dispose、实例配置和依赖失败合同，再迁设计器；不先建空SDK。启停不等于外部安装，前端安装不自动补齐Java服务。缺依赖显示不可用；激活失败回滚局部贡献；停用释放UI资源、保留任务/版本/产物，在途任务仍由核心观察。任意第三方同页JS不能仅靠Manifest隔离；外部包来源/兼容/升级回滚/隔离另行评审。完整门禁见[插件与场景决定](decisions/agent-runtime-evolution.md#6-核心插件与场景)。
+
 <a id="section-0b-5"></a>
 ### 0B.5 输入框：相互独立的选择与可见状态
 
@@ -343,7 +362,7 @@ sequenceDiagram
 <a id="section-0b-9"></a>
 ### 0B.9 因文字沟通偏差产生的调整需求
 
-本表为当前有效验收ID与未关闭关口。当前基线`82aa504`；实现/阶段验证通过不关闭整项用户验收。媒体复核及Comments 1–10的限定修复见[媒体对照记录](records/frontend-history.md#reference-ui-review)，原555/556项阶段数字与详细日志保存在[历史§0B.9](records/product-plan-history.md#section-0b-9)；不叠加为本轮执行。
+本表为当前有效验收ID与未关闭关口。文档回顾基线`119391f`；实现/阶段验证通过不关闭整项用户验收。媒体复核及Comments 1–10的限定修复见[媒体对照记录](records/frontend-history.md#reference-ui-review)，原555/556项阶段数字与详细日志保存在[历史§0B.9](records/product-plan-history.md#section-0b-9)；不叠加为本轮执行。
 
 | ID / 优先级 | 原先误解或当前偏差 | 必须调整为 | 可观察的验收结果 |
 |---|---|---|---|
@@ -356,14 +375,26 @@ sequenceDiagram
 | CP-01 / P0 | 用 `chat/code` 两值冒充会话执行模式 | 任务目标与执行模式分离；工具按真实能力启用 | **部分交付**：规划/智能体未接通即禁用；Git 随 `git_status`；无模型发送禁用+去设置。仍缺：规划/智能体真实执行器 |
 | CP-02 / P0 | `review` 可叫“AI审核” | 按真实后端能力显示生效策略 | **部分交付**：文案为逐次确认/只读；摘要与策略菜单明示「风险审核未接入」。拒绝后不继续写入此前已接 |
 | CP-03 / P1 | 表单选择框堆满输入区即满足截图 | 多行编辑 + 轻量操作条 + 就近弹层 | **部分交付**：开弹层不清正文、Esc回焦；知识/Skill紧凑引用，模型/发送成组靠右、缺模型提示在下方；限定四视口发送可达。仍缺：审批流在短窗的人工联调 |
-| MD-01 / P0 | 保存一个连接模型即可 | 凭据→目录→允许模型→会话具体模型与能力 | **部分交付**：连接/目录/白名单/默认/会话强度已接，失败保留缓存且不自动全选；10/28曾完成DeepSeek目录和只读连通性测试并停用测试连接。仍缺：当前连接与推理档位的供应商能力验收，不将历史连通性视为当前可用或代码生成授权 |
+| MD-01 / P0 | 保存连接或发现模型就证明推理协议可用 | 凭据/显式wireApi→目录→允许模型→会话具体模型与能力 | **部分交付**：连接/目录/白名单/默认/强度已有，追加普通API Responses文本/代码提案及显式选择、revision/重绑定和Git拒绝，离线回归通过；失败保留缓存且不自动全选。10/28 DeepSeek目录测试为历史。仍缺：重启加载后当前网关/认证/推理档位实网验证、浏览器接受及Responses工具；不宣布本次403故障已恢复 |
 | EX-01 / P1 | 固定三角色等于专家协作 | 将配置专家按明确合同接入任务 | **部分交付**：指引追溯保留；单个持久专家授权知识→Chat、发送重检、撤权/旧记忆隔离已交付（c9d23a7），有实库/Fake模型与浏览器证据。仍缺：完整角色与其余资源、真实供应商效果；不执行DAG或自动授予工具权限 |
 | PB-01 / P0 | 标题+正文+点击按钮就是可视化原型 | 先支持 EAP 页面布局/交互草案，再扩展通用编辑器 | **部分交付**：GrapesJS真实画布、工程/Schema、page/section/text/heading/button/link/list/input八类映射、Vue交互预览与保存重开已验证；Builder设计/版本/历史演示分面，未知映射阻塞。仍缺：目标页面所需更多组件/状态/动作映射与真实改页验收，不承诺任意Vue无损导入 |
 | PB-02 / P0 | 传原型 ID 就完成交付开发 | 生成前绑定目标与基线、读取相关现有源码；propose 必须含 `targetPath` | **部分交付**：单目标完整有界源码已在模型前持久保存/读回，原型与Task/revision快照及PREBOUND已交付（f6aed04、69892f3）。仍缺：真实供应商自身改页验收、多文件组件图约束 |
 | PB-03 / P0 | 模型返回完整文件后才取哈希足够 | 生成前固定文件快照，应用前再校验，保留既有修改 | **部分交付**：单文件候选、APPLYING意图、写后读回与APPLIED重放、基线冲突及UNKNOWN目录/任务互锁已持久化；POST_HOC/PREBOUND归因已交付。仍缺：真实模型改页/完整交互验收、未知人工核对；不承诺多文件事务或OS级CAS |
 | PB-04 / P0 | 写入成功等于界面调整完成 | Diff→应用→类型/测试/构建→页面预览→人工交互验收 | **部分交付**：Run独立typecheck/test/build真实三项联调、同源源码/交付证据和持久人工接受/拒绝机制已交付（04edef5及后续交付切片）。仍缺：EAP自身真实模型改页→预览→用户接受整链验收；测试人工决定不等于用户已接受 |
-| CT-01 / P1 | 页面保留等于任务后台运行/可恢复 | 区分 UI 实例缓存、请求进行中和持久 Run | **部分交付**：看板Run/验证/交付与应用结果已有持久回放，重启未知结果保持阻塞；普通ChatMemory仍内存。仍缺：取消/未知人工核对及按需跨重启进程接管，不把记录恢复称为进程恢复 |
+| CT-01 / P1 | 页面保留等于任务恢复，或会话失效只能手工新建 | 区分 UI缓存、模型记忆、请求和持久Run；显式重连后可重试当前草稿 | **部分交付**：看板持久回放/UNKNOWN阻塞保留；追加同ID空会话显式重连及草稿重试、瞬时故障重新检查，前后端离线回归通过，见[会话合同](decisions/chat-engineering-task-slice.md#会话失效与显式重试2026-11-05实现与离线回归通过)。保留本地上下文但不重放历史，不宣称模型记忆恢复；仍缺真实浏览器接受、取消/UNKNOWN人工核对及按需跨重启进程接管 |
 | RV-01 / P1 | SQL检查器等于全局摘要 | 任务/会话相关摘要、文件Diff、验证和来源 | **部分交付**：会话摘要/变更右栏、源文件浮层、终端底栏各守职责；看板按Run选择审阅/验证，源码交付与接受/拒绝独立工作面且持久回放；设置不挂任务面板。仍缺：SQL实际任务证据、完整自身改页证据及用户接受；Chat终端未因此获得任意shell能力 |
+| CE-01 / P0 | 有拼装与字符限制就算上下文工程 | 在既有路径统一预算、来源、选择及失效合同 | **待实施**：含输出预留、超限反馈、未知计量标识与派生敏感内容反例 |
+| KR-01 / P0；KR-02 / 条件后续 | 没向量库等于没检索 | 先评测已有FTS/关键词，证明不足再比较增强 | **待实施**：预定问题集/阈值、召回/来源、更新删除/范围、延迟成本；不自动添加基础设施 |
+| MEM-01 / P1 | 窗口持久化等于完整记忆 | 历史/绑定恢复、任务工作记忆分层，依赖CE-01 | **待实施**：重启/删除/模型切换/撤权与版本失效；保留清空保护直到替代验证，自动长期抽取延期 |
+| MCP-01 / P0 | 登记/探测等于协议执行 | 既有授权/会话桥接一个只读服务器 | **待实施**：真实initialize/分页发现/call、拒绝/错误/超时/清理/隔离；不必调用模型验协议 |
+| FS-01 / P0 | 工作区树等于应用目录管理；UI scratch等于磁盘目录 | 数据根、缓存/产物/任务临时资源归属，浏览器与本机执行分界 | **待实施**：旧数据迁移/读回/失败恢复、清理/限额、路径逃逸及UNKNOWN保留；不赋任意fs/shell |
+| TM-01 / P1 | 程序登记等于安装与版本管理 | FS-01后增加一个可信受管工具，系统引用保留 | **待实施**：锁版本/校验/失败回滚、实际调用、在途卸载阻止；不改系统工具 |
+| TD-01 / P0 | 每个工具都要手填，或发现程序就认定能执行 | 可信定义自动汇总、已知依赖绑定，未知候选需适配 | **待实施**：Git免重复录入、来源/冲突/未知版本、停用保留、失效/快照；不整盘扫描、自动执行/授权 |
+| TC-01 / P0 | 目录登记/查询取消等于完整使用，或Java工具需前端重实现 | 明确入口/输入输出/范围/策略，前端通用交互与受信结果适配 | **待实施**：目录到真实只读Git调用，执行端重校验、拒绝/错误/取消及结果呈现；不用任意执行接口绕过业务入口 |
+| TC-02 / P1 | 保存版本等于当前草稿，当前页面就是隐含目标 | 前端Host处理具体实例/文档/revision，先人工读取 | **待实施**：多实例/切页/关闭断线/revision冲突；TC-01合同后协调插件Host，模型反向调用另评审 |
+| PL-01 / P0；PL-02 / P1 | 固定Chat/Builder启停原型等于通用安装器 | 现有看板贡献首片，再迁设计器，复用核心服务 | **待实施**：依赖/兼容失败、激活回滚、启停/刷新/实例隔离、在途不丢状态；外部动态代码延期 |
+| SC-03 / P1 | 原型到代码等于一个页面插件 | 场景组合设计器/可选看板及核心交付服务 | **待实施**：依赖声明与缺失提示，配置/版本/任务分离；保留SC-01保存UNKNOWN删除阻断及真实交付关口 |
+| FW-01 / 条件后续 | 能力未接线就直接换框架 | 明确需求/可复现阻碍后同条件比较Spring AI与LangChain4j | **未启动**：兼容、成本、正确性、取消/错误及迁移回归；需独立决定，不长期双循环 |
 
 这些需求是对“语义未实现”的纠偏，不因已有代码能编译而降级为可选润色。P0 表示下一轮需优先确认和实施，不是授权一次性重写全应用。
 
@@ -390,10 +421,13 @@ sequenceDiagram
 
 **原则落地**：KISS 用同一会话骨架和清楚的状态；DRY 复用既有连接/版本/API/执行器；SRP 将场景配置、设计版本、执行与验收分开；YAGNI 优先真实自身用例，暂缓完整市场、调度及无损逆向编辑器。阶段测试通过不替代交互接受，交互接受也不替代真实仓库交付验证。
 
+**技术补强切片**：CE-01/KR-01先定义上下文失效和检索基线；FS-01确认目录/旧数据合同；TD-01/TC-01先以既有Git验证发现/绑定和调用/呈现，不等TM-01或完整插件SDK；TC-02在调用合同后验证前端实例，反向Agent调用另批。MCP-01与PL-01按边界分别推进；MEM-01依赖CE-01，TM-01依赖FS-01，PL-02/SC-03依赖PL-01。KR-02/FW-01仅由证据触发。它们不替换R0–R4，也不是自身单页面交付的全套前置，退出矩阵见[技术路线决定](decisions/agent-runtime-evolution.md#7-分阶段切片与退出门禁)。
+
 <a id="section-0b-11"></a>
 ### 0B.11 Kanban：EAP单一事实源与RK验收合同
 
-**EAP看板属于EAP自身功能**：任务、Run、数据库、API与事件由EAP管理。Hermes只作为设计/源码参考，不要求安装Hermes、接其Kanban API/SQLite/Dispatcher/Worker、嵌入React界面或同步两套状态；旧RH接入阶段取消，改为RK设计与独立依赖验证。Vibe Kanban也只作可选参考，不为界面相似更换技术栈。
+**EAP看板属于EAP自身功能**：任务、Run、数据库、API与事件由EAP管理。
+**插件边界**：看板UI以PL-01逐步转为可信贡献，当前尚非通用可安装插件；插件停用不删除Task/Run、停止核心执行或另建状态机。Hermes Kanban并非纯UI插件，参考其持久运行时与视图分层，不复制其运行系统。Hermes只作为设计/源码参考，不要求安装Hermes、接其Kanban API/SQLite/Dispatcher/Worker、嵌入React界面或同步两套状态；旧RH接入阶段取消，改为RK设计与独立依赖验证。Vibe Kanban也只作可选参考，不为界面相似更换技术栈。
 
 采用顺序：**现有EAP能力 → 独立开源组件/库 → 按许可提取可维护实现 → 参考设计补最小缺口**。列/卡/详情先用Vue与`@eap/ui`；拖拽需键盘替代且不直接写权威状态；存储复用JDBC/Flyway；领取/重试先最小规则；HTTP/有限轮询足够时不加消息总线。Agent沿用既有适配，不自建Harness。
 
@@ -438,6 +472,140 @@ sequenceDiagram
 当前实施状态（2026-11-01同步）：RK-1～3任务准备/并发/启动去重、RK-4受控只读Git检查、RK-6重读/失败/未知阻塞已落地；RK-5已从原型→任务→Run快照推进到单文件生成/持久应用、独立验证、POST_HOC/PREBOUND来源和人工接受/拒绝记录。真实供应商自身改页及用户交互验收仍待，Git检查Run不是代码实现者，取消和跨重启接管未因此实现。证据见[受控执行](records/delivery-history.md#board-controlled-run)、[独立验证](records/delivery-history.md#board-run-verification)、[交付决定](records/delivery-history.md#board-source-delivery)、[生成前任务绑定](records/delivery-history.md#code-task-prebinding)。
 
 **KB验收ID仍保留**：KB-01/P0为能力/依赖复用审查；KB-02/P0为EAP单一状态、执行归属与并发规则；KB-03/P1为Vue看板/详情/状态更新；KB-04/P0为原型→任务→执行证据→验收关联。当前有限实现以RK状态及§0B.9为准，不以旧阶段顺序重新启动已交付工作。详细比较表、架构图和查阅来源见[历史§0B.11](records/product-plan-history.md#section-0b-11)。
+
+<a id="ide-planning-diagrams"></a>
+## 0C. Agent IDE 规划图与前后端复用路线（2026-11-07）
+
+依据：[工作台整体规划](https://chatgpt.com/s/t_6aee876efc5c81918a7f9ea12d87863d)、[标准化扩展体系](https://chatgpt.com/s/t_6aee877c63d08191aa553135b4fd69df)、[Vue 3 项目对比](https://chatgpt.com/s/t_6aee890aab188191ad26a32d178f9aeb)及六张截图。本节把讨论中的图和仓库定位映射到 §0A/§0B 现行合同。图中的目标能力、候选组件和历史讨论工期均按规划理解。仓库事实以本地 `119391f` 加当前工作树为核对范围，未提交的 Chat reconnect 代码单独看待。
+
+### 0C.1 统一工作台布局（截图 5）
+
+```text
+┌ EAP Agent IDE ──────────────────────────────────────────────────┐
+│ code · 编程 / work · 办公 / 场景 / 专家 / 设置                   │
+├───────────────┬───────────────────────────────┬─────────────────┤
+│ 工作区树      │ 标签：会话 / 文件 / Diff       │ 上下文 / 审批    │
+│ Agent 任务    │ 当前会话或代码审阅            │ 产物 / 验证      │
+│               ├───────────────────────────────┴─────────────────┤
+│               │ Terminal / Problems / Output                    │
+├───────────────┴─────────────────────────────────────────────────┤
+│ 分支 · 工作区连接状态 · 执行状态                                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+在现有 `WorkbenchFrame.vue` 和五入口外壳内演进。代码工作区、终端与审批按上下文打开。先用只读文件和真实 Diff 校验操作动线，终端面板显示现有 Run 输出，交互式 PTY 按独立权限关口验收。
+
+### 0C.2 前端能力来源与通信分层（截图 6）
+
+```mermaid
+flowchart TB
+  UI["EAP Web / Electron · Vue 3 / Vite+ / TypeScript"]
+  UI --> Chat["会话 · OpenWork 布局 / Agentdown 渲染候选"]
+  UI --> Board["任务与看板 · ainative 交互参考"]
+  UI --> Code["工作区与代码 · OpenWork 参考 / Monaco 候选"]
+  UI --> Design["原型设计 · GrapesJS / EAP Schema"]
+  Chat & Board & Code & Design --> Client["现有 runtime-client / 领域状态投影"]
+  Client <-->|"REST 命令与快照 / SSE 执行事件"| API["EAP Spring Boot · Spring AI / CLI / Codex / MCP / Skills"]
+  Code -.->|"WebSocket · 交互 PTY 候选"| API
+```
+
+共享组件按 §0A.1 落入现有公开入口。Pinia、Query 等按实际状态与缓存缺口评估。Web/Electron 共享 Vue 工作面，Electron 特有能力走受控 preload。
+
+### 0C.3 DSH 的 Cordis 组合机制（截图 2，上游参考）
+
+```mermaid
+flowchart TB
+  C["Cordis Context · 服务 / 事件 / 生命周期 / 依赖"]
+  C --> M["模型适配器"]
+  C --> T["工具注册"]
+  C --> A["Agent Loop"]
+  C --> S["会话存储"]
+  C --> P["审批策略"]
+  C --> W["Web 扩展"]
+  M & T & A & S & P & W --> B["Profiles / Bundles / Patches"]
+  B --> R["Web / Headless / SDK / ACP"]
+```
+
+EAP 借鉴依赖声明、注册撤销和运行组合。前端 PoC 仅比较一个可信视图和一个命令的注册、停用、重复启用、订阅清理及打包差异。模型、会话持久化和执行仍由 Java 侧负责。[DSH 核心子系统](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/core.md) · [Cordis](https://github.com/cordiverse/cordis)
+
+### 0C.4 EAP 混合扩展架构（截图 1，按当前证据修订）
+
+```mermaid
+flowchart TB
+  UI["Vue / Electron · 可信 UI Host · Cordis 候选"]
+  UI --> V["视图 / 命令 / 原型组件"]
+  UI <-->|"能力目录与受控调用"| E["Spring Boot / Agent Runtime · 执行 / 审批 / 调度 / 审计"]
+  E --> J["Java Handler / Capability · 现有入口"]
+  E --> M["MCP · 外部工具与资源 · 真实客户端待接线"]
+  E --> S["Agent Skills · 按需引用 · 目录及仓库导入待验"]
+  E --> A["ACP · 外部 IDE 集成候选"]
+  E --> C["CLI Adapter · Codex 等执行器"]
+  J -.-> SP["Spring Plugin · 静态发现候选"]
+  J -.-> PF["PF4J · 动态加载候选"]
+```
+
+分享聊天把 PF4J 标为已有热更新能力。本次检查 `backend/**/pom.xml` 未发现 PF4J 或 Spring Plugin 声明，当前以 Java Handler/Capability 为接入点。需要静态选择时才比较 Spring Plugin 与现有 Bean 发现机制，明确需要动态 jar 生命周期时才评估 PF4J。能力目录聚合展示，权限和运行仍按各自的接入路径管理。Hermes 提供 Skills/Tools 使用方式参考，DSH 提供组合机制参考，ACP 对接 IDE 与 Agent，MCP 对接工具与资源。
+
+### 0C.5 执行事件、回放与断线恢复（截图 4）
+
+```mermaid
+flowchart TB
+  S["Codex / CLI / Spring AI / 规则 Agent / MCP"]
+  S --> N["EAP 执行边界 · 归一化状态、错误、审批与产物元数据"]
+  N --> L["目标：持久事件日志 + REST Snapshot + SSE"]
+  L --> C["会话渲染"]
+  L --> B["任务看板"]
+  L --> W["审批 / 工作区"]
+```
+
+增量接在 `AiChatController`、现有 Run/Task 接口和 `runtime-client` 上。Chat reconnect 路由在当前工作树可见，其存在只证明有重连接口代码。目标事件包含 `eventId`、执行内 `sequence`、`executionId`、可选会话/任务 ID、类型、时间及协议版本。快照带游标，按执行内序号补齐并去重，覆盖从补读切到实时订阅的间隙。游标失效时显式刷新快照。审批和取消由 REST 提交并由后端裁决，事件记录经过脱敏。持久回放、跨重启恢复及进程重接分别验证。
+
+### 0C.6 从可视原型到 Vue 代码交付（截图 3）
+
+```mermaid
+flowchart TB
+  G["GrapesJS · 布局 / 拖拽 / 样式 / 响应式"]
+  G --> S["EAP Prototype Schema · 组件树 / 属性 / 事件 / 路由 / Mock / 动作"]
+  S --> P["浏览器交互预览 · 明确标记模拟"]
+  S --> C["Vue 3 候选 · SFC / 组件 / 路由 / Mock 按需生成"]
+  P --> A["人确认原型与目标仓库"]
+  A --> D["Agent 开发任务 · 绑定仓库、目标文件与原型版本"]
+  C --> D
+  D --> V["隔离候选变更 → 类型检查与独立验证 → Diff 审阅 → 用户接受"]
+```
+
+复用 `GrapesEditorScaffold.vue`、`BuilderWorkspace.vue` 与 §0B.7 的两条入口。先验证一个已有 EAP 页面的小改造和受支持组件映射。生成输入应固定原型版本和源码基线。GrapesJS 负责可视编辑，EAP 负责语义映射和 Vue 候选交付。无法映射的交互留给显式任务，应用到目标和用户接受分别记录。
+
+<a id="ide-repository-reuse"></a>
+### 0C.7 仓库复用矩阵
+
+首轮按 **Agentdown 渲染验证 → OpenWork 工作区对照 → ainative 看板对照** 排序。链接定位到具体上游，建议的复用点仍需按目标 tag/commit 检查源码、LICENSE、传递依赖、维护状态和 Vue/Java 兼容性。
+
+| 前端切片 | 上游仓库 | 复用方式与 EAP 落点 | 首片验收 |
+|---|---|---|---|
+| 会话、工具、审批、产物 | [codexiaoke/agentdown](https://github.com/codexiaoke/agentdown) | 先隔离验证 `AgentChatWorkspace` / `RunSurface` 的实际导出和适配成本。复用现有 `ChatWorkspace.vue` 与事件投影，候选渲染器只消费结构化数据 | 同一段 EAP 流式事件可显示文本、工具和审批，重复事件只渲染一次，拒绝后的状态来自后端 |
+| 工作台、文件树、代码与 Diff | [afumu/openwork](https://github.com/afumu/openwork) · [VS Code](https://github.com/microsoft/vscode) · [Monaco](https://github.com/microsoft/monaco-editor) | 参考准确的同名 OpenWork 仓库及 VS Code 布局，保留 EAP 外壳和路径授权。Monaco 仅在实际 Diff 需求验证后引入 | 从现有任务打开真实候选 Diff，能定位目标文件，路径越界失败 |
+| 看板、时间线、DAG | [irchelper/ainative](https://github.com/irchelper/ainative) · [VueDraggablePlus](https://github.com/Alfred-Skyblue/vue-draggable-plus) · [Vue Flow](https://github.com/bcakmakoglu/vue-flow) | 参考状态投影与任务详情。拖拽和 DAG 库按需采用，后端沿用 §0B.11 的 RK 合同 | 非法拖动被拒并恢复；刷新后从服务端读取真实状态 |
+| 原型、终端与会话任务联动 | [GrapesJS](https://github.com/GrapesJS/grapesjs) · [xterm.js](https://github.com/xtermjs/xterm.js) · [Taskyon](https://github.com/Xyntopia/taskyon) | GrapesJS 延续已有集成，xterm.js 只评估渲染，Taskyon 仅对照产品交互 | 原型可还原及预览，执行输出可读，写操作经现有授权路径 |
+
+| 后端切片 | 上游仓库 | 复用方式与 EAP 落点 | 首片验收 |
+|---|---|---|---|
+| 模型与工具调用 | [Spring AI](https://github.com/spring-projects/spring-ai) · [MCP Java SDK](https://github.com/modelcontextprotocol/java-sdk) | `eap-ai` 复用当前 Spring AI。MCP 接线优先核对 Spring AI 与 SDK 兼容性，经现有 Capability/Policy 路径调用 | Fake 模型与真实接入分别验收，一个只读 MCP 工具含成功、拒绝、超时 |
+| 外部执行与 IDE 接入 | [Codex](https://github.com/openai/codex) · [ACP](https://github.com/agentclientprotocol/agent-client-protocol) | 复用已有 CLI/Codex Adapter，ACP 待有明确 IDE 客户端需求后评估，`eap-engine` 持有 Run 和证据 | 一个受控执行可查询、取消、审阅，未知进程状态可见 |
+| Skill 与扩展生命周期 | [Agent Skills](https://github.com/agentskills/agentskills) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | 复用 EAP 版本化 Skill 与授权链，借鉴按需加载、配置组合及资源回收 | 明确选择的 Skill 版本可追踪，停用后新会话无法引用，历史记录保留 |
+| Java 扩展发现和动态装载 | [Spring Plugin](https://github.com/spring-projects/spring-plugin) · [PF4J](https://github.com/pf4j/pf4j) | 条件候选，按 §0C.4 分开验证，保留当前注册入口 | 有实际需求后比较选择、冲突、停用及资源清理，再决定依赖 |
+
+### 0C.8 增量开发关口
+
+| 顺序 | 前后端一起交付 | 放行证据 |
+|---|---|---|
+| 1. 基线与会话 | 固定现有 API/事件样例，比较 Agentdown 适配与现有渲染，补同一执行的快照和恢复缺口 | 真实流式、取消、重连证据分开记录，重复和缺失事件有回归 |
+| 2. 任务与审批 | 沿用 RK 看板合同，复用执行状态投影和后端审批门禁 | 同一审批从会话与看板得到一致状态，拒绝或过期能控制真实执行 |
+| 3. 工作区与原型交付 | 先现有 EAP 页面、只读文件树、真实 Diff，再按需补编辑/PTY 和更多原型映射 | 可点击原型经人确认后，候选能构建、独立复核并由用户接受 |
+| 4. 标准扩展与打包 | 独立验收只读 MCP、Skill 扩展及必要的宿主 PoC，按实际目标平台验证桌面包 | 许可证与依赖锁定、注册停用资源清理、真实进程与权限验证各有记录 |
+
+顺序与 §0B.10/§0B.11 共同使用。聊天中的 P0–P5 是讨论用分期，当前排期从已有实现的验收缺口起算。实现前固定仓库版本、要读的上游文件、EAP 接入点和退出条件。许可、适配成本或故障回归达不到门槛时，继续使用现有 EAP 组件。
+
 
 ## 文档与交付治理
 
