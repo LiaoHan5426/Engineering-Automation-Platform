@@ -28,7 +28,7 @@ describe('console shell', () => {
     expect(html).not.toContain('inspector-card')
   })
 
-  it('keeps an in-flight send visible and uncancellable on another page', async () => {
+  it('keeps an in-flight send visible with explicit cancellation and page-exit boundaries', async () => {
     const binding: ChatBinding = {
       history: [],
       activeId: null,
@@ -51,9 +51,10 @@ describe('console shell', () => {
     chatBinding.value = binding
     try {
       const html = await render()
-      expect(html).toContain('发送仍在进行，这次请求不能取消')
-      expect(html).toContain('刷新或重启后不会继续')
-      expect(html).not.toContain('取消发送')
+      expect(html).toContain('发送仍在进行')
+      expect(html).toContain('可用输入区取消按钮请求中止')
+      expect(html).toContain('离开页面不会中断服务端轮次')
+      expect(html).toContain('刷新或重启后也不会继续')
     } finally {
       chatBinding.value = null
     }

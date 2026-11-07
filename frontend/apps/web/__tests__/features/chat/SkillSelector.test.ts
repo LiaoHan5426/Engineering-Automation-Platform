@@ -120,6 +120,7 @@ it('selects through + skills, loads full text on demand, previews checked resour
     'keep question',
     'none',
     expect.objectContaining({ skillRef, skillResourcePaths: ['guide.txt'], instructions: '' }),
+    { signal: expect.any(AbortSignal), onEvent: expect.any(Function) },
   ])
   await click('skill-remove')
   expect(session.context.value).not.toHaveProperty('skillRef')

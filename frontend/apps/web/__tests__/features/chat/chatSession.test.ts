@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { createChatSession, type ChatApi } from '../../../src/features/chat/chatSession'
-import type { AiMessageResult, AiStatus } from '@eap/runtime-client'
+import type { AiMessageResult, AiStatus, ContextBudgetObservation } from '@eap/runtime-client'
 
 function status(state: AiStatus['state'] = 'disabled'): AiStatus {
   return {
@@ -32,10 +32,12 @@ function result(partial: Partial<AiMessageResult> = {}): AiMessageResult {
 
 function deferred<T>() {
   let resolve: (value: T) => void = () => {}
-  const promise = new Promise<T>((done) => {
+  let reject: (reason: unknown) => void = () => {}
+  const promise = new Promise<T>((done, fail) => {
     resolve = done
+    reject = fail
   })
-  return { promise, resolve }
+  return { promise, resolve, reject }
 }
 
 describe('chat session', () => {
@@ -440,6 +442,289 @@ describe('chat session', () => {
     expect(session.failure.value).toBe('')
     expect(session.draft.value).toBe('')
     expect(session.turns.value.map((turn) => turn.text)).toEqual(['hello', 'retried'])
+  })
+
+  it('preserves partial stream evidence as unknown after interruption and retries only explicitly', async () => {
+    let calls = 0
+    const session = createChatSession({
+      aiStatus: async () => status(),
+      openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+      sendAiMessage: async (_id, _message, _mode, _context, options) => {
+        calls++
+        if (calls > 1) return result({ answer: 'retried' })
+        options?.onEvent?.({
+          type: 'answer.delta',
+          text: 'partial',
+          status: 'RUNNING',
+          code: '',
+          executionId: 'exec-partial',
+          sequence: 1,
+        })
+        options?.onEvent?.({
+          type: 'tool',
+          text: '',
+          status: 'RUNNING',
+          code: 'TOOL_STARTED',
+          executionId: 'exec-partial',
+          sequence: 2,
+        })
+        throw { response: { status: 502, data: { detail: 'AI_RESPONSE_INCOMPLETE' } } }
+      },
+    })
+    await session.openConversation()
+    session.draft.value = 'hello'
+    await session.send()
+    expect(calls).toBe(1)
+    expect(session.sending.value).toBe(false)
+    expect(session.draft.value).toBe('hello')
+    expect(session.failure.value).toBe('failed')
+    expect(session.turns.value[1]).toMatchObject({
+      text: 'partial',
+      status: 'UNKNOWN',
+      error: 'AI_RESPONSE_INCOMPLETE',
+      executionId: 'exec-partial',
+      toolEvents: [{ sequence: 2, code: 'TOOL_STARTED' }],
+    })
+    await session.send()
+    expect(calls).toBe(2)
+    expect(session.turns.value.map((turn) => turn.text)).toEqual([
+      'hello',
+      'partial',
+      'hello',
+      'retried',
+    ])
+    expect(session.turns.value[1]?.status).toBe('UNKNOWN')
+    expect(session.failure.value).toBe('')
+    expect(session.draft.value).toBe('')
+  })
+
+  it.each(['FAILED', 'UNKNOWN', 'RUNNING', 'unrecognized'])(
+    'retains streamed output and the draft when the final result is %s without an error code',
+    async (terminalStatus) => {
+      const session = createChatSession({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+        sendAiMessage: async (_id, _message, _mode, _context, options) => {
+          options?.onEvent?.({
+            type: 'answer.delta',
+            text: 'partial',
+            status: 'RUNNING',
+            code: '',
+            executionId: 'exec-partial',
+            sequence: 1,
+          })
+          return result({ answer: '', status: terminalStatus })
+        },
+      })
+      await session.openConversation()
+      session.draft.value = 'retain'
+      await session.send()
+      expect(session.turns.value[1]).toMatchObject({
+        text: 'partial',
+        status: terminalStatus === 'RUNNING' ? 'UNKNOWN' : terminalStatus,
+      })
+      expect(session.draft.value).toBe('retain')
+      expect(session.failure.value).toBe('kept')
+      expect(session.sending.value).toBe(false)
+    },
+  )
+
+  it('accepts the explicit mock_completed contract without promoting unknown statuses to success', async () => {
+    let calls = 0
+    const session = createChatSession({
+      aiStatus: async () => status(),
+      openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+      sendAiMessage: async () => {
+        calls++
+        if (calls === 1)
+          throw { response: { status: 400, data: { detail: 'CONTEXT_BUDGET_EXCEEDED' } } }
+        return result({ answer: '模拟回答', status: 'mock_completed' })
+      },
+    })
+    await session.openConversation()
+    session.draft.value = 'oversized'
+    await session.send()
+    expect(session.failure.value).toBe('context-budget-exceeded')
+    session.draft.value = 'ordinary edited draft'
+    await session.send()
+    expect(session.failure.value).toBe('')
+    expect(session.draft.value).toBe('')
+    expect(session.turns.value[1]).toMatchObject({ text: '模拟回答', status: 'mock_completed' })
+  })
+
+  it('treats local abort as unknown rather than confirmed backend cancellation', async () => {
+    const session = createChatSession({
+      aiStatus: async () => status(),
+      openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+      sendAiMessage: (_id, _message, _mode, _context, options) =>
+        new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener('abort', () => {
+            reject(Object.assign(new Error('stopped waiting'), { name: 'AbortError' }))
+          })
+        }),
+      cancelAiConversation: async () => ({ cancelled: false, executionId: '' }),
+    })
+    await session.openConversation()
+    session.draft.value = 'retain'
+    const pending = session.send()
+    await session.cancelSend()
+    await pending
+    expect(session.turns.value[1]).toMatchObject({
+      status: 'UNKNOWN',
+      error: 'AI_RESPONSE_INCOMPLETE',
+    })
+    expect(session.failure.value).toBe('failed')
+    expect(session.draft.value).toBe('retain')
+    expect(session.sending.value).toBe(false)
+  })
+
+  it.each([false, true])(
+    'isolates late streamed failure and budget from another conversation (rejected=%s)',
+    async (rejected) => {
+      const pending = deferred<AiMessageResult>()
+      let serial = 0
+      const budget: ContextBudgetObservation = {
+        platformLimit: 96000,
+        outputReserve: 16384,
+        inputMaterialLimit: 64000,
+        usedChars: 1200,
+        materialChars: 800,
+        remainingChars: 78416,
+        metering: 'CHAR_ESTIMATE',
+        sources: [],
+        notes: [],
+      }
+      const session = createChatSession({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({
+          conversationId: `c${++serial}`,
+          workspaceLabel: '',
+          memory: '',
+        }),
+        sendAiMessage: async (id, _message, _mode, _context, options) => {
+          if (id === 'c2') return result({ contextBudget: { ...budget, usedChars: 500 } })
+          options?.onEvent?.({
+            type: 'answer.delta',
+            text: 'partial-c1',
+            status: 'RUNNING',
+            code: '',
+            executionId: 'exec-c1',
+            sequence: 1,
+          })
+          return pending.promise
+        },
+      })
+      await session.openConversation()
+      session.draft.value = 'first'
+      const first = session.send()
+      await session.openConversation()
+      session.draft.value = 'second'
+      await session.send()
+      session.draft.value = 'new second draft'
+      if (rejected)
+        pending.reject({
+          response: {
+            status: 502,
+            data: { detail: 'AI_RESPONSE_INCOMPLETE', contextBudget: budget },
+          },
+        })
+      else
+        pending.resolve(
+          result({
+            answer: '',
+            error: 'AI_PROVIDER_ERROR',
+            status: 'FAILED',
+            contextBudget: budget,
+          }),
+        )
+      await first
+      expect(session.lastContextBudget.value?.usedChars).toBe(500)
+      expect(session.draft.value).toBe('new second draft')
+      expect(session.failure.value).toBe('')
+      expect(session.turns.value.map((turn) => turn.text)).toEqual(['second', 'real'])
+      await session.selectConversation('c1')
+      expect(session.draft.value).toBe('first')
+      expect(session.turns.value[1]).toMatchObject({
+        text: 'partial-c1',
+        status: rejected ? 'UNKNOWN' : 'FAILED',
+        executionId: rejected ? 'exec-c1' : 'exec-1',
+      })
+    },
+  )
+
+  it.each(['FAILED', 'CANCELLED', 'UNKNOWN'])(
+    'retains server terminal %s evidence when the transport subsequently fails',
+    async (terminalStatus) => {
+      const session = createChatSession({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+        sendAiMessage: async (_id, _message, _mode, _context, options) => {
+          options?.onEvent?.({
+            type: 'error',
+            text: '',
+            status: terminalStatus,
+            code: 'SERVER_TERMINAL',
+            executionId: 'exec-1',
+            sequence: 1,
+          })
+          throw new Error('socket closed')
+        },
+      })
+      await session.openConversation()
+      session.draft.value = 'retain'
+      await session.send()
+      expect(session.turns.value).toHaveLength(2)
+      expect(session.turns.value[1]).toMatchObject({
+        status: terminalStatus,
+        error: 'SERVER_TERMINAL',
+      })
+      expect(session.draft.value).toBe('retain')
+      expect(session.sending.value).toBe(false)
+    },
+  )
+
+  it('rolls back only a rejected attempt and ignores its events after explicit retry', async () => {
+    let calls = 0
+    let lateEvent: NonNullable<
+      NonNullable<Parameters<ChatApi['sendAiMessage']>[4]>['onEvent']
+    > = () => {}
+    const session = createChatSession({
+      aiStatus: async () => status(),
+      openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+      sendAiMessage: async (_id, _message, _mode, _context, options) => {
+        calls++
+        if (calls === 2) {
+          lateEvent = options!.onEvent!
+          throw { response: { status: 500 } }
+        }
+        return result({ answer: calls === 1 ? 'previous answer' : 'retry answer' })
+      },
+    })
+    await session.openConversation()
+    session.draft.value = 'previous request'
+    await session.send()
+    session.draft.value = 'retry request'
+    await session.send()
+    expect(session.turns.value.map((turn) => turn.text)).toEqual([
+      'previous request',
+      'previous answer',
+    ])
+    await session.send()
+    lateEvent({
+      type: 'answer.delta',
+      text: 'stale',
+      code: '',
+      status: 'RUNNING',
+      executionId: 'stale',
+      sequence: 1,
+    })
+    expect(session.turns.value.map((turn) => turn.text)).toEqual([
+      'previous request',
+      'previous answer',
+      'retry request',
+      'retry answer',
+    ])
+    expect(calls).toBe(3)
   })
 
   it('holds the old conversation until a target change is confirmed', async () => {

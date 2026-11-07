@@ -409,6 +409,8 @@ it('creates a blank custom scenario from the local catalog', async () => {
 it('keeps preset delete disabled and removes only in-page custom scenes', async () => {
   workbench.workMode = 'work'
   await mount()
+  const read = vi.spyOn(runtimeApi, 'scenario').mockRejectedValue({ response: { status: 404 } })
+  const remove = vi.spyOn(runtimeApi, 'deleteScenario')
   const presetDelete = root!.querySelector(
     '[data-testid=scene-delete][data-scene-id="doc-writing"]',
   ) as HTMLButtonElement
@@ -429,7 +431,9 @@ it('keeps preset delete disabled and removes only in-page custom scenes', async 
     ) as HTMLButtonElement
   ).click()
   await nextTick()
-  expect(scenarios.length).toBe(before - 1)
+  await vi.waitFor(() => expect(scenarios.length).toBe(before - 1))
+  expect(read).toHaveBeenCalledWith(customId)
+  expect(remove).not.toHaveBeenCalled()
   expect(scenarios.some((item) => item.id === customId)).toBe(false)
   await vi.waitFor(() =>
     expect(root!.querySelector('[data-testid=scene-notice]')?.textContent).toMatch(

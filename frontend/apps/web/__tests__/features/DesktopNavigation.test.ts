@@ -19,6 +19,7 @@ let root: HTMLDivElement | undefined
 beforeEach(() => {
   resetScenarioWorkspaceState()
   vi.spyOn(runtimeApi, 'aiStatus').mockRejectedValue(new Error('No local service in unit tests'))
+  vi.spyOn(runtimeApi, 'scenarios').mockResolvedValue({ items: [] })
   vi.spyOn(runtimeApi, 'workspaceDirty').mockResolvedValue({
     requested: false,
     denial: 'AUTHORIZED_ROOT_MISSING',
@@ -74,6 +75,21 @@ const pages = [
   'builder-beta',
 ].map((id) => ({ id, name: id }))
 describe('desktop navigation', () => {
+  it('keeps the board contribution hidden only when explicitly disabled', async () => {
+    workbench.selectedProjectId = 'local-eap'
+    const enabled = ref(true)
+    root = document.createElement('div')
+    document.body.append(root)
+    app = createApp({
+      render: () =>
+        h(DesktopNavigation, { activeView: 'chat', pages, boardEnabled: enabled.value }),
+    })
+    app.use(i18n).mount(root)
+    expect(root.querySelector('[data-testid=open-board]')).not.toBeNull()
+    enabled.value = false
+    await nextTick()
+    expect(root.querySelector('[data-testid=open-board]')).toBeNull()
+  })
   it('groups sidebar creation, search, conversations and secondary tools in a clear order', async () => {
     root = document.createElement('div')
     document.body.append(root)

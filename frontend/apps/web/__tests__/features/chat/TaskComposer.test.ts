@@ -108,6 +108,7 @@ describe('engineering task composer', () => {
         targetPath: 'frontend/apps/web/src/Example.vue',
         prototypeVersionId: '',
       }),
+      { signal: expect.any(AbortSignal), onEvent: expect.any(Function) },
     ])
   })
   it('shows a disabled busy refresh action while a catalog request is in progress', async () => {

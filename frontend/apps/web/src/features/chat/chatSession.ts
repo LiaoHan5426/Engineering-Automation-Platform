@@ -669,6 +669,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     }
     const mode = toolMode.value
     const current = ++ticket
+    let receivedEvent = false
     const controller = new AbortController()
     abortControllers.value = { ...abortControllers.value, [id]: controller }
     inflight.value = { ...inflight.value, [id]: current }
@@ -684,8 +685,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       artifactError: '',
       artifacts: [],
     })
-    const assistantIndex =
-      (transcripts.value[id]?.length ?? 0)
+    const assistantIndex = transcripts.value[id]?.length ?? 0
     append(id, {
       ...requestMetadata,
       role: 'assistant',
@@ -711,10 +711,12 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
           signal: controller.signal,
           onEvent: (event) => {
             if (inflight.value[id] !== current) return
+            receivedEvent = true
             const turns = transcripts.value[id]
             if (!turns || !turns[assistantIndex]) return
             const next = [...turns]
             const turn = { ...next[assistantIndex]! }
+            if (event.executionId) turn.executionId = event.executionId
             if (event.type === 'answer.delta') turn.text = (turn.text || '') + (event.text || '')
             if (event.type === 'tool') {
               turn.toolEvents = [
@@ -735,7 +737,13 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       if (inflight.value[id] !== current) return
       if (entry && result.contextMemoryCleared) entry.contextMemoryCleared = true
       const turns = transcripts.value[id] ? [...transcripts.value[id]!] : []
-      if (result.contextBudget) lastContextBudget.value = result.contextBudget
+      if (conversationId.value === id && result.contextBudget)
+        lastContextBudget.value = result.contextBudget
+      const streamedTurn = turns[assistantIndex]
+      // The existing mock contract stays visibly simulated; arbitrary statuses
+      // (including UNKNOWN) must never clear a failed draft as if successful.
+      const succeeded =
+        (result.status === 'SUCCEEDED' || result.status === 'mock_completed') && !result.error
       turns[assistantIndex] = {
         ...requestMetadata,
         role: 'assistant',
@@ -744,14 +752,16 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         knowledgeContext: result.knowledgeContext,
         knowledgeMemoryCleared: result.knowledgeMemoryCleared,
         contextBudget: result.contextBudget ?? null,
-        executionId: result.executionId,
+        executionId: result.executionId || streamedTurn?.executionId,
         proposal: result.proposal,
-        text: result.answer,
+        text: result.answer || (!succeeded ? streamedTurn?.text : '') || '',
         error: result.error,
-        status: result.status,
+        status: !result.status || result.status === 'RUNNING' ? 'UNKNOWN' : result.status,
         approval: result.approval,
         verification: result.verification,
-        toolEvents: result.toolEvents ?? [],
+        toolEvents: result.toolEvents?.length
+          ? result.toolEvents
+          : (streamedTurn?.toolEvents ?? []),
         artifactError: result.artifactError,
         artifacts: result.artifacts ?? [],
       }
@@ -766,24 +776,50 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
           /* association refresh is best-effort; send result already applied */
         }
       }
-      if (!result.error) {
+      if (succeeded) {
         if (entry && entry.draft === text) entry.draft = ''
         if (conversationId.value === id && draft.value === text) draft.value = ''
         if (conversationId.value === id) failure.value = ''
       }
-      if (conversationId.value === id && result.error)
+      if (conversationId.value === id && !succeeded)
         failure.value =
           result.error === 'AI_CANCELLED'
             ? 'cancelled'
             : result.error === 'CODE_PROPOSAL_TOO_LARGE'
               ? 'generation-too-large'
-              : result.error === 'CONTEXT_BUDGET_EXCEEDED' || result.error === 'TASK_CONTEXT_TOO_LARGE'
+              : result.error === 'CONTEXT_BUDGET_EXCEEDED' ||
+                  result.error === 'TASK_CONTEXT_TOO_LARGE'
                 ? 'context-budget-exceeded'
                 : 'kept'
     } catch (error) {
       if (inflight.value[id] !== current) return
+      const detail = (error as { response?: { data?: { detail?: string } } } | null)?.response?.data
+        ?.detail
+      const currentTurns = transcripts.value[id] ?? []
+      // A rejected HTTP request has no accepted turn. Once streaming starts (or the
+      // transport outcome is uncertain), keep its evidence rather than erasing it.
+      if (!receivedEvent && httpStatus(error) != null && detail !== 'AI_RESPONSE_INCOMPLETE') {
+        transcripts.value = {
+          ...transcripts.value,
+          [id]: currentTurns.slice(0, assistantIndex - 1),
+        }
+      } else {
+        const next = [...currentTurns]
+        const turn = next[assistantIndex]
+        if (turn) {
+          next[assistantIndex] = {
+            ...turn,
+            status: ['SUCCEEDED', 'FAILED', 'CANCELLED', 'REFUSED', 'UNKNOWN'].includes(turn.status)
+              ? turn.status
+              : 'UNKNOWN',
+            error: turn.error || detail || 'AI_RESPONSE_INCOMPLETE',
+          }
+          transcripts.value = { ...transcripts.value, [id]: next }
+        }
+      }
       if ((error as { name?: string } | null)?.name === 'AbortError') {
-        if (conversationId.value === id) failure.value = 'cancelled'
+        // Aborting the client wait does not acknowledge backend termination.
+        if (conversationId.value === id) failure.value = 'failed'
         return
       }
       if (
@@ -799,7 +835,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       )
         entry.knowledgeMemoryCleared = true
       const budget = contextBudgetFromError(error)
-      if (budget) lastContextBudget.value = budget
+      if (conversationId.value === id && budget) lastContextBudget.value = budget
       if (httpStatus(error) === 404 && !generationFailure(error)) {
         if (conversationId.value === id) await recheckConversation()
       }

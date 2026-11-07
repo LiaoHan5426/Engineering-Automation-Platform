@@ -338,5 +338,6 @@ it('chooses a persisted enabled expert, previews the exact draft, then explicitl
     'original question',
     'none',
     expect.objectContaining({ knowledgeExpertRef: expertRef, instructions: '', files: [] }),
+    { signal: expect.any(AbortSignal), onEvent: expect.any(Function) },
   ])
 })

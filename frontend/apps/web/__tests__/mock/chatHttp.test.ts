@@ -1,27 +1,23 @@
-import { createServer } from 'node:http'
 import { expect, it } from 'vite-plus/test'
 import { createChatApi } from '@eap/runtime-client'
 import { createMockChatBackend } from '../../mock/chatBackend'
+import { replyChatSse, replyJson, startChatHttpFixture } from '../chatHttpFixture'
 
 it('uses the shared runtime HTTP client for models, conversation, message and proposal confirmation', async () => {
   const backend = createMockChatBackend()
-  const server = createServer(async (req, res) => {
-    let raw = ''
-    for await (const chunk of req) raw += chunk.toString()
-    const reply = await backend.handle(
-      req.method ?? 'GET',
-      req.url ?? '/',
-      raw ? JSON.parse(raw) : {},
+  const fixture = await startChatHttpFixture(async (request, response) => {
+    const reply = await backend.handle(request.method, request.url, request.data ?? {})
+    if (
+      reply.status === 200 &&
+      request.method === 'POST' &&
+      request.url.endsWith('/messages') &&
+      request.headers.accept === 'text/event-stream'
     )
-    res.statusCode = reply.status
-    res.setHeader('Content-Type', 'application/json')
-    res.end(JSON.stringify(reply.data))
+      replyChatSse(response, reply.data)
+    else replyJson(response, reply.data, reply.status)
   })
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   try {
-    const address = server.address()
-    if (!address || typeof address === 'string') throw new Error('Missing test server port')
-    const api = createChatApi(`http://127.0.0.1:${address.port}`)
+    const api = createChatApi(fixture.baseURL)
     expect((await api.modelConnections()).items[0]?.allowedModels).toContain('general-demo')
     const conversation = await api.openAiConversation()
     const assigned = await api.assignConversationConnection(
@@ -48,21 +44,45 @@ it('uses the shared runtime HTTP client for models, conversation, message and pr
     )
     expect(response.proposal?.files[0]?.path).toBe('Example.vue')
     expect(response.proposal?.files[0]?.baseHash).toBe('')
+    const messageRequest = fixture.requests.find((request) => request.url.endsWith('/messages'))!
+    expect(messageRequest.method).toBe('POST')
+    expect(messageRequest.url).toBe(`/ai/conversations/${conversation.conversationId}/messages`)
+    expect(messageRequest.headers.accept).toBe('text/event-stream')
+    expect(messageRequest.data).toEqual({
+      message: 'Review a candidate',
+      toolMode: 'none',
+      context: {
+        mode: 'code',
+        expert: 'frontend',
+        instructions: '',
+        reasoning: 'default',
+        approval: 'review',
+        files: [],
+        prototypeVersionId: '',
+        targetPath: '',
+      },
+    })
     await expect(
       api.codeProposal(conversation.conversationId, response.proposal!.id),
-    ).rejects.toMatchObject({
-      response: { status: 404, data: { error: 'MOCK_DURABLE_APPLICATION_UNAVAILABLE' } },
+    ).resolves.toMatchObject({
+      status: 'PROPOSED',
+      result: null,
+      proposal: { id: response.proposal!.id, applied: false, writeAllowed: false },
     })
     await expect(
       api.applyCodeProposal(conversation.conversationId, response.proposal!.id),
-    ).rejects.toMatchObject({ response: { status: 409 } })
+    ).rejects.toMatchObject({ response: { status: 409, data: { error: 'BASELINE_UNKNOWN' } } })
+    await expect(
+      api.codeProposal(conversation.conversationId, response.proposal!.id),
+    ).resolves.toMatchObject({
+      status: 'PROPOSED',
+      proposal: { applied: false, writeAllowed: false },
+    })
     await api.deleteAiConversation(conversation.conversationId)
     await expect(api.aiConversation(conversation.conversationId)).rejects.toMatchObject({
       response: { status: 404 },
     })
   } finally {
-    await new Promise<void>((resolve, reject) =>
-      server.close((error) => (error ? reject(error) : resolve())),
-    )
+    await fixture.close()
   }
 })

@@ -61,7 +61,7 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 
 未重启用户服务、未调用真实模型、未提交推送。Node localStorage、Mockito/JDK及构建大chunk告警保留。上述为自动化组件/回环HTTP证据，不宣称真实浏览器用户接受或模型故障已恢复；本地记录续接不等于完整ChatMemory持久化。已有服务需由用户重启加载后使用该入口。
 
-## 聊天 SSE 执行事件与取消（2026-11-07，离线通过，浏览器待验）
+## 聊天 SSE 执行事件与取消（2026-11-07，限定离线与mock交互已验）
 
 破坏性合同：`POST /api/ai/conversations/{id}/messages` 主路径改为 `text/event-stream`（`consumes=application/json`）。校验失败仍在首帧前抛出 HTTP 4xx JSON；成功路径按序推送 `status` / `answer.delta` / `tool` / `approval` / `error` / `final`（`final.payload` 为完整消息信封）。配套：
 
@@ -70,6 +70,22 @@ web 包新增开发依赖 `vite-plugin-vue-mcp` 0.3.2，默认关闭。仅开发
 - 前端 `runtime-client` 用 fetch 消费 SSE；`eventProjector` 按 `executionId+sequence` 去重并记录缺序；发送中可取消。
 
 离线证据：`ChatExecutionStreamTest` 4 项；前端 eventProjector/reconnect/wireApi 等定向通过。不宣称跨重启持久事件日志或真实供应商流式验收。
+
+### SSE 回归收敛（接续 1e13b66）
+
+先在同一工作树、现有网络保护下复现707项/673通过/34失败，再分两线修正，不放行开发8080、不修改后端UUID校验或供应商协议：
+
+- **会话生命周期**：首帧前HTTP拒绝撤销本次乐观user/空assistant占位，保留之前正文与当前草稿；接到事件或传输结果未知后保留部分回答、executionId和工具证据，将悬空RUNNING收敛为UNKNOWN，不自动重试。明确终态失败/取消/未知不因error为空而清掉草稿；仅SUCCEEDED与既有明确模拟终态mock_completed按成功处理。晚到结果与预算不污染另一会话。
+- **传输与组件合同**：Knowledge/Skill请求仍精确断言引用revision/digest及资源路径；原Axios adapter未覆盖fetch SSE的测试改为worker自有127.0.0.1临时HTTP服务，核对JSON管理请求、发送Accept/正文与SSE final完整信封。组件增加第五参数AbortSignal/onEvent合同断言，不删除原业务断言；补冲突、部分delta后EOF和真实AbortSignal回归。模拟fixture不是模型效果证明。
+- **同批剩余门禁**：导航optional Boolean缺省被Vue转换false，显式默认true且保留Host传false；场景删除测试模拟404核对并等待异步删除完成，不绕过零revision UNKNOWN保护；全局发送说明断言迁至当前取消合同，不再断言“不能取消”。
+
+指定预览工具实测：`desktop_preview`打开mock5174，`drive_preview`发送预算超限词，失败只显示预算说明、原草稿保留、无新增空运行回合；编辑后同会话发送普通草稿返回明确模拟回答，草稿清空且无失败重试提示。首次验证发现mock_completed被误当失败，已补兼容回归再复验。mock新建未保存场景→删除→返回列表提示已删除，预设删除仍禁用。真机5173仅验证输入草稿→设置→返回来源会话保留草稿，随后清空自建草稿，未发送真实请求。真实供应商流式/进程取消、窄屏/系统缩放与用户接受仍独立，未因此关闭。
+
+父任务验证（仓库根）：`rtk proxy pnpm --dir frontend test run --maxWorkers=2 --reporter=json`完整128文件724项通过；`rtk proxy pnpm --dir frontend typecheck`、`check:architecture`（含边界）、`build`通过。新增17项不替换原断言：流式证据/终态/切会话/模拟成功及SSE冲突/提前EOF/Abort、导航显式停用覆盖。测试网络guard保留，fixture只连接自己创建的临时loopback服务，不修改runtime-client生产协议或mock生产后端。原mock候选查询404断言按已有PROPOSED实现更新，追加writeAllowed=false、409 BASELINE_UNKNOWN、拒绝后仍未应用。后端未改未跑，不引用历史Maven通过作为本次结果；Node localStorage与大chunk告警保留。
+
+最终完整测试日志仍有10次`EAP_TEST_NETWORK_BLOCKED`诊断（包括网络保护负向回归及既有夹具漏mock），均在测试worker内拦截且退出0；不称日志零错误或已清空所有测试隔离欠账，不通过删除guard消除它们。新增传输fixture只访问自身临时端点。当前34个失败身份程序化比对全部消除；与真实供应商、UI全视口/系统缩放及进程生命周期验收分别记录。
+
+提交前限定独立只读审查通过：未发现本轮阻断缺陷，确认关键授权/UNKNOWN断言没有删除或放宽；审查者重跑受影响11文件130项通过及diff检查通过。审查当时尚未看到规划更新的提醒，由父任务在提交前同步本决定、主方案CT-01验收行、台账与路线图并核对暂存范围关闭。独立定向结果不重复计为另一轮全量执行。
 
 ## 上下文预算 CE-01 首片（2026-11-07，离线通过）
 

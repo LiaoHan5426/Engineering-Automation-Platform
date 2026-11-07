@@ -24,11 +24,14 @@ import {
   workbench,
 } from './shell/workbench'
 
-const props = defineProps<{
-  activeView: string
-  pages: { id: string; name: string }[]
-  boardEnabled?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    activeView: string
+    pages: { id: string; name: string }[]
+    boardEnabled?: boolean
+  }>(),
+  { boardEnabled: true },
+)
 const emit = defineEmits<{ navigate: [id: string] }>()
 const { t } = useI18n()
 type Area = 'code' | 'work' | 'scenes' | 'experts' | 'settings'
