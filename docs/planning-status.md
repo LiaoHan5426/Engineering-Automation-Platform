@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main`（待提交 TC-01 mock 拒绝/超时/取消呈现；含 `4fa6f80` CE-01 mock 预算）。历史全量数字仅为既往证据。本轮：mock 可信目录返回启用 `git-status`；invoke 成功/拒绝/超时/取消可呈现；`capabilityBackend`/`trustedToolInvokeView` 7 项离线通过；mock `:5174` 浏览器已验成功 stdout、denied/timeout/cancelled 提示与取消按钮。不开放任意执行口，不宣称真实 git/用户产品接受。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 29abc58`（TC-01 mock 拒绝/超时/取消呈现；含 `4fa6f80` CE-01 mock 预算）。历史全量数字仅为既往证据。本轮：mock 可信目录返回启用 `git-status`；invoke 成功/拒绝/超时/取消可呈现；`capabilityBackend`/`trustedToolInvokeView` 7 项离线通过；mock `:5174` 浏览器已验成功 stdout、denied/timeout/cancelled 提示与取消按钮。不开放任意执行口，不宣称真实 git/用户产品接受。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
