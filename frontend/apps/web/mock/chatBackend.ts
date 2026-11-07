@@ -216,7 +216,7 @@ export function createMockChatBackend() {
           model: target.defaultModel,
           workingMemory: {
             goal: '',
-            constraints: [],
+            constraints: ['示例约束：复用现有组件'],
             facts: [],
             evidenceRefs: [],
             dependencyKeys: [],

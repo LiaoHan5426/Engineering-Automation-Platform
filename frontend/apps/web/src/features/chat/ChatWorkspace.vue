@@ -130,8 +130,15 @@ const session = createChatSession(
 async function saveWorkingGoal() {
   const goal = workingGoalDraft.value.trim()
   if (!goal) return
+  const current = session.workingMemory.value
   try {
-    await session.saveWorkingMemory({ goal })
+    await session.saveWorkingMemory({
+      goal,
+      constraints: current?.constraints ?? [],
+      facts: current?.facts ?? [],
+      evidenceRefs: current?.evidenceRefs ?? [],
+      dependencyKeys: current?.dependencyKeys ?? [],
+    })
     workingGoalDraft.value = ''
   } catch {
     session.failure.value = 'failed'
@@ -763,10 +770,30 @@ onMounted(async () => {
           <p v-if="session.workingMemory.value?.invalidation" class="hint">
             {{ t('workingMemory.invalidation') }}：{{ session.workingMemory.value.invalidation }}
           </p>
-          <p v-else-if="session.workingMemory.value?.goal" class="hint">
+          <p v-else-if="session.workingMemory.value?.goal" class="hint" data-testid="working-memory-goal-text">
             {{ t('workingMemory.goal') }}：{{ session.workingMemory.value.goal }}
           </p>
           <p v-else class="hint">{{ t('workingMemory.empty') }}</p>
+          <p
+            v-if="session.workingMemory.value?.constraints?.length"
+            class="hint"
+            data-testid="working-memory-constraints"
+          >
+            {{ t('workingMemory.constraints') }}：{{
+              session.workingMemory.value.constraints.join(' · ')
+            }}
+          </p>
+          <p
+            v-if="session.workingMemory.value?.facts?.length"
+            class="hint"
+            data-testid="working-memory-facts"
+          >
+            {{ t('workingMemory.facts') }}：{{
+              session.workingMemory.value.facts
+                .map((fact) => `${fact.kind}:${fact.id}${fact.revisionOrDigest ? '@' + fact.revisionOrDigest : ''}`)
+                .join(' · ')
+            }}
+          </p>
           <p
             v-if="session.workingMemory.value?.layers?.length"
             class="hint"

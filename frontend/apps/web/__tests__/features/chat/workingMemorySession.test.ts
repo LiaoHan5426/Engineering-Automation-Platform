@@ -116,4 +116,39 @@ describe('working memory session', () => {
     expect(session.workingMemory.value?.dependencyKeys).toContain('task:proj:t1:1')
     expect(session.workingMemory.value?.evidenceRefs).toContain('execution:e1')
   })
+
+  it('persists constraints and fact refs through putWorkingMemory', async () => {
+    let stored = emptyMemory
+    const api = {
+      aiStatus: async () => status(),
+      openAiConversation: async () => ({
+        conversationId: 'c3',
+        workspaceLabel: 'ws',
+        memory: '分层说明',
+        workingMemory: emptyMemory,
+      }),
+      putWorkingMemory: async (_id, body) => {
+        stored = {
+          ...emptyMemory,
+          goal: body.goal ?? '',
+          constraints: body.constraints ?? [],
+          facts: body.facts ?? [],
+          updatedAt: '2026-11-07T03:00:00Z',
+        }
+        return stored
+      },
+      sendAiMessage: async () => {
+        throw new Error('unused')
+      },
+    } satisfies ChatApi
+    const session = createChatSession(api)
+    await session.openConversation()
+    await session.saveWorkingMemory({
+      goal: '交付登录页',
+      constraints: ['复用现有组件'],
+      facts: [{ kind: 'knowledge', id: 'expert-a', revisionOrDigest: '2' }],
+    })
+    expect(session.workingMemory.value?.constraints).toEqual(['复用现有组件'])
+    expect(session.workingMemory.value?.facts?.[0]?.id).toBe('expert-a')
+  })
 })
