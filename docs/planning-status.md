@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main /`（三切片并行：SC-01 删除核对 + FS-01 盘点 UI + KR-01 生产形排序样本；提交后回填 SHA）。历史全量数字仅为既往证据。本轮：① SC-01 `revision=0` 删除前 GET 核对（远端存在则 CAS 删除，404 才本地草稿，未知态保留草稿不误报）；② FS-01 能力总览只读 data-layout/`migrationReadiness` 面板；③ KR-01 `productionSampleCases` 离线排序 + gated FTS 排序对照用例；另：`EAP_RUN_MCP_OFFICIAL` 实跑 memory/`read_graph` 通过。浏览器 mock `:5174` 与真机 `:5173` 已验 FS-01 盘点；真机探测写回后 cache 文件 present。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / cbfa6a9`（三切片并行：SC-01 删除核对 + FS-01 盘点 UI + KR-01 生产形排序样本）。历史全量数字仅为既往证据。本轮：① SC-01 `revision=0` 删除前 GET 核对（远端存在则 CAS 删除，404 才本地草稿，未知态保留草稿不误报）；② FS-01 能力总览只读 data-layout/`migrationReadiness` 面板；③ KR-01 `productionSampleCases` 离线排序 + gated FTS 排序对照用例；另：`EAP_RUN_MCP_OFFICIAL` 实跑 memory/`read_graph` 通过。浏览器 mock `:5174` 与真机 `:5173` 已验 FS-01 盘点；真机探测写回后 cache 文件 present。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
