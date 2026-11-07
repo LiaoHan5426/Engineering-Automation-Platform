@@ -78,8 +78,8 @@
 - **MCP-01 Streamable-HTTP（2026-11-07）**：`StreamableHttpMcpTransport` 对 `transport=streamable-http`：POST 带双 Accept，接受 JSON 或 SSE 响应，捕获/回传 `MCP-Session-Id`，close 时尽力 DELETE；`StreamableHttpMcpTransportTest` 通过。不宣称生产授权或 GET 续传。
 - **MCP-01 生产授权白名单（2026-11-07）**：`McpProductionAllowlist` 锁定允许传输（含 streamable-http）与官方只读包 `echo`；信任官方包时拒绝越权工具；list/probe 回传 `productionGrantedTools`；调用路径再校验。非官方信任仍为操作者声明。`McpProductionAllowlistTest` 通过。
 - **MCP-01 Streamable-HTTP GET 续传（2026-11-07）**：`StreamableHttpMcpTransport` 记录 SSE `id`/`retry`；POST SSE 未拿到匹配响应时带 `Last-Event-ID` GET 续传；`StreamableHttpMcpTransportTest` 含断流重连用例。不宣称常驻 listen 线程。
-- **MCP-01 官方只读包矩阵（2026-11-07）**：锁定 everything/`echo`、sequential-thinking/`sequentialthinking`、memory/`read_graph` 与 **filesystem@2025.11.25/`list_directory`**（门禁 stdio 附加允许根目录参数；endpoint 仍按 package@version 匹配）；生产白名单与能力页共用；mock 浏览器已验四条目。追加包须先验工具存在。
-- **KR-01 生产形排序样本（2026-11-07）**：`RetrievalBaseline.productionSampleCases`（较长操作员措辞，`expectedMaxRank≤2`）+ 离线 `KEYWORD_PROBE_PRODUCTION_SAMPLE`；`RetrievalBaselineDbContrastTest` 增加 gated Postgres FTS 排序对照。不启 KR-02。
+- **MCP-01 官方只读包矩阵（2026-11-07）**：锁定 everything/`echo`、sequential-thinking/`sequentialthinking`、memory/`read_graph` 与 **filesystem@2025.11.25/`list_directory`+`directory_tree`**（门禁 stdio 附加允许根；tools/list 证明二者，call 仅 preferred `list_directory`——`directory_tree` 仅 path 会 isError；endpoint 仍按 package@version 匹配）；生产白名单与能力页共用；mock 浏览器已验双工具文案。追加包须先验工具存在。
+- **KR-01 生产形排序样本（2026-11-07）**：`RetrievalBaseline.productionSampleCases`（较长操作员措辞，`expectedMaxRank≤2`）+ 离线 `KEYWORD_PROBE_PRODUCTION_SAMPLE`；`RetrievalBaselineDbContrastTest` 增加 gated Postgres FTS 排序对照；口令回退 `application.yml` / `EAP_DB_PASSWORD` / `SPRING_DATASOURCE_PASSWORD`。不启 KR-02。
 - **SC-01 保存未知态核对（2026-11-07）**：`scenarioCatalog.save` 在非 409 失败后 GET 核对；远端 revision 相对保存前前进则标 `unknown` 并采用远端 revision；404 保持 `save`。
 - **TC-01 调用未知结果（2026-11-07）**：`trustedToolInvokeFailure` 增加 `unknown`（520/`TRUSTED_TOOL_UNKNOWN` 或无响应网络中断）；mock「模拟结果未知」+ 能力页提示；真机成功调用已验。
 - 本地stdio进程的argv、cwd、环境和生命周期仍须约束；远端目标的认证/网络范围独立处理。MCP Roots及工具只读标注不是强制沙箱。不先将已有Java/CLI能力全部包装为MCP Server。
@@ -102,6 +102,8 @@
 **FS-01 迁移就绪盘点（2026-11-07）**：同接口附加 `migrationReadiness`（`status`/`candidates`/`approved=false`/`physicalMigration=false`），盘点 legacy 产物路径、连接登记与 `cache/trusted-tool-probes` 是否存在；不移动、不删除、不改默认路径。`RuntimeDataLayoutServiceTest` 覆盖。
 
 **FS-01 能力页盘点 UI（2026-11-07）**：能力总览只读展示 entries + migrationReadiness；mock `:5174` 与真机 `:5173` 浏览器已验；真机探测后 `trusted-tool-probes` 转为 present。
+
+**FS-01 刷新盘点（2026-11-07）**：能力页「刷新盘点」独立调用 data-layout（busy 态）；不触发物理迁移。mock/真机浏览器已验。
 
 | 逻辑路径 | 含义 |
 |---|---|
@@ -223,11 +225,11 @@ mock 可信目录返回启用 `git-status`；`invoke` 默认成功 stdout，`moc
 |---|---|---|
 | 先保留缺陷门禁 | 场景保存UNKNOWN后的删除核对仍阻断；已有自身改页验收线独立推进 | 结果未知不误报删除/完成；原有交付证据保留 |
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 回合预算/超限（浏览器已验）；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS 适配；每题延迟观测 + 本机实库对照 + 排序质量样本 | CE-01 剩余 token/压缩/Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
-| FS-01 | 数据根、目录归属与前端/本机执行分界；盘点旧数据 | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
+| FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点 UI + **刷新盘点**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | **部分交付**：可信定义汇总 + 绑定快照 + 显式 `--version` 探测写回（known/probe_failed；目录不自动探测；mock 浏览器已验） | 持久化探测缓存、更多依赖绑定与用户接受；不执行未知脚本、不整盘扫描或自动授权 |
 | TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消呈现与 Abort 取消（浏览器已验） | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
 | TC-02 / P1 | TC-01职责合同后验证前端交互实例，协调实际Host而非等待完整SDK | 人工读取草稿/选中状态、多实例/revision/关闭断线、保存版本区别；模型反向调用另行评审 |
-| MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（everything + sequential-thinking）+ http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传 | 继续追加已验证官方包；常驻 GET listen 未做 |
+| MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（everything + sequential-thinking + memory + filesystem/`list_directory`+`directory_tree`）+ http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传 | 真机重载后核对 `directory_tree`；继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/持久化回滚 + 依赖缺失/激活失败呈现（mock 浏览器已验）；不改 Task/Run | 真实服务探测与用户接受；在途停用完整矩阵；无第二状态源；外部安装器延期 |
 | MEM-01 | **部分交付**：状态机+PUT/UI（约束/事实展示）+本地持久+Task/Run+知识/Skill 依赖对抗失效；敏感清空/换模/换任务/换依赖失效；显式删除清盘；mock 浏览器验目标/约束 | sticky 清空仍保留；用户产品接受仍待；长期自动抽取延期 |
 | TM-01 | FS-01后做一个受管工具，复用CLI登记 | 锁版本/校验、失败回滚、实际调用、在途卸载阻止；不更改系统工具 |
