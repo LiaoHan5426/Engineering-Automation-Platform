@@ -78,7 +78,9 @@
 - **MCP-01 Streamable-HTTP（2026-11-07）**：`StreamableHttpMcpTransport` 对 `transport=streamable-http`：POST 带双 Accept，接受 JSON 或 SSE 响应，捕获/回传 `MCP-Session-Id`，close 时尽力 DELETE；`StreamableHttpMcpTransportTest` 通过。不宣称生产授权或 GET 续传。
 - **MCP-01 生产授权白名单（2026-11-07）**：`McpProductionAllowlist` 锁定允许传输（含 streamable-http）与官方只读包 `echo`；信任官方包时拒绝越权工具；list/probe 回传 `productionGrantedTools`；调用路径再校验。非官方信任仍为操作者声明。`McpProductionAllowlistTest` 通过。
 - **MCP-01 Streamable-HTTP GET 续传（2026-11-07）**：`StreamableHttpMcpTransport` 记录 SSE `id`/`retry`；POST SSE 未拿到匹配响应时带 `Last-Event-ID` GET 续传；`StreamableHttpMcpTransportTest` 含断流重连用例。不宣称常驻 listen 线程。
-- **MCP-01 官方只读包矩阵（2026-11-07）**：锁定 everything/`echo`、sequential-thinking/`sequentialthinking`、memory/`read_graph` 与 **filesystem@2025.11.25/`list_directory`+`get_file_info`+`directory_tree`**（门禁 stdio 附加允许根；实 call list+info；`directory_tree` 因上游 structuredContent 校验失败仅 tools/list 证明；endpoint 仍按 package@version 匹配）；生产白名单与能力页共用；mock 浏览器已验三工具文案。追加包须先验工具存在。
+- **MCP-01 官方只读包矩阵（2026-11-07）**：锁定 everything/`echo`、sequential-thinking/`sequentialthinking`、memory/`read_graph` 与 **filesystem@2025.11.25/`list_directory`+`get_file_info`+`search_files`+`directory_tree`**（门禁 stdio 附加允许根；实 call list+info+search；`directory_tree` 因上游 structuredContent 校验失败仅 tools/list 证明）；生产白名单与能力页共用；mock 浏览器已验四工具文案。追加包须先验工具存在。
+- **FS-01 kind/byteSize（2026-11-07）**：data-layout 条目报告 `kind`（missing/file/directory/other）；仅常规文件附带 `byteSize`，目录不递归计量。mock/真机浏览器已验。
+- **TC-01 调用摘要（2026-11-07）**：能力页在 stdout 前展示 capability/成功/exitCode/本地 `observedAt`；不宣称服务端时钟合同。mock/真机已验。
 - **SC-01 mock 保存断连（2026-11-07）**：mock `mockOutcome=save-lost` 先落盘 revision 再 502；前端「模拟保存断连」触发核对→`unknown`；`:5174` 已验。不等于用户产品接受。
 - **TD-01 清除探测缓存（2026-11-07）**：`POST /api/runtime/trusted-tools/probe-cache/clear` 清空内存+`.eap/cache/trusted-tool-probes.json`；能力页按钮；不改绑定/启停；mock/真机浏览器已验版本回未知。
 - **KR-01 生产形排序样本（2026-11-07）**：`RetrievalBaseline.productionSampleCases`（较长操作员措辞，`expectedMaxRank≤2`）+ 离线 `KEYWORD_PROBE_PRODUCTION_SAMPLE`；`RetrievalBaselineDbContrastTest` 增加 gated Postgres FTS 排序对照；口令回退 `application.yml` / `EAP_DB_PASSWORD` / `SPRING_DATASOURCE_PASSWORD`。不启 KR-02。
@@ -227,11 +229,11 @@ mock 可信目录返回启用 `git-status`；`invoke` 默认成功 stdout，`moc
 |---|---|---|
 | 先保留缺陷门禁 | 场景保存UNKNOWN后的删除核对仍阻断；已有自身改页验收线独立推进 | 结果未知不误报删除/完成；原有交付证据保留 |
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 回合预算/超限（浏览器已验）；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS 适配；每题延迟观测 + 本机实库对照 + 排序质量样本 | CE-01 剩余 token/压缩/Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
-| FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点 UI + **刷新盘点**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
+| FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + **kind/byteSize**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测写回 + 持久化 + **清除探测缓存**（mock/真机已验） | 更多依赖绑定与用户接受；不执行未知脚本、不整盘扫描或自动授权 |
-| TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消呈现与 Abort 取消（浏览器已验） | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
+| TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消/unknown；**调用摘要**（exit/观测时间） | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
 | TC-02 / P1 | TC-01职责合同后验证前端交互实例，协调实际Host而非等待完整SDK | 人工读取草稿/选中状态、多实例/revision/关闭断线、保存版本区别；模型反向调用另行评审 |
-| MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（everything + sequential-thinking + memory + filesystem/`list_directory`+`get_file_info`+`directory_tree`）+ http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传 | 真机重载后核对三工具；继续追加已验证官方包；常驻 GET listen 未做 |
+| MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（everything + sequential-thinking + memory + filesystem/`list_directory`+`get_file_info`+`search_files`+`directory_tree`）+ http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传 | 真机重载后核对四工具；继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/持久化回滚 + 依赖缺失/激活失败呈现（mock 浏览器已验）；不改 Task/Run | 真实服务探测与用户接受；在途停用完整矩阵；无第二状态源；外部安装器延期 |
 | MEM-01 | **部分交付**：状态机+PUT/UI（约束/事实展示）+本地持久+Task/Run+知识/Skill 依赖对抗失效；敏感清空/换模/换任务/换依赖失效；显式删除清盘；mock 浏览器验目标/约束 | sticky 清空仍保留；用户产品接受仍待；长期自动抽取延期 |
 | TM-01 | FS-01后做一个受管工具，复用CLI登记 | 锁版本/校验、失败回滚、实际调用、在途卸载阻止；不更改系统工具 |
