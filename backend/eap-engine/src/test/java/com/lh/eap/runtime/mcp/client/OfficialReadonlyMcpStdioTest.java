@@ -39,7 +39,7 @@ class OfficialReadonlyMcpStdioTest {
                             .map(tool -> tool.get("name")).toList());
             var result = client.callTool(OfficialReadonlyMcpLock.READONLY_TOOL, Map.of("message", "eap-readonly"));
             assertNotEquals(Boolean.TRUE, result.get("isError"));
-            assertEquals(3, OfficialReadonlyMcpMatrix.ENTRIES.size());
+            assertEquals(4, OfficialReadonlyMcpMatrix.ENTRIES.size());
             assertEquals(OfficialReadonlyMcpMatrix.primary().preferredTool(), OfficialReadonlyMcpLock.READONLY_TOOL);
             client.close();
             assertFalse(transport.alive());
@@ -86,6 +86,29 @@ class OfficialReadonlyMcpStdioTest {
                     () -> "missing " + entry.preferredTool() + " in " + tools.stream()
                             .map(tool -> tool.get("name")).toList());
             var result = client.callTool(entry.preferredTool(), Map.of());
+            assertNotEquals(Boolean.TRUE, result.get("isError"));
+            client.close();
+            assertFalse(transport.alive());
+        }
+    }
+
+    @Test
+    void initializeListAndCallFilesystemListDirectoryMatrixEntry() throws Exception {
+        var entry = OfficialReadonlyMcpMatrix.ENTRIES.get(3);
+        assertEquals("@modelcontextprotocol/server-filesystem", entry.packageName());
+        var npx = resolveNpx();
+        assumeTrue(npx != null, "npx executable required for official MCP stdio contrast");
+        var allowRoot = Files.createTempDirectory("eap-mcp-fs-readonly");
+        var command = new ArrayList<>(entry.argv(npx));
+        command.add(allowRoot.toAbsolutePath().toString());
+        try (var transport = StdioMcpTransport.start(command, Path.of("").toAbsolutePath())) {
+            var client = new McpProtocolClient(transport, Duration.ofSeconds(90));
+            client.initialize();
+            var tools = client.listTools();
+            assertTrue(tools.stream().anyMatch(tool -> entry.preferredTool().equals(tool.get("name"))),
+                    () -> "missing " + entry.preferredTool() + " in " + tools.stream()
+                            .map(tool -> tool.get("name")).toList());
+            var result = client.callTool(entry.preferredTool(), Map.of("path", allowRoot.toString()));
             assertNotEquals(Boolean.TRUE, result.get("isError"));
             client.close();
             assertFalse(transport.alive());

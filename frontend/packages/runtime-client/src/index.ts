@@ -1248,7 +1248,7 @@ export const runtimeApi = {
       )
       .then((r) => r.data),
   invokeTrustedGitStatus: (options?: {
-    mockOutcome?: 'success' | 'denied' | 'timeout' | 'cancelled'
+    mockOutcome?: 'success' | 'denied' | 'timeout' | 'cancelled' | 'unknown'
     signal?: AbortSignal
   }) =>
     client

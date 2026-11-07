@@ -67,6 +67,28 @@ it('never turns a failed catalog request into mock data or a saved status', asyn
   expect(scenes).toEqual([])
 })
 
+it('reconciles a lost save response by adopting the remote revision as unknown', async () => {
+  const scene: Scenario = { ...definition, id: snapshot.id, builtin: false }
+  const scenes = reactive<Scenario[]>([scene])
+  const catalog = createScenarioCatalog(scenes)
+  vi.spyOn(runtimeApi, 'saveScenario').mockRejectedValue(new Error('network drop'))
+  vi.spyOn(runtimeApi, 'scenario').mockResolvedValue(snapshot)
+  expect(await catalog.save(scenes[0]!)).toBe(false)
+  expect(catalog.state.error).toBe('unknown')
+  expect(catalog.revision(snapshot.id)).toBe(1)
+})
+
+it('keeps save error when reconcile finds no remote scene after a failed create', async () => {
+  const scene: Scenario = { ...definition, id: 'new-draft', builtin: false }
+  const scenes = reactive<Scenario[]>([scene])
+  const catalog = createScenarioCatalog(scenes)
+  vi.spyOn(runtimeApi, 'saveScenario').mockRejectedValue(new Error('network drop'))
+  vi.spyOn(runtimeApi, 'scenario').mockRejectedValue({ response: { status: 404 } })
+  expect(await catalog.save(scenes[0]!)).toBe(false)
+  expect(catalog.state.error).toBe('save')
+  expect(catalog.revision('new-draft')).toBe(0)
+})
+
 it('reconciles lost save writeback before deleting a zero-revision custom scene', async () => {
   const scene: Scenario = { ...definition, id: snapshot.id, builtin: false }
   const scenes = reactive<Scenario[]>([scene])

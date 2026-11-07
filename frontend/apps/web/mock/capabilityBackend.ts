@@ -1,5 +1,5 @@
 /** Minimal capability/MCP catalog for mock mode browser checks. */
-export type TrustedGitMockOutcome = 'success' | 'denied' | 'timeout' | 'cancelled'
+export type TrustedGitMockOutcome = 'success' | 'denied' | 'timeout' | 'cancelled' | 'unknown'
 export type TrustedVersionProbeOutcome = 'success' | 'fail' | 'conflict' | 'disabled'
 
 type PersistedProbe = {
@@ -38,6 +38,14 @@ export function createMockCapabilityBackend() {
       endpoint: 'npx -y @modelcontextprotocol/server-memory@2025.11.25',
       readonlyTools: ['read_graph'],
       preferredTool: 'read_graph',
+    },
+    {
+      packageName: '@modelcontextprotocol/server-filesystem',
+      version: '2025.11.25',
+      packageAtVersion: '@modelcontextprotocol/server-filesystem@2025.11.25',
+      endpoint: 'npx -y @modelcontextprotocol/server-filesystem@2025.11.25',
+      readonlyTools: ['list_directory'],
+      preferredTool: 'list_directory',
     },
   ]
   const mcpServers = [
@@ -144,7 +152,7 @@ export function createMockCapabilityBackend() {
     const query = path.includes('?') ? path.slice(path.indexOf('?') + 1) : ''
     const params = new URLSearchParams(query)
     const raw = (params.get('mockOutcome') || 'success').trim().toLowerCase()
-    if (raw === 'denied' || raw === 'timeout' || raw === 'cancelled') return raw
+    if (raw === 'denied' || raw === 'timeout' || raw === 'cancelled' || raw === 'unknown') return raw
     return 'success'
   }
 
@@ -286,6 +294,9 @@ export function createMockCapabilityBackend() {
         }
         if (outcome === 'cancelled') {
           return { status: 499, data: { detail: 'TRUSTED_TOOL_CANCELLED' } }
+        }
+        if (outcome === 'unknown') {
+          return { status: 520, data: { detail: 'TRUSTED_TOOL_UNKNOWN' } }
         }
         return {
           status: 200,

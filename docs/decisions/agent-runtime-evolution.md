@@ -78,8 +78,10 @@
 - **MCP-01 Streamable-HTTP（2026-11-07）**：`StreamableHttpMcpTransport` 对 `transport=streamable-http`：POST 带双 Accept，接受 JSON 或 SSE 响应，捕获/回传 `MCP-Session-Id`，close 时尽力 DELETE；`StreamableHttpMcpTransportTest` 通过。不宣称生产授权或 GET 续传。
 - **MCP-01 生产授权白名单（2026-11-07）**：`McpProductionAllowlist` 锁定允许传输（含 streamable-http）与官方只读包 `echo`；信任官方包时拒绝越权工具；list/probe 回传 `productionGrantedTools`；调用路径再校验。非官方信任仍为操作者声明。`McpProductionAllowlistTest` 通过。
 - **MCP-01 Streamable-HTTP GET 续传（2026-11-07）**：`StreamableHttpMcpTransport` 记录 SSE `id`/`retry`；POST SSE 未拿到匹配响应时带 `Last-Event-ID` GET 续传；`StreamableHttpMcpTransportTest` 含断流重连用例。不宣称常驻 listen 线程。
-- **MCP-01 官方只读包矩阵（2026-11-07）**：`OfficialReadonlyMcpMatrix` 可扩展 Entry；锁定 `@modelcontextprotocol/server-everything@2.2.1`/`echo`、`@modelcontextprotocol/server-sequential-thinking@0.6.2`/`sequentialthinking` 与 **`@modelcontextprotocol/server-memory@2025.11.25`/`read_graph`（仅只读工具）**；生产白名单与能力页 `mcpProductionMatrix` 共用；矩阵/白名单单测通过；**`EAP_RUN_MCP_OFFICIAL` 门禁实跑 memory/`read_graph` 通过**；mock 浏览器已验三条目。追加包须先验工具存在。
+- **MCP-01 官方只读包矩阵（2026-11-07）**：锁定 everything/`echo`、sequential-thinking/`sequentialthinking`、memory/`read_graph` 与 **filesystem@2025.11.25/`list_directory`**（门禁 stdio 附加允许根目录参数；endpoint 仍按 package@version 匹配）；生产白名单与能力页共用；mock 浏览器已验四条目。追加包须先验工具存在。
 - **KR-01 生产形排序样本（2026-11-07）**：`RetrievalBaseline.productionSampleCases`（较长操作员措辞，`expectedMaxRank≤2`）+ 离线 `KEYWORD_PROBE_PRODUCTION_SAMPLE`；`RetrievalBaselineDbContrastTest` 增加 gated Postgres FTS 排序对照。不启 KR-02。
+- **SC-01 保存未知态核对（2026-11-07）**：`scenarioCatalog.save` 在非 409 失败后 GET 核对；远端 revision 相对保存前前进则标 `unknown` 并采用远端 revision；404 保持 `save`。
+- **TC-01 调用未知结果（2026-11-07）**：`trustedToolInvokeFailure` 增加 `unknown`（520/`TRUSTED_TOOL_UNKNOWN` 或无响应网络中断）；mock「模拟结果未知」+ 能力页提示；真机成功调用已验。
 - 本地stdio进程的argv、cwd、环境和生命周期仍须约束；远端目标的认证/网络范围独立处理。MCP Roots及工具只读标注不是强制沙箱。不先将已有Java/CLI能力全部包装为MCP Server。
 - A2A与EAP作为MCP Server延期至明确互操作需求；不得为对齐教材章节而全部实施。
 - LangChain4j对照仅在自主协作等明确需求，或Spring AI出现可复现阻碍时启动。相同模型、业务样例、授权和验收合同下比较复杂度、正确性、token成本、延迟、取消/错误处理、兼容性与迁移回归；不预设胜者。具体版本、Java25/Boot4.1.1兼容性及模块稳定性待实验验证。

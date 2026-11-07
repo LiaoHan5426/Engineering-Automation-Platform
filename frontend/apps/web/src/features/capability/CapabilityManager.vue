@@ -149,7 +149,7 @@ async function refresh() {
 }
 
 async function runTrustedGitStatus(
-  mockOutcome?: 'success' | 'denied' | 'timeout' | 'cancelled',
+  mockOutcome?: 'success' | 'denied' | 'timeout' | 'cancelled' | 'unknown',
 ) {
   trustedAbort.value?.abort()
   const controller = new AbortController()
@@ -498,6 +498,15 @@ async function submitServer() {
           >
             模拟取消
           </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            data-testid="trusted-git-mock-unknown"
+            :disabled="trustedBusy"
+            @click="runTrustedGitStatus('unknown')"
+          >
+            模拟结果未知
+          </Button>
         </template>
       </div>
       <pre v-if="trustedGitResult" class="trusted-git-result" data-testid="trusted-git-status-result">{{
@@ -523,6 +532,13 @@ async function submitServer() {
         data-testid="trusted-git-status-cancelled"
       >
         已取消本次可信工具调用。
+      </p>
+      <p
+        v-if="trustedFailure === 'unknown'"
+        class="hint"
+        data-testid="trusted-git-status-unknown"
+      >
+        可信工具调用结果未知（连接中断）；未确认是否已执行，请核对后再试。
       </p>
     </article>
     <p v-if="loading && !catalog" class="hint">正在读取能力目录…</p>

@@ -2,6 +2,7 @@ package com.lh.eap.runtime.mcp.client;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +15,7 @@ class OfficialReadonlyMcpMatrixTest {
         assertEquals("echo", primary.preferredTool());
         assertEquals(List.of("echo"), primary.readonlyTools());
         assertTrue(OfficialReadonlyMcpMatrix.findByEndpoint(primary.endpoint()).isPresent());
-        assertEquals(3, OfficialReadonlyMcpMatrix.views().size());
+        assertEquals(4, OfficialReadonlyMcpMatrix.views().size());
         assertEquals("echo", OfficialReadonlyMcpMatrix.views().getFirst().get("preferredTool"));
     }
 
@@ -40,6 +41,19 @@ class OfficialReadonlyMcpMatrixTest {
         assertTrue(OfficialReadonlyMcpMatrix.findByEndpoint(entry.endpoint()).isPresent());
         assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "read_graph"));
         assertFalse(McpProductionAllowlist.productionGranted(entry.endpoint(), "create_entities"));
+    }
+
+    @Test
+    void fourthEntryPinsFilesystemListDirectoryOnly() {
+        var entry = OfficialReadonlyMcpMatrix.ENTRIES.get(3);
+        assertEquals("@modelcontextprotocol/server-filesystem", entry.packageName());
+        assertEquals("2025.11.25", entry.version());
+        assertEquals(List.of("list_directory"), entry.readonlyTools());
+        assertEquals("list_directory", entry.preferredTool());
+        assertTrue(OfficialReadonlyMcpMatrix.findByEndpoint(
+                entry.endpoint() + " " + Path.of(".eap", "mcp-fs-readonly")).isPresent());
+        assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "list_directory"));
+        assertFalse(McpProductionAllowlist.productionGranted(entry.endpoint(), "write_file"));
     }
 
     @Test

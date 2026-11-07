@@ -14,7 +14,7 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     expect(entries.some((item) => item.logical === 'cache/trusted-tool-probes')).toBe(true)
   })
 
-  it('exposes three official readonly matrix packages including memory', async () => {
+  it('exposes four official readonly matrix packages including filesystem', async () => {
     const backend = createMockCapabilityBackend()
     const reply = await backend.handle('GET', '/capabilities')
     const matrix = (reply?.data as { mcpProductionMatrix: Array<{ packageAtVersion: string }> })
@@ -23,6 +23,7 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
       '@modelcontextprotocol/server-everything@2.2.1',
       '@modelcontextprotocol/server-sequential-thinking@0.6.2',
       '@modelcontextprotocol/server-memory@2025.11.25',
+      '@modelcontextprotocol/server-filesystem@2025.11.25',
     ])
   })
 
@@ -129,5 +130,15 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     )
     expect(reply?.status).toBe(499)
     expect(reply?.data).toEqual({ detail: 'TRUSTED_TOOL_CANCELLED' })
+  })
+
+  it('maps mockOutcome=unknown to TRUSTED_TOOL_UNKNOWN', async () => {
+    const backend = createMockCapabilityBackend()
+    const reply = await backend.handle(
+      'POST',
+      '/runtime/trusted-tools/git-status/invoke?mockOutcome=unknown',
+    )
+    expect(reply?.status).toBe(520)
+    expect(reply?.data).toEqual({ detail: 'TRUSTED_TOOL_UNKNOWN' })
   })
 })

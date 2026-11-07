@@ -57,8 +57,9 @@ export function createScenarioCatalog(scenes: Scenario[]) {
       state.error = ''
       state.savedId = ''
       const sent = definition(scene)
+      const priorRevision = revisions.get(scene.id) ?? 0
       try {
-        const saved = await runtimeApi.saveScenario(scene.id, revisions.get(scene.id) ?? 0, sent)
+        const saved = await runtimeApi.saveScenario(scene.id, priorRevision, sent)
         // Record the returned revision even if readback fails: do not replay a create blindly.
         revisions.set(scene.id, saved.revision)
         const read = await runtimeApi.scenario(scene.id)
@@ -67,6 +68,24 @@ export function createScenarioCatalog(scenes: Scenario[]) {
         state.savedId = scene.id
         return true
       } catch (error) {
+        if (statusOf(error) === 409) {
+          fail(error, 'conflict')
+          return false
+        }
+        // Save may have landed while the response/readback was lost — reconcile before treating as draft.
+        try {
+          const remote = await runtimeApi.scenario(scene.id)
+          revisions.set(scene.id, remote.revision)
+          if (remote.revision !== priorRevision) {
+            state.error = 'unknown'
+            return false
+          }
+        } catch (reconcileError) {
+          if (statusOf(reconcileError) !== 404) {
+            fail(reconcileError, 'unknown')
+            return false
+          }
+        }
         fail(error, 'save')
         return false
       } finally {

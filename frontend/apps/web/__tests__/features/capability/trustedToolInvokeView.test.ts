@@ -25,6 +25,11 @@ describe('trustedToolInvokeView', () => {
       }),
     ).toBe('cancelled')
     expect(trustedToolInvokeFailure({ name: 'AbortError' })).toBe('cancelled')
+    expect(
+      trustedToolInvokeFailure({
+        response: { status: 520, data: { detail: 'TRUSTED_TOOL_UNKNOWN' } },
+      }),
+    ).toBe('unknown')
   })
 
   it('exposes readable failure messages without tool payload bodies', () => {
@@ -40,5 +45,10 @@ describe('trustedToolInvokeView', () => {
         response: { status: 504, data: { detail: 'TRUSTED_TOOL_TIMEOUT' } },
       }),
     ).toContain('超时')
+    expect(
+      trustedToolInvokeFailureMessage({
+        response: { status: 520, data: { detail: 'TRUSTED_TOOL_UNKNOWN' } },
+      }),
+    ).toContain('未知')
   })
 })

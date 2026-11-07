@@ -5,6 +5,7 @@ export type TrustedToolInvokeFailure =
   | 'denied'
   | 'timeout'
   | 'cancelled'
+  | 'unknown'
   | 'failed'
 
 function responseOf(error: unknown): { status?: number; data?: { detail?: unknown } } | null {
@@ -24,6 +25,19 @@ export function trustedToolInvokeFailure(error: unknown): TrustedToolInvokeFailu
   if (status === 403 || detail === 'CAPABILITY_DISABLED') return 'denied'
   if (status === 408 || status === 504 || detail === 'TRUSTED_TOOL_TIMEOUT') return 'timeout'
   if (status === 499 || detail === 'TRUSTED_TOOL_CANCELLED') return 'cancelled'
+  if (detail === 'TRUSTED_TOOL_UNKNOWN' || status === 520) return 'unknown'
+  // Transport dropped with no HTTP response: outcome may be unknown (request may have reached the host).
+  if (axios.isAxiosError(error) && !error.response) {
+    const code = error.code ?? ''
+    if (
+      code === 'ERR_NETWORK' ||
+      code === 'ECONNRESET' ||
+      code === 'ECONNREFUSED' ||
+      code === 'ERR_BAD_RESPONSE'
+    ) {
+      return 'unknown'
+    }
+  }
   return 'failed'
 }
 
@@ -32,5 +46,6 @@ export function trustedToolInvokeFailureMessage(error: unknown): string {
   if (kind === 'denied') return '能力已停用或未授权，已拒绝本次只读调用。'
   if (kind === 'timeout') return '可信工具调用超时，未修改工作区。'
   if (kind === 'cancelled') return '已取消本次可信工具调用。'
+  if (kind === 'unknown') return '可信工具调用结果未知（连接中断）；未确认是否已执行，请核对后再试。'
   return errorMessage(error)
 }

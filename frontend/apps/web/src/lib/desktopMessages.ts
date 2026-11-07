@@ -159,7 +159,7 @@ export const desktopMessages = {
     sceneStoreError_save: '保存或读回失败，草稿已保留。结果可能未知，请重新读取核对后再决定。',
     sceneStoreError_delete: '删除失败，当前场景已保留；请重新读取核对服务端状态。',
     sceneStoreError_unknown:
-      '删除前无法确认服务端是否已有该场景（可能是保存响应丢失）。未删除本地草稿，请重新读取核对后再决定。',
+      '保存/删除结果未知（可能是响应丢失但服务端已变更）。本地草稿已保留且已尽量核对远端 revision，请重新读取后再决定。',
     sceneStoreError_conflict:
       '配置已被其他页面修改或删除，未覆盖服务端。草稿已保留，可复制为新场景后保存，或刷新核对。',
     sceneUploadOff: '上传 · 未接通',
@@ -687,7 +687,7 @@ export const desktopMessages = {
       'Save or readback failed. Draft retained; the outcome may be unknown. Reload to verify before retrying.',
     sceneStoreError_delete: 'Deletion failed. Scene retained; reload to verify the server state.',
     sceneStoreError_unknown:
-      'Could not confirm whether the server already has this scene (a prior save response may have been lost). Local draft retained; reload to verify before deleting.',
+      'Save/delete outcome is unknown (a response may have been lost after the server changed). Local draft retained and remote revision reconciled when possible; reload before deciding.',
     sceneStoreError_conflict:
       'Another page changed or deleted this configuration. The server was not overwritten. Copy your retained draft to a new scene, or reload to inspect.',
     sceneUploadOff: 'Upload · not connected',

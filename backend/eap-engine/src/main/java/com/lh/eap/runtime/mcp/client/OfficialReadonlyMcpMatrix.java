@@ -65,7 +65,14 @@ public final class OfficialReadonlyMcpMatrix {
                     "@modelcontextprotocol/server-memory",
                     "2025.11.25",
                     List.of("read_graph"),
-                    "read_graph"));
+                    "read_graph"),
+            // Filesystem server; production grant limited to list_directory. Stdio gate appends an
+            // allow-listed directory argument (package requires ≥1 path); endpoint match is by package@version.
+            new Entry(
+                    "@modelcontextprotocol/server-filesystem",
+                    "2025.11.25",
+                    List.of("list_directory"),
+                    "list_directory"));
 
     private OfficialReadonlyMcpMatrix() {}
 
