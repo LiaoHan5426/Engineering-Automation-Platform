@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main`（待提交 KR-01 排序质量样本；含 `33bb07a` MCP 矩阵）。历史全量数字仅为既往证据。本轮：`rankingFixtureCases` + 干扰语料；`expectedMaxRank`/`rankingPassRate` 阈值 1.0；`RetrievalBaselineTest` 7 项离线通过。无检索管理 UI，本切片不跑浏览器。不宣称生产样本或启动 KR-02。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 6b927a4`（KR-01 排序质量样本；含 `33bb07a` MCP 矩阵）。历史全量数字仅为既往证据。本轮：`rankingFixtureCases` + 干扰语料；`expectedMaxRank`/`rankingPassRate` 阈值 1.0；`RetrievalBaselineTest` 7 项离线通过。无检索管理 UI，本切片不跑浏览器。不宣称生产样本或启动 KR-02。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
