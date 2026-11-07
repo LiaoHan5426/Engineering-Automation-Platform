@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -26,10 +27,13 @@ public class FileWorkingMemoryStore implements WorkingMemoryStore {
 
     private final Path directory;
 
+    /** Spring entry: resolve store under the runtime workspace. */
+    @Autowired
     public FileWorkingMemoryStore(com.lh.eap.config.RuntimeWorkspace runtime) {
         this(runtime.workspace().resolve(".eap").resolve("working-memory"));
     }
 
+    /** Test/manual entry: explicit directory. Not a Spring injection candidate. */
     public FileWorkingMemoryStore(Path directory) {
         this.directory = Objects.requireNonNull(directory, "directory").toAbsolutePath().normalize();
     }
