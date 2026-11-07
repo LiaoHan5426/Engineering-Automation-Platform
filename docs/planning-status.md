@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / a0935ed`（三切片并行：MCP `search_files` + FS-01 kind/byteSize + TC-01 调用摘要）。历史全量数字仅为既往证据。本轮：① MCP-01 filesystem 追加 `search_files`（门禁实 call list+info+search；tree 仍仅 list 证明）；② FS-01 盘点条目 `kind`/`byteSize`（文件才给字节，不递归扫盘）；③ TC-01 能力页摘要 capability/成功/exit/观测时间。离线：Matrix+Stdio 6/0、layout 3/0、capabilityBackend 14/0。浏览器 mock `:5174` 已验 kind/bytes、矩阵含 search_files、调用摘要；真机 `:5173` 已验 kind/bytes 与调用摘要。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 847d597`（三切片并行：MCP `list_allowed_directories` + CE-01 历史未计量 mock + MEM-01 失效 mock）。历史全量数字仅为既往证据。本轮：① MCP-01 filesystem 追加 `list_allowed_directories`（门禁实 call list+info+search+allowed；tree 仍仅 list）；② CE-01 mock 回合可触发 `CHAT_MEMORY_NOT_METERED`/`UNKNOWN` 计量与 history 来源；③ MEM-01 mock 发送「记忆失效验收」写 `DEPENDENCY_CHANGED` 并展示失效。离线：Matrix+Stdio 6/0、chatBackend/capabilityBackend 定向通过。浏览器 mock `:5174` 已验矩阵五工具文案、历史未计量备注、已失效 DEPENDENCY_CHANGED；真机 `:5173` 已验矩阵含 `list_allowed_directories`。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
@@ -33,14 +33,14 @@
 | CT-01 生命周期 | 记录回放/UNKNOWN阻塞保留；同ID重连+草稿重试保留；**本轮追加**：聊天主路径改为 SSE（`answer.delta`/`tool`/`final`）、`POST …/cancel`、执行快照游标、前端投影去重/缺序回归；`ChatExecutionStreamTest` 4项及前端 eventProjector/reconnect/wireApi 离线通过 | 用户重启后浏览器流式/取消/重连验收；不重放历史或宣称模型记忆恢复；跨重启进程接管仍待 |
 | RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与测试接受/拒绝决定已有刷新回放 | EAP自身改页完整证据、SQL实际任务证据及用户接受；不重复开发已有决定回放 |
 | Skill | 文本上传/粘贴+显式文本资源、不可变版本、CAS启停/回退、按需预览与Chat精确引用首片已实现；安全/保存恢复缺陷修复后父任务前端525项、后端647项（6跳过）、实库/浏览器及独立复核通过；见 [阶段记录](records/resource-history.md#skill-text-import) | 目录/仓库导入延期；不执行脚本或授予工具权限，不支持通用mock YAML解析；真实供应商效果与用户最终验收待定 |
-| MCP-01 / P0 | **部分交付**：stdio/http/SSE/Streamable-HTTP/白名单/GET 续传；官方矩阵 filesystem/`list_directory`+`get_file_info`+`search_files`+`directory_tree`（门禁实 call 前三；tree 仅 list） | 真机重载后核对四工具文案；常驻 GET listen 未做；继续追加包 |
+| MCP-01 / P0 | **部分交付**：stdio/http/SSE/Streamable-HTTP/白名单/GET 续传；官方矩阵 filesystem/`list_directory`+`get_file_info`+`search_files`+`list_allowed_directories`+`directory_tree`（门禁实 call 前四；tree 仅 list；`:5174`/`:5173` 已验文案） | 常驻 GET listen 未做；继续追加包 |
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理 | 检索更新删除/来源与专家范围，SQL真实任务，CLI生命周期回归；不扩第二套执行器 |
 | PL-01 / P0 看板插件首片 | **部分交付**：board 可信预装启停/持久化回滚；**本轮**：服务依赖缺失与激活失败 sticky 呈现、刷新保留 Builder 实例；8 项离线 + mock 浏览器已验；不停 Task/Run | 真实服务探测与用户接受仍待；外部安装器延期 |
 | PL-02 / P1 设计器插件 | GrapesJS/Schema/版本已有；尚未按通用贡献机制迁移 | PL-01后复用现有设计器、版本和核心API，验证停用不丢草稿/版本；外部任意JS安装延期 |
 | SC-03 / P1 场景组合 | 原型到代码已有独立配置/设计/准备/交付切片，不是单个插件 | 依赖PL-01，设计器迁移与PL-02协调；声明所需插件/服务/资源、缺依赖不可用；应用不安装/授权/发送；SC-01 保存断连浏览器接受仍独立 |
-| CE-01 / P0 上下文工程 | **部分交付**：后端预算观测 + 前端回合用量摘要与超限 Feedback；**本轮**：mock 回合附带 `contextBudget`、显式超限触发；`chatBackend`/`contextBudgetView` 5 项；mock 浏览器验用量摘要与超限 Feedback | 真实 token/压缩、ChatMemory 精确计量、用户产品接受；MEM-01 仍后续；不记录敏感正文 |
+| CE-01 / P0 上下文工程 | **部分交付**：后端预算观测 + 前端回合用量摘要与超限 Feedback；mock 预算/超限；**本轮**：`历史未计量验收`→`CHAT_MEMORY_NOT_METERED`/`UNKNOWN`+history:0（`:5174` 已验） | 真实 token/压缩、ChatMemory 精确计量、用户产品接受；不记录敏感正文 |
 | KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；实库对照；排序质量样本；`productionSampleCases`；**本轮**：对照测口令回退 `EAP_DB_PASSWORD`/`SPRING_DATASOURCE_PASSWORD`（不写入仓库） | 实库开启 `EAP_RUN_BOARD_PERSISTENCE`+口令跑 FTS 排序对照；不足证据前不启 KR-02 |
-| MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；**约束/事实展示**：Chat 面板 `constraints`/`facts`、保存目标不丢字段；`workingMemorySession` 3 项；mock 浏览器验目标/约束 | sticky 清空仍保留；用户产品接受仍待；自动长期抽取延期 |
+| MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；约束/事实展示；**本轮**：mock「记忆失效验收」→`DEPENDENCY_CHANGED` UI（`:5174` 已验） | sticky 清空仍保留；用户产品接受仍待；自动长期抽取延期 |
 | FS-01 / P0 目录与临时资源 | **部分交付**：data-layout + migrationReadiness + 刷新盘点；**本轮**：条目 `kind`/`byteSize`（文件才计量，不递归；mock/真机已验）；`physicalMigration=false` | 旧数据物理迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
 | TM-01 / P1 受管工具 | CLI程序/固定操作可登记和配置路径；依赖PATH/指定文件，无安装版本管理 | 依赖FS-01，选择一个可信便携工具或venv；锁版本/校验/安装回滚、实际调用/在途保护；保留系统引用，不静默或全局安装 |
 | TD-01 / P0 自动发现与绑定 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测 + 持久化；**本轮**：清除探测缓存 API/UI（mock/真机已验，版本回未知）；目录仍不自动探测 | 真实本机 git 重启验收与用户接受仍待；更多依赖绑定仍待；不整盘扫描 |
