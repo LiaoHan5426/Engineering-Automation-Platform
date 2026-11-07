@@ -2,6 +2,17 @@
 export type TrustedGitMockOutcome = 'success' | 'denied' | 'timeout' | 'cancelled'
 export type TrustedVersionProbeOutcome = 'success' | 'fail' | 'conflict' | 'disabled'
 
+type PersistedProbe = {
+  versionStatus: string
+  detectedVersion: string
+  probedAt: string
+  probeNote: string
+  bindingNote: string
+}
+
+/** Module-scoped TD-01 probe cache so remounted mock backends keep durable writeback. */
+const persistedTrustedProbes = new Map<string, PersistedProbe>()
+
 export function createMockCapabilityBackend() {
   const productionMatrix = [
     {
@@ -19,6 +30,14 @@ export function createMockCapabilityBackend() {
       endpoint: 'npx -y @modelcontextprotocol/server-sequential-thinking@0.6.2',
       readonlyTools: ['sequentialthinking'],
       preferredTool: 'sequentialthinking',
+    },
+    {
+      packageName: '@modelcontextprotocol/server-memory',
+      version: '2025.11.25',
+      packageAtVersion: '@modelcontextprotocol/server-memory@2025.11.25',
+      endpoint: 'npx -y @modelcontextprotocol/server-memory@2025.11.25',
+      readonlyTools: ['read_graph'],
+      preferredTool: 'read_graph',
     },
   ]
   const mcpServers = [
@@ -111,6 +130,16 @@ export function createMockCapabilityBackend() {
     },
   ]
 
+  for (const tool of trustedTools) {
+    const cached = persistedTrustedProbes.get(tool.id)
+    if (!cached) continue
+    tool.versionStatus = cached.versionStatus
+    tool.detectedVersion = cached.detectedVersion
+    tool.probedAt = cached.probedAt
+    tool.probeNote = cached.probeNote
+    tool.bindingNote = cached.bindingNote
+  }
+
   function parseOutcome(path: string): TrustedGitMockOutcome {
     const query = path.includes('?') ? path.slice(path.indexOf('?') + 1) : ''
     const params = new URLSearchParams(query)
@@ -199,6 +228,13 @@ export function createMockCapabilityBackend() {
           tool.probedAt = '2026-11-07T04:00:00Z'
           tool.probeNote = 'mock：显式探测失败，未伪造版本。'
           tool.bindingNote = tool.probeNote
+          persistedTrustedProbes.set(id, {
+            versionStatus: tool.versionStatus,
+            detectedVersion: '',
+            probedAt: tool.probedAt,
+            probeNote: tool.probeNote,
+            bindingNote: tool.bindingNote,
+          })
           return {
             status: 200,
             data: {
@@ -216,8 +252,15 @@ export function createMockCapabilityBackend() {
         tool.versionStatus = 'known'
         tool.detectedVersion = 'git version 2.45.1 (mock)'
         tool.probedAt = '2026-11-07T04:00:00Z'
-        tool.probeNote = 'mock：显式探测成功；进程内写回。'
-        tool.bindingNote = '二进制已解析；版本已由显式探测写回。'
+        tool.probeNote = 'mock：显式探测成功；已持久化写回。'
+        tool.bindingNote = '二进制已解析；版本已由显式探测持久化写回。'
+        persistedTrustedProbes.set(id, {
+          versionStatus: tool.versionStatus,
+          detectedVersion: tool.detectedVersion,
+          probedAt: tool.probedAt,
+          probeNote: tool.probeNote,
+          bindingNote: tool.bindingNote,
+        })
         return {
           status: 200,
           data: {

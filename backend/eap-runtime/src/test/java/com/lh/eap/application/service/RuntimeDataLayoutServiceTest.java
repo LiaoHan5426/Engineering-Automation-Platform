@@ -26,5 +26,27 @@ class RuntimeDataLayoutServiceTest {
         assertTrue(entries.stream().anyMatch(item -> item instanceof java.util.Map<?, ?> row
                 && "workspace/authorized-root".equals(String.valueOf(row.get("logical")))
                 && Boolean.TRUE.equals(row.get("exists"))));
+        assertTrue(entries.stream().anyMatch(item -> item instanceof java.util.Map<?, ?> row
+                && "cache/trusted-tool-probes".equals(String.valueOf(row.get("logical")))));
+
+        var readiness = layout.get("migrationReadiness");
+        assertTrue(readiness instanceof java.util.Map<?, ?>);
+        var readinessMap = (java.util.Map<?, ?>) readiness;
+        assertEquals(false, readinessMap.get("physicalMigration"));
+        assertEquals(false, readinessMap.get("approved"));
+        assertTrue(readinessMap.get("candidates") instanceof java.util.List<?>);
+    }
+
+    @Test
+    void reportsCandidatesPresentWhenLegacyArtifactsExist() throws Exception {
+        Files.createDirectories(workspace.resolve(".eap-ai-artifacts"));
+        var runtime = RuntimeWorkspace.colocated(workspace, workspace.toString(), "");
+        var service = new RuntimeDataLayoutService(runtime, workspace, ".eap-ai-artifacts", ".eap/model-connections.json");
+        var readiness = (java.util.Map<?, ?>) service.layout().get("migrationReadiness");
+        assertEquals("candidates_present", readiness.get("status"));
+        var candidates = (java.util.List<?>) readiness.get("candidates");
+        assertTrue(candidates.stream().anyMatch(item -> item instanceof java.util.Map<?, ?> row
+                && "legacy-ai-artifacts".equals(String.valueOf(row.get("id")))
+                && Boolean.TRUE.equals(row.get("present"))));
     }
 }

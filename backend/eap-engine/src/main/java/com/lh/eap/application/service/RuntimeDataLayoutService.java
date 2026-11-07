@@ -29,20 +29,70 @@ public class RuntimeDataLayoutService {
 
     public Map<String, Object> layout() {
         var entries = new ArrayList<Map<String, Object>>();
-        entries.add(entry("data-root", workspace.resolve(".eap"), "本机应用数据根（相对工作区）"));
-        entries.add(entry("config/model-connections", resolveRelative(connectionStore), "模型连接登记"));
-        entries.add(entry("artifacts/ai", resolveRelative(artifactRoot), "AI 执行产物目录"));
+        var dataRoot = workspace.resolve(".eap");
+        var probeCache = dataRoot.resolve("cache").resolve("trusted-tool-probes.json");
+        var connections = resolveRelative(connectionStore);
+        var artifacts = resolveRelative(artifactRoot);
+        entries.add(entry("data-root", dataRoot, "本机应用数据根（相对工作区）"));
+        entries.add(entry("config/model-connections", connections, "模型连接登记"));
+        entries.add(entry("artifacts/ai", artifacts, "AI 执行产物目录"));
         entries.add(entry("workspace/process", workspace, "进程检测到的工作区"));
         var root = runtime.root();
         entries.add(entry(
                 "workspace/authorized-root",
                 root.path(),
                 root.allowed() ? "已绑定的授权工作区根" : "未绑定：" + root.denial()));
-        entries.add(entry("cache", workspace.resolve(".eap").resolve("cache"), "可重建缓存（目标布局）"));
-        entries.add(entry("logs", workspace.resolve(".eap").resolve("logs"), "有界运行记录（目标布局）"));
-        entries.add(entry("tools", workspace.resolve(".eap").resolve("tools"), "受管工具目录（目标布局）"));
-        entries.add(entry("tasks", workspace.resolve(".eap").resolve("tasks"), "任务临时与产物（目标布局）"));
-        return Map.of("entries", List.copyOf(entries), "physicalMigration", false);
+        entries.add(entry("cache", dataRoot.resolve("cache"), "可重建缓存（目标布局）"));
+        entries.add(entry("cache/trusted-tool-probes", probeCache, "TD-01 版本探测持久缓存"));
+        entries.add(entry("logs", dataRoot.resolve("logs"), "有界运行记录（目标布局）"));
+        entries.add(entry("tools", dataRoot.resolve("tools"), "受管工具目录（目标布局）"));
+        entries.add(entry("tasks", dataRoot.resolve("tasks"), "任务临时与产物（目标布局）"));
+        return Map.of(
+                "entries", List.copyOf(entries),
+                "physicalMigration", false,
+                "migrationReadiness", migrationReadiness(connections, artifacts, probeCache));
+    }
+
+    private Map<String, Object> migrationReadiness(Path connections, Path artifacts, Path probeCache) {
+        var candidates = new ArrayList<Map<String, Object>>();
+        addCandidate(candidates, "legacy-ai-artifacts", artifacts,
+                "当前配置的 AI 产物路径；目标归属仍待批准后迁入 data-root/artifacts",
+                exists(artifacts) && !underDataRoot(artifacts));
+        addCandidate(candidates, "model-connections", connections,
+                "模型连接登记文件；迁移合同未批准前保持原路径可读",
+                exists(connections));
+        addCandidate(candidates, "trusted-tool-probes", probeCache,
+                "TD-01 探测缓存已按目标 cache 布局落盘；不是物理迁移动作",
+                exists(probeCache));
+        var present = candidates.stream().anyMatch(row -> Boolean.TRUE.equals(row.get("present")));
+        var readiness = new LinkedHashMap<String, Object>();
+        readiness.put("status", present ? "candidates_present" : "inventory_only");
+        readiness.put("physicalMigration", false);
+        readiness.put("approved", false);
+        readiness.put("note", "只读盘点旧/现路径存在性；未批准不执行物理迁移或删除。");
+        readiness.put("candidates", List.copyOf(candidates));
+        return Map.copyOf(readiness);
+    }
+
+    private void addCandidate(List<Map<String, Object>> candidates, String id, Path path,
+                              String note, boolean present) {
+        var row = new LinkedHashMap<String, Object>();
+        row.put("id", id);
+        row.put("resolved", path == null ? "" : path.toAbsolutePath().normalize().toString());
+        row.put("present", present);
+        row.put("note", note);
+        candidates.add(row);
+    }
+
+    private boolean underDataRoot(Path path) {
+        if (path == null) return false;
+        var dataRoot = workspace.resolve(".eap").toAbsolutePath().normalize();
+        var normalized = path.toAbsolutePath().normalize();
+        return normalized.startsWith(dataRoot);
+    }
+
+    private static boolean exists(Path path) {
+        return path != null && Files.exists(path.toAbsolutePath().normalize());
     }
 
     private Map<String, Object> entry(String logical, Path path, String note) {

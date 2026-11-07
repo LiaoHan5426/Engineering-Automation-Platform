@@ -14,7 +14,7 @@ class OfficialReadonlyMcpMatrixTest {
         assertEquals("echo", primary.preferredTool());
         assertEquals(List.of("echo"), primary.readonlyTools());
         assertTrue(OfficialReadonlyMcpMatrix.findByEndpoint(primary.endpoint()).isPresent());
-        assertEquals(2, OfficialReadonlyMcpMatrix.views().size());
+        assertEquals(3, OfficialReadonlyMcpMatrix.views().size());
         assertEquals("echo", OfficialReadonlyMcpMatrix.views().getFirst().get("preferredTool"));
     }
 
@@ -28,6 +28,18 @@ class OfficialReadonlyMcpMatrixTest {
         assertTrue(OfficialReadonlyMcpMatrix.findByEndpoint(entry.endpoint()).isPresent());
         assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "sequentialthinking"));
         assertFalse(McpProductionAllowlist.productionGranted(entry.endpoint(), "echo"));
+    }
+
+    @Test
+    void thirdEntryPinsMemoryReadGraphOnly() {
+        var entry = OfficialReadonlyMcpMatrix.ENTRIES.get(2);
+        assertEquals("@modelcontextprotocol/server-memory", entry.packageName());
+        assertEquals("2025.11.25", entry.version());
+        assertEquals(List.of("read_graph"), entry.readonlyTools());
+        assertEquals("read_graph", entry.preferredTool());
+        assertTrue(OfficialReadonlyMcpMatrix.findByEndpoint(entry.endpoint()).isPresent());
+        assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "read_graph"));
+        assertFalse(McpProductionAllowlist.productionGranted(entry.endpoint(), "create_entities"));
     }
 
     @Test

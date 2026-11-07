@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createMockCapabilityBackend } from '../../mock/capabilityBackend'
 
 describe('mock capabilityBackend trusted git (TC-01)', () => {
-  it('exposes both official readonly matrix packages', async () => {
+  it('exposes three official readonly matrix packages including memory', async () => {
     const backend = createMockCapabilityBackend()
     const reply = await backend.handle('GET', '/capabilities')
     const matrix = (reply?.data as { mcpProductionMatrix: Array<{ packageAtVersion: string }> })
@@ -10,6 +10,7 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     expect(matrix.map((item) => item.packageAtVersion)).toEqual([
       '@modelcontextprotocol/server-everything@2.2.1',
       '@modelcontextprotocol/server-sequential-thinking@0.6.2',
+      '@modelcontextprotocol/server-memory@2025.11.25',
     ])
   })
 
@@ -51,6 +52,22 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     ).items
     expect(items.find((item) => item.id === 'git-status')?.versionStatus).toBe('known')
     expect(items.find((item) => item.id === 'git-status')?.detectedVersion).toContain('2.45.1')
+  })
+
+  it('keeps durable probe writeback across remounted mock backends', async () => {
+    const first = createMockCapabilityBackend()
+    await first.handle('POST', '/runtime/trusted-tools/git-status/probe-version')
+    const remounted = createMockCapabilityBackend()
+    const catalog = await remounted.handle('GET', '/runtime/trusted-tools')
+    const items = (
+      catalog?.data as {
+        items: Array<{ id: string; versionStatus: string; detectedVersion: string; bindingNote: string }>
+      }
+    ).items
+    const status = items.find((item) => item.id === 'git-status')
+    expect(status?.versionStatus).toBe('known')
+    expect(status?.detectedVersion).toContain('2.45.1')
+    expect(status?.bindingNote).toContain('持久化')
   })
 
   it('maps mock version probe failure and conflict without inventing a version', async () => {

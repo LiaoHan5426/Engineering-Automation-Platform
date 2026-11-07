@@ -78,7 +78,7 @@
 - **MCP-01 Streamable-HTTP（2026-11-07）**：`StreamableHttpMcpTransport` 对 `transport=streamable-http`：POST 带双 Accept，接受 JSON 或 SSE 响应，捕获/回传 `MCP-Session-Id`，close 时尽力 DELETE；`StreamableHttpMcpTransportTest` 通过。不宣称生产授权或 GET 续传。
 - **MCP-01 生产授权白名单（2026-11-07）**：`McpProductionAllowlist` 锁定允许传输（含 streamable-http）与官方只读包 `echo`；信任官方包时拒绝越权工具；list/probe 回传 `productionGrantedTools`；调用路径再校验。非官方信任仍为操作者声明。`McpProductionAllowlistTest` 通过。
 - **MCP-01 Streamable-HTTP GET 续传（2026-11-07）**：`StreamableHttpMcpTransport` 记录 SSE `id`/`retry`；POST SSE 未拿到匹配响应时带 `Last-Event-ID` GET 续传；`StreamableHttpMcpTransportTest` 含断流重连用例。不宣称常驻 listen 线程。
-- **MCP-01 官方只读包矩阵（2026-11-07）**：`OfficialReadonlyMcpMatrix` 可扩展 Entry；锁定 `@modelcontextprotocol/server-everything@2.2.1`/`echo` 与 `@modelcontextprotocol/server-sequential-thinking@0.6.2`/`sequentialthinking`；生产白名单与能力页 `mcpProductionMatrix` 共用；矩阵/白名单单测 + 门禁 stdio（含第二包 call）通过；mock 浏览器已验双条目。追加包须先验工具存在。
+- **MCP-01 官方只读包矩阵（2026-11-07）**：`OfficialReadonlyMcpMatrix` 可扩展 Entry；锁定 `@modelcontextprotocol/server-everything@2.2.1`/`echo`、`@modelcontextprotocol/server-sequential-thinking@0.6.2`/`sequentialthinking` 与 **`@modelcontextprotocol/server-memory@2025.11.25`/`read_graph`（仅只读工具）**；生产白名单与能力页 `mcpProductionMatrix` 共用；矩阵/白名单单测通过；门禁 stdio 含第三包用例（需 `EAP_RUN_MCP_OFFICIAL`）；mock 浏览器已验三条目。追加包须先验工具存在。
 - 本地stdio进程的argv、cwd、环境和生命周期仍须约束；远端目标的认证/网络范围独立处理。MCP Roots及工具只读标注不是强制沙箱。不先将已有Java/CLI能力全部包装为MCP Server。
 - A2A与EAP作为MCP Server延期至明确互操作需求；不得为对齐教材章节而全部实施。
 - LangChain4j对照仅在自主协作等明确需求，或Spring AI出现可复现阻碍时启动。相同模型、业务样例、授权和验收合同下比较复杂度、正确性、token成本、延迟、取消/错误处理、兼容性与迁移回归；不预设胜者。具体版本、Java25/Boot4.1.1兼容性及模块稳定性待实验验证。
@@ -94,7 +94,9 @@
 
 ### 5.2 逻辑布局（目标，物理路径待平台切片确认）
 
-**FS-01 首片盘点（2026-11-07，只读探测）**：`GET /api/runtime/data-layout` 返回下列逻辑项的解析路径与 `exists`，不执行迁移。默认相对进程工作区（`EAP_WORKSPACE` 或含 `.git` 的 `user.dir`）展开：
+**FS-01 首片盘点（2026-11-07，只读探测）**：`GET /api/runtime/data-layout` 返回下列逻辑项的解析路径与 `exists`，不执行迁移。默认相对进程工作区（`EAP_WORKSPACE` 或含 `.git` 的 `user.dir`）展开。
+
+**FS-01 迁移就绪盘点（2026-11-07）**：同接口附加 `migrationReadiness`（`status`/`candidates`/`approved=false`/`physicalMigration=false`），盘点 legacy 产物路径、连接登记与 `cache/trusted-tool-probes` 是否存在；不移动、不删除、不改默认路径。`RuntimeDataLayoutServiceTest` 覆盖；无前端盘点页，浏览器跳过。
 
 | 逻辑路径 | 含义 |
 |---|---|
@@ -103,7 +105,7 @@
 | `artifacts/ai` | `eap.ai.artifact-root`（默认 `.eap-ai-artifacts`） |
 | `workspace/process` | 进程检测到的工作区 |
 | `workspace/authorized-root` | `eap.runtime.authorized-root` 绑定结果 |
-| `cache` / `logs` / `tools` / `tasks` | 目标布局占位，尚未强制创建 |
+| `cache` / `cache/trusted-tool-probes` / `logs` / `tools` / `tasks` | 目标布局；探测缓存文件按需创建 |
 
 ```text
 EAP应用数据根/
@@ -137,7 +139,11 @@ EAP应用数据根/
 
 #### TD-01 显式版本探测写回（2026-11-07）
 
-`POST /api/runtime/trusted-tools/{id}/probe-version` 复用 `CliChannels.probe` 有界 `--version`（参数数组、短超时、输出截断脱敏）。成功写回进程内缓存 `versionStatus=known` + `detectedVersion`/`probedAt`；失败写 `probe_failed` 且不伪造版本；disabled→403、conflict/missing_binary→409。目录 GET 合并同路径缓存，路径变化失效；仍不在渲染时自动探测。mock 能力页浏览器已验成功写回与探测失败。无持久化探测表、不整盘扫描、不开放任意执行口。
+`POST /api/runtime/trusted-tools/{id}/probe-version` 复用 `CliChannels.probe` 有界 `--version`（参数数组、短超时、输出截断脱敏）。成功写回 `versionStatus=known` + `detectedVersion`/`probedAt`；失败写 `probe_failed` 且不伪造版本；disabled→403、conflict/missing_binary→409。目录 GET 合并同路径缓存，路径变化失效；仍不在渲染时自动探测。mock 能力页浏览器已验成功写回与探测失败。
+
+#### TD-01 探测持久化缓存（2026-11-07）
+
+`TrustedToolProbeStore` 将探测快照落到 `.eap/cache/trusted-tool-probes.json`（schema `trusted-tool-probes/v1`）；服务启动/重建时读回，写失败不阻断进程内目录。路径变化仍失效并重写文件。`TrustedToolCatalogServiceTest` 覆盖重建可读；mock 模块级缓存 + 能力页浏览器已验离页回读。不整盘扫描、不开放任意执行口。
 
 | 来源 | 发现与绑定方式 | 限制 |
 |---|---|---|

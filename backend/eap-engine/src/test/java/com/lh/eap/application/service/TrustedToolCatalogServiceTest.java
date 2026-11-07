@@ -9,11 +9,13 @@ import com.lh.eap.domain.model.CapabilityKind;
 import com.lh.eap.domain.model.CapabilityScope;
 import com.lh.eap.runtime.handler.CapabilityHandler;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.web.server.ResponseStatusException;
 
 class TrustedToolCatalogServiceTest {
@@ -86,6 +88,25 @@ class TrustedToolCatalogServiceTest {
 
         var conflict = assertThrows(ResponseStatusException.class, () -> service.probeVersion("broken-cli"));
         assertEquals(409, conflict.getStatusCode().value());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void durableProbeSurvivesCatalogReconstruction(@TempDir Path workspace) {
+        var store = TrustedToolProbeStore.underWorkspace(workspace);
+        var channels = channels();
+        when(channels.probe(eq("git-status"), eq("git"), any(Path.class))).thenReturn(probeOk("git version 2.45.1"));
+
+        var first = new TrustedToolCatalogService(registry(), settings(), channels, store);
+        first.probeVersion("git-status");
+        assertTrue(Files.isRegularFile(store.file()));
+
+        var second = new TrustedToolCatalogService(registry(), settings(), channels, store);
+        var items = (List<Map<String, Object>>) second.catalog().get("items");
+        var status = items.stream().filter(row -> "git-status".equals(row.get("id"))).findFirst().orElseThrow();
+        assertEquals("known", status.get("versionStatus"));
+        assertEquals("git version 2.45.1", status.get("detectedVersion"));
+        assertTrue(String.valueOf(status.get("bindingNote")).contains("持久化"));
     }
 
     private static CapabilityHandlerRegistry registry() {

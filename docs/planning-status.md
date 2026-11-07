@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / 1eb706d`（TD-01 显式版本探测写回；含 `9306d1c` 绑定呈现）。历史全量数字仅为既往证据。本轮：`POST /api/runtime/trusted-tools/{id}/probe-version` 复用 `CliChannels.probe` 有界 `--version`，进程内写回 `versionStatus`/`detectedVersion`/`probedAt`；目录 GET 仍不自动探测；disabled/conflict 拒绝；失败写 `probe_failed` 不伪造版本；mock 成功/失败 + 能力页浏览器已验。不整盘扫描、不持久化探测表、不开放任意执行口。`application.yml` 本地密钥不得提交。
+当前工作基线：`main /`（三切片并行：MCP memory 矩阵 + TD-01 探测持久化 + FS-01 迁移就绪盘点；提交后回填 SHA）。历史全量数字仅为既往证据。本轮：① MCP-01 追加 `@modelcontextprotocol/server-memory@2025.11.25`/`read_graph`（矩阵/白名单/mock；门禁 stdio 用例已加，未开 `EAP_RUN_MCP_OFFICIAL`）；② TD-01 探测写回 `.eap/cache/trusted-tool-probes.json`，重建目录可读；③ FS-01 `migrationReadiness` 只读候选盘点（`physicalMigration=false`）。能力页浏览器已验矩阵三包 + 持久化写回文案/离页回读。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
@@ -33,7 +33,7 @@
 | CT-01 生命周期 | 记录回放/UNKNOWN阻塞保留；同ID重连+草稿重试保留；**本轮追加**：聊天主路径改为 SSE（`answer.delta`/`tool`/`final`）、`POST …/cancel`、执行快照游标、前端投影去重/缺序回归；`ChatExecutionStreamTest` 4项及前端 eventProjector/reconnect/wireApi 离线通过 | 用户重启后浏览器流式/取消/重连验收；不重放历史或宣称模型记忆恢复；跨重启进程接管仍待 |
 | RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与测试接受/拒绝决定已有刷新回放 | EAP自身改页完整证据、SQL实际任务证据及用户接受；不重复开发已有决定回放 |
 | Skill | 文本上传/粘贴+显式文本资源、不可变版本、CAS启停/回退、按需预览与Chat精确引用首片已实现；安全/保存恢复缺陷修复后父任务前端525项、后端647项（6跳过）、实库/浏览器及独立复核通过；见 [阶段记录](records/resource-history.md#skill-text-import) | 目录/仓库导入延期；不执行脚本或授予工具权限，不支持通用mock YAML解析；真实供应商效果与用户最终验收待定 |
-| MCP-01 / P0 | **部分交付**：stdio + 分页 + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；**官方只读包矩阵** everything@2.2.1/`echo` + **本轮** sequential-thinking@0.6.2/`sequentialthinking`（门禁 stdio + mock 浏览器已验） | 继续追加已验证包；常驻 GET listen 未做 |
+| MCP-01 / P0 | **部分交付**：stdio + 分页 + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；**官方只读包矩阵** everything/`echo` + sequential-thinking/`sequentialthinking` + **本轮** memory@2025.11.25/`read_graph`（矩阵/白名单/mock 浏览器已验；门禁 stdio 用例已加） | 门禁实跑 `EAP_RUN_MCP_OFFICIAL` 验 memory；继续追加已验证包；常驻 GET listen 未做 |
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理 | 检索更新删除/来源与专家范围，SQL真实任务，CLI生命周期回归；不扩第二套执行器 |
 | PL-01 / P0 看板插件首片 | **部分交付**：board 可信预装启停/持久化回滚；**本轮**：服务依赖缺失与激活失败 sticky 呈现、刷新保留 Builder 实例；8 项离线 + mock 浏览器已验；不停 Task/Run | 真实服务探测与用户接受仍待；外部安装器延期 |
 | PL-02 / P1 设计器插件 | GrapesJS/Schema/版本已有；尚未按通用贡献机制迁移 | PL-01后复用现有设计器、版本和核心API，验证停用不丢草稿/版本；外部任意JS安装延期 |
@@ -41,9 +41,9 @@
 | CE-01 / P0 上下文工程 | **部分交付**：后端预算观测 + 前端回合用量摘要与超限 Feedback；**本轮**：mock 回合附带 `contextBudget`、显式超限触发；`chatBackend`/`contextBudgetView` 5 项；mock 浏览器验用量摘要与超限 Feedback | 真实 token/压缩、ChatMemory 精确计量、用户产品接受；MEM-01 仍后续；不记录敏感正文 |
 | KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；实库对照；**本轮**：排序质量样本（干扰语料 + `expectedMaxRank`/`rankingPassRate`，7 项离线） | 生产样本/真实 FTS 排序对照仍待；不足证据前不启 KR-02 |
 | MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；**约束/事实展示**：Chat 面板 `constraints`/`facts`、保存目标不丢字段；`workingMemorySession` 3 项；mock 浏览器验目标/约束 | sticky 清空仍保留；用户产品接受仍待；自动长期抽取延期 |
-| FS-01 / P0 目录与临时资源 | **部分交付**：`GET /api/runtime/data-layout` 只读盘点 + 决策文档逻辑路径表；不做物理迁移 | 旧数据迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
+| FS-01 / P0 目录与临时资源 | **部分交付**：`GET /api/runtime/data-layout` 只读盘点 + **本轮** `migrationReadiness` 候选存在性（含 `cache/trusted-tool-probes`）；`physicalMigration=false`/`approved=false`；无 UI，浏览器跳过 | 旧数据物理迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
 | TM-01 / P1 受管工具 | CLI程序/固定操作可登记和配置路径；依赖PATH/指定文件，无安装版本管理 | 依赖FS-01，选择一个可信便携工具或venv；锁版本/校验/安装回滚、实际调用/在途保护；保留系统引用，不静默或全局安装 |
-| TD-01 / P0 自动发现与绑定 | **部分交付**：可信定义汇总 + 绑定快照；**本轮**：显式版本探测写回（known/probe_failed + detectedVersion/probedAt；目录不自动探测）；后端 4 项 + 前端 11 项 + mock 浏览器已验 | 进程重启后探测缓存丢失（无持久表）；更多依赖绑定与用户接受仍待；不整盘扫描 |
+| TD-01 / P0 自动发现与绑定 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测；**本轮**：探测结果持久化至 `.eap/cache/trusted-tool-probes.json`（路径变化失效；目录仍不自动探测）；后端 5 项 + 前端 10 项 + mock 浏览器已验离页回读 | 真实本机 git 重启验收与用户接受仍待；更多依赖绑定仍待；不整盘扫描 |
 | TC-01 / P0 工具调用与呈现 | **部分交付**：目录→只读 git-status 调用 API + 能力页入口；**本轮**：mock 目录启用 + 成功/拒绝/超时/取消呈现与 Abort 取消；7 项离线 + mock 浏览器已验 | 真实 git 拒绝/超时/取消与用户接受仍待；不开放任意 Capability 执行口 |
 | TC-02 / P1 前端实例能力 | 尚无通用交互实例工具合同；Java保存版本不等于编辑器未保存草稿 | **待实施**：TC-01合同后先人工读取，协调实际插件Host；实例/文档/revision绑定、切页/关闭/断线与结果未知；后端Agent反向调用另评审，不依赖隐藏组件后台存活 |
 | KR-02 / FW-01 条件后续 | 当前保留Spring AI，未采用向量增强或LangChain4j迁移 | KR-01证明检索不足再评估增强；明确协作需求/可复现框架阻碍后独立批准同条件对照，记录兼容/正确性/成本/取消与迁移回归；不长期双循环 |
@@ -69,8 +69,8 @@ CP-03用户标注Comment 1已做限定调整：模型/发送成组靠右，缺�
 后续只安排剩余关口，不从头重复上述切片；技术细节与退出矩阵见[技术路线决定](decisions/agent-runtime-evolution.md#7-分阶段切片与退出门禁)：
 
 1. **工程交付验收线**：用户确认目标页面、设计、允许范围和真实供应商/Agent调用后，复用PREBOUND与现有应用/验证/决定链走一次EAP自身改页；授权未具备时保持待验收，不伪造模型结果。
-2. **上下文与资源能力线**：CE-01（含 mock 预算展示/超限）/KR-01(含 FTS+延迟观测+本机实库对照+排序质量样本)/MCP-01(stdio+官方矩阵含 sequential-thinking+http+legacy SSE+Streamable-HTTP+生产白名单+GET 续传)/MEM-01（含对抗失效与约束/事实 UI）离线首片已落地；下一步生产检索样本或继续追加已验证官方包。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
-3. **工具与本地环境线**：TD-01（含绑定冲突/停用快照 + 显式版本探测写回）与TC-01（含 mock 拒绝/超时/取消呈现）共同从现有Git首片验证；持久化探测缓存与用户接受仍待；TC-02后续人工验证前端实例，反向Agent调用另批。发现不等于授权，Java执行不需前端复制实现。FS-01先确认数据/临时目录和旧数据迁移，再做TM-01一个受管工具，不把安装作为系统工具调用的前置。sidecar/包验证独立推进；签名待凭据/发行决定。
+2. **上下文与资源能力线**：CE-01（含 mock 预算展示/超限）/KR-01(含 FTS+延迟观测+本机实库对照+排序质量样本)/MCP-01(stdio+官方矩阵含 memory/`read_graph`+http+legacy SSE+Streamable-HTTP+生产白名单+GET 续传)/MEM-01（含对抗失效与约束/事实 UI）离线首片已落地；下一步生产检索样本或继续追加已验证官方包（含门禁实跑 memory）。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
+3. **工具与本地环境线**：TD-01（含绑定冲突/停用 + 显式探测 + **探测持久化缓存**）与TC-01（含 mock 拒绝/超时/取消呈现）共同从现有Git首片验证；真实重启与用户接受仍待；TC-02后续人工验证前端实例，反向Agent调用另批。发现不等于授权，Java执行不需前端复制实现。FS-01已有只读盘点+迁移就绪候选；物理迁移仍待批准，再做TM-01一个受管工具。sidecar/包验证独立推进；签名待凭据/发行决定。
 4. **可信插件与场景线**：PL-01（含依赖缺失/激活失败 mock 呈现）先迁现有看板贡献，不改核心Task/Run；再做PL-02设计器与SC-03场景依赖，保留版本/候选/产物和五入口合同。外部安装器/市场/第三方隔离延期；不先建空SDK。
 5. **总体质量与接受**：持续全页面真实系统缩放/焦点/错误矩阵、SQL/CLI剩余业务回归、其他mock合同复核和构建包体积评估；最终由用户逐项接受。资源和桌面不必成为单页面交付的前置。
 

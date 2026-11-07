@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * TD-01: aggregate built-in capability handler definitions with binding snapshot fields.
  * Catalog GET never runs binaries; version stays unknown until an explicit probe writeback.
+ * Successful/failed probes persist under {@code .eap/cache/trusted-tool-probes.json}.
  */
 @Service
 public class TrustedToolCatalogService {
@@ -29,7 +30,8 @@ public class TrustedToolCatalogService {
     private final CapabilitySettings settings;
     private final CliChannels channels;
     private final RuntimeWorkspace runtime;
-    private final ConcurrentHashMap<String, VersionProbe> probes = new ConcurrentHashMap<>();
+    private final TrustedToolProbeStore probeStore;
+    private final ConcurrentHashMap<String, VersionProbe> probes;
 
     @Autowired
     public TrustedToolCatalogService(CapabilityHandlerRegistry handlers, CapabilitySettings settings,
@@ -38,12 +40,30 @@ public class TrustedToolCatalogService {
         this.settings = settings;
         this.channels = channels == null ? CliChannels.defaults() : channels;
         this.runtime = runtime;
+        this.probeStore = TrustedToolProbeStore.underWorkspace(probeWorkspace());
+        this.probes = new ConcurrentHashMap<>(this.probeStore.load());
     }
 
-    /** Test helper when RuntimeWorkspace is irrelevant. */
+    /** Test helper when RuntimeWorkspace is irrelevant and persistence is disabled. */
     TrustedToolCatalogService(CapabilityHandlerRegistry handlers, CapabilitySettings settings,
                               CliChannels channels) {
-        this(handlers, settings, channels, null);
+        this.handlers = handlers;
+        this.settings = settings;
+        this.channels = channels == null ? CliChannels.defaults() : channels;
+        this.runtime = null;
+        this.probeStore = null;
+        this.probes = new ConcurrentHashMap<>();
+    }
+
+    /** Test helper that loads/saves probe snapshots from an explicit store file. */
+    TrustedToolCatalogService(CapabilityHandlerRegistry handlers, CapabilitySettings settings,
+                              CliChannels channels, TrustedToolProbeStore probeStore) {
+        this.handlers = handlers;
+        this.settings = settings;
+        this.channels = channels == null ? CliChannels.defaults() : channels;
+        this.runtime = null;
+        this.probeStore = probeStore;
+        this.probes = new ConcurrentHashMap<>(probeStore == null ? Map.of() : probeStore.load());
     }
 
     public Map<String, Object> catalog() {
@@ -59,7 +79,8 @@ public class TrustedToolCatalogService {
 
     /**
      * Explicit operator action: run {@code <binary> --version} once and write the result back into the
-     * in-process catalog cache. Does not authorize execution of arbitrary capabilities.
+     * catalog cache (memory + durable file when a store is configured). Does not authorize execution of
+     * arbitrary capabilities.
      */
     public Map<String, Object> probeVersion(String toolId) {
         var descriptor = requireDescriptor(toolId);
@@ -86,13 +107,15 @@ public class TrustedToolCatalogService {
         VersionProbe snapshot;
         if (executed && success) {
             var version = firstLine(output);
-            snapshot = new VersionProbe("known", version, now, resolved, "显式探测成功；进程内写回，目录 GET 不自动重探。");
+            snapshot = new VersionProbe("known", version, now, resolved,
+                    "显式探测成功；已持久化写回，目录 GET 不自动重探。");
         } else {
             var note = text(probe.get("message"));
             if (note.isEmpty()) note = "显式探测未成功；版本保持未知态写入 probe_failed。";
             snapshot = new VersionProbe("probe_failed", "", now, resolved, note);
         }
         probes.put(toolId, snapshot);
+        persistProbes();
 
         var payload = new LinkedHashMap<String, Object>();
         payload.put("id", toolId);
@@ -157,7 +180,7 @@ public class TrustedToolCatalogService {
         } else if ("probe_failed".equals(fields.get("versionStatus"))) {
             fields.put("bindingNote", String.valueOf(fields.get("probeNote")));
         } else {
-            fields.put("bindingNote", "二进制已解析；版本已由显式探测写回。");
+            fields.put("bindingNote", "二进制已解析；版本已由显式探测持久化写回。");
         }
         return fields;
     }
@@ -173,11 +196,18 @@ public class TrustedToolCatalogService {
         }
         if (cached != null && !resolvedPath.equals(cached.resolvedPath())) {
             probes.remove(toolId);
+            persistProbes();
         }
         fields.put("versionStatus", "unknown");
         fields.put("detectedVersion", "");
         fields.put("probedAt", "");
         fields.put("probeNote", "");
+    }
+
+    private void persistProbes() {
+        if (probeStore != null) {
+            probeStore.save(probes);
+        }
     }
 
     private static String classifyBinding(boolean enabled, CliChannels.Channel channel) {

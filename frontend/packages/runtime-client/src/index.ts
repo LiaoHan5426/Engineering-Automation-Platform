@@ -9,7 +9,26 @@ export type DataLayoutEntry = {
   exists: boolean
   note: string
 }
-export type DataLayoutResponse = { entries: DataLayoutEntry[]; physicalMigration: boolean }
+export type DataLayoutMigrationCandidate = {
+  id: string
+  resolved: string
+  present: boolean
+  note: string
+}
+
+export type DataLayoutMigrationReadiness = {
+  status: string
+  physicalMigration: boolean
+  approved: boolean
+  note: string
+  candidates: DataLayoutMigrationCandidate[]
+}
+
+export type DataLayoutResponse = {
+  entries: DataLayoutEntry[]
+  physicalMigration: boolean
+  migrationReadiness?: DataLayoutMigrationReadiness
+}
 
 export type TrustedToolBindingStatus =
   | 'ready'

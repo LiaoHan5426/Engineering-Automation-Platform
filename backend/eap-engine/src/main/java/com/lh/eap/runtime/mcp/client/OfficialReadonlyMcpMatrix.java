@@ -59,7 +59,13 @@ public final class OfficialReadonlyMcpMatrix {
                     "@modelcontextprotocol/server-sequential-thinking",
                     "0.6.2",
                     List.of("sequentialthinking"),
-                    "sequentialthinking"));
+                    "sequentialthinking"),
+            // Official knowledge-graph memory server; production grant limited to read_graph only.
+            new Entry(
+                    "@modelcontextprotocol/server-memory",
+                    "2025.11.25",
+                    List.of("read_graph"),
+                    "read_graph"));
 
     private OfficialReadonlyMcpMatrix() {}
 
