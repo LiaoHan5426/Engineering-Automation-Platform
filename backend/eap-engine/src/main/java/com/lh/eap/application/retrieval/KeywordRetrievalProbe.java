@@ -29,6 +29,10 @@ public final class KeywordRetrievalProbe {
         this.documents = List.copyOf(documents);
     }
 
+    public List<Document> documents() {
+        return documents;
+    }
+
     public List<RetrievalBaseline.Hit> search(String query, int limit, Set<UUID> allowedBases) {
         if (query == null || query.isBlank() || allowedBases == null || allowedBases.isEmpty()) return List.of();
         var terms = KnowledgeRepository.terms(query);

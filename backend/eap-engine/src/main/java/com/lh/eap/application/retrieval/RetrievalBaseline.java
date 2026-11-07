@@ -72,8 +72,14 @@ public final class RetrievalBaseline {
     }
 
     public static Report evaluate(List<Case> cases, Function<Case, List<Hit>> search) {
+        return evaluate(cases, search, "KEYWORD_PROBE");
+    }
+
+    public static Report evaluate(List<Case> cases, Function<Case, List<Hit>> search, String metering) {
         Objects.requireNonNull(cases, "cases");
         Objects.requireNonNull(search, "search");
+        Objects.requireNonNull(metering, "metering");
+        if (metering.isBlank()) throw new IllegalArgumentException("metering");
         var results = new ArrayList<CaseResult>();
         int directHit = 0, directTotal = 0, chineseHit = 0, chineseTotal = 0;
         int authzFailures = 0, emptyFailures = 0;
@@ -128,7 +134,7 @@ public final class RetrievalBaseline {
         }
         double direct = directTotal == 0 ? 1.0 : (double) directHit / directTotal;
         double chinese = chineseTotal == 0 ? 1.0 : (double) chineseHit / chineseTotal;
-        return new Report("KEYWORD_PROBE", List.copyOf(results), direct, chinese, authzFailures, emptyFailures);
+        return new Report(metering, List.copyOf(results), direct, chinese, authzFailures, emptyFailures);
     }
 
     private static CaseResult failed(Case testCase, List<Hit> hits, String failure) {

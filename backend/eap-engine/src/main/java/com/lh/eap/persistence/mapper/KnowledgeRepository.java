@@ -38,7 +38,7 @@ public class KnowledgeRepository {
         var score=new StringBuilder("ts_rank(to_tsvector('simple',c.content),websearch_to_tsquery('simple',?))");
         args.add(query);
         for(var term:terms){score.append(" + CASE WHEN c.content ILIKE ? ESCAPE '\\' THEN 1.0 ELSE 0.0 END");args.add(like(term));}
-        var sql=new StringBuilder("SELECT c.id,d.object_key,b.name AS knowledge_base,c.content,("+score+") AS score FROM eap.knowledge_chunk c JOIN eap.knowledge_document d ON d.id=c.document_id JOIN eap.knowledge_base b ON b.id=d.knowledge_base_id WHERE (to_tsvector('simple',c.content) @@ websearch_to_tsquery('simple',?)");
+        var sql=new StringBuilder("SELECT c.id,d.object_key,b.id AS knowledge_base_id,b.name AS knowledge_base,c.content,("+score+") AS score FROM eap.knowledge_chunk c JOIN eap.knowledge_document d ON d.id=c.document_id JOIN eap.knowledge_base b ON b.id=d.knowledge_base_id WHERE (to_tsvector('simple',c.content) @@ websearch_to_tsquery('simple',?)");
         args.add(query);
         for(var term:terms){sql.append(" OR c.content ILIKE ? ESCAPE '\\'");args.add(like(term));}
         sql.append(")");
@@ -47,7 +47,14 @@ public class KnowledgeRepository {
         sql.append(" ORDER BY score DESC,c.id LIMIT ?");args.add(Math.clamp(limit,1,20));
         return jdbc.query(sql.toString(),(rs,row)->{
             var content=rs.getString("content");
-            return Map.<String,Object>of("id",rs.getObject("id"),"source",SensitiveData.redact(rs.getString("object_key")),"knowledgeBase",SensitiveData.redact(rs.getString("knowledge_base")),"score",rs.getDouble("score"),"excerpt",SensitiveData.redact(content.substring(0,Math.min(content.length(),1200))),"retrievalMode","local-keyword");
+            return Map.<String,Object>of(
+                    "id",rs.getObject("id"),
+                    "source",SensitiveData.redact(rs.getString("object_key")),
+                    "knowledgeBaseId",rs.getObject("knowledge_base_id").toString(),
+                    "knowledgeBase",SensitiveData.redact(rs.getString("knowledge_base")),
+                    "score",rs.getDouble("score"),
+                    "excerpt",SensitiveData.redact(content.substring(0,Math.min(content.length(),1200))),
+                    "retrievalMode","local-keyword");
         },args.toArray());
     }
     private static String like(String term){return "%"+term.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%";}

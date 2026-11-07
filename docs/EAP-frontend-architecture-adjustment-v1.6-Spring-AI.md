@@ -384,7 +384,7 @@ sequenceDiagram
 | CT-01 / P1 | 页面保留等于任务恢复，或会话失效只能手工新建 | 区分 UI缓存、模型记忆、请求和持久Run；显式重连后可重试当前草稿 | **部分交付**：看板持久回放/UNKNOWN阻塞保留；同ID重连及草稿重试保留；**本轮**：聊天 SSE 事件流、`cancel`、执行快照游标与前端投影去重/缺序离线通过。保留本地上下文但不重放历史；仍缺真实浏览器流式/取消接受及跨重启进程接管 |
 | RV-01 / P1 | SQL检查器等于全局摘要 | 任务/会话相关摘要、文件Diff、验证和来源 | **部分交付**：会话摘要/变更右栏、源文件浮层、终端底栏各守职责；看板按Run选择审阅/验证，源码交付与接受/拒绝独立工作面且持久回放；设置不挂任务面板。仍缺：SQL实际任务证据、完整自身改页证据及用户接受；Chat终端未因此获得任意shell能力 |
 | CE-01 / P0 | 有拼装与字符限制就算上下文工程 | 在既有路径统一预算、来源、选择及失效合同 | **部分交付**：后端 `ContextBudget` + 前端回合用量摘要/`CONTEXT_BUDGET_EXCEEDED` 可读提示（无正文）；`ContextBudgetTest` 与 `contextBudgetView` 离线通过。仍缺：真实 token、压缩策略、ChatMemory 精确计量；不宣称 MEM-01 |
-| KR-01 / P0；KR-02 / 条件后续 | 没向量库等于没检索 | 先评测已有FTS/关键词，证明不足再比较增强 | **部分交付（KR-01）**：预定 fixture 题集 + `RetrievalBaseline`/`KeywordRetrievalProbe`（复用 `KnowledgeRepository.terms`）；直召/标识符/中文 recall@5 阈值=1.0、空结果与越权零泄漏；`RetrievalBaselineTest` 5 项通过。仍缺：实库 PostgreSQL FTS 同题对照、延迟/成本账、引用可追溯生产样本；**KR-02 未触发** |
+| KR-01 / P0；KR-02 / 条件后续 | 没向量库等于没检索 | 先评测已有FTS/关键词，证明不足再比较增强 | **部分交付（KR-01）**：fixture + `KEYWORD_PROBE`；**实库适配** `PostgresKnowledgeRetrieval`/`POSTGRES_FTS`（含 `knowledgeBaseId`）与 `PostgresKnowledgeRetrievalTest`；`RetrievalBaselineDbContrastTest` 门禁挂载。仍缺：本机实库同题跑通证据、延迟/成本、引用生产样本；**KR-02 未触发** |
 | MEM-01 / P1 | 窗口持久化等于完整记忆 | 历史/绑定恢复、任务工作记忆分层，依赖CE-01 | **部分交付**：分层+PUT/UI+本地持久；**Task/Run 关联**（`dependencyKeys`/`evidenceRefs`，换任务失效）；`TaskWorkingMemoryTest` 关联项通过。仍缺：对抗用例替代清空；自动长期抽取延期 |
 | MCP-01 / P0 | 登记/探测等于协议执行 | 既有授权/会话桥接一个只读服务器 | **部分交付**：进程内 Client + **stdio 传输**（`StdioMcpTransport`/`StdioMcpCommand`，registry endpoint 映射、超时/destroy）；假子进程 initialize/list/call 通过；http/sse 仍未接入；外部官方 MCP 包实网验收仍待 |
 | FS-01 / P0 | 工作区树等于应用目录管理；UI scratch等于磁盘目录 | 数据根、缓存/产物/任务临时资源归属，浏览器与本机执行分界 | **部分交付**：只读 data-layout 盘点 API 与文档路径表；物理迁移未批准 |
