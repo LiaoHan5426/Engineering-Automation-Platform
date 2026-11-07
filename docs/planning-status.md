@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / 8769704`（三切片并行：MCP filesystem/`directory_tree` + FS-01 刷新盘点 + KR-01 口令环境回退）。历史全量数字仅为既往证据。本轮：① MCP-01 filesystem 只读工具扩为 `list_directory`+`directory_tree`（门禁 tools/list 证明二者，call 仅 preferred `list_directory`；`directory_tree` 以 path 单参调用会 isError，故不门禁实 call）；② FS-01 能力页「刷新盘点」独立刷新 data-layout；③ KR-01 `RetrievalBaselineDbContrastTest` 口令回退 `EAP_DB_PASSWORD`/`SPRING_DATASOURCE_PASSWORD`。离线：Matrix+Stdio 6/0、`capabilityBackend` 12/0。浏览器 mock `:5174` 已验刷新盘点与矩阵 `list_directory、directory_tree`；真机 `:5173` 已验刷新盘点，矩阵仍仅 `list_directory`（后端未热重载）。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / f005b6d`（三切片并行：MCP `get_file_info` + SC-01 mock 保存断连 + TD-01 清除探测缓存）。历史全量数字仅为既往证据。本轮：① MCP-01 filesystem 授权 `list_directory`+`get_file_info`+`directory_tree`（门禁实 call list+info；`directory_tree` 因上游 structuredContent 校验失败仅 list 证明）；② SC-01 mock「模拟保存断连」落盘后 502→核对 unknown；③ TD-01 `POST …/probe-cache/clear` 清持久探测。离线：Matrix+Stdio+TrustedTool 11/0；前端 capability/scenario/catalog 25/0。浏览器 mock `:5174` 已验清除探测、矩阵三工具、断连 unknown；真机 `:5173` 已验清除探测（git-status 回未知）。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
@@ -18,7 +18,7 @@
 | UI-03 本地服务身份 | 本机绑定和只读能力已有验证 | Electron目录选择与打包环境复核；不把分组标签当权限 |
 | 统一图标 | `@eap/ui` Icon/name入口与内部本地Lucide资源包已实现，首批工作台/Tag/Tree迁移；全量574项、类型/边界/构建、真实浅深主题及最终独立审查通过，见[记录](records/frontend-history.md#frontend-icons) | 其余管理页面/历史演示字符按语义迁移，不将领域SVG/正文标点机械替换；不是全仓清零 |
 | UI-04 Code/Work | 共用会话和选择保存 | 实际办公任务执行，不只角色指引 |
-| SC-01/02 场景 | 配置、设计、版本、准备已分面；CAS 保存/删除；**本轮**：save 失败后远端核对（revision 前进→`unknown`，404→保留 `save`）；删除零 revision 核对保留 | 浏览器保存断连交互与用户接受仍待；真实交付及依赖授权闭环；不把可变配置revision当不可变设计版本 |
+| SC-01/02 场景 | 配置、设计、版本、准备已分面；CAS 保存/删除；save 失败后远端核对；**本轮**：mock「模拟保存断连」落盘+502→`unknown`（`:5174` 已验） | 用户产品接受仍待；真实交付及依赖授权闭环；不把可变配置revision当不可变设计版本 |
 | CP-01/02/03 输入与策略 | 目标/模式/审批分别建模，未接通模式禁用；媒体对照修正知识/Skill常驻堆叠，＋入口/紧凑引用/弹窗说明，四视口发送可达，见[记录](records/frontend-history.md#reference-ui-review) | 规划/Agent真实执行；禁止用标签替代策略；不以局部布局通过代替全体验接受 |
 | MD-01 模型连接 | 凭据/目录/白名单/强度已有；追加普通API显式wireApi及Responses文本/代码提案，协议变更revision/重绑定、Git拒绝和前端/mock合同已实现并通过离线回归，见[决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验) | 用户重启加载、编辑原连接选择Responses并确认会话绑定后真实重试；真实网关/认证和浏览器接受未验，不自动付费探测；Responses工具及403网关诊断仍缺，不宣称原故障已恢复 |
 | EX-01 专家 | 指引/版本/资源可见，现有DAG保留；单专家授权知识→Chat接线、撤权/旧记忆隔离及实库范围回归已通过，见 [阶段记录](records/resource-history.md#expert-knowledge-chat) | 完整配置角色/其余资源及真实供应商效果仍待；不执行DAG或自动获得工具权限 |
@@ -33,7 +33,7 @@
 | CT-01 生命周期 | 记录回放/UNKNOWN阻塞保留；同ID重连+草稿重试保留；**本轮追加**：聊天主路径改为 SSE（`answer.delta`/`tool`/`final`）、`POST …/cancel`、执行快照游标、前端投影去重/缺序回归；`ChatExecutionStreamTest` 4项及前端 eventProjector/reconnect/wireApi 离线通过 | 用户重启后浏览器流式/取消/重连验收；不重放历史或宣称模型记忆恢复；跨重启进程接管仍待 |
 | RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与测试接受/拒绝决定已有刷新回放 | EAP自身改页完整证据、SQL实际任务证据及用户接受；不重复开发已有决定回放 |
 | Skill | 文本上传/粘贴+显式文本资源、不可变版本、CAS启停/回退、按需预览与Chat精确引用首片已实现；安全/保存恢复缺陷修复后父任务前端525项、后端647项（6跳过）、实库/浏览器及独立复核通过；见 [阶段记录](records/resource-history.md#skill-text-import) | 目录/仓库导入延期；不执行脚本或授予工具权限，不支持通用mock YAML解析；真实供应商效果与用户最终验收待定 |
-| MCP-01 / P0 | **部分交付**：stdio/http/SSE/Streamable-HTTP/白名单/GET 续传；官方矩阵 everything+sequential-thinking+memory+**filesystem/`list_directory`+`directory_tree`**（门禁 list 证明 + call preferred；mock 已验双工具） | 真机后端重载后核对 `directory_tree`；常驻 GET listen 未做；继续追加包 |
+| MCP-01 / P0 | **部分交付**：stdio/http/SSE/Streamable-HTTP/白名单/GET 续传；官方矩阵含 filesystem/`list_directory`+`get_file_info`+`directory_tree`（门禁实 call list+info；tree 仅 list 证明） | 真机重载后核对三工具文案；常驻 GET listen 未做；继续追加包 |
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理 | 检索更新删除/来源与专家范围，SQL真实任务，CLI生命周期回归；不扩第二套执行器 |
 | PL-01 / P0 看板插件首片 | **部分交付**：board 可信预装启停/持久化回滚；**本轮**：服务依赖缺失与激活失败 sticky 呈现、刷新保留 Builder 实例；8 项离线 + mock 浏览器已验；不停 Task/Run | 真实服务探测与用户接受仍待；外部安装器延期 |
 | PL-02 / P1 设计器插件 | GrapesJS/Schema/版本已有；尚未按通用贡献机制迁移 | PL-01后复用现有设计器、版本和核心API，验证停用不丢草稿/版本；外部任意JS安装延期 |
@@ -43,7 +43,7 @@
 | MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；**约束/事实展示**：Chat 面板 `constraints`/`facts`、保存目标不丢字段；`workingMemorySession` 3 项；mock 浏览器验目标/约束 | sticky 清空仍保留；用户产品接受仍待；自动长期抽取延期 |
 | FS-01 / P0 目录与临时资源 | **部分交付**：data-layout + migrationReadiness + 能力页只读盘点；**本轮**：「刷新盘点」独立刷新（mock/真机已验）；`physicalMigration=false` | 旧数据物理迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
 | TM-01 / P1 受管工具 | CLI程序/固定操作可登记和配置路径；依赖PATH/指定文件，无安装版本管理 | 依赖FS-01，选择一个可信便携工具或venv；锁版本/校验/安装回滚、实际调用/在途保护；保留系统引用，不静默或全局安装 |
-| TD-01 / P0 自动发现与绑定 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测；**本轮**：探测结果持久化至 `.eap/cache/trusted-tool-probes.json`（路径变化失效；目录仍不自动探测）；后端 5 项 + 前端 10 项 + mock 浏览器已验离页回读 | 真实本机 git 重启验收与用户接受仍待；更多依赖绑定仍待；不整盘扫描 |
+| TD-01 / P0 自动发现与绑定 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测 + 持久化；**本轮**：清除探测缓存 API/UI（mock/真机已验，版本回未知）；目录仍不自动探测 | 真实本机 git 重启验收与用户接受仍待；更多依赖绑定仍待；不整盘扫描 |
 | TC-01 / P0 工具调用与呈现 | **部分交付**：git-status 调用 + mock 拒绝/超时/取消；**本轮**：`unknown`（520/无响应网络中断）呈现 + mock 按钮；真机 `:5173` 成功调用已验 | 真实拒绝/超时/取消与用户接受仍待；不开放任意 Capability 执行口 |
 | TC-02 / P1 前端实例能力 | 尚无通用交互实例工具合同；Java保存版本不等于编辑器未保存草稿 | **待实施**：TC-01合同后先人工读取，协调实际插件Host；实例/文档/revision绑定、切页/关闭/断线与结果未知；后端Agent反向调用另评审，不依赖隐藏组件后台存活 |
 | KR-02 / FW-01 条件后续 | 当前保留Spring AI，未采用向量增强或LangChain4j迁移 | KR-01证明检索不足再评估增强；明确协作需求/可复现框架阻碍后独立批准同条件对照，记录兼容/正确性/成本/取消与迁移回归；不长期双循环 |
