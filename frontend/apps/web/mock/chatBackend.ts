@@ -134,7 +134,10 @@ export function createMockChatBackend() {
       if (configured) return configured
       const board = boardBackend.handle(method, requestUrl, body)
       if (board) return board
-      const capability = capabilityBackend.handle(method, path)
+      const capability = await capabilityBackend.handle(
+        method,
+        path + (requestUrl.search ? requestUrl.search : ''),
+      )
       if (capability) return capability
       if (path === '/prototype-versions' && method === 'GET')
         return result(200, {

@@ -1186,8 +1186,20 @@ export const runtimeApi = {
   health: () => get<RuntimeHealth>('/health'),
   dataLayout: () => get<DataLayoutResponse>('/runtime/data-layout'),
   trustedTools: () => get<TrustedToolResponse>('/runtime/trusted-tools'),
-  invokeTrustedGitStatus: () =>
-    client.post<TrustedGitStatusResult>('/runtime/trusted-tools/git-status/invoke').then((r) => r.data),
+  invokeTrustedGitStatus: (options?: {
+    mockOutcome?: 'success' | 'denied' | 'timeout' | 'cancelled'
+    signal?: AbortSignal
+  }) =>
+    client
+      .post<TrustedGitStatusResult>(
+        '/runtime/trusted-tools/git-status/invoke',
+        {},
+        {
+          signal: options?.signal,
+          params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
+        },
+      )
+      .then((r) => r.data),
   capabilities: () => get<CapabilityResponse>('/capabilities'),
   cliPrograms: () => get<{ items: CliProgramItem[] }>('/cli-programs'),
   registerCliProgram: (program: CliProgramRequest) =>

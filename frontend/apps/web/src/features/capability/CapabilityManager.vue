@@ -14,6 +14,11 @@ import {
 import { Badge, Button, Checkbox, ConfirmBox, Feedback, Input, Select, Tabs } from '@eap/ui'
 import { Table, type TableColumn } from '@eap/plugin-table'
 import { errorMessage } from '../../lib/presentation'
+import {
+  trustedToolInvokeFailure,
+  trustedToolInvokeFailureMessage,
+  type TrustedToolInvokeFailure,
+} from './trustedToolInvokeView'
 import CliProgramManager from './CliProgramManager.vue'
 
 const emit = defineEmits<{ (event: 'saved'): void }>()
@@ -26,6 +31,9 @@ const tab = ref('overview')
 const trustedTools = ref<TrustedToolItem[]>([])
 const trustedGitResult = ref<TrustedGitStatusResult | null>(null)
 const trustedBusy = ref(false)
+const trustedFailure = ref<TrustedToolInvokeFailure | null>(null)
+const trustedAbort = ref<AbortController | null>(null)
+const mockTrustedScenarios = import.meta.env.MODE === 'mock'
 
 /** Drafts, keyed by capability: a note explains a switch, a binary points a CLI capability at a file. */
 const notesDraft = ref<Record<string, string>>({})
@@ -123,17 +131,37 @@ async function refresh() {
   }
 }
 
-async function runTrustedGitStatus() {
+async function runTrustedGitStatus(
+  mockOutcome?: 'success' | 'denied' | 'timeout' | 'cancelled',
+) {
+  trustedAbort.value?.abort()
+  const controller = new AbortController()
+  trustedAbort.value = controller
   trustedBusy.value = true
   trustedGitResult.value = null
+  trustedFailure.value = null
   try {
-    trustedGitResult.value = await runtimeApi.invokeTrustedGitStatus()
+    trustedGitResult.value = await runtimeApi.invokeTrustedGitStatus({
+      mockOutcome: mockTrustedScenarios ? mockOutcome : undefined,
+      signal: controller.signal,
+    })
     feedback(trustedGitResult.value.success ? 'success' : 'error', trustedGitResult.value.message)
   } catch (error) {
-    feedback('error', errorMessage(error))
+    if (controller.signal.aborted) {
+      trustedFailure.value = 'cancelled'
+      feedback('error', '已取消本次可信工具调用。')
+      return
+    }
+    trustedFailure.value = trustedToolInvokeFailure(error)
+    feedback('error', trustedToolInvokeFailureMessage(error))
   } finally {
+    if (trustedAbort.value === controller) trustedAbort.value = null
     trustedBusy.value = false
   }
+}
+
+function cancelTrustedGitStatus() {
+  trustedAbort.value?.abort()
 }
 onMounted(refresh)
 defineExpose({ refresh })
@@ -293,14 +321,73 @@ async function submitServer() {
           size="sm"
           data-testid="trusted-git-status-invoke"
           :disabled="trustedBusy || !trustedTools.some((tool) => tool.id === 'git-status' && tool.enabled)"
-          @click="runTrustedGitStatus"
+          @click="runTrustedGitStatus()"
         >
           触发只读 git status
         </Button>
+        <Button
+          v-if="trustedBusy"
+          variant="secondary"
+          size="sm"
+          data-testid="trusted-git-status-cancel"
+          @click="cancelTrustedGitStatus"
+        >
+          取消调用
+        </Button>
+        <template v-if="mockTrustedScenarios">
+          <Button
+            variant="secondary"
+            size="sm"
+            data-testid="trusted-git-mock-denied"
+            :disabled="trustedBusy"
+            @click="runTrustedGitStatus('denied')"
+          >
+            模拟拒绝
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            data-testid="trusted-git-mock-timeout"
+            :disabled="trustedBusy"
+            @click="runTrustedGitStatus('timeout')"
+          >
+            模拟超时
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            data-testid="trusted-git-mock-cancelled"
+            :disabled="trustedBusy"
+            @click="runTrustedGitStatus('cancelled')"
+          >
+            模拟取消
+          </Button>
+        </template>
       </div>
       <pre v-if="trustedGitResult" class="trusted-git-result" data-testid="trusted-git-status-result">{{
         trustedGitResult.stdout ?? trustedGitResult.message
       }}</pre>
+      <p
+        v-if="trustedFailure === 'denied'"
+        class="hint"
+        data-testid="trusted-git-status-denied"
+      >
+        能力已停用或未授权，已拒绝本次只读调用。
+      </p>
+      <p
+        v-if="trustedFailure === 'timeout'"
+        class="hint"
+        data-testid="trusted-git-status-timeout"
+      >
+        可信工具调用超时，未修改工作区。
+      </p>
+      <p
+        v-if="trustedFailure === 'cancelled'"
+        class="hint"
+        data-testid="trusted-git-status-cancelled"
+      >
+        已取消本次可信工具调用。
+      </p>
     </article>
     <p v-if="loading && !catalog" class="hint">正在读取能力目录…</p>
     <article v-for="kind in kinds" :key="kind.id" class="eap-panel panel-block cap-group">
