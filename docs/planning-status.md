@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / TBD-feat`（TD-01 显式版本探测写回；含 `9306d1c` 绑定呈现）。历史全量数字仅为既往证据。本轮：`POST /api/runtime/trusted-tools/{id}/probe-version` 复用 `CliChannels.probe` 有界 `--version`，进程内写回 `versionStatus`/`detectedVersion`/`probedAt`；目录 GET 仍不自动探测；disabled/conflict 拒绝；失败写 `probe_failed` 不伪造版本；mock 成功/失败 + 能力页浏览器已验。不整盘扫描、不持久化探测表、不开放任意执行口。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 1eb706d`（TD-01 显式版本探测写回；含 `9306d1c` 绑定呈现）。历史全量数字仅为既往证据。本轮：`POST /api/runtime/trusted-tools/{id}/probe-version` 复用 `CliChannels.probe` 有界 `--version`，进程内写回 `versionStatus`/`detectedVersion`/`probedAt`；目录 GET 仍不自动探测；disabled/conflict 拒绝；失败写 `probe_failed` 不伪造版本；mock 成功/失败 + 能力页浏览器已验。不整盘扫描、不持久化探测表、不开放任意执行口。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
