@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / 75caaa7`（MCP-01 http 台账）+ 本轮 MCP-01 legacy SSE 与 FileWorkingMemoryStore 注入修复（未提交）。历史全量数字仅为既往证据。本轮：`SseMcpTransportTest`/`HttpMcpTransportTest` 通过。浏览器/用户接受仍待。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 08e3b21`（MCP-01 legacy SSE；含 `27fec41` FileWorkingMemoryStore 注入修复）。历史全量数字仅为既往证据。本轮：`SseMcpTransportTest`/`HttpMcpTransportTest` 通过。浏览器/用户接受仍待。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
