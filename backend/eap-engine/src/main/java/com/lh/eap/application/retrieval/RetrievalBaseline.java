@@ -17,6 +17,8 @@ public final class RetrievalBaseline {
     public static final double DIRECT_RECALL_AT_K_THRESHOLD = 1.0;
     /** Chinese bigram fixtures must all hit within topK under the keyword probe. */
     public static final double CHINESE_RECALL_AT_K_THRESHOLD = 1.0;
+    /** Ranking fixtures must place the gold source at or above expectedMaxRank. */
+    public static final double RANKING_PASS_THRESHOLD = 1.0;
 
     private RetrievalBaseline() {}
 
@@ -35,7 +37,8 @@ public final class RetrievalBaseline {
             Set<String> expectedSources,
             Set<UUID> allowedBases,
             int topK,
-            boolean expectEmpty) {
+            boolean expectEmpty,
+            Integer expectedMaxRank) {
         public Case {
             Objects.requireNonNull(id, "id");
             Objects.requireNonNull(kind, "kind");
@@ -43,6 +46,20 @@ public final class RetrievalBaseline {
             expectedSources = Set.copyOf(expectedSources == null ? Set.of() : expectedSources);
             allowedBases = Set.copyOf(allowedBases == null ? Set.of() : allowedBases);
             if (topK < 1 || topK > 20) throw new IllegalArgumentException("topK");
+            if (expectedMaxRank != null && (expectedMaxRank < 1 || expectedMaxRank > topK)) {
+                throw new IllegalArgumentException("expectedMaxRank");
+            }
+        }
+
+        public Case(
+                String id,
+                String kind,
+                String query,
+                Set<String> expectedSources,
+                Set<UUID> allowedBases,
+                int topK,
+                boolean expectEmpty) {
+            this(id, kind, query, expectedSources, allowedBases, topK, expectEmpty, null);
         }
     }
 
@@ -66,6 +83,7 @@ public final class RetrievalBaseline {
             List<CaseResult> results,
             double directRecallAtK,
             double chineseRecallAtK,
+            double rankingPassRate,
             int authzFailures,
             int emptyFailures,
             long totalSearchDurationMs) {
@@ -76,6 +94,7 @@ public final class RetrievalBaseline {
         public boolean meetsDeclaredThresholds() {
             return directRecallAtK >= DIRECT_RECALL_AT_K_THRESHOLD
                     && chineseRecallAtK >= CHINESE_RECALL_AT_K_THRESHOLD
+                    && rankingPassRate >= RANKING_PASS_THRESHOLD
                     && authzFailures == 0
                     && emptyFailures == 0;
         }
@@ -92,6 +111,7 @@ public final class RetrievalBaseline {
         if (metering.isBlank()) throw new IllegalArgumentException("metering");
         var results = new ArrayList<CaseResult>();
         int directHit = 0, directTotal = 0, chineseHit = 0, chineseTotal = 0;
+        int rankingHit = 0, rankingTotal = 0;
         int authzFailures = 0, emptyFailures = 0;
         long totalMs = 0;
         for (var testCase : cases) {
@@ -135,20 +155,29 @@ public final class RetrievalBaseline {
                     if (best == null) best = i + 1;
                 }
             }
-            boolean passed = hitCount > 0;
+            boolean recalled = hitCount > 0;
+            boolean rankingOk = testCase.expectedMaxRank() == null
+                    || (best != null && best <= testCase.expectedMaxRank());
+            boolean passed = recalled && rankingOk;
+            String failure = !recalled ? "MISS" : (!rankingOk ? "RANK_TOO_LOW" : "");
+
             if (testCase.kind().equals("direct") || testCase.kind().equals("identifier")) {
                 directTotal++;
-                if (passed) directHit++;
+                if (recalled) directHit++;
             } else if (testCase.kind().equals("chinese")) {
                 chineseTotal++;
-                if (passed) chineseHit++;
+                if (recalled) chineseHit++;
+            } else if (testCase.kind().equals("ranking") || testCase.expectedMaxRank() != null) {
+                rankingTotal++;
+                if (passed) rankingHit++;
             }
             results.add(new CaseResult(testCase.id(), testCase.kind(), passed, hitCount,
-                    testCase.expectedSources().size(), best, hits.size(), passed ? "" : "MISS", durationMs));
+                    testCase.expectedSources().size(), best, hits.size(), failure, durationMs));
         }
         double direct = directTotal == 0 ? 1.0 : (double) directHit / directTotal;
         double chinese = chineseTotal == 0 ? 1.0 : (double) chineseHit / chineseTotal;
-        return new Report(metering, List.copyOf(results), direct, chinese, authzFailures, emptyFailures, totalMs);
+        double ranking = rankingTotal == 0 ? 1.0 : (double) rankingHit / rankingTotal;
+        return new Report(metering, List.copyOf(results), direct, chinese, ranking, authzFailures, emptyFailures, totalMs);
     }
 
     private static CaseResult failed(Case testCase, List<Hit> hits, String failure, long durationMs) {
@@ -174,6 +203,22 @@ public final class RetrievalBaseline {
                         Set.of("secrets/foreign.md"), Set.of(authorizedBase), DEFAULT_TOP_K, false),
                 new Case("update-after-edit", "direct", "needle updated-private",
                         Set.of("docs/needle.md"), Set.of(authorizedBase), DEFAULT_TOP_K, false)
+        );
+    }
+
+    /**
+     * Ranking-quality samples: gold source must beat intentional distractors within expectedMaxRank.
+     * Separate from recall fixtures so DB contrast of fixtureCases stays unchanged.
+     */
+    public static List<Case> rankingFixtureCases(UUID authorizedBase) {
+        Objects.requireNonNull(authorizedBase, "authorizedBase");
+        return List.of(
+                new Case("rank-git-status-top1", "ranking", "git status 只读工具",
+                        Set.of("tools/git-status.md"), Set.of(authorizedBase), DEFAULT_TOP_K, false, 1),
+                new Case("rank-wire-api-top1", "ranking", "wireApi responses protocol",
+                        Set.of("models/wire-api.md"), Set.of(authorizedBase), DEFAULT_TOP_K, false, 1),
+                new Case("rank-context-budget-top1", "ranking", "如何配置上下文预算",
+                        Set.of("chat/context-budget.md"), Set.of(authorizedBase), DEFAULT_TOP_K, false, 1)
         );
     }
 }

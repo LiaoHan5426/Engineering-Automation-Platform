@@ -17,7 +17,7 @@
 | 模型与工具循环 | `backend/pom.xml` 使用 Boot 4.1.1 / Spring AI 2.0.2；`EngineeringAiConfiguration` 使用官方 Memory/ToolCalling Advisor | 配置成功不证明供应商效果；不据此添加第二套循环 |
 | 会话记忆 | 20条模型窗口；**MEM-01** 工作记忆分层+PUT/UI（含约束/事实展示）+本地持久+Task/Run+知识/Skill 依赖对抗失效 | 模型窗口仍非跨重启；UI 历史在浏览器；长期记忆未启动；sticky 清空保护未取消 |
 | 敏感上下文 | `AiConversationRegistry.clearContextMemory`：知识/Skill一旦使用，后续每轮先清空模型记忆，包括移除资源和被拒请求 | 连续对话被主动牺牲；不能简单取消清空，派生回答也可能保留撤权知识 |
-| 检索 | PostgreSQL FTS/关键词 + 专家授权引用；**KR-01**：离线 `KEYWORD_PROBE` + `POSTGRES_FTS` 适配 + 每题延迟观测 | 无向量；本机实库同题跑通/排序质量仍缺；引用不证明模型正确使用；KR-02 未触发 |
+| 检索 | PostgreSQL FTS/关键词 + 专家授权引用；**KR-01**：离线 `KEYWORD_PROBE` + `POSTGRES_FTS` 适配 + 每题延迟观测 + 排序质量样本（干扰语料/`expectedMaxRank`） | 无向量；生产样本与真实 FTS 排序对照仍待；引用不证明模型正确使用；KR-02 未触发 |
 | 上下文 | `TaskContext`/`AiChatApplication` 拼装；**CE-01 首片**：`ContextBudget` 字符预算/输出预留/超限观测（CHAR_ESTIMATE） | 非 provider token；无压缩选择策略；ChatMemory 未精确计量（标 UNKNOWN）；派生失效仍靠清空保护 |
 | 工具调用 | Java Handler可直接执行本地逻辑；CLI经 `CliOperationHandler` / `CliExecutionService` / `DefaultProcessExecutor`，使用argv与cwd；Chat当前受控工具为只读gitStatus | 不是所有工具都走Shell，也不是目录中的工具都向模型开放；cwd限制不是OS沙箱 |
 | CLI管理 | `CliProgramService` / `/api/cli-programs` 与 `CliProgramManager.vue` 可登记程序、路径及固定参数操作；`LocalBinaries` 查PATH或指定文件 | 登记不安装；缺少受管版本、来源、更新、回滚、卸载与依赖管理 |
@@ -54,6 +54,8 @@
 **KR-01 本机实库对照（2026-11-07）**：用 IDEA 运行配置中的本机口令（未写入仓库）执行 `RetrievalBaselineDbContrastTest`：**1 通过**，同题阈值与 `KEYWORD_PROBE` 对照满足。排序质量/生产样本仍待；未启动 KR-02。
 
 **KR-01 延迟观测（2026-11-07，离线）**：`RetrievalBaseline.CaseResult.durationMs` 与 `Report.totalSearchDurationMs` 记录每题检索耗时；不设通过阈值（成本账证据），`RetrievalBaselineTest` 校验汇总一致。未启动 KR-02。
+
+**KR-01 排序质量样本（2026-11-07，离线）**：`rankingFixtureCases` 三题要求金标源 `expectedMaxRank=1`；`KeywordRetrievalProbe.rankingCorpus` 加入弱干扰文档；`Report.rankingPassRate` 阈值 `RANKING_PASS_THRESHOLD=1.0`；失败标 `RANK_TOO_LOW`。`RetrievalBaselineTest` 7 项通过。仍为 `KEYWORD_PROBE`，不是 PostgreSQL `ts_rank` 或生产样本；未启动 KR-02。
 
 **MEM-01 首片（2026-11-07，离线）**：`TaskWorkingMemory` 保存目标/约束/事实引用/证据引用/依赖键（无正文）；与 `display_history`/`model_window`/`binding` 分层。`clearContextMemory` 与换模 `bind(..., clearMemory=true)` 失效工作记忆；sticky 清空保护不取消。会话响应附带快照。`TaskWorkingMemoryTest` 通过。
 
@@ -201,7 +203,7 @@ mock 可信目录返回启用 `git-status`；`invoke` 默认成功 stdout，`moc
 | 顺序 / ID | 最小范围与依赖 | 退出证据 |
 |---|---|---|
 | 先保留缺陷门禁 | 场景保存UNKNOWN后的删除核对仍阻断；已有自身改页验收线独立推进 | 结果未知不误报删除/完成；原有交付证据保留 |
-| CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 回合预算/超限（浏览器已验）；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS 适配；每题延迟观测 + 本机实库对照 | CE-01 剩余 token/压缩/Memory 计量与用户接受；KR-01 排序质量样本；KR-02 仅证据触发 |
+| CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 回合预算/超限（浏览器已验）；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS 适配；每题延迟观测 + 本机实库对照 + 排序质量样本 | CE-01 剩余 token/压缩/Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
 | FS-01 | 数据根、目录归属与前端/本机执行分界；盘点旧数据 | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | 可信定义发现与已知CLI绑定，先复用现有Git能力；受管包/MCP/插件来源随对应切片接入 | 无需重复录入、路径来源/冲突/未知版本、停用保留、失效与执行快照；不执行未知脚本、不整盘扫描或自动授权 |
 | TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消呈现与 Abort 取消（浏览器已验） | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |

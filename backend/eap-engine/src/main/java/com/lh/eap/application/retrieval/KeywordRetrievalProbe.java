@@ -76,4 +76,20 @@ public final class KeywordRetrievalProbe {
                         "完全无关的桌面外壳布局说明，不应被虚构主题命中。")
         ));
     }
+
+    /**
+     * Ranking corpus: baseline docs plus weaker distractors that share partial tokens.
+     * Gold sources in {@link RetrievalBaseline#rankingFixtureCases} must still rank first.
+     */
+    public static KeywordRetrievalProbe rankingCorpus(UUID authorizedBase, UUID foreignBase) {
+        var base = fixtureCorpus(authorizedBase, foreignBase).documents();
+        var docs = new ArrayList<>(base);
+        docs.add(new Document("d8", "tools/git-help.md", authorizedBase,
+                "git 帮助：clone commit push pull，介绍常见写操作命令，不谈 status 只读检查。"));
+        docs.add(new Document("d9", "models/wire-notes.md", authorizedBase,
+                "wire 连接笔记：记录超时与重试，未写 responses protocol 或代码提案。"));
+        docs.add(new Document("d10", "chat/budget-ui.md", authorizedBase,
+                "预算界面布局与按钮文案，不含上下文计量、输出预留或超限拒绝逻辑。"));
+        return new KeywordRetrievalProbe(docs);
+    }
 }

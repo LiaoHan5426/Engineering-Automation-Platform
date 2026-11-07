@@ -72,4 +72,47 @@ class RetrievalBaselineTest {
         var probe = KeywordRetrievalProbe.fixtureCorpus(authorized, UUID.randomUUID());
         assertEquals(List.of(), probe.search("git status", 5, Set.of()));
     }
+
+    @Test
+    void rankingFixtureBeatsDistractorsAtExpectedMaxRank() {
+        var authorized = UUID.randomUUID();
+        var foreign = UUID.randomUUID();
+        var probe = KeywordRetrievalProbe.rankingCorpus(authorized, foreign);
+        var report = RetrievalBaseline.evaluate(
+                RetrievalBaseline.rankingFixtureCases(authorized),
+                testCase -> probe.search(testCase.query(), testCase.topK(), testCase.allowedBases()));
+        assertEquals(1.0, report.rankingPassRate());
+        assertTrue(report.meetsDeclaredThresholds());
+        assertTrue(report.results().stream().allMatch(RetrievalBaseline.CaseResult::passed));
+        for (var result : report.results()) {
+            assertNotNull(result.bestRank());
+            assertEquals(1, result.bestRank());
+            assertEquals("", result.failure());
+        }
+    }
+
+    @Test
+    void rankingFailureWhenGoldIsNotFirst() {
+        var authorized = UUID.randomUUID();
+        var probe = new KeywordRetrievalProbe(List.of(
+                new KeywordRetrievalProbe.Document("noise", "tools/git-help.md", authorized,
+                        "git status 只读工具"),
+                new KeywordRetrievalProbe.Document("gold", "tools/git-status.md", authorized,
+                        "git 仓库状态检查说明")));
+        var report = RetrievalBaseline.evaluate(
+                List.of(new RetrievalBaseline.Case(
+                        "rank-should-fail",
+                        "ranking",
+                        "git status 只读工具",
+                        Set.of("tools/git-status.md"),
+                        Set.of(authorized),
+                        5,
+                        false,
+                        1)),
+                testCase -> probe.search(testCase.query(), testCase.topK(), testCase.allowedBases()));
+        assertEquals(0.0, report.rankingPassRate());
+        assertFalse(report.meetsDeclaredThresholds());
+        assertEquals("RANK_TOO_LOW", report.results().getFirst().failure());
+        assertTrue(report.results().getFirst().bestRank() > 1);
+    }
 }
