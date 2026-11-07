@@ -2,6 +2,7 @@ package com.lh.eap.runtime.mcp.client;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import java.util.Map;
  */
 public final class McpProtocolClient {
     public static final String PROTOCOL_VERSION = "2024-11-05";
+    public static final int MAX_TOOL_LIST_PAGES = 32;
 
     private final McpTransport transport;
     private final Duration timeout;
@@ -43,9 +45,30 @@ public final class McpProtocolClient {
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> listTools() {
         requireReady();
-        var result = call("tools/list", Map.of());
-        if (!(result.get("tools") instanceof List<?> tools)) return List.of();
-        return tools.stream().filter(Map.class::isInstance).map(item -> (Map<String, Object>) item).toList();
+        var all = new ArrayList<Map<String, Object>>();
+        String cursor = null;
+        for (int page = 0; page < MAX_TOOL_LIST_PAGES; page++) {
+            var params = new LinkedHashMap<String, Object>();
+            if (cursor != null) params.put("cursor", cursor);
+            var result = call("tools/list", params);
+            if (result.get("tools") instanceof List<?> tools) {
+                for (var item : tools) {
+                    if (item instanceof Map<?, ?> row) {
+                        var typed = new LinkedHashMap<String, Object>();
+                        for (var entry : row.entrySet()) {
+                            if (entry.getKey() instanceof String key) typed.put(key, entry.getValue());
+                        }
+                        all.add(Map.copyOf(typed));
+                    }
+                }
+            }
+            if (result.get("nextCursor") instanceof String next && !next.isBlank()) {
+                cursor = next;
+            } else {
+                return List.copyOf(all);
+            }
+        }
+        throw new McpProtocolException("MCP_TOOL_LIST_PAGE_LIMIT", -1);
     }
 
     public Map<String, Object> callTool(String name, Map<String, Object> arguments) {

@@ -14,10 +14,16 @@ public final class InMemoryMcpServer {
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     private final Set<String> allowedTools;
+    private final int pageSize;
     private final AtomicBoolean closed = new AtomicBoolean();
 
     public InMemoryMcpServer(java.util.Collection<String> allowedTools) {
+        this(allowedTools, Integer.MAX_VALUE);
+    }
+
+    public InMemoryMcpServer(java.util.Collection<String> allowedTools, int pageSize) {
         this.allowedTools = Set.copyOf(allowedTools);
+        this.pageSize = Math.max(1, pageSize);
     }
 
     public boolean closed() {
@@ -44,10 +50,29 @@ public final class InMemoryMcpServer {
                     "protocolVersion", McpProtocolClient.PROTOCOL_VERSION,
                     "capabilities", Map.of("tools", Map.of()),
                     "serverInfo", Map.of("name", "in-memory", "version", "0.1")));
-            case "tools/list" -> success(id, Map.of("tools", allowedTools.stream().map(InMemoryMcpServer::toolSchema).toList()));
+            case "tools/list" -> listTools(id, params(request));
             case "tools/call" -> handleCall(id, params(request));
             default -> error(id, -32601, "METHOD_NOT_FOUND");
         };
+    }
+
+    private String listTools(Object id, Map<String, Object> params) {
+        var ordered = allowedTools.stream().sorted().map(InMemoryMcpServer::toolSchema).toList();
+        int offset = 0;
+        if (params.get("cursor") instanceof String cursor && !cursor.isBlank()) {
+            try {
+                offset = Integer.parseInt(cursor);
+            } catch (NumberFormatException invalid) {
+                return error(id, -32602, "INVALID_CURSOR");
+            }
+        }
+        if (offset < 0 || offset > ordered.size()) return error(id, -32602, "INVALID_CURSOR");
+        int end = Math.min(offset + pageSize, ordered.size());
+        var page = ordered.subList(offset, end);
+        var result = new LinkedHashMap<String, Object>();
+        result.put("tools", page);
+        if (end < ordered.size()) result.put("nextCursor", Integer.toString(end));
+        return success(id, result);
     }
 
     private String handleCall(Object id, Map<String, Object> params) {

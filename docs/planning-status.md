@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / b08f3f3`（MEM-01 对抗失效）。历史全量数字仅为既往证据。本轮离线：`WorkingMemoryAdversarialTest` 通过；sticky 清空未取消。浏览器/用户接受仍待。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / b9883cf`（MEM-01 对抗台账）+ 本轮 MCP-01 官方只读 stdio（未提交）。历史全量数字仅为既往证据。本轮：`McpToolListPaginationTest` 与 `OfficialReadonlyMcpStdioTest`（`EAP_RUN_MCP_OFFICIAL`）通过。浏览器/用户接受仍待。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
@@ -33,7 +33,7 @@
 | CT-01 生命周期 | 记录回放/UNKNOWN阻塞保留；同ID重连+草稿重试保留；**本轮追加**：聊天主路径改为 SSE（`answer.delta`/`tool`/`final`）、`POST …/cancel`、执行快照游标、前端投影去重/缺序回归；`ChatExecutionStreamTest` 4项及前端 eventProjector/reconnect/wireApi 离线通过 | 用户重启后浏览器流式/取消/重连验收；不重放历史或宣称模型记忆恢复；跨重启进程接管仍待 |
 | RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与测试接受/拒绝决定已有刷新回放 | EAP自身改页完整证据、SQL实际任务证据及用户接受；不重复开发已有决定回放 |
 | Skill | 文本上传/粘贴+显式文本资源、不可变版本、CAS启停/回退、按需预览与Chat精确引用首片已实现；安全/保存恢复缺陷修复后父任务前端525项、后端647项（6跳过）、实库/浏览器及独立复核通过；见 [阶段记录](records/resource-history.md#skill-text-import) | 目录/仓库导入延期；不执行脚本或授予工具权限，不支持通用mock YAML解析；真实供应商效果与用户最终验收待定 |
-| MCP-01 / P0 | **部分交付**：进程内 Client + stdio 子进程传输（命令解析/禁 shell、超时、destroy）；registry 暴露 endpoint；`StdioMcpTransportTest` 3 项及既有 MCP/能力回归通过 | 外部官方只读 MCP 包实网验收、分页发现、http/sse；付费模型无关 |
+| MCP-01 / P0 | **部分交付**：stdio Client；**tools/list 分页**；锁定 `@modelcontextprotocol/server-everything@2.2.1`；`OfficialReadonlyMcpStdioTest`（echo 只读 call）通过 | http/sse、生产授权白名单、更多官方包矩阵；付费模型无关 |
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理 | 检索更新删除/来源与专家范围，SQL真实任务，CLI生命周期回归；不扩第二套执行器 |
 | PL-01 / P0 看板插件首片 | **部分交付**：board 纳入可信预装 Manifest/Host，启停隐藏导航、持久化失败回滚；插件单测 19 项通过；不停 Task/Run | 服务依赖/激活失败矩阵与刷新实例隔离的浏览器验收；外部安装器延期 |
 | PL-02 / P1 设计器插件 | GrapesJS/Schema/版本已有；尚未按通用贡献机制迁移 | PL-01后复用现有设计器、版本和核心API，验证停用不丢草稿/版本；外部任意JS安装延期 |
@@ -69,7 +69,7 @@ CP-03用户标注Comment 1已做限定调整：模型/发送成组靠右，缺�
 后续只安排剩余关口，不从头重复上述切片；技术细节与退出矩阵见[技术路线决定](decisions/agent-runtime-evolution.md#7-分阶段切片与退出门禁)：
 
 1. **工程交付验收线**：用户确认目标页面、设计、允许范围和真实供应商/Agent调用后，复用PREBOUND与现有应用/验证/决定链走一次EAP自身改页；授权未具备时保持待验收，不伪造模型结果。
-2. **上下文与资源能力线**：CE-01/KR-01(含 FTS 适配)/MCP-01(stdio)/MEM-01（含对抗失效）离线首片已落地；下一步本机 KR-01 实库同题跑通、或外接官方只读 MCP。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
+2. **上下文与资源能力线**：CE-01/KR-01(含 FTS 适配)/MCP-01(stdio+官方只读包)/MEM-01（含对抗失效）离线首片已落地；下一步本机 KR-01 实库同题跑通、或 MCP http/sse。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
 3. **工具与本地环境线**：TD-01自动汇总可信定义/已知依赖绑定，与TC-01调用/呈现合同共同从现有Git首片验证；TC-02后续人工验证前端实例，反向Agent调用另批。发现不等于授权，Java执行不需前端复制实现。FS-01先确认数据/临时目录和旧数据迁移，再做TM-01一个受管工具，不把安装作为系统工具调用的前置。sidecar/包验证独立推进；签名待凭据/发行决定。
 4. **可信插件与场景线**：PL-01先迁现有看板贡献，不改核心Task/Run；再做PL-02设计器与SC-03场景依赖，保留版本/候选/产物和五入口合同。外部安装器/市场/第三方隔离延期；不先建空SDK。
 5. **总体质量与接受**：持续全页面真实系统缩放/焦点/错误矩阵、SQL/CLI剩余业务回归、其他mock合同复核和构建包体积评估；最终由用户逐项接受。资源和桌面不必成为单页面交付的前置。
