@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main`（待提交官方只读包矩阵 + KR-01 实库对照证据；含 `3b0cfcd` GET 续传）。历史全量数字仅为既往证据。本轮：`OfficialReadonlyMcpMatrix`（可扩展 Entry，当前 everything@2.2.1/`echo`）；`RetrievalBaselineDbContrastTest` 实库 1 项通过（IDEA 本机口令，未写入仓库）；能力页展示生产矩阵，mock 浏览器已验。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 3ee7489`（官方只读包矩阵 + KR-01 实库对照；含 `3b0cfcd` GET 续传）。历史全量数字仅为既往证据。本轮：`OfficialReadonlyMcpMatrix`（可扩展 Entry，当前 everything@2.2.1/`echo`）；`RetrievalBaselineDbContrastTest` 实库 1 项通过（IDEA 本机口令，未写入仓库）；能力页展示生产矩阵，mock 浏览器已验。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
