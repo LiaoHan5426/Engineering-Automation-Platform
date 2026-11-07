@@ -6,7 +6,7 @@
 
 ## 当前基线与完成口径
 
-当前工作基线：`main /`（三切片并行：MCP memory 矩阵 + TD-01 探测持久化 + FS-01 迁移就绪盘点；提交后回填 SHA）。历史全量数字仅为既往证据。本轮：① MCP-01 追加 `@modelcontextprotocol/server-memory@2025.11.25`/`read_graph`（矩阵/白名单/mock；门禁 stdio 用例已加，未开 `EAP_RUN_MCP_OFFICIAL`）；② TD-01 探测写回 `.eap/cache/trusted-tool-probes.json`，重建目录可读；③ FS-01 `migrationReadiness` 只读候选盘点（`physicalMigration=false`）。能力页浏览器已验矩阵三包 + 持久化写回文案/离页回读。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
+当前工作基线：`main / 004d2b4`（三切片并行：MCP memory 矩阵 + TD-01 探测持久化 + FS-01 迁移就绪盘点）。历史全量数字仅为既往证据。本轮：① MCP-01 追加 `@modelcontextprotocol/server-memory@2025.11.25`/`read_graph`（矩阵/白名单/mock；门禁 stdio 用例已加，未开 `EAP_RUN_MCP_OFFICIAL`）；② TD-01 探测写回 `.eap/cache/trusted-tool-probes.json`，重建目录可读；③ FS-01 `migrationReadiness` 只读候选盘点（`physicalMigration=false`）。能力页浏览器已验矩阵三包 + 持久化写回文案/离页回读。不整盘扫描、不执行物理迁移、不开放任意执行口。`application.yml` 本地密钥不得提交。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
