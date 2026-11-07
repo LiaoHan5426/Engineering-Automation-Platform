@@ -14,8 +14,20 @@ class OfficialReadonlyMcpMatrixTest {
         assertEquals("echo", primary.preferredTool());
         assertEquals(List.of("echo"), primary.readonlyTools());
         assertTrue(OfficialReadonlyMcpMatrix.findByEndpoint(primary.endpoint()).isPresent());
-        assertEquals(1, OfficialReadonlyMcpMatrix.views().size());
+        assertEquals(2, OfficialReadonlyMcpMatrix.views().size());
         assertEquals("echo", OfficialReadonlyMcpMatrix.views().getFirst().get("preferredTool"));
+    }
+
+    @Test
+    void secondEntryPinsSequentialThinkingReadonlyTool() {
+        var entry = OfficialReadonlyMcpMatrix.ENTRIES.get(1);
+        assertEquals("@modelcontextprotocol/server-sequential-thinking", entry.packageName());
+        assertEquals("0.6.2", entry.version());
+        assertEquals(List.of("sequentialthinking"), entry.readonlyTools());
+        assertEquals("sequentialthinking", entry.preferredTool());
+        assertTrue(OfficialReadonlyMcpMatrix.findByEndpoint(entry.endpoint()).isPresent());
+        assertTrue(McpProductionAllowlist.productionGranted(entry.endpoint(), "sequentialthinking"));
+        assertFalse(McpProductionAllowlist.productionGranted(entry.endpoint(), "echo"));
     }
 
     @Test

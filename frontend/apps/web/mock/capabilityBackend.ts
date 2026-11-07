@@ -11,6 +11,14 @@ export function createMockCapabilityBackend() {
       readonlyTools: ['echo'],
       preferredTool: 'echo',
     },
+    {
+      packageName: '@modelcontextprotocol/server-sequential-thinking',
+      version: '0.6.2',
+      packageAtVersion: '@modelcontextprotocol/server-sequential-thinking@0.6.2',
+      endpoint: 'npx -y @modelcontextprotocol/server-sequential-thinking@0.6.2',
+      readonlyTools: ['sequentialthinking'],
+      preferredTool: 'sequentialthinking',
+    },
   ]
   const mcpServers = [
     {

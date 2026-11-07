@@ -53,7 +53,13 @@ public final class OfficialReadonlyMcpMatrix {
                     "@modelcontextprotocol/server-everything",
                     "2.2.1",
                     List.of("echo"),
-                    "echo"));
+                    "echo"),
+            // Verified 2026-11-07 via stdio tools/list + tools/call (thought probe); low side-effect.
+            new Entry(
+                    "@modelcontextprotocol/server-sequential-thinking",
+                    "0.6.2",
+                    List.of("sequentialthinking"),
+                    "sequentialthinking"));
 
     private OfficialReadonlyMcpMatrix() {}
 

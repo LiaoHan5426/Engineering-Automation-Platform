@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { createMockCapabilityBackend } from '../../mock/capabilityBackend'
 
 describe('mock capabilityBackend trusted git (TC-01)', () => {
+  it('exposes both official readonly matrix packages', async () => {
+    const backend = createMockCapabilityBackend()
+    const reply = await backend.handle('GET', '/capabilities')
+    const matrix = (reply?.data as { mcpProductionMatrix: Array<{ packageAtVersion: string }> })
+      .mcpProductionMatrix
+    expect(matrix.map((item) => item.packageAtVersion)).toEqual([
+      '@modelcontextprotocol/server-everything@2.2.1',
+      '@modelcontextprotocol/server-sequential-thinking@0.6.2',
+    ])
+  })
+
   it('lists enabled git-status in the trusted catalog', async () => {
     const backend = createMockCapabilityBackend()
     const reply = await backend.handle('GET', '/runtime/trusted-tools')

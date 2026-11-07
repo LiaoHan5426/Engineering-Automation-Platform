@@ -76,7 +76,7 @@
 - **MCP-01 Streamable-HTTP（2026-11-07）**：`StreamableHttpMcpTransport` 对 `transport=streamable-http`：POST 带双 Accept，接受 JSON 或 SSE 响应，捕获/回传 `MCP-Session-Id`，close 时尽力 DELETE；`StreamableHttpMcpTransportTest` 通过。不宣称生产授权或 GET 续传。
 - **MCP-01 生产授权白名单（2026-11-07）**：`McpProductionAllowlist` 锁定允许传输（含 streamable-http）与官方只读包 `echo`；信任官方包时拒绝越权工具；list/probe 回传 `productionGrantedTools`；调用路径再校验。非官方信任仍为操作者声明。`McpProductionAllowlistTest` 通过。
 - **MCP-01 Streamable-HTTP GET 续传（2026-11-07）**：`StreamableHttpMcpTransport` 记录 SSE `id`/`retry`；POST SSE 未拿到匹配响应时带 `Last-Event-ID` GET 续传；`StreamableHttpMcpTransportTest` 含断流重连用例。不宣称常驻 listen 线程。
-- **MCP-01 官方只读包矩阵（2026-11-07）**：`OfficialReadonlyMcpMatrix` 可扩展 Entry；当前锁定 `@modelcontextprotocol/server-everything@2.2.1`/`echo`；生产白名单与能力页 `mcpProductionMatrix` 共用；`OfficialReadonlyMcpMatrixTest` + 门禁 stdio 通过。追加包须先验工具存在。
+- **MCP-01 官方只读包矩阵（2026-11-07）**：`OfficialReadonlyMcpMatrix` 可扩展 Entry；锁定 `@modelcontextprotocol/server-everything@2.2.1`/`echo` 与 `@modelcontextprotocol/server-sequential-thinking@0.6.2`/`sequentialthinking`；生产白名单与能力页 `mcpProductionMatrix` 共用；矩阵/白名单单测 + 门禁 stdio（含第二包 call）通过；mock 浏览器已验双条目。追加包须先验工具存在。
 - 本地stdio进程的argv、cwd、环境和生命周期仍须约束；远端目标的认证/网络范围独立处理。MCP Roots及工具只读标注不是强制沙箱。不先将已有Java/CLI能力全部包装为MCP Server。
 - A2A与EAP作为MCP Server延期至明确互操作需求；不得为对齐教材章节而全部实施。
 - LangChain4j对照仅在自主协作等明确需求，或Spring AI出现可复现阻碍时启动。相同模型、业务样例、授权和验收合同下比较复杂度、正确性、token成本、延迟、取消/错误处理、兼容性与迁移回归；不预设胜者。具体版本、Java25/Boot4.1.1兼容性及模块稳定性待实验验证。
@@ -206,7 +206,7 @@ mock 可信目录返回启用 `git-status`；`invoke` 默认成功 stdout，`moc
 | TD-01 / P0 | 可信定义发现与已知CLI绑定，先复用现有Git能力；受管包/MCP/插件来源随对应切片接入 | 无需重复录入、路径来源/冲突/未知版本、停用保留、失效与执行快照；不执行未知脚本、不整盘扫描或自动授权 |
 | TC-01 / P0 | **部分交付**：目录→只读 git-status API + 能力页；mock 成功/拒绝/超时/取消呈现与 Abort 取消（浏览器已验） | 真实 git 拒绝/超时/取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
 | TC-02 / P1 | TC-01职责合同后验证前端交互实例，协调实际Host而非等待完整SDK | 人工读取草稿/选中状态、多实例/revision/关闭断线、保存版本区别；模型反向调用另行评审 |
-| MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵 + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传；假子进程与拒绝/超时/隔离已有证据 | 追加已验证官方包条目；常驻 GET listen 未做 |
+| MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（everything + sequential-thinking）+ http + legacy SSE + Streamable-HTTP + 生产白名单 + GET/Last-Event-ID 续传 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/持久化回滚 + 依赖缺失/激活失败呈现（mock 浏览器已验）；不改 Task/Run | 真实服务探测与用户接受；在途停用完整矩阵；无第二状态源；外部安装器延期 |
 | MEM-01 | **部分交付**：状态机+PUT/UI（约束/事实展示）+本地持久+Task/Run+知识/Skill 依赖对抗失效；敏感清空/换模/换任务/换依赖失效；显式删除清盘；mock 浏览器验目标/约束 | sticky 清空仍保留；用户产品接受仍待；长期自动抽取延期 |
 | TM-01 | FS-01后做一个受管工具，复用CLI登记 | 锁版本/校验、失败回滚、实际调用、在途卸载阻止；不更改系统工具 |

@@ -39,8 +39,33 @@ class OfficialReadonlyMcpStdioTest {
                             .map(tool -> tool.get("name")).toList());
             var result = client.callTool(OfficialReadonlyMcpLock.READONLY_TOOL, Map.of("message", "eap-readonly"));
             assertNotEquals(Boolean.TRUE, result.get("isError"));
-            assertEquals(1, OfficialReadonlyMcpMatrix.ENTRIES.size());
+            assertEquals(2, OfficialReadonlyMcpMatrix.ENTRIES.size());
             assertEquals(OfficialReadonlyMcpMatrix.primary().preferredTool(), OfficialReadonlyMcpLock.READONLY_TOOL);
+            client.close();
+            assertFalse(transport.alive());
+        }
+    }
+
+    @Test
+    void initializeListAndCallSequentialThinkingMatrixEntry() throws Exception {
+        var entry = OfficialReadonlyMcpMatrix.ENTRIES.get(1);
+        assertEquals("@modelcontextprotocol/server-sequential-thinking", entry.packageName());
+        var npx = resolveNpx();
+        assumeTrue(npx != null, "npx executable required for official MCP stdio contrast");
+        var command = new ArrayList<>(entry.argv(npx));
+        try (var transport = StdioMcpTransport.start(command, Path.of("").toAbsolutePath())) {
+            var client = new McpProtocolClient(transport, Duration.ofSeconds(90));
+            client.initialize();
+            var tools = client.listTools();
+            assertTrue(tools.stream().anyMatch(tool -> entry.preferredTool().equals(tool.get("name"))),
+                    () -> "missing " + entry.preferredTool() + " in " + tools.stream()
+                            .map(tool -> tool.get("name")).toList());
+            var result = client.callTool(entry.preferredTool(), Map.of(
+                    "thought", "eap-matrix-probe",
+                    "nextThoughtNeeded", false,
+                    "thoughtNumber", 1,
+                    "totalThoughts", 1));
+            assertNotEquals(Boolean.TRUE, result.get("isError"));
             client.close();
             assertFalse(transport.alive());
         }
