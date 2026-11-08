@@ -1,10 +1,9 @@
 # Architecture
 
-2026-10-24 implementation update: chat now accepts selected expert guidance, user-selected text files and
-saved prototype references, and can produce reviewable source proposals through the selected Spring AI
-connection. Writes are separately confirmed, workspace-bound and never imply build/test verification.
-The existing SQL workflow remains available; it is not the required entry for general engineering tasks.
-See [the bounded task slice](decisions/chat-engineering-task-slice.md) for actual scope and limitations.
+Implementation baseline: `2c7e87b` (2026-11-09). Current scope and validation are maintained in
+[the acceptance ledger](planning-status.md#validation-baseline); detailed dated evidence belongs in
+[topic records](records/README.md). The module decision defines composition and remaining coupling;
+the expert workspace decision defines the shared three-pane editor and domain ownership.
 
 The platform is a cross-platform engineering console: a Vue frontend, a **local Java service** on the
 operator's machine, and optional Python **install/bootstrap** tooling (not an agent host). Its
@@ -21,7 +20,7 @@ is fixed here.
 ```text
 frontend/            Vue 3 + TypeScript monorepo (Vite+ / pnpm)
   apps/web           browser console (product UI)
-  packages/ui        shared presentational primitives (all basic chrome)
+  packages/ui        shared primitives and layout (including EditorWorkbench)
   packages/runtime-client HTTP client and shared API types, exported through a package entry point
   packages/expert-sdk typed expert authoring DSL (compile-to-manifest, tooling only)
   internal/tsconfig  shared TypeScript configuration, published as @eap/tsconfig
@@ -48,8 +47,8 @@ components instead of scanning every EAP package. Default library wiring does no
 
 Deterministic proposal application/verification lives in `com.lh.eap.delivery`; Board and JDBC task adapters
 remain in workflow. Domain handlers live with SQL/knowledge/MCP, with SQL-specific knowledge hints supplied
-by a workflow adapter. Expert execution, the product catalog and CLI management still combine domains;
-AI codegen/context still contain product integration. See [implementation and remaining gates](decisions/backend-module-composition.md#implementation)
+by a workflow adapter. Expert analysis/resource ports and AI codegen/context queries no longer require the full workflow implementation.
+The workflow module, product catalog and CLI management still combine domains; product Chat orchestration remains partially coupled. See [implementation and remaining gates](decisions/backend-module-composition.md#implementation)
 and [module layout](module-layout.md). Historical five-module evidence remains in the architecture records.
 
 Frontend UI placement (primitives in `@eap/ui`, planned hooks/effects/layout/plugin modules, agent workflow)
@@ -297,4 +296,4 @@ wiring does not establish a framework limitation. Do not maintain parallel model
   called in a session owned by one execution — never in a session shared between experts.
 - Knowledge access is deny-by-default and every retrieved source is cited.
 - Rules are evaluated by the platform; experts cannot self-certify compliance.
-- A model is consulted only after deterministic evidence and only with a compressed, bounded prompt.
+- SQL enhancement follows deterministic evidence and a bounded prompt. Chat and autonomous SQL planning explicitly use models; all tool calls, writes and completion claims remain subject to authorization and independent evidence.

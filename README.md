@@ -2,15 +2,15 @@
 
 A cross-platform engineering console built on one rule: **deterministic first, model last.**
 
-Most "AI for engineering" tools send everything to a model. This platform runs local, deterministic
-capabilities first and turns their output into structured, citable evidence. A language model is
-consulted only when the deterministic result is explicitly *not* decisive — and when it is called,
-it receives a compressed, token-bounded, structured prompt instead of the raw artifact.
+Local capabilities produce structured, citable evidence without requiring a language model.
+The SQL analysis pipeline can use bounded model enhancement when deterministic evidence is insufficient.
+Chat and the versioned SQL Agent explicitly use a configured model; tool authorization, candidate
+approval and independent verification remain separate from model output. Model savings and quality
+must be measured for the actual workload, not inferred from this architecture.
 
-That produces two measurable outcomes:
-
-1. **Less dependency on models** — the common case never calls one.
-2. **Cheaper model calls** — each call is compressed, cached and its compression ratio is reported.
+The expert manager and GrapesJS prototype designer now share an independent three-pane editor.
+See the [documentation index](docs/README.md) and [current implementation/acceptance status](docs/planning-status.md#validation-baseline)
+for delivered scope, historical evidence and remaining user acceptance.
 
 ## Repository layout
 
@@ -81,26 +81,30 @@ consolidated into the canonical documents rather than maintained as parallel ins
 
 Requires JDK 25, Maven 3.9+, Node.js with pnpm 12, PostgreSQL, Git and ripgrep.
 
+Run the backend and frontend in separate terminals, each starting at the repository root.
+
 ```shell
-# Backend
+# Backend terminal
 cd backend
 mvn test
 mvn -pl :eap-full-application -am install -DskipTests
 mvn -pl :eap-full-application spring-boot:run
+```
 
-# Frontend
+```shell
+# Frontend terminal
 cd frontend
-vp install
+vp i
 vp build
-vp dev
+vpr dev
 ```
 
 The Maven run goal uses `backend/` as its working directory. If an existing installation uses another
 data directory, preserve it with `-Deap.run.working-directory=<original-absolute-directory>`; IDEA/JAR
 launches must retain their existing working directory. The module move does not migrate data.
 
-The model stage is **off by default**. Generic model integration uses Spring AI 2.0.2. To enable
-the official OpenAI provider (credentials are injected from the environment, never committed):
+The optional SQL enhancement stage is **off by default**. Generic model integration uses Spring AI 2.0.2. To enable
+the official OpenAI provider from `backend/` (POSIX shell example; credentials are injected, never committed):
 
 ```shell
 EAP_AI_PROVIDER=openai EAP_AI_MODEL=<api-model-id> OPENAI_API_KEY=<injected-secret> EAP_LLM_ENABLED=true \

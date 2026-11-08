@@ -13,7 +13,8 @@
 | 配置环境、迁移旧模型属性 | [environment](environment.md) |
 | 开发规范与验收要求 | [开发与验收指南](agent-development-guide.md) |
 | 找包、模块和验证入口 | [module-layout](module-layout.md)、[后端模块组合与实施](decisions/backend-module-composition.md#implementation) |
-| 本阶段提交范围、验证与剩余项 | [2026-11-08阶段收束](decisions/backend-module-composition.md#stage-checkpoint) |
+| 当前实现基线与最近验证 | [2c7e87b验收基线](planning-status.md#validation-baseline)；完整命令与证据进入主题记录 |
+| 专家管理、任务详情与三栏编辑 | [专家工作区合同](decisions/expert-workspace-navigation.md)，含原型设计器共享边界 |
 | **前端 UI / hooks·effects·layout·plugin 落点（Agent 强制）** | [frontend-ui-shared-module-boundaries](decisions/frontend-ui-shared-module-boundaries.md) |
 | 查 HTTP 接口与专家执行流程 | [backend-architecture](backend-architecture.md) |
 | 知识库能否本地执行、何时需要模型 | [知识与本地执行边界](decisions/knowledge-local-execution.md) |
@@ -29,18 +30,22 @@
 - [扩展边界决策](decisions/extension-boundaries.md)、[CLI/Codex 分阶段设计](decisions/p1-cli-codex-design.md)、[工具接入与运行边界](decisions/tool-integration-runtime-boundaries.md)：有效决策；工作区/配置口径以 [running-context](running-context.md) 为准。
 - [S1 Spring AI Chat 接入设计](decisions/s1-chat-spring-ai-design.md)：v1.6 最小 API/UI 方案；**实现与限制以 roadmap 与 chat-engineering-task-slice 为准**（勿把本 README 旧「尚未实施」句当作现状）。
 
-## 验收结论
+## 验收证据入口（按阶段区分）
 
-- [SQL Agent真实Responses整链](decisions/backend-module-composition.md#responses-tools-acceptance)：两轮取证/候选、页面审批、独立读回及重启终态；复杂SQL效果与用户接受仍独立。
+- [当前验证与待验项](planning-status.md#validation-baseline)：统一维护最近全量结果；本次文档整理未重跑应用验收。
+- [工作台交互记录](records/frontend-history.md#expert-workspace-evolution)：三栏编辑及审批UI技术检查，fixture写入与真实本地编辑分别标注；新工作台原生缩放和用户接受仍待。
+- [SQL Agent真实Responses整链](records/backend-composition-history.md#responses-tools-acceptance)：两轮取证/候选、页面审批、独立读回及重启终态；[复杂SQL限定样例](records/backend-composition-history.md#complex-sql-acceptance)不代表完整SQL效果或用户接受。
+
+以下为专项或早期阶段结论，使用时核对其日期、实现范围和当前台账：
 
 - [Spring AI 集成](audits/spring-ai-integration-report.md)、[统一化与清理](audits/spring-ai-consolidation-report.md)。
 - [扩展能力审计](audits/extension-capability-audit.md)、[P0 基线](audits/p0-validation-report.md)。
-- [P1-A](records/external-execution-history.md#p1-a-implementation-report)、[P1-B](records/external-execution-history.md#p1-b-implementation-report)、[P1-C 当前实现](records/external-execution-history.md#p1-c-implementation-report)。
+- [P1-A](records/external-execution-history.md#p1-a-implementation-report)、[P1-B](records/external-execution-history.md#p1-b-implementation-report)、[P1-C 阶段实现](records/external-execution-history.md#p1-c-implementation-report)。
 - [Codex 执行证据](records/external-execution-history.md#p1-c-execution-evidence-closure-report)、[真实委派结论](records/external-execution-history.md#p1-c-real-delegation-20261023-report)、[Windows 沙箱历史结论](records/external-execution-history.md#p1-c-windows-sandbox-compatibility-diagnosis)。
 
 ## 文档维护
 
-根目录保留长期使用说明和当前进度；**约束性定位以 `running-context.md` 为唯一事实源**。decisions 保存有效决策，records 按主题维护完整阶段记录，audits 保留未被主题总览取代的专项结论。日期写进章节，不再新建日期报告；合并时更新链接及稳定锚点，保留失败、跳过、授权和未完成证据。历史指令不重新生效。测试删改必须记录过时原因与覆盖去向，不以数量减少为质量指标。
+根目录保留长期使用说明和当前进度；**约束性定位以 `running-context.md` 为唯一事实源**。decisions 保存有效决策，records 按主题维护完整阶段记录，audits 保留未被主题总览取代的专项结论。当前完整状态统一维护在planning-status，roadmap只列推进顺序，主方案保留规范及验收行；其他文档引用验收基线，不复制“最新测试数”。日期写进章节，不再新建日期报告；合并时更新链接及稳定锚点，保留失败、跳过、授权和未完成证据。历史指令不重新生效。测试删改必须记录过时原因与覆盖去向，不以数量减少为质量指标。
 
 ### 2026-10-27 合并说明
 

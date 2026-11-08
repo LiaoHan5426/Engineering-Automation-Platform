@@ -65,7 +65,7 @@ apps/web/src
 | ConnectionDialog | `apps/web/src/components/ConnectionDialog.vue`（薄包装 Dialog） | 保持薄包装；壳能力只在 Dialog | 出现第三处平行弹层实现时必须删平行实现 |
 | SessionPanel / WorkspaceWelcome / RepositoryBrowser | `apps/web/src/components/`（聊天装配与会话轨共用；领域状态仍在 `features/shell`） | SessionPanel 的 Dock/Rail 契约 → `@eap/layout`；仓库 API 与懒加载留应用，通用 Tree 已在 UI 包；文件浮层组装 Drawer | 第二工作台复用同一 Dock/Rail 契约时抽 layout 包 |
 | WorkbenchFrame / Rail 网格 | `packages/ui/src/layout`（已定义并接入 Chat） | 暂存 `@eap/ui`；独立生命周期出现后再评估 `@eap/layout` | SessionPanel 的领域数据与 terminal 展示仍属应用组合 |
-| EditorWorkbench独立三栏壳（已实现） | `packages/ui/src/layout/EditorWorkbench.vue`及editor-workbench.css；公共导出，复用Splitter/Drawer，见[验收记录](expert-workspace-navigation.md) | `@eap/ui` L2受控子树；固定流程、SQL Agent、GrapesJS注入内容与领域操作 | 用户授权一次性接入；可调整/折叠/响应式侧面板，不持有领域API；134文件786项及浏览器技术回归通过，无新增插件运行时 |
+| EditorWorkbench独立三栏壳（已实现） | `packages/ui/src/layout/EditorWorkbench.vue`及editor-workbench.css；公共导出，复用Splitter/Drawer，见[验收记录](expert-workspace-navigation.md) | `@eap/ui` L2受控子树；固定流程、SQL Agent、GrapesJS注入内容与领域操作 | 用户授权一次性接入；可调整/折叠/响应式侧面板，不持有领域API；技术检查见[验收台账](../planning-status.md#validation-baseline)，无新增插件运行时 |
 | Tree / Tooltip / Segmented / DatePicker / Drawer / Splitter | `packages/ui/src` 对应目录（已定义；交互依赖只在包内） | `@eap/ui`；Splitter 与 Frame 分别处理调整行为和结构 | 不因组件复杂而拆平行包 |
 | 外观偏好 / 设置页 | `apps/web/src/features/settings/appearance.ts`、`AppearanceSettings.vue` | 当前 web 应用策略；调用 style API，组装公共 UI | 第二宿主需要同一存储契约时再提炼通用 hooks；不把 localStorage/系统监听塞入 L0 |
 | ActionCard / DropdownMenu / SvgActionPath | `packages/ui/src/action-card`、`dropdown-menu`、`svg-action-path` | 已落地 `@eap/ui`；共享主/次操作隔离、菜单键盘/定位、SVG 操作无障碍 | 领域回调、图数据仍在应用 |

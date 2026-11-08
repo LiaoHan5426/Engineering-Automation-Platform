@@ -33,9 +33,16 @@ without BUILD SUCCESS and exit 0 is not build success. Do not enable Bean overri
 Current 32-project reactor evidence and remaining optional-composition gates are recorded in
 [the composition decision](decisions/backend-module-composition.md#implementation).
 
-## 2026-11-08 stage checkpoint
+## Current implementation and validation baseline
 
-User-authorized local commit covers module composition, versioned SQL Agent behavior, durable recovery/approval, background UI and Responses function tools. Backend final reactor verify: 32 projects, 907 tests (833 passed, 74 gated skips, no failures/errors); the prior clean build found an obsolete completed-event fixture, corrected before the successful verify. Frontend pre-commit full run: 131 files/763 tests passed; typecheck, architecture and build passed in the immediately preceding implementation turn. Real provider and native-100% evidence, retained implementations and remaining gates are in [the stage record](decisions/backend-module-composition.md#stage-checkpoint). No new provider calls or service restarts are needed for this documentation/commit step.
+The current implementation commit is `2c7e87b`; it and backend stage `c76cded` were pushed with user authorization.
+Use [the validation ledger](planning-status.md#validation-baseline) for the latest recorded checks and their limits.
+The [backend record](records/backend-composition-history.md) preserves migration, real-provider and gated database evidence;
+the [frontend record](records/frontend-history.md#expert-workspace-evolution) preserves editor/browser checks.
+Documentation-only maintenance does not rerun or renew these acceptance results.
+
+For local frontend development, enter `frontend`, run `vp i`, then `vpr dev` (the existing dev script).
+The implementation-stage run used 12 workspaces and port5173. Do not equate a running dev server with acceptance.
 
 ## Business acceptance matrix
 
@@ -88,6 +95,8 @@ directories, with successful-check logs removed by default and failures retained
 
 ### 本轮整理记录（基线82aa504）
 
+历史快照：以下命令、数量与独立审查属于82aa504接续阶段，不是当前验证基线。
+
 | 范围 | 调整原因与覆盖去向 |
 |---|---|
 | 后端候选持久化 | `CodeTaskBindingPersistenceTest`继承测试类导致5项重复执行；抽出无@Test的`CodeProposalPersistenceFixture`。原5项持久候选测试正文不变，绑定专属6项保留，UNKNOWN/并发/事务/真实文件检查不删 |
@@ -101,8 +110,16 @@ directories, with successful-check logs removed by default and failures retained
 
 ## Consistency and delivery
 
-文档独立复核确认27份来源全文（24份阶段记录、旧路线/台账、完整主方案）归一化后内容一致，27个验收ID及核心合同保留。9处旧裸引用已修正并通过补充复核；本地Markdown链接与锚点校验通过。docs内Markdown从59份整理为43份；当前主方案1685→446行、路线图750→31行，原文均可在主题历史追溯，不以删除证据换取简短。
+历史快照（82aa504接续整理）：文档独立复核确认27份来源全文（24份阶段记录、旧路线/台账、完整主方案）归一化后内容一致，27个验收ID及核心合同保留。9处旧裸引用已修正并通过补充复核；本地Markdown链接与锚点校验通过。docs内Markdown从59份整理为43份；当前主方案1685→446行、路线图750→31行，原文均可在主题历史追溯，不以删除证据换取简短。
 
 本轮测试精简的独立只读审查通过：原候选持久化测试体、迁出的初始化/工厂/清理、任务绑定断言，以及Welcome断言均程序化比对保留。原preview循环确实不消费实际服务来源。Spring context refresh只证明该测试装配成功，不是完整运行时启动或setter行为验收；审查读取已有日志，不冒充另一次全量执行。父任务链式命令退出0确认类型/边界/构建通过。
 
 Check links/paths and scripts when editing guidance. Module files specialize root guidance without duplicating its workflow. Target Plugin/Mission/Builder requirements do not authorize implementation. Record baseline dirty files and never include their changes as your work. Deliver file reasons, reuse/removal, commands/results/skips, risks, next plan and required decisions. Missing credentials, dependencies or protocol client are explicit unverified blockers, never passes.
+
+## 2026-11-09 文档统一整理
+
+实现基线 `2c7e87b`，开始时工作树干净，HEAD与origin/main一致。本次只改文档：统一入口、当前基线与剩余关口；将后端逐轮实施迁入主题记录、专家演进归入前端历史、旧台账全文归档。决策保留有效合同与旧显式锚点入口，已完成项从下一步移除。主方案、台账、路线与架构同步，修正旧“未授权推送”和模型使用范围的过度概括。
+
+维护口径：最新阶段验证只在台账集中维护，其他入口引用；历史数字按原日期保留。特别区分前轮实库门控与本轮跳过、真实供应商与fixture写请求、旧界面原生125%与新工作台浏览器比例覆盖。用户最终接受仍未完成。
+
+本次检查通过：Python本地链接/锚点核对覆盖51份Markdown、676个链接；归档正文与HEAD原稿按相对链接重定位后逐字比对，后端328行、专家135行、台账92行完整保留；原台账工作项标签全部保留。18个改动文件均为Markdown文档、UTF-8无BOM；`git -c core.autocrlf=false diff --check`通过。不重跑应用构建/业务测试、不重新调用模型或改变数据，既有结果不标成本次实测。

@@ -2,6 +2,8 @@
 
 本文件是旧知识库IA评审、导航重构和会话交互说明的统一入口。当前实现和后续顺序以 [roadmap](roadmap.md) 为准，产品目标不代表已经实现。
 
+当前专家管理、任务阅读和独立编辑交互以[专家工作区合同](decisions/expert-workspace-navigation.md)为准；专家与GrapesJS已共用EditorWorkbench。此处静态HTML演示和Vue内真实原型设计器是不同用途，不能互相替代验收。
+
 ## 当前原型与产品边界
 
 唯一保留的 [控制台HTML原型](prototype/console.html) 是独立演示页面，内嵌脚本提供模拟状态与交互。它仍由 scripts/test-conversation-prototype.cjs 引用，不能当作无用脚本删除。已结束的知识库结构提案HTML已被主原型覆盖，退役后不再并行维护。

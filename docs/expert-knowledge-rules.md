@@ -1,6 +1,6 @@
 # Experts, knowledge bases and rules
 
-Current behavior boundary: the fixed-DAG examples below remain `eap/v1`. Explicit `eap/v2` SQL Agents bind `sql-readonly-agent@1` and use authorized tools through Spring AI; they are not workflow graphs or arbitrary prompt-defined permissions. Behavior binding, revision/activation, durable recovery and candidate approval are specified in [the Agent decision](decisions/agent-runtime-evolution.md#expert-agent-boundary). The expert page offers background execution and single-file review; generated SQL is never executed. Real Responses evidence and remaining limits are in [the stage record](decisions/backend-module-composition.md#stage-checkpoint).
+Current behavior boundary: the fixed-DAG examples below remain `eap/v1`. Explicit `eap/v2` SQL Agents bind `sql-readonly-agent@1` and use authorized tools through Spring AI; they are not workflow graphs or arbitrary prompt-defined permissions. Behavior binding, revision/activation, durable recovery and candidate approval are specified in [the Agent decision](decisions/agent-runtime-evolution.md#expert-agent-boundary). The expert page offers background execution and single-file review; generated SQL is never executed. Real Responses evidence is in [the execution record](records/backend-composition-history.md#responses-tools-acceptance); current navigation, independent editing and task review follow [the workspace contract](decisions/expert-workspace-navigation.md).
 
 This document defines how the platform stays configurable. It exists because an earlier revision of
 the codebase got this wrong in a way that is easy to repeat:
@@ -20,7 +20,7 @@ capabilities, and a mismatch is rejected rather than left to fail silently.
 
 ## 1. The one rule
 
-**The expert is data. Code only extracts facts.**
+**Fixed-flow manifests and rule packs are data; executable capabilities and professional behaviors remain code.**
 
 ```text
         ┌──────────────────────── code (generic) ────────────────────────┐
@@ -39,9 +39,10 @@ SQL ──▶ │ SqlFactExtractor                                              
         └────────────────────────────────────────────────────────────────┘
 ```
 
-Everything that answers *"is this good or bad, how bad, and what should be done"* lives on the right
-of that picture and is a JSON file or a database row. The left side only answers *"what is
-structurally true about this statement"*.
+For deterministic SQL rule evaluation, conditions, severity and suggestions live in rule-pack JSON or
+database rows, while extraction code reports structural facts. This does not make arbitrary knowledge
+documents executable or turn a manifest into a new Agent implementation: supported behaviors are
+implemented, versioned and independently tested in code; a definition selects one and declares its scope.
 
 A second rule is just as load-bearing: **every fact names the capability that produces it.** The fact
 map is not a global bag — `sql.parse` publishes the 33 facts about statement shape, `knowledge.search`

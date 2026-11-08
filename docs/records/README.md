@@ -5,11 +5,12 @@
 | 主题 | 内容与边界 |
 |---|---|
 | [任务、源码与交付](delivery-history.md) | 准备、Run、原型、审阅、验证、人工决定、生成基线、持久应用、POST_HOC/PREBOUND；10份阶段记录完整合并 |
-| [前端工作台与共享UI](frontend-history.md) | 验收清单、组件/主题收敛、录屏对照、Comments 1–10和图标首片；4份记录完整合并 |
+| [前端工作台与共享UI](frontend-history.md) | 验收清单、组件/主题、录屏对照、图标首片，以及[专家导航/详情与三栏工作台演进](frontend-history.md#expert-workspace-evolution) |
 | [专家知识与Skill](resource-history.md) | 知识授权和Skill文本导入/使用；2份记录完整合并 |
-| [架构与实现审查](architecture-history.md) | 已开发内容纠偏和历史五模块拆分；当前32模块与SQL Agent实施/验收见[模块组合决定](../decisions/backend-module-composition.md#stage-checkpoint) |
+| [架构与实现审查](architecture-history.md) | 已开发内容纠偏、安全加固和历史五模块拆分；不代表当前模块结构 |
+| [后端模块组合与SQL Agent](backend-composition-history.md) | 32模块迁移、十四轮边界调整、恢复/审批、真实Responses、复杂SQL和缩放；原决定中的完整逐轮证据 |
 | [CLI与外部Agent](external-execution-history.md) | P1-A/B/C、真实委派和Windows失败诊断；6份记录完整合并，不授权重试 |
-| [历史路线与台账](roadmap-history.md) | 整理前路线图和台账全文；旧“下一步”不覆盖当前计划 |
+| [历史路线与台账](roadmap-history.md) | 历次整理前路线图和台账全文，含2c7e87b文档同步前快照；旧“下一步”不覆盖当前计划 |
 | [产品方案历史](product-plan-history.md) | 主方案迁出的进度流水及被覆盖目标，保留完整记录与引用 |
 
 ## 维护规则
