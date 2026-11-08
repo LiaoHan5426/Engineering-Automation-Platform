@@ -20,7 +20,7 @@ if($Check){
   exit 0
  }catch{[Console]::Error.WriteLine($_.Exception.Message);exit 1}
 }
-if(!$OutputDirectory){$OutputDirectory=Join-Path (Split-Path $PSScriptRoot -Parent) ('backend/eap-runtime/target/sandbox-snapshots/snapshot-'+[guid]::NewGuid().ToString('N'))}
+if(!$OutputDirectory){$OutputDirectory=Join-Path (Split-Path $PSScriptRoot -Parent) ('backend/eap-applications/eap-full-application/target/sandbox-snapshots/snapshot-'+[guid]::NewGuid().ToString('N'))}
 if(Test-Path $OutputDirectory){throw 'Use a fresh output directory'}
 [IO.Directory]::CreateDirectory($OutputDirectory)|Out-Null
 if(!$Directory){$Directory=Join-Path ([IO.Path]::GetTempPath()) ('eap-snapshot-'+[guid]::NewGuid().ToString('N'));[IO.Directory]::CreateDirectory($Directory)|Out-Null}

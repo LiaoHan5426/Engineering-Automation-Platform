@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.lh</groupId>
+        <artifactId>engineering-automation-platform</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>eap-spring</artifactId>
+    <packaging>pom</packaging>
+    <modules>
+        <module>eap-spring-boot-autoconfigure</module>
+        <module>eap-spring-boot-starter-core</module>
+        <module>eap-spring-boot-starter-local</module>
+        <module>eap-spring-boot-starter-ai</module>
+    </modules>
+</project>

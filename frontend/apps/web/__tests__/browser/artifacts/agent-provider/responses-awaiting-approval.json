@@ -1,0 +1,83 @@
+{
+  "run": {
+    "id": "791dedff-f3c3-4002-afed-8d798c9750c4",
+    "snapshot": {
+      "manifest": {
+        "apiVersion": "eap/v2",
+        "kind": "Expert",
+        "id": "sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250",
+        "name": "SQL 取证 Agent",
+        "knowledgeBases": [],
+        "databaseProfiles": [],
+        "steps": [],
+        "edges": [],
+        "rules": [
+          "database.credentials.never-expose"
+        ],
+        "rulePacks": [],
+        "mcpTools": [],
+        "behavior": {
+          "id": "sql-readonly-agent",
+          "version": 1
+        },
+        "agent": {
+          "goal": "基于已有证据分析 SQL，缺少证据时追问，结论保持未验证。",
+          "tools": [
+            "sql.parse",
+            "database.explain"
+          ]
+        }
+      },
+      "revision": 4
+    },
+    "request": "{\"sql\": \"SELECT 1 AS acceptance_value;\", \"question\": \"验证工具协议与人工审批链路：请先通过 read_evidence 读取已提供的 database.explain 证据，再通过 propose_sql 提交与原SQL相同的 SELECT 1 AS acceptance_value; 单文件候选，等待审批。不执行SQL，不声称性能提升。\", \"databaseId\": null, \"targetPath\": \"frontend/apps/web/__tests__/browser/artifacts/agent-provider/provider-candidate.sql\", \"explainPlan\": {\"Plan\": {\"Node Type\": \"Result\", \"Plan Rows\": 1, \"Plan Width\": 4, \"Total Cost\": 0.01}}}",
+    "checkpoint": "{\"facts\": {\"join.count\": 0, \"table.list\": \"\", \"plan.loaded\": true, \"table.count\": 0, \"parse.status\": \"valid\", \"plan.seqScan\": false, \"select.limit\": false, \"select.offset\": false, \"join.cartesian\": false, \"plan.nodeCount\": 1, \"plan.nodeTypes\": \"Result\", \"select.noWhere\": true, \"statement.type\": \"SELECT\", \"select.distinct\": false, \"select.hasWhere\": false, \"metric.joinCount\": 0, \"metric.unionCount\": 0, \"select.allColumns\": false, \"select.hasOrderBy\": false, \"join.cartesianCount\": 0, \"metric.functionCount\": 0, \"metric.subqueryCount\": 0, \"plan.filteredSeqScan\": false, \"statement.classified\": true}, \"advice\": [\"计划节点 Result（未指定关系），估计行数：1。这是计划证据，不是实际耗时。\"], \"summary\": \"SQL candidate awaits explicit file-write approval; it has not been applied or executed.\", \"analysis\": {\"facts\": {\"join.count\": 0, \"table.list\": \"\", \"plan.loaded\": true, \"table.count\": 0, \"parse.status\": \"valid\", \"plan.seqScan\": false, \"select.limit\": false, \"select.offset\": false, \"join.cartesian\": false, \"plan.nodeCount\": 1, \"plan.nodeTypes\": \"Result\", \"select.noWhere\": true, \"statement.type\": \"SELECT\", \"select.distinct\": false, \"select.hasWhere\": false, \"metric.joinCount\": 0, \"metric.unionCount\": 0, \"select.allColumns\": false, \"select.hasOrderBy\": false, \"join.cartesianCount\": 0, \"metric.functionCount\": 0, \"metric.subqueryCount\": 0, \"plan.filteredSeqScan\": false, \"statement.classified\": true}, \"tables\": [], \"joinKeys\": [], \"joinColumns\": [], \"parseStatus\": \"valid\", \"engineVersion\": \"sql-analyzer/4\", \"joinKeyAdvice\": [], \"normalizedSql\": \"SELECT 1 AS acceptance_value\", \"statementType\": \"SELECT\"}, \"executed\": [\"sql.parse\", \"database.explain\"], \"proposal\": \"2317b1a8-d1f7-489e-8408-0d90938414f5\", \"terminal\": \"awaiting-approval\", \"citations\": [], \"generation\": \"20403f6f-a63d-4e97-81c8-811778134b63\", \"incomplete\": false, \"modelCalls\": 2, \"observations\": [{\"stderr\": \"\", \"stdout\": \"{\\\"facts\\\":{\\\"join.cartesian\\\":false,\\\"select.allColumns\\\":false,\\\"table.count\\\":0,\\\"select.hasOrderBy\\\":false,\\\"select.offset\\\":false,\\\"select.hasWhere\\\":false,\\\"metric.unionCount\\\":0,\\\"select.limit\\\":false,\\\"parse.status\\\":\\\"valid\\\",\\\"select.distinct\\\":false,\\\"statement.type\\\":\\\"SELECT\\\",\\\"metric.functionCount\\\":0,\\\"select.noWhere\\\":true,\\\"metric.joinCount\\\":0,\\\"join.cartesianCount\\\":0,\\\"statement.classified\\\":true,\\\"join.count\\\":0,\\\"table.list\\\":\\\"\\\",\\\"metric.subqueryCount\\\":0},\\\"message\\\":\\\"已用 SQL AST 抽取 19 项结构事实；判定在流程图执行完成后统一进行\\\",\\\"data\\\":{\\\"factCount\\\":19,\\\"statementType\\\":\\\"SELECT\\\"},\\\"success\\\":true,\\\"incomplete\\\":false}\", \"success\": true, \"exitCode\": 0, \"metadata\": {\"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250\", \"revision\": 4}, \"capability\": \"sql.parse\"}, {\"stderr\": \"\", \"stdout\": \"{\\\"facts\\\":{\\\"join.cartesian\\\":false,\\\"select.allColumns\\\":false,\\\"table.count\\\":0,\\\"select.hasOrderBy\\\":false,\\\"select.offset\\\":false,\\\"select.hasWhere\\\":false,\\\"metric.unionCount\\\":0,\\\"select.limit\\\":false,\\\"parse.status\\\":\\\"valid\\\",\\\"select.distinct\\\":false,\\\"statement.type\\\":\\\"SELECT\\\",\\\"metric.functionCount\\\":0,\\\"select.noWhere\\\":true,\\\"metric.joinCount\\\":0,\\\"join.cartesianCount\\\":0,\\\"statement.classified\\\":true,\\\"join.count\\\":0,\\\"table.list\\\":\\\"\\\",\\\"metric.subqueryCount\\\":0,\\\"plan.loaded\\\":true,\\\"plan.nodeCount\\\":1,\\\"plan.nodeTypes\\\":\\\"Result\\\",\\\"plan.seqScan\\\":false,\\\"plan.filteredSeqScan\\\":false},\\\"message\\\":\\\"已分析用户提供的计划快照，不代表平台实测耗时\\\",\\\"data\\\":{\\\"nodeTypes\\\":[\\\"Result\\\"],\\\"plan\\\":{\\\"Plan\\\":{\\\"Node Type\\\":\\\"Result\\\",\\\"Plan Rows\\\":1,\\\"Plan Width\\\":4,\\\"Total Cost\\\":0.01}}},\\\"success\\\":true,\\\"incomplete\\\":false}\", \"success\": true, \"exitCode\": 0, \"metadata\": {\"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250\", \"revision\": 4}, \"capability\": \"database.explain\"}], \"databaseGrants\": [], \"knowledgeGrants\": []}",
+    "state": "awaiting-approval",
+    "attempts": 1,
+    "owner": null,
+    "leaseUntil": null,
+    "expiresAt": "2026-11-09T14:13:40.903417Z",
+    "result": "{\"id\": \"791dedff-f3c3-4002-afed-8d798c9750c4\", \"error\": \"\", \"status\": \"awaiting-approval\", \"summary\": \"SQL candidate awaits explicit file-write approval; it has not been applied or executed.\", \"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250\", \"citations\": [], \"proposalId\": \"2317b1a8-d1f7-489e-8408-0d90938414f5\", \"observations\": [{\"stderr\": \"\", \"stdout\": \"{\\\"facts\\\":{\\\"join.cartesian\\\":false,\\\"select.allColumns\\\":false,\\\"table.count\\\":0,\\\"select.hasOrderBy\\\":false,\\\"select.offset\\\":false,\\\"select.hasWhere\\\":false,\\\"metric.unionCount\\\":0,\\\"select.limit\\\":false,\\\"parse.status\\\":\\\"valid\\\",\\\"select.distinct\\\":false,\\\"statement.type\\\":\\\"SELECT\\\",\\\"metric.functionCount\\\":0,\\\"select.noWhere\\\":true,\\\"metric.joinCount\\\":0,\\\"join.cartesianCount\\\":0,\\\"statement.classified\\\":true,\\\"join.count\\\":0,\\\"table.list\\\":\\\"\\\",\\\"metric.subqueryCount\\\":0},\\\"message\\\":\\\"已用 SQL AST 抽取 19 项结构事实；判定在流程图执行完成后统一进行\\\",\\\"data\\\":{\\\"factCount\\\":19,\\\"statementType\\\":\\\"SELECT\\\"},\\\"success\\\":true,\\\"incomplete\\\":false}\", \"success\": true, \"exitCode\": 0, \"metadata\": {\"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250\", \"revision\": 4}, \"capability\": \"sql.parse\"}, {\"stderr\": \"\", \"stdout\": \"{\\\"facts\\\":{\\\"join.cartesian\\\":false,\\\"select.allColumns\\\":false,\\\"table.count\\\":0,\\\"select.hasOrderBy\\\":false,\\\"select.offset\\\":false,\\\"select.hasWhere\\\":false,\\\"metric.unionCount\\\":0,\\\"select.limit\\\":false,\\\"parse.status\\\":\\\"valid\\\",\\\"select.distinct\\\":false,\\\"statement.type\\\":\\\"SELECT\\\",\\\"metric.functionCount\\\":0,\\\"select.noWhere\\\":true,\\\"metric.joinCount\\\":0,\\\"join.cartesianCount\\\":0,\\\"statement.classified\\\":true,\\\"join.count\\\":0,\\\"table.list\\\":\\\"\\\",\\\"metric.subqueryCount\\\":0,\\\"plan.loaded\\\":true,\\\"plan.nodeCount\\\":1,\\\"plan.nodeTypes\\\":\\\"Result\\\",\\\"plan.seqScan\\\":false,\\\"plan.filteredSeqScan\\\":false},\\\"message\\\":\\\"已分析用户提供的计划快照，不代表平台实测耗时\\\",\\\"data\\\":{\\\"nodeTypes\\\":[\\\"Result\\\"],\\\"plan\\\":{\\\"Plan\\\":{\\\"Node Type\\\":\\\"Result\\\",\\\"Plan Rows\\\":1,\\\"Plan Width\\\":4,\\\"Total Cost\\\":0.01}}},\\\"success\\\":true,\\\"incomplete\\\":false}\", \"success\": true, \"exitCode\": 0, \"metadata\": {\"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250\", \"revision\": 4}, \"capability\": \"database.explain\"}, {\"stderr\": \"\", \"stdout\": \"SQL candidate awaits explicit file-write approval; it has not been applied or executed.\", \"success\": false, \"exitCode\": 0, \"metadata\": {\"state\": \"awaiting-approval\", \"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250\", \"revision\": 4, \"modelCalls\": 2, \"verification\": \"unverified\"}, \"capability\": \"expert.agent\"}], \"verification\": \"unverified\", \"deterministicAnalysis\": {\"facts\": {\"join.count\": 0, \"table.list\": \"\", \"plan.loaded\": true, \"table.count\": 0, \"parse.status\": \"valid\", \"plan.seqScan\": false, \"select.limit\": false, \"select.offset\": false, \"join.cartesian\": false, \"plan.nodeCount\": 1, \"plan.nodeTypes\": \"Result\", \"select.noWhere\": true, \"statement.type\": \"SELECT\", \"select.distinct\": false, \"select.hasWhere\": false, \"metric.joinCount\": 0, \"metric.unionCount\": 0, \"select.allColumns\": false, \"select.hasOrderBy\": false, \"join.cartesianCount\": 0, \"metric.functionCount\": 0, \"metric.subqueryCount\": 0, \"plan.filteredSeqScan\": false, \"statement.classified\": true}, \"tables\": [], \"summary\": \"未触发确定性规则；结构上未见明显反模式。\", \"findings\": [], \"joinKeys\": [], \"complexity\": 0, \"rulesFired\": [], \"joinColumns\": [], \"parseStatus\": \"valid\", \"suggestions\": [\"已解析 SELECT。当前没有足够结构证据支持确定性改写，请提供业务语义、表结构与执行计划。\"], \"blockedRules\": [], \"engineVersion\": \"sql-analyzer/4\", \"joinKeyAdvice\": [], \"normalizedSql\": \"SELECT 1 AS acceptance_value\", \"statementType\": \"SELECT\", \"severityCounts\": {}, \"ruleCapabilities\": [], \"requiresModelReview\": false, \"deterministicConfidence\": 0.9}}",
+    "automatic": true
+  },
+  "approval": {
+    "proposal_id": "2317b1a8-d1f7-489e-8408-0d90938414f5",
+    "approval_digest": "e7b9deb001b896a302e68e4b88ebf445fe394625ea151ca07f7d0998a06a24a9",
+    "approval_expires_at": "2026-11-08T14:28:51.885Z",
+    "decision": null,
+    "decided_by": null,
+    "decided_at": null
+  },
+  "candidate": {
+    "proposal": {
+      "id": "2317b1a8-d1f7-489e-8408-0d90938414f5",
+      "conversationId": "791dedff-f3c3-4002-afed-8d798c9750c4",
+      "workspace": "F:\\Engineering-Automation-Platform",
+      "summary": "Unverified SQL candidate",
+      "files": [
+        {
+          "path": "frontend/apps/web/__tests__/browser/artifacts/agent-provider/provider-candidate.sql",
+          "before": null,
+          "content": "SELECT 1 AS acceptance_value;",
+          "baseHash": "absent"
+        }
+      ],
+      "createdAt": "2026-11-08T14:13:51.873014800Z",
+      "applied": false,
+      "writeAllowed": true,
+      "verification": "not_requested",
+      "generation": {
+        "id": "20403f6f-a63d-4e97-81c8-811778134b63",
+        "targetPath": "frontend/apps/web/__tests__/browser/artifacts/agent-provider/provider-candidate.sql",
+        "baseHash": "absent",
+        "capturedAt": "2026-11-08T14:13:42.973118Z",
+        "prototypeVersionId": "",
+        "prototypeContentHash": "",
+        "taskBinding": null
+      }
+    },
+    "status": "PROPOSED",
+    "result": null,
+    "reason": ""
+  }
+}

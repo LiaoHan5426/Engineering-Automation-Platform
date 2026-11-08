@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import ExpertManager from '../../src/features/expert/ExpertManager.vue'
+import { i18n } from '../../src/lib/i18n'
 import CapabilityManager from '../../src/features/capability/CapabilityManager.vue'
 import KnowledgeManager from '../../src/features/knowledge/KnowledgeManager.vue'
 import DatabaseManager from '../../src/features/database/DatabaseManager.vue'
@@ -20,7 +21,7 @@ describe('management page initialization', () => {
     expect(html).not.toContain('删除资料')
   })
   it('opens expert management without accessing uninitialized state', async () => {
-    const html = await renderToString(createSSRApp(ExpertManager))
+    const html = await renderToString(createSSRApp(ExpertManager).use(i18n))
     expect(html).toContain('构建专家工作流')
     expect(html).toContain('新建专家')
   })

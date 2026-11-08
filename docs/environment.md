@@ -97,7 +97,7 @@ databases and consolidating V1–V18 into `V1__initial_schema.sql`. This baselin
 four explicit indexes and the built-in Git/ripgrep programs and operations. Other configuration
 starts empty; absent capability settings mean enabled, and absent CLI overrides use default binaries.
 
-Only `backend/eap-runtime/src/main/resources/db/migration` is active; the obsolete `backend/db`
+Only `backend/eap-applications/eap-full-application/src/main/resources/db/migration` is active; the obsolete `backend/db`
 copies were removed. Historical CLI override conversion, duplicate comments, transitional ALTERs
 and the V5 legacy-adoption strategy were removed. Unused pgvector setup and its vector column were
 removed; existing embedding metadata fields remain for the current mapper contract.

@@ -1,0 +1,89 @@
+package com.lh.eap.domain.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.List;
+import tools.jackson.databind.json.JsonMapper;
+
+/**
+ * The declarative definition of an expert.
+ *
+ * <p>An expert is data, not code. It declares which capabilities to run, which rule packs define its
+ * judgment, and which knowledge bases it may consult. Nothing here is specialized for SQL: the same
+ * schema describes any expert, and a new expert can be added through the API without a code change.
+ *
+ * <ul>
+ *   <li>{@code steps}/{@code edges} — the capability graph the runtime executes.</li>
+ *   <li>{@code rulePacks} — ids of declarative rule packs (built-in JSON or operator-authored).</li>
+ *   <li>{@code knowledgeBases}/{@code databaseProfiles} — resource references, granted on activation.</li>
+ *   <li>{@code mcpTools} — expert-scoped capabilities (MCP tools, remote endpoints) this expert is
+ *       allowed to call. These are never enabled globally: the declaration here is the authorization,
+ *       activation records it as a grant, and the graph may only contain nodes that appear in it.</li>
+ *   <li>{@code rules} — platform invariants that must hold for every expert.</li>
+ * </ul>
+ */
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record ExpertManifest(String apiVersion, String kind, String id, String name,
+        List<String> knowledgeBases, List<String> databaseProfiles, List<Step> steps,
+        List<Edge> edges, List<String> rules, List<String> rulePacks, List<String> mcpTools,
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        ExpertBehaviorBinding behavior,
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        ExpertAgentDefinition agent) {
+    private static final JsonMapper JSON = JsonMapper.builder().build();
+
+    public ExpertManifest {
+        rulePacks = rulePacks == null ? List.of() : List.copyOf(rulePacks);
+        mcpTools = mcpTools == null ? List.of() : List.copyOf(mcpTools);
+    }
+
+    public ExpertManifest(String apiVersion, String kind, String id, String name, List<String> knowledgeBases,
+            List<String> databaseProfiles, List<Step> steps, List<Edge> edges, List<String> rules,
+            List<String> rulePacks, List<String> mcpTools, ExpertBehaviorBinding behavior) {
+        this(apiVersion, kind, id, name, knowledgeBases, databaseProfiles, steps, edges, rules, rulePacks, mcpTools, behavior, null);
+    }
+
+    /** Legacy manifests use the host's explicit compatibility binding. */
+    public ExpertManifest(String apiVersion, String kind, String id, String name, List<String> knowledgeBases,
+            List<String> databaseProfiles, List<Step> steps, List<Edge> edges, List<String> rules,
+            List<String> rulePacks, List<String> mcpTools) {
+        this(apiVersion, kind, id, name, knowledgeBases, databaseProfiles, steps, edges, rules, rulePacks, mcpTools, null);
+    }
+
+    /** Backwards compatible shape for manifests authored before MCP tools existed. */
+    public ExpertManifest(String apiVersion, String kind, String id, String name, List<String> knowledgeBases,
+            List<String> databaseProfiles, List<Step> steps, List<Edge> edges, List<String> rules,
+            List<String> rulePacks) {
+        this(apiVersion, kind, id, name, knowledgeBases, databaseProfiles, steps, edges, rules, rulePacks, List.of());
+    }
+
+    /** Backwards compatible shape for manifests authored before rule packs existed. */
+    public ExpertManifest(String apiVersion, String kind, String id, String name, List<String> knowledgeBases,
+            List<String> databaseProfiles, List<Step> steps, List<Edge> edges, List<String> rules) {
+        this(apiVersion, kind, id, name, knowledgeBases, databaseProfiles, steps, edges, rules, List.of(), List.of());
+    }
+
+    /**
+     * Capabilities this expert explicitly authorized that are not platform-level. Shipped as
+     * {@code mcpTools} in the manifest; kept behind an accessor so the rest of the runtime does not have
+     * to know which transport an expert-scoped capability uses.
+     */
+    public List<String> expertScopedCapabilities() { return mcpTools; }
+
+    public static ExpertManifest parse(String json) {
+        var root = JSON.readTree(json);
+        if (root.has("behavior")) {
+            var binding = root.get("behavior");
+            if (!binding.isObject() || binding.size() != 2 || !binding.path("id").isString()
+                    || !binding.path("version").isIntegralNumber() || !binding.path("version").canConvertToInt()) {
+                throw new IllegalArgumentException("behavior requires an id and an integer version");
+            }
+        }
+        return JSON.readValue(json, ExpertManifest.class);
+    }
+
+    public static String serialize(ExpertManifest manifest) { return JSON.writeValueAsString(manifest); }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Step(String id, String label, String capability, Boolean required) { }
+    public record Edge(String source, String target) { }
+}

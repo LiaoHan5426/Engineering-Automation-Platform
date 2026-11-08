@@ -7,33 +7,13 @@
         <version>0.1.0-SNAPSHOT</version>
     </parent>
     <artifactId>eap-ai</artifactId>
-    <dependencies>
-        <dependency>
-            <groupId>com.lh</groupId>
-            <artifactId>eap-engine</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.lh</groupId>
-            <artifactId>eap-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-openai</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-jose</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <packaging>pom</packaging>
+    <modules>
+        <module>eap-ai-chat</module>
+        <module>eap-ai-model-openai</module>
+        <module>eap-ai-skill</module>
+        <module>eap-ai-context</module>
+        <module>eap-ai-codegen</module>
+        <module>eap-ai-sql</module>
+    </modules>
 </project>

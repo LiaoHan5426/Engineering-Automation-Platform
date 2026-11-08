@@ -12,7 +12,8 @@
 | 理解平台架构和 Spring AI 边界 | [architecture](architecture.md) |
 | 配置环境、迁移旧模型属性 | [environment](environment.md) |
 | 开发规范与验收要求 | [开发与验收指南](agent-development-guide.md) |
-| 找包、模块和验证入口 | [module-layout](module-layout.md) |
+| 找包、模块和验证入口 | [module-layout](module-layout.md)、[后端模块组合与实施](decisions/backend-module-composition.md#implementation) |
+| 本阶段提交范围、验证与剩余项 | [2026-11-08阶段收束](decisions/backend-module-composition.md#stage-checkpoint) |
 | **前端 UI / hooks·effects·layout·plugin 落点（Agent 强制）** | [frontend-ui-shared-module-boundaries](decisions/frontend-ui-shared-module-boundaries.md) |
 | 查 HTTP 接口与专家执行流程 | [backend-architecture](backend-architecture.md) |
 | 使用专家、知识库和规则 | [expert-knowledge-rules](expert-knowledge-rules.md)、[runtime-workflow](runtime-workflow.md) |
@@ -28,6 +29,8 @@
 - [S1 Spring AI Chat 接入设计](decisions/s1-chat-spring-ai-design.md)：v1.6 最小 API/UI 方案；**实现与限制以 roadmap 与 chat-engineering-task-slice 为准**（勿把本 README 旧「尚未实施」句当作现状）。
 
 ## 验收结论
+
+- [SQL Agent真实Responses整链](decisions/backend-module-composition.md#responses-tools-acceptance)：两轮取证/候选、页面审批、独立读回及重启终态；复杂SQL效果与用户接受仍独立。
 
 - [Spring AI 集成](audits/spring-ai-integration-report.md)、[统一化与清理](audits/spring-ai-consolidation-report.md)。
 - [扩展能力审计](audits/extension-capability-audit.md)、[P0 基线](audits/p0-validation-report.md)。

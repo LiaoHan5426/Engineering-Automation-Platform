@@ -1,6 +1,6 @@
 param([ValidateSet('before','run','after')][string]$Phase)
 $ErrorActionPreference='Stop'
-$out=Join-Path (Split-Path $PSScriptRoot -Parent) 'backend/eap-runtime/target/sandbox-preflight-once'
+$out=Join-Path (Split-Path $PSScriptRoot -Parent) 'backend/eap-applications/eap-full-application/target/sandbox-preflight-once'
 [IO.Directory]::CreateDirectory($out)|Out-Null
 function Save($name,$value){[IO.File]::WriteAllText((Join-Path $out $name),($value|ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))}
 if($Phase -eq 'before'){

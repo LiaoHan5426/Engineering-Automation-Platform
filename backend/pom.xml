@@ -16,7 +16,8 @@
         <module>eap-engine</module>
         <module>eap-ai</module>
         <module>eap-web</module>
-        <module>eap-runtime</module>
+        <module>eap-spring</module>
+        <module>eap-applications</module>
     </modules>
     <properties>
         <java.version>25</java.version>

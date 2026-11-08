@@ -1,0 +1,146 @@
+{
+  "expertId": "sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250",
+  "runId": "bb290185-d953-4625-8242-d45d608d9158",
+  "state": "failed",
+  "attempts": 1,
+  "checkpoint": {
+    "facts": {
+      "join.count": 0,
+      "table.list": "",
+      "table.count": 0,
+      "parse.status": "valid",
+      "select.limit": false,
+      "select.offset": false,
+      "join.cartesian": false,
+      "select.noWhere": true,
+      "statement.type": "SELECT",
+      "select.distinct": false,
+      "select.hasWhere": false,
+      "metric.joinCount": 0,
+      "metric.unionCount": 0,
+      "select.allColumns": false,
+      "select.hasOrderBy": false,
+      "join.cartesianCount": 0,
+      "metric.functionCount": 0,
+      "metric.subqueryCount": 0,
+      "statement.classified": true
+    },
+    "advice": [],
+    "summary": null,
+    "analysis": {
+      "facts": {
+        "join.count": 0,
+        "table.list": "",
+        "table.count": 0,
+        "parse.status": "valid",
+        "select.limit": false,
+        "select.offset": false,
+        "join.cartesian": false,
+        "select.noWhere": true,
+        "statement.type": "SELECT",
+        "select.distinct": false,
+        "select.hasWhere": false,
+        "metric.joinCount": 0,
+        "metric.unionCount": 0,
+        "select.allColumns": false,
+        "select.hasOrderBy": false,
+        "join.cartesianCount": 0,
+        "metric.functionCount": 0,
+        "metric.subqueryCount": 0,
+        "statement.classified": true
+      },
+      "tables": [],
+      "joinKeys": [],
+      "joinColumns": [],
+      "parseStatus": "valid",
+      "engineVersion": "sql-analyzer/4",
+      "joinKeyAdvice": [],
+      "normalizedSql": "SELECT 1 AS acceptance_value",
+      "statementType": "SELECT"
+    },
+    "executed": [
+      "sql.parse"
+    ],
+    "proposal": null,
+    "terminal": null,
+    "citations": [],
+    "generation": "c3f51448-b98a-49ab-9e58-bc88f8c75903",
+    "incomplete": false,
+    "modelCalls": 0,
+    "observations": [
+      {
+        "stderr": "",
+        "stdout": "{\"data\":{\"statementType\":\"SELECT\",\"factCount\":19},\"message\":\"已用 SQL AST 抽取 19 项结构事实；判定在流程图执行完成后统一进行\",\"facts\":{\"statement.classified\":true,\"join.cartesianCount\":0,\"metric.joinCount\":0,\"select.noWhere\":true,\"metric.functionCount\":0,\"statement.type\":\"SELECT\",\"select.distinct\":false,\"parse.status\":\"valid\",\"select.limit\":false,\"metric.unionCount\":0,\"select.hasWhere\":false,\"select.offset\":false,\"select.hasOrderBy\":false,\"table.count\":0,\"select.allColumns\":false,\"join.cartesian\":false,\"metric.subqueryCount\":0,\"table.list\":\"\",\"join.count\":0},\"incomplete\":false,\"success\":true}",
+        "success": true,
+        "exitCode": 0,
+        "metadata": {
+          "behavior": {
+            "id": "sql-readonly-agent",
+            "version": 1
+          },
+          "expertId": "sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250",
+          "revision": 2
+        },
+        "capability": "sql.parse"
+      }
+    ],
+    "databaseGrants": [],
+    "knowledgeGrants": []
+  },
+  "result": {
+    "id": "bb290185-d953-4625-8242-d45d608d9158",
+    "error": "AGENT_MODEL_TOOLS_UNSUPPORTED",
+    "status": "failed",
+    "summary": "",
+    "behavior": {
+      "id": "sql-readonly-agent",
+      "version": 1
+    },
+    "expertId": "sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250",
+    "citations": [],
+    "proposalId": null,
+    "observations": [
+      {
+        "stderr": "",
+        "stdout": "{\"data\":{\"statementType\":\"SELECT\",\"factCount\":19},\"message\":\"已用 SQL AST 抽取 19 项结构事实；判定在流程图执行完成后统一进行\",\"facts\":{\"statement.classified\":true,\"join.cartesianCount\":0,\"metric.joinCount\":0,\"select.noWhere\":true,\"metric.functionCount\":0,\"statement.type\":\"SELECT\",\"select.distinct\":false,\"parse.status\":\"valid\",\"select.limit\":false,\"metric.unionCount\":0,\"select.hasWhere\":false,\"select.offset\":false,\"select.hasOrderBy\":false,\"table.count\":0,\"select.allColumns\":false,\"join.cartesian\":false,\"metric.subqueryCount\":0,\"table.list\":\"\",\"join.count\":0},\"incomplete\":false,\"success\":true}",
+        "success": true,
+        "exitCode": 0,
+        "metadata": {
+          "behavior": {
+            "id": "sql-readonly-agent",
+            "version": 1
+          },
+          "expertId": "sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250",
+          "revision": 2
+        },
+        "capability": "sql.parse"
+      },
+      {
+        "stderr": "AGENT_MODEL_TOOLS_UNSUPPORTED",
+        "stdout": "",
+        "success": false,
+        "exitCode": 0,
+        "metadata": {
+          "state": "failed",
+          "behavior": {
+            "id": "sql-readonly-agent",
+            "version": 1
+          },
+          "expertId": "sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250",
+          "revision": 2,
+          "modelCalls": 0,
+          "verification": "unverified"
+        },
+        "capability": "expert.agent"
+      }
+    ],
+    "verification": "unverified",
+    "deterministicAnalysis": {}
+  },
+  "candidatePresent": false,
+  "targetExists": false,
+  "cleanup": {
+    "expertEnabled": false,
+    "historyRetained": true
+  }
+}

@@ -85,15 +85,17 @@ export async function loadMonacoDiff(): Promise<MonacoDiffBundle | null> {
       },
       dispose(editor) {
         const model = editor.getModel()
+        // Detach first: the diff widget still observes both models until reset/disposal.
+        editor.setModel(null)
+        editor.dispose()
         model?.original?.dispose()
         model?.modified?.dispose()
-        editor.dispose()
       },
       update(editor, { original, modified, language }) {
         const model = editor.getModel()
         if (!model) return
-        model.original.setValue(original)
-        model.modified.setValue(modified)
+        if (model.original.getValue() !== original) model.original.setValue(original)
+        if (model.modified.getValue() !== modified) model.modified.setValue(modified)
         monaco.editor.setModelLanguage(model.original, 'plaintext')
         monaco.editor.setModelLanguage(model.modified, 'plaintext')
         void language

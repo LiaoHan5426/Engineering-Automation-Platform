@@ -18,6 +18,25 @@ Frontend agents must follow `frontend/AGENTS.md` UI placement rules on every UI 
 
 Run from repository root with the RTK prefix required by local instructions. Backend: `rtk proxy mvn -f backend/pom.xml test`. Frontend: `rtk proxy pnpm --dir frontend typecheck`, `rtk proxy pnpm --dir frontend test run`, `rtk proxy pnpm --dir frontend build`, `rtk proxy pnpm --dir frontend check:boundaries`. These are derived from reactor POMs and frontend/package.json; package scripts may fail if tools/dependencies are absent. Commands listed here are not passing results.
 
+## Backend module composition validation
+
+The executable host is `backend/eap-applications/eap-full-application`; keep `com.lh.eap.EapApplication` as main class.
+Use `rtk proxy mvn -f backend/pom.xml -pl :eap-full-application -am clean verify` for the host closure.
+For development, first install sibling artifacts through the reactor, then run only the full application goal;
+do not run `spring-boot:run -am` across library modules. The Maven run goal explicitly uses `backend/` as
+working directory, matching this checkout's existing `.eap` and `.eap-ai-artifacts` locations. For an installation
+that previously used another directory, set `-Deap.run.working-directory=<original-absolute-directory>`; keep
+the same IDEA/JAR working directory and external configuration/data locations. No data is moved. Reimport Maven and select the new host classpath in IDEA; live restart remains a separate check.
+Stop the DevTools application before a reactor clean/rebuild, then restart it after BUILD SUCCESS.
+Backend `.mvn/jvm.config` fixes Maven file/stdout/stderr encoding to UTF-8; an RTK encoding error
+without BUILD SUCCESS and exit 0 is not build success. Do not enable Bean overriding to hide conflicts.
+Current 32-project reactor evidence and remaining optional-composition gates are recorded in
+[the composition decision](decisions/backend-module-composition.md#implementation).
+
+## 2026-11-08 stage checkpoint
+
+User-authorized local commit covers module composition, versioned SQL Agent behavior, durable recovery/approval, background UI and Responses function tools. Backend final reactor verify: 32 projects, 907 tests (833 passed, 74 gated skips, no failures/errors); the prior clean build found an obsolete completed-event fixture, corrected before the successful verify. Frontend pre-commit full run: 131 files/763 tests passed; typecheck, architecture and build passed in the immediately preceding implementation turn. Real provider and native-100% evidence, retained implementations and remaining gates are in [the stage record](decisions/backend-module-composition.md#stage-checkpoint). No new provider calls or service restarts are needed for this documentation/commit step.
+
 ## Business acceptance matrix
 
 | Area | Required real evidence |

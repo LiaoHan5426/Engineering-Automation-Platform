@@ -5,7 +5,7 @@ This file is the runtime *reference*: the HTTP surface, the execution flow, and 
 machine.
 
 Current boundaries: model transport uses Spring AI and the controlled Chat HTTP API is wired.
-Persistent Mission/Run and limited delivery evidence exist; the general autonomous state machine
+The versioned SQL Agent has durable checkpoints, explicit automatic queue consent and single-file approval. Persistent Mission/Run and limited delivery evidence exist; the general autonomous state machine
 near the end remains a target. See [roadmap](roadmap.md) for current scope and [module-layout](module-layout.md) for
 source locations and build commands. This API reference is retained because it is not a duplicate
 of the platform overview or module layout.
@@ -27,7 +27,7 @@ of the platform overview or module layout.
 | POST | `/api/mcp-servers` | Register a server (`id` validated against the `mcp.<server>.<tool>` segment shape; credentials in the endpoint refused). |
 | PUT | `/api/mcp-servers/{id}` | Edit a server's name, transport, endpoint or tool allow-list. |
 | PUT | `/api/mcp-servers/{id}/activation` | Enable/trust a server independently of the expert grants that reference its tools. |
-| POST | `/api/mcp-servers/{id}/probe` | Probe reachability; reports `verified: false` because there is no protocol client yet. |
+| POST | `/api/mcp-servers/{id}/probe` | Probe reachability; does not by itself prove authorized protocol execution. |
 | DELETE | `/api/mcp-servers/{id}` | Delete a server; refused while an enabled expert still holds a grant on one of its tools. |
 | GET | `/api/experts` | Expert definitions plus enabled/builtin/revision state. |
 | GET | `/api/experts/catalog` | Platform capability items and kind summaries, platform rules, rule pack summaries (with `requires`), the fact vocabulary (with `producedBy`), the expert-scoped vocabulary and the registered MCP servers. |
@@ -35,6 +35,11 @@ of the platform overview or module layout.
 | POST | `/api/experts` | Save a **disabled** draft. |
 | PUT | `/api/experts/{id}/activation` | Explicitly enable/authorise or disable/revoke — writes and revokes the knowledge, database **and MCP tool** grants. |
 | POST | `/api/experts/{id}/execute` | Execute the DAG and persist observations. |
+| GET | `/api/expert-agent-runs` | Bounded persistent task list and automatic scheduling availability. |
+| POST | `/api/experts/{expertId}/agent-runs/{id}/queue` | Explicitly authorize bounded background execution; returns 202. |
+| POST / GET / DELETE | `/api/experts/{expertId}/agent-runs/{id}` | Explicit execution, persisted detail/candidate, or cancellation. |
+| POST | `/api/experts/{expertId}/agent-runs/{id}/resume` | Resume eligible interrupted execution within the original budget. |
+| POST | `/api/experts/{expertId}/agent-runs/{id}/approval` | Approve/deny `{proposalId, digest, approve}`; recheck authorization, expiry and file baseline; never execute SQL or replay UNKNOWN. |
 | GET | `/api/rule-packs` | Rule pack catalog (shipped + authored) with rule counts, state, `requires` and derived required facts. |
 | GET | `/api/rule-packs/vocabulary` | Fact and operator vocabulary a rule may reference, including each fact's producing capability. |
 | GET | `/api/rule-packs/{id}` | Full pack JSON plus `shipped`/`editable` flags and its capability requirements. |

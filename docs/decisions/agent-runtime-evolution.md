@@ -10,6 +10,8 @@
 
 ## 2. 当前事实与缺口
 
+2026-11-08评审实施补充：[安全与执行边界](../records/architecture-history.md#backend-review-hardening)。保留五模块；禁止把原始工具名、已配置服务器或HTTP成功作为授权/验收。以下历史实现证据不等于本轮实网验证。
+
 以下为静态源码检查，不是本轮运行验收。已有测试和历史实库证据仅按其原范围引用。
 
 | 范围 | 源码事实与定位 | 未完成 / 不得推断 |
@@ -21,7 +23,7 @@
 | 上下文 | `TaskContext`/`AiChatApplication` 拼装；**CE-01 首片**：`ContextBudget` 字符预算/输出预留/超限观测（CHAR_ESTIMATE） | 非 provider token；无压缩选择策略；ChatMemory 未精确计量（标 UNKNOWN）；派生失效仍靠清空保护 |
 | 工具调用 | Java Handler可直接执行本地逻辑；CLI经 `CliOperationHandler` / `CliExecutionService` / `DefaultProcessExecutor`，使用argv与cwd；Chat当前受控工具为只读gitStatus | 不是所有工具都走Shell，也不是目录中的工具都向模型开放；cwd限制不是OS沙箱 |
 | CLI管理 | `CliProgramService` / `/api/cli-programs` 与 `CliProgramManager.vue` 可登记程序、路径及固定参数操作；`LocalBinaries` 查PATH或指定文件 | 登记不安装；缺少受管版本、来源、更新、回滚、卸载与依赖管理 |
-| MCP | 登记/授权/会话隔离；stdio + 分页 + **官方只读包矩阵** + http + legacy SSE + Streamable-HTTP；生产白名单；GET/Last-Event-ID 续传 | 常驻 GET listen 未做；非官方信任仍为操作者声明；矩阵仍可追加已验证包 |
+| MCP | 固定read_graph通过现有Handler和持久专家grant接线；stdio环境白名单、半行/输出限额、进程树/初始化失败清理；登记/授权/会话隔离；stdio + 分页 + **官方只读包矩阵** + http + legacy SSE + Streamable-HTTP；生产白名单；GET/Last-Event-ID 续传 | 常驻 GET listen 未做；非官方信任只允许登记，callReadOnly拒绝未经精确矩阵许可的端点；官方包真实Expert整链仍待验 |
 | 目录 | 有工作区绑定、只读文件树、受控应用；默认连接 `.eap/model-connections.json`、AI产物 `.eap-ai-artifacts` 为相对位置 | 缺统一数据/缓存/工具/任务临时目录合同与旧数据迁移；不是完全没有目录能力 |
 | 前端与桌面 | 浏览器有草稿/偏好存储；`frontend/apps/desktop/src/main.mjs` 提供安全壳和选目录 | UI中的scratch键不是磁盘目录；未接通统一临时资源服务或工具安装器 |
 | 插件 | `features/plugins/model.ts` 固定chat/builder，`host.ts` 生成入口，`PluginSlot.vue` 直接导入组件 | 是可信预装原型，不是通用插件SDK、外部安装器或第三方隔离；Manifest申请不是授权 |
@@ -304,3 +306,140 @@ TC-02 定向独立复核通过，原P1关闭：审查者复跑2文件10项、typ
 - 主方案、台账、路线图及本决定中的11个技术切片ID覆盖检查通过；优先级、依赖及条件触发范围经差异核对，新增功能均未标为已交付。
 - `git diff --check -- docs`通过。Git提示`running-context.md`后续可能转换为CRLF，不是本次空白错误；文件编码仍为UTF-8无BOM。
 - 未运行Maven、前端构建或业务测试：本轮仅文档变更，不以历史回归或链接检查替代功能验收。接续时已有文档草稿予以保留核对，`application.yml`未读取或修改。
+
+## 后端评审后的执行约束（2026-11-08）
+
+- API所有方法统一校验loopback Host；带Origin时使用明确来源清单，CORS同源配置复用`eap.web.allowed-origins`。默认只允许localhost/127.0.0.1的5173、5174、8080；部署到其他前端端口须显式配置。POST/PUT/PATCH有正文时只接受JSON；无Origin的本机非浏览器客户端仍可用。这不是远端多租户鉴权。
+- Chat执行由有上限的应用线程拥有，HTTP连接是可失效观察者。取消仍通过现有会话取消入口；普通Chat走Spring AI流，Responses适配器关闭底层流；完整行脱敏后发delta，代码提案仍整份解析。进程内事件日志不承诺重启恢复。
+- MCP生产调用以精确argv/锁定包版本/工具白名单为准，不能用包名子串或工具名称推断只读。首个Handler只接无参数read_graph，并复核持久专家授权；不会把完整MCP目录暴露给Chat。运行时npx使用离线/拒绝安装选项，安装仍需操作者动作。
+- 批量迁移CodeChangeService和交付持久化闭包被自动审批拒绝。本轮采用已验证的单叶类迁移及执行器复用；其余迁移清单、类型依赖和放行条件见评审记录。未引入新注册中心、框架或数据库迁移。
+
+
+<a id="engine-optional-modules"></a>
+## 后端可选能力与应用组合（2026-11-08实施首轮）
+
+用户批准的模块组合已进入代码：api保留契约JAR；engine、ai、web、spring和applications使用聚合POM；full应用接替runtime。core/local与headless Chat已有独立组合回归，完整产品使用显式组件Import。
+
+详细结构、接口迁移、证据和BM-01～07剩余关口统一见[模块组合决定](backend-module-composition.md#implementation)。Expert/目录/CLI管理仍有产品跨域依赖，不能把聚合拆分当成所有能力已独立可选。此前自动审查拒绝批量迁移为已获后续授权的历史，不再作为权限待办。
+
+<a id="expert-agent-boundary"></a>
+## 11. 专家、专业Agent与固定流程的边界（2026-11-08，分阶段实施）
+
+用户提出SQL专家应更接近具有特色行为与作用的Agent。本节记录目标、实施边界与迁移顺序。用户后续授权自主Agent行为实现；现已实现显式版本绑定的SQL只读取证Agent（11.9），具备基于观察选择工具、追问与结束的有限行为；已继续实现检查点跨JVM恢复和单SQL候选文件审批（11.10）；自动后台调度与审批UI已继续实现（11.11），真实Chromium视觉与模拟审批交互已验；真实Responses文本和Windows原生100%已验，普通API Responses工具支持及真实两轮取证→候选→页面审批→写入读回→重启终态已验；其他系统缩放、复杂SQL效果及用户接受仍待。
+
+### 11.1 初始固定模式的问题（历史背景；新增Agent模式见11.9）
+
+- `ExpertManifest`将步骤、连线、规则包与资源声明绑在一个Expert对象上；`experts/sql-expert.json`固定串行parse→knowledge→schema→indexes→explain。它能表达专业检查流程，却不能根据观察决定补充哪种证据、追问用户或提前形成结论。
+- `ExpertExecutionService.Request`包含sql/databaseId/explainPlan等SQL专用字段，执行服务随后把SQL分析、规则判定、知识引用、模型建议合成一个结果。通用服务即使换成接口，产品输入与完成语义仍偏SQL。
+- 第三轮的`ExpertAnalysisPolicy`是调度器与领域分析的接口，不是Agent行为接口；执行服务现已支持由宿主按专家解析分析策略，完整产品默认仍显式选择SQL兼容策略；现已提供manifest中的版本化专业分析行为绑定；仍不代表不同Agent决策模式。
+- `ExpertExecutionService.execute`的90秒事务范围包含能力与模型执行；任务结果在执行末尾保存。它不是脱离请求持续运行、可恢复和逐步审批的Agent运行机制。给这个方法增加循环会扩大长事务和未知结果问题。
+- `SqlExpertService`当前只在确定性分析后决定是否请求模型建议。`eap-api`的`Expert<I,O>.analyze`在当前后端主源码中没有实现接线；不能用接口名称宣称已有统一Agent运行时。
+
+### 11.2 建议职责
+
+| 概念 | 职责 | 与现有实现关系 |
+|---|---|---|
+| 专家定义 | 专业目标、适用任务、行为策略引用、知识/Skill/工具需求、输入输出与验证要求 | 向专业Agent配置演进；资源声明只表达需求，仍须服务端授权 |
+| 专业Agent行为 | 根据目标和已验证观察选择下一步：调用授权工具、调用固定流程、请求补充信息、结束并交付证据 | 复用Spring AI现有模型/工具调用机制；只把业务决策和执行约束放入EAP，不另造模型协议栈 |
+| 固定流程 | 可复用、可独立测试的有序步骤/DAG | 已提取core独立定义/结构校验/同步执行器，ExpertGraph保留v1适配和领域校验；SQL确定性检查链继续复用。未来Agent入口与授权接线待实施 |
+| Capability / Skill / Rule | Capability执行有边界的操作；Skill提供指导材料；Rule校验事实与候选 | 三者继续分离；自然语言指令不自动成为工具授权或验证结论 |
+| 任务运行 | 持久状态、审批、预算、取消、证据、恢复和UNKNOWN处理 | 复用并增量完善Mission/Task/Run，独立于Chat请求与UI；模型/工具等待不占用整轮数据库事务 |
+
+因此建议把“SQL专家”视为专业角色/行为配置，SQL解析、规则分析、授权元数据读取与执行计划分析作为它可以组合的能力。面对“为什么这个查询很慢”，它可以先判断已有证据，按授权补充结构/索引/计划，证据不足则请求用户补充，再生成待验证候选。是否使用模型由任务需要决定；有确定性能力就先取证，并不意味着每一种专家行为都必须绑定同一固定流水线。性能提升、语义保持等结论仍须独立验证，模型不能自行宣布通过。
+
+### 11.3 实现落点与兼容
+
+- `engine-core`保留中立清单、能力/规则查询及固定流程结构/调度原语（WorkflowDefinition、WorkflowGraph、FixedWorkflowRunner）；`engine-sql`继续拥有可脱离模型使用的SQL分析与规则能力。
+- `engine-workflow`拥有固定流程及现有产品任务/授权持久化；`ai-sql`承接后续SQL专业Agent行为，复用`ai-chat`、模型适配和上下文服务。尚不预建空的`eap-ai-agent`模块；出现多个专业行为的共同实现后再提取。
+- `eap-spring`显式装配已选择的策略/模式；HTTP只做入口适配。配置专家时必须能识别所选模式是否有实现及所需权限，缺实现时明确不可用，不能隐式升级为自主执行。
+- 现有`eap/v1 Expert`仍按固定DAG解释。新专家配置与流程引用的版本化合同先定设计，再实现兼容适配；不能把已有steps/edges自动解释为Agent目标。当前DB迁移、URL和内置资源不改写；已应用版本仅允许后续增量迁移。
+- 专家定义不持有另一套任务状态。写操作审批由执行端依据目标/范围/版本重验，声明范围与实时授予权限取交集；撤权、取消、预算耗尽和结果未知必须能在步骤边界阻断后续动作。
+
+### 11.4 分阶段验收
+
+| 阶段 | 交付 | 验收/状态 |
+|---|---|---|
+| EA-01 现有依赖收敛 | 专家定义/目录消费规则查询与专家范围能力查询；产品SQL/MCP实现继续复用；服务注入实际CapabilitySettings | 本轮实施，验证与剩余产品耦合见[模块组合记录](backend-module-composition.md#implementation)；不是Agent实现 |
+| EA-02 角色与流程合同 | 明确专业目标/行为策略、输入输出、流程引用、旧v1适配，以及固定模式/Agent模式选择 | **部分实施**：固定流程定义/执行器从专家服务提取至core，v1适配、SQL既有链及非SQL本地流程回归；能力输入已按SQL/本地领域接口分离，原HTTP形状由兼容请求组合；宿主可按已加载专家选择分析策略并固定本次词表；专业分析行为id/version已持久绑定并经实库回归（见11.8）；v2目标/tools与Agent模式已接通SQL只读入口；通用领域输入输出与完整角色合同仍待 |
+| EA-03 SQL只读Agent切片 | 授权资料与现有分析能力；选择工具/请求补充/完成的有限行为；复用已有模型工具调用 | **SQL Agent执行与后台入口已实现**：sql-readonly-agent v1复用Spring AI ToolCallingAdvisor，Fake模型及本地PostgreSQL验证动态取证、追问、结束、拒绝/预算/取消、事务边界及持久终态；普通API Responses真实两轮工具调用及单SQL候选审批已验；复杂SQL效果与用户接受待验，见11.9及11.12 |
+| EA-04 运行机制与事务 | 复用Task/Run/Mission，短事务保存状态与证据，模型/工具调用在事务外，审批和恢复按动作持久化 | **部分实施**：Agent在原Task下持久输入/专家revision/检查点及模型预算，租约隔离并显式跨重启续跑；单SQL候选通过独立人工审批复用持久交付，UNKNOWN不重放，已验独立JVM强制退出。模型无事务，本地取证/状态为短事务。显式后台任务可自动续跑，审批UI已接通；旧DAG90秒事务、通用写工具、UNKNOWN人工处置、Chromium视觉/模拟审批交互已验，Responses单SQL文件整链及原生100%已验；其他缩放/复杂SQL效果/用户接受仍待，见11.10～11.12 |
+| EA-05 产品与真实验收 | 专家编辑器、行为轨迹、领域结果/证据展示及旧SQL入口兼容 | 待实施；真实供应商/数据权限/费用另按明确授权验证，用户接受独立记录 |
+
+EA-03若仅验证同步只读行为，可使用有明确生命周期的临时执行；需要脱离请求、跨重启、写操作审批或后台任务时必须先满足EA-04对应关口。产品角色命名与模式选择尚未定稿，不以本节代替后续行为接受。
+
+### 11.5 EA-02首片：固定流程独立（2026-11-08）
+
+WorkflowDefinition只包含步骤和连线，构造时复制集合；WorkflowGraph负责100节点/500边上限、必填项、重复/断边、单入口和无环校验；FixedWorkflowRunner负责稳定拓扑顺序、必需节点失败向后阻断、可选失败/缺证据标记不完整、节点间预算及观察回调。它不选择工具、不调用模型、不加载注册表、不赋予授权、不创建线程或持久任务。
+
+现有ExpertGraph将eap/v1的步骤/连线适配到WorkflowDefinition，继续执行能力词表、开关、规则需求及专家声明校验；ExpertExecutionService通过同一运行器驱动既有Handler，每个节点仍在原resolveFor/授权上下文中执行。SQL规则、模型增强、资源释放和Task结果保存归原服务。45秒调度预算仍包含授权查询准备，零剩余预算产生失败/阻断证据且不调用节点；达到预算后只阻止后续节点，正在运行的I/O仍须原Handler自行实施超时/取消，不能宣传为硬性整轮45秒终止。
+
+既有SQL输入、输出字段、v1清单、URL、内置资源和数据库不变；预算错误文本改为不绑定SQL默认秒数的“流程达到调度预算”，同时在恰好耗尽预算时拒绝启动节点。通用流程结构校验不等于专家权限或业务有效性校验；消费方必须显式提供已授权的节点执行回调。新模型不是新的持久化清单版本，也未开放通用执行HTTP入口。
+
+本片使固定流程成为可复用执行基础；专家角色/行为策略的版本化合同、应用请求的SQL专用字段解耦、长事务拆解与Agent行为仍是后续项（能力层输入分离见下一片）。保留90秒事务并不代表已完成EA-04，后续模型/工具循环须在持久任务和短事务合同下实现。
+
+### 11.6 EA-02第二片：能力输入按领域分离（2026-11-08）
+
+此前core的CapabilityRequest要求所有能力调用都实现sql/question/databaseId/explainPlan/enhanceWithModel/pattern，CapabilityContext也以sql命名通用文本。现CapabilityRequest仅标识领域输入，SQL模块的DatabaseEvidenceInput持有数据库资料ID/执行计划快照契约，local模块的WorkspaceSearchInput仅提供pattern；CapabilityContext.input为已准备的领域文本，requestAs只对显式实现的领域接口做类型检查，不按同名属性推断，不做反射/JSON转换或跨领域回退。
+
+现有ExpertExecutionService.Request保留六字段JSON与SQL校验/脱敏，作为产品兼容请求同时实现两个领域接口；SQL解析读取已准备的context.input，元数据/计划处理器读取DatabaseEvidenceInput，工作区检索读取WorkspaceSearchInput。知识、MCP及CLI的既有上下文构造不需要填充SQL接口成员。输入类型不是权限：数据库资料必须继续查询持久专家grant；工作区由执行上下文传入，输入无权指定cwd；工具权限仍由原注册表/调用方执行边界决定。
+
+缺少/错误领域输入归类为缺少上下文；数据库读取/本地进程不启动，计划缺失返回plan.loaded=false，而非NullPointerException。空/超长检索输入的原拒绝规则保留。同名databaseId/pattern字段但未实现接口的对象不视为有效领域输入。
+
+Java消费方需将CapabilityContext.sql()改为input()，并让自定义请求实现相应领域接口；本次未承诺Java二进制兼容。HTTP URL/JSON六字段、专家清单、数据库迁移与业务调用顺序保持。应用层ExpertExecutionService仍是SQL产品兼容服务，尚未实现通用Agent请求/专业行为绑定；90秒事务与持久任务改造仍是EA-04关口，不能据此宣称所有SQL语义已从workflow消除。
+
+### 11.7 EA-02第三片（历史快照，绑定进度见11.8）：按专家选择分析策略（2026-11-08）
+
+core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManifest，输出为所选ExpertAnalysisPolicy或空；执行服务不再持有全局单一策略，而在校验当前专家和输入后、打开执行资源之前解析一次。所选策略随Run传递给规则解析、事实发布、判定、汇总与可选增强；allowedFacts复制为不可变集合，后续修改选择器或其原始集合不能改变在途执行的策略引用/事实范围。策略实现仍须共享无状态或自行保证线程安全，这不是策略对象所有内部配置的深复制。
+
+未知/未配置策略返回503 EXPERT_ANALYSIS_POLICY_UNAVAILABLE，资源、工具和Task保存均不启动；解析器抛出异常也直接失败，不退回任意可用策略。解析来源不含HTTP策略ID，不新增工具授权或平行能力注册表。宿主可按专家定义选择不同领域策略，不需改通用调度代码；直接Java消费仍可显式传入固定策略，原构造方式保留。
+
+完整产品在FullApplicationConfiguration显式提供SQL兼容选择器，保留现有v1专家结果。用户提供自己的Resolver Bean时默认定义退让；没有把所有可见策略Bean按顺序猜测匹配，也不按expertId包含sql等字符串推断专业角色。测试覆盖同服务多策略、并发隔离、单次解析与词表固定、空/异常拒绝、产品默认与用户覆盖装配。当前产品仍未持久化专家与行为/策略的绑定；SQL专用输入输出、Agent模式、角色配置及EA-04长事务/任务机制仍待。
+
+
+### 11.8 EA-02第四片：专业分析行为版本持久绑定（2026-11-08，历史快照；自主模式见11.9）
+
+专业行为引用现为`behavior: {"id":"sql-analysis","version":1}`，随专家manifest持久保存；缺省旧清单通过宿主显式兼容绑定解析，首次管理保存后固定版本。省略字段的旧编辑器更新保留现有绑定；null不表示清除。清单只能引用宿主已安装的精确行为版本，无法提交实现类/提示词来获得执行逻辑或权限。完整产品只发布SQL分析v1，其模式仍为fixed-workflow。专家目录公开版本合同，保存/启用/执行共同拒绝未知行为版本。
+
+行为变更继续经过原草稿/revision/撤权/重新启用流程；一次执行使用已加载绑定和不可变事实词表，结果及持久节点观察记录该行为版本。数据库UPSERT原子保留旧编辑器省略的绑定，并在同事务验证实际保存值；陈旧读取与存储值冲突时拒绝并回滚。已完成本地PostgreSQL保存重载、独立连接读取、旧编辑器兼容、行为变更撤权、提供方移除后的拒绝/停用、陈旧预读回滚、执行选择及历史版本保留回归；行为/Handler使用确定性测试替身，不作为真实模型或SQL专业效果验收。
+
+实现与命令详见[模块组合第十轮](backend-module-composition.md#implementation)。本片不修改数据库迁移或内置专家资源；UI行为选择、完整角色与行为独立规则目录、SQL请求/结果解耦仍待，EA-03/EA-04未完成。11.5～11.7中有关“持久绑定尚待”的文字保留为各片当时的历史快照。
+
+
+### 11.9 EA-03：SQL只读自主Agent（2026-11-08，历史快照；恢复与审批见11.10）
+
+新增显式`sql-readonly-agent@1`，使用`eap/v2 Expert`的`agent.goal/tools`；steps/edges必须为空。它不会把旧v1流程重新解释为自主目标。后端管理保存、激活与目录识别模式、允许工具及必需sql.parse；原sql-analysis v1和DAG入口保留，新Agent绑定从旧入口调用返回冲突。
+
+`ai-sql/SqlExpertAgentService`先复用sql.parse进行确定性抽取；缺SQL或解析失败直接要求补充，不请求模型。有效输入后复用Spring AI ToolCallingAdvisor/ToolCallingManager进行多轮工具交互：模型可选择read_evidence、request_input或finish_analysis。工具只支持sql.parse、授权数据库表/索引快照、用户提供的EXPLAIN与授权知识检索；sql.parse先由服务运行，其余按模型观察选择，重复工具拒绝。每次只允许一个工具调用；工具不接受新SQL、资料ID、路径、提示词或授权参数，始终使用原始请求与专家声明/grant交集。返回自由文本不算完成，必须调用终结工具；缺证据/阻断规则覆盖模型的completed建议，结论始终unverified。
+
+`engine-core/ExpertAgentAccess`是现有产品授权/持久化端口；workflow的实现复用ExpertDefinitionMapper/Service、grant表和Task/Observation表。每次模型前后重验enabled/revision/清单及已用能力开关；每次本地读取持专家共享锁至读取结束，重新查询授权，不在模型或网络等待期间持事务。run只在进程中拥有临时执行状态；开始时唯一UUID插入Task，结束记录状态、模型调用数、行为版本/revision和脱敏观察。完成后不接受同UUID重试。
+
+边界：4个并发槽、45秒调用等待预算、最多6轮模型/6次工具（每工具最多4次，证据源只读一次）、80k上下文字符/16k单轮输出/16k取证输出，模型maxTokens=2048。超时或DELETE取消中断worker并封闭后续工具/模型入口；不配合中断的Provider仍占用槽至退出，不能继续执行迟到工具，也不能把终态改回成功；不宣称能撤回已发送的网络请求。仅支持当前具有工具协议的chat-completions连接；已有Responses/ChatGPT纯文本适配明确返回AGENT_MODEL_TOOLS_UNSUPPORTED，不静默退化。
+
+接口与完整样例见[模块组合第十一轮](backend-module-composition.md#implementation)。本轮只做本地Fake模型与本地PostgreSQL验证，无真实模型计费、业务SQL执行、MCP/CLI写操作或数据库DDL。进程崩溃可能留下running Task，本轮不自动接管或重放；逐动作持久化、断线独立任务、跨重启恢复/UNKNOWN、写操作审批、前端UI及真实模型效果仍属于后续验收。
+
+
+### 11.10 EA-04首片：持久续跑与单SQL候选文件审批（2026-11-08，历史快照；自动调度与UI见11.11）
+
+原Task下新增一对一续跑记录，固定专家版本与输入，提交取证检查点并在模型调用前扣减持久预算。新owner/60秒租约阻止旧线程提交；单次45秒等待、最多3次尝试/累计6次模型请求、24小时总有效期。重启不自动调用模型，由显式resume继续；已提交证据复用，知识/资料grant重验，终态和取消不可重放。独立JVM在模型边界强制退出后，已验证另一JVM复用检查点与累计预算。
+
+写切片仅允许用户预先指定单个SQL候选路径。模型只调用propose_sql生成候选，不持有文件应用或数据库执行工具。候选/基线/专家版本摘要及15分钟有效期绑定审批；独立人工批准后复用现有CodeChangeService执行，决定记录本地操作员，重试不二次写入，基线变化/撤权/过期拒绝，写中断UNKNOWN不重放。实现、接口、确切验证结果见[模块组合第十二轮](backend-module-composition.md#implementation)。V23/V24为增量迁移，已应用历史不改写。
+
+这是SQL Agent显式恢复与文件候选审批切片，不代表旧Chat/SSE自动持久恢复，也不代表通用Agent后台调度、外部进程接管、数据库写审批/执行或用户验收完成。旧DAG90秒事务、UNKNOWN人工处置、前端行为轨迹、真实供应商效果仍待。
+
+
+### 11.11 EA-04接续：自动后台调度与审批UI（2026-11-08）
+
+显式queue持久化输入/专家快照和automatic许可后返回202；ApplicationReady后的有界调度复用原resume/CAS租约与累计预算。历史手动任务不自动启动；显式后台任务重启后继续，最多3次尝试、累计6次模型调用，授权失效终止。每宿主4个调度槽，100项活动队列限额由数据库短事务串行准入。V25增量迁移保留历史版本，自动许可不可变。
+
+专家页新增提交/列表/证据/候选Diff及独立批准拒绝。离页不取消服务端任务，返回读取持久状态；写审批仍需用户确认当前proposalId/digest，待审批、UNKNOWN或终态不被调度器重放。预览模式禁用，旧DAG编辑器不覆盖v2清单。复用交付服务，不执行SQL。基础SQL Agent创建仅包含解析与用户EXPLAIN，不授予数据库/知识权限。
+
+实库/Fake模型验证双调度器竞争、优雅重启与独立JVM硬退出自动恢复、限额/取消/撤权/幂等/审批隔离；组件回归覆盖审批/拒绝、重挂载、错误/过期/UNKNOWN/预览、费用确认和迟到响应隔离。确切命令与证据见[模块组合第十三轮](backend-module-composition.md#implementation)。后续真实Chromium视觉回归已完成（四档宽度、浅深色、真实Monaco、模拟审批动作与重挂载），修复共享确认框溢出及Diff销毁错误。真实供应商效果、原生桌面缩放/用户接受、通用写工具/UNKNOWN人工处置及旧DAG长事务仍待；浏览器夹具不替代真实模型/写入业务验收。
+
+
+11.11验收接续（历史阻塞快照，已由11.12解除）：真实默认GPT API/gpt-6.1-sol Responses文本请求成功（5.45秒），但真实SQL Agent任务在EAP的AGENT_MODEL_TOOLS_UNSUPPORTED门禁失败，模型调用0、无候选/写入。现有Responses适配器仅支持文本，不能将连通性当作自主工具行为通过；已请求用户选择补齐工具协议或提供chat-completions连接，未擅改连接。Windows原生100%（96 DPI）下有界面Chromium/viewport:null回归通过；其他系统缩放仍因桌面控制通道缺失未验。详见模块组合接续和浏览器README。
+
+### 11.12 Responses工具与真实SQL候选整链（2026-11-08）
+
+用户明确授权补齐工具支持。普通API Responses通过既有Spring AI ToolCallingAdvisor执行工具；适配器只负责function声明、完成响应校验、call_id输出匹配、加密reasoning回传。失败/截断/未知工具/重复ID/非法参数均不执行工具。账号计划SQL Agent门禁与Chat Git门禁保留。
+
+真实原连接gpt-6.1-sol执行两轮：read_evidence读取用户提供的EXPLAIN，再propose_sql；审批前目标不存在，经真实页面确认后写入一个SELECT常量文件，独立读回一致，重复审批与服务重启均不重写/不增加模型调用。代理按用户授权执行测试审批，不等于用户最终接受；未执行SQL，不证明查询语义或性能。运行ID、hash、截图、回归数字见[模块组合第十四轮](backend-module-composition.md#responses-tools-acceptance)。

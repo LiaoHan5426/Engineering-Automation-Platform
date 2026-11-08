@@ -1,12 +1,14 @@
 # 规划状态与验收台账
 
-依据：v1.6 当前 §0B 产品合同、§0A 技术边界及后续决策；旧双入口/Builder 第六入口、市场、全量重建调度器不是隐式要求。2026-11-05技术路线整理后，用户报告模型故障并确认Responses协议，追加限定协议修复；其他新技术切片仍仅规划，不提交推送。此前阶段提交授权不自动外推。持续排除 application.yml，保持现有本机服务。
+依据：v1.6 当前 §0B 产品合同、§0A 技术边界及后续决策；旧双入口/Builder 第六入口、市场、全量重建调度器不是隐式要求。2026-11-05技术路线整理后，用户报告模型故障并确认Responses协议，追加限定协议修复；2026-11-08按用户授权继续Responses工具和真实SQL整链，详见模块组合第十四轮；其他未授权新技术切片仍仅规划。本轮用户明确授权阶段性本地提交，未授权推送。application.yml仅纳入经校验内容不变的宿主路径迁移，不纳入本地配置变更或凭据。
 
 本表跟踪完整范围，不因局部阶段完成把其他项关闭。`实现通过`仅限列明能力，用户人工接受、供应商与平台验收不能由代理或 Mock 替代。
 
 ## 当前基线与完成口径
 
-当前工作基线：`main / fdcda56`；本轮并行PL-01显式只读Task列表依赖检查、CT-01 SSE分帧/终态/缓冲边界。父任务完整前端130文件752项通过（`--maxWorkers=2`），类型、架构（含边界）、构建通过；大chunk、Node localStorage及既有网络保护诊断保留。指定`desktop_preview`/`drive_preview`真机5173点击local-eap只读检查获得Task列表可用/来源/时间；mock5174检查标记模拟，聊天发送成功清草稿。不把Task查询升级为Run/全服务健康，不把模拟流升级为真实供应商验收。`application.yml`不读取、不修改、不提交；未重启服务、未调用真实模型、未迁移数据。
+2026-11-08阶段收束基线：`1aecc1a`；本次提交覆盖十四轮模块/Agent接续，详情见[阶段收束](decisions/backend-module-composition.md#stage-checkpoint)。安全/事件/MCP和单类归属调整见[评审实施](records/architecture-history.md#backend-review-hardening)；本次后端验证单独记录，不复用下方历史前端或门控证据。
+
+保留历史快照：`main / fdcda56`；本轮并行PL-01显式只读Task列表依赖检查、CT-01 SSE分帧/终态/缓冲边界。父任务完整前端130文件752项通过（`--maxWorkers=2`），类型、架构（含边界）、构建通过；大chunk、Node localStorage及既有网络保护诊断保留。指定`desktop_preview`/`drive_preview`真机5173点击local-eap只读检查获得Task列表可用/来源/时间；mock5174检查标记模拟，聊天发送成功清草稿。不把Task查询升级为Run/全服务健康，不把模拟流升级为真实供应商验收。`application.yml`不读取、不修改、不提交；未重启服务、未调用真实模型、未迁移数据。
 
 本台账只维护当前状态与下一关口；阶段原文和历史测试数字归[主题记录总览](records/README.md)。不因局部切片通过关闭资源阶段、桌面发行或用户产品验收。
 
@@ -20,8 +22,8 @@
 | UI-04 Code/Work | 共用会话和选择保存 | 实际办公任务执行，不只角色指引 |
 | SC-01/02 场景 | 配置、设计、版本、准备已分面；CAS 保存/删除；save 失败后远端核对；**本轮**：mock「模拟保存断连」落盘+502→`unknown`（`:5174` 已验） | 用户产品接受仍待；真实交付及依赖授权闭环；不把可变配置revision当不可变设计版本 |
 | CP-01/02/03 输入与策略 | 目标/模式/审批分别建模，未接通模式禁用；媒体对照修正知识/Skill常驻堆叠，＋入口/紧凑引用/弹窗说明，四视口发送可达，见[记录](records/frontend-history.md#reference-ui-review) | 规划/Agent真实执行；禁止用标签替代策略；不以局部布局通过代替全体验接受 |
-| MD-01 模型连接 | 凭据/目录/白名单/强度已有；追加普通API显式wireApi及Responses文本/代码提案，协议变更revision/重绑定、Git拒绝和前端/mock合同已实现并通过离线回归，见[决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验) | 用户重启加载、编辑原连接选择Responses并确认会话绑定后真实重试；真实网关/认证和浏览器接受未验，不自动付费探测；Responses工具及403网关诊断仍缺，不宣称原故障已恢复 |
-| EX-01 专家 | 指引/版本/资源可见，现有DAG保留；单专家授权知识→Chat接线、撤权/旧记忆隔离及实库范围回归已通过，见 [阶段记录](records/resource-history.md#expert-knowledge-chat) | 完整配置角色/其余资源及真实供应商效果仍待；不执行DAG或自动获得工具权限 |
+| MD-01 模型连接 | 凭据/目录/白名单/强度已有；追加普通API显式wireApi及Responses文本/代码提案，协议变更revision/重绑定、Git拒绝和前端/mock合同已实现并通过离线回归，见[决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验) | 原连接Responses真实文本与SQL Agent两轮工具、审批写入已验；其他网关/模型/推理档位、Responses Chat Git/账户计划工具及用户最终接受仍待 |
+| EX-01 专家 | 指引/版本/资源可见，现有DAG保留；专业行为id/version持久绑定已接通管理与执行，新增SQL自主Agent及跨JVM检查点恢复/自动后台调度/单SQL候选审批UI（Fake模型/实库、组件及真实Chromium视觉/模拟交互验证；普通API Responses工具支持及真实两轮取证→候选→页面审批→写入读回→重启终态已验；其他系统缩放、复杂SQL效果及用户接受仍待）；单专家授权知识→Chat接线、撤权/旧记忆隔离及实库范围回归已通过，见 [阶段记录](records/resource-history.md#expert-knowledge-chat) | 完整配置角色/其余资源及真实供应商效果仍待；不执行DAG或自动获得工具权限 |
 | PB-01 原型编辑 | Grapes工程+语义Schema、8类映射、保存重开/预览 | 对目标页面需要的状态/动作/组件逐项补映射；未知阻塞 |
 | PB-02 生成基线 | 单目标完整有界源码、原型及生成前Task/revision快照已落地；生成期间变化/额外目标拒绝，PREBOUND关联已交付（69892f3）；见 [阶段记录](records/delivery-history.md#code-generation-baseline)、[阶段记录](records/delivery-history.md#code-task-prebinding) | 真实供应商自身改页验收、多文件组件图约束及快照保留期仍后续 |
 | PB-03 受控应用 | 持久单文件候选、意图/读回、未知保护、Task→workspace互锁及POST_HOC/PREBOUND交付归因已通过实库/回归；见 [阶段记录](records/delivery-history.md#code-proposal-application)、[阶段记录](records/delivery-history.md#code-task-prebinding) | 未知人工核对、真实模型自身改页和完整交付；不宣称OS事务CAS、Git Run创作代码或会话重启恢复 |
@@ -30,10 +32,10 @@
 | Chat应用→交付关联 | POST_HOC（544b8f9）与后续PREBOUND（69892f3）已通过实库协议、前后端回归及独立复核；旧无绑定记录不升级归因 | POST_HOC不证明生成时任务归因；PREBOUND仍不证明真实供应商改页/用户产品验收 |
 | 生成前任务绑定 | PREBOUND单目标任务/原型快照、应用领取互锁、交付归因已通过实库协议与独立复核；前端398项、后端569项（6跳过），见 [阶段记录](records/delivery-history.md#code-task-prebinding) | 生成前绑定不等于真实供应商已改页；实际模型交付及用户验收仍待，不自动完成整体PB/RK |
 | RK-1～4/6 看板准备与只读Run | 已实现持久任务、revision/幂等、只读Run、原型快照、审阅 | 接入真实实现Run后复核状态/失败/并发；不放开任意拖done |
-| CT-01 生命周期 | SSE/cancel/快照/同ID重连及失败草稿保留；本轮LF/CRLF分块解析、坏帧拒绝、1Mi UTF-16单帧限额、final及时释放已回归；真实临时HTTP25项通过，mock预览发送成功；全量752项通过 | 真实供应商流式/进程取消/重连接受仍待；单帧限额非总内存限制，不重放历史或宣称模型记忆恢复；跨重启接管仍待 |
+| CT-01 生命周期 | SSE/cancel/快照/同ID重连保留；2026-11-08应用线程执行、断线继续、Spring AI/Responses流、完整行脱敏、事件预算/终态/并发修复，见评审记录 | 真实供应商及用户接受待验；日志仍进程内，持久回放/跨重启接管未实现 |
 | RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与测试接受/拒绝决定已有刷新回放 | EAP自身改页完整证据、SQL实际任务证据及用户接受；不重复开发已有决定回放 |
 | Skill | 文本上传/粘贴+显式文本资源、不可变版本、CAS启停/回退、按需预览与Chat精确引用首片已实现；安全/保存恢复缺陷修复后父任务前端525项、后端647项（6跳过）、实库/浏览器及独立复核通过；见 [阶段记录](records/resource-history.md#skill-text-import) | 目录/仓库导入延期；不执行脚本或授予工具权限，不支持通用mock YAML解析；真实供应商效果与用户最终验收待定 |
-| MCP-01 / P0 | **部分交付**：stdio/http/SSE/Streamable-HTTP/白名单/GET 续传；官方矩阵四包；**本轮**：视图区分 `callVerifiedTools`/`listOnlyTools`（`directory_tree` 仅 list；`:5174`/`:5173` 已验） | 常驻 GET listen 未做；继续追加包 |
+| MCP-01 / P0 | 保留四传输/矩阵/续传；2026-11-08增加固定read_graph Handler、持久专家grant、精确服务器匹配、环境白名单、有界IO/进程树清理；真实子进程协议夹具覆盖 | 官方memory包通过Expert入口的本机实网验收、常驻GET listen待验；运行时npx离线且拒绝自动安装 |
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理 | 检索更新删除/来源与专家范围，SQL真实任务，CLI生命周期回归；不扩第二套执行器 |
 | PL-01 / P0 看板插件首片 | **部分交付**：board启停/回滚/sticky保留；本轮新增项目ID有界显式GET Task列表检查，未检查/检查中/可用/失败未知与来源时间分开；真机/mock已验，不改Task/Run | 仅Task列表读取通过；Run/全服务健康、在途停用完整矩阵与用户接受仍待；外部安装器延期 |
 | PL-02 / P1 设计器插件 | GrapesJS/Schema/版本已有；尚未按通用贡献机制迁移 | PL-01后复用现有设计器、版本和核心API，验证停用不丢草稿/版本；外部任意JS安装延期 |
@@ -50,7 +52,8 @@
 | 桌面与安装器 | Electron45 preload壳、bootstrap检测脚手架 | Windows sidecar、一体启动/停止、迁移失败/恢复、包验证；签名需要用户凭据及发行决定 |
 | Mock契约与总体质量 | 网络保护持续启用；前轮34项回归已修；本轮SSE CRLF/分块/多行data、畸形拒绝、每帧1Mi UTF-16上限与final及时释放；最新130文件752项、类型/架构/build通过 | 真实模型/后台恢复/全页面视口与用户接受不随之关闭；单帧限额不是总内存/总流上限 |
 | 最终验收 | **未完成** | EAP自身实际改页、完整证据链、用户交互接受；已验证/跳过/外部阻塞分别列明 |
-| 后端runtime拆分 | 五模块依赖方向落地，runtime主源码194→4；干净verify 652项0失败/错误6跳过、最终独立复核通过，迁移未改，见[记录](records/architecture-history.md#backend-runtime-modules) | IDEA重导入Maven与实际本机启动核对；不宣称业务新增或模型闭环完成 |
+| 后端runtime拆分 | 已由applications/full接替；唯一Boot主类与配置/迁移资源保留；旧五模块记录为历史 | 当前IDEA原配置/full宿主启动已验证；跨环境部署与实库业务接受独立，不由离线Bean图替代 |
+| BM-01～07 后端模块组合 | **十四轮边界调整，部分关口保留**：[实施范围](decisions/backend-module-composition.md#implementation)；最新clean后修复旧测试夹具再verify为32项目成功、907项（833通过/74跳过/0失败或错误；提交前前端全量131文件/763项通过，类型/架构/构建通过；含4项真实PostgreSQL绑定回归、4项Agent持久化/授权回归及23项续跑/审批回归），core/local/Chat最小组合、显式完整产品装配；知识上下文去workflow依赖、管理事务下沉服务、Expert执行分析/资源端口化、CLI通道下沉local/存储失败拒绝、codegen原型查询端口及证据存储/DTO归属修正（已去workflow依赖）、专家定义领域查询分离、固定流程定义/调度独立、能力输入按领域分离及按专家选择/固定执行策略、行为id/version持久绑定（目录/保存/启用/执行/历史观察，含本地PostgreSQL回归）、SQL自主Agent工具循环及授权/短事务/取消、持久检查点/租约/预算、自动后台调度与单SQL候选审批UI；IDEA原配置启动与产品注册表调试已通过（重复Bean旧进程根因未复现） | EA-02固定流程/能力输入分离、策略解析及专业行为版本持久绑定已实现；EA-03 SQL只读Agent后端已实现且Fake模型/实库通过；行为编辑器、真实供应商效果、通用应用输入及旧DAG长事务、EA-04已实现SQL Agent检查点显式续跑/文件候选审批/UNKNOWN不重放，显式后台任务自动恢复与审批UI已实现，Chromium视觉/模拟审批交互已验，真实Responses文本请求与Windows原生100%已验，普通API Responses工具及真实两轮取证/候选/审批/文件读回/重启终态已验；复杂SQL效果/其他系统缩放/用户接受、通用写工具及UNKNOWN人工处置仍待，产品目录/CLI程序登记审批及Chat产品用例/工具可选贡献继续解耦（workflow整体仍依赖SQL/MCP）；领域schema、跨环境服务和实库业务/官方MCP/供应商独立验收 |
 
 ## 已完成切片与后续顺序
 

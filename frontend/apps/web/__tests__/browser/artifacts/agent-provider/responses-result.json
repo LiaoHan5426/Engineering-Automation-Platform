@@ -1,0 +1,45 @@
+{
+  "runId": "791dedff-f3c3-4002-afed-8d798c9750c4",
+  "expertId": "sql-agent-0c1a7b33-f6da-4417-a422-d6e4124f4250",
+  "connection": {
+    "id": "8b523f6e-d59a-4201-8440-c4a0b9beda22",
+    "wireApi": "responses",
+    "model": "gpt-6.1-sol"
+  },
+  "modelCalls": 2,
+  "observedCapabilities": [
+    "sql.parse",
+    "database.explain"
+  ],
+  "stateBeforeApproval": "awaiting-approval",
+  "targetAbsentBeforeApproval": true,
+  "approvalHttp": 200,
+  "stateAfterApproval": "applied",
+  "candidateStatus": "APPLIED",
+  "repeatApprovalHttp": 200,
+  "stateAfterRestart": "applied",
+  "attemptsAfterRestart": 1,
+  "targetRelative": "frontend/apps/web/__tests__/browser/artifacts/agent-provider/provider-candidate.sql",
+  "content": "SELECT 1 AS acceptance_value;",
+  "sha256": "85e0c913bd9600ce1276fd0722769a506e2a9851bb9becd1a9701a6b277bbac4",
+  "readbackMatchesCandidate": true,
+  "mtimeUnchangedAfterRepeatAndRestart": true,
+  "connectionUnchanged": true,
+  "sqlExecuted": false,
+  "approvalPerformedBy": "Codex browser automation under user-authorized end-to-end test; not final user acceptance",
+  "nativeWindow": {
+    "dpr": 1,
+    "inner": [
+      1920,
+      945
+    ],
+    "screen": [
+      1920,
+      1080
+    ],
+    "scale": 1
+  },
+  "pageErrors": [],
+  "staleApprovalSummaryHidden": true,
+  "testExpertDisabled": true
+}

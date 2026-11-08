@@ -29,7 +29,7 @@ def code_state():
     return digest.hexdigest()
 
 def main():
-    config = (ROOT / 'backend/eap-runtime/src/main/resources/application.yml').read_text(encoding='utf-8')
+    config = (ROOT / 'backend/eap-applications/eap-full-application/src/main/resources/application.yml').read_text(encoding='utf-8')
     match = re.search(r'(?m)^\s*deepseek-key:\s*([^\r\n]+)', config)
     if not match: raise ValueError('Missing configured key')
     scalar = match.group(1).strip()

@@ -94,7 +94,7 @@ def print_report(payload: dict) -> int:
         print(f"  {name:6} {path} · {version}")
     print()
     print("Suggested next steps:")
-    print("  1) Start local Java service from IDEA or: mvn -f backend/pom.xml -pl eap-runtime spring-boot:run")
+    print("  1) After reactor install, start local Java service from IDEA or: mvn -f backend/pom.xml -pl :eap-full-application spring-boot:run")
     print("  2) Start UI: pnpm --dir frontend --filter @eap/web dev")
     print("  3) Optional desktop shell: pnpm --dir frontend --filter @eap/desktop dev")
     print(f"  4) Health: GET {payload['defaults']['apiHealth']}")

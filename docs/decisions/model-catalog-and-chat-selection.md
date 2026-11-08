@@ -50,7 +50,7 @@ ChatGPT 账号登录已增加独立通道，见 [ChatGPT 账号接入](chatgpt-a
 - 普通连接显式保存`wireApi: "chat-completions" | "responses"`；旧数据缺字段默认Chat Completions，不猜域名/模型、不自动降级重试。普通连接创建默认Chat Completions，更新未传协议则保留原值；非法值拒绝。
 - 切换协议属于实质连接变更：提升revision并隔离客户端与会话指纹，按现有机制重新确认/清空模型记忆；同端点仅改协议不清空目录和允许模型。不得静默迁移既有会话或重发草稿。
 - Responses普通API继续使用该连接API Key，复用现有官方SDK窄适配，不冒充ChatGPT订阅登录，不读取Codex或其他应用认证文件。ChatGPT账号通道保持固定Responses和原有OAuth语义。
-- 首片仅文本聊天/代码提案，发送instructions、历史input、显式推理档位及store=false，通过流式完成事件判断结果；失败/不完整流不标成功。不新增模型工具循环，也不将Chat Completions工具直接发送到Responses；前后端明确拒绝Git工具组合。
+- 首片历史范围（2026-11-08普通API SQL工具扩展见下）：仅文本聊天/代码提案，发送instructions、历史input、显式推理档位及store=false，通过流式完成事件判断结果；失败/不完整流不标成功。不新增模型工具循环，也不将Chat Completions工具直接发送到Responses；前后端明确拒绝Git工具组合。
 - 不改用户已保存连接、密钥、application.yml，不为验证而调用真实付费模型或重启用户服务。普通API认证继续为Bearer Key；用户配置中的`requires_openai_auth = true`不是订阅OAuth，也不是允许读取其他应用凭据。
 
 ### 验证与使用
@@ -61,3 +61,7 @@ ChatGPT 账号登录已增加独立通道，见 [ChatGPT 账号接入](chatgpt-a
 - 实际接入需先由用户在IDEA重启后端加载新代码，再在设置编辑原API连接、将协议设为Responses并保存。地址不追加`/responses`（保留`/v1`），密钥留空表示保留。仅协议变更保留目录/允许模型；回会话明确确认重新绑定，工具设为无，再由用户重试原草稿。不自动创建其他供应商连接或重发请求。
 - 后续CT-01修复补充：重启后若原服务端会话已丢失，使用[重新连接并重试](chat-engineering-task-slice.md#会话失效与显式重试2026-11-05实现与离线回归通过)确认入口，不再要求手工新建用户会话。保留本地历史/草稿/选择，但不把历史自动发给模型；工作区或模型不符合条件时明确阻断。
 - 未验证：真实端点认证/Cloudflare规则、供应商响应兼容性及浏览器交互接受；仍不能宣布原故障已完全恢复。403目前仍为通用权限分类，网关HTML与供应商JSON的诊断细分是剩余缺口，不借此记录或输出原始凭据/正文。
+
+## 普通API Responses函数工具（2026-11-08）
+
+当前普通API Responses已支持Spring AI函数声明、完成后调用识别、call_id结果和加密reasoning项回传；Spring AI继续拥有工具循环。单SQL Agent的真实两轮取证/候选/页面审批/写入/独立读回/服务重启终态已验，原连接和默认模型未改变。结果与限制见[第十四轮验收](backend-module-composition.md#responses-tools-acceptance)。首片文字和数字保留为历史；Responses Chat Git工具和账号计划SQL Agent尚未放开，其他模型/推理档位及用户最终接受独立。

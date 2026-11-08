@@ -1,0 +1,82 @@
+{
+  "checks": [
+    {
+      "width": 1920,
+      "panel": {
+        "width": 1547,
+        "scroll": 1547,
+        "left": 318,
+        "right": 1867,
+        "viewport": 1920
+      }
+    },
+    "approve sends exact binding and renders applied; Escape never writes",
+    "deny and remount retain state; populated expert list has no empty-state contradiction",
+    "unknown/expired refuse approval; rejected approval remains waiting; explicit cancel renders cancelled",
+    "submission requires cost confirmation; leaving does not cancel the server task"
+  ],
+  "mutations": [
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111/approval",
+      "body": {
+        "proposalId": "visual-proposal",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "approve": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111/approval",
+      "body": {
+        "proposalId": "visual-proposal",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "approve": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111/approval",
+      "body": {
+        "proposalId": "visual-proposal",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "approve": true
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111",
+      "body": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/0f34c586-deb6-4ff4-9e5c-d71d510d6ce4/queue",
+      "body": {
+        "sql": "select 1",
+        "question": "",
+        "targetPath": "queries/review.sql",
+        "databaseId": null,
+        "explainPlan": null
+      }
+    }
+  ],
+  "errors": [],
+  "native": true,
+  "display": {
+    "devicePixelRatio": 1,
+    "screen": {
+      "width": 1920,
+      "height": 1080
+    },
+    "inner": {
+      "width": 1920,
+      "height": 945
+    },
+    "outer": {
+      "width": 1920,
+      "height": 1032
+    },
+    "visualScale": 1
+  },
+  "boundary": "Real Chromium/UI/Monaco; fixture API only for Agent state/actions. No model calls or real candidate writes."
+}

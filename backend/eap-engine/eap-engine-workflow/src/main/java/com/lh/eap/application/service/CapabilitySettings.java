@@ -1,0 +1,104 @@
+package com.lh.eap.application.service;
+
+import com.lh.eap.core.CapabilityUsageQuery;
+
+import java.util.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+/**
+ * The one on/off switch for every capability, whatever its kind.
+ *
+ * <p>A capability is registered by code, so the only thing an operator can decide about its existence is
+ * whether this installation should offer it: {@code database.explain} may be pointless without a plan
+ * snapshot source, an operator may want a stricter baseline. That decision — plus a note explaining it —
+ * lives here, in one table, rather than being spread across the CLI channel and the MCP registry.
+ *
+ * <p><b>Absent means enabled only after a successful query.</b> Settings are an opt-out: a capability
+ * nobody configured is runnable. An unavailable authoritative store is not an empty settings table;
+ * readers must refuse execution instead of silently bypassing an operator's persisted switch.
+ *
+ * <p>The refusal rule is the same one rule packs and knowledge bases already follow: a capability that an
+ * <em>enabled</em> expert runs cannot be switched off, because doing so would turn a working expert into
+ * one that fails a node. Draft references do not block anything — they are not running.
+ */
+@Service
+public class CapabilitySettings implements com.lh.eap.core.CapabilitySwitches {
+    private static final int NOTES_LIMIT = 500;
+
+    private final JdbcTemplate jdbc;
+    private final CapabilityUsageQuery usage;
+
+    public CapabilitySettings(JdbcTemplate jdbc, CapabilityUsageQuery usage) {
+        this.jdbc = jdbc;
+        this.usage = usage;
+    }
+
+    public record Setting(String capability, boolean enabled, String notes, String updatedAt) { }
+
+    /** Every stored setting. Only a successful empty query means "nothing has been configured". */
+    public Map<String, Setting> all() {
+        var result = new LinkedHashMap<String, Setting>();
+        List<Map<String, Object>> rows;
+        try {
+            if (jdbc == null) throw new IllegalStateException("Settings store unavailable");
+            rows = jdbc.queryForList("SELECT capability,enabled,notes,updated_at FROM eap.capability_setting");
+            if (rows == null) throw new IllegalStateException("Settings query returned no result");
+        } catch (RuntimeException error) {
+            // Stable refusal reason; never expose driver messages or connection details to callers.
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CAPABILITY_SETTINGS_UNAVAILABLE");
+        }
+        for (var row : rows) {
+            var capability = text(row.get("capability"));
+            if (capability == null) continue;
+            result.put(capability, new Setting(capability, !Boolean.FALSE.equals(row.get("enabled")),
+                    Objects.toString(row.get("notes"), ""), Objects.toString(row.get("updated_at"), "")));
+        }
+        return result;
+    }
+
+    public Setting setting(String capability) {
+        return all().getOrDefault(capability, new Setting(capability, true, "", ""));
+    }
+
+    public boolean enabled(String capability) { return setting(capability).enabled(); }
+
+    /** Capabilities the operator switched off. Absent capabilities are enabled, so this is a real list. */
+    public Set<String> disabled() {
+        var result = new TreeSet<String>();
+        for (var setting : all().values()) if (!setting.enabled()) result.add(setting.capability());
+        return result;
+    }
+
+    /**
+     * Turn a capability on or off and record why.
+     *
+     * @throws IllegalStateException when an enabled expert still runs it — the caller turns that into a
+     *                               refusal listing the experts, so the operator can decide which to
+     *                               disable first instead of discovering it as a failing node later
+     */
+    @Transactional
+    public void save(String capability, boolean enabled, String notes) {
+        var note = notes == null ? "" : notes.trim();
+        if (note.length() > NOTES_LIMIT) throw new IllegalArgumentException("备注最多" + NOTES_LIMIT + "字符");
+        if (!enabled) {
+            var experts = usage.enabledExpertsUsing(capability);
+            if (!experts.isEmpty()) {
+                throw new IllegalStateException("能力 " + capability + " 仍被已启用专家引用：" + String.join("、", experts)
+                        + "。停用会让这些专家的节点在执行时失败；请先停用这些专家，或从它们的流程中移除该节点。");
+            }
+        }
+        jdbc.update("INSERT INTO eap.capability_setting (capability,enabled,notes,updated_at) VALUES (?,?,?,now()) "
+                        + "ON CONFLICT (capability) DO UPDATE SET enabled=EXCLUDED.enabled, notes=EXCLUDED.notes, updated_at=now()",
+                capability, enabled, note);
+    }
+
+    private static String text(Object value) {
+        if (value == null) return null;
+        var text = String.valueOf(value).trim();
+        return text.isEmpty() ? null : text;
+    }
+}

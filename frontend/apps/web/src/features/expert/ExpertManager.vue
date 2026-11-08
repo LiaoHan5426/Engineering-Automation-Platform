@@ -2,6 +2,8 @@
 import { ref, onMounted, onUnmounted, computed, watch, toRaw } from 'vue'
 import { runtimeApi, type CapabilityItem, type CapabilityKindSummary } from '@eap/runtime-client'
 import { assertExpertId } from '@eap/expert-sdk'
+import { useI18n } from 'vue-i18n'
+import ExpertAgentPanel from './ExpertAgentPanel.vue'
 import {
   Button,
   Checkbox,
@@ -34,6 +36,7 @@ type ExpertDefinition = {
   [key: string]: unknown
 }
 const emit = defineEmits<{ saved: []; run: [id: string] }>()
+const { t } = useI18n()
 const original = ref<ExpertDefinition | null>(null)
 const baseline = ref('')
 const library = ref<Array<{ id: string; name: string }>>([])
@@ -326,6 +329,10 @@ function applyDefinition(item: ExpertDefinition, note?: string) {
   baseline.value = definition().manifest
 }
 function edit(item: ExpertDefinition) {
+  if (item.apiVersion === 'eap/v2') {
+    loadError.value = t('expertAgent.agentEditor')
+    return
+  }
   if (!guardLeave()) return
   applyDefinition(item)
 }
@@ -525,6 +532,7 @@ defineExpose({ refresh: refreshData })
 onMounted(refreshData)
 </script>
 <template>
+  <ExpertAgentPanel @saved="refreshData" />
   <section class="manager-workspace">
     <aside class="manager-list eap-panel">
       <div class="manager-toolbar">
@@ -556,7 +564,9 @@ onMounted(refreshData)
         <strong>{{ item.name }}</strong
         ><small>{{ item.id }}</small>
       </Button>
-      <EmptyState>暂无匹配专家，点击新建开始配置。</EmptyState>
+      <EmptyState v-if="!visibleItems.length && !loadError"
+        >暂无匹配专家，点击新建开始配置。</EmptyState
+      >
     </aside>
     <div v-if="!editing" class="eap-panel eap-empty">
       <h2>构建专家工作流</h2>

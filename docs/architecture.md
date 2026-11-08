@@ -27,29 +27,31 @@ frontend/            Vue 3 + TypeScript monorepo (Vite+ / pnpm)
   internal/tsconfig  shared TypeScript configuration, published as @eap/tsconfig
   (planned) hooks / effects / layout / plugin-* — see UI shared-module decision
 backend/             Java 25 / Spring Boot / Maven reactor
-  eap-api            stable contracts only: Capability, ExecutionContext, Observation, ProcessExecutor,
-                     and the expert analysis model
-  eap-engine         deterministic services, capability/process execution, rules/experts,
-                     task/Run verification, persistence, workspace and application DTOs
-  eap-ai             Spring AI/chat/model adapters, source generation/application, Skill services,
-                     and board delivery integration with AI snapshots
-  eap-web            HTTP controllers, browser-request guard, CORS
-  eap-runtime        only executable Boot host: startup wiring, built-in resources, migrations,
+  eap-api            stable contracts, including TaskRef (JAR)
+  eap-engine/        deterministic modules: core/local/sql/knowledge/mcp/delivery/workflow
+  eap-ai/            chat/model-openai/skill/context/codegen/sql
+  eap-web/           core/local/sql/knowledge/mcp/workflow/ai HTTP adapters
+  eap-spring/        conditional auto-configuration; core/local/ai starters
+  eap-applications/eap-full-application
+                     only executable Boot host: explicit product wiring, resources, migrations,
                      and cross-module acceptance tests
-  eap-runtime/src/main/resources/db/migration
-                     Flyway development baseline (V1__initial_schema.sql)
+  eap-applications/eap-full-application/src/main/resources/db/migration
+                     25 migrations: retained V1–V22 plus incremental V23–V25
 docs/                architecture, pipeline, roadmap, environment, expert/knowledge/rules, prototype
 ```
 
-`eap-api` contains no Spring and no LLM SDK. Dependency direction is runtime → web → ai → engine → api;
-modules also declare direct dependencies for types they use. Only runtime uses Boot repackage.
-The engine is an engineering implementation module, not a claim of framework-free domain purity.
-The existing Spring/JDBC/HTTP-exception coupling is retained; SQL model calls still use the existing
-provider contract implemented by the AI module. See [module split and verification](records/architecture-history.md#backend-runtime-modules).
+The layout above is the implemented composition through the current SQL Agent slice. `eap-api` has no framework dependencies;
+engine core/local have no Spring, JDBC or model runtime dependencies (core retains Jackson for existing
+manifest/value serialization). Libraries never depend on the application; engine never depends on AI or HTTP.
+Only `eap-full-application` uses Boot repackage. `FullApplicationConfiguration` explicitly imports product
+components instead of scanning every EAP package. Default library wiring does not grant filesystem or tool access.
 
-Classes retain their package identities except shared DTOs now under `application.dto` and AI responses under `ai.dto`. They include `web.controller`, `application.service`,
-`persistence.mapper`, `domain.model`, `domain.expert`, `runtime.handler`, `runtime.sql`, and
-`runtime.mcp`. See [module-layout.md](module-layout.md) for the implemented boundaries and verification commands.
+Deterministic proposal application/verification lives in `com.lh.eap.delivery`; Board and JDBC task adapters
+remain in workflow. Domain handlers live with SQL/knowledge/MCP, with SQL-specific knowledge hints supplied
+by a workflow adapter. Expert execution, the product catalog and CLI management still combine domains;
+AI codegen/context still contain product integration. See [implementation and remaining gates](decisions/backend-module-composition.md#implementation)
+and [module layout](module-layout.md). Historical five-module evidence remains in the architecture records.
+
 Frontend UI placement (primitives in `@eap/ui`, planned hooks/effects/layout/plugin modules, agent workflow)
 is normative in [frontend-ui-shared-module-boundaries.md](decisions/frontend-ui-shared-module-boundaries.md);
 planned packages are not implemented until an approved slice creates them.
@@ -141,13 +143,15 @@ executes once over the accumulated fact base (after the whole graph), and any ru
 not run is reported as a **blocked** rule — the run degrades to `partial` with explicit advice instead
 of reporting "no findings". See [expert-knowledge-rules.md](expert-knowledge-rules.md) §2–§3.
 
-**Expert orchestration.** An expert is a declarative JSON manifest (`eap/v1`) with steps, explicit
+**Fixed-workflow expert orchestration.** An expert is a declarative JSON manifest (`eap/v1`) with steps, explicit
 edges, rule pack references and platform invariants. `ExpertGraph` validates the DAG (single entry, no
 cycles, known capabilities, satisfiable rule pack requirements) and orders it. `ExpertExecutionService`
 resolves the declared rule packs, runs nodes in dependency order, blocks dependents of a failed required
 node, enforces knowledge and database grants, redacts evidence and persists observations. Shipped
 experts are seeded into `expert_definition` with `builtin = true` by `BuiltinResourceSeeder`, so
 built-in and operator-authored experts share one code path.
+
+**Versioned SQL Agent behavior.** Explicit `eap/v2` manifests bind `sql-readonly-agent@1`; old DAG experts are not upgraded implicitly. The Agent uses Spring AI to select authorized evidence, request input or propose one SQL file. Task-owned checkpoints, lease ownership and cumulative budgets survive restart; only explicitly queued runs receive automatic scheduling consent. Separate digest-bound approval applies the candidate through existing delivery services. UNKNOWN writes are not replayed. Ordinary Responses function tools passed a real two-call evidence/candidate/approval/readback test and restart verification; this does not establish SQL correctness or performance. See [stage evidence](decisions/backend-module-composition.md#responses-tools-acceptance).
 
 **Knowledge.** `knowledge.search` performs PostgreSQL full-text search plus local keyword matching
 (including Chinese bigram segmentation). Access is deny-by-default via `expert_knowledge_grant`.
@@ -178,6 +182,13 @@ an explicit reset; automatic legacy adoption was removed. Future changes use inc
 See [runtime-workflow.md](runtime-workflow.md).
 
 ## What is planned (not yet implemented)
+
+### Remaining backend composition work
+
+The [BM stage table](decisions/backend-module-composition.md) records what is implemented and what remains:
+Expert/registry/CLI service decoupling, product Chat contributions, independent schema initialization and
+cross-environment service acceptance. The local IDEA host and bounded SQL Agent provider chain have passed their checks. The module hierarchy, core/local/Chat starters and minimum composition tests
+are implemented; they must not be listed as wholly unimplemented or as full product acceptance.
 
 These are target designs, not current behaviour. Each is gated behind a roadmap phase with exit
 criteria in [roadmap.md](roadmap.md).
@@ -243,7 +254,7 @@ wiring does not establish a framework limitation. Do not maintain parallel model
   framed as a remote multi-tenant grant store. The threat model is about what the operator *imports*
   (third-party experts, MCP servers, model output), not about other people.
 - **SQL parsing:** JSQLParser 5.4. Parsing is local and deterministic.
-- **Model integration:** Spring AI 2.0.2 BOM and official OpenAI Starter in runtime. ChatClient,
+- **Model integration:** Spring AI 2.0.2 BOM and official OpenAI Starter in eap-ai-model-openai. ChatClient,
   ChatModel, ToolCallingAdvisor/Manager and ChatMemory are framework responsibilities. A saved local
   OpenAI-compatible connection can be selected for chat; that setting is auxiliary and is not a
   provider catalog, router, gateway, or authentication system. LlmProvider and its compression,

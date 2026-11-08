@@ -5,14 +5,14 @@ $OutputEncoding = [Text.UTF8Encoding]::new($false)
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 $root = Split-Path $PSScriptRoot -Parent
 $logDir = if ($LogDirectory) { [IO.Path]::GetFullPath($LogDirectory) }
-          else { Join-Path $root 'backend/eap-runtime/target/validation-logs' }
+          else { Join-Path $root 'backend/eap-applications/eap-full-application/target/validation-logs' }
 $commands = @{
  versions = 'java -version & mvn -version & node --version & pnpm --version & vp --version'
  node = 'node --version'
  pnpm = 'pnpm --version'
  backend = 'mvn -B -ntp -f backend/pom.xml test'
- single = 'mvn -B -ntp -f backend/pom.xml -pl eap-runtime -am -Dtest=CapabilityCatalogTest -Dsurefire.failIfNoSpecifiedTests=false test'
- process = 'mvn -B -ntp -f backend/pom.xml -pl eap-runtime -am -Dtest=DefaultProcessExecutorTest -Dsurefire.failIfNoSpecifiedTests=false test'
+ single = 'mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am -Dtest=CapabilityCatalogTest -Dsurefire.failIfNoSpecifiedTests=false test'
+ process = 'mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am -Dtest=DefaultProcessExecutorTest -Dsurefire.failIfNoSpecifiedTests=false test'
  typecheck = 'pnpm --dir frontend typecheck'
  test = 'pnpm --dir frontend test run'
  build = 'pnpm --dir frontend build'

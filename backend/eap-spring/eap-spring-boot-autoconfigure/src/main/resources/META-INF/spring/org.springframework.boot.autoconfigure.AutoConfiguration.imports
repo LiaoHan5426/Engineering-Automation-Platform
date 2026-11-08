@@ -1,0 +1,4 @@
+com.lh.eap.spring.EapCoreAutoConfiguration
+com.lh.eap.spring.EapLocalAutoConfiguration
+com.lh.eap.spring.EapChatAutoConfiguration
+com.lh.eap.spring.EapWebAutoConfiguration

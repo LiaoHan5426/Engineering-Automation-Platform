@@ -1,6 +1,6 @@
 # Engineering Automation Platform：当前产品与架构合同
 
-> 当前工作基线：`main / 119391f`（2026-11-05）；技术路线回顾仅调整文档，后续因用户报告模型故障增加普通API显式Responses协议修复，限定实现与离线回归见[模型协议决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验)。未调用真实付费模型或启停用户服务。此前 `82aa504` 的整理与测试证据保留在[开发指南](agent-development-guide.md#本轮整理记录基线82aa504)，不是本轮执行结果。适用：本地桌面工程工作台的增量开发与验收。
+> 保留历史工作基线：`main / 119391f`（2026-11-05）；技术路线回顾仅调整文档，后续因用户报告模型故障增加普通API显式Responses协议修复，限定实现与离线回归见[模型协议决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验)。当时未调用真实付费模型或启停用户服务；2026-11-08当前阶段由`1aecc1a`接续，用户已授权本地阶段提交；范围、验证与剩余项见[阶段收束](decisions/backend-module-composition.md#stage-checkpoint)。此前 `82aa504` 的整理与测试证据保留在[开发指南](agent-development-guide.md#本轮整理记录基线82aa504)，不是本轮执行结果。适用：本地桌面工程工作台的增量开发与验收。
 > **优先级：用户最新明确要求 → 本文 §0B 产品合同 → §0A 技术/执行边界 → 历史资料。** 五个固定一级入口 `code · 编程 / work · 办公 / 场景 / 专家 / 设置`；旧双入口、Builder 第六入口、M0/完整 Mission 前置、插件任意扩展一级导航均不再生效。
 > 本地确定性工具优先，必要时使用 LLM/外部 Agent，结果独立验证。原型先可点击并经人确认，再按实际缺口渐进实施；不授权全量重写、任意工具调用或第三方代码注入。
 
@@ -13,9 +13,9 @@
 | 工作面与共享UI | 五入口；场景配置/任务准备、Builder设计/版本/历史、看板任务/原型/执行审阅；主题与共享组件；统一UI Icon/name入口 | 全页面真实系统缩放、焦点/失败矩阵、其他管理页图标迁移及用户接受 |
 | 原型与本地上下文 | GrapesJS真实编辑、八类语义映射、不可变版本、只读目录/源码、Task与Run原型快照 | 更多组件/状态/动作映射、多文件组件约束、自身页面真实交付 |
 | 源码与交付 | 单目标生成前持久基线、候选与应用读回、目录互锁、POST_HOC/PREBOUND、独立验证及持久接受/拒绝 | 真实供应商生成→应用→实际页面→用户接受整链；未知人工核对/取消；Git Run不归因为代码作者 |
-| 专家与Skill | 单专家授权知识检索/旧记忆隔离；Skill文本导入、不可变版本、启停与无工具Chat显式引用 | 完整角色/资源整合、Skill目录/仓库导入、MCP真实协议、规划/Agent与Work执行；不执行脚本或自动授予工具权限 |
-| 后端与桌面 | api/engine/ai/web/runtime五模块；Electron安全preload与安装引导脚手架 | IDEA重新导入/实际重启与完整生产启动；Windows sidecar、一体启停/迁移、打包签名和人工验收 |
-| Agent上下文与记忆 | Spring AI20条消息窗口；知识全文/关键词检索；授权知识/Skill使用后逐轮清空模型记忆 | CE-01/KR-01基线、MEM-01恢复/工作记忆；派生内容撤权失效先于放开记忆；不默认换框架或引入向量库 |
+| 专家与Skill | 单专家授权知识检索/旧记忆隔离；Skill文本导入、不可变版本、启停与无工具Chat显式引用 | [专业Agent与固定流程边界提案](decisions/agent-runtime-evolution.md#expert-agent-boundary)、完整角色/资源整合、Skill目录/仓库导入、MCP官方包经专家入口的实网验收、规划/Agent与Work执行；不执行脚本或自动授予工具权限 |
+| 后端与桌面 | 模块组合及十四轮边界已实施：full宿主、领域拆分、spring条件装配、知识授权端口、管理事务下沉、Expert分析/资源端口、CLI通道独立、codegen去workflow依赖、专家定义领域查询分离、固定流程独立、能力输入按领域拆分及专家分析策略按执行选择、专业行为版本持久绑定、SQL自主Agent检查点恢复、自动后台调度及候选审批UI，普通API Responses工具支持与真实单SQL文件审批整链已通过；后端833通过/74跳过，提交前前端763项通过；最小组合和完整Bean图已验证，IDEA原配置启动已通过；Electron仍为安全preload/引导脚手架 | 专家角色/固定流程重划、目录/CLI登记审批剩余解耦、跨环境启动；实库/真实模型与Windows sidecar、打包签名/人工验收独立 |
+| Agent上下文与记忆 | Spring AI20条消息窗口；知识全文/关键词检索；授权知识/Skill使用后逐轮清空模型记忆 | CE-01/KR-01和MEM-01已有部分实现，详见台账；真实token、恢复和产品接受仍待；派生内容撤权失效先于放开记忆；不默认换框架或引入向量库 |
 | 本地工具与目录 | Java/CLI能力与程序操作登记、PATH/指定路径发现、工作区绑定和只读文件树 | FS-01统一数据/临时资源归属与迁移合同、TM-01一个受管工具；登记不等于安装，cwd不是OS沙箱 |
 | 工具发现与使用 | Handler/CLI管理与特定业务调用已存在，前端交互实例没有通用调用合同 | TD-01可信定义/依赖自动绑定；TC-01运行时调用与呈现，TC-02前端实例；发现不等于授权或业务完成 |
 | 功能插件与场景组合 | 固定Chat/Builder可信预装Host与启停原型；看板/原型服务已有业务切片 | PL-01看板贡献首片、PL-02/SC-03设计器与场景依赖；不是外部安装器或任意JS隔离 |
@@ -28,8 +28,10 @@
 <a id="section-0a-1"></a>
 ### 0A.1 保留架构与当前模块归属
 
+2026-11-08已实施模块组合首轮：applications/full接替runtime；engine七域、ai六域、web七域聚合；spring提供core/local/ai starter与条件装配；api保留契约JAR。core/local与headless Chat、最小本地HTTP及完整Bean图已验证；第二轮已通过知识授权端口消除ai-context到workflow的依赖，并将CLI/开关/MCP管理事务下沉服务；第三轮将ExpertExecution的分析与执行资源生命周期端口化，SQL策略归sql、MCP资源归mcp，第四轮CLI通道迁入local、持久化端口可覆盖且存储失败拒绝默认回退；第五轮codegen通过原型只读端口移除workflow依赖，执行证据存储归local、连接响应DTO归chat；第六轮专家定义/目录消费规则与范围能力查询接口；第七轮固定流程定义/调度提取至core，v1专家继续复用；第八轮core能力输入去SQL耦合，SQL/local各持有自身输入，原HTTP请求兼容；第九轮宿主可按专家选择分析策略，并固定单次执行策略与词表；第十轮将行为id/version存入专家manifest，打通保存、启用、执行、目录与历史观察，实库重载/撤权/回滚已验证，第十一轮新增显式v2 SQL只读Agent，复用Spring AI选择授权证据/追问/结束（Fake模型与实库已验），旧固定DAG不自动升级；第十二轮增加原Task下的检查点/租约/预算、跨JVM显式续跑和单SQL候选人工写入审批；第十三轮提供显式后台入队与自动恢复、专家任务列表/候选Diff审批UI（组件与真实Chromium视觉/模拟审批交互已验，用户接受仍待）；第十四轮补齐Responses工具协议，真实两轮取证/候选/页面审批/文件读回及重启终态已验，职责迁移见[专家行为提案](decisions/agent-runtime-evolution.md#expert-agent-boundary)，完整workflow仍有产品依赖；Expert/目录/CLI持久管理和部分Chat产品整合仍有跨域依赖，详见[模块组合实施与剩余关口](decisions/backend-module-composition.md#implementation)。库不反向依赖应用，engine不依赖ai/web。
+
 - 保留 Java 25 / Spring Boot 4.1.1 / Spring AI 2.0.2、Maven reactor，以及 Vue 3 + TypeScript + Vite+ + pnpm workspace + Tailwind 4 / 标准CSS变量；不引入Sass或另建React Renderer。
-- 后端保持单一Java服务：`backend/eap-api`为稳定能力契约；`eap-engine`为确定性执行、任务/Run及持久化；`eap-ai`为模型/Chat/Skill及交付整合；`eap-web`为HTTP边界；`eap-runtime`只保留启动装配、运行资源和跨模块测试。依赖方向 runtime→web→ai→engine→api；普通DTO在application.dto，AI响应在ai.dto。已应用迁移不重写，不为拆模块改变API/权限。
+- 当前完整产品仍是单一Java服务，唯一启动模块为`backend/eap-applications/eap-full-application`，保留主类、产品资源及跨模块验收；能力JAR由应用显式组合。确定性交付迁至engine-delivery，Board/JDBC任务整合留workflow；已应用迁移不重写，HTTP/JSON与授权合同保留。
 - 共享UI、hooks/effects/layout/plugin等落点以[唯一共享模块规范](decisions/frontend-ui-shared-module-boundaries.md)为准；组件以`frontend/packages/ui/src/index.ts`实际导出为准。允许实现用户明确需要的跨仓库基础定义，不因没有第二消费者阻止，但必须有实现/公开入口/样式/验证，不能建空壳。
 - `@eap/ui`为组件与统一`Icon`/类型化name入口，`@eap/icons`仅内部本地Lucide资源层；Reka为内部交互依赖。已按需纳入shadcn TooltipContent并保留来源/许可，不等于全库迁移；页面不另设第三方UI入口。`@eap/style`不持有路由/存储，应用负责偏好持久化。
 - Vue Router、Pinia、Query、Monaco、xterm、Vue Flow及SDK拆包属于按缺口评估的演进选项，不是本轮无条件安装/迁移指令；先复用现有runtime-client、composable、受信Host和领域页面。新文案走i18n，不按旧建议目录一次性搬迁。
@@ -375,18 +377,18 @@ sequenceDiagram
 | CP-01 / P0 | 用 `chat/code` 两值冒充会话执行模式 | 任务目标与执行模式分离；工具按真实能力启用 | **部分交付**：规划/智能体未接通即禁用；Git 随 `git_status`；无模型发送禁用+去设置。仍缺：规划/智能体真实执行器 |
 | CP-02 / P0 | `review` 可叫“AI审核” | 按真实后端能力显示生效策略 | **部分交付**：文案为逐次确认/只读；摘要与策略菜单明示「风险审核未接入」。拒绝后不继续写入此前已接 |
 | CP-03 / P1 | 表单选择框堆满输入区即满足截图 | 多行编辑 + 轻量操作条 + 就近弹层 | **部分交付**：开弹层不清正文、Esc回焦；知识/Skill紧凑引用，模型/发送成组靠右、缺模型提示在下方；限定四视口发送可达。仍缺：审批流在短窗的人工联调 |
-| MD-01 / P0 | 保存连接或发现模型就证明推理协议可用 | 凭据/显式wireApi→目录→允许模型→会话具体模型与能力 | **部分交付**：连接/目录/白名单/默认/强度已有，追加普通API Responses文本/代码提案及显式选择、revision/重绑定和Git拒绝，离线回归通过；失败保留缓存且不自动全选。10/28 DeepSeek目录测试为历史。仍缺：重启加载后当前网关/认证/推理档位实网验证、浏览器接受及Responses工具；不宣布本次403故障已恢复 |
-| EX-01 / P1 | 固定三角色等于专家协作 | 将配置专家按明确合同接入任务 | **部分交付**：指引追溯保留；单个持久专家授权知识→Chat、发送重检、撤权/旧记忆隔离已交付（c9d23a7），有实库/Fake模型与浏览器证据。仍缺：完整角色与其余资源、真实供应商效果；不执行DAG或自动授予工具权限 |
+| MD-01 / P0 | 保存连接或发现模型就证明推理协议可用 | 凭据/显式wireApi→目录→允许模型→会话具体模型与能力 | **部分交付**：连接/目录/白名单/默认/强度已有，追加普通API Responses文本/代码提案及显式选择、revision/重绑定和Git拒绝，离线回归通过；失败保留缓存且不自动全选。10/28 DeepSeek目录测试为历史。普通API Responses文本及SQL Agent两轮工具整链已实网通过。仍缺：其他模型/网关/推理档位、Responses Chat Git工具、账户计划工具及用户接受 |
+| EX-01 / P1 | 固定三角色等于专家协作 | 将配置专家按明确合同接入任务 | **部分交付**：固定流程定义/调度已与专家产品编排分开，能力输入已按领域分离，宿主支持按专家选择分析策略，行为id/version持久绑定及实库保存/重载/撤权/回滚已实现；显式v2 SQL只读Agent工具选择/追问/结束、取消/预算和短事务授权已接通，检查点跨JVM恢复与单SQL候选写入审批已实现（V23、UNKNOWN不重放），自动后台调度及审批UI已实现，Fake模型/实库/组件回归通过，真实Chromium四档宽度/浅深色与模拟审批交互已验；真实Responses文本请求及原生Windows 100%已验；普通API Responses工具支持及真实两轮取证→候选→页面审批→写入读回→重启终态已验；其他系统缩放、复杂SQL效果及用户接受仍待；指引追溯保留；单个持久专家授权知识→Chat、发送重检、撤权/旧记忆隔离已交付（c9d23a7），有实库/Fake模型与浏览器证据。仍缺：完整角色与其余资源、真实供应商效果；不执行DAG或自动授予工具权限 |
 | PB-01 / P0 | 标题+正文+点击按钮就是可视化原型 | 先支持 EAP 页面布局/交互草案，再扩展通用编辑器 | **部分交付**：GrapesJS真实画布、工程/Schema、page/section/text/heading/button/link/list/input八类映射、Vue交互预览与保存重开已验证；Builder设计/版本/历史演示分面，未知映射阻塞。仍缺：目标页面所需更多组件/状态/动作映射与真实改页验收，不承诺任意Vue无损导入 |
 | PB-02 / P0 | 传原型 ID 就完成交付开发 | 生成前绑定目标与基线、读取相关现有源码；propose 必须含 `targetPath` | **部分交付**：单目标完整有界源码已在模型前持久保存/读回，原型与Task/revision快照及PREBOUND已交付（f6aed04、69892f3）。仍缺：真实供应商自身改页验收、多文件组件图约束 |
 | PB-03 / P0 | 模型返回完整文件后才取哈希足够 | 生成前固定文件快照，应用前再校验，保留既有修改 | **部分交付**：单文件候选、APPLYING意图、写后读回与APPLIED重放、基线冲突及UNKNOWN目录/任务互锁已持久化；POST_HOC/PREBOUND归因已交付。仍缺：真实模型改页/完整交互验收、未知人工核对；不承诺多文件事务或OS级CAS |
 | PB-04 / P0 | 写入成功等于界面调整完成 | Diff→应用→类型/测试/构建→页面预览→人工交互验收 | **部分交付**：Run独立typecheck/test/build真实三项联调、同源源码/交付证据和持久人工接受/拒绝机制已交付（04edef5及后续交付切片）。仍缺：EAP自身真实模型改页→预览→用户接受整链验收；测试人工决定不等于用户已接受 |
-| CT-01 / P1 | 页面保留等于任务恢复，或会话失效只能手工新建 | 区分 UI缓存、模型记忆、请求和持久Run；显式重连后可重试当前草稿 | **部分交付**：SSE/cancel/快照/同ID重连及失败草稿保留；本轮CRLF/分块/多行data、坏帧拒绝/每帧限额、final及时释放HTTP连接已回归，全量752项通过，mock发送已验；真实供应商流式/进程取消、跨重启接管与用户接受仍待 |
+| CT-01 / P1 | 页面保留等于任务恢复，或会话失效只能手工新建 | 区分 UI缓存、模型记忆、请求和持久Run；显式重连后可重试当前草稿 | **部分交付**：SSE/cancel/快照/同ID重连及失败草稿保留；本轮CRLF/分块/多行data、坏帧拒绝/每帧限额、final及时释放HTTP连接已回归，全量752项通过，mock发送已验；真实供应商流式/进程取消、跨重启接管与用户接受仍待 2026-11-08后端评审修复：应用线程拥有执行，SSE断线不终止任务；Spring AI/Responses流按完整行脱敏输出；事件终态预留、并发快照、运行中记录保留和大代码响应修复。持久回放/跨重启接管仍未实现，详见[评审实施](records/architecture-history.md#backend-review-hardening)。 |
 | RV-01 / P1 | SQL检查器等于全局摘要 | 任务/会话相关摘要、文件Diff、验证和来源 | **部分交付**：会话摘要/变更右栏、源文件浮层、终端底栏各守职责；看板按Run选择审阅/验证，源码交付与接受/拒绝独立工作面且持久回放；设置不挂任务面板。仍缺：SQL实际任务证据、完整自身改页证据及用户接受；Chat终端未因此获得任意shell能力 |
 | CE-01 / P0 | 有拼装与字符限制就算上下文工程 | 在既有路径统一预算、来源、选择及失效合同 | **部分交付**：后端 `ContextBudget` + 用量摘要/超限提示；mock 预算/超限/历史未计量 + 派生清空 + **`COMPRESSION_NOT_ENABLED`**（`:5174` 已验）。仍缺：真实 token、压缩策略实现、ChatMemory 精确计量、用户接受 |
 | KR-01 / P0；KR-02 / 条件后续 | 没向量库等于没检索 | 先评测已有FTS/关键词，证明不足再比较增强 | **部分交付（KR-01）**：fixture + FTS；排序质量样本；生产形排序样本；gated FTS 对照；**口令环境回退**（`EAP_DB_PASSWORD`）。仍缺：实库跑通 FTS 排序对照；**KR-02 未触发** |
 | MEM-01 / P1 | 窗口持久化等于完整记忆 | 历史/绑定恢复、任务工作记忆分层，依赖CE-01 | **部分交付**：分层+PUT/UI（约束/事实展示）+本地持久+Task/Run；对抗失效；DEPENDENCY_CHANGED 失效 Feedback + **sticky 仍保留诚实提示**；有材料时不叠空态（`:5174`）。仍缺：以对抗证据取消 sticky 清空；用户产品接受；自动长期抽取延期 |
-| MCP-01 / P0 | 登记/探测等于协议执行 | 既有授权/会话桥接一个只读服务器 | **部分交付**：stdio/http/SSE/Streamable-HTTP/白名单/GET 续传 + 官方矩阵四包 + **callVerified/listOnly**（`directory_tree` 仅 list；`:5174`/`:5173` 已验）；常驻 listen 仍待 |
+| MCP-01 / P0 | 登记/探测等于协议执行 | 既有授权/会话桥接一个只读服务器 | **部分交付**：stdio/http/SSE/Streamable-HTTP/白名单/GET 续传 + 官方矩阵四包 + **callVerified/listOnly**（`directory_tree` 仅 list；`:5174`/`:5173` 已验）；常驻 listen 仍待 2026-11-08新增现有Handler链的固定无参数read_graph首片；服务器精确白名单和持久专家grant均须通过，未知端点不能借只读名称放行；stdio环境/超时/限额/清理加固。官方包实网验收仍门控。 |
 | FS-01 / P0 | 工作区树等于应用目录管理；UI scratch等于磁盘目录 | 数据根、缓存/产物/任务临时资源归属，浏览器与本机执行分界 | **部分交付**：data-layout + migrationReadiness + 刷新盘点 + kind/byteSize + inventory + candidateCounts + **byKind**（mock/真机已验）；物理迁移未批准 |
 | TM-01 / P1 | 程序登记等于安装与版本管理 | FS-01后增加一个可信受管工具，系统引用保留 | **待实施**：锁版本/校验/失败回滚、实际调用、在途卸载阻止；不改系统工具 |
 | TD-01 / P0 | 每个工具都要手填，或发现程序就认定能执行 | 可信定义自动汇总、已知依赖绑定，未知候选需适配 | **部分交付**：可信工具目录 + 绑定快照 + 显式探测写回 + 持久化缓存 + 清除探测缓存 + probeCache + **newestProbedAt**（mock/真机已验）。真实重启与用户接受仍待 |

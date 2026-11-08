@@ -3,14 +3,20 @@
   inset: 0;
   z-index: var(--eap-index-confirm);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 24px;
   background: var(--eap-overlay-color);
 }
 
 .eap-confirm__dialog {
+  box-sizing: border-box;
   width: min(520px, 100%);
+  min-width: 0;
+  max-height: calc(100dvh - 48px);
   padding: 18px 20px;
+  overflow: auto;
+  overflow-wrap: anywhere;
   background: var(--eap-fill-color-blank);
   border-radius: var(--eap-border-radius-card);
   box-shadow: var(--eap-box-shadow);

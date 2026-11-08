@@ -1,0 +1,9 @@
+{
+  "conversationId": "7397f946-314a-4de6-8f41-56c71d01b271",
+  "executionId": "5e7e7a60-4fd8-42d3-bd32-893c1234e82d",
+  "status": "SUCCEEDED",
+  "code": "",
+  "answer": "EAP_PROVIDER_ACCEPTANCE_OK",
+  "error": "",
+  "elapsedSeconds": 5.45
+}

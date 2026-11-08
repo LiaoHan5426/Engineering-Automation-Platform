@@ -16,7 +16,7 @@ That produces two measurable outcomes:
 
 ```text
 frontend/   Vue 3 / TypeScript monorepo (Vite+, pnpm) — apps/*, packages/*
-backend/    Java 25 / Spring Boot / Maven reactor — eap-api, eap-runtime
+backend/    Java 25 / Spring Boot / Maven reactor — api, engine/ai/web/spring libraries, applications/eap-full-application
 scripts/    optional Python tooling
 docs/       architecture, pipeline, roadmap, environment, prototype
 ```
@@ -50,7 +50,11 @@ threshold — means editing a rule pack, not recompiling the backend:
 
 - Preview a rule against real SQL before publishing: `POST /api/rule-packs/dry-run`.
 - Attach packs to an expert with `"rulePacks": ["sql-antipatterns"]`.
-- Capabilities are one `@Component` each; the executor has no per-capability branches.
+- Capability handlers and their declared contributions are composed by the host; the executor resolves them through the existing registry.
+- Fixed workflows retain `eap/v1`. The explicit `eap/v2` SQL Agent binds a versioned professional behavior, selects authorized evidence through Spring AI, and persists bounded background execution.
+- A generated SQL file is only a candidate: writing requires a separate, digest-bound approval. The platform does not execute that SQL.
+
+See [backend composition and stage evidence](docs/decisions/backend-module-composition.md#responses-tools-acceptance) for the 32-project reactor, restart recovery, approval UI and real Responses tool acceptance.
 
 Read [docs/expert-knowledge-rules.md](docs/expert-knowledge-rules.md) for the full model and
 [docs/pipeline.md](docs/pipeline.md) for the invariants that enforce it.
@@ -81,7 +85,8 @@ Requires JDK 25, Maven 3.9+, Node.js with pnpm 12, PostgreSQL, Git and ripgrep.
 # Backend
 cd backend
 mvn test
-mvn spring-boot:run -pl eap-runtime -am
+mvn -pl :eap-full-application -am install -DskipTests
+mvn -pl :eap-full-application spring-boot:run
 
 # Frontend
 cd frontend
@@ -90,17 +95,20 @@ vp build
 vp dev
 ```
 
+The Maven run goal uses `backend/` as its working directory. If an existing installation uses another
+data directory, preserve it with `-Deap.run.working-directory=<original-absolute-directory>`; IDEA/JAR
+launches must retain their existing working directory. The module move does not migrate data.
+
 The model stage is **off by default**. Generic model integration uses Spring AI 2.0.2. To enable
 the official OpenAI provider (credentials are injected from the environment, never committed):
 
 ```shell
 EAP_AI_PROVIDER=openai EAP_AI_MODEL=<api-model-id> OPENAI_API_KEY=<injected-secret> EAP_LLM_ENABLED=true \
-  mvn spring-boot:run -pl eap-runtime -am
+  mvn -pl :eap-full-application spring-boot:run
 ```
 
 `EAP_LLM_ENABLED` gates SQL enhancement; it does not configure a connection. Old connection variables
-require migration and are rejected when model use is enabled. Generic AI is currently a backend
-service, not an integrated Chat workbench. See
+require migration and are rejected when model use is enabled. The Chat workbench and SQL Agent use explicitly saved model connections and allowed models; configuration alone does not establish provider acceptance. Ordinary API Responses function tools have passed a bounded SQL candidate/approval test; Chat Git tools and account-plan SQL tools remain separately gated. See
 [docs/environment.md](docs/environment.md).
 
 Licensed under Apache-2.0.

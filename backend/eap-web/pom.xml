@@ -7,30 +7,14 @@
         <version>0.1.0-SNAPSHOT</version>
     </parent>
     <artifactId>eap-web</artifactId>
-    <dependencies>
-        <dependency>
-            <groupId>com.lh</groupId>
-            <artifactId>eap-engine</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.lh</groupId>
-            <artifactId>eap-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.lh</groupId>
-            <artifactId>eap-ai</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <packaging>pom</packaging>
+    <modules>
+        <module>eap-web-core</module>
+        <module>eap-web-local</module>
+        <module>eap-web-sql</module>
+        <module>eap-web-knowledge</module>
+        <module>eap-web-mcp</module>
+        <module>eap-web-workflow</module>
+        <module>eap-web-ai</module>
+    </modules>
 </project>

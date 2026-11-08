@@ -1,5 +1,14 @@
 import axios from 'axios'
 import NProgress from 'nprogress'
+import { createExpertAgentApi } from './expertAgent'
+export type {
+  ExpertAgentState,
+  ExpertAgentInput,
+  ExpertAgentSummary,
+  ExpertAgentRun,
+  ExpertAgentDetail,
+  ExpertAgentResult,
+} from './expertAgent'
 
 export type RuntimeHealth = { status: string; service: string }
 
@@ -1160,6 +1169,7 @@ async function get<T>(path: string): Promise<T> {
 }
 
 export const runtimeApi = {
+  ...createExpertAgentApi(client),
   scenarios: () => get<{ items: ScenarioSnapshot[] }>('/scenarios'),
   scenario: (id: string) => get<ScenarioSnapshot>('/scenarios/' + encodeURIComponent(id)),
   saveScenario: (

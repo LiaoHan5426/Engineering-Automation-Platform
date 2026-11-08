@@ -11,6 +11,7 @@ import { boardDeliveryMessages } from './boardDeliveryMessages'
 import { boardVerificationMessages } from './boardVerificationMessages'
 import { boardRunMessages } from './boardRunMessages'
 import { appearanceMessages } from './appearanceMessages'
+import { expertAgentMessages } from './expertAgentMessages'
 import { createI18n } from 'vue-i18n'
 import { previewMessages } from './previewMessages'
 import { desktopMessages, modelMessages, authMessages } from './desktopMessages'
@@ -21,6 +22,7 @@ export const i18n = createI18n({
   fallbackLocale: 'en-US',
   messages: {
     'zh-CN': {
+      expertAgent: expertAgentMessages['zh-CN'],
       knowledgeContext: knowledgeContextMessages['zh-CN'],
       contextBudget: contextBudgetMessages['zh-CN'],
       workingMemory: workingMemoryMessages['zh-CN'],
@@ -343,6 +345,7 @@ export const i18n = createI18n({
       },
     },
     'en-US': {
+      expertAgent: expertAgentMessages['en-US'],
       knowledgeContext: knowledgeContextMessages['en-US'],
       contextBudget: contextBudgetMessages['en-US'],
       workingMemory: workingMemoryMessages['en-US'],

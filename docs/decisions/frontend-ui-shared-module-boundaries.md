@@ -71,6 +71,7 @@ apps/web/src
 | 浮层定位 / 关闭 / 焦点 | `packages/ui/src/popover`、`dropdown-menu`，内部 Reka | 已从 DesktopNavigation、ChatWorkspace、TaskComposer 移出通用行为；删除私有 popupPlacement | 保持公共契约，无领域数据，不新建平行包 |
 | PluginSlot | `features/plugins`；聊天页由 `App.vue` 以 `chatView` 注入，避免插件 feature 引用聊天 `.vue` | `@eap/plugin-sdk` + runtime | 用户批准插件迁移切片后 |
 | 原型版本内容展示 | `components/PrototypeVersionContent.vue`；解析与语义节点留 `features/shell` 原型域 | Builder 与任务/Run 共用语义预览；旧文本版本兼容，未知映射明确阻塞；不是基础 UI | 第二宿主复用完整原型域时再迁 `@eap/prototype-*` |
+| 候选文件Diff | `components/ProposalDiffView.vue`，Chat与专家审批共用 | 应用层只读候选展示，复用现有Monaco/文本降级，销毁前先解除模型绑定；审批状态/API留各feature | 第二宿主复用候选交付合同再抽包，不新增平行Diff或基础UI包 |
 | 场景原型工作面 | `features/ScenarioWorkspace.vue` 只组装版本选择与开发准备，设计器经既有 Builder 入口打开 | 不再复制挂载 LayoutDraft/GrapesJS；场景返回状态留应用层 | 无新增共享包 |
 
 ## 4. 何时新建 `packages/*`
@@ -215,3 +216,5 @@ apps/web/src
 | Vue MCP（可选） | 启用时组件树可见共享原语；未启用不得伪造成功 |
 
 修订本决策时保留本文件为唯一落点规范；勿再平行新增「又一份组件目录说明」而不互相链接。
+
+2026-11-08 SQL Agent视觉接续：ConfirmBox的长文本换行、网格最小宽度和视口高度滚动统一在packages/ui修复；任务列表/容器响应式留expert feature，不复制弹窗。真实Chromium覆盖390～1440px与低高度、浅深色、焦点/拒绝/错误；入口和证据见apps/web/__tests__/browser/README.md。

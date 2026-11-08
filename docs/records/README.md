@@ -7,7 +7,7 @@
 | [任务、源码与交付](delivery-history.md) | 准备、Run、原型、审阅、验证、人工决定、生成基线、持久应用、POST_HOC/PREBOUND；10份阶段记录完整合并 |
 | [前端工作台与共享UI](frontend-history.md) | 验收清单、组件/主题收敛、录屏对照、Comments 1–10和图标首片；4份记录完整合并 |
 | [专家知识与Skill](resource-history.md) | 知识授权和Skill文本导入/使用；2份记录完整合并 |
-| [架构与实现审查](architecture-history.md) | 已开发内容纠偏和五模块拆分；2份记录完整合并 |
+| [架构与实现审查](architecture-history.md) | 已开发内容纠偏和历史五模块拆分；当前32模块与SQL Agent实施/验收见[模块组合决定](../decisions/backend-module-composition.md#stage-checkpoint) |
 | [CLI与外部Agent](external-execution-history.md) | P1-A/B/C、真实委派和Windows失败诊断；6份记录完整合并，不授权重试 |
 | [历史路线与台账](roadmap-history.md) | 整理前路线图和台账全文；旧“下一步”不覆盖当前计划 |
 | [产品方案历史](product-plan-history.md) | 主方案迁出的进度流水及被覆盖目标，保留完整记录与引用 |
