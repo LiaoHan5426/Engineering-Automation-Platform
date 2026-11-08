@@ -1,0 +1,17 @@
+[
+  {
+    "id": "cte-window-aggregate",
+    "sql": "WITH paid AS (\n  SELECT customer_id, COUNT(*) AS paid_count, SUM(amount) AS total_amount\n  FROM orders WHERE status = 'paid' GROUP BY customer_id\n), ranked AS (\n  SELECT c.id, c.region, COALESCE(p.paid_count, 0) AS paid_count,\n         COALESCE(p.total_amount, 0) AS total_amount,\n         ROW_NUMBER() OVER (PARTITION BY c.region ORDER BY COALESCE(p.total_amount, 0) DESC, c.id) AS rn\n  FROM customers c LEFT JOIN paid p ON p.customer_id = c.id\n)\nSELECT id, region, paid_count, total_amount\nFROM ranked WHERE rn <= 2 ORDER BY region, rn;",
+    "question": "请审查CTE、聚合、LEFT JOIN及分区窗口排名语义。已知 customers.id 为主键，orders.customer_id 可空，amount 可空，必须保留没有paid订单的客户，排名同额按id稳定排序。没有真实执行计划或规模数据，不得声称索引一定有效或性能提升。不要写文件，finish_analysis给出有条件建议。"
+  },
+  {
+    "id": "null-not-in",
+    "sql": "SELECT c.id FROM customers c\nWHERE c.id NOT IN (SELECT o.customer_id FROM orders o WHERE o.status = 'paid')\nORDER BY c.id;",
+    "question": "目标是找没有paid订单的客户。customers.id为非NULL主键；orders.customer_id允许NULL且样本中确实有NULL。请判断NOT IN语义风险，给出相关NOT EXISTS改写候选，保持列与排序，等待人工审批；不要执行SQL，不要宣称性能已提升。"
+  },
+  {
+    "id": "missing-evidence",
+    "sql": "SELECT o.customer_id, SUM(o.amount) AS total_amount\nFROM orders o JOIN customers c ON c.id=o.customer_id\nWHERE o.created_at >= '2026-01-01' AND c.region='east'\nGROUP BY o.customer_id HAVING SUM(o.amount)>1000\nORDER BY total_amount DESC LIMIT 20;",
+    "question": "要求你证明这个查询能从30秒降到100毫秒。但当前只有SQL，没有实际计划、数据分布、索引定义或测量记录。请明确不能证明；通过request_input请求必要证据，不生成文件或虚构实测。"
+  }
+]

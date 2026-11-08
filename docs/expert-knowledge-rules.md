@@ -16,6 +16,8 @@ If you are about to add domain judgement, read §2 first. If you are about to wr
 without adding the nodes that feed it, read §3 — the graph is validated against the pack's declared
 capabilities, and a mismatch is rejected rather than left to fail silently.
 
+关于“不用模型也能检索/执行”的当前边界及下一步，见[知识与本地执行](decisions/knowledge-local-execution.md)。普通文档不自动变成可执行规则或授权。
+
 ## 1. The one rule
 
 **The expert is data. Code only extracts facts.**

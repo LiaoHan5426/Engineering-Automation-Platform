@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   runtimeApi,
@@ -7,12 +7,23 @@ import {
   type ExpertAgentInput,
   type ExpertAgentResult,
 } from '@eap/runtime-client'
-import { Button, ConfirmBox, Feedback, Input, Select, Textarea, Collapse } from '@eap/ui'
+import { Button, ConfirmBox, Feedback, Input, Select, Textarea } from '@eap/ui'
+import ExpertTaskInspector from './ExpertTaskInspector.vue'
 import ProposalDiffView from '../../components/ProposalDiffView.vue'
 import { errorMessage } from '../../lib/presentation'
 import { useExpertAgentRuns } from './useExpertAgentRuns'
 
-const emit = defineEmits<{ saved: [] }>()
+import type { ExpertRoute } from './expertNavigation'
+const props = withDefaults(
+  defineProps<{
+    mode?: 'tasks' | 'start' | 'task' | 'review'
+    expertId?: string
+    runId?: string
+    fromAll?: boolean
+  }>(),
+  { mode: 'tasks', expertId: '', runId: '', fromAll: false },
+)
+const emit = defineEmits<{ navigate: [route: ExpertRoute] }>()
 const { t, locale } = useI18n()
 const {
   runs,
@@ -31,7 +42,9 @@ const {
   submit,
   review,
   cancel,
-} = useExpertAgentRuns()
+} = useExpertAgentRuns(false, () =>
+  props.mode === 'tasks' ? 'list' : props.mode === 'start' ? 'form' : 'detail',
+)
 const experts = ref<Array<{ id: string; name: string }>>([])
 const expert = ref(''),
   sql = ref(''),
@@ -39,12 +52,63 @@ const expert = ref(''),
   target = ref(''),
   database = ref(''),
   plan = ref('')
-const setupError = ref(''),
-  creating = ref(false)
-const confirmation = ref<'submit' | 'create' | 'approve' | 'deny' | null>(null)
+const setupError = ref('')
+const stateFilter = ref('')
+const visibleRuns = computed(() =>
+  runs.value.filter(
+    (run) =>
+      (!props.expertId || run.expertId === props.expertId) &&
+      (!stateFilter.value || run.state === stateFilter.value),
+  ),
+)
+function openRun(run: { id: string; expertId: string }) {
+  emit('navigate', {
+    page: 'task',
+    expertId: run.expertId,
+    runId: run.id,
+    from: props.fromAll ? 'all' : undefined,
+  })
+}
+function openReview() {
+  emit('navigate', {
+    page: 'review',
+    expertId: props.expertId,
+    runId: props.runId,
+    from: props.fromAll ? 'all' : undefined,
+  })
+}
+function guardLeave() {
+  if (busy.value || confirmation.value) return false
+  if (
+    props.mode === 'start' &&
+    [sql.value, question.value, target.value, database.value, plan.value].some((value) =>
+      value.trim(),
+    )
+  ) {
+    setupError.value = t('expertWorkspace.taskDraft')
+    return false
+  }
+  return true
+}
+function discardInput() {
+  sql.value = ''
+  question.value = ''
+  target.value = ''
+  database.value = ''
+  plan.value = ''
+  setupError.value = ''
+}
+function beforeUnload(event: BeforeUnloadEvent) {
+  if (!guardLeave()) {
+    event.preventDefault()
+    event.returnValue = ''
+  }
+}
+onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
+defineExpose({ guardLeave })
+const confirmation = ref<'submit' | 'approve' | 'deny' | null>(null)
 const captured = ref<ExpertAgentDetail | null>(null)
 const submitted = ref<{ expert: string; input: ExpertAgentInput } | null>(null)
-let creationId: string | null = null
 function displayTime(value: string | null) {
   if (!value) return '—'
   const date = new Date(value)
@@ -59,6 +123,29 @@ function parse<T>(value: string | null | undefined): T | null {
 }
 const result = computed(() => parse<ExpertAgentResult>(detail.value?.run.result))
 const checkpoint = computed(() => parse<ExpertAgentResult>(detail.value?.run.checkpoint))
+const citations = computed(() =>
+  result.value?.citations?.length ? result.value.citations : (checkpoint.value?.citations ?? []),
+)
+const inspector = ref<'input' | 'citation' | 'evidence' | 'run' | null>(null)
+const citationIndex = ref(0)
+const observations = computed(
+  () => result.value?.observations ?? checkpoint.value?.observations ?? [],
+)
+watch(
+  () => [props.mode, props.expertId, props.runId],
+  () => {
+    inspector.value = null
+  },
+)
+function inspectCitation(index: number) {
+  citationIndex.value = index
+  inspector.value = 'citation'
+}
+const request = computed(() => parse<ExpertAgentInput>(detail.value?.run.request))
+const goalPreview = computed(() => {
+  const goal = request.value?.question?.trim()
+  return goal ? (goal.length > 180 ? goal.slice(0, 180) + '…' : goal) : t('expertWorkspace.noGoal')
+})
 const cancellable = computed(
   () =>
     detail.value &&
@@ -82,8 +169,7 @@ async function loadExperts() {
         ? [{ id: value.id, name: value.name }]
         : []
     })
-    if (!experts.value.some((item) => item.id === expert.value))
-      expert.value = experts.value[0]?.id ?? ''
+    expert.value = experts.value.some((item) => item.id === props.expertId) ? props.expertId : ''
     setupError.value = ''
   } catch (error) {
     setupError.value = errorMessage(error)
@@ -121,45 +207,17 @@ function prepareReview(approve: boolean) {
 }
 async function confirm() {
   const action = confirmation.value
-  if (action === 'submit' && submitted.value)
+  if (action === 'submit' && submitted.value) {
     await submit(submitted.value.expert, submitted.value.input)
-  if ((action === 'approve' || action === 'deny') && captured.value)
-    await review(action === 'approve', captured.value)
-  if (action === 'create') {
-    creating.value = true
-    setupError.value = ''
-    try {
-      creationId ??= 'sql-agent-' + crypto.randomUUID()
-      const manifest = {
-        apiVersion: 'eap/v2',
-        kind: 'Expert',
-        id: creationId,
-        name: t('expertAgent.defaultName'),
-        behavior: { id: 'sql-readonly-agent', version: 1 },
-        agent: { goal: t('expertAgent.goal'), tools: ['sql.parse', 'database.explain'] },
-        knowledgeBases: [],
-        databaseProfiles: [],
-        steps: [],
-        edges: [],
-        rules: ['database.credentials.never-expose'],
-        rulePacks: [],
-        mcpTools: [],
-      }
-      await runtimeApi.saveExpert({
-        id: creationId,
-        name: manifest.name,
-        manifest: JSON.stringify(manifest),
-      })
-      await runtimeApi.activateExpert(creationId, true)
-      await loadExperts()
-      emit('saved')
-      creationId = null
-    } catch (error) {
-      setupError.value = errorMessage(error)
-    } finally {
-      creating.value = false
+    if (!actionError.value && selected.value) {
+      confirmation.value = null
+      discardInput()
+      openRun(selected.value)
+      return
     }
   }
+  if ((action === 'approve' || action === 'deny') && captured.value)
+    await review(action === 'approve', captured.value)
   confirmation.value = null
 }
 const confirmationTitle = computed(() =>
@@ -167,7 +225,6 @@ const confirmationTitle = computed(() =>
     'expertAgent.' +
       {
         submit: 'submitTitle',
-        create: 'createTitle',
         approve: 'approvalTitle',
         deny: 'denialTitle',
       }[confirmation.value ?? 'submit'],
@@ -182,49 +239,59 @@ const confirmationImpact = computed(() => {
       t('expertAgent.digest') + ': ' + (captured.value?.approval.approval_digest ?? ''),
     ]
   return [
-    t('expertAgent.' + (confirmation.value === 'create' ? 'createImpact' : 'submitImpact')),
+    t('expertAgent.submitImpact'),
     ...(confirmation.value === 'submit'
       ? [submitted.value?.expert ?? '', submitted.value?.input.targetPath ?? '']
       : []),
   ].filter(Boolean)
 })
-onMounted(loadExperts)
+onMounted(() => {
+  window.addEventListener('beforeunload', beforeUnload)
+  watch(
+    () => [props.mode, props.expertId, props.runId],
+    () => {
+      if (props.mode === 'start') void loadExperts()
+      if (props.runId && props.expertId && (props.mode === 'task' || props.mode === 'review'))
+        void select({ id: props.runId, expertId: props.expertId })
+    },
+    { immediate: true },
+  )
+})
 </script>
 
 <template>
   <section class="agent-panel eap-panel" data-testid="expert-agent-panel">
     <header class="agent-actions">
-      <h2>{{ t('expertAgent.title') }}</h2>
+      <h2>
+        {{
+          mode === 'task' && detail
+            ? detail.run.snapshot.manifest.name
+            : t('expertWorkspace.' + mode)
+        }}
+      </h2>
       <Button :disabled="busy || preview" @click="reload">{{ t('expertAgent.refresh') }}</Button>
     </header>
-    <p>{{ t('expertAgent.hint') }}</p>
+    <p v-if="mode === 'start'">{{ t('expertAgent.hint') }}</p>
     <Feedback v-if="preview" :message="t('expertAgent.preview')" />
-    <Feedback v-else-if="!automatic && !checking" :message="t('expertAgent.unavailable')" />
-    <p v-if="!preview && checking" role="status">{{ t('expertAgent.loading') }}</p>
+    <Feedback
+      v-else-if="mode === 'start' && !automatic && !checking"
+      :message="t('expertAgent.unavailable')"
+    />
+    <p v-if="!preview && ((checking && !detail) || (loading && !detail))" role="status">
+      {{ t('expertAgent.loading') }}
+    </p>
     <Feedback
       v-if="readError || actionError || setupError"
       tone="error"
       :message="actionError || readError || setupError"
     />
-    <Collapse>
-      <template #summary>{{ t('expertAgent.submit') }}</template>
+    <section v-if="mode === 'start'">
       <div class="agent-form">
-        <template v-if="!experts.length"
-          ><p>{{ t('expertAgent.noExperts') }}</p>
-          <Button
-            data-testid="agent-create"
-            :disabled="preview || busy || creating"
-            @click="confirmation = 'create'"
-            >{{ t('expertAgent.create') }}</Button
-          ></template
-        >
-        <label for="agent-expert">{{ t('expertAgent.expert') }}</label>
-        <Select id="agent-expert" v-model="expert" :disabled="busy || preview"
-          ><option value="">{{ t('expertAgent.choose') }}</option>
-          <option v-for="item in experts" :key="item.id" :value="item.id">
-            {{ item.name }}
-          </option></Select
-        >
+        <Feedback v-if="!expert">{{ t('expertWorkspace.enableHint') }}</Feedback>
+        <p>
+          {{ t('expertAgent.expert') }}:
+          {{ experts.find((item) => item.id === expert)?.name || expertId }}
+        </p>
         <label for="agent-sql">{{ t('expertAgent.sql') }}</label
         ><Textarea id="agent-sql" v-model="sql" :disabled="busy" :maxlength="50000" />
         <label for="agent-question">{{ t('expertAgent.question') }}</label
@@ -250,92 +317,166 @@ onMounted(loadExperts)
           @click="prepareSubmit"
           >{{ t('expertAgent.submit') }}</Button
         >
-      </div>
-    </Collapse>
-    <h3>{{ t('expertAgent.recent') }}</h3>
-    <p v-if="!checking && !readError && !runs.length">{{ t('expertAgent.empty') }}</p>
-    <div class="agent-layout">
-      <nav class="agent-list" :aria-label="t('expertAgent.recent')">
-        <Button
-          v-for="run in runs"
-          :key="run.id"
-          variant="navigation"
-          :active="selected?.id === run.id"
-          :disabled="busy"
-          :data-testid="'agent-run-' + run.id"
-          @click="select(run)"
-        >
-          {{ run.expertName }} · {{ t('expertAgent.state.' + run.state)
-          }}<small>{{ displayTime(run.createdAt) }}</small
-          ><small>{{ run.id }}</small>
-        </Button>
-      </nav>
-      <div v-if="detail" class="agent-detail" data-testid="agent-detail">
-        <h3>
-          {{ detail.run.snapshot.manifest.name }} ·
-          <span data-testid="agent-state">{{ t('expertAgent.state.' + detail.run.state) }}</span>
-        </h3>
-        <p>
-          {{ t(detail.run.automatic ? 'expertAgent.automatic' : 'expertAgent.manual') }} ·
-          {{ t('expertAgent.attempts') }} {{ detail.run.attempts }}/3 ·
-          {{ t('expertAgent.revision') }} {{ detail.run.snapshot.revision }}
-        </p>
-        <p v-if="loading" role="status">{{ t('expertAgent.loading') }}</p>
-        <p v-if="result?.summary && result.status === detail.run.state">{{ result.summary }}</p>
-        <Feedback v-if="result?.error" tone="error" :message="result.error" />
-        <Feedback
-          v-if="detail.run.state === 'unknown'"
-          tone="error"
-          :message="t('expertAgent.unknown')"
-        />
-        <Feedback v-if="detail.run.state === 'applied'" :message="t('expertAgent.applied')" />
-        <Button v-if="cancellable" data-testid="agent-cancel" :disabled="busy" @click="cancel">{{
-          t('expertAgent.cancel')
+        <Button data-testid="agent-discard-input" :disabled="busy" @click="discardInput">{{
+          t('expertWorkspace.discardInput')
         }}</Button>
-        <template v-if="detail.candidate">
-          <p>{{ t('expertAgent.unverified') }}</p>
-          <p>{{ t('expertAgent.workspace') }}: {{ detail.candidate.proposal.workspace }}</p>
-          <p>
-            {{ t('expertAgent.expiry') }}: {{ displayTime(detail.approval.approval_expires_at) }}
-          </p>
-          <div v-for="file in detail.candidate.proposal.files" :key="file.path">
-            <h4>{{ file.path }}</h4>
-            <p>{{ t('expertAgent.base') }}: {{ file.baseHash }}</p>
-            <ProposalDiffView :path="file.path" :before="file.before" :after="file.content" />
-          </div>
-          <div class="agent-actions">
-            <Button
-              data-testid="agent-approve"
-              variant="primary"
-              :disabled="!canReview"
-              @click="prepareReview(true)"
-              >{{ t('expertAgent.review') }}</Button
-            >
-            <Button
-              data-testid="agent-deny"
-              variant="danger"
-              :disabled="!canReview"
-              @click="prepareReview(false)"
-              >{{ t('expertAgent.deny') }}</Button
-            >
-          </div>
-          <p v-if="!canReview">{{ t('expertAgent.blocked') }}</p>
-        </template>
-        <Collapse
-          ><template #summary>{{ t('expertAgent.observations') }}</template>
-          <pre
-            v-for="(observation, index) in result?.observations ?? checkpoint?.observations ?? []"
-            :key="index"
-            >{{ observation.capability }}: {{ observation.stdout }}</pre>
-        </Collapse>
       </div>
+    </section>
+    <template v-if="mode === 'tasks'">
+      <label
+        >{{ t('expertWorkspace.filter')
+        }}<Select v-model="stateFilter"
+          ><option value="">{{ t('expertWorkspace.allStates') }}</option>
+          <option value="awaiting-approval">{{ t('expertAgent.state.awaiting-approval') }}</option>
+          <option value="running">{{ t('expertAgent.state.running') }}</option>
+          <option value="needs-input">{{ t('expertAgent.state.needs-input') }}</option></Select
+        ></label
+      >
+      <h3>{{ t('expertAgent.recent') }}</h3>
+      <p v-if="!checking && !readError && !visibleRuns.length">{{ t('expertAgent.empty') }}</p>
+      <div class="agent-layout">
+        <nav class="agent-list" :aria-label="t('expertAgent.recent')">
+          <Button
+            v-for="run in visibleRuns"
+            :key="run.id"
+            variant="navigation"
+            :active="selected?.id === run.id"
+            :disabled="busy"
+            :data-testid="'agent-run-' + run.id"
+            @click="openRun(run)"
+          >
+            {{ run.expertName }} · {{ t('expertAgent.state.' + run.state)
+            }}<small>{{ displayTime(run.createdAt) }}</small>
+          </Button>
+        </nav>
+      </div>
+    </template>
+    <div
+      v-if="detail && (mode === 'task' || mode === 'review')"
+      class="agent-detail"
+      data-testid="agent-detail"
+    >
+      <p data-testid="agent-state">{{ t('expertAgent.state.' + detail.run.state) }}</p>
+      <section v-if="mode === 'task'" class="task-summary-section" data-testid="task-goal">
+        <h3>{{ t('expertWorkspace.taskGoal') }}</h3>
+        <p>{{ goalPreview }}</p>
+        <Button variant="link" data-testid="task-input-open" @click="inspector = 'input'">{{
+          t('expertWorkspace.viewInput')
+        }}</Button>
+      </section>
+      <section class="task-summary-section" data-testid="task-result">
+        <h3 v-if="mode === 'task'">{{ t('expertWorkspace.resultAndNext') }}</h3>
+        <p v-if="result?.summary && result.status === detail.run.state">{{ result.summary }}</p>
+        <p
+          v-else-if="
+            mode === 'task' && ['queued', 'running', 'interrupted'].includes(detail.run.state)
+          "
+        >
+          {{ t('expertWorkspace.resultPending') }}
+        </p>
+      </section>
+      <Feedback v-if="result?.error" tone="error" :message="result.error" />
+      <Feedback
+        v-if="detail.run.state === 'unknown'"
+        tone="error"
+        :message="t('expertAgent.unknown')"
+      />
+      <Feedback v-if="detail.run.state === 'applied'" :message="t('expertAgent.applied')" />
+      <Button v-if="cancellable" data-testid="agent-cancel" :disabled="busy" @click="cancel">{{
+        t('expertAgent.cancel')
+      }}</Button>
+      <Button
+        v-if="mode === 'task' && detail.candidate"
+        data-testid="agent-open-review"
+        variant="primary"
+        @click="openReview"
+        >{{
+          t(
+            detail.run.state === 'awaiting-approval'
+              ? 'expertWorkspace.review'
+              : 'expertWorkspace.reviewRecord',
+          )
+        }}</Button
+      >
+      <template v-if="mode === 'review' && detail.candidate">
+        <p>{{ t('expertAgent.unverified') }}</p>
+        <p>{{ t('expertAgent.workspace') }}: {{ detail.candidate.proposal.workspace }}</p>
+        <p v-if="detail.run.state === 'awaiting-approval'">
+          {{ t('expertAgent.expiry') }}: {{ displayTime(detail.approval.approval_expires_at) }}
+        </p>
+        <div v-for="file in detail.candidate.proposal.files" :key="file.path">
+          <h4>{{ file.path }}</h4>
+          <p>{{ t('expertAgent.base') }}: {{ file.baseHash }}</p>
+          <ProposalDiffView :path="file.path" :before="file.before" :after="file.content" />
+        </div>
+        <div v-if="detail.run.state === 'awaiting-approval'" class="agent-actions">
+          <Button
+            data-testid="agent-approve"
+            variant="primary"
+            :disabled="!canReview"
+            @click="prepareReview(true)"
+            >{{ t('expertAgent.review') }}</Button
+          >
+          <Button
+            data-testid="agent-deny"
+            variant="danger"
+            :disabled="!canReview"
+            @click="prepareReview(false)"
+            >{{ t('expertAgent.deny') }}</Button
+          >
+        </div>
+        <p v-if="detail.run.state === 'awaiting-approval' && !canReview">
+          {{ t('expertAgent.blocked') }}
+        </p>
+        <p v-if="detail.run.state !== 'awaiting-approval'">
+          {{ t('expertWorkspace.reviewRecord') }}:
+          {{ t('expertAgent.state.' + detail.run.state) }} ·
+          {{ displayTime(detail.approval.decided_at) }}
+        </p>
+      </template>
+      <section
+        v-if="mode === 'task' && citations.length"
+        class="task-summary-section"
+        data-testid="task-references"
+      >
+        <h3>{{ t('expertWorkspace.citations') }}</h3>
+        <Button
+          v-for="(citation, index) in citations"
+          :key="citation.id"
+          variant="navigation"
+          class="task-reference"
+          :data-testid="'task-reference-' + index"
+          @click="inspectCitation(index)"
+        >
+          <span>{{ citation.source }}</span
+          ><small>{{ citation.knowledgeBase }} · {{ t('expertWorkspace.viewExcerpt') }}</small>
+        </Button>
+      </section>
+      <nav class="task-inspector-links" :aria-label="t('expertWorkspace.supportingDetails')">
+        <Button variant="link" data-testid="task-evidence-open" @click="inspector = 'evidence'">{{
+          t('expertWorkspace.executionEvidence')
+        }}</Button>
+        <Button variant="link" data-testid="task-run-open" @click="inspector = 'run'">{{
+          t('expertWorkspace.technical')
+        }}</Button>
+      </nav>
     </div>
+    <ExpertTaskInspector
+      v-if="inspector && detail"
+      :section="inspector"
+      :detail="detail"
+      :input="request"
+      :citations="citations"
+      :citation-index="citationIndex"
+      :observations="observations"
+      @close="inspector = null"
+    />
     <ConfirmBox
       v-if="confirmation"
       :title="confirmationTitle"
       :impact="confirmationImpact"
       :confirm-label="confirmationTitle"
-      :busy="busy || creating"
+      :busy="busy"
       :danger="confirmation === 'deny'"
       :refusal="
         (confirmation === 'approve' || confirmation === 'deny') && !canReview && !busy
@@ -373,8 +514,12 @@ onMounted(loadExperts)
 
 .agent-layout {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(0, 3fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+}
+
+.agent-detail {
+  align-content: start;
 }
 
 .agent-list {
@@ -417,6 +562,40 @@ pre {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+
+.task-summary-section {
+  display: grid;
+  gap: 10px;
+}
+
+.task-summary-section h3,
+.task-summary-section p {
+  margin: 0;
+}
+
+.task-summary-section > button {
+  justify-self: start;
+}
+
+.task-summary-section > .task-reference {
+  display: grid;
+  gap: 4px;
+  justify-self: stretch;
+  text-align: left;
+}
+
+.task-reference span,
+.task-reference small {
+  overflow-wrap: anywhere;
+}
+
+.task-inspector-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+}
+
 
 @container (width <= 760px) {
   .agent-layout {

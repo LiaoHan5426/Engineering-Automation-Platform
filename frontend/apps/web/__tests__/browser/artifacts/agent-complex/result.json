@@ -1,0 +1,106 @@
+{
+  "timestamp": "2026-11-08T14:36:32.853Z",
+  "baseCommit": "c76cded",
+  "syntheticDataOnly": true,
+  "applicationExecutedSql": false,
+  "sqliteFixtureExecutedSelects": true,
+  "runs": [
+    {
+      "caseId": "cte-window-aggregate",
+      "id": "9b6b2a71-5ebe-4c1b-bb2b-ffeacae6dd12",
+      "state": "timed-out",
+      "modelCalls": 2,
+      "executed": [
+        "sql.parse",
+        "knowledge.search"
+      ],
+      "citations": 1,
+      "error": "AGENT_TIME_LIMIT"
+    },
+    {
+      "caseId": "missing-evidence",
+      "id": "0596cfa1-93ff-4900-9189-000c1da812ee",
+      "state": "needs-input",
+      "modelCalls": 1,
+      "executed": [
+        "sql.parse"
+      ],
+      "citations": 0,
+      "error": ""
+    },
+    {
+      "caseId": "null-not-in",
+      "id": "3b20fd34-5f2c-479c-acc0-7f168c699b30",
+      "state": "applied",
+      "modelCalls": 1,
+      "executed": [
+        "sql.parse"
+      ],
+      "citations": 0,
+      "error": ""
+    },
+    {
+      "caseId": "cte-window-aggregate-bounded",
+      "id": "04f9110b-3777-4776-a52d-b473bfa6f3da",
+      "state": "partial",
+      "modelCalls": 2,
+      "executed": [
+        "sql.parse",
+        "knowledge.search"
+      ],
+      "citations": 1,
+      "error": ""
+    }
+  ],
+  "candidate": {
+    "path": "frontend/apps/web/__tests__/browser/artifacts/agent-complex/null-safe-candidate.sql",
+    "contentMatchesReadback": true,
+    "sha256": "7a67ca717b70f4ccef4ab0ea84f36b861306f313d7cb32d023e0d0a09e683225",
+    "approvalBy": "Codex under user authorization; not user acceptance"
+  },
+  "knowledge": {
+    "baseId": "d7827f76-222c-4587-a0a6-ef4393d6b77f",
+    "documentId": "d7fd40c0-6e10-433a-9fd4-0a81cd89b773",
+    "localSearchHits": 1,
+    "source": "SQL语义检查说明（合成验收资料）",
+    "retrievalMode": "local-keyword",
+    "authorizedPreviewHttp": 200,
+    "unauthorizedPreviewHttp": 403,
+    "unauthorizedBody": {
+      "detail": "EXPERT_CONTEXT_NOT_AUTHORIZED",
+      "instance": "/api/ai/expert-context/preview",
+      "status": 403,
+      "title": "Forbidden"
+    },
+    "localPathsModelCalls": 0,
+    "documentDeletion": {
+      "before": 1,
+      "http": 200,
+      "after": 0
+    }
+  },
+  "scaling": {
+    "verifiedPercent": 100,
+    "observed": {
+      "dpr": 1,
+      "screen": [
+        1920,
+        1080
+      ],
+      "inner": [
+        1920,
+        945
+      ],
+      "visualScale": 1
+    },
+    "pending": [
+      125,
+      150
+    ],
+    "blocker": "Native computer-use pipe unavailable; awaiting manual Windows scale change"
+  },
+  "userAcceptance": "pending",
+  "pageErrors": [],
+  "testExpertDisabled": true,
+  "detailLayout": "top-aligned; no horizontal overflow"
+}

@@ -65,6 +65,7 @@ apps/web/src
 | ConnectionDialog | `apps/web/src/components/ConnectionDialog.vue`（薄包装 Dialog） | 保持薄包装；壳能力只在 Dialog | 出现第三处平行弹层实现时必须删平行实现 |
 | SessionPanel / WorkspaceWelcome / RepositoryBrowser | `apps/web/src/components/`（聊天装配与会话轨共用；领域状态仍在 `features/shell`） | SessionPanel 的 Dock/Rail 契约 → `@eap/layout`；仓库 API 与懒加载留应用，通用 Tree 已在 UI 包；文件浮层组装 Drawer | 第二工作台复用同一 Dock/Rail 契约时抽 layout 包 |
 | WorkbenchFrame / Rail 网格 | `packages/ui/src/layout`（已定义并接入 Chat） | 暂存 `@eap/ui`；独立生命周期出现后再评估 `@eap/layout` | SessionPanel 的领域数据与 terminal 展示仍属应用组合 |
+| EditorWorkbench独立三栏壳（已实现） | `packages/ui/src/layout/EditorWorkbench.vue`及editor-workbench.css；公共导出，复用Splitter/Drawer，见[验收记录](expert-workspace-navigation.md) | `@eap/ui` L2受控子树；固定流程、SQL Agent、GrapesJS注入内容与领域操作 | 用户授权一次性接入；可调整/折叠/响应式侧面板，不持有领域API；134文件786项及浏览器技术回归通过，无新增插件运行时 |
 | Tree / Tooltip / Segmented / DatePicker / Drawer / Splitter | `packages/ui/src` 对应目录（已定义；交互依赖只在包内） | `@eap/ui`；Splitter 与 Frame 分别处理调整行为和结构 | 不因组件复杂而拆平行包 |
 | 外观偏好 / 设置页 | `apps/web/src/features/settings/appearance.ts`、`AppearanceSettings.vue` | 当前 web 应用策略；调用 style API，组装公共 UI | 第二宿主需要同一存储契约时再提炼通用 hooks；不把 localStorage/系统监听塞入 L0 |
 | ActionCard / DropdownMenu / SvgActionPath | `packages/ui/src/action-card`、`dropdown-menu`、`svg-action-path` | 已落地 `@eap/ui`；共享主/次操作隔离、菜单键盘/定位、SVG 操作无障碍 | 领域回调、图数据仍在应用 |
@@ -218,3 +219,7 @@ apps/web/src
 修订本决策时保留本文件为唯一落点规范；勿再平行新增「又一份组件目录说明」而不互相链接。
 
 2026-11-08 SQL Agent视觉接续：ConfirmBox的长文本换行、网格最小宽度和视口高度滚动统一在packages/ui修复；任务列表/容器响应式留expert feature，不复制弹窗。真实Chromium覆盖390～1440px与低高度、浅深色、焦点/拒绝/错误；入口和证据见apps/web/__tests__/browser/README.md。
+
+2026-11-08专家分层接续：导航/状态/分类配置仍属L4 expert，原编辑器拆为ExpertEditor，复用现有Tabs、Panel、ActionCard、表单及ConfirmBox；无新增共享类别/暂存包。基础控件门禁、专家样式、类型、组件与Chromium回归通过；见[专家界面记录](expert-workspace-navigation.md)。
+
+任务详情接续：ExpertTaskInspector为L4专家域只读组合，复用@eap/ui Drawer/Descriptions/Collapse；无新共享类别，主页面保留目标/结果，输入、引用摘录和技术信息按需查看。

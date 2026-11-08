@@ -46,8 +46,10 @@ public class SqlParseHandler implements CapabilityHandler {
         facts.forEach(context::publish);
         context.analysis().putAll(skeleton);
         boolean parsed = "valid".equals(skeleton.get("parseStatus"));
-        return new NodeResult(parsed, false,
-                "已用 SQL AST 抽取 " + facts.size() + " 项结构事实；判定在流程图执行完成后统一进行",
+        boolean partial = Boolean.TRUE.equals(facts.get("parse.partial"));
+        return new NodeResult(parsed, partial,
+                partial ? "SQL语法已解析，但包含未完整分析的作用域；当前事实只覆盖已抽取部分"
+                        : "已用 SQL AST 抽取 " + facts.size() + " 项结构事实；判定在流程图执行完成后统一进行",
                 Map.of("statementType", String.valueOf(skeleton.get("statementType")),
                         "factCount", facts.size()));
     }

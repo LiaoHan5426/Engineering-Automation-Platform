@@ -30,6 +30,13 @@ const props = withDefaults(
 )
 const { t } = useI18n()
 const surface = ref('design')
+const designer = ref<{ guardLeave: () => boolean }>()
+function guardLeave() {
+  const accepted = designer.value?.guardLeave() ?? true
+  if (!accepted) surface.value = 'design'
+  return accepted
+}
+defineExpose({ guardLeave })
 const visited = reactive({ legacy: false })
 watch(surface, (next) => {
   if (next === 'legacy' && !visited.legacy) {
@@ -39,6 +46,10 @@ watch(surface, (next) => {
   }
 })
 function backToScenes() {
+  if (!guardLeave()) {
+    surface.value = 'design'
+    return
+  }
   window.location.hash = 'scenes'
 }
 async function publishedVersion(id: string) {
@@ -304,14 +315,14 @@ onUnmounted(() => {
 
 <template>
   <section class="view work-page builder-workspace" :data-testid="`builder-${instanceId}`">
-    <div class="page-head">
-      <p class="eyebrow">BUILDER</p>
-      <h1>{{ instanceId === 'alpha' ? t('plugin.builderAlpha') : t('plugin.builderBeta') }}</h1>
-      <p>{{ t('builder.subtitle') }}</p>
-      <Button variant="secondary" data-testid="builder-back-scenes" @click="backToScenes">{{
+    <header class="builder-nav">
+      <Button variant="link" data-testid="builder-back-scenes" @click="backToScenes">{{
         t('builder.backScenes')
-      }}</Button>
-    </div>
+      }}</Button
+      ><strong>{{
+        instanceId === 'alpha' ? t('plugin.builderAlpha') : t('plugin.builderBeta')
+      }}</strong>
+    </header>
     <Tabs
       v-model="surface"
       :label="t('builder.surfaces')"
@@ -324,10 +335,12 @@ onUnmounted(() => {
     <section
       v-show="surface === 'design'"
       :inert="surface !== 'design'"
+      class="builder-design-surface"
       data-testid="builder-design-panel"
       :aria-label="t('builder.design')"
     >
       <GrapesEditorScaffold
+        ref="designer"
         :source-ref="`builder-${instanceId}`"
         :active="props.active && surface === 'design'"
         @published="publishedVersion"
@@ -576,6 +589,32 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.builder-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: auto;
+}
+
+.builder-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  padding: 8px 16px 0;
+}
+
+.builder-design-surface {
+  flex: 1;
+  min-height: 0;
+}
+
 .builder-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

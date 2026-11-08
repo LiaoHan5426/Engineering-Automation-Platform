@@ -224,7 +224,16 @@
       "severity": "medium",
       "when": { "fact": "predicate.inSubquery", "op": "eq", "value": true },
       "evidence": "IN 使用子查询。",
-      "suggestion": "评估子查询能否改写为 JOIN 或半连接，避免重复执行与不必要的半连接开销。"
+      "suggestion": "先核对重复行和NULL语义，再根据执行计划评估半连接；普通JOIN可能放大结果，不能直接替换或断言更快。"
+    },
+    {
+      "id": "predicate.not_in_subquery",
+      "title": "NOT IN 子查询的NULL语义",
+      "category": "谓词",
+      "severity": "high",
+      "when": { "fact": "predicate.notInSubquery", "op": "eq", "value": true },
+      "evidence": "NOT IN 使用子查询；当前未证明两侧均非NULL。",
+      "suggestion": "子查询返回NULL时，未匹配行也可能被UNKNOWN过滤；先明确业务意图及两侧NULL约束。NOT EXISTS可能符合反连接意图，但不保证与原NOT IN等价，更不能直接替换为普通JOIN。性能需执行计划与实测。"
     },
     {
       "id": "predicate.subquery",

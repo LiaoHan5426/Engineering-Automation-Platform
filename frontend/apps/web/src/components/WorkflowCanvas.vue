@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { SvgActionPath, Button } from '@eap/ui'
-import { computed, ref, useId } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import { inspectGraph, type WorkflowNode, type WorkflowEdge } from '../lib/workflowGraph'
 const props = defineProps<{ nodes: WorkflowNode[]; edges: WorkflowEdge[] }>()
 const emit = defineEmits<{ select: [id: string] }>()
-const selected = ref(''),
-  source = ref(''),
+const selected = defineModel<string>('selected', { default: '' })
+const source = ref(''),
   feedback = ref('')
 const drag = ref<{ id: string; x: number; y: number } | null>(null)
 const marker = useId()
@@ -93,6 +93,22 @@ function layout() {
 function removeEdge(index: number) {
   props.edges.splice(index, 1)
 }
+async function reveal(id: string) {
+  await nextTick()
+  const point = position(id)
+  canvas.value?.scrollTo?.({
+    left: Math.max(0, point.x * zoom.value - 30),
+    top: Math.max(0, point.y * zoom.value - 30),
+    behavior: 'smooth',
+  })
+}
+watch(
+  () => props.nodes.map((node) => node.id),
+  (ids) => {
+    if (!ids.includes(source.value)) source.value = ''
+  },
+)
+defineExpose({ reveal })
 </script>
 <template>
   <div class="canvas-tools">
@@ -241,23 +257,28 @@ function removeEdge(index: number) {
 <style scoped>
 .canvas-tools {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
+  align-items: center;
   margin: 12px 0;
   font-size: 13px;
-  flex-wrap: wrap;
 }
+
 .canvas-tools span {
   flex: 1;
 }
+
 .graph-warning {
+  padding: 10px;
   color: var(--warn-text);
   background: var(--warn-bg);
-  padding: 10px;
   border-radius: 8px;
 }
+
 .workflow-canvas {
+  flex: 1;
   height: 470px;
+  min-height: 220px;
   overflow: auto;
   background-color: var(--surface-2);
   background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
@@ -265,56 +286,67 @@ function removeEdge(index: number) {
   border: 1px solid var(--border-strong);
   border-radius: 10px;
 }
+
 .canvas-surface {
   position: relative;
 }
+
 .workflow-node {
   position: absolute;
+  box-sizing: border-box;
+  display: grid;
+  gap: 6px;
   width: 200px;
   height: 120px;
+  padding: 12px;
   background: var(--surface);
   border: 2px solid var(--focus-ring);
   border-radius: 10px;
-  box-sizing: border-box;
-  padding: 12px;
-  display: grid;
-  gap: 6px;
 }
+
 .workflow-node.selected,
 .workflow-node.connecting {
   border-color: var(--accent);
 }
+
 .node-handle {
-  cursor: grab;
-  touch-action: none;
   display: grid;
   gap: 4px;
+  touch-action: none;
+  cursor: grab;
 }
+
 .node-handle small {
   color: var(--text-soft);
 }
+
 .node-handle strong {
-  font-size: 14px;
   overflow: hidden;
-  white-space: nowrap;
   text-overflow: ellipsis;
+  font-size: 14px;
+  white-space: nowrap;
 }
+
 .workflow-node code {
   font-size: 11px;
   color: var(--text-soft);
 }
+
 .port {
   position: absolute;
   top: 44px;
   width: 24px;
   height: 28px;
 }
+
 .input {
   left: -14px;
 }
+
 .output {
   right: -14px;
 }
+
 svg {
   position: absolute;
   top: 0;

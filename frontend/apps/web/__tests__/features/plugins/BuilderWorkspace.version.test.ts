@@ -108,6 +108,12 @@ describe('builder version preview', () => {
     expect(root!.querySelector('[data-testid="draft-title"]')).toBe(legacy)
     expect(legacy.value).toBe('未保存旧草稿')
     root!.querySelector<HTMLButtonElement>('[data-testid="builder-back-scenes"]')!.click()
+    await settled()
+    expect(window.location.hash).not.toBe('#scenes')
+    expect(root!.textContent).toContain('请先保存或放弃修改')
+    root!.querySelector<HTMLButtonElement>('[data-testid="grapes-discard"]')!.click()
+    await settled()
+    root!.querySelector<HTMLButtonElement>('[data-testid="builder-back-scenes"]')!.click()
     expect(window.location.hash).toBe('#scenes')
   })
 

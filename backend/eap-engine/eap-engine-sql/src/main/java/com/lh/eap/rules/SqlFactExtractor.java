@@ -67,6 +67,8 @@ public final class SqlFactExtractor {
     }
 
     private static void inspect(Statement statement, State state) {
+        if (statement instanceof Select select && select.getWithItemsList() != null && !select.getWithItemsList().isEmpty())
+            state.facts.put("parse.partial", true);
         if (statement instanceof PlainSelect select) {
             inspectSelect(select, state);
         } else if (statement instanceof SetOperationList set) {
@@ -85,6 +87,10 @@ public final class SqlFactExtractor {
     }
 
     private static void inspectSelect(PlainSelect select, State state) {
+        // These scopes are parsed by JSQLParser but are not fully traversed by this extractor.
+        if ((select.getFromItem() != null && !(select.getFromItem() instanceof Table))
+                || select.getGroupBy() != null || select.getHaving() != null)
+            state.facts.put("parse.partial", true);
         var aliases = new LinkedHashMap<String, String>();
         if (select.getFromItem() instanceof Table table) {
             state.tables.add(table.getFullyQualifiedName());
@@ -99,11 +105,13 @@ public final class SqlFactExtractor {
                 var expression = item.getExpression();
                 if (expression instanceof AllColumns) star = true;
                 if (expression instanceof Function) state.functions++;
+                if (expression instanceof AnalyticExpression || isSubquery(expression)) state.facts.put("parse.partial", true);
             }
         }
         mergeFlag(state.facts, "select.allColumns", star);
         if (select.getJoins() != null) {
             for (var join : select.getJoins()) {
+                if (!(join.getFromItem() instanceof Table)) state.facts.put("parse.partial", true);
                 if (join.getFromItem() instanceof Table table) {
                     state.tables.add(table.getFullyQualifiedName());
                     alias(table, aliases);
@@ -174,7 +182,8 @@ public final class SqlFactExtractor {
         if (expression instanceof InExpression in) {
             if (isSubquery(in.getRightExpression())) {
                 state.subqueries++;
-                mergeFlag(state.facts, "predicate.inSubquery", true);
+                state.facts.put("parse.partial", true);
+                mergeFlag(state.facts, in.isNot() ? "predicate.notInSubquery" : "predicate.inSubquery", true);
             }
             walk(in.getLeftExpression(), state, aliases);
             return;
@@ -208,6 +217,7 @@ public final class SqlFactExtractor {
         }
         if (isSubquery(expression)) {
             state.subqueries++;
+            state.facts.put("parse.partial", true);
             mergeFlag(state.facts, "predicate.subquery", true);
             return;
         }

@@ -1,0 +1,24 @@
+{
+  "result": "passed",
+  "checks": [
+    "catalog add, property/structure/canvas selection, incident-edge deletion, draft guard, fixture save and reload",
+    "1440/900/640/390: no page overflow, resize/collapse keeps canvas, narrow drawer focus/Escape/return",
+    "Agent goal/tool save retains professional behavior/version and empty DAG",
+    "real GrapesJS add/edit/select, interactive Vue preview, browser-local project+schema save/reload, discard and leave guard",
+    "prototype compact resources and stable canvas at 900/390",
+    "dark theme editor shell with document canvas retaining its own design appearance",
+    "unknown component mapping blocks publication; no delivery API writes"
+  ],
+  "mutations": [
+    {
+      "kind": "fixture-only-save",
+      "id": "editor-fixture"
+    },
+    {
+      "kind": "fixture-only-save",
+      "id": "agent-editor-fixture"
+    }
+  ],
+  "errors": [],
+  "boundary": "Expert saves are intercepted fixtures; prototype saves are browser-local; no provider or delivery writes."
+}

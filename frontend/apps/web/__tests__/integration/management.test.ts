@@ -22,8 +22,10 @@ describe('management page initialization', () => {
   })
   it('opens expert management without accessing uninitialized state', async () => {
     const html = await renderToString(createSSRApp(ExpertManager).use(i18n))
-    expect(html).toContain('构建专家工作流')
-    expect(html).toContain('新建专家')
+    expect(html).toContain('我的专家')
+    expect(html).not.toContain('流程画布')
+    expect(html).not.toContain('后台任务与审批')
+    expect(html).toContain('新建 SQL Agent')
   })
   it('opens knowledge management with a clear selection prompt', async () => {
     const html = await renderToString(createSSRApp(KnowledgeManager))

@@ -16,6 +16,7 @@
 | 本阶段提交范围、验证与剩余项 | [2026-11-08阶段收束](decisions/backend-module-composition.md#stage-checkpoint) |
 | **前端 UI / hooks·effects·layout·plugin 落点（Agent 强制）** | [frontend-ui-shared-module-boundaries](decisions/frontend-ui-shared-module-boundaries.md) |
 | 查 HTTP 接口与专家执行流程 | [backend-architecture](backend-architecture.md) |
+| 知识库能否本地执行、何时需要模型 | [知识与本地执行边界](decisions/knowledge-local-execution.md) |
 | 使用专家、知识库和规则 | [expert-knowledge-rules](expert-knowledge-rules.md)、[runtime-workflow](runtime-workflow.md) |
 | 理解确定性分析与模型增强流程 | [pipeline](pipeline.md) |
 

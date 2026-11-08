@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   runtimeApi,
   type ExpertAgentDetail,
@@ -8,7 +8,10 @@ import {
 import { errorMessage } from '../../lib/presentation'
 import { useMockServices } from '../../lib/serviceConfig'
 
-export function useExpertAgentRuns() {
+export function useExpertAgentRuns(
+  autoSelect = true,
+  scope: () => 'list' | 'detail' | 'form' = () => 'list',
+) {
   const runs = ref<ExpertAgentSummary[]>([])
   const selected = ref<{ id: string; expertId: string } | null>(null)
   const detail = ref<ExpertAgentDetail | null>(null)
@@ -40,15 +43,15 @@ export function useExpertAgentRuns() {
       Date.parse(d.run.expiresAt) > now.value
     )
   })
-  async function loadDetail() {
+  async function loadDetail(background = false) {
     if (!selected.value || disposed || preview) return
     const selection = { ...selected.value },
       version = ++detailVersion
-    loading.value = true
+    if (!background) loading.value = true
     try {
       const result = await runtimeApi.expertAgentRun(selection.expertId, selection.id)
       if (!disposed && version === detailVersion) {
-        detail.value = result
+        if (JSON.stringify(detail.value) !== JSON.stringify(result)) detail.value = result
         readError.value = ''
       }
     } catch (error) {
@@ -66,18 +69,22 @@ export function useExpertAgentRuns() {
     actionError.value = ''
     await loadDetail()
   }
-  async function refresh() {
+  async function refresh(background = false) {
     if (preview || disposed || refreshing || busy.value) return
     refreshing = true
     const version = detailVersion
     try {
+      if (scope() === 'detail' && selected.value) {
+        await loadDetail(background)
+        return
+      }
       const result = await runtimeApi.expertAgentRuns()
       if (disposed || busy.value || version !== detailVersion) return
       runs.value = result.items
       automatic.value = result.automaticScheduling
       readError.value = ''
-      if (!selected.value && result.items[0]) selected.value = result.items[0]
-      await loadDetail()
+      if (autoSelect && !selected.value && result.items[0]) selected.value = result.items[0]
+      if (autoSelect || scope() === 'detail') await loadDetail(background)
     } catch (error) {
       if (!disposed && !busy.value && version === detailVersion) {
         readError.value = errorMessage(error)
@@ -154,12 +161,30 @@ export function useExpertAgentRuns() {
     }
     await refresh()
   }
+  const activeStates = new Set([
+    'queued',
+    'running',
+    'interrupted',
+    'awaiting-approval',
+    'applying',
+  ])
+  function shouldPoll() {
+    return scope() !== 'detail' || !detail.value || activeStates.has(detail.value.run.state)
+  }
+  function schedule() {
+    if (timer) clearTimeout(timer)
+    if (!disposed && !preview && shouldPoll()) timer = setTimeout(poll, 2000)
+  }
   async function poll() {
     now.value = Date.now()
-    await refresh()
-    if (!disposed && !preview) timer = setTimeout(poll, 2000)
+    if (shouldPoll()) await refresh(true)
+    schedule()
   }
-  onMounted(poll)
+  watch(() => [scope(), selected.value?.id, detail.value?.run.state], schedule)
+  onMounted(async () => {
+    await refresh()
+    schedule()
+  })
   onBeforeUnmount(() => {
     disposed = true
     ++detailVersion

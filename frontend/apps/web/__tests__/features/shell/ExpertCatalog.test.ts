@@ -46,7 +46,7 @@ it('exposes my-experts in the header and filters by category chips', async () =>
   app.use(i18n).mount(root)
   await nextTick()
   expect(root.querySelector('[data-testid=expert-catalog-title]')?.textContent).toMatch(
-    /专家市场|Expert marketplace/,
+    /对话角色|Conversation roles/,
   )
   const mine = root.querySelector('[data-testid=experts-mine]') as HTMLButtonElement
   expect(mine.textContent).toMatch(/我的专家|My experts/)

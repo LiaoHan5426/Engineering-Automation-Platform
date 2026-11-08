@@ -8,6 +8,12 @@ import { useMockServices } from '../../lib/serviceConfig'
 
 const props = defineProps<{ viewId: string; host: PluginHost; chatView: Component }>()
 const { t } = useI18n()
+const builders = new Map<string, { guardLeave: () => boolean }>()
+function bindBuilder(id: string, value: unknown) {
+  if (value) builders.set(id, value as { guardLeave: () => boolean })
+  else builders.delete(id)
+}
+defineExpose({ guardLeave: (id: string) => builders.get(id)?.guardLeave() ?? true })
 const visited = reactive(new Set<string>())
 const workspaceIds = ['chat', 'builder-alpha', 'builder-beta'] as const
 watch(
@@ -52,6 +58,7 @@ const enabled = computed(() =>
     />
     <BuilderWorkspace
       v-else
+      :ref="(value) => bindBuilder(id, value)"
       v-show="viewId === id"
       :inert="viewId !== id"
       :aria-hidden="viewId !== id"

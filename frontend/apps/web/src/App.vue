@@ -118,7 +118,7 @@ const pages = computed(() => [
   ...pluginHost.entries.value,
   ...shellPages.filter((page) => page.group === '设置'),
 ])
-const hashView = typeof location !== 'undefined' ? location.hash.slice(1) : ''
+const hashView = typeof location !== 'undefined' ? location.hash.slice(1).split('?')[0]! : ''
 const activeView = ref(isKnownHash(hashView) ? hashView : DEFAULT_VIEW)
 if (activeView.value === 'work') {
   workbench.workMode = 'work'
@@ -134,7 +134,8 @@ const shellTitle = computed(() => {
       : i18n.global.t('desktop.newChat')
   }
   if (activeView.value === 'board') return i18n.global.t('desktop.board')
-  if (activeView.value === 'expert-catalog') return i18n.global.t('desktop.experts')
+  if (activeView.value === 'expert-catalog') return i18n.global.t('expertWorkspace.roles')
+  if (activeView.value === 'experts') return i18n.global.t('desktop.experts')
   if (activeView.value === 'scenes') return i18n.global.t('desktop.scenes')
   return currentView.value.name
 })
@@ -178,6 +179,19 @@ const inspector = computed(
 )
 const taskViews = new Set(['chat', 'sql', 'board'])
 watch(activeView, (value, previous) => {
+  if (previous !== value && !(pluginSlot.value?.guardLeave(previous) ?? true)) {
+    activeView.value = previous
+    return
+  }
+  if (
+    previous === 'experts' &&
+    value !== 'experts' &&
+    expertManager.value &&
+    !expertManager.value.guardLeave()
+  ) {
+    activeView.value = 'experts'
+    return
+  }
   if (value === 'work') {
     workbench.workMode = 'work'
     activeView.value = 'chat'
@@ -187,11 +201,27 @@ watch(activeView, (value, previous) => {
   if (previous && taskViews.has(previous) && !taskViews.has(value))
     workbench.origin = previous === 'chat' && workbench.workMode === 'work' ? 'work' : previous
   if (!taskViews.has(value)) workbench.panel = null
-  if (typeof location !== 'undefined')
+  if (
+    typeof location !== 'undefined' &&
+    !(value === 'experts' && location.hash.startsWith('#experts?'))
+  )
     location.hash = value === 'chat' && workbench.workMode === 'work' ? 'work' : value
 })
 function hashChange() {
-  const id = location.hash.slice(1)
+  const id = location.hash.slice(1).split('?')[0]!
+  if (id !== activeView.value && !(pluginSlot.value?.guardLeave(activeView.value) ?? true)) {
+    window.history.replaceState(null, '', '#' + activeView.value)
+    return
+  }
+  if (
+    activeView.value === 'experts' &&
+    id !== 'experts' &&
+    expertManager.value &&
+    !expertManager.value.guardLeave()
+  ) {
+    window.history.replaceState(null, '', '#' + expertManager.value.currentHash())
+    return
+  }
   if (id === 'chat') workbench.workMode = 'code'
   if (id === 'work') {
     workbench.workMode = 'work'
@@ -219,10 +249,22 @@ const errors = ref<Record<string, string>>({})
 const capabilities = ref<string[]>([])
 const capabilityItems = ref<CapabilityItem[]>([])
 const capabilityKinds = ref<CapabilityKindSummary[]>([])
+const pluginSlot = ref<{ guardLeave: (id: string) => boolean }>()
+const expertEditing = ref(false)
+const editorSurface = computed(
+  () =>
+    (activeView.value === 'experts' && expertEditing.value) ||
+    (['builder-alpha', 'builder-beta'].includes(activeView.value) &&
+      pluginHost.installation.value.enabled.builder),
+)
 const expertCount = ref(0)
 const capabilityManager = ref<{ refresh: () => Promise<void> } | null>(null)
 const inspectorOpen = ref(false)
-const expertManager = ref<{ refresh: () => Promise<void> } | null>(null)
+const expertManager = ref<{
+  refresh: () => Promise<void>
+  guardLeave: () => boolean
+  currentHash: () => string
+} | null>(null)
 const knowledgeManager = ref<{ refresh: () => Promise<void> } | null>(null)
 const databaseManager = ref<{ refresh: () => Promise<void> } | null>(null)
 const ruleManager = ref<{ refresh: () => Promise<void> } | null>(null)
@@ -1045,9 +1087,17 @@ onUnmounted(() => {
 
     <div
       class="body"
-      :class="{ 'body--chat': activeView === 'chat', 'body--sql': activeView === 'sql' }"
+      :class="{
+        'body--chat': activeView === 'chat',
+        'body--sql': activeView === 'sql',
+        'body--editor': editorSurface,
+      }"
     >
       <DesktopNavigation
+        v-show="!editorSurface"
+        :can-navigate="
+          () => activeView !== 'experts' || !expertManager || expertManager.guardLeave()
+        "
         :active-view="activeView"
         :pages="pages"
         :board-enabled="pluginHost.boardContributionVisible.value"
@@ -1785,6 +1835,7 @@ onUnmounted(() => {
           <SkillManager v-if="activeView === 'skills'" />
           <ExpertManager
             ref="expertManager"
+            @editing="expertEditing = $event"
             v-else-if="activeView === 'experts'"
             @saved="refresh"
             @run="
@@ -1811,7 +1862,12 @@ onUnmounted(() => {
             @saved="refresh"
           />
         </KeepAlive>
-        <PluginSlot :view-id="activeView" :host="pluginHost" :chat-view="ChatWorkspace" />
+        <PluginSlot
+          ref="pluginSlot"
+          :view-id="activeView"
+          :host="pluginHost"
+          :chat-view="ChatWorkspace"
+        />
       </main>
 
       <!-- INSPECTOR -->

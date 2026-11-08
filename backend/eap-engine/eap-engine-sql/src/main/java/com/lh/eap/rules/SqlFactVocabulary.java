@@ -39,6 +39,7 @@ public final class SqlFactVocabulary {
             new Fact("parse.status", "string", "解析", "valid 表示语句已成功解析，invalid 表示语法无法识别", SQL_PARSE),
             new Fact("statement.type", "string", "解析", "SELECT / UPDATE / DELETE / INSERT / UNION / OTHER", SQL_PARSE),
             new Fact("statement.classified", "boolean", "解析", "是否为平台已识别的语句类型", SQL_PARSE),
+            new Fact("parse.partial", "boolean", "解析", "包含尚未完整抽取的查询作用域；语法解析成功不等于完整分析", SQL_PARSE),
 
             new Fact("select.allColumns", "boolean", "投影", "投影中包含 * 或 表.* 通配符", SQL_PARSE),
             new Fact("select.distinct", "boolean", "结构", "查询使用 DISTINCT 去重", SQL_PARSE),
@@ -67,6 +68,7 @@ public final class SqlFactVocabulary {
             new Fact("predicate.not", "boolean", "谓词", "条件中出现 NOT 否定", SQL_PARSE),
             new Fact("predicate.leadingWildcardLike", "boolean", "谓词", "LIKE 以前导通配符 % 开头", SQL_PARSE),
             new Fact("predicate.inSubquery", "boolean", "谓词", "IN 使用子查询", SQL_PARSE),
+            new Fact("predicate.notInSubquery", "boolean", "谓词", "NOT IN 使用子查询，需核对两侧NULL语义", SQL_PARSE),
             new Fact("predicate.subquery", "boolean", "谓词", "条件中包含子查询", SQL_PARSE),
             new Fact("predicate.nullComparison", "boolean", "谓词", "使用 = NULL 或 <> NULL", SQL_PARSE),
             new Fact("predicate.functionOnColumn", "string", "谓词", "包裹列的函数名（存在即表示命中了非 sargable 写法）", SQL_PARSE),

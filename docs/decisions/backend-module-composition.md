@@ -484,3 +484,49 @@ SQL Agent允许普通openai-compatible的chat-completions和responses；ChatGPT�
 验证：后端沿用紧邻实现轮已完成的clean后修复夹具再verify（32项目SUCCESS；907项，833通过、74环境门控跳过、0失败/错误；31项已批准PostgreSQL回归实际执行）。本次提交准备重新执行仓库根`rtk proxy pnpm --dir frontend test run`，131文件/763项通过；类型、架构、构建在紧邻实现轮通过且生产代码此后未变。真实Responses工具链、页面审批与独立读回、重复审批/完整服务重启不重放、Windows原生100%结果见上节。未为文档提交重启服务、调用供应商或扩大数据库门控。提交前检查暂存diff、移动归属、UTF-8无BOM、相对链接与敏感内容；不纳入编译产物或凭据文件。
 
 阶段未关闭项：workflow产品目录/CLI管理和Chat产品贡献解耦、旧DAG长事务、通用输入及更多专业行为、通用写工具/UNKNOWN人工处置、独立schema组合和跨环境发行、官方MCP独立实网业务验收、复杂SQL效果、原生125%/150%及用户最终产品接受。下一步按这些边界选择最小可验证切片；本次提交不宣布整个平台已完成。
+
+<a id="complex-sql-acceptance"></a>
+### 第十四轮接续：复杂SQL、知识边界与人工验收准备（2026-11-08）
+
+基线c76cded，用户要求继续复杂SQL、其他系统缩放及用户验收，同时解释知识库与本地执行关系。本轮变更纳入后续独立编辑工作台阶段提交。复杂样例均为合成customers/orders数据，不连接业务数据库。
+
+发现并修复：原CTE只提取外层ranked却给出0.9确定性；NOT IN误触发普通IN/半连接建议。SqlFactExtractor/Vocabulary新增parse.partial与predicate.notInSubquery：尚未完整分析的CTE/子查询/派生表/聚合/窗口标记部分证据，SqlParseHandler传播incomplete，sql-analyzer/5限制确定性至0.5并明确不完整结构；NOT IN单独提示NULL/UNKNOWN及反连接业务语义，不保证NOT EXISTS与原SQL等价。没有宣称实现了完整CTE递归作用域分析。新增ComplexSqlEvidenceTest六项覆盖及规则事实合同。实际页面还发现多任务列表拉长后详情行被纵向分散，feature沿用现有组件仅align-content:start，原生复查段间12px、无横向溢出；无新共享原语/暂存。
+
+真实模型4次任务共6轮调用（同一现有Responses默认连接）：
+
+| 场景 | 运行ID | 结果 |
+|---|---|---|
+| CTE/LEFT JOIN/聚合/ROW_NUMBER+知识 | 9b6b2a71-5ebe-4c1b-bb2b-ffeacae6dd12 | 2轮，已读取knowledge.search且持久1条引用，45秒AGENT_TIME_LIMIT；不计成功 |
+| 缺少计划却要求证明30秒到100毫秒 | 0596cfa1-93ff-4900-9189-000c1da812ee | 1轮needs-input，明确不能证明，请求计划/分布/约束/测量；无候选 |
+| NOT IN/NULL反连接 | 3b20fd34-5f2c-479c-acc0-7f168c699b30 | 1轮生成NOT EXISTS单文件候选，代理按授权页面审批后applied；读回一致 |
+| CTE同样例限制180字结论复测 | 04f9110b-3777-4776-a52d-b473bfa6f3da | 2轮，真实knowledge.search并引用合成资料，partial，准确保留覆盖/性能未知 |
+
+独立oracle脚本frontend/apps/web/__tests__/browser/sql_semantic_fixture.py只创建内存SQLite合成表，在装载fixture后开启只读authorizer；生成SQL仅允许SELECT相关操作，不访问EAP/业务数据库。CTE排序/零订单/NULL金额样例结果与预期一致；原NOT IN在paid子集含NULL时空集，目标反连接应得客户2/5/6。生成候选在NULL/重复订单/NULL金额、无NULL客户、空订单、仅NULL客户四组数据上符合业务目标。此为选定SQL语义样例，不证明PostgreSQL性能或任意输入等价。候选仅写入artifacts/agent-complex/null-safe-candidate.sql；EAP未执行SQL，独立验收脚本才在合成内存库运行。
+
+本地知识验收：创建单份合成说明，导入1块；全文/关键词搜索命中1条并返回来源；授权专家预览200，另一个无知识grant专家预览403；临时测试文档删除前命中1/删除后0。这些接口调用链不调用模型；SQL Agent取证的选择与结论仍由模型调用完成。知识正文版本更新尚无合同；未冒充已完成更新一致性。完整解释见[知识库、本地规则与模型边界](knowledge-local-execution.md)。测试专家均停用，合成知识和历史运行保留供用户阅读。
+
+验证（backend目录）：`rtk proxy mvn -f pom.xml -pl :eap-full-application -am test '-Dtest=ComplexSqlEvidenceTest,DeterministicSqlAnalyzerRulesTest,RulePackTest,SqlExpertAgentServiceTest' '-Dsurefire.failIfNoSpecifiedTests=false'`成功；`rtk proxy mvn -f pom.xml verify`32项目成功，156报告913项（839通过/74门控跳过/0失败或错误），只开启既有3个Expert门控，31项实库回归执行。IDEA构建前停止，完成后恢复。仓库根`python frontend/apps/web/__tests__/browser/sql_semantic_fixture.py`成功；`rtk proxy pnpm --dir frontend test run`131文件763项成功，typecheck、check:architecture、build及目标stylelint成功。Python oracle初次authorizer拒绝fixture提交，修正为装载并commit后才启用只读限制；没有放宽候选写权限。
+
+原生缩放：重新检查computer-use技能的sky及CUA入口，均为native pipe unavailable，浏览器host也不可用；已有本地Playwright可操作应用，当前DPR1/1920×945/visualScale1，仍是100%。已向用户请求手动切换Windows125%，待回复后验收并继续150%；没有以deviceScaleFactor/浏览器zoom替代。用户验收页面和下方清单已提供，尚无用户接受结论。证据为frontend/apps/web/__tests__/browser/artifacts/agent-complex，含首次超时、修复前后本地结果、真实运行/引用、oracle与截图。原生125%/150%、完整SQL作用域、真实生产分布/性能与用户接受继续保持未验。
+
+用户验收清单（入口http://127.0.0.1:5173 → 专家 → 专家定义）：
+
+- 查看“复杂SQL验收Agent”的证据不完整、等待补充输入、已写入、已超时四种记录，确认含义清楚且不会混为成功。
+- 查看NULL候选Diff中的目标路径/注释/NULL风险，核对已写入提示与仅保存未执行边界。
+- 展开CTE取证记录，确认能追溯合成知识来源，不把知识引用视为查询正确性证明。
+- 在实际125%/150%系统缩放查看文字、滚动、Diff和确认框可达性；反馈遮挡、拥挤、焦点或操作障碍。只读已有记录不会再收费调用模型。
+
+### 原生125%缩放接续（2026-11-08）
+
+用户明确回复已切换Windows125%。运行既有expert-agent-visual.mjs原生模式（EAP_VISUAL_NATIVE=true，输出artifacts/agent-native-125），不设置deviceScaleFactor或页面zoom。有界面最大化Chromium实测DPR1.25、screen1536×864、inner1536×730、outer1536×816、visualScale1。5组检查通过、5次仅fixture修改、0pageerror；检查确认框焦点/Tab/Escape、批准/拒绝/过期/UNKNOWN/失败、提交费用确认、离页与浅深主题；截图已查看，无遮挡或横向溢出。
+
+另开无mock浏览器，只读真实CTE partial、缺资料needs-input、NULL候选applied三条历史记录；详情均宽836且scrollWidth836，真实Monaco加载，0pageerror。证据live-result.json及live-{partial,needs-input,applied}.png。没有调用模型或批准真实写入，没有修改生产代码，故不重跑构建。本轮125%技术检查通过；150%仍待用户实际切换，用户主观体验接受尚未收到。先前“125%未验”保留为历史快照。
+
+<a id="expert-workspace-navigation"></a>
+### 专家界面分层与截图反馈（2026-11-08）
+
+已按用户授权将专家定义与单次执行分开，增加SQL Agent行为编辑及分类配置；终态停止轮询、活动任务静默更新，移除已完成任务的失效审批按钮。后端模块/任务状态机/数据库不变；本轮前端132文件773项通过，类型/架构/构建通过。真实125%读取历史终态无重复请求或布局抖动；模拟浏览器审批保持绑定/费用/拒绝/异常检查。用户接受和150%仍待，完整范围与保留实现见[界面决策](expert-workspace-navigation.md)。此前复杂SQL修复的913项后端结果保留，本轮未重跑后端或真实模型。
+
+### 独立编辑工作台提交前复核（2026-11-09）
+
+用户已授权在浏览器技术验收后提交并推送。本阶段将此前未提交的复杂SQL证据修复、知识边界说明、专家导航/详情调整与本次独立编辑工作台一并收口。`rtk proxy mvn -f backend/pom.xml test`重跑32模块SUCCESS，912项（808通过/104门控跳过/0失败错误）；本轮未启用额外实库/供应商门控，前述913项/74跳过是前轮环境快照。前端134文件786项、类型/架构/构建与定向样式通过；新编辑工作台7组、原审批UI9组浏览器技术检查通过，所有专家保存/审批写请求均为隔离fixture。当前原生DPR1及Chromium1.25/1.5覆盖通过，不冒充Windows原生150%。细节与剩余用户验收见[工作台记录](expert-workspace-navigation.md)。

@@ -204,10 +204,12 @@ describe('source-surface return through the real App navigation', () => {
   it('returns from the expert catalog to the existing Work session after selection', async () => {
     await mountSource()
     await click('.activity-bar button:nth-child(4)')
+    expect(window.location.hash).toBe('#experts')
+    await click('[data-testid="expert-roles-nav"]')
     expect(window.location.hash).toBe('#expert-catalog')
     // App, not a copied test watcher, records Work as the source of chat.
     expect(workbench.origin).toBe('work')
-    expect(root.querySelector('[data-testid="project-tree"]')).not.toBeNull()
+    expect(root.querySelector('[data-testid="project-tree"]')).toBeNull()
     await click('[data-testid="expert-add"]')
     expect(currentExtras().experts).toHaveLength(1)
     expect(window.location.hash).toBe('#expert-catalog')

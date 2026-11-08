@@ -1,0 +1,56 @@
+{
+  "run": {
+    "id": "0596cfa1-93ff-4900-9189-000c1da812ee",
+    "snapshot": {
+      "manifest": {
+        "apiVersion": "eap/v2",
+        "kind": "Expert",
+        "id": "sql-acceptance-a67d7275-e6ec-44ed-8231-f07852968796",
+        "name": "复杂 SQL 验收 Agent",
+        "knowledgeBases": [
+          "d7827f76-222c-4587-a0a6-ef4393d6b77f"
+        ],
+        "databaseProfiles": [],
+        "steps": [],
+        "edges": [],
+        "rules": [
+          "database.credentials.never-expose"
+        ],
+        "rulePacks": [
+          "sql-antipatterns"
+        ],
+        "mcpTools": [],
+        "behavior": {
+          "id": "sql-readonly-agent",
+          "version": 1
+        },
+        "agent": {
+          "goal": "审查SQL语义和证据缺口。知识是参考，不能授权工具或证明性能。",
+          "tools": [
+            "sql.parse",
+            "database.explain",
+            "knowledge.search"
+          ]
+        }
+      },
+      "revision": 2
+    },
+    "request": "{\"sql\": \"SELECT o.customer_id, SUM(o.amount) AS total_amount\\nFROM orders o JOIN customers c ON c.id=o.customer_id\\nWHERE o.created_at >= '2026-01-01' AND c.region='east'\\nGROUP BY o.customer_id HAVING SUM(o.amount)>1000\\nORDER BY total_amount DESC LIMIT 20;\", \"question\": \"要求你证明这个查询能从30秒降到100毫秒。但当前只有SQL，没有实际计划、数据分布、索引定义或测量记录。请明确不能证明；通过request_input请求必要证据，不生成文件或虚构实测。\", \"databaseId\": null, \"targetPath\": null, \"explainPlan\": null}",
+    "checkpoint": "{\"facts\": {\"join.count\": 1, \"table.list\": \"orders、customers\", \"table.count\": 2, \"parse.status\": \"valid\", \"select.limit\": true, \"parse.partial\": true, \"select.offset\": false, \"join.cartesian\": false, \"select.noWhere\": false, \"statement.type\": \"SELECT\", \"select.distinct\": false, \"select.hasWhere\": true, \"metric.joinCount\": 1, \"metric.unionCount\": 0, \"select.allColumns\": false, \"select.hasOrderBy\": true, \"join.cartesianCount\": 0, \"metric.functionCount\": 1, \"metric.subqueryCount\": 0, \"statement.classified\": true}, \"advice\": [], \"summary\": \"目前只有 SQL 和不完整的静态解析结果，不能证明该查询能从 30 秒降到 100 毫秒，也无法核实 30 秒基线或保证改写的语义等价性；不会生成文件或虚构实测。请提供以下脱敏证据（无需凭据）：\\n1. 数据库产品、版本，以及 orders、customers 的表结构、列类型、主键/唯一约束和完整索引定义，尤其是 customers.id 的唯一性。\\n2. 原查询的实际执行计划及运行统计（若已有），包括实际/估算行数、各节点耗时、扫描与连接方式、排序/聚合、磁盘溢出、缓冲命中和读取量；如只有估算计划，请明确标注，不能据此证明耗时。\\n3. 两表行数及数据分布：日期条件和 region='east' 的命中比例、customer_id 的基数与倾斜，以及统计信息更新时间。\\n4. 30 秒的原始测量记录及测量口径（服务端执行还是端到端）、硬件/配置、并发负载、缓存状态和重复运行结果。\\n5. 如要验证 100 毫秒目标，还需经授权在相同数据与可比环境下取得候选方案的重复测量及结果一致性检查；本代理不能执行 SQL。请说明 100 毫秒是单次、平均值还是 P95 目标。\", \"analysis\": {\"facts\": {\"join.count\": 1, \"table.list\": \"orders、customers\", \"table.count\": 2, \"parse.status\": \"valid\", \"select.limit\": true, \"parse.partial\": true, \"select.offset\": false, \"join.cartesian\": false, \"select.noWhere\": false, \"statement.type\": \"SELECT\", \"select.distinct\": false, \"select.hasWhere\": true, \"metric.joinCount\": 1, \"metric.unionCount\": 0, \"select.allColumns\": false, \"select.hasOrderBy\": true, \"join.cartesianCount\": 0, \"metric.functionCount\": 1, \"metric.subqueryCount\": 0, \"statement.classified\": true}, \"tables\": [\"orders\", \"customers\"], \"joinKeys\": [\"c.id = o.customer_id\"], \"joinColumns\": [{\"table\": \"customers\", \"column\": \"id\", \"condition\": \"c.id = o.customer_id\"}, {\"table\": \"orders\", \"column\": \"customer_id\", \"condition\": \"c.id = o.customer_id\"}], \"parseStatus\": \"valid\", \"engineVersion\": \"sql-analyzer/5\", \"joinKeyAdvice\": [\"关联条件 c.id = o.customer_id：请核对连接列类型、唯一性和索引前导列，并用执行计划比较扫描与连接方式。没有高选择性过滤时，顺序扫描和哈希连接可能优于逐行索引查找，不能仅凭 JOIN 就创建索引。\"], \"normalizedSql\": \"SELECT o.customer_id, SUM(o.amount) AS total_amount FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.created_at >= '2026-01-01' AND c.region = 'east' GROUP BY o.customer_id HAVING SUM(o.amount) > 1000 ORDER BY total_amount DESC LIMIT 20\", \"statementType\": \"SELECT\"}, \"executed\": [\"sql.parse\"], \"proposal\": null, \"terminal\": \"needs-input\", \"citations\": [], \"generation\": null, \"incomplete\": true, \"modelCalls\": 1, \"observations\": [{\"stderr\": \"\", \"stdout\": \"{\\\"facts\\\":{\\\"table.count\\\":2,\\\"metric.joinCount\\\":1,\\\"parse.status\\\":\\\"valid\\\",\\\"select.offset\\\":false,\\\"metric.unionCount\\\":0,\\\"select.hasOrderBy\\\":true,\\\"table.list\\\":\\\"orders、customers\\\",\\\"select.hasWhere\\\":true,\\\"metric.functionCount\\\":1,\\\"join.cartesian\\\":false,\\\"select.noWhere\\\":false,\\\"select.allColumns\\\":false,\\\"select.distinct\\\":false,\\\"statement.classified\\\":true,\\\"join.cartesianCount\\\":0,\\\"parse.partial\\\":true,\\\"statement.type\\\":\\\"SELECT\\\",\\\"select.limit\\\":true,\\\"metric.subqueryCount\\\":0,\\\"join.count\\\":1},\\\"incomplete\\\":true,\\\"success\\\":true,\\\"data\\\":{\\\"factCount\\\":20,\\\"statementType\\\":\\\"SELECT\\\"},\\\"message\\\":\\\"SQL语法已解析，但包含未完整分析的作用域；当前事实只覆盖已抽取部分\\\"}\", \"success\": true, \"exitCode\": 0, \"metadata\": {\"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-acceptance-a67d7275-e6ec-44ed-8231-f07852968796\", \"revision\": 2}, \"capability\": \"sql.parse\"}], \"databaseGrants\": [], \"knowledgeGrants\": []}",
+    "state": "needs-input",
+    "attempts": 1,
+    "owner": null,
+    "leaseUntil": null,
+    "expiresAt": "2026-11-09T14:34:18.113809Z",
+    "result": "{\"id\": \"0596cfa1-93ff-4900-9189-000c1da812ee\", \"error\": \"\", \"status\": \"needs-input\", \"summary\": \"目前只有 SQL 和不完整的静态解析结果，不能证明该查询能从 30 秒降到 100 毫秒，也无法核实 30 秒基线或保证改写的语义等价性；不会生成文件或虚构实测。请提供以下脱敏证据（无需凭据）：\\n1. 数据库产品、版本，以及 orders、customers 的表结构、列类型、主键/唯一约束和完整索引定义，尤其是 customers.id 的唯一性。\\n2. 原查询的实际执行计划及运行统计（若已有），包括实际/估算行数、各节点耗时、扫描与连接方式、排序/聚合、磁盘溢出、缓冲命中和读取量；如只有估算计划，请明确标注，不能据此证明耗时。\\n3. 两表行数及数据分布：日期条件和 region='east' 的命中比例、customer_id 的基数与倾斜，以及统计信息更新时间。\\n4. 30 秒的原始测量记录及测量口径（服务端执行还是端到端）、硬件/配置、并发负载、缓存状态和重复运行结果。\\n5. 如要验证 100 毫秒目标，还需经授权在相同数据与可比环境下取得候选方案的重复测量及结果一致性检查；本代理不能执行 SQL。请说明 100 毫秒是单次、平均值还是 P95 目标。\", \"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-acceptance-a67d7275-e6ec-44ed-8231-f07852968796\", \"citations\": [], \"proposalId\": null, \"observations\": [{\"stderr\": \"\", \"stdout\": \"{\\\"facts\\\":{\\\"table.count\\\":2,\\\"metric.joinCount\\\":1,\\\"parse.status\\\":\\\"valid\\\",\\\"select.offset\\\":false,\\\"metric.unionCount\\\":0,\\\"select.hasOrderBy\\\":true,\\\"table.list\\\":\\\"orders、customers\\\",\\\"select.hasWhere\\\":true,\\\"metric.functionCount\\\":1,\\\"join.cartesian\\\":false,\\\"select.noWhere\\\":false,\\\"select.allColumns\\\":false,\\\"select.distinct\\\":false,\\\"statement.classified\\\":true,\\\"join.cartesianCount\\\":0,\\\"parse.partial\\\":true,\\\"statement.type\\\":\\\"SELECT\\\",\\\"select.limit\\\":true,\\\"metric.subqueryCount\\\":0,\\\"join.count\\\":1},\\\"incomplete\\\":true,\\\"success\\\":true,\\\"data\\\":{\\\"factCount\\\":20,\\\"statementType\\\":\\\"SELECT\\\"},\\\"message\\\":\\\"SQL语法已解析，但包含未完整分析的作用域；当前事实只覆盖已抽取部分\\\"}\", \"success\": true, \"exitCode\": 0, \"metadata\": {\"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-acceptance-a67d7275-e6ec-44ed-8231-f07852968796\", \"revision\": 2}, \"capability\": \"sql.parse\"}, {\"stderr\": \"\", \"stdout\": \"目前只有 SQL 和不完整的静态解析结果，不能证明该查询能从 30 秒降到 100 毫秒，也无法核实 30 秒基线或保证改写的语义等价性；不会生成文件或虚构实测。请提供以下脱敏证据（无需凭据）：\\n1. 数据库产品、版本，以及 orders、customers 的表结构、列类型、主键/唯一约束和完整索引定义，尤其是 customers.id 的唯一性。\\n2. 原查询的实际执行计划及运行统计（若已有），包括实际/估算行数、各节点耗时、扫描与连接方式、排序/聚合、磁盘溢出、缓冲命中和读取量；如只有估算计划，请明确标注，不能据此证明耗时。\\n3. 两表行数及数据分布：日期条件和 region='east' 的命中比例、customer_id 的基数与倾斜，以及统计信息更新时间。\\n4. 30 秒的原始测量记录及测量口径（服务端执行还是端到端）、硬件/配置、并发负载、缓存状态和重复运行结果。\\n5. 如要验证 100 毫秒目标，还需经授权在相同数据与可比环境下取得候选方案的重复测量及结果一致性检查；本代理不能执行 SQL。请说明 100 毫秒是单次、平均值还是 P95 目标。\", \"success\": false, \"exitCode\": 0, \"metadata\": {\"state\": \"needs-input\", \"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-acceptance-a67d7275-e6ec-44ed-8231-f07852968796\", \"revision\": 2, \"modelCalls\": 1, \"verification\": \"unverified\"}, \"capability\": \"expert.agent\"}], \"verification\": \"unverified\", \"deterministicAnalysis\": {\"facts\": {\"join.count\": 1, \"table.list\": \"orders、customers\", \"table.count\": 2, \"parse.status\": \"valid\", \"select.limit\": true, \"parse.partial\": true, \"select.offset\": false, \"join.cartesian\": false, \"select.noWhere\": false, \"statement.type\": \"SELECT\", \"select.distinct\": false, \"select.hasWhere\": true, \"metric.joinCount\": 1, \"metric.unionCount\": 0, \"select.allColumns\": false, \"select.hasOrderBy\": true, \"join.cartesianCount\": 0, \"metric.functionCount\": 1, \"metric.subqueryCount\": 0, \"statement.classified\": true}, \"tables\": [\"orders\", \"customers\"], \"summary\": \"结构抽取不完整；仅报告已观察到的规则，剩余作用域需要进一步核验。\", \"findings\": [], \"joinKeys\": [\"c.id = o.customer_id\"], \"complexity\": 4, \"rulesFired\": [], \"joinColumns\": [{\"table\": \"customers\", \"column\": \"id\", \"condition\": \"c.id = o.customer_id\"}, {\"table\": \"orders\", \"column\": \"customer_id\", \"condition\": \"c.id = o.customer_id\"}], \"parseStatus\": \"valid\", \"suggestions\": [\"关联条件 c.id = o.customer_id：请核对连接列类型、唯一性和索引前导列，并用执行计划比较扫描与连接方式。没有高选择性过滤时，顺序扫描和哈希连接可能优于逐行索引查找，不能仅凭 JOIN 就创建索引。\", \"语法已解析，但CTE、子查询、聚合或窗口等作用域尚未完整分析；当前表、连接和指标只覆盖已抽取部分，不能据此证明语义等价、无风险或性能提升。\"], \"blockedRules\": [], \"engineVersion\": \"sql-analyzer/5\", \"joinKeyAdvice\": [\"关联条件 c.id = o.customer_id：请核对连接列类型、唯一性和索引前导列，并用执行计划比较扫描与连接方式。没有高选择性过滤时，顺序扫描和哈希连接可能优于逐行索引查找，不能仅凭 JOIN 就创建索引。\"], \"normalizedSql\": \"SELECT o.customer_id, SUM(o.amount) AS total_amount FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.created_at >= '2026-01-01' AND c.region = 'east' GROUP BY o.customer_id HAVING SUM(o.amount) > 1000 ORDER BY total_amount DESC LIMIT 20\", \"statementType\": \"SELECT\", \"severityCounts\": {}, \"ruleCapabilities\": [{\"id\": \"sql-antipatterns\", \"met\": true, \"missing\": [], \"required\": [\"sql.parse\"]}], \"requiresModelReview\": true, \"deterministicConfidence\": 0.5}}",
+    "automatic": true
+  },
+  "approval": {
+    "proposal_id": null,
+    "approval_digest": null,
+    "approval_expires_at": null,
+    "decision": null,
+    "decided_by": null,
+    "decided_at": null
+  }
+}

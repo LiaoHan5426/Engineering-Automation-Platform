@@ -1,0 +1,41 @@
+{
+  "result": "passed",
+  "checks": [
+    {
+      "label": "native-current",
+      "metrics": {
+        "dpr": 1,
+        "width": 1920,
+        "height": 945,
+        "visualScale": 1,
+        "overflow": false
+      },
+      "errors": [],
+      "boundary": "Current native display, read-only existing expert"
+    },
+    {
+      "label": "chromium-scale-1.25",
+      "metrics": {
+        "dpr": 1.25,
+        "width": 1535,
+        "height": 738,
+        "visualScale": 1,
+        "overflow": false
+      },
+      "errors": [],
+      "boundary": "Chromium device-scale override, not Windows OS scale acceptance"
+    },
+    {
+      "label": "chromium-scale-1.5",
+      "metrics": {
+        "dpr": 1.5,
+        "width": 1276,
+        "height": 597,
+        "visualScale": 1,
+        "overflow": false
+      },
+      "errors": [],
+      "boundary": "Chromium device-scale override, not Windows OS scale acceptance"
+    }
+  ]
+}

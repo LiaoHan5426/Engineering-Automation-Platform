@@ -1,0 +1,888 @@
+[
+  {
+    "id": "cte-window-aggregate",
+    "http": 200,
+    "data": {
+      "id": "847975f5-6688-41fe-b988-19be2146700f",
+      "expertId": "sql-expert",
+      "goal": "请审查CTE、聚合、LEFT JOIN及分区窗口排名语义。已知 customers.id 为主键，orders.customer_id 可空，amount 可空，必须保留没有paid订单的客户，排名同额按id稳定排序。没有真实执行计划或规模数据，不得声称索引一定有效或性能提升。不要写文件，finish_analysis给出有条件建议。",
+      "behavior": {
+        "id": "sql-analysis",
+        "version": 1
+      },
+      "status": "partial",
+      "decision": "needs-review",
+      "sql": "WITH paid AS (\n  SELECT customer_id, COUNT(*) AS paid_count, SUM(amount) AS total_amount\n  FROM orders WHERE status = 'paid' GROUP BY customer_id\n), ranked AS (\n  SELECT c.id, c.region, COALESCE(p.paid_count, 0) AS paid_count,\n         COALESCE(p.total_amount, 0) AS total_amount,\n         ROW_NUMBER() OVER (PARTITION BY c.region ORDER BY COALESCE(p.total_amount, 0) DESC, c.id) AS rn\n  FROM customers c LEFT JOIN paid p ON p.customer_id = c.id\n)\nSELECT id, region, paid_count, total_amount\nFROM ranked WHERE rn <= 2 ORDER BY region, rn;",
+      "advice": [
+        "语法已解析，但CTE、子查询、聚合或窗口等作用域尚未完整分析；当前表、连接和指标只覆盖已抽取部分，不能据此证明语义等价、无风险或性能提升。"
+      ],
+      "rulePacks": [
+        {
+          "requires": [
+            "sql.parse"
+          ],
+          "id": "sql-antipatterns",
+          "name": "SQL 结构反模式规则包",
+          "ruleCount": 22
+        }
+      ],
+      "rulePackRequirements": [
+        {
+          "id": "sql-antipatterns",
+          "required": [
+            "sql.parse"
+          ],
+          "met": true,
+          "missing": []
+        }
+      ],
+      "executedCapabilities": [
+        "sql.parse",
+        "knowledge.search",
+        "database.schema.read",
+        "database.index.read",
+        "database.explain"
+      ],
+      "deterministicAnalysis": {
+        "facts": {
+          "table.count": 1,
+          "metric.joinCount": 0,
+          "parse.status": "valid",
+          "select.offset": false,
+          "metric.unionCount": 0,
+          "select.hasOrderBy": true,
+          "table.list": "ranked",
+          "select.hasWhere": true,
+          "metric.functionCount": 0,
+          "join.cartesian": false,
+          "select.noWhere": false,
+          "select.allColumns": false,
+          "select.distinct": false,
+          "statement.classified": true,
+          "join.cartesianCount": 0,
+          "parse.partial": true,
+          "statement.type": "SELECT",
+          "select.limit": false,
+          "metric.subqueryCount": 0,
+          "join.count": 0,
+          "knowledge.granted": false,
+          "knowledge.matches": 0,
+          "schema.loaded": "not-produced",
+          "schema.tableCount": "not-produced",
+          "schema.unresolvedColumn": "not-produced",
+          "schema.typeMismatch": "not-produced",
+          "index.loaded": "not-produced",
+          "index.count": "not-produced",
+          "index.uncoveredJoinColumn": "not-produced",
+          "index.leadingColumnMatch": "not-produced",
+          "plan.loaded": false
+        },
+        "parseStatus": "valid",
+        "statementType": "SELECT",
+        "normalizedSql": "WITH paid AS (SELECT customer_id, COUNT(*) AS paid_count, SUM(amount) AS total_amount FROM orders WHERE status = 'paid' GROUP BY customer_id), ranked AS (SELECT c.id, c.region, COALESCE(p.paid_count, 0) AS paid_count, COALESCE(p.total_amount, 0) AS total_amount, ROW_NUMBER() OVER (PARTITION BY c.region ORDER BY COALESCE(p.total_amount, 0) DESC, c.id) AS rn FROM customers c LEFT JOIN paid p ON p.customer_id = c.id) SELECT id, region, paid_count, total_amount FROM ranked WHERE rn <= 2 ORDER BY region, rn",
+        "engineVersion": "sql-analyzer/5",
+        "tables": [
+          "ranked"
+        ],
+        "joinKeys": [],
+        "joinColumns": [],
+        "joinKeyAdvice": [],
+        "findings": [],
+        "rulesFired": [],
+        "blockedRules": [],
+        "ruleCapabilities": [
+          {
+            "id": "sql-antipatterns",
+            "required": [
+              "sql.parse"
+            ],
+            "met": true,
+            "missing": []
+          }
+        ],
+        "suggestions": [
+          "语法已解析，但CTE、子查询、聚合或窗口等作用域尚未完整分析；当前表、连接和指标只覆盖已抽取部分，不能据此证明语义等价、无风险或性能提升。"
+        ],
+        "severityCounts": {},
+        "complexity": 0,
+        "deterministicConfidence": 0.5,
+        "requiresModelReview": true,
+        "summary": "结构抽取不完整；仅报告已观察到的规则，剩余作用域需要进一步核验。"
+      },
+      "knowledgeEvidence": [],
+      "observations": [
+        {
+          "capability": "sql.parse",
+          "success": true,
+          "exitCode": 0,
+          "stdout": "{\"factCount\":20,\"statementType\":\"SELECT\"}",
+          "stderr": "",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "parse",
+            "required": true,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "knowledge.search",
+          "success": true,
+          "exitCode": 0,
+          "stdout": "{\"matches\":[],\"retrievalMode\":\"local-keyword\"}",
+          "stderr": "",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "knowledge",
+            "required": true,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "database.schema.read",
+          "success": false,
+          "exitCode": 2,
+          "stdout": "{}",
+          "stderr": "未选择数据库资料",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "schema",
+            "required": false,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "database.index.read",
+          "success": false,
+          "exitCode": 2,
+          "stdout": "{}",
+          "stderr": "未选择数据库资料",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "indexes",
+            "required": false,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "database.explain",
+          "success": false,
+          "exitCode": 2,
+          "stdout": "{}",
+          "stderr": "未提供 EXPLAIN JSON；平台不会自动执行 SQL",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "explain",
+            "required": false,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        }
+      ],
+      "nodes": [
+        {
+          "message": "SQL语法已解析，但包含未完整分析的作用域；当前事实只覆盖已抽取部分",
+          "data": {
+            "factCount": 20,
+            "statementType": "SELECT"
+          },
+          "capability": "sql.parse",
+          "state": "needs-context",
+          "id": "parse",
+          "label": "解析 SQL 并执行规则包"
+        },
+        {
+          "message": "此专家尚未获得知识库读取授权",
+          "data": {
+            "matches": [],
+            "retrievalMode": "local-keyword"
+          },
+          "capability": "knowledge.search",
+          "state": "needs-context",
+          "id": "knowledge",
+          "label": "检索优化知识"
+        },
+        {
+          "message": "未选择数据库资料",
+          "data": {},
+          "capability": "database.schema.read",
+          "state": "needs-context",
+          "id": "schema",
+          "label": "读取授权表结构"
+        },
+        {
+          "message": "未选择数据库资料",
+          "data": {},
+          "capability": "database.index.read",
+          "state": "needs-context",
+          "id": "indexes",
+          "label": "检查索引"
+        },
+        {
+          "message": "未提供 EXPLAIN JSON；平台不会自动执行 SQL",
+          "data": {},
+          "capability": "database.explain",
+          "state": "needs-context",
+          "id": "explain",
+          "label": "分析执行计划"
+        }
+      ],
+      "expertAdvice": null,
+      "modelAdvisor": {
+        "attempted": false,
+        "succeeded": false,
+        "error": "AI_NOT_CONFIGURED",
+        "decision": "enhance",
+        "rationale": "确定性置信度较低（0.5）且结构复杂，建议基于压缩证据复核；Spring AI 模型未配置或 SQL 增强未启用，已回退确定性结果",
+        "provider": null,
+        "model": null,
+        "latencyMs": 0,
+        "promptTokens": 0,
+        "completionTokens": 0,
+        "preprocessing": {
+          "estimatedTokens": 582,
+          "baselineTokens": 361,
+          "compressionRatio": 0,
+          "includedSections": [
+            "goal",
+            "sql",
+            "metadata",
+            "rules"
+          ],
+          "droppedSections": []
+        }
+      },
+      "analysisMode": "deterministic-workflow",
+      "modelEnhancement": "unavailable",
+      "safety": [
+        "输入与持久化证据在平台侧脱敏",
+        "只读取已显式授权的资料与知识库",
+        "未连接业务数据库，未执行输入 SQL",
+        "仅当确定性证据不足或操作者显式请求时才调用模型，且提交前已做证据压缩",
+        "模型输出仅为待验证观察，不代表性能提升"
+      ],
+      "message": "已返回可用分析；缺少上下文或独立验证的节点已明确标注"
+    }
+  },
+  {
+    "id": "null-not-in",
+    "http": 200,
+    "data": {
+      "id": "70070afb-c5f5-49b1-a744-337c92749ea8",
+      "expertId": "sql-expert",
+      "goal": "目标是找没有paid订单的客户。customers.id为非NULL主键；orders.customer_id允许NULL且样本中确实有NULL。请判断NOT IN语义风险，给出相关NOT EXISTS改写候选，保持列与排序，等待人工审批；不要执行SQL，不要宣称性能已提升。",
+      "behavior": {
+        "id": "sql-analysis",
+        "version": 1
+      },
+      "status": "partial",
+      "decision": "needs-review",
+      "sql": "SELECT c.id FROM customers c\nWHERE c.id NOT IN (SELECT o.customer_id FROM orders o WHERE o.status = 'paid')\nORDER BY c.id;",
+      "advice": [
+        "子查询返回NULL时，未匹配行也可能被UNKNOWN过滤；先明确业务意图及两侧NULL约束。NOT EXISTS可能符合反连接意图，但不保证与原NOT IN等价，更不能直接替换为普通JOIN。性能需执行计划与实测。",
+        "语法已解析，但CTE、子查询、聚合或窗口等作用域尚未完整分析；当前表、连接和指标只覆盖已抽取部分，不能据此证明语义等价、无风险或性能提升。"
+      ],
+      "rulePacks": [
+        {
+          "requires": [
+            "sql.parse"
+          ],
+          "id": "sql-antipatterns",
+          "name": "SQL 结构反模式规则包",
+          "ruleCount": 22
+        }
+      ],
+      "rulePackRequirements": [
+        {
+          "id": "sql-antipatterns",
+          "required": [
+            "sql.parse"
+          ],
+          "met": true,
+          "missing": []
+        }
+      ],
+      "executedCapabilities": [
+        "sql.parse",
+        "knowledge.search",
+        "database.schema.read",
+        "database.index.read",
+        "database.explain"
+      ],
+      "deterministicAnalysis": {
+        "facts": {
+          "table.list": "customers",
+          "select.distinct": false,
+          "predicate.notInSubquery": true,
+          "parse.partial": true,
+          "select.limit": false,
+          "metric.unionCount": 0,
+          "select.noWhere": false,
+          "statement.type": "SELECT",
+          "table.count": 1,
+          "statement.classified": true,
+          "parse.status": "valid",
+          "select.allColumns": false,
+          "join.cartesianCount": 0,
+          "select.offset": false,
+          "metric.joinCount": 0,
+          "metric.functionCount": 0,
+          "select.hasWhere": true,
+          "metric.subqueryCount": 1,
+          "select.hasOrderBy": true,
+          "join.cartesian": false,
+          "join.count": 0,
+          "knowledge.granted": false,
+          "knowledge.matches": 0,
+          "schema.loaded": "not-produced",
+          "schema.tableCount": "not-produced",
+          "schema.unresolvedColumn": "not-produced",
+          "schema.typeMismatch": "not-produced",
+          "index.loaded": "not-produced",
+          "index.count": "not-produced",
+          "index.uncoveredJoinColumn": "not-produced",
+          "index.leadingColumnMatch": "not-produced",
+          "plan.loaded": false
+        },
+        "parseStatus": "valid",
+        "statementType": "SELECT",
+        "normalizedSql": "SELECT c.id FROM customers c WHERE c.id NOT IN (SELECT o.customer_id FROM orders o WHERE o.status = 'paid') ORDER BY c.id",
+        "engineVersion": "sql-analyzer/5",
+        "tables": [
+          "customers"
+        ],
+        "joinKeys": [],
+        "joinColumns": [],
+        "joinKeyAdvice": [],
+        "findings": [
+          {
+            "code": "predicate.not_in_subquery",
+            "title": "NOT IN 子查询的NULL语义",
+            "category": "谓词",
+            "severity": "high",
+            "evidence": "NOT IN 使用子查询；当前未证明两侧均非NULL。",
+            "suggestion": "子查询返回NULL时，未匹配行也可能被UNKNOWN过滤；先明确业务意图及两侧NULL约束。NOT EXISTS可能符合反连接意图，但不保证与原NOT IN等价，更不能直接替换为普通JOIN。性能需执行计划与实测。",
+            "confidence": 0.75
+          }
+        ],
+        "rulesFired": [
+          "predicate.not_in_subquery"
+        ],
+        "blockedRules": [],
+        "ruleCapabilities": [
+          {
+            "id": "sql-antipatterns",
+            "required": [
+              "sql.parse"
+            ],
+            "met": true,
+            "missing": []
+          }
+        ],
+        "suggestions": [
+          "子查询返回NULL时，未匹配行也可能被UNKNOWN过滤；先明确业务意图及两侧NULL约束。NOT EXISTS可能符合反连接意图，但不保证与原NOT IN等价，更不能直接替换为普通JOIN。性能需执行计划与实测。",
+          "语法已解析，但CTE、子查询、聚合或窗口等作用域尚未完整分析；当前表、连接和指标只覆盖已抽取部分，不能据此证明语义等价、无风险或性能提升。"
+        ],
+        "severityCounts": {
+          "high": 1
+        },
+        "complexity": 2,
+        "deterministicConfidence": 0.5,
+        "requiresModelReview": true,
+        "summary": "结构抽取不完整；仅报告已观察到的规则，剩余作用域需要进一步核验。"
+      },
+      "knowledgeEvidence": [],
+      "observations": [
+        {
+          "capability": "sql.parse",
+          "success": true,
+          "exitCode": 0,
+          "stdout": "{\"factCount\":21,\"statementType\":\"SELECT\"}",
+          "stderr": "",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "parse",
+            "required": true,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "knowledge.search",
+          "success": true,
+          "exitCode": 0,
+          "stdout": "{\"matches\":[],\"retrievalMode\":\"local-keyword\"}",
+          "stderr": "",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "knowledge",
+            "required": true,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "database.schema.read",
+          "success": false,
+          "exitCode": 2,
+          "stdout": "{}",
+          "stderr": "未选择数据库资料",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "schema",
+            "required": false,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "database.index.read",
+          "success": false,
+          "exitCode": 2,
+          "stdout": "{}",
+          "stderr": "未选择数据库资料",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "indexes",
+            "required": false,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "database.explain",
+          "success": false,
+          "exitCode": 2,
+          "stdout": "{}",
+          "stderr": "未提供 EXPLAIN JSON；平台不会自动执行 SQL",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "explain",
+            "required": false,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        }
+      ],
+      "nodes": [
+        {
+          "message": "SQL语法已解析，但包含未完整分析的作用域；当前事实只覆盖已抽取部分",
+          "data": {
+            "factCount": 21,
+            "statementType": "SELECT"
+          },
+          "capability": "sql.parse",
+          "state": "needs-context",
+          "id": "parse",
+          "label": "解析 SQL 并执行规则包"
+        },
+        {
+          "message": "此专家尚未获得知识库读取授权",
+          "data": {
+            "matches": [],
+            "retrievalMode": "local-keyword"
+          },
+          "capability": "knowledge.search",
+          "state": "needs-context",
+          "id": "knowledge",
+          "label": "检索优化知识"
+        },
+        {
+          "message": "未选择数据库资料",
+          "data": {},
+          "capability": "database.schema.read",
+          "state": "needs-context",
+          "id": "schema",
+          "label": "读取授权表结构"
+        },
+        {
+          "message": "未选择数据库资料",
+          "data": {},
+          "capability": "database.index.read",
+          "state": "needs-context",
+          "id": "indexes",
+          "label": "检查索引"
+        },
+        {
+          "message": "未提供 EXPLAIN JSON；平台不会自动执行 SQL",
+          "data": {},
+          "capability": "database.explain",
+          "state": "needs-context",
+          "id": "explain",
+          "label": "分析执行计划"
+        }
+      ],
+      "expertAdvice": null,
+      "modelAdvisor": {
+        "attempted": false,
+        "succeeded": false,
+        "error": "AI_NOT_CONFIGURED",
+        "decision": "enhance",
+        "rationale": "确定性置信度较低（0.5）且结构复杂，建议基于压缩证据复核；Spring AI 模型未配置或 SQL 增强未启用，已回退确定性结果",
+        "provider": null,
+        "model": null,
+        "latencyMs": 0,
+        "promptTokens": 0,
+        "completionTokens": 0,
+        "preprocessing": {
+          "estimatedTokens": 558,
+          "baselineTokens": 451,
+          "compressionRatio": 0,
+          "includedSections": [
+            "goal",
+            "sql",
+            "findings",
+            "metadata",
+            "rules"
+          ],
+          "droppedSections": []
+        }
+      },
+      "analysisMode": "deterministic-workflow",
+      "modelEnhancement": "unavailable",
+      "safety": [
+        "输入与持久化证据在平台侧脱敏",
+        "只读取已显式授权的资料与知识库",
+        "未连接业务数据库，未执行输入 SQL",
+        "仅当确定性证据不足或操作者显式请求时才调用模型，且提交前已做证据压缩",
+        "模型输出仅为待验证观察，不代表性能提升"
+      ],
+      "message": "已返回可用分析；缺少上下文或独立验证的节点已明确标注"
+    }
+  },
+  {
+    "id": "missing-evidence",
+    "http": 200,
+    "data": {
+      "id": "46ed64e3-2aa7-4fe5-836c-cf27b98f23cc",
+      "expertId": "sql-expert",
+      "goal": "要求你证明这个查询能从30秒降到100毫秒。但当前只有SQL，没有实际计划、数据分布、索引定义或测量记录。请明确不能证明；通过request_input请求必要证据，不生成文件或虚构实测。",
+      "behavior": {
+        "id": "sql-analysis",
+        "version": 1
+      },
+      "status": "partial",
+      "decision": "needs-review",
+      "sql": "SELECT o.customer_id, SUM(o.amount) AS total_amount\nFROM orders o JOIN customers c ON c.id=o.customer_id\nWHERE o.created_at >= '2026-01-01' AND c.region='east'\nGROUP BY o.customer_id HAVING SUM(o.amount)>1000\nORDER BY total_amount DESC LIMIT 20;",
+      "advice": [
+        "关联条件 c.id = o.customer_id：请核对连接列类型、唯一性和索引前导列，并用执行计划比较扫描与连接方式。没有高选择性过滤时，顺序扫描和哈希连接可能优于逐行索引查找，不能仅凭 JOIN 就创建索引。",
+        "语法已解析，但CTE、子查询、聚合或窗口等作用域尚未完整分析；当前表、连接和指标只覆盖已抽取部分，不能据此证明语义等价、无风险或性能提升。"
+      ],
+      "rulePacks": [
+        {
+          "requires": [
+            "sql.parse"
+          ],
+          "id": "sql-antipatterns",
+          "name": "SQL 结构反模式规则包",
+          "ruleCount": 22
+        }
+      ],
+      "rulePackRequirements": [
+        {
+          "id": "sql-antipatterns",
+          "required": [
+            "sql.parse"
+          ],
+          "met": true,
+          "missing": []
+        }
+      ],
+      "executedCapabilities": [
+        "sql.parse",
+        "knowledge.search",
+        "database.schema.read",
+        "database.index.read",
+        "database.explain"
+      ],
+      "deterministicAnalysis": {
+        "facts": {
+          "table.count": 2,
+          "metric.joinCount": 1,
+          "parse.status": "valid",
+          "select.offset": false,
+          "metric.unionCount": 0,
+          "select.hasOrderBy": true,
+          "table.list": "orders、customers",
+          "select.hasWhere": true,
+          "metric.functionCount": 1,
+          "join.cartesian": false,
+          "select.noWhere": false,
+          "select.allColumns": false,
+          "select.distinct": false,
+          "statement.classified": true,
+          "join.cartesianCount": 0,
+          "parse.partial": true,
+          "statement.type": "SELECT",
+          "select.limit": true,
+          "metric.subqueryCount": 0,
+          "join.count": 1,
+          "knowledge.granted": false,
+          "knowledge.matches": 0,
+          "schema.loaded": "not-produced",
+          "schema.tableCount": "not-produced",
+          "schema.unresolvedColumn": "not-produced",
+          "schema.typeMismatch": "not-produced",
+          "index.loaded": "not-produced",
+          "index.count": "not-produced",
+          "index.uncoveredJoinColumn": "not-produced",
+          "index.leadingColumnMatch": "not-produced",
+          "plan.loaded": false
+        },
+        "parseStatus": "valid",
+        "statementType": "SELECT",
+        "normalizedSql": "SELECT o.customer_id, SUM(o.amount) AS total_amount FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.created_at >= '2026-01-01' AND c.region = 'east' GROUP BY o.customer_id HAVING SUM(o.amount) > 1000 ORDER BY total_amount DESC LIMIT 20",
+        "engineVersion": "sql-analyzer/5",
+        "tables": [
+          "orders",
+          "customers"
+        ],
+        "joinKeys": [
+          "c.id = o.customer_id"
+        ],
+        "joinColumns": [
+          {
+            "condition": "c.id = o.customer_id",
+            "column": "id",
+            "table": "customers"
+          },
+          {
+            "condition": "c.id = o.customer_id",
+            "column": "customer_id",
+            "table": "orders"
+          }
+        ],
+        "joinKeyAdvice": [
+          "关联条件 c.id = o.customer_id：请核对连接列类型、唯一性和索引前导列，并用执行计划比较扫描与连接方式。没有高选择性过滤时，顺序扫描和哈希连接可能优于逐行索引查找，不能仅凭 JOIN 就创建索引。"
+        ],
+        "findings": [],
+        "rulesFired": [],
+        "blockedRules": [],
+        "ruleCapabilities": [
+          {
+            "id": "sql-antipatterns",
+            "required": [
+              "sql.parse"
+            ],
+            "met": true,
+            "missing": []
+          }
+        ],
+        "suggestions": [
+          "关联条件 c.id = o.customer_id：请核对连接列类型、唯一性和索引前导列，并用执行计划比较扫描与连接方式。没有高选择性过滤时，顺序扫描和哈希连接可能优于逐行索引查找，不能仅凭 JOIN 就创建索引。",
+          "语法已解析，但CTE、子查询、聚合或窗口等作用域尚未完整分析；当前表、连接和指标只覆盖已抽取部分，不能据此证明语义等价、无风险或性能提升。"
+        ],
+        "severityCounts": {},
+        "complexity": 4,
+        "deterministicConfidence": 0.5,
+        "requiresModelReview": true,
+        "summary": "结构抽取不完整；仅报告已观察到的规则，剩余作用域需要进一步核验。"
+      },
+      "knowledgeEvidence": [],
+      "observations": [
+        {
+          "capability": "sql.parse",
+          "success": true,
+          "exitCode": 0,
+          "stdout": "{\"factCount\":20,\"statementType\":\"SELECT\"}",
+          "stderr": "",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "parse",
+            "required": true,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "knowledge.search",
+          "success": true,
+          "exitCode": 0,
+          "stdout": "{\"matches\":[],\"retrievalMode\":\"local-keyword\"}",
+          "stderr": "",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "knowledge",
+            "required": true,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "database.schema.read",
+          "success": false,
+          "exitCode": 2,
+          "stdout": "{}",
+          "stderr": "未选择数据库资料",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "schema",
+            "required": false,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "database.index.read",
+          "success": false,
+          "exitCode": 2,
+          "stdout": "{}",
+          "stderr": "未选择数据库资料",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "indexes",
+            "required": false,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        },
+        {
+          "capability": "database.explain",
+          "success": false,
+          "exitCode": 2,
+          "stdout": "{}",
+          "stderr": "未提供 EXPLAIN JSON；平台不会自动执行 SQL",
+          "metadata": {
+            "expertId": "sql-expert",
+            "nodeId": "explain",
+            "required": false,
+            "behavior": {
+              "id": "sql-analysis",
+              "version": 1
+            },
+            "state": "needs-context"
+          }
+        }
+      ],
+      "nodes": [
+        {
+          "message": "SQL语法已解析，但包含未完整分析的作用域；当前事实只覆盖已抽取部分",
+          "data": {
+            "factCount": 20,
+            "statementType": "SELECT"
+          },
+          "capability": "sql.parse",
+          "state": "needs-context",
+          "id": "parse",
+          "label": "解析 SQL 并执行规则包"
+        },
+        {
+          "message": "此专家尚未获得知识库读取授权",
+          "data": {
+            "matches": [],
+            "retrievalMode": "local-keyword"
+          },
+          "capability": "knowledge.search",
+          "state": "needs-context",
+          "id": "knowledge",
+          "label": "检索优化知识"
+        },
+        {
+          "message": "未选择数据库资料",
+          "data": {},
+          "capability": "database.schema.read",
+          "state": "needs-context",
+          "id": "schema",
+          "label": "读取授权表结构"
+        },
+        {
+          "message": "未选择数据库资料",
+          "data": {},
+          "capability": "database.index.read",
+          "state": "needs-context",
+          "id": "indexes",
+          "label": "检查索引"
+        },
+        {
+          "message": "未提供 EXPLAIN JSON；平台不会自动执行 SQL",
+          "data": {},
+          "capability": "database.explain",
+          "state": "needs-context",
+          "id": "explain",
+          "label": "分析执行计划"
+        }
+      ],
+      "expertAdvice": null,
+      "modelAdvisor": {
+        "attempted": false,
+        "succeeded": false,
+        "error": "AI_NOT_CONFIGURED",
+        "decision": "enhance",
+        "rationale": "确定性置信度较低（0.5）且结构复杂，建议基于压缩证据复核；Spring AI 模型未配置或 SQL 增强未启用，已回退确定性结果",
+        "provider": null,
+        "model": null,
+        "latencyMs": 0,
+        "promptTokens": 0,
+        "completionTokens": 0,
+        "preprocessing": {
+          "estimatedTokens": 562,
+          "baselineTokens": 340,
+          "compressionRatio": 0,
+          "includedSections": [
+            "goal",
+            "sql",
+            "joinKeys",
+            "metadata",
+            "rules"
+          ],
+          "droppedSections": []
+        }
+      },
+      "analysisMode": "deterministic-workflow",
+      "modelEnhancement": "unavailable",
+      "safety": [
+        "输入与持久化证据在平台侧脱敏",
+        "只读取已显式授权的资料与知识库",
+        "未连接业务数据库，未执行输入 SQL",
+        "仅当确定性证据不足或操作者显式请求时才调用模型，且提交前已做证据压缩",
+        "模型输出仅为待验证观察，不代表性能提升"
+      ],
+      "message": "已返回可用分析；缺少上下文或独立验证的节点已明确标注"
+    }
+  }
+]

@@ -1,0 +1,38 @@
+{
+  "nativeDisplay": {
+    "devicePixelRatio": 1.25,
+    "innerWidth": 1536,
+    "innerHeight": 730,
+    "visualScale": 1
+  },
+  "checks": [
+    {
+      "testId": "task-input-open",
+      "focusInside": true,
+      "text": "本次任务输入\n关闭详情面板\n任务目标\n\n请先knowledge.search查授权SQL语义说明，然后finish_analysis给出不超过180字的结论：LEFT JOIN保留无订单客户、SUM的NULL与COALE",
+      "focusReturned": true
+    },
+    {
+      "testId": "task-evidence-open",
+      "focusInside": true,
+      "text": "执行记录\n关闭详情面板\n\n以下为已保存的工具调用记录。调用成功不代表 SQL 正确或性能已验证。\n\n1. sql.parse · 调用成功\n2. knowledge.search · 调用成功\n3. expert.age",
+      "focusReturned": true
+    },
+    {
+      "testId": "task-run-open",
+      "focusInside": true,
+      "text": "运行信息\n关闭详情面板\n任务标识\n04f9110b-3777-4776-a52d-b473bfa6f3da\n执行专家\n复杂 SQL 验收 Agent\n专家版本\n2\n任务状态\n证据不完整\n执行次数\n1/3\n调度方式\n自动调",
+      "focusReturned": true
+    }
+  ],
+  "referenceFocusReturned": true,
+  "narrow": {
+    "width": 390,
+    "height": 844,
+    "drawer": {
+      "client": 389,
+      "scroll": 389
+    }
+  },
+  "boundary": "Existing terminal task, read-only UI inspection. No new provider calls, approvals or candidate writes."
+}

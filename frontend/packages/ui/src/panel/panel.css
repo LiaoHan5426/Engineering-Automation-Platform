@@ -28,3 +28,7 @@
 .eap-panel__body {
   margin-top: 16px;
 }
+
+.eap-panel__body:first-child {
+  margin-top: 0;
+}

@@ -1,3 +1,5 @@
+import { editorMessages } from './editorMessages'
+import { expertWorkspaceMessages } from './expertWorkspaceMessages'
 import { knowledgeContextMessages } from './knowledgeContextMessages'
 import { contextBudgetMessages } from './contextBudgetMessages'
 import { workingMemoryMessages } from './workingMemoryMessages'
@@ -23,6 +25,8 @@ export const i18n = createI18n({
   messages: {
     'zh-CN': {
       expertAgent: expertAgentMessages['zh-CN'],
+      editor: editorMessages['zh-CN'],
+      expertWorkspace: expertWorkspaceMessages['zh-CN'],
       knowledgeContext: knowledgeContextMessages['zh-CN'],
       contextBudget: contextBudgetMessages['zh-CN'],
       workingMemory: workingMemoryMessages['zh-CN'],
@@ -346,6 +350,8 @@ export const i18n = createI18n({
     },
     'en-US': {
       expertAgent: expertAgentMessages['en-US'],
+      editor: editorMessages['en-US'],
+      expertWorkspace: expertWorkspaceMessages['en-US'],
       knowledgeContext: knowledgeContextMessages['en-US'],
       contextBudget: contextBudgetMessages['en-US'],
       workingMemory: workingMemoryMessages['en-US'],

@@ -218,8 +218,10 @@ describe('desktop navigation', () => {
     expect(root.querySelector('.desktop-sidebar')?.textContent).not.toContain('原型到代码')
     ;(buttons[3] as HTMLButtonElement).click()
     await nextTick()
-    expect(selected.at(-1)).toBe('expert-catalog')
-    expect(root.querySelector('[data-testid="project-tree"]')).not.toBeNull()
+    expect(selected.at(-1)).toBe('experts')
+    expect(root.querySelector('[data-testid="project-tree"]')).toBeNull()
+    expect(root.querySelector('.settings-search')).toBeNull()
+    expect(root.textContent).toContain('我的专家')
     expect(root.querySelector('[data-testid="back-to-chat"]')).toBeNull()
   })
   it.each(['builder-alpha', 'builder-beta'])(

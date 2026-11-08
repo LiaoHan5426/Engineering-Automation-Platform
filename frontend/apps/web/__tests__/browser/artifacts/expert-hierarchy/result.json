@@ -1,0 +1,113 @@
+{
+  "checks": [
+    "supporting task details open in the shared drawer and restore focus without mutations",
+    {
+      "width": 1440,
+      "panel": {
+        "width": 1082,
+        "scroll": 1082,
+        "left": 318,
+        "right": 1402,
+        "viewport": 1440
+      }
+    },
+    {
+      "width": 900,
+      "panel": {
+        "width": 576,
+        "scroll": 576,
+        "left": 284,
+        "right": 862,
+        "viewport": 900
+      }
+    },
+    {
+      "width": 640,
+      "panel": {
+        "width": 542,
+        "scroll": 542,
+        "left": 76,
+        "right": 620,
+        "viewport": 640
+      }
+    },
+    {
+      "width": 390,
+      "panel": {
+        "width": 292,
+        "scroll": 292,
+        "left": 76,
+        "right": 370,
+        "viewport": 390
+      }
+    },
+    "approve sends exact binding and renders applied; Escape never writes",
+    "deny and remount retain state; populated expert list has no empty-state contradiction",
+    "unknown/expired refuse approval; rejected approval remains waiting; explicit cancel renders cancelled",
+    "submission requires cost confirmation; leaving does not cancel the server task"
+  ],
+  "mutations": [
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111/approval",
+      "body": {
+        "proposalId": "visual-proposal",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "approve": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111/approval",
+      "body": {
+        "proposalId": "visual-proposal",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "approve": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111/approval",
+      "body": {
+        "proposalId": "visual-proposal",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "approve": true
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111",
+      "body": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/20ed7e8f-7cbd-4ff2-8788-b562e814423f/queue",
+      "body": {
+        "sql": "select 1",
+        "question": "",
+        "targetPath": "queries/review.sql",
+        "databaseId": null,
+        "explainPlan": null
+      }
+    }
+  ],
+  "errors": [],
+  "native": false,
+  "display": {
+    "devicePixelRatio": 1,
+    "screen": {
+      "width": 1440,
+      "height": 1000
+    },
+    "inner": {
+      "width": 1440,
+      "height": 1000
+    },
+    "outer": {
+      "width": 1440,
+      "height": 1000
+    },
+    "visualScale": 1
+  },
+  "boundary": "Real Chromium/UI/Monaco; fixture API only for Agent state/actions. No model calls or real candidate writes."
+}

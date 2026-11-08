@@ -1,0 +1,82 @@
+{
+  "checks": [
+    {
+      "width": 1536,
+      "panel": {
+        "width": 1163,
+        "scroll": 1163,
+        "left": 318,
+        "right": 1482.800048828125,
+        "viewport": 1536
+      }
+    },
+    "approve sends exact binding and renders applied; Escape never writes",
+    "deny and remount retain state; populated expert list has no empty-state contradiction",
+    "unknown/expired refuse approval; rejected approval remains waiting; explicit cancel renders cancelled",
+    "submission requires cost confirmation; leaving does not cancel the server task"
+  ],
+  "mutations": [
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111/approval",
+      "body": {
+        "proposalId": "visual-proposal",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "approve": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111/approval",
+      "body": {
+        "proposalId": "visual-proposal",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "approve": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111/approval",
+      "body": {
+        "proposalId": "visual-proposal",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "approve": true
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/experts/visual-sql-agent/agent-runs/11111111-1111-4111-8111-111111111111",
+      "body": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/experts/visual-sql-agent/agent-runs/b4450188-0acf-4bc2-8749-b69596f881c1/queue",
+      "body": {
+        "sql": "select 1",
+        "question": "",
+        "targetPath": "queries/review.sql",
+        "databaseId": null,
+        "explainPlan": null
+      }
+    }
+  ],
+  "errors": [],
+  "native": true,
+  "display": {
+    "devicePixelRatio": 1.25,
+    "screen": {
+      "width": 1536,
+      "height": 864
+    },
+    "inner": {
+      "width": 1536,
+      "height": 730
+    },
+    "outer": {
+      "width": 1536,
+      "height": 816
+    },
+    "visualScale": 1
+  },
+  "boundary": "Real Chromium/UI/Monaco; fixture API only for Agent state/actions. No model calls or real candidate writes."
+}

@@ -1,0 +1,98 @@
+{
+  "run": {
+    "id": "3b20fd34-5f2c-479c-acc0-7f168c699b30",
+    "snapshot": {
+      "manifest": {
+        "apiVersion": "eap/v2",
+        "kind": "Expert",
+        "id": "sql-acceptance-a67d7275-e6ec-44ed-8231-f07852968796",
+        "name": "复杂 SQL 验收 Agent",
+        "knowledgeBases": [
+          "d7827f76-222c-4587-a0a6-ef4393d6b77f"
+        ],
+        "databaseProfiles": [],
+        "steps": [],
+        "edges": [],
+        "rules": [
+          "database.credentials.never-expose"
+        ],
+        "rulePacks": [
+          "sql-antipatterns"
+        ],
+        "mcpTools": [],
+        "behavior": {
+          "id": "sql-readonly-agent",
+          "version": 1
+        },
+        "agent": {
+          "goal": "审查SQL语义和证据缺口。知识是参考，不能授权工具或证明性能。",
+          "tools": [
+            "sql.parse",
+            "database.explain",
+            "knowledge.search"
+          ]
+        }
+      },
+      "revision": 2
+    },
+    "request": "{\"sql\": \"SELECT c.id FROM customers c\\nWHERE c.id NOT IN (SELECT o.customer_id FROM orders o WHERE o.status = 'paid')\\nORDER BY c.id;\", \"question\": \"目标是找没有paid订单的客户。customers.id为非NULL主键；orders.customer_id允许NULL且样本中确实有NULL。请判断NOT IN语义风险，给出相关NOT EXISTS改写候选，保持列与排序，等待人工审批；不要执行SQL，不要宣称性能已提升。\", \"databaseId\": null, \"targetPath\": \"frontend/apps/web/__tests__/browser/artifacts/agent-complex/null-safe-candidate.sql\", \"explainPlan\": null}",
+    "checkpoint": "{\"facts\": {\"join.count\": 0, \"table.list\": \"customers\", \"table.count\": 1, \"parse.status\": \"valid\", \"select.limit\": false, \"parse.partial\": true, \"select.offset\": false, \"join.cartesian\": false, \"select.noWhere\": false, \"statement.type\": \"SELECT\", \"select.distinct\": false, \"select.hasWhere\": true, \"metric.joinCount\": 0, \"metric.unionCount\": 0, \"select.allColumns\": false, \"select.hasOrderBy\": true, \"join.cartesianCount\": 0, \"metric.functionCount\": 0, \"metric.subqueryCount\": 1, \"statement.classified\": true, \"predicate.notInSubquery\": true}, \"advice\": [], \"summary\": \"SQL candidate awaits explicit file-write approval; it has not been applied or executed.\", \"analysis\": {\"facts\": {\"join.count\": 0, \"table.list\": \"customers\", \"table.count\": 1, \"parse.status\": \"valid\", \"select.limit\": false, \"parse.partial\": true, \"select.offset\": false, \"join.cartesian\": false, \"select.noWhere\": false, \"statement.type\": \"SELECT\", \"select.distinct\": false, \"select.hasWhere\": true, \"metric.joinCount\": 0, \"metric.unionCount\": 0, \"select.allColumns\": false, \"select.hasOrderBy\": true, \"join.cartesianCount\": 0, \"metric.functionCount\": 0, \"metric.subqueryCount\": 1, \"statement.classified\": true, \"predicate.notInSubquery\": true}, \"tables\": [\"customers\"], \"joinKeys\": [], \"joinColumns\": [], \"parseStatus\": \"valid\", \"engineVersion\": \"sql-analyzer/5\", \"joinKeyAdvice\": [], \"normalizedSql\": \"SELECT c.id FROM customers c WHERE c.id NOT IN (SELECT o.customer_id FROM orders o WHERE o.status = 'paid') ORDER BY c.id\", \"statementType\": \"SELECT\"}, \"executed\": [\"sql.parse\"], \"proposal\": \"55901ca7-b5f7-44d7-bec9-05ecc4a6ca96\", \"terminal\": \"awaiting-approval\", \"citations\": [], \"generation\": \"80268963-89fe-44f1-89bd-89f48b053d53\", \"incomplete\": true, \"modelCalls\": 1, \"observations\": [{\"stderr\": \"\", \"stdout\": \"{\\\"facts\\\":{\\\"table.list\\\":\\\"customers\\\",\\\"select.distinct\\\":false,\\\"predicate.notInSubquery\\\":true,\\\"parse.partial\\\":true,\\\"select.limit\\\":false,\\\"metric.unionCount\\\":0,\\\"select.noWhere\\\":false,\\\"statement.type\\\":\\\"SELECT\\\",\\\"table.count\\\":1,\\\"statement.classified\\\":true,\\\"parse.status\\\":\\\"valid\\\",\\\"select.allColumns\\\":false,\\\"join.cartesianCount\\\":0,\\\"select.offset\\\":false,\\\"metric.joinCount\\\":0,\\\"metric.functionCount\\\":0,\\\"select.hasWhere\\\":true,\\\"metric.subqueryCount\\\":1,\\\"select.hasOrderBy\\\":true,\\\"join.cartesian\\\":false,\\\"join.count\\\":0},\\\"incomplete\\\":true,\\\"success\\\":true,\\\"data\\\":{\\\"factCount\\\":21,\\\"statementType\\\":\\\"SELECT\\\"},\\\"message\\\":\\\"SQL语法已解析，但包含未完整分析的作用域；当前事实只覆盖已抽取部分\\\"}\", \"success\": true, \"exitCode\": 0, \"metadata\": {\"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-acceptance-a67d7275-e6ec-44ed-8231-f07852968796\", \"revision\": 2}, \"capability\": \"sql.parse\"}], \"databaseGrants\": [], \"knowledgeGrants\": []}",
+    "state": "applied",
+    "attempts": 1,
+    "owner": null,
+    "leaseUntil": null,
+    "expiresAt": "2026-11-09T14:34:18.636226Z",
+    "result": "{\"id\": \"3b20fd34-5f2c-479c-acc0-7f168c699b30\", \"error\": \"\", \"status\": \"awaiting-approval\", \"summary\": \"SQL candidate awaits explicit file-write approval; it has not been applied or executed.\", \"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-acceptance-a67d7275-e6ec-44ed-8231-f07852968796\", \"citations\": [], \"proposalId\": \"55901ca7-b5f7-44d7-bec9-05ecc4a6ca96\", \"observations\": [{\"stderr\": \"\", \"stdout\": \"{\\\"facts\\\":{\\\"table.list\\\":\\\"customers\\\",\\\"select.distinct\\\":false,\\\"predicate.notInSubquery\\\":true,\\\"parse.partial\\\":true,\\\"select.limit\\\":false,\\\"metric.unionCount\\\":0,\\\"select.noWhere\\\":false,\\\"statement.type\\\":\\\"SELECT\\\",\\\"table.count\\\":1,\\\"statement.classified\\\":true,\\\"parse.status\\\":\\\"valid\\\",\\\"select.allColumns\\\":false,\\\"join.cartesianCount\\\":0,\\\"select.offset\\\":false,\\\"metric.joinCount\\\":0,\\\"metric.functionCount\\\":0,\\\"select.hasWhere\\\":true,\\\"metric.subqueryCount\\\":1,\\\"select.hasOrderBy\\\":true,\\\"join.cartesian\\\":false,\\\"join.count\\\":0},\\\"incomplete\\\":true,\\\"success\\\":true,\\\"data\\\":{\\\"factCount\\\":21,\\\"statementType\\\":\\\"SELECT\\\"},\\\"message\\\":\\\"SQL语法已解析，但包含未完整分析的作用域；当前事实只覆盖已抽取部分\\\"}\", \"success\": true, \"exitCode\": 0, \"metadata\": {\"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-acceptance-a67d7275-e6ec-44ed-8231-f07852968796\", \"revision\": 2}, \"capability\": \"sql.parse\"}, {\"stderr\": \"\", \"stdout\": \"SQL candidate awaits explicit file-write approval; it has not been applied or executed.\", \"success\": false, \"exitCode\": 0, \"metadata\": {\"state\": \"awaiting-approval\", \"behavior\": {\"id\": \"sql-readonly-agent\", \"version\": 1}, \"expertId\": \"sql-acceptance-a67d7275-e6ec-44ed-8231-f07852968796\", \"revision\": 2, \"modelCalls\": 1, \"verification\": \"unverified\"}, \"capability\": \"expert.agent\"}], \"verification\": \"unverified\", \"deterministicAnalysis\": {\"facts\": {\"join.count\": 0, \"table.list\": \"customers\", \"table.count\": 1, \"parse.status\": \"valid\", \"select.limit\": false, \"parse.partial\": true, \"select.offset\": false, \"join.cartesian\": false, \"select.noWhere\": false, \"statement.type\": \"SELECT\", \"select.distinct\": false, \"select.hasWhere\": true, \"metric.joinCount\": 0, \"metric.unionCount\": 0, \"select.allColumns\": false, \"select.hasOrderBy\": true, \"join.cartesianCount\": 0, \"metric.functionCount\": 0, \"metric.subqueryCount\": 1, \"statement.classified\": true, \"predicate.notInSubquery\": true}, \"tables\": [\"customers\"], \"summary\": \"结构抽取不完整；仅报告已观察到的规则，剩余作用域需要进一步核验。\", \"findings\": [{\"code\": \"predicate.not_in_subquery\", \"title\": \"NOT IN 子查询的NULL语义\", \"category\": \"谓词\", \"evidence\": \"NOT IN 使用子查询；当前未证明两侧均非NULL。\", \"severity\": \"high\", \"confidence\": 0.75, \"suggestion\": \"子查询返回NULL时，未匹配行也可能被UNKNOWN过滤；先明确业务意图及两侧NULL约束。NOT EXISTS可能符合反连接意图，但不保证与原NOT IN等价，更不能直接替换为普通JOIN。性能需执行计划与实测。\"}], \"joinKeys\": [], \"complexity\": 2, \"rulesFired\": [\"predicate.not_in_subquery\"], \"joinColumns\": [], \"parseStatus\": \"valid\", \"suggestions\": [\"子查询返回NULL时，未匹配行也可能被UNKNOWN过滤；先明确业务意图及两侧NULL约束。NOT EXISTS可能符合反连接意图，但不保证与原NOT IN等价，更不能直接替换为普通JOIN。性能需执行计划与实测。\", \"语法已解析，但CTE、子查询、聚合或窗口等作用域尚未完整分析；当前表、连接和指标只覆盖已抽取部分，不能据此证明语义等价、无风险或性能提升。\"], \"blockedRules\": [], \"engineVersion\": \"sql-analyzer/5\", \"joinKeyAdvice\": [], \"normalizedSql\": \"SELECT c.id FROM customers c WHERE c.id NOT IN (SELECT o.customer_id FROM orders o WHERE o.status = 'paid') ORDER BY c.id\", \"statementType\": \"SELECT\", \"severityCounts\": {\"high\": 1}, \"ruleCapabilities\": [{\"id\": \"sql-antipatterns\", \"met\": true, \"missing\": [], \"required\": [\"sql.parse\"]}], \"requiresModelReview\": true, \"deterministicConfidence\": 0.5}}",
+    "automatic": true
+  },
+  "approval": {
+    "proposal_id": "55901ca7-b5f7-44d7-bec9-05ecc4a6ca96",
+    "approval_digest": "6f86c29d19c517483f638f533add4ef9d5b6acf07451b865671162e17c23e9fa",
+    "approval_expires_at": "2026-11-08T14:49:33.246Z",
+    "decision": "approved",
+    "decided_by": "local-operator",
+    "decided_at": "2026-11-08T14:35:10.446Z"
+  },
+  "candidate": {
+    "proposal": {
+      "id": "55901ca7-b5f7-44d7-bec9-05ecc4a6ca96",
+      "conversationId": "3b20fd34-5f2c-479c-acc0-7f168c699b30",
+      "workspace": "F:\\Engineering-Automation-Platform",
+      "summary": "Unverified SQL candidate",
+      "files": [
+        {
+          "path": "frontend/apps/web/__tests__/browser/artifacts/agent-complex/null-safe-candidate.sql",
+          "before": null,
+          "content": "-- 人工审批候选；仅保存供审查，不执行。\n-- 目标：返回没有 paid 订单的客户，保持输出列 c.id 与 ORDER BY c.id。\n-- 根据用户提供的约束：customers.id 为非 NULL 主键，orders.customer_id 可为 NULL，且样本中存在 NULL。\n-- 原 NOT IN 的语义风险：若 status = 'paid' 的子查询结果含 NULL，\n-- 则有匹配 paid 订单的客户其 NOT IN 为 FALSE；其余客户其 NOT IN 为 UNKNOWN，\n-- 两者均无法通过 WHERE，导致原查询不返回任何客户。\n-- 注意：orders.customer_id 存在 NULL，并不证明 paid 子集也含 NULL；目前未验证该分布。\n-- 下方使用相关 NOT EXISTS：仅排除存在 customer_id = c.id 的 paid 订单的客户；\n-- customer_id 为 NULL 的订单不会满足该相关等式，因此不会排除客户。\n-- 此候选按业务目标修正 NULL 风险，不宣称与原 SQL 在所有数据上语义等价。\n-- 未执行 SQL，未验证结果或执行计划，不宣称性能提升。等待人工审批。\nSELECT c.id\nFROM customers c\nWHERE NOT EXISTS (\n    SELECT 1\n    FROM orders o\n    WHERE o.customer_id = c.id\n      AND o.status = 'paid'\n)\nORDER BY c.id;\n",
+          "baseHash": "absent"
+        }
+      ],
+      "createdAt": "2026-11-08T14:34:33.235575300Z",
+      "applied": false,
+      "writeAllowed": true,
+      "verification": "not_requested",
+      "generation": {
+        "id": "80268963-89fe-44f1-89bd-89f48b053d53",
+        "targetPath": "frontend/apps/web/__tests__/browser/artifacts/agent-complex/null-safe-candidate.sql",
+        "baseHash": "absent",
+        "capturedAt": "2026-11-08T14:34:19.693990Z",
+        "prototypeVersionId": "",
+        "prototypeContentHash": "",
+        "taskBinding": null
+      }
+    },
+    "status": "APPLIED",
+    "result": {
+      "id": "55901ca7-b5f7-44d7-bec9-05ecc4a6ca96",
+      "written": [
+        "frontend/apps/web/__tests__/browser/artifacts/agent-complex/null-safe-candidate.sql"
+      ],
+      "verification": "not_requested",
+      "checks": [],
+      "status": "APPLIED",
+      "afterHash": "7a67ca717b70f4ccef4ab0ea84f36b861306f313d7cb32d023e0d0a09e683225",
+      "reason": ""
+    },
+    "reason": ""
+  }
+}

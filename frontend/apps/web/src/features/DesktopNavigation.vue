@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { expertSidebarSection } from './expert/expertNavigation'
 import { Input, DropdownMenu, Button, type MenuAction } from '@eap/ui'
 import {
   IconCode,
@@ -29,6 +30,7 @@ const props = withDefaults(
     activeView: string
     pages: { id: string; name: string }[]
     boardEnabled?: boolean
+    canNavigate?: () => boolean
   }>(),
   { boardEnabled: true },
 )
@@ -43,6 +45,14 @@ const areaIcons = {
   settings: IconSettings,
 }
 const area = ref<Area>('code')
+const expertTasksActive = ref(false)
+function syncExpertSection() {
+  // Draft guards can restore the accepted hash with replaceState later in this event.
+  // Read after all synchronous hash listeners so a refused navigation cannot change selection.
+  queueMicrotask(() => {
+    expertTasksActive.value = expertSidebarSection(window.location.hash) === 'tasks'
+  })
+}
 const lastView = new Map<Area, string>()
 const query = ref('')
 const sidebarFilter = ref('')
@@ -209,6 +219,7 @@ const conversations = computed(
   () => chatBinding.value?.history.filter((item) => item.archived === showArchived.value) ?? [],
 )
 function open(id: string) {
+  if (props.canNavigate && !props.canNavigate()) return
   lastView.set(area.value, id)
   emit('navigate', id)
   workbench.sidebarOpen = false
@@ -217,6 +228,7 @@ function sessionMode(): 'code' | 'work' {
   return workbench.workMode === 'work' ? 'work' : 'code'
 }
 function returnToSourceSession() {
+  if (props.canNavigate && !props.canNavigate()) return
   // App records Work chat as "work"; returning must not create/select a session.
   const origin = workbench.origin
   emit(
@@ -305,7 +317,16 @@ function sessionStamp(value?: string) {
     minute: '2-digit',
   })
 }
+function openExpertTasks() {
+  if (!props.canNavigate || props.canNavigate()) window.location.hash = 'experts?view=tasks'
+}
+function openExperts() {
+  if (props.canNavigate && !props.canNavigate()) return
+  open('experts')
+  window.location.hash = 'experts'
+}
 function select(next: Area) {
+  if (props.canNavigate && !props.canNavigate()) return
   area.value = next
   if (next === 'code' || next === 'work') workbench.workMode = next
   const previous = lastView.get(next)
@@ -322,7 +343,7 @@ function select(next: Area) {
     return
   }
   if (next === 'experts') {
-    open(previous && expertIds.includes(previous) ? previous : 'expert-catalog')
+    open(previous && expertIds.includes(previous) ? previous : 'experts')
     return
   }
   open(previous && settingsIds.includes(previous) ? previous : 'model-settings')
@@ -385,9 +406,12 @@ function onMenuKey(event: KeyboardEvent) {
 }
 onMounted(() => {
   window.addEventListener('keydown', onMenuKey)
+  window.addEventListener('hashchange', syncExpertSection)
+  syncExpertSection()
 })
 onUnmounted(() => {
   window.removeEventListener('keydown', onMenuKey)
+  window.removeEventListener('hashchange', syncExpertSection)
 })
 </script>
 
@@ -415,9 +439,36 @@ onUnmounted(() => {
         @click="returnToSourceSession"
         ><IconArrowLeft />{{ t('desktop.backToSourceSession') }}</Button
       >
-      <template
-        v-if="area === 'code' || area === 'work' || area === 'scenes' || area === 'experts'"
-      >
+      <nav v-if="area === 'experts'" :aria-label="t('desktop.experts')">
+        <Button
+          variant="navigation"
+          :active="activeView === 'experts' && !expertTasksActive"
+          :aria-current="activeView === 'experts' && !expertTasksActive ? 'page' : undefined"
+          data-testid="expert-list-nav"
+          class="nav"
+          @click="openExperts"
+          >{{ t('expertWorkspace.list') }}</Button
+        >
+        <Button
+          variant="navigation"
+          class="nav"
+          :active="activeView === 'experts' && expertTasksActive"
+          :aria-current="activeView === 'experts' && expertTasksActive ? 'page' : undefined"
+          data-testid="expert-tasks-nav"
+          @click="openExpertTasks"
+          >{{ t('expertWorkspace.allTasks') }}</Button
+        >
+        <Button
+          variant="navigation"
+          :active="activeView === 'expert-catalog'"
+          :aria-current="activeView === 'expert-catalog' ? 'page' : undefined"
+          class="nav"
+          data-testid="expert-roles-nav"
+          @click="open('expert-catalog')"
+          >{{ t('expertWorkspace.roles') }}</Button
+        >
+      </nav>
+      <template v-if="area === 'code' || area === 'work' || area === 'scenes'">
         <Button
           variant="navigation"
           type="button"
@@ -727,7 +778,7 @@ onUnmounted(() => {
           >
         </section>
       </template>
-      <template v-else>
+      <template v-else-if="area === 'settings'">
         <h2>{{ t('desktop.settings') }}</h2>
         <Input
           v-model="query"

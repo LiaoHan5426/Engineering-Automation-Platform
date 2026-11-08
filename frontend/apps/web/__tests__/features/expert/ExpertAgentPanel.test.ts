@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test'
-import { createApp, h, nextTick, type App } from 'vue'
+import { createApp, h, nextTick, ref, type App } from 'vue'
 import { runtimeApi, type ExpertAgentDetail, type ExpertAgentSummary } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import ExpertAgentPanel from '../../../src/features/expert/ExpertAgentPanel.vue'
@@ -81,13 +81,16 @@ function confirmButton() {
     '[role="dialog"] button:not([data-confirm-cancel])',
   )!
 }
-async function mount() {
+async function mount(mode: 'review' | 'start' | 'task' = 'review') {
   host = document.createElement('div')
   document.body.append(host)
-  app = createApp({ render: () => h(ExpertAgentPanel) })
+  app = createApp({
+    render: () => h(ExpertAgentPanel, { mode, expertId: 'reviewer', runId: 'run-1' }),
+  })
   app.use(i18n).mount(host)
-  await vi.waitFor(() => expect(button('agent-approve')).not.toBeNull())
-  await vi.waitFor(() => expect(button('agent-approve').disabled).toBe(false))
+  if (mode === 'review')
+    await vi.waitFor(() => expect(button('agent-approve')?.disabled).toBe(false))
+  else await vi.waitFor(() => expect(host.textContent).toContain('SQL reviewer'))
 }
 beforeEach(() => {
   mode.preview = false
@@ -116,6 +119,64 @@ beforeEach(() => {
   vi.spyOn(runtimeApi, 'queueExpertAgent').mockImplementation(async () => saved.run)
   vi.spyOn(runtimeApi, 'cancelExpertAgent').mockResolvedValue({ cancelRequested: true })
 })
+
+it('orders the task goal, result and references before optional supporting details', async () => {
+  saved.run.request = JSON.stringify({ question: 'Check NULL semantics', sql: 'select 1' })
+  saved.run.result = JSON.stringify({
+    status: 'awaiting-approval',
+    summary: 'Candidate needs review',
+    citations: [
+      {
+        id: 'ref-1',
+        source: 'SQL reference',
+        knowledgeBase: 'SQL notes',
+        excerpt: 'Saved source excerpt',
+      },
+    ],
+  })
+  await mount('task')
+  await vi.waitFor(() => expect(host.querySelector('[data-testid=task-goal]')).not.toBeNull())
+  const text = host.textContent!
+  expect(text.indexOf('任务目标')).toBeLessThan(text.indexOf('结果与待办'))
+  expect(text.indexOf('结果与待办')).toBeLessThan(text.indexOf('已收集的参考资料'))
+  expect(host.querySelectorAll('summary')).toHaveLength(0)
+  expect(text).not.toContain('Saved source excerpt')
+  expect(text).not.toContain('select 1')
+  expect(text).not.toContain('digest-run-1')
+  button('task-reference-0').click()
+  await nextTick()
+  expect(document.querySelector('[role=dialog]')?.textContent).toContain('Saved source excerpt')
+  expect(document.querySelector('[role=dialog]')?.textContent).toContain('不是操作授权')
+  expect(runtimeApi.reviewExpertAgent).not.toHaveBeenCalled()
+})
+
+it('opens full input and run metadata in the shared drawer without losing the main result', async () => {
+  saved.run.request = JSON.stringify({
+    question: 'Inspect query',
+    sql: 'SELECT <script>unsafe</script>',
+    targetPath: 'queries/review.sql',
+    databaseId: 'profile-1',
+    explainPlan: { Plan: 'Synthetic plan' },
+  })
+  await mount('task')
+  await vi.waitFor(() => expect(button('task-input-open')).not.toBeNull())
+  button('task-input-open').click()
+  await nextTick()
+  let dialog = document.querySelector<HTMLElement>('[role=dialog]')!
+  expect(dialog.textContent).toContain('SELECT <script>unsafe</script>')
+  expect(dialog.textContent).toContain('Synthetic plan')
+  expect(dialog.querySelector('script')).toBeNull()
+  dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await nextTick()
+  expect(document.querySelector('[role=dialog]')).toBeNull()
+  button('task-run-open').click()
+  await nextTick()
+  dialog = document.querySelector('[role=dialog]')!
+  expect(dialog.textContent).toContain('run-1')
+  expect(dialog.textContent).toContain('本任务使用专家版本 3')
+  expect(host.querySelector('[data-testid=task-result]')).not.toBeNull()
+  expect(runtimeApi.queueExpertAgent).not.toHaveBeenCalled()
+})
 afterEach(() => {
   app?.unmount()
   app = undefined
@@ -125,7 +186,10 @@ afterEach(() => {
 })
 
 it('shows persisted candidate diff and only approves after explicit confirmation with the captured digest', async () => {
-  saved.run.result = JSON.stringify({ status: 'awaiting-approval', summary: 'Awaiting file approval' })
+  saved.run.result = JSON.stringify({
+    status: 'awaiting-approval',
+    summary: 'Awaiting file approval',
+  })
   await mount()
   expect(host.textContent).toContain('Awaiting file approval')
   expect(host.textContent).toContain('/authorized/workspace')
@@ -145,7 +209,7 @@ it('shows persisted candidate diff and only approves after explicit confirmation
   )
   await vi.waitFor(() => expect(host.textContent).toContain('文件已写入，未执行 SQL'))
   expect(host.textContent).not.toContain('Awaiting file approval')
-  expect(button('agent-approve').disabled).toBe(true)
+  expect(button('agent-approve')).toBeNull()
 })
 
 it('shows loading rather than claiming scheduling is unavailable before the first response', async () => {
@@ -158,7 +222,7 @@ it('shows loading rather than claiming scheduling is unavailable before the firs
   )
   host = document.createElement('div')
   document.body.append(host)
-  app = createApp({ render: () => h(ExpertAgentPanel) })
+  app = createApp({ render: () => h(ExpertAgentPanel, { mode: 'tasks' }) })
   app.use(i18n).mount(host)
   await nextTick()
   expect(host.textContent).toContain('正在读取服务端状态')
@@ -208,13 +272,15 @@ it('rejects the bound candidate and reopening does not submit a second decision'
   host.remove()
   host = document.createElement('div')
   document.body.append(host)
-  app = createApp({ render: () => h(ExpertAgentPanel) })
+  app = createApp({
+    render: () => h(ExpertAgentPanel, { mode: 'review', expertId: 'reviewer', runId: 'run-1' }),
+  })
   app.use(i18n).mount(host)
   await vi.waitFor(() =>
     expect(host.querySelector('[data-testid="agent-state"]')?.textContent).toContain('已拒绝'),
   )
   expect(runtimeApi.reviewExpertAgent).toHaveBeenCalledTimes(1)
-  expect(button('agent-approve').disabled).toBe(true)
+  expect(button('agent-approve')).toBeNull()
 })
 it.each(['unknown', 'expired', 'awaiting-approval'] as const)(
   'disables approval for %s with expired approval',
@@ -223,10 +289,13 @@ it.each(['unknown', 'expired', 'awaiting-approval'] as const)(
     saved.approval.approval_expires_at = new Date(Date.now() - 1000).toISOString()
     host = document.createElement('div')
     document.body.append(host)
-    app = createApp({ render: () => h(ExpertAgentPanel) })
+    app = createApp({
+      render: () => h(ExpertAgentPanel, { mode: 'review', expertId: 'reviewer', runId: 'run-1' }),
+    })
     app.use(i18n).mount(host)
-    await vi.waitFor(() => expect(button('agent-approve')).not.toBeNull())
-    expect(button('agent-approve').disabled).toBe(true)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=agent-state]')).not.toBeNull())
+    if (state === 'awaiting-approval') expect(button('agent-approve').disabled).toBe(true)
+    else expect(button('agent-approve')).toBeNull()
     if (state === 'unknown') expect(host.textContent).toContain('不要重复应用')
     expect(runtimeApi.reviewExpertAgent).not.toHaveBeenCalled()
   },
@@ -235,7 +304,9 @@ it('explicitly disables background submission in preview without making API requ
   mode.preview = true
   host = document.createElement('div')
   document.body.append(host)
-  app = createApp({ render: () => h(ExpertAgentPanel) })
+  app = createApp({
+    render: () => h(ExpertAgentPanel, { mode: 'start', expertId: 'reviewer', runId: 'run-1' }),
+  })
   app.use(i18n).mount(host)
   await nextTick()
   expect(host.textContent).toContain('预览模式未连接后台调度')
@@ -255,7 +326,7 @@ it('retains approval errors and reloads durable state rather than assuming a suc
   expect(runtimeApi.expertAgentRun).toHaveBeenCalledTimes(2)
 })
 it('requires cost confirmation to enqueue and does not cancel the server task when the panel unmounts', async () => {
-  await mount()
+  await mount('start')
   const sql = host.querySelector<HTMLTextAreaElement>('#agent-sql')!
   sql.value = 'select 1'
   sql.dispatchEvent(new Event('input', { bubbles: true }))
@@ -277,7 +348,15 @@ it('stops polling after unmount and discards a late response from a previously s
     items: [summary(saved), summary(second)],
     automaticScheduling: true,
   })
-  await mount()
+  const currentRun = ref('run-1')
+  host = document.createElement('div')
+  document.body.append(host)
+  app = createApp({
+    render: () =>
+      h(ExpertAgentPanel, { mode: 'review', expertId: 'reviewer', runId: currentRun.value }),
+  })
+  app.use(i18n).mount(host)
+  await vi.waitFor(() => expect(button('agent-approve')?.disabled).toBe(false))
   let resolve!: (detail: ExpertAgentDetail) => void
   vi.mocked(runtimeApi.expertAgentRun).mockImplementation((_expert, id) =>
     id === 'run-1'
@@ -286,9 +365,11 @@ it('stops polling after unmount and discards a late response from a previously s
         })
       : Promise.resolve(second),
   )
-  button('agent-run-run-1').click()
+  host.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
+    if (button.textContent?.trim() === '刷新') button.click()
+  })
   await nextTick()
-  button('agent-run-run-2').click()
+  currentRun.value = 'run-2'
   await nextTick()
   resolve(saved)
   await vi.waitFor(() => expect(host.querySelector('[data-testid="agent-approve"]')).not.toBeNull())
@@ -301,4 +382,91 @@ it('stops polling after unmount and discards a late response from a previously s
   const count = vi.mocked(runtimeApi.expertAgentRuns).mock.calls.length
   await vi.advanceTimersByTimeAsync(5000)
   expect(runtimeApi.expertAgentRuns).toHaveBeenCalledTimes(count)
+})
+
+it('shows only scoped tasks and does not fetch or render a task detail on list entry', async () => {
+  vi.mocked(runtimeApi.expertAgentRuns).mockResolvedValue({
+    items: [summary(saved), { ...summary(saved), id: 'other-run', expertId: 'other' }],
+    automaticScheduling: true,
+  })
+  host = document.createElement('div')
+  document.body.append(host)
+  const navigate = vi.fn()
+  app = createApp({
+    render: () =>
+      h(ExpertAgentPanel, { mode: 'tasks', expertId: 'reviewer', onNavigate: navigate }),
+  })
+  app.use(i18n).mount(host)
+  await vi.waitFor(() => expect(button('agent-run-run-1')).not.toBeNull())
+  expect(button('agent-run-other-run')).toBeNull()
+  expect(host.querySelector('[data-testid=agent-detail]')).toBeNull()
+  expect(host.querySelector('#agent-sql')).toBeNull()
+  expect(runtimeApi.expertAgentRun).not.toHaveBeenCalled()
+  button('agent-run-run-1').click()
+  expect(navigate).toHaveBeenCalledWith({
+    page: 'task',
+    expertId: 'reviewer',
+    runId: 'run-1',
+    from: undefined,
+  })
+})
+
+it('stops network polling for terminal details and refreshes only on explicit request', async () => {
+  saved.run.state = 'partial'
+  let state!: ReturnType<typeof useExpertAgentRuns>
+  host = document.createElement('div')
+  document.body.append(host)
+  app = createApp({
+    setup() {
+      state = useExpertAgentRuns(false, () => 'detail')
+      return () => h('div')
+    },
+  })
+  app.mount(host)
+  await vi.waitFor(() => expect(state.checking.value).toBe(false))
+  await state.select({ id: 'run-1', expertId: 'reviewer' })
+  await nextTick()
+  vi.useFakeTimers()
+  const reads = vi.mocked(runtimeApi.expertAgentRun).mock.calls.length
+  const lists = vi.mocked(runtimeApi.expertAgentRuns).mock.calls.length
+  await vi.advanceTimersByTimeAsync(10000)
+  expect(runtimeApi.expertAgentRun).toHaveBeenCalledTimes(reads)
+  expect(runtimeApi.expertAgentRuns).toHaveBeenCalledTimes(lists)
+  await state.refresh()
+  expect(runtimeApi.expertAgentRun).toHaveBeenCalledTimes(reads + 1)
+})
+
+it('refreshes active details in the background without inserting loading content and stops on completion', async () => {
+  saved.run.state = 'running'
+  let state!: ReturnType<typeof useExpertAgentRuns>
+  host = document.createElement('div')
+  document.body.append(host)
+  app = createApp({
+    setup() {
+      state = useExpertAgentRuns(false, () => 'detail')
+      return () => h('div')
+    },
+  })
+  app.mount(host)
+  await vi.waitFor(() => expect(state.checking.value).toBe(false))
+  vi.useFakeTimers()
+  await state.select({ id: 'run-1', expertId: 'reviewer' })
+  await nextTick()
+  let resolve!: (value: ExpertAgentDetail) => void
+  vi.mocked(runtimeApi.expertAgentRun).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done
+      }),
+  )
+  await vi.advanceTimersByTimeAsync(2000)
+  expect(state.loading.value).toBe(false)
+  expect(state.detail.value?.run.state).toBe('running')
+  saved.run.state = 'completed'
+  resolve(structuredClone(saved))
+  await vi.advanceTimersByTimeAsync(1)
+  const count = vi.mocked(runtimeApi.expertAgentRun).mock.calls.length
+  await vi.advanceTimersByTimeAsync(10000)
+  expect(state.detail.value?.run.state).toBe('completed')
+  expect(runtimeApi.expertAgentRun).toHaveBeenCalledTimes(count)
 })

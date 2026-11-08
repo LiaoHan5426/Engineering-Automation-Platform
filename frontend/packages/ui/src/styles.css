@@ -29,6 +29,7 @@
 @import url('./skeleton/skeleton.css');
 @import url('./descriptions/descriptions.css');
 @import url('./layout/layout.css');
+@import url('./layout/editor-workbench.css');
 @import url('./date-picker/date-picker.css');
 @import url('./tree/tree.css');
 @import url('./tooltip/tooltip.css');

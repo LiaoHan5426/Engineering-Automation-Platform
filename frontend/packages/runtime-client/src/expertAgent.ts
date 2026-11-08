@@ -65,6 +65,14 @@ export type ExpertAgentResult = {
   error?: string
   observations?: TaskObservation[]
   verification?: string
+  citations?: Array<{
+    id: string
+    source: string
+    excerpt: string
+    knowledgeBase?: string
+    knowledgeBaseId?: string
+    retrievalMode?: string
+  }>
 }
 export function createExpertAgentApi(client: AxiosInstance) {
   const path = (expert: string, id: string) =>

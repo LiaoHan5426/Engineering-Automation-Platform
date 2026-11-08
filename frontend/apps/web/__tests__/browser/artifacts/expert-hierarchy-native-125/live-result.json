@@ -1,0 +1,23 @@
+{
+  "requestsAfterInitialLoad": [],
+  "before": {
+    "x": 334.8000183105469,
+    "y": 229.8000030517578,
+    "width": 1146.4000549316406,
+    "height": 326.99998474121094
+  },
+  "after": {
+    "x": 334.8000183105469,
+    "y": 229.8000030517578,
+    "width": 1146.4000549316406,
+    "height": 326.99998474121094
+  },
+  "loadingText": 0,
+  "display": {
+    "devicePixelRatio": 1.25,
+    "innerWidth": 1536,
+    "innerHeight": 730,
+    "visualScale": 1
+  },
+  "boundary": "Read-only existing terminal task. No provider calls, approvals or writes."
+}

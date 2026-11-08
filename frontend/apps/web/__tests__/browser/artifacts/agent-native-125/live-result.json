@@ -1,0 +1,47 @@
+{
+  "userConfirmedWindowsScale": 125,
+  "display": {
+    "dpr": 1.25,
+    "inner": [
+      1536,
+      730
+    ],
+    "screen": [
+      1536,
+      864
+    ],
+    "visualScale": 1
+  },
+  "checks": [
+    {
+      "id": "04f9110b-3777-4776-a52d-b473bfa6f3da",
+      "state": "证据不完整",
+      "geometry": {
+        "width": 836,
+        "scrollWidth": 836,
+        "overflow": false
+      }
+    },
+    {
+      "id": "0596cfa1-93ff-4900-9189-000c1da812ee",
+      "state": "等待补充输入",
+      "geometry": {
+        "width": 836,
+        "scrollWidth": 836,
+        "overflow": false
+      }
+    },
+    {
+      "id": "3b20fd34-5f2c-479c-acc0-7f168c699b30",
+      "state": "已写入",
+      "geometry": {
+        "width": 836,
+        "scrollWidth": 836,
+        "overflow": false
+      }
+    }
+  ],
+  "errors": [],
+  "mode": "Read-only actual persisted runs; no model calls or write approvals",
+  "userAcceptance": "pending"
+}

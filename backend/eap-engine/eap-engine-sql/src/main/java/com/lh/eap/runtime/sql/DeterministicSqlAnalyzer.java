@@ -26,7 +26,7 @@ import java.util.*;
  * glued together for the standalone (non-expert) callers: dry-run and unit tests.
  */
 public final class DeterministicSqlAnalyzer {
-    public static final String ENGINE_VERSION = "sql-analyzer/4";
+    public static final String ENGINE_VERSION = "sql-analyzer/5";
 
     private DeterministicSqlAnalyzer() { }
 
@@ -73,11 +73,13 @@ public final class DeterministicSqlAnalyzer {
         var available = availableCapabilities == null ? null : Set.copyOf(availableCapabilities);
         var outcome = RuleEngine.evaluate(RulePacks.merged(packs), facts, available);
         boolean invalid = "invalid".equals(analysis.get("parseStatus"));
+        boolean partial = Boolean.TRUE.equals(facts.get("parse.partial"));
 
         var suggestions = new ArrayList<String>();
         var joinKeyAdvice = analysis.get("joinKeyAdvice");
         if (joinKeyAdvice instanceof List<?> advice) advice.forEach(item -> suggestions.add(String.valueOf(item)));
         suggestions.addAll(outcome.suggestions());
+        if (partial) suggestions.add("语法已解析，但CTE、子查询、聚合或窗口等作用域尚未完整分析；当前表、连接和指标只覆盖已抽取部分，不能据此证明语义等价、无风险或性能提升。");
         if (suggestions.isEmpty()) {
             suggestions.add("已解析 " + analysis.getOrDefault("statementType", "语句")
                     + "。当前没有足够结构证据支持确定性改写，请提供业务语义、表结构与执行计划。");
@@ -97,9 +99,9 @@ public final class DeterministicSqlAnalyzer {
         result.put("suggestions", List.copyOf(suggestions));
         result.put("severityCounts", outcome.severityCounts());
         result.put("complexity", outcome.complexity());
-        result.put("deterministicConfidence", invalid ? 1.0 : outcome.confidence());
-        result.put("requiresModelReview", !invalid && outcome.requiresModelReview());
-        result.put("summary", outcome.summary());
+        result.put("deterministicConfidence", invalid ? 1.0 : partial ? Math.min(0.5, outcome.confidence()) : outcome.confidence());
+        result.put("requiresModelReview", !invalid && (partial || outcome.requiresModelReview()));
+        result.put("summary", partial ? "结构抽取不完整；仅报告已观察到的规则，剩余作用域需要进一步核验。" : outcome.summary());
         return result;
     }
 

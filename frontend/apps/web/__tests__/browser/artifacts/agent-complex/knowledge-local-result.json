@@ -1,0 +1,21 @@
+{
+  "baseId": "d7827f76-222c-4587-a0a6-ef4393d6b77f",
+  "documentId": "d7fd40c0-6e10-433a-9fd4-0a81cd89b773",
+  "localSearchHits": 1,
+  "source": "SQL语义检查说明（合成验收资料）",
+  "retrievalMode": "local-keyword",
+  "authorizedPreviewHttp": 200,
+  "unauthorizedPreviewHttp": 403,
+  "unauthorizedBody": {
+    "detail": "EXPERT_CONTEXT_NOT_AUTHORIZED",
+    "instance": "/api/ai/expert-context/preview",
+    "status": 403,
+    "title": "Forbidden"
+  },
+  "localPathsModelCalls": 0,
+  "documentDeletion": {
+    "before": 1,
+    "http": 200,
+    "after": 0
+  }
+}

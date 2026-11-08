@@ -3,7 +3,19 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import 'grapesjs/dist/css/grapes.min.css'
 import PrototypeSchemaPreview from './PrototypeSchemaPreview.vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Feedback, Input, Select, Slider } from '@eap/ui'
+import {
+  Button,
+  Feedback,
+  Input,
+  Select,
+  Slider,
+  EditorWorkbench,
+  Tabs,
+  Tree,
+  EmptyState,
+  Collapse,
+  type TreeNode,
+} from '@eap/ui'
 import {
   readEditorInspection,
   sameInspectionTarget,
@@ -34,6 +46,100 @@ const emit = defineEmits<{ saved: [schema: PrototypeSchema]; published: [id: str
 
 const canvas = ref<HTMLElement | null>(null)
 const title = ref('EAP layout')
+const frame = ref<{ showInspector: () => void }>()
+const resourcesTab = ref('components')
+const inspectorTab = ref('page')
+const surface = ref('canvas')
+const selectedId = ref('')
+const savedSnapshot = ref('')
+const structure = ref<TreeNode[]>([])
+const blocks = ['section', 'text', 'heading', 'button', 'link', 'list', 'input'] as const
+let cleanProject: import('grapesjs').ProjectData | undefined
+let cleanTitle = 'EAP layout'
+function snapshot() {
+  return JSON.stringify({
+    title: title.value,
+    project: editor?.getProjectData?.() ?? schema.value.grapesProject ?? {},
+  })
+}
+const dirty = computed(() => {
+  void revision.value
+  return !!savedSnapshot.value && savedSnapshot.value !== snapshot()
+})
+function markSaved() {
+  cleanProject = JSON.parse(
+    JSON.stringify(editor?.getProjectData?.() ?? schema.value.grapesProject ?? {}),
+  )
+  cleanTitle = title.value
+  savedSnapshot.value = snapshot()
+}
+function guardLeave() {
+  if (publishing.value) return false
+  if (!dirty.value) return true
+  note.value = t('editor.leaveHint')
+  return false
+}
+function discard() {
+  title.value = cleanTitle
+  if (cleanProject) editor?.loadProjectData(cleanProject)
+  note.value = ''
+  markSaved()
+  refreshStructure()
+}
+function beforeUnload(event: BeforeUnloadEvent) {
+  if (dirty.value) {
+    event.preventDefault()
+    event.returnValue = ''
+  }
+}
+function refreshStructure() {
+  function nodes(collection: import('grapesjs').Component[]): TreeNode[] {
+    return collection.map((component) => ({
+      id: component.getId(),
+      label: component.getName(),
+      children: nodes(component.components().models),
+    }))
+  }
+  structure.value = nodes(editor?.getWrapper?.()?.components().models ?? [])
+}
+function selectComponent(id: string) {
+  function find(items: import('grapesjs').Component[]): import('grapesjs').Component | undefined {
+    for (const item of items) {
+      if (item.getId() === id) return item
+      const child = find(item.components().models)
+      if (child) return child
+    }
+  }
+  const component = find(editor?.getWrapper?.()?.components().models ?? [])
+  if (component) editor?.select(component)
+}
+function removeComponent() {
+  activeComponent?.remove()
+  activeComponent = undefined
+  selected.value = false
+  selectedId.value = ''
+  inspectorTab.value = 'page'
+  refreshStructure()
+}
+function preview() {
+  schema.value = schemaFromGrapesProject(
+    title.value,
+    editor?.getProjectData?.() ?? schema.value.grapesProject ?? {},
+  )
+  surface.value = surface.value === 'preview' ? 'canvas' : 'preview'
+}
+function validateDesign() {
+  schema.value = schemaFromGrapesProject(
+    title.value,
+    editor?.getProjectData?.() ?? schema.value.grapesProject ?? {},
+  )
+  const blockers = deliveryBlockers(schema.value)
+  note.value = blockers.length
+    ? t('desktop.grapesBlocked', { reasons: blockers.join(' · ') })
+    : t('desktop.grapesDeliverOk')
+}
+defineExpose({ guardLeave })
+
 const status = ref<'loading' | 'ready' | 'offline'>('loading')
 const note = ref('')
 const selectedText = ref('')
@@ -55,6 +161,7 @@ const inspectionStale = computed(
 )
 function changed() {
   revision.value += 1
+  refreshStructure()
 }
 function switchDocument() {
   documentId.value = crypto.randomUUID()
@@ -96,6 +203,10 @@ function updateLayout() {
 let activeComponent: import('grapesjs').Component | undefined
 const publishing = ref(false)
 function newDesign() {
+  if (!guardLeave()) {
+    note.value = t('editor.newHint')
+    return
+  }
   switchDocument()
   editor?.setComponents([])
   schema.value = emptyPrototypeSchema(title.value)
@@ -183,14 +294,23 @@ function updateText() {
   component.components(encoded)
 }
 const schema = ref<PrototypeSchema>(emptyPrototypeSchema())
+const design = computed(() => {
+  void revision.value
+  return status.value === 'ready' && editor
+    ? schemaFromGrapesProject(title.value, editor.getProjectData())
+    : schema.value
+})
 const versions = ref(loadPrototypeVersions())
 function reopen(id: string) {
+  if (!guardLeave()) return
   const version = versions.value.find((item) => item.id === id)
   if (!version) return
   switchDocument()
   schema.value = JSON.parse(JSON.stringify(version))
   title.value = version.title
   editor?.loadProjectData(version.grapesProject as import('grapesjs').ProjectData)
+  markSaved()
+  refreshStructure()
 }
 let editor: import('grapesjs').Editor | null = null
 let disposed = false
@@ -209,7 +329,7 @@ async function mountEditor() {
     editor?.destroy?.()
     editor = grapes.init({
       container: canvas.value,
-      height: '360px',
+      height: '100%',
       width: 'auto',
       fromElement: false,
       storageManager: false,
@@ -258,12 +378,19 @@ async function mountEditor() {
         if (component) {
           activeComponent = component
           selected.value = true
+          selectedId.value = component.getId()
+          inspectorTab.value = 'component'
+          layout.value = String(component.getStyle().display ?? 'block')
+          spacing.value = Number.parseFloat(String(component.getStyle().gap ?? '12')) || 0
+          frame.value?.showInspector()
           selectedText.value =
             component.get('content') || component.getInnerHTML().replace(/<[^>]*>/g, '')
         } else {
           activeComponent = undefined
           selected.value = false
           selectedText.value = ''
+          selectedId.value = ''
+          inspectorTab.value = 'page'
         }
       })
     }
@@ -302,10 +429,13 @@ async function mountEditor() {
       ])
     }
     status.value = 'ready'
+    markSaved()
+    refreshStructure()
   } catch {
     editor = null
     status.value = 'offline'
     note.value = t('desktop.grapesOffline')
+    markSaved()
   }
 }
 
@@ -332,13 +462,16 @@ function save() {
   note.value = blockers.length
     ? t('desktop.grapesBlocked', { reasons: blockers.join(' · ') })
     : t('desktop.grapesSaved')
+  markSaved()
   emit('saved', schema.value)
 }
 
 onMounted(() => {
   void mountEditor()
+  window.addEventListener('beforeunload', beforeUnload)
 })
 onUnmounted(() => {
+  window.removeEventListener('beforeunload', beforeUnload)
   disposed = true
   inspection.value = null
   editor?.destroy?.()
@@ -347,228 +480,266 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="grapes-scaffold" data-testid="grapes-scaffold">
-    <header>
-      <h2>{{ t('desktop.grapesTitle') }}</h2>
-      <span data-testid="grapes-status">{{
-        status === 'ready'
-          ? t('desktop.grapesReady')
-          : status === 'offline'
-            ? t('desktop.grapesOfflineShort')
-            : t('desktop.grapesLoading')
-      }}</span>
-    </header>
-    <p class="hint" data-testid="grapes-boundary">{{ t('desktop.grapesBoundary') }}</p>
-    <label class="title-field">
-      {{ t('desktop.grapesName') }}
-      <Input v-model="title" maxlength="120" data-testid="grapes-title" />
-    </label>
-    <label v-if="versions.length" class="title-field"
-      >{{ t('desktop.chooseVersion')
-      }}<Select :model-value="schema.id || ''" @update:model-value="reopen(String($event))"
-        ><option value="" disabled>—</option>
-        <option v-for="version in versions" :key="version.id" :value="version.id">
-          {{ version.title }} · {{ version.updatedAt }}
-        </option></Select
-      ></label
+  <EditorWorkbench
+    ref="frame"
+    class="grapes-scaffold"
+    data-testid="grapes-scaffold"
+    :resources-label="t('editor.resources')"
+    :inspector-label="t('editor.properties')"
+    :resize-label="t('editor.resize')"
+    :close-label="t('editor.close')"
+  >
+    <template #header>
+      <div>
+        <h2>{{ title }}</h2>
+        <small data-testid="grapes-status">{{
+          status === 'ready'
+            ? t('desktop.grapesReady')
+            : status === 'offline'
+              ? t('desktop.grapesOfflineShort')
+              : t('desktop.grapesLoading')
+        }}</small>
+        <small v-if="dirty"> · {{ t('editor.unsaved') }}</small>
+      </div>
+      <div class="actions">
+        <Button data-testid="grapes-preview" :disabled="status !== 'ready'" @click="preview">{{
+          t(surface === 'preview' ? 'editor.canvas' : 'editor.preview')
+        }}</Button>
+        <Button :disabled="status !== 'ready'" @click="validateDesign">{{
+          t('editor.validation')
+        }}</Button>
+        <Button v-if="dirty" data-testid="grapes-discard" @click="discard">{{
+          t('editor.discard')
+        }}</Button>
+        <div class="actions">
+          <Button
+            type="button"
+            size="sm"
+            data-testid="grapes-save"
+            :disabled="status === 'loading'"
+            @click="save"
+            >{{ t('desktop.grapesSave') }}</Button
+          >
+          <Button
+            type="button"
+            size="sm"
+            variant="primary"
+            data-testid="grapes-publish"
+            :disabled="status !== 'ready' || publishing || !canAutoDeliver(design)"
+            @click="publish"
+            >{{ t('desktop.grapesPublish') }}</Button
+          >
+          <span class="hint" data-testid="grapes-deliver">{{
+            canAutoDeliver(design)
+              ? t('desktop.grapesDeliverOk')
+              : t('desktop.grapesDeliverBlocked')
+          }}</span>
+        </div>
+      </div>
+    </template>
+    <template #toolbar
+      ><strong>{{
+        t(surface === 'preview' ? 'editor.preview' : 'editor.canvas')
+      }}</strong></template
     >
+    <template #resources>
+      <Tabs
+        v-model="resourcesTab"
+        :label="t('editor.resources')"
+        :tabs="[
+          { id: 'components', label: t('editor.components') },
+          { id: 'structure', label: t('editor.pageStructure') },
+        ]"
+      />
+      <div v-if="resourcesTab === 'components'" class="component-library">
+        <Button
+          v-for="kind in blocks"
+          :key="kind"
+          :disabled="status !== 'ready'"
+          :data-testid="'grapes-add-' + kind"
+          @click="addBlock(kind)"
+          >{{ t('desktop.grapesAdd' + kind) }}</Button
+        >
+        <Button :disabled="status !== 'ready'" data-testid="grapes-new" @click="newDesign">{{
+          t('desktop.grapesNew')
+        }}</Button>
+      </div>
+      <template v-else
+        ><Tree
+          v-model="selectedId"
+          :items="structure"
+          :label="t('editor.pageStructure')"
+          @select="selectComponent($event.id)"
+        /><EmptyState v-if="!structure.length">{{
+          t('editor.emptyStructure')
+        }}</EmptyState></template
+      >
+    </template>
     <div
+      v-show="surface === 'canvas'"
       ref="canvas"
       class="grapes-canvas eap-scrollbar"
       data-testid="grapes-canvas"
       :data-mode="status"
     />
-    <div v-if="status === 'ready'" class="editor-controls">
-      <Button type="button" size="sm" data-testid="grapes-new" @click="newDesign">{{
-        t('desktop.grapesNew')
-      }}</Button>
-      <Button
-        v-for="kind in ['section', 'text', 'heading', 'button', 'link', 'list', 'input'] as const"
-        :key="kind"
-        type="button"
-        size="sm"
-        :data-testid="'grapes-add-' + kind"
-        @click="addBlock(kind)"
-        >{{ t('desktop.grapesAdd' + kind) }}</Button
-      >
-      <label v-if="selected"
-        >{{ t('desktop.grapesText') }}<Input v-model="selectedText" @input="updateText"
-      /></label>
-      <label v-if="selected"
-        >{{ t('desktop.grapesLayout')
-        }}<Select v-model="layout" @change="updateLayout"
-          ><option value="block">Block</option>
-          <option value="flex">Flex</option>
-          <option value="grid">Grid</option></Select
-        ></label
-      >
-      <label v-if="selected"
-        >{{ t('desktop.grapesSpacing') }} · {{ spacing }}px<Slider
-          v-model="spacing"
-          :min="0"
-          :max="48"
-          @input="updateLayout"
-      /></label>
-    </div>
-    <PrototypeSchemaPreview :schema="schema" />
-    <section class="inspection-panel" data-testid="grapes-inspection">
-      <p class="hint">{{ t('desktop.grapesInspectBoundary') }}</p>
-      <p class="hint" data-testid="grapes-inspection-target">
-        {{ props.sourceRef }} · {{ instanceId }} · {{ documentId }} · revision {{ revision }}
-      </p>
-      <Button
-        size="sm"
-        class="inspection-trigger"
-        data-testid="grapes-inspect"
-        :disabled="status !== 'ready' || !props.active"
-        @click="inspect"
-      >
-        {{ t('desktop.grapesInspect') }}
-      </Button>
-      <Feedback v-if="inspectionStale" tone="warning" data-testid="grapes-inspection-stale">{{
-        t('desktop.grapesInspectStale')
-      }}</Feedback>
-      <pre
-        v-if="inspection?.status === 'ok'"
-        class="inspection-result eap-scrollbar"
-        data-testid="grapes-inspection-result"
-        >{{ JSON.stringify(inspection, null, 2) }}</pre>
-      <Feedback v-else-if="inspection" tone="warning" data-testid="grapes-inspection-error">{{
-        t('desktop.grapesInspectError.' + inspection.status)
-      }}</Feedback>
-    </section>
-    <p v-if="status === 'offline'" class="offline-panel" data-testid="grapes-offline-panel">
+    <PrototypeSchemaPreview v-show="surface === 'preview'" :schema="schema" />
+    <p v-if="status === 'offline'" class="hint" data-testid="grapes-offline-panel">
       {{ t('desktop.grapesOfflineBody') }}
     </p>
-    <div class="actions">
-      <Button
-        type="button"
-        size="sm"
-        data-testid="grapes-save"
-        :disabled="status === 'loading'"
-        @click="save"
-        >{{ t('desktop.grapesSave') }}</Button
-      >
-      <Button
-        type="button"
-        size="sm"
-        variant="primary"
-        data-testid="grapes-publish"
-        :disabled="status !== 'ready' || publishing"
-        @click="publish"
-        >{{ t('desktop.grapesPublish') }}</Button
-      >
-      <span class="hint" data-testid="grapes-deliver">{{
-        canAutoDeliver(schema) ? t('desktop.grapesDeliverOk') : t('desktop.grapesDeliverBlocked')
-      }}</span>
-    </div>
-    <p v-if="note" role="status" data-testid="grapes-note">{{ note }}</p>
-  </section>
-</template>
+    <template #inspector>
+      <Tabs
+        v-model="inspectorTab"
+        :label="t('editor.properties')"
+        :tabs="[
+          { id: 'page', label: t('editor.pageSettings') },
+          { id: 'component', label: t('editor.componentSettings') },
+        ]"
+      />
+      <div v-if="inspectorTab === 'page'" class="editor-controls">
+        <label class="title-field">
+          {{ t('desktop.grapesName') }}
+          <Input v-model="title" maxlength="120" data-testid="grapes-title" />
+        </label>
+        <label v-if="versions.length" class="title-field"
+          >{{ t('desktop.chooseVersion')
+          }}<Select :model-value="schema.id || ''" @update:model-value="reopen(String($event))"
+            ><option value="" disabled>—</option>
+            <option v-for="version in versions" :key="version.id" :value="version.id">
+              {{ version.title }} · {{ version.updatedAt }}
+            </option></Select
+          ></label
+        >
+      </div>
+      <div v-else class="editor-controls">
+        <label v-if="selected"
+          >{{ t('desktop.grapesText') }}<Input v-model="selectedText" @input="updateText"
+        /></label>
+        <label v-if="selected"
+          >{{ t('desktop.grapesLayout')
+          }}<Select v-model="layout" @change="updateLayout"
+            ><option value="block">Block</option>
+            <option value="flex">Flex</option>
+            <option value="grid">Grid</option></Select
+          ></label
+        >
+        <label v-if="selected"
+          >{{ t('desktop.grapesSpacing') }} · {{ spacing }}px<Slider
+            v-model="spacing"
+            :min="0"
+            :max="48"
+            @input="updateLayout"
+        /></label>
 
+        <Button
+          v-if="selected"
+          variant="danger"
+          data-testid="grapes-remove"
+          @click="removeComponent"
+          >{{ t('editor.deleteComponent') }}</Button
+        >
+        <EmptyState v-else>{{ t('editor.chooseComponent') }}</EmptyState>
+      </div>
+      <Collapse
+        ><template #summary>{{ t('desktop.grapesInspect') }}</template>
+        <section class="inspection-panel" data-testid="grapes-inspection">
+          <p class="hint">{{ t('desktop.grapesInspectBoundary') }}</p>
+          <p class="hint" data-testid="grapes-inspection-target">
+            {{ props.sourceRef }} · {{ instanceId }} · {{ documentId }} · revision {{ revision }}
+          </p>
+          <Button
+            size="sm"
+            class="inspection-trigger"
+            data-testid="grapes-inspect"
+            :disabled="status !== 'ready' || !props.active"
+            @click="inspect"
+          >
+            {{ t('desktop.grapesInspect') }}
+          </Button>
+          <Feedback v-if="inspectionStale" tone="warning" data-testid="grapes-inspection-stale">{{
+            t('desktop.grapesInspectStale')
+          }}</Feedback>
+          <pre
+            v-if="inspection?.status === 'ok'"
+            class="inspection-result eap-scrollbar"
+            data-testid="grapes-inspection-result"
+            >{{ JSON.stringify(inspection, null, 2) }}</pre>
+          <Feedback v-else-if="inspection" tone="warning" data-testid="grapes-inspection-error">{{
+            t('desktop.grapesInspectError.' + inspection.status)
+          }}</Feedback>
+        </section>
+      </Collapse>
+    </template>
+    <template #status>
+      <p v-if="note" role="status" data-testid="grapes-note">{{ note }}</p>
+      <small class="hint" data-testid="grapes-boundary">{{ t('desktop.grapesBoundary') }}</small>
+    </template>
+  </EditorWorkbench>
+</template>
 <style scoped>
 .grapes-scaffold {
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-  border: 1px dashed var(--border-strong);
-  border-radius: 12px;
-  background: var(--surface-2);
+  min-height: 0;
 }
-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: center;
-}
+
 h2 {
   margin: 0;
-  font-size: 15px;
-  color: var(--accent);
+  font-size: 18px;
 }
-header span,
-.hint {
+
+.hint,
+small {
   font-size: 12px;
   color: var(--text-soft);
 }
-.title-field {
-  display: grid;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-soft);
-}
-.title-field input {
-  font: inherit;
-  width: 100%;
-}
+
 .grapes-canvas {
-  min-height: 200px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  flex: 1;
+  min-height: 280px;
+  overflow: hidden;
   background: var(--surface);
-  overflow: auto;
+  border: 1px solid var(--border);
 }
-.grapes-canvas :deep(.gjs-cv-canvas) {
-  width: 100%;
-  height: 100%;
-  top: 0;
+
+
+
+.editor-controls,
+.component-library {
+  display: grid;
+  gap: 12px;
+  align-content: start;
 }
-.editor-controls {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+
 .editor-controls label {
   display: grid;
-  gap: 5px;
-  width: 100%;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 13px;
 }
-.editor-controls input {
-  width: 100%;
-}
-.grapes-canvas[data-mode='offline'],
-.grapes-canvas[data-mode='loading'] {
-  min-height: 120px;
-  background: repeating-linear-gradient(
-    -45deg,
-    var(--surface),
-    var(--surface) 8px,
-    var(--surface-2) 8px,
-    var(--surface-2) 16px
-  );
-}
-.offline-panel {
-  margin: 0;
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--surface-2);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-soft);
-}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
+
 .inspection-panel {
   display: grid;
   gap: 8px;
   min-width: 0;
 }
-.inspection-panel .hint {
-  overflow-wrap: anywhere;
-}
-.inspection-trigger {
-  justify-self: start;
-}
+
 .inspection-result {
   max-height: 280px;
   overflow: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
   font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+</style>
+
+<style>
+.grapes-scaffold .grapes-canvas .gjs-cv-canvas {
+  top: 0;
+  width: 100%;
+  height: 100%;
 }
 </style>

@@ -1784,3 +1784,8 @@
     font-size: 12px;
   }
 }
+
+/* Standalone editors own their internal resource/inspector panes. */
+.app .body.body--editor { grid-template-columns: minmax(0, 1fr); }
+.body.body--editor > .workbench { padding: 0; overflow: hidden; border-radius: 0; }
+.body.body--editor > .inspector { display: none; }
