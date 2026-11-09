@@ -61,11 +61,13 @@ class TrustedToolCatalogServiceTest {
         assertEquals(3, items.size());
 
         var status = items.stream().filter(row -> "git-status".equals(row.get("id"))).findFirst().orElseThrow();
+        assertEquals("POST /api/runtime/trusted-tools/git-status/invoke", status.get("invocation"));
         assertEquals("ready", status.get("bindingStatus"));
         assertEquals("unknown", status.get("versionStatus"));
         assertEquals("shipped", status.get("bindingSource"));
 
         var stopped = items.stream().filter(row -> "git-diff".equals(row.get("id"))).findFirst().orElseThrow();
+        assertEquals("POST /api/cli-programs/git/operations/git-diff/executions", stopped.get("invocation"));
         assertEquals("disabled", stopped.get("bindingStatus"));
         assertTrue(String.valueOf(stopped.get("bindingNote")).contains("停用"));
 

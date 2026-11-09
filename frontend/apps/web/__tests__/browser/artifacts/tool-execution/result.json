@@ -3,11 +3,14 @@
   "checks": [
     "one Git program with two operations",
     "program-level explicit version probe",
+    "diff uses its own route and explicit unstaged scope",
     "cached navigation restores durable running record",
     "request cancellation then observe cleanup confirmation",
     "browser reload reads the same terminal execution",
     "1440/900/390px viewport bounds",
-    "restart UNKNOWN blocks another invocation"
+    "restart UNKNOWN blocks another invocation",
+    "status UNKNOWN does not block diff or share cancellation state",
+    "diff reload recovery and three viewport bounds"
   ],
   "errors": []
 }

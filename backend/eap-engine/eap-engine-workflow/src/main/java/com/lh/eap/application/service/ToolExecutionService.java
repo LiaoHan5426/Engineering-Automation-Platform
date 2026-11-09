@@ -21,7 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-/** The only manual operation supported here is the built-in, read-only Git status. */
+/** Durable manual execution of the two built-in, read-only Git operations. */
 @Service
 public class ToolExecutionService implements InitializingBean {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ToolExecutionService.class);
@@ -42,18 +42,20 @@ public class ToolExecutionService implements InitializingBean {
     }
     @Override public void afterPropertiesSet() { store.markRestartUnknown(); }
 
-    public ToolExecution start(UUID requestId) {
+    public ToolExecution start(UUID requestId) { return start("git-status", requestId); }
+    public ToolExecution start(String operation, UUID requestId) {
+        validateOperation(operation);
         if (requestId == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "REQUEST_ID_REQUIRED");
         var workspace = workspace();
         var prior = store.request(workspace.toString(), requestId);
-        if (prior.isPresent()) return prior.get();
-        var blocking = store.blocking(workspace.toString());
+        if (prior.isPresent()) return sameOperation(prior.get(), operation);
+        var blocking = store.blocking(workspace.toString(), operation);
         if (blocking.isPresent()) throw new Blocked(blocking.get());
-        var binary = authorize(workspace);
+        var binary = authorize(workspace, operation);
         if (!capacity.tryAcquire()) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "TOOL_EXECUTION_CAPACITY");
         var id = UUID.randomUUID();
         var token = new AtomicBoolean();
-        var row = new ToolExecution(id, requestId, "git", "git-status", workspace.toString(), binary,
+        var row = new ToolExecution(id, requestId, "git", operation, workspace.toString(), binary,
                 "CREATED", false, Instant.now(), null, null, "", "", false, null, null, List.of());
         active.put(id, token);
         try {
@@ -62,8 +64,8 @@ public class ToolExecutionService implements InitializingBean {
             active.remove(id); capacity.release();
             if (failure instanceof DuplicateKeyException) {
                 prior = store.request(workspace.toString(), requestId);
-                if (prior.isPresent()) return prior.get();
-                blocking = store.blocking(workspace.toString());
+                if (prior.isPresent()) return sameOperation(prior.get(), operation);
+                blocking = store.blocking(workspace.toString(), operation);
                 if (blocking.isPresent()) throw new Blocked(blocking.get());
             }
             throw failure;
@@ -78,13 +80,17 @@ public class ToolExecutionService implements InitializingBean {
         return row;
     }
 
-    public List<ToolExecution> list(int limit) {
+    public List<ToolExecution> list(int limit) { return list("git-status", limit); }
+    public List<ToolExecution> list(String operation, int limit) {
+        validateOperation(operation);
         if (limit < 1 || limit > 100) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_LIMIT");
-        return store.list(workspace().toString(), limit).stream().map(this::confirmOwnership).toList();
+        return store.list(workspace().toString(), operation, limit).stream().map(this::confirmOwnership).toList();
     }
-    public ToolExecution get(UUID id) { return confirmOwnership(require(id)); }
-    public ToolExecution cancel(UUID id) {
-        require(id);
+    public ToolExecution get(UUID id) { return get("git-status", id); }
+    public ToolExecution get(String operation, UUID id) { return confirmOwnership(require(operation, id)); }
+    public ToolExecution cancel(UUID id) { return cancel("git-status", id); }
+    public ToolExecution cancel(String operation, UUID id) {
+        require(operation, id);
         var row = store.update(id, current -> current.active()
                 ? current.state("CANCELLING", true, null, current.exitCode(), current.stdout(), current.stderr(),
                         current.truncated(), current.exitEvidence(), current.unconfirmedReason(), current.steps()) : current);
@@ -94,9 +100,10 @@ public class ToolExecutionService implements InitializingBean {
         }
         return confirmOwnership(row);
     }
-    private ToolExecution require(UUID id) {
+    private ToolExecution require(String operation, UUID id) {
+        validateOperation(operation);
         var root = workspace().toString();
-        return store.find(id).filter(row -> row.workspacePath().equals(root))
+        return store.find(id).filter(row -> row.workspacePath().equals(root) && row.capabilityId().equals(operation))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TOOL_EXECUTION_NOT_FOUND"));
     }
     private ToolExecution confirmOwnership(ToolExecution row) {
@@ -107,7 +114,7 @@ public class ToolExecutionService implements InitializingBean {
     private void execute(ToolExecution row, AtomicBoolean cancelled) {
         try {
             // Revalidate at dispatch; never silently select a new executable or workspace.
-            if (!authorize(Path.of(row.workspacePath())).equals(row.executable())) {
+            if (!authorize(Path.of(row.workspacePath()), row.capabilityId()).equals(row.executable())) {
                 reject(row.id(), "TOOL_BINDING_CHANGED"); return;
             }
             var current = store.update(row.id(), value -> value.active()
@@ -123,7 +130,7 @@ public class ToolExecutionService implements InitializingBean {
                 @Override public Observation runIsolated(String capability, Path directory, List<String> command,
                                                          Map<String, String> environment) {
                     var child = UUID.randomUUID();
-                    var phase = switch (observed.size()) { case 0 -> "root"; case 1 -> "filters"; default -> "status"; };
+                    var phase = switch (observed.size()) { case 0 -> "root"; case 1 -> "filters"; default -> row.capabilityId().substring(4); };
                     var pending = new ToolExecution.Step(child, phase, "CREATED", command, Map.of());
                     observed.add(pending);
                     saveSteps(row.id(), observed);
@@ -144,7 +151,7 @@ public class ToolExecutionService implements InitializingBean {
                 }
             };
             // Reuse all three safe command constructors, repository checks and filter disabling.
-            var git = new GitCapability("status", () -> row.executable());
+            var git = new GitCapability(row.capabilityId().substring(4), () -> row.executable());
             var result = git.execute(new ExecutionContext(Path.of(row.workspacePath()), tracked));
             var facts = new LinkedHashMap<>(result.metadata());
             facts.put("exitCode", result.exitCode());
@@ -187,14 +194,24 @@ public class ToolExecutionService implements InitializingBean {
         try { unknown(id, "EXECUTION_EVIDENCE_UNCONFIRMED"); }
         catch (RuntimeException unavailable) { LOG.error("Tool execution {} evidence persistence unavailable", id); }
     }
-    private String authorize(Path root) {
+    private static void validateOperation(String operation) {
+        if (!"git-status".equals(operation) && !"git-diff".equals(operation))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TOOL_OPERATION_NOT_FOUND");
+    }
+    private static ToolExecution sameOperation(ToolExecution row, String operation) {
+        if (!row.capabilityId().equals(operation))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "REQUEST_ID_OPERATION_CONFLICT");
+        return row;
+    }
+    private String authorize(Path root, String operation) {
+        validateOperation(operation);
         if (!workspace().equals(root)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "WORKSPACE_CHANGED");
-        if (!settings.enabled("git-status")) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "CAPABILITY_DISABLED");
-        if (!(handlers.resolveFor(null, "git-status").orElse(null) instanceof GitInspectionHandler))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "GIT_STATUS_HANDLER_MISSING");
-        var registered = capabilities.all().stream().filter(value -> value.name().equals("git-status")).findFirst().orElse(null);
+        if (!settings.enabled(operation)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "CAPABILITY_DISABLED");
+        if (!(handlers.resolveFor(null, operation).orElse(null) instanceof GitInspectionHandler))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "git-status".equals(operation) ? "GIT_STATUS_HANDLER_MISSING" : "GIT_DIFF_HANDLER_MISSING");
+        var registered = capabilities.all().stream().filter(value -> value.name().equals(operation)).findFirst().orElse(null);
         if (!(registered instanceof GitCapability git))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "GIT_STATUS_CAPABILITY_MISSING");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "git-status".equals(operation) ? "GIT_STATUS_CAPABILITY_MISSING" : "GIT_DIFF_CAPABILITY_MISSING");
         final String executable;
         try { executable = git.executable(); }
         catch (IllegalStateException unavailable) {

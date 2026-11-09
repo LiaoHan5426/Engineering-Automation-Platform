@@ -1,18 +1,25 @@
-import type { ToolExecution } from '@eap/runtime-client'
+import type { GitExecutionOperation, ToolExecution } from '@eap/runtime-client'
 
 type Entry = { row: ToolExecution; outcome: string }
 const persisted = new Map<string, Entry>()
-const base = '/cli-programs/git/operations/git-status/executions'
 const active = (row: ToolExecution) => ['CREATED', 'RUNNING', 'CANCELLING'].includes(row.status)
 const copy = (row: ToolExecution) => structuredClone(row)
 
 /** Mock service records survive browser remounts. Every output is explicitly simulated. */
-export function createMockToolExecutionBackend(records = persisted) {
+export function createMockToolExecutionBackend(
+  records = persisted,
+  enabled: (operation: GitExecutionOperation) => boolean = () => true,
+) {
   return {
     async handle(method: string, path: string, body?: unknown) {
       const url = new URL(path, 'http://mock.invalid')
       const route = url.pathname
-      if (!route.startsWith(base)) return null
+      const match = route.match(
+        /^\/cli-programs\/git\/operations\/(git-status|git-diff)\/executions(?:\/|$)/,
+      )
+      if (!match) return null
+      const operation = match[1] as GitExecutionOperation
+      const base = '/cli-programs/git/operations/' + operation + '/executions'
       if (route === base && method === 'GET') {
         const limit = Number(url.searchParams.get('limit') ?? 20)
         if (!Number.isInteger(limit) || limit < 1 || limit > 100)
@@ -21,6 +28,7 @@ export function createMockToolExecutionBackend(records = persisted) {
           status: 200,
           data: {
             items: [...records.values()]
+              .filter((entry) => entry.row.capabilityId === operation)
               .map((entry) => copy(entry.row))
               .reverse()
               .slice(0, limit),
@@ -40,9 +48,14 @@ export function createMockToolExecutionBackend(records = persisted) {
         const prior = [...records.values()].find(
           (entry) => entry.row.requestId === request.requestId,
         )
-        if (prior) return { status: 202, data: copy(prior.row) }
+        if (prior)
+          return prior.row.capabilityId === operation
+            ? { status: 202, data: copy(prior.row) }
+            : { status: 409, data: { detail: 'REQUEST_ID_OPERATION_CONFLICT' } }
         const blocking = [...records.values()].find(
-          (entry) => active(entry.row) || entry.row.status === 'UNKNOWN',
+          (entry) =>
+            entry.row.capabilityId === operation &&
+            (active(entry.row) || entry.row.status === 'UNKNOWN'),
         )
         if (blocking)
           return {
@@ -50,12 +63,13 @@ export function createMockToolExecutionBackend(records = persisted) {
             data: { detail: 'TOOL_EXECUTION_BLOCKED', execution: copy(blocking.row) },
           }
         const outcome = url.searchParams.get('mockOutcome') ?? 'success'
-        if (outcome === 'denied') return { status: 403, data: { detail: 'CAPABILITY_DISABLED' } }
+        if (!enabled(operation) || outcome === 'denied')
+          return { status: 403, data: { detail: 'CAPABILITY_DISABLED' } }
         const row: ToolExecution = {
           id: crypto.randomUUID(),
           requestId: request.requestId,
           programId: 'git',
-          capabilityId: 'git-status',
+          capabilityId: operation,
           workspacePath: '/mock/workspace',
           executable: '/mock/bin/git',
           status: outcome === 'unknown' ? 'UNKNOWN' : 'RUNNING',
@@ -76,7 +90,8 @@ export function createMockToolExecutionBackend(records = persisted) {
       }
       const tail = route.slice(base.length + 1).split('/')
       const entry = records.get(tail[0] ?? '')
-      if (!entry) return { status: 404, data: { detail: 'TOOL_EXECUTION_NOT_FOUND' } }
+      if (!entry || entry.row.capabilityId !== operation)
+        return { status: 404, data: { detail: 'TOOL_EXECUTION_NOT_FOUND' } }
       const row = entry.row
       if (tail.length === 2 && tail[1] === 'cancel' && method === 'POST') {
         if (active(row)) {
@@ -96,7 +111,9 @@ export function createMockToolExecutionBackend(records = persisted) {
           row.exitEvidence = 'mock: process tree cleanup confirmed'
           row.stdout =
             row.status === 'SUCCEEDED'
-              ? 'mock: no real Git executed\n## mock-branch\n M mock/file.vue'
+              ? operation === 'git-diff'
+                ? 'mock: no real Git executed\ndiff --git a/mock/file.vue b/mock/file.vue\n-old\n+new'
+                : 'mock: no real Git executed\n## mock-branch\n M mock/file.vue'
               : ''
         }
         if (!active(row) && row.status !== 'UNKNOWN') row.finishedAt ??= new Date().toISOString()

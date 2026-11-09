@@ -382,3 +382,37 @@ SQL Agent允许普通openai-compatible的chat-completions和responses；ChatGPT�
 前端最终补核：程序管理探测后立即通知父目录刷新，共享版本成功/失败两种结果回归通过。一次与构建并行的全量复跑出现SkillManager级联22失败；该文件单独25项通过，随后不并行构建的全量136文件796项通过。保留中间失败，不推断其为生产缺陷或放宽测试。
 
 最终交付补核：历史Git绑定冲突时，handler可用性读取改走安全通道快照，目录可继续显示冲突，且回归确认不执行进程/不改写绑定。启动阶段明确的400/403/409/429拒绝与网络结果未知分别呈现，相关DOM回归通过。最后前端136文件797项通过；后端完整离线reactor930项（829通过、101门控跳过、0失败/错误）通过，最终日志为tool-execution-offline-reactor-final.log。此后typecheck/build/check:architecture及改动范围lint/stylelint均通过。
+
+<a id="git-diff-operation-executions"></a>
+## Git diff持久人工执行接续（2026-11-09）
+
+基线e2c53c7，开始时工作树干净。用户批准status链路复用到diff，后续明确授权提交并推送；随本次提交交付。
+
+实现：服务/HTTP/仓储按操作隔离，工作区requestId全局去重且跨操作409，详情/取消越操作404，两个操作各自UNKNOWN互锁并共用容量；diff复用安全构造器及三阶段取消/证据。V28增量扩展约束，V26/V27未改。面板参数化并挂载两个独立实例；runtime-client有限操作类型与通用方法、旧status包装并存；mock相同隔离合同，目录diff演示改为启用，输出仍显式模拟。UI落点已查现有原语→L4业务面板→复用Button/Badge/Collapse/Feedback；未新增共享类别或暂存。
+
+验证与修复：
+- 首次后端定向31模块闭包BUILD SUCCESS，50项通过，其中实库1项在UUID自有schema中验证V26/V27→保留status历史→V28、真实Git未暂存diff及不含仅暂存/未跟踪文件、8000字符截断、索引/文件未改、持久重读、UNKNOWN隔离与唯一约束；SchemaAndWiringTest 4项、真实进程与服务/HTTP回归分列。之后增加在途并发、插入竞争与独立Handler验证，最终定向60项全部通过、0跳过；实库用例在其中单独计为1项，不与全量跳过数拼接。
+- 前端最初参数化回归仍有固定status选择器，修正后25项通过。首次全量137文件811项中SkillManager首项5000ms加载超时，后续22项级联失败；单文件25项通过。将lazy组件导入移到30秒beforeAll准备阶段，避免测试已超时后仍挂载组件；业务断言未删，生产Skill代码未改。修复后全量137文件812项通过。
+- 架构检查首次指出runtime-client新增运行时测试未声明vite-plus/test依赖；补本包catalog开发依赖并离线同步锁文件，无版本升级。
+- 浏览器首次diff按钮被旧mock停用快照禁用；将已交付diff的模拟目录设为启用，并让mock启动核验对应开关，独立停用拒绝回归保留。最终真实Chromium＋mock服务10组通过、0pageerror，1440/900/390px无横溢，查看390/1440截图；涵盖diff内容、范围、取消、刷新恢复、status UNKNOWN下diff独立执行。不是实际进程或用户产品接受。
+- 后端完整离线reactor32模块SUCCESS、退出0，按本次起始时间筛选160份XML：939项，834通过、105门控跳过、0失败/错误，日志为backend/target/git-diff-reactor.log，逐报告汇总为git-diff-reactor-summary.json。只在子进程关闭全部已设置EAP_RUN_*门控，因此与前阶段101跳过的环境不同。全量之后保留status原GIT_STATUS_HANDLER_MISSING/GIT_STATUS_CAPABILITY_MISSING错误码，新增diff对应错误码并补两个Handler用例；最终审查还补齐可信目录的diff持久执行地址，保留status旧地址与兼容断言。最终定向加入TrustedToolCatalogServiceTest，31模块闭包60项全部通过，含实库1项/装配4项，日志backend/target/git-diff-final-targeted.log；作为最终小改动回归，不冒充第二次全量。
+- 前端typecheck、build、check:architecture（含boundaries/circular）、改动范围vp lint/stylelint和11文件vp fmt --check均退出0。构建保留既有大chunk提示；改动范围lint保留capabilityBackend.test.ts既有optional chaining警告。UTF-8无BOM、本地链接、git diff --check与有限敏感模式扫描通过。
+- 最初独立文档链接扫描把尖括号内带空格的媒体链接错误截断，修正解析器后再核对。若命令封装/检查失败，仅以修正后的退出0结果作为验证证据。
+
+复现命令（仓库根；浏览器命令在frontend目录）：
+```text
+rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=ToolExecutionServiceTest,ToolExecutionJsonTest,ToolExecutionControllerTest,ToolExecutionPersistenceTest,TrustedToolCatalogServiceTest,GitCapabilityTest,DefaultProcessExecutorTest,SchemaAndWiringTest' '-Dsurefire.failIfNoSpecifiedTests=false' test
+rtk proxy mvn -B -ntp -f backend/pom.xml test
+rtk proxy pnpm --dir frontend test run
+rtk proxy pnpm --dir frontend typecheck
+rtk proxy pnpm --dir frontend check:architecture
+rtk proxy pnpm --dir frontend build
+rtk proxy pnpm --dir frontend dev:mock --port 5186 --strictPort
+rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright H:/developerTools/ai/hermes/hermes-agent/node_modules/playwright-core --chromium C:/Users/LH/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe --url http://127.0.0.1:5186
+```
+
+全量后端只在子进程关闭EAP_RUN_*门控；定向实库使用既有EAP_RUN_BOARD_PERSISTENCE和已有本机连接，凭据未输出/写入代码，只清理测试自有schema。没有修改应用表或Flyway历史，没有启动真实模型/MCP。真实diff HTTP执行整链与用户接受仍未验，不以MockMvc、临时schema或浏览器mock替代。应用schema V28升级由后续用户启动完成，证据如下。
+
+提交准备接续：用户报告已启动full-application并完成V28。使用现有本机数据源只读事务回读Flyway历史，V28于2026-11-09 14:30:06安装，success=true、checksum=-329790285；按Flyway逐行UTF-8 CRC32计算与源码一致。V26=-716806117、V27=1802106427同样一致，tool_execution_capability_id_check已允许git-status/git-diff。查询结束回滚只读事务，未写应用表或repair/clean/baseline；GET http://127.0.0.1:8080/api/health为200/ok。证据在backend/target/git-diff-commit-db-check.json，凭据不进入文件或输出。
+
+本次提交阶段只同步迁移/授权记录并复核完整差异、UTF-8/链接/空白和敏感模式；沿用紧邻实施阶段已经完成的812项前端全量、939项后端离线及最终60项定向结果，没有为提交再次构建/重启应用或重跑模型、浏览器与实库业务。提交前fetch确认远端状态，提交后push并回读远端SHA；具体提交号以Git记录为准。

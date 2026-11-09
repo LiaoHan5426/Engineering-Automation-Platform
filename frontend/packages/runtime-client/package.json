@@ -20,6 +20,7 @@
     "@eap/tsconfig": "workspace:*",
     "@types/nprogress": "catalog:tooling",
     "typescript": "catalog:tooling",
-    "vite": "catalog:tooling"
+    "vite": "catalog:tooling",
+    "vite-plus": "catalog:tooling"
   }
 }

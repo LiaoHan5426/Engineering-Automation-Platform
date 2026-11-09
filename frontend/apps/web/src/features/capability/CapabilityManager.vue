@@ -482,7 +482,7 @@ async function submitServer() {
           <h2>可信工具目录（TD-01）</h2>
           <p>
             自动汇总内置只读能力定义；版本需显式探测写回，目录渲染不自动执行二进制。下方可触发一次受控
-            git-status，不开放任意执行口。
+            git-status 或 git-diff。
           </p>
         </div>
       </header>
@@ -551,7 +551,9 @@ async function submitServer() {
               <Badge :tone="operation.enabled ? 'success' : 'warning'">{{
                 operation.enabled ? '已启用' : '已停用'
               }}</Badge>
-              <span v-if="operation.id !== 'git-status'">{{ t('manualUnavailable') }}</span>
+              <span v-if="!['git-status', 'git-diff'].includes(operation.id)">{{
+                t('manualUnavailable')
+              }}</span>
             </li>
           </ul>
         </li>
@@ -589,7 +591,10 @@ async function submitServer() {
         </Button>
       </div>
       <TrustedGitExecutionPanel
-        :enabled="trustedTools.some((tool) => tool.id === 'git-status' && tool.enabled)"
+        v-for="operation in ['git-status', 'git-diff'] as const"
+        :key="operation"
+        :operation="operation"
+        :enabled="trustedTools.some((tool) => tool.id === operation && tool.enabled)"
       />
     </article>
     <p v-if="loading && !catalog" class="hint">正在读取能力目录…</p>

@@ -35,7 +35,9 @@ Current 32-project reactor evidence and remaining optional-composition gates are
 
 ## Current implementation and validation baseline
 
-The current implementation commit is `2c7e87b`; it and backend stage `c76cded` were pushed with user authorization.
+The latest committed implementation is `e2c53c7` (Git program/status durable execution, pushed with user authorization).
+The Git diff continuation is delivered with this user-authorized commit/push; application V28 migration
+and its source checksum have been independently read back. Current checks remain recorded separately below.
 Use [the validation ledger](planning-status.md#validation-baseline) for the latest recorded checks and their limits.
 The [backend record](records/backend-composition-history.md) preserves migration, real-provider and gated database evidence;
 the [frontend record](records/frontend-history.md#expert-workspace-evolution) preserves editor/browser checks.

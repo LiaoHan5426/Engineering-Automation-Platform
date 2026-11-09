@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, onActivated, onDeactivated, onBeforeUnmount, onMounted, ref } from 'vue'
 import axios from 'axios'
-import { runtimeApi, type ToolExecution } from '@eap/runtime-client'
+import { runtimeApi, type GitExecutionOperation, type ToolExecution } from '@eap/runtime-client'
 import { Badge, Button, Collapse, Feedback } from '@eap/ui'
 import { i18n } from '../../lib/i18n'
 import { trustedStdoutNeedsCollapse, trustedStdoutPreview } from './trustedToolInvokeView'
 
-defineProps<{ enabled: boolean }>()
+const props = withDefaults(defineProps<{ enabled: boolean; operation?: GitExecutionOperation }>(), {
+  operation: 'git-status',
+})
+const testId = (suffix: string) => 'trusted-' + props.operation + '-' + suffix
 const t = (key: string) => i18n.global.t(`toolExecution.${key}`)
 const records = ref<ToolExecution[]>([])
 const selected = ref<ToolExecution | null>(null)
@@ -75,7 +78,7 @@ async function poll() {
   if (!id || disposed || suspended || busy.value) return
   const revision = ++generation
   try {
-    const row = await runtimeApi.trustedGitExecution(id, controller.signal)
+    const row = await runtimeApi.gitOperationExecution(props.operation, id, controller.signal)
     if (!disposed && revision === generation) accept(row)
   } catch (error) {
     if (revision === generation) failed(error)
@@ -88,7 +91,7 @@ async function recheck() {
   const revision = ++generation
   clearTimeout(timer)
   try {
-    const response = await runtimeApi.trustedGitExecutions(controller.signal)
+    const response = await runtimeApi.gitOperationExecutions(props.operation, controller.signal)
     if (disposed || suspended || revision !== generation) return
     records.value = response.items
     const row =
@@ -113,7 +116,7 @@ async function start(mockOutcome?: string) {
   const revision = ++generation
   requestId ??= crypto.randomUUID()
   try {
-    const row = await runtimeApi.startTrustedGitExecution(requestId, {
+    const row = await runtimeApi.startGitOperationExecution(props.operation, requestId, {
       signal: controller.signal,
       mockOutcome: mock ? mockOutcome : undefined,
     })
@@ -134,7 +137,11 @@ async function cancel() {
   const revision = ++generation // A late poll cannot overwrite the cancellation acknowledgement.
   clearTimeout(timer)
   try {
-    const result = await runtimeApi.cancelTrustedGitExecution(row.id, controller.signal)
+    const result = await runtimeApi.cancelGitOperationExecution(
+      props.operation,
+      row.id,
+      controller.signal,
+    )
     if (!disposed && !suspended && revision === generation) accept(result)
   } catch (error) {
     if (revision === generation) failed(error)
@@ -168,23 +175,25 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="trusted-git-execution" data-testid="trusted-git-execution-panel">
-    <h3>{{ t('title') }}</h3>
-    <p class="hint">{{ t('boundary') }}</p>
+  <section class="trusted-git-execution" :data-testid="testId('execution-panel')">
+    <h3>{{ t(operation === 'git-diff' ? 'diffTitle' : 'title') }}</h3>
+    <p class="hint">
+      {{ t('boundary') }} <template v-if="operation === 'git-diff'">{{ t('diffScope') }}</template>
+    </p>
     <div class="form-actions">
       <Button
         variant="secondary"
         size="sm"
-        data-testid="trusted-git-status-invoke"
+        :data-testid="testId('invoke')"
         :disabled="!enabled || busy || blocking || uncertain || !loaded"
         @click="start()"
-        >{{ t('start') }}</Button
+        >{{ t(operation === 'git-diff' ? 'diffStart' : 'start') }}</Button
       >
       <Button
         v-if="selected && active(selected)"
         variant="secondary"
         size="sm"
-        data-testid="trusted-git-status-cancel"
+        :data-testid="testId('cancel')"
         :disabled="busy || selected.status === 'CANCELLING'"
         @click="cancel"
         >{{ t('cancel') }}</Button
@@ -192,7 +201,7 @@ onBeforeUnmount(() => {
       <Button
         variant="secondary"
         size="sm"
-        data-testid="trusted-git-status-recheck"
+        :data-testid="testId('recheck')"
         :disabled="busy"
         @click="recheck"
         >{{ t('recheck') }}</Button
@@ -204,21 +213,23 @@ onBeforeUnmount(() => {
           variant="secondary"
           size="sm"
           :disabled="busy || blocking || uncertain || !loaded"
-          :data-testid="`trusted-git-mock-${scenario}`"
+          :data-testid="
+            operation === 'git-status' ? 'trusted-git-mock-' + scenario : testId('mock-' + scenario)
+          "
           @click="start(scenario)"
           >{{ t(`mock${scenario[0]?.toUpperCase()}${scenario.slice(1)}`) }}</Button
         >
       </template>
     </div>
     <p v-if="busy" class="hint">{{ t('waiting') }}</p>
-    <Feedback v-if="uncertain" tone="warning" data-testid="trusted-git-status-network"
+    <Feedback v-if="uncertain" tone="warning" :data-testid="testId('network')"
       >{{ t('network') }} · {{ errorDetail }}</Feedback
     >
-    <Feedback v-if="refusal" tone="error" :data-testid="`trusted-git-status-${refusal}`">
+    <Feedback v-if="refusal" tone="error" :data-testid="testId(refusal ?? 'rejected')">
       {{ t(refusal === 'denied' ? 'denied' : 'startRejected') }} · {{ errorDetail }}
     </Feedback>
     <template v-if="selected">
-      <p class="hint" data-testid="trusted-git-status-summary">
+      <p class="hint" :data-testid="testId('summary')">
         <code>{{ selected.id }}</code> · {{ selected.programId }} / {{ selected.capabilityId }} ·
         <Badge :tone="selected.status === 'SUCCEEDED' ? 'success' : 'warning'">{{
           t(selected.status)
@@ -232,19 +243,16 @@ onBeforeUnmount(() => {
       <Feedback
         v-if="selected.status === 'CANCELLING'"
         tone="warning"
-        data-testid="trusted-git-status-cancelling"
+        :data-testid="testId('cancelling')"
         >{{ t('cancelPending') }}</Feedback
       >
       <Feedback
         v-if="selected.status === 'CANCELLED'"
         tone="success"
-        data-testid="trusted-git-status-cancelled"
+        :data-testid="testId('cancelled')"
         >{{ t('CANCELLED') }} · {{ selected.exitEvidence }}</Feedback
       >
-      <Feedback
-        v-if="selected.status === 'UNKNOWN'"
-        tone="warning"
-        data-testid="trusted-git-status-unknown"
+      <Feedback v-if="selected.status === 'UNKNOWN'" tone="warning" :data-testid="testId('unknown')"
         >{{ t('unknown') }} · {{ selected.unconfirmedReason }}</Feedback
       >
       <p v-if="selected.exitEvidence" class="hint">
@@ -253,15 +261,11 @@ onBeforeUnmount(() => {
       <p v-if="selected.truncated" class="hint">{{ t('truncated') }}</p>
       <Collapse v-if="trustedStdoutNeedsCollapse(selected.stdout)">
         <template #summary>{{ trustedStdoutPreview(selected.stdout) }}</template>
-        <pre class="trusted-git-result" data-testid="trusted-git-status-result">{{
-          selected.stdout
-        }}</pre>
+        <pre class="trusted-git-result" :data-testid="testId('result')">{{ selected.stdout }}</pre>
       </Collapse>
-      <pre
-        v-else-if="selected.stdout"
-        class="trusted-git-result"
-        data-testid="trusted-git-status-result"
-        >{{ selected.stdout }}</pre>
+      <pre v-else-if="selected.stdout" class="trusted-git-result" :data-testid="testId('result')">{{
+        selected.stdout
+      }}</pre>
       <pre v-if="selected.stderr" class="trusted-git-result">{{ selected.stderr }}</pre>
       <p v-if="selected.steps.length" class="hint">
         {{ t('steps') }}:
@@ -270,7 +274,7 @@ onBeforeUnmount(() => {
     </template>
     <h4>{{ t('history') }}</h4>
     <p v-if="loaded && !records.length" class="hint">{{ t('empty') }}</p>
-    <ul class="trusted-tool-list" data-testid="trusted-git-history">
+    <ul class="trusted-tool-list" :data-testid="testId('history')">
       <li v-for="row in records" :key="row.id">
         <Collapse>
           <template #summary>{{ row.createdAt }} · {{ row.id }} · {{ t(row.status) }}</template>

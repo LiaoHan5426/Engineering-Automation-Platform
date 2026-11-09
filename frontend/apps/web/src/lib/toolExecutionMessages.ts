@@ -1,6 +1,9 @@
 export const toolExecutionMessages = {
   'zh-CN': {
     title: 'Git · 读取工作区状态',
+    diffTitle: 'Git · 读取未暂存差异',
+    diffStart: '读取差异',
+    diffScope: '仅显示已跟踪文件的未暂存差异，不包含暂存区和未跟踪文件。',
     boundary: '工作区与只读命令由本地服务决定。离开页面不会取消后台执行。',
     start: '读取状态',
     cancel: '请求取消',
@@ -9,7 +12,7 @@ export const toolExecutionMessages = {
     waiting: '正在核对执行记录…',
     empty: '暂无持久执行记录。',
     cancelPending: '已请求取消，正在等待进程退出与清理确认。',
-    unknown: '结果未知，未确认进程已结束；保留记录并阻止重复启动。',
+    unknown: '结果未知，未确认进程已结束；保留记录并阻止同一操作重复启动。',
     denied: '操作已停用或当前工作区未授权，启动被拒绝。',
     startRejected: '服务端已拒绝本次启动，请检查程序绑定、请求或容量。',
     network: '暂时无法确认执行状态。已停止自动查询，请重新查询；不会自动启动或重试执行。',
@@ -37,6 +40,10 @@ export const toolExecutionMessages = {
   },
   'en-US': {
     title: 'Git · Read workspace status',
+    diffTitle: 'Git · Read unstaged diff',
+    diffStart: 'Read diff',
+    diffScope:
+      'Shows unstaged changes to tracked files. Staged changes and untracked files are excluded.',
     boundary:
       'The local service owns the workspace and read-only command. Leaving does not cancel execution.',
     start: 'Read status',
@@ -47,7 +54,7 @@ export const toolExecutionMessages = {
     empty: 'No durable executions.',
     cancelPending: 'Cancellation requested. Waiting for process exit and cleanup evidence.',
     unknown:
-      'Outcome unknown. Process exit is unconfirmed; this record blocks duplicate execution.',
+      'Outcome unknown. Process exit is unconfirmed; this record blocks another execution of this operation.',
     denied: 'The operation is disabled or the workspace is not authorized. Start was denied.',
     startRejected: 'Start was rejected. Check the program binding, request, or capacity.',
     network:

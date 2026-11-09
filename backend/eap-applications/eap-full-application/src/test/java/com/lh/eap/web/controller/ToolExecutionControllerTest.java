@@ -22,19 +22,36 @@ class ToolExecutionControllerTest {
         var id = UUID.randomUUID();
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON).content("{\"requestId\":\"" + id + "\"}"))
                 .andExpect(status().isAccepted());
-        verify(service).start(id);
-        mvc.perform(post(BASE.replace("git-status", "git-diff")).contentType(MediaType.APPLICATION_JSON).content("{}"))
+        verify(service).start("git-status", id);
+        mvc.perform(post(BASE.replace("git-status", "git-log")).contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isNotFound());
+    }
+    @Test void bothWhitelistedOperationsDispatchWithTheirOwnIdentity() throws Exception {
+        var service = mock(ToolExecutionService.class);
+        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service)).build();
+        for (var operation : List.of("git-status", "git-diff")) {
+            var base = BASE.replace("git-status", operation);
+            var request = UUID.randomUUID(); var id = UUID.randomUUID();
+            mvc.perform(post(base).contentType(MediaType.APPLICATION_JSON).content("{\"requestId\":\"" + request + "\"}"))
+                    .andExpect(status().isAccepted());
+            mvc.perform(get(base)).andExpect(status().isOk());
+            mvc.perform(get(base + "/" + id)).andExpect(status().isOk());
+            mvc.perform(post(base + "/" + id + "/cancel")).andExpect(status().isOk());
+            verify(service).start(operation, request); verify(service).list(operation, 20);
+            verify(service).get(operation, id); verify(service).cancel(operation, id);
+        }
     }
     @Test void newRoutesRetainHostOriginAndContentTypeProtection() throws Exception {
         var service = mock(ToolExecutionService.class);
         var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service)).addFilters(new AiBrowserRequestGuard()).build();
-        mvc.perform(post(BASE).header("Host", "evil.example").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        for (var base : List.of(BASE, BASE.replace("git-status", "git-diff"))) {
+        mvc.perform(post(base).header("Host", "evil.example").contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isForbidden());
-        mvc.perform(post(BASE).header("Host", "localhost").header("Origin", "http://evil.example")
+        mvc.perform(post(base).header("Host", "localhost").header("Origin", "http://evil.example")
                 .contentType(MediaType.APPLICATION_JSON).content("{}")) .andExpect(status().isForbidden());
-        mvc.perform(post(BASE).header("Host", "localhost").contentType(MediaType.TEXT_PLAIN).content("{}"))
+        mvc.perform(post(base).header("Host", "localhost").contentType(MediaType.TEXT_PLAIN).content("{}"))
                 .andExpect(status().isUnsupportedMediaType());
+        }
         verifyNoInteractions(service);
     }
 }

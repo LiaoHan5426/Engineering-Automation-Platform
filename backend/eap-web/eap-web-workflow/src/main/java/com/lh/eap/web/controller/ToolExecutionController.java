@@ -9,28 +9,28 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Literal built-in route: no arbitrary program, argv, cwd or capability execution API. */
+/** Whitelisted built-in routes: no arbitrary program, argv, cwd or capability execution API. */
 @RestController
-@RequestMapping("/api/cli-programs/git/operations/git-status/executions")
+@RequestMapping("/api/cli-programs/git/operations/{operation:git-status|git-diff}/executions")
 public class ToolExecutionController {
     private final ToolExecutionService service;
     public ToolExecutionController(ToolExecutionService service) { this.service = service; }
     @PostMapping @ResponseStatus(HttpStatus.ACCEPTED)
-    public ToolExecution start(@RequestBody Map<String, Object> body) {
+    public ToolExecution start(@PathVariable String operation, @RequestBody Map<String, Object> body) {
         if (body.size() != 1 || !(body.get("requestId") instanceof String request))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ONLY_REQUEST_ID_ALLOWED");
         try {
             var id = UUID.fromString(request);
             if (!id.toString().equalsIgnoreCase(request)) throw new IllegalArgumentException("Noncanonical UUID");
-            return service.start(id);
+            return service.start(operation, id);
         }
         catch (IllegalArgumentException invalid) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_ID"); }
     }
-    @GetMapping public Map<String, Object> list(@RequestParam(defaultValue = "20") int limit) {
-        return Map.of("items", service.list(limit));
+    @GetMapping public Map<String, Object> list(@PathVariable String operation, @RequestParam(defaultValue = "20") int limit) {
+        return Map.of("items", service.list(operation, limit));
     }
-    @GetMapping("/{id}") public ToolExecution get(@PathVariable UUID id) { return service.get(id); }
-    @PostMapping("/{id}/cancel") public ToolExecution cancel(@PathVariable UUID id) { return service.cancel(id); }
+    @GetMapping("/{id}") public ToolExecution get(@PathVariable String operation, @PathVariable UUID id) { return service.get(operation, id); }
+    @PostMapping("/{id}/cancel") public ToolExecution cancel(@PathVariable String operation, @PathVariable UUID id) { return service.cancel(operation, id); }
     @ExceptionHandler(ToolExecutionService.Blocked.class)
     public ResponseEntity<Map<String, Object>> blocked(ToolExecutionService.Blocked blocked) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

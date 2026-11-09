@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeAll, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, KeepAlive, nextTick, ref, type App, type Component } from 'vue'
 import { runtimeApi, type SkillSnapshot } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
@@ -67,12 +67,17 @@ async function prepareSave(version = '1.0.0') {
   await vi.waitFor(() => expect(node('skill-confirm').disabled).toBe(false))
   await click('skill-confirm')
 }
-async function mount(props: Record<string, unknown> = {}, keepAlive = false) {
+let component: Component
+// Compile/load the lazy view before test deadlines. A timed-out import must not mount into a later test.
+beforeAll(async () => {
   const modules = import.meta.glob('../../../src/features/settings/SkillManager.vue')
   expect(modules['../../../src/features/settings/SkillManager.vue']).toBeDefined()
-  const component = (await modules['../../../src/features/settings/SkillManager.vue']!()) as {
+  const loaded = (await modules['../../../src/features/settings/SkillManager.vue']!()) as {
     default: Component
   }
+  component = loaded.default
+}, 30_000)
+async function mount(props: Record<string, unknown> = {}, keepAlive = false) {
   host = document.createElement('div')
   document.body.append(host)
   const visible = ref(true)
@@ -81,10 +86,10 @@ async function mount(props: Record<string, unknown> = {}, keepAlive = false) {
       ? {
           render: () =>
             h(KeepAlive, null, {
-              default: () => (visible.value ? h(component.default, props) : null),
+              default: () => (visible.value ? h(component, props) : null),
             }),
         }
-      : component.default,
+      : component,
     props,
   )
   app.use(i18n).mount(host)

@@ -118,6 +118,8 @@ export type TrustedToolProgram = Omit<
 > & {
   operations: TrustedToolItem[]
 }
+export type GitExecutionOperation = 'git-status' | 'git-diff'
+
 export type ToolExecutionStatus =
   | 'CREATED'
   | 'RUNNING'
@@ -1213,6 +1215,46 @@ async function get<T>(path: string): Promise<T> {
   return (await client.get<T>(path)).data
 }
 
+function gitExecutionPath(operation: GitExecutionOperation) {
+  if (operation !== 'git-status' && operation !== 'git-diff') {
+    throw new Error('TOOL_OPERATION_NOT_FOUND')
+  }
+  return '/cli-programs/git/operations/' + operation + '/executions'
+}
+const gitOperationApi = {
+  start: (
+    operation: GitExecutionOperation,
+    requestId: string,
+    options?: { signal?: AbortSignal; mockOutcome?: string },
+  ) =>
+    client
+      .post<ToolExecution>(
+        gitExecutionPath(operation),
+        { requestId },
+        {
+          signal: options?.signal,
+          params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
+        },
+      )
+      .then((r) => r.data),
+  list: (operation: GitExecutionOperation, signal?: AbortSignal) =>
+    client
+      .get<{ items: ToolExecution[] }>(gitExecutionPath(operation), { signal })
+      .then((r) => r.data),
+  get: (operation: GitExecutionOperation, id: string, signal?: AbortSignal) =>
+    client
+      .get<ToolExecution>(gitExecutionPath(operation) + '/' + encodeURIComponent(id), { signal })
+      .then((r) => r.data),
+  cancel: (operation: GitExecutionOperation, id: string, signal?: AbortSignal) =>
+    client
+      .post<ToolExecution>(
+        gitExecutionPath(operation) + '/' + encodeURIComponent(id) + '/cancel',
+        {},
+        { signal },
+      )
+      .then((r) => r.data),
+}
+
 export const runtimeApi = {
   ...createExpertAgentApi(client),
   scenarios: () => get<{ items: ScenarioSnapshot[] }>('/scenarios'),
@@ -1385,41 +1427,19 @@ export const runtimeApi = {
         },
       )
       .then((r) => r.data),
+  startGitOperationExecution: gitOperationApi.start,
+  gitOperationExecutions: gitOperationApi.list,
+  gitOperationExecution: gitOperationApi.get,
+  cancelGitOperationExecution: gitOperationApi.cancel,
   startTrustedGitExecution: (
     requestId: string,
     options?: { signal?: AbortSignal; mockOutcome?: string },
-  ) =>
-    client
-      .post<ToolExecution>(
-        '/cli-programs/git/operations/git-status/executions',
-        { requestId },
-        {
-          signal: options?.signal,
-          params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
-        },
-      )
-      .then((r) => r.data),
-  trustedGitExecutions: (signal?: AbortSignal) =>
-    client
-      .get<{ items: ToolExecution[] }>('/cli-programs/git/operations/git-status/executions', {
-        signal,
-      })
-      .then((r) => r.data),
+  ) => gitOperationApi.start('git-status', requestId, options),
+  trustedGitExecutions: (signal?: AbortSignal) => gitOperationApi.list('git-status', signal),
   trustedGitExecution: (id: string, signal?: AbortSignal) =>
-    client
-      .get<ToolExecution>(
-        '/cli-programs/git/operations/git-status/executions/' + encodeURIComponent(id),
-        { signal },
-      )
-      .then((r) => r.data),
+    gitOperationApi.get('git-status', id, signal),
   cancelTrustedGitExecution: (id: string, signal?: AbortSignal) =>
-    client
-      .post<ToolExecution>(
-        '/cli-programs/git/operations/git-status/executions/' + encodeURIComponent(id) + '/cancel',
-        {},
-        { signal },
-      )
-      .then((r) => r.data),
+    gitOperationApi.cancel('git-status', id, signal),
   capabilities: () => get<CapabilityResponse>('/capabilities'),
   cliPrograms: () => get<{ items: CliProgramItem[] }>('/cli-programs'),
   registerCliProgram: (program: CliProgramRequest) =>

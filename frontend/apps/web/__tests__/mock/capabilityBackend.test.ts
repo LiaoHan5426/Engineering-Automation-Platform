@@ -106,7 +106,7 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     expect(items.some((item) => item.id === 'git-status' && item.enabled)).toBe(true)
   })
 
-  it('exposes binding status snapshots for ready disabled and conflict tools', async () => {
+  it('exposes executable Git operation snapshots and binding conflicts', async () => {
     const backend = createMockCapabilityBackend()
     await backend.handle('POST', '/runtime/trusted-tools/probe-cache/clear')
     const reply = await backend.handle('GET', '/runtime/trusted-tools')
@@ -117,7 +117,7 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     ).items
     expect(items.find((item) => item.id === 'git-status')?.bindingStatus).toBe('ready')
     expect(items.find((item) => item.id === 'git-status')?.versionStatus).toBe('unknown')
-    expect(items.find((item) => item.id === 'git-diff')?.bindingStatus).toBe('disabled')
+    expect(items.find((item) => item.id === 'git-diff')?.bindingStatus).toBe('ready')
     expect(items.find((item) => item.id === 'broken-cli')?.bindingStatus).toBe('conflict')
   })
 
@@ -133,7 +133,9 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     })
     const catalog = await backend.handle('GET', '/runtime/trusted-tools')
     const items = (
-      catalog?.data as { items: Array<{ id: string; versionStatus: string; detectedVersion: string }> }
+      catalog?.data as {
+        items: Array<{ id: string; versionStatus: string; detectedVersion: string }>
+      }
     ).items
     expect(items.find((item) => item.id === 'git-status')?.versionStatus).toBe('known')
     expect(items.find((item) => item.id === 'git-status')?.detectedVersion).toContain('2.45.1')
@@ -146,7 +148,12 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     const catalog = await remounted.handle('GET', '/runtime/trusted-tools')
     const items = (
       catalog?.data as {
-        items: Array<{ id: string; versionStatus: string; detectedVersion: string; bindingNote: string }>
+        items: Array<{
+          id: string
+          versionStatus: string
+          detectedVersion: string
+          bindingNote: string
+        }>
       }
     ).items
     const status = items.find((item) => item.id === 'git-status')
@@ -163,7 +170,9 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     expect(cleared?.data).toMatchObject({ remaining: 0 })
     const catalog = await backend.handle('GET', '/runtime/trusted-tools')
     const items = (
-      catalog?.data as { items: Array<{ id: string; versionStatus: string; detectedVersion: string }> }
+      catalog?.data as {
+        items: Array<{ id: string; versionStatus: string; detectedVersion: string }>
+      }
     ).items
     expect(items.find((item) => item.id === 'git-status')?.versionStatus).toBe('unknown')
     expect(items.find((item) => item.id === 'git-status')?.detectedVersion).toBe('')
@@ -176,7 +185,11 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
       '/runtime/trusted-tools/git-status/probe-version?mockOutcome=fail',
     )
     expect(failed?.status).toBe(200)
-    expect(failed?.data).toMatchObject({ versionStatus: 'probe_failed', detectedVersion: '', success: false })
+    expect(failed?.data).toMatchObject({
+      versionStatus: 'probe_failed',
+      detectedVersion: '',
+      success: false,
+    })
     const conflict = await backend.handle('POST', '/runtime/trusted-tools/broken-cli/probe-version')
     expect(conflict?.status).toBe(409)
   })

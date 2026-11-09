@@ -29,11 +29,11 @@ public class JdbcToolExecutionStore implements ToolExecutionStore {
     @Override public Optional<ToolExecution> request(String workspace, UUID id) {
         return query(" WHERE workspace_path=? AND request_id=?", workspace, id).stream().findFirst();
     }
-    @Override public List<ToolExecution> list(String workspace, int limit) {
-        return query(" WHERE workspace_path=? ORDER BY created_at DESC,id DESC LIMIT ?", workspace, limit);
+    @Override public List<ToolExecution> list(String workspace, String operation, int limit) {
+        return query(" WHERE workspace_path=? AND capability_id=? ORDER BY created_at DESC,id DESC LIMIT ?", workspace, operation, limit);
     }
-    @Override public Optional<ToolExecution> blocking(String workspace) {
-        return query(" WHERE workspace_path=? AND status IN ('CREATED','RUNNING','CANCELLING','UNKNOWN')", workspace)
+    @Override public Optional<ToolExecution> blocking(String workspace, String operation) {
+        return query(" WHERE workspace_path=? AND capability_id=? AND status IN ('CREATED','RUNNING','CANCELLING','UNKNOWN')", workspace, operation)
                 .stream().findFirst();
     }
     @Override @Transactional public ToolExecution update(UUID id, UnaryOperator<ToolExecution> transition) {

@@ -15,7 +15,9 @@ type PersistedProbe = {
 const persistedTrustedProbes = new Map<string, PersistedProbe>()
 
 export function createMockCapabilityBackend() {
-  const executions = createMockToolExecutionBackend()
+  const executions = createMockToolExecutionBackend(undefined, (operation) =>
+    trustedTools.some((tool) => tool.id === operation && tool.enabled),
+  )
   const productionMatrix = [
     {
       packageName: '@modelcontextprotocol/server-everything',
@@ -131,15 +133,15 @@ export function createMockCapabilityBackend() {
       kind: 'cli',
       scope: 'platform',
       readOnly: true,
-      enabled: false,
-      invocation: '',
+      enabled: true,
+      invocation: 'POST /api/cli-programs/git/operations/git-diff/executions',
       summary: '只读检查工作区差异；不修改文件。',
-      bindingStatus: 'disabled',
+      bindingStatus: 'ready',
       bindingSource: 'shipped',
       binary: 'git',
       resolvedPath: '/mock/bin/git',
       versionStatus: 'unknown',
-      bindingNote: '已停用快照：定义与绑定保留，调用入口拒绝执行。',
+      bindingNote: 'mock：内置 diff 人工执行已启用；仅模拟已跟踪文件的未暂存差异。',
     },
     {
       id: 'broken-cli',

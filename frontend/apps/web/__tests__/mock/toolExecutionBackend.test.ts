@@ -41,3 +41,47 @@ describe('mock durable operation protocol', () => {
     ).toMatchObject({ detail: 'TOOL_EXECUTION_BLOCKED', execution: { status: 'UNKNOWN' } })
   })
 })
+
+it('isolates operations and rejects cross-operation request IDs and cancellation', async () => {
+  const backend = createMockToolExecutionBackend(new Map())
+  const diff = base.replace('git-status', 'git-diff')
+  const request = { requestId: crypto.randomUUID() }
+  const status = await backend.handle('POST', base + '?mockOutcome=unknown', request)
+  const id = (status!.data as { id: string }).id
+  expect((await backend.handle('POST', diff, request))?.data).toEqual({
+    detail: 'REQUEST_ID_OPERATION_CONFLICT',
+  })
+  expect((await backend.handle('GET', diff))?.data).toEqual({ items: [] })
+  expect((await backend.handle('GET', diff + '/' + id))?.status).toBe(404)
+  expect((await backend.handle('POST', diff + '/' + id + '/cancel'))?.status).toBe(404)
+  const started = await backend.handle('POST', diff, { requestId: crypto.randomUUID() })
+  expect(started?.status).toBe(202)
+  const diffId = (started!.data as { id: string }).id
+  expect((await backend.handle('GET', diff + '/' + diffId))?.data).toMatchObject({
+    capabilityId: 'git-diff',
+    status: 'SUCCEEDED',
+    stdout: expect.stringContaining('diff --git'),
+  })
+  expect((await backend.handle('GET', base))?.data).toMatchObject({
+    items: [{ id, status: 'UNKNOWN' }],
+  })
+  expect(await backend.handle('POST', base.replace('git-status', 'git-log'), request)).toBeNull()
+})
+
+it('checks the selected operation switch while retaining history and the other operation', async () => {
+  const backend = createMockToolExecutionBackend(
+    new Map(),
+    (operation) => operation === 'git-status',
+  )
+  expect(
+    (
+      await backend.handle('POST', base.replace('git-status', 'git-diff'), {
+        requestId: crypto.randomUUID(),
+      })
+    )?.status,
+  ).toBe(403)
+  expect((await backend.handle('POST', base, { requestId: crypto.randomUUID() }))?.status).toBe(202)
+  expect((await backend.handle('GET', base.replace('git-status', 'git-diff')))?.data).toEqual({
+    items: [],
+  })
+})

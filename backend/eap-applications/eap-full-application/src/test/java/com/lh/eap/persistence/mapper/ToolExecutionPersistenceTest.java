@@ -65,12 +65,32 @@ class ToolExecutionPersistenceTest {
             try (var context = new AnnotationConfigApplicationContext()) {
                 context.registerBean(DataSource.class, () -> isolated); context.register(Transactions.class); context.refresh();
                 var store = context.getBean(ToolExecutionStore.class);
+                var historical = new ToolExecution(UUID.randomUUID(), UUID.randomUUID(), "git", "git-status",
+                        workspace.toRealPath().toString(), "git", "SUCCEEDED", false, Instant.now(), Instant.now(),
+                        0, "historical status", "", false, "PROCESS_EXIT_CONFIRMED", null, List.of());
+                store.insert(historical);
+                var v28 = new ClassPathResource("db/migration/V28__git_diff_tool_executions.sql")
+                        .getContentAsString(StandardCharsets.UTF_8).replace("eap.tool_execution", schema + ".tool_execution");
+                try (var connection = original.getConnection()) {
+                    ScriptUtils.executeSqlScript(connection, new ByteArrayResource(v28.getBytes(StandardCharsets.UTF_8)));
+                }
+                assertEquals(historical, store.find(historical.id()).orElseThrow());
                 var init = new ProcessBuilder("git", "init", "--quiet").directory(workspace.toFile()).redirectErrorStream(true).start();
                 assertTrue(init.waitFor(5, TimeUnit.SECONDS)); assertEquals(0, init.exitValue());
-                var settings = mock(CapabilitySettings.class); when(settings.enabled("git-status")).thenReturn(true);
+                Files.writeString(workspace.resolve("tracked.txt"), "base\n");
+                Files.writeString(workspace.resolve("staged-only.txt"), "staged only\n");
+                var add = new ProcessBuilder("git", "add", "--", "tracked.txt", "staged-only.txt")
+                        .directory(workspace.toFile()).redirectErrorStream(true).start();
+                assertTrue(add.waitFor(5, TimeUnit.SECONDS)); assertEquals(0, add.exitValue());
+                Files.writeString(workspace.resolve("tracked.txt"), "unstaged-change\n");
+                Files.writeString(workspace.resolve("untracked.txt"), "untracked only\n");
+                var index = Files.readAllBytes(workspace.resolve(".git/index"));
+                var settings = mock(CapabilitySettings.class);
+                when(settings.enabled("git-status")).thenReturn(true); when(settings.enabled("git-diff")).thenReturn(true);
                 var handlers = mock(CapabilityHandlerRegistry.class);
                 when(handlers.resolveFor(null, "git-status")).thenReturn(Optional.of(mock(GitInspectionHandler.class)));
-                var registry = new CapabilityRegistry().register(new GitCapability("status"));
+                when(handlers.resolveFor(null, "git-diff")).thenReturn(Optional.of(mock(GitInspectionHandler.class)));
+                var registry = new CapabilityRegistry().register(new GitCapability("status")).register(new GitCapability("diff"));
                 try (var executor = new DefaultProcessExecutor()) {
                     var service = new ToolExecutionService(store, RuntimeWorkspace.colocated(workspace, "", ""), settings, handlers, registry, executor);
                     try {
@@ -84,6 +104,20 @@ class ToolExecutionPersistenceTest {
                         assertEquals("SUCCEEDED", service.cancel(row.id()).status());
                         var reconstructed = new JdbcToolExecutionStore(new JdbcTemplate(isolated)).find(row.id()).orElseThrow();
                         assertEquals(row, reconstructed);
+                        var diff = settle(service, service.start("git-diff", UUID.randomUUID()));
+                        assertEquals("SUCCEEDED", diff.status(), diff.stderr());
+                        assertTrue(diff.stdout().contains("+unstaged-change"));
+                        assertFalse(diff.stdout().contains("staged-only.txt")); assertFalse(diff.stdout().contains("untracked.txt"));
+                        assertEquals(List.of("root", "filters", "diff"), diff.steps().stream().map(ToolExecution.Step::phase).toList());
+                        assertEquals(diff, new JdbcToolExecutionStore(new JdbcTemplate(isolated)).find(diff.id()).orElseThrow());
+                        assertArrayEquals(index, Files.readAllBytes(workspace.resolve(".git/index")));
+                        assertEquals("unstaged-change\n", Files.readString(workspace.resolve("tracked.txt")));
+                        assertEquals(409, assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                                () -> service.start("git-status", diff.requestId())).getStatusCode().value());
+                        Files.writeString(workspace.resolve("tracked.txt"), "large-diff-line\n".repeat(1000));
+                        var large = settle(service, service.start("git-diff", UUID.randomUUID()));
+                        assertEquals("SUCCEEDED", large.status()); assertTrue(large.truncated()); assertEquals(8000, large.stdout().length());
+                        assertArrayEquals(index, Files.readAllBytes(workspace.resolve(".git/index")));
                         var open = new ToolExecution(UUID.randomUUID(), UUID.randomUUID(), "git", "git-status", workspace.toRealPath().toString(),
                                 "git", "RUNNING", false, Instant.now(), null, null, "", "", false, null, null, List.of());
                         store.insert(open);
@@ -92,6 +126,15 @@ class ToolExecutionPersistenceTest {
                         store.markRestartUnknown();
                         assertEquals("UNKNOWN", service.get(open.id()).status());
                         assertThrows(ToolExecutionService.Blocked.class, () -> service.start(UUID.randomUUID()));
+                        var independent = settle(service, service.start("git-diff", UUID.randomUUID()));
+                        assertEquals("SUCCEEDED", independent.status());
+                        assertTrue(service.list("git-diff", 20).stream().allMatch(value -> value.capabilityId().equals("git-diff")));
+                        assertEquals(404, assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                                () -> service.cancel("git-status", independent.id())).getStatusCode().value());
+                        // The workspace-wide request constraint still rejects cross-operation reuse directly.
+                        assertThrows(DuplicateKeyException.class, () -> store.insert(new ToolExecution(UUID.randomUUID(), open.requestId(),
+                                "git", "git-diff", open.workspacePath(), "git", "SUCCEEDED", false, Instant.now(), Instant.now(),
+                                0, "", "", false, "PROCESS_EXIT_CONFIRMED", null, List.of())));
                         var serialized = JsonMapper.builder().build().writeValueAsString(service.list(20));
                         assertTrue(serialized.contains("SERVICE_RESTART_EXIT_UNCONFIRMED"));
                     } finally { service.close(); }
@@ -101,6 +144,14 @@ class ToolExecutionPersistenceTest {
             // This test never modifies the application schema or Flyway history.
             raw.execute("DROP SCHEMA " + schema + " CASCADE");
         }
+    }
+    private static ToolExecution settle(ToolExecutionService service, ToolExecution row) throws Exception {
+        var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+        while (row.active() && System.nanoTime() < deadline) {
+            Thread.sleep(20); row = service.get(row.capabilityId(), row.id());
+        }
+        assertFalse(row.active(), "Execution did not settle");
+        return row;
     }
     private static Connection relocate(Connection connection, String schema) {
         return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[]{Connection.class}, (proxy, method, args) -> {

@@ -294,6 +294,7 @@ public class TrustedToolCatalogService {
 
     private static String invocationFor(String capability) {
         if ("git-status".equals(capability)) return "POST /api/runtime/trusted-tools/git-status/invoke";
+        if ("git-diff".equals(capability)) return "POST /api/cli-programs/git/operations/git-diff/executions";
         return "";
     }
 
