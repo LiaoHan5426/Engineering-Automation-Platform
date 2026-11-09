@@ -74,6 +74,11 @@ class ToolExecutionPersistenceTest {
                 try (var connection = original.getConnection()) {
                     ScriptUtils.executeSqlScript(connection, new ByteArrayResource(v28.getBytes(StandardCharsets.UTF_8)));
                 }
+                var v29 = new ClassPathResource("db/migration/V29__tool_unknown_manual_closure.sql")
+                        .getContentAsString(StandardCharsets.UTF_8).replace("eap.tool_execution", schema + ".tool_execution");
+                try (var connection = original.getConnection()) {
+                    ScriptUtils.executeSqlScript(connection, new ByteArrayResource(v29.getBytes(StandardCharsets.UTF_8)));
+                }
                 assertEquals(historical, store.find(historical.id()).orElseThrow());
                 var init = new ProcessBuilder("git", "init", "--quiet").directory(workspace.toFile()).redirectErrorStream(true).start();
                 assertTrue(init.waitFor(5, TimeUnit.SECONDS)); assertEquals(0, init.exitValue());
@@ -137,6 +142,40 @@ class ToolExecutionPersistenceTest {
                                 0, "", "", false, "PROCESS_EXIT_CONFIRMED", null, List.of())));
                         var serialized = JsonMapper.builder().build().writeValueAsString(service.list(20));
                         assertTrue(serialized.contains("SERVICE_RESTART_EXIT_UNCONFIRMED"));
+                        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> store.update(open.id(),
+                                value -> value.state("CLOSED_UNKNOWN", false, null, null, "", "", false, null, "test", List.of())));
+                        assertEquals("UNKNOWN", store.find(open.id()).orElseThrow().status(), "Failed transition rolls back");
+                        var reviewRequest = UUID.randomUUID();
+                        var reviewed = service.resolveUnknown("git-status", open.id(), reviewRequest,
+                                "Reviewed all related processes; test fixture never started a process", true);
+                        assertEquals("CLOSED_UNKNOWN", reviewed.status());
+                        assertEquals("SERVICE_RESTART_EXIT_UNCONFIRMED", reviewed.unconfirmedReason());
+                        assertNull(reviewed.exitCode()); assertNull(reviewed.exitEvidence()); assertNull(reviewed.finishedAt());
+                        assertEquals(reviewed, new JdbcToolExecutionStore(new JdbcTemplate(isolated)).find(open.id()).orElseThrow());
+                        assertEquals(reviewed, service.resolveUnknown("git-status", open.id(), reviewRequest,
+                                "Reviewed all related processes; test fixture never started a process", true));
+                        assertEquals(reviewed, service.start(open.requestId()));
+                        store.markRestartUnknown();
+                        assertEquals(reviewed, store.find(open.id()).orElseThrow());
+                        assertEquals("SUCCEEDED", settle(service, service.start(UUID.randomUUID())).status());
+                        var race = new ToolExecution(UUID.randomUUID(), UUID.randomUUID(), "git", "git-diff",
+                                open.workspacePath(), "git", "UNKNOWN", false, Instant.now(), null, null, "preserved", "", false, null, "test", List.of());
+                        store.insert(race);
+                        try (var workers = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+                            var gate = new java.util.concurrent.CountDownLatch(1);
+                            var results = new ArrayList<java.util.concurrent.Future<String>>();
+                            for (int i = 0; i < 2; i++) results.add(workers.submit(() -> {
+                                gate.await();
+                                try { return service.resolveUnknown("git-diff", race.id(), UUID.randomUUID(),
+                                        "Fixture review: no real process was started", true).status(); }
+                                catch (org.springframework.web.server.ResponseStatusException conflict) { return conflict.getReason(); }
+                            }));
+                            gate.countDown();
+                            assertEquals(Set.of("CLOSED_UNKNOWN", "UNKNOWN_REVIEW_CONFLICT"),
+                                    Set.of(results.get(0).get(5, TimeUnit.SECONDS), results.get(1).get(5, TimeUnit.SECONDS)));
+                        }
+                        assertEquals("preserved", store.find(race.id()).orElseThrow().stdout());
+
                     } finally { service.close(); }
                 }
             }

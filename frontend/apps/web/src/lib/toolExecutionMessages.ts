@@ -33,6 +33,20 @@ export const toolExecutionMessages = {
     TIMED_OUT: '执行超时',
     CANCELLED: '已确认取消',
     UNKNOWN: '结果未知',
+    CLOSED_UNKNOWN: '人工关闭（结果仍未知）',
+    reviewEvidence: '查看进程核对线索',
+    reviewEvidenceHint:
+      'PID、启动时间和命令仅供人工核对。父进程消失或缺少 PID 不能证明相关子进程已结束。',
+    reviewBoundary:
+      '先在操作系统核对本次执行及其相关子进程均已结束，再填写核对说明（10～2000字符）。人工关闭只解除本操作的启动阻塞，保留原未知结果与证据。',
+    reviewNote: '核对说明（请勿填写凭据）',
+    reviewAttestation: '我已核对本次执行及其相关子进程均已结束。',
+    reviewOpen: '核对后关闭阻塞',
+    reviewTitle: '关闭这条 UNKNOWN 的启动阻塞',
+    reviewImpact:
+      '保存人工核对记录并允许随后手动启动。原结果仍未知；不会确认成功/取消、终止进程或自动重跑。',
+    reviewConfirm: '保存核对并关闭阻塞',
+    originalUnknown: '原未知原因',
     mockRunning: '模拟运行中',
     mockUnknown: '模拟重启未知',
     mockTimeout: '模拟超时',
@@ -76,6 +90,20 @@ export const toolExecutionMessages = {
     TIMED_OUT: 'Timed out',
     CANCELLED: 'Cancellation confirmed',
     UNKNOWN: 'Unknown',
+    CLOSED_UNKNOWN: 'Manually closed (outcome unknown)',
+    reviewEvidence: 'Inspect process review clues',
+    reviewEvidenceHint:
+      'PID, start time and command are review clues. A missing parent or PID does not prove its descendants exited.',
+    reviewBoundary:
+      'Verify this execution and its related child processes have stopped in the operating system, then record your review (10–2000 characters). Closing only releases this operation; the unknown outcome and evidence remain.',
+    reviewNote: 'Review notes (do not enter credentials)',
+    reviewAttestation: 'I verified this execution and its related child processes have stopped.',
+    reviewOpen: 'Close block after review',
+    reviewTitle: 'Close this UNKNOWN execution block',
+    reviewImpact:
+      'Save the human review and allow a later manual start. The outcome stays unknown. No success/cancellation, process termination or automatic replay is implied.',
+    reviewConfirm: 'Save review and close block',
+    originalUnknown: 'Original unknown reason',
     mockRunning: 'Simulate running',
     mockUnknown: 'Simulate restart unknown',
     mockTimeout: 'Simulate timeout',

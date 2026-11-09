@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { computed, onActivated, onDeactivated, onBeforeUnmount, onMounted, ref } from 'vue'
 import axios from 'axios'
-import { runtimeApi, type GitExecutionOperation, type ToolExecution } from '@eap/runtime-client'
-import { Badge, Button, Collapse, Feedback } from '@eap/ui'
+import {
+  runtimeApi,
+  type GitExecutionOperation,
+  type ToolExecution,
+  type ToolUnknownReviewRequest,
+} from '@eap/runtime-client'
+import { Badge, Button, Checkbox, Collapse, ConfirmBox, Feedback, Textarea } from '@eap/ui'
 import { i18n } from '../../lib/i18n'
 import { trustedStdoutNeedsCollapse, trustedStdoutPreview } from './trustedToolInvokeView'
 
@@ -19,6 +24,15 @@ const refusal = ref<'denied' | 'rejected' | null>(null)
 const loaded = ref(false)
 const errorDetail = ref('')
 const observedAt = ref('')
+const reviewNote = ref('')
+const reviewChecked = ref(false)
+const reviewError = ref('')
+const reviewDialog = ref<{ id: string; request: ToolUnknownReviewRequest } | null>(null)
+const pendingReview = ref<{ id: string; request: ToolUnknownReviewRequest } | null>(null)
+const reviewValid = computed(
+  () =>
+    reviewChecked.value && reviewNote.value.trim().length >= 10 && reviewNote.value.length <= 2000,
+)
 let controller = new AbortController()
 let timer: ReturnType<typeof setTimeout> | undefined
 let disposed = false
@@ -34,13 +48,20 @@ const elapsed = computed(() =>
   selected.value
     ? Math.max(
         0,
-        Date.parse(selected.value.finishedAt ?? observedAt.value) -
-          Date.parse(selected.value.createdAt),
+        Date.parse(
+          selected.value.finishedAt ?? selected.value.resolution?.resolvedAt ?? observedAt.value,
+        ) - Date.parse(selected.value.createdAt),
       )
     : 0,
 )
 
 function accept(row: ToolExecution) {
+  if (row.status !== 'UNKNOWN' || selected.value?.id !== row.id) {
+    pendingReview.value = null
+    reviewNote.value = ''
+    reviewChecked.value = false
+  }
+  reviewError.value = ''
   selected.value = row
   records.value = [row, ...records.value.filter((item) => item.id !== row.id)].slice(0, 20)
   observedAt.value = new Date().toISOString()
@@ -152,9 +173,51 @@ async function cancel() {
     }
   }
 }
+function openReview() {
+  const row = selected.value
+  if (!row || row.status !== 'UNKNOWN' || busy.value || uncertain.value || !reviewValid.value)
+    return
+  reviewDialog.value = pendingReview.value ?? {
+    id: row.id,
+    request: {
+      requestId: crypto.randomUUID(),
+      note: reviewNote.value.trim(),
+      processTreeStopped: true,
+    },
+  }
+}
+async function resolveUnknown() {
+  const review = reviewDialog.value
+  if (!review || busy.value || uncertain.value || suspended || disposed) return
+  pendingReview.value = review
+  busy.value = true
+  const revision = ++generation
+  try {
+    const row = await runtimeApi.resolveUnknownGitExecution(
+      props.operation,
+      review.id,
+      review.request,
+      controller.signal,
+    )
+    if (!disposed && !suspended && revision === generation) accept(row)
+  } catch (error) {
+    if (revision !== generation || disposed || suspended) return
+    if (axios.isAxiosError(error) && [400, 403, 404, 409].includes(error.response?.status ?? 0)) {
+      reviewError.value =
+        (error.response?.data as { detail?: string })?.detail ?? 'UNKNOWN_REVIEW_REJECTED'
+      pendingReview.value = null
+    } else failed(error)
+  } finally {
+    if (revision === generation) {
+      busy.value = false
+      reviewDialog.value = null
+    }
+  }
+}
 onMounted(() => void recheck())
 onDeactivated(() => {
   suspended = true
+  reviewDialog.value = null
   ++generation
   busy.value = false
   clearTimeout(timer)
@@ -168,6 +231,7 @@ onActivated(() => {
 })
 onBeforeUnmount(() => {
   disposed = true
+  reviewDialog.value = null
   ++generation
   clearTimeout(timer)
   controller.abort()
@@ -255,6 +319,55 @@ onBeforeUnmount(() => {
       <Feedback v-if="selected.status === 'UNKNOWN'" tone="warning" :data-testid="testId('unknown')"
         >{{ t('unknown') }} · {{ selected.unconfirmedReason }}</Feedback
       >
+      <template v-if="selected.status === 'UNKNOWN'">
+        <Collapse>
+          <template #summary>{{ t('reviewEvidence') }}</template>
+          <p class="hint">{{ t('reviewEvidenceHint') }}</p>
+          <div v-for="step in selected.steps" :key="step.id">
+            <p>{{ step.phase }} · {{ step.status }}</p>
+            <pre class="trusted-git-result">{{ JSON.stringify(step.command) }}</pre>
+            <pre class="trusted-git-result">{{ JSON.stringify(step.evidence, null, 2) }}</pre>
+          </div>
+        </Collapse>
+        <p class="hint">{{ t('reviewBoundary') }}</p>
+        <label
+          >{{ t('reviewNote') }}
+          <Textarea
+            v-model="reviewNote"
+            :maxlength="2000"
+            :disabled="busy || uncertain || !!pendingReview"
+            :data-testid="testId('review-note')"
+          />
+        </label>
+        <label
+          ><Checkbox
+            v-model="reviewChecked"
+            :disabled="busy || uncertain || !!pendingReview"
+            :data-testid="testId('review-checked')"
+          />{{ t('reviewAttestation') }}</label
+        >
+        <Feedback v-if="reviewError" tone="error" :data-testid="testId('review-error')">{{
+          reviewError
+        }}</Feedback>
+        <Button
+          variant="secondary"
+          size="sm"
+          :disabled="busy || uncertain || !reviewValid"
+          :data-testid="testId('review-open')"
+          @click="openReview"
+          >{{ t('reviewOpen') }}</Button
+        >
+      </template>
+      <Feedback
+        v-if="selected.resolution"
+        tone="warning"
+        :data-testid="testId('review-resolution')"
+      >
+        {{ t('CLOSED_UNKNOWN') }} · {{ selected.resolution.operator }} ·
+        {{ selected.resolution.resolvedAt }}
+        <br />{{ selected.resolution.note }} <br />{{ t('originalUnknown') }} ·
+        {{ selected.unconfirmedReason }}
+      </Feedback>
       <p v-if="selected.exitEvidence" class="hint">
         {{ t('evidence') }} · {{ selected.exitEvidence }}
       </p>
@@ -279,10 +392,29 @@ onBeforeUnmount(() => {
         <Collapse>
           <template #summary>{{ row.createdAt }} · {{ row.id }} · {{ t(row.status) }}</template>
           <p>{{ row.exitEvidence || row.unconfirmedReason }}</p>
+          <p v-if="row.resolution">
+            {{ t('CLOSED_UNKNOWN') }} · {{ row.resolution.operator }} ·
+            {{ row.resolution.resolvedAt }} · {{ row.resolution.note }}
+          </p>
           <pre class="trusted-git-result">{{ row.stdout }}{{ row.stderr }}</pre>
         </Collapse>
       </li>
     </ul>
+    <ConfirmBox
+      v-if="reviewDialog"
+      :title="t('reviewTitle')"
+      :impact="[
+        reviewDialog.id,
+        selected?.workspacePath ?? '',
+        t('reviewImpact'),
+        reviewDialog.request.note,
+      ]"
+      :confirm-label="t('reviewConfirm')"
+      :busy="busy"
+      :refusal="uncertain ? t('network') : undefined"
+      @confirm="resolveUnknown"
+      @cancel="reviewDialog = null"
+    />
   </section>
 </template>
 

@@ -85,3 +85,51 @@ it('checks the selected operation switch while retaining history and the other o
     items: [],
   })
 })
+
+it('requires an explicit review, preserves UNKNOWN evidence and closes idempotently without replay', async () => {
+  const backend = createMockToolExecutionBackend(new Map())
+  const start = await backend.handle('POST', base + '?mockOutcome=unknown', {
+    requestId: crypto.randomUUID(),
+  })
+  const original = start!.data as { id: string; requestId: string }
+  const url = base + '/' + original.id + '/resolve-unknown'
+  const review = {
+    requestId: crypto.randomUUID(),
+    note: 'Verified process tree stopped; token=test-secret',
+    processTreeStopped: true,
+  }
+  for (const bad of [
+    {},
+    { ...review, note: 'short' },
+    { ...review, processTreeStopped: false },
+    { ...review, operator: 'admin' },
+  ]) {
+    expect((await backend.handle('POST', url, bad))?.status).toBe(400)
+  }
+  const closed = await backend.handle('POST', url, review)
+  expect(closed?.data).toMatchObject({
+    status: 'CLOSED_UNKNOWN',
+    exitCode: null,
+    exitEvidence: null,
+    finishedAt: null,
+    unconfirmedReason: 'mock: SERVICE_RESTART_EXIT_UNCONFIRMED',
+    resolution: { operator: 'local-operator', note: expect.not.stringContaining('test-secret') },
+  })
+  expect((await backend.handle('POST', url, review))?.data).toEqual(closed?.data)
+  expect(
+    (await backend.handle('POST', url, { ...review, note: review.note + ' changed' }))?.status,
+  ).toBe(409)
+  expect(
+    (await backend.handle('POST', url.replace('git-status', 'git-diff'), review))?.status,
+  ).toBe(404)
+  expect((await backend.handle('POST', base, { requestId: original.requestId }))?.data).toEqual(
+    closed?.data,
+  )
+  expect((await backend.handle('GET', base + '/' + original.id))?.data).toEqual(closed?.data)
+  const next = await backend.handle('POST', base, { requestId: crypto.randomUUID() })
+  expect(next?.status).toBe(202)
+  const id = (next!.data as { id: string }).id
+  expect((await backend.handle('POST', base + '/' + id + '/resolve-unknown', review))?.status).toBe(
+    409,
+  )
+})

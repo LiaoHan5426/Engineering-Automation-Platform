@@ -130,7 +130,19 @@ export type ToolExecutionStatus =
   | 'TIMED_OUT'
   | 'CANCELLED'
   | 'UNKNOWN'
+  | 'CLOSED_UNKNOWN'
+export type ToolUnknownReviewRequest = {
+  requestId: string
+  note: string
+  processTreeStopped: true
+}
+export type ToolUnknownResolution = ToolUnknownReviewRequest & {
+  requestDigest: string
+  operator: 'local-operator'
+  resolvedAt: string
+}
 export type ToolExecution = {
+  resolution?: ToolUnknownResolution | null
   id: string
   requestId: string
   programId: string
@@ -1431,6 +1443,19 @@ export const runtimeApi = {
   gitOperationExecutions: gitOperationApi.list,
   gitOperationExecution: gitOperationApi.get,
   cancelGitOperationExecution: gitOperationApi.cancel,
+  resolveUnknownGitExecution: (
+    operation: GitExecutionOperation,
+    id: string,
+    request: ToolUnknownReviewRequest,
+    signal?: AbortSignal,
+  ) =>
+    client
+      .post<ToolExecution>(
+        gitExecutionPath(operation) + '/' + encodeURIComponent(id) + '/resolve-unknown',
+        request,
+        { signal },
+      )
+      .then((r) => r.data),
   startTrustedGitExecution: (
     requestId: string,
     options?: { signal?: AbortSignal; mockOutcome?: string },

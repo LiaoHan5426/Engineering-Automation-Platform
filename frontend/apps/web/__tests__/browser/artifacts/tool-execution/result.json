@@ -10,7 +10,9 @@
     "1440/900/390px viewport bounds",
     "restart UNKNOWN blocks another invocation",
     "status UNKNOWN does not block diff or share cancellation state",
-    "diff reload recovery and three viewport bounds"
+    "diff reload recovery and three viewport bounds",
+    "status explicit review, cancel confirmation, manual closure, reload and three viewport bounds",
+    "diff explicit review, cancel confirmation, manual closure, reload and three viewport bounds"
   ],
   "errors": []
 }

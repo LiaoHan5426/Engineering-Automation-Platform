@@ -48,6 +48,18 @@ describe('bounded Git execution client', () => {
       expect(JSON.parse(requests[0]!.data as string)).toEqual({ requestId: 'request' })
     },
   )
+  it('binds unknown review to one operation and execution without extra fields', async () => {
+    const review = {
+      requestId: 'review',
+      note: 'Verified all related processes stopped',
+      processTreeStopped: true as const,
+    }
+    await runtimeApi.resolveUnknownGitExecution('git-diff', 'id/with slash', review)
+    expect(requests[0]?.url).toBe(
+      '/cli-programs/git/operations/git-diff/executions/id%2Fwith%20slash/resolve-unknown',
+    )
+    expect(JSON.parse(requests[0]!.data as string)).toEqual(review)
+  })
   it('preserves status wrappers and rejects unknown runtime operation values before HTTP', async () => {
     await runtimeApi.startTrustedGitExecution('request')
     await runtimeApi.trustedGitExecutions()

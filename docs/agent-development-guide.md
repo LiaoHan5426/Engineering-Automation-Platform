@@ -35,9 +35,9 @@ Current 32-project reactor evidence and remaining optional-composition gates are
 
 ## Current implementation and validation baseline
 
-The latest committed implementation is `e2c53c7` (Git program/status durable execution, pushed with user authorization).
-The Git diff continuation is delivered with this user-authorized commit/push; application V28 migration
-and its source checksum have been independently read back. Current checks remain recorded separately below.
+The latest committed implementation is `8abbd21` (durable Git diff and operation isolation, pushed with user authorization).
+This user-authorized commit/push delivers the continuation that verifies real diff HTTP/JDBC and adds explicit manual closure of tool UNKNOWN blocks.
+Human review is recorded separately from executor exit/cleanup proof; it never turns UNKNOWN into success or cancellation.
 Use [the validation ledger](planning-status.md#validation-baseline) for the latest recorded checks and their limits.
 The [backend record](records/backend-composition-history.md) preserves migration, real-provider and gated database evidence;
 the [frontend record](records/frontend-history.md#expert-workspace-evolution) preserves editor/browser checks.

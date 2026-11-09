@@ -1,6 +1,6 @@
 # Agent 能力、本地运行环境与插件演进
 
-状态：有效合同与增量实现记录；当前已提交实现基线 `e2c53c7`，diff接续按用户授权随本次提交交付，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。后续各切片已有独立授权和实测，本文历史章节的“不推送/不调用真实模型”等仅描述当时范围，不是当前全局限制。向量增强、框架迁移、第三方安装等仍须满足各自证据与授权门禁。
+状态：有效合同与增量实现记录；当前已提交实现基线 `8abbd21`，真实diff HTTP及工具UNKNOWN人工处置接续按用户授权随本次提交交付，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。后续各切片已有独立授权和实测，本文历史章节的“不推送/不调用真实模型”等仅描述当时范围，不是当前全局限制。向量增强、框架迁移、第三方安装等仍须满足各自证据与授权门禁。
 
 ## 1. 结论与适用范围
 
@@ -275,7 +275,7 @@ TC-02 定向独立复核通过，原P1关闭：审查者复跑2文件10项、typ
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + 派生清空 + **备注 Badge**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
 | FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + inventory + candidateCounts + **byKind**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | **部分交付**：既有程序/操作模型投影目录；Git路径、版本与探测缓存共享；旧能力ID/探测入口兼容，历史路径冲突拒绝执行 | 其他依赖绑定与用户接受；见[Git调用合同](#git-operation-executions) |
-| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝 | UNKNOWN人工处置、跨重启进程接管与用户接受独立；见[Git调用合同](#git-operation-executions) |
+| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝；真实diff HTTP/JDBC已验，工具UNKNOWN显式核对关闭阻塞已实现 | 真实孤儿进程核对、跨重启进程接管与用户接受独立；见[Git调用合同](#git-operation-executions) |
 | TC-02 / P1 | **部分交付**：实际 Grapes 实例人工读取草稿/选中状态，实例/文档/revision 核验、有界快照、过期与离页清空 | 多实例/冲突/超限离线覆盖，真机已验读取/过期/切页/新建；用户接受、远程断线与模型反向调用仍独立，不建设反向 RPC |
 | MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（含 filesystem 五工具）+ **callVerified/listOnly 视图** + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；mock/真机已验 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/回滚、依赖缺失/激活失败；新增显式只读Task列表检查，来源/时间/未检查与未知失败分开（真机及mock已验）；不改Task/Run | Run/整体服务健康未验，用户接受与在途停用完整矩阵仍待；无第二状态源，外部安装器延期 |
@@ -473,7 +473,7 @@ core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManife
 
 实现、失败修复、命令与验证边界见[阶段记录](../records/backend-composition-history.md#tool-operation-executions)。此合同不关闭通用TC-01、用户接受或其他CLI业务验收。
 
-### diff接续合同（2026-11-09）
+### diff接续合同（历史阶段，8abbd21，2026-11-09）
 
 - 复用同一ToolExecutionService、存储和面板，仅允许git-status/git-diff。HTTP路径为 `/api/cli-programs/git/operations/{operation}/executions`，旧status URL、同步invoke及客户端包装保留；未知操作404，POST仍只接受规范UUID requestId，Host/Origin/JSON门禁覆盖两种操作。
 - 工作区由服务端规范化，列表、详情、取消和在途/UNKNOWN互锁按工作区＋操作隔离。跨操作详情/取消404；同操作requestId读回原记录，工作区内跨操作复用requestId返回409 REQUEST_ID_OPERATION_CONFLICT且不带另一操作记录，插入竞争后同样校验。
@@ -484,3 +484,16 @@ core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManife
 - mock目录将diff演示快照改为已启用，启动读取对应操作开关；输出明示模拟。组件回归分别覆盖两种操作及双实例隔离，真实Git与mock浏览器证据分列。
 
 本轮范围由已批准计划确定；用户已授权提交并推送，随本次提交交付，最终提交号和远端对齐由Git回读确认。命令、失败修复与验证边界见[diff接续记录](../records/backend-composition-history.md#git-diff-operation-executions)；UNKNOWN人工处置、跨重启进程接管及用户接受继续保留。
+
+### 工具UNKNOWN人工核对关闭（2026-11-09）
+
+范围仅内置git-status/git-diff的独立ToolExecution，不推广到SQL Agent、候选写入、Mission或任意CLI。真实diff HTTP标记差异、规范工作区/三步退出清理、幂等/迟到取消/越操作拒绝及独立JDBC读回已验；见[本轮记录](../records/backend-composition-history.md#tool-unknown-manual-review)。
+
+- POST `/api/cli-programs/git/operations/{operation}/executions/{id}/resolve-unknown`只接受规范UUID requestId、10～2000字符note、processTreeStopped=true。本地操作员身份由服务端固定；未知操作/越工作区或操作404，非法输入400，在途owner、非UNKNOWN或冲突核对409；沿用Host/Origin/JSON门禁。停用操作仍可核对旧记录，不能由此自动启动或扩权。
+- 服务不把PID消失、无PID、父进程退出或超时当作进程树结束证据。操作员须先在OS核对本次执行及其相关子进程均已结束，并说明核对依据。页面展开已有脱敏进程身份/命令/证据作为线索，要求独立勾选和ConfirmBox二次确认；代理/测试夹具的核对不算用户产品接受。
+- 在既有短行锁中重验UNKNOWN且本服务active map不持有该执行；保存独立resolution（核对requestId、脱敏有界说明、规范原说明SHA-256幂等摘要、local-operator、时间、人工确认）。相同requestId/规范说明幂等返回；不同请求或说明409，第一次核对不可覆盖。仅支持一个执行宿主，与既有启动UNKNOWN处理一致，不新增多宿主进程所有权协议。
+- 状态为CLOSED_UNKNOWN，展示“人工关闭（结果仍未知）”。原stdout/stderr、步骤、未知原因、exitCode/exitEvidence、cancelRequested及finishedAt保留，不伪造成功/取消、退出时间或OS清理证据。重启/旧启动requestId/迟到取消保持该记录；原partial index自然释放对应操作阻塞，只允许后来显式新requestId启动，不重跑旧执行、不杀进程。
+- V29增量扩展状态CHECK并约束CLOSED_UNKNOWN必须附完整人工核对记录；历史无resolution JSON兼容，V26～V28不改。核对存储失败事务回滚，UNKNOWN互锁不释放。自有schema回归覆盖升级、缺审计拒绝/回滚、读回、并发核对、重启与再次手动启动。full-application恢复后V29已成功迁移，checksum=-508415836只读回读与源码一致；真实HTTP已验已成功记录/越操作/恶意Origin拒绝，未制造真实孤儿进程。
+- 前端和mock复用原面板/DTO链路；响应丢失时暂停、锁定原核对内容，经重新查询后才允许显式重提同一请求。离页只停止观测，返回读回审计；无自动重提、自动恢复执行或隐式解锁。UI基础组件复用@eap/ui，业务留L4 capability，文案走i18n，无新增共享类别。
+
+真实孤儿进程核对演练、跨重启进程接管、用户接受及其他领域UNKNOWN继续独立；本轮已获用户提交并推送授权，随本次提交交付；结果以Git回读为准。

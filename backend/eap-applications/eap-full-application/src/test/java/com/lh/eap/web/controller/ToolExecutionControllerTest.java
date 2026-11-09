@@ -41,16 +41,35 @@ class ToolExecutionControllerTest {
             verify(service).get(operation, id); verify(service).cancel(operation, id);
         }
     }
+    @Test void unknownReviewOnlyAcceptsExplicitBoundedReviewInput() throws Exception {
+        var service = mock(ToolExecutionService.class);
+        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service)).build();
+        var id = UUID.randomUUID(); var request = UUID.randomUUID();
+        for (var operation : List.of("git-status", "git-diff")) {
+            var url = BASE.replace("git-status", operation) + "/" + id + "/resolve-unknown";
+            for (var body : List.of("{}", "{\"requestId\":\"" + request + "\",\"note\":\"Reviewed process tree\",\"processTreeStopped\":false}",
+                    "{\"requestId\":\"" + request + "\",\"note\":\"Reviewed process tree\",\"processTreeStopped\":true,\"operator\":\"admin\"}",
+                    "{\"requestId\":\"invalid\",\"note\":\"Reviewed process tree\",\"processTreeStopped\":true}"))
+                mvc.perform(post(url).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());
+            mvc.perform(post(url).contentType(MediaType.APPLICATION_JSON).content("{\"requestId\":\"" + request
+                    + "\",\"note\":\"Reviewed process tree\",\"processTreeStopped\":true}")).andExpect(status().isOk());
+            verify(service).resolveUnknown(operation, id, request, "Reviewed process tree", true);
+        }
+        verifyNoMoreInteractions(service);
+    }
     @Test void newRoutesRetainHostOriginAndContentTypeProtection() throws Exception {
         var service = mock(ToolExecutionService.class);
         var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service)).addFilters(new AiBrowserRequestGuard()).build();
-        for (var base : List.of(BASE, BASE.replace("git-status", "git-diff"))) {
+        for (var operation : List.of("git-status", "git-diff")) {
+        for (var suffix : List.of("", "/" + UUID.randomUUID() + "/resolve-unknown")) {
+        var base = BASE.replace("git-status", operation) + suffix;
         mvc.perform(post(base).header("Host", "evil.example").contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isForbidden());
         mvc.perform(post(base).header("Host", "localhost").header("Origin", "http://evil.example")
                 .contentType(MediaType.APPLICATION_JSON).content("{}")) .andExpect(status().isForbidden());
         mvc.perform(post(base).header("Host", "localhost").contentType(MediaType.TEXT_PLAIN).content("{}"))
                 .andExpect(status().isUnsupportedMediaType());
+        }
         }
         verifyNoInteractions(service);
     }

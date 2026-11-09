@@ -416,3 +416,45 @@ rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright
 提交准备接续：用户报告已启动full-application并完成V28。使用现有本机数据源只读事务回读Flyway历史，V28于2026-11-09 14:30:06安装，success=true、checksum=-329790285；按Flyway逐行UTF-8 CRC32计算与源码一致。V26=-716806117、V27=1802106427同样一致，tool_execution_capability_id_check已允许git-status/git-diff。查询结束回滚只读事务，未写应用表或repair/clean/baseline；GET http://127.0.0.1:8080/api/health为200/ok。证据在backend/target/git-diff-commit-db-check.json，凭据不进入文件或输出。
 
 本次提交阶段只同步迁移/授权记录并复核完整差异、UTF-8/链接/空白和敏感模式；沿用紧邻实施阶段已经完成的812项前端全量、939项后端离线及最终60项定向结果，没有为提交再次构建/重启应用或重跑模型、浏览器与实库业务。提交前fetch确认远端状态，提交后push并回读远端SHA；具体提交号以Git记录为准。
+
+<a id="tool-unknown-manual-review"></a>
+## 真实diff HTTP与工具UNKNOWN人工处置（2026-11-09）
+
+基线8abbd21，开始时main工作树干净且与本地origin/main一致。用户授权先验真实diff HTTP，再推进UNKNOWN前后端；后续明确授权提交并推送，随本次提交交付。
+
+### 真实diff HTTP与独立持久读回
+
+在用户运行的full-application :8080读取目录，status/diff均enabled/ready；diff无阻塞。临时向本记录文件尾部加入唯一标记EAP_REAL_DIFF_HTTP_70330824da92437fb59af995f0637270，POST /api/cli-programs/git/operations/git-diff/executions（requestId=5d9cb471-b825-479f-850d-4ae5059b7d65）返回202，执行4e6f4bc7-ab7d-462c-b4fa-df3586c93122经GET返回SUCCEEDED/exit0，stdout含该标记，工作区为当前仓库，root/filters/diff均有processExited/processTreeCleanup和终态。相同requestId返回同一快照，迟到cancel仍SUCCEEDED；status路径读取/取消该ID均404，status复用该requestId409；列表包含记录，附带argv400、非信任Origin403。
+
+finally核对临时文件未被并发修改后恢复原始字节，Git index字节未变。独立JDBC只读事务回读snapshot与HTTP JSON完全一致；Java默认stdout编码首次导致Python解码失败，显式-Dstdout.encoding=UTF-8/-Dstderr.encoding=UTF-8后核验成功。持久执行记录保留，完整证据backend/target/git-diff-real-http-acceptance.json。该验收不证明耗时Git取消、父子进程跨重启接管或用户产品接受。
+
+### UNKNOWN实现与验证
+
+ToolExecution追加可空resolution兼容历史JSON，CLOSED_UNKNOWN仅表示人工关闭阻塞。服务沿用工作区/操作隔离、短行锁和active owner检查，规范UUID/核对说明/进程树人工确认、服务端local-operator/时间及幂等摘要；响应丢失可重提同一请求，竞争或改说明409。原输出/步骤/未知原因/退出字段/取消意图不变。V29保留既有迁移、增状态/审计CHECK；不新增执行器、状态源、PID接管或重放。面板复用Textarea/Checkbox/ConfirmBox/Collapse/Feedback，人工证据线索/说明/勾选→确认→审计回显；离页/刷新读回及网络未知锁定已覆盖。UI落点：已搜索公共原语→L4 capability→复用@eap/ui；无新共享包、类别或暂存登记。
+
+首轮后端定向失败为JSON测试直接比较Map中的Long/Integer导致的不等；改为验证resolution/时间/状态及Number.longValue，保留原进程证据断言。随后31模块定向65项通过，含自有PostgreSQL schema迁移/行锁竞争/缺审计约束拒绝后事务回滚/历史读回、真实Git与真实进程回归；之后V29加强processTreeStopped为JSON boolean的约束，最终31模块定向复验65项通过、0跳过；日志backend/target/git-unknown-final-targeted.log。
+
+前端定向3文件38项通过，完整137文件824项通过。真实Chromium+mock服务12组通过、0pageerror，1440/900/390px无横溢；已查看390px确认框及diff关闭记录截图。核对内容明确mock未启动进程，不能将模拟UNKNOWN当真实孤儿进程验证。类型、架构（含boundaries/circular）、build及改动范围lint/stylelint通过，保留既有大chunk/网络防护/Node localStorage提示。
+
+为避免DevTools构建期间应用新迁移，先读取当前两个操作的历史确认无在途，再按jps校验精确EapApplication PID9024并停止；原启动参数仅保存于backend/target本地清单，构建后恢复。完整离线reactor32模块BUILD SUCCESS、退出0；按本轮时间窗汇总160份XML，946项：841通过、105门控跳过、0失败/错误。仅该子进程关闭EAP_RUN_*门控，与定向实库分列；日志backend/target/git-unknown-offline-reactor.log，逐报告统计git-unknown-offline-summary.json。
+
+15:08按原Java参数恢复full-application（PID7632），启动日志确认29份迁移校验与V29成功应用；health为200/ok。只读事务回读V29于2026-11-09 15:08:09安装、success=true、checksum=-508415836，与逐行UTF-8 CRC32一致，V26=-716806117/V27=1802106427/V28=-329790285也保持一致；status/人工核对CHECK存在。旧真实diff执行4e6f4bc7-ab7d-462c-b4fa-df3586c93122保持SUCCEEDED，resolution为空；对它POST resolve-unknown返回409、status路径404、非信任Origin403，随后读回未被修改。证据backend/target/git-unknown-live-check.json，启动日志git-unknown-app-restart.log。没有制造真实孤儿进程，也未对用户未知执行做人工确认；成功人工关闭的实库/组件/mock浏览器证据不能替代真实孤儿进程人工核对或用户接受。
+
+最终typecheck、build、check:architecture、改动范围lint/stylelint与7文件vp fmt --check通过；UTF-8无BOM、Markdown本地链接、git diff --check和有限敏感模式扫描通过。浏览器临时mock服务已停止，恢复的full-application保持运行。本轮代码、迁移、测试、截图及规划文档按用户后续授权随本次提交交付。
+
+复现命令（仓库根；浏览器命令在frontend目录）：
+```text
+rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=ToolExecutionServiceTest,ToolExecutionJsonTest,ToolExecutionControllerTest,ToolExecutionPersistenceTest,TrustedToolCatalogServiceTest,GitCapabilityTest,DefaultProcessExecutorTest,SchemaAndWiringTest' '-Dsurefire.failIfNoSpecifiedTests=false' test
+rtk proxy mvn -B -ntp -f backend/pom.xml test
+rtk proxy pnpm --dir frontend test run
+rtk proxy pnpm --dir frontend typecheck
+rtk proxy pnpm --dir frontend check:architecture
+rtk proxy pnpm --dir frontend build
+rtk proxy pnpm --dir frontend dev:mock --port 5186 --strictPort
+rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright H:/developerTools/ai/hermes/hermes-agent/node_modules/playwright-core --chromium C:/Users/LH/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe --url http://127.0.0.1:5186
+```
+
+UNKNOWN人工处置仅覆盖两个内置只读操作；SQL/源码写入UNKNOWN、真实孤儿进程人工核对、跨重启接管与用户接受仍待。不调用真实模型/MCP，不进行repair/clean/baseline，不终止未知PID。
+
+
+提交准备：完整核查本轮42文件差异、UTF-8/本地链接/空白及敏感模式，V26～V28原稿不变。沿用紧邻实施阶段前端824项、后端946项离线（841通过/105跳过）及最终65项定向证据，提交阶段只更新授权/交付说明，不重跑应用或模型。fetch确认分支状态，提交推送后回读本地/远端SHA；具体提交号见Git记录。

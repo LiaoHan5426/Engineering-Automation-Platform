@@ -31,6 +31,21 @@ public class ToolExecutionController {
     }
     @GetMapping("/{id}") public ToolExecution get(@PathVariable String operation, @PathVariable UUID id) { return service.get(operation, id); }
     @PostMapping("/{id}/cancel") public ToolExecution cancel(@PathVariable String operation, @PathVariable UUID id) { return service.cancel(operation, id); }
+    @PostMapping("/{id}/resolve-unknown")
+    public ToolExecution resolveUnknown(@PathVariable String operation, @PathVariable UUID id,
+                                       @RequestBody Map<String, Object> body) {
+        if (body.size() != 3 || !(body.get("requestId") instanceof String request)
+                || !(body.get("note") instanceof String note) || !Boolean.TRUE.equals(body.get("processTreeStopped")))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "UNKNOWN_REVIEW_REQUIRED");
+        final UUID requestId;
+        try {
+            requestId = UUID.fromString(request);
+            if (!requestId.toString().equalsIgnoreCase(request)) throw new IllegalArgumentException("Noncanonical UUID");
+        } catch (IllegalArgumentException invalid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_ID");
+        }
+        return service.resolveUnknown(operation, id, requestId, note, true);
+    }
     @ExceptionHandler(ToolExecutionService.Blocked.class)
     public ResponseEntity<Map<String, Object>> blocked(ToolExecutionService.Blocked blocked) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

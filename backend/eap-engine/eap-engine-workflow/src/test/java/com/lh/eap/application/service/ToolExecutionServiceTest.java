@@ -192,6 +192,79 @@ class ToolExecutionServiceTest {
         assertTrue(store.rows.isEmpty()); assertEquals(0, executor.calls.get());
     }
 
+    private ToolExecution unknownRow(String operation) throws Exception {
+        var row = new ToolExecution(UUID.randomUUID(), UUID.randomUUID(), "git", operation, workspace.toRealPath().toString(),
+                "git", "UNKNOWN", true, Instant.now(), null, null, "partial evidence", "", true, null,
+                "SERVICE_RESTART_EXIT_UNCONFIRMED", List.of(new ToolExecution.Step(UUID.randomUUID(), "root", "RUNNING",
+                List.of("git", "rev-parse"), Map.of("processPid", 42L))));
+        store.insert(row); return row;
+    }
+    @ParameterizedTest @org.junit.jupiter.params.provider.ValueSource(strings = {"git-status", "git-diff"})
+    void manualClosurePreservesUnknownEvidenceAndOnlyReleasesTheReviewedOperation(String operation) throws Exception {
+        var executor = new Probe(); service(executor);
+        var original = unknownRow(operation); var request = UUID.randomUUID();
+        var note = "Verified execution and all related child processes stopped; password=test-secret";
+        var closed = service.resolveUnknown(operation, original.id(), request, note, true);
+        assertEquals("CLOSED_UNKNOWN", closed.status()); assertFalse(closed.blocking());
+        assertEquals(original.stdout(), closed.stdout()); assertEquals(original.steps(), closed.steps());
+        assertEquals(original.unconfirmedReason(), closed.unconfirmedReason());
+        assertEquals(original.exitCode(), closed.exitCode()); assertEquals(original.exitEvidence(), closed.exitEvidence());
+        assertEquals(original.finishedAt(), closed.finishedAt()); assertEquals(original.cancelRequested(), closed.cancelRequested());
+        assertEquals("local-operator", closed.resolution().operator()); assertNotNull(closed.resolution().resolvedAt());
+        assertFalse(closed.resolution().note().contains("test-secret"));
+        assertEquals(closed, service.resolveUnknown(operation, original.id(), request, note, true));
+        assertEquals(closed, service.start(operation, original.requestId()));
+        assertEquals(closed, service.cancel(operation, closed.id()));
+        assertEquals(0, executor.calls.get(), "Review cannot execute or replay a process");
+        assertEquals(409, assertThrows(ResponseStatusException.class,
+                () -> service.resolveUnknown(operation, original.id(), request, note + " changed", true)).getStatusCode().value());
+        assertEquals(409, assertThrows(ResponseStatusException.class,
+                () -> service.resolveUnknown(operation, original.id(), UUID.randomUUID(), note, true)).getStatusCode().value());
+        assertEquals("SUCCEEDED", finished(operation, service.start(operation, UUID.randomUUID()).id()).status());
+    }
+    @Test void reviewIsScopedValidatedAndCannotCloseAnOwnedOrKnownExecution() throws Exception {
+        var executor = new Probe(); executor.blockAt = 0; service(executor);
+        var row = service.start(UUID.randomUUID()); assertTrue(executor.started.await(3, TimeUnit.SECONDS));
+        // Even an UNKNOWN written while its worker still unwinds must remain blocked.
+        store.update(row.id(), value -> value.state("UNKNOWN", false, null, null, "", "", false, null, "test", value.steps()));
+        assertEquals("EXECUTION_OWNER_STILL_ACTIVE", assertThrows(ResponseStatusException.class,
+                () -> service.resolveUnknown("git-status", row.id(), UUID.randomUUID(), "Reviewed all processes", true)).getReason());
+        executor.release.countDown();
+        service.close(); service = null; // Wait for worker release before further assertions.
+        service(new Probe());
+        assertEquals(404, assertThrows(ResponseStatusException.class,
+                () -> service.resolveUnknown("git-diff", row.id(), UUID.randomUUID(), "Reviewed all processes", true)).getStatusCode().value());
+        for (var note : List.of("", "short", "x".repeat(2001))) {
+            assertEquals(400, assertThrows(ResponseStatusException.class,
+                    () -> service.resolveUnknown("git-status", row.id(), UUID.randomUUID(), note, true)).getStatusCode().value());
+        }
+        assertEquals(400, assertThrows(ResponseStatusException.class,
+                () -> service.resolveUnknown("git-status", row.id(), UUID.randomUUID(), "Reviewed all processes", false)).getStatusCode().value());
+        var terminal = finished("git-diff", service.start("git-diff", UUID.randomUUID()).id());
+        assertEquals("EXECUTION_NOT_UNKNOWN", assertThrows(ResponseStatusException.class,
+                () -> service.resolveUnknown("git-diff", terminal.id(), UUID.randomUUID(), "Reviewed all processes", true)).getReason());
+        var other = new ToolExecution(UUID.randomUUID(), UUID.randomUUID(), "git", "git-status", "/other", "git", "UNKNOWN",
+                false, Instant.now(), null, null, "", "", false, null, "test", List.of());
+        store.insert(other);
+        assertEquals(404, assertThrows(ResponseStatusException.class,
+                () -> service.resolveUnknown("git-status", other.id(), UUID.randomUUID(), "Reviewed all processes", true)).getStatusCode().value());
+    }
+    @Test void concurrentManualReviewsHaveOneImmutableWinner() throws Exception {
+        service(new Probe()); var row = unknownRow("git-diff");
+        try (var pool = Executors.newVirtualThreadPerTaskExecutor()) {
+            var gate = new CountDownLatch(1);
+            var tasks = new ArrayList<Future<String>>();
+            for (int i = 0; i < 2; i++) tasks.add(pool.submit(() -> {
+                gate.await();
+                try { return service.resolveUnknown("git-diff", row.id(), UUID.randomUUID(), "Verified all related processes stopped", true).status(); }
+                catch (ResponseStatusException conflict) { return conflict.getReason(); }
+            }));
+            gate.countDown();
+            assertEquals(Set.of("CLOSED_UNKNOWN", "UNKNOWN_REVIEW_CONFLICT"),
+                    Set.of(tasks.get(0).get(3, TimeUnit.SECONDS), tasks.get(1).get(3, TimeUnit.SECONDS)));
+        }
+    }
+
     static class Probe implements ProcessExecutor {
         final AtomicInteger calls = new AtomicInteger();
         final CountDownLatch started = new CountDownLatch(1), release = new CountDownLatch(1);

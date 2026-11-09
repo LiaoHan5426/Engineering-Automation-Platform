@@ -50,6 +50,20 @@ beforeEach(() => {
   vi.spyOn(runtimeApi, 'startGitOperationExecution').mockResolvedValue(row())
   vi.spyOn(runtimeApi, 'gitOperationExecution').mockResolvedValue(row('SUCCEEDED'))
   vi.spyOn(runtimeApi, 'cancelGitOperationExecution').mockResolvedValue(row('CANCELLING'))
+  vi.spyOn(runtimeApi, 'resolveUnknownGitExecution').mockImplementation(
+    async (op, id, request) => ({
+      ...row('CLOSED_UNKNOWN'),
+      id,
+      capabilityId: op,
+      unconfirmedReason: 'SERVICE_RESTART_EXIT_UNCONFIRMED',
+      resolution: {
+        ...request,
+        requestDigest: 'a'.repeat(64),
+        operator: 'local-operator',
+        resolvedAt: new Date().toISOString(),
+      },
+    }),
+  )
 })
 afterEach(() => {
   app?.unmount()
@@ -66,6 +80,145 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
     vi.mocked(runtimeApi.startGitOperationExecution).mockResolvedValue(row())
     vi.mocked(runtimeApi.gitOperationExecution).mockResolvedValue(row('SUCCEEDED'))
     vi.mocked(runtimeApi.cancelGitOperationExecution).mockResolvedValue(row('CANCELLING'))
+  })
+  async function prepareReview() {
+    const textarea = root.querySelector<HTMLTextAreaElement>(
+      '[data-testid="trusted-' + operation + '-review-note"]',
+    )!
+    textarea.value = 'Verified execution and all related child processes stopped'
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    root
+      .querySelector<HTMLInputElement>('[data-testid="trusted-' + operation + '-review-checked"]')!
+      .click()
+    await settle()
+  }
+  function confirmReview() {
+    const confirm = document.querySelector<HTMLButtonElement>('.eap-confirm__actions button')!
+    expect(confirm).not.toBeNull()
+    confirm.click()
+  }
+  it('requires notes, process-tree attestation and explicit confirmation; closure keeps outcome unknown', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({
+      items: [{ ...row('UNKNOWN'), unconfirmedReason: 'SERVICE_RESTART_EXIT_UNCONFIRMED' }],
+    })
+    await mount()
+    expect(button('review-open').disabled).toBe(true)
+    await prepareReview()
+    expect(button('review-open').disabled).toBe(false)
+    button('review-open').click()
+    await settle()
+    expect(runtimeApi.resolveUnknownGitExecution).not.toHaveBeenCalled()
+    expect(document.querySelector('.eap-confirm')?.textContent).toContain('原结果仍未知')
+    confirmReview()
+    await settle()
+    expect(runtimeApi.resolveUnknownGitExecution).toHaveBeenCalledWith(
+      operation,
+      'a',
+      {
+        requestId: expect.any(String),
+        note: 'Verified execution and all related child processes stopped',
+        processTreeStopped: true,
+      },
+      expect.any(AbortSignal),
+    )
+    expect(button('invoke').disabled).toBe(false)
+    expect(root.textContent).toContain('人工关闭（结果仍未知）')
+    expect(root.textContent).toContain('SERVICE_RESTART_EXIT_UNCONFIRMED')
+    expect(root.querySelector('[data-testid="trusted-' + operation + '-cancelled"]')).toBeNull()
+    expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+  })
+  it('keeps the identical review request after response loss and never automatically resubmits', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
+    vi.mocked(runtimeApi.resolveUnknownGitExecution).mockRejectedValueOnce(
+      new Error('response lost'),
+    )
+    await mount()
+    await prepareReview()
+    button('review-open').click()
+    await settle()
+    confirmReview()
+    await settle()
+    const first = vi.mocked(runtimeApi.resolveUnknownGitExecution).mock.calls[0]!
+    expect(button('invoke').disabled).toBe(true)
+    expect(button('review-open').disabled).toBe(true)
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(runtimeApi.resolveUnknownGitExecution).toHaveBeenCalledTimes(1)
+    button('recheck').click()
+    await settle()
+    button('review-open').click()
+    await settle()
+    confirmReview()
+    await settle()
+    expect(vi.mocked(runtimeApi.resolveUnknownGitExecution).mock.calls[1]![2]).toEqual(first[2])
+    expect(root.textContent).toContain('人工关闭（结果仍未知）')
+  })
+  it('shows a review conflict without enabling start or losing the original UNKNOWN', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
+    vi.mocked(runtimeApi.resolveUnknownGitExecution).mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 409, data: { detail: 'EXECUTION_OWNER_STILL_ACTIVE' } },
+    })
+    await mount()
+    await prepareReview()
+    button('review-open').click()
+    await settle()
+    confirmReview()
+    await settle()
+    expect(root.textContent).toContain('EXECUTION_OWNER_STILL_ACTIVE')
+    expect(button('invoke').disabled).toBe(true)
+    expect(root.querySelector('[data-testid="trusted-' + operation + '-unknown"]')).not.toBeNull()
+  })
+  it('cancelling the confirmation leaves the review editable and sends no request', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
+    await mount()
+    await prepareReview()
+    button('review-open').click()
+    await settle()
+    document.querySelector<HTMLButtonElement>('[data-confirm-cancel]')!.click()
+    await settle()
+    expect(runtimeApi.resolveUnknownGitExecution).not.toHaveBeenCalled()
+    expect(
+      root.querySelector<HTMLTextAreaElement>(
+        '[data-testid="trusted-' + operation + '-review-note"]',
+      )!.disabled,
+    ).toBe(false)
+  })
+  it('a late closure response after unmount is recovered by list readback', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
+    let complete!: (value: ToolExecution) => void
+    vi.mocked(runtimeApi.resolveUnknownGitExecution).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve
+        }),
+    )
+    await mount()
+    await prepareReview()
+    button('review-open').click()
+    await settle()
+    confirmReview()
+    await settle()
+    app?.unmount()
+    app = undefined
+    root.remove()
+    const reviewed = {
+      ...row('CLOSED_UNKNOWN'),
+      resolution: {
+        requestId: 'review',
+        note: 'Verified all related processes stopped',
+        processTreeStopped: true as const,
+        requestDigest: 'a'.repeat(64),
+        operator: 'local-operator' as const,
+        resolvedAt: new Date().toISOString(),
+      },
+    }
+    complete(reviewed)
+    await settle()
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [reviewed] })
+    await mount()
+    expect(root.textContent).toContain('人工关闭（结果仍未知）')
+    expect(button('invoke').disabled).toBe(false)
+    expect(runtimeApi.resolveUnknownGitExecution).toHaveBeenCalledTimes(1)
   })
   it('shows a confirmed start denial separately from transport uncertainty', async () => {
     vi.mocked(runtimeApi.startGitOperationExecution).mockRejectedValue({

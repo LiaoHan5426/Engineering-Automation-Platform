@@ -98,6 +98,43 @@ try {
     await page.screenshot({ path: resolve(output, 'diff-cancelled-' + width + '.png') })
   }
   checks.push('diff reload recovery and three viewport bounds')
+  for (const operation of ['status', 'diff']) {
+    if (operation === 'diff') {
+      await button('diff-mock-unknown').click()
+      await button('diff-unknown').waitFor()
+    }
+    assert.equal(await button(operation + '-review-open').isDisabled(), true)
+    await button(operation + '-review-note').fill('mock review: fixture has no real process; related processes checked')
+    await button(operation + '-review-checked').check()
+    await button(operation + '-review-open').click()
+    const dialog = page.getByRole('dialog', { name: '关闭这条 UNKNOWN 的启动阻塞' })
+    await dialog.waitFor()
+    assert.match(await dialog.innerText(), /原结果仍未知/)
+    for (const width of [1440, 900, 390]) {
+      await page.setViewportSize({ width, height: 960 })
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true)
+      await page.screenshot({ path: resolve(output, operation + '-review-confirm-' + width + '.png') })
+    }
+    await dialog.getByRole('button', { name: '取消', exact: true }).click()
+    assert.equal(await button(operation + '-invoke').isDisabled(), true)
+    await button(operation + '-review-note').fill('mock review: no real process was launched by this fixture')
+    await button(operation + '-review-open').click()
+    await dialog.getByRole('button', { name: '保存核对并关闭阻塞' }).click()
+    await button(operation + '-review-resolution').waitFor()
+    assert.match(await button(operation + '-review-resolution').innerText(), /人工关闭（结果仍未知）/)
+    assert.equal(await button(operation + '-invoke').isDisabled(), false)
+    assert.equal(await button(operation + '-cancelled').count(), 0)
+    await page.reload()
+    await button(operation + '-review-resolution').waitFor()
+    assert.match(await button(operation + '-review-resolution').innerText(), /SERVICE_RESTART_EXIT_UNCONFIRMED/)
+    for (const width of [1440, 900, 390]) {
+      await page.setViewportSize({ width, height: 960 })
+      await button(operation + '-summary').scrollIntoViewIfNeeded()
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true)
+      await page.screenshot({ path: resolve(output, operation + '-reviewed-' + width + '.png') })
+    }
+    checks.push(operation + ' explicit review, cancel confirmation, manual closure, reload and three viewport bounds')
+  }
   assert.deepEqual(errors, [])
   await writeFile(
     resolve(output, 'result.json'),

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type { GitExecutionOperation, ToolExecution } from '@eap/runtime-client'
 
 type Entry = { row: ToolExecution; outcome: string }
@@ -93,6 +94,48 @@ export function createMockToolExecutionBackend(
       if (!entry || entry.row.capabilityId !== operation)
         return { status: 404, data: { detail: 'TOOL_EXECUTION_NOT_FOUND' } }
       const row = entry.row
+      if (tail.length === 2 && tail[1] === 'resolve-unknown' && method === 'POST') {
+        const review = body as {
+          requestId?: unknown
+          note?: unknown
+          processTreeStopped?: unknown
+        } | null
+        if (
+          !review ||
+          Object.keys(review).length !== 3 ||
+          typeof review.requestId !== 'string' ||
+          !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(review.requestId) ||
+          typeof review.note !== 'string' ||
+          review.note.trim().length < 10 ||
+          review.note.length > 2000 ||
+          review.processTreeStopped !== true
+        )
+          return { status: 400, data: { detail: 'UNKNOWN_REVIEW_REQUIRED' } }
+        const digest = createHash('sha256').update(review.note.trim(), 'utf8').digest('hex')
+        if (row.resolution)
+          return row.resolution.requestId === review.requestId.toLowerCase() &&
+            row.resolution.requestDigest === digest
+            ? { status: 200, data: copy(row) }
+            : { status: 409, data: { detail: 'UNKNOWN_REVIEW_CONFLICT' } }
+        if (row.status !== 'UNKNOWN')
+          return { status: 409, data: { detail: 'EXECUTION_NOT_UNKNOWN' } }
+        row.resolution = {
+          requestId: review.requestId.toLowerCase(),
+          requestDigest: digest,
+          note: review.note
+            .trim()
+            .replace(
+              /((?:password|passwd|token|secret|api[_-]?key)\s*[:=]\s*)[^\s,;}]+/gi,
+              '$1[REDACTED]',
+            )
+            .slice(0, 2000),
+          processTreeStopped: true,
+          operator: 'local-operator',
+          resolvedAt: new Date().toISOString(),
+        }
+        row.status = 'CLOSED_UNKNOWN'
+        return { status: 200, data: copy(row) }
+      }
       if (tail.length === 2 && tail[1] === 'cancel' && method === 'POST') {
         if (active(row)) {
           row.cancelRequested = true
@@ -116,7 +159,8 @@ export function createMockToolExecutionBackend(
                 : 'mock: no real Git executed\n## mock-branch\n M mock/file.vue'
               : ''
         }
-        if (!active(row) && row.status !== 'UNKNOWN') row.finishedAt ??= new Date().toISOString()
+        if (!active(row) && row.status !== 'UNKNOWN' && row.status !== 'CLOSED_UNKNOWN')
+          row.finishedAt ??= new Date().toISOString()
         return { status: 200, data: copy(row) }
       }
       return { status: 404, data: { detail: 'MOCK_ROUTE_NOT_FOUND' } }

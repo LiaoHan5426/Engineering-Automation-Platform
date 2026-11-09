@@ -11,6 +11,9 @@ import com.lh.eap.runtime.handler.GitInspectionHandler;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -99,6 +102,38 @@ public class ToolExecutionService implements InitializingBean {
             if (token != null) token.set(true);
         }
         return confirmOwnership(row);
+    }
+    /**
+     * Explicit local-operator attestation releases only this operation's reservation.
+     * No process lookup/kill, execution replay or invented terminal result occurs here.
+     */
+    public ToolExecution resolveUnknown(String operation, UUID id, UUID requestId, String note, boolean processTreeStopped) {
+        require(operation, id);
+        if (requestId == null || note == null || note.strip().length() < 10 || note.length() > 2000 || !processTreeStopped)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "UNKNOWN_REVIEW_REQUIRED");
+        var normalized = note.strip();
+        var digest = reviewDigest(normalized);
+        var redacted = SensitiveData.redact(normalized);
+        var savedNote = redacted.substring(0, Math.min(2000, redacted.length()));
+        return store.update(id, row -> {
+            // Check the live owner while holding the same short lock used by all transitions.
+            if (active.containsKey(id))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "EXECUTION_OWNER_STILL_ACTIVE");
+            if (row.resolution() != null) {
+                var prior = row.resolution();
+                if (prior.requestId().equals(requestId) && prior.requestDigest().equals(digest))
+                    return row;
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "UNKNOWN_REVIEW_CONFLICT");
+            }
+            if (!"UNKNOWN".equals(row.status()))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "EXECUTION_NOT_UNKNOWN");
+            return row.closeUnknown(new ToolExecution.Resolution(requestId, savedNote, digest,
+                    "local-operator", Instant.now(), true));
+        });
+    }
+    private static String reviewDigest(String note) {
+        try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(note.getBytes(StandardCharsets.UTF_8))); }
+        catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
     private ToolExecution require(String operation, UUID id) {
         validateOperation(operation);
