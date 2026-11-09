@@ -1,6 +1,6 @@
 # Agent 能力、本地运行环境与插件演进
 
-状态：有效合同与增量实现记录；当前已提交实现基线 `b6e9748`（已推送），本轮追加已观察子进程身份有界持久/核对，接续已获用户提交并推送授权，随本次提交交付，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。后续各切片已有独立授权和实测，本文历史章节的“不推送/不调用真实模型”等仅描述当时范围，不是当前全局限制。向量增强、框架迁移、第三方安装等仍须满足各自证据与授权门禁。
+状态：有效合同与增量实现记录；当前已提交实现基线 `d7c1428`（已推送），本轮验证受控异常UNKNOWN整链及追加历史详情入口，接续已获本次提交并推送授权，随本次提交交付，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。后续各切片已有独立授权和实测，本文历史章节的“不推送/不调用真实模型”等仅描述当时范围，不是当前全局限制。向量增强、框架迁移、第三方安装等仍须满足各自证据与授权门禁。
 
 ## 1. 结论与适用范围
 
@@ -275,7 +275,7 @@ TC-02 定向独立复核通过，原P1关闭：审查者复跑2文件10项、typ
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + 派生清空 + **备注 Badge**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
 | FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + inventory + candidateCounts + **byKind**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | **部分交付**：既有程序/操作模型投影目录；Git路径、版本与探测缓存共享；旧能力ID/探测入口兼容，历史路径冲突拒绝执行 | 其他依赖绑定与用户接受；见[Git调用合同](#git-operation-executions) |
-| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝；真实diff HTTP/JDBC已验，工具UNKNOWN显式核对关闭阻塞及当前身份线索已实现；追加每步32个已观察子进程身份持久/核对，清理句柄不受限，仍不证明完整树退出；隔离真实父退出/子存活已验 | 实际异常执行人工接受、跨重启进程接管独立；见[Git调用合同](#git-operation-executions) |
+| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝；真实diff HTTP/JDBC已验，工具UNKNOWN显式核对关闭阻塞及当前身份线索已实现；追加每步32个已观察子进程身份持久/核对，清理句柄不受限，仍不证明完整树退出；受控中断后的实际HTTP/PostgreSQL/Vue核对整链及历史详情重开已验 | 真实Git异常、跨重启进程接管和产品用户接受独立；见[Git调用合同](#git-operation-executions) |
 | TC-02 / P1 | **部分交付**：实际 Grapes 实例人工读取草稿/选中状态，实例/文档/revision 核验、有界快照、过期与离页清空 | 多实例/冲突/超限离线覆盖，真机已验读取/过期/切页/新建；用户接受、远程断线与模型反向调用仍独立，不建设反向 RPC |
 | MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（含 filesystem 五工具）+ **callVerified/listOnly 视图** + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；mock/真机已验 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/回滚、依赖缺失/激活失败；新增显式只读Task列表检查，来源/时间/未检查与未知失败分开（真机及mock已验）；不改Task/Run | Run/整体服务健康未验，用户接受与在途停用完整矩阵仍待；无第二状态源，外部安装器延期 |
@@ -519,3 +519,16 @@ core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManife
 - 前端保留显式检查/离页清除/迟到响应隔离与人工确认；父与子共用身份呈现，区分历史缺失、未观察到、截断，任何结果均不自动勾选或解锁。业务留L4 capability，DTO在runtime-client，复用@eap/ui原语，无新增共享类别。mock子进程存活/截断仅为模拟，不能替代OS证据或用户接受。
 
 实际验证：真实status HTTP执行三步均捕获并保存1个子进程完整身份，独立只读JDBC快照与HTTP一致；另有64项最终定向（含自有schema）、956项完整离线（851通过/105门控跳过）及834项前端测试和14组Chromium/mock验证。完整命令、文件检查及限制见[本轮记录](../records/backend-composition-history.md#tool-descendant-evidence)，不把正常执行或模拟核对升级为异常人工接受。
+
+
+### 受控异常UNKNOWN整链与历史执行详情（2026-11-09）
+
+- d7c14288ec7c6fd01b6a87d5c0397968f38b8f4d已按用户授权提交并推送，HEAD/origin/main/远端ref一致。以下按本次授权提交。
+- 测试夹具限于full宿主测试目录：通过EAP_RUN_TOOL_UNKNOWN_REVIEW=true显式运行，同时要求已批准本机EAP_RUN_BOARD_PERSISTENCE=true及Playwright/Chromium路径。UUID自有schema仅应用V26～V29及测试开关表；既有服务/控制器/JDBC/事务/Host-Origin门禁和Vue面板实际接线，测试宿主监听随机loopback端口。无产品故障注入接口或模型调用，测试注册不进入产品装配。
+- 故障仅在测试ProcessExecutor适配器中替代一次CLI命令，启动自有Java父子进程；保存全部已观察身份后强制终止自有宿主，持久步骤仍RUNNING，重启初始化转UNKNOWN并保留同操作互锁。Java子进程就绪显式握手，不能将Windows conhost等首个后代误作目标子进程；捕获辅助进程同样按完整身份核对/清理。
+- 实际Chromium面板检查父子存活→精确停止父但子仍存活→精确停止全部已捕获自有进程。每阶段检查均不改状态、审计或勾选；停止后仍要求说明/勾选/ConfirmBox二次确认。CLOSED_UNKNOWN保留原步骤、stdout/stderr、取消意图、未知原因与退出字段；同核对幂等，冲突409、跨操作404、旧启动requestId及迟到取消不改原记录，显式新请求才执行实际Git；再重启读回关闭记录不变。
+- 补齐实际页面缺口：新执行成为当前记录后，历史Collapse新增公共Button“查看执行详情”，调用原gitOperationExecution(operation,id)隔离GET，随后可检查旧CLOSED_UNKNOWN身份。沿用generation/AbortController丢弃离页或迟到响应，读取失败进入既有不确定态并显式重查；选择历史不取消、启动或核对执行，其他UNKNOWN/在途记录仍由records互锁。重新查询保留原有“优先在途/UNKNOWN，否则最近”的规则。
+- 生产后端端口与持久合同复用，无新增路由/迁移/权限；新增后端门控验收与前端领域入口。UI已搜索并复用@eap/ui Button/Collapse/ConfirmBox，L4 capability业务与i18n原位，测试夹具统一置__tests__，无新共享类别或暂存登记。
+- 整链验证只证明受控Java进程替代与实际HTTP/PostgreSQL/Vue路径，不证明真实Git故障、跨重启进程接管或用户产品接受。测试结束停止所有自有宿主/进程、删除自身schema，并比对应用schema工具记录的ID/摘要完全不变；不自动解除产品UNKNOWN。命令、失败修复与证据见[本轮记录](../records/backend-composition-history.md#tool-unknown-controlled-acceptance)。
+
+本轮最终验证：65项定向全部通过（含受控整链7组真实浏览器检查与JDBC对照）；完整离线957项中851通过/106门控跳过；前端137文件840项通过，typecheck/build/architecture/lint/stylelint/格式通过。应用按原参数恢复PID38636，health=200/ok；29份迁移校验通过、V26～V29不改。工具应用记录摘要不变，自有schema/宿主/进程及临时监听清理完毕；接续代码按本次授权提交，见[证据](../records/backend-composition-history.md#tool-unknown-controlled-acceptance)。

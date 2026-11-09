@@ -213,6 +213,80 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
     expect(button('review-open').disabled).toBe(true)
     expect(runtimeApi.resolveUnknownGitExecution).not.toHaveBeenCalled()
   })
+  it('reopens a closed historical execution through scoped GET and inspects it without replay', async () => {
+    const closed = {
+      ...row('CLOSED_UNKNOWN'),
+      id: 'closed',
+      unconfirmedReason: 'preserved unknown',
+    }
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({
+      items: [row('SUCCEEDED'), closed],
+    })
+    vi.mocked(runtimeApi.gitOperationExecution).mockResolvedValue(closed)
+    await mount()
+    button('history-open-closed').click()
+    await settle()
+    expect(runtimeApi.gitOperationExecution).toHaveBeenCalledWith(
+      operation,
+      'closed',
+      expect.any(AbortSignal),
+    )
+    expect(
+      root.querySelector('[data-testid="trusted-' + operation + '-summary"]')?.textContent,
+    ).toContain('closed')
+    button('process-inspect').click()
+    await settle()
+    expect(runtimeApi.gitExecutionProcessReview).toHaveBeenCalledWith(
+      operation,
+      'closed',
+      expect.any(AbortSignal),
+    )
+    expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+    expect(runtimeApi.cancelGitOperationExecution).not.toHaveBeenCalled()
+  })
+  it('keeps an UNKNOWN reservation while showing a different historical record', async () => {
+    const closed = { ...row('CLOSED_UNKNOWN'), id: 'closed' }
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({
+      items: [row('UNKNOWN'), closed],
+    })
+    vi.mocked(runtimeApi.gitOperationExecution).mockResolvedValue(closed)
+    await mount()
+    button('history-open-closed').click()
+    await settle()
+    expect(button('invoke').disabled).toBe(true)
+    expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+  })
+  it('discards historical detail after leaving and requires recheck after an unavailable detail', async () => {
+    const closed = { ...row('CLOSED_UNKNOWN'), id: 'closed' }
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({
+      items: [row('SUCCEEDED'), closed],
+    })
+    vi.mocked(runtimeApi.gitOperationExecution).mockRejectedValueOnce(
+      new Error('detail unavailable'),
+    )
+    await mount()
+    button('history-open-closed').click()
+    await settle()
+    expect(button('invoke').disabled).toBe(true)
+    expect(button('history-open-closed').disabled).toBe(true)
+    button('recheck').click()
+    await settle()
+    let resolve!: (value: ToolExecution) => void
+    vi.mocked(runtimeApi.gitOperationExecution).mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done
+        }),
+    )
+    button('history-open-closed').click()
+    await settle()
+    app?.unmount()
+    app = undefined
+    resolve(closed)
+    await settle()
+    expect(root.textContent).not.toContain('closed')
+    expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+  })
   it('shows inspection errors separately without clearing UNKNOWN or enabling start', async () => {
     vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
     vi.mocked(runtimeApi.gitExecutionProcessReview).mockRejectedValue(new Error('unavailable'))

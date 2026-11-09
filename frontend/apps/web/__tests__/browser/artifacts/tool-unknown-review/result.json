@@ -1,0 +1,28 @@
+{
+  "result": {
+    "browser": {
+      "passed": 7,
+      "checks": [
+        "restart UNKNOWN blocks only the same operation; cross-operation detail denied",
+        "real OS parent and child match; inspection preserves UNKNOWN and manual confirmation",
+        "parent exit leaves captured child alive; no automatic release",
+        "verified owned tree stopped; observation still does not attest or close",
+        "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+        "historical closure reopens through real scoped GET; captured identity review remains available",
+        "reload restores audit; explicit new request executes actual Git without changing the closed record"
+      ],
+      "errors": []
+    },
+    "realParentAndChildStopped": true,
+    "schema": "eap_unknown_qa_ee5d1729aecb4fbc9f87e506e537368d",
+    "restartPreservedClosedUnknown": true,
+    "executionId": "0a15e25c-017a-40d4-9078-c3f3e53c061d",
+    "passed": true
+  },
+  "cleanup": {
+    "hostsStopped": true,
+    "ownedProcessesStopped": true,
+    "applicationRecordsUnchanged": true,
+    "ownedSchemaDropped": true
+  }
+}

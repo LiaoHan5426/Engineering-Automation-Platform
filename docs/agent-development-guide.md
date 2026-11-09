@@ -35,7 +35,7 @@ Current 32-project reactor evidence and remaining optional-composition gates are
 
 ## Current implementation and validation baseline
 
-The latest committed implementation is `b6e9748` (read-only tool process identity review, pushed with user authorization). The current slice, authorized for commit and push, adds bounded observed descendant identities to existing step JSON and the review UI; no migration or process ownership takeover is introduced.
+The latest committed implementation is `d7c1428` (bounded observed descendant identity evidence, pushed with user authorization). The current slice, authorized for commit and push, validates controlled UNKNOWN recovery through real HTTP/PostgreSQL/Vue and adds historical execution detail selection using the existing scoped GET; no production fault endpoint, migration or process takeover is introduced.
 This user-authorized commit/push delivers the continuation that adds bounded read-only inspection of captured process identities and isolated real parent/child regression.
 Human review is recorded separately from executor exit/cleanup proof; it never turns UNKNOWN into success or cancellation.
 Use [the validation ledger](planning-status.md#validation-baseline) for the latest recorded checks and their limits.
@@ -125,3 +125,12 @@ Check links/paths and scripts when editing guidance. Module files specialize roo
 维护口径：最新阶段验证只在台账集中维护，其他入口引用；历史数字按原日期保留。特别区分前轮实库门控与本轮跳过、真实供应商与fixture写请求、旧界面原生125%与新工作台浏览器比例覆盖。用户最终接受仍未完成。
 
 本次检查通过：Python本地链接/锚点核对覆盖51份Markdown、676个链接；归档正文与HEAD原稿按相对链接重定位后逐字比对，后端328行、专家135行、台账92行完整保留；原台账工作项标签全部保留。18个改动文件均为Markdown文档、UTF-8无BOM；`git -c core.autocrlf=false diff --check`通过。不重跑应用构建/业务测试、不重新调用模型或改变数据，既有结果不标成本次实测。
+
+
+## Controlled tool UNKNOWN acceptance
+
+The opt-in `ToolUnknownReviewAcceptanceTest` requires `EAP_RUN_TOOL_UNKNOWN_REVIEW=true` and the already approved local persistence gate `EAP_RUN_BOARD_PERSISTENCE=true`, the existing DB credential environment, `EAP_PLAYWRIGHT_MODULE` (local playwright-core) and `EAP_CHROMIUM`. From the repository root run:
+
+`rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=ToolUnknownReviewAcceptanceTest' '-Dsurefire.failIfNoSpecifiedTests=false' test`
+
+Stop the DevTools application before compilation and restore its original launch parameters afterwards. The test owns a UUID schema, temporary repository, isolated socket hosts, Vite at loopback port 5187, and Java parent/child processes. Actual production service/controller/store/UI are reused; only the test executor substitutes one CLI command for controlled crash injection. No product mock responses or model calls are used. Cleanup checks the exact owned identities and schema and compares application execution-record digests unchanged. Artifacts live in `backend/target/tool-unknown-review-<uuid>`; meaningful selected evidence is retained under the frontend browser artifacts directory. This controlled test is separate from actual Git failure and human product acceptance; normal offline runs skip it.

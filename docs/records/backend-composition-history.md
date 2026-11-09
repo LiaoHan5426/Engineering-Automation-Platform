@@ -516,3 +516,43 @@ rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright
 完整树证明与跨重启接管仍未实现：观察间隙、脱离、瞬时创建、最后清理枚举、崩溃或未刷新窗口可能漏掉身份。即使全部捕获身份均退出，也不自动认定完整进程树退出；completeProcessTreeEvidence始终false。真实应用异常Git的完整人工核对演练、原生系统缩放及用户接受仍待，隔离真实进程/持久测试和模拟浏览器证据分列。
 
 提交准备：本次按用户授权先提交并推送子进程身份切片，再验证受控异常UNKNOWN整链。复核实际代码/测试/截图/文档差异，保留紧邻实现阶段64项后端定向、956项后端离线及834项前端证据，提交准备未重跑并冒充新测；新增内容敏感扫描、UTF-8、链接与暂存空白再查，推送后回读本地/远端SHA。
+
+
+<a id="tool-unknown-controlled-acceptance"></a>
+## 受控异常UNKNOWN完整核对与历史执行详情（2026-11-09）
+
+用户要求先提交推送本轮改动，再验证受控异常UNKNOWN完整核对并继续前后端开发。已提交d7c14288ec7c6fd01b6a87d5c0397968f38b8f4d（47文件，447 additions/62 deletions，feat: 持久保存工具执行的子进程身份线索）；push origin main成功后HEAD/origin/main/远端refs/heads/main一致且工作树干净。提交前复核实际差异、UTF-8/敏感/暂存空白；沿用紧邻实现阶段证据，未冒充重新测试。
+
+实现：新增full宿主测试目录ToolUnknownReviewFixture/ToolUnknownReviewAcceptanceTest及前端__tests__/browser内的专用入口/runner。真实ToolExecutionService、JdbcToolExecutionStore短事务、ToolExecutionController、Host-Origin门禁与TrustedGitExecutionPanel通过实际socket连接。测试executor仅替代一次CLI命令，运行自有Java父子；在身份持久后的回调门锁强制中断宿主，重启转UNKNOWN，实际OS检查/精确停止自有进程后走原人工确认接口。无生产故障注入路由、任意PID端口或新迁移，无模型调用。
+
+核对后显式新请求运行实际Git；发现原历史列表只有摘要，不能重开旧关闭记录的完整身份线索，故新增公共Button“查看执行详情”，复用原按operation/id隔离的GET及显式process-review。业务留capability/i18n，复用@eap/ui原语，无新共享类别。沿用不确定态与generation/AbortController，原记录之外的UNKNOWN/在途仍互锁，历史选择不启动/取消/核对。
+
+| 阶段/挑战 | 证据与修复 |
+|---|---|
+| 首次编译门禁 | 新验收默认跳过1项，单独编译成功不算整链验证 |
+| 受控尝试1 | 独立宿主未加载application.yml，Spring AI默认音频模型装配要求凭据；未发出模型请求。测试启动参数显式关闭chat/embedding/image/audio/moderation；原产品配置不改 |
+| 尝试2 | host.json被创建但尚未写完，父进程读取空内容；改为临时文件写完后atomic move发布，增加宿主退出快速失败 |
+| 尝试3 | 测试schema适配仅覆盖PreparedStatement，启动UNKNOWN的普通Statement未重定位，读回为OWNER_UNAVAILABLE；补齐普通Statement映射。应用停机前已确认无在途；最终版本每轮比较应用工具记录ID/摘要不变，避免隔离声明仅依赖约定 |
+| 尝试4～5 | Windows先观察到conhost，不能把首个后代当Java目标；改为目标Java子进程就绪握手并按它的精确PID核对，辅助进程也捕获/清理。就绪文件可能在身份通知后出现，回调等待明确握手，不能依赖没有变化时再次通知 |
+| 尝试6 | 7组浏览器断言已通过，但最后重启时夹具把浏览器正常结束误判为失败；浏览器完成后释放其等待状态，保留完整宿主重启校验 |
+| 尝试7 | 整项通过：执行d99e69f1-d7e6-4df9-b24d-8d0b8b872b56，schema=eap_unknown_qa_57bc7921243941b5996e2bbfe33b2123；7组实际浏览器检查、0pageerror，原步骤及未知/退出字段保留，同核对幂等/冲突，显式新请求成功，再重启仍CLOSED_UNKNOWN。UUID schema、自有宿主和进程均清理，应用记录摘要不变。会话backend/target/tool-unknown-review-7a1d8460-6c7b-4c44-8779-f8540bb20f18，日志tool-unknown-review-acceptance-7.log |
+
+受控验收命令：在子进程设置EAP_RUN_TOOL_UNKNOWN_REVIEW=true，保留既有EAP_RUN_BOARD_PERSISTENCE=true及凭据环境；EAP_PLAYWRIGHT_MODULE=H:/developerTools/ai/hermes/hermes-agent/node_modules/playwright-core，EAP_CHROMIUM=C:/Users/LH/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe；运行`rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=ToolUnknownReviewAcceptanceTest' '-Dsurefire.failIfNoSpecifiedTests=false' test`。端口5187只在测试宿主的Origin白名单，产品白名单不改。
+
+前端：`rtk proxy pnpm --dir frontend test run`为137文件840项通过；面板定向43项通过。typecheck、build、check:architecture（含boundaries/circular）、目标lint/stylelint通过，保留既有大chunk/网络防护/Node localStorage提示。格式检查初次报告runner一处未格式化，修正后6文件最终通过，见下表。原产品应用在确认status/diff无在途、jps核对PID35768后暂停以避免DevTools与编译并行；恢复结果见下表。
+
+最终验证：
+
+| 检查 | 结果 |
+|---|---|
+| 后端完整离线 | 32模块SUCCESS；163报告957项：851通过、106门控跳过，0失败/错误，6分06秒。仅该子进程关闭已有EAP_RUN_*及新整链门控。日志backend/target/tool-unknown-review-offline-reactor.log，按本次时间窗XML统计tool-unknown-review-offline-summary.json；该跳过结果不替代实际整链 |
+| 最终定向 | 同一reactor选择DefaultProcessExecutorTest,DescendantEvidenceTest,LocalProcessIdentityInspectorTest,ToolExecutionServiceTest,ToolExecutionJsonTest,ToolExecutionControllerTest,ToolExecutionPersistenceTest,ToolUnknownReviewAcceptanceTest,SchemaAndWiringTest,BackendModuleBoundaryTest：31模块闭包SUCCESS，10报告65项全部通过、0跳过，1分24秒。新整链门控及既有自有schema门控均true；EAP_PLAYWRIGHT_MODULE/EAP_CHROMIUM与前述一致。日志backend/target/tool-unknown-review-final-targeted.log及tool-unknown-review-targeted-summary.json |
+| 受控整链复跑 | 最终执行0a15e25c-017a-40d4-9078-c3f3e53c061d，7组真实浏览器断言通过、0pageerror，新增独立JDBC关闭快照与HTTP一致断言通过；CLOSED_UNKNOWN跨再次重启不变。自有schema eap_unknown_qa_ee5d1729aecb4fbc9f87e506e537368d、宿主及进程均清理，应用记录ID/摘要不变。会话backend/target/tool-unknown-review-a1247297-b591-496d-8864-57621b356062；摘要和截图保留在[artifact](../../frontend/apps/web/__tests__/browser/artifacts/tool-unknown-review/result.json)。已查看最终1440px历史重开和390px确认框 |
+| 前端收尾 | 前述137文件840项、面板43项通过后，typecheck/build/check:architecture、目标vp lint（含runner/fixture）和stylelint通过，6文件vp fmt --check最终通过 |
+| 服务恢复 | 按保存原args/cwd恢复PID38636，health=200/ok。启动日志验证29份迁移且schema up to date，V26～V29只读JDBC回读与源码校验和一致；无新迁移。既有status da1bea9b-67b6-4d02-b02d-3baeb5cc4b75读回不变，process-review对成功409、越操作404、恶意Origin403，无在途执行；jps无测试fixture JVM，5187监听关闭。backend/target/tool-unknown-review-live-check.json |
+
+本次用户已授权本切片提交并推送。受控Java替代、真实OS/HTTP/PostgreSQL/Vue自动操作不能推广为真实Git故障、任意进程树退出证明、跨重启接管或用户产品接受。
+
+最终文件收尾：23个变更文件，16个文本UTF-8无BOM/无替换字符、7张受控截图；170处本地Markdown目标及锚点、3类新增内容有限敏感模式和git diff --check通过。接续工作区未暂存/未提交，HEAD与origin/main仍为d7c1428；本次授权的“先提交并推送”已完成，后续新片保留审阅。
+
+本次提交准备：用户要求先提交并推送受控UNKNOWN验收及历史详情切片，再继续真实Git异常验证。复核代码、夹具、截图和规划同步；保留紧邻阶段65项定向、957项离线与840项前端证据，不为提交冒充重新测试。提交前复核UTF-8、敏感模式及暂存空白，推送后回读本地/远端SHA；历史未提交口径仅描述当时交付状态。

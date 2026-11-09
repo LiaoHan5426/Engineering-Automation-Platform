@@ -135,6 +135,25 @@ async function recheck() {
     }
   }
 }
+async function openExecution(id: string) {
+  if (busy.value || uncertain.value || disposed || suspended || selected.value?.id === id) return
+  busy.value = true
+  const revision = ++generation
+  clearTimeout(timer)
+  processReview.value = null
+  processReviewError.value = ''
+  try {
+    const row = await runtimeApi.gitOperationExecution(props.operation, id, controller.signal)
+    if (!disposed && !suspended && revision === generation) accept(row)
+  } catch (error) {
+    if (revision === generation) failed(error)
+  } finally {
+    if (revision === generation) {
+      busy.value = false
+      schedule()
+    }
+  }
+}
 async function start(mockOutcome?: string) {
   if (busy.value || blocking.value || uncertain.value || !loaded.value) return
   busy.value = true
@@ -483,6 +502,14 @@ onBeforeUnmount(() => {
             {{ t('CLOSED_UNKNOWN') }} · {{ row.resolution.operator }} ·
             {{ row.resolution.resolvedAt }} · {{ row.resolution.note }}
           </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            :disabled="busy || uncertain || selected?.id === row.id"
+            :data-testid="testId('history-open-' + row.id)"
+            @click="openExecution(row.id)"
+            >{{ t('historyOpen') }}</Button
+          >
           <pre class="trusted-git-result">{{ row.stdout }}{{ row.stderr }}</pre>
         </Collapse>
       </li>
