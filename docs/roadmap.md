@@ -2,7 +2,7 @@
 
 ## 当前基线与事实源
 
-当前已提交实现基线为 `8abbd21`（2026-11-09，已推送）；本轮真实diff HTTP验证及工具UNKNOWN人工处置按用户授权随本次提交交付。本文只维护推进顺序；最近验证结果统一见[验收台账](planning-status.md#validation-baseline)，历史执行证据归主题记录。
+当前已提交实现基线为 `bb83f31`（2026-11-09，已推送）；本轮接续当前进程身份线索，按用户授权随本次提交交付。本文只维护推进顺序；最近验证结果统一见[验收台账](planning-status.md#validation-baseline)，历史执行证据归主题记录。
 
 普通API显式Responses选择与函数工具已实现；原连接真实两轮SQL取证/候选/页面审批/写入读回及重启终态已验；见[模型协议决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验)。其余切片逐项按台账记录，不以早期“待实施”覆盖后续限定交付。
 
@@ -26,7 +26,7 @@ CT-01追加[显式重连与重试](decisions/chat-engineering-task-slice.md#会�
 | 资源 | 单专家授权知识与旧记忆隔离；Skill文本版本、启停及按需引用 | MCP官方memory包经Expert入口的本机实网验收（固定read_graph协议子进程夹具已验）；通用规划/Agent/Work执行；Skill目录/仓库导入 |
 | 上下文/记忆/检索 | **CE-01/KR-01/MCP-01（矩阵 callVerified/listOnly）/MEM-01**；CE 备注 Badge + 压缩未启用备注与 MEM sticky 诚实提示 mock 已验 | 实库跑 FTS 排序对照；CE-01 真实 token/压缩策略仍缺；KR-02 证据触发 |
 | 工具/目录 | 程序与固定操作登记、路径发现、工作区/文件树；**FS-01 盘点+刷新+kind/byteSize+inventory+candidateCounts+byKind（mock/真机已验）**；不是安装器 | 批准后的物理迁移/读回/失败恢复；TM-01一个受管工具；前端预览与本机执行分界 |
-| 工具发现/使用 | TD-01统一Git程序/操作与共享版本；TC-01补status/diff持久执行/取消证据与按操作隔离、离页与重启状态恢复、UNKNOWN互锁；真实diff HTTP/JDBC整链及工具UNKNOWN核对关闭阻塞接通；TC-02实例读取保留 | 真实孤儿进程核对、其他工具与用户接受；不按PID跨重启接管。见[Git调用合同](decisions/agent-runtime-evolution.md#git-operation-executions) |
+| 工具发现/使用 | TD-01统一Git程序/操作与共享版本；TC-01补status/diff持久执行/取消证据与按操作隔离、离页与重启状态恢复、UNKNOWN互锁；真实diff HTTP/JDBC整链及工具UNKNOWN核对关闭阻塞及有界当前身份线索接通；隔离真实父退出/子存活已验；TC-02实例读取保留 | 实际异常执行人工接受、其他工具与进程接管；不按PID跨重启接管。见[Git调用合同](decisions/agent-runtime-evolution.md#git-operation-executions) |
 | 插件/场景 | PL-01看板启停/回滚/sticky；本轮显式只读Task列表依赖检查已真机/mock验证，来源/时间与未检查分开；设计器业务已存在 | Run/整体健康与用户接受仍待；PL-02/SC-03后续；核心生命周期不依赖插件存活 |
 | 桌面发行 | Electron安全preload壳、bootstrap引导脚手架 | Windows sidecar、一体启停/迁移、安装包验证；签名另需发行决定与凭据 |
 
@@ -37,7 +37,7 @@ CT-01追加[显式重连与重试](decisions/chat-engineering-task-slice.md#会�
 1. SC-01 零 revision 删除核对已落地；保存中途断连完整未知态与用户接受仍独立；既有未关闭交付关口不借路线回顾关闭。
 2. 先明确CE-01/KR-01上下文失效/预算与检索质量基线，以及FS-01数据根/临时资源/迁移合同。MCP-01只读协议与PL-01看板贡献可在边界明确后分别推进，不建设第二套能力注册或模型循环。
 3. MEM-01依赖CE-01；TM-01依赖FS-01；PL-02/SC-03依赖PL-01。锁定一个工具/服务器及验收范围，避免全量底座重写；外部插件安装、A2A、MCP Server、万能包管理器延期。
-   工具线已完成Git程序/操作统一及status/diff持久人工执行；diff限定已跟踪文件的未暂存差异。本轮补真实HTTP/JDBC验证及工具UNKNOWN人工核对关闭阻塞，原结果仍未知；后续按台账验证真实孤儿进程及其他工具；TC-02后续Host及反向Agent另评审。不等待TM-01或完整插件SDK，不自动执行未知工具或覆盖停用/授权决定。
+   工具线已完成Git程序/操作统一及status/diff持久人工执行；diff限定已跟踪文件的未暂存差异。本轮补真实HTTP/JDBC验证及工具UNKNOWN人工核对关闭阻塞，原结果仍未知；接续补当前进程身份线索及隔离真实父子演练；后续按台账验证实际异常执行人工接受及其他工具；TC-02后续Host及反向Agent另评审。不等待TM-01或完整插件SDK，不自动执行未知工具或覆盖停用/授权决定。
 4. 自身改页在明确范围和供应商授权下继续验收，不以全部技术补强为前置；未知执行/写入不自动扩大权限。桌面sidecar/安装包独立验收，不把preload或工具登记当安装器。
 5. KR-02仅在检索基线不足后比较向量/混合/重排；FW-01仅在明确Agent协作需求或框架阻碍后同条件比较LangChain4j，迁移另批。
 6. 每个实施阶段同步台账、主方案验收行和相关decision，历史结果进入主题记录。按该阶段用户授权提交/推送并核对远端SHA，保留失败/跳过/未验收项；本机配置和凭据不纳入。已完成阶段的授权不扩展为任意后续操作。

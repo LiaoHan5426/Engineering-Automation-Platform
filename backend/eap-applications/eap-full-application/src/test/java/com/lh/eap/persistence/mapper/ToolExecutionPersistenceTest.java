@@ -130,6 +130,10 @@ class ToolExecutionPersistenceTest {
                                 open.workspacePath(), "git", "CREATED", false, Instant.now(), null, null, "", "", false, null, null, List.of())));
                         store.markRestartUnknown();
                         assertEquals("UNKNOWN", service.get(open.id()).status());
+                        var beforeInspection = store.find(open.id()).orElseThrow();
+                        var inspection = service.inspectProcesses("git-status", open.id());
+                        assertEquals("UNKNOWN", inspection.executionStatus()); assertFalse(inspection.completeProcessTreeEvidence());
+                        assertEquals(beforeInspection, store.find(open.id()).orElseThrow(), "OS inspection does not persist or release UNKNOWN");
                         assertThrows(ToolExecutionService.Blocked.class, () -> service.start(UUID.randomUUID()));
                         var independent = settle(service, service.start("git-diff", UUID.randomUUID()));
                         assertEquals("SUCCEEDED", independent.status());

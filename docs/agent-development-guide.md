@@ -35,8 +35,8 @@ Current 32-project reactor evidence and remaining optional-composition gates are
 
 ## Current implementation and validation baseline
 
-The latest committed implementation is `8abbd21` (durable Git diff and operation isolation, pushed with user authorization).
-This user-authorized commit/push delivers the continuation that verifies real diff HTTP/JDBC and adds explicit manual closure of tool UNKNOWN blocks.
+The latest committed implementation is `bb83f31` (tool UNKNOWN manual review, pushed with user authorization).
+This user-authorized commit/push delivers the continuation that adds bounded read-only inspection of captured process identities and isolated real parent/child regression.
 Human review is recorded separately from executor exit/cleanup proof; it never turns UNKNOWN into success or cancellation.
 Use [the validation ledger](planning-status.md#validation-baseline) for the latest recorded checks and their limits.
 The [backend record](records/backend-composition-history.md) preserves migration, real-provider and gated database evidence;

@@ -265,6 +265,32 @@ class ToolExecutionServiceTest {
         }
     }
 
+    @Test void processReviewIsScopedBoundedAndNeverChangesUnknownOrStartsAProcess() throws Exception {
+        var executor = new Probe(); service(executor); var original = unknownRow("git-diff");
+        var steps = new ArrayList<ToolExecution.Step>();
+        for (int i = 0; i < 12; i++) steps.add(new ToolExecution.Step(UUID.randomUUID(), "root", "RUNNING",
+                List.of("git"), Map.of("processPid", -1)));
+        store.update(original.id(), row -> row.state("UNKNOWN", row.cancelRequested(), null, null, row.stdout(), "",
+                false, null, row.unconfirmedReason(), steps));
+        var before = store.find(original.id()).orElseThrow();
+        var review = service.inspectProcesses("git-diff", original.id());
+        assertEquals(original.id(), review.executionId()); assertEquals("UNKNOWN", review.executionStatus());
+        assertNotNull(review.observedAt()); assertFalse(review.completeProcessTreeEvidence());
+        assertTrue(review.truncated()); assertEquals(8, review.steps().size());
+        assertTrue(review.steps().stream().allMatch(step -> step.process().status().equals("NOT_CAPTURED")));
+        assertEquals(before, store.find(original.id()).orElseThrow()); assertEquals(0, executor.calls.get());
+        assertThrows(ToolExecutionService.Blocked.class, () -> service.start("git-diff", UUID.randomUUID()));
+        assertEquals(404, assertThrows(ResponseStatusException.class,
+                () -> service.inspectProcesses("git-status", original.id())).getStatusCode().value());
+        assertEquals(404, assertThrows(ResponseStatusException.class,
+                () -> service.inspectProcesses("git-log", original.id())).getStatusCode().value());
+        var closed = service.resolveUnknown("git-diff", original.id(), UUID.randomUUID(), "Fixture never started any related process", true);
+        assertEquals("CLOSED_UNKNOWN", service.inspectProcesses("git-diff", closed.id()).executionStatus());
+        var known = finished(service.start(UUID.randomUUID()).id());
+        assertEquals(409, assertThrows(ResponseStatusException.class,
+                () -> service.inspectProcesses("git-status", known.id())).getStatusCode().value());
+    }
+
     static class Probe implements ProcessExecutor {
         final AtomicInteger calls = new AtomicInteger();
         final CountDownLatch started = new CountDownLatch(1), release = new CountDownLatch(1);

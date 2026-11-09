@@ -6,6 +6,7 @@ import com.lh.eap.common.SensitiveData;
 import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.core.CapabilityRegistry;
 import com.lh.eap.core.LocalBinaries;
+import com.lh.eap.local.LocalProcessIdentityInspector;
 import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
 import com.lh.eap.runtime.handler.GitInspectionHandler;
 import jakarta.annotation.PreDestroy;
@@ -102,6 +103,25 @@ public class ToolExecutionService implements InitializingBean {
             if (token != null) token.set(true);
         }
         return confirmOwnership(row);
+    }
+    public ToolProcessReview inspectProcesses(String operation, UUID id) {
+        var row = require(operation, id);
+        if (!List.of("UNKNOWN", "CLOSED_UNKNOWN").contains(row.status()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "PROCESS_REVIEW_NOT_UNKNOWN");
+        var inspector = new LocalProcessIdentityInspector();
+        var observations = row.steps().stream().limit(8).map(step -> {
+            var evidence = step.evidence();
+            Long pid = null;
+            if (evidence.get("processPid") instanceof Number value) {
+                try { pid = new java.math.BigDecimal(value.toString()).longValueExact(); }
+                catch (ArithmeticException | NumberFormatException invalid) { /* No usable captured PID. */ }
+            }
+            var started = evidence.get("processStartedAt") instanceof String value ? value : null;
+            var executable = evidence.get("processExecutable") instanceof String value ? value : null;
+            return new ToolProcessReview.Step(step.id(), step.phase(), inspector.inspect(pid, started, executable));
+        }).toList();
+        return new ToolProcessReview(row.id(), operation, row.status(), Instant.now(), false,
+                row.steps().size() > 8, observations);
     }
     /**
      * Explicit local-operator attestation releases only this operation's reservation.

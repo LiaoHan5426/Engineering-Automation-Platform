@@ -1,6 +1,6 @@
 # Agent 能力、本地运行环境与插件演进
 
-状态：有效合同与增量实现记录；当前已提交实现基线 `8abbd21`，真实diff HTTP及工具UNKNOWN人工处置接续按用户授权随本次提交交付，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。后续各切片已有独立授权和实测，本文历史章节的“不推送/不调用真实模型”等仅描述当时范围，不是当前全局限制。向量增强、框架迁移、第三方安装等仍须满足各自证据与授权门禁。
+状态：有效合同与增量实现记录；当前已提交实现基线 `bb83f31`，当前进程线索按用户授权随本次提交交付，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。后续各切片已有独立授权和实测，本文历史章节的“不推送/不调用真实模型”等仅描述当时范围，不是当前全局限制。向量增强、框架迁移、第三方安装等仍须满足各自证据与授权门禁。
 
 ## 1. 结论与适用范围
 
@@ -275,7 +275,7 @@ TC-02 定向独立复核通过，原P1关闭：审查者复跑2文件10项、typ
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + 派生清空 + **备注 Badge**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
 | FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + inventory + candidateCounts + **byKind**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | **部分交付**：既有程序/操作模型投影目录；Git路径、版本与探测缓存共享；旧能力ID/探测入口兼容，历史路径冲突拒绝执行 | 其他依赖绑定与用户接受；见[Git调用合同](#git-operation-executions) |
-| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝；真实diff HTTP/JDBC已验，工具UNKNOWN显式核对关闭阻塞已实现 | 真实孤儿进程核对、跨重启进程接管与用户接受独立；见[Git调用合同](#git-operation-executions) |
+| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝；真实diff HTTP/JDBC已验，工具UNKNOWN显式核对关闭阻塞及当前身份线索已实现；隔离真实父退出/子存活已验 | 实际异常执行人工接受、跨重启进程接管独立；见[Git调用合同](#git-operation-executions) |
 | TC-02 / P1 | **部分交付**：实际 Grapes 实例人工读取草稿/选中状态，实例/文档/revision 核验、有界快照、过期与离页清空 | 多实例/冲突/超限离线覆盖，真机已验读取/过期/切页/新建；用户接受、远程断线与模型反向调用仍独立，不建设反向 RPC |
 | MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（含 filesystem 五工具）+ **callVerified/listOnly 视图** + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；mock/真机已验 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/回滚、依赖缺失/激活失败；新增显式只读Task列表检查，来源/时间/未检查与未知失败分开（真机及mock已验）；不改Task/Run | Run/整体服务健康未验，用户接受与在途停用完整矩阵仍待；无第二状态源，外部安装器延期 |
@@ -485,7 +485,7 @@ core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManife
 
 本轮范围由已批准计划确定；用户已授权提交并推送，随本次提交交付，最终提交号和远端对齐由Git回读确认。命令、失败修复与验证边界见[diff接续记录](../records/backend-composition-history.md#git-diff-operation-executions)；UNKNOWN人工处置、跨重启进程接管及用户接受继续保留。
 
-### 工具UNKNOWN人工核对关闭（2026-11-09）
+### 工具UNKNOWN人工核对关闭（历史阶段，bb83f31，2026-11-09）
 
 范围仅内置git-status/git-diff的独立ToolExecution，不推广到SQL Agent、候选写入、Mission或任意CLI。真实diff HTTP标记差异、规范工作区/三步退出清理、幂等/迟到取消/越操作拒绝及独立JDBC读回已验；见[本轮记录](../records/backend-composition-history.md#tool-unknown-manual-review)。
 
@@ -497,3 +497,14 @@ core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManife
 - 前端和mock复用原面板/DTO链路；响应丢失时暂停、锁定原核对内容，经重新查询后才允许显式重提同一请求。离页只停止观测，返回读回审计；无自动重提、自动恢复执行或隐式解锁。UI基础组件复用@eap/ui，业务留L4 capability，文案走i18n，无新增共享类别。
 
 真实孤儿进程核对演练、跨重启进程接管、用户接受及其他领域UNKNOWN继续独立；本轮已获用户提交并推送授权，随本次提交交付；结果以Git回读为准。
+
+### 当前进程身份线索（2026-11-09）
+
+- GET `/api/cli-programs/git/operations/{operation}/executions/{id}/process-review`复用规范工作区/操作隔离，仅UNKNOWN/CLOSED_UNKNOWN允许查询；其他状态409、跨操作/工作区或未知ID404。客户端只传执行ID，不接受PID、路径、argv或系统扫描条件。
+- 从持久步骤读取已捕获processPid/processStartedAt/processExecutable，最多前8步；API类型在eap-api，本地ProcessHandle观察器在engine-local，workflow只负责范围/步骤投影，web提供HTTP，不引入框架/依赖或第二执行器。
+- 比较完整启动时刻和绝对规范可执行路径，区分NOT_CAPTURED/NOT_FOUND/MATCHING_ALIVE/MATCHING_EXITED/IDENTITY_MISMATCH/UNVERIFIABLE/UNAVAILABLE。PID存在不足以确认身份；不读取命令参数、环境或文件内容，不枚举进程/子孙或发出终止动作。路径脱敏并限1000字符；权限/平台不可用返回不确定线索。
+- 返回临时观测时间、执行ID/当时状态与截断标记，completeProcessTreeEvidence固定false。父进程缺失、身份不符、已退出或无法核验均不证明子进程已结束；绝不修改持久状态/退出证据/核对审计，也不替代人工进程树确认。人工关闭仍由原独立接口裁决。
+- 面板仅显式点击后读取，展示捕获/当前时间与路径、状态及不完整边界；无自动轮询/自动解锁。离页清除临时观察并丢弃迟到响应，返回读取持久记录后须重新点击。旧UNKNOWN处置与CLOSED_UNKNOWN历史保留，复用@eap/ui基础组件，无新共享类别或数据库迁移。
+- 隔离测试创建自有Java父子进程，终止父进程后仍观测子存活，最后清理精确自有进程。该证据验证语义及OS观察器，不是用户异常Git进程的完整人工接受，更不是跨重启接管。
+
+命令、结果与限制见[当前进程线索记录](../records/backend-composition-history.md#tool-process-review)。本接续已获用户提交并推送授权，随本次提交交付；结果以Git回读为准。

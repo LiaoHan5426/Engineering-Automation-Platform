@@ -133,3 +133,32 @@ it('requires an explicit review, preserves UNKNOWN evidence and closes idempoten
     409,
   )
 })
+
+it('returns explicitly simulated process clues without clearing UNKNOWN or allowing cross-operation reads', async () => {
+  const backend = createMockToolExecutionBackend(new Map())
+  const started = await backend.handle('POST', base + '?mockOutcome=unknown', {
+    requestId: crypto.randomUUID(),
+  })
+  const id = (started!.data as { id: string }).id
+  const url = base + '/' + id + '/process-review'
+  const observed = await backend.handle('GET', url)
+  expect(observed?.data).toMatchObject({
+    executionId: id,
+    executionStatus: 'UNKNOWN',
+    completeProcessTreeEvidence: false,
+    steps: [{ phase: 'mock: root', process: { status: 'NOT_CAPTURED' } }],
+  })
+  expect((await backend.handle('GET', base + '/' + id))?.data).toEqual(started?.data)
+  expect((await backend.handle('POST', base, { requestId: crypto.randomUUID() }))?.status).toBe(409)
+  expect((await backend.handle('GET', url.replace('git-status', 'git-diff')))?.status).toBe(404)
+  const review = {
+    requestId: crypto.randomUUID(),
+    note: 'Mock has no real process; human review fixture',
+    processTreeStopped: true,
+  }
+  await backend.handle('POST', base + '/' + id + '/resolve-unknown', review)
+  expect((await backend.handle('GET', url))?.data).toMatchObject({
+    executionStatus: 'CLOSED_UNKNOWN',
+    completeProcessTreeEvidence: false,
+  })
+})

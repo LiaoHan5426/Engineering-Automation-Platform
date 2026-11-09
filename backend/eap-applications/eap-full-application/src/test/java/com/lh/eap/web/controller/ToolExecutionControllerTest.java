@@ -39,6 +39,8 @@ class ToolExecutionControllerTest {
             mvc.perform(post(base + "/" + id + "/cancel")).andExpect(status().isOk());
             verify(service).start(operation, request); verify(service).list(operation, 20);
             verify(service).get(operation, id); verify(service).cancel(operation, id);
+            mvc.perform(get(base + "/" + id + "/process-review")).andExpect(status().isOk());
+            verify(service).inspectProcesses(operation, id);
         }
     }
     @Test void unknownReviewOnlyAcceptsExplicitBoundedReviewInput() throws Exception {

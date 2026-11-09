@@ -131,6 +131,33 @@ export type ToolExecutionStatus =
   | 'CANCELLED'
   | 'UNKNOWN'
   | 'CLOSED_UNKNOWN'
+export type ToolProcessReview = {
+  executionId: string
+  capabilityId: GitExecutionOperation
+  executionStatus: ToolExecutionStatus
+  observedAt: string
+  completeProcessTreeEvidence: false
+  truncated: boolean
+  steps: Array<{
+    stepId: string
+    phase: string
+    process: {
+      pid: number | null
+      status:
+        | 'NOT_CAPTURED'
+        | 'NOT_FOUND'
+        | 'MATCHING_ALIVE'
+        | 'MATCHING_EXITED'
+        | 'IDENTITY_MISMATCH'
+        | 'UNVERIFIABLE'
+        | 'UNAVAILABLE'
+      capturedStartedAt: string | null
+      observedStartedAt: string | null
+      capturedExecutable: string
+      observedExecutable: string
+    }
+  }>
+}
 export type ToolUnknownReviewRequest = {
   requestId: string
   note: string
@@ -1443,6 +1470,13 @@ export const runtimeApi = {
   gitOperationExecutions: gitOperationApi.list,
   gitOperationExecution: gitOperationApi.get,
   cancelGitOperationExecution: gitOperationApi.cancel,
+  gitExecutionProcessReview: (operation: GitExecutionOperation, id: string, signal?: AbortSignal) =>
+    client
+      .get<ToolProcessReview>(
+        gitExecutionPath(operation) + '/' + encodeURIComponent(id) + '/process-review',
+        { signal },
+      )
+      .then((r) => r.data),
   resolveUnknownGitExecution: (
     operation: GitExecutionOperation,
     id: string,

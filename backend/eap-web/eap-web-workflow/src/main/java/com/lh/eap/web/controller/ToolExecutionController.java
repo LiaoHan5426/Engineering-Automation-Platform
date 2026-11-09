@@ -2,6 +2,7 @@ package com.lh.eap.web.controller;
 
 import com.lh.eap.application.service.ToolExecution;
 import com.lh.eap.application.service.ToolExecutionService;
+import com.lh.eap.application.service.ToolProcessReview;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,10 @@ public class ToolExecutionController {
     }
     @GetMapping("/{id}") public ToolExecution get(@PathVariable String operation, @PathVariable UUID id) { return service.get(operation, id); }
     @PostMapping("/{id}/cancel") public ToolExecution cancel(@PathVariable String operation, @PathVariable UUID id) { return service.cancel(operation, id); }
+    @GetMapping("/{id}/process-review")
+    public ToolProcessReview inspectProcesses(@PathVariable String operation, @PathVariable UUID id) {
+        return service.inspectProcesses(operation, id);
+    }
     @PostMapping("/{id}/resolve-unknown")
     public ToolExecution resolveUnknown(@PathVariable String operation, @PathVariable UUID id,
                                        @RequestBody Map<String, Object> body) {

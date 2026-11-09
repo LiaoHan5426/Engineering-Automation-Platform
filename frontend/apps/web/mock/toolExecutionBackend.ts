@@ -94,6 +94,35 @@ export function createMockToolExecutionBackend(
       if (!entry || entry.row.capabilityId !== operation)
         return { status: 404, data: { detail: 'TOOL_EXECUTION_NOT_FOUND' } }
       const row = entry.row
+      if (tail.length === 2 && tail[1] === 'process-review' && method === 'GET') {
+        if (!['UNKNOWN', 'CLOSED_UNKNOWN'].includes(row.status))
+          return { status: 409, data: { detail: 'PROCESS_REVIEW_NOT_UNKNOWN' } }
+        return {
+          status: 200,
+          data: {
+            executionId: row.id,
+            capabilityId: operation,
+            executionStatus: row.status,
+            observedAt: new Date().toISOString(),
+            completeProcessTreeEvidence: false,
+            truncated: false,
+            steps: [
+              {
+                stepId: 'mock-step',
+                phase: 'mock: root',
+                process: {
+                  pid: null,
+                  status: 'NOT_CAPTURED',
+                  capturedStartedAt: null,
+                  observedStartedAt: null,
+                  capturedExecutable: '',
+                  observedExecutable: '',
+                },
+              },
+            ],
+          },
+        }
+      }
       if (tail.length === 2 && tail[1] === 'resolve-unknown' && method === 'POST') {
         const review = body as {
           requestId?: unknown

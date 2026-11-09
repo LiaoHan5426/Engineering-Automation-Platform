@@ -103,6 +103,19 @@ try {
       await button('diff-mock-unknown').click()
       await button('diff-unknown').waitFor()
     }
+    await button(operation + '-process-inspect').click()
+    await button(operation + '-process-observation').waitFor()
+    assert.match(await button(operation + '-process-observation').innerText(), /未捕获有效 PID/)
+    assert.equal(await button(operation + '-invoke').isDisabled(), true)
+    assert.equal(await button(operation + '-review-open').isDisabled(), true)
+    checks.push(operation + ' explicit process observation does not release UNKNOWN')
+    for (const width of [1440, 900, 390]) {
+      await page.setViewportSize({ width, height: 960 })
+      await button(operation + '-process-observation').scrollIntoViewIfNeeded()
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true)
+      await page.screenshot({ path: resolve(output, operation + '-process-observation-' + width + '.png') })
+    }
+
     assert.equal(await button(operation + '-review-open').isDisabled(), true)
     await button(operation + '-review-note').fill('mock review: fixture has no real process; related processes checked')
     await button(operation + '-review-checked').check()

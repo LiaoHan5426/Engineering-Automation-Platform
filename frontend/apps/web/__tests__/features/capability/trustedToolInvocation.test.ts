@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, nextTick, KeepAlive, h, ref, type App } from 'vue'
-import { runtimeApi, type ToolExecution } from '@eap/runtime-client'
+import { runtimeApi, type ToolExecution, type ToolProcessReview } from '@eap/runtime-client'
 import Panel from '../../../src/features/capability/TrustedGitExecutionPanel.vue'
 
 let app: App | undefined
@@ -50,6 +50,28 @@ beforeEach(() => {
   vi.spyOn(runtimeApi, 'startGitOperationExecution').mockResolvedValue(row())
   vi.spyOn(runtimeApi, 'gitOperationExecution').mockResolvedValue(row('SUCCEEDED'))
   vi.spyOn(runtimeApi, 'cancelGitOperationExecution').mockResolvedValue(row('CANCELLING'))
+  vi.spyOn(runtimeApi, 'gitExecutionProcessReview').mockImplementation(async (op, id) => ({
+    executionId: id,
+    capabilityId: op,
+    executionStatus: 'UNKNOWN',
+    observedAt: '2026-11-09T08:00:00Z',
+    completeProcessTreeEvidence: false,
+    truncated: false,
+    steps: [
+      {
+        stepId: 'step',
+        phase: 'root',
+        process: {
+          pid: 42,
+          status: 'MATCHING_ALIVE',
+          capturedStartedAt: '2026-11-09T07:00:00Z',
+          observedStartedAt: '2026-11-09T07:00:00Z',
+          capturedExecutable: '/bin/git',
+          observedExecutable: '/bin/git',
+        },
+      },
+    ],
+  }))
   vi.spyOn(runtimeApi, 'resolveUnknownGitExecution').mockImplementation(
     async (op, id, request) => ({
       ...row('CLOSED_UNKNOWN'),
@@ -97,6 +119,102 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
     expect(confirm).not.toBeNull()
     confirm.click()
   }
+  it('inspects only on explicit action and retains UNKNOWN and manual attestation requirements', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
+    await mount()
+    expect(runtimeApi.gitExecutionProcessReview).not.toHaveBeenCalled()
+    button('process-inspect').click()
+    await settle()
+    expect(runtimeApi.gitExecutionProcessReview).toHaveBeenCalledWith(
+      operation,
+      'a',
+      expect.any(AbortSignal),
+    )
+    expect(root.textContent).toContain('身份匹配，进程仍存活')
+    expect(root.textContent).toContain('2026-11-09T08:00:00Z')
+    expect(button('invoke').disabled).toBe(true)
+    expect(button('review-open').disabled).toBe(true)
+    expect(runtimeApi.resolveUnknownGitExecution).not.toHaveBeenCalled()
+    vi.mocked(runtimeApi.gitExecutionProcessReview).mockResolvedValue({
+      executionId: 'a',
+      capabilityId: operation,
+      executionStatus: 'UNKNOWN',
+      observedAt: 'now',
+      completeProcessTreeEvidence: false,
+      truncated: false,
+      steps: [
+        {
+          stepId: 'step',
+          phase: 'root',
+          process: {
+            pid: 42,
+            status: 'NOT_FOUND',
+            capturedStartedAt: null,
+            observedStartedAt: null,
+            capturedExecutable: '/bin/git',
+            observedExecutable: '',
+          },
+        },
+      ],
+    })
+    button('process-inspect').click()
+    await settle()
+    expect(root.textContent).toContain('当前未找到该 PID')
+    expect(button('invoke').disabled).toBe(true)
+    expect(button('review-open').disabled).toBe(true)
+    expect(root.textContent).toContain('不能证明子进程已结束')
+  })
+  it('shows inspection errors separately without clearing UNKNOWN or enabling start', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
+    vi.mocked(runtimeApi.gitExecutionProcessReview).mockRejectedValue(new Error('unavailable'))
+    await mount()
+    button('process-inspect').click()
+    await settle()
+    expect(root.textContent).toContain('PROCESS_REVIEW_UNAVAILABLE')
+    expect(button('invoke').disabled).toBe(true)
+    expect(button('review-open').disabled).toBe(true)
+    expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+  })
+  it('discards a late process observation after cached navigation and explicitly rechecks on return', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
+    let resolve!: (value: ToolProcessReview) => void
+    vi.mocked(runtimeApi.gitExecutionProcessReview).mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done
+        }),
+    )
+    const visible = ref(true)
+    root = document.createElement('div')
+    document.body.append(root)
+    app = createApp({
+      render: () =>
+        h(KeepAlive, null, {
+          default: () => (visible.value ? h(Panel, { enabled: true, operation }) : null),
+        }),
+    })
+    app.mount(root)
+    await settle()
+    button('process-inspect').click()
+    await settle()
+    visible.value = false
+    await settle()
+    resolve({
+      executionId: 'a',
+      capabilityId: operation,
+      executionStatus: 'UNKNOWN',
+      observedAt: 'late-observation',
+      completeProcessTreeEvidence: false,
+      truncated: false,
+      steps: [],
+    })
+    await settle()
+    visible.value = true
+    await settle()
+    expect(root.textContent).not.toContain('late-observation')
+    expect(runtimeApi.gitExecutionProcessReview).toHaveBeenCalledTimes(1)
+    expect(button('invoke').disabled).toBe(true)
+  })
   it('requires notes, process-tree attestation and explicit confirmation; closure keeps outcome unknown', async () => {
     vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({
       items: [{ ...row('UNKNOWN'), unconfirmedReason: 'SERVICE_RESTART_EXIT_UNCONFIRMED' }],

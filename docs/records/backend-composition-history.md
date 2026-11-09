@@ -458,3 +458,35 @@ UNKNOWN人工处置仅覆盖两个内置只读操作；SQL/源码写入UNKNOWN�
 
 
 提交准备：完整核查本轮42文件差异、UTF-8/本地链接/空白及敏感模式，V26～V28原稿不变。沿用紧邻实施阶段前端824项、后端946项离线（841通过/105跳过）及最终65项定向证据，提交阶段只更新授权/交付说明，不重跑应用或模型。fetch确认分支状态，提交推送后回读本地/远端SHA；具体提交号见Git记录。
+
+<a id="tool-process-review"></a>
+## 当前进程身份线索与隔离父子演练（2026-11-09）
+
+用户授权先提交推送UNKNOWN处置，再继续开发。已提交bb83f31be8ab4545b46dc7efc253fd0e39f4ebd1（42文件，feat: 增加工具 UNKNOWN 人工核对与持久关闭），push origin main成功；git rev-parse HEAD origin/main及git ls-remote --exit-code origin refs/heads/main三者一致，随后工作树干净。提交前完整差异/敏感/编码/链接/暂存空白检查通过，未重跑前阶段模型/测试。以下为该提交之后的接续，用户后续明确授权提交并推送，随本次提交交付。
+
+新增ProcessIdentityInspection API类型、LocalProcessIdentityInspector本地只读观察器、ToolProcessReview产品投影和GET process-review。仅查询当前工作区/操作记录内已捕获身份，最多8步；比对PID/启动时间/绝对可执行路径，返回有时间的即时线索，不读argv/环境、不扫描/枚举、不杀进程、不重放、不修改状态或审计。任何结果均completeProcessTreeEvidence=false；未找到父PID也不能证明子进程结束。旧人工核对/再次启动门禁保留，前端明确点击才检查，错误不清UNKNOWN、离页清除并丢弃迟到响应。DTO/HTTP在runtime-client，业务留L4 capability，复用@eap/ui Button/Feedback，无新包/依赖/迁移。
+
+首轮31模块定向BUILD SUCCESS，47项/0跳过：local 4项含真实自有JVM检查及真实父退出/子存活（最后精确清理测试进程），其余覆盖身份不符/权限不足/身份缺失、有界/不变状态/操作隔离、JSON/HTTP、模块边界与PostgreSQL自有schema。之后补持久化用例检查process-review前后记录不变，最终定向另记。前端定向3文件46项与全量137文件832项通过；typecheck、build、check:architecture及改动范围lint/stylelint通过，既有大chunk/网络防护/Node localStorage提示保留。
+
+真实Chromium+mock服务14组通过、0pageerror，1440/900/390px无横溢；显式检查后UNKNOWN仍阻塞/核对按钮仍要求人工输入，mock仅示例NOT_CAPTURED，不能代替真实OS进程。浏览器脚本补存线索区域三档截图，最终脚本仍14组通过，已查看status线索390px与diff线索1440px截图；页面明确显示模拟、即时观测及非完整退出证明。
+
+构建前读取历史确认无在途工具调用，按jps精确校验后暂停full-application PID7632，并保留原Java启动参数；构建后恢复。无新迁移，V26～V29原稿保留；未扫描/终止用户未知进程，未调用模型/MCP。最终完整离线reactor32模块BUILD SUCCESS/退出0，按本次起始时间汇总161份XML：951项，846通过、105门控跳过、0失败/错误。只在子进程关闭EAP_RUN_*门控，原始日志backend/target/git-process-review-offline-reactor.log，逐报告汇总git-process-review-offline-summary.json。最终定向47项通过、0跳过，包含补充的持久不变断言；日志git-process-review-final-targeted.log。
+
+15:38按原参数恢复full-application，PID34672；启动日志校验29份迁移，schema已最新，无迁移执行，health为200/ok。新GET process-review对原真实diff成功记录返回409、status跨操作404、非信任Origin403；前后GET快照一致。只读回读V26=-716806117、V27=1802106427、V28=-329790285、V29=-508415836均与源码一致。证据backend/target/git-process-review-live-check.json和git-process-review-app-restart.log。成功身份检查由本地真实进程/隔离服务回归验证，不把真实HTTP拒绝路径当完整UNKNOWN人工接受。
+
+最终7文件vp fmt --check及git diff --check通过，全部改动UTF-8无BOM、本地Markdown链接和有限敏感模式扫描通过；前端类型/架构/构建及目标lint/stylelint均退出0。临时mock服务已停止，恢复的full-application保持运行。
+
+复现命令（仓库根；浏览器脚本在frontend目录）：
+```text
+rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=LocalProcessIdentityInspectorTest,ToolExecutionServiceTest,ToolExecutionJsonTest,ToolExecutionControllerTest,ToolExecutionPersistenceTest,SchemaAndWiringTest,BackendModuleBoundaryTest' '-Dsurefire.failIfNoSpecifiedTests=false' test
+rtk proxy mvn -B -ntp -f backend/pom.xml test
+rtk proxy pnpm --dir frontend test run
+rtk proxy pnpm --dir frontend typecheck
+rtk proxy pnpm --dir frontend check:architecture
+rtk proxy pnpm --dir frontend build
+rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright H:/developerTools/ai/hermes/hermes-agent/node_modules/playwright-core --chromium C:/Users/LH/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe --url http://127.0.0.1:5186
+```
+
+本片不把隔离JVM测试等同异常Git人工接受，不实现跨重启进程接管或进程树完整证明。后续仍需实际异常执行的人工核对/用户接受以及其他工具合同。本接续按用户后续授权随本次提交交付，结果以Git回读为准。
+
+提交准备接续：本次用户授权先提交并推送当前进程线索检查，再继续开发。复核49文件差异、敏感模式、UTF-8、Markdown链接及暂存空白；V26～V29原稿不变。沿用紧邻实现阶段832项前端、951项后端离线（846通过/105跳过）及最终47项定向证据，未为提交重跑服务/模型。提交前fetch，推送后回读本地及远端SHA；具体提交号以Git记录为准。

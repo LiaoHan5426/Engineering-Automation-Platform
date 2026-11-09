@@ -6,6 +6,7 @@ import {
   type GitExecutionOperation,
   type ToolExecution,
   type ToolUnknownReviewRequest,
+  type ToolProcessReview,
 } from '@eap/runtime-client'
 import { Badge, Button, Checkbox, Collapse, ConfirmBox, Feedback, Textarea } from '@eap/ui'
 import { i18n } from '../../lib/i18n'
@@ -24,6 +25,8 @@ const refusal = ref<'denied' | 'rejected' | null>(null)
 const loaded = ref(false)
 const errorDetail = ref('')
 const observedAt = ref('')
+const processReview = ref<ToolProcessReview | null>(null)
+const processReviewError = ref('')
 const reviewNote = ref('')
 const reviewChecked = ref(false)
 const reviewError = ref('')
@@ -56,6 +59,7 @@ const elapsed = computed(() =>
 )
 
 function accept(row: ToolExecution) {
+  if (selected.value?.id !== row.id) processReview.value = null
   if (row.status !== 'UNKNOWN' || selected.value?.id !== row.id) {
     pendingReview.value = null
     reviewNote.value = ''
@@ -173,6 +177,42 @@ async function cancel() {
     }
   }
 }
+async function inspectProcesses() {
+  const row = selected.value
+  if (
+    !row ||
+    !['UNKNOWN', 'CLOSED_UNKNOWN'].includes(row.status) ||
+    busy.value ||
+    disposed ||
+    suspended
+  )
+    return
+  busy.value = true
+  const revision = ++generation
+  processReviewError.value = ''
+  processReview.value = null
+  try {
+    const result = await runtimeApi.gitExecutionProcessReview(
+      props.operation,
+      row.id,
+      controller.signal,
+    )
+    if (
+      !disposed &&
+      !suspended &&
+      revision === generation &&
+      selected.value?.id === result.executionId
+    )
+      processReview.value = result
+  } catch (error) {
+    if (!disposed && !suspended && revision === generation)
+      processReviewError.value = axios.isAxiosError(error)
+        ? ((error.response?.data as { detail?: string })?.detail ?? 'PROCESS_REVIEW_UNAVAILABLE')
+        : 'PROCESS_REVIEW_UNAVAILABLE'
+  } finally {
+    if (revision === generation) busy.value = false
+  }
+}
 function openReview() {
   const row = selected.value
   if (!row || row.status !== 'UNKNOWN' || busy.value || uncertain.value || !reviewValid.value)
@@ -217,6 +257,7 @@ async function resolveUnknown() {
 onMounted(() => void recheck())
 onDeactivated(() => {
   suspended = true
+  processReview.value = null
   reviewDialog.value = null
   ++generation
   busy.value = false
@@ -319,6 +360,39 @@ onBeforeUnmount(() => {
       <Feedback v-if="selected.status === 'UNKNOWN'" tone="warning" :data-testid="testId('unknown')"
         >{{ t('unknown') }} · {{ selected.unconfirmedReason }}</Feedback
       >
+      <template v-if="['UNKNOWN', 'CLOSED_UNKNOWN'].includes(selected.status)">
+        <Button
+          variant="secondary"
+          size="sm"
+          :disabled="busy"
+          :data-testid="testId('process-inspect')"
+          @click="inspectProcesses"
+          >{{ t('processInspect') }}</Button
+        >
+        <p class="hint">{{ t('processBoundary') }}</p>
+        <Feedback v-if="processReviewError" tone="warning" :data-testid="testId('process-error')">{{
+          processReviewError
+        }}</Feedback>
+        <div v-if="processReview" :data-testid="testId('process-observation')">
+          <p>{{ t('observed') }} {{ processReview.observedAt }} · {{ t('processSnapshot') }}</p>
+          <p v-if="!processReview.steps.length" class="hint">{{ t('processNoIdentity') }}</p>
+          <p v-if="processReview.truncated" class="hint">{{ t('processLimited') }}</p>
+          <div v-for="step in processReview.steps" :key="step.stepId">
+            <p>
+              {{ step.phase }} · {{ t('process' + step.process.status) }} · PID
+              {{ step.process.pid ?? '—' }}
+            </p>
+            <p>
+              {{ t('processCaptured') }} · {{ step.process.capturedStartedAt ?? '—' }} ·
+              {{ step.process.capturedExecutable || '—' }}
+            </p>
+            <p>
+              {{ t('processCurrent') }} · {{ step.process.observedStartedAt ?? '—' }} ·
+              {{ step.process.observedExecutable || '—' }}
+            </p>
+          </div>
+        </div>
+      </template>
       <template v-if="selected.status === 'UNKNOWN'">
         <Collapse>
           <template #summary>{{ t('reviewEvidence') }}</template>

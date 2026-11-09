@@ -48,6 +48,16 @@ describe('bounded Git execution client', () => {
       expect(JSON.parse(requests[0]!.data as string)).toEqual({ requestId: 'request' })
     },
   )
+  it('reads process clues only from the captured execution route', async () => {
+    await runtimeApi.gitExecutionProcessReview('git-diff', 'id/with slash')
+    expect(requests).toEqual([
+      {
+        method: 'get',
+        url: '/cli-programs/git/operations/git-diff/executions/id%2Fwith%20slash/process-review',
+        data: undefined,
+      },
+    ])
+  })
   it('binds unknown review to one operation and execution without extra fields', async () => {
     const review = {
       requestId: 'review',
