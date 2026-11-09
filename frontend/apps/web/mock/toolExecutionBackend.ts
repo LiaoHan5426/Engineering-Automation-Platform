@@ -110,6 +110,18 @@ export function createMockToolExecutionBackend(
               {
                 stepId: 'mock-step',
                 phase: 'mock: root',
+                descendantsCaptured: true,
+                descendantsTruncated: true,
+                descendants: [
+                  {
+                    pid: 424242,
+                    status: 'MATCHING_ALIVE',
+                    capturedStartedAt: '2026-11-09T08:00:00Z',
+                    observedStartedAt: '2026-11-09T08:00:00Z',
+                    capturedExecutable: '/mock/observed-child',
+                    observedExecutable: '/mock/observed-child',
+                  },
+                ],
                 process: {
                   pid: null,
                   status: 'NOT_CAPTURED',

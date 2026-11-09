@@ -141,22 +141,27 @@ export type ToolProcessReview = {
   steps: Array<{
     stepId: string
     phase: string
-    process: {
-      pid: number | null
-      status:
-        | 'NOT_CAPTURED'
-        | 'NOT_FOUND'
-        | 'MATCHING_ALIVE'
-        | 'MATCHING_EXITED'
-        | 'IDENTITY_MISMATCH'
-        | 'UNVERIFIABLE'
-        | 'UNAVAILABLE'
-      capturedStartedAt: string | null
-      observedStartedAt: string | null
-      capturedExecutable: string
-      observedExecutable: string
-    }
+    process: ToolProcessIdentityInspection
+    /** Absent on historical servers; never implies a complete tree. */
+    descendantsCaptured?: boolean
+    descendantsTruncated?: boolean
+    descendants?: ToolProcessIdentityInspection[]
   }>
+}
+export type ToolProcessIdentityInspection = {
+  pid: number | null
+  status:
+    | 'NOT_CAPTURED'
+    | 'NOT_FOUND'
+    | 'MATCHING_ALIVE'
+    | 'MATCHING_EXITED'
+    | 'IDENTITY_MISMATCH'
+    | 'UNVERIFIABLE'
+    | 'UNAVAILABLE'
+  capturedStartedAt: string | null
+  observedStartedAt: string | null
+  capturedExecutable: string
+  observedExecutable: string
 }
 export type ToolUnknownReviewRequest = {
   requestId: string

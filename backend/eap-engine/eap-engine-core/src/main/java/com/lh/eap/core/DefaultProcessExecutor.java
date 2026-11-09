@@ -53,7 +53,7 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
     }
     @Override public Observation runManaged(UUID id,String capability,Path dir,List<String> command,
                                            Map<String,String> environment,ManagedProcessControl control){
-        return execute(id,capability,dir,command,Map.copyOf(environment),control::started,control::cancellationRequested);
+        return execute(id,capability,dir,command,Map.copyOf(environment),control::started,control::cancellationRequested,control::descendantsObserved);
     }
     private final Duration timeout;
     private static final int OUTPUT_LIMIT=1024*1024;
@@ -70,11 +70,12 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
     }
     private Observation execute(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment,
                                 java.util.function.Consumer<Map<String,Object>> onStart){
-        return execute(id,capability,dir,command,environment,onStart,()->false);
+        return execute(id,capability,dir,command,environment,onStart,()->false,null);
     }
     private Observation execute(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment,
                                 java.util.function.Consumer<Map<String,Object>> onStart,
-                                java.util.function.BooleanSupplier cancelled){
+                                java.util.function.BooleanSupplier cancelled,
+                                java.util.function.Consumer<Map<String,Object>> onDescendants){
         var execution=new Execution(id);
         synchronized(this){
             if(closed)throw new IllegalStateException("Executor closed");
@@ -85,6 +86,7 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
         }
         Process process=null;
         var descendants=new LinkedHashMap<Long,ProcessHandle>();
+        var descendantEvidence=new DescendantEvidence();
         var readers=Executors.newVirtualThreadPerTaskExecutor();
         var phases=new LinkedHashMap<String,Instant>();
         Observation observation;
@@ -100,14 +102,19 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
                 phases.put("started",Instant.now());
                 execution.identity=identityOf(process,command);
             }
-            if(onStart!=null) onStart.accept(execution.identity);
+            if(onStart!=null) {
+                var initial=new LinkedHashMap<String,Object>(execution.identity);
+                initial.putAll(descendantEvidence.snapshot());
+                onStart.accept(initial);
+            }
             process.getOutputStream().close();
             var running=process;
             var stdout=readers.submit(()->read(running.getInputStream()));
             var stderr=readers.submit(()->read(running.getErrorStream()));
             long deadline=System.nanoTime()+timeout.toNanos();
             while(process.isAlive()){
-                process.descendants().forEach(p->descendants.put(p.pid(),p));
+                observeDescendants(process,descendants,descendantEvidence);
+                descendantEvidence.publish(onDescendants,false);
                 synchronized(execution){
                     if(cancelled.getAsBoolean()||execution.status==CliExecution.Status.CANCELLING){execution.status=CliExecution.Status.CANCELLED;phases.put("cancelled",Instant.now());break;}
                     if(System.nanoTime()>=deadline){execution.status=CliExecution.Status.TIMED_OUT;phases.put("timedOut",Instant.now());break;}
@@ -120,6 +127,8 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
                 if(execution.status==CliExecution.Status.RUNNING)execution.status=process.exitValue()==0?CliExecution.Status.SUCCEEDED:CliExecution.Status.FAILED;
             }
             phases.put("cleanupStarted",Instant.now());
+            observeDescendants(process,descendants,descendantEvidence);
+            descendantEvidence.publish(onDescendants,true);
             boolean cleanupAttempted=terminate(process,descendants);
             process.waitFor(2,TimeUnit.SECONDS);
             for(var child:descendants.values())try{child.onExit().get(2,TimeUnit.SECONDS);}catch(ExecutionException|TimeoutException ignored){}
@@ -150,6 +159,9 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
             execution.status=CliExecution.Status.FAILED;
             observation=new Observation(capability,false,-1,"","Process execution failed: "+error.getClass().getSimpleName(),Map.of());
         }finally{
+            // Evidence collection must never prevent the existing best-effort cleanup.
+            try { if(process!=null) observeDescendants(process,descendants,descendantEvidence); }
+            catch(RuntimeException unavailable) { /* Cleanup below still attempts enumeration. */ }
             boolean cleanupAttempted=terminate(process,descendants);
             if(process!=null){
                 try{process.getInputStream().close();process.getErrorStream().close();process.getOutputStream().close();}catch(IOException ignored){}
@@ -164,6 +176,7 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
         // Observation copies metadata, so publish evidence only after the final cleanup attempt.
         var metadata=new LinkedHashMap<String,Object>(observation.metadata());
         metadata.putAll(execution.identity);
+        if(process!=null) metadata.putAll(descendantEvidence.snapshot());
         metadata.put("executorStatus",execution.status.name());
         metadata.put("processExited",process!=null&&!process.isAlive());
         metadata.put("processNotStarted",process==null);
@@ -182,6 +195,14 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
                 .orElse(command.isEmpty()?"":command.get(0));
         identity.put("processExecutable",executable);
         return identity;
+    }
+    private static void observeDescendants(Process process,Map<Long,ProcessHandle> descendants,DescendantEvidence evidence){
+        try(var handles=process.descendants()) {
+            handles.forEach(handle->{
+                var previous=descendants.put(handle.pid(),handle);
+                if(!handle.equals(previous)) evidence.capture(handle);
+            });
+        }
     }
     private static boolean terminate(Process process,Map<Long,ProcessHandle> descendants){
         return ProcessTree.terminate(process, descendants);

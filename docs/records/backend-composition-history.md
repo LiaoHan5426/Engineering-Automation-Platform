@@ -490,3 +490,29 @@ rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright
 本片不把隔离JVM测试等同异常Git人工接受，不实现跨重启进程接管或进程树完整证明。后续仍需实际异常执行的人工核对/用户接受以及其他工具合同。本接续按用户后续授权随本次提交交付，结果以Git回读为准。
 
 提交准备接续：本次用户授权先提交并推送当前进程线索检查，再继续开发。复核49文件差异、敏感模式、UTF-8、Markdown链接及暂存空白；V26～V29原稿不变。沿用紧邻实现阶段832项前端、951项后端离线（846通过/105跳过）及最终47项定向证据，未为提交重跑服务/模型。提交前fetch，推送后回读本地及远端SHA；具体提交号以Git记录为准。
+
+
+<a id="tool-descendant-evidence"></a>
+## 已观察子进程身份的有界持久与前端核对（2026-11-09）
+
+先按用户授权提交并推送b6e974867cbf31344b474af19ad1d5212520fe93（49文件，feat: 增加工具执行的只读进程身份核对）；回读HEAD、origin/main和远端refs/heads/main一致。提交后的工作树干净。以下接续按用户“继续前后端开发”授权实施；本次用户明确要求提交并推送，随本次提交交付。
+
+实际缺口：DefaultProcessExecutor原有子孙句柄只用于清理，UNKNOWN步骤仅保存父身份。复用现有循环及ManagedProcessControl兼容default回调，新增DescendantEvidence，每步保存最多32个已观察身份并标记截断；仅变化时发送累计证据、普通通知250ms节流、正常清理前刷新。清理句柄集合无证据限额。ToolExecutionService在短事务合并步骤证据，最后合并metadata，JSON增量不需迁移。检查接口最多8步/每步32子身份，复用原身份检查器及隔离，不接受外部PID或新增终止动作。
+
+前端DTO增量兼容旧服务，父/子共用身份排版与i18n，分别提示旧记录未捕获、新记录未观察到、证据截断。保留显式检查、离页清除、迟到响应隔离及独立人工核对。UI原语复用@eap/ui，业务留L4 capability，无新共享类别。mock明示父身份缺失和子存活/截断，不启动真实进程。
+
+| 验证 | 实际结果与边界 |
+|---|---|
+| 后端首轮 | 定向reactor成功，包含真实父子取消及身份通知失败清理、证据限32但40句柄均清理、通知节流/强制刷新与scope投影；之后加强隔离实库JSON断言 |
+| 后端完整离线 | `rtk proxy mvn -B -ntp -f backend/pom.xml test`，仅子进程设置全部已有EAP_RUN_*=false。32模块SUCCESS，162报告956项：851通过、105门控跳过、0失败/错误；约7分05秒。日志和按本次时间窗报告汇总：backend/target/git-descendants-offline-reactor.log、git-descendants-offline-summary.json |
+| 最终后端定向/实库 | `rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=DefaultProcessExecutorTest,DescendantEvidenceTest,LocalProcessIdentityInspectorTest,ToolExecutionServiceTest,ToolExecutionJsonTest,ToolExecutionControllerTest,ToolExecutionPersistenceTest,SchemaAndWiringTest,BackendModuleBoundaryTest' '-Dsurefire.failIfNoSpecifiedTests=false' test`：31模块SUCCESS，9报告64项全部通过、0跳过。EAP_RUN_BOARD_PERSISTENCE=true；UUID自有schema覆盖历史升级、子进程JSON读回、重启UNKNOWN及检查不改变原快照，finally仅删除自身schema。日志/汇总：backend/target/git-descendants-final-targeted.log、git-descendants-targeted-summary.json |
+| 前端 | `rtk proxy pnpm --dir frontend test run`：137文件834项通过；定向trustedToolInvocation/toolExecutionBackend/gitExecutions三文件48项通过。`typecheck`、`build`、`check:architecture`（含boundaries/circular）、改动范围vp lint/stylelint与5文件vp fmt --check通过。既有大chunk、EAP_TEST_NETWORK_BLOCKED诊断与Node localStorage提示保留，未开放测试外网 |
+| Chromium/mock | 启动`rtk proxy pnpm --dir frontend dev:mock --port 5186 --strictPort`后，从frontend运行`rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright H:/developerTools/ai/hermes/hermes-agent/node_modules/playwright-core --chromium C:/Users/LH/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe --url http://127.0.0.1:5186`：14组通过、0pageerror，1440/900/390px无横溢。已查看390px diff和1440px status身份区域截图；artifact在apps/web/__tests__/browser/artifacts/tool-execution |
+| 服务恢复/真实只读HTTP | 构建前检查status/diff无在途并核对EapApplication PID34672后暂停，完成后按保存原args/cwd恢复PID35768，health=200/ok。已有真实diff记录4e6f4bc7-ab7d-462c-b4fa-df3586c93122仍SUCCEEDED且前后相同；process-review对成功409、越操作404、恶意Origin403。backend/target/git-descendants-live-check.json |
+| 新增字段真实HTTP/JDBC | POST git-status，requestId=92d87219-66bb-4e22-95b2-125d3a84adea，执行da1bea9b-67b6-4d02-b02d-3baeb5cc4b75为SUCCEEDED/exit0。root/filters/status每步均观察并保存1个实际子进程的PID/启动时间/可执行路径，未截断，进程退出/树清理证据为true；独立只读JDBC事务回读snapshot与HTTP完全一致并回滚，执行记录保留。backend/target/git-descendants-real-http.json；只验证正常执行身份持久，不代替异常UNKNOWN人工核对 |
+| 文件收尾 | 47个变更文件，其中22个文本文件UTF-8无BOM/无替换字符，164处本地Markdown目标/锚点通过；git diff --check及新增内容3类有限敏感模式扫描通过。临时mock监听PID34600经命令行核对后停止（启动命令随之255退出，为主动收尾）；full-application保留运行；本次用户已授权该切片提交并推送，结果以Git回读为准 |
+| 迁移 | 恢复日志验证29份迁移、schema up to date、无新迁移。只读JDBC回读V26/V27/V28/V29分别-716806117/1802106427/-329790285/-508415836，与源码按Flyway CRC校验一致。原脚本不改；不执行repair/clean/baseline。首次PowerShell拆分未加引号的-Dstdout.encoding参数，补参数引号后回读成功 |
+
+完整树证明与跨重启接管仍未实现：观察间隙、脱离、瞬时创建、最后清理枚举、崩溃或未刷新窗口可能漏掉身份。即使全部捕获身份均退出，也不自动认定完整进程树退出；completeProcessTreeEvidence始终false。真实应用异常Git的完整人工核对演练、原生系统缩放及用户接受仍待，隔离真实进程/持久测试和模拟浏览器证据分列。
+
+提交准备：本次按用户授权先提交并推送子进程身份切片，再验证受控异常UNKNOWN整链。复核实际代码/测试/截图/文档差异，保留紧邻实现阶段64项后端定向、956项后端离线及834项前端证据，提交准备未重跑并冒充新测；新增内容敏感扫描、UTF-8、链接与暂存空白再查，推送后回读本地/远端SHA。

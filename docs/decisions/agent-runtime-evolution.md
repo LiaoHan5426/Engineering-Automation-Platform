@@ -1,6 +1,6 @@
 # Agent 能力、本地运行环境与插件演进
 
-状态：有效合同与增量实现记录；当前已提交实现基线 `bb83f31`，当前进程线索按用户授权随本次提交交付，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。后续各切片已有独立授权和实测，本文历史章节的“不推送/不调用真实模型”等仅描述当时范围，不是当前全局限制。向量增强、框架迁移、第三方安装等仍须满足各自证据与授权门禁。
+状态：有效合同与增量实现记录；当前已提交实现基线 `b6e9748`（已推送），本轮追加已观察子进程身份有界持久/核对，接续已获用户提交并推送授权，随本次提交交付，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。后续各切片已有独立授权和实测，本文历史章节的“不推送/不调用真实模型”等仅描述当时范围，不是当前全局限制。向量增强、框架迁移、第三方安装等仍须满足各自证据与授权门禁。
 
 ## 1. 结论与适用范围
 
@@ -275,7 +275,7 @@ TC-02 定向独立复核通过，原P1关闭：审查者复跑2文件10项、typ
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + 派生清空 + **备注 Badge**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
 | FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + inventory + candidateCounts + **byKind**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | **部分交付**：既有程序/操作模型投影目录；Git路径、版本与探测缓存共享；旧能力ID/探测入口兼容，历史路径冲突拒绝执行 | 其他依赖绑定与用户接受；见[Git调用合同](#git-operation-executions) |
-| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝；真实diff HTTP/JDBC已验，工具UNKNOWN显式核对关闭阻塞及当前身份线索已实现；隔离真实父退出/子存活已验 | 实际异常执行人工接受、跨重启进程接管独立；见[Git调用合同](#git-operation-executions) |
+| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝；真实diff HTTP/JDBC已验，工具UNKNOWN显式核对关闭阻塞及当前身份线索已实现；追加每步32个已观察子进程身份持久/核对，清理句柄不受限，仍不证明完整树退出；隔离真实父退出/子存活已验 | 实际异常执行人工接受、跨重启进程接管独立；见[Git调用合同](#git-operation-executions) |
 | TC-02 / P1 | **部分交付**：实际 Grapes 实例人工读取草稿/选中状态，实例/文档/revision 核验、有界快照、过期与离页清空 | 多实例/冲突/超限离线覆盖，真机已验读取/过期/切页/新建；用户接受、远程断线与模型反向调用仍独立，不建设反向 RPC |
 | MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（含 filesystem 五工具）+ **callVerified/listOnly 视图** + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；mock/真机已验 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/回滚、依赖缺失/激活失败；新增显式只读Task列表检查，来源/时间/未检查与未知失败分开（真机及mock已验）；不改Task/Run | Run/整体服务健康未验，用户接受与在途停用完整矩阵仍待；无第二状态源，外部安装器延期 |
@@ -501,10 +501,21 @@ core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManife
 ### 当前进程身份线索（2026-11-09）
 
 - GET `/api/cli-programs/git/operations/{operation}/executions/{id}/process-review`复用规范工作区/操作隔离，仅UNKNOWN/CLOSED_UNKNOWN允许查询；其他状态409、跨操作/工作区或未知ID404。客户端只传执行ID，不接受PID、路径、argv或系统扫描条件。
-- 从持久步骤读取已捕获processPid/processStartedAt/processExecutable，最多前8步；API类型在eap-api，本地ProcessHandle观察器在engine-local，workflow只负责范围/步骤投影，web提供HTTP，不引入框架/依赖或第二执行器。
+- 从持久步骤读取已捕获processPid/processStartedAt/processExecutable，最多前8步及每步32个已观察子进程身份；API类型在eap-api，本地ProcessHandle观察器在engine-local，workflow只负责范围/步骤投影，web提供HTTP，不引入框架/依赖或第二执行器。
 - 比较完整启动时刻和绝对规范可执行路径，区分NOT_CAPTURED/NOT_FOUND/MATCHING_ALIVE/MATCHING_EXITED/IDENTITY_MISMATCH/UNVERIFIABLE/UNAVAILABLE。PID存在不足以确认身份；不读取命令参数、环境或文件内容，不枚举进程/子孙或发出终止动作。路径脱敏并限1000字符；权限/平台不可用返回不确定线索。
 - 返回临时观测时间、执行ID/当时状态与截断标记，completeProcessTreeEvidence固定false。父进程缺失、身份不符、已退出或无法核验均不证明子进程已结束；绝不修改持久状态/退出证据/核对审计，也不替代人工进程树确认。人工关闭仍由原独立接口裁决。
 - 面板仅显式点击后读取，展示捕获/当前时间与路径、状态及不完整边界；无自动轮询/自动解锁。离页清除临时观察并丢弃迟到响应，返回读取持久记录后须重新点击。旧UNKNOWN处置与CLOSED_UNKNOWN历史保留，复用@eap/ui基础组件，无新共享类别或数据库迁移。
 - 隔离测试创建自有Java父子进程，终止父进程后仍观测子存活，最后清理精确自有进程。该证据验证语义及OS观察器，不是用户异常Git进程的完整人工接受，更不是跨重启接管。
 
-命令、结果与限制见[当前进程线索记录](../records/backend-composition-history.md#tool-process-review)。本接续已获用户提交并推送授权，随本次提交交付；结果以Git回读为准。
+前一阶段已作为b6e9748提交并推送，命令、结果与限制保留在[当前进程线索记录](../records/backend-composition-history.md#tool-process-review)。本轮接续证据见[已观察子进程身份](../records/backend-composition-history.md#tool-descendant-evidence)，接续已获用户提交并推送授权，随本次提交交付。
+
+
+### 已观察子进程身份的有界持久与核对（2026-11-09）
+
+- 复用DefaultProcessExecutor现有descendants观察循环与ManagedProcessControl，新增兼容default回调。每步最多保存32个执行期间已观察身份（PID、完整启动时间、可执行路径），第33个置截断；子进程信息不可读时只保留不充分线索。身份依据不包含argv、环境或进程用户，不新增系统扫描或终止接口。
+- 子进程证据与清理句柄独立：达到证据上限后仍保留全部已观察句柄用于原有ProcessTree清理。只对新句柄捕获身份；累计快照仅变更时通知，普通通知间隔至少250ms，正常清理前强制刷新剩余快照。32个身份加截断最多33次变更通知/步骤。finally继续原清理；通知持久失败抛回workflow记UNKNOWN，不把失败写库当完成。
+- 启动步骤保存空子进程快照以标识新版本；后续回调在既有短事务更新步骤，最终返回合并既有证据及metadata。中断/Reader错误的已捕获身份仍随结果保存；finally不新增可能遮蔽原异常的存储回调。进程瞬时创建/脱离、轮询间隙、最后清理枚举、崩溃及尚未刷新的窗口均可能缺失，证据不完整。无新迁移，V26～V29不变。
+- process-review每步返回descendantsCaptured、descendantsTruncated及descendants，并再次按32限额投影（最多8步）；历史无列表为未捕获，空列表仅表示未观察到，非法列表项给NOT_CAPTURED；超量/截断不隐去提示。复用同一身份检查器，不修改持久记录/人工审计，completeProcessTreeEvidence仍固定false。
+- 前端保留显式检查/离页清除/迟到响应隔离与人工确认；父与子共用身份呈现，区分历史缺失、未观察到、截断，任何结果均不自动勾选或解锁。业务留L4 capability，DTO在runtime-client，复用@eap/ui原语，无新增共享类别。mock子进程存活/截断仅为模拟，不能替代OS证据或用户接受。
+
+实际验证：真实status HTTP执行三步均捕获并保存1个子进程完整身份，独立只读JDBC快照与HTTP一致；另有64项最终定向（含自有schema）、956项完整离线（851通过/105门控跳过）及834项前端测试和14组Chromium/mock验证。完整命令、文件检查及限制见[本轮记录](../records/backend-composition-history.md#tool-descendant-evidence)，不把正常执行或模拟核对升级为异常人工接受。

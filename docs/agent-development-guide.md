@@ -35,7 +35,7 @@ Current 32-project reactor evidence and remaining optional-composition gates are
 
 ## Current implementation and validation baseline
 
-The latest committed implementation is `bb83f31` (tool UNKNOWN manual review, pushed with user authorization).
+The latest committed implementation is `b6e9748` (read-only tool process identity review, pushed with user authorization). The current slice, authorized for commit and push, adds bounded observed descendant identities to existing step JSON and the review UI; no migration or process ownership takeover is introduced.
 This user-authorized commit/push delivers the continuation that adds bounded read-only inspection of captured process identities and isolated real parent/child regression.
 Human review is recorded separately from executor exit/cleanup proof; it never turns UNKNOWN into success or cancellation.
 Use [the validation ledger](planning-status.md#validation-baseline) for the latest recorded checks and their limits.

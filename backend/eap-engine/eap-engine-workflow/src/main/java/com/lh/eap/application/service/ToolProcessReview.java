@@ -9,5 +9,12 @@ import java.util.UUID;
 public record ToolProcessReview(UUID executionId, String capabilityId, String executionStatus,
         Instant observedAt, boolean completeProcessTreeEvidence, boolean truncated, List<Step> steps) {
     public ToolProcessReview { steps = List.copyOf(steps); }
-    public record Step(UUID stepId, String phase, ProcessIdentityInspection process) {}
+    public record Step(UUID stepId, String phase, ProcessIdentityInspection process,
+                       boolean descendantsCaptured, boolean descendantsTruncated,
+                       List<ProcessIdentityInspection> descendants) {
+        public Step { descendants = List.copyOf(descendants); }
+        public Step(UUID stepId, String phase, ProcessIdentityInspection process) {
+            this(stepId, phase, process, false, false, List.of());
+        }
+    }
 }

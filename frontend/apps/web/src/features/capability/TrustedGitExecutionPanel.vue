@@ -378,18 +378,31 @@ onBeforeUnmount(() => {
           <p v-if="!processReview.steps.length" class="hint">{{ t('processNoIdentity') }}</p>
           <p v-if="processReview.truncated" class="hint">{{ t('processLimited') }}</p>
           <div v-for="step in processReview.steps" :key="step.stepId">
-            <p>
-              {{ step.phase }} · {{ t('process' + step.process.status) }} · PID
-              {{ step.process.pid ?? '—' }}
+            <p>{{ step.phase }}</p>
+            <p v-if="!step.descendantsCaptured" class="hint">{{ t('processDescendantsLegacy') }}</p>
+            <p v-else-if="!step.descendants?.length" class="hint">
+              {{ t('processDescendantsEmpty') }}
             </p>
-            <p>
-              {{ t('processCaptured') }} · {{ step.process.capturedStartedAt ?? '—' }} ·
-              {{ step.process.capturedExecutable || '—' }}
+            <p v-if="step.descendantsTruncated" class="hint">
+              {{ t('processDescendantsLimited') }}
             </p>
-            <p>
-              {{ t('processCurrent') }} · {{ step.process.observedStartedAt ?? '—' }} ·
-              {{ step.process.observedExecutable || '—' }}
-            </p>
+            <div
+              v-for="(identity, index) in [step.process, ...(step.descendants ?? [])]"
+              :key="index"
+            >
+              <p>
+                {{ t(index === 0 ? 'processParent' : 'processDescendant') }} ·
+                {{ t('process' + identity.status) }} · PID {{ identity.pid ?? '—' }}
+              </p>
+              <p>
+                {{ t('processCaptured') }} · {{ identity.capturedStartedAt ?? '—' }} ·
+                {{ identity.capturedExecutable || '—' }}
+              </p>
+              <p>
+                {{ t('processCurrent') }} · {{ identity.observedStartedAt ?? '—' }} ·
+                {{ identity.observedExecutable || '—' }}
+              </p>
+            </div>
           </div>
         </div>
       </template>

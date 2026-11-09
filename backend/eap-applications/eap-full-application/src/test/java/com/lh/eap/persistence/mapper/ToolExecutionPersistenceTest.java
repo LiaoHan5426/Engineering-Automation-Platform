@@ -124,7 +124,11 @@ class ToolExecutionPersistenceTest {
                         assertEquals("SUCCEEDED", large.status()); assertTrue(large.truncated()); assertEquals(8000, large.stdout().length());
                         assertArrayEquals(index, Files.readAllBytes(workspace.resolve(".git/index")));
                         var open = new ToolExecution(UUID.randomUUID(), UUID.randomUUID(), "git", "git-status", workspace.toRealPath().toString(),
-                                "git", "RUNNING", false, Instant.now(), null, null, "", "", false, null, null, List.of());
+                                "git", "RUNNING", false, Instant.now(), null, null, "", "", false, null, null,
+                                List.of(new ToolExecution.Step(UUID.randomUUID(), "fixture", "RUNNING", List.of("git"),
+                                        Map.of("processDescendants", List.of(Map.of("processPid", -1L,
+                                                        "processStartedAt", "2026-11-09T08:00:00Z", "processExecutable", "/fixture/child")),
+                                                "processDescendantsTruncated", true))));
                         store.insert(open);
                         assertThrows(DuplicateKeyException.class, () -> store.insert(new ToolExecution(UUID.randomUUID(), UUID.randomUUID(), "git", "git-status",
                                 open.workspacePath(), "git", "CREATED", false, Instant.now(), null, null, "", "", false, null, null, List.of())));
@@ -133,6 +137,11 @@ class ToolExecutionPersistenceTest {
                         var beforeInspection = store.find(open.id()).orElseThrow();
                         var inspection = service.inspectProcesses("git-status", open.id());
                         assertEquals("UNKNOWN", inspection.executionStatus()); assertFalse(inspection.completeProcessTreeEvidence());
+                        assertTrue(inspection.steps().getFirst().descendantsCaptured());
+                        assertTrue(inspection.steps().getFirst().descendantsTruncated());
+                        assertEquals("NOT_CAPTURED", inspection.steps().getFirst().descendants().getFirst().status());
+                        assertEquals("/fixture/child", inspection.steps().getFirst().descendants().getFirst().capturedExecutable());
+                        assertEquals(beforeInspection, new JdbcToolExecutionStore(new JdbcTemplate(isolated)).find(open.id()).orElseThrow());
                         assertEquals(beforeInspection, store.find(open.id()).orElseThrow(), "OS inspection does not persist or release UNKNOWN");
                         assertThrows(ToolExecutionService.Blocked.class, () -> service.start(UUID.randomUUID()));
                         var independent = settle(service, service.start("git-diff", UUID.randomUUID()));

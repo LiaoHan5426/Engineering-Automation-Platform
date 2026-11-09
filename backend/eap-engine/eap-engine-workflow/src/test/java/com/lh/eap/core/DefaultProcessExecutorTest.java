@@ -57,6 +57,8 @@ class DefaultProcessExecutorTest {
         var started = new CountDownLatch(1);
         var observation = new AtomicReference<Observation>();
         var cancelled = new java.util.concurrent.atomic.AtomicBoolean();
+        var descendantsCaptured = new CountDownLatch(1);
+        var captured = new AtomicReference<Map<String,Object>>();
         var command = List.of(
                 Path.of(System.getProperty("java.home"), "bin", "java").toString(),
                 "-cp", probeClasspath(), Parent.class.getName(), probeClasspath());
@@ -68,6 +70,9 @@ class DefaultProcessExecutorTest {
                 ? executor.runManaged(id, "probe", workspace, command, Map.of(), new com.lh.eap.api.ManagedProcessControl() {
                     public boolean cancellationRequested() { return cancelled.get(); }
                     public void started(Map<String,Object> identity) { onStart.accept(identity); }
+                    public void descendantsObserved(Map<String,Object> evidence) {
+                        captured.set(evidence); descendantsCaptured.countDown();
+                    }
                 }) : executor.runManaged(id, "probe", workspace, command, Map.of(), onStart)));
         worker.start();
         assertTrue(started.await(10, TimeUnit.SECONDS));
@@ -79,12 +84,21 @@ class DefaultProcessExecutorTest {
             Thread.sleep(30);
         }
         assertNotNull(child);
+        if (throughControl) {
+            assertTrue(descendantsCaptured.await(5, TimeUnit.SECONDS));
+            var identities = (List<?>) captured.get().get("processDescendants");
+            var identity = (Map<?,?>) identities.getFirst();
+            assertEquals(child, identity.get("processPid"));
+            assertFalse(((String) identity.get("processStartedAt")).isBlank());
+            assertTrue(Path.of((String) identity.get("processExecutable")).isAbsolute());
+        }
         if (throughControl) cancelled.set(true); else executor.cancel(id);
         worker.join(10_000);
         assertFalse(worker.isAlive());
         assertFalse(ProcessHandle.of(parent.get()).map(ProcessHandle::isAlive).orElse(false));
         assertFalse(ProcessHandle.of(child).map(ProcessHandle::isAlive).orElse(false));
         assertEquals(true, observation.get().metadata().get("processTreeCleanup"));
+        assertFalse(((List<?>) observation.get().metadata().get("processDescendants")).isEmpty());
         var outcome = MissionRunOutcome.from(String.valueOf(observation.get().metadata().get("executorStatus")), observation.get().metadata(), true);
         assertEquals("CANCELLED", outcome.status());
         assertEquals("进程树已清理", outcome.exitEvidence());
@@ -100,6 +114,68 @@ class DefaultProcessExecutorTest {
                 }));
         assertEquals("identity write failed", failure.getMessage());
         assertFalse(ProcessHandle.of(pid.get()).map(ProcessHandle::isAlive).orElse(false));
+    }
+
+    @Test void descendantEvidenceFailureStillCleansTheObservedTree() throws Exception {
+        var parent = new AtomicLong();
+        var child = new AtomicLong();
+        try (var executor = new DefaultProcessExecutor(Duration.ofSeconds(15))) {
+            assertThrows(IllegalStateException.class, () -> executor.runManaged(UUID.randomUUID(), "probe", workspace,
+                    List.of(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+                            "-cp", probeClasspath(), Parent.class.getName(), probeClasspath()), Map.of(),
+                    new com.lh.eap.api.ManagedProcessControl() {
+                        public boolean cancellationRequested() { return false; }
+                        public void started(Map<String,Object> identity) { parent.set((Long) identity.get("processPid")); }
+                        public void descendantsObserved(Map<String,Object> evidence) {
+                            child.set((Long) ((Map<?,?>) ((List<?>) evidence.get("processDescendants")).getFirst()).get("processPid"));
+                            throw new IllegalStateException("descendant write failed");
+                        }
+                    }));
+            assertTrue(parent.get() > 0); assertTrue(child.get() > 0);
+            for (long pid : List.of(parent.get(), child.get())) {
+                var handle = ProcessHandle.of(pid);
+                if (handle.isPresent()) handle.get().onExit().get(5, TimeUnit.SECONDS);
+                assertFalse(ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false));
+            }
+        }
+    }
+
+    @Test void evidenceLimitNeverLimitsCleanupAndInspectionDoesNotReadArguments() throws Exception {
+        var process = mock(Process.class);
+        var parent = mock(ProcessHandle.class);
+        when(process.toHandle()).thenReturn(parent);
+        when(parent.info()).thenReturn(mock(ProcessHandle.Info.class));
+        when(process.getOutputStream()).thenReturn(OutputStream.nullOutputStream());
+        when(process.getInputStream()).thenReturn(InputStream.nullInputStream());
+        when(process.getErrorStream()).thenReturn(InputStream.nullInputStream());
+        var children = new java.util.ArrayList<ProcessHandle>();
+        for (int i = 0; i < 40; i++) {
+            var handle = mock(ProcessHandle.class);
+            when(handle.pid()).thenReturn(100L + i);
+            when(handle.info()).thenReturn(mock(ProcessHandle.Info.class));
+            when(handle.onExit()).thenReturn(CompletableFuture.completedFuture(handle));
+            children.add(handle);
+        }
+        when(process.descendants()).thenAnswer(invocation -> children.stream());
+        var publications = new java.util.ArrayList<Map<String,Object>>();
+        try (var builders = mockConstruction(ProcessBuilder.class, (builder, context) -> {
+            when(builder.directory(any())).thenReturn(builder); when(builder.start()).thenReturn(process);
+        }); var executor = new DefaultProcessExecutor()) {
+            var result = executor.runManaged(UUID.randomUUID(), "probe", workspace, List.of("fixture"), Map.of(),
+                    new com.lh.eap.api.ManagedProcessControl() {
+                        public boolean cancellationRequested() { return false; }
+                        public void started(Map<String,Object> identity) {}
+                        public void descendantsObserved(Map<String,Object> evidence) { publications.add(evidence); }
+                    });
+            assertEquals(32, ((List<?>) result.metadata().get("processDescendants")).size());
+            assertEquals(true, result.metadata().get("processDescendantsTruncated"));
+            assertEquals(1, publications.size());
+            assertEquals(true, result.metadata().get("processTreeCleanup"));
+            for (var handle : children) verify(handle, atLeastOnce()).destroyForcibly();
+            for (var handle : children.subList(0, 32)) {
+                verify(handle.info(), never()).arguments(); verify(handle.info(), never()).commandLine();
+            }
+        }
     }
 
     @Test void closingTheExecutorStopsARunningProcess() throws Exception {

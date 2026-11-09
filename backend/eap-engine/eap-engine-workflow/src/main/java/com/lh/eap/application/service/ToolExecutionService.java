@@ -111,17 +111,25 @@ public class ToolExecutionService implements InitializingBean {
         var inspector = new LocalProcessIdentityInspector();
         var observations = row.steps().stream().limit(8).map(step -> {
             var evidence = step.evidence();
-            Long pid = null;
-            if (evidence.get("processPid") instanceof Number value) {
-                try { pid = new java.math.BigDecimal(value.toString()).longValueExact(); }
-                catch (ArithmeticException | NumberFormatException invalid) { /* No usable captured PID. */ }
-            }
-            var started = evidence.get("processStartedAt") instanceof String value ? value : null;
-            var executable = evidence.get("processExecutable") instanceof String value ? value : null;
-            return new ToolProcessReview.Step(step.id(), step.phase(), inspector.inspect(pid, started, executable));
+            boolean captured = evidence.get("processDescendants") instanceof List<?>;
+            var children = captured ? (List<?>) evidence.get("processDescendants") : List.of();
+            var descendants = children.stream().limit(32)
+                    .map(value -> inspectIdentity(inspector, value instanceof Map<?, ?> map ? map : Map.of())).toList();
+            return new ToolProcessReview.Step(step.id(), step.phase(), inspectIdentity(inspector, evidence), captured,
+                    Boolean.TRUE.equals(evidence.get("processDescendantsTruncated")) || children.size() > 32, descendants);
         }).toList();
         return new ToolProcessReview(row.id(), operation, row.status(), Instant.now(), false,
                 row.steps().size() > 8, observations);
+    }
+    private static ProcessIdentityInspection inspectIdentity(LocalProcessIdentityInspector inspector, Map<?, ?> evidence) {
+        Long pid = null;
+        if (evidence.get("processPid") instanceof Number value) {
+            try { pid = new java.math.BigDecimal(value.toString()).longValueExact(); }
+            catch (ArithmeticException | NumberFormatException invalid) { /* No usable captured PID. */ }
+        }
+        var started = evidence.get("processStartedAt") instanceof String value ? value : null;
+        var executable = evidence.get("processExecutable") instanceof String value ? value : null;
+        return inspector.inspect(pid, started, executable);
     }
     /**
      * Explicit local-operator attestation releases only this operation's reservation.
@@ -195,8 +203,16 @@ public class ToolExecutionService implements InitializingBean {
                             observed.set(observed.size() - 1, new ToolExecution.Step(child, phase, "RUNNING", command, identity));
                             saveSteps(row.id(), observed);
                         }
+                        public void descendantsObserved(Map<String, Object> evidence) {
+                            var previous = observed.getLast();
+                            var facts = new LinkedHashMap<>(previous.evidence());
+                            facts.putAll(evidence);
+                            observed.set(observed.size() - 1, new ToolExecution.Step(child, phase, "RUNNING", command, facts));
+                            saveSteps(row.id(), observed);
+                        }
                     });
-                    var facts = new LinkedHashMap<>(result.metadata());
+                    var facts = new LinkedHashMap<>(observed.getLast().evidence());
+                    facts.putAll(result.metadata());
                     facts.remove("trace"); facts.remove("command");
                     facts.put("exitCode", result.exitCode());
                     observed.set(observed.size() - 1, new ToolExecution.Step(child, phase,

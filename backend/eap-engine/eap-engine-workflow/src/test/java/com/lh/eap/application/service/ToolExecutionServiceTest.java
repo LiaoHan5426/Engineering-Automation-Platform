@@ -291,16 +291,52 @@ class ToolExecutionServiceTest {
                 () -> service.inspectProcesses("git-status", known.id())).getStatusCode().value());
     }
 
+    @Test void descendantEvidenceIsDurableBeforeExitAndSurvivesUnknown() throws Exception {
+        var probe = new Probe(); probe.blockAt = 0; probe.publishDescendants = true; probe.cleaned = false;
+        service(probe);
+        var row = service.start(UUID.randomUUID());
+        assertTrue(probe.started.await(3, TimeUnit.SECONDS));
+        var running = store.find(row.id()).orElseThrow();
+        assertEquals(1, ((List<?>) running.steps().getFirst().evidence().get("processDescendants")).size());
+        probe.release.countDown();
+        var unknown = finished(row.id());
+        assertEquals("UNKNOWN", unknown.status());
+        var before = store.find(row.id()).orElseThrow();
+        var review = service.inspectProcesses("git-status", row.id());
+        assertTrue(review.steps().getFirst().descendantsCaptured());
+        assertEquals("NOT_CAPTURED", review.steps().getFirst().descendants().getFirst().status());
+        assertEquals(before, store.find(row.id()).orElseThrow());
+    }
+
+    @Test void descendantProjectionHandlesLegacyEmptyMalformedAndOversizedEvidence() throws Exception {
+        service(new Probe()); var row = unknownRow("git-diff");
+        var large = java.util.Collections.nCopies(40, Map.of("processPid", -1));
+        var steps = List.of(
+                new ToolExecution.Step(UUID.randomUUID(), "legacy", "RUNNING", List.of(), Map.of()),
+                new ToolExecution.Step(UUID.randomUUID(), "empty", "RUNNING", List.of(), Map.of("processDescendants", List.of())),
+                new ToolExecution.Step(UUID.randomUUID(), "malformed", "RUNNING", List.of(), Map.of("processDescendants", List.of("bad"))),
+                new ToolExecution.Step(UUID.randomUUID(), "large", "RUNNING", List.of(), Map.of("processDescendants", large)));
+        store.update(row.id(), current -> current.state("UNKNOWN", false, null, null, "", "", false, null, "fixture", steps));
+        var review = service.inspectProcesses("git-diff", row.id());
+        assertFalse(review.steps().get(0).descendantsCaptured());
+        assertTrue(review.steps().get(1).descendantsCaptured()); assertTrue(review.steps().get(1).descendants().isEmpty());
+        assertEquals("NOT_CAPTURED", review.steps().get(2).descendants().getFirst().status());
+        assertTrue(review.steps().get(3).descendantsTruncated()); assertEquals(32, review.steps().get(3).descendants().size());
+        assertFalse(review.completeProcessTreeEvidence());
+    }
+
     static class Probe implements ProcessExecutor {
         final AtomicInteger calls = new AtomicInteger();
         final CountDownLatch started = new CountDownLatch(1), release = new CountDownLatch(1);
-        int blockAt = -1; boolean cleaned = true; String inspectionOutput = "## test";
+        int blockAt = -1; boolean cleaned = true, publishDescendants; String inspectionOutput = "## test";
         public Observation run(String name, Path dir, List<String> argv) { throw new AssertionError("Unmanaged execution"); }
         @Override public Observation runManaged(UUID id, String name, Path dir, List<String> argv, Map<String,String> env, ManagedProcessControl control) {
             calls.incrementAndGet();
             int phase = argv.contains("rev-parse") ? 0 : argv.contains("config") ? 1 : 2;
             assertTrue(env.containsKey("GIT_OPTIONAL_LOCKS"));
             control.started(Map.of("processPid", 42L, "processExecutable", argv.getFirst()));
+            if (publishDescendants) control.descendantsObserved(Map.of("processDescendants", List.of(Map.of("processPid", -1)),
+                    "processDescendantsTruncated", false));
             if (phase == blockAt) {
                 started.countDown();
                 try { assertTrue(release.await(3, TimeUnit.SECONDS)); }

@@ -164,6 +164,55 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
     expect(button('review-open').disabled).toBe(true)
     expect(root.textContent).toContain('不能证明子进程已结束')
   })
+  it('distinguishes legacy, empty and truncated descendant evidence without accepting the review', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
+    const process = {
+      pid: 123,
+      status: 'NOT_FOUND' as const,
+      capturedStartedAt: null,
+      observedStartedAt: null,
+      capturedExecutable: '/captured/parent',
+      observedExecutable: '',
+    }
+    vi.mocked(runtimeApi.gitExecutionProcessReview).mockResolvedValue({
+      executionId: 'a',
+      capabilityId: operation,
+      executionStatus: 'UNKNOWN',
+      observedAt: 'now',
+      completeProcessTreeEvidence: false,
+      truncated: false,
+      steps: [
+        { stepId: 'old', phase: 'legacy', process },
+        { stepId: 'empty', phase: 'empty', process, descendantsCaptured: true, descendants: [] },
+        {
+          stepId: 'children',
+          phase: 'children',
+          process,
+          descendantsCaptured: true,
+          descendantsTruncated: true,
+          descendants: [
+            {
+              ...process,
+              pid: 456,
+              status: 'MATCHING_ALIVE',
+              capturedExecutable: '/captured/child',
+            },
+          ],
+        },
+      ],
+    })
+    await mount()
+    button('process-inspect').click()
+    await settle()
+    expect(root.textContent).toContain('此步骤未保存子进程身份')
+    expect(root.textContent).toContain('执行期间未观察到子进程')
+    expect(root.textContent).toContain('子进程证据已截断')
+    expect(root.textContent).toContain('/captured/child')
+    expect(root.textContent).toContain('身份匹配，进程仍存活')
+    expect(button('invoke').disabled).toBe(true)
+    expect(button('review-open').disabled).toBe(true)
+    expect(runtimeApi.resolveUnknownGitExecution).not.toHaveBeenCalled()
+  })
   it('shows inspection errors separately without clearing UNKNOWN or enabling start', async () => {
     vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
     vi.mocked(runtimeApi.gitExecutionProcessReview).mockRejectedValue(new Error('unavailable'))

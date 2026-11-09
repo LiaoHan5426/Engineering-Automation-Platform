@@ -6,4 +6,6 @@ import java.util.Map;
 public interface ManagedProcessControl {
     boolean cancellationRequested();
     void started(Map<String, Object> identity);
+    /** Bounded cumulative descendant clues; never a complete process-tree or exit assertion. */
+    default void descendantsObserved(Map<String, Object> evidence) {}
 }
