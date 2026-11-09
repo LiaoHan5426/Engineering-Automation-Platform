@@ -34,7 +34,11 @@ class CliChannelsTest {
         assertEquals("new-git", channels.binaryFor("git-diff", "git"));
         channels.configure("git", " ");
         assertEquals("legacy-git", channels.binaryFor("git-status", "git"));
-        assertEquals("git", channels.binaryFor("git-diff", "git"));
+        assertEquals("legacy-git", channels.binaryFor("git-diff", "git"));
+        assertEquals("legacy-git", channels.binaryFor("git", "git"));
+        store.values.put("git-diff", "other-git");
+        assertThrows(IllegalStateException.class, () -> channels.binaryFor("git-status", "git"));
+        assertNull(channels.channel("git", "git").resolvedPath());
     }
     @Test void invalidBinaryNeverReachesTheStore() {
         var store = new Store(); var channels = new CliChannels(store);

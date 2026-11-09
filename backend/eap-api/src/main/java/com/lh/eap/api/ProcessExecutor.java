@@ -4,6 +4,11 @@ import java.nio.file.Path;
 import java.util.List;
 
 public interface ProcessExecutor {
+    /** Fail closed when an executor cannot observe cancellation before process start. */
+    default Observation runManaged(java.util.UUID id, String capability, Path directory, List<String> command,
+                                   java.util.Map<String,String> environment, ManagedProcessControl control) {
+        throw new UnsupportedOperationException("Controlled managed execution is not supported");
+    }
     default java.util.Optional<CliExecution.Snapshot> status(java.util.UUID id) { return java.util.Optional.empty(); }
     default java.util.List<CliExecution.Snapshot> snapshots() { return java.util.List.of(); }
     default java.util.Optional<CliExecution.Snapshot> cancel(java.util.UUID id) { return java.util.Optional.empty(); }

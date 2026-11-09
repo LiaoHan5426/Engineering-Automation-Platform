@@ -274,8 +274,8 @@ TC-02 定向独立复核通过，原P1关闭：审查者复跑2文件10项、typ
 | 先保留缺陷门禁 | 场景保存UNKNOWN后的删除核对仍阻断；已有自身改页验收线独立推进 | 结果未知不误报删除/完成；原有交付证据保留 |
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + 派生清空 + **备注 Badge**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
 | FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + inventory + candidateCounts + **byKind**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
-| TD-01 / P0 | **部分交付**：可信定义汇总 + 绑定快照 + 显式探测写回 + 持久化 + 清除探测缓存 + probeCache + newestProbedAt + **绑定状态计数**（mock/真机已验） | 更多依赖绑定与用户接受；不执行未知脚本、不整盘扫描或自动授权 |
-| TC-01 / P0 | **部分交付**：目录→只读 git-status、失败摘要与长 stdout；本轮 HTTP 停止等待/客户端超时判 UNKNOWN，服务端 499 独立 | 真实 git 拒绝/超时/进程取消与用户接受；参数/范围重校验与通用 Schema 呈现仍待；不新增任意执行口 |
+| TD-01 / P0 | **部分交付**：既有程序/操作模型投影目录；Git路径、版本与探测缓存共享；旧能力ID/探测入口兼容，历史路径冲突拒绝执行 | 其他依赖绑定与用户接受；见[Git调用合同](#git-operation-executions) |
+| TC-01 / P0 | **status切片实现**：持久执行、取消覆盖root/filter/status、证据确认终态、KeepAlive/刷新恢复、重启UNKNOWN阻塞 | diff人工执行、UNKNOWN人工处置、跨重启进程接管与用户接受独立；见[Git调用合同](#git-operation-executions) |
 | TC-02 / P1 | **部分交付**：实际 Grapes 实例人工读取草稿/选中状态，实例/文档/revision 核验、有界快照、过期与离页清空 | 多实例/冲突/超限离线覆盖，真机已验读取/过期/切页/新建；用户接受、远程断线与模型反向调用仍独立，不建设反向 RPC |
 | MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（含 filesystem 五工具）+ **callVerified/listOnly 视图** + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；mock/真机已验 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/回滚、依赖缺失/激活失败；新增显式只读Task列表检查，来源/时间/未检查与未知失败分开（真机及mock已验）；不改Task/Run | Run/整体服务健康未验，用户接受与在途停用完整矩阵仍待；无第二状态源，外部安装器延期 |
@@ -449,3 +449,22 @@ core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManife
 用户授权将平铺面板改为专家列表/概览/配置/任务/审阅父子页面；SQL Agent目标和工具按原v2合同保存，DAG编辑器保留。后续截图反馈的终态轮询抖动和整列配置已修复：配置按类别Tabs，运行中静默更新，终态只手动刷新。前端132文件773项、类型/架构/构建及真实125%只读UI复核通过；审批写入仍由原服务端绑定校验，未调用模型或再次写入文件。范围/限制见[界面记录](expert-workspace-navigation.md)。
 
 接续：用户批准一次性独立编辑工作台并提交推送，现已复用@eap/ui EditorWorkbench接入固定流程/SQL Agent/GrapesJS；节点库/结构树/属性选择一致、未知目录不虚构能力、草稿保护与原型手工预览已验。当前前端134文件786项与新工作台7组浏览器技术检查通过；前段773项/原生125%为历史快照。真实模型执行与服务端授权合同未变，原生150%及用户最终接受仍待，见上述界面记录。
+
+<a id="git-operation-executions"></a>
+## Git 程序与 status 持久调用（2026-11-09）
+
+范围由本轮用户确认：复用现有 Git 程序与 status/diff 操作模型，只交付 status 新执行口；记录跨重启保留，UNKNOWN 阻止重复启动，人工解除与进程接管不在本片。
+
+本片已获用户提交并推送授权，随本次提交交付；验证与剩余关口保持下述限定范围，提交及推送不替代用户产品接受。
+
+- 程序目录是 CliProgram / CliOperation / handler 的投影，不另建注册表。git-status / git-diff 继续作为专家引用与开关标识。路径、版本及探测缓存归 git；可信目录与程序管理共用探测结果。旧操作级探测响应保留原 id。
+- 程序级路径优先；无程序覆盖时，兼容一致的历史操作覆盖。历史status/diff覆盖冲突时显示绑定冲突并拒绝运行，不静默选择。整个调用捕获一个已解析绝对路径。
+- 固定接口基路径为 /api/cli-programs/git/operations/git-status/executions：POST只接收requestId，持久化后返回202；GET列表默认20条、最多100条；GET /{id}读快照；POST /{id}/cancel记录取消意图。不同requestId遇在途/UNKNOWN返回409并附阻塞记录；同requestId读回原记录。
+- 读写按服务端规范工作区隔离。请求不接受路径、参数、批准字段或其他操作；保留Host/Origin/JSON门禁。旧同步invoke复用同一服务，停止HTTP等待不构成进程取消。
+- 状态为CREATED/RUNNING/CANCELLING/SUCCEEDED/FAILED/REJECTED/TIMED_OUT/CANCELLED/UNKNOWN。取消覆盖根目录、filter配置与最终status；预检与安全参数仍由GitCapability生成。只有未启动或退出且进程树清理完成时确认取消。迟到取消不覆盖已完成结果。
+- 存储端口与JDBC适配留在现有workflow产品服务，API只增取消信号/身份回调，local/core不依赖数据库。创建、领取、取消和结果写回使用短事务；运行期间无事务。stdout/stderr脱敏后各限8000字符，带截断标记和有序步骤证据。
+- V26新增独立工具调用表，V27补列注释。只读核查确认本机服务已应用首版V26，校验和为 -716806117；保留原稿，不repair或改写已应用历史。实库用例在UUID临时schema中验证V26/V27与仓储SQL，只清理自己的schema。
+- 服务重启把遗留在途记录标UNKNOWN，不重放、不按PID销毁。UI停止轮询，保留记录并阻止同工作区/操作重复启动；人工处置另片。
+- UI复用Button/Badge/Collapse/Feedback；L4面板留capability域，DTO/HTTP在runtime-client，文案走i18n，无新共享类别。KeepAlive离页只停止观测，返回重读；网络错误暂停轮询且不重试执行，迟到响应按观测代次丢弃。
+
+实现、失败修复、命令与验证边界见[阶段记录](../records/backend-composition-history.md#tool-operation-executions)。此合同不关闭通用TC-01、用户接受或其他CLI业务验收。

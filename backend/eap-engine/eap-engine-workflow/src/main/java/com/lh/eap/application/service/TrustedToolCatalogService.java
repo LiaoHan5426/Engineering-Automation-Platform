@@ -32,16 +32,19 @@ public class TrustedToolCatalogService {
     private final RuntimeWorkspace runtime;
     private final TrustedToolProbeStore probeStore;
     private final ConcurrentHashMap<String, VersionProbe> probes;
+    private com.lh.eap.persistence.mapper.CliProgramMapper programs;
 
     @Autowired
     public TrustedToolCatalogService(CapabilityHandlerRegistry handlers, CapabilitySettings settings,
-                                     CliChannels channels, RuntimeWorkspace runtime) {
+                                     CliChannels channels, RuntimeWorkspace runtime,
+                                     com.lh.eap.persistence.mapper.CliProgramMapper programs) {
         this.handlers = handlers;
         this.settings = settings;
         this.channels = channels == null ? CliChannels.defaults() : channels;
         this.runtime = runtime;
         this.probeStore = TrustedToolProbeStore.underWorkspace(probeWorkspace());
         this.probes = new ConcurrentHashMap<>(this.probeStore.load());
+        this.programs = programs;
     }
 
     /** Test helper when RuntimeWorkspace is irrelevant and persistence is disabled. */
@@ -68,10 +71,13 @@ public class TrustedToolCatalogService {
 
     public Map<String, Object> catalog() {
         var items = new ArrayList<Map<String, Object>>();
+        var owners = new java.util.HashMap<String, String>();
+        if (programs != null) programs.operations().forEach(op -> owners.put(op.capabilityId(), op.programId()));
         for (CapabilityHandler handler : handlers.all()) {
             for (CapabilityDescriptor descriptor : handler.describe()) {
                 if (!descriptor.readOnly()) continue;
-                items.add(item(descriptor, handler.scope().id(), settings.enabled(descriptor.name())));
+                items.add(item(descriptor, handler.scope().id(), settings.enabled(descriptor.name()),
+                        owners.getOrDefault(descriptor.name(), CliChannels.programId(descriptor.name()))));
             }
         }
         long known = probes.values().stream().filter(probe -> "known".equals(probe.versionStatus())).count();
@@ -90,6 +96,7 @@ public class TrustedToolCatalogService {
         probeCache.put("newestProbedAt", newestProbedAt);
         var catalog = new LinkedHashMap<String, Object>();
         catalog.put("items", List.copyOf(items));
+        catalog.put("programs", groupedPrograms(items));
         catalog.put("source", "capability-handlers");
         catalog.put("probeCache", Map.copyOf(probeCache));
         return Map.copyOf(catalog);
@@ -101,6 +108,13 @@ public class TrustedToolCatalogService {
      * arbitrary capabilities.
      */
     public Map<String, Object> probeVersion(String toolId) {
+        if (programs != null) {
+            requireDescriptor(toolId);
+            if (!settings.enabled(toolId)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "CAPABILITY_DISABLED");
+            var result = new LinkedHashMap<String, Object>(probeProgram(programId(toolId)));
+            result.put("id", toolId);
+            return result;
+        }
         var descriptor = requireDescriptor(toolId);
         if (!descriptor.hasBinary()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "VERSION_PROBE_NOT_APPLICABLE");
@@ -132,7 +146,7 @@ public class TrustedToolCatalogService {
             if (note.isEmpty()) note = "显式探测未成功；版本保持未知态写入 probe_failed。";
             snapshot = new VersionProbe("probe_failed", "", now, resolved, note);
         }
-        probes.put(toolId, snapshot);
+        probes.put(programId(toolId), snapshot);
         persistProbes();
 
         var payload = new LinkedHashMap<String, Object>();
@@ -147,7 +161,7 @@ public class TrustedToolCatalogService {
         return Map.copyOf(payload);
     }
 
-    private Map<String, Object> item(CapabilityDescriptor descriptor, String scope, boolean enabled) {
+    private Map<String, Object> item(CapabilityDescriptor descriptor, String scope, boolean enabled, String programId) {
         var row = new LinkedHashMap<String, Object>();
         row.put("id", descriptor.name());
         row.put("title", descriptor.title());
@@ -157,11 +171,15 @@ public class TrustedToolCatalogService {
         row.put("enabled", enabled);
         row.put("invocation", invocationFor(descriptor.name()));
         row.put("summary", descriptor.summary());
-        row.putAll(bindingFields(descriptor, enabled));
+        if (descriptor.hasBinary()) {
+            row.put("programId", programId);
+            row.put("operationId", descriptor.name());
+        }
+        row.putAll(bindingFields(descriptor, enabled, programId));
         return row;
     }
 
-    private Map<String, Object> bindingFields(CapabilityDescriptor descriptor, boolean enabled) {
+    private Map<String, Object> bindingFields(CapabilityDescriptor descriptor, boolean enabled, String programId) {
         var fields = new LinkedHashMap<String, Object>();
         if (!descriptor.hasBinary()) {
             fields.put("bindingStatus", enabled ? "ready" : "disabled");
@@ -180,7 +198,7 @@ public class TrustedToolCatalogService {
         fields.put("resolvedPath", channel.resolvedPath() == null ? "" : channel.resolvedPath());
         var binding = classifyBinding(enabled, channel);
         fields.put("bindingStatus", binding);
-        applyVersionFields(fields, descriptor.name(), channel.resolvedPath() == null ? "" : channel.resolvedPath(), binding);
+        applyVersionFields(fields, programId, channel.resolvedPath() == null ? "" : channel.resolvedPath(), binding);
         if ("disabled".equals(binding)) {
             fields.put("bindingNote", "已停用快照：定义与绑定保留，调用入口拒绝执行。");
             return fields;
@@ -277,6 +295,54 @@ public class TrustedToolCatalogService {
     private static String invocationFor(String capability) {
         if ("git-status".equals(capability)) return "POST /api/runtime/trusted-tools/git-status/invoke";
         return "";
+    }
+
+    private String programId(String capability) {
+        if (programs != null) return programs.operations().stream()
+                .filter(op -> op.capabilityId().equals(capability)).map(op -> op.programId())
+                .findFirst().orElseGet(() -> CliChannels.programId(capability));
+        return CliChannels.programId(capability);
+    }
+
+    /** Program-owned projection; definitions and switches remain operation-owned. */
+    private List<Map<String, Object>> groupedPrograms(List<Map<String, Object>> items) {
+        var result = new ArrayList<Map<String, Object>>();
+        if (programs == null) return result;
+        for (var program : programs.programs()) {
+            var operations = items.stream().filter(item -> program.id().equals(item.get("programId"))).toList();
+            if (operations.isEmpty()) continue;
+            var row = new LinkedHashMap<String, Object>();
+            row.put("id", program.id()); row.put("title", program.name()); row.put("kind", "cli");
+            row.put("operations", operations);
+            row.putAll(programBinding(program.id(), program.binary()));
+            result.add(Map.copyOf(row));
+        }
+        return List.copyOf(result);
+    }
+
+    private Map<String, Object> programBinding(String id, String binary) {
+        var channel = channels.channel(id, binary);
+        var fields = new LinkedHashMap<String, Object>();
+        fields.put("binary", channel.binary()); fields.put("bindingSource", channel.source());
+        fields.put("resolvedPath", channel.resolvedPath() == null ? "" : channel.resolvedPath());
+        fields.put("bindingStatus", classifyBinding(true, channel));
+        applyVersionFields(fields, id, String.valueOf(fields.get("resolvedPath")), String.valueOf(fields.get("bindingStatus")));
+        return fields;
+    }
+
+    public Map<String, Object> probeProgram(String id) {
+        var program = programs.program(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CLI_PROGRAM_NOT_FOUND"));
+        var channel = channels.channel(id, program.binary());
+        if (channel.resolvedPath() == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "BINDING_UNAVAILABLE");
+        var probe = channels.probe(id, program.binary(), probeWorkspace());
+        boolean success = Boolean.TRUE.equals(probe.get("executed")) && Boolean.TRUE.equals(probe.get("success"));
+        var snapshot = new VersionProbe(success ? "known" : "probe_failed", success ? firstLine(text(probe.get("output"))) : "",
+                Instant.now().toString(), channel.resolvedPath(), text(probe.get("message")));
+        probes.put(id, snapshot); persistProbes();
+        var result = new LinkedHashMap<String, Object>(probe);
+        result.put("id", id); result.put("versionStatus", snapshot.versionStatus());
+        result.put("detectedVersion", snapshot.detectedVersion()); result.put("probedAt", snapshot.probedAt());
+        return result;
     }
 
     private static String firstLine(String output) {

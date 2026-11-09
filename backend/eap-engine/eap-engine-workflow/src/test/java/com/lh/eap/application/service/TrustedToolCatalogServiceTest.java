@@ -19,6 +19,32 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.web.server.ResponseStatusException;
 
 class TrustedToolCatalogServiceTest {
+    @Test @SuppressWarnings("unchecked")
+    void groupsGitOperationsAndSharesOneProgramProbe(@TempDir Path workspace) {
+        var mapper = mock(com.lh.eap.persistence.mapper.CliProgramMapper.class);
+        var program = new com.lh.eap.domain.model.CliProgram("git", "Git", "git", true);
+        when(mapper.programs()).thenReturn(List.of(program));
+        when(mapper.program("git")).thenReturn(java.util.Optional.of(program));
+        when(mapper.operations()).thenReturn(List.of(
+                new com.lh.eap.domain.model.CliOperation("git-status", "git", "Status", List.of("status"), "", true),
+                new com.lh.eap.domain.model.CliOperation("git-diff", "git", "Diff", List.of("diff"), "", true)));
+        var channels = channels();
+        when(channels.channel("git", "git")).thenReturn(new CliChannels.Channel("git", "git", "shipped", "/usr/bin/git",
+                com.lh.eap.domain.model.CapabilityAvailability.AVAILABLE));
+        when(channels.probe(eq("git"), eq("git"), any(Path.class))).thenReturn(probeOk("git version shared"));
+        var service = new TrustedToolCatalogService(registry(), settings(), channels,
+                com.lh.eap.config.RuntimeWorkspace.colocated(workspace, "", ""), mapper);
+        var before = (List<Map<String,Object>>) service.catalog().get("programs");
+        assertEquals(1, before.size());
+        assertEquals("git", before.getFirst().get("id"));
+        assertEquals(2, ((List<?>) before.getFirst().get("operations")).size());
+        service.probeVersion("git-status");
+        var after = (List<Map<String,Object>>) service.catalog().get("programs");
+        assertEquals("git version shared", after.getFirst().get("detectedVersion"));
+        verify(channels).probe(eq("git"), eq("git"), any(Path.class));
+        verify(channels, never()).probe(eq("git-status"), anyString(), any(Path.class));
+        assertEquals(1, ((Map<String,Object>) service.catalog().get("probeCache")).get("cached"));
+    }
 
     @Test
     @SuppressWarnings("unchecked")

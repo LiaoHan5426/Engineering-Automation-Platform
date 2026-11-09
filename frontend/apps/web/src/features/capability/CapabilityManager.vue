@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   runtimeApi,
   type CapabilityItem,
@@ -9,30 +9,12 @@ import {
   type McpServerItem,
   type McpServerRequest,
   type DataLayoutResponse,
-  type TrustedGitStatusResult,
   type TrustedToolItem,
+  type TrustedToolProgram,
 } from '@eap/runtime-client'
-import {
-  Badge,
-  Button,
-  Checkbox,
-  Collapse,
-  ConfirmBox,
-  Feedback,
-  Input,
-  Select,
-  Tabs,
-} from '@eap/ui'
+import { Badge, Button, Checkbox, ConfirmBox, Feedback, Input, Select, Tabs } from '@eap/ui'
 import { Table, type TableColumn } from '@eap/plugin-table'
 import { errorMessage } from '../../lib/presentation'
-import {
-  trustedStdoutNeedsCollapse,
-  trustedStdoutPreview,
-  trustedToolInvokeDetail,
-  trustedToolInvokeFailure,
-  trustedToolInvokeFailureMessage,
-  type TrustedToolInvokeFailure,
-} from './trustedToolInvokeView'
 import {
   bindingDetail,
   bindingStatusCounts,
@@ -44,6 +26,9 @@ import {
   versionStatusTone,
 } from './trustedToolBindingView'
 import CliProgramManager from './CliProgramManager.vue'
+import TrustedGitExecutionPanel from './TrustedGitExecutionPanel.vue'
+import { i18n } from '../../lib/i18n'
+const t = (key: string) => i18n.global.t('toolExecution.' + key)
 
 const emit = defineEmits<{ (event: 'saved'): void }>()
 
@@ -53,6 +38,22 @@ const message = ref('')
 const messageKind = ref<'error' | 'success'>('success')
 const tab = ref('overview')
 const trustedTools = ref<TrustedToolItem[]>([])
+const trustedPrograms = ref<TrustedToolProgram[]>([])
+const displayTools = computed<TrustedToolItem[]>(() => [
+  ...trustedPrograms.value.map((program) => ({
+    ...program,
+    scope: 'platform',
+    enabled: true,
+    readOnly: true,
+    invocation: '',
+    summary: '',
+  })),
+  ...trustedTools.value.filter(
+    (tool) =>
+      tool.kind !== 'cli' ||
+      !trustedPrograms.value.some((program) => program.operations.some((op) => op.id === tool.id)),
+  ),
+])
 const trustedProbeCache = ref<{
   cached: number
   known: number
@@ -61,12 +62,8 @@ const trustedProbeCache = ref<{
 } | null>(null)
 const dataLayout = ref<DataLayoutResponse | null>(null)
 const dataLayoutBusy = ref(false)
-const trustedGitResult = ref<TrustedGitStatusResult | null>(null)
-const trustedBusy = ref(false)
 const trustedProbeBusy = ref(false)
 const probeCacheBusy = ref(false)
-const trustedFailure = ref<TrustedToolInvokeFailure | null>(null)
-const trustedAbort = ref<AbortController | null>(null)
 const mockTrustedScenarios = import.meta.env.MODE === 'mock'
 
 /** Drafts, keyed by capability: a note explains a switch, a binary points a CLI capability at a file. */
@@ -104,11 +101,7 @@ function removeTool(name: string) {
 
 const kinds = computed<CapabilityKindSummary[]>(() => catalog.value?.kinds ?? [])
 const items = computed<CapabilityItem[]>(() => catalog.value?.items ?? [])
-const trustedBindingCounts = computed(() => bindingStatusCounts(trustedTools.value))
-const trustedGitStdout = computed(
-  () => trustedGitResult.value?.stdout || trustedGitResult.value?.message || '',
-)
-const trustedGitStdoutCollapsed = computed(() => trustedStdoutNeedsCollapse(trustedGitStdout.value))
+const trustedBindingCounts = computed(() => bindingStatusCounts(displayTools.value))
 const capabilityColumns: TableColumn[] = [
   { key: 'name', title: '能力', mono: true },
   { key: 'kindLabel', title: '种类' },
@@ -158,6 +151,7 @@ async function refresh() {
     catalog.value = await runtimeApi.capabilities()
     const trusted = await runtimeApi.trustedTools()
     trustedTools.value = trusted.items
+    trustedPrograms.value = trusted.programs ?? []
     trustedProbeCache.value = trusted.probeCache ?? {
       cached: trusted.items.filter(
         (item) => item.versionStatus === 'known' || item.versionStatus === 'probe_failed',
@@ -189,47 +183,16 @@ async function refreshDataLayout() {
   }
 }
 
-async function runTrustedGitStatus(
-  mockOutcome?: 'success' | 'denied' | 'timeout' | 'cancelled' | 'unknown',
-) {
-  if (trustedBusy.value) return
-  const controller = new AbortController()
-  trustedAbort.value = controller
-  trustedBusy.value = true
-  trustedGitResult.value = null
-  trustedFailure.value = null
-  const startedAt = Date.now()
+async function runProgramProbe(id: string) {
+  trustedProbeBusy.value = true
   try {
-    trustedGitResult.value = {
-      ...(await runtimeApi.invokeTrustedGitStatus({
-        mockOutcome: mockTrustedScenarios ? mockOutcome : undefined,
-        signal: controller.signal,
-      })),
-      observedAt: new Date().toISOString(),
-      elapsedMs: Math.max(0, Date.now() - startedAt),
-    }
-    feedback(trustedGitResult.value.success ? 'success' : 'error', trustedGitResult.value.message)
+    await runtimeApi.probeCliProgram(id)
+    await refresh()
   } catch (error) {
-    const elapsedMs = Math.max(0, Date.now() - startedAt)
-
-    trustedFailure.value = trustedToolInvokeFailure(error)
-    trustedGitResult.value = {
-      capability: 'git-status',
-      success: false,
-      message: trustedToolInvokeFailureMessage(error),
-      detail: trustedToolInvokeDetail(error),
-      observedAt: new Date().toISOString(),
-      elapsedMs,
-    }
-    feedback('error', trustedToolInvokeFailureMessage(error))
+    feedback('error', errorMessage(error))
   } finally {
-    if (trustedAbort.value === controller) trustedAbort.value = null
-    trustedBusy.value = false
+    trustedProbeBusy.value = false
   }
-}
-
-function cancelTrustedGitStatus() {
-  trustedAbort.value?.abort()
 }
 
 async function runTrustedVersionProbe(
@@ -264,7 +227,6 @@ async function clearTrustedProbeCache() {
 }
 
 onMounted(refresh)
-onBeforeUnmount(() => trustedAbort.value?.abort())
 defineExpose({ refresh })
 
 /** The switch every kind shares. The backend refuses it while an enabled expert depends on the capability. */
@@ -532,8 +494,8 @@ async function submitServer() {
           · 其他 {{ trustedBindingCounts.other }}</template
         >
       </p>
-      <ul v-if="trustedTools.length" class="trusted-tool-list">
-        <li v-for="tool in trustedTools" :key="tool.id" :data-testid="`trusted-tool-${tool.id}`">
+      <ul v-if="displayTools.length" class="trusted-tool-list">
+        <li v-for="tool in displayTools" :key="tool.id" :data-testid="`trusted-tool-${tool.id}`">
           <strong class="mono">{{ tool.id }}</strong> · {{ tool.title }}
           <span :data-testid="`trusted-tool-binding-${tool.id}`">
             <Badge
@@ -566,11 +528,32 @@ async function submitServer() {
             variant="secondary"
             size="sm"
             :data-testid="`trusted-tool-probe-${tool.id}`"
-            :disabled="trustedProbeBusy || trustedBusy"
-            @click="runTrustedVersionProbe(tool.id)"
+            :disabled="trustedProbeBusy"
+            @click="
+              trustedPrograms.some((program) => program.id === tool.id)
+                ? runProgramProbe(tool.id)
+                : runTrustedVersionProbe(tool.id)
+            "
           >
-            探测版本
+            {{ t('versionProbe') }}
           </Button>
+          <ul
+            v-if="trustedPrograms.find((program) => program.id === tool.id)"
+            class="trusted-tool-list"
+          >
+            <li
+              v-for="operation in trustedPrograms.find((program) => program.id === tool.id)
+                ?.operations"
+              :key="operation.id"
+              :data-testid="'trusted-operation-' + operation.id"
+            >
+              <strong>{{ operation.title }}</strong> · <code>{{ operation.id }}</code>
+              <Badge :tone="operation.enabled ? 'success' : 'warning'">{{
+                operation.enabled ? '已启用' : '已停用'
+              }}</Badge>
+              <span v-if="operation.id !== 'git-status'">{{ t('manualUnavailable') }}</span>
+            </li>
+          </ul>
         </li>
       </ul>
       <p v-else class="hint">暂无可信只读工具定义。</p>
@@ -588,11 +571,7 @@ async function submitServer() {
           size="sm"
           data-testid="trusted-tool-probe-cache-clear"
           :disabled="
-            probeCacheBusy ||
-            trustedProbeBusy ||
-            trustedBusy ||
-            loading ||
-            (trustedProbeCache?.cached ?? 0) === 0
+            probeCacheBusy || trustedProbeBusy || loading || (trustedProbeCache?.cached ?? 0) === 0
           "
           @click="clearTrustedProbeCache"
         >
@@ -603,137 +582,15 @@ async function submitServer() {
           variant="secondary"
           size="sm"
           data-testid="trusted-tool-probe-fail"
-          :disabled="trustedProbeBusy || trustedBusy"
+          :disabled="trustedProbeBusy"
           @click="runTrustedVersionProbe('git-status', 'fail')"
         >
           模拟探测失败
         </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          data-testid="trusted-git-status-invoke"
-          :disabled="
-            trustedBusy || !trustedTools.some((tool) => tool.id === 'git-status' && tool.enabled)
-          "
-          @click="runTrustedGitStatus()"
-        >
-          触发只读 git status
-        </Button>
-        <Button
-          v-if="trustedBusy"
-          variant="secondary"
-          size="sm"
-          data-testid="trusted-git-status-cancel"
-          @click="cancelTrustedGitStatus"
-        >
-          停止等待
-        </Button>
-        <template v-if="mockTrustedScenarios">
-          <Button
-            variant="secondary"
-            size="sm"
-            data-testid="trusted-git-mock-denied"
-            :disabled="trustedBusy"
-            @click="runTrustedGitStatus('denied')"
-          >
-            模拟拒绝
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            data-testid="trusted-git-mock-timeout"
-            :disabled="trustedBusy"
-            @click="runTrustedGitStatus('timeout')"
-          >
-            模拟超时
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            data-testid="trusted-git-mock-cancelled"
-            :disabled="trustedBusy"
-            @click="runTrustedGitStatus('cancelled')"
-          >
-            模拟取消
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            data-testid="trusted-git-mock-unknown"
-            :disabled="trustedBusy"
-            @click="runTrustedGitStatus('unknown')"
-          >
-            模拟结果未知
-          </Button>
-        </template>
       </div>
-      <p
-        v-if="trustedGitResult && (trustedGitResult.success || !trustedFailure)"
-        class="hint"
-        data-testid="trusted-git-status-summary"
-      >
-        {{ trustedGitResult.capability }} · {{ trustedGitResult.success ? '成功' : '失败'
-        }}<template v-if="trustedGitResult.detail"> · {{ trustedGitResult.detail }}</template
-        ><template v-if="trustedGitResult.exitCode != null">
-          · exit {{ trustedGitResult.exitCode }}</template
-        ><template v-if="trustedGitResult.elapsedMs != null">
-          · {{ trustedGitResult.elapsedMs }} ms</template
-        ><template v-if="trustedGitResult.observedAt">
-          · 观测于 {{ trustedGitResult.observedAt }}</template
-        >
-      </p>
-      <Collapse
-        v-if="trustedGitResult?.success && trustedGitStdout && trustedGitStdoutCollapsed"
-        class="trusted-git-result trusted-git-result--collapse"
-        data-testid="trusted-git-status-result-collapse"
-      >
-        <template #summary>
-          <span data-testid="trusted-git-status-result-summary">
-            长输出已折叠（{{ trustedGitStdout.length }} 字符）· 预览
-            {{ trustedStdoutPreview(trustedGitStdout) }}
-          </span>
-        </template>
-        <pre class="trusted-git-result__body" data-testid="trusted-git-status-result">{{
-          trustedGitStdout
-        }}</pre>
-      </Collapse>
-      <pre
-        v-else-if="trustedGitResult?.success && trustedGitStdout"
-        class="trusted-git-result"
-        data-testid="trusted-git-status-result"
-        >{{ trustedGitStdout }}</pre>
-      <p v-if="trustedFailure === 'denied'" class="hint" data-testid="trusted-git-status-denied">
-        能力已停用或未授权，已拒绝本次只读调用<template v-if="trustedGitResult?.detail">
-          · {{ trustedGitResult.detail }}</template
-        ><template v-if="trustedGitResult?.elapsedMs != null">
-          · {{ trustedGitResult.elapsedMs }} ms</template
-        >。
-      </p>
-      <p v-if="trustedFailure === 'timeout'" class="hint" data-testid="trusted-git-status-timeout">
-        可信工具调用超时，未修改工作区<template v-if="trustedGitResult?.detail">
-          · {{ trustedGitResult.detail }}</template
-        ><template v-if="trustedGitResult?.elapsedMs != null">
-          · {{ trustedGitResult.elapsedMs }} ms</template
-        >。
-      </p>
-      <p
-        v-if="trustedFailure === 'cancelled'"
-        class="hint"
-        data-testid="trusted-git-status-cancelled"
-      >
-        已取消本次可信工具调用<template v-if="trustedGitResult?.detail">
-          · {{ trustedGitResult.detail }}</template
-        ><template v-if="trustedGitResult?.elapsedMs != null">
-          · {{ trustedGitResult.elapsedMs }} ms</template
-        >。
-      </p>
-      <p v-if="trustedFailure === 'unknown'" class="hint" data-testid="trusted-git-status-unknown">
-        {{ trustedGitResult?.message
-        }}<template v-if="trustedGitResult?.detail"> · {{ trustedGitResult.detail }}</template
-        ><template v-if="trustedGitResult?.elapsedMs != null">
-          · {{ trustedGitResult.elapsedMs }} ms</template
-        >。
-      </p>
+      <TrustedGitExecutionPanel
+        :enabled="trustedTools.some((tool) => tool.id === 'git-status' && tool.enabled)"
+      />
     </article>
     <p v-if="loading && !catalog" class="hint">正在读取能力目录…</p>
     <article v-for="kind in kinds" :key="kind.id" class="eap-panel panel-block cap-group">

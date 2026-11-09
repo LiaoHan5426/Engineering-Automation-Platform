@@ -76,6 +76,8 @@ export type TrustedToolBindingStatus =
 export type TrustedToolVersionStatus = 'unknown' | 'known' | 'not_applicable' | 'probe_failed'
 
 export type TrustedToolItem = {
+  programId?: string
+  operationId?: string
   id: string
   title: string
   kind: string
@@ -104,9 +106,52 @@ export type TrustedToolProbeCacheSummary = {
 
 export type TrustedToolResponse = {
   items: TrustedToolItem[]
+  programs?: TrustedToolProgram[]
   source: string
   /** Durable probe snapshot counts; catalog GET never auto-probes. */
   probeCache?: TrustedToolProbeCacheSummary
+}
+
+export type TrustedToolProgram = Omit<
+  TrustedToolItem,
+  'scope' | 'readOnly' | 'enabled' | 'invocation' | 'summary'
+> & {
+  operations: TrustedToolItem[]
+}
+export type ToolExecutionStatus =
+  | 'CREATED'
+  | 'RUNNING'
+  | 'CANCELLING'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'REJECTED'
+  | 'TIMED_OUT'
+  | 'CANCELLED'
+  | 'UNKNOWN'
+export type ToolExecution = {
+  id: string
+  requestId: string
+  programId: string
+  capabilityId: string
+  workspacePath: string
+  executable: string
+  status: ToolExecutionStatus
+  cancelRequested: boolean
+  createdAt: string
+  finishedAt: string | null
+  exitCode: number | null
+  stdout: string
+  stderr: string
+  truncated: boolean
+  exitEvidence: string | null
+  unconfirmedReason: string | null
+  steps: Array<{
+    id: string
+    phase: string
+    status: string
+    command: string[]
+    evidence: Record<string, unknown>
+  }>
 }
 
 export type TrustedToolVersionProbeResult = {
@@ -1179,9 +1224,13 @@ export const runtimeApi = {
     options?: { mockOutcome?: 'save-lost' },
   ) =>
     client
-      .put<ScenarioSnapshot>('/scenarios/' + encodeURIComponent(id), { revision, definition }, {
-        params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
-      })
+      .put<ScenarioSnapshot>(
+        '/scenarios/' + encodeURIComponent(id),
+        { revision, definition },
+        {
+          params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
+        },
+      )
       .then((r) => r.data),
   deleteScenario: (id: string, revision: number) =>
     client
@@ -1334,6 +1383,41 @@ export const runtimeApi = {
           signal: options?.signal,
           params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
         },
+      )
+      .then((r) => r.data),
+  startTrustedGitExecution: (
+    requestId: string,
+    options?: { signal?: AbortSignal; mockOutcome?: string },
+  ) =>
+    client
+      .post<ToolExecution>(
+        '/cli-programs/git/operations/git-status/executions',
+        { requestId },
+        {
+          signal: options?.signal,
+          params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
+        },
+      )
+      .then((r) => r.data),
+  trustedGitExecutions: (signal?: AbortSignal) =>
+    client
+      .get<{ items: ToolExecution[] }>('/cli-programs/git/operations/git-status/executions', {
+        signal,
+      })
+      .then((r) => r.data),
+  trustedGitExecution: (id: string, signal?: AbortSignal) =>
+    client
+      .get<ToolExecution>(
+        '/cli-programs/git/operations/git-status/executions/' + encodeURIComponent(id),
+        { signal },
+      )
+      .then((r) => r.data),
+  cancelTrustedGitExecution: (id: string, signal?: AbortSignal) =>
+    client
+      .post<ToolExecution>(
+        '/cli-programs/git/operations/git-status/executions/' + encodeURIComponent(id) + '/cancel',
+        {},
+        { signal },
       )
       .then((r) => r.data),
   capabilities: () => get<CapabilityResponse>('/capabilities'),
@@ -1893,11 +1977,7 @@ export function createChatApi(
           '/proposals/' +
           encodeURIComponent(proposal),
       ),
-    refuseCodeProposal: (
-      id: string,
-      proposal: string,
-      request?: { executionId?: string | null },
-    ) =>
+    refuseCodeProposal: (id: string, proposal: string, request?: { executionId?: string | null }) =>
       client
         .post<CodeProposalState>(
           '/ai/conversations/' +

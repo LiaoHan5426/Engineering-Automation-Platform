@@ -22,6 +22,16 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class DefaultProcessExecutorTest {
+    @Test void controlledCancellationBeforeStartNeverLaunchesTheCommand() {
+        var result = new DefaultProcessExecutor().runManaged(UUID.randomUUID(), "test", Path.of("."),
+                List.of("must-not-start"), Map.of(), new com.lh.eap.api.ManagedProcessControl() {
+                    public boolean cancellationRequested() { return true; }
+                    public void started(Map<String,Object> identity) { fail("Process must not start"); }
+                });
+        assertEquals("CANCELLED", result.metadata().get("executorStatus"));
+        assertEquals(true, result.metadata().get("processNotStarted"));
+        assertEquals(true, result.metadata().get("processTreeCleanup"));
+    }
     @TempDir Path workspace;
     private List<String> command(String mode){
         return List.of(Path.of(System.getProperty("java.home"),"bin","java").toString(),
@@ -39,18 +49,26 @@ class DefaultProcessExecutorTest {
         assertTrue(result.stdout().length()<1_050_000);
         assertTrue(result.stderr().length()<1_050_000);
     }
-    @Test void cancelKillsTheProcessAndItsChildOnlyAfterTheyExit() throws Exception {
+    @ParameterizedTest @ValueSource(booleans = {false, true})
+    void cancelKillsTheProcessAndItsChildOnlyAfterTheyExit(boolean throughControl) throws Exception {
         var executor = new DefaultProcessExecutor(Duration.ofSeconds(20));
         var id = UUID.randomUUID();
         var parent = new AtomicLong();
         var started = new CountDownLatch(1);
         var observation = new AtomicReference<Observation>();
-        var worker = new Thread(() -> observation.set(executor.runManaged(id, "probe", workspace, List.of(
+        var cancelled = new java.util.concurrent.atomic.AtomicBoolean();
+        var command = List.of(
                 Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-                "-cp", probeClasspath(), Parent.class.getName(), probeClasspath()), Map.of(), identity -> {
+                "-cp", probeClasspath(), Parent.class.getName(), probeClasspath());
+        java.util.function.Consumer<Map<String,Object>> onStart = identity -> {
             parent.set((Long) identity.get("processPid"));
             started.countDown();
-        })));
+        };
+        var worker = new Thread(() -> observation.set(throughControl
+                ? executor.runManaged(id, "probe", workspace, command, Map.of(), new com.lh.eap.api.ManagedProcessControl() {
+                    public boolean cancellationRequested() { return cancelled.get(); }
+                    public void started(Map<String,Object> identity) { onStart.accept(identity); }
+                }) : executor.runManaged(id, "probe", workspace, command, Map.of(), onStart)));
         worker.start();
         assertTrue(started.await(10, TimeUnit.SECONDS));
         Long child = null;
@@ -61,7 +79,7 @@ class DefaultProcessExecutorTest {
             Thread.sleep(30);
         }
         assertNotNull(child);
-        executor.cancel(id);
+        if (throughControl) cancelled.set(true); else executor.cancel(id);
         worker.join(10_000);
         assertFalse(worker.isAlive());
         assertFalse(ProcessHandle.of(parent.get()).map(ProcessHandle::isAlive).orElse(false));

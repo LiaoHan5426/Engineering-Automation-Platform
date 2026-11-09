@@ -74,7 +74,11 @@ public class CliChannels {
 
     /** The full channel view: what is in effect, where it resolved to, and whether it is runnable. */
     public Channel channel(String capability, String shippedDefault) {
-        var override = override(capability);
+        final String override;
+        try { override = override(capability); }
+        catch (BindingConflict conflict) {
+            return new Channel(capability, "", "operator", null, CapabilityAvailability.MISSING_BINARY);
+        }
         var binary = override == null ? shippedDefault : override;
         var resolved = LocalBinaries.resolve(binary);
         return new Channel(capability, binary, override == null ? "shipped" : "operator",
@@ -155,8 +159,18 @@ public class CliChannels {
         var program = programId(capability);
         var shared = values.get(program);
         if (shared != null) return shared;
+        if ("git".equals(program)) {
+            var status = values.get("git-status");
+            var diff = values.get("git-diff");
+            if (status != null && diff != null && !status.equals(diff)) throw new BindingConflict();
+            return status != null ? status : diff;
+        }
         // Compatibility for installations not migrated yet. New writes use program ids.
         return values.get(capability);
+    }
+
+    private static final class BindingConflict extends IllegalStateException {
+        BindingConflict() { super("CLI_PROGRAM_BINDING_CONFLICT"); }
     }
 
     public static String programId(String capability) {

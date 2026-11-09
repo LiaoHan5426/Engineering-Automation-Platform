@@ -133,6 +133,7 @@ async function probe(program: CliProgramItem) {
   await action(async () => {
     const result = await runtimeApi.probeCliProgram(program.id)
     probes.value[program.id] = result
+    emit('saved') // Refresh the shared program-version projection, including failed probes.
     if (!result.success) throw new Error(result.message)
   }, '程序探测成功。')
 }

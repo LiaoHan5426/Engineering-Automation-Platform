@@ -703,7 +703,7 @@ class BoardRunPersistenceTest {
         }
         if (context != null) context.close();
     }
-    @Configuration @EnableTransactionManagement static class Db {
+    @Configuration @EnableTransactionManagement(proxyTargetClass = true) static class Db {
         @Bean CapabilityRegistry registry() { return new CapabilityRegistry().register(new GitCapability("status")).register(new GitCapability("diff")); }
         @Bean CapabilityHandlerRegistry handlers(CapabilityRegistry registry, DefaultProcessExecutor executor) { return new CapabilityHandlerRegistry(List.of(new GitInspectionHandler(registry, executor))); }
         @Bean CapabilitySettings settings(JdbcTemplate jdbc) { return new CapabilitySettings(jdbc, null); }

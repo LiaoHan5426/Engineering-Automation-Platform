@@ -1,4 +1,5 @@
 /** Minimal capability/MCP catalog for mock mode browser checks. */
+import { createMockToolExecutionBackend } from './toolExecutionBackend'
 export type TrustedGitMockOutcome = 'success' | 'denied' | 'timeout' | 'cancelled' | 'unknown'
 export type TrustedVersionProbeOutcome = 'success' | 'fail' | 'conflict' | 'disabled'
 
@@ -14,6 +15,7 @@ type PersistedProbe = {
 const persistedTrustedProbes = new Map<string, PersistedProbe>()
 
 export function createMockCapabilityBackend() {
+  const executions = createMockToolExecutionBackend()
   const productionMatrix = [
     {
       packageName: '@modelcontextprotocol/server-everything',
@@ -158,7 +160,7 @@ export function createMockCapabilityBackend() {
   ]
 
   for (const tool of trustedTools) {
-    const cached = persistedTrustedProbes.get(tool.id)
+    const cached = persistedTrustedProbes.get(tool.id.startsWith('git-') ? 'git' : tool.id)
     if (!cached) continue
     tool.versionStatus = cached.versionStatus
     tool.detectedVersion = cached.detectedVersion
@@ -171,7 +173,8 @@ export function createMockCapabilityBackend() {
     const query = path.includes('?') ? path.slice(path.indexOf('?') + 1) : ''
     const params = new URLSearchParams(query)
     const raw = (params.get('mockOutcome') || 'success').trim().toLowerCase()
-    if (raw === 'denied' || raw === 'timeout' || raw === 'cancelled' || raw === 'unknown') return raw
+    if (raw === 'denied' || raw === 'timeout' || raw === 'cancelled' || raw === 'unknown')
+      return raw
     return 'success'
   }
 
@@ -188,7 +191,12 @@ export function createMockCapabilityBackend() {
   }
 
   return {
-    async handle(method: string, path: string) {
+    async handle(method: string, path: string, body?: unknown) {
+      const execution = await executions.handle(method, path, body)
+      if (execution) return execution
+      if (method === 'POST' && pathnameOnly(path) === '/cli-programs/git/probe') {
+        path = '/runtime/trusted-tools/git-status/probe-version'
+      }
       const route = pathnameOnly(path)
       if (method === 'GET' && route === '/capabilities') {
         return {
@@ -242,17 +250,31 @@ export function createMockCapabilityBackend() {
         return {
           status: 200,
           data: {
-            items: trustedTools,
+            items: trustedTools.map((tool) => ({
+              ...tool,
+              programId: tool.id.startsWith('git-') ? 'git' : tool.id,
+              operationId: tool.id,
+            })),
+            programs: [
+              {
+                ...trustedTools[0],
+                id: 'git',
+                title: 'Git',
+                operations: trustedTools.filter((tool) => tool.id.startsWith('git-')),
+              },
+              { ...trustedTools[2], operations: [trustedTools[2]] },
+            ],
             source: 'mock-capability-handlers',
             probeCache: {
               cached: persistedTrustedProbes.size,
               known,
               failed,
-              newestProbedAt: [...persistedTrustedProbes.values()]
-                .map((row) => row.probedAt)
-                .filter((at) => !!at)
-                .sort()
-                .at(-1) ?? '',
+              newestProbedAt:
+                [...persistedTrustedProbes.values()]
+                  .map((row) => row.probedAt)
+                  .filter((at) => !!at)
+                  .sort()
+                  .at(-1) ?? '',
             },
           },
         }
@@ -274,7 +296,7 @@ export function createMockCapabilityBackend() {
           tool.probedAt = '2026-11-07T04:00:00Z'
           tool.probeNote = 'mock：显式探测失败，未伪造版本。'
           tool.bindingNote = tool.probeNote
-          persistedTrustedProbes.set(id, {
+          persistedTrustedProbes.set(id.startsWith('git-') ? 'git' : id, {
             versionStatus: tool.versionStatus,
             detectedVersion: '',
             probedAt: tool.probedAt,
@@ -300,7 +322,7 @@ export function createMockCapabilityBackend() {
         tool.probedAt = '2026-11-07T04:00:00Z'
         tool.probeNote = 'mock：显式探测成功；已持久化写回。'
         tool.bindingNote = '二进制已解析；版本已由显式探测持久化写回。'
-        persistedTrustedProbes.set(id, {
+        persistedTrustedProbes.set(id.startsWith('git-') ? 'git' : id, {
           versionStatus: tool.versionStatus,
           detectedVersion: tool.detectedVersion,
           probedAt: tool.probedAt,

@@ -11,7 +11,6 @@ import com.lh.eap.common.SensitiveData;
 import com.lh.eap.api.ExecutionContext;
 import com.lh.eap.api.ProcessExecutor;
 import com.lh.eap.core.CapabilityRegistry;
-import com.lh.eap.core.LocalBinaries;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -56,8 +55,7 @@ public class GitInspectionHandler implements CapabilityHandler {
     @Override public CapabilityKind kind() { return CapabilityKind.CLI; }
 
     @Override public CapabilityAvailability availability() {
-        return LocalBinaries.resolve(channels.binaryFor("git-status", SHIPPED_BINARY)).isPresent()
-                ? CapabilityAvailability.AVAILABLE : CapabilityAvailability.MISSING_BINARY;
+        return channels.channel("git-status", SHIPPED_BINARY).availability();
     }
 
     @Override public List<CapabilityDescriptor> describe() {

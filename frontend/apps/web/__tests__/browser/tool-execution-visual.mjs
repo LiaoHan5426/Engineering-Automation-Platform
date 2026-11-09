@@ -1,0 +1,85 @@
+// Real Chromium + the explicitly simulated mock service. No real CLI or model calls.
+import assert from 'node:assert/strict'
+import { createRequire } from 'node:module'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
+import { parseArgs } from 'node:util'
+
+const { values } = parseArgs({
+  options: {
+    playwright: { type: 'string' },
+    chromium: { type: 'string' },
+    url: { type: 'string', default: 'http://127.0.0.1:5186' },
+  },
+})
+const { chromium } = createRequire(import.meta.url)(
+  values.playwright || process.env.EAP_PLAYWRIGHT_MODULE || 'playwright-core',
+)
+const browser = await chromium.launch({
+  executablePath: values.chromium || process.env.EAP_CHROMIUM,
+  headless: true,
+})
+const page = await browser.newPage({ viewport: { width: 1440, height: 960 } })
+const errors = [],
+  checks = []
+page.on('pageerror', (error) => errors.push(error.message))
+page.setDefaultTimeout(15000)
+const output = resolve('apps/web/__tests__/browser/artifacts/tool-execution')
+await mkdir(output, { recursive: true })
+const button = (id) => page.getByTestId('trusted-git-' + id)
+try {
+  await page.goto(values.url + '/#capabilities')
+  await page.getByTestId('trusted-tools-panel').waitFor()
+  await page.getByTestId('trusted-operation-git-status').waitFor()
+  assert.equal(await page.getByTestId('trusted-tool-git').count(), 1)
+  assert.equal(await page.getByTestId('trusted-operation-git-diff').count(), 1)
+  assert.equal(await page.getByTestId('trusted-tool-probe-git-status').count(), 0)
+  checks.push('one Git program with two operations')
+  await page.getByTestId('trusted-tool-probe-git').click()
+  await page.getByTestId('trusted-tool-version-git').getByText('版本已知').waitFor()
+  checks.push('program-level explicit version probe')
+  await button('mock-running').click()
+  await button('status-cancel').waitFor()
+  const id = await button('status-summary').locator('code').innerText()
+  await page.evaluate(() => {
+    location.hash = 'rules'
+  })
+  await page.waitForFunction(() => location.hash === '#rules')
+  await page.evaluate(() => {
+    location.hash = 'capabilities'
+  })
+  await button('status-summary').filter({ hasText: id }).waitFor()
+  checks.push('cached navigation restores durable running record')
+  await button('status-cancel').click()
+  await button('status-cancelling').waitFor()
+  await button('status-cancelled').waitFor()
+  checks.push('request cancellation then observe cleanup confirmation')
+  await page.reload()
+  await button('status-cancelled').waitFor()
+  checks.push('browser reload reads the same terminal execution')
+  for (const width of [1440, 900, 390]) {
+    await page.setViewportSize({ width, height: 960 })
+    await button('status-summary').scrollIntoViewIfNeeded()
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+      true,
+      `overflow at ${width}`,
+    )
+    await page.screenshot({ path: resolve(output, `cancelled-${width}.png`) })
+  }
+  checks.push('1440/900/390px viewport bounds')
+  await button('mock-unknown').click()
+  await button('status-unknown').waitFor()
+  assert.equal(await button('status-invoke').isDisabled(), true)
+  assert.equal(await button('status-cancel').count(), 0)
+  await page.screenshot({ path: resolve(output, 'unknown-390.png') })
+  checks.push('restart UNKNOWN blocks another invocation')
+  assert.deepEqual(errors, [])
+  await writeFile(
+    resolve(output, 'result.json'),
+    JSON.stringify({ source: 'mock service / real Chromium', checks, errors }, null, 2),
+  )
+  process.stdout.write(JSON.stringify({ passed: checks.length, errors }) + '\n')
+} finally {
+  await browser.close()
+}

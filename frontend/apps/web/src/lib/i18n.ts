@@ -1,4 +1,5 @@
 import { editorMessages } from './editorMessages'
+import { toolExecutionMessages } from './toolExecutionMessages'
 import { expertWorkspaceMessages } from './expertWorkspaceMessages'
 import { knowledgeContextMessages } from './knowledgeContextMessages'
 import { contextBudgetMessages } from './contextBudgetMessages'
@@ -24,6 +25,7 @@ export const i18n = createI18n({
   fallbackLocale: 'en-US',
   messages: {
     'zh-CN': {
+      toolExecution: toolExecutionMessages['zh-CN'],
       expertAgent: expertAgentMessages['zh-CN'],
       editor: editorMessages['zh-CN'],
       expertWorkspace: expertWorkspaceMessages['zh-CN'],
@@ -349,6 +351,7 @@ export const i18n = createI18n({
       },
     },
     'en-US': {
+      toolExecution: toolExecutionMessages['en-US'],
       expertAgent: expertAgentMessages['en-US'],
       editor: editorMessages['en-US'],
       expertWorkspace: expertWorkspaceMessages['en-US'],

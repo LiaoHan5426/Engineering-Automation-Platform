@@ -45,11 +45,15 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
     public synchronized int activeCount(){return (int)executions.values().stream().filter(e->!e.released).count();}
     public synchronized List<CliExecution.Snapshot> snapshots(){return executions.values().stream().map(Execution::snapshot).toList();}
     @Override public Observation runManaged(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment){
-        return runManaged(id,capability,dir,command,environment,null);
+        return execute(id,capability,dir,command,Map.copyOf(environment),null);
     }
     public Observation runManaged(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment,
                                   java.util.function.Consumer<Map<String,Object>> onStart){
         return execute(id,capability,dir,command,Map.copyOf(environment),onStart);
+    }
+    @Override public Observation runManaged(UUID id,String capability,Path dir,List<String> command,
+                                           Map<String,String> environment,ManagedProcessControl control){
+        return execute(id,capability,dir,command,Map.copyOf(environment),control::started,control::cancellationRequested);
     }
     private final Duration timeout;
     private static final int OUTPUT_LIMIT=1024*1024;
@@ -66,6 +70,11 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
     }
     private Observation execute(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment,
                                 java.util.function.Consumer<Map<String,Object>> onStart){
+        return execute(id,capability,dir,command,environment,onStart,()->false);
+    }
+    private Observation execute(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment,
+                                java.util.function.Consumer<Map<String,Object>> onStart,
+                                java.util.function.BooleanSupplier cancelled){
         var execution=new Execution(id);
         synchronized(this){
             if(closed)throw new IllegalStateException("Executor closed");
@@ -83,7 +92,7 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
             var builder=new ProcessBuilder(command).directory(dir.toFile());
             if(environment!=null){builder.environment().clear();builder.environment().putAll(environment);}
             synchronized(execution){
-                if(execution.status==CliExecution.Status.CANCELLING){
+                if(cancelled.getAsBoolean()||execution.status==CliExecution.Status.CANCELLING){
                     execution.status=CliExecution.Status.CANCELLED;
                     return new Observation(capability,false,130,"","Cancelled before start",Map.of("processExited",false,"processNotStarted",true,"processTreeCleanup",true,"executorStatus","CANCELLED"));
                 }
@@ -100,7 +109,7 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
             while(process.isAlive()){
                 process.descendants().forEach(p->descendants.put(p.pid(),p));
                 synchronized(execution){
-                    if(execution.status==CliExecution.Status.CANCELLING){execution.status=CliExecution.Status.CANCELLED;phases.put("cancelled",Instant.now());break;}
+                    if(cancelled.getAsBoolean()||execution.status==CliExecution.Status.CANCELLING){execution.status=CliExecution.Status.CANCELLED;phases.put("cancelled",Instant.now());break;}
                     if(System.nanoTime()>=deadline){execution.status=CliExecution.Status.TIMED_OUT;phases.put("timedOut",Instant.now());break;}
                 }
                 process.waitFor(20,TimeUnit.MILLISECONDS);

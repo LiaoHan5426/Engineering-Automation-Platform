@@ -6,6 +6,9 @@ import org.springframework.context.annotation.Import;
 /** Explicit full product composition; adding a jar alone never activates its components here. */
 @Configuration(proxyBeanMethods = false)
 @Import({
+    com.lh.eap.application.service.ToolExecutionService.class,
+    com.lh.eap.persistence.mapper.JdbcToolExecutionStore.class,
+    com.lh.eap.web.controller.ToolExecutionController.class,
     com.lh.eap.application.service.SqlExpertAnalysisPolicy.class,
     com.lh.eap.application.service.WorkflowExpertKnowledgeAccess.class,
     com.lh.eap.runtime.handler.SqlKnowledgeQueryEnricher.class,

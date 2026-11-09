@@ -1,0 +1,13 @@
+{
+  "source": "mock service / real Chromium",
+  "checks": [
+    "one Git program with two operations",
+    "program-level explicit version probe",
+    "cached navigation restores durable running record",
+    "request cancellation then observe cleanup confirmation",
+    "browser reload reads the same terminal execution",
+    "1440/900/390px viewport bounds",
+    "restart UNKNOWN blocks another invocation"
+  ],
+  "errors": []
+}

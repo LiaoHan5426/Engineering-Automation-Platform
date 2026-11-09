@@ -332,3 +332,53 @@ SQL Agent允许普通openai-compatible的chat-completions和responses；ChatGPT�
 ### 独立编辑工作台提交前复核（2026-11-09）
 
 用户已授权在浏览器技术验收后提交并推送。本阶段将此前未提交的复杂SQL证据修复、知识边界说明、专家导航/详情调整与本次独立编辑工作台一并收口。`rtk proxy mvn -f backend/pom.xml test`重跑32模块SUCCESS，912项（808通过/104门控跳过/0失败错误）；本轮未启用额外实库/供应商门控，前述913项/74跳过是前轮环境快照。前端134文件786项、类型/架构/构建与定向样式通过；新编辑工作台7组、原审批UI9组浏览器技术检查通过，所有专家保存/审批写请求均为隔离fixture。当前原生DPR1及Chromium1.25/1.5覆盖通过，不冒充Windows原生150%。细节与剩余用户验收见[工作台记录](../decisions/expert-workspace-navigation.md)。
+
+<a id="tool-operation-executions"></a>
+## Git 程序统一与 status 持久取消（2026-11-09）
+
+起点为干净工作树 ec2914c。用户确认范围为“统一模型＋status取消”、跨重启保留记录、UNKNOWN保留并阻止重复启动；实施阶段未授权提交/推送，交付后用户已明确授权本次提交并推送。相关合同见[技术决定](../decisions/agent-runtime-evolution.md#git-operation-executions)。
+
+| 子系统 | 实际修改与复用 |
+|---|---|
+| Git管理 | 复用CliProgram/CliOperation和CliChannels；可信目录增加程序分组，Git下保留status/diff两个能力ID；版本探测与缓存归程序，旧入口响应ID兼容。历史操作路径一致时共享、冲突时拒绝执行，程序覆盖优先，不改写用户配置 |
+| 执行与存储 | 新增ToolExecution、存储端口/JDBC适配、受限status服务/HTTP入口；先持久化再后台运行。requestId去重与工作区互锁由数据库唯一索引兜底；只接收requestId，不接受路径/参数/批准 |
+| 进程 | ProcessExecutor增兼容的取消信号/启动回调；现有DefaultProcessExecutor与GitCapability继续生成安全命令、限制环境/输出、执行与清理。一个调用记录root/filter/status步骤与身份，不让预检逃离取消边界 |
+| 前端 | 移除页面内旧同步invoke编排，L4 TrustedGitExecutionPanel负责持久记录观测；DTO/HTTP仍在runtime-client；复用公共UI与i18n。KeepAlive停用/销毁暂停观测，返回重读，观测代次防止旧响应覆盖 |
+| 兼容 | 同步invoke转为同一持久服务的适配层；停止HTTP等待不变成进程取消。旧Mission/Board/Chat Git链路保留；底层进程查询接口不冒充调用记录 |
+| 迁移 | V26新增工具调用表，V27补列注释。实库测试只创建/删除UUID命名临时schema，不创建/删除数据库，不重置应用schema或Flyway历史 |
+
+状态与失败边界：CANCELLING仅表示取消意图；未启动或退出且树清理完成才确认CANCELLED，完成后取消不覆盖原结果。写回失败/缺清理证据或重启遗留在途转UNKNOWN，继续互锁，不自动重放、按PID销毁或提供人工解除。stdout/stderr脱敏后各保留最多8000字符，携带截断标记。
+
+验证证据分开记录：
+
+- 前端全量最终为136文件797项通过，typecheck、check:architecture、check:boundaries、build、改动范围stylelint与lint通过。保留既有网络保护诊断、Node localStorage提示及构建大chunk提醒；未放宽网络保护或检查规则。
+- 后端定向命令覆盖ToolExecutionServiceTest、ToolExecutionJsonTest、TrustedToolCatalogServiceTest、DefaultProcessExecutorTest、ToolExecutionControllerTest、ToolExecutionPersistenceTest、SchemaAndWiringTest：36项通过。新取消信号的真实父子进程清理、启动前取消，与三个Git阶段的调度/取消模拟分开验证。
+- 既有BoardRunPersistenceTest在实库门控开启时36项通过（330秒）；未删断言。首轮暴露事务代理按接口生成、测试却按具体CapabilitySettings注入的问题，测试配置显式使用类代理，保留与宿主相同的注入方式。
+- 新增实库用例以现有本机测试连接为入口，在UUID临时schema执行迁移与仓储SQL：真实Git三个步骤、快照重构读回、requestId去重、唯一互锁、重启UNKNOWN与阻塞均验证；finally只清理自己的schema。没有把合成进程当作真实Git。
+- 本机真实HTTP调用也成功：202启动后，执行3deabe6e-986b-4a09-b49e-2212c17c53a9读回SUCCEEDED/exit0及root、filters、status；核对工作区为当前仓库，迟到取消仍SUCCEEDED。留有独立调用历史，JSON读回证据在full宿主target/tool-execution-live.json。此项是本轮限定实测，不保证服务一直在线。
+- 真实Chromium配mock服务7组通过、0pageerror，1440/900/390px无横溢，截图已查看；覆盖程序分组/共享探测、缓存导航返回、取消请求到确认、刷新及UNKNOWN阻塞。脚本、截图与result.json见[浏览器目录](../../frontend/apps/web/__tests__/browser/README.md)。没有调用真实模型。
+- 后端最终离线reactor的通过/跳过数字统一在[当前台账](../planning-status.md#tool-execution-validation)维护，与上述实库证据分列，不拼接覆盖率。
+
+精确主要命令（仓库根，浏览器脚本在frontend目录）：
+
+    rtk proxy mvn -B -ntp -f backend/pom.xml test
+    rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=ToolExecutionPersistenceTest,ToolExecutionControllerTest,ToolExecutionJsonTest,ToolExecutionServiceTest,DefaultProcessExecutorTest,TrustedToolCatalogServiceTest,SchemaAndWiringTest' '-Dsurefire.failIfNoSpecifiedTests=false' test
+    rtk proxy pnpm --dir frontend test run
+    rtk proxy pnpm --dir frontend typecheck
+    rtk proxy pnpm --dir frontend check:architecture
+    rtk proxy pnpm --dir frontend check:boundaries
+    rtk proxy pnpm --dir frontend build
+
+离线reactor仅在其子进程中将EAP_RUN_BOARD_PERSISTENCE设为false；上述实库用例与看板36项使用原环境已有true门控及口令，凭据未写入代码/命令。改动Vue文件单独执行stylelint，改动TS/Vue/浏览器脚本执行vp lint。
+
+失败与恢复保留：首轮全量有36项旧测试代理错误及1项新增表列注释失败；分别修正代理配置与追加V27。新增临时schema测试最初未重定位普通Statement，导致重启原因断言失败，已补全Statement/PreparedStatement重定位并实测通过；分组测试嵌套Mockito stubbing已修正。浏览器脚本第二次在已有mock UNKNOWN上重跑被互锁阻止，符合合同；使用新mock服务进程后7组再次通过，未增加清空后门。一轮最终全量重跑会话失效、日志无完成状态，未算通过，后续离线全量重新执行。
+
+迁移历史保护：编译期间只读核查发现本机已有服务已应用首版V26，数据库校验和为-716806117。恢复并复核V26源文件同值，把后续列注释放V27；未运行repair、clean或baseline。临时schema验证与应用库迁移状态分别报告，不能互相替代。
+
+本片随本次用户授权的提交交付，推送结果以Git远端回读为准；用户交互接受、diff新人工执行、UNKNOWN人工处置、跨重启进程接管及其他工具合同仍未关闭。KISS/YAGNI体现在只支持status固定入口；DRY复用程序/操作、命令构造和执行器；SOLID通过存储端口、运行控制、HTTP与领域呈现分责落实。
+
+本轮最终补核：离线reactor 32模块通过，930项中829通过、101门控跳过、0失败/错误；V26/V27独立schema迁移与实库用例、SchemaAndWiringTest最后重跑5项通过。只读回读确认本机V27已应用，校验和1802106427；V26仍为-716806117，两份源文件与数据库一致。
+
+前端最终补核：程序管理探测后立即通知父目录刷新，共享版本成功/失败两种结果回归通过。一次与构建并行的全量复跑出现SkillManager级联22失败；该文件单独25项通过，随后不并行构建的全量136文件796项通过。保留中间失败，不推断其为生产缺陷或放宽测试。
+
+最终交付补核：历史Git绑定冲突时，handler可用性读取改走安全通道快照，目录可继续显示冲突，且回归确认不执行进程/不改写绑定。启动阶段明确的400/403/409/429拒绝与网络结果未知分别呈现，相关DOM回归通过。最后前端136文件797项通过；后端完整离线reactor930项（829通过、101门控跳过、0失败/错误）通过，最终日志为tool-execution-offline-reactor-final.log。此后typecheck/build/check:architecture及改动范围lint/stylelint均通过。

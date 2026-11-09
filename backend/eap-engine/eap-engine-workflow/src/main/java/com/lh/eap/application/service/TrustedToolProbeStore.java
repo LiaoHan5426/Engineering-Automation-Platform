@@ -36,6 +36,7 @@ final class TrustedToolProbeStore {
     @SuppressWarnings("unchecked")
     Map<String, TrustedToolCatalogService.VersionProbe> load() {
         var loaded = new ConcurrentHashMap<String, TrustedToolCatalogService.VersionProbe>();
+        var conflicts = new java.util.HashSet<String>();
         if (!Files.isRegularFile(file)) return loaded;
         try {
             var raw = JSON.readValue(Files.readString(file, StandardCharsets.UTF_8), Map.class);
@@ -43,17 +44,24 @@ final class TrustedToolProbeStore {
             if (!(probes instanceof Map<?, ?> rows)) return loaded;
             for (var entry : rows.entrySet()) {
                 if (entry.getKey() == null || !(entry.getValue() instanceof Map<?, ?> row)) continue;
-                var toolId = String.valueOf(entry.getKey()).trim();
+                var toolId = CliChannels.programId(String.valueOf(entry.getKey()).trim());
                 if (toolId.isEmpty()) continue;
+                if (conflicts.contains(toolId)) continue;
                 var status = text(row.get("versionStatus"));
                 if (!"known".equals(status) && !"probe_failed".equals(status)) continue;
                 var version = "known".equals(status) ? text(row.get("detectedVersion")) : "";
-                loaded.put(toolId, new TrustedToolCatalogService.VersionProbe(
+                var snapshot = new TrustedToolCatalogService.VersionProbe(
                         status,
                         version,
                         text(row.get("probedAt")),
                         text(row.get("resolvedPath")),
-                        text(row.get("probeNote"))));
+                        text(row.get("probeNote")));
+                var prior = loaded.get(toolId);
+                if (prior != null && (!prior.resolvedPath().equals(snapshot.resolvedPath())
+                        || !prior.detectedVersion().equals(snapshot.detectedVersion()))) {
+                    loaded.remove(toolId);
+                    conflicts.add(toolId);
+                } else loaded.put(toolId, snapshot);
             }
         } catch (IOException | RuntimeException ignored) {
             // Corrupt cache must not block catalog; treat as empty.
@@ -77,7 +85,7 @@ final class TrustedToolProbeStore {
                 rows.put(entry.getKey(), row);
             }
             var payload = new LinkedHashMap<String, Object>();
-            payload.put("schema", "trusted-tool-probes/v1");
+            payload.put("schema", "trusted-tool-probes/v2");
             payload.put("probes", rows);
             Files.writeString(file, JSON.writeValueAsString(payload), StandardCharsets.UTF_8);
         } catch (IOException | RuntimeException ignored) {

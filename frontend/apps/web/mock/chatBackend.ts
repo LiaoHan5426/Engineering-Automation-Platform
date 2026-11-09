@@ -38,8 +38,7 @@ export function mockContextBudget(message: string): ContextBudgetObservation {
   const outputReserve = 16384
   const historyNotMetered =
     message.includes('历史未计量验收') || message.includes('__CHAT_MEMORY_NOT_METERED__')
-  const derivedCleared =
-    message.includes('派生清空验收') || message.includes('__DERIVED_CLEARED__')
+  const derivedCleared = message.includes('派生清空验收') || message.includes('__DERIVED_CLEARED__')
   return {
     platformLimit,
     outputReserve,
@@ -158,6 +157,7 @@ export function createMockChatBackend() {
       const capability = await capabilityBackend.handle(
         method,
         path + (requestUrl.search ? requestUrl.search : ''),
+        body,
       )
       if (capability) return capability
       if (path === '/prototype-versions' && method === 'GET')
@@ -511,7 +511,10 @@ export function createMockChatBackend() {
             return reply(409, { detail: 'MOCK_TASK_BINDING_UNAVAILABLE' })
           if (typeof body.message !== 'string' || !body.message.trim())
             return reply(400, { error: 'EMPTY_MESSAGE' })
-          if (body.message.includes('预算超限验收') || body.message.includes('__CONTEXT_BUDGET_EXCEEDED__')) {
+          if (
+            body.message.includes('预算超限验收') ||
+            body.message.includes('__CONTEXT_BUDGET_EXCEEDED__')
+          ) {
             const contextBudget = mockContextBudget(body.message)
             contextBudget.usedChars = contextBudget.platformLimit
             contextBudget.remainingChars = 0

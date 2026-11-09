@@ -15,6 +15,16 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 class GitCapabilityTest {
+    @Test void conflictingLegacyBindingsRemainVisibleWithoutBreakingCatalogAvailability() {
+        var store = new com.lh.eap.local.CliChannelStore() {
+            public Map<String,String> overrides() { return Map.of("git-status", "/legacy/a", "git-diff", "/legacy/b"); }
+            public void configure(String capability, String binary) { fail("Catalog must not rewrite bindings"); }
+        };
+        var handler = new com.lh.eap.runtime.handler.GitInspectionHandler(new com.lh.eap.core.CapabilityRegistry(),
+                (capability, cwd, command) -> { fail("Catalog must not execute a process"); return null; },
+                new com.lh.eap.application.service.CliChannels(store));
+        assertEquals(com.lh.eap.domain.model.CapabilityAvailability.MISSING_BINARY, assertDoesNotThrow(handler::availability));
+    }
     @TempDir Path workspace;
     @Test
     void managedExecutionUsesTheCapabilityCommandAndThePlatformId() {

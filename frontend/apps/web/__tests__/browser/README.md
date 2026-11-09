@@ -1,5 +1,17 @@
 # SQL Agent 浏览器视觉回归
 
+## Git 程序与持久调用首片
+
+`tool-execution-visual.mjs` 使用真实 Chromium 与明确标记的 mock 服务，验证 Git 程序下的两个操作、共享版本探测、KeepAlive 返回、取消确认、刷新读回、1440/900/390px 视口和 UNKNOWN 阻塞。真实 Git/进程树/PostgreSQL 证据由后端测试独立提供。
+
+先启动一个**新的 mock 服务进程**（例如仓库根执行 `rtk proxy pnpm --dir frontend dev:mock --port 5186 --strictPort`），再在 frontend 目录执行：
+
+```powershell
+rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright <本机playwright-core路径> --chromium <本机chrome.exe路径> --url http://127.0.0.1:5186
+```
+
+脚本最终保留模拟 UNKNOWN，符合服务端互锁合同；重跑前需新建 mock 服务进程，不添加清除 UNKNOWN 的产品后门。截图及结果在 `artifacts/tool-execution/`。本轮 7 组通过、0 pageerror，截图已查看；不是原生系统缩放或用户接受。
+
 `expert-agent-visual.mjs` 使用本机已有 Playwright Core/Chromium，打开真实 Vite 应用及 Monaco。先读取真实后端页面，再拦截 Agent API 为明确标注“模拟”的审批夹具；所有未声明的修改请求被阻断。不会调用真实模型或修改候选文件，不代表真实模型生成/落盘整链验收。
 
 在 `frontend` 目录、前后端服务已运行时执行（路径换成当前机器已安装位置，不自动安装软件）：

@@ -1,0 +1,39 @@
+package com.lh.eap.web.controller;
+
+import com.lh.eap.application.service.ToolExecution;
+import com.lh.eap.application.service.ToolExecutionService;
+import java.util.Map;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
+/** Literal built-in route: no arbitrary program, argv, cwd or capability execution API. */
+@RestController
+@RequestMapping("/api/cli-programs/git/operations/git-status/executions")
+public class ToolExecutionController {
+    private final ToolExecutionService service;
+    public ToolExecutionController(ToolExecutionService service) { this.service = service; }
+    @PostMapping @ResponseStatus(HttpStatus.ACCEPTED)
+    public ToolExecution start(@RequestBody Map<String, Object> body) {
+        if (body.size() != 1 || !(body.get("requestId") instanceof String request))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ONLY_REQUEST_ID_ALLOWED");
+        try {
+            var id = UUID.fromString(request);
+            if (!id.toString().equalsIgnoreCase(request)) throw new IllegalArgumentException("Noncanonical UUID");
+            return service.start(id);
+        }
+        catch (IllegalArgumentException invalid) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_ID"); }
+    }
+    @GetMapping public Map<String, Object> list(@RequestParam(defaultValue = "20") int limit) {
+        return Map.of("items", service.list(limit));
+    }
+    @GetMapping("/{id}") public ToolExecution get(@PathVariable UUID id) { return service.get(id); }
+    @PostMapping("/{id}/cancel") public ToolExecution cancel(@PathVariable UUID id) { return service.cancel(id); }
+    @ExceptionHandler(ToolExecutionService.Blocked.class)
+    public ResponseEntity<Map<String, Object>> blocked(ToolExecutionService.Blocked blocked) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("detail", "TOOL_EXECUTION_BLOCKED", "execution", blocked.execution()));
+    }
+}
