@@ -58,6 +58,8 @@ export const toolExecutionMessages = {
     reviewEvidence: '查看进程核对线索',
     reviewEvidenceHint:
       'PID、启动时间和命令仅供人工核对。父进程消失或缺少 PID 不能证明相关子进程已结束。',
+    reviewEvidencePreserved:
+      '以下为原始执行时保存的步骤和证据；人工关闭保留原字段，步骤状态不表示当前进程仍在运行。',
     reviewBoundary:
       '先在操作系统核对本次执行及其相关子进程均已结束，再填写核对说明（10～2000字符）。人工关闭只解除本操作的启动阻塞，保留原未知结果与证据。',
     reviewNote: '核对说明（请勿填写凭据）',
@@ -139,6 +141,8 @@ export const toolExecutionMessages = {
     reviewEvidence: 'Inspect process review clues',
     reviewEvidenceHint:
       'PID, start time and command are review clues. A missing parent or PID does not prove its descendants exited.',
+    reviewEvidencePreserved:
+      'These steps and evidence were saved during the original execution. Manual closure preserves them; step status does not indicate a process is still running.',
     reviewBoundary:
       'Verify this execution and its related child processes have stopped in the operating system, then record your review (10–2000 characters). Closing only releases this operation; the unknown outcome and evidence remain.',
     reviewNote: 'Review notes (do not enter credentials)',

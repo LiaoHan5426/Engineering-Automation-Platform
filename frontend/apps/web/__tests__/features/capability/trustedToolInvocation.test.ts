@@ -244,6 +244,31 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
     expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
     expect(runtimeApi.cancelGitOperationExecution).not.toHaveBeenCalled()
   })
+  it('retains original commands and step evidence after manual closure without offering another review', async () => {
+    const closed = {
+      ...row('CLOSED_UNKNOWN'),
+      steps: [
+        {
+          id: 'step',
+          phase: 'status',
+          status: 'RUNNING',
+          command: ['/bin/git', 'status'],
+          evidence: { processPid: 123, processExecutable: '/bin/git' },
+        },
+      ],
+    }
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [closed] })
+    await mount()
+    const evidence = root.querySelector(
+      '[data-testid="trusted-' + operation + '-execution-evidence"]',
+    )
+    expect(evidence?.textContent).toContain('/bin/git')
+    expect(evidence?.textContent).toContain('processPid')
+    expect(evidence?.textContent).toContain('步骤状态不表示当前进程仍在运行')
+    expect(root.querySelector('[data-testid="trusted-' + operation + '-review-open"]')).toBeNull()
+    expect(root.querySelector('[data-testid="trusted-' + operation + '-review-note"]')).toBeNull()
+    expect(runtimeApi.resolveUnknownGitExecution).not.toHaveBeenCalled()
+  })
   it('keeps an UNKNOWN reservation while showing a different historical record', async () => {
     const closed = { ...row('CLOSED_UNKNOWN'), id: 'closed' }
     vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({

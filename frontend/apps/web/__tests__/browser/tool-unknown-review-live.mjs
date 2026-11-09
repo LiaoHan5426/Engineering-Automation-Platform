@@ -81,40 +81,61 @@ try {
   await button('process-inspect').click()
   const observation = button('process-observation')
   await observation.waitFor()
-  assert.ok((await observation.innerText()).match(/身份匹配，进程仍存活/g).length >= 2)
-  assert.deepEqual(await api('GET', endpoint, undefined, 200), original)
-  assert.equal(await button('review-open').isDisabled(), true)
-  await page.screenshot({ path: resolve(session, 'parent-and-child-alive.png'), fullPage: true })
-  checks.push(
-    'real OS parent and child match; inspection preserves UNKNOWN and manual confirmation',
-  )
+  if (input.realGit) {
+    assert.doesNotMatch(await observation.innerText(), /身份匹配，进程仍存活/)
+    assert.match(await observation.innerText(), /当前未找到该 PID/)
+    assert.deepEqual(await api('GET', endpoint, undefined, 200), original)
+    assert.equal(await button('invoke').isDisabled(), true)
+    assert.equal(await button('review-open').isDisabled(), true)
+    assert.equal(reviews.length, 0)
+    await page.screenshot({ path: resolve(session, 'real-git-unknown.png'), fullPage: true })
+    checks.push(
+      'actual Git was abnormally terminated before host crash; persisted UNKNOWN does not infer an exit result',
+    )
+    await handshake('verify-git-stopped.request', 'tree-stopped.json')
+    checks.push(
+      'exact owned Git tree audit confirms stopped; missing PID still does not attest or close',
+    )
+  } else {
+    assert.ok((await observation.innerText()).match(/身份匹配，进程仍存活/g).length >= 2)
+    assert.deepEqual(await api('GET', endpoint, undefined, 200), original)
+    assert.equal(await button('review-open').isDisabled(), true)
+    await page.screenshot({ path: resolve(session, 'parent-and-child-alive.png'), fullPage: true })
+    checks.push(
+      'real OS parent and child match; inspection preserves UNKNOWN and manual confirmation',
+    )
 
-  await handshake('stop-parent.request', 'parent-stopped.json')
-  await button('process-inspect').click()
-  await observation.getByText('当前未找到该 PID', { exact: false }).first().waitFor()
-  assert.match(
-    await observation.innerText(),
-    new RegExp('已观察的子进程 · 身份匹配，进程仍存活 · PID ' + input.childPid),
-  )
-  assert.equal(await button('invoke').isDisabled(), true)
-  assert.equal(await button('review-open').isDisabled(), true)
-  await page.screenshot({ path: resolve(session, 'parent-exited-child-alive.png'), fullPage: true })
-  checks.push('parent exit leaves captured child alive; no automatic release')
+    await handshake('stop-parent.request', 'parent-stopped.json')
+    await button('process-inspect').click()
+    await observation.getByText('当前未找到该 PID', { exact: false }).first().waitFor()
+    assert.match(
+      await observation.innerText(),
+      new RegExp('已观察的子进程 · 身份匹配，进程仍存活 · PID ' + input.childPid),
+    )
+    assert.equal(await button('invoke').isDisabled(), true)
+    assert.equal(await button('review-open').isDisabled(), true)
+    await page.screenshot({
+      path: resolve(session, 'parent-exited-child-alive.png'),
+      fullPage: true,
+    })
+    checks.push('parent exit leaves captured child alive; no automatic release')
 
-  await handshake('stop-child.request', 'tree-stopped.json')
-  await button('process-inspect').click()
-  await page.waitForFunction(() => {
-    const text = document.querySelector(
-      '[data-testid="trusted-git-status-process-observation"]',
-    )?.textContent
-    return text?.includes('当前未找到该 PID') && !text.includes('身份匹配，进程仍存活')
-  })
-  assert.equal(await button('review-open').isDisabled(), true)
-  assert.equal(reviews.length, 0)
-  checks.push('verified owned tree stopped; observation still does not attest or close')
+    await handshake('stop-child.request', 'tree-stopped.json')
+    await button('process-inspect').click()
+    await page.waitForFunction(() => {
+      const text = document.querySelector(
+        '[data-testid="trusted-git-status-process-observation"]',
+      )?.textContent
+      return text?.includes('当前未找到该 PID') && !text.includes('身份匹配，进程仍存活')
+    })
+    assert.equal(await button('review-open').isDisabled(), true)
+    assert.equal(reviews.length, 0)
+    checks.push('verified owned tree stopped; observation still does not attest or close')
+  }
 
-  const note =
-    'Controlled acceptance harness: verified captured parent, owned Java child and captured helper processes stopped by exact PID, start time and executable. Automated review fixture, not product user acceptance.'
+  const note = input.realGit
+    ? 'Real Git fault acceptance: verified the owned Git process and its captured helper tree stopped by exact PID, start time and executable after forced abnormal termination. Automated review, not product user acceptance.'
+    : 'Controlled acceptance harness: verified captured parent, owned Java child and captured helper processes stopped by exact PID, start time and executable. Automated review fixture, not product user acceptance.'
   await button('review-note').fill(note)
   assert.equal(await button('review-open').isDisabled(), true)
   await button('review-checked').check()
@@ -165,10 +186,15 @@ try {
   await page.setViewportSize({ width: 1440, height: 960 })
   await page.screenshot({ path: resolve(session, 'closed-reloaded.png'), fullPage: true })
   await button('invoke').click()
-  await button('result').waitFor()
+  await button('summary').filter({ hasText: '执行成功' }).waitFor()
   const newId = await button('summary').locator('code').innerText()
   assert.notEqual(newId, input.executionId)
-  assert.equal((await api('GET', route + '/' + newId, undefined, 200)).status, 'SUCCEEDED')
+  const recovered = await api('GET', route + '/' + newId, undefined, 200)
+  assert.equal(recovered.status, 'SUCCEEDED')
+  if (input.realGit) {
+    assert.match(recovered.stdout, /file-0-/)
+    assert.equal(recovered.truncated, true)
+  }
   assert.deepEqual(await api('GET', endpoint, undefined, 200), closed)
   const historical = page
     .getByTestId('trusted-git-status-history')
@@ -180,6 +206,11 @@ try {
   await button('process-inspect').click()
   await observation.waitFor()
   assert.equal(await button('review-open').count(), 0)
+  const savedEvidence = button('execution-evidence')
+  await savedEvidence.locator('summary').click()
+  assert.match(await savedEvidence.innerText(), /processPid/)
+  assert.match(await savedEvidence.innerText(), /步骤状态不表示当前进程仍在运行/)
+  if (input.realGit) assert.match(await savedEvidence.innerText(), /status/)
   assert.equal(reviews.length, 1)
   await page.screenshot({ path: resolve(session, 'closed-history-reopened.png'), fullPage: true })
   checks.push(

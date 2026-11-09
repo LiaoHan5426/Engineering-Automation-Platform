@@ -28,8 +28,17 @@ class ToolUnknownReviewAcceptanceTest {
     private String schema;
     private String base;
     private Path repository;
+    private boolean realGit;
 
     @Test void crashedOwnerLeavesLiveChildUntilExplicitOsReviewAndDurableHumanClosure() throws Exception {
+        exercise(false);
+    }
+    @Test @EnabledIfEnvironmentVariable(named = "EAP_RUN_REAL_GIT_UNKNOWN", matches = "true")
+    void realGitAbnormalExitWithoutDurableResultRequiresExplicitUnknownReview() throws Exception {
+        exercise(true);
+    }
+    private void exercise(boolean useRealGit) throws Exception {
+        realGit = useRealGit;
         assertEquals("true", System.getenv("EAP_RUN_BOARD_PERSISTENCE"), "Approved local persistence gate required");
         assertNotNull(System.getenv("EAP_DB_PASSWORD"));
         assertNotNull(System.getenv("EAP_PLAYWRIGHT_MODULE"));
@@ -55,25 +64,59 @@ class ToolUnknownReviewAcceptanceTest {
             admin.execute("CREATE TABLE " + schema + ".capability_setting (capability text PRIMARY KEY, enabled boolean NOT NULL, notes text, updated_at timestamptz)");
             var init = new ProcessBuilder("git", "init", "--quiet").directory(session.resolve("workspace").toFile()).start();
             assertTrue(init.waitFor(5, TimeUnit.SECONDS)); assertEquals(0, init.exitValue());
+            if (realGit) {
+                // More than a pipe buffer of real status output holds Git alive while the start callback is gated.
+                for (int i = 0; i < 2000; i++) Files.writeString(session.resolve("workspace/file-" + i + "-" + "x".repeat(80) + ".txt"), "owned test file\n");
+            }
 
             startHost(true);
             var requestId = UUID.randomUUID();
             var started = request("POST", ROUTE, Map.of("requestId", requestId), 202);
             var id = (String) started.get("id");
-            awaitFile("captured.json");
+            awaitFile(realGit ? "git-started.json" : "captured.json");
             var jdbc = new JdbcTemplate(ToolUnknownReviewFixture.scopedDataSource(schema));
             var store = new JdbcToolExecutionStore(jdbc);
             var beforeCrash = store.find(UUID.fromString(id)).orElseThrow();
             assertEquals("RUNNING", beforeCrash.status());
-            var evidence = beforeCrash.steps().getFirst().evidence();
+            var evidence = (realGit ? beforeCrash.steps().getLast() : beforeCrash.steps().getFirst()).evidence();
             identities.add(evidence);
             for (var child : (List<?>) evidence.get("processDescendants")) identities.add((Map<?,?>) child);
-            var childInfo = ToolUnknownReviewFixture.JSON.readValue(read("child-ready.json"), Map.class);
-            long childPid = ((Number) childInfo.get("pid")).longValue();
-            var javaChild = identities.stream().filter(value -> pid(value) == childPid).findFirst().orElseThrow();
-            assertOwnedAlive(identities.getFirst()); assertOwnedAlive(javaChild);
+            long childPid = -1;
+            Map<?,?> javaChild = null;
+            if (realGit) {
+                assertEquals(List.of("root", "filters", "status"), beforeCrash.steps().stream().map(ToolExecution.Step::phase).toList());
+                assertOwnedAlive(evidence);
+                var command = beforeCrash.steps().getLast().command();
+                assertTrue(command.contains("status"));
+                assertEquals(command, ToolUnknownReviewFixture.JSON.readValue(read("git-started.json"), Map.class).get("command"));
+                var parent = ProcessHandle.of(pid(evidence)).orElseThrow();
+                // External test-only OS audit of this known process tree; never inject it into product evidence.
+                try (var children = parent.descendants()) { children.forEach(handle -> {
+                    var info = handle.info();
+                    identities.add(Map.of("processPid", handle.pid(), "processStartedAt", info.startInstant().orElseThrow().toString(),
+                            "processExecutable", info.command().orElseThrow()));
+                }); }
+                var gitProcesses = identities.stream().filter(ToolUnknownReviewAcceptanceTest::isGit).toList();
+                assertFalse(gitProcesses.isEmpty());
+                write("owned-git-processes.json", identities);
+                stopOwned(gitProcesses.getLast());
+                for (var identity : identities.reversed()) stopOwned(identity);
+                write("git-resume.request", Map.of("verifiedAbnormalTermination", true));
+                awaitFile("git-exited.json");
+                var exited = ToolUnknownReviewFixture.JSON.readValue(read("git-exited.json"), Map.class);
+                assertEquals(false, exited.get("success")); assertNotEquals(0, ((Number) exited.get("exitCode")).intValue());
+                var metadata = (Map<?,?>) exited.get("metadata");
+                assertEquals(true, metadata.get("processExited")); assertEquals(true, metadata.get("processTreeCleanup"));
+                assertEquals(beforeCrash, store.find(UUID.fromString(id)).orElseThrow(), "Actual failure has not been committed by workflow");
+            } else {
+                var childInfo = ToolUnknownReviewFixture.JSON.readValue(read("child-ready.json"), Map.class);
+                childPid = ((Number) childInfo.get("pid")).longValue();
+                long expectedPid = childPid;
+                javaChild = identities.stream().filter(value -> pid(value) == expectedPid).findFirst().orElseThrow();
+                assertOwnedAlive(identities.getFirst()); assertOwnedAlive(javaChild);
+            }
             stopHost(hosts.getLast(), true);
-            assertOwnedAlive(identities.getFirst()); assertOwnedAlive(javaChild);
+            if (!realGit) { assertOwnedAlive(identities.getFirst()); assertOwnedAlive(javaChild); }
 
             startHost(false);
             var unknown = request("GET", ROUTE + "/" + id, null, 200);
@@ -85,16 +128,18 @@ class ToolUnknownReviewAcceptanceTest {
             request("GET", ROUTE + "/" + id + "/process-review", null, 200);
             assertEquals(beforeInspection, store.find(UUID.fromString(id)).orElseThrow());
             write("browser-input.json", Map.of("base", base, "executionId", id, "requestId", requestId,
-                    "session", session.toString(), "frontend", repository.resolve("frontend").toString(), "childPid", childPid));
+                    "session", session.toString(), "frontend", repository.resolve("frontend").toString(), "childPid", childPid, "realGit", realGit));
             browser = new ProcessBuilder("node", repository.resolve("frontend/apps/web/__tests__/browser/tool-unknown-review-live.mjs").toString(),
                     "--session", session.toString()).directory(repository.resolve("frontend").toFile())
                     .redirectErrorStream(true).redirectOutput(session.resolve("browser.log").toFile()).start();
 
-            awaitFile("stop-parent.request");
-            stopOwned(identities.getFirst());
-            assertOwnedAlive(javaChild);
-            write("parent-stopped.json", Map.of("verified", true));
-            awaitFile("stop-child.request");
+            if (!realGit) {
+                awaitFile("stop-parent.request");
+                stopOwned(identities.getFirst());
+                assertOwnedAlive(javaChild);
+                write("parent-stopped.json", Map.of("verified", true));
+            }
+            awaitFile(realGit ? "verify-git-stopped.request" : "stop-child.request");
             for (var identity : identities.reversed()) stopOwned(identity);
             for (var identity : identities) assertFalse(ProcessHandle.of(pid(identity)).map(ProcessHandle::isAlive).orElse(false));
             write("tree-stopped.json", Map.of("verified", true));
@@ -112,6 +157,22 @@ class ToolUnknownReviewAcceptanceTest {
             assertTrue(closed.resolution().processTreeStopped());
             assertEquals(ToolUnknownReviewFixture.JSON.readValue(ToolUnknownReviewFixture.JSON.writeValueAsString(closed), Map.class),
                     request("GET", ROUTE + "/" + id, null, 200), "Independent JDBC snapshot matches the actual HTTP closure");
+            if (realGit) {
+                var index = session.resolve("workspace/.git/index");
+                assertFalse(Files.exists(index), "Owned untracked-only repository must have no index to restore");
+                Map<String,Object> failed;
+                try {
+                    Files.writeString(index, "invalid-owned-test-index");
+                    failed = settle(request("POST", ROUTE, Map.of("requestId", UUID.randomUUID()), 202));
+                    assertEquals("FAILED", failed.get("status"));
+                    assertNotEquals(0, ((Number) failed.get("exitCode")).intValue());
+                    assertNotNull(failed.get("exitEvidence")); assertNull(failed.get("unconfirmedReason"));
+                    write("confirmed-git-failure.json", failed);
+                } finally { Files.deleteIfExists(index); }
+                var repaired = settle(request("POST", ROUTE, Map.of("requestId", UUID.randomUUID()), 202));
+                assertEquals("SUCCEEDED", repaired.get("status"));
+                write("git-repaired.json", Map.of("id", repaired.get("id"), "status", repaired.get("status")));
+            }
 
             stopHost(hosts.getLast(), false);
             startHost(false);
@@ -119,7 +180,8 @@ class ToolUnknownReviewAcceptanceTest {
             request("POST", ROUTE, Map.of("requestId", requestId), 202);
             assertEquals(closed, store.find(closed.id()).orElseThrow());
             write("result.json", Map.of("passed", true, "executionId", id, "schema", schema,
-                    "restartPreservedClosedUnknown", true, "realParentAndChildStopped", true,
+                    "restartPreservedClosedUnknown", true, "ownedProcessTreeStopped", true,
+                    "realGitAbnormalExit", realGit,
                     "browser", ToolUnknownReviewFixture.JSON.readValue(read("browser-result.json"), Map.class)));
         } finally {
             if (browser != null && browser.isAlive()) browser.destroyForcibly().waitFor(5, TimeUnit.SECONDS);
@@ -140,7 +202,7 @@ class ToolUnknownReviewAcceptanceTest {
         var java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
         var host = new ProcessBuilder(java, "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8", "-cp",
                 System.getProperty("surefire.test.class.path", System.getProperty("java.class.path")),
-                ToolUnknownReviewFixture.class.getName(), session.toString(), schema, Boolean.toString(fault))
+                ToolUnknownReviewFixture.class.getName(), session.toString(), schema, fault && realGit ? "real-git" : Boolean.toString(fault))
                 .redirectErrorStream(true).redirectOutput(session.resolve("host-" + hosts.size() + ".log").toFile()).start();
         hosts.add(host); awaitFile("host.json");
         var info = ToolUnknownReviewFixture.JSON.readValue(read("host.json"), Map.class);
@@ -152,6 +214,18 @@ class ToolUnknownReviewAcceptanceTest {
         if (!host.waitFor(15, TimeUnit.SECONDS)) { host.destroyForcibly(); assertTrue(host.waitFor(5, TimeUnit.SECONDS)); }
     }
     private static long pid(Map<?,?> identity) { return ((Number) identity.get("processPid")).longValue(); }
+    private static boolean isGit(Map<?,?> identity) {
+        var name = Path.of(String.valueOf(identity.get("processExecutable"))).getFileName().toString().toLowerCase(Locale.ROOT);
+        return name.equals("git") || name.equals("git.exe");
+    }
+    private Map<String,Object> settle(Map<String,Object> row) throws Exception {
+        long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
+        while (List.of("CREATED", "RUNNING", "CANCELLING").contains(row.get("status")) && System.nanoTime() < deadline) {
+            Thread.sleep(20); row = request("GET", ROUTE + "/" + row.get("id"), null, 200);
+        }
+        assertFalse(List.of("CREATED", "RUNNING", "CANCELLING").contains(row.get("status")), "Git did not settle");
+        return row;
+    }
     private static void assertOwnedAlive(Map<?,?> identity) {
         assertEquals("MATCHING_ALIVE", new LocalProcessIdentityInspector().inspect(pid(identity),
                 (String) identity.get("processStartedAt"), (String) identity.get("processExecutable")).status());

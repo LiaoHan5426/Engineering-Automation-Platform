@@ -556,3 +556,41 @@ rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright
 最终文件收尾：23个变更文件，16个文本UTF-8无BOM/无替换字符、7张受控截图；170处本地Markdown目标及锚点、3类新增内容有限敏感模式和git diff --check通过。接续工作区未暂存/未提交，HEAD与origin/main仍为d7c1428；本次授权的“先提交并推送”已完成，后续新片保留审阅。
 
 本次提交准备：用户要求先提交并推送受控UNKNOWN验收及历史详情切片，再继续真实Git异常验证。复核代码、夹具、截图和规划同步；保留紧邻阶段65项定向、957项离线与840项前端证据，不为提交冒充重新测试。提交前复核UTF-8、敏感模式及暂存空白，推送后回读本地/远端SHA；历史未提交口径仅描述当时交付状态。
+
+
+<a id="real-git-unknown-review"></a>
+## 真实Git异常UNKNOWN完整核对与关闭后原始证据（2026-11-09）
+
+本次用户要求先提交推送，再验证真实Git异常。已提交a641892956a845f1310c69f09cf69fa18bd0b2bd（23文件，797 additions/16 deletions，feat: 验证受控 UNKNOWN 核对并支持历史执行详情），push origin main成功，HEAD/origin/main/远端ref一致且工作树干净。提交前复核实际差异、UTF-8/敏感/暂存空白，沿用紧邻65项定向、957项离线与840项前端证据，不冒充重新测试。
+
+本轮复用既有夹具、HTTP/JDBC服务与Vue runner，新增真实Git模式，不替换Git程序、参数、环境或DefaultProcessExecutor：自有仓库2000个未跟踪文件提供大于管道缓冲区的实际status输出；started回调在身份持久后等待，使实际Git保持在途。只从已知父PID枚举本次自有后代，核对完整身份，精确终止实际Git及辅助进程；这些外部OS审计保存到独立测试文件，不注入产品捕获证据。原执行器实际读到非零退出/清理结果，在返回workflow前再中断宿主，持久记录仍RUNNING、未收到退出结果，重启转UNKNOWN。此故障限定为“实际Git强制终止+宿主丢失持久结果”，不把普通Git失败泛化为UNKNOWN。
+
+浏览器复用实际Panel/隔离GET/核对POST，检查PID未找到不自动关闭或勾选，OS精确核对后说明+独立勾选+ConfirmBox二次确认，原步骤/未知原因/退出字段保留，同核对幂等、冲突409、跨操作404、旧启动请求及迟到取消不改记录，显式新请求实际Git成功，再次重启仍CLOSED_UNKNOWN。关闭后允许只读展开原命令及步骤证据，明确旧RUNNING是持久历史状态，不是当前进程存活判断；UNKNOWN表单与关闭记录展示分离，复用公共Collapse，无新接口/迁移/共享类别。
+
+追加对照：在无索引的自有未跟踪仓库创建有界损坏index，要求实际Git在正常宿主下明确FAILED、非零exitCode及退出证据、无未知原因；finally删除仅测试新建index，再次请求应SUCCEEDED。与UNKNOWN持久结果丢失分开记录。
+
+| 验证阶段 | 结果与边界 |
+|---|---|
+| 首轮真实Git | 门控1项通过，真实异常exit1、executorStatus=FAILED，执行器看到processExited/processTreeCleanup=true，但workflow未接收；实际程序H:/developerTools/tools/Git/cmd/git.exe，原命令数组与持久步骤一致。受控执行4c7ee0d7-5680-47b1-9de1-6de8bc1ac089经UNKNOWN/人工关闭/幂等/再次执行/再次重启完整通过，6组实际Chromium检查、0pageerror；应用工具记录摘要不变，schema/宿主/自有进程清理通过。会话backend/target/tool-unknown-review-fdca0c79-8338-492e-b921-48ca4859d13c，日志backend/target/real-git-unknown-acceptance-1.log |
+| 扩展定向首次 | 新增对照后清理import时漏掉ToolExecution的方法引用导入，host testCompile失败；此前5报告47项通过不算reactor成功。补回导入后完整重跑，失败日志backend/target/real-git-unknown-targeted.log保留 |
+| 前端 | `rtk proxy pnpm --dir frontend test run`：137文件842项通过，面板定向45项通过。既有测试网络防护及Node localStorage提示保留；工程检查与最终对照结果见收尾 |
+
+实际命令：保留本机EAP_RUN_BOARD_PERSISTENCE=true及原凭据环境，子进程设置EAP_RUN_TOOL_UNKNOWN_REVIEW=true和EAP_RUN_REAL_GIT_UNKNOWN=true；EAP_PLAYWRIGHT_MODULE=H:/developerTools/ai/hermes/hermes-agent/node_modules/playwright-core，EAP_CHROMIUM=C:/Users/LH/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe；首轮以`rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=ToolUnknownReviewAcceptanceTest#realGitAbnormalExitWithoutDurableResultRequiresExplicitUnknownReview' '-Dsurefire.failIfNoSpecifiedTests=false' test`运行。未调用模型、未开放产品故障注入路由，测试Origin仅限隔离宿主。
+
+主方案验收行、台账、路线及相关decision同步。本次用户已授权本切片提交并推送，最终定向/完整离线、对照、恢复及文件检查结果见下文；本次真实异常限定git-status，git-diff异常、其他Git故障矩阵、完整进程树退出证明、跨重启进程接管与产品用户接受仍独立。
+
+
+本轮最终定向：`rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=DefaultProcessExecutorTest,DescendantEvidenceTest,LocalProcessIdentityInspectorTest,ToolExecutionServiceTest,ToolExecutionJsonTest,ToolExecutionControllerTest,ToolExecutionPersistenceTest,ToolUnknownReviewAcceptanceTest,SchemaAndWiringTest,BackendModuleBoundaryTest' '-Dsurefire.failIfNoSpecifiedTests=false' test`，两项新整链门控及原持久门控均true，其余环境/路径同上。31模块闭包SUCCESS，10报告66项全部通过、0跳过，2分18秒。日志backend/target/real-git-unknown-final-targeted.log及按本次时间窗报告统计real-git-unknown-final-targeted-summary.json。包括旧Java模式7组与新实际Git模式6组浏览器检查，共13组，0pageerror。
+
+最终真实Git模式执行2315f97c-ee0d-4b63-b491-3b99e44de604（强制终止实际Git，独立执行器观察exit1，但业务未接收）；索引损坏对照7a9b98ae-7dc0-4c3e-828c-0a21c729de6e为FAILED/exit128/“进程树已清理”、无未知原因；删除测试新建损坏index后执行fe0515e7-c836-4044-84a2-1bb61b9d89b0为SUCCEEDED。自有schema/宿主/进程清理及应用记录摘要不变均通过。会话backend/target/tool-unknown-review-bd93fd1f-61d2-4397-b6a4-ba031d092748；原始started/异常退出/外部OS审计/明确失败/修复结果保留在该目录，[精简结果与6张截图](../../frontend/apps/web/__tests__/browser/artifacts/real-git-unknown/result.json)入库待提交。已查看最终1440px历史原证据展开与390px确认框，确认原步骤status仍RUNNING且说明清楚、关闭记录无再次核对表单。
+
+前端收尾：完整137文件842项、面板定向45项通过后，typecheck/build/check:architecture（含boundaries/circular）、目标vp lint/stylelint、4文件vp fmt --check通过。保留既有大chunk、网络防护/Node localStorage提示；本次build还有非阻断plugin timings诊断，未通过改阈值掩盖。
+
+
+完整离线收尾：仅子进程关闭已有EAP_RUN_*以及EAP_RUN_TOOL_UNKNOWN_REVIEW/EAP_RUN_REAL_GIT_UNKNOWN，运行`rtk proxy mvn -B -ntp -f backend/pom.xml test`：32模块SUCCESS，163报告958项：851通过、107门控跳过，0失败/错误，6分21秒。日志backend/target/real-git-unknown-offline-reactor.log及按本次时间窗XML统计real-git-unknown-offline-summary.json。门控跳过与前述66项真实/实库定向分别记录，未拼接覆盖率。
+
+应用恢复：构建前确认status/diff无在途、jps核对原EapApplication PID38636后暂停；全部构建成功后按保存原args/cwd恢复PID41284，health=200/ok。启动日志验证29份迁移、schema up to date；V26/V27/V28/V29只读JDBC回读分别-716806117/1802106427/-329790285/-508415836，与源码Flyway CRC一致，无新迁移、无repair/clean/baseline。原真实status记录da1bea9b-67b6-4d02-b02d-3baeb5cc4b75读回不变，process-review对成功409、越操作404、恶意Origin403，无在途执行；jps无fixture JVM，5187已关闭。证据backend/target/real-git-unknown-live-check.json。
+
+最终文件收尾：20个变更文件（14个文本UTF-8无BOM/无替换字符、6张真实Git截图），176处本地Markdown目标与锚点、3类新增内容有限敏感模式、git diff --check通过；明细backend/target/real-git-unknown-file-check.json。该实现阶段交付时HEAD与origin/main为a641892、接续未提交；本次用户已明确授权上述新增代码/回归/文档提交并推送，实际结果以Git回读为准。
+
+本次提交准备：按用户“提交并推送本轮改动”授权，复核20文件的真实Git异常回归、关闭后原证据展示及规划同步。沿用紧邻实现阶段66项后端定向、958项后端离线（851通过/107门控跳过）和842项前端证据，提交准备未重跑测试或启停服务；新增差异敏感扫描、UTF-8、本地文档链接和暂存空白再查，推送后核对本地/远端SHA及工作树。

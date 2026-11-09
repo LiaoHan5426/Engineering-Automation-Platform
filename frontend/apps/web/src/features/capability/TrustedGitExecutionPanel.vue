@@ -425,16 +425,19 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </template>
-      <template v-if="selected.status === 'UNKNOWN'">
-        <Collapse>
+      <template v-if="['UNKNOWN', 'CLOSED_UNKNOWN'].includes(selected.status)">
+        <Collapse :data-testid="testId('execution-evidence')">
           <template #summary>{{ t('reviewEvidence') }}</template>
           <p class="hint">{{ t('reviewEvidenceHint') }}</p>
+          <p class="hint">{{ t('reviewEvidencePreserved') }}</p>
           <div v-for="step in selected.steps" :key="step.id">
             <p>{{ step.phase }} · {{ step.status }}</p>
             <pre class="trusted-git-result">{{ JSON.stringify(step.command) }}</pre>
             <pre class="trusted-git-result">{{ JSON.stringify(step.evidence, null, 2) }}</pre>
           </div>
         </Collapse>
+      </template>
+      <template v-if="selected.status === 'UNKNOWN'">
         <p class="hint">{{ t('reviewBoundary') }}</p>
         <label
           >{{ t('reviewNote') }}

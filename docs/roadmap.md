@@ -2,7 +2,7 @@
 
 ## 当前基线与事实源
 
-当前已提交实现基线为 `d7c1428`（2026-11-09，已推送）；本轮验证受控异常UNKNOWN整链并追加历史执行详情入口，接续已获本次提交并推送授权，随本次提交交付。本文只维护推进顺序；最近验证结果统一见[验收台账](planning-status.md#validation-baseline)，历史执行证据归主题记录。
+当前已提交实现基线为 `a641892`（2026-11-09，已推送）；本轮验证真实Git异常退出且持久结果丢失后的UNKNOWN核对，追加关闭后原步骤证据只读展示，接续已获本次提交并推送授权，随本次提交交付。本文只维护推进顺序；最近验证结果统一见[验收台账](planning-status.md#validation-baseline)，历史执行证据归主题记录。
 
 普通API显式Responses选择与函数工具已实现；原连接真实两轮SQL取证/候选/页面审批/写入读回及重启终态已验；见[模型协议决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验)。其余切片逐项按台账记录，不以早期“待实施”覆盖后续限定交付。
 
@@ -26,7 +26,7 @@ CT-01追加[显式重连与重试](decisions/chat-engineering-task-slice.md#会�
 | 资源 | 单专家授权知识与旧记忆隔离；Skill文本版本、启停及按需引用 | MCP官方memory包经Expert入口的本机实网验收（固定read_graph协议子进程夹具已验）；通用规划/Agent/Work执行；Skill目录/仓库导入 |
 | 上下文/记忆/检索 | **CE-01/KR-01/MCP-01（矩阵 callVerified/listOnly）/MEM-01**；CE 备注 Badge + 压缩未启用备注与 MEM sticky 诚实提示 mock 已验 | 实库跑 FTS 排序对照；CE-01 真实 token/压缩策略仍缺；KR-02 证据触发 |
 | 工具/目录 | 程序与固定操作登记、路径发现、工作区/文件树；**FS-01 盘点+刷新+kind/byteSize+inventory+candidateCounts+byKind（mock/真机已验）**；不是安装器 | 批准后的物理迁移/读回/失败恢复；TM-01一个受管工具；前端预览与本机执行分界 |
-| 工具发现/使用 | TD-01统一Git程序/操作与共享版本；TC-01补status/diff持久执行/取消证据与按操作隔离、离页与重启状态恢复、UNKNOWN互锁；真实diff HTTP/JDBC整链及工具UNKNOWN核对关闭阻塞及有界当前身份线索接通；隔离真实父退出/子存活已验；每步32个已观察子进程身份持久/即时核对；受控宿主中断后的HTTP/PostgreSQL/Vue核对、关闭及重启读回已验，并追加历史详情入口，不推断完整树退出；TC-02实例读取保留 | 真实Git异常及产品用户接受、其他工具与进程接管；不按PID跨重启接管。见[Git调用合同](decisions/agent-runtime-evolution.md#git-operation-executions) |
+| 工具发现/使用 | TD-01统一Git程序/操作与共享版本；TC-01补status/diff持久执行/取消证据与按操作隔离、离页与重启状态恢复、UNKNOWN互锁；真实diff HTTP/JDBC整链及工具UNKNOWN核对关闭阻塞及有界当前身份线索接通；隔离真实父退出/子存活已验；每步32个已观察子进程身份持久/即时核对；受控宿主中断后的HTTP/PostgreSQL/Vue核对、关闭及重启读回已验，并追加历史详情入口及关闭后原证据只读展示；真实Git异常终止/持久结果丢失的核对整链已验，不推断完整树退出；TC-02实例读取保留 | 其他Git异常矩阵、产品用户接受、其他工具与进程接管；不按PID跨重启接管。见[Git调用合同](decisions/agent-runtime-evolution.md#git-operation-executions) |
 | 插件/场景 | PL-01看板启停/回滚/sticky；本轮显式只读Task列表依赖检查已真机/mock验证，来源/时间与未检查分开；设计器业务已存在 | Run/整体健康与用户接受仍待；PL-02/SC-03后续；核心生命周期不依赖插件存活 |
 | 桌面发行 | Electron安全preload壳、bootstrap引导脚手架 | Windows sidecar、一体启停/迁移、安装包验证；签名另需发行决定与凭据 |
 

@@ -23,18 +23,20 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Test-only socket host: real service/controller/JDBC; one explicitly substituted process for crash injection. */
+/** Test-only socket host: real service/controller/JDBC with explicit Java-substitute and unchanged-Git fault modes. */
 public final class ToolUnknownReviewFixture {
     static final JsonMapper JSON = JsonMapper.builder().build();
     static Path session;
     static String schema;
     static boolean interrupt;
+    static boolean realGit;
 
     public static void main(String[] args) throws Exception {
         session = Path.of(args[0]).toAbsolutePath().normalize();
         schema = args[1];
         if (!schema.matches("eap_unknown_qa_[a-f0-9]{32}")) throw new IllegalArgumentException("Unowned schema");
         interrupt = Boolean.parseBoolean(args[2]);
+        realGit = "real-git".equals(args[2]);
         System.setProperty("spring.devtools.restart.enabled", "false");
         var context = new SpringApplicationBuilder(Host.class).run(
                 "--spring.config.name=tool-unknown-fixture", "--server.address=127.0.0.1", "--server.port=0",
@@ -65,6 +67,30 @@ public final class ToolUnknownReviewFixture {
                 public Observation run(String name, Path directory, List<String> command) { throw new UnsupportedOperationException(); }
                 public Observation runManaged(UUID id, String name, Path directory, List<String> command,
                                                Map<String,String> environment, ManagedProcessControl control) {
+                    if (realGit && command.contains("status")) {
+                        // Preserve the actual Git executable, argument array, environment and executor.
+                        var result = executor.runManaged(id, name, directory, command, environment, new ManagedProcessControl() {
+                            public boolean cancellationRequested() { return control.cancellationRequested(); }
+                            public void descendantsObserved(Map<String,Object> evidence) { control.descendantsObserved(evidence); }
+                            public void started(Map<String,Object> identity) {
+                                control.started(identity);
+                                try {
+                                    Files.writeString(session.resolve("git-started.tmp"), JSON.writeValueAsString(Map.of("identity", identity, "command", command)));
+                                    Files.move(session.resolve("git-started.tmp"), session.resolve("git-started.json"), StandardCopyOption.ATOMIC_MOVE);
+                                    long deadline = System.nanoTime() + Duration.ofSeconds(40).toNanos();
+                                    while (!Files.exists(session.resolve("git-resume.request")) && System.nanoTime() < deadline) Thread.sleep(10);
+                                    if (!Files.exists(session.resolve("git-resume.request"))) throw new IllegalStateException("Git fault handshake timed out");
+                                } catch (Exception error) { throw new IllegalStateException("Git start gate failed", error); }
+                            }
+                        });
+                        try {
+                            Files.writeString(session.resolve("git-exited.tmp"), JSON.writeValueAsString(result));
+                            Files.move(session.resolve("git-exited.tmp"), session.resolve("git-exited.json"), StandardCopyOption.ATOMIC_MOVE);
+                            // Crash before workflow sees the actual abnormal exit; durable step stays RUNNING.
+                            Thread.sleep(120_000);
+                        } catch (Exception error) { throw new IllegalStateException("Git result gate interrupted", error); }
+                        return result;
+                    }
                     if (!interrupt) return executor.runManaged(id, name, directory, command, environment, control);
                     var java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
                     var substitute = List.of(java, "-cp", System.getProperty("java.class.path"), Parent.class.getName(), session.toString());
