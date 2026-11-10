@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.lh.eap.application.service.ToolExecution;
 import com.lh.eap.local.LocalProcessIdentityInspector;
 import java.net.URI;
+import java.nio.channels.FileChannel;
+import java.nio.file.attribute.*;
+import java.io.IOException;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -33,6 +36,7 @@ class ToolUnknownReviewAcceptanceTest {
     private Path repository;
     private boolean realGit;
     private String fault = "real-git";
+    private AutoCloseable indexFault = () -> {};
 
     @Test void crashedOwnerLeavesLiveChildUntilExplicitOsReviewAndDurableHumanClosure() throws Exception {
         exercise(false);
@@ -57,6 +61,17 @@ class ToolUnknownReviewAcceptanceTest {
         fault = selectedFault;
         exercise(true);
     }
+    @ParameterizedTest(name = "{0} / {1}")
+    @EnabledIfEnvironmentVariable(named = "EAP_RUN_GIT_PERMISSION_IO_MATRIX", matches = "true")
+    @org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    @CsvSource({"git-status,cancel-lost", "git-diff,cancel-lost", "git-status,permission",
+            "git-diff,permission", "git-status,io", "git-diff,io"})
+    void cancelResponseLossAndFileFaultsRequireScopedUnknownRecovery(String selectedOperation, String selectedFault) throws Exception {
+        operation = selectedOperation; route = routeFor(operation); fault = selectedFault;
+        exercise(true);
+    }
+    private boolean cancellationFault() { return List.of("cancel", "cancel-lost").contains(fault); }
+    private boolean fileFault() { return List.of("permission", "io").contains(fault); }
     private static String routeFor(String operation) {
         return "/api/cli-programs/git/operations/" + operation + "/executions";
     }
@@ -88,7 +103,7 @@ class ToolUnknownReviewAcceptanceTest {
             var init = new ProcessBuilder("git", "init", "--quiet").directory(session.resolve("workspace").toFile()).start();
             assertTrue(init.waitFor(5, TimeUnit.SECONDS)); assertEquals(0, init.exitValue());
             byte[] originalIndex = null;
-            if (operation.equals("git-diff")) {
+            if (operation.equals("git-diff") || fileFault()) {
                 Files.writeString(session.resolve("workspace/tracked.txt"), "base\n");
                 Files.writeString(session.resolve("workspace/staged-only.txt"), "staged-only-diff-marker\n");
                 var add = new ProcessBuilder("git", "-c", "core.autocrlf=false", "add", "--", "tracked.txt", "staged-only.txt")
@@ -97,13 +112,15 @@ class ToolUnknownReviewAcceptanceTest {
                 originalIndex = Files.readAllBytes(session.resolve("workspace/.git/index"));
                 Files.writeString(session.resolve("workspace/tracked.txt"), "diff-recovery-marker\n".repeat(4000));
                 Files.writeString(session.resolve("workspace/untracked.txt"), "untracked-diff-marker\n");
-            } else if (realGit) {
+            }
+            if (operation.equals("git-status") && realGit) {
                 // More than a pipe buffer of real status output holds Git alive while the start callback is gated.
                 for (int i = 0; i < 2000; i++) Files.writeString(session.resolve("workspace/file-" + i + "-" + "x".repeat(80) + ".txt"), "owned test file\n");
             }
 
             startHost(true);
             var requestId = UUID.randomUUID();
+            indexFault = enableIndexFault();
             var started = request("POST", route, Map.of("requestId", requestId), 202);
             var id = (String) started.get("id");
             awaitFile(realGit ? "git-started.json" : "captured.json");
@@ -118,13 +135,13 @@ class ToolUnknownReviewAcceptanceTest {
             Map<?,?> javaChild = null;
             if (realGit) {
                 assertEquals(List.of("root", "filters", operation.substring(4)), beforeCrash.steps().stream().map(ToolExecution.Step::phase).toList());
-                assertOwnedAlive(evidence);
+                if (!fileFault()) assertOwnedAlive(evidence);
                 var command = beforeCrash.steps().getLast().command();
                 assertTrue(command.contains(operation.substring(4)));
                 assertEquals(command, ToolUnknownReviewFixture.JSON.readValue(read("git-started.json"), Map.class).get("command"));
-                var parent = ProcessHandle.of(pid(evidence)).orElseThrow();
+                var parent = ProcessHandle.of(pid(evidence));
                 // External test-only OS audit of this known process tree; never inject it into product evidence.
-                try (var children = parent.descendants()) { children.forEach(handle -> {
+                try (var children = parent.stream().flatMap(ProcessHandle::descendants)) { children.forEach(handle -> {
                     var info = handle.info();
                     identities.add(Map.of("processPid", handle.pid(), "processStartedAt", info.startInstant().orElseThrow().toString(),
                             "processExecutable", info.command().orElseThrow()));
@@ -135,7 +152,9 @@ class ToolUnknownReviewAcceptanceTest {
                 if (fault.equals("real-git")) {
                     stopOwned(gitProcesses.getLast());
                     for (var identity : identities.reversed()) stopOwned(identity);
-                } else if (fault.equals("cancel")) {
+                } else if (fault.equals("cancel-lost")) {
+                    verifyLostCancelResponse(id, requestId, store);
+                } else if (cancellationFault()) {
                     var cancelling = request("POST", route + "/" + id + "/cancel", null, 200);
                     assertEquals("CANCELLING", cancelling.get("status"));
                     assertEquals(true, cancelling.get("cancelRequested"));
@@ -144,13 +163,14 @@ class ToolUnknownReviewAcceptanceTest {
                 awaitFile("git-exited.json");
                 var exited = ToolUnknownReviewFixture.JSON.readValue(read("git-exited.json"), Map.class);
                 assertActualResult(exited);
+                if (fileFault()) assertTrue(((String) exited.get("stderr")).toLowerCase(Locale.ROOT).contains("index"), exited.toString());
                 write("interrupted-result.json", exited);
                 write("interrupted-started.json", ToolUnknownReviewFixture.JSON.readValue(read("git-started.json"), Map.class));
                 beforeCrash = store.find(UUID.fromString(id)).orElseThrow();
-                assertEquals(fault.equals("cancel") ? "CANCELLING" : "RUNNING", beforeCrash.status());
+                assertEquals(cancellationFault() ? "CANCELLING" : "RUNNING", beforeCrash.status());
                 assertEquals("RUNNING", beforeCrash.steps().getLast().status());
                 assertNull(beforeCrash.exitCode()); assertNull(beforeCrash.exitEvidence());
-                assertEquals(fault.equals("cancel"), beforeCrash.cancelRequested());
+                assertEquals(cancellationFault(), beforeCrash.cancelRequested());
                 write("before-crash.json", beforeCrash);
                 request("POST", route + "/" + id + "/resolve-unknown", Map.of("requestId", UUID.randomUUID(),
                         "note", "Active owner cannot be closed by human review", "processTreeStopped", true), 409);
@@ -165,6 +185,8 @@ class ToolUnknownReviewAcceptanceTest {
                 javaChild = identities.stream().filter(value -> pid(value) == expectedPid).findFirst().orElseThrow();
                 assertOwnedAlive(identities.getFirst()); assertOwnedAlive(javaChild);
             }
+            indexFault.close(); indexFault = () -> {};
+            write("index-fault-restored.json", Map.of("restored", true, "fault", fault));
             stopHost(hosts.getLast(), true);
             if (!realGit) { assertOwnedAlive(identities.getFirst()); assertOwnedAlive(javaChild); }
 
@@ -172,7 +194,7 @@ class ToolUnknownReviewAcceptanceTest {
             var unknown = request("GET", route + "/" + id, null, 200);
             assertEquals("UNKNOWN", unknown.get("status"));
             assertEquals("SERVICE_RESTART_EXIT_UNCONFIRMED", unknown.get("unconfirmedReason"));
-            assertEquals(fault.equals("cancel"), unknown.get("cancelRequested"));
+            assertEquals(cancellationFault(), unknown.get("cancelRequested"));
             assertEquals(beforeCrash.steps(), store.find(UUID.fromString(id)).orElseThrow().steps());
             request("POST", route, Map.of("requestId", UUID.randomUUID()), 409);
             var otherRoute = routeFor(operation.equals("git-diff") ? "git-status" : "git-diff");
@@ -218,7 +240,7 @@ class ToolUnknownReviewAcceptanceTest {
                 if (!fault.equals("real-git")) verifyConfirmedResultControl(store);
                 var index = session.resolve("workspace/.git/index");
                 var savedIndex = Files.exists(index) ? Files.readAllBytes(index) : null;
-                if (operation.equals("git-diff")) assertArrayEquals(originalIndex, savedIndex);
+                if (operation.equals("git-diff") || fileFault()) assertArrayEquals(originalIndex, savedIndex);
                 else assertNull(savedIndex, "Owned untracked-only repository must have no index to restore");
                 Map<String,Object> failed;
                 try {
@@ -258,6 +280,7 @@ class ToolUnknownReviewAcceptanceTest {
                     "realGitAbnormalExit", realGit && fault.equals("real-git"), "operation", operation, "fault", fault,
                     "browser", ToolUnknownReviewFixture.JSON.readValue(read("browser-result.json"), Map.class)));
         } finally {
+            indexFault.close();
             if (browser != null && browser.isAlive()) browser.destroyForcibly().waitFor(5, TimeUnit.SECONDS);
             for (var host : hosts) if (host.isAlive()) stopHost(host, false);
             for (var identity : identities.reversed()) stopOwned(identity);
@@ -271,14 +294,56 @@ class ToolUnknownReviewAcceptanceTest {
         }
     }
 
+    private AutoCloseable enableIndexFault() throws Exception {
+        if (!fileFault()) return () -> {};
+        var workspace = session.resolve("workspace").toAbsolutePath().normalize();
+        var index = workspace.resolve(".git/index").normalize();
+        assertTrue(index.startsWith(workspace)); assertTrue(Files.isRegularFile(index, LinkOption.NOFOLLOW_LINKS));
+        var original = Files.readAllBytes(index);
+        AutoCloseable restore;
+        if (fault.equals("permission")) {
+            var view = Files.getFileAttributeView(index, AclFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+            assertNotNull(view, "Windows ACL support required for real permission acceptance");
+            var acl = List.copyOf(view.getAcl());
+            var user = index.getFileSystem().getUserPrincipalLookupService().lookupPrincipalByName(System.getProperty("user.name"));
+            var denied = new ArrayList<AclEntry>();
+            denied.add(AclEntry.newBuilder().setType(AclEntryType.DENY).setPrincipal(user)
+                    .setPermissions(AclEntryPermission.READ_DATA).build());
+            denied.addAll(acl); view.setAcl(denied);
+            restore = () -> { view.setAcl(acl); assertEquals(acl, view.getAcl()); assertArrayEquals(original, Files.readAllBytes(index)); };
+        } else {
+            var channel = FileChannel.open(index, StandardOpenOption.READ, com.sun.nio.file.ExtendedOpenOption.NOSHARE_READ);
+            restore = () -> { channel.close(); assertArrayEquals(original, Files.readAllBytes(index)); };
+        }
+        try {
+            var failure = assertThrows(IOException.class, () -> Files.readAllBytes(index));
+            write("index-fault-applied.json", Map.of("kind", fault, "nioFailure", failure.getClass().getName()));
+            return restore;
+        } catch (Throwable error) { restore.close(); throw error; }
+    }
+    private void verifyLostCancelResponse(String id, UUID requestId, JdbcToolExecutionStore store) throws Exception {
+        write("browser-input.json", Map.of("base", base, "executionId", id, "requestId", requestId,
+                "session", session.toString(), "frontend", repository.resolve("frontend").toString(),
+                "operation", operation, "phase", "cancel", "dropCancelResponse", true));
+        browser = new ProcessBuilder("node", repository.resolve("frontend/apps/web/__tests__/browser/tool-unknown-review-live.mjs").toString(),
+                "--session", session.toString()).directory(repository.resolve("frontend").toFile())
+                .redirectErrorStream(true).redirectOutput(session.resolve("browser-cancel.log").toFile()).start();
+        assertTrue(browser.waitFor(45, TimeUnit.SECONDS), "Cancel browser did not finish");
+        assertEquals(0, browser.exitValue(), () -> read("browser-cancel.log"));
+        browser = null;
+        var persisted = store.find(UUID.fromString(id)).orElseThrow();
+        assertEquals("CANCELLING", persisted.status()); assertTrue(persisted.cancelRequested());
+        assertNull(persisted.exitCode()); assertNull(persisted.exitEvidence());
+        write("cancel-response-persisted.json", persisted);
+    }
     private void assertActualResult(Map<?,?> result) {
         var metadata = (Map<?,?>) result.get("metadata");
-        var expected = switch (fault) { case "cancel" -> "CANCELLED"; case "timeout" -> "TIMED_OUT";
+        var expected = switch (fault) { case "cancel", "cancel-lost" -> "CANCELLED"; case "timeout" -> "TIMED_OUT";
             case "return" -> "SUCCEEDED"; default -> "FAILED"; };
         assertEquals(expected, metadata.get("executorStatus"), result.toString());
         assertEquals(fault.equals("return"), result.get("success"));
-        if (fault.equals("real-git")) assertNotEquals(0, ((Number) result.get("exitCode")).intValue());
-        else assertEquals(fault.equals("cancel") ? 130 : fault.equals("timeout") ? 124 : 0,
+        if (fault.equals("real-git") || fileFault()) assertNotEquals(0, ((Number) result.get("exitCode")).intValue());
+        else assertEquals(cancellationFault() ? 130 : fault.equals("timeout") ? 124 : 0,
                 ((Number) result.get("exitCode")).intValue());
         assertEquals(true, metadata.get("processExited")); assertEquals(true, metadata.get("processTreeCleanup"));
         assertEquals(false, metadata.get("processNotStarted"));
@@ -288,24 +353,28 @@ class ToolUnknownReviewAcceptanceTest {
         for (var file : List.of("git-started.json", "git-exited.json", "git-resume.request", "git-return.request"))
             Files.deleteIfExists(session.resolve(file));
         startHost(true);
+        indexFault = enableIndexFault();
         var started = request("POST", route, Map.of("requestId", UUID.randomUUID()), 202);
         var id = (String) started.get("id");
         awaitFile("git-started.json");
         var running = store.find(UUID.fromString(id)).orElseThrow();
         var identity = running.steps().getLast().evidence();
         identities.add(identity);
-        assertOwnedAlive(identity);
-        if (fault.equals("cancel")) {
+        if (!fileFault()) assertOwnedAlive(identity);
+        if (cancellationFault()) {
             var cancelling = request("POST", route + "/" + id + "/cancel", null, 200);
             assertEquals("CANCELLING", cancelling.get("status"));
         }
         write("git-resume.request", Map.of("control", true));
         awaitFile("git-exited.json");
-        assertActualResult(ToolUnknownReviewFixture.JSON.readValue(read("git-exited.json"), Map.class));
+        var actual = ToolUnknownReviewFixture.JSON.readValue(read("git-exited.json"), Map.class);
+        assertActualResult(actual);
+        if (fileFault()) assertTrue(((String) actual.get("stderr")).toLowerCase(Locale.ROOT).contains("index"), actual.toString());
+        indexFault.close(); indexFault = () -> {};
         assertNull(store.find(UUID.fromString(id)).orElseThrow().exitCode());
         write("git-return.request", Map.of("persistActualResult", true));
         var confirmed = settle(started);
-        assertEquals(fault.equals("cancel") ? "CANCELLED" : fault.equals("timeout") ? "TIMED_OUT" : "SUCCEEDED", confirmed.get("status"));
+        assertEquals(cancellationFault() ? "CANCELLED" : fault.equals("timeout") ? "TIMED_OUT" : fileFault() ? "FAILED" : "SUCCEEDED", confirmed.get("status"));
         assertNotNull(confirmed.get("exitEvidence")); assertNull(confirmed.get("unconfirmedReason"));
         request("POST", route + "/" + id + "/resolve-unknown", Map.of("requestId", UUID.randomUUID(),
                 "note", "Confirmed execution must reject UNKNOWN review", "processTreeStopped", true), 409);

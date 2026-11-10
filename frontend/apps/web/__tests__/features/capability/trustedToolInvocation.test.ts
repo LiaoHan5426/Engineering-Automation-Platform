@@ -600,6 +600,32 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
     await vi.advanceTimersByTimeAsync(3000)
     expect(runtimeApi.gitOperationExecution).toHaveBeenCalledTimes(1)
   })
+  it('blocks another cancel after its response is lost until explicit state readback', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row()] })
+    vi.mocked(runtimeApi.cancelGitOperationExecution).mockRejectedValueOnce(
+      new Error('cancel response lost'),
+    )
+    await mount()
+    button('cancel').click()
+    await settle()
+    expect(root.querySelector(`[data-testid="trusted-${operation}-network"]`)).not.toBeNull()
+    expect(button('cancel').disabled).toBe(true)
+    button('cancel').click()
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(runtimeApi.cancelGitOperationExecution).toHaveBeenCalledTimes(1)
+    expect(runtimeApi.gitOperationExecution).not.toHaveBeenCalled()
+    expect(button('invoke').disabled).toBe(true)
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({
+      items: [{ ...row('CANCELLING'), cancelRequested: true }],
+    })
+    button('recheck').click()
+    await settle()
+    expect(root.querySelector(`[data-testid="trusted-${operation}-network"]`)).toBeNull()
+    expect(root.querySelector(`[data-testid="trusted-${operation}-cancelling"]`)).not.toBeNull()
+    expect(button('cancel').disabled).toBe(true)
+    expect(runtimeApi.cancelGitOperationExecution).toHaveBeenCalledTimes(1)
+    expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+  })
   it('leaving aborts HTTP observation and never sends server cancellation; returning reads records', async () => {
     vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row()] })
     await mount()

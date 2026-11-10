@@ -176,7 +176,16 @@ async function start(mockOutcome?: string) {
 }
 async function cancel() {
   const row = selected.value
-  if (!row || !active(row) || row.status === 'CANCELLING' || busy.value) return
+  if (
+    !row ||
+    !active(row) ||
+    row.status === 'CANCELLING' ||
+    busy.value ||
+    uncertain.value ||
+    disposed ||
+    suspended
+  )
+    return
   busy.value = true
   const revision = ++generation // A late poll cannot overwrite the cancellation acknowledgement.
   clearTimeout(timer)
@@ -318,7 +327,7 @@ onBeforeUnmount(() => {
         variant="secondary"
         size="sm"
         :data-testid="testId('cancel')"
-        :disabled="busy || selected.status === 'CANCELLING'"
+        :disabled="busy || uncertain || selected.status === 'CANCELLING'"
         @click="cancel"
         >{{ t('cancel') }}</Button
       >

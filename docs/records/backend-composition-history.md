@@ -636,7 +636,7 @@ rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright
 
 
 <a id="git-interruption-unknown-review"></a>
-## status/diff取消、超时与结果返回中断UNKNOWN矩阵（2026-11-10）
+## status/diff取消、超时与结果返回中断UNKNOWN矩阵（历史阶段5e0ec5b，2026-11-10）
 
 先按用户授权提交并推送067c3d864cf065e1fd2acd9d3ce5be85f9d6c47e（19文件），HEAD/origin/main/远端main一致，工作树干净。提交准备仅复核紧邻实现阶段证据，没有冒充重测。随后复用ToolUnknownReviewFixture/AcceptanceTest及生产Vue面板，在UUID自有schema/仓库/测试宿主中扩展六组真实Git矩阵；本轮开始没有EapApplication，保持原启动状态，接续新改动不自动提交。
 
@@ -666,3 +666,38 @@ status/diff × cancel/timeout/return的实际执行器结果分别CANCELLED/130�
 收尾18个变更文件：14文本UTF-8无BOM/无替换字符、4张截图；191处本地Markdown目标/锚点、3类新增内容有限敏感模式及git diff --check通过，明细git-interruption-file-check.json。主方案对应TC-01/当前进度、台账、路线、指南及decision同步，旧阶段明确标历史。067c3d8已推送；此接续尚未提交/推送。当前仅新增取消意图提示与独立验收，不修改后端生产状态/API、默认timeout、生产Origin或迁移，不推广到SQL/源码写入UNKNOWN处置。后续优先补取消请求响应丢失、权限/IO/其他平台矩阵及产品人工接受；跨重启接管与TC-02反向调用仍按各自合同评审。
 
 本次提交准备：用户明确授权先提交并推送上述18文件，再继续取消请求响应丢失及权限/IO异常矩阵。已审查实际代码/测试/证据与规划同步，沿用紧邻实现阶段6项矩阵、67项兼容定向、960项完整离线（851通过/109门控跳过）及844项前端验证；提交准备不重跑业务或启停服务。再次检查UTF-8、本地文档目标/锚点、新增内容有限敏感模式与暂存空白，推送后回读本地与远端SHA。以上未提交口径保留为当时交付状态。
+
+
+<a id="git-cancel-permission-io-review"></a>
+## 取消请求响应丢失及权限/IO异常UNKNOWN核对恢复（2026-11-10）
+
+先按用户授权提交并推送5e0ec5b08010d40aafed1e3a64385cfa6700d81f（18文件，772新增/58删除），HEAD/origin/main/远端main一致，提交后工作树干净。提交检查复用紧邻实现阶段证据，未冒充功能重测；随后推进本接续，新增改动不自动提交。本轮开始jps无EapApplication，仅运行隔离测试宿主。
+
+复现并修复前端缺口：cancel失败后failed()设置uncertain，但取消按钮及事件入口未检查uncertain，故仍可重复点击。新增组件回归在status/diff均先失败（49项中2失败/47通过，断言cancel按钮应disabled）；复现与修复后命令均为 `rtk proxy pnpm --dir frontend test run apps/web/__tests__/features/capability/trustedToolInvocation.test.ts`；补齐按钮禁用与cancel入口uncertain/disposed/suspended守卫后，49项全部通过。复用原@eap/ui Button、capability L4状态及网络提示，无新共享类别/样式壳/API；保留后端取消幂等合同，客户端先显式重查再决定下一步。
+
+矩阵复用原ToolUnknownReviewAcceptanceTest/Fixture，新增EAP_RUN_GIT_PERMISSION_IO_MATRIX显式门控及Windows条件。两个固定操作各覆盖cancel-lost/permission/io。取消从实际Vue按钮发起，真实服务持久CANCELLING/cancelRequested后，代理发送真实200响应头并中断正文；页面须停轮询、禁止再次取消/启动、取消POST只有1次，显式重查恢复CANCELLING，不补造CANCELLED。随后原执行器返回前宿主中断、重启UNKNOWN并完成原核对/恢复链路。
+
+权限只针对UUID自有仓库.git/index，为当前用户临时增加READ_DATA DENY ACL，保留并精确还原原ACL；IO仅持有自有index的NOSHARE_READ句柄，释放后比较原字节。启用后必须由Java真实读取抛IOException，Git真实返回非零/FAILED且stderr指向index，不伪造Observation/metadata。权限/IO错误结果未交workflow时中断宿主才进入UNKNOWN；正常释放相同真实错误结果须保存FAILED及退出/清理证据、拒绝UNKNOWN人工关闭，修复后显式新请求成功。Windows共享限制不代表物理磁盘故障；测试专用ExtendedOpenOption编译有内部API提示，不进入生产执行器或跨平台合同。
+
+
+新增矩阵首轮通过：既有EAP_RUN_BOARD_PERSISTENCE=true/密码环境保持；仅子进程设置EAP_RUN_TOOL_UNKNOWN_REVIEW=true、EAP_RUN_GIT_PERMISSION_IO_MATRIX=true；Playwright/Chromium路径沿前轮。运行 `rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=ToolUnknownReviewAcceptanceTest#cancelResponseLossAndFileFaultsRequireScopedUnknownRecovery' '-Dsurefire.failIfNoSpecifiedTests=false' test`：31模块闭包SUCCESS，6项全部通过、0跳过，7分49秒。日志git-permission-io-matrix-1.log、时间窗git-permission-io-matrix-1-run.json；六组会话与精简证据见[矩阵摘要](../../frontend/apps/web/__tests__/browser/artifacts/git-cancel-permission-io/result.json)。
+
+取消响应丢失两个操作各完成3组在途真实页面检查（实际200/CANCELLING已保存、响应正文中断；重复取消/启动禁用且取消POST只有1次；显式重查恢复CANCELLING，无退出证据），随后每组完成8组UNKNOWN核对恢复检查；四组权限/IO各7组，共50组、0pageerror。权限Java读取实际AccessDeniedException，IO为FileSystemException，Git stderr均为“fatal: .git/index: index file open failed: Permission denied”，exit128/FAILED；Git对Windows共享冲突也映射为Permission denied，不依据文案混淆故障原因，按实际ACL/打开句柄及Java异常分别保存。
+
+六组均在实际执行器结果返回workflow前中断测试宿主，重启UNKNOWN并完整核对、关闭响应中断重查、保留原字段和取消意图、JDBC/HTTP一致、操作隔离、显式新请求恢复及再次重启审计不变。正常返回同一结果时，取消为CANCELLED/130、四组文件错误为FAILED/128，均有退出证据/无未知原因、resolve-unknown409；恢复权限/句柄后新请求SUCCEEDED。三个diff场景比较原index和三个工作文件字节保持、未暂存标记存在且仅暂存/未跟踪排除。每组cleanup全部true，应用执行记录ID/摘要不变；仅清理自有schema/进程/宿主。独立保存interrupted-result/interrupted-started/before-crash，避免正常终态对照覆盖故障前证据。
+
+前端本轮 `rtk proxy pnpm --dir frontend test run`：137文件846项通过；面板49项通过。typecheck/build/check:architecture、目标vp lint/stylelint及3文件vp fmt --check通过；保留既有测试网络防护、Node localStorage及大chunk提示。已查看390px取消响应丢失（原RUNNING仍为最后读到的快照，network提示且取消禁用）和1440px显式重查CANCELLING截图；截图与结果摘要共5份入库。本次没有引入公共UI壳、共享模块或新文案，L4原位修复。最终兼容定向和完整离线回归见后续收尾。
+
+
+权限/IO命令可以在started保存后快速退出，夹具只在已知父句柄仍存在时读取其descendants，不要求故障Git保持存活；外部OS审计与产品捕获证据继续分开。精确清理仍只对匹配PID/启动时间/可执行路径发终止，不确定或复用身份不发终止；产品完整树证明保持false。
+
+兼容定向回归：原EAP_RUN_TOOL_UNKNOWN_REVIEW/EAP_RUN_REAL_GIT_UNKNOWN/EAP_RUN_REAL_GIT_DIFF_UNKNOWN=true，两个矩阵门控false，原持久门控及Playwright/Chromium路径保持。运行 `rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=DefaultProcessExecutorTest,DescendantEvidenceTest,LocalProcessIdentityInspectorTest,ToolExecutionServiceTest,ToolExecutionJsonTest,ToolExecutionControllerTest,ToolExecutionPersistenceTest,ToolUnknownReviewAcceptanceTest,SchemaAndWiringTest,BackendModuleBoundaryTest' '-Dsurefire.failIfNoSpecifiedTests=false' test`：31模块闭包SUCCESS，10报告69项：67通过、2矩阵门控跳过，0失败/错误，3分09秒；原Java7组/status6组/diff6组共19组浏览器检查、0pageerror。日志git-permission-io-targeted.log及本次mtime XML统计git-permission-io-targeted-summary.json；与新增6项及前轮矩阵分别记录，不将跳过算通过。
+
+
+最终完整离线：仅子进程关闭全部已有EAP_RUN_*及两个矩阵门控，执行 `rtk proxy mvn -B -ntp -f backend/pom.xml test`：32模块SUCCESS，163报告961项：851通过、110门控跳过，0失败/错误，5分57秒。日志git-permission-io-offline.log及按本次mtime XML统计git-permission-io-offline-summary.json；与6项新增实测、67项兼容定向和前轮矩阵分别记录，不拼接覆盖率。仅本机真实测试使用原持久门控及密码环境，未调用真实模型或外部Agent。
+
+最终资源独立复核：九个成功会话cleanup均true，无fixture JVM/5187监听；独立只读JDBC确认无eap_unknown_qa_* schema，应用原3条工具记录聚合摘要仍9328dec3d51e0c83b3929e5a376073ab。V26/V27/V28/V29数据库校验和分别-716806117/1802106427/-329790285/-508415836，与源码Flyway CRC一致；29份已应用迁移，无新迁移/clean/repair/baseline。自有index ACL/字节已精确恢复、共享句柄已释放；full-application起始未运行，结束保持原状态，不启停其他Java服务。只读结果和汇总留存git-permission-io-cleanup-check.json。
+
+文件收尾17个变更文件：13文本UTF-8无BOM/无替换字符、4截图；196处本地Markdown目标/锚点、3类新增内容有限敏感模式、git diff --check通过，明细git-permission-io-file-check.json。主方案当前进度/TC-01验收行、台账、路线、指南及decision同步，前轮标历史。5e0ec5b已推送，本次接续尚未提交/推送。剩余优先项：数据库结果写入中断/证据持久失败、工作区或可执行文件授权失效及其他平台；物理磁盘故障、跨重启进程接管和产品人工接受仍独立，不将Windows index读取/共享冲突推广为所有IO故障。
+
+本次提交准备：用户授权先提交并推送上述17文件，再集中推进数据库结果写入中断及工作区/可执行文件授权失效的恢复能力。复核实际代码/证据与规划同步，沿用紧邻实现阶段6项矩阵、67项兼容实测、961项完整离线（851通过/110门控跳过）及846项前端证据；提交准备不重跑业务测试或启停服务。UTF-8、本地链接/锚点、有限敏感模式及暂存空白再查，推送后核对本地与远端SHA。此前未提交口径保留为当时交付状态。

@@ -39,7 +39,7 @@ public final class ToolUnknownReviewFixture {
         if (!schema.matches("eap_unknown_qa_[a-f0-9]{32}")) throw new IllegalArgumentException("Unowned schema");
         interrupt = Boolean.parseBoolean(args[2]);
         fault = args[2];
-        realGit = List.of("real-git", "cancel", "timeout", "return").contains(fault);
+        realGit = List.of("real-git", "cancel", "timeout", "return", "cancel-lost", "permission", "io").contains(fault);
         operation = args.length > 3 ? args[3] : "git-status";
         if (!List.of("git-status", "git-diff").contains(operation)) throw new IllegalArgumentException("Unsupported fixture operation");
         System.setProperty("spring.devtools.restart.enabled", "false");
