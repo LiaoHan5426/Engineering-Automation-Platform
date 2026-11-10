@@ -521,6 +521,7 @@ onBeforeUnmount(() => {
       v-if="reviewDialog"
       :title="t('reviewTitle')"
       :impact="[
+        t(operation === 'git-diff' ? 'diffTitle' : 'title') + ' · ' + operation,
         reviewDialog.id,
         selected?.workspacePath ?? '',
         t('reviewImpact'),

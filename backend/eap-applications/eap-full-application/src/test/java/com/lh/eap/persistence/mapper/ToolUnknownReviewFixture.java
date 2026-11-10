@@ -30,6 +30,7 @@ public final class ToolUnknownReviewFixture {
     static String schema;
     static boolean interrupt;
     static boolean realGit;
+    static String operation;
 
     public static void main(String[] args) throws Exception {
         session = Path.of(args[0]).toAbsolutePath().normalize();
@@ -37,6 +38,8 @@ public final class ToolUnknownReviewFixture {
         if (!schema.matches("eap_unknown_qa_[a-f0-9]{32}")) throw new IllegalArgumentException("Unowned schema");
         interrupt = Boolean.parseBoolean(args[2]);
         realGit = "real-git".equals(args[2]);
+        operation = args.length > 3 ? args[3] : "git-status";
+        if (!List.of("git-status", "git-diff").contains(operation)) throw new IllegalArgumentException("Unsupported fixture operation");
         System.setProperty("spring.devtools.restart.enabled", "false");
         var context = new SpringApplicationBuilder(Host.class).run(
                 "--spring.config.name=tool-unknown-fixture", "--server.address=127.0.0.1", "--server.port=0",
@@ -67,7 +70,7 @@ public final class ToolUnknownReviewFixture {
                 public Observation run(String name, Path directory, List<String> command) { throw new UnsupportedOperationException(); }
                 public Observation runManaged(UUID id, String name, Path directory, List<String> command,
                                                Map<String,String> environment, ManagedProcessControl control) {
-                    if (realGit && command.contains("status")) {
+                    if (realGit && command.contains(operation.substring(4))) {
                         // Preserve the actual Git executable, argument array, environment and executor.
                         var result = executor.runManaged(id, name, directory, command, environment, new ManagedProcessControl() {
                             public boolean cancellationRequested() { return control.cancellationRequested(); }

@@ -34,7 +34,11 @@ let browser
 const checks = [],
   errors = [],
   reviews = []
-const route = '/api/cli-programs/git/operations/git-status/executions'
+const operation = input.operation ?? 'git-status'
+assert.ok(['git-status', 'git-diff'].includes(operation))
+const otherOperation = operation === 'git-diff' ? 'git-status' : 'git-diff'
+const operationLabel = operation === 'git-diff' ? 'Git · 读取未暂存差异' : 'Git · 读取工作区状态'
+const route = '/api/cli-programs/git/operations/' + operation + '/executions'
 const endpoint = route + '/' + input.executionId
 const wait = (ms) => new Promise((done) => setTimeout(done, ms))
 async function handshake(request, reply) {
@@ -59,7 +63,7 @@ try {
     if (request.url().endsWith('/resolve-unknown') && request.method() === 'POST')
       reviews.push(request.postDataJSON())
   })
-  const button = (suffix) => page.getByTestId('trusted-git-status-' + suffix)
+  const button = (suffix) => page.getByTestId('trusted-' + operation + '-' + suffix)
   const api = async (method, path, body, expected) => {
     const response = await page.request.fetch('http://127.0.0.1:5187' + path, {
       method,
@@ -72,11 +76,40 @@ try {
   await page.goto('http://127.0.0.1:5187/__tests__/browser/fixtures/tool-unknown/index.html')
   await button('unknown').waitFor()
   assert.equal(await button('invoke').isDisabled(), true)
-  assert.equal(await page.getByTestId('trusted-git-diff-invoke').isEnabled(), true)
+  await page.waitForFunction(
+    (id) => {
+      const element = document.querySelector('[data-testid="' + id + '"]')
+      return element instanceof HTMLButtonElement && !element.disabled
+    },
+    'trusted-' + otherOperation + '-invoke',
+  )
   const original = await api('GET', endpoint, undefined, 200)
   await api('POST', route, { requestId: crypto.randomUUID() }, 409)
-  await api('GET', endpoint.replace('git-status', 'git-diff'), undefined, 404)
-  checks.push('restart UNKNOWN blocks only the same operation; cross-operation detail denied')
+  await api('GET', endpoint.replace(operation, otherOperation), undefined, 404)
+  await api(
+    'POST',
+    endpoint.replace(operation, otherOperation) + '/resolve-unknown',
+    {
+      requestId: crypto.randomUUID(),
+      note: 'Wrong operation must never close this execution',
+      processTreeStopped: true,
+    },
+    404,
+  )
+  await api(
+    'POST',
+    endpoint + '/resolve-unknown',
+    {
+      requestId: crypto.randomUUID(),
+      note: 'Fixture has not confirmed the process tree',
+      processTreeStopped: false,
+    },
+    400,
+  )
+  assert.deepEqual(await api('GET', endpoint, undefined, 200), original)
+  checks.push(
+    'restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied',
+  )
 
   await button('process-inspect').click()
   const observation = button('process-observation')
@@ -122,12 +155,12 @@ try {
 
     await handshake('stop-child.request', 'tree-stopped.json')
     await button('process-inspect').click()
-    await page.waitForFunction(() => {
+    await page.waitForFunction((op) => {
       const text = document.querySelector(
-        '[data-testid="trusted-git-status-process-observation"]',
+        '[data-testid="trusted-' + op + '-process-observation"]',
       )?.textContent
       return text?.includes('当前未找到该 PID') && !text.includes('身份匹配，进程仍存活')
-    })
+    }, operation)
     assert.equal(await button('review-open').isDisabled(), true)
     assert.equal(reviews.length, 0)
     checks.push('verified owned tree stopped; observation still does not attest or close')
@@ -142,6 +175,7 @@ try {
   await button('review-open').click()
   const dialog = page.getByRole('dialog', { name: '关闭这条 UNKNOWN 的启动阻塞' })
   await dialog.waitFor()
+  assert.ok((await dialog.innerText()).includes(operationLabel))
   assert.equal(reviews.length, 0)
   for (const width of [1440, 900, 390]) {
     await page.setViewportSize({ width, height: 960 })
@@ -192,12 +226,16 @@ try {
   const recovered = await api('GET', route + '/' + newId, undefined, 200)
   assert.equal(recovered.status, 'SUCCEEDED')
   if (input.realGit) {
-    assert.match(recovered.stdout, /file-0-/)
+    if (operation === 'git-diff') {
+      assert.match(recovered.stdout, /diff --git/)
+      assert.match(recovered.stdout, /\+diff-recovery-marker/)
+      assert.doesNotMatch(recovered.stdout, /staged-only-diff-marker|untracked-diff-marker/)
+    } else assert.match(recovered.stdout, /file-0-/)
     assert.equal(recovered.truncated, true)
   }
   assert.deepEqual(await api('GET', endpoint, undefined, 200), closed)
   const historical = page
-    .getByTestId('trusted-git-status-history')
+    .getByTestId('trusted-' + operation + '-history')
     .locator('li')
     .filter({ hasText: input.executionId })
   await historical.locator('summary').click()
@@ -210,7 +248,7 @@ try {
   await savedEvidence.locator('summary').click()
   assert.match(await savedEvidence.innerText(), /processPid/)
   assert.match(await savedEvidence.innerText(), /步骤状态不表示当前进程仍在运行/)
-  if (input.realGit) assert.match(await savedEvidence.innerText(), /status/)
+  if (input.realGit) assert.ok((await savedEvidence.innerText()).includes(operation.substring(4)))
   assert.equal(reviews.length, 1)
   await page.screenshot({ path: resolve(session, 'closed-history-reopened.png'), fullPage: true })
   checks.push(

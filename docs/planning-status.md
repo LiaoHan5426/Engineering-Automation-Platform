@@ -1,17 +1,33 @@
 # 规划状态与验收台账
 
-依据：v1.6当前产品/技术合同及有效决策。已提交实现基线为 `a641892`（2026-11-09，已推送）；本轮验证真实Git异常的UNKNOWN核对，并补齐关闭后原始步骤证据展示，接续已获本次提交并推送授权，随本次提交交付。
+依据：v1.6当前产品/技术合同及有效决策。已提交实现基线为 `47433d8`（2026-11-09，已推送）；本轮验证真实git-diff异常与恢复的UNKNOWN完整核对，并明确确认框操作身份，接续已获本次提交并推送授权，随本次提交交付。
 
 本表跟踪完整范围，不因局部阶段完成把其他项关闭。`实现通过`仅限列明能力，用户人工接受、供应商与平台验收不能由代理或 Mock 替代。
 
 ## 当前基线与完成口径
 
-当前已提交实现基线：`a641892`；按用户要求先提交并推送，三方SHA一致且工作树干净，再推进以下接续。当前状态只维护一次；逐轮数字、失败与当时授权见[主题记录](records/README.md)，整理前台账全文见[历史快照](records/roadmap-history.md#planning-before-workbench-consolidation)。
+当前已提交实现基线：`47433d8`；本轮开始工作树干净，HEAD与origin/main一致；按用户继续开发授权推进以下接续。当前状态只维护一次；逐轮数字、失败与当时授权见[主题记录](records/README.md)，整理前台账全文见[历史快照](records/roadmap-history.md#planning-before-workbench-consolidation)。
 
 <a id="validation-baseline"></a>
 
 <a id="tool-execution-validation"></a>
-### 真实Git异常UNKNOWN核对与关闭后原始证据（2026-11-09，按本次授权提交）
+### 真实git-diff异常/恢复UNKNOWN核对与操作身份（2026-11-10，按本次授权提交）
+
+从已推送47433d8接续；开始无EapApplication在运行，保留原启动状态。复用既有真实Git夹具/生产服务/面板，新增操作参数及diff门控，确认框显示操作名和稳定ID，证据见[本轮记录](records/backend-composition-history.md#real-git-diff-unknown-review)。
+
+| 检查 | 本轮实际结果 | 边界 |
+|---|---|---|
+| 前端首轮定向 | 面板1文件45项通过，两个操作均校验确认框名称与ID | 公共ConfirmBox、既有i18n标题与L4业务原位，无新UI类别 |
+| diff异常首轮 | 门控验收清理辅助进程时失败；尚未走到页面 | 退出竞争MATCHING_EXITED及随后PID复用IDENTITY_MISMATCH，均未据此终止未知身份；修正测试清理后重跑，失败日志保留 |
+| 最终定向/整链 | 31模块闭包SUCCESS；10报告67项全部通过、0跳过；Java7组、status6组、diff6组共19组真实浏览器检查，0pageerror | 跨操作详情/关闭404、requestId复用409、不完整确认400；UNKNOWN仅阻塞自身操作，其他操作实际成功；原字段/JDBC/重启读回不变 |
+| diff异常/恢复 | 最终diff执行5e0ad68d-4e7f-4e28-bcfb-a1367a118796，实际Git异常exit1后在workflow返回前中断宿主，重启UNKNOWN并完成页面核对关闭/恢复 | 原Git命令/环境/执行器不变；独立OS审计不注入产品证据，完整树证明仍false |
+| 明确失败对照/范围 | 损坏索引709f26bd-c6e3-4ea8-b7c6-42da9a76606c为FAILED/exit128/“进程树已清理”、无未知原因；恢复精确原index后944493a0-6c35-43ee-a019-24f27218ac02为SUCCEEDED | diff-scope四项true：未暂存标记存在、仅暂存/未跟踪排除、索引/三个工作文件字节保持；[结果与截图](../frontend/apps/web/__tests__/browser/artifacts/real-git-diff-unknown/result.json)保留 |
+| 前端最终 | 全量137文件842项、面板45项通过；typecheck/build/check:architecture、目标lint/stylelint及3文件格式检查通过 | 确认框显示本地化操作名及ID；已查看最终390px确认框及1440px历史证据展开，无横向溢出；既有大chunk/测试网络防护/Node localStorage提示保留 |
+| 完整离线 | 32模块SUCCESS；163报告959项：851通过、108门控跳过，0失败/错误，5分29秒 | 仅该子进程关闭已有EAP_RUN_*及三项整链门控；与67项实测分列，日志/时间窗汇总backend/target/real-git-diff-unknown-offline-* |
+| 资源/迁移 | 独立只读SQL确认最终三个自有schema已不存在；清理记录及应用工具记录摘要不变断言通过；无fixture JVM/5187监听，原full-application仍未运行 | 应用库29份已应用迁移、最新V29；V26～V29数据库和源码CRC一致，无迁移改动，不重用旧PID或擅自启动 |
+| 文件收尾 | 19个变更文件，13个文本UTF-8无BOM、6张diff截图；182处本地文档目标/锚点、3类有限敏感模式与差异空白通过 | 当前改动按本次用户授权提交并推送，结果以Git回读为准，产品用户接受及其他异常矩阵独立 |
+
+### 真实Git status异常UNKNOWN核对与关闭后原始证据（历史阶段，47433d8，2026-11-09）
 
 先按用户授权提交并推送a641892956a845f1310c69f09cf69fa18bd0b2bd（23文件，feat: 验证受控 UNKNOWN 核对并支持历史执行详情），HEAD/origin/main/远端ref一致且工作树干净，再推进以下接续。证据见[本轮记录](records/backend-composition-history.md#real-git-unknown-review)。
 
@@ -158,7 +174,7 @@
 | FS-01 / P0 目录与临时资源 | **部分交付**：data-layout + migrationReadiness + kind/byteSize + inventory + candidateCounts；**该切片**：`inventory.byKind`（`:5174`/`:5173` 已验）；`physicalMigration=false` | 旧数据物理迁移/读回/失败恢复、限额/回收与 UNKNOWN 保留仍待批准后实施 |
 | TM-01 / P1 受管工具 | CLI程序/固定操作可登记和配置路径；依赖PATH/指定文件，无安装版本管理 | 依赖FS-01，选择一个可信便携工具或venv；锁版本/校验/安装回滚、实际调用/在途保护；保留系统引用，不静默或全局安装 |
 | TD-01 / P0 自动发现与绑定 | **部分交付**：既有程序/操作模型上统一Git目录与共享路径/版本；status/diff保留能力ID与独立开关，旧探测入口兼容；历史路径冲突拒绝执行，见[Git程序与持久调用](decisions/agent-runtime-evolution.md#git-operation-executions) | 更多依赖绑定与用户接受；发现仍不等于授权，不整盘扫描 |
-| TC-01 / P0 工具调用与呈现 | **status/diff切片实现**：两个固定操作分别持久启动/查询/取消、三个Git阶段取消及清理证据；跨操作requestId复用409、详情/取消404；KeepAlive离页/返回与刷新读回；重启UNKNOWN按操作保留并互锁。V26/V27原稿保留，增量V28且应用库迁移已核验；diff限定已跟踪文件未暂存差异，真实HTTP/JDBC整链已验；工具UNKNOWN核对后保存CLOSED_UNKNOWN审计并解除本操作阻塞（V29，应用库迁移已核验），保留原未知及退出证据；新增最多8步、每步32个已观察子进程身份的持久/即时检查，历史缺失/空/截断区分，证据限额不影响清理，原状态/审计不变；受控异常及真实Git异常终止/持久结果丢失后的HTTP/PostgreSQL/Vue核对、历史详情重开及关闭后原始证据展示已验，证据见[Git程序与持久调用](decisions/agent-runtime-evolution.md#git-operation-executions) | 其他Git异常矩阵、跨重启进程接管与产品用户接受独立；不提供任意命令执行口 |
+| TC-01 / P0 工具调用与呈现 | **status/diff切片实现**：两个固定操作分别持久启动/查询/取消、三个Git阶段取消及清理证据；跨操作requestId复用409、详情/取消404；KeepAlive离页/返回与刷新读回；重启UNKNOWN按操作保留并互锁。V26/V27原稿保留，增量V28且应用库迁移已核验；diff限定已跟踪文件未暂存差异，真实HTTP/JDBC整链已验；工具UNKNOWN核对后保存CLOSED_UNKNOWN审计并解除本操作阻塞（V29，应用库迁移已核验），保留原未知及退出证据；新增最多8步、每步32个已观察子进程身份的持久/即时检查，历史缺失/空/截断区分，证据限额不影响清理，原状态/审计不变；受控异常及真实status/diff异常终止/持久结果丢失后的HTTP/PostgreSQL/Vue核对、恢复diff范围/索引与文件不变、历史详情及关闭后原证据展示已验，确认框明确操作身份，证据见[Git程序与持久调用](decisions/agent-runtime-evolution.md#git-operation-executions) | 其他Git异常矩阵、跨重启进程接管与产品用户接受独立；不提供任意命令执行口 |
 | TC-02 / P1 前端实例能力 | **部分交付**：GrapesJS 当前实例草稿/选中状态人工读取；实例/文档/revision与24,000字符上限、过期/离页清空；真机浏览器已验，多实例/冲突/关闭/超限离线回归 | 用户产品接受；远程断线/反向Agent调用另评审，不依赖隐藏组件后台存活，不把本地草稿当Java保存版本 |
 | KR-02 / FW-01 条件后续 | 当前保留Spring AI，未采用向量增强或LangChain4j迁移 | KR-01证明检索不足再评估增强；明确协作需求/可复现框架阻碍后独立批准同条件对照，记录兼容/正确性/成本/取消与迁移回归；不长期双循环 |
 | 桌面与安装器 | Electron45 preload壳、bootstrap检测脚手架 | Windows sidecar、一体启动/停止、迁移失败/恢复、包验证；签名需要用户凭据及发行决定 |

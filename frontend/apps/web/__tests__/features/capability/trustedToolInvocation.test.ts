@@ -375,6 +375,10 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
     await settle()
     expect(runtimeApi.resolveUnknownGitExecution).not.toHaveBeenCalled()
     expect(document.querySelector('.eap-confirm')?.textContent).toContain('原结果仍未知')
+    expect(document.querySelector('.eap-confirm')?.textContent).toContain(operation)
+    expect(document.querySelector('.eap-confirm')?.textContent).toContain(
+      operation === 'git-diff' ? '读取未暂存差异' : '读取工作区状态',
+    )
     confirmReview()
     await settle()
     expect(runtimeApi.resolveUnknownGitExecution).toHaveBeenCalledWith(

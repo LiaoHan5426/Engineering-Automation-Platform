@@ -1,0 +1,100 @@
+{
+  "result": {
+    "browser": {
+      "passed": 6,
+      "checks": [
+        "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+        "actual Git was abnormally terminated before host crash; persisted UNKNOWN does not infer an exit result",
+        "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+        "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+        "historical closure reopens through real scoped GET; captured identity review remains available",
+        "reload restores audit; explicit new request executes actual Git without changing the closed record"
+      ],
+      "errors": []
+    },
+    "realGitAbnormalExit": true,
+    "passed": true,
+    "schema": "eap_unknown_qa_64367007704c410da2be1513ad052372",
+    "executionId": "5e0ad68d-4e7f-4e28-bcfb-a1367a118796",
+    "restartPreservedClosedUnknown": true,
+    "ownedProcessTreeStopped": true,
+    "operation": "git-diff"
+  },
+  "cleanup": {
+    "ownedProcessesStopped": true,
+    "applicationRecordsUnchanged": true,
+    "ownedSchemaDropped": true,
+    "hostsStopped": true
+  },
+  "fault": {
+    "command": [
+      "H:\\developerTools\\tools\\Git\\cmd\\git.exe",
+      "--no-pager",
+      "-c",
+      "core.quotePath=true",
+      "-c",
+      "color.ui=false",
+      "-c",
+      "core.fsmonitor=false",
+      "-c",
+      "filter.lfs.clean=",
+      "-c",
+      "filter.lfs.process=",
+      "-c",
+      "filter.lfs.required=false",
+      "diff",
+      "--no-ext-diff",
+      "--no-textconv",
+      "--ignore-submodules=all",
+      "--no-color"
+    ],
+    "executable": "H:\\developerTools\\tools\\Git\\cmd\\git.exe",
+    "exitCode": 1,
+    "executorStatus": "FAILED",
+    "processExited": true,
+    "processTreeCleanup": true
+  },
+  "osReview": [
+    {
+      "pid": 34396,
+      "status": "NOT_FOUND",
+      "capturedStartedAt": "2026-11-10T01:26:54.682Z",
+      "observedStartedAt": null,
+      "capturedExecutable": "H:\\developerTools\\tools\\Git\\cmd\\git.exe",
+      "observedExecutable": ""
+    },
+    {
+      "pid": 23748,
+      "status": "NOT_FOUND",
+      "capturedStartedAt": "2026-11-10T01:26:54.698Z",
+      "observedStartedAt": null,
+      "capturedExecutable": "C:\\Windows\\System32\\conhost.exe",
+      "observedExecutable": ""
+    },
+    {
+      "pid": 33204,
+      "status": "NOT_FOUND",
+      "capturedStartedAt": "2026-11-10T01:26:54.733Z",
+      "observedStartedAt": null,
+      "capturedExecutable": "H:\\developerTools\\tools\\Git\\ucrt64\\bin\\git.exe",
+      "observedExecutable": ""
+    }
+  ],
+  "diffScope": {
+    "unstagedTrackedMarkerPresent": true,
+    "indexBytesPreserved": true,
+    "workspaceBytesPreserved": true,
+    "stagedAndUntrackedExcluded": true
+  },
+  "confirmedFailure": {
+    "id": "709f26bd-c6e3-4ea8-b7c6-42da9a76606c",
+    "status": "FAILED",
+    "exitCode": 128,
+    "exitEvidence": "进程树已清理",
+    "unconfirmedReason": null
+  },
+  "repaired": {
+    "status": "SUCCEEDED",
+    "id": "944493a0-6c35-43ee-a019-24f27218ac02"
+  }
+}
