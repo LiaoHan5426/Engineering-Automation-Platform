@@ -118,6 +118,26 @@ export type TrustedToolProgram = Omit<
 > & {
   operations: TrustedToolItem[]
 }
+export type BoardRuntimeSnapshot = {
+  projectId: string
+  observedAt: string
+  taskCount: number
+  runCount: number
+  activeRunCount: number
+  unknownRunCount: number
+  activeVerificationCount: number
+  unknownVerificationCount: number
+  activeWriteCount: number
+  unknownWriteCount: number
+  items: Array<{
+    taskId: string
+    id: string
+    kind: 'RUN' | 'VERIFICATION' | 'SOURCE_WRITE'
+    status: string
+    storedStatus: string
+  }>
+  truncated: boolean
+}
 export type GitExecutionOperation = 'git-status' | 'git-diff'
 
 export type ToolExecutionStatus =
@@ -1593,6 +1613,45 @@ export const runtimeApi = {
       .post<TaskResult>('/tasks', { goal }, { timeout: 60_000 })
       .then((response) => response.data),
   handoffs: () => get<{ items: HandoffRecord[] }>('/handoffs'),
+  boardRuntime: (projectId: string, signal?: AbortSignal) =>
+    client
+      .get<BoardRuntimeSnapshot>('/board/runtime', { params: { projectId }, signal })
+      .then(({ data }) => {
+        const counts = [
+          'taskCount',
+          'runCount',
+          'activeRunCount',
+          'unknownRunCount',
+          'activeVerificationCount',
+          'unknownVerificationCount',
+          'activeWriteCount',
+          'unknownWriteCount',
+        ] as const
+        if (
+          !data ||
+          data.projectId !== projectId ||
+          typeof data.observedAt !== 'string' ||
+          !Number.isFinite(Date.parse(data.observedAt)) ||
+          counts.some((key) => !Number.isSafeInteger(data[key]) || data[key] < 0) ||
+          !Array.isArray(data.items) ||
+          data.items.length > 20 ||
+          typeof data.truncated !== 'boolean' ||
+          data.items.some(
+            (item) =>
+              !item ||
+              typeof item.taskId !== 'string' ||
+              typeof item.id !== 'string' ||
+              !['RUN', 'VERIFICATION', 'SOURCE_WRITE'].includes(item.kind) ||
+              !['CREATED', 'QUEUED', 'RUNNING', 'CANCELLING', 'APPLYING', 'UNKNOWN'].includes(
+                item.status,
+              ) ||
+              typeof item.storedStatus !== 'string' ||
+              !item.storedStatus,
+          )
+        )
+          throw new Error('INVALID_BOARD_RUNTIME_RESPONSE')
+        return data
+      }),
   boardTasks: (projectId: string) =>
     get<{ items: BoardTask[] }>('/board/tasks?projectId=' + encodeURIComponent(projectId)),
   setBoardPrototype: (

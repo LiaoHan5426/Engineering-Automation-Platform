@@ -1,0 +1,93 @@
+{
+  "baseline": "ed84ab9818b520cf460005439042cede5cf018b4",
+  "kind": "Local PostgreSQL, real HTTP, production PluginCenter/ProjectBoard and actual Git; not user acceptance",
+  "session": "board-runtime-c7c598c0-87ed-4704-b157-9f5e7d56368e",
+  "executionId": "c2e5e909-0b06-4338-bb27-d136f6f54a44",
+  "actualGitSucceededWhileUiDisabled": true,
+  "browser": {
+    "passed": 6,
+    "checks": [
+      "real core RUNNING and one Task/Run are read from PostgreSQL without dispatching work",
+      "canceling disable confirmation keeps the actual board contribution and core work",
+      "confirmed disable releases board UI and persists preference while the real core run remains active",
+      "the actual Git run completes through the original core service while its UI stays disabled",
+      "reload preserves disabled preference; re-enabling reloads the original task and successful run without replay",
+      "persisted scope fixtures distinguish unknown from saved RUNNING, count all records and bound IDs to 20"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  "core": {
+    "projectId": "local-eap",
+    "observedAt": "2026-11-10T04:50:49.438329700Z",
+    "taskCount": 1,
+    "runCount": 1,
+    "activeRunCount": 0,
+    "unknownRunCount": 0,
+    "activeVerificationCount": 0,
+    "unknownVerificationCount": 0,
+    "activeWriteCount": 0,
+    "unknownWriteCount": 0,
+    "items": [],
+    "truncated": false
+  },
+  "persistedFixtureScope": {
+    "projectId": "scope-matrix",
+    "observedAt": "2026-11-10T04:49:58.227465800Z",
+    "taskCount": 1,
+    "runCount": 26,
+    "activeRunCount": 1,
+    "unknownRunCount": 25,
+    "activeVerificationCount": 1,
+    "unknownVerificationCount": 1,
+    "activeWriteCount": 1,
+    "unknownWriteCount": 1,
+    "truncated": true
+  },
+  "fixtureItems": {
+    "count": 20,
+    "allUnknown": true,
+    "savedRunStatePreserved": true
+  },
+  "cleanup": {
+    "hostStopped": true,
+    "browserStopped": true,
+    "applicationRecordsUnchanged": true,
+    "ownedSchemaDropped": true,
+    "capturedGitExited": true
+  },
+  "validation": {
+    "targetedBackend": {
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "frontend": {
+      "files": 139,
+      "tests": 872,
+      "failures": 0
+    },
+    "offlineBackend": {
+      "tests": 978,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 113,
+      "reports": 165,
+      "passed": 865,
+      "seconds": 340,
+      "exit": 0
+    }
+  },
+  "limits": [
+    "Seven owned tables copied with LIKE INCLUDING ALL; existing checks/defaults/indexes retained, foreign keys and triggers are not cloned. No application migration replay.",
+    "Actual lifecycle is one real local Git status Run. Verification/write/unknown count rows are persisted test fixtures, not real write or verification process exercises.",
+    "Observation reads existing database state; no process exit proof, all-service health, work dispatch, data deletion, permission grant or UNKNOWN resolution.",
+    "Board UI disable preference is local. Human product acceptance, PL-02/SC-03 and external package installation remain separate."
+  ],
+  "screenshots": [
+    "disabled-active-1440.png",
+    "disabled-active-390.png",
+    "unknown-scope.png"
+  ]
+}

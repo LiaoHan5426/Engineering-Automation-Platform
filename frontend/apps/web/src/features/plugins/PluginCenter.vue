@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Badge, Button, Input } from '@eap/ui'
+import { Badge, Button, Input, ConfirmBox, Feedback, Collapse } from '@eap/ui'
 import { pluginCheckMessages } from '../../lib/pluginMessages'
 import type { PluginHost } from './host'
 import { GRANTS, MANIFESTS, type PluginId } from './model'
@@ -14,9 +14,38 @@ const observationStale = computed(() => {
   const observation = props.host.boardDependencyCheck.value
   return (
     !!observation.source &&
-    observation.source !== 'GET /api/board/tasks?projectId=' + encodeURIComponent(projectId.value)
+    observation.source !== 'GET /api/board/runtime?projectId=' + encodeURIComponent(projectId.value)
   )
 })
+const disableBoard = ref(false)
+const installationError = ref('')
+const snapshot = computed(() => props.host.boardDependencyCheck.value.snapshot)
+const currentObservation = computed(
+  () =>
+    props.host.boardDependencyCheck.value.status === 'available' &&
+    !observationStale.value &&
+    snapshot.value?.projectId === projectId.value,
+)
+const openCount = computed(() =>
+  snapshot.value
+    ? snapshot.value.activeRunCount +
+      snapshot.value.unknownRunCount +
+      snapshot.value.activeVerificationCount +
+      snapshot.value.unknownVerificationCount +
+      snapshot.value.activeWriteCount +
+      snapshot.value.unknownWriteCount
+    : 0,
+)
+function confirmDisable() {
+  try {
+    props.host.setEnabled('board', false)
+    disableBoard.value = false
+    installationError.value = ''
+  } catch (error) {
+    installationError.value =
+      error instanceof Error ? error.message : 'PLUGIN_INSTALLATION_PERSIST_FAILED'
+  }
+}
 onBeforeUnmount(() => props.host.cancelBoardDependencyCheck())
 const mockPluginScenarios = import.meta.env.MODE === 'mock'
 
@@ -45,10 +74,16 @@ function runtimeTone(kind: string): 'success' | 'warning' | 'danger' | 'neutral'
 }
 
 function toggle(host: PluginHost, id: PluginId) {
+  if (id === 'board' && host.installation.value.enabled.board) {
+    disableBoard.value = true
+    return
+  }
   try {
     host.setEnabled(id, !host.installation.value.enabled[id])
-  } catch {
-    /* activation/dependency failures keep prior installation; UI reads host.runtimeOf */
+    installationError.value = ''
+  } catch (error) {
+    installationError.value =
+      error instanceof Error ? error.message : 'PLUGIN_INSTALLATION_PERSIST_FAILED'
   }
 }
 </script>
@@ -167,6 +202,67 @@ function toggle(host: PluginHost, id: PluginId) {
           <p v-if="host.boardDependencyCheck.value.reason" class="hint">
             {{ t('check.reason', { reason: host.boardDependencyCheck.value.reason }) }}
           </p>
+          <Feedback
+            v-if="!host.installation.value.enabled.board"
+            tone="warning"
+            data-testid="plugin-board-disabled-boundary"
+            >{{ t('check.disabledBoundary') }}</Feedback
+          >
+          <div v-if="snapshot" data-testid="plugin-runtime-snapshot">
+            <p class="hint">
+              {{
+                t('check.savedObservation', {
+                  project: snapshot.projectId,
+                  time: snapshot.observedAt,
+                })
+              }}
+            </p>
+            <p>{{ t('check.totals', { tasks: snapshot.taskCount, runs: snapshot.runCount }) }}</p>
+            <p>
+              {{
+                t('check.runs', {
+                  active: snapshot.activeRunCount,
+                  unknown: snapshot.unknownRunCount,
+                })
+              }}
+            </p>
+            <p>
+              {{
+                t('check.verifications', {
+                  active: snapshot.activeVerificationCount,
+                  unknown: snapshot.unknownVerificationCount,
+                })
+              }}
+            </p>
+            <p>
+              {{
+                t('check.writes', {
+                  active: snapshot.activeWriteCount,
+                  unknown: snapshot.unknownWriteCount,
+                })
+              }}
+            </p>
+            <Feedback v-if="!currentObservation" tone="warning" data-testid="plugin-snapshot-old">{{
+              t('check.oldSnapshot')
+            }}</Feedback>
+            <Feedback v-else-if="openCount" tone="warning" data-testid="plugin-open-work">{{
+              t('check.openWork')
+            }}</Feedback>
+            <p v-else data-testid="plugin-no-open-work">{{ t('check.noOpenWork') }}</p>
+            <Collapse v-if="snapshot.items.length" data-testid="plugin-open-items">
+              <template #summary>{{ t('check.items') }}</template>
+              <ul>
+                <li v-for="item in snapshot.items" :key="item.kind + item.id">
+                  {{ t('check.' + item.kind) }} · {{ item.status }}
+                  <template v-if="item.storedStatus !== item.status"
+                    >({{ t('check.storedState') }} {{ item.storedStatus }})</template
+                  >
+                  · Task <code>{{ item.taskId }}</code> · <code>{{ item.id }}</code>
+                </li>
+              </ul>
+            </Collapse>
+            <p v-if="snapshot.truncated" class="hint">{{ t('check.truncated') }}</p>
+          </div>
           <p class="hint">{{ t('check.scope') }}</p>
           <p v-if="mockPluginScenarios" class="hint">{{ t('check.simulated') }}</p>
         </section>
@@ -184,6 +280,28 @@ function toggle(host: PluginHost, id: PluginId) {
         </Button>
       </li>
     </ul>
+    <Feedback v-if="installationError" tone="error" data-testid="plugin-installation-error">{{
+      installationError
+    }}</Feedback>
+    <ConfirmBox
+      v-if="disableBoard"
+      :title="t('check.disableTitle')"
+      :confirm-label="t('check.disableConfirm')"
+      :impact="[
+        t('check.disableImpact'),
+        currentObservation
+          ? t('check.disableObserved', {
+              project: snapshot?.projectId,
+              count: openCount,
+              time: snapshot?.observedAt,
+            })
+          : t('check.disableUnverified'),
+        t('check.disabledBoundary'),
+      ]"
+      :refusal="installationError || undefined"
+      @confirm="confirmDisable"
+      @cancel="disableBoard = false"
+    />
   </section>
 </template>
 
@@ -203,7 +321,7 @@ function toggle(host: PluginHost, id: PluginId) {
   list-style: none;
 }
 
-.plugin-list li {
+.plugin-list > li {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -211,5 +329,12 @@ function toggle(host: PluginHost, id: PluginId) {
   padding: 16px;
   border: 1px solid var(--eap-line, var(--border));
   border-radius: 12px;
+}
+
+.plugin-list > li,
+.plugin-list section {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 </style>

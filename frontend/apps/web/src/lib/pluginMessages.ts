@@ -7,10 +7,34 @@ export const pluginCheckMessages = {
       unchecked: '未检查',
       stale: '输入项目已变化；下方为上次观测，请重新检查。',
       checking: '检查中',
-      available: 'Task 列表可用',
+      available: 'Task/Run 状态可读取',
       failed: '检查失败（可用性未知）',
+      savedObservation: '上次成功观测：项目 {project} · {time}',
+      totals: 'Task {tasks} 条 · Run {runs} 条',
+      runs: 'Run：在途 {active} · 结果未知 {unknown}',
+      verifications: '独立验证：在途 {active} · 结果未知 {unknown}',
+      writes: '源码写入：在途 {active} · 结果未知 {unknown}',
+      storedState: '保存状态',
+      items: '查看在途与未知记录标识',
+      RUN: 'Run',
+      VERIFICATION: '独立验证',
+      SOURCE_WRITE: '源码写入',
+      truncated: '仅显示前 20 个在途/未知标识，计数覆盖本项目全部持久记录。',
+      oldSnapshot: '下方是上次成功快照，不能据此判断当前无在途工作；请核对项目并重新检查。',
+      openWork: '本项目存在在途或结果未知记录。停用插件只隐藏看板，后台工作及未知互锁继续保留。',
+      noOpenWork: '本次观测未发现本项目在途或未知记录；不代表其他项目或随后时刻没有执行。',
+      disabledBoundary:
+        '看板 UI 已停用时，核心 Task/Run、验证与源码写入仍由原服务管理。可在此重新检查；重新启用后读取原记录。停用不会取消、删除、解除 UNKNOWN 或自动重跑。',
+      disableTitle: '停用看板显示',
+      disableConfirm: '仅停用看板显示',
+      disableImpact:
+        '隐藏看板入口并释放其页面。项目任务、执行证据和工作区互锁保持；其他插件和核心服务继续运行。',
+      disableObserved:
+        '项目 {project} 在 {time} 观测到 {count} 条在途/未知活动；这是观测快照，不是停止证明。',
+      disableUnverified:
+        '当前未取得与输入项目一致的成功观测；不能确认是否有后台工作。仍可只停用显示，之后在此检查。',
       scope:
-        '只读查询指定项目的 Task 列表；空列表也可通过。不验证 Run 执行、全服务健康或插件激活；不创建任务、扫描目录、授予权限或调用模型。观测仅代表记录时刻，不改变现有入口。',
+        '只读检查指定项目的 Task/Run、独立验证和源码写入持久状态。空项目可通过；不启动任务或命令、不调用模型、不扫描目录、不证明进程退出或全服务健康。插件停用不影响此查询。',
       source: '来源：{source}',
       time: '观测时间：{time}',
       reason: '失败原因：{reason}',
@@ -27,10 +51,38 @@ export const pluginCheckMessages = {
       stale:
         'The project input changed; the observation below is from the previous check. Check again.',
       checking: 'Checking',
-      available: 'Task list available',
+      available: 'Task/Run state readable',
       failed: 'Check failed (availability unknown)',
+      savedObservation: 'Last successful observation: project {project} · {time}',
+      totals: '{tasks} Tasks · {runs} Runs',
+      runs: 'Runs: {active} active · {unknown} unknown',
+      verifications: 'Verification: {active} active · {unknown} unknown',
+      writes: 'Source writes: {active} active · {unknown} unknown',
+      storedState: 'stored status',
+      items: 'Inspect active and unknown record IDs',
+      RUN: 'Run',
+      VERIFICATION: 'Verification',
+      SOURCE_WRITE: 'Source write',
+      truncated:
+        'Only the first 20 active/unknown IDs are shown. Counts include all persisted records in this project.',
+      oldSnapshot:
+        'This is the last successful snapshot. It cannot establish that no work is active now; check the project and refresh.',
+      openWork:
+        'This project has active or unknown records. Disabling only hides the board; core work and unknown reservations remain.',
+      noOpenWork:
+        'No active or unknown records were observed in this project at this time. Other projects and later work are not covered.',
+      disabledBoundary:
+        'Disabling board UI leaves core Tasks/Runs, verification and source writes under their existing services. Check here while disabled; enabling reads the original records. Disabling does not cancel, delete, close UNKNOWN or replay.',
+      disableTitle: 'Hide the board UI',
+      disableConfirm: 'Hide board UI only',
+      disableImpact:
+        'Hide the board entry and release its page. Tasks, execution evidence and workspace reservations remain; other plugins and core services continue.',
+      disableObserved:
+        'Project {project} had {count} active/unknown activities at {time}. This is an observation, not proof of termination.',
+      disableUnverified:
+        'No successful observation matches the current project input. Background work is unconfirmed. You may hide the UI and check here afterward.',
       scope:
-        'Read-only Task list query for the specified project; an empty list can pass. Does not verify Run execution, overall service health or plugin activation; does not create tasks, scan directories, grant access or call models. Observation is point-in-time and does not change existing entry behavior.',
+        'Read-only persisted Task/Run, verification and source-write state for one project. Empty projects can pass. Does not start work, invoke models, scan directories, prove process exit or overall health. Available while board UI is disabled.',
       source: 'Source: {source}',
       time: 'Observed at: {time}',
       reason: 'Failure reason: {reason}',

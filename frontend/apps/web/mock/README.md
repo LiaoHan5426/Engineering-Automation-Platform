@@ -20,6 +20,8 @@ Mock 只替换 HTTP 响应，不另做一套页面。界面始终调用 runtime 
 
 知识库 `/knowledge` 提供库/文档的增删改、计数和带可选 `baseId` 的检索；数据库资料 `/databases` 提供元数据快照 CRUD。两者使用与 Java 相同的页面和客户端，拒绝凭据输入，删除后内存检索结果同步消失。知识 mock 仅用关键字包含匹配，不模拟 PostgreSQL 排名，也尚未覆盖启用专家引用导致的删除拒绝；这些边界不能作为真实授权或检索质量证据。原型场景不再按服务来源选择不同组件，统一设计/版本/准备流程；mock 缺少授权根或基线时同样阻止交付。
 
+`/board/runtime`仅显式GET按项目统计当前内存Task，Run/验证/源码写入均为0且无标识，不制造真实执行；非GET拒绝405。空项目或超过120字符拒绝400，读取不改任务。它只服务相同插件中心观测UI，不能替代PostgreSQL/Git生命周期验收。
+
 Mock 状态只保存在开发进程内存里，重启后浏览器里的旧模拟会话会过期。看板已提供 `/board/tasks` 的任务草稿、备注、revision 与状态变更响应，与真实数据库接口共用 UI；不启动 Run，不允许无证据进入 running/done。原型版本复用 `/prototype-versions`，工程与语义 Schema 存在版本正文中；目录接口 `/ai/workspace/files` 的 mock 只提供夹具，不读取仓库。
 
 看板合同集中在 `boardBackend.ts`：planned 可暂存，ready 需要非空 goal/acceptanceCriteria，创建时禁止执行态；创建要求 UUID requestId，同项目同请求去重、内容不一致返回 409；更新要求 projectId + revision，服务端返回 preparationIssues/allowedColumns。优先级支持 none/p0/p1/p2，和备注一样受 revision 校验，保存后进入事件记录。优先级筛选使用接口返回字段。浏览器中的未提交编辑按任务及真实/mock来源隔离缓存，只在明确保存时调用服务；mock重启后不存在的任务不因本机缓存复活。

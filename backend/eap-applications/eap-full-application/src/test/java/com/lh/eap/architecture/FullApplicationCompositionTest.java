@@ -68,7 +68,9 @@ class FullApplicationCompositionTest {
                             .isEqualTo(FullApplicationConfiguration.class);
                     assertThat(context.getBeansOfType(DefaultProcessExecutor.class))
                             .containsOnlyKeys("processExecutor", "boardVerificationProcessExecutor");
-                    assertThat(context).hasSingleBean(WorkspaceFilesController.class);
+                    assertThat(context).hasSingleBean(WorkspaceFilesController.class)
+                            .hasSingleBean(BoardRuntimeController.class)
+                            .hasSingleBean(com.lh.eap.application.service.BoardRuntimeService.class);
                 });
     }
 
@@ -93,7 +95,9 @@ class FullApplicationCompositionTest {
                             .isSameAs(customPolicies);
                     assertThat(context).hasSingleBean(AiChatController.class).hasSingleBean(WorkspaceFilesController.class)
                             .hasSingleBean(McpManagementController.class).hasSingleBean(CapabilityManagementController.class)
-                            .hasSingleBean(BoardDeliveryController.class).hasSingleBean(KnowledgeController.class);
+                            .hasSingleBean(BoardDeliveryController.class).hasSingleBean(KnowledgeController.class)
+                            .hasSingleBean(BoardRuntimeController.class)
+                            .hasSingleBean(com.lh.eap.application.service.BoardRuntimeService.class);
                     assertThat(context.getBeansOfType(DefaultProcessExecutor.class)).containsOnlyKeys("processExecutor", "boardVerificationProcessExecutor");
                     assertThat(context.getBean("processExecutor")).isNotSameAs(context.getBean("boardVerificationProcessExecutor"));
                 });

@@ -99,6 +99,25 @@ export function createBoardBackend(versionExists: (id: string) => boolean = () =
             items: [],
           })
       }
+      if (path === '/board/runtime') {
+        if (method !== 'GET') return error(405, 'METHOD_NOT_ALLOWED')
+        const projectId = url.searchParams.get('projectId')
+        if (!projectId?.trim() || projectId.length > 120) return error(400, 'INVALID_BOARD_FIELD')
+        return result(200, {
+          projectId,
+          observedAt: new Date().toISOString(),
+          taskCount: tasks.filter((task) => task.projectId === projectId).length,
+          runCount: 0,
+          activeRunCount: 0,
+          unknownRunCount: 0,
+          activeVerificationCount: 0,
+          unknownVerificationCount: 0,
+          activeWriteCount: 0,
+          unknownWriteCount: 0,
+          items: [],
+          truncated: false,
+        })
+      }
       if (path === '/board/tasks' && method === 'GET') {
         if (
           !url.searchParams.get('projectId')?.trim() ||

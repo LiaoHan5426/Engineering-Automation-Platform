@@ -1,3 +1,4 @@
+import { runtimeSnapshot } from './runtimeSnapshot'
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, nextTick, type App } from 'vue'
@@ -23,8 +24,8 @@ afterEach(() => {
 it('checks only on explicit click, displays scoped evidence, and ignores a late failure after unmount (simulated)', async () => {
   let reject!: (error: Error) => void
   const query = vi
-    .spyOn(runtimeApi, 'boardTasks')
-    .mockResolvedValueOnce({ items: [] })
+    .spyOn(runtimeApi, 'boardRuntime')
+    .mockImplementationOnce(async (project) => runtimeSnapshot(project))
     .mockImplementationOnce(
       () =>
         new Promise((_, fail) => {
@@ -50,11 +51,11 @@ it('checks only on explicit click, displays scoped evidence, and ignores a late 
   ) as HTMLButtonElement
   button.click()
   await settle()
-  expect(query).toHaveBeenCalledExactlyOnceWith('project one')
+  expect(query).toHaveBeenCalledExactlyOnceWith('project one', expect.any(AbortSignal))
   expect(
     root.querySelector('[data-testid="plugin-dependency-observation"]')?.textContent,
-  ).toContain('Task 列表可用')
-  expect(root.textContent).toContain('GET /api/board/tasks?projectId=project%20one')
+  ).toContain('Task/Run 状态可读取')
+  expect(root.textContent).toContain('GET /api/board/runtime?projectId=project%20one')
   expect(root.textContent).toContain(host.boardDependencyCheck.value.observedAt)
   input.value = 'project two'
   input.dispatchEvent(new Event('input', { bubbles: true }))

@@ -2,9 +2,30 @@
 
 ## 当前结论与阅读方式
 
-五入口、公共UI/主题、专家父子导航与任务详情已落地；`2c7e87b`接入专家固定流程/SQL Agent/GrapesJS独立三栏工作台。当前验证与剩余关口统一见[台账](../planning-status.md#validation-baseline)，交互合同见[工作区决定](../decisions/expert-workspace-navigation.md)。早期记录及测试数按各阶段解释；新工作台原生125%/150%、全页面错误/焦点矩阵和用户体验接受仍待。共享模块落点以[边界规范](../decisions/frontend-ui-shared-module-boundaries.md)为准。
+五入口、公共UI/主题、专家父子导航与任务详情已落地；`2c7e87b`接入专家固定流程/SQL Agent/GrapesJS独立三栏工作台。当前验证与剩余关口统一见[台账](../planning-status.md#validation-baseline)，交互合同见[工作区决定](../decisions/expert-workspace-navigation.md)。早期记录及测试数按各阶段解释；新工作台原生125%/150%、全页面错误/焦点矩阵和用户体验接受仍待。共享模块落点以[边界规范](../decisions/frontend-ui-shared-module-boundaries.md)为准。本轮PL-01项目聚合观测及真实Git在途停用/后台完成/重新启用恢复已验，见[生命周期证据](#board-runtime-lifecycle)；用户接受和PL-02/SC-03仍独立。
 
 以下按主题合并完整阶段记录，日期保留在记录中而不再作为文件名。记录中的“本轮/未提交/下一步”和测试数字仅代表当时快照；不得覆盖上面的当前结论、有效产品合同或用户授权。原文完整保留（只调整标题层级、锚点及链接），后续更新本总览，不另建日期报告。
+
+<a id="board-runtime-lifecycle"></a>
+## PL-01 项目观测、在途停用与恢复（2026-11-10）
+
+基线ed84ab9；先按用户授权将上一批数据库/授权恢复28文件提交推送，再按加快进度要求完成本功能批次，新工作区按本次用户授权提交并推送；沿用已有测试结果，不重复测试。有效合同见[决定](../decisions/agent-runtime-evolution.md#61-先可信内置贡献后外部安装)；当前结果见[台账](../planning-status.md#board-runtime-validation)，本节保留限定证据。
+
+后端workflow新增BoardRuntimeService，web新增GET适配，full显式组合；单SQL投影既有任务/运行/验证快照/源码应用状态。Task-only检查改用项目runtime聚合，原Task/Run API继续供业务使用；无并行注册表或状态机。UNKNOWN只读映射unconfirmed_reason，storedStatus原值保持。前端继续L4 plugins及runtime-client DTO，复用@eap/ui ConfirmBox/Feedback/Collapse；无新共享类别/包。明确检查、旧快照、停用确认及恢复，停用不调用执行/取消/核对接口，服务假设及sticky激活失败不被观测覆盖。
+
+执行命令与结果：
+
+- `rtk proxy pnpm --dir frontend test run apps/web/__tests__/features/plugins`：11文件34项通过。新增测试首轮曾2失败，分别因spy不存在方法和误用ConfirmBox props/slot；修正为现有公开API后通过，没有修改公共确认框合同。
+- `rtk proxy pnpm --dir frontend test run`：139文件872项通过；`typecheck`、`build`、`check:architecture`和目标lint/stylelint通过。既有测试网络保护、Node localStorage及构建大chunk提示保留。
+- `rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am -Dtest=BoardRuntimeAcceptanceTest,BoardRuntimeControllerTest,BackendModuleBoundaryTest,FullApplicationCompositionTest -Dsurefire.failIfNoSpecifiedTests=false test`：独立子进程仅开启EAP_RUN_BOARD_RUNTIME/EAP_RUN_BOARD_PERSISTENCE及指定Playwright/Chromium；两次31模块SUCCESS/12项通过/0跳过。首轮1分01秒，修正列表样式和补进程身份清理断言后最终1分25秒。host仅loopback随机端口，Vite5187，全部模型none，不使用正式full启动配置。首次完整真实链没有失败；首轮单元测试修正按上条保留。
+- `rtk proxy mvn -B -ntp -f backend/pom.xml test`：32模块SUCCESS；按本次执行起始时间筛选165份XML，978项：865通过、113门控跳过、0失败/错误，5分38秒；全部EAP_RUN_*仅在该子进程清除，避免启动其他实库场景。包括新增正式组合Bean断言，与12项实库验收分列，不将跳过记作通过。
+- 独立只读JDBC读回：无自有schema/测试连接；3条应用工具记录摘要9328dec3d51e0c83b3929e5a376073ab保持，已应用29份迁移，V26～V29校验和未改。正式full-application未启停。
+
+[浏览器摘要](../../frontend/apps/web/__tests__/browser/artifacts/board-runtime-lifecycle/result.json)记录6组实际检查：在途精确项目观测；取消停用确认；确认停用并保持核心RUNNING/取消false；停用时实际Git完成；刷新停用偏好/重新启用恢复原Task和唯一成功Run；持久矩阵完整计数/未知和20标识截断。浏览器0pageerror/0写请求。Java通过实际HTTP创建任务及Run，执行器started回调测试门锁延迟结果收集，Git命令/生产执行器及workflow/JDBC路径不替换；独立JDBC检查SUCCEEDED/0、原stdout标记及exitEvidence。最终cleanup确认捕获Git身份已退出、host/browser停止、自有schema删除、7张应用表全行count/hash不变。
+
+矩阵26Run、验证/写入各在途1/UNKNOWN1为持久夹具，不是实际验证/源码进程演练；7表LIKE INCLUDING ALL保留检查/默认/索引，不复制FK/触发器，不称迁移重跑。读取前后摘要不变、其他项目0；开放记录只返回20个，计数仍全量。观测不证明进程树退出/整体服务健康，不改变后台状态、安装或授权。
+
+已查看[390px停用在途](../../frontend/apps/web/__tests__/browser/artifacts/board-runtime-lifecycle/disabled-active-390.png)与[未知记录展开](../../frontend/apps/web/__tests__/browser/artifacts/board-runtime-lifecycle/unknown-scope.png)，1440/900/390脚本无横向溢出；[1440px截图](../../frontend/apps/web/__tests__/browser/artifacts/board-runtime-lifecycle/disabled-active-1440.png)另存。用户人工产品接受与全页面缩放/焦点矩阵仍待；下一完整批次为PL-02/SC-03，协调既有TC-02实例读取与草稿/版本保留，外部安装器/任意JS与反向Agent调用另评审。
 
 ## 记录索引
 

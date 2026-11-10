@@ -75,6 +75,7 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
   })
   const t = i18n.global.t
   let checkGeneration = 0
+  let checkController: AbortController | undefined
 
   function runtimeOf(pluginId: PluginId): PluginRuntimeObservation {
     const observation = pluginRuntimeObservation({
@@ -197,38 +198,53 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
       )
         return
       const generation = ++checkGeneration
-      const source = 'GET /api/board/tasks?projectId=' + encodeURIComponent(projectId)
-      boardDependencyCheck.value = { status: 'checking', source, observedAt: null, reason: '' }
+      const source = 'GET /api/board/runtime?projectId=' + encodeURIComponent(projectId)
+      const previous = boardDependencyCheck.value.snapshot
+      checkController = new AbortController()
+      boardDependencyCheck.value = {
+        status: 'checking',
+        source,
+        observedAt: null,
+        reason: '',
+        snapshot: previous,
+      }
       try {
-        const page = await runtimeApi.boardTasks(projectId)
-        if (!page || !Array.isArray(page.items)) throw new Error('INVALID_BOARD_TASK_LIST_RESPONSE')
+        const snapshot = await runtimeApi.boardRuntime(projectId, checkController.signal)
+        if (!snapshot || snapshot.projectId !== projectId || !Array.isArray(snapshot.items))
+          throw new Error('INVALID_BOARD_RUNTIME_RESPONSE')
         if (generation !== checkGeneration) return
         boardDependencyCheck.value = {
           status: 'available',
           source,
-          observedAt: new Date().toISOString(),
+          observedAt: snapshot.observedAt,
           reason: '',
+          snapshot,
         }
       } catch (error) {
         if (generation !== checkGeneration) return
-        // A failed read is not proof that the dependency does not exist.
         boardDependencyCheck.value = {
           status: 'failed',
           source,
           observedAt: new Date().toISOString(),
           reason: error instanceof Error ? error.message : 'DEPENDENCY_CHECK_FAILED',
+          snapshot: previous,
         }
+      } finally {
+        if (generation === checkGeneration) checkController = undefined
       }
     },
     runtimeOf,
     cancelBoardDependencyCheck() {
       ++checkGeneration
+      checkController?.abort()
+      checkController = undefined
       if (boardDependencyCheck.value.status === 'checking') {
         boardDependencyCheck.value = {
           status: 'unchecked',
           source: '',
           observedAt: null,
           reason: '',
+          snapshot: boardDependencyCheck.value.snapshot,
         }
       }
     },

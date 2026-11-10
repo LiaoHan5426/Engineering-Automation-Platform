@@ -5,7 +5,7 @@
 | 主题 | 内容与边界 |
 |---|---|
 | [任务、源码与交付](delivery-history.md) | 准备、Run、原型、审阅、验证、人工决定、生成基线、持久应用、POST_HOC/PREBOUND；10份阶段记录完整合并 |
-| [前端工作台与共享UI](frontend-history.md) | 验收清单、组件/主题、录屏对照、图标首片，以及[专家导航/详情与三栏工作台演进](frontend-history.md#expert-workspace-evolution) |
+| [前端工作台与共享UI](frontend-history.md) | 验收清单、组件/主题、录屏对照、图标首片，[PL-01项目观测/在途停用与恢复](frontend-history.md#board-runtime-lifecycle)，以及[专家导航/详情与三栏工作台演进](frontend-history.md#expert-workspace-evolution) |
 | [专家知识与Skill](resource-history.md) | 知识授权和Skill文本导入/使用；2份记录完整合并 |
 | [架构与实现审查](architecture-history.md) | 已开发内容纠偏、安全加固和历史五模块拆分；不代表当前模块结构 |
 | [后端模块组合与SQL Agent](backend-composition-history.md) | 32模块迁移、十四轮边界调整、恢复/审批、真实Responses、复杂SQL和缩放；工具UNKNOWN人工处置、[当前进程线索](backend-composition-history.md#tool-process-review)、[已观察子进程身份持久/核对](backend-composition-history.md#tool-descendant-evidence)、[受控UNKNOWN完整核对](backend-composition-history.md#tool-unknown-controlled-acceptance)、[真实Git异常核对](backend-composition-history.md#real-git-unknown-review)、[真实git-diff异常恢复](backend-composition-history.md#real-git-diff-unknown-review)、[取消/超时/结果返回中断矩阵](backend-composition-history.md#git-interruption-unknown-review)、[取消响应丢失/权限/IO核对恢复](backend-composition-history.md#git-cancel-permission-io-review)及[数据库写入/授权恢复整组交付](backend-composition-history.md#git-database-authorization-recovery)；原决定中的完整逐轮证据 |

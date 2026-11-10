@@ -2,6 +2,35 @@ import { randomUUID } from 'node:crypto'
 import { expect, it } from 'vite-plus/test'
 import { createMockChatBackend } from '../../mock/chatBackend'
 import type { BoardTask } from '@eap/runtime-client'
+it('observes only scoped mock Tasks and never invents or changes execution records', async () => {
+  const api = createMockChatBackend()
+  await api.handle('POST', '/board/tasks', {
+    requestId: randomUUID(),
+    projectId: 'group',
+    title: 'draft',
+  })
+  const before = structuredClone((await api.handle('GET', '/board/tasks?projectId=group')).data)
+  expect((await api.handle('GET', '/board/runtime?projectId=group')).data).toMatchObject({
+    projectId: 'group',
+    taskCount: 1,
+    runCount: 0,
+    activeRunCount: 0,
+    unknownRunCount: 0,
+    activeVerificationCount: 0,
+    unknownVerificationCount: 0,
+    activeWriteCount: 0,
+    unknownWriteCount: 0,
+    items: [],
+    truncated: false,
+  })
+  expect((await api.handle('GET', '/board/runtime?projectId=other')).data).toMatchObject({
+    taskCount: 0,
+  })
+  expect((await api.handle('GET', '/board/runtime?projectId=')).status).toBe(400)
+  expect((await api.handle('GET', '/board/runtime?projectId=' + 'x'.repeat(121))).status).toBe(400)
+  expect((await api.handle('POST', '/board/runtime?projectId=group', {})).status).toBe(405)
+  expect((await api.handle('GET', '/board/tasks?projectId=group')).data).toEqual(before)
+})
 it('keeps board project scope and revisions authoritative without simulating a real run', async () => {
   const api = createMockChatBackend()
   const task = (

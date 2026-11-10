@@ -1,3 +1,4 @@
+import type { BoardRuntimeSnapshot } from '@eap/runtime-client'
 import type { PluginId } from './model'
 
 export type PluginServiceDependency = {
@@ -33,6 +34,8 @@ export type DependencyCheck = {
   source: string
   observedAt: string | null
   reason: string
+  /** Last successful observation, never an independently maintained execution state. */
+  snapshot?: BoardRuntimeSnapshot
 }
 
 export function missingDependenciesFor(
