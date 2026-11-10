@@ -1,0 +1,29 @@
+{
+  "committedHead": "1ce0c4bfd4a68d6ff1c969839cc99f476f2df69c",
+  "trackingMain": "1ce0c4bfd4a68d6ff1c969839cc99f476f2df69c",
+  "remoteMain": "1ce0c4bfd4a68d6ff1c969839cc99f476f2df69c",
+  "newBatchCommitted": false,
+  "health": {
+    "service": "eap-runtime",
+    "status": "ok"
+  },
+  "hostPid": 36288,
+  "sensitivePatternClasses": 3,
+  "allChangedTextScanned": true,
+  "oldSuitesRerun": false,
+  "passedChecks": {
+    "backendFocused": 6,
+    "frontendFocused": 9,
+    "productionV30BrowserGroups": 5,
+    "publicationRecoveryV31BrowserGroups": 3,
+    "publicationConcurrentHttpRequests": 12,
+    "migrationsValidated": 31
+  },
+  "limitations": [
+    "browser route controlled response loss, not physical database disconnection",
+    "no real model source delivery or human product acceptance",
+    "existing Vite chunk and PluginCenter locale fallback warnings remain"
+  ],
+  "changedFilesAtVerification": 53,
+  "evidencePhase": "Pre-commit verification snapshot; Git determines the subsequent commit/push state"
+}

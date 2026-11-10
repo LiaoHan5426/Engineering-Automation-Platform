@@ -58,7 +58,7 @@ class SingleContractAcceptanceTest {
             var shipped=new String(getClass().getResourceAsStream("/experts/sql-expert.json").readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
             assertEquals(new ExpertBehaviorBinding("sql-analysis",1),com.lh.eap.domain.model.ExpertManifest.parse(shipped).behavior());
             CurrentContractTestSchema.migrate(session,schema);
-            assertEquals("30",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1",String.class));
+            assertEquals("31",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1",String.class));
             assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->jdbc.update("INSERT INTO eap.cli_channel(program_id,binary_path) VALUES ('git-status','old-git')"));
             assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->jdbc.update("INSERT INTO eap.expert_definition(id,name,manifest) VALUES ('invalid','invalid','{}'::jsonb)"));
 
@@ -106,7 +106,7 @@ class SingleContractAcceptanceTest {
                 assertEquals(2,context.getBean(ExpertDefinitionService.class).require("reviewer",true).behavior().version());
 
                 request("POST","/api/prototype-versions",Map.of("sourceRef","builder-alpha","title","Design","body","plain text","acceptance",List.of()),400);
-                var design=Map.of("sourceRef","builder-alpha","title","Design","body",SemanticPrototypeFixture.body("Design"),"acceptance",List.of("preview"));
+                var design=Map.of("requestId",UUID.randomUUID().toString(),"sourceRef","builder-alpha","title","Design","body",SemanticPrototypeFixture.body("Design"),"acceptance",List.of("preview"));
                 var forged=new LinkedHashMap<>(design);forged.put("buttonPresses",1);request("POST","/api/prototype-versions",forged,400);
                 var version=request("POST","/api/prototype-versions",design,200);
                 assertFalse(version.containsKey("buttonPresses"));assertFalse(version.containsKey("interaction"));

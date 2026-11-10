@@ -146,7 +146,7 @@ class BoardRunPersistenceTest {
         } finally { Files.deleteIfExists(outside); }
     }
     private PrototypeVersion version(String title) {
-        var version = context.getBean(PrototypeVersionService.class).save("builder-alpha", title, SemanticPrototypeFixture.body("saved body " + title), List.of("review design"));
+        var version = context.getBean(PrototypeVersionService.class).save(UUID.randomUUID(), "builder-alpha", title, SemanticPrototypeFixture.body("saved body " + title), List.of("review design"));
         ownedVersions.add(version.id()); return version;
     }
     @Test void prototypeLinkIsScopedVersionedAndFrozenInEachRun() throws Exception {

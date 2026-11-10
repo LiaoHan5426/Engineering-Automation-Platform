@@ -14,7 +14,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class JdbcPrototypeVersionStore implements PrototypeVersionStore {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final String SELECT = """
-            SELECT id, source_ref, title, body, acceptance, content_hash, created_at
+            SELECT id, request_id, source_ref, title, body, acceptance, content_hash, created_at
             FROM eap.prototype_version
             """;
     private final JdbcTemplate jdbc;
@@ -28,16 +28,22 @@ public class JdbcPrototypeVersionStore implements PrototypeVersionStore {
         jdbc.update(
                 """
                 INSERT INTO eap.prototype_version(
-                    id, source_ref, title, body, acceptance, content_hash, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    id, request_id, source_ref, title, body, acceptance, content_hash, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (request_id) DO NOTHING
                 """,
-                version.id(), version.sourceRef(), version.title(), version.body(), JSON.writeValueAsString(version.acceptance()), version.contentHash(),
+                version.id(), version.requestId(), version.sourceRef(), version.title(), version.body(), JSON.writeValueAsString(version.acceptance()), version.contentHash(),
                 Timestamp.from(version.createdAt()));
     }
 
     @Override
     public Optional<PrototypeVersion> find(UUID id) {
         return jdbc.query(SELECT + " WHERE id = ?", (rs, row) -> map(rs), id).stream().findFirst();
+    }
+
+    @Override
+    public Optional<PrototypeVersion> request(UUID requestId) {
+        return jdbc.query(SELECT + " WHERE request_id = ?", (rs, row) -> map(rs), requestId).stream().findFirst();
     }
 
     @Override
@@ -49,6 +55,7 @@ public class JdbcPrototypeVersionStore implements PrototypeVersionStore {
         var acceptance = List.of(JSON.readValue(rs.getString("acceptance"), String[].class));
         return new PrototypeVersion(
                 rs.getObject("id", UUID.class),
+                rs.getObject("request_id", UUID.class),
                 rs.getString("source_ref"),
                 rs.getString("title"),
                 rs.getString("body"),

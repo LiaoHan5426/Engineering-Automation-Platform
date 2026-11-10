@@ -1,0 +1,53 @@
+{
+  "message": "locator.fill: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=builder-alpha]:visible, [data-testid=builder-beta]:visible').getByTestId('grapes-title')\u001b[22m\n",
+  "checks": [
+    "Committed response discarded: pending intent blocks publication and disable, survives reload without replay, explicit real HTTP query recovers identical persisted version"
+  ],
+  "errors": [],
+  "external": [],
+  "posts": [
+    {
+      "requestId": "f832e89c-a814-4e88-a4e4-9e309c06f768",
+      "mode": "resumed-committed-evidence"
+    },
+    {
+      "requestId": "950d80d5-8dcf-4fb0-bb19-2c8a2778dde0",
+      "mode": "aborted-before-send"
+    }
+  ],
+  "state": {
+    "hash": "#builder-beta",
+    "visible": [
+      "runtime-chip",
+      "builder-beta",
+      "builder-back-scenes",
+      "builder-tab-design",
+      "builder-tab-versions",
+      "builder-design-panel",
+      "grapes-scaffold",
+      "grapes-status",
+      "grapes-preview",
+      "grapes-save",
+      "grapes-publish",
+      "grapes-deliver",
+      "publication-review",
+      "publication-check",
+      "grapes-add-section",
+      "grapes-add-text",
+      "grapes-add-heading",
+      "grapes-add-button",
+      "grapes-add-link",
+      "grapes-add-list",
+      "grapes-add-input",
+      "grapes-new",
+      "grapes-canvas",
+      "grapes-remove",
+      "grapes-inspection",
+      "grapes-inspection-target",
+      "grapes-inspect",
+      "grapes-note",
+      "grapes-boundary"
+    ],
+    "text": "构建 · 目录\n运行时已连接\n返回场景\n构建 · 目录\n设计\n版本\nPublication original retry 1794296847034\nGrapesJS 已挂载\n交互预览\n检查设计\n保存 Schema\n保存交付版本\n映射齐全，仍须人工验收后才可交付开发\n\n上次发布结果尚未确认。请先核对；不会自动重发或创建另一版本，当前编辑仍保留。\n\n待核对发布：Publication original retry 1794296847034 · 950d80d5-8dcf-4fb0-bb19-2c8a2778dde0\n\n核对发布结果\n\n资源\n设计画布\n属性\n组件库\n页面结构\n添加分区\n添加文本\n添加标题\n添加按钮\n添加链接\n添加列表\n添加输入框\n新建草案\n页面设置\n组件属性\n选中组件文字\n组件布局\nBlock\nFlex\nGrid\n间距与内边距 · 12px\n删除所选组件\n只读检查当前编辑器\n\n上次发布结果尚未确认。请先核对；不会自动重发或创建另一版本，当前编辑仍保留。\n\n保留编辑器工程与语义 Schema；HTML/CSS 导出不是可维护 Vue 源码。未知组件映射会阻塞自动交付。"
+  }
+}

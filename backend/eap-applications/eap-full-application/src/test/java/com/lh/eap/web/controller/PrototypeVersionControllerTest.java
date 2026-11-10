@@ -34,12 +34,12 @@ class PrototypeVersionControllerTest {
         for(var content : List.of("正文", "{}")) {
             mvc.perform(post("/api/prototype-versions").contentType(MediaType.APPLICATION_JSON).content(
                     tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(java.util.Map.of(
-                            "sourceRef","builder-alpha","title","设计","body",content,"acceptance",List.of()))))
+                            "requestId",java.util.UUID.randomUUID().toString(),"sourceRef","builder-alpha","title","设计","body",content,"acceptance",List.of()))))
                     .andExpect(status().isBadRequest());
         }
         mvc.perform(post("/api/prototype-versions").contentType(MediaType.APPLICATION_JSON).content(
                 tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(java.util.Map.of(
-                        "sourceRef","builder-alpha","title","设计",
+                        "requestId",java.util.UUID.randomUUID().toString(),"sourceRef","builder-alpha","title","设计",
                         "body",com.lh.eap.application.service.SemanticPrototypeFixture.body("设计"),"acceptance",List.of("看标题")))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.buttonPresses").doesNotExist())
                 .andExpect(jsonPath("$.interaction").doesNotExist());
@@ -49,6 +49,7 @@ class PrototypeVersionControllerTest {
     private static MockMvc mvc(List<PrototypeVersion> rows) {
         var service = new PrototypeVersionService(new PrototypeVersionStore() {
             @Override public void insert(PrototypeVersion version) { rows.add(version); }
+            @Override public Optional<PrototypeVersion> request(UUID requestId) { return rows.stream().filter(row -> row.requestId().equals(requestId)).findFirst(); }
             @Override public Optional<PrototypeVersion> find(UUID id) { return Optional.empty(); }
             @Override public List<PrototypeVersion> list(String sourceRef) { return List.of(); }
         }, new PrototypeDeliveryStore() {

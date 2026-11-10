@@ -1,6 +1,14 @@
 # Builder 语义设计版本与可审阅交付单
 
-状态：当前单一契约已实现，V30独立Flyway/PostgreSQL/HTTP/Git及Chromium验证通过；日常开发库尚为V29，1条非语义原型需显式处理后才能迁移。本批未提交，详见[台账](../planning-status.md#single-contract-validation)与[证据](../records/architecture-history.md#single-contract-convergence)。下方2026-10-24全文仅为被覆盖的历史记录，不能再要求实现旧计数/文本发布或兼容回退。
+状态：唯一语义契约已随1ce0c4b提交推送；开发库旧非语义版本及引用已备份处置，正式full完成V30/V31迁移与真实整链。接续必填发布requestId、幂等与响应丢失显式核对随本次提交交付，沿用已有验证而不重跑测试；见[当前台账](../planning-status.md#publication-recovery-validation)及[过程证据](../records/architecture-history.md#publication-recovery)。下方2026-10-24全文为被覆盖历史，不能再要求旧计数/文本或无身份发布兼容。
+
+## 发布请求与恢复核对（V31当前唯一合同）
+
+- POST /api/prototype-versions必须提供客户端UUID requestId；规范化的sourceRef/title/body/acceptance构成内容哈希，身份不参与内容哈希。同身份同内容返回原版本，同身份不同内容409 PUBLICATION_REQUEST_CONTENT_CONFLICT，缺身份400。
+- GET /api/prototype-publications/{requestId}只读返回权威版本，未找到404；GET不创建版本。request_id NOT NULL UNIQUE且无默认，旧接口/服务调用签名删除，不自动生成请求身份。
+- 前端发布前持久保存冻结的原请求并读回，网络失败保留unknown；刷新/切页不重发。显式查询成功清理待核对意图；404后显示明确重试原请求，用原UUID/内容，保留之后的编辑。其他错误继续未知。未知或本地存储不可靠阻止新发布、停用及替换文档，允许保留草稿/离页。
+- V31为已有合规不可变版本一次性分配身份，内容/hash/创建时间不变。不是运行兼容；新身份允许显式发布内容相同的新版本，原型交付单与代码生成/源码接受仍独立。
+- 真实正式full/JDBC/Chromium验证提交后丢响应、发送前中断及12并发同身份，三个请求各1版本、原hash保持。用户人工接受和真实模型源码交付不由此关闭。
 
 ## 当前工作面与数据职责
 
@@ -11,13 +19,13 @@
 
 ## 唯一发布契约
 
-`POST /api/prototype-versions`仅接受sourceRef、title、body、acceptance；sourceRef限builder-alpha/builder-beta。body必须是JSON文本，format=eap-prototype-v1，携带version=1的schema、语义root、unknownMappings=[]及grapesProject对象。保留编辑器项目和语义数据，不把HTML/CSS导出当Vue源码。
+`POST /api/prototype-versions`仅接受requestId、sourceRef、title、body、acceptance；requestId为调用方生成的必填UUID，sourceRef限builder-alpha/builder-beta。body必须是JSON文本，format=eap-prototype-v1，携带version=1的schema、语义root、unknownMappings=[]及grapesProject对象。保留编辑器项目和语义数据，不把HTML/CSS导出当Vue源码。
 
 前后端均拒绝纯文本、未知格式、未注册组件或未知映射；后端SemanticPrototype另限正文160000字符、节点500及深度24。节点kind来自当前page/section/text/heading/button/input/link/list映射，props为对象，children为数组，root须有内容。发布内容先脱敏、统一换行/NFC与首尾空白后校验，再持久化。交付服务重验所引版本语义，不能只靠页面禁用按钮。
 
 DTO/数据库已删除buttonPresses/button_presses和interaction。请求带旧字段、客户端哈希、仓库路径、模拟标签或授权信息均拒绝，不插入。没有旧文本解析、旧计数预览或legacy slot。原始正文只可作为转义后的只读证据查看，不能作为可交付设计放行。
 
-UUID及createdAt由服务端生成，时间按数据库微秒精度生成，发布响应/数据库回读一致。一份版本只插入，不提供更新入口；这不是数据库防更新触发器的声明。
+版本id及createdAt由服务端生成，requestId由客户端提供；时间按数据库微秒精度生成，发布响应/数据库回读一致。一份版本只插入，不提供更新入口；这不是数据库防更新触发器的声明。
 
 ## 哈希与预览
 
@@ -33,7 +41,7 @@ UUID及createdAt由服务端生成，时间按数据库微秒精度生成，发�
 
 ## 数据库与验收
 
-V30移除旧计数列并增加语义envelope约束，同时收敛CLI程序FK和专家显式行为图。迁移不重写已应用版本，不自动恢复/推断/删除旧数据；不合规记录使事务回滚。日常库只读预检有1条非语义版本，未对它做数据操作，也未执行日常库V30。
+V30移除旧计数列并增加语义envelope约束，同时收敛CLI程序FK和专家显式行为图。迁移不重写已应用版本，不自动恢复/推断/删除旧数据；不合规记录使事务回滚。迁移前日常库1条非语义版本及两处测试引用已按本次授权精确备份处置，正式应用执行V30，旧记录及引用0；未增加运行兼容。
 
 SingleContractAcceptanceTest验证实际迁移、旧契约拒绝、发布/回读、交付唯一、真实status/diff执行身份与专家版本历史。DesignerLifecycleAcceptanceTest在完整V1～V30独立schema下验证7组双实例发布/恢复、启停、激活错误、服务故障/恢复及场景保存。成功结果、失败过程和命令见[本轮记录](../records/architecture-history.md#single-contract-convergence)。未执行模型源码交付或用户人工接受。
 

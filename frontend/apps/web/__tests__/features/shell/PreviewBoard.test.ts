@@ -351,6 +351,7 @@ it('separates preparation, prototype and runs without losing edits or restarting
 it('preserves goal edits made while a prototype link save is awaiting its response', async () => {
   const version: PrototypeVersionRecord = {
     id: 'design-a',
+    requestId: '22222222-2222-4222-8222-222222222222',
     sourceRef: 'builder-alpha',
     title: '设计 A',
     body: 'saved text',

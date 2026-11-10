@@ -41,6 +41,7 @@ function version(id: string, title: string, _presses = 0): PrototypeVersionRecor
   ]
   return {
     id,
+    requestId: crypto.randomUUID(),
     sourceRef: 'builder-alpha',
     title,
     body: JSON.stringify({ format: 'eap-prototype-v1', schema }),

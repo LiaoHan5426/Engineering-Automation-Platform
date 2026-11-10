@@ -25,6 +25,7 @@ const task: BoardTask = {
 }
 const a: PrototypeVersionRecord = {
   id: 'design-a',
+  requestId: '11111111-1111-4111-8111-111111111111',
   sourceRef: 'builder-alpha',
   title: '设计 A',
   body: 'stored text A',

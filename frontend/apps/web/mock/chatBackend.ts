@@ -169,23 +169,46 @@ export function createMockChatBackend() {
         })
       if (path === '/prototype-versions' && method === 'POST') {
         if (
+          typeof body.requestId !== 'string' ||
+          !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(body.requestId) ||
           !['builder-alpha', 'builder-beta'].includes(String(body.sourceRef)) ||
           typeof body.body !== 'string' ||
           body.body.length > 160000 ||
           prototypeVersionDesign(body.body).blocked ||
           Object.keys(body).some(
-            (key) => !['sourceRef', 'title', 'body', 'acceptance'].includes(key),
+            (key) => !['requestId', 'sourceRef', 'title', 'body', 'acceptance'].includes(key),
           )
         )
           return result(400, { error: 'INVALID_PROTOTYPE' })
+        const contentHash = createHash('sha256')
+          .update(
+            JSON.stringify({
+              sourceRef: body.sourceRef,
+              title: body.title,
+              body: body.body,
+              acceptance: body.acceptance,
+            }),
+          )
+          .digest('hex')
+        const existing = versions.find((item) => item.requestId === body.requestId)
+        if (existing)
+          return existing.contentHash === contentHash
+            ? result(200, existing)
+            : result(409, { detail: 'PUBLICATION_REQUEST_CONTENT_CONFLICT' })
         const version = {
           ...body,
           id: randomUUID(),
-          contentHash: createHash('sha256').update(JSON.stringify(body)).digest('hex'),
+          contentHash,
           createdAt: new Date().toISOString(),
         }
         versions.unshift(version)
         return result(200, version)
+      }
+      if (path.startsWith('/prototype-publications/') && method === 'GET') {
+        const version = versions.find(
+          (item) => item.requestId === path.slice('/prototype-publications/'.length),
+        )
+        return version ? result(200, version) : result(404, { detail: 'PUBLICATION_NOT_FOUND' })
       }
       if (path.startsWith('/prototype-versions/') && method === 'GET') {
         const version = versions.find(

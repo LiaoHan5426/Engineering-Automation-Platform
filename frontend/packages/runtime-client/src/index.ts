@@ -529,12 +529,20 @@ export type MissionExecutionRecord = {
 }
 export type PrototypeVersionRecord = {
   id: string
+  requestId: string
   sourceRef: 'builder-alpha' | 'builder-beta'
   title: string
   body: string
   acceptance: string[]
   contentHash: string
   createdAt?: string
+}
+export type PrototypePublicationRequest = {
+  requestId: string
+  sourceRef: 'builder-alpha' | 'builder-beta'
+  title: string
+  body: string
+  acceptance: string[]
 }
 export type PrototypeDeliveryRecord = {
   id: string
@@ -1809,15 +1817,12 @@ export const runtimeApi = {
     get<{ items: PrototypeVersionRecord[] }>(
       '/prototype-versions?sourceRef=' + encodeURIComponent(sourceRef),
     ),
-  savePrototypeVersion: (draft: {
-    sourceRef: 'builder-alpha' | 'builder-beta'
-    title: string
-    body: string
-    acceptance: string[]
-  }) =>
+  savePrototypeVersion: (draft: PrototypePublicationRequest) =>
     client
       .post<PrototypeVersionRecord>('/prototype-versions', draft)
       .then((response) => response.data),
+  prototypePublication: (requestId: string) =>
+    get<PrototypeVersionRecord>('/prototype-publications/' + encodeURIComponent(requestId)),
   prototypeVersion: (id: string) =>
     get<PrototypeVersionRecord>('/prototype-versions/' + encodeURIComponent(id)),
   createPrototypeDelivery: (versionId: string) =>

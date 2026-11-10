@@ -1,0 +1,20 @@
+{
+  "exitCode": 0,
+  "reports": [
+    {
+      "name": "com.lh.eap.web.controller.PrototypeVersionControllerTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.lh.eap.application.service.PrototypePublicationServiceTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "seconds": 21.1
+}

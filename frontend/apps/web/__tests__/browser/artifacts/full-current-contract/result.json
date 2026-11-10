@@ -1,0 +1,22 @@
+{
+  "host": "production executable full-application jar",
+  "schema": 30,
+  "checks": [
+    "production App -> real GrapesJS -> full-application HTTP -> application PostgreSQL publication/readback -> interactive semantic preview",
+    "production PluginCenter disable/reload/re-enable restores unpublished draft and leaves the persisted published version unchanged",
+    "production scenario composition observes the real version service and published resource",
+    "full-application durable status/diff execute real repository Git with stable request identities; old invoke route is absent",
+    "shipped explicit SQL expert executes through the real product service and persists its behavior version without requesting model enhancement"
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "browserMutations": [],
+  "version": {
+    "id": "054ce698-6231-4d3d-a8cc-a3d71c629ca6",
+    "title": "Full application V30 1794295700782",
+    "contentHash": "94f033277eec07426015a2f9da6c3edbee017f5c5b088a195040d279c6843974"
+  },
+  "expertTaskId": "c8cb6772-6fbb-4922-bcd0-61264a05a22b",
+  "existingVersionsPreserved": true,
+  "formalHostLeftRunning": true
+}

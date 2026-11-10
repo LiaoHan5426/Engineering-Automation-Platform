@@ -22,7 +22,13 @@ import {
   type EditorInspectionResult,
   type EditorInspectionTarget,
 } from './editorInspection'
-import { runtimeApi } from '@eap/runtime-client'
+import { runtimeApi, type PrototypeVersionRecord } from '@eap/runtime-client'
+import {
+  clearPublicationIntent,
+  readPublicationIntent,
+  writePublicationIntent,
+  type PublicationIntent,
+} from './prototypePublication'
 import {
   readDesignerRecovery,
   writeDesignerRecovery,
@@ -85,7 +91,8 @@ function guardLeave() {
   return checkpoint()
 }
 function guardReplaceDocument() {
-  if (!publishing.value && !dirty.value) return true
+  if (!publishing.value && !publicationIntent.value && !publicationInvalid.value && !dirty.value)
+    return true
   note.value = t('editor.leaveHint')
   return false
 }
@@ -150,7 +157,11 @@ function validateDesign() {
 }
 defineExpose({
   guardLeave,
-  prepareDisable: () => !publishing.value && (!initialized || checkpoint()),
+  prepareDisable: () =>
+    !publishing.value &&
+    !publicationIntent.value &&
+    !publicationInvalid.value &&
+    (!initialized || checkpoint()),
 })
 
 const status = ref<'loading' | 'ready' | 'offline'>('loading')
@@ -219,6 +230,14 @@ function updateLayout() {
 }
 let activeComponent: import('grapesjs').Component | undefined
 const publishing = ref(false)
+const checkingPublication = ref(false)
+const publicationIntent = ref<PublicationIntent | null>(null)
+const publicationInvalid = ref(false)
+try {
+  publicationIntent.value = readPublicationIntent(props.sourceRef)
+} catch {
+  publicationInvalid.value = true
+}
 function newDesign() {
   if (!guardReplaceDocument()) {
     note.value = t('editor.newHint')
@@ -231,24 +250,98 @@ function newDesign() {
   activeComponent = undefined
 }
 async function publish() {
-  if (publishing.value || !editor) return
+  if (publishing.value || publicationIntent.value || publicationInvalid.value || !editor) return
   if (!save()) return
   if (!canAutoDeliver(schema.value)) return
-  publishing.value = true
-  try {
-    const version = await runtimeApi.savePrototypeVersion({
+  const intent: PublicationIntent = {
+    format: 1,
+    status: 'unknown',
+    request: {
+      requestId: crypto.randomUUID(),
       sourceRef: props.sourceRef,
       title: schema.value.title,
       body: JSON.stringify({ format: 'eap-prototype-v1', schema: schema.value }),
       acceptance: ['semantic-preview'],
-    })
-    note.value = t('desktop.grapesPublished', { id: version.id })
-    emit('published', version.id)
+    },
+  }
+  try {
+    writePublicationIntent(intent)
+    publicationIntent.value = intent
   } catch {
-    note.value = t('desktop.grapesPublishFailed')
+    publicationInvalid.value = true
+    note.value = t('editor.publicationStorageFailed')
+    return
+  }
+  await sendPublication(intent)
+}
+function confirmPublication(version: PrototypeVersionRecord, intent: PublicationIntent) {
+  if (
+    version.requestId !== intent.request.requestId ||
+    version.sourceRef !== intent.request.sourceRef ||
+    !version.id
+  )
+    throw new Error('PUBLICATION_RESPONSE_MISMATCH')
+  clearPublicationIntent(intent.request.sourceRef)
+  publicationIntent.value = null
+  note.value = t('desktop.grapesPublished', { id: version.id })
+  emit('published', version.id)
+}
+async function sendPublication(intent: PublicationIntent) {
+  publishing.value = true
+  try {
+    confirmPublication(await runtimeApi.savePrototypeVersion(intent.request), intent)
+  } catch {
+    intent.status = 'unknown'
+    publicationIntent.value = intent
+    try {
+      writePublicationIntent(intent)
+    } catch {
+      publicationInvalid.value = true
+    }
+    note.value = t('editor.publicationUnknown')
   } finally {
     publishing.value = false
   }
+}
+async function checkPublication() {
+  const intent = publicationIntent.value
+  if (!intent || checkingPublication.value || publishing.value) return
+  checkingPublication.value = true
+  try {
+    confirmPublication(await runtimeApi.prototypePublication(intent.request.requestId), intent)
+  } catch (error) {
+    intent.status =
+      (error as { response?: { status?: number } }).response?.status === 404 ? 'absent' : 'unknown'
+    try {
+      writePublicationIntent(intent)
+    } catch {
+      publicationInvalid.value = true
+    }
+    note.value = t(
+      intent.status === 'absent' ? 'editor.publicationAbsent' : 'editor.publicationUnknown',
+    )
+  } finally {
+    checkingPublication.value = false
+  }
+}
+async function retryPublication() {
+  const intent = publicationIntent.value
+  if (
+    !intent ||
+    intent.status !== 'absent' ||
+    publishing.value ||
+    checkingPublication.value ||
+    publicationInvalid.value
+  )
+    return
+  intent.status = 'unknown'
+  try {
+    writePublicationIntent(intent)
+  } catch {
+    publicationInvalid.value = true
+    return
+  }
+  await sendPublication(intent)
 }
 function addBlock(kind: 'section' | 'text' | 'heading' | 'button' | 'input' | 'link' | 'list') {
   if (!editor) return
@@ -583,7 +676,13 @@ onUnmounted(() => {
             size="sm"
             variant="primary"
             data-testid="grapes-publish"
-            :disabled="status !== 'ready' || publishing || !canAutoDeliver(design)"
+            :disabled="
+              status !== 'ready' ||
+              publishing ||
+              !!publicationIntent ||
+              publicationInvalid ||
+              !canAutoDeliver(design)
+            "
             @click="publish"
             >{{ t('desktop.grapesPublish') }}</Button
           >
@@ -593,6 +692,44 @@ onUnmounted(() => {
               : t('desktop.grapesDeliverBlocked')
           }}</span>
         </div>
+        <Feedback
+          v-if="publicationIntent || publicationInvalid"
+          tone="warning"
+          data-testid="publication-review"
+        >
+          <p>
+            {{
+              t(
+                publicationInvalid
+                  ? 'editor.publicationStorageFailed'
+                  : 'editor.publicationUnknown',
+              )
+            }}
+          </p>
+          <template v-if="publicationIntent">
+            <p>
+              {{
+                t('editor.publicationIdentity', {
+                  id: publicationIntent.request.requestId,
+                  title: publicationIntent.request.title,
+                })
+              }}
+            </p>
+            <Button
+              data-testid="publication-check"
+              :disabled="publishing || checkingPublication || publicationInvalid"
+              @click="checkPublication"
+              >{{ t('editor.publicationCheck') }}</Button
+            >
+            <Button
+              v-if="publicationIntent.status === 'absent'"
+              data-testid="publication-retry"
+              :disabled="publishing || checkingPublication || publicationInvalid"
+              @click="retryPublication"
+              >{{ t('editor.publicationRetry') }}</Button
+            >
+          </template>
+        </Feedback>
       </div>
     </template>
     <template #toolbar

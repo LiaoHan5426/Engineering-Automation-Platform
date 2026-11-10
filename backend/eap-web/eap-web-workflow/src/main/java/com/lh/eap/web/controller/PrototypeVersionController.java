@@ -22,7 +22,7 @@ import tools.jackson.databind.json.JsonMapper;
 @RequestMapping("/api")
 public class PrototypeVersionController {
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private static final Set<String> VERSION_FIELDS = Set.of("sourceRef", "title", "body", "acceptance");
+    private static final Set<String> VERSION_FIELDS = Set.of("requestId", "sourceRef", "title", "body", "acceptance");
     private static final Set<String> DELIVERY_FIELDS = Set.of("versionId");
     private final PrototypeVersionService versions;
 
@@ -40,10 +40,16 @@ public class PrototypeVersionController {
         return versions.find(id);
     }
 
+    @GetMapping("/prototype-publications/{requestId}")
+    public PrototypeVersion publication(@PathVariable UUID requestId) {
+        return versions.publication(requestId);
+    }
+
     @PostMapping("/prototype-versions")
     public PrototypeVersion save(@RequestBody(required = false) String body) {
         var parsed = objectBody(body, VERSION_FIELDS, "原型版本");
-        if (!(parsed.get("sourceRef") instanceof String sourceRef)
+        if (!(parsed.get("requestId") instanceof String requestId)
+                || !(parsed.get("sourceRef") instanceof String sourceRef)
                 || !(parsed.get("title") instanceof String title)
                 || !(parsed.get("body") instanceof String text)
                 || !(parsed.get("acceptance") instanceof List<?> acceptance)) {
@@ -54,7 +60,7 @@ public class PrototypeVersionController {
             if (!(item instanceof String condition)) throw new IllegalArgumentException("验收条件必须是文本");
             conditions.add(condition);
         }
-        return versions.save(sourceRef, title, text, conditions);
+        return versions.save(UUID.fromString(requestId), sourceRef, title, text, conditions);
     }
 
     @PostMapping("/prototype-deliveries")

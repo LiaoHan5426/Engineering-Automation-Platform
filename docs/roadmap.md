@@ -2,7 +2,7 @@
 
 ## 当前基线与事实源
 
-当前已提交基线 `fe08a99`（PL-01的34文件，已推送；提交沿用已有测试结果，未重复测试）。本批保留PL-02/SC-03新增，完成[五组双轨集中收敛](records/architecture-history.md#single-contract-convergence)，V30独立数据库与真实整链通过；日常库V29因1条非语义原型尚未迁移，新增尚未提交。当前验证与历史全量快照见[台账](planning-status.md#validation-baseline)，边界与失败归主题记录。
+当前已提交基线 `1ce0c4b`（PL-02/SC-03与五组收敛179文件，已推送；沿用已有测试、不重复测试）。接续已精确处理唯一旧非语义版本及测试引用，正式full执行V30/V31及生产页面、Git、SQL专家和发布断连恢复整链；发布身份与核对随本次提交交付；本次沿用已有测试，不重复执行，后续按既有PREBOUND到实际页面交付推进。见[当前台账](planning-status.md#publication-recovery-validation)与[实现记录](records/architecture-history.md#publication-recovery)。
 
 普通API显式Responses选择与函数工具已实现；原连接真实两轮SQL取证/候选/页面审批/写入读回及重启终态已验；见[模型协议决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验)。其余切片逐项按台账记录，不以早期“待实施”覆盖后续限定交付。
 
@@ -27,8 +27,8 @@ CT-01追加[显式重连与重试](decisions/chat-engineering-task-slice.md#会�
 | 上下文/记忆/检索 | **CE-01/KR-01/MCP-01（矩阵 callVerified/listOnly）/MEM-01**；CE 备注 Badge + 压缩未启用备注与 MEM sticky 诚实提示 mock 已验 | 实库跑 FTS 排序对照；CE-01 真实 token/压缩策略仍缺；KR-02 证据触发 |
 | 工具/目录 | 程序与固定操作登记、路径发现、工作区/文件树；**FS-01 盘点+刷新+kind/byteSize+inventory+candidateCounts+byKind（mock/真机已验）**；不是安装器 | 批准后的物理迁移/读回/失败恢复；TM-01一个受管工具；前端预览与本机执行分界 |
 | 工具发现/使用 | TD-01统一Git程序/操作与共享版本；TC-01补status/diff持久执行/取消证据与按操作隔离、离页与重启状态恢复、UNKNOWN互锁；真实diff HTTP/JDBC整链及工具UNKNOWN核对关闭阻塞及有界当前身份线索接通；隔离真实父退出/子存活已验；每步32个已观察子进程身份持久/即时核对；受控宿主中断后的HTTP/PostgreSQL/Vue核对、关闭及重启读回已验，并追加历史详情入口及关闭后原证据只读展示；真实status/diff异常终止/持久结果丢失的核对整链、diff恢复范围及索引/文件不变对照已验，关闭确认明确操作身份，不推断完整树退出；TC-02实例读取保留；status/diff取消、超时及成功结果返回中断的六组UNKNOWN核对与恢复、正常持久终态对照及人工关闭响应中断后显式重查已验；取消意图在UNKNOWN/CLOSED_UNKNOWN保留展示；取消请求响应丢失后不确定态禁止重复取消/启动并显式重查；status/diff的Windows index ACL与共享IO限制异常、结果保存中断UNKNOWN核对及正常FAILED对照恢复已验；集中交付逐Git阶段授权复核、只读readiness和恢复指引、应用层存储事务归一化/核对响应校验及历史外阻塞加载；数据库终态/审计提交前后断连、工作区/绑定失效12场景84组真实浏览器检查通过 | 其他权限范围/物理IO/其他平台异常、产品用户接受、其他工具与进程接管；不按PID跨重启接管。见[Git调用合同](decisions/agent-runtime-evolution.md#git-operation-executions) |
-| 插件/场景 | PL-01看板生命周期；PL-02设计器贡献/实例恢复草稿/版本保留/独立激活错误；SC-03可信必需/可选依赖、实际Host阻断、服务修复重查和场景副本保存，7组真实整链已验 | 用户接受、发布断连治理、完整真实模型源码交付及外部安装独立；不建立第二状态机或兼容轨道 |
-| 开发契约 | 已排查五组非需求兼容/重复入口收敛；前后端、内置专家/SDK及V30统一契约，真实设计器和HTTP/JDBC/Git验证 | 显式处理日常库1条非语义原型后再执行V30及正式宿主验收；不恢复旧语义 |
+| 插件/场景 | PL-01看板生命周期；PL-02设计器贡献/实例恢复草稿/版本保留/独立激活错误；SC-03可信必需/可选依赖、实际Host阻断、服务修复重查和场景副本保存，7组真实整链已验 | 发布断连持久身份/显式核对/原内容重试已实链；用户接受、完整真实模型源码交付及外部安装独立；不建立第二状态机或兼容轨道 |
+| 开发契约 | 已排查五组非需求兼容/重复入口收敛；前后端、内置专家/SDK及V30统一契约，真实设计器和HTTP/JDBC/Git验证 | 日常库旧原型及引用已处理，正式V30/V31和31份迁移校验通过；不恢复旧语义或无身份发布 |
 | 桌面发行 | Electron安全preload壳、bootstrap引导脚手架 | Windows sidecar、一体启停/迁移、安装包验证；签名另需发行决定与凭据 |
 
 ## 推进顺序与门禁

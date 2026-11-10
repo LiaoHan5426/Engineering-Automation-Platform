@@ -1,22 +1,41 @@
 # 规划状态与验收台账
 
-> 本批提交阶段：按用户要求提交PL-02/SC-03与五组单一契约收敛，沿用仓库已记录的测试结果，不重复测试；提交前仅复核差异、UTF-8、链接和敏感模式。日常库V30迁移及正式full验证在提交推送后继续，尚不计入本批通过。
+> 本批提交推送已完成：`1ce0c4bfd4a68d6ff1c969839cc99f476f2df69c`（179文件），HEAD/origin/main/远端main一致。提交沿用已有测试，未重复测试。接续已处理开发库唯一非语义原型及引用，正式full-application完成V30、V31迁移和真实整链；发布响应丢失治理及正式宿主证据随本次提交交付；本次提交沿用已记录验证结果，不重复测试，不保留旧无身份发布兼容分支。实际提交及推送状态以Git回读为准。
 
-依据：v1.6当前合同及有效决策。已提交实现基线为 `fe08a99`（2026-11-10，已推送）；提交阶段沿用PL-01已有测试结果，未重复测试。本批PL-02/SC-03新增前后端与证据尚未提交。开发阶段演进规则以根[AGENTS.md](../AGENTS.md#development-evolution)为准；已排查五组收敛及正式库迁移限制见[本批验收](#single-contract-validation)，首次排查保留为历史快照。
+依据：v1.6当前合同及有效决策。已提交实现基线为 `1ce0c4b`（2026-11-10，179文件已推送）；提交沿用已有测试结果，未重复测试。发布请求身份、恢复核对及正式宿主证据随本次提交交付；提交阶段沿用已有测试，未重跑。开发阶段演进规则以根[AGENTS.md](../AGENTS.md#development-evolution)为准；已排查五组收敛及正式库迁移限制见[本批验收](#single-contract-validation)，首次排查保留为历史快照。
 
 本表跟踪完整范围，不因局部阶段完成把其他项关闭。`实现通过`仅限列明能力，用户人工接受、供应商与平台验收不能由代理或 Mock 替代。
 
 ## 当前基线与完成口径
 
-当前已提交实现基线：`fe08a99afa53d120edb6f4497cda94228555621a`；PL-01的34文件已提交推送，HEAD/origin/main/远端main一致；以下新增为继续开发工作区。历史阶段数字与授权保留在主题记录，不作为新代码的全量重测结果。
+当前已提交实现基线：`1ce0c4bfd4a68d6ff1c969839cc99f476f2df69c`；PL-02/SC-03与五组收敛179文件已提交推送，HEAD/origin/main/远端main一致；发布响应恢复随本次提交交付；提交后基线以Git回读为准。历史阶段数字与授权保留在主题记录，不作为新代码的全量重测结果。
 
 <a id="validation-baseline"></a>
 
+<a id="publication-recovery-validation"></a>
+
+### 正式开发库迁移与发布响应恢复（2026-11-10，接续1ce0c4b，随本次提交交付）
+
+[实现、失败过程及命令](records/architecture-history.md#publication-recovery)；[正式V30页面结果](../frontend/apps/web/__tests__/browser/artifacts/full-current-contract/result.json)；[V31恢复整链](../frontend/apps/web/__tests__/browser/artifacts/prototype-publication-recovery/result.json)；[独立数据库回读](../frontend/apps/web/__tests__/browser/artifacts/prototype-publication-recovery/database-verification.json)。
+
+| 范围 | 本批实际结果 | 边界 |
+|---|---|---|
+| 提交推送 | 原179文件提交1ce0c4b，HEAD/origin/main/远端main一致；差异、UTF-8、链接和有限敏感模式通过 | 本次发布恢复随提交交付，沿用下列已记录结果；仅复核差异、编码、链接与敏感模式，不重跑测试 |
+| 旧原型处置 | 唯一非语义版本6b8dcc1f…备份后删除；旧测试Run快照删除1行，任务清关联并revision 2→3；原SUCCEEDED执行保留；其他表数量/摘要不变 | 仅该记录及两处引用，未清库/重置；原始备份留忽略的backend/target/development-v30-transition |
+| 正式迁移 | 正式Boot jar执行V30 checksum=-1792803472、V31 checksum=-2146259443；31份Flyway validate通过，原记录/快照引用0 | 无clean/repair/baseline；V31为合规版本一次性分配request_id，不改正文/hash/创建时间，不恢复旧语义 |
+| 正式V30整链 | 5组：真实生产App设计/HTTP发布/JDBC回读/交互预览、停用刷新重启草稿及版本保留、场景依赖、真实Git status/diff幂等及旧URL404、固定SQL专家 | 正式main与真实应用库，无测试Host/模型替身；SQL明确不增强模型；0pageerror/0外呼；不是用户人工接受 |
+| 发布唯一契约 | requestId必填；唯一索引与冲突回读确保同身份同内容同版本，异内容409；GET publication只读核对，不存在404，缺身份400；同步client/Mock/全部调用方 | 不保留旧无身份入口/默认ID；显式新身份仍可发布新版本 |
+| 前端恢复 | 按A/B持久保存冻结请求，发请求前存储读回；未知时阻止新发布/停用/替换文档；刷新不重发，显式查到原版本或404后显式原内容重试，后续编辑保留 | 浏览器本地证据不是服务器第二份发布状态；损坏/不可写存储阻塞并提示，不自动丢弃 |
+| 新增定向 | 后端2类6项通过/0跳过；前端3文件9项通过；12个TS/Vue格式和lint、1个Vue stylelint、typecheck/architecture/build通过 | 不重跑旧260/250等集合；build仍有大chunk提示；其他旧测试仅同步当前必填签名并编译 |
+| V31真实整链 | 3组：提交响应丢失→刷新→显式查询；发送前中断→404→保留新编辑的原请求重试；12并发同身份唯一版本、冲突409/缺身份400/GET不写；JDBC逐身份仅1行、原版本hash不变 | 断网由浏览器拦截控制，后端为真实正式服务/JDBC；0pageerror/0外呼；保留脚本失败过程 |
+| 当前宿主 | 真正com.lh.eap.EapApplication可执行jar，PID36288，8080 health=200，EAP_WORKSPACE/EAP_AUTHORIZED_ROOT明确绑定本仓库 | JVM启动参数无测试故障注入；本地进程/日志留backend/target/full-application-live；不是IDEA调试启动 |
+| 未关闭项 | 真实模型源码交付、完整页面交付及用户产品接受仍独立 | 下一批按既有PREBOUND/候选/受控应用/独立验证/人工决定集中推进，不新增兼容路径 |
+
 <a id="single-contract-validation"></a>
 
-### 五组非需求双轨集中收敛（2026-11-10，未提交）
+### 五组非需求双轨集中收敛（2026-11-10，已提交推送1ce0c4b）
 
-[实现记录与失败边界](records/architecture-history.md#single-contract-convergence)；[机器证据及截图](../frontend/apps/web/__tests__/browser/artifacts/single-contract-convergence/result.json)。当前源码保留既有PL-02/SC-03工作，不提交推送。
+[实现记录与失败边界](records/architecture-history.md#single-contract-convergence)；[机器证据及截图](../frontend/apps/web/__tests__/browser/artifacts/single-contract-convergence/result.json)。该批与PL-02/SC-03已提交推送；下列旧测试结果沿用，当前正式库接续见上表。
 
 | 范围 | 实现与实际验证 | 剩余边界 |
 |---|---|---|
@@ -28,7 +47,7 @@
 | 后端定向 | 多组成功结果按类去重42报告288项：260通过、28环境门控跳过，0失败/错误；模块clean/test-compile与最小/完整组合通过 | 不是一次全量reactor结果；28项旧实库门控未启用，新持久合同由独立schema真实整链验证 |
 | 前端定向 | 39文件250项通过；SDK与简化model另2文件4项通过（model重叠）；56个TS/Vue格式和lint、3个相关Vue样式检查通过；typecheck/architecture/build通过；末次Schema/SDK两文件9项通过（重叠） | 不累加重叠集合；构建保留大chunk提示；原有全量/无关页面stylelint未重跑 |
 | 真实整链 | SingleContractAcceptanceTest与DesignerLifecycleAcceptanceTest共2项通过/0跳过；真实V1～V30 Flyway/PostgreSQL/HTTP/Git，以及7组Chromium/GrapesJS检查；原Git索引/文件、应用记录保持，独立schema/宿主/浏览器清理 | 临时宿主使用生产controller/service/store与无模型测试组合；响应延迟、关系改名、Host激活失败为测试控制；没有模型/源码写入 |
-| 日常库预检 | 只读确认V29、旧CLI键0、非规范自定义专家0、非语义原型1；migrationReady=false | **没有对日常库执行V30或删除该版本**；部署前须显式处理这条旧记录，不保留运行回退 |
+| 日常库预检（迁移前历史） | 当时V29、非语义原型1，migrationReady=false | 已按本次授权备份并清理精确引用，正式宿主成功迁移V30及V31；当前结果见上表 |
 
 <a id="development-dual-path-validation"></a>
 
@@ -45,7 +64,7 @@
 | 文件检查 | 变更文本UTF-8无BOM、Markdown本地链接/锚点及git diff --check核对 | 规则和审计不代表所有遗留已消除；没有提交、推送或修改数据库 |
 
 <a id="designer-scenario-validation"></a>
-### PL-02 / SC-03 设计器贡献与场景依赖原阶段证据（2026-11-10，接续fe08a99，未提交）
+### PL-02 / SC-03 设计器贡献与场景依赖原阶段证据（2026-11-10，历史快照；后随1ce0c4b提交）
 
 以下为V30收敛之前的PL-02阶段证据；“无迁移/LIKE三表/56文件”等仅代表当时快照。当前迁移、夹具与实际结果以上述五组收敛表为准。结果与截图见[摘要](../frontend/apps/web/__tests__/browser/artifacts/designer-scenario-lifecycle/result.json)，实现/失败/命令见[主题记录](records/frontend-history.md#designer-scenario-lifecycle)。
 
@@ -290,7 +309,7 @@
 | MCP-01 / P0 | 保留四传输/矩阵/续传；2026-11-08增加固定read_graph Handler、持久专家grant、精确服务器匹配、环境白名单、有界IO/进程树清理；真实子进程协议夹具覆盖 | 官方memory包通过Expert入口的本机实网验收、常驻GET listen待验；运行时npx离线且拒绝自动安装 |
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理；本轮真实本地知识导入/搜索/授权预览/无授权403/删除一致性通过，检索无模型；复杂SQL修复parse.partial与NOT IN NULL规则，四组合成结果验证通过，见[知识与本地执行边界](decisions/knowledge-local-execution.md) | 文档正文版本更新、检索质量评测、完整SQL作用域/生产数据与性能验证、CLI生命周期回归；不扩第二套执行器 |
 | PL-01 / P0 看板插件首片 | **限定生命周期实现通过**：board启停/回滚/sticky；项目聚合Task/Run与验证/写入在途/未知只读观测、失败旧快照、在途停用确认及重新启用；实际Git后台完成和原Task/Run恢复已验 | 验证/写入/UNKNOWN投影由持久夹具证明；全服务健康与用户接受独立；PL-02/SC-03见本批记录；外部安装独立 |
-| PL-02 / P1 设计器插件 | **限定实现及整链通过**：可信贡献依赖/启停/激活隔离、A/B实例恢复草稿和本地版本隔离、发布中拒绝停用、停用/刷新/重建恢复、原服务器版本保持；不读旧全局数据或合成占位保存 | 本地恢复与服务器版本分离；用户接受、发布响应丢失的进一步治理、外部安装/任意JS隔离独立 |
+| PL-02 / P1 设计器插件 | **限定实现及整链通过**：可信贡献依赖/启停/激活隔离、A/B实例恢复草稿和本地版本隔离、发布中拒绝停用、停用/刷新/重建恢复、原服务器版本保持；不读旧全局数据或合成占位保存 | 本地恢复与服务器版本分离；发布响应丢失已完成当前请求身份/核对切片；用户接受、外部安装/任意JS隔离独立 |
 | SC-03 / P1 场景组合 | **依赖切片实现及整链通过**：核心固定workflow可信依赖观测；必需设计器/版本服务/已发布版本，可选看板；实际Host及失败旧快照阻断、实库修复重查、副本workflow配置保存/读回 | 应用不安装/授权/发送/执行；完整设计→真实源码候选→应用→验证→用户接受与SC-01保存UNKNOWN删除关口独立 |
 | CE-01 / P0 上下文工程 | **部分交付**：预算观测/用量 UI/超限；历史未计量；派生清空；`COMPRESSION_NOT_ENABLED`；**该切片**：备注 Badge 呈现（`:5174` 已验） | 真实 token/压缩策略、ChatMemory 精确计量、用户产品接受；不记录敏感正文 |
 | KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；实库对照；排序质量样本；`productionSampleCases`；**该切片**：对照测口令回退 `EAP_DB_PASSWORD`/`SPRING_DATASOURCE_PASSWORD`（不写入仓库） | 实库开启 `EAP_RUN_BOARD_PERSISTENCE`+口令跑 FTS 排序对照；不足证据前不启 KR-02 |

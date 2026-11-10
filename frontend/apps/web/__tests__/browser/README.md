@@ -1,5 +1,22 @@
 # SQL Agent 浏览器视觉回归
 
+## 正式 full-application 当前契约与发布恢复
+
+两份脚本均连接开发库及真正的 `com.lh.eap.EapApplication`，会留下明确的验证版本/任务记录。先打包并启动正式 full-application（8080、授权根为本仓库），确认应用库当前 V31 和健康检查；不使用 mock 模式或测试 Host。脚本自行启动生产 App 的 Vite 5173 代理，独立浏览器存储，结束关闭自有浏览器及 Vite，保留正式后端。
+
+在 frontend 目录运行，EAP_PLAYWRIGHT_MODULE / EAP_CHROMIUM 指向已有本机安装（不自动下载）：
+
+```powershell
+rtk proxy node apps/web/__tests__/browser/full-current-contract-live.mjs
+rtk proxy node apps/web/__tests__/browser/prototype-publication-recovery-live.mjs
+```
+
+`full-current-contract-live.mjs` 的保留结果是正式 V30 下5组：设计发布/交互预览、停用重建恢复草稿、场景依赖、真实 Git status/diff、确定性 SQL 专家。当前脚本使用 runtime-client 的 V31 发布身份并要求V31，已保留结果中的 schema=30记录当时实测版本，不能据它推断当前库。按本轮要求没有为新数字重跑这5组。
+
+`prototype-publication-recovery-live.mjs` 的正式 V31 下3组结果覆盖：真实 POST 提交后丢响应、刷新无重发与显式查询；发送前中断与404后原内容/身份重试并保留新编辑；12并发同身份同版本及409/400拒绝、GET不写。首次已提交请求写入本主题 committed-checkpoint.json，脚本修正后复用并恢复该意图，不重复创建丢响应版本。失败过程单独保留。结果、数据库独立回读、截图及实际新请求在 `artifacts/full-current-contract/` 和 `artifacts/prototype-publication-recovery/`，原始旧数据全行备份留忽略的backend/target而不提交。
+
+0pageerror/0外呼；截图已查看。网络异常由浏览器控制，数据库为真实正式服务提交，不代表物理数据库断连或真实模型源码交付、用户人工接受。当前合同、迁移与过程见[主题记录](../../../../../docs/records/architecture-history.md#publication-recovery)。
+
 ## Git 程序与持久调用首片
 
 `tool-execution-visual.mjs` 使用真实 Chromium 与明确标记的 mock 服务，验证 Git 程序下的两个操作、共享版本探测、KeepAlive 返回、取消确认、刷新读回、1440/900/390px 视口和 UNKNOWN 阻塞。真实 Git/进程树/PostgreSQL 证据由后端测试独立提供。

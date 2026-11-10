@@ -1,0 +1,12 @@
+{
+  "message": "locator.click: Error: strict mode violation: locator('[data-testid=version-preview] [data-testid=semantic-preview] button') resolved to 2 elements:\n    1) <button type=\"button\" data-v-7cf41b97=\"\" class=\"eap-button eap-button--secondary eap-button--sm\">Action</button> aka getByRole('button', { name: 'Action' }).first()\n    2) <button type=\"button\" data-v-7cf41b97=\"\" class=\"eap-button eap-button--secondary eap-button--sm\">Action</button> aka getByRole('button', { name: 'Action' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=version-preview] [data-testid=semantic-preview] button')\u001b[22m\n",
+  "checks": [],
+  "errors": [],
+  "external": [],
+  "mutations": [
+    {
+      "method": "POST",
+      "path": "/api/prototype-versions"
+    }
+  ]
+}

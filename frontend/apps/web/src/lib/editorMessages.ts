@@ -1,5 +1,13 @@
 export const editorMessages = {
   'zh-CN': {
+    publicationUnknown:
+      '上次发布结果尚未确认。请先核对；不会自动重发或创建另一版本，当前编辑仍保留。',
+    publicationAbsent: '当前未查询到该发布请求。可明确重试原请求；重试使用原内容和同一请求身份。',
+    publicationStorageFailed:
+      '发布核对记录无法可靠读写。已阻止新发布及停用，请恢复浏览器存储后核对。',
+    publicationIdentity: '待核对发布：{title} · {id}',
+    publicationCheck: '核对发布结果',
+    publicationRetry: '按原内容重试发布',
     resources: '资源',
     properties: '属性',
     resize: '调整编辑分栏',
@@ -45,6 +53,15 @@ export const editorMessages = {
     agentResources: '资料引用',
   },
   'en-US': {
+    publicationUnknown:
+      'The last publication is unconfirmed. Check it first; no automatic replay or new version. Current edits are retained.',
+    publicationAbsent:
+      'This request is currently absent. You may explicitly retry its original content with the same identity.',
+    publicationStorageFailed:
+      'Publication evidence cannot be stored reliably. New publication and disable are blocked until storage is restored.',
+    publicationIdentity: 'Unconfirmed publication: {title} · {id}',
+    publicationCheck: 'Check publication result',
+    publicationRetry: 'Retry original publication',
     resources: 'Resources',
     properties: 'Properties',
     resize: 'Resize editor panes',

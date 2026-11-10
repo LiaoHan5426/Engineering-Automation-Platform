@@ -36,14 +36,14 @@ afterEach(() => {
   localStorage.clear()
 })
 it('publishes into the actual Builder instance rather than always alpha', async () => {
-  const save = vi.spyOn(runtimeApi, 'savePrototypeVersion').mockResolvedValue({
+  const save = vi.spyOn(runtimeApi, 'savePrototypeVersion').mockImplementation(async (request) => ({
     id: 'beta-design',
-    sourceRef: 'builder-beta',
+    ...request,
     title: 'Design',
     body: '',
     acceptance: [],
     contentHash: 'hash',
-  })
+  }))
   const published = vi.fn()
   root = document.createElement('div')
   document.body.append(root)

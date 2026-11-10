@@ -63,7 +63,7 @@ class PrototypeDeliveryAcceptanceTest {
                         handoff, "自建交接摘要");
                 var before = jdbc.queryForObject("SELECT count(*) FROM eap.handoff", Integer.class);
                 var summary = jdbc.queryForObject("SELECT summary FROM eap.handoff WHERE id = ?", String.class, handoff);
-                var first = service.save("builder-alpha", " 验收标题 \r\n", com.lh.eap.application.service.SemanticPrototypeFixture.body( "验收正文"), java.util.List.of("看标题"));
+                var first = service.save(java.util.UUID.randomUUID(),"builder-alpha", " 验收标题 \r\n", com.lh.eap.application.service.SemanticPrototypeFixture.body( "验收正文"), java.util.List.of("看标题"));
                 var reopened = service.find(first.id());
                 assertEquals(first.contentHash(), reopened.contentHash());
                 assertEquals(first.title(), reopened.title());
@@ -72,7 +72,7 @@ class PrototypeDeliveryAcceptanceTest {
                 assertEquals(first.acceptance(), reopened.acceptance());
                 assertEquals(reopened.contentHash(), PrototypeCanonical.of(reopened.sourceRef(), reopened.title(), reopened.body(), reopened.acceptance()).hash());
 
-                var second = service.save("builder-alpha", "验收标题", com.lh.eap.application.service.SemanticPrototypeFixture.body( "另一段正文"), java.util.List.of("看标题"));
+                var second = service.save(java.util.UUID.randomUUID(),"builder-alpha", "验收标题", com.lh.eap.application.service.SemanticPrototypeFixture.body( "另一段正文"), java.util.List.of("看标题"));
                 var still = service.find(first.id());
                 assertEquals(first.contentHash(), still.contentHash());
                 assertEquals("验收正文", still.body());

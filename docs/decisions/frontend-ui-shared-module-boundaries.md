@@ -71,7 +71,7 @@ apps/web/src
 | ActionCard / DropdownMenu / SvgActionPath | `packages/ui/src/action-card`、`dropdown-menu`、`svg-action-path` | 已落地 `@eap/ui`；共享主/次操作隔离、菜单键盘/定位、SVG 操作无障碍 | 领域回调、图数据仍在应用 |
 | 浮层定位 / 关闭 / 焦点 | `packages/ui/src/popover`、`dropdown-menu`，内部 Reka | 已从 DesktopNavigation、ChatWorkspace、TaskComposer 移出通用行为；删除私有 popupPlacement | 保持公共契约，无领域数据，不新建平行包 |
 | PluginSlot | `features/plugins`；聊天页由 `App.vue` 以 `chatView` 注入，避免插件 feature 引用聊天 `.vue` | `@eap/plugin-sdk` + runtime | 用户批准插件迁移切片后 |
-| 原型版本内容展示 | `components/PrototypeVersionContent.vue`；解析与语义节点留 `features/shell` 原型域 | Builder 与任务/Run 共用语义预览；旧文本版本兼容，未知映射明确阻塞；不是基础 UI | 第二宿主复用完整原型域时再迁 `@eap/prototype-*` |
+| 原型版本内容展示 | `components/PrototypeVersionContent.vue`；解析与语义节点留 `features/shell` 原型域 | Builder 与任务/Run 共用语义预览；只接受语义版本，未知映射明确阻塞；不是基础 UI | 第二宿主复用完整原型域时再迁 `@eap/prototype-*` |
 | 候选文件Diff | `components/ProposalDiffView.vue`，Chat与专家审批共用 | 应用层只读候选展示，复用现有Monaco/文本降级，销毁前先解除模型绑定；审批状态/API留各feature | 第二宿主复用候选交付合同再抽包，不新增平行Diff或基础UI包 |
 | 场景原型工作面 | `features/ScenarioWorkspace.vue` 只组装版本选择与开发准备，设计器经既有 Builder 入口打开 | 不再复制挂载 LayoutDraft/GrapesJS；场景返回状态留应用层 | 无新增共享包 |
 
@@ -223,3 +223,5 @@ apps/web/src
 2026-11-08专家分层接续：导航/状态/分类配置仍属L4 expert，原编辑器拆为ExpertEditor，复用现有Tabs、Panel、ActionCard、表单及ConfirmBox；无新增共享类别/暂存包。基础控件门禁、专家样式、类型、组件与Chromium回归通过；见[专家界面记录](expert-workspace-navigation.md)。
 
 任务详情接续：ExpertTaskInspector为L4专家域只读组合，复用@eap/ui Drawer/Descriptions/Collapse；无新共享类别，主页面保留目标/结果，输入、引用摘录和技术信息按需查看。
+
+2026-11-10发布恢复接续：核对面板复用@eap/ui Feedback/Button，冻结请求和浏览器恢复证据留L4 features/shell/prototypePublication.ts，API合同由@eap/runtime-client公开；无新共享类别或包。格式/lint/stylelint/typecheck/architecture及正式Chromium恢复整链通过，见[当前验收](../planning-status.md#publication-recovery-validation)。

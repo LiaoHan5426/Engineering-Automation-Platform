@@ -7,6 +7,7 @@ import java.util.UUID;
 /** Stored canonical content. There is no update operation. */
 public record PrototypeVersion(
         UUID id,
+        UUID requestId,
         String sourceRef,
         String title,
         String body,

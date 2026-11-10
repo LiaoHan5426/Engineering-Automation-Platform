@@ -9,5 +9,7 @@ public interface PrototypeVersionStore {
 
     Optional<PrototypeVersion> find(UUID id);
 
+    Optional<PrototypeVersion> request(UUID requestId);
+
     List<PrototypeVersion> list(String sourceRef);
 }

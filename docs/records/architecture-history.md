@@ -4,7 +4,7 @@
 
 当前后端由api、engine、ai、web、spring及applications组成，唯一Boot宿主为eap-applications/eap-full-application；库模块不得反向依赖宿主，engine不得依赖ai/web。当前结构以[架构](../architecture.md)和[模块布局](../module-layout.md)为准。下文8e020d5的五模块拆分、652项回归及19份迁移均为历史快照，不代表当前结构、IDEA实际重启或完整产品验收。
 
-2026-11-10完成[开发阶段规则排查](#development-dual-path-audit)及[五组集中收敛](#single-contract-convergence)：两处小遗留与五组兼容/重复入口均已清理，V30独立Flyway/数据库/HTTP/Git及设计器真实整链通过。日常库只读预检为V29、有1条非语义原型，尚未对日常库迁移或删数据；具体边界见下。
+2026-11-10完成[开发阶段规则排查](#development-dual-path-audit)及[五组集中收敛](#single-contract-convergence)：两处小遗留与五组兼容/重复入口均已清理，V30独立Flyway/数据库/HTTP/Git及设计器真实整链通过。该179文件已提交推送1ce0c4b。日常库旧非语义原型及测试引用已按本次授权备份处置，正式full完成V30/V31与生产页面整链；新增发布响应丢失核对随本次提交交付，沿用已有验证且不重复测试，见[当前接续](#publication-recovery)。
 
 以下按主题合并完整阶段记录，日期保留在记录中而不再作为文件名。记录中的“本轮/未提交/下一步”和测试数字仅代表当时快照；不得覆盖上面的当前结论、有效产品合同或用户授权。原文完整保留（只调整标题层级、锚点及链接），后续更新本总览，不另建日期报告。
 
@@ -17,11 +17,51 @@
 
 ---
 
+<a id="publication-recovery"></a>
+
+## 正式开发库V30/V31与发布响应丢失恢复（2026-11-10）
+
+### 提交推送与精确数据处置
+
+原PL-02/SC-03及五组收敛共179文件提交 `1ce0c4bfd4a68d6ff1c969839cc99f476f2df69c`，已推送origin/main；提交后核对HEAD/origin/main/远端main一致。按用户要求沿用此前已记录测试，不重复测试；提交阶段只检查差异/UTF-8/链接及有限敏感模式。以下发布恢复代码及证据随本次提交交付；按本次明确授权沿用已记录测试结果，提交前只核对差异、文档、编码、链接和敏感模式，不重复测试。
+
+迁移前遍历eap schema内uuid/text/varchar/json/jsonb列，只命中非语义原型 `6b8dcc1f-ba23-4ef8-b9a2-236067c06f3e`（builder-alpha，24字符，hash c51b54128d34ef654ea47cdabc57e6a5682967b9c65f00cd74e0e3c4baf5401b）及两处引用：旧测试任务 `5b71f0a4-639a-4401-bbba-ddae6369ce07` 的prototype_version_id，旧Run `3350dce7-7c4e-473a-9f86-4d425d0a0a7f` 的task_snapshot。任务属board-run-test项目，Run的Mission已SUCCEEDED，无验证/交付快照、无prototype_delivery/codegen引用，也无指向该Run的FK。
+
+原型/任务/Run全行先备份到忽略的 `backend/target/development-v30-transition/`，原始业务全行不进入Git。随后一个精确事务按ID/hash/revision及状态断言：删1行旧测试Run快照、任务清prototype_version_id且revision 2→3、删1行旧原型；保留任务和原SUCCEEDED Mission，其他表数量/摘要不变。摘要见[data-disposition](../../frontend/apps/web/__tests__/browser/artifacts/full-current-contract/data-disposition.json)及[V30回读](../../frontend/apps/web/__tests__/browser/artifacts/full-current-contract/migration-verification.json)。首轮误用不存在的task.updated_at字段导致事务完整回滚，修正后成功；未发生半清理。单独Flyway.validate在V30 pending时拒绝，未repair/baseline/ignore，最终由真正Boot正常迁移。
+
+### 正式宿主与V30五组实链
+
+Maven `package -DskipTests` 打包真正可执行 `eap-full-application-0.1.0-SNAPSHOT.jar`，以main `com.lh.eap.EapApplication` 启动；显式EAP_WORKSPACE/EAP_AUTHORIZED_ROOT为当前仓库，端口8080，不使用测试Host或假模型装配。V30正式checksum=-1792803472。Chromium打开生产App（Vite 5173代理8080），完成5组：GrapesJS编辑/HTTP持久发布/回读/交互预览；真实PluginCenter停用/刷新/启用恢复未发布草稿且原版本不变；场景读取真实版本依赖；真实仓库Git status/diff持久执行及同requestId回读、旧invoke404；内置SQL固定专家显式不增强模型执行并保存sql-analysis/v1。
+
+0pageerror、0外呼。留下语义版本 `054ce698-6231-4d3d-a8cc-a3d71c629ca6` 和SQL任务 `c8cb6772-6fbb-4922-bcd0-61264a05a22b`，不伪称全库没有变化。[结果/请求](../../frontend/apps/web/__tests__/browser/artifacts/full-current-contract/result.json)、[截图](../../frontend/apps/web/__tests__/browser/artifacts/full-current-contract/designer-restored.png)。初次脚本发布成功后多按钮selector strict失败，修正首个语义按钮并复用已有版本，不再次发布；失败证据保留。
+
+### 发布恢复唯一契约与V31
+
+原POST每次新建版本，提交后响应丢失无法判断是否成功。当前新增：客户端UUID requestId必填；PrototypeVersion/Store/Service、HTTP、runtime-client、Mock及全部当前调用方同步。JDBC以request_id唯一约束和ON CONFLICT DO NOTHING回读权威版本；同身份同规范内容返回同版本，同身份异内容409 PUBLICATION_REQUEST_CONTENT_CONFLICT。GET /api/prototype-publications/{requestId}只读核对，不存在404，缺请求身份400。没有旧无身份入口、服务重载或运行时自动身份分配。
+
+V31增加request_id NOT NULL UNIQUE。迁移只对已有合规语义版本一次性gen_random_uuid，随后删除DEFAULT；body/hash/created_at不改，不恢复旧数据。正式full重建时跳过测试，核对自有PID和jar command line后停止自己启动的V30进程，再启动真正main。V31 checksum=-2146259443，31份Flyway validate通过。当前PID36288，8080健康200；进程记录和日志在忽略的backend/target/full-application-live，不泄露连接凭据。
+
+前端发布前按实例写入并读回冻结请求；丢响应保留unknown，不自动重发/清理。未知阻止新发布、替换文档和停用，刷新及离页恢复同一请求。显式查询成功清理本地意图；只有404显示原请求明确重试，重试不替换已冻结正文，不覆盖后续草稿编辑。损坏或不能可靠写入的存储保留阻塞并提示。A/B key独立，未建立另一套服务器状态机；Feedback/Button复用@eap/ui，领域恢复仍属features/shell，公共HTTP类型属runtime-client，无新共享包。
+
+### 本批新验证与失败过程
+
+| 检查 | 实际命令与结果 |
+|---|---|
+| 后端新定向 | `rtk proxy mvn -f backend/pom.xml -pl :eap-full-application -am test '-Dtest=PrototypePublicationServiceTest,PrototypeVersionControllerTest' '-Dsurefire.failIfNoSpecifiedTests=false'`：5+1=6项通过、0跳过，覆盖响应丢失查询、冲突、16线程请求同版本、缺身份/不存在只读、新身份新版本；[摘要](../../frontend/apps/web/__tests__/browser/artifacts/prototype-publication-recovery/backend-regression.json) |
+| 前端新定向 | `rtk proxy pnpm --dir frontend exec vp test run apps/web/__tests__/features/shell/prototypePublication.test.ts apps/web/__tests__/features/shell/GrapesEditor.publicationRecovery.test.ts apps/web/__tests__/features/shell/GrapesEditor.publish.test.ts`：3文件9项通过；覆盖存储校验/隔离、重挂载、503继续未知、身份不匹配、原内容重试及后续编辑 |
+| 工程门禁 | 当前12个受影响TS/Vue及2份浏览器脚本格式和lint通过，GrapesEditorScaffold stylelint、typecheck、check:architecture、build通过；build保留大chunk提示。旧完整集合未重跑；其余测试必填签名同步并由skipTests打包阶段编译 |
+| 新正式实链 | 真实正式full/JDBC与生产App下3组：route.fetch让数据库提交后abort响应→待核对/停用阻止→刷新不自动POST→查询找回同版本；发送前abort→GET404→修改新草稿→原身份/内容明确重试；12并发真实HTTP同版本、异内容409/缺身份400/GET404不写，既有hash保持 |
+| 数据库独立回读 | request_id无默认、非空、唯一，无重复身份；3个实链requestId各1行且ID/hash匹配，V30发布ID/hash保持，旧非语义原型和旧快照引用0；[证据](../../frontend/apps/web/__tests__/browser/artifacts/prototype-publication-recovery/database-verification.json) |
+
+[3组结果](../../frontend/apps/web/__tests__/browser/artifacts/prototype-publication-recovery/result.json)及[恢复后新草稿截图](../../frontend/apps/web/__tests__/browser/artifacts/prototype-publication-recovery/recovered-draft.png)已查看。0pageerror/0外呼，数据新增3个语义发布版本（含12并发仅1行），不是Mock写入。断连由浏览器路由控制，后端事务/数据库未替身。脚本初轮遇默认启用状态未落localStorage及双实例selector strict、添加组件后自动切属性面板的定位问题；修正定位并用committed-checkpoint复用首次已提交版本，没有以再次发布掩盖丢响应。failure.json/png保留末次失败，未发送成功的旧requestId没有落库。
+
+真实PluginCenter现有局部i18n scope产生root fallback warning，但无pageerror、中文最终可见；此项和构建大chunk不伪称已修复。没有再次运行此前260/250等旧套件，未调用外部模型/Agent/MCP，未做源码生成/写入、人工产品接受或跨平台故障穷举。下一完整批按既有PREBOUND→候选→受控应用→独立验证→人工决定推进实际页面交付，不新增兼容机制。
+
 <a id="single-contract-convergence"></a>
 
-## 五组非需求双轨集中收敛与V30整链（2026-11-10，未提交）
+## 五组非需求双轨集中收敛与V30整链（2026-11-10，阶段快照；已随1ce0c4b提交）
 
-本轮授权集中完成此前五组排查，保留工作区PL-02/SC-03未提交改动。规则以根[AGENTS](../../AGENTS.md#development-evolution)为准。结果与截图见[机器证据](../../frontend/apps/web/__tests__/browser/artifacts/single-contract-convergence/result.json)，完整当前验收行见[台账](../planning-status.md#single-contract-validation)。未提交推送。
+本轮授权集中完成此前五组排查，保留工作区PL-02/SC-03未提交改动。规则以根[AGENTS](../../AGENTS.md#development-evolution)为准。结果与截图见[机器证据](../../frontend/apps/web/__tests__/browser/artifacts/single-contract-convergence/result.json)，完整当前验收行见[台账](../planning-status.md#single-contract-validation)。原阶段结论保留；本次已随179文件提交推送，当前开发库与正式宿主接续见上。
 
 ### 单一契约与删除范围
 

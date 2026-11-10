@@ -14,7 +14,7 @@ class CurrentContractPreflightTest {
         var result=new LinkedHashMap<String,Object>();
         result.put("readOnly",true);
         result.put("schemaVersion",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1",String.class));
-        result.put("cliOperationOrUnregisteredKeys",jdbc.queryForObject("SELECT count(*) FROM eap.cli_channel c WHERE NOT EXISTS (SELECT 1 FROM eap.cli_program p WHERE p.id=c.capability)",Integer.class));
+        result.put("cliOperationOrUnregisteredKeys",jdbc.queryForObject("SELECT count(*) FROM eap.cli_channel c WHERE NOT EXISTS (SELECT 1 FROM eap.cli_program p WHERE p.id=c.program_id)",Integer.class));
         int missing=0;for(var row:jdbc.queryForList("SELECT id,builtin,manifest::text AS manifest FROM eap.expert_definition")) {
             if(Boolean.TRUE.equals(row.get("builtin"))&&"sql-expert".equals(row.get("id")))continue;
             try {com.lh.eap.domain.model.ExpertManifest.parse((String)row.get("manifest"));}catch(RuntimeException invalid){missing++;}

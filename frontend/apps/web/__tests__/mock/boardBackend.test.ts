@@ -285,6 +285,7 @@ it('links only existing saved versions with project and revision checks', async 
   const api = createMockChatBackend()
   const version = (
     await api.handle('POST', '/prototype-versions', {
+      requestId: randomUUID(),
       sourceRef: 'builder-alpha',
       title: 'design',
       body: JSON.stringify({

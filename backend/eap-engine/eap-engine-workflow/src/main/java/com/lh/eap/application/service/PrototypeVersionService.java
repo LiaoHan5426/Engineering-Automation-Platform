@@ -20,12 +20,20 @@ public class PrototypeVersionService implements com.lh.eap.delivery.PrototypeVer
         this.deliveries = deliveries;
     }
 
-    public PrototypeVersion save(String sourceRef, String title, String body, List<String> acceptance) {
+    public PrototypeVersion save(UUID requestId, String sourceRef, String title, String body, List<String> acceptance) {
+        if (requestId == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PUBLICATION_REQUEST_ID_REQUIRED");
         var content = PrototypeCanonical.of(sourceRef, title, body, acceptance);
-        var version = new PrototypeVersion(UUID.randomUUID(), content.sourceRef(), content.title(), content.body(),
+        var version = new PrototypeVersion(UUID.randomUUID(), requestId, content.sourceRef(), content.title(), content.body(),
                 content.acceptance(), content.hash(), Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         versions.insert(version);
-        return version;
+        var stored = publication(requestId);
+        if (!stored.contentHash().equals(content.hash()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "PUBLICATION_REQUEST_CONTENT_CONFLICT");
+        return stored;
+    }
+
+    public PrototypeVersion publication(UUID requestId) {
+        return versions.request(requestId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PUBLICATION_NOT_FOUND"));
     }
 
     @Override
