@@ -33,7 +33,7 @@ class CodeGenerationPersistenceTest {
         jdbc = new JdbcTemplate(dataSource);
         var manager = new DataSourceTransactionManager(dataSource);
         var store = new JdbcCodeGenerationStore(jdbc, manager);
-        var service = new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, root.toString(), ""), null, null, store);
+        var service = new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, root.toString()), null, null, store);
         Files.writeString(root.resolve("Page.vue"), "<template>persistent baseline</template>");
         var conversation = UUID.randomUUID();
         var transaction = new TransactionTemplate(manager);

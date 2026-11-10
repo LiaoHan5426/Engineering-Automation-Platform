@@ -41,8 +41,6 @@ it('publishes into the actual Builder instance rather than always alpha', async 
     sourceRef: 'builder-beta',
     title: 'Design',
     body: '',
-    buttonPresses: 0,
-    interaction: '',
     acceptance: [],
     contentHash: 'hash',
   })

@@ -1,50 +1,38 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Badge, Button, Feedback, Input, Textarea, Collapse, Tabs } from '@eap/ui'
+import { Button, Tabs } from '@eap/ui'
 import {
   runtimeApi,
-  type HandoffRecord,
-  type MissionRecord,
   type PrototypeDeliveryRecord,
   type PrototypeVersionRecord,
 } from '@eap/runtime-client'
 import { errorMessage } from '../../lib/presentation'
-import { beginHandoff, builderHandoff, handoffSucceeded } from '../handoff/handoff'
-import { beginMission, missionLocked, missionShell } from '../mission/mission'
-import PrototypePreview from './PrototypePreview.vue'
 import PrototypeVersionContent from '../../components/PrototypeVersionContent.vue'
 import { prototypeVersionDesign } from '../shell/prototypeVersionDesign'
 import { scenarioWorkspaceState } from '../shell/scenarioWorkspaceState'
-import { openVersionPreview, pressVersionPreview } from './prototypeVersion'
 import type { PluginHost } from './host'
-import { GRANTS, MANIFESTS, type BuilderConfig } from './model'
-import type { LayoutDraft as LayoutDraftRecord } from '../shell/workbench'
+import type { BuilderInstanceId } from './model'
 
-const LayoutDraft = defineAsyncComponent(() => import('../shell/LayoutDraft.vue'))
 const GrapesEditorScaffold = defineAsyncComponent(() => import('../shell/GrapesEditorScaffold.vue'))
 
 const props = withDefaults(
-  defineProps<{ instanceId: BuilderConfig['instanceId']; host: PluginHost; active?: boolean }>(),
+  defineProps<{ instanceId: BuilderInstanceId; host: PluginHost; active?: boolean }>(),
   { active: true },
 )
 const { t } = useI18n()
 const surface = ref('design')
-const designer = ref<{ guardLeave: () => boolean }>()
+const designer = ref<{ guardLeave: () => boolean; prepareDisable: () => boolean }>()
+const unregister = props.host.registerBuilderInstance(
+  `builder-${props.instanceId}`,
+  () => designer.value?.prepareDisable() ?? false,
+)
 function guardLeave() {
   const accepted = designer.value?.guardLeave() ?? true
   if (!accepted) surface.value = 'design'
   return accepted
 }
 defineExpose({ guardLeave })
-const visited = reactive({ legacy: false })
-watch(surface, (next) => {
-  if (next === 'legacy' && !visited.legacy) {
-    visited.legacy = true
-    void loadHandoffs()
-    void loadMissions()
-  }
-})
 function backToScenes() {
   if (!guardLeave()) {
     surface.value = 'design'
@@ -58,159 +46,18 @@ async function publishedVersion(id: string) {
   await openVersion(id)
   surface.value = 'versions'
 }
-const draft = reactive(props.host.readBuilder(props.instanceId))
-const saved = ref(false)
-const handoffs = ref<HandoffRecord[]>([])
-const missions = ref<MissionRecord[]>([])
-const handoffNote = ref('')
-const handoffOk = ref(false)
-const handoffBusy = ref(false)
-const missionNote = ref('')
-const missionOk = ref(false)
-const missionBusy = ref(false)
-const acceptanceText = ref('')
 const versions = ref<PrototypeVersionRecord[]>([])
 const opened = ref<PrototypeVersionRecord | null>(null)
 const designBlocked = computed(
   () => !!opened.value && prototypeVersionDesign(opened.value.body).blocked,
 )
-const previewPresses = ref(0)
 const delivery = ref<PrototypeDeliveryRecord | null>(null)
-const versionBusy = ref(false)
 const deliveryBusy = ref(false)
 const versionNote = ref('')
 const versionListError = ref('')
 let openRequest = 0
 let deliveryRequest = 0
 let listRequest = 0
-const requests = MANIFESTS.find((item) => item.id === 'builder')!.requests
-
-function save() {
-  props.host.saveBuilder({ ...draft })
-  saved.value = true
-}
-
-/** Layout interaction draft is local-only; copy title/prompt into the prototype fields when useful. */
-function onLayoutSaved(layout: LayoutDraftRecord) {
-  if (layout.title?.trim()) draft.draftTitle = layout.title.trim().slice(0, 80)
-  if (layout.placeholder?.trim()) draft.draftBody = layout.placeholder.trim().slice(0, 400)
-  saved.value = false
-}
-
-function press() {
-  draft.buttonPresses += 1
-  saved.value = false
-}
-
-function approve() {
-  draft.mockApproval = 'simulated'
-  saved.value = false
-}
-
-function linkedMission(handoffId: string) {
-  return missions.value.find((item) => item.handoffId === handoffId)
-}
-
-async function loadMissions() {
-  if (typeof window === 'undefined') return
-  try {
-    const page = await runtimeApi.missions()
-    missions.value = page.items
-  } catch {
-    missions.value = []
-  }
-}
-
-async function loadHandoffs() {
-  if (typeof window === 'undefined') return
-  try {
-    const page = await runtimeApi.handoffs()
-    const sourceRef = `builder-${props.instanceId}`
-    handoffs.value = page.items.filter(
-      (item) => item.source === 'builder' && item.sourceRef === sourceRef,
-    )
-  } catch {
-    handoffs.value = []
-  }
-}
-
-async function recordHandoff() {
-  const request = builderHandoff(props.instanceId, draft.draftTitle, draft.draftBody)
-  const gate = { busy: handoffBusy.value }
-  if (!request || !beginHandoff(gate)) return
-  handoffBusy.value = true
-  handoffOk.value = false
-  handoffNote.value = ''
-  try {
-    const recorded = await runtimeApi.recordHandoff(request)
-    if (!handoffSucceeded(recorded)) {
-      handoffNote.value = t('plugin.handoffRejected')
-      return
-    }
-    handoffOk.value = true
-    handoffNote.value = t('plugin.handoffDone', recorded)
-    await loadHandoffs()
-    await loadMissions()
-  } catch (error) {
-    handoffOk.value = false
-    handoffNote.value = errorMessage(error)
-  } finally {
-    handoffBusy.value = false
-  }
-}
-
-async function readGitStatus(missionId: string) {
-  const gate = { busy: missionBusy.value }
-  if (!beginMission(gate)) return
-  missionBusy.value = true
-  missionOk.value = false
-  missionNote.value = ''
-  try {
-    const execution = await runtimeApi.startMissionGitStatus(missionId)
-    missionOk.value = execution.unconfirmedReason == null
-    missionNote.value = execution.unconfirmedReason
-      ? t('plugin.missionRunPending', {
-          id: execution.id,
-          status: execution.status,
-          reason: execution.unconfirmedReason,
-        })
-      : t('plugin.missionRunResult', {
-          id: execution.id,
-          status: execution.status,
-          exitCode: execution.exitCode ?? '',
-        })
-    await loadMissions()
-  } catch (error) {
-    missionOk.value = false
-    missionNote.value = errorMessage(error)
-  } finally {
-    missionBusy.value = false
-  }
-}
-
-async function createMission(handoffId: string) {
-  const gate = { busy: missionBusy.value }
-  if (!beginMission(gate)) return
-  missionBusy.value = true
-  missionOk.value = false
-  missionNote.value = ''
-  try {
-    const saved = await runtimeApi.createMission(handoffId)
-    if (!missionShell(saved)) {
-      missionNote.value = t('plugin.missionRejected')
-      return
-    }
-    missionOk.value = true
-    missionNote.value = t('plugin.missionShell', saved)
-    await loadMissions()
-  } catch (error) {
-    missionOk.value = false
-    missionNote.value = errorMessage(error)
-  } finally {
-    missionBusy.value = false
-  }
-}
-
 async function loadVersions() {
   if (typeof window === 'undefined') return
   const request = ++listRequest
@@ -225,27 +72,6 @@ async function loadVersions() {
   }
 }
 
-async function saveVersion() {
-  if (versionBusy.value) return
-  versionBusy.value = true
-  versionNote.value = ''
-  try {
-    const savedVersion = await runtimeApi.savePrototypeVersion({
-      sourceRef: `builder-${props.instanceId}`,
-      title: draft.draftTitle,
-      body: draft.draftBody,
-      buttonPresses: draft.buttonPresses,
-      acceptance: acceptanceText.value.split('\n'),
-    })
-    versionNote.value = savedVersion.id
-    await loadVersions()
-  } catch (error) {
-    versionNote.value = errorMessage(error)
-  } finally {
-    versionBusy.value = false
-  }
-}
-
 async function openVersion(id: string) {
   const request = ++openRequest
   deliveryRequest += 1
@@ -254,21 +80,11 @@ async function openVersion(id: string) {
     const version = await runtimeApi.prototypeVersion(id)
     if (request !== openRequest) return
     opened.value = version
-    previewPresses.value = openVersionPreview(version).presses
     delivery.value = null
   } catch (error) {
     if (request !== openRequest) return
     versionNote.value = errorMessage(error)
   }
-}
-
-function pressOpened() {
-  if (!opened.value) return
-  previewPresses.value = pressVersionPreview({
-    title: opened.value.title,
-    body: opened.value.body,
-    presses: previewPresses.value,
-  }).presses
 }
 
 function closeVersion() {
@@ -307,6 +123,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  unregister()
   openRequest += 1
   deliveryRequest += 1
   listRequest += 1
@@ -329,7 +146,6 @@ onUnmounted(() => {
       :tabs="[
         { id: 'design', label: t('builder.design'), testId: 'builder-tab-design' },
         { id: 'versions', label: t('builder.versions'), testId: 'builder-tab-versions' },
-        { id: 'legacy', label: t('builder.legacy'), testId: 'builder-tab-legacy' },
       ]"
     />
     <section
@@ -345,82 +161,6 @@ onUnmounted(() => {
         :active="props.active && surface === 'design'"
         @published="publishedVersion"
       />
-    </section>
-    <section
-      v-if="visited.legacy"
-      v-show="surface === 'legacy'"
-      :inert="surface !== 'legacy'"
-      data-testid="builder-legacy-panel"
-      :aria-label="t('builder.legacy')"
-    >
-      <p class="hint">{{ t('builder.legacyHint') }}</p>
-      <section data-testid="builder-layout-draft">
-        <LayoutDraft @saved="onLayoutSaved" />
-      </section>
-      <div class="builder-layout">
-        <form class="stack builder-editor" @submit.prevent="save">
-          <div class="section-heading">
-            <h2>{{ t('workUi.draftEditor') }}</h2>
-            <span>{{ t('workUi.localDraft') }}</span>
-          </div>
-          <p>
-            <Badge tone="warning" :label="t('plugin.mock')" />
-          </p>
-          <label>
-            {{ t('plugin.repo') }}
-            <Input
-              v-model="draft.mockRepositoryLabel"
-              data-testid="mock-repository"
-              @input="saved = false"
-            />
-          </label>
-          <label>
-            {{ t('plugin.title') }}
-            <Input v-model="draft.draftTitle" data-testid="draft-title" @input="saved = false" />
-          </label>
-          <label>
-            {{ t('plugin.body') }}
-            <Textarea
-              v-model="draft.draftBody"
-              rows="5"
-              data-testid="draft-body"
-              @input="saved = false"
-            />
-          </label>
-          <Button variant="primary" type="submit" data-testid="save-prototype">{{
-            t('plugin.save')
-          }}</Button>
-          <Feedback v-if="saved" tone="success">{{ t('plugin.saved') }}</Feedback>
-        </form>
-        <section class="preview-frame">
-          <div class="section-heading">
-            <h2>{{ t('workUi.livePreview') }}</h2>
-            <span>{{ t('workUi.vueComponent') }}</span>
-          </div>
-          <div class="preview-canvas">
-            <PrototypePreview
-              :title="draft.draftTitle"
-              :body="draft.draftBody"
-              :presses="draft.buttonPresses"
-              @press="press"
-            />
-          </div>
-          <p class="hint">{{ t('workUi.previewHint') }}</p>
-        </section>
-      </div>
-      <label>
-        {{ t('plugin.versionAcceptance') }}
-        <Textarea v-model="acceptanceText" rows="3" data-testid="version-acceptance" />
-      </label>
-      <Button
-        variant="secondary"
-        type="button"
-        data-testid="save-version"
-        :disabled="versionBusy"
-        @click="saveVersion"
-      >
-        {{ t('plugin.versionSave') }}
-      </Button>
     </section>
     <section
       v-show="surface === 'versions'"
@@ -457,15 +197,7 @@ onUnmounted(() => {
       </ul>
       <div v-if="opened" data-testid="version-preview">
         <p class="eyebrow">{{ t('plugin.versionPreview') }}</p>
-        <PrototypeVersionContent :version="opened"
-          ><template #legacy
-            ><PrototypePreview
-              :title="opened.title"
-              :body="opened.body"
-              :presses="previewPresses"
-              @press="pressOpened" /></template
-        ></PrototypeVersionContent>
-        <p data-testid="version-interaction">{{ opened.interaction }}</p>
+        <PrototypeVersionContent :version="opened" />
         <ul>
           <li v-for="item in opened.acceptance" :key="item">{{ item }}</li>
         </ul>
@@ -504,87 +236,6 @@ onUnmounted(() => {
         </p>
       </div>
     </section>
-    <Collapse v-if="visited.legacy" v-show="surface === 'legacy'" class="builder-secondary">
-      <template #summary>{{ t('workUi.simulationDetails') }}</template>
-      <p class="hint">{{ t('plugin.storage') }}</p>
-      <section class="stack task" data-testid="mock-task">
-        <p>
-          <Badge tone="warning" :label="t('plugin.mock')" />
-          <strong> {{ t('plugin.task') }}</strong>
-        </p>
-        <p class="hint">{{ t('plugin.taskBody') }}</p>
-        <p class="hint">
-          {{ t('plugin.requests') }}：{{ requests.map((item) => item.id).join('、') }}
-        </p>
-        <p class="hint">
-          {{ t('plugin.grants') }}：{{ GRANTS.length ? GRANTS.join('、') : t('plugin.noGrant') }}
-        </p>
-        <Button data-testid="mock-approve" variant="secondary" @click="approve">{{
-          t('plugin.approve')
-        }}</Button>
-        <Feedback v-if="draft.mockApproval === 'simulated'" tone="warning">{{
-          t('plugin.approved')
-        }}</Feedback>
-        <Button
-          data-testid="builder-handoff"
-          variant="secondary"
-          type="button"
-          :disabled="handoffBusy || (!draft.draftTitle.trim() && !draft.draftBody.trim())"
-          @click="recordHandoff"
-        >
-          {{ t('plugin.handoff') }}
-        </Button>
-        <p class="hint">{{ t('plugin.handoffHint') }} {{ t('plugin.handoffRepeat') }}</p>
-        <Feedback v-if="handoffNote" :tone="handoffOk ? 'info' : 'warning'">{{
-          handoffNote
-        }}</Feedback>
-        <ul v-if="handoffs.length">
-          <li v-for="item in handoffs" :key="item.id">
-            <p>{{ item.summary }} · {{ item.execution }} · {{ item.grant }}</p>
-            <Button
-              variant="secondary"
-              type="button"
-              data-testid="builder-mission"
-              :disabled="missionBusy"
-              @click="createMission(item.id)"
-            >
-              {{ t('plugin.mission') }}
-            </Button>
-            <template v-if="linkedMission(item.id) && missionLocked(linkedMission(item.id)!)">
-              <p data-testid="mission-shell">
-                {{
-                  missionShell(linkedMission(item.id)!)
-                    ? t('plugin.missionShell', linkedMission(item.id)!)
-                    : t('plugin.missionRunResult', {
-                        id: linkedMission(item.id)!.id,
-                        status: linkedMission(item.id)!.execution,
-                        exitCode: '',
-                      })
-                }}
-              </p>
-              <Button
-                variant="secondary"
-                type="button"
-                data-testid="builder-git-status"
-                :disabled="missionBusy"
-                @click="readGitStatus(linkedMission(item.id)!.id)"
-              >
-                {{ t('plugin.missionRun') }}
-              </Button>
-            </template>
-            <p v-else-if="linkedMission(item.id)">{{ t('plugin.missionRejected') }}</p>
-          </li>
-        </ul>
-        <p class="hint">{{ t('plugin.missionHint') }} {{ t('plugin.missionRepeat') }}</p>
-        <Feedback v-if="missionNote" :tone="missionOk ? 'info' : 'warning'">{{
-          missionNote
-        }}</Feedback>
-        <Button data-testid="deliver-write" variant="danger" disabled>{{
-          t('plugin.deliver')
-        }}</Button>
-        <p class="hint">{{ t('plugin.deliverDenied') }}</p>
-      </section>
-    </Collapse>
   </section>
 </template>
 
@@ -615,27 +266,9 @@ onUnmounted(() => {
   min-height: 0;
 }
 
-.builder-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
 .stack {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.stack input,
-.stack textarea {
-  display: block;
-  width: 100%;
-  margin-top: 4px;
-}
-
-.task {
-  max-width: 40rem;
 }
 </style>

@@ -1,3 +1,4 @@
+import { prototypeVersionDesign } from '../src/features/shell/prototypeVersionDesign'
 import type {
   AiConversation,
   AiMessageResult,
@@ -123,7 +124,7 @@ export function createMockChatBackend() {
   const modelBackend = createModelBackend(connections)
   const knowledgeBackend = createKnowledgeBackend()
   const skillBackend = createSkillBackend()
-  const scenarioBackend = createScenarioBackend()
+  const scenarioBackend = createScenarioBackend(() => versions.length)
   const databaseBackend = createDatabaseBackend()
   const boardBackend = createBoardBackend((id) => versions.some((version) => version.id === id))
   const effective = () =>
@@ -170,13 +171,16 @@ export function createMockChatBackend() {
         if (
           !['builder-alpha', 'builder-beta'].includes(String(body.sourceRef)) ||
           typeof body.body !== 'string' ||
-          body.body.length > 160000
+          body.body.length > 160000 ||
+          prototypeVersionDesign(body.body).blocked ||
+          Object.keys(body).some(
+            (key) => !['sourceRef', 'title', 'body', 'acceptance'].includes(key),
+          )
         )
           return result(400, { error: 'INVALID_PROTOTYPE' })
         const version = {
           ...body,
           id: randomUUID(),
-          interaction: '语义原型交互',
           contentHash: createHash('sha256').update(JSON.stringify(body)).digest('hex'),
           createdAt: new Date().toISOString(),
         }

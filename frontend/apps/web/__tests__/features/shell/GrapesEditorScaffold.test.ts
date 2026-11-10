@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createApp, h, nextTick, type App } from 'vue'
+import { createApp, h, type App } from 'vue'
 import { i18n } from '../../../src/lib/i18n'
 import { resetPrototypeSchemaForTests } from '../../../src/features/shell/prototypeSchema'
 import GrapesEditorScaffold from '../../../src/features/shell/GrapesEditorScaffold.vue'
@@ -24,7 +24,7 @@ afterEach(() => {
 })
 
 describe('grapes editor scaffold', () => {
-  it('stays honest when grapesjs is unavailable and still saves a local schema', async () => {
+  it('refuses editing and saving when the actual designer is unavailable', async () => {
     root = document.createElement('div')
     document.body.append(root)
     app = createApp({ render: () => h(GrapesEditorScaffold) })
@@ -39,12 +39,12 @@ describe('grapes editor scaffold', () => {
         /HTML\/CSS|Vue/,
       ),
     )
-    const title = root.querySelector('[data-testid=grapes-title]') as HTMLInputElement
-    title.value = 'Grapes scaffold'
-    title.dispatchEvent(new Event('input'))
-    ;(root.querySelector('[data-testid=grapes-save]') as HTMLButtonElement).click()
-    await nextTick()
-    expect(root.querySelector('[data-testid=grapes-note]')?.textContent).toMatch(/已保存|saved/i)
-    expect(localStorage.getItem('eap.prototype-schema.v1')).toContain('Grapes scaffold')
+    expect((root.querySelector('[data-testid=grapes-title]') as HTMLInputElement).disabled).toBe(
+      true,
+    )
+    expect((root.querySelector('[data-testid=grapes-save]') as HTMLButtonElement).disabled).toBe(
+      true,
+    )
+    expect(localStorage.getItem('eap.prototype-schema.v1.builder-alpha')).toBeNull()
   })
 })

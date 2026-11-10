@@ -2,9 +2,36 @@
 
 ## 当前结论与阅读方式
 
-五入口、公共UI/主题、专家父子导航与任务详情已落地；`2c7e87b`接入专家固定流程/SQL Agent/GrapesJS独立三栏工作台。当前验证与剩余关口统一见[台账](../planning-status.md#validation-baseline)，交互合同见[工作区决定](../decisions/expert-workspace-navigation.md)。早期记录及测试数按各阶段解释；新工作台原生125%/150%、全页面错误/焦点矩阵和用户体验接受仍待。共享模块落点以[边界规范](../decisions/frontend-ui-shared-module-boundaries.md)为准。本轮PL-01项目聚合观测及真实Git在途停用/后台完成/重新启用恢复已验，见[生命周期证据](#board-runtime-lifecycle)；用户接受和PL-02/SC-03仍独立。
+五入口、公共UI/主题、专家父子导航与任务详情已落地；`2c7e87b`接入专家固定流程/SQL Agent/GrapesJS独立三栏工作台。当前验证与剩余关口统一见[台账](../planning-status.md#validation-baseline)，交互合同见[工作区决定](../decisions/expert-workspace-navigation.md)。早期记录及测试数按各阶段解释；新工作台原生125%/150%、全页面错误/焦点矩阵和用户体验接受仍待。共享模块落点以[边界规范](../decisions/frontend-ui-shared-module-boundaries.md)为准。本轮PL-01项目聚合观测及真实Git在途停用/后台完成/重新启用恢复已验，见[生命周期证据](#board-runtime-lifecycle)；用户接受独立，PL-02/SC-03接续结果见[本批生命周期记录](#designer-scenario-lifecycle)。
+
+本批PL-02设计器贡献与SC-03可信依赖、草稿/版本启停恢复整链已验，见[记录](#designer-scenario-lifecycle)；开发阶段采用单一新契约，无旧全局数据兼容读取。用户产品接受独立。
 
 以下按主题合并完整阶段记录，日期保留在记录中而不再作为文件名。记录中的“本轮/未提交/下一步”和测试数字仅代表当时快照；不得覆盖上面的当前结论、有效产品合同或用户授权。原文完整保留（只调整标题层级、锚点及链接），后续更新本总览，不另建日期报告。
+
+<a id="designer-scenario-lifecycle"></a>
+## PL-02 设计器贡献与 SC-03 场景依赖整链（2026-11-10）
+
+按用户要求，先沿用PL-01既有结果提交推送34文件为fe08a99afa53d120edb6f4497cda94228555621a，HEAD/origin/main/远端main一致；提交阶段仅复核差异、文档、编码与敏感模式，没有重跑测试。以下是继续开发的新批次，尚未提交。用户明确开发阶段无需兼容旧数据/接口/逻辑，可做必要破坏性重构；本批采用单一新契约，不迁移旧全局草稿，也未因兼容限制保留第二机制。没有数据库结构变更或迁移。
+
+有效边界见[决定§6.2](../decisions/agent-runtime-evolution.md#62-pl-02--sc-03-设计器贡献及场景依赖2026-11-10)，当前结果见[台账](../planning-status.md#designer-scenario-validation)。本批复用原核心版本、场景revision保存、Host/PluginSlot/Builder/GrapesJS；新增恢复草稿和可信只读依赖投影。按UI规范已搜索并复用@eap/ui ConfirmBox、Feedback、Button、Collapse：业务组合留L4 plugins/shell，DTO在runtime-client，无新包/共享类别或暂存登记。Host的实例回调只是停用前保存检查，卸载即撤销，不是新能力注册表。激活错误按插件隔离；ScenarioWorkspace不再接收独立启用布尔值。恢复草稿、本地历史和服务器显式发布版本各有职责；新建/重开文档仍需先保存或明确放弃，切页则可在恢复写入确认后离开。编辑器加载失败禁用编辑/保存/发布，原占位设计合成回退已删除。
+
+只读GET /api/scenarios/workflows/prototype-to-code/dependencies从固定可信workflow声明builder必需、board可选，观察两个合法sourceRef内版本总数及存储可读；不将用户配置的installed标签当作状态。实际Host与本次成功观察决定场景是否可应用，失败保留旧快照但阻断，修复后显式重查；工作区/模型/验证门禁继续独立。副本workflow保留并通过原revision API保存/读回，应用不隐式发布、授权、发送或执行。
+
+实际执行与失败证据：
+
+- 新契约首轮前端定向16文件67项中18失败：测试把Host创建/状态写入放进render导致递归，插入组合区打断既有v-if链，以及旧断言仍要求不可恢复离页/零草稿存储。将Host创建移出render、恢复条件链，并按新草稿合同更新断言后，受影响4文件39项通过；未降低业务门禁。
+- A/B恢复测试最初发现Vue代理传给第三方恢复接口的问题；恢复时传纯JSON工程数据后通过。存储失败测试改为实际localStorage实例注入，验证失败时不销毁画布，修复后再停用。设计器缺失状态、跨插件并存激活失败、dirty新建替换保护均追加有意义回归。
+- 受影响前端命令：`rtk proxy pnpm --dir frontend test run apps/web/__tests__/features/plugins apps/web/__tests__/features/shell apps/web/__tests__/features/ScenarioWorkspace.test.ts apps/web/__tests__/features/DesktopNavigation.test.ts apps/web/__tests__/features/chat/ChatWorkspace.test.ts apps/web/__tests__/features/chat/ChatWorkspace.ui.test.ts apps/web/__tests__/mock/scenarioBackend.test.ts packages/runtime-client/__tests__/scenarioDependencies.test.ts`，发现49文件282项全部通过。后续插件/场景依赖/客户端/mock定向16文件66项通过；最后插件隔离12文件38项，文档替换保护4文件9项、观测原因/刷新保护3文件9项通过。集合重叠，不累加；旧全量872/978仅保留PL-01历史证据，本批未重跑完整前后端套件。
+- 后端配套通过：`rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am -Dtest=DesignerLifecycleAcceptanceTest,ScenarioServiceTest,ScenarioApiTest,PrototypeVersionControllerTest,BackendModuleBoundaryTest,FullApplicationCompositionTest -Dsurefire.failIfNoSpecifiedTests=false test`。第3次尝试的服务4/HTTP3/版本HTTP1/边界8/完整组合2共18项全部通过，整链当时失败，因此该reactor仍按失败保留。
+- 只重试失败的真实整链：同reactor命令改为`-Dtest=DesignerLifecycleAcceptanceTest`；第6次最终31模块SUCCESS、1项通过/0跳过，30.8秒。只在子进程开启EAP_RUN_DESIGNER_LIFECYCLE/EAP_RUN_BOARD_PERSISTENCE、指定已存在Playwright模块和Chromium；其他EAP_RUN_*清除。无模型调用，也没有启动正式full配置。
+- 第1次浏览器模块旧路径失效，尚未进页；第2次脚本没有等待异步依赖读取；第3次未展开只读检查折叠区；第4次测试故障开关在恢复后重复重命名关系；第5次业务步骤完成后请求审计多1条。修正精确等待/可见交互及故障单次触发；按本地GrapesJS公开配置关闭默认telemetry，增加出站请求审计/阻断后第6次通过。所有失败reactor及会话日志保留在backend/target，6次cleanup均确认自有schema删除、应用记录不变、host/browser停止。没有将首次失败改称成功。
+- typecheck、check:architecture及最终build通过，既有大chunk/Node localStorage/测试网络保护提示保留。目标lint、格式与设计器相关5个Vue stylelint结果见台账。扩展检查的ScenarioWorkspace既有82项、ChatWorkspace selector解析TypeError在HEAD同样式中复现；未改CSS内容或检查白名单，未冒充全stylelint通过。
+
+[结果摘要](../../frontend/apps/web/__tests__/browser/artifacts/designer-scenario-lifecycle/result.json)保留7组真实检查：空库资源不满足；真实持久发布响应等待时拒绝停用；实际A/B工程/标题/本地历史隔离；确认停用/刷新时保留版本；激活失败回滚与重新启用恢复精确未发布工程/dirty及新TC-02身份；实际关系失效503/修复重查；副本workflow保存与原版本无重复发布。最后两项局部加固采用相应组件回归，没有再跑真实整链以刷新数字。
+
+最终0pageerror、0外部请求，只有2次原型版本POST和1次场景PUT。JDBC独立确认两个实例各1个原版本、1个场景、0交付单，原版本ID/hash保持；3张应用表的完整行count/hash前后相同。夹具复制3张自有表，LIKE INCLUDING ALL保留检查/默认/索引，不复制FK/触发器，不等于迁移重跑；发布响应门锁和关系重命名均只在测试宿主/schema，本地激活失败是显式注入。独立只读JDBC无测试schema/连接，原3条工具记录摘要保持，29份迁移未改；正式full未启停。
+
+已查看[停用依赖](../../frontend/apps/web/__tests__/browser/artifacts/designer-scenario-lifecycle/designer-disabled-dependencies.png)及[390px恢复后场景](../../frontend/apps/web/__tests__/browser/artifacts/designer-scenario-lifecycle/designer-restored-390.png)，[1440px恢复后场景](../../frontend/apps/web/__tests__/browser/artifacts/designer-scenario-lifecycle/designer-restored-1440.png)另存；场景页1440/900/390无横向溢出。该视口结论不扩大为所有设计器布局或原生系统缩放接受。用户产品接受、版本发布响应丢失治理、真实模型到源码交付、外部插件安装及反向Agent调用仍独立。
 
 <a id="board-runtime-lifecycle"></a>
 ## PL-01 项目观测、在途停用与恢复（2026-11-10）

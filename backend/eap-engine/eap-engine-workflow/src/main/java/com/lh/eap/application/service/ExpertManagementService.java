@@ -69,7 +69,6 @@ public class ExpertManagementService {
         result.put("rulePacks",rulePacks.catalog());
         result.put("facts",rulePacks.facts());
         result.put("behaviors",definitions.behaviorPolicies().behaviors());
-        definitions.behaviorPolicies().legacyBinding().ifPresent(binding -> result.put("legacyBehavior", binding));
         return result;
     }
 
@@ -81,7 +80,7 @@ public class ExpertManagementService {
         if(errors.isEmpty()){
             try{
                 if(SensitiveData.containsSecret(JSON.readValue(request.manifest(),Map.class)))errors.add("专家定义含凭据或连接字符串，请脱敏后保存");
-                var manifest=ExpertManifest.parse(prepareManifest(request));
+                var manifest=ExpertManifest.parse(request.manifest());
                 if(!request.id().equals(manifest.id())||!request.name().equals(manifest.name())) errors.add("Manifest 标识和名称必须与专家信息一致");
                 errors.addAll(definitions.validateGraph(manifest));
                 errors.addAll(definitions.validateReferences(manifest));
@@ -97,30 +96,15 @@ public class ExpertManagementService {
         if(definitions.isBuiltin(request.id())) throw new ResponseStatusException(HttpStatus.CONFLICT,"内置专家不可就地覆盖，请复制为新标识后编辑");
         String saved;
         try {
-            saved=mapper.saveDraft(request.id(),request.name(),prepareManifest(request),
-                    !JSON.readTree(request.manifest()).has("behavior"));
+            saved=mapper.saveDraft(request.id(),request.name(),request.manifest());
         } catch (org.springframework.dao.EmptyResultDataAccessException conflict) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"内置专家不可就地覆盖，请复制为新标识后编辑");
         }
-        // The upsert may preserve a newer binding than validation read. Validate the locked, stored value.
+        // Revalidate the stored definition inside the management transaction.
         var manifest=ExpertManifest.parse(saved);
         var errors=definitions.validateBehavior(manifest);
         if(!errors.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,String.join("；",errors));
         return Map.of("id",request.id(),"status","saved-draft","enabled",false,"behavior",manifest.behavior());
-    }
-
-    private String prepareManifest(ExpertDefinitionRequest request) {
-        // Parse before normalization: explicit null/malformed bindings must never fall back to SQL.
-        ExpertManifest.parse(request.manifest());
-        var root=(tools.jackson.databind.node.ObjectNode)JSON.readTree(request.manifest());
-        if(!root.has("behavior")) {
-            var existing=mapper.findManifest(request.id()).map(ExpertManifest::parse)
-                    .map(ExpertManifest::behavior);
-            var binding=existing.or(() -> definitions.behaviorPolicies().legacyBinding())
-                    .orElseThrow(() -> new IllegalArgumentException("Explicit expert behavior is required"));
-            root.set("behavior",JSON.valueToTree(binding));
-        }
-        return JSON.writeValueAsString(root); // Preserve editor coordinates and unknown extension fields.
     }
 
     public Map<String,Object> activate(String id,ExpertActivationRequest request){

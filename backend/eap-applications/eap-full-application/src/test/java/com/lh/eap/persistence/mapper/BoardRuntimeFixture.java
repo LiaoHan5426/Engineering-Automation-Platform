@@ -69,7 +69,7 @@ public final class BoardRuntimeFixture {
                 }
             };
             return new MissionGitExecutionService(missions,executions,handlers,settings,registry,gated,
-                    RuntimeWorkspace.colocated(session.resolve("workspace"),"",""));
+                    RuntimeWorkspace.colocated(session.resolve("workspace"),""));
         }
         @Bean PrototypeVersionService versions(JdbcTemplate jdbc){return new PrototypeVersionService(new JdbcPrototypeVersionStore(jdbc),new JdbcPrototypeDeliveryStore(jdbc));}
         @Bean BoardPrototypeService prototypes(JdbcTemplate jdbc,BoardTaskService tasks,PrototypeVersionService versions){return new BoardPrototypeService(jdbc,tasks,versions);}

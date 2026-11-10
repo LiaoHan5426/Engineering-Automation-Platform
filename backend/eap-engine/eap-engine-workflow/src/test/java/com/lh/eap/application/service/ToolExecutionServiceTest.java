@@ -36,7 +36,7 @@ class ToolExecutionServiceTest {
         var registry = new CapabilityRegistry().register(new GitCapability("status", configuredBinary::get)).register(new GitCapability("diff", configuredBinary::get));
         for (var operation : List.of("git-status", "git-diff"))
             when(handlers.resolveFor(null, operation)).thenReturn(Optional.of(mock(GitInspectionHandler.class)));
-        return service = new ToolExecutionService(store, RuntimeWorkspace.colocated(workspace, "", ""), settings, handlers, registry, executor);
+        return service = new ToolExecutionService(store, RuntimeWorkspace.colocated(workspace, ""), settings, handlers, registry, executor);
     }
     ToolExecution finished(UUID id) throws Exception { return finished("git-status", id); }
     ToolExecution finished(String operation, UUID id) throws Exception {

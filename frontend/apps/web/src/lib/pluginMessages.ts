@@ -1,5 +1,37 @@
 export const pluginCheckMessages = {
   'zh-CN': {
+    designer: {
+      boundary:
+        '设计器贡献停用会释放画布和观察结果；各实例草稿在本机恢复，服务器版本、候选和任务保留。',
+      check: '检查原型版本服务',
+      unchecked: '原型版本服务未检查',
+      checking: '正在检查原型版本服务',
+      available: '原型版本目录可读取',
+      failed: '原型版本服务检查失败，可用性未知',
+      observed: '上次成功观测：已发布版本 {count} 个 · {time}',
+      old: '此为上次成功快照，本次读取未确认。请重新检查。',
+      disableTitle: '停用设计器',
+      disableConfirm: '保存恢复草稿并停用',
+      suspendBlocked:
+        '正在发布或本机恢复草稿保存未确认，设计器保持启用。请返回设计器等待发布结束或修复浏览器存储后重试。',
+      disableImpact:
+        'A/B 实例的当前草稿将在本浏览器中保存恢复数据，随后释放设计器画布与实例观察结果。',
+      disablePreserve:
+        '本机保存未确认或正在发布时将阻止停用。不会发布新版本、删除服务器版本、取消核心任务或自动重放请求。',
+    },
+    composition: {
+      title: '场景组合依赖',
+      required: '必需：设计器贡献、可读取的原型版本服务及已发布版本。可选：任务看板。',
+      designerReady: '设计器贡献可用',
+      designerMissing: '设计器已停用、缺少依赖或激活失败；请到插件中心处理。',
+      boardReady: '可选任务看板可用',
+      boardMissing: '可选任务看板不可用，不阻止此场景。',
+      blocked:
+        '必需依赖尚未确认或没有已发布版本，暂不能应用或进入代码开发；仍可打开可用的设计器创建版本。',
+      manage: '管理插件依赖',
+      boundary:
+        '依赖合同来自核心服务，插件启停以当前本机 Host 为准。保存的场景标签不是授权；检查、启用及应用不会自动安装、授权、发布、发送或执行。仓库、模型和验证条件仍需在开发准备中核对。',
+    },
     check: {
       action: '检查运行时依赖',
       project: '查询项目 ID',
@@ -42,6 +74,40 @@ export const pluginCheckMessages = {
     },
   },
   'en-US': {
+    designer: {
+      boundary:
+        'Disabling releases the canvas and observations. Drafts recover locally per instance; server versions, proposals and tasks remain.',
+      check: 'Check prototype version service',
+      unchecked: 'Prototype service not checked',
+      checking: 'Checking prototype service',
+      available: 'Prototype version catalog readable',
+      failed: 'Prototype service check failed; availability unknown',
+      observed: 'Last successful observation: {count} published versions · {time}',
+      old: 'This is an older successful snapshot. The current read is unconfirmed; check again.',
+      disableTitle: 'Disable designer',
+      disableConfirm: 'Save recovery drafts and disable',
+      suspendBlocked:
+        'Publishing or local recovery storage is unconfirmed. The designer stays enabled; wait for publishing or repair browser storage and retry.',
+      disableImpact:
+        'Save recovery data for A/B drafts in this browser, then release designer canvases and instance observations.',
+      disablePreserve:
+        'Unconfirmed local storage or an active publish blocks disabling. No new publication, server deletion, task cancellation or automatic replay occurs.',
+    },
+    composition: {
+      title: 'Scenario composition dependencies',
+      required:
+        'Required: designer contribution, readable version service and published versions. Optional: task board.',
+      designerReady: 'Designer contribution available',
+      designerMissing:
+        'Designer disabled, missing dependencies or failed activation. Manage it in the plugin center.',
+      boardReady: 'Optional task board available',
+      boardMissing: 'Optional task board unavailable; this does not block the scenario.',
+      blocked:
+        'Required dependencies are unconfirmed or no published version exists. Apply and code development are blocked; an available designer can still create a version.',
+      manage: 'Manage plugin dependencies',
+      boundary:
+        'The core declares dependencies; this local Host owns plugin enablement. Saved labels are not grants. Checking, enabling and applying do not install, authorize, publish, send or execute. Workspace, model and verification checks remain separate.',
+    },
     check: {
       action: 'Check runtime dependency',
       project: 'Query project ID',

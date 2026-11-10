@@ -12,26 +12,16 @@ public class ExpertDefinitionMapper {
         return jdbc.queryForList("SELECT id,manifest::text AS manifest,enabled,revision FROM eap.expert_definition WHERE id=? FOR SHARE", id).stream().findFirst();
     }
     public List<Map<String,Object>> list() { return jdbc.queryForList("SELECT id,manifest::text AS manifest,enabled,revision,builtin FROM eap.expert_definition ORDER BY builtin DESC, updated_at DESC"); }
-    public void saveDraft(String id,String name,String manifest) {
-        saveDraft(id, name, manifest, false);
-    }
-    public Optional<String> findManifest(String id) {
-        return jdbc.queryForList("SELECT manifest::text FROM eap.expert_definition WHERE id=?", String.class, id)
-                .stream().findFirst();
-    }
-    /** Atomic upsert preserves bindings omitted by legacy editors, including concurrent inserts/updates.
-     * Call in the management transaction so validation and all grant revocations roll back together. */
-    public String saveDraft(String id, String name, String manifest, boolean preserveBehavior) {
+    /** Save the complete explicit definition and revoke grants in the management transaction. */
+    public String saveDraft(String id, String name, String manifest) {
         var saved = jdbc.queryForObject("""
                 INSERT INTO eap.expert_definition(id,name,manifest) VALUES (?,?,?::jsonb)
                 ON CONFLICT(id) DO UPDATE SET name=excluded.name,
-                manifest=CASE WHEN ? THEN excluded.manifest || jsonb_build_object('behavior',
-                    COALESCE(expert_definition.manifest->'behavior',excluded.manifest->'behavior'))
-                    ELSE excluded.manifest END,
+                manifest=excluded.manifest,
                 enabled=false,revision=expert_definition.revision+1,updated_at=now()
                 WHERE NOT expert_definition.builtin
                 RETURNING manifest::text
-                """, String.class, id, name, manifest, preserveBehavior);
+                """, String.class, id, name, manifest);
         jdbc.update("DELETE FROM eap.expert_knowledge_grant WHERE expert_id=?",id);
         jdbc.update("DELETE FROM eap.expert_database_grant WHERE expert_id=?",id);
         jdbc.update("DELETE FROM eap.expert_mcp_grant WHERE expert_id=?",id);

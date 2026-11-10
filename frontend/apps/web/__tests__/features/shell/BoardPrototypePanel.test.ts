@@ -28,8 +28,6 @@ const a: PrototypeVersionRecord = {
   sourceRef: 'builder-alpha',
   title: '设计 A',
   body: 'stored text A',
-  buttonPresses: 0,
-  interaction: '',
   acceptance: ['已检查设计'],
   contentHash: 'hash-a',
   createdAt: '2026-10-31T08:00:00Z',
@@ -172,6 +170,8 @@ it('renders the semantic saved version without changing stored content', async (
       schema: {
         version: 1,
         title: 'saved',
+        unknownMappings: [],
+        grapesProject: {},
         updatedAt: 'now',
         root: {
           id: 'root',
@@ -212,7 +212,9 @@ it('shows non-semantic content as escaped text instead of executing embedded HTM
   document.body.append(root)
   app = createApp(PrototypeVersionViewer, { versionId: a.id })
   app.use(i18n).mount(root)
-  await vi.waitFor(() => expect(document.body.textContent).toContain('没有可用的语义预览'))
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=version-design-blocked]')).not.toBeNull(),
+  )
   expect(document.querySelector('[data-testid=prototype-version-viewer] script')).toBeNull()
   expect(
     document.querySelector('[data-testid=prototype-version-viewer] pre')?.textContent,

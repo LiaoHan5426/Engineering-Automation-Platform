@@ -37,7 +37,7 @@ class SkillPersistenceTest {
         service = (SkillService) proxy.getProxy();
         ownedScope = service.preview(input()).scope();
     }
-    SkillService create(Path path) { return new SkillService(jdbc, new SkillTextParser(), RuntimeWorkspace.colocated(path, "", ""), new CapabilityHandlerRegistry(List.of())); }
+    SkillService create(Path path) { return new SkillService(jdbc, new SkillTextParser(), RuntimeWorkspace.colocated(path, ""), new CapabilityHandlerRegistry(List.of())); }
     Map<String,Object> input() { return SkillTextParserTest.input("---\nname: " + name + "\ndescription: fixture\n---\nprivate instruction\n"); }
     SkillService.Snapshot save(Map<String,Object> input, String digest) {
         return service.save(Map.of("input", input, "expectedDigest", digest, "confirmed", true));

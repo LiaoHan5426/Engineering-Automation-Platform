@@ -42,7 +42,6 @@ eap:
   runtime:
     # Process-bound workspace root for the colocated local Java service.
     # Empty: RuntimeConfiguration falls back to the detected process workspace (git/user.dir).
-    # Legacy eap.ai.authorized-root is only a fallback; conflicting paths refuse instead of widening.
     # Does not accept browser/remote multi-tenant directory-grant POSTs.
     authorized-root: ${EAP_AUTHORIZED_ROOT:}
     # Post-apply checks on the local-service machine. Off by default; empty list → verification=not_requested.
@@ -55,7 +54,6 @@ eap:
       #   run: [git, --version]
       # Heavy typecheck/test/build must be opted in explicitly; do not enable casually against the live repo.
   ai:
-    authorized-root: ${EAP_AI_AUTHORIZED_ROOT:}
     artifact-root: ${EAP_AI_ARTIFACT_ROOT:.eap-ai-artifacts}
   llm:
     # A model is consulted only when the deterministic result is not decisive or the operator

@@ -31,11 +31,18 @@ class PrototypeVersionControllerTest {
                 {"versionId":"00000000-0000-0000-0000-000000000000","remote":"git@example","grant":"repository.write"}
                 """)).andExpect(status().isBadRequest());
         org.junit.jupiter.api.Assertions.assertTrue(rows.isEmpty());
-        mvc.perform(post("/api/prototype-versions").contentType(MediaType.APPLICATION_JSON).content("""
-                {"sourceRef":"builder-alpha","title":"结算页","body":"正文","buttonPresses":1,"acceptance":["看标题"]}
-                """)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.interaction").value("预览按钮使计数加一"))
-                .andExpect(jsonPath("$.buttonPresses").value(1));
+        for(var content : List.of("正文", "{}")) {
+            mvc.perform(post("/api/prototype-versions").contentType(MediaType.APPLICATION_JSON).content(
+                    tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(java.util.Map.of(
+                            "sourceRef","builder-alpha","title","设计","body",content,"acceptance",List.of()))))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(post("/api/prototype-versions").contentType(MediaType.APPLICATION_JSON).content(
+                tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(java.util.Map.of(
+                        "sourceRef","builder-alpha","title","设计",
+                        "body",com.lh.eap.application.service.SemanticPrototypeFixture.body("设计"),"acceptance",List.of("看标题")))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.buttonPresses").doesNotExist())
+                .andExpect(jsonPath("$.interaction").doesNotExist());
         org.junit.jupiter.api.Assertions.assertEquals(1, rows.size());
     }
 

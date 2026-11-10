@@ -51,7 +51,7 @@ class ExpertAgentContinuationPersistenceTest extends CodeProposalPersistenceFixt
         var rules = new RulePackService(jdbc);
         policies = new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(SqlExpertAgentService.BINDING,
                 "SQL Agent", new SqlExpertAnalysisPolicy(rules, mock(SqlExpertService.class)), "agent", SqlExpertAgentService.TOOLS,
-                Set.of("sql.parse"))), SqlExpertAgentService.BINDING);
+                Set.of("sql.parse"))));
         definitions = proxy(new ExpertDefinitionService(jdbc, rules, () -> Set.of(), mock(CapabilitySettings.class), policies));
         var mapper = new ExpertDefinitionMapper(jdbc);
         var manifest = new ExpertManifest("eap/v2", "Expert", expert, "Fixture", List.of(), List.of(), List.of(), List.of(),
@@ -189,7 +189,7 @@ class ExpertAgentContinuationPersistenceTest extends CodeProposalPersistenceFixt
             var rules = new RulePackService(fixture.jdbc);
             fixture.policies = new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(SqlExpertAgentService.BINDING,
                     "SQL Agent", new SqlExpertAnalysisPolicy(rules, mock(SqlExpertService.class)), "agent", SqlExpertAgentService.TOOLS,
-                    Set.of("sql.parse"))), SqlExpertAgentService.BINDING);
+                    Set.of("sql.parse"))));
             fixture.definitions = fixture.proxy(new ExpertDefinitionService(fixture.jdbc, rules, () -> Set.of(), mock(CapabilitySettings.class), fixture.policies));
             fixture.access = fixture.proxy(new WorkflowExpertAgentAccess(new ExpertDefinitionMapper(fixture.jdbc), fixture.definitions, new TaskRepository(fixture.jdbc)));
             fixture.root = java.nio.file.Path.of(args[2]); fixture.reconstruct();

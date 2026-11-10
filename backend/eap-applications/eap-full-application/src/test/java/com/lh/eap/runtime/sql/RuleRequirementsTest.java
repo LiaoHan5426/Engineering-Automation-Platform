@@ -82,7 +82,7 @@ class RuleRequirementsTest {
         }
         return new ExpertManifest("eap/v1", "Expert", "test", "Test", List.of(), List.of(),
                 List.copyOf(nodes), List.copyOf(edges),
-                List.of("database.credentials.never-expose"), List.of("sql-snapshot-evidence"));
+                List.of("database.credentials.never-expose"), List.of("sql-snapshot-evidence"), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
     }
 
     @Test void expertReferencingAPackWithoutItsCapabilitiesIsRejected() {

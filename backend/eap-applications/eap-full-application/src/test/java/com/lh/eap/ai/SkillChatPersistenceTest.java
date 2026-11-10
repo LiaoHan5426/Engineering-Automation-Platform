@@ -34,7 +34,7 @@ class SkillChatPersistenceTest {
         assertTrue(url.startsWith("jdbc:postgresql://localhost:") || url.startsWith("jdbc:postgresql://127.0.0.1:"));
         var ds = new DriverManagerDataSource(url,env.getProperty("spring.datasource.username"),env.getProperty("spring.datasource.password"));
         jdbc = new JdbcTemplate(ds);
-        var target = new SkillService(jdbc,new SkillTextParser(),RuntimeWorkspace.colocated(root,"",""),new CapabilityHandlerRegistry(List.of()));
+        var target = new SkillService(jdbc,new SkillTextParser(),RuntimeWorkspace.colocated(root,""),new CapabilityHandlerRegistry(List.of()));
         var proxy = new ProxyFactory(target); proxy.setProxyTargetClass(true);
         proxy.addAdvice(new TransactionInterceptor(new DataSourceTransactionManager(ds),new AnnotationTransactionAttributeSource()));
         skills = (SkillService)proxy.getProxy();

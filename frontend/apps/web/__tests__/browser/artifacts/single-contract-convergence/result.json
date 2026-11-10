@@ -1,0 +1,538 @@
+{
+  "baseline": "fe08a99afa53d120edb6f4497cda94228555621a",
+  "kind": "Five current-contract convergence: isolated real Flyway/PostgreSQL/HTTP/Git and real GrapesJS/Chromium; not product human acceptance",
+  "schemaVersion": 30,
+  "backend": {
+    "tests": 288,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 28,
+    "passed": 260,
+    "reports": 42
+  },
+  "backendRuns": {
+    "offline": {
+      "exitCode": 0,
+      "seconds": 51.9,
+      "reports": [
+        {
+          "name": "com.lh.eap.ai.SqlExpertAgentServiceTest",
+          "tests": 17,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.ai.AiConnectionStatusTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertExecutionTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertScopedCapabilityTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertWorkflowTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.PrototypeCanonicalTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.architecture.BackendModuleBoundaryTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.architecture.FullApplicationCompositionTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.web.controller.PrototypeVersionControllerTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.web.controller.ToolExecutionControllerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.core.ExpertBehaviorCatalogTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.CliChannelsTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertAgentDefinitionTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertBehaviorManagementTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertDefinitionCompositionTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertPolicySelectionTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.JdbcCliChannelStoreTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ToolExecutionServiceTest",
+          "tests": 39,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.TrustedToolCatalogServiceTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.config.RuntimeWorkspaceTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.spring.ModuleCompositionTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "expanded": {
+      "exitCode": 0,
+      "seconds": 36.6,
+      "reports": [
+        {
+          "name": "com.lh.eap.ai.CodegenCompositionTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.ai.KnowledgeContextCompositionTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.ai.CodeChangeBoundaryTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.ai.CodeGenerationBoundaryTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.ai.CodeProposalBoundaryTest",
+          "tests": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.ai.EngineeringTaskFlowTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.ai.ExpertAgentContinuationPersistenceTest",
+          "tests": 22,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 22
+        },
+        {
+          "name": "com.lh.eap.ai.ExpertKnowledgeChatTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.ai.ExpertKnowledgeContextServiceTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.ai.ExpertKnowledgePersistenceTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 2
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertBehaviorPersistenceTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 4
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertExecutionTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertScopedCapabilityTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertWorkflowTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.RuntimeDataLayoutServiceTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.config.RuntimeConfigurationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.web.controller.ExpertInputCompatibilityTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.core.ExpertBehaviorCatalogTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.WorkspaceFilesServiceTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertAgentDefinitionTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertBehaviorManagementTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertDefinitionCompositionTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.ExpertPolicySelectionTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.web.controller.ExpertAgentQueueControllerTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "preflight": {
+      "exitCode": 0,
+      "seconds": 36.7,
+      "reports": [
+        {
+          "name": "com.lh.eap.config.RuntimeConfigurationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.persistence.mapper.CurrentContractPreflightTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.spring.ModuleCompositionTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "final": {
+      "exitCode": 0,
+      "seconds": 21.0,
+      "reports": [
+        {
+          "name": "com.lh.eap.application.service.CapabilityManagementTest",
+          "tests": 20,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.application.service.CliProgramsTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "live": {
+      "exitCode": 0,
+      "seconds": 75.9,
+      "reports": [
+        {
+          "name": "com.lh.eap.persistence.mapper.DesignerLifecycleAcceptanceTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "com.lh.eap.persistence.mapper.SingleContractAcceptanceTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    }
+  },
+  "frontend": {
+    "affectedFiles": 39,
+    "affectedTests": 250,
+    "sdkAndModelTests": 4,
+    "overlappingGroups": true,
+    "lintFiles": 56,
+    "formatFiles": 56,
+    "typecheck": "passed",
+    "architecture": "passed",
+    "build": "passed",
+    "stylelintFiles": 3,
+    "stylelint": "passed",
+    "latestSchemaAndSdkTests": 9,
+    "testDependency": "vite-plus declared in expert-sdk; lockfile updated offline"
+  },
+  "contracts": {
+    "explicitExpertVersionAndHistory": true,
+    "semanticPublicationAndDelivery": true,
+    "migrationRejectsOldCliAndExpert": true,
+    "cliProgramBinding": true,
+    "statusAndDiffPersistentIdentity": true,
+    "migration": 30,
+    "oldInvokeRejected": true,
+    "gitIndexUnchanged": true
+  },
+  "contractCleanup": {
+    "ownedSchemaDropped": true,
+    "applicationRecordsUnchanged": true,
+    "hostStopped": true
+  },
+  "designerSession": "designer-lifecycle-17ea2cf1-5008-4494-a59d-fb40fb40179d",
+  "browser": {
+    "passed": 7,
+    "checks": [
+      "empty real version catalog is readable but cannot satisfy the required published-version resource",
+      "actual publish is persisted through HTTP/JDBC; disabling while its response is pending is refused and does not replay it",
+      "real GrapesJS A/B projects, local versions and unpublished edits are isolated per instance",
+      "confirmed disable releases all designers; refresh preserves disabled preference and original server versions while required composition stays blocked",
+      "activation failure rolls back and stays visible; successful re-enable creates fresh instances and restores exact unsaved project/title with dirty state",
+      "actual PostgreSQL relation failure returns bounded 503 and retains old evidence; explicit retry after relation repair restores readiness",
+      "copied scene persists its workflow through the real revision API; navigation keeps chosen version and does not mutate or republish original versions"
+    ],
+    "errors": [],
+    "mutations": [
+      {
+        "method": "POST",
+        "path": "/api/prototype-versions"
+      },
+      {
+        "method": "POST",
+        "path": "/api/prototype-versions"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/scenarios/custom-2c6c027c-1712-42b9-b380-42f68bfddcad"
+      }
+    ],
+    "externalRequests": [],
+    "versions": [
+      {
+        "id": "7efa8206-0f5a-44a7-8e30-98caac65a244",
+        "sourceRef": "builder-alpha",
+        "title": "Alpha published design",
+        "contentHash": "ae9f1d9726261386e4848205e2bbb6a46423a80e593997461fb534b2fa5c9b96"
+      },
+      {
+        "id": "c6a13209-b1e1-4823-bd87-534d29c25729",
+        "sourceRef": "builder-beta",
+        "title": "Beta published design",
+        "contentHash": "138983508f68a98d6e81073f15eb86c6a28d4ab74cc14c30cd3f3df7c8fc8858"
+      }
+    ],
+    "faultScope": "Publish response latch and owned PostgreSQL relation rename; activation failure is an explicitly injected local Host test fault"
+  },
+  "jdbc": {
+    "versions": [
+      {
+        "id": "7efa8206-0f5a-44a7-8e30-98caac65a244",
+        "source_ref": "builder-alpha",
+        "title": "Alpha published design",
+        "content_hash": "ae9f1d9726261386e4848205e2bbb6a46423a80e593997461fb534b2fa5c9b96"
+      },
+      {
+        "id": "c6a13209-b1e1-4823-bd87-534d29c25729",
+        "source_ref": "builder-beta",
+        "title": "Beta published design",
+        "content_hash": "138983508f68a98d6e81073f15eb86c6a28d4ab74cc14c30cd3f3df7c8fc8858"
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "custom-2c6c027c-1712-42b9-b380-42f68bfddcad",
+        "revision": 1,
+        "workflow": "prototype-to-code"
+      }
+    ],
+    "originalDataUnchanged": true
+  },
+  "designerCleanup": {
+    "ownedSchemaDropped": true,
+    "applicationRecordsUnchanged": true,
+    "hostStopped": true,
+    "browserStopped": true
+  },
+  "applicationPreflight": {
+    "readOnly": true,
+    "schemaVersion": "29",
+    "cliOperationOrUnregisteredKeys": 0,
+    "authoredExpertsOutsideCurrentContract": 0,
+    "prototypesOutsideSemanticContract": 1,
+    "migrationReady": false
+  },
+  "deployment": {
+    "applicationSchemaMigrated": false,
+    "applicationDataModified": false,
+    "reason": "One existing prototype is outside the semantic contract; V30 intentionally rejects it. No legacy data conversion or fallback was added."
+  },
+  "limits": [
+    "Formal full application not restarted or migrated. Tests use production domain services/controllers with deterministic no-model test composition.",
+    "Designer HTTP response latch and owned relation rename are test controls; activation fault is explicitly injected in the local Host.",
+    "Existing gate-controlled expert persistence tests: 28 skipped in expanded offline group; real new-contract persistence is covered by the separate owned-schema HTTP acceptance.",
+    "No provider/model calls, repository code delivery, external plugins, or human acceptance in this task."
+  ],
+  "verificationNotes": [
+    "Root Maven clean could not delete a historical test Git object. Affected modules were cleaned separately and reactor test compilation passed.",
+    "First socket acceptance failed only on nanosecond versus PostgreSQL microsecond createdAt; new publication and delivery timestamps now use microseconds and the two real tests passed.",
+    "Architecture check caught missing SDK test dependency; declaration and offline lock update fixed it and the final architecture check passed.",
+    "Latest schema/SDK focused group: two files, nine passing tests; overlaps earlier groups."
+  ]
+}

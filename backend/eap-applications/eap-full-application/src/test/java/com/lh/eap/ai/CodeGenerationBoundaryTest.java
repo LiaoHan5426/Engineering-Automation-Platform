@@ -18,7 +18,7 @@ class CodeGenerationBoundaryTest {
     @TempDir Path root;
     private final InMemoryCodeGenerationStore store = new InMemoryCodeGenerationStore();
     private CodeChangeService changes(CodeGenerationStore adapter) {
-        return new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), null, null, adapter, new InMemoryCodeProposalStore());
+        return new CodeChangeService(new RuntimeWorkspace(root, root.toString()), null, null, adapter, new InMemoryCodeProposalStore());
     }
     private AiChatApplication app(ChatModel model, CodeChangeService changes) {
         var fixture = new AiChatApplicationTest(); fixture.root = root;

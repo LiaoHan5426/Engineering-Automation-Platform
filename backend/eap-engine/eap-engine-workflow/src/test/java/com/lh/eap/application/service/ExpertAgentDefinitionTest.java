@@ -15,7 +15,7 @@ class ExpertAgentDefinitionTest {
     private final CapabilitySettings switches = mock(CapabilitySettings.class);
     private final ExpertAnalysisPolicy policy = mock(ExpertAnalysisPolicy.class);
     private final ExpertBehaviorCatalog policies = new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(
-            binding, "SQL Agent", policy, "agent", Set.of("sql.parse", "database.explain"), Set.of("sql.parse"))), binding);
+            binding, "SQL Agent", policy, "agent", Set.of("sql.parse", "database.explain"), Set.of("sql.parse"))));
     private final ExpertDefinitionService service = new ExpertDefinitionService(mock(JdbcTemplate.class), rules, () -> Set.of(), switches, policies);
 
     @Test void explicitV2AgentRoundTripsWithoutPretendingToolsAreADag() {

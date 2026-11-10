@@ -17,7 +17,7 @@ const observationStale = computed(() => {
     observation.source !== 'GET /api/board/runtime?projectId=' + encodeURIComponent(projectId.value)
   )
 })
-const disableBoard = ref(false)
+const disableTarget = ref<'board' | 'builder' | null>(null)
 const installationError = ref('')
 const snapshot = computed(() => props.host.boardDependencyCheck.value.snapshot)
 const currentObservation = computed(
@@ -38,15 +38,31 @@ const openCount = computed(() =>
 )
 function confirmDisable() {
   try {
-    props.host.setEnabled('board', false)
-    disableBoard.value = false
+    if (!disableTarget.value) return
+    props.host.setEnabled(disableTarget.value, false)
+    disableTarget.value = null
     installationError.value = ''
   } catch (error) {
     installationError.value =
-      error instanceof Error ? error.message : 'PLUGIN_INSTALLATION_PERSIST_FAILED'
+      error instanceof Error && error.message === 'DESIGNER_SUSPEND_BLOCKED'
+        ? t('designer.suspendBlocked')
+        : error instanceof Error
+          ? error.message
+          : 'PLUGIN_INSTALLATION_PERSIST_FAILED'
   }
 }
-onBeforeUnmount(() => props.host.cancelBoardDependencyCheck())
+function refreshInstallation() {
+  try {
+    props.host.refreshFromStore()
+    installationError.value = ''
+  } catch {
+    installationError.value = t('designer.suspendBlocked')
+  }
+}
+onBeforeUnmount(() => {
+  props.host.cancelBoardDependencyCheck()
+  props.host.cancelBuilderDependencyCheck()
+})
 const mockPluginScenarios = import.meta.env.MODE === 'mock'
 
 function name(id: PluginId): string {
@@ -74,8 +90,9 @@ function runtimeTone(kind: string): 'success' | 'warning' | 'danger' | 'neutral'
 }
 
 function toggle(host: PluginHost, id: PluginId) {
-  if (id === 'board' && host.installation.value.enabled.board) {
-    disableBoard.value = true
+  if ((id === 'board' || id === 'builder') && host.installation.value.enabled[id]) {
+    disableTarget.value = id
+    installationError.value = ''
     return
   }
   try {
@@ -100,7 +117,7 @@ function toggle(host: PluginHost, id: PluginId) {
         variant="secondary"
         size="sm"
         data-testid="plugin-refresh"
-        @click="host.refreshFromStore()"
+        @click="refreshInstallation"
       >
         {{ t('plugin.refresh') }}
       </Button>
@@ -164,6 +181,38 @@ function toggle(host: PluginHost, id: PluginId) {
         <p class="hint">
           {{ t('plugin.requests') }}：{{ manifest.requests.map((item) => item.id).join('、') }}
         </p>
+        <section v-if="manifest.id === 'builder'" data-testid="designer-dependencies">
+          <p>{{ t('designer.boundary') }}</p>
+          <Button
+            variant="secondary"
+            data-testid="designer-check"
+            :disabled="host.builderDependencyCheck.value.status === 'checking'"
+            @click="host.checkBuilderDependencies()"
+            >{{ t('designer.check') }}</Button
+          >
+          <p data-testid="designer-check-state">
+            {{ t('designer.' + host.builderDependencyCheck.value.status) }}
+          </p>
+          <p v-if="host.builderDependencyCheck.value.reason">
+            {{ host.builderDependencyCheck.value.reason }}
+          </p>
+          <p v-if="host.builderDependencyCheck.value.snapshot" data-testid="designer-observation">
+            {{
+              t('designer.observed', {
+                count: host.builderDependencyCheck.value.snapshot.resources[0]?.count,
+                time: host.builderDependencyCheck.value.snapshot.observedAt,
+              })
+            }}
+          </p>
+          <Feedback
+            v-if="
+              host.builderDependencyCheck.value.snapshot &&
+              host.builderDependencyCheck.value.status !== 'available'
+            "
+            tone="warning"
+            >{{ t('designer.old') }}</Feedback
+          >
+        </section>
         <section
           v-if="manifest.id === 'board'"
           data-testid="plugin-dependency-observation"
@@ -284,23 +333,29 @@ function toggle(host: PluginHost, id: PluginId) {
       installationError
     }}</Feedback>
     <ConfirmBox
-      v-if="disableBoard"
-      :title="t('check.disableTitle')"
-      :confirm-label="t('check.disableConfirm')"
-      :impact="[
-        t('check.disableImpact'),
-        currentObservation
-          ? t('check.disableObserved', {
-              project: snapshot?.projectId,
-              count: openCount,
-              time: snapshot?.observedAt,
-            })
-          : t('check.disableUnverified'),
-        t('check.disabledBoundary'),
-      ]"
+      v-if="disableTarget"
+      :title="t(disableTarget === 'builder' ? 'designer.disableTitle' : 'check.disableTitle')"
+      :confirm-label="
+        t(disableTarget === 'builder' ? 'designer.disableConfirm' : 'check.disableConfirm')
+      "
+      :impact="
+        disableTarget === 'builder'
+          ? [t('designer.disableImpact'), t('designer.disablePreserve')]
+          : [
+              t('check.disableImpact'),
+              currentObservation
+                ? t('check.disableObserved', {
+                    project: snapshot?.projectId,
+                    count: openCount,
+                    time: snapshot?.observedAt,
+                  })
+                : t('check.disableUnverified'),
+              t('check.disabledBoundary'),
+            ]
+      "
       :refusal="installationError || undefined"
       @confirm="confirmDisable"
-      @cancel="disableBoard = false"
+      @cancel="disableTarget = null"
     />
   </section>
 </template>

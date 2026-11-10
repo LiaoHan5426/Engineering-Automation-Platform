@@ -1,3 +1,9 @@
+import { scopedPrototypeStorage } from '../../../src/features/shell/prototypeDrafts'
+import {
+  emptyPrototypeSchema,
+  savePrototypeSchema,
+  loadPrototypeSchema,
+} from '../../../src/features/shell/prototypeSchema'
 import { runtimeSnapshot } from './runtimeSnapshot'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { runtimeApi } from '@eap/runtime-client'
@@ -77,7 +83,8 @@ describe('explicit read-only board dependency observation (simulated API)', () =
     try {
       const store = memoryStore()
       const host = createPluginHost(store)
-      host.saveBuilder({ ...host.readBuilder('alpha'), draftTitle: 'retained' })
+      const storage = scopedPrototypeStorage('builder-alpha', store as Storage)
+      savePrototypeSchema(emptyPrototypeSchema('retained'), storage)
       await host.checkBoardDependencies('one')
       expect(host.boardDependencyCheck.value).toMatchObject({
         status: 'failed',
@@ -92,11 +99,11 @@ describe('explicit read-only board dependency observation (simulated API)', () =
       query.mockImplementationOnce(async (project) => runtimeSnapshot(project))
       await host.checkBoardDependencies('one')
       expect(host.runtimeOf('board').kind).toBe('activation_failed')
-      expect(host.activationFailure.value?.message).toBe('sticky')
+      expect(host.activationFailures.value.board).toBe('sticky')
       expect(host.installation.value.enabled.board).toBe(false)
-      expect(host.readBuilder('alpha').draftTitle).toBe('retained')
+      expect(loadPrototypeSchema(storage)?.title).toBe('retained')
       host.setServiceAvailable('runtime.board-api', true)
-      expect(host.activationFailure.value?.message).toBe('sticky')
+      expect(host.activationFailures.value.board).toBe('sticky')
     } finally {
       query.mockRestore()
     }

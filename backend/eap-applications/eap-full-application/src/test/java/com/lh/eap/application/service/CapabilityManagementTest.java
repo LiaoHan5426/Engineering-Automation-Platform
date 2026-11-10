@@ -53,6 +53,7 @@ class CapabilityManagementTest {
     private static String manifestWith(String capability) {
         return """
                 {"apiVersion":"eap/v1","kind":"Expert","id":"orders-sql","name":"订单库",
+                 "behavior":{"id":"sql-analysis","version":1},
                  "steps":[{"id":"parse","capability":"%s","required":true}],"edges":[],
                  "rules":["database.credentials.never-expose"]}
                 """.formatted(capability);
@@ -201,7 +202,7 @@ class CapabilityManagementTest {
 
     @Test void anOperatorOverrideReplacesTheShippedBinaryAndIsReportedAsSuch() {
         // Overrides are keyed by program id (`rg` / `git`), shared by every operation under that program.
-        var jdbc = jdbcWhere("cli_channel", List.of(Map.of("capability", "rg", "binary_path", "custom-rg")));
+        var jdbc = jdbcWhere("cli_channel", List.of(Map.of("program_id", "rg", "binary_path", "custom-rg")));
         var channels = new CliChannels(new JdbcCliChannelStore(jdbc));
 
         assertEquals("custom-rg", channels.binaryFor("rg-search", "rg"), "覆盖值生效");
@@ -217,7 +218,7 @@ class CapabilityManagementTest {
 
     /** A binary that cannot be found is reported as missing, and the shipped default is named. */
     @Test void aChannelThatCannotBeFoundIsReportedWithItsPathAbsent() {
-        var jdbc = jdbcWhere("cli_channel", List.of(Map.of("capability", "rg", "binary_path", "eap-no-such-binary")));
+        var jdbc = jdbcWhere("cli_channel", List.of(Map.of("program_id", "rg", "binary_path", "eap-no-such-binary")));
         var channel = new CliChannels(new JdbcCliChannelStore(jdbc)).channel("rg-search", "rg");
 
         assertNull(channel.resolvedPath());
@@ -230,23 +231,23 @@ class CapabilityManagementTest {
         var channels = new CliChannels(new JdbcCliChannelStore(jdbc));
 
         assertEquals("二进制位置不能以 - 开头",
-                assertThrows(IllegalArgumentException.class, () -> channels.configure("rg-search", "--exec=evil")).getMessage());
+                assertThrows(IllegalArgumentException.class, () -> channels.configure("rg", "--exec=evil")).getMessage());
         assertEquals("二进制位置不能包含控制字符",
-                assertThrows(IllegalArgumentException.class, () -> channels.configure("rg-search", "rg\nrm -rf /")).getMessage());
+                assertThrows(IllegalArgumentException.class, () -> channels.configure("rg", "rg\nrm -rf /")).getMessage());
         assertEquals("二进制位置不能包含凭据",
-                assertThrows(IllegalArgumentException.class, () -> channels.configure("rg-search", "http://x?token=abc")).getMessage());
+                assertThrows(IllegalArgumentException.class, () -> channels.configure("rg", "http://x?token=abc")).getMessage());
 
-        channels.configure("rg-search", "C:/tools/rg.exe");
+        channels.configure("rg", "C:/tools/rg.exe");
         verify(jdbc).update(argThat((String sql) -> sql != null && sql.contains("cli_channel")),
-                eq("rg-search"), eq("C:/tools/rg.exe"));
+                eq("rg"), eq("C:/tools/rg.exe"));
     }
 
     /** Blank clears the override, so the shipped default applies again instead of a broken value sticking. */
     @Test void clearingTheChannelRemovesTheOverride() {
         var jdbc = mock(JdbcTemplate.class);
-        new CliChannels(new JdbcCliChannelStore(jdbc)).configure("rg-search", "   ");
+        new CliChannels(new JdbcCliChannelStore(jdbc)).configure("rg", "   ");
         verify(jdbc).update(argThat((String sql) -> sql != null && sql.toLowerCase(Locale.ROOT).contains("delete from")),
-                eq("rg-search"));
+                eq("rg"));
     }
 
     /**
@@ -255,7 +256,7 @@ class CapabilityManagementTest {
      */
     @Test void theProbeRunsTheBinaryWithAVersionFlagAndReportsIt() {
         var java = Path.of(System.getProperty("java.home"), "bin", System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win") ? "java.exe" : "java");
-        var jdbc = jdbcWhere("cli_channel", List.of(Map.of("capability", "rg", "binary_path", java.toString())));
+        var jdbc = jdbcWhere("cli_channel", List.of(Map.of("program_id", "rg", "binary_path", java.toString())));
         var commands = new ArrayList<List<String>>();
         ProcessExecutor executor = (capability, directory, command) -> {
             commands.add(List.copyOf(command));
@@ -271,7 +272,7 @@ class CapabilityManagementTest {
     }
 
     @Test void theProbeOfAMissingBinaryExecutesNothing() {
-        var jdbc = jdbcWhere("cli_channel", List.of(Map.of("capability", "rg", "binary_path", "eap-no-such-binary")));
+        var jdbc = jdbcWhere("cli_channel", List.of(Map.of("program_id", "rg", "binary_path", "eap-no-such-binary")));
         var executed = new ArrayList<String>();
         ProcessExecutor executor = (capability, directory, command) -> {
             executed.add(capability);
@@ -358,7 +359,7 @@ class CapabilityManagementTest {
         when(jdbc.queryForList(argThat((String sql) -> sql != null && sql.contains(EXPERT_SQL))))
                 .thenReturn(List.of(expert("orders-sql", true, """
                         {"apiVersion":"eap/v1","kind":"Expert","id":"orders-sql","name":"订单库",
-                         "steps":[],"edges":[],"rules":["database.credentials.never-expose"],
+                         "behavior":{"id":"sql-analysis","version":1},"steps":[],"edges":[],"rules":["database.credentials.never-expose"],
                          "mcpTools":["mcp.files.search"]}
                         """)));
 

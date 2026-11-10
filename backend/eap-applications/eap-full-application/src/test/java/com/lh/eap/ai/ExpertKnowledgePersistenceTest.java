@@ -52,7 +52,7 @@ class ExpertKnowledgePersistenceTest {
         manager = new DataSourceTransactionManager(dataSource);
         tx = new TransactionTemplate(manager); tx.setTimeout(10);
         var settings = new CapabilitySettings(jdbc, new CapabilityUsage(jdbc));
-        experts = new ExpertDefinitionService(jdbc, new RulePackService(jdbc), new McpServerRegistry(jdbc), settings, com.lh.eap.core.ExpertAnalysisPolicyResolver.fixed(org.mockito.Mockito.mock(com.lh.eap.core.ExpertAnalysisPolicy.class)));
+        experts = new ExpertDefinitionService(jdbc, new RulePackService(jdbc), new McpServerRegistry(jdbc), settings, new com.lh.eap.core.ExpertBehaviorCatalog(java.util.List.of(new com.lh.eap.core.ExpertBehaviorCatalog.Registration(new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1), "SQL", org.mockito.Mockito.mock(com.lh.eap.core.ExpertAnalysisPolicy.class)))));
         definitions = new ExpertDefinitionMapper(jdbc);
         var repository = new KnowledgeRepository(jdbc);
         var registry = new CapabilityHandlerRegistry(List.of(new KnowledgeSearchHandler(repository)), settings);
@@ -78,7 +78,7 @@ class ExpertKnowledgePersistenceTest {
     KnowledgeExpertRef createExpert(String id, UUID base) {
         var manifest = new ExpertManifest("eap/v1", "Expert", id, "fixture", List.of(base.toString()), List.of(),
                 List.of(new ExpertManifest.Step("read", "Knowledge", "knowledge.search", true)), List.of(),
-                List.of("database.credentials.never-expose"));
+                List.of("database.credentials.never-expose"), List.of(), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
         tx.executeWithoutResult(s -> definitions.saveDraft(id, "fixture", ExpertManifest.serialize(manifest)));
         tx.executeWithoutResult(s -> experts.activate(id, true));
         return tx.execute(s -> new KnowledgeExpertRef(id, ((Number) definitions.lockForKnowledge(id).orElseThrow().get("revision")).longValue()));

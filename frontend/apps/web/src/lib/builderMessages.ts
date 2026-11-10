@@ -5,8 +5,6 @@ export const builderMessages = {
     surfaces: 'Builder 工作面',
     design: '设计',
     versions: '版本',
-    legacy: '历史演示',
-    legacyHint: '保留布局草案、旧标题与计数演示及交接记录；不会将这些演示当作语义设计。',
   },
   'en-US': {
     subtitle:
@@ -15,8 +13,5 @@ export const builderMessages = {
     surfaces: 'Builder surfaces',
     design: 'Design',
     versions: 'Versions',
-    legacy: 'Legacy demos',
-    legacyHint:
-      'Retained layout drafts, title/counter demos and handoff records are not semantic designs.',
   },
 }

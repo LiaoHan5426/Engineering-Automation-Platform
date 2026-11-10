@@ -24,7 +24,7 @@ class ExpertPolicySelectionTest {
         var binding = new ExpertBehaviorBinding("local-review", 2);
         var selected = policy("second");
         var resolver = new ExpertBehaviorCatalog(List.of(
-                new ExpertBehaviorCatalog.Registration(binding, "Local", selected)), binding);
+                new ExpertBehaviorCatalog.Registration(binding, "Local", selected)));
         var service = service(resolver, context -> {
             context.publish("second.checked", true);
             return new NodeResult(true, false, "Checked", Map.of());
@@ -45,7 +45,7 @@ class ExpertPolicySelectionTest {
         var binding = new ExpertBehaviorBinding("local-review", 1);
         var installed = policy("first");
         var resolver = new ExpertBehaviorCatalog(List.of(
-                new ExpertBehaviorCatalog.Registration(binding, "Local", installed)), binding);
+                new ExpertBehaviorCatalog.Registration(binding, "Local", installed)));
         var service = service(resolver, context -> { fail("Tool must not run"); return null; });
         var stored = manifest("first");
         var bound = new ExpertManifest(stored.apiVersion(), stored.kind(), stored.id(), stored.name(),
@@ -165,7 +165,7 @@ class ExpertPolicySelectionTest {
     private static ExpertManifest manifest(String id) {
         return new ExpertManifest("eap/v1", "Expert", id, id, List.of(), List.of(),
                 List.of(new ExpertManifest.Step("inspect", "Inspect", "local.inspect", true)), List.of(),
-                List.of("database.credentials.never-expose"));
+                List.of("database.credentials.never-expose"), List.of(), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
     }
 
     private static ExpertExecutionService.Request request() {

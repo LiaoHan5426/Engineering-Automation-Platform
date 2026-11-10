@@ -131,7 +131,7 @@ public final class ToolUnknownReviewFixture {
                 }
             };
             var handlers = new CapabilityHandlerRegistry(List.of(new GitInspectionHandler(registry, executor)), settings);
-            return new ToolExecutionService(store, RuntimeWorkspace.colocated(session.resolve("workspace"), "", ""),
+            return new ToolExecutionService(store, RuntimeWorkspace.colocated(session.resolve("workspace"), ""),
                     settings, handlers, registry, controlled);
         }
     }

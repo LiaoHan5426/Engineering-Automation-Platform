@@ -18,7 +18,7 @@ class CodeChangeBoundaryTest {
     @TempDir Path root;
 
     private CodeChangeService service() {
-        return new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""));
+        return new CodeChangeService(new RuntimeWorkspace(root, root.toString()));
     }
 
     private static String candidate(String path) {
@@ -65,7 +65,7 @@ class CodeChangeBoundaryTest {
                     calls.incrementAndGet();
                     return new CodeVerificationService.ProcessResult(7, "typecheck failed");
                 });
-        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), verification);
+        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString()), verification);
         var conversation = UUID.randomUUID();
         var proposal = changes.propose(conversation, candidate("source.ts"));
         var first = changes.apply(conversation, proposal.id(), true);

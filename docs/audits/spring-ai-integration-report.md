@@ -46,7 +46,7 @@ EAP_AI_PROVIDER=openai
 OPENAI_API_KEY=<由部署环境注入，不写入仓库>
 EAP_AI_MODEL=<操作者确认可用的 OpenAI API 模型>
 EAP_AI_BASE_URL=https://api.openai.com
-EAP_AI_AUTHORIZED_ROOT=<可信仓库或仓库父目录绝对路径>
+EAP_AUTHORIZED_ROOT=<明确绑定的可信工作区绝对路径>
 EAP_AI_ARTIFACT_ROOT=<可信 Artifact 根目录，父目录必须已存在>
 ```
 

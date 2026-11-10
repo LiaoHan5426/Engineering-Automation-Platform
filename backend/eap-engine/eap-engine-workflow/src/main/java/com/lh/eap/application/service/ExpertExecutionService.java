@@ -57,13 +57,6 @@ public class ExpertExecutionService {
     private final Path workspace;
     private final List<ExecutionResource> resources;
 
-    /** Explicit fixed-policy construction retained for embedded consumers. */
-    public ExpertExecutionService(ExpertDefinitionService definitions, TaskRepository tasks,
-            CapabilityHandlerRegistry handlers, ExpertAnalysisPolicy policy, Path workspace,
-            List<ExecutionResource> resources) {
-        this(definitions, tasks, handlers, ExpertAnalysisPolicyResolver.fixed(policy), workspace, resources);
-    }
-
     @Autowired
     public ExpertExecutionService(ExpertDefinitionService definitions, TaskRepository tasks,
             CapabilityHandlerRegistry handlers, ExpertAnalysisPolicyResolver policies, Path workspace,
@@ -100,7 +93,7 @@ public class ExpertExecutionService {
         if (selectedPolicy == null || selectedPolicy.isEmpty())
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "EXPERT_ANALYSIS_POLICY_UNAVAILABLE");
         var policy = selectedPolicy.get();
-        var binding = manifest.behavior() != null ? manifest.behavior() : policies.legacyBinding().orElse(null);
+        var binding = manifest.behavior();
         var allowedFacts = Set.copyOf(policy.allowedFacts());
         var declaredPackIds=manifest.rulePacks()==null?List.<String>of():manifest.rulePacks();
         var selectedRules=policy.rules(declaredPackIds);

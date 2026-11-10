@@ -14,7 +14,7 @@ import java.util.*;
 
 class ExpertWorkflowTest {
     private ExpertManifest graph(List<ExpertManifest.Step> steps,List<ExpertManifest.Edge> edges){
-        return new ExpertManifest("eap/v1","Expert","test","Test",List.of(),List.of(),steps,edges,List.of("database.credentials.never-expose"));
+        return new ExpertManifest("eap/v1","Expert","test","Test",List.of(),List.of(),steps,edges,List.of("database.credentials.never-expose"), List.of(), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
     }
     private ExpertManifest.Step node(String id){return new ExpertManifest.Step(id,id,"sql.parse",true);}
     @Test void ordersByDependenciesNotNames(){
@@ -29,7 +29,7 @@ class ExpertWorkflowTest {
     @Test void rejectsUnknownCapabilitiesAndMissingPrivacyRule(){
         var manifest=graph(List.of(new ExpertManifest.Step("a","A","shell.eval",true)),List.of());
         assertFalse(ExpertGraph.validate(manifest).isEmpty());
-        assertFalse(ExpertGraph.validate(new ExpertManifest("eap/v1","Expert","test","Test",List.of(),List.of(),List.of(node("a")),List.of(),List.of())).isEmpty());
+        assertFalse(ExpertGraph.validate(new ExpertManifest("eap/v1","Expert","test","Test",List.of(),List.of(),List.of(node("a")),List.of(),List.of(), List.of(), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1))).isEmpty());
     }
     @Test void sqlUsesActualJoinColumns(){
         var result=DeterministicSqlAnalyzer.analyze("select a.id,b.success from task a join task_observation b on a.id=b.task_id");
@@ -60,7 +60,7 @@ class ExpertWorkflowTest {
     }
     @Test void manifestParserAcceptsEditorCoordinates(){
         var parsed=ExpertManifest.parse("""
-          {"apiVersion":"eap/v1","kind":"Expert","id":"test","name":"Test","steps":[{"id":"a","capability":"sql.parse","required":true,"x":10,"y":20}],"edges":[],"rules":["database.credentials.never-expose"]}
+          {"apiVersion":"eap/v1","kind":"Expert","id":"test","name":"Test","behavior":{"id":"sql-analysis","version":1},"steps":[{"id":"a","capability":"sql.parse","required":true,"x":10,"y":20}],"edges":[],"rules":["database.credentials.never-expose"]}
           """);
         assertTrue(ExpertGraph.validate(parsed).isEmpty());
     }

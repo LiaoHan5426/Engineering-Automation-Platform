@@ -29,9 +29,8 @@ public final class ExpertBehaviorCatalog implements ExpertAnalysisPolicyResolver
 
     private final Map<ExpertBehaviorBinding, ExpertAnalysisPolicy> policies;
     private final List<Descriptor> descriptors;
-    private final ExpertBehaviorBinding legacy;
 
-    public ExpertBehaviorCatalog(List<Registration> registrations, ExpertBehaviorBinding legacy) {
+    public ExpertBehaviorCatalog(List<Registration> registrations) {
         var entries = new LinkedHashMap<ExpertBehaviorBinding, ExpertAnalysisPolicy>();
         var names = new ArrayList<Descriptor>();
         for (var registration : registrations) {
@@ -40,15 +39,12 @@ public final class ExpertBehaviorCatalog implements ExpertAnalysisPolicyResolver
             }
             names.add(new Descriptor(registration.binding(), registration.name(), registration.executionMode(), registration.allowedTools(), registration.requiredTools()));
         }
-        this.legacy = Objects.requireNonNull(legacy);
-        if (!entries.containsKey(legacy)) throw new IllegalArgumentException("Legacy behavior is not registered");
         this.policies = Map.copyOf(entries);
         this.descriptors = List.copyOf(names);
     }
 
     @Override public Optional<ExpertAnalysisPolicy> resolve(ExpertManifest expert) {
-        return Optional.ofNullable(policies.get(expert.behavior() == null ? legacy : expert.behavior()));
+        return expert.behavior() == null ? Optional.empty() : Optional.ofNullable(policies.get(expert.behavior()));
     }
-    @Override public Optional<ExpertBehaviorBinding> legacyBinding() { return Optional.of(legacy); }
     @Override public List<Descriptor> behaviors() { return descriptors; }
 }

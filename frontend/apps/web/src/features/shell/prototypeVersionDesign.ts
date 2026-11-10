@@ -9,12 +9,12 @@ export function prototypeVersionDesign(body: string): {
   try {
     const data = JSON.parse(body)
     if (typeof data?.format !== 'string' || !data.format.startsWith('eap-prototype-'))
-      return { semantic: false, schema: null, blocked: false }
+      return { semantic: false, schema: null, blocked: true }
     const schema =
       data.format === 'eap-prototype-v1' ? parsePrototypeSchema(JSON.stringify(data.schema)) : null
     return { semantic: true, schema, blocked: !schema || !canAutoDeliver(schema) }
   } catch {
     const semantic = body.includes('eap-prototype-')
-    return { semantic, schema: null, blocked: semantic }
+    return { semantic, schema: null, blocked: true }
   }
 }

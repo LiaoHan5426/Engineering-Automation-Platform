@@ -58,7 +58,7 @@ class MissionGitExecutionServiceTest {
             @Override public Optional<Mission> findByHandoff(UUID handoffId) { return Optional.empty(); }
             @Override public void updateExecution(UUID id, String execution) {}
         }, new MemoryExecutions(rows), handlers, new CapabilitySettings(null, null), capabilities,
-                (ProcessExecutor) new DefaultProcessExecutor(), new RuntimeWorkspace(java.nio.file.Path.of("."), "", ""));
+                (ProcessExecutor) new DefaultProcessExecutor(), new RuntimeWorkspace(java.nio.file.Path.of("."), ""));
     }
 
     private static MissionExecution open(UUID missionId, long pid, Instant started) {

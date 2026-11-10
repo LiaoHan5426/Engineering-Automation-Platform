@@ -22,7 +22,7 @@ import tools.jackson.databind.json.JsonMapper;
 @RequestMapping("/api")
 public class PrototypeVersionController {
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private static final Set<String> VERSION_FIELDS = Set.of("sourceRef", "title", "body", "buttonPresses", "acceptance");
+    private static final Set<String> VERSION_FIELDS = Set.of("sourceRef", "title", "body", "acceptance");
     private static final Set<String> DELIVERY_FIELDS = Set.of("versionId");
     private final PrototypeVersionService versions;
 
@@ -46,7 +46,6 @@ public class PrototypeVersionController {
         if (!(parsed.get("sourceRef") instanceof String sourceRef)
                 || !(parsed.get("title") instanceof String title)
                 || !(parsed.get("body") instanceof String text)
-                || !(parsed.get("buttonPresses") instanceof Integer presses)
                 || !(parsed.get("acceptance") instanceof List<?> acceptance)) {
             throw new IllegalArgumentException("原型版本字段类型不正确");
         }
@@ -55,7 +54,7 @@ public class PrototypeVersionController {
             if (!(item instanceof String condition)) throw new IllegalArgumentException("验收条件必须是文本");
             conditions.add(condition);
         }
-        return versions.save(sourceRef, title, text, presses, conditions);
+        return versions.save(sourceRef, title, text, conditions);
     }
 
     @PostMapping("/prototype-deliveries")

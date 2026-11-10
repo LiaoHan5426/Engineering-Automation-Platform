@@ -34,7 +34,7 @@ class ExpertDefinitionCompositionTest {
                 .withBean(RulePackQuery.class, () -> rules)
                 .withBean(ExpertScopedCapabilityQuery.class, () -> () -> Set.of())
                 .withBean(CapabilitySettings.class, () -> settings)
-                .withBean(ExpertAnalysisPolicyResolver.class, () -> ExpertAnalysisPolicyResolver.fixed(mock(ExpertAnalysisPolicy.class)))
+                .withBean(ExpertAnalysisPolicyResolver.class, () -> new com.lh.eap.core.ExpertBehaviorCatalog(java.util.List.of(new com.lh.eap.core.ExpertBehaviorCatalog.Registration(new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1), "SQL", mock(ExpertAnalysisPolicy.class)))))
                 .withBean(CliProgramMapper.class, () -> mock(CliProgramMapper.class))
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -105,12 +105,12 @@ class ExpertDefinitionCompositionTest {
     }
 
     private ExpertDefinitionService definitions(ExpertScopedCapabilityQuery scoped) {
-        return new ExpertDefinitionService(jdbc, rules, scoped, settings, ExpertAnalysisPolicyResolver.fixed(mock(ExpertAnalysisPolicy.class)));
+        return new ExpertDefinitionService(jdbc, rules, scoped, settings, new com.lh.eap.core.ExpertBehaviorCatalog(java.util.List.of(new com.lh.eap.core.ExpertBehaviorCatalog.Registration(new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1), "SQL", mock(ExpertAnalysisPolicy.class)))));
     }
 
     private static ExpertManifest manifest(String capability, List<String> packs, List<String> tools) {
         return new ExpertManifest("eap/v1", "Expert", "local-expert", "Local expert", List.of(), List.of(),
                 List.of(new ExpertManifest.Step("inspect", "Inspect", capability, true)), List.of(),
-                List.of("database.credentials.never-expose"), packs, tools);
+                List.of("database.credentials.never-expose"), packs, tools, new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
     }
 }

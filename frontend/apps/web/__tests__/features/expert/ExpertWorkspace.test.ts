@@ -14,6 +14,7 @@ const workflow = {
   id: 'workflow',
   name: 'Fixed SQL',
   apiVersion: 'eap/v1',
+  behavior: { id: 'sql-analysis', version: 1 },
   kind: 'Expert',
   steps: [{ id: 'parse', capability: 'sql.parse', required: true }],
   edges: [],
@@ -228,6 +229,7 @@ it('adds catalog nodes, synchronizes canvas and structure selection, and removes
   await vi.waitFor(() => expect(runtimeApi.saveExpert).toHaveBeenCalledOnce())
   expect(manifest).toMatchObject({
     apiVersion: 'eap/v1',
+    behavior: { id: 'sql-analysis', version: 1 },
     edges: [],
     steps: [{ capability: 'database.explain' }],
   })

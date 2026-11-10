@@ -25,25 +25,19 @@ export type DesktopPlatform = {
   showNotification?: (input: DesktopNotificationInput) => Promise<{ ok: boolean } | void>
 }
 
-/** @deprecated Prefer DesktopPlatform; kept for existing localBridge imports. */
-export type DesktopWorkspaceBridge = Pick<DesktopPlatform, 'chooseWorkspace'>
-
 declare global {
   interface Window {
     /** Canonical preload surface from desktop-spec. */
     eap?: DesktopPlatform
-    /** Interim alias used before apps/desktop ships. */
-    eapDesktop?: DesktopPlatform
   }
 }
 
-/** Preload may expose window.eap (spec) or window.eapDesktop (interim). */
+/** Resolve the single public surface exposed by the desktop preload. */
 export function resolveDesktopBridge(
   win: Window | undefined = typeof window === 'undefined' ? undefined : window,
 ): DesktopPlatform | null {
   if (!win) return null
   if (typeof win.eap?.chooseWorkspace === 'function') return win.eap
-  if (typeof win.eapDesktop?.chooseWorkspace === 'function') return win.eapDesktop
   return null
 }
 

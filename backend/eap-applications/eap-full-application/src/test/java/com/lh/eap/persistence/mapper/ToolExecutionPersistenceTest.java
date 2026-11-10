@@ -97,7 +97,7 @@ class ToolExecutionPersistenceTest {
                 when(handlers.resolveFor(null, "git-diff")).thenReturn(Optional.of(mock(GitInspectionHandler.class)));
                 var registry = new CapabilityRegistry().register(new GitCapability("status")).register(new GitCapability("diff"));
                 try (var executor = new DefaultProcessExecutor()) {
-                    var service = new ToolExecutionService(store, RuntimeWorkspace.colocated(workspace, "", ""), settings, handlers, registry, executor);
+                    var service = new ToolExecutionService(store, RuntimeWorkspace.colocated(workspace, ""), settings, handlers, registry, executor);
                     try {
                         service.afterPropertiesSet();
                         var row = service.start(UUID.randomUUID());

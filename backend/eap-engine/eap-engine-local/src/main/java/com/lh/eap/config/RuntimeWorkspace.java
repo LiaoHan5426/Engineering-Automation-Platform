@@ -25,28 +25,28 @@ public final class RuntimeWorkspace {
     private final Path workspace;
     private final Decision root;
 
-    public RuntimeWorkspace(Path workspace, String configuredRoot, String legacyRoot) {
+    public RuntimeWorkspace(Path workspace, String configuredRoot) {
         this.workspace = workspace;
-        this.root = decide(configuredRoot, legacyRoot);
+        this.root = decide(configuredRoot);
     }
 
     /**
-     * Colocated local-service factory: if both config keys are empty, bind the process root to the
-     * detected workspace directory. Explicit conflicts and invalid directories still deny. Does not
+     * Colocated local-service factory: if the configuration is empty, bind the process root to the
+     * detected workspace directory. Invalid directories still deny. Does not
      * widen to a parent of {@code workspace} or the whole disk.
      */
-    public static RuntimeWorkspace colocated(Path workspace, String configuredRoot, String legacyRoot) {
-        var base = new RuntimeWorkspace(workspace, configuredRoot, legacyRoot);
+    public static RuntimeWorkspace colocated(Path workspace, String configuredRoot) {
+        var base = new RuntimeWorkspace(workspace, configuredRoot);
         if (base.root().allowed()) {
             return base;
         }
-        if (!"AUTHORIZED_ROOT_MISSING".equals(base.root().denial())) {
+        if (blankToNull(configuredRoot) != null) {
             return base;
         }
         if (workspace == null || !Files.isDirectory(workspace)) {
             return base;
         }
-        return new RuntimeWorkspace(workspace, workspace.toAbsolutePath().normalize().toString(), "");
+        return new RuntimeWorkspace(workspace, workspace.toAbsolutePath().normalize().toString());
     }
 
     public Path workspace() {
@@ -65,26 +65,11 @@ public final class RuntimeWorkspace {
         return label(workspace);
     }
 
-    /** New key wins only when it is the only one set, or both real paths are the same directory. */
-    public static Decision decide(String configuredRoot, String legacyRoot) {
+    /** Resolve only the current authorized-root contract. */
+    public static Decision decide(String configuredRoot) {
         var current = blankToNull(configuredRoot);
-        var legacy = blankToNull(legacyRoot);
-        if (current == null && legacy == null) {
-            return new Decision(null, "AUTHORIZED_ROOT_MISSING");
-        }
-        if (current != null && legacy != null) {
-            var left = directory(current);
-            var right = directory(legacy);
-            if (left == null || right == null || !left.equals(right)) {
-                return new Decision(null, "ROOT_CONFLICT");
-            }
-            return new Decision(left, null);
-        }
-        var chosen = directory(current != null ? current : legacy);
-        if (chosen == null) {
-            return new Decision(null, "AUTHORIZED_ROOT_MISSING");
-        }
-        return new Decision(chosen, null);
+        var chosen = current == null ? null : directory(current);
+        return chosen == null ? new Decision(null, "AUTHORIZED_ROOT_MISSING") : new Decision(chosen, null);
     }
 
     public static String label(Path workspace) {

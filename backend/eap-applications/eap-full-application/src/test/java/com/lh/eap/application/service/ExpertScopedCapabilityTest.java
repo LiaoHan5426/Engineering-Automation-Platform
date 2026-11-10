@@ -68,7 +68,7 @@ class ExpertScopedCapabilityTest {
             edges.add(new ExpertManifest.Edge(nodes.get(index - 1).id(), nodes.get(index).id()));
         }
         return new ExpertManifest("eap/v1", "Expert", EXPERT, "订单库", List.of(), List.of(),
-                List.copyOf(nodes), List.copyOf(edges), List.of("database.credentials.never-expose"), List.of(), mcpTools);
+                List.copyOf(nodes), List.copyOf(edges), List.of("database.credentials.never-expose"), List.of(), mcpTools, new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
     }
 
     /** A registry with one registered, enabled and trusted server publishing {@code query}. */
@@ -191,7 +191,7 @@ class ExpertScopedCapabilityTest {
         when(jdbc.queryForList(anyString(), eq(EXPERT))).thenReturn(List.of(row));
         var service = new ExpertDefinitionService(jdbc, new RulePackService(jdbc), servers,
                 new CapabilitySettings(jdbc, new com.lh.eap.persistence.mapper.CapabilityUsage(jdbc)),
-                com.lh.eap.core.ExpertAnalysisPolicyResolver.fixed(mock(com.lh.eap.core.ExpertAnalysisPolicy.class)));
+                new com.lh.eap.core.ExpertBehaviorCatalog(java.util.List.of(new com.lh.eap.core.ExpertBehaviorCatalog.Registration(new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1), "SQL", mock(com.lh.eap.core.ExpertAnalysisPolicy.class)))));
 
         service.activate(EXPERT, true);
         verify(jdbc).update(contains("INSERT INTO eap.expert_mcp_grant"), eq(EXPERT), eq(FakeMcpToolHandler.CAPABILITY));

@@ -301,7 +301,7 @@ class OpenAiResponsesProtocolTest {
                     new EngineeringChatService(null, handlers, root,
                             new com.lh.eap.application.service.FileExecutionArtifactStore(root.resolve("artifacts"))), root, connections);
             org.springframework.test.util.ReflectionTestUtils.setField(app, "codeChanges", new CodeChangeService(
-                    new com.lh.eap.config.RuntimeWorkspace(root, root.toString(), ""), null, null,
+                    new com.lh.eap.config.RuntimeWorkspace(root, root.toString()), null, null,
                     new InMemoryCodeGenerationStore(), new InMemoryCodeProposalStore()));
             var id = app.open("{}").conversationId();
             assertEquals("offline answer", app.send(id, "{\"message\":\"memory-marker\",\"toolMode\":\"none\"}").answer());

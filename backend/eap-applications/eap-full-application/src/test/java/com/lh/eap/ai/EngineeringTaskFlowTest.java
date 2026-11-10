@@ -34,12 +34,12 @@ class EngineeringTaskFlowTest {
         var service = new EngineeringChatService(client, handlers, (Path) null, new FileExecutionArtifactStore(root.resolve("artifacts")));
         var status = new AiConnectionStatus(handlers, root, null, "openai", "offline", "https://api.openai.com", true);
         var app = new AiChatApplication(status, new AiConversationRegistry(memory), service, root);
-        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), null, null, new InMemoryCodeGenerationStore(), new InMemoryCodeProposalStore());
+        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString()), null, null, new InMemoryCodeGenerationStore(), new InMemoryCodeProposalStore());
         ReflectionTestUtils.setField(app, "codeChanges", changes);
         var versions = org.mockito.Mockito.mock(com.lh.eap.application.service.PrototypeVersionService.class);
         var versionId = UUID.fromString("116967fb-fcc8-49ec-a8a4-2042ae80ecb0");
         org.mockito.Mockito.when(versions.find(versionId)).thenReturn(new com.lh.eap.application.service.PrototypeVersion(
-                versionId, "builder-alpha", "Saved checkout", "A saved design", 1, "button increments", List.of("Accessible button"), "hash", java.time.Instant.now()));
+                versionId, "builder-alpha", "Saved checkout", "A saved design", List.of("Accessible button"), "hash", java.time.Instant.now()));
         ReflectionTestUtils.setField(app, "prototypes", versions);
         var id = app.open("{}").conversationId();
         Files.createDirectories(root.resolve("src/features/chat"));
@@ -80,7 +80,7 @@ class EngineeringTaskFlowTest {
             }
         };
         var verify = new CodeVerificationService(true, 5, List.of(new CodeVerificationService.Spec("typecheck", List.of("stub"))), runner);
-        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), verify);
+        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString()), verify);
         var id = UUID.randomUUID();
         var proposal = changes.propose(id, CODE);
         var applied = changes.apply(id, proposal.id(), true);
@@ -93,12 +93,12 @@ class EngineeringTaskFlowTest {
     }
 
     @Test void readOnlyAndMissingRootCannotBeBypassedByApplyRequest() {
-        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""));
+        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString()));
         var id = UUID.randomUUID();
         var readOnly = changes.propose(id, CODE, false);
         assertEquals("READ_ONLY_PROPOSAL", assertThrows(ResponseStatusException.class,
                 () -> changes.apply(id, readOnly.id(), true)).getReason());
-        var noRoot = new CodeChangeService(new RuntimeWorkspace(root, "", ""));
+        var noRoot = new CodeChangeService(new RuntimeWorkspace(root, ""));
         var proposal = noRoot.propose(id, CODE);
         assertEquals("WORKSPACE_WRITE_NOT_AUTHORIZED", assertThrows(ResponseStatusException.class,
                 () -> noRoot.apply(id, proposal.id(), true)).getReason());
@@ -108,7 +108,7 @@ class EngineeringTaskFlowTest {
         Files.createDirectories(root.resolve("src/components"));
         Path target = root.resolve("src/components/Checkout.vue");
         Files.writeString(target, "before");
-        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""));
+        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString()));
         var id = UUID.randomUUID();
         var proposal = changes.propose(id, CODE);
         Files.writeString(target, "user edit");
@@ -119,7 +119,7 @@ class EngineeringTaskFlowTest {
     }
 
     @Test void unsafePathsAndOversizedContextAreRejected() {
-        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""));
+        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString()));
         for (String path : List.of("../outside.ts", ".git/config", "C:/outside.ts", "src/../../file.ts", "package.json")) {
             assertThrows(ResponseStatusException.class, () -> changes.propose(UUID.randomUUID(), CODE.replace("src/components/Checkout.vue", path)));
         }
@@ -131,10 +131,10 @@ class EngineeringTaskFlowTest {
         Files.createDirectories(root.resolve("src/components"));
         Path target = root.resolve("src/components/Checkout.vue");
         Files.writeString(target, "baseline-body");
-        var denied = new CodeChangeService(new RuntimeWorkspace(root, "", "")).inspectBaseline("src/components/Checkout.vue");
+        var denied = new CodeChangeService(new RuntimeWorkspace(root, "")).inspectBaseline("src/components/Checkout.vue");
         assertEquals("AUTHORIZED_ROOT_MISSING", denied.denial());
         assertEquals("", denied.baseHash());
-        var allowed = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""));
+        var allowed = new CodeChangeService(new RuntimeWorkspace(root, root.toString()));
         var missing = allowed.inspectBaseline("src/components/Missing.vue");
         assertFalse(missing.exists());
         assertEquals("absent", missing.baseHash());
@@ -148,18 +148,18 @@ class EngineeringTaskFlowTest {
     }
 
     @Test void dirtyInspectionRequiresAuthorizedRootAndParsesPorcelain() {
-        var denied = new CodeChangeService(new RuntimeWorkspace(root, "", "")).inspectDirty();
+        var denied = new CodeChangeService(new RuntimeWorkspace(root, "")).inspectDirty();
         assertFalse(denied.requested());
         assertEquals("AUTHORIZED_ROOT_MISSING", denied.denial());
         assertTrue(denied.paths().isEmpty());
         var runner = (CodeChangeService.DirtyRunner) workspace -> " M src/features/chat/TaskComposer.vue\n?? docs/note.md\n";
-        var dirty = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), null, runner).inspectDirty();
+        var dirty = new CodeChangeService(new RuntimeWorkspace(root, root.toString()), null, runner).inspectDirty();
         assertTrue(dirty.requested());
         assertEquals("", dirty.denial());
         assertEquals(2, dirty.count());
         assertEquals(List.of("src/features/chat/TaskComposer.vue", "docs/note.md"), dirty.paths());
         assertEquals("dirty", dirty.detail());
-        var clean = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), null, workspace -> "").inspectDirty();
+        var clean = new CodeChangeService(new RuntimeWorkspace(root, root.toString()), null, workspace -> "").inspectDirty();
         assertTrue(clean.requested());
         assertEquals(0, clean.count());
         assertEquals("clean", clean.detail());
@@ -170,7 +170,7 @@ class EngineeringTaskFlowTest {
         Files.createDirectories(root.resolve("src/features/chat"));
         Path target = root.resolve("src/features/chat/TaskComposer.vue");
         Files.writeString(target, "<script setup>const x = 1</script>\n".repeat(200));
-        var withoutRoot = new CodeChangeService(new RuntimeWorkspace(root, "", ""));
+        var withoutRoot = new CodeChangeService(new RuntimeWorkspace(root, ""));
         var excerpt = withoutRoot.inspectSource("src/features/chat/TaskComposer.vue");
         assertTrue(excerpt.exists());
         assertEquals("", excerpt.denial());
@@ -194,7 +194,7 @@ class EngineeringTaskFlowTest {
         assertTrue(ctx.systemInstructions().contains("MUST include that exact path"));
         assertThrows(ResponseStatusException.class, () -> TaskContext.parse(Map.of("targetPath", "../secret")));
 
-        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""));
+        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString()));
         String shellOnly = """
                 {"summary":"new shell","files":[{"path":"src/components/NewShell.vue","content":"<template>new</template>"}]}
                 """;
@@ -224,7 +224,7 @@ class EngineeringTaskFlowTest {
         try (var executor = new com.lh.eap.core.DefaultProcessExecutor()) {
             var runner = new CapabilityDirtyRunner(settings, registry, executor);
             assertTrue(runner.porcelain(root).contains("README.md"));
-            var dirty = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), null, runner).inspectDirty();
+            var dirty = new CodeChangeService(new RuntimeWorkspace(root, root.toString()), null, runner).inspectDirty();
             assertTrue(dirty.requested(), dirty.detail());
             assertEquals("", dirty.denial());
             assertTrue(dirty.count() >= 1);
@@ -238,7 +238,7 @@ class EngineeringTaskFlowTest {
         assumeTrue(isCommandAvailable("git"), "git required for process runner checks");
         // enabled=false and empty specs: probe must still run; apply path must stay not_requested.
         var verify = new CodeVerificationService(false, 10, List.of(), CodeVerificationService.ProcessRunner.INSTANCE);
-        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), verify);
+        var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString()), verify);
         var probe = changes.probeVerification();
         assertTrue(probe.requested());
         assertEquals("", probe.denial());
@@ -246,7 +246,7 @@ class EngineeringTaskFlowTest {
         assertEquals(0, probe.exitCode());
         assertTrue(probe.summary().toLowerCase().contains("git"));
         assertFalse(verify.enabled());
-        var missing = new CodeChangeService(new RuntimeWorkspace(root, "", ""), verify).probeVerification();
+        var missing = new CodeChangeService(new RuntimeWorkspace(root, ""), verify).probeVerification();
         assertFalse(missing.requested());
         assertEquals("AUTHORIZED_ROOT_MISSING", missing.denial());
     }

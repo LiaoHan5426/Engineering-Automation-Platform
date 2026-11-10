@@ -18,7 +18,7 @@ class EngineeringAiConfigurationTest {
             .withUserConfiguration(EngineeringAiConfiguration.class)
             .withBean(CapabilityHandlerRegistry.class, () -> new CapabilityHandlerRegistry(List.of()))
             .withBean(java.nio.file.Path.class, () -> java.nio.file.Path.of("."))
-            .withBean(com.lh.eap.config.RuntimeWorkspace.class, () -> new com.lh.eap.config.RuntimeWorkspace(java.nio.file.Path.of("."), "", ""));
+            .withBean(com.lh.eap.config.RuntimeWorkspace.class, () -> new com.lh.eap.config.RuntimeWorkspace(java.nio.file.Path.of("."), ""));
 
     @Test void disabledProviderStartsWithoutCredentials() {
         context.withPropertyValues("spring.ai.model.chat=none").run(c -> {

@@ -12,11 +12,11 @@ class ExpertBehaviorCatalogTest {
     private final ExpertAnalysisPolicy first = new UnusedPolicy();
     private final ExpertAnalysisPolicy second = new UnusedPolicy();
 
-    @Test void persistedBindingChoosesExactVersionAndLegacyUsesOnlyExplicitDefault() {
+    @Test void persistedBindingChoosesExactVersionAndMissingBindingIsUnsupported() {
         var catalog = new ExpertBehaviorCatalog(List.of(
                 new ExpertBehaviorCatalog.Registration(v1, "SQL v1", first),
-                new ExpertBehaviorCatalog.Registration(v2, "SQL v2", second)), v1);
-        assertSame(first, catalog.resolve(manifest(null)).orElseThrow());
+                new ExpertBehaviorCatalog.Registration(v2, "SQL v2", second)));
+        assertTrue(catalog.resolve(manifest(null)).isEmpty());
         var restored = ExpertManifest.parse(ExpertManifest.serialize(manifest(v2)));
         assertSame(second, catalog.resolve(restored).orElseThrow());
         assertTrue(catalog.resolve(manifest(new ExpertBehaviorBinding("sql-analysis", 3))).isEmpty());
@@ -25,10 +25,9 @@ class ExpertBehaviorCatalogTest {
                 .map(ExpertBehaviorCatalog.Descriptor::executionMode).toList());
     }
 
-    @Test void compositionRejectsDuplicateBindingsAndMissingLegacyVersion() {
+    @Test void compositionRejectsDuplicateBindings() {
         var registration = new ExpertBehaviorCatalog.Registration(v1, "SQL", first);
-        assertThrows(IllegalArgumentException.class, () -> new ExpertBehaviorCatalog(List.of(registration, registration), v1));
-        assertThrows(IllegalArgumentException.class, () -> new ExpertBehaviorCatalog(List.of(registration), v2));
+        assertThrows(IllegalArgumentException.class, () -> new ExpertBehaviorCatalog(List.of(registration, registration)));
     }
 
     @Test void malformedExplicitBindingsNeverBecomeLegacyDefinitions() {
@@ -39,17 +38,15 @@ class ExpertBehaviorCatalogTest {
                 "{\"id\":\"../sql\",\"version\":1}",
                 "{\"id\":\"sql-analysis\",\"version\":2147483648}",
                 "{\"id\":\"sql-analysis\",\"version\":1,\"class\":\"untrusted\"}")) {
-            assertThrows(RuntimeException.class, () -> ExpertManifest.parse("{\"behavior\":" + binding + "}"), binding);
+            assertThrows(RuntimeException.class, () -> ExpertManifest.parse("{\"steps\":[],\"edges\":[],\"behavior\":" + binding + "}"), binding);
         }
     }
 
-    @Test void legacySerializationOmitsBindingAndFixedResolverCannotIgnoreExplicitVersions() {
-        var json = ExpertManifest.serialize(manifest(null));
-        assertFalse(json.contains("behavior"));
-        assertNull(ExpertManifest.parse(json).behavior());
-        var fixed = ExpertAnalysisPolicyResolver.fixed(first);
-        assertTrue(fixed.resolve(manifest(v1)).isEmpty());
-        assertSame(first, fixed.resolve(manifest(null)).orElseThrow());
+    @Test void missingBehaviorOrImplicitGraphIsRejectedBeforeSelection() {
+        var raw=ExpertManifest.serialize(manifest(null));
+        assertThrows(IllegalArgumentException.class,()->ExpertManifest.parse(raw));
+        var complete=ExpertManifest.serialize(manifest(v1));
+        assertThrows(IllegalArgumentException.class,()->ExpertManifest.parse(complete.replace("\"edges\":[]", "\"capabilities\":[]")));
     }
 
     private static class UnusedPolicy implements ExpertAnalysisPolicy {

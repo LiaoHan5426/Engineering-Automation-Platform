@@ -25,20 +25,18 @@ class CliChannelsTest {
         assertEquals("git", channels.binaryFor("git-status", "git"));
         assertThrows(IllegalStateException.class, () -> channels.configure("git", "custom"));
     }
-    @Test void bindingsAreLiveSharedByProgramAndKeepLegacyFallback() {
+    @Test void bindingsAreLiveSharedByProgramAndClearingCannotReactivateOldOperationKeys() {
         var store = new Store(); var channels = new CliChannels(store);
-        store.values.put("git-status", "legacy-git");
-        assertEquals("legacy-git", channels.binaryFor("git-status", "git"));
+        store.values.put("git-status", "old-status");
+        store.values.put("git-diff", "old-diff");
+        assertEquals("git", channels.binaryFor("git-status", "git"));
         channels.configure("git", "new-git");
         assertEquals("new-git", channels.binaryFor("git-status", "git"));
         assertEquals("new-git", channels.binaryFor("git-diff", "git"));
         channels.configure("git", " ");
-        assertEquals("legacy-git", channels.binaryFor("git-status", "git"));
-        assertEquals("legacy-git", channels.binaryFor("git-diff", "git"));
-        assertEquals("legacy-git", channels.binaryFor("git", "git"));
-        store.values.put("git-diff", "other-git");
-        assertThrows(IllegalStateException.class, () -> channels.binaryFor("git-status", "git"));
-        assertNull(channels.channel("git", "git").resolvedPath());
+        assertEquals("git", channels.binaryFor("git-status", "git"));
+        assertEquals("git", channels.binaryFor("git-diff", "git"));
+        assertEquals("git", channels.binaryFor("git", "git"));
     }
     @Test void invalidBinaryNeverReachesTheStore() {
         var store = new Store(); var channels = new CliChannels(store);

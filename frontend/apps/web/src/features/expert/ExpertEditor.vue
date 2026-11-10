@@ -32,7 +32,6 @@ type ExpertDefinition = {
   databaseProfiles?: string[]
   steps?: Step[]
   edges?: Array<{ source: string; target: string }>
-  capabilities?: string[]
   rules?: string[]
   rulePacks?: string[]
   /** Expert-scoped capabilities (MCP tools) this expert is authorised to call. */
@@ -405,8 +404,15 @@ function applyDefinition(item: ExpertDefinition, note?: string) {
   const source = toRaw(item)
   const behavior = source.behavior as { id?: string; version?: number } | undefined
   if (
-    source.apiVersion === 'eap/v2' &&
-    (behavior?.id !== 'sql-readonly-agent' || behavior.version !== 1)
+    !behavior ||
+    !Number.isInteger(behavior.version) ||
+    Number(behavior.version) < 1 ||
+    !Array.isArray(source.steps) ||
+    !Array.isArray(source.edges) ||
+    'capabilities' in source ||
+    (source.apiVersion === 'eap/v2'
+      ? behavior.id !== 'sql-readonly-agent' || behavior.version !== 1
+      : source.apiVersion !== 'eap/v1')
   ) {
     loadError.value = t('expertWorkspace.unsupported')
     return
@@ -426,27 +432,8 @@ function applyDefinition(item: ExpertDefinition, note?: string) {
   selectedRules.value = [...new Set(['database.credentials.never-expose', ...(source.rules ?? [])])]
   selectedRulePacks.value = [...((source.rulePacks as string[] | undefined) ?? [])]
   declaredMcpTools.value = [...((source.mcpTools as string[] | undefined) ?? [])]
-  steps.value = structuredClone(
-    source.steps ??
-      (source.capabilities ?? []).map((capability: string, index: number) => ({
-        id: 'step-' + (index + 1),
-        capability,
-        required: true,
-      })),
-  )
-  if (source.steps && source.edges === undefined) {
-    edges.value = steps.value.slice(1).map((step, index) => ({
-      source: steps.value[index]!.id,
-      target: step.id,
-    }))
-    message.value = '旧版顺序步骤已转换为显式依赖连线，请确认后保存草稿。'
-  } else {
-    message.value =
-      note ??
-      (!agentMode.value && !source.steps
-        ? '该定义仅有能力清单，没有执行顺序；请手动连接节点。'
-        : '')
-  }
+  steps.value = structuredClone(source.steps!)
+  message.value = note ?? ''
   baseline.value = definition().manifest
 }
 /** 明确放弃未保存的修改，而不是把它藏在一个确认框后面。 */
@@ -468,7 +455,6 @@ function definition() {
   // `steps` is the single source of truth for capabilities; a duplicate `capabilities` array used to be
   // written here and could silently disagree with the graph.
   const base = { ...((original.value ?? {}) as Record<string, unknown>) }
-  delete base.capabilities
   return {
     id: id.value,
     name: name.value,
@@ -480,7 +466,7 @@ function definition() {
             behavior: { id: 'sql-readonly-agent', version: 1 },
             agent: { goal: agentGoal.value, tools: agentTools.value },
           }
-        : {}),
+        : { behavior: original.value?.behavior ?? { id: 'sql-analysis', version: 1 } }),
       kind: 'Expert',
       id: id.value,
       name: name.value,

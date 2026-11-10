@@ -255,7 +255,7 @@ const editorSurface = computed(
   () =>
     (activeView.value === 'experts' && expertEditing.value) ||
     (['builder-alpha', 'builder-beta'].includes(activeView.value) &&
-      pluginHost.installation.value.enabled.builder),
+      pluginHost.builderContributionVisible.value),
 )
 const expertCount = ref(0)
 const capabilityManager = ref<{ refresh: () => Promise<void> } | null>(null)
@@ -1139,8 +1139,7 @@ onUnmounted(() => {
         -->
         <ScenarioWorkspace
           v-if="activeView === 'scenes'"
-          :builder-enabled="pluginHost.installation.value.enabled.builder"
-          :chat-enabled="pluginHost.installation.value.enabled.chat"
+          :plugin-host="pluginHost"
           @navigate="activeView = $event"
         />
         <ProjectBoard

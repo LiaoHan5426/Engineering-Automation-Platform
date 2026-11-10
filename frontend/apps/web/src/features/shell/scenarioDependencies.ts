@@ -10,6 +10,7 @@ export type ScenarioDependency = {
 }
 
 export type DeliveryDependencyInput = {
+  designerAvailable: boolean
   processBound: boolean
   baselineReady: boolean
   /** When false, baseline is still loading — do not claim missing yet. */
@@ -38,6 +39,14 @@ export function resolveDeliveryDependencies(
   input: DeliveryDependencyInput,
 ): ScenarioDependency[] {
   return deps.map((item) => {
+    if (item.name === 'Builder 原型编辑')
+      return {
+        ...item,
+        state: input.designerAvailable ? 'installed' : 'missing',
+        where: input.designerAvailable
+          ? '插件中心：设计器贡献可用；版本和授权仍需单独核对。'
+          : '插件中心：设计器贡献不可用，请检查启用状态、服务依赖或激活错误。',
+      }
     if (BIND_NAMES.has(item.name)) {
       return {
         name: '本地服务进程绑定根',

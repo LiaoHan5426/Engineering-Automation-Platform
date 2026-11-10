@@ -45,9 +45,15 @@ import {
 import { deliveryBlocked, resolveDeliveryGates } from './shell/deliveryGates'
 import { pagePreviewMessageKey, resolvePagePreview } from './shell/pagePreview'
 import { resolveDeliveryDependencies } from './shell/scenarioDependencies'
+import type { PluginHost } from './plugins/host'
+import ScenarioComposition from './plugins/ScenarioComposition.vue'
+import { scenarioComposition } from './plugins/scenarioComposition'
 
 const DELIVERY_PAGE = DELIVERY_TARGET_PATH
-const props = defineProps<{ builderEnabled: boolean; chatEnabled: boolean }>()
+const props = defineProps<{ pluginHost: PluginHost }>()
+const builderEnabled = computed(() => props.pluginHost.builderContributionVisible.value)
+const chatEnabled = computed(() => props.pluginHost.installation.value.enabled.chat)
+const compositionReady = computed(() => scenarioComposition(props.pluginHost).ready)
 const emit = defineEmits<{ navigate: [id: string] }>()
 const { t } = useI18n()
 const versions = ref<PrototypeVersionRecord[]>([])
@@ -182,6 +188,7 @@ const sourceReady = computed(() => {
 })
 const liveDependencies = computed(() =>
   resolveDeliveryDependencies(activeScenario.value.dependencies, {
+    designerAvailable: builderEnabled.value,
     processBound: identityAuthorized(runtimeIdentity.value),
     baselineReady: baselineReady.value,
     prepSettled: prepSettled.value,
@@ -205,7 +212,7 @@ const openGates = computed(() => gates.value.filter((item) => item.open))
 const prepBlocked = computed(
   () =>
     activeScenario.value.workflow === 'prototype-to-code' &&
-    (!prepSettled.value || deliveryBlocked(gates.value)),
+    (!compositionReady.value || !prepSettled.value || deliveryBlocked(gates.value)),
 )
 function gateAction(action: 'versions' | 'model' | 'builder' | undefined) {
   if (action === 'model') emit('navigate', 'model-settings')
@@ -341,7 +348,7 @@ async function loadSource() {
 }
 function develop() {
   if (
-    !props.chatEnabled ||
+    !chatEnabled.value ||
     loading.value ||
     error.value ||
     !versions.value.some((item) => item.id === selected.value)
@@ -371,7 +378,10 @@ function develop() {
 function apply() {
   const scene = activeScenario.value
   if (!scene || scene.status === 'disabled') return
-  if (scene.workflow === 'prototype-to-code' && deliveryBlocked(gates.value)) {
+  if (
+    scene.workflow === 'prototype-to-code' &&
+    (!compositionReady.value || deliveryBlocked(gates.value))
+  ) {
     blocked.value = true
     return
   }
@@ -444,6 +454,11 @@ onMounted(() => {
         >{{ t('desktop.backToChat') }}</Button
       >
     </header>
+    <ScenarioComposition
+      v-if="activeScenario.workflow === 'prototype-to-code' && sceneView !== 'list'"
+      :host="pluginHost"
+      @manage="emit('navigate', 'plugins')"
+    />
     <p v-if="scenarioCatalog.state.error" class="hint" role="alert" data-testid="scene-store-error">
       {{ t(`desktop.sceneStoreError_${scenarioCatalog.state.error}`) }}
       <Button

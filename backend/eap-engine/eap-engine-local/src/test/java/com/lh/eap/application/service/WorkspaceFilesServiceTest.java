@@ -15,7 +15,7 @@ class WorkspaceFilesServiceTest {
     @Test void listsBoundedReadOnlyEntriesAndRejectsTraversal() throws Exception {
         Files.createDirectory(root.resolve("src")); Files.writeString(root.resolve("src/App.vue"), "sample");
         Files.createDirectory(root.resolve("node_modules")); Files.writeString(root.resolve(".env"), "private");
-        var service = new WorkspaceFilesService(new RuntimeWorkspace(root, root.toString(), ""));
+        var service = new WorkspaceFilesService(new RuntimeWorkspace(root, root.toString()));
         assertEquals(1, service.list("").entries().size());
         assertEquals("src/App.vue", service.list("src").entries().getFirst().path());
         assertEquals("INVALID_DIRECTORY_PATH", service.list("../outside").denial());
@@ -24,9 +24,9 @@ class WorkspaceFilesServiceTest {
         assertEquals("sample", Files.readString(root.resolve("src/App.vue")));
     }
     @Test void deniesMissingAuthorityAndLimitsEntries() throws Exception {
-        assertEquals("AUTHORIZED_ROOT_MISSING", new WorkspaceFilesService(new RuntimeWorkspace(root, "", "")).list("").denial());
+        assertEquals("AUTHORIZED_ROOT_MISSING", new WorkspaceFilesService(new RuntimeWorkspace(root, "")).list("").denial());
         for (int i = 0; i < 205; i++) Files.writeString(root.resolve("item" + i), "");
-        var listing = new WorkspaceFilesService(new RuntimeWorkspace(root, root.toString(), "")).list("");
+        var listing = new WorkspaceFilesService(new RuntimeWorkspace(root, root.toString())).list("");
         assertEquals(200, listing.entries().size()); assertTrue(listing.truncated());
     }
 }

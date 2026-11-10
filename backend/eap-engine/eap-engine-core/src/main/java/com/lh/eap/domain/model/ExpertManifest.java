@@ -42,26 +42,6 @@ public record ExpertManifest(String apiVersion, String kind, String id, String n
         this(apiVersion, kind, id, name, knowledgeBases, databaseProfiles, steps, edges, rules, rulePacks, mcpTools, behavior, null);
     }
 
-    /** Legacy manifests use the host's explicit compatibility binding. */
-    public ExpertManifest(String apiVersion, String kind, String id, String name, List<String> knowledgeBases,
-            List<String> databaseProfiles, List<Step> steps, List<Edge> edges, List<String> rules,
-            List<String> rulePacks, List<String> mcpTools) {
-        this(apiVersion, kind, id, name, knowledgeBases, databaseProfiles, steps, edges, rules, rulePacks, mcpTools, null);
-    }
-
-    /** Backwards compatible shape for manifests authored before MCP tools existed. */
-    public ExpertManifest(String apiVersion, String kind, String id, String name, List<String> knowledgeBases,
-            List<String> databaseProfiles, List<Step> steps, List<Edge> edges, List<String> rules,
-            List<String> rulePacks) {
-        this(apiVersion, kind, id, name, knowledgeBases, databaseProfiles, steps, edges, rules, rulePacks, List.of());
-    }
-
-    /** Backwards compatible shape for manifests authored before rule packs existed. */
-    public ExpertManifest(String apiVersion, String kind, String id, String name, List<String> knowledgeBases,
-            List<String> databaseProfiles, List<Step> steps, List<Edge> edges, List<String> rules) {
-        this(apiVersion, kind, id, name, knowledgeBases, databaseProfiles, steps, edges, rules, List.of(), List.of());
-    }
-
     /**
      * Capabilities this expert explicitly authorized that are not platform-level. Shipped as
      * {@code mcpTools} in the manifest; kept behind an accessor so the rest of the runtime does not have
@@ -71,12 +51,13 @@ public record ExpertManifest(String apiVersion, String kind, String id, String n
 
     public static ExpertManifest parse(String json) {
         var root = JSON.readTree(json);
-        if (root.has("behavior")) {
-            var binding = root.get("behavior");
-            if (!binding.isObject() || binding.size() != 2 || !binding.path("id").isString()
-                    || !binding.path("version").isIntegralNumber() || !binding.path("version").canConvertToInt()) {
-                throw new IllegalArgumentException("behavior requires an id and an integer version");
-            }
+        if (!root.isObject() || !root.has("behavior") || !root.path("steps").isArray()
+                || !root.path("edges").isArray() || root.has("capabilities"))
+            throw new IllegalArgumentException("Explicit behavior, steps and edges are required");
+        var binding = root.get("behavior");
+        if (!binding.isObject() || binding.size() != 2 || !binding.path("id").isString()
+                || !binding.path("version").isIntegralNumber() || !binding.path("version").canConvertToInt()) {
+            throw new IllegalArgumentException("behavior requires an id and an integer version");
         }
         return JSON.readValue(json, ExpertManifest.class);
     }

@@ -34,7 +34,7 @@ class SkillApiTest {
     }
     @Test void previewUsesBoundRootAndNeverTrustsTheClientOrTouchesStorage() throws Exception {
         var jdbc = org.mockito.Mockito.mock(JdbcTemplate.class);
-        var service = new SkillService(jdbc, new SkillTextParser(), RuntimeWorkspace.colocated(root, "", ""), new CapabilityHandlerRegistry(List.of()));
+        var service = new SkillService(jdbc, new SkillTextParser(), RuntimeWorkspace.colocated(root, ""), new CapabilityHandlerRegistry(List.of()));
         var controller = new SkillController(service);
         var mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiErrorHandler()).build();
         String json = tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(SkillTextParserTest.input("---\nname: good\ndescription: ok\n---\nbody"));

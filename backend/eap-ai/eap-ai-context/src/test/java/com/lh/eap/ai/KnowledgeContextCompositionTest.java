@@ -18,7 +18,7 @@ class KnowledgeContextCompositionTest {
         var access = mock(ExpertKnowledgeAccess.class);
         var base = UUID.randomUUID();
         var manifest = new ExpertManifest("v1", "Expert", "reader", "Reader", List.of(base.toString()),
-                List.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
         when(access.lockForKnowledge("reader")).thenReturn(Optional.of(Map.of("id", "reader", "revision", 1L,
                 "enabled", true, "manifest", ExpertManifest.serialize(manifest))));
         when(access.knowledgeGrants("reader")).thenReturn(List.of(base));

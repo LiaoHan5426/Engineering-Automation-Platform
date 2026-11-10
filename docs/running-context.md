@@ -54,7 +54,7 @@ Java 存连接与执行命令。
 - 外部模型输出须独立验证（diff/构建/测试），不能当作完成事实。
 - 文档与 UI 不得把「未共置的远端 Java 路径」冒充用户仓库。
 - `storesUserDirectoryGrants=false` / `POST …/grants → 405` 表示**拒绝浏览器/远端多租户授权库 POST**；本地服务仍可通过进程绑定根绑定本机工作区。
-- 生产装配：`eap.runtime.authorized-root` 与旧键皆空时，`RuntimeWorkspace.colocated` **默认绑定到检测出的进程工作区**（不扩大到父目录）；显式冲突仍拒绝。产品 UI 已按本地服务口径展示（2026-10-27）。
+- 生产装配：仅使用`eap.runtime.authorized-root`，空配置时`RuntimeWorkspace.colocated` **默认绑定到检测出的进程工作区**（不扩大到父目录）；显式无效目录拒绝，旧AI键不再读取。产品 UI 已按本地服务口径展示（2026-10-27）。
 
 ## Python 安装器范围（首轮目标）
 

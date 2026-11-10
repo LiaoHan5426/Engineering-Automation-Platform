@@ -67,7 +67,7 @@ class CodeProposalPersistenceTest extends CodeProposalPersistenceFixture {
         assertEquals("candidate", Files.readString(root.resolve("Page.vue")));
         assertEquals(result, store().find(principal, conversation, saved.id()).orElseThrow().result());
         Files.writeString(root.resolve("Page.vue"), "later edit");
-        var ungranted = new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, "", ""), null, null,
+        var ungranted = new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, ""), null, null,
                 new JdbcCodeGenerationStore(jdbc, manager), store());
         assertEquals(result, ungranted.apply(principal, conversation, saved.id(), true));
         assertEquals("later edit", Files.readString(root.resolve("Page.vue")));

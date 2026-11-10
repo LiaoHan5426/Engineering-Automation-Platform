@@ -55,7 +55,7 @@ class SqlExpertAgentPersistenceTest {
         var rules = new RulePackService(jdbc);
         var policy = new SqlExpertAnalysisPolicy(rules, mock(SqlExpertService.class));
         policies = new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(SqlExpertAgentService.BINDING,
-                "SQL Agent", policy, "agent", SqlExpertAgentService.TOOLS, Set.of("sql.parse"))), SqlExpertAgentService.BINDING);
+                "SQL Agent", policy, "agent", SqlExpertAgentService.TOOLS, Set.of("sql.parse"))));
         mapper = new ExpertDefinitionMapper(jdbc);
         definitions = proxy(new ExpertDefinitionService(jdbc, rules, () -> Set.of(), mock(CapabilitySettings.class), policies));
         jdbc.update("INSERT INTO eap.database_profile(id,label,engine,environment,metadata) VALUES (?,'agent fixture','PostgreSQL','local',?::jsonb)",

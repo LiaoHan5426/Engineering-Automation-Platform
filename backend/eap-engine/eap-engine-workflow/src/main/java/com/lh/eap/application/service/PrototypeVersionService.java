@@ -20,10 +20,10 @@ public class PrototypeVersionService implements com.lh.eap.delivery.PrototypeVer
         this.deliveries = deliveries;
     }
 
-    public PrototypeVersion save(String sourceRef, String title, String body, int buttonPresses, List<String> acceptance) {
-        var content = PrototypeCanonical.of(sourceRef, title, body, buttonPresses, acceptance);
+    public PrototypeVersion save(String sourceRef, String title, String body, List<String> acceptance) {
+        var content = PrototypeCanonical.of(sourceRef, title, body, acceptance);
         var version = new PrototypeVersion(UUID.randomUUID(), content.sourceRef(), content.title(), content.body(),
-                content.buttonPresses(), content.interaction(), content.acceptance(), content.hash(), Instant.now());
+                content.acceptance(), content.hash(), Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         versions.insert(version);
         return version;
     }
@@ -41,9 +41,9 @@ public class PrototypeVersionService implements com.lh.eap.delivery.PrototypeVer
     }
 
     public PrototypeDelivery deliver(UUID versionId) {
-        find(versionId);
+        SemanticPrototype.require(find(versionId).body());
         try {
-            var created = new PrototypeDelivery(UUID.randomUUID(), versionId, Instant.now());
+            var created = new PrototypeDelivery(UUID.randomUUID(), versionId, Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
             deliveries.insert(created);
             return created;
         } catch (DuplicateKeyException conflict) {

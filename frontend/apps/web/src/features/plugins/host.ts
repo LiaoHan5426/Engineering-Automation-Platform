@@ -1,13 +1,10 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
-import { runtimeApi } from '@eap/runtime-client'
+import { runtimeApi, type ScenarioWorkflowDependencies } from '@eap/runtime-client'
 import { i18n } from '../../lib/i18n'
 import {
   browserStore,
-  readBuilder,
   readInstallation,
-  writeBuilder,
   writeInstallation,
-  type BuilderConfig,
   type Installation,
   type KeyValueStore,
   type PluginId,
@@ -37,19 +34,26 @@ export interface PluginHost {
   installation: Ref<Installation>
   entries: ComputedRef<NavItem[]>
   boardContributionVisible: ComputedRef<boolean>
+  builderContributionVisible: ComputedRef<boolean>
+  builderDependencyCheck: Ref<{
+    status: 'unchecked' | 'checking' | 'available' | 'failed'
+    reason: string
+    snapshot?: ScenarioWorkflowDependencies
+  }>
+  checkBuilderDependencies(): Promise<void>
+  cancelBuilderDependencyCheck(): void
+  registerBuilderInstance(id: string, prepareDisable: () => boolean): () => void
   services: Ref<Record<string, boolean>>
-  activationFailure: Ref<PluginActivationFailure | null>
+  activationFailures: Ref<Partial<Record<PluginId, string>>>
   boardDependencyCheck: Ref<DependencyCheck>
   checkBoardDependencies(projectId: string): Promise<void>
   cancelBoardDependencyCheck(): void
   runtimeOf(pluginId: PluginId): PluginRuntimeObservation
   setEnabled(pluginId: PluginId, enabled: boolean): void
   setServiceAvailable(serviceId: string, available: boolean): void
-  /** Mock/test only: next board enable attempt fails activation and rolls back. */
-  armActivationFailure(message: string): void
+  /** Test seam: the selected contribution's next enable attempt fails and rolls back. */
+  armActivationFailure(message: string, pluginId?: 'board' | 'builder'): void
   refreshFromStore(): void
-  readBuilder(instanceId: BuilderConfig['instanceId']): BuilderConfig
-  saveBuilder(config: BuilderConfig): void
   describe(id: string): NavItem
 }
 
@@ -65,8 +69,26 @@ function defaultServices(): Record<string, boolean> {
 export function createPluginHost(store: KeyValueStore = browserStore()): PluginHost {
   const installation = ref(readInstallation(store))
   const services = ref(defaultServices())
-  const activationFailure = ref<PluginActivationFailure | null>(null)
-  const pendingActivationFailure = ref<string | null>(null)
+  const activationFailures = ref<Partial<Record<PluginId, string>>>({})
+  function clearActivationFailure(id: PluginId) {
+    const next = { ...activationFailures.value }
+    delete next[id]
+    activationFailures.value = next
+  }
+  const pendingActivationFailure = ref<PluginActivationFailure | null>(null)
+  const builderInstances = new Map<string, () => boolean>()
+  const builderDependencyCheck = ref<{
+    status: 'unchecked' | 'checking' | 'available' | 'failed'
+    reason: string
+    snapshot?: ScenarioWorkflowDependencies
+  }>({ status: 'unchecked', reason: '' })
+  let builderCheckGeneration = 0
+  let builderCheckController: AbortController | undefined
+  function prepareBuilders() {
+    for (const prepare of builderInstances.values()) {
+      if (!prepare()) throw new Error('DESIGNER_SUSPEND_BLOCKED')
+    }
+  }
   const boardDependencyCheck = ref<DependencyCheck>({
     status: 'unchecked',
     source: '',
@@ -82,11 +104,11 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
       pluginId,
       enabled: installation.value.enabled[pluginId],
       services: services.value,
-      activationError:
-        activationFailure.value?.pluginId === pluginId ? activationFailure.value.message : null,
+      activationError: activationFailures.value[pluginId] ?? null,
     })
-    if (pluginId === 'board' && observation.kind === 'ready') {
-      const status = boardDependencyCheck.value.status
+    if ((pluginId === 'board' || pluginId === 'builder') && observation.kind === 'ready') {
+      const check = pluginId === 'board' ? boardDependencyCheck.value : builderDependencyCheck.value
+      const status = check.status
       if (status !== 'available')
         return {
           ...observation,
@@ -96,7 +118,7 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
               : status === 'failed'
                 ? 'dependency_check_failed'
                 : 'dependency_unchecked',
-          message: boardDependencyCheck.value.reason,
+          message: check.reason,
         }
     }
     return observation
@@ -118,7 +140,7 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
         'board',
         installation.value.enabled.board,
         services.value,
-        activationFailure.value?.pluginId === 'board' ? activationFailure.value.message : null,
+        activationFailures.value.board ?? null,
       )
     ) {
       items.push({
@@ -129,7 +151,7 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
         hint: t('plugin.boardHint'),
       })
     }
-    if (contributionVisible('builder', installation.value.enabled.builder, services.value, null)) {
+    if (builderContributionVisible.value) {
       items.push(
         {
           id: 'builder-alpha',
@@ -179,7 +201,15 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
       'board',
       installation.value.enabled.board,
       services.value,
-      activationFailure.value?.pluginId === 'board' ? activationFailure.value.message : null,
+      activationFailures.value.board ?? null,
+    ),
+  )
+  const builderContributionVisible = computed(() =>
+    contributionVisible(
+      'builder',
+      installation.value.enabled.builder,
+      services.value,
+      activationFailures.value.builder ?? null,
     ),
   )
 
@@ -187,8 +217,47 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
     installation,
     entries,
     boardContributionVisible,
+    builderContributionVisible,
+    builderDependencyCheck,
+    registerBuilderInstance(id, prepareDisable) {
+      if (builderInstances.has(id)) throw new Error('DESIGNER_INSTANCE_ALREADY_REGISTERED')
+      builderInstances.set(id, prepareDisable)
+      return () => {
+        if (builderInstances.get(id) === prepareDisable) builderInstances.delete(id)
+      }
+    },
+    async checkBuilderDependencies() {
+      if (builderDependencyCheck.value.status === 'checking') return
+      const generation = ++builderCheckGeneration
+      builderCheckController = new AbortController()
+      const previous = builderDependencyCheck.value.snapshot
+      builderDependencyCheck.value = { status: 'checking', reason: '', snapshot: previous }
+      try {
+        const snapshot = await runtimeApi.scenarioWorkflowDependencies(
+          builderCheckController.signal,
+        )
+        if (generation === builderCheckGeneration)
+          builderDependencyCheck.value = { status: 'available', reason: '', snapshot }
+      } catch (error) {
+        if (generation === builderCheckGeneration)
+          builderDependencyCheck.value = {
+            status: 'failed',
+            reason: error instanceof Error ? error.message : 'DEPENDENCY_CHECK_FAILED',
+            snapshot: previous,
+          }
+      } finally {
+        if (generation === builderCheckGeneration) builderCheckController = undefined
+      }
+    },
+    cancelBuilderDependencyCheck() {
+      ++builderCheckGeneration
+      builderCheckController?.abort()
+      builderCheckController = undefined
+      if (builderDependencyCheck.value.status === 'checking')
+        builderDependencyCheck.value = { ...builderDependencyCheck.value, status: 'unchecked' }
+    },
     services,
-    activationFailure,
+    activationFailures,
     boardDependencyCheck,
     async checkBoardDependencies(projectId) {
       if (
@@ -249,41 +318,45 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
       }
     },
     setServiceAvailable(serviceId, available) {
+      if (serviceId === 'runtime.prototype-api' && !available) prepareBuilders()
       services.value = { ...services.value, [serviceId]: available }
     },
-    armActivationFailure(message) {
-      pendingActivationFailure.value = message
+    armActivationFailure(message, pluginId = 'board') {
+      pendingActivationFailure.value = { pluginId, message }
     },
     refreshFromStore() {
-      installation.value = readInstallation(store)
+      const next = readInstallation(store)
+      if (!next.enabled.builder && installation.value.enabled.builder) prepareBuilders()
+      installation.value = next
     },
     setEnabled(pluginId, enabled) {
+      if (pluginId === 'builder' && !enabled) prepareBuilders()
       const previous = installation.value
       const next: Installation = { enabled: { ...previous.enabled, [pluginId]: enabled } }
       installation.value = next
       try {
-        if (enabled && pluginId === 'board') {
+        if (enabled && (pluginId === 'board' || pluginId === 'builder')) {
           const missing = pluginRuntimeObservation({
-            pluginId: 'board',
+            pluginId,
             enabled: true,
             services: services.value,
             activationError: null,
           })
           if (missing.kind === 'dependency_missing') {
             installation.value = previous
-            activationFailure.value = null
+            clearActivationFailure(pluginId)
             throw new Error('PLUGIN_DEPENDENCY_MISSING')
           }
-          if (pendingActivationFailure.value) {
-            const message = pendingActivationFailure.value
+          if (pendingActivationFailure.value?.pluginId === pluginId) {
+            const message = pendingActivationFailure.value.message
             pendingActivationFailure.value = null
             installation.value = previous
-            activationFailure.value = { pluginId: 'board', message }
+            activationFailures.value = { ...activationFailures.value, [pluginId]: message }
             throw new Error('PLUGIN_ACTIVATION_FAILED')
           }
-          activationFailure.value = null
+          clearActivationFailure(pluginId)
         }
-        if (!enabled && pluginId === 'board') activationFailure.value = null
+        if (!enabled) clearActivationFailure(pluginId)
         writeInstallation(store, installation.value)
       } catch (error) {
         if (
@@ -296,10 +369,6 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
         installation.value = previous
         throw new Error('PLUGIN_INSTALLATION_PERSIST_FAILED')
       }
-    },
-    readBuilder: (instanceId) => readBuilder(store, instanceId),
-    saveBuilder(config) {
-      writeBuilder(store, config)
     },
     describe,
   }

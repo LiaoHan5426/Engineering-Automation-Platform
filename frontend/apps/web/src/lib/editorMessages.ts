@@ -32,6 +32,11 @@ export const editorMessages = {
     saved: '已保存',
     discard: '放弃修改',
     leaveHint: '请先保存或放弃修改，再离开编辑器。',
+    recoveryFailed:
+      '本机草稿保存未确认，暂不能停用或离开。请恢复浏览器存储后重试，编辑内容仍保留。',
+    recoveryInvalid: '本机恢复草稿无法读取，原数据已保留；请核对浏览器存储后重试。',
+    recoveryLocal:
+      '草稿恢复数据保存在当前浏览器，并按设计器实例隔离；未创建服务器版本，发布仍需明确操作。',
     newHint: '新建设计前请先保存或放弃修改。',
     selected: '当前选中',
     validation: '检查设计',
@@ -72,6 +77,12 @@ export const editorMessages = {
     saved: 'Saved',
     discard: 'Discard changes',
     leaveHint: 'Save or discard changes before leaving the editor.',
+    recoveryFailed:
+      'Local draft storage is unconfirmed. Disable and navigation are blocked; restore browser storage and retry. Editor content is retained.',
+    recoveryInvalid:
+      'The local recovery draft cannot be read. Original data is retained; check browser storage and retry.',
+    recoveryLocal:
+      'Recovery data is stored in this browser per designer instance. It does not create a server version; publishing is explicit.',
     newHint: 'Save or discard changes before creating a design.',
     selected: 'Selected',
     validation: 'Validate design',

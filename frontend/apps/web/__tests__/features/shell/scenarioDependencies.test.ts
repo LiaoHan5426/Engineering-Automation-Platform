@@ -21,7 +21,11 @@ describe('resolveDeliveryDependencies', () => {
   ]
 
   it('marks colocated bind and baseline when the local service is ready', () => {
-    const rows = resolveDeliveryDependencies(template, { processBound: true, baselineReady: true })
+    const rows = resolveDeliveryDependencies(template, {
+      designerAvailable: true,
+      processBound: true,
+      baselineReady: true,
+    })
     expect(rows[1]).toMatchObject({ name: '本地服务进程绑定根', state: 'installed' })
     expect(rows[2]).toMatchObject({ name: '生成前文件快照', state: 'installed' })
     expect(rows[0].state).toBe('installed')
@@ -29,15 +33,18 @@ describe('resolveDeliveryDependencies', () => {
 
   it('keeps bind unconfigured and baseline unsettled without a process root', () => {
     const rows = resolveDeliveryDependencies(template, {
+      designerAvailable: false,
       processBound: false,
       baselineReady: false,
     })
     expect(rows[1].state).toBe('unconfigured')
+    expect(rows[0].state).toBe('missing')
     expect(rows[2].state).toBe('unconfigured')
   })
 
   it('shows baseline missing when bound but hash is not ready', () => {
     const rows = resolveDeliveryDependencies(template, {
+      designerAvailable: true,
       processBound: true,
       baselineReady: false,
     })

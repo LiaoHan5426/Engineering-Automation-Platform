@@ -9,7 +9,7 @@ export type PluginServiceDependency = {
 /** Declared runtime services; contribution assumptions are not read observations. */
 export const PLUGIN_SERVICE_DEPENDENCIES: Record<PluginId, readonly PluginServiceDependency[]> = {
   chat: [],
-  builder: [],
+  builder: [{ id: 'runtime.prototype-api', label: '原型版本 API' }],
   board: [{ id: 'runtime.board-api', label: '看板 Task/Run API' }],
 }
 
@@ -83,7 +83,7 @@ export function contributionVisible(
     pluginId,
     enabled,
     services,
-    activationError: pluginId === 'board' ? activationError : null,
+    activationError,
   })
   return observation.kind === 'ready'
 }

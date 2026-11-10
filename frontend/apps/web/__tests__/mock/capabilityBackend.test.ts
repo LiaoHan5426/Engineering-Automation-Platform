@@ -34,14 +34,13 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     })
   })
 
-  it('returns exitCode on successful mock git-status invoke', async () => {
-    const backend = createMockCapabilityBackend()
-    const reply = await backend.handle('POST', '/runtime/trusted-tools/git-status/invoke')
-    expect(reply?.data).toMatchObject({
-      capability: 'git-status',
-      success: true,
-      exitCode: 0,
-    })
+  it('does not expose the retired synchronous invocation route', async () => {
+    expect(
+      await createMockCapabilityBackend().handle(
+        'POST',
+        '/runtime/trusted-tools/git-status/invoke',
+      ),
+    ).toBeNull()
   })
 
   it('exposes probeCache summary that grows after explicit probe', async () => {
@@ -192,52 +191,5 @@ describe('mock capabilityBackend trusted git (TC-01)', () => {
     })
     const conflict = await backend.handle('POST', '/runtime/trusted-tools/broken-cli/probe-version')
     expect(conflict?.status).toBe(409)
-  })
-
-  it('returns a successful mock git-status payload', async () => {
-    const backend = createMockCapabilityBackend()
-    const reply = await backend.handle('POST', '/runtime/trusted-tools/git-status/invoke')
-    expect(reply?.status).toBe(200)
-    expect(reply?.data).toMatchObject({ capability: 'git-status', success: true })
-  })
-
-  it('maps mockOutcome=denied to CAPABILITY_DISABLED', async () => {
-    const backend = createMockCapabilityBackend()
-    const reply = await backend.handle(
-      'POST',
-      '/runtime/trusted-tools/git-status/invoke?mockOutcome=denied',
-    )
-    expect(reply?.status).toBe(403)
-    expect(reply?.data).toEqual({ detail: 'CAPABILITY_DISABLED' })
-  })
-
-  it('maps mockOutcome=timeout to TRUSTED_TOOL_TIMEOUT', async () => {
-    const backend = createMockCapabilityBackend()
-    const reply = await backend.handle(
-      'POST',
-      '/runtime/trusted-tools/git-status/invoke?mockOutcome=timeout',
-    )
-    expect(reply?.status).toBe(504)
-    expect(reply?.data).toEqual({ detail: 'TRUSTED_TOOL_TIMEOUT' })
-  })
-
-  it('maps mockOutcome=cancelled to TRUSTED_TOOL_CANCELLED', async () => {
-    const backend = createMockCapabilityBackend()
-    const reply = await backend.handle(
-      'POST',
-      '/runtime/trusted-tools/git-status/invoke?mockOutcome=cancelled',
-    )
-    expect(reply?.status).toBe(499)
-    expect(reply?.data).toEqual({ detail: 'TRUSTED_TOOL_CANCELLED' })
-  })
-
-  it('maps mockOutcome=unknown to TRUSTED_TOOL_UNKNOWN', async () => {
-    const backend = createMockCapabilityBackend()
-    const reply = await backend.handle(
-      'POST',
-      '/runtime/trusted-tools/git-status/invoke?mockOutcome=unknown',
-    )
-    expect(reply?.status).toBe(520)
-    expect(reply?.data).toEqual({ detail: 'TRUSTED_TOOL_UNKNOWN' })
   })
 })

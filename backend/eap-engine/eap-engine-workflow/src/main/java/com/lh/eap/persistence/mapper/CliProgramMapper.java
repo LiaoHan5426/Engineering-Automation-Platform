@@ -61,7 +61,7 @@ public class CliProgramMapper {
     }
 
     public void deleteProgram(String id) {
-        jdbc.update("DELETE FROM eap.cli_channel WHERE capability=?", id);
+        jdbc.update("DELETE FROM eap.cli_channel WHERE program_id=?", id);
         jdbc.update("DELETE FROM eap.cli_program WHERE id=? AND NOT builtin", id);
     }
 }

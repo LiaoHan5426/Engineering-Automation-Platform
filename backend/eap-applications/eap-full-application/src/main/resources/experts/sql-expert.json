@@ -1,6 +1,7 @@
 {
   "apiVersion": "eap/v1",
   "kind": "Expert",
+  "behavior": {"id": "sql-analysis", "version": 1},
   "id": "sql-expert",
   "name": "SQL 专家",
   "description": "对 SQL 做确定性的结构分析与索引/分页/谓词检查，只在证据不足时才按需请求模型复核。",

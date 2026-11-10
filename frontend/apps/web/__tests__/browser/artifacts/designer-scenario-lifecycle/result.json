@@ -1,0 +1,155 @@
+{
+  "baseline": "fe08a99afa53d120edb6f4497cda94228555621a",
+  "session": "designer-lifecycle-e9d9ab3e-f247-4d99-88a4-b5713b1de5e5",
+  "kind": "Isolated real HTTP/PostgreSQL/GrapesJS lifecycle acceptance, not human product acceptance",
+  "browser": {
+    "passed": 7,
+    "checks": [
+      "empty real version catalog is readable but cannot satisfy the required published-version resource",
+      "actual publish is persisted through HTTP/JDBC; disabling while its response is pending is refused and does not replay it",
+      "real GrapesJS A/B projects, local versions and unpublished edits are isolated per instance",
+      "confirmed disable releases all designers; refresh preserves disabled preference and original server versions while required composition stays blocked",
+      "activation failure rolls back and stays visible; successful re-enable creates fresh instances and restores exact unsaved project/title with dirty state",
+      "actual PostgreSQL relation failure returns bounded 503 and retains old evidence; explicit retry after relation repair restores readiness",
+      "copied scene persists its workflow through the real revision API; navigation keeps chosen version and does not mutate or republish original versions"
+    ],
+    "errors": [],
+    "mutations": [
+      {
+        "method": "POST",
+        "path": "/api/prototype-versions"
+      },
+      {
+        "method": "POST",
+        "path": "/api/prototype-versions"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/scenarios/custom-892c3773-bafc-46ce-bd53-882902b566e6"
+      }
+    ],
+    "externalRequests": [],
+    "versions": [
+      {
+        "id": "d5c8c210-5564-4cf6-9c42-101abffa761c",
+        "sourceRef": "builder-alpha",
+        "title": "Alpha published design",
+        "contentHash": "28647be8b783d08894f965ead4451de0a84f059cdb98528366de2ea0efa66847"
+      },
+      {
+        "id": "68634aea-e711-4203-8815-ce69a2944b75",
+        "sourceRef": "builder-beta",
+        "title": "Beta published design",
+        "contentHash": "606acf2ad447ac2fc23e36624d63a65301da346b0b0972de52cfea8c8dec8162"
+      }
+    ],
+    "faultScope": "Publish response latch and owned PostgreSQL relation rename; activation failure is an explicitly injected local Host test fault"
+  },
+  "jdbc": {
+    "versions": [
+      {
+        "id": "d5c8c210-5564-4cf6-9c42-101abffa761c",
+        "source_ref": "builder-alpha",
+        "title": "Alpha published design",
+        "content_hash": "28647be8b783d08894f965ead4451de0a84f059cdb98528366de2ea0efa66847"
+      },
+      {
+        "id": "68634aea-e711-4203-8815-ce69a2944b75",
+        "source_ref": "builder-beta",
+        "title": "Beta published design",
+        "content_hash": "606acf2ad447ac2fc23e36624d63a65301da346b0b0972de52cfea8c8dec8162"
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "custom-892c3773-bafc-46ce-bd53-882902b566e6",
+        "revision": 1,
+        "workflow": "prototype-to-code"
+      }
+    ],
+    "originalDataUnchanged": true
+  },
+  "cleanup": {
+    "ownedSchemaDropped": true,
+    "applicationRecordsUnchanged": true,
+    "hostStopped": true,
+    "browserStopped": true
+  },
+  "screenshots": [
+    "designer-disabled-dependencies.png",
+    "designer-restored-1440.png",
+    "designer-restored-390.png"
+  ],
+  "validation": {
+    "frontendAffected": {
+      "files": 49,
+      "tests": 282,
+      "failures": 0
+    },
+    "frontendLatest": {
+      "files": 16,
+      "tests": 66,
+      "failures": 0
+    },
+    "backendCompanion": {
+      "tests": 18,
+      "passed": 18,
+      "failures": 0,
+      "skipped": 0,
+      "source": "acceptance-3 companion reports; the separate lifecycle failed there"
+    },
+    "backendLifecycle": {
+      "tests": 1,
+      "passed": 1,
+      "failures": 0,
+      "skipped": 0,
+      "source": "acceptance-6 final reactor SUCCESS"
+    },
+    "pluginFailureIsolation": {
+      "files": 12,
+      "tests": 38,
+      "failures": 0
+    },
+    "documentReplacementGuard": {
+      "files": 4,
+      "tests": 9,
+      "failures": 0
+    },
+    "finalObservationUi": {
+      "files": 3,
+      "tests": 9,
+      "failures": 0
+    },
+    "styleBaseline": {
+      "ScenarioWorkspace.vue": {
+        "styleUnchanged": true,
+        "baselineExit": 2,
+        "baselineErrors": 82
+      },
+      "chat/ChatWorkspace.vue": {
+        "styleUnchanged": true,
+        "baselineExit": 1,
+        "baselineMessage": [
+          "TypeError: Cannot read properties of undefined (reading 'slice')"
+        ]
+      }
+    },
+    "finalStatic": {
+      "formatTargets": 35,
+      "format": "passed",
+      "lintExit": 0,
+      "typecheck": "passed",
+      "architecture": "passed",
+      "build": "passed",
+      "designerStylelintFiles": 5,
+      "designerStylelint": "passed"
+    }
+  },
+  "limits": [
+    "Three UUID-owned tables cloned with LIKE INCLUDING ALL. Constraints/defaults/indexes are retained; FK/triggers are not cloned. This does not replay migrations or start the formal full application.",
+    "Publish response latch and owned-relation rename are test-only failure controls. Activation failure is a local Host injection, not a real third-party module failure.",
+    "No real model, source write, task execution, external plugin installation or reverse agent RPC is exercised. Published versions, recoverable local drafts and local version history remain distinct artifacts.",
+    "PL-01 commit uses previous recorded test evidence without rerunning it. New tests cover this PL-02/SC-03 change; previous full-suite numbers are not renewed.",
+    "Real lifecycle evidence is acceptance-6; later concurrent-plugin error isolation and dirty-document replacement hardening use targeted regression tests without rerunning the real lifecycle."
+  ]
+}

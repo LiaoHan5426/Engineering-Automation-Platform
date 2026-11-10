@@ -1,13 +1,27 @@
 import type { ScenarioConfiguration, ScenarioSnapshot } from '@eap/runtime-client'
 
 /** Development-server memory only. Never accesses Java, a model, or the filesystem. */
-export function createScenarioBackend() {
+export function createScenarioBackend(versionCount: () => number = () => 0) {
   const records = new Map<string, ScenarioSnapshot>()
   const deleted = new Set<string>()
   const result = (status: number, data: unknown) => ({ status, data: structuredClone(data) })
   const invalid = () => result(400, { detail: 'INVALID_SCENARIO_INPUT' })
   return {
     handle(method: string, url: URL, body: Record<string, unknown>) {
+      if (url.pathname === '/scenarios/workflows/prototype-to-code/dependencies') {
+        if (method !== 'GET') return result(405, { detail: 'METHOD_NOT_ALLOWED' })
+        return result(200, {
+          contractVersion: 1,
+          workflow: 'prototype-to-code',
+          observedAt: new Date().toISOString(),
+          plugins: [
+            { id: 'builder', required: true },
+            { id: 'board', required: false },
+          ],
+          services: [{ id: 'prototype-versions', state: 'READABLE' }],
+          resources: [{ id: 'prototype-version', required: true, count: versionCount() }],
+        })
+      }
       if (url.pathname === '/scenarios' && method === 'GET')
         return result(200, { items: [...records.values()] })
       if (!url.pathname.startsWith('/scenarios/')) return

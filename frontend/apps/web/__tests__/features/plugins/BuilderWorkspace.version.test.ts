@@ -8,9 +8,17 @@ import {
 } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import BuilderWorkspace from '../../../src/features/plugins/BuilderWorkspace.vue'
-vi.mock('grapesjs', () => {
-  throw new Error('Canvas is browser-tested')
-})
+vi.mock('grapesjs', () => ({
+  default: {
+    init: () => ({
+      on: () => {},
+      setComponents: () => {},
+      destroy: () => {},
+      getProjectData: () => ({ pages: [] }),
+      loadProjectData: () => {},
+    }),
+  },
+}))
 import { createPluginHost, type PluginHost } from '../../../src/features/plugins/host'
 import { memoryStore } from '../../../src/features/plugins/model'
 import { emptyPrototypeSchema } from '../../../src/features/shell/prototypeSchema'
@@ -25,16 +33,19 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-function version(id: string, title: string, presses = 2): PrototypeVersionRecord {
+function version(id: string, title: string, _presses = 0): PrototypeVersionRecord {
+  const schema = emptyPrototypeSchema(title)
+  schema.root.children = [
+    { id: 'title', kind: 'text', props: { text: title }, children: [] },
+    { id: 'action', kind: 'button', props: { label: 'Action' }, children: [] },
+  ]
   return {
     id,
     sourceRef: 'builder-alpha',
     title,
-    body: '正文',
-    buttonPresses: presses,
-    interaction: '预览按钮使计数加一',
+    body: JSON.stringify({ format: 'eap-prototype-v1', schema }),
     acceptance: ['看标题'],
-    contentHash: `hash-${id}`,
+    contentHash: 'hash-' + id,
   }
 }
 
@@ -80,41 +91,25 @@ describe('builder version preview', () => {
     await settled()
   }
 
-  it('starts with only design and lazily retains drafts across the three shared tabs', async () => {
+  it('retains the designer across its two tabs and has no legacy production write surface', async () => {
     await mount([], 'design')
-    expect(root!.querySelectorAll('.eap-tabs [role="tab"]')).toHaveLength(3)
+    expect(root!.querySelectorAll('.eap-tabs [role="tab"]')).toHaveLength(2)
     await vi.waitFor(() =>
       expect(root!.querySelector('[data-testid="grapes-title"]')).not.toBeNull(),
     )
-    expect(root!.querySelector('[data-testid="builder-layout-draft"]')).toBeNull()
-    expect(root!.querySelector('[data-testid="draft-title"]')).toBeNull()
-    expect(runtimeApi.handoffs).not.toHaveBeenCalled()
     const design = root!.querySelector<HTMLInputElement>('[data-testid="grapes-title"]')!
     design.value = '未保存设计'
     design.dispatchEvent(new Event('input'))
-    await tab('legacy')
-    const legacy = root!.querySelector<HTMLInputElement>('[data-testid="draft-title"]')!
-    legacy.value = '未保存旧草稿'
-    legacy.dispatchEvent(new Event('input'))
-    expect(runtimeApi.handoffs).toHaveBeenCalledOnce()
     await tab('versions')
-    expect(
-      root!.querySelector<HTMLElement>('[data-testid="builder-design-panel"]')!.style.display,
-    ).toBe('none')
     await tab('design')
     expect(root!.querySelector('[data-testid="grapes-title"]')).toBe(design)
     expect(design.value).toBe('未保存设计')
-    await tab('legacy')
-    expect(root!.querySelector('[data-testid="draft-title"]')).toBe(legacy)
-    expect(legacy.value).toBe('未保存旧草稿')
+    expect(root!.querySelector('[data-testid="builder-tab-legacy"]')).toBeNull()
+    expect(root!.querySelector('[data-testid="save-version"]')).toBeNull()
+    expect(runtimeApi.handoffs).not.toHaveBeenCalled()
     root!.querySelector<HTMLButtonElement>('[data-testid="builder-back-scenes"]')!.click()
     await settled()
-    expect(window.location.hash).not.toBe('#scenes')
-    expect(root!.textContent).toContain('请先保存或放弃修改')
-    root!.querySelector<HTMLButtonElement>('[data-testid="grapes-discard"]')!.click()
-    await settled()
-    root!.querySelector<HTMLButtonElement>('[data-testid="builder-back-scenes"]')!.click()
-    expect(window.location.hash).toBe('#scenes')
+    expect(localStorage.getItem('eap.prototype-recovery.v1.builder-alpha')).toContain('未保存设计')
   })
 
   function openButton(title: string) {
@@ -143,7 +138,6 @@ describe('builder version preview', () => {
     expect(root!.querySelector('[data-testid="version-preview"]')?.textContent).not.toContain(
       '版本甲',
     )
-    expect(host!.readBuilder('alpha').buttonPresses).toBe(0)
   })
 
   it('renders semantic versions with real interactions instead of the legacy counter', async () => {
@@ -165,7 +159,6 @@ describe('builder version preview', () => {
     ;(preview.querySelector('[data-testid=semantic-preview] button') as HTMLButtonElement).click()
     await settled()
     expect(preview.querySelector('output')?.textContent).toBe('1')
-    expect(host!.readBuilder('alpha').buttonPresses).toBe(0)
   })
 
   it('blocks unsupported semantic versions instead of treating them as legacy demos', async () => {
@@ -235,75 +228,40 @@ describe('builder version preview', () => {
     await settled()
     expect(root!.querySelector('[data-testid="version-preview"]')?.textContent).toContain('版本乙')
     expect(root!.querySelector('[data-testid="delivery-sheet"]')).toBeNull()
-    expect(host!.readBuilder('alpha').draftTitle).toBe('结算页')
   })
 
-  it('shows a failed open or list without clearing the draft or an older list', async () => {
-    const listed = deferred<{ items: PrototypeVersionRecord[] }>()
-    vi.spyOn(runtimeApi, 'handoffs').mockResolvedValue({ items: [] })
-    vi.spyOn(runtimeApi, 'missions').mockResolvedValue({ items: [] })
-    vi.spyOn(runtimeApi, 'prototypeVersions').mockImplementation(() => listed.promise)
-    host = createPluginHost(memoryStore())
-    root = document.createElement('div')
-    document.body.appendChild(root)
-    app = createApp(BuilderWorkspace, { instanceId: 'alpha', host })
-    app.use(i18n)
-    app.mount(root)
-    const reloaded = deferred<{ items: PrototypeVersionRecord[] }>()
-    listed.resolve({ items: [version('a', '版本甲')] })
+  it('preserves an earlier list and designer when refresh or open fails', async () => {
+    await mount([version('a', '版本甲')])
+    vi.spyOn(runtimeApi, 'prototypeVersions').mockRejectedValue(new Error('版本列表不可用'))
+    const refresh = [...root!.querySelectorAll<HTMLButtonElement>('button')].find((item) =>
+      item.textContent?.includes('刷新版本'),
+    )!
+    refresh.click()
     await settled()
-    await tab('legacy')
-    vi.spyOn(runtimeApi, 'prototypeVersions').mockImplementation(() => reloaded.promise)
-    vi.spyOn(runtimeApi, 'savePrototypeVersion').mockResolvedValue(version('saved', '已保存'))
-    root.querySelector<HTMLButtonElement>('[data-testid="save-version"]')!.click()
-    await settled()
-    reloaded.reject(new Error('版本列表不可用'))
-    await settled()
-    expect(root.querySelector('[data-testid="version-list-error"]')?.textContent).toContain(
+    expect(root!.querySelector('[data-testid="version-list-error"]')?.textContent).toContain(
       '版本列表不可用',
     )
-    expect(root.textContent).toContain('版本甲')
-    expect((root.querySelector('[data-testid="draft-title"]') as HTMLInputElement).value).toBe(
-      '结算页',
-    )
-    expect(host.readBuilder('alpha').buttonPresses).toBe(0)
-
+    expect(root!.textContent).toContain('版本甲')
     vi.spyOn(runtimeApi, 'prototypeVersion').mockRejectedValue(new Error('版本打不开'))
     openButton('版本甲').click()
     await settled()
-    expect(root.querySelector('[data-testid="version-note"]')?.textContent).toContain('版本打不开')
-    expect(root.querySelector('[data-testid="version-preview"]')).toBeNull()
-    expect(host.readBuilder('alpha').draftBody).toContain('手工编辑这段说明')
+    expect(root!.querySelector('[data-testid="version-note"]')?.textContent).toContain('版本打不开')
+    expect(root!.querySelector('[data-testid="version-preview"]')).toBeNull()
   })
 
-  it('presses the opened version without writing the draft, and reopens at the saved count', async () => {
-    await mount([version('a', '版本甲', 2)])
-    vi.spyOn(runtimeApi, 'prototypeVersion').mockResolvedValue(version('a', '版本甲', 2))
-    openButton('版本甲').click()
+  it('rejects text-only versions for preview, chat and delivery', async () => {
+    const invalid = { ...version('old', '旧版本'), body: 'plain old text' }
+    await mount([invalid])
+    vi.spyOn(runtimeApi, 'prototypeVersion').mockResolvedValue(invalid)
+    openButton('旧版本').click()
     await settled()
-    root!
-      .querySelector<HTMLButtonElement>(
-        '[data-testid="version-preview"] [data-testid="preview-button"]',
-      )!
-      .click()
-    await settled()
+    expect(root!.querySelector('[data-testid="version-design-blocked"]')).not.toBeNull()
     expect(
-      root!.querySelector('[data-testid="version-preview"] [data-testid="press-count"]')
-        ?.textContent,
-    ).toContain('3')
-    expect(host!.readBuilder('alpha')).toMatchObject({
-      draftTitle: '结算页',
-      buttonPresses: 0,
-      mockApproval: 'none',
-      mockRepositoryLabel: '模拟 · ledger',
-    })
-    root!.querySelector<HTMLButtonElement>('[data-testid="close-version"]')!.click()
-    openButton('版本甲').click()
-    await settled()
+      root!.querySelector<HTMLButtonElement>('[data-testid="prototype-to-code"]')!.disabled,
+    ).toBe(true)
     expect(
-      root!.querySelector('[data-testid="version-preview"] [data-testid="press-count"]')
-        ?.textContent,
-    ).toContain('2')
-    expect(host!.readBuilder('alpha').buttonPresses).toBe(0)
+      root!.querySelector<HTMLButtonElement>('[data-testid="create-delivery"]')!.disabled,
+    ).toBe(true)
+    expect(root!.querySelector('[data-testid="preview-button"]')).toBeNull()
   })
 })

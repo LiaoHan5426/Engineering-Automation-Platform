@@ -1,3 +1,6 @@
+import { scenarioHost } from './plugins/designerFixtures'
+const readyPluginHost = scenarioHost()
+const disabledPluginHost = scenarioHost(false)
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { chatBinding, workbench } from '../../src/features/shell/workbench'
@@ -47,7 +50,6 @@ beforeEach(() => {
   resetLocalBridgeForTests()
   workspaceDirty.value = null
   delete window.eap
-  delete window.eapDesktop
 })
 afterEach(() => {
   app?.unmount()
@@ -60,7 +62,6 @@ afterEach(() => {
   resetLocalBridgeForTests()
   workspaceDirty.value = null
   delete window.eap
-  delete window.eapDesktop
   workbench.sessionExtras = {}
   workbench.pendingDraft = ''
   workbench.pendingNewChat = false
@@ -171,8 +172,7 @@ describe('desktop navigation', () => {
     root = document.createElement('div')
     document.body.append(root)
     app = createApp({
-      render: () =>
-        h(ScenarioWorkspace, { builderEnabled: true, chatEnabled: true, onNavigate: navigate }),
+      render: () => h(ScenarioWorkspace, { pluginHost: readyPluginHost, onNavigate: navigate }),
     })
     app.use(i18n).mount(root)
     await nextTick()
@@ -603,8 +603,6 @@ describe('desktop navigation', () => {
           sourceRef: 'builder-alpha',
           title: 'Saved',
           body: '',
-          buttonPresses: 0,
-          interaction: '',
           acceptance: [],
           contentHash: 'hash',
         },
@@ -622,8 +620,7 @@ describe('desktop navigation', () => {
     app = createApp({
       render: () =>
         h(ScenarioWorkspace, {
-          builderEnabled: false,
-          chatEnabled: true,
+          pluginHost: disabledPluginHost,
           onNavigate: (id) => selected.push(id),
         }),
     })

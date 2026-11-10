@@ -47,9 +47,9 @@ class FullApplicationCompositionTest {
                     assertThat(context.getBean(com.lh.eap.core.ExpertAnalysisPolicyResolver.class).behaviors())
                             .anyMatch(item -> item.binding().equals(com.lh.eap.ai.SqlExpertAgentService.BINDING)
                                     && item.executionMode().equals("agent") && item.requiredTools().contains("sql.parse"));
-                    var legacyExpert = new com.lh.eap.domain.model.ExpertManifest("eap/v1", "Expert", "sql-expert", "SQL",
-                            java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of());
-                    assertThat(context.getBean(com.lh.eap.core.ExpertAnalysisPolicyResolver.class).resolve(legacyExpert))
+                    var fixedExpert = new com.lh.eap.domain.model.ExpertManifest("eap/v1", "Expert", "sql-expert", "SQL",
+                            java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
+                    assertThat(context.getBean(com.lh.eap.core.ExpertAnalysisPolicyResolver.class).resolve(fixedExpert))
                             .contains(context.getBean(com.lh.eap.application.service.SqlExpertAnalysisPolicy.class));
                     assertThat(context).hasSingleBean(com.lh.eap.rules.RulePackQuery.class);
                     assertThat(context.getBean(com.lh.eap.rules.RulePackQuery.class))

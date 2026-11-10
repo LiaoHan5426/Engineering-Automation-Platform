@@ -36,15 +36,7 @@ export interface PluginManifest {
   requests: readonly PermissionRequest[]
 }
 
-export interface BuilderConfig {
-  pluginId: 'builder'
-  instanceId: 'alpha' | 'beta'
-  mockRepositoryLabel: string
-  draftTitle: string
-  draftBody: string
-  buttonPresses: number
-  mockApproval: 'none' | 'simulated'
-}
+export type BuilderInstanceId = 'alpha' | 'beta'
 
 export interface KeyValueStore {
   getItem(key: string): string | null
@@ -82,38 +74,13 @@ export const MANIFESTS: readonly PluginManifest[] = [
   },
 ]
 
-const BUILDER_SEEDS: readonly BuilderConfig[] = [
-  {
-    pluginId: 'builder',
-    instanceId: 'alpha',
-    mockRepositoryLabel: '模拟 · ledger',
-    draftTitle: '结算页',
-    draftBody: '手工编辑这段说明，预览使用真实 Vue 组件。',
-    buttonPresses: 0,
-    mockApproval: 'none',
-  },
-  {
-    pluginId: 'builder',
-    instanceId: 'beta',
-    mockRepositoryLabel: '模拟 · catalog',
-    draftTitle: '目录页',
-    draftBody: '这是另一个实例的草稿。',
-    buttonPresses: 0,
-    mockApproval: 'none',
-  },
-]
-
 const DEFAULT_INSTALLATION: Installation = { enabled: { chat: true, builder: true, board: true } }
-
-export function instanceKey(pluginId: PluginId, instanceId: string): string {
-  return `eap.plugin.instance.${pluginId}.${instanceId}`
-}
 
 export function isShellPage(id: string): boolean {
   return (SHELL_PAGE_IDS as readonly string[]).includes(id)
 }
 
-export function contributionHash(instanceId: BuilderConfig['instanceId']): string {
+export function contributionHash(instanceId: BuilderInstanceId): string {
   return `builder-${instanceId}`
 }
 
@@ -141,11 +108,10 @@ export function browserStore(): KeyValueStore {
       }
     },
     setItem(key, value) {
-      try {
-        globalThis.localStorage?.setItem(key, value)
-      } catch {
-        /* Privacy mode keeps the current page usable. */
-      }
+      if (!globalThis.localStorage) throw new Error('PLUGIN_LOCAL_STORAGE_UNAVAILABLE')
+      globalThis.localStorage.setItem(key, value)
+      if (globalThis.localStorage.getItem(key) !== value)
+        throw new Error('PLUGIN_LOCAL_WRITE_UNCONFIRMED')
     },
   }
 }
@@ -191,39 +157,4 @@ export function writeInstallation(store: KeyValueStore, installation: Installati
       },
     }),
   )
-}
-
-export function readBuilder(
-  store: KeyValueStore,
-  instanceId: BuilderConfig['instanceId'],
-): BuilderConfig {
-  const seed = BUILDER_SEEDS.find((item) => item.instanceId === instanceId)!
-  const raw = store.getItem(instanceKey('builder', instanceId))
-  if (!raw) return { ...seed }
-  try {
-    const parsed = JSON.parse(raw) as Partial<BuilderConfig>
-    if (parsed.pluginId !== 'builder' || parsed.instanceId !== instanceId) return { ...seed }
-    return {
-      pluginId: 'builder',
-      instanceId,
-      mockRepositoryLabel: text(parsed.mockRepositoryLabel, seed.mockRepositoryLabel),
-      draftTitle: text(parsed.draftTitle, seed.draftTitle),
-      draftBody: text(parsed.draftBody, seed.draftBody),
-      buttonPresses:
-        Number.isInteger(parsed.buttonPresses) && parsed.buttonPresses! >= 0
-          ? parsed.buttonPresses!
-          : 0,
-      mockApproval: parsed.mockApproval === 'simulated' ? 'simulated' : 'none',
-    }
-  } catch {
-    return { ...seed }
-  }
-}
-
-export function writeBuilder(store: KeyValueStore, config: BuilderConfig): void {
-  store.setItem(instanceKey('builder', config.instanceId), JSON.stringify({ ...config }))
-}
-
-function text(value: unknown, fallback: string): string {
-  return typeof value === 'string' ? value : fallback
 }

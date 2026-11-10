@@ -53,7 +53,7 @@ class ExpertBehaviorPersistenceTest {
         transactions = new DataSourceTransactionManager(dataSource);
         policies = new ExpertBehaviorCatalog(List.of(
                 new ExpertBehaviorCatalog.Registration(v1, "SQL", first),
-                new ExpertBehaviorCatalog.Registration(v2, "Local", second)), v1);
+                new ExpertBehaviorCatalog.Registration(v2, "Local", second)));
         mapper = new ExpertDefinitionMapper(jdbc);
         definitions = definitions(policies);
         management = management(mapper, definitions);
@@ -75,7 +75,7 @@ class ExpertBehaviorPersistenceTest {
     }
 
     @Test void committedBindingSurvivesNewServicesAndUpdatesRevokeAuthorizationUntilReactivation() {
-        assertEquals(v1, management.save(request(null)).get("behavior"));
+        assertEquals(v1, management.save(request(v1)).get("behavior"));
         // Each JdbcTemplate call obtains a fresh connection; these are committed DB reads, not an in-memory map.
         var reloaded = definitions(policies);
         assertEquals(v1, reloaded.require(id, false).behavior());
@@ -112,11 +112,11 @@ class ExpertBehaviorPersistenceTest {
         assertEquals(result.get("behavior"), metadata.get("behavior"), "History must retain the executed version after the expert changes");
     }
 
-    @Test void legacyEditorCannotEraseSavedVersionAndUnknownOrNullBindingCannotChangeIt() {
+    @Test void missingOrUnknownBindingCannotChangeSavedDefinition() {
         management.save(request(v2));
-        management.save(request(null));
+        assertThrows(ResponseStatusException.class, () -> management.save(request(null)));
         assertEquals(v2, definitions.require(id, false).behavior());
-        assertTrue(mapper.findManifest(id).orElseThrow().contains("layout-marker"));
+        assertTrue(ExpertManifest.serialize(definitions.require(id, false)).contains("behavior"));
         int revision = revision();
         assertThrows(ResponseStatusException.class, () -> management.save(request(new ExpertBehaviorBinding("local-review", 999))));
         var invalid = request(null).manifest().replace("\"extension\"", "\"behavior\":null,\"extension\"");
@@ -135,24 +135,26 @@ class ExpertBehaviorPersistenceTest {
         assertEquals(v2, restricted.require(id, false).behavior());
     }
 
-    @Test void staleValidationCannotOverwriteNewBindingAndFailureRollsBackDraftAndGrantDeletes() {
+    @Test void failureRollsBackExplicitDraftAndGrantDeletes() {
         management.save(request(v2));
         definitions.activate(id, true);
         jdbc.update("INSERT INTO eap.expert_mcp_grant(expert_id,capability) VALUES (?,?)", id, "fixture.inspect");
         int revision = revision();
-        // Deterministically reproduce a stale pre-upsert read; PostgreSQL must preserve the actual row's v2.
-        var staleReader = new ExpertDefinitionMapper(jdbc) {
-            @Override public Optional<String> findManifest(String expertId) { return Optional.of(request(v1).manifest()); }
+        var failingStore = new ExpertDefinitionMapper(jdbc) {
+            @Override public String saveDraft(String expertId,String name,String manifest) {
+                super.saveDraft(expertId,name,manifest);
+                throw new IllegalStateException("injected failure after draft and grant writes");
+            }
         };
-        var restricted = management(staleReader, definitions(onlyFirst()));
-        assertThrows(ResponseStatusException.class, () -> restricted.save(request(null)));
+        var restricted = management(failingStore, definitions(policies));
+        assertThrows(IllegalStateException.class, () -> restricted.save(request(v1)));
         assertEquals(revision, revision());
         assertEquals(1, grants());
         assertEquals(v2, definitions.require(id, true).behavior());
     }
 
     private ExpertBehaviorCatalog onlyFirst() {
-        return new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(v1, "SQL", first)), v1);
+        return new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(v1, "SQL", first)));
     }
     private ExpertDefinitionService definitions(ExpertAnalysisPolicyResolver resolver) {
         return proxy(new ExpertDefinitionService(jdbc, mock(RulePackQuery.class), () -> Set.of(),

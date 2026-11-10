@@ -74,11 +74,7 @@ public class CliChannels {
 
     /** The full channel view: what is in effect, where it resolved to, and whether it is runnable. */
     public Channel channel(String capability, String shippedDefault) {
-        final String override;
-        try { override = override(capability); }
-        catch (BindingConflict conflict) {
-            return new Channel(capability, "", "operator", null, CapabilityAvailability.MISSING_BINARY);
-        }
+        var override = override(capability);
         var binary = override == null ? shippedDefault : override;
         var resolved = LocalBinaries.resolve(binary);
         return new Channel(capability, binary, override == null ? "shipped" : "operator",
@@ -86,31 +82,33 @@ public class CliChannels {
                 resolved.isPresent() ? CapabilityAvailability.AVAILABLE : CapabilityAvailability.MISSING_BINARY);
     }
 
-    /** Every operator override, keyed by capability. */
+    /** Every operator override, keyed by program. */
     public Map<String, String> overrides() {
         // Never fall back to a different binary when the authoritative configuration is unreadable.
         return Map.copyOf(Objects.requireNonNull(store.overrides(), "CLI channel store returned no result"));
     }
 
     /**
-     * Point a capability at a specific binary, or clear the override ({@code binary} blank) so the
+     * Point a program at a specific binary, or clear the override ({@code binary} blank) so the
      * shipped default applies again.
      *
      * @throws IllegalArgumentException when the value could not be a binary path — control characters, a
      *                                  leading dash (which the process executor would read as a flag), an
      *                                  over-long value, or anything that looks like a credential
      */
-    public void configure(String capability, String binary) {
+    public void configure(String program, String binary) {
+        if (program == null || !program.matches("[a-z0-9]+(?:-[a-z0-9]+)*") || !program.equals(programId(program)))
+            throw new IllegalArgumentException("CLI_PROGRAM_ID_REQUIRED");
         var value = binary == null ? "" : binary.trim();
         if (value.isEmpty()) {
-            store.configure(capability, "");
+            store.configure(program, "");
             return;
         }
         if (value.length() > 500) throw new IllegalArgumentException("二进制位置最多500字符");
         if (value.startsWith("-")) throw new IllegalArgumentException("二进制位置不能以 - 开头");
         if (value.chars().anyMatch(Character::isISOControl)) throw new IllegalArgumentException("二进制位置不能包含控制字符");
         if (SensitiveData.containsSecret(value)) throw new IllegalArgumentException("二进制位置不能包含凭据");
-        store.configure(capability, value);
+        store.configure(program, value);
     }
 
     /**
@@ -155,22 +153,7 @@ public class CliChannels {
     }
 
     private String override(String capability) {
-        var values = overrides();
-        var program = programId(capability);
-        var shared = values.get(program);
-        if (shared != null) return shared;
-        if ("git".equals(program)) {
-            var status = values.get("git-status");
-            var diff = values.get("git-diff");
-            if (status != null && diff != null && !status.equals(diff)) throw new BindingConflict();
-            return status != null ? status : diff;
-        }
-        // Compatibility for installations not migrated yet. New writes use program ids.
-        return values.get(capability);
-    }
-
-    private static final class BindingConflict extends IllegalStateException {
-        BindingConflict() { super("CLI_PROGRAM_BINDING_CONFLICT"); }
+        return overrides().get(programId(capability));
     }
 
     public static String programId(String capability) {

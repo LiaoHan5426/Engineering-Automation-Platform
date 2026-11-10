@@ -54,7 +54,7 @@ class ExpertKnowledgeContextServiceTest {
         final ExpertKnowledgeContextService service = new ExpertKnowledgeContextService(new com.lh.eap.application.service.WorkflowExpertKnowledgeAccess(definitions, experts),
                 new CapabilityHandlerRegistry(List.of(new KnowledgeSearchHandler(knowledge)), settings));
         Map<String,Object> row(boolean enabled, long revision, String manifestId) {
-            var manifest = new ExpertManifest("v1", "Expert", manifestId, "A", List.of(base.toString()), List.of(), List.of(), List.of(), List.of());
+            var manifest = new ExpertManifest("v1", "Expert", manifestId, "A", List.of(base.toString()), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
             return Map.of("id", "expert-a", "manifest", ExpertManifest.serialize(manifest), "enabled", enabled, "revision", revision);
         }
         Fixture() {
@@ -84,7 +84,7 @@ class ExpertKnowledgeContextServiceTest {
         var grants = mock(ExpertDefinitionService.class);
         var knowledge = mock(KnowledgeRepository.class);
         var allowed = UUID.randomUUID(); var undeclared = UUID.randomUUID();
-        var manifest = new ExpertManifest("v1", "Expert", "expert-a", "A", List.of(allowed.toString()), List.of(), List.of(), List.of(), List.of());
+        var manifest = new ExpertManifest("v1", "Expert", "expert-a", "A", List.of(allowed.toString()), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
         when(jdbc.queryForList(anyString(), eq("expert-a"))).thenReturn(List.of(Map.of("id", "expert-a", "manifest", ExpertManifest.serialize(manifest), "enabled", true, "revision", 2L)));
         when(grants.knowledgeGrants("expert-a")).thenReturn(List.of(allowed, undeclared));
         when(knowledge.searchAuthorized(anyString(), eq(5), eq(List.of(allowed)))).thenReturn(List.of(Map.of("id", UUID.randomUUID(), "source", "source.md", "knowledgeBase", "A", "excerpt", "private-a", "retrievalMode", "local-keyword")));

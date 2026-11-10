@@ -13,27 +13,22 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** One canonical form for both the stored version and the reopened preview. */
 public final class PrototypeCanonical {
-    public static final String INTERACTION = "预览按钮使计数加一";
-
-    public record Content(String sourceRef, String title, String body, int buttonPresses,
-                          String interaction, List<String> acceptance, String hash) {}
+    public record Content(String sourceRef, String title, String body, List<String> acceptance, String hash) {}
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     private PrototypeCanonical() {}
 
-    public static Content of(String sourceRef, String title, String body, int buttonPresses, List<String> acceptance) {
+    public static Content of(String sourceRef, String title, String body, List<String> acceptance) {
         if (!"builder-alpha".equals(sourceRef) && !"builder-beta".equals(sourceRef)) {
             throw new IllegalArgumentException("原型版本只属于 builder-alpha 或 builder-beta");
-        }
-        if (buttonPresses < 0) {
-            throw new IllegalArgumentException("按钮次数不能为负");
         }
         var normalizedTitle = text(title);
         var normalizedBody = text(body);
         if (normalizedTitle.isBlank() && normalizedBody.isBlank()) {
             throw new IllegalArgumentException("标题和正文不能同时为空");
         }
+        SemanticPrototype.require(normalizedBody);
         var conditions = new ArrayList<String>();
         if (acceptance != null) {
             for (var item : acceptance) {
@@ -41,10 +36,9 @@ public final class PrototypeCanonical {
                 if (!normalized.isBlank()) conditions.add(normalized);
             }
         }
-        var content = new Content(sourceRef, normalizedTitle, normalizedBody, buttonPresses, INTERACTION,
+        var content = new Content(sourceRef, normalizedTitle, normalizedBody,
                 List.copyOf(conditions), "");
-        return new Content(content.sourceRef(), content.title(), content.body(), content.buttonPresses(),
-                content.interaction(), content.acceptance(), sha256(json(content)));
+        return new Content(content.sourceRef(), content.title(), content.body(), content.acceptance(), sha256(json(content)));
     }
 
     /** Field order is part of the hash. Jackson only supplies escaping and UTF-8 bytes. */
@@ -53,8 +47,6 @@ public final class PrototypeCanonical {
         fields.put("sourceRef", content.sourceRef());
         fields.put("title", content.title());
         fields.put("body", content.body());
-        fields.put("buttonPresses", content.buttonPresses());
-        fields.put("interaction", content.interaction());
         fields.put("acceptance", content.acceptance());
         return JSON.writeValueAsString(fields);
     }

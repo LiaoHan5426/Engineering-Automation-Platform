@@ -31,8 +31,7 @@ public class EapLocalAutoConfiguration {
         var workspace = Path.of(environment.getProperty("eap.local.workspace", System.getProperty("user.dir")))
                 .toAbsolutePath().normalize();
         return new RuntimeWorkspace(workspace,
-                environment.getProperty("eap.runtime.authorized-root", ""),
-                environment.getProperty("eap.ai.authorized-root", ""));
+                environment.getProperty("eap.runtime.authorized-root", ""));
     }
     @Bean
     @ConditionalOnMissingBean

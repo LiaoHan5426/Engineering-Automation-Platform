@@ -44,9 +44,9 @@ class AiConnectionStatusTest {
         assertEquals("", snapshot.authorizedRootDenial());
         assertFalse(snapshot.storesUserDirectoryGrants());
         assertFalse(snapshot.workspaceLabel().contains(root.toString()));
-        var conflict = new AiConnectionStatus(new CapabilityHandlerRegistry(List.of()), root, null, "ROOT_CONFLICT",
+        var conflict = new AiConnectionStatus(new CapabilityHandlerRegistry(List.of()), root, null, "AUTHORIZED_ROOT_MISSING",
                 "none", "", "", false, null);
-        assertEquals("ROOT_CONFLICT", conflict.read().authorizedRootDenial());
+        assertEquals("AUTHORIZED_ROOT_MISSING", conflict.read().authorizedRootDenial());
         assertEquals("", conflict.read().authorizedRootPath());
         assertFalse(conflict.read().storesUserDirectoryGrants());
         assertNotEquals(other.toString(), conflict.read().workspacePath());
@@ -105,10 +105,10 @@ class AiConnectionStatusTest {
     @Test void sharedRootDecisionDrivesChatGitAvailability(@TempDir Path other) throws Exception {
         var handlers = new CapabilityHandlerRegistry(List.of(new GitInspectionHandler(
                 new CapabilityRegistry().register(new GitCapability("status")), new DefaultProcessExecutor())));
-        assertFalse(chat(handlers, new RuntimeWorkspace(root, " ", "")).gitStatusAvailable());
-        assertTrue(chat(handlers, new RuntimeWorkspace(root, "", root.toString())).gitStatusAvailable());
+        assertFalse(chat(handlers, new RuntimeWorkspace(root, " ")).gitStatusAvailable());
+        assertTrue(chat(handlers, new RuntimeWorkspace(root, root.toString())).gitStatusAvailable());
         var nested = Files.createDirectory(root.resolve("repo"));
-        assertFalse(chat(handlers, new RuntimeWorkspace(root, nested.toString(), other.toString())).gitStatusAvailable());
+        assertFalse(chat(handlers, new RuntimeWorkspace(root, nested.toString())).gitStatusAvailable());
     }
 
     private AiConnectionStatus chat(CapabilityHandlerRegistry handlers, RuntimeWorkspace runtime) {

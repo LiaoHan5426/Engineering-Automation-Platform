@@ -33,8 +33,8 @@ class ExpertExecutionTest {
     private static ExpertExecutionService execution(ExpertDefinitionService definitions, TaskRepository tasks,
             CapabilityHandlerRegistry handlers, RulePackService rulePacks, Path workspace,
             SqlExpertService model, McpSessionRegistry sessions) {
-        return new ExpertExecutionService(definitions, tasks, handlers,
-                new SqlExpertAnalysisPolicy(rulePacks, model), workspace, List.of(sessions));
+        return new ExpertExecutionService(definitions, tasks, handlers, new com.lh.eap.core.ExpertBehaviorCatalog(java.util.List.of(new com.lh.eap.core.ExpertBehaviorCatalog.Registration(new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1), "SQL",
+                new SqlExpertAnalysisPolicy(rulePacks, model)))), workspace, List.of(sessions));
     }
 
     private static CapabilityHandlerRegistry handlers(KnowledgeRepository knowledge, JdbcTemplate jdbc,
@@ -73,7 +73,7 @@ class ExpertExecutionTest {
         var jdbc=mock(JdbcTemplate.class);
         var manifest=new ExpertManifest("eap/v1","Expert","test","Test",List.of(),List.of(),
                 List.of(new ExpertManifest.Step("knowledge","Knowledge","knowledge.search",true),new ExpertManifest.Step("parse","Parse","sql.parse",true)),
-                List.of(new ExpertManifest.Edge("parse","knowledge")),List.of("database.credentials.never-expose"));
+                List.of(new ExpertManifest.Edge("parse","knowledge")),List.of("database.credentials.never-expose"), List.of(), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
         when(definitions.require("test",true)).thenReturn(manifest);
         when(definitions.knowledgeGrants("test")).thenReturn(List.of());
         var execution=execution(definitions,tasks,
@@ -115,7 +115,7 @@ class ExpertExecutionTest {
         var jdbc=mock(JdbcTemplate.class);
         var manifest=new ExpertManifest("eap/v1","Expert","test","Test",List.of(),List.of(),
                 List.of(new ExpertManifest.Step("parse","Parse","sql.parse",true)),List.of(),
-                List.of("database.credentials.never-expose"),List.of("does-not-exist"));
+                List.of("database.credentials.never-expose"),List.of("does-not-exist"), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
         when(definitions.require("test",true)).thenReturn(manifest);
         when(definitions.knowledgeGrants("test")).thenReturn(List.of());
         var execution=execution(definitions,tasks,
@@ -134,7 +134,7 @@ class ExpertExecutionTest {
         var jdbc=mock(JdbcTemplate.class);
         var manifest=new ExpertManifest("eap/v1","Expert","test","Test",List.of(),List.of(),
                 List.of(new ExpertManifest.Step("parse","Parse","sql.parse",true)),List.of(),
-                List.of("database.credentials.never-expose"),List.of());
+                List.of("database.credentials.never-expose"),List.of(), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
         when(definitions.require("test",true)).thenReturn(manifest);
         when(definitions.knowledgeGrants("test")).thenReturn(List.of());
         var sqlModel=new SqlExpertService(new com.lh.eap.llm.PromptPreprocessor(600),gateway,
@@ -156,7 +156,7 @@ class ExpertExecutionTest {
                 List.of(new ExpertManifest.Step("parse","Parse","sql.parse",true),
                         new ExpertManifest.Step("mcp","Query","mcp.registrydb.query",false)),
                 List.of(new ExpertManifest.Edge("parse","mcp")),
-                List.of("database.credentials.never-expose"),List.of(),mcpTools);
+                List.of("database.credentials.never-expose"),List.of(),mcpTools, new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
     }
 
     @Test void anExpertThatDidNotDeclareAMcpToolCannotRunItEvenThoughTheHandlerExists(){
@@ -221,7 +221,7 @@ class ExpertExecutionTest {
         var definitions=mock(ExpertDefinitionService.class);
         var tasks=mock(TaskRepository.class);
         var manifest=new ExpertManifest("eap/v1","Expert","local","Local",List.of(),List.of(),
-                List.of(new ExpertManifest.Step("inspect","Inspect","local.inspect",true)),List.of(),List.of("database.credentials.never-expose"));
+                List.of(new ExpertManifest.Step("inspect","Inspect","local.inspect",true)),List.of(),List.of("database.credentials.never-expose"), List.of(), List.of(), new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1));
         when(definitions.require("local",true)).thenReturn(manifest);
         when(definitions.knowledgeGrants("local")).thenReturn(List.of());
         var policy=mock(com.lh.eap.core.ExpertAnalysisPolicy.class);
@@ -238,7 +238,7 @@ class ExpertExecutionTest {
                 return new com.lh.eap.domain.model.NodeResult(true,false,"checked",Map.of());
             }
         };
-        var execution=new ExpertExecutionService(definitions,tasks,new CapabilityHandlerRegistry(List.of(handler)),policy,Path.of("."),List.of());
+        var execution=new ExpertExecutionService(definitions,tasks,new CapabilityHandlerRegistry(List.of(handler)), new com.lh.eap.core.ExpertBehaviorCatalog(java.util.List.of(new com.lh.eap.core.ExpertBehaviorCatalog.Registration(new com.lh.eap.domain.model.ExpertBehaviorBinding("sql-analysis", 1), "SQL", policy))),Path.of("."),List.of());
         var result=execution.execute("local",new ExpertExecutionService.Request(null,"inspect",null,null,false,null));
         assertEquals("completed",result.get("status"));
         assertEquals(Map.of("local.checked",true),((Map<?,?>)result.get("deterministicAnalysis")).get("facts"));

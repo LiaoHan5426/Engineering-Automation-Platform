@@ -1,6 +1,25 @@
 import { expect, it } from 'vite-plus/test'
 import { createScenarioBackend } from '../../mock/scenarioBackend'
 
+it('observes scoped mock version count without executing or changing scenario configuration', () => {
+  const backend = createScenarioBackend(() => 2)
+  const url = new URL('http://mock.local/scenarios/workflows/prototype-to-code/dependencies')
+  expect(backend.handle('GET', url, {})?.data).toMatchObject({
+    contractVersion: 1,
+    workflow: 'prototype-to-code',
+    plugins: [
+      { id: 'builder', required: true },
+      { id: 'board', required: false },
+    ],
+    services: [{ id: 'prototype-versions', state: 'READABLE' }],
+    resources: [{ id: 'prototype-version', required: true, count: 2 }],
+  })
+  expect(backend.handle('POST', url, {})?.status).toBe(405)
+  expect(backend.handle('GET', new URL('http://mock.local/scenarios'), {})?.data).toEqual({
+    items: [],
+  })
+})
+
 it('keeps the mock CAS and deletion contract without claiming database persistence', () => {
   const backend = createScenarioBackend()
   const url = new URL('http://mock.local/scenarios/custom-test')

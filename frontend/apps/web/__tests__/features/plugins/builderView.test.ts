@@ -20,7 +20,7 @@ describe('plugin prototype views', () => {
     expect(alpha).toContain('data-testid="builder-alpha"')
     expect(beta).toContain('data-testid="builder-beta"')
     expect(alpha).toContain('data-testid="grapes-scaffold"')
-    expect(alpha).toContain('data-testid="builder-tab-legacy"')
+    expect(alpha).not.toContain('data-testid="builder-tab-legacy"')
     expect(alpha).not.toContain('data-testid="mock-task"')
     expect(alpha).not.toContain('data-testid="builder-layout-draft"')
     expect(alpha).not.toContain('已交付')

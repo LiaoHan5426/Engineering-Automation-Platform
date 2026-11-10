@@ -3,7 +3,7 @@ import { computed, reactive, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BuilderWorkspace from './BuilderWorkspace.vue'
 import type { PluginHost } from './host'
-import type { BuilderConfig } from './model'
+import type { BuilderInstanceId } from './model'
 import { useMockServices } from '../../lib/serviceConfig'
 
 const props = defineProps<{ viewId: string; host: PluginHost; chatView: Component }>()
@@ -29,11 +29,11 @@ const cachedViews = computed(() =>
       visited.has(id) &&
       (id === 'chat'
         ? props.host.installation.value.enabled.chat
-        : props.host.installation.value.enabled.builder),
+        : props.host.builderContributionVisible.value),
   ),
 )
 
-const instanceId = computed((): BuilderConfig['instanceId'] | '' => {
+const instanceId = computed((): BuilderInstanceId | '' => {
   if (props.viewId === 'builder-alpha') return 'alpha'
   if (props.viewId === 'builder-beta') return 'beta'
   return ''
@@ -41,7 +41,7 @@ const instanceId = computed((): BuilderConfig['instanceId'] | '' => {
 const enabled = computed(() =>
   props.viewId === 'chat'
     ? props.host.installation.value.enabled.chat
-    : props.host.installation.value.enabled.builder,
+    : props.host.builderContributionVisible.value,
 )
 </script>
 

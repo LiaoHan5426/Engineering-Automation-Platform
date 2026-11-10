@@ -22,7 +22,7 @@ class SkillWiringTest {
         try (var context = new AnnotationConfigApplicationContext()) {
             context.registerBean(JdbcTemplate.class, () -> mock(JdbcTemplate.class));
             context.registerBean(PlatformTransactionManager.class, () -> mock(PlatformTransactionManager.class));
-            context.registerBean(RuntimeWorkspace.class, () -> RuntimeWorkspace.colocated(root,"",""));
+            context.registerBean(RuntimeWorkspace.class, () -> RuntimeWorkspace.colocated(root,""));
             context.registerBean(CapabilityHandlerRegistry.class, () -> new CapabilityHandlerRegistry(List.of()));
             context.register(Transactions.class, SkillTextParser.class, SkillService.class, SkillController.class);
             assertDoesNotThrow(context::refresh);

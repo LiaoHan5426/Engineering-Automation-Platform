@@ -46,7 +46,7 @@ S1 仅实现单个当前配置模型的状态展示、同步聊天和可选只�
 
 ## 权限与证据
 
-首版沿用个人本机部署，服务端固定操作者身份，不增加用户/租户系统。工作区使用现有 RuntimeConfiguration 的服务端 workspace，与 eap.ai.authorized-root 规范化实路径比较；客户端选择与此不一致时明确提示，不静默更换已绑定会话目录。
+首版沿用个人本机部署，服务端固定操作者身份，不增加用户/租户系统。工作区使用现有 RuntimeConfiguration 的服务端 workspace，与 eap.runtime.authorized-root 规范化实路径比较；客户端选择与此不一致时明确提示，不静默更换已绑定会话目录。
 
 普通聊天 toolMode=none 时不注册工具回调。git_status 需用户显式选择，同时满足服务端根目录约束、Capability 启用/授权和现有处理器校验。不能将浏览器布尔值直接赋给 gitAllowed。复用现有 gitStatus 空参数验证、GitInspectionHandler、调用次数上限和 Trace；不执行模型生成的 Shell。只读结果仍可能包含文件名，应在发送前提示其会提供给模型。
 

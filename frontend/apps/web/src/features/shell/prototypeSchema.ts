@@ -226,23 +226,23 @@ export function parsePrototypeSchema(raw: string): PrototypeSchema | null {
         typeof node.kind === 'string' &&
         !!node.props &&
         typeof node.props === 'object' &&
+        !Array.isArray(node.props) &&
         Array.isArray(node.children) &&
         node.children.every((child) => valid(child, depth + 1))
       )
     }
-    if (parsed?.version !== 1 || typeof parsed.title !== 'string' || !valid(parsed.root))
+    if (
+      parsed?.version !== 1 ||
+      typeof parsed.title !== 'string' ||
+      !valid(parsed.root) ||
+      !Array.isArray(parsed.unknownMappings) ||
+      !parsed.unknownMappings.every((item) => typeof item === 'string') ||
+      !parsed.grapesProject ||
+      typeof parsed.grapesProject !== 'object' ||
+      Array.isArray(parsed.grapesProject)
+    )
       return null
-    return {
-      ...emptyPrototypeSchema(parsed.title),
-      ...parsed,
-      unknownMappings: Array.isArray(parsed.unknownMappings)
-        ? parsed.unknownMappings.filter((item): item is string => typeof item === 'string')
-        : [],
-      grapesProject:
-        parsed.grapesProject && typeof parsed.grapesProject === 'object'
-          ? parsed.grapesProject
-          : {},
-    }
+    return parsed
   } catch {
     return null
   }
@@ -253,9 +253,6 @@ export function savePrototypeSchema(
   storage: Storage | undefined = typeof localStorage === 'undefined' ? undefined : localStorage,
 ) {
   const versions = loadPrototypeVersions(storage)
-  const previous = loadPrototypeSchema(storage)
-  if (!versions.length && previous)
-    versions.push({ ...previous, id: previous.id || 'legacy-snapshot' })
   const next = JSON.parse(
     JSON.stringify({
       ...schema,

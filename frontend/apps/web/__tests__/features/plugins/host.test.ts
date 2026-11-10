@@ -1,6 +1,16 @@
+import { scopedPrototypeStorage } from '../../../src/features/shell/prototypeDrafts'
+import {
+  emptyPrototypeSchema,
+  savePrototypeSchema,
+  loadPrototypeSchema,
+} from '../../../src/features/shell/prototypeSchema'
 import { describe, expect, it } from 'vite-plus/test'
 import { createPluginHost } from '../../../src/features/plugins/host'
-import { INSTALLATION_KEY, memoryStore, readInstallation } from '../../../src/features/plugins/model'
+import {
+  INSTALLATION_KEY,
+  memoryStore,
+  readInstallation,
+} from '../../../src/features/plugins/model'
 
 describe('plugin host board contribution', () => {
   it('hides board nav when disabled and restores after refresh', () => {
@@ -49,7 +59,7 @@ describe('plugin host board contribution', () => {
     expect(() => host.setEnabled('board', true)).toThrow(/ACTIVATION_FAILED/)
     expect(host.installation.value.enabled.board).toBe(false)
     expect(readInstallation(store).enabled.board).toBe(false)
-    expect(host.activationFailure.value?.message).toBe('mock boom')
+    expect(host.activationFailures.value.board).toBe('mock boom')
     expect(host.runtimeOf('board').kind).toBe('activation_failed')
     expect(host.boardContributionVisible.value).toBe(false)
   })
@@ -57,18 +67,14 @@ describe('plugin host board contribution', () => {
   it('keeps builder instance drafts isolated across board dependency refresh', () => {
     const store = memoryStore()
     const host = createPluginHost(store)
-    host.saveBuilder({
-      ...host.readBuilder('alpha'),
-      draftTitle: '隔离标题-alpha',
-    })
-    host.saveBuilder({
-      ...host.readBuilder('beta'),
-      draftTitle: '隔离标题-beta',
-    })
+    const alpha = scopedPrototypeStorage('builder-alpha', store as Storage)
+    const beta = scopedPrototypeStorage('builder-beta', store as Storage)
+    savePrototypeSchema(emptyPrototypeSchema('隔离标题-alpha'), alpha)
+    savePrototypeSchema(emptyPrototypeSchema('隔离标题-beta'), beta)
     host.setServiceAvailable('runtime.board-api', false)
     host.refreshFromStore()
-    expect(host.readBuilder('alpha').draftTitle).toBe('隔离标题-alpha')
-    expect(host.readBuilder('beta').draftTitle).toBe('隔离标题-beta')
+    expect(loadPrototypeSchema(alpha)?.title).toBe('隔离标题-alpha')
+    expect(loadPrototypeSchema(beta)?.title).toBe('隔离标题-beta')
     host.setServiceAvailable('runtime.board-api', true)
     expect(host.boardContributionVisible.value).toBe(true)
   })

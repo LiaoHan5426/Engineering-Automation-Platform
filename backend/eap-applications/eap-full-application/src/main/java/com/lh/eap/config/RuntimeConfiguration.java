@@ -25,8 +25,7 @@ public class RuntimeConfiguration {
     RuntimeWorkspace runtimeWorkspace(Path workspace, Environment environment) {
         // Colocated local service: empty config binds to the detected process workspace, not a remote grant store.
         return RuntimeWorkspace.colocated(workspace,
-                environment.getProperty("eap.runtime.authorized-root", ""),
-                environment.getProperty("eap.ai.authorized-root", ""));
+                environment.getProperty("eap.runtime.authorized-root", ""));
     }
 
     @Bean

@@ -42,7 +42,7 @@ class CliProgramIntegrationTest {
                 Flyway.configure().dataSource(testUrl,user,password).schemas("eap").defaultSchema("eap")
                         .locations("classpath:db/migration").load().migrate();
                 try (var configured = DriverManager.getConnection(testUrl,user,password); var statement = configured.createStatement()) {
-                    statement.execute("INSERT INTO eap.cli_channel(capability,binary_path) VALUES ('git','configured-git-binary')");
+                    statement.execute("INSERT INTO eap.cli_channel(program_id,binary_path) VALUES ('git','configured-git-binary')");
                 }
                 try (var context = new SpringApplicationBuilder(EapApplication.class).run(
                         "--spring.datasource.url=" + testUrl, "--server.port=0", "--eap.llm.enabled=false", "--spring.devtools.restart.enabled=false")) {

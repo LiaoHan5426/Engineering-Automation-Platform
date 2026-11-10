@@ -26,7 +26,7 @@ class CapabilityDirtyRunnerTest {
     @TempDir Path workspace;
 
     @Test void compatibilityConstructorsNeverStartAnImplicitGitProcess() {
-        var runtime = new RuntimeWorkspace(workspace, workspace.toString(), "");
+        var runtime = new RuntimeWorkspace(workspace, workspace.toString());
         for (var service : List.of(new CodeChangeService(runtime), new CodeChangeService(runtime, null),
                 new CodeChangeService(runtime, null, null))) {
             var result = service.inspectDirty();
@@ -73,7 +73,7 @@ class CapabilityDirtyRunnerTest {
         for (var settings : List.of(disabled, new CapabilitySettings(null, null))) {
             var executor = mock(ProcessExecutor.class);
             var registry = new CapabilityRegistry().register(new GitCapability("status"));
-            var service = new CodeChangeService(new RuntimeWorkspace(workspace, workspace.toString(), ""), null,
+            var service = new CodeChangeService(new RuntimeWorkspace(workspace, workspace.toString()), null,
                     new CapabilityDirtyRunner(settings, registry, executor));
             assertFalse(service.inspectDirty().requested());
             verifyNoInteractions(executor);
@@ -88,7 +88,7 @@ class CapabilityDirtyRunnerTest {
         var runner = new CapabilityDirtyRunner(settings, registry, executor);
         assertEquals("BINARY_MISSING", assertThrows(java.io.IOException.class, () -> runner.porcelain(workspace)).getMessage());
         clearInvocations(settings);
-        assertEquals("AUTHORIZED_ROOT_MISSING", new CodeChangeService(new RuntimeWorkspace(workspace, "", ""), null, runner).inspectDirty().denial());
+        assertEquals("AUTHORIZED_ROOT_MISSING", new CodeChangeService(new RuntimeWorkspace(workspace, ""), null, runner).inspectDirty().denial());
         verifyNoInteractions(executor, settings);
     }
 
@@ -97,7 +97,7 @@ class CapabilityDirtyRunnerTest {
         when(settings.enabled("git-status")).thenReturn(true);
         var registry = new CapabilityRegistry().register(new GitCapability("status"));
         var executor = new RecordingExecutor();
-        var service = new CodeChangeService(new RuntimeWorkspace(workspace, workspace.toString(), ""), null,
+        var service = new CodeChangeService(new RuntimeWorkspace(workspace, workspace.toString()), null,
                 new CapabilityDirtyRunner(settings, registry, executor));
         for (var metadata : List.of(
                 Map.<String, Object>of("executorStatus", "TIMED_OUT", "processExited", true, "processTreeCleanup", true),
@@ -120,7 +120,7 @@ class CapabilityDirtyRunnerTest {
         var candidates = scanner.findCandidateComponents("com.lh.eap.delivery");
         assertEquals(1, candidates.size(), "Dirty inspection must have one injectable capability-backed runner");
         var context = new AnnotationConfigApplicationContext();
-        context.registerBean(RuntimeWorkspace.class, () -> new RuntimeWorkspace(workspace, workspace.toString(), ""));
+        context.registerBean(RuntimeWorkspace.class, () -> new RuntimeWorkspace(workspace, workspace.toString()));
         context.registerBean(CapabilitySettings.class, () -> settings);
         context.registerBean(CapabilityRegistry.class, () -> registry);
         context.registerBean(ProcessExecutor.class, () -> executor);

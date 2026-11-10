@@ -1,6 +1,5 @@
 /** Minimal capability/MCP catalog for mock mode browser checks. */
 import { createMockToolExecutionBackend } from './toolExecutionBackend'
-export type TrustedGitMockOutcome = 'success' | 'denied' | 'timeout' | 'cancelled' | 'unknown'
 export type TrustedVersionProbeOutcome = 'success' | 'fail' | 'conflict' | 'disabled'
 
 type PersistedProbe = {
@@ -118,7 +117,7 @@ export function createMockCapabilityBackend() {
       scope: 'platform',
       readOnly: true,
       enabled: true,
-      invocation: 'POST /api/runtime/trusted-tools/git-status/invoke',
+      invocation: 'POST /api/cli-programs/git/operations/git-status/executions',
       summary: '只读检查工作区状态；不修改文件。',
       bindingStatus: 'ready',
       bindingSource: 'shipped',
@@ -169,15 +168,6 @@ export function createMockCapabilityBackend() {
     tool.probedAt = cached.probedAt
     tool.probeNote = cached.probeNote
     tool.bindingNote = cached.bindingNote
-  }
-
-  function parseOutcome(path: string): TrustedGitMockOutcome {
-    const query = path.includes('?') ? path.slice(path.indexOf('?') + 1) : ''
-    const params = new URLSearchParams(query)
-    const raw = (params.get('mockOutcome') || 'success').trim().toLowerCase()
-    if (raw === 'denied' || raw === 'timeout' || raw === 'cancelled' || raw === 'unknown')
-      return raw
-    return 'success'
   }
 
   function parseProbeOutcome(path: string): TrustedVersionProbeOutcome {
@@ -365,44 +355,6 @@ export function createMockCapabilityBackend() {
             cleared,
             remaining: 0,
             message: '已清除版本探测缓存；目录不再显示已知版本，直至下次显式探测。',
-          },
-        }
-      }
-      if (method === 'POST' && route === '/runtime/trusted-tools/git-status/invoke') {
-        const outcome = parseOutcome(path)
-        if (outcome === 'denied') {
-          return { status: 403, data: { detail: 'CAPABILITY_DISABLED' } }
-        }
-        if (outcome === 'timeout') {
-          await new Promise((resolve) => setTimeout(resolve, 40))
-          return { status: 504, data: { detail: 'TRUSTED_TOOL_TIMEOUT' } }
-        }
-        if (outcome === 'cancelled') {
-          return { status: 499, data: { detail: 'TRUSTED_TOOL_CANCELLED' } }
-        }
-        if (outcome === 'unknown') {
-          return { status: 520, data: { detail: 'TRUSTED_TOOL_UNKNOWN' } }
-        }
-        return {
-          status: 200,
-          data: {
-            capability: 'git-status',
-            success: true,
-            message: 'mock：只读 git status 已返回（未调用真实 git）',
-            stdout: [
-              '## mock-branch',
-              ' M frontend/apps/web/mock/capabilityBackend.ts',
-              ' M frontend/apps/web/src/features/capability/CapabilityManager.vue',
-              ' M frontend/apps/web/src/features/capability/trustedToolInvokeView.ts',
-              ' M frontend/apps/web/src/features/chat/ChatWorkspace.vue',
-              ' M frontend/apps/web/src/features/chat/contextBudgetView.ts',
-              '?? frontend/apps/web/__tests__/features/capability/trustedToolInvokeView.test.ts',
-              '?? docs/planning-status.md',
-              '?? docs/roadmap.md',
-              '?? docs/decisions/agent-runtime-evolution.md',
-              '',
-            ].join('\n'),
-            exitCode: 0,
           },
         }
       }

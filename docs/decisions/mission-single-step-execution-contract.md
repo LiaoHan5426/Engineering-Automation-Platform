@@ -12,7 +12,7 @@
 | `eap.handoff` | 未执行意图。来源只有 `chat` 或 `builder`，`sourceRef` 是会话 id、`draft`、`builder-alpha` 或 `builder-beta` | 文件系统路径或授权 |
 | Builder `mockRepositoryLabel` | 浏览器本地字符串，例如「模拟 · ledger」 | 真实仓库路径或 `repository.write` |
 | `Path workspace` | 服务端 bean。`EAP_WORKSPACE` 优先，否则当前目录含 `.git` 时用当前目录，否则用父目录。见 `RuntimeConfiguration` | 浏览器提交的路径 |
-| `RuntimeWorkspace` | 工作区、授权根和显示标签的共享来源。新键 `eap.runtime.authorized-root` 与旧键 `eap.ai.authorized-root` 冲突时拒绝；两者都空时拒绝；不把根扩大到父目录或整盘。日常服务的根保持为空 | 操作者认证 |
+| `RuntimeWorkspace` | 工作区、授权根和显示标签的共享来源。只使用 `eap.runtime.authorized-root`；full空配置按colocated绑定进程工作区，starter缺配置拒绝，显式无效路径拒绝；不把根扩大到父目录或整盘 | 操作者认证 |
 | `git-status` | `GitCapability.command()` 是唯一的参数数组构造。Mission 通过 `executeManaged(平台执行号)` 复用它。`execute()` 仍给聊天里不需要平台执行号的调用 | Mission 自己拼 `[binary, status]` |
 | `DefaultProcessExecutor` | 同一 bean 上取消、20 秒超时、状态快照都在进程内存，最多 256 条。平台执行号由调用方传入 `runManaged` | 跨重启进程接管 |
 | `CliExecution.Status` | `CREATED`、`RUNNING`、`CANCELLING`、`SUCCEEDED`、`FAILED`、`REJECTED`、`TIMED_OUT`、`CANCELLED`。验证枚举另有 `UNVERIFIED` | Mission 的 `completed` |

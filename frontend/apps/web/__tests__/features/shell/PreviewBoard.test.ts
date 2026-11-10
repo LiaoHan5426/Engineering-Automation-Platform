@@ -354,8 +354,6 @@ it('preserves goal edits made while a prototype link save is awaiting its respon
     sourceRef: 'builder-alpha',
     title: '设计 A',
     body: 'saved text',
-    buttonPresses: 0,
-    interaction: '',
     acceptance: [],
     contentHash: 'hash-a',
     createdAt: '2026-10-31T08:00:00Z',

@@ -7,7 +7,6 @@ import {
 
 afterEach(() => {
   delete window.eap
-  delete window.eapDesktop
 })
 
 it('defaults to colocated local-service when no desktop bridge is present', () => {

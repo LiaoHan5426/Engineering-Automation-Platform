@@ -39,4 +39,23 @@ class ScenarioServiceTest {
         assertEquals("SCENARIO_STORE_UNAVAILABLE", error.getReason());
         assertEquals(503, error.getStatusCode().value());
     }
+    @Test void trustedWorkflowDependenciesAreReadOnlyAndNeverAcceptPersistedInstalledLabelsAsProof() {
+        var jdbc = mock(JdbcTemplate.class);
+        var service = new ScenarioService(jdbc);
+        when(jdbc.queryForObject(anyString(), eq(Long.class))).thenReturn(2L);
+        var snapshot = service.dependencies("prototype-to-code");
+        assertEquals(1, snapshot.contractVersion());
+        assertEquals(List.of("builder", "board"), snapshot.plugins().stream().map(x -> x.id()).toList());
+        assertTrue(snapshot.plugins().getFirst().required());
+        assertFalse(snapshot.plugins().getLast().required());
+        assertEquals(2, snapshot.resources().getFirst().count());
+        assertEquals("READABLE", snapshot.services().getFirst().state());
+        assertEquals(404, assertThrows(ResponseStatusException.class, () -> service.dependencies("arbitrary")).getStatusCode().value());
+        when(jdbc.queryForObject(anyString(), eq(Long.class))).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("private"));
+        var failure = assertThrows(ResponseStatusException.class, () -> service.dependencies("prototype-to-code"));
+        assertEquals(503, failure.getStatusCode().value());
+        assertEquals("SCENARIO_DEPENDENCY_UNAVAILABLE", failure.getReason());
+        verify(jdbc,times(2)).queryForObject(anyString(),eq(Long.class));
+        verifyNoMoreInteractions(jdbc);
+    }
 }

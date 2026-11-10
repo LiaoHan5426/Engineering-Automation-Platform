@@ -21,7 +21,6 @@ beforeEach(() => {
   resetLocalProjectsForTests()
   resetLocalBridgeForTests()
   delete window.eap
-  delete window.eapDesktop
 })
 
 it('refuses choose when the local bridge is missing', async () => {
@@ -44,7 +43,7 @@ it('records a local session grant from window.eap without posting to the server'
 })
 
 it('does not treat a manually typed intended path as a grant, and renaming preference keeps grant separate', async () => {
-  window.eapDesktop = { chooseWorkspace: vi.fn(async () => 'J:/repos/demo') }
+  window.eap = { chooseWorkspace: vi.fn(async () => 'J:/repos/demo') }
   selectLocalProject('local-eap')
   await chooseLocalWorkspace('local-eap')
   expect(hasLocalWorkspaceGrant()).toBe(true)

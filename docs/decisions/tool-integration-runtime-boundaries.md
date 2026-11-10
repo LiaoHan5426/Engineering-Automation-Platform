@@ -51,7 +51,7 @@ Chat、Expert 与 Mission 复用同一操作语义和执行入口，允许不同
 
 本机单用户无需为此新增远程认证系统。`local-operator` 是审计标签，不是认证；`resolveFor` 只证明能力可解析及相关启停/范围条件满足，不完成路径、参数和执行策略授权。
 
-同机进程绑定配置成为该 JVM 的事实源，Chat 和 Mission 共同读取；Mission 不依赖 `com.lh.eap.ai` 的常量、显示算法或 AI 专属配置。迁移时明确新键和旧 `eap.ai.authorized-root` 的兼容期限：旧键只作显式回退，新旧冲突则拒绝相关操作并说明原因；可空。不能回退到任意 cwd、上级目录或全盘授权。文档更新不改变既有部署配置。
+同机进程绑定配置成为该 JVM 的事实源，Chat 和 Mission 共同读取；Mission 不依赖 `com.lh.eap.ai` 的常量、显示算法或 AI 专属配置。只使用 `eap.runtime.authorized-root` / `EAP_AUTHORIZED_ROOT`，删除旧AI配置回退。full空配置显式采用进程共置绑定，starter缺配置拒绝，显式无效目录拒绝；不扩大到上级目录或全盘。实现及V30部署边界见[集中收敛记录](../records/architecture-history.md#single-contract-convergence)。
 
 CLI 使用 argv，不拼 Shell；参数模板及环境按操作需要限制，不把某一 Windows 操作的变量清单推广为所有 CLI/MCP 的固定要求。二进制发现、配置覆盖、超时及输出上限复用现有渠道。
 

@@ -50,7 +50,7 @@ class SqlExpertAgentServiceTest {
         when(policy.rules(anyList())).thenReturn(new ExpertAnalysisPolicy.Rules(List.of(), List.of()));
         when(policy.judge(anyMap(), anyList(), anySet())).thenReturn(Map.of("blockedRules", List.of()));
         var resolver = new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(SqlExpertAgentService.BINDING,
-                "SQL Agent", policy, "agent", SqlExpertAgentService.TOOLS)), SqlExpertAgentService.BINDING);
+                "SQL Agent", policy, "agent", SqlExpertAgentService.TOOLS)));
         var handler = new CapabilityHandler() {
             public Set<String> capabilities() { return SqlExpertAgentService.TOOLS; }
             public NodeResult handle(CapabilityContext context) {

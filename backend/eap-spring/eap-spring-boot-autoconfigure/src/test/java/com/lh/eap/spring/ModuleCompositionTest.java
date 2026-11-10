@@ -38,9 +38,11 @@ class ModuleCompositionTest {
             assertThat(files.list("").entries()).extracting(WorkspaceFilesService.Entry::name).containsExactly("sample.txt");
             assertThat(files.list("../").denial()).isEqualTo("INVALID_DIRECTORY_PATH");
         });
+        local().withPropertyValues("eap.local.workspace=" + root, "eap.ai.authorized-root=" + root).run(context ->
+                assertThat(context.getBean(RuntimeWorkspace.class).root().allowed()).isFalse());
     }
     @Test void consumersOverrideWorkspaceAndExecutor() {
-        var workspace = RuntimeWorkspace.colocated(root, "", "");
+        var workspace = RuntimeWorkspace.colocated(root, "");
         var executor = org.mockito.Mockito.mock(ProcessExecutor.class);
         local().withBean(RuntimeWorkspace.class, () -> workspace).withBean(ProcessExecutor.class, () -> executor)
                 .run(context -> {

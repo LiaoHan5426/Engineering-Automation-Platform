@@ -241,20 +241,6 @@ export type TrustedToolVersionProbeResult = {
   output?: string
 }
 
-export type TrustedGitStatusResult = {
-  capability: string
-  success: boolean
-  message: string
-  stdout?: string
-  stderr?: string
-  exitCode?: number
-  /** Stable failure/detail code when success is false (e.g. CAPABILITY_DISABLED). */
-  detail?: string
-  /** Client-local observation time; not a server clock contract. */
-  observedAt?: string
-  /** Client-local elapsed milliseconds for this invoke attempt. */
-  elapsedMs?: number
-}
 /** Configuration, never runtime permission or execution evidence. */
 export type ScenarioConfiguration = {
   name: string
@@ -273,6 +259,14 @@ export type ScenarioConfiguration = {
   workflow?: 'prototype-to-code' | null
 }
 export type ScenarioSnapshot = { id: string; revision: number; definition: ScenarioConfiguration }
+export type ScenarioWorkflowDependencies = {
+  contractVersion: 1
+  workflow: 'prototype-to-code'
+  observedAt: string
+  plugins: Array<{ id: 'builder' | 'board'; required: boolean }>
+  services: Array<{ id: 'prototype-versions'; state: 'READABLE' }>
+  resources: Array<{ id: 'prototype-version'; required: boolean; count: number }>
+}
 /** How a capability gets things done: built-in command, local CLI, MCP tool or HTTP service. */
 /**
  * What an operator can do about a capability of a given kind.
@@ -538,8 +532,6 @@ export type PrototypeVersionRecord = {
   sourceRef: 'builder-alpha' | 'builder-beta'
   title: string
   body: string
-  buttonPresses: number
-  interaction: string
   acceptance: string[]
   contentHash: string
   createdAt?: string
@@ -743,7 +735,7 @@ export type AiStatus = {
    * Not a remote user directory grant.
    */
   authorizedRootPath?: string
-  /** Denial code when authorizedRootPath is empty (e.g. AUTHORIZED_ROOT_MISSING, ROOT_CONFLICT). */
+  /** Denial code when authorizedRootPath is empty (e.g. AUTHORIZED_ROOT_MISSING). */
   authorizedRootDenial?: string
   /**
    * Always false when the runtime follows Cursor/Codex-style local hosting:
@@ -1332,6 +1324,36 @@ const gitOperationApi = {
 export const runtimeApi = {
   ...createExpertAgentApi(client),
   scenarios: () => get<{ items: ScenarioSnapshot[] }>('/scenarios'),
+  scenarioWorkflowDependencies: (signal?: AbortSignal) =>
+    client
+      .get<ScenarioWorkflowDependencies>('/scenarios/workflows/prototype-to-code/dependencies', {
+        signal,
+      })
+      .then(({ data }) => {
+        if (
+          !data ||
+          data.contractVersion !== 1 ||
+          data.workflow !== 'prototype-to-code' ||
+          typeof data.observedAt !== 'string' ||
+          !Number.isFinite(Date.parse(data.observedAt)) ||
+          !Array.isArray(data.plugins) ||
+          data.plugins.length !== 2 ||
+          !data.plugins.some((p) => p?.id === 'builder' && p.required === true) ||
+          !data.plugins.some((p) => p?.id === 'board' && p.required === false) ||
+          !Array.isArray(data.services) ||
+          data.services.length !== 1 ||
+          data.services[0]?.id !== 'prototype-versions' ||
+          data.services[0]?.state !== 'READABLE' ||
+          !Array.isArray(data.resources) ||
+          data.resources.length !== 1 ||
+          data.resources[0]?.id !== 'prototype-version' ||
+          data.resources[0]?.required !== true ||
+          !Number.isSafeInteger(data.resources[0]?.count) ||
+          data.resources[0]!.count < 0
+        )
+          throw new Error('INVALID_SCENARIO_DEPENDENCY_RESPONSE')
+        return data
+      }),
   scenario: (id: string) => get<ScenarioSnapshot>('/scenarios/' + encodeURIComponent(id)),
   saveScenario: (
     id: string,
@@ -1485,20 +1507,6 @@ export const runtimeApi = {
       .post<{ cleared: number; remaining: number; message: string }>(
         '/runtime/trusted-tools/probe-cache/clear',
         {},
-      )
-      .then((r) => r.data),
-  invokeTrustedGitStatus: (options?: {
-    mockOutcome?: 'success' | 'denied' | 'timeout' | 'cancelled' | 'unknown'
-    signal?: AbortSignal
-  }) =>
-    client
-      .post<TrustedGitStatusResult>(
-        '/runtime/trusted-tools/git-status/invoke',
-        {},
-        {
-          signal: options?.signal,
-          params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
-        },
       )
       .then((r) => r.data),
   startGitOperationExecution: gitOperationApi.start,
@@ -1805,7 +1813,6 @@ export const runtimeApi = {
     sourceRef: 'builder-alpha' | 'builder-beta'
     title: string
     body: string
-    buttonPresses: number
     acceptance: string[]
   }) =>
     client

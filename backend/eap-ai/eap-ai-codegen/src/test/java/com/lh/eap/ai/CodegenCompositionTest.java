@@ -39,7 +39,7 @@ class CodegenCompositionTest {
         var selected = UUID.randomUUID();
         var query = mock(PrototypeVersionQuery.class);
         when(query.find(selected)).thenReturn(new PrototypeVersion(selected, "builder-alpha", "Saved design",
-                "Immutable body", 1, "button increments", List.of("Accessible button"), "saved-hash", Instant.now()));
+                "Immutable body", List.of("Accessible button"), "saved-hash", Instant.now()));
         var observed = new AtomicReference<Prompt>();
         when(model.stream(any(Prompt.class))).thenAnswer(call -> {
             observed.set(call.getArgument(0));

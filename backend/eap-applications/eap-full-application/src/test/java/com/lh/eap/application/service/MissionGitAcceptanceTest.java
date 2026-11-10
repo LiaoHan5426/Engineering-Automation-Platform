@@ -245,7 +245,7 @@ class MissionGitAcceptanceTest {
     }
 
     private RuntimeWorkspace bound(Path root) {
-        return new RuntimeWorkspace(repo, root.toString(), "");
+        return new RuntimeWorkspace(repo, root.toString());
     }
 
     private MissionGitExecutionService service(RuntimeWorkspace runtime, CapabilitySettings settings, CliChannels channels, ProcessExecutor executor) {

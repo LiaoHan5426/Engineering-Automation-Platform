@@ -74,6 +74,7 @@ it('manually inspects the addressed live instance, invalidates edits and discard
       .querySelector('[data-testid=grapes-scaffold]')!
       .querySelector('[data-testid=grapes-inspection-result]')
   const first = JSON.parse(result()!.textContent!)
+  expect(localStorage.length).toBe(storage) // The inspection itself does not persist its result.
   expect(first.target.sourceRef).toBe('builder-alpha')
   expect(first.draft.selection.content).toBe('<b>unsaved</b>')
   expect(result()!.querySelector('b')).toBeNull()
@@ -100,7 +101,8 @@ it('manually inspects the addressed live instance, invalidates edits and discard
     true,
   )
   expect(save).not.toHaveBeenCalled()
-  expect(localStorage.length).toBe(storage)
+  expect(localStorage.getItem('eap.prototype-schema.v1.versions.builder-alpha')).toBeNull()
+  expect(localStorage.getItem('eap.prototype-recovery.v1.builder-alpha')).not.toContain('selection')
   fixtures.editors[1]!.destroy()
   fixtures.editors[1]!.events.destroy!()
   await nextTick()

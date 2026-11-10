@@ -6,11 +6,13 @@ export const mockExpertPage = {
   items: [
     JSON.stringify({
       id: expertRef.id,
+      apiVersion: 'eap/v1',
+      kind: 'Expert',
+      behavior: { id: 'sql-analysis', version: 1 },
       name: 'Mock · 模拟知识专家',
       description: 'Fixed simulated knowledge; not a production grant',
       role: 'Mock guidance',
       knowledgeBases: ['mock-base'],
-      capabilities: [],
       permissions: [],
       steps: [],
       edges: [],

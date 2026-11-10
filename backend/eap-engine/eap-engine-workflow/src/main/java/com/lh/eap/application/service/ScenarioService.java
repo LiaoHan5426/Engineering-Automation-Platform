@@ -3,6 +3,8 @@ package com.lh.eap.application.service;
 import com.lh.eap.application.dto.ScenarioConfiguration;
 import com.lh.eap.application.dto.ScenarioConfiguration.Snapshot;
 import com.lh.eap.application.dto.ScenarioConfiguration.Write;
+import com.lh.eap.application.dto.ScenarioWorkflowDependencies;
+import java.time.Instant;
 import java.util.*;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -17,6 +19,22 @@ public class ScenarioService {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private final JdbcTemplate jdbc;
     public ScenarioService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+
+    /** Plugin enablement belongs to the local UI host, not stored scenario dependency labels. */
+    public ScenarioWorkflowDependencies dependencies(String workflow) {
+        if (!"prototype-to-code".equals(workflow))
+            throw failure(HttpStatus.NOT_FOUND, "SCENARIO_WORKFLOW_NOT_FOUND");
+        try {
+            long count = jdbc.queryForObject("SELECT count(*) FROM eap.prototype_version WHERE source_ref IN ('builder-alpha','builder-beta')", Long.class);
+            return new ScenarioWorkflowDependencies(1, workflow, Instant.now(),
+                    List.of(new ScenarioWorkflowDependencies.Plugin("builder", true),
+                            new ScenarioWorkflowDependencies.Plugin("board", false)),
+                    List.of(new ScenarioWorkflowDependencies.Service("prototype-versions", "READABLE")),
+                    List.of(new ScenarioWorkflowDependencies.Resource("prototype-version", true, count)));
+        } catch (DataAccessException error) {
+            throw failure(HttpStatus.SERVICE_UNAVAILABLE, "SCENARIO_DEPENDENCY_UNAVAILABLE");
+        }
+    }
 
     public List<Snapshot> list() {
         try {

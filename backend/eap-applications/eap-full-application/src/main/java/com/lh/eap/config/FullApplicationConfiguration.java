@@ -57,7 +57,6 @@ import org.springframework.context.annotation.Import;
     com.lh.eap.application.service.ScenarioService.class,
     com.lh.eap.application.service.SqlExpertService.class,
     com.lh.eap.application.service.TaskService.class,
-    com.lh.eap.application.service.TrustedGitStatusService.class,
     com.lh.eap.application.service.TrustedToolCatalogService.class,
     com.lh.eap.config.BuiltinResourceSeeder.class,
     com.lh.eap.config.CliRetentionConfiguration.class,
@@ -149,7 +148,7 @@ public class FullApplicationConfiguration {
         return new com.lh.eap.core.ExpertBehaviorCatalog(java.util.List.of(
                 new com.lh.eap.core.ExpertBehaviorCatalog.Registration(binding, "SQL 专业分析", sqlPolicy),
                 new com.lh.eap.core.ExpertBehaviorCatalog.Registration(com.lh.eap.ai.SqlExpertAgentService.BINDING,
-                        "SQL 只读取证 Agent", sqlPolicy, "agent", com.lh.eap.ai.SqlExpertAgentService.TOOLS, java.util.Set.of("sql.parse"))), binding);
+                        "SQL 只读取证 Agent", sqlPolicy, "agent", com.lh.eap.ai.SqlExpertAgentService.TOOLS, java.util.Set.of("sql.parse"))));
     }
 
     @org.springframework.context.annotation.Bean

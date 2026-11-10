@@ -1,3 +1,5 @@
+import { scenarioHost } from './plugins/designerFixtures'
+const readyPluginHost = scenarioHost()
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, type App } from 'vue'
@@ -81,8 +83,7 @@ async function mount() {
   app = createApp({
     render: () =>
       h(ScenarioWorkspace, {
-        builderEnabled: true,
-        chatEnabled: true,
+        pluginHost: readyPluginHost,
         onNavigate: (id: string) => navigated.push(id),
       }),
   })
@@ -156,8 +157,6 @@ it('restores the scene workflow and version selection after navigating away and 
     sourceRef: 'builder-alpha',
     title: 'Retained',
     body: 'text',
-    buttonPresses: 0,
-    interaction: '',
     acceptance: [],
     contentHash: 'hash',
   }
@@ -176,7 +175,7 @@ it('restores the scene workflow and version selection after navigating away and 
   root!.remove()
   root = document.createElement('div')
   document.body.append(root)
-  app = createApp(ScenarioWorkspace, { builderEnabled: true, chatEnabled: true })
+  app = createApp(ScenarioWorkspace, { pluginHost: readyPluginHost })
   app.use(i18n).mount(root)
   await vi.waitFor(() =>
     expect(root!.querySelector('[data-testid="scene-workflow-view"]')).not.toBeNull(),
@@ -526,8 +525,7 @@ it('keeps the mock prototype flow out of live service mode', async () => {
   root = document.createElement('div')
   document.body.append(root)
   app = createApp({
-    render: () =>
-      h(ScenarioWorkspace, { builderEnabled: true, chatEnabled: true, onNavigate: () => {} }),
+    render: () => h(ScenarioWorkspace, { pluginHost: readyPluginHost, onNavigate: () => {} }),
   })
   app.use(i18n).mount(root)
   await nextTick()
@@ -644,8 +642,6 @@ it('hands a selected prototype version into code chat when delivery gates are op
         sourceRef: 'builder-alpha',
         title: 'Saved layout',
         body: '{}',
-        buttonPresses: 0,
-        interaction: '',
         acceptance: [],
         contentHash: 'hash',
       },
@@ -678,8 +674,7 @@ it('hands a selected prototype version into code chat when delivery gates are op
   app = createApp({
     render: () =>
       h(ScenarioWorkspace, {
-        builderEnabled: true,
-        chatEnabled: true,
+        pluginHost: readyPluginHost,
         onNavigate: (id: string) => navigated.push(id),
       }),
   })

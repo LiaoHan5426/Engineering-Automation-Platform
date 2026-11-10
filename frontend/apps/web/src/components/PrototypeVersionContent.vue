@@ -13,8 +13,9 @@ const { t } = useI18n()
   <p v-if="design.blocked" role="alert" data-testid="version-design-blocked">
     {{ t('desktop.grapesDeliverBlocked') }}
   </p>
-  <PrototypeSchemaPreview v-if="design.schema" :key="version.id" :schema="design.schema" />
-  <slot v-else-if="!design.semantic" name="legacy"
-    ><p>{{ t('boardPrototype.textOnly') }}</p></slot
-  >
+  <PrototypeSchemaPreview
+    v-if="design.schema && !design.blocked"
+    :key="version.id"
+    :schema="design.schema"
+  />
 </template>

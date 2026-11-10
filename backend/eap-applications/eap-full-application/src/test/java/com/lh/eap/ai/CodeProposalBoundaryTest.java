@@ -15,7 +15,7 @@ class CodeProposalBoundaryTest {
     final InMemoryCodeProposalStore proposals = new InMemoryCodeProposalStore();
     final UUID conversation = UUID.randomUUID();
     CodeChangeService service() {
-        return new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), null, null, generations, proposals);
+        return new CodeChangeService(new RuntimeWorkspace(root, root.toString()), null, null, generations, proposals);
     }
     CodeChangeService.Proposal proposal(boolean writable) {
         var service = service();
@@ -37,7 +37,7 @@ class CodeProposalBoundaryTest {
         assertEquals("user edit after apply", Files.readString(root.resolve("Page.vue")));
     }
     @Test void preparedProposalRequiresDurableStore() {
-        var service = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), null, null,
+        var service = new CodeChangeService(new RuntimeWorkspace(root, root.toString()), null, null,
                 new InMemoryCodeGenerationStore());
         var conversation = UUID.randomUUID();
         var generation = service.prepareGeneration("operator", conversation, "Page.vue", "", "");
@@ -74,7 +74,7 @@ class CodeProposalBoundaryTest {
                 throw new IllegalStateException("injected database unavailable");
             }
         };
-        var service = new CodeChangeService(new RuntimeWorkspace(root, root.toString(), ""), null, null, generations, failing);
+        var service = new CodeChangeService(new RuntimeWorkspace(root, root.toString()), null, null, generations, failing);
         var snapshot = service.prepareGeneration(AiConversationRegistry.PRINCIPAL, conversation, "Page.vue", "", "");
         var saved = service.proposePrepared(AiConversationRegistry.PRINCIPAL, conversation, snapshot.id(),
                 "{\"files\":[{\"path\":\"Page.vue\",\"content\":\"candidate\"}]}", true);

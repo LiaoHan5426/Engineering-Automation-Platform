@@ -10,8 +10,6 @@ public record PrototypeVersion(
         String sourceRef,
         String title,
         String body,
-        int buttonPresses,
-        String interaction,
         List<String> acceptance,
         String contentHash,
         Instant createdAt) {}

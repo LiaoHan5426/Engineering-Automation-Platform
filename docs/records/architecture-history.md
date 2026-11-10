@@ -2,7 +2,9 @@
 
 ## 当前结论与阅读方式
 
-当前模块为api → engine → ai → web → runtime的被依赖方向，运行依赖方向相反；仅runtime为Boot宿主。8e020d5拆分通过干净652项回归（6条件跳过），19份迁移未变；不代表IDEA实际重启或完整产品验收。当前结构以[架构](../architecture.md)和[模块布局](../module-layout.md)为准。
+当前后端由api、engine、ai、web、spring及applications组成，唯一Boot宿主为eap-applications/eap-full-application；库模块不得反向依赖宿主，engine不得依赖ai/web。当前结构以[架构](../architecture.md)和[模块布局](../module-layout.md)为准。下文8e020d5的五模块拆分、652项回归及19份迁移均为历史快照，不代表当前结构、IDEA实际重启或完整产品验收。
+
+2026-11-10完成[开发阶段规则排查](#development-dual-path-audit)及[五组集中收敛](#single-contract-convergence)：两处小遗留与五组兼容/重复入口均已清理，V30独立Flyway/数据库/HTTP/Git及设计器真实整链通过。日常库只读预检为V29、有1条非语义原型，尚未对日常库迁移或删数据；具体边界见下。
 
 以下按主题合并完整阶段记录，日期保留在记录中而不再作为文件名。记录中的“本轮/未提交/下一步”和测试数字仅代表当时快照；不得覆盖上面的当前结论、有效产品合同或用户授权。原文完整保留（只调整标题层级、锚点及链接），后续更新本总览，不另建日期报告。
 
@@ -12,6 +14,115 @@
 |---|---|
 | `docs/decisions/implementation-review-2026-10-31.md` | [已开发内容审查与纠偏（2026-10-31）](#implementation-review) |
 | `docs/decisions/backend-runtime-modules-2026-11-01.md` | [后端 runtime 模块拆分](#backend-runtime-modules) |
+
+---
+
+<a id="single-contract-convergence"></a>
+
+## 五组非需求双轨集中收敛与V30整链（2026-11-10，未提交）
+
+本轮授权集中完成此前五组排查，保留工作区PL-02/SC-03未提交改动。规则以根[AGENTS](../../AGENTS.md#development-evolution)为准。结果与截图见[机器证据](../../frontend/apps/web/__tests__/browser/artifacts/single-contract-convergence/result.json)，完整当前验收行见[台账](../planning-status.md#single-contract-validation)。未提交推送。
+
+### 单一契约与删除范围
+
+| 组 | 实际修改 | 保留的职责 |
+|---|---|---|
+| 授权根 | RuntimeWorkspace只接一个配置；full/starter/YAML去掉AI旧键，删除双键冲突语义；所有Java调用方同步。额外修复显式无效目录不能回落到cwd | full空配置的进程共置绑定、独立starter缺授权拒绝、realPath与越界保护 |
+| CLI | JdbcCliChannelStore/CliProgramMapper读写program_id，V30外键指向cli_program；CliChannels仅按程序读绑定，拒绝用已知操作ID配置程序；旧操作回读/BindingConflict删除 | git-status/git-diff等操作ID仍是业务能力；共享程序binary与原执行器、参数/授权/限额不变 |
+| 专家 | 删除legacyBinding、fixed默认resolver、缺行为构造形状、prepareManifest和preserveBehavior SQL；编辑器不再从capabilities/顺序steps推图。内置SQL、expert-sdk、Mock和当前测试写显式behavior/steps/edges；V30增加CHECK | 版本化策略目录、不同fixed/agent执行模式、草稿停用/撤权、事务回滚和执行历史冻结 |
+| 原型 | Builder删旧演示页、counter预览/本地配置及发布入口；只剩设计/版本。HTTP/DTO/表去buttonPresses/interaction。SemanticPrototype服务校验格式、节点上限500/深度24、已注册kind、无未知映射及Grapes工程；保存与交付均拒绝旧文本。前端相同拒绝，无legacy slot | 按实例恢复草稿、本地历史、不可变服务器版本、独立临时语义交互；原打开/交付迟到响应保护 |
+| Git HTTP | 删除同步invoke controller/service/装配、客户端类型/方法、Mock分支和过时用例；目录改指operation executions | 同一ToolExecutionService的requestId幂等、持久状态、取消/UNKNOWN人工核对与恢复，不新增执行器 |
+
+### 数据库与验证边界
+
+新增[V30](../../backend/eap-applications/eap-full-application/src/main/resources/db/migration/V30__single_current_contracts.sql)，不修改V1～V29。该迁移不把旧自定义行为、CLI操作键或旧文本推断成新授权/设计，不自动删除旧行；遇不合规数据事务回滚。已知内置sql-expert按当前产品种子显式更新sql-analysis/v1，不作为其他专家默认。新原型哈希只覆盖sourceRef/title/body/acceptance；原已保存哈希作为冻结证据回读，没有运行时双算法分支。
+
+真实SingleContractAcceptanceTest在UUID自有schema执行V1～V29，插入旧CLI键/缺行为专家后证明V30拒绝且回滚，移除自有故障行后迁到V30。生产HTTP/JDBC验证程序绑定/清除、status/diff真实Git及同requestId幂等、旧invoke404、专家缺行为拒绝/显式版本保存→启用→执行→改版本停用→再启用→历史仍保留原行为、语义版本发布/回读及交付唯一。临时仓库工作文件和Git索引字节保持。
+
+DesignerLifecycleAcceptanceTest改为实际Flyway V1～V30创建完整独立schema，替代LIKE三表的旧夹具。7组真实Chromium/GrapesJS检查通过，2次版本POST+1次场景PUT，0pageerror/0外呼；双实例未发布草稿、本地版本和服务器版本在停用、刷新、激活失败、重建后保持；数据库关系异常503与修复重查仍验证。两个测试都清理自有schema/宿主/浏览器并核对原应用记录摘要不变。未重启正式full，未调用供应商模型，不是用户产品接受。
+
+日常库只读CurrentContractPreflightTest确认：schema V29，旧CLI/未登记键0，非规范自定义专家0，非语义原型1；因此migrationReady=false。本轮没有修改日常库或删除那条记录。正式启用新版本前先显式决定该旧记录的处理并执行V30，不能用运行回退绕过约束。
+
+### 回归、失败与复验
+
+- 成功的后端定向/扩展/预检/补充/真实组按测试类去重：42报告288项，260通过、28门控跳过，0失败/错误。分组数字：主定向164全通过；扩展145中117通过/28跳过；预检与装配10通过；目录与CLI补充29通过；真实整链2通过，集合重叠不累加为一次全量。
+- 前端39文件250项通过；SDK/model补充2文件4项（model重叠）；相关56个TS/Vue格式与lint、typecheck/architecture/build通过。删除旧counter纯函数测试，改为语义预览交互、旧文本/旧入口拒绝；未削减授权/UNKNOWN门禁。3个相关Vue的stylelint通过；最后Schema/SDK2文件9项通过（集合重叠）。已有大chunk构建提示保留，未跑无关页面stylelint。新增SDK测试缺vite-plus包内声明的架构失败已通过显式devDependency及离线锁更新修复，末次架构通过。
+- 根clean因历史验收Git只读对象无法删除而失败，随后仅受影响模块clean成功、reactor test-compile成功，未递归删除旧验收目录。首轮编译/回归暴露旧构造/字段和Mock用例，随新契约同步后对应回归通过。
+- 首次跨组真实链在版本createdAt纳秒/数据库微秒回读比较失败；新发布/交付时间统一微秒精度后复验2项通过，不引入兼容分支。初次目录回归还发现旧程序键/缺行为MCP测试夹具，修正后20项与CLI9项通过。失败日志保留于backend/target，不冒用旧PL-02结果。
+
+可复现命令（仓库根，PowerShell参数整体加引号）：
+
+```text
+rtk proxy mvn -f backend/pom.xml -pl :eap-full-application -am test "-Dtest=RuntimeWorkspaceTest,RuntimeConfigurationTest,CliChannelsTest,JdbcCliChannelStoreTest,ExpertBehaviorCatalogTest,ExpertBehaviorManagementTest,ExpertPolicySelectionTest,ExpertExecutionTest,PrototypeCanonicalTest,PrototypeVersionControllerTest,ToolExecutionServiceTest,ToolExecutionControllerTest,CapabilityManagementTest,CliProgramsTest,ModuleCompositionTest,FullApplicationCompositionTest" "-Dsurefire.failIfNoSpecifiedTests=false"
+rtk proxy mvn -f backend/pom.xml -pl :eap-full-application -am test "-Dtest=SingleContractAcceptanceTest,DesignerLifecycleAcceptanceTest" "-Dsurefire.failIfNoSpecifiedTests=false"
+rtk proxy pnpm --dir frontend test run apps/web/__tests__/features/plugins apps/web/__tests__/features/expert apps/web/__tests__/mock apps/web/__tests__/features/shell/BoardPrototypePanel.test.ts packages/expert-sdk/__tests__ packages/runtime-client/__tests__
+rtk proxy pnpm --dir frontend typecheck
+rtk proxy pnpm --dir frontend check:architecture
+rtk proxy pnpm --dir frontend build
+```
+
+真实组须显式开启EAP_RUN_SINGLE_CONTRACTS/EAP_RUN_DESIGNER_LIFECYCLE/EAP_RUN_BOARD_PERSISTENCE=true，并设置本机EAP_PLAYWRIGHT_MODULE/EAP_CHROMIUM。它们只迁自有schema；CurrentContractPreflightTest同门控但只读日常库。28项较早专家实库门控未开，不能写成通过。UI原语已搜索并继续复用@eap/ui；本轮只删应用级旧面，无新基础组件或共享包，落点及架构门禁通过。
+
+KISS/YAGNI体现在删除旧面与回退，不新增替代机制；DRY体现统一读写与状态契约；SOLID体现配置、程序绑定、语义校验、业务执行与HTTP适配职责保持明确。下一步是日常库旧记录处置/V30正式宿主验证，再回到既有真实代码交付关口，不重复推进已完成五组。
+
+---
+
+<a id="development-dual-path-audit"></a>
+
+## 开发阶段规则与非需求双轨首次排查（2026-11-10历史快照）
+
+以下“仍待/后续”及代码形态只记录首次排查，不是当前状态；五组均按下文单一契约收敛。
+
+### 范围与判断依据
+
+用户明确开发阶段不默认要求旧数据、旧接口、旧逻辑兼容，允许为需求、安全、便利和效率调整数据库结构并进行必要破坏性重构。权威规则已写入根[AGENTS.md](../../AGENTS.md#development-evolution)。本次保留工作区既有PL-02/SC-03改动，没有提交推送、启停正式服务、修改数据库或重跑旧完整套件。
+
+排查覆盖工作区授权与CLI绑定、专家定义/执行、Builder设计/版本/交接、桌面桥及相邻测试/配置/装配。以生产入口、调用方与可达回退为证据，不按legacy/compatible关键词机械认定问题；不是全仓所有语义的穷尽证明。
+
+### 已直接清理
+
+| 项目 | 原问题与修改 | 当前单一契约 |
+|---|---|---|
+| 桌面桥别名 | [desktopPlatform.ts](../../frontend/apps/web/src/features/shell/desktopPlatform.ts)在规范eap之外接受eapDesktop，并声明无调用方的DesktopWorkspaceBridge；删除旧别名、回退和测试设置/清理 | [preload.cjs](../../frontend/apps/desktop/src/preload.cjs)实际只暴露window.eap，web仅消费该入口；选择工作区和会话授权语义不变 |
+| 原型旧快照补历史 | [prototypeSchema.ts](../../frontend/apps/web/src/features/shell/prototypeSchema.ts)保存时曾将旧当前快照自动加入空历史，并可能生成legacy-snapshot；删除自动补历史分支 | 历史仅包含明确保存的版本；正常当前编辑状态与版本历史仍有不同职责，不自动恢复旧数据 |
+
+### 确认仍存在的兼容回退与重复入口
+
+下列优先级是收敛顺序，不是已发生数据损坏或安全事故的声明。当前未发现需求要求长期保留这些兼容分支；本轮没有将审计扩大为各领域整链重构。
+
+| 优先级 / 项目 | 当前源码证据 | 影响及目标契约 | 实施与验证关口 |
+|---|---|---|---|
+| P1 工作区授权双配置键 | [RuntimeWorkspace.decide](../../backend/eap-engine/eap-engine-local/src/main/java/com/lh/eap/config/RuntimeWorkspace.java)同时接收configuredRoot/legacyRoot，旧键回退与ROOT_CONFLICT；[full装配](../../backend/eap-applications/eap-full-application/src/main/java/com/lh/eap/config/RuntimeConfiguration.java)、[starter装配](../../backend/eap-spring/eap-spring-boot-autoconfigure/src/main/java/com/lh/eap/spring/EapLocalAutoConfiguration.java)及[application.yml](../../backend/eap-applications/eap-full-application/src/main/resources/application.yml)都读取eap.runtime.authorized-root/eap.ai.authorized-root | 同一授权根受两套配置影响，操作和诊断负担增加。统一eap.runtime.authorized-root及其环境键，删除legacy参数、读取和冲突兼容；正常colocated绑定模式另按需求保留 | 同步宿主/starter、构造调用方、授权拒绝与真实工作区回归；配置重载、缺配置、越界拒绝不得放宽 |
+| P1 CLI新旧绑定键 | [CliChannels.override](../../backend/eap-engine/eap-engine-local/src/main/java/com/lh/eap/application/service/CliChannels.java)先读git，再读git-status/git-diff并检查BindingConflict；[JdbcCliChannelStore.configure](../../backend/eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service/JdbcCliChannelStore.java)删除只作用于program键 | 若库中有旧操作行，清除新git覆盖后，旧路径可能重新生效；这是可达风险，未查询实库旧行。统一程序级binary绑定，操作ID只作为能力标识 | 删除运行时旧键读取；明确开发库旧行处置及约束，采用后续迁移而不篡改已应用迁移。覆盖设置/清除、无绑定、权限失效及status/diff一致性 |
+| P1 专家显式行为与隐式默认 | [ExpertBehaviorCatalog](../../backend/eap-engine/eap-engine-core/src/main/java/com/lh/eap/core/ExpertBehaviorCatalog.java)的behavior缺省→legacy；[ExpertAnalysisPolicyResolver](../../backend/eap-engine/eap-engine-core/src/main/java/com/lh/eap/core/ExpertAnalysisPolicyResolver.java)、[ExpertExecutionService](../../backend/eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service/ExpertExecutionService.java)仍回退；[ExpertManagementService](../../backend/eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service/ExpertManagementService.java)自动补behavior，[Mapper](../../backend/eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/persistence/mapper/ExpertDefinitionMapper.java)用preserveBehavior保留旧编辑器字段；[ExpertEditor](../../frontend/apps/web/src/features/expert/ExpertEditor.vue)将旧capabilities/顺序steps转换 | 定义、编辑、保存及执行存在两种输入语义。统一当前显式版本化behavior及明确steps/edges合同，缺字段拒绝，不再隐式指定SQL默认 | 同步内置定义/编辑器/HTTP/存储/执行/测试；保留草稿revision、撤权、事务原子性和在途Run快照。固定DAG与动态Agent是不同业务模式，不合并执行器 |
+| P1 Builder旧发布生产入口 | [BuilderWorkspace.saveVersion](../../frontend/apps/web/src/features/plugins/BuilderWorkspace.vue)的legacy页仍以draftTitle/draftBody/buttonPresses调用真实版本API；[prototypeVersionDesign](../../frontend/apps/web/src/features/shell/prototypeVersionDesign.ts)对非语义文本返回blocked:false，Builder进入Chat/交付仅检查designBlocked；[PrototypeVersionContent](../../frontend/apps/web/src/components/PrototypeVersionContent.vue)仍有legacy预览 | 标注“历史演示”不能使真实写API变成Mock；旧文本/计数版本仍能发布并进入后续路径。统一语义设计版本的发布/回读/预览/交接契约，删除旧写入口和非语义放行 | 对齐后端发布校验、客户端/Mock、任务版本选择与交付消费；验证未知格式拒绝、双实例草稿/版本保留及启停恢复。独立handoff/Mission需求先明确归属，不盲删 |
+| P2 Git旧同步invoke入口 | [RuntimeDataController](../../backend/eap-web/eap-web-workflow/src/main/java/com/lh/eap/web/controller/RuntimeDataController.java)仍公开POST /api/runtime/trusted-tools/git-status/invoke；`TrustedGitStatusService`（现已删除，首次排查基线fe08a99可追溯）生成随机requestId并sleep轮询；[runtime-client](../../frontend/packages/runtime-client/src/index.ts)及[目录](../../backend/eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service/TrustedToolCatalogService.java)仍公开旧入口，当前CapabilityManager已使用持久操作面板 | 属于重复调用契约与等待语义，底层仍是同一个ToolExecutionService，不是第二执行引擎。统一客户端明确requestId的start/get/cancel及核对API | 删除旧controller/service装配/客户端方法/目录描述并同步测试；验证响应丢失、取消、超时、UNKNOWN核对与恢复仍使用同一执行身份 |
+
+### 不应误判与清理候选
+
+- 草稿恢复、本地保存历史和PostgreSQL不可变发布版本职责不同；不能因多个存储位置直接判定双状态机。显式隔离的Mock也有当前验收用途。
+- MCP stdio/SSE/Streamable HTTP属于外部协议适配；OpenAI-compatible是协议名称，Skill frontmatter compatibility是格式字段，不据此另判旧业务双轨。
+- [PrototypeFlow.vue](../../frontend/apps/web/src/features/shell/PrototypeFlow.vue)未发现生产组件导入，只有自身及测试引用；Chat的pendingMockHandoff消费有props.mock守卫。属于旧PoC/死源码候选，不能称当前存在第二条生产交付链。
+- OfficialReadonlyMcpLock委托同一Matrix、LlmGateway.complete包装同一completeWithEvidence：可以评估删除多余外观，但未发现第二套MCP传输或模型循环。
+- 模型连接的存储模式/宿主属性模式需要结合实际组合目标继续判断；本次未将其认定为已证实缺陷。固定DAG与动态Agent的不同模式应显式选定，禁止把旧定义隐式升级为另一模式。
+- 已应用数据库迁移和明确标记的历史记录用于追溯，不是运行时双轨。本轮只纠正有效合同中“必须旧SQL入口兼容”的未来要求，保留既有历史证据。
+
+### 验证与后续顺序
+
+本次相关检查：
+
+```text
+rtk proxy pnpm --dir frontend test run apps/web/__tests__/features/shell/localBridge.test.ts apps/web/__tests__/features/shell/workspaceHost.test.ts apps/web/__tests__/features/shell/prototypeSchema.test.ts apps/web/__tests__/features/shell/prototypeDrafts.test.ts apps/web/__tests__/features/DesktopNavigation.test.ts
+rtk proxy pnpm --dir frontend typecheck
+rtk proxy node frontend/apps/desktop/src/check-preload.cjs
+rtk proxy pnpm --dir frontend check:architecture
+rtk proxy pnpm --dir frontend exec vp lint apps/web/src/features/shell/desktopPlatform.ts apps/web/src/features/shell/prototypeSchema.ts apps/web/__tests__/features/shell/localBridge.test.ts apps/web/__tests__/features/shell/workspaceHost.test.ts apps/web/__tests__/features/DesktopNavigation.test.ts
+rtk proxy pnpm --dir frontend exec vp fmt apps/web/src/features/shell/desktopPlatform.ts apps/web/src/features/shell/prototypeSchema.ts apps/web/__tests__/features/shell/localBridge.test.ts apps/web/__tests__/features/shell/workspaceHost.test.ts apps/web/__tests__/features/DesktopNavigation.test.ts --check
+```
+
+结果：5文件30项定向测试、类型、preload合同、架构检查通过；lint通过；格式首轮发现3个测试文件问题，格式化后复查通过。UTF-8无BOM、Markdown本地链接/锚点、差异空白另做静态核对。未运行Maven、全量测试或本轮真实HTTP/数据库/浏览器整链；不将PL-02/SC-03历史结果当成本次兼容清理的全链验收。
+
+后续先收敛授权配置与CLI绑定，再统一专家定义/存储/执行，接着清理Builder旧生产发布链，最后删除Git同步入口；每组同时更新调用方、测试和有效文档。没有以新增兼容层作为过渡目标。按当前需求清理既有实现体现KISS/YAGNI；移除别名及补历史回退减少重复契约，体现DRY；领域职责与外部协议分层仍保持明确，体现SOLID。
 
 ---
 

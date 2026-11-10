@@ -48,13 +48,13 @@ class BoardRunPersistenceTest {
         assertTrue(url.startsWith("jdbc:postgresql://localhost:") || url.startsWith("jdbc:postgresql://127.0.0.1:"));
         context = new AnnotationConfigApplicationContext();
         context.registerBean(DataSource.class, () -> new DriverManagerDataSource(url, env.getProperty("spring.datasource.username"), env.getProperty("spring.datasource.password")));
-        context.registerBean(RuntimeWorkspace.class, () -> new RuntimeWorkspace(repo, repo.toString(), ""));
+        context.registerBean(RuntimeWorkspace.class, () -> new RuntimeWorkspace(repo, repo.toString()));
         context.registerBean(DefaultProcessExecutor.class, () -> executor);
         context.register(Db.class); context.refresh();
         jdbc = context.getBean(JdbcTemplate.class); tasks = context.getBean(BoardTaskService.class); executions = context.getBean(MissionExecutionStore.class);
         assertEquals(0, executor.run("init-test-repository", repo, List.of("git", "init")).exitCode());
         Files.writeString(repo.resolve("evidence.txt"), "bounded repository fixture");
-        git = git(new RuntimeWorkspace(repo, repo.toString(), ""), executions);
+        git = git(new RuntimeWorkspace(repo, repo.toString()), executions);
         runs = service(git, queue::add);
     }
     private MissionGitExecutionService git(RuntimeWorkspace workspace, MissionExecutionStore store) {
@@ -108,7 +108,7 @@ class BoardRunPersistenceTest {
     }
     @Test void denialOrChangedWorkspaceRollsBackHandoffMissionAndRun() throws Exception {
         var task = task(); var request = request(task);
-        var denied = service(git(new RuntimeWorkspace(repo, "", ""), executions), queue::add);
+        var denied = service(git(new RuntimeWorkspace(repo, ""), executions), queue::add);
         assertEquals("AUTHORIZED_ROOT_MISSING", rejects(() -> denied.start(task.id(), request)).getReason());
         assertEquals("BOARD_WORKSPACE_CHANGED", rejects(() -> runs.start(task.id(), new BoardRunService.Start(project, 1, request.requestId(), request.workspacePath() + "-other"))).getReason());
         assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM eap.handoff WHERE source='board' AND source_ref=?", Integer.class, task.id().toString()));
@@ -118,7 +118,7 @@ class BoardRunPersistenceTest {
         var task = task(); var request = request(task); var run = runs.start(task.id(), request);
         var scoped = org.mockito.Mockito.mock(MissionExecutionStore.class, org.mockito.AdditionalAnswers.delegatesTo(executions));
         org.mockito.Mockito.doReturn(List.of(run.execution())).when(scoped).openAll();
-        git(new RuntimeWorkspace(repo, repo.toString(), ""), scoped).markRestartUnknown();
+        git(new RuntimeWorkspace(repo, repo.toString()), scoped).markRestartUnknown();
         queue.remove().run();
         var saved = runs.list(task.id(), project).items().getFirst();
         assertEquals("CREATED", saved.execution().status()); assertNotNull(saved.execution().unconfirmedReason());
@@ -136,7 +136,7 @@ class BoardRunPersistenceTest {
         // A separate sibling of the Git root prevents parent repository discovery.
         var outside = Files.createTempDirectory(repo.getParent(), "board-non-git-");
         try {
-            var failedGit = git(new RuntimeWorkspace(outside, outside.toString(), ""), executions);
+            var failedGit = git(new RuntimeWorkspace(outside, outside.toString()), executions);
             var service = service(failedGit, queue::add); var task = task();
             service.start(task.id(), new BoardRunService.Start(project, 1, UUID.randomUUID(), outside.toRealPath().toString()));
             queue.remove().run();
@@ -146,7 +146,7 @@ class BoardRunPersistenceTest {
         } finally { Files.deleteIfExists(outside); }
     }
     private PrototypeVersion version(String title) {
-        var version = context.getBean(PrototypeVersionService.class).save("builder-alpha", title, "saved body " + title, 0, List.of("review design"));
+        var version = context.getBean(PrototypeVersionService.class).save("builder-alpha", title, SemanticPrototypeFixture.body("saved body " + title), List.of("review design"));
         ownedVersions.add(version.id()); return version;
     }
     @Test void prototypeLinkIsScopedVersionedAndFrozenInEachRun() throws Exception {
@@ -489,7 +489,7 @@ class BoardRunPersistenceTest {
         return new com.lh.eap.delivery.JdbcCodeProposalStore(jdbc, context.getBean(PlatformTransactionManager.class));
     }
     private com.lh.eap.delivery.CodeChangeService codeChanges() {
-        return new com.lh.eap.delivery.CodeChangeService(new RuntimeWorkspace(repo, repo.toString(), ""), null, null,
+        return new com.lh.eap.delivery.CodeChangeService(new RuntimeWorkspace(repo, repo.toString()), null, null,
                 new com.lh.eap.delivery.JdbcCodeGenerationStore(jdbc, context.getBean(PlatformTransactionManager.class)), codeStore());
     }
     private com.lh.eap.delivery.CodeChangeService.Proposal codeProposal(UUID conversation) {

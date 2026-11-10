@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue'
 import 'grapesjs/dist/css/grapes.min.css'
 import PrototypeSchemaPreview from './PrototypeSchemaPreview.vue'
 import { useI18n } from 'vue-i18n'
@@ -23,6 +23,12 @@ import {
   type EditorInspectionTarget,
 } from './editorInspection'
 import { runtimeApi } from '@eap/runtime-client'
+import {
+  readDesignerRecovery,
+  writeDesignerRecovery,
+  scopedPrototypeStorage,
+  type DesignerRecovery,
+} from './prototypeDrafts'
 import {
   canAutoDeliver,
   deliveryBlockers,
@@ -76,6 +82,10 @@ function markSaved() {
 function guardLeave() {
   if (publishing.value) return false
   if (!dirty.value) return true
+  return checkpoint()
+}
+function guardReplaceDocument() {
+  if (!publishing.value && !dirty.value) return true
   note.value = t('editor.leaveHint')
   return false
 }
@@ -138,7 +148,10 @@ function validateDesign() {
     ? t('desktop.grapesBlocked', { reasons: blockers.join(' · ') })
     : t('desktop.grapesDeliverOk')
 }
-defineExpose({ guardLeave })
+defineExpose({
+  guardLeave,
+  prepareDisable: () => !publishing.value && (!initialized || checkpoint()),
+})
 
 const status = ref<'loading' | 'ready' | 'offline'>('loading')
 const note = ref('')
@@ -161,6 +174,10 @@ const inspectionStale = computed(
 )
 function changed() {
   revision.value += 1
+  if (initialized)
+    queueMicrotask(() => {
+      if (!disposed) checkpoint()
+    })
   refreshStructure()
 }
 function switchDocument() {
@@ -203,7 +220,7 @@ function updateLayout() {
 let activeComponent: import('grapesjs').Component | undefined
 const publishing = ref(false)
 function newDesign() {
-  if (!guardLeave()) {
+  if (!guardReplaceDocument()) {
     note.value = t('editor.newHint')
     return
   }
@@ -215,7 +232,7 @@ function newDesign() {
 }
 async function publish() {
   if (publishing.value || !editor) return
-  save()
+  if (!save()) return
   if (!canAutoDeliver(schema.value)) return
   publishing.value = true
   try {
@@ -223,7 +240,6 @@ async function publish() {
       sourceRef: props.sourceRef,
       title: schema.value.title,
       body: JSON.stringify({ format: 'eap-prototype-v1', schema: schema.value }),
-      buttonPresses: 0,
       acceptance: ['semantic-preview'],
     })
     note.value = t('desktop.grapesPublished', { id: version.id })
@@ -300,9 +316,9 @@ const design = computed(() => {
     ? schemaFromGrapesProject(title.value, editor.getProjectData())
     : schema.value
 })
-const versions = ref(loadPrototypeVersions())
+const versions = ref(loadPrototypeVersions(scopedPrototypeStorage(props.sourceRef)))
 function reopen(id: string) {
-  if (!guardLeave()) return
+  if (!guardReplaceDocument()) return
   const version = versions.value.find((item) => item.id === id)
   if (!version) return
   switchDocument()
@@ -314,14 +330,50 @@ function reopen(id: string) {
 }
 let editor: import('grapesjs').Editor | null = null
 let disposed = false
+let initialized = false
+const recoveryFailed = ref(false)
+const recoveryRestored = ref(false)
+function checkpoint() {
+  if (!initialized) return false
+  try {
+    writeDesignerRecovery({
+      format: 1,
+      sourceRef: props.sourceRef,
+      title: title.value,
+      project: editor?.getProjectData?.() ?? schema.value.grapesProject ?? {},
+      cleanTitle,
+      cleanProject: cleanProject ?? {},
+    })
+    recoveryFailed.value = false
+    return true
+  } catch {
+    recoveryFailed.value = true
+    note.value = t('editor.recoveryFailed')
+    return false
+  }
+}
 
 async function mountEditor() {
   status.value = 'loading'
   note.value = ''
-  const restored = loadPrototypeSchema()
+  let recovery: DesignerRecovery | null = null
+  try {
+    recovery = readDesignerRecovery(props.sourceRef)
+  } catch {
+    recoveryFailed.value = true
+    note.value = t('editor.recoveryInvalid')
+    status.value = 'offline'
+    return
+  }
+  const restored = loadPrototypeSchema(scopedPrototypeStorage(props.sourceRef))
   if (restored) {
     schema.value = restored
     title.value = restored.title
+  }
+  if (recovery) {
+    title.value = recovery.title
+    schema.value.grapesProject = recovery.project
+    recoveryRestored.value = true
   }
   try {
     const { default: grapes } = await import('grapesjs')
@@ -333,6 +385,7 @@ async function mountEditor() {
       width: 'auto',
       fromElement: false,
       storageManager: false,
+      telemetry: false,
       noticeOnUnload: false,
       avoidInlineStyle: false,
       cssIcons: '',
@@ -409,7 +462,7 @@ async function mountEditor() {
         .loadProjectData === 'function'
     ) {
       ;(editor as { loadProjectData: (data: Record<string, unknown>) => void }).loadProjectData(
-        schema.value.grapesProject,
+        JSON.parse(JSON.stringify(schema.value.grapesProject)),
       )
     } else {
       editor.setComponents([
@@ -429,51 +482,56 @@ async function mountEditor() {
       ])
     }
     status.value = 'ready'
-    markSaved()
+    if (recovery) {
+      cleanTitle = recovery.cleanTitle
+      cleanProject = recovery.cleanProject as import('grapesjs').ProjectData
+      savedSnapshot.value = JSON.stringify({ title: cleanTitle, project: cleanProject })
+    } else markSaved()
+    initialized = true
     refreshStructure()
   } catch {
+    editor?.destroy?.()
     editor = null
     status.value = 'offline'
     note.value = t('desktop.grapesOffline')
     markSaved()
+    initialized = false
   }
 }
 
 function save() {
+  if (status.value !== 'ready' || !editor) return false
   const project = editor?.getProjectData?.() ?? schema.value.grapesProject ?? {}
   const next = schemaFromGrapesProject(title.value, project)
-  if (status.value === 'offline') {
-    next.root.children = [
-      {
-        id: 'section-0',
-        kind: 'section',
-        props: {},
-        children: [
-          { id: 'text-0', kind: 'text', props: { text: title.value }, children: [] },
-          { id: 'button-0', kind: 'button', props: { label: 'Action' }, children: [] },
-        ],
-      },
-    ]
-    next.unknownMappings = []
+  try {
+    schema.value = savePrototypeSchema(next, scopedPrototypeStorage(props.sourceRef))
+  } catch {
+    recoveryFailed.value = true
+    note.value = t('editor.recoveryFailed')
+    return false
   }
-  schema.value = savePrototypeSchema(next)
-  versions.value = loadPrototypeVersions()
+  versions.value = loadPrototypeVersions(scopedPrototypeStorage(props.sourceRef))
   const blockers = deliveryBlockers(schema.value)
   note.value = blockers.length
     ? t('desktop.grapesBlocked', { reasons: blockers.join(' · ') })
     : t('desktop.grapesSaved')
   markSaved()
+  checkpoint()
   emit('saved', schema.value)
+  return true
 }
 
 onMounted(() => {
   void mountEditor()
   window.addEventListener('beforeunload', beforeUnload)
 })
-onUnmounted(() => {
-  window.removeEventListener('beforeunload', beforeUnload)
+onBeforeUnmount(() => {
+  if (initialized) checkpoint()
   disposed = true
   inspection.value = null
+})
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', beforeUnload)
   editor?.destroy?.()
   editor = null
 })
@@ -516,7 +574,7 @@ onUnmounted(() => {
             type="button"
             size="sm"
             data-testid="grapes-save"
-            :disabled="status === 'loading'"
+            :disabled="status !== 'ready'"
             @click="save"
             >{{ t('desktop.grapesSave') }}</Button
           >
@@ -598,7 +656,12 @@ onUnmounted(() => {
       <div v-if="inspectorTab === 'page'" class="editor-controls">
         <label class="title-field">
           {{ t('desktop.grapesName') }}
-          <Input v-model="title" maxlength="120" data-testid="grapes-title" />
+          <Input
+            v-model="title"
+            maxlength="120"
+            :disabled="status !== 'ready'"
+            data-testid="grapes-title"
+          />
         </label>
         <label v-if="versions.length" class="title-field"
           >{{ t('desktop.chooseVersion')
@@ -670,6 +733,12 @@ onUnmounted(() => {
       </Collapse>
     </template>
     <template #status>
+      <Feedback v-if="recoveryFailed" tone="error" data-testid="grapes-recovery-error">{{
+        t('editor.recoveryFailed')
+      }}</Feedback>
+      <p v-else-if="dirty || recoveryRestored" class="hint" data-testid="grapes-recovery-state">
+        {{ t('editor.recoveryLocal') }}
+      </p>
       <p v-if="note" role="status" data-testid="grapes-note">{{ note }}</p>
       <small class="hint" data-testid="grapes-boundary">{{ t('desktop.grapesBoundary') }}</small>
     </template>
@@ -698,8 +767,6 @@ small {
   background: var(--surface);
   border: 1px solid var(--border);
 }
-
-
 
 .editor-controls,
 .component-library {

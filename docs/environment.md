@@ -35,7 +35,6 @@ EAP_AI_MODEL=gpt-4.1-mini         # configure an API model you are authorized to
 EAP_AI_BASE_URL=https://api.openai.com
 OPENAI_API_KEY=<injected-only-when-enabled>
 EAP_AUTHORIZED_ROOT=<optional-override-of-process-workspace-root>
-EAP_AI_AUTHORIZED_ROOT=<legacy-fallback-same-as-EAP_AUTHORIZED_ROOT>
 EAP_AI_ARTIFACT_ROOT=.eap-ai-artifacts
 
 # SQL business stage (separate from connection configuration)
@@ -74,9 +73,10 @@ servers. Such a connection needs its own authorized integration test; do not dec
 from a saved URL. Chat may use a saved OpenAI-compatible connection selected in settings; that path
 is auxiliary to engineering delivery — see [architecture.md](architecture.md) and
 [running-context.md](running-context.md). Prefer `EAP_AUTHORIZED_ROOT` for an explicit process-bound
-root. When both keys are empty, the colocated local service binds to the detected process workspace
-(git root / `user.dir`). Legacy `EAP_AI_AUTHORIZED_ROOT` is only a same-path fallback; conflicting
-paths refuse. This is not a remote multi-tenant grant store.
+root. Only `eap.runtime.authorized-root` / `EAP_AUTHORIZED_ROOT` selects this boundary. An empty
+configuration binds the full colocated local service to its detected process workspace; an explicitly
+invalid directory is denied. The removed AI-specific key has no effect. The standalone local starter
+requires explicit authorization. This is not a remote multi-tenant grant store.
 
 ## Ordinary API wire protocol
 

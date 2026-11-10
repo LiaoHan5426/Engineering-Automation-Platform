@@ -14,7 +14,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class JdbcPrototypeVersionStore implements PrototypeVersionStore {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final String SELECT = """
-            SELECT id, source_ref, title, body, button_presses, interaction, acceptance, content_hash, created_at
+            SELECT id, source_ref, title, body, acceptance, content_hash, created_at
             FROM eap.prototype_version
             """;
     private final JdbcTemplate jdbc;
@@ -28,11 +28,10 @@ public class JdbcPrototypeVersionStore implements PrototypeVersionStore {
         jdbc.update(
                 """
                 INSERT INTO eap.prototype_version(
-                    id, source_ref, title, body, button_presses, interaction, acceptance, content_hash, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    id, source_ref, title, body, acceptance, content_hash, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                version.id(), version.sourceRef(), version.title(), version.body(), version.buttonPresses(),
-                version.interaction(), JSON.writeValueAsString(version.acceptance()), version.contentHash(),
+                version.id(), version.sourceRef(), version.title(), version.body(), JSON.writeValueAsString(version.acceptance()), version.contentHash(),
                 Timestamp.from(version.createdAt()));
     }
 
@@ -53,8 +52,6 @@ public class JdbcPrototypeVersionStore implements PrototypeVersionStore {
                 rs.getString("source_ref"),
                 rs.getString("title"),
                 rs.getString("body"),
-                rs.getInt("button_presses"),
-                rs.getString("interaction"),
                 List.copyOf(acceptance),
                 rs.getString("content_hash"),
                 rs.getTimestamp("created_at").toInstant());

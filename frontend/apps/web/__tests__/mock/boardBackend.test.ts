@@ -1,3 +1,4 @@
+import { emptyPrototypeSchema } from '../../src/features/shell/prototypeSchema'
 import { randomUUID } from 'node:crypto'
 import { expect, it } from 'vite-plus/test'
 import { createMockChatBackend } from '../../mock/chatBackend'
@@ -286,8 +287,18 @@ it('links only existing saved versions with project and revision checks', async 
     await api.handle('POST', '/prototype-versions', {
       sourceRef: 'builder-alpha',
       title: 'design',
-      body: 'saved',
-      buttonPresses: 0,
+      body: JSON.stringify({
+        format: 'eap-prototype-v1',
+        schema: {
+          ...emptyPrototypeSchema('design'),
+          root: {
+            id: 'root',
+            kind: 'page',
+            props: {},
+            children: [{ id: 'text', kind: 'text', props: { text: 'saved' }, children: [] }],
+          },
+        },
+      }),
       acceptance: [],
     })
   ).data as { id: string }

@@ -521,7 +521,7 @@ export const desktopMessages = {
     missingDep: '缺少依赖',
     disabledScene: '已禁用',
     partialScene: '可用，但有缺口',
-    presetReadonly: '预设只读。复制为用户配置尚未接通。',
+    presetReadonly: '预设只读，可复制为自定义场景并显式保存。',
   },
   'en-US': {
     navigation: 'Application navigation',
@@ -1112,7 +1112,7 @@ export const desktopMessages = {
     missingDep: 'Missing dependency',
     disabledScene: 'Disabled',
     partialScene: 'Usable, with gaps',
-    presetReadonly: 'Preset is read only. Copying to a user configuration is not connected.',
+    presetReadonly: 'Presets are read only. Copy to a custom scenario and save explicitly.',
   },
 }
 

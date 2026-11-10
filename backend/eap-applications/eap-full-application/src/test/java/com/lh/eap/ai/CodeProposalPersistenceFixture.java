@@ -38,7 +38,7 @@ abstract class CodeProposalPersistenceFixture {
     }
 
     CodeChangeService service(CodeProposalStore store) {
-        return new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, root.toString(), ""), null, null,
+        return new CodeChangeService(new com.lh.eap.config.RuntimeWorkspace(root, root.toString()), null, null,
                 new JdbcCodeGenerationStore(jdbc, manager), store);
     }
 

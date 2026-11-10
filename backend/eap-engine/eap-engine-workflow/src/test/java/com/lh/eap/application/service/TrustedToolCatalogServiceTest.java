@@ -33,7 +33,7 @@ class TrustedToolCatalogServiceTest {
                 com.lh.eap.domain.model.CapabilityAvailability.AVAILABLE));
         when(channels.probe(eq("git"), eq("git"), any(Path.class))).thenReturn(probeOk("git version shared"));
         var service = new TrustedToolCatalogService(registry(), settings(), channels,
-                com.lh.eap.config.RuntimeWorkspace.colocated(workspace, "", ""), mapper);
+                com.lh.eap.config.RuntimeWorkspace.colocated(workspace, ""), mapper);
         var before = (List<Map<String,Object>>) service.catalog().get("programs");
         assertEquals(1, before.size());
         assertEquals("git", before.getFirst().get("id"));
@@ -61,7 +61,7 @@ class TrustedToolCatalogServiceTest {
         assertEquals(3, items.size());
 
         var status = items.stream().filter(row -> "git-status".equals(row.get("id"))).findFirst().orElseThrow();
-        assertEquals("POST /api/runtime/trusted-tools/git-status/invoke", status.get("invocation"));
+        assertEquals("POST /api/cli-programs/git/operations/git-status/executions", status.get("invocation"));
         assertEquals("ready", status.get("bindingStatus"));
         assertEquals("unknown", status.get("versionStatus"));
         assertEquals("shipped", status.get("bindingSource"));
