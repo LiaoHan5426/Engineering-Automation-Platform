@@ -31,13 +31,15 @@ public final class ToolUnknownReviewFixture {
     static boolean interrupt;
     static boolean realGit;
     static String operation;
+    static String fault;
 
     public static void main(String[] args) throws Exception {
         session = Path.of(args[0]).toAbsolutePath().normalize();
         schema = args[1];
         if (!schema.matches("eap_unknown_qa_[a-f0-9]{32}")) throw new IllegalArgumentException("Unowned schema");
         interrupt = Boolean.parseBoolean(args[2]);
-        realGit = "real-git".equals(args[2]);
+        fault = args[2];
+        realGit = List.of("real-git", "cancel", "timeout", "return").contains(fault);
         operation = args.length > 3 ? args[3] : "git-status";
         if (!List.of("git-status", "git-diff").contains(operation)) throw new IllegalArgumentException("Unsupported fixture operation");
         System.setProperty("spring.devtools.restart.enabled", "false");
@@ -66,33 +68,40 @@ public final class ToolUnknownReviewFixture {
         @Bean(destroyMethod = "close") DefaultProcessExecutor processExecutor() { return new DefaultProcessExecutor(Duration.ofMinutes(3)); }
         @Bean ToolExecutionService service(JdbcToolExecutionStore store, CapabilitySettings settings,
                                            CapabilityRegistry registry, DefaultProcessExecutor executor) {
+            var claimed = new java.util.concurrent.atomic.AtomicBoolean();
             ProcessExecutor controlled = new ProcessExecutor() {
                 public Observation run(String name, Path directory, List<String> command) { throw new UnsupportedOperationException(); }
                 public Observation runManaged(UUID id, String name, Path directory, List<String> command,
                                                Map<String,String> environment, ManagedProcessControl control) {
-                    if (realGit && command.contains(operation.substring(4))) {
+                    if (realGit && command.contains(operation.substring(4)) && claimed.compareAndSet(false, true)) {
                         // Preserve the actual Git executable, argument array, environment and executor.
-                        var result = executor.runManaged(id, name, directory, command, environment, new ManagedProcessControl() {
-                            public boolean cancellationRequested() { return control.cancellationRequested(); }
-                            public void descendantsObserved(Map<String,Object> evidence) { control.descendantsObserved(evidence); }
-                            public void started(Map<String,Object> identity) {
-                                control.started(identity);
-                                try {
-                                    Files.writeString(session.resolve("git-started.tmp"), JSON.writeValueAsString(Map.of("identity", identity, "command", command)));
-                                    Files.move(session.resolve("git-started.tmp"), session.resolve("git-started.json"), StandardCopyOption.ATOMIC_MOVE);
-                                    long deadline = System.nanoTime() + Duration.ofSeconds(40).toNanos();
-                                    while (!Files.exists(session.resolve("git-resume.request")) && System.nanoTime() < deadline) Thread.sleep(10);
-                                    if (!Files.exists(session.resolve("git-resume.request"))) throw new IllegalStateException("Git fault handshake timed out");
-                                } catch (Exception error) { throw new IllegalStateException("Git start gate failed", error); }
-                            }
-                        });
-                        try {
-                            Files.writeString(session.resolve("git-exited.tmp"), JSON.writeValueAsString(result));
-                            Files.move(session.resolve("git-exited.tmp"), session.resolve("git-exited.json"), StandardCopyOption.ATOMIC_MOVE);
-                            // Crash before workflow sees the actual abnormal exit; durable step stays RUNNING.
-                            Thread.sleep(120_000);
-                        } catch (Exception error) { throw new IllegalStateException("Git result gate interrupted", error); }
-                        return result;
+                        // Apply a real executor deadline only to the target command, never the preflight.
+                        try (var deadlineExecutor = new DefaultProcessExecutor(Duration.ofNanos(1))) {
+                            var target = fault.equals("timeout") ? deadlineExecutor : executor;
+                            var result = target.runManaged(id, name, directory, command, environment, new ManagedProcessControl() {
+                                public boolean cancellationRequested() { return control.cancellationRequested(); }
+                                public void descendantsObserved(Map<String,Object> evidence) { control.descendantsObserved(evidence); }
+                                public void started(Map<String,Object> identity) {
+                                    control.started(identity);
+                                    try {
+                                        Files.writeString(session.resolve("git-started.tmp"), JSON.writeValueAsString(Map.of("identity", identity, "command", command)));
+                                        Files.move(session.resolve("git-started.tmp"), session.resolve("git-started.json"), StandardCopyOption.ATOMIC_MOVE);
+                                        long deadline = System.nanoTime() + Duration.ofSeconds(40).toNanos();
+                                        while (!Files.exists(session.resolve("git-resume.request")) && System.nanoTime() < deadline) Thread.sleep(10);
+                                        if (!Files.exists(session.resolve("git-resume.request"))) throw new IllegalStateException("Git fault handshake timed out");
+                                    } catch (Exception error) { throw new IllegalStateException("Git start gate failed", error); }
+                                }
+                            });
+                            try {
+                                Files.writeString(session.resolve("git-exited.tmp"), JSON.writeValueAsString(result));
+                                Files.move(session.resolve("git-exited.tmp"), session.resolve("git-exited.json"), StandardCopyOption.ATOMIC_MOVE);
+                                // Tests either crash before workflow receives the actual result or release it for persistence.
+                                long deadline = System.nanoTime() + Duration.ofSeconds(120).toNanos();
+                                while (!Files.exists(session.resolve("git-return.request")) && System.nanoTime() < deadline) Thread.sleep(10);
+                                if (!Files.exists(session.resolve("git-return.request"))) throw new IllegalStateException("Git result handshake timed out");
+                            } catch (Exception error) { throw new IllegalStateException("Git result gate interrupted", error); }
+                            return result;
+                        }
                     }
                     if (!interrupt) return executor.runManaged(id, name, directory, command, environment, control);
                     var java = Path.of(System.getProperty("java.home"), "bin", "java").toString();

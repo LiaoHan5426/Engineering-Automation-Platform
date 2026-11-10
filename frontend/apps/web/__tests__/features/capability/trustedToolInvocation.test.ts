@@ -119,6 +119,47 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
     expect(confirm).not.toBeNull()
     confirm.click()
   }
+  it('retains cancellation intent through UNKNOWN review response loss and explicit closure readback', async () => {
+    const unknown = { ...row('UNKNOWN'), cancelRequested: true }
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [unknown] })
+    vi.mocked(runtimeApi.resolveUnknownGitExecution).mockRejectedValueOnce(
+      new Error('response lost'),
+    )
+    await mount()
+    expect(button('cancel-unconfirmed').textContent).toContain('曾请求取消')
+    expect(root.querySelector('[data-testid="trusted-' + operation + '-cancelled"]')).toBeNull()
+    await prepareReview()
+    button('review-open').click()
+    await settle()
+    confirmReview()
+    await settle()
+    const review = vi.mocked(runtimeApi.resolveUnknownGitExecution).mock.calls[0]![2]
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({
+      items: [
+        {
+          ...unknown,
+          status: 'CLOSED_UNKNOWN',
+          resolution: {
+            ...review,
+            requestDigest: 'a'.repeat(64),
+            operator: 'local-operator',
+            resolvedAt: new Date().toISOString(),
+          },
+        },
+      ],
+    })
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(runtimeApi.resolveUnknownGitExecution).toHaveBeenCalledTimes(1)
+    expect(button('invoke').disabled).toBe(true)
+    button('recheck').click()
+    await settle()
+    expect(button('cancel-unconfirmed').textContent).toContain('曾请求取消')
+    expect(root.textContent).toContain('人工关闭（结果仍未知）')
+    expect(root.querySelector('[data-testid="trusted-' + operation + '-cancelled"]')).toBeNull()
+    expect(button('invoke').disabled).toBe(false)
+    expect(runtimeApi.resolveUnknownGitExecution).toHaveBeenCalledTimes(1)
+    expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+  })
   it('inspects only on explicit action and retains UNKNOWN and manual attestation requirements', async () => {
     vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
     await mount()

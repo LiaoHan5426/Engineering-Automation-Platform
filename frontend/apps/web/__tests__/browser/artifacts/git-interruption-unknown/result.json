@@ -1,0 +1,427 @@
+{
+  "baseCommit": "067c3d864cf065e1fd2acd9d3ce5be85f9d6c47e",
+  "testCases": 6,
+  "failures": 0,
+  "skipped": 0,
+  "browserChecks": 44,
+  "pageErrors": [],
+  "boundary": "Isolated real Git / OS / HTTP / PostgreSQL / production Vue acceptance; timeout uses a test-only 1ns executor deadline. Not product user acceptance or cross-restart process takeover.",
+  "reviewTransport": "Actual committed HTTP 200 headers flushed; body interrupted before delivery. No fabricated DTO or product fault route. Exactly one review POST asserted per browser.",
+  "items": [
+    {
+      "operation": "git-diff",
+      "fault": "cancel",
+      "session": "tool-unknown-review-481bc8e7-74c3-4a61-b474-65235a694ebe",
+      "executionId": "cf1e7500-dc56-4ee6-b66e-421fe7971785",
+      "interruptedResult": {
+        "executorStatus": "CANCELLED",
+        "exitCode": 130,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "durableBeforeCrash": {
+        "status": "CANCELLING",
+        "cancelRequested": true,
+        "lastStepStatus": "RUNNING",
+        "exitCode": null,
+        "exitEvidence": null
+      },
+      "closure": {
+        "status": "CLOSED_UNKNOWN",
+        "cancelRequested": true,
+        "exitCode": null,
+        "unconfirmedReason": "SERVICE_RESTART_EXIT_UNCONFIRMED",
+        "operator": "local-operator",
+        "originalStepsPreserved": true
+      },
+      "confirmedControl": {
+        "status": "CANCELLED",
+        "exitCode": 130,
+        "exitEvidence": "进程树已清理",
+        "unconfirmedReason": null
+      },
+      "confirmedControlRecovery": "SUCCEEDED",
+      "confirmedIndexFailure": {
+        "status": "FAILED",
+        "exitCode": 128
+      },
+      "repaired": "SUCCEEDED",
+      "diffScope": {
+        "stagedAndUntrackedExcluded": true,
+        "workspaceBytesPreserved": true,
+        "indexBytesPreserved": true,
+        "unstagedTrackedMarkerPresent": true
+      },
+      "browser": {
+        "passed": 8,
+        "checks": [
+          "persisted cancellation intent remains visible without claiming confirmed cancellation",
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true,
+        "ownedProcessesStopped": true
+      }
+    },
+    {
+      "operation": "git-status",
+      "fault": "cancel",
+      "session": "tool-unknown-review-0abd9544-746f-4ebf-8588-558ff1caca28",
+      "executionId": "3cacf774-5737-494b-8597-88899de70172",
+      "interruptedResult": {
+        "executorStatus": "CANCELLED",
+        "exitCode": 130,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "durableBeforeCrash": {
+        "status": "CANCELLING",
+        "cancelRequested": true,
+        "lastStepStatus": "RUNNING",
+        "exitCode": null,
+        "exitEvidence": null
+      },
+      "closure": {
+        "status": "CLOSED_UNKNOWN",
+        "cancelRequested": true,
+        "exitCode": null,
+        "unconfirmedReason": "SERVICE_RESTART_EXIT_UNCONFIRMED",
+        "operator": "local-operator",
+        "originalStepsPreserved": true
+      },
+      "confirmedControl": {
+        "status": "CANCELLED",
+        "exitCode": 130,
+        "exitEvidence": "进程树已清理",
+        "unconfirmedReason": null
+      },
+      "confirmedControlRecovery": "SUCCEEDED",
+      "confirmedIndexFailure": {
+        "status": "FAILED",
+        "exitCode": 128
+      },
+      "repaired": "SUCCEEDED",
+      "diffScope": null,
+      "browser": {
+        "passed": 8,
+        "checks": [
+          "persisted cancellation intent remains visible without claiming confirmed cancellation",
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true,
+        "ownedProcessesStopped": true
+      }
+    },
+    {
+      "operation": "git-diff",
+      "fault": "return",
+      "session": "tool-unknown-review-317660fa-525d-4217-b7e8-a5638422bf29",
+      "executionId": "af0a9902-525b-44b5-b87f-5519f6297f57",
+      "interruptedResult": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "durableBeforeCrash": {
+        "status": "RUNNING",
+        "cancelRequested": false,
+        "lastStepStatus": "RUNNING",
+        "exitCode": null,
+        "exitEvidence": null
+      },
+      "closure": {
+        "status": "CLOSED_UNKNOWN",
+        "cancelRequested": false,
+        "exitCode": null,
+        "unconfirmedReason": "SERVICE_RESTART_EXIT_UNCONFIRMED",
+        "operator": "local-operator",
+        "originalStepsPreserved": true
+      },
+      "confirmedControl": {
+        "status": "SUCCEEDED",
+        "exitCode": 0,
+        "exitEvidence": "进程树已清理",
+        "unconfirmedReason": null
+      },
+      "confirmedControlRecovery": "SUCCEEDED",
+      "confirmedIndexFailure": {
+        "status": "FAILED",
+        "exitCode": 128
+      },
+      "repaired": "SUCCEEDED",
+      "diffScope": {
+        "stagedAndUntrackedExcluded": true,
+        "workspaceBytesPreserved": true,
+        "indexBytesPreserved": true,
+        "unstagedTrackedMarkerPresent": true
+      },
+      "browser": {
+        "passed": 7,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true,
+        "ownedProcessesStopped": true
+      }
+    },
+    {
+      "operation": "git-status",
+      "fault": "return",
+      "session": "tool-unknown-review-e3a3f973-5785-4569-9bff-f2fa84cb2fd5",
+      "executionId": "caa680f1-a749-483b-852d-e5b9e530c67c",
+      "interruptedResult": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "durableBeforeCrash": {
+        "status": "RUNNING",
+        "cancelRequested": false,
+        "lastStepStatus": "RUNNING",
+        "exitCode": null,
+        "exitEvidence": null
+      },
+      "closure": {
+        "status": "CLOSED_UNKNOWN",
+        "cancelRequested": false,
+        "exitCode": null,
+        "unconfirmedReason": "SERVICE_RESTART_EXIT_UNCONFIRMED",
+        "operator": "local-operator",
+        "originalStepsPreserved": true
+      },
+      "confirmedControl": {
+        "status": "SUCCEEDED",
+        "exitCode": 0,
+        "exitEvidence": "进程树已清理",
+        "unconfirmedReason": null
+      },
+      "confirmedControlRecovery": "SUCCEEDED",
+      "confirmedIndexFailure": {
+        "status": "FAILED",
+        "exitCode": 128
+      },
+      "repaired": "SUCCEEDED",
+      "diffScope": null,
+      "browser": {
+        "passed": 7,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true,
+        "ownedProcessesStopped": true
+      }
+    },
+    {
+      "operation": "git-diff",
+      "fault": "timeout",
+      "session": "tool-unknown-review-b61de200-c0b7-4b50-b8d4-d9fd59720704",
+      "executionId": "ed05ac9a-b1b4-4722-926c-331812338dfb",
+      "interruptedResult": {
+        "executorStatus": "TIMED_OUT",
+        "exitCode": 124,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "durableBeforeCrash": {
+        "status": "RUNNING",
+        "cancelRequested": false,
+        "lastStepStatus": "RUNNING",
+        "exitCode": null,
+        "exitEvidence": null
+      },
+      "closure": {
+        "status": "CLOSED_UNKNOWN",
+        "cancelRequested": false,
+        "exitCode": null,
+        "unconfirmedReason": "SERVICE_RESTART_EXIT_UNCONFIRMED",
+        "operator": "local-operator",
+        "originalStepsPreserved": true
+      },
+      "confirmedControl": {
+        "status": "TIMED_OUT",
+        "exitCode": 124,
+        "exitEvidence": "进程树已清理",
+        "unconfirmedReason": null
+      },
+      "confirmedControlRecovery": "SUCCEEDED",
+      "confirmedIndexFailure": {
+        "status": "FAILED",
+        "exitCode": 128
+      },
+      "repaired": "SUCCEEDED",
+      "diffScope": {
+        "stagedAndUntrackedExcluded": true,
+        "workspaceBytesPreserved": true,
+        "indexBytesPreserved": true,
+        "unstagedTrackedMarkerPresent": true
+      },
+      "browser": {
+        "passed": 7,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true,
+        "ownedProcessesStopped": true
+      }
+    },
+    {
+      "operation": "git-status",
+      "fault": "timeout",
+      "session": "tool-unknown-review-c9a5172c-fafd-4914-b603-7a026104e71b",
+      "executionId": "86b80aab-88e6-45ba-beec-9a5bfe2f2eb7",
+      "interruptedResult": {
+        "executorStatus": "TIMED_OUT",
+        "exitCode": 124,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "durableBeforeCrash": {
+        "status": "RUNNING",
+        "cancelRequested": false,
+        "lastStepStatus": "RUNNING",
+        "exitCode": null,
+        "exitEvidence": null
+      },
+      "closure": {
+        "status": "CLOSED_UNKNOWN",
+        "cancelRequested": false,
+        "exitCode": null,
+        "unconfirmedReason": "SERVICE_RESTART_EXIT_UNCONFIRMED",
+        "operator": "local-operator",
+        "originalStepsPreserved": true
+      },
+      "confirmedControl": {
+        "status": "TIMED_OUT",
+        "exitCode": 124,
+        "exitEvidence": "进程树已清理",
+        "unconfirmedReason": null
+      },
+      "confirmedControlRecovery": "SUCCEEDED",
+      "confirmedIndexFailure": {
+        "status": "FAILED",
+        "exitCode": 128
+      },
+      "repaired": "SUCCEEDED",
+      "diffScope": null,
+      "browser": {
+        "passed": 7,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true,
+        "ownedProcessesStopped": true
+      }
+    }
+  ],
+  "regression": {
+    "targeted": {
+      "reports": 10,
+      "tests": 68,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "browserChecks": 19
+    },
+    "offline": {
+      "reports": 163,
+      "tests": 960,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 109
+    },
+    "frontend": {
+      "files": 137,
+      "tests": 844,
+      "panelTests": 47,
+      "typecheck": true,
+      "build": true,
+      "architecture": true,
+      "lint": true,
+      "stylelint": true,
+      "format": true
+    }
+  },
+  "finalIndependentReadback": {
+    "ownedUnknownSchemasRemaining": 0,
+    "applicationExecutionRecords": 3,
+    "applicationRecordsDigest": "9328dec3d51e0c83b3929e5a376073ab",
+    "applicationRecordsUnchanged": true,
+    "appliedMigrations": 29,
+    "migrationChecksums": {
+      "26": -716806117,
+      "27": 1802106427,
+      "28": -329790285,
+      "29": -508415836
+    },
+    "fixtureJvmStopped": true,
+    "port5187Closed": true,
+    "fullApplicationRemainedStopped": true
+  }
+}

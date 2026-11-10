@@ -1,6 +1,6 @@
 # Agent 能力、本地运行环境与插件演进
 
-状态：有效合同与增量实现记录；当前已提交实现基线 `47433d8`（已推送），本轮接续真实git-diff异常/恢复与确认框操作身份提示，接续已获本次提交并推送授权，随本次提交交付，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。后续各切片已有独立授权和实测，本文历史章节的“不推送/不调用真实模型”等仅描述当时范围，不是当前全局限制。向量增强、框架迁移、第三方安装等仍须满足各自证据与授权门禁。
+状态：有效合同与增量实现记录；当前已提交实现基线 `067c3d8`（已推送），本轮接续status/diff取消、超时及结果返回中断UNKNOWN核对与恢复；接续改动已获本次用户提交并推送授权，随本次提交交付，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。历史章节的提交授权、测试数字和限制只描述当时范围。向量增强、框架迁移、第三方安装等仍须满足各自证据与授权门禁。
 
 ## 1. 结论与适用范围
 
@@ -275,7 +275,7 @@ TC-02 定向独立复核通过，原P1关闭：审查者复跑2文件10项、typ
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + 派生清空 + **备注 Badge**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
 | FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + inventory + candidateCounts + **byKind**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | **部分交付**：既有程序/操作模型投影目录；Git路径、版本与探测缓存共享；旧能力ID/探测入口兼容，历史路径冲突拒绝执行 | 其他依赖绑定与用户接受；见[Git调用合同](#git-operation-executions) |
-| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝；真实diff HTTP/JDBC已验，工具UNKNOWN显式核对关闭阻塞及当前身份线索已实现；追加每步32个已观察子进程身份持久/核对，清理句柄不受限，仍不证明完整树退出；受控中断及真实status/diff异常终止/持久结果丢失的HTTP/PostgreSQL/Vue核对、diff恢复范围及索引/文件不变已验，确认框明确操作身份，关闭后仍只读保留原始命令和步骤证据 | 其他Git异常矩阵、跨重启进程接管和产品用户接受独立；见[Git调用合同](#git-operation-executions) |
+| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝；真实diff HTTP/JDBC已验，工具UNKNOWN显式核对关闭阻塞及当前身份线索已实现；追加每步32个已观察子进程身份持久/核对，清理句柄不受限，仍不证明完整树退出；受控中断及真实status/diff异常终止/持久结果丢失的HTTP/PostgreSQL/Vue核对、diff恢复范围及索引/文件不变已验，确认框明确操作身份，关闭后仍只读保留原始命令和步骤证据；status/diff取消、超时及成功结果返回中断的六组UNKNOWN核对与恢复、正常持久终态对照及人工关闭响应中断后显式重查已验；取消意图在UNKNOWN/CLOSED_UNKNOWN保留展示 | 其他权限/IO/平台异常、跨重启进程接管和产品用户接受独立；见[Git调用合同](#git-operation-executions) |
 | TC-02 / P1 | **部分交付**：实际 Grapes 实例人工读取草稿/选中状态，实例/文档/revision 核验、有界快照、过期与离页清空 | 多实例/冲突/超限离线覆盖，真机已验读取/过期/切页/新建；用户接受、远程断线与模型反向调用仍独立，不建设反向 RPC |
 | MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（含 filesystem 五工具）+ **callVerified/listOnly 视图** + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；mock/真机已验 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/回滚、依赖缺失/激活失败；新增显式只读Task列表检查，来源/时间/未检查与未知失败分开（真机及mock已验）；不改Task/Run | Run/整体服务健康未验，用户接受与在途停用完整矩阵仍待；无第二状态源，外部安装器延期 |
@@ -549,7 +549,7 @@ core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManife
 最终收尾：完整离线958项中851通过/107门控跳过，32模块成功，0失败/错误；与66项定向实测分列。原应用按原参数恢复PID41284，health=200/ok，29份迁移校验通过、V26～V29不变；既有记录及路由隔离复核通过，测试资源清理完成。当前真实Git异常仅覆盖status及索引损坏对照，diff异常、其他矩阵和用户产品接受仍独立。20文件/UTF-8/176处链接/敏感/空白检查通过，接续按本次授权提交。
 
 
-### 真实git-diff异常/恢复与核对操作身份（2026-11-10）
+### 真实git-diff异常/恢复与核对操作身份（历史阶段067c3d8，2026-11-10）
 
 - 从已推送47433d89a0e39d39c00449c2f8fd0019c9743c14接续，不重复提交/改写历史迁移。测试复用原ToolUnknownReviewFixture/AcceptanceTest和真实浏览器runner，新增EAP_RUN_REAL_GIT_DIFF_UNKNOWN门控；operation只允许git-status/git-diff，同一代码路径保留Java/status回归。
 - diff的root/filters/diff均由原GitCapability/DefaultProcessExecutor运行，不替换程序/argv/环境。在自有仓库暂存tracked.txt基线和staged-only.txt，仅修改tracked工作文件并保留untracked.txt；大差异让实际Git在身份持久后等待期间保持在途。故障仍为精确终止实际Git、取得非零结果后在workflow持久提交前中断测试宿主，重启保留UNKNOWN，不伪造退出字段。
@@ -562,3 +562,15 @@ core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManife
 本轮最终定向67项全部通过（Java7组/status6组/diff6组实际浏览器检查，共19组，0pageerror），包含diff损坏索引明确FAILED/exit128、精确还原index后SUCCEEDED，以及diff输出范围和index/文件字节保持、JDBC/HTTP关闭快照与重启审计不变。前端842项/面板45项与工程检查通过；最终证据见[记录](../records/backend-composition-history.md#real-git-diff-unknown-review)。其他异常矩阵、跨重启接管和产品用户接受仍独立。
 
 最终完整离线959项：851通过/108门控跳过，32模块成功，0失败/错误，与67项明确门控实测分列。最终3个自有schema经独立只读JDBC核对不存在，应用记录摘要不变、fixture JVM/监听清理；full-application起始未运行，保持原状态。应用库29份迁移/最新V29，V26～V29校验和不变。19文件/13文本UTF-8/182处链接/敏感/空白检查通过；接续按本次授权提交，用户产品接受独立。
+
+
+### status/diff取消、超时与结果返回中断合同（2026-11-10，接续按本次授权提交）
+
+067c3d8已按用户授权推送并核对本地/远端一致。本轮复用原独立ToolExecution、实际Git执行器与HTTP/JDBC/面板，不引入新状态或迁移，测试门控EAP_RUN_GIT_INTERRUPTION_MATRIX独立于原Java/真实异常门控。
+
+- 取消意图与取消确认继续分离：HTTP已持久CANCELLING/cancelRequested不代表CANCELLED；结果返回前宿主中断，重启UNKNOWN保留意图。UNKNOWN/CLOSED_UNKNOWN且cancelRequested时面板展示曾请求取消但未保存确认结果；关闭审计不清除该意图。
+- 真实执行器已经得到CANCELLED/130、TIMED_OUT/124或SUCCEEDED/0，若workflow尚未持久结果，不能由重启或进程检查补造终态。测试timeout仅目标命令用实际1ns截止期，预检/恢复仍复用原执行器；测试回调等待不算超时。正常返回相同结果须落入对应终态、有退出/清理证据，禁止UNKNOWN人工关闭，随后显式新请求成功。
+- 实际服务已提交CLOSED_UNKNOWN而核对HTTP响应中断，页面保留不确定态/原请求、禁止重复提交且不自动重提；显式重新查询读回已关闭审计。测试代理只中断真实响应传输，不模拟DTO、不增加产品故障路由。
+- 六组真实矩阵全部通过，44组Chromium断言/0pageerror；原字段/JDBC/重启、跨操作互锁及diff范围/索引/文件字节不变均核验。前端844项/面板47项与工程检查通过。完整命令、失败及资源收尾见[主题记录](../records/backend-composition-history.md#git-interruption-unknown-review)；用户产品接受、完整树退出证明、跨重启接管及其他权限/IO/平台异常独立。
+
+最终兼容定向67通过/1矩阵门控跳过（原三场景19组浏览器检查）；完整离线960项中851通过/109门控跳过、32模块成功，0失败/错误。独立只读数据库/迁移/临时schema、原记录摘要及自有进程/监听收尾均通过；full-application保持原未运行状态。六组矩阵与完整离线分列，详见上述主题记录和当前台账。

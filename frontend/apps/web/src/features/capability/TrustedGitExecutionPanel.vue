@@ -379,6 +379,12 @@ onBeforeUnmount(() => {
       <Feedback v-if="selected.status === 'UNKNOWN'" tone="warning" :data-testid="testId('unknown')"
         >{{ t('unknown') }} · {{ selected.unconfirmedReason }}</Feedback
       >
+      <Feedback
+        v-if="selected.cancelRequested && ['UNKNOWN', 'CLOSED_UNKNOWN'].includes(selected.status)"
+        tone="warning"
+        :data-testid="testId('cancel-unconfirmed')"
+        >{{ t('cancelUnconfirmed') }}</Feedback
+      >
       <template v-if="['UNKNOWN', 'CLOSED_UNKNOWN'].includes(selected.status)">
         <Button
           variant="secondary"

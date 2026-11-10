@@ -597,7 +597,7 @@ rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright
 
 
 <a id="real-git-diff-unknown-review"></a>
-## 真实git-diff异常、UNKNOWN核对与恢复（2026-11-10）
+## 真实git-diff异常、UNKNOWN核对与恢复（历史阶段067c3d8，2026-11-10）
 
 用户要求继续验证真实git-diff异常/恢复完整核对并根据文档推进前后端。开始时HEAD/origin/main为47433d89a0e39d39c00449c2f8fd0019c9743c14，工作树干净；jps没有EapApplication，不重用前一天旧PID/启动参数，不启停其他Java服务。所有数据库/进程/页面动作在明确门控的自有schema/仓库/宿主范围；当前开发不自动提交推送。
 
@@ -633,3 +633,36 @@ rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright
 最终完整离线：仅子进程关闭已有EAP_RUN_*及EAP_RUN_TOOL_UNKNOWN_REVIEW/EAP_RUN_REAL_GIT_UNKNOWN/EAP_RUN_REAL_GIT_DIFF_UNKNOWN，运行¤rtk proxy mvn -B -ntp -f backend/pom.xml test¤：32模块SUCCESS，163报告959项：851通过、108门控跳过，0失败/错误，5分29秒。日志backend/target/real-git-diff-unknown-offline-reactor.log及按本次时间窗XML统计real-git-diff-unknown-offline-summary.json。三项场景在此跳过，完整链路依据前述67项明确门控实测，未与离线结果拼接覆盖率。最终主方案验收行、台账、路线、指南、决策和主题记录已同步；保留各轮失败及历史限定结果。
 
 本次提交准备：用户明确授权先提交并推送diff异常验收与确认框操作身份切片，再继续取消/超时/返回中断矩阵。复核19文件实际代码、测试、截图和规划同步，沿用紧邻实现阶段67项定向、959项离线（851通过/108门控跳过）及842项前端证据，不将提交检查冒充功能重测；新增内容敏感模式、UTF-8、本地文档目标/锚点与暂存空白再查，推送后核对本地及远端SHA。此前未提交口径保留为历史交付状态。
+
+
+<a id="git-interruption-unknown-review"></a>
+## status/diff取消、超时与结果返回中断UNKNOWN矩阵（2026-11-10）
+
+先按用户授权提交并推送067c3d864cf065e1fd2acd9d3ce5be85f9d6c47e（19文件），HEAD/origin/main/远端main一致，工作树干净。提交准备仅复核紧邻实现阶段证据，没有冒充重测。随后复用ToolUnknownReviewFixture/AcceptanceTest及生产Vue面板，在UUID自有schema/仓库/测试宿主中扩展六组真实Git矩阵；本轮开始没有EapApplication，保持原启动状态，接续新改动不自动提交。
+
+取消通过实际HTTP cancel持久CANCELLING/cancelRequested后放行真实执行器；超时仅对目标status/diff使用DefaultProcessExecutor真实1ns截止期（预检保持3分钟），started回调门锁不计入执行器deadline；返回中断分支使用正常实际成功结果。执行器的CANCELLED/130、TIMED_OUT/124或SUCCEEDED/0与processExited/processTreeCleanup必须实际断言，不伪造metadata。workflow收到结果前强制中断自有宿主，重启后UNKNOWN保留取消意图和原步骤，不从测试外部知道的退出状态补造终态。正常释放相同结果作为持久终态对照，拒绝resolve-unknown，并允许显式新请求恢复成功。
+
+前端L4原面板复用@eap/ui Feedback，仅UNKNOWN/CLOSED_UNKNOWN且cancelRequested时显示取消意图及缺少确认结果；中英i18n同步，不新增共享模块/暂存类别。测试代理完整收到真实服务核对响应后中断传输；没有产品故障路由或伪造API数据。目标是服务端已持久CLOSED_UNKNOWN而页面不确定时停止自动重提，通过显式重新查询恢复原审计。
+
+首轮矩阵未通过：测试代理初版误丢弃400不完整确认拒绝响应，修正为仅200；之后在真实200/CLOSED_UNKNOWN响应丢失时页面未出现预期network提示，保留失败日志git-interruption-matrix.log和六个会话的browser-result/cleanup。调整为先发送真实响应头并声明实际body长度，再中断body传输，避免空响应连接可能触发浏览器重发；此原因待后续现场证据核验，不将首轮算业务通过。六个失败会话均清理自有schema/宿主/进程且应用记录摘要不变。
+
+
+第二轮矩阵完整通过：既有EAP_RUN_BOARD_PERSISTENCE=true/密码环境保持；仅子进程设置EAP_RUN_TOOL_UNKNOWN_REVIEW=true、EAP_RUN_GIT_INTERRUPTION_MATRIX=true，EAP_PLAYWRIGHT_MODULE=H:/developerTools/ai/hermes/hermes-agent/node_modules/playwright-core，EAP_CHROMIUM=C:/Users/LH/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe。运行 `rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=ToolUnknownReviewAcceptanceTest#realGitResultInterruptionRequiresReviewAndExplicitRecovery' '-Dsurefire.failIfNoSpecifiedTests=false' test`：31模块闭包SUCCESS，6项全部通过、0跳过，7分17秒。日志git-interruption-matrix-2.log和时间窗git-interruption-matrix-2-run.json；六个会话和精简结果见[矩阵摘要](../../frontend/apps/web/__tests__/browser/artifacts/git-interruption-unknown/result.json)。
+
+status/diff × cancel/timeout/return的实际执行器结果分别CANCELLED/130、TIMED_OUT/124、SUCCEEDED/0，processExited/processTreeCleanup均true；结果持久化前中断宿主，重启UNKNOWN仅保留未确认字段，owner在途核对与同操作新请求409；跨操作仍可实际运行，越操作详情/核对404，不完整确认400。实际页面核对、原字段保留、JDBC/HTTP相同、关闭响应中断后禁止重提/显式重查、旧request幂等/迟到取消、新执行恢复、历史证据及再次重启审计不变均通过。取消两组各8项、其余四组各7项，共44组浏览器检查、0pageerror。
+
+六组还正常释放实际结果，业务分别持久CANCELLED/130、TIMED_OUT/124、SUCCEEDED/0，均有退出证据/无未知原因；resolve-unknown均409，再次显式请求SUCCEEDED。索引损坏对照均FAILED/128，精确恢复后SUCCEEDED；三个diff场景核验原index与三个工作文件字节不变、未暂存标记存在且仅暂存/未跟踪标记排除。每组cleanup全部true：只删自身schema，停自身host/原身份进程，应用执行记录ID/摘要不变。对照原始git-exited会覆盖，因此额外独立保存interrupted-result/interrupted-started与before-crash，避免混淆故障前结果和正常终态对照。
+
+真实核对响应丢失使用服务已返回的200/CLOSED_UNKNOWN，测试代理发送实际content-type及body长度后中断body，不发送伪造DTO；客户端进入network提示且核对POST只有1次。用户显式重查后读回同一关闭审计，取消意图仍保留；不需引入通用响应解析框架或修改runtime-client。结果摘要及4张截图入库，已查看390px响应丢失/二次确认及1440px历史证据；1440/900/390px无横向溢出。这是隔离真实HTTP/PostgreSQL/Vue自动化验证，非产品用户接受/完整装配重启/默认20秒超时验收。
+
+前端实际命令：`rtk proxy pnpm --dir frontend test run`，137文件844项通过；面板定向47项通过；`rtk proxy pnpm --dir frontend typecheck`、`rtk proxy pnpm --dir frontend build`、`rtk proxy pnpm --dir frontend check:architecture`通过；目标vp lint、面板stylelint和4文件vp fmt --check通过。保留既有测试网络防护/Node localStorage诊断及大chunk提示，不改阈值或跳过业务断言。最终后端兼容回归与完整离线结果见后续收尾。
+
+
+兼容定向回归：子进程EAP_RUN_TOOL_UNKNOWN_REVIEW/EAP_RUN_REAL_GIT_UNKNOWN/EAP_RUN_REAL_GIT_DIFF_UNKNOWN=true，矩阵门控false，原持久门控及Playwright/Chromium路径保持；运行 `rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=DefaultProcessExecutorTest,DescendantEvidenceTest,LocalProcessIdentityInspectorTest,ToolExecutionServiceTest,ToolExecutionJsonTest,ToolExecutionControllerTest,ToolExecutionPersistenceTest,ToolUnknownReviewAcceptanceTest,SchemaAndWiringTest,BackendModuleBoundaryTest' '-Dsurefire.failIfNoSpecifiedTests=false' test`：31模块闭包SUCCESS，10报告68项：67通过、1矩阵门控跳过，0失败/错误，3分13秒。日志git-interruption-targeted.log及按本次mtime XML统计git-interruption-targeted-summary.json。三类原有真实浏览器场景共19组、0pageerror；本轮六组矩阵已独立通过，不无故重跑或将门控跳过当实测。
+
+
+最终完整离线：仅子进程关闭所有已有EAP_RUN_*及新矩阵门控，执行 `rtk proxy mvn -B -ntp -f backend/pom.xml test`：32模块SUCCESS，163报告960项：851通过、109门控跳过，0失败/错误，6分08秒。日志git-interruption-offline.log及按本次mtime XML统计git-interruption-offline-summary.json；与六组矩阵、67项兼容实测分别记录，不计算混合覆盖率。已停止所有自有测试宿主/进程及5187监听；九个成功会话和六个首轮失败会话cleanup均true。独立只读JDBC确认无eap_unknown_qa_* schema，应用工具记录仍3条，聚合摘要9328dec3d51e0c83b3929e5a376073ab保持；V26/V27/V28/V29数据库与源码Flyway CRC分别-716806117/1802106427/-329790285/-508415836，29份已应用迁移，无改写。full-application起始未运行，结束保持未运行；不启停其他Java服务。
+
+收尾18个变更文件：14文本UTF-8无BOM/无替换字符、4张截图；191处本地Markdown目标/锚点、3类新增内容有限敏感模式及git diff --check通过，明细git-interruption-file-check.json。主方案对应TC-01/当前进度、台账、路线、指南及decision同步，旧阶段明确标历史。067c3d8已推送；此接续尚未提交/推送。当前仅新增取消意图提示与独立验收，不修改后端生产状态/API、默认timeout、生产Origin或迁移，不推广到SQL/源码写入UNKNOWN处置。后续优先补取消请求响应丢失、权限/IO/其他平台矩阵及产品人工接受；跨重启接管与TC-02反向调用仍按各自合同评审。
+
+本次提交准备：用户明确授权先提交并推送上述18文件，再继续取消请求响应丢失及权限/IO异常矩阵。已审查实际代码/测试/证据与规划同步，沿用紧邻实现阶段6项矩阵、67项兼容定向、960项完整离线（851通过/109门控跳过）及844项前端验证；提交准备不重跑业务或启停服务。再次检查UTF-8、本地文档目标/锚点、新增内容有限敏感模式与暂存空白，推送后回读本地与远端SHA。以上未提交口径保留为当时交付状态。

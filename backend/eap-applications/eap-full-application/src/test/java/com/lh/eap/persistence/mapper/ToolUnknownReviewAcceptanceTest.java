@@ -11,6 +11,8 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.core.io.*;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -30,6 +32,7 @@ class ToolUnknownReviewAcceptanceTest {
     private String base;
     private Path repository;
     private boolean realGit;
+    private String fault = "real-git";
 
     @Test void crashedOwnerLeavesLiveChildUntilExplicitOsReviewAndDurableHumanClosure() throws Exception {
         exercise(false);
@@ -42,6 +45,16 @@ class ToolUnknownReviewAcceptanceTest {
     void realGitDiffAbnormalExitAndRecoveryRequireScopedUnknownReview() throws Exception {
         operation = "git-diff";
         route = routeFor(operation);
+        exercise(true);
+    }
+    @ParameterizedTest(name = "{0} / {1}")
+    @EnabledIfEnvironmentVariable(named = "EAP_RUN_GIT_INTERRUPTION_MATRIX", matches = "true")
+    @CsvSource({"git-status,cancel", "git-diff,cancel", "git-status,timeout", "git-diff,timeout",
+            "git-status,return", "git-diff,return"})
+    void realGitResultInterruptionRequiresReviewAndExplicitRecovery(String selectedOperation, String selectedFault) throws Exception {
+        operation = selectedOperation;
+        route = routeFor(operation);
+        fault = selectedFault;
         exercise(true);
     }
     private static String routeFor(String operation) {
@@ -119,15 +132,32 @@ class ToolUnknownReviewAcceptanceTest {
                 var gitProcesses = identities.stream().filter(ToolUnknownReviewAcceptanceTest::isGit).toList();
                 assertFalse(gitProcesses.isEmpty());
                 write("owned-git-processes.json", identities);
-                stopOwned(gitProcesses.getLast());
-                for (var identity : identities.reversed()) stopOwned(identity);
-                write("git-resume.request", Map.of("verifiedAbnormalTermination", true));
+                if (fault.equals("real-git")) {
+                    stopOwned(gitProcesses.getLast());
+                    for (var identity : identities.reversed()) stopOwned(identity);
+                } else if (fault.equals("cancel")) {
+                    var cancelling = request("POST", route + "/" + id + "/cancel", null, 200);
+                    assertEquals("CANCELLING", cancelling.get("status"));
+                    assertEquals(true, cancelling.get("cancelRequested"));
+                }
+                write("git-resume.request", Map.of("scenario", fault));
                 awaitFile("git-exited.json");
                 var exited = ToolUnknownReviewFixture.JSON.readValue(read("git-exited.json"), Map.class);
-                assertEquals(false, exited.get("success")); assertNotEquals(0, ((Number) exited.get("exitCode")).intValue());
-                var metadata = (Map<?,?>) exited.get("metadata");
-                assertEquals(true, metadata.get("processExited")); assertEquals(true, metadata.get("processTreeCleanup"));
-                assertEquals(beforeCrash, store.find(UUID.fromString(id)).orElseThrow(), "Actual failure has not been committed by workflow");
+                assertActualResult(exited);
+                write("interrupted-result.json", exited);
+                write("interrupted-started.json", ToolUnknownReviewFixture.JSON.readValue(read("git-started.json"), Map.class));
+                beforeCrash = store.find(UUID.fromString(id)).orElseThrow();
+                assertEquals(fault.equals("cancel") ? "CANCELLING" : "RUNNING", beforeCrash.status());
+                assertEquals("RUNNING", beforeCrash.steps().getLast().status());
+                assertNull(beforeCrash.exitCode()); assertNull(beforeCrash.exitEvidence());
+                assertEquals(fault.equals("cancel"), beforeCrash.cancelRequested());
+                write("before-crash.json", beforeCrash);
+                request("POST", route + "/" + id + "/resolve-unknown", Map.of("requestId", UUID.randomUUID(),
+                        "note", "Active owner cannot be closed by human review", "processTreeStopped", true), 409);
+                assertEquals(beforeCrash, store.find(UUID.fromString(id)).orElseThrow());
+                // Real cleanup can publish additional descendant identities without committing the result.
+                for (var child : (List<?>) beforeCrash.steps().getLast().evidence().get("processDescendants"))
+                    if (!identities.contains(child)) identities.add((Map<?,?>) child);
             } else {
                 var childInfo = ToolUnknownReviewFixture.JSON.readValue(read("child-ready.json"), Map.class);
                 childPid = ((Number) childInfo.get("pid")).longValue();
@@ -142,6 +172,7 @@ class ToolUnknownReviewAcceptanceTest {
             var unknown = request("GET", route + "/" + id, null, 200);
             assertEquals("UNKNOWN", unknown.get("status"));
             assertEquals("SERVICE_RESTART_EXIT_UNCONFIRMED", unknown.get("unconfirmedReason"));
+            assertEquals(fault.equals("cancel"), unknown.get("cancelRequested"));
             assertEquals(beforeCrash.steps(), store.find(UUID.fromString(id)).orElseThrow().steps());
             request("POST", route, Map.of("requestId", UUID.randomUUID()), 409);
             var otherRoute = routeFor(operation.equals("git-diff") ? "git-status" : "git-diff");
@@ -152,7 +183,8 @@ class ToolUnknownReviewAcceptanceTest {
             request("GET", route + "/" + id + "/process-review", null, 200);
             assertEquals(beforeInspection, store.find(UUID.fromString(id)).orElseThrow());
             write("browser-input.json", Map.of("base", base, "executionId", id, "requestId", requestId,
-                    "session", session.toString(), "frontend", repository.resolve("frontend").toString(), "childPid", childPid, "realGit", realGit, "operation", operation));
+                    "session", session.toString(), "frontend", repository.resolve("frontend").toString(), "childPid", childPid,
+                    "realGit", realGit, "operation", operation, "dropReviewResponse", !fault.equals("real-git")));
             browser = new ProcessBuilder("node", repository.resolve("frontend/apps/web/__tests__/browser/tool-unknown-review-live.mjs").toString(),
                     "--session", session.toString()).directory(repository.resolve("frontend").toFile())
                     .redirectErrorStream(true).redirectOutput(session.resolve("browser.log").toFile()).start();
@@ -183,6 +215,7 @@ class ToolUnknownReviewAcceptanceTest {
             assertEquals(ToolUnknownReviewFixture.JSON.readValue(ToolUnknownReviewFixture.JSON.writeValueAsString(closed), Map.class),
                     request("GET", route + "/" + id, null, 200), "Independent JDBC snapshot matches the actual HTTP closure");
             if (realGit) {
+                if (!fault.equals("real-git")) verifyConfirmedResultControl(store);
                 var index = session.resolve("workspace/.git/index");
                 var savedIndex = Files.exists(index) ? Files.readAllBytes(index) : null;
                 if (operation.equals("git-diff")) assertArrayEquals(originalIndex, savedIndex);
@@ -222,7 +255,7 @@ class ToolUnknownReviewAcceptanceTest {
             assertEquals(closed, store.find(closed.id()).orElseThrow());
             write("result.json", Map.of("passed", true, "executionId", id, "schema", schema,
                     "restartPreservedClosedUnknown", true, "ownedProcessTreeStopped", true,
-                    "realGitAbnormalExit", realGit, "operation", operation,
+                    "realGitAbnormalExit", realGit && fault.equals("real-git"), "operation", operation, "fault", fault,
                     "browser", ToolUnknownReviewFixture.JSON.readValue(read("browser-result.json"), Map.class)));
         } finally {
             if (browser != null && browser.isAlive()) browser.destroyForcibly().waitFor(5, TimeUnit.SECONDS);
@@ -238,12 +271,59 @@ class ToolUnknownReviewAcceptanceTest {
         }
     }
 
+    private void assertActualResult(Map<?,?> result) {
+        var metadata = (Map<?,?>) result.get("metadata");
+        var expected = switch (fault) { case "cancel" -> "CANCELLED"; case "timeout" -> "TIMED_OUT";
+            case "return" -> "SUCCEEDED"; default -> "FAILED"; };
+        assertEquals(expected, metadata.get("executorStatus"), result.toString());
+        assertEquals(fault.equals("return"), result.get("success"));
+        if (fault.equals("real-git")) assertNotEquals(0, ((Number) result.get("exitCode")).intValue());
+        else assertEquals(fault.equals("cancel") ? 130 : fault.equals("timeout") ? 124 : 0,
+                ((Number) result.get("exitCode")).intValue());
+        assertEquals(true, metadata.get("processExited")); assertEquals(true, metadata.get("processTreeCleanup"));
+        assertEquals(false, metadata.get("processNotStarted"));
+    }
+    private void verifyConfirmedResultControl(JdbcToolExecutionStore store) throws Exception {
+        stopHost(hosts.getLast(), false);
+        for (var file : List.of("git-started.json", "git-exited.json", "git-resume.request", "git-return.request"))
+            Files.deleteIfExists(session.resolve(file));
+        startHost(true);
+        var started = request("POST", route, Map.of("requestId", UUID.randomUUID()), 202);
+        var id = (String) started.get("id");
+        awaitFile("git-started.json");
+        var running = store.find(UUID.fromString(id)).orElseThrow();
+        var identity = running.steps().getLast().evidence();
+        identities.add(identity);
+        assertOwnedAlive(identity);
+        if (fault.equals("cancel")) {
+            var cancelling = request("POST", route + "/" + id + "/cancel", null, 200);
+            assertEquals("CANCELLING", cancelling.get("status"));
+        }
+        write("git-resume.request", Map.of("control", true));
+        awaitFile("git-exited.json");
+        assertActualResult(ToolUnknownReviewFixture.JSON.readValue(read("git-exited.json"), Map.class));
+        assertNull(store.find(UUID.fromString(id)).orElseThrow().exitCode());
+        write("git-return.request", Map.of("persistActualResult", true));
+        var confirmed = settle(started);
+        assertEquals(fault.equals("cancel") ? "CANCELLED" : fault.equals("timeout") ? "TIMED_OUT" : "SUCCEEDED", confirmed.get("status"));
+        assertNotNull(confirmed.get("exitEvidence")); assertNull(confirmed.get("unconfirmedReason"));
+        request("POST", route + "/" + id + "/resolve-unknown", Map.of("requestId", UUID.randomUUID(),
+                "note", "Confirmed execution must reject UNKNOWN review", "processTreeStopped", true), 409);
+        for (var step : store.find(UUID.fromString(id)).orElseThrow().steps())
+            for (var child : (List<?>) step.evidence().getOrDefault("processDescendants", List.of()))
+                identities.add((Map<?,?>) child);
+        assertFalse(ownedIdentityAlive(identity));
+        write("confirmed-result-control.json", confirmed);
+        var recovered = settle(request("POST", route, Map.of("requestId", UUID.randomUUID()), 202));
+        assertEquals("SUCCEEDED", recovered.get("status"));
+        write("confirmed-control-recovered.json", recovered);
+    }
     private void startHost(boolean fault) throws Exception {
         Files.deleteIfExists(session.resolve("host.json"));
         var java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
         var host = new ProcessBuilder(java, "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8", "-cp",
                 System.getProperty("surefire.test.class.path", System.getProperty("java.class.path")),
-                ToolUnknownReviewFixture.class.getName(), session.toString(), schema, fault && realGit ? "real-git" : Boolean.toString(fault), operation)
+                ToolUnknownReviewFixture.class.getName(), session.toString(), schema, fault && realGit ? this.fault : Boolean.toString(fault), operation)
                 .redirectErrorStream(true).redirectOutput(session.resolve("host-" + hosts.size() + ".log").toFile()).start();
         hosts.add(host); awaitFile("host.json");
         var info = ToolUnknownReviewFixture.JSON.readValue(read("host.json"), Map.class);

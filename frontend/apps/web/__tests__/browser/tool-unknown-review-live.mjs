@@ -1,4 +1,4 @@
-// Opt-in acceptance against the test-only socket host. No intercepted API responses or product fault endpoints.
+// Opt-in acceptance against real HTTP/JDBC. Optional test proxy drops one actual committed review response.
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { readFile, writeFile, access } from 'node:fs/promises'
@@ -15,6 +15,7 @@ const input = JSON.parse(await readFile(resolve(session, 'browser-input.json'), 
 assert.equal(input.session, session)
 assert.match(input.base, /^http:\/\/127\.0\.0\.1:\d+$/)
 const { chromium } = createRequire(import.meta.url)(process.env.EAP_PLAYWRIGHT_MODULE)
+let droppedReviewResponse = false
 const server = await createServer({
   configFile: false,
   root: resolve(input.frontend, 'apps/web'),
@@ -27,10 +28,64 @@ const server = await createServer({
     host: '127.0.0.1',
     port: 5187,
     strictPort: true,
-    proxy: { '/api': { target: input.base, changeOrigin: true } },
+    proxy: {
+      '/api': {
+        target: input.base,
+        changeOrigin: true,
+        selfHandleResponse: true,
+        configure(proxy) {
+          proxy.on('proxyRes', (upstream, request, response) => {
+            if (
+              input.dropReviewResponse &&
+              upstream.statusCode === 200 &&
+              !droppedReviewResponse &&
+              request.method === 'POST' &&
+              request.url ===
+                '/api/cli-programs/git/operations/' +
+                  input.operation +
+                  '/executions/' +
+                  input.executionId +
+                  '/resolve-unknown'
+            ) {
+              droppedReviewResponse = true
+              const chunks = []
+              upstream.on('data', (chunk) => chunks.push(chunk))
+              upstream.on('error', () => response.destroy())
+              upstream.on('end', () => {
+                // The real backend has committed and returned; drop transport only, never manufacture a DTO.
+                void writeFile(
+                  resolve(session, 'dropped-review-response.json'),
+                  JSON.stringify({
+                    status: upstream.statusCode,
+                    body: Buffer.concat(chunks).toString('utf8'),
+                  }),
+                ).then(
+                  () => {
+                    // Flush actual headers first; Chromium may retry an empty stale-socket reset.
+                    // Interrupt the declared body in transit to exercise network failure without replay.
+                    response.writeHead(upstream.statusCode, {
+                      'content-type': upstream.headers['content-type'],
+                      'content-length': Buffer.concat(chunks).length,
+                      connection: 'close',
+                    })
+                    response.flushHeaders()
+                    setTimeout(() => response.destroy(), 25)
+                  },
+                  () => response.destroy(),
+                )
+              })
+              return
+            }
+            response.writeHead(upstream.statusCode ?? 502, upstream.headers)
+            upstream.on('error', () => response.destroy())
+            upstream.pipe(response)
+          })
+        },
+      },
+    },
   },
 })
-let browser
+let browser, page
 const checks = [],
   errors = [],
   reviews = []
@@ -56,7 +111,7 @@ async function handshake(request, reply) {
 try {
   await server.listen()
   browser = await chromium.launch({ executablePath: process.env.EAP_CHROMIUM, headless: true })
-  const page = await browser.newPage({ viewport: { width: 1440, height: 960 } })
+  page = await browser.newPage({ viewport: { width: 1440, height: 960 } })
   page.setDefaultTimeout(15000)
   page.on('pageerror', (error) => errors.push(error.message))
   page.on('request', (request) => {
@@ -84,6 +139,13 @@ try {
     'trusted-' + otherOperation + '-invoke',
   )
   const original = await api('GET', endpoint, undefined, 200)
+  if (original.cancelRequested) {
+    await button('cancel-unconfirmed').waitFor()
+    assert.equal(await button('cancelled').count(), 0)
+    checks.push(
+      'persisted cancellation intent remains visible without claiming confirmed cancellation',
+    )
+  }
   await api('POST', route, { requestId: crypto.randomUUID() }, 409)
   await api('GET', endpoint.replace(operation, otherOperation), undefined, 404)
   await api(
@@ -123,7 +185,7 @@ try {
     assert.equal(reviews.length, 0)
     await page.screenshot({ path: resolve(session, 'real-git-unknown.png'), fullPage: true })
     checks.push(
-      'actual Git was abnormally terminated before host crash; persisted UNKNOWN does not infer an exit result',
+      'actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result',
     )
     await handshake('verify-git-stopped.request', 'tree-stopped.json')
     checks.push(
@@ -167,7 +229,7 @@ try {
   }
 
   const note = input.realGit
-    ? 'Real Git fault acceptance: verified the owned Git process and its captured helper tree stopped by exact PID, start time and executable after forced abnormal termination. Automated review, not product user acceptance.'
+    ? 'Real Git interruption acceptance: verified the owned Git process and its captured helper tree stopped by exact PID, start time and executable. Automated review, not product user acceptance.'
     : 'Controlled acceptance harness: verified captured parent, owned Java child and captured helper processes stopped by exact PID, start time and executable. Automated review fixture, not product user acceptance.'
   await button('review-note').fill(note)
   assert.equal(await button('review-open').isDisabled(), true)
@@ -189,6 +251,25 @@ try {
     })
   }
   await dialog.getByRole('button', { name: '保存核对并关闭阻塞', exact: true }).click()
+  if (input.dropReviewResponse) {
+    await button('network').waitFor()
+    const transport = JSON.parse(
+      await readFile(resolve(session, 'dropped-review-response.json'), 'utf8'),
+    )
+    assert.equal(transport.status, 200)
+    assert.equal(JSON.parse(transport.body).status, 'CLOSED_UNKNOWN')
+    assert.equal((await api('GET', endpoint, undefined, 200)).status, 'CLOSED_UNKNOWN')
+    assert.equal(await button('invoke').isDisabled(), true)
+    assert.equal(await button('review-open').isDisabled(), true)
+    assert.equal(await button('review-note').isDisabled(), true)
+    await wait(1200)
+    assert.equal(reviews.length, 1)
+    await page.screenshot({ path: resolve(session, 'review-response-lost.png'), fullPage: true })
+    await button('recheck').click()
+    checks.push(
+      'committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit',
+    )
+  }
   await button('summary').filter({ hasText: '人工关闭（结果仍未知）' }).waitFor()
   assert.equal(reviews.length, 1)
   assert.equal(reviews[0].note, note)
@@ -197,6 +278,7 @@ try {
   assert.equal(closed.status, 'CLOSED_UNKNOWN')
   assert.equal(closed.resolution.operator, 'local-operator')
   assert.equal(closed.resolution.note, note)
+  if (original.cancelRequested) await button('cancel-unconfirmed').waitFor()
   assert.ok(closed.resolution.resolvedAt)
   for (const [key, value] of Object.entries(original)) {
     if (!['status', 'resolution'].includes(key))
@@ -263,6 +345,10 @@ try {
     JSON.stringify({ passed: checks.length, checks, errors }, null, 2),
   )
 } catch (error) {
+  if (page && !page.isClosed()) {
+    await page.screenshot({ path: resolve(session, 'failure.png'), fullPage: true })
+    await writeFile(resolve(session, 'failure.txt'), await page.locator('body').innerText())
+  }
   await writeFile(
     resolve(session, 'browser-result.json'),
     JSON.stringify({ checks, errors, failure: String(error) }, null, 2),
