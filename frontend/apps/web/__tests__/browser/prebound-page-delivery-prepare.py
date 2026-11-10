@@ -14,7 +14,7 @@ state=json.loads(statePath.read_text(encoding='utf-8')) if statePath.exists() el
 def save():statePath.write_text(json.dumps(state,indent=2),encoding='utf-8')
 save()
 if (out/'proposal.json').exists():print('Existing real proposal preserved; no second model request');raise SystemExit()
-target='frontend/apps/web/src/features/chat/GenerationBaseline.vue'
+target='frontend/apps/web/src/components/GenerationBaseline.vue'
 goal='Improve the actual generation snapshot panel: bound tasks must show a PREBOUND badge in the collapsed summary and a clear next delivery step after source application. Keep task identity, hashes and prototype evidence intact.'
 criteria='With taskBinding: the summary shows generation.prebound in @eap/ui Badge with data-testid=generation-prebound, and the expanded content shows generation.deliveryNext in p[data-testid=generation-next-step]. Without taskBinding neither is present. No claims of automatic validation or acceptance, no network calls/navigation, and existing generation evidence remains unchanged.'
 if 'prototype' not in state:

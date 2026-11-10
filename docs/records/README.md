@@ -22,3 +22,5 @@
 - 本轮整理与后续验证记录写入[开发与验收指南](../agent-development-guide.md)，不再新增一份日期交付报告。
 
 当前交付接续：[PREBOUND真实页面候选、应用、独立检查与技术决定](delivery-history.md#prebound-page-delivery)，包含V32约束修复及任务应用证据目录；原阶段数字不合并为本批全量。
+
+当前恢复接续：[任务持久源码候选与Chat失效后的正式重启恢复](delivery-history.md#board-code-recovery)，使用原持久证据和写入服务，区别于上一批真实模型生成证据。

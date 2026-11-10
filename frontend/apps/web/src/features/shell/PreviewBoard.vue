@@ -20,6 +20,7 @@ import { localProjectState } from './localProjects'
 import { useMockServices } from '../../lib/serviceConfig'
 import BoardRunPanel from './BoardRunPanel.vue'
 import BoardPrototypePanel from './BoardPrototypePanel.vue'
+import BoardCodeCandidates from './BoardCodeCandidates.vue'
 import { readBoardEdit, writeBoardEdit, readBoardCreate, writeBoardCreate } from './boardEdits'
 const { t } = useI18n()
 const columns: BoardColumn[] = ['planned', 'ready', 'running', 'acceptance', 'done']
@@ -30,6 +31,7 @@ const query = ref(''),
   note = ref('')
 const priorityFilter = ref<'all' | 'p0' | 'p1' | 'p2'>('all')
 const prototypePending = ref(false)
+const codePending = ref(false)
 const detailTab = ref('preparation')
 const visitedDetailTabs = ref(new Set<string>(['preparation']))
 watch(detailTab, (tab) => visitedDetailTabs.value.add(tab))
@@ -82,7 +84,7 @@ const dirty = computed(
 )
 const stale = computed(() => !!selected.value && draftRevision.value !== selected.value.revision)
 function guarded(action: () => void) {
-  if (busy.value) return
+  if (busy.value || codePending.value) return
   if (dirty.value) pendingAction.value = action
   else action()
 }
@@ -201,6 +203,7 @@ watch(selectedId, () => {
   detailTab.value = 'preparation'
   visitedDetailTabs.value = new Set(['preparation'])
   prototypePending.value = false
+  codePending.value = false
   const task = selected.value
   const cached = task ? readBoardEdit(draftStore, task.id, useMockServices) : null
   draftNotes.value = cached?.notes ?? task?.notes ?? ''
@@ -593,7 +596,7 @@ function open(task: BoardTask) {
     <Dialog
       v-if="selected"
       :title="selected.title"
-      :busy="busy || !!pendingAction"
+      :busy="busy || !!pendingAction || codePending"
       :close-label="t('preview.close')"
       close-test-id="board-close-detail"
       size="lg"
@@ -613,6 +616,7 @@ function open(task: BoardTask) {
             },
             { id: 'prototype', label: t('boardRun.prototypeTab'), testId: 'board-tab-prototype' },
             { id: 'runs', label: t('boardRun.runsTab'), testId: 'board-tab-runs' },
+            { id: 'code', label: t('boardCode.tab'), testId: 'board-tab-code' },
           ]"
         />
         <p v-if="dirty && detailTab !== 'preparation'" role="status">
@@ -761,6 +765,20 @@ function open(task: BoardTask) {
           />
         </section>
         <section
+          v-if="visitedDetailTabs.has('code')"
+          v-show="detailTab === 'code'"
+          class="board-detail-section"
+          :inert="detailTab !== 'code'"
+        >
+          <BoardCodeCandidates
+            :key="selected.id + '-code'"
+            :task="selected"
+            :disabled="busy || dirty || stale || prototypePending"
+            @pending="codePending = $event"
+            @changed="load"
+          />
+        </section>
+        <section
           v-if="visitedDetailTabs.has('runs')"
           v-show="detailTab === 'runs'"
           class="board-detail-section"
@@ -770,7 +788,7 @@ function open(task: BoardTask) {
           <BoardRunPanel
             :key="selected.id"
             :task="selected"
-            :disabled="busy || dirty || stale || prototypePending"
+            :disabled="busy || dirty || stale || prototypePending || codePending"
             @changed="load"
           />
           <Collapse class="board-evidence"

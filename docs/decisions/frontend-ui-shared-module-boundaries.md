@@ -72,6 +72,7 @@ apps/web/src
 | 浮层定位 / 关闭 / 焦点 | `packages/ui/src/popover`、`dropdown-menu`，内部 Reka | 已从 DesktopNavigation、ChatWorkspace、TaskComposer 移出通用行为；删除私有 popupPlacement | 保持公共契约，无领域数据，不新建平行包 |
 | PluginSlot | `features/plugins`；聊天页由 `App.vue` 以 `chatView` 注入，避免插件 feature 引用聊天 `.vue` | `@eap/plugin-sdk` + runtime | 用户批准插件迁移切片后 |
 | 原型版本内容展示 | `components/PrototypeVersionContent.vue`；解析与语义节点留 `features/shell` 原型域 | Builder 与任务/Run 共用语义预览；只接受语义版本，未知映射明确阻塞；不是基础 UI | 第二宿主复用完整原型域时再迁 `@eap/prototype-*` |
+| 生成快照与候选应用 | `components/GenerationBaseline.vue`、`components/ProposalApplication.vue`（从Chat移出，旧文件删除） | Chat和任务候选共同使用的L3产品组合，复用Badge/Collapse/Checkbox/Button；Board通过显式operations接入任务API，无网络错误回退另一入口 | 第二宿主复用完整候选域时再评估抽包，不增加平行应用面板 |
 | 候选文件Diff | `components/ProposalDiffView.vue`，Chat与专家审批共用 | 应用层只读候选展示，复用现有Monaco/文本降级，销毁前先解除模型绑定；审批状态/API留各feature | 第二宿主复用候选交付合同再抽包，不新增平行Diff或基础UI包 |
 | 场景原型工作面 | `features/ScenarioWorkspace.vue` 只组装版本选择与开发准备，设计器经既有 Builder 入口打开 | 不再复制挂载 LayoutDraft/GrapesJS；场景返回状态留应用层 | 无新增共享包 |
 
@@ -227,3 +228,5 @@ apps/web/src
 2026-11-10发布恢复接续：核对面板复用@eap/ui Feedback/Button，冻结请求和浏览器恢复证据留L4 features/shell/prototypePublication.ts，API合同由@eap/runtime-client公开；无新共享类别或包。格式/lint/stylelint/typecheck/architecture及正式Chromium恢复整链通过，见[当前验收](../planning-status.md#publication-recovery-validation)。
 
 2026-11-10 PREBOUND交付接续：BoardAppliedCandidates为shell L4只读业务组合，复用Button/Feedback；任务及Run范围、失败旧快照/选择意图留应用，公共DTO/API在runtime-client。真实模型改动GenerationBaseline仍复用Badge/Collapse，无新共享类别/包；architecture、定向组件及生产App整链通过。见[当前台账](../planning-status.md#prebound-page-delivery-validation)。
+
+2026-11-10候选恢复接续：BoardCodeCandidates属shell L4任务域，复用已登记L3生成快照/候选应用及ProposalDiffView，底层@eap/ui控件不复制。共享应用组件监听稳定身份key，操作状态同步目录，拒绝数据变化引发网络循环。类型/架构/定向及正式浏览器通过，见[当前验收](../planning-status.md#board-code-recovery-validation)。

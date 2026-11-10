@@ -2,7 +2,7 @@
 import { afterEach, expect, it } from 'vite-plus/test'
 import { createApp, h, type App } from 'vue'
 import { i18n } from '../../../src/lib/i18n'
-import GenerationBaseline from '../../../src/features/chat/GenerationBaseline.vue'
+import GenerationBaseline from '../../../src/components/GenerationBaseline.vue'
 let app: App | undefined
 afterEach(() => {
   app?.unmount()

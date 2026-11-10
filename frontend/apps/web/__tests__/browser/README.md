@@ -1,5 +1,24 @@
 # SQL Agent 浏览器视觉回归
 
+## 任务持久候选与真实重启恢复
+
+`board-code-recovery-live.mjs` 打开生产 App，连接真正 full-application 和开发库，在没有本地 Chat 历史、原 Chat 会话已返回404的条件下验证任务候选恢复。它不调用模型、不重建会话，也不重复此前真实页面交付的897项检查。上一批真实模型候选只读回核对；新增待应用/只读/陈旧候选是明确的确定性数据，实际持久到JDBC并写入隔离工作树，用于真实文件动作及拒绝边界验证。
+
+先运行 `BoardCodeProposalRecoveryTest,BoardCodeProposalControllerTest,FullApplicationCompositionTest` 定向（实库门控 EAP_RUN_SINGLE_CONTRACTS=true / EAP_RUN_BOARD_PERSISTENCE=true），已有仓库内 `backend/target/prebound-page-workspace` 隔离工作树、正式宿主/原始模型对照记录后，可从仓库根明确准备数据：
+
+```powershell
+$env:EAP_RUN_BOARD_CODE_BROWSER='approved'
+rtk proxy python -X utf8 frontend/apps/web/__tests__/browser/board-code-recovery-prepare.py
+```
+
+该工具只在已存在的隔离工作树创建三个自有源码文件及Task/Generation/Proposal，已有fixture.json时保留，不自动清理/覆盖。然后真正重启full（无需新迁移，仍V32），在frontend目录设置已有Playwright/Chromium路径并运行：
+
+```powershell
+rtk proxy node apps/web/__tests__/browser/board-code-recovery-live.mjs
+```
+
+实际6组/0pageerror/0浏览器外呼：原真实候选在Chat404下可读；无历史列表/Monaco Diff/明确应用，提交后响应丢失由GET核对；刷新APPLIED及终态重放；只读403；旧revision409后明确REFUSED且文件/Task不变；跨Task/project/workspace404。执行中只有1次浏览器apply和1次refuse，0模型请求/Chat重建/交付接受。证据及截图在 `artifacts/board-code-recovery`；[合同、独立JDBC回读与失败修复](../../../../../docs/records/delivery-history.md#board-code-recovery)保留，不能当作复杂页面生成质量或用户产品接受。
+
 ## PREBOUND 真实页面交付
 
 `prebound-page-delivery-prepare.py` 与 `prebound-page-delivery-live.mjs` 使用已配置真实模型、正式 full-application、实际开发库和生产 App。它们会生成/应用一个明确目标文件并保存技术交付决定，不属于 mock 或普通无副作用测试。完整前置、数据身份、隔离边界及失败过程见[主题记录](../../../../../docs/records/delivery-history.md#prebound-page-delivery)。

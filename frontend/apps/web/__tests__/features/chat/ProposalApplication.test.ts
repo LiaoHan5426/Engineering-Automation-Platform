@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, ref, type App } from 'vue'
 import { runtimeApi, type CodeProposal } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
-import ProposalApplication from '../../../src/features/chat/ProposalApplication.vue'
+import ProposalApplication from '../../../src/components/ProposalApplication.vue'
 const proposal: CodeProposal = {
   id: 'p1',
   conversationId: 'c1',

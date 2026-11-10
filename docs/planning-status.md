@@ -1,20 +1,39 @@
 # 规划状态与验收台账
 
-> 当前已提交基线为 `edada582043345d301161c9fcb69175f5d2b0ea5`（发布恢复55文件，已推送）。本轮接续完成限定真实PREBOUND页面交付：V32修正当前语义原型快照约束，新增任务应用证据目录/选择，真实模型候选→页面确认应用→独立检查→交付→明确技术决定整链已验。该批随本次提交交付，沿用已记录结果、不重复测试；用户产品接受仍独立，提交推送状态以Git回读为准。
+> 当前已提交并推送基线为 `b9a9b124fa518457b5da7c897a077db23da89a7b`（PREBOUND真实页面交付42文件）。提交沿用已有验证，未重复测试。接续新增任务侧持久源码候选列表、Diff审阅、明确应用/拒绝及真实重启恢复，随本次提交交付，沿用已有验证不重复测试；无Chat会话自动重建、模型重放或第二套源码写入机制。
 
-依据：v1.6当前合同及有效决策。已提交实现基线为 `edada58`（2026-11-10，发布恢复55文件已推送）；提交沿用旧结果未重复测试。本轮限定PREBOUND真实页面交付随本次提交交付，原阶段测试数字分列保留。开发阶段演进规则以根[AGENTS.md](../AGENTS.md#development-evolution)为准；已排查五组收敛及正式库迁移限制见[本批验收](#single-contract-validation)，首次排查保留为历史快照。
+依据：v1.6当前合同及有效决策。已提交实现基线为 `b9a9b12`（2026-11-10，PREBOUND页面交付42文件已推送）；提交沿用原结果未重复测试。当前任务持久候选重启恢复随本次提交交付，提交沿用已有结果不重复测试，旧阶段数字保留。开发阶段演进规则以根[AGENTS.md](../AGENTS.md#development-evolution)为准；已排查五组收敛及正式库迁移限制见[本批验收](#single-contract-validation)，首次排查保留为历史快照。
 
 本表跟踪完整范围，不因局部阶段完成把其他项关闭。`实现通过`仅限列明能力，用户人工接受、供应商与平台验收不能由代理或 Mock 替代。
 
 ## 当前基线与完成口径
 
-当前已提交实现基线：`edada582043345d301161c9fcb69175f5d2b0ea5`；发布恢复55文件已提交推送。当前PREBOUND页面交付随本次提交交付，提交阶段只复核差异/编码/链接/敏感模式，未重复测试；隔离验证工作树的本地基线提交只用于验证，未改main或推送。历史阶段数字与授权保留在主题记录，不作为新代码的全量重测结果。
+当前已提交实现基线：`b9a9b124fa518457b5da7c897a077db23da89a7b`；PREBOUND页面交付42文件已提交推送，HEAD/origin/main/远端已核一致。当前任务候选恢复随本次提交交付，提交不重复测试；隔离工作树的本地验证基线未推送。历史阶段数字与授权保留在主题记录，不作为新代码的全量重测结果。
 
 <a id="validation-baseline"></a>
 
+<a id="board-code-recovery-validation"></a>
+
+### 任务持久源码候选与正式重启恢复（2026-11-10，接续b9a9b12，随本次提交交付）
+
+[合同、命令和失败过程](records/delivery-history.md#board-code-recovery)；[6组正式页面结果](../frontend/apps/web/__tests__/browser/artifacts/board-code-recovery/result.json)；[JDBC独立回读](../frontend/apps/web/__tests__/browser/artifacts/board-code-recovery/database-verification.json)。
+
+| 范围 | 实现及实际证据 | 边界 |
+|---|---|---|
+| 先行提交 | b9a9b12提交推送42文件，HEAD/origin/main/远端一致；沿用后端4/前端37/正式897项与4组旧结果，未重复测试 | 暂存展示patch混入CRCRLF，只将可读diff按LF重建；原候选JSON/源码/哈希不改 |
+| 持久恢复入口 | GET任务code-proposals目录/详情，项目/Task/操作者/当前进程工作区隔离；最多20条/截断，可查看原revision；无需Chat注册表/本地历史 | 无新表/迁移；code_generation/code_proposal仍唯一权威；任务目录不替代源码/Task应用校验 |
+| 明确动作 | task侧apply/refuse要求精确project/current revision/confirmed=true，conversation由服务端原始记录推导；apply复用CodeChangeService及原claim锁/源码基线/读回；旧任务版本不能应用但可明确拒绝 | APPLIED只读/幂等；READ_ONLY403、UNKNOWN/APPLYING互锁不释放，无盲目重试、重连或重新生成 |
+| 页面/共享落点 | 任务详情新增源码候选页签，明确读取→原Task/原型生成快照→Monaco Diff→确认应用或二次确认拒绝；失败旧快照禁写、迟到请求隔离、在途关闭/Run阻止 | GenerationBaseline/ProposalApplication移到components供Chat和Board复用，删旧文件无转发壳；public UI继续复用@eap/ui，无第二应用面板实现 |
+| 后端新定向 | BoardCodeProposalRecoveryTest/ControllerTest/FullApplicationCompositionTest共4项通过/0跳过；UUID自有schema真实V1～V32、文件与JDBC；重建service无Chat也能读取应用，隔离/只读/旧revision拒绝、REFUSED重放/UNKNOWN阻塞 | 测试只删除自有schema，不建/删数据库；不是新模型效果验证 |
+| 前端新定向 | 5文件45项通过（候选/共享应用/生成快照23项，受影响看板/Mock22项）；复核5项覆盖每次独立JSON对象回读不循环、列表状态同步、丢响应核对及旧版本拒绝 | 重叠17/5项重跑不累加；共享面板由数组watch改稳定身份key，真实浏览器先发现循环读取后修复 |
+| 正式重启 | 真实主full及隔离full JVM重建，原模型Chat返回404；原真实候选仍APPLIED且generation/hash保持，任务接口可读 | 主PID8824/8080，隔离PID40872/54445健康；32份迁移未变，无repair/clean/baseline，不复活Chat |
+| 浏览器/JDBC | 全新存储生产App6组、0pageerror/0外呼/0模型：真Monaco、确认后真实文件写入并丢弃POST响应→GET恢复、刷新APPLIED、readonly403/旧revision409、明确REFUSED、跨Task/project/workspace404 | 新待应用/只读/旧版本为明确确定性夹具，非真实模型；原真实模型已应用记录只读核对。1次浏览器apply、1次refuse，3任务仍ready/r1/r1/r2，未接受交付 |
+| 工程检查 | typecheck/architecture/build通过；相关TS/Vue及浏览器脚本format/lint通过，新组件stylelint通过；保留大chunk提示 | 不重跑上一批897项或真实模型；变动涉及的新定向独立执行，无全stylelint/平台穷举声明 |
+| 后续关口 | 候选恢复不等于恢复模型记忆、流式事件、在途进程或UNKNOWN人工解除 | 复杂页面、多文件、UNKNOWN人工处置及用户产品接受独立，不重复新增注册表/执行机制 |
+
 <a id="prebound-page-delivery-validation"></a>
 
-### PREBOUND真实单文件页面交付（2026-11-10，接续edada58，随本次提交交付）
+### PREBOUND真实单文件页面交付（2026-11-10，已随b9a9b12提交；以下为原阶段证据）
 
 [合同、命令与失败过程](records/delivery-history.md#prebound-page-delivery)；[4组正式页面结果](../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/result.json)；[JDBC独立回读](../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/database-verification.json)。
 
@@ -316,7 +335,7 @@
 | EX-01 专家 | 父子导航、独立三栏编辑、任务摘要/按需详情、终态停止轮询与静默更新已交付，见[工作区合同](decisions/expert-workspace-navigation.md)；专业行为版本持久绑定、SQL Agent工具循环/检查点恢复/后台调度/单SQL文件审批已接通。真实Responses两轮整链及复杂SQL三类限定样例有独立证据；单专家授权知识→Chat、撤权/旧记忆隔离已有实库回归 | 新工作台原生125%/150%与用户接受；其他行为编辑器/资源整合、完整SQL作用域/生产效果；Chat引用不执行DAG或自动获得工具权限 |
 | PB-01 原型编辑 | Grapes工程+语义Schema、8类映射、保存重开/预览；已接EditorWorkbench三栏壳，浏览器编辑/本地重开/交互预览及未知映射阻止通过，数据模型仍归原型域 | 按目标页面逐项补状态/动作/组件映射；原生缩放、用户接受及真实交付 |
 | PB-02 生成基线 | 单目标完整有界源码、原型及生成前Task/revision快照已落地；生成期间变化/额外目标拒绝，PREBOUND关联已交付（69892f3）；见 [阶段记录](records/delivery-history.md#code-generation-baseline)、[阶段记录](records/delivery-history.md#code-task-prebinding) | 限定真实供应商单文件改页及PREBOUND整链已验；多文件组件图、快照保留期及用户产品接受仍后续 |
-| PB-03 受控应用 | 持久单文件候选、意图/读回、未知保护、Task→workspace互锁及POST_HOC/PREBOUND交付归因已通过实库/回归；见 [阶段记录](records/delivery-history.md#code-proposal-application)、[阶段记录](records/delivery-history.md#code-task-prebinding) | 限定真实模型单文件改页/受控应用/交付/技术决定已验；未知人工核对及完整用户接受仍待；不宣称OS事务CAS、Git Run创作代码或会话重启恢复 |
+| PB-03 受控应用 | 持久单文件候选、意图/读回、未知保护、Task→workspace互锁及POST_HOC/PREBOUND交付归因已通过实库/回归；见 [阶段记录](records/delivery-history.md#code-proposal-application)、[阶段记录](records/delivery-history.md#code-task-prebinding) | 限定真实模型单文件改页/受控应用/交付/技术决定已验；任务侧持久候选/真实重启后读取和明确应用拒绝已验；未知人工核对及完整用户接受仍待；不宣称OS事务CAS或Git Run创作代码 |
 | PB-04/RK-5 独立验证 | **实现通过，04edef5已推送**。前端295通过，后端400通过6跳过，真实三项退出0；V9/V10 | 验证覆盖仅当前frontend；不是源码实现归因或人工验收 |
 | 源码交付证据与人工决定 | **EXTERNAL_MANUAL 切片实现及联调通过**，见 [阶段记录](records/delivery-history.md#board-source-delivery) | 实际样例完成采集/同源验证/接受/过期拒绝/拒绝回待处理/刷新；不是平台自动开发或用户最终接受 |
 | Chat应用→交付关联 | POST_HOC（544b8f9）与后续PREBOUND（69892f3）已通过实库协议、前后端回归及独立复核；旧无绑定记录不升级归因 | POST_HOC不证明生成时任务归因；本轮另有明确真实模型单文件改页证据；原PREBOUND切片自身不证明供应商效果或用户产品验收 |
@@ -363,7 +382,7 @@ CP-03用户标注Comment 1已做限定调整：模型/发送成组靠右，缺�
 
 后续只安排剩余关口，不从头重复上述切片；技术细节与退出矩阵见[技术路线决定](decisions/agent-runtime-evolution.md#7-分阶段切片与退出门禁)：
 
-1. **工程交付验收线**：本轮按用户授权以GenerationBaseline.vue为唯一目标，已完成PREBOUND真实模型→受控应用→独立验证→技术决定；下一片按实际产品需求推进更完整页面/组件图和用户交互接受，不为刷新数字重复供应商调用或扩大全平台故障矩阵。
+1. **工程交付验收线**：本轮按用户授权以GenerationBaseline.vue为唯一目标，已完成PREBOUND真实模型→受控应用→独立验证→技术决定；接续已补任务持久候选在Chat失效/重启后的独立审阅和明确应用拒绝；下一片按实际页面需求推进更完整组件图和用户交互接受，不为刷新数字重复供应商调用或扩大全平台故障矩阵。
 2. **上下文与资源能力线**：CE-01（含 mock 预算展示/超限）/KR-01(含 FTS+延迟观测+本机实库对照+排序质量样本)/MCP-01(stdio+官方矩阵含 memory/`read_graph`+http+legacy SSE+Streamable-HTTP+生产白名单+GET 续传)/MEM-01（含对抗失效与约束/事实 UI）离线首片已落地；下一步生产检索样本或继续追加已验证官方包（含门禁实跑 memory）。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
 3. **工具与本地环境线**：TD-01已统一Git程序及status/diff操作；TC-01已补status/diff持久调用/取消确认，UNKNOWN阻止同一操作重复启动，证据见[Git程序与持久调用](decisions/agent-runtime-evolution.md#git-operation-executions)。工具UNKNOWN已接通核对说明/进程树确认/二次确认及持久审计；本轮验证受控异常UNKNOWN整链并追加历史详情入口；当前检查仍不证明完整树退出。取消/超时/成功结果返回中断及核对响应丢失矩阵已验，取消意图保留展示；取消响应丢失和Windows index ACL/共享IO限制异常已验；本批已补数据库终态/审计提交前后及工作区/程序绑定恢复。后续将工具剩余异常列为维护回归，PL-01本轮已验证Task/Run只读观测与在途停用真实Git整链；本批已接通PL-02/SC-03及TC-02生命周期整链，后续进入实际页面交付验收；物理IO/跨平台穷举不作为其余产品开发前置，产品用户接受、其他工具和进程接管独立，不推广为SQL/源码写入UNKNOWN处置。TC-02实例读取与后续Host评审独立；反向Agent调用另批。FS-01物理迁移仍待批准，再做TM-01受管工具；sidecar/包验证与签名独立。
 4. **可信插件与场景线**：PL-01已完成项目Task/Run与验证/写入只读观测及真实Git在途停用/后台完成/重新启用恢复；用户接受与全服务健康独立。本批已接通PL-02设计器贡献、SC-03必需/可选依赖及TC-02观察随销毁失效、草稿/版本恢复。下一批集中推进既有PREBOUND/候选/应用/验证/人工决定的实际页面交付验收，保留五入口合同。外部安装器/市场/第三方隔离延期；不先建空SDK。

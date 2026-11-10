@@ -2,7 +2,7 @@
 
 ## 当前基线与事实源
 
-当前已提交基线 `edada58`（发布恢复55文件，已推送；提交沿用旧验证）。本轮新增任务已应用候选目录/选择，V32清除生成快照对旧计数字段的要求，并完成真实模型单目标自身改页→受控应用→独立验证→技术决定整链；见[当前台账](planning-status.md#prebound-page-delivery-validation)和[主题记录](records/delivery-history.md#prebound-page-delivery)。该批随本次提交交付，提交阶段沿用已有验证、不重复测试；用户产品接受独立。
+当前已提交推送基线 `b9a9b12`（PREBOUND真实页面42文件，沿用既有验证、不重复测试）。接续新增任务侧持久源码候选、Monaco审阅与明确应用/拒绝，真实重启后Chat不存在仍可恢复原证据；本批随本次提交交付，不重复测试。见[当前台账](planning-status.md#board-code-recovery-validation)及[合同记录](records/delivery-history.md#board-code-recovery)。无模型重放/会话复活，用户产品接受独立。
 
 普通API显式Responses选择与函数工具已实现；原连接真实两轮SQL取证/候选/页面审批/写入读回及重启终态已验；见[模型协议决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验)。其余切片逐项按台账记录，不以早期“待实施”覆盖后续限定交付。
 
@@ -21,7 +21,7 @@ CT-01追加[显式重连与重试](decisions/chat-engineering-task-slice.md#会�
 | 工作台/UI | 五入口、会话与场景分面、真实文件浏览、公共UI/主题与图标首片；专家父子导航、任务按需详情和独立三栏编辑工作台 | 新工作台原生125%/150%、全页面焦点/错误矩阵与用户接受；其余图标逐项迁移 |
 | 后端结构 | applications/full已接替runtime；engine/ai/web分域，spring条件装配；最小本地/Chat/HTTP与完整Bean图有回归，IDEA原配置启动已验；当前验证结果见台账 | 按[BM剩余关口](decisions/backend-module-composition.md#implementation)收敛Expert/目录/CLI和产品Chat依赖；跨环境启动、schema裁剪与完整产品验收仍独立 |
 | SQL Agent | 专业行为版本绑定、有限动态取证、持久检查点/租约/预算、后台调度、单SQL文件审批UI；普通Responses真实两轮整链及重启终态已验；复杂SQL三类限定样例与本地知识授权/删除一致性已验 | 生产SQL/完整作用域与性能质量、UNKNOWN人工处置、通用写工具、其他原生缩放及用户接受 |
-| 原型与源码 | GrapesJS三栏编辑、语义预览/版本、草稿保护与本地重开、单目标生成前基线、持久候选和受控应用、目录互锁 | 单文件真实供应商自身改页已验；更多映射、多文件约束及用户产品接受仍待 |
+| 原型与源码 | GrapesJS三栏编辑、语义预览/版本、草稿保护与本地重开、单目标生成前基线、持久候选和受控应用、目录互锁 | 单文件真实供应商及任务持久候选重启恢复已验；更多映射、多文件约束及用户产品接受仍待 |
 | 交付证据 | Run独立检查、源码交付、持久接受/拒绝、POST_HOC/PREBOUND关联 | GenerationBaseline.vue真实改页及技术ACCEPT已验；用户最终接受/复杂页面仍待；Git Run不是源码作者 |
 | 资源 | 单专家授权知识与旧记忆隔离；Skill文本版本、启停及按需引用 | MCP官方memory包经Expert入口的本机实网验收（固定read_graph协议子进程夹具已验）；通用规划/Agent/Work执行；Skill目录/仓库导入 |
 | 上下文/记忆/检索 | **CE-01/KR-01/MCP-01（矩阵 callVerified/listOnly）/MEM-01**；CE 备注 Badge + 压缩未启用备注与 MEM sticky 诚实提示 mock 已验 | 实库跑 FTS 排序对照；CE-01 真实 token/压缩策略仍缺；KR-02 证据触发 |

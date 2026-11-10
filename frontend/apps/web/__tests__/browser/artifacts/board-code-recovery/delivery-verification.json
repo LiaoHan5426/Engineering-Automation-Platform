@@ -1,0 +1,36 @@
+{
+  "committedHead": "b9a9b124fa518457b5da7c897a077db23da89a7b",
+  "remoteAligned": true,
+  "committedBatchFiles": 42,
+  "committedBatchTestsRerun": false,
+  "newBatchCommitted": false,
+  "newBackendFocusedPassed": 4,
+  "newFrontendFocusedPassed": 45,
+  "newFrontendFocusedDistinctFiles": 5,
+  "newProductionBrowserGroups": 6,
+  "newModelCalls": 0,
+  "oldFull897SuiteRerun": false,
+  "sharedComponentsMovedWithoutReexports": true,
+  "newMigration": false,
+  "schema": 32,
+  "health": [
+    {
+      "pid": 8824,
+      "base": "http://127.0.0.1:8080",
+      "status": "ok"
+    },
+    {
+      "pid": 40872,
+      "base": "http://127.0.0.1:54445",
+      "status": "ok"
+    }
+  ],
+  "browserAndViteClosed": true,
+  "scope": "Task-owned persistent source candidate recovery, independent of ephemeral Chat memory; original model evidence read-only; new action scenarios are deterministic fixtures",
+  "remaining": [
+    "Complex pages and multi-file constraints",
+    "UNKNOWN manual source recovery",
+    "Human product acceptance"
+  ],
+  "sensitivePatternClasses": 3
+}

@@ -1,8 +1,8 @@
 # Agent 能力、本地运行环境与插件演进
 
-> 当前已提交基线为 `edada582043345d301161c9fcb69175f5d2b0ea5`（发布恢复55文件，已推送）。本轮接续完成限定真实PREBOUND页面交付：V32修正当前语义原型快照约束，新增任务应用证据目录/选择，真实模型候选→页面确认应用→独立检查→交付→明确技术决定整链已验。该批随本次提交交付，沿用已记录结果、不重复测试；用户产品接受仍独立，提交推送状态以Git回读为准。
+> 当前已提交并推送基线为 `b9a9b124fa518457b5da7c897a077db23da89a7b`（PREBOUND真实页面交付42文件）。提交沿用已有验证，未重复测试。接续新增任务侧持久源码候选列表、Diff审阅、明确应用/拒绝及真实重启恢复，随本次提交交付，沿用已有验证不重复测试；无Chat会话自动重建、模型重放或第二套源码写入机制。
 
-状态：有效合同与增量实现记录；已提交基线 `edada58`（发布恢复55文件已推送）；本轮PREBOUND真实页面交付随本次提交交付，沿用已有验证、不重复测试，实测范围见[当前台账](../planning-status.md#prebound-page-delivery-validation)。开发阶段演进以根[AGENTS.md](../../AGENTS.md#development-evolution)为权威规则；原审计五组已[集中收敛](../records/architecture-history.md#single-contract-convergence)：单授权键、程序绑定、显式专家行为、语义原型、持久Git入口；V30已在日常库由正式full迁移，唯一非语义原型及测试引用已精确处置；接续V31和发布断连恢复已验证，无运行兼容分支。完成范围和失败证据以§7及[台账](../planning-status.md)为准。
+状态：有效合同与增量实现记录；已提交基线 `b9a9b12`（PREBOUND真实页面42文件已推送，提交未重测）；当前任务持久候选恢复随本次提交交付，不重复测试，见[台账](../planning-status.md#board-code-recovery-validation)。开发阶段演进以根[AGENTS.md](../../AGENTS.md#development-evolution)为权威规则；原审计五组已[集中收敛](../records/architecture-history.md#single-contract-convergence)：单授权键、程序绑定、显式专家行为、语义原型、持久Git入口；V30已在日常库由正式full迁移，唯一非语义原型及测试引用已精确处置；接续V31和发布断连恢复已验证，无运行兼容分支。完成范围和失败证据以§7及[台账](../planning-status.md)为准。
 
 ## 1. 结论与适用范围
 
@@ -311,6 +311,12 @@ TC-02 定向独立复核通过，原P1关闭：审查者复跑2文件10项、typ
 V32将code_generation_task_group中已删除的计数原型字段要求替换为当前requestId/语义原型，不补旧字段、不修改历史迁移。开发库原绑定快照0行，正式32份迁移校验通过。GET /api/board/tasks/{taskId}/runs/{executionId}/delivery/applications只读发现该Run原任务版本、项目、workspace及操作者的APPLIED PREBOUND，最多20条，不返正文；前端明确读取/选择而不自动提交，失败快照禁选。提交与决定继续使用原始服务的完整快照/时间/源码/独立检查核对，目录不授予写入或接受权限。
 
 真实已配置gpt-6.1-sol/Responses仅1次生成GenerationBaseline.vue，显示绑定Badge及后续独立交付步骤；候选先审diff，经生产App确认应用。隔离本仓库工作树、真正full/原开发库下，Git Run及独立typecheck/145文件897项/test/build通过；生产看板选择已应用证据、提交CHAT_APPLIED_PREBOUND并明确技术ACCEPT，刷新读回及决定幂等/冲突已验。技术声明不是用户产品接受。模型文件按应用后精确hash带回主工作区，无新执行器、状态机或兼容入口；详见[记录](../records/delivery-history.md#prebound-page-delivery)。
+
+### 6.6 任务持久候选与Chat失效解耦（2026-11-10）
+
+任务详情可显式读取当前工作区内的原始PREBOUND候选、生成快照及Diff。GET目录/详情按Task/project/operator/workspace查原code_generation/proposal，不依赖Chat注册表或本地历史；apply/refuse要求project/current revision/confirmed=true，由服务端推导原conversation，不接受客户端归因/正文/工作区。apply继续走唯一CodeChangeService的持久领取、Task/workspace锁、原始快照与源码校验；旧任务版本只读或明确拒绝，UNKNOWN/APPLYING不降级。
+
+GenerationBaseline与ProposalApplication迁到应用components供Chat/Board共用，旧位置删除无转发；普通Chat入口仍属于普通会话职责，任务持久入口不回退到Chat重连。正式重启后原真实模型Chat404、持久候选/hash保持；新浏览器无聊天历史下6组实际页面/文件/JDBC恢复通过，新候选明确为确定性夹具，0模型重放，未进行产品接受。详见[主题记录](../records/delivery-history.md#board-code-recovery)。
 
 ## 7. 分阶段切片与退出门禁
 

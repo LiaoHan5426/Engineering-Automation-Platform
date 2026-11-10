@@ -2,7 +2,7 @@
 
 ## 当前结论与阅读方式
 
-任务准备 → 受控只读Run → 原型引用 → 仓库审阅 → 独立验证 → 源码交付 → 生成前基线/持久应用 → POST_HOC/PREBOUND。本轮已完成一次限定真实模型自身改页：PREBOUND语义原型/任务/源码→真实候选→生产页面确认应用→独立typecheck/test/build→交付→明确技术ACCEPT及刷新读回。复杂页面、多文件开发和用户最终产品接受仍独立；见[当前接续](#prebound-page-delivery)。Git Run不是源码作者，UNKNOWN/APPLYING继续阻塞，未完成项以[接续台账](../planning-status.md)为准。
+任务准备 → 受控只读Run → 原型引用 → 仓库审阅 → 独立验证 → 源码交付 → 生成前基线/持久应用 → POST_HOC/PREBOUND。本轮已完成一次限定真实模型自身改页：PREBOUND语义原型/任务/源码→真实候选→生产页面确认应用→独立typecheck/test/build→交付→明确技术ACCEPT及刷新读回。接续已补任务持久候选列表/Diff及明确应用拒绝，正式重启/Chat404和全新浏览器无历史恢复已验，见[当前恢复](#board-code-recovery)。复杂页面、多文件开发和用户最终产品接受仍独立；原模型整链见[上一批](#prebound-page-delivery)。Git Run不是源码作者，UNKNOWN/APPLYING继续阻塞，未完成项以[接续台账](../planning-status.md)为准。
 
 以下按主题合并完整阶段记录，日期保留在记录中而不再作为文件名。记录中的“本轮/未提交/下一步”和测试数字仅代表当时快照；不得覆盖上面的当前结论、有效产品合同或用户授权。原文完整保留（只调整标题层级、锚点及链接），后续更新本总览，不另建日期报告。
 
@@ -23,9 +23,64 @@
 
 ---
 
+<a id="board-code-recovery"></a>
+
+## 任务持久源码候选与Chat失效后的正式重启恢复（2026-11-10，接续b9a9b12，随本次提交交付）
+
+### 先行提交与实际问题
+
+本轮先按用户授权提交推送上一批42文件为 `b9a9b124fa518457b5da7c897a077db23da89a7b`，HEAD/origin/main/远端main一致且工作区干净。提交沿用已记录后端4/前端37/正式897项及4组浏览器结果，未重复测试/构建/模型请求；仅检查差异、编码、链接和敏感模式。暂存检查发现展示patch的CRCRLF，改为规范LF可读diff；原候选JSON、应用字节和hash不动，不用测试重跑刷新数字。
+
+接续代码核对发现：generation/proposal虽然已持久保存，Chat查询和动作入口仍需AiConversationRegistry存活；正式JVM重启后或本地Chat历史丢失，任务无法独立恢复候选审阅，用户只能看既有已应用目录，未应用的持久候选缺入口。这个问题不能用自动重连、重新生成、追补Task或内存镜像兜底。
+
+### 唯一持久证据与任务边界
+
+新增BoardCodeProposalService及`/api/board/tasks/{taskId}/code-proposals`目录/详情/apply/refuse。所有入口先校验任务项目，再用原code_generation+code_proposal筛选Task、project、local-operator及当前进程真实workspace。详情验证原proposal.generation.taskBinding，无效身份返回404；目录最多20条并明确truncated，历史Task revision保留只读观测。不接受客户端conversation/workspace/正文/归因状态，不新建表、迁移或索引注册表。
+
+动作严格接收 `{projectId,revision,confirmed:true}`，拒绝额外字段、缺确认或小数revision。服务端从原持久行推导conversation，current revision必须准确；PROPOSED原生成revision变化时apply拒绝BOARD_CODE_PROPOSAL_STALE。拒绝一个尚未应用但已陈旧的候选仍可明确进行，保留证据/源码/Task revision与状态。REFUSED明确重放只读返回，APPLIED继续复用原终态，不重写。
+
+apply从任务入口调用同一个CodeChangeService，不经过或创建Chat注册表；原JdbcCodeProposalStore.claim仍按Task→workspace锁校验完整不可变Task/原型、在途/UNKNOWN互锁和实际目标基线，再保存APPLYING意图、原子单文件替换、读回hash及持久结果。任务入口没有自行实现另一份文件写入。UNKNOWN/APPLYING继续阻塞应用/拒绝，不被读取、重连或UI刷新降级。普通Chat管理仍是另一当前业务入口，Task入口失败不回退它，不模拟模型记忆恢复。
+
+### 前端共享与实际交互
+
+任务详情新增“源码候选”页签：显式读取目录→打开生成前Task/原型/hash快照→真实Monaco Diff→逐项确认应用，或二次确认拒绝。失败保留旧证据但禁写，Task/revision变化使晚到响应失效；应用/拒绝在途时任务切换/关闭和Run操作阻止。列表和详情均取同一持久状态，应用/拒绝后同步状态标签，不能列表仍PROPOSED而详情APPLIED/REFUSED。
+
+GenerationBaseline和ProposalApplication从features/chat移到apps/web/src/components供Chat/Board两处消费；旧路径文件直接删除，没有兼容转发组件。Diff复用既有ProposalDiffView。ProposalApplication允许宿主显式传入read/apply operations，普通Chat继续使用自己的接口；未新增另一面板或网络失败后的回退。领域组件仍L3/任务页L4，基础原语均复用@eap/ui，边界规范已登记。
+
+正式浏览器首先发现共享面板watch的getter返回新数组，父层每次JSON回读替换proposal对象后触发持续读取，界面停留“正在读取”。修正为稳定scope+proposal+conversation字符串key，测试替身改为每次独立JSON对象并明确断言只有目录打开/面板核对两次读取；没有用防抖、忽略异常或共享同对象掩盖问题。拒绝后使用同一状态观测刷新共享面板/目录，未自动再发动作。
+
+### 正式服务与真实数据验证
+
+使用之前同一开发库和隔离本仓库worktree。为覆盖尚未应用、只读、任务已变三条路径，明确创建三个确定性候选及三个自有RecoveryEvidence*.vue文件，proposal由真实prepareGeneration/proposePrepared写入JDBC；随机conversation仅为不可变证据身份，从未创建Chat注册表会话。它们是显式夹具，不冒充新模型生成；后端0模型外呼。原上一批真实模型generation/proposal/hash另作只读对照。
+
+精确核对自有PID及jar命令行后停止主full与隔离full，Maven package -DskipTests重建，重新启动真正com.lh.eap.EapApplication：主PID8824/8080，隔离PID40872/54445。均health200，仍V32/32份迁移，无新迁移/clean/repair/baseline；未停其他端口进程。原真实模型Chat8a6f75b4…已404，但原683f6b41…候选仍APPLIED、generation f1235495…和afterHash d3fd0494…保持，任务接口直接读取，无Chat重建。
+
+全新Chromium存储没有eap.chat.history.v1，打开生产App的任务页签，实际完成6组：
+
+1. 原真实模型会话缺失时仍读取持久Task候选与原hash，未调用重连/模型。
+2. 读取待应用候选并显示真实Monaco Diff；未确认时禁用；明确确认后真实POST提交，浏览器route.fetch后丢弃响应，面板通过GET核对APPLIED，实际文件精确等于原候选，只有1次浏览器apply。
+3. 刷新重新打开保持APPLIED且无写按钮；显式同动作重放返回原持久终态，不重写。
+4. 只读候选仍可审阅，UI复选框禁用，独立HTTP403，源文件不变。
+5. 任务原revision陈旧时UI及HTTP409阻止应用；显式二次确认拒绝保存REFUSED，文件不变，Task仍ready/r2。候选拒绝不是交付接受。
+6. 跨Task/project以及主服务不同workspace读取404；浏览器没有Chat/reconnect/model POST、无外呼、0pageerror。
+
+[6组结果](../../frontend/apps/web/__tests__/browser/artifacts/board-code-recovery/result.json)、[数据库独立回读](../../frontend/apps/web/__tests__/browser/artifacts/board-code-recovery/database-verification.json)、[后端定向](../../frontend/apps/web/__tests__/browser/artifacts/board-code-recovery/backend-regression.json)分列保留。已查看[任务应用恢复](../../frontend/apps/web/__tests__/browser/artifacts/board-code-recovery/task-recovered-applied.png)、[旧版本明确拒绝](../../frontend/apps/web/__tests__/browser/artifacts/board-code-recovery/stale-refused.png)。截图记录当时状态；随后组件回归又补强目录标签同步，未为重拍而重复应用/拒绝。浏览器首次失败截图保留，不覆盖失败为成功。
+
+JDBC独立确认3条夹具为APPLIED/PROPOSED/REFUSED，pending目标hash=34c922f86d4082ca876e5e75fefd536af8e5e6051e29c4bae2b47c84686988ee；另外两文件仍原字节。3任务保持ready、revision=1/1/2，原真实模型记录不变。已应用文件及拒绝证据留隔离工作树/开发库供核对；没有接受新交付或清理UNKNOWN。浏览器与Vite退出，正式两个宿主保留。
+
+### 新增检查与复现入口
+
+- 后端：`EAP_RUN_SINGLE_CONTRACTS=true EAP_RUN_BOARD_PERSISTENCE=true rtk proxy mvn -f backend/pom.xml -pl :eap-full-application -am test '-Dtest=BoardCodeProposalRecoveryTest,BoardCodeProposalControllerTest,FullApplicationCompositionTest' '-Dsurefire.failIfNoSpecifiedTests=false'`：3类4项全部通过/0跳过；真实UUID自有schema V1～V32、文件/JDBC、service重新构造不使用AiConversationRegistry、Task/project/workspace隔离、只读/旧revision/缺确认拒绝、终态/REFUSED重放和UNKNOWN阻塞均验证。自有schema finally清理，不创建或删除数据库。
+- 前端：`rtk proxy pnpm --dir frontend exec vp test run apps/web/__tests__/features/shell/BoardCodeCandidates.test.ts apps/web/__tests__/features/chat/ProposalApplication.test.ts apps/web/__tests__/features/chat/GenerationBaseline.test.ts`：3文件23项通过；受影响PreviewBoard.test.ts与mock/boardBackend.test.ts另2文件22项通过，共45个不同测试。循环读取及状态同步的5项后续定向通过，不把重叠17/5结果再累加。
+- typecheck、check:architecture、build通过；受影响TS/Vue与新浏览器脚本fmt/lint、新组件stylelint通过。大chunk等既有提示保留，无全stylelint声明。没有重跑上一批897项或真实模型调用；正式jar package跳过测试。
+- 显式确定性浏览器准备工具：`EAP_RUN_BOARD_CODE_BROWSER=approved rtk proxy python -X utf8 frontend/apps/web/__tests__/browser/board-code-recovery-prepare.py`，需先运行上述实库定向得到classpath，且已有隔离工作树。工具编译test目录的BoardCodeRecoveryBrowserFixture，已有fixture.json时保留不重复创建；不读/打印模型凭据，不发模型请求。
+- 在frontend目录，设置已有EAP_PLAYWRIGHT_MODULE/EAP_CHROMIUM后执行 `rtk proxy node apps/web/__tests__/browser/board-code-recovery-live.mjs`。宿主base/workspace读忽略的backend/target/prebound-live/process.json，fixture在backend/target/board-code-live/fixture.json，原真实模型对照保留先前session.json。首次POST中断是浏览器控制，后端/数据库与文件写入真实，不代表物理数据库断连。
+
+该批随本次提交交付，沿用已有结果不重复测试。剩余复杂页面、多文件生成图约束、源码UNKNOWN人工核对/跨重启进程接管和用户产品接受仍独立；持久候选可恢复不代表ChatMemory或事件日志已持久化。下一片优先按实际交付需求推进，不通过重新生成或兼容旧记录绕过已存意图。
+
 <a id="prebound-page-delivery"></a>
 
-## PREBOUND真实页面交付与语义快照约束（2026-11-10，接续edada58，随本次提交交付）
+## PREBOUND真实页面交付与语义快照约束（2026-11-10，已随b9a9b12提交；原阶段快照）
 
 ### 当前授权与交付范围
 

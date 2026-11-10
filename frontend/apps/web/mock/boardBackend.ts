@@ -23,6 +23,14 @@ export function createBoardBackend(versionExists: (id: string) => boolean = () =
   return {
     handle(method: string, url: URL, body: Record<string, unknown>) {
       const path = url.pathname
+      const codePath =
+        /^\/board\/tasks\/([^/]+)\/code-proposals(?:\/[^/]+(?:\/(?:apply|refuse))?)?$/.exec(path)
+      if (codePath) {
+        const projectId = method === 'GET' ? url.searchParams.get('projectId') : body.projectId
+        if (!tasks.some((task) => task.id === codePath[1] && task.projectId === projectId))
+          return error(404, 'BOARD_TASK_NOT_FOUND')
+        return error(409, 'MOCK_TASK_BINDING_UNAVAILABLE') // Never synthesize durable generation or approval evidence.
+      }
       const deliveryPath =
         /^\/board\/tasks\/([^/]+)\/runs\/([^/]+)\/delivery(?:\/(?:decision|applications))?$/.exec(
           path,

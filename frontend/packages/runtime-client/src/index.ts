@@ -925,6 +925,24 @@ export type BoardVerificationPage = {
   reason: string
 }
 export type BoardApplicationRef = { conversationId: string; proposalId: string }
+export type BoardCodeCandidate = {
+  id: string
+  conversationId: string
+  generationId: string
+  taskRevision: number
+  targetPath: string
+  status: CodeProposalState['status']
+  writeAllowed: boolean
+  createdAt: string
+}
+export type BoardCodeCandidates = {
+  taskId: string
+  projectId: string
+  currentRevision: number
+  workspacePath: string
+  items: BoardCodeCandidate[]
+  truncated: boolean
+}
 export type BoardAppliedCandidate = BoardApplicationRef & {
   generationId: string
   targetPath: string
@@ -1682,6 +1700,52 @@ export const runtimeApi = {
       }),
   boardTasks: (projectId: string) =>
     get<{ items: BoardTask[] }>('/board/tasks?projectId=' + encodeURIComponent(projectId)),
+  boardCodeCandidates: (taskId: string, projectId: string) =>
+    get<BoardCodeCandidates>(
+      '/board/tasks/' +
+        encodeURIComponent(taskId) +
+        '/code-proposals?projectId=' +
+        encodeURIComponent(projectId),
+    ),
+  boardCodeCandidate: (taskId: string, proposalId: string, projectId: string) =>
+    get<CodeProposalState>(
+      '/board/tasks/' +
+        encodeURIComponent(taskId) +
+        '/code-proposals/' +
+        encodeURIComponent(proposalId) +
+        '?projectId=' +
+        encodeURIComponent(projectId),
+    ),
+  applyBoardCodeCandidate: (
+    taskId: string,
+    proposalId: string,
+    request: { projectId: string; revision: number; confirmed: true },
+  ) =>
+    client
+      .post<CodeApplied>(
+        '/board/tasks/' +
+          encodeURIComponent(taskId) +
+          '/code-proposals/' +
+          encodeURIComponent(proposalId) +
+          '/apply',
+        request,
+      )
+      .then((response) => response.data),
+  refuseBoardCodeCandidate: (
+    taskId: string,
+    proposalId: string,
+    request: { projectId: string; revision: number; confirmed: true },
+  ) =>
+    client
+      .post<CodeProposalState>(
+        '/board/tasks/' +
+          encodeURIComponent(taskId) +
+          '/code-proposals/' +
+          encodeURIComponent(proposalId) +
+          '/refuse',
+        request,
+      )
+      .then((response) => response.data),
   setBoardPrototype: (
     id: string,
     selection: { projectId: string; revision: number; versionId: string | null },

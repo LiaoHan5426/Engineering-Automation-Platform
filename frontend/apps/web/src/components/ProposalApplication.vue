@@ -8,8 +8,13 @@ import {
   type CodeApplied,
 } from '@eap/runtime-client'
 import { useI18n } from 'vue-i18n'
-const props = defineProps<{ proposal: CodeProposal; readOnly: boolean }>()
-const emit = defineEmits<{ applied: [result: CodeApplied] }>()
+const props = defineProps<{
+  proposal: CodeProposal
+  readOnly: boolean
+  scopeKey?: string
+  operations?: { read: () => Promise<CodeProposalState>; apply: () => Promise<CodeApplied> }
+}>()
+const emit = defineEmits<{ applied: [result: CodeApplied]; pending: [value: boolean] }>()
 const { t } = useI18n()
 const state = ref<CodeProposalState | null>(null),
   loading = ref(false),
@@ -23,7 +28,9 @@ async function read() {
   confirmed.value = false
   state.value = null
   try {
-    const record = await runtimeApi.codeProposal(props.proposal.conversationId, props.proposal.id)
+    const record = props.operations
+      ? await props.operations.read()
+      : await runtimeApi.codeProposal(props.proposal.conversationId, props.proposal.id)
     if (token !== generation) return
     if (
       record.proposal.id !== props.proposal.id ||
@@ -31,7 +38,9 @@ async function read() {
     )
       throw new Error('Identity mismatch')
     if (
-      !['PROPOSED', 'APPLYING', 'APPLIED', 'FAILED', 'UNKNOWN', 'REFUSED'].includes(record.status) ||
+      !['PROPOSED', 'APPLYING', 'APPLIED', 'FAILED', 'UNKNOWN', 'REFUSED'].includes(
+        record.status,
+      ) ||
       (record.status === 'APPLIED') !== (record.result != null) ||
       (record.result &&
         (record.result.id !== record.proposal.id ||
@@ -65,7 +74,8 @@ async function apply() {
   note.value = ''
   let refusal = ''
   try {
-    await runtimeApi.applyCodeProposal(props.proposal.conversationId, props.proposal.id)
+    if (props.operations) await props.operations.apply()
+    else await runtimeApi.applyCodeProposal(props.proposal.conversationId, props.proposal.id)
   } catch (error) {
     const code = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
     if (
@@ -95,7 +105,7 @@ async function apply() {
   }
 }
 watch(
-  () => [props.proposal.id, props.proposal.conversationId],
+  () => [props.proposal.id, props.proposal.conversationId, props.scopeKey ?? ''].join(':'),
   () => {
     generation++
     state.value = null
@@ -114,7 +124,9 @@ watch(
 )
 onBeforeUnmount(() => {
   generation++
+  emit('pending', false)
 })
+watch(writing, (value) => emit('pending', value), { flush: 'sync' })
 </script>
 <template>
   <section class="proposal-application" data-testid="proposal-application">

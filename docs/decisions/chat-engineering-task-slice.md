@@ -1,6 +1,6 @@
 # 聊天工程任务与原型到源码
 
-当前接续（2026-11-10）：已提交基线edada58。PREBOUND真实单文件页面交付已完成模型候选、受控应用、独立检查、交付和技术决定，随本次提交交付，沿用已有验证、不重复测试；合同与实际边界见[台账](../planning-status.md#prebound-page-delivery-validation)及[主题记录](../records/delivery-history.md#prebound-page-delivery)。生成记录的旧计数原型约束由V32直接替换，任务应用目录仅做只读发现，候选不因被列出而自动提交或接受。以下2026-10-24及后续各段按原阶段理解，旧内存/路径描述不能覆盖当前持久服务。
+当前接续（2026-11-10）：已提交基线b9a9b12。PREBOUND真实单文件页面交付已提交推送，沿用已有验证未重复测试；接续任务持久候选恢复见[当前台账](../planning-status.md#board-code-recovery-validation)，不依赖或复活已失效Chat会话。合同与实际边界见[台账](../planning-status.md#prebound-page-delivery-validation)及[主题记录](../records/delivery-history.md#prebound-page-delivery)。生成记录的旧计数原型约束由V32直接替换，任务应用目录仅做只读发现，候选不因被列出而自动提交或接受。以下2026-10-24及后续各段按原阶段理解，旧内存/路径描述不能覆盖当前持久服务。
 
 ## 使用
 

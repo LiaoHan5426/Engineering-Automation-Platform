@@ -1,0 +1,49 @@
+{
+  "host": "genuinely restarted production full-application jar",
+  "schema": 32,
+  "fixtureKind": "Explicit deterministic candidates in a real production workspace/database; no model call",
+  "realModelEvidenceRetained": {
+    "taskId": "1b3db07e-c020-494c-acc5-060b51c11b37",
+    "proposalId": "683f6b41-c89a-4c73-bca4-22d4c1dd01f5",
+    "afterHash": "d3fd0494fcb3849fb80c08f61609d8189749632819687b0df6bc8d8171802dd7"
+  },
+  "checks": [
+    "After genuine production JVM restart the original real-model Chat session is absent (404), while its task-owned immutable generation/proposal and applied hash remain readable without reconnect or model calls",
+    "Fresh production App with no Chat history lists persistent task candidates, renders real Monaco Diff, requires explicit write confirmation and recovers a committed-but-lost apply response by reading the same proposal; exactly the declared fixture source changes",
+    "Reload restores APPLIED and immutable evidence without Chat reconstruction or automatic write; explicit duplicate task apply replays the stored terminal result",
+    "Read-only candidate remains reviewable after restart, disables approval and is independently denied by the server with 403 without source changes",
+    "Stale original task revision is viewable but cannot apply; explicit confirmed refusal persists REFUSED without writing source or changing task acceptance/revision",
+    "Cross-task, cross-project and different bound workspace reads return 404; the browser makes no Chat/reconnect/model requests and issues only one explicitly confirmed application POST"
+  ],
+  "pageErrors": [],
+  "externalRequests": [],
+  "browserMutations": [
+    {
+      "method": "POST",
+      "path": "/api/board/tasks/fe58951f-8360-487f-85bd-64bb009cb736/code-proposals/8de47be9-a888-4b90-9519-a5f6c0e53610/apply"
+    },
+    {
+      "method": "POST",
+      "path": "/api/board/tasks/ac269fd7-4b18-481b-9b37-a124ac2ea582/code-proposals/fa9e2e57-0b94-469d-a963-c6cf2cffc295/refuse"
+    }
+  ],
+  "projectId": "board-candidate-recovery-d9bc0cb6",
+  "taskIds": [
+    "fe58951f-8360-487f-85bd-64bb009cb736",
+    "ff7070b1-053c-4ea9-b4a8-00f8adb2727b",
+    "ac269fd7-4b18-481b-9b37-a124ac2ea582"
+  ],
+  "proposalIds": [
+    "8de47be9-a888-4b90-9519-a5f6c0e53610",
+    "da10dcb7-25a4-4d65-92bb-ad30cae0fe14",
+    "fa9e2e57-0b94-469d-a963-c6cf2cffc295"
+  ],
+  "sourceChanges": {
+    "pending": "exact declared after content",
+    "readonly": "unchanged",
+    "stale": "unchanged"
+  },
+  "modelCalls": 0,
+  "chatSessionsRecreated": 0,
+  "userProductAcceptance": false
+}

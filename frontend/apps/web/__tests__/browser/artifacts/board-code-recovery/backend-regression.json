@@ -1,0 +1,27 @@
+{
+  "exitCode": 0,
+  "reports": [
+    {
+      "name": "com.lh.eap.architecture.FullApplicationCompositionTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.lh.eap.persistence.mapper.BoardCodeProposalRecoveryTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.lh.eap.web.controller.BoardCodeProposalControllerTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "seconds": 48.1
+}
