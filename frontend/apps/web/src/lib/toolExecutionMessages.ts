@@ -8,6 +8,16 @@ export const toolExecutionMessages = {
     start: '读取状态',
     cancel: '请求取消',
     recheck: '重新查询',
+    readiness: '当前执行条件',
+    readinessBoundary:
+      '本次检查仅供观察；启动前仍由服务端复核。恢复环境后请重新查询，核对关闭不会授予权限或自动重跑。',
+    storeUnavailable:
+      '执行记录存储暂不可用，尚不能确认本次写入是否保存。请恢复数据库连接后重新查询，保留当前记录与请求，避免重复提交。',
+    workspaceUnavailable:
+      '当前授权工作区不可访问。请恢复原目录及服务端工作区配置后重新查询；已有记录和核对输入暂时保留。',
+    operationDisabled: '此操作当前已停用。请在工具配置中确认启用后重新查询；停用不改变历史结果。',
+    bindingUnavailable:
+      'Git 程序绑定或可执行文件不可用。请在工具配置中修复绑定后重新查询；人工关闭不会恢复程序授权。',
     history: '最近执行',
     historyOpen: '查看执行详情',
     waiting: '正在核对执行记录…',
@@ -88,6 +98,17 @@ export const toolExecutionMessages = {
     start: 'Read status',
     cancel: 'Request cancellation',
     recheck: 'Check again',
+    readiness: 'Current execution conditions',
+    readinessBoundary:
+      'This check is an observation. The server validates again before starting. Check again after restoring the environment; closure neither grants access nor replays execution.',
+    storeUnavailable:
+      'Execution storage is unavailable; this write may or may not have committed. Restore the database connection and check again. Keep the current record and request to avoid duplicate submissions.',
+    workspaceUnavailable:
+      'The authorized workspace is inaccessible. Restore its original directory and server configuration, then check again. Existing records and review input are retained.',
+    operationDisabled:
+      'This operation is disabled. Confirm its tool configuration and check again. Disabling does not change history.',
+    bindingUnavailable:
+      'The Git binding or executable is unavailable. Repair the tool binding and check again. Manual closure does not restore executable authorization.',
     history: 'Recent executions',
     historyOpen: 'View execution details',
     waiting: 'Checking execution records…',

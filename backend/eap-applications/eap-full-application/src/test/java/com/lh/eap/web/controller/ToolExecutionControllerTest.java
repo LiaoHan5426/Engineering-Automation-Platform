@@ -43,6 +43,23 @@ class ToolExecutionControllerTest {
             verify(service).inspectProcesses(operation, id);
         }
     }
+    @Test void readinessIsScopedAndStorageFailuresNeverExposeSqlOrImplyRollback() throws Exception {
+        var service = mock(ToolExecutionService.class);
+        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service)).build();
+        for (var operation : List.of("git-status", "git-diff")) {
+            var base = BASE.replace("git-status", operation);
+            mvc.perform(get(base + "/readiness")).andExpect(status().isOk());
+            verify(service).readiness(operation);
+            when(service.list(operation, 20)).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("private SQL and connection detail"));
+            mvc.perform(get(base)).andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.detail").value("TOOL_EXECUTION_STORE_UNAVAILABLE"))
+                    .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("private"))));
+        }
+        doThrow(new org.springframework.dao.DataAccessResourceFailureException("private commit detail")).when(service).list("git-status", 20);
+        mvc.perform(get(BASE)).andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.detail").value("TOOL_EXECUTION_STORE_UNAVAILABLE"));
+        mvc.perform(get(BASE.replace("git-status", "git-log") + "/readiness")).andExpect(status().isNotFound());
+    }
     @Test void unknownReviewOnlyAcceptsExplicitBoundedReviewInput() throws Exception {
         var service = mock(ToolExecutionService.class);
         var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service)).build();

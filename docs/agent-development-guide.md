@@ -35,7 +35,7 @@ Current 32-project reactor evidence and remaining optional-composition gates are
 
 ## Current implementation and validation baseline
 
-The latest committed implementation is `5e0ec5b` (status/diff cancellation, timeout and result interruption acceptance, with cancellation intent preserved, pushed with user authorization). This continuation verifies lost cancellation responses and actual Windows index ACL/share-denial faults using isolated repositories, HTTP/JDBC and the production Vue panel. The cancellation button and handler now respect uncertain state until explicit readback. The user has authorized committing and pushing this continuation; no migration or product fault endpoint is introduced.
+The latest committed implementation is `fef287f` (lost cancellation response and Windows index permission/share faults, pushed with user authorization). The current batch, authorized for commit and push, adds per-phase authorization, read-only readiness, stable storage/transaction errors, bounded review-response validation and recovery UI. Twelve real scenarios cover terminal/review writes interrupted before/after commit, workspace access loss and executable binding loss. New frontend/backend versions must be updated together; readiness neither grants access nor closes UNKNOWN. There is no new migration or production fault endpoint.
 Human review is recorded separately from executor exit/cleanup proof; it never turns UNKNOWN into success or cancellation.
 Use [the validation ledger](planning-status.md#validation-baseline) for the latest recorded checks and their limits.
 The [backend record](records/backend-composition-history.md) preserves migration, real-provider and gated database evidence;

@@ -669,7 +669,7 @@ status/diff × cancel/timeout/return的实际执行器结果分别CANCELLED/130�
 
 
 <a id="git-cancel-permission-io-review"></a>
-## 取消请求响应丢失及权限/IO异常UNKNOWN核对恢复（2026-11-10）
+## 取消请求响应丢失及权限/IO异常UNKNOWN核对恢复（历史阶段fef287f，2026-11-10）
 
 先按用户授权提交并推送5e0ec5b08010d40aafed1e3a64385cfa6700d81f（18文件，772新增/58删除），HEAD/origin/main/远端main一致，提交后工作树干净。提交检查复用紧邻实现阶段证据，未冒充功能重测；随后推进本接续，新增改动不自动提交。本轮开始jps无EapApplication，仅运行隔离测试宿主。
 
@@ -701,3 +701,39 @@ status/diff × cancel/timeout/return的实际执行器结果分别CANCELLED/130�
 文件收尾17个变更文件：13文本UTF-8无BOM/无替换字符、4截图；196处本地Markdown目标/锚点、3类新增内容有限敏感模式、git diff --check通过，明细git-permission-io-file-check.json。主方案当前进度/TC-01验收行、台账、路线、指南及decision同步，前轮标历史。5e0ec5b已推送，本次接续尚未提交/推送。剩余优先项：数据库结果写入中断/证据持久失败、工作区或可执行文件授权失效及其他平台；物理磁盘故障、跨重启进程接管和产品人工接受仍独立，不将Windows index读取/共享冲突推广为所有IO故障。
 
 本次提交准备：用户授权先提交并推送上述17文件，再集中推进数据库结果写入中断及工作区/可执行文件授权失效的恢复能力。复核实际代码/证据与规划同步，沿用紧邻实现阶段6项矩阵、67项兼容实测、961项完整离线（851通过/110门控跳过）及846项前端证据；提交准备不重跑业务测试或启停服务。UTF-8、本地链接/锚点、有限敏感模式及暂存空白再查，推送后核对本地与远端SHA。此前未提交口径保留为当时交付状态。
+
+
+<a id="git-database-authorization-recovery"></a>
+## 数据库写入中断与授权失效恢复整组交付（2026-11-10）
+
+先按用户授权提交并推送fef287f7ccb05dc3eda09f567a3fcac008bf02b7（17文件，954新增/245删除），HEAD/origin/main/远端main一致，提交后工作树干净。用户要求集中推进，本轮将数据库终态/核对审计写入、工作区/程序绑定失效、后端逐阶段授权及前端恢复交互一起交付。新增改动不自动提交；没有新状态、迁移、产品故障端点或全局授权体系。
+
+生产改动：ToolExecutionService新增只读readiness，区分工作区可访问、执行授权及阻塞ID/观察时间，不修改记录或授予权限。每个Git阶段启动前复核原工作区、操作启用及程序绑定，失效后停止后续进程并保留已有步骤，用NO_FURTHER_PROCESS_STARTED区别首次执行前拒绝的PROCESS_NOT_STARTED。应用服务归一化TransactionException为稳定存储错误，Controller只映射DataAccessException到503/TOOL_EXECUTION_STORE_UNAVAILABLE，不依赖事务层或暴露SQL。前端/runtime-client接入当前条件和分原因恢复指引，保留UNKNOWN、核对输入与原请求，恢复后显式查询；补读最近20条之外的阻塞记录。核对成功响应必须匹配记录、操作、CLOSED_UNKNOWN及原请求审计，异常成功包保持未确认。复用@eap/ui Feedback/Button，L4业务原位、DTO在runtime-client，无新共享类别。前后端版本需配套更新，不对旧服务404做乐观授权回退。
+
+数据库故障只作用于UUID自有schema的目标SUCCEEDED/CLOSED_UNKNOWN事务。每条测试连接设置application_name为自身schema，协调器同时核对pg_stat_activity的PID和该名称，再按同条件pg_terminate_backend。提交前在实际UPDATE后、COMMIT前终止该连接，真实事务回滚；提交后先真实commit，再在Spring事务完成返回前终止，用实际查询触发57P01/08006连接异常。不是伪造SQLException、抓包级COMMIT确认丢失、全库网络分区或停止数据库。终态提交前由服务保存UNKNOWN/EXECUTION_EVIDENCE_UNCONFIRMED，提交后SUCCEEDED保留；核对提交前保留UNKNOWN和原UUID供显式重试，提交后读回既有CLOSED_UNKNOWN，不再次提交。
+
+授权整链：实际UNKNOWN页面中，移动仅自有workspace到session内固定旁路目录，readiness返回scopeAccessible=false，详情/启动/核对403，原记录和输入保留；恢复原目录后显式查询。程序绑定由测试supplier读取session文件，暂时指向自有不存在文件，readiness为BINARY_MISSING；历史核对仍允许，但关闭后新启动仍409且按钮禁用，修复并查询后才可执行。未修改生产Git或全局授权。停用/工作区/可执行文件在Git阶段间失效由服务定向覆盖，后续进程计数不增加，恢复后新请求成功。
+
+首轮命令：保留原EAP_RUN_BOARD_PERSISTENCE=true/密码环境，子进程EAP_RUN_TOOL_UNKNOWN_REVIEW=true、EAP_RUN_GIT_RECOVERY_BATCH=true，Playwright/Chromium路径同前轮。运行 `rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=ToolExecutionServiceTest,ToolExecutionControllerTest,ToolUnknownReviewAcceptanceTest#databaseAndAuthorizationRecoveryRemainScopedAndDurable' '-Dsurefire.failIfNoSpecifiedTests=false' test`：服务33项、控制器5项通过，12整链中8通过/4核对审计失败，reactor FAILURE，10分54秒。失败暴露事务提交异常映射不完整、页面未正确显示存储未确认，首个异常响应还使选中记录缺少状态；补齐事务异常归一化和runtime-client核对身份校验。初次typecheck发现scopeUnavailable未使用，接入工作区失效时进程检查禁用后通过。只保留8个成功场景的限定证据，不称首轮整体成功。
+
+四个审计场景分出databaseReviewCommitRecoveryRetainsTheOriginalRequest，便于精确重跑。运行 `rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=ToolExecutionServiceTest,ToolExecutionControllerTest,ToolUnknownReviewAcceptanceTest#databaseReviewCommitRecoveryRetainsTheOriginalRequest' '-Dsurefire.failIfNoSpecifiedTests=false' test`：服务37项、4审计通过，但控制器单测对已有throw stub再次when()时触发旧异常，1测试错误使reactor FAILURE，5分03秒。改doThrow后控制器5项独立通过，31模块SUCCESS，17秒。中间一次修改命令引号错误使重跑仍用旧stub，失败日志保留。日志git-recovery-batch-1.log、git-recovery-audit-2.log、git-recovery-controller.log、git-recovery-controller-final.log及时间窗JSON。
+
+首轮完整离线 `rtk proxy mvn -B -ntp -f backend/pom.xml test`：974项中861通过/112门控跳过/1失败，失败为BackendModuleBoundaryTest禁止web源码依赖org.springframework.transaction。不能因只引用异常类型就绕过规则：将事务异常归一化移到应用服务persist边界，Controller保留稳定存储错误映射；补两操作真实事务异常类型的单测。随后只重验受影响四审计和服务/HTTP/模块边界，不重复其余8个已通过长场景；最终结果见后续收尾。原失败日志git-recovery-offline.log/summary.json保留。
+
+成功场景证据见[12场景结果与6张截图](../../frontend/apps/web/__tests__/browser/artifacts/git-database-authorization-recovery/result.json)：共84组真实Chromium检查/0pageerror，其他8场景56组、审计4场景28组，失败会话不混入成功摘要。DB后置保持原SUCCEEDED/拒绝UNKNOWN关闭、旧request幂等与新请求执行；其余十个UNKNOWN场景核对关闭、原字段/JDBC/历史/再重启保持。五个diff UNKNOWN场景做了输出范围/索引/三个文件字节比较，已提交成功的diff对照仅确认原持久结果/幂等保持，不扩大字节级覆盖。每个会话只清理自身schema/进程/宿主并比较应用记录ID/摘要不变。
+
+前端定向3文件69项、完整137文件855项通过。typecheck、build、check:architecture、目标vp lint/stylelint及7文件vp fmt --check通过；保留既有测试网络防护、Node localStorage和大chunk提示。已查看390px工作区失效和审计写入未确认截图，原记录/输入保留；原1440/900/390px确认框检查保留。本轮未启动或停止正式full-application，隔离验收不等于完整装配启动或产品人工接受。其他平台、数据库服务重启/全库断网、完整树退出证明和跨重启接管仍独立。
+
+
+最终应用层归一化后定向：保持新组门控与原持久门控true，执行 `rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am '-Dtest=BackendModuleBoundaryTest,ToolExecutionServiceTest,ToolExecutionControllerTest,ToolUnknownReviewAcceptanceTest#databaseReviewCommitRecoveryRetainsTheOriginalRequest' '-Dsurefire.failIfNoSpecifiedTests=false' test`：31模块SUCCESS，4报告56项全部通过、0跳过，4分31秒（服务39/HTTP5/边界8/真实审计4）。日志git-recovery-final-targeted.log/summary.json。四个最新审计成功会话替换摘要和对应截图中的早前审计证据，原8个成功场景维持各自通过范围；总12个成功场景84组浏览器检查/0pageerror。HTTP503与原请求保留在最终应用层边界再次经真实断连验证。
+
+
+最终完整离线：仅子进程关闭全部已有EAP_RUN_*及新组门控，运行 `rtk proxy mvn -B -ntp -f backend/pom.xml test`：32模块SUCCESS，163报告976项：864通过、112门控跳过，0失败/错误，6分27秒。日志git-recovery-offline-final.log/summary.json，按本次mtime统计；与56项最终定向及12真实场景84组浏览器检查分列，不拼接覆盖率。此前974项中1个模块边界失败作为失败记录保留，没有改检测规则或跳过该测试。
+
+最终资源复核：全部20个尝试会话（首批8成功/4失败、审计复验4成功、应用层归一化后再验4成功）的cleanup均true；当前摘要仅选12个成功场景。独立只读JDBC确认无eap_unknown_qa_* schema；应用工具记录仍3条，聚合摘要9328dec3d51e0c83b3929e5a376073ab不变。无fixture JVM或5187监听，所有自有PG连接/宿主/原身份进程已清理；本轮未启停正式full-application。V26/V27/V28/V29数据库与源码CRC分别-716806117/1802106427/-329790285/-508415836，29份已应用迁移，无迁移改写/clean/repair/baseline。证据git-recovery-cleanup-check.json。
+
+最终文件收尾：28文件（22文本UTF-8无BOM/无替换字符、6截图），201处本地Markdown目标/锚点、3类新增内容有限敏感模式和git diff --check通过，明细git-recovery-file-check.json。主方案进度/TC-01、台账、路线、指南与决策同步；fef287f已推送，本轮新增改动未提交/推送。恢复基础作为本批交付，后续工具边界故障转维护回归，产品批次优先PL-01 Task/Run状态健康与在途停用、既有TC-02实例读取整链；物理IO/跨平台穷举不作为其余产品开发的全套前置。跨重启接管、真实供应商和产品人工接受继续按独立门禁。
+
+补充独立只读连接核验：ReadGitRecoveryEvidence查询pg_stat_activity中application_name匹配eap_unknown_qa_*的连接数为0，应用记录摘要、无自有schema及29份迁移结果同时保持；没有仅以宿主退出推断数据库连接清理。
+
+本次提交准备：用户明确授权先提交并推送上述28文件，再按完整功能批次继续推进。已复核生产代码、测试和规划同步，沿用紧邻阶段56项后端定向、976项完整离线（864通过/112门控跳过）、855项前端及12场景84组真实浏览器证据；本次提交准备没有重新跑业务或启停服务。再次执行UTF-8、文档链接/锚点、有限敏感模式和暂存空白检查，推送后核对本地/远端SHA。原未提交口径保留为历史交付状态。

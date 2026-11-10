@@ -1,7 +1,7 @@
 // Opt-in acceptance against real HTTP/JDBC. Optional test proxy drops one actual committed review response.
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { readFile, writeFile, access } from 'node:fs/promises'
+import { readFile, writeFile, appendFile, access } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { createServer } from 'vite-plus'
@@ -36,6 +36,19 @@ const server = await createServer({
         selfHandleResponse: true,
         configure(proxy) {
           proxy.on('proxyRes', (upstream, request, response) => {
+            if (request.method === 'POST' && request.url?.endsWith('/resolve-unknown')) {
+              const observed = []
+              upstream.on('data', (chunk) => observed.push(chunk))
+              upstream.on('end', () => {
+                void appendFile(
+                  resolve(session, 'review-http-responses.jsonl'),
+                  JSON.stringify({
+                    status: upstream.statusCode,
+                    body: Buffer.concat(observed).toString('utf8'),
+                  }) + '\n',
+                ).catch(() => {})
+              })
+            }
             const path =
               '/api/cli-programs/git/operations/' +
               input.operation +
@@ -100,6 +113,7 @@ const otherOperation = operation === 'git-diff' ? 'git-status' : 'git-diff'
 const operationLabel = operation === 'git-diff' ? 'Git · 读取未暂存差异' : 'Git · 读取工作区状态'
 const route = '/api/cli-programs/git/operations/' + operation + '/executions'
 const endpoint = route + '/' + input.executionId
+const expectedReviewPosts = input.databaseReview === 'db-review-before' ? 2 : 1
 const wait = (ms) => new Promise((done) => setTimeout(done, ms))
 async function handshake(request, reply) {
   await writeFile(resolve(session, request), 'owned-process-review')
@@ -201,6 +215,50 @@ try {
         null,
         2,
       ),
+    )
+  } else if (input.phase === 'committed') {
+    await button('summary').filter({ hasText: '执行成功' }).waitFor()
+    const committed = await api('GET', endpoint, undefined, 200)
+    assert.equal(committed.status, 'SUCCEEDED')
+    assert.equal(await button('unknown').count(), 0)
+    assert.equal(await button('review-open').count(), 0)
+    await api(
+      'POST',
+      endpoint + '/resolve-unknown',
+      {
+        requestId: crypto.randomUUID(),
+        note: 'Committed result is not an unknown outcome',
+        processTreeStopped: true,
+      },
+      409,
+    )
+    checks.push(
+      'real commit followed by connection loss preserves SUCCEEDED and rejects UNKNOWN closure',
+    )
+    await button('recheck').click()
+    await button('summary').filter({ hasText: input.executionId }).waitFor()
+    assert.deepEqual(await api('POST', route, { requestId: input.requestId }, 202), committed)
+    checks.push(
+      'explicit query and the original request recover the exact committed result without replay',
+    )
+    await button('invoke').click()
+    await page.waitForFunction(
+      ({ operation, originalId }) => {
+        const text = document.querySelector(
+          '[data-testid="trusted-' + operation + '-summary"]',
+        )?.textContent
+        return text?.includes('执行成功') && !text.includes(originalId)
+      },
+      { operation, originalId: input.executionId },
+    )
+    assert.deepEqual(await api('GET', endpoint, undefined, 200), committed)
+    assert.equal(reviews.length, 0)
+    checks.push('a new explicit request succeeds and keeps the original committed evidence')
+    await page.screenshot({ path: resolve(session, 'database-committed.png'), fullPage: true })
+    assert.deepEqual(errors, [])
+    await writeFile(
+      resolve(session, 'browser-result.json'),
+      JSON.stringify({ passed: checks.length, checks, errors }, null, 2),
     )
   } else {
     await button('unknown').waitFor()
@@ -305,6 +363,57 @@ try {
       checks.push('verified owned tree stopped; observation still does not attest or close')
     }
 
+    if (input.environmentFault) {
+      const draft = 'Retained review input while execution authorization is unavailable'
+      await button('review-note').fill(draft)
+      await handshake('invalidate-environment.request', 'environment-invalid.json')
+      await button('recheck').click()
+      const reason =
+        input.environmentFault === 'workspace-loss' ? 'AUTHORIZED_ROOT_MISSING' : 'BINARY_MISSING'
+      await button('readiness').filter({ hasText: reason }).waitFor()
+      await button('environment').waitFor()
+      assert.equal(await button('invoke').isDisabled(), true)
+      assert.equal(await button('review-note').inputValue(), draft)
+      if (input.environmentFault === 'workspace-loss') {
+        assert.equal(await button('review-open').isDisabled(), true)
+        await api('GET', endpoint, undefined, 403)
+        await api('POST', route, { requestId: crypto.randomUUID() }, 403)
+        await api(
+          'POST',
+          endpoint + '/resolve-unknown',
+          {
+            requestId: crypto.randomUUID(),
+            note: 'Unauthorized workspace cannot be reviewed',
+            processTreeStopped: true,
+          },
+          403,
+        )
+      } else {
+        assert.deepEqual(await api('GET', endpoint, undefined, 200), original)
+        assert.equal(await button('network').count(), 0)
+      }
+      await page.setViewportSize({ width: 390, height: 960 })
+      await page.screenshot({
+        path: resolve(session, 'environment-unavailable-390.png'),
+        fullPage: true,
+      })
+      await handshake('environment-observed.request', 'environment-observed.json')
+      checks.push(
+        'actual authorization loss exposes current recovery guidance and preserves UNKNOWN plus review input',
+      )
+      if (input.environmentFault === 'workspace-loss') {
+        await handshake('restore-environment.request', 'environment-restored.json')
+        await button('recheck').click()
+        await button('readiness').filter({ hasText: 'TOOL_EXECUTION_BLOCKED' }).waitFor()
+        assert.equal(await button('environment').count(), 0)
+        assert.equal(await button('review-note').inputValue(), draft)
+        assert.deepEqual(await api('GET', endpoint, undefined, 200), original)
+        checks.push(
+          'restoring the original workspace and querying resumes review without replay or evidence changes',
+        )
+      }
+    }
+
     const note = input.realGit
       ? 'Real Git interruption acceptance: verified the owned Git process and its captured helper tree stopped by exact PID, start time and executable. Automated review, not product user acceptance.'
       : 'Controlled acceptance harness: verified captured parent, owned Java child and captured helper processes stopped by exact PID, start time and executable. Automated review fixture, not product user acceptance.'
@@ -347,8 +456,52 @@ try {
         'committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit',
       )
     }
+    if (input.databaseReview) {
+      await button('network').waitFor()
+      await button('environment').filter({ hasText: '尚不能确认本次写入是否保存' }).waitFor()
+      assert.equal(reviews.length, 1)
+      assert.equal(await button('review-open').isDisabled(), true)
+      const actual = await api('GET', endpoint, undefined, 200)
+      assert.equal(
+        actual.status,
+        input.databaseReview === 'db-review-before' ? 'UNKNOWN' : 'CLOSED_UNKNOWN',
+      )
+      await page.screenshot({
+        path: resolve(session, 'database-review-unconfirmed.png'),
+        fullPage: true,
+      })
+      await wait(1200)
+      assert.equal(reviews.length, 1)
+      await button('recheck').click()
+      if (input.databaseReview === 'db-review-before') {
+        await button('unknown').waitFor()
+        await page.waitForFunction(
+          (op) =>
+            !document.querySelector('[data-testid="trusted-' + op + '-review-open"]')?.disabled,
+          operation,
+        )
+        await button('review-open').click()
+        await dialog.waitFor()
+        await dialog.getByRole('button', { name: '保存核对并关闭阻塞', exact: true }).click()
+        await button('summary').filter({ hasText: '人工关闭（结果仍未知）' }).waitFor()
+        assert.deepEqual(reviews[1], reviews[0])
+      }
+      checks.push(
+        'real database disconnect during review preserves the request; query distinguishes rollback from committed audit',
+      )
+    }
     await button('summary').filter({ hasText: '人工关闭（结果仍未知）' }).waitFor()
-    assert.equal(reviews.length, 1)
+    if (input.environmentFault === 'binding-loss') {
+      assert.equal(await button('invoke').isDisabled(), true)
+      await api('POST', route, { requestId: crypto.randomUUID() }, 409)
+      await handshake('restore-environment.request', 'environment-restored.json')
+      await button('recheck').click()
+      await button('readiness').filter({ hasText: 'READY' }).waitFor()
+      checks.push(
+        'manual closure does not restore executable authorization; only binding repair and explicit query enable a new start',
+      )
+    }
+    assert.equal(reviews.length, expectedReviewPosts)
     assert.equal(reviews[0].note, note)
     assert.equal(await button('invoke').isEnabled(), true)
     const closed = await api('GET', endpoint, undefined, 200)
@@ -408,7 +561,7 @@ try {
     assert.match(await savedEvidence.innerText(), /processPid/)
     assert.match(await savedEvidence.innerText(), /步骤状态不表示当前进程仍在运行/)
     if (input.realGit) assert.ok((await savedEvidence.innerText()).includes(operation.substring(4)))
-    assert.equal(reviews.length, 1)
+    assert.equal(reviews.length, expectedReviewPosts)
     await page.screenshot({ path: resolve(session, 'closed-history-reopened.png'), fullPage: true })
     checks.push(
       'historical closure reopens through real scoped GET; captured identity review remains available',

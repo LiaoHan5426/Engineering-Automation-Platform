@@ -32,6 +32,7 @@ public final class ToolUnknownReviewFixture {
     static boolean realGit;
     static String operation;
     static String fault;
+    static final java.util.concurrent.atomic.AtomicBoolean commitClaimed = new java.util.concurrent.atomic.AtomicBoolean();
 
     public static void main(String[] args) throws Exception {
         session = Path.of(args[0]).toAbsolutePath().normalize();
@@ -39,7 +40,8 @@ public final class ToolUnknownReviewFixture {
         if (!schema.matches("eap_unknown_qa_[a-f0-9]{32}")) throw new IllegalArgumentException("Unowned schema");
         interrupt = Boolean.parseBoolean(args[2]);
         fault = args[2];
-        realGit = List.of("real-git", "cancel", "timeout", "return", "cancel-lost", "permission", "io").contains(fault);
+        realGit = List.of("real-git", "cancel", "timeout", "return", "cancel-lost", "permission", "io", "db-before", "db-after", "db-review-before", "db-review-after", "workspace-loss", "binding-loss").contains(fault)
+                && !(args.length > 4 && args[4].equals("recovery"));
         operation = args.length > 3 ? args[3] : "git-status";
         if (!List.of("git-status", "git-diff").contains(operation)) throw new IllegalArgumentException("Unsupported fixture operation");
         System.setProperty("spring.devtools.restart.enabled", "false");
@@ -63,7 +65,8 @@ public final class ToolUnknownReviewFixture {
         @Bean JdbcToolExecutionStore store(DataSource source) { return new JdbcToolExecutionStore(new JdbcTemplate(source)); }
         @Bean CapabilitySettings settings(DataSource source) { return new CapabilitySettings(new JdbcTemplate(source), null); }
         @Bean CapabilityRegistry registry() {
-            return new CapabilityRegistry().register(new GitCapability("status")).register(new GitCapability("diff"));
+            return new CapabilityRegistry().register(new GitCapability("status", ToolUnknownReviewFixture::registeredBinary))
+                    .register(new GitCapability("diff", ToolUnknownReviewFixture::registeredBinary));
         }
         @Bean(destroyMethod = "close") DefaultProcessExecutor processExecutor() { return new DefaultProcessExecutor(Duration.ofMinutes(3)); }
         @Bean ToolExecutionService service(JdbcToolExecutionStore store, CapabilitySettings settings,
@@ -144,11 +147,69 @@ public final class ToolUnknownReviewFixture {
         if (!ownedSchema.matches("eap_unknown_qa_[a-f0-9]{32}")) throw new IllegalArgumentException("Unowned schema");
         var original = originalDataSource();
         return new AbstractDataSource() {
-            public Connection getConnection() throws java.sql.SQLException { return relocate(original.getConnection(), ownedSchema); }
+            public Connection getConnection() throws java.sql.SQLException { return relocate(interruptible(original.getConnection(), ownedSchema), ownedSchema); }
             public Connection getConnection(String user, String password) throws java.sql.SQLException {
-                return relocate(original.getConnection(user, password), ownedSchema);
+                return relocate(interruptible(original.getConnection(user, password), ownedSchema), ownedSchema);
             }
         };
+    }
+    static String registeredBinary() {
+        try {
+            var path = session.resolve("binary-binding.txt");
+            return Files.exists(path) ? Files.readString(path).strip() : "git";
+        } catch (java.io.IOException error) { throw new IllegalStateException("Fixture binding unavailable", error); }
+    }
+    private static Connection interruptible(Connection connection, String ownedSchema) throws java.sql.SQLException {
+        if (session == null || !List.of("db-before", "db-after", "db-review-before", "db-review-after").contains(fault) || !ownedSchema.equals(schema)) return connection;
+        try (var statement = connection.prepareStatement("SELECT set_config('application_name', ?, false)")) {
+            statement.setString(1, ownedSchema); statement.execute();
+        }
+        var terminalWrite = new boolean[1];
+        var execution = new Object[1];
+        return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[]{Connection.class}, (proxy, method, args) -> {
+            if (method.getName().equals("commit") && terminalWrite[0] && commitClaimed.compareAndSet(false, true)) {
+                try {
+                    if (fault.endsWith("after")) connection.commit();
+                    int pid;
+                    try (var statement = connection.createStatement(); var rows = statement.executeQuery("SELECT pg_backend_pid()")) {
+                        rows.next(); pid = rows.getInt(1);
+                    }
+                    Files.writeString(session.resolve("db-commit-ready.tmp"), JSON.writeValueAsString(Map.of(
+                            "pid", pid, "schema", ownedSchema, "executionId", String.valueOf(execution[0]), "mode", fault)));
+                    Files.move(session.resolve("db-commit-ready.tmp"), session.resolve("db-commit-ready.json"), StandardCopyOption.ATOMIC_MOVE);
+                    long deadline = System.nanoTime() + Duration.ofSeconds(40).toNanos();
+                    while (!Files.exists(session.resolve("db-commit-release.request")) && System.nanoTime() < deadline) Thread.sleep(10);
+                    if (!Files.exists(session.resolve("db-commit-release.request"))) throw new IllegalStateException("Owned database interruption handshake timed out");
+                    if (fault.endsWith("before")) connection.commit();
+                    else try (var statement = connection.createStatement()) { statement.execute("SELECT 1"); }
+                    throw new IllegalStateException("Owned PostgreSQL connection was not interrupted");
+                } catch (java.sql.SQLException failure) {
+                    Files.writeString(session.resolve("db-commit-error.json"), JSON.writeValueAsString(Map.of("sqlState", String.valueOf(failure.getSQLState()), "mode", fault)));
+                    throw failure;
+                }
+            }
+            try {
+                var value = method.invoke(connection, args);
+                if (method.getName().equals("prepareStatement") && args[0] instanceof String sql
+                        && sql.startsWith("UPDATE " + ownedSchema + ".tool_execution SET status")) {
+                    var statement = (java.sql.PreparedStatement) value;
+                    var bindings = new HashMap<Integer,Object>();
+                    return Proxy.newProxyInstance(java.sql.PreparedStatement.class.getClassLoader(), new Class<?>[]{java.sql.PreparedStatement.class},
+                            (p, action, values) -> {
+                                if (action.getName().startsWith("set") && values != null && values.length >= 2 && values[0] instanceof Integer key)
+                                    bindings.put(key, values[1]);
+                                try {
+                                    var result = action.invoke(statement, values);
+                                    if (action.getName().equals("executeUpdate") && (fault.startsWith("db-review") ? "CLOSED_UNKNOWN" : "SUCCEEDED").equals(bindings.get(1))) {
+                                        terminalWrite[0] = true; execution[0] = bindings.get(3);
+                                    }
+                                    return result;
+                                } catch (InvocationTargetException error) { throw error.getCause(); }
+                            });
+                }
+                return value;
+            } catch (InvocationTargetException error) { throw error.getCause(); }
+        });
     }
     private static Connection relocate(Connection connection, String ownedSchema) {
         return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[]{Connection.class},

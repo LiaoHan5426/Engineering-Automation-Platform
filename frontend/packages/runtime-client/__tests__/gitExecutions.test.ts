@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-const { requests } = vi.hoisted(() => ({
+const { requests, reviewReply } = vi.hoisted(() => ({
+  reviewReply: { invalid: false },
   requests: [] as { url?: string; method?: string; data?: unknown }[],
 }))
 vi.mock('axios', async (original) => {
@@ -19,7 +20,16 @@ vi.mock('axios', async (original) => {
               statusText: 'OK',
               headers: {},
               config,
-              data: { id: 'execution', items: [] },
+              data: config.url?.endsWith('/resolve-unknown')
+                ? reviewReply.invalid
+                  ? { detail: 'write outcome unavailable' }
+                  : {
+                      id: 'id/with slash',
+                      capabilityId: 'git-diff',
+                      status: 'CLOSED_UNKNOWN',
+                      resolution: { requestId: 'review', processTreeStopped: true },
+                    }
+                : { id: 'execution', items: [] },
             }
           },
         }),
@@ -29,6 +39,7 @@ vi.mock('axios', async (original) => {
 import { runtimeApi } from '../src/index'
 beforeEach(() => {
   requests.length = 0
+  reviewReply.invalid = false
 })
 describe('bounded Git execution client', () => {
   it.each(['git-status', 'git-diff'] as const)(
@@ -36,12 +47,14 @@ describe('bounded Git execution client', () => {
     async (operation) => {
       await runtimeApi.startGitOperationExecution(operation, 'request')
       await runtimeApi.gitOperationExecutions(operation)
+      await runtimeApi.gitOperationReadiness(operation)
       await runtimeApi.gitOperationExecution(operation, 'id/with slash')
       await runtimeApi.cancelGitOperationExecution(operation, 'id/with slash')
       const base = '/cli-programs/git/operations/' + operation + '/executions'
       expect(requests.map(({ method, url }) => [method, url])).toEqual([
         ['post', base],
         ['get', base],
+        ['get', base + '/readiness'],
         ['get', base + '/id%2Fwith%20slash'],
         ['post', base + '/id%2Fwith%20slash/cancel'],
       ])
@@ -69,6 +82,16 @@ describe('bounded Git execution client', () => {
       '/cli-programs/git/operations/git-diff/executions/id%2Fwith%20slash/resolve-unknown',
     )
     expect(JSON.parse(requests[0]!.data as string)).toEqual(review)
+  })
+  it('rejects an unconfirmed review response even when HTTP reports success', async () => {
+    reviewReply.invalid = true
+    await expect(
+      runtimeApi.resolveUnknownGitExecution('git-diff', 'id/with slash', {
+        requestId: 'review',
+        note: 'Verified related processes stopped',
+        processTreeStopped: true,
+      }),
+    ).rejects.toThrow('UNKNOWN_REVIEW_RESPONSE_UNCONFIRMED')
   })
   it('preserves status wrappers and rejects unknown runtime operation values before HTTP', async () => {
     await runtimeApi.startTrustedGitExecution('request')

@@ -7,6 +7,7 @@ import {
   type ToolExecution,
   type ToolUnknownReviewRequest,
   type ToolProcessReview,
+  type ToolExecutionReadiness,
 } from '@eap/runtime-client'
 import { Badge, Button, Checkbox, Collapse, ConfirmBox, Feedback, Textarea } from '@eap/ui'
 import { i18n } from '../../lib/i18n'
@@ -23,6 +24,30 @@ const busy = ref(false)
 const uncertain = ref(false)
 const refusal = ref<'denied' | 'rejected' | null>(null)
 const loaded = ref(false)
+const readiness = ref<ToolExecutionReadiness | null>(null)
+const scopeUnavailable = computed(() => readiness.value?.scopeAccessible === false)
+const authorizationBlocked = computed(() => readiness.value?.authorized === false)
+const environmentHint = computed(() => {
+  const reason = readiness.value?.authorized === false ? readiness.value.reason : errorDetail.value
+  if (reason === 'TOOL_EXECUTION_STORE_UNAVAILABLE') return t('storeUnavailable')
+  if (reason === 'AUTHORIZED_ROOT_MISSING' || reason === 'WORKSPACE_CHANGED')
+    return t('workspaceUnavailable')
+  if (reason === 'CAPABILITY_DISABLED') return t('operationDisabled')
+  if (
+    [
+      'BINARY_MISSING',
+      'CLI_BINDING_UNAVAILABLE',
+      'CLI_PROGRAM_BINDING_CONFLICT',
+      'TOOL_BINDING_CHANGED',
+      'GIT_STATUS_HANDLER_MISSING',
+      'GIT_DIFF_HANDLER_MISSING',
+      'GIT_STATUS_CAPABILITY_MISSING',
+      'GIT_DIFF_CAPABILITY_MISSING',
+    ].includes(reason)
+  )
+    return t('bindingUnavailable')
+  return ''
+})
 const errorDetail = ref('')
 const observedAt = ref('')
 const processReview = ref<ToolProcessReview | null>(null)
@@ -116,8 +141,29 @@ async function recheck() {
   const revision = ++generation
   clearTimeout(timer)
   try {
+    const conditions = await runtimeApi.gitOperationReadiness(props.operation, controller.signal)
+    if (disposed || suspended || revision !== generation) return
+    readiness.value = conditions
+    if (!conditions.scopeAccessible) {
+      uncertain.value = true
+      errorDetail.value = conditions.reason
+      loaded.value = true
+      return
+    }
     const response = await runtimeApi.gitOperationExecutions(props.operation, controller.signal)
     if (disposed || suspended || revision !== generation) return
+    if (
+      conditions.blockingExecutionId &&
+      !response.items.some((item) => item.id === conditions.blockingExecutionId)
+    ) {
+      const reserved = await runtimeApi.gitOperationExecution(
+        props.operation,
+        conditions.blockingExecutionId,
+        controller.signal,
+      )
+      if (disposed || suspended || revision !== generation) return
+      response.items = [reserved, ...response.items].slice(0, 20)
+    }
     records.value = response.items
     const row =
       response.items.find((item) => active(item) || item.status === 'UNKNOWN') ?? response.items[0]
@@ -155,7 +201,14 @@ async function openExecution(id: string) {
   }
 }
 async function start(mockOutcome?: string) {
-  if (busy.value || blocking.value || uncertain.value || !loaded.value) return
+  if (
+    busy.value ||
+    blocking.value ||
+    uncertain.value ||
+    authorizationBlocked.value ||
+    !loaded.value
+  )
+    return
   busy.value = true
   const revision = ++generation
   requestId ??= crypto.randomUUID()
@@ -210,6 +263,7 @@ async function inspectProcesses() {
   if (
     !row ||
     !['UNKNOWN', 'CLOSED_UNKNOWN'].includes(row.status) ||
+    scopeUnavailable.value ||
     busy.value ||
     disposed ||
     suspended
@@ -318,7 +372,7 @@ onBeforeUnmount(() => {
         variant="secondary"
         size="sm"
         :data-testid="testId('invoke')"
-        :disabled="!enabled || busy || blocking || uncertain || !loaded"
+        :disabled="!enabled || busy || blocking || uncertain || authorizationBlocked || !loaded"
         @click="start()"
         >{{ t(operation === 'git-diff' ? 'diffStart' : 'start') }}</Button
       >
@@ -354,6 +408,16 @@ onBeforeUnmount(() => {
         >
       </template>
     </div>
+    <div v-if="readiness" :data-testid="testId('readiness')">
+      <p class="hint">
+        {{ t('readiness') }} · {{ readiness.reason }} · {{ t('observed') }}
+        {{ readiness.checkedAt }}
+      </p>
+      <p class="hint">{{ t('readinessBoundary') }}</p>
+    </div>
+    <Feedback v-if="environmentHint" tone="warning" :data-testid="testId('environment')">{{
+      environmentHint
+    }}</Feedback>
     <p v-if="busy" class="hint">{{ t('waiting') }}</p>
     <Feedback v-if="uncertain" tone="warning" :data-testid="testId('network')"
       >{{ t('network') }} · {{ errorDetail }}</Feedback
@@ -398,7 +462,7 @@ onBeforeUnmount(() => {
         <Button
           variant="secondary"
           size="sm"
-          :disabled="busy"
+          :disabled="busy || scopeUnavailable"
           :data-testid="testId('process-inspect')"
           @click="inspectProcesses"
           >{{ t('processInspect') }}</Button

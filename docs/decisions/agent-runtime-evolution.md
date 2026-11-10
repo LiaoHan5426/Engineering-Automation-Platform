@@ -1,6 +1,6 @@
 # Agent 能力、本地运行环境与插件演进
 
-状态：有效合同与增量实现记录；当前已提交实现基线 `5e0ec5b`（已推送），本轮接续取消请求响应丢失及权限/IO异常UNKNOWN核对恢复；接续按本次用户授权提交并推送，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。历史章节的提交授权、测试数字和限制只描述当时范围。向量增强、框架迁移、第三方安装等仍须满足各自证据与授权门禁。
+状态：有效合同与增量实现记录；当前已提交实现基线 `fef287f`（已推送），本轮集中交付数据库结果/审计写入与工作区/可执行文件授权失效恢复；接续按本次用户授权提交并推送，完成范围与剩余项以 §7 和[台账](../planning-status.md)为准。历史数字和授权描述保留原范围，框架/外部安装等仍按独立门禁。
 
 ## 1. 结论与适用范围
 
@@ -275,7 +275,7 @@ TC-02 定向独立复核通过，原P1关闭：审查者复跑2文件10项、typ
 | CE-01 / KR-01 | **CE-01/KR-01 部分交付**：字符预算观测 + 用量 UI + mock 预算/超限 + 历史未计量 + 派生清空 + **备注 Badge**；预定检索 fixture + KEYWORD_PROBE；POSTGRES_FTS；延迟/实库对照/排序样本 | CE-01 剩余 token/压缩/精确 Memory 计量与用户接受；KR-01 生产样本/FTS 排序对照；KR-02 仅证据触发 |
 | FS-01 | **部分交付**：data-layout + migrationReadiness + 能力页盘点/刷新 + kind/byteSize + inventory + candidateCounts + **byKind**；`physicalMigration=false` | 迁移/读回/失败恢复、边界与清理合同；不启动未经批准迁移 |
 | TD-01 / P0 | **部分交付**：既有程序/操作模型投影目录；Git路径、版本与探测缓存共享；旧能力ID/探测入口兼容，历史路径冲突拒绝执行 | 其他依赖绑定与用户接受；见[Git调用合同](#git-operation-executions) |
-| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝；真实diff HTTP/JDBC已验，工具UNKNOWN显式核对关闭阻塞及当前身份线索已实现；追加每步32个已观察子进程身份持久/核对，清理句柄不受限，仍不证明完整树退出；受控中断及真实status/diff异常终止/持久结果丢失的HTTP/PostgreSQL/Vue核对、diff恢复范围及索引/文件不变已验，确认框明确操作身份，关闭后仍只读保留原始命令和步骤证据；status/diff取消、超时及成功结果返回中断的六组UNKNOWN核对与恢复、正常持久终态对照及人工关闭响应中断后显式重查已验；取消意图在UNKNOWN/CLOSED_UNKNOWN保留展示；取消请求响应丢失后不确定态禁止重复取消/启动并显式重查；status/diff的Windows index ACL与共享IO限制异常、结果保存中断UNKNOWN核对及正常FAILED对照恢复已验 | 其他权限范围/物理IO/其他平台异常、跨重启进程接管和产品用户接受独立；见[Git调用合同](#git-operation-executions) |
+| TC-01 / P0 | **status/diff切片实现**：固定操作持久执行，取消覆盖root/filter/最终命令，证据确认终态、KeepAlive/刷新恢复，UNKNOWN按操作阻塞，requestId跨操作冲突拒绝；真实diff HTTP/JDBC已验，工具UNKNOWN显式核对关闭阻塞及当前身份线索已实现；追加每步32个已观察子进程身份持久/核对，清理句柄不受限，仍不证明完整树退出；受控中断及真实status/diff异常终止/持久结果丢失的HTTP/PostgreSQL/Vue核对、diff恢复范围及索引/文件不变已验，确认框明确操作身份，关闭后仍只读保留原始命令和步骤证据；status/diff取消、超时及成功结果返回中断的六组UNKNOWN核对与恢复、正常持久终态对照及人工关闭响应中断后显式重查已验；取消意图在UNKNOWN/CLOSED_UNKNOWN保留展示；取消请求响应丢失后不确定态禁止重复取消/启动并显式重查；status/diff的Windows index ACL与共享IO限制异常、结果保存中断UNKNOWN核对及正常FAILED对照恢复已验；集中交付逐Git阶段授权复核、只读readiness和恢复指引、应用层存储事务归一化/核对响应校验及历史外阻塞加载；数据库终态/审计提交前后断连、工作区/绑定失效12场景84组真实浏览器检查通过 | 其他权限范围/物理IO/其他平台异常、跨重启进程接管和产品用户接受独立；见[Git调用合同](#git-operation-executions) |
 | TC-02 / P1 | **部分交付**：实际 Grapes 实例人工读取草稿/选中状态，实例/文档/revision 核验、有界快照、过期与离页清空 | 多实例/冲突/超限离线覆盖，真机已验读取/过期/切页/新建；用户接受、远程断线与模型反向调用仍独立，不建设反向 RPC |
 | MCP-01 | **部分交付**：stdio + 分页 + 官方只读包矩阵（含 filesystem 五工具）+ **callVerified/listOnly 视图** + http + legacy SSE + Streamable-HTTP + 生产白名单 + GET 续传；mock/真机已验 | 继续追加已验证官方包；常驻 GET listen 未做 |
 | PL-01 | **部分交付**：看板启停/回滚、依赖缺失/激活失败；新增显式只读Task列表检查，来源/时间/未检查与未知失败分开（真机及mock已验）；不改Task/Run | Run/整体服务健康未验，用户接受与在途停用完整矩阵仍待；无第二状态源，外部安装器延期 |
@@ -576,7 +576,7 @@ core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManife
 最终兼容定向67通过/1矩阵门控跳过（原三场景19组浏览器检查）；完整离线960项中851通过/109门控跳过、32模块成功，0失败/错误。独立只读数据库/迁移/临时schema、原记录摘要及自有进程/监听收尾均通过；full-application保持原未运行状态。六组矩阵与完整离线分列，详见上述主题记录和当前台账。
 
 
-### 取消响应丢失与文件权限/IO异常合同（2026-11-10，接续按本次用户授权提交）
+### 取消响应丢失与文件权限/IO异常合同（历史阶段fef287f，2026-11-10）
 
 5e0ec5b已按用户授权推送并核对远端一致。本轮复用ToolExecution、固定status/diff、生产执行器和原核对接口，不新增状态或迁移。
 
@@ -585,3 +585,17 @@ core新增ExpertAnalysisPolicyResolver，输入为服务端加载的ExpertManife
 - 六组实际HTTP/PostgreSQL/Vue矩阵通过，共50组浏览器检查/0pageerror；正常终态对照、UNKNOWN原证据/JDBC/历史/再重启、操作隔离和diff范围保持均核验。前端846项/面板49项及工程检查通过；复现、完整命令、资源和最终兼容/离线回归见[主题记录](../records/backend-composition-history.md#git-cancel-permission-io-review)。其他权限范围/物理IO/其他平台、完整树退出证明、跨重启接管和产品用户接受仍独立。
 
 最终兼容定向69项中67通过/2矩阵门控跳过（原三场景19组浏览器检查）；完整离线961项中851通过/110门控跳过、32模块成功，0失败/错误。九个成功会话及独立数据库/迁移/原记录摘要/临时schema/进程监听收尾通过，full-application保持原未运行状态。最终文件及限定剩余范围见上述主题记录和当前台账。
+
+
+### 数据库与授权恢复能力整组合同（2026-11-10，接续按本次授权提交）
+
+fef287f已按用户授权推送。本组同时交付后端逐阶段复核/只读readiness、应用层事务异常归一化、前端恢复指引/历史阻塞补读和核对响应身份校验，复用原状态和审计，不建设新的授权中心。
+
+- readiness只读区分scopeAccessible/authorized/canStart及阻塞ID，不关闭UNKNOWN或授予权限；新前后端配套更新。每阶段复核工作区/启用/绑定，失效后不再启动后续进程，保留步骤和NO_FURTHER_PROCESS_STARTED证据。
+- 应用服务把提交异常归一化为稳定存储错误，HTTP映射503/TOOL_EXECUTION_STORE_UNAVAILABLE；不让web依赖事务层，不暴露SQL。客户端保留原请求并显式查询；核对成功包须匹配记录/操作/CLOSED_UNKNOWN/原审计请求。
+- 两操作的终态/审计提交前后及工作区/程序绑定失效共12场景、84组真实HTTP/PostgreSQL/Vue检查通过，失败reactor单独保留。前端855项/定向69项及工程检查通过，最终后端回归见[主题记录](../records/backend-composition-history.md#git-database-authorization-recovery)。
+- 仅按PID和UUID schema application_name双重核对后中断测试连接；后置故障为实际commit后/Spring返回前的连接失败，不推广为抓包级COMMIT丢包、全库断网或数据库重启。其他平台、完整树证明、跨重启接管和产品用户接受独立。
+
+应用层归一化后的最终定向56项全部通过/0跳过，含4个实际审计断连及8项模块边界；服务测试增至39项。最新4个审计会话已替换摘要中的旧证据，其余8成功场景保留原范围。完整离线与资源收尾见主题记录，不以早先失败reactor冒充成功。
+
+最终完整离线976项：864通过/112门控跳过，32模块SUCCESS、0失败/错误；20个尝试会话及当前12场景清理、原3条应用记录摘要、临时schema/进程/监听、V26～V29校验和独立复核通过。当前28文件未提交，原fef287f已推送。恢复基础收口后按完整产品批次继续，不将所有物理IO/平台异常穷举设为其余产品开发前置。

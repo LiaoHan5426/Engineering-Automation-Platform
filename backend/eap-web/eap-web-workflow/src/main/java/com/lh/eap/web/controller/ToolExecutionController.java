@@ -3,6 +3,7 @@ package com.lh.eap.web.controller;
 import com.lh.eap.application.service.ToolExecution;
 import com.lh.eap.application.service.ToolExecutionService;
 import com.lh.eap.application.service.ToolProcessReview;
+import com.lh.eap.application.service.ToolExecutionReadiness;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,15 @@ public class ToolExecutionController {
     }
     @GetMapping public Map<String, Object> list(@PathVariable String operation, @RequestParam(defaultValue = "20") int limit) {
         return Map.of("items", service.list(operation, limit));
+    }
+    @GetMapping("/readiness") public ToolExecutionReadiness readiness(@PathVariable String operation) {
+        return service.readiness(operation);
+    }
+    @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+    public ResponseEntity<Map<String, Object>> persistenceUnavailable() {
+        // A failed write response does not tell the client whether a transaction committed.
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("detail", "TOOL_EXECUTION_STORE_UNAVAILABLE"));
     }
     @GetMapping("/{id}") public ToolExecution get(@PathVariable String operation, @PathVariable UUID id) { return service.get(operation, id); }
     @PostMapping("/{id}/cancel") public ToolExecution cancel(@PathVariable String operation, @PathVariable UUID id) { return service.cancel(operation, id); }

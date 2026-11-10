@@ -70,6 +70,20 @@ class ToolUnknownReviewAcceptanceTest {
         operation = selectedOperation; route = routeFor(operation); fault = selectedFault;
         exercise(true);
     }
+    @ParameterizedTest(name = "{0} / {1}")
+    @EnabledIfEnvironmentVariable(named = "EAP_RUN_GIT_RECOVERY_BATCH", matches = "true")
+    @CsvSource({"git-status,db-before", "git-diff,db-before", "git-status,db-after", "git-diff,db-after",
+            "git-status,workspace-loss", "git-diff,workspace-loss", "git-status,binding-loss", "git-diff,binding-loss"})
+    void databaseAndAuthorizationRecoveryRemainScopedAndDurable(String selectedOperation, String selectedFault) throws Exception {
+        operation = selectedOperation; route = routeFor(operation); fault = selectedFault; exercise(true);
+    }
+    @ParameterizedTest(name = "{0} / {1}")
+    @EnabledIfEnvironmentVariable(named = "EAP_RUN_GIT_RECOVERY_BATCH", matches = "true")
+    @CsvSource({"git-status,db-review-before", "git-diff,db-review-before", "git-status,db-review-after", "git-diff,db-review-after"})
+    void databaseReviewCommitRecoveryRetainsTheOriginalRequest(String selectedOperation, String selectedFault) throws Exception {
+        operation = selectedOperation; route = routeFor(operation); fault = selectedFault; exercise(true);
+    }
+    private boolean recoveryBatch() { return fault.startsWith("db-") || fault.endsWith("-loss"); }
     private boolean cancellationFault() { return List.of("cancel", "cancel-lost").contains(fault); }
     private boolean fileFault() { return List.of("permission", "io").contains(fault); }
     private static String routeFor(String operation) {
@@ -187,13 +201,28 @@ class ToolUnknownReviewAcceptanceTest {
             }
             indexFault.close(); indexFault = () -> {};
             write("index-fault-restored.json", Map.of("restored", true, "fault", fault));
+            if (fault.equals("db-before") || fault.equals("db-after")) {
+                write("git-return.request", Map.of("persistActualResult", true));
+                interruptOwnedDatabaseConnection(admin);
+                var settled = settle(started);
+                if (fault.equals("db-after")) {
+                    assertEquals("SUCCEEDED", settled.get("status"));
+                    var committed = store.find(UUID.fromString(id)).orElseThrow();
+                    verifyCommittedDatabaseResult(id, requestId, committed, store);
+                    return;
+                }
+                assertEquals("UNKNOWN", settled.get("status"));
+                assertEquals("EXECUTION_EVIDENCE_UNCONFIRMED", settled.get("unconfirmedReason"));
+                beforeCrash = store.find(UUID.fromString(id)).orElseThrow();
+                write("database-unknown.json", beforeCrash);
+            }
             stopHost(hosts.getLast(), true);
             if (!realGit) { assertOwnedAlive(identities.getFirst()); assertOwnedAlive(javaChild); }
 
             startHost(false);
             var unknown = request("GET", route + "/" + id, null, 200);
             assertEquals("UNKNOWN", unknown.get("status"));
-            assertEquals("SERVICE_RESTART_EXIT_UNCONFIRMED", unknown.get("unconfirmedReason"));
+            assertEquals(fault.equals("db-before") ? "EXECUTION_EVIDENCE_UNCONFIRMED" : "SERVICE_RESTART_EXIT_UNCONFIRMED", unknown.get("unconfirmedReason"));
             assertEquals(cancellationFault(), unknown.get("cancelRequested"));
             assertEquals(beforeCrash.steps(), store.find(UUID.fromString(id)).orElseThrow().steps());
             request("POST", route, Map.of("requestId", UUID.randomUUID()), 409);
@@ -204,9 +233,13 @@ class ToolUnknownReviewAcceptanceTest {
             var beforeInspection = store.find(UUID.fromString(id)).orElseThrow();
             request("GET", route + "/" + id + "/process-review", null, 200);
             assertEquals(beforeInspection, store.find(UUID.fromString(id)).orElseThrow());
-            write("browser-input.json", Map.of("base", base, "executionId", id, "requestId", requestId,
+            var browserInput = new LinkedHashMap<String,Object>();
+            browserInput.putAll(Map.of("base", base, "executionId", id, "requestId", requestId,
                     "session", session.toString(), "frontend", repository.resolve("frontend").toString(), "childPid", childPid,
-                    "realGit", realGit, "operation", operation, "dropReviewResponse", !fault.equals("real-git")));
+                    "realGit", realGit, "operation", operation, "dropReviewResponse", !fault.equals("real-git") && !fault.startsWith("db-review")));
+            browserInput.put("environmentFault", fault.endsWith("-loss") ? fault : "");
+            browserInput.put("databaseReview", fault.startsWith("db-review") ? fault : "");
+            write("browser-input.json", browserInput);
             browser = new ProcessBuilder("node", repository.resolve("frontend/apps/web/__tests__/browser/tool-unknown-review-live.mjs").toString(),
                     "--session", session.toString()).directory(repository.resolve("frontend").toFile())
                     .redirectErrorStream(true).redirectOutput(session.resolve("browser.log").toFile()).start();
@@ -222,6 +255,8 @@ class ToolUnknownReviewAcceptanceTest {
             for (var identity : identities) assertFalse(ownedIdentityAlive(identity));
             write("os-review.json", identities.stream().map(ToolUnknownReviewAcceptanceTest::inspectOwned).toList());
             write("tree-stopped.json", Map.of("verified", true));
+            if (fault.endsWith("-loss")) verifyEnvironmentLoss(id, store);
+            if (fault.startsWith("db-review")) interruptOwnedDatabaseConnection(admin);
             assertTrue(browser.waitFor(60, TimeUnit.SECONDS), "Browser did not finish");
             assertEquals(0, browser.exitValue(), () -> read("browser.log"));
             browser = null;
@@ -237,7 +272,7 @@ class ToolUnknownReviewAcceptanceTest {
             assertEquals(ToolUnknownReviewFixture.JSON.readValue(ToolUnknownReviewFixture.JSON.writeValueAsString(closed), Map.class),
                     request("GET", route + "/" + id, null, 200), "Independent JDBC snapshot matches the actual HTTP closure");
             if (realGit) {
-                if (!fault.equals("real-git")) verifyConfirmedResultControl(store);
+                if (!fault.equals("real-git") && !recoveryBatch()) verifyConfirmedResultControl(store);
                 var index = session.resolve("workspace/.git/index");
                 var savedIndex = Files.exists(index) ? Files.readAllBytes(index) : null;
                 if (operation.equals("git-diff") || fileFault()) assertArrayEquals(originalIndex, savedIndex);
@@ -281,6 +316,9 @@ class ToolUnknownReviewAcceptanceTest {
                     "browser", ToolUnknownReviewFixture.JSON.readValue(read("browser-result.json"), Map.class)));
         } finally {
             indexFault.close();
+            var unavailableRoot = session.resolve("workspace-unavailable");
+            if (Files.exists(unavailableRoot) && !Files.exists(session.resolve("workspace"))) Files.move(unavailableRoot, session.resolve("workspace"));
+            Files.deleteIfExists(session.resolve("binary-binding.txt"));
             if (browser != null && browser.isAlive()) browser.destroyForcibly().waitFor(5, TimeUnit.SECONDS);
             for (var host : hosts) if (host.isAlive()) stopHost(host, false);
             for (var identity : identities.reversed()) stopOwned(identity);
@@ -294,6 +332,57 @@ class ToolUnknownReviewAcceptanceTest {
         }
     }
 
+    private void interruptOwnedDatabaseConnection(JdbcTemplate admin) throws Exception {
+        awaitFile("db-commit-ready.json");
+        var ready = ToolUnknownReviewFixture.JSON.readValue(read("db-commit-ready.json"), Map.class);
+        assertEquals(schema, ready.get("schema"));
+        int pid = ((Number) ready.get("pid")).intValue();
+        assertEquals(1, admin.queryForObject("SELECT count(*) FROM pg_stat_activity WHERE pid=? AND application_name=?", Integer.class, pid, schema));
+        assertEquals(true, admin.queryForObject("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid=? AND application_name=?", Boolean.class, pid, schema));
+        write("db-terminated.json", ready);
+        write("db-commit-release.request", Map.of("ownedBackendTerminated", true));
+        awaitFile("db-commit-error.json");
+        var error = ToolUnknownReviewFixture.JSON.readValue(read("db-commit-error.json"), Map.class);
+        assertTrue(List.of("57P01", "08006", "08003").contains(error.get("sqlState")), error.toString());
+    }
+    private void verifyEnvironmentLoss(String id, JdbcToolExecutionStore store) throws Exception {
+        awaitFile("invalidate-environment.request");
+        var before = store.find(UUID.fromString(id)).orElseThrow();
+        if (fault.equals("workspace-loss")) {
+            var source = session.resolve("workspace").toAbsolutePath().normalize();
+            var target = session.resolve("workspace-unavailable").toAbsolutePath().normalize();
+            assertTrue(source.startsWith(session)); assertTrue(target.startsWith(session)); assertFalse(Files.exists(target));
+            Files.move(source, target);
+        } else Files.writeString(session.resolve("binary-binding.txt"), session.resolve("missing-git.exe").toString());
+        write("environment-invalid.json", Map.of("fault", fault));
+        awaitFile("environment-observed.request");
+        assertEquals(before, store.find(UUID.fromString(id)).orElseThrow(), "Authorization loss and inspection must preserve the UNKNOWN record");
+        write("environment-observed.json", Map.of("unchanged", true));
+        awaitFile("restore-environment.request");
+        if (fault.equals("binding-loss")) {
+            var closed = store.find(UUID.fromString(id)).orElseThrow();
+            assertEquals("CLOSED_UNKNOWN", closed.status()); assertEquals(before.steps(), closed.steps());
+        }
+        if (fault.equals("workspace-loss")) Files.move(session.resolve("workspace-unavailable"), session.resolve("workspace"));
+        else Files.delete(session.resolve("binary-binding.txt"));
+        write("environment-restored.json", Map.of("restored", true, "recordUnchanged", true));
+    }
+    private void verifyCommittedDatabaseResult(String id, UUID requestId, ToolExecution committed, JdbcToolExecutionStore store) throws Exception {
+        write("database-committed.json", committed);
+        request("POST", route + "/" + id + "/resolve-unknown", Map.of("requestId", UUID.randomUUID(),
+                "note", "A committed terminal result cannot be closed as UNKNOWN", "processTreeStopped", true), 409);
+        write("browser-input.json", Map.of("base", base, "executionId", id, "requestId", requestId,
+                "session", session.toString(), "frontend", repository.resolve("frontend").toString(), "operation", operation, "phase", "committed"));
+        browser = new ProcessBuilder("node", repository.resolve("frontend/apps/web/__tests__/browser/tool-unknown-review-live.mjs").toString(),
+                "--session", session.toString()).directory(repository.resolve("frontend").toFile())
+                .redirectErrorStream(true).redirectOutput(session.resolve("browser.log").toFile()).start();
+        assertTrue(browser.waitFor(60, TimeUnit.SECONDS)); assertEquals(0, browser.exitValue(), () -> read("browser.log")); browser = null;
+        stopHost(hosts.getLast(), false); startHost(false);
+        assertEquals(committed, store.find(committed.id()).orElseThrow());
+        assertEquals("SUCCEEDED", request("POST", route, Map.of("requestId", requestId), 202).get("status"));
+        write("result.json", Map.of("passed", true, "fault", fault, "operation", operation, "schema", schema, "executionId", id,
+                "committedResultPreserved", true, "browser", ToolUnknownReviewFixture.JSON.readValue(read("browser-result.json"), Map.class)));
+    }
     private AutoCloseable enableIndexFault() throws Exception {
         if (!fileFault()) return () -> {};
         var workspace = session.resolve("workspace").toAbsolutePath().normalize();
@@ -339,9 +428,9 @@ class ToolUnknownReviewAcceptanceTest {
     private void assertActualResult(Map<?,?> result) {
         var metadata = (Map<?,?>) result.get("metadata");
         var expected = switch (fault) { case "cancel", "cancel-lost" -> "CANCELLED"; case "timeout" -> "TIMED_OUT";
-            case "return" -> "SUCCEEDED"; default -> "FAILED"; };
+            case "return", "db-before", "db-after", "db-review-before", "db-review-after", "workspace-loss", "binding-loss" -> "SUCCEEDED"; default -> "FAILED"; };
         assertEquals(expected, metadata.get("executorStatus"), result.toString());
-        assertEquals(fault.equals("return"), result.get("success"));
+        assertEquals(fault.equals("return") || recoveryBatch(), result.get("success"));
         if (fault.equals("real-git") || fileFault()) assertNotEquals(0, ((Number) result.get("exitCode")).intValue());
         else assertEquals(cancellationFault() ? 130 : fault.equals("timeout") ? 124 : 0,
                 ((Number) result.get("exitCode")).intValue());
@@ -392,7 +481,7 @@ class ToolUnknownReviewAcceptanceTest {
         var java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
         var host = new ProcessBuilder(java, "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8", "-cp",
                 System.getProperty("surefire.test.class.path", System.getProperty("java.class.path")),
-                ToolUnknownReviewFixture.class.getName(), session.toString(), schema, fault && realGit ? this.fault : Boolean.toString(fault), operation)
+                ToolUnknownReviewFixture.class.getName(), session.toString(), schema, (fault && realGit) || this.fault.startsWith("db-review") ? this.fault : Boolean.toString(fault), operation, fault ? "fault" : "recovery")
                 .redirectErrorStream(true).redirectOutput(session.resolve("host-" + hosts.size() + ".log").toFile()).start();
         hosts.add(host); awaitFile("host.json");
         var info = ToolUnknownReviewFixture.JSON.readValue(read("host.json"), Map.class);

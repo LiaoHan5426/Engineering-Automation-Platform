@@ -1,0 +1,875 @@
+{
+  "baseCommit": "fef287f7ccb05dc3eda09f567a3fcac008bf02b7",
+  "passedScenarios": 12,
+  "browserChecks": 84,
+  "pageErrors": [],
+  "evidencePhases": "Eight terminal/authorization scenarios passed in the initial failed reactor. Four audit scenarios passed after fixes, then were rerun successfully on the final application-layer transaction translation with service, HTTP and module boundary tests. Earlier failed reactors remain failures.",
+  "boundary": "Owned PostgreSQL backends only, matched by PID and exact schema application_name. Commit-before/after interruption is applied by a test connection wrapper. The after mode commits, then terminates the connection before Spring transaction completion returns; it is not a packet-level lost COMMIT acknowledgment or a database-server outage.",
+  "items": [
+    {
+      "operation": "git-diff",
+      "fault": "binding-loss",
+      "session": "tool-unknown-review-de33375d-1b77-4424-b276-b5fca05a6cbf",
+      "executionId": "a621c9a0-99a6-426b-9075-e68d73309387",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": null,
+      "ownDatabaseConnectionTerminated": false,
+      "committedResult": null,
+      "unknownAfterWriteFailure": null,
+      "reviewHttp": [
+        {
+          "status": 404,
+          "detail": "TOOL_EXECUTION_NOT_FOUND",
+          "executionStatus": 404,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 400,
+          "detail": "UNKNOWN_REVIEW_REQUIRED",
+          "executionStatus": 400,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "6bb573b2-d8a9-4e47-9772-cff5fde95211"
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "6bb573b2-d8a9-4e47-9772-cff5fde95211"
+        },
+        {
+          "status": 409,
+          "detail": "UNKNOWN_REVIEW_CONFLICT",
+          "executionStatus": 409,
+          "resolutionRequestId": null
+        }
+      ],
+      "identicalReviewRetryVerified": false,
+      "authorizationRestored": {
+        "recordUnchanged": true,
+        "restored": true
+      },
+      "diffScope": {
+        "indexBytesPreserved": true,
+        "unstagedTrackedMarkerPresent": true,
+        "stagedAndUntrackedExcluded": true,
+        "workspaceBytesPreserved": true
+      },
+      "browser": {
+        "passed": 9,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "actual authorization loss exposes current recovery guidance and preserves UNKNOWN plus review input",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "manual closure does not restore executable authorization; only binding repair and explicit query enable a new start",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    },
+    {
+      "operation": "git-status",
+      "fault": "binding-loss",
+      "session": "tool-unknown-review-ff77bf09-7df0-4498-83f2-d04f56f73f2f",
+      "executionId": "a1bb404e-ce1a-4123-9966-34d0a424142c",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": null,
+      "ownDatabaseConnectionTerminated": false,
+      "committedResult": null,
+      "unknownAfterWriteFailure": null,
+      "reviewHttp": [
+        {
+          "status": 404,
+          "detail": "TOOL_EXECUTION_NOT_FOUND",
+          "executionStatus": 404,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 400,
+          "detail": "UNKNOWN_REVIEW_REQUIRED",
+          "executionStatus": 400,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "8d0917c6-cda6-4e27-89d9-59e43206bee6"
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "8d0917c6-cda6-4e27-89d9-59e43206bee6"
+        },
+        {
+          "status": 409,
+          "detail": "UNKNOWN_REVIEW_CONFLICT",
+          "executionStatus": 409,
+          "resolutionRequestId": null
+        }
+      ],
+      "identicalReviewRetryVerified": false,
+      "authorizationRestored": {
+        "recordUnchanged": true,
+        "restored": true
+      },
+      "diffScope": null,
+      "browser": {
+        "passed": 9,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "actual authorization loss exposes current recovery guidance and preserves UNKNOWN plus review input",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "manual closure does not restore executable authorization; only binding repair and explicit query enable a new start",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    },
+    {
+      "operation": "git-diff",
+      "fault": "db-after",
+      "session": "tool-unknown-review-013244f1-dcc3-4b25-a2b6-d50a38368cbf",
+      "executionId": "f31f1503-1d11-433e-8cda-0ea919dd64f0",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": {
+        "sqlState": "57P01",
+        "mode": "db-after"
+      },
+      "ownDatabaseConnectionTerminated": true,
+      "committedResult": {
+        "status": "SUCCEEDED",
+        "exitCode": 0,
+        "exitEvidence": "进程树已清理"
+      },
+      "unknownAfterWriteFailure": null,
+      "reviewHttp": [],
+      "identicalReviewRetryVerified": false,
+      "authorizationRestored": null,
+      "diffScope": null,
+      "browser": {
+        "passed": 3,
+        "checks": [
+          "real commit followed by connection loss preserves SUCCEEDED and rejects UNKNOWN closure",
+          "explicit query and the original request recover the exact committed result without replay",
+          "a new explicit request succeeds and keeps the original committed evidence"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    },
+    {
+      "operation": "git-status",
+      "fault": "db-after",
+      "session": "tool-unknown-review-8bba3c1a-52da-467e-9a31-4da3a433cea9",
+      "executionId": "1629f2e2-17a4-4824-bf58-a77a533b94a8",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": {
+        "sqlState": "08006",
+        "mode": "db-after"
+      },
+      "ownDatabaseConnectionTerminated": true,
+      "committedResult": {
+        "status": "SUCCEEDED",
+        "exitCode": 0,
+        "exitEvidence": "进程树已清理"
+      },
+      "unknownAfterWriteFailure": null,
+      "reviewHttp": [],
+      "identicalReviewRetryVerified": false,
+      "authorizationRestored": null,
+      "diffScope": null,
+      "browser": {
+        "passed": 3,
+        "checks": [
+          "real commit followed by connection loss preserves SUCCEEDED and rejects UNKNOWN closure",
+          "explicit query and the original request recover the exact committed result without replay",
+          "a new explicit request succeeds and keeps the original committed evidence"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    },
+    {
+      "operation": "git-diff",
+      "fault": "db-before",
+      "session": "tool-unknown-review-34f4cb7a-38cd-4293-98a0-387b7d6f169e",
+      "executionId": "f8ee9507-a95b-46d2-be2e-458112c633a1",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": {
+        "sqlState": "08006",
+        "mode": "db-before"
+      },
+      "ownDatabaseConnectionTerminated": true,
+      "committedResult": null,
+      "unknownAfterWriteFailure": {
+        "status": "UNKNOWN",
+        "reason": "EXECUTION_EVIDENCE_UNCONFIRMED",
+        "exitCode": null
+      },
+      "reviewHttp": [],
+      "identicalReviewRetryVerified": false,
+      "authorizationRestored": null,
+      "diffScope": {
+        "indexBytesPreserved": true,
+        "unstagedTrackedMarkerPresent": true,
+        "stagedAndUntrackedExcluded": true,
+        "workspaceBytesPreserved": true
+      },
+      "browser": {
+        "passed": 7,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    },
+    {
+      "operation": "git-status",
+      "fault": "db-before",
+      "session": "tool-unknown-review-a14056a2-db90-4675-8d21-ebe47dd95df0",
+      "executionId": "597cfb6a-5973-460a-b92a-38f024b74083",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": {
+        "mode": "db-before",
+        "sqlState": "08006"
+      },
+      "ownDatabaseConnectionTerminated": true,
+      "committedResult": null,
+      "unknownAfterWriteFailure": {
+        "status": "UNKNOWN",
+        "reason": "EXECUTION_EVIDENCE_UNCONFIRMED",
+        "exitCode": null
+      },
+      "reviewHttp": [],
+      "identicalReviewRetryVerified": false,
+      "authorizationRestored": null,
+      "diffScope": null,
+      "browser": {
+        "passed": 7,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    },
+    {
+      "operation": "git-diff",
+      "fault": "db-review-after",
+      "session": "tool-unknown-review-d9a8236f-5ee4-450c-92db-d505b8ee3823",
+      "executionId": "9e192150-c86b-4cf5-ab8b-6c420cad2652",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": {
+        "sqlState": "08006",
+        "mode": "db-review-after"
+      },
+      "ownDatabaseConnectionTerminated": true,
+      "committedResult": null,
+      "unknownAfterWriteFailure": null,
+      "reviewHttp": [
+        {
+          "status": 404,
+          "detail": "TOOL_EXECUTION_NOT_FOUND",
+          "executionStatus": 404,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 400,
+          "detail": "UNKNOWN_REVIEW_REQUIRED",
+          "executionStatus": 400,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 503,
+          "detail": "TOOL_EXECUTION_STORE_UNAVAILABLE",
+          "executionStatus": null,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "066087ac-5272-48de-be10-e1c69419b0cd"
+        },
+        {
+          "status": 409,
+          "detail": "UNKNOWN_REVIEW_CONFLICT",
+          "executionStatus": 409,
+          "resolutionRequestId": null
+        }
+      ],
+      "identicalReviewRetryVerified": false,
+      "authorizationRestored": null,
+      "diffScope": {
+        "indexBytesPreserved": true,
+        "unstagedTrackedMarkerPresent": true,
+        "stagedAndUntrackedExcluded": true,
+        "workspaceBytesPreserved": true
+      },
+      "browser": {
+        "passed": 7,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "real database disconnect during review preserves the request; query distinguishes rollback from committed audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    },
+    {
+      "operation": "git-status",
+      "fault": "db-review-after",
+      "session": "tool-unknown-review-0a8738b0-b622-45ce-9807-d5acfdeee258",
+      "executionId": "85aa1bdd-dfff-4efc-87ca-be55d5949563",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": {
+        "sqlState": "08006",
+        "mode": "db-review-after"
+      },
+      "ownDatabaseConnectionTerminated": true,
+      "committedResult": null,
+      "unknownAfterWriteFailure": null,
+      "reviewHttp": [
+        {
+          "status": 404,
+          "detail": "TOOL_EXECUTION_NOT_FOUND",
+          "executionStatus": 404,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 400,
+          "detail": "UNKNOWN_REVIEW_REQUIRED",
+          "executionStatus": 400,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 503,
+          "detail": "TOOL_EXECUTION_STORE_UNAVAILABLE",
+          "executionStatus": null,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "61b71286-918d-4fc5-b35c-1dc7b18c4fee"
+        },
+        {
+          "status": 409,
+          "detail": "UNKNOWN_REVIEW_CONFLICT",
+          "executionStatus": 409,
+          "resolutionRequestId": null
+        }
+      ],
+      "identicalReviewRetryVerified": false,
+      "authorizationRestored": null,
+      "diffScope": null,
+      "browser": {
+        "passed": 7,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "real database disconnect during review preserves the request; query distinguishes rollback from committed audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    },
+    {
+      "operation": "git-diff",
+      "fault": "db-review-before",
+      "session": "tool-unknown-review-c6354baa-5034-4500-b2a4-c0e7c1956616",
+      "executionId": "47770047-f67f-435c-94a7-ebc71672a460",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": {
+        "mode": "db-review-before",
+        "sqlState": "08006"
+      },
+      "ownDatabaseConnectionTerminated": true,
+      "committedResult": null,
+      "unknownAfterWriteFailure": null,
+      "reviewHttp": [
+        {
+          "status": 404,
+          "detail": "TOOL_EXECUTION_NOT_FOUND",
+          "executionStatus": 404,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 400,
+          "detail": "UNKNOWN_REVIEW_REQUIRED",
+          "executionStatus": 400,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 503,
+          "detail": "TOOL_EXECUTION_STORE_UNAVAILABLE",
+          "executionStatus": null,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "5a67d9e2-f833-4f05-be29-b3137b64744f"
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "5a67d9e2-f833-4f05-be29-b3137b64744f"
+        },
+        {
+          "status": 409,
+          "detail": "UNKNOWN_REVIEW_CONFLICT",
+          "executionStatus": 409,
+          "resolutionRequestId": null
+        }
+      ],
+      "identicalReviewRetryVerified": true,
+      "authorizationRestored": null,
+      "diffScope": {
+        "indexBytesPreserved": true,
+        "unstagedTrackedMarkerPresent": true,
+        "stagedAndUntrackedExcluded": true,
+        "workspaceBytesPreserved": true
+      },
+      "browser": {
+        "passed": 7,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "real database disconnect during review preserves the request; query distinguishes rollback from committed audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    },
+    {
+      "operation": "git-status",
+      "fault": "db-review-before",
+      "session": "tool-unknown-review-f493c52d-575e-4733-b5d4-2f6f675441e0",
+      "executionId": "2723be5a-6f36-4bf4-bdb2-f9199d1f1dc1",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": {
+        "mode": "db-review-before",
+        "sqlState": "08006"
+      },
+      "ownDatabaseConnectionTerminated": true,
+      "committedResult": null,
+      "unknownAfterWriteFailure": null,
+      "reviewHttp": [
+        {
+          "status": 404,
+          "detail": "TOOL_EXECUTION_NOT_FOUND",
+          "executionStatus": 404,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 400,
+          "detail": "UNKNOWN_REVIEW_REQUIRED",
+          "executionStatus": 400,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 503,
+          "detail": "TOOL_EXECUTION_STORE_UNAVAILABLE",
+          "executionStatus": null,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "a90d29c9-a54b-463b-94ca-107199fc5d31"
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "a90d29c9-a54b-463b-94ca-107199fc5d31"
+        },
+        {
+          "status": 409,
+          "detail": "UNKNOWN_REVIEW_CONFLICT",
+          "executionStatus": 409,
+          "resolutionRequestId": null
+        }
+      ],
+      "identicalReviewRetryVerified": true,
+      "authorizationRestored": null,
+      "diffScope": null,
+      "browser": {
+        "passed": 7,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "real database disconnect during review preserves the request; query distinguishes rollback from committed audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    },
+    {
+      "operation": "git-diff",
+      "fault": "workspace-loss",
+      "session": "tool-unknown-review-0a897783-c39a-4980-8673-1f4c72cf4371",
+      "executionId": "1cce5b47-79c1-414e-8f41-454900c4c3a0",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": null,
+      "ownDatabaseConnectionTerminated": false,
+      "committedResult": null,
+      "unknownAfterWriteFailure": null,
+      "reviewHttp": [
+        {
+          "status": 404,
+          "detail": "TOOL_EXECUTION_NOT_FOUND",
+          "executionStatus": 404,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 400,
+          "detail": "UNKNOWN_REVIEW_REQUIRED",
+          "executionStatus": 400,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 403,
+          "detail": "AUTHORIZED_ROOT_MISSING",
+          "executionStatus": 403,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "b0428594-5ae3-445e-b6e2-e41faf3c9448"
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "b0428594-5ae3-445e-b6e2-e41faf3c9448"
+        },
+        {
+          "status": 409,
+          "detail": "UNKNOWN_REVIEW_CONFLICT",
+          "executionStatus": 409,
+          "resolutionRequestId": null
+        }
+      ],
+      "identicalReviewRetryVerified": false,
+      "authorizationRestored": {
+        "recordUnchanged": true,
+        "restored": true
+      },
+      "diffScope": {
+        "indexBytesPreserved": true,
+        "unstagedTrackedMarkerPresent": true,
+        "stagedAndUntrackedExcluded": true,
+        "workspaceBytesPreserved": true
+      },
+      "browser": {
+        "passed": 9,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "actual authorization loss exposes current recovery guidance and preserves UNKNOWN plus review input",
+          "restoring the original workspace and querying resumes review without replay or evidence changes",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    },
+    {
+      "operation": "git-status",
+      "fault": "workspace-loss",
+      "session": "tool-unknown-review-ef8cc185-67f9-47ba-83a7-6c518ade3068",
+      "executionId": "f0abcbc9-ddf7-4fe5-b49b-a8eddbebb7dd",
+      "actualGit": {
+        "executorStatus": "SUCCEEDED",
+        "exitCode": 0,
+        "processExited": true,
+        "processTreeCleanup": true
+      },
+      "databaseInterruption": null,
+      "ownDatabaseConnectionTerminated": false,
+      "committedResult": null,
+      "unknownAfterWriteFailure": null,
+      "reviewHttp": [
+        {
+          "status": 404,
+          "detail": "TOOL_EXECUTION_NOT_FOUND",
+          "executionStatus": 404,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 400,
+          "detail": "UNKNOWN_REVIEW_REQUIRED",
+          "executionStatus": 400,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 403,
+          "detail": "AUTHORIZED_ROOT_MISSING",
+          "executionStatus": 403,
+          "resolutionRequestId": null
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "5d33e301-a875-435f-be1d-5ff998d31ea2"
+        },
+        {
+          "status": 200,
+          "detail": null,
+          "executionStatus": "CLOSED_UNKNOWN",
+          "resolutionRequestId": "5d33e301-a875-435f-be1d-5ff998d31ea2"
+        },
+        {
+          "status": 409,
+          "detail": "UNKNOWN_REVIEW_CONFLICT",
+          "executionStatus": 409,
+          "resolutionRequestId": null
+        }
+      ],
+      "identicalReviewRetryVerified": false,
+      "authorizationRestored": {
+        "recordUnchanged": true,
+        "restored": true
+      },
+      "diffScope": null,
+      "browser": {
+        "passed": 9,
+        "checks": [
+          "restart UNKNOWN blocks only the same operation; cross-operation detail and incomplete attestation denied",
+          "actual Git exited before host crash; persisted UNKNOWN does not infer an uncommitted result",
+          "exact owned Git tree audit confirms stopped; missing PID still does not attest or close",
+          "actual authorization loss exposes current recovery guidance and preserves UNKNOWN plus review input",
+          "restoring the original workspace and querying resumes review without replay or evidence changes",
+          "committed review response lost: UI blocks resubmission, does not retry, explicit query restores audit",
+          "notes + attestation + second confirmation persist closure; original evidence and idempotency preserved",
+          "historical closure reopens through real scoped GET; captured identity review remains available",
+          "reload restores audit; explicit new request executes actual Git without changing the closed record"
+        ],
+        "errors": []
+      },
+      "cleanup": {
+        "ownedProcessesStopped": true,
+        "hostsStopped": true,
+        "ownedSchemaDropped": true,
+        "applicationRecordsUnchanged": true
+      }
+    }
+  ],
+  "regression": {
+    "finalTargeted": {
+      "reports": 4,
+      "tests": 56,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "frontend": {
+      "files": 137,
+      "tests": 855,
+      "targetedFiles": 3,
+      "targetedTests": 69,
+      "typecheck": true,
+      "build": true,
+      "architecture": true,
+      "lint": true,
+      "stylelint": true,
+      "formatFiles": 7
+    },
+    "offline": {
+      "reports": 163,
+      "tests": 976,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 112
+    }
+  },
+  "finalIndependentReadback": {
+    "attemptSessionsChecked": 20,
+    "allSessionCleanupPassed": true,
+    "ownedUnknownSchemasRemaining": 0,
+    "applicationExecutionRecords": 3,
+    "applicationRecordsDigest": "9328dec3d51e0c83b3929e5a376073ab",
+    "applicationRecordsUnchanged": true,
+    "appliedMigrations": 29,
+    "migrationChecksums": {
+      "26": -716806117,
+      "27": 1802106427,
+      "28": -329790285,
+      "29": -508415836
+    },
+    "fixtureJvmStopped": true,
+    "port5187Closed": true,
+    "fullApplicationNotManagedByThisBatch": true,
+    "fullApplicationRunningAtFinalCheck": false,
+    "ownedDatabaseConnectionsRemaining": 0
+  }
+}

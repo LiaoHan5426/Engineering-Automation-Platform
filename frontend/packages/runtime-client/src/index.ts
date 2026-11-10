@@ -131,6 +131,16 @@ export type ToolExecutionStatus =
   | 'CANCELLED'
   | 'UNKNOWN'
   | 'CLOSED_UNKNOWN'
+export type ToolExecutionReadiness = {
+  capabilityId: GitExecutionOperation
+  scopeAccessible: boolean
+  authorized: boolean
+  canStart: boolean
+  reason: string
+  blockingExecutionId: string | null
+  blockingStatus: ToolExecutionStatus | null
+  checkedAt: string
+}
 export type ToolProcessReview = {
   executionId: string
   capabilityId: GitExecutionOperation
@@ -1473,6 +1483,10 @@ export const runtimeApi = {
       .then((r) => r.data),
   startGitOperationExecution: gitOperationApi.start,
   gitOperationExecutions: gitOperationApi.list,
+  gitOperationReadiness: (operation: GitExecutionOperation, signal?: AbortSignal) =>
+    client
+      .get<ToolExecutionReadiness>(gitExecutionPath(operation) + '/readiness', { signal })
+      .then((r) => r.data),
   gitOperationExecution: gitOperationApi.get,
   cancelGitOperationExecution: gitOperationApi.cancel,
   gitExecutionProcessReview: (operation: GitExecutionOperation, id: string, signal?: AbortSignal) =>
@@ -1494,7 +1508,18 @@ export const runtimeApi = {
         request,
         { signal },
       )
-      .then((r) => r.data),
+      .then(({ data }) => {
+        if (
+          !data ||
+          data.id !== id ||
+          data.capabilityId !== operation ||
+          data.status !== 'CLOSED_UNKNOWN' ||
+          data.resolution?.requestId !== request.requestId ||
+          data.resolution.processTreeStopped !== true
+        )
+          throw new Error('UNKNOWN_REVIEW_RESPONSE_UNCONFIRMED')
+        return data
+      }),
   startTrustedGitExecution: (
     requestId: string,
     options?: { signal?: AbortSignal; mockOutcome?: string },

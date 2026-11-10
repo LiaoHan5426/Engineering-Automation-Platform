@@ -21,6 +21,28 @@ export function createMockToolExecutionBackend(
       if (!match) return null
       const operation = match[1] as GitExecutionOperation
       const base = '/cli-programs/git/operations/' + operation + '/executions'
+      if (route === base + '/readiness' && method === 'GET') {
+        const blocking = [...records.values()].find(
+          ({ row }) => row.capabilityId === operation && (active(row) || row.status === 'UNKNOWN'),
+        )?.row
+        return {
+          status: 200,
+          data: {
+            capabilityId: operation,
+            scopeAccessible: true,
+            authorized: enabled(operation),
+            canStart: enabled(operation) && !blocking,
+            reason: !enabled(operation)
+              ? 'CAPABILITY_DISABLED'
+              : blocking
+                ? 'TOOL_EXECUTION_BLOCKED'
+                : 'READY',
+            blockingExecutionId: blocking?.id ?? null,
+            blockingStatus: blocking?.status ?? null,
+            checkedAt: new Date().toISOString(),
+          },
+        }
+      }
       if (route === base && method === 'GET') {
         const limit = Number(url.searchParams.get('limit') ?? 20)
         if (!Number.isInteger(limit) || limit < 1 || limit > 100)

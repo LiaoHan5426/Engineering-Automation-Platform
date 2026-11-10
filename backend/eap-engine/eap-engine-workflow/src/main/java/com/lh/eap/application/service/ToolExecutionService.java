@@ -77,7 +77,7 @@ public class ToolExecutionService implements InitializingBean {
         try { workers.submit(() -> execute(row, token)); }
         catch (RejectedExecutionException rejected) {
             active.remove(id); capacity.release();
-            store.update(id, current -> current.state(current.cancelRequested() ? "CANCELLED" : "FAILED", current.cancelRequested(), Instant.now(), null,
+            persist(id, current -> current.state(current.cancelRequested() ? "CANCELLED" : "FAILED", current.cancelRequested(), Instant.now(), null,
                     "", "WORKER_UNAVAILABLE", false, "PROCESS_NOT_STARTED", null, current.steps()));
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "WORKER_UNAVAILABLE");
         }
@@ -85,6 +85,22 @@ public class ToolExecutionService implements InitializingBean {
     }
 
     public List<ToolExecution> list(int limit) { return list("git-status", limit); }
+    public ToolExecutionReadiness readiness(String operation) {
+        validateOperation(operation);
+        boolean scopeAccessible = false;
+        try {
+            var root = workspace();
+            scopeAccessible = true;
+            authorize(root, operation);
+            var blocking = store.blocking(root.toString(), operation);
+            return new ToolExecutionReadiness(operation, true, true, blocking.isEmpty(),
+                    blocking.isPresent() ? "TOOL_EXECUTION_BLOCKED" : "READY",
+                    blocking.map(ToolExecution::id).orElse(null), blocking.map(ToolExecution::status).orElse(null), Instant.now());
+        } catch (ResponseStatusException denied) {
+            return new ToolExecutionReadiness(operation, scopeAccessible, false, false,
+                    denied.getReason(), null, null, Instant.now());
+        }
+    }
     public List<ToolExecution> list(String operation, int limit) {
         validateOperation(operation);
         if (limit < 1 || limit > 100) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_LIMIT");
@@ -95,7 +111,7 @@ public class ToolExecutionService implements InitializingBean {
     public ToolExecution cancel(UUID id) { return cancel("git-status", id); }
     public ToolExecution cancel(String operation, UUID id) {
         require(operation, id);
-        var row = store.update(id, current -> current.active()
+        var row = persist(id, current -> current.active()
                 ? current.state("CANCELLING", true, null, current.exitCode(), current.stdout(), current.stderr(),
                         current.truncated(), current.exitEvidence(), current.unconfirmedReason(), current.steps()) : current);
         if (row.active()) {
@@ -143,7 +159,7 @@ public class ToolExecutionService implements InitializingBean {
         var digest = reviewDigest(normalized);
         var redacted = SensitiveData.redact(normalized);
         var savedNote = redacted.substring(0, Math.min(2000, redacted.length()));
-        return store.update(id, row -> {
+        return persist(id, row -> {
             // Check the live owner while holding the same short lock used by all transitions.
             if (active.containsKey(id))
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "EXECUTION_OWNER_STILL_ACTIVE");
@@ -180,7 +196,7 @@ public class ToolExecutionService implements InitializingBean {
             if (!authorize(Path.of(row.workspacePath()), row.capabilityId()).equals(row.executable())) {
                 reject(row.id(), "TOOL_BINDING_CHANGED"); return;
             }
-            var current = store.update(row.id(), value -> value.active()
+            var current = persist(row.id(), value -> value.active()
                     ? value.state(value.cancelRequested() ? "CANCELLING" : "RUNNING", value.cancelRequested(),
                             null, null, "", "", false, null, null, value.steps()) : value);
             if (!current.active()) return;
@@ -192,6 +208,9 @@ public class ToolExecutionService implements InitializingBean {
                 }
                 @Override public Observation runIsolated(String capability, Path directory, List<String> command,
                                                          Map<String, String> environment) {
+                    // An earlier Git phase cannot authorize a later process after a binding/grant changed.
+                    if (!authorize(Path.of(row.workspacePath()), row.capabilityId()).equals(row.executable()))
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "TOOL_BINDING_CHANGED");
                     var child = UUID.randomUUID();
                     var phase = switch (observed.size()) { case 0 -> "root"; case 1 -> "filters"; default -> row.capabilityId().substring(4); };
                     var pending = new ToolExecution.Step(child, phase, "CREATED", command, Map.of());
@@ -235,7 +254,7 @@ public class ToolExecutionService implements InitializingBean {
             var out = clip(result.stdout()); var err = clip(result.stderr());
             boolean truncated = Boolean.TRUE.equals(result.metadata().get("truncated"))
                     || SensitiveData.redact(result.stdout()).length() > 8000 || SensitiveData.redact(result.stderr()).length() > 8000;
-            store.update(row.id(), value -> value.active()
+            persist(row.id(), value -> value.active()
                     ? value.state(status, value.cancelRequested(), Instant.now(), result.exitCode(), out, err,
                             truncated, outcome.exitEvidence(), null, value.steps()) : value);
         } catch (ResponseStatusException denied) {
@@ -246,19 +265,26 @@ public class ToolExecutionService implements InitializingBean {
             recordFailure(row.id());
         } finally { active.remove(row.id()); capacity.release(); }
     }
+    private ToolExecution persist(UUID id, java.util.function.UnaryOperator<ToolExecution> transition) {
+        try { return store.update(id, transition); }
+        catch (org.springframework.transaction.TransactionException unavailable) {
+            // The application owns transaction uncertainty; HTTP adapters only map a stable storage error.
+            throw new org.springframework.dao.DataAccessResourceFailureException("Tool execution write outcome unconfirmed", unavailable);
+        }
+    }
     private void saveSteps(UUID id, List<ToolExecution.Step> steps) {
-        store.update(id, row -> {
+        persist(id, row -> {
             if (!row.active()) throw new IllegalStateException("Execution is not active");
             return row.state(row.status(), row.cancelRequested(), null, row.exitCode(), row.stdout(), row.stderr(),
                     row.truncated(), row.exitEvidence(), row.unconfirmedReason(), steps);
         });
     }
     private void reject(UUID id, String reason) {
-        store.update(id, row -> row.active() ? row.state("REJECTED", row.cancelRequested(), Instant.now(), null,
-                "", clip(reason), false, "PROCESS_NOT_STARTED", null, row.steps()) : row);
+        persist(id, row -> row.active() ? row.state("REJECTED", row.cancelRequested(), Instant.now(), null,
+                "", clip(reason), false, row.steps().isEmpty() ? "PROCESS_NOT_STARTED" : "NO_FURTHER_PROCESS_STARTED", null, row.steps()) : row);
     }
     private ToolExecution unknown(UUID id, String reason) {
-        return store.update(id, row -> row.active() ? row.state("UNKNOWN", row.cancelRequested(), null,
+        return persist(id, row -> row.active() ? row.state("UNKNOWN", row.cancelRequested(), null,
                 row.exitCode(), row.stdout(), row.stderr(), row.truncated(), null, reason, row.steps()) : row);
     }
     private void recordFailure(UUID id) {

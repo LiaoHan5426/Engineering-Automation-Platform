@@ -46,6 +46,16 @@ function button(id: string) {
 }
 beforeEach(() => {
   vi.useFakeTimers()
+  vi.spyOn(runtimeApi, 'gitOperationReadiness').mockImplementation(async (op) => ({
+    capabilityId: op,
+    scopeAccessible: true,
+    authorized: true,
+    canStart: true,
+    reason: 'READY',
+    blockingExecutionId: null,
+    blockingStatus: null,
+    checkedAt: new Date().toISOString(),
+  }))
   vi.spyOn(runtimeApi, 'gitOperationExecutions').mockResolvedValue({ items: [] })
   vi.spyOn(runtimeApi, 'startGitOperationExecution').mockResolvedValue(row())
   vi.spyOn(runtimeApi, 'gitOperationExecution').mockResolvedValue(row('SUCCEEDED'))
@@ -159,6 +169,131 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
     expect(button('invoke').disabled).toBe(false)
     expect(runtimeApi.resolveUnknownGitExecution).toHaveBeenCalledTimes(1)
     expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+  })
+  it('loads an older server reservation even when it falls outside the recent history page', async () => {
+    vi.mocked(runtimeApi.gitOperationReadiness).mockResolvedValue({
+      capabilityId: operation,
+      scopeAccessible: true,
+      authorized: true,
+      canStart: false,
+      reason: 'TOOL_EXECUTION_BLOCKED',
+      blockingExecutionId: 'older-reservation',
+      blockingStatus: 'UNKNOWN',
+      checkedAt: new Date().toISOString(),
+    })
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({
+      items: Array.from({ length: 20 }, (_, i) => ({ ...row('SUCCEEDED'), id: 'recent-' + i })),
+    })
+    vi.mocked(runtimeApi.gitOperationExecution).mockResolvedValue({
+      ...row('UNKNOWN'),
+      id: 'older-reservation',
+    })
+    await mount()
+    expect(runtimeApi.gitOperationExecution).toHaveBeenCalledWith(
+      operation,
+      'older-reservation',
+      expect.any(AbortSignal),
+    )
+    expect(root.textContent).toContain('older-reservation')
+    expect(root.querySelector('[data-testid="trusted-' + operation + '-unknown"]')).not.toBeNull()
+    expect(button('invoke').disabled).toBe(true)
+    expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+  })
+  it('retains UNKNOWN and review input while workspace access is lost, then restores through explicit query', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
+    await mount()
+    await prepareReview()
+    vi.mocked(runtimeApi.gitOperationReadiness).mockResolvedValueOnce({
+      capabilityId: operation,
+      scopeAccessible: false,
+      authorized: false,
+      canStart: false,
+      reason: 'AUTHORIZED_ROOT_MISSING',
+      blockingExecutionId: null,
+      blockingStatus: null,
+      checkedAt: new Date().toISOString(),
+    })
+    button('recheck').click()
+    await settle()
+    expect(root.textContent).toContain('当前授权工作区不可访问')
+    expect(button('invoke').disabled).toBe(true)
+    expect(button('review-open').disabled).toBe(true)
+    expect(
+      root.querySelector<HTMLTextAreaElement>(
+        '[data-testid="trusted-' + operation + '-review-note"]',
+      )!.value,
+    ).toContain('Verified execution')
+    expect(root.querySelector('[data-testid="trusted-' + operation + '-unknown"]')).not.toBeNull()
+    expect(runtimeApi.resolveUnknownGitExecution).not.toHaveBeenCalled()
+    button('recheck').click()
+    await settle()
+    expect(button('review-open').disabled).toBe(false)
+    expect(root.querySelector('[data-testid="trusted-' + operation + '-environment"]')).toBeNull()
+    expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+  })
+  it('allows reading and reviewing UNKNOWN with a missing executable but keeps new execution blocked', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
+    vi.mocked(runtimeApi.gitOperationReadiness).mockImplementation(async (op) => ({
+      capabilityId: op,
+      scopeAccessible: true,
+      authorized: false,
+      canStart: false,
+      reason: 'BINARY_MISSING',
+      blockingExecutionId: null,
+      blockingStatus: null,
+      checkedAt: new Date().toISOString(),
+    }))
+    await mount()
+    expect(root.textContent).toContain('Git 程序绑定或可执行文件不可用')
+    await prepareReview()
+    button('review-open').click()
+    await settle()
+    confirmReview()
+    await settle()
+    expect(root.textContent).toContain('人工关闭（结果仍未知）')
+    expect(button('invoke').disabled).toBe(true)
+    expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+    vi.mocked(runtimeApi.gitOperationReadiness).mockResolvedValue({
+      capabilityId: operation,
+      scopeAccessible: true,
+      authorized: true,
+      canStart: true,
+      reason: 'READY',
+      blockingExecutionId: null,
+      blockingStatus: null,
+      checkedAt: new Date().toISOString(),
+    })
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({
+      items: [row('CLOSED_UNKNOWN')],
+    })
+    button('recheck').click()
+    await settle()
+    expect(button('invoke').disabled).toBe(false)
+    expect(runtimeApi.startGitOperationExecution).not.toHaveBeenCalled()
+  })
+  it('keeps the review request after a storage failure and restores an already committed closure by query', async () => {
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
+    vi.mocked(runtimeApi.resolveUnknownGitExecution).mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { status: 503, data: { detail: 'TOOL_EXECUTION_STORE_UNAVAILABLE' } },
+    })
+    await mount()
+    await prepareReview()
+    button('review-open').click()
+    await settle()
+    confirmReview()
+    await settle()
+    expect(root.textContent).toContain('尚不能确认本次写入是否保存')
+    expect(button('review-open').disabled).toBe(true)
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(runtimeApi.resolveUnknownGitExecution).toHaveBeenCalledTimes(1)
+    vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({
+      items: [row('CLOSED_UNKNOWN')],
+    })
+    button('recheck').click()
+    await settle()
+    expect(root.textContent).toContain('人工关闭（结果仍未知）')
+    expect(runtimeApi.resolveUnknownGitExecution).toHaveBeenCalledTimes(1)
   })
   it('inspects only on explicit action and retains UNKNOWN and manual attestation requirements', async () => {
     vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })

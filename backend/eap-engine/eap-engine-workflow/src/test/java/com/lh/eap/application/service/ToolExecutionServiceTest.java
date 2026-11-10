@@ -26,12 +26,14 @@ class ToolExecutionServiceTest {
     final CapabilitySettings settings = mock(CapabilitySettings.class);
     final CapabilityHandlerRegistry handlers = mock(CapabilityHandlerRegistry.class);
     ToolExecutionService service;
+    final java.util.concurrent.atomic.AtomicReference<String> configuredBinary = new java.util.concurrent.atomic.AtomicReference<>();
 
     @BeforeEach void prepare() { when(settings.enabled("git-status")).thenReturn(true); when(settings.enabled("git-diff")).thenReturn(true); }
     @AfterEach void close() { if (service != null) service.close(); }
     ToolExecutionService service(ProcessExecutor executor) {
         var binary = Path.of(System.getProperty("java.home"), "bin", System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java").toString();
-        var registry = new CapabilityRegistry().register(new GitCapability("status", () -> binary)).register(new GitCapability("diff", () -> binary));
+        configuredBinary.set(binary);
+        var registry = new CapabilityRegistry().register(new GitCapability("status", configuredBinary::get)).register(new GitCapability("diff", configuredBinary::get));
         for (var operation : List.of("git-status", "git-diff"))
             when(handlers.resolveFor(null, operation)).thenReturn(Optional.of(mock(GitInspectionHandler.class)));
         return service = new ToolExecutionService(store, RuntimeWorkspace.colocated(workspace, "", ""), settings, handlers, registry, executor);
@@ -325,6 +327,89 @@ class ToolExecutionServiceTest {
         assertFalse(review.completeProcessTreeEvidence());
     }
 
+    @ParameterizedTest @CsvSource({"git-status,0", "git-status,1", "git-diff,0", "git-diff,1"})
+    void revokedAuthorizationStopsBeforeTheNextGitProcess(String operation, int phase) throws Exception {
+        var executor = new Probe(); executor.blockAt = phase; service(executor);
+        var row = service.start(operation, UUID.randomUUID());
+        assertTrue(executor.started.await(3, TimeUnit.SECONDS));
+        when(settings.enabled(operation)).thenReturn(false);
+        executor.release.countDown();
+        var rejected = finished(operation, row.id());
+        assertEquals("REJECTED", rejected.status());
+        assertEquals("CAPABILITY_DISABLED", rejected.stderr());
+        assertEquals("NO_FURTHER_PROCESS_STARTED", rejected.exitEvidence());
+        assertEquals(phase + 1, executor.calls.get());
+        assertTrue(rejected.steps().stream().allMatch(step -> !step.status().equals("RUNNING")));
+    }
+    @ParameterizedTest @org.junit.jupiter.params.provider.ValueSource(strings = {"git-status", "git-diff"})
+    void reviewCommitFailureIsTranslatedInsideTheApplicationWithoutChangingTheRecord(String operation) throws Exception {
+        var executor = new Probe(); executor.cleaned = false; service(executor);
+        var row = finished(operation, service.start(operation, UUID.randomUUID()).id());
+        service.close();
+        store.failReviewCommit = true;
+        var failure = assertThrows(org.springframework.dao.DataAccessResourceFailureException.class,
+                () -> service.resolveUnknown(operation, row.id(), UUID.randomUUID(), "Verified all related processes stopped", true));
+        assertInstanceOf(org.springframework.transaction.TransactionSystemException.class, failure.getCause());
+        assertEquals(row, store.find(row.id()).orElseThrow());
+    }
+    @ParameterizedTest @CsvSource({"git-status,workspace", "git-diff,workspace", "git-status,binary", "git-diff,binary"})
+    void changedWorkspaceOrExecutableStopsBeforeTheFinalCommandAndRecoversExplicitly(String operation, String failure) throws Exception {
+        var executor = new Probe(); executor.blockAt = 1; service(executor);
+        var row = service.start(operation, UUID.randomUUID());
+        assertTrue(executor.started.await(3, TimeUnit.SECONDS));
+        var originalBinary = configuredBinary.get();
+        var moved = workspace.resolveSibling(workspace.getFileName() + "-suspended");
+        try {
+            if (failure.equals("workspace")) java.nio.file.Files.move(workspace, moved);
+            else configuredBinary.set(workspace.resolve("missing-executable").toString());
+            executor.release.countDown();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            ToolExecution stopped;
+            do {
+                stopped = store.find(row.id()).orElseThrow();
+                if (!stopped.active()) break;
+                Thread.sleep(5);
+            } while (System.nanoTime() < deadline);
+            assertEquals("REJECTED", stopped.status());
+            assertEquals(failure.equals("workspace") ? "AUTHORIZED_ROOT_MISSING" : "BINARY_MISSING", stopped.stderr());
+            assertEquals("NO_FURTHER_PROCESS_STARTED", stopped.exitEvidence());
+            assertEquals(2, executor.calls.get(), "Final status/diff process must not start");
+        } finally {
+            if (java.nio.file.Files.exists(moved)) java.nio.file.Files.move(moved, workspace);
+            configuredBinary.set(originalBinary);
+        }
+        assertTrue(service.readiness(operation).canStart());
+        assertEquals("SUCCEEDED", finished(operation, service.start(operation, UUID.randomUUID()).id()).status());
+        assertEquals(5, executor.calls.get());
+    }
+    @ParameterizedTest @org.junit.jupiter.params.provider.ValueSource(strings = {"git-status", "git-diff"})
+    void readinessIsReadOnlyAndSeparatesAuthorizationFromUnknownReservation(String operation) throws Exception {
+        var executor = new Probe(); executor.cleaned = false; service(executor);
+        var row = finished(operation, service.start(operation, UUID.randomUUID()).id());
+        var before = store.find(row.id()).orElseThrow();
+        var ready = service.readiness(operation);
+        assertTrue(ready.scopeAccessible()); assertTrue(ready.authorized()); assertFalse(ready.canStart());
+        assertEquals(row.id(), ready.blockingExecutionId()); assertEquals("UNKNOWN", ready.blockingStatus());
+        assertEquals(before, store.find(row.id()).orElseThrow());
+        when(settings.enabled(operation)).thenReturn(false);
+        ready = service.readiness(operation);
+        assertTrue(ready.scopeAccessible()); assertFalse(ready.authorized());
+        assertEquals("CAPABILITY_DISABLED", ready.reason());
+        assertEquals(before, store.find(row.id()).orElseThrow());
+        var moved = workspace.resolveSibling(workspace.getFileName() + "-unavailable");
+        java.nio.file.Files.move(workspace, moved);
+        try {
+            ready = service.readiness(operation);
+            assertFalse(ready.scopeAccessible()); assertFalse(ready.canStart());
+            assertEquals("AUTHORIZED_ROOT_MISSING", ready.reason());
+            assertEquals(403, assertThrows(ResponseStatusException.class, () -> service.get(operation, row.id())).getStatusCode().value());
+            assertEquals(before, store.find(row.id()).orElseThrow());
+        } finally { java.nio.file.Files.move(moved, workspace); }
+        when(settings.enabled(operation)).thenReturn(true);
+        assertEquals(row, service.get(operation, row.id()));
+        assertTrue(service.readiness(operation).authorized());
+        assertEquals(1, executor.calls.get());
+    }
     static class Probe implements ProcessExecutor {
         final AtomicInteger calls = new AtomicInteger();
         final CountDownLatch started = new CountDownLatch(1), release = new CountDownLatch(1);
@@ -352,7 +437,7 @@ class ToolExecutionServiceTest {
     }
     static class MemoryStore implements ToolExecutionStore {
         final Map<UUID,ToolExecution> rows = new LinkedHashMap<>();
-        boolean failInsert, failRunningStep;
+        boolean failInsert, failRunningStep, failReviewCommit;
         ToolExecution reservationWinner;
         public synchronized void insert(ToolExecution row) { if (failInsert) throw new IllegalStateException("insert failed");
             if (reservationWinner != null) {
@@ -370,6 +455,7 @@ class ToolExecutionServiceTest {
         public synchronized Optional<ToolExecution> blocking(String workspace, String operation) { return rows.values().stream().filter(row -> row.workspacePath().equals(workspace) && row.capabilityId().equals(operation) && row.blocking()).findFirst(); }
         public synchronized ToolExecution update(UUID id, UnaryOperator<ToolExecution> transition) {
             var next = transition.apply(rows.get(id));
+            if (failReviewCommit && next.status().equals("CLOSED_UNKNOWN")) throw new org.springframework.transaction.TransactionSystemException("Commit result unavailable");
             if (failRunningStep && next.steps().stream().anyMatch(step -> step.status().equals("RUNNING"))) throw new IllegalStateException("identity write failed");
             rows.put(id, next); return next;
         }
