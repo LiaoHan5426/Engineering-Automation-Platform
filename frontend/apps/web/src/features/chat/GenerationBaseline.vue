@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Collapse } from '@eap/ui'
+import { Badge, Collapse } from '@eap/ui'
 import type { CodeGenerationSnapshot } from '@eap/runtime-client'
 import { useI18n } from 'vue-i18n'
 defineProps<{ generation?: CodeGenerationSnapshot | null }>()
@@ -7,7 +7,12 @@ const { t } = useI18n()
 </script>
 <template>
   <Collapse v-if="generation" data-testid="generation-record">
-    <template #summary>{{ t('generation.title') }} · {{ generation.targetPath }}</template>
+    <template #summary>
+      {{ t('generation.title') }} · {{ generation.targetPath }}
+      <Badge v-if="generation.taskBinding" data-testid="generation-prebound">
+        {{ t('generation.prebound') }}
+      </Badge>
+    </template>
     <div class="generation-baseline">
       <code>{{ generation.id }}</code>
       <p>{{ t('generation.target') }}：{{ generation.targetPath }}</p>
@@ -26,6 +31,9 @@ const { t } = useI18n()
         >
       </p>
       <p>{{ t('generation.boundary') }}</p>
+      <p v-if="generation.taskBinding" data-testid="generation-next-step">
+        {{ t('generation.deliveryNext') }}
+      </p>
     </div>
   </Collapse>
   <p v-else class="hint" data-testid="generation-missing">{{ t('generation.missing') }}</p>

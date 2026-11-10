@@ -13,6 +13,9 @@ export const generationMessages = {
     adoptTaskImpact:
       '整体采用任务文本、版本身份及原型；当前未发送草稿将被替换，不自动发送。目标文件需明确填写；服务端会再次核对任务版本。',
     taskBinding: '生成前任务绑定',
+    prebound: '生成前已绑定任务',
+    deliveryNext:
+      '应用源码后，请回看板运行独立验证并提交源码证据；生成或应用成功不会自动接受交付。',
     removeTask: '移除任务绑定（保留草稿）',
     target: '唯一生成目标',
     captured: '采集时间',
@@ -46,6 +49,9 @@ export const generationMessages = {
     adoptTaskImpact:
       'Adopt task text, version identity and prototype together. This replaces the unsent draft without sending. Specify a target file; the server rechecks task revision.',
     taskBinding: 'Pre-generation task binding',
+    prebound: 'Task bound before generation',
+    deliveryNext:
+      'After applying source, run independent checks and submit source evidence on the board. Generation or application never accepts delivery automatically.',
     removeTask: 'Remove task binding (keep draft)',
     target: 'Single generation target',
     captured: 'Captured at',

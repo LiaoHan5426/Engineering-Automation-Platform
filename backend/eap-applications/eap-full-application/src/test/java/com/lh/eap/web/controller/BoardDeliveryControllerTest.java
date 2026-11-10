@@ -11,6 +11,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class BoardDeliveryControllerTest {
+    @Test void appliedCatalogIsReadOnlyAndScopedToTheRequestedRunAndProject() throws Exception {
+        var service=mock(BoardDeliveryService.class);
+        var task=UUID.randomUUID();var run=UUID.randomUUID();
+        var mvc=MockMvcBuilders.standaloneSetup(new BoardDeliveryController(service)).setControllerAdvice(new ApiErrorHandler()).build();
+        String path="/api/board/tasks/"+task+"/runs/"+run+"/delivery/applications";
+        mvc.perform(get(path).param("projectId","scoped")).andExpect(status().isOk());
+        verify(service).applications(task,run,"scoped");verifyNoMoreInteractions(service);
+        clearInvocations(service);
+        mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isMethodNotAllowed());
+        verifyNoInteractions(service);
+    }
     @Test void acceptsOnlyExplicitUuidApplicationReference() throws Exception {
         var service = mock(BoardDeliveryService.class);
         var mvc = MockMvcBuilders.standaloneSetup(new BoardDeliveryController(service)).setControllerAdvice(new ApiErrorHandler()).build();

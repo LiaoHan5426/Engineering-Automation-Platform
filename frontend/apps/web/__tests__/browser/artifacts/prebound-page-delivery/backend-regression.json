@@ -1,0 +1,20 @@
+{
+  "exitCode": 0,
+  "reports": [
+    {
+      "name": "com.lh.eap.persistence.mapper.PreboundSemanticDeliveryTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "com.lh.eap.web.controller.BoardDeliveryControllerTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "seconds": 63.9
+}

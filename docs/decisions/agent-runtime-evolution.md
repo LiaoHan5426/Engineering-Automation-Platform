@@ -1,8 +1,8 @@
 # Agent 能力、本地运行环境与插件演进
 
-> 本批提交推送已完成：`1ce0c4bfd4a68d6ff1c969839cc99f476f2df69c`（179文件），HEAD/origin/main/远端main一致。提交沿用已有测试，未重复测试。接续已处理开发库唯一非语义原型及引用，正式full-application完成V30、V31迁移和真实整链；发布响应丢失治理及正式宿主证据随本次提交交付；本次提交沿用已记录验证结果，不重复测试，不保留旧无身份发布兼容分支。实际提交及推送状态以Git回读为准。
+> 当前已提交基线为 `edada582043345d301161c9fcb69175f5d2b0ea5`（发布恢复55文件，已推送）。本轮接续完成限定真实PREBOUND页面交付：V32修正当前语义原型快照约束，新增任务应用证据目录/选择，真实模型候选→页面确认应用→独立检查→交付→明确技术决定整链已验。该批随本次提交交付，沿用已记录结果、不重复测试；用户产品接受仍独立，提交推送状态以Git回读为准。
 
-状态：有效合同与增量实现记录；已提交基线 `1ce0c4b`（179文件已推送，沿用既有测试、未重复测试）；发布响应恢复随本次提交交付；本次沿用已有验证，不重复测试。开发阶段演进以根[AGENTS.md](../../AGENTS.md#development-evolution)为权威规则；原审计五组已[集中收敛](../records/architecture-history.md#single-contract-convergence)：单授权键、程序绑定、显式专家行为、语义原型、持久Git入口；V30已在日常库由正式full迁移，唯一非语义原型及测试引用已精确处置；接续V31和发布断连恢复已验证，无运行兼容分支。完成范围和失败证据以§7及[台账](../planning-status.md)为准。
+状态：有效合同与增量实现记录；已提交基线 `edada58`（发布恢复55文件已推送）；本轮PREBOUND真实页面交付随本次提交交付，沿用已有验证、不重复测试，实测范围见[当前台账](../planning-status.md#prebound-page-delivery-validation)。开发阶段演进以根[AGENTS.md](../../AGENTS.md#development-evolution)为权威规则；原审计五组已[集中收敛](../records/architecture-history.md#single-contract-convergence)：单授权键、程序绑定、显式专家行为、语义原型、持久Git入口；V30已在日常库由正式full迁移，唯一非语义原型及测试引用已精确处置；接续V31和发布断连恢复已验证，无运行兼容分支。完成范围和失败证据以§7及[台账](../planning-status.md)为准。
 
 ## 1. 结论与适用范围
 
@@ -305,6 +305,12 @@ TC-02 定向独立复核通过，原P1关闭：审查者复跑2文件10项、typ
 旧179文件已提交推送1ce0c4b；以下发布恢复及正式宿主证据随本次提交交付，沿用既有验证，不重复测试。唯一非语义原型及两处测试引用在备份与精确事务断言后清理，保留任务及原Mission执行；正式full执行V30和V31，31份迁移校验通过。正式V30五组生产页面/HTTP/JDBC/Git/SQL专家检查与新增V31三组发布恢复分别记录，见[验收台账](../planning-status.md#publication-recovery-validation)及[实现与过程](../records/architecture-history.md#publication-recovery)。
 
 发布客户端生成必填requestId，数据库唯一约束作为唯一权威；同身份同规范内容回读原版本，异内容409，GET /api/prototype-publications/{requestId}只读查询。V31仅为已有合规版本一次性增加身份，正文/hash/时间不动，移除DEFAULT，运行时不补旧身份。前端发请求前可靠保存冻结请求，未知不自动重发，查询404后才能明确重试原请求；阻止新发布/停用/替换文档，保留后续编辑和A/B隔离。草稿、不可变版本、浏览器待核对意图各有职责，不建立第二发布状态机。12并发HTTP/JDBC与响应丢失/未送达恢复均通过。
+
+### 6.5 PREBOUND实际页面交付（2026-11-10）
+
+V32将code_generation_task_group中已删除的计数原型字段要求替换为当前requestId/语义原型，不补旧字段、不修改历史迁移。开发库原绑定快照0行，正式32份迁移校验通过。GET /api/board/tasks/{taskId}/runs/{executionId}/delivery/applications只读发现该Run原任务版本、项目、workspace及操作者的APPLIED PREBOUND，最多20条，不返正文；前端明确读取/选择而不自动提交，失败快照禁选。提交与决定继续使用原始服务的完整快照/时间/源码/独立检查核对，目录不授予写入或接受权限。
+
+真实已配置gpt-6.1-sol/Responses仅1次生成GenerationBaseline.vue，显示绑定Badge及后续独立交付步骤；候选先审diff，经生产App确认应用。隔离本仓库工作树、真正full/原开发库下，Git Run及独立typecheck/145文件897项/test/build通过；生产看板选择已应用证据、提交CHAT_APPLIED_PREBOUND并明确技术ACCEPT，刷新读回及决定幂等/冲突已验。技术声明不是用户产品接受。模型文件按应用后精确hash带回主工作区，无新执行器、状态机或兼容入口；详见[记录](../records/delivery-history.md#prebound-page-delivery)。
 
 ## 7. 分阶段切片与退出门禁
 

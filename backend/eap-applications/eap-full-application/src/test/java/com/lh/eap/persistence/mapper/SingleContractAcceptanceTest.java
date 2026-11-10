@@ -58,7 +58,7 @@ class SingleContractAcceptanceTest {
             var shipped=new String(getClass().getResourceAsStream("/experts/sql-expert.json").readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
             assertEquals(new ExpertBehaviorBinding("sql-analysis",1),com.lh.eap.domain.model.ExpertManifest.parse(shipped).behavior());
             CurrentContractTestSchema.migrate(session,schema);
-            assertEquals("31",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1",String.class));
+            assertEquals("32",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1",String.class));
             assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->jdbc.update("INSERT INTO eap.cli_channel(program_id,binary_path) VALUES ('git-status','old-git')"));
             assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->jdbc.update("INSERT INTO eap.expert_definition(id,name,manifest) VALUES ('invalid','invalid','{}'::jsonb)"));
 

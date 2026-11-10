@@ -1,5 +1,28 @@
 # SQL Agent 浏览器视觉回归
 
+## PREBOUND 真实页面交付
+
+`prebound-page-delivery-prepare.py` 与 `prebound-page-delivery-live.mjs` 使用已配置真实模型、正式 full-application、实际开发库和生产 App。它们会生成/应用一个明确目标文件并保存技术交付决定，不属于 mock 或普通无副作用测试。完整前置、数据身份、隔离边界及失败过程见[主题记录](../../../../../docs/records/delivery-history.md#prebound-page-delivery)。
+
+前置：在仓库内 `backend/target/prebound-page-workspace` 建立隔离的本仓库工作树，纳入本批产品入口与独立验收测试作为本地验证基线；离线安装依赖，主工作区改动保留。真正 full jar绑定该工作树及授权根，使用原连接配置/开发库且已迁移V32；在 `backend/target/prebound-live/process.json` 记录 `{pid,base,workspace}`。不得使用测试Host、替身模型或对main做未经授权的提交。
+
+从仓库根明确开启一次真实请求，准备工具将task/prototype/conversation/request身份及SSE结果持久保存至忽略的 `backend/target/prebound-live`；已有proposal时复用，不自动再次调用模型：
+
+```powershell
+$env:EAP_RUN_PREBOUND_REAL_MODEL='approved'
+rtk proxy python -X utf8 frontend/apps/web/__tests__/browser/prebound-page-delivery-prepare.py
+```
+
+随后在frontend目录运行（EAP_PLAYWRIGHT_MODULE、EAP_CHROMIUM指向已有本机安装）：
+
+```powershell
+rtk proxy node apps/web/__tests__/browser/prebound-page-delivery-live.mjs
+```
+
+脚本自启Vite 5173代理上述正式服务，使用实际生产Chat确认应用、Board选择持久应用证据、提交交付及明确技术ACCEPT；复用持久APPLIED/Run/已完成独立检查，不为脚本定位修复重复模型、应用或typecheck/test/build。实际结果4组/0pageerror，后端模型1次；正式独立检查145文件/897项通过，类型/构建与源码前后快照通过。结果、真实模型候选、diff、JDBC回读及截图在 `artifacts/prebound-page-delivery`。
+
+ACCEPT说明明确为自动化技术核验，不是用户产品接受。脚本最后关闭自有浏览器/Vite，保留正式隔离宿主与工作树供核对；不要将当前本机PID/端口当成永久配置。尚未覆盖多文件、复杂页面、源码UNKNOWN人工恢复或用户最终交互接受。
+
 ## 正式 full-application 当前契约与发布恢复
 
 两份脚本均连接开发库及真正的 `com.lh.eap.EapApplication`，会留下明确的验证版本/任务记录。先打包并启动正式 full-application（8080、授权根为本仓库），确认应用库当前 V31 和健康检查；不使用 mock 模式或测试 Host。脚本自行启动生产 App 的 Vite 5173 代理，独立浏览器存储，结束关闭自有浏览器及 Vite，保留正式后端。

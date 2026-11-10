@@ -46,6 +46,14 @@ public class BoardDeliveryService {
     public BoardDeliveryService(JdbcTemplate jdbc, BoardTaskService tasks, MissionExecutionStore executions, MissionGitExecutionService git, CapabilityRegistry registry, BoardVerificationService verification, BoardDeliveryCapture capture, BoardApplicationEvidence applications) {
         this.jdbc=jdbc; this.tasks=tasks; this.executions=executions; this.git=git; this.registry=registry; this.verification=verification; this.capture=capture; this.applications=applications;
     }
+    public BoardApplicationCatalog.Page applications(UUID taskId, UUID executionId, String projectId) {
+        project(projectId);
+        var task = tasks.find(taskId, projectId, false);
+        var saved = read(taskId, executionId);
+        var execution = executions.find(executionId).orElseThrow();
+        return new BoardApplicationCatalog(jdbc).list(
+                new com.lh.eap.api.TaskRef(task.projectId(), task.id(), saved.revision()), execution.workspacePath());
+    }
     public Page get(UUID taskId, UUID executionId, String projectId) {
         project(projectId); var task = tasks.find(taskId, projectId, false); var saved = read(taskId, executionId);
         if (saved.delivery()!=null) return new Page(saved.delivery(), false, "BOARD_DELIVERY_ALREADY_RECORDED");

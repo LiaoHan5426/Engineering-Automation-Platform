@@ -1,5 +1,12 @@
 export const boardDeliveryMessages = {
   'zh-CN': {
+    candidatesHint:
+      '读取此 Run 原任务版本在同一工作区已应用的 PREBOUND 候选。选择只填写关联和路径；提交仍由服务端重新核对源码、时间及验证证据。',
+    loadCandidates: '读取此任务的已应用候选',
+    candidatesFailed: '读取失败或身份不符，旧列表仅供查看，不能选择；请明确重查。',
+    noCandidates: '未找到此任务版本的已应用候选。未应用、其他任务或其他工作区的记录不会列出。',
+    candidatesTruncated: '仅显示最近 20 条，请核对目标文件及应用时间。',
+    selectCandidate: '选择此源码应用证据',
     linkApplication: '关联已应用的 Chat 候选',
     conversationId: '会话 ID',
     proposalId: '候选 ID',
@@ -52,6 +59,16 @@ export const boardDeliveryMessages = {
     loadFailed: '无法读取交付记录。保留已保存证据，写操作暂停；请刷新后重试。',
   },
   'en-US': {
+    candidatesHint:
+      'Read applied PREBOUND candidates for this Run task revision and workspace. Selection only fills the reference and path; submission rechecks source, time and verification evidence.',
+    loadCandidates: 'Read applied candidates for this task',
+    candidatesFailed:
+      'Read failed or identity mismatched. The previous list is view-only; explicitly check again.',
+    noCandidates:
+      'No applied candidate for this task revision. Unapplied records and other tasks or workspaces are excluded.',
+    candidatesTruncated:
+      'Showing the latest 20 records. Check the target file and application time.',
+    selectCandidate: 'Select this source application evidence',
     linkApplication: 'Link an applied Chat candidate',
     conversationId: 'Conversation ID',
     proposalId: 'Proposal ID',

@@ -925,6 +925,18 @@ export type BoardVerificationPage = {
   reason: string
 }
 export type BoardApplicationRef = { conversationId: string; proposalId: string }
+export type BoardAppliedCandidate = BoardApplicationRef & {
+  generationId: string
+  targetPath: string
+  afterHash: string
+  appliedAt: string
+}
+export type BoardAppliedCandidates = {
+  taskBinding: CodeTaskRef
+  workspacePath: string
+  items: BoardAppliedCandidate[]
+  truncated: boolean
+}
 export type BoardApplicationEvidence = BoardApplicationRef & {
   association: 'POST_HOC' | 'PREBOUND'
   taskBinding?: CodeTaskRef | null
@@ -1747,6 +1759,15 @@ export const runtimeApi = {
         { timeout: 90_000 },
       )
       .then((response) => response.data),
+  boardAppliedCandidates: (taskId: string, executionId: string, projectId: string) =>
+    get<BoardAppliedCandidates>(
+      '/board/tasks/' +
+        encodeURIComponent(taskId) +
+        '/runs/' +
+        encodeURIComponent(executionId) +
+        '/delivery/applications?projectId=' +
+        encodeURIComponent(projectId),
+    ),
   boardDelivery: (taskId: string, executionId: string, projectId: string) =>
     get<BoardDeliveryPage>(
       '/board/tasks/' +

@@ -12,6 +12,9 @@ public class BoardDeliveryController {
     private final BoardDeliveryService service;
     public BoardDeliveryController(BoardDeliveryService service) { this.service=service; }
     @GetMapping public BoardDeliveryService.Page get(@PathVariable UUID taskId, @PathVariable UUID executionId, @RequestParam String projectId) { return service.get(taskId, executionId, projectId); }
+    @GetMapping("/applications") public com.lh.eap.application.service.BoardApplicationCatalog.Page applications(@PathVariable UUID taskId, @PathVariable UUID executionId, @RequestParam String projectId) {
+        return service.applications(taskId, executionId, projectId);
+    }
     @PostMapping public BoardDeliveryService.Delivery submit(@PathVariable UUID taskId, @PathVariable UUID executionId, @RequestBody String body) {
         var map = fields(body, Set.of("projectId","revision","workspacePath","requestId","paths","note"), Set.of("applicationRef"));
         BoardDeliveryService.ApplicationRef ref = null;

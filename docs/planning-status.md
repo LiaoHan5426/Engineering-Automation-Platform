@@ -1,20 +1,39 @@
 # 规划状态与验收台账
 
-> 本批提交推送已完成：`1ce0c4bfd4a68d6ff1c969839cc99f476f2df69c`（179文件），HEAD/origin/main/远端main一致。提交沿用已有测试，未重复测试。接续已处理开发库唯一非语义原型及引用，正式full-application完成V30、V31迁移和真实整链；发布响应丢失治理及正式宿主证据随本次提交交付；本次提交沿用已记录验证结果，不重复测试，不保留旧无身份发布兼容分支。实际提交及推送状态以Git回读为准。
+> 当前已提交基线为 `edada582043345d301161c9fcb69175f5d2b0ea5`（发布恢复55文件，已推送）。本轮接续完成限定真实PREBOUND页面交付：V32修正当前语义原型快照约束，新增任务应用证据目录/选择，真实模型候选→页面确认应用→独立检查→交付→明确技术决定整链已验。该批随本次提交交付，沿用已记录结果、不重复测试；用户产品接受仍独立，提交推送状态以Git回读为准。
 
-依据：v1.6当前合同及有效决策。已提交实现基线为 `1ce0c4b`（2026-11-10，179文件已推送）；提交沿用已有测试结果，未重复测试。发布请求身份、恢复核对及正式宿主证据随本次提交交付；提交阶段沿用已有测试，未重跑。开发阶段演进规则以根[AGENTS.md](../AGENTS.md#development-evolution)为准；已排查五组收敛及正式库迁移限制见[本批验收](#single-contract-validation)，首次排查保留为历史快照。
+依据：v1.6当前合同及有效决策。已提交实现基线为 `edada58`（2026-11-10，发布恢复55文件已推送）；提交沿用旧结果未重复测试。本轮限定PREBOUND真实页面交付随本次提交交付，原阶段测试数字分列保留。开发阶段演进规则以根[AGENTS.md](../AGENTS.md#development-evolution)为准；已排查五组收敛及正式库迁移限制见[本批验收](#single-contract-validation)，首次排查保留为历史快照。
 
 本表跟踪完整范围，不因局部阶段完成把其他项关闭。`实现通过`仅限列明能力，用户人工接受、供应商与平台验收不能由代理或 Mock 替代。
 
 ## 当前基线与完成口径
 
-当前已提交实现基线：`1ce0c4bfd4a68d6ff1c969839cc99f476f2df69c`；PL-02/SC-03与五组收敛179文件已提交推送，HEAD/origin/main/远端main一致；发布响应恢复随本次提交交付；提交后基线以Git回读为准。历史阶段数字与授权保留在主题记录，不作为新代码的全量重测结果。
+当前已提交实现基线：`edada582043345d301161c9fcb69175f5d2b0ea5`；发布恢复55文件已提交推送。当前PREBOUND页面交付随本次提交交付，提交阶段只复核差异/编码/链接/敏感模式，未重复测试；隔离验证工作树的本地基线提交只用于验证，未改main或推送。历史阶段数字与授权保留在主题记录，不作为新代码的全量重测结果。
 
 <a id="validation-baseline"></a>
 
+<a id="prebound-page-delivery-validation"></a>
+
+### PREBOUND真实单文件页面交付（2026-11-10，接续edada58，随本次提交交付）
+
+[合同、命令与失败过程](records/delivery-history.md#prebound-page-delivery)；[4组正式页面结果](../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/result.json)；[JDBC独立回读](../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/database-verification.json)。
+
+| 范围 | 实现与实际验证 | 边界 |
+|---|---|---|
+| 真实阻断修复 | V16的生成快照约束仍要求已删除buttonPresses/interaction；V32直接替换为requestId及语义原型合同，拒绝旧字段，不改V16/V30/V31 | 开发库迁移前绑定快照0行，无旧数据补字段/转换；V32正式checksum=753706238，32份Flyway validate通过 |
+| 前后端交付入口 | GET delivery/applications按原Run任务版本/项目/工作区/操作者筛选APPLIED PREBOUND，最多20条并报告截断，无源码正文；页面明确读取/选择后填原会话、候选和单路径，失败旧快照禁选/迟到响应失效 | 目录只提供发现，不替代submit/decide的源码、时间、原型、任务及独立验证核对；EXTERNAL_MANUAL/POST_HOC是现有不同业务来源，不是旧兼容入口 |
+| 真实候选 | 已配置gpt-6.1-sol/Responses仅1次模型请求，18.21秒；生成前持久task r2/语义原型/完整目标源码，返回唯一GenerationBaseline.vue候选，生成阶段文件未改 | 外部模型输出先审diff；无工具/其他文件/自动应用。真实模型负责生成，Git Run只负责只读检查 |
+| 实际页面改进 | 折叠标题显示生成前绑定Badge，展开提示应用后还需独立验证及明确决定；无绑定不显示PREBOUND归因。生产App页面确认后应用，原意图/结果/重复请求保持同hash | 模型精确应用后的文件hash d3fd0494…已带回主工作区；无额外授权、导航、请求或自动接受 |
+| 正式独立验证 | 隔离EAP工作树、真正full Boot jar/原开发库/原模型配置；真实Git Run SUCCEEDED/0；原生vp依次typecheck/test/build均PASSED、exit0、清理true，682文件源码前后快照相同 | 唯一一次完整验证：145文件897项通过，58.04秒；不把输出截断当零告警，不宣称OS沙箱；依赖预先离线安装 |
+| 交付与决定 | 生产看板选择服务端应用证据→提交CHAT_APPLIED_PREBOUND→显式勾选/确认技术ACCEPT→task done/r4；缺人工声明400、重复决定幂等、第二决定409、刷新恢复证据 | 操作说明明确Automated technical ACCEPT，不是用户产品接受；原任务版本r2、提交后r3、最终r4分别保留，无源码重写 |
+| 新定向回归 | 后端2类4项通过/0跳过（含真实V31拒绝→V32→PREBOUND应用及目录隔离/截断）；前端3文件37项通过（4+27+6，集合分阶段不重复累加） | 首轮root导入因CRLF/LF保护停止及Teleport定位失败，修正后失败2文件33项通过；非业务门禁放宽 |
+| 工程检查 | 主工作区typecheck/architecture通过；11个TS/Vue/浏览器脚本格式/lint通过；模型文件仅check不重写；新候选组件stylelint通过 | BoardRunDelivery和GenerationBaseline样式与HEAD完全相同，扩展stylelint的13项旧问题保留；未称全stylelint通过；build大chunk及i18n/networkGuard既有诊断保留 |
+| 证据与资源 | 4组真实生产App/JDBC检查，0pageerror/0浏览器外呼；JDBC确认1 generation/1 proposal、正确绑定、hash和时间顺序、3项检查及决定。主8080和隔离正式宿主健康，浏览器/Vite已关闭 | 后端这1次真实模型外呼独立记录；隔离工作树及宿主保留便于核对，未提交main或推送，无数据库clean/repair/baseline |
+| 剩余关口 | 本轮覆盖已有组件的单文件实际改页，不关闭整项PB/RK、复杂页面、多文件图约束、UNKNOWN人工恢复、用户交互及最终产品接受 | 后续按目标需求批量推进，不新造执行器或兼容机制 |
+
 <a id="publication-recovery-validation"></a>
 
-### 正式开发库迁移与发布响应恢复（2026-11-10，接续1ce0c4b，随本次提交交付）
+### 正式开发库迁移与发布响应恢复（2026-11-10，已随edada58提交；以下为V31阶段快照）
 
 [实现、失败过程及命令](records/architecture-history.md#publication-recovery)；[正式V30页面结果](../frontend/apps/web/__tests__/browser/artifacts/full-current-contract/result.json)；[V31恢复整链](../frontend/apps/web/__tests__/browser/artifacts/prototype-publication-recovery/result.json)；[独立数据库回读](../frontend/apps/web/__tests__/browser/artifacts/prototype-publication-recovery/database-verification.json)。
 
@@ -296,12 +315,12 @@
 | MD-01 模型连接 | 凭据/目录/白名单/强度已有；追加普通API显式wireApi及Responses文本/代码提案，协议变更revision/重绑定、Git拒绝和前端/mock合同已实现并通过离线回归，见[决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验) | 原连接Responses真实文本与SQL Agent两轮工具、审批写入已验；其他网关/模型/推理档位、Responses Chat Git/账户计划工具及用户最终接受仍待 |
 | EX-01 专家 | 父子导航、独立三栏编辑、任务摘要/按需详情、终态停止轮询与静默更新已交付，见[工作区合同](decisions/expert-workspace-navigation.md)；专业行为版本持久绑定、SQL Agent工具循环/检查点恢复/后台调度/单SQL文件审批已接通。真实Responses两轮整链及复杂SQL三类限定样例有独立证据；单专家授权知识→Chat、撤权/旧记忆隔离已有实库回归 | 新工作台原生125%/150%与用户接受；其他行为编辑器/资源整合、完整SQL作用域/生产效果；Chat引用不执行DAG或自动获得工具权限 |
 | PB-01 原型编辑 | Grapes工程+语义Schema、8类映射、保存重开/预览；已接EditorWorkbench三栏壳，浏览器编辑/本地重开/交互预览及未知映射阻止通过，数据模型仍归原型域 | 按目标页面逐项补状态/动作/组件映射；原生缩放、用户接受及真实交付 |
-| PB-02 生成基线 | 单目标完整有界源码、原型及生成前Task/revision快照已落地；生成期间变化/额外目标拒绝，PREBOUND关联已交付（69892f3）；见 [阶段记录](records/delivery-history.md#code-generation-baseline)、[阶段记录](records/delivery-history.md#code-task-prebinding) | 真实供应商自身改页验收、多文件组件图约束及快照保留期仍后续 |
-| PB-03 受控应用 | 持久单文件候选、意图/读回、未知保护、Task→workspace互锁及POST_HOC/PREBOUND交付归因已通过实库/回归；见 [阶段记录](records/delivery-history.md#code-proposal-application)、[阶段记录](records/delivery-history.md#code-task-prebinding) | 未知人工核对、真实模型自身改页和完整交付；不宣称OS事务CAS、Git Run创作代码或会话重启恢复 |
+| PB-02 生成基线 | 单目标完整有界源码、原型及生成前Task/revision快照已落地；生成期间变化/额外目标拒绝，PREBOUND关联已交付（69892f3）；见 [阶段记录](records/delivery-history.md#code-generation-baseline)、[阶段记录](records/delivery-history.md#code-task-prebinding) | 限定真实供应商单文件改页及PREBOUND整链已验；多文件组件图、快照保留期及用户产品接受仍后续 |
+| PB-03 受控应用 | 持久单文件候选、意图/读回、未知保护、Task→workspace互锁及POST_HOC/PREBOUND交付归因已通过实库/回归；见 [阶段记录](records/delivery-history.md#code-proposal-application)、[阶段记录](records/delivery-history.md#code-task-prebinding) | 限定真实模型单文件改页/受控应用/交付/技术决定已验；未知人工核对及完整用户接受仍待；不宣称OS事务CAS、Git Run创作代码或会话重启恢复 |
 | PB-04/RK-5 独立验证 | **实现通过，04edef5已推送**。前端295通过，后端400通过6跳过，真实三项退出0；V9/V10 | 验证覆盖仅当前frontend；不是源码实现归因或人工验收 |
 | 源码交付证据与人工决定 | **EXTERNAL_MANUAL 切片实现及联调通过**，见 [阶段记录](records/delivery-history.md#board-source-delivery) | 实际样例完成采集/同源验证/接受/过期拒绝/拒绝回待处理/刷新；不是平台自动开发或用户最终接受 |
-| Chat应用→交付关联 | POST_HOC（544b8f9）与后续PREBOUND（69892f3）已通过实库协议、前后端回归及独立复核；旧无绑定记录不升级归因 | POST_HOC不证明生成时任务归因；PREBOUND仍不证明真实供应商改页/用户产品验收 |
-| 生成前任务绑定 | PREBOUND单目标任务/原型快照、应用领取互锁、交付归因已通过实库协议与独立复核；前端398项、后端569项（6跳过），见 [阶段记录](records/delivery-history.md#code-task-prebinding) | 生成前绑定不等于真实供应商已改页；实际模型交付及用户验收仍待，不自动完成整体PB/RK |
+| Chat应用→交付关联 | POST_HOC（544b8f9）与后续PREBOUND（69892f3）已通过实库协议、前后端回归及独立复核；旧无绑定记录不升级归因 | POST_HOC不证明生成时任务归因；本轮另有明确真实模型单文件改页证据；原PREBOUND切片自身不证明供应商效果或用户产品验收 |
+| 生成前任务绑定 | PREBOUND单目标任务/原型快照、应用领取互锁、交付归因已通过实库协议与独立复核；前端398项、后端569项（6跳过），见 [阶段记录](records/delivery-history.md#code-task-prebinding) | 限定gpt-6.1-sol真实单文件交付已另验；生成前绑定本身不等于供应商效果，用户接受/多文件与整体PB/RK不自动关闭 |
 | RK-1～4/6 看板准备与只读Run | 已实现持久任务、revision/幂等、只读Run、原型快照、审阅 | 接入真实实现Run后复核状态/失败/并发；不放开任意拖done |
 | CT-01 生命周期 | SSE/cancel/快照/同ID重连保留；2026-11-08应用线程执行、断线继续、Spring AI/Responses流、完整行脱敏、事件预算/终态/并发修复，见评审记录 | 真实供应商及用户接受待验；日志仍进程内，持久回放/跨重启接管未实现 |
 | RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与测试接受/拒绝决定已有刷新回放 | EAP自身改页完整证据、SQL实际任务证据及用户接受；不重复开发已有决定回放 |
@@ -310,7 +329,7 @@
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理；本轮真实本地知识导入/搜索/授权预览/无授权403/删除一致性通过，检索无模型；复杂SQL修复parse.partial与NOT IN NULL规则，四组合成结果验证通过，见[知识与本地执行边界](decisions/knowledge-local-execution.md) | 文档正文版本更新、检索质量评测、完整SQL作用域/生产数据与性能验证、CLI生命周期回归；不扩第二套执行器 |
 | PL-01 / P0 看板插件首片 | **限定生命周期实现通过**：board启停/回滚/sticky；项目聚合Task/Run与验证/写入在途/未知只读观测、失败旧快照、在途停用确认及重新启用；实际Git后台完成和原Task/Run恢复已验 | 验证/写入/UNKNOWN投影由持久夹具证明；全服务健康与用户接受独立；PL-02/SC-03见本批记录；外部安装独立 |
 | PL-02 / P1 设计器插件 | **限定实现及整链通过**：可信贡献依赖/启停/激活隔离、A/B实例恢复草稿和本地版本隔离、发布中拒绝停用、停用/刷新/重建恢复、原服务器版本保持；不读旧全局数据或合成占位保存 | 本地恢复与服务器版本分离；发布响应丢失已完成当前请求身份/核对切片；用户接受、外部安装/任意JS隔离独立 |
-| SC-03 / P1 场景组合 | **依赖切片实现及整链通过**：核心固定workflow可信依赖观测；必需设计器/版本服务/已发布版本，可选看板；实际Host及失败旧快照阻断、实库修复重查、副本workflow配置保存/读回 | 应用不安装/授权/发送/执行；完整设计→真实源码候选→应用→验证→用户接受与SC-01保存UNKNOWN删除关口独立 |
+| SC-03 / P1 场景组合 | **依赖切片实现及整链通过**：核心固定workflow可信依赖观测；必需设计器/版本服务/已发布版本，可选看板；实际Host及失败旧快照阻断、实库修复重查、副本workflow配置保存/读回 | 应用不安装/授权/发送/执行；本轮另完成单文件PREBOUND→真实候选→应用→验证→技术决定；完整设计交互接受、用户产品接受及SC-01保存UNKNOWN删除关口独立 |
 | CE-01 / P0 上下文工程 | **部分交付**：预算观测/用量 UI/超限；历史未计量；派生清空；`COMPRESSION_NOT_ENABLED`；**该切片**：备注 Badge 呈现（`:5174` 已验） | 真实 token/压缩策略、ChatMemory 精确计量、用户产品接受；不记录敏感正文 |
 | KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；实库对照；排序质量样本；`productionSampleCases`；**该切片**：对照测口令回退 `EAP_DB_PASSWORD`/`SPRING_DATASOURCE_PASSWORD`（不写入仓库） | 实库开启 `EAP_RUN_BOARD_PERSISTENCE`+口令跑 FTS 排序对照；不足证据前不启 KR-02 |
 | MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；约束/事实；失效 Feedback/空态纠偏；**该切片**：失效下 sticky 清空仍保留诚实提示（`:5174` 已验） | sticky 清空仍不可取消；用户产品接受仍待；自动长期抽取延期 |
@@ -344,7 +363,7 @@ CP-03用户标注Comment 1已做限定调整：模型/发送成组靠右，缺�
 
 后续只安排剩余关口，不从头重复上述切片；技术细节与退出矩阵见[技术路线决定](decisions/agent-runtime-evolution.md#7-分阶段切片与退出门禁)：
 
-1. **工程交付验收线**：用户确认目标页面、设计、允许范围和真实供应商/Agent调用后，复用PREBOUND与现有应用/验证/决定链走一次EAP自身改页；授权未具备时保持待验收，不伪造模型结果。
+1. **工程交付验收线**：本轮按用户授权以GenerationBaseline.vue为唯一目标，已完成PREBOUND真实模型→受控应用→独立验证→技术决定；下一片按实际产品需求推进更完整页面/组件图和用户交互接受，不为刷新数字重复供应商调用或扩大全平台故障矩阵。
 2. **上下文与资源能力线**：CE-01（含 mock 预算展示/超限）/KR-01(含 FTS+延迟观测+本机实库对照+排序质量样本)/MCP-01(stdio+官方矩阵含 memory/`read_graph`+http+legacy SSE+Streamable-HTTP+生产白名单+GET 续传)/MEM-01（含对抗失效与约束/事实 UI）离线首片已落地；下一步生产检索样本或继续追加已验证官方包（含门禁实跑 memory）。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
 3. **工具与本地环境线**：TD-01已统一Git程序及status/diff操作；TC-01已补status/diff持久调用/取消确认，UNKNOWN阻止同一操作重复启动，证据见[Git程序与持久调用](decisions/agent-runtime-evolution.md#git-operation-executions)。工具UNKNOWN已接通核对说明/进程树确认/二次确认及持久审计；本轮验证受控异常UNKNOWN整链并追加历史详情入口；当前检查仍不证明完整树退出。取消/超时/成功结果返回中断及核对响应丢失矩阵已验，取消意图保留展示；取消响应丢失和Windows index ACL/共享IO限制异常已验；本批已补数据库终态/审计提交前后及工作区/程序绑定恢复。后续将工具剩余异常列为维护回归，PL-01本轮已验证Task/Run只读观测与在途停用真实Git整链；本批已接通PL-02/SC-03及TC-02生命周期整链，后续进入实际页面交付验收；物理IO/跨平台穷举不作为其余产品开发前置，产品用户接受、其他工具和进程接管独立，不推广为SQL/源码写入UNKNOWN处置。TC-02实例读取与后续Host评审独立；反向Agent调用另批。FS-01物理迁移仍待批准，再做TM-01受管工具；sidecar/包验证与签名独立。
 4. **可信插件与场景线**：PL-01已完成项目Task/Run与验证/写入只读观测及真实Git在途停用/后台完成/重新启用恢复；用户接受与全服务健康独立。本批已接通PL-02设计器贡献、SC-03必需/可选依赖及TC-02观察随销毁失效、草稿/版本恢复。下一批集中推进既有PREBOUND/候选/应用/验证/人工决定的实际页面交付验收，保留五入口合同。外部安装器/市场/第三方隔离延期；不先建空SDK。

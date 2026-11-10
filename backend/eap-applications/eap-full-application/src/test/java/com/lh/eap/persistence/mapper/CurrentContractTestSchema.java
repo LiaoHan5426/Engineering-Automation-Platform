@@ -7,7 +7,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 /** Executes the actual Flyway scripts in a fresh UUID-owned schema, never the application schema. */
 final class CurrentContractTestSchema {
     static void migrate(Path session,String schema) throws Exception {
-        migrate(session,schema,"31");
+        migrate(session,schema,"32");
     }
     static void migrate(Path session,String schema,String target) throws Exception {
         if(!schema.matches("eap_unknown_qa_[a-f0-9]{32}"))throw new IllegalArgumentException("Unowned schema");

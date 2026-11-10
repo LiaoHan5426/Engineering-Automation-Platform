@@ -225,3 +225,5 @@ apps/web/src
 任务详情接续：ExpertTaskInspector为L4专家域只读组合，复用@eap/ui Drawer/Descriptions/Collapse；无新共享类别，主页面保留目标/结果，输入、引用摘录和技术信息按需查看。
 
 2026-11-10发布恢复接续：核对面板复用@eap/ui Feedback/Button，冻结请求和浏览器恢复证据留L4 features/shell/prototypePublication.ts，API合同由@eap/runtime-client公开；无新共享类别或包。格式/lint/stylelint/typecheck/architecture及正式Chromium恢复整链通过，见[当前验收](../planning-status.md#publication-recovery-validation)。
+
+2026-11-10 PREBOUND交付接续：BoardAppliedCandidates为shell L4只读业务组合，复用Button/Feedback；任务及Run范围、失败旧快照/选择意图留应用，公共DTO/API在runtime-client。真实模型改动GenerationBaseline仍复用Badge/Collapse，无新共享类别/包；architecture、定向组件及生产App整链通过。见[当前台账](../planning-status.md#prebound-page-delivery-validation)。

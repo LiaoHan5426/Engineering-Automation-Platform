@@ -1,0 +1,32 @@
+{
+  "head": "edada582043345d301161c9fcb69175f5d2b0ea5",
+  "newBatchCommitted": false,
+  "sourcePath": "frontend/apps/web/src/features/chat/GenerationBaseline.vue",
+  "mainSourceMatchesAppliedHash": "d3fd0494fcb3849fb80c08f61609d8189749632819687b0df6bc8d8171802dd7",
+  "migrationSourceChecksumMatchesDatabase": 753706238,
+  "health": [
+    {
+      "pid": 21004,
+      "base": "http://127.0.0.1:8080",
+      "status": "ok"
+    },
+    {
+      "pid": 33784,
+      "base": "http://127.0.0.1:64806",
+      "status": "ok"
+    }
+  ],
+  "browserAndViteClosed": true,
+  "realModelRequestCount": 1,
+  "formalIndependentChecksRunCount": 1,
+  "formalFrontendTestFiles": 145,
+  "formalFrontendTestsPassed": 897,
+  "backendFocusedPassed": 4,
+  "frontendFocusedPassed": 37,
+  "frontendFocusedEvidence": "4 candidate component tests passed, followed by 33 delivery/generation tests passed; totals are distinct tests, not summed reruns",
+  "oldStylelintIssuesRetained": 13,
+  "newCandidateStylelintPassed": true,
+  "architectureAndTypecheckPassed": true,
+  "userProductAcceptance": false,
+  "sensitivePatternClasses": 3
+}

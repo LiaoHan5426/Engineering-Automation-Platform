@@ -2,7 +2,7 @@
 
 ## 当前结论与阅读方式
 
-任务准备 → 受控只读Run → 原型引用 → 仓库审阅 → 独立验证 → 源码交付 → 生成前基线/持久应用 → POST_HOC/PREBOUND。已落地的是这些有限切片；真实供应商在EAP内改造自身页面、多文件开发及用户最终接受仍未完成。Git Run不是源码作者，UNKNOWN/APPLYING继续阻塞，未完成项以[接续台账](../planning-status.md)为准。
+任务准备 → 受控只读Run → 原型引用 → 仓库审阅 → 独立验证 → 源码交付 → 生成前基线/持久应用 → POST_HOC/PREBOUND。本轮已完成一次限定真实模型自身改页：PREBOUND语义原型/任务/源码→真实候选→生产页面确认应用→独立typecheck/test/build→交付→明确技术ACCEPT及刷新读回。复杂页面、多文件开发和用户最终产品接受仍独立；见[当前接续](#prebound-page-delivery)。Git Run不是源码作者，UNKNOWN/APPLYING继续阻塞，未完成项以[接续台账](../planning-status.md)为准。
 
 以下按主题合并完整阶段记录，日期保留在记录中而不再作为文件名。记录中的“本轮/未提交/下一步”和测试数字仅代表当时快照；不得覆盖上面的当前结论、有效产品合同或用户授权。原文完整保留（只调整标题层级、锚点及链接），后续更新本总览，不另建日期报告。
 
@@ -22,6 +22,68 @@
 | `docs/decisions/code-task-prebinding-2026-11-01.md` | [生成前 Task 绑定与交付归因最小切片](#code-task-prebinding) |
 
 ---
+
+<a id="prebound-page-delivery"></a>
+
+## PREBOUND真实页面交付与语义快照约束（2026-11-10，接续edada58，随本次提交交付）
+
+### 当前授权与交付范围
+
+用户授权集中推进PREBOUND→真实源码候选→受控应用→独立验证→人工决定。主工作区起始干净，HEAD=edada582043345d301161c9fcb69175f5d2b0ea5（已推送）。本次按用户要求提交推送已有42文件，沿用既有结果，不重复测试；提交前仅复核差异/文档/编码/链接及敏感模式。暂存检查发现展示patch混入CRCRLF，已仅按LF重新生成可读diff；原候选JSON、源码字节及哈希证据不变，未重复测试。本批不是大范围更换架构：复用原持久generation/proposal、Task/Run、工作区互锁、独立验证及交付/决定服务。旧无身份发布及同步Git入口仍不存在；不增加执行器、状态机、能力注册表或默认兼容。
+
+选择实际目标 `frontend/apps/web/src/features/chat/GenerationBaseline.vue`：折叠状态即可识别生成前任务绑定，展开后说明应用源码后仍须独立验证、提交证据及明确决定；无任务绑定不展示PREBOUND归因。已配置真实gpt-6.1-sol/Responses仅1次模型请求（18.21秒），保留原模型/连接，不复制或打印凭据，无额外工具调用。模型前已在独立事务保存task r2、当前语义原型及完整目标源码，模型调用不持Task/数据库锁。
+
+### 发现的真实阻断与直接收敛
+
+V30删除原型buttonPresses/interaction，V31增加requestId，但V16的code_generation_task_group仍要求旧计数快照字段，导致当前原型的PREBOUND生成无法落库。只读预检应用库task_snapshot非空0行，旧原型快照0行，无需旧数据恢复或清理。新增[V32](../../backend/eap-applications/eap-full-application/src/main/resources/db/migration/V32__prebound_semantic_prototype.sql)原子删除并重建该约束，要求requestId/当前语义格式，明确拒绝旧计数字段；没有修改已应用V16/V30/V31或补造旧字段。
+
+PreboundSemanticDeliveryTest在UUID自有schema先运行V1～V31，确认当前语义原型绑定失败且generation 0行；再执行真实V32，保存原型/任务/完整源码、持久候选及应用成功，原型快照完全保留。真实数据库回归同时覆盖非APPLIED不列出、Task/project/revision/workspace隔离、20项截断、旧字段插入拒绝及不可变证据更新拒绝。完成后只删除自己创建且正则断言通过的schema，不创建/删除数据库。
+
+### 从页面连接应用与交付
+
+新增GET `/api/board/tasks/{taskId}/runs/{executionId}/delivery/applications?projectId=...`。服务端先核对实际project/task/Run，再按原Run任务版本、workspace及local-operator读取原code_generation/code_proposal；只列APPLIED且有匹配结果/生成身份的PREBOUND，最多20条+truncated。响应只含原始ID、单路径、afterHash和时间，没有源码正文、模型指令或可执行参数。GET不探测文件、不运行命令、不持有写入授权。
+
+BoardAppliedCandidates复用@eap/ui Button/Feedback，业务状态留shell L4，公共类型/HTTP留runtime-client，无新包。页面显式读取、显式选择后只填原applicationRef与路径，不提交；网络/身份错误保留旧列表但禁选，Task/revision/Run变化使迟到响应失效；未知/在途交付阻止替换。已有EXTERNAL_MANUAL、POST_HOC是不同来源职责，不是为了旧接口保留的兼容分支；其手工入口和原完整服务端核对不变。
+
+目录不保证当前源码仍匹配、不保证验证时间顺序，也不授予接受权限。submit/decide继续重读不可变generation、task/prototype、实际源码与同源独立检查，并校验应用发生在独立检查之前。不能把目录选中等同于交付。
+
+### 正式宿主、隔离边界与实际过程
+
+主工作区保留开发改动。为使完整前端差异能够精确对应唯一模型目标，使用仓库内忽略目录 `backend/target/prebound-page-workspace` 的独立Git worktree，在detached本地基线中纳入本批产品入口和独立验收测试；没有在main创建额外提交或推送。依赖使用已有本机缓存 `pnpm install --offline --frozen-lockfile --ignore-scripts`，未运行安装脚本或下载软件。
+
+真正full-application jar使用原开发库/连接配置启动；主8080恢复为PID21004并执行V32，隔离正式main PID33784监听127.0.0.1:64806，仅授权上述工作树。不是测试Host、Fake模型或替换生产service。V32 checksum=753706238，32份Flyway validate通过，无clean/repair/baseline。Windows已运行jar会阻止repackage，首次打包失败后精确核对自有PID/命令行再停旧宿主重建；8081被其他进程占用，未停止占用者，隔离宿主改用已探测空闲端口。
+
+生成候选先独立检查diff：唯一文件、仅增加公共Badge及条件指引、保留所有hash/Task/原型显示，无请求/导航/授权/自动接受。生产App真实Chat读取该持久候选，操作者技术确认后POST原apply；写后字节与候选完全一致，重复apply返回原APPLIED结果，不再写入。实际新组件标题和指引已由Chromium及截图检查。
+
+随后真实Git Run SUCCEEDED/0，正式BoardVerificationService以原生vp依次执行typecheck、test、build；三项PASSED、exit0、processTreeCleanup=true。test为145文件/897项通过（58.04秒），验证全程682文件的前后源码快照相等。这是该正式验证实际要求的一次完整检查，不是为刷新旧PL-02/V31数字重复执行。
+
+生产看板打开该任务Run：显式读取应用目录只返回唯一匹配候选→选择后会话/候选/路径正确→确认采集→保存CHAT_APPLIED_PREBOUND交付（原任务r2、提交后r3）。缺标准/预览声明的ACCEPT返回400且决定保持null；随后实际页面逐项勾选、填写明确技术说明并二次确认，记录一次技术ACCEPT、Task done/r4。决定请求同内容重放返回原记录，新的冲突决定409；刷新恢复已决定的只读证据，无写入按钮。
+
+**该ACCEPT为代理执行的技术流程验证，不是用户产品接受。** 操作说明原文明确“Automated technical ACCEPT…This is not human user product acceptance.”；未以它关闭整体PB/RK或用户体验接受。Git Run未创作任何代码；唯一源码变更由上述真实模型候选产生。
+
+| 持久证据 | 身份 |
+|---|---|
+| Task / 原版本 | 1b3db07e-c020-494c-acc5-060b51c11b37 / r2 |
+| 语义原型 | c934b152-20e6-4f84-b6c0-e1dacb5eb863 |
+| Conversation | 8a6f75b4-1964-45af-8ca2-ec54e9f511b1 |
+| Generation / Proposal | f1235495-9036-4749-872e-679a9eb89195 / 683f6b41-c89a-4c73-bca4-22d4c1dd01f5 |
+| 只读Git Run | ed8060e2-eb64-4c34-a605-6c7317a530b0 |
+| 独立检查 / 交付 | 5257a2f1-1bfa-4f4f-aced-57ca1f48c291 / fe5753fc-12b5-4dfe-9217-ab985208098f |
+| 技术决定 | bddd8e8f-6093-4162-a583-e77671718e9a |
+| 应用后精确SHA-256 | d3fd0494fcb3849fb80c08f61609d8189749632819687b0df6bc8d8171802dd7 |
+
+[正式4组页面结果](../../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/result.json)、[真实模型候选](../../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/real-model-proposal.json)、[实际diff](../../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/reviewed-source.patch)、[独立检查摘要](../../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/independent-checks.json)、[JDBC回读](../../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/database-verification.json)分别保留。已查看[实际改页](../../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/applied-generation.png)和[决定后页面](../../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/delivery-decided.png)。浏览器0pageerror、0外呼，后端明确有上述1次真实模型调用，不能将0浏览器外呼写成未调用模型。
+
+主工作区导入前先验证目标原文仍等于生成前内容。隔离checkout因Git换行配置使用CRLF、主工作区使用LF，首个纯字节保护拒绝导入；确认只有换行差异后按原文核对，导入模型精确应用字节。主工作区hash与APPLIED/delivery完全相同，没有格式化重写模型文件。Git基线的规范LF hash与生成前原始CRLF hash是不同层次证据，界面明确区分，不混为同一基线。
+
+### 定向验证、失败保留与剩余项
+
+- 后端命令：`EAP_RUN_SINGLE_CONTRACTS=true EAP_RUN_BOARD_PERSISTENCE=true rtk proxy mvn -f backend/pom.xml -pl :eap-full-application -am test '-Dtest=PreboundSemanticDeliveryTest,BoardDeliveryControllerTest' '-Dsurefire.failIfNoSpecifiedTests=false'`。最终2类4项通过/0跳过，含真实迁移/文件/JDBC及只读HTTP路由合同；[摘要](../../frontend/apps/web/__tests__/browser/artifacts/prebound-page-delivery/backend-regression.json)。
+- 前端定向：BoardAppliedCandidates.test.ts、BoardRunDelivery.test.ts、GenerationBaseline.test.ts最终4+27+6=37项通过；不将重叠轮次相加。第一次2文件30项通过时旧交付测试漏mock产生networkGuard诊断，补明确拒绝的测试替身后最终失败重试2文件33项通过、无该新增诊断。首轮33+4中的2失败是模型文件尚因换行保护未导入和Dialog Teleport定位范围错误，修正后通过；未降低身份/源码/UNKNOWN门禁。
+- 主工作区typecheck、check:architecture通过；11个TS/Vue/浏览器脚本格式和lint通过，模型文件仅fmt --check；新候选组件stylelint通过。扩展stylelint发现两个既有组件13项原样式问题，源码style段与HEAD完全相同，未改旧样式或加白名单，不宣称全stylelint通过。正式build保留大chunk，测试日志中仍有既有i18n/networkGuard诊断，不将截断输出冒称日志零错误。
+- 浏览器脚本早期定位native summary及ConfirmBox按钮失败；修正后复用同一APPLIED候选/Run/验证记录，没有再次调用模型、重写文件或重跑已完成typecheck/test/build。只读JDBC辅助首次因JSONB问号操作符被PreparedStatement识别为占位而失败，改用jsonb_exists函数后成功回读，没有数据写入。
+- 正式4组检查通过，原型、generation/proposal、Run、检查和交付留应用库；独立JDBC确认仅1 generation/1 proposal及完整时间/hash/版本关系。浏览器和Vite已关闭；主8080与隔离正式宿主/工作树留存核对，进程/原始日志在忽略的backend/target/prebound-live。未提交main或推送。
+- 剩余：用户交互/产品接受、复杂页面及多文件图约束、源码UNKNOWN人工核对/跨重启接管独立；本次单文件页内状态提示不等于完整设计器到复杂页面生成质量。下一批按实际页面需求继续，禁止为兼容旧计数快照补回字段或增加第二发布/执行机制。
 
 <a id="board-task-preparation"></a>
 

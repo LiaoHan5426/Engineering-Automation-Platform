@@ -102,11 +102,44 @@ beforeEach(() => {
   })
   vi.spyOn(runtimeApi, 'submitBoardDelivery').mockResolvedValue(record)
   vi.spyOn(runtimeApi, 'decideBoardDelivery').mockResolvedValue(record)
+  vi.spyOn(runtimeApi, 'codeProposal').mockRejectedValue(new Error('No linked proposal fixture'))
 })
 afterEach(() => {
   app?.unmount()
   root?.remove()
   vi.restoreAllMocks()
+})
+it('selects the exact persisted PREBOUND application and path without submitting delivery', async () => {
+  const candidate = {
+    conversationId: crypto.randomUUID(),
+    proposalId: crypto.randomUUID(),
+    generationId: crypto.randomUUID(),
+    targetPath: 'frontend/Page.vue',
+    afterHash: 'a'.repeat(64),
+    appliedAt: '2026-11-10T00:00:00Z',
+  }
+  vi.spyOn(runtimeApi, 'boardAppliedCandidates').mockResolvedValue({
+    taskBinding: { projectId: task.projectId, taskId: task.id, revision: run.taskRevision },
+    workspacePath: run.execution.workspacePath,
+    items: [candidate],
+    truncated: false,
+  })
+  await mount()
+  button('delivery-load-candidates').click()
+  await vi.waitFor(() => expect(button('delivery-select-candidate')).not.toBeNull())
+  button('delivery-select-candidate').click()
+  await vi.waitFor(() =>
+    expect(
+      (document.querySelector('[data-testid=delivery-conversation-id]') as HTMLInputElement)?.value,
+    ).toBe(candidate.conversationId),
+  )
+  expect(
+    (document.querySelector('[data-testid=delivery-proposal-id]') as HTMLInputElement).value,
+  ).toBe(candidate.proposalId)
+  expect(
+    (document.querySelector('[data-testid=delivery-paths]') as HTMLTextAreaElement).value,
+  ).toBe(candidate.targetPath)
+  expect(runtimeApi.submitBoardDelivery).not.toHaveBeenCalled()
 })
 it('submits a single explicit post-hoc application reference without inventing hashes or changing the original retry', async () => {
   vi.mocked(runtimeApi.boardDelivery).mockResolvedValue({

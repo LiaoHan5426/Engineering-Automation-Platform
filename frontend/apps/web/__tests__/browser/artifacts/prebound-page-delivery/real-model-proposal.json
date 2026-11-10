@@ -1,0 +1,31 @@
+{
+  "id": "683f6b41-c89a-4c73-bca4-22d4c1dd01f5",
+  "conversationId": "8a6f75b4-1964-45af-8ca2-ec54e9f511b1",
+  "workspace": "J:\\Code\\Engineering-Automation-Platform\\backend\\target\\prebound-page-workspace",
+  "summary": "Proposed a conditional PREBOUND badge in the summary and translated delivery guidance in expanded content, preserving all existing generation evidence.",
+  "files": [
+    {
+      "path": "frontend/apps/web/src/features/chat/GenerationBaseline.vue",
+      "before": "<script setup lang=\"ts\">\r\nimport { Collapse } from '@eap/ui'\r\nimport type { CodeGenerationSnapshot } from '@eap/runtime-client'\r\nimport { useI18n } from 'vue-i18n'\r\ndefineProps<{ generation?: CodeGenerationSnapshot | null }>()\r\nconst { t } = useI18n()\r\n</script>\r\n<template>\r\n  <Collapse v-if=\"generation\" data-testid=\"generation-record\">\r\n    <template #summary>{{ t('generation.title') }} · {{ generation.targetPath }}</template>\r\n    <div class=\"generation-baseline\">\r\n      <code>{{ generation.id }}</code>\r\n      <p>{{ t('generation.target') }}：{{ generation.targetPath }}</p>\r\n      <p v-if=\"generation.baseHash === 'absent'\">{{ t('generation.absent') }}</p>\r\n      <p v-else>\r\n        SHA-256：<code>{{ generation.baseHash }}</code>\r\n      </p>\r\n      <p>{{ t('generation.captured') }}：{{ generation.capturedAt }}</p>\r\n      <p v-if=\"generation.taskBinding\">\r\n        {{ t('generation.taskBinding') }}：{{ generation.taskBinding.projectId }} ·\r\n        {{ generation.taskBinding.taskId }} · r{{ generation.taskBinding.revision }}\r\n      </p>\r\n      <p v-if=\"generation.prototypeVersionId\">\r\n        {{ t('generation.prototype') }}：<code\r\n          >{{ generation.prototypeVersionId }} · {{ generation.prototypeContentHash }}</code\r\n        >\r\n      </p>\r\n      <p>{{ t('generation.boundary') }}</p>\r\n    </div>\r\n  </Collapse>\r\n  <p v-else class=\"hint\" data-testid=\"generation-missing\">{{ t('generation.missing') }}</p>\r\n</template>\r\n<style scoped>\r\n.generation-baseline {\r\n  display: grid;\r\n  gap: 8px;\r\n  min-width: 0;\r\n}\r\n.generation-baseline p,\r\n.generation-baseline code {\r\n  overflow-wrap: anywhere;\r\n}\r\n.generation-baseline code {\r\n  font-size: 11px;\r\n}\r\n</style>\r\n",
+      "content": "<script setup lang=\"ts\">\nimport { Badge, Collapse } from '@eap/ui'\nimport type { CodeGenerationSnapshot } from '@eap/runtime-client'\nimport { useI18n } from 'vue-i18n'\ndefineProps<{ generation?: CodeGenerationSnapshot | null }>()\nconst { t } = useI18n()\n</script>\n<template>\n  <Collapse v-if=\"generation\" data-testid=\"generation-record\">\n    <template #summary>\n      {{ t('generation.title') }} · {{ generation.targetPath }}\n      <Badge v-if=\"generation.taskBinding\" data-testid=\"generation-prebound\">\n        {{ t('generation.prebound') }}\n      </Badge>\n    </template>\n    <div class=\"generation-baseline\">\n      <code>{{ generation.id }}</code>\n      <p>{{ t('generation.target') }}：{{ generation.targetPath }}</p>\n      <p v-if=\"generation.baseHash === 'absent'\">{{ t('generation.absent') }}</p>\n      <p v-else>\n        SHA-256：<code>{{ generation.baseHash }}</code>\n      </p>\n      <p>{{ t('generation.captured') }}：{{ generation.capturedAt }}</p>\n      <p v-if=\"generation.taskBinding\">\n        {{ t('generation.taskBinding') }}：{{ generation.taskBinding.projectId }} ·\n        {{ generation.taskBinding.taskId }} · r{{ generation.taskBinding.revision }}\n      </p>\n      <p v-if=\"generation.prototypeVersionId\">\n        {{ t('generation.prototype') }}：<code\n          >{{ generation.prototypeVersionId }} · {{ generation.prototypeContentHash }}</code\n        >\n      </p>\n      <p>{{ t('generation.boundary') }}</p>\n      <p v-if=\"generation.taskBinding\" data-testid=\"generation-next-step\">\n        {{ t('generation.deliveryNext') }}\n      </p>\n    </div>\n  </Collapse>\n  <p v-else class=\"hint\" data-testid=\"generation-missing\">{{ t('generation.missing') }}</p>\n</template>\n<style scoped>\n.generation-baseline {\n  display: grid;\n  gap: 8px;\n  min-width: 0;\n}\n.generation-baseline p,\n.generation-baseline code {\n  overflow-wrap: anywhere;\n}\n.generation-baseline code {\n  font-size: 11px;\n}\n</style>\n",
+      "baseHash": "e3ad7e47032fcac13c7ba04f0fc391789a0b71c2aaced2cd822e3c8c6eec3cb9"
+    }
+  ],
+  "createdAt": "2026-11-10T09:16:13.024188800Z",
+  "applied": false,
+  "writeAllowed": true,
+  "verification": "not_requested",
+  "generation": {
+    "id": "f1235495-9036-4749-872e-679a9eb89195",
+    "targetPath": "frontend/apps/web/src/features/chat/GenerationBaseline.vue",
+    "baseHash": "e3ad7e47032fcac13c7ba04f0fc391789a0b71c2aaced2cd822e3c8c6eec3cb9",
+    "capturedAt": "2026-11-10T09:15:54.945745Z",
+    "prototypeVersionId": "c934b152-20e6-4f84-b6c0-e1dacb5eb863",
+    "prototypeContentHash": "9bb4d7a617503c23dbb1a2980c19c825b3d30e6914b5483a6394c402bc8916f9",
+    "taskBinding": {
+      "projectId": "prebound-page-delivery-25d2f6387b31",
+      "taskId": "1b3db07e-c020-494c-acc5-060b51c11b37",
+      "revision": 2
+    }
+  }
+}

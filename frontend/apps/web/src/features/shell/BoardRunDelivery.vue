@@ -7,6 +7,7 @@ import {
   type BoardRun,
   type BoardTask,
   type BoardDeliveryPage,
+  type BoardAppliedCandidate,
 } from '@eap/runtime-client'
 import { isAxiosError } from 'axios'
 import {
@@ -18,6 +19,7 @@ import {
 } from './boardDeliveryRequest'
 import { useMockServices } from '../../lib/serviceConfig'
 import { useI18n } from 'vue-i18n'
+import BoardAppliedCandidates from './BoardAppliedCandidates.vue'
 const props = defineProps<{ task: BoardTask; run: BoardRun; disabled?: boolean }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
 const { t } = useI18n()
@@ -35,6 +37,13 @@ const applicationRef = computed(() => ({
   conversationId: conversationId.value,
   proposalId: proposalId.value,
 }))
+function selectApplication(candidate: BoardAppliedCandidate) {
+  if (busy.value || props.disabled || pending.value) return
+  linkApplication.value = true
+  conversationId.value = candidate.conversationId
+  proposalId.value = candidate.proposalId
+  pathsText.value = candidate.targetPath
+}
 const applicationValid = computed(
   () =>
     !linkApplication.value ||
@@ -375,6 +384,12 @@ onBeforeUnmount(() => {
         >{{ t('boardDelivery.retry') }}</Button
       >
       <section v-if="!record" class="delivery">
+        <BoardAppliedCandidates
+          :task="task"
+          :run="run"
+          :disabled="busy || !!disabled || !!pending"
+          @select="selectApplication"
+        />
         <label
           ><Checkbox
             v-model="linkApplication"

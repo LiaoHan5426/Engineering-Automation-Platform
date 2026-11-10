@@ -51,3 +51,33 @@ it('labels an absent target as a state rather than a SHA digest', () => {
   expect(root.textContent).toContain('目标不存在（新增文件）')
   expect(root.textContent).not.toContain('SHA-256：absent')
 })
+it('keeps the PREBOUND identity visible in the collapsed summary and explains independent delivery gates', () => {
+  const root = mount({
+    id: 'generation-prebound',
+    targetPath: 'frontend/Page.vue',
+    baseHash: 'captured-source',
+    capturedAt: 'now',
+    taskBinding: { projectId: 'project', taskId: 'task', revision: 2 },
+  })
+  expect(root.querySelector('[data-testid=generation-prebound]')?.textContent).toContain(
+    '生成前已绑定任务',
+  )
+  expect(root.querySelector('[data-testid=generation-next-step]')?.textContent).toContain(
+    '独立验证',
+  )
+  expect(root.querySelector('[data-testid=generation-next-step]')?.textContent).toContain(
+    '不会自动接受交付',
+  )
+  expect(root.textContent).toContain('task · r2')
+  expect(root.textContent).toContain('captured-source')
+})
+it('does not invent PREBOUND attribution or its handoff instruction for an unbound generation', () => {
+  const root = mount({
+    id: 'ordinary',
+    targetPath: 'frontend/Page.vue',
+    baseHash: 'base',
+    capturedAt: 'now',
+  })
+  expect(root.querySelector('[data-testid=generation-prebound]')).toBeNull()
+  expect(root.querySelector('[data-testid=generation-next-step]')).toBeNull()
+})
