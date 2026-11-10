@@ -103,9 +103,19 @@ export function checkBoundaries(root: string): string[] {
       if (
         owner.name === '@eap/ui' &&
         /^@eap\//.test(target) &&
-        !/^@eap\/(?:style|icons)(?:\/|$)/.test(target)
+        !/^@eap\/(?:style|icons|request)(?:\/|$)/.test(target)
       )
         problems.push(`${file}: @eap/ui must not depend on domain package ${target}`)
+      if (owner.name === '@eap/request' && /^@eap\//.test(target))
+        problems.push(
+          `${file}: @eap/request must remain independent of application and domain packages`,
+        )
+      if (
+        owner.name !== '@eap/backend-mock' &&
+        !file.includes(`${path.sep}__tests__${path.sep}`) &&
+        /^@eap\/backend-mock(?:\/|$)/.test(target)
+      )
+        problems.push(`${file}: production source must not import the development mock service`)
       const resolved = ts.resolveModuleName(target, file, options.get(owner.root) ?? {}, ts.sys)
         .resolvedModule?.resolvedFileName
       problems.push(

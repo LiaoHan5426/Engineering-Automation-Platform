@@ -43,7 +43,6 @@ function add(id: string) {
     <header class="expert-head">
       <div>
         <h1 data-testid="expert-catalog-title">{{ t('desktop.expertMarket') }}</h1>
-        <p v-if="workbench.preview">{{ t('preview.boundary') }}</p>
         <p>{{ t('desktop.expertDisconnected') }}</p>
       </div>
       <Button
@@ -129,7 +128,7 @@ function add(id: string) {
             t('desktop.expertOnTheWay')
           }}</span>
         </div>
-        <p>{{ expert.category }} · {{ expert.version }} · {{ t('desktop.demo') }}</p>
+        <p>{{ expert.category }} · {{ expert.version }}</p>
         <p>{{ expert.resources }}</p>
         <p>{{ expert.guidance }}</p>
       </li>

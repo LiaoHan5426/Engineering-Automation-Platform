@@ -1,4 +1,5 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.error.BoardErrors;
 
 import com.lh.eap.application.service.BoardPrototypeService;
 import com.lh.eap.application.service.BoardTaskService;
@@ -18,12 +19,12 @@ public class BoardPrototypeController {
     @PostMapping public BoardTaskService.Task select(@PathVariable UUID taskId, @RequestBody String body) {
         final Object parsed;
         try { parsed = JSON.readValue(body, Object.class); }
-        catch (RuntimeException invalid) { throw new IllegalArgumentException("INVALID_BOARD_PROTOTYPE_REQUEST"); }
+        catch (RuntimeException invalid) { throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_PROTOTYPE_REQUEST.code()); }
         if (!(parsed instanceof Map<?, ?> fields) || !fields.keySet().equals(FIELDS)
                 || !(fields.get("projectId") instanceof String project)
                 || !(fields.get("revision") instanceof Integer || fields.get("revision") instanceof Long)
                 || (fields.get("versionId") != null && !(fields.get("versionId") instanceof String))) {
-            throw new IllegalArgumentException("INVALID_BOARD_PROTOTYPE_REQUEST");
+            throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_PROTOTYPE_REQUEST.code());
         }
         var version = fields.get("versionId") == null ? null : UUID.fromString((String) fields.get("versionId"));
         return prototypes.select(taskId, new BoardPrototypeService.Selection(project, ((Number) fields.get("revision")).longValue(), version));

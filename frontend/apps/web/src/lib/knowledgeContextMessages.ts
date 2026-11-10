@@ -21,7 +21,6 @@ export const knowledgeContextMessages = {
     removed: '已移除知识引用。下次发送时服务端将按会话安全策略清理旧知识记忆。',
     provided: '服务端返回的本轮知识材料：已检索 / 准备，不证明已发送给模型提供方或被模型引用。',
     cleared: '为防止旧知识跨轮沿用，服务端已清理本轮此前的会话记忆；这不是持久会话保证。',
-    mock: 'Mock · 固定模拟知识，不调用真实模型，不代表生产授权或持久会话。',
   },
   'en-US': {
     title: 'Authorized knowledge · one expert',
@@ -49,6 +48,5 @@ export const knowledgeContextMessages = {
       'Server-returned knowledge material for this round: retrieved / prepared, not proof of delivery to the model provider or model citation.',
     cleared:
       'The server cleared prior conversation memory to prevent stale knowledge reuse. This is not a durable session guarantee.',
-    mock: 'Mock · fixed simulated knowledge, no real model call, production authority or durable conversation.',
   },
 }

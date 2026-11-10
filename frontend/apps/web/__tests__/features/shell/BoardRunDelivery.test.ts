@@ -115,6 +115,7 @@ it('selects the exact persisted PREBOUND application and path without submitting
     proposalId: crypto.randomUUID(),
     generationId: crypto.randomUUID(),
     targetPath: 'frontend/Page.vue',
+    paths: ['frontend/Page.vue'],
     afterHash: 'a'.repeat(64),
     appliedAt: '2026-11-10T00:00:00Z',
   }
@@ -513,7 +514,7 @@ it('keeps an explicit content conflict even when GET returns the same request id
     })
     throw new AxiosError('conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
       status: 409,
-      data: { detail: 'BOARD_DELIVERY_REQUEST_CONFLICT' },
+      data: { code: 'BOARD_DELIVERY_REQUEST_CONFLICT' },
     } as never)
   })
   const changed = vi.fn()
@@ -582,7 +583,7 @@ it('does not recover a lost decision response from a same-ID different-content r
   vi.mocked(runtimeApi.decideBoardDelivery).mockRejectedValueOnce(
     new AxiosError('conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
       status: 409,
-      data: { detail: 'BOARD_DELIVERY_REQUEST_CONFLICT' },
+      data: { code: 'BOARD_DELIVERY_REQUEST_CONFLICT' },
     } as never),
   )
   button('delivery-retry').click()
@@ -826,7 +827,7 @@ it('requires fresh human statements after a stale acceptance is rejected, while 
   vi.mocked(runtimeApi.decideBoardDelivery).mockRejectedValueOnce(
     new AxiosError('stale', 'ERR_BAD_REQUEST', undefined, undefined, {
       status: 409,
-      data: { detail: 'BOARD_DELIVERY_SOURCE_STALE' },
+      data: { code: 'BOARD_DELIVERY_SOURCE_STALE' },
     } as never),
   )
   await mount()
@@ -857,7 +858,7 @@ it('identifies missing Run delivery as unavailable instead of a successful empty
   vi.mocked(runtimeApi.boardDelivery).mockRejectedValueOnce(
     new AxiosError('missing', 'ERR_BAD_REQUEST', undefined, undefined, {
       status: 404,
-      data: { detail: 'BOARD_RUN_NOT_FOUND' },
+      data: { code: 'BOARD_RUN_NOT_FOUND' },
     } as never),
   )
   await mount()

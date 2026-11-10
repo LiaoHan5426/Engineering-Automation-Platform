@@ -26,7 +26,6 @@ const server = await createServer({
   plugins: [vue(), tailwindcss()],
   define: {
     'import.meta.env.VITE_API_URL': JSON.stringify('/api'),
-    'import.meta.env.VITE_USE_MOCK': JSON.stringify('false'),
   },
   server: {
     host: '127.0.0.1',
@@ -85,7 +84,7 @@ try {
       )
       localStorage.setItem('eap.selected-project.v1', session.projectId)
       localStorage.setItem(
-        'eap.chat.history.v1',
+        encodeURIComponent('/api') + '.eap.chat.history.v1',
         JSON.stringify({
           version: 1,
           activeId: id,

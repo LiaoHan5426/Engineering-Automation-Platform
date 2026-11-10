@@ -1,4 +1,6 @@
 package com.lh.eap.application.service;
+import com.lh.eap.core.CapabilitySwitches;
+import com.lh.eap.error.ToolErrors;
 
 import com.lh.eap.core.CapabilityUsageQuery;
 
@@ -26,7 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
  * one that fails a node. Draft references do not block anything — they are not running.
  */
 @Service
-public class CapabilitySettings implements com.lh.eap.core.CapabilitySwitches {
+public class CapabilitySettings implements CapabilitySwitches {
     private static final int NOTES_LIMIT = 500;
 
     private final JdbcTemplate jdbc;
@@ -49,7 +51,7 @@ public class CapabilitySettings implements com.lh.eap.core.CapabilitySwitches {
             if (rows == null) throw new IllegalStateException("Settings query returned no result");
         } catch (RuntimeException error) {
             // Stable refusal reason; never expose driver messages or connection details to callers.
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CAPABILITY_SETTINGS_UNAVAILABLE");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, ToolErrors.CAPABILITY_SETTINGS_UNAVAILABLE.code());
         }
         for (var row : rows) {
             var capability = text(row.get("capability"));
@@ -83,12 +85,11 @@ public class CapabilitySettings implements com.lh.eap.core.CapabilitySwitches {
     @Transactional
     public void save(String capability, boolean enabled, String notes) {
         var note = notes == null ? "" : notes.trim();
-        if (note.length() > NOTES_LIMIT) throw new IllegalArgumentException("备注最多" + NOTES_LIMIT + "字符");
+        if (note.length() > NOTES_LIMIT) throw new IllegalArgumentException(ToolErrors.CAPABILITY_NOTE_TOO_LONG.code());
         if (!enabled) {
             var experts = usage.enabledExpertsUsing(capability);
             if (!experts.isEmpty()) {
-                throw new IllegalStateException("能力 " + capability + " 仍被已启用专家引用：" + String.join("、", experts)
-                        + "。停用会让这些专家的节点在执行时失败；请先停用这些专家，或从它们的流程中移除该节点。");
+                throw new IllegalStateException(ToolErrors.CAPABILITY_IN_USE.code());
             }
         }
         jdbc.update("INSERT INTO eap.capability_setting (capability,enabled,notes,updated_at) VALUES (?,?,?,now()) "

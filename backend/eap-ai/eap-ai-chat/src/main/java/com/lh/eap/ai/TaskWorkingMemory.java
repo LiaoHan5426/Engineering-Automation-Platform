@@ -1,4 +1,5 @@
 package com.lh.eap.ai;
+import java.util.UUID;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -109,6 +110,7 @@ public final class TaskWorkingMemory {
             if (reason == null || reason.isBlank()) reason = "INVALIDATED";
             boolean hadContent = !goal.isBlank() || !constraints.isEmpty() || !facts.isEmpty()
                     || !evidenceRefs.isEmpty() || !dependencyKeys.isEmpty();
+            if (!hadContent && reason.equals(invalidation)) return false;
             goal = "";
             constraints.clear();
             facts.clear();
@@ -140,7 +142,7 @@ public final class TaskWorkingMemory {
         return "task:" + projectId + ":" + taskId + ":" + revision;
     }
 
-    public static String evidenceExecution(java.util.UUID executionId) {
+    public static String evidenceExecution(UUID executionId) {
         return "execution:" + Objects.requireNonNull(executionId, "executionId");
     }
 

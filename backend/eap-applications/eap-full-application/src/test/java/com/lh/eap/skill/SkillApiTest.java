@@ -18,8 +18,8 @@ class SkillApiTest {
     @TempDir Path root;
     @Test void browserWritesRequireLocalJsonOrigin() throws Exception {
         var skills = org.mockito.Mockito.mock(SkillService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new SkillController(skills)).setControllerAdvice(new ApiErrorHandler())
-                .addFilters(new com.lh.eap.web.AiBrowserRequestGuard()).build();
+        var mvc = MockMvcBuilders.standaloneSetup(new SkillController(skills, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES))))
+                .addFilters(new com.lh.eap.web.AiBrowserRequestGuard(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         mvc.perform(post("/api/skills").contentType(MediaType.APPLICATION_JSON).content("{}").header("Origin","https://evil.example"))
                 .andExpect(status().isForbidden());
         mvc.perform(post("/api/skills/preview").contentType(MediaType.TEXT_PLAIN).content("{}"))
@@ -27,16 +27,16 @@ class SkillApiTest {
         org.mockito.Mockito.verifyNoInteractions(skills);
     }
     @Test void missingBodyUsesSkillErrorContract() throws Exception {
-        var mvc = MockMvcBuilders.standaloneSetup(new SkillController(org.mockito.Mockito.mock(SkillService.class)))
-                .setControllerAdvice(new ApiErrorHandler()).build();
+        var mvc = MockMvcBuilders.standaloneSetup(new SkillController(org.mockito.Mockito.mock(SkillService.class), new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES))))
+                .setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         mvc.perform(post("/api/skills/preview").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value("INVALID_SKILL_INPUT"));
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_SKILL_INPUT"));
     }
     @Test void previewUsesBoundRootAndNeverTrustsTheClientOrTouchesStorage() throws Exception {
         var jdbc = org.mockito.Mockito.mock(JdbcTemplate.class);
         var service = new SkillService(jdbc, new SkillTextParser(), RuntimeWorkspace.colocated(root, ""), new CapabilityHandlerRegistry(List.of()));
-        var controller = new SkillController(service);
-        var mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiErrorHandler()).build();
+        var controller = new SkillController(service, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)));
+        var mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         String json = tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(SkillTextParserTest.input("---\nname: good\ndescription: ok\n---\nbody"));
         mvc.perform(post("/api/skills/preview").contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.id").value("good"))

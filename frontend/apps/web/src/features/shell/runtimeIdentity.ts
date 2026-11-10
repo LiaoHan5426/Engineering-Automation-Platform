@@ -1,3 +1,5 @@
+import { GitErrors } from '@eap/runtime-client'
+import { WorkspaceErrors } from '@eap/runtime-client'
 import type { AiConnectionState, AiStatus, WorkspaceDirty } from '@eap/runtime-client'
 import { runtimeApi } from '@eap/runtime-client'
 import { shallowRef } from 'vue'
@@ -119,7 +121,7 @@ export async function refreshWorkspaceDirty(
   if (!identityAuthorized(identity)) {
     workspaceDirty.value = {
       requested: false,
-      denial: identity.authorizedRootDenial || 'AUTHORIZED_ROOT_MISSING',
+      denial: identity.authorizedRootDenial || WorkspaceErrors.AUTHORIZED_ROOT_MISSING,
       count: 0,
       paths: [],
       detail: '',
@@ -131,7 +133,7 @@ export async function refreshWorkspaceDirty(
   } catch {
     workspaceDirty.value = {
       requested: false,
-      denial: 'GIT_STATUS_FAILED',
+      denial: GitErrors.GIT_STATUS_FAILED,
       count: 0,
       paths: [],
       detail: '',
@@ -147,7 +149,9 @@ export function formatDirtyLine(
 ) {
   if (!dirty) return translate('desktop.repoDirtyOff')
   if (!dirty.requested) {
-    return translate('desktop.repoDirtyDenied', { code: dirty.denial || 'AUTHORIZED_ROOT_MISSING' })
+    return translate('desktop.repoDirtyDenied', {
+      code: dirty.denial || WorkspaceErrors.AUTHORIZED_ROOT_MISSING,
+    })
   }
   if (dirty.count <= 0) return translate('desktop.repoDirtyClean')
   return translate('desktop.repoDirtyCount', {

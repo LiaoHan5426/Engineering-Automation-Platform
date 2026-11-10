@@ -1,4 +1,5 @@
 package com.lh.eap.web.controller;
+import java.security.NoSuchAlgorithmException;
 
 import com.lh.eap.application.service.KnowledgeManagementService;
 import com.lh.eap.application.dto.KnowledgeBaseRequest;
@@ -19,7 +20,7 @@ public class KnowledgeController {
     @GetMapping("/{id}/documents")
     public Map<String,Object> documents(@PathVariable UUID id) { return service.documents(id); }
     @PostMapping("/{id}/documents")
-    public Map<String,Object> addDocument(@PathVariable UUID id, @RequestBody KnowledgeDocumentRequest request) throws java.security.NoSuchAlgorithmException { return service.addDocument(id,request); }
+    public Map<String,Object> addDocument(@PathVariable UUID id, @RequestBody KnowledgeDocumentRequest request) throws NoSuchAlgorithmException { return service.addDocument(id,request); }
     @GetMapping("/search")
     public Map<String,Object> search(@RequestParam String q, @RequestParam(defaultValue="5") int limit, @RequestParam(required=false) UUID baseId) { return service.search(q,limit,baseId); }
     @PutMapping("/{id}")

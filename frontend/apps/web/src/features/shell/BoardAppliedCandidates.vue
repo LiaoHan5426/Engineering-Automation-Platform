@@ -47,6 +47,10 @@ async function load() {
           ) ||
           typeof item.targetPath !== 'string' ||
           !item.targetPath.startsWith('frontend/') ||
+          !Array.isArray(item.paths) ||
+          item.paths.length < 1 ||
+          item.paths.length > 8 ||
+          item.paths[0] !== item.targetPath ||
           !item.appliedAt,
       )
     )

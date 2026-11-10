@@ -1,0 +1,19 @@
+{
+  "kind": "Current main-worktree format/CSS normalization preview against original durable evidence; read only",
+  "checks": [
+    {
+      "width": 1440,
+      "filterSelectionEmpty": true,
+      "panelInsideViewport": true
+    },
+    {
+      "width": 390,
+      "filterSelectionEmpty": true,
+      "panelInsideViewport": true
+    }
+  ],
+  "errors": [],
+  "mutations": [],
+  "external": [],
+  "userProductAcceptance": false
+}

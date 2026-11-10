@@ -1,0 +1,40 @@
+{
+  "kind": "Production Vue UI and runtime client against isolated full application",
+  "checks": [
+    {
+      "language": "zh-CN",
+      "requests": [
+        "/api/ai/conversations/d2669ef7-8688-402c-92c0-bec32d6a10b1/reconnect",
+        "/api/ai/conversations/d2669ef7-8688-402c-92c0-bec32d6a10b1/messages"
+      ],
+      "persistedTurns": 2,
+      "viewports": [
+        1440,
+        900,
+        390
+      ],
+      "externalModelCalls": 0,
+      "providerCalls": 1,
+      "modelWindowMessages": 2
+    },
+    {
+      "language": "en-US",
+      "requests": [
+        "/api/ai/conversations/d2669ef7-8688-402c-92c0-bec32d6a10b1/reconnect",
+        "/api/ai/conversations/d2669ef7-8688-402c-92c0-bec32d6a10b1/messages"
+      ],
+      "persistedTurns": 2,
+      "viewports": [
+        1440,
+        900,
+        390
+      ],
+      "externalModelCalls": 0,
+      "providerCalls": 2,
+      "modelWindowMessages": 2
+    }
+  ],
+  "errors": [],
+  "external": [],
+  "userProductAcceptance": false
+}

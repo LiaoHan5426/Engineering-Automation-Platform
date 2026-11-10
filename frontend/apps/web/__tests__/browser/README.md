@@ -142,3 +142,38 @@ node apps/web/__tests__/browser/editor-display-visual.mjs
 editor-workbench-visual为真实Chromium与GrapesJS，专家GET/保存仅fixture接管，其余写入默认拒绝；原型Schema/工程只保存到隔离浏览器localStorage。7组检查通过（2次模拟保存、0pageerror），涵盖节点添加/拖动/连线/循环拒绝/选择/删除、草稿退出保护、保存重开、Agent合同、Vue预览按钮状态、原型恢复、未知映射阻止、四档宽度/焦点及浅深主题。artifacts/editor-workbench保存截图与result.json。样式验收发现Drawer拉伸Tab，修复后新增高度<60px断言。
 
 editor-display-visual只读真实内置SQL专家：当前原生DPR1、1920×945；Chromium --force-device-scale-factor=1.25/1.5分别1535×738/1276×597，visualScale1，无横溢。覆盖结果写入display子目录，明确不等于Windows系统125%/150%验收。早期原生125%截图保持历史身份；用户最终接受未由自动化替代。
+
+<a id="component-page-delivery"></a>
+
+## 三文件组件图实际页面交付
+
+本批当前证据在[component-page-delivery/artifacts](artifacts/component-page-delivery/result.json)，旧单文件及任务恢复段落为各自阶段证据。真正full可执行jar/原开发库须迁移V33/V34，并将EAP_WORKSPACE/EAP_AUTHORIZED_ROOT绑定到仓库内新隔离工作树`backend/target/component-page-workspace`，离线安装依赖，在`backend/target/component-live/process.json`保存`{pid,base,workspace}`。独立验收测试在模型前冻结；不使用测试Host/替身模型，不覆盖既有目录，不向main自动提交。
+
+仅在明确需要一次真实模型时，于仓库根执行：
+
+```powershell
+$env:EAP_RUN_COMPONENT_REAL_MODEL='approved'
+rtk proxy python -X utf8 frontend/apps/web/__tests__/browser/component-page-delivery-prepare.py
+```
+
+该工具发布语义原型、绑定任务r2并保存精确三文件TaskContext及模型前哈希，全部源码由正式后端读取；模型目标是DeliveryEvidencePanel.vue、DeliveryEvidenceSummary.vue、deliveryEvidenceModel.ts。session/proposal已存在则复用，已有请求开始标记但缺终态时停止供核对，不能删除标记盲重发。
+
+设置本机已有EAP_PLAYWRIGHT_MODULE/EAP_CHROMIUM后，在frontend目录运行：
+
+```powershell
+rtk proxy node apps/web/__tests__/browser/component-page-delivery-live.mjs
+```
+
+浏览器使用默认允许的5174开发origin（5173被其他进程占用时不终止他人进程；随机origin会被正式CORS拒绝）。实际App不seed聊天历史；从任务源码候选页读取、审3份Diff、明确应用；检查筛选/计数/选择/空态和逐文件读回。唯一正式Run/验证持久保存，重启/交付失败后的继续运行复用原记录，只有不存在验证时才创建。随后页面读取完整paths3证据、提交PREBOUND并显式确认技术决定；不是用户产品接受。最终关闭自有浏览器/Vite，保留正式隔离宿主/工作树供核对，勿把瞬时PID/端口当永久配置。
+
+已验5组及JDBC结果、原模型JSON、原应用源码diff/三hash、独立验证和主工作区规范化差异均在同目录；failure.json保留首次旧单文件CHECK造成的503，result.json为V34后恢复通过。首次编译产物竞争、UI测试定位和受限origin失败见主交付记录。源码UNKNOWN人工解除、任意页面/路由/资源图与用户接受未由此关闭。
+
+主工作区格式/CSS规范化后的只读页面可用同样Playwright环境运行`rtk proxy node apps/web/__tests__/browser/component-page-preview-live.mjs`，读取原隔离宿主持久证据，验证1440/390筛选、选择、空态和业务网格边界；不会创建模型、Run、验证、应用或决定。该检查曾复现Collapse最小内容撑宽，业务网格minmax修复后的结果见main-preview.json；不为此重复全套测试。
+
+<a id="domain-status-i18n"></a>
+
+## 分域状态与后端中英文错误合同
+
+证据、确定性故障边界和结果在[status-i18n](artifacts/status-i18n/README.md)。`status-i18n-http.py`使用backend/target/status-i18n/live/host.json描述的自有完整测试宿主；`status-i18n-live.mjs`在5174启动当前Vue页面，代理实际生产HTTP/JDBC。设置现有EAP_PLAYWRIGHT_MODULE/EAP_CHROMIUM后，从frontend运行`rtk proxy node apps/web/__tests__/browser/status-i18n-live.mjs`。测试辅助模块仅通过显式test entry加载；产品源码不导入测试目录，不使用边界忽略名单。
+
+HTTP脚本含状态变更，仅针对StatusI18nLiveFixture初始化的自有schema/工作区；会使两条候选失败、撤权并过期会话、人工关闭UNKNOWN，不可对普通开发业务记录直接重放。首次结果已完成，不以语言切换重跑模型或真实页面交付。需要再次执行时新建自有fixture身份，不删除已完成请求后盲重发。生产jar没有`/qa/status-i18n`端点。

@@ -1,4 +1,7 @@
 package com.lh.eap.application.service;
+import java.util.HashSet;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.AgentErrors;
 
 import com.lh.eap.api.Observation;
 import com.lh.eap.core.ExpertAgentAccess;
@@ -24,24 +27,24 @@ public class WorkflowExpertAgentAccess implements ExpertAgentAccess {
         this.mapper = mapper; this.definitions = definitions; this.tasks = tasks;
     }
     @Override public Snapshot load(String id) {
-        var row = mapper.lockForKnowledge(id).orElseThrow(() -> rejected("EXPERT_UNAVAILABLE"));
-        if (!Boolean.TRUE.equals(row.get("enabled"))) throw rejected("EXPERT_DISABLED");
+        var row = mapper.lockForKnowledge(id).orElseThrow(() -> rejected(AgentErrors.EXPERT_UNAVAILABLE.code()));
+        if (!Boolean.TRUE.equals(row.get("enabled"))) throw rejected(AgentErrors.EXPERT_DISABLED.code());
         var manifest = ExpertManifest.parse((String) row.get("manifest"));
         if (!definitions.validateGraph(manifest).isEmpty() || !definitions.validateReferences(manifest).isEmpty())
-            throw rejected("EXPERT_DEFINITION_UNAVAILABLE");
+            throw rejected(AgentErrors.EXPERT_DEFINITION_UNAVAILABLE.code());
         return new Snapshot(manifest, ((Number) row.get("revision")).longValue());
     }
     @Override public void check(Snapshot snapshot) { checked(snapshot); }
     @Override public void checkEvidence(Snapshot snapshot, Set<UUID> knowledge, Set<UUID> databases) {
         checked(snapshot);
-        if (!new java.util.HashSet<>(definitions.knowledgeGrants(snapshot.manifest().id())).containsAll(knowledge)
+        if (!new HashSet<>(definitions.knowledgeGrants(snapshot.manifest().id())).containsAll(knowledge)
                 || databases.stream().anyMatch(id -> !definitions.databaseGranted(snapshot.manifest().id(), id)))
-            throw rejected("AGENT_EVIDENCE_GRANT_REVOKED");
+            throw rejected(AgentErrors.AGENT_EVIDENCE_GRANT_REVOKED.code());
     }
     private void checked(Snapshot snapshot) {
-        var row = mapper.lockForKnowledge(snapshot.manifest().id()).orElseThrow(() -> rejected("EXPERT_REVOKED"));
+        var row = mapper.lockForKnowledge(snapshot.manifest().id()).orElseThrow(() -> rejected(AgentErrors.EXPERT_REVOKED.code()));
         if (!Boolean.TRUE.equals(row.get("enabled")) || ((Number) row.get("revision")).longValue() != snapshot.revision()
-                || !ExpertManifest.parse((String) row.get("manifest")).equals(snapshot.manifest())) throw rejected("EXPERT_REVOKED");
+                || !ExpertManifest.parse((String) row.get("manifest")).equals(snapshot.manifest())) throw rejected(AgentErrors.EXPERT_REVOKED.code());
     }
     @Override public <T> T authorized(Snapshot snapshot, Function<List<UUID>, T> localRead) {
         checked(snapshot);
@@ -52,10 +55,10 @@ public class WorkflowExpertAgentAccess implements ExpertAgentAccess {
     }
     @Override public void begin(UUID id, Snapshot snapshot, String goal) {
         checked(snapshot);
-        if (!tasks.startAgent(id, goal)) throw rejected("EXECUTION_ID_ALREADY_USED");
+        if (!tasks.startAgent(id, goal)) throw rejected(ExecutionErrors.EXECUTION_ID_ALREADY_USED.code());
     }
     @Override public void finish(UUID id, String status, String modelEnhancement, List<Observation> observations) {
-        if (!tasks.finishAgent(id, status, modelEnhancement, observations)) throw rejected("EXECUTION_ALREADY_FINISHED");
+        if (!tasks.finishAgent(id, status, modelEnhancement, observations)) throw rejected(ExecutionErrors.EXECUTION_ALREADY_FINISHED.code());
     }
     private static ResponseStatusException rejected(String code) { return new ResponseStatusException(HttpStatus.CONFLICT, code); }
 }

@@ -1,4 +1,6 @@
 package com.lh.eap.ai;
+import com.lh.eap.config.RuntimeWorkspace;
+import com.lh.eap.error.ChatErrors;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -29,7 +31,7 @@ public class FileWorkingMemoryStore implements WorkingMemoryStore {
 
     /** Spring entry: resolve store under the runtime workspace. */
     @Autowired
-    public FileWorkingMemoryStore(com.lh.eap.config.RuntimeWorkspace runtime) {
+    public FileWorkingMemoryStore(RuntimeWorkspace runtime) {
         this(runtime.workspace().resolve(".eap").resolve("working-memory"));
     }
 
@@ -65,7 +67,7 @@ public class FileWorkingMemoryStore implements WorkingMemoryStore {
             payload.put("layers", snapshot.layers());
             Files.writeString(file, JSON.writeValueAsString(payload), StandardCharsets.UTF_8);
         } catch (IOException | RuntimeException failure) {
-            throw new IllegalStateException("WORKING_MEMORY_SAVE_FAILED", failure);
+            throw new IllegalStateException(ChatErrors.WORKING_MEMORY_SAVE_FAILED.code(), failure);
         }
     }
 
@@ -113,7 +115,7 @@ public class FileWorkingMemoryStore implements WorkingMemoryStore {
         try {
             Files.deleteIfExists(file(conversationId));
         } catch (IOException failure) {
-            throw new IllegalStateException("WORKING_MEMORY_DELETE_FAILED", failure);
+            throw new IllegalStateException(ChatErrors.WORKING_MEMORY_DELETE_FAILED.code(), failure);
         }
     }
 

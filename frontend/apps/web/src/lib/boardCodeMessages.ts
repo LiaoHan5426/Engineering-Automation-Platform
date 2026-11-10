@@ -1,5 +1,15 @@
 export const boardCodeMessages = {
   'zh-CN': {
+    fileFilter: '筛选交付文件',
+    evidenceTitle: '组件图交付证据',
+    noMatchingFiles: '没有匹配的文件',
+    total: '文件总数',
+    changed: '已修改',
+    added: '新增',
+    details: '文件详情',
+    bytes: '源码字节',
+    baseline: '生成前基线',
+    evidenceBoundary: '这里只审阅候选文件集合，不执行、应用或接受交付。',
     tab: '源码候选',
     hint: '从任务的持久生成记录恢复候选，不依赖聊天会话或本地历史。这里只读取当前工作区的生成前绑定证据；打开、刷新都不会重新生成、应用或接受。',
     refresh: '读取任务源码候选',
@@ -14,6 +24,17 @@ export const boardCodeMessages = {
     uncertain: '操作结果尚未确认。请读取原候选核对，不创建新请求、重新生成或自动重发。',
   },
   'en-US': {
+    fileFilter: 'Filter delivery files',
+    evidenceTitle: 'Component graph delivery evidence',
+    noMatchingFiles: 'No matching files',
+    total: 'Total files',
+    changed: 'Modified',
+    added: 'Added',
+    details: 'File details',
+    bytes: 'Source bytes',
+    baseline: 'Generation baseline',
+    evidenceBoundary:
+      'Review of candidate files only. This does not execute, apply or accept delivery.',
     tab: 'Source candidates',
     hint: 'Recover candidates from durable task generation records, independently of Chat memory or local history. Only prebound evidence in this workspace is read. Opening or refreshing never regenerates, applies or accepts.',
     refresh: 'Read task source candidates',

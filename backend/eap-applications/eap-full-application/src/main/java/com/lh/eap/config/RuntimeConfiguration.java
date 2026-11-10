@@ -1,4 +1,5 @@
 package com.lh.eap.config;
+import java.time.Duration;
 
 import com.lh.eap.capability.*;
 import com.lh.eap.core.CapabilityRegistry;
@@ -18,7 +19,7 @@ public class RuntimeConfiguration {
 
     @Bean(destroyMethod = "close")
     DefaultProcessExecutor boardVerificationProcessExecutor() {
-        return new DefaultProcessExecutor(java.time.Duration.ofSeconds(120));
+        return new DefaultProcessExecutor(Duration.ofSeconds(120));
     }
 
     @Bean

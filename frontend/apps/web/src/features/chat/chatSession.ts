@@ -1,6 +1,11 @@
+import { ChatErrors } from '@eap/runtime-client'
+
+import { hasWireValue } from '@eap/runtime-client'
+import { ChatExecutionStatus } from '@eap/runtime-client'
+import { AgentErrors, CodeErrors, ModelErrors } from '@eap/runtime-client'
 import { computed, ref, watch } from 'vue'
 import type {
-  AiConversation,
+  AiConversationRecovery,
   AiMessageResult,
   AiStatus,
   AiToolMode,
@@ -12,12 +17,16 @@ import type {
   CodeProposal,
 } from '@eap/runtime-client'
 import { contextBudgetFromError } from './contextBudgetView'
+import { runtimeLanguage } from '@eap/runtime-client'
+import { createChatHistoryWriter, readChatHistory, type ChatHistorySnapshot } from './chatHistory'
 
 export type ChatApi = {
   reconnectAiConversation?: (
     id: string,
     expectedWorkspaceLabel: string,
-  ) => Promise<AiConversation & { contextReset: boolean }>
+    connectionId: string,
+    model: string,
+  ) => Promise<AiConversationRecovery>
   aiConversation?: (id: string) => Promise<{
     workspaceLabel: string
     memory: string
@@ -43,6 +52,7 @@ export type ChatApi = {
     options?: {
       signal?: AbortSignal
       onEvent?: (event: {
+        message?: string
         type: string
         text: string
         code: string
@@ -79,6 +89,8 @@ export type ChatApi = {
 }
 
 export type ChatTurn = {
+  errorMessage?: string
+  errorLanguage?: string
   skillContext?: AiMessageResult['skillContext']
   contextMemoryCleared?: boolean
   knowledgeContext?: AiMessageResult['knowledgeContext']
@@ -107,13 +119,12 @@ function httpStatus(error: unknown): number | undefined {
 }
 
 function generationFailure(error: unknown): string | undefined {
-  const code = (error as { response?: { data?: { detail?: unknown } } } | null)?.response?.data
-    ?.detail
+  const code = (error as { response?: { data?: { code?: unknown } } } | null)?.response?.data?.code
   if (typeof code !== 'string') return undefined
   if (code.startsWith('SKILL_') || code.startsWith('INVALID_SKILL_')) return 'skill-failed'
-  if (code === 'INVALID_EXPERT_CONTEXT' || code.startsWith('EXPERT_CONTEXT_'))
+  if (code === AgentErrors.INVALID_EXPERT_CONTEXT || code.startsWith('EXPERT_CONTEXT_'))
     return 'knowledge-failed'
-  if (code === 'CONTEXT_BUDGET_EXCEEDED' || code === 'TASK_CONTEXT_TOO_LARGE')
+  if (code === ChatErrors.CONTEXT_BUDGET_EXCEEDED || code === 'TASK_CONTEXT_TOO_LARGE')
     return 'context-budget-exceeded'
   return (
     {
@@ -130,7 +141,6 @@ function generationFailure(error: unknown): string | undefined {
       BOARD_EXECUTION_ACTIVE: 'generation-task-blocked',
       BOARD_PREPARATION_REQUIRED: 'generation-task-blocked',
       BOARD_TASK_NOT_FOUND: 'generation-task-stale',
-      MOCK_TASK_BINDING_UNAVAILABLE: 'generation-task-mock',
     } as Record<string, string>
   )[code]
 }
@@ -153,8 +163,11 @@ export type ConversationHistory = {
 export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem' | 'setItem'>) {
   const history = ref<ConversationHistory[]>([])
   const storageError = ref(false)
+  // Read one startup snapshot; restoring selection must not reread a
+  // snapshot that reactive watchers may already have rewritten.
+  let saved: ChatHistorySnapshot | null = null
   try {
-    const saved = JSON.parse(storage?.getItem('eap.chat.history.v1') ?? 'null')
+    saved = readChatHistory(storage)
     if (saved?.version === 1 && Array.isArray(saved.items))
       history.value = saved.items.filter(
         (x: ConversationHistory) =>
@@ -175,8 +188,12 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const expired = ref(false)
   const reconnectingIds = ref<Record<string, boolean>>({})
   const reconnecting = computed(() => !!reconnectingIds.value[conversationId.value ?? ''])
+  const changingConnectionIds = ref<Record<string, boolean>>({})
+  const changingConnection = computed(
+    () => !!changingConnectionIds.value[conversationId.value ?? ''],
+  )
   const reconnectNotice = ref('')
-  const reconnectResults = ref<Record<string, AiConversation & { contextReset: boolean }>>({})
+  const reconnectResults = ref<Record<string, AiConversationRecovery>>({})
   const sessionUnavailable = ref(false)
   const checkingConversation = ref(false)
   let selectionVersion = 0
@@ -204,15 +221,16 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const targetNotice = ref('')
   let ticket = 0
   try {
-    const saved = JSON.parse(storage?.getItem('eap.chat.history.v1') ?? 'null')
     if (saved?.version === 1 && saved.transcripts && typeof saved.transcripts === 'object') {
       for (const item of history.value)
         if (Array.isArray(saved.transcripts[item.id]))
-          transcripts.value[item.id] = saved.transcripts[item.id]
+          transcripts.value[item.id] = saved.transcripts[item.id]!
     }
   } catch {
     storageError.value = true
   }
+  let restoration = saved ? { activeId: saved.activeId, scratch: saved.scratch } : null
+  saved = null
   watch(
     context,
     (value) => {
@@ -222,23 +240,24 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     },
     { deep: true, flush: 'sync' },
   )
-  function persist() {
-    try {
-      storage?.setItem(
-        'eap.chat.history.v1',
-        JSON.stringify({
-          version: 1,
-          items: history.value,
-          transcripts: transcripts.value,
-          activeId: conversationId.value,
-          scratch: conversationId.value ? null : { draft: draft.value, context: context.value },
-        }),
-      )
-    } catch {
+  const historyWriter = createChatHistoryWriter(
+    storage,
+    () => ({
+      version: 1,
+      items: history.value,
+      transcripts: transcripts.value,
+      activeId: conversationId.value ?? undefined,
+      scratch: conversationId.value ? undefined : { draft: draft.value, context: context.value },
+    }),
+    () => {
       storageError.value = true
-    }
-  }
-  watch([history, transcripts, conversationId], persist, { deep: true, flush: 'sync' })
+    },
+  )
+  const persist = historyWriter.flush
+  // Streaming turns are replaced immutably. Avoid a deep traversal and a full
+  // synchronous serialization for every delta, while keeping edits durable.
+  watch(transcripts, historyWriter.schedule, { flush: 'sync' })
+  watch([history, conversationId], persist, { deep: true, flush: 'sync' })
   watch(
     draft,
     (value) => {
@@ -296,23 +315,30 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   )
 
   async function restoreLastConversation() {
+    const startup = restoration
+    restoration = null
     try {
-      const saved = JSON.parse(storage?.getItem('eap.chat.history.v1') ?? 'null')
       if (
-        saved?.activeId &&
-        history.value.some((item) => item.id === saved.activeId && !item.archived)
+        startup?.activeId &&
+        history.value.some((item) => item.id === startup.activeId && !item.archived)
       )
-        await selectConversation(saved.activeId)
-      else if (saved?.scratch && typeof saved.scratch.draft === 'string') {
-        draft.value = saved.scratch.draft
-        if (saved.scratch.context) context.value = saved.scratch.context
+        await selectConversation(startup.activeId)
+      else if (startup?.scratch && typeof startup.scratch.draft === 'string') {
+        draft.value = startup.scratch.draft
+        if (startup.scratch.context) context.value = startup.scratch.context
       }
     } catch {
       storageError.value = true
     }
   }
 
-  async function refreshStatus() {
+  let statusRequest: Promise<void> | undefined
+  function refreshStatus(): Promise<void> {
+    return (statusRequest ??= loadStatus().finally(() => {
+      statusRequest = undefined
+    }))
+  }
+  async function loadStatus() {
     try {
       status.value = await api.aiStatus()
       phase.value = 'ready'
@@ -337,7 +363,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   }
 
   async function openConversation() {
-    if (opening.value) throw new Error('CONVERSATION_BUSY')
+    if (opening.value) throw new Error(ChatErrors.CONVERSATION_BUSY)
     opening.value = true
     try {
       const created = await api.openAiConversation()
@@ -384,14 +410,16 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     dependencyKeys?: string[]
   }) {
     const id = conversationId.value
+    const version = selectionVersion
     if (!id || !api.putWorkingMemory) return null
     const snapshot = await api.putWorkingMemory(id, body)
-    workingMemory.value = snapshot
+    if (conversationId.value === id && selectionVersion === version) workingMemory.value = snapshot
     return snapshot
   }
 
   async function selectConversation(id: string) {
     if (!transcripts.value[id]) return
+    if (conversationId.value === id) return recheckConversation()
     selectionVersion++
     reconnectNotice.value = ''
     conversationId.value = id
@@ -413,26 +441,49 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     await recheckConversation()
   }
 
+  const conversationRequests = new Map<
+    string,
+    Promise<Awaited<ReturnType<NonNullable<ChatApi['aiConversation']>>>>
+  >()
+  function applyBinding(
+    id: string,
+    binding: { connectionId?: string | null; model?: string | null },
+    selected = true,
+  ) {
+    const item = history.value.find((row) => row.id === id)
+    if (item) {
+      item.connectionId = binding.connectionId ?? null
+      item.model = binding.model ?? ''
+    }
+    if (selected && conversationId.value === id) {
+      boundConnectionId.value = binding.connectionId ?? null
+      boundModel.value = binding.model ?? ''
+    }
+  }
   async function recheckConversation() {
     const id = conversationId.value
-    if (!id || !api.aiConversation || reconnecting.value) return false
+    if (!id || !api.aiConversation || reconnecting.value || changingConnection.value) return false
     const item = history.value.find((row) => row.id === id)
     const version = selectionVersion
     const active = () => conversationId.value === id && selectionVersion === version
     checkingConversation.value = true
     try {
-      const live = await api.aiConversation(id)
+      let request = conversationRequests.get(id)
+      if (!request) {
+        request = api.aiConversation(id).finally(() => {
+          conversationRequests.delete(id)
+        })
+        conversationRequests.set(id, request)
+      }
+      const live = await request
       if (!active()) return false
-      boundConnectionId.value = live.connectionId ?? null
-      boundModel.value = live.model ?? ''
+      applyBinding(id, live)
       memoryNote.value = live.memory || memoryNote.value
       workingMemory.value = live.workingMemory ?? null
       if (live.workspaceLabel) workspaceLabel.value = live.workspaceLabel
       expired.value = false
       sessionUnavailable.value = false
       if (item) {
-        item.connectionId = live.connectionId ?? null
-        item.model = live.model ?? ''
         item.expired = false
         item.memory = live.memory || item.memory
       }
@@ -455,7 +506,13 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     transcripts.value = { ...transcripts.value, [id]: [...existing, turn] }
   }
 
-  async function refreshConnections() {
+  let connectionsRequest: Promise<void> | undefined
+  function refreshConnections(): Promise<void> {
+    return (connectionsRequest ??= loadConnections().finally(() => {
+      connectionsRequest = undefined
+    }))
+  }
+  async function loadConnections() {
     if (!api.modelConnections) return
     const page = await api.modelConnections()
     connections.value = page.items
@@ -471,7 +528,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   }
 
   function chooseConversationConnection(id: string, model: string) {
-    if (sending.value || reconnecting.value) return
+    if (sending.value || reconnecting.value || changingConnection.value) return
     if (
       id === boundConnectionId.value &&
       model === boundModel.value &&
@@ -490,35 +547,39 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   async function confirmConnectionChange() {
     const id = conversationId.value
     const next = pendingConnectionId.value
-    if (!id || !next || !api.assignConversationConnection) return
+    if (
+      !id ||
+      !next ||
+      !api.assignConversationConnection ||
+      sending.value ||
+      reconnecting.value ||
+      changingConnection.value ||
+      checkingConversation.value
+    )
+      return
+    const version = selectionVersion
+    const active = () => conversationId.value === id && selectionVersion === version
+    changingConnectionIds.value = { ...changingConnectionIds.value, [id]: true }
     let assigned
     try {
       assigned = await api.assignConversationConnection(id, next, true, pendingModel.value)
     } catch {
-      failure.value = 'target-change-failed'
+      if (active()) failure.value = 'target-change-failed'
       return
+    } finally {
+      const next = { ...changingConnectionIds.value }
+      delete next[id]
+      changingConnectionIds.value = next
     }
-    if (conversationId.value !== id) {
-      const previous = history.value.find((x) => x.id === id)
-      if (previous) {
-        previous.connectionId = assigned.connectionId
-        previous.model = assigned.model
-      }
-      return
-    }
-    boundConnectionId.value = assigned.connectionId
-    boundModel.value = assigned.model
+    applyBinding(id, assigned, active())
+    if (!active()) return
     failure.value = ''
-    const item = history.value.find((x) => x.id === id)
-    if (item) {
-      item.connectionId = assigned.connectionId
-      item.model = assigned.model
-    }
     pendingConnectionId.value = null
     targetNotice.value = assigned.memoryCleared ? 'cleared' : 'kept'
   }
 
   function cancelConnectionChange() {
+    if (changingConnection.value) return
     pendingConnectionId.value = null
     targetNotice.value = ''
   }
@@ -532,8 +593,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       item.archived ||
       inflight.value[id] != null ||
       reconnectingIds.value[id] ||
-      !api.reconnectAiConversation ||
-      !api.assignConversationConnection
+      changingConnectionIds.value[id] ||
+      !api.reconnectAiConversation
     )
       return
     const targetId = pendingConnectionId.value || item.connectionId
@@ -552,29 +613,26 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     const active = () => conversationId.value === id && selectionVersion === version
     reconnectingIds.value = { ...reconnectingIds.value, [id]: true }
     try {
-      const result = await api.reconnectAiConversation(id, item.workspaceLabel)
+      const result = await api.reconnectAiConversation(id, item.workspaceLabel, targetId, model)
       reconnectResults.value = { ...reconnectResults.value, [id]: result }
-      if (!active()) return { ...result, readyToRetry: false }
-      const assigned = await api.assignConversationConnection(id, targetId, true, model)
-      item.connectionId = assigned.connectionId
-      item.model = assigned.model
+      applyBinding(id, result, active())
       item.expired = false
       if (active()) {
-        boundConnectionId.value = assigned.connectionId
-        boundModel.value = assigned.model
+        memoryNote.value = result.memory
+        workingMemory.value = result.workingMemory ?? null
         pendingConnectionId.value = null
         targetNotice.value = ''
         expired.value = false
         sessionUnavailable.value = false
         failure.value = ''
-        reconnectNotice.value = result.contextReset || assigned.memoryCleared ? 'reset' : 'kept'
+        reconnectNotice.value = result.contextReset || result.memoryCleared ? 'reset' : 'kept'
       }
       return { ...result, readyToRetry: active() }
     } catch (error) {
       if (active())
         failure.value =
-          (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ===
-          'CONVERSATION_WORKSPACE_CHANGED'
+          (error as { response?: { data?: { code?: string } } })?.response?.data?.code ===
+          ChatErrors.CONVERSATION_WORKSPACE_CHANGED
             ? 'workspace-changed'
             : 'reconnect-failed'
       return
@@ -589,6 +647,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     if (
       opening.value ||
       reconnecting.value ||
+      changingConnection.value ||
       checkingConversation.value ||
       sessionUnavailable.value
     )
@@ -668,6 +727,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       reasoning: requestContext.reasoning,
     }
     const mode = toolMode.value
+    const requestLanguage = runtimeLanguage()
     const current = ++ticket
     let receivedEvent = false
     const controller = new AbortController()
@@ -691,7 +751,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       role: 'assistant',
       text: '',
       error: '',
-      status: 'RUNNING',
+      status: ChatExecutionStatus.RUNNING,
       approval: '',
       verification: '',
       toolEvents: [],
@@ -729,6 +789,10 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
             }
             if (event.status) turn.status = event.status
             if (event.type === 'error') turn.error = event.code || event.text || turn.error
+            if (event.message) {
+              turn.errorMessage = event.message
+              turn.errorLanguage = requestLanguage
+            }
             next[assistantIndex] = turn
             transcripts.value = { ...transcripts.value, [id]: next }
           },
@@ -740,10 +804,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       if (conversationId.value === id && result.contextBudget)
         lastContextBudget.value = result.contextBudget
       const streamedTurn = turns[assistantIndex]
-      // The existing mock contract stays visibly simulated; arbitrary statuses
-      // (including UNKNOWN) must never clear a failed draft as if successful.
-      const succeeded =
-        (result.status === 'SUCCEEDED' || result.status === 'mock_completed') && !result.error
+      // Only a confirmed successful result clears the failed draft.
+      const succeeded = result.status === ChatExecutionStatus.SUCCEEDED && !result.error
       turns[assistantIndex] = {
         ...requestMetadata,
         role: 'assistant',
@@ -756,7 +818,12 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         proposal: result.proposal,
         text: result.answer || (!succeeded ? streamedTurn?.text : '') || '',
         error: result.error,
-        status: !result.status || result.status === 'RUNNING' ? 'UNKNOWN' : result.status,
+        errorMessage: result.errorMessage ?? streamedTurn?.errorMessage,
+        errorLanguage: result.errorLanguage ?? streamedTurn?.errorLanguage,
+        status:
+          !result.status || result.status === ChatExecutionStatus.RUNNING
+            ? ChatExecutionStatus.UNKNOWN
+            : result.status,
         approval: result.approval,
         verification: result.verification,
         toolEvents: result.toolEvents?.length
@@ -783,22 +850,26 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       }
       if (conversationId.value === id && !succeeded)
         failure.value =
-          result.error === 'AI_CANCELLED'
+          result.error === ModelErrors.AI_CANCELLED
             ? 'cancelled'
-            : result.error === 'CODE_PROPOSAL_TOO_LARGE'
+            : result.error === CodeErrors.CODE_PROPOSAL_TOO_LARGE
               ? 'generation-too-large'
-              : result.error === 'CONTEXT_BUDGET_EXCEEDED' ||
+              : result.error === ChatErrors.CONTEXT_BUDGET_EXCEEDED ||
                   result.error === 'TASK_CONTEXT_TOO_LARGE'
                 ? 'context-budget-exceeded'
                 : 'kept'
     } catch (error) {
       if (inflight.value[id] !== current) return
-      const detail = (error as { response?: { data?: { detail?: string } } } | null)?.response?.data
-        ?.detail
+      const detail = (error as { response?: { data?: { code?: string } } } | null)?.response?.data
+        ?.code
       const currentTurns = transcripts.value[id] ?? []
       // A rejected HTTP request has no accepted turn. Once streaming starts (or the
       // transport outcome is uncertain), keep its evidence rather than erasing it.
-      if (!receivedEvent && httpStatus(error) != null && detail !== 'AI_RESPONSE_INCOMPLETE') {
+      if (
+        !receivedEvent &&
+        httpStatus(error) != null &&
+        detail !== ModelErrors.AI_RESPONSE_INCOMPLETE
+      ) {
         transcripts.value = {
           ...transcripts.value,
           [id]: currentTurns.slice(0, assistantIndex - 1),
@@ -809,10 +880,19 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         if (turn) {
           next[assistantIndex] = {
             ...turn,
-            status: ['SUCCEEDED', 'FAILED', 'CANCELLED', 'REFUSED', 'UNKNOWN'].includes(turn.status)
+            status: hasWireValue(
+              [
+                ChatExecutionStatus.SUCCEEDED,
+                ChatExecutionStatus.FAILED,
+                ChatExecutionStatus.CANCELLED,
+                ChatExecutionStatus.REFUSED,
+                ChatExecutionStatus.UNKNOWN,
+              ],
+              turn.status,
+            )
               ? turn.status
-              : 'UNKNOWN',
-            error: turn.error || detail || 'AI_RESPONSE_INCOMPLETE',
+              : ChatExecutionStatus.UNKNOWN,
+            error: turn.error || detail || ModelErrors.AI_RESPONSE_INCOMPLETE,
           }
           transcripts.value = { ...transcripts.value, [id]: next }
         }
@@ -842,8 +922,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       if (conversationId.value === id)
         failure.value =
           generationFailure(error) ??
-          ((error as { response?: { data?: { detail?: string } } } | null)?.response?.data
-            ?.detail === 'AI_CANCELLED'
+          ((error as { response?: { data?: { code?: string } } } | null)?.response?.data?.code ===
+          ModelErrors.AI_CANCELLED
             ? 'cancelled'
             : httpStatus(error) === 409
               ? 'target-changed'
@@ -861,6 +941,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         delete next[id]
         inflight.value = next
       }
+      persist()
     }
   }
 
@@ -878,11 +959,13 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   }
 
   return {
+    flushPersistence: persist,
     inflight,
     history,
     storageError,
     expired,
     reconnecting,
+    changingConnection,
     reconnectNotice,
     reconnectResults,
     sessionUnavailable,

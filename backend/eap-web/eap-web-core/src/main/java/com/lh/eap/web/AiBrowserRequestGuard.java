@@ -1,4 +1,10 @@
 package com.lh.eap.web;
+import com.lh.eap.config.WebConfiguration;
+import com.lh.eap.web.i18n.ProblemResponses;
+import java.util.Arrays;
+import org.springframework.beans.factory.annotation.Value;
+import com.lh.eap.error.SecurityErrors;
+import com.lh.eap.error.WorkspaceErrors;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,10 +25,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class AiBrowserRequestGuard extends OncePerRequestFilter {
+    private final ProblemResponses problems;
+    public AiBrowserRequestGuard(ProblemResponses problems) { this.problems = problems; }
     private static final Set<String> LOOPBACK = Set.of("localhost", "127.0.0.1", "::1", "[::1]");
 
-    @org.springframework.beans.factory.annotation.Value("${eap.web.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:8080,http://127.0.0.1:8080}")
-    private String origins = com.lh.eap.config.WebConfiguration.DEFAULT_ORIGINS;
+    @Value("${eap.web.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:8080,http://127.0.0.1:8080}")
+    private String origins = WebConfiguration.DEFAULT_ORIGINS;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -38,7 +46,7 @@ public class AiBrowserRequestGuard extends OncePerRequestFilter {
         try {
             path = RequestPath.parse(request.getRequestURI(), request.getContextPath()).pathWithinApplication();
         } catch (IllegalArgumentException malformed) {
-            reject(response, 400, "PATH_REJECTED");
+            reject(request, response, 400, WorkspaceErrors.PATH_REJECTED.code());
             return;
         }
         var segments = path.elements().stream().filter(PathContainer.PathSegment.class::isInstance)
@@ -50,25 +58,25 @@ public class AiBrowserRequestGuard extends OncePerRequestFilter {
         // API writes do not support matrix parameters, even with otherwise trusted headers.
         String rawPath = path.value().toLowerCase(Locale.ROOT);
         if (rawPath.contains(";") || rawPath.contains("%3b")) {
-            reject(response, 400, "PATH_REJECTED");
+            reject(request, response, 400, WorkspaceErrors.PATH_REJECTED.code());
             return;
         }
         String header = request.getHeader("Host");
         String hostName = header == null || header.isBlank() ? request.getServerName() : host(header);
         if (!loopback(hostName) || !loopback(request.getServerName())) {
-            reject(response, 403, "HOST_REJECTED");
+            reject(request, response, 403, SecurityErrors.HOST_REJECTED.code());
             return;
         }
         String origin = request.getHeader("Origin");
-        if (origin != null && !origin.isBlank() && (!allowedOrigin(origin) || !java.util.Arrays.asList(origins.split(",")).contains(origin))) {
-            reject(response, 403, "ORIGIN_REJECTED");
+        if (origin != null && !origin.isBlank() && (!allowedOrigin(origin) || !Arrays.asList(origins.split(",")).contains(origin))) {
+            reject(request, response, 403, SecurityErrors.ORIGIN_REJECTED.code());
             return;
         }
         String type = request.getContentType();
         if (Set.of("POST", "PUT", "PATCH").contains(request.getMethod().toUpperCase(Locale.ROOT))
                 && (request.getContentLengthLong() > 0 || request.getHeader("Transfer-Encoding") != null || type != null)
                 && (type == null || !type.split(";", 2)[0].trim().equalsIgnoreCase("application/json"))) {
-            reject(response, 415, "CONTENT_TYPE_REJECTED");
+            reject(request, response, 415, SecurityErrors.CONTENT_TYPE_REJECTED.code());
             return;
         }
         chain.doFilter(request, response);
@@ -101,9 +109,7 @@ public class AiBrowserRequestGuard extends OncePerRequestFilter {
         return colon > 0 ? header.substring(0, colon) : header;
     }
 
-    private static void reject(HttpServletResponse response, int status, String detail) throws IOException {
-        response.setStatus(status);
-        response.setContentType("application/problem+json");
-        response.getWriter().write("{\"status\":" + status + ",\"detail\":\"" + detail + "\"}");
+    private void reject(HttpServletRequest request, HttpServletResponse response, int status, String code) throws IOException {
+        problems.write(status, code, request, response);
     }
 }

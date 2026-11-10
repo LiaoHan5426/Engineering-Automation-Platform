@@ -12,7 +12,7 @@ import {
   type TrustedToolItem,
   type TrustedToolProgram,
 } from '@eap/runtime-client'
-import { Badge, Button, Checkbox, ConfirmBox, Feedback, Input, Select, Tabs } from '@eap/ui'
+import { Badge, Button, Checkbox, ConfirmBox, Dialog, Feedback, Input, Select, Tabs } from '@eap/ui'
 import { Table, type TableColumn } from '@eap/plugin-table'
 import { errorMessage } from '../../lib/presentation'
 import {
@@ -29,6 +29,9 @@ import CliProgramManager from './CliProgramManager.vue'
 import TrustedGitExecutionPanel from './TrustedGitExecutionPanel.vue'
 import { i18n } from '../../lib/i18n'
 const t = (key: string) => i18n.global.t('toolExecution.' + key)
+const pt = (key: string) => i18n.global.t('product.' + key)
+const diagnosticsOpen = ref(false)
+const diagnosticTab = ref('storage')
 
 const emit = defineEmits<{ (event: 'saved'): void }>()
 
@@ -64,7 +67,6 @@ const dataLayout = ref<DataLayoutResponse | null>(null)
 const dataLayoutBusy = ref(false)
 const trustedProbeBusy = ref(false)
 const probeCacheBusy = ref(false)
-const mockTrustedScenarios = import.meta.env.MODE === 'mock'
 
 /** Drafts, keyed by capability: a note explains a switch, a binary points a CLI capability at a file. */
 const notesDraft = ref<Record<string, string>>({})
@@ -113,6 +115,7 @@ const capabilityColumns: TableColumn[] = [
 const visibleKinds = computed(() => kinds.value.filter((kind) => kind.visible))
 const capabilityTabs = computed(() => [
   { id: 'overview', label: '总览' },
+  { id: 'trusted', label: pt('trustedExecution') },
   ...visibleKinds.value.map((kind) => ({
     id: kind.id,
     label: kind.count ? `${kind.label} · ${kind.count}` : kind.label,
@@ -195,15 +198,10 @@ async function runProgramProbe(id: string) {
   }
 }
 
-async function runTrustedVersionProbe(
-  toolId: string,
-  mockOutcome?: 'success' | 'fail' | 'conflict' | 'disabled',
-) {
+async function runTrustedVersionProbe(toolId: string) {
   trustedProbeBusy.value = true
   try {
-    const result = await runtimeApi.probeTrustedToolVersion(toolId, {
-      mockOutcome: mockTrustedScenarios ? mockOutcome : undefined,
-    })
+    const result = await runtimeApi.probeTrustedToolVersion(toolId, {})
     feedback(result.success ? 'success' : 'error', result.message)
     await refresh()
   } catch (error) {
@@ -364,239 +362,254 @@ async function submitServer() {
 
   <!-- 总览 -->
   <section v-if="tab === 'overview'" class="view">
-    <article v-if="dataLayout" class="eap-panel panel-block" data-testid="data-layout-panel">
-      <header class="cap-head">
-        <div class="cap-head__main">
-          <h2>本机数据布局（FS-01）</h2>
-          <p>只读盘点逻辑路径与迁移就绪候选；不执行物理迁移。</p>
-          <p class="hint cap-head__flags" data-testid="data-layout-physical-migration">
-            physicalMigration
-            <Badge
-              :tone="dataLayout.physicalMigration ? 'warning' : 'neutral'"
-              :label="dataLayout.physicalMigration ? 'true' : 'false'"
-            />
-          </p>
-          <p class="hint" data-testid="data-layout-inventory">
-            盘点 {{ dataLayout.inventory?.total ?? dataLayout.entries.length }} · 存在
-            {{
-              dataLayout.inventory?.present ??
-              dataLayout.entries.filter((entry) => entry.exists).length
-            }}
-            · 未创建
-            {{
-              dataLayout.inventory?.missing ??
-              dataLayout.entries.filter((entry) => !entry.exists).length
-            }}
-          </p>
-          <p
-            v-if="dataLayout.inventory?.byKind"
-            class="hint"
-            data-testid="data-layout-inventory-by-kind"
-          >
-            类型 文件 {{ dataLayout.inventory.byKind.file }} · 目录
-            {{ dataLayout.inventory.byKind.directory }} · 缺失
-            {{ dataLayout.inventory.byKind.missing }} · 其他
-            {{ dataLayout.inventory.byKind.other }}
-          </p>
-        </div>
-        <div class="cap-head__tools">
-          <Button
-            variant="secondary"
-            size="sm"
-            data-testid="data-layout-refresh"
-            :disabled="dataLayoutBusy || loading"
-            @click="refreshDataLayout"
-          >
-            刷新盘点
-          </Button>
-        </div>
-      </header>
-      <ul class="trusted-tool-list" data-testid="data-layout-entries">
-        <li
-          v-for="entry in dataLayout.entries"
-          :key="entry.logical"
-          :data-testid="`data-layout-entry-${entry.logical}`"
-        >
-          <strong class="mono">{{ entry.logical }}</strong>
-          <Badge
-            :tone="entry.exists ? 'success' : 'neutral'"
-            :label="entry.exists ? '存在' : '未创建'"
-          />
-          <Badge
-            v-if="entry.kind"
-            tone="neutral"
-            :label="entry.kind"
-            :data-testid="`data-layout-kind-${entry.logical}`"
-          />
-          <span
-            v-if="entry.kind === 'file' && entry.byteSize != null"
-            class="hint mono"
-            :data-testid="`data-layout-bytes-${entry.logical}`"
-          >
-            {{ entry.byteSize }} B
-          </span>
-          <p class="hint mono">{{ entry.resolved || '—' }}</p>
-          <p v-if="entry.note" class="hint">{{ entry.note }}</p>
-        </li>
-      </ul>
-      <section v-if="dataLayout.migrationReadiness" data-testid="data-layout-migration-readiness">
-        <h3>迁移就绪盘点</h3>
-        <p class="hint">
-          状态 {{ dataLayout.migrationReadiness.status }} · 已批准
-          {{ dataLayout.migrationReadiness.approved ? '是' : '否' }} ·
-          {{ dataLayout.migrationReadiness.note }}
-        </p>
-        <p class="hint" data-testid="data-layout-candidate-counts">
-          候选
-          {{
-            dataLayout.migrationReadiness.candidateCounts?.total ??
-            dataLayout.migrationReadiness.candidates.length
-          }}
-          · 现有
-          {{
-            dataLayout.migrationReadiness.candidateCounts?.present ??
-            dataLayout.migrationReadiness.candidates.filter((row) => row.present).length
-          }}
-          · 缺失
-          {{
-            dataLayout.migrationReadiness.candidateCounts?.absent ??
-            dataLayout.migrationReadiness.candidates.filter((row) => !row.present).length
-          }}
-        </p>
-        <ul>
+    <article class="eap-panel panel-block">
+      <h2>{{ pt('trustedExecution') }}</h2>
+      <p>{{ pt('executionHelp') }}</p>
+      <Button data-testid="open-git-checks" @click="tab = 'trusted'">{{
+        pt('openExecution')
+      }}</Button>
+    </article>
+    <article class="eap-panel panel-block">
+      <h2>{{ pt('diagnostics') }}</h2>
+      <p>{{ pt('diagnosticsHelp') }}</p>
+      <Button data-testid="open-capability-diagnostics" @click="diagnosticsOpen = true">{{
+        pt('inspectDiagnostics')
+      }}</Button>
+    </article>
+    <Dialog
+      v-if="diagnosticsOpen"
+      :title="pt('diagnostics')"
+      size="lg"
+      @close="diagnosticsOpen = false"
+    >
+      <Tabs
+        v-model="diagnosticTab"
+        :label="pt('diagnostics')"
+        :tabs="[
+          { id: 'storage', label: pt('localStorage') },
+          { id: 'tools', label: pt('trustedTools') },
+        ]"
+      />
+      <article
+        v-if="dataLayout && diagnosticTab === 'storage'"
+        class="eap-panel panel-block"
+        data-testid="data-layout-panel"
+      >
+        <header class="cap-head">
+          <div class="cap-head__main">
+            <h2>{{ pt('localStorage') }}</h2>
+            <p>只读盘点逻辑路径与迁移就绪候选；不执行物理迁移。</p>
+            <p class="hint" data-testid="data-layout-inventory">
+              盘点 {{ dataLayout.inventory?.total ?? dataLayout.entries.length }} · 存在
+              {{
+                dataLayout.inventory?.present ??
+                dataLayout.entries.filter((entry) => entry.exists).length
+              }}
+              · 未创建
+              {{
+                dataLayout.inventory?.missing ??
+                dataLayout.entries.filter((entry) => !entry.exists).length
+              }}
+            </p>
+            <p
+              v-if="dataLayout.inventory?.byKind"
+              class="hint"
+              data-testid="data-layout-inventory-by-kind"
+            >
+              类型 文件 {{ dataLayout.inventory.byKind.file }} · 目录
+              {{ dataLayout.inventory.byKind.directory }} · 缺失
+              {{ dataLayout.inventory.byKind.missing }} · 其他
+              {{ dataLayout.inventory.byKind.other }}
+            </p>
+          </div>
+          <div class="cap-head__tools">
+            <Button
+              variant="secondary"
+              size="sm"
+              data-testid="data-layout-refresh"
+              :disabled="dataLayoutBusy || loading"
+              @click="refreshDataLayout"
+            >
+              刷新盘点
+            </Button>
+          </div>
+        </header>
+        <ul class="trusted-tool-list" data-testid="data-layout-entries">
           <li
-            v-for="candidate in dataLayout.migrationReadiness.candidates"
-            :key="candidate.id"
-            class="mono"
-            :data-testid="`data-layout-candidate-${candidate.id}`"
+            v-for="entry in dataLayout.entries"
+            :key="entry.logical"
+            :data-testid="`data-layout-entry-${entry.logical}`"
           >
-            {{ candidate.id }} · {{ candidate.present ? 'present' : 'absent' }} ·
-            {{ candidate.resolved || '—' }}
+            <strong class="mono">{{ entry.logical }}</strong>
+            <Badge
+              :tone="entry.exists ? 'success' : 'neutral'"
+              :label="entry.exists ? '存在' : '未创建'"
+            />
+            <Badge
+              v-if="entry.kind"
+              tone="neutral"
+              :label="entry.kind"
+              :data-testid="`data-layout-kind-${entry.logical}`"
+            />
+            <span
+              v-if="entry.kind === 'file' && entry.byteSize != null"
+              class="hint mono"
+              :data-testid="`data-layout-bytes-${entry.logical}`"
+            >
+              {{ entry.byteSize }} B
+            </span>
+            <p class="hint mono">{{ entry.resolved || '—' }}</p>
+            <p v-if="entry.note" class="hint">{{ entry.note }}</p>
           </li>
         </ul>
-      </section>
-    </article>
-    <article class="eap-panel panel-block" data-testid="trusted-tools-panel">
-      <header class="cap-head">
-        <div class="cap-head__main">
-          <h2>可信工具目录（TD-01）</h2>
-          <p>
-            自动汇总内置只读能力定义；版本需显式探测写回，目录渲染不自动执行二进制。下方可触发一次受控
-            git-status 或 git-diff。
+        <section v-if="dataLayout.migrationReadiness" data-testid="data-layout-migration-readiness">
+          <h3>迁移就绪盘点</h3>
+          <p class="hint">
+            状态 {{ dataLayout.migrationReadiness.status }} · 已批准
+            {{ dataLayout.migrationReadiness.approved ? '是' : '否' }} ·
+            {{ dataLayout.migrationReadiness.note }}
           </p>
-        </div>
-      </header>
-      <p v-if="trustedTools.length" class="hint" data-testid="trusted-tool-binding-counts">
-        绑定 {{ trustedBindingCounts.total }} · 就绪 {{ trustedBindingCounts.ready }} · 停用
-        {{ trustedBindingCounts.disabled }} · 冲突 {{ trustedBindingCounts.conflict }} · 缺二进制
-        {{ trustedBindingCounts.missingBinary }} · 版本未知 {{ trustedBindingCounts.unknownVersion
-        }}<template v-if="trustedBindingCounts.other">
-          · 其他 {{ trustedBindingCounts.other }}</template
-        >
-      </p>
-      <ul v-if="displayTools.length" class="trusted-tool-list">
-        <li v-for="tool in displayTools" :key="tool.id" :data-testid="`trusted-tool-${tool.id}`">
-          <strong class="mono">{{ tool.id }}</strong> · {{ tool.title }}
-          <span :data-testid="`trusted-tool-binding-${tool.id}`">
-            <Badge
-              :tone="bindingStatusTone(tool.bindingStatus)"
-              :label="bindingStatusLabel(tool.bindingStatus)"
-            />
-          </span>
-          <span :data-testid="`trusted-tool-version-${tool.id}`">
-            <Badge
-              :tone="versionStatusTone(tool.versionStatus)"
-              :label="versionStatusLabel(tool.versionStatus)"
-            />
-          </span>
-          <p
-            v-if="bindingDetail(tool)"
-            class="hint"
-            :data-testid="`trusted-tool-binding-detail-${tool.id}`"
-          >
-            {{ bindingDetail(tool) }}
+          <p class="hint" data-testid="data-layout-candidate-counts">
+            候选
+            {{
+              dataLayout.migrationReadiness.candidateCounts?.total ??
+              dataLayout.migrationReadiness.candidates.length
+            }}
+            · 现有
+            {{
+              dataLayout.migrationReadiness.candidateCounts?.present ??
+              dataLayout.migrationReadiness.candidates.filter((row) => row.present).length
+            }}
+            · 缺失
+            {{
+              dataLayout.migrationReadiness.candidateCounts?.absent ??
+              dataLayout.migrationReadiness.candidates.filter((row) => !row.present).length
+            }}
           </p>
-          <p
-            v-if="versionDetail(tool)"
-            class="hint"
-            :data-testid="`trusted-tool-version-detail-${tool.id}`"
-          >
-            {{ versionDetail(tool) }}
-          </p>
-          <Button
-            v-if="canProbeVersion(tool)"
-            variant="secondary"
-            size="sm"
-            :data-testid="`trusted-tool-probe-${tool.id}`"
-            :disabled="trustedProbeBusy"
-            @click="
-              trustedPrograms.some((program) => program.id === tool.id)
-                ? runProgramProbe(tool.id)
-                : runTrustedVersionProbe(tool.id)
-            "
-          >
-            {{ t('versionProbe') }}
-          </Button>
-          <ul
-            v-if="trustedPrograms.find((program) => program.id === tool.id)"
-            class="trusted-tool-list"
-          >
+          <ul>
             <li
-              v-for="operation in trustedPrograms.find((program) => program.id === tool.id)
-                ?.operations"
-              :key="operation.id"
-              :data-testid="'trusted-operation-' + operation.id"
+              v-for="candidate in dataLayout.migrationReadiness.candidates"
+              :key="candidate.id"
+              class="mono"
+              :data-testid="`data-layout-candidate-${candidate.id}`"
             >
-              <strong>{{ operation.title }}</strong> · <code>{{ operation.id }}</code>
-              <Badge :tone="operation.enabled ? 'success' : 'warning'">{{
-                operation.enabled ? '已启用' : '已停用'
-              }}</Badge>
-              <span v-if="!['git-status', 'git-diff'].includes(operation.id)">{{
-                t('manualUnavailable')
-              }}</span>
+              {{ candidate.id }} · {{ candidate.present ? 'present' : 'absent' }} ·
+              {{ candidate.resolved || '—' }}
             </li>
           </ul>
-        </li>
-      </ul>
-      <p v-else class="hint">暂无可信只读工具定义。</p>
-      <p v-if="trustedProbeCache" class="hint" data-testid="trusted-tool-probe-cache-summary">
-        探测缓存 {{ trustedProbeCache.cached }} · 已知 {{ trustedProbeCache.known }} · 失败
-        {{ trustedProbeCache.failed
-        }}<template v-if="trustedProbeCache.newestProbedAt">
-          · 最近 {{ trustedProbeCache.newestProbedAt }}</template
-        >
-        （目录 GET 不自动探测）
-      </p>
-      <div class="trusted-tool-actions">
-        <Button
-          variant="secondary"
-          size="sm"
-          data-testid="trusted-tool-probe-cache-clear"
-          :disabled="
-            probeCacheBusy || trustedProbeBusy || loading || (trustedProbeCache?.cached ?? 0) === 0
-          "
-          @click="clearTrustedProbeCache"
-        >
-          清除探测缓存
-        </Button>
-        <Button
-          v-if="mockTrustedScenarios"
-          variant="secondary"
-          size="sm"
-          data-testid="trusted-tool-probe-fail"
-          :disabled="trustedProbeBusy"
-          @click="runTrustedVersionProbe('git-status', 'fail')"
-        >
-          模拟探测失败
-        </Button>
-      </div>
-      <TrustedGitExecutionPanel
-        v-for="operation in ['git-status', 'git-diff'] as const"
-        :key="operation"
-        :operation="operation"
-        :enabled="trustedTools.some((tool) => tool.id === operation && tool.enabled)"
-      />
-    </article>
+        </section>
+      </article>
+      <article
+        v-if="diagnosticTab === 'tools'"
+        class="eap-panel panel-block"
+        data-testid="trusted-tools-panel"
+      >
+        <header class="cap-head">
+          <div class="cap-head__main">
+            <h2>{{ pt('trustedTools') }}</h2>
+            <p>工具绑定、版本与可用操作。需要更新版本时，请点击「探测版本」。</p>
+          </div>
+        </header>
+        <p v-if="trustedTools.length" class="hint" data-testid="trusted-tool-binding-counts">
+          绑定 {{ trustedBindingCounts.total }} · 就绪 {{ trustedBindingCounts.ready }} · 停用
+          {{ trustedBindingCounts.disabled }} · 冲突 {{ trustedBindingCounts.conflict }} · 缺二进制
+          {{ trustedBindingCounts.missingBinary }} · 版本未知
+          {{ trustedBindingCounts.unknownVersion
+          }}<template v-if="trustedBindingCounts.other">
+            · 其他 {{ trustedBindingCounts.other }}</template
+          >
+        </p>
+        <ul v-if="displayTools.length" class="trusted-tool-list">
+          <li v-for="tool in displayTools" :key="tool.id" :data-testid="`trusted-tool-${tool.id}`">
+            <strong class="mono">{{ tool.id }}</strong> · {{ tool.title }}
+            <span :data-testid="`trusted-tool-binding-${tool.id}`">
+              <Badge
+                :tone="bindingStatusTone(tool.bindingStatus)"
+                :label="bindingStatusLabel(tool.bindingStatus)"
+              />
+            </span>
+            <span :data-testid="`trusted-tool-version-${tool.id}`">
+              <Badge
+                :tone="versionStatusTone(tool.versionStatus)"
+                :label="versionStatusLabel(tool.versionStatus)"
+              />
+            </span>
+            <p
+              v-if="bindingDetail(tool)"
+              class="hint"
+              :data-testid="`trusted-tool-binding-detail-${tool.id}`"
+            >
+              {{ bindingDetail(tool) }}
+            </p>
+            <p
+              v-if="versionDetail(tool)"
+              class="hint"
+              :data-testid="`trusted-tool-version-detail-${tool.id}`"
+            >
+              {{ versionDetail(tool) }}
+            </p>
+            <Button
+              v-if="canProbeVersion(tool)"
+              variant="secondary"
+              size="sm"
+              :data-testid="`trusted-tool-probe-${tool.id}`"
+              :disabled="trustedProbeBusy"
+              @click="
+                trustedPrograms.some((program) => program.id === tool.id)
+                  ? runProgramProbe(tool.id)
+                  : runTrustedVersionProbe(tool.id)
+              "
+            >
+              {{ t('versionProbe') }}
+            </Button>
+            <ul
+              v-if="trustedPrograms.find((program) => program.id === tool.id)"
+              class="trusted-tool-list"
+            >
+              <li
+                v-for="operation in trustedPrograms.find((program) => program.id === tool.id)
+                  ?.operations"
+                :key="operation.id"
+                :data-testid="'trusted-operation-' + operation.id"
+              >
+                <strong>{{ operation.title }}</strong> · <code>{{ operation.id }}</code>
+                <Badge :tone="operation.enabled ? 'success' : 'warning'">{{
+                  operation.enabled ? '已启用' : '已停用'
+                }}</Badge>
+                <span v-if="!['git-status', 'git-diff'].includes(operation.id)">{{
+                  t('manualUnavailable')
+                }}</span>
+              </li>
+            </ul>
+          </li>
+        </ul>
+        <p v-else class="hint">暂无可信只读工具定义。</p>
+        <p v-if="trustedProbeCache" class="hint" data-testid="trusted-tool-probe-cache-summary">
+          探测缓存 {{ trustedProbeCache.cached }} · 已知 {{ trustedProbeCache.known }} · 失败
+          {{ trustedProbeCache.failed
+          }}<template v-if="trustedProbeCache.newestProbedAt">
+            · 最近 {{ trustedProbeCache.newestProbedAt }}</template
+          >
+          （目录 GET 不自动探测）
+        </p>
+        <div class="trusted-tool-actions">
+          <Button
+            variant="secondary"
+            size="sm"
+            data-testid="trusted-tool-probe-cache-clear"
+            :disabled="
+              probeCacheBusy ||
+              trustedProbeBusy ||
+              loading ||
+              (trustedProbeCache?.cached ?? 0) === 0
+            "
+            @click="clearTrustedProbeCache"
+          >
+            清除探测缓存
+          </Button>
+        </div>
+      </article>
+    </Dialog>
     <p v-if="loading && !catalog" class="hint">正在读取能力目录…</p>
     <article v-for="kind in kinds" :key="kind.id" class="eap-panel panel-block cap-group">
       <header class="cap-head">
@@ -650,6 +663,15 @@ async function submitServer() {
         </template>
       </Table>
     </article>
+  </section>
+
+  <section v-else-if="tab === 'trusted'" class="view" data-testid="git-checks-workspace">
+    <TrustedGitExecutionPanel
+      v-for="operation in ['git-status', 'git-diff'] as const"
+      :key="operation"
+      :operation="operation"
+      :enabled="trustedTools.some((tool) => tool.id === operation && tool.enabled)"
+    />
   </section>
 
   <!-- 某一类 -->
@@ -804,7 +826,7 @@ async function submitServer() {
           </ul>
         </section>
       </article>
-      <article v-if="serverEditor" class="eap-panel panel-block">
+      <Dialog v-if="serverEditor" :title="pt('mcpServer')" size="lg" @close="resetForm">
         <h2>{{ editing ? '编辑服务器 ' + editing : '登记 MCP 服务器' }}</h2>
         <p class="hint">地址中不要填写 Token 或密钥。</p>
         <div class="editor-grid">
@@ -879,11 +901,10 @@ async function submitServer() {
           </Button>
           <Button variant="ghost" @click="resetForm">取消</Button>
         </div>
-      </article>
+      </Dialog>
 
       <p v-if="!servers.length" class="eap-panel panel-block hint">
-        尚未登记任何 MCP
-        服务器，因此没有专家级工具可被调用。这是如实状态，不是错误：目录不会因为「应该有」就列出不存在的能力。
+        尚未登记 MCP 服务器。点击「登记服务器」添加，再为专家选择可用工具。
       </p>
 
       <article v-for="server in servers" :key="server.id" class="eap-panel panel-block">

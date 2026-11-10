@@ -11,7 +11,12 @@ afterEach(() => {
 function mount(generation?: object | null) {
   const root = document.createElement('div')
   document.body.append(root)
-  app = createApp({ render: () => h(GenerationBaseline, { generation } as never) })
+  app = createApp({
+    render: () =>
+      h(GenerationBaseline, {
+        generation: generation ? { companionFiles: [], ...generation } : generation,
+      } as never),
+  })
   app.use(i18n).mount(root)
   return root
 }

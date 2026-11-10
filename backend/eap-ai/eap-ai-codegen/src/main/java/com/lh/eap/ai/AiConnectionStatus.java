@@ -1,4 +1,8 @@
 package com.lh.eap.ai;
+import java.util.HashMap;
+import org.springframework.ai.chat.model.ChatModel;
+import com.lh.eap.error.WorkspaceErrors;
+import com.lh.eap.error.ModelErrors;
 import com.lh.eap.delivery.CodeVerificationProperties;
 
 import com.lh.eap.config.RuntimeWorkspace;
@@ -35,7 +39,9 @@ public class AiConnectionStatus {
                            String connectionId, String connectionName, String workspacePath,
                            String authorizedRootPath, String authorizedRootDenial,
                            boolean storesUserDirectoryGrants,
-                           boolean verificationEnabled, List<String> verificationCommands) {}
+                           boolean verificationEnabled, List<String> verificationCommands) {
+        public Snapshot { ModelConnectionState.fromWire(state); }
+    }
     private record Observed(Instant at, String state, String error) {}
 
     private final CapabilityHandlerRegistry registry;
@@ -54,14 +60,14 @@ public class AiConnectionStatus {
     private volatile String connectionName = "";
     private volatile String secretFingerprint = "";
     private final ModelConnections connections;
-    private final java.util.Map<String, Observed> observed = new java.util.HashMap<>();
+    private final Map<String, Observed> observed = new HashMap<>();
 
     @Autowired
     public AiConnectionStatus(CapabilityHandlerRegistry registry, RuntimeWorkspace runtime,
             @Value("${spring.ai.model.chat:none}") String provider,
             @Value("${spring.ai.openai.chat.options.model:}") String model,
             @Value("${spring.ai.openai.base-url:}") String baseUrl,
-            ObjectProvider<org.springframework.ai.chat.model.ChatModel> models,
+            ObjectProvider<ChatModel> models,
             ObjectProvider<ModelConnections> connections,
             ObjectProvider<CodeVerificationProperties> verification) {
         this(registry, runtime.workspace(), runtime.root().allowed() ? runtime.root().path() : null,
@@ -73,13 +79,13 @@ public class AiConnectionStatus {
     /** Test and revision setup. Production callers use the Spring constructor. */
     public AiConnectionStatus(CapabilityHandlerRegistry registry, Path workspace, Path authorizedRoot,
             String provider, String model, String baseUrl, boolean modelPresent) {
-        this(registry, workspace, authorizedRoot, authorizedRoot == null ? "AUTHORIZED_ROOT_MISSING" : "",
+        this(registry, workspace, authorizedRoot, authorizedRoot == null ? WorkspaceErrors.AUTHORIZED_ROOT_MISSING.code() : "",
                 provider, model, baseUrl, modelPresent, null, null);
     }
 
     public AiConnectionStatus(CapabilityHandlerRegistry registry, Path workspace, Path authorizedRoot,
             String provider, String model, String baseUrl, boolean modelPresent, ModelConnections connections) {
-        this(registry, workspace, authorizedRoot, authorizedRoot == null ? "AUTHORIZED_ROOT_MISSING" : "",
+        this(registry, workspace, authorizedRoot, authorizedRoot == null ? WorkspaceErrors.AUTHORIZED_ROOT_MISSING.code() : "",
                 provider, model, baseUrl, modelPresent, connections, null);
     }
 
@@ -97,7 +103,7 @@ public class AiConnectionStatus {
         this.workspace = workspace;
         this.authorizedRoot = authorizedRoot;
         this.authorizedRootDenial = authorizedRoot == null
-                ? (authorizedRootDenial == null || authorizedRootDenial.isBlank() ? "AUTHORIZED_ROOT_MISSING" : authorizedRootDenial)
+                ? (authorizedRootDenial == null || authorizedRootDenial.isBlank() ? WorkspaceErrors.AUTHORIZED_ROOT_MISSING.code() : authorizedRootDenial)
                 : "";
         this.provider = provider == null || provider.isBlank() ? "none" : provider;
         this.model = model == null ? "" : model;
@@ -140,7 +146,7 @@ public class AiConnectionStatus {
     public void observe(String errorCode) {
         synchronized (lock) {
             refresh();
-            if ("none".equals(provider) || !modelPresent || "AI_NOT_CONFIGURED".equals(errorCode)) return;
+            if ("none".equals(provider) || !modelPresent || ModelErrors.AI_NOT_CONFIGURED.code().equals(errorCode)) return;
             observeRevision(currentRevision(), errorCode);
         }
     }
@@ -148,9 +154,9 @@ public class AiConnectionStatus {
     /** Records the attempt against the revision captured when that request started. */
     public void observeRevision(String revision, String errorCode) {
         synchronized (lock) {
-            if (revision == null || revision.isBlank() || "AI_NOT_CONFIGURED".equals(errorCode)) return;
-            if (errorCode != null && errorCode.startsWith("AI_")) observed.put(revision, new Observed(Instant.now(), "error", errorCode));
-            else observed.put(revision, new Observed(Instant.now(), "available", ""));
+            if (revision == null || revision.isBlank() || ModelErrors.AI_NOT_CONFIGURED.code().equals(errorCode)) return;
+            if (errorCode != null && errorCode.startsWith("AI_")) observed.put(revision, new Observed(Instant.now(), ModelConnectionState.ERROR.wire(), errorCode));
+            else observed.put(revision, new Observed(Instant.now(), ModelConnectionState.AVAILABLE.wire(), ""));
         }
     }
 
@@ -194,10 +200,10 @@ public class AiConnectionStatus {
     }
 
     private String currentState(Observed mark) {
-        if ("none".equals(provider)) return "disabled";
-        if (!modelPresent) return "not_configured";
+        if ("none".equals(provider)) return ModelConnectionState.DISABLED.wire();
+        if (!modelPresent) return ModelConnectionState.NOT_CONFIGURED.wire();
         if (mark != null) return mark.state;
-        return "configured_unverified";
+        return ModelConnectionState.CONFIGURED_UNVERIFIED.wire();
     }
 
     public static String revision(String provider, String model, String baseUrl, boolean rootConfigured) {

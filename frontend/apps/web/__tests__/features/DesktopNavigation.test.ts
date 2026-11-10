@@ -44,7 +44,7 @@ beforeEach(() => {
     baseHash: '',
     denial: 'AUTHORIZED_ROOT_MISSING',
   })
-  workbench.preview = false
+
   workbench.selectedScenario = 'prototype-to-code'
   resetLocalProjectsForTests()
   resetLocalBridgeForTests()

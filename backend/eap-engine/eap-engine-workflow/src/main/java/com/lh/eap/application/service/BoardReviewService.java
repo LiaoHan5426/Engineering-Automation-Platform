@@ -1,4 +1,7 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.BoardErrors;
+import com.lh.eap.error.BoardVerificationErrors;
+import com.lh.eap.error.ToolErrors;
 
 import com.lh.eap.capability.GitCapability;
 import com.lh.eap.core.CapabilityRegistry;
@@ -32,20 +35,20 @@ public class BoardReviewService {
     }
     public Page get(UUID taskId, UUID executionId, String projectId) {
         requireProject(projectId); var task = tasks.find(taskId, projectId, false); var saved = read(taskId, executionId);
-        String reason = task.executionActive() ? "BOARD_EXECUTION_ACTIVE" : denial(executionId);
+        String reason = task.executionActive() ? BoardErrors.BOARD_EXECUTION_ACTIVE.code() : denial(executionId);
         return new Page(saved, saved == null && reason.isEmpty(), reason);
     }
     @Transactional(timeout = 90)
     public GitReviewCapture.Evidence collect(UUID taskId, UUID executionId, Request request) {
         requireProject(request.projectId());
-        if (request.workspacePath() == null || request.workspacePath().isBlank() || request.workspacePath().length() > 2048) throw new IllegalArgumentException("INVALID_BOARD_REVIEW_REQUEST");
+        if (request.workspacePath() == null || request.workspacePath().isBlank() || request.workspacePath().length() > 2048) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_REVIEW_REQUEST.code());
         tasks.find(taskId, request.projectId(), true);
         var saved = read(taskId, executionId); var run = executions.find(executionId).orElseThrow();
-        if (!request.workspacePath().equals(run.workspacePath())) throw conflict("BOARD_WORKSPACE_CHANGED");
+        if (!request.workspacePath().equals(run.workspacePath())) throw conflict(BoardErrors.BOARD_WORKSPACE_CHANGED.code());
         if (saved != null) return saved; // A retry reads the original observation, never re-scans changed files.
-        if (tasks.hasActiveExecution(taskId)) throw conflict("BOARD_EXECUTION_ACTIVE");
+        if (tasks.hasActiveExecution(taskId)) throw conflict(BoardErrors.BOARD_EXECUTION_ACTIVE.code());
         tasks.lockWorkspace(run.workspacePath());
-        if (tasks.hasActiveVerification(run.workspacePath())) throw conflict("BOARD_VERIFICATION_WORKSPACE_BUSY");
+        if (tasks.hasActiveVerification(run.workspacePath())) throw conflict(BoardVerificationErrors.BOARD_VERIFICATION_WORKSPACE_BUSY.code());
         var reason = denial(executionId);
         if (!reason.isEmpty()) throw conflict(reason);
         var evidence = capture.capture(Path.of(run.workspacePath()), capability());
@@ -54,13 +57,13 @@ public class BoardReviewService {
     }
     private String denial(UUID executionId) {
         var execution = executions.find(executionId).orElseThrow();
-        if (!"SUCCEEDED".equals(execution.status()) || execution.unconfirmedReason() != null) return "BOARD_REVIEW_RUN_NOT_SUCCEEDED";
+        if (!"SUCCEEDED".equals(execution.status()) || execution.unconfirmedReason() != null) return BoardErrors.BOARD_REVIEW_RUN_NOT_SUCCEEDED.code();
         var available = git.availability();
         if (!available.allowed()) return available.reason();
-        if (!available.workspacePath().equals(execution.workspacePath())) return "BOARD_WORKSPACE_CHANGED";
-        if (!settings.enabled("git-diff")) return "CAPABILITY_DISABLED";
-        if (!(handlers.resolveFor(null, "git-diff").orElse(null) instanceof GitInspectionHandler) || capability() == null) return "CAPABILITY_UNRESOLVED";
-        if (!capability().runnable() || !capability().executable().equals(execution.executable())) return "BOARD_WORKSPACE_CHANGED";
+        if (!available.workspacePath().equals(execution.workspacePath())) return BoardErrors.BOARD_WORKSPACE_CHANGED.code();
+        if (!settings.enabled("git-diff")) return ToolErrors.CAPABILITY_DISABLED.code();
+        if (!(handlers.resolveFor(null, "git-diff").orElse(null) instanceof GitInspectionHandler) || capability() == null) return ToolErrors.CAPABILITY_UNRESOLVED.code();
+        if (!capability().runnable() || !capability().executable().equals(execution.executable())) return BoardErrors.BOARD_WORKSPACE_CHANGED.code();
         return "";
     }
     private GitCapability capability() { return registry.all().stream().filter(item -> item.name().equals("git-diff") && item instanceof GitCapability).map(item -> (GitCapability)item).findFirst().orElse(null); }
@@ -68,9 +71,9 @@ public class BoardReviewService {
         var rows = jdbc.query("SELECT review_snapshot FROM eap.board_task_run WHERE task_id=? AND execution_id=?", (rs, row) -> {
             String value = rs.getString(1); return value == null ? Optional.<GitReviewCapture.Evidence>empty() : Optional.of(JSON.readValue(value, GitReviewCapture.Evidence.class));
         }, taskId, executionId);
-        if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "BOARD_RUN_NOT_FOUND");
+        if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, BoardErrors.BOARD_RUN_NOT_FOUND.code());
         return rows.getFirst().orElse(null);
     }
-    private static void requireProject(String id) { if (id == null || id.isBlank() || id.length() > 120) throw new IllegalArgumentException("INVALID_BOARD_FIELD"); }
+    private static void requireProject(String id) { if (id == null || id.isBlank() || id.length() > 120) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_FIELD.code()); }
     private static ResponseStatusException conflict(String reason) { return new ResponseStatusException(HttpStatus.CONFLICT, reason); }
 }

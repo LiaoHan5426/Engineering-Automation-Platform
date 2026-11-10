@@ -70,7 +70,7 @@ class MissionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"handoffId\":\"" + handoffId + "\"}"))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.detail").value("数据服务暂不可用，请检查数据库、迁移和后端日志"));
+                .andExpect(jsonPath("$.code").value("DATA_SERVICE_UNAVAILABLE"));
     }
 
     private static String jsonId(String body) {
@@ -130,7 +130,7 @@ class MissionControllerTest {
             }
         });
         return MockMvcBuilders.standaloneSetup(new MissionController(service))
-                .setControllerAdvice(new ApiErrorHandler())
+                .setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES))))
                 .build();
     }
 }

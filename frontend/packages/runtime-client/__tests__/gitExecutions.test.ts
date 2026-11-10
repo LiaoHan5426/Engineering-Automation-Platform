@@ -29,7 +29,7 @@ vi.mock('axios', async (original) => {
                       status: 'CLOSED_UNKNOWN',
                       resolution: { requestId: 'review', processTreeStopped: true },
                     }
-                : { id: 'execution', items: [] },
+                : { id: 'execution', status: 'CREATED', items: [] },
             }
           },
         }),

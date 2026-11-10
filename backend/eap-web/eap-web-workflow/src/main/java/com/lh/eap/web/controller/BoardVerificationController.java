@@ -1,4 +1,5 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.error.BoardVerificationErrors;
 
 import com.lh.eap.application.service.BoardVerificationService;
 import com.lh.eap.application.service.BoardVerificationPlanSupport;
@@ -26,8 +27,8 @@ public class BoardVerificationController {
     private static Map<?,?> fields(String body, Set<String> keys) {
         final Object parsed;
         try { parsed = JSON.readValue(body, Object.class); }
-        catch (RuntimeException invalid) { throw new IllegalArgumentException("INVALID_BOARD_VERIFICATION_REQUEST"); }
-        if (!(parsed instanceof Map<?,?> fields) || !fields.keySet().equals(keys) || fields.values().stream().anyMatch(value -> !(value instanceof String))) throw new IllegalArgumentException("INVALID_BOARD_VERIFICATION_REQUEST");
+        catch (RuntimeException invalid) { throw new IllegalArgumentException(BoardVerificationErrors.INVALID_BOARD_VERIFICATION_REQUEST.code()); }
+        if (!(parsed instanceof Map<?,?> fields) || !fields.keySet().equals(keys) || fields.values().stream().anyMatch(value -> !(value instanceof String))) throw new IllegalArgumentException(BoardVerificationErrors.INVALID_BOARD_VERIFICATION_REQUEST.code());
         return fields;
     }
 }

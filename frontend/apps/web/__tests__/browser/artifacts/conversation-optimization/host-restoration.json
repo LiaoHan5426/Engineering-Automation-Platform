@@ -1,0 +1,12 @@
+{
+  "previousPid": 18216,
+  "restoredPid": 41820,
+  "base": "http://127.0.0.1:52025",
+  "workspace": "J:\\Code\\Engineering-Automation-Platform\\backend\\target\\component-page-workspace",
+  "defaultArtifactRestored": true,
+  "health": 200,
+  "ide8080Health": 200,
+  "ideProcessStopped": false,
+  "testsRepeated": false,
+  "qaRoutesAbsent": true
+}

@@ -31,7 +31,7 @@ public final class DesignerLifecycleFixture {
                 "port",context.getEnvironment().getProperty("local.server.port"),"pid",ProcessHandle.current().pid())));
     }
     @Configuration(proxyBeanMethods=false) @EnableAutoConfiguration
-    @Import({PrototypeVersionController.class,ScenarioController.class,AiBrowserRequestGuard.class})
+    @Import({PrototypeVersionController.class,ScenarioController.class,AiBrowserRequestGuard.class ,com.lh.eap.web.i18n.PlatformMessagesConfiguration.class,com.lh.eap.web.i18n.ProblemResponses.class})
     static class Host {
         @Bean DataSource source(){return ToolUnknownReviewFixture.scopedDataSource(schema);}
         @Bean JdbcTemplate jdbc(DataSource source){return new JdbcTemplate(source);}

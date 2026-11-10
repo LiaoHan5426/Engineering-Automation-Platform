@@ -1,0 +1,152 @@
+{
+  "kind": "Current production Vue page and Axios/SSE client against isolated full application; real HTTP/JDBC, explicit database failure fixture",
+  "checks": [
+    {
+      "language": "zh-CN",
+      "axiosProblem": {
+        "code": "UNKNOWN_CONVERSATION",
+        "status": 404,
+        "detail": "服务端会话不存在或已失效，本地草稿和独立执行证据仍需保留。"
+      },
+      "sseProblem": {
+        "code": "UNKNOWN_CONVERSATION",
+        "status": 404,
+        "detail": "服务端会话不存在或已失效，本地草稿和独立执行证据仍需保留。"
+      },
+      "expectedClosed": "人工关闭（结果仍未知）",
+      "expectedStore": "执行记录存储暂不可用，尚不能确认本次写入是否保存。请恢复数据库连接后重新查询，保留当前记录与请求，避免重复提交。",
+      "preservedExecution": "88b0d0fb-17d3-4ef4-ae05-7aac3aa40f55"
+    },
+    {
+      "language": "en-US",
+      "axiosProblem": {
+        "code": "UNKNOWN_CONVERSATION",
+        "status": 404,
+        "detail": "The server conversation is absent or expired. Retain local drafts and independent execution evidence."
+      },
+      "sseProblem": {
+        "code": "UNKNOWN_CONVERSATION",
+        "status": 404,
+        "detail": "The server conversation is absent or expired. Retain local drafts and independent execution evidence."
+      },
+      "expectedClosed": "Manually closed (outcome unknown)",
+      "expectedStore": "Execution storage is unavailable; this write may or may not have committed. Restore the database connection and check again. Keep the current record and request to avoid duplicate submissions.",
+      "preservedExecution": "88b0d0fb-17d3-4ef4-ae05-7aac3aa40f55"
+    }
+  ],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/cli-programs/git/operations/git-status/executions/readiness",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cli-programs/git/operations/git-diff/executions/readiness",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capabilities",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capabilities",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/databases",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/experts",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scenarios",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cli-programs/git/operations/git-status/executions",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cli-programs/git/operations/git-diff/executions",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/status",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/conversations/bd7b7399-287c-432f-aef5-8ae1a0629b40",
+      "language": "zh-CN"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/conversations/bd7b7399-287c-432f-aef5-8ae1a0629b40/messages",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cli-programs/git/operations/git-status/executions/readiness",
+      "language": "zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/status",
+      "language": "en-US"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/conversations/bd7b7399-287c-432f-aef5-8ae1a0629b40",
+      "language": "en-US"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/conversations/bd7b7399-287c-432f-aef5-8ae1a0629b40/messages",
+      "language": "en-US"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cli-programs/git/operations/git-status/executions/readiness",
+      "language": "en-US"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capabilities",
+      "language": "en-US"
+    },
+    {
+      "method": "GET",
+      "path": "/api/runtime/trusted-tools",
+      "language": "en-US"
+    }
+  ],
+  "errors": [],
+  "external": [],
+  "userProductAcceptance": false
+}

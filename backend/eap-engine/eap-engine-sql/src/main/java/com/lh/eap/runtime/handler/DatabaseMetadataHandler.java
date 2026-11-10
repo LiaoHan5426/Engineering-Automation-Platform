@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.handler;
+import com.lh.eap.sql.DatabaseEvidenceInput;
 
 import com.lh.eap.core.DatabaseGrantQuery;
 import com.lh.eap.domain.model.CapabilityContext;
@@ -64,8 +65,8 @@ public class DatabaseMetadataHandler implements CapabilityHandler {
         boolean schema = SCHEMA.equals(context.step().capability());
         var facts = SqlFactVocabulary.factsOf(context.step().capability()).stream()
                 .map(SqlFactVocabulary.Fact::key).toArray(String[]::new);
-        var databaseId = context.requestAs(com.lh.eap.sql.DatabaseEvidenceInput.class)
-                .map(com.lh.eap.sql.DatabaseEvidenceInput::databaseId).orElse(null);
+        var databaseId = context.requestAs(DatabaseEvidenceInput.class)
+                .map(DatabaseEvidenceInput::databaseId).orElse(null);
         if (databaseId == null) {
             context.markNotProduced(facts);
             return new NodeResult(false, true, "未选择数据库资料", Map.of());

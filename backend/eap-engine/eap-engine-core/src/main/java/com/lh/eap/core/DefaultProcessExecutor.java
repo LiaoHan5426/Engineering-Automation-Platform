@@ -1,4 +1,7 @@
 package com.lh.eap.core;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import com.lh.eap.error.ExecutionErrors;
 
 import com.lh.eap.api.*;
 import java.io.*;
@@ -48,7 +51,7 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
         return execute(id,capability,dir,command,Map.copyOf(environment),null);
     }
     public Observation runManaged(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment,
-                                  java.util.function.Consumer<Map<String,Object>> onStart){
+                                  Consumer<Map<String,Object>> onStart){
         return execute(id,capability,dir,command,Map.copyOf(environment),onStart);
     }
     @Override public Observation runManaged(UUID id,String capability,Path dir,List<String> command,
@@ -69,13 +72,13 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
         return execute(UUID.randomUUID(),capability,dir,command,Map.copyOf(environment),null);
     }
     private Observation execute(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment,
-                                java.util.function.Consumer<Map<String,Object>> onStart){
+                                Consumer<Map<String,Object>> onStart){
         return execute(id,capability,dir,command,environment,onStart,()->false,null);
     }
     private Observation execute(UUID id,String capability,Path dir,List<String> command,Map<String,String> environment,
-                                java.util.function.Consumer<Map<String,Object>> onStart,
-                                java.util.function.BooleanSupplier cancelled,
-                                java.util.function.Consumer<Map<String,Object>> onDescendants){
+                                Consumer<Map<String,Object>> onStart,
+                                BooleanSupplier cancelled,
+                                Consumer<Map<String,Object>> onDescendants){
         var execution=new Execution(id);
         synchronized(this){
             if(closed)throw new IllegalStateException("Executor closed");
@@ -150,7 +153,7 @@ public class DefaultProcessExecutor implements ProcessExecutor, AutoCloseable {
             if(execution.identity!=null) metadata.putAll(execution.identity);
             metadata.put("trace",new CliExecution.Trace(phases,out.lines(),err.text(),out.truncated()||err.truncated(),""));
             observation=new Observation(capability,execution.status==CliExecution.Status.SUCCEEDED,code,
-                    out.text(),cleaned?err.text():"CLEANUP_FAILED",metadata);
+                    out.text(),cleaned?err.text():ExecutionErrors.CLEANUP_FAILED.code(),metadata);
         }catch(InterruptedException error){
             execution.status=CliExecution.Status.CANCELLED;
             Thread.currentThread().interrupt();

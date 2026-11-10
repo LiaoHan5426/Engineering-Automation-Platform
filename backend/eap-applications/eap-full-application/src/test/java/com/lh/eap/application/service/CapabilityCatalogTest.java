@@ -133,7 +133,7 @@ class CapabilityCatalogTest {
         row.put("enabled", true);
         row.put("manifest", """
                 {"apiVersion":"eap/v1","kind":"Expert","id":"orders-sql","name":"订单库",
-                 "steps":[{"id":"parse","capability":"sql.parse","required":true}],"edges":[],
+                 "behavior":{"id":"sql-analysis","version":1},"steps":[{"id":"parse","capability":"sql.parse","required":true}],"edges":[],
                  "rules":["database.credentials.never-expose"]}
                 """);
         when(jdbc.queryForList(anyString())).thenAnswer(call ->

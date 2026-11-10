@@ -5,7 +5,6 @@ import { Button, Checkbox, Feedback, Input, Select } from '@eap/ui'
 import { IconPlus } from '@eap/ui'
 import type { ModelConnection, ModelWireApi } from '@eap/runtime-client'
 import { modelApi as runtimeApi } from '../chat/chatService'
-import { useMockServices } from '../../lib/serviceConfig'
 import ConnectionDialog from '../../components/ConnectionDialog.vue'
 import ModelCatalogEditor from './ModelCatalogEditor.vue'
 import ChatGptAccountCard from './ChatGptAccountCard.vue'
@@ -306,7 +305,6 @@ async function makeDefault(item: ModelConnection) {
         "
       >
         <form class="connection-form" @submit.prevent="saveConnection">
-          <p v-if="useMockServices" class="hint">{{ t('preview.connectionMock') }}</p>
           <div class="connection-editor-heading">
             <h3>{{ editingId ? t('chat.connectionEdit') : t('composerUi.addConnection') }}</h3>
             <Button

@@ -1,4 +1,7 @@
 package com.lh.eap.ai;
+import com.lh.eap.llm.EndpointPolicy;
+import java.util.TreeSet;
+import com.lh.eap.error.ModelErrors;
 
 import java.io.Serial;
 import java.net.URI;
@@ -23,7 +26,7 @@ public class ModelDiscovery {
     public List<String> fetch(ModelConnectionSnapshot connection) {
         try {
             var base = URI.create(connection.baseUrl);
-            if (!com.lh.eap.llm.EndpointPolicy.permits(connection.baseUrl, true) || base.getHost() == null
+            if (!EndpointPolicy.permits(connection.baseUrl, true) || base.getHost() == null
                     || base.getRawQuery() != null || base.getFragment() != null) throw new IllegalStateException();
             String path = base.getPath() == null ? "" : base.getPath().replaceAll("/+$", "");
             // Root endpoints follow the existing OpenAI-compatible client's /v1 convention.
@@ -35,8 +38,8 @@ public class ModelDiscovery {
             if (response.statusCode() != 200) throw new DiscoveryFailure("MODEL_DISCOVERY_HTTP_" + response.statusCode());
             boolean plan = ModelConnections.CHATGPT_KIND.equals(connection.kind);
             var data = JsonMapper.builder().build().readTree(response.body()).path(plan ? "models" : "data");
-            if (!data.isArray() || data.size() > 1024) throw new DiscoveryFailure("MODEL_DISCOVERY_INVALID_RESPONSE");
-            var result = new java.util.TreeSet<String>();
+            if (!data.isArray() || data.size() > 1024) throw new DiscoveryFailure(ModelErrors.MODEL_DISCOVERY_INVALID_RESPONSE.code());
+            var result = new TreeSet<String>();
             for (var item : data) {
                 if (plan && !item.path("visibility").asString().equals("list")) continue;
                 var id = item.path(plan ? "slug" : "id").asString("");
@@ -47,10 +50,10 @@ public class ModelDiscovery {
             throw failure;
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            throw new DiscoveryFailure("MODEL_DISCOVERY_INTERRUPTED");
+            throw new DiscoveryFailure(ModelErrors.MODEL_DISCOVERY_INTERRUPTED.code());
         } catch (Exception failure) {
             // Never expose endpoint response bodies, Authorization headers or client exception details.
-            throw new DiscoveryFailure("MODEL_DISCOVERY_UNAVAILABLE");
+            throw new DiscoveryFailure(ModelErrors.MODEL_DISCOVERY_UNAVAILABLE.code());
         }
     }
 
@@ -71,7 +74,7 @@ public class ModelDiscovery {
             for (var buffer : buffers) bytes += buffer.remaining();
             if (bytes > MAX_BYTES) {
                 subscription.cancel();
-                delegate.onError(new IllegalStateException("MODEL_DISCOVERY_TOO_LARGE"));
+                delegate.onError(new IllegalStateException(ModelErrors.MODEL_DISCOVERY_TOO_LARGE.code()));
             } else delegate.onNext(buffers);
         }
         public void onError(Throwable error) { delegate.onError(error); }

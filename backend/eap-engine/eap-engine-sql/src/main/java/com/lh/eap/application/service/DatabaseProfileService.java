@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.DatabaseErrors;
 
 import com.lh.eap.application.dto.*;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,7 @@ public class DatabaseProfileService {
 
     public Map<String,Object> detail(UUID id){
         var rows=mapper.detail(id);
-        if(rows.isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"数据库资料不存在");
+        if(rows.isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND,DatabaseErrors.DATABASE_PROFILE_NOT_FOUND.code());
         var result=new LinkedHashMap<>(rows.getFirst());result.put("metadata",JSON.readValue((String)result.get("metadata"),Map.class));return result;
     }
 
@@ -42,19 +43,19 @@ public class DatabaseProfileService {
     @Transactional
     public Map<String,Object> remove(UUID id){
         var referenced=mapper.enabledReferences(id);
-        if(!referenced.isEmpty())throw new ResponseStatusException(HttpStatus.CONFLICT,"数据库资料正被已启用的专家引用："+referenced);
-        if(mapper.delete(id)==0)throw new ResponseStatusException(HttpStatus.NOT_FOUND,"数据库资料不存在");
+        if(!referenced.isEmpty())throw new ResponseStatusException(HttpStatus.CONFLICT,DatabaseErrors.DATABASE_PROFILE_IN_USE.code());
+        if(mapper.delete(id)==0)throw new ResponseStatusException(HttpStatus.NOT_FOUND,DatabaseErrors.DATABASE_PROFILE_NOT_FOUND.code());
         return Map.of("id",id,"status","deleted");
     }
     private Map<String,Object> save(UUID id,DatabaseProfileRequest request,boolean update){
-        if(SensitiveData.containsSecret(request.label())||SensitiveData.containsSecret(request.engine())||SensitiveData.containsSecret(request.environment()))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"资料字段包含凭据，请脱敏后保存");
-        if(request.label()==null||request.label().isBlank()||request.label().length()>200||request.engine()==null||request.environment()==null||request.engine().length()>40||request.environment().length()>40)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"请填写有效名称、引擎和环境");
+        if(SensitiveData.containsSecret(request.label())||SensitiveData.containsSecret(request.engine())||SensitiveData.containsSecret(request.environment()))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,DatabaseErrors.DATABASE_PROFILE_SECRET.code());
+        if(request.label()==null||request.label().isBlank()||request.label().length()>200||request.engine()==null||request.environment()==null||request.engine().length()>40||request.environment().length()>40)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,DatabaseErrors.DATABASE_PROFILE_INVALID.code());
         var metadata=request.metadata()==null?Map.of():request.metadata();
-        if(SensitiveData.containsSecret(metadata))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"资料含凭据或连接字符串，禁止保存");
+        if(SensitiveData.containsSecret(metadata))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,DatabaseErrors.DATABASE_PROFILE_SECRET.code());
         var json=JSON.writeValueAsString(metadata);
-        if(json.length()>100000)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"资料最多10万字符");
+        if(json.length()>100000)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,DatabaseErrors.DATABASE_PROFILE_INVALID.code());
         if(update){
-            if(mapper.update(id,request.label(),request.engine(),request.environment(),json)==0)throw new ResponseStatusException(HttpStatus.NOT_FOUND,"数据库资料不存在");
+            if(mapper.update(id,request.label(),request.engine(),request.environment(),json)==0)throw new ResponseStatusException(HttpStatus.NOT_FOUND,DatabaseErrors.DATABASE_PROFILE_NOT_FOUND.code());
         }else mapper.insert(id,request.label(),request.engine(),request.environment(),json);
         return Map.of("id",id,"status","saved");
     }

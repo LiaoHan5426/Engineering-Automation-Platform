@@ -16,7 +16,6 @@ const server = await createServer({
   plugins: [vue(), tailwindcss()],
   define: {
     'import.meta.env.VITE_API_URL': JSON.stringify('/api'),
-    'import.meta.env.VITE_USE_MOCK': JSON.stringify('false'),
   },
   server: {
     host: '127.0.0.1',

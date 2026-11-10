@@ -1,4 +1,19 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.ai.ExpertKnowledgeContextService;
+import com.lh.eap.ai.TaskWorkingMemory;
+import com.lh.eap.ai.dto.AiConversationReconnectResponse;
+import com.lh.eap.web.i18n.ProblemResponses;
+import com.lh.eap.web.i18n.RequestLanguage;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.CompletionException;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.error.ProtocolErrors;
+import com.lh.eap.error.WorkspaceErrors;
 import com.lh.eap.delivery.CodeChangeService;
 
 import com.lh.eap.ai.AiChatApplication;
@@ -27,22 +42,25 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @RequestMapping("/api/ai")
 public class AiChatController {
+    private static final JsonMapper JSON = JsonMapper.builder().build();
     private final AiChatApplication chat;
+    private final ProblemResponses problems;
 
-    public AiChatController(AiChatApplication chat) {
+    public AiChatController(AiChatApplication chat, ProblemResponses problems) {
         this.chat = chat;
+        this.problems = problems;
     }
 
     @GetMapping("/conversations/{id}")
     public AiConversationResponse conversation(@PathVariable UUID id) { return chat.conversation(id); }
 
     @PutMapping(value = "/conversations/{id}/working-memory", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public com.lh.eap.ai.TaskWorkingMemory.Snapshot putWorkingMemory(@PathVariable UUID id,
+    public TaskWorkingMemory.Snapshot putWorkingMemory(@PathVariable UUID id,
             @RequestBody(required = false) String body) {
         return chat.putWorkingMemory(id, body);
     }
 
-    @org.springframework.web.bind.annotation.DeleteMapping("/conversations/{id}")
+    @DeleteMapping("/conversations/{id}")
     public void deleteConversation(@PathVariable UUID id) { chat.deleteConversation(id); }
 
     @GetMapping("/status")
@@ -51,17 +69,17 @@ public class AiChatController {
     }
 
     @GetMapping("/workspace/baseline")
-    public com.lh.eap.delivery.CodeChangeService.Baseline baseline(@RequestParam("path") String path) {
+    public CodeChangeService.Baseline baseline(@RequestParam("path") String path) {
         return chat.baseline(path);
     }
 
     @GetMapping("/workspace/source")
-    public com.lh.eap.delivery.CodeChangeService.SourceExcerpt source(@RequestParam("path") String path) {
+    public CodeChangeService.SourceExcerpt source(@RequestParam("path") String path) {
         return chat.source(path);
     }
 
     @GetMapping("/workspace/dirty")
-    public com.lh.eap.delivery.CodeChangeService.DirtySummary dirty() {
+    public CodeChangeService.DirtySummary dirty() {
         return chat.dirty();
     }
 
@@ -70,7 +88,7 @@ public class AiChatController {
      * and never marks apply verification as passed.
      */
     @PostMapping("/workspace/verification/probe")
-    public com.lh.eap.delivery.CodeChangeService.VerificationProbe verificationProbe() {
+    public CodeChangeService.VerificationProbe verificationProbe() {
         return chat.verificationProbe();
     }
 
@@ -80,9 +98,9 @@ public class AiChatController {
      */
     @PostMapping("/workspace/grants")
     public void refuseUserDirectoryGrants() {
-        throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.METHOD_NOT_ALLOWED,
-                "USER_DIRECTORY_GRANTS_NOT_STORED_ON_SERVER");
+        throw new ResponseStatusException(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                WorkspaceErrors.USER_DIRECTORY_GRANTS_NOT_STORED_ON_SERVER.code());
     }
 
     @PostMapping("/conversations")
@@ -91,7 +109,7 @@ public class AiChatController {
     }
 
     @PostMapping("/conversations/{id}/reconnect")
-    public com.lh.eap.ai.dto.AiConversationReconnectResponse reconnect(@PathVariable UUID id,
+    public AiConversationReconnectResponse reconnect(@PathVariable UUID id,
             @RequestBody(required = false) String body) {
         return chat.reconnect(id, body);
     }
@@ -105,16 +123,18 @@ public class AiChatController {
             value = "/conversations/{id}/messages",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter message(@PathVariable UUID id, @RequestBody(required = false) String body) {
+    public SseEmitter message(@PathVariable UUID id, @RequestBody(required = false) String body, HttpServletRequest request, HttpServletResponse response) {
+        var language = RequestLanguage.resolve(request.getHeader("Accept-Language"));
+        response.setHeader("Content-Language", language.toLanguageTag());
         var emitter = new SseEmitter(120_000L);
-        var turn = chat.sendDetached(id, body, event -> sendEvent(emitter, event));
+        var turn = chat.sendDetached(id, body, event -> sendEvent(emitter, event, language));
         turn.result().whenComplete((result, failure) -> {
             if (failure == null) emitter.complete();
             else emitter.completeWithError(failure);
         });
         // Only preparation is awaited: failures before execution retain normal HTTP error semantics.
         try { turn.started().join(); }
-        catch (java.util.concurrent.CompletionException failure) {
+        catch (CompletionException failure) {
             if (failure.getCause() instanceof RuntimeException cause) throw cause;
             throw failure;
         }
@@ -127,16 +147,24 @@ public class AiChatController {
     }
 
     @GetMapping("/conversations/{id}/executions/{executionId}/snapshot")
-    public com.lh.eap.ai.dto.ChatExecutionSnapshot snapshot(
+    public Map<String,Object> snapshot(
             @PathVariable UUID id,
             @PathVariable UUID executionId,
-            @RequestParam(name = "afterSequence", defaultValue = "0") long afterSequence) {
-        if (afterSequence < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CURSOR_INVALID");
-        return chat.executionSnapshot(id, executionId, afterSequence);
+            @RequestParam(name = "afterSequence", defaultValue = "0") long afterSequence,
+            HttpServletRequest request, HttpServletResponse response) {
+        if (afterSequence < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ProtocolErrors.CURSOR_INVALID.code());
+        var language = RequestLanguage.resolve(request.getHeader("Accept-Language"));
+        response.setHeader("Content-Language", language.toLanguageTag());
+        var snapshot = chat.executionSnapshot(id, executionId, afterSequence);
+        var data = new LinkedHashMap<String,Object>();
+        data.put("executionId", snapshot.executionId()); data.put("conversationId", snapshot.conversationId());
+        data.put("latestSequence", snapshot.latestSequence()); data.put("complete", snapshot.complete()); data.put("status", snapshot.status());
+        data.put("events", snapshot.events().stream().map(event -> eventBody(event, language)).toList());
+        return data;
     }
 
     @PostMapping("/expert-context/preview")
-    public com.lh.eap.ai.ExpertKnowledgeContextService.Context previewExpertContext(@RequestBody(required = false) String body) {
+    public ExpertKnowledgeContextService.Context previewExpertContext(@RequestBody(required = false) String body) {
         return chat.previewExpertContext(body);
     }
 
@@ -146,18 +174,18 @@ public class AiChatController {
     }
 
     @PostMapping("/conversations/{id}/proposals/{proposal}/apply")
-    public com.lh.eap.delivery.CodeChangeService.Applied apply(@PathVariable UUID id, @PathVariable UUID proposal,
+    public CodeChangeService.Applied apply(@PathVariable UUID id, @PathVariable UUID proposal,
             @RequestBody(required = false) String body) {
         return chat.apply(id, proposal, body);
     }
 
     @GetMapping("/conversations/{id}/proposals/{proposal}")
-    public com.lh.eap.delivery.CodeChangeService.ProposalStatus proposal(@PathVariable UUID id, @PathVariable UUID proposal) {
+    public CodeChangeService.ProposalStatus proposal(@PathVariable UUID id, @PathVariable UUID proposal) {
         return chat.proposal(id, proposal);
     }
 
     @PostMapping("/conversations/{id}/proposals/{proposal}/refuse")
-    public com.lh.eap.delivery.CodeChangeService.ProposalStatus refuseProposal(@PathVariable UUID id, @PathVariable UUID proposal,
+    public CodeChangeService.ProposalStatus refuseProposal(@PathVariable UUID id, @PathVariable UUID proposal,
             @RequestBody(required = false) String body) {
         return chat.refuseProposal(id, proposal, body);
     }
@@ -195,11 +223,18 @@ public class AiChatController {
         return chat.assign(id, body);
     }
 
-    private static void sendEvent(SseEmitter emitter, ChatExecutionEvent event) {
+    private void sendEvent(SseEmitter emitter, ChatExecutionEvent event, Locale language) {
         try {
-            emitter.send(SseEmitter.event().id(event.eventId().toString()).name(event.type()).data(event));
+            emitter.send(SseEmitter.event().id(event.eventId().toString()).name(event.type()).data(eventBody(event, language)));
         } catch (IOException closed) {
-            throw new ResponseStatusException(HttpStatus.REQUEST_TIMEOUT, "SSE_CLOSED");
+            throw new ResponseStatusException(HttpStatus.REQUEST_TIMEOUT, ProtocolErrors.SSE_CLOSED.code());
         }
+    }
+
+    private Object eventBody(ChatExecutionEvent event, Locale language) {
+        if (event.code() == null || event.code().isBlank() || !Set.of("error","refused","final").contains(event.type())) return event;
+        Map<String,Object> data = JSON.convertValue(event, LinkedHashMap.class);
+        data.put("message", problems.localized(400, event.code(), language).getDetail());
+        return data;
     }
 }

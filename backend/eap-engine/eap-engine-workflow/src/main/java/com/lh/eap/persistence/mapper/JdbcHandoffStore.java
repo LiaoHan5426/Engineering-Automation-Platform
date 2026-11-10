@@ -1,4 +1,6 @@
 package com.lh.eap.persistence.mapper;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import com.lh.eap.application.service.Handoff;
 import com.lh.eap.application.service.HandoffStore;
@@ -57,7 +59,7 @@ public class JdbcHandoffStore implements HandoffStore {
         return rows.stream().findFirst();
     }
 
-    private static Handoff map(java.sql.ResultSet rs) throws java.sql.SQLException {
+    private static Handoff map(ResultSet rs) throws SQLException {
         return new Handoff(
                 rs.getObject("id", UUID.class),
                 rs.getString("source"),

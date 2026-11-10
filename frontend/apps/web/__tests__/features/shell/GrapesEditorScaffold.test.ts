@@ -34,11 +34,6 @@ describe('grapes editor scaffold', () => {
         /脚手架|Scaffold/,
       ),
     )
-    await vi.waitFor(() =>
-      expect(root!.querySelector('[data-testid=grapes-boundary]')?.textContent).toMatch(
-        /HTML\/CSS|Vue/,
-      ),
-    )
     expect((root.querySelector('[data-testid=grapes-title]') as HTMLInputElement).disabled).toBe(
       true,
     )

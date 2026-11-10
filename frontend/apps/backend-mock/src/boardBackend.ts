@@ -1,0 +1,270 @@
+import { hasWireValue } from '@eap/runtime-client/contracts'
+import { BoardTaskColumn } from '@eap/runtime-client/contracts'
+import { BoardErrors } from '@eap/runtime-client/contracts'
+import { randomUUID } from 'node:crypto'
+import type { BoardTask } from '@eap/runtime-client/contracts'
+
+/** Contract simulation only. State is lost when the mock server restarts. */
+export function createBoardBackend(versionExists: (id: string) => boolean = () => false) {
+  const tasks: BoardTask[] = []
+  const requests = new Map<string, { fingerprint: string; task: BoardTask }>()
+  const result = (status: number, data: unknown) => ({ status, data })
+  const error = (status: number, detail: string) => result(status, { code: detail })
+  const validText = (value: unknown, limit: number) =>
+    typeof value === 'string' && value.length <= limit
+  function present(task: BoardTask) {
+    task.preparationIssues = []
+    if (!task.goal.trim()) task.preparationIssues.push('goal')
+    if (!task.acceptanceCriteria.trim()) task.preparationIssues.push('acceptanceCriteria')
+    task.allowedColumns = !hasWireValue(
+      [BoardTaskColumn.PLANNED, BoardTaskColumn.READY],
+      task.column,
+    )
+      ? []
+      : task.preparationIssues.length
+        ? [BoardTaskColumn.PLANNED]
+        : [BoardTaskColumn.PLANNED, BoardTaskColumn.READY]
+    return task
+  }
+  return {
+    handle(method: string, url: URL, body: Record<string, unknown>) {
+      const path = url.pathname
+      const codePath =
+        /^\/board\/tasks\/([^/]+)\/code-proposals(?:\/[^/]+(?:\/(?:apply|refuse))?)?$/.exec(path)
+      if (codePath) {
+        const projectId = method === 'GET' ? url.searchParams.get('projectId') : body.projectId
+        if (!tasks.some((task) => task.id === codePath[1] && task.projectId === projectId))
+          return error(404, BoardErrors.BOARD_TASK_NOT_FOUND)
+        return error(409, 'CODE_GENERATION_CONTEXT_UNAVAILABLE') // Never synthesize durable generation or approval evidence.
+      }
+      const deliveryPath =
+        /^\/board\/tasks\/([^/]+)\/runs\/([^/]+)\/delivery(?:\/(?:decision|applications))?$/.exec(
+          path,
+        )
+      if (deliveryPath) {
+        const projectId = method === 'GET' ? url.searchParams.get('projectId') : body.projectId
+        if (!tasks.some((task) => task.id === deliveryPath[1] && task.projectId === projectId))
+          return error(404, BoardErrors.BOARD_TASK_NOT_FOUND)
+        return error(404, BoardErrors.BOARD_RUN_NOT_FOUND) // No verified Run: never invent source delivery or acceptance.
+      }
+      const verificationPath =
+        /^\/board\/tasks\/([^/]+)\/runs\/([^/]+)\/verification(?:\/plan)?$/.exec(path)
+      if (verificationPath) {
+        const projectId = method === 'GET' ? url.searchParams.get('projectId') : body.projectId
+        if (!tasks.some((task) => task.id === verificationPath[1] && task.projectId === projectId))
+          return error(404, BoardErrors.BOARD_TASK_NOT_FOUND)
+        return error(404, BoardErrors.BOARD_RUN_NOT_FOUND) // No fake commands, source snapshots or check results.
+      }
+      const reviewPath = /^\/board\/tasks\/([^/]+)\/runs\/([^/]+)\/review$/.exec(path)
+      if (reviewPath) {
+        const projectId = method === 'GET' ? url.searchParams.get('projectId') : body.projectId
+        if (!tasks.some((task) => task.id === reviewPath[1] && task.projectId === projectId))
+          return error(404, BoardErrors.BOARD_TASK_NOT_FOUND)
+        return error(404, BoardErrors.BOARD_RUN_NOT_FOUND) // Mock never creates Runs or repository evidence.
+      }
+      const prototypePath = /^\/board\/tasks\/([^/]+)\/prototype$/.exec(path)
+      if (prototypePath && method === 'POST') {
+        if (Object.keys(body).sort().join(',') !== 'projectId,revision,versionId')
+          return error(400, BoardErrors.INVALID_BOARD_PROTOTYPE_REQUEST)
+        if (
+          !validText(body.projectId, 120) ||
+          !String(body.projectId).trim() ||
+          !Number.isSafeInteger(body.revision) ||
+          Number(body.revision) < 1
+        )
+          return error(400, BoardErrors.INVALID_BOARD_FIELD)
+        const task = tasks.find(
+          (item) => item.id === prototypePath[1] && item.projectId === body.projectId,
+        )
+        if (!task) return error(404, BoardErrors.BOARD_TASK_NOT_FOUND)
+        if (task.revision !== body.revision) return error(409, BoardErrors.BOARD_REVISION_CONFLICT)
+        if (task.executionActive) return error(409, BoardErrors.BOARD_EXECUTION_ACTIVE)
+        if (!hasWireValue([BoardTaskColumn.PLANNED, BoardTaskColumn.READY], task.column))
+          return error(409, BoardErrors.BOARD_EXECUTION_EVIDENCE_REQUIRED)
+        const versionId = body.versionId ?? null
+        if (
+          versionId !== null &&
+          (typeof versionId !== 'string' ||
+            !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(versionId))
+        )
+          return error(400, 'INVALID_PROTOTYPE_VERSION')
+        if (versionId !== null && !versionExists(String(versionId)))
+          return error(404, 'PROTOTYPE_VERSION_NOT_FOUND')
+        if (task.prototypeVersionId !== versionId) {
+          task.prototypeVersionId = versionId as string | null
+          task.revision++
+          task.events.push(versionId === null ? 'prototype_unlinked' : 'prototype_linked')
+        }
+        return result(200, present(task))
+      }
+      const runPath = /^\/board\/tasks\/([^/]+)\/runs$/.exec(path)
+      if (runPath) {
+        const projectId = method === 'GET' ? url.searchParams.get('projectId') : body.projectId
+        if (!tasks.some((task) => task.id === runPath[1] && task.projectId === projectId))
+          return error(404, BoardErrors.BOARD_TASK_NOT_FOUND)
+        if (method === 'POST') return error(503, 'MOCK_RUN_NOT_AVAILABLE')
+        if (method === 'GET')
+          return result(200, {
+            availability: {
+              allowed: false,
+              workspacePath: '',
+              workspaceLabel: '',
+              reason: 'MOCK_RUN_NOT_AVAILABLE',
+            },
+            items: [],
+          })
+      }
+      if (path === '/board/runtime') {
+        if (method !== 'GET') return error(405, 'METHOD_NOT_ALLOWED')
+        const projectId = url.searchParams.get('projectId')
+        if (!projectId?.trim() || projectId.length > 120)
+          return error(400, BoardErrors.INVALID_BOARD_FIELD)
+        return result(200, {
+          projectId,
+          observedAt: new Date().toISOString(),
+          taskCount: tasks.filter((task) => task.projectId === projectId).length,
+          runCount: 0,
+          activeRunCount: 0,
+          unknownRunCount: 0,
+          activeVerificationCount: 0,
+          unknownVerificationCount: 0,
+          activeWriteCount: 0,
+          unknownWriteCount: 0,
+          items: [],
+          truncated: false,
+        })
+      }
+      if (path === '/board/tasks' && method === 'GET') {
+        if (
+          !url.searchParams.get('projectId')?.trim() ||
+          url.searchParams.get('projectId')!.length > 120
+        )
+          return error(400, BoardErrors.INVALID_BOARD_FIELD)
+        return result(200, {
+          items: tasks
+            .filter((task) => task.projectId === url.searchParams.get('projectId'))
+            .slice(0, 200)
+            .map(present),
+        })
+      }
+      if (path === '/board/tasks' && method === 'POST') {
+        if (
+          !validText(body.projectId, 120) ||
+          !String(body.projectId).trim() ||
+          !validText(body.title, 200) ||
+          !String(body.title).trim()
+        )
+          return error(400, BoardErrors.INVALID_BOARD_FIELD)
+        const column = body.column ?? BoardTaskColumn.PLANNED
+        if (!hasWireValue([BoardTaskColumn.PLANNED, BoardTaskColumn.READY], String(column)))
+          return error(400, BoardErrors.INVALID_BOARD_INITIAL_COLUMN)
+        const goal = body.goal ?? '',
+          acceptanceCriteria = body.acceptanceCriteria ?? '',
+          sessionId = body.sessionId ?? ''
+        if (
+          !validText(goal, 4000) ||
+          !validText(acceptanceCriteria, 4000) ||
+          !validText(sessionId, 120)
+        )
+          return error(400, BoardErrors.BOARD_TEXT_TOO_LONG)
+        if (
+          typeof body.requestId !== 'string' ||
+          !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(body.requestId)
+        )
+          return error(400, BoardErrors.BOARD_REQUEST_ID_REQUIRED)
+        if (
+          column === BoardTaskColumn.READY &&
+          (!String(goal).trim() || !String(acceptanceCriteria).trim())
+        )
+          return error(409, BoardErrors.BOARD_PREPARATION_REQUIRED)
+        const fingerprint = JSON.stringify([
+          body.projectId,
+          String(body.title).trim(),
+          sessionId,
+          column,
+          goal,
+          acceptanceCriteria,
+        ])
+        const key = JSON.stringify([body.projectId, body.requestId])
+        const prior = requests.get(key)
+        if (prior)
+          return prior.fingerprint === fingerprint
+            ? result(200, present(prior.task))
+            : error(409, BoardErrors.BOARD_REQUEST_CONFLICT)
+        const task: BoardTask = {
+          id: randomUUID(),
+          projectId: String(body.projectId),
+          title: String(body.title).trim(),
+          column: column as BoardTask['column'],
+          goal: String(goal),
+          acceptanceCriteria: String(acceptanceCriteria),
+          sessionId: String(sessionId),
+          notes: '',
+          priority: 'none',
+          revision: 1,
+          events: ['created'],
+          executionActive: false,
+          prototypeVersionId: null,
+          preparationIssues: [],
+          allowedColumns: [],
+        }
+        tasks.unshift(task)
+        requests.set(key, { fingerprint, task })
+        return result(200, present(task))
+      }
+      if (path.startsWith('/board/tasks/') && method === 'POST') {
+        if (
+          !validText(body.projectId, 120) ||
+          !String(body.projectId).trim() ||
+          !Number.isSafeInteger(body.revision) ||
+          Number(body.revision) < 1
+        )
+          return error(400, BoardErrors.INVALID_BOARD_FIELD)
+        const task = tasks.find(
+          (item) =>
+            item.id === path.slice('/board/tasks/'.length) && item.projectId === body.projectId,
+        )
+        if (!task) return error(404, BoardErrors.BOARD_TASK_NOT_FOUND)
+        if (body.revision !== task.revision) return error(409, BoardErrors.BOARD_REVISION_CONFLICT)
+        const target = body.column ?? task.column
+        if (
+          !hasWireValue([BoardTaskColumn.PLANNED, BoardTaskColumn.READY], task.column) ||
+          !hasWireValue([BoardTaskColumn.PLANNED, BoardTaskColumn.READY], String(target))
+        )
+          return error(409, BoardErrors.BOARD_EXECUTION_EVIDENCE_REQUIRED)
+        const notes = body.notes ?? task.notes,
+          goal = body.goal ?? task.goal,
+          acceptanceCriteria = body.acceptanceCriteria ?? task.acceptanceCriteria,
+          priority = body.priority ?? task.priority
+        if (![notes, goal, acceptanceCriteria].every((value) => validText(value, 4000)))
+          return error(400, BoardErrors.BOARD_TEXT_TOO_LONG)
+        if (!['none', 'p0', 'p1', 'p2'].includes(String(priority)))
+          return error(400, BoardErrors.INVALID_BOARD_PRIORITY)
+        if (
+          target === BoardTaskColumn.READY &&
+          (!String(goal).trim() || !String(acceptanceCriteria).trim())
+        )
+          return error(409, BoardErrors.BOARD_PREPARATION_REQUIRED)
+        const events: string[] = []
+        if (target !== task.column) events.push(String(target))
+        if (notes !== task.notes) events.push('notes_updated')
+        if (priority !== task.priority) events.push('priority_updated')
+        if (goal !== task.goal || acceptanceCriteria !== task.acceptanceCriteria)
+          events.push('preparation_updated')
+        if (events.length) {
+          Object.assign(task, {
+            column: target,
+            notes,
+            goal,
+            acceptanceCriteria,
+            priority,
+            revision: task.revision + 1,
+          })
+          task.events.push(...events)
+        }
+        return result(200, present(task))
+      }
+      return null
+    },
+  }
+}

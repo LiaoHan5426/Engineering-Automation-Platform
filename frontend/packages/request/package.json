@@ -1,0 +1,20 @@
+{
+  "name": "@eap/request",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "src"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "axios": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@eap/tsconfig": "workspace:*",
+    "typescript": "catalog:tooling",
+    "vite-plus": "catalog:tooling"
+  }
+}

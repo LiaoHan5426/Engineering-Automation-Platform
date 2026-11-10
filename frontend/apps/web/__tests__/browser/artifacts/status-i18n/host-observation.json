@@ -1,0 +1,38 @@
+[
+  {
+    "name": "ide-full",
+    "base": "http://127.0.0.1:8080",
+    "responses": [
+      {
+        "status": 404,
+        "language": "zh-CN",
+        "code": "UNKNOWN_CONVERSATION",
+        "detail": "服务端会话不存在或已失效，本地草稿和独立执行证据仍需保留。"
+      },
+      {
+        "status": 404,
+        "language": "en-US",
+        "code": "UNKNOWN_CONVERSATION",
+        "detail": "The server conversation is absent or expired. Retain local drafts and independent execution evidence."
+      }
+    ]
+  },
+  {
+    "name": "component-full",
+    "base": "http://127.0.0.1:52025",
+    "responses": [
+      {
+        "status": 404,
+        "language": "zh-CN",
+        "code": "UNKNOWN_CONVERSATION",
+        "detail": "服务端会话不存在或已失效，本地草稿和独立执行证据仍需保留。"
+      },
+      {
+        "status": 404,
+        "language": "en-US",
+        "code": "UNKNOWN_CONVERSATION",
+        "detail": "The server conversation is absent or expired. Retain local drafts and independent execution evidence."
+      }
+    ]
+  }
+]

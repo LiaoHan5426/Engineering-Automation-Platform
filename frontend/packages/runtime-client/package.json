@@ -7,18 +7,18 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./contracts": "./src/contracts/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "axios": "catalog:frontend",
-    "nprogress": "catalog:frontend"
+    "@eap/request": "workspace:*"
   },
   "devDependencies": {
     "@eap/tsconfig": "workspace:*",
-    "@types/nprogress": "catalog:tooling",
+    "axios": "catalog:frontend",
     "typescript": "catalog:tooling",
     "vite": "catalog:tooling",
     "vite-plus": "catalog:tooling"

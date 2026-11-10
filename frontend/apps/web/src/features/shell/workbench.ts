@@ -6,13 +6,13 @@ export type BoardTaskDraft = {
   taskRef?: CodeTaskRef
   prototypeVersionId?: string
 }
-import { useMockServices } from '../../lib/serviceConfig'
+import { apiStorageScope } from '../../lib/runtimeConfig'
 import { createScenarioCatalog } from './scenarioCatalog'
 
 export type ExecutionMode = 'chat' | 'plan' | 'agent'
 export type WorkMode = 'code' | 'work'
 export type PanelId = 'summary' | 'changes' | 'files' | 'terminal' | null
-export type BoardColumn = 'planned' | 'ready' | 'running' | 'acceptance' | 'done'
+export type { BoardColumn } from '@eap/runtime-client'
 
 export type DeliveryInput = { versionId: string; pagePath: string; pageLabel: string }
 
@@ -92,7 +92,8 @@ export type ChatBinding = {
   create: () => void
 }
 
-export type ScenarioStatus = 'partial' | 'missing' | 'disabled'
+export type { ScenarioStatus } from '@eap/runtime-client'
+import type { ScenarioStatus, ScenarioDependencyStatus } from '@eap/runtime-client'
 
 export type Scenario = {
   builtin?: boolean
@@ -108,7 +109,7 @@ export type Scenario = {
   mcp: string[]
   dependencies: Array<{
     name: string
-    state: 'installed' | 'missing' | 'unconfigured' | 'denied'
+    state: ScenarioDependencyStatus
     where: string
   }>
 }
@@ -123,26 +124,6 @@ export type CatalogExpert = {
   mine: boolean
   /** Shown but not selectable; mirrors frame-064 coming-soon experts. */
   comingSoon?: boolean
-}
-
-export type BoardTask = {
-  id: string
-  title: string
-  column: BoardColumn
-  note: string
-}
-
-export type LayoutDraft = {
-  id: string
-  savedAt: string
-  sidebar: boolean
-  popover: boolean
-  panel: boolean
-  title?: string
-  placeholder?: string
-  sidebarWidth?: number
-  accent?: string
-  acceptance?: string[]
 }
 
 export const scenarios = reactive<Scenario[]>([
@@ -212,12 +193,12 @@ export const scenarios = reactive<Scenario[]>([
     status: 'partial',
     modes: ['work'],
     summary: '从已有材料整理项目说明与交付清单。',
-    instructions: '先明确受众和输出格式，再整理资料；演示不会导出真实文档。',
-    tools: ['文档整理（模拟）'],
+    instructions: '先明确受众和输出格式，再整理已有资料。',
+    tools: ['文档整理'],
     skills: [],
     mcp: [],
     dependencies: [
-      { name: '文档输出（模拟）', state: 'installed', where: '仅页面内模拟，不会导出文件。' },
+      { name: '文档导出', state: 'missing', where: '可在会话中整理文本，文件导出暂不可用。' },
     ],
   },
   {
@@ -282,7 +263,7 @@ export const expertCatalog: CatalogExpert[] = [
     id: 'fe-vue',
     name: '前端实现',
     category: '工程',
-    version: 'demo-1',
+    version: '1.0',
     resources: '未接入仓库读取',
     guidance: '复用现有 Vue 组件，不新建空壳。',
     mine: true,
@@ -291,7 +272,7 @@ export const expertCatalog: CatalogExpert[] = [
     id: 'reviewer',
     name: '代码审阅',
     category: '质量',
-    version: 'demo-1',
+    version: '1.0',
     resources: '只读候选 diff',
     guidance: '指出最小修改和已有脏文件。',
     mine: false,
@@ -300,7 +281,7 @@ export const expertCatalog: CatalogExpert[] = [
     id: 'writer',
     name: '文档整理',
     category: '办公',
-    version: 'demo-1',
+    version: '1.0',
     resources: '无外部工具',
     guidance: '只整理已给出的材料。',
     mine: true,
@@ -309,7 +290,7 @@ export const expertCatalog: CatalogExpert[] = [
     id: 'policy-kb',
     name: '公司政策知识专家',
     category: '办公',
-    version: 'demo-0',
+    version: '0.1',
     resources: '知识库未接入',
     guidance: '敬请期待；不能加入当前任务。',
     mine: false,
@@ -317,15 +298,12 @@ export const expertCatalog: CatalogExpert[] = [
   },
 ]
 
-const columns: BoardColumn[] = ['planned', 'ready', 'running', 'acceptance', 'done']
-
 export const chatBinding = shallowRef<ChatBinding | null>(null)
 
 /** First self-validation delivery page; generation-prep only, not a write grant. */
 export const DELIVERY_TARGET_PATH = 'frontend/apps/web/src/features/chat/TaskComposer.vue'
 
 export const workbench = reactive({
-  preview: useMockServices,
   workMode: 'code' as WorkMode,
   executionMode: 'chat' as ExecutionMode,
   panel: null as PanelId,
@@ -340,7 +318,6 @@ export const workbench = reactive({
   set selectedProjectId(id: string | null) {
     selectLocalProject(id)
   },
-  pendingMockHandoff: false,
   pendingBoardDraft: null as BoardTaskDraft | null,
   modelMenuToken: 0,
   policyMenuToken: 0,
@@ -348,20 +325,6 @@ export const workbench = reactive({
   selectedScenario: 'prototype-to-code',
   deliveryTargetPath: DELIVERY_TARGET_PATH,
   sessionExtras: {} as Record<string, SessionExtras>,
-  tasks: [
-    { id: 'task-nav', title: '调整设置侧栏与输入框', column: 'planned' as BoardColumn, note: '' },
-    { id: 'task-sql', title: '保留 SQL 分析工作台', column: 'ready' as BoardColumn, note: '' },
-  ],
-  drafts: [] as LayoutDraft[],
-  layoutEditor: {
-    sidebar: true,
-    popover: false,
-    panel: false,
-    title: 'EAP Workspace',
-    placeholder: 'Describe a task…',
-    sidebarWidth: 120,
-    accent: '#347f70',
-  },
   sessionPanels: {} as Record<string, PanelId>,
   workspaceTreeOpen: false,
   /** Cleared after SessionPanel consumes it when the changes rail opens. */
@@ -482,27 +445,8 @@ export function removeExpert(id: string) {
   extras.experts = extras.experts.filter((item) => item.id !== id)
 }
 
-export function moveTask(id: string, column: BoardColumn) {
-  const task = workbench.tasks.find((item) => item.id === id)
-  if (!task) return 'missing'
-  const from = columns.indexOf(task.column)
-  const to = columns.indexOf(column)
-  if (column === 'done') {
-    task.note = 'rejected'
-    return 'rejected'
-  }
-  if (Math.abs(to - from) > 1) {
-    task.note = 'rejected'
-    return 'rejected'
-  }
-  task.column = column
-  task.note = 'moved'
-  return 'moved'
-}
-
-const DRAFT_KEY = 'eap.layout-draft.v1'
-const EXTRAS_KEY = useMockServices ? 'mock.eap.session-extras.v1' : 'eap.session-extras.v1'
-const PANELS_KEY = useMockServices ? 'mock.eap.session-panels.v1' : 'eap.session-panels.v1'
+const EXTRAS_KEY = apiStorageScope + '.eap.session-extras.v1'
+const PANELS_KEY = apiStorageScope + '.eap.session-panels.v1'
 const EXTRAS_LIMIT = 40
 const PANEL_VALUES = new Set(['summary', 'changes', 'files', 'terminal'])
 
@@ -659,32 +603,3 @@ watch(
   () => persistSessionPanels(),
   { deep: true, flush: 'sync' },
 )
-
-export function loadLayoutDrafts(storage: Pick<Storage, 'getItem'> | undefined) {
-  try {
-    const parsed = JSON.parse(storage?.getItem(DRAFT_KEY) ?? 'null')
-    workbench.drafts = Array.isArray(parsed)
-      ? parsed.filter((item) => item && typeof item.id === 'string')
-      : []
-  } catch {
-    workbench.drafts = []
-  }
-}
-
-export function saveLayoutDraft(
-  draft: Omit<LayoutDraft, 'id' | 'savedAt'>,
-  storage: Pick<Storage, 'getItem' | 'setItem'> | undefined,
-) {
-  const next: LayoutDraft = {
-    ...draft,
-    id: `draft-${Date.now()}-${workbench.drafts.length}`,
-    savedAt: new Date().toISOString(),
-  }
-  workbench.drafts = [next, ...workbench.drafts].slice(0, 8)
-  try {
-    storage?.setItem(DRAFT_KEY, JSON.stringify(workbench.drafts))
-  } catch {
-    /* 本机存储失败时仍保留内存副本 */
-  }
-  return next
-}

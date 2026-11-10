@@ -1,5 +1,7 @@
 export const contextBudgetMessages = {
   'zh-CN': {
+    summary: '上下文 · 约 {used} 字符',
+    artifacts: '查看执行附件（{count}）',
     title: '上下文用量',
     metering: '计量方式',
     charEstimate: '字符估算（非供应商 token）',
@@ -8,12 +10,14 @@ export const contextBudgetMessages = {
     remaining: '剩余（含输出预留后）',
     reserve: '输出预留',
     material: '材料上限内用量',
-    sources: '来源',
-    notes: '备注',
+    sources: '来源明细（字符）',
+    notes: '诊断代码',
     exceeded: '上下文超出平台字符预算，请减少附件、原型或检索材料后重试。',
     exceededDetail: '已用 {used} / 平台 {platform}（输出预留 {reserve}）。计量：{metering}。',
   },
   'en-US': {
+    summary: 'Context · about {used} characters',
+    artifacts: 'Execution attachments ({count})',
     title: 'Context usage',
     metering: 'Metering',
     charEstimate: 'Character estimate (not provider tokens)',
@@ -22,9 +26,11 @@ export const contextBudgetMessages = {
     remaining: 'Remaining (after output reserve)',
     reserve: 'Output reserve',
     material: 'Material usage within cap',
-    sources: 'Sources',
-    notes: 'Notes',
-    exceeded: 'Context exceeds the platform character budget. Reduce attachments, prototypes, or retrieved material and retry.',
-    exceededDetail: 'Used {used} / platform {platform} (output reserve {reserve}). Metering: {metering}.',
+    sources: 'Source breakdown (characters)',
+    notes: 'Diagnostic codes',
+    exceeded:
+      'Context exceeds the platform character budget. Reduce attachments, prototypes, or retrieved material and retry.',
+    exceededDetail:
+      'Used {used} / platform {platform} (output reserve {reserve}). Metering: {metering}.',
   },
 } as const

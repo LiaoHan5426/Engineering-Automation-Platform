@@ -1,4 +1,6 @@
 package com.lh.eap.skill;
+import java.util.regex.Pattern;
+import com.lh.eap.error.SkillErrors;
 
 import java.util.*;
 import java.nio.charset.StandardCharsets;
@@ -20,49 +22,49 @@ public class SkillTextParser {
     public record Parsed(String id, String version, String description, String sourceLabel, String rawSkillMd,
                          String instructions, List<Resource> resources, List<String> requiredCapabilities, String scope, String digest) {}
     public Parsed parse(Object value, String scope) {
-        var input = fields(value, Set.of("rawSkillMd", "version", "sourceLabel", "resources", "requiredCapabilities"), "INVALID_SKILL_INPUT");
-        String raw = text(input.get("rawSkillMd"), 16000, false, "INVALID_SKILL_INPUT");
-        String version = text(input.get("version"), 32, false, "INVALID_SKILL_VERSION");
-        if (!validVersion(version)) throw invalid("INVALID_SKILL_VERSION");
-        String source = text(input.get("sourceLabel"), 200, false, "INVALID_SKILL_INPUT");
-        var front = java.util.regex.Pattern.compile("\\A---\\r?\\n(.*?)^---\\r?\\n", java.util.regex.Pattern.DOTALL | java.util.regex.Pattern.MULTILINE).matcher(raw);
-        if (!front.find()) throw invalid("INVALID_SKILL_FRONTMATTER");
+        var input = fields(value, Set.of("rawSkillMd", "version", "sourceLabel", "resources", "requiredCapabilities"), SkillErrors.INVALID_SKILL_INPUT.code());
+        String raw = text(input.get("rawSkillMd"), 16000, false, SkillErrors.INVALID_SKILL_INPUT.code());
+        String version = text(input.get("version"), 32, false, SkillErrors.INVALID_SKILL_VERSION.code());
+        if (!validVersion(version)) throw invalid(SkillErrors.INVALID_SKILL_VERSION.code());
+        String source = text(input.get("sourceLabel"), 200, false, SkillErrors.INVALID_SKILL_INPUT.code());
+        var front = Pattern.compile("\\A---\\r?\\n(.*?)^---\\r?\\n", Pattern.DOTALL | Pattern.MULTILINE).matcher(raw);
+        if (!front.find()) throw invalid(SkillErrors.INVALID_SKILL_FRONTMATTER.code());
         String instructions = raw.substring(front.end());
-        if (instructions.isBlank()) throw invalid("INVALID_SKILL_BODY");
+        if (instructions.isBlank()) throw invalid(SkillErrors.INVALID_SKILL_BODY.code());
         var metadata = metadata(front.group(1));
-        String name = text(metadata.get("name"), 64, false, "INVALID_SKILL_FRONTMATTER");
-        if (!validId(name)) throw invalid("INVALID_SKILL_FRONTMATTER");
-        String description = text(metadata.get("description"), 1024, false, "INVALID_SKILL_FRONTMATTER");
-        if (metadata.containsKey("license")) text(metadata.get("license"), 200, false, "INVALID_SKILL_FRONTMATTER");
-        if (metadata.containsKey("compatibility")) text(metadata.get("compatibility"), 500, false, "INVALID_SKILL_FRONTMATTER");
+        String name = text(metadata.get("name"), 64, false, SkillErrors.INVALID_SKILL_FRONTMATTER.code());
+        if (!validId(name)) throw invalid(SkillErrors.INVALID_SKILL_FRONTMATTER.code());
+        String description = text(metadata.get("description"), 1024, false, SkillErrors.INVALID_SKILL_FRONTMATTER.code());
+        if (metadata.containsKey("license")) text(metadata.get("license"), 200, false, SkillErrors.INVALID_SKILL_FRONTMATTER.code());
+        if (metadata.containsKey("compatibility")) text(metadata.get("compatibility"), 500, false, SkillErrors.INVALID_SKILL_FRONTMATTER.code());
         if (metadata.containsKey("metadata")) {
-            if (!(metadata.get("metadata") instanceof Map<?,?> extensions) || extensions.size() > 16) throw invalid("INVALID_SKILL_FRONTMATTER");
-            extensions.forEach((k,v) -> { text(k, 64, false, "INVALID_SKILL_FRONTMATTER"); text(v, 500, true, "INVALID_SKILL_FRONTMATTER"); });
+            if (!(metadata.get("metadata") instanceof Map<?,?> extensions) || extensions.size() > 16) throw invalid(SkillErrors.INVALID_SKILL_FRONTMATTER.code());
+            extensions.forEach((k,v) -> { text(k, 64, false, SkillErrors.INVALID_SKILL_FRONTMATTER.code()); text(v, 500, true, SkillErrors.INVALID_SKILL_FRONTMATTER.code()); });
         }
-        if (!(input.get("resources") instanceof List<?> entries) || entries.size() > 4) throw invalid("INVALID_SKILL_RESOURCE");
+        if (!(input.get("resources") instanceof List<?> entries) || entries.size() > 4) throw invalid(SkillErrors.INVALID_SKILL_RESOURCE.code());
         var resources = new ArrayList<Resource>(); var seen = new HashSet<String>(); int total = raw.length();
         for (var entry : entries) {
-            var fields = fields(entry, Set.of("path", "mediaType", "content"), "INVALID_SKILL_RESOURCE");
+            var fields = fields(entry, Set.of("path", "mediaType", "content"), SkillErrors.INVALID_SKILL_RESOURCE.code());
             String path = resourcePath(fields.get("path"));
-            if (!seen.add(path.toLowerCase(Locale.ROOT))) throw invalid("INVALID_SKILL_RESOURCE");
-            String media = text(fields.get("mediaType"), 40, false, "INVALID_SKILL_RESOURCE");
-            if (!media.equals(path.toLowerCase(Locale.ROOT).endsWith(".md") ? "text/markdown" : "text/plain")) throw invalid("INVALID_SKILL_RESOURCE");
-            String content = text(fields.get("content"), 16000, true, "INVALID_SKILL_RESOURCE");
+            if (!seen.add(path.toLowerCase(Locale.ROOT))) throw invalid(SkillErrors.INVALID_SKILL_RESOURCE.code());
+            String media = text(fields.get("mediaType"), 40, false, SkillErrors.INVALID_SKILL_RESOURCE.code());
+            if (!media.equals(path.toLowerCase(Locale.ROOT).endsWith(".md") ? "text/markdown" : "text/plain")) throw invalid(SkillErrors.INVALID_SKILL_RESOURCE.code());
+            String content = text(fields.get("content"), 16000, true, SkillErrors.INVALID_SKILL_RESOURCE.code());
             total += content.length();
-            if (total > 24000) throw invalid("INVALID_SKILL_SIZE");
+            if (total > 24000) throw invalid(SkillErrors.INVALID_SKILL_SIZE.code());
             resources.add(new Resource(path, media, content));
         }
-        if (!(input.get("requiredCapabilities") instanceof List<?> entries2) || entries2.size() > 16) throw invalid("INVALID_SKILL_DEPENDENCIES");
+        if (!(input.get("requiredCapabilities") instanceof List<?> entries2) || entries2.size() > 16) throw invalid(SkillErrors.INVALID_SKILL_DEPENDENCIES.code());
         var dependencies = new ArrayList<String>();
         for (var entry : entries2) {
-            String id = text(entry, 120, false, "INVALID_SKILL_DEPENDENCIES");
-            if (!id.matches("[A-Za-z0-9][A-Za-z0-9._:-]*") || dependencies.contains(id)) throw invalid("INVALID_SKILL_DEPENDENCIES");
+            String id = text(entry, 120, false, SkillErrors.INVALID_SKILL_DEPENDENCIES.code());
+            if (!id.matches("[A-Za-z0-9][A-Za-z0-9._:-]*") || dependencies.contains(id)) throw invalid(SkillErrors.INVALID_SKILL_DEPENDENCIES.code());
             dependencies.add(id);
         }
         // Detect rather than redact: content and its digest must never silently change.
         if (SensitiveData.containsSecret(raw) || SensitiveData.containsSecret(source)
                 || resources.stream().anyMatch(r -> SensitiveData.containsSecret(r.path()) || SensitiveData.containsSecret(r.content()))
-                || SensitiveData.containsSecret(dependencies)) throw invalid("INVALID_SKILL_SECRET");
+                || SensitiveData.containsSecret(dependencies)) throw invalid(SkillErrors.INVALID_SKILL_SECRET.code());
         resources.sort(Comparator.comparing(Resource::path)); dependencies.sort(String::compareTo);
         var digestFields = new ArrayList<>(List.of("skill-text-v1", scope, name, version, source, raw, Integer.toString(resources.size())));
         for (var r : resources) digestFields.addAll(List.of(r.path(), r.mediaType(), r.content()));
@@ -77,25 +79,25 @@ public class SkillTextParser {
             for (var event : yaml.parse(new StringReader(text))) {
                 if (++count > 160 || event instanceof AliasEvent || event instanceof NodeEvent node && node.getAnchor() != null
                         || event instanceof ScalarEvent scalar && scalar.getTag() != null
-                        || event instanceof CollectionStartEvent collection && collection.getTag() != null) throw invalid("INVALID_SKILL_FRONTMATTER");
-                if (event instanceof DocumentEndEvent end && end.getExplicit()) throw invalid("INVALID_SKILL_FRONTMATTER");
-                if (event instanceof DocumentStartEvent && ++documents > 1) throw invalid("INVALID_SKILL_FRONTMATTER");
-                if (event instanceof ScalarEvent scalar && scalar.getValue().equals("<<")) throw invalid("INVALID_SKILL_FRONTMATTER");
+                        || event instanceof CollectionStartEvent collection && collection.getTag() != null) throw invalid(SkillErrors.INVALID_SKILL_FRONTMATTER.code());
+                if (event instanceof DocumentEndEvent end && end.getExplicit()) throw invalid(SkillErrors.INVALID_SKILL_FRONTMATTER.code());
+                if (event instanceof DocumentStartEvent && ++documents > 1) throw invalid(SkillErrors.INVALID_SKILL_FRONTMATTER.code());
+                if (event instanceof ScalarEvent scalar && scalar.getValue().equals("<<")) throw invalid(SkillErrors.INVALID_SKILL_FRONTMATTER.code());
             }
             Object loaded = yaml.load(text);
             if (!(loaded instanceof Map<?,?> map) || !map.keySet().containsAll(Set.of("name", "description"))
-                    || map.keySet().stream().anyMatch(k -> !Set.of("name", "description", "license", "compatibility", "metadata").contains(k))) throw invalid("INVALID_SKILL_FRONTMATTER");
+                    || map.keySet().stream().anyMatch(k -> !Set.of("name", "description", "license", "compatibility", "metadata").contains(k))) throw invalid(SkillErrors.INVALID_SKILL_FRONTMATTER.code());
             return map;
         } catch (ResponseStatusException rejected) { throw rejected; }
-        catch (RuntimeException rejected) { throw invalid("INVALID_SKILL_FRONTMATTER"); }
+        catch (RuntimeException rejected) { throw invalid(SkillErrors.INVALID_SKILL_FRONTMATTER.code()); }
     }
     public static boolean validId(String value) { return value != null && value.length() <= 64 && value.matches("[a-z0-9]+(?:-[a-z0-9]+)*"); }
     public static boolean validVersion(String value) { return value != null && value.length() <= 32 && value.matches("(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)"); }
     public static String resourcePath(Object value) {
-        String path = text(value, 240, false, "INVALID_SKILL_RESOURCE");
+        String path = text(value, 240, false, SkillErrors.INVALID_SKILL_RESOURCE.code());
         if (!path.matches("[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*")
                 || !path.toLowerCase(Locale.ROOT).matches(".*\\.(md|txt)") || path.contains("..")
-                || Arrays.stream(path.split("/")).anyMatch(segment -> segment.equalsIgnoreCase("scripts"))) throw invalid("INVALID_SKILL_RESOURCE");
+                || Arrays.stream(path.split("/")).anyMatch(segment -> segment.equalsIgnoreCase("scripts"))) throw invalid(SkillErrors.INVALID_SKILL_RESOURCE.code());
         return path;
     }
     static Map<?,?> fields(Object value, Set<String> keys, String code) {

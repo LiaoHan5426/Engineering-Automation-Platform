@@ -1,3 +1,4 @@
+import type { ScenarioDependencyStatus } from '@eap/runtime-client'
 /**
  * Live dependency rows for delivery scenes.
  * Static workbench presets are templates; colocated bind and baseline override honesty.
@@ -5,7 +6,7 @@
 
 export type ScenarioDependency = {
   name: string
-  state: 'installed' | 'missing' | 'unconfigured' | 'denied'
+  state: ScenarioDependencyStatus
   where: string
 }
 

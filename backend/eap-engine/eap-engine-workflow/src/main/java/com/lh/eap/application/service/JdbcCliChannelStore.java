@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.CliProgramErrors;
 
 import com.lh.eap.local.CliChannelStore;
 import java.util.*;
@@ -28,7 +29,7 @@ public class JdbcCliChannelStore implements CliChannelStore {
             return values;
         } catch (RuntimeException error) {
             // Never expose driver errors, connection details or a fallback binary.
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CLI_CHANNEL_STORE_UNAVAILABLE");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CliProgramErrors.CLI_CHANNEL_STORE_UNAVAILABLE.code());
         }
     }
 

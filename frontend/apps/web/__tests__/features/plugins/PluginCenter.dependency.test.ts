@@ -37,37 +37,39 @@ it('checks only on explicit click, displays scoped evidence, and ignores a late 
   document.body.append(root)
   app = createApp(PluginCenter, { host })
   app.use(i18n).mount(root)
-  expect(root.querySelector('[data-testid="plugin-runtime-board"]')?.textContent).toContain(
+  ;(document.querySelector('[data-testid="plugin-details-board"]') as HTMLButtonElement).click()
+  await nextTick()
+  expect(document.querySelector('[data-testid="plugin-runtime-board"]')?.textContent).toContain(
     '未检查',
   )
   expect(query).not.toHaveBeenCalled()
-  const input = root.querySelector('[data-testid="plugin-check-project"]') as HTMLInputElement
+  const input = document.querySelector('[data-testid="plugin-check-project"]') as HTMLInputElement
   expect(input).not.toBeNull()
   input.value = 'project one'
   input.dispatchEvent(new Event('input', { bubbles: true }))
   await nextTick()
-  const button = root.querySelector(
+  const button = document.querySelector(
     '[data-testid="plugin-check-dependencies"]',
   ) as HTMLButtonElement
   button.click()
   await settle()
   expect(query).toHaveBeenCalledExactlyOnceWith('project one', expect.any(AbortSignal))
   expect(
-    root.querySelector('[data-testid="plugin-dependency-observation"]')?.textContent,
+    document.querySelector('[data-testid="plugin-dependency-observation"]')?.textContent,
   ).toContain('Task/Run 状态可读取')
-  expect(root.textContent).toContain('GET /api/board/runtime?projectId=project%20one')
-  expect(root.textContent).toContain(host.boardDependencyCheck.value.observedAt)
+  expect(document.body.textContent).toContain('GET /api/board/runtime?projectId=project%20one')
+  expect(document.body.textContent).toContain(host.boardDependencyCheck.value.observedAt)
   input.value = 'project two'
   input.dispatchEvent(new Event('input', { bubbles: true }))
   await nextTick()
-  expect(root.querySelector('[data-testid="plugin-check-stale"]')?.textContent).toContain(
+  expect(document.querySelector('[data-testid="plugin-check-stale"]')?.textContent).toContain(
     '重新检查',
   )
   expect(query).toHaveBeenCalledTimes(1)
   input.value = 'project one'
   input.dispatchEvent(new Event('input', { bubbles: true }))
   await nextTick()
-  expect(root.querySelector('[data-testid="plugin-check-stale"]')).toBeNull()
+  expect(document.querySelector('[data-testid="plugin-check-stale"]')).toBeNull()
   button.click()
   await nextTick()
   expect(button.disabled).toBe(true)

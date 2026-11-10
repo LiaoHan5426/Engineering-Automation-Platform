@@ -1,4 +1,5 @@
 package com.lh.eap.config;
+import com.lh.eap.error.WorkspaceErrors;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -69,7 +70,7 @@ public final class RuntimeWorkspace {
     public static Decision decide(String configuredRoot) {
         var current = blankToNull(configuredRoot);
         var chosen = current == null ? null : directory(current);
-        return chosen == null ? new Decision(null, "AUTHORIZED_ROOT_MISSING") : new Decision(chosen, null);
+        return chosen == null ? new Decision(null, WorkspaceErrors.AUTHORIZED_ROOT_MISSING.code()) : new Decision(chosen, null);
     }
 
     public static String label(Path workspace) {

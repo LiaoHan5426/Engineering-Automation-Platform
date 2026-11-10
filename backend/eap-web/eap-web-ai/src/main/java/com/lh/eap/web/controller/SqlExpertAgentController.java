@@ -1,4 +1,6 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.application.service.ExpertAgentApprovalService;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.lh.eap.ai.SqlExpertAgentService;
 import java.util.Map;
@@ -10,10 +12,10 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/experts/{expertId}/agent-runs/{executionId}")
 public class SqlExpertAgentController {
     private final SqlExpertAgentService agents;
-    private final com.lh.eap.application.service.ExpertAgentApprovalService approvals;
+    private final ExpertAgentApprovalService approvals;
     public SqlExpertAgentController(SqlExpertAgentService agents) { this(agents, null); }
-    @org.springframework.beans.factory.annotation.Autowired
-    public SqlExpertAgentController(SqlExpertAgentService agents, com.lh.eap.application.service.ExpertAgentApprovalService approvals) {
+    @Autowired
+    public SqlExpertAgentController(SqlExpertAgentService agents, ExpertAgentApprovalService approvals) {
         this.agents = agents; this.approvals = approvals;
     }
     @PostMapping public SqlExpertAgentService.Result execute(@PathVariable String expertId, @PathVariable UUID executionId,
@@ -30,7 +32,7 @@ public class SqlExpertAgentController {
         return agents.resume(expertId, executionId);
     }
     @PostMapping("/approval") public Map<String,Object> approve(@PathVariable String expertId, @PathVariable UUID executionId,
-            @RequestBody com.lh.eap.application.service.ExpertAgentApprovalService.Review review) {
+            @RequestBody ExpertAgentApprovalService.Review review) {
         return approvals.review(expertId, executionId, review);
     }
 }

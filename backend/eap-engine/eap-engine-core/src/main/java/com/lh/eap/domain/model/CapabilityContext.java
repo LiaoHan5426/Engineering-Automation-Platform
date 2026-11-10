@@ -1,4 +1,6 @@
 package com.lh.eap.domain.model;
+import java.util.Optional;
+import java.util.Set;
 
 
 
@@ -29,14 +31,14 @@ public record CapabilityContext(ExpertManifest.Step step, CapabilityRequest requ
                                 String input, String question, String expertId, UUID executionId,
                                 List<UUID> grants, Map<String, Object> facts, Map<String, Object> analysis,
                                 List<String> advice, List<Map<String, Object>> evidence,
-                                List<RulePack> rulePacks, Path workspace, java.util.Set<String> allowedFacts) {
+                                List<RulePack> rulePacks, Path workspace, Set<String> allowedFacts) {
 
     /** Facts explicitly produced by a capability that failed or lacked context. */
     public static final String NOT_PRODUCED = "not-produced";
 
     /** Explicit domain input lookup; no reflection, JSON conversion or fallback to another domain. */
-    public <T extends CapabilityRequest> java.util.Optional<T> requestAs(Class<T> type) {
-        return type.isInstance(request) ? java.util.Optional.of(type.cast(request)) : java.util.Optional.empty();
+    public <T extends CapabilityRequest> Optional<T> requestAs(Class<T> type) {
+        return type.isInstance(request) ? Optional.of(type.cast(request)) : Optional.empty();
     }
 
     /**

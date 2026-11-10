@@ -253,9 +253,8 @@ it('keeps a recorded verification value from looking complete', async () => {
   app = createApp({ render: () => h(SessionPanel, { mode: 'summary' }) })
   app.use(i18n).mount(root)
   await nextTick()
-  expect(root.textContent).toContain('记录值：passed')
-  expect(root.textContent).toContain('没有逐条退出码，不能显示完成')
-  expect(root.textContent).toContain('退出码：无')
+  expect(root.textContent).toContain('检查明细尚不完整')
+  expect(root.textContent).not.toContain('检查已通过')
 })
 
 it('keeps a local upload apart from the design version and the unread repository', async () => {
@@ -320,13 +319,15 @@ it('keeps candidate, applied and unread directory changes apart', async () => {
   expect(root.querySelector('[data-testid="live-verification-config"]')?.textContent).toMatch(
     /未启用|verification\.enabled=false|Verification config: off/i,
   )
-  expect(text).toContain('typecheck：未请求，退出码：无')
-  expect(text).toContain('test：未请求，退出码：无')
-  expect(text).toContain('build：未请求，退出码：无')
-  expect(text).toContain('页面预览：可打开本机 UI')
-  expect(text).toContain('/#chat')
-  expect(text).toContain('交互验收：未完成')
-  expect(text).toContain('不能显示完成')
+  expect(text).toContain('尚未运行检查')
+  expect(
+    root.querySelector('[data-testid="delivery-preview-link"]')?.getAttribute('href'),
+  ).toContain('/#chat')
+  expect(text).toContain('待人工验收')
+  expect(text).not.toContain('检查已通过')
+  expect(
+    (root.querySelector('[data-testid="verification-details"]') as HTMLDetailsElement).open,
+  ).toBe(false)
   expect(root.querySelector('[data-testid="panel-session"] span')?.textContent).toBe('当前会话')
   ;(root.querySelector('.codex-file') as HTMLButtonElement).click()
   await nextTick()

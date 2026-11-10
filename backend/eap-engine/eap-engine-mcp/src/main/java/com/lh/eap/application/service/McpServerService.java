@@ -1,4 +1,6 @@
 package com.lh.eap.application.service;
+import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.error.McpErrors;
 
 import com.lh.eap.persistence.mapper.McpServerRegistry;
 import com.lh.eap.core.CapabilityUsageQuery;
@@ -57,7 +59,7 @@ public class McpServerService {
     @Transactional
     public Map<String, Object> activate(String id, Boolean enabled, Boolean trusted) {
         var current = rows().stream().filter(server -> id.equals(server.id())).findFirst()
-                .orElseThrow(() -> new NoSuchElementException("MCP 服务器不存在：" + id));
+                .orElseThrow(() -> new NoSuchElementException(McpErrors.MCP_SERVER_NOT_FOUND.code()));
         boolean nextEnabled = enabled == null ? current.enabled() : enabled;
         boolean nextTrusted = trusted == null ? current.trusted() : trusted;
         save(id, current.name(), current.transport(), current.endpoint(), current.tools(), nextTrusted, nextEnabled);
@@ -116,39 +118,37 @@ public class McpServerService {
                      boolean trusted, boolean enabled) {
         var serverId = required(id, "服务器标识");
         if (!SEGMENT.matcher(serverId).matches()) {
-            throw new IllegalArgumentException("服务器标识只允许小写字母、数字、下划线和连字符，且不超过61字符："
-                    + "它会成为能力标识 mcp.<服务器>.<工具> 的一段");
+            throw new IllegalArgumentException(McpErrors.MCP_SERVER_INPUT_INVALID.code());
         }
         var label = name == null || name.isBlank() ? serverId : name.trim();
-        if (label.length() > 200) throw new IllegalArgumentException("服务器名称最多200字符");
+        if (label.length() > 200) throw new IllegalArgumentException(McpErrors.MCP_SERVER_INPUT_INVALID.code());
         var channel = McpProductionAllowlist.normalizeTransport(transport);
         if (!McpProductionAllowlist.isAllowedTransport(channel)) {
-            throw new IllegalArgumentException("传输方式只能是 stdio、http、sse 或 streamable-http");
+            throw new IllegalArgumentException(McpErrors.MCP_SERVER_INPUT_INVALID.code());
         }
         var location = endpoint == null ? "" : endpoint.trim();
         if ("stdio".equals(channel)) {
-            if (location.isEmpty()) throw new IllegalArgumentException("stdio 服务器必须填写启动命令");
-            if (location.length() > 300) throw new IllegalArgumentException("启动命令最多300字符");
+            if (location.isEmpty()) throw new IllegalArgumentException(McpErrors.MCP_SERVER_INPUT_INVALID.code());
+            if (location.length() > 300) throw new IllegalArgumentException(McpErrors.MCP_SERVER_INPUT_INVALID.code());
         } else {
             if (!location.startsWith("http://") && !location.startsWith("https://")) {
-                throw new IllegalArgumentException("http/sse/streamable-http 服务器必须填写 http:// 或 https:// 开头的地址");
+                throw new IllegalArgumentException(McpErrors.MCP_SERVER_INPUT_INVALID.code());
             }
-            if (location.length() > 300) throw new IllegalArgumentException("地址最多300字符");
+            if (location.length() > 300) throw new IllegalArgumentException(McpErrors.MCP_SERVER_INPUT_INVALID.code());
         }
-        if (location.chars().anyMatch(Character::isISOControl)) throw new IllegalArgumentException("地址不能包含控制字符");
+        if (location.chars().anyMatch(Character::isISOControl)) throw new IllegalArgumentException(McpErrors.MCP_SERVER_INPUT_INVALID.code());
         if (SensitiveData.containsSecret(location)) {
-            throw new IllegalArgumentException("地址不能包含凭据：平台不保存 Token 或密钥，请通过环境变量注入");
+            throw new IllegalArgumentException(McpErrors.MCP_SERVER_SECRET.code());
         }
         var allowList = new ArrayList<String>();
         for (var raw : tools == null ? List.<String>of() : tools) {
             var tool = required(raw, "工具名");
             if (!SEGMENT.matcher(tool).matches()) {
-                throw new IllegalArgumentException("工具名 " + tool + " 不合法：它会被拼进能力标识 mcp." + serverId
-                        + ".<工具>，只允许小写字母、数字、下划线和连字符，且不超过61字符");
+                throw new IllegalArgumentException(McpErrors.MCP_TOOL_NAME_INVALID.code());
             }
             if (!allowList.contains(tool)) allowList.add(tool);
         }
-        if (allowList.size() > 50) throw new IllegalArgumentException("工具白名单最多50项");
+        if (allowList.size() > 50) throw new IllegalArgumentException(McpErrors.MCP_ALLOWLIST_TOO_LARGE.code());
         McpProductionAllowlist.requireTrustedGrant(channel, location, allowList, trusted);
 
         var existing = rows().stream().filter(server -> server.id().equals(serverId)).findFirst().orElse(null);
@@ -161,8 +161,7 @@ public class McpServerService {
                 var capability = McpServerRegistry.capabilityId(serverId, tool);
                 var experts = usage.enabledExpertsUsing(capability);
                 if (!experts.isEmpty()) {
-                    throw new IllegalStateException("工具 " + capability + " 仍被已启用专家授权：" + String.join("、", experts)
-                            + "。撤回信任或移除工具会让这些专家的调用失败；请先停用这些专家，或在专家清单与授权中移除该工具。");
+                    throw new IllegalStateException(McpErrors.MCP_SERVER_IN_USE.code());
                 }
             }
         }
@@ -195,8 +194,7 @@ public class McpServerService {
             }
         }
         if (!blocked.isEmpty()) {
-            throw new IllegalStateException("服务器 " + serverId + " 仍被已启用专家授权使用：" + String.join("、", blocked)
-                    + "。请先停用这些专家，再删除该服务器。");
+            throw new IllegalStateException(McpErrors.MCP_SERVER_IN_USE.code());
         }
         jdbc.update("DELETE FROM eap.mcp_server WHERE id=?", serverId);
         // Grants for tools that no longer exist are pointless rows; removing them keeps the grant table
@@ -308,7 +306,7 @@ public class McpServerService {
      * handshake without a migration.
      */
     private static String tools(List<String> names) {
-        var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+        var mapper = JsonMapper.builder().build();
         var shaped = names.stream().map(name -> Map.of("name", name)).toList();
         try {
             return mapper.writeValueAsString(shaped);
@@ -318,7 +316,7 @@ public class McpServerService {
     }
 
     private static String required(String value, String label) {
-        if (value == null || value.isBlank()) throw new IllegalArgumentException(label + "不能为空");
+        if (value == null || value.isBlank()) throw new IllegalArgumentException(McpErrors.MCP_SERVER_INPUT_INVALID.code());
         return value.trim();
     }
 

@@ -1,4 +1,5 @@
 package com.lh.eap.api;
+import java.time.Instant;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -6,7 +7,7 @@ import java.util.*;
 /** Provider-specific protocols stay outside ProcessExecutor. Trusted server-side entry point. */
 public interface AgentAdapter {
     record Task(UUID executionId, Path repository, String instructions, String model, boolean approved) {}
-    record Event(long sequence, String type, String sessionId, String summary, java.time.Instant receivedAt) {
+    record Event(long sequence, String type, String sessionId, String summary, Instant receivedAt) {
         public Event(long sequence,String type,String sessionId,String summary){this(sequence,type,sessionId,summary,null);}
     }
     record RetryPolicy(int eapAutomaticRetries, String codexInternalRetries) {}

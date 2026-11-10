@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.handler;
+import com.lh.eap.local.WorkspaceSearchInput;
 
 import com.lh.eap.application.service.CliChannels;
 import com.lh.eap.domain.model.CapabilityAvailability;
@@ -67,8 +68,8 @@ public class WorkspaceSearchHandler implements CapabilityHandler {
     }
 
     @Override public NodeResult handle(CapabilityContext context) {
-        var input = context.requestAs(com.lh.eap.local.WorkspaceSearchInput.class);
-        var pattern = SensitiveData.redact(input.map(com.lh.eap.local.WorkspaceSearchInput::pattern).orElse("")).trim();
+        var input = context.requestAs(WorkspaceSearchInput.class);
+        var pattern = SensitiveData.redact(input.map(WorkspaceSearchInput::pattern).orElse("")).trim();
         if (pattern.isBlank() || pattern.length() > 500) {
             return new NodeResult(false, true, "请提供不超过500字符的检索目标", Map.of());
         }

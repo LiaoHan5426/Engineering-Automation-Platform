@@ -1,0 +1,98 @@
+{
+  "schema": 34,
+  "host": "production full-application jar and actual development database",
+  "workspace": "isolated repository checkout under backend/target",
+  "model": "gpt-6.1-sol",
+  "modelSeconds": 36.76,
+  "modelRequestCount": 1,
+  "checks": [
+    "One real configured model produces exactly three connected files from a PREBOUND snapshot; fresh production task UI with no Chat history reviews three Diffs and explicitly applies the full set; every byte and duplicate result match durable evidence",
+    "Actual delivered panel supports global modified/new counts, case-insensitive filtering, file selection and UTF-8/hash/content detail; empty filter removes stale detail and does not write or accept",
+    "Real Git Run and application-owned independent native typecheck/test/build finish PASSED with process cleanup and unchanged bounded source snapshots",
+    "Production board reads exact applied PREBOUND catalog, explicitly selects server evidence, submits real three-file delivery and transitions to acceptance with the original task revision and candidate hash",
+    "Explicit production decision form requires criteria and preview statements, records one technical ACCEPT and done task, replays idempotently, rejects a second decision, and restores read-only evidence after reload; user product acceptance remains separate"
+  ],
+  "pageErrors": [],
+  "externalRequests": [],
+  "browserMutations": [
+    {
+      "method": "POST",
+      "path": "/api/board/tasks/3c2cfb3f-b093-42bb-9e58-bd1712549fc2/runs/f917dca9-44f5-4c61-9e97-125d92c06234/delivery"
+    },
+    {
+      "method": "POST",
+      "path": "/api/board/tasks/3c2cfb3f-b093-42bb-9e58-bd1712549fc2/runs/f917dca9-44f5-4c61-9e97-125d92c06234/delivery/decision"
+    }
+  ],
+  "taskId": "3c2cfb3f-b093-42bb-9e58-bd1712549fc2",
+  "projectId": "prebound-page-delivery-0c43f3d79c09",
+  "taskRevision": 2,
+  "prototypeVersionId": "0b2b5390-f479-44bf-967b-a546a7434057",
+  "conversationId": "2582fc97-d1c9-4028-984a-373dbc6ad567",
+  "generationId": "997cf732-c5ca-47ae-8757-a7ca4e7c04ba",
+  "proposalId": "0eacdbca-8ac2-4a79-82a3-1505276b7fb8",
+  "targetPath": "frontend/apps/web/src/components/DeliveryEvidencePanel.vue",
+  "paths": [
+    "frontend/apps/web/src/components/DeliveryEvidencePanel.vue",
+    "frontend/apps/web/src/components/DeliveryEvidenceSummary.vue",
+    "frontend/apps/web/src/components/deliveryEvidenceModel.ts"
+  ],
+  "hashes": [
+    {
+      "path": "frontend/apps/web/src/components/DeliveryEvidencePanel.vue",
+      "baseHash": "8bc5eabb12f4d5f59b0a19c21c4b11cf8ca0b0f4a9d0136636c21c9c214b3257",
+      "afterHash": "93864577572bdbf8423fa5e39a7a66147fe0cfd1a9313ea58819471c26263dc6"
+    },
+    {
+      "path": "frontend/apps/web/src/components/DeliveryEvidenceSummary.vue",
+      "baseHash": "fccf054f9664e16648bdfa6b7c630d8cfe75e4e4e5931aa902200bfff6c3cfae",
+      "afterHash": "51f21588c0be906e09a26a81ec1318132986f67ea42d8ea981febc8aa5fc4673"
+    },
+    {
+      "path": "frontend/apps/web/src/components/deliveryEvidenceModel.ts",
+      "baseHash": "5abfc42093479288c601af06e2859c2680d37bb132f8fef219293bdcfdda8afd",
+      "afterHash": "8e36f8f98be3dee167a6068b53428294d062df070f6e4fd4dc412461dd92c4ab"
+    }
+  ],
+  "baseHashes": {
+    "frontend/apps/web/src/components/DeliveryEvidencePanel.vue": "8bc5eabb12f4d5f59b0a19c21c4b11cf8ca0b0f4a9d0136636c21c9c214b3257",
+    "frontend/apps/web/src/components/DeliveryEvidenceSummary.vue": "fccf054f9664e16648bdfa6b7c630d8cfe75e4e4e5931aa902200bfff6c3cfae",
+    "frontend/apps/web/src/components/deliveryEvidenceModel.ts": "5abfc42093479288c601af06e2859c2680d37bb132f8fef219293bdcfdda8afd"
+  },
+  "appliedAfterHash": "93864577572bdbf8423fa5e39a7a66147fe0cfd1a9313ea58819471c26263dc6",
+  "runId": "f917dca9-44f5-4c61-9e97-125d92c06234",
+  "verificationId": "49ce8741-1ad1-4362-8ae3-5c62921f5a3a",
+  "verificationChecks": [
+    {
+      "id": "typecheck",
+      "status": "PASSED",
+      "exitCode": 0,
+      "processTreeCleanup": true
+    },
+    {
+      "id": "test",
+      "status": "PASSED",
+      "exitCode": 0,
+      "processTreeCleanup": true
+    },
+    {
+      "id": "build",
+      "status": "PASSED",
+      "exitCode": 0,
+      "processTreeCleanup": true
+    }
+  ],
+  "deliveryId": "0fa5f794-e38c-48ae-8489-26947118c7f4",
+  "deliverySource": "CHAT_APPLIED_PREBOUND",
+  "userProductAcceptance": false,
+  "decision": {
+    "id": "85dc2ee7-71ae-4477-aa82-766e54d93616",
+    "requestId": "f2c42716-08dc-405d-834a-f937428419ce",
+    "decision": "ACCEPT",
+    "criteriaConfirmed": true,
+    "previewConfirmed": true,
+    "comment": "Automated technical ACCEPT: source diff, actual generation panel and independent checks reviewed. This is not human user product acceptance.",
+    "operator": "local-operator",
+    "createdAt": "2026-11-10T12:14:59.470333600Z"
+  }
+}

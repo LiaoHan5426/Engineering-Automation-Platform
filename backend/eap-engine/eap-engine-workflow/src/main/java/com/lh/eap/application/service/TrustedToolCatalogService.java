@@ -1,4 +1,9 @@
 package com.lh.eap.application.service;
+import com.lh.eap.persistence.mapper.CliProgramMapper;
+import java.util.HashMap;
+import com.lh.eap.error.CliProgramErrors;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.ToolErrors;
 
 import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.domain.model.CapabilityAvailability;
@@ -32,12 +37,12 @@ public class TrustedToolCatalogService {
     private final RuntimeWorkspace runtime;
     private final TrustedToolProbeStore probeStore;
     private final ConcurrentHashMap<String, VersionProbe> probes;
-    private com.lh.eap.persistence.mapper.CliProgramMapper programs;
+    private CliProgramMapper programs;
 
     @Autowired
     public TrustedToolCatalogService(CapabilityHandlerRegistry handlers, CapabilitySettings settings,
                                      CliChannels channels, RuntimeWorkspace runtime,
-                                     com.lh.eap.persistence.mapper.CliProgramMapper programs) {
+                                     CliProgramMapper programs) {
         this.handlers = handlers;
         this.settings = settings;
         this.channels = channels == null ? CliChannels.defaults() : channels;
@@ -71,7 +76,7 @@ public class TrustedToolCatalogService {
 
     public Map<String, Object> catalog() {
         var items = new ArrayList<Map<String, Object>>();
-        var owners = new java.util.HashMap<String, String>();
+        var owners = new HashMap<String, String>();
         if (programs != null) programs.operations().forEach(op -> owners.put(op.capabilityId(), op.programId()));
         for (CapabilityHandler handler : handlers.all()) {
             for (CapabilityDescriptor descriptor : handler.describe()) {
@@ -110,20 +115,20 @@ public class TrustedToolCatalogService {
     public Map<String, Object> probeVersion(String toolId) {
         if (programs != null) {
             requireDescriptor(toolId);
-            if (!settings.enabled(toolId)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "CAPABILITY_DISABLED");
+            if (!settings.enabled(toolId)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, ToolErrors.CAPABILITY_DISABLED.code());
             var result = new LinkedHashMap<String, Object>(probeProgram(programId(toolId)));
             result.put("id", toolId);
             return result;
         }
         var descriptor = requireDescriptor(toolId);
         if (!descriptor.hasBinary()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "VERSION_PROBE_NOT_APPLICABLE");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ExecutionErrors.VERSION_PROBE_NOT_APPLICABLE.code());
         }
         var enabled = settings.enabled(toolId);
         var channel = channels.channel(toolId, descriptor.binary());
         var binding = classifyBinding(enabled, channel);
         if ("disabled".equals(binding)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "CAPABILITY_DISABLED");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ToolErrors.CAPABILITY_DISABLED.code());
         }
         if ("conflict".equals(binding) || "missing_binary".equals(binding)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "BINDING_" + binding.toUpperCase());
@@ -279,7 +284,7 @@ public class TrustedToolCatalogService {
                 }
             }
         }
-        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TRUSTED_TOOL_NOT_FOUND");
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, ToolErrors.TRUSTED_TOOL_NOT_FOUND.code());
     }
 
     private Path probeWorkspace() {
@@ -332,9 +337,9 @@ public class TrustedToolCatalogService {
     }
 
     public Map<String, Object> probeProgram(String id) {
-        var program = programs.program(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CLI_PROGRAM_NOT_FOUND"));
+        var program = programs.program(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, CliProgramErrors.CLI_PROGRAM_NOT_FOUND.code()));
         var channel = channels.channel(id, program.binary());
-        if (channel.resolvedPath() == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "BINDING_UNAVAILABLE");
+        if (channel.resolvedPath() == null) throw new ResponseStatusException(HttpStatus.CONFLICT, ExecutionErrors.BINDING_UNAVAILABLE.code());
         var probe = channels.probe(id, program.binary(), probeWorkspace());
         boolean success = Boolean.TRUE.equals(probe.get("executed")) && Boolean.TRUE.equals(probe.get("success"));
         var snapshot = new VersionProbe(success ? "known" : "probe_failed", success ? firstLine(text(probe.get("output"))) : "",

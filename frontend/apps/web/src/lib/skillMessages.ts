@@ -37,8 +37,6 @@ export const skillMessages = {
     evidence: '以下是服务端准备的 Skill 材料，不证明模型收到或采用。',
     cleared: '本会话已报告清理知识 / Skill 相关记忆；不是持久记忆保证。',
     removed: '已移除技能引用；后续发送仍由服务端清理旧上下文记忆。',
-    mock: '模拟模式：不调用真实模型；Skill 导入只支持页面提供的固定安全文本夹具，不声称通用 YAML 解析。',
-    fixture: '填入模拟夹具',
     uploadError: '文件类型、数量、路径或长度超限；原草稿未改动。',
     failed: '技能上下文不可用，请重新核对版本及启用状态；不会自动换版。',
     unavailable: '请先移除知识专家并选择 Chat / 无工具。',
@@ -89,8 +87,6 @@ export const skillMessages = {
       'This conversation reported cleared Knowledge / Skill memory; not a durable memory guarantee.',
     removed:
       'Skill reference removed; the server still clears prior context memory on subsequent turns.',
-    mock: 'Simulation: no real model. Skill import supports only the supplied safe text fixture, not general YAML parsing.',
-    fixture: 'Use mock fixture',
     uploadError: 'Unsupported type, count, path or text size. Original draft retained.',
     failed: 'Skill context unavailable. Check exact version and activation; no automatic upgrade.',
     unavailable: 'Remove the knowledge expert and select Chat / no tools first.',

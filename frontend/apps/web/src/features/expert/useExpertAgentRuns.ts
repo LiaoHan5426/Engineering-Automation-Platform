@@ -1,3 +1,4 @@
+import { ExpertAgentState, CodeProposalStatus } from '@eap/runtime-client'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   runtimeApi,
@@ -6,7 +7,6 @@ import {
   type ExpertAgentSummary,
 } from '@eap/runtime-client'
 import { errorMessage } from '../../lib/presentation'
-import { useMockServices } from '../../lib/serviceConfig'
 
 export function useExpertAgentRuns(
   autoSelect = true,
@@ -27,15 +27,14 @@ export function useExpertAgentRuns(
     refreshing = false
   let timer: ReturnType<typeof setTimeout> | undefined
   let pendingSubmission: { signature: string; id: string } | null = null
-  const preview = useMockServices
   const canReview = computed(() => {
     const d = detail.value
     return (
       !busy.value &&
       !loading.value &&
       !readError.value &&
-      d?.run.state === 'awaiting-approval' &&
-      d.candidate?.status === 'PROPOSED' &&
+      d?.run.state === ExpertAgentState.AWAITING_APPROVAL &&
+      d.candidate?.status === CodeProposalStatus.PROPOSED &&
       d.candidate.proposal.files.length === 1 &&
       d.candidate.proposal.id === d.approval.proposal_id &&
       !!d.approval.approval_digest &&
@@ -44,7 +43,7 @@ export function useExpertAgentRuns(
     )
   })
   async function loadDetail(background = false) {
-    if (!selected.value || disposed || preview) return
+    if (!selected.value || disposed) return
     const selection = { ...selected.value },
       version = ++detailVersion
     if (!background) loading.value = true
@@ -70,7 +69,7 @@ export function useExpertAgentRuns(
     await loadDetail()
   }
   async function refresh(background = false) {
-    if (preview || disposed || refreshing || busy.value) return
+    if (disposed || refreshing || busy.value) return
     refreshing = true
     const version = detailVersion
     try {
@@ -96,7 +95,7 @@ export function useExpertAgentRuns(
     }
   }
   async function submit(expert: string, input: ExpertAgentInput) {
-    if (preview || busy.value || !automatic.value) return
+    if (busy.value || !automatic.value) return
     busy.value = true
     actionError.value = ''
     ++detailVersion
@@ -147,7 +146,7 @@ export function useExpertAgentRuns(
   }
   async function cancel() {
     const run = detail.value?.run
-    if (!run || busy.value || preview) return
+    if (!run || busy.value) return
     busy.value = true
     actionError.value = ''
     ++detailVersion
@@ -173,7 +172,7 @@ export function useExpertAgentRuns(
   }
   function schedule() {
     if (timer) clearTimeout(timer)
-    if (!disposed && !preview && shouldPoll()) timer = setTimeout(poll, 2000)
+    if (!disposed && shouldPoll()) timer = setTimeout(poll, 2000)
   }
   async function poll() {
     now.value = Date.now()
@@ -201,7 +200,6 @@ export function useExpertAgentRuns(
     readError,
     actionError,
     now,
-    preview,
     canReview,
     select,
     refresh,

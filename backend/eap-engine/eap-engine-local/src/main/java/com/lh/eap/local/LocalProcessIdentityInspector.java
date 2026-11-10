@@ -1,4 +1,5 @@
 package com.lh.eap.local;
+import com.lh.eap.api.ProcessIdentityStatus;
 
 import com.lh.eap.api.ProcessIdentityInspection;
 import com.lh.eap.common.SensitiveData;
@@ -18,23 +19,23 @@ public final class LocalProcessIdentityInspector {
     public ProcessIdentityInspection inspect(Long pid, String startedAt, String executable) {
         var captured = parseTime(startedAt);
         var capturedPath = bounded(executable);
-        if (pid == null || pid <= 0) return result(null, "NOT_CAPTURED", captured, null, capturedPath, "");
+        if (pid == null || pid <= 0) return result(null, ProcessIdentityStatus.NOT_CAPTURED.wire(), captured, null, capturedPath, "");
         try {
             var found = lookup.apply(pid);
-            if (found.isEmpty()) return result(pid, "NOT_FOUND", captured, null, capturedPath, "");
+            if (found.isEmpty()) return result(pid, ProcessIdentityStatus.NOT_FOUND.wire(), captured, null, capturedPath, "");
             var handle = found.get();
             var info = handle.info();
             var observed = info.startInstant().orElse(null);
             var command = info.command().orElse("");
             var observedPath = bounded(command);
             if (captured == null || observed == null || capturedPath.isEmpty() || command.isEmpty())
-                return result(pid, "UNVERIFIABLE", captured, observed, capturedPath, observedPath);
+                return result(pid, ProcessIdentityStatus.UNVERIFIABLE.wire(), captured, observed, capturedPath, observedPath);
             if (!captured.equals(observed) || !samePath(executable, command))
-                return result(pid, "IDENTITY_MISMATCH", captured, observed, capturedPath, observedPath);
-            return result(pid, handle.isAlive() ? "MATCHING_ALIVE" : "MATCHING_EXITED",
+                return result(pid, ProcessIdentityStatus.IDENTITY_MISMATCH.wire(), captured, observed, capturedPath, observedPath);
+            return result(pid, handle.isAlive() ? ProcessIdentityStatus.MATCHING_ALIVE.wire() : ProcessIdentityStatus.MATCHING_EXITED.wire(),
                     captured, observed, capturedPath, observedPath);
         } catch (SecurityException | UnsupportedOperationException failure) {
-            return result(pid, "UNAVAILABLE", captured, null, capturedPath, "");
+            return result(pid, ProcessIdentityStatus.UNAVAILABLE.wire(), captured, null, capturedPath, "");
         }
     }
     private static ProcessIdentityInspection result(Long pid, String status, Instant captured, Instant observed,

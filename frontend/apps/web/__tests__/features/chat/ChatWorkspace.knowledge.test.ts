@@ -1,3 +1,4 @@
+import { chatStorage } from '../../../src/features/chat/chatService'
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, nextTick, type App } from 'vue'
@@ -24,7 +25,7 @@ function button(id: string) {
   return value!
 }
 it('replays nullable server knowledgeContext without a knowledge evidence section', async () => {
-  localStorage.setItem(
+  chatStorage(localStorage).setItem(
     'eap.chat.history.v1',
     JSON.stringify({
       version: 1,
@@ -74,7 +75,7 @@ it('replays nullable server knowledgeContext without a knowledge evidence sectio
 it('shows a rejected send memory notice only when the originating session is active', async () => {
   workbench.executionMode = 'chat'
   workbench.sessionExtras = {}
-  localStorage.setItem(
+  chatStorage(localStorage).setItem(
     'eap.chat.history.v1',
     JSON.stringify({
       version: 1,
@@ -132,7 +133,7 @@ it('shows a rejected send memory notice only when the originating session is act
   reject({
     response: {
       status: 409,
-      data: { detail: 'EXPERT_CONTEXT_STALE', knowledgeMemoryCleared: true },
+      data: { code: 'EXPERT_CONTEXT_STALE', knowledgeMemoryCleared: true },
     },
   })
   await vi.waitFor(() => expect(chatBinding.value?.sending).toBe(false))
@@ -187,6 +188,13 @@ it.each([
     vi.spyOn(runtimeApi, 'experts').mockResolvedValue({
       items: [JSON.stringify({ id: 'saved', name: 'Saved' })],
       states: { saved: { enabled: true, builtin: false, revision: 4 } },
+    })
+    vi.spyOn(runtimeApi, 'aiConversation').mockResolvedValue({
+      conversationId: 'c1',
+      workspaceLabel: '',
+      memory: '',
+      connectionId: 'mock-local',
+      model: 'reasoning-demo',
     })
     const expertRef = { id: 'saved', revision: 4 }
     const preview = vi

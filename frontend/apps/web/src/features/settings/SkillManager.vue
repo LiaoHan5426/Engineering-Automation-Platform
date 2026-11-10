@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Checkbox, Feedback, FileInput, Input, Textarea } from '@eap/ui'
+import { apiStorageScope } from '../../lib/runtimeConfig'
+import { Button, Checkbox, Feedback, Collapse, Dialog, FileUpload, Input, Textarea } from '@eap/ui'
 import {
   runtimeApi,
   type SkillImportInput,
@@ -9,9 +10,6 @@ import {
   type SkillSummary,
   type SkillSaveRequest,
 } from '@eap/runtime-client'
-import { useMockServices } from '../../lib/serviceConfig'
-import { mockSkillText } from '../../lib/skillFixture'
-withDefaults(defineProps<{ mock?: boolean }>(), { mock: useMockServices })
 const { t } = useI18n()
 const items = ref<SkillSummary[]>([]),
   editing = ref(false),
@@ -30,7 +28,7 @@ const capabilities = ref(''),
   detail = ref<SkillSnapshot>()
 const pending = ref<SkillSaveRequest>()
 let pendingJournal: string | undefined
-const pendingKey = 'eap.skill.pending.v1:' + (import.meta.env.VITE_API_URL ?? 'local')
+const pendingKey = apiStorageScope + '.eap.skill.pending.v1'
 try {
   const saved = sessionStorage.getItem(pendingKey)
   if (saved) {
@@ -84,7 +82,7 @@ watch(capabilities, (value) => {
     .filter(Boolean)
 })
 function failure(e: unknown) {
-  const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+  const detail = (e as { response?: { data?: { code?: string } } })?.response?.data?.code
   error.value = detail || t('skill.failure')
 }
 async function refresh() {
@@ -104,10 +102,7 @@ function withinLimits(input: SkillImportInput) {
     input.rawSkillMd.length + input.resources.reduce((n, r) => n + r.content.length, 0) <= 24000
   )
 }
-async function upload(event: Event, resources: boolean) {
-  const field = event.target as HTMLInputElement
-  const files = Array.from(field.files ?? [])
-  field.value = ''
+async function upload(files: File[], resources: boolean) {
   if (busy.value || pending.value || !files.length) return
   if (
     (!resources && files.length !== 1) ||
@@ -280,8 +275,7 @@ onDeactivated(leave)
 <template>
   <section class="skill-manager">
     <h2>{{ t('skill.title') }}</h2>
-    <p>{{ t('skill.hint') }}</p>
-    <Feedback v-if="mock">{{ t('skill.mock') }}</Feedback>
+
     <Feedback v-if="error" tone="error" data-testid="skill-error">{{ error }}</Feedback>
     <Feedback v-if="pending" tone="warning" data-testid="skill-pending"
       >{{ t('skill.pending')
@@ -289,7 +283,7 @@ onDeactivated(leave)
         t('skill.retry')
       }}</Button></Feedback
     >
-    <template v-if="!editing">
+    <div class="skill-catalog">
       <Button data-testid="skill-import" @click="editing = true">{{ t('skill.import') }}</Button>
       <Button :disabled="busy" @click="refresh">{{ t('skill.refresh') }}</Button>
       <p v-if="!items.length">{{ t('skill.empty') }}</p>
@@ -301,7 +295,7 @@ onDeactivated(leave)
             item.stateRevision
           }}
         </p>
-        <code>{{ item.digest }}</code>
+
         <Button
           :data-testid="'skill-activate-' + item.id + '-' + item.version"
           :disabled="busy"
@@ -315,101 +309,120 @@ onDeactivated(leave)
           >{{ t('skill.detail') }}</Button
         >
       </article>
-      <section v-if="detail" data-testid="skill-detail-result">
-        <h3>{{ detail.id }} · {{ detail.version }}</h3>
-        <pre>{{ detail.rawSkillMd }}</pre>
-        <div v-for="resource in detail.resources" :key="resource.path">
-          <strong>{{ resource.path }}</strong>
-          <pre>{{ resource.content }}</pre>
-        </div>
-        <p>{{ t('skill.trust') }}: {{ detail.trust }}</p>
-        <p>{{ t('skill.dependencies') }}: {{ detail.dependencies }}</p>
-      </section>
-    </template>
-    <section v-else data-testid="skill-import-form">
-      <p>{{ t('skill.subset') }}</p>
-      <p>{{ t('skill.limits') }}</p>
-      <p>{{ t('skill.boundary') }}</p>
-      <Button
-        v-if="mock"
-        data-testid="skill-fixture"
-        :disabled="busy || !!pending"
-        @click="draft.rawSkillMd = mockSkillText"
-        >{{ t('skill.fixture') }}</Button
+      <Dialog
+        v-if="detail"
+        :title="detail.id + ' · ' + detail.version"
+        size="lg"
+        @close="detail = undefined"
       >
-      <label
-        >{{ t('skill.raw')
-        }}<Textarea
-          v-model="draft.rawSkillMd"
-          data-testid="skill-raw"
-          rows="10"
-          :disabled="busy || !!pending"
-      /></label>
-      <FileInput
-        data-testid="skill-file"
-        accept=".md"
-        :aria-label="t('skill.raw')"
-        :disabled="busy || !!pending"
-        @change="upload($event, false)"
-      />
-      <label
-        >{{ t('skill.resources')
-        }}<FileInput
-          data-testid="skill-resources"
-          multiple
-          accept=".md,.txt"
-          :disabled="busy || !!pending"
-          @change="upload($event, true)"
-      /></label>
-      <div v-for="resource in draft.resources" :key="resource.path">
-        <code>{{ resource.path }}</code>
-        <pre>{{ resource.content }}</pre>
-        <Button
-          :disabled="busy || !!pending"
-          @click="draft.resources = draft.resources.filter((r) => r.path !== resource.path)"
-          >{{ t('skill.remove') }}</Button
+        <section v-if="detail" data-testid="skill-detail-result">
+          <h3>{{ detail.id }} · {{ detail.version }}</h3>
+          <pre>{{ detail.rawSkillMd }}</pre>
+          <div v-for="resource in detail.resources" :key="resource.path">
+            <strong>{{ resource.path }}</strong>
+            <pre>{{ resource.content }}</pre>
+          </div>
+          <p>{{ t('skill.trust') }}: {{ detail.trust }}</p>
+          <p>{{ t('skill.dependencies') }}: {{ detail.dependencies }}</p>
+        </section></Dialog
+      >
+    </div>
+    <Dialog v-if="editing" :title="t('skill.import')" size="lg" :busy="busy" @close="leave">
+      <Feedback v-if="error" tone="error">{{ error }}</Feedback>
+      <section data-testid="skill-import-form">
+        <p>{{ t('skill.boundary') }}</p>
+        <Collapse
+          ><template #summary>{{ t('product.skillFormat') }}</template>
+          <p>{{ t('skill.subset') }}</p>
+          <p>{{ t('skill.limits') }}</p></Collapse
         >
-      </div>
-      <label
-        >{{ t('skill.version')
-        }}<Input v-model="draft.version" data-testid="skill-version" :disabled="busy || !!pending"
-      /></label>
-      <label
-        >{{ t('skill.source')
-        }}<Input
-          v-model="draft.sourceLabel"
-          data-testid="skill-source"
+
+        <label
+          >{{ t('skill.raw')
+          }}<Textarea
+            v-model="draft.rawSkillMd"
+            data-testid="skill-raw"
+            rows="10"
+            :disabled="busy || !!pending"
+        /></label>
+        <FileUpload
+          data-testid="skill-file"
+          :label="t('product.chooseFile')"
+          :max-size="96000"
+          :invalid-message="t('skill.uploadError')"
+          accept=".md"
+          :aria-label="t('skill.raw')"
           :disabled="busy || !!pending"
-      /></label>
-      <label
-        >{{ t('skill.capabilities')
-        }}<Textarea v-model="capabilities" :disabled="busy || !!pending"
-      /></label>
-      <Button data-testid="skill-preview" :disabled="busy || !!pending" @click="validate">{{
-        t('skill.preview')
-      }}</Button>
-      <section v-if="preview" data-testid="skill-preview-result">
-        <h3>{{ preview.id }} · {{ preview.version }}</h3>
-        <p>{{ preview.description }}</p>
-        <code>{{ preview.digest }}</code>
-        <pre>{{ preview.instructions }}</pre>
-        <p>{{ t('skill.dependencies') }}: {{ preview.dependencies }}</p>
-      </section>
-      <label
-        ><Checkbox v-model="confirmed" data-testid="skill-confirm" :disabled="!preview || busy" />{{
-          t('skill.confirm')
-        }}</label
-      >
-      <Button
-        data-testid="skill-save"
-        :disabled="!preview || !confirmed || busy || !!pending"
-        @click="save"
-        >{{ t('skill.save') }}</Button
-      >
-      <Button data-testid="skill-cancel" :disabled="busy && !!pending" @click="leave">{{
-        t('skill.cancel')
-      }}</Button>
-    </section>
+          @select="upload($event, false)"
+        />
+        <label
+          >{{ t('skill.resources')
+          }}<FileUpload
+            data-testid="skill-resources"
+            multiple
+            :max-files="4"
+            :max-size="96000"
+            :label="t('product.chooseFiles')"
+            :invalid-message="t('skill.uploadError')"
+            accept=".md,.txt"
+            :disabled="busy || !!pending"
+            @select="upload($event, true)"
+        /></label>
+        <div v-for="resource in draft.resources" :key="resource.path">
+          <code>{{ resource.path }}</code>
+          <pre>{{ resource.content }}</pre>
+          <Button
+            :disabled="busy || !!pending"
+            @click="draft.resources = draft.resources.filter((r) => r.path !== resource.path)"
+            >{{ t('skill.remove') }}</Button
+          >
+        </div>
+        <label
+          >{{ t('skill.version')
+          }}<Input
+            v-model="draft.version"
+            data-testid="skill-version"
+            :disabled="busy || !!pending"
+        /></label>
+        <label
+          >{{ t('skill.source')
+          }}<Input
+            v-model="draft.sourceLabel"
+            data-testid="skill-source"
+            :disabled="busy || !!pending"
+        /></label>
+        <label
+          >{{ t('skill.capabilities')
+          }}<Textarea v-model="capabilities" :disabled="busy || !!pending"
+        /></label>
+        <Button data-testid="skill-preview" :disabled="busy || !!pending" @click="validate">{{
+          t('skill.preview')
+        }}</Button>
+        <section v-if="preview" data-testid="skill-preview-result">
+          <h3>{{ preview.id }} · {{ preview.version }}</h3>
+          <p>{{ preview.description }}</p>
+          <code>{{ preview.digest }}</code>
+          <pre>{{ preview.instructions }}</pre>
+          <p>{{ t('skill.dependencies') }}: {{ preview.dependencies }}</p>
+        </section>
+        <label
+          ><Checkbox
+            v-model="confirmed"
+            data-testid="skill-confirm"
+            :disabled="!preview || busy"
+          />{{ t('skill.confirm') }}</label
+        >
+        <Button
+          data-testid="skill-save"
+          :disabled="!preview || !confirmed || busy || !!pending"
+          @click="save"
+          >{{ t('skill.save') }}</Button
+        >
+        <Button data-testid="skill-cancel" :disabled="busy && !!pending" @click="leave">{{
+          t('skill.cancel')
+        }}</Button>
+      </section></Dialog
+    >
   </section>
 </template>
 <style scoped>

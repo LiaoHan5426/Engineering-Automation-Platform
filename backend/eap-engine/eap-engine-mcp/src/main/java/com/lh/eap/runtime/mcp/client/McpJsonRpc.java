@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.mcp.client;
+import com.lh.eap.error.McpErrors;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -53,7 +54,7 @@ public final class McpJsonRpc {
             var tree = JSON.readValue(json, Map.class);
             if (tree.get("error") instanceof Map<?, ?> error) {
                 var code = error.get("code");
-                var message = error.get("message") == null ? "MCP_ERROR" : String.valueOf(error.get("message"));
+                var message = error.get("message") == null ? McpErrors.MCP_ERROR.code() : String.valueOf(error.get("message"));
                 throw new McpProtocolException(message, code instanceof Number n ? n.intValue() : -1);
             }
             if (!(tree.get("result") instanceof Map<?, ?> result)) {

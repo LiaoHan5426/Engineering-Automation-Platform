@@ -1,4 +1,5 @@
 package com.lh.eap.ai;
+import org.springframework.ai.chat.model.ChatModel;
 
 import java.time.Duration;
 import org.springframework.ai.chat.client.ChatClient;
@@ -26,7 +27,7 @@ public final class SpringAiModelClientSource implements ModelClientSource {
         return ChatClient.builder(model(snapshot)).build();
     }
 
-    private static org.springframework.ai.chat.model.ChatModel model(ModelConnectionSnapshot snapshot) {
+    private static ChatModel model(ModelConnectionSnapshot snapshot) {
         if (ModelConnections.CHATGPT_KIND.equals(snapshot.kind)) return new ChatGptPlanChatModel(snapshot);
         if ("responses".equals(snapshot.wireApi)) return new OpenAiResponsesChatModel(snapshot);
         var options = OpenAiChatOptions.builder().baseUrl(snapshot.baseUrl).apiKey(snapshot.secret)

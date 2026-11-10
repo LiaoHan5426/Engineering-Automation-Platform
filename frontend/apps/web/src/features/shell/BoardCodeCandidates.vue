@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { isCodeProposalStatus } from '@eap/runtime-client'
+
+import { CodeProposalStatus } from '@eap/runtime-client'
+
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Badge, Button, ConfirmBox, Feedback } from '@eap/ui'
 import {
@@ -11,6 +15,7 @@ import { useI18n } from 'vue-i18n'
 import GenerationBaseline from '../../components/GenerationBaseline.vue'
 import ProposalApplication from '../../components/ProposalApplication.vue'
 import ProposalDiffView from '../../components/ProposalDiffView.vue'
+import DeliveryEvidencePanel from '../../components/DeliveryEvidencePanel.vue'
 const props = defineProps<{ task: BoardTask; disabled?: boolean }>()
 const emit = defineEmits<{ pending: [value: boolean]; changed: [] }>()
 const { t } = useI18n()
@@ -51,11 +56,21 @@ function checkDetail(state: CodeProposalState, proposalId: string) {
         item.id === proposalId &&
         item.conversationId === proposal.conversationId &&
         item.generationId === proposal.generation?.id &&
+        item.fileCount === proposal.files.length &&
         item.taskRevision === binding.revision,
     ) ||
-    !['PROPOSED', 'APPLYING', 'APPLIED', 'FAILED', 'UNKNOWN', 'REFUSED'].includes(state.status) ||
-    proposal.files.length !== 1 ||
-    proposal.files[0]?.path !== proposal.generation?.targetPath
+    !isCodeProposalStatus(state.status) ||
+    proposal.files.length < 1 ||
+    proposal.files.length > 8 ||
+    !Array.isArray(proposal.generation?.companionFiles) ||
+    proposal.files.length !== 1 + proposal.generation.companionFiles.length ||
+    proposal.files.some((file, index) => {
+      const baseline =
+        index === 0
+          ? { path: proposal.generation!.targetPath, baseHash: proposal.generation!.baseHash }
+          : proposal.generation!.companionFiles[index - 1]
+      return file.path !== baseline?.path || file.baseHash !== baseline?.baseHash
+    })
   )
     throw new Error('BOARD_CODE_IDENTITY_MISMATCH')
   return state
@@ -96,9 +111,10 @@ async function load() {
           !item.generationId ||
           !Number.isSafeInteger(item.taskRevision) ||
           item.taskRevision < 1 ||
-          !['PROPOSED', 'APPLYING', 'APPLIED', 'FAILED', 'UNKNOWN', 'REFUSED'].includes(
-            item.status,
-          ),
+          !Number.isSafeInteger(item.fileCount) ||
+          item.fileCount < 1 ||
+          item.fileCount > 8 ||
+          !isCodeProposalStatus(item.status),
       )
     )
       throw new Error('BOARD_CODE_SCOPE_CHANGED')
@@ -158,7 +174,7 @@ const operations = {
 }
 async function refuse() {
   confirmRefuse.value = false
-  if (blocked.value || !opened.value || opened.value.status !== 'PROPOSED') return
+  if (blocked.value || !opened.value || opened.value.status !== CodeProposalStatus.PROPOSED) return
   const token = generation,
     id = opened.value.proposal.id
   refusing.value = true
@@ -228,6 +244,22 @@ onBeforeUnmount(() => {
       </li>
     </ul>
     <section v-if="opened" class="board-code" data-testid="board-code-review">
+      <DeliveryEvidencePanel
+        :files="opened.proposal.files"
+        :status="t('application.status.' + opened.status)"
+        :labels="{
+          filter: t('boardCode.fileFilter'),
+          title: t('boardCode.evidenceTitle'),
+          empty: t('boardCode.noMatchingFiles'),
+          total: t('boardCode.total'),
+          changed: t('boardCode.changed'),
+          added: t('boardCode.added'),
+          details: t('boardCode.details'),
+          bytes: t('boardCode.bytes'),
+          baseline: t('boardCode.baseline'),
+          boundary: t('boardCode.evidenceBoundary'),
+        }"
+      />
       <GenerationBaseline :generation="opened.proposal.generation" />
       <p v-if="stale">{{ t('boardCode.stale') }}</p>
       <ProposalDiffView
@@ -248,7 +280,7 @@ onBeforeUnmount(() => {
       />
       <p v-if="actionNote" role="status">{{ actionNote }}</p>
       <Button
-        v-if="opened.status === 'PROPOSED'"
+        v-if="opened.status === CodeProposalStatus.PROPOSED"
         :disabled="blocked"
         data-testid="board-code-refuse"
         @click="confirmRefuse = true"
@@ -268,6 +300,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .board-code {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   min-width: 0;
 }

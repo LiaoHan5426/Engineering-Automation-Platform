@@ -39,6 +39,8 @@ management:
       exposure:
         include: health,info
 eap:
+  web:
+    message-basenames: i18n/common/messages,i18n/code/messages,i18n/board/messages,i18n/tool/messages,i18n/agent/messages,i18n/model/messages,i18n/mcp/messages,i18n/resource/messages,i18n/knowledge/messages,i18n/database/messages,i18n/rule/messages
   runtime:
     # Process-bound workspace root for the colocated local Java service.
     # Empty: RuntimeConfiguration falls back to the detected process workspace (git/user.dir).

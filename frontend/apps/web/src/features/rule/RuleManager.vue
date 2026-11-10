@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   runtimeApi,
   type DryRunResult,
@@ -11,11 +12,38 @@ import {
   type RuleRequirements,
   type RuleValidation,
 } from '@eap/runtime-client'
-import { Badge, Button, ConfirmBox, EmptyState, Feedback, Input, Select, Textarea } from '@eap/ui'
+import {
+  Badge,
+  Button,
+  ConfirmBox,
+  Dialog,
+  Tabs,
+  EmptyState,
+  Feedback,
+  Input,
+  Select,
+  Textarea,
+} from '@eap/ui'
 import { Table, type TableColumn } from '@eap/plugin-table'
 import { errorMessage } from '../../lib/presentation'
 import { derivedCapabilities, requirementGaps, unknownFacts } from './ruleDraft'
 
+const { t } = useI18n()
+const detailTab = ref('rules')
+const activeRule = ref<number | null>(null)
+const discardOpen = ref(false)
+function confirmDiscard() {
+  discardOpen.value = false
+  discardDraft()
+  void selectPack('')
+}
+function backToCatalog() {
+  if (dirty.value) {
+    discardOpen.value = true
+    return
+  }
+  void selectPack('')
+}
 const emit = defineEmits<{ saved: [] }>()
 
 const packs = ref<RulePackSummary[]>([])
@@ -214,7 +242,7 @@ async function refresh() {
     facts.value = vocabulary.facts
     operators.value = vocabulary.operators
     const keep = packs.value.some((pack) => pack.id === selectedId.value)
-    await selectPack(keep ? selectedId.value : (packs.value[0]?.id ?? ''))
+    if (!dirty.value) await selectPack(keep ? selectedId.value : '')
   } catch (cause) {
     error.value = errorMessage(cause)
   } finally {
@@ -232,6 +260,8 @@ async function selectPack(id: string) {
     return
   }
   selectedId.value = id
+  activeRule.value = null
+  detailTab.value = 'rules'
   error.value = ''
   validation.value = null
   dry.value = null
@@ -276,7 +306,7 @@ async function validateDraft() {
   try {
     validation.value = await runtimeApi.validateRulePack(draftText.value)
     message.value = validation.value.valid
-      ? '定义校验通过（本地镜像与后端一致）。'
+      ? '规则定义校验通过。'
       : (validation.value.errors ?? []).join('；')
   } catch (cause) {
     message.value = errorMessage(cause)
@@ -304,6 +334,7 @@ async function saveDraft() {
       draftText.value,
     )
     message.value = `已保存，修订号 ${result.revision ?? '?'}。`
+    baseline.value = draftText.value
     await refresh()
     emit('saved')
   } catch (cause) {
@@ -334,6 +365,7 @@ function addRule() {
     suggestion: '请填写语义保持的改进建议：改写不得改变查询语义。',
     confidence: 0.6,
   })
+  activeRule.value = draft.value.rules.length - 1
 }
 
 function removeRule(index: number) {
@@ -353,8 +385,8 @@ async function createFromDraft() {
     message.value = '请填写新规则包标识（小写字母、数字、- 或 _）。'
     return
   }
-  if (!newPackFromBlank && !draft.value) return
-  const source: RulePackManifest = newPackFromBlank
+  if (!newPackFromBlank.value && !draft.value) return
+  const source: RulePackManifest = newPackFromBlank.value
     ? {
         apiVersion: 'eap/v1',
         kind: 'RulePack',
@@ -381,10 +413,9 @@ async function createFromDraft() {
   message.value = ''
   try {
     await runtimeApi.createRulePack(source.name, JSON.stringify(source, null, 2))
-    message.value = newPackFromBlank
-      ? `已创建 ${id}，现在可以编辑它。`
-      : `已复制为 ${id}：副本可以改，原始内置包保持只读，升级时不会被你的改动覆盖。`
+    message.value = newPackFromBlank.value ? `已创建 ${id}，现在可以编辑它。` : `已复制为 ${id}。`
     newPackOpen.value = false
+    baseline.value = draftText.value
     newPackId.value = ''
     await refresh()
     await selectPack(id)
@@ -424,6 +455,7 @@ async function deletePack() {
     await runtimeApi.deleteRulePack(pack.id)
     message.value = `已删除 ${pack.id}。`
     deleteOpen.value = false
+    await selectPack('')
     await refresh()
     emit('saved')
   } catch (cause) {
@@ -485,8 +517,16 @@ defineExpose({ refresh })
     <Feedback tone="error" v-if="error" role="alert">{{ error }}</Feedback>
     <Feedback v-if="message">{{ message }}</Feedback>
 
-    <div class="grid-2 rule-layout">
-      <article class="eap-panel">
+    <div class="rule-workspace">
+      <Button
+        v-if="draft"
+        variant="secondary"
+        data-testid="rule-back"
+        :disabled="busy"
+        @click="backToCatalog"
+        >{{ t('product.backToList') }}</Button
+      >
+      <article v-if="!draft" class="eap-panel">
         <header class="panel-head">
           <div>
             <h2>规则包</h2>
@@ -525,25 +565,7 @@ defineExpose({ refresh })
             </Button>
           </div>
         </header>
-        <form v-if="newPackOpen" class="pack-form" @submit.prevent="createFromDraft">
-          <p class="hint">
-            {{
-              newPackFromBlank
-                ? '从空白模板创建一个规则包。'
-                : `从当前选中的「${draft?.name ?? ''}」复制一个可编辑的副本。`
-            }}
-          </p>
-          <label
-            >新标识
-            <Input v-model="newPackId" placeholder="my-team-sql" aria-label="新规则包标识" />
-          </label>
-          <div class="form-actions">
-            <Button type="submit" variant="primary" :disabled="busy || !newPackId.trim()">
-              创建
-            </Button>
-            <Button variant="secondary" type="button" @click="newPackOpen = false">取消</Button>
-          </div>
-        </form>
+
         <div class="list">
           <Button
             variant="navigation"
@@ -571,7 +593,7 @@ defineExpose({ refresh })
         <EmptyState v-if="!packs.length && !loading">没有可用的规则包。</EmptyState>
       </article>
 
-      <article class="eap-panel">
+      <article v-if="draft" class="eap-panel">
         <header class="panel-head">
           <div>
             <h2>{{ draft?.name ?? '规则明细' }}</h2>
@@ -594,6 +616,15 @@ defineExpose({ refresh })
         </header>
 
         <template v-if="draft">
+          <Tabs
+            v-model="detailTab"
+            :label="t('product.ruleWorkspace')"
+            :tabs="[
+              { id: 'rules', label: t('product.rules') },
+              { id: 'trial', label: t('product.trial') },
+              { id: 'vocabulary', label: t('product.vocabulary') },
+            ]"
+          />
           <div class="draft-line">
             <Badge tone="neutral" :class="dirty ? 'eap-badge--warning' : 'eap-badge--neutral'">
               {{ shipped ? '内置只读（修改请先复制）' : dirty ? '有未保存的修改' : '已保存' }}
@@ -669,121 +700,143 @@ defineExpose({ refresh })
             <p v-if="draft.requires?.note" class="hint">{{ draft.requires.note }}</p>
           </div>
 
-          <article
-            v-for="(rule, index) in rules"
-            :key="rule.id"
-            class="rule"
-            :class="{ 'rule--draft': !shipped }"
-          >
-            <div class="result-heading">
-              <strong v-if="shipped">{{ rule.title ?? rule.id }}</strong>
-              <span class="sev" :class="rule.severity">{{ severityText(rule.severity) }}</span>
+          <div v-if="detailTab === 'rules'" class="rule-summaries">
+            <div v-for="(rule, index) in rules" :key="index" class="rule-summary">
               <Button
-                variant="ghost"
-                v-if="!shipped"
-                @click="removeRule(index)"
-                class="rule-remove"
+                variant="navigation"
+                class="list-item"
+                :data-testid="'rule-open-' + index"
+                @click="activeRule = index"
               >
-                移除规则
-              </Button>
-            </div>
-            <div class="mono rule-code">
-              {{ rule.id }}<template v-if="rule.category"> · {{ rule.category }}</template>
-              <template v-if="rule.when"> · 依赖 {{ producerOf(rule.when.fact ?? '') }}</template>
-            </div>
-
-            <template v-if="shipped">
-              <div class="rule-cond"><b>当</b> {{ conditionText(rule.when) }}</div>
-              <div
-                v-for="(override, position) in rule.severityWhen ?? []"
-                :key="position"
-                class="rule-cond rule-cond--sub"
-              >
-                <b>若</b> {{ conditionText(override.when) }} → 升级为
-                {{ severityText(override.severity) }}
-              </div>
-              <p class="evidence">{{ rule.evidence }}</p>
-              <p class="rule-suggestion">{{ rule.suggestion }}</p>
-            </template>
-
-            <div v-else class="rule-edit">
-              <label
-                >标题<Input :value="rule.title ?? ''" @input="rule.title = eventValue($event)"
-              /></label>
-              <label
-                >严重级
-                <Select
-                  :value="rule.severity ?? 'medium'"
-                  @change="rule.severity = eventValue($event)"
+                <span
+                  ><strong>{{ rule.title || rule.id }}</strong
+                  ><small>{{ rule.id }} · {{ severityText(rule.severity) }}</small></span
                 >
-                  <option v-for="level in severityOptions" :key="level" :value="level">
-                    {{ severityText(level) }}
-                  </option>
-                </Select>
-              </label>
-              <div class="rule-cond">
-                <b>当</b>
-                <template v-if="isLeaf(rule.when)">
-                  <Select
-                    :value="conditionFact(rule)"
-                    aria-label="事实"
-                    @change="setConditionFact(rule, eventValue($event))"
+              </Button>
+              <Dialog
+                v-if="activeRule === index"
+                :title="rule.title || rule.id"
+                size="lg"
+                :busy="busy"
+                @close="activeRule = null"
+              >
+                <div class="result-heading">
+                  <strong v-if="shipped">{{ rule.title ?? rule.id }}</strong>
+                  <span class="sev" :class="rule.severity">{{ severityText(rule.severity) }}</span>
+                  <Button
+                    variant="ghost"
+                    v-if="!shipped"
+                    @click="removeRule(index)"
+                    class="rule-remove"
                   >
-                    <option v-for="fact in facts" :key="fact.key" :value="fact.key">
-                      {{ fact.key }}
-                    </option>
-                  </Select>
-                  <Select
-                    :value="conditionOp(rule)"
-                    aria-label="运算符"
-                    @change="setConditionOp(rule, eventValue($event))"
+                    移除规则
+                  </Button>
+                </div>
+                <div class="mono rule-code">
+                  {{ rule.id }}<template v-if="rule.category"> · {{ rule.category }}</template>
+                  <template v-if="rule.when">
+                    · 依赖 {{ producerOf(rule.when.fact ?? '') }}</template
                   >
-                    <option v-for="operator in operators" :key="operator" :value="operator">
-                      {{ operatorText[operator] ?? operator }}
-                    </option>
-                  </Select>
-                  <Input
-                    :value="conditionValue(rule)"
-                    aria-label="比较值"
-                    @input="setConditionValue(rule, eventValue($event))"
-                  />
+                </div>
+
+                <template v-if="shipped">
+                  <div class="rule-cond"><b>当</b> {{ conditionText(rule.when) }}</div>
+                  <div
+                    v-for="(override, position) in rule.severityWhen ?? []"
+                    :key="position"
+                    class="rule-cond rule-cond--sub"
+                  >
+                    <b>若</b> {{ conditionText(override.when) }} → 升级为
+                    {{ severityText(override.severity) }}
+                  </div>
+                  <p class="evidence">{{ rule.evidence }}</p>
+                  <p class="rule-suggestion">{{ rule.suggestion }}</p>
                 </template>
-                <template v-else-if="isCompound(rule.when)">
-                  <span class="hint">
-                    复合条件（all / any / not）：{{ conditionText(rule.when) }}。
-                    结构化编辑只覆盖单事实条件；复合条件请在下方「JSON
-                    草稿」里改，保存前用「校验」复核。
-                  </span>
-                </template>
-                <template v-else>
-                  <span class="hint">无条件（总是命中）。</span>
-                  <Button variant="secondary" @click="resetCondition(rule)">改为单事实条件</Button>
-                </template>
-              </div>
-              <label
-                >证据模板
-                <Textarea
-                  :value="rule.evidence ?? ''"
-                  rows="2"
-                  @input="rule.evidence = eventValue($event)"
-                />
-              </label>
-              <label
-                >建议
-                <Textarea
-                  :value="rule.suggestion ?? ''"
-                  rows="2"
-                  @input="rule.suggestion = eventValue($event)"
-                />
-              </label>
+
+                <div v-else class="rule-edit">
+                  <label
+                    >标题<Input :value="rule.title ?? ''" @input="rule.title = eventValue($event)"
+                  /></label>
+                  <label
+                    >严重级
+                    <Select
+                      :value="rule.severity ?? 'medium'"
+                      @change="rule.severity = eventValue($event)"
+                    >
+                      <option v-for="level in severityOptions" :key="level" :value="level">
+                        {{ severityText(level) }}
+                      </option>
+                    </Select>
+                  </label>
+                  <div class="rule-cond">
+                    <b>当</b>
+                    <template v-if="isLeaf(rule.when)">
+                      <Select
+                        :value="conditionFact(rule)"
+                        aria-label="事实"
+                        @change="setConditionFact(rule, eventValue($event))"
+                      >
+                        <option v-for="fact in facts" :key="fact.key" :value="fact.key">
+                          {{ fact.key }}
+                        </option>
+                      </Select>
+                      <Select
+                        :value="conditionOp(rule)"
+                        aria-label="运算符"
+                        @change="setConditionOp(rule, eventValue($event))"
+                      >
+                        <option v-for="operator in operators" :key="operator" :value="operator">
+                          {{ operatorText[operator] ?? operator }}
+                        </option>
+                      </Select>
+                      <Input
+                        :value="conditionValue(rule)"
+                        aria-label="比较值"
+                        @input="setConditionValue(rule, eventValue($event))"
+                      />
+                    </template>
+                    <template v-else-if="isCompound(rule.when)">
+                      <span class="hint">
+                        复合条件（all / any / not）：{{ conditionText(rule.when) }}。
+                        结构化编辑只覆盖单事实条件；复合条件请在下方「JSON
+                        草稿」里改，保存前用「校验」复核。
+                      </span>
+                    </template>
+                    <template v-else>
+                      <span class="hint">无条件（总是命中）。</span>
+                      <Button variant="secondary" @click="resetCondition(rule)"
+                        >改为单事实条件</Button
+                      >
+                    </template>
+                  </div>
+                  <label
+                    >证据模板
+                    <Textarea
+                      :value="rule.evidence ?? ''"
+                      rows="2"
+                      @input="rule.evidence = eventValue($event)"
+                    />
+                  </label>
+                  <label
+                    >建议
+                    <Textarea
+                      :value="rule.suggestion ?? ''"
+                      rows="2"
+                      @input="rule.suggestion = eventValue($event)"
+                    />
+                  </label>
+                </div>
+              </Dialog>
             </div>
-          </article>
-          <EmptyState v-if="!rules.length">
+          </div>
+          <EmptyState v-if="detailTab === 'rules' && !rules.length">
             该规则包没有规则。自定义包可以「添加规则」。
           </EmptyState>
-          <Button variant="secondary" v-if="!shipped" @click="addRule">＋ 添加规则</Button>
+          <Button variant="secondary" v-if="detailTab === 'rules' && !shipped" @click="addRule"
+            >＋ 添加规则</Button
+          >
 
-          <div v-if="!shipped" class="advanced">
+          <div v-if="detailTab === 'rules' && !shipped" class="advanced">
             <Button
               variant="secondary"
               @click="advancedOpen ? (advancedOpen = false) : openAdvanced()"
@@ -792,9 +845,7 @@ defineExpose({ refresh })
             </Button>
             <template v-if="advancedOpen">
               <p class="hint">
-                这是后端真正接收的东西。复合条件、阈值与 policy
-                只能在这里改——与其做一个覆盖不了全部字段的
-                结构化表单，不如把真实清单摊开，并用「校验」判定。
+                {{ t('product.jsonHelp') }}
               </p>
               <Textarea
                 v-model="advancedText"
@@ -811,7 +862,7 @@ defineExpose({ refresh })
       </article>
     </div>
 
-    <article class="eap-panel panel-block">
+    <article v-if="draft && detailTab === 'trial'" class="eap-panel panel-block">
       <header class="panel-head">
         <div>
           <h2>试算（dry-run）</h2>
@@ -897,7 +948,7 @@ defineExpose({ refresh })
       </div>
     </article>
 
-    <article class="eap-panel panel-block">
+    <article v-if="draft && detailTab === 'vocabulary'" class="eap-panel panel-block">
       <header class="panel-head">
         <div>
           <h2>事实与运算符词表</h2>
@@ -913,6 +964,42 @@ defineExpose({ refresh })
       </div>
     </article>
 
+    <Dialog
+      v-if="newPackOpen"
+      :title="t('product.createRulePack')"
+      :busy="busy"
+      @close="newPackOpen = false"
+    >
+      <form v-if="newPackOpen" class="pack-form" @submit.prevent="createFromDraft">
+        <Feedback v-if="message">{{ message }}</Feedback>
+        <p class="hint">
+          {{
+            newPackFromBlank
+              ? '从空白模板创建一个规则包。'
+              : `从当前选中的「${draft?.name ?? ''}」复制一个可编辑的副本。`
+          }}
+        </p>
+        <label
+          >新标识
+          <Input v-model="newPackId" placeholder="my-team-sql" aria-label="新规则包标识" />
+        </label>
+        <div class="form-actions">
+          <Button type="submit" variant="primary" :disabled="busy || !newPackId.trim()">
+            创建
+          </Button>
+          <Button variant="secondary" type="button" @click="newPackOpen = false">取消</Button>
+        </div>
+      </form></Dialog
+    >
+    <ConfirmBox
+      v-if="discardOpen"
+      :title="t('product.discardTitle')"
+      :impact="[t('product.discardImpact')]"
+      :confirm-label="t('product.discard')"
+      danger
+      @confirm="confirmDiscard"
+      @cancel="discardOpen = false"
+    />
     <ConfirmBox
       v-if="deleteOpen && selectedPack"
       :title="`删除规则包 ${selectedPack.id}？`"
@@ -935,3 +1022,27 @@ defineExpose({ refresh })
     />
   </section>
 </template>
+
+<style scoped>
+.rule-workspace {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.rule-summaries {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 8px;
+}
+
+.rule-summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rule-summary .list-item {
+  width: 100%;
+  height: 100%;
+}
+</style>

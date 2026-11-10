@@ -1,4 +1,9 @@
 package com.lh.eap.spring;
+import com.lh.eap.core.CapabilitySwitches;
+import com.lh.eap.runtime.handler.CapabilityHandler;
+import com.lh.eap.runtime.handler.CapabilityHandlerRegistry;
+import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
 
 import com.lh.eap.api.ProcessExecutor;
 import com.lh.eap.core.DefaultProcessExecutor;
@@ -13,10 +18,10 @@ import org.springframework.context.annotation.Primary;
 public class EapCoreAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
-    com.lh.eap.runtime.handler.CapabilityHandlerRegistry capabilityHandlerRegistry(
-            java.util.List<com.lh.eap.runtime.handler.CapabilityHandler> handlers,
-            org.springframework.beans.factory.ObjectProvider<com.lh.eap.core.CapabilitySwitches> switches) {
-        return new com.lh.eap.runtime.handler.CapabilityHandlerRegistry(handlers,
+    CapabilityHandlerRegistry capabilityHandlerRegistry(
+            List<CapabilityHandler> handlers,
+            ObjectProvider<CapabilitySwitches> switches) {
+        return new CapabilityHandlerRegistry(handlers,
                 switches.getIfAvailable(() -> capability -> false));
     }
 

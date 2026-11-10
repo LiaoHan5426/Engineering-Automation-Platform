@@ -1,0 +1,283 @@
+{
+  "method": "Current source/encoding/parity audit, not a substitute for runtime evidence",
+  "domains": [
+    {
+      "name": "ProcessIdentityStatus",
+      "wireValues": [
+        "NOT_CAPTURED",
+        "NOT_FOUND",
+        "MATCHING_ALIVE",
+        "MATCHING_EXITED",
+        "IDENTITY_MISMATCH",
+        "UNVERIFIABLE",
+        "UNAVAILABLE"
+      ],
+      "java": "backend\\eap-api\\src\\main\\java\\com\\lh\\eap\\api\\ProcessIdentityStatus.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\processIdentity.ts"
+    },
+    {
+      "name": "SkillDependencyStatus",
+      "wireValues": [
+        "unknown",
+        "disabled",
+        "available"
+      ],
+      "java": "backend\\eap-ai\\eap-ai-skill\\src\\main\\java\\com\\lh\\eap\\skill\\SkillDependencyStatus.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\skill.ts"
+    },
+    {
+      "name": "ModelConnectionState",
+      "wireValues": [
+        "disabled",
+        "not_configured",
+        "configured_unverified",
+        "available",
+        "error"
+      ],
+      "java": "backend\\eap-ai\\eap-ai-codegen\\src\\main\\java\\com\\lh\\eap\\ai\\ModelConnectionState.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\modelConnection.ts"
+    },
+    {
+      "name": "CodeProposalStatus",
+      "wireValues": [
+        "PROPOSED",
+        "APPLYING",
+        "APPLIED",
+        "FAILED",
+        "UNKNOWN",
+        "REFUSED"
+      ],
+      "java": "backend\\eap-engine\\eap-engine-delivery\\src\\main\\java\\com\\lh\\eap\\delivery\\CodeProposalStatus.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\codeProposal.ts"
+    },
+    {
+      "name": "ChatExecutionStatus",
+      "wireValues": [
+        "CREATED",
+        "RUNNING",
+        "CANCELLING",
+        "SUCCEEDED",
+        "FAILED",
+        "REJECTED",
+        "REFUSED",
+        "TIMED_OUT",
+        "CANCELLED",
+        "UNKNOWN"
+      ],
+      "java": "backend\\eap-ai\\eap-ai-chat\\src\\main\\java\\com\\lh\\eap\\ai\\ChatExecutionStatus.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\chatExecution.ts"
+    },
+    {
+      "name": "ToolExecutionStatus",
+      "wireValues": [
+        "CREATED",
+        "RUNNING",
+        "CANCELLING",
+        "SUCCEEDED",
+        "FAILED",
+        "REJECTED",
+        "TIMED_OUT",
+        "CANCELLED",
+        "UNKNOWN",
+        "CLOSED_UNKNOWN"
+      ],
+      "java": "backend\\eap-engine\\eap-engine-workflow\\src\\main\\java\\com\\lh\\eap\\application\\service\\ToolExecutionStatus.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\toolExecution.ts"
+    },
+    {
+      "name": "ScenarioStatus",
+      "wireValues": [
+        "partial",
+        "missing",
+        "disabled"
+      ],
+      "java": "backend\\eap-engine\\eap-engine-workflow\\src\\main\\java\\com\\lh\\eap\\application\\service\\ScenarioStatus.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\scenario.ts"
+    },
+    {
+      "name": "ScenarioDependencyStatus",
+      "wireValues": [
+        "installed",
+        "missing",
+        "unconfigured",
+        "denied"
+      ],
+      "java": "backend\\eap-engine\\eap-engine-workflow\\src\\main\\java\\com\\lh\\eap\\application\\service\\ScenarioDependencyStatus.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\scenario.ts"
+    },
+    {
+      "name": "MissionExecutionStatus",
+      "wireValues": [
+        "CREATED",
+        "RUNNING",
+        "CANCELLING",
+        "SUCCEEDED",
+        "FAILED",
+        "REJECTED",
+        "TIMED_OUT",
+        "CANCELLED",
+        "INTERRUPTED",
+        "UNKNOWN"
+      ],
+      "java": "backend\\eap-engine\\eap-engine-workflow\\src\\main\\java\\com\\lh\\eap\\application\\service\\MissionExecutionStatus.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\missionExecution.ts"
+    },
+    {
+      "name": "BoardVerificationStatus",
+      "wireValues": [
+        "QUEUED",
+        "RUNNING",
+        "PASSED",
+        "FAILED",
+        "STALE",
+        "UNKNOWN"
+      ],
+      "java": "backend\\eap-engine\\eap-engine-workflow\\src\\main\\java\\com\\lh\\eap\\application\\service\\BoardVerificationStatus.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\boardVerification.ts"
+    },
+    {
+      "name": "BoardVerificationCheckStatus",
+      "wireValues": [
+        "RUNNING",
+        "PASSED",
+        "FAILED",
+        "TIMED_OUT",
+        "UNKNOWN"
+      ],
+      "java": "backend\\eap-engine\\eap-engine-workflow\\src\\main\\java\\com\\lh\\eap\\application\\service\\BoardVerificationCheckStatus.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\boardVerification.ts"
+    },
+    {
+      "name": "BoardTaskColumn",
+      "wireValues": [
+        "planned",
+        "ready",
+        "running",
+        "acceptance",
+        "done"
+      ],
+      "java": "backend\\eap-engine\\eap-engine-workflow\\src\\main\\java\\com\\lh\\eap\\application\\service\\BoardTaskColumn.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\boardTask.ts"
+    },
+    {
+      "name": "BoardDeliverySource",
+      "wireValues": [
+        "EXTERNAL_MANUAL",
+        "CHAT_APPLIED_POST_HOC",
+        "CHAT_APPLIED_PREBOUND"
+      ],
+      "java": "backend\\eap-engine\\eap-engine-workflow\\src\\main\\java\\com\\lh\\eap\\application\\service\\BoardDeliverySource.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\boardDelivery.ts"
+    },
+    {
+      "name": "BoardDeliveryDecision",
+      "wireValues": [
+        "ACCEPT",
+        "REJECT"
+      ],
+      "java": "backend\\eap-engine\\eap-engine-workflow\\src\\main\\java\\com\\lh\\eap\\application\\service\\BoardDeliveryDecision.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\boardDelivery.ts"
+    },
+    {
+      "name": "ChatGptLoginStatus",
+      "wireValues": [
+        "waiting",
+        "exchanging",
+        "connected",
+        "permission_required",
+        "failed",
+        "cancelled",
+        "expired"
+      ],
+      "java": "backend\\eap-ai\\eap-ai-model-openai\\src\\main\\java\\com\\lh\\eap\\ai\\ChatGptLoginStatus.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\modelConnection.ts"
+    },
+    {
+      "name": "ExpertAgentState",
+      "wireValues": [
+        "queued",
+        "running",
+        "interrupted",
+        "completed",
+        "partial",
+        "needs-input",
+        "failed",
+        "cancelled",
+        "timed-out",
+        "awaiting-approval",
+        "applying",
+        "applied",
+        "denied",
+        "expired",
+        "unknown"
+      ],
+      "java": "backend\\eap-engine\\eap-engine-core\\src\\main\\java\\com\\lh\\eap\\core\\ExpertAgentState.java",
+      "frontend": "frontend\\packages\\runtime-client\\src\\contracts\\expertAgent.ts"
+    }
+  ],
+  "domainCount": 16,
+  "errorCatalogs": 23,
+  "errorCodes": 516,
+  "resourceBundles": {
+    "backend\\eap-web\\eap-web-core\\src\\main\\resources\\i18n\\common": {
+      "pairedKeys": 120
+    },
+    "backend\\eap-ai\\eap-ai-model-openai\\src\\main\\resources\\i18n\\model": {
+      "pairedKeys": 72
+    },
+    "backend\\eap-engine\\eap-engine-workflow\\src\\main\\resources\\i18n\\tool": {
+      "pairedKeys": 55
+    },
+    "backend\\eap-engine\\eap-engine-workflow\\src\\main\\resources\\i18n\\board": {
+      "pairedKeys": 82
+    },
+    "backend\\eap-engine\\eap-engine-delivery\\src\\main\\resources\\i18n\\code": {
+      "pairedKeys": 39
+    },
+    "backend\\eap-engine\\eap-engine-knowledge\\src\\main\\resources\\i18n\\knowledge": {
+      "pairedKeys": 6
+    },
+    "backend\\eap-engine\\eap-engine-core\\src\\main\\resources\\i18n\\resource": {
+      "pairedKeys": 38
+    },
+    "backend\\eap-engine\\eap-engine-core\\src\\main\\resources\\i18n\\agent": {
+      "pairedKeys": 57
+    },
+    "backend\\eap-engine\\eap-engine-sql\\src\\main\\resources\\i18n\\rule": {
+      "pairedKeys": 4
+    },
+    "backend\\eap-engine\\eap-engine-sql\\src\\main\\resources\\i18n\\database": {
+      "pairedKeys": 4
+    },
+    "backend\\eap-engine\\eap-engine-mcp\\src\\main\\resources\\i18n\\mcp": {
+      "pairedKeys": 55
+    }
+  },
+  "frontendBusinessDetailReaders": [],
+  "utf8WithoutBomFilesChecked": 414,
+  "preservedHistoricalArtifactsAndAppliedMigrations": [
+    "backend/eap-applications/eap-full-application/src/main/resources/db/migration/V33__component_generation_graph.sql",
+    "backend/eap-applications/eap-full-application/src/main/resources/db/migration/V34__component_delivery_evidence.sql",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/README.md",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/applied-component-page.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/backend-regression.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/database-verification.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/delivery-awaiting-decision.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/delivery-constraint-regression.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/delivery-decided.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/failure.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/failure.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/independent-checks.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-normalization.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-normalization.patch",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-page-1440.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-page-390.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-preview-failure.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-preview.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/quality-checks.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/real-model-proposal.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/result.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/reviewed-source.patch"
+  ],
+  "oldCompatibilityParserAdded": false
+}

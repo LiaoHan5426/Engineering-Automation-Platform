@@ -1,4 +1,5 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.error.BoardErrors;
 
 import com.lh.eap.application.service.PrototypeDelivery;
 import com.lh.eap.application.service.PrototypeVersion;
@@ -53,11 +54,11 @@ public class PrototypeVersionController {
                 || !(parsed.get("title") instanceof String title)
                 || !(parsed.get("body") instanceof String text)
                 || !(parsed.get("acceptance") instanceof List<?> acceptance)) {
-            throw new IllegalArgumentException("原型版本字段类型不正确");
+            throw new IllegalArgumentException(BoardErrors.PROTOTYPE_INPUT_INVALID.code());
         }
         var conditions = new ArrayList<String>();
         for (var item : acceptance) {
-            if (!(item instanceof String condition)) throw new IllegalArgumentException("验收条件必须是文本");
+            if (!(item instanceof String condition)) throw new IllegalArgumentException(BoardErrors.PROTOTYPE_INPUT_INVALID.code());
             conditions.add(condition);
         }
         return versions.save(UUID.fromString(requestId), sourceRef, title, text, conditions);
@@ -67,24 +68,24 @@ public class PrototypeVersionController {
     public PrototypeDelivery deliver(@RequestBody(required = false) String body) {
         var parsed = objectBody(body, DELIVERY_FIELDS, "交付单");
         if (!(parsed.get("versionId") instanceof String versionId)) {
-            throw new IllegalArgumentException("交付单只接受版本号");
+            throw new IllegalArgumentException(BoardErrors.PROTOTYPE_INPUT_INVALID.code());
         }
         return versions.deliver(UUID.fromString(versionId));
     }
 
     private static Map<String, Object> objectBody(String json, Set<String> fields, String name) {
-        if (json == null || json.isBlank()) throw new IllegalArgumentException(name + "请求不能为空");
+        if (json == null || json.isBlank()) throw new IllegalArgumentException(BoardErrors.PROTOTYPE_INPUT_INVALID.code());
         final Object parsed;
         try {
             parsed = JSON.readValue(json, Object.class);
         } catch (RuntimeException invalid) {
-            throw new IllegalArgumentException(name + "请求不是 JSON 对象");
+            throw new IllegalArgumentException(BoardErrors.PROTOTYPE_INPUT_INVALID.code());
         }
-        if (!(parsed instanceof Map<?, ?> raw)) throw new IllegalArgumentException(name + "请求不是 JSON 对象");
+        if (!(parsed instanceof Map<?, ?> raw)) throw new IllegalArgumentException(BoardErrors.PROTOTYPE_INPUT_INVALID.code());
         var body = new LinkedHashMap<String, Object>();
         for (var entry : raw.entrySet()) {
             if (!(entry.getKey() instanceof String field) || !fields.contains(field)) {
-                throw new IllegalArgumentException(name + "请求含有不允许的字段");
+                throw new IllegalArgumentException(BoardErrors.PROTOTYPE_INPUT_INVALID.code());
             }
             body.put(field, entry.getValue());
         }

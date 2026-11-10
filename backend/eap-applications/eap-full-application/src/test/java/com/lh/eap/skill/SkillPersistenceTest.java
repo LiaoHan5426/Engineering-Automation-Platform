@@ -65,8 +65,8 @@ class SkillPersistenceTest {
         }
     }
     @Test void httpLifecycleUsesExactReferencesAndSeparatesScopes() throws Exception {
-        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(new SkillController(service))
-                .setControllerAdvice(new com.lh.eap.web.controller.ApiErrorHandler()).build();
+        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(new SkillController(service, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES))))
+                .setControllerAdvice(new com.lh.eap.web.controller.ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         var json = tools.jackson.databind.json.JsonMapper.builder().build();
         var preview = service.preview(input());
         String saveBody = json.writeValueAsString(Map.of("input", input(), "confirmed", true, "expectedDigest", preview.digest()));
@@ -93,12 +93,12 @@ class SkillPersistenceTest {
         var changed = new HashMap<>(reference); changed.put("digest", "0".repeat(64));
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/skills/context/preview").contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("skillRef", changed, "resourcePaths", List.of()))))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.detail").value("SKILL_REF_STALE"));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value("SKILL_REF_STALE"));
         activate(false, 2);
         changed.put("digest",preview.digest()); changed.put("stateRevision",3);
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/skills/context/preview").contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("skillRef", changed, "resourcePaths", List.of()))))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.detail").value("SKILL_DISABLED"));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value("SKILL_DISABLED"));
         var otherRoot = java.nio.file.Files.createDirectory(root.resolve("other"));
         var other = create(otherRoot);
         assertEquals("SKILL_NOT_FOUND", assertThrows(ResponseStatusException.class, () -> other.get(name,"1.0.0")).getReason());

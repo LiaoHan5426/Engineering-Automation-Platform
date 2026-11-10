@@ -1,0 +1,143 @@
+--- delivered/frontend/apps/web/src/components/DeliveryEvidencePanel.vue
++++ main/frontend/apps/web/src/components/DeliveryEvidencePanel.vue
+@@ -15,1 +15,3 @@
+-const changed = computed(() => props.files.filter((file) => file.before !== null && file.before !== file.content).length)
++const changed = computed(
++  () => props.files.filter((file) => file.before !== null && file.before !== file.content).length,
++)
+@@ -17,2 +19,6 @@
+-const selected = computed(() => rows.value.find((file) => file.path === selectedPath.value) ?? rows.value[0] ?? null)
+-const byteCount = computed(() => selected.value ? new TextEncoder().encode(selected.value.content).byteLength : 0)
++const selected = computed(
++  () => rows.value.find((file) => file.path === selectedPath.value) ?? rows.value[0] ?? null,
++)
++const byteCount = computed(() =>
++  selected.value ? new TextEncoder().encode(selected.value.content).byteLength : 0,
++)
+@@ -20,5 +26,9 @@
+-watch(rows, (visible) => {
+-  if (!visible.some((file) => file.path === selectedPath.value)) {
+-    selectedPath.value = visible[0]?.path ?? null
+-  }
+-}, { immediate: true, flush: 'sync' })
++watch(
++  rows,
++  (visible) => {
++    if (!visible.some((file) => file.path === selectedPath.value)) {
++      selectedPath.value = visible[0]?.path ?? null
++    }
++  },
++  { immediate: true, flush: 'sync' },
++)
+@@ -37,1 +47,6 @@
+-    <Input v-model="query" data-testid="evidence-filter" :aria-label="labels.filter" :placeholder="labels.filter" />
++    <Input
++      v-model="query"
++      data-testid="evidence-filter"
++      :aria-label="labels.filter"
++      :placeholder="labels.filter"
++    />
+@@ -43,0 +59,1 @@
++            class="evidence-file"
+@@ -46,1 +62,2 @@
+-          >{{ file.path }}</Button>
++            >{{ file.path }}</Button
++          >
+@@ -49,1 +66,6 @@
+-      <section v-if="selected" data-testid="evidence-detail" class="evidence-detail" :aria-label="labels.details">
++      <section
++        v-if="selected"
++        data-testid="evidence-detail"
++        class="evidence-detail"
++        :aria-label="labels.details"
++      >
+@@ -53,2 +75,10 @@
+-          <div><dt>{{ labels.baseline }}</dt><dd><code>{{ selected.baseHash }}</code></dd></div>
+-          <div><dt>{{ labels.bytes }}</dt><dd>{{ byteCount }}</dd></div>
++          <div>
++            <dt>{{ labels.baseline }}</dt>
++            <dd>
++              <code>{{ selected.baseHash }}</code>
++            </dd>
++          </div>
++          <div>
++            <dt>{{ labels.bytes }}</dt>
++            <dd>{{ byteCount }}</dd>
++          </div>
+@@ -70,0 +101,1 @@
++
+@@ -73,0 +105,1 @@
++  gap: var(--spacing-4, 1rem);
+@@ -75,1 +106,0 @@
+-  gap: var(--spacing-4, 1rem);
+@@ -76,0 +108,1 @@
++
+@@ -82,0 +115,1 @@
++  padding: 0;
+@@ -84,1 +116,0 @@
+-  padding: 0;
+@@ -87,1 +119,2 @@
+-.evidence-files :deep(button) {
++
++.evidence-file {
+@@ -88,0 +122,2 @@
++  text-align: start;
++  overflow-wrap: anywhere;
+@@ -90,2 +124,0 @@
+-  overflow-wrap: anywhere;
+-  text-align: start;
+@@ -92,0 +126,1 @@
++
+@@ -98,1 +132,4 @@
+-.evidence-path, dd, .evidence-boundary {
++
++.evidence-path,
++dd,
++.evidence-boundary {
+@@ -100,0 +138,1 @@
++
+@@ -105,0 +144,1 @@
++
+@@ -108,0 +148,1 @@
++
+@@ -110,0 +151,1 @@
++  padding: var(--spacing-3, 0.75rem);
+@@ -112,1 +152,0 @@
+-  padding: var(--spacing-3, 0.75rem);
+--- delivered/frontend/apps/web/src/components/DeliveryEvidenceSummary.vue
++++ main/frontend/apps/web/src/components/DeliveryEvidenceSummary.vue
+@@ -17,3 +17,12 @@
+-      <div><dt>{{ labels.total }}</dt><dd data-testid="evidence-total">{{ total }}</dd></div>
+-      <div><dt>{{ labels.changed }}</dt><dd data-testid="evidence-changed">{{ changed }}</dd></div>
+-      <div><dt>{{ labels.added }}</dt><dd data-testid="evidence-added">{{ added }}</dd></div>
++      <div>
++        <dt>{{ labels.total }}</dt>
++        <dd data-testid="evidence-total">{{ total }}</dd>
++      </div>
++      <div>
++        <dt>{{ labels.changed }}</dt>
++        <dd data-testid="evidence-changed">{{ changed }}</dd>
++      </div>
++      <div>
++        <dt>{{ labels.added }}</dt>
++        <dd data-testid="evidence-added">{{ added }}</dd>
++      </div>
+@@ -25,1 +34,3 @@
+-.evidence-summary, dl, dl > div {
++.evidence-summary,
++dl,
++dl > div {
+@@ -27,0 +39,1 @@
++  gap: var(--spacing-2, 0.5rem);
+@@ -29,1 +40,0 @@
+-  gap: var(--spacing-2, 0.5rem);
+@@ -31,1 +42,3 @@
+-.evidence-summary, dl {
++
++.evidence-summary,
++dl {
+@@ -34,1 +47,3 @@
+-dl, dd {
++
++dl,
++dd {

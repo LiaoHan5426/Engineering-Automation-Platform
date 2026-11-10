@@ -15,9 +15,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 class GitCapabilityTest {
-    @Test void conflictingLegacyBindingsRemainVisibleWithoutBreakingCatalogAvailability() {
+    @Test void missingProgramBindingIsReportedWithoutExecutingOrRewritingBindings() {
         var store = new com.lh.eap.local.CliChannelStore() {
-            public Map<String,String> overrides() { return Map.of("git-status", "/legacy/a", "git-diff", "/legacy/b"); }
+            public Map<String,String> overrides() { return Map.of("git", "/eap-missing-program-fixture/git.exe"); }
             public void configure(String capability, String binary) { fail("Catalog must not rewrite bindings"); }
         };
         var handler = new com.lh.eap.runtime.handler.GitInspectionHandler(new com.lh.eap.core.CapabilityRegistry(),

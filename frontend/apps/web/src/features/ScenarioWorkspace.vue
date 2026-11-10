@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { WorkspaceErrors } from '@eap/runtime-client'
+import { ExecutionErrors } from '@eap/runtime-client'
+import { CodeErrors } from '@eap/runtime-client'
+
 import { useI18n } from 'vue-i18n'
 import { ActionCard, Button, Checkbox, Input, Select, Tabs, Tag, Textarea } from '@eap/ui'
 import { IconPlus } from '@eap/ui'
@@ -266,7 +270,9 @@ const liveProbeLine = computed(() => {
   const item = probeResult.value
   if (!item) return t('desktop.verificationProbeIdle')
   if (!item.requested)
-    return t('desktop.verificationProbeDenied', { code: item.denial || 'AUTHORIZED_ROOT_MISSING' })
+    return t('desktop.verificationProbeDenied', {
+      code: item.denial || WorkspaceErrors.AUTHORIZED_ROOT_MISSING,
+    })
   if (item.exitCode == null) {
     return t('desktop.verificationProbeNoExit', {
       name: item.name || 'git-version-probe',
@@ -281,7 +287,6 @@ const liveProbeLine = computed(() => {
 })
 const livePreview = computed(() =>
   resolvePagePreview({
-    mock: workbench.preview,
     origin: typeof window !== 'undefined' ? window.location.origin : '',
   }),
 )
@@ -328,7 +333,7 @@ async function loadBaseline() {
       path: DELIVERY_PAGE,
       exists: false,
       baseHash: '',
-      denial: 'BASELINE_UNAVAILABLE',
+      denial: CodeErrors.BASELINE_UNAVAILABLE,
     }
   }
 }
@@ -342,7 +347,7 @@ async function loadSource() {
       baseHash: '',
       bytes: 0,
       excerpt: '',
-      denial: 'SOURCE_UNAVAILABLE',
+      denial: WorkspaceErrors.SOURCE_UNAVAILABLE,
     }
   }
 }
@@ -409,7 +414,7 @@ async function runVerificationProbe() {
   } catch {
     probeResult.value = {
       requested: false,
-      denial: 'PROBE_FAILED',
+      denial: ExecutionErrors.PROBE_FAILED,
       name: '',
       exitCode: null,
       summary: '',
@@ -469,7 +474,6 @@ onMounted(() => {
         >{{ t('desktop.sceneStoreRetry') }}</Button
       >
     </p>
-    <p v-if="workbench.preview" class="hint">{{ t('desktop.sceneStoreMock') }}</p>
     <Tabs
       v-model="sceneTab"
       class="scene-tabs"
@@ -607,15 +611,6 @@ onMounted(() => {
             :disabled="scenarioCatalog.state.busy"
             @click="scenarioCatalog.save(activeScenario)"
             >{{ t('desktop.sceneStoreSave') }}</Button
-          >
-          <Button
-            v-if="workbench.preview && activeScenario.builtin === false"
-            variant="secondary"
-            size="sm"
-            data-testid="scene-save-lost"
-            :disabled="scenarioCatalog.state.busy"
-            @click="scenarioCatalog.save(activeScenario, 'save-lost')"
-            >{{ t('desktop.sceneStoreSaveLost') }}</Button
           >
           <Button
             v-if="activeScenario.builtin === false"

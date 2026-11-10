@@ -1,0 +1,53 @@
+{
+  "id": "0eacdbca-8ac2-4a79-82a3-1505276b7fb8",
+  "conversationId": "2582fc97-d1c9-4028-984a-373dbc6ad567",
+  "workspace": "J:\\Code\\Engineering-Automation-Platform\\backend\\target\\component-page-workspace",
+  "summary": "Proposed read-only evidence panel with all-file summary counts, case-insensitive filtering, reconciled file selection, baseline and exact UTF-8 byte inspection, and an explicit boundary notice. Not built or tested.",
+  "files": [
+    {
+      "path": "frontend/apps/web/src/components/DeliveryEvidencePanel.vue",
+      "before": "<script setup lang=\"ts\">\nimport { computed, ref } from 'vue'\nimport { Input, Button, Panel } from '@eap/ui'\nimport DeliveryEvidenceSummary from './DeliveryEvidenceSummary.vue'\nimport { evidenceRows, type EvidenceFile } from './deliveryEvidenceModel'\nconst props = defineProps<{\n  files: EvidenceFile[]\n  status: string\n  labels: Record<string, string>\n}>()\nconst query = ref('')\nconst rows = computed(() => evidenceRows(props.files, query.value))\n</script>\n<template>\n  <Panel data-testid=\"delivery-evidence-panel\">\n    <DeliveryEvidenceSummary\n      :total=\"files.length\"\n      :changed=\"files.length\"\n      :added=\"0\"\n      :status=\"status\"\n    />\n    <Input v-model=\"query\" data-testid=\"evidence-filter\" :aria-label=\"labels.filter\" />\n    <ul>\n      <li v-for=\"file in rows\" :key=\"file.path\">\n        <Button>{{ file.path }}</Button>\n      </li>\n    </ul>\n  </Panel>\n</template>\n",
+      "content": "<script setup lang=\"ts\">\nimport { computed, ref, watch } from 'vue'\nimport { Input, Button, Panel } from '@eap/ui'\nimport DeliveryEvidenceSummary from './DeliveryEvidenceSummary.vue'\nimport { evidenceRows, type EvidenceFile } from './deliveryEvidenceModel'\n\nconst props = defineProps<{\n  files: EvidenceFile[]\n  status: string\n  labels: Record<string, string>\n}>()\nconst query = ref('')\nconst selectedPath = ref<string | null>(null)\nconst rows = computed(() => evidenceRows(props.files, query.value))\nconst changed = computed(() => props.files.filter((file) => file.before !== null && file.before !== file.content).length)\nconst added = computed(() => props.files.filter((file) => file.before === null).length)\nconst selected = computed(() => rows.value.find((file) => file.path === selectedPath.value) ?? rows.value[0] ?? null)\nconst byteCount = computed(() => selected.value ? new TextEncoder().encode(selected.value.content).byteLength : 0)\n\nwatch(rows, (visible) => {\n  if (!visible.some((file) => file.path === selectedPath.value)) {\n    selectedPath.value = visible[0]?.path ?? null\n  }\n}, { immediate: true, flush: 'sync' })\n</script>\n\n<template>\n  <Panel data-testid=\"evidence-panel\" class=\"evidence-panel\">\n    <h2>{{ labels.title }}</h2>\n    <DeliveryEvidenceSummary\n      :total=\"files.length\"\n      :changed=\"changed\"\n      :added=\"added\"\n      :status=\"status\"\n      :labels=\"labels\"\n    />\n    <Input v-model=\"query\" data-testid=\"evidence-filter\" :aria-label=\"labels.filter\" :placeholder=\"labels.filter\" />\n    <div v-if=\"rows.length\" class=\"evidence-layout\">\n      <ul class=\"evidence-files\">\n        <li v-for=\"file in rows\" :key=\"file.path\">\n          <Button\n            type=\"button\"\n            data-testid=\"evidence-file\"\n            :aria-pressed=\"selected?.path === file.path\"\n            @click=\"selectedPath = file.path\"\n          >{{ file.path }}</Button>\n        </li>\n      </ul>\n      <section v-if=\"selected\" data-testid=\"evidence-detail\" class=\"evidence-detail\" :aria-label=\"labels.details\">\n        <h3>{{ labels.details }}</h3>\n        <p class=\"evidence-path\">{{ selected.path }}</p>\n        <dl>\n          <div><dt>{{ labels.baseline }}</dt><dd><code>{{ selected.baseHash }}</code></dd></div>\n          <div><dt>{{ labels.bytes }}</dt><dd>{{ byteCount }}</dd></div>\n        </dl>\n        <pre><code>{{ selected.content }}</code></pre>\n      </section>\n    </div>\n    <p v-else>{{ labels.empty }}</p>\n    <p class=\"evidence-boundary\">{{ labels.boundary }}</p>\n  </Panel>\n</template>\n\n<style scoped>\n.evidence-panel {\n  display: flex;\n  flex-direction: column;\n  gap: var(--spacing-4, 1rem);\n  min-width: 0;\n}\n.evidence-layout {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: flex-start;\n  gap: var(--spacing-4, 1rem);\n}\n.evidence-files {\n  display: flex;\n  flex: 1 1 14rem;\n  flex-direction: column;\n  gap: var(--spacing-2, 0.5rem);\n  min-width: 0;\n  margin: 0;\n  padding: 0;\n  list-style: none;\n}\n.evidence-files :deep(button) {\n  max-width: 100%;\n  white-space: normal;\n  overflow-wrap: anywhere;\n  text-align: start;\n}\n.evidence-detail {\n  flex: 3 1 24rem;\n  min-width: 0;\n  max-width: 100%;\n}\n.evidence-path, dd, .evidence-boundary {\n  overflow-wrap: anywhere;\n}\ndl {\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--spacing-4, 1rem);\n}\ndd {\n  margin: 0;\n}\npre {\n  max-width: 100%;\n  overflow: auto;\n  padding: var(--spacing-3, 0.75rem);\n  background: var(--surface-secondary, transparent);\n  border-radius: var(--radius-md, 0.375rem);\n}\n</style>\n",
+      "baseHash": "8bc5eabb12f4d5f59b0a19c21c4b11cf8ca0b0f4a9d0136636c21c9c214b3257"
+    },
+    {
+      "path": "frontend/apps/web/src/components/DeliveryEvidenceSummary.vue",
+      "before": "<script setup lang=\"ts\">\nimport { Badge } from '@eap/ui'\ndefineProps<{ total: number; changed: number; added: number; status: string }>()\n</script>\n<template>\n  <div>\n    <Badge>{{ status }}</Badge\n    ><span>{{ total }} files</span>\n  </div>\n</template>\n",
+      "content": "<script setup lang=\"ts\">\nimport { Badge } from '@eap/ui'\n\ndefineProps<{\n  total: number\n  changed: number\n  added: number\n  status: string\n  labels: Record<string, string>\n}>()\n</script>\n\n<template>\n  <div data-testid=\"evidence-summary\" class=\"evidence-summary\">\n    <Badge>{{ status }}</Badge>\n    <dl>\n      <div><dt>{{ labels.total }}</dt><dd data-testid=\"evidence-total\">{{ total }}</dd></div>\n      <div><dt>{{ labels.changed }}</dt><dd data-testid=\"evidence-changed\">{{ changed }}</dd></div>\n      <div><dt>{{ labels.added }}</dt><dd data-testid=\"evidence-added\">{{ added }}</dd></div>\n    </dl>\n  </div>\n</template>\n\n<style scoped>\n.evidence-summary, dl, dl > div {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: center;\n  gap: var(--spacing-2, 0.5rem);\n}\n.evidence-summary, dl {\n  gap: var(--spacing-4, 1rem);\n}\ndl, dd {\n  margin: 0;\n}\n</style>\n",
+      "baseHash": "fccf054f9664e16648bdfa6b7c630d8cfe75e4e4e5931aa902200bfff6c3cfae"
+    },
+    {
+      "path": "frontend/apps/web/src/components/deliveryEvidenceModel.ts",
+      "before": "export type EvidenceFile = {\n  path: string\n  before: string | null\n  content: string\n  baseHash: string\n}\nexport function evidenceRows(files: EvidenceFile[], query: string) {\n  return files.filter((file) => file.path.toLowerCase().includes(query.toLowerCase()))\n}\n",
+      "content": "export type EvidenceFile = {\n  path: string\n  before: string | null\n  content: string\n  baseHash: string\n}\n\nexport function evidenceRows(files: EvidenceFile[], query: string): EvidenceFile[] {\n  const normalizedQuery = query.toLowerCase()\n  return files.filter((file) => file.path.toLowerCase().includes(normalizedQuery))\n}\n",
+      "baseHash": "5abfc42093479288c601af06e2859c2680d37bb132f8fef219293bdcfdda8afd"
+    }
+  ],
+  "createdAt": "2026-11-10T12:02:05.240341700Z",
+  "applied": false,
+  "writeAllowed": true,
+  "verification": "not_requested",
+  "generation": {
+    "id": "997cf732-c5ca-47ae-8757-a7ca4e7c04ba",
+    "targetPath": "frontend/apps/web/src/components/DeliveryEvidencePanel.vue",
+    "baseHash": "8bc5eabb12f4d5f59b0a19c21c4b11cf8ca0b0f4a9d0136636c21c9c214b3257",
+    "capturedAt": "2026-11-10T12:01:28.703554Z",
+    "prototypeVersionId": "0b2b5390-f479-44bf-967b-a546a7434057",
+    "prototypeContentHash": "3ee5f12b22b465f1d7ba81e1b7d68750d013e4374373bf98db0c489b317daa4a",
+    "taskBinding": {
+      "projectId": "prebound-page-delivery-0c43f3d79c09",
+      "taskId": "3c2cfb3f-b093-42bb-9e58-bd1712549fc2",
+      "revision": 2
+    },
+    "companionFiles": [
+      {
+        "path": "frontend/apps/web/src/components/DeliveryEvidenceSummary.vue",
+        "baseHash": "fccf054f9664e16648bdfa6b7c630d8cfe75e4e4e5931aa902200bfff6c3cfae"
+      },
+      {
+        "path": "frontend/apps/web/src/components/deliveryEvidenceModel.ts",
+        "baseHash": "5abfc42093479288c601af06e2859c2680d37bb132f8fef219293bdcfdda8afd"
+      }
+    ]
+  }
+}

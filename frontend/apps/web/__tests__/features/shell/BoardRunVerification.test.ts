@@ -422,7 +422,7 @@ it('invalidates a rejected stale plan and requires preparing again instead of re
   vi.mocked(runtimeApi.startBoardVerification).mockRejectedValueOnce(
     new AxiosError('stale', 'ERR_BAD_REQUEST', undefined, undefined, {
       status: 409,
-      data: { detail: 'BOARD_VERIFICATION_PLAN_STALE' },
+      data: { code: 'BOARD_VERIFICATION_PLAN_STALE' },
     } as never),
   )
   await mount()

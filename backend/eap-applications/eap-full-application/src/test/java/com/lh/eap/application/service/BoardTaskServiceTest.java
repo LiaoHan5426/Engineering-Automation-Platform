@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.persistence.mapper.StateBindings;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,7 +22,7 @@ class BoardTaskServiceTest {
         return new BoardTaskService.Update(project, revision, column, null, null, goal, criteria);
     }
     @SuppressWarnings("unchecked") private void found(BoardTaskService.Task task) {
-        when(jdbc.query(anyString(), any(RowMapper.class), eq(id), eq("group"))).thenReturn(List.of(task));
+        when(jdbc.query(anyString(), any(RowMapper.class), eq(StateBindings.MISSION_ACTIVE), eq(StateBindings.VERIFICATION_BLOCKING), eq(StateBindings.CODE_BLOCKING), eq(id), eq("group"))).thenReturn(List.of(task));
     }
     private void rejects(String reason, Runnable action) {
         assertEquals(reason, assertThrows(ResponseStatusException.class, action::run).getReason());

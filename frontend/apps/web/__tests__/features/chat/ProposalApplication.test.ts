@@ -14,6 +14,7 @@ const proposal: CodeProposal = {
   writeAllowed: true,
   verification: 'not_requested',
   generation: {
+    companionFiles: [],
     id: 'g1',
     targetPath: 'App.vue',
     baseHash: 'hash',
@@ -92,7 +93,7 @@ it.each(['APPLYING', 'UNKNOWN', 'FAILED'])(
 )
 it('retains a task revision refusal after rereading a still-proposed record', async () => {
   vi.mocked(runtimeApi.applyCodeProposal).mockRejectedValue({
-    response: { status: 409, data: { detail: 'BOARD_REVISION_CONFLICT' } },
+    response: { status: 409, data: { code: 'BOARD_REVISION_CONFLICT' } },
   })
   await mount()
   await vi.waitFor(() => expect(button('proposal-apply')).not.toBeNull())

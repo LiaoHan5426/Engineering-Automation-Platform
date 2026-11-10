@@ -58,7 +58,7 @@ public final class ToolUnknownReviewFixture {
     }
 
     @Configuration(proxyBeanMethods = false) @EnableAutoConfiguration @EnableTransactionManagement
-    @Import({ToolExecutionController.class, AiBrowserRequestGuard.class})
+    @Import({ToolExecutionController.class, AiBrowserRequestGuard.class ,com.lh.eap.web.i18n.PlatformMessagesConfiguration.class,com.lh.eap.web.i18n.ProblemResponses.class})
     static class Host {
         @Bean DataSource dataSource() { return scopedDataSource(schema); }
         @Bean PlatformTransactionManager transactionManager(DataSource source) { return new DataSourceTransactionManager(source); }

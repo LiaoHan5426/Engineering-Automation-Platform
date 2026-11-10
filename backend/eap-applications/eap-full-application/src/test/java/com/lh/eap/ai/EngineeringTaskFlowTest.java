@@ -191,7 +191,8 @@ class EngineeringTaskFlowTest {
         assertEquals("frontend/apps/web/src/features/chat/TaskComposer.vue", ctx.targetPath());
         assertTrue(ctx.systemInstructions().contains("<workspace-source>"));
         assertTrue(ctx.systemInstructions().contains("frontend/apps/web/src/features/chat/TaskComposer.vue"));
-        assertTrue(ctx.systemInstructions().contains("MUST include that exact path"));
+        assertTrue(ctx.systemInstructions().contains("Return the entry file first"));
+        assertTrue(ctx.systemInstructions().contains("No extra or missing files"));
         assertThrows(ResponseStatusException.class, () -> TaskContext.parse(Map.of("targetPath", "../secret")));
 
         var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString()));

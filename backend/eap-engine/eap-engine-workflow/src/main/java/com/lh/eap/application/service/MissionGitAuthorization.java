@@ -1,4 +1,6 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.WorkspaceErrors;
+import com.lh.eap.error.ToolErrors;
 
 import java.nio.file.Path;
 
@@ -14,10 +16,10 @@ public final class MissionGitAuthorization {
     public static Decision decide(boolean handlerResolved, boolean gitInspectionHandler, boolean capabilityEnabled,
                                   boolean gitCapability, Path authorizedRoot, Path workspace) {
         if (!capabilityEnabled) {
-            return new Decision(false, "CAPABILITY_DISABLED");
+            return new Decision(false, ToolErrors.CAPABILITY_DISABLED.code());
         }
         if (!handlerResolved) {
-            return new Decision(false, "CAPABILITY_UNRESOLVED");
+            return new Decision(false, ToolErrors.CAPABILITY_UNRESOLVED.code());
         }
         if (!gitInspectionHandler) {
             return new Decision(false, "CAPABILITY_HANDLER");
@@ -26,10 +28,10 @@ public final class MissionGitAuthorization {
             return new Decision(false, "CAPABILITY_IMPLEMENTATION");
         }
         if (authorizedRoot == null) {
-            return new Decision(false, "AUTHORIZED_ROOT_MISSING");
+            return new Decision(false, WorkspaceErrors.AUTHORIZED_ROOT_MISSING.code());
         }
         if (workspace == null || !inside(workspace, authorizedRoot)) {
-            return new Decision(false, "WORKSPACE_ESCAPES_ROOT");
+            return new Decision(false, WorkspaceErrors.WORKSPACE_ESCAPES_ROOT.code());
         }
         return new Decision(true, "SERVER_POLICY");
     }

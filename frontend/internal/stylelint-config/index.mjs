@@ -24,6 +24,11 @@ export default {
     },
   ],
   rules: {
+    // Vue SFC compiler directives are valid selector syntax, not unknown CSS pseudo classes.
+    'selector-pseudo-class-no-unknown': [
+      true,
+      { ignorePseudoClasses: ['deep', 'global', 'slotted'] },
+    ],
     // Allow BEM modifiers/elements (e.g. eap-button--primary, eap-panel__body, form-actions).
     'selector-class-pattern': [
       // Longer separators first: otherwise "--primary" is eaten as "-" + invalid "-primary".

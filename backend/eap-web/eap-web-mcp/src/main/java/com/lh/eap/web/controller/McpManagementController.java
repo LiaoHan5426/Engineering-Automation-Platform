@@ -1,4 +1,6 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.runtime.mcp.client.OfficialReadonlyMcpMatrix;
+import com.lh.eap.error.CommonErrors;
 import com.lh.eap.application.dto.McpServerRequest;
 import com.lh.eap.application.dto.McpServerActivationRequest;
 import com.lh.eap.application.service.McpServerService;
@@ -16,7 +18,7 @@ public class McpManagementController {
     public Map<String, Object> mcpServers() {
         return Map.of(
                 "items", mcp.list(),
-                "productionMatrix", com.lh.eap.runtime.mcp.client.OfficialReadonlyMcpMatrix.views());
+                "productionMatrix", OfficialReadonlyMcpMatrix.views());
     }
 
     /** Register a server, or update one that is already registered. */
@@ -75,7 +77,7 @@ public class McpManagementController {
     }
 
     private Map<String, Object> saveServer(String id, McpServerRequest request) {
-        if (request == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "缺少请求体");
+        if (request == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,CommonErrors.INVALID_REQUEST.code());
         try {
             mcp.save(id, request.name(), request.transport(), request.endpoint(), request.tools(),
                     Boolean.TRUE.equals(request.trusted()), Boolean.TRUE.equals(request.enabled()));

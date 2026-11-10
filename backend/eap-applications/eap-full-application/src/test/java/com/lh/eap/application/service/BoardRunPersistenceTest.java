@@ -308,7 +308,10 @@ class BoardRunPersistenceTest {
         service.start(task.id(), run.execution().id(), new BoardVerificationService.Start(project, plan.workspacePath(), plan.planHash()));
         // Execute the production recovery SQL scoped strictly to this test's row, never other users' work.
         var scoped = org.mockito.Mockito.mock(JdbcTemplate.class);
-        org.mockito.Mockito.doAnswer(call -> jdbc.update((String)call.getArgument(0) + " AND task_id=?", task.id())).when(scoped).update(org.mockito.ArgumentMatchers.anyString());
+        org.mockito.Mockito.doAnswer(call -> jdbc.update((String)call.getArgument(0) + " AND task_id=?",
+                call.getArgument(1), call.getArgument(2), call.getArgument(3), task.id())).when(scoped).update(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
         new BoardVerificationService(scoped, tasks, executions, git, context.getBean(CapabilityRegistry.class), context.getBean(CapabilitySettings.class), org.mockito.Mockito.mock(BoardVerificationPlanSupport.class), process, context.getBean(PlatformTransactionManager.class), queue::add).markRestartUnknown();
         queue.remove().run();
         assertEquals("UNKNOWN", service.get(task.id(), run.execution().id(), project).record().status());

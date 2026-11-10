@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.mcp.client;
+import com.lh.eap.error.McpErrors;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -36,7 +37,7 @@ public final class McpProtocolClient {
         try {
             transport.exchange(McpJsonRpc.notification("notifications/initialized", Map.of()), timeout);
         } catch (IOException failure) {
-            throw new McpProtocolException(failure.getMessage() == null ? "MCP_IO" : failure.getMessage(), -1, failure);
+            throw new McpProtocolException(failure.getMessage() == null ? McpErrors.MCP_IO.code() : failure.getMessage(), -1, failure);
         }
         initialized = true;
         return result;
@@ -68,7 +69,7 @@ public final class McpProtocolClient {
                 return List.copyOf(all);
             }
         }
-        throw new McpProtocolException("MCP_TOOL_LIST_PAGE_LIMIT", -1);
+        throw new McpProtocolException(McpErrors.MCP_TOOL_LIST_PAGE_LIMIT.code(), -1);
     }
 
     public Map<String, Object> callTool(String name, Map<String, Object> arguments) {
@@ -89,7 +90,7 @@ public final class McpProtocolClient {
             var response = transport.exchange(McpJsonRpc.request(method, params), timeout);
             return McpJsonRpc.parseResponse(response);
         } catch (IOException failure) {
-            throw new McpProtocolException(failure.getMessage() == null ? "MCP_IO" : failure.getMessage(), -1, failure);
+            throw new McpProtocolException(failure.getMessage() == null ? McpErrors.MCP_IO.code() : failure.getMessage(), -1, failure);
         }
     }
 

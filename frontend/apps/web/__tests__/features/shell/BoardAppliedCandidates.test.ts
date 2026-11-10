@@ -19,6 +19,7 @@ const item = {
   proposalId: crypto.randomUUID(),
   generationId: crypto.randomUUID(),
   targetPath: 'frontend/Page.vue',
+  paths: ['frontend/Page.vue', 'frontend/Summary.vue'],
   afterHash: 'a'.repeat(64),
   appliedAt: '2026-11-10T00:00:00Z',
 }

@@ -1,4 +1,6 @@
 import { createApp } from 'vue'
+import NProgress from 'nprogress'
+import { configureRuntimeRequests } from '@eap/runtime-client'
 import { initializeAppearance } from './features/settings/appearance'
 import { tablePlugin } from '@eap/plugin-table'
 import '@eap/ui/styles.css'
@@ -8,6 +10,13 @@ import './style.css'
 import './work-pages.css'
 import { i18n } from './lib/i18n'
 import { scenarioCatalog } from './features/shell/workbench'
+
+configureRuntimeRequests({
+  onPendingChange: (pending) => {
+    if (pending) NProgress.start()
+    else NProgress.done()
+  },
+})
 
 const disposeAppearance = initializeAppearance()
 if (import.meta.hot) import.meta.hot.dispose(disposeAppearance)

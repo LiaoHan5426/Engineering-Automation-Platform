@@ -9,7 +9,7 @@ import {
   type BoardDelivery,
   type PrototypeVersionRecord,
 } from '@eap/runtime-client'
-import { createMockChatBackend } from '../../../mock/chatBackend'
+import { createMockChatBackend } from '@eap/backend-mock/backend'
 import { i18n } from '../../../src/lib/i18n'
 import PreviewBoard from '../../../src/features/shell/PreviewBoard.vue'
 import { chatBinding, workbench, type ChatBinding } from '../../../src/features/shell/workbench'

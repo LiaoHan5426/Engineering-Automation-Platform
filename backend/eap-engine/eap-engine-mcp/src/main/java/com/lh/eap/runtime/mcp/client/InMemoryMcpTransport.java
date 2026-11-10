@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.mcp.client;
+import com.lh.eap.error.McpErrors;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -25,13 +26,13 @@ public final class InMemoryMcpTransport implements McpTransport {
         var deadline = System.nanoTime() + timeout.toNanos();
         if (handler instanceof DelayingHandler delaying && delaying.delayMs() > 0) {
             if (System.nanoTime() + delaying.delayMs() * 1_000_000L > deadline) {
-                throw new IOException("MCP_TIMEOUT");
+                throw new IOException(McpErrors.MCP_TIMEOUT.code());
             }
         }
         try {
             return handler.apply(requestJson);
         } catch (RuntimeException failure) {
-            throw new IOException(failure.getMessage() == null ? "MCP_TRANSPORT_FAILED" : failure.getMessage(), failure);
+            throw new IOException(failure.getMessage() == null ? McpErrors.MCP_TRANSPORT_FAILED.code() : failure.getMessage(), failure);
         }
     }
 
@@ -60,7 +61,7 @@ public final class InMemoryMcpTransport implements McpTransport {
                 Thread.sleep(delayMs);
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
-                throw new IllegalStateException("MCP_DELAY_INTERRUPTED");
+                throw new IllegalStateException(McpErrors.MCP_DELAY_INTERRUPTED.code());
             }
             return delegate.handle(line);
         }

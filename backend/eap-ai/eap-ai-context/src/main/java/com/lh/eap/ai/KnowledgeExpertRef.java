@@ -1,4 +1,5 @@
 package com.lh.eap.ai;
+import com.lh.eap.error.AgentErrors;
 
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +18,6 @@ public record KnowledgeExpertRef(String id, long revision) {
         return new KnowledgeExpertRef(id, ((Number) fields.get("revision")).longValue());
     }
     static ResponseStatusException invalid() {
-        return new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_EXPERT_CONTEXT");
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, AgentErrors.INVALID_EXPERT_CONTEXT.code());
     }
 }

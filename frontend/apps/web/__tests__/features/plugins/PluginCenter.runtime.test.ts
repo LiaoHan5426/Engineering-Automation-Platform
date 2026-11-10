@@ -25,14 +25,16 @@ async function mount(store = memoryStore()) {
   document.body.append(root)
   app = createApp(PluginCenter, { host })
   app.use(i18n).mount(root)
-  const input = root.querySelector<HTMLInputElement>('[data-testid="plugin-check-project"]')!
+  ;(document.querySelector('[data-testid="plugin-details-board"]') as HTMLButtonElement).click()
+  await nextTick()
+  const input = document.querySelector<HTMLInputElement>('[data-testid="plugin-check-project"]')!
   input.value = 'one'
   input.dispatchEvent(new Event('input', { bubbles: true }))
   await settle()
   return host
 }
 function click(id: string) {
-  root.querySelector<HTMLButtonElement>('[data-testid="' + id + '"]')!.click()
+  document.querySelector<HTMLButtonElement>('[data-testid="' + id + '"]')!.click()
 }
 it('confirms UI-only disable, preserves active core observation, checks while disabled and restores installation', async () => {
   const snapshot = runtimeSnapshot('one', {
@@ -47,11 +49,11 @@ it('confirms UI-only disable, preserves active core observation, checks while di
   const host = await mount(store)
   click('plugin-check-dependencies')
   await settle()
-  expect(root.textContent).toContain('Run：在途 1 · 结果未知 1')
+  expect(document.body.textContent).toContain('Run：在途 1 · 结果未知 1')
   click('plugin-toggle-board')
   await settle()
   expect(host.installation.value.enabled.board).toBe(true)
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('2 条在途')
+  expect(document.querySelector('.eap-confirm')?.textContent).toContain('2 条在途')
   document.querySelector<HTMLButtonElement>('[data-confirm-cancel]')!.click()
   await settle()
   expect(host.installation.value.enabled.board).toBe(true)
@@ -65,7 +67,7 @@ it('confirms UI-only disable, preserves active core observation, checks while di
   click('plugin-check-dependencies')
   await settle()
   expect(host.installation.value.enabled.board).toBe(false)
-  expect(root.querySelector('[data-testid="plugin-no-open-work"]')).not.toBeNull()
+  expect(document.querySelector('[data-testid="plugin-no-open-work"]')).not.toBeNull()
   expect(cancel).not.toHaveBeenCalled()
   click('plugin-toggle-board')
   await settle()
@@ -84,10 +86,10 @@ it('retains the last snapshot after an unavailable read and warns about unverifi
   await settle()
   expect(host.boardDependencyCheck.value.status).toBe('failed')
   expect(host.boardDependencyCheck.value.snapshot?.activeRunCount).toBe(1)
-  expect(root.querySelector('[data-testid="plugin-snapshot-old"]')).not.toBeNull()
+  expect(document.querySelector('[data-testid="plugin-snapshot-old"]')).not.toBeNull()
   click('plugin-toggle-board')
   await settle()
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('不能确认是否有后台工作')
+  expect(document.querySelector('.eap-confirm')?.textContent).toContain('不能确认是否有后台工作')
   expect(host.installation.value.enabled.board).toBe(true)
 })
 it('keeps installation enabled and confirmation visible when local preference persistence fails', async () => {
@@ -104,5 +106,5 @@ it('keeps installation enabled and confirmation visible when local preference pe
   await settle()
   expect(host.installation.value.enabled.board).toBe(true)
   expect(document.querySelector('[role="dialog"]')).not.toBeNull()
-  expect(root.textContent).toContain('PLUGIN_INSTALLATION_PERSIST_FAILED')
+  expect(document.body.textContent).toContain('PLUGIN_INSTALLATION_PERSIST_FAILED')
 })

@@ -1,20 +1,84 @@
 # 规划状态与验收台账
 
-> 当前已提交并推送基线为 `b9a9b124fa518457b5da7c897a077db23da89a7b`（PREBOUND真实页面交付42文件）。提交沿用已有验证，未重复测试。接续新增任务侧持久源码候选列表、Diff审阅、明确应用/拒绝及真实重启恢复，随本次提交交付，沿用已有验证不重复测试；无Chat会话自动重建、模型重放或第二套源码写入机制。
+> 本批提交接续 `2450bf29fe4a2e47fef69b7f402426a31bc4146b`，集中收录有界多文件组件图与真实页面交付、分域状态及后端中英文错误合同、会话恢复与上下文优化，以及全站管理工作面、独立 Mock 和通用请求客户端。开发库V33～V35迁移及各阶段验证沿用已保存证据；本次提交/推送不重复测试、构建、数据库迁移或模型调用。具体提交身份以Git记录为准，用户产品接受仍独立。
 
-依据：v1.6当前合同及有效决策。已提交实现基线为 `b9a9b12`（2026-11-10，PREBOUND页面交付42文件已推送）；提交沿用原结果未重复测试。当前任务持久候选重启恢复随本次提交交付，提交沿用已有结果不重复测试，旧阶段数字保留。开发阶段演进规则以根[AGENTS.md](../AGENTS.md#development-evolution)为准；已排查五组收敛及正式库迁移限制见[本批验收](#single-contract-validation)，首次排查保留为历史快照。
+依据：v1.6当前合同及有效决策。本批接续 `2450bf29fe4a2e47fef69b7f402426a31bc4146b`，多文件组件图、状态/i18n、会话优化及目标4～8的已验证实现统一纳入提交；各阶段验证单独列示，历史结果保留。开发演进规则见根[AGENTS.md](../AGENTS.md#development-evolution)，不保留旧接口/数据解析兼容分支。
 
 本表跟踪完整范围，不因局部阶段完成把其他项关闭。`实现通过`仅限列明能力，用户人工接受、供应商与平台验收不能由代理或 Mock 替代。
 
 ## 当前基线与完成口径
 
-当前已提交实现基线：`b9a9b124fa518457b5da7c897a077db23da89a7b`；PREBOUND页面交付42文件已提交推送，HEAD/origin/main/远端已核一致。当前任务候选恢复随本次提交交付，提交不重复测试；隔离工作树的本地验证基线未推送。历史阶段数字与授权保留在主题记录，不作为新代码的全量重测结果。
+本批提交前基线：`2450bf29fe4a2e47fef69b7f402426a31bc4146b`，提交前HEAD与远端main已核一致。三文件页面交付、分域状态/错误合同、会话优化、全站工作面与独立Mock/request及V33～V35文件纳入同批提交；隔离验收工作树中的提交仅用于验证。以下阶段结果均沿用，不当成本次提交时重新执行；分阶段的旧提交描述按当时快照理解。
 
 <a id="validation-baseline"></a>
 
+<a id="product-workspaces"></a>
+
+### 全站工作面、独立 Mock 与通用传输（2026-11-11，用户目标4～8，已纳入本批提交）
+
+[当前合同](decisions/frontend-product-workspaces-and-transport.md)；[逐页及交互证据](../frontend/apps/web/__tests__/browser/artifacts/product-workspaces/README.md)。此前会话优化记录仅覆盖其列明范围，不能当作全站目标4～8完成证据。此前保存的相关未提交改动一并纳入本批；沿用既有验证，不重跑外部模型交付或后端未变化测试。
+
+| 用户目标 | 当前实现及验证 | 边界 |
+|---|---|---|
+| 4 产品展示 | 清理会话/能力/设计器/规则等失效演示说明和共享确认框开发备注；诊断、规则全文与技术材料通过详情入口查看；真正影响授权/UNKNOWN核对的信息保留 | 不以批量隐藏警告替代产品设计；未进行全站静态文案英文化 |
+| 5 逐页布局 | 16入口真实加载态1440/390走查；规则列表→包详情→单条弹窗、试算/词表分Tabs；知识/资料/技能/CLI/MCP表单弹窗；插件详情与能力诊断分面；模型/专家/场景/看板/设计器已有子页与面板保留 | 真实后端创建/保存/放弃/读回/删除、插件启停恢复及窄屏键盘焦点/草稿验证通过；其他系统缩放和完整辅助技术矩阵未穷尽 |
+| 6 独立 Mock | apps/backend-mock 独立loopback Node进程；web模式仅选代理；正式src无Mock开关/专用完成状态/故障参数；同一HTTP/SSE/Problem合同；服务端一次性故障控制 | 模拟数据仅保存在Mock进程；不连接Java/供应商、不代表真实CLI或数据库持久化；不支持的合同返回错误 |
+| 7 通用客户端 | @eap/request负责Axios配置/拦截器、动态headers、超时/取消、流握手、multipart上传/下载；runtime-client保留业务合同，web装配进度条；UI FileUpload可注入请求且显式上传 | 无业务API、默认凭据/刷新地址、自动重放写操作；技能页文件选择仅写草稿，预览/信任/保存独立 |
+| 8 精简测试与规则 | 删除6个已移除演示/模式及重复SSR测试文件及旧布局/本地看板/Mock专用用例，Mock测试迁回所属包；保留授权/UNKNOWN/取消/去重/恢复/迟到响应保护；新增传输/上传/独立服务/架构边界的行为验证 | 测试守卫保留；最终149文件921项通过，0失败/跳过；typecheck/build/architecture及受影响格式/lint/新增样式检查通过，详见本节证据README，不把旧通过结果称为本轮重跑 |
+| 相邻问题修复 | ref.value决定规则复制路径；资料放弃真正恢复baseline；保存事件仅刷新父级概览，清除重复刷新重置确认框竞态 | 沿用一个保存/读回合同，无旧兼容分支；本轮无需Java或数据库迁移 |
+
+<a id="conversation-optimization"></a>
+
+### 会话结构与产品展示优化（2026-11-10，已纳入本批提交）
+
+前一批会话/上下文范围的历史记录（不覆盖本次全站目标4～8）；[当前恢复合同](decisions/chat-engineering-task-slice.md#会话失效与显式重试当前合同2026-11-10)和[证据／命令](../frontend/apps/web/__tests__/browser/artifacts/conversation-optimization/README.md)。此处为实施阶段验证快照；对应实现已纳入本批提交，不重跑原外部模型交付。
+
+| 目标 | 当前实现与证据 | 边界 |
+|---|---|---|
+| 会话及上下文流程 | 只读重查／明确恢复／普通换模／当前草稿重试分工；恢复与绑定合为一次严格请求，拒绝先于注册表变化；历史启动读取3次→1次，100个连续delta仅1次检查点写入；草稿／终态／页面生命周期flush；重复依赖／清理快照不重写 | 无跨请求授权缓存，无历史自动重放；最近一个150ms流式展示检查点不是独立执行证据 |
+| 减少重复 | chatHistory负责存储，applyBinding负责本地绑定投影，后端updateBinding负责清理／发布；模型授权只读取同一连接文档；恢复响应共享类型；摘要及上下文提取Chat域组件 | 保留敏感清理与文件保存的同步安全边界，不引入异步双写机制 |
+| Java import | 118个生产Java文件变化；113个import整理通过代码token和原始字面量／注释等价核对；5个逻辑文件单独验证 | 同名类型冲突仍可必要限定；reactor生产及测试编译通过 |
+| 产品展示 | 上下文、附件、来源、原始诊断及检查设置默认收起；正常任务摘要、单一预览入口、真实检查状态；无明细不显示完整通过，人工验收独立 | 复用@eap/ui；不是全站历史文案重写或用户产品接受 |
+| 验证 | 后端12类55项；前端74文件461项，末次异步保护4文件78项；真实HTTP6组、浏览器中英2组，3种宽度无横溢；typecheck/build/architecture及目标格式/lint通过 | 单元测试网络守卫保留；完整根格式及stylelint存量治理未重跑、不宣称全绿；外部模型0次 |
+
+<a id="state-i18n-audit"></a>
+
+### 分域状态与后端中英文错误合同（2026-11-10，已批准集中实施，已纳入本批提交）
+
+[实施合同与边界](decisions/domain-status-and-backend-i18n.md)；[验证命令及限制](records/delivery-history.md#domain-status-i18n)；[当前源码对齐](../frontend/apps/web/__tests__/browser/artifacts/status-i18n/source-contract-check.json)。原[审计扫描](audits/state-i18n-audit-2026-11-10.json)保留为实施前历史快照，311/137及224码等数字不是当前实现规模。
+
+| 范围 | 已完成实现和验证 | 明确边界 |
+|---|---|---|
+| 分域状态 | 16组Java wire枚举与前端as const逐值核对；复用CliExecution；工具/Mission/候选/验证/看板/专家/Chat/连接/场景/Skill按职责归属；SQL绑定对应分类；非法值拒绝 | DTO/JDBC边界可保留String wire字段并由所属枚举严格校验；不是全部Java字段都改为enum。Mission UNKNOWN是观察投影，storedStatus和数据库终态独立 |
+| 统一错误合同 | 23个分域错误目录516码，11组中英资源；ProblemResponses统一Advice/Filter/工具/Board/Skill出口，保留execution及清理标志；未分类错误安全脱敏 | code控制业务，detail展示；无code/detail双解析。内部诊断、命令输出、模型原文及历史执行证据不机械翻译；未扩成全站UI翻译工程 |
+| 语言与Mock | Axios/专用实例/SSE共用当前locale；Accept-Language权重、变体及默认明确；SSE入口捕获locale，快照按查看语言重读；Mock包括异常出口返回当前合同 | 中英切换不写入持久状态；journal哈希不变；Mock仍明确模拟，无真实CLI/供应商完成声明 |
+| 回归 | 前端149文件914项通过；后续变化14文件230项、请求中切换语言2文件61项及看板末次1文件14项通过；typecheck/build/architecture通过。后端普通跨模块首轮失败已修复，157项修复回归及55项后续回归通过；真实数据库9个用例中1项旧夹具修复后单项补跑通过 | 沿用未变化模块通过结果，未重复此前真实模型交付。环境门控的其余集成用例未全部启用；完整check格式及stylelint存量问题单列，不宣称全部工程检查通过 |
+| 真实整链 | full装配+自有schema/工作区：HTTP12组、Chromium中英2组、真实JDBC核对；基线冲突/UNKNOWN阻塞/存储失败/撤权/过期/非法UUID/Filter/SSE/人工关闭去重；2次确定性失败provider调用，外部模型0次 | 确定性时钟/provider/数据库失败注入在测试夹具，生产代码无QA入口；技术验证不是用户产品接受 |
+| 数据库与进程 | V33/V34及原页面交付证据hash保留；开发库及自有schema的V35列注释已核对；8080现有IDE full实际中英文请求通过，独立页面交付jar宿主恢复并验证 | V35仅补companion_sources注释，不修改已应用迁移或新增兼容分支。8080不是本轮新jar进程，不能用旧健康响应当新启动证据 |
+
+<a id="component-page-delivery-validation"></a>
+
+### 有界组件图与完整证据页面（2026-11-10，接续2450bf2，已纳入本批提交）
+
+[合同、命令和失败过程](records/delivery-history.md#component-page-delivery)；[5组真实页面结果](../frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/result.json)；[JDBC逐文件核对](../frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/database-verification.json)。
+
+| 范围 | 实现及实际证据 | 边界 |
+|---|---|---|
+| 先行提交 | 2450bf2已推送，HEAD/origin/main/远端main一致；沿用上一批后端4/前端45/浏览器6组结果，未重跑测试/构建/模型 | 阶段新增已纳入本批主工作区提交；隔离验收提交本身不推送到main |
+| 统一合同 | targetPath入口＋componentPaths最多7个；全部完整源码/哈希随Task/原型快照在模型前保存；单个24KB、合计48KB；返回精确1～8文件集合及顺序 | 单文件是空companions的同一叶子合同；当前JSON/DTO必填companionFiles，无旧格式回读兜底 |
+| 静态图 | 多文件限定frontend内Vue/TS/JS，显式相对引用、入口连通、无循环；仅四个公共包，未声明/动态引用及不支持的import/re-export语法拒绝 | 有界静态ES子集，不是完整TS/Vue编译器，不推断路由/资源/动态模块 |
+| 受控应用/归因 | 全集合预检→暂存→再核基线→逐文件替换→全读回；目录paths/fileCount、审阅及交付逐项核对原快照、APPLIED文件集合与独立验证hash | 同一CodeChangeService/持久状态/任务工作区锁；可能有副作用后的失败保留UNKNOWN/APPLYING并阻塞，不自动回滚他人源码 |
+| 实际页面 | 真实模型生成Panel/Summary/model三个关联源码，任务候选页显示全量新增/修改计数、筛选、选中详情、完整正文/基线/UTF8字节与空态；公共控件复用@eap/ui | 只读展示；应用/独立验证/决定仍明确操作；未新建UI包/执行器 |
+| 数据库 | 正式full实际执行V33（伴随完整源码/候选计数）及V34（替换Board交付旧单文件CHECK），34份Flyway validate通过 | V33旧叶子一次性补空元数据，不虚构内容/归因；已应用迁移未重写，无clean/repair/baseline |
+| 新后端定向 | ComponentTaskContextTest 1、ComponentGraphDeliveryTest 2、ComponentDeliveryConstraintTest 1通过/0跳过；其余恢复回归沿用已通过1项 | 实库自有schema迁移；覆盖漏文件/断图/循环/未声明/动态引用、伴随基线冲突、数据库结果中断UNKNOWN、V33拒绝→V34接受三文件且错误Task/9文件仍拒绝 |
+| 独立验证 | 仅一次正式验证：typecheck PASSED、147测试文件906项 PASSED、build PASSED，全部exit0及进程树清理true，710文件验证前后source完全一致 | V34仅修后端DB约束，恢复提交复用同一已通过验证，没有重复模型或前端全测；保留原chunk警告 |
+| 正式浏览器/JDBC | 无Chat历史任务页审3份真实Diff→确认apply全部读回；筛选/选择/空态；Run→选择服务端paths3→CHAT_APPLIED_PREBOUND→显式技术ACCEPT；重复决定幂等/第二决定409/刷新只读 | 模型1次36.76s，1 Generation/1 Proposal；原task r2、提交r3、决定done/r4；0pageerror/0外部网络；代理技术核验不是用户产品接受 |
+| 主工作区质量收尾 | 三个真实模型文件按精确应用hash导回，再仅做格式/CSS顺序及Button显式class规范化，差异另存；规范化后新面板2项通过；实际390px撑宽修复后1440/390页面通过，工程检查见主题记录 | 正式交付原hash/完整候选/隔离源码不变；主工作区最终hash独立列示，不冒充与已交付字节完全相同 |
+| 仍待关口 | 任意复杂页面、跨路由/资源图、完整设计交互及用户产品接受，源码UNKNOWN人工核对/解除 | 当前限定图与只读页面实链通过不关闭整个PB/RK/PL/SC |
+
 <a id="board-code-recovery-validation"></a>
 
-### 任务持久源码候选与正式重启恢复（2026-11-10，接续b9a9b12，随本次提交交付）
+### 任务持久源码候选与正式重启恢复（2026-11-10，已随2450bf2提交；以下为原阶段证据）
 
 [合同、命令和失败过程](records/delivery-history.md#board-code-recovery)；[6组正式页面结果](../frontend/apps/web/__tests__/browser/artifacts/board-code-recovery/result.json)；[JDBC独立回读](../frontend/apps/web/__tests__/browser/artifacts/board-code-recovery/database-verification.json)。
 
@@ -108,7 +172,7 @@
 
 | 检查 | 本批实际结果 | 边界 |
 |---|---|---|
-| 提交/推送 | PL-01共34文件提交fe08a99并推送，本地/远端一致；仅做差异/编码/敏感检查，沿用已有测试结果 | 没有重复运行PL-01测试；本批新增尚未提交 |
+| 提交/推送 | PL-01共34文件提交fe08a99并推送，本地/远端一致；仅做差异/编码/敏感检查，沿用已有测试结果 | 没有重复运行PL-01测试；本批新增纳入本批提交 |
 | PL-02生命周期 | 设计器贡献依赖/显式服务观测/缺失提示；A/B停用前保存恢复草稿并确认，发布或存储未确认阻止停用；销毁画布/观察结果，启用重建且保留独立草稿/本地历史/服务器版本；激活错误按插件隔离 | 复用Host/PluginSlot/Builder/GrapesJS，无新SDK/能力注册表；本地草稿不是已发布版本，不自动发布/取消/执行 |
 | 开发阶段调整 | 停止读取/迁移旧全局草稿；ScenarioWorkspace只接受实际Host，移除独立启用布尔值；删除编辑器失败时合成占位设计保存的逻辑；关闭GrapesJS遥测 | 不保留兼容双轨；数据库结构无需改变，本批无迁移；真实设计器不可用即禁用编辑/保存/发布 |
 | SC-03前后端 | GET /api/scenarios/workflows/prototype-to-code/dependencies返回固定可信插件/服务/资源合同与版本总数；必需设计器及版本服务/资源，可选看板；503为可用性未知，旧快照保留；副本保留workflow、revision保存/读回 | 声明与观测不授予权限；客户端标签installed不能绕过Host/服务检查；既有仓库、模型、验证门禁保留；核心版本API不受UI停用控制 |
@@ -117,7 +181,7 @@
 | 后端配套 | 服务4、HTTP3、原版本HTTP1、模块边界8、完整组合2，共18项通过/0跳过 | 配套在第3次尝试通过；其中整链当时失败，保留该reactor失败。之后仅复验失败整链，最终第6次单项SUCCESS，不合称一次19项reactor成功 |
 | 前端回归 | 受影响49文件282项通过；后续16文件66项通过；末次激活并存隔离12文件38项、文档替换保护4文件9项、观测原因/刷新保护3文件9项通过；最终typecheck/build/architecture通过 | 集合有重叠不累加；真实整链证据保留第6次，最后两项局部加固采用对应回归，没有为刷新数字重复全量/整链 |
 | 静态检查 | 36个前端文件lint、35目标格式与5个设计器相关Vue stylelint通过；两个既有页面的扩展stylelint未通过 | ScenarioWorkspace既有82项，ChatWorkspace既有selector解析TypeError；HEAD相同样式已复现，两个页面CSS内容未变，不改检查白名单；未重跑旧全量，保留新定向证据 |
-| 文件/VCS | 56个实际变更文件：53文本UTF-8无BOM/无替换字符、3截图；234处本地文档链接/锚点、3类有限敏感模式及差异空白通过 | HEAD/origin/main/远端保持fe08a99；本批新增尚未提交，无临时schema/宿主或5187监听 |
+| 文件/VCS | 56个实际变更文件：53文本UTF-8无BOM/无替换字符、3截图；234处本地文档链接/锚点、3类有限敏感模式及差异空白通过 | HEAD/origin/main/远端保持fe08a99；本批新增纳入本批提交，无临时schema/宿主或5187监听 |
 | 资源 | 6次尝试会话均记录自有schema删除、应用记录不变、host/browser停止；独立只读JDBC无自有schema/连接，原3条工具记录摘要保持，29份应用迁移未改 | 正式full未启停；浏览器存储配额/损坏、其他平台、完整用户接受与真实代码交付独立 |
 
 <a id="board-runtime-validation"></a>
@@ -334,12 +398,12 @@
 | MD-01 模型连接 | 凭据/目录/白名单/强度已有；追加普通API显式wireApi及Responses文本/代码提案，协议变更revision/重绑定、Git拒绝和前端/mock合同已实现并通过离线回归，见[决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验) | 原连接Responses真实文本与SQL Agent两轮工具、审批写入已验；其他网关/模型/推理档位、Responses Chat Git/账户计划工具及用户最终接受仍待 |
 | EX-01 专家 | 父子导航、独立三栏编辑、任务摘要/按需详情、终态停止轮询与静默更新已交付，见[工作区合同](decisions/expert-workspace-navigation.md)；专业行为版本持久绑定、SQL Agent工具循环/检查点恢复/后台调度/单SQL文件审批已接通。真实Responses两轮整链及复杂SQL三类限定样例有独立证据；单专家授权知识→Chat、撤权/旧记忆隔离已有实库回归 | 新工作台原生125%/150%与用户接受；其他行为编辑器/资源整合、完整SQL作用域/生产效果；Chat引用不执行DAG或自动获得工具权限 |
 | PB-01 原型编辑 | Grapes工程+语义Schema、8类映射、保存重开/预览；已接EditorWorkbench三栏壳，浏览器编辑/本地重开/交互预览及未知映射阻止通过，数据模型仍归原型域 | 按目标页面逐项补状态/动作/组件映射；原生缩放、用户接受及真实交付 |
-| PB-02 生成基线 | 单目标完整有界源码、原型及生成前Task/revision快照已落地；生成期间变化/额外目标拒绝，PREBOUND关联已交付（69892f3）；见 [阶段记录](records/delivery-history.md#code-generation-baseline)、[阶段记录](records/delivery-history.md#code-task-prebinding) | 限定真实供应商单文件改页及PREBOUND整链已验；多文件组件图、快照保留期及用户产品接受仍后续 |
-| PB-03 受控应用 | 持久单文件候选、意图/读回、未知保护、Task→workspace互锁及POST_HOC/PREBOUND交付归因已通过实库/回归；见 [阶段记录](records/delivery-history.md#code-proposal-application)、[阶段记录](records/delivery-history.md#code-task-prebinding) | 限定真实模型单文件改页/受控应用/交付/技术决定已验；任务侧持久候选/真实重启后读取和明确应用拒绝已验；未知人工核对及完整用户接受仍待；不宣称OS事务CAS或Git Run创作代码 |
+| PB-02 生成基线 | 统一入口＋最多7伴随完整有界源码、原型及Task/revision快照；V33、精确集合/顺序/静态连通无环及生成期间全基线校验；真实三文件页面整链已验，见[当前验收](#component-page-delivery-validation) | 任意TS语法、跨路由/资源图、快照保留期及用户产品接受仍后续 |
+| PB-03 受控应用 | 统一1～8文件持久候选/应用/全读回、互锁及POST_HOC/PREBOUND归因；V34交付约束同步；真实三文件页面→验证→技术决定已验，任务候选恢复保留 | UNKNOWN人工核对及用户接受仍待；不宣称跨文件OS事务/CAS，不把Git Run当代码作者 |
 | PB-04/RK-5 独立验证 | **实现通过，04edef5已推送**。前端295通过，后端400通过6跳过，真实三项退出0；V9/V10 | 验证覆盖仅当前frontend；不是源码实现归因或人工验收 |
 | 源码交付证据与人工决定 | **EXTERNAL_MANUAL 切片实现及联调通过**，见 [阶段记录](records/delivery-history.md#board-source-delivery) | 实际样例完成采集/同源验证/接受/过期拒绝/拒绝回待处理/刷新；不是平台自动开发或用户最终接受 |
-| Chat应用→交付关联 | POST_HOC（544b8f9）与后续PREBOUND（69892f3）已通过实库协议、前后端回归及独立复核；旧无绑定记录不升级归因 | POST_HOC不证明生成时任务归因；本轮另有明确真实模型单文件改页证据；原PREBOUND切片自身不证明供应商效果或用户产品验收 |
-| 生成前任务绑定 | PREBOUND单目标任务/原型快照、应用领取互锁、交付归因已通过实库协议与独立复核；前端398项、后端569项（6跳过），见 [阶段记录](records/delivery-history.md#code-task-prebinding) | 限定gpt-6.1-sol真实单文件交付已另验；生成前绑定本身不等于供应商效果，用户接受/多文件与整体PB/RK不自动关闭 |
+| Chat应用→交付关联 | POST_HOC（544b8f9）与PREBOUND（69892f3）原阶段保留；当前统一1～8文件应用集合，逐项核对原快照/写入/验证/交付，真实三文件页面整链已验 | POST_HOC不证明生成时任务归因；用户产品接受和更广页面范围仍待，不把原切片本身当供应商效果 |
+| 生成前任务绑定 | PREBOUND任务/原型快照、应用领取互锁与归因已交付；当前入口＋0～7伴随在模型前固定，真实gpt-6.1-sol三文件→技术决定已验；[原阶段数字](records/delivery-history.md#code-task-prebinding)保留 | 绑定本身不等于供应商效果；用户接受、跨页面/资源图及整体PB/RK不自动关闭 |
 | RK-1～4/6 看板准备与只读Run | 已实现持久任务、revision/幂等、只读Run、原型快照、审阅 | 接入真实实现Run后复核状态/失败/并发；不放开任意拖done |
 | CT-01 生命周期 | SSE/cancel/快照/同ID重连保留；2026-11-08应用线程执行、断线继续、Spring AI/Responses流、完整行脱敏、事件预算/终态/并发修复，见评审记录 | 真实供应商及用户接受待验；日志仍进程内，持久回放/跨重启接管未实现 |
 | RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与测试接受/拒绝决定已有刷新回放 | EAP自身改页完整证据、SQL实际任务证据及用户接受；不重复开发已有决定回放 |
@@ -348,7 +412,7 @@
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理；本轮真实本地知识导入/搜索/授权预览/无授权403/删除一致性通过，检索无模型；复杂SQL修复parse.partial与NOT IN NULL规则，四组合成结果验证通过，见[知识与本地执行边界](decisions/knowledge-local-execution.md) | 文档正文版本更新、检索质量评测、完整SQL作用域/生产数据与性能验证、CLI生命周期回归；不扩第二套执行器 |
 | PL-01 / P0 看板插件首片 | **限定生命周期实现通过**：board启停/回滚/sticky；项目聚合Task/Run与验证/写入在途/未知只读观测、失败旧快照、在途停用确认及重新启用；实际Git后台完成和原Task/Run恢复已验 | 验证/写入/UNKNOWN投影由持久夹具证明；全服务健康与用户接受独立；PL-02/SC-03见本批记录；外部安装独立 |
 | PL-02 / P1 设计器插件 | **限定实现及整链通过**：可信贡献依赖/启停/激活隔离、A/B实例恢复草稿和本地版本隔离、发布中拒绝停用、停用/刷新/重建恢复、原服务器版本保持；不读旧全局数据或合成占位保存 | 本地恢复与服务器版本分离；发布响应丢失已完成当前请求身份/核对切片；用户接受、外部安装/任意JS隔离独立 |
-| SC-03 / P1 场景组合 | **依赖切片实现及整链通过**：核心固定workflow可信依赖观测；必需设计器/版本服务/已发布版本，可选看板；实际Host及失败旧快照阻断、实库修复重查、副本workflow配置保存/读回 | 应用不安装/授权/发送/执行；本轮另完成单文件PREBOUND→真实候选→应用→验证→技术决定；完整设计交互接受、用户产品接受及SC-01保存UNKNOWN删除关口独立 |
+| SC-03 / P1 场景组合 | **依赖切片实现及整链通过**：核心固定workflow可信依赖观测；必需设计器/版本服务/已发布版本，可选看板；实际Host及失败旧快照阻断、实库修复重查、副本workflow配置保存/读回 | 应用不安装/授权/发送/执行；本轮另完成限定三文件PREBOUND→真实候选→应用→验证→技术决定；完整设计交互接受、用户产品接受及SC-01保存UNKNOWN删除关口独立 |
 | CE-01 / P0 上下文工程 | **部分交付**：预算观测/用量 UI/超限；历史未计量；派生清空；`COMPRESSION_NOT_ENABLED`；**该切片**：备注 Badge 呈现（`:5174` 已验） | 真实 token/压缩策略、ChatMemory 精确计量、用户产品接受；不记录敏感正文 |
 | KR-01 / P0 检索基线 | **部分交付**：fixture + `KEYWORD_PROBE`/`POSTGRES_FTS`；延迟观测；实库对照；排序质量样本；`productionSampleCases`；**该切片**：对照测口令回退 `EAP_DB_PASSWORD`/`SPRING_DATASOURCE_PASSWORD`（不写入仓库） | 实库开启 `EAP_RUN_BOARD_PERSISTENCE`+口令跑 FTS 排序对照；不足证据前不启 KR-02 |
 | MEM-01 / P1 记忆首片 | **部分交付**：分层+PUT/UI+本地持久+Task/Run；对抗失效；约束/事实；失效 Feedback/空态纠偏；**该切片**：失效下 sticky 清空仍保留诚实提示（`:5174` 已验） | sticky 清空仍不可取消；用户产品接受仍待；自动长期抽取延期 |
@@ -374,7 +438,9 @@ CP-03用户标注Comment 1已做限定调整：模型/发送成组靠右，缺�
 | Run独立验证 | `04edef5` | 当前验证覆盖frontend，检查成功不自动完成任务 |
 | 源码交付与测试人工决定 | `a63d27e` / `ca3b0a2` | EXTERNAL_MANUAL样例接受不是用户产品接受 |
 | 生成前基线与持久单文件应用 | `f6aed04` / `f614272` | 非多文件事务；未知结果仍阻塞 |
-| POST_HOC与PREBOUND关联 | `544b8f9` / `69892f3` | 只读Git Run不是实现执行器；真实供应商闭环仍待 |
+| POST_HOC与PREBOUND关联 | `544b8f9` / `69892f3` | 原阶段不证明真实供应商；当前三文件实链另验，Git Run仍不是实现执行器 |
+| 任务持久候选与重启恢复 | `2450bf2`（已推送） | 不恢复Chat模型记忆/在途进程，不解除源码UNKNOWN |
+| 有界组件图与三文件证据页面 | 已纳入本批提交 | 已完成限定真实交付/技术决定；跨路由/资源图与用户接受仍待 |
 | 单专家授权知识到Chat | `c9d23a7` | 不执行DAG，不开放其他资源与工具 |
 | Skill文本导入/版本/Chat引用 | `2b0fe26` | 不支持目录导入、脚本执行或任意资源组合 |
 | 后端模块与持久SQL Agent | `c76cded`（已推送） | 通用写工具、UNKNOWN人工处置与剩余产品耦合未收口 |
@@ -382,7 +448,7 @@ CP-03用户标注Comment 1已做限定调整：模型/发送成组靠右，缺�
 
 后续只安排剩余关口，不从头重复上述切片；技术细节与退出矩阵见[技术路线决定](decisions/agent-runtime-evolution.md#7-分阶段切片与退出门禁)：
 
-1. **工程交付验收线**：本轮按用户授权以GenerationBaseline.vue为唯一目标，已完成PREBOUND真实模型→受控应用→独立验证→技术决定；接续已补任务持久候选在Chat失效/重启后的独立审阅和明确应用拒绝；下一片按实际页面需求推进更完整组件图和用户交互接受，不为刷新数字重复供应商调用或扩大全平台故障矩阵。
+1. **工程交付验收线**：上一阶段以GenerationBaseline.vue为唯一目标完成真实交付；本轮推进三个关联文件；接续已补任务持久候选在Chat失效/重启后的独立审阅和明确应用拒绝；当前有界三文件图和完整证据面板实链已验；下一片推进设计状态/动作、跨页面引用及用户交互接受，不为刷新数字重复供应商调用或扩大全平台故障矩阵。
 2. **上下文与资源能力线**：CE-01（含 mock 预算展示/超限）/KR-01(含 FTS+延迟观测+本机实库对照+排序质量样本)/MCP-01(stdio+官方矩阵含 memory/`read_graph`+http+legacy SSE+Streamable-HTTP+生产白名单+GET 续传)/MEM-01（含对抗失效与约束/事实 UI）离线首片已落地；下一步生产检索样本或继续追加已验证官方包（含门禁实跑 memory）。规划/Agent、Work仍各设最小合同；A2A、MCP Server、自动长期记忆及Skill目录导入不隐式启动。
 3. **工具与本地环境线**：TD-01已统一Git程序及status/diff操作；TC-01已补status/diff持久调用/取消确认，UNKNOWN阻止同一操作重复启动，证据见[Git程序与持久调用](decisions/agent-runtime-evolution.md#git-operation-executions)。工具UNKNOWN已接通核对说明/进程树确认/二次确认及持久审计；本轮验证受控异常UNKNOWN整链并追加历史详情入口；当前检查仍不证明完整树退出。取消/超时/成功结果返回中断及核对响应丢失矩阵已验，取消意图保留展示；取消响应丢失和Windows index ACL/共享IO限制异常已验；本批已补数据库终态/审计提交前后及工作区/程序绑定恢复。后续将工具剩余异常列为维护回归，PL-01本轮已验证Task/Run只读观测与在途停用真实Git整链；本批已接通PL-02/SC-03及TC-02生命周期整链，后续进入实际页面交付验收；物理IO/跨平台穷举不作为其余产品开发前置，产品用户接受、其他工具和进程接管独立，不推广为SQL/源码写入UNKNOWN处置。TC-02实例读取与后续Host评审独立；反向Agent调用另批。FS-01物理迁移仍待批准，再做TM-01受管工具；sidecar/包验证与签名独立。
 4. **可信插件与场景线**：PL-01已完成项目Task/Run与验证/写入只读观测及真实Git在途停用/后台完成/重新启用恢复；用户接受与全服务健康独立。本批已接通PL-02设计器贡献、SC-03必需/可选依赖及TC-02观察随销毁失效、草稿/版本恢复。下一批集中推进既有PREBOUND/候选/应用/验证/人工决定的实际页面交付验收，保留五入口合同。外部安装器/市场/第三方隔离延期；不先建空SDK。

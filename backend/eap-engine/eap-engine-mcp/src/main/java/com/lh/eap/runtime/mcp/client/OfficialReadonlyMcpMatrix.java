@@ -1,4 +1,6 @@
 package com.lh.eap.runtime.mcp.client;
+import java.util.Locale;
+import java.util.Set;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -111,8 +113,8 @@ public final class OfficialReadonlyMcpMatrix {
         catch (IllegalArgumentException invalid) { return Optional.empty(); }
         if (argv.size() < 3) return Optional.empty();
         String binary = argv.getFirst().replace('\\', '/');
-        binary = binary.substring(binary.lastIndexOf('/') + 1).toLowerCase(java.util.Locale.ROOT);
-        if (!java.util.Set.of("npx", "npx.cmd", "npx.exe").contains(binary) || !argv.get(1).equals("-y")) return Optional.empty();
+        binary = binary.substring(binary.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT);
+        if (!Set.of("npx", "npx.cmd", "npx.exe").contains(binary) || !argv.get(1).equals("-y")) return Optional.empty();
         for (var entry : ENTRIES) {
             if (!argv.get(2).equals(entry.packageAtVersion())) continue;
             if (argv.size() == 3) return Optional.of(entry);

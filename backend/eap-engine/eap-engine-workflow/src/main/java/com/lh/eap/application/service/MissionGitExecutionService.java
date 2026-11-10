@@ -1,4 +1,8 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.MissionErrors;
+import com.lh.eap.error.BoardErrors;
+import com.lh.eap.error.CommonErrors;
 
 import com.lh.eap.api.ExecutionContext;
 import com.lh.eap.api.Observation;
@@ -26,7 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class MissionGitExecutionService {
     static final String OPEN_EXECUTION = "mission_execution_one_open";
-    static final String RESTART_UNKNOWN = "结果未知：服务重启后无法确认进程树是否结束";
+    static final String RESTART_UNKNOWN = ExecutionErrors.SERVICE_RESTART_EXIT_UNCONFIRMED.code();
     private final MissionStore missions;
     private final MissionExecutionStore executions;
     private final CapabilityHandlerRegistry handlers;
@@ -54,14 +58,14 @@ public class MissionGitExecutionService {
     }
 
     public MissionExecution start(UUID missionId) {
-        if ("board".equals(requireMission(missionId).source())) throw new ResponseStatusException(HttpStatus.CONFLICT, "BOARD_RUN_ENDPOINT_REQUIRED");
+        if ("board".equals(requireMission(missionId).source())) throw new ResponseStatusException(HttpStatus.CONFLICT, BoardErrors.BOARD_RUN_ENDPOINT_REQUIRED.code());
         var open = executions.open(missionId);
         if (open.isPresent()) return open.get();
         var prepared = authorize();
         var capability = prepared.capability();
         var id = UUID.randomUUID();
         var now = Instant.now();
-        var created = new MissionExecution(id, missionId, "CREATED", "git-status", runtime.operatorLabel(),
+        var created = new MissionExecution(id, missionId, MissionExecutionStatus.CREATED.wire(), "git-status", runtime.operatorLabel(),
                 prepared.workspace().toString(), prepared.label(), capability.executable(), prepared.policy(),
                 null, null, null, null, now, null, null, null, null, null, null, false, "NOT_REQUIRED", now);
         try {
@@ -70,7 +74,7 @@ public class MissionGitExecutionService {
             if (!namesOpenExecution(conflict)) throw conflict;
             return executions.open(missionId).orElseThrow(() -> conflict);
         } catch (DataAccessException failure) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务暂不可用，请检查数据库、迁移和后端日志");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,CommonErrors.DATA_SERVICE_UNAVAILABLE.code());
         }
         return executePrepared(created, prepared);
     }
@@ -92,10 +96,10 @@ public class MissionGitExecutionService {
         requireMission(missionId);
         var prepared = authorize();
         if (!prepared.workspace().toString().equals(confirmedWorkspace)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "BOARD_WORKSPACE_CHANGED");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, BoardErrors.BOARD_WORKSPACE_CHANGED.code());
         }
         var now = Instant.now();
-        var created = new MissionExecution(id, missionId, "CREATED", "git-status", runtime.operatorLabel(),
+        var created = new MissionExecution(id, missionId, MissionExecutionStatus.CREATED.wire(), "git-status", runtime.operatorLabel(),
                 prepared.workspace().toString(), prepared.label(), prepared.capability().executable(), prepared.policy(),
                 null, null, null, null, now, null, null, null, null, null, null, false, "NOT_REQUIRED", now);
         executions.insertOpen(created);
@@ -110,7 +114,7 @@ public class MissionGitExecutionService {
         try {
             prepared = authorize();
             if (!prepared.workspace().toString().equals(created.workspacePath()) || !prepared.capability().executable().equals(created.executable())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "BOARD_WORKSPACE_CHANGED");
+                throw new ResponseStatusException(HttpStatus.CONFLICT, BoardErrors.BOARD_WORKSPACE_CHANGED.code());
             }
         } catch (ResponseStatusException denied) {
             executions.failSameRow(executionId, created.missionId(), denied.getReason());
@@ -128,17 +132,17 @@ public class MissionGitExecutionService {
         } catch (RuntimeException rejected) {
             executions.failSameRow(id, missionId, rejected.getClass().getSimpleName());
             var failed = executions.find(id).orElseThrow();
-            if (!"FAILED".equals(failed.status())) throw rejected;
+            if (!MissionExecutionStatus.FAILED.wire().equals(failed.status())) throw rejected;
             return failed;
         }
     }
 
     public MissionExecution cancel(UUID missionId, UUID executionId) {
-        if ("board".equals(requireMission(missionId).source())) throw new ResponseStatusException(HttpStatus.CONFLICT, "BOARD_CANCEL_NOT_AVAILABLE");
+        if ("board".equals(requireMission(missionId).source())) throw new ResponseStatusException(HttpStatus.CONFLICT, BoardErrors.BOARD_CANCEL_NOT_AVAILABLE.code());
         var execution = executions.find(executionId)
                 .filter(row -> row.missionId().equals(missionId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "执行不存在"));
-        if (!"CREATED".equals(execution.status()) && !"RUNNING".equals(execution.status())) {
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,MissionErrors.MISSION_EXECUTION_NOT_FOUND.code()));
+        if (!MissionExecutionStatus.CREATED.wire().equals(execution.status()) && !MissionExecutionStatus.RUNNING.wire().equals(execution.status())) {
             return execution;
         }
         executions.markCancelling(executionId);
@@ -185,7 +189,7 @@ public class MissionGitExecutionService {
         }
         var directory = realDirectory(runtime.workspace());
         if (git != null && !git.runnable()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "BINARY_MISSING");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ExecutionErrors.BINARY_MISSING.code());
         }
         var decision = MissionGitAuthorization.decide(resolved.isPresent(), resolved.orElse(null) instanceof GitInspectionHandler,
                 settings.enabled("git-status"), git != null, runtime.root().path(), directory);
@@ -204,7 +208,7 @@ public class MissionGitExecutionService {
     }
 
     private Mission requireMission(UUID missionId) {
-        return missions.find(missionId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "任务壳不存在"));
+        return missions.find(missionId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,MissionErrors.MISSION_NOT_FOUND.code()));
     }
 
     private static Path realDirectory(Path path) {

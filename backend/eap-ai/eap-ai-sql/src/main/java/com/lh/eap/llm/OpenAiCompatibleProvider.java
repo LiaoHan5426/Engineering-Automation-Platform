@@ -1,4 +1,7 @@
 package com.lh.eap.llm;
+import com.lh.eap.ai.ModelConnectionSnapshot;
+import com.lh.eap.ai.ModelConnections;
+import com.lh.eap.error.ModelErrors;
 
 import java.net.URI;
 import org.springframework.ai.chat.client.ChatClient;
@@ -18,7 +21,7 @@ public class OpenAiCompatibleProvider implements LlmProvider {
     private final String model;
     private final URI endpoint;
     private final boolean enabled;
-    private final com.lh.eap.ai.ModelConnections connections;
+    private final ModelConnections connections;
 
     public OpenAiCompatibleProvider(ObjectProvider<ChatClient.Builder> builders, ObjectProvider<ChatModel> models,
             @Value("${eap.llm.enabled:false}") boolean enabled,
@@ -29,7 +32,7 @@ public class OpenAiCompatibleProvider implements LlmProvider {
 
     @Autowired
     public OpenAiCompatibleProvider(ObjectProvider<ChatClient.Builder> builders, ObjectProvider<ChatModel> models,
-            ObjectProvider<com.lh.eap.ai.ModelConnections> connections,
+            ObjectProvider<ModelConnections> connections,
             @Value("${eap.llm.enabled:false}") boolean enabled,
             @Value("${spring.ai.openai.chat.options.model:gpt-4.1-mini}") String model,
             @Value("${spring.ai.openai.base-url:https://api.openai.com}") String baseUrl) {
@@ -37,7 +40,7 @@ public class OpenAiCompatibleProvider implements LlmProvider {
     }
 
     private OpenAiCompatibleProvider(ObjectProvider<ChatClient.Builder> builders, ObjectProvider<ChatModel> models,
-            boolean enabled, String model, String baseUrl, com.lh.eap.ai.ModelConnections connections) {
+            boolean enabled, String model, String baseUrl, ModelConnections connections) {
         var builder = connections == null && enabled && models.getIfAvailable() != null ? builders.getIfAvailable() : null;
         this.client = builder == null ? null : builder.build();
         this.model = model;
@@ -82,10 +85,10 @@ public class OpenAiCompatibleProvider implements LlmProvider {
         return completeSnapshot(request, snapshot);
     }
 
-    private Result completeSnapshot(Request request, com.lh.eap.ai.ModelConnectionSnapshot snapshot) {
+    private Result completeSnapshot(Request request, ModelConnectionSnapshot snapshot) {
         var active = snapshot == null ? client : connections.completionClient(snapshot);
         var selectedModel = snapshot == null ? model : snapshot.model;
-        if (active == null) return Result.failure(ID, "AI_NOT_CONFIGURED");
+        if (active == null) return Result.failure(ID, ModelErrors.AI_NOT_CONFIGURED.code());
         long started = System.nanoTime();
         try {
             var response = active.prompt().system(request.systemPrompt()).user(request.userPrompt())
@@ -93,7 +96,7 @@ public class OpenAiCompatibleProvider implements LlmProvider {
                             .maxTokens(request.maxTokens())).call().chatResponse();
             if (response == null || response.getResult() == null || response.getResult().getOutput().getText() == null
                     || response.getResult().getOutput().getText().isBlank())
-                return Result.failure(ID, "AI_EMPTY_RESPONSE");
+                return Result.failure(ID, ModelErrors.AI_EMPTY_RESPONSE.code());
             var usage = response.getMetadata().getUsage();
             return new Result(true, response.getResult().getOutput().getText(), ID, selectedModel,
                     (System.nanoTime() - started) / 1_000_000,

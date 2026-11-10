@@ -105,7 +105,7 @@ class WorkingMemoryAdversarialTest {
         });
         var memory2 = MessageWindowChatMemory.builder().maxMessages(20).build();
         var registry2 = new AiConversationRegistry(memory2, java.time.Instant::now, store);
-        registry2.reconnect(session.id, root, "ws");
+        registry2.reconnect(session.id, root, "ws", new AiConversationRegistry.Binding(java.util.UUID.randomUUID(), 1, "test", "m", "e", "r", null));
         assertTrue(memory2.get(key).isEmpty());
         assertEquals("DERIVED_CONTEXT_CLEARED", registry2.workingMemory(session.id).invalidation());
         assertFalse(registry2.workingMemory(session.id).active());

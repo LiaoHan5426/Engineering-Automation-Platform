@@ -1,4 +1,6 @@
 package com.lh.eap.persistence.mapper;
+import com.lh.eap.core.ExpertScopedCapabilityQuery;
+import tools.jackson.databind.json.JsonMapper;
 
 import com.lh.eap.domain.model.CapabilityScope;
 import com.lh.eap.runtime.mcp.McpSessionRegistry;
@@ -27,7 +29,7 @@ import org.springframework.stereotype.Service;
  * </ul>
  */
 @Service
-public class McpServerRegistry implements com.lh.eap.core.ExpertScopedCapabilityQuery {
+public class McpServerRegistry implements ExpertScopedCapabilityQuery {
     private final JdbcTemplate jdbc;
 
     public McpServerRegistry(JdbcTemplate jdbc) {
@@ -168,7 +170,7 @@ public class McpServerRegistry implements com.lh.eap.core.ExpertScopedCapability
         var text = text(raw);
         if (text == null) return List.of();
         try {
-            var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+            var mapper = JsonMapper.builder().build();
             var parsed = mapper.readValue(text, List.class);
             var result = new ArrayList<String>();
             for (var entry : parsed) {

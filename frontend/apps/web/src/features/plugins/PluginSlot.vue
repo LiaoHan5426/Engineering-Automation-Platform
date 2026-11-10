@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n'
 import BuilderWorkspace from './BuilderWorkspace.vue'
 import type { PluginHost } from './host'
 import type { BuilderInstanceId } from './model'
-import { useMockServices } from '../../lib/serviceConfig'
 
 const props = defineProps<{ viewId: string; host: PluginHost; chatView: Component }>()
 const { t } = useI18n()
@@ -54,7 +53,6 @@ const enabled = computed(() =>
       :inert="viewId !== id"
       :aria-hidden="viewId !== id"
       :active="viewId === id"
-      :mock="useMockServices"
     />
     <BuilderWorkspace
       v-else

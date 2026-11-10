@@ -34,6 +34,7 @@ const state = (): CodeProposalState => ({
     writeAllowed: true,
     verification: 'not_requested',
     generation: {
+      companionFiles: [],
       id: crypto.randomUUID(),
       targetPath: 'frontend/Page.vue',
       baseHash: 'b'.repeat(64),
@@ -65,6 +66,7 @@ const listing = (): BoardCodeCandidates => ({
       generationId: saved.proposal.generation!.id,
       targetPath: 'frontend/Page.vue',
       taskRevision: 2,
+      fileCount: saved.proposal.files.length,
       status: saved.status,
       writeAllowed: true,
       createdAt: 'now',
@@ -130,6 +132,22 @@ it('recovers and reviews persistent task candidates without querying or recreati
   await nextTick()
   await nextTick()
   expect(runtimeApi.boardCodeCandidate).toHaveBeenCalledTimes(2)
+})
+it('reviews the entire declared graph and blocks a companion whose baseline differs', async () => {
+  saved.proposal.files.push({
+    path: 'frontend/Part.vue',
+    before: null,
+    content: 'new part',
+    baseHash: 'absent',
+  })
+  saved.proposal.generation!.companionFiles = [{ path: 'frontend/Part.vue', baseHash: 'absent' }]
+  await mount()
+  await review()
+  expect(root.querySelectorAll('[data-testid=fixture-diff]')).toHaveLength(2)
+  saved.proposal.files[1]!.baseHash = 'a'.repeat(64)
+  button('board-code-refresh').click()
+  await vi.waitFor(() => expect(root.textContent).toContain('写操作暂停'))
+  expect(button('proposal-apply').disabled).toBe(true)
 })
 it('explicitly confirms task-owned application and reconciles a lost response with a read', async () => {
   const apply = vi.mocked(runtimeApi.applyBoardCodeCandidate)
@@ -212,6 +230,7 @@ it('rejects another task detail and drops reads that arrive after the task ident
     proposal: {
       ...saved.proposal,
       generation: {
+        companionFiles: [],
         ...saved.proposal.generation!,
         taskBinding: { projectId: 'other', taskId: task.id, revision: 2 },
       },

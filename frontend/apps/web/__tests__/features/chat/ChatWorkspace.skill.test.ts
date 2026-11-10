@@ -1,3 +1,4 @@
+import { chatStorage } from '../../../src/features/chat/chatService'
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, type App } from 'vue'
@@ -18,7 +19,7 @@ afterEach(() => {
 })
 it('replays server-prepared Skill evidence as escaped text and one unified memory notice', async () => {
   const skillRef = { id: 'guide', version: '1.0.0', digest: 'a'.repeat(64), stateRevision: 2 }
-  localStorage.setItem(
+  chatStorage(localStorage).setItem(
     'eap.chat.history.v1',
     JSON.stringify({
       version: 1,

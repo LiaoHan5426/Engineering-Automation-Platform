@@ -32,7 +32,6 @@ const readyStatus = {
 
 let app: App | undefined
 let root: HTMLDivElement | undefined
-const preview = workbench.preview
 
 afterEach(() => {
   app?.unmount()
@@ -40,7 +39,7 @@ afterEach(() => {
   root?.remove()
   vi.restoreAllMocks()
   runtimeIdentity.value = null
-  workbench.preview = preview
+
   workbench.workMode = 'code'
   workbench.selectedScenario = 'prototype-to-code'
   workbench.notice = ''
@@ -52,7 +51,6 @@ afterEach(() => {
 })
 
 async function mount() {
-  workbench.preview = true
   vi.spyOn(runtimeApi, 'aiStatus').mockResolvedValue(readyStatus)
   vi.spyOn(runtimeApi, 'scenarios').mockResolvedValue({ items: [] })
   vi.spyOn(runtimeApi, 'workspaceDirty').mockResolvedValue({
@@ -458,8 +456,7 @@ it('uses the same design and delivery surface in mock mode without bypassing gat
   await vi.waitFor(() => expect(runtimeApi.workspaceBaseline).toHaveBeenCalled())
 })
 
-it('keeps the mock prototype flow out of live service mode', async () => {
-  workbench.preview = false
+it('keeps preparation gates on the real service contract without legacy local demonstrations', async () => {
   workbench.selectedScenario = 'prototype-to-code'
   applyRuntimeIdentity({
     state: 'disabled',
@@ -587,7 +584,7 @@ it('keeps the mock prototype flow out of live service mode', async () => {
     /\/#chat$/,
   )
   expect(root.querySelector('[data-testid="acceptance-status"]')?.textContent).toMatch(
-    /交互验收：未完成|Interaction acceptance: open/,
+    /待人工验收|Human acceptance pending/,
   )
   expect(root.querySelector('[data-testid="acceptance-checklist"]')).toBeTruthy()
   expect(root.querySelector('[data-testid="accept-preview"]')).toBeTruthy()
@@ -623,7 +620,6 @@ it('keeps the mock prototype flow out of live service mode', async () => {
 })
 
 it('hands a selected prototype version into code chat when delivery gates are open', async () => {
-  workbench.preview = false
   workbench.selectedScenario = 'prototype-to-code'
   workbench.sessionExtras.scratch = {
     scenarioId: null,

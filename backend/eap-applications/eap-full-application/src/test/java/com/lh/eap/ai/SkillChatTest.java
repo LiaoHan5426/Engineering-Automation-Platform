@@ -68,7 +68,7 @@ class SkillChatTest {
         invalid.put("{\"message\":\"x\",\"toolMode\":\"none\",\"context\":{\"skillRef\":null}}", "INVALID_SKILL_REF");
         for (var entry : invalid.entrySet()) {
             h.mvc(app).perform(post("/api/ai/conversations/"+id+"/messages").contentType(MediaType.APPLICATION_JSON).content(entry.getKey()))
-                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value(entry.getValue()))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value(entry.getValue()))
                     .andExpect(jsonPath("$.contextMemoryCleared").value(true));
         }
         assertEquals(1,calls.get()); assertEquals(0,tools.get()); verify(skills,times(1)).resolve(any(),any());

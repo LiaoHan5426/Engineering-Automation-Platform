@@ -1,4 +1,5 @@
 package com.lh.eap.application.retrieval;
+import com.lh.eap.error.SecurityErrors;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -126,7 +127,7 @@ public final class RetrievalBaseline {
                             && !testCase.allowedBases().contains(UUID.fromString(hit.knowledgeBaseId())));
             if (unauthorized) {
                 authzFailures++;
-                results.add(failed(testCase, hits, "UNAUTHORIZED_HIT", durationMs));
+                results.add(failed(testCase, hits, SecurityErrors.UNAUTHORIZED_HIT.code(), durationMs));
                 continue;
             }
 

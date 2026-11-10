@@ -4,6 +4,22 @@ import { replyJson, sseFrame, startChatHttpFixture } from '../../chatHttpFixture
 
 const FRAME_LIMIT = 1_048_576 // Decoded UTF-16 code units, including metadata, excluding separator.
 
+it('rejects an unknown wire state without fabricating business UNKNOWN', async () => {
+  const fixture = await startChatHttpFixture((_request, response) => {
+    response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.end(
+      sseFrame('final', 1).replace('"status":"SUCCEEDED"', '"status":"ILLEGAL_WIRE_STATE"'),
+    )
+  })
+  try {
+    await expect(
+      createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none'),
+    ).rejects.toMatchObject({ response: { data: { code: 'AI_RESPONSE_INVALID' } } })
+  } finally {
+    await fixture.close()
+  }
+})
+
 it.each(['callback', 'malformed'] as const)(
   'releases an open response after %s failure',
   async (failure) => {
@@ -133,7 +149,7 @@ it.each(['', '\n\n'])(
         createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none'),
       ).rejects.toMatchObject({
         message: 'AI_RESPONSE_TOO_LARGE',
-        response: { status: 502, data: { detail: 'AI_RESPONSE_TOO_LARGE' } },
+        response: { status: 502, data: { code: 'AI_RESPONSE_TOO_LARGE' } },
       })
     } finally {
       await fixture.close()
@@ -187,7 +203,7 @@ it.each([
       .catch((error: unknown) => error)
     expect(failure).toMatchObject({
       message: 'AI_RESPONSE_INVALID',
-      response: { status: 502, data: { detail: 'AI_RESPONSE_INVALID' } },
+      response: { status: 502, data: { code: 'AI_RESPONSE_INVALID' } },
     })
     expect(JSON.stringify(failure)).not.toContain('private-body')
     expect(events).toEqual(['answer.delta'])
@@ -280,7 +296,7 @@ it('reads CRLF frames with multiline JSON across line and UTF-8 chunk boundaries
 
 it('preserves an authorization-reference conflict without treating JSON as a successful stream', async () => {
   const fixture = await startChatHttpFixture((_request, response) => {
-    replyJson(response, { detail: 'EXPERT_CONTEXT_STALE', revision: 8 }, 409)
+    replyJson(response, { code: 'EXPERT_CONTEXT_STALE', revision: 8 }, 409)
   })
   try {
     const expertRef = { id: 'saved-expert', revision: 7 }
@@ -298,7 +314,7 @@ it('preserves an authorization-reference conflict without treating JSON as a suc
     await expect(
       createChatApi(fixture.baseURL).sendAiMessage('c1', 'draft', 'none', context),
     ).rejects.toMatchObject({
-      response: { status: 409, data: { detail: 'EXPERT_CONTEXT_STALE', revision: 8 } },
+      response: { status: 409, data: { code: 'EXPERT_CONTEXT_STALE', revision: 8 } },
     })
     expect(fixture.requests.map(({ data }) => data)).toEqual([
       { message: 'draft', toolMode: 'none', context },
@@ -322,7 +338,7 @@ it.each(['', sseFrame('final', 2).trimEnd()])(
           onEvent: (event) => events.push(event.type),
         }),
       ).rejects.toMatchObject({
-        response: { status: 502, data: { detail: 'AI_RESPONSE_INCOMPLETE' } },
+        response: { status: 502, data: { code: 'AI_RESPONSE_INCOMPLETE' } },
       })
       expect(events).toEqual(['answer.delta'])
     } finally {

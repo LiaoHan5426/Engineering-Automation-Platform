@@ -12,7 +12,7 @@ afterEach(() => {
   app?.unmount()
   root?.remove()
   workbench.notice = ''
-  workbench.preview = false
+
   workbench.sessionExtras = {}
 })
 

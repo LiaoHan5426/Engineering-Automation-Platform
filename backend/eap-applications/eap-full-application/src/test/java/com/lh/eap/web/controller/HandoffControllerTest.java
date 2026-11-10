@@ -69,7 +69,7 @@ class HandoffControllerTest {
             }
         });
         return MockMvcBuilders.standaloneSetup(new HandoffController(service))
-                .setControllerAdvice(new ApiErrorHandler())
+                .setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES))))
                 .build();
     }
 }

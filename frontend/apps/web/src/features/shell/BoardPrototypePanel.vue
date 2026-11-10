@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { isAxiosError } from 'axios'
+import { isRequestError } from '@eap/request'
 import { useI18n } from 'vue-i18n'
 import { Button, Select } from '@eap/ui'
 import { runtimeApi, type BoardTask, type PrototypeVersionRecord } from '@eap/runtime-client'
@@ -77,7 +77,7 @@ async function save() {
   } catch (error) {
     if (current !== ticket || props.task.id !== id) return
     note.value = t(
-      isAxiosError(error) && error.response?.status === 409
+      isRequestError(error) && error.response?.status === 409
         ? 'boardPrototype.conflict'
         : 'boardPrototype.saveFailed',
     )

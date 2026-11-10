@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.handler;
+import com.lh.eap.api.Observation;
 
 import com.lh.eap.api.ProcessExecutor;
 import com.lh.eap.api.CliExecution;
@@ -51,7 +52,7 @@ public class CliOperationHandler implements CapabilityHandler {
         var policy = new CliExecution.Policy(context.workspace(), LocalBinaries.resolve(binary).orElseThrow().toString(),
                 op.args(), environment.keySet(), Set.of(), true, false);
         var result = new CliExecutionService(executor).execute(request, policy);
-        var observation = new com.lh.eap.api.Observation(op.capabilityId(), result.status() == CliExecution.Status.SUCCEEDED,
+        var observation = new Observation(op.capabilityId(), result.status() == CliExecution.Status.SUCCEEDED,
                 result.exitCode() == null ? -1 : result.exitCode(), result.stdout(), result.stderr(), Map.of());
         var data = Map.<String, Object>of("programId", program.id(), "args", result.commandSummary().subList(1,result.commandSummary().size()), "exitCode", observation.exitCode(),
                 "stdout", observation.stdout(), "stderr", observation.stderr(), "execution", result);

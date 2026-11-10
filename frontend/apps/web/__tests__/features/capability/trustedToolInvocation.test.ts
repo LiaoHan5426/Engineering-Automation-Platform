@@ -275,7 +275,7 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
     vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
     vi.mocked(runtimeApi.resolveUnknownGitExecution).mockRejectedValueOnce({
       isAxiosError: true,
-      response: { status: 503, data: { detail: 'TOOL_EXECUTION_STORE_UNAVAILABLE' } },
+      response: { status: 503, data: { code: 'TOOL_EXECUTION_STORE_UNAVAILABLE' } },
     })
     await mount()
     await prepareReview()
@@ -602,7 +602,7 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
     vi.mocked(runtimeApi.gitOperationExecutions).mockResolvedValue({ items: [row('UNKNOWN')] })
     vi.mocked(runtimeApi.resolveUnknownGitExecution).mockRejectedValue({
       isAxiosError: true,
-      response: { status: 409, data: { detail: 'EXECUTION_OWNER_STILL_ACTIVE' } },
+      response: { status: 409, data: { code: 'EXECUTION_OWNER_STILL_ACTIVE' } },
     })
     await mount()
     await prepareReview()
@@ -669,7 +669,7 @@ describe.each(['git-status', 'git-diff'] as const)('durable %s lifecycle', (op) 
   it('shows a confirmed start denial separately from transport uncertainty', async () => {
     vi.mocked(runtimeApi.startGitOperationExecution).mockRejectedValue({
       isAxiosError: true,
-      response: { status: 403, data: { detail: 'CAPABILITY_DISABLED' } },
+      response: { status: 403, data: { code: 'CAPABILITY_DISABLED' } },
     })
     await mount()
     button('invoke').click()

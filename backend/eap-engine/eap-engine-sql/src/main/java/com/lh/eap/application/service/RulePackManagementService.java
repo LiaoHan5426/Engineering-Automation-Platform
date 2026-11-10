@@ -1,4 +1,6 @@
 package com.lh.eap.application.service;
+import java.util.stream.Collectors;
+import com.lh.eap.error.RuleErrors;
 
 import com.lh.eap.application.dto.*;
 import org.springframework.stereotype.Service;
@@ -56,7 +58,7 @@ public class RulePackManagementService {
 
     public Map<String, Object> get(String id) {
         var pack = rulePacks.find(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "规则包不存在或未启用"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,RuleErrors.RULE_PACK_NOT_FOUND.code()));
         var result = new LinkedHashMap<String, Object>();
         result.put("manifest", RulePacks.serialize(pack));
         result.put("shipped", rulePacks.isShipped(id));
@@ -87,9 +89,9 @@ public class RulePackManagementService {
         if (rulePacks.isShipped(id)) errors.add("内置规则包不可就地修改，请复制为新标识后编辑");
         if (!errors.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, String.join("；", errors));
         var pack = RulePacks.parse(request.manifest());
-        if (!Objects.equals(id, pack.id())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "路径标识与规则包标识不一致");
+        if (!Objects.equals(id, pack.id())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,RuleErrors.RULE_PACK_ID_MISMATCH.code());
         var updated = mapper.update(id, pack.name(), request.manifest());
-        if (updated == 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "规则包不存在");
+        if (updated == 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND,RuleErrors.RULE_PACK_NOT_FOUND.code());
         return Map.of("id", id, "revision", currentRevision(id));
     }
 
@@ -97,21 +99,21 @@ public class RulePackManagementService {
 
     @Transactional
     public Map<String, Object> activate(String id, RuleActivationRequest request) {
-        if (rulePacks.isShipped(id)) throw new ResponseStatusException(HttpStatus.CONFLICT, "内置规则包始终启用");
+        if (rulePacks.isShipped(id)) throw new ResponseStatusException(HttpStatus.CONFLICT,RuleErrors.RULE_PACK_BUILTIN.code());
         var updated = mapper.activate(id, request.enabled());
-        if (updated == 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "规则包不存在");
+        if (updated == 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND,RuleErrors.RULE_PACK_NOT_FOUND.code());
         return Map.of("id", id, "enabled", request.enabled());
     }
 
     @Transactional
     public Map<String, Object> delete(String id) {
-        if (rulePacks.isShipped(id)) throw new ResponseStatusException(HttpStatus.CONFLICT, "内置规则包不可删除");
+        if (rulePacks.isShipped(id)) throw new ResponseStatusException(HttpStatus.CONFLICT,RuleErrors.RULE_PACK_BUILTIN.code());
         var referenced = mapper.enabledReferences(id);
         if (!referenced.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "规则包正被已启用的专家引用：" + referenced);
+            throw new ResponseStatusException(HttpStatus.CONFLICT,RuleErrors.RULE_PACK_IN_USE.code());
         }
         if (mapper.delete(id) == 0) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "规则包不存在");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,RuleErrors.RULE_PACK_NOT_FOUND.code());
         }
         return Map.of("id", id, "status", "deleted");
     }
@@ -145,7 +147,7 @@ public class RulePackManagementService {
         requirements.put("derived", List.copyOf(SqlFactVocabulary.producersOf(RulePacks.referencedFacts(pack))));
         result.put("requirements", requirements);
         result.put("factProducers", SqlFactVocabulary.FACTS_BY_KEY.entrySet().stream()
-                .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().producedBy())));
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().producedBy())));
         return result;
     }
 

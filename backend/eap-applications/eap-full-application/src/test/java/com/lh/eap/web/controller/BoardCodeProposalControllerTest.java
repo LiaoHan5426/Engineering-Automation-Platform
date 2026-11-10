@@ -10,7 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class BoardCodeProposalControllerTest {
  @Test void readsExactTaskScopeAndRejectsForgedIdentityOrMissingConfirmation()throws Exception {
-  var service=mock(BoardCodeProposalService.class);var mvc=MockMvcBuilders.standaloneSetup(new BoardCodeProposalController(service)).setControllerAdvice(new ApiErrorHandler()).build();
+  var service=mock(BoardCodeProposalService.class);var mvc=MockMvcBuilders.standaloneSetup(new BoardCodeProposalController(service)).setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
   var task=UUID.randomUUID();var proposal=UUID.randomUUID();String path="/api/board/tasks/"+task+"/code-proposals";
   mvc.perform(get(path).param("projectId","project")).andExpect(status().isOk());verify(service).list(task,"project");
   mvc.perform(get(path+"/"+proposal).param("projectId","project")).andExpect(status().isOk());verify(service).get(task,proposal,"project");clearInvocations(service);

@@ -1,0 +1,39 @@
+{
+  "kind": "Full application, isolated schema/workspace, deterministic streaming provider",
+  "checks": [
+    {
+      "name": "strict-current-contract-and-confirmed-expiry",
+      "passed": true
+    },
+    {
+      "name": "reject-before-recovery",
+      "language": "zh-CN",
+      "workspace": "CONVERSATION_WORKSPACE_CHANGED",
+      "model": "MODEL_NOT_ALLOWED"
+    },
+    {
+      "name": "reject-before-recovery",
+      "language": "en-US",
+      "workspace": "CONVERSATION_WORKSPACE_CHANGED",
+      "model": "MODEL_NOT_ALLOWED"
+    },
+    {
+      "name": "atomic-same-id-binding-and-working-memory-restore",
+      "contextReset": true,
+      "repeatKept": true
+    },
+    {
+      "name": "recovery-does-not-replay-history-or-call-provider",
+      "externalModelCalls": 0,
+      "providerCalls": 0,
+      "modelWindowMessages": 0
+    },
+    {
+      "name": "disabled-target-denied-and-explicit-recovery-after-restoration",
+      "passed": true
+    }
+  ],
+  "providerCalls": 0,
+  "externalModelCalls": 0,
+  "userProductAcceptance": false
+}

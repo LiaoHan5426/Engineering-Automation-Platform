@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.BoardErrors;
 
 import java.time.Instant;
 import java.util.*;
@@ -22,11 +23,11 @@ public class BoardPrototypeService {
         this.jdbc = jdbc; this.tasks = tasks; this.versions = versions;
     }
     @Transactional public BoardTaskService.Task select(UUID taskId, Selection selection) {
-        if (selection.projectId() == null || selection.projectId().isBlank() || selection.projectId().length() > 120 || selection.revision() < 1) throw new IllegalArgumentException("INVALID_BOARD_FIELD");
+        if (selection.projectId() == null || selection.projectId().isBlank() || selection.projectId().length() > 120 || selection.revision() < 1) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_FIELD.code());
         var task = tasks.find(taskId, selection.projectId(), true);
-        if (task.revision() != selection.revision()) throw conflict("BOARD_REVISION_CONFLICT");
-        if (tasks.hasActiveExecution(taskId)) throw conflict("BOARD_EXECUTION_ACTIVE");
-        if (!Set.of("planned", "ready").contains(task.column())) throw conflict("BOARD_EXECUTION_EVIDENCE_REQUIRED");
+        if (task.revision() != selection.revision()) throw conflict(BoardErrors.BOARD_REVISION_CONFLICT.code());
+        if (tasks.hasActiveExecution(taskId)) throw conflict(BoardErrors.BOARD_EXECUTION_ACTIVE.code());
+        if (!Set.of("planned", "ready").contains(task.column())) throw conflict(BoardErrors.BOARD_EXECUTION_EVIDENCE_REQUIRED.code());
         if (selection.versionId() != null) versions.find(selection.versionId());
         if (Objects.equals(task.prototypeVersionId(), selection.versionId())) return task;
         var events = new ArrayList<>(task.events());

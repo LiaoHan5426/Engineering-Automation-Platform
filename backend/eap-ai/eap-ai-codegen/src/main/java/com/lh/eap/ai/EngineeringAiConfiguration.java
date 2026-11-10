@@ -1,4 +1,7 @@
 package com.lh.eap.ai;
+import com.lh.eap.llm.EndpointPolicy;
+import java.util.Map;
+import org.slf4j.LoggerFactory;
 
 import com.lh.eap.application.service.FileExecutionArtifactStore;
 import com.lh.eap.config.RuntimeWorkspace;
@@ -24,24 +27,24 @@ public class EngineeringAiConfiguration {
     static BeanFactoryPostProcessor legacyModelConfigurationGuard(Environment environment) {
         return factory -> {
             if (environment.getProperty("spring.ai.model.chat", "none").equals("openai")
-                    && !com.lh.eap.llm.EndpointPolicy.permits(
+                    && !EndpointPolicy.permits(
                             environment.getProperty("spring.ai.openai.base-url", "https://api.openai.com"), true))
                 throw new IllegalStateException("Spring AI endpoint requires HTTPS or an HTTP loopback host, without userinfo");
-            var obsolete = java.util.Map.of(
+            var obsolete = Map.of(
                     "eap.llm.base-url", "EAP_LLM_BASE_URL", "eap.llm.model", "EAP_LLM_MODEL",
                     "eap.llm.connect-timeout-ms", "EAP_LLM_CONNECT_TIMEOUT_MS",
                     "eap.llm.read-timeout-ms", "EAP_LLM_READ_TIMEOUT_MS",
                     "eap.llm.allow-remote", "EAP_LLM_ALLOW_REMOTE");
             var found = obsolete.entrySet().stream()
                     .filter(entry -> environment.containsProperty(entry.getKey()) || environment.containsProperty(entry.getValue()))
-                    .map(java.util.Map.Entry::getKey).sorted().toList();
+                    .map(Map.Entry::getKey).sorted().toList();
             if (found.isEmpty()) return;
             String message = "Legacy model connection properties require Spring AI migration: " + String.join(", ", found)
                     + "; use spring.ai.* / EAP_AI_PROVIDER, EAP_AI_BASE_URL, EAP_AI_MODEL, OPENAI_API_KEY";
             boolean enabled = environment.getProperty("eap.llm.enabled", Boolean.class, false)
                     || !environment.getProperty("spring.ai.model.chat", "none").equals("none");
             if (enabled) throw new IllegalStateException(message);
-            org.slf4j.LoggerFactory.getLogger(EngineeringAiConfiguration.class).warn(message);
+            LoggerFactory.getLogger(EngineeringAiConfiguration.class).warn(message);
         };
     }
     @Bean

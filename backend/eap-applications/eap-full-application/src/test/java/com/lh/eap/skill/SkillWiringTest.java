@@ -24,7 +24,7 @@ class SkillWiringTest {
             context.registerBean(PlatformTransactionManager.class, () -> mock(PlatformTransactionManager.class));
             context.registerBean(RuntimeWorkspace.class, () -> RuntimeWorkspace.colocated(root,""));
             context.registerBean(CapabilityHandlerRegistry.class, () -> new CapabilityHandlerRegistry(List.of()));
-            context.register(Transactions.class, SkillTextParser.class, SkillService.class, SkillController.class);
+            context.register(com.lh.eap.web.i18n.PlatformMessagesConfiguration.class, com.lh.eap.web.i18n.ProblemResponses.class, Transactions.class, SkillTextParser.class, SkillService.class, SkillController.class);
             assertDoesNotThrow(context::refresh);
             var service = context.getBean(SkillService.class);
             assertTrue(org.springframework.aop.support.AopUtils.isCglibProxy(service));

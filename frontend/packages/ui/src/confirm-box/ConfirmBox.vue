@@ -58,9 +58,6 @@ const { onKeydown } = useFocusTrap(root, {
           </Button>
           <Button data-confirm-cancel :disabled="busy" @click="$emit('cancel')">取消</Button>
         </div>
-        <p v-if="refusal" class="eap-confirm__hint">
-          按钮仍在原位但已禁用：拒绝的原因在它旁边，而不是把它藏起来。
-        </p>
       </div>
     </div>
   </Teleport>

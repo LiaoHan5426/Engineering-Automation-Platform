@@ -1,4 +1,23 @@
 package com.lh.eap.ai;
+import java.time.Duration;
+import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.model.tool.ToolCallLimitExceededException;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.support.ToolCallbacks;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.definition.ToolDefinition;
+import com.lh.eap.error.WorkspaceErrors;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.CodeErrors;
+import com.lh.eap.error.ModelErrors;
+import com.lh.eap.error.ToolErrors;
 import com.lh.eap.delivery.CodeChangeService;
 
 import com.lh.eap.api.CliExecution;
@@ -73,12 +92,12 @@ public final class EngineeringChatService {
     }
 
     public Outcome chat(Request request, boolean registerGitTool, ChatClient selected, TaskContext context,
-            UUID executionId, java.util.function.BooleanSupplier cancelled) {
+            UUID executionId, BooleanSupplier cancelled) {
         return chat(request, registerGitTool, selected, context, executionId, cancelled, null);
     }
 
     public Outcome chat(Request request, boolean registerGitTool, ChatClient selected, TaskContext context,
-            UUID executionId, java.util.function.BooleanSupplier cancelled, java.util.function.Consumer<String> delta) {
+            UUID executionId, BooleanSupplier cancelled, Consumer<String> delta) {
         var active = selected != null ? selected : client;
         var id = executionId == null ? UUID.randomUUID() : executionId;
         var started = Instant.now();
@@ -87,32 +106,32 @@ public final class EngineeringChatService {
         var status = CliExecution.Status.SUCCEEDED;
         try {
             if (cancelled != null && cancelled.getAsBoolean()) {
-                error = "AI_CANCELLED";
+                error = ModelErrors.AI_CANCELLED.code();
                 status = CliExecution.Status.CANCELLED;
             } else if (active == null) {
-                error = "AI_NOT_CONFIGURED";
+                error = ModelErrors.AI_NOT_CONFIGURED.code();
                 status = CliExecution.Status.REJECTED;
             } else {
                 // Length prefix avoids ambiguous principal/conversation concatenation.
                 String conversation = memoryKey(request.principal(), request.conversationId());
                 var prompt = active.prompt().system(context.systemInstructions()).user(request.message());
                 if (!context.reasoning().equals("default")) {
-                    prompt = prompt.options(org.springframework.ai.openai.OpenAiChatOptions.builder()
+                    prompt = prompt.options(OpenAiChatOptions.builder()
                             .reasoningEffort(context.reasoning()));
                 }
                 if (registerGitTool) prompt = prompt.tools(tool.callback());
                 var prepared = prompt.advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation));
-                org.springframework.ai.chat.model.ChatResponse response;
+                ChatResponse response;
                 if (delta != null && context.mode().equals("chat")) {
                     var text = new StringBuilder();
                     var pending = new StringBuilder();
-                    org.springframework.ai.chat.model.ChatResponse last = null;
+                    ChatResponse last = null;
                     int frames = 0;
                     // Complete lines are redacted together, so a secret split across provider chunks cannot leak.
-                    try (var stream = prepared.stream().chatResponse().subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic()).timeout(java.time.Duration.ofSeconds(60)).toStream()) {
+                    try (var stream = prepared.stream().chatResponse().subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic()).timeout(Duration.ofSeconds(60)).toStream()) {
                         var iterator = stream.iterator();
                         while (iterator.hasNext()) {
-                            if (cancelled.getAsBoolean() || Thread.currentThread().isInterrupted()) throw new java.util.concurrent.CancellationException();
+                            if (cancelled.getAsBoolean() || Thread.currentThread().isInterrupted()) throw new CancellationException();
                             last = iterator.next();
                             if (last.getResult() == null) continue;
                             String part = last.getResult().getOutput().getText();
@@ -128,38 +147,38 @@ public final class EngineeringChatService {
                         }
                     }
                     if (!pending.isEmpty()) delta.accept(redact(pending.toString()));
-                    response = last == null ? null : new org.springframework.ai.chat.model.ChatResponse(List.of(
-                            new org.springframework.ai.chat.model.Generation(new org.springframework.ai.chat.messages.AssistantMessage(text.toString()),
+                    response = last == null ? null : new ChatResponse(List.of(
+                            new Generation(new AssistantMessage(text.toString()),
                                     last.getResult() == null ? null : last.getResult().getMetadata())));
                 } else response = prepared.call().chatResponse();
                 if ((cancelled != null && cancelled.getAsBoolean()) || Thread.currentThread().isInterrupted()) {
                     Thread.interrupted();
-                    error = "AI_CANCELLED";
+                    error = ModelErrors.AI_CANCELLED.code();
                     status = CliExecution.Status.CANCELLED;
                     answer = "";
                 } else if (response == null || response.getResult() == null) {
-                    error = "AI_EMPTY_RESPONSE";
+                    error = ModelErrors.AI_EMPTY_RESPONSE.code();
                     status = CliExecution.Status.FAILED;
                 } else {
                     String text = response.getResult().getOutput().getText();
                     if (context.mode().equals("code")) {
                         // A JSON proposal must stay complete. Never apply the ordinary-chat clip.
                         if (text != null && text.length() > CodeChangeService.MAX_PROPOSAL_RESPONSE_CHARS) {
-                            error = "CODE_PROPOSAL_TOO_LARGE";
+                            error = CodeErrors.CODE_PROPOSAL_TOO_LARGE.code();
                             status = CliExecution.Status.FAILED;
                         } else {
                             answer = redactComplete(text);
                             if (answer.length() > CodeChangeService.MAX_PROPOSAL_RESPONSE_CHARS) {
                                 answer = "";
-                                error = "CODE_PROPOSAL_TOO_LARGE";
+                                error = CodeErrors.CODE_PROPOSAL_TOO_LARGE.code();
                                 status = CliExecution.Status.FAILED;
                             }
                         }
                     } else {
                         answer = redact(text);
                     }
-                    if (org.springframework.ai.model.tool.ToolCallLimitExceededException.FINISH_REASON
-                            .equals(response.getResult().getMetadata().getFinishReason())) tool.error = "TOOL_CALL_LIMIT";
+                    if (ToolCallLimitExceededException.FINISH_REASON
+                            .equals(response.getResult().getMetadata().getFinishReason())) tool.error = ToolErrors.TOOL_CALL_LIMIT.code();
                 }
                 if (!tool.error.isEmpty()) error = tool.error;
             }
@@ -180,16 +199,16 @@ public final class EngineeringChatService {
             // Audit only controlled codes and timestamps, never prompts, credentials or model payloads.
             String toolEvents = tool.events.stream().map(event -> "{\"sequence\":" + event.sequence()
                     + ",\"receivedAt\":\"" + event.receivedAt() + "\",\"code\":\"" + event.text() + "\"}")
-                    .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+                    .collect(Collectors.joining(",", "[", "]"));
             String json = "{\"executionId\":\"" + id + "\",\"status\":\"" + status
                     + "\",\"error\":\"" + error + "\",\"startedAt\":\"" + started
                     + "\",\"completedAt\":\"" + ended + "\",\"toolEvents\":" + toolEvents + "}";
             refs.add(artifacts.save(id, "ai-trace", json.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception failure) {
-            artifactError = "ARTIFACT_SAVE_FAILED";
+            artifactError = ExecutionErrors.ARTIFACT_SAVE_FAILED.code();
         }
         var result = new CliExecution.Result(id, status, CliExecution.Approval.NOT_REQUIRED,
-                CliExecution.Verification.UNVERIFIED, started, java.time.Duration.between(started, ended).toMillis(),
+                CliExecution.Verification.UNVERIFIED, started, Duration.between(started, ended).toMillis(),
                 null, error, List.of("spring-ai", "chat"), Set.of(), "", "",
                 List.of(new CliExecution.Event(id, 1, started, CliExecution.Status.RUNNING),
                         new CliExecution.Event(id, 2, ended, status)), refs, trace, artifactError);
@@ -213,15 +232,15 @@ public final class EngineeringChatService {
         private String error = "";
         GitTool(UUID executionId, Request request) { this.executionId = executionId; this.request = request; }
 
-        org.springframework.ai.tool.ToolCallback callback() {
-            var delegate = org.springframework.ai.support.ToolCallbacks.from(this)[0];
-            return new org.springframework.ai.tool.ToolCallback() {
-                public org.springframework.ai.tool.definition.ToolDefinition getToolDefinition() {
+        ToolCallback callback() {
+            var delegate = ToolCallbacks.from(this)[0];
+            return new ToolCallback() {
+                public ToolDefinition getToolDefinition() {
                     return delegate.getToolDefinition();
                 }
                 public String call(String arguments) {
                     if (arguments == null || !arguments.matches("\\s*\\{\\s*\\}\\s*")) {
-                        error = "TOOL_INVALID_ARGUMENTS";
+                        error = ToolErrors.TOOL_INVALID_ARGUMENTS.code();
                         if (events.size() < 16) events.add(new CliExecution.ReceivedLine(events.size() + 1, Instant.now(), error));
                         return error;
                     }
@@ -237,7 +256,7 @@ public final class EngineeringChatService {
             try {
                 var decision = runtime != null ? runtime.root()
                         : (authorizedRoot == null
-                                ? new RuntimeWorkspace.Decision(null, "AUTHORIZED_ROOT_MISSING")
+                                ? new RuntimeWorkspace.Decision(null, WorkspaceErrors.AUTHORIZED_ROOT_MISSING.code())
                                 : new RuntimeWorkspace.Decision(authorizedRoot, null));
                 if (!request.gitAllowed() || !decision.allowed() || decision.path() == null) throw new SecurityException();
                 var root = decision.path().toRealPath();
@@ -246,15 +265,15 @@ public final class EngineeringChatService {
                 var handler = registry.resolveFor(null, "git-status").orElseThrow(SecurityException::new);
                 var context = new CapabilityContext(new ExpertManifest.Step("ai-git", "Git status", "git-status", true),
                         null, "", "", "spring-ai", executionId, List.of(), new HashMap<>(), new HashMap<>(),
-                        new ArrayList<>(), new ArrayList<>(), List.of(), workspace, java.util.Set.of());
+                        new ArrayList<>(), new ArrayList<>(), List.of(), workspace, Set.of());
                 var result = handler.handle(context);
-                code = result.success() ? "TOOL_SUCCEEDED" : "TOOL_FAILED";
+                code = result.success() ? "TOOL_SUCCEEDED" : ToolErrors.TOOL_FAILED.code();
                 output = result.success() ? redact(String.valueOf(result.data())) : code;
             } catch (SecurityException denied) {
-                code = "TOOL_PERMISSION_DENIED";
+                code = ToolErrors.TOOL_PERMISSION_DENIED.code();
                 output = code;
             } catch (Exception failure) {
-                code = "TOOL_FAILED";
+                code = ToolErrors.TOOL_FAILED.code();
                 output = code;
             }
             if (!code.equals("TOOL_SUCCEEDED")) error = code;

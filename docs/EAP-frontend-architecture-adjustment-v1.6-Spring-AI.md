@@ -1,8 +1,8 @@
 # Engineering Automation Platform：当前产品与架构合同
 
-> 当前已提交并推送基线为 `b9a9b124fa518457b5da7c897a077db23da89a7b`（PREBOUND真实页面交付42文件）。提交沿用已有验证，未重复测试。接续新增任务侧持久源码候选列表、Diff审阅、明确应用/拒绝及真实重启恢复，随本次提交交付，沿用已有验证不重复测试；无Chat会话自动重建、模型重放或第二套源码写入机制。
+> 本批提交接续 `2450bf29fe4a2e47fef69b7f402426a31bc4146b`，集中收录有界多文件组件图与真实页面交付、分域状态及后端中英文错误合同、会话恢复与上下文优化，以及全站管理工作面、独立 Mock 和通用请求客户端。开发库V33～V35迁移及各阶段验证沿用已保存证据；本次提交/推送不重复测试、构建、数据库迁移或模型调用。具体提交身份以Git记录为准，用户产品接受仍独立。
 
-> 已提交实现基线：`fe08a99`（2026-11-10，PL-01看板观测与启停恢复，已推送；提交沿用既有测试结果，未重复测试）。本文维护产品与架构合同；最近验证和保留的历史全量快照见[台账](planning-status.md#validation-baseline)，失败与边界见[主题记录](records/README.md)。历史数字不代表本轮重新执行。
+> 历史PL-01实现基线：`fe08a99`（2026-11-10，PL-01看板观测与启停恢复，已推送；提交沿用既有测试结果，未重复测试）。本文维护产品与架构合同；最近验证和保留的历史全量快照见[台账](planning-status.md#validation-baseline)，失败与边界见[主题记录](records/README.md)。历史数字不代表本轮重新执行。
 > **优先级：用户最新明确要求 → 本文 §0B 产品合同 → §0A 技术/执行边界 → 历史资料。** 五个固定一级入口 `code · 编程 / work · 办公 / 场景 / 专家 / 设置`；旧双入口、Builder 第六入口、M0/完整 Mission 前置、插件任意扩展一级导航均不再生效。
 > 本地确定性工具优先，必要时使用 LLM/外部 Agent，结果独立验证。原型先可点击并经人确认，再按实际缺口渐进实施；不授权全量重写、任意工具调用或第三方代码注入。
 
@@ -16,9 +16,12 @@
 
 | 范围 | 已有实现 / 阶段证据 | 尚未关闭的关口 |
 |---|---|---|
-| 工作面与共享UI | 五入口；场景配置/任务准备、Builder设计/版本/历史、看板任务/原型/执行审阅；主题与共享组件；统一UI Icon/name入口；EditorWorkbench三栏布局已接专家固定流程、SQL Agent及GrapesJS | 全页面真实系统缩放、焦点/失败矩阵、其他管理页图标迁移及用户接受 |
-| 原型与本地上下文 | GrapesJS三栏编辑、八类语义映射、草稿保护/本地保存重开、不可变版本、只读目录/源码、Task与Run原型快照 | 更多组件/状态/动作映射、多文件组件约束、自身页面真实交付 |
-| 源码与交付 | 单目标持久基线、候选/应用/互锁、POST_HOC/PREBOUND；新增V32语义绑定及任务应用证据选择；真实gpt-6.1-sol单文件改页→应用→独立验证→技术决定已验；接续任务持久候选/Diff/明确动作及Chat失效后重启恢复已验 | 用户产品接受、复杂页面/多文件及未知人工核对/取消仍独立；Git Run不归因为代码作者 |
+| 工作面与共享UI | 五入口；场景配置/任务准备、Builder设计/版本/历史、看板任务/原型/执行审阅；主题与共享组件；统一UI Icon/name入口；EditorWorkbench三栏布局已接专家固定流程、SQL Agent及GrapesJS | 已完成16入口1440/390逐页走查及代表弹窗焦点/失败/草稿验证；其他系统缩放、完整辅助技术矩阵、管理页图标迁移及用户接受 |
+| 全站工作面与开发基础设施（目标4～8） | 规则列表/详情/单条编辑、SQL试算/词表分面；知识/资料/技能/CLI/MCP表单及插件诊断按需打开；request独立传输与UI FileUpload；Mock独立Node服务，删除旧模式/演示分支和无效测试 | 真实Chromium已走查16入口×1440/390两种视口及8组HTTP/页面交互（含窄屏焦点/未保存保护）；前端149文件921项、typecheck/build/architecture及受影响质量检查通过；整合结果见[台账](planning-status.md#product-workspaces)。系统缩放、完整辅助技术矩阵及用户产品接受独立 |
+| 原型与本地上下文 | GrapesJS八类语义映射、草稿保存重开、不可变版本、Task/Run原型快照；显式入口＋最多7个伴随源码，静态组件图及完整基线 | 更多设计状态/动作映射、跨页面/路由与资源图、用户设计交互接受 |
+| 源码与交付 | 统一1～8文件持久基线/候选/应用，POST_HOC/PREBOUND；任务候选重启恢复；真实gpt-6.1-sol三文件证据页面→确认应用→独立147文件906项/typecheck/build→技术ACCEPT已验，V33/V34已迁移 | 用户产品接受、任意复杂页面/跨路由依赖、源码UNKNOWN人工处置；不承诺多文件OS事务/CAS，不把Git Run归因为作者 |
+| 状态与消息规范 | 已集中实施[分域状态与后端i18n合同](decisions/domain-status-and-backend-i18n.md)：16组Java/TS状态对齐、23个错误目录516码、11组中英资源；Advice/Filter/局部handler统一code/detail，Axios/SSE/Mock同批迁移 | 实现及必要整链验证通过：前端149文件914项后按新增变化定向14文件230项及请求中切换语言2文件61项；后端修复定向157项及后续55项通过；真实HTTP12组、浏览器中英2组、JDBC状态/CHECK和V35注释迁移核对通过。完整格式/stylelint仍有存量问题；不是全站文案英文化或用户产品接受 |
+| 会话结构与产品展示 | [恢复合同](decisions/chat-engineering-task-slice.md#会话失效与显式重试当前合同2026-11-10)统一同ID恢复及目标绑定；启动历史只读一次，流式150ms检查点、终态／生命周期flush，在途检查去重；相同材料／失效快照减少重复写盘。118个生产Java文件规范引用，其中113个为等价import整理；任务摘要与上下文详情拆为Chat域组件，原始码／哈希／配置默认收起 | 后端12类55项、前端受影响74文件461项及末次4文件78项通过；full真实HTTP6组、Chromium中英2组及1440/900/390布局通过。恢复0模型调用，明确重试2次确定性流式夹具、外部模型0次；typecheck/build/architecture及目标格式/lint通过。已纳入本批提交，用户接受独立；[证据](../frontend/apps/web/__tests__/browser/artifacts/conversation-optimization/README.md) |
 | 专家与Skill | 单专家授权知识检索/旧记忆隔离；本地无模型知识搜索/授权拒绝/删除一致性实测，边界见[知识与本地执行](decisions/knowledge-local-execution.md)；Skill文本导入、不可变版本、启停与无工具Chat显式引用 | 其他专业行为及完整角色/资源整合（遵守[Agent与固定流程边界](decisions/agent-runtime-evolution.md#expert-agent-boundary)）、Skill目录/仓库导入、MCP官方包经专家入口的实网验收、规划/Agent与Work执行；不执行脚本或自动授予工具权限 |
 | 后端与桌面 | 模块组合及十四轮边界已实施：full宿主、领域拆分、spring条件装配、知识授权端口、管理事务下沉、Expert分析/资源端口、CLI通道独立、codegen去workflow依赖、专家定义领域查询分离、固定流程独立、能力输入按领域拆分及专家分析策略按执行选择、专业行为版本持久绑定、SQL自主Agent检查点恢复、自动后台调度及候选审批UI，普通API Responses工具支持与真实单SQL文件审批整链已通过；复杂SQL作用域保守性和NOT IN NULL规则已修复；最近验证及历史全量快照见[验收基线](planning-status.md#validation-baseline)，前轮实库结果独立保留；最小组合和完整Bean图已验证，IDEA原配置启动已通过；Electron仍为安全preload/引导脚手架 | 其他专业行为/通用输入、旧DAG长事务及目录/CLI登记审批剩余解耦、跨环境启动；实库/真实模型与Windows sidecar、打包签名/人工验收独立 |
 | Agent上下文与记忆 | Spring AI20条消息窗口；知识全文/关键词检索；授权知识/Skill使用后逐轮清空模型记忆 | CE-01/KR-01和MEM-01已有部分实现，详见台账；真实token、恢复和产品接受仍待；派生内容撤权失效先于放开记忆；不默认换框架或引入向量库 |
@@ -186,7 +189,7 @@ Java 是本地服务端实现，不决定页面必须采用网站式导航。当
 
 尺寸为 CSS px 的初步建议，不从录屏像素反推硬编码；100%/125% 缩放、1280×800 和 1440×900 为首轮验收视口，窄窗口采用可收起侧栏。不得用全页横向滚动解决输入区溢出。
 
-**唯一工作台与数据来源**：真实服务与mock渲染同一`ChatWorkspace`、`createChatSession`、`TaskComposer`、导航和面板，使用同一`createChatApi`/DTO与`/api`路径。`vp run dev`代理Java；`vp run dev:mock`或`VITE_USE_MOCK=true`仅开发时注册模拟服务，生产不启用。界面不提供来源切换按钮，不另建演示首页；场景、版本和任务回链不改变来源或自动发送。
+**唯一工作台与数据来源**：真实服务与mock渲染同一`ChatWorkspace`、`createChatSession`、`TaskComposer`、导航和面板，使用同一`createChatApi`/DTO与`/api`路径。普通开发代理Java；先用 `pnpm --dir frontend dev:mock-server` 独立启动 Node Mock，再用 `pnpm --dir frontend dev:mock` 仅切开发代理。正式源码无Mock开关、专用状态或演示分支，生产包不导入Mock。界面不提供来源切换按钮，不另建演示首页；场景、版本和任务回链不改变来源或自动发送。
 
 前端、真实后端与mock按同一合同推进，mock不能永久替代业务实现。真实失败不回退mock，未实现mock端点返回404且不回退Java/模型；模拟结果明确未读写仓库、未跑真实测试。看板/原型版本均共用API与门禁；本机草稿不等于服务端不可变版本。当前模拟服务边界与早期分支纠偏见[历史§0B.3](records/product-plan-history.md#section-0b-3)。
 
@@ -307,7 +310,7 @@ stateDiagram-v2
 <a id="section-0b-7-1"></a>
 #### 0B.7.1 历史问题与当前范围
 
-2026-10-26的结构性缺口分析及Current/Target图已移至[历史快照](records/product-plan-history.md#section-0b-7-1)，不能继续称GrapesJS、生成前基线、持久应用或Task关联“尚未实现”。当前未关闭的是实际供应商自身改页、更多组件/多文件约束和用户接受；下述合同持续有效。
+2026-10-26的结构性缺口分析及Current/Target图已移至[历史快照](records/product-plan-history.md#section-0b-7-1)，不能继续称GrapesJS、生成前基线、持久应用或Task关联“尚未实现”。当前已验限定自身页面和静态多文件图；未关闭的是更多设计状态/动作、跨页面/资源图和用户接受；下述合同持续有效。
 
 <a id="section-0b-7-2"></a>
 #### 0B.7.2 两条入口共用一个交付合同
@@ -386,8 +389,8 @@ sequenceDiagram
 | MD-01 / P0 | 保存连接或发现模型就证明推理协议可用 | 凭据/显式wireApi→目录→允许模型→会话具体模型与能力 | **部分交付**：连接/目录/白名单/默认/强度已有，追加普通API Responses文本/代码提案及显式选择、revision/重绑定和Git拒绝，离线回归通过；失败保留缓存且不自动全选。10/28 DeepSeek目录测试为历史。普通API Responses文本及SQL Agent两轮工具整链已实网通过。仍缺：其他模型/网关/推理档位、Responses Chat Git工具、账户计划工具及用户接受 |
 | EX-01 / P1 | 固定三角色等于专家协作 | 将配置专家按明确合同接入任务 | **部分交付**：专家列表→详情→任务→审阅分层、分类配置页签及任务摘要/按需详情Drawer已接通，终态轮询/抖动已修，见[界面记录](decisions/expert-workspace-navigation.md)；固定流程定义/调度已与专家产品编排分开，能力输入已按领域分离，宿主支持按专家选择分析策略，行为id/version持久绑定及实库保存/重载/撤权/回滚已实现；显式v2 SQL只读Agent工具选择/追问/结束、取消/预算和短事务授权已接通，检查点跨JVM恢复与单SQL候选写入审批已实现（V23、UNKNOWN不重放），自动后台调度及审批UI已实现，Fake模型/实库/组件回归通过，真实Chromium四档宽度/浅深色与模拟审批交互已验；真实Responses文本请求及原生Windows 100%/125%技术检查已验；普通API Responses工具支持及真实两轮取证→候选→页面审批→写入读回→重启终态已验；复杂SQL三类限定样例已验（CTE知识引用、NULL反连接候选、缺证据追问），首轮CTE超时保留；完整作用域分析、生产SQL效果、原生150%及用户接受仍待；指引追溯保留；单个持久专家授权知识→Chat、发送重检、撤权/旧记忆隔离已交付（c9d23a7），有实库/Fake模型与浏览器证据。独立三栏EditorWorkbench已接入固定流程/SQL Agent，节点库/结构树/画布/属性与草稿保护通过[当前阶段技术检查](planning-status.md#validation-baseline)；浏览器比例覆盖125%/150%不代替原生系统验收。仍缺：其他行为与资源整合、生产任务效果；Chat中的专家引用不执行DAG或自动授予工具权限 |
 | PB-01 / P0 | 标题+正文+点击按钮就是可视化原型 | 先支持 EAP 页面布局/交互草案，再扩展通用编辑器 | **部分交付**：GrapesJS真实画布、工程/Schema、page/section/text/heading/button/link/list/input八类映射、Vue交互预览与保存重开已验证；Builder设计/版本/历史演示分面，未知映射阻塞。已与专家编辑共享独立三栏工作台布局壳，组件库/结构树/属性/草稿保护、真实GrapesJS编辑与本地保存重开/交互预览已验，见[实施记录](decisions/expert-workspace-navigation.md)。仍缺：目标页面所需更多组件/状态/动作映射与真实改页验收，不承诺任意Vue无损导入 |
-| PB-02 / P0 | 传原型 ID 就完成交付开发 | 生成前绑定目标与基线、读取相关现有源码；propose 必须含 `targetPath` | **部分交付**：单目标完整有界源码已在模型前持久保存/读回，原型与Task/revision快照及PREBOUND已交付（f6aed04、69892f3）。接续V32修正当前语义原型绑定，真实供应商单文件自身改页整链已验；仍缺：多文件组件图及用户产品接受 |
-| PB-03 / P0 | 模型返回完整文件后才取哈希足够 | 生成前固定文件快照，应用前再校验，保留既有修改 | **部分交付**：单文件候选、APPLYING意图、写后读回与APPLIED重放、基线冲突及UNKNOWN目录/任务互锁已持久化；POST_HOC/PREBOUND归因已交付。真实模型单文件改页/实际页面确认应用及读回已验；接续任务侧持久候选/实际重启后读取和明确应用拒绝已验，见[台账](planning-status.md#board-code-recovery-validation)；仍缺完整用户交互接受、未知人工核对；不承诺多文件事务或OS级CAS |
+| PB-02 / P0 | 传原型 ID 就完成交付开发 | 生成前绑定目标与基线、读取相关现有源码；propose 必须含 `targetPath` | **有界多文件交付已验**：入口＋0～7个显式伴随，逐文件完整源码/hash、原型及Task/revision在模型前持久化；精确集合/顺序、静态连通无环、未声明/动态引用拒绝。真实三文件页面一次模型请求及整链通过，见[台账](planning-status.md#component-page-delivery-validation)；任意TS语法/跨路由图及用户产品接受仍待 |
+| PB-03 / P0 | 模型返回完整文件后才取哈希足够 | 生成前固定文件快照，应用前再校验，保留既有修改 | **有界多文件交付已验**：同一applyDurable校验全部基线、全部暂存、逐文件替换及读回；失败/UNKNOWN持续互锁。三文件实际页面确认应用、完整交付关联、独立验证与技术决定已验；原任务候选重启恢复保留。用户接受/UNKNOWN人工核对仍待；不承诺跨文件OS事务或CAS |
 | PB-04 / P0 | 写入成功等于界面调整完成 | Diff→应用→类型/测试/构建→页面预览→人工交互验收 | **部分交付**：Run独立typecheck/test/build真实三项联调、同源源码/交付证据和持久人工接受/拒绝机制已交付（04edef5及后续交付切片）。已验EAP自身真实模型改页→实际预览→正式独立检查→技术ACCEPT/刷新读回，见[当前台账](planning-status.md#prebound-page-delivery-validation)；用户产品接受仍待，测试决定不等于用户已接受 |
 | CT-01 / P1 | 页面保留等于任务恢复，或会话失效只能手工新建 | 区分 UI缓存、模型记忆、请求和持久Run；显式重连后可重试当前草稿 | **部分交付**：SSE/cancel/快照/同ID重连及失败草稿保留；本轮CRLF/分块/多行data、坏帧拒绝/每帧限额、final及时释放HTTP连接已回归，全量752项通过，mock发送已验；真实供应商流式/进程取消、跨重启接管与用户接受仍待 2026-11-08后端评审修复：应用线程拥有执行，SSE断线不终止任务；Spring AI/Responses流按完整行脱敏输出；事件终态预留、并发快照、运行中记录保留和大代码响应修复。持久回放/跨重启接管仍未实现，详见[评审实施](records/architecture-history.md#backend-review-hardening)。 |
 | RV-01 / P1 | SQL检查器等于全局摘要 | 任务/会话相关摘要、文件Diff、验证和来源 | **部分交付**：会话摘要/变更右栏、源文件浮层、终端底栏各守职责；看板按Run选择审阅/验证，源码交付与接受/拒绝独立工作面且持久回放；设置不挂任务面板。仍缺：SQL实际任务证据、完整自身改页证据及用户接受；Chat终端未因此获得任意shell能力 |
@@ -478,7 +481,7 @@ sequenceDiagram
 | RK-5 审阅与原型关联 | 设计版本→任务→Run→Diff→验证→人工验收可追溯，缺证据不能完成 | 补关联与审阅功能，不让模型声明或文件写入替代验收 |
 | RK-6 页面与失败边界 | 切换/重开能读真实状态；断线、执行失败、未知结果及取消能力分别呈现 | 按实际支持标注；不扩大授权或虚构恢复能力 |
 
-当前实施状态（2026-11-01同步）：RK-1～3任务准备/并发/启动去重、RK-4受控只读Git检查、RK-6重读/失败/未知阻塞已落地；RK-5已从原型→任务→Run快照推进到单文件生成/持久应用、独立验证、POST_HOC/PREBOUND来源和人工接受/拒绝记录。限定真实供应商单文件改页及技术交付决定已验，用户产品接受及复杂页面仍待，Git检查Run不是代码实现者，取消和跨重启接管未因此实现。证据见[受控执行](records/delivery-history.md#board-controlled-run)、[独立验证](records/delivery-history.md#board-run-verification)、[交付决定](records/delivery-history.md#board-source-delivery)、[生成前任务绑定](records/delivery-history.md#code-task-prebinding)。
+当前实施状态（2026-11-10同步）：RK-1～3任务准备/并发/启动去重、RK-4受控只读Git检查、RK-6重读/失败/未知阻塞已落地；RK-5已从原型→任务→Run快照推进到有界1～8文件生成/持久应用、独立验证、POST_HOC/PREBOUND来源和人工接受/拒绝记录。限定真实供应商三文件证据页面及技术交付决定已验，跨页面/路由与用户产品接受仍待，Git检查Run不是代码实现者，取消和跨重启接管未因此实现。证据见[受控执行](records/delivery-history.md#board-controlled-run)、[独立验证](records/delivery-history.md#board-run-verification)、[交付决定](records/delivery-history.md#board-source-delivery)、[生成前任务绑定](records/delivery-history.md#code-task-prebinding)。
 
 **KB验收ID仍保留**：KB-01/P0为能力/依赖复用审查；KB-02/P0为EAP单一状态、执行归属与并发规则；KB-03/P1为Vue看板/详情/状态更新；KB-04/P0为原型→任务→执行证据→验收关联。当前有限实现以RK状态及§0B.9为准，不以旧阶段顺序重新启动已交付工作。详细比较表、架构图和查阅来源见[历史§0B.11](records/product-plan-history.md#section-0b-11)。
 

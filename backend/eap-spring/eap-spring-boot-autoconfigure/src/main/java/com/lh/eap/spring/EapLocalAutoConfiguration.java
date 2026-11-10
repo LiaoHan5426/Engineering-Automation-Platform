@@ -1,4 +1,8 @@
 package com.lh.eap.spring;
+import com.lh.eap.api.ProcessExecutor;
+import com.lh.eap.application.service.CliChannels;
+import com.lh.eap.local.CliChannelStore;
+import org.springframework.beans.factory.ObjectProvider;
 
 import com.lh.eap.application.service.WorkspaceFilesService;
 import com.lh.eap.config.RuntimeWorkspace;
@@ -14,14 +18,14 @@ import org.springframework.core.env.Environment;
 public class EapLocalAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
-    com.lh.eap.local.CliChannelStore cliChannelStore() {
-        return com.lh.eap.local.CliChannelStore.readOnlyDefaults();
+    CliChannelStore cliChannelStore() {
+        return CliChannelStore.readOnlyDefaults();
     }
     @Bean
     @ConditionalOnMissingBean
-    com.lh.eap.application.service.CliChannels cliChannels(com.lh.eap.local.CliChannelStore store,
-            org.springframework.beans.factory.ObjectProvider<com.lh.eap.api.ProcessExecutor> executor) {
-        return new com.lh.eap.application.service.CliChannels(store, executor.getIfAvailable());
+    CliChannels cliChannels(CliChannelStore store,
+            ObjectProvider<ProcessExecutor> executor) {
+        return new CliChannels(store, executor.getIfAvailable());
     }
 
     @Bean

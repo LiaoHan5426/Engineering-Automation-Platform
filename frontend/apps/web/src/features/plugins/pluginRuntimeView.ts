@@ -1,3 +1,4 @@
+import { DependencyCheckStatus, PluginRuntimeKind } from './pluginStates'
 import type { BoardRuntimeSnapshot } from '@eap/runtime-client'
 import type { PluginId } from './model'
 
@@ -13,14 +14,7 @@ export const PLUGIN_SERVICE_DEPENDENCIES: Record<PluginId, readonly PluginServic
   board: [{ id: 'runtime.board-api', label: '看板 Task/Run API' }],
 }
 
-export type PluginRuntimeKind =
-  | 'ready'
-  | 'dependency_unchecked'
-  | 'dependency_checking'
-  | 'dependency_check_failed'
-  | 'disabled'
-  | 'dependency_missing'
-  | 'activation_failed'
+export type { PluginRuntimeKind } from './pluginStates'
 
 export type PluginRuntimeObservation = {
   kind: PluginRuntimeKind
@@ -30,7 +24,7 @@ export type PluginRuntimeObservation = {
 
 /** Scoped read observation; not installation, activation or full Run verification. */
 export type DependencyCheck = {
-  status: 'unchecked' | 'checking' | 'available' | 'failed'
+  status: DependencyCheckStatus
   source: string
   observedAt: string | null
   reason: string
@@ -54,23 +48,23 @@ export function pluginRuntimeObservation(input: {
   // Sticky activation failure is shown even after rollback leaves enabled=false.
   if (input.activationError) {
     return {
-      kind: 'activation_failed',
+      kind: PluginRuntimeKind.ACTIVATION_FAILED,
       missingDependencies: [],
       message: input.activationError,
     }
   }
   if (!input.enabled) {
-    return { kind: 'disabled', missingDependencies: [], message: '' }
+    return { kind: PluginRuntimeKind.DISABLED, missingDependencies: [], message: '' }
   }
   const missing = missingDependenciesFor(input.pluginId, input.services)
   if (missing.length) {
     return {
-      kind: 'dependency_missing',
+      kind: PluginRuntimeKind.DEPENDENCY_MISSING,
       missingDependencies: missing,
       message: missing.map((item) => item.label).join('、'),
     }
   }
-  return { kind: 'ready', missingDependencies: [], message: '' }
+  return { kind: PluginRuntimeKind.READY, missingDependencies: [], message: '' }
 }
 
 export function contributionVisible(
@@ -85,5 +79,5 @@ export function contributionVisible(
     services,
     activationError,
   })
-  return observation.kind === 'ready'
+  return observation.kind === PluginRuntimeKind.READY
 }

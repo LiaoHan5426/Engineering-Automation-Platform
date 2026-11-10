@@ -1,4 +1,5 @@
 package com.lh.eap.ai;
+import com.lh.eap.error.ChatErrors;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -98,8 +99,8 @@ public final class ContextBudget {
     }
 
     public static ResponseStatusException exceeded(Observation observation) {
-        var rejected = new ResponseStatusException(HttpStatus.BAD_REQUEST, "CONTEXT_BUDGET_EXCEEDED");
-        rejected.getBody().setProperty("error", "CONTEXT_BUDGET_EXCEEDED");
+        var rejected = new ResponseStatusException(HttpStatus.BAD_REQUEST, ChatErrors.CONTEXT_BUDGET_EXCEEDED.code());
+        rejected.getBody().setProperty("error", ChatErrors.CONTEXT_BUDGET_EXCEEDED.code());
         rejected.getBody().setProperty("contextBudget", observation);
         return rejected;
     }

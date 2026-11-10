@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   runtimeApi,
   type CapabilityItem,
@@ -8,10 +9,11 @@ import {
   type CliOperationItem,
   type CliProbeResult,
 } from '@eap/runtime-client'
-import { Badge, Button, ConfirmBox, Feedback, Input, Select, Textarea } from '@eap/ui'
+import { Badge, Button, ConfirmBox, Dialog, Feedback, Input, Select, Textarea } from '@eap/ui'
 import { Table, type TableColumn } from '@eap/plugin-table'
 import { errorMessage } from '../../lib/presentation'
 
+const { t } = useI18n()
 const props = defineProps<{ items: CapabilityItem[]; kind: CapabilityKindSummary | null }>()
 const emit = defineEmits<{ saved: [] }>()
 const programs = ref<CliProgramItem[]>([])
@@ -200,17 +202,25 @@ async function remove() {
       </div>
     </header>
     <Feedback v-if="message" :tone="failed ? 'error' : 'success'">{{ message }}</Feedback>
-    <form v-if="programEditor" class="form-grid" @submit.prevent="register">
-      <label>程序标识<Input v-model="programForm.id" required placeholder="eslint" /></label>
-      <label>程序名称<Input v-model="programForm.name" required placeholder="ESLint" /></label>
-      <label
-        >可执行文件<Input v-model="programForm.binary" required placeholder="eslint 或绝对路径"
-      /></label>
-      <div class="form-actions">
-        <Button type="submit" variant="primary" :disabled="busy">登记程序</Button
-        ><Button variant="secondary" type="button" @click="programEditor = false">取消</Button>
-      </div>
-    </form>
+    <Dialog
+      v-if="programEditor"
+      :title="t('product.registerProgram')"
+      :busy="busy"
+      @close="programEditor = false"
+    >
+      <Feedback v-if="failed" tone="error">{{ message }}</Feedback>
+      <form v-if="programEditor" class="form-grid" @submit.prevent="register">
+        <label>程序标识<Input v-model="programForm.id" required placeholder="eslint" /></label>
+        <label>程序名称<Input v-model="programForm.name" required placeholder="ESLint" /></label>
+        <label
+          >可执行文件<Input v-model="programForm.binary" required placeholder="eslint 或绝对路径"
+        /></label>
+        <div class="form-actions">
+          <Button type="submit" variant="primary" :disabled="busy">登记程序</Button
+          ><Button variant="secondary" type="button" @click="programEditor = false">取消</Button>
+        </div>
+      </form>
+    </Dialog>
     <div class="form-actions">
       <label
         >显示范围<Select v-model="filter">
@@ -283,32 +293,44 @@ async function remove() {
         </Button>
       </div>
     </header>
-    <form v-if="operationProgram === program.id" class="form-grid" @submit.prevent="saveOperation">
-      <label
-        >能力标识<Input
-          v-model="operationForm.capabilityId"
-          :disabled="operationEditing"
-          required
-          placeholder="git-log" /></label
-      ><label
-        >操作名称<Input v-model="operationForm.title" required placeholder="查看最近提交"
-      /></label>
-      <label class="wide"
-        >固定参数数组<Textarea
-          v-model="operationForm.args"
-          class="mono"
-          required
-          placeholder='["log", "--oneline", "-10"]'
-        ></Textarea></label
-      ><label class="wide">用途说明<Input v-model="operationForm.description" /></label>
-      <p class="hint wide">
-        手动操作返回脱敏进程输出和退出码。被已启用专家引用的操作须先解除引用，才能修改或删除。
-      </p>
-      <div class="form-actions">
-        <Button type="submit" variant="primary" :disabled="busy">保存操作</Button
-        ><Button variant="secondary" type="button" @click="operationProgram = ''">取消</Button>
-      </div>
-    </form>
+    <Dialog
+      v-if="operationProgram === program.id"
+      :title="t('product.editOperation')"
+      :busy="busy"
+      @close="operationProgram = ''"
+    >
+      <Feedback v-if="failed" tone="error">{{ message }}</Feedback>
+      <form
+        v-if="operationProgram === program.id"
+        class="form-grid"
+        @submit.prevent="saveOperation"
+      >
+        <label
+          >能力标识<Input
+            v-model="operationForm.capabilityId"
+            :disabled="operationEditing"
+            required
+            placeholder="git-log" /></label
+        ><label
+          >操作名称<Input v-model="operationForm.title" required placeholder="查看最近提交"
+        /></label>
+        <label class="wide"
+          >固定参数数组<Textarea
+            v-model="operationForm.args"
+            class="mono"
+            required
+            placeholder='["log", "--oneline", "-10"]'
+          ></Textarea></label
+        ><label class="wide">用途说明<Input v-model="operationForm.description" /></label>
+        <p class="hint wide">
+          手动操作返回脱敏进程输出和退出码。被已启用专家引用的操作须先解除引用，才能修改或删除。
+        </p>
+        <div class="form-actions">
+          <Button type="submit" variant="primary" :disabled="busy">保存操作</Button
+          ><Button variant="secondary" type="button" @click="operationProgram = ''">取消</Button>
+        </div>
+      </form>
+    </Dialog>
     <Table
       v-if="program.operations.length"
       :columns="operationColumns"

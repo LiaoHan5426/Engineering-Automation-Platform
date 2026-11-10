@@ -39,7 +39,7 @@ const decision = {
     comment: 'literal comment',
   },
 }
-const read = () => readDeliveryRequest(store, 'task-a', 'run-a', 'project-a', false)
+const read = () => readDeliveryRequest(store, 'task-a', 'run-a', 'project-a', 'api-a')
 beforeEach(() => values.clear())
 it('keeps the exact post-hoc application reference in the request journal', () => {
   const request = {
@@ -49,7 +49,7 @@ it('keeps the exact post-hoc application reference in the request journal', () =
       proposalId: '22345678-1234-1234-1234-123456789abc',
     },
   }
-  writeDeliveryRequest(store, 'task-a', 'run-a', false, request)
+  writeDeliveryRequest(store, 'task-a', 'run-a', 'api-a', request)
   expect(read()).toEqual(request)
 })
 it.each([
@@ -58,7 +58,7 @@ it.each([
   { conversationId: 'bad', proposalId: submission.requestId },
   { conversationId: submission.requestId, proposalId: submission.requestId, source: 'fake' },
 ])('rejects malformed stored application references without normalizing them', (applicationRef) => {
-  writeDeliveryRequest(store, 'task-a', 'run-a', false, {
+  writeDeliveryRequest(store, 'task-a', 'run-a', 'api-a', {
     ...submission,
     applicationRef,
   } as unknown as PendingDeliveryRequest)
@@ -69,24 +69,24 @@ it.each([
   decision,
   { ...submission, rejectionCode: 'BOARD_DELIVERY_REQUEST_CONFLICT' },
 ])('round trips the exact immutable request and conflict state', (request) => {
-  expect(writeDeliveryRequest(store, 'task-a', 'run-a', false, request)).toBe(true)
+  expect(writeDeliveryRequest(store, 'task-a', 'run-a', 'api-a', request)).toBe(true)
   expect(read()).toEqual(request)
 })
-it('isolates task, Run, project, mode and the ordinary Run request journal', () => {
-  writeDeliveryRequest(store, 'task-a', 'run-a', false, submission)
-  for (const [task, run, project, mock] of [
-    ['task-b', 'run-a', 'project-a', false],
-    ['task-a', 'run-b', 'project-a', false],
-    ['task-a', 'run-a', 'project-b', false],
-    ['task-a', 'run-a', 'project-a', true],
+it('isolates task, Run, project, API target and the ordinary Run request journal', () => {
+  writeDeliveryRequest(store, 'task-a', 'run-a', 'api-a', submission)
+  for (const [task, run, project, scope] of [
+    ['task-b', 'run-a', 'project-a', 'api-a'],
+    ['task-a', 'run-b', 'project-a', 'api-a'],
+    ['task-a', 'run-a', 'project-b', 'api-a'],
+    ['task-a', 'run-a', 'project-a', 'api-b'],
   ] as const) {
-    expect(readDeliveryRequest(store, task, run, project, mock)).toBeNull()
+    expect(readDeliveryRequest(store, task, run, project, scope)).toBeNull()
   }
-  expect(readRunRequest(store, 'task-a', 'project-a', false)).toBeNull()
-  writeDeliveryRequest(store, 'task-a', 'run-b', false, decision)
-  writeDeliveryRequest(store, 'task-a', 'run-a', false, null)
+  expect(readRunRequest(store, 'task-a', 'project-a', 'api-a')).toBeNull()
+  writeDeliveryRequest(store, 'task-a', 'run-b', 'api-a', decision)
+  writeDeliveryRequest(store, 'task-a', 'run-a', 'api-a', null)
   expect(read()).toBeNull()
-  expect(readDeliveryRequest(store, 'task-a', 'run-b', 'project-a', false)).toEqual(decision)
+  expect(readDeliveryRequest(store, 'task-a', 'run-b', 'project-a', 'api-a')).toEqual(decision)
 })
 it.each([
   { ...submission, revision: 0 },
@@ -122,16 +122,16 @@ it.each([
     store,
     'task-a',
     'run-a',
-    false,
+    'api-a',
     invalid as unknown as PendingDeliveryRequest,
   )
   expect(read()).toBeNull()
 })
 it('handles corrupt JSON and inaccessible storage without issuing any request', () => {
-  writeDeliveryRequest(store, 'task-a', 'run-a', false, submission)
+  writeDeliveryRequest(store, 'task-a', 'run-a', 'api-a', submission)
   for (const key of values.keys()) values.set(key, '{bad json')
   expect(read()).toBeNull()
-  expect(readDeliveryRequest(null, 'task-a', 'run-a', 'project-a', false)).toBeNull()
+  expect(readDeliveryRequest(null, 'task-a', 'run-a', 'project-a', 'api-a')).toBeNull()
   const broken = {
     getItem: () => {
       throw new Error('denied')
@@ -143,7 +143,7 @@ it('handles corrupt JSON and inaccessible storage without issuing any request', 
       throw new Error('denied')
     },
   }
-  expect(readDeliveryRequest(broken, 'task-a', 'run-a', 'project-a', false)).toBeNull()
-  expect(writeDeliveryRequest(broken, 'task-a', 'run-a', false, submission)).toBe(false)
-  expect(writeDeliveryRequest(broken, 'task-a', 'run-a', false, null)).toBe(false)
+  expect(readDeliveryRequest(broken, 'task-a', 'run-a', 'project-a', 'api-a')).toBeNull()
+  expect(writeDeliveryRequest(broken, 'task-a', 'run-a', 'api-a', submission)).toBe(false)
+  expect(writeDeliveryRequest(broken, 'task-a', 'run-a', 'api-a', null)).toBe(false)
 })

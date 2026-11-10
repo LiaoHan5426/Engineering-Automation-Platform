@@ -15,7 +15,7 @@ class ScenarioApiTest {
         when(service.dependencies("prototype-to-code")).thenReturn(new com.lh.eap.application.dto.ScenarioWorkflowDependencies(
                 1,"prototype-to-code",java.time.Instant.now(),java.util.List.of(),java.util.List.of(),java.util.List.of()));
         var mvc=MockMvcBuilders.standaloneSetup(new ScenarioController(service))
-                .setControllerAdvice(new ApiErrorHandler()).addFilters(new AiBrowserRequestGuard()).build();
+                .setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).addFilters(new AiBrowserRequestGuard(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         mvc.perform(get("/api/scenarios/workflows/prototype-to-code/dependencies")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.contractVersion").value(1));
         mvc.perform(post("/api/scenarios/workflows/prototype-to-code/dependencies")).andExpect(status().isMethodNotAllowed());
@@ -26,7 +26,7 @@ class ScenarioApiTest {
     @Test void allConfigurationWritesRejectForeignOrigins() throws Exception {
         var service = mock(ScenarioService.class);
         var mvc = MockMvcBuilders.standaloneSetup(new ScenarioController(service))
-                .setControllerAdvice(new ApiErrorHandler()).addFilters(new AiBrowserRequestGuard()).build();
+                .setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).addFilters(new AiBrowserRequestGuard(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         mvc.perform(put("/api/scenarios/custom-test").contentType(MediaType.APPLICATION_JSON).content("{}")
                 .header("Origin", "https://evil.example")).andExpect(status().isForbidden());
         mvc.perform(delete("/api/scenarios/custom-test?revision=1").header("Origin", "https://evil.example"))
@@ -36,7 +36,7 @@ class ScenarioApiTest {
     @Test void deletionRequiresRevisionButNotAJsonBody() throws Exception {
         var service = mock(ScenarioService.class);
         var mvc = MockMvcBuilders.standaloneSetup(new ScenarioController(service))
-                .setControllerAdvice(new ApiErrorHandler()).addFilters(new AiBrowserRequestGuard()).build();
+                .setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).addFilters(new AiBrowserRequestGuard(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         mvc.perform(delete("/api/scenarios/custom-test?revision=2").header("Origin", "http://localhost:5173"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.deleted").value(true));
         verify(service).delete("custom-test", 2);

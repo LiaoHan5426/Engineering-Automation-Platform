@@ -55,8 +55,11 @@ class BoardVerificationWorkerTest {
             when(plans.availability()).thenReturn(""); when(plans.prepare(any(), any())).thenReturn(plan);
             when(jdbc.query(anyString(), any(RowMapper.class), eq(task), eq(run))).thenAnswer(call -> List.of(Optional.ofNullable(saved)));
             when(jdbc.update(contains("verification_snapshot=?::jsonb"), any(), eq(task), eq(run))).thenAnswer(call -> {
-                String sql = call.getArgument(0);
-                if (sql.contains("IS NULL") && saved != null || sql.contains("='QUEUED'") && !"QUEUED".equals(saved.status()) || sql.contains("='RUNNING'") && !"RUNNING".equals(saved.status())) return 0;
+                if (saved != null) return 0;
+                saved = JSON.readValue((String)call.getArgument(1), BoardVerificationService.Record.class); writes.add(saved); return 1;
+            });
+            when(jdbc.update(contains("verification_snapshot=?::jsonb"), any(), eq(task), eq(run), anyString())).thenAnswer(call -> {
+                if (saved == null || !saved.status().equals(call.getArgument(4))) return 0;
                 saved = JSON.readValue((String)call.getArgument(1), BoardVerificationService.Record.class); writes.add(saved); return 1;
             });
             when(process.runIsolated(eq("vp"), any(), anyList(), anyMap())).thenAnswer(call -> {
@@ -120,7 +123,7 @@ class BoardVerificationWorkerTest {
         var f = new Fixture();
         var recover = assertDoesNotThrow(() -> BoardVerificationService.class.getMethod("markRestartUnknown"));
         recover.invoke(f.service);
-        verify(f.jdbc).update(argThat((String sql) -> sql.contains("UNKNOWN") && sql.contains("'QUEUED','RUNNING'") && sql.contains("jsonb_set") && !sql.contains("DELETE")));
+        verify(f.jdbc).update(argThat((String sql) -> sql.contains("ANY(?::text[])") && sql.contains("jsonb_set") && !sql.contains("DELETE")), eq("UNKNOWN"), eq("BOARD_VERIFICATION_RESTART_UNKNOWN"), eq(com.lh.eap.persistence.mapper.StateBindings.VERIFICATION_ACTIVE));
     }
     @Test void sourceChangeBetweenChecksStopsBeforeTheNextProcess() {
         var f = new Fixture(); f.start();

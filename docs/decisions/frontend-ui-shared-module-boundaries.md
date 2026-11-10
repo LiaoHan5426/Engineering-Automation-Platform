@@ -34,14 +34,15 @@
 |---|---|---|---|
 | `@eap/style` | Design token 与主题 | light/dark、`applyTheme` | 无前端业务包 |
 | `@eap/icons` | UI内部纯SVG资源和尺寸/线宽/可访问性契约 | 静态Lucide白名单，currentColor继承主题；不联网 | Vue + 固定版本Lucide；无UI/路由/API依赖，仅UI接入，应用用`@eap/ui`的Icon |
-| `@eap/ui` | **全部**基础/无领域复合 UI 与 BEM 样式 | 实现以 §6 与 index.ts 为准 | Vue + `@eap/style`；按需声明内部交互依赖 |
+| `@eap/ui` | **全部**基础/无领域复合 UI 与 BEM 样式 | 实现以 §6 与 index.ts 为准 | Vue + `@eap/style`/icons；FileUpload 可引用 request 的无领域类型；禁止 runtime-client |
 | `@eap/hooks` | 无 UI 强绑定的 Vue composable | `useFocusTrap`、`useEscClose`、`useMediaQuery`、本地偏好键读写（无业务实体） | Vue；**不**依赖 runtime-client |
 | `@eap/effects` | 动效 / 过渡 / 可访问性反馈原语 | 统一 transition 名、reduced-motion 包装、加载 shimmer 类 | 优先纯 CSS/小工具；可被 `@eap/ui` 引用 |
 | `@eap/layout` | 壳层布局原语（非业务页） | SplitPane、Dock/Rail 槽位、WorkbenchFrame、滚动区约定 | `@eap/ui` + hooks；不含 Chat/Board 业务 |
 | `@eap/toggle` *或* 并入 `@eap/ui` | 开关类控制 | Switch、Segmented、ThemeToggle（纯展示） | 默认**先做进 `@eap/ui`**；仅当体积/依赖独立时再拆 `@eap/toggle` |
 | `@eap/plugin-sdk` / `@eap/plugin-runtime` | 工作台插件契约与可信运行时 | Manifest、贡献点、启停、槽位 | 见 v1.6 §2B；**不等于** Skill/MCP |
 | `@eap/plugin-table` | 纯表格插件（vxe-table + `@vxe-ui/core`） | `Table`；分页用 `@eap/ui` Pagination | 不 `app.use` vxe-pc-ui，不把表格实现放进 `@eap/ui`。vxe-pc-ui 只作类型依赖 |
-| `@eap/runtime-client` | HTTP 与 DTO | API 客户端 | 被 feature / 可选 L3 使用；**不被** `@eap/ui` 依赖 |
+| `@eap/request`（已落地） | 无领域依赖的 HTTP/流/上传/下载传输 | Axios 实例、动态 headers、超时/取消、注入 UploadRequest | 仅依赖 Axios；不导入 EAP 业务包，不含 API/凭据地址；UI FileUpload 仅引用请求函数类型 |
+| `@eap/runtime-client` | EAP API 与分域 DTO/状态/错误、业务 SSE 帧解析 | 复用 request；纯 contracts 入口供服务及测试使用 | 被 feature / 可选 L3 使用；**不被** `@eap/ui` 依赖 |
 | `@eap/vsh`（工程工具，非运行时层） | `scripts/vsh`集中前端规范门禁 | 包exports/依赖、UI/测试落点、循环检查与CLI | Node/TypeScript/Vue编译器和独立扫描器；不进入UI/应用生产依赖，不承载领域状态 |
 | `@eap/prototype-*` | Grapes / Schema / 预览 | 见 v1.6 §3A | 懒加载；不进全站主包 |
 
@@ -51,7 +52,7 @@
 apps/web/src
   features/<area>/     单域页面与局部逻辑（默认）
   components/          仅应用壳专用、且暂未满足抽包条件的组合（须短注释说明为何未进 packages）
-  lib/                 非 Vue 展示组件的工具：i18n 文案、脱敏、serviceConfig、纯函数
+  lib/                 非 Vue 展示组件的工具：i18n 文案、脱敏、API 存储范围配置、纯函数
 ```
 
 禁止：`features/A` 通过 `../B/...` 引用另一 feature 的 `.vue` 当作共享库。应上提到 L1–L3 或 `components/` 并登记。
@@ -60,7 +61,7 @@ apps/web/src
 
 | 内容 | 暂存位置 | 目标模块 | 触发抽包条件 |
 |---|---|---|---|
-| Dialog / Button / Input / Select / Textarea / Checkbox / Switch / FileInput / Slider / Scrollbar / InfiniteScroll / Tabs / Popover | `packages/ui`（已落地） | `@eap/ui` | — |
+| Dialog / Button / Input / Select / Textarea / Checkbox / Switch / FileInput / FileUpload / Slider / Scrollbar / InfiniteScroll / Tabs / Popover | `packages/ui`（已落地） | `@eap/ui` | — |
 | `useFocusTrap` / `useEscClose` | `packages/ui/src/hooks`（Dialog 与 ConfirmBox 共用） | `@eap/hooks` | feature 需要同一陷阱时抽包；在此之前不得另写一份 |
 | ConnectionDialog | `apps/web/src/components/ConnectionDialog.vue`（薄包装 Dialog） | 保持薄包装；壳能力只在 Dialog | 出现第三处平行弹层实现时必须删平行实现 |
 | SessionPanel / WorkspaceWelcome / RepositoryBrowser | `apps/web/src/components/`（聊天装配与会话轨共用；领域状态仍在 `features/shell`） | SessionPanel 的 Dock/Rail 契约 → `@eap/layout`；仓库 API 与懒加载留应用，通用 Tree 已在 UI 包；文件浮层组装 Drawer | 第二工作台复用同一 Dock/Rail 契约时抽 layout 包 |
@@ -74,6 +75,7 @@ apps/web/src
 | 原型版本内容展示 | `components/PrototypeVersionContent.vue`；解析与语义节点留 `features/shell` 原型域 | Builder 与任务/Run 共用语义预览；只接受语义版本，未知映射明确阻塞；不是基础 UI | 第二宿主复用完整原型域时再迁 `@eap/prototype-*` |
 | 生成快照与候选应用 | `components/GenerationBaseline.vue`、`components/ProposalApplication.vue`（从Chat移出，旧文件删除） | Chat和任务候选共同使用的L3产品组合，复用Badge/Collapse/Checkbox/Button；Board通过显式operations接入任务API，无网络错误回退另一入口 | 第二宿主复用完整候选域时再评估抽包，不增加平行应用面板 |
 | 候选文件Diff | `components/ProposalDiffView.vue`，Chat与专家审批共用 | 应用层只读候选展示，复用现有Monaco/文本降级，销毁前先解除模型绑定；审批状态/API留各feature | 第二宿主复用候选交付合同再抽包，不新增平行Diff或基础UI包 |
+| 多文件交付证据面板 | `components/DeliveryEvidencePanel.vue`、`DeliveryEvidenceSummary.vue`、`deliveryEvidenceModel.ts`，任务候选审阅消费 | L3应用交付域组合，复用Input/Button/Panel/Badge；只做计数/筛选/选择/正文展示，无API/应用/验证/接受动作；不新建基础包 | 第二宿主复用完整交付域时评估抽包；通用控件留@eap/ui |
 | 场景原型工作面 | `features/ScenarioWorkspace.vue` 只组装版本选择与开发准备，设计器经既有 Builder 入口打开 | 不再复制挂载 LayoutDraft/GrapesJS；场景返回状态留应用层 | 无新增共享包 |
 
 ## 4. 何时新建 `packages/*`
@@ -230,3 +232,5 @@ apps/web/src
 2026-11-10 PREBOUND交付接续：BoardAppliedCandidates为shell L4只读业务组合，复用Button/Feedback；任务及Run范围、失败旧快照/选择意图留应用，公共DTO/API在runtime-client。真实模型改动GenerationBaseline仍复用Badge/Collapse，无新共享类别/包；architecture、定向组件及生产App整链通过。见[当前台账](../planning-status.md#prebound-page-delivery-validation)。
 
 2026-11-10候选恢复接续：BoardCodeCandidates属shell L4任务域，复用已登记L3生成快照/候选应用及ProposalDiffView，底层@eap/ui控件不复制。共享应用组件监听稳定身份key，操作状态同步目录，拒绝数据变化引发网络循环。类型/架构/定向及正式浏览器通过，见[当前验收](../planning-status.md#board-code-recovery-validation)。
+
+2026-11-11：按用户目标4～8完成管理工作面分层；新建/编辑复用公共Dialog，规则/资料按Tabs分面，能力诊断与Git检查分开，插件详情按需打开。通用传输落 `@eap/request`；FileUpload在UI定义，技能页仅使用本地选择模式。独立Mock落apps/backend-mock，正式src不依赖或分支。详见[产品工作面与传输合同](frontend-product-workspaces-and-transport.md)。

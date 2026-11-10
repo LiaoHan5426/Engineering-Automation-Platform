@@ -10,7 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 class AiChatControllerGrantBoundaryTest {
     @Test
     void postWorkspaceGrantsIsRefusedAsRemoteGrantStore() {
-        var controller = new AiChatController(null);
+        var controller = new AiChatController(null, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)));
         var failure = assertThrows(ResponseStatusException.class, controller::refuseUserDirectoryGrants);
         assertEquals(HttpStatus.METHOD_NOT_ALLOWED, failure.getStatusCode());
         assertEquals("USER_DIRECTORY_GRANTS_NOT_STORED_ON_SERVER", failure.getReason());

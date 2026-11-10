@@ -2,43 +2,31 @@ import { defineConfig, loadEnv } from 'vite-plus'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { VueMcp } from 'vite-plugin-vue-mcp'
-import { mockBackend } from './mock/plugin'
-import { useMockServer } from './mock/mode'
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const useMock = useMockServer({
-    command,
-    mode,
-    flag: process.env.VITE_USE_MOCK || env.VITE_USE_MOCK,
-  })
+  const target =
+    process.env.EAP_API_PROXY ||
+    env.EAP_API_PROXY ||
+    (mode === 'mock' ? 'http://127.0.0.1:53200' : 'http://127.0.0.1:8080')
+  const apiURL = env.VITE_API_URL || process.env.VITE_API_URL || '/api'
+  const apiScope =
+    env.VITE_API_SCOPE ||
+    process.env.VITE_API_SCOPE ||
+    (command === 'serve' && !/^https?:\/\//.test(apiURL) ? target + apiURL : apiURL)
   return {
-    optimizeDeps: {
-      include: ['monaco-editor'],
-    },
+    optimizeDeps: { include: ['monaco-editor'] },
     plugins: [
       vue(),
       tailwindcss(),
-      ...(useMock ? [mockBackend()] : []),
       ...(command === 'serve' && process.env.EAP_VUE_MCP === 'true'
         ? [VueMcp({ host: '127.0.0.1', updateCursorMcpJson: false })]
         : []),
     ],
-    ...(command === 'serve' && mode !== 'test'
-      ? {
-          define: {
-            'import.meta.env.VITE_API_URL': JSON.stringify(
-              env.VITE_API_URL || process.env.VITE_API_URL || '/api',
-            ),
-            'import.meta.env.VITE_USE_MOCK': JSON.stringify(useMock ? 'true' : 'false'),
-          },
-        }
-      : {}),
-    server: {
-      host: '127.0.0.1',
-      proxy: useMock
-        ? undefined
-        : { '/api': { target: 'http://127.0.0.1:8080', changeOrigin: true } },
+    define: {
+      'import.meta.env.VITE_API_URL': JSON.stringify(apiURL),
+      'import.meta.env.VITE_API_SCOPE': JSON.stringify(apiScope),
     },
+    server: { host: '127.0.0.1', proxy: { '/api': { target, changeOrigin: true } } },
   }
 })

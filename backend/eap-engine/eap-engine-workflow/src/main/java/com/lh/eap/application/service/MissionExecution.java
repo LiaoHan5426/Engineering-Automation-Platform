@@ -26,4 +26,9 @@ public record MissionExecution(
         String unconfirmedReason,
         boolean cancelRequested,
         String approval,
-        Instant createdAt) {}
+        Instant createdAt) {
+    public MissionExecution {
+        if (MissionExecutionStatus.fromWire(status) == MissionExecutionStatus.UNKNOWN)
+            throw new IllegalArgumentException("Mission UNKNOWN is an observation; retain stored status and unconfirmedReason");
+    }
+}

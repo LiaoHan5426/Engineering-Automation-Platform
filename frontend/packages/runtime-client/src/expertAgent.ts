@@ -1,22 +1,9 @@
-import type { AxiosInstance } from 'axios'
+import type { RequestClient } from '@eap/request'
 import type { CodeProposalState, TaskObservation } from './index'
 
-export type ExpertAgentState =
-  | 'queued'
-  | 'running'
-  | 'interrupted'
-  | 'completed'
-  | 'partial'
-  | 'needs-input'
-  | 'failed'
-  | 'cancelled'
-  | 'timed-out'
-  | 'awaiting-approval'
-  | 'applying'
-  | 'applied'
-  | 'denied'
-  | 'expired'
-  | 'unknown'
+import type { ExpertAgentState } from './contracts/expertAgent'
+export type { ExpertAgentState } from './contracts/expertAgent'
+
 export type ExpertAgentInput = {
   sql: string
   question: string
@@ -74,7 +61,7 @@ export type ExpertAgentResult = {
     retrievalMode?: string
   }>
 }
-export function createExpertAgentApi(client: AxiosInstance) {
+export function createExpertAgentApi(client: RequestClient) {
   const path = (expert: string, id: string) =>
     '/experts/' + encodeURIComponent(expert) + '/agent-runs/' + encodeURIComponent(id)
   return {

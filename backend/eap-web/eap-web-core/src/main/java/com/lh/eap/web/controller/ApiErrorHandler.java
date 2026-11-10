@@ -1,21 +1,28 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.error.LocalizedFailure;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
+import com.lh.eap.error.CommonErrors;
 
-import com.lh.eap.common.SensitiveData;
-
-import java.util.UUID;
+import com.lh.eap.web.i18n.ProblemResponses;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 
 @RestControllerAdvice
 public class ApiErrorHandler {
     private static final Logger log=LoggerFactory.getLogger(ApiErrorHandler.class);
-    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
-    public ProblemDetail expected(org.springframework.web.server.ResponseStatusException error){
-        var result=ProblemDetail.forStatusAndDetail(error.getStatusCode(),SensitiveData.redact(error.getReason()));
+    private final ProblemResponses problems;
+    public ApiErrorHandler(ProblemResponses problems) { this.problems = problems; }
+    @ExceptionHandler(ResponseStatusException.class)
+    public ProblemDetail expected(ResponseStatusException error, HttpServletRequest request, HttpServletResponse response){
+        var result=problems.create(error.getStatusCode().value(),error.getReason(),request,response);
         var properties = error.getBody().getProperties();
         if (properties != null && properties.get("knowledgeMemoryCleared") instanceof Boolean cleared)
             result.setProperty("knowledgeMemoryCleared", cleared);
@@ -23,15 +30,28 @@ public class ApiErrorHandler {
             result.setProperty("contextMemoryCleared", cleared);
         return result;
     }
-    @ExceptionHandler({IllegalArgumentException.class,HttpMessageNotReadableException.class})
-    public ProblemDetail invalid(Exception error){
-        return problem(HttpStatus.BAD_REQUEST,error instanceof IllegalArgumentException?SensitiveData.redact(error.getMessage()):"请求 JSON 无效或字段类型不正确",error);
+    @ExceptionHandler(LocalizedFailure.class)
+    public ProblemDetail domain(LocalizedFailure error, HttpServletRequest request, HttpServletResponse response) {
+        int status = switch(error.kind()) { case INVALID -> 400; case FORBIDDEN -> 403; case NOT_FOUND -> 404; case CONFLICT -> 409; case UNAVAILABLE -> 503; };
+        return problems.create(status,error.code(),request,response,error.messageArguments());
+    }
+    @ExceptionHandler({IllegalArgumentException.class,HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    public ProblemDetail invalid(Exception error, HttpServletRequest request, HttpServletResponse response){
+        String code=error instanceof HttpMessageNotReadableException?CommonErrors.INVALID_JSON.code():problems.declaredCode(error.getMessage(),CommonErrors.INVALID_REQUEST.code());
+        return problem(HttpStatus.BAD_REQUEST,code,error,request,response);
     }
     @ExceptionHandler(DataAccessException.class)
-    public ProblemDetail database(DataAccessException error){return problem(HttpStatus.SERVICE_UNAVAILABLE,"数据服务暂不可用，请检查数据库、迁移和后端日志",error);}
-    private ProblemDetail problem(HttpStatus status,String message,Exception error){
-        var id=UUID.randomUUID().toString();
-        log.warn("API request {} failed: type={}, status={}",id,error.getClass().getSimpleName(),status.value());
-        var result=ProblemDetail.forStatusAndDetail(status,message);result.setProperty("requestId",id);return result;
+    public ProblemDetail database(DataAccessException error, HttpServletRequest request, HttpServletResponse response){return problem(HttpStatus.SERVICE_UNAVAILABLE,CommonErrors.DATA_SERVICE_UNAVAILABLE.code(),error,request,response);}
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail unexpected(Exception error, HttpServletRequest request, HttpServletResponse response){
+        int status=error instanceof ErrorResponse declared?declared.getStatusCode().value():500;
+        var result=problems.create(status,status<500?CommonErrors.INVALID_REQUEST.code():CommonErrors.UNEXPECTED_ERROR.code(),request,response);
+        log.warn("API request {} failed: code={}, type={}, status={}",result.getProperties().get("requestId"),result.getProperties().get("code"),error.getClass().getSimpleName(),status);
+        return result;
+    }
+    private ProblemDetail problem(HttpStatus status,String code,Exception error,HttpServletRequest request,HttpServletResponse response){
+        var result=problems.create(status.value(),code,request,response);
+        log.warn("API request {} failed: code={}, type={}, status={}",result.getProperties().get("requestId"),code,error.getClass().getSimpleName(),status.value());
+        return result;
     }
 }

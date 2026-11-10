@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.mcp.client;
+import com.lh.eap.error.McpErrors;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -83,12 +84,12 @@ public final class StreamableHttpMcpTransport implements McpTransport {
                 if (id != null && lastEventId != null && !lastEventId.isBlank()) {
                     return resumeUntil(id, deadline);
                 }
-                throw new IOException("MCP_STREAMABLE_HTTP_SSE_NO_RESPONSE");
+                throw new IOException(McpErrors.MCP_STREAMABLE_HTTP_SSE_NO_RESPONSE.code());
             }
             return body;
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            throw new IOException("MCP_STREAMABLE_HTTP_INTERRUPTED", interrupted);
+            throw new IOException(McpErrors.MCP_STREAMABLE_HTTP_INTERRUPTED.code(), interrupted);
         }
     }
 
@@ -99,7 +100,7 @@ public final class StreamableHttpMcpTransport implements McpTransport {
     public String resume(Duration timeout) throws IOException {
         if (closed.get()) throw new IOException("传输已关闭");
         if (lastEventId == null || lastEventId.isBlank()) {
-            throw new IOException("MCP_STREAMABLE_HTTP_NO_LAST_EVENT_ID");
+            throw new IOException(McpErrors.MCP_STREAMABLE_HTTP_NO_LAST_EVENT_ID.code());
         }
         var deadline = timeout == null || timeout.isNegative() || timeout.isZero()
                 ? Duration.ofSeconds(5)
@@ -135,7 +136,7 @@ public final class StreamableHttpMcpTransport implements McpTransport {
                     Thread.sleep(wait);
                 } catch (InterruptedException interrupted) {
                     Thread.currentThread().interrupt();
-                    throw new IOException("MCP_STREAMABLE_HTTP_INTERRUPTED", interrupted);
+                    throw new IOException(McpErrors.MCP_STREAMABLE_HTTP_INTERRUPTED.code(), interrupted);
                 }
                 remaining -= wait;
             }
@@ -151,7 +152,7 @@ public final class StreamableHttpMcpTransport implements McpTransport {
                 captureSession(response);
                 int status = response.statusCode();
                 if (status == 405) {
-                    throw new IOException("MCP_STREAMABLE_HTTP_GET_UNSUPPORTED");
+                    throw new IOException(McpErrors.MCP_STREAMABLE_HTTP_GET_UNSUPPORTED.code());
                 }
                 if (status < 200 || status >= 300) {
                     throw new IOException("MCP_STREAMABLE_HTTP_GET_" + status);
@@ -163,12 +164,12 @@ public final class StreamableHttpMcpTransport implements McpTransport {
                 if (expectedId == null && !body.isBlank()) return body;
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
-                throw new IOException("MCP_STREAMABLE_HTTP_INTERRUPTED", interrupted);
+                throw new IOException(McpErrors.MCP_STREAMABLE_HTTP_INTERRUPTED.code(), interrupted);
             }
             remaining -= Math.max(1, System.currentTimeMillis() - started);
             if (lastEventId == null || lastEventId.isBlank()) break;
         }
-        throw new IOException("MCP_STREAMABLE_HTTP_RESUME_TIMEOUT");
+        throw new IOException(McpErrors.MCP_STREAMABLE_HTTP_RESUME_TIMEOUT.code());
     }
 
     private void attachSession(HttpRequest.Builder builder) {
@@ -199,12 +200,12 @@ public final class StreamableHttpMcpTransport implements McpTransport {
     static String readSseResponse(String body, Object expectedId) throws IOException {
         var parsed = parseSse(body, expectedId);
         if (parsed.payload() != null) return parsed.payload();
-        throw new IOException("MCP_STREAMABLE_HTTP_SSE_NO_RESPONSE");
+        throw new IOException(McpErrors.MCP_STREAMABLE_HTTP_SSE_NO_RESPONSE.code());
     }
 
     static SseParseResult parseSse(String body, Object expectedId) throws IOException {
         if (body == null || body.isBlank()) {
-            throw new IOException("MCP_STREAMABLE_HTTP_SSE_EMPTY");
+            throw new IOException(McpErrors.MCP_STREAMABLE_HTTP_SSE_EMPTY.code());
         }
         String lastId = null;
         long retry = -1;

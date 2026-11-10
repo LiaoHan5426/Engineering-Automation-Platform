@@ -1,4 +1,7 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.application.service.CliProgramService;
+import com.lh.eap.error.CliProgramErrors;
+import com.lh.eap.error.CommonErrors;
 
 import com.lh.eap.application.dto.CapabilityActivationRequest;
 import com.lh.eap.application.dto.CliChannelRequest;
@@ -42,10 +45,10 @@ public class CapabilityManagementController {
     private final CapabilitySettings settings;
     private final CliChannels channels;
     private final Path workspace;
-    private final com.lh.eap.application.service.CliProgramService programs;
+    private final CliProgramService programs;
 
     public CapabilityManagementController(CapabilityHandlerRegistry handlers, CapabilitySettings settings,
-                                          CliChannels channels, Path workspace, com.lh.eap.application.service.CliProgramService programs) {
+                                          CliChannels channels, Path workspace, CliProgramService programs) {
         this.handlers = handlers;
         this.settings = settings;
         this.channels = channels;
@@ -62,7 +65,7 @@ public class CapabilityManagementController {
     @PutMapping("/capabilities/{name}/activation")
     public Map<String, Object> activate(@PathVariable String name, @RequestBody CapabilityActivationRequest request) {
         requireRegistered(name);
-        if (request == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "缺少请求体");
+        if (request == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,CommonErrors.INVALID_REQUEST.code());
         try {
             settings.save(name, request.enabled(), request.notes());
         } catch (IllegalStateException error) {
@@ -86,9 +89,7 @@ public class CapabilityManagementController {
     public Map<String, Object> channel(@PathVariable String name, @RequestBody CliChannelRequest request) {
         var handler = requireRegistered(name);
         if (handler.kind() != CapabilityKind.CLI) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, name
-                    + " 不是本地 CLI 能力，没有二进制通道。内置命令不依赖外部可执行文件，"
-                    + "其执行内容属于代码，只能启用或停用。");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,CliProgramErrors.CLI_PROBE_UNSUPPORTED.code());
         }
         try {
             channels.configure(programs.programIdForCapability(name), request == null ? null : request.binary());
@@ -112,7 +113,7 @@ public class CapabilityManagementController {
     public Map<String, Object> probeChannel(@PathVariable String name) {
         var handler = requireRegistered(name);
         if (handler.kind() != CapabilityKind.CLI) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, name + " 不是本地 CLI 能力，无法探测二进制");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,CliProgramErrors.CLI_PROBE_UNSUPPORTED.code());
         }
         return channels.probe(programs.programIdForCapability(name), shippedBinary(handler, name), workspace);
     }
@@ -122,9 +123,7 @@ public class CapabilityManagementController {
      * statement about the contract: there is nothing to create here.
      */
     private CapabilityHandler requireRegistered(String name) {
-        return handlers.find(name).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                "运行时没有注册能力 " + name + "。内置命令与本地 CLI 能力由代码注册（一个 CapabilityHandler Bean "
-                        + "加一处声明），目录只能启用、停用或配置已有能力，不能通过接口新增。"));
+        return handlers.find(name).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,CliProgramErrors.CLI_PROBE_UNSUPPORTED.code()));
     }
 
     private Map<String, Object> channelView(String name, CapabilityHandler handler) {
@@ -144,7 +143,7 @@ public class CapabilityManagementController {
         for (var descriptor : handler.describe()) {
             if (name.equals(descriptor.name()) && descriptor.binary() != null) return descriptor.binary();
         }
-        throw new ResponseStatusException(HttpStatus.NOT_FOUND, name + " 没有声明二进制，无法配置或探测通道");
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND,CliProgramErrors.CLI_PROBE_UNSUPPORTED.code());
     }
 
 }

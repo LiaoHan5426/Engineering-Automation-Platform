@@ -29,7 +29,7 @@ class WorkingMemoryPersistenceTest {
         // Simulate process restart: new registry + memory, same store path and conversation id.
         var memory2 = MessageWindowChatMemory.builder().maxMessages(20).build();
         var registry2 = new AiConversationRegistry(memory2, Instant::now, store);
-        var reconnected = registry2.reconnect(session.id, root, "ws");
+        var reconnected = registry2.reconnect(session.id, root, "ws", new AiConversationRegistry.Binding(java.util.UUID.randomUUID(), 1, "test", "m", "e", "r", null));
         assertTrue(reconnected.contextReset());
         assertTrue(memory2.get(key).isEmpty());
         assertEquals("交付登录", registry2.workingMemory(session.id).goal());
@@ -63,7 +63,7 @@ class WorkingMemoryPersistenceTest {
         assertEquals("DERIVED_CONTEXT_CLEARED", registry.workingMemory(session.id).invalidation());
 
         var registry2 = new AiConversationRegistry(MessageWindowChatMemory.builder().maxMessages(20).build(), Instant::now, store);
-        registry2.reconnect(session.id, root, "ws");
+        registry2.reconnect(session.id, root, "ws", new AiConversationRegistry.Binding(java.util.UUID.randomUUID(), 1, "test", "m", "e", "r", null));
         assertEquals("DERIVED_CONTEXT_CLEARED", registry2.workingMemory(session.id).invalidation());
         assertFalse(registry2.workingMemory(session.id).active());
     }

@@ -1,0 +1,73 @@
+{
+  "scope": "Approved coordinated domain status, error contract and locale migration; previous component delivery work retained",
+  "backend": {
+    "ordinaryReactor": "Cross-module mvn test executed; initial failures corrected with scoped reruns, not claimed as one final all-green full rerun",
+    "repairRegression": {
+      "tests": 157,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "lastAffectedRegression": {
+      "tests": 55,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "databaseInitial": {
+      "tests": 9,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "databaseRepair": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "databaseUniqueCasesFinallyPassed": 9,
+    "remainingEnvironmentGatedCases": "Not all enabled; full-application initial ordinary run reported 117 skipped; selected database cases were then enabled separately",
+    "latestSurefireReports": "No failed/error suite reports remain; this is a collection of latest class reports, not a claim of one new full rerun",
+    "finalProductionAndTestCompilation": "Passed after the final test-schema target update; no tests repeated"
+  },
+  "frontend": {
+    "ordinary": "149 files / 914 tests passed",
+    "afterFollowup": "14 files / 230 tests passed, including 8 new Mock and 1 illegal SSE state case; not an additive distinct total",
+    "typecheck": {
+      "kind": "typecheck",
+      "exitCode": 0,
+      "seconds": 7.9
+    },
+    "productionBuild": {
+      "kind": "build",
+      "exitCode": 0,
+      "seconds": 6.6
+    },
+    "architecture": "Passed after moving browser module imports to an explicit test entry; no ignore-list exception",
+    "scopedFormatLint": {
+      "kind": "fmt",
+      "exitCode": 0,
+      "seconds": 13.9
+    },
+    "fullRootCheck": "Failed: 202 formatting issues reported in the full root check; no rewrite of historical artifact JSON",
+    "fullStylelint": "Initial Vue :deep directive parser crash corrected using actual Vue directive names; full scan then reported 1693 errors, including existing property order, whitespace and selectors; no full repository CSS cleanup claimed",
+    "networkIsolation": "Network guard remained enabled; blocked development-service attempts remain visible in logs, no 8080 access from unit tests allowed",
+    "inflightLanguageRegression": "2 files / 61 tests passed after capturing request locale; includes the pending-response language switch case",
+    "finalScopedFormatLint": "5 affected client/session/browser files passed after the last locale change; earlier full changed-scope format/lint also passed",
+    "lastDiffReviewRegression": "PreviewBoard.test.ts: 1 file / 14 tests passed after removing legacy error fallback and restoring the CSS selector",
+    "fullStylelintBaselineProof": "All 1693 reported diagnostics belong to style blocks unchanged from the pre-task backup or HEAD; see quality-baseline.json"
+  },
+  "live": {
+    "http": "12 groups passed",
+    "browser": "2 language groups passed; page errors 0; external requests 0",
+    "provider": "2 deterministic streamed failures; external model calls 0",
+    "journal": "Hash unchanged across locale-specific snapshots",
+    "database": "V35 comment, paired failed proposals and deduplicated CLOSED_UNKNOWN verified",
+    "hosts": "Existing IDE-managed 8080 retained and verified; independently restarted component jar verified; duplicate jar port conflict corrected in launch records",
+    "temporaryQaHost": "Identity-checked QA host stopped after browser/JDBC verification; owned schema and workspace evidence retained",
+    "productionQaRoutes": "404 on existing IDE full and production jar host"
+  },
+  "preservation": "Original V33/V34 and component-page-delivery artifact hashes retained; no automatic commit/push",
+  "userProductAcceptance": false
+}

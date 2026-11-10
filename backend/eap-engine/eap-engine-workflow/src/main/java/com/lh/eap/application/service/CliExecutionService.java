@@ -1,4 +1,11 @@
 package com.lh.eap.application.service;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import tools.jackson.databind.json.JsonMapper;
+import com.lh.eap.error.SecurityErrors;
+import com.lh.eap.error.WorkspaceErrors;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.ToolErrors;
 
 import com.lh.eap.api.*;
 import com.lh.eap.api.CliExecution.*;
@@ -35,8 +42,8 @@ public final class CliExecutionService {
                 observation=executor.runManaged(request.executionId(),request.capability(),request.directory().toRealPath(),command,request.environment());
                 state=executor.status(request.executionId()).map(Snapshot::status)
                         .orElse(observation.success()?Status.SUCCEEDED:Status.FAILED);
-                if(!observation.success()) error="PROCESS_FAILED";
-            } catch(IOException|RuntimeException failure){state=Status.FAILED;error="EXECUTOR_FAILED";}
+                if(!observation.success()) error=ExecutionErrors.PROCESS_FAILED.code();
+            } catch(IOException|RuntimeException failure){state=Status.FAILED;error=ExecutionErrors.EXECUTOR_FAILED.code();}
         }
         events.add(new Event(request.executionId(),events.size()+1,Instant.now(),state));
         var trace=Trace.empty();
@@ -45,32 +52,32 @@ public final class CliExecutionService {
             var lines=raw.stdoutLines().stream().map(l->new ReceivedLine(l.sequence(),l.receivedAt(),redact(l.text(),secrets))).toList();
             var log=redact(raw.stderr(),secrets);
             boolean denied=toolPolicyDenied(log)||lines.stream().anyMatch(l->toolPolicyDenied(l.text()));
-            trace=new Trace(raw.phases(),lines,log,raw.truncated(),denied?"TOOL_POLICY_DENIED":"");
+            trace=new Trace(raw.phases(),lines,log,raw.truncated(),denied?ToolErrors.TOOL_POLICY_DENIED.code():"");
             if(artifactStore!=null){
                 try{
-                    var json=tools.jackson.databind.json.JsonMapper.builder().build();
+                    var json=JsonMapper.builder().build();
                     var jsonl=new StringBuilder();
                     for(var line:lines)jsonl.append(json.writeValueAsString(line)).append('\n');
-                    artifacts.add(artifactStore.save(request.executionId(),"codex-jsonl",jsonl.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                    artifacts.add(artifactStore.save(request.executionId(),"stderr",log.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                    artifacts.add(artifactStore.save(request.executionId(),"process-trace",json.writeValueAsString(trace).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                }catch(IOException|RuntimeException failure){artifactError="ARTIFACT_SAVE_FAILED";}
+                    artifacts.add(artifactStore.save(request.executionId(),"codex-jsonl",jsonl.toString().getBytes(StandardCharsets.UTF_8)));
+                    artifacts.add(artifactStore.save(request.executionId(),"stderr",log.getBytes(StandardCharsets.UTF_8)));
+                    artifacts.add(artifactStore.save(request.executionId(),"process-trace",json.writeValueAsString(trace).getBytes(StandardCharsets.UTF_8)));
+                }catch(IOException|RuntimeException failure){artifactError=ExecutionErrors.ARTIFACT_SAVE_FAILED.code();}
             }
-        }else if(observation!=null&&artifactStore!=null){artifactError="EXECUTION_TRACE_UNAVAILABLE";}
+        }else if(observation!=null&&artifactStore!=null){artifactError=ExecutionErrors.EXECUTION_TRACE_UNAVAILABLE.code();}
         return new Result(request.executionId(),state,request.approval(),Verification.UNVERIFIED,started,
                 (System.nanoTime()-clock)/1_000_000,observation==null?null:observation.exitCode(),error,
                 summary,request.environment().keySet(),observation==null?"":safe(observation.stdout(),secrets),
                 observation==null?"":safe(observation.stderr(),secrets),events,artifacts,trace,artifactError);
     }
     private static String validate(Request r,Policy p){
-        if(!p.executionAllowed())return "EXECUTION_DENIED";
+        if(!p.executionAllowed())return ExecutionErrors.EXECUTION_DENIED.code();
         if(r.approval()==Approval.DENIED||r.approval()==Approval.PENDING
-                ||p.approvalRequired()&&r.approval()!=Approval.APPROVED)return "APPROVAL_REQUIRED";
-        if(!r.arguments().equals(p.argumentTemplate()))return "ARGUMENT_TEMPLATE_MISMATCH";
-        if(!p.allowedEnvironment().containsAll(r.environment().keySet()))return "ENVIRONMENT_DENIED";
+                ||p.approvalRequired()&&r.approval()!=Approval.APPROVED)return ExecutionErrors.APPROVAL_REQUIRED.code();
+        if(!r.arguments().equals(p.argumentTemplate()))return ExecutionErrors.ARGUMENT_TEMPLATE_MISMATCH.code();
+        if(!p.allowedEnvironment().containsAll(r.environment().keySet()))return SecurityErrors.ENVIRONMENT_DENIED.code();
         try {
-            if(!java.nio.file.Files.isDirectory(r.directory())||!r.directory().toRealPath().startsWith(p.authorizedRoot().toRealPath()))return "DIRECTORY_DENIED";
-        } catch(IOException e){return "DIRECTORY_DENIED";}
+            if(!Files.isDirectory(r.directory())||!r.directory().toRealPath().startsWith(p.authorizedRoot().toRealPath()))return WorkspaceErrors.DIRECTORY_DENIED.code();
+        } catch(IOException e){return WorkspaceErrors.DIRECTORY_DENIED.code();}
         return null;
     }
     private static String safe(String text,List<String> secrets){

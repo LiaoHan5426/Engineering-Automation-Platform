@@ -8,7 +8,6 @@ const props = defineProps<{
   draft: string
   disabled: boolean
   blocked: boolean
-  mock: boolean
   trigger?: boolean
 }>()
 const emit = defineEmits<{ select: [ref: KnowledgeExpertRef]; remove: [] }>()
@@ -156,7 +155,6 @@ defineExpose({ show, close })
     @close="close"
   >
     <p>{{ t('knowledgeContext.boundary') }}</p>
-    <Feedback v-if="mock" tone="info">{{ t('knowledgeContext.mock') }}</Feedback>
     <Input
       v-model="search"
       :aria-label="t('knowledgeContext.search')"

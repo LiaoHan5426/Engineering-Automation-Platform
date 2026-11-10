@@ -39,7 +39,7 @@ it('saves an explicit copy with CAS and reads the exact target back', async () =
   const read = vi.spyOn(runtimeApi, 'scenario').mockResolvedValue(snapshot)
   const catalog = createScenarioCatalog(scenes)
   expect(await catalog.save(scenes[0]!)).toBe(true)
-  expect(save).toHaveBeenCalledWith(snapshot.id, 0, definition, undefined)
+  expect(save).toHaveBeenCalledWith(snapshot.id, 0, definition)
   expect(read).toHaveBeenCalledWith(snapshot.id)
   expect(catalog.revision(snapshot.id)).toBe(1)
 })
@@ -74,18 +74,6 @@ it('reconciles a lost save response by adopting the remote revision as unknown',
   vi.spyOn(runtimeApi, 'saveScenario').mockRejectedValue(new Error('network drop'))
   vi.spyOn(runtimeApi, 'scenario').mockResolvedValue(snapshot)
   expect(await catalog.save(scenes[0]!)).toBe(false)
-  expect(catalog.state.error).toBe('unknown')
-  expect(catalog.revision(snapshot.id)).toBe(1)
-})
-
-it('passes mock save-lost outcome through to the save API', async () => {
-  const scene: Scenario = { ...definition, id: snapshot.id, builtin: false }
-  const scenes = reactive<Scenario[]>([scene])
-  const catalog = createScenarioCatalog(scenes)
-  const save = vi.spyOn(runtimeApi, 'saveScenario').mockRejectedValue({ response: { status: 502 } })
-  vi.spyOn(runtimeApi, 'scenario').mockResolvedValue(snapshot)
-  expect(await catalog.save(scenes[0]!, 'save-lost')).toBe(false)
-  expect(save).toHaveBeenCalledWith(snapshot.id, 0, definition, { mockOutcome: 'save-lost' })
   expect(catalog.state.error).toBe('unknown')
   expect(catalog.revision(snapshot.id)).toBe(1)
 })

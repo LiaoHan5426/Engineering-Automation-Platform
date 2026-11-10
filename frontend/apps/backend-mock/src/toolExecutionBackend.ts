@@ -1,0 +1,253 @@
+import { ProtocolErrors } from '@eap/runtime-client/contracts'
+import { ExecutionErrors } from '@eap/runtime-client/contracts'
+import { isToolExecutionStatusActive } from '@eap/runtime-client/contracts'
+
+import { hasWireValue } from '@eap/runtime-client/contracts'
+import { ToolExecutionStatus } from '@eap/runtime-client/contracts'
+import { CommonErrors, ToolErrors } from '@eap/runtime-client/contracts'
+import { createHash } from 'node:crypto'
+import type { GitExecutionOperation, ToolExecution } from '@eap/runtime-client/contracts'
+
+type Entry = { row: ToolExecution; outcome: string }
+const persisted = new Map<string, Entry>()
+const active = (row: ToolExecution) => isToolExecutionStatusActive(row.status)
+const copy = (row: ToolExecution) => structuredClone(row)
+
+/** Mock service records survive browser remounts. Every output is explicitly simulated. */
+export function createMockToolExecutionBackend(
+  records = persisted,
+  enabled: (operation: GitExecutionOperation) => boolean = () => true,
+) {
+  return {
+    async handle(method: string, path: string, body?: unknown) {
+      const url = new URL(path, 'http://mock.invalid')
+      const route = url.pathname
+      const match = route.match(
+        /^\/cli-programs\/git\/operations\/(git-status|git-diff)\/executions(?:\/|$)/,
+      )
+      if (!match) return null
+      const operation = match[1] as GitExecutionOperation
+      const base = '/cli-programs/git/operations/' + operation + '/executions'
+      if (route === base + '/readiness' && method === 'GET') {
+        const blocking = [...records.values()].find(
+          ({ row }) =>
+            row.capabilityId === operation &&
+            (active(row) || row.status === ToolExecutionStatus.UNKNOWN),
+        )?.row
+        return {
+          status: 200,
+          data: {
+            capabilityId: operation,
+            scopeAccessible: true,
+            authorized: enabled(operation),
+            canStart: enabled(operation) && !blocking,
+            reason: !enabled(operation)
+              ? ToolErrors.CAPABILITY_DISABLED
+              : blocking
+                ? ToolErrors.TOOL_EXECUTION_BLOCKED
+                : 'READY',
+            blockingExecutionId: blocking?.id ?? null,
+            blockingStatus: blocking?.status ?? null,
+            checkedAt: new Date().toISOString(),
+          },
+        }
+      }
+      if (route === base && method === 'GET') {
+        const limit = Number(url.searchParams.get('limit') ?? 20)
+        if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+          return { status: 400, data: { code: ProtocolErrors.INVALID_LIMIT } }
+        return {
+          status: 200,
+          data: {
+            items: [...records.values()]
+              .filter((entry) => entry.row.capabilityId === operation)
+              .map((entry) => copy(entry.row))
+              .reverse()
+              .slice(0, limit),
+          },
+        }
+      }
+      if (route === base && method === 'POST') {
+        const request = body as { requestId?: unknown } | null
+        if (
+          !request ||
+          Object.keys(request).length !== 1 ||
+          typeof request.requestId !== 'string' ||
+          !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(request.requestId)
+        ) {
+          return { status: 400, data: { code: CommonErrors.ONLY_REQUEST_ID_ALLOWED } }
+        }
+        const prior = [...records.values()].find(
+          (entry) => entry.row.requestId === request.requestId,
+        )
+        if (prior)
+          return prior.row.capabilityId === operation
+            ? { status: 202, data: copy(prior.row) }
+            : { status: 409, data: { code: ToolErrors.REQUEST_ID_OPERATION_CONFLICT } }
+        const blocking = [...records.values()].find(
+          (entry) =>
+            entry.row.capabilityId === operation &&
+            (active(entry.row) || entry.row.status === ToolExecutionStatus.UNKNOWN),
+        )
+        if (blocking)
+          return {
+            status: 409,
+            data: { code: ToolErrors.TOOL_EXECUTION_BLOCKED, execution: copy(blocking.row) },
+          }
+        const outcome = url.searchParams.get('mockOutcome') ?? 'success'
+        if (!enabled(operation) || outcome === 'denied')
+          return { status: 403, data: { code: ToolErrors.CAPABILITY_DISABLED } }
+        const row: ToolExecution = {
+          id: crypto.randomUUID(),
+          requestId: request.requestId,
+          programId: 'git',
+          capabilityId: operation,
+          workspacePath: '/mock/workspace',
+          executable: '/mock/bin/git',
+          status: outcome === 'unknown' ? ToolExecutionStatus.UNKNOWN : ToolExecutionStatus.RUNNING,
+          cancelRequested: false,
+          createdAt: new Date().toISOString(),
+          finishedAt: null,
+          exitCode: null,
+          stdout: '',
+          stderr: '',
+          truncated: false,
+          exitEvidence: null,
+          unconfirmedReason:
+            outcome === 'unknown' ? 'mock: SERVICE_RESTART_EXIT_UNCONFIRMED' : null,
+          steps: [],
+        }
+        records.set(row.id, { row, outcome })
+        return { status: 202, data: copy(row) }
+      }
+      const tail = route.slice(base.length + 1).split('/')
+      const entry = records.get(tail[0] ?? '')
+      if (!entry || entry.row.capabilityId !== operation)
+        return { status: 404, data: { code: ToolErrors.TOOL_EXECUTION_NOT_FOUND } }
+      const row = entry.row
+      if (tail.length === 2 && tail[1] === 'process-review' && method === 'GET') {
+        if (
+          !hasWireValue(
+            [ToolExecutionStatus.UNKNOWN, ToolExecutionStatus.CLOSED_UNKNOWN],
+            row.status,
+          )
+        )
+          return { status: 409, data: { code: ExecutionErrors.PROCESS_REVIEW_NOT_UNKNOWN } }
+        return {
+          status: 200,
+          data: {
+            executionId: row.id,
+            capabilityId: operation,
+            executionStatus: row.status,
+            observedAt: new Date().toISOString(),
+            completeProcessTreeEvidence: false,
+            truncated: false,
+            steps: [
+              {
+                stepId: 'mock-step',
+                phase: 'mock: root',
+                descendantsCaptured: true,
+                descendantsTruncated: true,
+                descendants: [
+                  {
+                    pid: 424242,
+                    status: 'MATCHING_ALIVE',
+                    capturedStartedAt: '2026-11-09T08:00:00Z',
+                    observedStartedAt: '2026-11-09T08:00:00Z',
+                    capturedExecutable: '/mock/observed-child',
+                    observedExecutable: '/mock/observed-child',
+                  },
+                ],
+                process: {
+                  pid: null,
+                  status: 'NOT_CAPTURED',
+                  capturedStartedAt: null,
+                  observedStartedAt: null,
+                  capturedExecutable: '',
+                  observedExecutable: '',
+                },
+              },
+            ],
+          },
+        }
+      }
+      if (tail.length === 2 && tail[1] === 'resolve-unknown' && method === 'POST') {
+        const review = body as {
+          requestId?: unknown
+          note?: unknown
+          processTreeStopped?: unknown
+        } | null
+        if (
+          !review ||
+          Object.keys(review).length !== 3 ||
+          typeof review.requestId !== 'string' ||
+          !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(review.requestId) ||
+          typeof review.note !== 'string' ||
+          review.note.trim().length < 10 ||
+          review.note.length > 2000 ||
+          review.processTreeStopped !== true
+        )
+          return { status: 400, data: { code: ExecutionErrors.UNKNOWN_REVIEW_REQUIRED } }
+        const digest = createHash('sha256').update(review.note.trim(), 'utf8').digest('hex')
+        if (row.resolution)
+          return row.resolution.requestId === review.requestId.toLowerCase() &&
+            row.resolution.requestDigest === digest
+            ? { status: 200, data: copy(row) }
+            : { status: 409, data: { code: ExecutionErrors.UNKNOWN_REVIEW_CONFLICT } }
+        if (row.status !== ToolExecutionStatus.UNKNOWN)
+          return { status: 409, data: { code: ExecutionErrors.EXECUTION_NOT_UNKNOWN } }
+        row.resolution = {
+          requestId: review.requestId.toLowerCase(),
+          requestDigest: digest,
+          note: review.note
+            .trim()
+            .replace(
+              /((?:password|passwd|token|secret|api[_-]?key)\s*[:=]\s*)[^\s,;}]+/gi,
+              '$1[REDACTED]',
+            )
+            .slice(0, 2000),
+          processTreeStopped: true,
+          operator: 'local-operator',
+          resolvedAt: new Date().toISOString(),
+        }
+        row.status = ToolExecutionStatus.CLOSED_UNKNOWN
+        return { status: 200, data: copy(row) }
+      }
+      if (tail.length === 2 && tail[1] === 'cancel' && method === 'POST') {
+        if (active(row)) {
+          row.cancelRequested = true
+          row.status = ToolExecutionStatus.CANCELLING
+        }
+        return { status: 200, data: copy(row) }
+      }
+      if (tail.length === 1 && method === 'GET') {
+        if (row.status === ToolExecutionStatus.CANCELLING) {
+          row.status = ToolExecutionStatus.CANCELLED
+          row.exitCode = 130
+          row.exitEvidence = 'mock: process tree cleanup confirmed'
+        } else if (active(row) && entry.outcome !== 'running') {
+          row.status =
+            entry.outcome === 'timeout'
+              ? ToolExecutionStatus.TIMED_OUT
+              : ToolExecutionStatus.SUCCEEDED
+          row.exitCode = row.status === ToolExecutionStatus.SUCCEEDED ? 0 : 124
+          row.exitEvidence = 'mock: process tree cleanup confirmed'
+          row.stdout =
+            row.status === ToolExecutionStatus.SUCCEEDED
+              ? operation === 'git-diff'
+                ? 'mock: no real Git executed\ndiff --git a/mock/file.vue b/mock/file.vue\n-old\n+new'
+                : 'mock: no real Git executed\n## mock-branch\n M mock/file.vue'
+              : ''
+        }
+        if (
+          !active(row) &&
+          row.status !== ToolExecutionStatus.UNKNOWN &&
+          row.status !== ToolExecutionStatus.CLOSED_UNKNOWN
+        )
+          row.finishedAt ??= new Date().toISOString()
+        return { status: 200, data: copy(row) }
+      }
+      return { status: 404, data: { code: 'MOCK_ROUTE_NOT_FOUND' } }
+    },
+  }
+}

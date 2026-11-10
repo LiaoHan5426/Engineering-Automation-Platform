@@ -1,3 +1,4 @@
+import { chatStorage } from '../../../src/features/chat/chatService'
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, nextTick, type App } from 'vue'
@@ -23,7 +24,7 @@ afterEach(() => {
 it.each(['responses', 'chat-completions', 'plan'] as const)(
   'gates the Git choice by effective %s protocol',
   async (protocol) => {
-    localStorage.setItem(
+    chatStorage(localStorage).setItem(
       'eap.chat.history.v1',
       JSON.stringify({
         version: 1,

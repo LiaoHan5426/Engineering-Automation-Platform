@@ -1,4 +1,5 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.error.BoardErrors;
 
 import com.lh.eap.application.service.BoardReviewService;
 import com.lh.eap.application.service.GitReviewCapture;
@@ -16,9 +17,9 @@ public class BoardReviewController {
     @PostMapping public GitReviewCapture.Evidence collect(@PathVariable UUID taskId, @PathVariable UUID executionId, @RequestBody String body) {
         final Object parsed;
         try { parsed = JSON.readValue(body, Object.class); }
-        catch (RuntimeException invalid) { throw new IllegalArgumentException("INVALID_BOARD_REVIEW_REQUEST"); }
+        catch (RuntimeException invalid) { throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_REVIEW_REQUEST.code()); }
         if (!(parsed instanceof Map<?,?> fields) || !fields.keySet().equals(Set.of("projectId", "workspacePath"))
-                || !(fields.get("projectId") instanceof String project) || !(fields.get("workspacePath") instanceof String workspace)) throw new IllegalArgumentException("INVALID_BOARD_REVIEW_REQUEST");
+                || !(fields.get("projectId") instanceof String project) || !(fields.get("workspacePath") instanceof String workspace)) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_REVIEW_REQUEST.code());
         return reviews.collect(taskId, executionId, new BoardReviewService.Request(project, workspace));
     }
 }

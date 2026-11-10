@@ -35,7 +35,7 @@ public final class BoardRuntimeFixture {
                 "port",Integer.parseInt(context.getEnvironment().getProperty("local.server.port")),"pid",ProcessHandle.current().pid())));
     }
     @Configuration(proxyBeanMethods=false) @EnableAutoConfiguration @EnableTransactionManagement
-    @Import({BoardTaskController.class,BoardRunController.class,BoardRuntimeController.class,AiBrowserRequestGuard.class})
+    @Import({BoardTaskController.class,BoardRunController.class,BoardRuntimeController.class,AiBrowserRequestGuard.class ,com.lh.eap.web.i18n.PlatformMessagesConfiguration.class,com.lh.eap.web.i18n.ProblemResponses.class})
     static class Host {
         @Bean DataSource source(){return ToolUnknownReviewFixture.scopedDataSource(schema);}
         @Bean JdbcTemplate jdbc(DataSource source){return new JdbcTemplate(source);}

@@ -1,6 +1,5 @@
 import { reactive } from 'vue'
 import { resolveDesktopBridge } from './desktopPlatform'
-import { detectWorkspaceHost } from './workspaceHost'
 import { localProjectState, updateProjectIntendedPath } from './localProjects'
 
 /** Local session grant from the desktop bridge. Never posted to the Java server. */
@@ -85,9 +84,8 @@ export async function chooseLocalWorkspace(
   localBridgeState.choosing = true
   localBridgeState.lastDenial = ''
   try {
-    const host = detectWorkspaceHost()
     const bridge = resolveDesktopBridge()
-    if (host.kind === 'mock' || !bridge) {
+    if (!bridge) {
       localBridgeState.lastDenial = 'LOCAL_BRIDGE_MISSING'
       return { ok: false, denial: 'LOCAL_BRIDGE_MISSING' }
     }

@@ -51,3 +51,51 @@ it('rejects generated JavaScript next to its TypeScript source', () => {
   fs.writeFileSync(path.join(root, 'apps/web/src/main.js'), 'export const value = 1')
   expect(checkBoundaries(root)).toEqual([expect.stringContaining('generated JavaScript')])
 })
+
+it('allows UI transport types while rejecting production mock imports and domain-dependent transports', () => {
+  const root = workspace(
+    "import type { UploadRequest } from '@eap/request'; export type Request = UploadRequest",
+  )
+  const put = (file: string, content: unknown) => {
+    const target = path.join(root, file)
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    fs.writeFileSync(target, typeof content === 'string' ? content : JSON.stringify(content))
+  }
+  put('packages/request/package.json', { name: '@eap/request', exports: { '.': './src/index.ts' } })
+  put('packages/request/src/index.ts', 'export type UploadRequest = () => Promise<unknown>')
+  put('packages/ui/package.json', {
+    name: '@eap/ui',
+    dependencies: { '@eap/request': 'workspace:*' },
+    exports: { '.': './src/index.ts' },
+  })
+  put('packages/ui/src/index.ts', "export type { UploadRequest } from '@eap/request'")
+  put('apps/web/package.json', {
+    name: '@eap/web',
+    dependencies: { '@eap/request': 'workspace:*' },
+    devDependencies: { '@eap/backend-mock': 'workspace:*' },
+  })
+  expect(checkBoundaries(root)).toEqual([])
+  put('apps/backend-mock/package.json', {
+    name: '@eap/backend-mock',
+    exports: { '.': './src/index.ts' },
+  })
+  put('apps/backend-mock/src/index.ts', 'export const fixture = {}')
+  put('apps/web/src/main.ts', "import { fixture } from '@eap/backend-mock'; void fixture")
+  expect(checkBoundaries(root)).toContainEqual(
+    expect.stringContaining('production source must not import'),
+  )
+  put('packages/domain/package.json', {
+    name: '@eap/runtime-client',
+    exports: { '.': './src/index.ts' },
+  })
+  put('packages/domain/src/index.ts', 'export const api = {}')
+  put('packages/request/package.json', {
+    name: '@eap/request',
+    dependencies: { '@eap/runtime-client': 'workspace:*' },
+    exports: { '.': './src/index.ts' },
+  })
+  put('packages/request/src/index.ts', "export * from '@eap/runtime-client'")
+  expect(checkBoundaries(root)).toContainEqual(
+    expect.stringContaining('@eap/request must remain independent'),
+  )
+})

@@ -1,4 +1,5 @@
 package com.lh.eap.ai;
+import java.util.List;
 
 import com.lh.eap.llm.EndpointPolicy;
 import java.util.UUID;
@@ -45,7 +46,7 @@ public final class ModelConnectionSnapshot {
 
     public ModelConnectionView view() {
         return new ModelConnectionView(id, name, kind, enabled, baseUrl, model, secret != null && !secret.isBlank(),
-                revision, defaultSelected, configurationRevision, java.util.List.of(), java.util.List.of(), "", "", wireApi);
+                revision, defaultSelected, configurationRevision, List.of(), List.of(), "", "", wireApi);
     }
 
     public ModelConnectionSnapshot withModel(String selected) {

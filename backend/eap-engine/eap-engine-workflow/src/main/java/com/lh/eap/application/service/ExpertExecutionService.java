@@ -1,4 +1,8 @@
 package com.lh.eap.application.service;
+import com.lh.eap.domain.model.ExpertBehaviorBinding;
+import com.lh.eap.local.WorkspaceSearchInput;
+import com.lh.eap.sql.DatabaseEvidenceInput;
+import com.lh.eap.error.AgentErrors;
 
 import com.lh.eap.persistence.mapper.TaskRepository;
 import com.lh.eap.domain.model.CapabilityContext;
@@ -71,27 +75,27 @@ public class ExpertExecutionService {
 
     /** Existing HTTP shape composes domain inputs; it is not the generic capability input contract. */
     public record Request(String sql,String question,UUID databaseId,Map<String,Object> explainPlan,Boolean enhanceWithModel,String pattern)
-            implements com.lh.eap.sql.DatabaseEvidenceInput, com.lh.eap.local.WorkspaceSearchInput {}
+            implements DatabaseEvidenceInput, WorkspaceSearchInput {}
 
     @Transactional(isolation=Isolation.REPEATABLE_READ,timeout=90)
     public Map<String,Object> execute(String expertId,Request request){
         var manifest=definitions.require(expertId,true);
         if (manifest.agent() != null || policies.describe(manifest).map(item -> "agent".equals(item.executionMode())).orElse(false))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "EXPERT_REQUIRES_AGENT_ENTRY");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, AgentErrors.EXPERT_REQUIRES_AGENT_ENTRY.code());
         var known=new LinkedHashSet<>(handlers.names());
         known.addAll(manifest.expertScopedCapabilities());
         var errors=ExpertGraph.validate(manifest,known,Map.of(),handlers.expertScopedNames(),switchedOff(manifest));
         if(!errors.isEmpty())throw new ResponseStatusException(HttpStatus.BAD_REQUEST,String.join("；",errors));
         var sql=SensitiveData.redact(request.sql()).trim();
         var question=SensitiveData.redact(request.question()).trim();
-        if(sql.length()>50000||question.length()>8000)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"SQL 最多5万字符，问题最多8000字符");
-        if(sql.isBlank()&&question.isBlank()&&(request.pattern()==null||request.pattern().isBlank()))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"请填写问题、SQL 或检索目标");
-        if(request.explainPlan()!=null&&(JSON.writeValueAsString(request.explainPlan()).length()>100000||SensitiveData.containsSecret(request.explainPlan())))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"执行计划过大或包含凭据");
+        if(sql.length()>50000||question.length()>8000)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,AgentErrors.EXPERT_INPUT_INVALID.code());
+        if(sql.isBlank()&&question.isBlank()&&(request.pattern()==null||request.pattern().isBlank()))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,AgentErrors.EXPERT_INPUT_INVALID.code());
+        if(request.explainPlan()!=null&&(JSON.writeValueAsString(request.explainPlan()).length()>100000||SensitiveData.containsSecret(request.explainPlan())))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,AgentErrors.EXPERT_INPUT_INVALID.code());
 
         // Resolve once from the persisted definition, before resources, tools or model calls.
         var selectedPolicy = policies.resolve(manifest);
         if (selectedPolicy == null || selectedPolicy.isEmpty())
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "EXPERT_ANALYSIS_POLICY_UNAVAILABLE");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, AgentErrors.EXPERT_ANALYSIS_POLICY_UNAVAILABLE.code());
         var policy = selectedPolicy.get();
         var binding = manifest.behavior();
         var allowedFacts = Set.copyOf(policy.allowedFacts());
@@ -111,7 +115,7 @@ public class ExpertExecutionService {
     private record Run(UUID id,String expertId,ExpertManifest manifest,Request request,String sql,
             String question,String goal,List<String> declaredPackIds,List<RulePack> resolvedPacks,
             List<String> missingPacks,ExpertAnalysisPolicy policy,Set<String> allowedFacts,
-            com.lh.eap.domain.model.ExpertBehaviorBinding behavior){}
+            ExpertBehaviorBinding behavior){}
 
     private Map<String,Object> executeGraph(Run ctx){
         var id=ctx.id();var expertId=ctx.expertId();var manifest=ctx.manifest();var request=ctx.request();

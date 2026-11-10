@@ -1,4 +1,6 @@
 package com.lh.eap.application.service;
+import org.springframework.web.server.ResponseStatusException;
+import com.lh.eap.error.BoardDeliveryErrors;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -85,5 +87,5 @@ final class BoardDeliveryConversion {
         }
         return new Rules(autocrlf, Map.copyOf(all), Map.copyOf(index));
     }
-    private static org.springframework.web.server.ResponseStatusException unsupported() { return denied("BOARD_DELIVERY_CONVERSION_UNSUPPORTED"); }
+    private static ResponseStatusException unsupported() { return denied(BoardDeliveryErrors.BOARD_DELIVERY_CONVERSION_UNSUPPORTED.code()); }
 }

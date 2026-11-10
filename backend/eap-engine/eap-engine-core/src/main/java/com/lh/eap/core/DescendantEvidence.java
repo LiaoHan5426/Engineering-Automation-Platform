@@ -1,4 +1,6 @@
 package com.lh.eap.core;
+import java.util.LinkedHashMap;
+import java.util.concurrent.TimeUnit;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -17,7 +19,7 @@ final class DescendantEvidence {
     void capture(ProcessHandle handle) {
         if (truncated) return;
         if (identities.size() == 32) { truncated = true; revision++; return; }
-        var identity = new java.util.LinkedHashMap<String, Object>();
+        var identity = new LinkedHashMap<String, Object>();
         identity.put("processPid", handle.pid());
         try {
             var info = handle.info();
@@ -39,6 +41,6 @@ final class DescendantEvidence {
         if (callback == null || revision == published || (!force && now < nextPublication)) return;
         callback.accept(snapshot());
         published = revision;
-        nextPublication = now + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(250);
+        nextPublication = now + TimeUnit.MILLISECONDS.toNanos(250);
     }
 }

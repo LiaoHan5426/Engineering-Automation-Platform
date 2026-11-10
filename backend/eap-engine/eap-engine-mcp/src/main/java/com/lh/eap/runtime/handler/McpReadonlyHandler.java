@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.handler;
+import com.lh.eap.error.McpErrors;
 
 import com.lh.eap.domain.model.*;
 import com.lh.eap.persistence.mapper.McpServerRegistry;
@@ -25,10 +26,10 @@ public final class McpReadonlyHandler implements CapabilityHandler {
     @Override public NodeResult handle(CapabilityContext context) {
         String capability = context.step().capability();
         if (!capabilities().contains(capability) || !servers.grants(context.expertId()).contains(capability))
-            throw new SecurityException("MCP_TOOL_NOT_AUTHORIZED");
+            throw new SecurityException(McpErrors.MCP_TOOL_NOT_AUTHORIZED.code());
         var result = client.callReadOnly(context.executionId(), context.expertId(), capability, Map.of());
         boolean success = !Boolean.TRUE.equals(result.get("isError"));
         // Untrusted source data remains structured evidence, never instructions or tool authority.
-        return new NodeResult(success, false, success ? "MCP_TOOL_SUCCEEDED" : "MCP_TOOL_FAILED", result);
+        return new NodeResult(success, false, success ? "MCP_TOOL_SUCCEEDED" : McpErrors.MCP_TOOL_FAILED.code(), result);
     }
 }

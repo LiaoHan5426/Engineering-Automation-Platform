@@ -10,12 +10,7 @@ afterEach(() => {
 })
 
 it('defaults to colocated local-service when no desktop bridge is present', () => {
-  expect(detectWorkspaceHost(true)).toEqual({
-    kind: 'mock',
-    localFiles: false,
-    serverDiskObservation: false,
-  })
-  const browser = detectWorkspaceHost(false)
+  const browser = detectWorkspaceHost()
   expect(browser.kind).toBe('local-service')
   expect(browser.localFiles).toBe(true)
   expect(browser.serverDiskObservation).toBe(true)
@@ -24,7 +19,7 @@ it('defaults to colocated local-service when no desktop bridge is present', () =
 
 it('treats window.eap.chooseWorkspace as an optional desktop bridge enhancement', () => {
   window.eap = { chooseWorkspace: async () => null }
-  const host = detectWorkspaceHost(false)
+  const host = detectWorkspaceHost()
   expect(host).toEqual({ kind: 'local-bridge', localFiles: true, serverDiskObservation: true })
   expect(workspaceHostNoteKey(host)).toBe('desktop.hostLocalBridge')
 })

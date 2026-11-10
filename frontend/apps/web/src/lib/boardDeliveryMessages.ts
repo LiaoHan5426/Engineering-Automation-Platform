@@ -14,7 +14,7 @@ export const boardDeliveryMessages = {
       '服务端从原始生成记录判断生成前绑定或事后关联，不接受客户端选择归因类型。提交不自动验证或接受。',
     preboundHint:
       '生成前已绑定任务及版本，服务端核对原始快照与本次交付。此 Run 仍仅检查仓库，不是代码实现者；不证明整个 Git 差异均由 Chat 创作，提交不自动验证或接受。',
-    applicationInvalid: '关联仅支持一个文件及两个完整 UUID；不自动修正身份或路径。',
+    applicationInvalid: '关联需完整候选文件集合（1–8个）及两个完整 UUID；不自动修正身份或路径。',
     applicationEvidence: '已应用候选的关联证据',
     generationBaseline: '生成前工作树基线（不是下方 Git 基线）',
     appliedHash: '应用后源码 SHA-256',
@@ -77,7 +77,7 @@ export const boardDeliveryMessages = {
     preboundHint:
       'Task and revision were bound before generation and checked against this delivery. The Run only inspected the repository; it did not implement code. This does not establish authorship of the entire Git diff. Submission never automatically verifies or accepts.',
     applicationInvalid:
-      'Linking requires one file and two complete UUIDs. Identities and paths are never repaired automatically.',
+      'Linking requires the complete candidate file set (1–8 files) and two complete UUIDs. Identities and paths are never repaired automatically.',
     applicationEvidence: 'Linked application evidence',
     generationBaseline: 'Pre-generation working-tree baseline (not the Git baseline below)',
     appliedHash: 'Applied source SHA-256',

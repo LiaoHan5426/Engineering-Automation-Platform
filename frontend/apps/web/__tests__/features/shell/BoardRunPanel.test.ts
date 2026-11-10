@@ -1,3 +1,4 @@
+import { apiStorageScope } from '../../../src/lib/runtimeConfig'
 // @vitest-environment happy-dom
 import { beforeEach, afterEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, ref, type App } from 'vue'
@@ -258,7 +259,7 @@ it('retains the same request across an unknown outcome and remount', async () =>
 it('reconciles a persisted unknown request from the server snapshot without starting again', async () => {
   const saved = run()
   sessionStorage.setItem(
-    'eap.board-run.v1.task-a',
+    apiStorageScope + '.eap.board-run.v1.task-a',
     JSON.stringify({
       projectId: task.projectId,
       revision: 3,
@@ -269,7 +270,7 @@ it('reconciles a persisted unknown request from the server snapshot without star
   vi.mocked(runtimeApi.boardRuns).mockResolvedValue({ availability, items: [saved] })
   await mount()
   await vi.waitFor(() => expect(root.textContent).toContain('已找到原启动请求'))
-  expect(sessionStorage.getItem('eap.board-run.v1.task-a')).toBeNull()
+  expect(sessionStorage.getItem(apiStorageScope + '.eap.board-run.v1.task-a')).toBeNull()
   expect(runtimeApi.startBoardRun).not.toHaveBeenCalled()
 })
 it('keeps an unknown execution blocking and stops automatic polling', async () => {

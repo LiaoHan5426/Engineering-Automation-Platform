@@ -1,4 +1,9 @@
 package com.lh.eap.runtime.mcp.client;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.McpErrors;
+import com.lh.eap.error.ToolErrors;
 
 import com.lh.eap.persistence.mapper.McpServerRegistry;
 import com.lh.eap.runtime.mcp.McpCallScope;
@@ -43,7 +48,7 @@ public class McpClientService {
 
     public Map<String, Object> probe(UUID executionId, String expertId, String capability) {
         var scope = McpCallScope.of(executionId, expertId, capability)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_MCP_CAPABILITY"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, McpErrors.INVALID_MCP_CAPABILITY.code()));
         authorize(scope);
         var session = openSession(scope);
         try {
@@ -62,7 +67,7 @@ public class McpClientService {
     public Map<String, Object> callReadOnly(UUID executionId, String expertId, String capability,
                                             Map<String, Object> arguments) {
         var scope = McpCallScope.of(executionId, expertId, capability)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_MCP_CAPABILITY"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, McpErrors.INVALID_MCP_CAPABILITY.code()));
         var tool = toolName(scope.serverId(), capability);
         authorize(scope);
         ensureReadOnly(tool);
@@ -70,7 +75,7 @@ public class McpClientService {
         var session = openSession(scope);
         try {
             if (!(session.client().listTools().stream().anyMatch(item -> tool.equals(String.valueOf(item.get("name")))))) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "TOOL_NOT_PUBLISHED");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, ToolErrors.TOOL_NOT_PUBLISHED.code());
             }
             sessions.requireOwnership(scope, session);
             return session.client().callTool(tool, arguments == null ? Map.of() : arguments);
@@ -108,14 +113,14 @@ public class McpClientService {
         var factory = inMemoryTransports.get(serverId);
         if (factory != null) return factory.get();
         var server = registry.find(serverId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "MCP_SERVER_NOT_FOUND"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, McpErrors.MCP_SERVER_NOT_FOUND.code()));
         if (!server.usable()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "MCP_SERVER_NOT_USABLE");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_SERVER_NOT_USABLE.code());
         }
         var transport = server.transport() == null ? "" : server.transport().trim().toLowerCase();
         try {
             if ("stdio".equals(transport)) {
-                var argv = new java.util.ArrayList<>(StdioMcpCommand.parse(server.endpoint()));
+                var argv = new ArrayList<>(StdioMcpCommand.parse(server.endpoint()));
                 if (McpProductionAllowlist.matchesOfficialReadonly(server.endpoint())) {
                     // Runtime calls never install packages or prompt. Installation is an operator action.
                     argv.set(1, "--offline"); argv.add(2, "--no");
@@ -131,16 +136,16 @@ public class McpClientService {
             if ("streamable-http".equals(transport) || "streamable_http".equals(transport)) {
                 return StreamableHttpMcpTransport.connect(server.endpoint());
             }
-            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "MCP_TRANSPORT_UNSUPPORTED");
+            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, McpErrors.MCP_TRANSPORT_UNSUPPORTED.code());
         } catch (IllegalArgumentException invalid) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage());
         } catch (IOException failure) {
             var code = switch (transport) {
-                case "stdio" -> "MCP_STDIO_START_FAILED";
-                case "http" -> "MCP_HTTP_START_FAILED";
-                case "sse" -> "MCP_SSE_START_FAILED";
-                case "streamable-http", "streamable_http" -> "MCP_STREAMABLE_HTTP_START_FAILED";
-                default -> "MCP_TRANSPORT_START_FAILED";
+                case "stdio" -> McpErrors.MCP_STDIO_START_FAILED.code();
+                case "http" -> McpErrors.MCP_HTTP_START_FAILED.code();
+                case "sse" -> McpErrors.MCP_SSE_START_FAILED.code();
+                case "streamable-http", "streamable_http" -> McpErrors.MCP_STREAMABLE_HTTP_START_FAILED.code();
+                default -> McpErrors.MCP_TRANSPORT_START_FAILED.code();
             };
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, code);
         }
@@ -148,10 +153,10 @@ public class McpClientService {
 
     private void authorize(McpCallScope scope) {
         if (!registry.publishes(scope.capability())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "MCP_TOOL_NOT_AUTHORIZED");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_TOOL_NOT_AUTHORIZED.code());
         }
         if (registry.serverOf(scope.capability()).filter(scope.serverId()::equals).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "MCP_SERVER_MISMATCH");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_SERVER_MISMATCH.code());
         }
     }
 
@@ -162,10 +167,10 @@ public class McpClientService {
     }
 
     private static void ensureReadOnly(String tool) {
-        if (tool.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_TOOL");
+        if (tool.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ExecutionErrors.INVALID_TOOL.code());
         var lowered = tool.toLowerCase();
         if (lowered.contains("write") || lowered.contains("delete") || lowered.contains("exec")) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "MCP_TOOL_NOT_READ_ONLY");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_TOOL_NOT_READ_ONLY.code());
         }
     }
 
@@ -173,15 +178,15 @@ public class McpClientService {
         var server = registry.find(serverId).orElse(null);
         // Explicit in-process fixtures are never registered through HTTP.
         if (inMemoryTransports.containsKey(serverId)) return;
-        if (server == null) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "MCP_SERVER_NOT_FOUND");
+        if (server == null) throw new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_SERVER_NOT_FOUND.code());
         if (!McpProductionAllowlist.productionGranted(server.endpoint(), tool)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "MCP_PRODUCTION_TOOL_NOT_ALLOWED");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_PRODUCTION_TOOL_NOT_ALLOWED.code());
         }
     }
 
     /** Convenience for tests: wire an in-memory read-only server and return granted capability id. */
     public String wireInMemoryServer(String serverId, List<String> tools) {
-        var server = new InMemoryMcpServer(new java.util.LinkedHashSet<>(tools));
+        var server = new InMemoryMcpServer(new LinkedHashSet<>(tools));
         registerInMemoryTransport(serverId, () -> InMemoryMcpTransport.loopback(server));
         return tools.stream().map(tool -> McpServerRegistry.capabilityId(serverId, tool)).findFirst().orElse("");
     }

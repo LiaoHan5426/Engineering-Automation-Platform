@@ -1,0 +1,34 @@
+package com.lh.eap.error;
+
+import com.lh.eap.api.error.PlatformErrorCode;
+
+/** Skill machine errors. User messages belong to the corresponding i18n bundle. */
+public enum SkillErrors implements PlatformErrorCode {
+    INVALID_SKILL_ACTIVATION,
+    INVALID_SKILL_BODY,
+    INVALID_SKILL_CONFIRMATION,
+    INVALID_SKILL_CONTEXT,
+    INVALID_SKILL_DEPENDENCIES,
+    INVALID_SKILL_DIGEST,
+    INVALID_SKILL_FRONTMATTER,
+    INVALID_SKILL_IMPORT,
+    INVALID_SKILL_INPUT,
+    INVALID_SKILL_REF,
+    INVALID_SKILL_RESOURCE,
+    INVALID_SKILL_RESOURCE_PATHS,
+    INVALID_SKILL_SECRET,
+    INVALID_SKILL_SIZE,
+    INVALID_SKILL_VERSION,
+    SKILL_CONTENT_MISMATCH,
+    SKILL_CONTEXT_MODE_UNSUPPORTED,
+    SKILL_DIGEST_MISMATCH,
+    SKILL_DISABLED,
+    SKILL_NOT_FOUND,
+    SKILL_REF_STALE,
+    SKILL_SCOPE_UNAVAILABLE,
+    SKILL_STATE_STALE,
+    SKILL_UNAVAILABLE,
+    SKILL_VERSION_CONFLICT;
+
+    @Override public String code() { return name(); }
+}

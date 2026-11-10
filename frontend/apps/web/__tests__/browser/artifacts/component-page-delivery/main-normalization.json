@@ -1,0 +1,28 @@
+{
+  "changes": "formatting, CSS property/rule layout and explicit Button class; original applied evidence untouched",
+  "files": [
+    {
+      "path": "frontend/apps/web/src/components/DeliveryEvidencePanel.vue",
+      "deliveredHash": "93864577572bdbf8423fa5e39a7a66147fe0cfd1a9313ea58819471c26263dc6",
+      "mainWorktreeHash": "f536ef087004d929cb7e88ea174ef6c5224f7fbdb2aacc9fcc7405ddaf932f8d",
+      "equal": false
+    },
+    {
+      "path": "frontend/apps/web/src/components/DeliveryEvidenceSummary.vue",
+      "deliveredHash": "51f21588c0be906e09a26a81ec1318132986f67ea42d8ea981febc8aa5fc4673",
+      "mainWorktreeHash": "5b980fd8d003ca6217400d730ba297a051a3c30bb914595f5ed77cd7afd56732",
+      "equal": false
+    },
+    {
+      "path": "frontend/apps/web/src/components/deliveryEvidenceModel.ts",
+      "deliveredHash": "8e36f8f98be3dee167a6068b53428294d062df070f6e4fd4dc412461dd92c4ab",
+      "mainWorktreeHash": "8e36f8f98be3dee167a6068b53428294d062df070f6e4fd4dc412461dd92c4ab",
+      "equal": true
+    }
+  ],
+  "focusedPanelTests": 2,
+  "additionalLayoutFiles": [
+    "frontend/apps/web/src/features/shell/BoardCodeCandidates.vue: grid-template-columns minmax(0,1fr) after real 390px overflow reproduction",
+    "frontend/apps/web/src/components/GenerationBaseline.vue: CSS rule spacing only"
+  ]
+}

@@ -1,4 +1,5 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.error.MissionErrors;
 
 import com.lh.eap.application.service.Handoff;
 import com.lh.eap.application.service.HandoffService;
@@ -42,28 +43,28 @@ public class HandoffController {
         if (!(parsed.get("source") instanceof String source)
                 || !(parsed.get("sourceRef") instanceof String sourceRef)
                 || !(parsed.get("summary") instanceof String summary)) {
-            throw new IllegalArgumentException("交接字段必须是文本");
+            throw new IllegalArgumentException(MissionErrors.HANDOFF_INPUT_INVALID.code());
         }
         return handoffs.record(source, sourceRef, summary);
     }
 
     private static Map<String, Object> objectBody(String json) {
         if (json == null || json.isBlank()) {
-            throw new IllegalArgumentException("交接请求不能为空");
+            throw new IllegalArgumentException(MissionErrors.HANDOFF_INPUT_INVALID.code());
         }
         final Object parsed;
         try {
             parsed = JSON.readValue(json, Object.class);
         } catch (RuntimeException invalid) {
-            throw new IllegalArgumentException("交接请求不是 JSON 对象");
+            throw new IllegalArgumentException(MissionErrors.HANDOFF_INPUT_INVALID.code());
         }
         if (!(parsed instanceof Map<?, ?> raw)) {
-            throw new IllegalArgumentException("交接请求不是 JSON 对象");
+            throw new IllegalArgumentException(MissionErrors.HANDOFF_INPUT_INVALID.code());
         }
         var body = new LinkedHashMap<String, Object>();
         for (var entry : raw.entrySet()) {
             if (!(entry.getKey() instanceof String name) || !FIELDS.contains(name)) {
-                throw new IllegalArgumentException("交接请求含有不允许的字段");
+                throw new IllegalArgumentException(MissionErrors.HANDOFF_INPUT_INVALID.code());
             }
             body.put(name, entry.getValue());
         }

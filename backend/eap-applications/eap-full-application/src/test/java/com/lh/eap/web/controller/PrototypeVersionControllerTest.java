@@ -57,7 +57,7 @@ class PrototypeVersionControllerTest {
             @Override public Optional<PrototypeDelivery> findByVersion(UUID versionId) { return Optional.empty(); }
         });
         return MockMvcBuilders.standaloneSetup(new PrototypeVersionController(service))
-                .setControllerAdvice(new ApiErrorHandler())
+                .setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES))))
                 .build();
     }
 }

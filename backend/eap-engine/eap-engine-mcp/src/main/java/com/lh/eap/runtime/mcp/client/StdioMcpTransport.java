@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.mcp.client;
+import com.lh.eap.error.McpErrors;
 
 import com.lh.eap.core.ProcessTree;
 import java.io.*;
@@ -46,7 +47,7 @@ public final class StdioMcpTransport implements McpTransport {
 
     public static StdioMcpTransport start(List<String> command, Path cwd, Map<String, String> explicit) throws IOException {
         Objects.requireNonNull(command);
-        if (command.isEmpty()) throw new IllegalArgumentException("MCP_STDIO_COMMAND_REQUIRED");
+        if (command.isEmpty()) throw new IllegalArgumentException(McpErrors.MCP_STDIO_COMMAND_REQUIRED.code());
         var builder = new ProcessBuilder(command);
         if (cwd != null) builder.directory(cwd.toRealPath().toFile());
         var clean = environment(builder.environment(), explicit);
@@ -64,10 +65,10 @@ public final class StdioMcpTransport implements McpTransport {
         Future<String> pending = null;
         try {
             acquired = lock.tryLock(Math.max(0, timeout.toNanos()), TimeUnit.NANOSECONDS);
-            if (!acquired) throw new IOException("MCP_TIMEOUT");
-            if (closed.get() || !process.isAlive()) throw new IOException("MCP_STDIO_CLOSED");
+            if (!acquired) throw new IOException(McpErrors.MCP_TIMEOUT.code());
+            if (closed.get() || !process.isAlive()) throw new IOException(McpErrors.MCP_STDIO_CLOSED.code());
             byte[] bytes = request.getBytes(StandardCharsets.UTF_8);
-            if (bytes.length > MAX_FRAME_BYTES) throw new IOException("MCP_FRAME_LIMIT");
+            if (bytes.length > MAX_FRAME_BYTES) throw new IOException(McpErrors.MCP_FRAME_LIMIT.code());
             pending = io.submit(() -> {
                 var input = process.getOutputStream();
                 input.write(bytes); input.write('\n'); input.flush();
@@ -77,8 +78,8 @@ public final class StdioMcpTransport implements McpTransport {
                 int total = 0;
                 while (true) {
                     int next = output.read();
-                    if (next < 0) throw new IOException("MCP_STDIO_EOF");
-                    if (++total > MAX_FRAME_BYTES) throw new IOException("MCP_FRAME_LIMIT");
+                    if (next < 0) throw new IOException(McpErrors.MCP_STDIO_EOF.code());
+                    if (++total > MAX_FRAME_BYTES) throw new IOException(McpErrors.MCP_FRAME_LIMIT.code());
                     if (next == '\n') {
                         String value = line.toString(StandardCharsets.UTF_8).stripTrailing();
                         if (!value.isBlank()) return value;
@@ -88,13 +89,13 @@ public final class StdioMcpTransport implements McpTransport {
             });
             return pending.get(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
         } catch (TimeoutException timeoutFailure) {
-            close(); throw new IOException("MCP_TIMEOUT", timeoutFailure);
+            close(); throw new IOException(McpErrors.MCP_TIMEOUT.code(), timeoutFailure);
         } catch (InterruptedException interrupted) {
-            close(); Thread.currentThread().interrupt(); throw new IOException("MCP_STDIO_INTERRUPTED", interrupted);
+            close(); Thread.currentThread().interrupt(); throw new IOException(McpErrors.MCP_STDIO_INTERRUPTED.code(), interrupted);
         } catch (ExecutionException failed) {
             close();
             if (failed.getCause() instanceof IOException failure) throw failure;
-            throw new IOException("MCP_STDIO_IO", failed.getCause());
+            throw new IOException(McpErrors.MCP_STDIO_IO.code(), failed.getCause());
         } finally {
             if (pending != null && !pending.isDone()) pending.cancel(true);
             if (acquired) lock.unlock();

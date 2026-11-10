@@ -1,4 +1,5 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.error.BoardErrors;
 
 import com.lh.eap.application.service.BoardCodeProposalService;
 import com.lh.eap.delivery.CodeChangeService;
@@ -27,5 +28,5 @@ public class BoardCodeProposalController {
             ||((Number)map.get("revision")).longValue()<1||!Boolean.TRUE.equals(map.get("confirmed")))throw invalid();
         return new BoardCodeProposalService.Action(project,((Number)map.get("revision")).longValue(),true);
     }
-    private static IllegalArgumentException invalid(){return new IllegalArgumentException("INVALID_BOARD_CODE_PROPOSAL_ACTION");}
+    private static IllegalArgumentException invalid(){return new IllegalArgumentException(BoardErrors.INVALID_BOARD_CODE_PROPOSAL_ACTION.code());}
 }

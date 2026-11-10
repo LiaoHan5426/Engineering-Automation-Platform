@@ -1,3 +1,7 @@
+import { productMessages } from './productMessages'
+import { pluginCheckMessages } from './pluginMessages'
+import { configureRuntimeLanguage } from '@eap/runtime-client'
+import { presentationMessages } from './presentationMessages'
 import { editorMessages } from './editorMessages'
 import { toolExecutionMessages } from './toolExecutionMessages'
 import { expertWorkspaceMessages } from './expertWorkspaceMessages'
@@ -26,6 +30,9 @@ export const i18n = createI18n({
   fallbackLocale: 'en-US',
   messages: {
     'zh-CN': {
+      ...pluginCheckMessages['zh-CN'],
+      product: productMessages['zh-CN'],
+      presentation: presentationMessages['zh-CN'],
       toolExecution: toolExecutionMessages['zh-CN'],
       expertAgent: expertAgentMessages['zh-CN'],
       editor: editorMessages['zh-CN'],
@@ -96,7 +103,7 @@ export const i18n = createI18n({
         references: '引用',
         files: '添加文件',
         actions: '动作',
-        actionsEmpty: '动作目录未接通；这里不假装可执行无人值守动作。',
+        actionsEmpty: '暂无可用动作。',
         workspacePick: '从工作区选择',
         uploadLocal: '上传本地文件',
         experts: '专家',
@@ -108,7 +115,7 @@ export const i18n = createI18n({
         searchSkills: '搜索技能',
         searchMcp: '搜索 MCP',
         manageExperts: '管理专家',
-        localReference: '本地上传与仓库内文件不是同一个来源。这里只保留已选名称，不读取仓库。',
+        localReference: '本地上传与仓库内文件不是同一个来源。请从工作区选择需要引用的文件。',
         noReferences: '还没有引用文件或原型。',
       },
       workUi: {
@@ -119,13 +126,13 @@ export const i18n = createI18n({
         chatSubtitle: '描述目标，引用上下文，与专家一起完成需求。',
         chatWelcome: '今天要一起完成什么？',
         chatWelcomeBody: '选择模型和协作专家，加入文件或原型，从一个具体需求开始。',
-        sqlScope: '确定性分析工作面 · 不是对话摘要或变更面板',
+        sqlScope: 'SQL 分析工作台',
         sqlIntro: '左侧选任务回放，底部开始新分析。规则发现与模型观察分开显示。',
         sqlBoundary: '工作面边界',
-        sqlEvidenceScope: '只反映当前分析任务 · 不是对话摘要或设置页证据',
+        sqlEvidenceScope: '当前任务的发现、验证与来源',
         sqlEvidenceEmpty: '尚未选择分析任务；没有可展示的发现、验证或来源。',
         sqlEvidenceTask: '任务 {id} · {status}',
-        sqlEvidenceFindings: '确定性发现 {count} 条（未假装已跑业务库）',
+        sqlEvidenceFindings: '确定性发现 {count} 条',
         sqlEvidenceNoFindings: '本任务暂无确定性发现条数可展示',
         sqlEvidenceModel: '模型：{model}',
         sqlEvidenceObservations: '工具观察 {count} 条 · 历史摘要可能不含输出',
@@ -143,7 +150,7 @@ export const i18n = createI18n({
         previewHint: '修改左侧内容即时预览；点击按钮可检查交互。',
         versionsTitle: '版本与代码交付',
         versionStep: '保存 → 审阅 → 引用到对话',
-        simulationDetails: '模拟任务、授权说明与旧交接记录',
+        simulationDetails: '交接记录与授权说明',
       },
       task: {
         context: '添加',
@@ -353,6 +360,9 @@ export const i18n = createI18n({
       },
     },
     'en-US': {
+      ...pluginCheckMessages['en-US'],
+      product: productMessages['en-US'],
+      presentation: presentationMessages['en-US'],
       toolExecution: toolExecutionMessages['en-US'],
       expertAgent: expertAgentMessages['en-US'],
       editor: editorMessages['en-US'],
@@ -718,3 +728,5 @@ export const i18n = createI18n({
     },
   },
 })
+
+configureRuntimeLanguage(() => (i18n.global.locale.value === 'en-US' ? 'en-US' : 'zh-CN'))

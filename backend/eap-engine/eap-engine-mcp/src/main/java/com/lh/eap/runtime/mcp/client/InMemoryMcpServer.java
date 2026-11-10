@@ -1,4 +1,8 @@
 package com.lh.eap.runtime.mcp.client;
+import java.util.Collection;
+import com.lh.eap.error.ProtocolErrors;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.ToolErrors;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,11 +21,11 @@ public final class InMemoryMcpServer {
     private final int pageSize;
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    public InMemoryMcpServer(java.util.Collection<String> allowedTools) {
+    public InMemoryMcpServer(Collection<String> allowedTools) {
         this(allowedTools, Integer.MAX_VALUE);
     }
 
-    public InMemoryMcpServer(java.util.Collection<String> allowedTools, int pageSize) {
+    public InMemoryMcpServer(Collection<String> allowedTools, int pageSize) {
         this.allowedTools = Set.copyOf(allowedTools);
         this.pageSize = Math.max(1, pageSize);
     }
@@ -35,12 +39,12 @@ public final class InMemoryMcpServer {
     }
 
     public String handle(String line) {
-        if (closed.get()) return error(null, -32000, "SERVER_CLOSED");
+        if (closed.get()) return error(null, -32000, ProtocolErrors.SERVER_CLOSED.code());
         final Map<String, Object> request;
         try {
             request = JSON.readValue(line, Map.class);
         } catch (RuntimeException failure) {
-            return error(null, -32700, "PARSE_ERROR");
+            return error(null, -32700, ProtocolErrors.PARSE_ERROR.code());
         }
         var id = request.get("id");
         var method = String.valueOf(request.getOrDefault("method", ""));
@@ -52,7 +56,7 @@ public final class InMemoryMcpServer {
                     "serverInfo", Map.of("name", "in-memory", "version", "0.1")));
             case "tools/list" -> listTools(id, params(request));
             case "tools/call" -> handleCall(id, params(request));
-            default -> error(id, -32601, "METHOD_NOT_FOUND");
+            default -> error(id, -32601, ProtocolErrors.METHOD_NOT_FOUND.code());
         };
     }
 
@@ -63,10 +67,10 @@ public final class InMemoryMcpServer {
             try {
                 offset = Integer.parseInt(cursor);
             } catch (NumberFormatException invalid) {
-                return error(id, -32602, "INVALID_CURSOR");
+                return error(id, -32602, ProtocolErrors.INVALID_CURSOR.code());
             }
         }
-        if (offset < 0 || offset > ordered.size()) return error(id, -32602, "INVALID_CURSOR");
+        if (offset < 0 || offset > ordered.size()) return error(id, -32602, ProtocolErrors.INVALID_CURSOR.code());
         int end = Math.min(offset + pageSize, ordered.size());
         var page = ordered.subList(offset, end);
         var result = new LinkedHashMap<String, Object>();
@@ -77,14 +81,14 @@ public final class InMemoryMcpServer {
 
     private String handleCall(Object id, Map<String, Object> params) {
         var name = String.valueOf(params.getOrDefault("name", ""));
-        if (!allowedTools.contains(name)) return error(id, -32602, "TOOL_NOT_ALLOWED");
+        if (!allowedTools.contains(name)) return error(id, -32602, ToolErrors.TOOL_NOT_ALLOWED.code());
         if ("readonly.ping".equals(name)) {
             var payload = new LinkedHashMap<String, Object>();
             payload.put("content", List.of(Map.of("type", "text", "text", "pong")));
             payload.put("isError", false);
             return success(id, payload);
         }
-        return error(id, -32602, "UNKNOWN_TOOL");
+        return error(id, -32602, ExecutionErrors.UNKNOWN_TOOL.code());
     }
 
     private static Map<String, Object> toolSchema(String name) {

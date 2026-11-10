@@ -9,22 +9,15 @@ export type AcceptResult =
   | { ok: true; files: AttachedText[]; note: '' | 'media' }
   | { ok: false; reason: 'limit' | 'media' }
 
-/** Accepts text within the existing caps. Images stay filename-only in preview and are refused otherwise. A refusal keeps the previous list. */
+/** Accepts text within the existing caps. Images require a supported media contract and are currently refused. A refusal keeps the previous list. */
 export function acceptFiles(
   existing: readonly AttachedText[],
   incoming: readonly IncomingFile[],
-  preview: boolean,
 ): AcceptResult {
   const next = existing.map((file) => ({ ...file }))
-  let note: '' | 'media' = ''
+  const note: '' | 'media' = ''
   for (const file of incoming) {
-    if (file.media) {
-      if (!preview) return { ok: false, reason: 'media' }
-      if (next.length >= FILE_CAP) return { ok: false, reason: 'limit' }
-      next.push({ name: file.name, content: `[Mock media reference: ${file.name}]` })
-      note = 'media'
-      continue
-    }
+    if (file.media) return { ok: false, reason: 'media' }
     const used = next.reduce((size, item) => size + item.content.length, 0)
     if (
       next.length >= FILE_CAP ||

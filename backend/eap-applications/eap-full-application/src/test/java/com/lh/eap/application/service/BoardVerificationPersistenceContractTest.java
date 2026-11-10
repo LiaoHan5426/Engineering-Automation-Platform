@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.persistence.mapper.StateBindings;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -13,18 +14,18 @@ class BoardVerificationPersistenceContractTest {
     @Test void activeVerificationBlocksExistingTaskMutationThroughTheSharedPredicate() {
         var jdbc = mock(JdbcTemplate.class); var tasks = new BoardTaskService(jdbc); var id = UUID.randomUUID();
         var task = new BoardTaskService.Task(id, "p", "title", "ready", "", "", 1, List.of(), "none", "goal", "criteria", false, null);
-        when(jdbc.query(anyString(), any(RowMapper.class), eq(id), eq("p"))).thenReturn(List.of(task));
-        when(jdbc.queryForObject(anyString(), eq(Boolean.class), eq(id), eq(id))).thenAnswer(call -> ((String)call.getArgument(0)).contains("verification_snapshot") && ((String)call.getArgument(0)).contains("UNKNOWN"));
+        when(jdbc.query(anyString(), any(RowMapper.class), eq(StateBindings.MISSION_ACTIVE), eq(StateBindings.VERIFICATION_BLOCKING), eq(StateBindings.CODE_BLOCKING), eq(id), eq("p"))).thenReturn(List.of(task));
+        when(jdbc.queryForObject(anyString(), eq(Boolean.class), eq(id), eq(StateBindings.MISSION_ACTIVE), eq(StateBindings.VERIFICATION_BLOCKING), eq(StateBindings.CODE_BLOCKING), eq(id))).thenReturn(true);
         var denied = assertThrows(ResponseStatusException.class, () -> tasks.update(id, new BoardTaskService.Update("p", 1, "planned", null, null, null, null)));
         assertEquals("BOARD_EXECUTION_ACTIVE", denied.getReason());
         verify(jdbc, never()).update(anyString(), any(Object[].class));
     }
     @Test void workspaceExclusionAlsoFindsUnknownPreflightWithoutAPlan() {
         var jdbc = mock(JdbcTemplate.class); var tasks = new BoardTaskService(jdbc);
-        when(jdbc.queryForObject(anyString(), eq(Boolean.class), eq("workspace"))).thenAnswer(call -> {
+        when(jdbc.queryForObject(anyString(), eq(Boolean.class), eq("workspace"), eq(StateBindings.VERIFICATION_BLOCKING))).thenAnswer(call -> {
             String sql = call.getArgument(0);
             return sql.contains("COALESCE(r.verification_snapshot->'plan'->>'workspacePath', r.verification_snapshot->>'workspacePath')")
-                && sql.contains("'UNKNOWN'");
+                && StateBindings.VERIFICATION_BLOCKING.contains("UNKNOWN");
         });
         assertTrue(tasks.hasActiveVerification("workspace"), "preflight UNKNOWN has a workspace but no plan");
     }

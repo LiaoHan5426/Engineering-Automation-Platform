@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { hasWireValue } from '@eap/runtime-client'
+
+import { ExpertAgentState } from '@eap/runtime-client'
+
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -35,7 +39,6 @@ const {
   checking,
   readError,
   actionError,
-  preview,
   canReview,
   select,
   refresh,
@@ -149,10 +152,17 @@ const goalPreview = computed(() => {
 const cancellable = computed(
   () =>
     detail.value &&
-    ['queued', 'running', 'interrupted', 'awaiting-approval'].includes(detail.value.run.state),
+    hasWireValue(
+      [
+        ExpertAgentState.QUEUED,
+        ExpertAgentState.RUNNING,
+        ExpertAgentState.INTERRUPTED,
+        ExpertAgentState.AWAITING_APPROVAL,
+      ],
+      detail.value.run.state,
+    ),
 )
 async function loadExperts() {
-  if (preview) return
   try {
     const response = await runtimeApi.experts()
     experts.value = response.items.flatMap((text) => {
@@ -269,15 +279,15 @@ onMounted(() => {
             : t('expertWorkspace.' + mode)
         }}
       </h2>
-      <Button :disabled="busy || preview" @click="reload">{{ t('expertAgent.refresh') }}</Button>
+      <Button :disabled="busy" @click="reload">{{ t('expertAgent.refresh') }}</Button>
     </header>
     <p v-if="mode === 'start'">{{ t('expertAgent.hint') }}</p>
-    <Feedback v-if="preview" :message="t('expertAgent.preview')" />
+
     <Feedback
-      v-else-if="mode === 'start' && !automatic && !checking"
+      v-if="mode === 'start' && !automatic && !checking"
       :message="t('expertAgent.unavailable')"
     />
-    <p v-if="!preview && ((checking && !detail) || (loading && !detail))" role="status">
+    <p v-if="(checking && !detail) || (loading && !detail)" role="status">
       {{ t('expertAgent.loading') }}
     </p>
     <Feedback
@@ -308,7 +318,6 @@ onMounted(() => {
           variant="primary"
           :disabled="
             busy ||
-            preview ||
             !automatic ||
             !expert ||
             (!sql.trim() && !question.trim()) ||
@@ -595,7 +604,6 @@ pre {
   gap: 16px;
   margin-top: 12px;
 }
-
 
 @container (width <= 760px) {
   .agent-layout {

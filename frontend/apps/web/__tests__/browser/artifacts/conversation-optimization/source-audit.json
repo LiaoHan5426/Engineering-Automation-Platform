@@ -1,0 +1,139 @@
+{
+  "goalChangedFiles": 168,
+  "productionJavaChanged": 118,
+  "verifiedImportOnlyFiles": 113,
+  "domainLogicFiles": [
+    "AiChatApplication.java",
+    "AiConversationReconnectResponse.java",
+    "AiConversationRegistry.java",
+    "ModelConnections.java",
+    "TaskWorkingMemory.java"
+  ],
+  "backendTargeted": {
+    "reports": [
+      {
+        "name": "AiChatApplicationTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "AiConversationReconnectTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "AiConversationRegistryTest",
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "TaskWorkingMemoryTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "WorkingMemoryPersistenceTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "WorkingMemoryAdversarialTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "WorkingMemoryApiTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "ConversationContextEfficiencyTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "ModelConnectionsTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "ChatGptLoginTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "ChatGptPlanChatModelTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "PlatformProblemContractTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ],
+    "tests": 55
+  },
+  "utf8WithoutBom": true,
+  "noAutomaticCommitOrPush": true,
+  "preservedPreviousEvidenceAndMigrations": [
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/applied-component-page.png",
+    "frontend/apps/web/__tests__/browser/artifacts/status-i18n/http-result.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-page-1440.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/backend-regression.json",
+    "frontend/apps/web/__tests__/browser/artifacts/status-i18n/quality-baseline.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/reviewed-source.patch",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/delivery-constraint-regression.json",
+    "frontend/apps/web/__tests__/browser/artifacts/status-i18n/tool-store-zh-CN.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/failure.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/database-verification.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/delivery-awaiting-decision.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/result.json",
+    "frontend/apps/web/__tests__/browser/artifacts/status-i18n/README.md",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/quality-checks.json",
+    "frontend/apps/web/__tests__/browser/artifacts/status-i18n/browser-failure.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-preview-failure.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/real-model-proposal.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/delivery-decided.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-preview.json",
+    "frontend/apps/web/__tests__/browser/artifacts/status-i18n/database-result.json",
+    "backend/eap-applications/eap-full-application/src/main/resources/db/migration/V33__component_generation_graph.sql",
+    "frontend/apps/web/__tests__/browser/artifacts/status-i18n/validation.json",
+    "frontend/apps/web/__tests__/browser/artifacts/status-i18n/browser-result.json",
+    "backend/eap-applications/eap-full-application/src/main/resources/db/migration/V34__component_delivery_evidence.sql",
+    "backend/eap-applications/eap-full-application/src/main/resources/db/migration/V35__component_generation_comments.sql",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/independent-checks.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-normalization.json",
+    "frontend/apps/web/__tests__/browser/artifacts/status-i18n/source-contract-check.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-normalization.patch",
+    "frontend/apps/web/__tests__/browser/artifacts/status-i18n/host-observation.json",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/failure.png",
+    "frontend/apps/web/__tests__/browser/artifacts/status-i18n/tool-store-en-US.png",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/README.md",
+    "frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-page-390.png"
+  ]
+}

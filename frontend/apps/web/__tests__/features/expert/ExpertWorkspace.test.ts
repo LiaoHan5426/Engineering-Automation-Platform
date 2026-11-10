@@ -6,7 +6,6 @@ import { i18n } from '../../../src/lib/i18n'
 import ExpertManager from '../../../src/features/expert/ExpertManager.vue'
 import { expertHash, readExpertRoute } from '../../../src/features/expert/expertNavigation'
 
-vi.mock('../../../src/lib/serviceConfig', () => ({ useMockServices: false }))
 let app: App | undefined
 let host: HTMLElement
 let manifest: Record<string, unknown>

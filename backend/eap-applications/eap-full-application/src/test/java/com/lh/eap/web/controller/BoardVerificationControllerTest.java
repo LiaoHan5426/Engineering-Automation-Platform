@@ -15,7 +15,7 @@ class BoardVerificationControllerTest {
         var type = assertDoesNotThrow(() -> Class.forName("com.lh.eap.web.controller.BoardVerificationController"));
         var service = mock(BoardVerificationService.class);
         var controller = type.getConstructor(BoardVerificationService.class).newInstance(service);
-        var mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiErrorHandler()).build();
+        var mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         var task = UUID.randomUUID(); var run = UUID.randomUUID(); var path = "/api/board/tasks/" + task + "/runs/" + run + "/verification";
         for (var suffix : new String[]{"", "/plan"}) {
             for (var body : new String[]{"{}", "[]", "null", "{\"projectId\":\"p\",\"workspacePath\":[]}", "{\"projectId\":\"p\",\"workspacePath\":\"/repo\",\"commands\":[\"evil\"]}", "{\"projectId\":\"p\",\"workspacePath\":\"/repo\",\"result\":\"PASSED\"}"})

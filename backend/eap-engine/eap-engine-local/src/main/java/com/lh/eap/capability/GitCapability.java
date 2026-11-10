@@ -1,4 +1,10 @@
 package com.lh.eap.capability;
+import java.io.IOException;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import com.lh.eap.error.WorkspaceErrors;
+import com.lh.eap.error.GitErrors;
+import com.lh.eap.error.ExecutionErrors;
 
 
 
@@ -149,20 +155,20 @@ public final class GitCapability implements Capability {
     private Set<String> prepare(ExecutionContext context) {
         var root = context.executor().runIsolated(name(), context.workspace(), reviewCommand("root", null, Set.of()), environment());
         requireFinished(root, false);
-        if (!root.success() || Boolean.TRUE.equals(root.metadata().get("truncated"))) throw rejected("GIT_ROOT_UNAVAILABLE", root);
+        if (!root.success() || Boolean.TRUE.equals(root.metadata().get("truncated"))) throw rejected(GitErrors.GIT_ROOT_UNAVAILABLE.code(), root);
         try {
-            if (!java.nio.file.Path.of(root.stdout().strip()).toRealPath().equals(context.workspace().toRealPath()))
-                throw rejected("REPOSITORY_ROOT_MISMATCH", root);
-        } catch (java.io.IOException | java.nio.file.InvalidPathException invalid) {
-            throw rejected("GIT_ROOT_UNAVAILABLE", root);
+            if (!Path.of(root.stdout().strip()).toRealPath().equals(context.workspace().toRealPath()))
+                throw rejected(WorkspaceErrors.REPOSITORY_ROOT_MISMATCH.code(), root);
+        } catch (IOException | InvalidPathException invalid) {
+            throw rejected(GitErrors.GIT_ROOT_UNAVAILABLE.code(), root);
         }
         var configuration = context.executor().runIsolated(name(), context.workspace(), reviewCommand("filters", null, Set.of()), environment());
         requireFinished(configuration, true);
         boolean empty = configuration.exitCode() == 1 && configuration.stdout().isBlank() && configuration.stderr().isBlank();
-        if ((!configuration.success() && !empty) || Boolean.TRUE.equals(configuration.metadata().get("truncated"))) throw rejected("FILTER_CONFIGURATION_UNSUPPORTED", configuration);
+        if ((!configuration.success() && !empty) || Boolean.TRUE.equals(configuration.metadata().get("truncated"))) throw rejected(ExecutionErrors.FILTER_CONFIGURATION_UNSUPPORTED.code(), configuration);
         var filters = new LinkedHashSet<String>();
         for (String key : configuration.stdout().lines().filter(line -> !line.isBlank()).toList()) {
-            if (!key.matches("filter\\.[A-Za-z0-9_.-]+\\.(clean|process|required)") || filters.size() >= 100) throw rejected("FILTER_CONFIGURATION_UNSUPPORTED", configuration);
+            if (!key.matches("filter\\.[A-Za-z0-9_.-]+\\.(clean|process|required)") || filters.size() >= 100) throw rejected(ExecutionErrors.FILTER_CONFIGURATION_UNSUPPORTED.code(), configuration);
             filters.add(key);
         }
         return filters;
@@ -177,7 +183,7 @@ public final class GitCapability implements Capability {
                 || !Boolean.TRUE.equals(result.metadata().get("processTreeCleanup"))
                 || (!succeeded && !noFilters)) {
             // A failed/unknown preflight is real process evidence, not a command that never started.
-            throw new PreflightFailure(new Observation(name(), false, result.exitCode(), "", "GIT_PREFLIGHT_UNCONFIRMED", result.metadata()));
+            throw new PreflightFailure(new Observation(name(), false, result.exitCode(), "", GitErrors.GIT_PREFLIGHT_UNCONFIRMED.code(), result.metadata()));
         }
     }
 

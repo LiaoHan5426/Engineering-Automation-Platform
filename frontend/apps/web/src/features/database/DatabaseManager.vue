@@ -1,8 +1,41 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { runtimeApi } from '@eap/runtime-client'
-import { Button, Checkbox, ConfirmBox, EmptyState, Feedback, Input, Select } from '@eap/ui'
+import {
+  Button,
+  Checkbox,
+  ConfirmBox,
+  Dialog,
+  Tabs,
+  EmptyState,
+  Feedback,
+  Input,
+  Select,
+} from '@eap/ui'
 import { errorMessage } from '../../lib/presentation'
+const { t } = useI18n()
+const editTab = ref('profile')
+const discardOpen = ref(false)
+function confirmDiscard() {
+  discardOpen.value = false
+  reset()
+}
+function closeEditor() {
+  if (dirty.value) discardOpen.value = true
+  else reset()
+}
+function discardChanges() {
+  const saved = JSON.parse(baseline.value) as ReturnType<typeof profile>
+  label.value = saved.label
+  engine.value = saved.engine
+  environment.value = saved.environment
+  const { tables: savedTables, indexes: savedIndexes, ...rest } = saved.metadata
+  tables.value = savedTables
+  indexes.value = savedIndexes
+  extra.value = rest
+  message.value = t('product.discarded')
+}
 type Column = { name: string; type: string; nullable: boolean }
 type Table = { name: string; columns: Column[] }
 type Index = { name: string; table: string; columns: string[]; unique: boolean }
@@ -61,6 +94,7 @@ async function refresh() {
 function create() {
   if (!guardLeave()) return
   reset()
+  editTab.value = 'profile'
   editing.value = true
   message.value = ''
   baseline.value = JSON.stringify(profile())
@@ -79,6 +113,7 @@ async function select(key: string) {
     tables.value = (item.metadata.tables ?? []) as Table[]
     indexes.value = (item.metadata.indexes ?? []) as Index[]
     editing.value = true
+    editTab.value = 'profile'
     baseline.value = JSON.stringify(profile())
   } catch (error) {
     message.value = errorMessage(error)
@@ -154,7 +189,7 @@ defineExpose({ refresh })
 onMounted(refresh)
 </script>
 <template>
-  <section class="manager-workspace">
+  <section class="database-catalog">
     <aside class="eap-panel manager-list">
       <div class="manager-toolbar">
         <h2>数据库资料</h2>
@@ -178,144 +213,173 @@ onMounted(refresh)
         暂无资料。可登记脱敏表结构和索引，不需要提供连接凭据。
       </EmptyState>
     </aside>
-    <div class="eap-panel">
+    <div>
       <Feedback v-if="message">{{ message }}</Feedback>
       <p v-if="busy" role="status">正在处理…</p>
-      <EmptyState v-if="!editing">选择资料查看、编辑或删除，也可新建一个元数据快照。</EmptyState>
-      <form v-else @submit.prevent="save">
-        <div class="manager-toolbar">
-          <div>
-            <h2>{{ label || '新数据库资料' }}</h2>
-            <small>{{ dirty ? '有未保存修改' : '脱敏元数据快照' }}</small>
-          </div>
-          <div class="form-actions">
-            <Button
-              variant="danger"
-              v-if="id"
-              type="button"
-              :disabled="busy || dirty"
-              @click="askDelete"
-            >
-              删除资料
-            </Button>
-            <Button
-              variant="secondary"
-              v-if="dirty"
-              type="button"
-              :disabled="busy"
-              @click="
-                () => {
-                  baseline = JSON.stringify(profile())
-                  message = '已放弃未保存的修改，回到上次保存的版本。'
-                }
-              "
-            >
-              放弃修改
-            </Button>
-            <Button type="submit" variant="primary" :disabled="busy || !label.trim()">
-              {{ busy ? '保存中…' : '保存资料' }}
-            </Button>
-          </div>
-        </div>
-        <Feedback tone="warning">
-          只保存人工录入的结构快照。不要填写密码、Token 或 JDBC 地址；不会连接数据库或执行
-          SQL。专家使用资料前需要显式授权。
-        </Feedback>
-        <fieldset :disabled="busy" class="metadata-fields">
-          <label>资料名称<Input v-model="label" required maxlength="200" /></label
-          ><label
-            >数据库引擎<Select v-model="engine">
-              <option>PostgreSQL</option>
-              <option>MySQL</option>
-              <option>SQL Server</option>
-              <option>Oracle</option>
-              <option>SQLite</option>
-            </Select></label
-          ><label>环境<Input v-model="environment" required maxlength="40" /></label>
+
+      <Dialog
+        v-if="editing"
+        :title="label || t('product.createDatabase')"
+        size="lg"
+        :busy="busy"
+        @close="closeEditor"
+      >
+        <Feedback v-if="message">{{ message }}</Feedback>
+        <form @submit.prevent="save">
           <div class="manager-toolbar">
-            <h3>表结构</h3>
-            <Button
-              variant="secondary"
-              type="button"
-              @click="tables.push({ name: '', columns: [] })"
-            >
-              ＋ 添加表
-            </Button>
-          </div>
-          <EmptyState v-if="!tables.length">尚未登记表结构。</EmptyState>
-          <article v-for="(table, index) in tables" :key="index" class="observation">
-            <div class="form-actions">
-              <label class="grow"
-                >表名<Input v-model="table.name" placeholder="schema.table" required /></label
-              ><Button variant="secondary" type="button" @click="tables.splice(index, 1)">
-                移除表
-              </Button>
+            <div>
+              <h2>{{ label || '新数据库资料' }}</h2>
+              <small>{{ dirty ? '有未保存修改' : '脱敏元数据快照' }}</small>
             </div>
-            <div
-              v-for="(column, columnIndex) in table.columns"
-              :key="columnIndex"
-              class="metadata-row"
-            >
-              <label>字段名称<Input v-model="column.name" required /></label
-              ><label
-                >类型<Input v-model="column.type" placeholder="uuid / varchar / bigint" /></label
-              ><label><Checkbox v-model="column.nullable" />允许空值</label
-              ><Button
-                variant="secondary"
+            <div class="form-actions">
+              <Button
+                variant="danger"
+                v-if="id"
                 type="button"
-                @click="table.columns.splice(columnIndex, 1)"
+                :disabled="busy || dirty"
+                @click="askDelete"
               >
-                移除字段
+                删除资料
+              </Button>
+              <Button
+                variant="secondary"
+                v-if="dirty"
+                type="button"
+                :disabled="busy"
+                @click="discardChanges"
+              >
+                放弃修改
+              </Button>
+              <Button type="submit" variant="primary" :disabled="busy || !label.trim()">
+                {{ busy ? '保存中…' : '保存资料' }}
               </Button>
             </div>
-            <Button
-              variant="secondary"
-              type="button"
-              @click="table.columns.push({ name: '', type: '', nullable: true })"
-            >
-              ＋ 添加字段
-            </Button>
-          </article>
-          <div class="manager-toolbar">
-            <h3>索引信息</h3>
-            <Button
-              variant="secondary"
-              type="button"
-              @click="indexes.push({ name: '', table: '', columns: [], unique: false })"
-            >
-              ＋ 添加索引
-            </Button>
           </div>
-          <EmptyState v-if="!indexes.length">尚未登记索引，这不代表数据库没有索引。</EmptyState>
-          <article v-for="(index, position) in indexes" :key="position" class="observation">
-            <label>索引名称<Input v-model="index.name" required /></label
-            ><label
-              >所属表<Input v-model="index.table" list="database-table-names" required /></label
-            ><label
-              >索引列（按顺序，逗号分隔）<Input
-                :value="index.columns.join(', ')"
-                required
-                @input="
-                  index.columns = ($event.target as HTMLInputElement).value
-                    .split(',')
-                    .map((value) => value.trim())
-                    .filter(Boolean)
-                "
-            /></label>
-            <div class="form-actions">
-              <label><Checkbox v-model="index.unique" />唯一索引</label
-              ><Button variant="secondary" type="button" @click="indexes.splice(position, 1)">
-                移除索引
-              </Button>
+          <Feedback tone="warning">
+            只保存人工录入的结构快照。不要填写密码、Token 或 JDBC 地址；不会连接数据库或执行
+            SQL。专家使用资料前需要显式授权。
+          </Feedback>
+          <Tabs
+            v-model="editTab"
+            :label="t('product.databaseWorkspace')"
+            :tabs="[
+              { id: 'profile', label: t('product.profile') },
+              { id: 'tables', label: t('product.tables') },
+              { id: 'indexes', label: t('product.indexes') },
+            ]"
+          />
+          <fieldset :disabled="busy" class="metadata-fields">
+            <div v-show="editTab === 'profile'">
+              <label>资料名称<Input v-model="label" required maxlength="200" /></label
+              ><label
+                >数据库引擎<Select v-model="engine">
+                  <option>PostgreSQL</option>
+                  <option>MySQL</option>
+                  <option>SQL Server</option>
+                  <option>Oracle</option>
+                  <option>SQLite</option>
+                </Select></label
+              ><label>环境<Input v-model="environment" required maxlength="40" /></label>
             </div>
-          </article>
-          <datalist id="database-table-names">
-            <option v-for="table in tables" :key="table.name" :value="table.name" />
-          </datalist>
-        </fieldset>
-      </form>
+            <div v-show="editTab === 'tables'">
+              <div class="manager-toolbar">
+                <h3>表结构</h3>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  @click="tables.push({ name: '', columns: [] })"
+                >
+                  ＋ 添加表
+                </Button>
+              </div>
+              <EmptyState v-if="!tables.length">尚未登记表结构。</EmptyState>
+              <article v-for="(table, index) in tables" :key="index" class="observation">
+                <div class="form-actions">
+                  <label class="grow"
+                    >表名<Input v-model="table.name" placeholder="schema.table" required /></label
+                  ><Button variant="secondary" type="button" @click="tables.splice(index, 1)">
+                    移除表
+                  </Button>
+                </div>
+                <div
+                  v-for="(column, columnIndex) in table.columns"
+                  :key="columnIndex"
+                  class="metadata-row"
+                >
+                  <label>字段名称<Input v-model="column.name" required /></label
+                  ><label
+                    >类型<Input
+                      v-model="column.type"
+                      placeholder="uuid / varchar / bigint" /></label
+                  ><label><Checkbox v-model="column.nullable" />允许空值</label
+                  ><Button
+                    variant="secondary"
+                    type="button"
+                    @click="table.columns.splice(columnIndex, 1)"
+                  >
+                    移除字段
+                  </Button>
+                </div>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  @click="table.columns.push({ name: '', type: '', nullable: true })"
+                >
+                  ＋ 添加字段
+                </Button>
+              </article>
+            </div>
+            <div v-show="editTab === 'indexes'">
+              <div class="manager-toolbar">
+                <h3>索引信息</h3>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  @click="indexes.push({ name: '', table: '', columns: [], unique: false })"
+                >
+                  ＋ 添加索引
+                </Button>
+              </div>
+              <EmptyState v-if="!indexes.length">尚未登记索引，这不代表数据库没有索引。</EmptyState>
+              <article v-for="(index, position) in indexes" :key="position" class="observation">
+                <label>索引名称<Input v-model="index.name" required /></label
+                ><label
+                  >所属表<Input v-model="index.table" list="database-table-names" required /></label
+                ><label
+                  >索引列（按顺序，逗号分隔）<Input
+                    :value="index.columns.join(', ')"
+                    required
+                    @input="
+                      index.columns = ($event.target as HTMLInputElement).value
+                        .split(',')
+                        .map((value) => value.trim())
+                        .filter(Boolean)
+                    "
+                /></label>
+                <div class="form-actions">
+                  <label><Checkbox v-model="index.unique" />唯一索引</label
+                  ><Button variant="secondary" type="button" @click="indexes.splice(position, 1)">
+                    移除索引
+                  </Button>
+                </div>
+              </article>
+              <datalist id="database-table-names">
+                <option v-for="table in tables" :key="table.name" :value="table.name" />
+              </datalist>
+            </div>
+          </fieldset></form
+      ></Dialog>
     </div>
 
+    <ConfirmBox
+      v-if="discardOpen"
+      :title="t('product.discardTitle')"
+      :impact="[t('product.discardImpact')]"
+      :confirm-label="t('product.discard')"
+      danger
+      @confirm="confirmDiscard"
+      @cancel="discardOpen = false"
+    />
     <ConfirmBox
       v-if="deleteOpen && id"
       :title="`删除数据库资料「${label || id}」？`"

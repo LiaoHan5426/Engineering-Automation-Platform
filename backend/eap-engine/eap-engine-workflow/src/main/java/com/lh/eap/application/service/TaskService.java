@@ -1,4 +1,8 @@
 package com.lh.eap.application.service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import com.lh.eap.error.ToolErrors;
+import com.lh.eap.error.MissionErrors;
 
 import com.lh.eap.api.*;
 import com.lh.eap.core.CapabilityRegistry;
@@ -25,9 +29,9 @@ public class TaskService {
     }
     public Map<String,Object> list() { return Map.of("items",taskRepository.findAll()); }
     public Map<String,Object> statistics(int days) { return taskRepository.statistics(days).toMap(); }
-    public Map<String,Object> detail(UUID id) { return taskRepository.findById(id).orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,"任务不存在")); }
+    public Map<String,Object> detail(UUID id) { return taskRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,MissionErrors.MISSION_NOT_FOUND.code())); }
     public Map<String, Object> createTask(TaskRequest request) {
-        if (request.goal() == null || request.goal().isBlank() || request.goal().length()>8000) throw new IllegalArgumentException("需求不能为空，最多8000字符");
+        if (request.goal() == null || request.goal().isBlank() || request.goal().length()>8000) throw new IllegalArgumentException(MissionErrors.MISSION_INPUT_INVALID.code());
         request=new TaskRequest(SensitiveData.redact(request.goal()));
         var id = UUID.randomUUID();
         log.info("Task {} started: goalLength={}", id, request.goal().length());
@@ -41,7 +45,7 @@ public class TaskService {
             taskRepository.save(id, request.goal(), "needs-planning", "needs-review", null, List.of());
             return result;
         }
-        if (!settings.enabled(plan.capability())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "能力已在平台停用：" + plan.capability());
+        if (!settings.enabled(plan.capability())) throw new ResponseStatusException(HttpStatus.CONFLICT,ToolErrors.CAPABILITY_DISABLED.code());
         log.info("Task {} planned capability={}", id, plan.capability());
         var raw = registry.require(plan.capability()).execute(new ExecutionContext(workspace, executor), plan.args().toArray(String[]::new));
         var observations = List.of(new Observation(raw.capability(), raw.success(), raw.exitCode(),

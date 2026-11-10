@@ -1,4 +1,6 @@
 package com.lh.eap.persistence.mapper;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import com.lh.eap.application.service.PrototypeVersion;
 import com.lh.eap.application.service.PrototypeVersionStore;
@@ -51,7 +53,7 @@ public class JdbcPrototypeVersionStore implements PrototypeVersionStore {
         return jdbc.query(SELECT + " WHERE source_ref = ? ORDER BY created_at DESC", (rs, row) -> map(rs), sourceRef);
     }
 
-    private static PrototypeVersion map(java.sql.ResultSet rs) throws java.sql.SQLException {
+    private static PrototypeVersion map(ResultSet rs) throws SQLException {
         var acceptance = List.of(JSON.readValue(rs.getString("acceptance"), String[].class));
         return new PrototypeVersion(
                 rs.getObject("id", UUID.class),

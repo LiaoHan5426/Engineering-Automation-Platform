@@ -1,4 +1,17 @@
 package com.lh.eap.delivery;
+import com.lh.eap.api.TaskRef;
+import com.lh.eap.common.SensitiveData;
+import com.lh.eap.error.LocalizedFailure;
+import java.nio.ByteBuffer;
+import java.time.temporal.ChronoUnit;
+import java.util.stream.Stream;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import com.lh.eap.error.WorkspaceErrors;
+import com.lh.eap.error.GitErrors;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.CodeErrors;
 import com.lh.eap.delivery.CodeProposalStore;
 import com.lh.eap.delivery.CodeVerificationService;
 import com.lh.eap.delivery.CodeGenerationStore;
@@ -20,7 +33,12 @@ import tools.jackson.databind.json.JsonMapper;
 public final class CodeChangeService {
     public record Change(String path, String before, String content, String baseHash) {}
     public record Generation(UUID id, String targetPath, String baseHash, Instant capturedAt,
-                             String prototypeVersionId, String prototypeContentHash, com.lh.eap.api.TaskRef taskBinding) {
+                             String prototypeVersionId, String prototypeContentHash, TaskRef taskBinding,
+                             List<ComponentGraph.Baseline> companionFiles) {
+        public Generation { companionFiles=List.copyOf(companionFiles); }
+        public Generation(UUID id,String targetPath,String baseHash,Instant capturedAt,String prototypeVersionId,String prototypeContentHash,TaskRef taskBinding) {
+            this(id,targetPath,baseHash,capturedAt,prototypeVersionId,prototypeContentHash,taskBinding,List.of());
+        }
         public Generation(UUID id, String targetPath, String baseHash, Instant capturedAt, String prototypeVersionId, String prototypeContentHash) {
             this(id, targetPath, baseHash, capturedAt, prototypeVersionId, prototypeContentHash, null);
         }
@@ -34,11 +52,14 @@ public final class CodeChangeService {
     }
     public record Applied(UUID id, List<String> written, String verification, List<CodeVerificationService.Check> checks,
                           String status, String afterHash, String reason) {
+        public Applied { CodeProposalStatus.fromWire(status); }
         public Applied(UUID id, List<String> written, String verification, List<CodeVerificationService.Check> checks) {
-            this(id, written, verification, checks, "APPLIED", null, "");
+            this(id, written, verification, checks, CodeProposalStatus.APPLIED.wire(), null, "");
         }
     }
-    public record ProposalStatus(Proposal proposal, String status, Applied result, String reason) {}
+    public record ProposalStatus(Proposal proposal, String status, Applied result, String reason) {
+        public ProposalStatus { CodeProposalStatus.fromWire(status); }
+    }
     /** Read-only snapshot for delivery gates. Does not return file contents. */
     public record Baseline(String path, boolean exists, String baseHash, String denial) {}
     /**
@@ -78,18 +99,18 @@ public final class CodeChangeService {
         this(runtime, verification, null);
     }
     public CodeChangeService(RuntimeWorkspace runtime,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) CodeVerificationService verification,
+            @Autowired(required = false) CodeVerificationService verification,
             DirtyRunner dirtyRunner) {
         this(runtime, verification, dirtyRunner, null);
     }
     public CodeChangeService(RuntimeWorkspace runtime,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) CodeVerificationService verification,
+            @Autowired(required = false) CodeVerificationService verification,
             DirtyRunner dirtyRunner, CodeGenerationStore generations) {
         this(runtime, verification, dirtyRunner, generations, null);
     }
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public CodeChangeService(RuntimeWorkspace runtime,
-                             @org.springframework.beans.factory.annotation.Autowired(required = false) CodeVerificationService verification,
+                             @Autowired(required = false) CodeVerificationService verification,
                              DirtyRunner dirtyRunner, CodeGenerationStore generations, CodeProposalStore durable) {
         this.runtime = runtime;
         this.verification = verification;
@@ -107,25 +128,25 @@ public final class CodeChangeService {
         String path = relative == null ? "" : relative;
         if (!runtime.root().allowed()) {
             String denial = runtime.root().denial();
-            return new Baseline(path, false, "", denial == null || denial.isBlank() ? "AUTHORIZED_ROOT_MISSING" : denial);
+            return new Baseline(path, false, "", denial == null || denial.isBlank() ? WorkspaceErrors.AUTHORIZED_ROOT_MISSING.code() : denial);
         }
         try {
             Path file = target(path, false);
             Path authorized = runtime.root().path();
             Path real = Files.exists(file) ? file.toRealPath() : file.toAbsolutePath().normalize();
             if (!real.startsWith(authorized.toRealPath())) {
-                return new Baseline(path, false, "", "OUTSIDE_AUTHORIZED_ROOT");
+                return new Baseline(path, false, "", WorkspaceErrors.OUTSIDE_AUTHORIZED_ROOT.code());
             }
             if (!Files.exists(file)) return new Baseline(path, false, "absent", "");
-            if (!Files.isRegularFile(file)) return new Baseline(path, false, "", "INVALID_CODE_PATH");
-            if (Files.size(file) > 640000) return new Baseline(path, true, "", "EXISTING_FILE_TOO_LARGE");
+            if (!Files.isRegularFile(file)) return new Baseline(path, false, "", CodeErrors.INVALID_CODE_PATH.code());
+            if (Files.size(file) > 640000) return new Baseline(path, true, "", CodeErrors.EXISTING_FILE_TOO_LARGE.code());
             String content = Files.readString(file, StandardCharsets.UTF_8);
-            if (content.length() > 160000) return new Baseline(path, true, "", "EXISTING_FILE_TOO_LARGE");
+            if (content.length() > 160000) return new Baseline(path, true, "", CodeErrors.EXISTING_FILE_TOO_LARGE.code());
             return new Baseline(path, true, hash(content), "");
         } catch (ResponseStatusException expected) {
-            return new Baseline(path, false, "", expected.getReason() == null ? "INVALID_CODE_PATH" : expected.getReason());
+            return new Baseline(path, false, "", expected.getReason() == null ? CodeErrors.INVALID_CODE_PATH.code() : expected.getReason());
         } catch (Exception failure) {
-            return new Baseline(path, false, "", "BASELINE_UNAVAILABLE");
+            return new Baseline(path, false, "", CodeErrors.BASELINE_UNAVAILABLE.code());
         }
     }
 
@@ -135,16 +156,16 @@ public final class CodeChangeService {
     public DirtySummary inspectDirty() {
         if (!runtime.root().allowed()) {
             String denial = runtime.root().denial();
-            return new DirtySummary(false, denial == null || denial.isBlank() ? "AUTHORIZED_ROOT_MISSING" : denial, 0, List.of(), "");
+            return new DirtySummary(false, denial == null || denial.isBlank() ? WorkspaceErrors.AUTHORIZED_ROOT_MISSING.code() : denial, 0, List.of(), "");
         }
         try {
             Path workspace = runtime.workspace().toRealPath();
             Path authorized = runtime.root().path().toRealPath();
             if (!workspace.startsWith(authorized)) {
-                return new DirtySummary(false, "OUTSIDE_AUTHORIZED_ROOT", 0, List.of(), "");
+                return new DirtySummary(false, WorkspaceErrors.OUTSIDE_AUTHORIZED_ROOT.code(), 0, List.of(), "");
             }
             String porcelain = dirtyRunner.porcelain(workspace);
-            if (porcelain == null) return new DirtySummary(false, "GIT_STATUS_UNAVAILABLE", 0, List.of(), "");
+            if (porcelain == null) return new DirtySummary(false, GitErrors.GIT_STATUS_UNAVAILABLE.code(), 0, List.of(), "");
             var paths = new ArrayList<String>();
             for (String line : porcelain.replace("\r\n", "\n").split("\n")) {
                 String entry = dirtyPath(line);
@@ -159,7 +180,7 @@ public final class CodeChangeService {
                     ? failure.getClass().getSimpleName()
                     : failure.getMessage();
             if (detail.length() > 120) detail = detail.substring(0, 120);
-            return new DirtySummary(false, "GIT_STATUS_FAILED", 0, List.of(), detail);
+            return new DirtySummary(false, GitErrors.GIT_STATUS_FAILED.code(), 0, List.of(), detail);
         }
     }
 
@@ -171,17 +192,17 @@ public final class CodeChangeService {
         if (!runtime.root().allowed()) {
             String denial = runtime.root().denial();
             return new VerificationProbe(false,
-                    denial == null || denial.isBlank() ? "AUTHORIZED_ROOT_MISSING" : denial,
+                    denial == null || denial.isBlank() ? WorkspaceErrors.AUTHORIZED_ROOT_MISSING.code() : denial,
                     "", null, "");
         }
         if (verification == null) {
-            return new VerificationProbe(false, "VERIFICATION_UNAVAILABLE", "", null, "");
+            return new VerificationProbe(false, ExecutionErrors.VERIFICATION_UNAVAILABLE.code(), "", null, "");
         }
         try {
             Path workspace = runtime.workspace().toRealPath();
             Path authorized = runtime.root().path().toRealPath();
             if (!workspace.startsWith(authorized)) {
-                return new VerificationProbe(false, "OUTSIDE_AUTHORIZED_ROOT", "", null, "");
+                return new VerificationProbe(false, WorkspaceErrors.OUTSIDE_AUTHORIZED_ROOT.code(), "", null, "");
             }
             var check = verification.probe(workspace);
             return new VerificationProbe(true, "", check.name(), check.exitCode(), check.summary() == null ? "" : check.summary());
@@ -190,7 +211,7 @@ public final class CodeChangeService {
                     ? failure.getClass().getSimpleName()
                     : failure.getMessage();
             if (detail.length() > 120) detail = detail.substring(0, 120);
-            return new VerificationProbe(false, "PROBE_FAILED", "", null, detail);
+            return new VerificationProbe(false, ExecutionErrors.PROBE_FAILED.code(), "", null, detail);
         }
     }
 
@@ -203,16 +224,16 @@ public final class CodeChangeService {
         try {
             Path file = target(path, false);
             if (!Files.exists(file)) return new SourceExcerpt(path, false, "absent", 0, "", "");
-            if (!Files.isRegularFile(file)) return new SourceExcerpt(path, false, "", 0, "", "INVALID_CODE_PATH");
-            if (Files.size(file) > 640000) return new SourceExcerpt(path, true, "", 0, "", "EXISTING_FILE_TOO_LARGE");
+            if (!Files.isRegularFile(file)) return new SourceExcerpt(path, false, "", 0, "", CodeErrors.INVALID_CODE_PATH.code());
+            if (Files.size(file) > 640000) return new SourceExcerpt(path, true, "", 0, "", CodeErrors.EXISTING_FILE_TOO_LARGE.code());
             String content = Files.readString(file, StandardCharsets.UTF_8);
-            if (content.length() > 160000) return new SourceExcerpt(path, true, "", content.length(), "", "EXISTING_FILE_TOO_LARGE");
+            if (content.length() > 160000) return new SourceExcerpt(path, true, "", content.length(), "", CodeErrors.EXISTING_FILE_TOO_LARGE.code());
             String excerpt = content.length() <= SOURCE_EXCERPT_LIMIT ? content : content.substring(0, SOURCE_EXCERPT_LIMIT);
             return new SourceExcerpt(path, true, hash(content), content.length(), excerpt, "");
         } catch (ResponseStatusException expected) {
-            return new SourceExcerpt(path, false, "", 0, "", expected.getReason() == null ? "INVALID_CODE_PATH" : expected.getReason());
+            return new SourceExcerpt(path, false, "", 0, "", expected.getReason() == null ? CodeErrors.INVALID_CODE_PATH.code() : expected.getReason());
         } catch (Exception failure) {
-            return new SourceExcerpt(path, false, "", 0, "", "SOURCE_UNAVAILABLE");
+            return new SourceExcerpt(path, false, "", 0, "", WorkspaceErrors.SOURCE_UNAVAILABLE.code());
         }
     }
 
@@ -236,47 +257,50 @@ public final class CodeChangeService {
                                                 String answer, boolean writeAllowed) {
         var snapshot = loadGeneration(generationId);
         if (!snapshot.principal().equals(principal) || !snapshot.conversationId().equals(conversation))
-            throw rejected("CODE_GENERATION_SCOPE_MISMATCH");
+            throw rejected(CodeErrors.CODE_GENERATION_SCOPE_MISMATCH.code());
         verifyGeneration(snapshot);
-        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_PROPOSAL_STORE_UNAVAILABLE");
+        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CodeErrors.CODE_PROPOSAL_STORE_UNAVAILABLE.code());
         return parseProposal(conversation, answer, writeAllowed, snapshot.targetPath(), snapshot);
     }
 
     private Proposal parseProposal(UUID conversation, String answer, boolean writeAllowed, String expectedTargetPath,
                                    CodeGenerationStore.Snapshot generation) {
         try {
-            if (answer.length() > MAX_PROPOSAL_RESPONSE_CHARS) throw rejected("CODE_PROPOSAL_TOO_LARGE");
+            if (answer.length() > MAX_PROPOSAL_RESPONSE_CHARS) throw rejected(CodeErrors.CODE_PROPOSAL_TOO_LARGE.code());
             String value = answer.strip();
             if (value.startsWith("```")) value = value.substring(value.indexOf('\n') + 1, value.lastIndexOf("```")).strip();
             var root = JSON.readTree(value);
             var entries = root.path("files");
-            if (!entries.isArray() || entries.size() < 1 || entries.size() > 8) throw rejected("INVALID_CODE_PROPOSAL");
-            if (generation != null && (entries.size() != 1 || !entries.get(0).path("path").asString("").equals(generation.targetPath())))
-                throw rejected("CODE_GENERATION_SCOPE_MISMATCH");
+            if (!entries.isArray() || entries.size() < 1 || entries.size() > 8) throw rejected(CodeErrors.INVALID_CODE_PROPOSAL.code());
+            if (generation != null && (entries.size() != generation.sources().size() || !entries.get(0).path("path").asString("").equals(generation.targetPath())))
+                throw rejected(CodeErrors.CODE_GENERATION_SCOPE_MISMATCH.code());
             var files = new ArrayList<Change>();
             var names = new HashSet<String>();
             var targets = new ArrayList<Path>();
             int total = 0;
             for (var entry : entries) {
                 String name = entry.path("path").asString(""), content = entry.path("content").asString("");
-                if (!entry.path("content").isString() || !names.add(name)) throw rejected("INVALID_CODE_PROPOSAL");
+                if (!entry.path("content").isString() || !names.add(name)) throw rejected(CodeErrors.INVALID_CODE_PROPOSAL.code());
                 total += content.length();
-                if (total > MAX_PROPOSAL_CONTENT_CHARS) throw rejected("CODE_PROPOSAL_TOO_LARGE");
+                if (total > MAX_PROPOSAL_CONTENT_CHARS) throw rejected(CodeErrors.CODE_PROPOSAL_TOO_LARGE.code());
                 Path path = target(name, false);
                 for (Path previous : targets) {
                     if (previous.equals(path) || (Files.exists(previous) && Files.exists(path) && Files.isSameFile(previous, path))) {
-                        throw rejected("INVALID_CODE_PROPOSAL");
+                        throw rejected(CodeErrors.INVALID_CODE_PROPOSAL.code());
                     }
                 }
                 targets.add(path);
-                if (Files.exists(path) && Files.size(path) > 640000) throw rejected("EXISTING_FILE_TOO_LARGE");
-                String before = generation != null ? generation.source() : Files.exists(path) ? Files.readString(path, StandardCharsets.UTF_8) : null;
-                if (before != null && before.length() > 160000) throw rejected("EXISTING_FILE_TOO_LARGE");
+                if (Files.exists(path) && Files.size(path) > 640000) throw rejected(CodeErrors.EXISTING_FILE_TOO_LARGE.code());
+                String before = generation != null ? generation.sources().stream().filter(file->file.path().equals(name)).findFirst()
+                    .orElseThrow(()->rejected(CodeErrors.CODE_GENERATION_SCOPE_MISMATCH.code())).content() : Files.exists(path) ? Files.readString(path, StandardCharsets.UTF_8) : null;
+                if (before != null && before.length() > 160000) throw rejected(CodeErrors.EXISTING_FILE_TOO_LARGE.code());
                 files.add(new Change(name, before, content, hash(before)));
             }
+            if(generation!=null && !files.stream().map(Change::path).toList().equals(generation.sources().stream().map(ComponentGraph.Source::path).toList()))throw rejected(CodeErrors.CODE_GENERATION_SCOPE_MISMATCH.code());
+            if(generation!=null)ComponentGraph.validate(generation.targetPath(),files);
             String expected = expectedTargetPath == null ? "" : expectedTargetPath.trim();
             if (!expected.isBlank() && !names.contains(expected)) {
-                throw rejected("TARGET_PATH_REQUIRED");
+                throw rejected(CodeErrors.TARGET_PATH_REQUIRED.code());
             }
             var proposal = new Proposal(UUID.randomUUID(), conversation, runtime.workspace().toRealPath().toString(), root.path("summary").asString(""),
                     List.copyOf(files), Instant.now(), false, writeAllowed, "not_requested", generation == null ? null : generation.reference());
@@ -288,7 +312,7 @@ public final class CodeChangeService {
                     if (!saved.proposal().equals(proposal)) throw new IllegalStateException("proposal readback mismatch");
                     return saved.proposal();
                 } catch (Exception failure) {
-                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_PROPOSAL_STORE_UNAVAILABLE");
+                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CodeErrors.CODE_PROPOSAL_STORE_UNAVAILABLE.code());
                 }
             }
             sweep();
@@ -300,16 +324,16 @@ public final class CodeChangeService {
             proposals.put(proposal.id(), proposal);
             return proposal;
         } catch (ResponseStatusException expected) { throw expected; }
-        catch (Exception invalid) { throw rejected("INVALID_CODE_PROPOSAL"); }
+        catch (Exception invalid) { throw rejected(CodeErrors.INVALID_CODE_PROPOSAL.code()); }
     }
 
     public synchronized Applied apply(UUID conversation, UUID id, boolean confirmed) {
-        if (durable != null) return apply(com.lh.eap.config.RuntimeWorkspace.OPERATOR_LABEL, conversation, id, confirmed);
-        if (!confirmed) throw rejected("WRITE_CONFIRMATION_REQUIRED");
+        if (durable != null) return apply(RuntimeWorkspace.OPERATOR_LABEL, conversation, id, confirmed);
+        if (!confirmed) throw rejected(CodeErrors.WRITE_CONFIRMATION_REQUIRED.code());
         sweep();
         var proposal = proposals.get(id);
-        if (proposal == null || !proposal.conversationId().equals(conversation)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "UNKNOWN_CODE_PROPOSAL");
-        if (!proposal.writeAllowed()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "READ_ONLY_PROPOSAL");
+        if (proposal == null || !proposal.conversationId().equals(conversation)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, CodeErrors.UNKNOWN_CODE_PROPOSAL.code());
+        if (!proposal.writeAllowed()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, CodeErrors.READ_ONLY_PROPOSAL.code());
         if (proposal.applied()) {
             return appliedResults.get(id);
         }
@@ -318,9 +342,9 @@ public final class CodeChangeService {
             // Check every base before the first write. User changes since generation must be reviewed again.
             for (var file : proposal.files()) {
                 Path path = target(file.path(), true);
-                if (!runtime.workspace().toRealPath().toString().equals(proposal.workspace())) throw rejected("WORKSPACE_CHANGED");
+                if (!runtime.workspace().toRealPath().toString().equals(proposal.workspace())) throw rejected(WorkspaceErrors.WORKSPACE_CHANGED.code());
                 String current = Files.exists(path) ? Files.readString(path, StandardCharsets.UTF_8) : null;
-                if (!hash(current).equals(file.baseHash())) throw new ResponseStatusException(HttpStatus.CONFLICT, "FILE_CHANGED_SINCE_PROPOSAL");
+                if (!hash(current).equals(file.baseHash())) throw new ResponseStatusException(HttpStatus.CONFLICT, CodeErrors.FILE_CHANGED_SINCE_PROPOSAL.code());
             }
             for (var file : proposal.files()) {
                 Path path = target(file.path(), true);
@@ -352,88 +376,97 @@ public final class CodeChangeService {
     }
 
     public ProposalStatus proposal(String principal, UUID conversation, UUID id) {
-        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_PROPOSAL_STORE_UNAVAILABLE");
+        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CodeErrors.CODE_PROPOSAL_STORE_UNAVAILABLE.code());
         var row = durable.find(principal, conversation, id).orElseThrow(() ->
-                new ResponseStatusException(HttpStatus.NOT_FOUND, "UNKNOWN_CODE_PROPOSAL"));
+                new ResponseStatusException(HttpStatus.NOT_FOUND, CodeErrors.UNKNOWN_CODE_PROPOSAL.code()));
         return new ProposalStatus(row.proposal(), row.status(), row.result(), row.reason());
     }
 
     public ProposalStatus refuse(String principal, UUID conversation, UUID id) {
-        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_PROPOSAL_STORE_UNAVAILABLE");
+        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CodeErrors.CODE_PROPOSAL_STORE_UNAVAILABLE.code());
         return durable.withoutTransaction(() -> {
             proposal(principal, conversation, id);
-            durable.refuse(principal, conversation, id, "OPERATOR_REFUSED");
+            durable.refuse(principal, conversation, id, ExecutionErrors.OPERATOR_REFUSED.code());
             return proposal(principal, conversation, id);
         });
     }
 
-    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    @EventListener(ApplicationReadyEvent.class)
     public void recoverInterruptedApplications() throws IOException {
         if (durable != null) durable.recoverInterrupted(runtime.workspace().toRealPath().toString());
     }
 
     /** Production single-file apply: intent commits before filesystem effects; never runs verification. */
     public Applied apply(String principal, UUID conversation, UUID id, boolean confirmed) {
-        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_PROPOSAL_STORE_UNAVAILABLE");
+        if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CodeErrors.CODE_PROPOSAL_STORE_UNAVAILABLE.code());
         return durable.withoutTransaction(() -> applyDurable(principal, conversation, id, confirmed));
     }
     private Applied applyDurable(String principal, UUID conversation, UUID id, boolean confirmed) {
-        if (!confirmed) throw rejected("WRITE_CONFIRMATION_REQUIRED");
+        if (!confirmed) throw rejected(CodeErrors.WRITE_CONFIRMATION_REQUIRED.code());
         var saved = proposal(principal, conversation, id);
-        if (saved.status().equals("APPLIED")) return saved.result();
-        if (!saved.status().equals("PROPOSED")) throw new ResponseStatusException(HttpStatus.CONFLICT, "CODE_APPLICATION_" + saved.status());
+        if (saved.status().equals(CodeProposalStatus.APPLIED.wire())) return saved.result();
+        if (!saved.status().equals(CodeProposalStatus.PROPOSED.wire())) throw new ResponseStatusException(HttpStatus.CONFLICT, "CODE_APPLICATION_" + saved.status());
         var proposal = saved.proposal();
-        if (!proposal.writeAllowed()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "READ_ONLY_PROPOSAL");
+        if (!proposal.writeAllowed()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, CodeErrors.READ_ONLY_PROPOSAL.code());
         if (!durable.claim(principal, conversation, id)) {
             var current = proposal(principal, conversation, id);
-            if (current.status().equals("APPLIED")) return current.result();
+            if (current.status().equals(CodeProposalStatus.APPLIED.wire())) return current.result();
             throw new ResponseStatusException(HttpStatus.CONFLICT, "CODE_APPLICATION_" + current.status());
         }
         boolean effectStarted = false;
-        Path temp = null;
+        var temporary = new ArrayList<Path>();
         try {
             var snapshot = loadGeneration(proposal.generation().id());
             if (!snapshot.principal().equals(principal) || !snapshot.conversationId().equals(conversation)
-                    || !snapshot.workspace().equals(proposal.workspace()) || proposal.files().size() != 1)
-                throw rejected("CODE_GENERATION_SCOPE_MISMATCH");
-            var file = proposal.files().getFirst();
-            if (!file.path().equals(snapshot.targetPath()) || !file.baseHash().equals(snapshot.baseHash())
-                    || !Objects.equals(file.before(), snapshot.source())) throw rejected("CODE_GENERATION_SCOPE_MISMATCH");
-            Path path = target(snapshot.targetPath(), true);
-            if (!runtime.workspace().toRealPath().toString().equals(snapshot.workspace())) throw rejected("WORKSPACE_CHANGED");
-            if (!hash(generationSource(snapshot.targetPath())).equals(snapshot.baseHash()))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "FILE_CHANGED_SINCE_PROPOSAL");
-            effectStarted = true;
-            Files.createDirectories(path.getParent());
-            temp = Files.createTempFile(path.getParent(), ".eap-code-", ".tmp");
-            Files.writeString(temp, file.content(), StandardCharsets.UTF_8);
-            // Bounded last check, NOT OS compare-and-swap against an external editor.
-            path = target(snapshot.targetPath(), true);
-            if (!hash(generationSource(snapshot.targetPath())).equals(snapshot.baseHash()))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "FILE_CHANGED_SINCE_PROPOSAL");
-            if (snapshot.source() == null) Files.move(temp, path); // no replace: concurrent creation must fail
-            else Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            target(snapshot.targetPath(), true);
-            byte[] afterBytes;
-            try (var input = Files.newInputStream(path, LinkOption.NOFOLLOW_LINKS)) { afterBytes = input.readNBytes(640001); }
-            if (afterBytes.length > 640000) throw new IOException("readback too large");
-            String after = hash(StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(afterBytes)).toString());
-            target(snapshot.targetPath(), true);
-            if (!after.equals(hash(file.content()))) throw new IOException("readback mismatch");
-            var result = new Applied(id, List.of(snapshot.targetPath()), "not_requested", List.of(), "APPLIED", after, "");
-            durable.finish(principal, conversation, id, "APPLIED", result, "");
-            var persisted = proposal(principal, conversation, id);
-            if (!persisted.status().equals("APPLIED") || !result.equals(persisted.result())) throw new IllegalStateException("result readback mismatch");
+                    || !snapshot.workspace().equals(proposal.workspace()) || !snapshot.reference().equals(proposal.generation())
+                    || proposal.files().size()!=snapshot.sources().size()) throw rejected(CodeErrors.CODE_GENERATION_SCOPE_MISMATCH.code());
+            for(int i=0;i<snapshot.sources().size();i++) {
+                var source=snapshot.sources().get(i);var change=proposal.files().get(i);
+                if(!change.path().equals(source.path())||!change.baseHash().equals(source.baseHash())||!Objects.equals(change.before(),source.content()))
+                    throw rejected(CodeErrors.CODE_GENERATION_SCOPE_MISMATCH.code());
+            }
+            ComponentGraph.validate(snapshot.targetPath(),proposal.files());
+            if(!runtime.workspace().toRealPath().toString().equals(snapshot.workspace()))throw rejected(WorkspaceErrors.WORKSPACE_CHANGED.code());
+            // Every baseline must pass before staging or replacing any selected source.
+            for(var source:snapshot.sources()) {
+                target(source.path(),true);
+                if(!hash(generationSource(source.path())).equals(source.baseHash()))
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,CodeErrors.FILE_CHANGED_SINCE_PROPOSAL.code());
+            }
+            effectStarted=true;
+            for(var change:proposal.files()) {
+                var destination=target(change.path(),true);Files.createDirectories(destination.getParent());
+                var temp=Files.createTempFile(destination.getParent(),".eap-code-",".tmp");temporary.add(temp);
+                Files.writeString(temp,change.content(),StandardCharsets.UTF_8);
+            }
+            for(var source:snapshot.sources())if(!hash(generationSource(source.path())).equals(source.baseHash()))
+                throw new ResponseStatusException(HttpStatus.CONFLICT,CodeErrors.FILE_CHANGED_SINCE_PROPOSAL.code());
+            for(int i=0;i<proposal.files().size();i++) {
+                var change=proposal.files().get(i);var path=target(change.path(),true);
+                if(!hash(generationSource(change.path())).equals(change.baseHash()))throw new IOException("baseline changed during component apply");
+                if(change.before()==null)Files.move(temporary.get(i),path);
+                else Files.move(temporary.get(i),path,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);
+            }
+            for(var change:proposal.files()) {
+                var path=target(change.path(),true);byte[] bytes;
+                try(var input=Files.newInputStream(path,LinkOption.NOFOLLOW_LINKS)){bytes=input.readNBytes(640001);}
+                if(bytes.length>640000||!hash(StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString()).equals(hash(change.content())))
+                    throw new IOException("component readback mismatch");
+                target(change.path(),true);
+            }
+            var result = new Applied(id,proposal.files().stream().map(Change::path).toList(),"not_requested",List.of(),CodeProposalStatus.APPLIED.wire(),hash(proposal.files().getFirst().content()),"");
+            durable.finish(principal,conversation,id,CodeProposalStatus.APPLIED.wire(),result,"");
+            var persisted=proposal(principal,conversation,id);
+            if(!persisted.status().equals(CodeProposalStatus.APPLIED.wire())||!result.equals(persisted.result()))throw new IllegalStateException("result readback mismatch");
             return persisted.result();
-        } catch (Exception failure) {
-            String reason = effectStarted ? "CODE_APPLICATION_UNKNOWN"
-                    : failure instanceof ResponseStatusException denied ? denied.getReason() : "CODE_APPLICATION_FAILED";
-            try { durable.finish(principal, conversation, id, effectStarted ? "UNKNOWN" : "FAILED", null, reason); }
-            catch (RuntimeException ignored) { /* APPLYING remains a durable interlock; no blind retry or rollback. */ }
-            if (!effectStarted && failure instanceof ResponseStatusException denied) throw denied;
-            throw new ResponseStatusException(HttpStatus.CONFLICT, reason);
+        } catch(Exception failure) {
+            String reason=effectStarted?CodeErrors.CODE_APPLICATION_UNKNOWN.code():failure instanceof ResponseStatusException denied?denied.getReason():CodeErrors.CODE_APPLICATION_FAILED.code();
+            try{durable.finish(principal,conversation,id,effectStarted?CodeProposalStatus.UNKNOWN.wire():CodeProposalStatus.FAILED.wire(),null,reason);}
+            catch(RuntimeException ignored){ /* Original APPLYING remains the durable interlock. */ }
+            if(!effectStarted&&failure instanceof ResponseStatusException denied)throw denied;
+            throw new ResponseStatusException(HttpStatus.CONFLICT,reason);
         } finally {
-            if (temp != null) try { Files.deleteIfExists(temp); } catch (IOException ignored) { /* no target rollback */ }
+            for(var temp:temporary)try{Files.deleteIfExists(temp);}catch(IOException ignored){ /* Never roll back another editor's source. */ }
         }
     }
 
@@ -443,25 +476,42 @@ public final class CodeChangeService {
         return prepareGeneration(principal, conversation, relative, prototypeVersionId, prototypeContentHash, null);
     }
     public CodeGenerationStore.Snapshot prepareGeneration(String principal, UUID conversation, String relative,
-                                                          String prototypeVersionId, String prototypeContentHash, com.lh.eap.api.TaskRef taskRef) {
-        if (relative == null || relative.isBlank()) throw rejected("CODE_GENERATION_TARGET_REQUIRED");
+                                                          String prototypeVersionId, String prototypeContentHash, TaskRef taskRef) {
+        return prepareGeneration(principal,conversation,relative,prototypeVersionId,prototypeContentHash,taskRef,List.of());
+    }
+    public CodeGenerationStore.Snapshot prepareGeneration(String principal, UUID conversation, String relative,
+            String prototypeVersionId,String prototypeContentHash,TaskRef taskRef,List<String> componentPaths) {
+        if (relative == null || relative.isBlank()) throw rejected(CodeErrors.CODE_GENERATION_TARGET_REQUIRED.code());
+        if(componentPaths==null||componentPaths.size()>7||new HashSet<>(componentPaths).size()!=componentPaths.size()||componentPaths.contains(relative))throw rejected(CodeErrors.CODE_GRAPH_TARGETS_INVALID.code());
+        if(!componentPaths.isEmpty())for(String path:Stream.concat(Stream.of(relative),componentPaths.stream()).toList())
+            if(path==null||!path.matches("frontend/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*\\.(vue|ts|js)"))throw rejected(CodeErrors.CODE_GRAPH_PATH_DENIED.code());
         if (generations == null) throw contextUnavailable();
         if (prototypeVersionId == null || prototypeContentHash == null
                 || (taskRef == null && prototypeVersionId.isBlank() != prototypeContentHash.isBlank())) throw contextUnavailable();
         try {
             String workspace = runtime.workspace().toRealPath().toString();
+            var targets = new HashSet<Path>();
+            for (String path : Stream.concat(Stream.of(relative), componentPaths.stream()).toList())
+                if (!targets.add(target(path, false))) throw rejected(CodeErrors.CODE_GRAPH_DUPLICATE_TARGET.code());
             var snapshot = generations.capture(taskRef, workspace, prototypeVersionId, task -> {
                 try {
                     String source = generationSource(relative);
+                    var companions=new ArrayList<ComponentGraph.Source>();int total=source==null?0:source.getBytes(StandardCharsets.UTF_8).length;
+                    for(String path:componentPaths) {
+                        String content=generationSource(path);total+=content==null?0:content.getBytes(StandardCharsets.UTF_8).length;
+                        if(total>48000)throw new LocalizedFailure(LocalizedFailure.Kind.INVALID,CodeErrors.CODE_GRAPH_CONTEXT_TOO_LARGE,48000);
+                        companions.add(new ComponentGraph.Source(path,hash(content),content));
+                    }
                     String prototypeHash = task == null ? prototypeContentHash : task.prototype() == null ? "" : task.prototype().contentHash();
                     return new CodeGenerationStore.Snapshot(UUID.randomUUID(), principal, conversation,
                             workspace, relative, hash(source), source, prototypeVersionId, prototypeHash,
-                            Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS), task);
+                            Instant.now().truncatedTo(ChronoUnit.MICROS), task,companions);
                 } catch (IOException failure) { throw contextUnavailable(); }
             });
             if (!snapshot.equals(loadGeneration(snapshot.id()))) throw contextUnavailable();
             return loadGeneration(snapshot.id());
         } catch (ResponseStatusException expected) { throw expected; }
+        catch (LocalizedFailure expected) { throw expected; }
         catch (Exception failure) { throw contextUnavailable(); }
     }
 
@@ -474,21 +524,21 @@ public final class CodeChangeService {
     private void verifyGeneration(CodeGenerationStore.Snapshot snapshot) {
         try {
             if (!runtime.workspace().toRealPath().toString().equals(snapshot.workspace()))
-                throw rejected("CODE_GENERATION_SCOPE_MISMATCH");
-            if (!hash(generationSource(snapshot.targetPath())).equals(snapshot.baseHash()))
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "CODE_GENERATION_BASELINE_CHANGED");
+                throw rejected(CodeErrors.CODE_GENERATION_SCOPE_MISMATCH.code());
+            for(var file:snapshot.sources())if (!hash(generationSource(file.path())).equals(file.baseHash()))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, CodeErrors.CODE_GENERATION_BASELINE_CHANGED.code());
         } catch (ResponseStatusException expected) { throw expected; }
         catch (Exception failure) { throw contextUnavailable(); }
     }
 
     private String generationSource(String relative) throws IOException {
         Path path = target(relative, false);
-        // PB02 is deliberately a complete single-file context, not a truncated excerpt.
+        // Each selected source is complete and bounded, never a truncated excerpt.
         if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return null;
         byte[] bytes;
         try (var input = Files.newInputStream(path, LinkOption.NOFOLLOW_LINKS)) { bytes = input.readNBytes(24001); }
         if (bytes.length > 24000) throw contextUnavailable();
-        String source = StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+        String source = StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString();
         if (source.indexOf('\0') >= 0 || unsafeSource(source)) throw contextUnavailable();
         target(relative, false); // recheck workspace/symlink boundaries after the read
         return source;
@@ -496,38 +546,38 @@ public final class CodeChangeService {
 
     private static boolean unsafeSource(String source) {
         String lower = source.toLowerCase(Locale.ROOT);
-        return com.lh.eap.common.SensitiveData.containsSecret(source)
+        return SensitiveData.containsSecret(source)
                 || lower.contains("[redacted") || lower.contains("«redacted")
                 || lower.contains("private key-----") || lower.matches("(?s).*bearer\\s+[a-z0-9._~+/-]{8,}.*");
     }
 
     private static ResponseStatusException contextUnavailable() {
-        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "CODE_GENERATION_CONTEXT_UNAVAILABLE");
+        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CodeErrors.CODE_GENERATION_CONTEXT_UNAVAILABLE.code());
     }
 
     private Path target(String relative, boolean writing) throws IOException {
-        if (relative.isBlank() || relative.length() > 240 || relative.contains("\\") || relative.contains(":")) throw rejected("INVALID_CODE_PATH");
+        if (relative.isBlank() || relative.length() > 240 || relative.contains("\\") || relative.contains(":")) throw rejected(CodeErrors.INVALID_CODE_PATH.code());
         var parts = relative.split("/", -1);
         for (String part : parts) {
             String key = part.toLowerCase(Locale.ROOT);
             if (key.matches(".*(credential|secret|password|passwd|private[-_]?key|api[-_]?key|certificate|keystore).*")
-                    || key.matches(".*tokens?\\.(json|yaml|yml|txt|lock)")) throw rejected("SOURCE_FILES_ONLY");
+                    || key.matches(".*tokens?\\.(json|yaml|yml|txt|lock)")) throw rejected(CodeErrors.SOURCE_FILES_ONLY.code());
             if (part.isBlank() || part.startsWith(".") || part.endsWith(".") || part.endsWith(" ")
-                    || key.equals("node_modules") || key.equals("target") || key.equals("dist")) throw rejected("INVALID_CODE_PATH");
+                    || key.equals("node_modules") || key.equals("target") || key.equals("dist")) throw rejected(CodeErrors.INVALID_CODE_PATH.code());
         }
         String extension = relative.substring(relative.lastIndexOf('.') + 1);
         String policyPath = relative.toLowerCase(Locale.ROOT);
-        if (!EXTENSIONS.contains(extension) || policyPath.endsWith("package.json") || policyPath.endsWith("pom.xml")) throw rejected("SOURCE_FILES_ONLY");
+        if (!EXTENSIONS.contains(extension) || policyPath.endsWith("package.json") || policyPath.endsWith("pom.xml")) throw rejected(CodeErrors.SOURCE_FILES_ONLY.code());
         Path workspace = runtime.workspace().toRealPath();
         if (writing && (!runtime.root().allowed() || !workspace.startsWith(runtime.root().path())))
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "WORKSPACE_WRITE_NOT_AUTHORIZED");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, WorkspaceErrors.WORKSPACE_WRITE_NOT_AUTHORIZED.code());
         Path candidate = workspace;
         for (String part : parts) {
             candidate = candidate.resolve(part);
-            if (Files.exists(candidate.resolve(".git"), LinkOption.NOFOLLOW_LINKS)) throw rejected("CODE_NESTED_REPOSITORY");
-            if (Files.isSymbolicLink(candidate) || (Files.exists(candidate) && !candidate.toRealPath().startsWith(workspace))) throw rejected("CODE_PATH_ESCAPES_WORKSPACE");
+            if (Files.exists(candidate.resolve(".git"), LinkOption.NOFOLLOW_LINKS)) throw rejected(CodeErrors.CODE_NESTED_REPOSITORY.code());
+            if (Files.isSymbolicLink(candidate) || (Files.exists(candidate) && !candidate.toRealPath().startsWith(workspace))) throw rejected(CodeErrors.CODE_PATH_ESCAPES_WORKSPACE.code());
         }
-        if (Files.exists(candidate) && !Files.isRegularFile(candidate)) throw rejected("INVALID_CODE_PATH");
+        if (Files.exists(candidate) && !Files.isRegularFile(candidate)) throw rejected(CodeErrors.INVALID_CODE_PATH.code());
         return candidate;
     }
     private void sweep() {

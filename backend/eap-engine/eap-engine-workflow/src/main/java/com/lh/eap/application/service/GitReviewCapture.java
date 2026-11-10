@@ -1,4 +1,10 @@
 package com.lh.eap.application.service;
+import java.util.concurrent.TimeUnit;
+import com.lh.eap.error.SecurityErrors;
+import com.lh.eap.error.WorkspaceErrors;
+import com.lh.eap.error.GitErrors;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.BoardErrors;
 
 import com.lh.eap.api.Observation;
 import com.lh.eap.api.ProcessExecutor;
@@ -29,7 +35,7 @@ public class GitReviewCapture {
     public GitReviewCapture(ProcessExecutor executor) { this.executor = executor; }
 
     public Evidence capture(Path workspace, GitCapability git) {
-        if (!capacity.tryAcquire()) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "BOARD_REVIEW_BUSY");
+        if (!capacity.tryAcquire()) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, BoardErrors.BOARD_REVIEW_BUSY.code());
         try { return new Capture(workspace, git).run(); }
         finally { capacity.release(); }
     }
@@ -37,7 +43,7 @@ public class GitReviewCapture {
         private final Path workspace;
         private final GitCapability git;
         private final Instant started = Instant.now();
-        private final long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(30);
+        private final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
         private final List<Step> steps = new ArrayList<>();
         private final Set<String> issues = new LinkedHashSet<>();
         private final Set<String> disabledFilters = new LinkedHashSet<>();
@@ -48,40 +54,40 @@ public class GitReviewCapture {
             try {
                 var root = invoke("root");
                 if (!root.success() || !Path.of(root.stdout().strip()).toRealPath().equals(workspace.toRealPath())) {
-                    issues.add("REPOSITORY_ROOT_MISMATCH"); state = "FAILED"; return finish();
+                    issues.add(WorkspaceErrors.REPOSITORY_ROOT_MISMATCH.code()); state = "FAILED"; return finish();
                 }
                 var filters = invoke("filters");
-                if (Boolean.TRUE.equals(filters.metadata().get("truncated"))) throw new CaptureFailure("FILTER_CONFIGURATION_UNSUPPORTED");
+                if (Boolean.TRUE.equals(filters.metadata().get("truncated"))) throw new CaptureFailure(ExecutionErrors.FILTER_CONFIGURATION_UNSUPPORTED.code());
                 for (var key : filters.stdout().lines().filter(line -> !line.isBlank()).toList()) {
-                    if (!key.matches("filter\\.[A-Za-z0-9_.-]+\\.(clean|process|required)") || disabledFilters.size() >= 100) throw new CaptureFailure("FILTER_CONFIGURATION_UNSUPPORTED");
+                    if (!key.matches("filter\\.[A-Za-z0-9_.-]+\\.(clean|process|required)") || disabledFilters.size() >= 100) throw new CaptureFailure(ExecutionErrors.FILTER_CONFIGURATION_UNSUPPORTED.code());
                     disabledFilters.add(key);
                 }
-                if (!disabledFilters.isEmpty()) issues.add("FILTERS_DISABLED");
+                if (!disabledFilters.isEmpty()) issues.add(ExecutionErrors.FILTERS_DISABLED.code());
                 base = invoke("head").stdout().strip();
-                if (!base.matches("[0-9a-f]{40}|[0-9a-f]{64}")) throw new CaptureFailure("BASE_COMMIT_UNAVAILABLE");
+                if (!base.matches("[0-9a-f]{40}|[0-9a-f]{64}")) throw new CaptureFailure(ExecutionErrors.BASE_COMMIT_UNAVAILABLE.code());
                 var beforeStatus = invoke("status"); status = clip(beforeStatus.stdout(), 32768);
                 var beforeDiff = invoke("diff"); diff = clip(beforeDiff.stdout(), 131072);
                 var checked = invoke("check");
                 check = new Check(Boolean.TRUE.equals(checked.metadata().get("truncated")) ? "INCOMPLETE" : checked.exitCode() == 0 ? "PASSED" : "FAILED",
                         checked.exitCode(), clip(checked.stdout() + checked.stderr(), 8192));
-                if (check.status().equals("INCOMPLETE")) issues.add("OUTPUT_TRUNCATED");
-                if (beforeStatus.stdout().lines().anyMatch(line -> line.startsWith("?? "))) issues.add("UNTRACKED_NOT_INCLUDED");
-                if (beforeDiff.stdout().lines().anyMatch(line -> line.startsWith("Binary files "))) issues.add("BINARY_NOT_EXPANDED");
+                if (check.status().equals("INCOMPLETE")) issues.add(ExecutionErrors.OUTPUT_TRUNCATED.code());
+                if (beforeStatus.stdout().lines().anyMatch(line -> line.startsWith("?? "))) issues.add(ExecutionErrors.UNTRACKED_NOT_INCLUDED.code());
+                if (beforeDiff.stdout().lines().anyMatch(line -> line.startsWith("Binary files "))) issues.add(ExecutionErrors.BINARY_NOT_EXPANDED.code());
                 var afterDiff = invoke("diff-after");
                 var afterStatus = invoke("status-after");
                 headAfter = invoke("head-after").stdout().strip();
                 if (!base.equals(headAfter) || !beforeStatus.stdout().equals(afterStatus.stdout()) || !beforeDiff.stdout().equals(afterDiff.stdout())) {
-                    state = "CHANGED"; issues.add("WORKSPACE_CHANGED_DURING_CAPTURE"); check = new Check("STALE", check.exitCode(), check.output());
+                    state = "CHANGED"; issues.add(WorkspaceErrors.WORKSPACE_CHANGED_DURING_CAPTURE.code()); check = new Check("STALE", check.exitCode(), check.output());
                 } else if (!issues.isEmpty()) state = "INCOMPLETE";
             } catch (CaptureFailure failure) {
                 issues.add(failure.getMessage()); state = "FAILED";
             } catch (Exception failure) {
-                issues.add("CAPTURE_FAILED"); state = "FAILED";
+                issues.add(ExecutionErrors.CAPTURE_FAILED.code()); state = "FAILED";
             }
             return finish();
         }
         private Observation invoke(String step) {
-            if (System.nanoTime() > deadline) throw new CaptureFailure("CAPTURE_TIME_LIMIT");
+            if (System.nanoTime() > deadline) throw new CaptureFailure(ExecutionErrors.CAPTURE_TIME_LIMIT.code());
             var command = git.reviewCommand(step, base, disabledFilters);
             var env = new LinkedHashMap<>(GitCapability.environment());
             env.put("GIT_OPTIONAL_LOCKS", "0"); env.put("GIT_TERMINAL_PROMPT", "0");
@@ -92,19 +98,19 @@ public class GitReviewCapture {
             env.put("LC_ALL", "C");
             var result = executor.runIsolated("git-diff", workspace, command, env);
             boolean truncated = Boolean.TRUE.equals(result.metadata().get("truncated"));
-            if (truncated) issues.add("OUTPUT_TRUNCATED");
+            if (truncated) issues.add(ExecutionErrors.OUTPUT_TRUNCATED.code());
             var processStatus = String.valueOf(result.metadata().getOrDefault("executorStatus", "UNKNOWN"));
             steps.add(new Step(step, command, result.exitCode(), processStatus, truncated, clip(result.stderr(), 4096)));
             boolean whitespaceFailure = step.equals("check") && (result.exitCode() == 1 || result.exitCode() == 2) && processStatus.equals("FAILED");
             boolean noFilters = step.equals("filters") && result.exitCode() == 1 && processStatus.equals("FAILED") && result.stdout().isBlank() && result.stderr().isBlank();
             if (!Boolean.TRUE.equals(result.metadata().get("processExited")) || (!processStatus.equals("SUCCEEDED") && !whitespaceFailure && !noFilters) || (!result.success() && !whitespaceFailure && !noFilters))
-                throw new CaptureFailure(step.equals("head") ? "BASE_COMMIT_UNAVAILABLE" : "GIT_STEP_FAILED");
+                throw new CaptureFailure(step.equals("head") ? ExecutionErrors.BASE_COMMIT_UNAVAILABLE.code() : GitErrors.GIT_STEP_FAILED.code());
             return result;
         }
         private String clip(String value, int limit) {
             var safe = SensitiveData.redact(value);
-            if (!safe.equals(value)) issues.add("CONTENT_REDACTED");
-            if (safe.length() > limit) { issues.add("OUTPUT_TRUNCATED"); return safe.substring(0, limit); }
+            if (!safe.equals(value)) issues.add(SecurityErrors.CONTENT_REDACTED.code());
+            if (safe.length() > limit) { issues.add(ExecutionErrors.OUTPUT_TRUNCATED.code()); return safe.substring(0, limit); }
             return safe;
         }
         private Evidence finish() {

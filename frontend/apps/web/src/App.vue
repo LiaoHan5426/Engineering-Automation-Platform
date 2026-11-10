@@ -53,7 +53,6 @@ import { Table, type TableColumn } from '@eap/plugin-table'
 import { errorMessage, statusLabel } from './lib/presentation'
 import { describeSecret } from './lib/sensitive'
 import { CANDIDATE_REWRITE_NOTES, candidateRewrite, rewriteUnavailable } from './lib/rewrites'
-import { useMockServices } from './lib/serviceConfig'
 
 /** Existing views remain available through the five-entry desktop shell. */
 const shellPages = [
@@ -168,11 +167,11 @@ const INSPECTOR_PAGES: Record<string, { hint: string; pipeline?: boolean }> = {
     hint: '专家的能力引用、知识库与 MCP 工具授权在该专家面板内联展示；画布与清单都由当前草稿渲染。',
   },
   rules: {
-    hint: '规则包的条件、所需能力与试算结果在规则面板内联展示；自定义包可就地编辑规则，内置包需先复制。',
+    hint: '选择规则包查看规则，或切换到 SQL 试算。内置规则包可复制后修改。',
   },
-  knowledge: { hint: '知识库与文档的增删改在面板内联完成；检索范围会写在检索框下方。' },
-  databases: { hint: '表结构与索引快照在点击「查看」时于资料面板内联展示。' },
-  capabilities: { hint: '能力的种类、范围、可用状态与管理入口在能力目录内联展开。' },
+  knowledge: { hint: '选择知识库，阅读文档、录入知识或检索内容。' },
+  databases: { hint: '选择资料查看或编辑脱敏表结构与索引快照。' },
+  capabilities: { hint: '按种类管理能力，或打开 Git 工作区检查与数据诊断。' },
 }
 const inspector = computed(
   () => INSPECTOR_PAGES[activeView.value] ?? { hint: currentView.value.hint },
@@ -243,7 +242,7 @@ watch(
   },
 )
 
-const runtimeStatus = ref(useMockServices ? i18n.global.t('preview.simulated') : '检测中')
+const runtimeStatus = ref('检测中')
 const refreshing = ref(false)
 const errors = ref<Record<string, string>>({})
 const capabilities = ref<string[]>([])
@@ -545,7 +544,7 @@ watch(selectedExpert, () => {
   selectedFinding.value = null
 })
 
-async function refresh() {
+async function refresh(reloadActive = true) {
   if (refreshing.value) return
   refreshing.value = true
   errors.value = {}
@@ -594,7 +593,7 @@ async function refresh() {
       },
     ],
   ]
-  if (!useMockServices) {
+  {
     jobs.unshift([
       'health',
       async () => {
@@ -614,11 +613,13 @@ async function refresh() {
       }
     }),
   )
-  if (activeView.value === 'experts') await expertManager.value?.refresh()
-  if (activeView.value === 'knowledge') await knowledgeManager.value?.refresh()
-  if (activeView.value === 'databases') await databaseManager.value?.refresh()
-  if (activeView.value === 'rules') await ruleManager.value?.refresh()
-  if (activeView.value === 'capabilities') await capabilityManager.value?.refresh()
+  if (reloadActive) {
+    if (activeView.value === 'experts') await expertManager.value?.refresh()
+    if (activeView.value === 'knowledge') await knowledgeManager.value?.refresh()
+    if (activeView.value === 'databases') await databaseManager.value?.refresh()
+    if (activeView.value === 'rules') await ruleManager.value?.refresh()
+    if (activeView.value === 'capabilities') await capabilityManager.value?.refresh()
+  }
   lastRefresh.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
   refreshing.value = false
 }
@@ -1041,10 +1042,10 @@ onUnmounted(() => {
       <div class="spacer" />
       <span
         class="eap-chip"
-        :class="useMockServices ? '' : runtimeStatus === '已连接' ? 'ok' : 'warn'"
+        :class="runtimeStatus === '已连接' ? 'ok' : 'warn'"
         data-testid="runtime-chip"
       >
-        <i class="dot" />{{ useMockServices ? runtimeStatus : `运行时${runtimeStatus}` }}
+        <i class="dot" />{{ `运行时${runtimeStatus}` }}
       </span>
       <Button
         variant="secondary"
@@ -1061,7 +1062,7 @@ onUnmounted(() => {
         v-if="activeView === 'sql'"
         class="sql-top-secondary"
         :disabled="refreshing"
-        @click="refresh"
+        @click="refresh()"
       >
         {{ refreshing ? '刷新中…' : '刷新' }}
       </Button>
@@ -1836,7 +1837,7 @@ onUnmounted(() => {
             ref="expertManager"
             @editing="expertEditing = $event"
             v-else-if="activeView === 'experts'"
-            @saved="refresh"
+            @saved="refresh(false)"
             @run="
               ($event) => {
                 selectedExpert = $event
@@ -1847,18 +1848,22 @@ onUnmounted(() => {
           <KnowledgeManager
             ref="knowledgeManager"
             v-else-if="activeView === 'knowledge'"
-            @saved="refresh"
+            @saved="refresh(false)"
           />
           <DatabaseManager
             ref="databaseManager"
             v-else-if="activeView === 'databases'"
-            @saved="refresh"
+            @saved="refresh(false)"
           />
-          <RuleManager ref="ruleManager" v-else-if="activeView === 'rules'" @saved="refresh" />
+          <RuleManager
+            ref="ruleManager"
+            v-else-if="activeView === 'rules'"
+            @saved="refresh(false)"
+          />
           <CapabilityManager
             ref="capabilityManager"
             v-else-if="activeView === 'capabilities'"
-            @saved="refresh"
+            @saved="refresh(false)"
           />
         </KeepAlive>
         <PluginSlot

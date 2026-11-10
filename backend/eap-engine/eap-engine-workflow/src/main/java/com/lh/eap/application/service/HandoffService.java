@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.MissionErrors;
 
 import com.lh.eap.common.SensitiveData;
 import java.time.Instant;
@@ -22,13 +23,13 @@ public class HandoffService {
 
     public Handoff record(String source, String sourceRef, String summary) {
         if (source == null || !SOURCES.contains(source)) {
-            throw new IllegalArgumentException("交接来源只能是 chat 或 builder");
+            throw new IllegalArgumentException(MissionErrors.HANDOFF_INPUT_INVALID.code());
         }
         if (sourceRef == null || !SOURCE_REF.matcher(sourceRef).matches()) {
-            throw new IllegalArgumentException("交接引用无效");
+            throw new IllegalArgumentException(MissionErrors.HANDOFF_INPUT_INVALID.code());
         }
         if (summary == null || summary.isBlank() || summary.length() > 8000) {
-            throw new IllegalArgumentException("交接摘要不能为空，最多8000字符");
+            throw new IllegalArgumentException(MissionErrors.HANDOFF_INPUT_INVALID.code());
         }
         var handoff = new Handoff(
                 UUID.randomUUID(),
@@ -49,6 +50,6 @@ public class HandoffService {
     }
 
     public Handoff detail(UUID id) {
-        return store.find(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "交接不存在"));
+        return store.find(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,MissionErrors.HANDOFF_NOT_FOUND.code()));
     }
 }

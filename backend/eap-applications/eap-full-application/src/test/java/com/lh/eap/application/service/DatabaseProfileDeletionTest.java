@@ -37,8 +37,7 @@ class DatabaseProfileDeletionTest {
                 () -> controller(mapper).remove(UUID.randomUUID()));
 
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
-        assertTrue(error.getReason().contains("orders-sql"), error.getReason());
-        assertTrue(error.getReason().contains("已启用的专家"), error.getReason());
+        assertEquals("DATABASE_PROFILE_IN_USE", error.getReason());
         verify(mapper, never()).delete(any());
     }
 
@@ -62,7 +61,7 @@ class DatabaseProfileDeletionTest {
                 () -> controller(mapper).remove(UUID.randomUUID()));
 
         assertEquals(HttpStatus.NOT_FOUND, error.getStatusCode());
-        assertEquals("数据库资料不存在", error.getReason());
+        assertEquals("DATABASE_PROFILE_NOT_FOUND", error.getReason());
     }
 
     @Test void deletingAnUnreferencedProfileRemovesItAndEchoesTheId() {

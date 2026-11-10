@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.ResourceErrors;
 
 import com.lh.eap.application.dto.ScenarioConfiguration;
 import com.lh.eap.application.dto.ScenarioConfiguration.Snapshot;
@@ -23,7 +24,7 @@ public class ScenarioService {
     /** Plugin enablement belongs to the local UI host, not stored scenario dependency labels. */
     public ScenarioWorkflowDependencies dependencies(String workflow) {
         if (!"prototype-to-code".equals(workflow))
-            throw failure(HttpStatus.NOT_FOUND, "SCENARIO_WORKFLOW_NOT_FOUND");
+            throw failure(HttpStatus.NOT_FOUND, ResourceErrors.SCENARIO_WORKFLOW_NOT_FOUND.code());
         try {
             long count = jdbc.queryForObject("SELECT count(*) FROM eap.prototype_version WHERE source_ref IN ('builder-alpha','builder-beta')", Long.class);
             return new ScenarioWorkflowDependencies(1, workflow, Instant.now(),
@@ -32,7 +33,7 @@ public class ScenarioService {
                     List.of(new ScenarioWorkflowDependencies.Service("prototype-versions", "READABLE")),
                     List.of(new ScenarioWorkflowDependencies.Resource("prototype-version", true, count)));
         } catch (DataAccessException error) {
-            throw failure(HttpStatus.SERVICE_UNAVAILABLE, "SCENARIO_DEPENDENCY_UNAVAILABLE");
+            throw failure(HttpStatus.SERVICE_UNAVAILABLE, ResourceErrors.SCENARIO_DEPENDENCY_UNAVAILABLE.code());
         }
     }
 
@@ -46,7 +47,7 @@ public class ScenarioService {
         validateId(id);
         try {
             return jdbc.queryForList("SELECT id,revision,definition::text AS definition FROM eap.scenario_definition WHERE id=? AND NOT deleted", id)
-                    .stream().map(this::snapshot).findFirst().orElseThrow(() -> failure(HttpStatus.NOT_FOUND, "SCENARIO_NOT_FOUND"));
+                    .stream().map(this::snapshot).findFirst().orElseThrow(() -> failure(HttpStatus.NOT_FOUND, ResourceErrors.SCENARIO_NOT_FOUND.code()));
         } catch (DataAccessException error) { throw unavailable(); }
     }
     public Snapshot save(String id, Write request) {
@@ -60,7 +61,7 @@ public class ScenarioService {
             var rows = request.revision() == 0
                     ? jdbc.queryForList("INSERT INTO eap.scenario_definition(id,revision,definition) VALUES (?,1,?::jsonb) ON CONFLICT(id) DO NOTHING RETURNING id,revision,definition::text AS definition", id, json)
                     : jdbc.queryForList("UPDATE eap.scenario_definition SET definition=?::jsonb,revision=revision+1,updated_at=now() WHERE id=? AND revision=? AND NOT deleted RETURNING id,revision,definition::text AS definition", json, id, request.revision());
-            if (rows.isEmpty()) throw failure(HttpStatus.CONFLICT, "SCENARIO_STALE");
+            if (rows.isEmpty()) throw failure(HttpStatus.CONFLICT, ResourceErrors.SCENARIO_STALE.code());
             return snapshot(rows.getFirst());
         } catch (DataAccessException error) { throw unavailable(); }
     }
@@ -69,7 +70,7 @@ public class ScenarioService {
         if (revision < 1 || revision == Long.MAX_VALUE) throw invalid();
         try {
             if (jdbc.update("UPDATE eap.scenario_definition SET deleted=true,revision=revision+1,updated_at=now() WHERE id=? AND revision=? AND NOT deleted", id, revision) != 1)
-                throw failure(HttpStatus.CONFLICT, "SCENARIO_STALE");
+                throw failure(HttpStatus.CONFLICT, ResourceErrors.SCENARIO_STALE.code());
         } catch (DataAccessException error) { throw unavailable(); }
     }
     private Snapshot snapshot(Map<String,Object> row) {
@@ -82,7 +83,7 @@ public class ScenarioService {
     private static void validate(ScenarioConfiguration d) {
         if (d == null) throw invalid();
         text(d.name(), 80, true); text(d.summary(), 400, false); text(d.instructions(), 4000, false);
-        if (d.status() == null || !Set.of("partial", "missing", "disabled").contains(d.status())) throw invalid();
+        if (d.status() == null || !ScenarioStatus.isKnown(d.status())) throw invalid();
         if (d.modes() == null || d.modes().isEmpty() || d.modes().size() > 2
                 || new HashSet<>(d.modes()).size() != d.modes().size()
                 || d.modes().stream().anyMatch(mode -> !"code".equals(mode) && !"work".equals(mode))) throw invalid();
@@ -93,14 +94,14 @@ public class ScenarioService {
         if (d.workflow() != null && !"prototype-to-code".equals(d.workflow())) throw invalid();
         if (d.dependencies() == null || d.dependencies().size() > 30) throw invalid();
         for (var dep : d.dependencies()) {
-            if (dep == null || dep.state() == null || !Set.of("installed", "missing", "unconfigured", "denied").contains(dep.state())) throw invalid();
+            if (dep == null || dep.state() == null || !ScenarioDependencyStatus.isKnown(dep.state())) throw invalid();
             text(dep.name(), 200, true); text(dep.where(), 1000, false);
         }
     }
     private static void text(String value, int max, boolean required) {
         if (value == null || value.length() > max || (required && value.isBlank()) || value.indexOf('\0') >= 0) throw invalid();
     }
-    private static ResponseStatusException invalid() { return failure(HttpStatus.BAD_REQUEST, "INVALID_SCENARIO_INPUT"); }
-    private static ResponseStatusException unavailable() { return failure(HttpStatus.SERVICE_UNAVAILABLE, "SCENARIO_STORE_UNAVAILABLE"); }
+    private static ResponseStatusException invalid() { return failure(HttpStatus.BAD_REQUEST, ResourceErrors.INVALID_SCENARIO_INPUT.code()); }
+    private static ResponseStatusException unavailable() { return failure(HttpStatus.SERVICE_UNAVAILABLE, ResourceErrors.SCENARIO_STORE_UNAVAILABLE.code()); }
     private static ResponseStatusException failure(HttpStatus status, String code) { return new ResponseStatusException(status, code); }
 }

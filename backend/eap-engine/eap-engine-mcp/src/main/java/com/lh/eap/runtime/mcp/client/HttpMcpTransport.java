@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.mcp.client;
+import com.lh.eap.error.McpErrors;
 
 import java.io.IOException;
 import java.net.URI;
@@ -60,7 +61,7 @@ public final class HttpMcpTransport implements McpTransport {
             return body == null ? "" : body;
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            throw new IOException("MCP_HTTP_INTERRUPTED", interrupted);
+            throw new IOException(McpErrors.MCP_HTTP_INTERRUPTED.code(), interrupted);
         }
     }
 

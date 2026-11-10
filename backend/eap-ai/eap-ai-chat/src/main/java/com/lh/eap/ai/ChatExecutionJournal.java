@@ -1,4 +1,7 @@
 package com.lh.eap.ai;
+import java.time.Instant;
+import com.lh.eap.error.ProtocolErrors;
+import com.lh.eap.error.ExecutionErrors;
 
 import com.lh.eap.ai.dto.ChatExecutionEvent;
 import com.lh.eap.ai.dto.ChatExecutionSnapshot;
@@ -28,7 +31,7 @@ public class ChatExecutionJournal {
                         .min(Map.Entry.comparingByValue((a, b) -> a.opened.compareTo(b.opened)))
                         .map(Map.Entry::getKey)
                         .orElse(null);
-                if (oldest == null) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "EXECUTION_CAPACITY");
+                if (oldest == null) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, ExecutionErrors.EXECUTION_CAPACITY.code());
                 logs.remove(oldest);
             }
             var log = new ExecutionLog(executionId, conversationId);
@@ -49,11 +52,11 @@ public class ChatExecutionJournal {
     public ChatExecutionSnapshot snapshot(UUID conversationId, UUID executionId, long afterSequence) {
         var log = logs.get(executionId);
         if (log == null || !log.conversationId.equals(conversationId))
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "UNKNOWN_EXECUTION");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ExecutionErrors.UNKNOWN_EXECUTION.code());
         List<ChatExecutionEvent> events;
         synchronized (log) {
             if (afterSequence < 0 || afterSequence > log.latestSequence)
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "CURSOR_INVALID");
+                throw new ResponseStatusException(HttpStatus.CONFLICT, ProtocolErrors.CURSOR_INVALID.code());
             events = log.events.stream().filter(event -> event.sequence() > afterSequence).toList();
             return new ChatExecutionSnapshot(
                     executionId, conversationId, log.latestSequence, log.complete, log.status, events);
@@ -80,7 +83,7 @@ public class ChatExecutionJournal {
                 // Reserve one slot for a terminal frame, including failures at the budget boundary.
                 int limit = "final".equals(type) ? MAX_EVENTS : MAX_EVENTS - 1;
                 if (log.events.size() >= limit)
-                    throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "EXECUTION_EVENT_LIMIT");
+                    throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, ExecutionErrors.EXECUTION_EVENT_LIMIT.code());
                 long sequence = log.latestSequence + 1;
                 event = ChatExecutionEvent.of(sequence, log.executionId, log.conversationId,
                         null, type, text, code, status, payload);
@@ -116,11 +119,11 @@ public class ChatExecutionJournal {
     private static final class ExecutionLog {
         private final UUID executionId;
         private final UUID conversationId;
-        private final java.time.Instant opened = java.time.Instant.now();
+        private final Instant opened = Instant.now();
         private final List<ChatExecutionEvent> events = new ArrayList<>();
         private long latestSequence;
         private boolean complete;
-        private String status = "RUNNING";
+        private String status = ChatExecutionStatus.RUNNING.wire();
 
         synchronized boolean isComplete() { return complete; }
 

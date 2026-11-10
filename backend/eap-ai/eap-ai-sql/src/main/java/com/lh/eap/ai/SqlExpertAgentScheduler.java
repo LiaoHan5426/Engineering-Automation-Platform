@@ -1,4 +1,8 @@
 package com.lh.eap.ai;
+import java.util.Objects;
+import org.slf4j.Logger;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.AgentErrors;
 
 import com.lh.eap.core.ExpertAgentJournal;
 import jakarta.annotation.PreDestroy;
@@ -17,7 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 /** Polls only explicitly queued runs. The existing journal owns claims; model and file effects are never replayed here. */
 @Service
 public class SqlExpertAgentScheduler {
-    private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(SqlExpertAgentScheduler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SqlExpertAgentScheduler.class);
     private final SqlExpertAgentService agents;
     private final ExpertAgentJournal journal;
     private final boolean enabled;
@@ -43,7 +47,7 @@ public class SqlExpertAgentScheduler {
     }
     public boolean available() { return enabled && started && !closed; }
     public ExpertAgentJournal.Entry enqueue(String expert, UUID id, SqlExpertAgentService.Request request) {
-        if (!available()) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AGENT_SCHEDULER_UNAVAILABLE");
+        if (!available()) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, AgentErrors.AGENT_SCHEDULER_UNAVAILABLE.code());
         return agents.enqueue(expert, id, request);
     }
     void tick() {
@@ -69,9 +73,9 @@ public class SqlExpertAgentScheduler {
             if (!closed) agents.resume(pending.expertId(), pending.id());
         } catch (ResponseStatusException rejected) {
             if (!closed && rejected.getStatusCode().value() != 429
-                    && !Set.of("AGENT_RUN_NOT_RESUMABLE", "EXECUTION_ID_ALREADY_USED", "AGENT_LEASE_LOST", "AGENT_STOPPING")
-                        .contains(java.util.Objects.toString(rejected.getReason(), ""))) {
-                try { journal.failPending(pending, "AGENT_AUTHORITY_UNAVAILABLE"); }
+                    && !Set.of(AgentErrors.AGENT_RUN_NOT_RESUMABLE.code(), ExecutionErrors.EXECUTION_ID_ALREADY_USED.code(), AgentErrors.AGENT_LEASE_LOST.code(), AgentErrors.AGENT_STOPPING.code())
+                        .contains(Objects.toString(rejected.getReason(), ""))) {
+                try { journal.failPending(pending, AgentErrors.AGENT_AUTHORITY_UNAVAILABLE.code()); }
                 catch (RuntimeException unavailable) { LOG.warn("Agent rejection could not be recorded"); }
             }
         } catch (RuntimeException unavailable) {

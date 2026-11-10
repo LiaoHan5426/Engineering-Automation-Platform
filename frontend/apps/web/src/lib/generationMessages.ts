@@ -18,6 +18,9 @@ export const generationMessages = {
       '应用源码后，请回看板运行独立验证并提交源码证据；生成或应用成功不会自动接受交付。',
     removeTask: '移除任务绑定（保留草稿）',
     target: '唯一生成目标',
+    components: '关联组件路径（每行一个，最多7个）',
+    componentsHelp:
+      '入口及关联文件会一并冻结、生成和应用；相对静态引用必须连接同一组件图，无额外文件或循环。留空即单文件。',
     captured: '采集时间',
     prototype: '来源原型',
     targetPlaceholder: '仓库相对路径，例如 frontend/apps/web/src/Example.vue',
@@ -54,6 +57,9 @@ export const generationMessages = {
       'After applying source, run independent checks and submit source evidence on the board. Generation or application never accepts delivery automatically.',
     removeTask: 'Remove task binding (keep draft)',
     target: 'Single generation target',
+    components: 'Companion component paths (one per line, up to 7)',
+    componentsHelp:
+      'Freeze, generate and apply entry and companions together. Static relative imports must connect the selected graph without extra files or cycles. Empty means one file.',
     captured: 'Captured at',
     prototype: 'Source prototype',
     targetPlaceholder: 'Repository-relative path, e.g. frontend/apps/web/src/Example.vue',

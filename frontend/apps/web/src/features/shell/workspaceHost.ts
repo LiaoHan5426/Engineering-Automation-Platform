@@ -1,4 +1,3 @@
-import { useMockServices } from '../../lib/serviceConfig'
 import { resolveDesktopBridge } from './desktopPlatform'
 
 /**
@@ -7,8 +6,6 @@ import { resolveDesktopBridge } from './desktopPlatform'
  * Product default is colocated local Java service (see docs/running-context.md).
  */
 export type WorkspaceHostKind =
-  /** Dev mock: no real repository IO. */
-  | 'mock'
   /**
    * Default product: UI talks to the colocated local Java service.
    * Process-bound root on that JVM is the workspace binding; optional desktop bridge is enhancement only.
@@ -31,10 +28,7 @@ export type WorkspaceHost = {
   serverDiskObservation: boolean
 }
 
-export function detectWorkspaceHost(mock = useMockServices): WorkspaceHost {
-  if (mock) {
-    return { kind: 'mock', localFiles: false, serverDiskObservation: false }
-  }
+export function detectWorkspaceHost(): WorkspaceHost {
   if (resolveDesktopBridge()) {
     return { kind: 'local-bridge', localFiles: true, serverDiskObservation: true }
   }
@@ -42,7 +36,6 @@ export function detectWorkspaceHost(mock = useMockServices): WorkspaceHost {
 }
 
 export function workspaceHostNoteKey(host: WorkspaceHost = detectWorkspaceHost()) {
-  if (host.kind === 'mock') return 'desktop.hostMock'
   if (host.kind === 'local-bridge') return 'desktop.hostLocalBridge'
   return 'desktop.hostLocalService'
 }

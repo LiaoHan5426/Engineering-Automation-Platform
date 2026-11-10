@@ -1,12 +1,21 @@
 // @vitest-environment happy-dom
-import { afterEach, expect, it } from 'vite-plus/test'
-import { chatStorage } from '../../../src/features/chat/chatService'
-afterEach(() => localStorage.clear())
-it('isolates mock drafts and backend conversation IDs from live history', () => {
-  const live = chatStorage(false, localStorage),
-    mock = chatStorage(true, localStorage)
-  live.setItem('eap.chat.history.v1', 'live-conversation')
-  mock.setItem('eap.chat.history.v1', 'mock-conversation')
-  expect(live.getItem('eap.chat.history.v1')).toBe('live-conversation')
-  expect(mock.getItem('eap.chat.history.v1')).toBe('mock-conversation')
+import { afterEach, expect, it, vi } from 'vite-plus/test'
+afterEach(() => {
+  localStorage.clear()
+  vi.unstubAllEnvs()
+  vi.resetModules()
+})
+it('isolates browser history when a relative API proxy changes its configured destination', async () => {
+  vi.stubEnv('VITE_API_SCOPE', 'http://127.0.0.1:8080/api')
+  vi.resetModules()
+  const first = (await import('../../../src/features/chat/chatService')).chatStorage(localStorage)
+  first.setItem('eap.chat.history.v1', 'first-conversation')
+  vi.stubEnv('VITE_API_SCOPE', 'http://127.0.0.1:53200/api')
+  vi.resetModules()
+  const second = (await import('../../../src/features/chat/chatService')).chatStorage(localStorage)
+  expect(second.getItem('eap.chat.history.v1')).toBeNull()
+  second.setItem('eap.chat.history.v1', 'second-conversation')
+  expect(first.getItem('eap.chat.history.v1')).toBe('first-conversation')
+  expect(second.getItem('eap.chat.history.v1')).toBe('second-conversation')
+  expect(localStorage.getItem('eap.chat.history.v1')).toBeNull()
 })

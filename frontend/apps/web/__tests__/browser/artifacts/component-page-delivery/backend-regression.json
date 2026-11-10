@@ -1,0 +1,13 @@
+{
+  "exitCode": 0,
+  "reports": [
+    {
+      "name": "com.lh.eap.persistence.mapper.ComponentGraphDeliveryTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "seconds": 41.5
+}

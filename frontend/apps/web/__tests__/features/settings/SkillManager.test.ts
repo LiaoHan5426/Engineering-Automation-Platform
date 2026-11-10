@@ -193,7 +193,7 @@ it.each([
     await show(true)
     expect(node('skill-activate-guide-1.0.0').disabled).toBe(true)
     if (outcome === 'success') late.resolve(activated)
-    else late.reject({ response: { status: 409, data: { detail: 'STALE_OLD_ACTIVATION' } } })
+    else late.reject({ response: { status: 409, data: { code: 'STALE_OLD_ACTIVATION' } } })
     await flush()
     expect(activate).toHaveBeenCalledTimes(1)
     expect(get).toHaveBeenCalledTimes(stage === 'GET' ? 1 : 0)
@@ -243,7 +243,7 @@ it.each([
   const listsBefore = list.mock.calls.length
   const readsBefore = get.mock.calls.length
   if (outcome === 'success') oldA.resolve(trustedA)
-  else oldA.reject({ response: { status: 409, data: { detail: 'OLD_A_CONFLICT' } } })
+  else oldA.reject({ response: { status: 409, data: { code: 'OLD_A_CONFLICT' } } })
   await flush()
   expect(sessionStorage.getItem(key)).toBe(journalB)
   expect(node('skill-retry').disabled).toBe(true)
@@ -366,7 +366,7 @@ it('keeps the original pending save when POST succeeds but verification GET is r
     trust: { operator: 'local', confirmedAt: 'now' },
   })
   vi.spyOn(runtimeApi, 'skill').mockRejectedValue({
-    response: { status: 404, data: { detail: 'SKILL_NOT_FOUND' } },
+    response: { status: 404, data: { code: 'SKILL_NOT_FOUND' } },
   })
   await mount()
   await click('skill-import')
@@ -388,7 +388,7 @@ it('preserves import text after a same-version content conflict and requires a f
   vi.spyOn(runtimeApi, 'previewSkill').mockResolvedValue(snapshot)
   const save = vi
     .spyOn(runtimeApi, 'saveSkill')
-    .mockRejectedValue({ response: { status: 409, data: { detail: 'SKILL_VERSION_CONFLICT' } } })
+    .mockRejectedValue({ response: { status: 409, data: { code: 'SKILL_VERSION_CONFLICT' } } })
   await mount()
   await click('skill-import')
   await input('skill-raw', raw)
@@ -406,16 +406,6 @@ it('preserves import text after a same-version content conflict and requires a f
   expect(document.querySelector('[data-testid=skill-pending]')).toBeNull()
   expect(save).toHaveBeenCalledTimes(1)
 })
-it('offers the exact explicitly labelled fixture only in mock mode', async () => {
-  vi.spyOn(runtimeApi, 'skills').mockResolvedValue({ items: [] })
-  await mount({ mock: true })
-  await click('skill-import')
-  await click('skill-fixture')
-  expect(node<HTMLInputElement>('skill-raw').value).toBe(
-    '---\nname: mock-review\ndescription: Safe mock review fixture\n---\nReview changes and verify tests. This is simulated guidance.\n',
-  )
-  expect(document.body.textContent).toContain('不声称通用 YAML 解析')
-})
 it('reads saved versions explicitly and keeps a CAS conflict until operator refresh', async () => {
   const list = vi
     .spyOn(runtimeApi, 'skills')
@@ -425,7 +415,7 @@ it('reads saved versions explicitly and keeps a CAS conflict until operator refr
     .mockResolvedValue({ ...snapshot, stateRevision: 4, enabled: true })
   const activate = vi
     .spyOn(runtimeApi, 'activateSkill')
-    .mockRejectedValue({ response: { status: 409, data: { detail: 'SKILL_STATE_STALE' } } })
+    .mockRejectedValue({ response: { status: 409, data: { code: 'SKILL_STATE_STALE' } } })
   await mount()
   await vi.waitFor(() =>
     expect(document.querySelector('[data-testid="skill-activate-guide-1.0.0"]')).not.toBeNull(),
@@ -463,7 +453,7 @@ it('invalidates a late preview on leaving the import workspace while preserving 
   expect(node<HTMLButtonElement>('skill-save').disabled).toBe(true)
 })
 async function upload(id: string, files: File[]) {
-  const el = node<HTMLInputElement>(id)
+  const el = node(id).querySelector('input')!
   Object.defineProperty(el, 'files', { configurable: true, value: files })
   el.dispatchEvent(new Event('change', { bubbles: true }))
   await nextTick()

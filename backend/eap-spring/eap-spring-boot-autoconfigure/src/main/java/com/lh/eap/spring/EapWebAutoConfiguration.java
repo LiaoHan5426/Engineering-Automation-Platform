@@ -1,4 +1,7 @@
 package com.lh.eap.spring;
+import com.lh.eap.web.i18n.PlatformMessagesConfiguration;
+import com.lh.eap.web.i18n.ProblemResponses;
+import org.springframework.context.MessageSource;
 import com.lh.eap.config.WebConfiguration;
 import com.lh.eap.web.AiBrowserRequestGuard;
 import com.lh.eap.web.controller.ApiErrorHandler;
@@ -15,8 +18,10 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnProperty(name = "eap.web.enabled", matchIfMissing = true)
 public class EapWebAutoConfiguration {
     @Bean @ConditionalOnMissingBean WebConfiguration webConfiguration() { return new WebConfiguration(); }
-    @Bean @ConditionalOnMissingBean AiBrowserRequestGuard aiBrowserRequestGuard() { return new AiBrowserRequestGuard(); }
-    @Bean @ConditionalOnMissingBean ApiErrorHandler apiErrorHandler() { return new ApiErrorHandler(); }
+    @Bean @ConditionalOnMissingBean ProblemResponses problemResponses(MessageSource messages) { return new ProblemResponses(messages); }
+    @Bean @ConditionalOnMissingBean(name = "messageSource") MessageSource messageSource() { return PlatformMessagesConfiguration.source(PlatformMessagesConfiguration.COMMON_BASENAME); }
+    @Bean @ConditionalOnMissingBean AiBrowserRequestGuard aiBrowserRequestGuard(ProblemResponses problems) { return new AiBrowserRequestGuard(problems); }
+    @Bean @ConditionalOnMissingBean ApiErrorHandler apiErrorHandler(ProblemResponses problems) { return new ApiErrorHandler(problems); }
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnClass(WorkspaceFilesController.class)
     @ConditionalOnBean(WorkspaceFilesService.class)

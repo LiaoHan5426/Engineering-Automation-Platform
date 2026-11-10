@@ -1,8 +1,104 @@
-import axios from 'axios'
-import NProgress from 'nprogress'
+import type { GitExecutionOperation } from './contracts/toolModels'
+import type { ToolExecution } from './contracts/toolModels'
+import type { ScenarioSnapshot } from './contracts/scenarioModels'
+import type { ScenarioWorkflowDependencies } from './contracts/scenarioModels'
+import type { ScenarioConfiguration } from './contracts/scenarioModels'
+import type { TaskResult } from './contracts/capabilityModels'
+import type { CapabilityItem } from './contracts/capabilityModels'
+import type { CapabilityKindSummary } from './contracts/capabilityModels'
+import type { McpServerItem } from './contracts/capabilityModels'
+import type { RulePackSummary } from './contracts/capabilityModels'
+import type { RuleFact } from './contracts/capabilityModels'
+import type { RuleRequirements } from './contracts/capabilityModels'
+import type { DryRunResult } from './contracts/capabilityModels'
+import type { RuleValidation } from './contracts/capabilityModels'
+import type { RulePackWriteResult } from './contracts/capabilityModels'
+import type { TaskStatistics } from './contracts/capabilityModels'
+import type { RuntimeHealth } from './contracts/runtimeModels'
+import type { DataLayoutResponse } from './contracts/runtimeModels'
+import type { TrustedToolResponse } from './contracts/toolModels'
+import type { TrustedToolVersionProbeResult } from './contracts/toolModels'
+import type { ToolExecutionReadiness } from './contracts/toolModels'
+import type { ToolProcessReview } from './contracts/toolModels'
+import type { ToolUnknownReviewRequest } from './contracts/toolModels'
+import type { CapabilityResponse } from './contracts/capabilityModels'
+import type { CliProgramItem } from './contracts/capabilityModels'
+import type { CliProgramRequest } from './contracts/capabilityModels'
+import type { CliProbeResult } from './contracts/capabilityModels'
+import type { CliOperationRequest } from './contracts/capabilityModels'
+import type { McpServerRequest } from './contracts/capabilityModels'
+import type { McpProbeResult } from './contracts/capabilityModels'
+import type { HandoffRecord } from './contracts/workflowModels'
+import type { BoardRuntimeSnapshot } from './contracts/boardModels'
+import type { BoardTask } from './contracts/boardModels'
+import type { BoardCodeCandidates } from './contracts/boardModels'
+import type { CodeProposalState } from './contracts/codeModels'
+import type { CodeApplied } from './contracts/codeModels'
+import type { BoardRunPage } from './contracts/boardModels'
+import type { BoardReviewPage } from './contracts/boardModels'
+import type { BoardReviewEvidence } from './contracts/boardModels'
+import type { BoardVerificationPage } from './contracts/boardModels'
+import type { BoardVerificationPlan } from './contracts/boardModels'
+import type { BoardVerificationRecord } from './contracts/boardModels'
+import type { BoardAppliedCandidates } from './contracts/boardModels'
+import type { BoardDeliveryPage } from './contracts/boardModels'
+import type { BoardDeliveryRequest } from './contracts/boardModels'
+import type { BoardDelivery } from './contracts/boardModels'
+import type { BoardDeliveryDecisionRequest } from './contracts/boardModels'
+import type { BoardRunStart } from './contracts/boardModels'
+import type { BoardRun } from './contracts/boardModels'
+import type { BoardTaskDraft } from './contracts/boardModels'
+import type { MissionRecord } from './contracts/workflowModels'
+import type { PrototypeVersionRecord } from './contracts/workflowModels'
+import type { PrototypePublicationRequest } from './contracts/workflowModels'
+import type { PrototypeDeliveryRecord } from './contracts/workflowModels'
+import type { MissionExecutionRecord } from './contracts/workflowModels'
+import type { SqlAnalysis } from './contracts/capabilityModels'
+import type { ChatExecutionEvent } from './contracts/chatModels'
+import type { AiMessageResult } from './contracts/chatModels'
+import type { AiToolEvent } from './contracts/chatModels'
+import type { AiStatus } from './contracts/chatModels'
+import type { SkillSummary } from './contracts/skillModels'
+import type { SkillSnapshot } from './contracts/skillModels'
+import type { SkillImportInput } from './contracts/skillModels'
+import type { SkillSaveRequest } from './contracts/skillModels'
+import type { SkillRef } from './contracts/skillModels'
+import type { SkillContext } from './contracts/skillModels'
+import type { KnowledgeExpertRef } from './contracts/chatModels'
+import type { KnowledgeContext } from './contracts/capabilityModels'
+import type { WorkspaceBaseline } from './contracts/codeModels'
+import type { WorkspaceSource } from './contracts/codeModels'
+import type { WorkspaceDirty } from './contracts/codeModels'
+import type { WorkspaceFiles } from './contracts/codeModels'
+import type { VerificationProbe } from './contracts/codeModels'
+import type { AiConversation } from './contracts/chatModels'
+import type { AiConversationRecovery } from './contracts/chatModels'
+import type { TaskWorkingMemorySnapshot } from './contracts/chatModels'
+import type { AiToolMode } from './contracts/chatModels'
+import type { TaskContext } from './contracts/chatModels'
+import type { ChatExecutionSnapshot } from './contracts/chatModels'
+import type { ChatGptLoginAttempt } from './contracts/chatModels'
+import type { ChatGptLoginState } from './contracts/chatModels'
+import type { ModelConnectionList } from './contracts/chatModels'
+import type { ModelConnectionInput } from './contracts/chatModels'
+import type { ModelConnection } from './contracts/chatModels'
+import type { ModelSelection } from './contracts/chatModels'
+import type { ConversationConnection } from './contracts/capabilityModels'
+
+import {
+  isBoardRuntimeActivity,
+  validateCodeProposal,
+  validateToolExecution,
+} from './contracts/validation'
+
+import { runtimeLanguage } from './problem'
+import { isChatExecutionStatus } from './contracts/chatExecution'
+export { ContextMetering } from './contracts/contextBudget'
+import { ModelErrors } from './errors/modelErrors'
+import { ToolErrors } from './errors/toolErrors'
+import { createRequestClient, openStream, type RequestClient } from '@eap/request'
 import { createExpertAgentApi } from './expertAgent'
 export type {
-  ExpertAgentState,
   ExpertAgentInput,
   ExpertAgentSummary,
   ExpertAgentRun,
@@ -10,1310 +106,18 @@ export type {
   ExpertAgentResult,
 } from './expertAgent'
 
-export type RuntimeHealth = { status: string; service: string }
-
-export type DataLayoutEntry = {
-  logical: string
-  resolved: string
-  exists: boolean
-  note: string
-  /** FS-01 observational kind; directories never carry recursive byteSize. */
-  kind?: 'missing' | 'file' | 'directory' | 'other' | string
-  byteSize?: number
-}
-export type DataLayoutMigrationCandidate = {
-  id: string
-  resolved: string
-  present: boolean
-  note: string
-}
-
-export type DataLayoutCandidateCounts = {
-  present: number
-  absent: number
-  total: number
-}
-
-export type DataLayoutMigrationReadiness = {
-  status: string
-  physicalMigration: boolean
-  approved: boolean
-  note: string
-  candidates: DataLayoutMigrationCandidate[]
-  /** Observational present/absent over candidates; not migration progress. */
-  candidateCounts?: DataLayoutCandidateCounts
-}
-
-export type DataLayoutInventoryByKind = {
-  file: number
-  directory: number
-  missing: number
-  other: number
-}
-
-export type DataLayoutInventory = {
-  present: number
-  missing: number
-  total: number
-  /** Observational kind tallies over entries; not recursive disk scan. */
-  byKind?: DataLayoutInventoryByKind
-}
-
-export type DataLayoutResponse = {
-  entries: DataLayoutEntry[]
-  physicalMigration: boolean
-  /** FS-01 observational counts over entries; not a migration progress meter. */
-  inventory?: DataLayoutInventory
-  migrationReadiness?: DataLayoutMigrationReadiness
-}
-
-export type TrustedToolBindingStatus =
-  | 'ready'
-  | 'disabled'
-  | 'missing_binary'
-  | 'conflict'
-  | 'unknown_version'
-export type TrustedToolVersionStatus = 'unknown' | 'known' | 'not_applicable' | 'probe_failed'
-
-export type TrustedToolItem = {
-  programId?: string
-  operationId?: string
-  id: string
-  title: string
-  kind: string
-  scope: string
-  readOnly: boolean
-  enabled: boolean
-  invocation: string
-  summary: string
-  bindingStatus?: TrustedToolBindingStatus | string
-  bindingSource?: string
-  binary?: string
-  resolvedPath?: string
-  versionStatus?: TrustedToolVersionStatus | string
-  detectedVersion?: string
-  probedAt?: string
-  probeNote?: string
-  bindingNote?: string
-}
-export type TrustedToolProbeCacheSummary = {
-  cached: number
-  known: number
-  failed: number
-  /** ISO timestamp of the newest durable probe; empty when cache is empty. */
-  newestProbedAt?: string
-}
-
-export type TrustedToolResponse = {
-  items: TrustedToolItem[]
-  programs?: TrustedToolProgram[]
-  source: string
-  /** Durable probe snapshot counts; catalog GET never auto-probes. */
-  probeCache?: TrustedToolProbeCacheSummary
-}
-
-export type TrustedToolProgram = Omit<
-  TrustedToolItem,
-  'scope' | 'readOnly' | 'enabled' | 'invocation' | 'summary'
-> & {
-  operations: TrustedToolItem[]
-}
-export type BoardRuntimeSnapshot = {
-  projectId: string
-  observedAt: string
-  taskCount: number
-  runCount: number
-  activeRunCount: number
-  unknownRunCount: number
-  activeVerificationCount: number
-  unknownVerificationCount: number
-  activeWriteCount: number
-  unknownWriteCount: number
-  items: Array<{
-    taskId: string
-    id: string
-    kind: 'RUN' | 'VERIFICATION' | 'SOURCE_WRITE'
-    status: string
-    storedStatus: string
-  }>
-  truncated: boolean
-}
-export type GitExecutionOperation = 'git-status' | 'git-diff'
-
-export type ToolExecutionStatus =
-  | 'CREATED'
-  | 'RUNNING'
-  | 'CANCELLING'
-  | 'SUCCEEDED'
-  | 'FAILED'
-  | 'REJECTED'
-  | 'TIMED_OUT'
-  | 'CANCELLED'
-  | 'UNKNOWN'
-  | 'CLOSED_UNKNOWN'
-export type ToolExecutionReadiness = {
-  capabilityId: GitExecutionOperation
-  scopeAccessible: boolean
-  authorized: boolean
-  canStart: boolean
-  reason: string
-  blockingExecutionId: string | null
-  blockingStatus: ToolExecutionStatus | null
-  checkedAt: string
-}
-export type ToolProcessReview = {
-  executionId: string
-  capabilityId: GitExecutionOperation
-  executionStatus: ToolExecutionStatus
-  observedAt: string
-  completeProcessTreeEvidence: false
-  truncated: boolean
-  steps: Array<{
-    stepId: string
-    phase: string
-    process: ToolProcessIdentityInspection
-    /** Absent on historical servers; never implies a complete tree. */
-    descendantsCaptured?: boolean
-    descendantsTruncated?: boolean
-    descendants?: ToolProcessIdentityInspection[]
-  }>
-}
-export type ToolProcessIdentityInspection = {
-  pid: number | null
-  status:
-    | 'NOT_CAPTURED'
-    | 'NOT_FOUND'
-    | 'MATCHING_ALIVE'
-    | 'MATCHING_EXITED'
-    | 'IDENTITY_MISMATCH'
-    | 'UNVERIFIABLE'
-    | 'UNAVAILABLE'
-  capturedStartedAt: string | null
-  observedStartedAt: string | null
-  capturedExecutable: string
-  observedExecutable: string
-}
-export type ToolUnknownReviewRequest = {
-  requestId: string
-  note: string
-  processTreeStopped: true
-}
-export type ToolUnknownResolution = ToolUnknownReviewRequest & {
-  requestDigest: string
-  operator: 'local-operator'
-  resolvedAt: string
-}
-export type ToolExecution = {
-  resolution?: ToolUnknownResolution | null
-  id: string
-  requestId: string
-  programId: string
-  capabilityId: string
-  workspacePath: string
-  executable: string
-  status: ToolExecutionStatus
-  cancelRequested: boolean
-  createdAt: string
-  finishedAt: string | null
-  exitCode: number | null
-  stdout: string
-  stderr: string
-  truncated: boolean
-  exitEvidence: string | null
-  unconfirmedReason: string | null
-  steps: Array<{
-    id: string
-    phase: string
-    status: string
-    command: string[]
-    evidence: Record<string, unknown>
-  }>
-}
-
-export type TrustedToolVersionProbeResult = {
-  id: string
-  versionStatus: TrustedToolVersionStatus | string
-  detectedVersion?: string
-  probedAt?: string
-  resolvedPath?: string
-  success: boolean
-  message: string
-  output?: string
-}
-
-/** Configuration, never runtime permission or execution evidence. */
-export type ScenarioConfiguration = {
-  name: string
-  status: 'partial' | 'missing' | 'disabled'
-  modes: Array<'code' | 'work'>
-  summary: string
-  instructions: string
-  tools: string[]
-  skills: string[]
-  mcp: string[]
-  dependencies: Array<{
-    name: string
-    state: 'installed' | 'missing' | 'unconfigured' | 'denied'
-    where: string
-  }>
-  workflow?: 'prototype-to-code' | null
-}
-export type ScenarioSnapshot = { id: string; revision: number; definition: ScenarioConfiguration }
-export type ScenarioWorkflowDependencies = {
-  contractVersion: 1
-  workflow: 'prototype-to-code'
-  observedAt: string
-  plugins: Array<{ id: 'builder' | 'board'; required: boolean }>
-  services: Array<{ id: 'prototype-versions'; state: 'READABLE' }>
-  resources: Array<{ id: 'prototype-version'; required: boolean; count: number }>
-}
-/** How a capability gets things done: built-in command, local CLI, MCP tool or HTTP service. */
-/**
- * What an operator can do about a capability of a given kind.
- *
- * `description` answers "what can I change here", `creation` answers "how does one come into existence".
- * Both come from the runtime so the UI never promises an edit the backend would refuse.
- */
-export type CapabilityManagement = {
-  id: string
-  label: string
-  description: string
-  creation: string
-  manageable: boolean
-}
-export type CapabilityAvailabilityCounts = Record<string, number> & { total?: number }
-export type CapabilityKindSummary = {
-  id: string
-  label: string
-  description: string
-  count: number
-  /** Scope this kind is born with: platform-level or expert-level. */
-  scope: string
-  scopeLabel: string
-  expertScoped: boolean
-  management: CapabilityManagement
-  manageable: boolean
-  /** A kind earns a sub-page when it can be managed or has entries. */
-  visible: boolean
-  availability: CapabilityAvailabilityCounts
-}
-/** A registered MCP server, as far as the platform is willing to trust it. */
-export type McpServerItem = {
-  id: string
-  name: string
-  transport: string
-  endpoint: string
-  trusted: boolean
-  enabled: boolean
-  usable: boolean
-  tools: string[]
-  /** Tools that hit the locked official production allowlist (subset of tools). */
-  productionGrantedTools?: string[]
-  /** True when at least one tool is production-granted. */
-  productionGranted?: boolean
-  capabilities: string[]
-  /** Experts granted one of its tools on activation. */
-  authorisedExperts: string[]
-  /** Enabled experts that depend on one of its tools. */
-  enabledExperts: string[]
-  /** Why it is not callable, computed rather than stored. */
-  problems: string[]
-}
-/** Where the binary of a local CLI capability actually lives on this machine. */
-export type CapabilityCliChannel = {
-  binary: string
-  /** `shipped` (the handler's default) or `operator` (an override). */
-  source: string
-  shipped: boolean
-  overridden: boolean
-  resolvedPath: string | null
-  found: boolean
-  availability: string
-  availabilityLabel: string
-}
-export type CapabilitySetting = {
-  capability: string
-  enabled: boolean
-  notes: string
-  updatedAt: string
-}
-export type CapabilityItem = {
-  programId?: string
-  builtin?: boolean
-  args?: string[]
-  name: string
-  kind: string
-  kindLabel: string
-  management: CapabilityManagement
-  /** platform = the runtime may enable it for every expert; expert = only an expert that declared it may run it. */
-  scope: string
-  scopeLabel: string
-  expertScoped: boolean
-  /** False for a capability an MCP server publishes without a handler behind it. */
-  registered: boolean
-  title: string
-  summary: string
-  inputs: string[]
-  grants: string[]
-  executor: string
-  /** For a local CLI capability: the executable it ships with, before any override. */
-  binary?: string | null
-  facts: string[]
-  evidence: string[]
-  readOnly: boolean
-  enabled: boolean
-  disabled: boolean
-  notes: string
-  availability: string
-  availabilityLabel: string
-  /** True only for a platform-scoped capability that is switched on and whose dependency is present. */
-  globallyRunnable: boolean
-  cli?: CapabilityCliChannel
-  /** Why a published-but-unimplemented capability cannot run yet. */
-  problems?: string[]
-  /** Experts that were granted this expert-scoped capability on activation. */
-  authorisedExperts: string[]
-  /** Experts that are enabled and reference this capability. */
-  usedBy: string[]
-  /** Experts that reference it, including drafts. */
-  declaredBy: string[]
-}
-export type CapabilityResponse = {
-  cliPrograms?: CliProgramItem[]
-  items: CapabilityItem[]
-  kinds: CapabilityKindSummary[]
-  capabilities: string[]
-  /** Platform capabilities an expert editor may offer as an ordinary node. */
-  globallyUsable: string[]
-  /** Platform capabilities the operator switched off, so the editor can explain their absence. */
-  disabledPlatform: string[]
-  /** Capabilities that must be granted per expert; never globally enabled. */
-  expertScoped: string[]
-  platformScoped: string[]
-  /** Expert-scoped capability ids the platform currently publishes (registered + trusted MCP servers). */
-  expertScopedVocabulary: string[]
-  mcpServers: McpServerItem[]
-  /** Locked official read-only package matrix used for production grants. */
-  mcpProductionMatrix?: Array<{
-    packageName: string
-    version: string
-    packageAtVersion: string
-    endpoint: string
-    readonlyTools: string[]
-    preferredTool: string
-    /** Gate-proven via tools/call. */
-    callVerifiedTools?: string[]
-    /** Present in tools/list only; not call-verified (e.g. upstream schema bugs). */
-    listOnlyTools?: string[]
-  }>
-  settings: Record<string, CapabilitySetting>
-  disabledCapabilities: string[]
-  scopeNotes?: Record<string, string>
-  declared: string[]
-  unregistered: string[]
-  undeclared: string[]
-}
-export type CliProbeResult = {
-  capability: string
-  binary: string
-  source: string
-  resolvedPath: string | null
-  executed: boolean
-  exitCode?: number
-  success?: boolean
-  output?: string
-  message: string
-}
-
-export type CliOperationRequest = {
-  capabilityId: string
-  title: string
-  args: string[]
-  description: string
-}
-export type CliOperationItem = CliOperationRequest & { programId: string; builtin: boolean }
-export type CliProgramRequest = { id: string; name: string; binary: string }
-export type CliProgramItem = CliProgramRequest & {
-  builtin: boolean
-  channel: { binary: string; source: string; resolvedPath: string | null }
-  operations: CliOperationItem[]
-}
-export type McpProbeResult = {
-  id: string
-  checked: boolean
-  transport?: string
-  target?: string
-  /** Always false until an MCP protocol client exists: a declared tool list is not a verified one. */
-  verified?: boolean
-  targetResolved?: string | null
-  reachable?: boolean
-  message: string
-}
-export type McpServerRequest = {
-  id: string
-  name: string
-  transport: string
-  endpoint: string
-  tools: string[]
-  trusted: boolean
-  enabled: boolean
-}
-/**
- * Real counts behind the overview's headline figures, computed by the runtime from the task table.
- *
- * `model.share` and `deterministicShare` are null until at least one run records which route it took —
- * "no runs yet" is not the same claim as "0%", and only one of them is honest.
- */
-export type TaskStatistics = {
-  windowDays: number
-  tasksTotal: number
-  tasksInWindow: number
-  observationsInWindow: number
-  byStatus: Record<string, number>
-  byDecision: Record<string, number>
-  model: { recordedRuns: number; calls: number; share: number | null }
-  deterministicShare: number | null
-  source: string
-  note: string
-}
-export type TaskObservation = {
-  capability: string
-  success: boolean
-  exitCode: number
-  stdout: string
-  stderr: string
-  metadata?: { nodeId?: string; state?: string; required?: boolean; expertId?: string }
-}
-export type TaskResult = {
-  id: string
-  goal: string
-  status: string
-  decision: string
-  /** Which route the judgement stage took: `unverified-observation` / `skipped` / `unavailable`, or "" when the run never reached it. */
-  modelEnhancement?: string
-  observations?: TaskObservation[]
-  createdAt?: string
-}
-export type MissionRecord = {
-  id: string
-  handoffId: string
-  source: 'chat' | 'builder' | 'board'
-  sourceRef: string
-  summary: string
-  status: 'created'
-  execution:
-    | 'not_started'
-    | 'running'
-    | 'cancelling'
-    | 'succeeded'
-    | 'failed'
-    | 'timed_out'
-    | 'cancelled'
-    | 'interrupted'
-  approval: 'not_requested'
-  grant: 'none'
-  verification: 'not_requested'
-  createdAt?: string
-}
-export type MissionExecutionRecord = {
-  id: string
-  missionId: string
-  status: string
-  capability: 'git-status'
-  principal: 'local-operator'
-  exitCode?: number | null
-  exitEvidence?: string | null
-  unconfirmedReason?: string | null
-  approval: 'NOT_REQUIRED'
-  cancelRequested?: boolean
-}
-export type PrototypeVersionRecord = {
-  id: string
-  requestId: string
-  sourceRef: 'builder-alpha' | 'builder-beta'
-  title: string
-  body: string
-  acceptance: string[]
-  contentHash: string
-  createdAt?: string
-}
-export type PrototypePublicationRequest = {
-  requestId: string
-  sourceRef: 'builder-alpha' | 'builder-beta'
-  title: string
-  body: string
-  acceptance: string[]
-}
-export type PrototypeDeliveryRecord = {
-  id: string
-  versionId: string
-  createdAt?: string
-}
-export type HandoffRecord = {
-  id: string
-  source: 'chat' | 'builder' | 'board'
-  sourceRef: string
-  summary: string
-  status: 'recorded'
-  execution: 'not_started'
-  approval: 'not_requested'
-  grant: 'none'
-  createdAt?: string
-}
-export type SqlFinding = {
-  code: string
-  title?: string
-  category: string
-  severity: string
-  evidence: string
-  suggestion: string
-  confidence: number
-}
-export type BlockedRule = {
-  rule: string
-  missingFacts: string[]
-  missingCapabilities: string[]
-}
-export type RuleCapabilityCheck = {
-  id: string
-  required: string[]
-  met: boolean
-  missing: string[]
-}
-export type DeterministicAnalysis = {
-  parseStatus?: string
-  statementType?: string
-  normalizedSql?: string
-  engineVersion?: string
-  findings?: SqlFinding[]
-  rulesFired?: string[]
-  blockedRules?: BlockedRule[]
-  ruleCapabilities?: RuleCapabilityCheck[]
-  suggestions?: string[]
-  tables?: string[]
-  joinKeys?: string[]
-  joinColumns?: Array<Record<string, string>>
-  severityCounts?: Record<string, number>
-  complexity?: number
-  deterministicConfidence?: number
-  requiresModelReview?: boolean
-  summary?: string
-  error?: string
-  facts?: Record<string, unknown>
-}
-export type RulePackSummary = {
-  id: string
-  name: string
-  description?: string | null
-  version?: number | null
-  ruleCount: number
-  shipped: boolean
-  editable: boolean
-  enabled: boolean
-  revision: number
-  /** Capabilities this pack needs in order to produce findings. */
-  requires?: string[]
-  requiredFacts?: string[]
-}
-export type RuleRequirements = { declared: string[]; derived: string[]; facts?: string[] }
-/** A saved pack's detail: the manifest as text, plus whether the editor may change it. */
-export type RulePackDetail = {
-  manifest: string
-  shipped: boolean
-  editable: boolean
-  requirements?: RuleRequirements
-}
-/** What the backend says about a candidate manifest — the same checks that gate a save. */
-export type RuleValidation = { valid: boolean; errors: string[]; requirements?: RuleRequirements }
-export type RulePackWriteResult = { id: string; revision?: number; enabled?: boolean }
-export type RuleCondition = {
-  fact?: string
-  op?: string
-  value?: unknown
-  all?: RuleCondition[]
-  any?: RuleCondition[]
-  not?: RuleCondition
-}
-export type RuleDefinition = {
-  id: string
-  title?: string
-  category?: string
-  severity?: string
-  when?: RuleCondition
-  severityWhen?: Array<{ when?: RuleCondition; severity?: string }>
-  evidence?: string
-  suggestion?: string
-  confidence?: number
-}
-export type RulePackManifest = {
-  apiVersion?: string
-  kind?: string
-  id: string
-  name: string
-  version?: number
-  description?: string
-  requires?: { capabilities?: string[]; note?: string }
-  rules?: RuleDefinition[]
-}
-export type RuleFact = {
-  key: string
-  type: string
-  group: string
-  description: string
-  /** Capability that publishes this fact; a rule pack referencing it therefore needs that capability. */
-  producedBy: string
-}
-export type DryRunResult = {
-  valid: boolean
-  errors: string[]
-  parseStatus?: string
-  facts?: Record<string, unknown>
-  findings?: SqlFinding[]
-  rulesFired?: string[]
-  blockedRules?: BlockedRule[]
-  severityCounts?: Record<string, number>
-  complexity?: number
-  summary?: string
-  requirements?: RuleRequirements
-  factProducers?: Record<string, string>
-}
-export type ModelAdvisor = {
-  attempted?: boolean
-  succeeded?: boolean
-  decision?: string
-  rationale?: string
-  provider?: string | null
-  model?: string | null
-  latencyMs?: number
-  promptTokens?: number
-  completionTokens?: number
-  preprocessing?: {
-    estimatedTokens?: number
-    baselineTokens?: number
-    compressionRatio?: number
-    includedSections?: string[]
-    droppedSections?: string[]
-  }
-}
-export type SqlAnalysis = {
-  modelEnhancement?: string
-  id?: string
-  nodes?: Array<{ id: string; label: string; capability: string; state: string; message: string }>
-  status: string
-  sql: string
-  advice: string[]
-  safety: string[]
-  expertAdvice: string | null
-  analysisMode: string
-  message?: string
-  deterministicAnalysis?: DeterministicAnalysis
-  modelAdvisor?: ModelAdvisor
-  rulePacks?: Array<{ id: string; name: string; ruleCount: number; requires?: string[] }>
-  /** Per-pack check of whether this run could produce the facts the pack depends on. */
-  rulePackRequirements?: RuleCapabilityCheck[]
-  executedCapabilities?: string[]
-  knowledgeEvidence?: Array<{
-    source: string
-    knowledgeBase: string
-    score: number
-    excerpt: string
-  }>
-}
-
-export type AiConnectionState =
-  | 'disabled'
-  | 'not_configured'
-  | 'configured_unverified'
-  | 'available'
-  | 'error'
-export type AiToolMode = 'none' | 'git_status'
-export type AiStatus = {
-  state: AiConnectionState
-  provider: string
-  model: string
-  configurationRevision: string
-  lastObservedAt: string | null
-  errorCode: string
-  tools: { git_status: boolean }
-  workspaceLabel: string
-  /** Absolute Java-process machine workspace directory when known; never a local group label. */
-  workspacePath?: string
-  /**
-   * Optional co-located process-bound root on that same JVM machine; empty when denied/missing.
-   * Not a remote user directory grant.
-   */
-  authorizedRootPath?: string
-  /** Denial code when authorizedRootPath is empty (e.g. AUTHORIZED_ROOT_MISSING). */
-  authorizedRootDenial?: string
-  /**
-   * Always false when the runtime follows Cursor/Codex-style local hosting:
-   * the server does not persist operator directory grants.
-   */
-  storesUserDirectoryGrants?: boolean
-  /** Post-apply verification flag from local-service config; false by default. */
-  verificationEnabled?: boolean
-  /** Configured check names when verification is listed; empty means not_requested even if enabled. */
-  verificationCommands?: string[]
-}
-/** Read-only generation-prep baseline. Never includes file contents. */
-export type WorkspaceBaseline = {
-  path: string
-  exists: boolean
-  baseHash: string
-  denial: string
-}
-/** Read-only workspace excerpt for generation prep. Does not grant write authorization. */
-export type WorkspaceSource = {
-  path: string
-  exists: boolean
-  baseHash: string
-  bytes: number
-  excerpt: string
-  denial: string
-}
-export type WorkspaceFiles = {
-  path: string
-  entries: Array<{ name: string; path: string; directory: boolean }>
-  truncated: boolean
-  denial: string
-}
-export type BoardColumn = 'planned' | 'ready' | 'running' | 'acceptance' | 'done'
-export type BoardTask = {
-  id: string
-  projectId: string
-  title: string
-  column: BoardColumn
-  notes: string
-  sessionId: string
-  revision: number
-  events: string[]
-  priority: 'none' | 'p0' | 'p1' | 'p2'
-  goal: string
-  acceptanceCriteria: string
-  executionActive: boolean
-  prototypeVersionId: string | null
-  preparationIssues: Array<'goal' | 'acceptanceCriteria'>
-  allowedColumns: BoardColumn[]
-}
-export type BoardTaskDraft = {
-  projectId: string
-  title: string
-  column: 'planned' | 'ready'
-  sessionId: string
-  goal: string
-  acceptanceCriteria: string
-  requestId: string
-}
-export type BoardPrototypeReference = {
-  id: string
-  sourceRef: string
-  title: string
-  contentHash: string
-  createdAt: string
-}
-export type BoardRunStart = {
-  projectId: string
-  revision: number
-  requestId: string
-  workspacePath: string
-}
-export type BoardRun = {
-  requestId: string
-  taskRevision: number
-  task: {
-    title: string
-    goal: string
-    acceptanceCriteria: string
-    prototype?: BoardPrototypeReference | null
-  }
-  execution: MissionExecutionRecord & {
-    workspacePath: string
-    workspaceLabel: string
-    executable: string
-    stdout: string | null
-    stderr: string | null
-    startedAt: string
-    finishedAt: string | null
-  }
-}
-export type BoardRunPage = {
-  availability: { allowed: boolean; workspacePath: string; workspaceLabel: string; reason: string }
-  items: BoardRun[]
-}
-export type BoardReviewEvidence = {
-  contentHash: string
-  snapshot: {
-    workspacePath: string
-    baseCommit: string
-    headAfter: string
-    startedAt: string
-    finishedAt: string
-    status: 'CAPTURED' | 'INCOMPLETE' | 'FAILED' | 'CHANGED'
-    issues: string[]
-    repositoryStatus: string
-    diff: string
-    check: {
-      status: 'NOT_RUN' | 'PASSED' | 'FAILED' | 'INCOMPLETE' | 'STALE'
-      exitCode: number | null
-      output: string
-    }
-    steps: Array<{
-      name: string
-      command: string[]
-      exitCode: number
-      processStatus: string
-      truncated: boolean
-      stderr: string
-    }>
-  }
-}
-export type BoardReviewPage = {
-  evidence: BoardReviewEvidence | null
-  captureAllowed: boolean
-  reason: string
-}
-export type BoardVerificationSource = {
-  scope: string
-  contentHash: string
-  files: Array<{ path: string; contentHash: string; bytes: number }>
-  exclusions: string[]
-}
-export type BoardVerificationCommand = {
-  id: string
-  command: string[]
-  workingDirectory: string
-  timeoutSeconds: number
-}
-export type BoardVerificationPlan = {
-  planHash: string
-  workspacePath: string
-  baseCommit: string
-  source: BoardVerificationSource
-  commands: BoardVerificationCommand[]
-}
-export type BoardVerificationStatus =
-  | 'QUEUED'
-  | 'RUNNING'
-  | 'PASSED'
-  | 'FAILED'
-  | 'STALE'
-  | 'UNKNOWN'
-export type BoardVerificationCheck = Omit<BoardVerificationCommand, 'timeoutSeconds'> & {
-  status: BoardVerificationStatus | 'TIMED_OUT'
-  exitCode: number | null
-  stdout: string
-  stderr: string
-  truncated: boolean
-  processTreeCleanup: boolean
-  startedAt: string
-  finishedAt: string | null
-}
-export type BoardVerificationRecord = {
-  id: string
-  status: BoardVerificationStatus
-  reason: string
-  plan: BoardVerificationPlan | null
-  workspacePath?: string | null
-  checks: BoardVerificationCheck[]
-  sourceAfter: BoardVerificationSource | null
-  startedAt: string
-  finishedAt: string | null
-}
-export type BoardVerificationPage = {
-  record: BoardVerificationRecord | null
-  prepareAllowed: boolean
-  reason: string
-}
-export type BoardApplicationRef = { conversationId: string; proposalId: string }
-export type BoardCodeCandidate = {
-  id: string
-  conversationId: string
-  generationId: string
-  taskRevision: number
-  targetPath: string
-  status: CodeProposalState['status']
-  writeAllowed: boolean
-  createdAt: string
-}
-export type BoardCodeCandidates = {
-  taskId: string
-  projectId: string
-  currentRevision: number
-  workspacePath: string
-  items: BoardCodeCandidate[]
-  truncated: boolean
-}
-export type BoardAppliedCandidate = BoardApplicationRef & {
-  generationId: string
-  targetPath: string
-  afterHash: string
-  appliedAt: string
-}
-export type BoardAppliedCandidates = {
-  taskBinding: CodeTaskRef
-  workspacePath: string
-  items: BoardAppliedCandidate[]
-  truncated: boolean
-}
-export type BoardApplicationEvidence = BoardApplicationRef & {
-  association: 'POST_HOC' | 'PREBOUND'
-  taskBinding?: CodeTaskRef | null
-  generationId: string
-  targetPath: string
-  generationBaseHash: string
-  appliedAfterHash: string
-  generationCapturedAt: string
-  prototypeVersionId: string | null
-  prototypeContentHash: string | null
-  associatedAt: string
-  operator: 'local-operator'
-}
-export type BoardDeliveryRequest = BoardRunStart & {
-  paths: string[]
-  note: string
-  applicationRef?: BoardApplicationRef
-}
-export type BoardDeliveryDecisionRequest = {
-  projectId: string
-  revision: number
-  requestId: string
-  deliveryId: string
-  decision: 'ACCEPT' | 'REJECT'
-  criteriaConfirmed: boolean
-  previewConfirmed: boolean
-  comment: string
-}
-export type BoardDeliveryDecision = Omit<
-  BoardDeliveryDecisionRequest,
-  'projectId' | 'revision' | 'deliveryId'
-> & { id: string; operator: 'local-operator'; createdAt: string }
-export type BoardDeliveryFile = {
-  path: string
-  beforeHash: string
-  afterHash: string
-  before: string
-  after: string
-}
-export type BoardDelivery = {
-  id: string
-  source: 'EXTERNAL_MANUAL' | 'CHAT_APPLIED_POST_HOC' | 'CHAT_APPLIED_PREBOUND'
-  applicationEvidence?: BoardApplicationEvidence | null
-  requestId: string
-  taskRevision: number
-  submittedRevision: number
-  workspacePath: string
-  baseCommit: string
-  verificationId: string
-  sourceHash: string
-  prototypeVersionId: string | null
-  goal: string
-  acceptanceCriteria: string
-  note: string
-  files: BoardDeliveryFile[]
-  createdAt: string
-  decision: BoardDeliveryDecision | null
-}
-export type BoardDeliveryPage = {
-  record: BoardDelivery | null
-  prepareAllowed: boolean
-  reason: string
-}
-
-/** Read-only dirty-file summary. requested=false means git was not run. */
-export type WorkspaceDirty = {
-  requested: boolean
-  denial: string
-  count: number
-  paths: string[]
-  detail: string
-}
-/**
- * Safe verification probe. requested=false means the probe did not run.
- * Never marks apply verification as passed; never enables configured heavy checks.
- */
-export type VerificationProbe = {
-  requested: boolean
-  denial: string
-  name: string
-  exitCode: number | null
-  summary: string
-}
-export type TaskWorkingMemorySnapshot = {
-  goal: string
-  constraints: string[]
-  facts: Array<{ kind: string; id: string; revisionOrDigest: string }>
-  evidenceRefs: string[]
-  dependencyKeys: string[]
-  invalidation: string
-  updatedAt: string
-  layers: string[]
-}
-export type AiConversation = {
-  conversationId: string
-  workspaceLabel: string
-  memory: string
-  connectionId?: string | null
-  connectionName?: string | null
-  connectionRevision?: number | null
-  model?: string | null
-  workingMemory?: TaskWorkingMemorySnapshot | null
-}
-export type ChatGptLoginAttempt = { loginId: string; authorizationUrl: string; expiresAt: string }
-export type ChatGptLoginState = {
-  loginId: string
-  state:
-    | 'waiting'
-    | 'exchanging'
-    | 'connected'
-    | 'permission_required'
-    | 'failed'
-    | 'expired'
-    | 'cancelled'
-  connectionId: string | null
-  error: string
-}
-export type ModelOption = { id: string; reasoningEfforts: Array<'low' | 'medium' | 'high'> }
-export type ModelSelection = {
-  models: ModelOption[]
-  allowedModels: string[]
-  defaultModel: string
-}
-export type ModelConnection = {
-  id: string
-  name: string
-  kind: string
-  wireApi?: ModelWireApi
-  enabled: boolean
-  baseUrl: string
-  defaultModel: string
-  models: ModelOption[]
-  allowedModels: string[]
-  discoveredAt: string
-  discoveryError: string
-  secretPresent: boolean
-  revision: number
-  defaultSelected: boolean
-  configurationRevision: string
-}
-export type ModelWireApi = 'chat-completions' | 'responses'
-export type ModelConnectionList = { items: ModelConnection[]; effectiveDefaultId: string | null }
-export type ModelConnectionInput = {
-  name: string
-  baseUrl: string
-  wireApi?: ModelWireApi
-  secret?: string
-  enabled: boolean
-  defaultSelected: boolean
-}
-export type ConversationConnection = {
-  conversationId: string
-  connectionId: string
-  connectionName: string
-  model: string
-  endpoint: string
-  revision: number
-  memoryCleared: boolean
-}
-export type AiArtifactSummary = {
-  artifactId: string
-  executionId: string
-  kind: string
-  sizeBytes: number
-  sha256: string
-}
-export type AiToolEvent = { sequence: number; code: string }
-export type ChatExecutionEvent = {
-  eventId: string
-  sequence: number
-  executionId: string
-  conversationId: string
-  taskId?: string | null
-  type: string
-  protocolVersion: string
-  occurredAt: string
-  text: string
-  code: string
-  status: string
-  payload?: unknown
-}
-export type ChatExecutionSnapshot = {
-  executionId: string
-  conversationId: string
-  latestSequence: number
-  complete: boolean
-  status: string
-  events: ChatExecutionEvent[]
-}
-export type KnowledgeContext = {
-  expertRef: KnowledgeExpertRef
-  status: 'ready' | 'no_matches'
-  references: Array<{
-    id: string
-    source: string
-    knowledgeBase: string
-    excerpt: string
-    retrievalMode: string
-    knowledgeBaseId?: string
-    documentId?: string
-  }>
-}
-export type ContextBudgetObservation = {
-  platformLimit: number
-  outputReserve: number
-  inputMaterialLimit: number
-  usedChars: number
-  materialChars: number
-  remainingChars: number
-  metering: 'CHAR_ESTIMATE' | 'UNKNOWN' | string
-  sources: Array<{
-    source: string
-    chars: number
-    metering: string
-    disposition: string
-  }>
-  notes: string[]
-}
-export type AiMessageResult = {
-  skillContext?: SkillContext | null
-  contextMemoryCleared?: boolean
-  knowledgeContext?: KnowledgeContext | null
-  knowledgeMemoryCleared?: boolean
-  contextBudget?: ContextBudgetObservation | null
-  proposal?: CodeProposal | null
-  executionId: string | null
-  answer: string
-  error: string
-  status: string
-  approval: string
-  verification: string
-  toolEvents: AiToolEvent[]
-  artifactError: string
-  artifacts: AiArtifactSummary[]
-}
-
-export type CodeTaskRef = { projectId: string; taskId: string; revision: number }
-export type KnowledgeExpertRef = { id: string; revision: number }
-export type SkillRef = { id: string; version: string; digest: string; stateRevision: number }
-export type SkillResource = {
-  path: string
-  mediaType: 'text/markdown' | 'text/plain'
-  content: string
-}
-export type SkillImportInput = {
-  rawSkillMd: string
-  version: string
-  sourceLabel: string
-  resources: SkillResource[]
-  requiredCapabilities: string[]
-}
-export type SkillDependency = { id: string; status: string }
-export type SkillSummary = SkillRef & {
-  description: string
-  enabled: boolean
-  sourceLabel: string
-  createdAt: string
-  dependencies: SkillDependency[]
-}
-export type SkillSnapshot = Omit<SkillSummary, 'createdAt'> &
-  SkillImportInput & {
-    createdAt: string | null
-    schemaVersion: 1
-    entry: 'SKILL.md'
-    instructions: string
-    scope: string
-    trust: { operator: string; confirmedAt: string } | null
-  }
-export type SkillSaveRequest = { input: SkillImportInput; expectedDigest: string; confirmed: true }
-export type SkillContext = {
-  skillRef: SkillRef
-  instructions: string
-  resources: SkillResource[]
-  dependencies: SkillDependency[]
-}
-export type TaskContext = {
-  skillRef?: SkillRef
-  skillResourcePaths?: string[]
-  knowledgeExpertRef?: KnowledgeExpertRef
-  taskRef?: CodeTaskRef
-  mode: 'chat' | 'code'
-  expert: 'general' | 'sql' | 'frontend'
-  instructions: string
-  reasoning: 'default' | 'low' | 'medium' | 'high'
-  approval: 'review' | 'read_only'
-  files: Array<{ name: string; content: string }>
-  prototypeVersionId: string
-  /** Workspace-relative page the server may read for generation prep; never a write grant. */
-  targetPath: string
-}
-export type CodeGenerationSnapshot = {
-  taskBinding?: CodeTaskRef | null
-  id: string
-  targetPath: string
-  baseHash: string
-  capturedAt: string
-  prototypeVersionId: string
-  prototypeContentHash: string
-}
-export type CodeProposal = {
-  id: string
-  conversationId: string
-  workspace: string
-  summary: string
-  files: Array<{ path: string; before: string | null; content: string; baseHash: string }>
-  generation?: CodeGenerationSnapshot | null
-  applied: boolean
-  writeAllowed: boolean
-  verification: string
-}
-
-export type CodeApplied = {
-  id: string
-  written: string[]
-  verification: string
-  checks: Array<{ name: string; exitCode: number | null; summary: string }>
-  status?: string
-  afterHash?: string
-  reason?: string
-}
-export type CodeProposalState = {
-  proposal: CodeProposal
-  status: 'PROPOSED' | 'APPLYING' | 'APPLIED' | 'FAILED' | 'UNKNOWN' | 'REFUSED'
-  result: CodeApplied | null
-  reason: string
-}
-
-export function proposalRefused(status: string | null | undefined): boolean {
-  return status === 'REFUSED'
-}
-
 const baseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080/api'
 
-const client = axios.create({
-  baseURL: baseUrl,
-  timeout: 10_000,
-  headers: { Accept: 'application/json' },
-})
-
-client.interceptors.request.use((config) => {
-  if (pendingRequests++ === 0) NProgress.start()
-  return config
-})
-client.interceptors.response.use(
-  (response) => {
-    finishRequest()
-    return response
-  },
-  (error) => {
-    finishRequest()
-    return Promise.reject(error)
-  },
-)
-
-let pendingRequests = 0
-function finishRequest() {
-  pendingRequests = Math.max(0, pendingRequests - 1)
-  if (!pendingRequests) NProgress.done()
+let onPendingChange: ((pending: number) => void) | undefined
+export function configureRuntimeRequests(options: { onPendingChange?: (pending: number) => void }) {
+  onPendingChange = options.onPendingChange
 }
+const client = createRequestClient({
+  baseURL: baseUrl,
+  headers: { Accept: 'application/json' },
+  headersForRequest: () => ({ 'Accept-Language': runtimeLanguage() }),
+  onPendingChange: (pending) => onPendingChange?.(pending),
+})
 
 async function get<T>(path: string): Promise<T> {
   return (await client.get<T>(path)).data
@@ -1321,7 +125,7 @@ async function get<T>(path: string): Promise<T> {
 
 function gitExecutionPath(operation: GitExecutionOperation) {
   if (operation !== 'git-status' && operation !== 'git-diff') {
-    throw new Error('TOOL_OPERATION_NOT_FOUND')
+    throw new Error(ToolErrors.TOOL_OPERATION_NOT_FOUND)
   }
   return '/cli-programs/git/operations/' + operation + '/executions'
 }
@@ -1329,7 +133,7 @@ const gitOperationApi = {
   start: (
     operation: GitExecutionOperation,
     requestId: string,
-    options?: { signal?: AbortSignal; mockOutcome?: string },
+    options?: { signal?: AbortSignal },
   ) =>
     client
       .post<ToolExecution>(
@@ -1337,18 +141,18 @@ const gitOperationApi = {
         { requestId },
         {
           signal: options?.signal,
-          params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
         },
       )
-      .then((r) => r.data),
+      .then((r) => validateToolExecution(r.data)),
   list: (operation: GitExecutionOperation, signal?: AbortSignal) =>
-    client
-      .get<{ items: ToolExecution[] }>(gitExecutionPath(operation), { signal })
-      .then((r) => r.data),
+    client.get<{ items: ToolExecution[] }>(gitExecutionPath(operation), { signal }).then((r) => {
+      r.data.items.forEach(validateToolExecution)
+      return r.data
+    }),
   get: (operation: GitExecutionOperation, id: string, signal?: AbortSignal) =>
     client
       .get<ToolExecution>(gitExecutionPath(operation) + '/' + encodeURIComponent(id), { signal })
-      .then((r) => r.data),
+      .then((r) => validateToolExecution(r.data)),
   cancel: (operation: GitExecutionOperation, id: string, signal?: AbortSignal) =>
     client
       .post<ToolExecution>(
@@ -1356,7 +160,7 @@ const gitOperationApi = {
         {},
         { signal },
       )
-      .then((r) => r.data),
+      .then((r) => validateToolExecution(r.data)),
 }
 
 export const runtimeApi = {
@@ -1393,20 +197,9 @@ export const runtimeApi = {
         return data
       }),
   scenario: (id: string) => get<ScenarioSnapshot>('/scenarios/' + encodeURIComponent(id)),
-  saveScenario: (
-    id: string,
-    revision: number,
-    definition: ScenarioConfiguration,
-    options?: { mockOutcome?: 'save-lost' },
-  ) =>
+  saveScenario: (id: string, revision: number, definition: ScenarioConfiguration) =>
     client
-      .put<ScenarioSnapshot>(
-        '/scenarios/' + encodeURIComponent(id),
-        { revision, definition },
-        {
-          params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
-        },
-      )
+      .put<ScenarioSnapshot>('/scenarios/' + encodeURIComponent(id), { revision, definition })
       .then((r) => r.data),
   deleteScenario: (id: string, revision: number) =>
     client
@@ -1526,17 +319,13 @@ export const runtimeApi = {
   health: () => get<RuntimeHealth>('/health'),
   dataLayout: () => get<DataLayoutResponse>('/runtime/data-layout'),
   trustedTools: () => get<TrustedToolResponse>('/runtime/trusted-tools'),
-  probeTrustedToolVersion: (
-    id: string,
-    options?: { mockOutcome?: 'success' | 'fail' | 'conflict' | 'disabled'; signal?: AbortSignal },
-  ) =>
+  probeTrustedToolVersion: (id: string, options?: { signal?: AbortSignal }) =>
     client
       .post<TrustedToolVersionProbeResult>(
         '/runtime/trusted-tools/' + encodeURIComponent(id) + '/probe-version',
         {},
         {
           signal: options?.signal,
-          params: options?.mockOutcome ? { mockOutcome: options.mockOutcome } : undefined,
         },
       )
       .then((r) => r.data),
@@ -1586,10 +375,8 @@ export const runtimeApi = {
           throw new Error('UNKNOWN_REVIEW_RESPONSE_UNCONFIRMED')
         return data
       }),
-  startTrustedGitExecution: (
-    requestId: string,
-    options?: { signal?: AbortSignal; mockOutcome?: string },
-  ) => gitOperationApi.start('git-status', requestId, options),
+  startTrustedGitExecution: (requestId: string, options?: { signal?: AbortSignal }) =>
+    gitOperationApi.start('git-status', requestId, options),
   trustedGitExecutions: (signal?: AbortSignal) => gitOperationApi.list('git-status', signal),
   trustedGitExecution: (id: string, signal?: AbortSignal) =>
     gitOperationApi.get('git-status', id, signal),
@@ -1687,12 +474,7 @@ export const runtimeApi = {
               !item ||
               typeof item.taskId !== 'string' ||
               typeof item.id !== 'string' ||
-              !['RUN', 'VERIFICATION', 'SOURCE_WRITE'].includes(item.kind) ||
-              !['CREATED', 'QUEUED', 'RUNNING', 'CANCELLING', 'APPLYING', 'UNKNOWN'].includes(
-                item.status,
-              ) ||
-              typeof item.storedStatus !== 'string' ||
-              !item.storedStatus,
+              !isBoardRuntimeActivity(item),
           )
         )
           throw new Error('INVALID_BOARD_RUNTIME_RESPONSE')
@@ -1715,7 +497,7 @@ export const runtimeApi = {
         encodeURIComponent(proposalId) +
         '?projectId=' +
         encodeURIComponent(projectId),
-    ),
+    ).then(validateCodeProposal),
   applyBoardCodeCandidate: (
     taskId: string,
     proposalId: string,
@@ -1956,37 +738,26 @@ export const runtimeApi = {
 }
 
 async function postChatSse(
-  baseURL: string,
+  transport: RequestClient,
   path: string,
   body: unknown,
   options?: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void },
 ): Promise<AiMessageResult> {
-  const response = await fetch(joinUrl(baseURL, path), {
+  const requestLanguage = runtimeLanguage()
+  const response = await openStream(transport, path, {
     method: 'POST',
+    body,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
+      'Accept-Language': requestLanguage,
     },
-    body: JSON.stringify(body),
     signal: options?.signal,
+    timeout: 30_000,
   })
-  if (!response.ok) {
-    let detail = 'AI_PROVIDER_ERROR'
-    let data: Record<string, unknown> = {}
-    try {
-      data = (await response.json()) as Record<string, unknown>
-      if (typeof data.detail === 'string') detail = data.detail
-    } catch {
-      // Keep generic detail when the error body is not JSON.
-    }
-    const error = Object.assign(new Error(detail), {
-      response: { status: response.status, data: { ...data, detail } },
-    })
-    throw error
-  }
   if (!response.body) {
-    throw Object.assign(new Error('AI_EMPTY_RESPONSE'), {
-      response: { status: 502, data: { detail: 'AI_EMPTY_RESPONSE' } },
+    throw Object.assign(new Error(ModelErrors.AI_EMPTY_RESPONSE), {
+      response: { status: 502, data: { code: ModelErrors.AI_EMPTY_RESPONSE } },
     })
   }
   const reader = response.body.getReader()
@@ -2026,6 +797,12 @@ async function postChatSse(
             executionId: payload?.executionId ?? event.executionId,
             answer: payload?.answer ?? (event.text || answer),
             error: payload?.error ?? event.code,
+            ...(event.message
+              ? {
+                  errorMessage: event.message,
+                  errorLanguage: response.headers.get('Content-Language') ?? requestLanguage,
+                }
+              : {}),
             status: payload?.status ?? event.status,
             toolEvents: payload?.toolEvents ?? toolEvents,
           }
@@ -2036,7 +813,7 @@ async function postChatSse(
         throw chatStreamError('AI_RESPONSE_TOO_LARGE')
       }
     }
-    throw chatStreamError('AI_RESPONSE_INCOMPLETE')
+    throw chatStreamError(ModelErrors.AI_RESPONSE_INCOMPLETE)
   } finally {
     // Stop waiting at final or failure; cleanup must not replace the original error.
     await reader.cancel().catch(() => undefined)
@@ -2051,13 +828,9 @@ async function postChatSse(
 // Per frame, not per stream; decoded UTF-16 code units, separator excluded.
 const CHAT_SSE_FRAME_LIMIT = 1_048_576
 
-function joinUrl(baseURL: string, path: string): string {
-  return baseURL.replace(/\/$/, '') + (path.startsWith('/') ? path : '/' + path)
-}
-
-function chatStreamError(detail: string): Error {
-  return Object.assign(new Error(detail), {
-    response: { status: 502, data: { detail } },
+function chatStreamError(code: string): Error {
+  return Object.assign(new Error(code), {
+    response: { status: 502, data: { code } },
   })
 }
 
@@ -2089,6 +862,7 @@ function parseSseChunk(chunk: string): ChatExecutionEvent | null {
       (key) => typeof event[key] === 'string' && event[key] !== '',
     ) ||
     !['occurredAt', 'text', 'code', 'status'].every((key) => typeof event[key] === 'string') ||
+    (event.status !== '' && !isChatExecutionStatus(event.status)) ||
     !Number.isSafeInteger(event.sequence) ||
     (event.sequence as number) < 0
   )
@@ -2097,6 +871,7 @@ function parseSseChunk(chunk: string): ChatExecutionEvent | null {
     const payload = event.payload
     if (
       !isStreamRecord(payload) ||
+      (payload.status !== undefined && !isChatExecutionStatus(payload.status)) ||
       !['answer', 'error', 'status', 'approval', 'verification', 'artifactError'].every(
         (key) => payload[key] === undefined || typeof payload[key] === 'string',
       ) ||
@@ -2118,9 +893,17 @@ function parseSseChunk(chunk: string): ChatExecutionEvent | null {
 
 export function createChatApi(
   baseURL: string,
-  transport = axios.create({ baseURL, timeout: 10_000, headers: { Accept: 'application/json' } }),
+  transport = createRequestClient({
+    baseURL,
+    headers: { Accept: 'application/json' },
+    headersForRequest: () => ({ 'Accept-Language': runtimeLanguage() }),
+  }),
 ) {
   const client = transport
+  client.interceptors.request.use((config) => {
+    config.headers.set('Accept-Language', runtimeLanguage())
+    return config
+  })
   const get = <T>(path: string) => client.get<T>(path).then((response) => response.data)
   return {
     aiStatus: () => get<AiStatus>('/ai/status'),
@@ -2181,11 +964,16 @@ export function createChatApi(
           body,
         )
         .then((response) => response.data),
-    reconnectAiConversation: (id: string, expectedWorkspaceLabel: string) =>
+    reconnectAiConversation: (
+      id: string,
+      expectedWorkspaceLabel: string,
+      connectionId: string,
+      model: string,
+    ) =>
       client
-        .post<AiConversation & { contextReset: boolean }>(
+        .post<AiConversationRecovery>(
           '/ai/conversations/' + encodeURIComponent(id) + '/reconnect',
-          { confirmContextReset: true, expectedWorkspaceLabel },
+          { confirmContextReset: true, expectedWorkspaceLabel, connectionId, model },
           { timeout: 10_000 },
         )
         .then((response) => response.data),
@@ -2203,7 +991,7 @@ export function createChatApi(
       options?: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void },
     ) =>
       postChatSse(
-        baseURL,
+        client,
         '/ai/conversations/' + encodeURIComponent(id) + '/messages',
         { message, toolMode, ...(context ? { context } : {}) },
         options,
@@ -2241,7 +1029,7 @@ export function createChatApi(
           encodeURIComponent(id) +
           '/proposals/' +
           encodeURIComponent(proposal),
-      ),
+      ).then(validateCodeProposal),
     refuseCodeProposal: (id: string, proposal: string, request?: { executionId?: string | null }) =>
       client
         .post<CodeProposalState>(
@@ -2311,3 +1099,39 @@ export function createChatApi(
         .then((response) => response.data),
   }
 }
+
+export { SkillErrors } from './errors/skillErrors'
+export { BoardVerificationErrors } from './errors/boardVerificationErrors'
+export { BoardDeliveryErrors } from './errors/boardDeliveryErrors'
+export { ToolErrors } from './errors/toolErrors'
+export { ModelErrors } from './errors/modelErrors'
+
+export * from './contracts/index'
+
+export { AgentErrors } from './errors/agentErrors'
+
+export { BoardErrors } from './errors/boardErrors'
+
+export { CodeErrors } from './errors/codeErrors'
+
+export { ExecutionErrors } from './errors/executionErrors'
+
+export { SecurityErrors } from './errors/securityErrors'
+
+export { WorkspaceErrors } from './errors/workspaceErrors'
+
+export { ProtocolErrors } from './errors/protocolErrors'
+
+export { CommonErrors } from './errors/commonErrors'
+
+export { McpErrors } from './errors/mcpErrors'
+
+export { ChatGptAuthErrors } from './errors/chatGptAuthErrors'
+
+export { ChatErrors } from './errors/chatErrors'
+
+export { ResourceErrors } from './errors/resourceErrors'
+
+export { CliProgramErrors } from './errors/cliProgramErrors'
+
+export { GitErrors } from './errors/gitErrors'

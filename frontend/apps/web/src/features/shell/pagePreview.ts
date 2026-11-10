@@ -25,10 +25,7 @@ export function deliveryChatPreviewUrl(origin: string): string {
   return `${base}/#chat`
 }
 
-export function resolvePagePreview(input: { mock?: boolean; origin?: string }): PagePreview {
-  if (input.mock) {
-    return { url: '', ready: false, denial: 'PREVIEW_MOCK' }
-  }
+export function resolvePagePreview(input: { origin?: string }): PagePreview {
   const origin = (input.origin ?? '').trim()
   if (!origin) {
     return { url: '', ready: false, denial: 'PREVIEW_ORIGIN_UNKNOWN' }
@@ -41,6 +38,5 @@ export function resolvePagePreview(input: { mock?: boolean; origin?: string }): 
 
 export function pagePreviewMessageKey(preview: PagePreview): string {
   if (preview.ready) return 'desktop.deliveryPreviewReady'
-  if (preview.denial === 'PREVIEW_MOCK') return 'desktop.deliveryPreviewMock'
   return 'desktop.deliveryPreview'
 }

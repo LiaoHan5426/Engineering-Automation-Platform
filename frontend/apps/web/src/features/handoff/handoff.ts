@@ -6,7 +6,7 @@ export interface HandoffDraft {
   summary: string
 }
 
-/** The visible text the operator submits. Mock approval is not an input. */
+/** The visible text submitted by the operator. */
 export function chatHandoff(draft: string, conversationId: string | null): HandoffDraft | null {
   const summary = draft.trim()
   if (!summary) return null

@@ -12,25 +12,25 @@ describe('trustedToolInvokeView', () => {
     expect(
       trustedToolInvokeFailure({
         isAxiosError: true,
-        response: { status: 403, data: { detail: 'CAPABILITY_DISABLED' } },
+        response: { status: 403, data: { code: 'CAPABILITY_DISABLED' } },
       }),
     ).toBe('denied')
     expect(
       trustedToolInvokeFailure({
         isAxiosError: true,
-        response: { status: 504, data: { detail: 'TRUSTED_TOOL_TIMEOUT' } },
+        response: { status: 504, data: { code: 'TRUSTED_TOOL_TIMEOUT' } },
       }),
     ).toBe('timeout')
     expect(
       trustedToolInvokeFailure({
         isAxiosError: true,
-        response: { status: 499, data: { detail: 'TRUSTED_TOOL_CANCELLED' } },
+        response: { status: 499, data: { code: 'TRUSTED_TOOL_CANCELLED' } },
       }),
     ).toBe('cancelled')
     expect(trustedToolInvokeFailure({ name: 'AbortError' })).toBe('unknown')
     expect(
       trustedToolInvokeFailure({
-        response: { status: 520, data: { detail: 'TRUSTED_TOOL_UNKNOWN' } },
+        response: { status: 520, data: { code: 'TRUSTED_TOOL_UNKNOWN' } },
       }),
     ).toBe('unknown')
   })
@@ -39,18 +39,18 @@ describe('trustedToolInvokeView', () => {
     expect(
       trustedToolInvokeFailureMessage({
         isAxiosError: true,
-        response: { status: 403, data: { detail: 'CAPABILITY_DISABLED' } },
+        response: { status: 403, data: { code: 'CAPABILITY_DISABLED' } },
       }),
     ).toContain('拒绝')
     expect(
       trustedToolInvokeFailureMessage({
         isAxiosError: true,
-        response: { status: 504, data: { detail: 'TRUSTED_TOOL_TIMEOUT' } },
+        response: { status: 504, data: { code: 'TRUSTED_TOOL_TIMEOUT' } },
       }),
     ).toContain('超时')
     expect(
       trustedToolInvokeFailureMessage({
-        response: { status: 520, data: { detail: 'TRUSTED_TOOL_UNKNOWN' } },
+        response: { status: 520, data: { code: 'TRUSTED_TOOL_UNKNOWN' } },
       }),
     ).toContain('未知')
   })
@@ -59,7 +59,7 @@ describe('trustedToolInvokeView', () => {
     expect(
       trustedToolInvokeDetail({
         isAxiosError: true,
-        response: { status: 403, data: { detail: 'CAPABILITY_DISABLED' } },
+        response: { status: 403, data: { code: 'CAPABILITY_DISABLED' } },
       }),
     ).toBe('CAPABILITY_DISABLED')
     expect(trustedToolInvokeDetail({ name: 'AbortError' })).toBe('CLIENT_WAIT_ABORTED')

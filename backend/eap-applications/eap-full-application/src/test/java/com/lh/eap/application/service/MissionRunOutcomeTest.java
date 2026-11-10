@@ -14,7 +14,7 @@ class MissionRunOutcomeTest {
     void cancelledMemoryStatusWithoutProcessExitStaysUnconfirmed() {
         var outcome = MissionRunOutcome.from("CANCELLED", Map.of("processExited", false, "processNotStarted", false), true);
         assertFalse(outcome.terminal());
-        assertEquals("没有进程退出证据", outcome.unconfirmedReason());
+        assertEquals("PROCESS_EXIT_EVIDENCE_MISSING", outcome.unconfirmedReason());
     }
 
     @Test
@@ -31,7 +31,7 @@ class MissionRunOutcomeTest {
         var outcome = MissionRunOutcome.from(status, Map.of("processExited", true,
                 "processNotStarted", false, "processTreeCleanup", false, "exitCode", -1), true);
         assertFalse(outcome.terminal());
-        assertEquals("进程树清理未确认", outcome.unconfirmedReason());
+        assertEquals("PROCESS_TREE_CLEANUP_UNCONFIRMED", outcome.unconfirmedReason());
     }
 
     @ParameterizedTest

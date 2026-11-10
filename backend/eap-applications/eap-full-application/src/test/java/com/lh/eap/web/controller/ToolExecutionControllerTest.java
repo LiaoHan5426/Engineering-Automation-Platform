@@ -15,7 +15,7 @@ class ToolExecutionControllerTest {
     static final String BASE = "/api/cli-programs/git/operations/git-status/executions";
     @Test void onlyTheFixedOperationAndRequestIdAreAccepted() throws Exception {
         var service = mock(ToolExecutionService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service)).build();
+        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         for (var body : List.of("{}", "{\"requestId\":\"invalid\"}", "{\"requestId\":\"" + UUID.randomUUID() + "\",\"cwd\":\"/tmp\"}"))
             mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());
         verifyNoInteractions(service);
@@ -28,7 +28,7 @@ class ToolExecutionControllerTest {
     }
     @Test void bothWhitelistedOperationsDispatchWithTheirOwnIdentity() throws Exception {
         var service = mock(ToolExecutionService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service)).build();
+        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         for (var operation : List.of("git-status", "git-diff")) {
             var base = BASE.replace("git-status", operation);
             var request = UUID.randomUUID(); var id = UUID.randomUUID();
@@ -45,24 +45,24 @@ class ToolExecutionControllerTest {
     }
     @Test void readinessIsScopedAndStorageFailuresNeverExposeSqlOrImplyRollback() throws Exception {
         var service = mock(ToolExecutionService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service)).build();
+        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         for (var operation : List.of("git-status", "git-diff")) {
             var base = BASE.replace("git-status", operation);
             mvc.perform(get(base + "/readiness")).andExpect(status().isOk());
             verify(service).readiness(operation);
             when(service.list(operation, 20)).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("private SQL and connection detail"));
             mvc.perform(get(base)).andExpect(status().isServiceUnavailable())
-                    .andExpect(jsonPath("$.detail").value("TOOL_EXECUTION_STORE_UNAVAILABLE"))
+                    .andExpect(jsonPath("$.code").value("TOOL_EXECUTION_STORE_UNAVAILABLE"))
                     .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("private"))));
         }
         doThrow(new org.springframework.dao.DataAccessResourceFailureException("private commit detail")).when(service).list("git-status", 20);
         mvc.perform(get(BASE)).andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.detail").value("TOOL_EXECUTION_STORE_UNAVAILABLE"));
+                .andExpect(jsonPath("$.code").value("TOOL_EXECUTION_STORE_UNAVAILABLE"));
         mvc.perform(get(BASE.replace("git-status", "git-log") + "/readiness")).andExpect(status().isNotFound());
     }
     @Test void unknownReviewOnlyAcceptsExplicitBoundedReviewInput() throws Exception {
         var service = mock(ToolExecutionService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service)).build();
+        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         var id = UUID.randomUUID(); var request = UUID.randomUUID();
         for (var operation : List.of("git-status", "git-diff")) {
             var url = BASE.replace("git-status", operation) + "/" + id + "/resolve-unknown";
@@ -78,7 +78,7 @@ class ToolExecutionControllerTest {
     }
     @Test void newRoutesRetainHostOriginAndContentTypeProtection() throws Exception {
         var service = mock(ToolExecutionService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service)).addFilters(new AiBrowserRequestGuard()).build();
+        var mvc = MockMvcBuilders.standaloneSetup(new ToolExecutionController(service, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).addFilters(new AiBrowserRequestGuard(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         for (var operation : List.of("git-status", "git-diff")) {
         for (var suffix : List.of("", "/" + UUID.randomUUID() + "/resolve-unknown")) {
         var base = BASE.replace("git-status", operation) + suffix;

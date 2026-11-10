@@ -2,8 +2,15 @@
   "extends": "@eap/tsconfig/base.json",
   "files": [],
   "references": [
-    { "path": "./packages/icons" },
-    { "path": "./packages/runtime-client/tsconfig.type-tests.json" },
+    {
+      "path": "./packages/request"
+    },
+    {
+      "path": "./packages/icons"
+    },
+    {
+      "path": "./packages/runtime-client/tsconfig.type-tests.json"
+    },
     {
       "path": "./apps/web"
     },
@@ -21,6 +28,9 @@
     },
     {
       "path": "./packages/expert-sdk"
+    },
+    {
+      "path": "./apps/backend-mock"
     }
   ]
 }

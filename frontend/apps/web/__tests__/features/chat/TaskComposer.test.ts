@@ -95,6 +95,12 @@ describe('engineering task composer', () => {
     target.value = 'frontend/apps/web/src/Example.vue'
     target.dispatchEvent(new Event('input', { bubbles: true }))
     await nextTick()
+    const companions = element.querySelector(
+      '[data-testid=generation-component-paths]',
+    ) as HTMLTextAreaElement
+    companions.value = 'frontend/apps/web/src/Summary.vue\nfrontend/apps/web/src/model.ts'
+    companions.dispatchEvent(new Event('input', { bubbles: true }))
+    await nextTick()
     expect(session.context.value.prototypeVersionId).toBe('')
     expect(session.draft.value).toBe('Adjust this existing page')
     expect(send).not.toHaveBeenCalled()
@@ -106,6 +112,7 @@ describe('engineering task composer', () => {
       expect.objectContaining({
         mode: 'code',
         targetPath: 'frontend/apps/web/src/Example.vue',
+        componentPaths: ['frontend/apps/web/src/Summary.vue', 'frontend/apps/web/src/model.ts'],
         prototypeVersionId: '',
       }),
       { signal: expect.any(AbortSignal), onEvent: expect.any(Function) },
@@ -197,7 +204,6 @@ describe('engineering task composer', () => {
     app = createApp({
       render: () =>
         h(TaskComposer, {
-          preview: true,
           context: context.value,
           disabled: false,
           reasoningEfforts: [],
@@ -399,7 +405,6 @@ describe('engineering task composer', () => {
         h('form', [
           h('textarea', { value: '保留正文' }),
           h(TaskComposer, {
-            preview: true,
             context: context.value,
             disabled: false,
             reasoningEfforts: [],

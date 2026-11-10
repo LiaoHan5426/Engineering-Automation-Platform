@@ -1,0 +1,10 @@
+{
+  "command": "mvn -f backend/pom.xml -pl :eap-full-application -am package -DskipTests with temporary finalName only",
+  "exitCode": 0,
+  "artifact": "backend\\eap-applications\\eap-full-application\\target\\eap-full-application-optimization-verified.jar",
+  "sha256": "99f173050a17f393475cb36fc4b2ca5a6ad07f3aac1782766398510106d9f8bd",
+  "pomRestoredByteForByte": true,
+  "qaFixturesAbsent": true,
+  "existingServicesStopped": false,
+  "defaultNamePackaging": "Failed at Boot rename while existing jar was in use; verified alternate output instead"
+}

@@ -1,4 +1,7 @@
 package com.lh.eap.persistence.mapper;
+import java.util.Map;
+import com.lh.eap.application.service.ToolExecutionStatus;
+import com.lh.eap.error.ExecutionErrors;
 
 import com.lh.eap.application.service.ToolExecution;
 import com.lh.eap.application.service.ToolExecutionStore;
@@ -33,7 +36,7 @@ public class JdbcToolExecutionStore implements ToolExecutionStore {
         return query(" WHERE workspace_path=? AND capability_id=? ORDER BY created_at DESC,id DESC LIMIT ?", workspace, operation, limit);
     }
     @Override public Optional<ToolExecution> blocking(String workspace, String operation) {
-        return query(" WHERE workspace_path=? AND capability_id=? AND status IN ('CREATED','RUNNING','CANCELLING','UNKNOWN')", workspace, operation)
+        return query(" WHERE workspace_path=? AND capability_id=? AND status = ANY(?::text[])", workspace, operation, StateBindings.TOOL_BLOCKING)
                 .stream().findFirst();
     }
     @Override @Transactional public ToolExecution update(UUID id, UnaryOperator<ToolExecution> transition) {
@@ -45,11 +48,9 @@ public class JdbcToolExecutionStore implements ToolExecutionStore {
     }
     @Override @Transactional public void markRestartUnknown() {
         // Unknown rows remain in the partial unique index; startup never replays or kills a PID.
-        jdbc.update("""
-                UPDATE eap.tool_execution SET status='UNKNOWN', snapshot=snapshot ||
-                '{"status":"UNKNOWN","unconfirmedReason":"SERVICE_RESTART_EXIT_UNCONFIRMED"}'::jsonb
-                WHERE status IN ('CREATED','RUNNING','CANCELLING')
-                """);
+        jdbc.update("UPDATE eap.tool_execution SET status=?, snapshot=snapshot || ?::jsonb WHERE status = ANY(?::text[])",
+                ToolExecutionStatus.UNKNOWN.wire(), JSON.writeValueAsString(Map.of("status", ToolExecutionStatus.UNKNOWN.wire(),
+                        "unconfirmedReason", ExecutionErrors.SERVICE_RESTART_EXIT_UNCONFIRMED.code())), StateBindings.TOOL_ACTIVE);
     }
     private List<ToolExecution> query(String where, Object... args) {
         return jdbc.query(SELECT + where, (rs, row) -> JSON.readValue(rs.getString(1), ToolExecution.class), args);

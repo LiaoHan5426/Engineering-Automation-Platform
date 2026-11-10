@@ -1,0 +1,57 @@
+{
+  "scope": "Four approved objectives: conversation/context efficiency, duplication reduction, Java imports, product presentation",
+  "backend": {
+    "targetedClasses": 12,
+    "uniqueTests": 55,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "reactorCompilation": "passed",
+    "packaging": "Alternate finalName Boot package passed with tests skipped; temporary POM restored byte for byte",
+    "defaultNamePackageFailure": "Boot repackage rename failed because the previous independent host held the default jar; default runnable artifact restored and the owned independent host restarted on its original port/workspace"
+  },
+  "frontend": {
+    "affectedRegression": "74 files / 461 tests passed",
+    "lastChangedRegression": "4 files / 78 tests passed; overlaps earlier results and must not be added as a distinct total",
+    "typecheck": "passed after final production changes",
+    "build": "passed after final production changes; existing large chunk warning retained",
+    "architecture": "passed; no boundary exception added",
+    "targetedFormatLint": "passed",
+    "newComponentStylelint": "passed",
+    "networkGuard": "kept enabled; blocked unit-test 8080 attempts are diagnostics, not live HTTP evidence",
+    "fullRootFormatAndStylelint": "not repeated; previous documented baseline issues remain outside this goal"
+  },
+  "efficiencyEvidence": {
+    "startupStorageReadsBefore": 3,
+    "startupStorageReadsAfter": 1,
+    "streamDeltaCount": 100,
+    "writesDuringBurst": 0,
+    "writesAtCheckpoint": 1,
+    "checkpointMilliseconds": 150,
+    "draftAndTerminalWrites": "immediate",
+    "identicalSensitiveInvalidations": "2 model-window clears, 1 working-memory save",
+    "recoveryRequestsBefore": 2,
+    "recoveryRequestsAfter": 1,
+    "authorizationCaching": "none across requests"
+  },
+  "live": {
+    "httpGroupsPassed": 6,
+    "browserLanguageGroupsPassed": 2,
+    "viewportWidths": [1440, 900, 390],
+    "pageErrors": 0,
+    "externalRequests": 0,
+    "providerCallsForRecovery": 0,
+    "deterministicProviderCallsForExplicitRetry": 2,
+    "externalModelCalls": 0,
+    "reload": "original transcript retained; no hidden send",
+    "temporaryQaHost": "identity checked and stopped",
+    "productionQaRoutes": "404",
+    "ide8080": "left running; health is not evidence of loading the new artifact",
+    "ownedStandaloneHost": "restored current Boot jar, same 52025 port and isolated component workspace, health 200"
+  },
+  "preservation": "Prior uncommitted source changes retained; previous component-page-delivery/status-i18n artifacts and V33/V34/V35 checked byte for byte",
+  "compatibility": "Old two-field recovery request rejected; no fallback parser or second recovery path",
+  "userProductAcceptance": false,
+  "committed": false,
+  "pushed": false
+}

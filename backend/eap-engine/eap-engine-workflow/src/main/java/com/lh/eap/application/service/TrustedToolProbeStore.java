@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import java.util.HashSet;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -36,7 +37,7 @@ final class TrustedToolProbeStore {
     @SuppressWarnings("unchecked")
     Map<String, TrustedToolCatalogService.VersionProbe> load() {
         var loaded = new ConcurrentHashMap<String, TrustedToolCatalogService.VersionProbe>();
-        var conflicts = new java.util.HashSet<String>();
+        var conflicts = new HashSet<String>();
         if (!Files.isRegularFile(file)) return loaded;
         try {
             var raw = JSON.readValue(Files.readString(file, StandardCharsets.UTF_8), Map.class);

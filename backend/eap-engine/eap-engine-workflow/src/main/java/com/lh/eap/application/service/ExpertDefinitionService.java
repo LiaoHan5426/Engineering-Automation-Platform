@@ -1,4 +1,8 @@
 package com.lh.eap.application.service;
+import com.lh.eap.core.DatabaseGrantQuery;
+import com.lh.eap.core.ExpertBehaviorCatalog;
+import com.lh.eap.persistence.mapper.CliProgramMapper;
+import com.lh.eap.error.AgentErrors;
 
 import com.lh.eap.core.ExpertScopedCapabilityQuery;
 import com.lh.eap.core.ExpertAnalysisPolicyResolver;
@@ -23,16 +27,16 @@ import org.springframework.web.server.ResponseStatusException;
  * {@code if ("sql-expert".equals(id))} branches are gone.
  */
 @Service
-public class ExpertDefinitionService implements com.lh.eap.core.DatabaseGrantQuery {
+public class ExpertDefinitionService implements DatabaseGrantQuery {
     private final JdbcTemplate jdbc;
     private final RulePackQuery rulePacks;
     private final ExpertScopedCapabilityQuery scopedCapabilities;
     private final CapabilitySettings settings;
     private final ExpertAnalysisPolicyResolver policies;
-    private com.lh.eap.persistence.mapper.CliProgramMapper cliPrograms;
+    private CliProgramMapper cliPrograms;
 
     @Autowired
-    public void setCliPrograms(com.lh.eap.persistence.mapper.CliProgramMapper cliPrograms) { this.cliPrograms = cliPrograms; }
+    public void setCliPrograms(CliProgramMapper cliPrograms) { this.cliPrograms = cliPrograms; }
 
     /** All authoritative configuration comes from the host, including its capability switches. */
     public ExpertDefinitionService(JdbcTemplate jdbc, RulePackQuery rulePacks, ExpertScopedCapabilityQuery scopedCapabilities,
@@ -54,9 +58,9 @@ public class ExpertDefinitionService implements com.lh.eap.core.DatabaseGrantQue
 
     public ExpertManifest require(String id, boolean active) {
         var records = jdbc.queryForList("SELECT manifest::text AS manifest,enabled FROM eap.expert_definition WHERE id=?", id);
-        if (records.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "专家不存在");
+        if (records.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,AgentErrors.EXPERT_NOT_FOUND.code());
         if (active && !Boolean.TRUE.equals(records.getFirst().get("enabled"))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "专家仍为草稿，请先启用并授权");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,AgentErrors.EXPERT_NOT_ENABLED.code());
         }
         return ExpertManifest.parse((String) records.getFirst().get("manifest"));
     }
@@ -107,7 +111,7 @@ public class ExpertDefinitionService implements com.lh.eap.core.DatabaseGrantQue
                 rulePacks.requirements(manifest.rulePacks()), expertScopedCapabilities(), settings.disabled());
     }
 
-    private List<String> validateAgent(ExpertManifest manifest, com.lh.eap.core.ExpertBehaviorCatalog.Descriptor behavior) {
+    private List<String> validateAgent(ExpertManifest manifest, ExpertBehaviorCatalog.Descriptor behavior) {
         var errors = new ArrayList<String>();
         if (!"eap/v2".equals(manifest.apiVersion()) || !"Expert".equals(manifest.kind()) || manifest.agent() == null
                 || manifest.behavior() == null) return List.of("Agent 必须显式使用 eap/v2 Expert、behavior 和 agent 定义");
@@ -169,8 +173,8 @@ public class ExpertDefinitionService implements com.lh.eap.core.DatabaseGrantQue
     @Transactional
     public void activate(String id, boolean enabled) {
         var rows=jdbc.queryForList("SELECT manifest::text AS manifest,builtin FROM eap.expert_definition WHERE id=? FOR UPDATE", id);
-        if(rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"专家不存在");
-        if(Boolean.TRUE.equals(rows.getFirst().get("builtin"))) throw new ResponseStatusException(HttpStatus.CONFLICT,"内置专家不可就地授权，请复制为自定义专家后编辑");
+        if(rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,AgentErrors.EXPERT_NOT_FOUND.code());
+        if(Boolean.TRUE.equals(rows.getFirst().get("builtin"))) throw new ResponseStatusException(HttpStatus.CONFLICT,AgentErrors.EXPERT_BUILTIN.code());
         var manifest=enabled ? ExpertManifest.parse((String)rows.getFirst().get("manifest")) : null;
         if (enabled) {
             var errors=new ArrayList<>(validateGraph(manifest));errors.addAll(validateReferences(manifest));

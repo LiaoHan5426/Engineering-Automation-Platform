@@ -11,7 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 class BoardCodeWorkspaceInterlockTest {
     @Test void sharedBoardLockRejectsDurableCodeIntentForRunVerificationReviewAndDelivery() {
         var jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForObject(contains("eap.code_proposal"), eq(Boolean.class), eq("workspace"))).thenReturn(true);
+        when(jdbc.queryForObject(contains("eap.code_proposal"), eq(Boolean.class), eq("workspace"), eq(com.lh.eap.persistence.mapper.StateBindings.CODE_BLOCKING))).thenReturn(true);
         var tasks = new BoardTaskService(jdbc);
         TransactionSynchronizationManager.setActualTransactionActive(true);
         try {

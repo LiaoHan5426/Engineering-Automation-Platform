@@ -14,7 +14,7 @@ class BoardDeliveryControllerTest {
     @Test void appliedCatalogIsReadOnlyAndScopedToTheRequestedRunAndProject() throws Exception {
         var service=mock(BoardDeliveryService.class);
         var task=UUID.randomUUID();var run=UUID.randomUUID();
-        var mvc=MockMvcBuilders.standaloneSetup(new BoardDeliveryController(service)).setControllerAdvice(new ApiErrorHandler()).build();
+        var mvc=MockMvcBuilders.standaloneSetup(new BoardDeliveryController(service)).setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         String path="/api/board/tasks/"+task+"/runs/"+run+"/delivery/applications";
         mvc.perform(get(path).param("projectId","scoped")).andExpect(status().isOk());
         verify(service).applications(task,run,"scoped");verifyNoMoreInteractions(service);
@@ -24,7 +24,7 @@ class BoardDeliveryControllerTest {
     }
     @Test void acceptsOnlyExplicitUuidApplicationReference() throws Exception {
         var service = mock(BoardDeliveryService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new BoardDeliveryController(service)).setControllerAdvice(new ApiErrorHandler()).build();
+        var mvc = MockMvcBuilders.standaloneSetup(new BoardDeliveryController(service)).setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         String endpoint = "/api/board/tasks/"+UUID.randomUUID()+"/runs/"+UUID.randomUUID()+"/delivery";
         String ref = "{\"conversationId\":\""+UUID.randomUUID()+"\",\"proposalId\":\""+UUID.randomUUID()+"\"}";
         String body = "{\"projectId\":\"p\",\"revision\":1,\"workspacePath\":\"repo\",\"requestId\":\""+UUID.randomUUID()+"\",\"paths\":[\"frontend/source.ts\"],\"note\":\"post hoc\",\"applicationRef\":"+ref+"}";
@@ -38,7 +38,7 @@ class BoardDeliveryControllerTest {
     @Test void exactContractRejectsFabricatedEvidenceAndCoercedValuesBeforeCallingService() throws Exception {
         var type = assertDoesNotThrow(() -> Class.forName("com.lh.eap.web.controller.BoardDeliveryController"));
         var service = mock(BoardDeliveryService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(type.getConstructor(BoardDeliveryService.class).newInstance(service)).setControllerAdvice(new ApiErrorHandler()).build();
+        var mvc = MockMvcBuilders.standaloneSetup(type.getConstructor(BoardDeliveryService.class).newInstance(service)).setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         var task = UUID.randomUUID(); var run = UUID.randomUUID(); var request = UUID.randomUUID(); var delivery = UUID.randomUUID();
         String path = "/api/board/tasks/"+task+"/runs/"+run+"/delivery";
         String body = "{\"projectId\":\"p\",\"revision\":1,\"workspacePath\":\"repo\",\"requestId\":\""+request+"\",\"paths\":[\"frontend/source.ts\"],\"note\":\"manual\"}";

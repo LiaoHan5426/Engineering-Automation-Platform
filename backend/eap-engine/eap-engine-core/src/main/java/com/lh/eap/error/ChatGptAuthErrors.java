@@ -1,0 +1,27 @@
+package com.lh.eap.error;
+
+import com.lh.eap.api.error.PlatformErrorCode;
+
+/** ChatGptAuth operation errors; display messages live in domain bundles. */
+public enum ChatGptAuthErrors implements PlatformErrorCode {
+    CHATGPT_ACCOUNT_MISMATCH,
+    CHATGPT_AUTH_INTERRUPTED,
+    CHATGPT_AUTH_UNAVAILABLE,
+    CHATGPT_CALLBACK_UNAVAILABLE,
+    CHATGPT_HOST_STORE_FAILED,
+    CHATGPT_IDENTITY_INVALID,
+    CHATGPT_LOGIN_ALREADY_PENDING,
+    CHATGPT_LOGIN_CANCELLED,
+    CHATGPT_LOGIN_DENIED,
+    CHATGPT_LOGIN_EXPIRED,
+    CHATGPT_LOGIN_FAILED,
+    CHATGPT_LOGIN_LIMIT,
+    CHATGPT_PLAN_PERMISSION_REQUIRED,
+    CHATGPT_REAUTH_REQUIRED,
+    CHATGPT_REGISTRATION_INVALID,
+    CHATGPT_TOKEN_EXCHANGE_FAILED,
+    CHATGPT_TOKEN_INVALID,
+    UNKNOWN_CHATGPT_LOGIN;
+
+    @Override public String code() { return name(); }
+}

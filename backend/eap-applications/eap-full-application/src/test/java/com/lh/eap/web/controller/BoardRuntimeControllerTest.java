@@ -16,12 +16,12 @@ class BoardRuntimeControllerTest {
         when(service.inspect("one")).thenReturn(new BoardRuntimeService.Snapshot("one",Instant.now(),1,2,1,0,0,0,0,0,List.of(),false));
         when(service.inspect(" ")).thenThrow(new IllegalArgumentException("private"));
         when(service.inspect("unavailable")).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("private SQL"));
-        var mvc=MockMvcBuilders.standaloneSetup(new BoardRuntimeController(service)).addFilters(new AiBrowserRequestGuard()).build();
+        var mvc=MockMvcBuilders.standaloneSetup(new BoardRuntimeController(service, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).addFilters(new AiBrowserRequestGuard(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         mvc.perform(get("/api/board/runtime").param("projectId","one")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.projectId").value("one")).andExpect(jsonPath("$.activeRunCount").value(1));
         mvc.perform(get("/api/board/runtime").param("projectId"," ")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/board/runtime").param("projectId","unavailable")).andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.detail").value("BOARD_RUNTIME_OBSERVATION_UNAVAILABLE"))
+                .andExpect(jsonPath("$.code").value("BOARD_RUNTIME_OBSERVATION_UNAVAILABLE"))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("private"))));
         mvc.perform(post("/api/board/runtime").param("projectId","one")).andExpect(status().isMethodNotAllowed());
         mvc.perform(get("/api/board/runtime").param("projectId","one").header("Origin","http://evil.example"))

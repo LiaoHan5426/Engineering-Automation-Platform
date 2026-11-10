@@ -58,7 +58,7 @@ class SingleContractAcceptanceTest {
             var shipped=new String(getClass().getResourceAsStream("/experts/sql-expert.json").readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
             assertEquals(new ExpertBehaviorBinding("sql-analysis",1),com.lh.eap.domain.model.ExpertManifest.parse(shipped).behavior());
             CurrentContractTestSchema.migrate(session,schema);
-            assertEquals("32",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1",String.class));
+            assertEquals("34",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1",String.class));
             assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->jdbc.update("INSERT INTO eap.cli_channel(program_id,binary_path) VALUES ('git-status','old-git')"));
             assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->jdbc.update("INSERT INTO eap.expert_definition(id,name,manifest) VALUES ('invalid','invalid','{}'::jsonb)"));
 
@@ -136,7 +136,7 @@ class SingleContractAcceptanceTest {
     static void git(String...args)throws Exception {var command=new ArrayList<>(List.of("git"));command.addAll(List.of(args));var process=new ProcessBuilder(command).directory(workspace.toFile()).redirectErrorStream(true).start();String out=new String(process.getInputStream().readAllBytes());assertEquals(0,process.waitFor(),out);}
 
     @Configuration(proxyBeanMethods=false) @EnableAutoConfiguration @EnableTransactionManagement
-    @Import({RuntimeDataController.class,CliProgramController.class,ToolExecutionController.class,ExpertController.class,ExpertExecutionController.class,PrototypeVersionController.class,ApiErrorHandler.class,AiBrowserRequestGuard.class})
+    @Import({RuntimeDataController.class,CliProgramController.class,ToolExecutionController.class,ExpertController.class,ExpertExecutionController.class,PrototypeVersionController.class,ApiErrorHandler.class,AiBrowserRequestGuard.class ,com.lh.eap.web.i18n.PlatformMessagesConfiguration.class,com.lh.eap.web.i18n.ProblemResponses.class})
     static class Host {
         @Bean DataSource source(){return ToolUnknownReviewFixture.scopedDataSource(schema);}
         @Bean JdbcTemplate jdbc(DataSource source){return new JdbcTemplate(source);}

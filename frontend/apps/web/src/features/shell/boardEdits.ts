@@ -7,10 +7,10 @@ export type BoardEdit = {
   goal: string
   acceptanceCriteria: string
 }
-const key = (id: string, mock: boolean) => `${mock ? 'mock.' : ''}eap.board-edit.v1.${id}`
-export function readBoardEdit(store: Store | null, id: string, mock: boolean): BoardEdit | null {
+const key = (id: string, scope: string) => `${scope}.eap.board-edit.v1.${id}`
+export function readBoardEdit(store: Store | null, id: string, scope: string): BoardEdit | null {
   try {
-    const value = JSON.parse(store?.getItem(key(id, mock)) ?? 'null')
+    const value = JSON.parse(store?.getItem(key(id, scope)) ?? 'null')
     if (
       !value ||
       typeof value.notes !== 'string' ||
@@ -35,26 +35,25 @@ export function readBoardEdit(store: Store | null, id: string, mock: boolean): B
 export function writeBoardEdit(
   store: Store | null,
   id: string,
-  mock: boolean,
+  scope: string,
   draft: BoardEdit | null,
 ) {
   try {
-    if (draft) store?.setItem(key(id, mock), JSON.stringify(draft))
-    else store?.removeItem(key(id, mock))
+    if (draft) store?.setItem(key(id, scope), JSON.stringify(draft))
+    else store?.removeItem(key(id, scope))
   } catch {
     /* unavailable browser storage does not trigger backend writes */
   }
 }
 
-const createKey = (projectId: string, mock: boolean) =>
-  `${mock ? 'mock.' : ''}eap.board-create.v1.${projectId}`
+const createKey = (projectId: string, scope: string) => `${scope}.eap.board-create.v1.${projectId}`
 export function readBoardCreate(
   store: Store | null,
   projectId: string,
-  mock: boolean,
+  scope: string,
 ): BoardTaskDraft | null {
   try {
-    const value = JSON.parse(store?.getItem(createKey(projectId, mock)) ?? 'null')
+    const value = JSON.parse(store?.getItem(createKey(projectId, scope)) ?? 'null')
     if (!value || value.projectId !== projectId || !['planned', 'ready'].includes(value.column))
       return null
     for (const [key, limit] of [
@@ -80,13 +79,13 @@ export function readBoardCreate(
 export function writeBoardCreate(
   store: Store | null,
   projectId: string,
-  mock: boolean,
+  scope: string,
   draft: BoardTaskDraft | null,
 ): boolean {
   try {
     if (!store) return false
-    if (draft) store.setItem(createKey(projectId, mock), JSON.stringify(draft))
-    else store.removeItem(createKey(projectId, mock))
+    if (draft) store.setItem(createKey(projectId, scope), JSON.stringify(draft))
+    else store.removeItem(createKey(projectId, scope))
     return true
   } catch {
     return false

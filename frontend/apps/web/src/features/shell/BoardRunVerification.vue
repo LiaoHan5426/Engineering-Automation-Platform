@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { isBoardVerificationStatusActive } from '@eap/runtime-client'
+
+import { BoardVerificationErrors } from '@eap/runtime-client'
+
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { Dialog, Button, Badge, Collapse, ConfirmBox } from '@eap/ui'
 import {
@@ -8,7 +12,7 @@ import {
   type BoardVerificationPlan,
 } from '@eap/runtime-client'
 import { useI18n } from 'vue-i18n'
-import { isAxiosError } from 'axios'
+import { isRequestError } from '@eap/request'
 const props = defineProps<{ taskId: string; projectId: string; run: BoardRun }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
 const { t, te } = useI18n()
@@ -31,7 +35,7 @@ function stopPolling() {
 }
 function poll() {
   stopPolling()
-  if (!record.value || !['QUEUED', 'RUNNING'].includes(record.value.status)) return
+  if (!record.value || !isBoardVerificationStatusActive(record.value.status)) return
   if (++attempts <= 60) timer = setTimeout(() => void load(), 3000)
   else note.value = t('boardVerification.pollPaused')
 }
@@ -113,15 +117,15 @@ async function start() {
     }
   } catch (error) {
     if (current === generation) {
-      const code = isAxiosError(error) ? String(error.response?.data?.detail ?? '') : ''
+      const code = isRequestError(error) ? String(error.response?.data?.code ?? '') : ''
       const rejected =
-        isAxiosError(error) &&
+        isRequestError(error) &&
         error.response &&
         error.response.status >= 400 &&
         error.response.status < 500
       if (rejected) plan.value = null
       note.value = rejected
-        ? code === 'BOARD_VERIFICATION_PLAN_STALE'
+        ? code === BoardVerificationErrors.BOARD_VERIFICATION_PLAN_STALE
           ? t('boardVerification.stale')
           : reasonText(code)
         : t('boardVerification.uncertain')

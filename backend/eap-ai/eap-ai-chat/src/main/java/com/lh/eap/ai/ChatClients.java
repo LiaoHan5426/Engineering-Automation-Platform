@@ -1,4 +1,5 @@
 package com.lh.eap.ai;
+import java.util.UUID;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
@@ -15,7 +16,7 @@ public final class ChatClients {
                 ToolCallingAdvisor.builder().toolCallingManager(ToolCallingManager.builder()
                         .maxCallsPerTool(4).maxTotalToolCalls(4).resolutionFallbackEnabled(false).build()).build()).build();
     }
-    public static String memoryKey(String principal, java.util.UUID conversationId) {
+    public static String memoryKey(String principal, UUID conversationId) {
         return principal.length() + ":" + principal + ":" + conversationId;
     }
 }

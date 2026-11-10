@@ -1,3 +1,4 @@
+import { chatStorage } from '../../../src/features/chat/chatService'
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, nextTick, type App } from 'vue'
@@ -23,7 +24,7 @@ afterEach(() => {
   workbench.panel = null
 })
 async function mount(draft = 'retry this', mismatch = false) {
-  localStorage.setItem(
+  chatStorage(localStorage).setItem(
     'eap.chat.history.v1',
     JSON.stringify({
       version: 1,
@@ -72,16 +73,17 @@ async function mount(draft = 'retry this', mismatch = false) {
   const reconnect = vi.spyOn(runtimeApi, 'reconnectAiConversation')
   if (mismatch)
     reconnect.mockRejectedValue({
-      response: { status: 409, data: { detail: 'CONVERSATION_WORKSPACE_CHANGED' } },
+      response: { status: 409, data: { code: 'CONVERSATION_WORKSPACE_CHANGED' } },
     })
   else
     reconnect.mockResolvedValue({
       conversationId: 'old',
       workspaceLabel: 'saved-ws',
       memory: '',
-      connectionId: null,
-      model: null,
+      connectionId: 'desk',
+      model: 'm',
       contextReset: true,
+      memoryCleared: false,
     })
   const assign = vi.spyOn(runtimeApi, 'assignConversationConnection').mockResolvedValue({
     conversationId: 'old',
@@ -158,8 +160,8 @@ it('requires a visible confirmation before reconnect and sends the preserved dra
   click('.eap-confirm__actions button')
   click('.eap-confirm__actions button')
   await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1))
-  expect(reconnect).toHaveBeenCalledExactlyOnceWith('old', 'saved-ws')
-  expect(assign).toHaveBeenCalledExactlyOnceWith('old', 'desk', true, 'm')
+  expect(reconnect).toHaveBeenCalledExactlyOnceWith('old', 'saved-ws', 'desk', 'm')
+  expect(assign).not.toHaveBeenCalled()
   expect(send).toHaveBeenCalledWith(
     'old',
     'retry this',

@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.handler;
+import com.lh.eap.sql.DatabaseEvidenceInput;
 
 import com.lh.eap.domain.model.CapabilityContext;
 import com.lh.eap.domain.model.CapabilityDescriptor;
@@ -33,8 +34,8 @@ public class DatabaseExplainHandler implements CapabilityHandler {
     }
 
     @Override public NodeResult handle(CapabilityContext context) {
-        var plan = context.requestAs(com.lh.eap.sql.DatabaseEvidenceInput.class)
-                .map(com.lh.eap.sql.DatabaseEvidenceInput::explainPlan).orElse(null);
+        var plan = context.requestAs(DatabaseEvidenceInput.class)
+                .map(DatabaseEvidenceInput::explainPlan).orElse(null);
         if (plan == null) {
             context.publish("plan.loaded", false);
             return new NodeResult(false, true, "未提供 EXPLAIN JSON；平台不会自动执行 SQL", Map.of());

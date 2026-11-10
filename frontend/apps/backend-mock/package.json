@@ -1,0 +1,22 @@
+{
+  "name": "@eap/backend-mock",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./backend": "./src/chatBackend.ts"
+  },
+  "scripts": {
+    "dev": "node src/server.ts",
+    "start": "node src/server.ts"
+  },
+  "dependencies": {
+    "@eap/runtime-client": "workspace:*"
+  },
+  "devDependencies": {
+    "@eap/tsconfig": "workspace:*",
+    "@types/node": "catalog:types",
+    "typescript": "catalog:tooling",
+    "vite-plus": "catalog:tooling"
+  }
+}

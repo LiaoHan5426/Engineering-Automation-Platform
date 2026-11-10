@@ -1,17 +1,6 @@
-export type ChatExecutionEvent = {
-  eventId: string
-  sequence: number
-  executionId: string
-  conversationId: string
-  taskId?: string | null
-  type: string
-  protocolVersion: string
-  occurredAt: string
-  text: string
-  code: string
-  status: string
-  payload?: unknown
-}
+import { ChatExecutionStatus } from '@eap/runtime-client/contracts'
+import type { ChatExecutionEvent } from '@eap/runtime-client/contracts'
+export type { ChatExecutionEvent } from '@eap/runtime-client/contracts'
 
 export type ProjectedTurn = {
   executionId: string
@@ -50,7 +39,7 @@ export function projectEvents(events: ChatExecutionEvent[]): ProjectedTurn {
   }
   let answer = ''
   let error = ''
-  let status = 'RUNNING'
+  let status: string = ChatExecutionStatus.RUNNING
   let complete = false
   let proposal: unknown = null
   let finalPayload: unknown = null

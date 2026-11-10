@@ -1,4 +1,5 @@
 package com.lh.eap.rules;
+import java.util.stream.Collectors;
 
 
 
@@ -99,7 +100,7 @@ public final class SqlFactVocabulary {
             new Fact("plan.nodeCount", "number", "执行计划", "计划快照中的节点数量", DATABASE_EXPLAIN));
 
     private static final Map<String, Fact> BY_KEY = FACTS.stream()
-            .collect(java.util.stream.Collectors.toMap(Fact::key, fact -> fact, (a, b) -> a, LinkedHashMap::new));
+            .collect(Collectors.toMap(Fact::key, fact -> fact, (a, b) -> a, LinkedHashMap::new));
 
     public static final Map<String, Fact> FACTS_BY_KEY = Map.copyOf(BY_KEY);
 

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { CodeErrors } from '@eap/runtime-client'
+
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -19,13 +21,13 @@ import { type AiConnectionState } from '@eap/runtime-client'
 import { IconEllipsis, Icon } from '@eap/ui'
 import { errorMessage } from '../../lib/presentation'
 import { createChatSession } from './chatSession'
-import { contextBudgetNoteTone, includedSourceSummary } from './contextBudgetView'
+import TurnContextDetails from './TurnContextDetails.vue'
+import TaskMemoryPanel from './TaskMemoryPanel.vue'
 import ConnectionDialog from '../../components/ConnectionDialog.vue'
 import SessionPanel from '../../components/SessionPanel.vue'
 import WorkspaceFileTreeRail from '../../components/WorkspaceFileTreeRail.vue'
 import WorkspaceWelcome from '../../components/WorkspaceWelcome.vue'
 import { chatService, chatStorage } from './chatService'
-import { preview } from '../shell/preview'
 import TaskComposer from './TaskComposer.vue'
 import GenerationBaseline from '../../components/GenerationBaseline.vue'
 import ProposalApplication from '../../components/ProposalApplication.vue'
@@ -62,12 +64,12 @@ import {
   runtimeIdentity,
 } from '../shell/runtimeIdentity'
 
-const { t } = useI18n()
-const props = withDefaults(defineProps<{ active?: boolean; mock?: boolean }>(), {
+const { t, locale } = useI18n()
+const props = withDefaults(defineProps<{ active?: boolean }>(), {
   active: true,
-  mock: false,
 })
 const workingGoalDraft = ref('')
+const savingWorkingGoal = ref(false)
 const feedPort = ref<{ getEl: () => HTMLElement | null } | null>(null)
 const shownTurns = ref(40)
 const loadingOlder = ref(false)
@@ -125,11 +127,13 @@ const importingPrototype =
 const api = chatService()
 const session = createChatSession(
   api,
-  typeof localStorage === 'undefined' ? undefined : chatStorage(props.mock, localStorage),
+  typeof localStorage === 'undefined' ? undefined : chatStorage(localStorage),
 )
 async function saveWorkingGoal() {
   const goal = workingGoalDraft.value.trim()
-  if (!goal) return
+  if (!goal || savingWorkingGoal.value) return
+  const id = session.conversationId.value
+  savingWorkingGoal.value = true
   const current = session.workingMemory.value
   try {
     await session.saveWorkingMemory({
@@ -139,24 +143,14 @@ async function saveWorkingGoal() {
       evidenceRefs: current?.evidenceRefs ?? [],
       dependencyKeys: current?.dependencyKeys ?? [],
     })
-    workingGoalDraft.value = ''
+    if (session.conversationId.value === id && workingGoalDraft.value.trim() === goal)
+      workingGoalDraft.value = ''
   } catch {
-    session.failure.value = 'failed'
+    if (session.conversationId.value === id) session.failure.value = 'failed'
+  } finally {
+    savingWorkingGoal.value = false
   }
 }
-/** True when any non-layer working-memory field is present; avoids empty+constraints clash. */
-const hasWorkingMemoryMaterial = computed(() => {
-  const memory = session.workingMemory.value
-  if (!memory) return false
-  return Boolean(
-    memory.goal ||
-    memory.invalidation ||
-    memory.constraints?.length ||
-    memory.facts?.length ||
-    memory.dependencyKeys?.length ||
-    memory.evidenceRefs?.length,
-  )
-})
 const visibleTurns = computed(() => {
   const all = session.turns.value
   const start = Math.max(0, all.length - shownTurns.value)
@@ -182,34 +176,6 @@ function showOlderTurns() {
     loadingOlder.value = false
   })
 }
-async function importMockHandoff() {
-  if (!props.mock || !props.active || !workbench.pendingMockHandoff) return
-  workbench.pendingMockHandoff = false
-  const draft = preview.current(workbench.workMode)
-  await session.openConversation()
-  session.draft.value = draft.draft
-  session.context.value = JSON.parse(JSON.stringify(draft.context))
-  if (session.conversationId.value) {
-    const source = workbench.sessionExtras[draft.id]
-    const executionMode = source?.executionMode ?? draft.execution
-    workbench.sessionExtras[session.conversationId.value] = {
-      scenarioId: source?.scenarioId ?? null,
-      experts: [...(source?.experts ?? [])],
-      resources: [...(source?.resources ?? [])],
-      projectId: source?.projectId ?? workbench.selectedProjectId,
-      executionMode: executionMode === 'plan' || executionMode === 'agent' ? executionMode : 'chat',
-      delivery: source?.delivery,
-    }
-    workbench.executionMode =
-      workbench.sessionExtras[session.conversationId.value]?.executionMode ?? 'chat'
-  }
-}
-watch(
-  () => [props.active, workbench.pendingMockHandoff],
-  () => {
-    void importMockHandoff()
-  },
-)
 const manageId = ref<string | null>(null)
 const manageTitle = ref('')
 const deleteId = ref<string | null>(null)
@@ -313,8 +279,7 @@ const canRibbonRetry = computed(() => {
     return false
   if (failure !== 'failed' && failure !== 'kept' && failure !== 'not-configured') return false
   if (session.sending.value || !session.draft.value.trim()) return false
-  if (!props.mock && (workbench.executionMode === 'agent' || workbench.executionMode === 'plan'))
-    return false
+  if (workbench.executionMode === 'agent' || workbench.executionMode === 'plan') return false
   return true
 })
 function closePanel() {
@@ -377,7 +342,6 @@ async function confirmReconnect() {
 }
 function statusTone() {
   if (session.expired.value || archived.value) return 'warning'
-  if (props.mock) return 'neutral'
   const state = session.status.value?.state
   return state === 'available' ? 'success' : state === 'error' ? 'danger' : 'warning'
 }
@@ -406,7 +370,7 @@ function syncRefused(id: string, value: boolean) {
   refused.value = { ...refused.value, [id]: value }
 }
 async function hydrateProposalRefusal(proposal: CodeProposal) {
-  if (props.mock || refused.value[proposal.id]) return
+  if (refused.value[proposal.id]) return
   try {
     const state = await api.codeProposal(proposal.conversationId, proposal.id)
     if (refusedFromState(state)) syncRefused(proposal.id, true)
@@ -430,10 +394,6 @@ async function refuseProposal(turn: {
 }) {
   const proposal = turn.proposal
   if (!proposal || refused.value[proposal.id] || refusing.value) return
-  if (props.mock) {
-    syncRefused(proposal.id, true)
-    return
-  }
   refusing.value = proposal.id
   refuseNote.value = ''
   try {
@@ -585,10 +545,9 @@ watchEffect(() => {
     versionId: session.context.value.prototypeVersionId,
     draft: session.draft.value,
     sending: session.sending.value,
-    workspaceLabel:
-      session.workspaceLabel.value && session.workspaceLabel.value !== 'Mock workspace'
-        ? session.workspaceLabel.value
-        : session.status.value?.workspaceLabel || session.workspaceLabel.value,
+    workspaceLabel: session.workspaceLabel.value
+      ? session.workspaceLabel.value
+      : session.status.value?.workspaceLabel || session.workspaceLabel.value,
     memory: session.memoryNote.value,
     model: session.pendingModel.value || session.boundModel.value,
     connectionName: selectedModel.value?.name ?? '',
@@ -613,7 +572,13 @@ watchEffect(() => {
     },
   }
 })
+function flushHiddenHistory() {
+  if (document.visibilityState === 'hidden') session.flushPersistence()
+}
 onUnmounted(() => {
+  session.flushPersistence()
+  window.removeEventListener('pagehide', session.flushPersistence)
+  document.removeEventListener('visibilitychange', flushHiddenHistory)
   if (chatBinding.value?.activeId === session.conversationId.value) chatBinding.value = null
 })
 function useScene(id: string) {
@@ -649,8 +614,7 @@ const outgoingText = computed(() => {
   })
 })
 async function sendTask() {
-  if (!props.mock && (workbench.executionMode === 'agent' || workbench.executionMode === 'plan'))
-    return
+  if (workbench.executionMode === 'agent' || workbench.executionMode === 'plan') return
   const extras = currentExtras()
   const guidance = extras.experts.map((item) => item.guidance).join('\n')
   const sceneInstructions =
@@ -659,16 +623,11 @@ async function sendTask() {
     ...session.context.value,
     files: session.context.value.files.map((file) => ({ ...file })),
   }
-  if (workbench.executionMode === 'plan') {
-    requestContext.mode = 'chat'
-    requestContext.approval = 'read_only'
-    session.toolMode.value = 'none'
-  } else if (workbench.executionMode === 'agent') requestContext.mode = 'code'
   requestContext.instructions = outgoingInstructions({
     instructions: requestContext.instructions,
     scene: sceneInstructions,
     guidance,
-    plan: workbench.executionMode === 'plan',
+    plan: false,
   })
   const before = session.conversationId.value
   try {
@@ -712,9 +671,9 @@ async function applyProposal(proposal: CodeProposal) {
     applied.value = { ...applied.value, [proposal.id]: result.written }
     appliedVerification.value = { ...appliedVerification.value, [proposal.id]: result.verification }
     appliedChecks.value = { ...appliedChecks.value, [proposal.id]: result.checks ?? [] }
-    proposalNote.value = props.mock ? t('preview.boundary') : t('task.written')
+    proposalNote.value = t('task.written')
   } catch (error) {
-    if (applyFailureCode(error) === 'FILE_CHANGED_SINCE_PROPOSAL') {
+    if (applyFailureCode(error) === CodeErrors.FILE_CHANGED_SINCE_PROPOSAL) {
       conflicted.value = { ...conflicted.value, [proposal.id]: true }
       writeConfirmed.value = { ...writeConfirmed.value, [proposal.id]: false }
     }
@@ -732,14 +691,15 @@ const stateKey: Record<AiConnectionState, string> = {
 }
 
 onMounted(async () => {
-  void session.refreshStatus()
-  try {
-    await session.refreshConnections()
-    if (!importingPrototype) await session.restoreLastConversation()
-  } catch (error) {
-    historyNote.value = errorMessage(error)
-  }
-  await importMockHandoff()
+  window.addEventListener('pagehide', session.flushPersistence)
+  document.addEventListener('visibilitychange', flushHiddenHistory)
+  await Promise.all([
+    session.refreshStatus(),
+    session.refreshConnections().catch((error) => {
+      historyNote.value = errorMessage(error)
+    }),
+    importingPrototype ? Promise.resolve() : session.restoreLastConversation(),
+  ])
 })
 </script>
 
@@ -758,7 +718,6 @@ onMounted(async () => {
         </div>
         <div v-else class="session-status">
           <Badge
-            v-if="!mock"
             :tone="statusTone()"
             :label="t(stateKey[session.status.value?.state ?? 'disabled'])"
           />
@@ -878,101 +837,13 @@ onMounted(async () => {
           </DropdownMenu>
         </div>
       </div>
-      <section
+      <TaskMemoryPanel
         v-if="session.conversationId.value"
-        class="working-memory"
-        data-testid="working-memory"
-      >
-        <h3>{{ t('workingMemory.title') }}</h3>
-        <p class="hint">{{ t('workingMemory.note') }}</p>
-        <Feedback
-          v-if="session.workingMemory.value?.invalidation"
-          tone="warning"
-          data-testid="working-memory-invalidation"
-        >
-          {{ t('workingMemory.invalidation') }}：{{ session.workingMemory.value.invalidation }}
-        </Feedback>
-        <p
-          v-if="session.workingMemory.value?.invalidation"
-          class="hint"
-          data-testid="working-memory-sticky-retained"
-        >
-          {{ t('workingMemory.stickyClearRetained') }}
-        </p>
-        <p
-          v-else-if="session.workingMemory.value?.goal"
-          class="hint"
-          data-testid="working-memory-goal-text"
-        >
-          {{ t('workingMemory.goal') }}：{{ session.workingMemory.value.goal }}
-        </p>
-        <p v-else-if="!hasWorkingMemoryMaterial" class="hint" data-testid="working-memory-empty">
-          {{ t('workingMemory.empty') }}
-        </p>
-        <p
-          v-if="session.workingMemory.value?.constraints?.length"
-          class="hint"
-          data-testid="working-memory-constraints"
-        >
-          {{ t('workingMemory.constraints') }}：{{
-            session.workingMemory.value.constraints.join(' · ')
-          }}
-        </p>
-        <p
-          v-if="session.workingMemory.value?.facts?.length"
-          class="hint"
-          data-testid="working-memory-facts"
-        >
-          {{ t('workingMemory.facts') }}：{{
-            session.workingMemory.value.facts
-              .map(
-                (fact) =>
-                  `${fact.kind}:${fact.id}${fact.revisionOrDigest ? '@' + fact.revisionOrDigest : ''}`,
-              )
-              .join(' · ')
-          }}
-        </p>
-        <p
-          v-if="session.workingMemory.value?.layers?.length"
-          class="hint"
-          data-testid="working-memory-layers"
-        >
-          {{ t('workingMemory.layers') }}：{{ session.workingMemory.value.layers.join(' · ') }}
-        </p>
-        <p
-          v-if="session.workingMemory.value?.dependencyKeys?.length"
-          class="hint"
-          data-testid="working-memory-dependencies"
-        >
-          {{ t('workingMemory.dependencies') }}：{{
-            session.workingMemory.value.dependencyKeys.join(' · ')
-          }}
-        </p>
-        <p
-          v-if="session.workingMemory.value?.evidenceRefs?.length"
-          class="hint"
-          data-testid="working-memory-evidence"
-        >
-          {{ t('workingMemory.evidence') }}：{{
-            session.workingMemory.value.evidenceRefs.join(' · ')
-          }}
-        </p>
-        <form class="working-memory-form" @submit.prevent="saveWorkingGoal">
-          <Input
-            v-model="workingGoalDraft"
-            data-testid="working-memory-goal"
-            :placeholder="t('workingMemory.goalPlaceholder')"
-          />
-          <Button
-            size="sm"
-            type="submit"
-            variant="secondary"
-            data-testid="working-memory-save"
-            :disabled="!workingGoalDraft.trim() || session.sending.value"
-            >{{ t('workingMemory.saveGoal') }}</Button
-          >
-        </form>
-      </section>
+        v-model="workingGoalDraft"
+        :memory="session.workingMemory.value"
+        :busy="session.sending.value || savingWorkingGoal"
+        @save="saveWorkingGoal"
+      />
     </div>
 
     <WorkbenchFrame
@@ -1104,7 +975,14 @@ onMounted(async () => {
               >
                 <p v-if="turn.text">{{ turn.text }}</p>
                 <p v-else-if="turn.role === 'assistant'">{{ t('chat.noAnswer') }}</p>
-                <p v-if="turn.error">{{ t('chat.toolError') }}：{{ turn.error }}</p>
+                <p v-if="turn.error">
+                  {{
+                    turn.errorLanguage === locale && turn.errorMessage
+                      ? turn.errorMessage
+                      : t('presentation.failure')
+                  }}
+                  <code>{{ turn.error }}</code>
+                </p>
                 <p v-if="turn.artifactError">
                   {{ t('chat.artifactFailed') }}：{{ turn.artifactError }}
                 </p>
@@ -1167,7 +1045,7 @@ onMounted(async () => {
                     {{ t('desktop.refusedWrite') }}
                   </p>
                   <ProposalApplication
-                    v-if="turn.proposal.generation && !mock"
+                    v-if="turn.proposal.generation"
                     :proposal="turn.proposal"
                     :read-only="
                       session.context.value.approval === 'read_only' ||
@@ -1208,7 +1086,7 @@ onMounted(async () => {
                     >
                   </template>
                   <p v-else-if="applied[turn.proposal.id]">
-                    {{ mock ? t('preview.boundary') : t('task.written') }}
+                    {{ t('task.written') }}
                     {{ applied[turn.proposal.id]?.join('、') }}
                   </p>
                 </section>
@@ -1223,13 +1101,7 @@ onMounted(async () => {
                     r{{ turn.knowledgeContext.expertRef.revision }}
                   </h3>
                   <p>
-                    {{
-                      t(
-                        mock || turn.status === 'mock_completed'
-                          ? 'knowledgeContext.mock'
-                          : 'knowledgeContext.provided',
-                      )
-                    }}
+                    {{ t('knowledgeContext.provided') }}
                   </p>
                   <p>{{ t('knowledgeContext.excerpts') }}</p>
                   <p v-if="turn.knowledgeContext.status === 'no_matches'">
@@ -1257,7 +1129,7 @@ onMounted(async () => {
                     }}
                   </h3>
                   <p>{{ t('skill.evidence') }}</p>
-                  <p v-if="mock || turn.status === 'mock_completed'">{{ t('skill.mock') }}</p>
+
                   <code>{{ turn.skillContext.skillRef.digest }}</code>
                   <pre>{{ turn.skillContext.instructions }}</pre>
                   <div v-for="resource in turn.skillContext.resources" :key="resource.path">
@@ -1266,43 +1138,7 @@ onMounted(async () => {
                   </div>
                   <p>{{ t('skill.dependencies') }}: {{ turn.skillContext.dependencies }}</p>
                 </section>
-                <section v-if="turn.contextBudget" data-testid="turn-context-budget">
-                  <h3>{{ t('contextBudget.title') }}</h3>
-                  <p>
-                    {{ t('contextBudget.used') }} {{ turn.contextBudget.usedChars }} ·
-                    {{ t('contextBudget.remaining') }} {{ turn.contextBudget.remainingChars }} ·
-                    {{ t('contextBudget.reserve') }} {{ turn.contextBudget.outputReserve }}
-                  </p>
-                  <p>
-                    {{ t('contextBudget.metering') }}：{{
-                      turn.contextBudget.metering === 'UNKNOWN'
-                        ? t('contextBudget.unknown')
-                        : t('contextBudget.charEstimate')
-                    }}
-                  </p>
-                  <p v-if="includedSourceSummary(turn.contextBudget)">
-                    {{ t('contextBudget.sources') }}：{{
-                      includedSourceSummary(turn.contextBudget)
-                    }}
-                  </p>
-                  <div
-                    v-if="turn.contextBudget.notes.length"
-                    class="context-budget-notes"
-                    data-testid="turn-context-budget-notes"
-                  >
-                    <span class="context-budget-notes__label"
-                      >{{ t('contextBudget.notes') }}：</span
-                    >
-                    <Badge
-                      v-for="note in turn.contextBudget.notes"
-                      :key="note"
-                      class="context-budget-notes__badge"
-                      :tone="contextBudgetNoteTone(note)"
-                      :label="note"
-                      :data-testid="`context-budget-note-${note}`"
-                    />
-                  </div>
-                </section>
+                <TurnContextDetails :budget="turn.contextBudget" :artifacts="turn.artifacts" />
                 <Feedback
                   v-if="
                     turn.knowledgeMemoryCleared &&
@@ -1310,19 +1146,8 @@ onMounted(async () => {
                     !session.contextMemoryCleared.value
                   "
                   tone="info"
-                  >{{
-                    t(
-                      mock || turn.status === 'mock_completed'
-                        ? 'knowledgeContext.mock'
-                        : 'knowledgeContext.cleared',
-                    )
-                  }}</Feedback
+                  >{{ t('knowledgeContext.cleared') }}</Feedback
                 >
-                <ul v-if="turn.artifacts.length">
-                  <li v-for="artifact in turn.artifacts" :key="artifact.sha256">
-                    {{ artifact.kind }} · {{ artifact.sizeBytes }} · {{ artifact.sha256 }}
-                  </li>
-                </ul>
               </li>
             </ol>
 
@@ -1351,8 +1176,8 @@ onMounted(async () => {
               :disabled="
                 session.sending.value ||
                 !session.draft.value.trim() ||
-                (!mock &&
-                  (workbench.executionMode === 'agent' || workbench.executionMode === 'plan'))
+                workbench.executionMode === 'agent' ||
+                workbench.executionMode === 'plan'
               "
               @click="sendTask"
               >{{ t('desktop.retrySend') }}</Button
@@ -1385,10 +1210,10 @@ onMounted(async () => {
               v-if="session.contextMemoryCleared.value"
               data-testid="context-cleared"
               tone="info"
-              >{{ t(mock ? 'skill.mock' : 'skill.cleared') }}</Feedback
+              >{{ t('skill.cleared') }}</Feedback
             >
             <Feedback v-else-if="session.knowledgeMemoryCleared.value" tone="info">{{
-              t(mock ? 'knowledgeContext.mock' : 'knowledgeContext.cleared')
+              t('knowledgeContext.cleared')
             }}</Feedback>
             <Feedback v-if="session.failure.value.startsWith('skill-')" tone="warning">{{
               t('skill.' + session.failure.value.slice('skill-'.length))
@@ -1463,7 +1288,6 @@ onMounted(async () => {
               :draft="session.draft.value"
               :tool-mode="session.toolMode.value"
               :active="props.active"
-              :preview="mock"
               :refreshing-models="modelsRefreshing"
               :model-options-available="modelChoices.length > 0"
               :model-label="selectedModel ? selectedModel.model : ''"
@@ -1551,7 +1375,7 @@ onMounted(async () => {
               >
               <template #tools>
                 <div
-                  v-if="!mock && session.conversationId.value"
+                  v-if="session.conversationId.value"
                   class="chat-tool-settings"
                   data-testid="chat-tool-settings"
                 >
@@ -1601,7 +1425,7 @@ onMounted(async () => {
                   t('authUi.planUsage')
                 }}</small>
               </template>
-              <template v-if="!mock && !selectedModel" #status>
+              <template v-if="!selectedModel" #status>
                 <p class="hint" data-testid="send-needs-model">
                   {{ t('desktop.sendNeedsModel') }}
                   <a
@@ -1635,12 +1459,12 @@ onMounted(async () => {
                   :aria-label="t('chat.send')"
                   :title="t('chat.send')"
                   :disabled="
-                    (!mock &&
-                      (workbench.executionMode === 'agent' ||
-                        workbench.executionMode === 'plan')) ||
+                    workbench.executionMode === 'agent' ||
+                    workbench.executionMode === 'plan' ||
                     session.expired.value ||
                     archived ||
                     session.reconnecting.value ||
+                    session.changingConnection.value ||
                     session.checkingConversation.value ||
                     session.sessionUnavailable.value ||
                     session.opening.value ||
@@ -1668,11 +1492,16 @@ onMounted(async () => {
                 type="button"
                 variant="secondary"
                 @click="session.confirmConnectionChange()"
+                :disabled="session.changingConnection.value"
                 >{{ t('chat.confirmTarget') }}</Button
               >
-              <Button type="button" variant="secondary" @click="session.cancelConnectionChange()">{{
-                t('chat.cancelTarget')
-              }}</Button>
+              <Button
+                type="button"
+                variant="secondary"
+                :disabled="session.changingConnection.value"
+                @click="session.cancelConnectionChange()"
+                >{{ t('chat.cancelTarget') }}</Button
+              >
             </Feedback>
           </form>
           <SessionPanel
@@ -1862,46 +1691,6 @@ onMounted(async () => {
 .session-tools .shell-tool {
   white-space: nowrap;
 }
-.working-memory {
-  display: grid;
-  gap: 6px;
-  width: 100%;
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface-2, var(--panel-bg));
-}
-.working-memory h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.4;
-}
-.working-memory > .hint {
-  margin: 0;
-  max-width: 72ch;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.working-memory-form {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
-  align-items: center;
-  margin-top: 4px;
-}
-.working-memory-form :deep(.eap-input) {
-  flex: 1 1 auto;
-  width: auto;
-  max-width: none;
-  min-width: 0;
-}
-.working-memory-form :deep(.eap-button) {
-  flex: 0 0 auto;
-}
-
 @media (max-width: 760px) {
   .live-utilities {
     padding: 8px 12px 10px;
@@ -1913,12 +1702,6 @@ onMounted(async () => {
   .session-tools {
     max-width: 100%;
     margin-left: 0;
-    flex-wrap: wrap;
-  }
-  .working-memory {
-    max-width: none;
-  }
-  .working-memory-form {
     flex-wrap: wrap;
   }
 }

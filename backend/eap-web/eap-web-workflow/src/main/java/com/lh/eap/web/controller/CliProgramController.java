@@ -1,4 +1,5 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.application.service.TrustedToolCatalogService;
 
 import com.lh.eap.application.service.CliProgramService;
 import com.lh.eap.domain.model.CliOperation;
@@ -14,8 +15,8 @@ import org.springframework.web.bind.annotation.*;
 public class CliProgramController {
     private final CliProgramService service;
     private final Path workspace;
-    private final com.lh.eap.application.service.TrustedToolCatalogService tools;
-    public CliProgramController(CliProgramService service, Path workspace, com.lh.eap.application.service.TrustedToolCatalogService tools) {
+    private final TrustedToolCatalogService tools;
+    public CliProgramController(CliProgramService service, Path workspace, TrustedToolCatalogService tools) {
         this.service = service; this.workspace = workspace; this.tools = tools;
     }
     @GetMapping public Map<String, Object> list() { return Map.of("items", service.list()); }

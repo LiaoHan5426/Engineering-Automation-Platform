@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.WorkspaceErrors;
 
 import com.lh.eap.config.RuntimeWorkspace;
 import java.nio.file.*;
@@ -14,18 +15,18 @@ public final class WorkspaceFilesService {
     public WorkspaceFilesService(RuntimeWorkspace runtime) { this.runtime = runtime; }
     public Listing list(String requested) {
         String relative = requested == null ? "" : requested.replace('\\', '/');
-        if (!runtime.root().allowed()) return denied(relative, "AUTHORIZED_ROOT_MISSING");
+        if (!runtime.root().allowed()) return denied(relative, WorkspaceErrors.AUTHORIZED_ROOT_MISSING.code());
         try {
             Path part = Path.of(relative);
-            if (part.isAbsolute() || relative.contains(":")) return denied(relative, "INVALID_DIRECTORY_PATH");
-            for (Path segment : part) if (segment.toString().equals("..") || segment.toString().startsWith(".") || EXCLUDED.contains(segment.toString())) return denied(relative, "INVALID_DIRECTORY_PATH");
+            if (part.isAbsolute() || relative.contains(":")) return denied(relative, WorkspaceErrors.INVALID_DIRECTORY_PATH.code());
+            for (Path segment : part) if (segment.toString().equals("..") || segment.toString().startsWith(".") || EXCLUDED.contains(segment.toString())) return denied(relative, WorkspaceErrors.INVALID_DIRECTORY_PATH.code());
             Path workspace = runtime.workspace().toRealPath(), root = runtime.root().path().toRealPath();
             Path directory = workspace.resolve(part).normalize();
-            if (!workspace.startsWith(root) || !directory.startsWith(workspace)) return denied(relative, "OUTSIDE_AUTHORIZED_ROOT");
+            if (!workspace.startsWith(root) || !directory.startsWith(workspace)) return denied(relative, WorkspaceErrors.OUTSIDE_AUTHORIZED_ROOT.code());
             Path cursor = workspace;
-            for (Path segment : part) { cursor = cursor.resolve(segment); if (Files.isSymbolicLink(cursor)) return denied(relative, "SYMLINK_NOT_ALLOWED"); }
-            if (!Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) return denied(relative, "DIRECTORY_NOT_FOUND");
-            if (!directory.toRealPath().startsWith(root)) return denied(relative, "OUTSIDE_AUTHORIZED_ROOT");
+            for (Path segment : part) { cursor = cursor.resolve(segment); if (Files.isSymbolicLink(cursor)) return denied(relative, WorkspaceErrors.SYMLINK_NOT_ALLOWED.code()); }
+            if (!Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) return denied(relative, WorkspaceErrors.DIRECTORY_NOT_FOUND.code());
+            if (!directory.toRealPath().startsWith(root)) return denied(relative, WorkspaceErrors.OUTSIDE_AUTHORIZED_ROOT.code());
             List<Entry> entries = new ArrayList<>(); boolean truncated = false;
             try (var stream = Files.newDirectoryStream(directory)) {
                 for (Path file : stream) {
@@ -37,7 +38,7 @@ public final class WorkspaceFilesService {
             }
             entries.sort(Comparator.comparing(Entry::directory).reversed().thenComparing(Entry::name));
             return new Listing(relative, List.copyOf(entries), truncated, "");
-        } catch (Exception failure) { return denied(relative, "DIRECTORY_UNAVAILABLE"); }
+        } catch (Exception failure) { return denied(relative, WorkspaceErrors.DIRECTORY_UNAVAILABLE.code()); }
     }
     private static Listing denied(String path, String denial) { return new Listing(path, List.of(), false, denial); }
 }

@@ -1,6 +1,18 @@
 <script setup lang="ts">
+import { GitErrors } from '@eap/runtime-client'
+import { CliProgramErrors } from '@eap/runtime-client'
+import { WorkspaceErrors } from '@eap/runtime-client'
+import { ExecutionErrors } from '@eap/runtime-client'
+import { isToolExecutionStatusActive } from '@eap/runtime-client'
+
+import { hasWireValue } from '@eap/runtime-client'
+
+import { ToolExecutionStatus } from '@eap/runtime-client'
+
+import { ToolErrors } from '@eap/runtime-client'
+
 import { computed, onActivated, onDeactivated, onBeforeUnmount, onMounted, ref } from 'vue'
-import axios from 'axios'
+import { isRequestError } from '@eap/request'
 import {
   runtimeApi,
   type GitExecutionOperation,
@@ -29,21 +41,27 @@ const scopeUnavailable = computed(() => readiness.value?.scopeAccessible === fal
 const authorizationBlocked = computed(() => readiness.value?.authorized === false)
 const environmentHint = computed(() => {
   const reason = readiness.value?.authorized === false ? readiness.value.reason : errorDetail.value
-  if (reason === 'TOOL_EXECUTION_STORE_UNAVAILABLE') return t('storeUnavailable')
-  if (reason === 'AUTHORIZED_ROOT_MISSING' || reason === 'WORKSPACE_CHANGED')
-    return t('workspaceUnavailable')
-  if (reason === 'CAPABILITY_DISABLED') return t('operationDisabled')
+  if (reason === ToolErrors.TOOL_EXECUTION_STORE_UNAVAILABLE) return t('storeUnavailable')
   if (
-    [
-      'BINARY_MISSING',
-      'CLI_BINDING_UNAVAILABLE',
-      'CLI_PROGRAM_BINDING_CONFLICT',
-      'TOOL_BINDING_CHANGED',
-      'GIT_STATUS_HANDLER_MISSING',
-      'GIT_DIFF_HANDLER_MISSING',
-      'GIT_STATUS_CAPABILITY_MISSING',
-      'GIT_DIFF_CAPABILITY_MISSING',
-    ].includes(reason)
+    reason === WorkspaceErrors.AUTHORIZED_ROOT_MISSING ||
+    reason === WorkspaceErrors.WORKSPACE_CHANGED
+  )
+    return t('workspaceUnavailable')
+  if (reason === ToolErrors.CAPABILITY_DISABLED) return t('operationDisabled')
+  if (
+    hasWireValue(
+      [
+        ExecutionErrors.BINARY_MISSING,
+        CliProgramErrors.CLI_BINDING_UNAVAILABLE,
+        CliProgramErrors.CLI_PROGRAM_BINDING_CONFLICT,
+        ToolErrors.TOOL_BINDING_CHANGED,
+        GitErrors.GIT_STATUS_HANDLER_MISSING,
+        GitErrors.GIT_DIFF_HANDLER_MISSING,
+        GitErrors.GIT_STATUS_CAPABILITY_MISSING,
+        GitErrors.GIT_DIFF_CAPABILITY_MISSING,
+      ],
+      reason,
+    )
   )
     return t('bindingUnavailable')
   return ''
@@ -67,11 +85,10 @@ let disposed = false
 let suspended = false
 let requestId: string | null = null
 let generation = 0
-const active = (row: ToolExecution) => ['CREATED', 'RUNNING', 'CANCELLING'].includes(row.status)
+const active = (row: ToolExecution) => isToolExecutionStatusActive(row.status)
 const blocking = computed(() =>
-  records.value.some((row) => active(row) || row.status === 'UNKNOWN'),
+  records.value.some((row) => active(row) || row.status === ToolExecutionStatus.UNKNOWN),
 )
-const mock = import.meta.env.MODE === 'mock'
 const elapsed = computed(() =>
   selected.value
     ? Math.max(
@@ -85,7 +102,7 @@ const elapsed = computed(() =>
 
 function accept(row: ToolExecution) {
   if (selected.value?.id !== row.id) processReview.value = null
-  if (row.status !== 'UNKNOWN' || selected.value?.id !== row.id) {
+  if (row.status !== ToolExecutionStatus.UNKNOWN || selected.value?.id !== row.id) {
     pendingReview.value = null
     reviewNote.value = ''
     reviewChecked.value = false
@@ -97,13 +114,13 @@ function accept(row: ToolExecution) {
   uncertain.value = false
   refusal.value = null
   errorDetail.value = ''
-  if (!active(row) && row.status !== 'UNKNOWN') requestId = null
+  if (!active(row) && row.status !== ToolExecutionStatus.UNKNOWN) requestId = null
 }
 function failed(error: unknown, starting = false) {
   if (disposed || suspended) return
   uncertain.value = true
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data as { detail?: string; execution?: ToolExecution } | undefined
+  if (isRequestError(error)) {
+    const data = error.response?.data as { code?: string; execution?: ToolExecution } | undefined
     if (data?.execution) {
       accept(data.execution)
       return
@@ -114,7 +131,7 @@ function failed(error: unknown, starting = false) {
       selected.value = null
       requestId = null
     }
-    errorDetail.value = data?.detail ?? 'TRANSPORT_UNCONFIRMED'
+    errorDetail.value = data?.code ?? 'TRANSPORT_UNCONFIRMED'
   } else errorDetail.value = 'TRANSPORT_UNCONFIRMED'
 }
 function schedule() {
@@ -166,7 +183,8 @@ async function recheck() {
     }
     records.value = response.items
     const row =
-      response.items.find((item) => active(item) || item.status === 'UNKNOWN') ?? response.items[0]
+      response.items.find((item) => active(item) || item.status === ToolExecutionStatus.UNKNOWN) ??
+      response.items[0]
     uncertain.value = false
     refusal.value = null
     if (row) accept(row)
@@ -200,7 +218,7 @@ async function openExecution(id: string) {
     }
   }
 }
-async function start(mockOutcome?: string) {
+async function start() {
   if (
     busy.value ||
     blocking.value ||
@@ -215,7 +233,6 @@ async function start(mockOutcome?: string) {
   try {
     const row = await runtimeApi.startGitOperationExecution(props.operation, requestId, {
       signal: controller.signal,
-      mockOutcome: mock ? mockOutcome : undefined,
     })
     if (!disposed && !suspended && revision === generation) accept(row)
   } catch (error) {
@@ -232,7 +249,7 @@ async function cancel() {
   if (
     !row ||
     !active(row) ||
-    row.status === 'CANCELLING' ||
+    row.status === ToolExecutionStatus.CANCELLING ||
     busy.value ||
     uncertain.value ||
     disposed ||
@@ -262,7 +279,7 @@ async function inspectProcesses() {
   const row = selected.value
   if (
     !row ||
-    !['UNKNOWN', 'CLOSED_UNKNOWN'].includes(row.status) ||
+    !hasWireValue([ToolExecutionStatus.UNKNOWN, ToolExecutionStatus.CLOSED_UNKNOWN], row.status) ||
     scopeUnavailable.value ||
     busy.value ||
     disposed ||
@@ -288,8 +305,8 @@ async function inspectProcesses() {
       processReview.value = result
   } catch (error) {
     if (!disposed && !suspended && revision === generation)
-      processReviewError.value = axios.isAxiosError(error)
-        ? ((error.response?.data as { detail?: string })?.detail ?? 'PROCESS_REVIEW_UNAVAILABLE')
+      processReviewError.value = isRequestError(error)
+        ? ((error.response?.data as { code?: string })?.code ?? 'PROCESS_REVIEW_UNAVAILABLE')
         : 'PROCESS_REVIEW_UNAVAILABLE'
   } finally {
     if (revision === generation) busy.value = false
@@ -297,7 +314,13 @@ async function inspectProcesses() {
 }
 function openReview() {
   const row = selected.value
-  if (!row || row.status !== 'UNKNOWN' || busy.value || uncertain.value || !reviewValid.value)
+  if (
+    !row ||
+    row.status !== ToolExecutionStatus.UNKNOWN ||
+    busy.value ||
+    uncertain.value ||
+    !reviewValid.value
+  )
     return
   reviewDialog.value = pendingReview.value ?? {
     id: row.id,
@@ -324,9 +347,9 @@ async function resolveUnknown() {
     if (!disposed && !suspended && revision === generation) accept(row)
   } catch (error) {
     if (revision !== generation || disposed || suspended) return
-    if (axios.isAxiosError(error) && [400, 403, 404, 409].includes(error.response?.status ?? 0)) {
+    if (isRequestError(error) && [400, 403, 404, 409].includes(error.response?.status ?? 0)) {
       reviewError.value =
-        (error.response?.data as { detail?: string })?.detail ?? 'UNKNOWN_REVIEW_REJECTED'
+        (error.response?.data as { code?: string })?.code ?? 'UNKNOWN_REVIEW_REJECTED'
       pendingReview.value = null
     } else failed(error)
   } finally {
@@ -381,7 +404,7 @@ onBeforeUnmount(() => {
         variant="secondary"
         size="sm"
         :data-testid="testId('cancel')"
-        :disabled="busy || uncertain || selected.status === 'CANCELLING'"
+        :disabled="busy || uncertain || selected.status === ToolExecutionStatus.CANCELLING"
         @click="cancel"
         >{{ t('cancel') }}</Button
       >
@@ -393,20 +416,6 @@ onBeforeUnmount(() => {
         @click="recheck"
         >{{ t('recheck') }}</Button
       >
-      <template v-if="mock">
-        <Button
-          v-for="scenario in ['running', 'unknown', 'timeout', 'denied']"
-          :key="scenario"
-          variant="secondary"
-          size="sm"
-          :disabled="busy || blocking || uncertain || !loaded"
-          :data-testid="
-            operation === 'git-status' ? 'trusted-git-mock-' + scenario : testId('mock-' + scenario)
-          "
-          @click="start(scenario)"
-          >{{ t(`mock${scenario[0]?.toUpperCase()}${scenario.slice(1)}`) }}</Button
-        >
-      </template>
     </div>
     <div v-if="readiness" :data-testid="testId('readiness')">
       <p class="hint">
@@ -428,7 +437,7 @@ onBeforeUnmount(() => {
     <template v-if="selected">
       <p class="hint" :data-testid="testId('summary')">
         <code>{{ selected.id }}</code> · {{ selected.programId }} / {{ selected.capabilityId }} ·
-        <Badge :tone="selected.status === 'SUCCEEDED' ? 'success' : 'warning'">{{
+        <Badge :tone="selected.status === ToolExecutionStatus.SUCCEEDED ? 'success' : 'warning'">{{
           t(selected.status)
         }}</Badge>
         · {{ t('elapsed') }} {{ elapsed }} ms · {{ t('observed') }} {{ observedAt }}
@@ -438,27 +447,43 @@ onBeforeUnmount(() => {
         <code>{{ selected.workspacePath }}</code> · <code>{{ selected.executable }}</code>
       </p>
       <Feedback
-        v-if="selected.status === 'CANCELLING'"
+        v-if="selected.status === ToolExecutionStatus.CANCELLING"
         tone="warning"
         :data-testid="testId('cancelling')"
         >{{ t('cancelPending') }}</Feedback
       >
       <Feedback
-        v-if="selected.status === 'CANCELLED'"
+        v-if="selected.status === ToolExecutionStatus.CANCELLED"
         tone="success"
         :data-testid="testId('cancelled')"
         >{{ t('CANCELLED') }} · {{ selected.exitEvidence }}</Feedback
       >
-      <Feedback v-if="selected.status === 'UNKNOWN'" tone="warning" :data-testid="testId('unknown')"
+      <Feedback
+        v-if="selected.status === ToolExecutionStatus.UNKNOWN"
+        tone="warning"
+        :data-testid="testId('unknown')"
         >{{ t('unknown') }} · {{ selected.unconfirmedReason }}</Feedback
       >
       <Feedback
-        v-if="selected.cancelRequested && ['UNKNOWN', 'CLOSED_UNKNOWN'].includes(selected.status)"
+        v-if="
+          selected.cancelRequested &&
+          hasWireValue(
+            [ToolExecutionStatus.UNKNOWN, ToolExecutionStatus.CLOSED_UNKNOWN],
+            selected.status,
+          )
+        "
         tone="warning"
         :data-testid="testId('cancel-unconfirmed')"
         >{{ t('cancelUnconfirmed') }}</Feedback
       >
-      <template v-if="['UNKNOWN', 'CLOSED_UNKNOWN'].includes(selected.status)">
+      <template
+        v-if="
+          hasWireValue(
+            [ToolExecutionStatus.UNKNOWN, ToolExecutionStatus.CLOSED_UNKNOWN],
+            selected.status,
+          )
+        "
+      >
         <Button
           variant="secondary"
           size="sm"
@@ -504,7 +529,14 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </template>
-      <template v-if="['UNKNOWN', 'CLOSED_UNKNOWN'].includes(selected.status)">
+      <template
+        v-if="
+          hasWireValue(
+            [ToolExecutionStatus.UNKNOWN, ToolExecutionStatus.CLOSED_UNKNOWN],
+            selected.status,
+          )
+        "
+      >
         <Collapse :data-testid="testId('execution-evidence')">
           <template #summary>{{ t('reviewEvidence') }}</template>
           <p class="hint">{{ t('reviewEvidenceHint') }}</p>
@@ -516,7 +548,7 @@ onBeforeUnmount(() => {
           </div>
         </Collapse>
       </template>
-      <template v-if="selected.status === 'UNKNOWN'">
+      <template v-if="selected.status === ToolExecutionStatus.UNKNOWN">
         <p class="hint">{{ t('reviewBoundary') }}</p>
         <label
           >{{ t('reviewNote') }}

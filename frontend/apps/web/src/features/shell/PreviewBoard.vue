@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { BoardTaskColumn, platformErrorCode } from '@eap/runtime-client'
+
+import { BoardErrors } from '@eap/runtime-client'
+
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { runtimeApi, type BoardTask, type BoardTaskDraft } from '@eap/runtime-client'
@@ -14,16 +18,22 @@ import {
   Tabs,
 } from '@eap/ui'
 import { IconPlus } from '@eap/ui'
-import { isAxiosError } from 'axios'
+import { isRequestError } from '@eap/request'
 import { chatBinding, workbench, type BoardColumn } from './workbench'
 import { localProjectState } from './localProjects'
-import { useMockServices } from '../../lib/serviceConfig'
+import { apiStorageScope } from '../../lib/runtimeConfig'
 import BoardRunPanel from './BoardRunPanel.vue'
 import BoardPrototypePanel from './BoardPrototypePanel.vue'
 import BoardCodeCandidates from './BoardCodeCandidates.vue'
 import { readBoardEdit, writeBoardEdit, readBoardCreate, writeBoardCreate } from './boardEdits'
 const { t } = useI18n()
-const columns: BoardColumn[] = ['planned', 'ready', 'running', 'acceptance', 'done']
+const columns: BoardColumn[] = [
+  BoardTaskColumn.PLANNED,
+  BoardTaskColumn.READY,
+  BoardTaskColumn.RUNNING,
+  BoardTaskColumn.ACCEPTANCE,
+  BoardTaskColumn.DONE,
+]
 const query = ref(''),
   selectedId = ref(''),
   creating = ref(false),
@@ -45,7 +55,9 @@ const newGoal = ref(''),
   newCriteria = ref('')
 const createRequest = ref<BoardTaskDraft | null>(null)
 const draftPriority = ref<BoardTask['priority']>('none')
-const createColumn = ref<'planned' | 'ready'>('planned')
+const createColumn = ref<typeof BoardTaskColumn.PLANNED | typeof BoardTaskColumn.READY>(
+  BoardTaskColumn.PLANNED,
+)
 const linkCurrentSession = ref(true)
 const pendingAction = ref<(() => void) | null>(null)
 const activeSessionId = computed(() => chatBinding.value?.activeId?.trim() || '')
@@ -62,7 +74,7 @@ function persistEdit() {
   writeBoardEdit(
     draftStore,
     task.id,
-    useMockServices,
+    apiStorageScope,
     dirty.value
       ? {
           notes: draftNotes.value,
@@ -96,11 +108,13 @@ function closeDetail() {
 function discardEdits() {
   const action = pendingAction.value
   pendingAction.value = null
-  if (selected.value) writeBoardEdit(draftStore, selected.value.id, useMockServices, null)
+  if (selected.value) writeBoardEdit(draftStore, selected.value.id, apiStorageScope, null)
   useLatest()
   action?.()
 }
-function startCreate(column: 'planned' | 'ready' = 'planned') {
+function startCreate(
+  column: typeof BoardTaskColumn.PLANNED | typeof BoardTaskColumn.READY = BoardTaskColumn.PLANNED,
+) {
   guarded(() => {
     if (!createRequest.value) createColumn.value = column
     creating.value = true
@@ -113,15 +127,11 @@ function selectTask(id: string) {
       selectedId.value = id
     })
 }
-function failureCode(error: unknown): string {
-  if (!isAxiosError(error)) return ''
-  return String(error.response?.data?.detail ?? error.response?.data?.error ?? '')
-}
 async function mutationFailed(error: unknown) {
-  const code = failureCode(error)
-  if (code.includes('BOARD_PREPARATION_REQUIRED'))
+  const code = platformErrorCode(error)
+  if (code === BoardErrors.BOARD_PREPARATION_REQUIRED)
     note.value = t('desktop.boardPreparationRequired')
-  else if (isAxiosError(error) && error.response?.status === 409) {
+  else if (isRequestError(error) && error.response?.status === 409) {
     note.value = t('desktop.boardConflict')
     await load()
     // Keep the original draft revision until the user explicitly resolves the conflict.
@@ -135,7 +145,7 @@ function useLatest() {
   draftGoal.value = task.goal
   draftCriteria.value = task.acceptanceCriteria
   draftRevision.value = task.revision
-  writeBoardEdit(draftStore, task.id, useMockServices, null)
+  writeBoardEdit(draftStore, task.id, apiStorageScope, null)
 }
 function keepDraft() {
   if (selected.value) {
@@ -205,7 +215,7 @@ watch(selectedId, () => {
   prototypePending.value = false
   codePending.value = false
   const task = selected.value
-  const cached = task ? readBoardEdit(draftStore, task.id, useMockServices) : null
+  const cached = task ? readBoardEdit(draftStore, task.id, apiStorageScope) : null
   draftNotes.value = cached?.notes ?? task?.notes ?? ''
   draftPriority.value = cached?.priority ?? task?.priority ?? 'none'
   draftGoal.value = cached?.goal ?? task?.goal ?? ''
@@ -227,7 +237,7 @@ watch(
   projectId,
   () => {
     rows.value = []
-    createRequest.value = readBoardCreate(draftStore, projectId.value, useMockServices)
+    createRequest.value = readBoardCreate(draftStore, projectId.value, apiStorageScope)
     if (createRequest.value) {
       title.value = createRequest.value.title
       newGoal.value = createRequest.value.goal
@@ -259,9 +269,9 @@ async function move(id: string, column: BoardColumn) {
   if (!task || task.column === column) return
   if (!task.allowedColumns.includes(column)) {
     note.value = t(
-      column === 'ready'
+      column === BoardTaskColumn.READY
         ? 'desktop.boardPreparationRequired'
-        : column === 'running'
+        : column === BoardTaskColumn.RUNNING
           ? 'desktop.boardNoRun'
           : 'desktop.boardEvidence',
     )
@@ -309,7 +319,7 @@ async function create() {
   if (!title.value.trim() || busy.value) return
   if (
     !createRequest.value &&
-    createColumn.value === 'ready' &&
+    createColumn.value === BoardTaskColumn.READY &&
     (!newGoal.value.trim() || !newCriteria.value.trim())
   ) {
     note.value = t('desktop.boardPreparationRequired')
@@ -325,7 +335,7 @@ async function create() {
     acceptanceCriteria: newCriteria.value,
     requestId: crypto.randomUUID(),
   }
-  if (!writeBoardCreate(draftStore, projectId.value, useMockServices, createRequest.value)) {
+  if (!writeBoardCreate(draftStore, projectId.value, apiStorageScope, createRequest.value)) {
     createRequest.value = null
     busy.value = false
     note.value = t('desktop.boardCreateStorageFailed')
@@ -336,7 +346,7 @@ async function create() {
     const task = await runtimeApi.createBoardTask({ ...createRequest.value })
     rows.value = [task, ...rows.value.filter((item) => item.id !== task.id)]
     selectedId.value = task.id
-    writeBoardCreate(draftStore, projectId.value, useMockServices, null)
+    writeBoardCreate(draftStore, projectId.value, apiStorageScope, null)
     createRequest.value = null
     title.value = ''
     newGoal.value = ''
@@ -345,12 +355,12 @@ async function create() {
     note.value = task.sessionId ? t('desktop.boardCreatedLinked') : t('desktop.boardCreated')
   } catch (error) {
     if (
-      isAxiosError(error) &&
+      isRequestError(error) &&
       error.response &&
       error.response.status >= 400 &&
       error.response.status < 500
     ) {
-      writeBoardCreate(draftStore, projectId.value, useMockServices, null)
+      writeBoardCreate(draftStore, projectId.value, apiStorageScope, null)
       createRequest.value = null
       await mutationFailed(error)
     } else note.value = t('desktop.boardCreateUncertain')
@@ -373,7 +383,7 @@ function open(task: BoardTask) {
       ]
         .filter(Boolean)
         .join('\n\n'),
-      ...(task.column === 'ready' && !task.preparationIssues.length
+      ...(task.column === BoardTaskColumn.READY && !task.preparationIssues.length
         ? {
             taskRef: { projectId: task.projectId, taskId: task.id, revision: task.revision },
             prototypeVersionId: task.prototypeVersionId ?? '',

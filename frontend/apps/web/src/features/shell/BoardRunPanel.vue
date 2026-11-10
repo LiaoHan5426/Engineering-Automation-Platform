@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { MissionExecutionStatus } from '@eap/runtime-client'
+import { isMissionExecutionStatusActive } from '@eap/runtime-client'
+
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { isAxiosError } from 'axios'
+import { isRequestError } from '@eap/request'
 import { Button, Badge, Collapse, ConfirmBox, Select } from '@eap/ui'
 import {
   runtimeApi,
@@ -9,7 +12,7 @@ import {
   type BoardRunStart,
   type BoardTask,
 } from '@eap/runtime-client'
-import { useMockServices } from '../../lib/serviceConfig'
+import { apiStorageScope } from '../../lib/runtimeConfig'
 import PrototypeVersionViewer from './PrototypeVersionViewer.vue'
 import BoardRunReview from './BoardRunReview.vue'
 import BoardRunVerification from './BoardRunVerification.vue'
@@ -41,17 +44,13 @@ const store = (() => {
   }
 })()
 const missionOpen = computed(
-  () =>
-    !!page.value?.items.some((run) =>
-      ['CREATED', 'RUNNING', 'CANCELLING'].includes(run.execution.status),
-    ),
+  () => !!page.value?.items.some((run) => isMissionExecutionStatusActive(run.execution.status)),
 )
 const open = computed(() => props.task.executionActive || missionOpen.value)
 const pollingNeeded = computed(() =>
   page.value?.items.some(
     (run) =>
-      ['CREATED', 'RUNNING', 'CANCELLING'].includes(run.execution.status) &&
-      !run.execution.unconfirmedReason,
+      isMissionExecutionStatusActive(run.execution.status) && !run.execution.unconfirmedReason,
   ),
 )
 const canStart = computed(
@@ -73,7 +72,7 @@ function stopPolling() {
   timer = undefined
 }
 function errorText(error: unknown) {
-  const code = isAxiosError(error) ? String(error.response?.data?.detail ?? '') : ''
+  const code = isRequestError(error) ? String(error.response?.data?.code ?? '') : ''
   return t(
     'boardRun.' +
       ({
@@ -101,7 +100,7 @@ async function refresh(manual = false) {
     if (!data.items.some((run) => run.execution.id === selectedRunId.value))
       selectedRunId.value = data.items[0]?.execution.id ?? ''
     if (pending.value && data.items.some((run) => run.requestId === pending.value?.requestId)) {
-      writeRunRequest(store, id, useMockServices, null)
+      writeRunRequest(store, id, apiStorageScope, null)
       pending.value = null
       note.value = t('boardRun.recovered')
     }
@@ -137,7 +136,7 @@ async function start() {
     requestId: crypto.randomUUID(),
     workspacePath: page.value.availability.workspacePath,
   }
-  if (!writeRunRequest(store, props.task.id, useMockServices, pending.value)) {
+  if (!writeRunRequest(store, props.task.id, apiStorageScope, pending.value)) {
     pending.value = null
     note.value = t('boardRun.storageFailed')
     return
@@ -148,7 +147,7 @@ async function start() {
   note.value = ''
   try {
     const launched = await runtimeApi.startBoardRun(id, { ...pending.value })
-    writeRunRequest(store, id, useMockServices, null)
+    writeRunRequest(store, id, apiStorageScope, null)
     if (current !== generation) return
     selectedRunId.value = launched.execution.id
     pending.value = null
@@ -157,12 +156,12 @@ async function start() {
   } catch (error) {
     if (current !== generation) return
     if (
-      isAxiosError(error) &&
+      isRequestError(error) &&
       error.response &&
       error.response.status >= 400 &&
       error.response.status < 500
     ) {
-      writeRunRequest(store, id, useMockServices, null)
+      writeRunRequest(store, id, apiStorageScope, null)
       pending.value = null
       note.value = errorText(error)
       emit('changed')
@@ -189,7 +188,7 @@ watch(
     loading.value = false
     starting.value = false
     confirming.value = false
-    pending.value = readRunRequest(store, props.task.id, props.task.projectId, useMockServices)
+    pending.value = readRunRequest(store, props.task.id, props.task.projectId, apiStorageScope)
     note.value = pending.value ? t('boardRun.uncertain') : ''
     void refresh()
   },
@@ -281,7 +280,9 @@ onBeforeUnmount(() => {
         {{ t('boardRun.exitCode') }}：{{ run.execution.exitCode }} ·
         {{ run.execution.exitEvidence }}
       </p>
-      <p v-if="run.execution.status === 'SUCCEEDED'">{{ t('boardRun.notAccepted') }}</p>
+      <p v-if="run.execution.status === MissionExecutionStatus.SUCCEEDED">
+        {{ t('boardRun.notAccepted') }}
+      </p>
       <div class="board-run__actions">
         <Button size="sm" data-testid="board-run-review" @click="reviewing = run">{{
           t('boardReview.open')

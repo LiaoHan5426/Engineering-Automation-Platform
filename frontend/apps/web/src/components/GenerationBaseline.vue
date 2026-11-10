@@ -21,6 +21,11 @@ const { t } = useI18n()
         SHA-256：<code>{{ generation.baseHash }}</code>
       </p>
       <p>{{ t('generation.captured') }}：{{ generation.capturedAt }}</p>
+      <ul v-if="generation.companionFiles.length" data-testid="generation-component-graph">
+        <li v-for="file in generation.companionFiles" :key="file.path">
+          <code>{{ file.path }} · {{ file.baseHash }}</code>
+        </li>
+      </ul>
       <p v-if="generation.taskBinding">
         {{ t('generation.taskBinding') }}：{{ generation.taskBinding.projectId }} ·
         {{ generation.taskBinding.taskId }} · r{{ generation.taskBinding.revision }}
@@ -44,10 +49,12 @@ const { t } = useI18n()
   gap: 8px;
   min-width: 0;
 }
+
 .generation-baseline p,
 .generation-baseline code {
   overflow-wrap: anywhere;
 }
+
 .generation-baseline code {
   font-size: 11px;
 }

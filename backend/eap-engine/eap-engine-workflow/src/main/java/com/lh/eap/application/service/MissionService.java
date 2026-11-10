@@ -1,4 +1,6 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.MissionErrors;
+import com.lh.eap.error.CommonErrors;
 
 import java.sql.SQLException;
 import java.time.Instant;
@@ -24,7 +26,7 @@ public class MissionService {
     public Mission create(UUID handoffId) {
         try {
             var handoff = handoffs.find(handoffId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "交接不存在"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,MissionErrors.HANDOFF_NOT_FOUND.code()));
             var created = shell(handoff);
             try {
                 missions.insert(created);
@@ -39,9 +41,9 @@ public class MissionService {
             throw expected;
         } catch (DataAccessException failure) {
             if ("23503".equals(sqlState(failure))) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "交接不存在");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,MissionErrors.HANDOFF_NOT_FOUND.code());
             }
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务暂不可用，请检查数据库、迁移和后端日志");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,CommonErrors.DATA_SERVICE_UNAVAILABLE.code());
         }
     }
 
@@ -50,7 +52,7 @@ public class MissionService {
     }
 
     public Mission detail(UUID id) {
-        return missions.find(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "任务壳不存在"));
+        return missions.find(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,MissionErrors.MISSION_NOT_FOUND.code()));
     }
 
     private static Mission shell(Handoff handoff) {

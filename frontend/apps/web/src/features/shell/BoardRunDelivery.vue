@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { BoardDeliveryDecision } from '@eap/runtime-client'
+
+import { BoardDeliveryErrors, BoardErrors } from '@eap/runtime-client'
+
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { Dialog, Button, Input, Textarea, ConfirmBox, Collapse, Checkbox } from '@eap/ui'
 import {
@@ -9,7 +13,7 @@ import {
   type BoardDeliveryPage,
   type BoardAppliedCandidate,
 } from '@eap/runtime-client'
-import { isAxiosError } from 'axios'
+import { isRequestError } from '@eap/request'
 import {
   readDeliveryRequest,
   writeDeliveryRequest,
@@ -17,7 +21,7 @@ import {
   validApplicationRef,
   type PendingDeliveryRequest,
 } from './boardDeliveryRequest'
-import { useMockServices } from '../../lib/serviceConfig'
+import { apiStorageScope } from '../../lib/runtimeConfig'
 import { useI18n } from 'vue-i18n'
 import BoardAppliedCandidates from './BoardAppliedCandidates.vue'
 const props = defineProps<{ task: BoardTask; run: BoardRun; disabled?: boolean }>()
@@ -42,25 +46,23 @@ function selectApplication(candidate: BoardAppliedCandidate) {
   linkApplication.value = true
   conversationId.value = candidate.conversationId
   proposalId.value = candidate.proposalId
-  pathsText.value = candidate.targetPath
+  pathsText.value = candidate.paths.join('\n')
 }
 const applicationValid = computed(
   () =>
     !linkApplication.value ||
-    (validApplicationRef(applicationRef.value) && paths.value.length === 1),
+    (validApplicationRef(applicationRef.value) &&
+      paths.value.length >= 1 &&
+      paths.value.length <= 8),
 )
 const pending = ref<PendingDeliveryRequest | null>(null),
   fresh = ref(false)
 const criteriaConfirmed = ref(false),
   previewConfirmed = ref(false),
   comment = ref('')
-const deciding = ref<'ACCEPT' | 'REJECT' | null>(null)
+const deciding = ref<BoardDeliveryDecision | null>(null)
 const linkedProposalStatus = ref<string | null>(null)
 async function loadLinkedProposalStatus(conversation: string, proposal: string) {
-  if (useMockServices) {
-    linkedProposalStatus.value = null
-    return
-  }
   try {
     const state = await runtimeApi.codeProposal(conversation, proposal)
     linkedProposalStatus.value = state.status
@@ -152,7 +154,7 @@ async function load(manual = false, confirmedRequestId?: string) {
       confirmedRequestId === pending.value.requestId &&
       savedRequestId === confirmedRequestId
     ) {
-      writeDeliveryRequest(store, props.task.id, props.run.execution.id, useMockServices, null)
+      writeDeliveryRequest(store, props.task.id, props.run.execution.id, apiStorageScope, null)
       pending.value = null
       note.value = t('boardDelivery.recovered')
       emit('changed')
@@ -160,11 +162,11 @@ async function load(manual = false, confirmedRequestId?: string) {
     return true
   } catch (error) {
     if (current === generation) {
-      const missing = isAxiosError(error) && error.response?.status === 404
+      const missing = isRequestError(error) && error.response?.status === 404
       note.value = missing
         ? t('boardDelivery.blocked') +
           ' · ' +
-          String(error.response?.data?.detail ?? 'BOARD_RUN_NOT_FOUND')
+          String(error.response?.data?.code ?? BoardErrors.BOARD_RUN_NOT_FOUND)
         : t('boardDelivery.loadFailed')
     }
   } finally {
@@ -184,7 +186,7 @@ async function submit() {
     ...(linkApplication.value ? { applicationRef: { ...applicationRef.value } } : {}),
   }
   if (
-    !writeDeliveryRequest(store, props.task.id, props.run.execution.id, useMockServices, request)
+    !writeDeliveryRequest(store, props.task.id, props.run.execution.id, apiStorageScope, request)
   ) {
     note.value = t('boardDelivery.storageFailed')
     return
@@ -195,7 +197,11 @@ async function submit() {
 async function decide() {
   const decision = deciding.value
   deciding.value = null
-  if (!record.value || (decision === 'ACCEPT' ? !canAccept.value : !canReject.value) || !decision)
+  if (
+    !record.value ||
+    (decision === BoardDeliveryDecision.ACCEPT ? !canAccept.value : !canReject.value) ||
+    !decision
+  )
     return
   const requestId = crypto.randomUUID()
   const request: PendingDeliveryRequest = {
@@ -215,7 +221,7 @@ async function decide() {
     },
   }
   if (
-    !writeDeliveryRequest(store, props.task.id, props.run.execution.id, useMockServices, request)
+    !writeDeliveryRequest(store, props.task.id, props.run.execution.id, apiStorageScope, request)
   ) {
     note.value = t('boardDelivery.storageFailed')
     return
@@ -250,20 +256,20 @@ async function sendPending() {
   } catch (error) {
     if (current !== generation) return
     rejected =
-      isAxiosError(error) &&
+      isRequestError(error) &&
       !!error.response &&
       error.response.status >= 400 &&
       error.response.status < 500
-    if (rejected && isAxiosError(error)) {
-      const code = String(error.response?.data?.detail ?? '')
+    if (rejected && isRequestError(error)) {
+      const code = String(error.response?.data?.code ?? '')
       note.value = t('boardDelivery.rejected') + ' · ' + code
-      if (code === 'BOARD_DELIVERY_REQUEST_CONFLICT') {
+      if (code === BoardDeliveryErrors.BOARD_DELIVERY_REQUEST_CONFLICT) {
         pending.value = { ...request, rejectionCode: code }
         writeDeliveryRequest(
           store,
           props.task.id,
           props.run.execution.id,
-          useMockServices,
+          apiStorageScope,
           pending.value,
         )
       }
@@ -275,7 +281,7 @@ async function sendPending() {
         if (loaded && rejected && pending.value && !pending.value.rejectionCode) {
           criteriaConfirmed.value = false
           previewConfirmed.value = false
-          writeDeliveryRequest(store, props.task.id, props.run.execution.id, useMockServices, null)
+          writeDeliveryRequest(store, props.task.id, props.run.execution.id, apiStorageScope, null)
           pending.value = null
           emit('changed')
         }
@@ -310,7 +316,7 @@ watch(
         props.task.id,
         props.run.execution.id,
         props.task.projectId,
-        useMockServices,
+        apiStorageScope,
       )
       pathsText.value =
         pending.value && 'paths' in pending.value ? pending.value.paths.join('\n') : ''

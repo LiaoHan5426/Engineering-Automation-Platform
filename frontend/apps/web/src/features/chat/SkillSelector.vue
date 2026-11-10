@@ -12,7 +12,6 @@ import {
 const props = defineProps<{
   disabled: boolean
   blocked: boolean
-  mock: boolean
   trigger?: boolean
 }>()
 const emit = defineEmits<{ select: [ref: SkillRef, paths: string[]] }>()
@@ -144,7 +143,6 @@ defineExpose({ show, close })
   >
   <Dialog v-if="open" :title="t('skill.choose')" data-testid="skill-dialog" @close="close">
     <p>{{ t('skill.boundary') }}</p>
-    <Feedback v-if="mock">{{ t('skill.mock') }}</Feedback>
     <p v-if="loading">{{ t('skill.loading') }}</p>
     <p v-else-if="!items.length">{{ t('skill.empty') }}</p>
     <div v-for="item in items" :key="item.id + item.version">

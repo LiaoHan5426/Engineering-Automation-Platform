@@ -1,4 +1,11 @@
 package com.lh.eap.application.service;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.lh.eap.persistence.mapper.StateBindings;
+import com.lh.eap.error.BoardErrors;
+import com.lh.eap.error.CodeErrors;
+import com.lh.eap.error.CommonErrors;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lh.eap.common.SensitiveData;
@@ -18,18 +25,19 @@ public class BoardTaskService {
     public record Task(UUID id, String projectId, String title, String column, String notes,
                        String sessionId, long revision, List<String> events, String priority,
                        String goal, String acceptanceCriteria, boolean executionActive, UUID prototypeVersionId) {
+        public Task { BoardTaskColumn.fromWire(column); }
         @JsonProperty public List<String> preparationIssues() { return missing(goal, acceptanceCriteria); }
         @JsonProperty public List<String> allowedColumns() {
-            if (executionActive || !Set.of("planned", "ready").contains(column)) return List.of();
-            return preparationIssues().isEmpty() ? List.of("planned", "ready") : List.of("planned");
+            if (executionActive || !Set.of(BoardTaskColumn.PLANNED.wire(), BoardTaskColumn.READY.wire()).contains(column)) return List.of();
+            return preparationIssues().isEmpty() ? List.of(BoardTaskColumn.PLANNED.wire(), BoardTaskColumn.READY.wire()) : List.of(BoardTaskColumn.PLANNED.wire());
         }
     }
     public record Draft(String projectId, String title, String sessionId, String column,
                         String goal, String acceptanceCriteria, UUID requestId) {}
     public record Update(String projectId, long revision, String column, String notes, String priority,
                          String goal, String acceptanceCriteria) {}
-    private static final String ACTIVE = "(e.status IN ('CREATED','RUNNING','CANCELLING') OR r.verification_snapshot->>'status' IN ('QUEUED','RUNNING','UNKNOWN'))";
-    private static final String CODE_ACTIVE = "SELECT 1 FROM eap.code_proposal p JOIN eap.code_generation g ON g.id=p.generation_id WHERE p.status IN ('APPLYING','UNKNOWN') AND g.task_id=";
+    private static final String ACTIVE = "(e.status = ANY(?::text[]) OR r.verification_snapshot->>'status' = ANY(?::text[]))";
+    private static final String CODE_ACTIVE = "SELECT 1 FROM eap.code_proposal p JOIN eap.code_generation g ON g.id=p.generation_id WHERE p.status = ANY(?::text[]) AND g.task_id=";
     private static final String SELECT = "SELECT b.*, (EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=b.id AND " + ACTIVE + ") OR EXISTS (" + CODE_ACTIVE + "b.id)) AS execution_active FROM eap.board_task b";
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final RowMapper<Task> ROW = (rs, row) -> new Task(rs.getObject("id", UUID.class),
@@ -41,16 +49,16 @@ public class BoardTaskService {
 
     public List<Task> list(String projectId) {
         require(projectId, 120);
-        return jdbc.query(SELECT + " WHERE project_id=? ORDER BY created_at DESC LIMIT 200", ROW, projectId);
+        return jdbc.query(SELECT + " WHERE project_id=? ORDER BY created_at DESC LIMIT 200", ROW, StateBindings.MISSION_ACTIVE, StateBindings.VERIFICATION_BLOCKING, StateBindings.CODE_BLOCKING, projectId);
     }
 
     @Transactional public Task create(Draft draft) {
         require(draft.projectId(), 120); require(draft.title(), 200);
-        if (draft.requestId() == null) throw new IllegalArgumentException("BOARD_REQUEST_ID_REQUIRED");
+        if (draft.requestId() == null) throw new IllegalArgumentException(BoardErrors.BOARD_REQUEST_ID_REQUIRED.code());
         String sessionId = draft.sessionId() == null ? "" : draft.sessionId();
-        if (sessionId.length() > 120) throw new IllegalArgumentException("SESSION_ID_TOO_LONG");
-        String column = draft.column() == null ? "planned" : draft.column();
-        if (!Set.of("planned", "ready").contains(column)) throw new IllegalArgumentException("INVALID_BOARD_INITIAL_COLUMN");
+        if (sessionId.length() > 120) throw new IllegalArgumentException(CommonErrors.SESSION_ID_TOO_LONG.code());
+        String column = draft.column() == null ? BoardTaskColumn.PLANNED.wire() : draft.column();
+        if (!Set.of(BoardTaskColumn.PLANNED.wire(), BoardTaskColumn.READY.wire()).contains(column)) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_INITIAL_COLUMN.code());
         String title = text(draft.title().trim(), 200);
         String goal = text(draft.goal(), 4000), criteria = text(draft.acceptanceCriteria(), 4000);
         requireReady(column, goal, criteria);
@@ -58,20 +66,20 @@ public class BoardTaskService {
         String fingerprint = fingerprint(List.of(draft.projectId(), title, sessionId, column, goal, criteria));
         jdbc.update("INSERT INTO eap.board_task(id,project_id,title,session_id,column_id,goal,acceptance_criteria,request_id,request_fingerprint) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT (project_id,request_id) DO NOTHING",
                 UUID.randomUUID(), draft.projectId(), title, sessionId, column, goal, criteria, draft.requestId(), fingerprint);
-        var tasks = jdbc.query(SELECT + " WHERE project_id=? AND request_id=?", ROW, draft.projectId(), draft.requestId());
+        var tasks = jdbc.query(SELECT + " WHERE project_id=? AND request_id=?", ROW, StateBindings.MISSION_ACTIVE, StateBindings.VERIFICATION_BLOCKING, StateBindings.CODE_BLOCKING, draft.projectId(), draft.requestId());
         String savedFingerprint = jdbc.queryForObject("SELECT request_fingerprint FROM eap.board_task WHERE project_id=? AND request_id=?", String.class, draft.projectId(), draft.requestId());
-        if (!fingerprint.equals(savedFingerprint)) throw conflict("BOARD_REQUEST_CONFLICT");
+        if (!fingerprint.equals(savedFingerprint)) throw conflict(BoardErrors.BOARD_REQUEST_CONFLICT.code());
         return tasks.getFirst();
     }
 
     @Transactional public Task update(UUID id, Update update) {
         require(update.projectId(), 120);
-        if (update.revision() < 1) throw new IllegalArgumentException("INVALID_BOARD_REVISION");
+        if (update.revision() < 1) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_REVISION.code());
         Task current = find(id, update.projectId(), true);
-        if (current.revision() != update.revision()) throw conflict("BOARD_REVISION_CONFLICT");
-        if (hasActiveExecution(id)) throw conflict("BOARD_EXECUTION_ACTIVE");
+        if (current.revision() != update.revision()) throw conflict(BoardErrors.BOARD_REVISION_CONFLICT.code());
+        if (hasActiveExecution(id)) throw conflict(BoardErrors.BOARD_EXECUTION_ACTIVE.code());
         String target = update.column() == null ? current.column() : update.column();
-        if (!allowed(current.column(), target)) throw conflict("BOARD_EXECUTION_EVIDENCE_REQUIRED");
+        if (!allowed(current.column(), target)) throw conflict(BoardErrors.BOARD_EXECUTION_EVIDENCE_REQUIRED.code());
         String notes = update.notes() == null ? current.notes() : text(update.notes(), 4000);
         String goal = update.goal() == null ? current.goal() : text(update.goal(), 4000);
         String criteria = update.acceptanceCriteria() == null ? current.acceptanceCriteria() : text(update.acceptanceCriteria(), 4000);
@@ -90,43 +98,43 @@ public class BoardTaskService {
 
     /** Only the evidence service may request these transitions, inside its task/workspace transaction. */
     Task deliveryTransition(Task current, String target) {
-        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Delivery transition requires transaction");
-        boolean submit = current.column().equals("ready") && target.equals("acceptance");
-        boolean decide = current.column().equals("acceptance") && Set.of("done", "ready").contains(target);
-        if (!submit && !decide) throw conflict("BOARD_EXECUTION_EVIDENCE_REQUIRED");
-        if (hasActiveExecution(current.id())) throw conflict("BOARD_EXECUTION_ACTIVE");
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Delivery transition requires transaction");
+        boolean submit = current.column().equals(BoardTaskColumn.READY.wire()) && target.equals(BoardTaskColumn.ACCEPTANCE.wire());
+        boolean decide = current.column().equals(BoardTaskColumn.ACCEPTANCE.wire()) && Set.of(BoardTaskColumn.DONE.wire(), BoardTaskColumn.READY.wire()).contains(target);
+        if (!submit && !decide) throw conflict(BoardErrors.BOARD_EXECUTION_EVIDENCE_REQUIRED.code());
+        if (hasActiveExecution(current.id())) throw conflict(BoardErrors.BOARD_EXECUTION_ACTIVE.code());
         var events = new ArrayList<>(current.events()); events.add(target);
-        if (jdbc.update("UPDATE eap.board_task SET column_id=?,revision=revision+1,events=?::jsonb WHERE id=? AND revision=?", target, JSON.writeValueAsString(events), current.id(), current.revision()) != 1) throw conflict("BOARD_REVISION_CONFLICT");
+        if (jdbc.update("UPDATE eap.board_task SET column_id=?,revision=revision+1,events=?::jsonb WHERE id=? AND revision=?", target, JSON.writeValueAsString(events), current.id(), current.revision()) != 1) throw conflict(BoardErrors.BOARD_REVISION_CONFLICT.code());
         return find(current.id(), current.projectId(), false);
     }
 
     // Separate statement after locking the task: a waiter needs a fresh READ COMMITTED snapshot.
     boolean hasActiveExecution(UUID id) {
-        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=? AND " + ACTIVE + ") OR EXISTS (" + CODE_ACTIVE + "?)", Boolean.class, id, id));
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE r.task_id=? AND " + ACTIVE + ") OR EXISTS (" + CODE_ACTIVE + "?)", Boolean.class, id, StateBindings.MISSION_ACTIVE, StateBindings.VERIFICATION_BLOCKING, StateBindings.CODE_BLOCKING, id));
     }
     // All callers acquire the task row first, then this workspace lock: never the opposite order.
     void lockWorkspace(String workspace) {
         WorkspaceInterlock.lock(jdbc, workspace);
-        if (WorkspaceInterlock.codeActive(jdbc, workspace)) throw conflict("CODE_WORKSPACE_BUSY");
+        if (WorkspaceInterlock.codeActive(jdbc, workspace)) throw conflict(CodeErrors.CODE_WORKSPACE_BUSY.code());
     }
     boolean hasActiveWorkspace(String workspace) {
         if (WorkspaceInterlock.codeActive(jdbc, workspace)) return true;
-        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE lower(e.workspace_path)=lower(?) AND " + ACTIVE + ")", Boolean.class, workspace));
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id WHERE lower(e.workspace_path)=lower(?) AND " + ACTIVE + ")", Boolean.class, workspace, StateBindings.MISSION_ACTIVE, StateBindings.VERIFICATION_BLOCKING));
     }
     boolean hasActiveVerification(String workspace) {
         if (WorkspaceInterlock.codeActive(jdbc, workspace)) return true;
-        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r WHERE lower(COALESCE(r.verification_snapshot->'plan'->>'workspacePath', r.verification_snapshot->>'workspacePath'))=lower(?) AND r.verification_snapshot->>'status' IN ('QUEUED','RUNNING','UNKNOWN'))", Boolean.class, workspace));
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.board_task_run r WHERE lower(COALESCE(r.verification_snapshot->'plan'->>'workspacePath', r.verification_snapshot->>'workspacePath'))=lower(?) AND r.verification_snapshot->>'status' = ANY(?::text[]))", Boolean.class, workspace, StateBindings.VERIFICATION_BLOCKING));
     }
     Task find(UUID id, String projectId, boolean lock) {
-        var rows = jdbc.query(SELECT + " WHERE id=? AND project_id=?" + (lock ? " FOR UPDATE" : ""), ROW, id, projectId);
-        if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "BOARD_TASK_NOT_FOUND");
+        var rows = jdbc.query(SELECT + " WHERE id=? AND project_id=?" + (lock ? " FOR UPDATE" : ""), ROW, StateBindings.MISSION_ACTIVE, StateBindings.VERIFICATION_BLOCKING, StateBindings.CODE_BLOCKING, id, projectId);
+        if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, BoardErrors.BOARD_TASK_NOT_FOUND.code());
         return rows.getFirst();
     }
     public static boolean allowed(String from, String to) {
-        return Set.of("planned", "ready").contains(from) && Set.of("planned", "ready").contains(to);
+        return Set.of(BoardTaskColumn.PLANNED.wire(), BoardTaskColumn.READY.wire()).contains(from) && Set.of(BoardTaskColumn.PLANNED.wire(), BoardTaskColumn.READY.wire()).contains(to);
     }
     public static String validatePriority(String value) {
-        if (value == null || !Set.of("none", "p0", "p1", "p2").contains(value)) throw new IllegalArgumentException("INVALID_BOARD_PRIORITY");
+        if (value == null || !Set.of("none", "p0", "p1", "p2").contains(value)) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_PRIORITY.code());
         return value;
     }
     private static List<String> missing(String goal, String criteria) {
@@ -136,21 +144,21 @@ public class BoardTaskService {
         return List.copyOf(issues);
     }
     private static void requireReady(String column, String goal, String criteria) {
-        if (column.equals("ready") && !missing(goal, criteria).isEmpty()) throw conflict("BOARD_PREPARATION_REQUIRED");
+        if (column.equals(BoardTaskColumn.READY.wire()) && !missing(goal, criteria).isEmpty()) throw conflict(BoardErrors.BOARD_PREPARATION_REQUIRED.code());
     }
     private static String text(String value, int limit) {
         if (value == null) return "";
-        if (value.length() > limit) throw new IllegalArgumentException("BOARD_TEXT_TOO_LONG");
+        if (value.length() > limit) throw new IllegalArgumentException(BoardErrors.BOARD_TEXT_TOO_LONG.code());
         var safe = SensitiveData.redact(value);
-        if (safe.length() > limit) throw new IllegalArgumentException("BOARD_TEXT_TOO_LONG");
+        if (safe.length() > limit) throw new IllegalArgumentException(BoardErrors.BOARD_TEXT_TOO_LONG.code());
         return safe;
     }
     private static String fingerprint(List<String> fields) {
         try {
-            return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(JSON.writeValueAsString(fields).getBytes(StandardCharsets.UTF_8)));
-        } catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
+        } catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
     private static ResponseStatusException conflict(String reason) { return new ResponseStatusException(HttpStatus.CONFLICT, reason); }
-    private static void require(String value, int limit) { if (value == null || value.isBlank() || value.length() > limit) throw new IllegalArgumentException("INVALID_BOARD_FIELD"); }
+    private static void require(String value, int limit) { if (value == null || value.isBlank() || value.length() > limit) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_FIELD.code()); }
 }

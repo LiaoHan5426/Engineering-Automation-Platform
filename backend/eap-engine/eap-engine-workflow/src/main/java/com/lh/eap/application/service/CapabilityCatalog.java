@@ -1,4 +1,7 @@
 package com.lh.eap.application.service;
+import com.lh.eap.domain.model.CliOperation;
+import com.lh.eap.persistence.mapper.CliProgramMapper;
+import com.lh.eap.runtime.mcp.client.OfficialReadonlyMcpMatrix;
 
 import com.lh.eap.persistence.mapper.McpServerRegistry;
 import com.lh.eap.persistence.mapper.CapabilityUsage;
@@ -43,11 +46,11 @@ public class CapabilityCatalog {
     private final CliChannels cliChannels;
     private final CapabilitySettings settings;
     private final CapabilityUsage usage;
-    private com.lh.eap.persistence.mapper.CliProgramMapper cliPrograms;
+    private CliProgramMapper cliPrograms;
     private CliProgramService cliProgramService;
 
     @Autowired
-    public void setCliPrograms(com.lh.eap.persistence.mapper.CliProgramMapper mapper, CliProgramService service) {
+    public void setCliPrograms(CliProgramMapper mapper, CliProgramService service) {
         this.cliPrograms = mapper; this.cliProgramService = service;
     }
 
@@ -160,7 +163,7 @@ public class CapabilityCatalog {
         result.put("platformScoped", new ArrayList<>(handlers.platformNames()));
         result.put("expertScopedVocabulary", new ArrayList<>(mcpServers.capabilityIds()));
         result.put("mcpServers", serverViews);
-        result.put("mcpProductionMatrix", com.lh.eap.runtime.mcp.client.OfficialReadonlyMcpMatrix.views());
+        result.put("mcpProductionMatrix", OfficialReadonlyMcpMatrix.views());
         result.put("mcpTools", serverViews.stream().map(server -> {
             var entry = new LinkedHashMap<String, Object>();
             entry.put("id", server.get("id"));
@@ -220,12 +223,12 @@ public class CapabilityCatalog {
         // The channel is what a CLI capability's management page edits: which binary is in effect, where
         // it resolved to, and whether that value is the shipped default or an operator override.
         if (descriptor.hasBinary()) {
-            var operation = cliPrograms == null ? Optional.<com.lh.eap.domain.model.CliOperation>empty()
+            var operation = cliPrograms == null ? Optional.<CliOperation>empty()
                     : cliPrograms.operations().stream().filter(op -> op.capabilityId().equals(name)).findFirst();
-            var programId = operation.map(com.lh.eap.domain.model.CliOperation::programId).orElse(CliChannels.programId(name));
+            var programId = operation.map(CliOperation::programId).orElse(CliChannels.programId(name));
             entry.put("programId", programId);
-            entry.put("builtin", operation.map(com.lh.eap.domain.model.CliOperation::builtin).orElse(true));
-            entry.put("args", operation.map(com.lh.eap.domain.model.CliOperation::args).orElse(List.of()));
+            entry.put("builtin", operation.map(CliOperation::builtin).orElse(true));
+            entry.put("args", operation.map(CliOperation::args).orElse(List.of()));
             var channel = cliChannels.channel(programId, descriptor.binary());
             if (enabled) {
                 entry.put("availability", channel.availability().id());

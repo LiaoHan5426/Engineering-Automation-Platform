@@ -1,4 +1,5 @@
 package com.lh.eap.domain.expert;
+import java.util.regex.Pattern;
 
 import com.lh.eap.domain.model.ExpertManifest;
 import com.lh.eap.workflow.WorkflowDefinition;
@@ -22,8 +23,8 @@ public final class ExpertGraph {
      * Expert-scoped capability ids are namespaced by server, so two servers publishing a tool with the
      * same name can never collide and an operator can always tell which server a node would call.
      */
-    static final java.util.regex.Pattern MCP_CAPABILITY =
-            java.util.regex.Pattern.compile("mcp\\.[a-z0-9][a-z0-9_-]{0,60}\\.[a-z0-9][a-z0-9_-]{0,60}");
+    static final Pattern MCP_CAPABILITY =
+            Pattern.compile("mcp\\.[a-z0-9][a-z0-9_-]{0,60}\\.[a-z0-9][a-z0-9_-]{0,60}");
 
     private ExpertGraph() { }
 

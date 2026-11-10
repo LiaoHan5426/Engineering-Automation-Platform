@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class BoardPrototypeControllerTest {
     @Test void rejectsForgedMetadataMissingDetachIntentAndInvalidFieldTypes() throws Exception {
         var service = mock(BoardPrototypeService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new BoardPrototypeController(service)).setControllerAdvice(new ApiErrorHandler()).build();
+        var mvc = MockMvcBuilders.standaloneSetup(new BoardPrototypeController(service)).setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         var route = "/api/board/tasks/" + UUID.randomUUID() + "/prototype";
         for (var body : new String[] {
             "{\"projectId\":\"p\",\"revision\":1}",
@@ -25,7 +25,7 @@ class BoardPrototypeControllerTest {
     }
     @Test void acceptsExplicitNullForDetachAndOnlyPassesTheVersionIdentity() throws Exception {
         var service = mock(BoardPrototypeService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new BoardPrototypeController(service)).setControllerAdvice(new ApiErrorHandler()).build();
+        var mvc = MockMvcBuilders.standaloneSetup(new BoardPrototypeController(service)).setControllerAdvice(new ApiErrorHandler(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
         var id = UUID.randomUUID(); var version = UUID.randomUUID(); var route = "/api/board/tasks/" + id + "/prototype";
         mvc.perform(post(route).contentType(MediaType.APPLICATION_JSON).content("{\"projectId\":\"p\",\"revision\":2,\"versionId\":null}")).andExpect(status().isOk());
         verify(service).select(id, new BoardPrototypeService.Selection("p", 2, null));

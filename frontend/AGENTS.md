@@ -14,3 +14,7 @@
 - Builder uses GrapesJS for editing and versioned semantic Schema/component mappings for Vue preview and controlled delivery. HTML/CSS export is not maintainable Vue source. Preserve both editor project data and semantic data; reject unknown mappings.
 - Prototype acceptance requires manual design without AI, visible button/state changes, save/reopen, real interactive preview and documented mock boundaries. Production handoff additionally requires target repository authorization, diff, build/tests and human acceptance.
 - Keep renderer access bounded; Electron integration is a later approved phase. New product text follows existing i18n conventions.
+- 管理页面采用清晰的列表→详情、子页、Tabs 或公共 Dialog/Drawer；长规则全文、文档正文、创建/编辑表单和完整诊断不得无条件铺在列表页。新增弹窗须验证错误位于弹窗内、关闭/未保存确认、焦点及窄屏可达。不要用一层 Collapse 代替整页信息结构设计。
+- `@eap/request` 是无领域依赖的传输包（Axios、取消/超时、流握手、上传/下载及可注入 headers/interceptors），不能写入业务端点、默认授权/刷新地址或错误码。`@eap/ui` 的 FileUpload 仅消费其注入的请求函数类型；页面提供业务操作，选文件不自动上传或发布。`@eap/runtime-client` 保留 DTO、平台错误及 SSE 业务帧解析，NProgress 在应用装配。
+- Mock 源码及故障控制只在 `apps/backend-mock`；web 的 mock 模式仅切换开发代理，生产 `src` 不得导入该包或按模拟环境分支。测试需要其能力时声明 devDependency 并使用公开 export；禁止从 Mock 反向导入 web 私有源码。正式包图须排除 Mock 模块。
+- 子页面保存后自行读回数据；通知父页面更新概览时，不重复重载同一编辑器，避免清除刚打开的弹窗、当前草稿或异步操作状态。

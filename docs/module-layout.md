@@ -7,7 +7,9 @@
 | 包 | 职责 | 公开入口 |
 |---|---|---|
 | `@eap/web` | Vue 页面、交互与页面内状态 | 应用入口 |
-| `@eap/runtime-client` | HTTP 客户端、请求/响应 TypeScript 类型 | `@eap/runtime-client` |
+| `@eap/request` | 无业务 API 的通用传输、动态 headers、超时/取消、流握手、上传/下载 | `@eap/request` |
+| `@eap/runtime-client` | EAP API、分域 DTO/状态/错误和业务 SSE 帧；复用 request 传输 | `@eap/runtime-client` / `@eap/runtime-client/contracts` |
+| `@eap/backend-mock` | 独立 Node 开发 HTTP/SSE 服务，只绑定 loopback；正式 web 不导入 | `dev:mock-server`；测试公开 `@eap/backend-mock/backend` |
 | `@eap/style` | 设计令牌、可切换主题（light/dark）与文档底座 | `@eap/style` / `@eap/style/index.css` |
 | `@eap/icons` | UI内部本地SVG资源、尺寸/线宽与可访问性；currentColor随主题 | UI内部依赖；应用统一用`@eap/ui`的Icon，不直接引用资源包 |
 | `@eap/ui` | **全部**基础展示/交互原语与组件样式（依赖 `@eap/style`） | `@eap/ui` / `@eap/ui/styles.css` |

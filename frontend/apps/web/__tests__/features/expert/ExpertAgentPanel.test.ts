@@ -6,12 +6,6 @@ import { i18n } from '../../../src/lib/i18n'
 import ExpertAgentPanel from '../../../src/features/expert/ExpertAgentPanel.vue'
 import { useExpertAgentRuns } from '../../../src/features/expert/useExpertAgentRuns'
 
-const mode = vi.hoisted(() => ({ preview: false }))
-vi.mock('../../../src/lib/serviceConfig', () => ({
-  get useMockServices() {
-    return mode.preview
-  },
-}))
 let app: App | undefined, host: HTMLElement
 let saved: ExpertAgentDetail
 function candidate(id = 'run-1'): ExpertAgentDetail {
@@ -93,7 +87,6 @@ async function mount(mode: 'review' | 'start' | 'task' = 'review') {
   else await vi.waitFor(() => expect(host.textContent).toContain('SQL reviewer'))
 }
 beforeEach(() => {
-  mode.preview = false
   saved = candidate()
   vi.spyOn(runtimeApi, 'experts').mockResolvedValue({
     items: [
@@ -300,23 +293,13 @@ it.each(['unknown', 'expired', 'awaiting-approval'] as const)(
     expect(runtimeApi.reviewExpertAgent).not.toHaveBeenCalled()
   },
 )
-it('explicitly disables background submission in preview without making API requests', async () => {
-  mode.preview = true
-  host = document.createElement('div')
-  document.body.append(host)
-  app = createApp({
-    render: () => h(ExpertAgentPanel, { mode: 'start', expertId: 'reviewer', runId: 'run-1' }),
-  })
-  app.use(i18n).mount(host)
-  await nextTick()
-  expect(host.textContent).toContain('预览模式未连接后台调度')
-  expect(button('agent-submit').disabled).toBe(true)
-  expect(runtimeApi.expertAgentRuns).not.toHaveBeenCalled()
-  expect(runtimeApi.experts).not.toHaveBeenCalled()
-  expect(runtimeApi.queueExpertAgent).not.toHaveBeenCalled()
-})
 it('retains approval errors and reloads durable state rather than assuming a successful write', async () => {
-  vi.mocked(runtimeApi.reviewExpertAgent).mockRejectedValue(new Error('baseline changed'))
+  vi.mocked(runtimeApi.reviewExpertAgent).mockRejectedValue({
+    response: {
+      status: 409,
+      data: { code: 'FILE_CHANGED_SINCE_PROPOSAL', detail: 'baseline changed' },
+    },
+  })
   await mount()
   button('agent-approve').click()
   await nextTick()

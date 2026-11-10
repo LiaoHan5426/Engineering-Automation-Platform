@@ -7,14 +7,11 @@ import {
   adoptScratch,
   chatBinding,
   currentExtras,
-  loadLayoutDrafts,
   loadSessionExtras,
   loadSessionPanels,
-  moveTask,
   rememberPanel,
   rememberSessionExecution,
   restorePanel,
-  saveLayoutDraft,
   setExecutionMode,
   takeBoardDraft,
   workbench,
@@ -24,19 +21,14 @@ beforeEach(() => {
   localStorage.clear()
   workbench.sessionExtras = {}
   chatBinding.value = null
-  workbench.tasks = [
-    { id: 'task-nav', title: '调整设置侧栏与输入框', column: 'planned', note: '' },
-    { id: 'task-sql', title: '保留 SQL 分析工作台', column: 'ready', note: '' },
-  ]
   workbench.notice = ''
   workbench.executionMode = 'chat'
-  workbench.drafts = []
   workbench.pendingBoardDraft = null
   workbench.panel = null
   workbench.sessionPanels = {}
 })
 
-describe('workbench demo state', () => {
+describe('workbench session state', () => {
   it('applies a scenario without clearing the recorded draft', () => {
     const extras = currentExtras()
     extras.scenarioId = null
@@ -53,16 +45,6 @@ describe('workbench demo state', () => {
     expect(workbench.pendingBoardDraft?.title).toBe('验收证据检查')
     expect(takeBoardDraft(true)?.title).toBe('验收证据检查')
     expect(workbench.pendingBoardDraft).toBeNull()
-  })
-
-  it('rejects skipping acceptance and allows one demo step', () => {
-    expect(moveTask('task-nav', 'done')).toBe('rejected')
-    expect(workbench.tasks[0].column).toBe('planned')
-    expect(moveTask('task-nav', 'ready')).toBe('moved')
-    expect(moveTask('task-nav', 'running')).toBe('moved')
-    expect(moveTask('task-nav', 'acceptance')).toBe('moved')
-    expect(moveTask('task-nav', 'done')).toBe('rejected')
-    expect(workbench.tasks[0].column).toBe('acceptance')
   })
 
   it("restores each session's execution mode and keeps a draft choice on the new conversation", () => {
@@ -113,25 +95,6 @@ describe('workbench demo state', () => {
     assignSessionProject('session-b', null)
     expect(workbench.sessionExtras['session-a']?.projectId).toBe('local-eap')
     expect(workbench.sessionExtras['session-b']?.projectId).toBeNull()
-  })
-
-  it('reopens a saved layout draft', () => {
-    const memory = new Map<string, string>()
-    const storage = {
-      getItem: (key: string) => memory.get(key) ?? null,
-      setItem: (key: string, value: string) => {
-        memory.set(key, value)
-      },
-    }
-    const saved = saveLayoutDraft({ sidebar: false, popover: true, panel: true }, storage)
-    workbench.drafts = []
-    loadLayoutDrafts(storage)
-    expect(workbench.drafts[0]).toMatchObject({
-      id: saved.id,
-      sidebar: false,
-      popover: true,
-      panel: true,
-    })
   })
 
   it('persists scenario and expert picks across a reload of session extras', () => {

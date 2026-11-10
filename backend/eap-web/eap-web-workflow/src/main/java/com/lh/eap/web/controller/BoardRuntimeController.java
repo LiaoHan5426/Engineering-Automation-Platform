@@ -1,4 +1,10 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.web.i18n.ProblemResponses;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.dao.DataAccessException;
+import org.springframework.http.ProblemDetail;
+import com.lh.eap.error.BoardErrors;
 
 import com.lh.eap.application.service.BoardRuntimeService;
 import java.util.Map;
@@ -10,12 +16,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/board/runtime")
 public class BoardRuntimeController {
     private final BoardRuntimeService service;
-    public BoardRuntimeController(BoardRuntimeService service) { this.service = service; }
+    private final ProblemResponses problems;
+    public BoardRuntimeController(BoardRuntimeService service, ProblemResponses problems) { this.service = service; this.problems = problems; }
     @GetMapping public BoardRuntimeService.Snapshot inspect(@RequestParam String projectId) { return service.inspect(projectId); }
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String,String>> invalid() { return ResponseEntity.badRequest().body(Map.of("detail", "INVALID_BOARD_FIELD")); }
-    @ExceptionHandler(org.springframework.dao.DataAccessException.class)
-    public ResponseEntity<Map<String,String>> unavailable() {
-        return ResponseEntity.status(503).body(Map.of("detail", "BOARD_RUNTIME_OBSERVATION_UNAVAILABLE"));
+    public ProblemDetail invalid(HttpServletRequest request, HttpServletResponse response) { return problems.create(400, BoardErrors.INVALID_BOARD_FIELD.code(), request, response); }
+    @ExceptionHandler(DataAccessException.class)
+    public ProblemDetail unavailable(HttpServletRequest request, HttpServletResponse response) {
+        return problems.create(503, BoardErrors.BOARD_RUNTIME_OBSERVATION_UNAVAILABLE.code(), request, response);
     }
 }

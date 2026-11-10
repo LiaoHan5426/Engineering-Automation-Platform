@@ -1,0 +1,48 @@
+{
+  "requirements": [
+    {
+      "objective": 1,
+      "status": "verified",
+      "evidence": [
+        "chatHistory.ts one-shot startup snapshot and bounded streaming writer",
+        "AiChatApplication/registry strict atomic recovery and target bind",
+        "6 full HTTP groups, 2 actual browser flows, concurrent/stale response regressions"
+      ]
+    },
+    {
+      "objective": 2,
+      "status": "verified",
+      "evidence": [
+        "history writer, binding projections and backend clear/publish each have one owner",
+        "single-loaded model authorization and idempotent dependency/clear persistence",
+        "Chat-specific task memory and turn details components; common UI reused"
+      ]
+    },
+    {
+      "objective": 3,
+      "status": "verified",
+      "evidence": [
+        "118 production Java files normalized; 113 import-only token/literal equivalence checks",
+        "reactor production/test compilation, 55 targeted tests, final packaged classes match current output"
+      ]
+    },
+    {
+      "objective": 4,
+      "status": "verified",
+      "evidence": [
+        "original user screenshot inspected",
+        "default view hides raw notes, hashes and configuration details",
+        "verification state requires evidence; human acceptance separate",
+        "Chinese/English screenshots inspected; 1440/900/390 no page overflow"
+      ]
+    }
+  ],
+  "previousEvidenceAndMigrationsPreserved": 34,
+  "defaultAndAlternateBootJarsIdentical": true,
+  "packagedDomainClassesMatchCurrentCompilation": true,
+  "restoredProductionHostRejectsLegacyRecoveryBeforeMutation": true,
+  "remainingRequiredWork": [],
+  "userProductAcceptance": false,
+  "committed": false,
+  "pushed": false
+}

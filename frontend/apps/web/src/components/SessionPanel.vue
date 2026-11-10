@@ -24,7 +24,6 @@ import {
   identityPath,
   runtimeIdentity,
 } from '../features/shell/runtimeIdentity'
-import { useMockServices } from '../lib/serviceConfig'
 
 const props = defineProps<{ mode: 'summary' | 'changes' | 'files' | 'terminal' }>()
 const emit = defineEmits<{
@@ -131,7 +130,6 @@ const pendingLabel = computed(() => {
 })
 const pagePreview = computed(() =>
   resolvePagePreview({
-    mock: useMockServices,
     origin: typeof window !== 'undefined' ? window.location.origin : '',
   }),
 )
@@ -403,7 +401,7 @@ const previewLine = computed(() =>
             :checks="chatBinding?.verificationChecks"
           />
         </div>
-        <article v-if="selectedFile" class="mock-diff codex-detail">
+        <article v-if="selectedFile" class="proposal-diff codex-detail">
           <strong>{{ selectedFile.path }}</strong>
           <small
             >{{ t('desktop.fileBaseline') }}：{{
@@ -772,30 +770,30 @@ dd {
   font-size: 12px;
   line-height: 1.6;
 }
-.mock-diff {
+.proposal-diff {
   display: grid;
   gap: 8px;
   margin: 14px 0;
 }
-.mock-diff strong {
+.proposal-diff strong {
   font-size: 11px;
   overflow-wrap: anywhere;
 }
-.mock-diff small,
+.proposal-diff small,
 dd small {
   display: block;
   font-size: 10px;
   color: var(--text-mute);
   line-height: 1.6;
 }
-.mock-diff pre {
+.proposal-diff pre {
   font-size: 11px;
   white-space: pre-wrap;
   background: var(--danger-bg);
   color: var(--danger);
   max-height: 240px;
 }
-.mock-diff pre.added {
+.proposal-diff pre.added {
   background: var(--ok-bg);
   color: var(--ok);
 }

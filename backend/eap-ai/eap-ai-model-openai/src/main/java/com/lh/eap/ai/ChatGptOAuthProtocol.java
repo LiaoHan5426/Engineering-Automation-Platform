@@ -1,4 +1,6 @@
 package com.lh.eap.ai;
+import java.util.stream.Collectors;
+import com.lh.eap.error.ChatGptAuthErrors;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
@@ -27,7 +29,7 @@ public class ChatGptOAuthProtocol {
 
     static String encode(String value) { return URLEncoder.encode(value, StandardCharsets.UTF_8); }
     static String form(Map<String, String> fields) {
-        return fields.entrySet().stream().map(entry -> encode(entry.getKey()) + "=" + encode(entry.getValue())).collect(java.util.stream.Collectors.joining("&"));
+        return fields.entrySet().stream().map(entry -> encode(entry.getKey()) + "=" + encode(entry.getValue())).collect(Collectors.joining("&"));
     }
     String authorize(String host, String state, String nonce, String challenge, String callback, ChatGptCredentials previous) {
         var fields = new LinkedHashMap<String, String>();
@@ -43,18 +45,18 @@ public class ChatGptOAuthProtocol {
         var result = token(Map.of("grant_type", "authorization_code", "client_id", client, "code", code,
                 "code_verifier", verifier, "redirect_uri", callback, "resource", RESOURCE));
         var identity = verify(result.path("id_token").asString(""), client, nonce);
-        if (previous != null && !previous.subject().isBlank() && !previous.subject().equals(identity.subject())) throw failure("CHATGPT_ACCOUNT_MISMATCH");
+        if (previous != null && !previous.subject().isBlank() && !previous.subject().equals(identity.subject())) throw failure(ChatGptAuthErrors.CHATGPT_ACCOUNT_MISMATCH.code());
         return credentials(result, client, identity, null);
     }
 
     ChatGptCredentials refresh(ChatGptCredentials previous) {
-        if (previous.refreshToken() == null || previous.refreshToken().isBlank()) throw failure("CHATGPT_REAUTH_REQUIRED");
+        if (previous.refreshToken() == null || previous.refreshToken().isBlank()) throw failure(ChatGptAuthErrors.CHATGPT_REAUTH_REQUIRED.code());
         var result = token(Map.of("grant_type", "refresh_token", "client_id", previous.clientId(),
                 "refresh_token", previous.refreshToken(), "resource", RESOURCE));
         // Refresh responses need not return an ID token. Keep the previously verified identity and registration.
         if (!result.path("id_token").asString("").isBlank()) {
             var identity = verify(result.path("id_token").asString(), previous.clientId(), null);
-            if (!identity.subject().equals(previous.subject())) throw failure("CHATGPT_ACCOUNT_MISMATCH");
+            if (!identity.subject().equals(previous.subject())) throw failure(ChatGptAuthErrors.CHATGPT_ACCOUNT_MISMATCH.code());
         }
         return credentials(result, previous.clientId(), previous, previous);
     }
@@ -66,7 +68,7 @@ public class ChatGptOAuthProtocol {
         long lifetime = result.path("expires_in").asLong(0);
         if (access.isBlank() || access.length() > 16000 || access.indexOf('\r') >= 0 || access.indexOf('\n') >= 0
                 || !"bearer".equalsIgnoreCase(result.path("token_type").asString()) || lifetime <= 0 || lifetime > 604800)
-            throw failure("CHATGPT_TOKEN_INVALID");
+            throw failure(ChatGptAuthErrors.CHATGPT_TOKEN_INVALID.code());
         Set<String> scopes = scope.isBlank() && previous != null ? previous.scopes() : Set.copyOf(Arrays.asList(scope.trim().split(" +")));
         return new ChatGptCredentials(client, identity.subject(), identity.email(), result.path("id_token").asString(identity.idToken()),
                 access, refresh, Instant.now().plusSeconds(lifetime), scopes);
@@ -76,20 +78,20 @@ public class ChatGptOAuthProtocol {
     ChatGptCredentials verify(String raw, String client, String nonce) {
         try {
             var jwt = SignedJWT.parse(raw);
-            if (!JWSAlgorithm.RS256.equals(jwt.getHeader().getAlgorithm())) throw failure("CHATGPT_IDENTITY_INVALID");
+            if (!JWSAlgorithm.RS256.equals(jwt.getHeader().getAlgorithm())) throw failure(ChatGptAuthErrors.CHATGPT_IDENTITY_INVALID.code());
             var keys = JWKSet.parse(get(ISSUER + "/.well-known/jwks.json"));
             if (!(keys.getKeyByKeyId(jwt.getHeader().getKeyID()) instanceof RSAKey key) || !jwt.verify(new RSASSAVerifier(key)))
-                throw failure("CHATGPT_IDENTITY_INVALID");
+                throw failure(ChatGptAuthErrors.CHATGPT_IDENTITY_INVALID.code());
             var claims = jwt.getJWTClaimsSet(); var now = Instant.now();
             if (!ISSUER.equals(claims.getIssuer()) || !claims.getAudience().contains(client)
                     || claims.getExpirationTime() == null || claims.getExpirationTime().toInstant().isBefore(now.minusSeconds(5))
                     || claims.getIssueTime() == null || claims.getIssueTime().toInstant().isAfter(now.plusSeconds(5))
                     || (claims.getNotBeforeTime() != null && claims.getNotBeforeTime().toInstant().isAfter(now.plusSeconds(5)))
                     || claims.getSubject() == null || claims.getSubject().isBlank()
-                    || (nonce != null && !nonce.equals(claims.getStringClaim("nonce")))) throw failure("CHATGPT_IDENTITY_INVALID");
+                    || (nonce != null && !nonce.equals(claims.getStringClaim("nonce")))) throw failure(ChatGptAuthErrors.CHATGPT_IDENTITY_INVALID.code());
             return new ChatGptCredentials(client, claims.getSubject(), claims.getStringClaim("email"), raw, "", "", now, Set.of());
         } catch (AuthFailure failure) { throw failure; }
-        catch (Exception failure) { throw failure("CHATGPT_IDENTITY_INVALID"); }
+        catch (Exception failure) { throw failure(ChatGptAuthErrors.CHATGPT_IDENTITY_INVALID.code()); }
     }
 
     protected String get(String url) {
@@ -101,17 +103,17 @@ public class ChatGptOAuthProtocol {
                     .timeout(Duration.ofSeconds(12)).header("Content-Type", "application/x-www-form-urlencoded")
                     .POST(HttpRequest.BodyPublishers.ofString(form(fields))).build()));
         } catch (AuthFailure failure) { throw failure; }
-        catch (Exception failure) { throw failure("CHATGPT_TOKEN_EXCHANGE_FAILED"); }
+        catch (Exception failure) { throw failure(ChatGptAuthErrors.CHATGPT_TOKEN_EXCHANGE_FAILED.code()); }
     }
     private String request(HttpRequest request) {
         try {
             var response = http.send(request, ignored -> new ModelDiscovery.LimitedBody());
             if (response.statusCode() != 200) throw failure(response.statusCode() == 400 || response.statusCode() == 401
-                    ? "CHATGPT_REAUTH_REQUIRED" : "CHATGPT_AUTH_UNAVAILABLE");
+                    ? ChatGptAuthErrors.CHATGPT_REAUTH_REQUIRED.code() : ChatGptAuthErrors.CHATGPT_AUTH_UNAVAILABLE.code());
             return new String(response.body(), StandardCharsets.UTF_8);
         } catch (AuthFailure failure) { throw failure; }
-        catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw failure("CHATGPT_AUTH_INTERRUPTED"); }
-        catch (Exception failure) { throw failure("CHATGPT_AUTH_UNAVAILABLE"); }
+        catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw failure(ChatGptAuthErrors.CHATGPT_AUTH_INTERRUPTED.code()); }
+        catch (Exception failure) { throw failure(ChatGptAuthErrors.CHATGPT_AUTH_UNAVAILABLE.code()); }
     }
     static AuthFailure failure(String code) { return new AuthFailure(code); }
     static final class AuthFailure extends RuntimeException {

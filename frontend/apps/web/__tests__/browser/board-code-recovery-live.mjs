@@ -25,7 +25,6 @@ const server = await createServer({
   plugins: [vue(), tailwindcss()],
   define: {
     'import.meta.env.VITE_API_URL': JSON.stringify('/api'),
-    'import.meta.env.VITE_USE_MOCK': JSON.stringify('false'),
   },
   server: {
     host: '127.0.0.1',
@@ -97,7 +96,12 @@ try {
   )
   await page.goto('http://127.0.0.1:5173/#board')
   await page.getByTestId('preview-board').waitFor()
-  assert.equal(await page.evaluate(() => localStorage.getItem('eap.chat.history.v1')), null)
+  assert.equal(
+    await page.evaluate(() =>
+      localStorage.getItem(encodeURIComponent('/api') + '.eap.chat.history.v1'),
+    ),
+    null,
+  )
   const openTask = async (entry) => {
     if (await page.getByTestId('board-close-detail').count())
       await page.getByTestId('board-close-detail').click()

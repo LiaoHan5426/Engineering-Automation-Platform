@@ -1,4 +1,5 @@
 package com.lh.eap.web.controller;
+import java.util.List;
 
 import com.lh.eap.api.*;
 import java.util.UUID;
@@ -11,7 +12,7 @@ import org.springframework.http.HttpStatus;
 public class CliExecutionController {
     private final ProcessExecutor executor;
     public CliExecutionController(ProcessExecutor executor){this.executor=executor;}
-    @GetMapping public java.util.List<CliExecution.Snapshot> list(){return executor.snapshots();}
+    @GetMapping public List<CliExecution.Snapshot> list(){return executor.snapshots();}
     @GetMapping("/{id}") public CliExecution.Snapshot status(@PathVariable UUID id){
         return executor.status(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND));
     }

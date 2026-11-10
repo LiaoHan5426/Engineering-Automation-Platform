@@ -51,7 +51,7 @@ export function createScenarioCatalog(scenes: Scenario[]) {
         state.busy = false
       }
     },
-    async save(scene: Scenario, mockOutcome?: 'save-lost') {
+    async save(scene: Scenario) {
       if (state.busy || scene.builtin !== false) return false
       state.busy = true
       state.error = ''
@@ -59,12 +59,7 @@ export function createScenarioCatalog(scenes: Scenario[]) {
       const sent = definition(scene)
       const priorRevision = revisions.get(scene.id) ?? 0
       try {
-        const saved = await runtimeApi.saveScenario(
-          scene.id,
-          priorRevision,
-          sent,
-          mockOutcome ? { mockOutcome } : undefined,
-        )
+        const saved = await runtimeApi.saveScenario(scene.id, priorRevision, sent)
         // Record the returned revision even if readback fails: do not replay a create blindly.
         revisions.set(scene.id, saved.revision)
         const read = await runtimeApi.scenario(scene.id)

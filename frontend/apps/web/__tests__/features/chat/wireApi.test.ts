@@ -38,7 +38,7 @@ it('maps a server protocol denial to an actionable failure rather than target ch
     aiStatus: vi.fn(),
     openAiConversation: async () => ({ conversationId: 'c', workspaceLabel: '', memory: '' }),
     sendAiMessage: async () => {
-      throw { response: { status: 409, data: { detail: 'AI_PROTOCOL_TOOLS_UNAVAILABLE' } } }
+      throw { response: { status: 409, data: { code: 'AI_PROTOCOL_TOOLS_UNAVAILABLE' } } }
     },
   })
   await session.openConversation()

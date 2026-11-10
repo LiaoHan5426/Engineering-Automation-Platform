@@ -1,4 +1,5 @@
 package com.lh.eap.persistence.mapper;
+import com.lh.eap.core.CapabilityUsageQuery;
 
 import com.lh.eap.application.service.CapabilitySettings;
 import com.lh.eap.application.service.McpServerService;
@@ -21,7 +22,7 @@ import org.springframework.stereotype.Service;
  * {@code McpServerService} refuses to delete a server whose tools an enabled expert was granted.
  */
 @Service
-public class CapabilityUsage implements com.lh.eap.core.CapabilityUsageQuery {
+public class CapabilityUsage implements CapabilityUsageQuery {
     private final JdbcTemplate jdbc;
 
     public CapabilityUsage(JdbcTemplate jdbc) {

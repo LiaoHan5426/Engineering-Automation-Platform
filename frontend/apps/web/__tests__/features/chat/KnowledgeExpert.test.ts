@@ -275,7 +275,7 @@ it('retains the original revision on preview conflict and does not reconnect or 
     states: { saved: { enabled: true, builtin: false, revision: 5 } },
   })
   preview.mockRejectedValue({
-    response: { status: 409, data: { detail: 'EXPERT_CONTEXT_STALE' } },
+    response: { status: 409, data: { code: 'EXPERT_CONTEXT_STALE' } },
   })
   await openKnowledge()
   await nextTick()

@@ -1,0 +1,62 @@
+{
+  "method": "Static candidate inventory, not semantic deduplication or runtime proof. Counts include Java SQL string literals; exclusions target/node_modules/dist/__tests__/src/test; error extraction covers direct constructors and named helper calls only.",
+  "productionJavaFiles": 311,
+  "productionFrontendFiles": 137,
+  "stableErrorCodeCandidates": 224,
+  "errorCodeCandidateOccurrences": 371,
+  "backendI18nFrameworkUsages": [],
+  "naturalLanguageExceptionCandidates": 167,
+  "frontendDetailReaderFiles": 16,
+  "frontendInlineStatusSetFiles": 6,
+  "selectedStates": {
+    "UNKNOWN": {
+      "backend": {
+        "files": 12,
+        "occurrences": 37
+      },
+      "frontend": {
+        "files": 6,
+        "occurrences": 23
+      }
+    },
+    "RUNNING": {
+      "backend": {
+        "files": 12,
+        "occurrences": 40
+      },
+      "frontend": {
+        "files": 6,
+        "occurrences": 10
+      }
+    },
+    "APPLIED": {
+      "backend": {
+        "files": 5,
+        "occurrences": 13
+      },
+      "frontend": {
+        "files": 3,
+        "occurrences": 8
+      }
+    },
+    "FAILED": {
+      "backend": {
+        "files": 11,
+        "occurrences": 25
+      },
+      "frontend": {
+        "files": 4,
+        "occurrences": 9
+      }
+    }
+  },
+  "date": "2026-11-10",
+  "status": "AUDITED_PROPOSED_NOT_IMPLEMENTED",
+  "implementationBaseline": "2450bf29fe4a2e47fef69b7f402426a31bc4146b plus preserved uncommitted component-delivery batch",
+  "limitations": [
+    "Static candidates only, not proof of semantic duplication",
+    "Natural-language exception candidates include internal diagnostics; do not expose or mechanically translate all",
+    "No runtime behavior, database or process changes; no tests/build/model calls"
+  ],
+  "phase": "Pre-implementation historical snapshot; current implementation is documented in docs/decisions/domain-status-and-backend-i18n.md"
+}

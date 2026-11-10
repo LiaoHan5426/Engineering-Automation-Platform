@@ -275,6 +275,25 @@ importers:
         specifier: ~3.3.14
         version: 3.3.14(typescript@6.0.3)
 
+  apps/backend-mock:
+    dependencies:
+      '@eap/runtime-client':
+        specifier: workspace:*
+        version: link:../../packages/runtime-client
+    devDependencies:
+      '@eap/tsconfig':
+        specifier: workspace:*
+        version: link:../../internal/tsconfig
+      '@types/node':
+        specifier: catalog:types
+        version: 24.19.2
+      typescript:
+        specifier: catalog:tooling
+        version: 6.0.3
+      vite-plus:
+        specifier: catalog:tooling
+        version: 1.5.0(@types/node@24.19.2)(@vitest/ui@5.1.0)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.14)(happy-dom@21.0.4)(jiti@2.7.0)(typescript@6.0.3)(vue-tsc@3.3.14(typescript@6.0.3))
+
   apps/desktop:
     devDependencies:
       electron:
@@ -289,6 +308,9 @@ importers:
       '@eap/plugin-table':
         specifier: workspace:*
         version: link:../../packages/plugin-table
+      '@eap/request':
+        specifier: workspace:*
+        version: link:../../packages/request
       '@eap/runtime-client':
         specifier: workspace:*
         version: link:../../packages/runtime-client
@@ -298,9 +320,6 @@ importers:
       '@eap/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      axios:
-        specifier: catalog:frontend
-        version: 1.21.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
       grapesjs:
         specifier: ^0.22.7
         version: 0.22.16
@@ -317,6 +336,9 @@ importers:
         specifier: catalog:frontend
         version: 11.4.18(vue@3.5.44(typescript@6.0.3))
     devDependencies:
+      '@eap/backend-mock':
+        specifier: workspace:*
+        version: link:../backend-mock
       '@eap/tsconfig':
         specifier: workspace:*
         version: link:../../internal/tsconfig
@@ -329,6 +351,9 @@ importers:
       '@vitejs/plugin-vue':
         specifier: catalog:tooling
         version: 6.0.10(@voidzero-dev/vite-plus-core@1.5.0(@types/node@24.19.2)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.14)(jiti@2.7.0)(typescript@6.0.3)(vue-tsc@3.3.14(typescript@6.0.3)))(vue@3.5.44(typescript@6.0.3))
+      axios:
+        specifier: catalog:frontend
+        version: 1.21.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
       tailwindcss:
         specifier: catalog:frontend
         version: 4.3.4
@@ -421,21 +446,34 @@ importers:
         specifier: ~4.20.33
         version: 4.20.36(vue@3.5.44(typescript@6.0.3))
 
-  packages/runtime-client:
+  packages/request:
     dependencies:
       axios:
         specifier: catalog:frontend
         version: 1.21.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
-      nprogress:
-        specifier: catalog:frontend
-        version: 0.2.0
     devDependencies:
       '@eap/tsconfig':
         specifier: workspace:*
         version: link:../../internal/tsconfig
-      '@types/nprogress':
+      typescript:
         specifier: catalog:tooling
-        version: 0.2.3
+        version: 6.0.3
+      vite-plus:
+        specifier: catalog:tooling
+        version: 1.5.0(@types/node@24.19.2)(@vitest/ui@5.1.0)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.14)(happy-dom@21.0.4)(jiti@2.7.0)(typescript@6.0.3)(vue-tsc@3.3.14(typescript@6.0.3))
+
+  packages/runtime-client:
+    dependencies:
+      '@eap/request':
+        specifier: workspace:*
+        version: link:../request
+    devDependencies:
+      '@eap/tsconfig':
+        specifier: workspace:*
+        version: link:../../internal/tsconfig
+      axios:
+        specifier: catalog:frontend
+        version: 1.21.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
       typescript:
         specifier: catalog:tooling
         version: 6.0.3
@@ -460,6 +498,9 @@ importers:
       '@eap/icons':
         specifier: workspace:*
         version: link:../icons
+      '@eap/request':
+        specifier: workspace:*
+        version: link:../request
       '@eap/style':
         specifier: workspace:*
         version: link:../style

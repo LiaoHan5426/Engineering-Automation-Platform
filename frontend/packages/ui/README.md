@@ -23,6 +23,12 @@ Tailwind 4 宿主在 CSS 顶层按序使用裸字符串 `@import "tailwindcss"; 
 
 ## 新增定义与依赖闭包
 
+### 文件选择与上传
+
+`FileInput` 是原生文件选择原语；`FileUpload` 组合类型/数量/大小校验、文件列表、显式上传、进度和取消。`FileUpload` 的 `request` 由宿主注入，参数为 `(file, { signal, onProgress })`；支持 `select`、`uploaded`、`error` 事件及文案 props。未提供 request 时只选择文件，选择不会自动触发网络请求。技能页以此模式读取本地文本，预览、可信来源确认和发布仍由页面分别完成。
+
+复制 FileUpload 时携带 `file/`、`button/`、`feedback/`、Vue 和 Token，以及 `@eap/request` 的 UploadRequest/UploadProgress 类型定义；该包不含业务 API，也不导入 runtime-client。需要 HTTP multipart 上传的宿主可用 `createUploadRequest(client, endpoint)` 生成 request；endpoint、认证和错误提示由宿主决定。组件卸载会发出取消信号并忽略迟到完成，不会替宿主确认后端是否已接收文件。
+
 ### 统一图标入口
 
 Icon的原生attrs透传仅供可信宿主使用，不是输入清洗器；不要将用户/服务端提供的任意属性对象整体`v-bind`到图标。

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, nextTick, type App } from 'vue'
+import { i18n } from '../../../src/lib/i18n'
 import { runtimeApi, type CliProgramItem } from '@eap/runtime-client'
 import Manager from '../../../src/features/capability/CliProgramManager.vue'
 
@@ -37,7 +38,7 @@ describe('CLI program probe shared projection', () => {
       root = document.createElement('div')
       document.body.append(root)
       app = createApp(Manager, { items: [], kind: null, onSaved: saved })
-      app.mount(root)
+      app.use(i18n).mount(root)
       for (let i = 0; i < 8; i++) await Promise.resolve()
       await nextTick()
       const probe = [...root.querySelectorAll('button')].find(

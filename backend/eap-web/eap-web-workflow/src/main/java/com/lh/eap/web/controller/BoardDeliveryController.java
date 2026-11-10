@@ -1,4 +1,6 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.application.service.BoardApplicationCatalog;
+import com.lh.eap.error.BoardDeliveryErrors;
 
 import com.lh.eap.application.service.BoardDeliveryService;
 import java.util.*;
@@ -12,7 +14,7 @@ public class BoardDeliveryController {
     private final BoardDeliveryService service;
     public BoardDeliveryController(BoardDeliveryService service) { this.service=service; }
     @GetMapping public BoardDeliveryService.Page get(@PathVariable UUID taskId, @PathVariable UUID executionId, @RequestParam String projectId) { return service.get(taskId, executionId, projectId); }
-    @GetMapping("/applications") public com.lh.eap.application.service.BoardApplicationCatalog.Page applications(@PathVariable UUID taskId, @PathVariable UUID executionId, @RequestParam String projectId) {
+    @GetMapping("/applications") public BoardApplicationCatalog.Page applications(@PathVariable UUID taskId, @PathVariable UUID executionId, @RequestParam String projectId) {
         return service.applications(taskId, executionId, projectId);
     }
     @PostMapping public BoardDeliveryService.Delivery submit(@PathVariable UUID taskId, @PathVariable UUID executionId, @RequestBody String body) {
@@ -40,5 +42,5 @@ public class BoardDeliveryController {
     private static UUID uuid(Map<?,?> map, String key) { String value=string(map,key); if (!value.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")) throw invalid(); return UUID.fromString(value); }
     private static long revision(Map<?,?> map) { Object value=map.get("revision"); if (!(value instanceof Integer || value instanceof Long) || ((Number)value).longValue()<1) throw invalid(); return ((Number)value).longValue(); }
     private static boolean bool(Map<?,?> map, String key) { if (!(map.get(key) instanceof Boolean value)) throw invalid(); return value; }
-    private static IllegalArgumentException invalid() { return new IllegalArgumentException("INVALID_BOARD_DELIVERY_REQUEST"); }
+    private static IllegalArgumentException invalid() { return new IllegalArgumentException(BoardDeliveryErrors.INVALID_BOARD_DELIVERY_REQUEST.code()); }
 }

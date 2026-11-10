@@ -1,4 +1,5 @@
 package com.lh.eap.domain.model;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
@@ -25,9 +26,9 @@ import tools.jackson.databind.json.JsonMapper;
 public record ExpertManifest(String apiVersion, String kind, String id, String name,
         List<String> knowledgeBases, List<String> databaseProfiles, List<Step> steps,
         List<Edge> edges, List<String> rules, List<String> rulePacks, List<String> mcpTools,
-        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         ExpertBehaviorBinding behavior,
-        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         ExpertAgentDefinition agent) {
     private static final JsonMapper JSON = JsonMapper.builder().build();
 

@@ -1,4 +1,5 @@
 package com.lh.eap.persistence.mapper;
+import com.lh.eap.application.service.MissionExecutionStatus;
 
 import com.lh.eap.application.service.MissionExecution;
 import com.lh.eap.application.service.MissionExecutionStore;
@@ -36,9 +37,9 @@ public class JdbcMissionExecutionStore implements MissionExecutionStore {
                 INSERT INTO eap.mission_execution(
                     id, mission_id, status, capability, principal, workspace_path, workspace_label, executable,
                     policy_snapshot, started_at, cancel_requested, approval, created_at)
-                VALUES (?, ?, 'CREATED', 'git-status', 'local-operator', ?, ?, ?, ?, ?, false, 'NOT_REQUIRED', ?)
+                VALUES (?, ?, ?, 'git-status', 'local-operator', ?, ?, ?, ?, ?, false, 'NOT_REQUIRED', ?)
                 """,
-                execution.id(), execution.missionId(), execution.workspacePath(), execution.workspaceLabel(),
+                execution.id(), execution.missionId(), MissionExecutionStatus.CREATED.wire(), execution.workspacePath(), execution.workspaceLabel(),
                 execution.executable(), execution.policySnapshot(), Timestamp.from(execution.startedAt()),
                 Timestamp.from(execution.createdAt()));
         project(execution.missionId(), "running");
@@ -46,13 +47,13 @@ public class JdbcMissionExecutionStore implements MissionExecutionStore {
 
     @Override
     public boolean claimCreated(UUID id) {
-        return jdbc.update("UPDATE eap.mission_execution SET status='RUNNING' WHERE id=? AND status='CREATED' AND unconfirmed_reason IS NULL", id) == 1;
+        return jdbc.update("UPDATE eap.mission_execution SET status=? WHERE id=? AND status=? AND unconfirmed_reason IS NULL", MissionExecutionStatus.RUNNING.wire(), id, MissionExecutionStatus.CREATED.wire()) == 1;
     }
 
     @Override
     public Optional<MissionExecution> open(UUID missionId) {
-        return jdbc.query(SELECT + " WHERE mission_id = ? AND status IN ('CREATED', 'RUNNING', 'CANCELLING')",
-                (rs, row) -> map(rs), missionId).stream().findFirst();
+        return jdbc.query(SELECT + " WHERE mission_id = ? AND status = ANY(?::text[])",
+                (rs, row) -> map(rs), missionId, StateBindings.MISSION_ACTIVE).stream().findFirst();
     }
 
     @Override
@@ -67,7 +68,7 @@ public class JdbcMissionExecutionStore implements MissionExecutionStore {
 
     @Override
     public List<MissionExecution> openAll() {
-        return jdbc.query(SELECT + " WHERE status IN ('CREATED', 'RUNNING', 'CANCELLING')", (rs, row) -> map(rs));
+        return jdbc.query(SELECT + " WHERE status = ANY(?::text[])", (rs, row) -> map(rs), StateBindings.MISSION_ACTIVE);
     }
 
     @Override
@@ -75,8 +76,8 @@ public class JdbcMissionExecutionStore implements MissionExecutionStore {
     public void markCancelling(UUID id) {
         var mission = missionId(id);
         jdbc.update(
-                "UPDATE eap.mission_execution SET status = 'CANCELLING', cancel_requested = true WHERE id = ? AND status IN ('CREATED', 'RUNNING')",
-                id);
+                "UPDATE eap.mission_execution SET status = ?, cancel_requested = true WHERE id = ? AND status = ANY(?::text[])",
+                MissionExecutionStatus.CANCELLING.wire(), id, "{" + MissionExecutionStatus.CREATED.wire() + "," + MissionExecutionStatus.RUNNING.wire() + "}");
         project(mission, "cancelling");
     }
 
@@ -85,11 +86,11 @@ public class JdbcMissionExecutionStore implements MissionExecutionStore {
         jdbc.update(
                 """
                 UPDATE eap.mission_execution
-                SET status = CASE WHEN status = 'CREATED' THEN 'RUNNING' ELSE status END,
+                SET status = CASE WHEN status = ? THEN ? ELSE status END,
                     os_pid = ?, process_started_at = ?, process_user = ?, process_executable = ?
-                WHERE id = ? AND status IN ('CREATED', 'RUNNING', 'CANCELLING')
+                WHERE id = ? AND status = ANY(?::text[])
                 """,
-                pid, startedAt == null ? null : Timestamp.from(startedAt), user, executable, id);
+                MissionExecutionStatus.CREATED.wire(), MissionExecutionStatus.RUNNING.wire(), pid, startedAt == null ? null : Timestamp.from(startedAt), user, executable, id, StateBindings.MISSION_ACTIVE);
     }
 
     @Override
@@ -118,10 +119,10 @@ public class JdbcMissionExecutionStore implements MissionExecutionStore {
         jdbc.update(
                 """
                 UPDATE eap.mission_execution
-                SET status = 'FAILED', finished_at = ?, stderr = ?, exit_evidence = ?
+                SET status = ?, finished_at = ?, stderr = ?, exit_evidence = ?
                 WHERE id = ?
                 """,
-                Timestamp.from(Instant.now()), reason, "执行器拒绝", id);
+                MissionExecutionStatus.FAILED.wire(), Timestamp.from(Instant.now()), reason, "EXECUTOR_REJECTED", id);
         project(missionId, "failed");
     }
 

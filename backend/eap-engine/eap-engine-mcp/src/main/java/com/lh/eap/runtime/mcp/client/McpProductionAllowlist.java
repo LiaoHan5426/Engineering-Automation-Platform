@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.mcp.client;
+import com.lh.eap.error.McpErrors;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -62,7 +63,7 @@ public final class McpProductionAllowlist {
     public static void requireTrustedGrant(String transport, String endpoint, List<String> tools, boolean trusted) {
         var channel = normalizeTransport(transport);
         if (!isAllowedTransport(channel)) {
-            throw new IllegalArgumentException("传输方式只能是 stdio、http、sse 或 streamable-http");
+            throw new IllegalArgumentException(McpErrors.MCP_SERVER_INPUT_INVALID.code());
         }
         if (!trusted) return;
         var matched = OfficialReadonlyMcpMatrix.findByEndpoint(endpoint);
@@ -72,10 +73,7 @@ public final class McpProductionAllowlist {
         for (var tool : tools == null ? List.<String>of() : tools) {
             if (tool == null || tool.isBlank()) continue;
             if (!allowed.contains(tool.trim())) {
-                throw new IllegalArgumentException(
-                        "MCP_PRODUCTION_TOOL_NOT_ALLOWED：" + tool.trim()
-                                + " 不在官方只读生产白名单 " + allowed
-                                + "（" + entry.packageAtVersion() + "）");
+                throw new IllegalArgumentException(McpErrors.MCP_PRODUCTION_TOOL_NOT_ALLOWED.code());
             }
         }
         Objects.requireNonNull(endpoint);

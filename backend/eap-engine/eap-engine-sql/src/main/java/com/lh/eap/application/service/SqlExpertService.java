@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.ModelErrors;
 
 import com.lh.eap.decision.DecisionProvider;
 import com.lh.eap.decision.RuleBasedDecisionProvider;
@@ -76,7 +77,7 @@ public class SqlExpertService {
         if (!gateway.available()) {
             return new Outcome(false, false, decision.choice(),
                     decision.rationale() + "；Spring AI 模型未配置或 SQL 增强未启用，已回退确定性结果",
-                    null, null, null, 0, 0, 0, preprocessing, "AI_NOT_CONFIGURED");
+                    null, null, null, 0, 0, 0, preprocessing, ModelErrors.AI_NOT_CONFIGURED.code());
         }
 
         var activeProvider = gateway.activeProviderId().orElse(null);

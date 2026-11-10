@@ -1,4 +1,7 @@
 package com.lh.eap.delivery;
+import com.lh.eap.error.GitErrors;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.ToolErrors;
 import com.lh.eap.delivery.CodeChangeService;
 
 import com.lh.eap.api.ExecutionContext;
@@ -25,16 +28,16 @@ public final class CapabilityDirtyRunner implements CodeChangeService.DirtyRunne
     }
 
     @Override public String porcelain(Path workspace) throws IOException {
-        if (!settings.enabled("git-status")) throw new IOException("CAPABILITY_DISABLED");
-        if (!(registry.require("git-status") instanceof GitCapability git)) throw new IOException("GIT_STATUS_UNAVAILABLE");
-        if (!git.runnable()) throw new IOException("BINARY_MISSING");
+        if (!settings.enabled("git-status")) throw new IOException(ToolErrors.CAPABILITY_DISABLED.code());
+        if (!(registry.require("git-status") instanceof GitCapability git)) throw new IOException(GitErrors.GIT_STATUS_UNAVAILABLE.code());
+        if (!git.runnable()) throw new IOException(ExecutionErrors.BINARY_MISSING.code());
         var result = git.execute(new ExecutionContext(workspace, executor), "--porcelain=v1");
         if (!result.success() || !"SUCCEEDED".equals(result.metadata().get("executorStatus"))
                 || !Boolean.TRUE.equals(result.metadata().get("processExited"))
                 || !Boolean.TRUE.equals(result.metadata().get("processTreeCleanup"))) {
-            throw new IOException("GIT_STATUS_UNCONFIRMED");
+            throw new IOException(GitErrors.GIT_STATUS_UNCONFIRMED.code());
         }
-        if (Boolean.TRUE.equals(result.metadata().get("truncated")) || result.stdout().length() > 32768) throw new IOException("GIT_STATUS_TRUNCATED");
+        if (Boolean.TRUE.equals(result.metadata().get("truncated")) || result.stdout().length() > 32768) throw new IOException(GitErrors.GIT_STATUS_TRUNCATED.code());
         return SensitiveData.redact(result.stdout());
     }
 }

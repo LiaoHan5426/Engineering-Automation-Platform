@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 import { ConfirmBox } from '@eap/ui'
+import { i18n } from '../../src/lib/i18n'
 import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import DatabaseManager from '../../src/features/database/DatabaseManager.vue'
@@ -56,11 +57,10 @@ describe('destructive actions', () => {
     // 确认按钮没有被移除——它在，只是 disabled。
     expect(html).toContain('删除规则包')
     expect(html).toMatch(/<button[^>]*\bdisabled\b[^>]*>[\s\S]*?删除规则包/)
-    expect(html).toContain('按钮仍在原位但已禁用')
   })
 
   it('does not render a knowledge deletion entry until a base is selected', async () => {
-    const html = await renderToString(createSSRApp(KnowledgeManager))
+    const html = await renderToString(createSSRApp(KnowledgeManager).use(i18n))
     // 未选中知识库时不渲染删除入口；确认模态更不会凭空出现。
     expect(html).toContain('知识工作台')
     expect(html).not.toContain('删除知识库')
@@ -68,7 +68,7 @@ describe('destructive actions', () => {
   })
 
   it('does not render a profile deletion entry until a profile is selected', async () => {
-    const html = await renderToString(createSSRApp(DatabaseManager))
+    const html = await renderToString(createSSRApp(DatabaseManager).use(i18n))
     expect(html).not.toContain('删除资料')
     expect(html).not.toContain('eap-confirm')
   })

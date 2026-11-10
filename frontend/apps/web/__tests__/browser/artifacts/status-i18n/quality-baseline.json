@@ -1,0 +1,217 @@
+{
+  "fullStylelintDiagnosticsAtCheck": 1693,
+  "files": [
+    {
+      "file": "apps/web/src/style.css",
+      "diagnostics": 55,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/work-pages.css",
+      "diagnostics": 628,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/workspace.css",
+      "diagnostics": 126,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/components/ProposalApplication.vue",
+      "diagnostics": 6,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/components/ProposalDiffView.vue",
+      "diagnostics": 10,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/components/RepositoryBrowser.vue",
+      "diagnostics": 22,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/components/SessionPanel.vue",
+      "diagnostics": 117,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/components/WorkspaceFileTreeRail.vue",
+      "diagnostics": 11,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/components/WorkspaceWelcome.vue",
+      "diagnostics": 6,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/DesktopNavigation.vue",
+      "diagnostics": 73,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/ScenarioWorkspace.vue",
+      "diagnostics": 78,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "packages/ui/src/descriptions/descriptions.css",
+      "diagnostics": 1,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "packages/ui/src/layout/layout.css",
+      "diagnostics": 1,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "packages/ui/src/skeleton/skeleton.css",
+      "diagnostics": 1,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/chat/ChatWorkspace.vue",
+      "diagnostics": 104,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/chat/KnowledgeExpertSelector.vue",
+      "diagnostics": 3,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/chat/SkillSelector.vue",
+      "diagnostics": 2,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/chat/TaskComposer.vue",
+      "diagnostics": 74,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "pre-task uncommitted backup"
+    },
+    {
+      "file": "apps/web/src/features/settings/AppearanceSettings.vue",
+      "diagnostics": 4,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/settings/ChatGptAccountCard.vue",
+      "diagnostics": 12,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/settings/ModelCatalogEditor.vue",
+      "diagnostics": 22,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/settings/ModelSettings.vue",
+      "diagnostics": 29,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/settings/SkillManager.vue",
+      "diagnostics": 3,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/shell/BoardPrototypePanel.vue",
+      "diagnostics": 7,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/shell/BoardRunDelivery.vue",
+      "diagnostics": 11,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "pre-task uncommitted backup"
+    },
+    {
+      "file": "apps/web/src/features/shell/BoardRunPanel.vue",
+      "diagnostics": 19,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/shell/BoardRunReview.vue",
+      "diagnostics": 12,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/shell/BoardRunVerification.vue",
+      "diagnostics": 14,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/shell/ExpertCatalog.vue",
+      "diagnostics": 27,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/shell/LayoutDraft.vue",
+      "diagnostics": 33,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/shell/PreviewBoard.vue",
+      "diagnostics": 133,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/shell/PrototypeFlow.vue",
+      "diagnostics": 22,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/shell/PrototypeNodeView.vue",
+      "diagnostics": 17,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/shell/PrototypeSchemaPreview.vue",
+      "diagnostics": 4,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    },
+    {
+      "file": "apps/web/src/features/shell/PrototypeVersionViewer.vue",
+      "diagnostics": 6,
+      "stylesheetUnchangedFromBaseline": true,
+      "baseline": "HEAD"
+    }
+  ],
+  "diagnosticsInUnchangedStylesheets": 1693,
+  "method": "Read-only comparison of current style blocks with pre-task backups or HEAD; no old checks rerun; no ignores added"
+}

@@ -1,26 +1,29 @@
 package com.lh.eap.api;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 import java.nio.file.Path;
 import java.util.List;
 
 public interface ProcessExecutor {
     /** Fail closed when an executor cannot observe cancellation before process start. */
-    default Observation runManaged(java.util.UUID id, String capability, Path directory, List<String> command,
-                                   java.util.Map<String,String> environment, ManagedProcessControl control) {
+    default Observation runManaged(UUID id, String capability, Path directory, List<String> command,
+                                   Map<String,String> environment, ManagedProcessControl control) {
         throw new UnsupportedOperationException("Controlled managed execution is not supported");
     }
-    default java.util.Optional<CliExecution.Snapshot> status(java.util.UUID id) { return java.util.Optional.empty(); }
-    default java.util.List<CliExecution.Snapshot> snapshots() { return java.util.List.of(); }
-    default java.util.Optional<CliExecution.Snapshot> cancel(java.util.UUID id) { return java.util.Optional.empty(); }
-    default Observation runManaged(java.util.UUID id, String capability, Path directory, List<String> command,
-                                   java.util.Map<String,String> environment) {
+    default Optional<CliExecution.Snapshot> status(UUID id) { return Optional.empty(); }
+    default List<CliExecution.Snapshot> snapshots() { return List.of(); }
+    default Optional<CliExecution.Snapshot> cancel(UUID id) { return Optional.empty(); }
+    default Observation runManaged(UUID id, String capability, Path directory, List<String> command,
+                                   Map<String,String> environment) {
         return runIsolated(capability,directory,command,environment);
     }
     Observation run(String capability, Path workingDirectory, List<String> command);
 
     /** Explicit environment execution must fail closed on legacy implementations. */
     default Observation runIsolated(String capability, Path directory, List<String> command,
-                                    java.util.Map<String,String> environment) {
+                                    Map<String,String> environment) {
         throw new UnsupportedOperationException("Explicit environment execution is not supported");
     }
 }

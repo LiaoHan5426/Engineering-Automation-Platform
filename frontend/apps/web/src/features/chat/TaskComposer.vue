@@ -43,7 +43,6 @@ import {
   scenarios,
   sessionKey,
   setExecutionMode,
-  toggleResource,
   workbench,
 } from '../shell/workbench'
 import { acceptFiles, FILE_CAP, type IncomingFile } from './acceptFiles'
@@ -51,7 +50,6 @@ import { acceptFiles, FILE_CAP, type IncomingFile } from './acceptFiles'
 const props = withDefaults(
   defineProps<{
     active?: boolean
-    preview?: boolean
     draft?: string
     toolMode?: string
     context: TaskContext
@@ -63,7 +61,6 @@ const props = withDefaults(
   }>(),
   {
     active: true,
-    preview: false,
     draft: '',
     toolMode: 'none',
     refreshingModels: false,
@@ -125,10 +122,6 @@ const workspacePicker = ref(false),
   versionsBusy = ref(false)
 /** Layered + menu mirrors §0B.2 frame-024: files / instructions / actions / experts / skills / MCP. */
 const menuCategories = ['files', 'instructions', 'actions', 'experts', 'skills', 'mcp'] as const
-const demoResources = [
-  { id: 'skill:vue-layout', kind: 'skill', label: 'preview.skill' },
-  { id: 'mcp:files', kind: 'mcp', label: 'preview.mcp' },
-] as const
 const needle = computed(() => query.value.trim().toLowerCase())
 function matches(value: string) {
   return !needle.value || value.toLowerCase().includes(needle.value)
@@ -136,18 +129,13 @@ function matches(value: string) {
 const visibleExperts = computed(() =>
   expertCatalog.filter((item) => matches(item.name) || matches(item.category)),
 )
-const visibleResources = computed(() =>
-  demoResources.filter(
-    (item) => item.kind === (category.value === 'mcp' ? 'mcp' : 'skill') && matches(t(item.label)),
-  ),
-)
 const counts = computed(() => ({
   files: props.context.files.length + (props.context.prototypeVersionId ? 1 : 0),
   experts: currentExtras().experts.length + (props.context.expert === 'general' ? 0 : 1),
   instructions: props.context.instructions.trim() ? 1 : 0,
   actions: 0,
   skills: props.context.skillRef ? 1 : 0,
-  mcp: props.preview ? currentExtras().resources.filter((id) => id.startsWith('mcp:')).length : 0,
+  mcp: 0,
 }))
 function selectCategory(value: string) {
   if (menuCategories.includes(value as typeof category.value))
@@ -243,13 +231,12 @@ function change<K extends keyof TaskContext>(key: K, value: TaskContext[K]) {
   emit('update', { ...props.context, [key]: value })
 }
 function applyIncoming(incoming: IncomingFile[]) {
-  const result = acceptFiles(props.context.files, incoming, props.preview)
+  const result = acceptFiles(props.context.files, incoming)
   if (!result.ok) {
     note.value = t(result.reason === 'media' ? 'task.pasteMedia' : 'task.fileLimit')
     return
   }
   change('files', result.files)
-  if (result.note === 'media') note.value = t('preview.mediaReference')
 }
 function referenceSource(source: WorkspaceSource) {
   if (props.disabled || source.denial || !source.exists || !source.excerpt || !source.baseHash)
@@ -260,11 +247,9 @@ function referenceSource(source: WorkspaceSource) {
     workspacePicker.value = false
     return
   }
-  const result = acceptFiles(
-    props.context.files,
-    [{ name, size: new TextEncoder().encode(content).length, text: content, media: false }],
-    false,
-  )
+  const result = acceptFiles(props.context.files, [
+    { name, size: new TextEncoder().encode(content).length, text: content, media: false },
+  ])
   if (!result.ok) {
     note.value = t('task.fileLimit')
     return
@@ -416,7 +401,6 @@ async function loadVersions() {
       :trigger="false"
       :disabled="disabled"
       :blocked="skillBlocked"
-      :mock="preview"
       @select="
         (skillRef, skillResourcePaths) => {
           emit('update', { ...context, skillRef, skillResourcePaths })
@@ -432,7 +416,6 @@ async function loadVersions() {
       :draft="draft"
       :disabled="disabled"
       :blocked="toolMode !== 'none' || !!context.skillRef"
-      :mock="preview"
       @select="
         ($event) => {
           change('knowledgeExpertRef', $event)
@@ -549,16 +532,6 @@ async function loadVersions() {
         @close="removeExpert(expert.id)"
         >{{ t('desktop.collab') }}：{{ expert.name }}</Tag
       >
-      <Tag
-        v-for="id in currentExtras().resources"
-        :key="id"
-        closable
-        type="success"
-        :disabled="disabled"
-        @click="toggleResource(id)"
-        @close="toggleResource(id)"
-        >{{ t(demoResources.find((item) => item.id === id)?.label || 'preview.simulated') }}</Tag
-      >
     </div>
     <label v-if="context.mode === 'code'" class="generation-target">
       <span>{{ t('generation.target') }}</span>
@@ -571,6 +544,22 @@ async function loadVersions() {
         @update:model-value="change('targetPath', $event)"
       />
       <small>{{ t('generation.targetHelp') }}</small>
+      <span>{{ t('generation.components') }}</span>
+      <Textarea
+        data-testid="generation-component-paths"
+        :model-value="(context.componentPaths ?? []).join('\n')"
+        :disabled="disabled"
+        rows="3"
+        :placeholder="t('generation.componentsHelp')"
+        @update:model-value="
+          change(
+            'componentPaths',
+            String($event)
+              .split(/\r?\n/)
+              .filter((path) => path !== ''),
+          )
+        "
+      />
     </label>
     <div v-if="context.taskRef" data-testid="composer-task-binding" class="generation-target">
       <span
@@ -661,7 +650,7 @@ async function loadVersions() {
           >
             <h3>{{ t('desktop.executionChoiceTitle') }}</h3>
             <p class="hint" data-testid="execution-availability">
-              {{ t(preview ? 'desktop.executionDemoHint' : 'desktop.executionAvailability') }}
+              {{ t('desktop.executionAvailability') }}
             </p>
             <Button
               variant="navigation"
@@ -677,22 +666,22 @@ async function loadVersions() {
               type="button"
               data-testid="execution-plan"
               :aria-pressed="workbench.executionMode === 'plan'"
-              :disabled="!preview"
-              :title="preview ? undefined : t('desktop.executionModeOff')"
+              :disabled="true"
+              :title="t('desktop.executionModeOff')"
               @click="chooseExecution('plan')"
               >{{ t('desktop.executionPlan') }} · {{ t('desktop.executionPlanHint')
-              }}<template v-if="!preview"> · {{ t('desktop.executionModeOff') }}</template></Button
+              }}<template> · {{ t('desktop.executionModeOff') }}</template></Button
             >
             <Button
               variant="navigation"
               type="button"
               data-testid="execution-agent"
               :aria-pressed="workbench.executionMode === 'agent'"
-              :disabled="!preview"
-              :title="preview ? undefined : t('desktop.executionModeOff')"
+              :disabled="true"
+              :title="t('desktop.executionModeOff')"
               @click="chooseExecution('agent')"
               >{{ t('desktop.executionAgent') }} · {{ t('desktop.executionAgentHint')
-              }}<template v-if="!preview"> · {{ t('desktop.executionModeOff') }}</template></Button
+              }}<template> · {{ t('desktop.executionModeOff') }}</template></Button
             >
             <Button
               variant="navigation"
@@ -943,11 +932,7 @@ async function loadVersions() {
               <FileInput
                 ref="filesInput"
                 multiple
-                :accept="
-                  preview
-                    ? '.vue,.ts,.tsx,.js,.jsx,.json,.md,.txt,.sql,.java,.css,.html,.png,.jpg,.jpeg,.webp,.mp4'
-                    : '.vue,.ts,.tsx,.js,.jsx,.json,.md,.txt,.sql,.java,.css,.html'
-                "
+                accept=".vue,.ts,.tsx,.js,.jsx,.json,.md,.txt,.sql,.java,.css,.html"
                 hidden
                 @change="filesChanged"
               />
@@ -1079,19 +1064,8 @@ async function loadVersions() {
             >
             <template v-else-if="category === 'mcp'">
               <p class="hint" data-testid="resource-empty">
-                {{ preview ? t('preview.resourceHint') : t('desktop.mcpEmpty') }}
+                {{ t('desktop.mcpEmpty') }}
               </p>
-              <Button
-                variant="navigation"
-                v-for="item in preview ? visibleResources : []"
-                :key="item.id"
-                type="button"
-                class="menu-choice"
-                :aria-pressed="currentExtras().resources.includes(item.id)"
-                :disabled="disabled"
-                @click="toggleResource(item.id)"
-                >{{ t(item.label) }} · {{ t('preview.simulated') }}</Button
-              >
             </template>
             <label v-else
               >{{ t('task.guidance')
@@ -1107,9 +1081,7 @@ async function loadVersions() {
         </div>
       </Popover>
       <p
-        v-if="
-          !preview && (workbench.executionMode === 'agent' || workbench.executionMode === 'plan')
-        "
+        v-if="workbench.executionMode === 'agent' || workbench.executionMode === 'plan'"
         class="hint"
       >
         {{ t('desktop.executionBlocked') }}

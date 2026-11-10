@@ -1,10 +1,10 @@
+import { apiStorageScope } from '../../../src/lib/runtimeConfig'
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, type App } from 'vue'
 import { runtimeApi } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import ChatGptAccountCard from '../../../src/features/settings/ChatGptAccountCard.vue'
-vi.mock('../../../src/lib/serviceConfig', () => ({ useMockServices: false }))
 let app: App
 let root: HTMLDivElement
 afterEach(() => {
@@ -20,7 +20,7 @@ async function flush() {
 it('recovers a completed authorization when returning after the saved link expiry', async () => {
   const connected = vi.fn()
   sessionStorage.setItem(
-    'eap.chatgpt.pending-login',
+    apiStorageScope + '.eap.chatgpt.pending-login',
     JSON.stringify({
       loginId: 'finished',
       authorizationUrl: 'https://auth.openai.com/api/accounts/authorize?state=public-state',
@@ -40,7 +40,7 @@ it('recovers a completed authorization when returning after the saved link expir
   await flush()
   expect(status).toHaveBeenCalledWith('finished')
   expect(connected).toHaveBeenCalledWith('account')
-  expect(sessionStorage.getItem('eap.chatgpt.pending-login')).toBeNull()
+  expect(sessionStorage.getItem(apiStorageScope + '.eap.chatgpt.pending-login')).toBeNull()
 })
 it('starts browser authorization without requesting an API key and opens model setup only after a connected callback', async () => {
   vi.useFakeTimers()
@@ -75,5 +75,5 @@ it('starts browser authorization without requesting an API key and opens model s
   await vi.advanceTimersByTimeAsync(1500)
   await flush()
   expect(connected).toHaveBeenCalledWith('account')
-  expect(sessionStorage.getItem('eap.chatgpt.pending-login')).toBeNull()
+  expect(sessionStorage.getItem(apiStorageScope + '.eap.chatgpt.pending-login')).toBeNull()
 })

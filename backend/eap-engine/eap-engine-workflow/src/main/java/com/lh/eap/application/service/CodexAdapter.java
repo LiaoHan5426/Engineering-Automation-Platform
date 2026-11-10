@@ -1,4 +1,13 @@
 package com.lh.eap.application.service;
+import java.util.concurrent.atomic.AtomicBoolean;
+import com.lh.eap.error.CliProgramErrors;
+import com.lh.eap.error.ProtocolErrors;
+import com.lh.eap.error.SecurityErrors;
+import com.lh.eap.error.WorkspaceErrors;
+import com.lh.eap.error.GitErrors;
+import com.lh.eap.error.ExecutionErrors;
+import com.lh.eap.error.ModelErrors;
+import com.lh.eap.error.ToolErrors;
 
 import com.lh.eap.api.*;
 import com.lh.eap.api.CliExecution.*;
@@ -22,7 +31,7 @@ public final class CodexAdapter implements AgentAdapter {
         public ModelEvidence { Objects.requireNonNull(support);Objects.requireNonNull(source); }
     }
     private final Map<String,ModelEvidence> models;
-    private final java.util.concurrent.atomic.AtomicBoolean trialConsumed=new java.util.concurrent.atomic.AtomicBoolean();
+    private final AtomicBoolean trialConsumed=new AtomicBoolean();
     private final JsonMapper json=JsonMapper.builder().build();
     public static List<String> configurationArguments(){
         // Non-interactive: deny requests requiring additional approval; never bypass policy/sandbox.
@@ -31,7 +40,7 @@ public final class CodexAdapter implements AgentAdapter {
                 "-c","sandbox_workspace_write.exclude_tmpdir_env_var=true",
                 "-c","sandbox_workspace_write.exclude_slash_tmp=true");
     }
-    public RetryPolicy retryPolicy(){return new RetryPolicy(0,"NOT_CONTROLLED_BY_EAP");}
+    public RetryPolicy retryPolicy(){return new RetryPolicy(0,ExecutionErrors.NOT_CONTROLLED_BY_EAP.code());}
     public CodexAdapter(ProcessExecutor executor,Path testRoot,String binary,List<String> prefix,
                         String git,Map<String,String> environment){
         this(executor,testRoot,binary,prefix,git,environment,Map.of());
@@ -61,7 +70,7 @@ public final class CodexAdapter implements AgentAdapter {
     }
     private String git(Path repo,String...args){
         var r=call(UUID.randomUUID(),repo,git,List.of(args),Set.of());
-        if(r.status()!=Status.SUCCEEDED)throw new IllegalStateException("GIT_EVIDENCE_FAILED");
+        if(r.status()!=Status.SUCCEEDED)throw new IllegalStateException(GitErrors.GIT_EVIDENCE_FAILED.code());
         return r.stdout();
     }
     private boolean valid(Path repo)throws IOException {
@@ -73,29 +82,29 @@ public final class CodexAdapter implements AgentAdapter {
     @Override public Outcome execute(Task task){
         String version="",before="";Result execution=null;
         try{
-            if(!task.approved())return failure(task,"APPROVAL_REQUIRED",version,null,before);
+            if(!task.approved())return failure(task,ExecutionErrors.APPROVAL_REQUIRED.code(),version,null,before);
             if(task.model()==null||!task.model().matches("[A-Za-z0-9][A-Za-z0-9._-]{0,127}"))
-                return failure(task,"INVALID_MODEL",version,null,before);
+                return failure(task,ModelErrors.INVALID_MODEL.code(),version,null,before);
             var evidence=models.get(task.model());
             if(evidence==null||!evidence.userAuthorizedTrial()&&(evidence.support()==ModelSupport.UNKNOWN||evidence.support()==ModelSupport.CACHE_LISTED))
-                return failure(task,"MODEL_SUPPORT_UNCONFIRMED",version,null,before);
-            if(evidence.support()==ModelSupport.CACHE_MISS&&!evidence.userAuthorizedTrial())return failure(task,"MODEL_CACHE_MISS",version,null,before);
-            if(evidence.support()==ModelSupport.CONFIRMED_UNSUPPORTED)return failure(task,"MODEL_UNSUPPORTED",version,null,before);
+                return failure(task,ModelErrors.MODEL_SUPPORT_UNCONFIRMED.code(),version,null,before);
+            if(evidence.support()==ModelSupport.CACHE_MISS&&!evidence.userAuthorizedTrial())return failure(task,ModelErrors.MODEL_CACHE_MISS.code(),version,null,before);
+            if(evidence.support()==ModelSupport.CONFIRMED_UNSUPPORTED)return failure(task,ModelErrors.MODEL_UNSUPPORTED.code(),version,null,before);
             if(task.instructions()==null||task.instructions().isBlank()||task.instructions().length()>4000)
-                return failure(task,"INVALID_TASK",version,null,before);
-            if(!valid(task.repository()))return failure(task,"REPOSITORY_DENIED",version,null,before);
+                return failure(task,ExecutionErrors.INVALID_TASK.code(),version,null,before);
+            if(!valid(task.repository()))return failure(task,WorkspaceErrors.REPOSITORY_DENIED.code(),version,null,before);
             var repo=task.repository().toRealPath();
             var v=codex(repo,"--version");
-            if(v.status()!=Status.SUCCEEDED)return failure(task,"CLI_MISSING_OR_UNSTARTABLE",version,v,before);
+            if(v.status()!=Status.SUCCEEDED)return failure(task,CliProgramErrors.CLI_MISSING_OR_UNSTARTABLE.code(),version,v,before);
             version=v.stdout().trim();
             var help=codex(repo,"exec","--help");
-            if(help.status()!=Status.SUCCEEDED)return failure(task,"UNSUPPORTED_PARAMETERS",version,help,before);
+            if(help.status()!=Status.SUCCEEDED)return failure(task,ProtocolErrors.UNSUPPORTED_PARAMETERS.code(),version,help,before);
             for(var flag:List.of("--json","--sandbox","--cd","--ignore-user-config","--model","--ephemeral"))
-                if(!help.stdout().contains(flag))return failure(task,"UNSUPPORTED_PARAMETERS",version,help,before);
+                if(!help.stdout().contains(flag))return failure(task,ProtocolErrors.UNSUPPORTED_PARAMETERS.code(),version,help,before);
             var auth=codex(repo,"login","status");
-            if(auth.status()!=Status.SUCCEEDED||!(auth.stdout()+auth.stderr()).contains("Logged in"))return failure(task,"NOT_AUTHENTICATED",version,auth,before);
+            if(auth.status()!=Status.SUCCEEDED||!(auth.stdout()+auth.stderr()).contains("Logged in"))return failure(task,SecurityErrors.NOT_AUTHENTICATED.code(),version,auth,before);
             before=git(repo,"status","--porcelain=v1","--untracked-files=all");
-            if(evidence.userAuthorizedTrial()&&!trialConsumed.compareAndSet(false,true))return failure(task,"TRIAL_ALREADY_CONSUMED",version,null,before);
+            if(evidence.userAuthorizedTrial()&&!trialConsumed.compareAndSet(false,true))return failure(task,ExecutionErrors.TRIAL_ALREADY_CONSUMED.code(),version,null,before);
             var args=new ArrayList<>(prefix);
             args.addAll(List.of("exec","--model",task.model(),"--json","--sandbox","workspace-write","--ephemeral","--ignore-user-config"));
             args.addAll(configurationArguments());
@@ -113,31 +122,31 @@ public final class CodexAdapter implements AgentAdapter {
                     if(type.isEmpty())throw new IllegalArgumentException();
                     if(type.equals("turn.completed"))completed=true;
                     if(type.equals("turn.failed")||type.equals("error"))
-                        error=modelRejected(line)?"MODEL_SERVER_REJECTED":"PROVIDER_ERROR";
+                        error=modelRejected(line)?ModelErrors.MODEL_SERVER_REJECTED.code():ProtocolErrors.PROVIDER_ERROR.code();
                     events.add(new AgentAdapter.Event(events.size()+1,type,clean(node.path("thread_id").asString("")),clean(line),receivedLine.receivedAt()));
-                }catch(RuntimeException malformed){error="INVALID_OR_TRUNCATED_JSONL";break;}
+                }catch(RuntimeException malformed){error=ProtocolErrors.INVALID_OR_TRUNCATED_JSONL.code();break;}
             }
-            if(error.isEmpty()&&!completed)error="INCOMPLETE_PROTOCOL";
+            if(error.isEmpty()&&!completed)error=ProtocolErrors.INCOMPLETE_PROTOCOL.code();
             if(!execution.trace().toolError().isEmpty())error=execution.trace().toolError();
-            if(error.isEmpty()&&execution.trace().truncated())error="INVALID_OR_TRUNCATED_JSONL";
+            if(error.isEmpty()&&execution.trace().truncated())error=ProtocolErrors.INVALID_OR_TRUNCATED_JSONL.code();
             if(error.isEmpty()&&!execution.artifactError().isEmpty())error=execution.artifactError();
             if(execution.status()==Status.TIMED_OUT)error="TIMED_OUT";
             if(execution.status()==Status.CANCELLED)error="CANCELLED";
             return new Outcome(task.executionId(),version,task.model(),task.model(),clean(evidence.source()),retryPolicy(),error,execution,events,before,
                     git(repo,"status","--porcelain=v1","--untracked-files=all"),git(repo,"diff","--no-ext-diff","--stat"));
-        }catch(IOException e){return failure(task,"REPOSITORY_DENIED",version,execution,before);}
-        catch(RuntimeException e){return failure(task,"ADAPTER_OR_GIT_ERROR",version,execution,before);}
+        }catch(IOException e){return failure(task,WorkspaceErrors.REPOSITORY_DENIED.code(),version,execution,before);}
+        catch(RuntimeException e){return failure(task,ExecutionErrors.ADAPTER_OR_GIT_ERROR.code(),version,execution,before);}
     }
     private String classify(Result r){
         if(r.status()==Status.CANCELLED)return "CANCELLED";
         if(r.status()==Status.TIMED_OUT)return "TIMED_OUT";
         var text=(r.stdout()+r.stderr()).toLowerCase(Locale.ROOT);
-        if(CliExecutionService.toolPolicyDenied(text))return "TOOL_POLICY_DENIED";
-        if(text.contains("error loading config"))return "CLI_CONFIG_ERROR";
-        if(modelRejected(text))return "MODEL_SERVER_REJECTED";
-        if(text.contains("unauthorized")||text.contains("not logged in"))return "AUTHENTICATION_FAILED";
-        if(text.contains("connection")||text.contains("network"))return "NETWORK_ERROR";
-        return r.status()==Status.SUCCEEDED?"":"NONZERO_OR_PROCESS_FAILURE";
+        if(CliExecutionService.toolPolicyDenied(text))return ToolErrors.TOOL_POLICY_DENIED.code();
+        if(text.contains("error loading config"))return CliProgramErrors.CLI_CONFIG_ERROR.code();
+        if(modelRejected(text))return ModelErrors.MODEL_SERVER_REJECTED.code();
+        if(text.contains("unauthorized")||text.contains("not logged in"))return SecurityErrors.AUTHENTICATION_FAILED.code();
+        if(text.contains("connection")||text.contains("network"))return ProtocolErrors.NETWORK_ERROR.code();
+        return r.status()==Status.SUCCEEDED?"":ExecutionErrors.NONZERO_OR_PROCESS_FAILURE.code();
     }
     private Outcome failure(Task task,String error,String version,Result r,String before){
         var model=task.model()==null?"":clean(task.model());

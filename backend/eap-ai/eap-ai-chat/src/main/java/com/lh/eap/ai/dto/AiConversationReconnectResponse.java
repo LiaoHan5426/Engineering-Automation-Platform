@@ -1,7 +1,9 @@
 package com.lh.eap.ai.dto;
 
 import java.util.UUID;
+import com.lh.eap.ai.TaskWorkingMemory;
 
-/** Explicit recovery acknowledgement; a reset never restores model memory or binds a target. */
+/** One explicit recovery and target-binding acknowledgement. UI history is never replayed. */
 public record AiConversationReconnectResponse(UUID conversationId, String workspaceLabel, String memory,
-        UUID connectionId, String connectionName, Long connectionRevision, String model, boolean contextReset) {}
+        UUID connectionId, String connectionName, Long connectionRevision, String model, boolean contextReset,
+        boolean memoryCleared, TaskWorkingMemory.Snapshot workingMemory) {}

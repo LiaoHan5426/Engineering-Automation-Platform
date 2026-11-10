@@ -1,4 +1,5 @@
 package com.lh.eap.ai.dto;
+import com.lh.eap.ai.ChatExecutionStatus;
 
 import java.util.List;
 import java.util.UUID;
@@ -9,4 +10,6 @@ public record ChatExecutionSnapshot(
         long latestSequence,
         boolean complete,
         String status,
-        List<ChatExecutionEvent> events) {}
+        List<ChatExecutionEvent> events) {
+    public ChatExecutionSnapshot { ChatExecutionStatus.fromWire(status); }
+}

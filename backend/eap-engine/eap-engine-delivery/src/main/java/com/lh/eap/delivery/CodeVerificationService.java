@@ -1,4 +1,8 @@
 package com.lh.eap.delivery;
+import com.lh.eap.common.SensitiveData;
+import com.lh.eap.core.DefaultProcessExecutor;
+import java.time.Duration;
+import com.lh.eap.error.ExecutionErrors;
 import com.lh.eap.delivery.CodeVerificationProperties;
 
 import java.io.IOException;
@@ -51,7 +55,7 @@ public final class CodeVerificationService {
         var checks = new ArrayList<Check>();
         for (var spec : specs) {
             if (spec.name() == null || spec.name().isBlank() || spec.command() == null || spec.command().isEmpty()) {
-                checks.add(new Check(spec.name() == null ? "" : spec.name(), null, "INVALID_CHECK_SPEC"));
+                checks.add(new Check(spec.name() == null ? "" : spec.name(), null, ExecutionErrors.INVALID_CHECK_SPEC.code()));
                 continue;
             }
             try {
@@ -92,10 +96,10 @@ public final class CodeVerificationService {
         INSTANCE;
         @Override
         public ProcessResult run(Path workspace, List<String> command, int timeoutSeconds) throws IOException, InterruptedException {
-            try (var executor = new com.lh.eap.core.DefaultProcessExecutor(java.time.Duration.ofSeconds(timeoutSeconds))) {
+            try (var executor = new DefaultProcessExecutor(Duration.ofSeconds(timeoutSeconds))) {
                 var result = executor.run("code-verification", workspace.toRealPath(), command);
-                if (Thread.currentThread().isInterrupted()) throw new InterruptedException("CHECK_CANCELLED");
-                return new ProcessResult(result.exitCode(), com.lh.eap.common.SensitiveData.redact(
+                if (Thread.currentThread().isInterrupted()) throw new InterruptedException(ExecutionErrors.CHECK_CANCELLED.code());
+                return new ProcessResult(result.exitCode(), SensitiveData.redact(
                         result.stdout() + (result.stderr().isBlank() ? "" : "\n" + result.stderr())).strip());
             }
         }

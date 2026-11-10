@@ -1,0 +1,33 @@
+package com.lh.eap.error;
+
+import com.lh.eap.api.error.PlatformErrorCode;
+
+/** CliProgram operation errors; display messages live in domain bundles. */
+public enum CliProgramErrors implements PlatformErrorCode {
+    CLI_ARGUMENTS_INVALID,
+    CLI_ARGUMENTS_TOO_LARGE,
+    CLI_BINARY_ALREADY_REGISTERED,
+    CLI_BINARY_INVALID,
+    CLI_BINDING_UNAVAILABLE,
+    CLI_CHANNEL_STORE_UNAVAILABLE,
+    CLI_CONFIG_ERROR,
+    CLI_FIELD_INVALID,
+    CLI_FIELD_SECRET,
+    CLI_IDENTIFIER_INVALID,
+    CLI_MISSING_OR_UNSTARTABLE,
+    CLI_OPERATION_ALREADY_EXISTS,
+    CLI_OPERATION_BUILTIN,
+    CLI_OPERATION_ID_MISMATCH,
+    CLI_OPERATION_IN_USE,
+    CLI_OPERATION_NOT_FOUND,
+    CLI_OPERATION_RESERVED,
+    CLI_PROBE_UNSUPPORTED,
+    CLI_PROGRAM_ALREADY_EXISTS,
+    CLI_PROGRAM_BINDING_CONFLICT,
+    CLI_PROGRAM_BUILTIN,
+    CLI_PROGRAM_ID_REQUIRED,
+    CLI_PROGRAM_ID_RESERVED,
+    CLI_PROGRAM_NOT_FOUND;
+
+    @Override public String code() { return name(); }
+}

@@ -1,4 +1,7 @@
 package com.lh.eap.application.service;
+import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.TimeUnit;
+import com.lh.eap.error.BoardVerificationErrors;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,13 +32,13 @@ public class BoardVerificationSource {
     public Source snapshot(Path repository) {
         try {
             var root = repository.toRealPath(); var scope = root.resolve("frontend");
-            if (Files.isSymbolicLink(scope) || !Files.isDirectory(scope, LinkOption.NOFOLLOW_LINKS) || !scope.toRealPath().equals(scope)) throw denied("BOARD_VERIFICATION_SCOPE_UNAVAILABLE");
+            if (Files.isSymbolicLink(scope) || !Files.isDirectory(scope, LinkOption.NOFOLLOW_LINKS) || !scope.toRealPath().equals(scope)) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_SCOPE_UNAVAILABLE.code());
             var files = new ArrayList<File>(); long[] totals = {0, 0};
-            long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(10);
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
             Files.walkFileTree(scope, EnumSet.noneOf(FileVisitOption.class), 33, new SimpleFileVisitor<>() {
                 private void check(Path path, BasicFileAttributes attrs) throws IOException {
-                    if (++totals[1] > 10000 || System.nanoTime() > deadline) throw denied("BOARD_VERIFICATION_SOURCE_LIMIT");
-                    if (attrs.isSymbolicLink() || !path.toRealPath().startsWith(scope) || !path.toRealPath().equals(path)) throw denied("BOARD_VERIFICATION_SOURCE_LINK");
+                    if (++totals[1] > 10000 || System.nanoTime() > deadline) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_SOURCE_LIMIT.code());
+                    if (attrs.isSymbolicLink() || !path.toRealPath().startsWith(scope) || !path.toRealPath().equals(path)) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_SOURCE_LINK.code());
                 }
                 @Override public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
                     check(dir, attrs);
@@ -44,21 +47,21 @@ public class BoardVerificationSource {
                 }
                 @Override public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
                     check(path, attrs);
-                    if (attrs.isDirectory()) throw denied("BOARD_VERIFICATION_SOURCE_LIMIT");
+                    if (attrs.isDirectory()) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_SOURCE_LIMIT.code());
                     if (hidden(path) || !sourcePath(root.relativize(path).toString().replace('\\', '/'))) return FileVisitResult.CONTINUE;
-                    if (!attrs.isRegularFile()) throw denied("BOARD_VERIFICATION_SOURCE_UNREADABLE");
-                    if (files.size() >= 4096 || attrs.size() > 4L * 1024 * 1024 || totals[0] + attrs.size() > 32L * 1024 * 1024) throw denied("BOARD_VERIFICATION_SOURCE_LIMIT");
+                    if (!attrs.isRegularFile()) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_SOURCE_UNREADABLE.code());
+                    if (files.size() >= 4096 || attrs.size() > 4L * 1024 * 1024 || totals[0] + attrs.size() > 32L * 1024 * 1024) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_SOURCE_LIMIT.code());
                     var hash = digest(); long count = 0;
                     try (var channel = Files.newByteChannel(path, Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))) {
                         var buffer = ByteBuffer.allocate(8192);
                         while (channel.read(buffer) != -1) {
                             buffer.flip(); count += buffer.remaining();
-                            if (count > attrs.size() || System.nanoTime() > deadline) throw denied("BOARD_VERIFICATION_SOURCE_CHANGED");
+                            if (count > attrs.size() || System.nanoTime() > deadline) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_SOURCE_CHANGED.code());
                             hash.update(buffer); buffer.clear();
                         }
                     }
                     var after = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-                    if (count != attrs.size() || !Objects.equals(attrs.fileKey(), after.fileKey()) || !attrs.lastModifiedTime().equals(after.lastModifiedTime()) || after.isSymbolicLink()) throw denied("BOARD_VERIFICATION_SOURCE_CHANGED");
+                    if (count != attrs.size() || !Objects.equals(attrs.fileKey(), after.fileKey()) || !attrs.lastModifiedTime().equals(after.lastModifiedTime()) || after.isSymbolicLink()) throw denied(BoardVerificationErrors.BOARD_VERIFICATION_SOURCE_CHANGED.code());
                     totals[0] += count;
                     files.add(new File(root.relativize(path).toString().replace('\\', '/'), HexFormat.of().formatHex(hash.digest()), count));
                     return FileVisitResult.CONTINUE;
@@ -67,7 +70,7 @@ public class BoardVerificationSource {
             files.sort(Comparator.comparing(File::path));
             var immutable = List.copyOf(files);
             return new Source("frontend", GitReviewCapture.hash(JSON.writeValueAsString(List.of("frontend", immutable, EXCLUSIONS))), immutable, EXCLUSIONS);
-        } catch (IOException failure) { throw denied("BOARD_VERIFICATION_SOURCE_UNREADABLE"); }
+        } catch (IOException failure) { throw denied(BoardVerificationErrors.BOARD_VERIFICATION_SOURCE_UNREADABLE.code()); }
     }
     private static boolean hidden(Path path) throws IOException { return path.getFileName().toString().startsWith(".") || Files.isHidden(path); }
     /** The same pure path policy for current source and absent tree entries; never reads content. */
@@ -84,7 +87,7 @@ public class BoardVerificationSource {
     }
     private static MessageDigest digest() {
         try { return MessageDigest.getInstance("SHA-256"); }
-        catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
+        catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
     static ResponseStatusException denied(String reason) { return new ResponseStatusException(HttpStatus.CONFLICT, reason); }
 }

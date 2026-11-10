@@ -13,8 +13,7 @@ export const boardRunMessages = {
     retry: '重试原启动请求',
     refresh: '刷新运行记录',
     confirm: '确认本次仓库检查',
-    cancellation:
-      '页面关闭后服务端继续处理。本轮暂不提供看板取消操作；执行超时或结果未知会单独显示。',
+    cancellation: '页面关闭后服务端继续处理；执行超时或结果未知时，可打开记录核对状态。',
     empty: '暂无运行记录。',
     version: '任务版本 {version}',
     exitCode: '退出码',

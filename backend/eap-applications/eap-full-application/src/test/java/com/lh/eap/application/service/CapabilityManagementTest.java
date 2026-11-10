@@ -86,8 +86,8 @@ class CapabilityManagementTest {
         var settings = new CapabilitySettings(jdbc, new CapabilityUsage(jdbc));
 
         var error = assertThrows(IllegalStateException.class, () -> settings.save("sql.parse", false, "不需要"));
-        assertTrue(error.getMessage().contains("orders-sql"), "拒绝时必须点名是哪位专家：" + error.getMessage());
-        assertTrue(error.getMessage().contains("sql.parse"));
+        assertEquals("CAPABILITY_IN_USE", error.getMessage());
+        assertEquals("CAPABILITY_IN_USE", error.getMessage());
         verify(jdbc, never()).update(anyString(), any(), any(), any());
     }
 
@@ -230,11 +230,11 @@ class CapabilityManagementTest {
         var jdbc = mock(JdbcTemplate.class);
         var channels = new CliChannels(new JdbcCliChannelStore(jdbc));
 
-        assertEquals("二进制位置不能以 - 开头",
+        assertEquals("CLI_BINARY_INVALID",
                 assertThrows(IllegalArgumentException.class, () -> channels.configure("rg", "--exec=evil")).getMessage());
-        assertEquals("二进制位置不能包含控制字符",
+        assertEquals("CLI_BINARY_INVALID",
                 assertThrows(IllegalArgumentException.class, () -> channels.configure("rg", "rg\nrm -rf /")).getMessage());
-        assertEquals("二进制位置不能包含凭据",
+        assertEquals("CLI_BINARY_INVALID",
                 assertThrows(IllegalArgumentException.class, () -> channels.configure("rg", "http://x?token=abc")).getMessage());
 
         channels.configure("rg", "C:/tools/rg.exe");
@@ -299,22 +299,22 @@ class CapabilityManagementTest {
 
         assertTrue(assertThrows(IllegalArgumentException.class,
                 () -> service.save("Bad Server", "x", "stdio", "npx server", List.of("search"), false, false))
-                .getMessage().contains("mcp.<服务器>.<工具>"));
+                .getMessage().equals("MCP_SERVER_INPUT_INVALID"));
         assertTrue(assertThrows(IllegalArgumentException.class,
                 () -> service.save("files", "x", "stdio", "npx server", List.of("searchIssues"), false, false))
-                .getMessage().contains("不合法"), "大写工具名会拼出非法能力标识，必须当场拒绝");
+                .getMessage().equals("MCP_TOOL_NAME_INVALID"), "大写工具名会拼出非法能力标识，必须当场拒绝");
         assertTrue(assertThrows(IllegalArgumentException.class,
                 () -> service.save("files", "x", "stdio", "  ", List.of("search"), false, false))
-                .getMessage().contains("启动命令"));
+                .getMessage().equals("MCP_SERVER_INPUT_INVALID"));
         assertTrue(assertThrows(IllegalArgumentException.class,
                 () -> service.save("files", "x", "http", "files.example.com/mcp", List.of("search"), false, false))
-                .getMessage().contains("http://"));
+                .getMessage().equals("MCP_SERVER_INPUT_INVALID"));
         assertTrue(assertThrows(IllegalArgumentException.class,
                 () -> service.save("files", "x", "stdio", "npx server --api_key=abc123", List.of("search"), false, false))
-                .getMessage().contains("不能包含凭据"), "平台不保存凭据，配置里出现就要拒绝");
+                .getMessage().equals("MCP_SERVER_SECRET"), "平台不保存凭据，配置里出现就要拒绝");
         assertTrue(assertThrows(IllegalArgumentException.class,
                 () -> service.save("files", "x", "carrier-pigeon", "x", List.of("search"), false, false))
-                .getMessage().contains("传输方式"));
+                .getMessage().equals("MCP_SERVER_INPUT_INVALID"));
         assertTrue(assertThrows(IllegalArgumentException.class,
                 () -> service.save("official", "x", "stdio",
                         com.lh.eap.runtime.mcp.client.OfficialReadonlyMcpLock.endpoint(),
@@ -364,7 +364,7 @@ class CapabilityManagementTest {
                         """)));
 
         var error = assertThrows(IllegalStateException.class, () -> mcpService(jdbc).delete("files"));
-        assertTrue(error.getMessage().contains("mcp.files.search"), error.getMessage());
+        assertEquals("MCP_SERVER_IN_USE", error.getMessage());
         verify(jdbc, never()).update(argThat((String sql) -> sql != null && sql.startsWith("DELETE FROM eap.mcp_server")), eq("files"));
     }
 

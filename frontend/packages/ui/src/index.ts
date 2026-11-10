@@ -69,3 +69,5 @@ export { default as ActionCard } from './action-card/ActionCard.vue'
 export { default as DropdownMenu } from './dropdown-menu/DropdownMenu.vue'
 export type { MenuAction } from './dropdown-menu/types'
 export { default as SvgActionPath } from './svg-action-path/SvgActionPath.vue'
+
+export { default as FileUpload } from './file/FileUpload.vue'

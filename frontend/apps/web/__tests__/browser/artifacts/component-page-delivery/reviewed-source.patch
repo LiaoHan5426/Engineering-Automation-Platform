@@ -1,0 +1,186 @@
+--- frontend/apps/web/src/components/DeliveryEvidencePanel.vue
++++ frontend/apps/web/src/components/DeliveryEvidencePanel.vue
+@@ -1,29 +1,116 @@
+ <script setup lang="ts">
+-import { computed, ref } from 'vue'
++import { computed, ref, watch } from 'vue'
+ import { Input, Button, Panel } from '@eap/ui'
+ import DeliveryEvidenceSummary from './DeliveryEvidenceSummary.vue'
+ import { evidenceRows, type EvidenceFile } from './deliveryEvidenceModel'
++
+ const props = defineProps<{
+   files: EvidenceFile[]
+   status: string
+   labels: Record<string, string>
+ }>()
+ const query = ref('')
++const selectedPath = ref<string | null>(null)
+ const rows = computed(() => evidenceRows(props.files, query.value))
++const changed = computed(() => props.files.filter((file) => file.before !== null && file.before !== file.content).length)
++const added = computed(() => props.files.filter((file) => file.before === null).length)
++const selected = computed(() => rows.value.find((file) => file.path === selectedPath.value) ?? rows.value[0] ?? null)
++const byteCount = computed(() => selected.value ? new TextEncoder().encode(selected.value.content).byteLength : 0)
++
++watch(rows, (visible) => {
++  if (!visible.some((file) => file.path === selectedPath.value)) {
++    selectedPath.value = visible[0]?.path ?? null
++  }
++}, { immediate: true, flush: 'sync' })
+ </script>
++
+ <template>
+-  <Panel data-testid="delivery-evidence-panel">
++  <Panel data-testid="evidence-panel" class="evidence-panel">
++    <h2>{{ labels.title }}</h2>
+     <DeliveryEvidenceSummary
+       :total="files.length"
+-      :changed="files.length"
+-      :added="0"
++      :changed="changed"
++      :added="added"
+       :status="status"
++      :labels="labels"
+     />
+-    <Input v-model="query" data-testid="evidence-filter" :aria-label="labels.filter" />
+-    <ul>
+-      <li v-for="file in rows" :key="file.path">
+-        <Button>{{ file.path }}</Button>
+-      </li>
+-    </ul>
++    <Input v-model="query" data-testid="evidence-filter" :aria-label="labels.filter" :placeholder="labels.filter" />
++    <div v-if="rows.length" class="evidence-layout">
++      <ul class="evidence-files">
++        <li v-for="file in rows" :key="file.path">
++          <Button
++            type="button"
++            data-testid="evidence-file"
++            :aria-pressed="selected?.path === file.path"
++            @click="selectedPath = file.path"
++          >{{ file.path }}</Button>
++        </li>
++      </ul>
++      <section v-if="selected" data-testid="evidence-detail" class="evidence-detail" :aria-label="labels.details">
++        <h3>{{ labels.details }}</h3>
++        <p class="evidence-path">{{ selected.path }}</p>
++        <dl>
++          <div><dt>{{ labels.baseline }}</dt><dd><code>{{ selected.baseHash }}</code></dd></div>
++          <div><dt>{{ labels.bytes }}</dt><dd>{{ byteCount }}</dd></div>
++        </dl>
++        <pre><code>{{ selected.content }}</code></pre>
++      </section>
++    </div>
++    <p v-else>{{ labels.empty }}</p>
++    <p class="evidence-boundary">{{ labels.boundary }}</p>
+   </Panel>
+ </template>
++
++<style scoped>
++.evidence-panel {
++  display: flex;
++  flex-direction: column;
++  gap: var(--spacing-4, 1rem);
++  min-width: 0;
++}
++.evidence-layout {
++  display: flex;
++  flex-wrap: wrap;
++  align-items: flex-start;
++  gap: var(--spacing-4, 1rem);
++}
++.evidence-files {
++  display: flex;
++  flex: 1 1 14rem;
++  flex-direction: column;
++  gap: var(--spacing-2, 0.5rem);
++  min-width: 0;
++  margin: 0;
++  padding: 0;
++  list-style: none;
++}
++.evidence-files :deep(button) {
++  max-width: 100%;
++  white-space: normal;
++  overflow-wrap: anywhere;
++  text-align: start;
++}
++.evidence-detail {
++  flex: 3 1 24rem;
++  min-width: 0;
++  max-width: 100%;
++}
++.evidence-path, dd, .evidence-boundary {
++  overflow-wrap: anywhere;
++}
++dl {
++  display: flex;
++  flex-wrap: wrap;
++  gap: var(--spacing-4, 1rem);
++}
++dd {
++  margin: 0;
++}
++pre {
++  max-width: 100%;
++  overflow: auto;
++  padding: var(--spacing-3, 0.75rem);
++  background: var(--surface-secondary, transparent);
++  border-radius: var(--radius-md, 0.375rem);
++}
++</style>
+--- frontend/apps/web/src/components/DeliveryEvidenceSummary.vue
++++ frontend/apps/web/src/components/DeliveryEvidenceSummary.vue
+@@ -1,10 +1,37 @@
+ <script setup lang="ts">
+ import { Badge } from '@eap/ui'
+-defineProps<{ total: number; changed: number; added: number; status: string }>()
++
++defineProps<{
++  total: number
++  changed: number
++  added: number
++  status: string
++  labels: Record<string, string>
++}>()
+ </script>
++
+ <template>
+-  <div>
+-    <Badge>{{ status }}</Badge
+-    ><span>{{ total }} files</span>
++  <div data-testid="evidence-summary" class="evidence-summary">
++    <Badge>{{ status }}</Badge>
++    <dl>
++      <div><dt>{{ labels.total }}</dt><dd data-testid="evidence-total">{{ total }}</dd></div>
++      <div><dt>{{ labels.changed }}</dt><dd data-testid="evidence-changed">{{ changed }}</dd></div>
++      <div><dt>{{ labels.added }}</dt><dd data-testid="evidence-added">{{ added }}</dd></div>
++    </dl>
+   </div>
+ </template>
++
++<style scoped>
++.evidence-summary, dl, dl > div {
++  display: flex;
++  flex-wrap: wrap;
++  align-items: center;
++  gap: var(--spacing-2, 0.5rem);
++}
++.evidence-summary, dl {
++  gap: var(--spacing-4, 1rem);
++}
++dl, dd {
++  margin: 0;
++}
++</style>
+--- frontend/apps/web/src/components/deliveryEvidenceModel.ts
++++ frontend/apps/web/src/components/deliveryEvidenceModel.ts
+@@ -4,6 +4,8 @@
+   content: string
+   baseHash: string
+ }
+-export function evidenceRows(files: EvidenceFile[], query: string) {
+-  return files.filter((file) => file.path.toLowerCase().includes(query.toLowerCase()))
++
++export function evidenceRows(files: EvidenceFile[], query: string): EvidenceFile[] {
++  const normalizedQuery = query.toLowerCase()
++  return files.filter((file) => file.path.toLowerCase().includes(normalizedQuery))
+ }

@@ -113,7 +113,7 @@ describe('chat session', () => {
         reject({
           response: {
             status: 404,
-            data: { detail: 'SKILL_NOT_FOUND', contextMemoryCleared: true },
+            data: { code: 'SKILL_NOT_FOUND', contextMemoryCleared: true },
           },
         })
       else resolve(result({ skillContext: evidence, contextMemoryCleared: true }))
@@ -162,7 +162,7 @@ describe('chat session', () => {
       reject({
         response: {
           status: 409,
-          data: { detail: 'EXPERT_CONTEXT_STALE', knowledgeMemoryCleared: true },
+          data: { code: 'EXPERT_CONTEXT_STALE', knowledgeMemoryCleared: true },
         },
       })
       await pending
@@ -187,7 +187,7 @@ describe('chat session', () => {
         aiStatus: async () => status(),
         openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
         sendAiMessage: async () => {
-          throw { response: { status: http, data: { detail: 'INVALID_EXPERT_CONTEXT' } } }
+          throw { response: { status: http, data: { code: 'INVALID_EXPERT_CONTEXT' } } }
         },
       })
       await session.openConversation()
@@ -209,7 +209,7 @@ describe('chat session', () => {
         aiStatus: async () => status(),
         openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
         sendAiMessage: async () => {
-          throw { response: { status: http, data: { detail: 'EXPERT_CONTEXT_UNAVAILABLE' } } }
+          throw { response: { status: http, data: { code: 'EXPERT_CONTEXT_UNAVAILABLE' } } }
         },
       })
       await session.openConversation()
@@ -270,7 +270,6 @@ describe('chat session', () => {
     [409, 'BOARD_EXECUTION_ACTIVE', 'generation-task-blocked'],
     [409, 'BOARD_PREPARATION_REQUIRED', 'generation-task-blocked'],
     [404, 'BOARD_TASK_NOT_FOUND', 'generation-task-stale'],
-    [409, 'MOCK_TASK_BINDING_UNAVAILABLE', 'generation-task-mock'],
   ])(
     'keeps the draft and distinguishes source preparation failure %s %s from a model switch',
     async (http, code, expected) => {
@@ -282,7 +281,9 @@ describe('chat session', () => {
           memory: 'memory',
         }),
         sendAiMessage: async () => {
-          throw { response: { status: http, data: { detail: code } } }
+          throw {
+            response: { status: http, data: { code, detail: 'Localized preparation failure' } },
+          }
         },
       }
       const session = createChatSession(api)
@@ -402,7 +403,7 @@ describe('chat session', () => {
         memory: 'memory',
       }),
       sendAiMessage: async () => {
-        throw { response: { status: 503, data: { detail: 'AI_NOT_CONFIGURED' } } }
+        throw { response: { status: 503, data: { code: 'AI_NOT_CONFIGURED' } } }
       },
     }
     const session = createChatSession(api)
@@ -468,7 +469,7 @@ describe('chat session', () => {
           executionId: 'exec-partial',
           sequence: 2,
         })
-        throw { response: { status: 502, data: { detail: 'AI_RESPONSE_INCOMPLETE' } } }
+        throw { response: { status: 502, data: { code: 'AI_RESPONSE_INCOMPLETE' } } }
       },
     })
     await session.openConversation()
@@ -529,7 +530,7 @@ describe('chat session', () => {
     },
   )
 
-  it('accepts the explicit mock_completed contract without promoting unknown statuses to success', async () => {
+  it('accepts SUCCEEDED without promoting unknown statuses to success', async () => {
     let calls = 0
     const session = createChatSession({
       aiStatus: async () => status(),
@@ -537,8 +538,8 @@ describe('chat session', () => {
       sendAiMessage: async () => {
         calls++
         if (calls === 1)
-          throw { response: { status: 400, data: { detail: 'CONTEXT_BUDGET_EXCEEDED' } } }
-        return result({ answer: '模拟回答', status: 'mock_completed' })
+          throw { response: { status: 400, data: { code: 'CONTEXT_BUDGET_EXCEEDED' } } }
+        return result({ answer: '模拟回答', status: 'SUCCEEDED' })
       },
     })
     await session.openConversation()
@@ -549,7 +550,7 @@ describe('chat session', () => {
     await session.send()
     expect(session.failure.value).toBe('')
     expect(session.draft.value).toBe('')
-    expect(session.turns.value[1]).toMatchObject({ text: '模拟回答', status: 'mock_completed' })
+    expect(session.turns.value[1]).toMatchObject({ text: '模拟回答', status: 'SUCCEEDED' })
   })
 
   it('treats local abort as unknown rather than confirmed backend cancellation', async () => {
@@ -625,7 +626,7 @@ describe('chat session', () => {
         pending.reject({
           response: {
             status: 502,
-            data: { detail: 'AI_RESPONSE_INCOMPLETE', contextBudget: budget },
+            data: { code: 'AI_RESPONSE_INCOMPLETE', contextBudget: budget },
           },
         })
       else

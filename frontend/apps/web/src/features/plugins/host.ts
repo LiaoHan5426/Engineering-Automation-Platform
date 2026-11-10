@@ -1,3 +1,4 @@
+import { DependencyCheckStatus, PluginRuntimeKind } from './pluginStates'
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import { runtimeApi, type ScenarioWorkflowDependencies } from '@eap/runtime-client'
 import { i18n } from '../../lib/i18n'
@@ -36,7 +37,7 @@ export interface PluginHost {
   boardContributionVisible: ComputedRef<boolean>
   builderContributionVisible: ComputedRef<boolean>
   builderDependencyCheck: Ref<{
-    status: 'unchecked' | 'checking' | 'available' | 'failed'
+    status: DependencyCheckStatus
     reason: string
     snapshot?: ScenarioWorkflowDependencies
   }>
@@ -78,10 +79,10 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
   const pendingActivationFailure = ref<PluginActivationFailure | null>(null)
   const builderInstances = new Map<string, () => boolean>()
   const builderDependencyCheck = ref<{
-    status: 'unchecked' | 'checking' | 'available' | 'failed'
+    status: DependencyCheckStatus
     reason: string
     snapshot?: ScenarioWorkflowDependencies
-  }>({ status: 'unchecked', reason: '' })
+  }>({ status: DependencyCheckStatus.UNCHECKED, reason: '' })
   let builderCheckGeneration = 0
   let builderCheckController: AbortController | undefined
   function prepareBuilders() {
@@ -90,7 +91,7 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
     }
   }
   const boardDependencyCheck = ref<DependencyCheck>({
-    status: 'unchecked',
+    status: DependencyCheckStatus.UNCHECKED,
     source: '',
     observedAt: null,
     reason: '',
@@ -106,16 +107,19 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
       services: services.value,
       activationError: activationFailures.value[pluginId] ?? null,
     })
-    if ((pluginId === 'board' || pluginId === 'builder') && observation.kind === 'ready') {
+    if (
+      (pluginId === 'board' || pluginId === 'builder') &&
+      observation.kind === PluginRuntimeKind.READY
+    ) {
       const check = pluginId === 'board' ? boardDependencyCheck.value : builderDependencyCheck.value
       const status = check.status
-      if (status !== 'available')
+      if (status !== DependencyCheckStatus.AVAILABLE)
         return {
           ...observation,
           kind:
-            status === 'checking'
+            status === DependencyCheckStatus.CHECKING
               ? 'dependency_checking'
-              : status === 'failed'
+              : status === DependencyCheckStatus.FAILED
                 ? 'dependency_check_failed'
                 : 'dependency_unchecked',
           message: check.reason,
@@ -227,21 +231,29 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
       }
     },
     async checkBuilderDependencies() {
-      if (builderDependencyCheck.value.status === 'checking') return
+      if (builderDependencyCheck.value.status === DependencyCheckStatus.CHECKING) return
       const generation = ++builderCheckGeneration
       builderCheckController = new AbortController()
       const previous = builderDependencyCheck.value.snapshot
-      builderDependencyCheck.value = { status: 'checking', reason: '', snapshot: previous }
+      builderDependencyCheck.value = {
+        status: DependencyCheckStatus.CHECKING,
+        reason: '',
+        snapshot: previous,
+      }
       try {
         const snapshot = await runtimeApi.scenarioWorkflowDependencies(
           builderCheckController.signal,
         )
         if (generation === builderCheckGeneration)
-          builderDependencyCheck.value = { status: 'available', reason: '', snapshot }
+          builderDependencyCheck.value = {
+            status: DependencyCheckStatus.AVAILABLE,
+            reason: '',
+            snapshot,
+          }
       } catch (error) {
         if (generation === builderCheckGeneration)
           builderDependencyCheck.value = {
-            status: 'failed',
+            status: DependencyCheckStatus.FAILED,
             reason: error instanceof Error ? error.message : 'DEPENDENCY_CHECK_FAILED',
             snapshot: previous,
           }
@@ -253,15 +265,18 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
       ++builderCheckGeneration
       builderCheckController?.abort()
       builderCheckController = undefined
-      if (builderDependencyCheck.value.status === 'checking')
-        builderDependencyCheck.value = { ...builderDependencyCheck.value, status: 'unchecked' }
+      if (builderDependencyCheck.value.status === DependencyCheckStatus.CHECKING)
+        builderDependencyCheck.value = {
+          ...builderDependencyCheck.value,
+          status: DependencyCheckStatus.UNCHECKED,
+        }
     },
     services,
     activationFailures,
     boardDependencyCheck,
     async checkBoardDependencies(projectId) {
       if (
-        boardDependencyCheck.value.status === 'checking' ||
+        boardDependencyCheck.value.status === DependencyCheckStatus.CHECKING ||
         !projectId.trim() ||
         projectId.length > 120
       )
@@ -271,7 +286,7 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
       const previous = boardDependencyCheck.value.snapshot
       checkController = new AbortController()
       boardDependencyCheck.value = {
-        status: 'checking',
+        status: DependencyCheckStatus.CHECKING,
         source,
         observedAt: null,
         reason: '',
@@ -283,7 +298,7 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
           throw new Error('INVALID_BOARD_RUNTIME_RESPONSE')
         if (generation !== checkGeneration) return
         boardDependencyCheck.value = {
-          status: 'available',
+          status: DependencyCheckStatus.AVAILABLE,
           source,
           observedAt: snapshot.observedAt,
           reason: '',
@@ -292,7 +307,7 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
       } catch (error) {
         if (generation !== checkGeneration) return
         boardDependencyCheck.value = {
-          status: 'failed',
+          status: DependencyCheckStatus.FAILED,
           source,
           observedAt: new Date().toISOString(),
           reason: error instanceof Error ? error.message : 'DEPENDENCY_CHECK_FAILED',
@@ -307,9 +322,9 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
       ++checkGeneration
       checkController?.abort()
       checkController = undefined
-      if (boardDependencyCheck.value.status === 'checking') {
+      if (boardDependencyCheck.value.status === DependencyCheckStatus.CHECKING) {
         boardDependencyCheck.value = {
-          status: 'unchecked',
+          status: DependencyCheckStatus.UNCHECKED,
           source: '',
           observedAt: null,
           reason: '',
@@ -342,7 +357,7 @@ export function createPluginHost(store: KeyValueStore = browserStore()): PluginH
             services: services.value,
             activationError: null,
           })
-          if (missing.kind === 'dependency_missing') {
+          if (missing.kind === PluginRuntimeKind.DEPENDENCY_MISSING) {
             installation.value = previous
             clearActivationFailure(pluginId)
             throw new Error('PLUGIN_DEPENDENCY_MISSING')

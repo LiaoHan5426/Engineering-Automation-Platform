@@ -1,4 +1,6 @@
 package com.lh.eap.application.service;
+import org.springframework.dao.EmptyResultDataAccessException;
+import com.lh.eap.error.AgentErrors;
 
 import com.lh.eap.application.dto.*;
 import org.springframework.stereotype.Service;
@@ -93,12 +95,12 @@ public class ExpertManagementService {
     public Map<String,Object> save(ExpertDefinitionRequest request){
         var validation=validate(request);
         if(!Boolean.TRUE.equals(validation.get("valid"))) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,validation.get("errors").toString());
-        if(definitions.isBuiltin(request.id())) throw new ResponseStatusException(HttpStatus.CONFLICT,"内置专家不可就地覆盖，请复制为新标识后编辑");
+        if(definitions.isBuiltin(request.id())) throw new ResponseStatusException(HttpStatus.CONFLICT,AgentErrors.EXPERT_BUILTIN.code());
         String saved;
         try {
             saved=mapper.saveDraft(request.id(),request.name(),request.manifest());
-        } catch (org.springframework.dao.EmptyResultDataAccessException conflict) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,"内置专家不可就地覆盖，请复制为新标识后编辑");
+        } catch (EmptyResultDataAccessException conflict) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,AgentErrors.EXPERT_BUILTIN.code());
         }
         // Revalidate the stored definition inside the management transaction.
         var manifest=ExpertManifest.parse(saved);

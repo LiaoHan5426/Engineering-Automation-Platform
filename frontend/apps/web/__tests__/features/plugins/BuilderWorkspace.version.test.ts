@@ -233,7 +233,12 @@ describe('builder version preview', () => {
 
   it('preserves an earlier list and designer when refresh or open fails', async () => {
     await mount([version('a', '版本甲')])
-    vi.spyOn(runtimeApi, 'prototypeVersions').mockRejectedValue(new Error('版本列表不可用'))
+    vi.spyOn(runtimeApi, 'prototypeVersions').mockRejectedValue({
+      response: {
+        status: 409,
+        data: { code: 'PROTOTYPE_VERSION_NOT_FOUND', detail: '版本列表不可用' },
+      },
+    })
     const refresh = [...root!.querySelectorAll<HTMLButtonElement>('button')].find((item) =>
       item.textContent?.includes('刷新版本'),
     )!
@@ -243,7 +248,12 @@ describe('builder version preview', () => {
       '版本列表不可用',
     )
     expect(root!.textContent).toContain('版本甲')
-    vi.spyOn(runtimeApi, 'prototypeVersion').mockRejectedValue(new Error('版本打不开'))
+    vi.spyOn(runtimeApi, 'prototypeVersion').mockRejectedValue({
+      response: {
+        status: 404,
+        data: { code: 'PROTOTYPE_VERSION_NOT_FOUND', detail: '版本打不开' },
+      },
+    })
     openButton('版本甲').click()
     await settled()
     expect(root!.querySelector('[data-testid="version-note"]')?.textContent).toContain('版本打不开')

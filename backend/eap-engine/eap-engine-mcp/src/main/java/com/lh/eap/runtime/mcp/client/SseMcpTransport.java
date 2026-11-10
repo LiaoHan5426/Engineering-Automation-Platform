@@ -1,4 +1,5 @@
 package com.lh.eap.runtime.mcp.client;
+import com.lh.eap.error.McpErrors;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -63,7 +64,7 @@ public final class SseMcpTransport implements McpTransport {
             response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            throw new IOException("MCP_SSE_INTERRUPTED", interrupted);
+            throw new IOException(McpErrors.MCP_SSE_INTERRUPTED.code(), interrupted);
         }
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new IOException("MCP_SSE_" + response.statusCode());
@@ -84,11 +85,11 @@ public final class SseMcpTransport implements McpTransport {
         } catch (TimeoutException timeout) {
             closed.set(true);
             stream.close();
-            throw new IOException("MCP_SSE_ENDPOINT_TIMEOUT", timeout);
+            throw new IOException(McpErrors.MCP_SSE_ENDPOINT_TIMEOUT.code(), timeout);
         } catch (Exception failure) {
             closed.set(true);
             stream.close();
-            throw new IOException("MCP_SSE_ENDPOINT_FAILED", failure);
+            throw new IOException(McpErrors.MCP_SSE_ENDPOINT_FAILED.code(), failure);
         }
     }
 
@@ -114,12 +115,12 @@ public final class SseMcpTransport implements McpTransport {
             if (waiter == null) return "";
             return waiter.get(deadline.toMillis(), TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeoutFailure) {
-            throw new IOException("MCP_SSE_TIMEOUT", timeoutFailure);
+            throw new IOException(McpErrors.MCP_SSE_TIMEOUT.code(), timeoutFailure);
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            throw new IOException("MCP_SSE_INTERRUPTED", interrupted);
+            throw new IOException(McpErrors.MCP_SSE_INTERRUPTED.code(), interrupted);
         } catch (Exception failure) {
-            throw new IOException(failure.getMessage() == null ? "MCP_SSE_FAILED" : failure.getMessage(), failure);
+            throw new IOException(failure.getMessage() == null ? McpErrors.MCP_SSE_FAILED.code() : failure.getMessage(), failure);
         } finally {
             if (id != null) pending.remove(String.valueOf(id));
         }
@@ -200,7 +201,7 @@ public final class SseMcpTransport implements McpTransport {
         } finally {
             closed.set(true);
             for (var waiter : pending.values()) {
-                waiter.completeExceptionally(new IOException("MCP_SSE_CLOSED"));
+                waiter.completeExceptionally(new IOException(McpErrors.MCP_SSE_CLOSED.code()));
             }
         }
     }

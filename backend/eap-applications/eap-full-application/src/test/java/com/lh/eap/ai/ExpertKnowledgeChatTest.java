@@ -54,7 +54,7 @@ class ExpertKnowledgeChatTest {
         h.mvc(app).perform(post("/api/ai/conversations/" + id + "/messages").contentType(MediaType.APPLICATION_JSON)
                 .content(SEND.replace("\"none\"", "\"git_status\"")))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("EXPERT_CONTEXT_MODE_UNSUPPORTED"))
+                .andExpect(jsonPath("$.code").value("EXPERT_CONTEXT_MODE_UNSUPPORTED"))
                 .andExpect(jsonPath("$.knowledgeMemoryCleared").value(true));
         assertEquals(0, calls.get());
         assertEquals(0, toolCalls.get());

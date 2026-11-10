@@ -1,0 +1,46 @@
+{
+  "recordedAt": "2026-11-10T17:18:01.718550+00:00",
+  "tests": {
+    "files": 149,
+    "total": 921,
+    "passed": 921,
+    "failed": 0,
+    "skipped": 0,
+    "command": "rtk proxy pnpm --dir frontend test run --reporter=json --outputFile=../backend/target/frontend-product-consolidation/final-tests-current.json",
+    "reportSha256": "495eb2167cee1f487dc00d01fee20404eaf89b21a0a1a38b56b04caa4cbaae1b"
+  },
+  "browser": {
+    "engine": "real Chromium",
+    "pageViewportChecks": 32,
+    "interactionGroups": 8,
+    "errors": [],
+    "i18nWarnings": [],
+    "result": "result.json"
+  },
+  "checks": {
+    "typecheck": "passed",
+    "build": "passed with existing large chunk warning",
+    "architecture": "passed",
+    "changedFileFormatAndLint": "passed",
+    "newStylesStylelint": "passed",
+    "gitDiffWhitespace": "passed"
+  },
+  "productionBundle": {
+    "jsFiles": 102,
+    "forbiddenMockMarkers": []
+  },
+  "preservation": {
+    "existingBackendFilesUnchanged": 289,
+    "originalBackupFileCount": 592,
+    "utf8FilesChecked": 595,
+    "invalidEncoding": [],
+    "liveQaRecordsRemaining": []
+  },
+  "scope": {
+    "backendChanges": false,
+    "databaseMigrationRequired": false,
+    "externalModelCalls": 0,
+    "userAcceptance": "not claimed",
+    "commitOrPush": false
+  }
+}

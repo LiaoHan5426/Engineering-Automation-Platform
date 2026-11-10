@@ -1,4 +1,5 @@
 package com.lh.eap.persistence.mapper;
+import org.springframework.dao.EmptyResultDataAccessException;
 
 import com.lh.eap.application.service.Mission;
 import com.lh.eap.application.service.MissionStore;
@@ -56,7 +57,7 @@ public class JdbcMissionStore implements MissionStore {
     public void updateExecution(UUID id, String execution) {
         var updated = jdbc.update("UPDATE eap.mission SET execution = ? WHERE id = ?", execution, id);
         if (updated != 1) {
-            throw new org.springframework.dao.EmptyResultDataAccessException(1);
+            throw new EmptyResultDataAccessException(1);
         }
     }
 

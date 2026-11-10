@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.ResourceErrors;
 
 import java.util.Set;
 import tools.jackson.databind.JsonNode;
@@ -23,7 +24,7 @@ public final class SemanticPrototype {
                 throw new IllegalArgumentException();
             requireNode(schema.path("root"), 0, new int[1]);
         } catch (RuntimeException invalid) {
-            throw new IllegalArgumentException("PROTOTYPE_SEMANTIC_DESIGN_REQUIRED");
+            throw new IllegalArgumentException(ResourceErrors.PROTOTYPE_SEMANTIC_DESIGN_REQUIRED.code());
         }
     }
 

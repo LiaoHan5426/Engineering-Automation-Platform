@@ -1,4 +1,5 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.error.MissionErrors;
 
 import com.lh.eap.application.service.MissionExecution;
 import com.lh.eap.application.service.MissionGitExecutionService;
@@ -35,7 +36,7 @@ public class MissionExecutionController {
     public MissionExecution start(@PathVariable UUID missionId, @RequestBody(required = false) String body) {
         var parsed = objectBody(body);
         if (parsed.get("missionId") instanceof String supplied && !missionId.toString().equals(supplied)) {
-            throw new IllegalArgumentException("任务壳标识不一致");
+            throw new IllegalArgumentException(MissionErrors.MISSION_INPUT_INVALID.code());
         }
         return executions.start(missionId);
     }
@@ -51,15 +52,15 @@ public class MissionExecutionController {
         try {
             parsed = JSON.readValue(json, Object.class);
         } catch (RuntimeException invalid) {
-            throw new IllegalArgumentException("执行请求不是 JSON 对象");
+            throw new IllegalArgumentException(MissionErrors.MISSION_INPUT_INVALID.code());
         }
         if (!(parsed instanceof Map<?, ?> raw)) {
-            throw new IllegalArgumentException("执行请求不是 JSON 对象");
+            throw new IllegalArgumentException(MissionErrors.MISSION_INPUT_INVALID.code());
         }
         var body = new LinkedHashMap<String, Object>();
         for (var entry : raw.entrySet()) {
             if (!(entry.getKey() instanceof String name) || !FIELDS.contains(name)) {
-                throw new IllegalArgumentException("执行请求含有不允许的字段");
+                throw new IllegalArgumentException(MissionErrors.MISSION_INPUT_INVALID.code());
             }
             body.put(name, entry.getValue());
         }

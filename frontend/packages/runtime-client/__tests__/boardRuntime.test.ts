@@ -72,6 +72,29 @@ describe('read-only board runtime contract', () => {
     { items: Array.from({ length: 21 }, () => snapshot().items[0]) },
     { items: [{ ...snapshot().items[0], kind: 'TOOL' }] },
     { items: [{ ...snapshot().items[0], status: 'SUCCEEDED' }] },
+    {
+      items: [
+        {
+          ...snapshot().items[0],
+          kind: 'SOURCE_WRITE',
+          status: 'CREATED',
+          storedStatus: 'PROPOSED',
+        },
+      ],
+    },
+    {
+      items: [
+        {
+          ...snapshot().items[0],
+          kind: 'VERIFICATION',
+          status: 'APPLYING',
+          storedStatus: 'RUNNING',
+        },
+      ],
+    },
+    {
+      items: [{ ...snapshot().items[0], kind: 'RUN', status: 'UNKNOWN', storedStatus: 'APPLIED' }],
+    },
     { items: [{ ...snapshot().items[0], storedStatus: undefined }] },
     { truncated: 'false' },
   ])('rejects an invalid successful HTTP response: %j', async (override) => {

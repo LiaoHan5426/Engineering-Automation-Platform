@@ -1,0 +1,31 @@
+package com.lh.eap.error;
+
+import com.lh.eap.api.error.PlatformErrorCode;
+
+/** Tool operation errors; display messages live in domain bundles. */
+public enum ToolErrors implements PlatformErrorCode {
+    CAPABILITY_DISABLED,
+    CAPABILITY_NOTE_TOO_LONG,
+    CAPABILITY_SETTINGS_UNAVAILABLE,
+    CAPABILITY_UNAVAILABLE,
+    CAPABILITY_UNRESOLVED,
+    REQUEST_ID_OPERATION_CONFLICT,
+    TOOL_BINDING_CHANGED,
+    TOOL_CALL_LIMIT,
+    TOOL_EXECUTION_BLOCKED,
+    TOOL_EXECUTION_CAPACITY,
+    TOOL_EXECUTION_NOT_FOUND,
+    TOOL_EXECUTION_STORE_UNAVAILABLE,
+    TOOL_FAILED,
+    TOOL_INVALID_ARGUMENTS,
+    TOOL_NOT_ALLOWED,
+    TOOL_NOT_GRANTED,
+    TOOL_NOT_PUBLISHED,
+    TOOL_OPERATION_NOT_FOUND,
+    TOOL_PERMISSION_DENIED,
+    TOOL_POLICY_DENIED,
+    TRUSTED_TOOL_NOT_FOUND,
+    CAPABILITY_IN_USE;
+
+    @Override public String code() { return name(); }
+}

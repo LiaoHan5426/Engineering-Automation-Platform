@@ -1,4 +1,12 @@
 <script setup lang="ts">
+import { isCodeProposalStatus } from '@eap/runtime-client'
+
+import { hasWireValue } from '@eap/runtime-client'
+
+import { CodeProposalStatus } from '@eap/runtime-client'
+
+import { BoardErrors, CodeErrors } from '@eap/runtime-client'
+
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { Button, Checkbox, Feedback, Badge } from '@eap/ui'
 import {
@@ -38,10 +46,8 @@ async function read() {
     )
       throw new Error('Identity mismatch')
     if (
-      !['PROPOSED', 'APPLYING', 'APPLIED', 'FAILED', 'UNKNOWN', 'REFUSED'].includes(
-        record.status,
-      ) ||
-      (record.status === 'APPLIED') !== (record.result != null) ||
+      !isCodeProposalStatus(record.status) ||
+      (record.status === CodeProposalStatus.APPLIED) !== (record.result != null) ||
       (record.result &&
         (record.result.id !== record.proposal.id ||
           !Array.isArray(record.result.written) ||
@@ -51,7 +57,8 @@ async function read() {
       throw new Error('Inconsistent application record')
     state.value = record
     note.value = ''
-    if (record.status === 'APPLIED' && record.result) emit('applied', record.result)
+    if (record.status === CodeProposalStatus.APPLIED && record.result)
+      emit('applied', record.result)
   } catch {
     if (token === generation) note.value = t('application.readFailed')
   } finally {
@@ -65,7 +72,7 @@ async function apply() {
     !confirmed.value ||
     props.readOnly ||
     !state.value?.proposal.writeAllowed ||
-    state.value.status !== 'PROPOSED'
+    state.value.status !== CodeProposalStatus.PROPOSED
   )
     return
   const token = generation
@@ -77,18 +84,26 @@ async function apply() {
     if (props.operations) await props.operations.apply()
     else await runtimeApi.applyCodeProposal(props.proposal.conversationId, props.proposal.id)
   } catch (error) {
-    const code = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+    const code = (error as { response?: { data?: { code?: string } } })?.response?.data?.code
     if (
-      [
-        'BOARD_REVISION_CONFLICT',
-        'CODE_TASK_PROTOTYPE_MISMATCH',
-        'CODE_TASK_SNAPSHOT_CHANGED',
-        'BOARD_TASK_NOT_FOUND',
-      ].includes(code ?? '')
+      hasWireValue(
+        [
+          BoardErrors.BOARD_REVISION_CONFLICT,
+          CodeErrors.CODE_TASK_PROTOTYPE_MISMATCH,
+          CodeErrors.CODE_TASK_SNAPSHOT_CHANGED,
+          BoardErrors.BOARD_TASK_NOT_FOUND,
+        ],
+        code ?? '',
+      )
     )
       refusal = t('generation.generation-task-stale')
     else if (
-      ['BOARD_EXECUTION_ACTIVE', 'BOARD_PREPARATION_REQUIRED', 'CODE_WORKSPACE_BUSY'].includes(
+      hasWireValue(
+        [
+          BoardErrors.BOARD_EXECUTION_ACTIVE,
+          BoardErrors.BOARD_PREPARATION_REQUIRED,
+          CodeErrors.CODE_WORKSPACE_BUSY,
+        ],
         code ?? '',
       )
     )
@@ -99,7 +114,7 @@ async function apply() {
       await read()
       if (token === generation) {
         writing.value = false
-        if (refusal && state.value?.status === 'PROPOSED') note.value = refusal
+        if (refusal && state.value?.status === CodeProposalStatus.PROPOSED) note.value = refusal
       }
     }
   }
@@ -147,17 +162,17 @@ watch(writing, (value) => emit('pending', value), { flush: 'sync' })
     <p v-if="state?.reason">
       <code>{{ state.reason }}</code>
     </p>
-    <p v-if="state?.status === 'APPLIED' && state.result?.afterHash">
+    <p v-if="state?.status === CodeProposalStatus.APPLIED && state.result?.afterHash">
       SHA-256：<code>{{ state.result.afterHash }}</code>
     </p>
-    <p v-if="state?.status === 'APPLIED'" data-testid="application-identities">
+    <p v-if="state?.status === CodeProposalStatus.APPLIED" data-testid="application-identities">
       {{ t('boardDelivery.conversationId') }}：<code>{{ proposal.conversationId }}</code
       ><br />{{ t('boardDelivery.proposalId') }}：<code>{{ proposal.id }}</code>
     </p>
-    <p v-if="state?.status === 'REFUSED'" data-testid="proposal-refused-review">
+    <p v-if="state?.status === CodeProposalStatus.REFUSED" data-testid="proposal-refused-review">
       {{ t('application.refusedReview') }}
     </p>
-    <template v-if="state?.status === 'PROPOSED'">
+    <template v-if="state?.status === CodeProposalStatus.PROPOSED">
       <label
         ><Checkbox
           v-model="confirmed"

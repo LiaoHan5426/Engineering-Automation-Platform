@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import {
   contextBudgetFromError,
-  contextBudgetNoteTone,
   includedSourceSummary,
   isContextBudgetObservation,
 } from '../../../src/features/chat/contextBudgetView'
@@ -45,14 +44,6 @@ describe('context budget view', () => {
     expect(includedSourceSummary(budget)).toContain('files:100')
   })
 
-  it('maps stable CE notes to warning badges and keeps prose neutral', () => {
-    expect(contextBudgetNoteTone('COMPRESSION_NOT_ENABLED')).toBe('warning')
-    expect(contextBudgetNoteTone('CHAT_MEMORY_NOT_METERED')).toBe('warning')
-    expect(contextBudgetNoteTone('DERIVED_CLEARED_BEFORE_SEND')).toBe('warning')
-    expect(contextBudgetNoteTone('CONTEXT_BUDGET_EXCEEDED')).toBe('danger')
-    expect(contextBudgetNoteTone('mock：会话历史未精确计量，非真实 token')).toBe('neutral')
-  })
-
   it('maps CONTEXT_BUDGET_EXCEEDED with observation on the session', async () => {
     const session = createChatSession({
       aiStatus: async () => status(),
@@ -65,7 +56,7 @@ describe('context budget view', () => {
         throw Object.assign(new Error('CONTEXT_BUDGET_EXCEEDED'), {
           response: {
             status: 400,
-            data: { detail: 'CONTEXT_BUDGET_EXCEEDED', contextBudget: budget },
+            data: { code: 'CONTEXT_BUDGET_EXCEEDED', contextBudget: budget },
           },
         })
       },
@@ -75,9 +66,9 @@ describe('context budget view', () => {
     await session.send()
     expect(session.failure.value).toBe('context-budget-exceeded')
     expect(session.lastContextBudget.value?.usedChars).toBe(1200)
-    expect(contextBudgetFromError({ response: { data: { contextBudget: budget } } })?.usedChars).toBe(
-      1200,
-    )
+    expect(
+      contextBudgetFromError({ response: { data: { contextBudget: budget } } })?.usedChars,
+    ).toBe(1200)
   })
 
   it('keeps successful contextBudget on the assistant turn', async () => {

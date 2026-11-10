@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { pagePreviewMessageKey, resolvePagePreview, type PagePreview } from './pagePreview'
 import { formatVerificationConfig, runtimeIdentity } from './runtimeIdentity'
-import { useMockServices } from '../../lib/serviceConfig'
+import { Collapse } from '@eap/ui'
 
 const props = defineProps<{
   recorded?: string
@@ -11,12 +11,10 @@ const props = defineProps<{
   checks?: Array<{ name: string; exitCode: number | null; summary: string }>
   /** Optional override for tests; defaults to window.location.origin. */
   origin?: string
-  mock?: boolean
 }>()
 const { t } = useI18n()
 const preview = computed((): PagePreview =>
   resolvePagePreview({
-    mock: props.mock ?? useMockServices,
     origin: props.origin ?? (typeof window !== 'undefined' ? window.location.origin : ''),
   }),
 )
@@ -29,19 +27,33 @@ const previewLabel = computed(() =>
 const configLine = computed(() =>
   formatVerificationConfig(runtimeIdentity.value, (key, values) => t(key, values ?? {})),
 )
+const resultLabel = computed(() => {
+  const state = props.recorded?.toLowerCase()
+  if (
+    state === 'failed' ||
+    props.checks?.some((check) => check.exitCode != null && check.exitCode !== 0)
+  )
+    return t('desktop.verificationFailed')
+  if (
+    state === 'passed' &&
+    props.checks?.length &&
+    props.checks.every((check) => check.exitCode === 0)
+  )
+    return t('desktop.verificationPassed')
+  if (state === 'unknown') return t('desktop.verificationUnknown')
+  if (state && !['not_requested', 'unverified'].includes(state))
+    return t('desktop.verificationRecorded', { value: props.recorded })
+  return t('desktop.checksIdle')
+})
 </script>
 
 <template>
   <p v-if="brief" data-testid="verification-checks">
-    {{
-      recorded && recorded !== 'not_requested'
-        ? t('desktop.verificationRecorded', { value: recorded })
-        : t('desktop.checksIdle')
-    }}
+    {{ resultLabel }}
   </p>
   <ul v-else data-testid="verification-checks">
+    <li data-testid="verification-result">{{ resultLabel }}</li>
     <template v-if="checks?.length">
-      <li data-testid="live-verification-config">{{ configLine }}</li>
       <li v-for="item in checks" :key="item.name">
         {{ item.name }}：{{
           item.exitCode == null
@@ -52,31 +64,22 @@ const configLine = computed(() =>
           · {{ item.summary.slice(0, 80) }}{{ item.summary.length > 80 ? '…' : '' }}</span
         >
       </li>
-      <li>
-        {{
-          recorded && recorded !== 'not_requested'
-            ? t('desktop.verificationRecorded', { value: recorded })
-            : t('desktop.verificationOpen')
-        }}
-      </li>
     </template>
-    <template v-else>
-      <li data-testid="live-verification-config">{{ configLine }}</li>
-      <li>{{ t('desktop.checkType') }}</li>
-      <li>{{ t('desktop.checkTest') }}</li>
-      <li>{{ t('desktop.checkBuild') }}</li>
-      <li data-testid="delivery-preview">{{ previewLabel }}</li>
-      <li v-if="preview.ready">
-        <a :href="preview.url" data-testid="delivery-preview-link">{{ preview.url }}</a>
-      </li>
-      <li>{{ t('desktop.acceptanceStillOpen') }}</li>
-      <li>
-        {{
-          recorded && recorded !== 'not_requested'
-            ? t('desktop.verificationRecorded', { value: recorded })
-            : t('desktop.verificationOpen')
-        }}
-      </li>
-    </template>
+    <li data-testid="delivery-preview">
+      <a v-if="preview.ready" :href="preview.url" data-testid="delivery-preview-link">{{
+        t('desktop.openPagePreview')
+      }}</a>
+      <span v-else>{{ previewLabel }}</span>
+    </li>
+    <li>{{ t('desktop.acceptanceStillOpen') }}</li>
+    <li>
+      <Collapse data-testid="verification-details">
+        <template #summary>{{ t('desktop.verificationDetails') }}</template>
+        <p data-testid="live-verification-config">{{ configLine }}</p>
+        <p v-if="recorded">
+          <code>{{ recorded }}</code>
+        </p>
+      </Collapse>
+    </li>
   </ul>
 </template>

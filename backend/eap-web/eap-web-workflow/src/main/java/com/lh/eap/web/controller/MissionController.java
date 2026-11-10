@@ -1,4 +1,5 @@
 package com.lh.eap.web.controller;
+import com.lh.eap.error.MissionErrors;
 
 import com.lh.eap.application.service.Mission;
 import com.lh.eap.application.service.MissionService;
@@ -40,32 +41,32 @@ public class MissionController {
     public Mission create(@RequestBody(required = false) String body) {
         var parsed = objectBody(body);
         if (!(parsed.get("handoffId") instanceof String handoffId)) {
-            throw new IllegalArgumentException("交接标识必须是文本");
+            throw new IllegalArgumentException(MissionErrors.HANDOFF_INPUT_INVALID.code());
         }
         try {
             return missions.create(UUID.fromString(handoffId));
         } catch (IllegalArgumentException invalid) {
-            throw new IllegalArgumentException("交接标识无效");
+            throw new IllegalArgumentException(MissionErrors.HANDOFF_INPUT_INVALID.code());
         }
     }
 
     private static Map<String, Object> objectBody(String json) {
         if (json == null || json.isBlank()) {
-            throw new IllegalArgumentException("任务壳请求不能为空");
+            throw new IllegalArgumentException(MissionErrors.MISSION_INPUT_INVALID.code());
         }
         final Object parsed;
         try {
             parsed = JSON.readValue(json, Object.class);
         } catch (RuntimeException invalid) {
-            throw new IllegalArgumentException("任务壳请求不是 JSON 对象");
+            throw new IllegalArgumentException(MissionErrors.MISSION_INPUT_INVALID.code());
         }
         if (!(parsed instanceof Map<?, ?> raw)) {
-            throw new IllegalArgumentException("任务壳请求不是 JSON 对象");
+            throw new IllegalArgumentException(MissionErrors.MISSION_INPUT_INVALID.code());
         }
         var body = new LinkedHashMap<String, Object>();
         for (var entry : raw.entrySet()) {
             if (!(entry.getKey() instanceof String name) || !FIELDS.contains(name)) {
-                throw new IllegalArgumentException("任务壳请求含有不允许的字段");
+                throw new IllegalArgumentException(MissionErrors.MISSION_INPUT_INVALID.code());
             }
             body.put(name, entry.getValue());
         }

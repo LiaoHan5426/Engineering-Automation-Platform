@@ -1,0 +1,378 @@
+{
+  "kind": "Full application, real JDBC and HTTP; deterministic clock/provider/failure injection; no external model",
+  "schema": "eap_unknown_qa_f2db77f643e5466d97ddba790524a051",
+  "checks": [
+    {
+      "name": "source-baseline-conflict",
+      "responses": [
+        {
+          "language": "zh-CN",
+          "status": 409,
+          "body": {
+            "detail": "文件已在候选生成后发生变化，请重新核对源码。",
+            "instance": "/api/ai/conversations/bd7b7399-287c-432f-aef5-8ae1a0629b40/proposals/ee57e6e4-c27d-4a37-a482-664404ff7d5a/apply",
+            "status": 409,
+            "title": "操作冲突",
+            "type": "about:blank",
+            "code": "FILE_CHANGED_SINCE_PROPOSAL",
+            "requestId": "8b5d68c1-229f-4554-ae02-e7de3731c301"
+          }
+        },
+        {
+          "language": "en-US",
+          "status": 409,
+          "body": {
+            "detail": "A file has changed since the proposal was generated. Review the source again.",
+            "instance": "/api/ai/conversations/bd7b7399-287c-432f-aef5-8ae1a0629b40/proposals/65a4edef-2349-46c8-8216-ca9b7f3c1ded/apply",
+            "status": 409,
+            "title": "Operation conflict",
+            "type": "about:blank",
+            "code": "FILE_CHANGED_SINCE_PROPOSAL",
+            "requestId": "fd430c83-66cf-41ca-bc2e-3558472e7426"
+          }
+        }
+      ]
+    },
+    {
+      "name": "unknown-blocks-new-execution",
+      "responses": [
+        {
+          "language": "zh-CN",
+          "status": 409,
+          "body": {
+            "detail": "此操作存在在途或结果未知的执行，请先核对原记录。",
+            "instance": "/api/cli-programs/git/operations/git-status/executions",
+            "status": 409,
+            "title": "操作冲突",
+            "type": "about:blank",
+            "code": "TOOL_EXECUTION_BLOCKED",
+            "requestId": "a415b1d3-6700-4220-acd2-a18562111a47",
+            "execution": {
+              "id": "88b0d0fb-17d3-4ef4-ae05-7aac3aa40f55",
+              "requestId": "f493eb87-0ba0-48b7-ab06-29eac30782f7",
+              "programId": "git",
+              "capabilityId": "git-status",
+              "workspacePath": "J:\\Code\\Engineering-Automation-Platform\\backend\\target\\status-i18n\\live\\workspace-5d36be9b1369471ba2bd15f7ea477974",
+              "executable": "git",
+              "status": "UNKNOWN",
+              "cancelRequested": false,
+              "createdAt": "2026-11-10T14:09:59.928750500Z",
+              "finishedAt": null,
+              "exitCode": null,
+              "stdout": "",
+              "stderr": "",
+              "truncated": false,
+              "exitEvidence": null,
+              "unconfirmedReason": "SERVICE_RESTART_EXIT_UNCONFIRMED",
+              "steps": [],
+              "resolution": null
+            }
+          }
+        },
+        {
+          "language": "en-US",
+          "status": 409,
+          "body": {
+            "detail": "An active or unconfirmed execution blocks this operation. Inspect the original record.",
+            "instance": "/api/cli-programs/git/operations/git-status/executions",
+            "status": 409,
+            "title": "Operation conflict",
+            "type": "about:blank",
+            "code": "TOOL_EXECUTION_BLOCKED",
+            "requestId": "5e77483a-bfbf-497f-955b-b352ad1942c8",
+            "execution": {
+              "id": "88b0d0fb-17d3-4ef4-ae05-7aac3aa40f55",
+              "requestId": "f493eb87-0ba0-48b7-ab06-29eac30782f7",
+              "programId": "git",
+              "capabilityId": "git-status",
+              "workspacePath": "J:\\Code\\Engineering-Automation-Platform\\backend\\target\\status-i18n\\live\\workspace-5d36be9b1369471ba2bd15f7ea477974",
+              "executable": "git",
+              "status": "UNKNOWN",
+              "cancelRequested": false,
+              "createdAt": "2026-11-10T14:09:59.928750500Z",
+              "finishedAt": null,
+              "exitCode": null,
+              "stdout": "",
+              "stderr": "",
+              "truncated": false,
+              "exitEvidence": null,
+              "unconfirmedReason": "SERVICE_RESTART_EXIT_UNCONFIRMED",
+              "steps": [],
+              "resolution": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "real-aggregate-state-query",
+      "snapshot": {
+        "projectId": "status-i18n-qa",
+        "observedAt": "2026-11-10T14:10:38.114498600Z",
+        "taskCount": 1,
+        "runCount": 0,
+        "activeRunCount": 0,
+        "unknownRunCount": 0,
+        "activeVerificationCount": 0,
+        "unknownVerificationCount": 0,
+        "activeWriteCount": 0,
+        "unknownWriteCount": 0,
+        "items": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "tool-store-unavailable",
+      "responses": [
+        {
+          "language": "zh-CN",
+          "status": 503,
+          "body": {
+            "detail": "工具执行记录暂不可用，尚不能确认请求结果，请重新读取原记录。",
+            "instance": "/api/cli-programs/git/operations/git-status/executions/88b0d0fb-17d3-4ef4-ae05-7aac3aa40f55",
+            "status": 503,
+            "title": "服务暂不可用",
+            "type": "about:blank",
+            "code": "TOOL_EXECUTION_STORE_UNAVAILABLE",
+            "requestId": "b3ed0c55-59e3-4e97-94a5-fef2a575ca40"
+          }
+        },
+        {
+          "language": "en-US",
+          "status": 503,
+          "body": {
+            "detail": "Tool execution storage is unavailable. The request result is unconfirmed; read the original record.",
+            "instance": "/api/cli-programs/git/operations/git-status/executions/88b0d0fb-17d3-4ef4-ae05-7aac3aa40f55",
+            "status": 503,
+            "title": "Service unavailable",
+            "type": "about:blank",
+            "code": "TOOL_EXECUTION_STORE_UNAVAILABLE",
+            "requestId": "ec1b9b6a-d791-4731-a24c-7e39a33545f6"
+          }
+        }
+      ]
+    },
+    {
+      "name": "invalid-json",
+      "responses": [
+        {
+          "language": "zh-CN",
+          "status": 400,
+          "body": {
+            "detail": "模型或会话的字段或格式无效，请检查输入。",
+            "instance": "/api/ai/conversations",
+            "status": 400,
+            "title": "请求无效",
+            "type": "about:blank",
+            "code": "INVALID_CHAT_REQUEST",
+            "requestId": "ac38f966-bd22-408c-9a1c-f093d044afde"
+          }
+        },
+        {
+          "language": "en-US",
+          "status": 400,
+          "body": {
+            "detail": "The model or conversation contains invalid fields or format. Check the input.",
+            "instance": "/api/ai/conversations",
+            "status": 400,
+            "title": "Invalid request",
+            "type": "about:blank",
+            "code": "INVALID_CHAT_REQUEST",
+            "requestId": "81bb760f-1507-4ed2-894f-48cad7ffe8c8"
+          }
+        }
+      ]
+    },
+    {
+      "name": "invalid-uuid",
+      "responses": [
+        {
+          "language": "zh-CN",
+          "status": 400,
+          "body": {
+            "detail": "请求字段或参数不正确。",
+            "instance": "/api/ai/conversations/not-a-uuid",
+            "status": 400,
+            "title": "请求无效",
+            "type": "about:blank",
+            "code": "INVALID_REQUEST",
+            "requestId": "33aeb8e1-ece2-4c14-a68b-9f3bfecf5e8d"
+          }
+        },
+        {
+          "language": "en-US",
+          "status": 400,
+          "body": {
+            "detail": "The request contains invalid fields or parameters.",
+            "instance": "/api/ai/conversations/not-a-uuid",
+            "status": 400,
+            "title": "Invalid request",
+            "type": "about:blank",
+            "code": "INVALID_REQUEST",
+            "requestId": "90e709f9-86c2-4546-8339-dbcc2b45bd31"
+          }
+        }
+      ]
+    },
+    {
+      "name": "filter-host-rejection",
+      "responses": [
+        {
+          "language": "zh-CN",
+          "status": 403,
+          "body": {
+            "type": "about:blank",
+            "title": "操作被拒绝",
+            "status": 403,
+            "detail": "请求主机不在本地服务允许范围内。",
+            "code": "HOST_REJECTED",
+            "requestId": "859c5488-674d-43fa-979f-bedfc4bcba73"
+          }
+        },
+        {
+          "language": "en-US",
+          "status": 403,
+          "body": {
+            "type": "about:blank",
+            "title": "Operation denied",
+            "status": 403,
+            "detail": "The request host is outside the allowed local-service scope.",
+            "code": "HOST_REJECTED",
+            "requestId": "230af38d-424e-4f18-b42d-a5e920b77be0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "unsupported-directory-grant",
+      "responses": [
+        {
+          "language": "zh-CN",
+          "status": 405,
+          "body": {
+            "detail": "请求操作未满足当前操作条件，请核对输入、配置和原执行记录。",
+            "instance": "/api/ai/workspace/grants",
+            "status": 405,
+            "title": "操作不支持",
+            "type": "about:blank",
+            "code": "USER_DIRECTORY_GRANTS_NOT_STORED_ON_SERVER",
+            "requestId": "b07318f1-693e-4dc7-ad3c-282556b3a361"
+          }
+        },
+        {
+          "language": "en-US",
+          "status": 405,
+          "body": {
+            "detail": "The request does not meet the operation requirements. Check the input, configuration and original record.",
+            "instance": "/api/ai/workspace/grants",
+            "status": 405,
+            "title": "Method not allowed",
+            "type": "about:blank",
+            "code": "USER_DIRECTORY_GRANTS_NOT_STORED_ON_SERVER",
+            "requestId": "71baac72-9b8e-476a-8431-72c188f253e1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "sse-worker-language-and-snapshot-reread",
+      "executions": [
+        {
+          "language": "zh-CN",
+          "executionId": "207df35e-a350-4f28-82b5-d88ce3a5b7a5",
+          "code": "AI_PROVIDER_ERROR",
+          "status": "FAILED",
+          "message": "模型服务未能完成请求，请检查连接及执行记录。",
+          "snapshotZh": "模型服务未能完成请求，请检查连接及执行记录。",
+          "snapshotEn": "The model provider could not complete the request. Check the connection and execution record.",
+          "journalHashUnchanged": true
+        },
+        {
+          "language": "en-US",
+          "executionId": "4f38c9ab-6bf0-4df3-849a-0d16a5e7d71f",
+          "code": "AI_PROVIDER_ERROR",
+          "status": "FAILED",
+          "message": "The model provider could not complete the request. Check the connection and execution record.",
+          "snapshotZh": "模型服务未能完成请求，请检查连接及执行记录。",
+          "snapshotEn": "The model provider could not complete the request. Check the connection and execution record.",
+          "journalHashUnchanged": true
+        }
+      ]
+    },
+    {
+      "name": "conversation-connection-revoked",
+      "responses": [
+        {
+          "language": "zh-CN",
+          "status": 503,
+          "body": {
+            "detail": "模型或会话未满足当前操作条件，请核对输入、配置和原执行记录。",
+            "instance": "/api/ai/conversations/bd7b7399-287c-432f-aef5-8ae1a0629b40/messages",
+            "status": 503,
+            "title": "服务暂不可用",
+            "type": "about:blank",
+            "code": "AI_NOT_CONFIGURED",
+            "requestId": "e9dd08c7-4fa2-477f-83b6-8f4a18895dd5",
+            "knowledgeMemoryCleared": false,
+            "contextMemoryCleared": false
+          }
+        },
+        {
+          "language": "en-US",
+          "status": 503,
+          "body": {
+            "detail": "The model or conversation does not meet the operation requirements. Check the input, configuration and original record.",
+            "instance": "/api/ai/conversations/bd7b7399-287c-432f-aef5-8ae1a0629b40/messages",
+            "status": 503,
+            "title": "Service unavailable",
+            "type": "about:blank",
+            "code": "AI_NOT_CONFIGURED",
+            "requestId": "47a93c5a-b241-4bf0-b794-a6c5cce04a8f",
+            "knowledgeMemoryCleared": false,
+            "contextMemoryCleared": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "conversation-expired",
+      "responses": [
+        {
+          "language": "zh-CN",
+          "status": 404,
+          "body": {
+            "detail": "服务端会话不存在或已失效，本地草稿和独立执行证据仍需保留。",
+            "instance": "/api/ai/conversations/bd7b7399-287c-432f-aef5-8ae1a0629b40",
+            "status": 404,
+            "title": "记录不存在",
+            "type": "about:blank",
+            "code": "UNKNOWN_CONVERSATION",
+            "requestId": "cfa28c10-0f2f-4043-817f-7aac09ba7bcb"
+          }
+        },
+        {
+          "language": "en-US",
+          "status": 404,
+          "body": {
+            "detail": "The server conversation is absent or expired. Retain local drafts and independent execution evidence.",
+            "instance": "/api/ai/conversations/bd7b7399-287c-432f-aef5-8ae1a0629b40",
+            "status": 404,
+            "title": "Record not found",
+            "type": "about:blank",
+            "code": "UNKNOWN_CONVERSATION",
+            "requestId": "d9b1f974-ddd5-4ef7-ac03-58e125616472"
+          }
+        }
+      ]
+    },
+    {
+      "name": "unknown-human-close-and-idempotent-reread",
+      "executionId": "88b0d0fb-17d3-4ef4-ae05-7aac3aa40f55",
+      "status": "CLOSED_UNKNOWN",
+      "sameResolution": true
+    }
+  ],
+  "modelCalls": 2,
+  "externalModelCalls": 0,
+  "userProductAcceptance": false
+}

@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.CliProgramErrors;
 
 import com.lh.eap.domain.model.CapabilityAvailability;
 import com.lh.eap.common.SensitiveData;
@@ -98,16 +99,16 @@ public class CliChannels {
      */
     public void configure(String program, String binary) {
         if (program == null || !program.matches("[a-z0-9]+(?:-[a-z0-9]+)*") || !program.equals(programId(program)))
-            throw new IllegalArgumentException("CLI_PROGRAM_ID_REQUIRED");
+            throw new IllegalArgumentException(CliProgramErrors.CLI_PROGRAM_ID_REQUIRED.code());
         var value = binary == null ? "" : binary.trim();
         if (value.isEmpty()) {
             store.configure(program, "");
             return;
         }
-        if (value.length() > 500) throw new IllegalArgumentException("二进制位置最多500字符");
-        if (value.startsWith("-")) throw new IllegalArgumentException("二进制位置不能以 - 开头");
-        if (value.chars().anyMatch(Character::isISOControl)) throw new IllegalArgumentException("二进制位置不能包含控制字符");
-        if (SensitiveData.containsSecret(value)) throw new IllegalArgumentException("二进制位置不能包含凭据");
+        if (value.length() > 500) throw new IllegalArgumentException(CliProgramErrors.CLI_BINARY_INVALID.code());
+        if (value.startsWith("-")) throw new IllegalArgumentException(CliProgramErrors.CLI_BINARY_INVALID.code());
+        if (value.chars().anyMatch(Character::isISOControl)) throw new IllegalArgumentException(CliProgramErrors.CLI_BINARY_INVALID.code());
+        if (SensitiveData.containsSecret(value)) throw new IllegalArgumentException(CliProgramErrors.CLI_BINARY_INVALID.code());
         store.configure(program, value);
     }
 

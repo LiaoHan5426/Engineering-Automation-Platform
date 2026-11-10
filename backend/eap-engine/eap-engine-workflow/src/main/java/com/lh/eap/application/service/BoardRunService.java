@@ -1,4 +1,7 @@
 package com.lh.eap.application.service;
+import org.springframework.transaction.TransactionDefinition;
+import com.lh.eap.error.BoardErrors;
+import com.lh.eap.error.BoardVerificationErrors;
 
 import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,21 +61,21 @@ public class BoardRunService {
     public Run start(UUID taskId, Start request) {
         requireProject(request.projectId());
         if (request.revision() < 1 || request.requestId() == null || request.workspacePath() == null || request.workspacePath().isBlank() || request.workspacePath().length() > 2048) {
-            throw new IllegalArgumentException("INVALID_BOARD_RUN_REQUEST");
+            throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_RUN_REQUEST.code());
         }
         return transaction.execute(status -> {
             var task = tasks.find(taskId, request.projectId(), true);
             var prior = read("WHERE task_id=? AND request_id=?", taskId, request.requestId());
             if (!prior.isEmpty()) {
                 var run = prior.getFirst();
-                if (run.taskRevision() != request.revision() || !run.execution().workspacePath().equals(request.workspacePath())) throw conflict("BOARD_RUN_REQUEST_CONFLICT");
+                if (run.taskRevision() != request.revision() || !run.execution().workspacePath().equals(request.workspacePath())) throw conflict(BoardErrors.BOARD_RUN_REQUEST_CONFLICT.code());
                 return run;
             }
-            if (task.revision() != request.revision()) throw conflict("BOARD_REVISION_CONFLICT");
-            if (tasks.hasActiveExecution(taskId)) throw conflict("BOARD_EXECUTION_ACTIVE");
+            if (task.revision() != request.revision()) throw conflict(BoardErrors.BOARD_REVISION_CONFLICT.code());
+            if (tasks.hasActiveExecution(taskId)) throw conflict(BoardErrors.BOARD_EXECUTION_ACTIVE.code());
             tasks.lockWorkspace(request.workspacePath());
-            if (tasks.hasActiveVerification(request.workspacePath())) throw conflict("BOARD_VERIFICATION_WORKSPACE_BUSY");
-            if (!"ready".equals(task.column()) || !task.preparationIssues().isEmpty()) throw conflict("BOARD_PREPARATION_REQUIRED");
+            if (tasks.hasActiveVerification(request.workspacePath())) throw conflict(BoardVerificationErrors.BOARD_VERIFICATION_WORKSPACE_BUSY.code());
+            if (!"ready".equals(task.column()) || !task.preparationIssues().isEmpty()) throw conflict(BoardErrors.BOARD_PREPARATION_REQUIRED.code());
             var handoff = new Handoff(UUID.randomUUID(), "board", task.id().toString(), task.title(), "recorded", "not_started", "not_requested", "none", Instant.now());
             handoffs.insert(handoff);
             var mission = missions.create(handoff.id());
@@ -95,14 +98,14 @@ public class BoardRunService {
                     // Do not infer process termination when a persistence or worker failure is ambiguous.
                     try {
                         var saved = executions.find(execution.id()).orElseThrow();
-                        if (Set.of("CREATED", "RUNNING", "CANCELLING").contains(saved.status())) executions.unconfirmed(execution.id(), "BOARD_RUN_RESULT_UNKNOWN");
+                        if (MissionExecutionStatus.fromWire(saved.status()).active()) executions.unconfirmed(execution.id(), BoardErrors.BOARD_RUN_RESULT_UNKNOWN.code());
                     } catch (RuntimeException ignored) { /* the persisted open row still prevents another start */ }
                 }
             });
         } catch (RejectedExecutionException full) {
             var cleanup = new TransactionTemplate(transaction.getTransactionManager());
-            cleanup.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-            cleanup.executeWithoutResult(status -> executions.failSameRow(execution.id(), execution.missionId(), "BOARD_QUEUE_FULL"));
+            cleanup.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            cleanup.executeWithoutResult(status -> executions.failSameRow(execution.id(), execution.missionId(), BoardErrors.BOARD_QUEUE_FULL.code()));
         }
     }
     private List<Run> read(String suffix, Object... parameters) {
@@ -113,6 +116,6 @@ public class BoardRunService {
         // Release the result set before reading execution records from the shared store.
         return links.stream().map(link -> new Run(link.requestId(), link.revision(), link.task(), executions.find(link.executionId()).orElseThrow())).toList();
     }
-    private static void requireProject(String project) { if (project == null || project.isBlank() || project.length() > 120) throw new IllegalArgumentException("INVALID_BOARD_FIELD"); }
+    private static void requireProject(String project) { if (project == null || project.isBlank() || project.length() > 120) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_FIELD.code()); }
     private static ResponseStatusException conflict(String reason) { return new ResponseStatusException(HttpStatus.CONFLICT, reason); }
 }

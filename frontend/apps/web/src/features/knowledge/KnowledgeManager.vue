@@ -1,8 +1,29 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { runtimeApi } from '@eap/runtime-client'
-import { Button, ConfirmBox, EmptyState, Feedback, Input, Select, Tabs, Textarea } from '@eap/ui'
+import {
+  Button,
+  ConfirmBox,
+  Dialog,
+  EmptyState,
+  Feedback,
+  Input,
+  Select,
+  Tabs,
+  Textarea,
+} from '@eap/ui'
 import { errorMessage } from '../../lib/presentation'
+const { t } = useI18n()
+const renameDiscardOpen = ref(false)
+function confirmRenameDiscard() {
+  renameDiscardOpen.value = false
+  editing.value = false
+}
+function closeRename() {
+  if (renameDirty.value) renameDiscardOpen.value = true
+  else editing.value = false
+}
 const filter = ref('')
 const bases = ref<Array<{ id: string; name: string; description: string; documents: number }>>([])
 const documents = ref<Array<{ id: string; title: string; content: string }>>([])
@@ -32,6 +53,10 @@ const hasDraft = () => composing.value && !!(title.value.trim() || content.value
 async function requestSelect(id: string) {
   if (busy.value) return
   if (id === selected.value) return
+  if (renameDirty.value) {
+    message.value = t('product.finishEdit')
+    return
+  }
   if (hasDraft()) {
     // 记住操作者本来想去哪：确认框确认的是这次跳转，而不是一个无来由的「确定」。
     pendingSelect.value = id
@@ -229,12 +254,20 @@ defineExpose({
         <h2>知识库</h2>
         <Button variant="primary" :disabled="busy" @click="creating = !creating"> ＋ 新建 </Button>
       </div>
-      <form v-if="creating" @submit.prevent="create">
-        <label>名称<Input v-model="name" required /></label
-        ><label>说明<Input v-model="description" /></label
-        ><Button type="submit" variant="primary" :disabled="busy || !name.trim()"> 创建</Button
-        ><Button variant="secondary" type="button" @click="creating = false">取消</Button>
-      </form>
+      <Dialog
+        v-if="creating"
+        :title="t('product.createKnowledgeBase')"
+        :busy="busy"
+        @close="creating = false"
+      >
+        <form v-if="creating" @submit.prevent="create">
+          <Feedback v-if="message">{{ message }}</Feedback>
+          <label>名称<Input v-model="name" required /></label
+          ><label>说明<Input v-model="description" /></label
+          ><Button type="submit" variant="primary" :disabled="busy || !name.trim()"> 创建</Button
+          ><Button variant="secondary" type="button" @click="creating = false">取消</Button>
+        </form></Dialog
+      >
       <Input v-model="filter" placeholder="搜索知识库" aria-label="搜索知识库" /><Button
         variant="navigation"
         v-for="base in bases.filter((base) =>
@@ -304,48 +337,65 @@ defineExpose({
       <Feedback v-if="message">{{ message }}</Feedback>
       <p v-if="busy" role="status">正在处理…</p>
 
-      <form v-if="editing && selected" class="pack-form" @submit.prevent="renameBase">
-        <p class="hint">改名不会改动已录入的文档。</p>
-        <label>名称<Input v-model="editName" required maxlength="200" /></label
-        ><label>说明<Input v-model="editDescription" /></label>
-        <div class="form-actions">
-          <Button
-            type="submit"
-            variant="primary"
-            :disabled="busy || !editName.trim() || !renameDirty"
-          >
-            保存
-          </Button>
-          <Button variant="secondary" type="button" :disabled="busy" @click="editing = false">
-            取消
-          </Button>
-          <span v-if="renameDirty" class="hint">有未保存的修改。</span>
-        </div>
-      </form>
+      <Dialog
+        v-if="editing && selected"
+        :title="t('product.editKnowledgeBase')"
+        :busy="busy"
+        @close="closeRename"
+      >
+        <form v-if="editing && selected" class="pack-form" @submit.prevent="renameBase">
+          <Feedback v-if="message">{{ message }}</Feedback>
+          <p class="hint">改名不会改动已录入的文档。</p>
+          <label>名称<Input v-model="editName" required maxlength="200" /></label
+          ><label>说明<Input v-model="editDescription" /></label>
+          <div class="form-actions">
+            <Button
+              type="submit"
+              variant="primary"
+              :disabled="busy || !editName.trim() || !renameDirty"
+            >
+              保存
+            </Button>
+            <Button variant="secondary" type="button" :disabled="busy" @click="closeRename">
+              取消
+            </Button>
+            <span v-if="renameDirty" class="hint">有未保存的修改。</span>
+          </div>
+        </form></Dialog
+      >
 
       <template v-if="tab === 'documents'">
         <EmptyState v-if="!selected">从左侧选择知识库，查看文档或录入新知识。</EmptyState>
-        <form v-else-if="composing" @submit.prevent="add">
-          <h3>录入知识文档</h3>
-          <p class="hint">不要写入密码、Token 或连接串。</p>
-          <label>标题<Input v-model="title" required /></label
-          ><label
-            >正文<Textarea
-              v-model="content"
-              rows="12"
-              required
-              placeholder="表结构说明、业务规则或已验证优化案例"
-            ></Textarea></label
-          ><Button
-            type="submit"
-            variant="primary"
-            :disabled="busy || !title.trim() || !content.trim()"
-          >
-            保存文档</Button
-          ><Button variant="secondary" type="button" @click="requestSelect('')">取消</Button>
-        </form>
-        <template v-else-if="selected"
-          ><div class="document-grid">
+        <Dialog
+          v-if="composing"
+          :title="t('product.addDocument')"
+          size="lg"
+          :busy="busy"
+          @close="requestSelect('')"
+        >
+          <form @submit.prevent="add">
+            <Feedback v-if="message">{{ message }}</Feedback>
+            <h3>录入知识文档</h3>
+            <p class="hint">不要写入密码、Token 或连接串。</p>
+            <label>标题<Input v-model="title" required /></label
+            ><label
+              >正文<Textarea
+                v-model="content"
+                rows="12"
+                required
+                placeholder="表结构说明、业务规则或已验证优化案例"
+              ></Textarea></label
+            ><Button
+              type="submit"
+              variant="primary"
+              :disabled="busy || !title.trim() || !content.trim()"
+            >
+              保存文档</Button
+            ><Button variant="secondary" type="button" @click="requestSelect('')">取消</Button>
+          </form></Dialog
+        >
+        <template v-if="selected"
+          ><div class="document-list">
             <div>
               <Button
                 variant="navigation"
@@ -360,20 +410,27 @@ defineExpose({
               </Button>
               <EmptyState v-if="!documents.length">暂无文档，点击录入文档添加知识。</EmptyState>
             </div>
-            <article v-if="activeDocument">
-              <div class="result-heading">
-                <h3>{{ activeDocument.title }}</h3>
-                <Button
-                  variant="danger"
-                  :disabled="busy"
-                  @click="documentDeleteId = activeDocument.id"
-                >
-                  删除文档
-                </Button>
-              </div>
-              <pre class="document-content">{{ activeDocument.content }}</pre>
-            </article>
-            <EmptyState v-else-if="documents.length">选择文档查看正文。</EmptyState>
+            <Dialog
+              v-if="activeDocument"
+              :title="activeDocument.title"
+              size="lg"
+              :busy="busy"
+              @close="activeDocument = null"
+            >
+              <article v-if="activeDocument">
+                <div class="result-heading">
+                  <h3>{{ activeDocument.title }}</h3>
+                  <Button
+                    variant="danger"
+                    :disabled="busy"
+                    @click="documentDeleteId = activeDocument.id"
+                  >
+                    删除文档
+                  </Button>
+                </div>
+                <pre class="document-content">{{ activeDocument.content }}</pre>
+              </article></Dialog
+            >
           </div></template
         >
       </template>
@@ -413,6 +470,15 @@ defineExpose({
       </template>
     </div>
 
+    <ConfirmBox
+      v-if="renameDiscardOpen"
+      :title="t('product.discardTitle')"
+      :impact="[t('product.discardImpact')]"
+      :confirm-label="t('product.discard')"
+      danger
+      @confirm="confirmRenameDiscard"
+      @cancel="renameDiscardOpen = false"
+    />
     <ConfirmBox
       v-if="discardOpen"
       title="放弃未保存的文档？"

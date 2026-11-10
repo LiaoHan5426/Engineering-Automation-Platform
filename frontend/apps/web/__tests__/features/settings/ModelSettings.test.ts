@@ -4,7 +4,6 @@ import { createApp, nextTick, type App } from 'vue'
 import { runtimeApi, type ModelConnection } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import ModelSettings from '../../../src/features/settings/ModelSettings.vue'
-vi.mock('../../../src/lib/serviceConfig', () => ({ useMockServices: false }))
 let app: App
 let root: HTMLDivElement
 afterEach(() => {

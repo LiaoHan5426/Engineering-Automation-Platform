@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ChatGptLoginAttempt } from '@eap/runtime-client'
 import { modelApi as runtimeApi } from '../chat/chatService'
-import { useMockServices } from '../../lib/serviceConfig'
+import { apiStorageScope } from '../../lib/runtimeConfig'
 import { Button, Feedback } from '@eap/ui'
 import { errorMessage } from '../../lib/presentation'
 const emit = defineEmits<{ connected: [id: string]; changed: [] }>()
@@ -11,11 +11,9 @@ const { t } = useI18n()
 const attempt = ref<ChatGptLoginAttempt | null>(null)
 const busy = ref(false),
   note = ref('')
-const mockConsent = ref(false)
-const pendingConnectionId = ref<string | undefined>()
 let timer: ReturnType<typeof setTimeout> | undefined
 let disposed = false
-const storageKey = (useMockServices ? 'mock.' : '') + 'eap.chatgpt.pending-login'
+const storageKey = apiStorageScope + '.eap.chatgpt.pending-login'
 function remember(value: ChatGptLoginAttempt | null) {
   attempt.value = value
   try {
@@ -60,12 +58,7 @@ async function poll() {
     else remember(null)
   }
 }
-async function start(connectionId?: string, confirmed = false) {
-  if (useMockServices && !confirmed) {
-    pendingConnectionId.value = connectionId
-    mockConsent.value = true
-    return
-  }
+async function start(connectionId?: string) {
   if (busy.value || attempt.value) return
   busy.value = true
   note.value = ''
@@ -73,11 +66,6 @@ async function start(connectionId?: string, confirmed = false) {
     const started = await runtimeApi.startChatGptLogin(connectionId)
     if (disposed) return
     remember(started)
-    if (useMockServices) {
-      mockConsent.value = false
-      await poll()
-      return
-    }
     schedule()
     // Keep a visible link if the browser blocks a popup after the async request.
     window.open(started.authorizationUrl, '_blank', 'noopener,noreferrer')
@@ -136,13 +124,7 @@ defineExpose({ start })
     <Button type="button" :disabled="busy || !!attempt" @click="start()"
       >Continue with ChatGPT</Button
     >
-    <div v-if="mockConsent" class="authorization-pending" data-testid="mock-login-consent">
-      <p>{{ t('preview.loginConsent') }}</p>
-      <Button type="button" :disabled="busy" @click="start(pendingConnectionId, true)">{{
-        t('preview.loginConfirm')
-      }}</Button>
-      <Button type="button" @click="mockConsent = false">{{ t('composerUi.close') }}</Button>
-    </div>
+
     <div v-if="attempt" class="authorization-pending">
       <p>{{ t('authUi.waiting') }}</p>
       <a :href="attempt.authorizationUrl" target="_blank" rel="noopener noreferrer">{{

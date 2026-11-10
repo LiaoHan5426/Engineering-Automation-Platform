@@ -1,8 +1,8 @@
 # Agent 能力、本地运行环境与插件演进
 
-> 当前已提交并推送基线为 `b9a9b124fa518457b5da7c897a077db23da89a7b`（PREBOUND真实页面交付42文件）。提交沿用已有验证，未重复测试。接续新增任务侧持久源码候选列表、Diff审阅、明确应用/拒绝及真实重启恢复，随本次提交交付，沿用已有验证不重复测试；无Chat会话自动重建、模型重放或第二套源码写入机制。
+> 当前已提交并推送基线为 `2450bf29fe4a2e47fef69b7f402426a31bc4146b`（任务持久候选审阅与正式重启恢复），提交沿用已有测试且未重跑。接续完成1～8文件组件图、证据页面及真实三文件 PREBOUND→候选→受控应用→独立验证→技术决定，当前新增尚未提交；开发库已迁移V33/V34。详见[当前验收台账](../planning-status.md#component-page-delivery-validation)。
 
-状态：有效合同与增量实现记录；已提交基线 `b9a9b12`（PREBOUND真实页面42文件已推送，提交未重测）；当前任务持久候选恢复随本次提交交付，不重复测试，见[台账](../planning-status.md#board-code-recovery-validation)。开发阶段演进以根[AGENTS.md](../../AGENTS.md#development-evolution)为权威规则；原审计五组已[集中收敛](../records/architecture-history.md#single-contract-convergence)：单授权键、程序绑定、显式专家行为、语义原型、持久Git入口；V30已在日常库由正式full迁移，唯一非语义原型及测试引用已精确处置；接续V31和发布断连恢复已验证，无运行兼容分支。完成范围和失败证据以§7及[台账](../planning-status.md)为准。
+状态：有效合同与增量实现记录；已推送基线 `2450bf29fe4a2e47fef69b7f402426a31bc4146b`。当前接续组件图/完整证据页面及V33/V34新增尚未提交，真实三文件整链通过，见[台账](../planning-status.md#component-page-delivery-validation)。开发演进以根[AGENTS.md](../../AGENTS.md#development-evolution)为权威，无旧JSON/单文件执行兼容路径。历史五组收敛及先前阶段证据保留。
 
 ## 1. 结论与适用范围
 
@@ -317,6 +317,14 @@ V32将code_generation_task_group中已删除的计数原型字段要求替换为
 任务详情可显式读取当前工作区内的原始PREBOUND候选、生成快照及Diff。GET目录/详情按Task/project/operator/workspace查原code_generation/proposal，不依赖Chat注册表或本地历史；apply/refuse要求project/current revision/confirmed=true，由服务端推导原conversation，不接受客户端归因/正文/工作区。apply继续走唯一CodeChangeService的持久领取、Task/workspace锁、原始快照与源码校验；旧任务版本只读或明确拒绝，UNKNOWN/APPLYING不降级。
 
 GenerationBaseline与ProposalApplication迁到应用components供Chat/Board共用，旧位置删除无转发；普通Chat入口仍属于普通会话职责，任务持久入口不回退到Chat重连。正式重启后原真实模型Chat404、持久候选/hash保持；新浏览器无聊天历史下6组实际页面/文件/JDBC恢复通过，新候选明确为确定性夹具，0模型重放，未进行产品接受。详见[主题记录](../records/delivery-history.md#board-code-recovery)。
+
+### 6.7 有界组件图与完整页面交付（2026-11-10）
+
+生成输入保留入口targetPath，显式componentPaths最多7个。唯一快照存储增加companion_sources，源码24KB/文件、总48KB；模型前同一事务固定Task/revision/原型与完整源码/hash，输出必须入口优先且精确同序集合。多文件静态ES引用必须入口连通无环，未声明、动态或不支持语法拒绝；仅frontend Vue/TS/JS与四个公共包。单文件为空伴随叶子，共用parse/applyDurable，不设旧JSON解析或旧单文件写入分支。
+
+applyDurable校验全部基线、暂存、再检、逐个替换、全读回与持久APPLIED；目录返回paths/fileCount，交付/决定重新核对每个文件与原快照、验证hash。部分作用或结果写入中断UNKNOWN，保留互锁，不回滚他人源码，不承诺跨文件OS事务/CAS。V33持久伴随源码与精确候选数量，V34替换遗漏的Board单文件约束；两者正式迁移且34份validate通过。
+
+真正full/开发库/隔离本仓库下，一次gpt-6.1-sol请求36.76秒生成Panel＋Summary＋model；无Chat历史的实际任务页面审3份Diff并明确应用，新增面板支持计数/筛选/选择/空态/UTF8与完整源码核对。唯一正式独立typecheck/147文件906测试/build通过；生产看板选三文件证据，提交PREBOUND、显式技术ACCEPT、幂等/冲突/刷新/JDBC逐项通过。技术决定不是用户产品接受。主工作区另做格式与CSS规范化，原交付证据不改，详见[记录](../records/delivery-history.md#component-page-delivery)。
 
 ## 7. 分阶段切片与退出门禁
 

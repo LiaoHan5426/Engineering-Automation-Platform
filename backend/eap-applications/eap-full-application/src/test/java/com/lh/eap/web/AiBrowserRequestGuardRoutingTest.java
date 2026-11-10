@@ -29,8 +29,8 @@ class AiBrowserRequestGuardRoutingTest {
     static class Config {
         final SkillService skills = mock(SkillService.class);
         final AiChatApplication chat = mock(AiChatApplication.class);
-        @Bean SkillController skillsController() { return new SkillController(skills); }
-        @Bean AiChatController chatController() { return new AiChatController(chat); }
+        @Bean SkillController skillsController() { return new SkillController(skills, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES))); }
+        @Bean AiChatController chatController() { return new AiChatController(chat, new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES))); }
     }
 
     private AnnotationConfigWebApplicationContext context;
@@ -45,7 +45,7 @@ class AiBrowserRequestGuardRoutingTest {
         context.refresh();
         skills = context.getBean(Config.class).skills;
         chat = context.getBean(Config.class).chat;
-        guarded = MockMvcBuilders.webAppContextSetup(context).addFilters(new AiBrowserRequestGuard()).build();
+        guarded = MockMvcBuilders.webAppContextSetup(context).addFilters(new AiBrowserRequestGuard(new com.lh.eap.web.i18n.ProblemResponses(com.lh.eap.web.i18n.PlatformMessagesConfiguration.source(com.lh.eap.web.i18n.PlatformMessagesConfiguration.PRODUCT_BASENAMES)))).build();
     }
 
     @AfterEach void close() { context.close(); }
@@ -70,7 +70,7 @@ class AiBrowserRequestGuardRoutingTest {
         guarded.perform(post(URI.create("http://evil.example" + path))
                 .header("Host", "evil.example").header("Origin", "http://evil.example")
                 .contentType(MediaType.TEXT_PLAIN).content("{}"))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value("PATH_REJECTED"));
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PATH_REJECTED"));
         verifyNoInteractions(skills, chat);
     }
 
@@ -81,7 +81,7 @@ class AiBrowserRequestGuardRoutingTest {
     void rejectsUnsupportedMatrixSyntaxWithTrustedHeadersToo(String path) throws Exception {
         guarded.perform(post(URI.create(path)).header("Host", "localhost")
                 .header("Origin", "http://localhost:5173").contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value("PATH_REJECTED"));
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PATH_REJECTED"));
         verifyNoInteractions(skills, chat);
     }
 
@@ -92,13 +92,13 @@ class AiBrowserRequestGuardRoutingTest {
         guarded.perform(post(URI.create("http://evil.example" + path))
                 .header("Host", "evil.example").header("Origin", "http://evil.example")
                 .contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isForbidden()).andExpect(jsonPath("$.detail").value("HOST_REJECTED"));
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOST_REJECTED"));
         guarded.perform(post(URI.create(path)).header("Host", "localhost")
                 .header("Origin", "http://evil.example").contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isForbidden()).andExpect(jsonPath("$.detail").value("ORIGIN_REJECTED"));
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("ORIGIN_REJECTED"));
         guarded.perform(post(URI.create(path)).header("Host", "localhost")
                 .header("Origin", "http://localhost:5173").contentType(MediaType.TEXT_PLAIN).content("{}"))
-                .andExpect(status().isUnsupportedMediaType()).andExpect(jsonPath("$.detail").value("CONTENT_TYPE_REJECTED"));
+                .andExpect(status().isUnsupportedMediaType()).andExpect(jsonPath("$.code").value("CONTENT_TYPE_REJECTED"));
         verifyNoInteractions(skills, chat);
         var accepted = guarded.perform(post(URI.create(path)).header("Host", "localhost")
                 .header("Origin", "http://localhost:5173").contentType(MediaType.APPLICATION_JSON).content("{}"))
@@ -126,10 +126,10 @@ class AiBrowserRequestGuardRoutingTest {
         guarded.perform(post(URI.create("http://evil.example/eap/api/skills")).contextPath("/eap")
                 .header("Host", "evil.example").header("Origin", "http://evil.example")
                 .contentType(MediaType.TEXT_PLAIN).content("{}"))
-                .andExpect(status().isForbidden()).andExpect(jsonPath("$.detail").value("HOST_REJECTED"));
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOST_REJECTED"));
         guarded.perform(post("/eap/api/skills;x").contextPath("/eap")
                 .contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value("PATH_REJECTED"));
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PATH_REJECTED"));
         verifyNoInteractions(skills, chat);
         guarded.perform(post("/eap/api/skills").contextPath("/eap")
                 .contentType(MediaType.APPLICATION_JSON).content("{}"))
@@ -141,7 +141,7 @@ class AiBrowserRequestGuardRoutingTest {
         guarded.perform(post(URI.create("http://evil.example/api/skills"))
                 .header("Host", "evil.example").header("Origin", "http://evil.example")
                 .contentType(MediaType.TEXT_PLAIN).content("{}"))
-                .andExpect(status().isForbidden()).andExpect(jsonPath("$.detail").value("HOST_REJECTED"));
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOST_REJECTED"));
         verifyNoInteractions(skills, chat);
     }
 }

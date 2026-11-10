@@ -1,3 +1,6 @@
+import { hasWireValue } from '@eap/runtime-client'
+import { BoardDeliveryDecision } from '@eap/runtime-client'
+import { BoardDeliveryErrors } from '@eap/runtime-client'
 import type {
   BoardDeliveryRequest,
   BoardDeliveryDecisionRequest,
@@ -47,18 +50,18 @@ export function readDeliveryRequest(
   taskId: string,
   runId: string,
   projectId: string,
-  mock: boolean,
+  scope: string,
 ): PendingDeliveryRequest | null {
   const request = readRunRequest(
     store,
     key(taskId, runId),
     projectId,
-    mock,
+    scope,
   ) as PendingDeliveryRequest | null
   if (
     !request ||
     (request.rejectionCode !== undefined &&
-      request.rejectionCode !== 'BOARD_DELIVERY_REQUEST_CONFLICT')
+      request.rejectionCode !== BoardDeliveryErrors.BOARD_DELIVERY_REQUEST_CONFLICT)
   )
     return null
   if ('decisionRequest' in request) {
@@ -71,7 +74,10 @@ export function readDeliveryRequest(
       decision.revision !== request.revision ||
       typeof decision.deliveryId !== 'string' ||
       !decision.deliveryId.trim() ||
-      !['ACCEPT', 'REJECT'].includes(decision.decision) ||
+      !hasWireValue(
+        [BoardDeliveryDecision.ACCEPT, BoardDeliveryDecision.REJECT],
+        decision.decision,
+      ) ||
       typeof decision.criteriaConfirmed !== 'boolean' ||
       typeof decision.previewConfirmed !== 'boolean' ||
       typeof decision.comment !== 'string'
@@ -81,7 +87,9 @@ export function readDeliveryRequest(
     !validDeliveryPaths(request.paths) ||
     typeof request.note !== 'string' ||
     ('applicationRef' in request &&
-      (!validApplicationRef(request.applicationRef) || request.paths.length !== 1))
+      (!validApplicationRef(request.applicationRef) ||
+        request.paths.length < 1 ||
+        request.paths.length > 8))
   )
     return null
   return request
@@ -90,8 +98,8 @@ export function writeDeliveryRequest(
   store: Store | null,
   taskId: string,
   runId: string,
-  mock: boolean,
+  scope: string,
   request: PendingDeliveryRequest | null,
 ): boolean {
-  return writeRunRequest(store, key(taskId, runId), mock, request)
+  return writeRunRequest(store, key(taskId, runId), scope, request)
 }

@@ -1,0 +1,70 @@
+{
+  "browser-format": {
+    "exitCode": 0
+  },
+  "browser-lint": {
+    "exitCode": 0
+  },
+  "main-typecheck": {
+    "exitCode": 0
+  },
+  "main-architecture": {
+    "exitCode": 0
+  },
+  "main-stylelint": {
+    "exitCode": 0,
+    "previousExitCode": 2,
+    "resolved": "Two missing rule blank lines in GenerationBaseline.vue fixed; affected GenerationBaseline and BoardCodeCandidates stylelint passed; other two components had passed"
+  },
+  "prepare-syntax": {
+    "exitCode": 0
+  },
+  "main-ts-vue-format-lint": {
+    "exitCode": 0,
+    "files": 21,
+    "evidence": "convergence-format.log and convergence-lint.log; already passed after model import and CSS normalization"
+  },
+  "main-panel-tests": {
+    "exitCode": 0,
+    "testFiles": 1,
+    "tests": 2,
+    "evidence": "Focused DeliveryEvidencePanel.test.ts after normalization; no full suite rerun"
+  },
+  "main-preview": {
+    "exitCode": 0,
+    "widths": [
+      1440,
+      390
+    ],
+    "mutations": 0,
+    "pageErrors": 0,
+    "evidence": "main-preview.json; new L4 minmax(0,1fr) prevents Collapse min-content from widening all grid children"
+  },
+  "static-files": {
+    "exitCode": 0,
+    "utf8": "passed",
+    "diffCheck": "passed",
+    "markdownLinks": 264,
+    "evidence": "check-convergence-files.py; final refresh separately below",
+    "changedFiles": 69,
+    "textFiles": 62,
+    "allChangedTextSecretPatterns": 3
+  },
+  "commit-and-hosts": {
+    "exitCode": 0,
+    "head": "2450bf29fe4a2e47fef69b7f402426a31bc4146b",
+    "originMain": "2450bf29fe4a2e47fef69b7f402426a31bc4146b",
+    "remoteMain": "2450bf29fe4a2e47fef69b7f402426a31bc4146b",
+    "pendingNewBatchNotCommitted": true,
+    "hostHealth": {
+      "full-application-live": {
+        "status": "ok",
+        "service": "eap-runtime"
+      },
+      "component-live": {
+        "service": "eap-runtime",
+        "status": "ok"
+      }
+    }
+  }
+}

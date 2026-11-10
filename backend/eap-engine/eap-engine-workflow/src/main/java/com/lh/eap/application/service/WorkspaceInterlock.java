@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.persistence.mapper.StateBindings;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -13,14 +14,14 @@ public final class WorkspaceInterlock {
         jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(lower(?), 791621))", rs -> { }, workspace);
     }
     public static boolean codeActive(JdbcTemplate jdbc, String workspace) {
-        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.code_proposal WHERE lower(workspace)=lower(?) AND status IN ('APPLYING','UNKNOWN'))", Boolean.class, workspace));
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM eap.code_proposal WHERE lower(workspace)=lower(?) AND status = ANY(?::text[]))", Boolean.class, workspace, StateBindings.CODE_BLOCKING));
     }
     public static boolean boardActive(JdbcTemplate jdbc, String workspace) {
         return Boolean.TRUE.equals(jdbc.queryForObject("""
             SELECT EXISTS (SELECT 1 FROM eap.board_task_run r JOIN eap.mission_execution e ON e.id=r.execution_id
-              WHERE (lower(e.workspace_path)=lower(?) AND e.status IN ('CREATED','RUNNING','CANCELLING'))
+              WHERE (lower(e.workspace_path)=lower(?) AND e.status = ANY(?::text[]))
                  OR (lower(COALESCE(r.verification_snapshot->'plan'->>'workspacePath', r.verification_snapshot->>'workspacePath'))=lower(?)
-                     AND r.verification_snapshot->>'status' IN ('QUEUED','RUNNING','UNKNOWN')))
-            """, Boolean.class, workspace, workspace));
+                     AND r.verification_snapshot->>'status' = ANY(?::text[])))
+            """, Boolean.class, workspace, StateBindings.MISSION_ACTIVE, workspace, StateBindings.VERIFICATION_BLOCKING));
     }
 }

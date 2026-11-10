@@ -39,6 +39,14 @@ DTO/数据库已删除buttonPresses/button_presses和interaction。请求带旧�
 
 代码生成及受控应用继续经过现有工作区、原型/任务revision、基线、独立验证与人工接受门禁，不新增执行器、状态机或能力注册表。外部Agent边界见[工具接入](tool-integration-runtime-boundaries.md)，历史handoff不作为新发布的前置兼容入口。
 
+## 当前多文件源码交付（V33/V34）
+
+设计版本不直接授予源码写入。代码上下文携带targetPath入口及componentPaths（最多7个），服务端在调用模型前持久保存全部选定完整源码和hash，连同原Task/revision与原型版本；每文件24KB、合计48KB，超限拒绝，不截断。返回文件集合/顺序必须与输入完全一致。多文件仅支持frontend内Vue/TS/JS静态ES引用子集：入口可达全部节点、无循环、无未声明相对引用/动态导入；外部仅vue/vue-i18n/@eap/ui/@eap/runtime-client。不支持语法明确拒绝，不推断任意路由、资源或组件映射。
+
+生成快照及候选响应的companionFiles为当前必填数组，单文件是空数组叶子。V33一次性补齐已存叶子元数据，运行时不回退旧格式。应用沿用唯一CodeChangeService：全基线检查、全部暂存、再检、逐文件替换、全部读回及持久结果。多文件不是OS事务；部分作用/结果不明保留UNKNOWN和工作区互锁，不能自动重发或回滚他人文件。V34同步替换交付表旧单文件CHECK，源码、时间、任务、原型及每文件验证hash仍由服务端逐项核对。
+
+真实模型三文件证据面板及生产App交付/技术决定已通过；用户设计交互/产品接受、更多状态动作映射与UNKNOWN人工解除仍独立。见[验收](../planning-status.md#component-page-delivery-validation)。
+
 ## 数据库与验收
 
 V30移除旧计数列并增加语义envelope约束，同时收敛CLI程序FK和专家显式行为图。迁移不重写已应用版本，不自动恢复/推断/删除旧数据；不合规记录使事务回滚。迁移前日常库1条非语义版本及两处测试引用已按本次授权精确备份处置，正式应用执行V30，旧记录及引用0；未增加运行兼容。

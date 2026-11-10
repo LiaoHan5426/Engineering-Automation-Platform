@@ -1,4 +1,7 @@
 package com.lh.eap.runtime.mcp;
+import com.lh.eap.core.ExecutionResource;
+import jakarta.annotation.PreDestroy;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,12 +35,12 @@ import org.springframework.stereotype.Component;
  * but the session identity above it must still be per execution and per expert.
  */
 @Component
-public class McpSessionRegistry implements com.lh.eap.core.ExecutionResource {
-    @Override public com.lh.eap.core.ExecutionResource.Scope open(UUID executionId, String expertId) {
+public class McpSessionRegistry implements ExecutionResource {
+    @Override public ExecutionResource.Scope open(UUID executionId, String expertId) {
         beginExecution(executionId, expertId);
         return () -> {
             int closed = endExecution(executionId);
-            org.slf4j.LoggerFactory.getLogger(McpSessionRegistry.class)
+            LoggerFactory.getLogger(McpSessionRegistry.class)
                     .info("Expert execution {} closed: mcpSessions={}", executionId, closed);
         };
     }
@@ -123,7 +126,7 @@ public class McpSessionRegistry implements com.lh.eap.core.ExecutionResource {
     }
 
     /** Shutdown hook / tests. */
-    @jakarta.annotation.PreDestroy
+    @PreDestroy
     public synchronized void closeAll() {
         for (var key : List.copyOf(sessions.keySet())) {
             var owned = sessions.remove(key);

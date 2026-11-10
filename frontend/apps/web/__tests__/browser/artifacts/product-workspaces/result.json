@@ -1,0 +1,315 @@
+{
+  "backend": "http://127.0.0.1:52025",
+  "mock": "http://127.0.0.1:53200",
+  "engine": "real Chromium",
+  "pages": [
+    {
+      "route": "chat",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 1,
+      "screenshot": "chat-1440.png"
+    },
+    {
+      "route": "scenes",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "scenes-1440.png"
+    },
+    {
+      "route": "expert-catalog",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "expert-catalog-1440.png"
+    },
+    {
+      "route": "experts",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "experts-1440.png"
+    },
+    {
+      "route": "model-settings",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "model-settings-1440.png"
+    },
+    {
+      "route": "appearance",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "appearance-1440.png"
+    },
+    {
+      "route": "skills",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "skills-1440.png"
+    },
+    {
+      "route": "plugins",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "plugins-1440.png"
+    },
+    {
+      "route": "rules",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "rules-1440.png"
+    },
+    {
+      "route": "knowledge",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "knowledge-1440.png"
+    },
+    {
+      "route": "databases",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "databases-1440.png"
+    },
+    {
+      "route": "capabilities",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "capabilities-1440.png"
+    },
+    {
+      "route": "board",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "board-1440.png"
+    },
+    {
+      "route": "sql",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "sql-1440.png"
+    },
+    {
+      "route": "builder-alpha",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "builder-alpha-1440.png"
+    },
+    {
+      "route": "builder-beta",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "builder-beta-1440.png"
+    },
+    {
+      "route": "chat",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 1,
+      "screenshot": "chat-390.png"
+    },
+    {
+      "route": "scenes",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "scenes-390.png"
+    },
+    {
+      "route": "expert-catalog",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "expert-catalog-390.png"
+    },
+    {
+      "route": "experts",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "experts-390.png"
+    },
+    {
+      "route": "model-settings",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "model-settings-390.png"
+    },
+    {
+      "route": "appearance",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "appearance-390.png"
+    },
+    {
+      "route": "skills",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "skills-390.png"
+    },
+    {
+      "route": "plugins",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "plugins-390.png"
+    },
+    {
+      "route": "rules",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "rules-390.png"
+    },
+    {
+      "route": "knowledge",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "knowledge-390.png"
+    },
+    {
+      "route": "databases",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "databases-390.png"
+    },
+    {
+      "route": "capabilities",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "capabilities-390.png"
+    },
+    {
+      "route": "board",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "board-390.png"
+    },
+    {
+      "route": "sql",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "sql-390.png"
+    },
+    {
+      "route": "builder-alpha",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "builder-alpha-390.png"
+    },
+    {
+      "route": "builder-beta",
+      "width": 390,
+      "scrollWidth": 390,
+      "dialogs": 0,
+      "forms": 0,
+      "screenshot": "builder-beta-390.png"
+    }
+  ],
+  "checks": [
+    {
+      "name": "real-rule-list-detail-trial-copy-dirty-save-delete",
+      "passed": true
+    },
+    {
+      "name": "real-database-modal-tabs-save-discard-readback-delete",
+      "passed": true
+    },
+    {
+      "name": "real-knowledge-create-document-read-draft-cancel-delete",
+      "passed": true
+    },
+    {
+      "name": "real-capability-diagnostics-cli-mcp-forms",
+      "passed": true
+    },
+    {
+      "name": "real-plugin-detail-explicit-check-and-ui-disable-restore",
+      "passed": true
+    },
+    {
+      "name": "real-model-and-expert-editor-navigation",
+      "passed": true
+    },
+    {
+      "name": "isolated-mock-skill-file-preview-confirm-save-read-activate",
+      "passed": true
+    },
+    {
+      "name": "narrow-dialog-keyboard-focus-and-unsaved-draft",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "writes": [
+    {
+      "type": "rule-pack",
+      "id": "qa-product-1794330815281"
+    },
+    {
+      "type": "database-profile",
+      "id": "d21f2c5b-f5a9-4809-b8be-64122984e6cd"
+    },
+    {
+      "type": "knowledge-base",
+      "id": "0619038d-d8b8-4744-88ab-0186aa62e571"
+    }
+  ],
+  "passed": true,
+  "cleanup": []
+}

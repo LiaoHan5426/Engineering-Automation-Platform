@@ -1,4 +1,5 @@
 package com.lh.eap.decision;
+import java.util.Map;
 
 /**
  * A small, typed decision layer used for routing and triage. It returns a constrained choice with
@@ -9,7 +10,7 @@ public interface DecisionProvider {
     Decision decide(Request request);
 
     /** A routing decision request. {@code kind} selects the decision policy, {@code features} are typed inputs. */
-    record Request(String kind, java.util.Map<String, Object> features) { }
+    record Request(String kind, Map<String, Object> features) { }
 
     /** A constrained decision. {@code choice} is policy-defined, e.g. {@code enhance} or {@code skip}. */
     record Decision(String choice, double confidence, String rationale) {

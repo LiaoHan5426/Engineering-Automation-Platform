@@ -1,4 +1,5 @@
 package com.lh.eap.application.service;
+import com.lh.eap.error.ResourceErrors;
 
 import com.lh.eap.common.SensitiveData;
 import java.nio.charset.StandardCharsets;
@@ -21,12 +22,12 @@ public final class PrototypeCanonical {
 
     public static Content of(String sourceRef, String title, String body, List<String> acceptance) {
         if (!"builder-alpha".equals(sourceRef) && !"builder-beta".equals(sourceRef)) {
-            throw new IllegalArgumentException("原型版本只属于 builder-alpha 或 builder-beta");
+            throw new IllegalArgumentException(ResourceErrors.PROTOTYPE_SOURCE_INVALID.code());
         }
         var normalizedTitle = text(title);
         var normalizedBody = text(body);
         if (normalizedTitle.isBlank() && normalizedBody.isBlank()) {
-            throw new IllegalArgumentException("标题和正文不能同时为空");
+            throw new IllegalArgumentException(ResourceErrors.PROTOTYPE_CONTENT_REQUIRED.code());
         }
         SemanticPrototype.require(normalizedBody);
         var conditions = new ArrayList<String>();

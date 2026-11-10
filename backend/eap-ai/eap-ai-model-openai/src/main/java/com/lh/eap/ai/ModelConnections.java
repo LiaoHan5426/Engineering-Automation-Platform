@@ -1,4 +1,13 @@
 package com.lh.eap.ai;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Set;
+import org.springframework.ai.chat.client.ChatClient;
+import com.lh.eap.error.SecurityErrors;
+import com.lh.eap.error.ChatGptAuthErrors;
+import com.lh.eap.error.ModelErrors;
 
 import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.llm.EndpointPolicy;
@@ -39,8 +48,8 @@ public final class ModelConnections {
     private final Path file;
     private final boolean rootConfigured;
     private final ModelClientSource clients;
-    private final ConcurrentHashMap<String, org.springframework.ai.chat.client.ChatClient> chatClients = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, org.springframework.ai.chat.client.ChatClient> completionClients = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ChatClient> chatClients = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ChatClient> completionClients = new ConcurrentHashMap<>();
     private final Object lock = new Object();
 
     @Autowired
@@ -81,7 +90,7 @@ public final class ModelConnections {
             boolean makeDefault, String wireApi) {
         synchronized (lock) {
             var stored = new ArrayList<>(read());
-            if (stored.size() >= LIMIT) throw status(HttpStatus.CONFLICT, "CONNECTION_LIMIT");
+            if (stored.size() >= LIMIT) throw status(HttpStatus.CONFLICT, ModelErrors.CONNECTION_LIMIT.code());
             var row = new Row();
             row.id = UUID.randomUUID();
             row.kind = KIND;
@@ -107,7 +116,7 @@ public final class ModelConnections {
         synchronized (lock) {
             var stored = new ArrayList<>(read());
             var row = find(stored, id);
-            if (!KIND.equals(row.kind)) throw status(HttpStatus.BAD_REQUEST, "CONNECTION_TYPE_MISMATCH");
+            if (!KIND.equals(row.kind)) throw status(HttpStatus.BAD_REQUEST, ModelErrors.CONNECTION_TYPE_MISMATCH.code());
             var nextSecret = secret == null || secret.isBlank() ? row.secret : secret;
             var nextWireApi = checkedWireApi(wireApi == null ? row.wireApi : wireApi);
             boolean protocolChanged = !checkedWireApi(row.wireApi).equals(nextWireApi);
@@ -153,25 +162,30 @@ public final class ModelConnections {
         synchronized (lock) {
             var stored = new ArrayList<>(read());
             var row = find(stored, id);
-            if (CHATGPT_KIND.equals(row.kind) && row.enabled) {
-                if (row.oauth == null || !row.oauth.planGranted()) throw status(HttpStatus.FORBIDDEN, "CHATGPT_PLAN_PERMISSION_REQUIRED");
-                if (row.oauth.expiresAt().isBefore(java.time.Instant.now().plusSeconds(60))) {
-                    if (oauthProtocol == null) throw status(HttpStatus.UNAUTHORIZED, "CHATGPT_REAUTH_REQUIRED");
-                    try {
-                        row.oauth = oauthProtocol.refresh(row.oauth); write(stored);
-                        if (!row.oauth.planGranted()) throw status(HttpStatus.FORBIDDEN, "CHATGPT_PLAN_PERMISSION_REQUIRED");
-                    }
-                    catch (ChatGptOAuthProtocol.AuthFailure failure) { throw status(HttpStatus.UNAUTHORIZED, failure.getMessage()); }
-                }
-            }
-            return snapshot(row);
+            return authorizedSnapshot(row, stored);
         }
+    }
+
+    /** Validate/refresh credentials against the same loaded document as model authorization. Caller holds lock. */
+    private ModelConnectionSnapshot authorizedSnapshot(Row row, List<Row> stored) {
+        if (CHATGPT_KIND.equals(row.kind) && row.enabled) {
+            if (row.oauth == null || !row.oauth.planGranted()) throw status(HttpStatus.FORBIDDEN, ChatGptAuthErrors.CHATGPT_PLAN_PERMISSION_REQUIRED.code());
+            if (row.oauth.expiresAt().isBefore(Instant.now().plusSeconds(60))) {
+                if (oauthProtocol == null) throw status(HttpStatus.UNAUTHORIZED, ChatGptAuthErrors.CHATGPT_REAUTH_REQUIRED.code());
+                try {
+                    row.oauth = oauthProtocol.refresh(row.oauth); write(stored);
+                    if (!row.oauth.planGranted()) throw status(HttpStatus.FORBIDDEN, ChatGptAuthErrors.CHATGPT_PLAN_PERMISSION_REQUIRED.code());
+                }
+                catch (ChatGptOAuthProtocol.AuthFailure failure) { throw status(HttpStatus.UNAUTHORIZED, failure.getMessage()); }
+            }
+        }
+        return snapshot(row);
     }
 
     ChatGptCredentials oauthCredentials(UUID id) {
         synchronized (lock) {
             var row = find(read(), id);
-            if (!CHATGPT_KIND.equals(row.kind)) throw status(HttpStatus.BAD_REQUEST, "CONNECTION_TYPE_MISMATCH");
+            if (!CHATGPT_KIND.equals(row.kind)) throw status(HttpStatus.BAD_REQUEST, ModelErrors.CONNECTION_TYPE_MISMATCH.code());
             return row.oauth;
         }
     }
@@ -182,13 +196,13 @@ public final class ModelConnections {
             var row = stored.stream().filter(item -> item.id.equals(id)).findFirst().orElse(null);
             if (row != null) {
                 if (!CHATGPT_KIND.equals(row.kind) || row.oauth == null || !clientId.equals(row.oauth.clientId()))
-                    throw status(HttpStatus.CONFLICT, "CHATGPT_ACCOUNT_MISMATCH");
+                    throw status(HttpStatus.CONFLICT, ChatGptAuthErrors.CHATGPT_ACCOUNT_MISMATCH.code());
                 return;
             }
-            if (stored.size() >= LIMIT) throw status(HttpStatus.CONFLICT, "CONNECTION_LIMIT");
+            if (stored.size() >= LIMIT) throw status(HttpStatus.CONFLICT, ModelErrors.CONNECTION_LIMIT.code());
             row = new Row(); row.id = id; row.kind = CHATGPT_KIND; row.name = "ChatGPT";
             row.baseUrl = "https://api.openai.com/v1"; row.secret = ""; row.revision = 1; row.enabled = true;
-            row.oauth = new ChatGptCredentials(clientId, "", "", "", "", "", java.time.Instant.EPOCH, java.util.Set.of());
+            row.oauth = new ChatGptCredentials(clientId, "", "", "", "", "", Instant.EPOCH, Set.of());
             stored.add(row); write(stored);
         }
     }
@@ -198,7 +212,7 @@ public final class ModelConnections {
             var stored = new ArrayList<>(read()); var row = find(stored, id);
             if (!CHATGPT_KIND.equals(row.kind) || row.oauth == null || !row.oauth.clientId().equals(credentials.clientId())
                     || (!row.oauth.subject().isBlank() && !row.oauth.subject().equals(credentials.subject())))
-                throw status(HttpStatus.CONFLICT, "CHATGPT_ACCOUNT_MISMATCH");
+                throw status(HttpStatus.CONFLICT, ChatGptAuthErrors.CHATGPT_ACCOUNT_MISMATCH.code());
             if (!row.oauth.subject().isBlank()) row.revision++;
             row.oauth = credentials;
             row.name = "ChatGPT" + (credentials.email() == null || credentials.email().isBlank() ? "" : " · " + credentials.email());
@@ -209,9 +223,9 @@ public final class ModelConnections {
     public void disconnectOAuth(UUID id) {
         synchronized (lock) {
             var stored = new ArrayList<>(read()); var row = find(stored, id);
-            if (!CHATGPT_KIND.equals(row.kind) || row.oauth == null) throw status(HttpStatus.BAD_REQUEST, "CONNECTION_TYPE_MISMATCH");
+            if (!CHATGPT_KIND.equals(row.kind) || row.oauth == null) throw status(HttpStatus.BAD_REQUEST, ModelErrors.CONNECTION_TYPE_MISMATCH.code());
             var previous = row.oauth;
-            row.oauth = new ChatGptCredentials(previous.clientId(), previous.subject(), previous.email(), "", "", "", java.time.Instant.EPOCH, java.util.Set.of());
+            row.oauth = new ChatGptCredentials(previous.clientId(), previous.subject(), previous.email(), "", "", "", Instant.EPOCH, Set.of());
             row.enabled = false; row.revision++; write(stored);
         }
     }
@@ -226,15 +240,15 @@ public final class ModelConnections {
             }
             var host = "urn:uuid:" + UUID.randomUUID();
             ProtectedLocalFile.write(hostFile, host); return host;
-        } catch (IOException failure) { throw new IllegalStateException("CHATGPT_HOST_STORE_FAILED"); }
+        } catch (IOException failure) { throw new IllegalStateException(ChatGptAuthErrors.CHATGPT_HOST_STORE_FAILED.code()); }
     }
 
-    public org.springframework.ai.chat.client.ChatClient chatClient(ModelConnectionSnapshot snapshot) {
+    public ChatClient chatClient(ModelConnectionSnapshot snapshot) {
         var selected = CHATGPT_KIND.equals(snapshot.kind) ? requireModel(snapshot.id, snapshot.model) : snapshot;
         return chatClients.computeIfAbsent(cacheKey(selected), key -> clients.conversational(selected));
     }
 
-    public org.springframework.ai.chat.client.ChatClient completionClient(ModelConnectionSnapshot snapshot) {
+    public ChatClient completionClient(ModelConnectionSnapshot snapshot) {
         var selected = CHATGPT_KIND.equals(snapshot.kind) ? requireModel(snapshot.id, snapshot.model) : snapshot;
         return completionClients.computeIfAbsent(cacheKey(selected), key -> clients.completion(selected));
     }
@@ -251,11 +265,12 @@ public final class ModelConnections {
 
     public ModelConnectionSnapshot requireModel(UUID id, String model) {
         synchronized (lock) {
-            var connection = require(id);
+            var stored = new ArrayList<>(read());
+            var row = find(stored, id);
             var selected = requireText(model, 120);
-            var view = view(find(read(), id));
-            if (!view.allowedModels().contains(selected)) throw status(HttpStatus.FORBIDDEN, "MODEL_NOT_ALLOWED");
-            return connection.withModel(selected);
+            if (row.allowedModels == null || !row.allowedModels.contains(selected))
+                throw status(HttpStatus.FORBIDDEN, ModelErrors.MODEL_NOT_ALLOWED.code());
+            return authorizedSnapshot(row, stored).withModel(selected);
         }
     }
 
@@ -273,19 +288,19 @@ public final class ModelConnections {
             var row = find(stored, id);
             if (options == null || options.isEmpty() || options.size() > 1024 || allowed == null || allowed.isEmpty()
                     || allowed.size() > 128 || allowed.stream().distinct().count() != allowed.size())
-                throw status(HttpStatus.BAD_REQUEST, "INVALID_MODEL_SELECTION");
+                throw status(HttpStatus.BAD_REQUEST, ModelErrors.INVALID_MODEL_SELECTION.code());
             if (CHATGPT_KIND.equals(row.kind) && options.stream().anyMatch(option -> option == null || models(row).stream().noneMatch(known -> known.id().equals(option.id()))))
-                throw status(HttpStatus.BAD_REQUEST, "MODEL_NOT_IN_ACCOUNT_CATALOG");
-            var ids = new java.util.HashSet<String>();
+                throw status(HttpStatus.BAD_REQUEST, ModelErrors.MODEL_NOT_IN_ACCOUNT_CATALOG.code());
+            var ids = new HashSet<String>();
             for (var option : options) {
                 if (option == null || !ids.add(requireText(option.id(), 120)) || !option.id().equals(option.id().trim())
                         || option.id().chars().anyMatch(Character::isISOControl)
                         || option.reasoningEfforts().size() > 3
-                        || !java.util.Set.of("low", "medium", "high").containsAll(option.reasoningEfforts()))
-                    throw status(HttpStatus.BAD_REQUEST, "INVALID_MODEL_SELECTION");
+                        || !Set.of("low", "medium", "high").containsAll(option.reasoningEfforts()))
+                    throw status(HttpStatus.BAD_REQUEST, ModelErrors.INVALID_MODEL_SELECTION.code());
             }
             if (!ids.containsAll(allowed) || !allowed.contains(defaultModel))
-                throw status(HttpStatus.BAD_REQUEST, "INVALID_MODEL_SELECTION");
+                throw status(HttpStatus.BAD_REQUEST, ModelErrors.INVALID_MODEL_SELECTION.code());
             row.models = List.copyOf(options);
             row.allowedModels = List.copyOf(allowed);
             // Default model changes affect future sessions and SQL; existing chat bindings keep their selected model.
@@ -297,7 +312,7 @@ public final class ModelConnections {
 
     public ModelConnectionView refreshModels(UUID id, ModelDiscovery discovery) {
         var requested = require(id);
-        if (!requested.enabled) throw status(HttpStatus.CONFLICT, "CONNECTION_DISABLED");
+        if (!requested.enabled) throw status(HttpStatus.CONFLICT, ModelErrors.CONNECTION_DISABLED.code());
         List<String> discovered = null;
         String error = "";
         try { discovered = discovery.fetch(requested); }
@@ -305,14 +320,14 @@ public final class ModelConnections {
         synchronized (lock) {
             var stored = new ArrayList<>(read());
             var row = find(stored, id);
-            if (row.revision != requested.revision) throw status(HttpStatus.CONFLICT, "CONNECTION_CHANGED_DURING_DISCOVERY");
+            if (row.revision != requested.revision) throw status(HttpStatus.CONFLICT, ModelErrors.CONNECTION_CHANGED_DURING_DISCOVERY.code());
             if (discovered != null) {
-                var merged = new java.util.LinkedHashMap<String, ModelOption>();
+                var merged = new LinkedHashMap<String, ModelOption>();
                 models(row).forEach(option -> merged.put(option.id(), option));
                 discovered.forEach(model -> merged.putIfAbsent(model, new ModelOption(model, List.of())));
-                if (merged.size() > 1024) throw status(HttpStatus.CONFLICT, "MODEL_CATALOG_LIMIT");
+                if (merged.size() > 1024) throw status(HttpStatus.CONFLICT, ModelErrors.MODEL_CATALOG_LIMIT.code());
                 row.models = List.copyOf(merged.values());
-                row.discoveredAt = java.time.Instant.now().toString();
+                row.discoveredAt = Instant.now().toString();
             }
             row.discoveryError = error;
             write(stored);
@@ -363,26 +378,26 @@ public final class ModelConnections {
 
     private static String normalizeUrl(String baseUrl) {
         var value = requireText(baseUrl, 300);
-        if (!EndpointPolicy.permits(value, true)) throw status(HttpStatus.BAD_REQUEST, "ENDPOINT_REJECTED");
+        if (!EndpointPolicy.permits(value, true)) throw status(HttpStatus.BAD_REQUEST, SecurityErrors.ENDPOINT_REJECTED.code());
         return value;
     }
 
     private static String checkedSecret(String secret) {
-        if (secret == null || secret.isBlank()) throw status(HttpStatus.BAD_REQUEST, "SECRET_REQUIRED");
+        if (secret == null || secret.isBlank()) throw status(HttpStatus.BAD_REQUEST, SecurityErrors.SECRET_REQUIRED.code());
         if (secret.length() > 400 || secret.indexOf('\n') >= 0 || secret.indexOf('\r') >= 0)
-            throw status(HttpStatus.BAD_REQUEST, "SECRET_REJECTED");
+            throw status(HttpStatus.BAD_REQUEST, SecurityErrors.SECRET_REJECTED.code());
         return secret;
     }
 
     private static String requireText(String value, int limit) {
         var text = value == null ? "" : value.trim();
-        if (text.isEmpty() || text.length() > limit) throw status(HttpStatus.BAD_REQUEST, "INVALID_CONNECTION");
+        if (text.isEmpty() || text.length() > limit) throw status(HttpStatus.BAD_REQUEST, ModelErrors.INVALID_CONNECTION.code());
         return text;
     }
 
     private Row find(List<Row> stored, UUID id) {
         return stored.stream().filter(row -> row.id.equals(id)).findFirst()
-                .orElseThrow(() -> status(HttpStatus.NOT_FOUND, "UNKNOWN_CONNECTION"));
+                .orElseThrow(() -> status(HttpStatus.NOT_FOUND, ModelErrors.UNKNOWN_CONNECTION.code()));
     }
 
     private List<Row> read() {
@@ -392,7 +407,7 @@ public final class ModelConnections {
             if (parsed == null || parsed.connections == null) return List.of();
             return parsed.connections.stream().filter(row -> row != null && row.id != null && (KIND.equals(row.kind) || CHATGPT_KIND.equals(row.kind))).toList();
         } catch (RuntimeException | IOException failure) {
-            throw new IllegalStateException("CONNECTION_STORE_UNREADABLE");
+            throw new IllegalStateException(ModelErrors.CONNECTION_STORE_UNREADABLE.code());
         }
     }
 
@@ -402,7 +417,7 @@ public final class ModelConnections {
         try {
             ProtectedLocalFile.write(file, JSON.writeValueAsString(body));
         } catch (IOException failure) {
-            throw new IllegalStateException("CONNECTION_STORE_FAILED");
+            throw new IllegalStateException(ModelErrors.CONNECTION_STORE_FAILED.code());
         }
     }
 
@@ -425,7 +440,7 @@ public final class ModelConnections {
         public List<Row> connections = List.of();
     }
 
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonIgnoreProperties(ignoreUnknown = true)
     static final class Row {
         public UUID id;
         public String name;

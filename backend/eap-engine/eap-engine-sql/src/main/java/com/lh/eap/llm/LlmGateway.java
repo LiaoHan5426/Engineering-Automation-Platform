@@ -1,4 +1,5 @@
 package com.lh.eap.llm;
+import com.lh.eap.error.ModelErrors;
 
 import java.io.Serial;
 import java.nio.charset.StandardCharsets;
@@ -55,7 +56,7 @@ public class LlmGateway {
     /** Preserve failure codes for SQL evidence without removing the Optional compatibility API. */
     public LlmProvider.Result completeWithEvidence(LlmProvider.Request request) {
         var provider = providers.stream().map(LlmProvider::forRequest).filter(LlmProvider::available).findFirst().orElse(null);
-        if (provider == null) return LlmProvider.Result.failure("spring-ai", "AI_NOT_CONFIGURED");
+        if (provider == null) return LlmProvider.Result.failure("spring-ai", ModelErrors.AI_NOT_CONFIGURED.code());
         var key = provider.cacheScope() + ":" + digest(request);
         var cached = cache.get(key);
         if (cached != null) {

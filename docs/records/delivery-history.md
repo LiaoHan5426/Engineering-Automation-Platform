@@ -1,5 +1,71 @@
 # 任务、源码与交付证据总览
 
+<a id="consolidated-submission"></a>
+
+## 集中提交：组件图、状态消息、会话与全站工作面（2026-11-11）
+
+用户已授权调整完成后提交并推送。此次接续2450bf2，收录当前主工作区中已验证的多文件页面交付、分域状态/统一错误/后端中英资源、会话优化及目标4～8实现，同时提交对应迁移、测试、截图和规范。以下原阶段的“未提交”描述均为实施当时的历史快照，当前提交范围以本节和Git记录为准。
+
+| 范围 | 沿用的验证证据 | 本次提交边界 |
+|---|---|---|
+| 多文件组件图与页面交付 | ComponentTaskContextTest/ComponentGraphDeliveryTest/ComponentDeliveryConstraintTest，真实PREBOUND三文件候选→应用→独立验证→技术决定；[原证据](../../frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/README.md) | V33/V34及原真实模型/数据库验证不重跑；用户产品接受独立 |
+| 分域状态与后端中英文 | 16组状态、23域516码、11组资源；定向后端157项及后续55项、实库9用例、HTTP12组和浏览器中英2组；[原证据](../../frontend/apps/web/__tests__/browser/artifacts/status-i18n/README.md) | V35与既有迁移证据保留；未将分批后端结果冒称最终全量全绿 |
+| 会话与上下文 | 后端12类55项、前端461项及末次78项、HTTP6组和浏览器中英2组；[原证据](../../frontend/apps/web/__tests__/browser/artifacts/conversation-optimization/README.md) | 保留同ID恢复、草稿和迟到响应保护，无历史自动重放 |
+| 全站工作面、独立Mock/request | 最终前端149文件921项全部通过；16入口两视口32份检查、8组交互、0页面异常/缺键警告；typecheck/build/architecture与受影响质量检查通过；[最终汇总](../../frontend/apps/web/__tests__/browser/artifacts/product-workspaces/validation.json) | 本次提交不重复测试/构建/浏览器/迁移/模型调用；大chunk提示及完整系统缩放/辅助技术矩阵边界保留 |
+| 提交检查 | 实际差异、UTF-8无BOM、有限敏感模式及暂存清单核对；唯一凭据模式命中为拒绝密码字段的fixture-only测试样本 | 新增证据patch的空白上下文行已改为无上下文diff表示，候选/应用源码和hash不变；不提交backend/target、node_modules、dist或本地凭据；推送后核对HEAD/origin/main/远端main |
+
+<a id="conversation-optimization"></a>
+
+## 会话结构、import及产品展示集中优化（2026-11-10，已纳入本批提交（以下为实施快照））
+
+用户要求优化会话恢复开销、减少重复、规范后端import并改进截图中的开发备注展示。保留此前状态／i18n和多文件交付工作；完成情况见[当前台账](../planning-status.md#conversation-optimization)，恢复接口和行为见[有效决策](../decisions/chat-engineering-task-slice.md#会话失效与显式重试当前合同2026-11-10)。
+
+同ID恢复＋明确目标绑定合为一次POST；先验证工作区／模型，再清理并发布绑定；前端／Mock／合同测试同步迁移，删除旧两字段请求及后续绑定分支。GET重查、普通换模、明确当前草稿重试仍各负其责。在途请求合并，启动历史只读一次；chatHistory负责150ms流式检查点及终态／生命周期flush，业务只集中投影绑定。后端重复材料依赖和相同失效快照跳过写盘，敏感模型窗口仍每轮清理；模型授权复用单次加载的连接文档。
+
+生产Java118文件中113文件仅import／类型限定整理，代码token及原始字面量／注释等价核对通过；5个逻辑文件经过定向测试。Chat工作面拆出TaskMemoryPanel、TurnContextDetails，复用公共UI；原始码、哈希、来源、验证配置默认折叠，去除重复未执行占位和预览URL；无检查明细不显示完整通过，待人工验收独立。新增恢复响应类型由runtime-client公开合同复用。
+
+后端12类55项通过；前端受影响74文件461项及末次4文件78项通过。真实full HTTP6组，Chromium中英2组及1440／900／390无页面横溢；恢复供应商调用0，明确重试2次确定性流式夹具、外部模型0。typecheck/build/architecture及目标格式/lint通过，新组件stylelint通过；完整根格式／样式存量没有重跑或宣称清理完成。[命令、截图、失败修正及验证边界](../../frontend/apps/web/__tests__/browser/artifacts/conversation-optimization/README.md)。
+
+KISS／DRY：复用公共控件、存储与绑定各自唯一实现，删除两步恢复编排。SOLID：持久化、会话动作和领域展示分责，业务层不反向依赖UI。YAGNI：不新增授权缓存、异步双写、通用恢复框架或空包。用户产品接受与全站历史文案治理独立。
+
+收尾：独立命名Boot产物打包通过，POM临时命名调整逐字节恢复；默认名首次因已有jar占用在repackage重命名处失败，已恢复可启动默认产物，并核对身份后将自有独立full按原52025端口／工作区重启。IDE8080未停；两入口健康，正式jar的QA路由404。临时QA宿主已停止；[产物和宿主记录](../../frontend/apps/web/__tests__/browser/artifacts/conversation-optimization/host-restoration.json)。没有重复测试或调用外部模型。
+
+<a id="domain-status-i18n"></a>
+
+## 分域状态及中英文错误合同集中实施（2026-11-10，已纳入本批提交（以下为实施快照））
+
+用户已批准状态、错误协议、资源、前端/Mock与必要整链同批实施。保留已有多文件页面交付改动及原真实模型证据，不保留旧detail机器码解析或运行时旧状态回退。此阶段验证时尚未提交；对应实现已纳入本批提交。
+
+实际交付：16组Java严格wire枚举与前端as const对齐；SQL活动/阻塞查询绑定领域派生的数组参数；工具、Mission、候选应用、独立验证、Board、专家、Chat、连接、场景、Skill保持各自状态机。Mission INTERRUPTED与数据库一致，UNKNOWN是只读观察投影，storedStatus和稳定unconfirmedReason不丢。字符串wire DTO在构造/读取边界校验，未把非法值变成业务UNKNOWN。runtime-client根入口132个模型拆到9个领域Models文件，新增不加载浏览器HTTP依赖的公开contracts入口。
+
+错误合同为ProblemDetail的type/title/status/code/detail/requestId；23个领域目录516码、11个配对中英文basename。Advice、Filter及工具/Board/Skill局部handler共用ProblemResponses，保留execution和knowledgeMemoryCleared/contextMemoryCleared。CLI程序、知识库、数据库资料、规则包、专家、原型及MCP管理的业务拒绝使用稳定码，内部异常不透传。当前locale统一Axios/SSE，worker捕获请求语言，快照按查看者语言渲染，文案不写入持久journal/本地历史。Mock包括解析异常和超大请求出口均返回当前合同，仍是明确模拟。
+
+| 检查 | 精确命令/选择范围 | 实际结果 |
+|---|---|---|
+| 普通后端回归 | `rtk proxy mvn -f backend/pom.xml test` | 已执行跨模块回归；初次旧fixture及实际边界失败经下列定向修复，不把分批结果称为最后一次全量全绿 |
+| 修复定向 | `rtk proxy mvn -f backend/pom.xml -pl :eap-full-application,:eap-spring-boot-autoconfigure -am test -Dtest=AiConversationReconnectTest,EngineeringTaskFlowTest,SkillChatTest,BoardApplicationEvidenceTest,BoardCodeWorkspaceInterlockTest,BoardTaskServiceTest,BoardVerificationPersistenceContractTest,BoardVerificationWorkerTest,CapabilityCatalogTest,CapabilityManagementTest,DatabaseProfileDeletionTest,SchemaAndWiringTest,SkillWiringTest,DomainWireAndMessagesTest,PlatformProblemContractTest,ModuleCompositionTest,MissionRunOutcomeTest,ChatExecutionJournalTest -Dsurefire.failIfNoSpecifiedTests=false` | 157项，0失败/错误/跳过 |
+| 后续边界回归 | 同一reactor，`-Dtest=DomainWireAndMessagesTest,PlatformProblemContractTest,MissionRunOutcomeTest,MissionGitExecutionServiceTest,CapabilityManagementTest,McpProductionAllowlistTest,OfficialReadonlyMcpMatrixTest,PrototypeVersionControllerTest,ChatExecutionJournalTest,ProposalRefusalTest` | 55项，0失败/错误/跳过 |
+| 真实数据库 | 本轮仅为选择的测试进程设置 `EAP_RUN_BOARD_PERSISTENCE=true`、`EAP_RUN_SINGLE_CONTRACTS=true`；选择BoardRunPersistenceTest的runsOnceInTheConfirmedDirectoryAndReopensTheOriginalSnapshotAfterTaskChanges、restartUnknownBlocksBothDispatchAndAnotherStart、verificationPersistsOnceBlocksTaskAndPrototypeAndReplaysWithoutTaskCompletion、restartUnknownPreservesVerificationProgressAndNeverDispatchesAgain、preflightPlanUnknownSurvivesOuterRollbackAndBlocksWorkspace、codeIntentBlocksBoardRunVerificationReviewDeliveryAndRestartPreservesPassedEvidence、activeBoardRunAndVerificationBlockCodeApplyAndCompletedVerificationDoesNotBecomeAttribution，以及BoardCodeProposalRecoveryTest、ToolExecutionPersistenceTest | 9个不同用例；8项首轮通过，1项旧无参数SQL夹具修复后单项补跑通过；没有解除按自有任务/schema限制，也未重复其余8项 |
+| 前端普通回归 | `rtk proxy pnpm --dir frontend test run` | 149文件914项通过；原真实模型独立验证未重跑 |
+| 前端后续变化 | 同上，限定packages/runtime-client的boardRuntime/languageAndWire/gitExecutions，以及应用的mock/problems、mock/wireApi、sseTransport、eventProjector、chatSession、ChatWorkspace.knowledge、ExpertAgentPanel、BoardCodeCandidates、BoardRunPanel、ProposalApplication、trustedToolInvocation | 14文件230项通过；包括8个新Mock用例与非法SSE状态拒绝，不能与914直接相加宣称全量不同用例数 |
+| 请求中语言切换 | `rtk proxy pnpm --dir frontend test run packages/runtime-client/__tests__/languageAndWire.test.ts apps/web/__tests__/features/chat/chatSession.test.ts` | 2文件61项通过；请求入口捕获语言，SSE未完成时切换UI不会误标旧语言消息 |
+| 最终看板差异核对 | `rtk proxy pnpm --dir frontend test run apps/web/__tests__/features/shell/PreviewBoard.test.ts` | 1文件14项通过；移除旧error回退/错误码子串匹配，恢复被批量字段替换误改的detail-save样式类；随后typecheck/build/architecture及目标format/lint通过 |
+| 类型/构建/架构 | `rtk proxy pnpm --dir frontend typecheck`；`rtk proxy pnpm --dir frontend build`；`rtk proxy pnpm --dir frontend check:architecture` | 均通过；build既有chunk提示保留 |
+| 分域资源关口 | `rtk proxy python scripts/verify-domain-contracts.py` | 16组状态、23目录516码、11组资源对齐；可后续重复，不依赖本轮target备份 |
+| 格式/lint | 对当前更改TS/Vue/MJS/JSON逐批执行`rtk proxy pnpm --dir frontend exec vp check --fix <本批文件>` | 更改范围通过。全root check曾报告202项格式问题；全stylelint在正确识别Vue伪类后报告1693项存量错误，未做全仓清理，未扩大忽略名单 |
+| full真实HTTP/JDBC | test源StatusI18nLiveFixture加载EapApplication，完整生产装配及独立schema/工作区；`rtk proxy python -X utf8 frontend/apps/web/__tests__/browser/status-i18n-http.py` | 12组通过，2次确定性流式provider失败、外部模型0次；源冲突进入持久认领/失败，UNKNOWN阻塞上下文、撤权/过期、SSE及人工关闭去重均保留 |
+| Chromium | 设置既有EAP_PLAYWRIGHT_MODULE/EAP_CHROMIUM，在frontend运行`rtk proxy node apps/web/__tests__/browser/status-i18n-live.mjs` | 中英2组通过，当前能力页保留同一CLOSED_UNKNOWN记录及存储故障提示，Axios/SSE握手语言贯通；页面错误0、外部请求0。截图已查看 |
+| 包及正式入口 | `rtk proxy mvn -f backend/pom.xml -pl :eap-full-application -am package -DskipTests`；开发库/隔离schema的V35及JDBC只读核对 | 打包通过，未重复测试。V35仅补companion_sources列注释，未改V33/V34；8080已有IDE full及恢复后的独立jar full均经中英真实请求核对 |
+
+[全部分层证据与限制](../../frontend/apps/web/__tests__/browser/artifacts/status-i18n/README.md)。QA入口只在测试源，不装配到生产jar。初始fixture用call接口而未实现stream，已改为真正流式失败并以2次调用重验；不把旧0次计数当provider执行证明。浏览器定位失败、错误的绝对源码import均已修正为当前记录等待及普通同包测试入口，无新增边界豁免。开发8080由IDE进程管理，重复jar启动曾因端口冲突退出；旧健康响应不是新进程启动证明，已纠正PID/启动记录并保留IDE进程。
+
+全stylelint的1693项已按文件对照，全部所属样式块与本轮前备份或HEAD一致，见quality-baseline.json；不把本轮目标检查的通过扩大为全仓清理完成。临时QA宿主在全部浏览器/JDBC验证后按进程身份停止，证据schema/工作区保留；两个正式full入口均确认QA端点为404。
+
+本轮修复的实际缺陷还包括：Mock单元素allowedColumns被误写为字符串、非法UUID错误映射500、ProblemDetail空type导致Filter序列化失败、跨域聚合状态错误互认、交付范围检查在错误顺序下被误判为未应用。旧fixture同步code/参数绑定，没有恢复中文机器分支。测试网络守卫保留；仍有被阻止的开发服务访问诊断，不能把阻止日志当真实服务请求通过。
+
+KISS/DRY：状态值、分类、消息与错误构建器各保留唯一职责；SOLID：底层API保持纯JDK，业务不反向依赖web/host；YAGNI：复用现有Spring MessageSource、vue-i18n与Maven模块，无新框架或总常量类。后续仅需对实际新增域继续执行同一关口；全仓格式/样式存量治理及用户产品接受仍独立安排。
+
+
 ## 当前结论与阅读方式
 
 任务准备 → 受控只读Run → 原型引用 → 仓库审阅 → 独立验证 → 源码交付 → 生成前基线/持久应用 → POST_HOC/PREBOUND。本轮已完成一次限定真实模型自身改页：PREBOUND语义原型/任务/源码→真实候选→生产页面确认应用→独立typecheck/test/build→交付→明确技术ACCEPT及刷新读回。接续已补任务持久候选列表/Diff及明确应用拒绝，正式重启/Chat404和全新浏览器无历史恢复已验，见[当前恢复](#board-code-recovery)。复杂页面、多文件开发和用户最终产品接受仍独立；原模型整链见[上一批](#prebound-page-delivery)。Git Run不是源码作者，UNKNOWN/APPLYING继续阻塞，未完成项以[接续台账](../planning-status.md)为准。
@@ -762,3 +828,55 @@ ProposalApplication 属 chat L4，复用 Button/Checkbox/Badge/Feedback。加载
 - drive_preview桥无响应后，使用computer_use操作实际Hermes内置预览：看板测试卡→准备任务草稿→确认采用。截图复核绑定显示local-eap/原任务ID/r1、目标为空、任务正文仍在输入框、发送因无模型禁用；未调用模型。最终画面证据 `E:/ai/Hermes/profiles/eap/cache/images/computer_use_4dd213acbb774f7dac43455a0116815e.png`（本机不提交）。仅确认该交互，不代表用户产品验收。
 - 独立审查发现CODE_WORKSPACE_BUSY误显示模型变更，已按RED→GREEN补任务阻塞映射；最终前端82文件/398项及类型/边界/构建通过，最终独立复核通过。后端569项仍为上述父任务执行记录，6跳过；真实供应商生成→应用→验证→人工接受仍未验收。
 <!-- record:end docs/decisions/code-task-prebinding-2026-11-01.md -->
+
+
+<a id="component-page-delivery"></a>
+
+## 有界组件图与完整证据页面真实交付（2026-11-10）
+
+已推送基线为2450bf29fe4a2e47fef69b7f402426a31bc4146b（任务持久候选与正式重启恢复），先行提交沿用原后端4/前端45/浏览器6组，不重复测试。以下为接续未提交的新增；上方单文件与任务恢复均为保留的阶段证据。当前范围以[主计划](../EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md)和[当前验收行](../planning-status.md#component-page-delivery-validation)为准。
+
+### 实现与职责
+
+- targetPath为入口，componentPaths为0～7个显式伴随；Snapshot.companionSources与响应Generation.companionFiles固定有序集合。单文件是空伴随叶子，所有持久应用走同一个applyDurable，无运行时旧JSON/单文件写入兜底。V33一次性给既有合规叶子补空元数据，原正文/hash/归因不虚构。
+- 模型前同一任务/工作区事务固定完整源码及Task/revision/原型；24KB每文件、总48KB，敏感/超限/越界拒绝，不截断。候选必须精确路径与顺序，现存文件别名、额外/缺失文件和生成期间基线变化拒绝。
+- 多文件仅frontend内Vue/TS/JS，静态ES引用子集、入口可达全部节点且无循环；未声明相对引用、未批准包、动态import/require/glob或未支持语法拒绝。公共包限vue、vue-i18n、@eap/ui、@eap/runtime-client。该图不是完整编译器，也不推断路由/资源或任意运行期引用。
+- 应用先检查全部基线，再暂存全部文件、再检、逐个替换、全部读回并持久APPLIED。部分作用/数据库结果中断或不明确保留UNKNOWN/APPLYING互锁，不能盲重试/自动回滚他人源码。没有跨文件OS事务/CAS承诺。文件目录返回fileCount/paths，前端审阅和服务端归因逐项核对，V34删除旧单文件交付限制。
+- 完整页面位于应用components的DeliveryEvidencePanel、Summary及model，复用公共Input/Button/Panel/Badge；任务候选页供给翻译/状态及完整文件集合。摘要计数不受筛选影响；筛选大小写无关；选择文件显示基线、UTF8字节及完整正文；空态/候选切换无陈旧详情。全部只读，应用/独立验证/接受留原业务入口；不新建包/注册表/执行器。
+
+### 一次真实模型与交付证据
+
+正式可执行full-application jar绑定隔离本仓库backend/target/component-page-workspace和授权根，使用原连接存储/开发库。前端实现及独立验收测试在模型前作为本地detached基线冻结；该提交不推送。一次已配置gpt-6.1-sol/Responses调用36.76秒，全部源码由正式后端读取并先持久保存，生成未写源码。浏览器不seed Chat历史，从实际任务页读取三份Monaco Diff，明确确认应用全部文件；逐字节读回及重复应用原结果一致。
+
+| 身份 | 真实值 |
+|---|---|
+| project / task | prebound-page-delivery-0c43f3d79c09 / 3c2cfb3f-b093-42bb-9e58-bd1712549fc2 |
+| 原任务版本 / 原型 | r2 / 0b2b5390-f479-44bf-967b-a546a7434057 |
+| conversation / generation | 2582fc97-d1c9-4028-984a-373dbc6ad567 / 997cf732-c5ca-47ae-8757-a7ca4e7c04ba |
+| proposal | 0eacdbca-8ac2-4a79-82a3-1505276b7fb8 |
+| Run / verification | f917dca9-44f5-4c61-9e97-125d92c06234 / 49ce8741-1ad1-4362-8ae3-5c62921f5a3a |
+| delivery / decision | 0fa5f794-e38c-48ae-8489-26947118c7f4 / 85dc2ee7-71ae-4477-aa82-766e54d93616 |
+| 最终状态 | APPLIED、Run SUCCEEDED、验证PASSED、CHAT_APPLIED_PREBOUND、技术ACCEPT、task done/r4 |
+
+三文件为frontend/apps/web/src/components/下DeliveryEvidencePanel.vue（93864577…）、DeliveryEvidenceSummary.vue（51f21588…）、deliveryEvidenceModel.ts（8e36f8f9…）。完整before/after哈希见[实际结果](../../frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/result.json)；[原始候选](../../frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/real-model-proposal.json)、[逐文件审阅diff](../../frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/reviewed-source.patch)、[数据库核对](../../frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/database-verification.json)均保留。JDBC确认1 Generation/1 Proposal、原语义原型身份、时间顺序、全部文件应用/验证/交付hash及Task快照一致；验证前后710文件source完全一致。
+
+实际页面5组：任务持久候选审阅/确认应用、面板筛选/摘要/选中/空态、真实Git Run和独立验证、页面选完整paths3提交PREBOUND、显式决定/幂等/第二决定409/刷新只读。无pageerror/外部网络/浏览器模型请求。缺人工声明请求400，决定后r4/done。操作说明明确为自动化技术ACCEPT，不是用户产品接受，也不把只读Git Run当代码实现者。
+
+### 验证与必要恢复
+
+新定向后端共4项/0跳过：ComponentTaskContextTest 1项、ComponentGraphDeliveryTest 2项、ComponentDeliveryConstraintTest 1项。前者检查显式路径输入；图测试覆盖漏文件/断图/循环/动态/未声明/未批准包与多行re-export拒绝、全部基线、伴随被外改先失败不写入口、全部应用/幂等及数据库finish中断UNKNOWN阻塞；约束测试在UUID自有schema真实V33拒绝三文件→V34接受，错误Task和9文件仍拒绝。原恢复测试1项沿用已通过结果；不反复跑旧后端套件。可复现定向命令（首次复核才执行）：
+
+```powershell
+$env:EAP_RUN_SINGLE_CONTRACTS='true'
+rtk proxy mvn -f backend/pom.xml -pl :eap-full-application -am test '-Dtest=ComponentTaskContextTest,ComponentGraphDeliveryTest,ComponentDeliveryConstraintTest' '-Dsurefire.failIfNoSpecifiedTests=false'
+```
+
+真实应用自有独立验证仅运行一次：typecheck PASSED；147测试文件906项PASSED；build PASSED；三项exit0、processTreeCleanup=true，验证前后source一致。保留大chunk构建提示；没有把配置/HTTP200或编译当业务完成。原始检查尾部见[独立结果](../../frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/independent-checks.json)。V34为后端约束修复，重启后复用同一Run/已通过验证，无重复模型、无前端全套重跑。
+
+失败过程明确保留：初次增量编译期间ComponentGraph.class短暂缺失，检查确认源/类存在后仅重跑受影响图测试成功；新增TaskComposer测试首轮定位错误testid，修正测试选择器后15项通过，公共应用目录4项通过。5173被其他进程占用未终止他人；随机origin被正式CORS拒绝，改用已允许的5174而未放宽权限。首次提交三文件时遗漏Board表历史单文件CHECK，事务以503回滚，源码/验证保持；[failure.json](../../frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/failure.json)保留该失败。新增V34替换当前约束而不重写已应用V33；正式主full/隔离full重新启动，34份Flyway validate通过，无clean/repair/baseline；继续原候选/Run/验证并完成提交和决定。
+
+三个原模型文件经精确hash核对导回主工作区；随后按仓库规范做格式/CSS顺序以及Button显式class替换:deep选择器。原交付内容/隔离源码/hash不改；[主工作区规范化差异](../../frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-normalization.patch)及[独立hash](../../frontend/apps/web/__tests__/browser/artifacts/component-page-delivery/main-normalization.json)单列，不能把主工作区最终字节宣称为原交付hash。规范化后新面板2项定向通过；实际390px发现Collapse最小内容撑宽审阅网格，业务层grid-template-columns改minmax(0,1fr)，1440/390实际页面只读筛选/选择/空态和面板边界通过（0写请求/0外呼/0pageerror）；format/lint、相关stylelint、typecheck、architecture与静态UTF8/链接/diff检查结果以同目录quality-checks.json为准，不重跑147文件套件。
+
+### 仍待
+
+当前是有界三文件图和完整证据审阅页实链；任意复杂页面、更多设计状态/动作映射、跨页面/路由/资源图、用户交互和最终产品接受、源码UNKNOWN人工核对解除仍独立。现有UNKNOWN只阻塞，不冒充已提供人工恢复。下一批按真实页面需求推进上述有明确需求的图与映射，不新造兼容分支或执行机制。

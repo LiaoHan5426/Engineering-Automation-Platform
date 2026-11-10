@@ -18,12 +18,12 @@ it('isolates local unsent edits by task and service source and clears saved draf
     goal: 'goal',
     acceptanceCriteria: 'check',
   }
-  writeBoardEdit(store, 'a', false, edit)
-  expect(readBoardEdit(store, 'a', false)).toEqual(edit)
-  expect(readBoardEdit(store, 'b', false)).toBeNull()
-  expect(readBoardEdit(store, 'a', true)).toBeNull()
-  writeBoardEdit(store, 'a', false, null)
-  expect(readBoardEdit(store, 'a', false)).toBeNull()
-  data.set('eap.board-edit.v1.a', '{invalid')
-  expect(readBoardEdit(store, 'a', false)).toBeNull()
+  writeBoardEdit(store, 'a', 'api-a', edit)
+  expect(readBoardEdit(store, 'a', 'api-a')).toEqual(edit)
+  expect(readBoardEdit(store, 'b', 'api-a')).toBeNull()
+  expect(readBoardEdit(store, 'a', 'api-b')).toBeNull()
+  writeBoardEdit(store, 'a', 'api-a', null)
+  expect(readBoardEdit(store, 'a', 'api-a')).toBeNull()
+  data.set('api-a.eap.board-edit.v1.a', '{invalid')
+  expect(readBoardEdit(store, 'a', 'api-a')).toBeNull()
 })
