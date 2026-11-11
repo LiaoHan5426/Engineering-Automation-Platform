@@ -34,6 +34,11 @@ import type { BoardTask } from './contracts/boardModels'
 import type { BoardCodeCandidates } from './contracts/boardModels'
 import type { CodeProposalState } from './contracts/codeModels'
 import type { CodeApplied } from './contracts/codeModels'
+import type {
+  SourceWriteReviewDetail,
+  SourceWriteReviewItem,
+  SourceWriteReviewRequest,
+} from './contracts/codeProposal'
 import type { BoardRunPage } from './contracts/boardModels'
 import type { BoardReviewPage } from './contracts/boardModels'
 import type { BoardReviewEvidence } from './contracts/boardModels'
@@ -482,6 +487,16 @@ export const runtimeApi = {
       }),
   boardTasks: (projectId: string) =>
     get<{ items: BoardTask[] }>('/board/tasks?projectId=' + encodeURIComponent(projectId)),
+  sourceWriteReviews: () => get<SourceWriteReviewItem[]>('/board/source-write-reviews'),
+  sourceWriteReview: (id: string) =>
+    get<SourceWriteReviewDetail>('/board/source-write-reviews/' + encodeURIComponent(id)),
+  closeSourceWriteReview: (id: string, request: SourceWriteReviewRequest) =>
+    client
+      .post<SourceWriteReviewDetail>(
+        '/board/source-write-reviews/' + encodeURIComponent(id) + '/close',
+        request,
+      )
+      .then((response) => response.data),
   boardCodeCandidates: (taskId: string, projectId: string) =>
     get<BoardCodeCandidates>(
       '/board/tasks/' +

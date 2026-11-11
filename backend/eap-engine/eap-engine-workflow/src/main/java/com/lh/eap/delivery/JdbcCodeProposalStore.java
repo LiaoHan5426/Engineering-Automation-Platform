@@ -4,6 +4,8 @@ import com.lh.eap.application.service.BoardTaskService;
 import com.lh.eap.application.service.WorkspaceInterlock;
 import com.lh.eap.persistence.mapper.JdbcPrototypeVersionStore;
 import java.util.function.Supplier;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -117,5 +119,52 @@ public class JdbcCodeProposalStore implements CodeProposalStore {
                     CodeProposalStatus.REFUSED.wire(), reason, id, principal, conversation, CodeProposalStatus.PROPOSED.wire()) != 1)
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "CODE_APPLICATION_" + find(principal, conversation, id).map(Stored::status).orElse(CodeProposalStatus.UNKNOWN.wire()));
         });
+    }
+
+    record ReviewRow(SourceWriteReview.Item item, CodeChangeService.Proposal proposal,
+                     SourceWriteReview.Resolution resolution) {}
+
+    List<SourceWriteReview.Item> reviewItems(String principal, String workspace) {
+        return jdbc.query("""
+            SELECT id,status,reason,started_at FROM eap.code_proposal
+            WHERE principal=? AND workspace=? AND status IN (?, ?, ?)
+            ORDER BY (status <> ?) DESC, started_at DESC, id DESC LIMIT 20
+            """, (rs, i) -> reviewItem(rs), principal, workspace, CodeProposalStatus.APPLYING.wire(),
+                CodeProposalStatus.UNKNOWN.wire(), CodeProposalStatus.CLOSED_UNKNOWN.wire(),
+                CodeProposalStatus.CLOSED_UNKNOWN.wire());
+    }
+
+    Optional<ReviewRow> reviewRow(String principal, String workspace, UUID id) {
+        return jdbc.query("""
+            SELECT id,status,reason,started_at,proposal,unknown_review FROM eap.code_proposal
+            WHERE principal=? AND workspace=? AND id=?
+            """, (rs, i) -> {
+                String audit = rs.getString("unknown_review");
+                return new ReviewRow(reviewItem(rs), JSON.readValue(rs.getString("proposal"), CodeChangeService.Proposal.class),
+                        audit == null ? null : JSON.readValue(audit, SourceWriteReview.Resolution.class));
+            }, principal, workspace, id).stream().findFirst();
+    }
+
+    <T> T reviewLocked(String workspace, Supplier<T> action) {
+        return transaction.execute(tx -> {
+            WorkspaceInterlock.lock(jdbc, workspace);
+            return action.get();
+        });
+    }
+
+    void closeUnknown(String principal, String workspace, UUID id, SourceWriteReview.Resolution resolution) {
+        if (jdbc.update("""
+            UPDATE eap.code_proposal SET status=?,unknown_review=?::jsonb
+            WHERE id=? AND principal=? AND workspace=? AND status=?
+            """, CodeProposalStatus.CLOSED_UNKNOWN.wire(), JSON.writeValueAsString(resolution), id, principal, workspace,
+                CodeProposalStatus.UNKNOWN.wire()) != 1)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, CodeErrors.CODE_REVIEW_NOT_UNKNOWN.code());
+    }
+
+    private static SourceWriteReview.Item reviewItem(ResultSet rs) throws SQLException {
+        var started = rs.getTimestamp("started_at");
+        return new SourceWriteReview.Item(rs.getObject("id", UUID.class),
+                CodeProposalStatus.fromWire(rs.getString("status")).wire(), rs.getString("reason"),
+                started == null ? null : started.toInstant());
     }
 }

@@ -16,6 +16,7 @@ import {
   type CodeApplied,
 } from '@eap/runtime-client'
 import { useI18n } from 'vue-i18n'
+import SourceWriteReview from './SourceWriteReview.vue'
 const props = defineProps<{
   proposal: CodeProposal
   readOnly: boolean
@@ -34,7 +35,6 @@ async function read() {
   const token = generation
   loading.value = true
   confirmed.value = false
-  state.value = null
   try {
     const record = props.operations
       ? await props.operations.read()
@@ -60,7 +60,10 @@ async function read() {
     if (record.status === CodeProposalStatus.APPLIED && record.result)
       emit('applied', record.result)
   } catch {
-    if (token === generation) note.value = t('application.readFailed')
+    if (token === generation) {
+      state.value = null
+      note.value = t('application.readFailed')
+    }
   } finally {
     if (token === generation) loading.value = false
   }
@@ -156,6 +159,15 @@ watch(writing, (value) => emit('pending', value), { flush: 'sync' })
         @click="read"
         >{{ t('application.refresh') }}</Button
       >
+      <SourceWriteReview
+        v-if="
+          state?.status === CodeProposalStatus.UNKNOWN ||
+          state?.status === CodeProposalStatus.CLOSED_UNKNOWN
+        "
+        :proposal-id="proposal.id"
+        :scope-key="scopeKey"
+        @closed="read"
+      />
     </div>
     <p v-if="loading" role="status">{{ t('application.loading') }}</p>
     <Feedback v-if="note" tone="warning">{{ note }}</Feedback>

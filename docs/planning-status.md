@@ -12,6 +12,20 @@
 
 <a id="validation-baseline"></a>
 
+<a id="source-write-review-validation"></a>
+
+### 源码写入 UNKNOWN 人工核对和恢复（2026-11-11）
+
+| 范围 | 当前合同 | 验证边界 |
+| --- | --- | --- |
+| 工作区与原候选 | `APPLYING` 和 `UNKNOWN` 继续互锁；V36 将人工关闭及文件摘要写入原候选，`CLOSED_UNKNOWN` 保留原原因、时间及空结果。关闭后的记录不可改写，原候选不可再次应用。 | 文件读取失败、授权失效或摘要变化都拒绝关闭；只核对原候选的路径。数据库锁约束本宿主的操作，文件比对不是跨文件原子快照。 |
+| 页面及恢复 | 能力目录无需 Chat 会话即可发现待核对记录；候选详情复用相同面板。确认前展示逐项摘要、说明与明确确认；POST 响应不明时只 GET 原记录。 | 解除阻塞后按磁盘当前基线新建候选；核对不会生成原候选的应用、独立验证或用户接受证据。独立 Mock 不制造核对成功。 |
+| 实库与恢复 | PostgreSQL 17.5 自有 schema 中持久领取 V35 候选，夹具只写入其中一份文件。V36 迁移后启动完整应用，读回 `UNKNOWN`，拒绝在途再次生成、跨工作区读取、不可读目标及未确认的关闭。关闭后原记录和审计冻结、同请求读回、新候选从当前基线应用，交付目录只显示新应用。 | 受控模拟部分源码效果；迁移、启动恢复、数据库约束与文件读写均实际执行。未迁移日常应用库。 |
+| 真实浏览器 | Chromium 151 连接完整应用，390px 能力目录核对混合文件摘要；改动一份文件后 POST 返回 `409 CODE_REVIEW_CHANGED`，重新确认后提交。截断真实成功响应，页面只 GET 原记录，刷新与切换看板后均可重新打开审计，无重复 POST、无页面异常。 | 截断发生在浏览器网络层；没有伪造成功响应或调用外部模型。该结果是技术验收，跨路由/资源图与用户产品接受仍独立。 |
+| 定向回归 | Java 14 项（`CodeProposalBoundaryTest` 11、`DomainWireAndMessagesTest` 2、`SourceWriteReviewPersistenceTest` 1），前端候选组件与独立 Mock 合同 20 项。状态和中英文资源合同、前端类型及架构检查通过。 | 沿用已通过且未受影响的旧验收，不重跑旧整链。见[源码核对决定](decisions/builder-prototype-delivery-contract.md#source-write-review)。 |
+
+复验：有本机开发 PostgreSQL 配置时，设置 `EAP_RUN_SINGLE_CONTRACTS=true`，执行 `rtk proxy mvn -f backend/pom.xml -pl :eap-full-application -am test "-Dtest=SourceWriteReviewPersistenceTest" "-Dsurefire.failIfNoSpecifiedTests=false"`。同时设置 `EAP_SOURCE_REVIEW_CHROMIUM=true`、`EAP_PLAYWRIGHT_MODULE` 与 `EAP_CHROMIUM` 可启用真实浏览器。脚本从 `frontend` 运行，完整应用与 Vite 只绑定回环；证据、截图写到本次测试的 `eap-full-application/target/source-write-review-*` 目录，退出时删除 UUID 隔离 schema。
+
 <a id="product-workspaces"></a>
 
 ### 全站工作面、独立 Mock 与通用传输（2026-11-11，用户目标4～8，已纳入本批提交）
@@ -74,7 +88,7 @@
 | 独立验证 | 仅一次正式验证：typecheck PASSED、147测试文件906项 PASSED、build PASSED，全部exit0及进程树清理true，710文件验证前后source完全一致 | V34仅修后端DB约束，恢复提交复用同一已通过验证，没有重复模型或前端全测；保留原chunk警告 |
 | 正式浏览器/JDBC | 无Chat历史任务页审3份真实Diff→确认apply全部读回；筛选/选择/空态；Run→选择服务端paths3→CHAT_APPLIED_PREBOUND→显式技术ACCEPT；重复决定幂等/第二决定409/刷新只读 | 模型1次36.76s，1 Generation/1 Proposal；原task r2、提交r3、决定done/r4；0pageerror/0外部网络；代理技术核验不是用户产品接受 |
 | 主工作区质量收尾 | 三个真实模型文件按精确应用hash导回，再仅做格式/CSS顺序及Button显式class规范化，差异另存；规范化后新面板2项通过；实际390px撑宽修复后1440/390页面通过，工程检查见主题记录 | 正式交付原hash/完整候选/隔离源码不变；主工作区最终hash独立列示，不冒充与已交付字节完全相同 |
-| 仍待关口 | 任意复杂页面、跨路由/资源图、完整设计交互及用户产品接受，源码UNKNOWN人工核对/解除 | 当前限定图与只读页面实链通过不关闭整个PB/RK/PL/SC |
+| 后续关口（原阶段快照） | 任意复杂页面、跨路由/资源图、完整设计交互及用户产品接受；源码UNKNOWN已接续到[本轮核对](#source-write-review-validation) | 当前限定图与只读页面实链通过不关闭整个PB/RK/PL/SC |
 
 <a id="board-code-recovery-validation"></a>
 
@@ -399,7 +413,7 @@
 | EX-01 专家 | 父子导航、独立三栏编辑、任务摘要/按需详情、终态停止轮询与静默更新已交付，见[工作区合同](decisions/expert-workspace-navigation.md)；专业行为版本持久绑定、SQL Agent工具循环/检查点恢复/后台调度/单SQL文件审批已接通。真实Responses两轮整链及复杂SQL三类限定样例有独立证据；单专家授权知识→Chat、撤权/旧记忆隔离已有实库回归 | 新工作台原生125%/150%与用户接受；其他行为编辑器/资源整合、完整SQL作用域/生产效果；Chat引用不执行DAG或自动获得工具权限 |
 | PB-01 原型编辑 | Grapes工程+语义Schema、8类映射、保存重开/预览；已接EditorWorkbench三栏壳，浏览器编辑/本地重开/交互预览及未知映射阻止通过，数据模型仍归原型域 | 按目标页面逐项补状态/动作/组件映射；原生缩放、用户接受及真实交付 |
 | PB-02 生成基线 | 统一入口＋最多7伴随完整有界源码、原型及Task/revision快照；V33、精确集合/顺序/静态连通无环及生成期间全基线校验；真实三文件页面整链已验，见[当前验收](#component-page-delivery-validation) | 任意TS语法、跨路由/资源图、快照保留期及用户产品接受仍后续 |
-| PB-03 受控应用 | 统一1～8文件持久候选/应用/全读回、互锁及POST_HOC/PREBOUND归因；V34交付约束同步；真实三文件页面→验证→技术决定已验，任务候选恢复保留 | UNKNOWN人工核对及用户接受仍待；不宣称跨文件OS事务/CAS，不把Git Run当代码作者 |
+| PB-03 受控应用 | 统一1～8文件持久候选/应用/全读回、互锁及POST_HOC/PREBOUND归因；真实三文件页面→验证→技术决定已验；V36 [源码核对](#source-write-review-validation)保存原候选证据并释放互锁，可从当前基线新建候选 | 原写入仍未知；用户接受、跨路由/资源图与应用库V36迁移独立；不宣称跨文件OS事务/CAS |
 | PB-04/RK-5 独立验证 | **实现通过，04edef5已推送**。前端295通过，后端400通过6跳过，真实三项退出0；V9/V10 | 验证覆盖仅当前frontend；不是源码实现归因或人工验收 |
 | 源码交付证据与人工决定 | **EXTERNAL_MANUAL 切片实现及联调通过**，见 [阶段记录](records/delivery-history.md#board-source-delivery) | 实际样例完成采集/同源验证/接受/过期拒绝/拒绝回待处理/刷新；不是平台自动开发或用户最终接受 |
 | Chat应用→交付关联 | POST_HOC（544b8f9）与PREBOUND（69892f3）原阶段保留；当前统一1～8文件应用集合，逐项核对原快照/写入/验证/交付，真实三文件页面整链已验 | POST_HOC不证明生成时任务归因；用户产品接受和更广页面范围仍待，不把原切片本身当供应商效果 |

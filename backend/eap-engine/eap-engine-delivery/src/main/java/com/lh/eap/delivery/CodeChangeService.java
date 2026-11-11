@@ -396,7 +396,7 @@ public final class CodeChangeService {
         if (durable != null) durable.recoverInterrupted(runtime.workspace().toRealPath().toString());
     }
 
-    /** Production single-file apply: intent commits before filesystem effects; never runs verification. */
+    /** Durable apply: intent commits before filesystem effects; never runs verification. */
     public Applied apply(String principal, UUID conversation, UUID id, boolean confirmed) {
         if (durable == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CodeErrors.CODE_PROPOSAL_STORE_UNAVAILABLE.code());
         return durable.withoutTransaction(() -> applyDurable(principal, conversation, id, confirmed));
@@ -555,7 +555,7 @@ public final class CodeChangeService {
         return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CodeErrors.CODE_GENERATION_CONTEXT_UNAVAILABLE.code());
     }
 
-    private Path target(String relative, boolean writing) throws IOException {
+    Path target(String relative, boolean writing) throws IOException {
         if (relative.isBlank() || relative.length() > 240 || relative.contains("\\") || relative.contains(":")) throw rejected(CodeErrors.INVALID_CODE_PATH.code());
         var parts = relative.split("/", -1);
         for (String part : parts) {
@@ -584,7 +584,7 @@ public final class CodeChangeService {
         proposals.values().removeIf(item -> item.createdAt().isBefore(Instant.now().minusSeconds(1800)));
         appliedResults.keySet().retainAll(proposals.keySet());
     }
-    private static String hash(String value) {
+    static String hash(String value) {
         if (value == null) return "absent";
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))); }
         catch (Exception impossible) { throw new IllegalStateException(impossible); }

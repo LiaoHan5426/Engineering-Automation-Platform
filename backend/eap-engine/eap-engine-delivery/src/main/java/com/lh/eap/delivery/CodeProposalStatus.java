@@ -11,6 +11,7 @@ public enum CodeProposalStatus implements WireValue {
     APPLIED("APPLIED"),
     FAILED("FAILED"),
     UNKNOWN("UNKNOWN"),
+    CLOSED_UNKNOWN("CLOSED_UNKNOWN"),
     REFUSED("REFUSED");
 
     private final String value;

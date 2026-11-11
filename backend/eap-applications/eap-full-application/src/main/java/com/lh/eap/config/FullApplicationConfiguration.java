@@ -59,6 +59,7 @@ import com.lh.eap.core.ExpertBehaviorCatalog;
 import com.lh.eap.decision.RuleBasedDecisionProvider;
 import com.lh.eap.delivery.CapabilityDirtyRunner;
 import com.lh.eap.delivery.CodeChangeService;
+import com.lh.eap.delivery.SourceWriteReview;
 import com.lh.eap.delivery.CodeVerificationProperties;
 import com.lh.eap.delivery.CodeVerificationService;
 import com.lh.eap.delivery.JdbcCodeGenerationStore;
@@ -104,6 +105,7 @@ import com.lh.eap.web.AiBrowserRequestGuard;
 import com.lh.eap.web.controller.AiChatController;
 import com.lh.eap.web.controller.ApiErrorHandler;
 import com.lh.eap.web.controller.BoardCodeProposalController;
+import com.lh.eap.web.controller.SourceWriteReviewController;
 import com.lh.eap.web.controller.BoardDeliveryController;
 import com.lh.eap.web.controller.BoardPrototypeController;
 import com.lh.eap.web.controller.BoardReviewController;
@@ -208,6 +210,7 @@ import org.springframework.context.annotation.Import;
     RuleBasedDecisionProvider.class,
     CapabilityDirtyRunner.class,
     CodeChangeService.class,
+    SourceWriteReview.class,
     CodeVerificationProperties.class,
     CodeVerificationService.class,
     JdbcCodeGenerationStore.class,
@@ -248,6 +251,7 @@ import org.springframework.context.annotation.Import;
     ApiErrorHandler.class,
     BoardDeliveryController.class,
     BoardCodeProposalController.class,
+    SourceWriteReviewController.class,
     BoardPrototypeController.class,
     BoardReviewController.class,
     BoardRunController.class,

@@ -1,6 +1,6 @@
 import { hasWireValue } from '@eap/runtime-client/contracts'
 import { BoardTaskColumn } from '@eap/runtime-client/contracts'
-import { BoardErrors } from '@eap/runtime-client/contracts'
+import { BoardErrors, CodeErrors } from '@eap/runtime-client/contracts'
 import { randomUUID } from 'node:crypto'
 import type { BoardTask } from '@eap/runtime-client/contracts'
 
@@ -29,6 +29,10 @@ export function createBoardBackend(versionExists: (id: string) => boolean = () =
   return {
     handle(method: string, url: URL, body: Record<string, unknown>) {
       const path = url.pathname
+      if (path === '/board/source-write-reviews')
+        return method === 'GET' ? result(200, []) : error(405, 'METHOD_NOT_ALLOWED')
+      if (/^\/board\/source-write-reviews\/[^/]+(?:\/close)?$/.test(path))
+        return error(404, CodeErrors.UNKNOWN_CODE_PROPOSAL)
       const codePath =
         /^\/board\/tasks\/([^/]+)\/code-proposals(?:\/[^/]+(?:\/(?:apply|refuse))?)?$/.exec(path)
       if (codePath) {

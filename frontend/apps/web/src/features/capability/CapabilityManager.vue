@@ -27,6 +27,7 @@ import {
 } from './trustedToolBindingView'
 import CliProgramManager from './CliProgramManager.vue'
 import TrustedGitExecutionPanel from './TrustedGitExecutionPanel.vue'
+import SourceWriteReview from '../../components/SourceWriteReview.vue'
 import { i18n } from '../../lib/i18n'
 const t = (key: string) => i18n.global.t('toolExecution.' + key)
 const pt = (key: string) => i18n.global.t('product.' + key)
@@ -116,6 +117,7 @@ const visibleKinds = computed(() => kinds.value.filter((kind) => kind.visible))
 const capabilityTabs = computed(() => [
   { id: 'overview', label: '总览' },
   { id: 'trusted', label: pt('trustedExecution') },
+  { id: 'source-write-reviews', label: i18n.global.t('application.review.title') },
   ...visibleKinds.value.map((kind) => ({
     id: kind.id,
     label: kind.count ? `${kind.label} · ${kind.count}` : kind.label,
@@ -166,8 +168,7 @@ async function refresh() {
     for (const item of items.value) {
       if (notesDraft.value[item.name] === undefined) notesDraft.value[item.name] = item.notes
     }
-    if (!kinds.value.some((kind) => kind.id === tab.value) && tab.value !== 'overview')
-      tab.value = 'overview'
+    if (!capabilityTabs.value.some((item) => item.id === tab.value)) tab.value = 'overview'
   } catch (error) {
     feedback('error', errorMessage(error))
   } finally {
@@ -672,6 +673,10 @@ async function submitServer() {
       :operation="operation"
       :enabled="trustedTools.some((tool) => tool.id === operation && tool.enabled)"
     />
+  </section>
+
+  <section v-else-if="tab === 'source-write-reviews'" class="view">
+    <SourceWriteReview />
   </section>
 
   <!-- 某一类 -->
