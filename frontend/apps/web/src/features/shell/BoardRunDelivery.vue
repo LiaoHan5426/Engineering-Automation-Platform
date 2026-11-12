@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BoardDeliveryDecision } from '@eap/runtime-client'
+import { BoardDeliveryDecision, isLocalPreviewUrl } from '@eap/runtime-client'
 
 import { BoardDeliveryErrors, BoardErrors } from '@eap/runtime-client'
 
@@ -24,8 +24,18 @@ import {
 import { apiStorageScope } from '../../lib/runtimeConfig'
 import { useI18n } from 'vue-i18n'
 import BoardAppliedCandidates from './BoardAppliedCandidates.vue'
+import PrototypeVersionViewer from './PrototypeVersionViewer.vue'
 const props = defineProps<{ task: BoardTask; run: BoardRun; disabled?: boolean }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
+const previewUrl = ref('')
+const comparingPrototype = ref(false)
+watch(
+  previewUrl,
+  () => {
+    previewConfirmed.value = false
+  },
+  { flush: 'sync' },
+)
 const { t } = useI18n()
 const page = ref<BoardDeliveryPage | null>(null),
   loading = ref(false),
@@ -78,6 +88,11 @@ const store = (() => {
   }
 })()
 const record = computed(() => page.value?.record)
+const deliveryPrototype = computed(() => {
+  const prototype = props.run.task.prototype
+  const delivery = record.value
+  return prototype && (!delivery || delivery.prototypeVersionId === prototype.id) ? prototype : null
+})
 watch(
   () => {
     const evidence = record.value?.applicationEvidence
@@ -125,10 +140,17 @@ const canAccept = computed(
   () =>
     canDecide.value &&
     props.task.revision === record.value?.submittedRevision &&
+    (!record.value?.prototypeVersionId || !!deliveryPrototype.value) &&
     criteriaConfirmed.value &&
-    previewConfirmed.value,
+    previewConfirmed.value &&
+    isLocalPreviewUrl(previewUrl.value),
 )
-const canReject = computed(() => canDecide.value && !!comment.value.trim())
+const canReject = computed(
+  () =>
+    canDecide.value &&
+    !!comment.value.trim() &&
+    (!previewUrl.value || isLocalPreviewUrl(previewUrl.value)),
+)
 let generation = 0
 async function load(manual = false, confirmedRequestId?: string) {
   const current = generation
@@ -217,6 +239,7 @@ async function decide() {
       decision,
       criteriaConfirmed: criteriaConfirmed.value,
       previewConfirmed: previewConfirmed.value,
+      previewUrl: previewUrl.value,
       comment: comment.value,
     },
   }
@@ -305,6 +328,7 @@ watch(
   (identity, previous) => {
     const sameEntity = identity.slice(0, 3).every((value, index) => value === previous?.[index])
     generation++
+    comparingPrototype.value = false
     page.value = null
     loading.value = false
     sending.value = false
@@ -330,6 +354,7 @@ watch(
         pending.value && 'decisionRequest' in pending.value ? pending.value.decisionRequest : null
       comment.value = pendingDecision?.comment ?? ''
       criteriaConfirmed.value = pendingDecision?.criteriaConfirmed ?? false
+      previewUrl.value = pendingDecision?.previewUrl ?? ''
       previewConfirmed.value = pendingDecision?.previewConfirmed ?? false
     } else {
       // A revision refresh invalidates consent, not the user's text or the immutable pending payload.
@@ -522,6 +547,36 @@ onBeforeUnmount(() => {
       </section>
       <section v-if="record && !record.decision" class="delivery">
         <p>{{ t('boardDelivery.humanStatement') }}</p>
+        <Button
+          v-if="deliveryPrototype"
+          :disabled="busy"
+          data-testid="delivery-compare-prototype"
+          @click="comparingPrototype = true"
+          >{{ t('boardDelivery.comparePrototype') }}</Button
+        >
+        <p v-if="record.prototypeVersionId && !deliveryPrototype" role="alert">
+          {{ t('boardDelivery.prototypeMismatch') }}
+        </p>
+        <label
+          >{{ t('boardDelivery.previewAddress')
+          }}<Input
+            v-model="previewUrl"
+            :disabled="!canDecide"
+            maxlength="2048"
+            data-testid="delivery-preview-url"
+        /></label>
+        <p>{{ t('boardDelivery.previewAddressHint') }}</p>
+        <p v-if="previewUrl && !isLocalPreviewUrl(previewUrl)" role="alert">
+          {{ t('boardDelivery.previewAddressInvalid') }}
+        </p>
+        <a
+          v-if="isLocalPreviewUrl(previewUrl)"
+          :href="previewUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="delivery-open-preview"
+          >{{ t('boardDelivery.openPreview') }}</a
+        >
         <label
           ><Checkbox
             v-model="criteriaConfirmed"
@@ -532,7 +587,7 @@ onBeforeUnmount(() => {
         <label
           ><Checkbox
             v-model="previewConfirmed"
-            :disabled="!canDecide"
+            :disabled="!canDecide || !isLocalPreviewUrl(previewUrl)"
             data-testid="delivery-preview"
           />{{ t('boardDelivery.preview') }}</label
         >
@@ -559,7 +614,21 @@ onBeforeUnmount(() => {
         <code>{{ record.decision.id }}</code>
         <p>{{ record.decision.operator }} · {{ record.decision.createdAt }}</p>
         <p>{{ record.decision.comment }}</p>
+        <a
+          v-if="isLocalPreviewUrl(record.decision.previewUrl)"
+          :href="record.decision.previewUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="delivery-recorded-preview"
+          >{{ t('boardDelivery.openPreview') }}</a
+        >
       </section>
+      <PrototypeVersionViewer
+        v-if="comparingPrototype && deliveryPrototype"
+        :version-id="deliveryPrototype.id"
+        :expected-hash="deliveryPrototype.contentHash"
+        @close="comparingPrototype = false"
+      />
       <ConfirmBox
         v-if="deciding"
         :title="
@@ -569,6 +638,7 @@ onBeforeUnmount(() => {
           record?.id ?? '',
           record?.acceptanceCriteria ?? '',
           comment,
+          previewUrl,
           t('boardDelivery.humanStatement'),
           t(deciding === 'ACCEPT' ? 'boardDelivery.acceptImpact' : 'boardDelivery.rejectImpact'),
         ]"
@@ -604,37 +674,44 @@ onBeforeUnmount(() => {
   gap: 12px;
   min-width: 0;
 }
+
 .delivery label {
   display: grid;
   gap: 6px;
 }
+
 .delivery p,
 .delivery code {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+
 .delivery code {
   font-size: 11px;
 }
+
 .delivery h3 {
   font-size: 13px;
 }
+
 .delivery__comparison {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
 }
+
 .delivery__comparison section {
   min-width: 0;
 }
+
 .delivery pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
   max-height: 320px;
-  overflow: auto;
-  background: var(--eap-code-bg);
-  color: var(--eap-code-text);
   padding: 12px;
+  overflow: auto;
   font-size: 11px;
+  color: var(--eap-code-text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  background: var(--eap-code-bg);
 }
 </style>

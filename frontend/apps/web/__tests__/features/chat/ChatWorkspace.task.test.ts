@@ -44,6 +44,7 @@ it('requires explicit adoption and cancels without consuming or overwriting; ado
     revision: 3,
   }
   workbench.pendingBoardDraft = {
+    executionMode: 'chat',
     sessionId: '',
     title: 'New saved task',
     taskRef,

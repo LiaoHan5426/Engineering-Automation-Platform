@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { Button, Badge, Collapse, Dialog, ConfirmBox } from '@eap/ui'
 import { runtimeApi, type BoardRun, type BoardReviewPage } from '@eap/runtime-client'
 const props = defineProps<{ taskId: string; projectId: string; run: BoardRun }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; verify: [] }>()
 const { t, te } = useI18n()
 const page = ref<BoardReviewPage | null>(null),
   loading = ref(false),
@@ -86,6 +86,13 @@ onBeforeUnmount(() => {
     <p v-if="loading" role="status">{{ t('boardReview.loading') }}</p>
     <p v-if="note" role="status" data-testid="board-review-note">{{ note }}</p>
     <div class="review-actions">
+      <Button
+        v-if="page?.evidence"
+        :disabled="loading || saving"
+        data-testid="board-review-verify"
+        @click="emit('verify')"
+        >{{ t('boardVerification.open') }}</Button
+      >
       <Button
         v-if="page && !page.evidence"
         size="sm"

@@ -1,3 +1,4 @@
+import { loadPlaywright } from './playwright-runtime.mjs'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
@@ -18,7 +19,7 @@ const oldReal = JSON.parse(
 const base = host.base,
   output = resolve('apps/web/__tests__/browser/artifacts/board-code-recovery')
 await mkdir(output, { recursive: true })
-const { chromium } = createRequire(import.meta.url)(process.env.EAP_PLAYWRIGHT_MODULE)
+const { chromium } = loadPlaywright()
 const server = await createServer({
   configFile: false,
   root: resolve('apps/web'),
@@ -132,7 +133,7 @@ try {
     )
     await page.getByTestId('proposal-application').getByRole('checkbox').check()
     await page.getByTestId('proposal-apply').click()
-    await page.getByTestId('application-identities').waitFor()
+    await page.getByTestId('application-recorded').waitFor()
     await page.unroute('**/code-proposals/' + fixture.pending.proposal.id + '/apply')
   }
   saved = await api('GET', candidatePath(fixture.pending) + '?projectId=' + fixture.projectId)
@@ -148,7 +149,7 @@ try {
   await page.reload()
   await page.getByTestId('preview-board').waitFor()
   await openTask(fixture.pending)
-  await page.getByTestId('application-identities').waitFor()
+  await page.getByTestId('application-recorded').waitFor()
   assert.equal(await page.getByTestId('proposal-apply').count(), 0)
   await api('POST', candidatePath(fixture.pending) + '/apply', {
     projectId: fixture.projectId,

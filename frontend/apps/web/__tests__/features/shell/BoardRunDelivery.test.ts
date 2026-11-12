@@ -365,6 +365,7 @@ it.each(['ACCEPT', 'REJECT'] as const)(
             decision: request.decision,
             criteriaConfirmed: request.criteriaConfirmed,
             previewConfirmed: request.previewConfirmed,
+            previewUrl: request.previewUrl,
             comment: request.comment,
             operator: 'local-operator' as const,
             createdAt: '2026-11-01T00:10:00Z',
@@ -387,6 +388,7 @@ it.each(['ACCEPT', 'REJECT'] as const)(
       ;(document.querySelector('[data-testid=delivery-criteria]') as HTMLInputElement).click()
       await Promise.resolve()
       expect(button('delivery-accept').disabled).toBe(true)
+      await input('delivery-preview-url', 'http://127.0.0.1:5193/')
       ;(document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).click()
     }
     await input('delivery-comment', 'human reason')
@@ -401,6 +403,7 @@ it.each(['ACCEPT', 'REJECT'] as const)(
         decision,
         criteriaConfirmed: decision === 'ACCEPT',
         previewConfirmed: decision === 'ACCEPT',
+        previewUrl: decision === 'ACCEPT' ? 'http://127.0.0.1:5193/' : '',
         comment: 'human reason',
       }),
     )
@@ -434,6 +437,24 @@ it('preserves unsent source paths and note when only the task revision changes',
   ).toBe('keep my note')
   expect(runtimeApi.submitBoardDelivery).not.toHaveBeenCalled()
 })
+it('blocks acceptance when the recorded prototype cannot be matched to the Run', async () => {
+  current.value = { ...task, column: 'acceptance', revision: 4 }
+  vi.mocked(runtimeApi.boardDelivery).mockResolvedValue({
+    record: { ...record, prototypeVersionId: 'different-design' },
+    prepareAllowed: false,
+    reason: '',
+  })
+  await mount()
+  await vi.waitFor(() => expect(button('delivery-accept')).not.toBeNull())
+  ;(document.querySelector('[data-testid=delivery-criteria]') as HTMLInputElement).click()
+  await input('delivery-preview-url', 'http://127.0.0.1:5193/')
+  ;(document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).click()
+  await input('delivery-comment', 'Keep rejection available for manual review')
+  expect(button('delivery-accept').disabled).toBe(true)
+  expect(button('delivery-reject').disabled).toBe(false)
+  expect(button('delivery-compare-prototype')).toBeNull()
+  expect(runtimeApi.decideBoardDelivery).not.toHaveBeenCalled()
+})
 it('preserves review comments but invalidates human confirmations on revision changes', async () => {
   current.value = { ...task, column: 'acceptance', revision: 4 }
   vi.mocked(runtimeApi.boardDelivery).mockResolvedValue({
@@ -444,8 +465,16 @@ it('preserves review comments but invalidates human confirmations on revision ch
   await mount()
   await vi.waitFor(() => expect(button('delivery-accept')).not.toBeNull())
   ;(document.querySelector('[data-testid=delivery-criteria]') as HTMLInputElement).click()
+  await input('delivery-preview-url', 'http://127.0.0.1:5193/')
   ;(document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).click()
   await input('delivery-comment', 'keep this review draft')
+  await vi.waitFor(() => expect(button('delivery-accept').disabled).toBe(false))
+  await input('delivery-preview-url', 'http://127.0.0.1:5193/#/detail')
+  expect(
+    (document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).checked,
+  ).toBe(false)
+  expect(button('delivery-accept').disabled).toBe(true)
+  ;(document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).click()
   await vi.waitFor(() => expect(button('delivery-accept').disabled).toBe(false))
   button('delivery-accept').click()
   await vi.waitFor(() => expect(document.querySelector('.eap-confirm')).not.toBeNull())
@@ -487,11 +516,15 @@ it('rejects malformed or duplicate source paths without silently normalizing the
     reason: '',
   })
   await mount()
+  await input('delivery-paths', 'frontend/App.vue\nfrontend/copy.json')
+  await vi.waitFor(() => expect(button('delivery-submit').disabled).toBe(false))
   for (const value of [
     ' frontend/App.vue',
     'frontend/../secrets.ts',
     'backend/Foo.ts',
-    'frontend/config.json',
+    'frontend/banner.png',
+    'frontend/package.json',
+    'frontend/tsconfig.app.json',
     'frontend\\App.vue',
     'frontend/App.vue\nfrontend/App.vue',
   ]) {
@@ -568,6 +601,7 @@ it('does not recover a lost decision response from a same-ID different-content r
   await mount(changed)
   await vi.waitFor(() => expect(button('delivery-accept')).not.toBeNull())
   ;(document.querySelector('[data-testid=delivery-criteria]') as HTMLInputElement).click()
+  await input('delivery-preview-url', 'http://127.0.0.1:5193/')
   ;(document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).click()
   await input('delivery-comment', 'my original approval')
   await confirm('delivery-accept')
@@ -647,6 +681,7 @@ it('restores a pending decision after reopen and verifies its content by explici
   await mount()
   await vi.waitFor(() => expect(button('delivery-accept')).not.toBeNull())
   ;(document.querySelector('[data-testid=delivery-criteria]') as HTMLInputElement).click()
+  await input('delivery-preview-url', 'http://127.0.0.1:5193/')
   ;(document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).click()
   await input('delivery-comment', 'already reviewed')
   await confirm('delivery-accept')
@@ -719,6 +754,7 @@ it('retains saved file evidence but disables decisions when refresh fails', asyn
   await mount()
   await vi.waitFor(() => expect(button('delivery-accept')).not.toBeNull())
   ;(document.querySelector('[data-testid=delivery-criteria]') as HTMLInputElement).click()
+  await input('delivery-preview-url', 'http://127.0.0.1:5193/')
   ;(document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).click()
   await input('delivery-comment', 'checked')
   await vi.waitFor(() => expect(button('delivery-accept').disabled).toBe(false))
@@ -833,6 +869,7 @@ it('requires fresh human statements after a stale acceptance is rejected, while 
   await mount()
   await vi.waitFor(() => expect(button('delivery-accept')).not.toBeNull())
   ;(document.querySelector('[data-testid=delivery-criteria]') as HTMLInputElement).click()
+  await input('delivery-preview-url', 'http://127.0.0.1:5193/')
   ;(document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).click()
   await input('delivery-comment', 'source changed')
   await confirm('delivery-accept')

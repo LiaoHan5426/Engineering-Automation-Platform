@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import type { CodePreparationSelection } from './workbench'
+
+import { boardImplementationDraft, boardPlanningDraft } from './boardImplementationDraft'
 import { BoardTaskColumn, platformErrorCode } from '@eap/runtime-client'
 
 import { BoardErrors } from '@eap/runtime-client'
 
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { runtimeApi, type BoardTask, type BoardTaskDraft } from '@eap/runtime-client'
 import {
@@ -16,6 +19,7 @@ import {
   Textarea,
   Collapse,
   Tabs,
+  Feedback,
 } from '@eap/ui'
 import { IconPlus } from '@eap/ui'
 import { isRequestError } from '@eap/request'
@@ -25,7 +29,10 @@ import { apiStorageScope } from '../../lib/runtimeConfig'
 import BoardRunPanel from './BoardRunPanel.vue'
 import BoardPrototypePanel from './BoardPrototypePanel.vue'
 import BoardCodeCandidates from './BoardCodeCandidates.vue'
+import CodePreparationDialog from './CodePreparationDialog.vue'
 import { readBoardEdit, writeBoardEdit, readBoardCreate, writeBoardCreate } from './boardEdits'
+import { readTaskHandoff, writeTaskHandoff, type TaskHandoff } from './boardTaskHandoff'
+import { readBoardLocation } from './boardLocation'
 const { t } = useI18n()
 const columns: BoardColumn[] = [
   BoardTaskColumn.PLANNED,
@@ -43,6 +50,10 @@ const priorityFilter = ref<'all' | 'p0' | 'p1' | 'p2'>('all')
 const prototypePending = ref(false)
 const codePending = ref(false)
 const detailTab = ref('preparation')
+const preparingCode = ref(false)
+watch(selectedId, () => {
+  preparingCode.value = false
+})
 const visitedDetailTabs = ref(new Set<string>(['preparation']))
 watch(detailTab, (tab) => visitedDetailTabs.value.add(tab))
 const busy = ref(false),
@@ -60,7 +71,19 @@ const createColumn = ref<typeof BoardTaskColumn.PLANNED | typeof BoardTaskColumn
 )
 const linkCurrentSession = ref(true)
 const pendingAction = ref<(() => void) | null>(null)
-const activeSessionId = computed(() => chatBinding.value?.activeId?.trim() || '')
+const handoff = ref<TaskHandoff | null>(null)
+const handoffActive = ref(false),
+  handoffStorageError = ref(false),
+  discardHandoff = ref(false)
+let applyingHandoff = false
+const activeSessionId = computed(() =>
+  createRequest.value
+    ? createRequest.value.sessionId
+    : handoffActive.value
+      ? (handoff.value?.source.conversationId ?? '')
+      : chatBinding.value?.activeId?.trim() || '',
+)
+
 const draftStore = (() => {
   try {
     return typeof sessionStorage === 'undefined' ? null : sessionStorage
@@ -103,6 +126,7 @@ function guarded(action: () => void) {
 function closeDetail() {
   guarded(() => {
     selectedId.value = ''
+    if (window.location.hash.startsWith('#board?')) window.history.replaceState(null, '', '#board')
   })
 }
 function discardEdits() {
@@ -117,8 +141,25 @@ function startCreate(
 ) {
   guarded(() => {
     if (!createRequest.value) createColumn.value = column
+    selectedId.value = ''
     creating.value = true
   })
+}
+function closeCreate() {
+  if (busy.value || createRequest.value) return
+  if (handoffActive.value) {
+    persistHandoff()
+    creating.value = false
+    return
+  }
+  if (title.value || newGoal.value || newCriteria.value)
+    pendingAction.value = () => {
+      title.value = ''
+      newGoal.value = ''
+      newCriteria.value = ''
+      creating.value = false
+    }
+  else creating.value = false
 }
 function selectTask(id: string) {
   if (id === selectedId.value) closeDetail()
@@ -154,15 +195,140 @@ function keepDraft() {
   }
 }
 const projectId = ref(
-  localProjectState.selectedId || localProjectState.projects[0]?.id || 'local-eap',
+  readBoardLocation(window.location.hash)?.projectId ||
+    localProjectState.selectedId ||
+    localProjectState.projects[0]?.id ||
+    'local-eap',
 )
-const previewProjects = computed(() =>
-  localProjectState.projects.map((item) => ({
+const taskLinkFailed = ref(false)
+function readHandoff() {
+  try {
+    handoff.value = readTaskHandoff(localStorage, apiStorageScope)
+    handoffStorageError.value = false
+    const request = createRequest.value,
+      saved = handoff.value
+    if (
+      request &&
+      saved &&
+      request.projectId === saved.draft.projectId &&
+      request.title === saved.draft.title.trim() &&
+      request.goal === saved.draft.goal &&
+      request.acceptanceCriteria === saved.draft.acceptanceCriteria &&
+      request.sessionId === (saved.linkSource ? saved.source.conversationId : '')
+    ) {
+      handoffActive.value = true
+      linkCurrentSession.value = saved.linkSource
+    }
+  } catch {
+    handoffStorageError.value = true
+  }
+}
+function adoptHandoff() {
+  if (!handoff.value || busy.value || createRequest.value || handoffStorageError.value) return
+  const draft = handoff.value.draft
+  const target = draft.projectId || projectId.value
+  if (readBoardCreate(draftStore, target, apiStorageScope)) {
+    note.value = t('desktop.boardCreateUncertain')
+    return
+  }
+  const apply = () => {
+    applyingHandoff = true
+    projectId.value = target
+    selectedId.value = ''
+    title.value = draft.title
+    newGoal.value = draft.goal
+    newCriteria.value = draft.acceptanceCriteria
+    createColumn.value = BoardTaskColumn.PLANNED
+    linkCurrentSession.value = handoff.value!.linkSource
+    handoffActive.value = true
+    creating.value = true
+    applyingHandoff = false
+    persistHandoff()
+  }
+  if (dirty.value || (!handoffActive.value && (title.value || newGoal.value || newCriteria.value)))
+    pendingAction.value = apply
+  else apply()
+}
+function persistHandoff() {
+  if (
+    !handoffActive.value ||
+    !handoff.value ||
+    applyingHandoff ||
+    createRequest.value ||
+    handoffStorageError.value
+  )
+    return
+  const next: TaskHandoff = {
+    source: { ...handoff.value.source },
+    linkSource: linkCurrentSession.value,
+    draft: {
+      projectId: projectId.value,
+      title: title.value,
+      goal: newGoal.value,
+      acceptanceCriteria: newCriteria.value,
+    },
+  }
+  try {
+    writeTaskHandoff(localStorage, apiStorageScope, next, handoff.value)
+    handoff.value = next
+  } catch {
+    handoffStorageError.value = true
+  }
+}
+function removeHandoff() {
+  if (!handoff.value || createRequest.value) return
+  try {
+    writeTaskHandoff(localStorage, apiStorageScope, null, handoff.value)
+    handoff.value = null
+    if (handoffActive.value) {
+      handoffActive.value = false
+      title.value = ''
+      newGoal.value = ''
+      newCriteria.value = ''
+      creating.value = false
+    }
+    discardHandoff.value = false
+  } catch {
+    handoffStorageError.value = true
+  }
+}
+function chooseCreateProject(id: string) {
+  if (busy.value || createRequest.value) return
+  if (readBoardCreate(draftStore, id, apiStorageScope)) {
+    note.value = t('desktop.boardCreateUncertain')
+    return
+  }
+  projectId.value = id
+}
+watch([title, newGoal, newCriteria, projectId, linkCurrentSession], persistHandoff, {
+  flush: 'sync',
+})
+watch(() => workbench.boardHandoffToken, readHandoff)
+onMounted(readHandoff)
+watch([busy, handoff], () => {
+  if (
+    !busy.value &&
+    !readBoardLocation(window.location.hash) &&
+    handoff.value &&
+    !creating.value &&
+    !title.value &&
+    !newGoal.value &&
+    !newCriteria.value &&
+    !dirty.value &&
+    !createRequest.value
+  )
+    adoptHandoff()
+})
+const previewProjects = computed(() => {
+  const projects = localProjectState.projects.map((item) => ({
     id: item.id,
     name: item.label,
     directory: item.intendedPath,
-  })),
-)
+  }))
+  if (!projects.some((item) => item.id === projectId.value))
+    projects.push({ id: projectId.value, name: projectId.value, directory: '' })
+  return projects
+})
 const selected = computed(() => rows.value.find((item) => item.id === selectedId.value))
 const tasks = computed(() => {
   const needle = query.value.trim().toLowerCase()
@@ -183,23 +349,65 @@ const selectedProject = computed(() =>
   previewProjects.value.find((item) => item.id === selected.value?.projectId),
 )
 let ticket = 0
+let loadedHash = window.location.hash
 async function load() {
   const current = ++ticket
+  loadedHash = window.location.hash
+  const locationHash = loadedHash
+  const linked = readBoardLocation(window.location.hash)
   busy.value = true
+  taskLinkFailed.value = window.location.hash.startsWith('#board?') && !linked
   try {
-    const page = await runtimeApi.boardTasks(projectId.value)
-    if (current === ticket) {
+    const [page, target] = await Promise.all([
+      runtimeApi.boardTasks(projectId.value),
+      linked && linked.projectId === projectId.value
+        ? runtimeApi.boardTask(linked.taskId, linked.projectId)
+        : Promise.resolve(null),
+    ])
+    if (current === ticket && window.location.hash === locationHash) {
       // Check against the old snapshot at response time, including edits made while loading.
       const preserveDraft = dirty.value || stale.value
       rows.value = page.items
+      if (target) {
+        if (target.id !== linked?.taskId || target.projectId !== linked.projectId)
+          throw new Error('BOARD_TASK_IDENTITY_MISMATCH')
+        if (!rows.value.some((task) => task.id === target.id)) rows.value.push(target)
+        else rows.value = rows.value.map((task) => (task.id === target.id ? target : task))
+        if (!preserveDraft || selectedId.value === target.id) {
+          selectedId.value = target.id
+          await nextTick()
+          if (current === ticket) detailTab.value = 'runs'
+        }
+      }
       if (!preserveDraft) useLatest()
     }
   } catch {
-    if (current === ticket) note.value = t('desktop.boardLoadFailed')
+    if (current === ticket) {
+      note.value = t('desktop.boardLoadFailed')
+      if (linked) taskLinkFailed.value = true
+    }
   } finally {
-    if (current === ticket) busy.value = false
+    if (current === ticket) {
+      busy.value = false
+      if (window.location.hash !== locationHash) onTaskLocationChanged()
+    }
   }
 }
+function followTaskLocation() {
+  const linked = readBoardLocation(window.location.hash)
+  if (!linked) return
+  guarded(() => {
+    if (projectId.value !== linked.projectId) {
+      selectedId.value = ''
+      projectId.value = linked.projectId
+    } else void load()
+  })
+}
+function onTaskLocationChanged() {
+  if (window.location.hash !== loadedHash) followTaskLocation()
+}
+onMounted(() => window.addEventListener('hashchange', onTaskLocationChanged))
+onBeforeUnmount(() => window.removeEventListener('hashchange', onTaskLocationChanged))
 function switchProject(id: string) {
   if (createRequest.value) return
   guarded(() => {
@@ -243,6 +451,7 @@ watch(
       newGoal.value = createRequest.value.goal
       newCriteria.value = createRequest.value.acceptanceCriteria
       createColumn.value = createRequest.value.column
+      linkCurrentSession.value = !!createRequest.value.sessionId
       creating.value = true
       note.value = t('desktop.boardCreateUncertain')
     }
@@ -316,7 +525,15 @@ async function saveNotes() {
   }
 }
 async function create() {
-  if (!title.value.trim() || busy.value) return
+  if (
+    !title.value.trim() ||
+    busy.value ||
+    title.value.length > 200 ||
+    newGoal.value.length > 4000 ||
+    newCriteria.value.length > 4000 ||
+    (handoffActive.value && handoffStorageError.value && !createRequest.value)
+  )
+    return
   if (
     !createRequest.value &&
     createColumn.value === BoardTaskColumn.READY &&
@@ -345,13 +562,24 @@ async function create() {
     // Retries retain the exact request and identity after an unknown network outcome.
     const task = await runtimeApi.createBoardTask({ ...createRequest.value })
     rows.value = [task, ...rows.value.filter((item) => item.id !== task.id)]
-    selectedId.value = task.id
+    if (handoffActive.value && handoff.value) {
+      try {
+        writeTaskHandoff(localStorage, apiStorageScope, null, handoff.value)
+        handoff.value = null
+        handoffActive.value = false
+      } catch {
+        handoffStorageError.value = true
+        note.value = t('desktop.taskHandoffStorage')
+        return
+      }
+    }
     writeBoardCreate(draftStore, projectId.value, apiStorageScope, null)
     createRequest.value = null
     title.value = ''
     newGoal.value = ''
     newCriteria.value = ''
     creating.value = false
+    selectedId.value = task.id
     note.value = task.sessionId ? t('desktop.boardCreatedLinked') : t('desktop.boardCreated')
   } catch (error) {
     if (
@@ -368,29 +596,15 @@ async function create() {
     busy.value = false
   }
 }
-function open(task: BoardTask) {
+function open(task: BoardTask, selection?: CodePreparationSelection, planning = false) {
   if (busy.value || dirty.value || stale.value || task.executionActive) return
   guarded(() => {
     // Seed chat draft only; never invent a fake conversation id from the task id.
-    workbench.pendingBoardDraft = {
-      sessionId: task.sessionId || '',
-      title: [
-        task.title,
-        task.goal,
-        task.acceptanceCriteria
-          ? t('desktop.boardCriteria') + '：\n' + task.acceptanceCriteria
-          : '',
-      ]
-        .filter(Boolean)
-        .join('\n\n'),
-      ...(task.column === BoardTaskColumn.READY && !task.preparationIssues.length
-        ? {
-            taskRef: { projectId: task.projectId, taskId: task.id, revision: task.revision },
-            prototypeVersionId: task.prototypeVersionId ?? '',
-          }
-        : {}),
-    }
+    workbench.pendingBoardDraft = planning
+      ? boardPlanningDraft(task, t('desktop.boardCriteria'))
+      : boardImplementationDraft(task, t('desktop.boardCriteria'), selection)
     window.location.hash = workbench.workMode === 'work' ? 'work' : 'chat'
+    preparingCode.value = false
   })
 }
 </script>
@@ -413,65 +627,132 @@ function open(task: BoardTask) {
         ><IconPlus /> {{ t('preview.createTask') }}</Button
       >
     </header>
-    <form
+    <Feedback v-if="taskLinkFailed" tone="warning" data-testid="board-task-link-error">
+      {{ t('generation.taskLinkFailed') }}
+      <Button :disabled="busy" data-testid="board-task-link-retry" @click="followTaskLocation">{{
+        t('generation.taskLinkRetry')
+      }}</Button>
+    </Feedback>
+    <Feedback v-if="handoffStorageError" tone="error">{{
+      t('desktop.taskHandoffStorage')
+    }}</Feedback>
+    <Feedback v-if="handoff && !creating" tone="info">
+      {{ t('desktop.taskHandoffPending') }}
+      <Button
+        size="sm"
+        :disabled="busy || !!createRequest || handoffStorageError"
+        data-testid="board-handoff-resume"
+        @click="adoptHandoff"
+        >{{ t('desktop.taskHandoffResume') }}</Button
+      >
+      <Button
+        size="sm"
+        :disabled="busy || !!createRequest"
+        data-testid="board-handoff-discard"
+        @click="discardHandoff = true"
+        >{{ t('desktop.taskHandoffDiscard') }}</Button
+      >
+    </Feedback>
+    <Dialog
       v-if="creating"
-      class="new-task-form"
-      data-testid="board-create-form"
-      @submit.prevent="create"
+      :title="t('preview.createTask')"
+      :busy="busy || !!createRequest"
+      @close="closeCreate"
     >
-      <label class="new-task-form__title"
-        >{{ t('preview.taskTitle')
-        }}<Input
-          v-model="title"
-          required
-          maxlength="200"
-          :disabled="busy || !!createRequest"
-          :placeholder="t('preview.taskTitle')"
-          :aria-label="t('preview.taskTitle')"
-          autofocus
-      /></label>
-      <label class="preparation-field"
-        >{{ t('desktop.boardGoal')
-        }}<Textarea
-          v-model="newGoal"
-          data-testid="board-new-goal"
-          rows="4"
-          maxlength="4000"
-          :required="createColumn === 'ready'"
-          :disabled="busy || !!createRequest"
-      /></label>
-      <label class="preparation-field"
-        >{{ t('desktop.boardCriteria')
-        }}<Textarea
-          v-model="newCriteria"
-          data-testid="board-new-criteria"
-          rows="4"
-          maxlength="4000"
-          :required="createColumn === 'ready'"
-          :disabled="busy || !!createRequest"
-      /></label>
-      <p class="board-notice">{{ t('desktop.boardPreparationHint') }}</p>
-      <label v-if="activeSessionId" class="link-session" data-testid="board-link-session">
-        <Checkbox v-model="linkCurrentSession" :disabled="busy || !!createRequest" />
-        <span>{{ t('desktop.boardLinkCurrent') }} · {{ activeSessionId.slice(0, 8) }}</span>
-      </label>
-      <p v-else class="board-notice" data-testid="board-link-none">
-        {{ t('desktop.boardLinkNone') }}
-      </p>
-      <div class="new-task-form__actions">
-        <Button type="submit" variant="primary" size="sm" :disabled="busy || !title.trim()">{{
-          t(createRequest ? 'desktop.boardRetryCreate' : 'preview.save')
-        }}</Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          :disabled="busy || !!createRequest"
-          @click="creating = false"
-          >{{ t('preview.close') }}</Button
+      <form class="new-task-form" data-testid="board-create-form" @submit.prevent="create">
+        <Feedback v-if="note" tone="warning" data-testid="board-create-note">{{ note }}</Feedback>
+        <Feedback v-if="handoffActive && handoffStorageError" tone="error">{{
+          t('desktop.taskHandoffStorage')
+        }}</Feedback>
+        <Feedback v-if="newGoal.length > 4000" tone="warning">{{
+          t('desktop.taskHandoffGoalLimit')
+        }}</Feedback>
+        <p v-if="handoffActive">{{ t('desktop.taskHandoffBoundary') }}</p>
+        <label
+          >{{ t('desktop.boardProject') }}
+          <Select
+            data-testid="board-create-project"
+            :disabled="busy || !!createRequest"
+            :model-value="projectId"
+            @update:model-value="chooseCreateProject(String($event))"
+          >
+            <option v-for="item in previewProjects" :key="item.id" :value="item.id">
+              {{ item.name }}
+            </option>
+          </Select>
+        </label>
+        <Collapse
+          v-if="handoffActive && handoff"
+          :summary="t('desktop.taskHandoffSource')"
+          data-testid="board-handoff-source"
         >
-      </div>
-    </form>
+          <pre>{{ handoff.source.text }}</pre>
+        </Collapse>
+        <label class="new-task-form__title"
+          >{{ t('preview.taskTitle')
+          }}<Input
+            data-testid="board-new-title"
+            v-model="title"
+            required
+            maxlength="200"
+            :disabled="busy || !!createRequest"
+            :placeholder="t('preview.taskTitle')"
+            :aria-label="t('preview.taskTitle')"
+            autofocus
+        /></label>
+        <label class="preparation-field"
+          >{{ t('desktop.boardGoal')
+          }}<Textarea
+            v-model="newGoal"
+            data-testid="board-new-goal"
+            rows="4"
+            maxlength="4000"
+            :required="createColumn === 'ready'"
+            :disabled="busy || !!createRequest"
+        /></label>
+        <label class="preparation-field"
+          >{{ t('desktop.boardCriteria')
+          }}<Textarea
+            v-model="newCriteria"
+            data-testid="board-new-criteria"
+            rows="4"
+            maxlength="4000"
+            :required="createColumn === 'ready'"
+            :disabled="busy || !!createRequest"
+        /></label>
+        <p class="board-notice">{{ t('desktop.boardPreparationHint') }}</p>
+        <label v-if="activeSessionId" class="link-session" data-testid="board-link-session">
+          <Checkbox v-model="linkCurrentSession" :disabled="busy || !!createRequest" />
+          <span>{{ t('desktop.boardLinkCurrent') }} · {{ activeSessionId.slice(0, 8) }}</span>
+        </label>
+        <p v-else class="board-notice" data-testid="board-link-none">
+          {{ t('desktop.boardLinkNone') }}
+        </p>
+        <div class="new-task-form__actions">
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            :disabled="
+              busy ||
+              !title.trim() ||
+              newGoal.length > 4000 ||
+              (handoffActive && handoffStorageError && !createRequest)
+            "
+            data-testid="board-create-save"
+            >{{ t(createRequest ? 'desktop.boardRetryCreate' : 'preview.save') }}</Button
+          >
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            :disabled="busy || !!createRequest"
+            @click="closeCreate"
+            >{{ t('preview.close') }}</Button
+          >
+        </div>
+      </form>
+    </Dialog>
     <div class="board-tools">
       <label
         >{{ t('desktop.boardProject')
@@ -525,7 +806,7 @@ function open(task: BoardTask) {
       {{ t('desktop.boardFilterEmpty') }}
     </p>
     <p v-if="busy" role="status" data-testid="board-loading">{{ t('desktop.boardLoading') }}</p>
-    <p v-if="note" class="board-notice" role="status">{{ note }}</p>
+    <p v-if="note && !creating" class="board-notice" role="status">{{ note }}</p>
     <div class="board-scroll eap-scrollbar">
       <div class="board-lanes">
         <section
@@ -754,8 +1035,28 @@ function open(task: BoardTask) {
               "
               @click="move(selected.id, column)"
               >{{ t('desktop.' + column) }}</Button
-            ><Button size="sm" :disabled="busy || selected.executionActive" @click="open(selected)"
+            ><Button
+              v-if="selected.column === BoardTaskColumn.READY && !selected.preparationIssues.length"
+              size="sm"
+              :disabled="busy || dirty || stale || selected.executionActive"
+              data-testid="board-prepare-code"
+              @click="preparingCode = true"
+              >{{ t('boardCode.preparation.title') }}</Button
+            >
+            <Button size="sm" :disabled="busy || selected.executionActive" @click="open(selected)"
               >{{ t('preview.openConversation') }} ↗</Button
+            >
+            <Button
+              v-if="
+                [BoardTaskColumn.PLANNED, BoardTaskColumn.READY].includes(
+                  selected.column as 'planned' | 'ready',
+                )
+              "
+              size="sm"
+              :disabled="busy || dirty || stale || selected.executionActive"
+              data-testid="board-plan-task"
+              @click="open(selected, undefined, true)"
+              >{{ t('desktop.boardPlanTask') }}</Button
             >
           </div>
         </section>
@@ -786,6 +1087,7 @@ function open(task: BoardTask) {
             :disabled="busy || dirty || stale || prototypePending"
             @pending="codePending = $event"
             @changed="load"
+            @runs="detailTab = 'runs'"
           />
         </section>
         <section
@@ -847,6 +1149,14 @@ function open(task: BoardTask) {
       </div>
     </Dialog>
     <ConfirmBox
+      v-if="discardHandoff"
+      :title="t('desktop.taskHandoffDiscard')"
+      :confirm-label="t('desktop.boardDiscard')"
+      :impact="[t('desktop.taskHandoffDiscardImpact')]"
+      @confirm="removeHandoff"
+      @cancel="discardHandoff = false"
+    />
+    <ConfirmBox
       v-if="pendingAction"
       :title="t('desktop.boardUnsaved')"
       :impact="[t('desktop.boardDiscardImpact')]"
@@ -855,6 +1165,13 @@ function open(task: BoardTask) {
       @cancel="pendingAction = null"
     />
   </section>
+  <CodePreparationDialog
+    v-if="preparingCode && selected"
+    :key="selected.id"
+    :task="selected"
+    @close="preparingCode = false"
+    @prepared="open(selected!, $event)"
+  />
 </template>
 <style scoped>
 .preview-board {
@@ -1119,13 +1436,15 @@ h2 > .done {
 }
 .new-task-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px 16px;
-  align-items: start;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface-2);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+.new-task-form pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 220px;
+  overflow: auto;
 }
 .new-task-form label {
   display: grid;

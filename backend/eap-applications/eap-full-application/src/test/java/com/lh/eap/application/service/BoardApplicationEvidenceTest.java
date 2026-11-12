@@ -58,7 +58,7 @@ class BoardApplicationEvidenceTest {
         assertEquals(generation.reference().taskBinding(), evidence.taskBinding());
     }
     private void bindTask() {
-        var task = new CodeGenerationStore.TaskSnapshot("project", UUID.randomUUID(), 3, "title", "goal", "criteria", null);
+        var task = new CodeGenerationStore.TaskSnapshot("project", UUID.randomUUID(), 3, "title", "goal", "criteria", "reviewed plan", null);
         target = task.binding(); runTask = new BoardRunService.Snapshot("title", "goal", "criteria", null);
         generation = new CodeGenerationStore.Snapshot(generation.id(), principal, conversation, "repo", generation.targetPath(), generation.baseHash(), generation.source(), "", "", now, task);
         proposal = new CodeChangeService.Proposal(id, conversation, "repo", "candidate", proposal.files(), now, false, true, "not_requested", generation.reference());

@@ -26,7 +26,7 @@ def request(method, path, body=None, status=200, language='zh-CN'):
 id = host['conversationId']
 path = '/api/ai/conversations/' + id
 body = {'confirmContextReset': True, 'expectedWorkspaceLabel': host['workspaceLabel'], 'connectionId': host['connectionId'], 'model': host['model']}
-request('PUT', path + '/working-memory', {'goal': 'Keep the task goal', 'constraints': ['Reuse existing components']})
+request('PUT', path + '/working-memory', {'expectedUpdatedAt': request('GET', path)['workingMemory']['updatedAt'], 'goal': 'Keep the task goal', 'constraints': ['Reuse existing components']})
 request('POST', path + '/reconnect', {key: value for key, value in body.items() if key not in ('connectionId', 'model')}, status=400)
 request('POST', '/qa/conversation-recovery/expire', {})
 request('GET', path, status=404)

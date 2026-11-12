@@ -13,6 +13,8 @@ import { createMockChatBackend } from '@eap/backend-mock/backend'
 import { i18n } from '../../../src/lib/i18n'
 import PreviewBoard from '../../../src/features/shell/PreviewBoard.vue'
 import { chatBinding, workbench, type ChatBinding } from '../../../src/features/shell/workbench'
+import { writeTaskHandoff } from '../../../src/features/shell/boardTaskHandoff'
+import { apiStorageScope } from '../../../src/lib/runtimeConfig'
 vi.mock('node:url', () => ({ fileURLToPath: () => '/mock/workspace/' }))
 let app: App, root: HTMLDivElement
 const fill = (selector: string, value: string) => {
@@ -37,15 +39,17 @@ async function mountBoard() {
 }
 async function createTask() {
   ;(root.querySelector('[data-testid=board-create-task]') as HTMLButtonElement).click()
-  await vi.waitFor(() => expect(root.querySelector('form')).not.toBeNull())
+  await vi.waitFor(() => expect(document.querySelector('form')).not.toBeNull())
   fill('form input', '并发准备任务')
   prepare()
-  ;(root.querySelector('form') as HTMLFormElement).requestSubmit()
+  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
   await vi.waitFor(() => expect(detail()).not.toBeNull())
 }
 const detail = () => document.querySelector('[data-testid=board-detail]') as HTMLElement | null
 beforeEach(() => {
+  window.history.replaceState(null, '', '#board')
   sessionStorage.clear()
+  localStorage.removeItem(apiStorageScope + '.eap.board-task-handoff.v1')
   const mock = createMockChatBackend()
   const call = async (method: string, path: string, body = {}) => {
     const reply = await mock.handle(method, path, body)
@@ -80,8 +84,157 @@ afterEach(() => {
   app?.unmount()
   root?.remove()
   vi.restoreAllMocks()
+  window.history.replaceState(null, '', '#board')
   workbench.pendingBoardDraft = null
   chatBinding.value = null
+  localStorage.removeItem(apiStorageScope + '.eap.board-task-handoff.v1')
+})
+it('reads a linked task outside the recent list and opens its current runs without starting work', async () => {
+  const task = await runtimeApi.createBoardTask({
+    projectId: 'linked-project',
+    title: 'Original task',
+    goal: 'Goal',
+    acceptanceCriteria: 'Criteria',
+    column: 'ready',
+    sessionId: '',
+    requestId: crypto.randomUUID(),
+  })
+  vi.spyOn(runtimeApi, 'boardTask').mockResolvedValue(task)
+  vi.mocked(runtimeApi.boardTasks).mockResolvedValue({ items: [] })
+  const start = vi.spyOn(runtimeApi, 'startBoardRun')
+  window.history.replaceState(
+    null,
+    '',
+    '#board?' + new URLSearchParams({ projectId: task.projectId, taskId: task.id }),
+  )
+  await mountBoard()
+  await vi.waitFor(() =>
+    expect(
+      document.querySelector('[data-testid=board-tab-runs]')?.getAttribute('aria-selected'),
+    ).toBe('true'),
+  )
+  expect(runtimeApi.boardTask).toHaveBeenCalledWith(task.id, task.projectId)
+  expect(document.querySelector('[data-testid=board-detail-dialog]')?.textContent).toContain(
+    task.title,
+  )
+  expect(start).not.toHaveBeenCalled()
+  expect(runtimeApi.updateBoardTask).not.toHaveBeenCalled()
+  ;(document.querySelector('[data-testid=board-close-detail]') as HTMLButtonElement).click()
+  await vi.waitFor(() => expect(detail()).toBeNull())
+  expect(window.location.hash).toBe('#board')
+})
+it('keeps a failed task link recoverable without selecting a different task', async () => {
+  const task = await runtimeApi.createBoardTask({
+    projectId: 'linked-project',
+    title: 'Linked task',
+    goal: 'Goal',
+    acceptanceCriteria: 'Criteria',
+    column: 'ready',
+    sessionId: '',
+    requestId: crypto.randomUUID(),
+  })
+  vi.spyOn(runtimeApi, 'boardTask')
+    .mockRejectedValueOnce(new Error('unavailable'))
+    .mockResolvedValue(task)
+  window.history.replaceState(
+    null,
+    '',
+    '#board?' + new URLSearchParams({ projectId: task.projectId, taskId: task.id }),
+  )
+  await mountBoard()
+  expect(detail()).toBeNull()
+  expect(document.querySelector('[data-testid=board-task-link-error]')).not.toBeNull()
+  ;(document.querySelector('[data-testid=board-task-link-retry]') as HTMLButtonElement).click()
+  await vi.waitFor(() => expect(detail()).not.toBeNull())
+  expect(runtimeApi.boardTask).toHaveBeenCalledTimes(2)
+  expect(runtimeApi.updateBoardTask).not.toHaveBeenCalled()
+})
+it('ignores a late linked-task result and opens the latest requested task', async () => {
+  const create = (title: string) =>
+    runtimeApi.createBoardTask({
+      projectId: 'linked-project',
+      title,
+      goal: 'Goal',
+      acceptanceCriteria: 'Criteria',
+      column: 'ready',
+      sessionId: '',
+      requestId: crypto.randomUUID(),
+    })
+  const first = await create('First task'),
+    second = await create('Second task')
+  let finish!: (task: BoardTask) => void
+  vi.spyOn(runtimeApi, 'boardTask')
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    .mockResolvedValue(second)
+  vi.mocked(runtimeApi.boardTasks).mockResolvedValue({ items: [] })
+  const location = (task: BoardTask) =>
+    '#board?' + new URLSearchParams({ projectId: task.projectId, taskId: task.id })
+  window.history.replaceState(null, '', location(first))
+  const mounted = mountBoard()
+  await vi.waitFor(() =>
+    expect(runtimeApi.boardTask).toHaveBeenCalledWith(first.id, first.projectId),
+  )
+  window.location.hash = location(second)
+  finish(first)
+  await mounted
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-detail-dialog]')?.textContent).toContain(
+      second.title,
+    ),
+  )
+  expect(document.querySelector('[data-testid=board-detail-dialog]')?.textContent).not.toContain(
+    first.title,
+  )
+  expect(runtimeApi.updateBoardTask).not.toHaveBeenCalled()
+})
+it('keeps an oversized answer intact until the user shortens the task goal and restores the unsent draft', async () => {
+  writeTaskHandoff(
+    localStorage,
+    apiStorageScope,
+    {
+      source: {
+        conversationId: 'source-session',
+        executionId: 'source-execution',
+        text: 'x'.repeat(6000),
+      },
+      draft: {
+        projectId: 'local-eap',
+        title: 'Reviewed answer',
+        goal: 'x'.repeat(6000),
+        acceptanceCriteria: '',
+      },
+      linkSource: true,
+    },
+    null,
+  )
+  await mountBoard()
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-new-goal]')).not.toBeNull(),
+  )
+  const goal = () => document.querySelector('[data-testid=board-new-goal]') as HTMLTextAreaElement
+  expect(goal().value).toHaveLength(6000)
+  expect(
+    (document.querySelector('[data-testid=board-create-save]') as HTMLButtonElement).disabled,
+  ).toBe(true)
+  expect(runtimeApi.createBoardTask).not.toHaveBeenCalled()
+  fill('[data-testid=board-new-goal]', 'Reviewed short goal')
+  expect(
+    document.querySelector('[data-testid=board-handoff-source] pre')?.textContent,
+  ).toHaveLength(6000)
+  ;(document.querySelector('[data-eap-dialog-close]') as HTMLButtonElement).click()
+  app.unmount()
+  root.remove()
+  await mountBoard()
+  await vi.waitFor(() => expect(goal()?.value).toBe('Reviewed short goal'))
+  expect(
+    document.querySelector('[data-testid=board-handoff-source] pre')?.textContent,
+  ).toHaveLength(6000)
+  expect(runtimeApi.createBoardTask).not.toHaveBeenCalled()
 })
 it('renders decorative create icons without submitting a task when opening the form', async () => {
   await mountBoard()
@@ -96,7 +249,7 @@ it('renders decorative create icons without submitting a task when opening the f
   }
   create.click()
   await vi.waitFor(() =>
-    expect(root.querySelector('[data-testid="board-create-form"]')).not.toBeNull(),
+    expect(document.querySelector('[data-testid="board-create-form"]')).not.toBeNull(),
   )
   expect(runtimeApi.createBoardTask).not.toHaveBeenCalled()
 })
@@ -222,7 +375,7 @@ it.each(['ACCEPT', 'REJECT'] as const)(
     const button = (id: string) =>
       document.querySelector(`[data-testid=${id}]`) as HTMLButtonElement
     const confirm = async (id: string) => {
-      await vi.waitFor(() => expect(button(id)?.disabled).toBe(false))
+      await vi.waitFor(() => expect(button(id)?.disabled, id).toBe(false))
       button(id).click()
       await vi.waitFor(() =>
         expect(document.querySelector('.eap-confirm__actions button:first-child')).not.toBeNull(),
@@ -247,6 +400,12 @@ it.each(['ACCEPT', 'REJECT'] as const)(
       ).toBe(false),
     )
     ;(document.querySelector('[data-testid=delivery-criteria]') as HTMLInputElement).click()
+    fill('[data-testid=delivery-preview-url]', 'http://127.0.0.1:5193/#/')
+    await vi.waitFor(() =>
+      expect(
+        (document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).disabled,
+      ).toBe(false),
+    )
     ;(document.querySelector('[data-testid=delivery-preview]') as HTMLInputElement).click()
     fill('[data-testid=delivery-comment]', 'Human review')
     await confirm(decision === 'ACCEPT' ? 'delivery-accept' : 'delivery-reject')
@@ -423,12 +582,12 @@ it('persists backlog task edits through the service and refuses invented executi
   Array.from(root.querySelectorAll('button'))
     .find((item) => item.textContent?.includes('新建任务'))!
     .click()
-  await vi.waitFor(() => expect(root.querySelector('form')).not.toBeNull())
-  const input = root.querySelector('form input') as HTMLInputElement
+  await vi.waitFor(() => expect(document.querySelector('form')).not.toBeNull())
+  const input = document.querySelector('form input') as HTMLInputElement
   input.value = '验收任务'
   input.dispatchEvent(new Event('input'))
   prepare()
-  ;(root.querySelector('form') as HTMLFormElement).requestSubmit()
+  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
   await vi.waitFor(() =>
     expect(root.querySelector('[data-testid=lane-planned]')?.textContent).toContain('验收任务'),
   )
@@ -481,12 +640,12 @@ it('filters by notes and saved priority using the same service contract', async 
     ).toBe(false),
   )
   ;(root.querySelector('[data-testid=board-create-task]') as HTMLButtonElement).click()
-  await vi.waitFor(() => expect(root.querySelector('form')).not.toBeNull())
-  const input = root.querySelector('form input') as HTMLInputElement
+  await vi.waitFor(() => expect(document.querySelector('form')).not.toBeNull())
+  const input = document.querySelector('form input') as HTMLInputElement
   input.value = '优先级筛选任务'
   input.dispatchEvent(new Event('input'))
   prepare()
-  ;(root.querySelector('form') as HTMLFormElement).requestSubmit()
+  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
   await vi.waitFor(() => expect(root.textContent).toContain('优先级筛选任务'))
   await vi.waitFor(() => expect(detail()).not.toBeNull())
   const notes = detail()!.querySelector('[data-testid=task-notes]') as HTMLTextAreaElement
@@ -567,17 +726,17 @@ it('links the active conversation id on create without inventing execution', asy
   )
   ;(root.querySelector('[data-testid=board-create-task]') as HTMLButtonElement).click()
   await vi.waitFor(() =>
-    expect(root.querySelector('[data-testid=board-link-session]')?.textContent).toMatch(
+    expect(document.querySelector('[data-testid=board-link-session]')?.textContent).toMatch(
       /关联当前对话|Link current/,
     ),
   )
-  const input = root.querySelector(
+  const input = document.querySelector(
     '[data-testid=board-create-form] input:not([type=checkbox])',
   ) as HTMLInputElement
   input.value = '关联会话任务'
   input.dispatchEvent(new Event('input'))
   prepare()
-  ;(root.querySelector('[data-testid=board-create-form]') as HTMLFormElement).requestSubmit()
+  ;(document.querySelector('[data-testid=board-create-form]') as HTMLFormElement).requestSubmit()
   await vi.waitFor(() =>
     expect(runtimeApi.createBoardTask).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -613,12 +772,12 @@ it('opens task detail as a modal and protects unsaved edits on close', async () 
   ;(
     root.querySelector('[data-testid=lane-ready] [data-testid=lane-add-task]') as HTMLButtonElement
   ).click()
-  await vi.waitFor(() => expect(root.querySelector('form input')).not.toBeNull())
-  const title = root.querySelector('form input') as HTMLInputElement
+  await vi.waitFor(() => expect(document.querySelector('form input')).not.toBeNull())
+  const title = document.querySelector('form input') as HTMLInputElement
   title.value = '待处理列创建'
   title.dispatchEvent(new Event('input'))
   prepare()
-  ;(root.querySelector('form') as HTMLFormElement).requestSubmit()
+  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
   await vi.waitFor(() =>
     expect(root.querySelector('[data-testid=lane-ready] .board-card')?.textContent).toContain(
       '待处理列创建',
@@ -693,17 +852,21 @@ it('retries the identical creation after a lost response and renders only one pe
     throw new AxiosError('connection lost')
   })
   ;(root.querySelector('[data-testid=board-create-task]') as HTMLButtonElement).click()
-  await vi.waitFor(() => expect(root.querySelector('form')).not.toBeNull())
+  await vi.waitFor(() => expect(document.querySelector('form')).not.toBeNull())
   fill('form input', '未知创建结果')
   prepare()
-  ;(root.querySelector('form') as HTMLFormElement).requestSubmit()
-  await vi.waitFor(() => expect(root.textContent).toContain('创建结果尚未确认'))
-  expect((root.querySelector('form input') as HTMLInputElement).disabled).toBe(true)
+  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-create-note]')?.textContent).toContain(
+      '创建结果尚未确认',
+    ),
+  )
+  expect((document.querySelector('form input') as HTMLInputElement).disabled).toBe(true)
   app.unmount()
   root.remove()
   await mountBoard()
-  expect((root.querySelector('form input') as HTMLInputElement).value).toBe('未知创建结果')
-  ;(root.querySelector('form') as HTMLFormElement).requestSubmit()
+  expect((document.querySelector('form input') as HTMLInputElement).value).toBe('未知创建结果')
+  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
   await vi.waitFor(() => expect(root.querySelectorAll('.board-card')).toHaveLength(1))
   const calls = vi.mocked(runtimeApi.createBoardTask).mock.calls
   expect(calls[0]![0]).toEqual(calls[1]![0])
@@ -712,9 +875,9 @@ it('retries the identical creation after a lost response and renders only one pe
 it('allows an incomplete planned draft but disables ready and preserves preparation after reopening', async () => {
   await mountBoard()
   ;(root.querySelector('[data-testid=board-create-task]') as HTMLButtonElement).click()
-  await vi.waitFor(() => expect(root.querySelector('form')).not.toBeNull())
+  await vi.waitFor(() => expect(document.querySelector('form')).not.toBeNull())
   fill('form input', '待补全')
-  ;(root.querySelector('form') as HTMLFormElement).requestSubmit()
+  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
   await vi.waitFor(() => expect(detail()).not.toBeNull())
   const ready = () =>
     Array.from(detail()!.querySelectorAll('.task-moves button')).find(

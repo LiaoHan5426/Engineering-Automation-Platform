@@ -2,13 +2,17 @@ package com.lh.eap.application.service;
 import com.lh.eap.error.ResourceErrors;
 
 import java.util.Set;
+import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.HashSet;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Server-side publication boundary for the same semantic schema rendered by the workbench. */
 public final class SemanticPrototype {
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private static final Set<String> KINDS = Set.of("page", "section", "text", "heading", "button", "input", "link", "list");
+    private static final Set<String> KINDS = Set.of("page", "section", "text", "heading", "button", "input", "link", "list",
+            "form", "select", "checkbox", "dialog");
     private SemanticPrototype() {}
 
     public static void require(String body) {
@@ -22,16 +26,51 @@ public final class SemanticPrototype {
                     || !schema.path("unknownMappings").isArray() || !schema.path("unknownMappings").isEmpty()
                     || !schema.path("root").path("children").isArray() || schema.path("root").path("children").isEmpty())
                 throw new IllegalArgumentException();
-            requireNode(schema.path("root"), 0, new int[1]);
+            var nodes = new LinkedHashMap<String, JsonNode>();
+            requireNode(schema.path("root"), 0, nodes);
+            for (var node : nodes.values()) requireInteraction(node, nodes);
         } catch (RuntimeException invalid) {
             throw new IllegalArgumentException(ResourceErrors.PROTOTYPE_SEMANTIC_DESIGN_REQUIRED.code());
         }
     }
 
-    private static void requireNode(JsonNode node, int depth, int[] count) {
-        if (++count[0] > 500 || depth > 24 || !node.path("id").isString()
+    private static void requireNode(JsonNode node, int depth, Map<String, JsonNode> nodes) {
+        if (nodes.size() >= 500 || depth > 24 || !node.path("id").isString()
+                || !node.path("id").asString().matches("[A-Za-z][A-Za-z0-9_-]{0,79}")
                 || !KINDS.contains(node.path("kind").asString()) || !node.path("props").isObject()
                 || !node.path("children").isArray()) throw new IllegalArgumentException();
-        for (var child : node.path("children")) requireNode(child, depth + 1, count);
+        if (nodes.putIfAbsent(node.path("id").asString(), node) != null) throw new IllegalArgumentException();
+        for (var child : node.path("children")) requireNode(child, depth + 1, nodes);
+    }
+
+    private static void requireInteraction(JsonNode node, Map<String, JsonNode> nodes) {
+        var props = node.path("props");
+        String kind = node.path("kind").asString();
+        if (props.has("action")) {
+            var action = props.path("action");
+            if (!kind.equals("button") || !action.isObject() || action.size() != 2
+                    || !action.path("target").isString() || !action.path("type").isString())
+                throw new IllegalArgumentException();
+            var type = PrototypeActionType.valueOf(action.path("type").asString());
+            var target = nodes.get(action.path("target").asString());
+            if (target == null || (type == PrototypeActionType.TOGGLE
+                    ? !Set.of("dialog", "section").contains(target.path("kind").asString())
+                    : !target.path("kind").asString().equals("form"))) throw new IllegalArgumentException();
+        }
+        for (String key : Set.of("required", "checked", "initiallyVisible"))
+            if (props.has(key) && !props.path(key).isBoolean()) throw new IllegalArgumentException();
+        if (props.has("initialValue") && (!props.path("initialValue").isString()
+                || props.path("initialValue").asString().length() > 2000)) throw new IllegalArgumentException();
+        if (kind.equals("select")) {
+            var options = props.path("options");
+            if (!options.isArray() || options.isEmpty() || options.size() > 30) throw new IllegalArgumentException();
+            var values = new HashSet<String>();
+            for (var option : options) {
+                if (!option.isString() || option.asString().isBlank() || option.asString().length() > 200
+                        || !values.add(option.asString())) throw new IllegalArgumentException();
+            }
+            if (props.has("initialValue") && !props.path("initialValue").asString().isEmpty()
+                    && !values.contains(props.path("initialValue").asString())) throw new IllegalArgumentException();
+        }
     }
 }

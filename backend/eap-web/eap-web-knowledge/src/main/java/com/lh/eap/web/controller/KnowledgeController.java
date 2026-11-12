@@ -29,4 +29,6 @@ public class KnowledgeController {
     public Map<String,Object> remove(@PathVariable UUID id) { return service.remove(id); }
     @DeleteMapping("/{id}/documents/{documentId}")
     public Map<String,Object> removeDocument(@PathVariable UUID id, @PathVariable UUID documentId) { return service.removeDocument(id,documentId); }
+    @PutMapping("/{id}/documents/{documentId}")
+    public Map<String,Object> updateDocument(@PathVariable UUID id, @PathVariable UUID documentId, @RequestBody KnowledgeManagementService.DocumentUpdate request) throws NoSuchAlgorithmException { return service.updateDocument(id, documentId, request); }
 }

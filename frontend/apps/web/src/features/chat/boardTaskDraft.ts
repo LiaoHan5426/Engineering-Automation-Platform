@@ -2,8 +2,13 @@ import type { TaskContext } from '@eap/runtime-client'
 import type { BoardTaskDraft } from '../shell/workbench'
 
 /** Explicit adoption replaces text, task and prototype as one unit; never guesses a target path. */
-export function adoptBoardTaskDraft(draft: BoardTaskDraft): { text: string; context: TaskContext } {
+export function adoptBoardTaskDraft(draft: BoardTaskDraft): {
+  text: string
+  context: TaskContext
+  executionMode: BoardTaskDraft['executionMode']
+} {
   return {
+    executionMode: draft.executionMode,
     text: draft.title,
     context: {
       mode: draft.taskRef ? 'code' : 'chat',
@@ -11,9 +16,10 @@ export function adoptBoardTaskDraft(draft: BoardTaskDraft): { text: string; cont
       instructions: '',
       reasoning: 'default',
       approval: 'review',
-      files: [],
+      files: draft.taskRef ? (draft.referenceFiles ?? []).map((file) => ({ ...file })) : [],
       prototypeVersionId: draft.prototypeVersionId ?? '',
-      targetPath: '',
+      targetPath: draft.taskRef ? (draft.targetPath ?? '') : '',
+      componentPaths: draft.taskRef ? [...(draft.componentPaths ?? [])] : [],
       ...(draft.taskRef ? { taskRef: { ...draft.taskRef } } : {}),
     },
   }

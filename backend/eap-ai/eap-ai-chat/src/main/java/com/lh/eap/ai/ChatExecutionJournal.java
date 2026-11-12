@@ -83,7 +83,7 @@ public class ChatExecutionJournal {
                 // Reserve one slot for a terminal frame, including failures at the budget boundary.
                 int limit = "final".equals(type) ? MAX_EVENTS : MAX_EVENTS - 1;
                 if (log.events.size() >= limit)
-                    throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, ExecutionErrors.EXECUTION_EVENT_LIMIT.code());
+                    throw new ResponseStatusException(HttpStatus.CONTENT_TOO_LARGE, ExecutionErrors.EXECUTION_EVENT_LIMIT.code());
                 long sequence = log.latestSequence + 1;
                 event = ChatExecutionEvent.of(sequence, log.executionId, log.conversationId,
                         null, type, text, code, status, payload);

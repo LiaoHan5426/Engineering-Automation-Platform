@@ -1,5 +1,29 @@
 export const desktopMessages = {
   'zh-CN': {
+    taskPlanUncertain: '保存结果尚未确认。编辑和再次保存已暂停，请读取原任务核对，不会自动重发。',
+    taskPlanReconcile: '读取原任务核对',
+    taskPlanTitle: '核对并更新原任务',
+    boardPlanTask: '规划此任务',
+    taskPlanReady: '标记为待处理',
+    executionAgentBoundary:
+      '工程智能体仅用于已绑定且准备完整的代码任务：在本次固定选集中按需读取源码快照，再提出候选。最多4次读取工具调用；不运行Shell、不自动应用或验收。应用仍需人工确认，后台与跨重启续跑未接入。',
+    taskPlanBoundary:
+      '先核对原任务版本，再明确把计划追加到备注；目标和验收条件可编辑。保存沿用任务版本校验，不执行任务。',
+    taskPlanMissing: '原任务不存在或当前项目不可见。',
+    taskPlanStale: '任务版本或状态已变化，不能采用这份计划。请返回任务核对并重新规划。',
+    taskPlanAdopt: '将计划追加到备注草稿',
+    taskPlanLimit: '备注超过4000字，请明确编辑缩短后保存；原计划保留，不自动截断。',
+    taskFromAnswer: '转为任务草稿',
+    taskHandoffPending: '有一份尚未完成的会话任务草稿，请先继续编辑或明确放弃。',
+    taskHandoffResume: '继续编辑任务草稿',
+    taskHandoffDiscard: '放弃会话任务草稿？',
+    taskHandoffDiscardImpact: '仅删除尚未提交的本机任务草稿，原会话和已保存任务不变。',
+    taskHandoffStorage: '无法安全保存或核对任务草稿。原内容保留，请恢复本机存储后重试。',
+    taskHandoffGoalLimit:
+      '任务目标最多4000字，请编辑缩短。完整原回答仍可在下方对照，不会自动截断。',
+    taskHandoffBoundary:
+      '请核对项目、目标和验收条件。保存只创建待规划任务，不启动模型、工具或源码修改；会话关联仅用于追溯讨论。',
+    taskHandoffSource: '对照原回答',
     navigation: '应用导航',
     code: 'code · 编程',
     work: 'work · 办公',
@@ -143,7 +167,29 @@ export const desktopMessages = {
     sidebarFilter: '筛选分组或会话',
     moreActions: '更多',
     moreExport: '导出会话',
-    moreExportOff: '导出会话未接通；不会下载或上传对话内容。',
+    workDocumentTitle: '编辑为文档',
+    workDocumentSourceChanged:
+      '此位置已有另一来源或无法核对的文档草稿，未载入或覆盖。当前正文来自本条回答，可编辑并下载；原草稿保持不变。',
+    workDocumentDefault: '工作文档',
+    workDocumentBoundary:
+      '从本条回答创建本机文档草稿，原对话和执行状态保持不变。保存仅在当前浏览器生效，下载才生成文件；模型内容需要人工核对，不代表任务验收完成。',
+    workDocumentName: '文档标题',
+    workDocumentBody: 'Markdown 正文',
+    workDocumentSave: '保存本机草稿',
+    workDocumentSaved: '草稿已保存，可关闭后从同一条回答重新打开。',
+    workDocumentStorageError: '本机草稿读取或保存失败，当前编辑仍保留，请下载文件后再关闭。',
+    workDocumentDiscard: '放弃未保存的文档修改？',
+    workDocumentDiscardImpact: '已保存的本机草稿与原对话保持不变；本次未保存编辑会丢失。',
+    exportBoundary:
+      '仅导出本页已加载的会话正文、状态及证据引用到本机文件，不上传内容，不包含当前草稿、附件正文或连接设置。导出文件不是可恢复执行或人工验收证明。',
+    exportContents: '共 {count} 条已加载消息。下载前可在下方核对内容。',
+    exportDownload: '下载 Markdown',
+    exportUser: '用户',
+    exportAssistant: '助手',
+    exportStatus: '记录状态',
+    exportExecution: '执行引用',
+    exportVerification: '验证记录',
+    exportArtifact: '产物引用',
     moreShare: '分享',
     moreShareOff: '分享未接通；不会生成链接或对外发送。',
     summaryNone: '暂无',
@@ -212,9 +258,12 @@ export const desktopMessages = {
     executionChatHint: '无工具',
     executionChoiceTitle: '会话模式',
     modelEmptyHelp: '暂无可选模型。请先添加连接并选择允许使用的模型。',
-    executionAvailability: '当前仅聊天可用。规划与智能体尚未开放，暂时无法切换。',
+    executionAvailability:
+      '聊天与只读规划可用；已绑定代码任务可使用受控源码智能体。插件创造尚未接入。',
+    executionPlanBoundary:
+      '规划模式仅生成只读计划，不调用工具或创建源码候选。绑定任务会重新核对服务端版本，不自动更新或执行任务。',
     executionPlanHint: '只谈思考',
-    executionAgentHint: '常规任务',
+    executionAgentHint: '读取选集并提出候选',
     executionPluginHint: '用自然语言创建插件',
     executionModeOff: '未接通',
     comingSoon: '敬请期待',
@@ -234,13 +283,14 @@ export const desktopMessages = {
     mcpEmpty: 'MCP 未接通；登记不等于已调用工具。',
     contextLabel: '上下文',
     contextMeter: '上下文 · 文件 {files}/{limit} · 无 token',
-    contextMeterHint: '打开附件与上下文菜单。文件 {files}/{limit}，不统计 token。',
+    contextMeterHint:
+      '已附文件 {files}/{limit}，不统计 token。展开“查看将发送的内容”可核对本次输入。',
     outgoing: '查看将发送的内容',
     outgoingIdle: '打开这里不会发送，也不改当前输入。',
     outgoingDraft: '正文',
     outgoingGuide: '附带指引',
     outgoingNone: '没有场景或专家指引。',
-    outgoingPlan: '规划模式这次会暂时改为聊天和只读，发送后恢复原来的选择。',
+    outgoingPlan: '服务端按只读规划合同处理本次请求，不执行工具或创建源码候选。',
     outgoingNoFiles: '没有本地文件。',
     retrySend: '用原草稿再发一次',
     retryShort: '重试',
@@ -354,8 +404,6 @@ export const desktopMessages = {
     fileTreeExpandHint: '展开目录查看子项。',
     panelClose: '关闭面板',
     filesOverlayTitle: '源文件',
-    workspaceTree: '工作区',
-    workspaceTreeHint: '只读文件树；展开目录浏览授权范围，不授予写入。',
     openProposalDiff: '查看 Diff',
     diffFallbackNote: 'Monaco 未加载，当前为只读双栏文本对比。',
     terminalDockHint: '终端停靠在对话下方；未接通时不显示伪日志，也不授予任意 shell。',
@@ -517,6 +565,36 @@ export const desktopMessages = {
     presetReadonly: '预设只读，可复制为自定义场景并显式保存。',
   },
   'en-US': {
+    taskPlanUncertain:
+      'The save outcome is unconfirmed. Editing and saving are paused. Read the original task to reconcile; the request is never replayed automatically.',
+    taskPlanReconcile: 'Read original task',
+    taskPlanTitle: 'Review and update original task',
+    boardPlanTask: 'Plan this task',
+    taskPlanReady: 'Mark ready for implementation',
+    executionAgentBoundary:
+      'Engineering agents require a bound, prepared code task. They read the selected frozen source snapshots on demand and propose a candidate, with at most 4 read tool calls. No shell, automatic application or acceptance. Application requires confirmation; background and restart continuation are unavailable.',
+    taskPlanBoundary:
+      'Check the original task revision before explicitly appending the plan to notes. Edit the goal and acceptance criteria as needed. Saving checks the revision and does not execute the task.',
+    taskPlanMissing: 'The original task is missing or unavailable in this project.',
+    taskPlanStale:
+      'The task revision or state changed. Review the task and plan again before adopting.',
+    taskPlanAdopt: 'Append plan to notes draft',
+    taskPlanLimit:
+      'Notes exceed 4000 characters. Shorten them explicitly before saving; the original plan is retained.',
+    taskFromAnswer: 'Prepare task from answer',
+    taskHandoffPending:
+      'An unfinished conversation task draft is retained. Continue editing it or explicitly discard it first.',
+    taskHandoffResume: 'Continue task draft',
+    taskHandoffDiscard: 'Discard conversation task draft?',
+    taskHandoffDiscardImpact:
+      'Remove only the unsent local task draft. The conversation and saved tasks remain.',
+    taskHandoffStorage:
+      'The task draft could not be safely stored or checked. Existing content is retained; restore local storage and retry.',
+    taskHandoffGoalLimit:
+      'Task goals allow up to 4000 characters. Shorten the goal explicitly; the full original answer remains available for comparison.',
+    taskHandoffBoundary:
+      'Review the project, goal and acceptance criteria. Saving creates a planned task only, with no model, tool or source changes. The conversation link traces discussion only.',
+    taskHandoffSource: 'Compare original answer',
     navigation: 'Application navigation',
     code: 'code',
     work: 'work',
@@ -675,7 +753,31 @@ export const desktopMessages = {
     sidebarFilter: 'Filter groups or chats',
     moreActions: 'More',
     moreExport: 'Export chat',
-    moreExportOff: 'Export is not connected; nothing is downloaded or uploaded.',
+    workDocumentTitle: 'Edit as document',
+    workDocumentSourceChanged:
+      'This draft slot contains a different or unverifiable document. It was not loaded or overwritten. Edit and download the current answer instead; the saved draft stays unchanged.',
+    workDocumentDefault: 'Work document',
+    workDocumentBoundary:
+      'Create a local document draft from this answer. The original conversation and execution states stay unchanged. Saving affects this browser only; downloading creates a file. Review model content manually; this is not task acceptance.',
+    workDocumentName: 'Document title',
+    workDocumentBody: 'Markdown body',
+    workDocumentSave: 'Save local draft',
+    workDocumentSaved: 'Draft saved. Reopen it from the same answer after closing.',
+    workDocumentStorageError:
+      'Local draft reading or saving failed. Your edits remain available; download before closing.',
+    workDocumentDiscard: 'Discard unsaved document changes?',
+    workDocumentDiscardImpact:
+      'Saved local drafts and the original conversation stay unchanged. These unsaved edits will be lost.',
+    exportBoundary:
+      'Export only the loaded transcript, states and evidence references to a local file. Nothing is uploaded. Drafts, attachment bodies and connection settings are excluded. This is not execution recovery or acceptance proof.',
+    exportContents: '{count} loaded messages. Review the content below before downloading.',
+    exportDownload: 'Download Markdown',
+    exportUser: 'User',
+    exportAssistant: 'Assistant',
+    exportStatus: 'Recorded status',
+    exportExecution: 'Execution reference',
+    exportVerification: 'Verification record',
+    exportArtifact: 'Artifact reference',
     moreShare: 'Share',
     moreShareOff: 'Share is not connected; no link is created or sent.',
     summaryNone: 'None',
@@ -749,9 +851,11 @@ export const desktopMessages = {
     executionChoiceTitle: 'Conversation mode',
     modelEmptyHelp: 'No models are available. Add a connection and allow models in settings first.',
     executionAvailability:
-      'Only Chat is available. Planning and Agent modes are not available yet.',
+      'Chat and read-only planning are available. Bound code tasks support the bounded source agent. Plugin creation is unavailable.',
+    executionPlanBoundary:
+      'Planning produces a read-only plan without tools or source proposals. Bound tasks are checked against the server revision and are never updated or executed automatically.',
     executionPlanHint: 'Thinking only',
-    executionAgentHint: 'Routine tasks',
+    executionAgentHint: 'Read selected sources and propose',
     executionPluginHint: 'Create plugins in natural language',
     executionModeOff: 'Not connected',
     comingSoon: 'Coming soon',
@@ -774,14 +878,15 @@ export const desktopMessages = {
     mcpEmpty: 'MCP is not connected; registration is not a tool call.',
     contextLabel: 'Context',
     contextMeter: 'Context · files {files}/{limit} · no tokens',
-    contextMeterHint: 'Open attachments and context. Files {files}/{limit}; no token count.',
+    contextMeterHint:
+      'Attached files {files}/{limit}; no token count. Expand “Review what will be sent” to inspect the current input.',
     outgoing: 'Review what will be sent',
     outgoingIdle: 'Opening this does not send and does not change the current draft.',
     outgoingDraft: 'Draft',
     outgoingGuide: 'Attached guidance',
     outgoingNone: 'No scenario or expert guidance.',
     outgoingPlan:
-      'Plan mode temporarily switches this send to chat and read-only, then restores the previous choice.',
+      'The server enforces read-only planning for this request, with no tools or source proposals.',
     outgoingNoFiles: 'No local files.',
     retrySend: 'Send the same draft again',
     retryShort: 'Retry',
@@ -907,9 +1012,6 @@ export const desktopMessages = {
     fileTreeExpandHint: 'Expand folders in the tree to reveal children.',
     panelClose: 'Close panel',
     filesOverlayTitle: 'Sources',
-    workspaceTree: 'Workspace',
-    workspaceTreeHint:
-      'Read-only file tree; expand folders within the authorized root. Viewing grants no write.',
     openProposalDiff: 'View diff',
     diffFallbackNote: 'Monaco is unavailable; showing a read-only two-column text diff.',
     terminalDockHint:

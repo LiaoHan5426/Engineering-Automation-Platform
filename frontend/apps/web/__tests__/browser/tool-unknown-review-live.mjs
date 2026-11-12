@@ -1,3 +1,4 @@
+import { loadPlaywright } from './playwright-runtime.mjs'
 // Opt-in acceptance against real HTTP/JDBC. Optional test proxy drops one actual committed review response.
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
@@ -14,7 +15,7 @@ const session = resolve(values.session)
 const input = JSON.parse(await readFile(resolve(session, 'browser-input.json'), 'utf8'))
 assert.equal(input.session, session)
 assert.match(input.base, /^http:\/\/127\.0\.0\.1:\d+$/)
-const { chromium } = createRequire(import.meta.url)(process.env.EAP_PLAYWRIGHT_MODULE)
+const { chromium } = loadPlaywright()
 let droppedReviewResponse = false
 let droppedCancelResponse = false
 const server = await createServer({

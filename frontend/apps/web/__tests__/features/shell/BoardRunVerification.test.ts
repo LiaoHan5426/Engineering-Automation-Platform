@@ -65,7 +65,7 @@ let app: App,
   root: HTMLDivElement,
   current = ref(run)
 const button = (id: string) => document.querySelector(`[data-testid=${id}]`) as HTMLButtonElement
-async function mount(onChanged?: () => void) {
+async function mount(onChanged?: () => void, onDelivery?: () => void) {
   root = document.createElement('div')
   document.body.append(root)
   app = createApp({
@@ -75,6 +75,7 @@ async function mount(onChanged?: () => void) {
         projectId: 'project-a',
         run: current.value,
         onChanged,
+        onDelivery,
       }),
   })
   app.use(i18n).mount(root)
@@ -277,6 +278,7 @@ it('recovers a lost start response by reading the persisted record without resen
   expect(document.body.textContent).toContain('已找回服务端验证记录')
 })
 it('replays persisted verification after remount without preparing or executing it again', async () => {
+  const delivery = vi.fn()
   vi.useFakeTimers()
   vi.mocked(runtimeApi.boardVerification).mockResolvedValue({
     record,
@@ -289,6 +291,7 @@ it('replays persisted verification after remount without preparing or executing 
       record.id,
     ),
   )
+  expect(button('verification-delivery')).toBeNull()
   app.unmount()
   root.remove()
   const saved = { ...record, status: 'PASSED' as const, finishedAt: '2026-10-31T08:02:00Z' }
@@ -297,7 +300,7 @@ it('replays persisted verification after remount without preparing or executing 
     prepareAllowed: false,
     reason: '',
   })
-  await mount()
+  await mount(undefined, delivery)
   await vi.waitFor(() =>
     expect(document.querySelector('[data-testid=verification-record]')?.textContent).toContain(
       saved.finishedAt,
@@ -309,6 +312,9 @@ it('replays persisted verification after remount without preparing or executing 
   expect(runtimeApi.planBoardVerification).not.toHaveBeenCalled()
   expect(runtimeApi.startBoardVerification).not.toHaveBeenCalled()
   expect(button('verification-start')).toBeNull()
+  button('verification-delivery').click()
+  expect(delivery).toHaveBeenCalledTimes(1)
+  expect(runtimeApi.startBoardVerification).not.toHaveBeenCalled()
 })
 it.each(['resolve', 'reject'])('ignores a late POST %s after switching Runs', async (outcome) => {
   let resolve!: (value: BoardVerificationRecord) => void, reject!: (reason: Error) => void

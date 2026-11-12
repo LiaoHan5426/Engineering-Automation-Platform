@@ -60,6 +60,14 @@ export type BoardTaskDraft = {
   acceptanceCriteria: string
   requestId: string
 }
+export type PrototypeTaskDraft = {
+  projectId: string
+  title: string
+  goal: string
+  acceptanceCriteria: string
+  requestId: string
+  versionId: string
+}
 
 export type BoardPrototypeReference = {
   id: string
@@ -252,6 +260,7 @@ export type BoardDeliveryDecisionRequest = {
   decision: BoardDeliveryDecision
   criteriaConfirmed: boolean
   previewConfirmed: boolean
+  previewUrl: string
   comment: string
 }
 

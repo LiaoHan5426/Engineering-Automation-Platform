@@ -28,8 +28,8 @@ public class BoardDeliveryController {
         return service.submit(taskId, executionId, new BoardDeliveryService.Request(string(map,"projectId"), revision(map), string(map,"workspacePath"), uuid(map,"requestId"), paths.stream().map(String.class::cast).toList(), string(map,"note"), ref));
     }
     @PostMapping("/decision") public BoardDeliveryService.Delivery decide(@PathVariable UUID taskId, @PathVariable UUID executionId, @RequestBody String body) {
-        var map = fields(body, Set.of("projectId","revision","requestId","deliveryId","decision","criteriaConfirmed","previewConfirmed","comment"));
-        return service.decide(taskId, executionId, new BoardDeliveryService.Decide(string(map,"projectId"), revision(map), uuid(map,"requestId"), uuid(map,"deliveryId"), string(map,"decision"), bool(map,"criteriaConfirmed"), bool(map,"previewConfirmed"), string(map,"comment")));
+        var map = fields(body, Set.of("projectId","revision","requestId","deliveryId","decision","criteriaConfirmed","previewConfirmed","comment","previewUrl"));
+        return service.decide(taskId, executionId, new BoardDeliveryService.Decide(string(map,"projectId"), revision(map), uuid(map,"requestId"), uuid(map,"deliveryId"), string(map,"decision"), bool(map,"criteriaConfirmed"), bool(map,"previewConfirmed"), string(map,"comment"), string(map,"previewUrl")));
     }
     private static Map<?,?> fields(String body, Set<String> keys) { return fields(body, keys, Set.of()); }
     private static Map<?,?> fields(String body, Set<String> keys, Set<String> optional) {

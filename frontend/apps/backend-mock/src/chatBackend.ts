@@ -2,6 +2,8 @@ import { ChatErrors } from '@eap/runtime-client/contracts'
 import { WorkspaceErrors } from '@eap/runtime-client/contracts'
 import { ExecutionErrors } from '@eap/runtime-client/contracts'
 import {
+  AiToolMode,
+  TaskMode,
   AgentErrors,
   CodeErrors,
   ModelErrors,
@@ -93,6 +95,7 @@ export function createMockChatBackend() {
   let sequence = 0
   const instanceId = randomUUID()
   const conversations = new Map<string, AiConversation>()
+  const modelHistory = new Map<string, { messages: number; chars: number }>()
   const bindingRevisions = new Map<string, number>()
   const busy = new Set<string>()
   const sensitiveConversations = new Set<string>()
@@ -271,6 +274,13 @@ export function createMockChatBackend() {
           denial: WorkspaceErrors.AUTHORIZED_ROOT_MISSING,
         } satisfies WorkspaceBaseline)
       }
+      if (
+        method === 'POST' &&
+        (path === '/ai/workspace/code-preparation' ||
+          path === '/ai/workspace/code-dependencies' ||
+          path === '/ai/workspace/code-references')
+      )
+        return result(503, { code: CodeErrors.CODE_GENERATION_CONTEXT_UNAVAILABLE })
       if (method === 'GET' && path.startsWith('/ai/workspace/source')) {
         const query = requestUrl.searchParams
         const target = query.get('path') ?? ''
@@ -380,6 +390,7 @@ export function createMockChatBackend() {
           conversations.set(id, item)
         }
         item.connectionId = target.id
+        if (contextReset || memoryCleared) modelHistory.delete(id)
         item.model = String(body.model)
         bindingRevisions.set(id, target.revision)
         if (memoryCleared && item.workingMemory)
@@ -399,9 +410,53 @@ export function createMockChatBackend() {
       if (method !== 'GET' && busy.has(id))
         return result(409, { code: ChatErrors.CONVERSATION_BUSY })
       if (method === 'GET' && !suffix) return result(200, item)
+      if (suffix === '/model-history' && method === 'GET')
+        return result(200, modelHistory.get(id) ?? { messages: 0, chars: 0 })
+      if (suffix === '/model-history/summary' && method === 'POST') {
+        if (sensitiveConversations.has(id))
+          return result(409, { code: ChatErrors.HISTORY_SUMMARY_SENSITIVE })
+        const usage = modelHistory.get(id)
+        if (!usage?.messages) return result(400, { code: ChatErrors.INVALID_CHAT_REQUEST })
+        return result(200, {
+          text: 'Mock summary: review your goal, constraints and remaining work. No model was called.',
+          sourceMessages: usage.messages,
+          sourceChars: usage.chars,
+          model: item.model ?? 'mock',
+        })
+      }
+      if (suffix === '/model-history' && method === 'DELETE') {
+        modelHistory.delete(id)
+        return result(204, null)
+      }
       if (method === 'PUT' && suffix === '/working-memory') {
-        const allowed = new Set(['goal', 'constraints', 'facts', 'evidenceRefs', 'dependencyKeys'])
+        const allowed = new Set([
+          'goal',
+          'constraints',
+          'facts',
+          'evidenceRefs',
+          'dependencyKeys',
+          'expectedUpdatedAt',
+        ])
         if (Object.keys(body).some((key) => !allowed.has(key)))
+          return result(400, { code: ChatErrors.INVALID_CHAT_REQUEST })
+        if (
+          typeof body.expectedUpdatedAt !== 'string' ||
+          !Number.isFinite(Date.parse(body.expectedUpdatedAt))
+        )
+          return result(400, { code: ChatErrors.INVALID_CHAT_REQUEST })
+        if (body.expectedUpdatedAt !== (item.workingMemory?.updatedAt ?? '1970-01-01T00:00:00Z'))
+          return result(409, { code: ChatErrors.WORKING_MEMORY_CHANGED })
+        if (
+          ('goal' in body && typeof body.goal !== 'string') ||
+          ('constraints' in body && !Array.isArray(body.constraints))
+        )
+          return result(400, { code: ChatErrors.INVALID_CHAT_REQUEST })
+        if (
+          (typeof body.goal === 'string' && body.goal.length > 500) ||
+          (Array.isArray(body.constraints) &&
+            (body.constraints.length > 16 ||
+              body.constraints.some((value) => typeof value !== 'string' || value.length > 200)))
+        )
           return result(400, { code: ChatErrors.INVALID_CHAT_REQUEST })
         const snapshot = {
           goal: typeof body.goal === 'string' ? body.goal : '',
@@ -425,7 +480,9 @@ export function createMockChatBackend() {
             ? body.dependencyKeys.filter((value): value is string => typeof value === 'string')
             : [],
           invalidation: '',
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(
+            Math.max(Date.now(), Date.parse(item.workingMemory?.updatedAt ?? '') + 1 || 0),
+          ).toISOString(),
           layers: ['display_history', 'model_window', 'task_working', 'binding'],
         }
         item.workingMemory = snapshot
@@ -433,6 +490,7 @@ export function createMockChatBackend() {
       }
       if (method === 'DELETE' && !suffix) {
         conversations.delete(id)
+        modelHistory.delete(id)
         bindingRevisions.delete(id)
         sensitiveConversations.delete(id)
         return result(200, {})
@@ -450,6 +508,7 @@ export function createMockChatBackend() {
         if (memoryCleared && body.confirmTargetChange !== true)
           return result(409, { code: CodeErrors.TARGET_CHANGE_CONFIRMATION_REQUIRED })
         item.model = String(body.model)
+        if (memoryCleared) modelHistory.delete(id)
         item.connectionId = target.id
         bindingRevisions.set(id, target.revision)
         if (memoryCleared && item.workingMemory) {
@@ -487,6 +546,10 @@ export function createMockChatBackend() {
           // Yield a microtask only: mock turns are exclusive, without timers or model calls.
           await Promise.resolve()
           const context = body.context as TaskContext | undefined
+          if (body.toolMode === AiToolMode.CODE_SOURCES)
+            return result(503, { code: CodeErrors.CODE_GENERATION_CONTEXT_UNAVAILABLE })
+          if (context?.mode !== undefined && !Object.values(TaskMode).includes(context.mode))
+            return result(400, { code: ChatErrors.INVALID_TASK_CONTEXT })
           if (context?.componentPaths?.length)
             return result(409, { code: 'MOCK_COMPONENT_GRAPH_UNAVAILABLE' })
           let cleared = sensitiveConversations.has(id)
@@ -512,6 +575,7 @@ export function createMockChatBackend() {
                   'files',
                   'prototypeVersionId',
                   'targetPath',
+                  'componentPaths',
                   'taskRef',
                   'knowledgeExpertRef',
                   'skillRef',
@@ -533,7 +597,7 @@ export function createMockChatBackend() {
             const invalid = skillBackend.validate({ ...selection, resourcePaths: [] })
             if (invalid) return reply(invalid.status, invalid.data)
             if (
-              (context.mode !== undefined && context.mode !== 'chat') ||
+              (context.mode !== undefined && context.mode !== 'chat' && context.mode !== 'plan') ||
               'knowledgeExpertRef' in context ||
               'taskRef' in context
             )
@@ -552,11 +616,15 @@ export function createMockChatBackend() {
             if (body.toolMode !== 'none')
               return reply(400, { code: SkillErrors.SKILL_CONTEXT_MODE_UNSUPPORTED })
           } else if (hasPaths) return reply(400, { code: SkillErrors.INVALID_SKILL_RESOURCE_PATHS })
+          if (context?.mode === 'plan' && body.toolMode !== 'none')
+            return reply(400, { code: ChatErrors.INVALID_TASK_CONTEXT })
+          if (context?.mode === 'plan' && context.targetPath)
+            return reply(503, { code: CodeErrors.CODE_GENERATION_CONTEXT_UNAVAILABLE })
           const hasKnowledge = context && 'knowledgeExpertRef' in context
           if (hasKnowledge) {
             // Runtime parses the identity/mode before send fields, and resolves only after both checks.
             if (
-              ('mode' in context && context.mode !== 'chat') ||
+              ('mode' in context && context.mode !== 'chat' && context.mode !== 'plan') ||
               !validMockExpertRef(context.knowledgeExpertRef)
             )
               return reply(400, { code: AgentErrors.INVALID_EXPERT_CONTEXT })
@@ -581,11 +649,11 @@ export function createMockChatBackend() {
             return reply(409, { code: 'MODEL_TARGET_CHANGED' })
           if (
             body.toolMode !== undefined &&
-            !['none', 'git_status'].includes(String(body.toolMode))
+            !Object.values(AiToolMode).includes(body.toolMode as AiToolMode)
           )
             return reply(400, { code: ChatErrors.INVALID_CHAT_REQUEST })
           if (
-            body.toolMode === 'git_status' &&
+            body.toolMode === AiToolMode.GIT_STATUS &&
             (target.kind === 'chatgpt-plan' || target.wireApi === 'responses')
           )
             return reply(400, { code: ModelErrors.AI_PROTOCOL_TOOLS_UNAVAILABLE })
@@ -659,7 +727,7 @@ export function createMockChatBackend() {
           const derivedCleared =
             body.message.includes('派生清空验收') || body.message.includes('__DERIVED_CLEARED__')
           if (derivedCleared) cleared = true
-          return reply(200, {
+          const response = {
             skillContext: skill ? (skill.data as SkillContext) : null,
             knowledgeContext: knowledge && 'expertRef' in knowledge.data ? knowledge.data : null,
             executionId: `mock-exec-${++sequence}`,
@@ -675,7 +743,14 @@ export function createMockChatBackend() {
             artifacts: [],
             proposal,
             contextBudget: mockContextBudget(body.message),
-          } satisfies AiMessageResult)
+          } satisfies AiMessageResult
+          if (cleared) modelHistory.delete(id)
+          const previous = modelHistory.get(id) ?? { messages: 0, chars: 0 }
+          modelHistory.set(id, {
+            messages: previous.messages + 2,
+            chars: previous.chars + body.message.length + response.answer.length,
+          })
+          return reply(200, response)
         } finally {
           busy.delete(id)
         }
@@ -689,6 +764,7 @@ export function createMockChatBackend() {
         return result(200, {
           proposal,
           status: saved.status,
+          dependencies: [],
           result: null,
           reason: saved.reason,
         })
@@ -728,6 +804,7 @@ export function createMockChatBackend() {
         return result(200, {
           proposal,
           status: 'REFUSED',
+          dependencies: [],
           result: null,
           reason: ExecutionErrors.OPERATOR_REFUSED,
         })

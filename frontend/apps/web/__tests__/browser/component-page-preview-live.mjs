@@ -1,3 +1,4 @@
+import { loadPlaywright } from './playwright-runtime.mjs'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
@@ -15,7 +16,7 @@ const host = JSON.parse(
 )
 const output = resolve('apps/web/__tests__/browser/artifacts/component-page-delivery')
 await mkdir(output, { recursive: true })
-const { chromium } = createRequire(import.meta.url)(process.env.EAP_PLAYWRIGHT_MODULE)
+const { chromium } = loadPlaywright()
 const server = await createServer({
   configFile: false,
   root: resolve('apps/web'),

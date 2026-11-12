@@ -13,6 +13,7 @@ import {
   Tabs,
   Textarea,
 } from '@eap/ui'
+import DocumentEditor from './DocumentEditor.vue'
 import { errorMessage } from '../../lib/presentation'
 const { t } = useI18n()
 const renameDiscardOpen = ref(false)
@@ -25,6 +26,7 @@ function closeRename() {
   else editing.value = false
 }
 const filter = ref('')
+const editingDocument = ref(false)
 const bases = ref<Array<{ id: string; name: string; description: string; documents: number }>>([])
 const documents = ref<Array<{ id: string; title: string; content: string }>>([])
 const selected = ref(''),
@@ -411,7 +413,7 @@ defineExpose({
               <EmptyState v-if="!documents.length">暂无文档，点击录入文档添加知识。</EmptyState>
             </div>
             <Dialog
-              v-if="activeDocument"
+              v-if="activeDocument && !editingDocument"
               :title="activeDocument.title"
               size="lg"
               :busy="busy"
@@ -420,6 +422,12 @@ defineExpose({
               <article v-if="activeDocument">
                 <div class="result-heading">
                   <h3>{{ activeDocument.title }}</h3>
+                  <Button
+                    :disabled="busy"
+                    data-testid="knowledge-edit-open"
+                    @click="editingDocument = true"
+                    >{{ t('product.editDocument') }}</Button
+                  >
                   <Button
                     variant="danger"
                     :disabled="busy"
@@ -470,6 +478,20 @@ defineExpose({
       </template>
     </div>
 
+    <DocumentEditor
+      v-if="editingDocument && activeDocument"
+      :key="activeDocument.id"
+      :base-id="selected"
+      :document="activeDocument"
+      @close="editingDocument = false"
+      @saved="
+        (document) => {
+          documents = documents.map((item) => (item.id === document.id ? document : item))
+          activeDocument = document
+          editingDocument = false
+        }
+      "
+    />
     <ConfirmBox
       v-if="renameDiscardOpen"
       :title="t('product.discardTitle')"

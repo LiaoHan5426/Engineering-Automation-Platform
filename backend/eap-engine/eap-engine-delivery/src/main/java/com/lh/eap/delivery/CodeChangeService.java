@@ -59,9 +59,99 @@ public final class CodeChangeService {
     }
     public record ProposalStatus(Proposal proposal, String status, Applied result, String reason) {
         public ProposalStatus { CodeProposalStatus.fromWire(status); }
+        @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public List<ComponentGraph.Edge> dependencies() {
+            return ComponentGraph.validate(proposal.files().getFirst().path(), proposal.files());
+        }
     }
     /** Read-only snapshot for delivery gates. Does not return file contents. */
     public record Baseline(String path, boolean exists, String baseHash, String denial) {}
+    public record PreparationFile(String path, boolean exists, String baseHash, int bytes) {}
+    public record Preparation(String workspace, List<PreparationFile> files, int totalBytes) {}
+
+    /** Read-only preparation uses exactly the same path/read/size contract as generation. */
+    public Preparation inspectPreparation(String relative, List<String> companions) {
+        validateSelection(relative, companions);
+        try {
+            String workspace = runtime.workspace().toRealPath().toString();
+            var paths = Stream.concat(Stream.of(relative), companions.stream()).toList();
+            for (String path : paths) target(path, true);
+            var sources = generationSources(paths);
+            if (!workspace.equals(runtime.workspace().toRealPath().toString())) throw contextUnavailable();
+            var files = sources.stream().map(file -> new PreparationFile(file.path(), file.content() != null,
+                    file.baseHash(), file.content() == null ? 0 : file.content().getBytes(StandardCharsets.UTF_8).length)).toList();
+            return new Preparation(workspace, files, files.stream().mapToInt(PreparationFile::bytes).sum());
+        } catch (IOException unavailable) { throw contextUnavailable(); }
+    }
+    /** Bounded source material for planning, without a generation snapshot or write authority. */
+    public List<SourceExcerpt> planningSources(String entry, List<String> companions) {
+        validateSelection(entry, companions);
+        try {
+            var sources = generationSources(Stream.concat(Stream.of(entry), companions.stream()).toList());
+            return sources.stream().map(file -> new SourceExcerpt(file.path(), file.content() != null,
+                    file.baseHash(), file.content() == null ? 0 : file.content().getBytes(StandardCharsets.UTF_8).length,
+                    file.content() == null ? "" : file.content(), "")).toList();
+        } catch (IOException unavailable) { throw contextUnavailable(); }
+    }
+
+    /** Complete read-only reference snapshots, bounded by the existing attachment contract. */
+    public List<SourceExcerpt> inspectReferences(List<String> paths) {
+        if (paths == null || paths.size() > 6 || new java.util.HashSet<>(paths).size() != paths.size()
+                || paths.stream().anyMatch(path -> path == null || path.isBlank() || path.length() > 150))
+            throw rejected(CodeErrors.CODE_GRAPH_TARGETS_INVALID.code());
+        try {
+            String workspace = runtime.workspace().toRealPath().toString();
+            var result = new ArrayList<SourceExcerpt>();
+            int characters = 0;
+            for (String path : paths) {
+                target(path, true); // same explicit workspace grant as implementation preparation
+                String content = generationSource(path);
+                if (content == null) throw contextUnavailable();
+                characters += content.length();
+                if (content.length() > 16000 || characters > 24000)
+                    throw rejected(CodeErrors.CODE_GRAPH_CONTEXT_TOO_LARGE.code());
+                result.add(new SourceExcerpt(path, true, hash(content), content.getBytes(StandardCharsets.UTF_8).length, content, ""));
+            }
+            if (!workspace.equals(runtime.workspace().toRealPath().toString())) throw contextUnavailable();
+            return List.copyOf(result);
+        } catch (IOException unavailable) { throw contextUnavailable(); }
+    }
+
+    public CodeGenerationStore.TaskSnapshot planningTask(TaskRef ref) {
+        if (generations == null) throw contextUnavailable();
+        return generations.planningTask(ref);
+    }
+
+    /** Explicit read-only discovery; never grants writes or creates generation intent. */
+    public Preparation inspectDependencies(String entry) {
+        validateSelection(entry, List.of());
+        if (!ComponentGraph.deliveryPath(entry) || ComponentGraph.resource(entry))
+            throw rejected(CodeErrors.CODE_GRAPH_PATH_DENIED.code());
+        try {
+            var paths = new ArrayList<String>();
+            paths.add(entry);
+            for (int index = 0; index < paths.size(); index++) {
+                var sources = generationSources(paths); // enforce complete-source and aggregate budgets
+                var source = sources.get(index);
+                if (source.content() == null) continue;
+                var edges = ComponentGraph.dependencies(new Change(source.path(), null, source.content(), source.baseHash()), candidate -> {
+                    try { return Files.isRegularFile(target(candidate, false), LinkOption.NOFOLLOW_LINKS); }
+                    catch (IOException failure) { throw contextUnavailable(); }
+                });
+                for (var edge : edges) {
+                    if (edge.from().equals(edge.to())) throw rejected(CodeErrors.CODE_GRAPH_CYCLE.code());
+                    if (paths.contains(edge.to())) continue;
+                    if (paths.size() >= 8) throw rejected(CodeErrors.CODE_GRAPH_TARGETS_INVALID.code());
+                    paths.add(edge.to());
+                }
+            }
+            var sources = generationSources(paths);
+            ComponentGraph.validate(entry, sources.stream().map(file -> new Change(file.path(), null,
+                    file.content() == null ? "" : file.content(), file.baseHash())).toList());
+            return inspectPreparation(entry, paths.subList(1, paths.size()));
+        } catch (IOException unavailable) { throw contextUnavailable(); }
+    }
+
     /**
      * Read-only generation-prep excerpt. Does not grant write authorization.
      * @param excerpt truncated UTF-8 text for UI/model binding; empty when denied or missing
@@ -481,31 +571,20 @@ public final class CodeChangeService {
     }
     public CodeGenerationStore.Snapshot prepareGeneration(String principal, UUID conversation, String relative,
             String prototypeVersionId,String prototypeContentHash,TaskRef taskRef,List<String> componentPaths) {
-        if (relative == null || relative.isBlank()) throw rejected(CodeErrors.CODE_GENERATION_TARGET_REQUIRED.code());
-        if(componentPaths==null||componentPaths.size()>7||new HashSet<>(componentPaths).size()!=componentPaths.size()||componentPaths.contains(relative))throw rejected(CodeErrors.CODE_GRAPH_TARGETS_INVALID.code());
-        if(!componentPaths.isEmpty())for(String path:Stream.concat(Stream.of(relative),componentPaths.stream()).toList())
-            if(path==null||!path.matches("frontend/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*\\.(vue|ts|js)"))throw rejected(CodeErrors.CODE_GRAPH_PATH_DENIED.code());
+        validateSelection(relative, componentPaths);
         if (generations == null) throw contextUnavailable();
         if (prototypeVersionId == null || prototypeContentHash == null
                 || (taskRef == null && prototypeVersionId.isBlank() != prototypeContentHash.isBlank())) throw contextUnavailable();
         try {
             String workspace = runtime.workspace().toRealPath().toString();
-            var targets = new HashSet<Path>();
-            for (String path : Stream.concat(Stream.of(relative), componentPaths.stream()).toList())
-                if (!targets.add(target(path, false))) throw rejected(CodeErrors.CODE_GRAPH_DUPLICATE_TARGET.code());
             var snapshot = generations.capture(taskRef, workspace, prototypeVersionId, task -> {
                 try {
-                    String source = generationSource(relative);
-                    var companions=new ArrayList<ComponentGraph.Source>();int total=source==null?0:source.getBytes(StandardCharsets.UTF_8).length;
-                    for(String path:componentPaths) {
-                        String content=generationSource(path);total+=content==null?0:content.getBytes(StandardCharsets.UTF_8).length;
-                        if(total>48000)throw new LocalizedFailure(LocalizedFailure.Kind.INVALID,CodeErrors.CODE_GRAPH_CONTEXT_TOO_LARGE,48000);
-                        companions.add(new ComponentGraph.Source(path,hash(content),content));
-                    }
+                    var sources = generationSources(Stream.concat(Stream.of(relative), componentPaths.stream()).toList());
+                    var entry = sources.getFirst();
                     String prototypeHash = task == null ? prototypeContentHash : task.prototype() == null ? "" : task.prototype().contentHash();
                     return new CodeGenerationStore.Snapshot(UUID.randomUUID(), principal, conversation,
-                            workspace, relative, hash(source), source, prototypeVersionId, prototypeHash,
-                            Instant.now().truncatedTo(ChronoUnit.MICROS), task,companions);
+                            workspace, relative, entry.baseHash(), entry.content(), prototypeVersionId, prototypeHash,
+                            Instant.now().truncatedTo(ChronoUnit.MICROS), task, sources.subList(1, sources.size()));
                 } catch (IOException failure) { throw contextUnavailable(); }
             });
             if (!snapshot.equals(loadGeneration(snapshot.id()))) throw contextUnavailable();
@@ -513,6 +592,28 @@ public final class CodeChangeService {
         } catch (ResponseStatusException expected) { throw expected; }
         catch (LocalizedFailure expected) { throw expected; }
         catch (Exception failure) { throw contextUnavailable(); }
+    }
+
+    private static void validateSelection(String relative, List<String> componentPaths) {
+        if (relative == null || relative.isBlank()) throw rejected(CodeErrors.CODE_GENERATION_TARGET_REQUIRED.code());
+        if(componentPaths==null||componentPaths.size()>7||new HashSet<>(componentPaths).size()!=componentPaths.size()||componentPaths.contains(relative))throw rejected(CodeErrors.CODE_GRAPH_TARGETS_INVALID.code());
+        if(!componentPaths.isEmpty())for(String path:Stream.concat(Stream.of(relative),componentPaths.stream()).toList())
+            if(!ComponentGraph.deliveryPath(path) || (path.equals(relative) && ComponentGraph.resource(path)))
+                throw rejected(CodeErrors.CODE_GRAPH_PATH_DENIED.code());
+    }
+
+    private List<ComponentGraph.Source> generationSources(List<String> paths) throws IOException {
+        var sources = new ArrayList<ComponentGraph.Source>();
+        var targets = new HashSet<Path>();
+        int total = 0;
+        for (String path : paths) {
+            if (!targets.add(target(path, false))) throw rejected(CodeErrors.CODE_GRAPH_DUPLICATE_TARGET.code());
+            String content = generationSource(path);
+            total += content == null ? 0 : content.getBytes(StandardCharsets.UTF_8).length;
+            if (total > 48000) throw new LocalizedFailure(LocalizedFailure.Kind.INVALID, CodeErrors.CODE_GRAPH_CONTEXT_TOO_LARGE, 48000);
+            sources.add(new ComponentGraph.Source(path, hash(content), content));
+        }
+        return List.copyOf(sources);
     }
 
     private CodeGenerationStore.Snapshot loadGeneration(UUID id) {
@@ -529,6 +630,18 @@ public final class CodeChangeService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, CodeErrors.CODE_GENERATION_BASELINE_CHANGED.code());
         } catch (ResponseStatusException expected) { throw expected; }
         catch (Exception failure) { throw contextUnavailable(); }
+    }
+
+    /** Recheck authority and immutable source/task evidence before an agent can observe a snapshot. */
+    public void checkAgentGeneration(CodeGenerationStore.Snapshot snapshot) {
+        if (snapshot == null || snapshot.taskSnapshot() == null || !snapshot.equals(loadGeneration(snapshot.id())))
+            throw rejected(CodeErrors.CODE_GENERATION_SCOPE_MISMATCH.code());
+        try {
+            for (var file : snapshot.sources()) target(file.path(), true);
+            if (!snapshot.taskSnapshot().equals(generations.planningTask(snapshot.taskSnapshot().binding())))
+                throw rejected(CodeErrors.CODE_TASK_SNAPSHOT_CHANGED.code());
+            verifyGeneration(snapshot);
+        } catch (IOException unavailable) { throw contextUnavailable(); }
     }
 
     private String generationSource(String relative) throws IOException {

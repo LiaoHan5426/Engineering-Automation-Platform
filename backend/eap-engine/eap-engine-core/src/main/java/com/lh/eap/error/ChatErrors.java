@@ -13,6 +13,8 @@ public enum ChatErrors implements PlatformErrorCode {
     INVALID_TASK_CONTEXT,
     UNKNOWN_CONVERSATION,
     WORKING_MEMORY_DELETE_FAILED,
+    WORKING_MEMORY_CHANGED,
+    HISTORY_SUMMARY_SENSITIVE,
     WORKING_MEMORY_SAVE_FAILED;
 
     @Override public String code() { return name(); }

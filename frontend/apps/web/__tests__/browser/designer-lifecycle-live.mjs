@@ -1,3 +1,4 @@
+import { loadPlaywright } from './playwright-runtime.mjs'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -11,7 +12,7 @@ const session = resolve(values.session)
 const input = JSON.parse(await readFile(resolve(session, 'browser-input.json'), 'utf8'))
 assert.equal(input.session, session)
 assert.match(input.base, /^http:\/\/127\.0\.0\.1:\d+$/)
-const { chromium } = createRequire(import.meta.url)(process.env.EAP_PLAYWRIGHT_MODULE)
+const { chromium } = loadPlaywright()
 const server = await createServer({
   configFile: false,
   root: resolve(input.frontend, 'apps/web'),

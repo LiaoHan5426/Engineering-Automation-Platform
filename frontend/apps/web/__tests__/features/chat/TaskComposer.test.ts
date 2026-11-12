@@ -314,7 +314,7 @@ describe('engineering task composer', () => {
     await nextTick()
     expect(
       (element!.querySelector('[data-testid="execution-plan"]') as HTMLButtonElement).disabled,
-    ).toBe(true)
+    ).toBe(false)
     expect(
       (element!.querySelector('[data-testid="execution-agent"]') as HTMLButtonElement).disabled,
     ).toBe(true)
@@ -500,7 +500,7 @@ describe('engineering task composer', () => {
     expect(meter()).not.toMatch(/\d+\s*tokens?/i)
   })
 
-  it('opens the add menu from the context meter and labels high effort as max', async () => {
+  it('opens attachments from the add entry and labels high effort as max', async () => {
     const context = ref(empty())
     element = document.createElement('div')
     document.body.append(element)
@@ -518,7 +518,7 @@ describe('engineering task composer', () => {
     })
     app.use(i18n).mount(element)
     await nextTick()
-    ;(element!.querySelector('[data-testid=context-meter]') as HTMLButtonElement).click()
+    ;(element!.querySelector('[data-testid=composer-add]') as HTMLButtonElement).click()
     await nextTick()
     expect(element!.querySelector('[data-testid=composer-add-menu]')).not.toBeNull()
     expect(

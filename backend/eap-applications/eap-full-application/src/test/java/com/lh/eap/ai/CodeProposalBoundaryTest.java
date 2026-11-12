@@ -10,6 +10,85 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.web.server.ResponseStatusException;
 
 class CodeProposalBoundaryTest {
+    @Test void referenceSnapshotsAreCompleteBoundedAndNeverReserveGeneration() throws Exception {
+        Files.writeString(root.resolve("Host.ts"), "export const route = '#/detail'\n");
+        var service = service();
+        var references = service.inspectReferences(List.of("Host.ts"));
+        assertEquals(Files.readString(root.resolve("Host.ts")), references.getFirst().excerpt());
+        assertEquals(Files.size(root.resolve("Host.ts")), references.getFirst().bytes());
+        assertTrue(proposals.rows.isEmpty());
+        assertEquals("CODE_GRAPH_TARGETS_INVALID", assertThrows(ResponseStatusException.class,
+                () -> service.inspectReferences(List.of("Host.ts", "Host.ts"))).getReason());
+        Files.writeString(root.resolve("Large.ts"), "x".repeat(16001));
+        assertEquals("CODE_GRAPH_CONTEXT_TOO_LARGE", assertThrows(ResponseStatusException.class,
+                () -> service.inspectReferences(List.of("Large.ts"))).getReason());
+        Files.writeString(root.resolve("One.ts"), "x".repeat(13000));
+        Files.writeString(root.resolve("Two.ts"), "x".repeat(13000));
+        assertEquals("CODE_GRAPH_CONTEXT_TOO_LARGE", assertThrows(ResponseStatusException.class,
+                () -> service.inspectReferences(List.of("One.ts", "Two.ts"))).getReason());
+        Files.writeString(root.resolve("Sensitive.ts"), "const authorization = 'Bearer abcdefghijklmnop';");
+        assertThrows(ResponseStatusException.class, () -> service.inspectReferences(List.of("Sensitive.ts")));
+        assertThrows(ResponseStatusException.class, () -> service.inspectReferences(List.of("missing.ts")));
+        assertThrows(ResponseStatusException.class, () -> service.inspectReferences(List.of("../Host.ts")));
+        var denied = new CodeChangeService(new RuntimeWorkspace(root, root.resolve("absent").toString()));
+        assertThrows(ResponseStatusException.class, () -> denied.inspectReferences(List.of("Host.ts")));
+    }
+    @Test void preparationReadsTheSameCompleteSourcesAsGenerationWithoutCreatingIntent() throws Exception {
+        Files.createDirectories(root.resolve("frontend"));
+        Files.writeString(root.resolve("frontend/Form.vue"), "<template><p>Task</p></template>");
+        Files.writeString(root.resolve("frontend/copy.json"), "{\"name\":\"Task\"}");
+        var service = service();
+        var result = service.inspectPreparation("frontend/Form.vue", List.of("frontend/copy.json", "frontend/form.css"));
+        assertEquals(List.of(true, true, false), result.files().stream().map(CodeChangeService.PreparationFile::exists).toList());
+        assertEquals("absent", result.files().getLast().baseHash());
+        assertTrue(proposals.rows.isEmpty());
+        var snapshot = service.prepareGeneration(AiConversationRegistry.PRINCIPAL, conversation,
+                "frontend/Form.vue", "", "", null, List.of("frontend/copy.json", "frontend/form.css"));
+        assertEquals(snapshot.sources().stream().map(file -> file.baseHash()).toList(),
+                result.files().stream().map(CodeChangeService.PreparationFile::baseHash).toList());
+        assertEquals("CODE_GRAPH_TARGETS_INVALID", assertThrows(ResponseStatusException.class,
+                () -> service.inspectPreparation("frontend/Form.vue", List.of("frontend/Form.vue"))).getReason());
+        Files.writeString(root.resolve("frontend/copy.json"), "x".repeat(24001));
+        assertThrows(ResponseStatusException.class, () -> service.inspectPreparation("frontend/Form.vue", List.of("frontend/copy.json")));
+        var denied = new CodeChangeService(new RuntimeWorkspace(root, root.resolve("absent").toString()));
+        assertThrows(ResponseStatusException.class, () -> denied.inspectPreparation("frontend/Form.vue", List.of()));
+    }
+    @Test void discoversBoundedDependenciesUsingProposalSyntaxWithoutIntent() throws Exception {
+        Files.createDirectories(root.resolve("frontend"));
+        Files.writeString(root.resolve("frontend/Page.vue"), "<script setup>import './style.css'; const page = () => import('./Detail.vue')</script>");
+        Files.writeString(root.resolve("frontend/Detail.vue"), "<script setup>import copy from './copy.json'</script>");
+        Files.writeString(root.resolve("frontend/style.css"), "p {color: red}");
+        Files.writeString(root.resolve("frontend/copy.json"), "{\"title\":\"Detail\"}");
+        var result = service().inspectDependencies("frontend/Page.vue");
+        assertEquals(Set.of("frontend/Page.vue", "frontend/Detail.vue", "frontend/style.css", "frontend/copy.json"),
+                new HashSet<>(result.files().stream().map(CodeChangeService.PreparationFile::path).toList()));
+        assertTrue(proposals.rows.isEmpty());
+        Files.writeString(root.resolve("frontend/Detail.vue"), "<script>import './Page.vue'</script>");
+        assertEquals("CODE_GRAPH_CYCLE", assertThrows(ResponseStatusException.class,
+                () -> service().inspectDependencies("frontend/Page.vue")).getReason());
+        Files.writeString(root.resolve("frontend/Detail.vue"), "<script>import './missing.vue'</script>");
+        assertEquals("CODE_GRAPH_UNDECLARED_IMPORT", assertThrows(ResponseStatusException.class,
+                () -> service().inspectDependencies("frontend/Page.vue")).getReason());
+    }
+    @Test void dependencyDiscoveryRejectsCyclesAmbiguityAndExcessiveScope() throws Exception {
+        Files.createDirectories(root.resolve("frontend"));
+        Files.writeString(root.resolve("frontend/Page.ts"), "import './Page.ts'");
+        assertEquals("CODE_GRAPH_CYCLE", assertThrows(ResponseStatusException.class,
+                () -> service().inspectDependencies("frontend/Page.ts")).getReason());
+        Files.writeString(root.resolve("frontend/Page.ts"), "import './copy'");
+        Files.writeString(root.resolve("frontend/copy.ts"), "export const title='a'");
+        Files.writeString(root.resolve("frontend/copy.js"), "export const title='b'");
+        assertEquals("CODE_GRAPH_UNDECLARED_IMPORT", assertThrows(ResponseStatusException.class,
+                () -> service().inspectDependencies("frontend/Page.ts")).getReason());
+        var imports = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            imports.append("import './file").append(i).append(".ts';\n");
+            Files.writeString(root.resolve("frontend/file" + i + ".ts"), "export const x=1");
+        }
+        Files.writeString(root.resolve("frontend/Page.ts"), imports);
+        assertEquals("CODE_GRAPH_TARGETS_INVALID", assertThrows(ResponseStatusException.class,
+                () -> service().inspectDependencies("frontend/Page.ts")).getReason());
+    }
     @TempDir Path root;
     final InMemoryCodeGenerationStore generations = new InMemoryCodeGenerationStore();
     final InMemoryCodeProposalStore proposals = new InMemoryCodeProposalStore();

@@ -36,6 +36,7 @@ const decision = {
     decision: 'ACCEPT' as const,
     criteriaConfirmed: true,
     previewConfirmed: true,
+    previewUrl: 'http://127.0.0.1:5193/',
     comment: 'literal comment',
   },
 }
@@ -99,7 +100,7 @@ it.each([
   { ...submission, paths: [' frontend/App.vue'] },
   { ...submission, paths: ['frontend/../secret.ts'] },
   { ...submission, paths: ['backend/Foo.ts'] },
-  { ...submission, paths: ['frontend/config.json'] },
+  { ...submission, paths: ['frontend/config.exe'] },
   { ...submission, paths: ['frontend\\App.vue'] },
   { ...submission, paths: [7] },
   { ...submission, paths: Array.from({ length: 9 }, (_, i) => `frontend/File${i}.ts`) },

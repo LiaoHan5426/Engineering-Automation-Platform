@@ -44,9 +44,15 @@ public class ApiErrorHandler {
     public ProblemDetail database(DataAccessException error, HttpServletRequest request, HttpServletResponse response){return problem(HttpStatus.SERVICE_UNAVAILABLE,CommonErrors.DATA_SERVICE_UNAVAILABLE.code(),error,request,response);}
     @ExceptionHandler(Exception.class)
     public ProblemDetail unexpected(Exception error, HttpServletRequest request, HttpServletResponse response){
+        if (org.springframework.web.util.DisconnectedClientHelper.isClientDisconnectedException(error)) {
+            log.debug("Client disconnected while writing route {}", request.getAttribute(org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE));
+            return null;
+        }
         int status=error instanceof ErrorResponse declared?declared.getStatusCode().value():500;
         var result=problems.create(status,status<500?CommonErrors.INVALID_REQUEST.code():CommonErrors.UNEXPECTED_ERROR.code(),request,response);
-        log.warn("API request {} failed: code={}, type={}, status={}",result.getProperties().get("requestId"),result.getProperties().get("code"),error.getClass().getSimpleName(),status);
+        log.warn("API request {} failed: code={}, type={}, status={}, route={}, cause={}, committed={}",result.getProperties().get("requestId"),result.getProperties().get("code"),error.getClass().getSimpleName(),status,
+                request.getAttribute(org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE),
+                error.getCause() == null ? "none" : error.getCause().getClass().getSimpleName(), response.isCommitted());
         return result;
     }
     private ProblemDetail problem(HttpStatus status,String code,Exception error,HttpServletRequest request,HttpServletResponse response){

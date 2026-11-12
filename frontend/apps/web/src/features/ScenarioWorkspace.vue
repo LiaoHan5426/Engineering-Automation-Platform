@@ -4,7 +4,7 @@ import { ExecutionErrors } from '@eap/runtime-client'
 import { CodeErrors } from '@eap/runtime-client'
 
 import { useI18n } from 'vue-i18n'
-import { ActionCard, Button, Checkbox, Input, Select, Tabs, Tag, Textarea } from '@eap/ui'
+import { ActionCard, Button, Checkbox, Input, Select, Tabs, Tag, Textarea, Feedback } from '@eap/ui'
 import { IconPlus } from '@eap/ui'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRef, watch } from 'vue'
 import {
@@ -13,6 +13,7 @@ import {
   type VerificationProbe,
   type WorkspaceBaseline,
   type WorkspaceSource,
+  type SkillSummary,
 } from '@eap/runtime-client'
 
 import { scenarioWorkspaceState } from './shell/scenarioWorkspaceState'
@@ -47,7 +48,6 @@ import {
   workspaceDirty,
 } from './shell/runtimeIdentity'
 import { deliveryBlocked, resolveDeliveryGates } from './shell/deliveryGates'
-import { pagePreviewMessageKey, resolvePagePreview } from './shell/pagePreview'
 import { resolveDeliveryDependencies } from './shell/scenarioDependencies'
 import type { PluginHost } from './plugins/host'
 import ScenarioComposition from './plugins/ScenarioComposition.vue'
@@ -72,6 +72,50 @@ const sceneView = toRef(scenarioWorkspaceState, 'view')
 const workflowTab = toRef(scenarioWorkspaceState, 'workflowTab')
 /** frame-088 detail sections: basics / tools / skills / MCP. */
 const detailTab = toRef(scenarioWorkspaceState, 'detailTab')
+const skillCatalog = ref<SkillSummary[]>([])
+const skillsLoading = ref(false),
+  skillsLoaded = ref(false),
+  skillsError = ref(''),
+  skillToAdd = ref('')
+let skillsTicket = 0
+const skillIds = computed(() => [...new Set(skillCatalog.value.map((item) => item.id))])
+function enabledSkillCount(id: string) {
+  return skillCatalog.value.filter((item) => item.id === id && item.enabled).length
+}
+async function loadSkillCatalog() {
+  const ticket = ++skillsTicket
+  skillsLoading.value = true
+  skillsLoaded.value = false
+  skillsError.value = ''
+  try {
+    const result = await runtimeApi.skills()
+    if (ticket !== skillsTicket) return
+    skillCatalog.value = result.items
+    skillsLoaded.value = true
+  } catch {
+    if (ticket === skillsTicket) skillsError.value = t('skill.scenarioCatalogFailed')
+  } finally {
+    if (ticket === skillsTicket) skillsLoading.value = false
+  }
+}
+function addSkillDeclaration() {
+  if (
+    activeScenario.value.builtin !== false ||
+    !skillsLoaded.value ||
+    !skillIds.value.includes(skillToAdd.value) ||
+    activeScenario.value.skills.includes(skillToAdd.value) ||
+    activeScenario.value.skills.length >= 30
+  )
+    return
+  activeScenario.value.skills.push(skillToAdd.value)
+  skillToAdd.value = ''
+}
+watch(detailTab, (tab) => {
+  if (tab === 'skills') void loadSkillCatalog()
+})
+onBeforeUnmount(() => {
+  skillsTicket++
+})
 const baseline = ref<WorkspaceBaseline | null>(null)
 const source = ref<WorkspaceSource | null>(null)
 const prepSettled = ref(false)
@@ -285,16 +329,7 @@ const liveProbeLine = computed(() => {
     summary: item.summary || '—',
   })
 })
-const livePreview = computed(() =>
-  resolvePagePreview({
-    origin: typeof window !== 'undefined' ? window.location.origin : '',
-  }),
-)
-const livePreviewLine = computed(() =>
-  livePreview.value.ready
-    ? t(pagePreviewMessageKey(livePreview.value), { url: livePreview.value.url })
-    : t(pagePreviewMessageKey(livePreview.value)),
-)
+const livePreviewLine = computed(() => t('desktop.deliveryPreview'))
 const acceptance = reactive<AcceptanceState>(
   loadAcceptance(typeof sessionStorage !== 'undefined' ? sessionStorage : null),
 )
@@ -662,7 +697,7 @@ onMounted(() => {
             },
             {
               id: 'skills',
-              label: `${t('desktop.sceneDetailSkills')} 0/${activeScenario.skills.length}`,
+              label: `${t('desktop.sceneDetailSkills')} (${activeScenario.skills.length})`,
               testId: 'scene-tab-skills',
             },
             {
@@ -835,12 +870,61 @@ onMounted(() => {
           <p v-if="!activeScenario.tools.length" class="hint">{{ t('desktop.notConnected') }}</p>
         </template>
         <template v-else-if="detailTab === 'skills'">
+          <p>{{ t('skill.scenarioConfig') }}</p>
+          <Feedback v-if="skillsError" tone="error">{{ skillsError }}</Feedback>
+          <Button
+            :disabled="skillsLoading"
+            data-testid="scene-skills-refresh"
+            @click="loadSkillCatalog"
+            >{{ t('skill.refresh') }}</Button
+          >
+          <div v-if="activeScenario.builtin === false" class="scene-config">
+            <Select
+              v-model="skillToAdd"
+              :disabled="skillsLoading || !skillsLoaded"
+              data-testid="scene-skill-select"
+              :aria-label="t('skill.scenarioAdd')"
+            >
+              <option value="">{{ t('skill.scenarioAdd') }}</option>
+              <option
+                v-for="id in skillIds.filter((id) => !activeScenario.skills.includes(id))"
+                :key="id"
+                :value="id"
+              >
+                {{ id }}
+              </option>
+            </Select>
+            <Button
+              :disabled="
+                !skillToAdd || skillsLoading || !skillsLoaded || activeScenario.skills.length >= 30
+              "
+              data-testid="scene-skill-add"
+              @click="addSkillDeclaration"
+              >{{ t('skill.scenarioAdd') }}</Button
+            >
+          </div>
           <p v-if="!activeScenario.skills.length" class="hint" data-testid="skills-empty">
             {{ t('desktop.skillsEmpty') }}
           </p>
           <ul data-testid="scene-skills-list">
             <li v-for="skill in activeScenario.skills" :key="skill">
-              {{ skill }} · {{ t('desktop.notConnected') }}
+              {{ skill }} ·
+              {{
+                skillsLoading
+                  ? t('skill.loading')
+                  : skillsLoaded
+                    ? enabledSkillCount(skill)
+                      ? t('skill.scenarioVersions', { count: enabledSkillCount(skill) })
+                      : t('skill.scenarioNoVersion')
+                    : t('desktop.notConnected')
+              }}
+              <Button
+                v-if="activeScenario.builtin === false"
+                size="sm"
+                :aria-label="t('skill.scenarioRemove') + ': ' + skill"
+                @click="activeScenario.skills = activeScenario.skills.filter((id) => id !== skill)"
+                >{{ t('skill.scenarioRemove') }}</Button
+              >
             </li>
           </ul>
         </template>
@@ -981,9 +1065,6 @@ onMounted(() => {
           >
           <p data-testid="live-verification-probe">{{ liveProbeLine }}</p>
           <p data-testid="live-preview">{{ livePreviewLine }}</p>
-          <p v-if="livePreview.ready" class="hint">
-            <a data-testid="live-preview-link" :href="livePreview.url">{{ livePreview.url }}</a>
-          </p>
           <fieldset class="acceptance-checklist" data-testid="acceptance-checklist">
             <legend>{{ t('desktop.acceptanceTitle') }}</legend>
             <p data-testid="acceptance-status">{{ acceptanceLine }}</p>

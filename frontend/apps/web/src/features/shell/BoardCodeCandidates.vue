@@ -17,7 +17,7 @@ import ProposalApplication from '../../components/ProposalApplication.vue'
 import ProposalDiffView from '../../components/ProposalDiffView.vue'
 import DeliveryEvidencePanel from '../../components/DeliveryEvidencePanel.vue'
 const props = defineProps<{ task: BoardTask; disabled?: boolean }>()
-const emit = defineEmits<{ pending: [value: boolean]; changed: [] }>()
+const emit = defineEmits<{ pending: [value: boolean]; changed: []; runs: [] }>()
 const { t } = useI18n()
 const page = ref<BoardCodeCandidates | null>(null),
   opened = ref<CodeProposalState | null>(null)
@@ -277,6 +277,7 @@ onBeforeUnmount(() => {
         :operations="operations"
         @pending="writing = $event"
         @applied="emit('changed')"
+        @continue="emit('runs')"
       />
       <p v-if="actionNote" role="status">{{ actionNote }}</p>
       <Button

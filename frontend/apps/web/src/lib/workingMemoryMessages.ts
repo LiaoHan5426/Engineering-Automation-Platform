@@ -1,5 +1,13 @@
 export const workingMemoryMessages = {
   'zh-CN': {
+    edit: '编辑目标与约束',
+    refresh: '重新读取',
+    save: '保存任务记忆',
+    adopt: '带入当前草稿',
+    editBoundary:
+      '目标最多500字，约束每行一条，最多16条、每条200字。事实和证据引用保持不变。保存不会发送给模型；需要时明确带入草稿。发生冲突时保留输入，请关闭并重新读取后核对。',
+    discard: '放弃未保存的任务记忆？',
+    discardImpact: '只放弃本次编辑，已保存的任务记忆保持不变。',
     title: '任务摘要',
     details: '查看关联资料',
     layers: '分层',
@@ -11,11 +19,17 @@ export const workingMemoryMessages = {
     invalidation: '已失效',
     stickyClearRetained: '为保护资料，旧的上下文不会自动恢复。请核对当前目标和引用后再继续。',
     empty: '尚未保存任务目标。',
-    saveGoal: '保存目标',
-    goalPlaceholder: '记录当前任务目标',
     note: '保存目标和约束，便于下次继续。切换模型、任务或资料后，请重新核对摘要。',
   },
   'en-US': {
+    edit: 'Edit goal and constraints',
+    refresh: 'Reload',
+    save: 'Save task memory',
+    adopt: 'Add to current draft',
+    editBoundary:
+      'Goal: up to 500 characters. Constraints: one per line, up to 16 lines of 200 characters. Fact and evidence references remain unchanged. Saving does not send to the model; explicitly add it to your draft when needed. Conflicts retain your input; close and reload to review.',
+    discard: 'Discard unsaved task memory?',
+    discardImpact: 'Only these edits are discarded. Saved task memory stays unchanged.',
     title: 'Task summary',
     details: 'Related material',
     layers: 'Layers',
@@ -28,8 +42,6 @@ export const workingMemoryMessages = {
     stickyClearRetained:
       'Previous context will not be restored automatically. Review the current goal and references before continuing.',
     empty: 'No task goal saved yet.',
-    saveGoal: 'Save goal',
-    goalPlaceholder: 'Record the current task goal',
     note: 'Save goals and constraints for later. Review the summary after changing the model, task or material.',
   },
 } as const

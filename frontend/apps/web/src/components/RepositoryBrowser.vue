@@ -9,8 +9,8 @@ import { useI18n } from 'vue-i18n'
 import { runtimeApi, type WorkspaceSource } from '@eap/runtime-client'
 
 const props = withDefaults(
-  defineProps<{ selectable?: boolean; disabled?: boolean; filter?: string; compact?: boolean }>(),
-  { selectable: false, disabled: false, filter: '', compact: false },
+  defineProps<{ selectable?: boolean; disabled?: boolean; filter?: string }>(),
+  { selectable: false, disabled: false, filter: '' },
 )
 const emit = defineEmits<{ select: [source: WorkspaceSource] }>()
 const { t, te } = useI18n()
@@ -184,7 +184,7 @@ onMounted(() => {
       </template>
     </Tree>
     <p v-if="rootMeta.truncated" class="hint">{{ t('desktop.fileTruncated') }}</p>
-    <article v-if="source && !error && !compact" data-testid="repo-source">
+    <article v-if="source && !error" data-testid="repo-source">
       <strong>{{ source.path }}</strong>
       <small>SHA-256 · {{ source.baseHash }}</small>
       <pre>{{ source.excerpt }}</pre>

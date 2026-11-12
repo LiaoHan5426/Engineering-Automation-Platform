@@ -1,3 +1,4 @@
+import { loadPlaywright } from './playwright-runtime.mjs'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
@@ -19,7 +20,7 @@ const output = resolve('apps/web/__tests__/browser/artifacts/component-page-deli
 await mkdir(output, { recursive: true })
 const proposal = session.final.proposal
 const target = proposal.files[0].path
-const { chromium } = createRequire(import.meta.url)(process.env.EAP_PLAYWRIGHT_MODULE)
+const { chromium } = loadPlaywright()
 const server = await createServer({
   configFile: false,
   root: resolve(workspace, 'frontend/apps/web'),
@@ -118,7 +119,7 @@ try {
     const applicationResponse = await applied
     assert.equal(applicationResponse.status(), 200, await applicationResponse.text())
   }
-  await page.getByTestId('application-identities').waitFor()
+  await page.getByTestId('application-recorded').waitFor()
   for (const file of proposal.files)
     assert.equal(await readFile(resolve(workspace, file.path), 'utf8'), file.content)
   session.applied = await api('GET', applicationRead)
@@ -307,6 +308,7 @@ try {
         decision: 'ACCEPT',
         criteriaConfirmed: false,
         previewConfirmed: false,
+        previewUrl: 'http://127.0.0.1:5174/',
         comment: 'Missing statements must be rejected',
       },
       400,
@@ -317,6 +319,7 @@ try {
       null,
     )
     await page.getByTestId('delivery-criteria').check()
+    await page.getByTestId('delivery-preview-url').fill('http://127.0.0.1:5174/#chat')
     await page.getByTestId('delivery-preview').check()
     await page
       .getByTestId('delivery-comment')
@@ -347,6 +350,7 @@ try {
     decision: 'ACCEPT',
     criteriaConfirmed: true,
     previewConfirmed: true,
+    previewUrl: 'http://127.0.0.1:5174/',
     comment: decision.comment,
   }
   assert.deepEqual(

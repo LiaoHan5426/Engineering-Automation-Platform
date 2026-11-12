@@ -8,12 +8,13 @@ import { CodeProposalStatus } from '@eap/runtime-client'
 import { BoardErrors, CodeErrors } from '@eap/runtime-client'
 
 import { onBeforeUnmount, ref, watch } from 'vue'
-import { Button, Checkbox, Feedback, Badge } from '@eap/ui'
+import { Button, Checkbox, Collapse, Feedback, Badge } from '@eap/ui'
 import {
   runtimeApi,
   type CodeProposal,
   type CodeProposalState,
   type CodeApplied,
+  type CodeTaskRef,
 } from '@eap/runtime-client'
 import { useI18n } from 'vue-i18n'
 import SourceWriteReview from './SourceWriteReview.vue'
@@ -23,7 +24,11 @@ const props = defineProps<{
   scopeKey?: string
   operations?: { read: () => Promise<CodeProposalState>; apply: () => Promise<CodeApplied> }
 }>()
-const emit = defineEmits<{ applied: [result: CodeApplied]; pending: [value: boolean] }>()
+const emit = defineEmits<{
+  applied: [result: CodeApplied]
+  pending: [value: boolean]
+  continue: [task: CodeTaskRef]
+}>()
 const { t } = useI18n()
 const state = ref<CodeProposalState | null>(null),
   loading = ref(false),
@@ -170,17 +175,36 @@ watch(writing, (value) => emit('pending', value), { flush: 'sync' })
       />
     </div>
     <p v-if="loading" role="status">{{ t('application.loading') }}</p>
+    <Collapse v-if="state?.dependencies?.length" :summary="t('generation.dependencies')">
+      <ul data-testid="proposal-dependencies">
+        <li v-for="edge in state.dependencies" :key="edge.from + ':' + edge.to">
+          <code>{{ edge.from }}</code> → <code>{{ edge.to }}</code>
+          <Badge>{{ t('generation.dependencyKind.' + edge.kind) }}</Badge>
+        </li>
+      </ul>
+    </Collapse>
     <Feedback v-if="note" tone="warning">{{ note }}</Feedback>
     <p v-if="state?.reason">
       <code>{{ state.reason }}</code>
     </p>
-    <p v-if="state?.status === CodeProposalStatus.APPLIED && state.result?.afterHash">
-      SHA-256：<code>{{ state.result.afterHash }}</code>
-    </p>
-    <p v-if="state?.status === CodeProposalStatus.APPLIED" data-testid="application-identities">
-      {{ t('boardDelivery.conversationId') }}：<code>{{ proposal.conversationId }}</code
-      ><br />{{ t('boardDelivery.proposalId') }}：<code>{{ proposal.id }}</code>
-    </p>
+    <section v-if="state?.status === CodeProposalStatus.APPLIED" data-testid="application-recorded">
+      <Button
+        v-if="state.proposal.generation?.taskBinding"
+        data-testid="application-continue"
+        :disabled="loading || writing"
+        @click="emit('continue', state.proposal.generation.taskBinding)"
+        >{{ t('generation.continueDelivery') }}</Button
+      >
+      <Collapse :summary="t('generation.applicationDetails')">
+        <p v-if="state.result?.afterHash">
+          SHA-256：<code>{{ state.result.afterHash }}</code>
+        </p>
+        <p data-testid="application-identities">
+          {{ t('boardDelivery.conversationId') }}：<code>{{ proposal.conversationId }}</code>
+          <br />{{ t('boardDelivery.proposalId') }}：<code>{{ proposal.id }}</code>
+        </p>
+      </Collapse>
+    </section>
     <p v-if="state?.status === CodeProposalStatus.REFUSED" data-testid="proposal-refused-review">
       {{ t('application.refusedReview') }}
     </p>

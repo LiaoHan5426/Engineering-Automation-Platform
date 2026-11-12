@@ -1,6 +1,12 @@
 /** Presentation and navigation for the management workspaces. */
 export const productMessages = {
   'zh-CN': {
+    editDocument: '编辑文档正文',
+    documentTitle: '文档标题',
+    documentBody: '文档正文',
+    documentEditBoundary:
+      '保存会原子替换当前文档及检索分段，保留文档身份。旧内容哈希不匹配时拒绝覆盖，请重新核对。',
+    documentReadback: '无法确认文档读回结果，请保留草稿并重新核对。',
     skillFormat: '支持的文件格式与大小限制',
     backToList: '返回列表',
     createRulePack: '新建规则包',
@@ -39,6 +45,13 @@ export const productMessages = {
     trustedTools: '可信工具',
   },
   'en-US': {
+    editDocument: 'Edit document',
+    documentTitle: 'Document title',
+    documentBody: 'Document content',
+    documentEditBoundary:
+      'Saving atomically replaces this document and its search chunks while retaining its identity. A changed content hash blocks overwrite.',
+    documentReadback:
+      'The document readback could not be confirmed. Keep the draft and check again.',
     skillFormat: 'Supported formats and file limits',
     backToList: 'Back to list',
     createRulePack: 'Create rule pack',

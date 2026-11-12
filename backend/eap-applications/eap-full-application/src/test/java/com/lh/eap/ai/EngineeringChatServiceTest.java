@@ -18,6 +18,17 @@ import org.springframework.ai.chat.model.*;
 import org.springframework.ai.chat.prompt.Prompt;
 
 class EngineeringChatServiceTest {
+    @Test void planningNeverRegistersGitEvenIfAnInternalCallerRequestsIt() {
+        var calls = new AtomicInteger();
+        var outcome = service(prompt -> {
+            assertTrue(prompt.toString().contains("No tools are available"));
+            return text("Plan: inspect the supplied source, implement, then verify.");
+        }, handler(calls, false)).chat(request(true), true, null,
+                TaskContext.parse(Map.of("mode", "plan")));
+        assertEquals(CliExecution.Status.SUCCEEDED, outcome.execution().status());
+        assertEquals(0, calls.get());
+        assertTrue(outcome.execution().trace().stdoutLines().isEmpty());
+    }
     @TempDir Path root;
     ChatResponse text(String text) { return new ChatResponse(List.of(new Generation(new AssistantMessage(text)))); }
     ChatResponse tool() { return new ChatResponse(List.of(new Generation(AssistantMessage.builder().content("")
@@ -77,6 +88,7 @@ class EngineeringChatServiceTest {
         var outcome = service(p -> turns.getAndIncrement() == 0 ? tool() : text("denied"), handler(calls, false))
                 .chat(request(false));
         assertEquals(0, calls.get()); assertEquals("TOOL_PERMISSION_DENIED", outcome.error());
+        assertEquals(CliExecution.Status.FAILED, outcome.execution().status());
         assertEquals(outcome.error(), outcome.execution().trace().toolError());
     }
     @Test void toolFailureIsSanitized() {
@@ -84,6 +96,7 @@ class EngineeringChatServiceTest {
         var outcome = service(p -> turns.getAndIncrement() == 0 ? tool() : text("tool failed"), handler(new AtomicInteger(), true))
                 .chat(request(true));
         assertEquals("TOOL_FAILED", outcome.error());
+        assertEquals(CliExecution.Status.FAILED, outcome.execution().status());
         assertFalse(outcome.toString().contains("do-not-leak"));
     }
     @Test void missingProviderFailsExplicitly() {
@@ -173,6 +186,7 @@ class EngineeringChatServiceTest {
         var outcome = service(p -> tool(), handler(calls, false)).chat(request(true));
         assertEquals(4, calls.get());
         assertEquals("TOOL_CALL_LIMIT", outcome.error());
+        assertEquals(CliExecution.Status.FAILED, outcome.execution().status());
         assertEquals("TOOL_CALL_LIMIT", outcome.execution().trace().toolError());
     }
     @Test void modelCannotSupplyPathsOrShellArgumentsToReadOnlyTool() {
@@ -187,6 +201,7 @@ class EngineeringChatServiceTest {
             return text("invalid arguments rejected");
         }, handler(calls, false)).chat(request(true));
         assertEquals(0, calls.get()); assertEquals("TOOL_INVALID_ARGUMENTS", outcome.error());
+        assertEquals(CliExecution.Status.FAILED, outcome.execution().status());
     }
     @Test void executionsHaveSeparateEvidenceAndRedactModelOutput() {
         var service = service(p -> text("api_key=confidential Bearer hidden sk-testcredential"), null);

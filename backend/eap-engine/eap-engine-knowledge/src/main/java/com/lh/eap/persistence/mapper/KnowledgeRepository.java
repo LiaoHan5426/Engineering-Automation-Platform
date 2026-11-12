@@ -53,9 +53,26 @@ public class KnowledgeRepository {
                     "knowledgeBaseId",rs.getObject("knowledge_base_id").toString(),
                     "knowledgeBase",SensitiveData.redact(rs.getString("knowledge_base")),
                     "score",rs.getDouble("score"),
-                    "excerpt",SensitiveData.redact(content.substring(0,Math.min(content.length(),1200))),
+                    "excerpt",excerpt(content,terms),
                     "retrievalMode","local-keyword");
         },args.toArray());
+    }
+    /** Redact before clipping so a credential crossing an excerpt boundary cannot be exposed. */
+    public static String excerpt(String content, List<String> terms) {
+        String safe = SensitiveData.redact(content == null ? "" : content);
+        if (safe.length() <= 1200) return safe;
+        String lower = safe.toLowerCase(Locale.ROOT);
+        int match = -1;
+        for (String term : terms) {
+            int index = lower.indexOf(term.toLowerCase(Locale.ROOT));
+            if (index >= 0 && (match < 0 || index < match)) match = index;
+        }
+        int start = match < 0 ? 0 : Math.max(0, match - 200);
+        start = Math.min(start, safe.length() - 1200);
+        if (start > 0 && Character.isLowSurrogate(safe.charAt(start))) start--;
+        int end = Math.min(safe.length(), start + 1200);
+        if (end < safe.length() && Character.isHighSurrogate(safe.charAt(end - 1))) end--;
+        return safe.substring(start, end);
     }
     private static String like(String term){return "%"+term.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%";}
 }

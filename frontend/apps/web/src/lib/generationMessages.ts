@@ -13,18 +13,28 @@ export const generationMessages = {
     adoptTaskImpact:
       '整体采用任务文本、版本身份及原型；当前未发送草稿将被替换，不自动发送。目标文件需明确填写；服务端会再次核对任务版本。',
     taskBinding: '生成前任务绑定',
+    continueDelivery: '继续验证与交付',
+    applicationDetails: '查看应用记录详情',
+    taskLinkFailed: '无法打开关联任务。请核对项目和任务是否仍然可用，然后重新读取。',
+    taskLinkRetry: '重新读取关联任务',
     prebound: '生成前已绑定任务',
     deliveryNext:
       '应用源码后，请回看板运行独立验证并提交源码证据；生成或应用成功不会自动接受交付。',
     removeTask: '移除任务绑定（保留草稿）',
     target: '唯一生成目标',
-    components: '关联组件路径（每行一个，最多7个）',
+    components: '关联页面与资源（每行一个路径，最多 7 个）',
+    dependencies: '查看文件依赖',
+    dependencyKind: {
+      MODULE: '立即加载',
+      LAZY_MODULE: '按需加载',
+      STYLESHEET: '样式导入',
+    },
     componentsHelp:
-      '入口及关联文件会一并冻结、生成和应用；相对静态引用必须连接同一组件图，无额外文件或循环。留空即单文件。',
+      '可选路由模块、Vue 页面、本地 CSS 和 JSON。支持明确路径的按需加载；所有依赖须选定、连通且无循环。留空即单文件。',
     captured: '采集时间',
     prototype: '来源原型',
     targetPlaceholder: '仓库相对路径，例如 frontend/apps/web/src/Example.vue',
-    targetHelp: '无需关联原型。只生成此文件；附件不自动成为目标，路径与完整源码由服务端校验。',
+    targetHelp: '无需关联原型。只生成此入口与明确选择的关联文件；附件不会自动成为目标。',
     absent: '目标不存在（新增文件）',
     'generation-too-large':
       '候选超过完整响应或源码内容上限，已拒绝，不会应用截断内容。草稿保留，请缩小需求范围。',
@@ -38,6 +48,11 @@ export const generationMessages = {
     retry: '核对源码后重新生成',
   },
   'en-US': {
+    continueDelivery: 'Continue to verification and delivery',
+    applicationDetails: 'View application record details',
+    taskLinkFailed:
+      'The linked task could not be opened. Check that the project and task are still available, then read it again.',
+    taskLinkRetry: 'Read linked task again',
     pendingTask:
       'A task draft is ready to adopt. Current input is unchanged and nothing was sent. Confirm to adopt task and prototype together.',
     title: 'Pre-generation snapshot',
@@ -57,14 +72,20 @@ export const generationMessages = {
       'After applying source, run independent checks and submit source evidence on the board. Generation or application never accepts delivery automatically.',
     removeTask: 'Remove task binding (keep draft)',
     target: 'Single generation target',
-    components: 'Companion component paths (one per line, up to 7)',
+    components: 'Related pages and resources (one path per line, up to 7)',
+    dependencies: 'View file dependencies',
+    dependencyKind: {
+      MODULE: 'Eager module',
+      LAZY_MODULE: 'Lazy module',
+      STYLESHEET: 'Stylesheet import',
+    },
     componentsHelp:
-      'Freeze, generate and apply entry and companions together. Static relative imports must connect the selected graph without extra files or cycles. Empty means one file.',
+      'Select route modules, Vue pages, local CSS and JSON. Literal local lazy imports are supported. Select all dependencies and connect them without cycles. Empty means one file.',
     captured: 'Captured at',
     prototype: 'Source prototype',
     targetPlaceholder: 'Repository-relative path, e.g. frontend/apps/web/src/Example.vue',
     targetHelp:
-      'No prototype required. Generate only this file; attachments do not select a target. The server validates the path and complete source.',
+      'No prototype required. Generate the entry and explicitly selected files. Attachments do not select a target.',
     absent: 'Target absent (new file)',
     'generation-too-large':
       'Candidate exceeds the complete response or source content limit. Rejected without applying truncated content. Draft preserved; reduce the requested scope.',

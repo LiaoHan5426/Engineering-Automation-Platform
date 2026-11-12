@@ -1,3 +1,4 @@
+import type { TaskMode } from './taskMode'
 import type { ModelConnectionState } from './modelConnection.ts'
 import type { ChatGptLoginStatus } from './modelConnection.ts'
 import type { SkillContext } from './skillModels.ts'
@@ -27,7 +28,7 @@ export type ModelAdvisor = {
 
 export type AiConnectionState = ModelConnectionState
 
-export type AiToolMode = 'none' | 'git_status'
+export type { AiToolMode } from './aiToolMode'
 
 export type AiStatus = {
   state: AiConnectionState
@@ -72,6 +73,14 @@ export type TaskWorkingMemorySnapshot = {
 export type AiConversationRecovery = AiConversation & {
   contextReset: boolean
   memoryCleared: boolean
+}
+
+export type ModelHistoryUsage = { messages: number; chars: number }
+export type ModelHistorySummary = {
+  text: string
+  sourceMessages: number
+  sourceChars: number
+  model: string
 }
 
 export type AiConversation = {
@@ -213,7 +222,7 @@ export type TaskContext = {
   skillResourcePaths?: string[]
   knowledgeExpertRef?: KnowledgeExpertRef
   taskRef?: CodeTaskRef
-  mode: 'chat' | 'code'
+  mode: TaskMode
   expert: 'general' | 'sql' | 'frontend'
   instructions: string
   reasoning: 'default' | 'low' | 'medium' | 'high'

@@ -3,6 +3,24 @@ import { randomUUID } from 'node:crypto'
 import { expect, it } from 'vite-plus/test'
 import { createMockChatBackend } from '../src/chatBackend'
 import type { BoardTask } from '@eap/runtime-client'
+it('reads a task by exact project and id without exposing it through another project', async () => {
+  const api = createMockChatBackend()
+  const created = await api.handle('POST', '/board/tasks', {
+    requestId: randomUUID(),
+    projectId: 'group',
+    title: 'Exact task',
+    column: 'planned',
+    sessionId: '',
+    goal: '',
+    acceptanceCriteria: '',
+  })
+  const task = created.data as BoardTask
+  expect(await api.handle('GET', '/board/tasks/' + task.id + '?projectId=group')).toMatchObject({
+    status: 200,
+    data: { id: task.id, projectId: 'group' },
+  })
+  expect((await api.handle('GET', '/board/tasks/' + task.id + '?projectId=other')).status).toBe(404)
+})
 it('observes only scoped mock Tasks and never invents or changes execution records', async () => {
   const api = createMockChatBackend()
   await api.handle('POST', '/board/tasks', {
@@ -303,6 +321,32 @@ it('links only existing saved versions with project and revision checks', async 
       acceptance: [],
     })
   ).data as { id: string }
+  const request = {
+    projectId: 'group',
+    title: 'From design',
+    goal: 'Implement',
+    acceptanceCriteria: 'Review',
+    requestId: randomUUID(),
+    versionId: version.id,
+  }
+  const created = await api.handle('POST', '/board/tasks/from-prototype', request)
+  expect(created).toMatchObject({
+    status: 200,
+    data: { prototypeVersionId: version.id, column: 'planned' },
+  })
+  expect(await api.handle('POST', '/board/tasks/from-prototype', request)).toEqual(created)
+  expect(
+    (await api.handle('POST', '/board/tasks/from-prototype', { ...request, title: 'changed' }))
+      .status,
+  ).toBe(409)
+  expect(
+    (
+      await api.handle('POST', '/board/tasks/from-prototype', {
+        ...request,
+        versionId: randomUUID(),
+      })
+    ).status,
+  ).toBe(404)
   const task = (
     await api.handle('POST', '/board/tasks', {
       requestId: randomUUID(),

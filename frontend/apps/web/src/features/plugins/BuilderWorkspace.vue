@@ -9,6 +9,7 @@ import {
 } from '@eap/runtime-client'
 import { errorMessage } from '../../lib/presentation'
 import PrototypeVersionContent from '../../components/PrototypeVersionContent.vue'
+import PrototypeTaskDialog from '../shell/PrototypeTaskDialog.vue'
 import { prototypeVersionDesign } from '../shell/prototypeVersionDesign'
 import { scenarioWorkspaceState } from '../shell/scenarioWorkspaceState'
 import type { PluginHost } from './host'
@@ -22,6 +23,7 @@ const props = withDefaults(
 )
 const { t } = useI18n()
 const surface = ref('design')
+const taskDialog = ref(false)
 const designer = ref<{ guardLeave: () => boolean; prepareDisable: () => boolean }>()
 const unregister = props.host.registerBuilderInstance(
   `builder-${props.instanceId}`,
@@ -73,6 +75,7 @@ async function loadVersions() {
 }
 
 async function openVersion(id: string) {
+  taskDialog.value = false
   const request = ++openRequest
   deliveryRequest += 1
   deliveryBusy.value = false
@@ -88,6 +91,7 @@ async function openVersion(id: string) {
 }
 
 function closeVersion() {
+  taskDialog.value = false
   openRequest += 1
   deliveryRequest += 1
   deliveryBusy.value = false
@@ -197,7 +201,7 @@ onUnmounted(() => {
       </ul>
       <div v-if="opened" data-testid="version-preview">
         <p class="eyebrow">{{ t('plugin.versionPreview') }}</p>
-        <PrototypeVersionContent :version="opened" />
+        <PrototypeVersionContent v-if="surface === 'versions' && props.active" :version="opened" />
         <ul>
           <li v-for="item in opened.acceptance" :key="item">{{ item }}</li>
         </ul>
@@ -205,6 +209,12 @@ onUnmounted(() => {
           {{ t('plugin.versionHash', { hash: opened.contentHash }) }}
         </p>
         <div class="version-actions">
+          <Button
+            :disabled="designBlocked"
+            data-testid="prototype-create-task"
+            @click="taskDialog = true"
+            >{{ t('builder.task.title') }}</Button
+          >
           <Button
             type="button"
             variant="primary"
@@ -235,6 +245,12 @@ onUnmounted(() => {
           {{ t('plugin.deliverySheet', { id: delivery.id, versionId: delivery.versionId }) }}
         </p>
       </div>
+      <PrototypeTaskDialog
+        v-if="taskDialog && opened"
+        :key="opened.id"
+        :version="opened"
+        @close="taskDialog = false"
+      />
     </section>
   </section>
 </template>

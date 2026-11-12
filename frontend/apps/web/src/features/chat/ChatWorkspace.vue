@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { CodeErrors } from '@eap/runtime-client'
+import type { CodePreparationSelection } from '../shell/workbench'
+
+import { AiToolMode, CodeErrors } from '@eap/runtime-client'
 
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -23,16 +25,26 @@ import { errorMessage } from '../../lib/presentation'
 import { createChatSession } from './chatSession'
 import TurnContextDetails from './TurnContextDetails.vue'
 import TaskMemoryPanel from './TaskMemoryPanel.vue'
+import ModelHistoryDialog from './ModelHistoryDialog.vue'
+import ChatExportDialog from './ChatExportDialog.vue'
+import WorkDocumentDialog from './WorkDocumentDialog.vue'
+import TaskPlanDialog from './TaskPlanDialog.vue'
+import CodePreparationDialog from '../shell/CodePreparationDialog.vue'
+import { boardTaskLocation } from '../shell/boardLocation'
+import { boardImplementationDraft } from '../shell/boardImplementationDraft'
+import type { BoardTask } from '@eap/runtime-client'
+import type { ChatTurn } from './chatSession'
 import ConnectionDialog from '../../components/ConnectionDialog.vue'
 import SessionPanel from '../../components/SessionPanel.vue'
-import WorkspaceFileTreeRail from '../../components/WorkspaceFileTreeRail.vue'
 import WorkspaceWelcome from '../../components/WorkspaceWelcome.vue'
 import { chatService, chatStorage } from './chatService'
 import TaskComposer from './TaskComposer.vue'
 import GenerationBaseline from '../../components/GenerationBaseline.vue'
 import ProposalApplication from '../../components/ProposalApplication.vue'
+import { apiStorageScope } from '../../lib/runtimeConfig'
+import { readTaskHandoff, writeTaskHandoff } from '../shell/boardTaskHandoff'
 import { adoptBoardTaskDraft } from './boardTaskDraft'
-import type { CodeProposal } from '@eap/runtime-client'
+import type { CodeProposal, CodeTaskRef } from '@eap/runtime-client'
 import { catalogRefreshNote, type CatalogNote } from './catalogNote'
 import { readFeedScroll, saveFeedScroll } from './feedScroll'
 import { outgoingInstructions } from './outgoing'
@@ -52,7 +64,6 @@ import {
   restorePanel,
   scenarios,
   takeBoardDraft,
-  toggleWorkspaceTree,
   openCandidateDiff,
   workbench,
 } from '../shell/workbench'
@@ -68,8 +79,6 @@ const { t, locale } = useI18n()
 const props = withDefaults(defineProps<{ active?: boolean }>(), {
   active: true,
 })
-const workingGoalDraft = ref('')
-const savingWorkingGoal = ref(false)
 const feedPort = ref<{ getEl: () => HTMLElement | null } | null>(null)
 const shownTurns = ref(40)
 const loadingOlder = ref(false)
@@ -129,28 +138,6 @@ const session = createChatSession(
   api,
   typeof localStorage === 'undefined' ? undefined : chatStorage(localStorage),
 )
-async function saveWorkingGoal() {
-  const goal = workingGoalDraft.value.trim()
-  if (!goal || savingWorkingGoal.value) return
-  const id = session.conversationId.value
-  savingWorkingGoal.value = true
-  const current = session.workingMemory.value
-  try {
-    await session.saveWorkingMemory({
-      goal,
-      constraints: current?.constraints ?? [],
-      facts: current?.facts ?? [],
-      evidenceRefs: current?.evidenceRefs ?? [],
-      dependencyKeys: current?.dependencyKeys ?? [],
-    })
-    if (session.conversationId.value === id && workingGoalDraft.value.trim() === goal)
-      workingGoalDraft.value = ''
-  } catch {
-    if (session.conversationId.value === id) session.failure.value = 'failed'
-  } finally {
-    savingWorkingGoal.value = false
-  }
-}
 const visibleTurns = computed(() => {
   const all = session.turns.value
   const start = Math.max(0, all.length - shownTurns.value)
@@ -182,6 +169,7 @@ const deleteId = ref<string | null>(null)
 const historyNote = ref('')
 const boardNote = ref('')
 const adoptingBoardDraft = ref(false)
+const answerHandoffPending = ref(false)
 function adoptPendingBoardDraft() {
   if (!props.active || session.sending.value || session.opening.value) return
   const pending = takeBoardDraft(true)
@@ -191,14 +179,14 @@ function adoptPendingBoardDraft() {
   session.beginDraft()
   session.draft.value = adopted.text
   session.context.value = adopted.context
-  workbench.executionMode = 'chat'
-  session.toolMode.value = 'none'
+  workbench.executionMode = adopted.executionMode
+  session.toolMode.value = AiToolMode.NONE
   workbench.sessionExtras.scratch = {
     projectId: pending.taskRef?.projectId ?? null,
     scenarioId: null,
     experts: [],
     resources: [],
-    executionMode: 'chat',
+    executionMode: adopted.executionMode,
   }
   boardNote.value = ''
 }
@@ -214,6 +202,64 @@ watch(
 )
 const deleting = ref(false)
 const moreOpen = ref(false)
+const modelHistoryOpen = ref(false)
+const taskPlan = ref<ChatTurn | null>(null)
+const preparingTask = ref<BoardTask | null>(null)
+function prepareSavedTask(task: BoardTask) {
+  preparingTask.value = task
+  taskPlan.value = null
+}
+function adoptPreparedTask(selection: CodePreparationSelection) {
+  if (!preparingTask.value) return
+  workbench.pendingBoardDraft = boardImplementationDraft(
+    preparingTask.value,
+    t('desktop.boardCriteria'),
+    selection,
+  )
+  preparingTask.value = null
+}
+
+const exportingChat = ref(false)
+const documentSource = ref<{ key: string; turn: ChatTurn } | null>(null)
+function resumeTaskHandoff() {
+  workbench.boardHandoffToken++
+  window.location.hash = 'board'
+}
+function taskFromAnswer(turn: ChatTurn) {
+  const conversationId = session.conversationId.value
+  if (!conversationId || session.sending.value || !turn.text || turn.text.length > 20000) return
+  try {
+    if (readTaskHandoff(localStorage, apiStorageScope)) {
+      boardNote.value = t('desktop.taskHandoffPending')
+      answerHandoffPending.value = true
+      return
+    }
+    writeTaskHandoff(
+      localStorage,
+      apiStorageScope,
+      {
+        source: { conversationId, executionId: turn.executionId ?? '', text: turn.text },
+        draft: {
+          projectId: workbench.selectedProjectId ?? '',
+          title:
+            turn.text
+              .split(/\r?\n/)
+              .find((line) => line.trim())
+              ?.replace(/^#+\s*/, '')
+              .slice(0, 200) ?? '',
+          goal: turn.text,
+          acceptanceCriteria: '',
+        },
+        linkSource: true,
+      },
+      null,
+    )
+    workbench.boardHandoffToken++
+    window.location.hash = 'board'
+  } catch {
+    boardNote.value = t('desktop.taskHandoffStorage')
+  }
+}
 function applyPendingDraft() {
   const seeded = workbench.pendingDraft.trim()
   if (!seeded) return
@@ -246,6 +292,9 @@ watch(
 watch(
   () => session.conversationId.value,
   (id, previous) => {
+    exportingChat.value = false
+    taskPlan.value = null
+    preparingTask.value = null
     rememberSessionExecution(id)
     restorePanel(id)
     if (previous !== undefined) saveFeedScroll(feedKey(previous), feed()?.scrollTop ?? 0)
@@ -263,7 +312,6 @@ const railMode = computed(() => {
 const filesOverlayOpen = computed(() => workbench.panel === 'files')
 /** Terminal docks under the conversation and shrinks height — not a right rail. */
 const terminalDockOpen = computed(() => workbench.panel === 'terminal')
-const workspaceTreeOpen = computed(() => workbench.workspaceTreeOpen)
 function choosePanel(id: 'summary' | 'changes' | 'files' | 'terminal') {
   moreOpen.value = false
   rememberPanel(session.conversationId.value, workbench.panel === id ? null : id)
@@ -279,7 +327,7 @@ const canRibbonRetry = computed(() => {
     return false
   if (failure !== 'failed' && failure !== 'kept' && failure !== 'not-configured') return false
   if (session.sending.value || !session.draft.value.trim()) return false
-  if (workbench.executionMode === 'agent' || workbench.executionMode === 'plan') return false
+  if (workbench.executionMode === 'agent' && !agentReady.value) return false
   return true
 })
 function closePanel() {
@@ -442,6 +490,14 @@ const selectedModel = computed(() =>
       item.model ===
         (session.pendingConnectionId.value ? session.pendingModel.value : session.boundModel.value),
   ),
+)
+const agentReady = computed(
+  () =>
+    session.context.value.mode === 'code' &&
+    !!session.context.value.taskRef &&
+    !!session.context.value.targetPath.trim() &&
+    !!selectedModel.value &&
+    selectedModel.value.kind !== 'chatgpt-plan',
 )
 const reasoningEfforts = computed(() => selectedModel.value?.efforts ?? [])
 const boundEfforts = computed(
@@ -614,7 +670,7 @@ const outgoingText = computed(() => {
   })
 })
 async function sendTask() {
-  if (workbench.executionMode === 'agent' || workbench.executionMode === 'plan') return
+  if (workbench.executionMode === 'agent' && !agentReady.value) return
   const extras = currentExtras()
   const guidance = extras.experts.map((item) => item.guidance).join('\n')
   const sceneInstructions =
@@ -623,15 +679,19 @@ async function sendTask() {
     ...session.context.value,
     files: session.context.value.files.map((file) => ({ ...file })),
   }
+  if (workbench.executionMode === 'plan') requestContext.mode = 'plan'
   requestContext.instructions = outgoingInstructions({
     instructions: requestContext.instructions,
     scene: sceneInstructions,
     guidance,
-    plan: false,
+    plan: workbench.executionMode === 'plan',
   })
   const before = session.conversationId.value
   try {
-    await session.send(requestContext)
+    await session.send(
+      requestContext,
+      workbench.executionMode === 'agent' ? AiToolMode.CODE_SOURCES : undefined,
+    )
   } finally {
     if (!before && session.conversationId.value) {
       adoptScratch(session.conversationId.value)
@@ -654,6 +714,9 @@ function baselineReady(proposal: CodeProposal) {
   return (
     proposal.files.length > 0 && proposal.files.every((file) => file.baseHash.trim().length > 0)
   )
+}
+function continueDelivery(task: CodeTaskRef) {
+  window.location.hash = boardTaskLocation(task)
 }
 async function applyProposal(proposal: CodeProposal) {
   if (
@@ -759,17 +822,6 @@ onMounted(async () => {
             variant="ghost"
             type="button"
             class="shell-tool"
-            data-testid="open-workspace-tree"
-            :aria-pressed="workspaceTreeOpen"
-            :title="t('desktop.workspaceTreeHint')"
-            @click="toggleWorkspaceTree()"
-            >{{ t('desktop.workspaceTree') }}</Button
-          >
-          <Button
-            size="sm"
-            variant="ghost"
-            type="button"
-            class="shell-tool"
             data-testid="open-summary"
             :aria-pressed="workbench.panel === 'summary'"
             @click="choosePanel('summary')"
@@ -810,12 +862,21 @@ onMounted(async () => {
             v-model:open="moreOpen"
             :label="t('desktop.moreActions')"
             data-testid="ribbon-more-menu"
+            @select="
+              (id) => {
+                if (id === 'export') exportingChat = true
+              }
+            "
             :items="[
               {
                 id: 'export',
                 label: t('desktop.moreExport'),
-                disabled: true,
-                description: t('desktop.moreExportOff'),
+                disabled:
+                  !session.conversationId.value ||
+                  session.sending.value ||
+                  !session.turns.value.length,
+                description: t('desktop.exportBoundary'),
+                testId: 'chat-export-open',
               },
               {
                 id: 'share',
@@ -837,686 +898,787 @@ onMounted(async () => {
           </DropdownMenu>
         </div>
       </div>
-      <TaskMemoryPanel
+      <Button
         v-if="session.conversationId.value"
-        v-model="workingGoalDraft"
-        :memory="session.workingMemory.value"
-        :busy="session.sending.value || savingWorkingGoal"
-        @save="saveWorkingGoal"
+        size="sm"
+        :disabled="session.sending.value"
+        data-testid="open-model-history"
+        @click="modelHistoryOpen = true"
+        >{{ t('contextBudget.historyTitle') }}</Button
+      >
+      <ModelHistoryDialog
+        v-if="modelHistoryOpen && session.conversationId.value"
+        :conversation-id="session.conversationId.value"
+        @adopt="
+          (text) => {
+            session.draft.value = [session.draft.value, text].filter(Boolean).join('\n\n')
+          }
+        "
+        @close="modelHistoryOpen = false"
+      />
+      <Collapse
+        v-if="session.conversationId.value"
+        :key="session.conversationId.value"
+        data-testid="task-memory-details"
+      >
+        <template #summary>
+          {{ t('workingMemory.title') }}
+          <Badge v-if="session.workingMemory.value?.invalidation" tone="warning">{{
+            t('workingMemory.invalidation')
+          }}</Badge>
+        </template>
+        <TaskMemoryPanel
+          :memory="session.workingMemory.value"
+          :busy="session.sending.value"
+          :save="session.saveWorkingMemory"
+          @refresh="session.recheckConversation"
+          @adopt="
+            (text) => {
+              session.draft.value = [session.draft.value, text].filter(Boolean).join('\n\n')
+            }
+          "
+        />
+      </Collapse>
+      <ChatExportDialog
+        v-if="exportingChat && session.conversationId.value"
+        :key="session.conversationId.value"
+        :conversation-id="session.conversationId.value"
+        :title="
+          session.history.value.find((item) => item.id === session.conversationId.value)?.title ??
+          'EAP'
+        "
+        :turns="session.turns.value"
+        @close="exportingChat = false"
       />
     </div>
 
+    <TaskPlanDialog
+      v-if="taskPlan?.planningTask"
+      :binding="taskPlan.planningTask"
+      :text="taskPlan.text"
+      @close="taskPlan = null"
+      @prepare="prepareSavedTask"
+    />
+    <CodePreparationDialog
+      v-if="preparingTask"
+      :task="preparingTask"
+      @close="preparingTask = null"
+      @prepared="adoptPreparedTask"
+    />
+    <WorkDocumentDialog
+      v-if="documentSource && session.conversationId.value"
+      :key="session.conversationId.value + documentSource.key"
+      :conversation-id="session.conversationId.value"
+      :source-key="documentSource.key"
+      :turn="documentSource.turn"
+      @close="documentSource = null"
+    />
     <WorkbenchFrame
       :rail="!!railMode"
       class="chat-body"
       :class="{
         'has-rail': !!railMode,
         'has-terminal-dock': terminalDockOpen,
-        'has-workspace-tree': workspaceTreeOpen,
       }"
       data-testid="chat-body"
     >
-      <WorkbenchFrame
-        :rail="workspaceTreeOpen"
-        rail-side="start"
-        class="chat-workspace-split"
-        data-testid="chat-workspace-split"
-      >
-        <div class="chat-main" data-testid="chat-main">
-          <InfiniteScroll
-            ref="feedPort"
-            class="chat-feed preview-feed"
-            data-testid="chat-feed"
-            edge="start"
-            :disabled="!hasOlderTurns || loadingOlder || holdingFeed"
-            @scroll="onFeedScroll"
-            @load="showOlderTurns"
+      <div class="chat-main" data-testid="chat-main">
+        <InfiniteScroll
+          ref="feedPort"
+          class="chat-feed preview-feed"
+          data-testid="chat-feed"
+          edge="start"
+          :disabled="!hasOlderTurns || loadingOlder || holdingFeed"
+          @scroll="onFeedScroll"
+          @load="showOlderTurns"
+        >
+          <Feedback v-if="session.storageError.value" tone="warning">{{
+            t('historyUi.storageError')
+          }}</Feedback>
+          <Feedback
+            v-if="historyNote && !deleteId && session.phase.value !== 'offline'"
+            tone="warning"
+            >{{ historyNote }}</Feedback
           >
-            <Feedback v-if="session.storageError.value" tone="warning">{{
-              t('historyUi.storageError')
-            }}</Feedback>
-            <Feedback
-              v-if="historyNote && !deleteId && session.phase.value !== 'offline'"
-              tone="warning"
-              >{{ historyNote }}</Feedback
-            >
-            <p v-if="boardNote" class="hint" role="status" data-testid="board-draft-note">
-              {{ boardNote }}
-            </p>
-            <Button
-              v-if="workbench.pendingBoardDraft"
-              data-testid="adopt-board-draft"
-              :disabled="session.sending.value || session.opening.value"
-              @click="adoptingBoardDraft = true"
-              >{{ t('generation.adoptTask') }}</Button
-            >
-            <ConfirmBox
-              v-if="adoptingBoardDraft && workbench.pendingBoardDraft"
-              :title="t('generation.adoptTask')"
-              :impact="[workbench.pendingBoardDraft.title, t('generation.adoptTaskImpact')]"
-              :confirm-label="t('generation.adoptTask')"
-              @confirm="adoptPendingBoardDraft"
-              @cancel="adoptingBoardDraft = false"
-            />
-            <Feedback v-if="session.expired.value || archived" tone="warning">{{
-              archived ? t('historyUi.archiveNotice') : t('historyUi.expired')
-            }}</Feedback>
-            <Button
-              v-if="session.expired.value && !archived"
-              data-testid="reconnect-session"
-              :disabled="
-                session.reconnecting.value ||
-                reconnectActionBusy ||
-                session.checkingConversation.value
-              "
-              @click="reconnectConfirmId = session.conversationId.value"
-              >{{ reconnectLabel }}</Button
-            >
-            <ConfirmBox
-              v-if="reconnectConfirmId"
-              :title="reconnectLabel"
-              :impact="[t('historyUi.reconnectImpact'), t('historyUi.reconnectLocal')]"
-              :confirm-label="reconnectLabel"
-              :busy="reconnectActionBusy"
-              @confirm="confirmReconnect"
-              @cancel="reconnectConfirmId = null"
-            />
-            <Feedback v-if="session.sessionUnavailable.value" tone="warning">{{
-              t('historyUi.probeFailed')
-            }}</Feedback>
-            <Button
-              v-if="session.sessionUnavailable.value || (session.expired.value && !archived)"
-              data-testid="recheck-session"
-              :disabled="
-                session.checkingConversation.value ||
-                session.reconnecting.value ||
-                reconnectActionBusy
-              "
-              @click="session.recheckConversation()"
-              >{{ t('historyUi.recheck') }}</Button
-            >
-            <Feedback
-              v-if="
-                session.failure.value === 'reconnect-failed' ||
-                session.failure.value === 'workspace-changed'
-              "
-              data-testid="reconnect-error"
-              tone="warning"
-              >{{
-                t(
-                  session.failure.value === 'workspace-changed'
-                    ? 'historyUi.workspaceChanged'
-                    : 'historyUi.reconnectFailed',
-                )
-              }}</Feedback
-            >
-            <Feedback v-if="session.reconnectNotice.value" tone="info">{{
+          <p v-if="boardNote" class="hint" role="status" data-testid="board-draft-note">
+            {{ boardNote }}
+          </p>
+          <Button
+            v-if="answerHandoffPending"
+            size="sm"
+            data-testid="answer-task-resume"
+            @click="resumeTaskHandoff"
+            >{{ t('desktop.taskHandoffResume') }}</Button
+          >
+          <Button
+            v-if="workbench.pendingBoardDraft"
+            data-testid="adopt-board-draft"
+            :disabled="session.sending.value || session.opening.value"
+            @click="adoptingBoardDraft = true"
+            >{{ t('generation.adoptTask') }}</Button
+          >
+          <ConfirmBox
+            v-if="adoptingBoardDraft && workbench.pendingBoardDraft"
+            :title="t('generation.adoptTask')"
+            :impact="[workbench.pendingBoardDraft.title, t('generation.adoptTaskImpact')]"
+            :confirm-label="t('generation.adoptTask')"
+            @confirm="adoptPendingBoardDraft"
+            @cancel="adoptingBoardDraft = false"
+          />
+          <Feedback v-if="session.expired.value || archived" tone="warning">{{
+            archived ? t('historyUi.archiveNotice') : t('historyUi.expired')
+          }}</Feedback>
+          <Button
+            v-if="session.expired.value && !archived"
+            data-testid="reconnect-session"
+            :disabled="
+              session.reconnecting.value ||
+              reconnectActionBusy ||
+              session.checkingConversation.value
+            "
+            @click="reconnectConfirmId = session.conversationId.value"
+            >{{ reconnectLabel }}</Button
+          >
+          <ConfirmBox
+            v-if="reconnectConfirmId"
+            :title="reconnectLabel"
+            :impact="[t('historyUi.reconnectImpact'), t('historyUi.reconnectLocal')]"
+            :confirm-label="reconnectLabel"
+            :busy="reconnectActionBusy"
+            @confirm="confirmReconnect"
+            @cancel="reconnectConfirmId = null"
+          />
+          <Feedback v-if="session.sessionUnavailable.value" tone="warning">{{
+            t('historyUi.probeFailed')
+          }}</Feedback>
+          <Button
+            v-if="session.sessionUnavailable.value || (session.expired.value && !archived)"
+            data-testid="recheck-session"
+            :disabled="
+              session.checkingConversation.value ||
+              session.reconnecting.value ||
+              reconnectActionBusy
+            "
+            @click="session.recheckConversation()"
+            >{{ t('historyUi.recheck') }}</Button
+          >
+          <Feedback
+            v-if="
+              session.failure.value === 'reconnect-failed' ||
+              session.failure.value === 'workspace-changed'
+            "
+            data-testid="reconnect-error"
+            tone="warning"
+            >{{
               t(
-                session.reconnectNotice.value === 'reset'
-                  ? 'historyUi.contextReset'
-                  : 'historyUi.contextKept',
+                session.failure.value === 'workspace-changed'
+                  ? 'historyUi.workspaceChanged'
+                  : 'historyUi.reconnectFailed',
               )
-            }}</Feedback>
-            <p v-if="session.toolMode.value === 'git_status'" class="hint">
-              {{ t('chat.gitWarning') }}
-            </p>
+            }}</Feedback
+          >
+          <Feedback v-if="session.reconnectNotice.value" tone="info">{{
+            t(
+              session.reconnectNotice.value === 'reset'
+                ? 'historyUi.contextReset'
+                : 'historyUi.contextKept',
+            )
+          }}</Feedback>
+          <p
+            v-if="
+              workbench.executionMode !== 'plan' && session.toolMode.value === AiToolMode.GIT_STATUS
+            "
+            class="hint"
+          >
+            {{ t('chat.gitWarning') }}
+          </p>
 
-            <WorkspaceWelcome
-              v-if="!session.turns.value.length || workbench.workMode === 'work'"
-              :compact="session.turns.value.length > 0"
-              @scenario="useScene"
-            />
-            <ol v-if="visibleTurns.length" class="chat-log">
-              <li
-                v-for="{ turn, key } in visibleTurns"
-                :key="key"
-                :aria-label="turn.role === 'user' ? t('chat.speakerYou') : t('chat.speakerModel')"
-                :class="turn.role === 'user' ? 'turn-user' : 'turn-assistant'"
+          <WorkspaceWelcome
+            v-if="!session.turns.value.length || workbench.workMode === 'work'"
+            :compact="session.turns.value.length > 0"
+            @scenario="useScene"
+          />
+          <ol v-if="visibleTurns.length" class="chat-log">
+            <li
+              v-for="{ turn, key } in visibleTurns"
+              :key="key"
+              :aria-label="turn.role === 'user' ? t('chat.speakerYou') : t('chat.speakerModel')"
+              :class="turn.role === 'user' ? 'turn-user' : 'turn-assistant'"
+            >
+              <p v-if="turn.text">{{ turn.text }}</p>
+              <p v-else-if="turn.role === 'assistant'">{{ t('chat.noAnswer') }}</p>
+              <Button
+                v-if="
+                  workbench.workMode === 'work' &&
+                  turn.role === 'assistant' &&
+                  turn.text &&
+                  !session.sending.value
+                "
+                size="sm"
+                data-testid="work-document-open"
+                @click="documentSource = { key: String(key), turn }"
+                >{{ t('desktop.workDocumentTitle') }}</Button
               >
-                <p v-if="turn.text">{{ turn.text }}</p>
-                <p v-else-if="turn.role === 'assistant'">{{ t('chat.noAnswer') }}</p>
-                <p v-if="turn.error">
-                  {{
-                    turn.errorLanguage === locale && turn.errorMessage
-                      ? turn.errorMessage
-                      : t('presentation.failure')
-                  }}
-                  <code>{{ turn.error }}</code>
+              <Button
+                v-if="
+                  turn.role === 'assistant' && turn.text && !turn.error && !session.sending.value
+                "
+                size="sm"
+                data-testid="answer-create-task"
+                @click="taskFromAnswer(turn)"
+                >{{ t('desktop.taskFromAnswer') }}</Button
+              >
+              <Button
+                v-if="
+                  turn.role === 'assistant' &&
+                  turn.planningTask &&
+                  turn.text &&
+                  !turn.error &&
+                  !session.sending.value
+                "
+                size="sm"
+                data-testid="task-plan-open"
+                @click="taskPlan = turn"
+                >{{ t('desktop.taskPlanTitle') }}</Button
+              >
+              <p v-if="turn.error">
+                {{
+                  turn.errorLanguage === locale && turn.errorMessage
+                    ? turn.errorMessage
+                    : t('presentation.failure')
+                }}
+                <code>{{ turn.error }}</code>
+              </p>
+              <p v-if="turn.artifactError">
+                {{ t('chat.artifactFailed') }}：{{ turn.artifactError }}
+              </p>
+              <section
+                v-if="turn.proposal"
+                class="code-proposal write-request"
+                data-testid="code-proposal"
+              >
+                <h3>{{ t('desktop.writeRequest', { count: turn.proposal.files.length }) }}</h3>
+                <GenerationBaseline :generation="turn.proposal.generation" />
+                <p v-if="!refused[turn.proposal.id]" class="hint" data-testid="turn-pending">
+                  {{ t(turnPending(turn)) }}
                 </p>
-                <p v-if="turn.artifactError">
-                  {{ t('chat.artifactFailed') }}：{{ turn.artifactError }}
-                </p>
-                <section
-                  v-if="turn.proposal"
-                  class="code-proposal write-request"
-                  data-testid="code-proposal"
-                >
-                  <h3>{{ t('desktop.writeRequest', { count: turn.proposal.files.length }) }}</h3>
-                  <GenerationBaseline :generation="turn.proposal.generation" />
-                  <p v-if="!refused[turn.proposal.id]" class="hint" data-testid="turn-pending">
-                    {{ t(turnPending(turn)) }}
-                  </p>
-                  <Collapse v-for="file in turn.proposal.files" :key="file.path">
-                    <template #summary
-                      >{{ file.path }} ·
-                      {{ file.before == null ? t('task.newFile') : t('task.modifiedFile') }} ·
-                      {{ t('desktop.fileBaseline') }}：{{
-                        file.baseHash || t('desktop.summaryUnknown')
-                      }}</template
+                <Collapse v-for="file in turn.proposal.files" :key="file.path">
+                  <template #summary
+                    >{{ file.path }} ·
+                    {{ file.before == null ? t('task.newFile') : t('task.modifiedFile') }} ·
+                    {{ t('desktop.fileBaseline') }}：{{
+                      file.baseHash || t('desktop.summaryUnknown')
+                    }}</template
+                  >
+                  <div class="code-comparison">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      type="button"
+                      data-testid="open-proposal-diff"
+                      @click="viewProposalDiff(file.path)"
+                      >{{ t('desktop.openProposalDiff') }}</Button
                     >
-                    <div class="code-comparison">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        type="button"
-                        data-testid="open-proposal-diff"
-                        @click="viewProposalDiff(file.path)"
-                        >{{ t('desktop.openProposalDiff') }}</Button
-                      >
-                      <div>
-                        <strong>{{ t('task.before') }}</strong>
-                        <pre>{{ file.before ?? t('task.newFile') }}</pre>
-                      </div>
-                      <div>
-                        <strong>{{ t('task.after') }}</strong>
-                        <pre>{{ file.content }}</pre>
-                      </div>
+                    <div>
+                      <strong>{{ t('task.before') }}</strong>
+                      <pre>{{ file.before ?? t('task.newFile') }}</pre>
                     </div>
-                  </Collapse>
-                  <div class="proposal-actions">
-                    <Button
-                      v-if="!applied[turn.proposal.id] && !refused[turn.proposal.id]"
-                      type="button"
-                      data-testid="refuse-write"
-                      :disabled="!!refusing"
-                      @click="refuseProposal(turn)"
-                      >{{ t('desktop.refuseWrite') }}</Button
-                    >
+                    <div>
+                      <strong>{{ t('task.after') }}</strong>
+                      <pre>{{ file.content }}</pre>
+                    </div>
                   </div>
-                  <p
-                    v-if="refuseNote && refusing === turn.proposal.id"
-                    class="hint"
-                    role="alert"
-                    data-testid="refuse-write-error"
+                </Collapse>
+                <div class="proposal-actions">
+                  <Button
+                    v-if="!applied[turn.proposal.id] && !refused[turn.proposal.id]"
+                    type="button"
+                    data-testid="refuse-write"
+                    :disabled="!!refusing"
+                    @click="refuseProposal(turn)"
+                    >{{ t('desktop.refuseWrite') }}</Button
                   >
-                    {{ refuseNote }}
-                  </p>
-                  <p v-if="refused[turn.proposal.id]" class="hint" data-testid="refused-write">
-                    {{ t('desktop.refusedWrite') }}
-                  </p>
-                  <ProposalApplication
-                    v-if="turn.proposal.generation"
-                    :proposal="turn.proposal"
-                    :read-only="
-                      session.context.value.approval === 'read_only' ||
-                      !!refused[turn.proposal.id] ||
-                      session.expired.value ||
-                      archived
-                    "
-                    @applied="
-                      (result) => {
-                        applied[turn.proposal!.id] = result.written
-                        appliedVerification[turn.proposal!.id] = result.verification
-                        appliedChecks[turn.proposal!.id] = result.checks
-                      }
-                    "
-                  />
-                  <template
-                    v-else-if="
-                      !applied[turn.proposal.id] &&
-                      !refused[turn.proposal.id] &&
-                      baselineReady(turn.proposal)
-                    "
+                </div>
+                <p
+                  v-if="refuseNote && refusing === turn.proposal.id"
+                  class="hint"
+                  role="alert"
+                  data-testid="refuse-write-error"
+                >
+                  {{ refuseNote }}
+                </p>
+                <p v-if="refused[turn.proposal.id]" class="hint" data-testid="refused-write">
+                  {{ t('desktop.refusedWrite') }}
+                </p>
+                <ProposalApplication
+                  v-if="turn.proposal.generation"
+                  :proposal="turn.proposal"
+                  @continue="continueDelivery"
+                  :read-only="
+                    session.context.value.approval === 'read_only' ||
+                    !!refused[turn.proposal.id] ||
+                    session.expired.value ||
+                    archived
+                  "
+                  @applied="
+                    (result) => {
+                      applied[turn.proposal!.id] = result.written
+                      appliedVerification[turn.proposal!.id] = result.verification
+                      appliedChecks[turn.proposal!.id] = result.checks
+                    }
+                  "
+                />
+                <template
+                  v-else-if="
+                    !applied[turn.proposal.id] &&
+                    !refused[turn.proposal.id] &&
+                    baselineReady(turn.proposal)
+                  "
+                >
+                  <label
+                    ><Checkbox v-model="writeConfirmed[turn.proposal.id]" />
+                    {{ t('task.confirmWrite') }}</label
                   >
-                    <label
-                      ><Checkbox v-model="writeConfirmed[turn.proposal.id]" />
-                      {{ t('task.confirmWrite') }}</label
+                  <Button
+                    type="button"
+                    variant="primary"
+                    :disabled="
+                      !writeConfirmed[turn.proposal.id] ||
+                      !!applying ||
+                      !turn.proposal.writeAllowed ||
+                      session.context.value.approval === 'read_only'
+                    "
+                    @click="applyProposal(turn.proposal)"
+                    >{{ t('task.apply') }}</Button
+                  >
+                </template>
+                <p v-else-if="applied[turn.proposal.id]">
+                  {{ t('task.written') }}
+                  {{ applied[turn.proposal.id]?.join('、') }}
+                </p>
+              </section>
+              <ul v-if="turn.toolEvents.length">
+                <li v-for="event in turn.toolEvents" :key="event.sequence">
+                  {{ event.sequence }}. {{ event.code }}
+                </li>
+              </ul>
+              <section v-if="turn.knowledgeContext" data-testid="turn-knowledge">
+                <h3>
+                  {{ t('knowledgeContext.title') }} · {{ turn.knowledgeContext.expertRef.id }} · r{{
+                    turn.knowledgeContext.expertRef.revision
+                  }}
+                </h3>
+                <p>
+                  {{ t('knowledgeContext.provided') }}
+                </p>
+                <p>{{ t('knowledgeContext.excerpts') }}</p>
+                <p v-if="turn.knowledgeContext.status === 'no_matches'">
+                  {{ t('knowledgeContext.no_matches') }}
+                </p>
+                <ul>
+                  <li v-for="reference in turn.knowledgeContext.references" :key="reference.id">
+                    <strong
+                      >{{ reference.id }} · {{ reference.source }} ·
+                      {{ reference.knowledgeBase }}</strong
                     >
-                    <Button
-                      type="button"
-                      variant="primary"
-                      :disabled="
-                        !writeConfirmed[turn.proposal.id] ||
-                        !!applying ||
-                        !turn.proposal.writeAllowed ||
-                        session.context.value.approval === 'read_only'
-                      "
-                      @click="applyProposal(turn.proposal)"
-                      >{{ t('task.apply') }}</Button
-                    >
-                  </template>
-                  <p v-else-if="applied[turn.proposal.id]">
-                    {{ t('task.written') }}
-                    {{ applied[turn.proposal.id]?.join('、') }}
-                  </p>
-                </section>
-                <ul v-if="turn.toolEvents.length">
-                  <li v-for="event in turn.toolEvents" :key="event.sequence">
-                    {{ event.sequence }}. {{ event.code }}
+                    <p>
+                      {{ reference.retrievalMode }} · {{ reference.knowledgeBaseId }} ·
+                      {{ reference.documentId }}
+                    </p>
+                    <pre>{{ reference.excerpt }}</pre>
                   </li>
                 </ul>
-                <section v-if="turn.knowledgeContext" data-testid="turn-knowledge">
-                  <h3>
-                    {{ t('knowledgeContext.title') }} · {{ turn.knowledgeContext.expertRef.id }} ·
-                    r{{ turn.knowledgeContext.expertRef.revision }}
-                  </h3>
-                  <p>
-                    {{ t('knowledgeContext.provided') }}
-                  </p>
-                  <p>{{ t('knowledgeContext.excerpts') }}</p>
-                  <p v-if="turn.knowledgeContext.status === 'no_matches'">
-                    {{ t('knowledgeContext.no_matches') }}
-                  </p>
-                  <ul>
-                    <li v-for="reference in turn.knowledgeContext.references" :key="reference.id">
-                      <strong
-                        >{{ reference.id }} · {{ reference.source }} ·
-                        {{ reference.knowledgeBase }}</strong
-                      >
-                      <p>
-                        {{ reference.retrievalMode }} · {{ reference.knowledgeBaseId }} ·
-                        {{ reference.documentId }}
-                      </p>
-                      <pre>{{ reference.excerpt }}</pre>
-                    </li>
-                  </ul>
-                </section>
-                <section v-if="turn.skillContext" data-testid="turn-skill">
-                  <h3>
-                    {{ t('skill.title') }} · {{ turn.skillContext.skillRef.id }} ·
-                    {{ turn.skillContext.skillRef.version }} · r{{
-                      turn.skillContext.skillRef.stateRevision
-                    }}
-                  </h3>
-                  <p>{{ t('skill.evidence') }}</p>
+              </section>
+              <section v-if="turn.skillContext" data-testid="turn-skill">
+                <h3>
+                  {{ t('skill.title') }} · {{ turn.skillContext.skillRef.id }} ·
+                  {{ turn.skillContext.skillRef.version }} · r{{
+                    turn.skillContext.skillRef.stateRevision
+                  }}
+                </h3>
+                <p>{{ t('skill.evidence') }}</p>
 
-                  <code>{{ turn.skillContext.skillRef.digest }}</code>
-                  <pre>{{ turn.skillContext.instructions }}</pre>
-                  <div v-for="resource in turn.skillContext.resources" :key="resource.path">
-                    <strong>{{ resource.path }}</strong>
-                    <pre>{{ resource.content }}</pre>
-                  </div>
-                  <p>{{ t('skill.dependencies') }}: {{ turn.skillContext.dependencies }}</p>
-                </section>
-                <TurnContextDetails :budget="turn.contextBudget" :artifacts="turn.artifacts" />
-                <Feedback
-                  v-if="
-                    turn.knowledgeMemoryCleared &&
-                    !turn.contextMemoryCleared &&
-                    !session.contextMemoryCleared.value
+                <code>{{ turn.skillContext.skillRef.digest }}</code>
+                <pre>{{ turn.skillContext.instructions }}</pre>
+                <div v-for="resource in turn.skillContext.resources" :key="resource.path">
+                  <strong>{{ resource.path }}</strong>
+                  <pre>{{ resource.content }}</pre>
+                </div>
+                <p>{{ t('skill.dependencies') }}: {{ turn.skillContext.dependencies }}</p>
+              </section>
+              <TurnContextDetails :budget="turn.contextBudget" :artifacts="turn.artifacts" />
+              <Feedback
+                v-if="
+                  turn.knowledgeMemoryCleared &&
+                  !turn.contextMemoryCleared &&
+                  !session.contextMemoryCleared.value
+                "
+                tone="info"
+                >{{ t('knowledgeContext.cleared') }}</Feedback
+              >
+            </li>
+          </ol>
+
+          <Button
+            v-if="session.failure.value === 'target-changed'"
+            type="button"
+            :disabled="!selectedModel || session.sending.value"
+            @click="
+              session.chooseConversationConnection(
+                session.boundConnectionId.value!,
+                session.boundModel.value,
+              )
+            "
+            >{{ t('modelUi.reconnect') }}</Button
+          >
+          <Button
+            v-if="
+              !session.expired.value &&
+              (session.failure.value === 'failed' ||
+                session.failure.value === 'kept' ||
+                session.failure.value === 'cancelled' ||
+                session.failure.value === 'not-configured')
+            "
+            type="button"
+            data-testid="retry-send"
+            :disabled="
+              session.sending.value ||
+              !session.draft.value.trim() ||
+              (workbench.executionMode === 'agent' && !agentReady)
+            "
+            @click="sendTask"
+            >{{ t('desktop.retrySend') }}</Button
+          >
+          <a
+            v-if="session.failure.value === 'not-configured'"
+            data-testid="locate-settings"
+            :title="t('desktop.locateSettingsNote')"
+            href="#model-settings"
+            >{{ t('desktop.locateSettings') }}</a
+          >
+          <Button
+            v-if="
+              session.failure.value === 'model-unavailable' ||
+              session.failure.value === 'target-change-failed'
+            "
+            type="button"
+            data-testid="locate-model"
+            :title="t('desktop.locateModelNote')"
+            @click="workbench.modelMenuToken += 1"
+            >{{ t('desktop.locateModel') }}</Button
+          >
+          <Feedback v-if="session.targetNotice.value === 'cleared'" tone="info">{{
+            t('chat.memoryCleared')
+          }}</Feedback>
+          <Feedback v-if="session.targetNotice.value === 'kept'" tone="info">{{
+            t('modelUi.memoryKept')
+          }}</Feedback>
+          <Feedback
+            v-if="session.contextMemoryCleared.value"
+            data-testid="context-cleared"
+            tone="info"
+            >{{ t('skill.cleared') }}</Feedback
+          >
+          <Feedback v-else-if="session.knowledgeMemoryCleared.value" tone="info">{{
+            t('knowledgeContext.cleared')
+          }}</Feedback>
+          <Feedback v-if="session.failure.value.startsWith('skill-')" tone="warning">{{
+            t('skill.' + session.failure.value.slice('skill-'.length))
+          }}</Feedback>
+          <Feedback v-if="session.failure.value.startsWith('knowledge-')" tone="warning">{{
+            t('knowledgeContext.' + session.failure.value.slice('knowledge-'.length))
+          }}</Feedback>
+          <Feedback
+            v-else-if="session.failure.value === 'context-budget-exceeded'"
+            data-testid="context-budget-exceeded"
+            tone="warning"
+          >
+            <p>{{ t('contextBudget.exceeded') }}</p>
+            <p v-if="session.lastContextBudget.value">
+              {{
+                t('contextBudget.exceededDetail', {
+                  used: session.lastContextBudget.value.usedChars,
+                  platform: session.lastContextBudget.value.platformLimit,
+                  reserve: session.lastContextBudget.value.outputReserve,
+                  metering: session.lastContextBudget.value.metering,
+                })
+              }}
+            </p>
+          </Feedback>
+          <Feedback
+            v-else-if="session.failure.value === 'protocol-tools-unavailable'"
+            tone="warning"
+            >{{ t('modelUi.protocolToolsUnavailable') }}</Feedback
+          >
+          <Feedback v-else-if="session.failure.value.startsWith('generation-')" tone="warning">{{
+            t('generation.' + session.failure.value)
+          }}</Feedback>
+          <Feedback
+            v-else-if="
+              session.failure.value &&
+              !session.failure.value.startsWith('skill-') &&
+              !['reconnect-failed', 'workspace-changed'].includes(session.failure.value)
+            "
+            tone="warning"
+            >{{
+              t(
+                session.failure.value === 'target-changed'
+                  ? 'modelUi.retryTarget'
+                  : session.failure.value === 'model-unavailable'
+                    ? 'modelUi.unavailable'
+                    : session.failure.value === 'not-configured'
+                      ? 'chat.notConfigured'
+                      : session.failure.value === 'target-change-failed'
+                        ? 'chat.targetChangeFailed'
+                        : 'desktop.retrySame',
+              )
+            }}</Feedback
+          >
+          <Button
+            v-if="session.failure.value === 'generation-stale'"
+            data-testid="retry-generation"
+            :disabled="session.sending.value || !session.draft.value.trim()"
+            @click="sendTask"
+            >{{ t('generation.retry') }}</Button
+          >
+          <Feedback v-if="proposalNote" tone="info">{{ proposalNote }}</Feedback>
+          <p v-if="effortReset" class="hint" data-testid="effort-reset">
+            {{ t('desktop.effortReset', { effort: t('task.' + effortReset) }) }}
+          </p>
+        </InfiniteScroll>
+        <form
+          class="chat-composer preview-composer preview-input-box"
+          data-testid="chat-composer"
+          @submit.prevent="sendTask"
+        >
+          <TaskComposer
+            :draft="session.draft.value"
+            :tool-mode="
+              workbench.executionMode === 'plan' ? AiToolMode.NONE : session.toolMode.value
+            "
+            :active="props.active"
+            :refreshing-models="modelsRefreshing"
+            :model-options-available="modelChoices.length > 0"
+            :agent-available="agentReady"
+            :model-label="selectedModel ? selectedModel.model : ''"
+            :context="session.context.value"
+            :disabled="
+              session.sending.value ||
+              session.opening.value ||
+              session.reconnecting.value ||
+              archived
+            "
+            :reasoning-efforts="reasoningEfforts"
+            @update="session.context.value = $event"
+            @refresh="refreshModels"
+          >
+            <template #draft>
+              <label>
+                <span class="sr-only">{{ t('chat.draft') }}</span>
+                <Textarea
+                  v-model="session.draft.value"
+                  class="composer-draft"
+                  :placeholder="
+                    t(
+                      workbench.workMode === 'work'
+                        ? 'chat.draftWork'
+                        : workbench.workMode === 'code'
+                          ? 'chat.draftCode'
+                          : 'chat.draft',
+                    )
                   "
-                  tone="info"
-                  >{{ t('knowledgeContext.cleared') }}</Feedback
-                >
-              </li>
-            </ol>
-
-            <Button
-              v-if="session.failure.value === 'target-changed'"
-              type="button"
-              :disabled="!selectedModel || session.sending.value"
-              @click="
-                session.chooseConversationConnection(
-                  session.boundConnectionId.value!,
-                  session.boundModel.value,
-                )
-              "
-              >{{ t('modelUi.reconnect') }}</Button
-            >
-            <Button
-              v-if="
-                !session.expired.value &&
-                (session.failure.value === 'failed' ||
-                  session.failure.value === 'kept' ||
-                  session.failure.value === 'cancelled' ||
-                  session.failure.value === 'not-configured')
-              "
-              type="button"
-              data-testid="retry-send"
-              :disabled="
-                session.sending.value ||
-                !session.draft.value.trim() ||
-                workbench.executionMode === 'agent' ||
-                workbench.executionMode === 'plan'
-              "
-              @click="sendTask"
-              >{{ t('desktop.retrySend') }}</Button
-            >
-            <a
-              v-if="session.failure.value === 'not-configured'"
-              data-testid="locate-settings"
-              :title="t('desktop.locateSettingsNote')"
-              href="#model-settings"
-              >{{ t('desktop.locateSettings') }}</a
-            >
-            <Button
-              v-if="
-                session.failure.value === 'model-unavailable' ||
-                session.failure.value === 'target-change-failed'
-              "
-              type="button"
-              data-testid="locate-model"
-              :title="t('desktop.locateModelNote')"
-              @click="workbench.modelMenuToken += 1"
-              >{{ t('desktop.locateModel') }}</Button
-            >
-            <Feedback v-if="session.targetNotice.value === 'cleared'" tone="info">{{
-              t('chat.memoryCleared')
-            }}</Feedback>
-            <Feedback v-if="session.targetNotice.value === 'kept'" tone="info">{{
-              t('modelUi.memoryKept')
-            }}</Feedback>
-            <Feedback
-              v-if="session.contextMemoryCleared.value"
-              data-testid="context-cleared"
-              tone="info"
-              >{{ t('skill.cleared') }}</Feedback
-            >
-            <Feedback v-else-if="session.knowledgeMemoryCleared.value" tone="info">{{
-              t('knowledgeContext.cleared')
-            }}</Feedback>
-            <Feedback v-if="session.failure.value.startsWith('skill-')" tone="warning">{{
-              t('skill.' + session.failure.value.slice('skill-'.length))
-            }}</Feedback>
-            <Feedback v-if="session.failure.value.startsWith('knowledge-')" tone="warning">{{
-              t('knowledgeContext.' + session.failure.value.slice('knowledge-'.length))
-            }}</Feedback>
-            <Feedback
-              v-else-if="session.failure.value === 'context-budget-exceeded'"
-              data-testid="context-budget-exceeded"
-              tone="warning"
-            >
-              <p>{{ t('contextBudget.exceeded') }}</p>
-              <p v-if="session.lastContextBudget.value">
+                  rows="3"
+                  :disabled="
+                    session.sending.value ||
+                    session.opening.value ||
+                    session.reconnecting.value ||
+                    archived
+                  "
+                />
+              </label>
+              <Collapse class="outgoing-preview" data-testid="outgoing-preview">
+                <template #summary>{{ t('desktop.outgoing') }}</template>
+                <p>{{ t('desktop.outgoingIdle') }}</p>
+                <p>
+                  {{ t('desktop.outgoingDraft') }}：{{
+                    session.draft.value.trim() || t('desktop.stepNoDraft')
+                  }}
+                </p>
+                <p>{{ t('desktop.outgoingGuide') }}</p>
+                <pre>{{ outgoingText || t('desktop.outgoingNone') }}</pre>
+                <p v-if="workbench.executionMode === 'plan'">{{ t('desktop.outgoingPlan') }}</p>
+                <ul v-if="session.context.value.files.length">
+                  <li v-for="file in session.context.value.files" :key="file.name">
+                    {{ file.name }}
+                  </li>
+                </ul>
+                <p v-else>{{ t('desktop.outgoingNoFiles') }}</p>
+              </Collapse>
+            </template>
+            <template #settings
+              ><p
+                v-if="catalogNote?.kind === 'cached'"
+                class="catalog-fail"
+                data-testid="catalog-cache"
+              >
                 {{
-                  t('contextBudget.exceededDetail', {
-                    used: session.lastContextBudget.value.usedChars,
-                    platform: session.lastContextBudget.value.platformLimit,
-                    reserve: session.lastContextBudget.value.outputReserve,
-                    metering: session.lastContextBudget.value.metering,
+                  t('desktop.catalogCached', {
+                    time: catalogNote.time || t('desktop.catalogNoTime'),
+                    error: catalogNote.error,
                   })
                 }}
               </p>
-            </Feedback>
-            <Feedback
-              v-else-if="session.failure.value === 'protocol-tools-unavailable'"
-              tone="warning"
-              >{{ t('modelUi.protocolToolsUnavailable') }}</Feedback
+              <p v-else-if="catalogNote?.kind === 'fresh'" class="hint" data-testid="catalog-fresh">
+                {{
+                  t('desktop.catalogFresh', {
+                    time: catalogNote.time || t('desktop.catalogNoTime'),
+                  })
+                }}
+              </p>
+              <p v-if="selectedModel?.wireApi === 'responses'" class="hint">
+                {{ t('modelUi.protocolToolsUnavailable') }}
+              </p></template
             >
-            <Feedback v-else-if="session.failure.value.startsWith('generation-')" tone="warning">{{
-              t('generation.' + session.failure.value)
-            }}</Feedback>
-            <Feedback
-              v-else-if="
-                session.failure.value &&
-                !session.failure.value.startsWith('skill-') &&
-                !['reconnect-failed', 'workspace-changed'].includes(session.failure.value)
-              "
-              tone="warning"
-              >{{
-                t(
-                  session.failure.value === 'target-changed'
-                    ? 'modelUi.retryTarget'
-                    : session.failure.value === 'model-unavailable'
-                      ? 'modelUi.unavailable'
-                      : session.failure.value === 'not-configured'
-                        ? 'chat.notConfigured'
-                        : session.failure.value === 'target-change-failed'
-                          ? 'chat.targetChangeFailed'
-                          : 'desktop.retrySame',
-                )
-              }}</Feedback
-            >
-            <Button
-              v-if="session.failure.value === 'generation-stale'"
-              data-testid="retry-generation"
-              :disabled="session.sending.value || !session.draft.value.trim()"
-              @click="sendTask"
-              >{{ t('generation.retry') }}</Button
-            >
-            <Feedback v-if="proposalNote" tone="info">{{ proposalNote }}</Feedback>
-            <p v-if="effortReset" class="hint" data-testid="effort-reset">
-              {{ t('desktop.effortReset', { effort: t('task.' + effortReset) }) }}
-            </p>
-          </InfiniteScroll>
-          <form
-            class="chat-composer preview-composer preview-input-box"
-            data-testid="chat-composer"
-            @submit.prevent="sendTask"
-          >
-            <TaskComposer
-              :draft="session.draft.value"
-              :tool-mode="session.toolMode.value"
-              :active="props.active"
-              :refreshing-models="modelsRefreshing"
-              :model-options-available="modelChoices.length > 0"
-              :model-label="selectedModel ? selectedModel.model : ''"
-              :context="session.context.value"
-              :disabled="
-                session.sending.value ||
-                session.opening.value ||
-                session.reconnecting.value ||
-                archived
-              "
-              :reasoning-efforts="reasoningEfforts"
-              @update="session.context.value = $event"
-              @refresh="refreshModels"
-            >
-              <template #draft>
-                <label>
-                  <span class="sr-only">{{ t('chat.draft') }}</span>
-                  <Textarea
-                    v-model="session.draft.value"
-                    class="composer-draft"
-                    :placeholder="
-                      t(
-                        workbench.workMode === 'work'
-                          ? 'chat.draftWork'
-                          : workbench.workMode === 'code'
-                            ? 'chat.draftCode'
-                            : 'chat.draft',
-                      )
-                    "
-                    rows="3"
-                    :disabled="
-                      session.sending.value ||
-                      session.opening.value ||
-                      session.reconnecting.value ||
-                      archived
-                    "
-                  />
-                </label>
-                <Collapse class="outgoing-preview" data-testid="outgoing-preview">
-                  <template #summary>{{ t('desktop.outgoing') }}</template>
-                  <p>{{ t('desktop.outgoingIdle') }}</p>
-                  <p>
-                    {{ t('desktop.outgoingDraft') }}：{{
-                      session.draft.value.trim() || t('desktop.stepNoDraft')
-                    }}
-                  </p>
-                  <p>{{ t('desktop.outgoingGuide') }}</p>
-                  <pre>{{ outgoingText || t('desktop.outgoingNone') }}</pre>
-                  <p v-if="workbench.executionMode === 'plan'">{{ t('desktop.outgoingPlan') }}</p>
-                  <ul v-if="session.context.value.files.length">
-                    <li v-for="file in session.context.value.files" :key="file.name">
-                      {{ file.name }}
-                    </li>
-                  </ul>
-                  <p v-else>{{ t('desktop.outgoingNoFiles') }}</p>
-                </Collapse>
-              </template>
-              <template #settings
-                ><p
-                  v-if="catalogNote?.kind === 'cached'"
-                  class="catalog-fail"
-                  data-testid="catalog-cache"
-                >
-                  {{
-                    t('desktop.catalogCached', {
-                      time: catalogNote.time || t('desktop.catalogNoTime'),
-                      error: catalogNote.error,
-                    })
-                  }}
-                </p>
-                <p
-                  v-else-if="catalogNote?.kind === 'fresh'"
-                  class="hint"
-                  data-testid="catalog-fresh"
-                >
-                  {{
-                    t('desktop.catalogFresh', {
-                      time: catalogNote.time || t('desktop.catalogNoTime'),
-                    })
-                  }}
-                </p>
-                <p v-if="selectedModel?.wireApi === 'responses'" class="hint">
-                  {{ t('modelUi.protocolToolsUnavailable') }}
-                </p></template
+            <template #tools>
+              <div
+                v-if="session.conversationId.value"
+                class="chat-tool-settings"
+                data-testid="chat-tool-settings"
               >
-              <template #tools>
-                <div
-                  v-if="session.conversationId.value"
-                  class="chat-tool-settings"
-                  data-testid="chat-tool-settings"
-                >
-                  <p class="hint">{{ t('chat.gitWarning') }}</p>
-                  <Button
-                    variant="secondary"
-                    type="button"
-                    :aria-pressed="session.toolMode.value === 'none'"
-                    @click="session.toolMode.value = 'none'"
-                    >{{ t('chat.toolNone') }}</Button
-                  >
-                  <Button
-                    variant="secondary"
-                    type="button"
-                    :disabled="
-                      !session.status.value?.tools.git_status ||
-                      selectedModel?.wireApi === 'responses'
-                    "
-                    :aria-pressed="session.toolMode.value === 'git_status'"
-                    @click="session.toolMode.value = 'git_status'"
-                    >{{ t('chat.toolGit') }}</Button
-                  >
-                </div>
-              </template>
-              <template #model>
-                <p
-                  v-if="session.conversationId.value && modelChoices.length"
-                  class="hint"
-                  data-testid="model-switch-notice"
-                >
-                  {{ t('modelUi.switchAhead') }}
-                </p>
-                <p v-if="!modelChoices.length" class="hint" data-testid="model-empty">
-                  {{ t('desktop.modelEmptyHelp') }}
-                </p>
+                <p class="hint">{{ t('chat.gitWarning') }}</p>
                 <Button
-                  variant="navigation"
-                  v-for="item in modelChoices"
-                  :key="item.key"
-                  type="button"
-                  class="menu-choice"
-                  :aria-pressed="item.key === modelSelection"
-                  @click="chooseModel(item.key)"
-                  >{{ item.name }} · {{ item.model }}</Button
-                >
-                <small v-if="selectedModel?.kind === 'chatgpt-plan'">{{
-                  t('authUi.planUsage')
-                }}</small>
-              </template>
-              <template v-if="!selectedModel" #status>
-                <p class="hint" data-testid="send-needs-model">
-                  {{ t('desktop.sendNeedsModel') }}
-                  <a
-                    data-testid="send-open-settings"
-                    href="#model-settings"
-                    :title="t('desktop.locateSettingsNote')"
-                    >{{ t('desktop.locateSettings') }}</a
-                  >
-                </p>
-              </template>
-              <template #send>
-                <Button
-                  v-if="session.sending.value"
-                  class="composer-send"
                   variant="secondary"
                   type="button"
-                  data-testid="cancel-message"
-                  :aria-label="t('chat.cancel')"
-                  :title="t('chat.cancel')"
-                  @click="session.cancelSend()"
+                  :aria-pressed="session.toolMode.value === AiToolMode.NONE"
+                  @click="session.toolMode.value = AiToolMode.NONE"
+                  >{{ t('chat.toolNone') }}</Button
                 >
-                  <Icon name="x" class="composer-send-arrow" :size="18" />
-                  <span class="sr-only">{{ t('chat.cancel') }}</span>
-                </Button>
                 <Button
-                  v-else
-                  class="composer-send"
-                  variant="primary"
-                  type="submit"
-                  data-testid="send-message"
-                  :aria-label="t('chat.send')"
-                  :title="t('chat.send')"
+                  variant="secondary"
+                  type="button"
                   :disabled="
-                    workbench.executionMode === 'agent' ||
                     workbench.executionMode === 'plan' ||
-                    session.expired.value ||
-                    archived ||
-                    session.reconnecting.value ||
-                    session.changingConnection.value ||
-                    session.checkingConversation.value ||
-                    session.sessionUnavailable.value ||
-                    session.opening.value ||
-                    !session.draft.value.trim() ||
-                    (!!session.pendingConnectionId.value && !!session.conversationId.value) ||
-                    !selectedModel
+                    !session.status.value?.tools.git_status ||
+                    selectedModel?.wireApi === 'responses'
                   "
+                  :aria-pressed="session.toolMode.value === AiToolMode.GIT_STATUS"
+                  @click="session.toolMode.value = AiToolMode.GIT_STATUS"
+                  >{{ t('chat.toolGit') }}</Button
                 >
-                  <Icon name="arrow-up" class="composer-send-arrow" :size="18" />
-                  <span class="sr-only">{{ t('chat.send') }}</span>
-                </Button>
-              </template>
-            </TaskComposer>
-            <Feedback
-              v-if="
-                session.pendingConnectionId.value &&
-                session.conversationId.value &&
-                !session.expired.value
-              "
-              tone="warning"
+              </div>
+            </template>
+            <template #model>
+              <p
+                v-if="session.conversationId.value && modelChoices.length"
+                class="hint"
+                data-testid="model-switch-notice"
+              >
+                {{ t('modelUi.switchAhead') }}
+              </p>
+              <p v-if="!modelChoices.length" class="hint" data-testid="model-empty">
+                {{ t('desktop.modelEmptyHelp') }}
+              </p>
+              <Button
+                variant="navigation"
+                v-for="item in modelChoices"
+                :key="item.key"
+                type="button"
+                class="menu-choice"
+                :aria-pressed="item.key === modelSelection"
+                @click="chooseModel(item.key)"
+                >{{ item.name }} · {{ item.model }}</Button
+              >
+              <small v-if="selectedModel?.kind === 'chatgpt-plan'">{{
+                t('authUi.planUsage')
+              }}</small>
+            </template>
+            <template v-if="!selectedModel" #status>
+              <p class="hint" data-testid="send-needs-model">
+                {{ t('desktop.sendNeedsModel') }}
+                <a
+                  data-testid="send-open-settings"
+                  href="#model-settings"
+                  :title="t('desktop.locateSettingsNote')"
+                  >{{ t('desktop.locateSettings') }}</a
+                >
+              </p>
+            </template>
+            <template #send>
+              <Button
+                v-if="session.sending.value"
+                class="composer-send"
+                variant="secondary"
+                type="button"
+                data-testid="cancel-message"
+                :aria-label="t('chat.cancel')"
+                :title="t('chat.cancel')"
+                @click="session.cancelSend()"
+              >
+                <Icon name="x" class="composer-send-arrow" :size="18" />
+                <span class="sr-only">{{ t('chat.cancel') }}</span>
+              </Button>
+              <Button
+                v-else
+                class="composer-send"
+                variant="primary"
+                type="submit"
+                data-testid="send-message"
+                :aria-label="t('chat.send')"
+                :title="t('chat.send')"
+                :disabled="
+                  (workbench.executionMode === 'agent' && !agentReady) ||
+                  session.expired.value ||
+                  archived ||
+                  session.reconnecting.value ||
+                  session.changingConnection.value ||
+                  session.checkingConversation.value ||
+                  session.sessionUnavailable.value ||
+                  session.opening.value ||
+                  !session.draft.value.trim() ||
+                  (!!session.pendingConnectionId.value && !!session.conversationId.value) ||
+                  !selectedModel
+                "
+              >
+                <Icon name="arrow-up" class="composer-send-arrow" :size="18" />
+                <span class="sr-only">{{ t('chat.send') }}</span>
+              </Button>
+            </template>
+          </TaskComposer>
+          <Feedback
+            v-if="
+              session.pendingConnectionId.value &&
+              session.conversationId.value &&
+              !session.expired.value
+            "
+            tone="warning"
+          >
+            {{ t('chat.targetPrompt', { target: session.targetNotice.value }) }}
+            {{ t('modelUi.clearNotice') }}
+            <Button
+              type="button"
+              variant="secondary"
+              @click="session.confirmConnectionChange()"
+              :disabled="session.changingConnection.value"
+              >{{ t('chat.confirmTarget') }}</Button
             >
-              {{ t('chat.targetPrompt', { target: session.targetNotice.value }) }}
-              {{ t('modelUi.clearNotice') }}
-              <Button
-                type="button"
-                variant="secondary"
-                @click="session.confirmConnectionChange()"
-                :disabled="session.changingConnection.value"
-                >{{ t('chat.confirmTarget') }}</Button
-              >
-              <Button
-                type="button"
-                variant="secondary"
-                :disabled="session.changingConnection.value"
-                @click="session.cancelConnectionChange()"
-                >{{ t('chat.cancelTarget') }}</Button
-              >
-            </Feedback>
-          </form>
-          <SessionPanel
-            v-if="terminalDockOpen"
-            class="terminal-dock"
-            mode="terminal"
-            data-testid="terminal-dock"
-            @close="closePanel"
-            @open="openFromSummary"
-          />
-        </div>
-        <template v-if="workspaceTreeOpen" #rail>
-          <WorkspaceFileTreeRail @close="toggleWorkspaceTree(false)" />
-        </template>
-      </WorkbenchFrame>
+            <Button
+              type="button"
+              variant="secondary"
+              :disabled="session.changingConnection.value"
+              @click="session.cancelConnectionChange()"
+              >{{ t('chat.cancelTarget') }}</Button
+            >
+          </Feedback>
+        </form>
+        <SessionPanel
+          v-if="terminalDockOpen"
+          class="terminal-dock"
+          mode="terminal"
+          data-testid="terminal-dock"
+          @close="closePanel"
+          @open="openFromSummary"
+        />
+      </div>
       <SessionPanel
         v-if="railMode"
         class="session-rail eap-scrollbar"
@@ -1705,11 +1867,6 @@ onMounted(async () => {
     flex-wrap: wrap;
   }
 }
-.chat-workspace-split {
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-}
 .chat-main {
   display: flex;
   flex-direction: column;
@@ -1820,6 +1977,9 @@ onMounted(async () => {
   display: block;
   gap: 0;
   flex: 0 0 auto;
+  max-height: min(55%, 440px);
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 .chat-composer:has(textarea.composer-draft:disabled) textarea,
 .chat-composer:has(textarea.composer-draft:disabled) :deep(.context-toolbar) {

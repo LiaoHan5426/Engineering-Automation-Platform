@@ -200,7 +200,7 @@ class OpenAiResponsesProtocolTest {
             var client = new SpringAiModelClientSource(MessageWindowChatMemory.builder().build()).completion(snapshot(server, "responses"));
             String answer = client.prompt().user("run local tools")
                     .options(OpenAiChatOptions.builder().maxTokens(512))
-                    .toolCallbacks(callback("lookup", calls, false), callback("finish", calls, true))
+                    .tools(callback("lookup", calls, false), callback("finish", calls, true))
                     .advisors(org.springframework.ai.chat.client.advisor.ToolCallingAdvisor.builder().build()).call().content();
             assertTrue(answer.contains("finished")); assertEquals(2, calls.get()); assertEquals(2, requests.size());
             var first = requests.getFirst();
@@ -236,7 +236,7 @@ class OpenAiResponsesProtocolTest {
             try {
                 var client = new SpringAiModelClientSource(MessageWindowChatMemory.builder().build()).completion(snapshot(server, "responses"));
                 assertThrows(RuntimeException.class, () -> client.prompt().user("run")
-                        .toolCallbacks(callback("lookup", calls, true))
+                        .tools(callback("lookup", calls, true))
                         .advisors(org.springframework.ai.chat.client.advisor.ToolCallingAdvisor.builder().build()).call().content());
                 assertEquals(0, calls.get());
             } finally { server.stop(0); }

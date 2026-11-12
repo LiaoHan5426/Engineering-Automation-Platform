@@ -12,7 +12,10 @@ const version = ref<PrototypeVersionRecord | null>(null),
   error = ref('')
 let ticket = 0
 const mismatch = computed(
-  () => !!version.value && !!props.expectedHash && version.value.contentHash !== props.expectedHash,
+  () =>
+    !!version.value &&
+    (version.value.id !== props.versionId ||
+      (!!props.expectedHash && version.value.contentHash !== props.expectedHash)),
 )
 
 async function load() {

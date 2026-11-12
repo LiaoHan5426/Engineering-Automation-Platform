@@ -9,6 +9,8 @@ const props = withDefaults(
   defineProps<{
     accept?: string
     multiple?: boolean
+    /** Select local directory contents; this does not start a request or traverse server paths. */
+    directory?: boolean
     disabled?: boolean
     maxFiles?: number
     maxSize?: number
@@ -64,7 +66,7 @@ function select(event: Event) {
   input.value = ''
   if (props.disabled || busy.value || !next.length) return
   if (
-    next.length > (props.multiple ? props.maxFiles : 1) ||
+    next.length > (props.multiple || props.directory ? props.maxFiles : 1) ||
     next.some((file) => file.size > props.maxSize || !accepts(file))
   ) {
     message.value = props.invalidMessage
@@ -118,7 +120,8 @@ onBeforeUnmount(cancel)
   <div class="eap-upload">
     <FileInput
       :accept="accept"
-      :multiple="multiple"
+      :multiple="multiple || directory"
+      :webkitdirectory="directory ? '' : undefined"
       :disabled="disabled || busy"
       :aria-label="label"
       @change="select"

@@ -225,3 +225,7 @@ BM-02与BM-03可在一个小的core/local闭包内交替落地，不能让临时
 ### 专家界面分层与截图反馈
 
 完整原文已归入[后端实施记录](../records/backend-composition-history.md#expert-workspace-navigation)；此处保留旧链接入口。
+
+### 运行中宿主的独立产物命名（2026-11-11）
+
+唯一full宿主build.finalName取自eap.application.final-name，默认值仍为artifactId-version。需要保留运行中宿主时可明确指定新名字完成同一套Boot package，不新增profile或宿主，不改运行数据路径。不要以clean/删除/覆盖正在使用的JAR解决重打包失败。当前新文件名reactor package退出0，Boot清单/165依赖/关键模块字节码/ZIP完整性已检查。该归档已通过独立 JVM 隔离启动：PropertiesLauncher 仅增加测试数据源配置，应用主类和生产依赖来自 Boot 包；健康、创建会话、查询模型历史均为 HTTP 200，自有 schema 和进程清理完成，模型调用为零。默认配置的普通 java -jar、日常库迁移及真实模型业务仍独立待验；此包为本轮入口依赖开发之前的产物，不能声称含后续源码。具体命令见agent-development-guide，证据见[台账](../planning-status.md#integration-build-source-check)。

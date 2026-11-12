@@ -103,7 +103,7 @@ it('uses shared decorative icons for the composer controls', async () => {
     'context-meter',
     'model-picker',
   ]) {
-    const icon = button(id).querySelector('svg.eap-icon')
+    const icon = host.querySelector(`[data-testid="${id}"] svg.eap-icon`)
     expect(icon, id).not.toBeNull()
     expect(icon!.getAttribute('aria-hidden')).toBe('true')
   }
@@ -117,13 +117,17 @@ it('shows model setup instead of reasoning controls when no model is selected', 
   expect(document.querySelector('.effort-row')).toBeNull()
 })
 
-it('uses an unmetered circular context entry without inventing token usage', async () => {
+it('keeps context usage informational and adds attachments through a single entry', async () => {
   await mount()
-  const meter = button('context-meter')
+  const meter = host.querySelector('[data-testid="context-meter"]') as HTMLElement
   expect(meter.querySelector('svg')).not.toBeNull()
   expect(meter.getAttribute('aria-valuenow')).toBeNull()
   expect(meter.getAttribute('aria-label')).toContain('不统计 token')
-  await click('context-meter')
+  expect(meter.closest('button')).toBeNull()
+  meter.click()
+  await nextTick()
+  expect(document.querySelector('[data-testid="composer-add-menu"]')).toBeNull()
+  await click('composer-add')
   expect(document.querySelector('[data-testid="context-usage-detail"]')?.textContent).toContain(
     '文件 0/6',
   )
@@ -134,9 +138,11 @@ it('explains unavailable execution modes while allowing real approval changes', 
   const { context } = await mount()
   await click('execution-mode')
   expect(document.querySelector('[data-testid="execution-availability"]')?.textContent).toContain(
-    '仅聊天可用',
+    '聊天与只读规划可用',
   )
-  expect(button('execution-plan').disabled).toBe(true)
+  expect(button('execution-plan').disabled).toBe(false)
+  expect(button('execution-agent').disabled).toBe(true)
+  expect(button('execution-plugin').disabled).toBe(true)
   await click('approval-policy')
   expect(document.querySelector('[data-testid="approval-menu"] h3')?.textContent).toBe('写入策略')
   await click('approval-read-only')

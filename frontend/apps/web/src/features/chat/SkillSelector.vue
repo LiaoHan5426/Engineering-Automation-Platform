@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button, Checkbox, Dialog, Feedback } from '@eap/ui'
 import {
@@ -24,6 +24,10 @@ const items = ref<SkillSummary[]>([]),
   candidate = ref<SkillSnapshot>(),
   paths = ref<string[]>([]),
   preview = ref<SkillContext>()
+const requestedIds = ref<string[] | null>(null)
+const missingIds = computed(
+  () => requestedIds.value?.filter((id) => !items.value.some((item) => item.id === id)) ?? [],
+)
 let catalogTicket = 0,
   detailTicket = 0,
   previewTicket = 0
@@ -48,19 +52,23 @@ watch(
   { flush: 'sync' },
 )
 watch(paths, invalidate, { deep: true, flush: 'sync' })
-async function show() {
+async function show(ids?: string[]) {
   if (props.disabled || props.blocked) return
   close()
   open.value = true
   loading.value = true
   error.value = ''
   items.value = []
+  requestedIds.value = ids ? [...new Set(ids)] : null
   candidate.value = undefined
   paths.value = []
   const ticket = ++catalogTicket
   try {
     const result = await runtimeApi.skills()
-    if (ticket === catalogTicket) items.value = result.items
+    if (ticket === catalogTicket)
+      items.value = requestedIds.value
+        ? result.items.filter((item) => requestedIds.value!.includes(item.id))
+        : result.items
   } catch {
     if (ticket === catalogTicket) error.value = t('skill.failure')
   } finally {
@@ -78,6 +86,8 @@ async function choose(item: SkillSummary) {
     const result = await runtimeApi.skill(item.id, item.version)
     if (ticket !== detailTicket) return
     if (
+      result.id !== item.id ||
+      result.version !== item.version ||
       !result.enabled ||
       result.digest !== item.digest ||
       result.stateRevision !== item.stateRevision
@@ -138,11 +148,15 @@ defineExpose({ show, close })
     data-testid="skill-open"
     type="button"
     :disabled="disabled || blocked"
-    @click="show"
+    @click="show()"
     >{{ t('skill.choose') }}</Button
   >
   <Dialog v-if="open" :title="t('skill.choose')" data-testid="skill-dialog" @close="close">
     <p>{{ t('skill.boundary') }}</p>
+    <p v-if="requestedIds">{{ t('skill.scenarioSelection') }}</p>
+    <Feedback v-if="!loading && missingIds.length" tone="warning">{{
+      t('skill.scenarioMissing', { ids: missingIds.join(', ') })
+    }}</Feedback>
     <p v-if="loading">{{ t('skill.loading') }}</p>
     <p v-else-if="!items.length">{{ t('skill.empty') }}</p>
     <div v-for="item in items" :key="item.id + item.version">

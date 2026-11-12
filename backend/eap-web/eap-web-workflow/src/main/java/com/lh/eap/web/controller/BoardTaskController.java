@@ -9,6 +9,10 @@ public class BoardTaskController {
     private final BoardTaskService tasks;
     public BoardTaskController(BoardTaskService tasks) { this.tasks = tasks; }
     @GetMapping public Map<String, Object> list(@RequestParam String projectId) { return Map.of("items", tasks.list(projectId)); }
+    @GetMapping("/{id}") public BoardTaskService.Task get(@PathVariable UUID id, @RequestParam String projectId) { return tasks.get(id, projectId); }
     @PostMapping public BoardTaskService.Task create(@RequestBody BoardTaskService.Draft draft) { return tasks.create(draft); }
+    @PostMapping("/from-prototype") public BoardTaskService.Task fromPrototype(@RequestBody BoardTaskService.PrototypeDraft draft) {
+        return tasks.fromPrototype(draft);
+    }
     @PostMapping("/{id}") public BoardTaskService.Task update(@PathVariable UUID id, @RequestBody BoardTaskService.Update update) { return tasks.update(id, update); }
 }

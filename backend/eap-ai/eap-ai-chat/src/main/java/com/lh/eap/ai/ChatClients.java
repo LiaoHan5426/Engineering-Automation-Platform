@@ -10,11 +10,12 @@ import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 
 /** Shared bounded Spring AI client setup; no product or provider dependencies. */
 public final class ChatClients {
+    public static final int MAX_TOOL_CALLS = 4;
     private ChatClients() {}
     public static ChatClient createClient(ChatClient.Builder builder, ChatMemory memory) {
         return builder.defaultAdvisors(MessageChatMemoryAdvisor.builder(memory).build(),
                 ToolCallingAdvisor.builder().toolCallingManager(ToolCallingManager.builder()
-                        .maxCallsPerTool(4).maxTotalToolCalls(4).resolutionFallbackEnabled(false).build()).build()).build();
+                        .maxCallsPerTool(MAX_TOOL_CALLS).maxTotalToolCalls(MAX_TOOL_CALLS).resolutionFallbackEnabled(false).build()).build()).build();
     }
     public static String memoryKey(String principal, UUID conversationId) {
         return principal.length() + ":" + principal + ":" + conversationId;

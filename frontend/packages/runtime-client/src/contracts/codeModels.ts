@@ -80,8 +80,15 @@ export type CodeApplied = {
   reason?: string
 }
 
+export type CodePreparation = {
+  workspace: string
+  files: Array<{ path: string; exists: boolean; baseHash: string; bytes: number }>
+  totalBytes: number
+}
+
 export type CodeProposalState = {
   proposal: CodeProposal
+  dependencies: import('./sourceDependency').SourceDependency[]
   status: CodeProposalStatus
   result: CodeApplied | null
   reason: string

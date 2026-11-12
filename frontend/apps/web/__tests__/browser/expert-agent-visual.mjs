@@ -1,3 +1,4 @@
+import { loadPlaywright } from './playwright-runtime.mjs'
 // Real Chromium rendering with isolated API fixtures. No model calls or filesystem writes via EAP.
 // EAP_PLAYWRIGHT_MODULE and EAP_CHROMIUM point to an already installed driver/browser.
 import assert from 'node:assert/strict'
@@ -6,7 +7,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const require = createRequire(import.meta.url)
-const { chromium } = require(process.env.EAP_PLAYWRIGHT_MODULE || 'playwright-core')
+const { chromium } = loadPlaywright()
 const output = resolve(
   process.env.EAP_VISUAL_OUTPUT || 'apps/web/__tests__/browser/artifacts/expert-hierarchy',
 )
@@ -199,13 +200,18 @@ try {
     await page.getByTestId(control).click()
     await fits('.eap-drawer .eap-dialog')
     await page.keyboard.press('Tab')
-    assert.equal(await dialog().evaluate(e => e.contains(document.activeElement)), true)
+    assert.equal(await dialog().evaluate((e) => e.contains(document.activeElement)), true)
     await page.keyboard.press('Escape')
     assert.equal(await dialog().count(), 0)
-    assert.equal(await page.getByTestId(control).evaluate(e => e === document.activeElement), true)
+    assert.equal(
+      await page.getByTestId(control).evaluate((e) => e === document.activeElement),
+      true,
+    )
   }
   assert.equal(mutations.length, 0)
-  checks.push('supporting task details open in the shared drawer and restore focus without mutations')
+  checks.push(
+    'supporting task details open in the shared drawer and restore focus without mutations',
+  )
   await page.getByTestId('agent-open-review').click()
   await page.getByTestId('proposal-diff-monaco').waitFor({ state: 'visible' })
   const display = await page.evaluate(() => ({

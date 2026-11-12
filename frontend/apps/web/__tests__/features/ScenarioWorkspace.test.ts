@@ -53,6 +53,7 @@ afterEach(() => {
 async function mount() {
   vi.spyOn(runtimeApi, 'aiStatus').mockResolvedValue(readyStatus)
   vi.spyOn(runtimeApi, 'scenarios').mockResolvedValue({ items: [] })
+  vi.spyOn(runtimeApi, 'skills').mockResolvedValue({ items: [] })
   vi.spyOn(runtimeApi, 'workspaceDirty').mockResolvedValue({
     requested: false,
     count: 0,
@@ -330,7 +331,7 @@ it('locates a missing dependency and applies the scene without installing or wid
     'true',
   )
   expect(root!.querySelector('[data-testid=scene-tab-tools]')?.textContent).toMatch(/0\/\d+/)
-  expect(root!.querySelector('[data-testid=scene-tab-skills]')?.textContent).toMatch(/0\/\d+/)
+  expect(root!.querySelector('[data-testid=scene-tab-skills]')?.textContent).toMatch(/\(\d+\)/)
   expect(root!.querySelector('[data-testid=scene-tab-mcp]')?.textContent).toMatch(/0\/\d+/)
   expect(root!.querySelector('[data-testid=scene-dep-banner]')?.textContent).toMatch(
     /不可用|unavailable/,
@@ -577,12 +578,10 @@ it('keeps preparation gates on the real service contract without legacy local de
   expect(root.querySelector('[data-testid="live-verification-probe"]')?.textContent).toMatch(
     /不代表应用验证通过|not apply verification/i,
   )
-  expect(root.querySelector('[data-testid="live-preview"]')?.textContent).toMatch(
-    /可打开本机 UI|open local UI/i,
+  expect(root.querySelector('[data-testid="live-preview"]')?.textContent).toContain(
+    i18n.global.t('desktop.deliveryPreview'),
   )
-  expect(root.querySelector('[data-testid="live-preview-link"]')?.getAttribute('href')).toMatch(
-    /\/#chat$/,
-  )
+  expect(root.querySelector('[data-testid="live-preview-link"]')).toBeNull()
   expect(root.querySelector('[data-testid="acceptance-status"]')?.textContent).toMatch(
     /待人工验收|Human acceptance pending/,
   )

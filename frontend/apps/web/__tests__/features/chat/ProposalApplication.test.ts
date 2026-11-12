@@ -25,6 +25,7 @@ const proposal: CodeProposal = {
 }
 const applied = { id: 'p1', written: ['App.vue'], verification: 'not_requested', checks: [] }
 const state = (status: string, result: object | null = null) => ({
+  dependencies: [],
   proposal,
   status,
   result,
@@ -33,12 +34,13 @@ const state = (status: string, result: object | null = null) => ({
 let app: App, host: HTMLElement
 const current = ref(proposal)
 const button = (id: string) => document.querySelector(`[data-testid=${id}]`) as HTMLButtonElement
-async function mount() {
+async function mount(onContinue = vi.fn()) {
   host = document.createElement('div')
   document.body.append(host)
   const onApplied = vi.fn()
   app = createApp({
-    render: () => h(ProposalApplication, { proposal: current.value, readOnly: false, onApplied }),
+    render: () =>
+      h(ProposalApplication, { proposal: current.value, readOnly: false, onApplied, onContinue }),
   })
   app.use(i18n).mount(host)
   await vi.waitFor(() => expect(runtimeApi.codeProposal).toHaveBeenCalled())
@@ -62,6 +64,39 @@ it('reads a durable application on mount without posting again', async () => {
   expect(host.querySelector('[data-testid=application-identities]')?.textContent).toContain('c1')
   expect(host.querySelector('[data-testid=application-identities]')?.textContent).toContain('p1')
   expect(button('proposal-apply')).toBeNull()
+  expect(runtimeApi.applyCodeProposal).not.toHaveBeenCalled()
+})
+it('offers explicit continuation using the persisted application task without posting or opening diagnostics', async () => {
+  const binding = { projectId: 'original-project', taskId: crypto.randomUUID(), revision: 3 }
+  const bound = { ...proposal, generation: { ...proposal.generation!, taskBinding: binding } }
+  current.value = bound
+  vi.mocked(runtimeApi.codeProposal).mockResolvedValue({
+    ...state('APPLIED', applied),
+    proposal: bound,
+  } as never)
+  const next = vi.fn()
+  await mount(next)
+  await vi.waitFor(() => expect(button('application-continue')).not.toBeNull())
+  expect(host.querySelector('[data-testid=application-identities]')?.closest('details')?.open).toBe(
+    false,
+  )
+  expect(next).not.toHaveBeenCalled()
+  button('application-continue').click()
+  expect(next).toHaveBeenCalledWith(binding)
+  expect(runtimeApi.applyCodeProposal).not.toHaveBeenCalled()
+})
+it('distinguishes server-observed lazy and stylesheet edges without applying the candidate', async () => {
+  vi.mocked(runtimeApi.codeProposal).mockResolvedValue({
+    ...state('PROPOSED'),
+    dependencies: [
+      { from: 'frontend/routes.ts', to: 'frontend/Page.vue', kind: 'LAZY_MODULE' },
+      { from: 'frontend/page.css', to: 'frontend/palette.css', kind: 'STYLESHEET' },
+    ],
+  } as never)
+  await mount()
+  await vi.waitFor(() => expect(host.textContent).toContain('按需加载'))
+  expect(host.textContent).toContain('样式导入')
+  expect(button('proposal-apply').disabled).toBe(true)
   expect(runtimeApi.applyCodeProposal).not.toHaveBeenCalled()
 })
 it('requires confirmation and recovers a lost POST response by reading, not repeating the write', async () => {

@@ -1,6 +1,7 @@
 import { hasWireValue } from '@eap/runtime-client/contracts'
 import { BoardTaskColumn } from '@eap/runtime-client/contracts'
 import { BoardErrors, CodeErrors } from '@eap/runtime-client/contracts'
+import { ResourceErrors } from '@eap/runtime-client/contracts'
 import { randomUUID } from 'node:crypto'
 import type { BoardTask } from '@eap/runtime-client/contracts'
 
@@ -28,7 +29,16 @@ export function createBoardBackend(versionExists: (id: string) => boolean = () =
   }
   return {
     handle(method: string, url: URL, body: Record<string, unknown>) {
-      const path = url.pathname
+      let path = url.pathname
+      const prototypeVersionId =
+        path === '/board/tasks/from-prototype' && method === 'POST' ? body.versionId : null
+      if (path === '/board/tasks/from-prototype') {
+        if (method !== 'POST') return error(405, 'METHOD_NOT_ALLOWED')
+        if (typeof prototypeVersionId !== 'string' || !versionExists(prototypeVersionId))
+          return error(404, ResourceErrors.PROTOTYPE_VERSION_NOT_FOUND)
+        path = '/board/tasks'
+        body = { ...body, sessionId: '', column: BoardTaskColumn.PLANNED }
+      }
       if (path === '/board/source-write-reviews')
         return method === 'GET' ? result(200, []) : error(405, 'METHOD_NOT_ALLOWED')
       if (/^\/board\/source-write-reviews\/[^/]+(?:\/close)?$/.test(path))
@@ -188,6 +198,7 @@ export function createBoardBackend(versionExists: (id: string) => boolean = () =
           column,
           goal,
           acceptanceCriteria,
+          prototypeVersionId,
         ])
         const key = JSON.stringify([body.projectId, body.requestId])
         const prior = requests.get(key)
@@ -208,13 +219,20 @@ export function createBoardBackend(versionExists: (id: string) => boolean = () =
           revision: 1,
           events: ['created'],
           executionActive: false,
-          prototypeVersionId: null,
+          prototypeVersionId: typeof prototypeVersionId === 'string' ? prototypeVersionId : null,
           preparationIssues: [],
           allowedColumns: [],
         }
         tasks.unshift(task)
         requests.set(key, { fingerprint, task })
         return result(200, present(task))
+      }
+      if (path.startsWith('/board/tasks/') && method === 'GET') {
+        const projectId = url.searchParams.get('projectId')
+        const task = tasks.find(
+          (item) => item.id === path.slice('/board/tasks/'.length) && item.projectId === projectId,
+        )
+        return task ? result(200, present(task)) : error(404, BoardErrors.BOARD_TASK_NOT_FOUND)
       }
       if (path.startsWith('/board/tasks/') && method === 'POST') {
         if (

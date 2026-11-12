@@ -49,6 +49,7 @@ export function schemaFromGrapesProject(
       return { id: `node-${count}`, kind: 'text', props: { text: value }, children: [] }
     const source = record(value),
       attrs = record(source.attributes)
+    const id = String(attrs['data-eap-id'] ?? attrs.id ?? source.id ?? `node-${count}-${depth}`)
     const tag = String(source.tagName ?? '').toLowerCase()
     const kind = String(
       attrs['data-eap-kind'] ??
@@ -102,12 +103,31 @@ export function schemaFromGrapesProject(
       const level = Number(attrs['data-level'] ?? (tag === 'h2' ? 2 : tag === 'h3' ? 3 : 1))
       props.level = level === 2 || level === 3 ? level : 1
     }
-    if (kind === 'button') props.label = text(source)
+    if (kind === 'button') {
+      props.label = text(source)
+      if (attrs['data-action'])
+        props.action = {
+          type: String(attrs['data-action']),
+          target: String(attrs['data-target'] ?? ''),
+        }
+    }
     if (kind === 'link') {
       props.href = String(attrs.href ?? '#')
       props.label = text(source).slice(0, 200) || String(attrs['aria-label'] ?? 'Link')
     }
+    if (['input', 'select', 'checkbox', 'form', 'dialog'].includes(kind))
+      props.label = String(attrs['data-label'] ?? attrs.placeholder ?? '')
     if (kind === 'input') props.placeholder = String(attrs.placeholder ?? '')
+    if (['input', 'select'].includes(kind)) props.initialValue = String(attrs['data-value'] ?? '')
+    if (['input', 'select', 'checkbox'].includes(kind))
+      props.required = attrs['data-required'] === 'true' || attrs['data-required'] === true
+    if (kind === 'checkbox')
+      props.checked = attrs['data-checked'] === 'true' || attrs['data-checked'] === true
+    if (kind === 'select')
+      props.options = String(attrs['data-options'] ?? '')
+        .split('\n')
+        .filter(Boolean)
+    if (kind === 'section') props.initiallyVisible = attrs['data-visible'] !== 'false'
     const contents =
       Array.isArray(source.components) && source.components.length
         ? source.components
@@ -122,13 +142,12 @@ export function schemaFromGrapesProject(
         .filter(Boolean)
         .slice(0, 50)
     }
-    const children =
-      kind === 'section'
-        ? contents
-            .map((child) => convert(child, depth + 1))
-            .filter((child): child is PrototypeNode => !!child)
-        : []
-    return { id: `node-${count}-${depth}`, kind, props, children }
+    const children = ['section', 'form', 'dialog'].includes(kind)
+      ? contents
+          .map((child) => convert(child, depth + 1))
+          .filter((child): child is PrototypeNode => !!child)
+      : []
+    return { id, kind, props, children }
   }
   const pages = Array.isArray(project.pages) ? project.pages : []
   for (const page of pages) {

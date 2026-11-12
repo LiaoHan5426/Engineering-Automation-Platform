@@ -28,8 +28,8 @@ public class BoardDeliveryService {
             this(projectId, revision, workspacePath, requestId, paths, note, null);
         }
     }
-    public record Decide(String projectId, long revision, UUID requestId, UUID deliveryId, String decision, boolean criteriaConfirmed, boolean previewConfirmed, String comment) {}
-    public record Decision(UUID id, UUID requestId, String decision, boolean criteriaConfirmed, boolean previewConfirmed, String comment, String operator, Instant createdAt) {}
+    public record Decide(String projectId, long revision, UUID requestId, UUID deliveryId, String decision, boolean criteriaConfirmed, boolean previewConfirmed, String comment, String previewUrl) {}
+    public record Decision(UUID id, UUID requestId, String decision, boolean criteriaConfirmed, boolean previewConfirmed, String comment, String operator, Instant createdAt, String previewUrl) {}
     public record Delivery(UUID id, String source, UUID requestId, long taskRevision, long submittedRevision, String workspacePath, String baseCommit, UUID verificationId, String sourceHash, UUID prototypeVersionId, String goal, String acceptanceCriteria, String note, List<BoardDeliveryCapture.File> files, Instant createdAt, Decision decision, BoardApplicationEvidence.Evidence applicationEvidence) {
         public Delivery(UUID id, String source, UUID requestId, long taskRevision, long submittedRevision, String workspacePath, String baseCommit, UUID verificationId, String sourceHash, UUID prototypeVersionId, String goal, String acceptanceCriteria, String note, List<BoardDeliveryCapture.File> files, Instant createdAt, Decision decision) {
             this(id, source, requestId, taskRevision, submittedRevision, workspacePath, baseCommit, verificationId, sourceHash, prototypeVersionId, goal, acceptanceCriteria, note, files, createdAt, decision, null);
@@ -93,6 +93,9 @@ public class BoardDeliveryService {
     }
     public Delivery decide(UUID taskId, UUID executionId, Decide request) {
         project(request.projectId()); text(request.comment());
+        if (request.previewUrl()==null || (!request.previewUrl().isEmpty() && !validPreviewUrl(request.previewUrl())) ||
+                (BoardDeliveryDecision.ACCEPT.wire().equals(request.decision()) && !validPreviewUrl(request.previewUrl())))
+            throw new IllegalArgumentException(BoardDeliveryErrors.INVALID_BOARD_DELIVERY_DECISION.code());
         if (request.revision()<1 || request.requestId()==null || request.deliveryId()==null || request.decision()==null || !Set.of(BoardDeliveryDecision.ACCEPT.wire(),BoardDeliveryDecision.REJECT.wire()).contains(request.decision()) || (request.decision().equals(BoardDeliveryDecision.ACCEPT.wire()) && (!request.criteriaConfirmed() || !request.previewConfirmed())) || (request.decision().equals(BoardDeliveryDecision.REJECT.wire()) && request.comment().isBlank())) throw new IllegalArgumentException(BoardDeliveryErrors.INVALID_BOARD_DELIVERY_DECISION.code());
         // No process in this initial read. Task is re-read and locked inside the independent transaction.
         tasks.find(taskId, request.projectId(), false); var initial = read(taskId, executionId);
@@ -118,7 +121,7 @@ public class BoardDeliveryService {
                         throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_STALE.code());
                 }
             }
-            var decision = new Decision(UUID.randomUUID(), request.requestId(), request.decision(), request.criteriaConfirmed(), request.previewConfirmed(), SensitiveData.redact(request.comment()), "local-operator", Instant.now());
+            var decision = new Decision(UUID.randomUUID(), request.requestId(), request.decision(), request.criteriaConfirmed(), request.previewConfirmed(), SensitiveData.redact(request.comment()), "local-operator", Instant.now(), request.previewUrl());
             var result = new Delivery(delivery.id(), delivery.source(), delivery.requestId(), delivery.taskRevision(), delivery.submittedRevision(), delivery.workspacePath(), delivery.baseCommit(), delivery.verificationId(), delivery.sourceHash(), delivery.prototypeVersionId(), delivery.goal(), delivery.acceptanceCriteria(), delivery.note(), delivery.files(), delivery.createdAt(), decision, delivery.applicationEvidence());
             jdbc.update("UPDATE eap.board_task_run SET delivery_snapshot=?::jsonb,delivery_decision_hash=? WHERE task_id=? AND execution_id=?", JSON.writeValueAsString(result), fingerprint(request), taskId, executionId);
             tasks.deliveryTransition(task, request.decision().equals(BoardDeliveryDecision.ACCEPT.wire()) ? BoardTaskColumn.DONE.wire() : BoardTaskColumn.READY.wire()); return result;
@@ -164,6 +167,15 @@ public class BoardDeliveryService {
         return rows.getFirst();
     }
     private static String fingerprint(Object value) { return GitReviewCapture.hash(JSON.writeValueAsString(value)); }
+    static boolean validPreviewUrl(String value) {
+        if (value==null || value.length()>2048 || value.chars().anyMatch(Character::isWhitespace) || value.chars().anyMatch(Character::isISOControl)) return false;
+        try {
+            var url = java.net.URI.create(value);
+            return url.getScheme()!=null && Set.of("http", "https").contains(url.getScheme()) && url.getHost()!=null &&
+                    Set.of("localhost", "127.0.0.1", "[::1]").contains(url.getHost()) && url.getRawUserInfo()==null &&
+                    (url.getPort()==-1 || url.getPort()>0 && url.getPort()<=65535);
+        } catch (IllegalArgumentException invalid) { return false; }
+    }
     private static void project(String value) { if (value==null || value.isBlank() || value.length()>120) throw new IllegalArgumentException(BoardErrors.INVALID_BOARD_FIELD.code()); }
     private static void text(String value) { if (value==null || value.length()>4000) throw new IllegalArgumentException(BoardDeliveryErrors.INVALID_BOARD_DELIVERY_REQUEST.code()); }
 }

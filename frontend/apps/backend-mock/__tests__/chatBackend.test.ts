@@ -9,6 +9,92 @@ import type {
   ModelConnectionList,
 } from '@eap/runtime-client'
 
+it('does not fabricate repository preparation or discovered dependencies', async () => {
+  const api = createMockChatBackend()
+  for (const route of ['/ai/workspace/code-preparation', '/ai/workspace/code-dependencies']) {
+    expect(
+      await api.handle('POST', route, { targetPath: 'frontend/Page.vue', componentPaths: [] }),
+    ).toMatchObject({ status: 503, data: { code: 'CODE_GENERATION_CONTEXT_UNAVAILABLE' } })
+  }
+  const conversation = (await api.handle('POST', '/ai/conversations')).data as AiConversation
+  expect(
+    await api.handle('POST', '/ai/conversations/' + conversation.conversationId + '/messages', {
+      message: 'Read selected sources',
+      toolMode: 'code_sources',
+      context: { mode: 'code', targetPath: 'frontend/Page.vue' },
+    }),
+  ).toMatchObject({ status: 503, data: { code: 'CODE_GENERATION_CONTEXT_UNAVAILABLE' } })
+})
+
+it('keeps planning read-only and refuses tool or repository evidence simulation', async () => {
+  const api = createMockChatBackend()
+  const conversation = (await api.handle('POST', '/ai/conversations')).data as AiConversation
+  const path = '/ai/conversations/' + conversation.conversationId + '/messages'
+  expect(
+    await api.handle('POST', path, {
+      message: 'Unknown purpose',
+      toolMode: 'none',
+      context: { mode: 'agent' },
+    }),
+  ).toMatchObject({ status: 400, data: { code: 'INVALID_TASK_CONTEXT' } })
+  expect(
+    await api.handle('POST', path, {
+      message: 'Plan only',
+      toolMode: 'git_status',
+      context: { mode: 'plan' },
+    }),
+  ).toMatchObject({ status: 400, data: { code: 'INVALID_TASK_CONTEXT' } })
+  expect(
+    await api.handle('POST', path, {
+      message: 'Plan selected source',
+      toolMode: 'none',
+      context: { mode: 'plan', targetPath: 'frontend/Page.vue' },
+    }),
+  ).toMatchObject({ status: 503, data: { code: 'CODE_GENERATION_CONTEXT_UNAVAILABLE' } })
+  const reply = await api.handle('POST', path, {
+    message: 'Plan only',
+    toolMode: 'none',
+    context: { mode: 'plan' },
+  })
+  expect(reply.status).toBe(200)
+  expect((reply.data as AiMessageResult).proposal).toBeNull()
+})
+
+it('clears simulated model history without deleting the conversation or task memory', async () => {
+  const api = createMockChatBackend()
+  const conversation = (await api.handle('POST', '/ai/conversations')).data as AiConversation
+  const route = '/ai/conversations/' + conversation.conversationId
+  await api.handle('POST', route + '/messages', {
+    message: 'Keep this draft',
+    context: { mode: 'chat' },
+  })
+  expect((await api.handle('GET', route + '/model-history')).data).toMatchObject({ messages: 2 })
+  expect(await api.handle('POST', route + '/model-history/summary')).toMatchObject({
+    status: 200,
+    data: { sourceMessages: 2 },
+  })
+  const before = (await api.handle('GET', route)).data
+  expect((await api.handle('DELETE', route + '/model-history')).status).toBe(204)
+  expect((await api.handle('GET', route + '/model-history')).data).toEqual({
+    messages: 0,
+    chars: 0,
+  })
+  expect((await api.handle('GET', route)).data).toEqual(before)
+  const expectedUpdatedAt = (before as AiConversation).workingMemory!.updatedAt
+  const saved = await api.handle('PUT', route + '/working-memory', {
+    expectedUpdatedAt,
+    goal: 'new goal',
+    constraints: ['new constraint'],
+  })
+  expect(saved.status).toBe(200)
+  expect(
+    await api.handle('PUT', route + '/working-memory', { expectedUpdatedAt, goal: 'stale goal' }),
+  ).toMatchObject({ status: 409, data: { code: 'WORKING_MEMORY_CHANGED' } })
+  expect(((await api.handle('GET', route)).data as AiConversation).workingMemory?.goal).toBe(
+    'new goal',
+  )
+})
+
 it('refuses task-bound generation instead of simulating durable PREBOUND evidence', async () => {
   const api = createMockChatBackend()
   const conversation = (await api.handle('POST', '/ai/conversations')).data as AiConversation
@@ -150,6 +236,8 @@ it('serves the chat contract and model whitelist without an external backend', a
   expect(derivedCleared.contextMemoryCleared).toBe(true)
   expect(derivedCleared.contextBudget?.notes).toContain('DERIVED_CLEARED_BEFORE_SEND')
   await api.handle('PUT', conversationPath + '/working-memory', {
+    expectedUpdatedAt: ((await api.handle('GET', conversationPath)).data as AiConversation)
+      .workingMemory!.updatedAt,
     goal: '记忆失效前目标',
     constraints: ['示例约束：复用现有组件'],
   })

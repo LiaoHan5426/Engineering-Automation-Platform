@@ -427,10 +427,10 @@ class BoardRunPersistenceTest {
         Files.writeString(repo.resolve("frontend/source.ts"), "export const source = 3;");
         assertEquals("BOARD_EXECUTION_EVIDENCE_REQUIRED", rejects(() -> tasks.update(f.task().id(), new BoardTaskService.Update(project, 2, null, "changed", null, null, null))).getReason());
         assertEquals("BOARD_EXECUTION_EVIDENCE_REQUIRED", rejects(() -> context.getBean(BoardPrototypeService.class).select(f.task().id(), new BoardPrototypeService.Selection(project, 2, null))).getReason());
-        var accept = new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "ACCEPT", true, true, "checked");
+        var accept = new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "ACCEPT", true, true, "checked", "http://127.0.0.1:5193/");
         assertEquals("BOARD_DELIVERY_SOURCE_STALE", rejects(() -> f.service().decide(f.task().id(), f.execution(), accept)).getReason());
         assertNull(f.service().get(f.task().id(), f.execution(), project).record().decision());
-        var reject = new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "REJECT", false, false, "source changed");
+        var reject = new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "REJECT", false, false, "source changed", "http://127.0.0.1:5193/");
         assertEquals("REJECT", f.service().decide(f.task().id(), f.execution(), reject).decision().decision());
         assertEquals("ready", tasks.find(f.task().id(), project, false).column());
         assertEquals(delivery.files(), f.service().get(f.task().id(), f.execution(), project).record().files());
@@ -442,7 +442,7 @@ class BoardRunPersistenceTest {
         try (var pool = Executors.newFixedThreadPool(2)) {
             var calls = java.util.stream.IntStream.range(0,2).mapToObj(i -> pool.submit(() -> {
                 barrier.await(5, TimeUnit.SECONDS);
-                try { return f.service().decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "REJECT", false, false, "not accepted")).decision().decision(); }
+                try { return f.service().decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "REJECT", false, false, "not accepted", "http://127.0.0.1:5193/")).decision().decision(); }
                 catch (ResponseStatusException denied) { return denied.getReason(); }
             })).toList();
             assertEquals(Set.of("REJECT", "BOARD_DELIVERY_REQUEST_CONFLICT"), Set.of(calls.get(0).get(20,TimeUnit.SECONDS), calls.get(1).get(20,TimeUnit.SECONDS)));
@@ -458,8 +458,8 @@ class BoardRunPersistenceTest {
         assertEquals(404, rejects(() -> service.get(f.task().id(), f.execution(), project+"-foreign")).getStatusCode().value());
         assertEquals(404, rejects(() -> service.get(f.task().id(), UUID.randomUUID(), project)).getStatusCode().value());
         assertEquals("BOARD_DELIVERY_REQUEST_CONFLICT", rejects(() -> service.submit(f.task().id(), f.execution(), new BoardDeliveryService.Request(project,1,f.request().workspacePath(),f.request().requestId(),f.request().paths(),"different"))).getReason());
-        assertThrows(IllegalArgumentException.class, () -> service.decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",false,true,"unchecked")));
-        assertThrows(IllegalArgumentException.class, () -> service.decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"REJECT",false,false," ")));
+        assertThrows(IllegalArgumentException.class, () -> service.decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",false,true,"unchecked", "http://127.0.0.1:5193/")));
+        assertThrows(IllegalArgumentException.class, () -> service.decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"REJECT",false,false," ", "http://127.0.0.1:5193/")));
         org.mockito.Mockito.verifyNoInteractions(process);
     }
     @Test void deliveryCannotReuseVerificationAfterTaskOrPrototypeChange() throws Exception {
@@ -474,17 +474,17 @@ class BoardRunPersistenceTest {
         var process = org.mockito.Mockito.mock(com.lh.eap.api.ProcessExecutor.class);
         org.mockito.Mockito.when(process.runIsolated(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.anyList(),org.mockito.ArgumentMatchers.anyMap())).thenThrow(new IllegalStateException("unconfirmed"));
         var service = new BoardDeliveryService(jdbc,tasks,executions,git,context.getBean(CapabilityRegistry.class),f.verification(),new BoardDeliveryCapture(process,new BoardVerificationSource()));
-        var accept = new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"checked");
+        var accept = new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"checked", "http://127.0.0.1:5193/");
         assertEquals("BOARD_VERIFICATION_PROCESS_UNKNOWN",rejects(() -> service.decide(f.task().id(),f.execution(),accept)).getReason());
         assertEquals(delivery,service.get(f.task().id(),f.execution(),project).record());
         assertTrue(tasks.hasActiveWorkspace(f.request().workspacePath()));
         assertEquals("acceptance",tasks.find(f.task().id(),project,false).column());
-        assertEquals("BOARD_EXECUTION_ACTIVE",rejects(() -> service.decide(f.task().id(),f.execution(),new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"REJECT",false,false,"unknown"))).getReason());
+        assertEquals("BOARD_EXECUTION_ACTIVE",rejects(() -> service.decide(f.task().id(),f.execution(),new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"REJECT",false,false,"unknown", "http://127.0.0.1:5193/"))).getReason());
     }
     @Test void acceptanceRechecksEvidencePathsAndNestedRepositoryBoundaries() throws Exception {
         var f=deliveryFixture(executor); var delivery=f.service().submit(f.task().id(),f.execution(),f.request());
         Files.createDirectories(repo.resolve("frontend/.git"));
-        var accept=new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"reviewed");
+        var accept=new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"reviewed", "http://127.0.0.1:5193/");
         assertEquals("BOARD_DELIVERY_PATH_DENIED", rejects(()->f.service().decide(f.task().id(),f.execution(),accept)).getReason());
         assertEquals("acceptance",tasks.find(f.task().id(),project,false).column());
     }
@@ -579,7 +579,7 @@ class BoardRunPersistenceTest {
                 "jsonb_set(delivery_snapshot,'{applicationEvidence,taskBinding,revision}','2'::jsonb)"))
             assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> jdbc.update(
                     "UPDATE eap.board_task_run SET delivery_snapshot=" + expression + " WHERE execution_id=?", f.execution()));
-        var accepted = service.decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "ACCEPT", true, true, "test only"));
+        var accepted = service.decide(f.task().id(), f.execution(), new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "ACCEPT", true, true, "test only", "http://127.0.0.1:5193/"));
         assertEquals("ACCEPT", accepted.decision().decision());
         assertEquals(delivery.applicationEvidence(), accepted.applicationEvidence());
     }
@@ -633,7 +633,7 @@ class BoardRunPersistenceTest {
         assertEquals(delivery, reopened.get(f.task().id(), f.execution(), project).record());
         assertEquals(delivery, reopened.submit(f.task().id(), f.execution(), request));
         org.mockito.Mockito.verifyNoInteractions(noProcesses);
-        var accept = new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "ACCEPT", true, true, "isolated fixture, not user acceptance");
+        var accept = new BoardDeliveryService.Decide(project, 2, UUID.randomUUID(), delivery.id(), "ACCEPT", true, true, "isolated fixture, not user acceptance", "http://127.0.0.1:5193/");
         var decided = service.decide(f.task().id(), f.execution(), accept);
         assertEquals(json.path("applicationEvidence"), tools.jackson.databind.json.JsonMapper.builder().build().valueToTree(decided).path("applicationEvidence"));
         assertEquals(decided, reopened.decide(f.task().id(), f.execution(), accept));
@@ -657,11 +657,11 @@ class BoardRunPersistenceTest {
         var fixture=appliedDeliveryFixture(); var f=fixture.fixture(); var service=applicationDeliveryService(f,executor);
         var delivery=service.submit(f.task().id(),f.execution(),fixture.request());
         jdbc.update("UPDATE eap.code_proposal SET result=jsonb_set(result,'{afterHash}',to_jsonb(?::text)) WHERE id=?", "f".repeat(64),fixture.proposal().id());
-        var accept=new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"isolated test");
+        var accept=new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"isolated test", "http://127.0.0.1:5193/");
         assertEquals("BOARD_DELIVERY_APPLICATION_SOURCE_MISMATCH",rejects(() -> service.decide(f.task().id(),f.execution(),accept)).getReason());
         assertEquals(delivery,service.get(f.task().id(),f.execution(),project).record()); assertEquals(2,tasks.find(f.task().id(),project,false).revision());
         var process=org.mockito.Mockito.mock(com.lh.eap.api.ProcessExecutor.class);
-        var reject=new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"REJECT",false,false,"isolated stale application fixture");
+        var reject=new BoardDeliveryService.Decide(project,2,UUID.randomUUID(),delivery.id(),"REJECT",false,false,"isolated stale application fixture", "http://127.0.0.1:5193/");
         var decided=applicationDeliveryService(f,process).decide(f.task().id(),f.execution(),reject);
         assertEquals(delivery.applicationEvidence(),decided.applicationEvidence()); assertEquals("ready",tasks.find(f.task().id(),project,false).column()); org.mockito.Mockito.verifyNoInteractions(process);
     }

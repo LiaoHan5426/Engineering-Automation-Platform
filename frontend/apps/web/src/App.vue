@@ -202,7 +202,8 @@ watch(activeView, (value, previous) => {
   if (!taskViews.has(value)) workbench.panel = null
   if (
     typeof location !== 'undefined' &&
-    !(value === 'experts' && location.hash.startsWith('#experts?'))
+    !(value === 'experts' && location.hash.startsWith('#experts?')) &&
+    !(value === 'board' && location.hash.startsWith('#board?'))
   )
     location.hash = value === 'chat' && workbench.workMode === 'work' ? 'work' : value
 })

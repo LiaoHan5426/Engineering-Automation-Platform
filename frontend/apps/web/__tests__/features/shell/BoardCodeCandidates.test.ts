@@ -22,6 +22,7 @@ const task = {
   executionActive: false,
 } as BoardTask
 const state = (): CodeProposalState => ({
+  dependencies: [],
   proposal: {
     id: crypto.randomUUID(),
     conversationId: crypto.randomUUID(),

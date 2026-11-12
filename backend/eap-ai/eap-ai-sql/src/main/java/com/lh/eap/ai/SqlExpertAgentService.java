@@ -255,7 +255,7 @@ public class SqlExpertAgentService {
                     """).user(bounded(Map.of("goal", snapshot.manifest().agent().goal(), "question", request.question(),
                     "sql", request.sql(), "initialEvidence", analysis, "priorObservations", observations, "citations", citations), 100000))
                     .options(ToolCallingChatOptions.builder().maxTokens(2048))
-                    .toolCallbacks(callbacks).advisors(loop, guard()).call().chatResponse();
+                    .tools(callbacks.toArray()).advisors(loop, guard()).call().chatResponse();
             live();
             if (terminal == null) throw new Stop(AgentErrors.AGENT_NO_TERMINAL_DECISION.code());
             return result();

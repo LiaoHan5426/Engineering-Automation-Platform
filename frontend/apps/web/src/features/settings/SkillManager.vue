@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiStorageScope } from '../../lib/runtimeConfig'
+import { readSkillDirectory } from './skillDirectory'
 import { Button, Checkbox, Feedback, Collapse, Dialog, FileUpload, Input, Textarea } from '@eap/ui'
 import {
   runtimeApi,
@@ -147,6 +148,21 @@ async function upload(files: File[], resources: boolean) {
     draft.value = next
   } catch {
     if (current === previewTicket) error.value = t('skill.uploadError')
+  } finally {
+    if (current === previewTicket) busy.value = false
+  }
+}
+async function importDirectory(files: File[]) {
+  if (busy.value || pending.value || !files.length) return
+  const current = ++previewTicket
+  busy.value = true
+  error.value = ''
+  try {
+    const imported = await readSkillDirectory(files)
+    if (current !== previewTicket) return
+    draft.value = { ...draft.value, ...imported }
+  } catch {
+    if (current === previewTicket) error.value = t('skill.directoryError')
   } finally {
     if (current === previewTicket) busy.value = false
   }
@@ -331,6 +347,18 @@ onDeactivated(leave)
       <Feedback v-if="error" tone="error">{{ error }}</Feedback>
       <section data-testid="skill-import-form">
         <p>{{ t('skill.boundary') }}</p>
+        <p>{{ t('skill.directoryHelp') }}</p>
+        <FileUpload
+          directory
+          multiple
+          :max-files="5"
+          :max-size="96000"
+          data-testid="skill-directory"
+          :label="t('skill.directory')"
+          :invalid-message="t('skill.directoryError')"
+          :disabled="busy || !!pending"
+          @select="importDirectory"
+        />
         <Collapse
           ><template #summary>{{ t('product.skillFormat') }}</template>
           <p>{{ t('skill.subset') }}</p>
@@ -427,11 +455,22 @@ onDeactivated(leave)
 </template>
 <style scoped>
 .skill-manager,
-label {
+label,
+[data-testid='skill-import-form'] {
   display: grid;
   gap: 12px;
+  min-width: 0;
+}
+section,
+section > div {
+  min-width: 0;
+}
+code {
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 pre {
+  max-width: 100%;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

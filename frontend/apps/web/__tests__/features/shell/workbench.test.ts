@@ -40,7 +40,11 @@ describe('workbench session state', () => {
   })
 
   it('reads a board task once and does not keep it pending', () => {
-    workbench.pendingBoardDraft = { sessionId: 'preview-1', title: '验收证据检查' }
+    workbench.pendingBoardDraft = {
+      executionMode: 'chat',
+      sessionId: 'preview-1',
+      title: '验收证据检查',
+    }
     expect(takeBoardDraft(false)).toBeNull()
     expect(workbench.pendingBoardDraft?.title).toBe('验收证据检查')
     expect(takeBoardDraft(true)?.title).toBe('验收证据检查')

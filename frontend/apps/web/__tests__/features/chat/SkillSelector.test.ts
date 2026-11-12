@@ -5,12 +5,16 @@ import { runtimeApi, type SkillSnapshot, type TaskContext } from '@eap/runtime-c
 import { i18n } from '../../../src/lib/i18n'
 import TaskComposer from '../../../src/features/chat/TaskComposer.vue'
 import { createChatSession, type ChatApi } from '../../../src/features/chat/chatSession'
+import { scenarios, currentExtras } from '../../../src/features/shell/workbench'
 let app: App, host: HTMLDivElement
 afterEach(() => {
   app?.unmount()
   host?.remove()
   vi.restoreAllMocks()
   sessionStorage.clear()
+  currentExtras().scenarioId = null
+  const scene = scenarios.findIndex((item) => item.id === 'custom-skill-selection-test')
+  if (scene >= 0) scenarios.splice(scene, 1)
 })
 const skillRef = { id: 'guide', version: '1.0.0', digest: 'a'.repeat(64), stateRevision: 2 }
 const snapshot: SkillSnapshot = {
@@ -83,6 +87,53 @@ async function setup() {
   await nextTick()
   return { session, send, get, preview }
 }
+it('selects an enabled exact version from scenario declarations without applying unrelated skills or sending', async () => {
+  const { session, send } = await setup()
+  scenarios.push({
+    id: 'custom-skill-selection-test',
+    builtin: false,
+    name: 'Review scenario',
+    status: 'ready',
+    modes: ['code', 'work'],
+    summary: '',
+    instructions: '',
+    tools: [],
+    skills: ['guide', 'missing-guide'],
+    mcp: [],
+    dependencies: [],
+  })
+  currentExtras().scenarioId = 'custom-skill-selection-test'
+  vi.mocked(runtimeApi.skills).mockResolvedValue({
+    items: [
+      snapshot,
+      { ...snapshot, version: '1.1.0', enabled: false },
+      { ...snapshot, id: 'unrelated' },
+    ],
+  })
+  await nextTick()
+  await click('scenario-skill-open')
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid="skill-candidate-guide-1.0.0"]')).not.toBeNull(),
+  )
+  expect(document.querySelector('[data-testid="skill-candidate-unrelated-1.0.0"]')).toBeNull()
+  expect(button('skill-candidate-guide-1.1.0').disabled).toBe(true)
+  expect(document.body.textContent).toContain('missing-guide')
+  await click('skill-candidate-guide-1.0.0')
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=skill-resource-0]')).not.toBeNull(),
+  )
+  await click('skill-resource-0')
+  await click('skill-context-preview')
+  await vi.waitFor(() => expect(button('skill-use').disabled).toBe(false))
+  await click('skill-use')
+  expect(session.context.value.skillRef).toEqual(skillRef)
+  expect(session.context.value.skillResourcePaths).toEqual(['guide.txt'])
+  expect(send).not.toHaveBeenCalled()
+  expect(scenarios.find((item) => item.id === 'custom-skill-selection-test')!.skills).toEqual([
+    'guide',
+    'missing-guide',
+  ])
+})
 it('selects through + skills, loads full text on demand, previews checked resources and applies only an exact reference', async () => {
   const { session, send, get, preview } = await setup()
   preview.mockResolvedValue({

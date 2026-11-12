@@ -3,6 +3,7 @@ import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Button,
+  Collapse,
   Feedback,
   FileInput,
   Input,
@@ -22,6 +23,7 @@ import {
   Icon,
 } from '@eap/ui'
 import {
+  AiToolMode,
   runtimeApi,
   type TaskContext,
   type PrototypeVersionRecord,
@@ -51,21 +53,23 @@ const props = withDefaults(
   defineProps<{
     active?: boolean
     draft?: string
-    toolMode?: string
+    toolMode?: AiToolMode
     context: TaskContext
     disabled: boolean
     refreshingModels?: boolean
     reasoningEfforts: Array<'low' | 'medium' | 'high'>
     modelLabel?: string
     modelOptionsAvailable?: boolean
+    agentAvailable?: boolean
   }>(),
   {
     active: true,
     draft: '',
-    toolMode: 'none',
+    toolMode: AiToolMode.NONE,
     refreshingModels: false,
     modelLabel: '',
     modelOptionsAvailable: true,
+    agentAvailable: false,
   },
 )
 const reasoningSupported = computed(() => props.reasoningEfforts.length > 0)
@@ -91,7 +95,7 @@ watch(
 const skillBlocked = computed(
   () =>
     props.context.mode !== 'chat' ||
-    props.toolMode !== 'none' ||
+    props.toolMode !== AiToolMode.NONE ||
     !!props.context.knowledgeExpertRef ||
     !!props.context.taskRef,
 )
@@ -170,6 +174,11 @@ const hasExtraChips = computed(() => {
 })
 const activeScene = computed(
   () => scenarios.find((item) => item.id === currentExtras().scenarioId) ?? null,
+)
+watch(
+  () => activeScene.value?.id,
+  () => skillSelector.value?.close(),
+  { flush: 'sync' },
 )
 const sceneMissingDeps = computed(() =>
   pendingScenarioDependencies(
@@ -347,14 +356,6 @@ function choosePolicy(approval: TaskContext['approval']) {
 function chooseEffort(effort: TaskContext['reasoning']) {
   change('reasoning', effort)
 }
-function openContextMenu(event: Event) {
-  placePopup(event)
-  category.value = 'files'
-  menu.value = !menu.value
-  executionOpen.value = false
-  policyOpen.value = false
-  modelOpen.value = false
-}
 const effortLabel = computed(() =>
   shownEffort.value === 'default' ? t('task.modelDefault') : t('task.' + shownEffort.value),
 )
@@ -415,7 +416,7 @@ async function loadVersions() {
       :selected="context.knowledgeExpertRef"
       :draft="draft"
       :disabled="disabled"
-      :blocked="toolMode !== 'none' || !!context.skillRef"
+      :blocked="toolMode !== AiToolMode.NONE || !!context.skillRef"
       @select="
         ($event) => {
           change('knowledgeExpertRef', $event)
@@ -424,7 +425,27 @@ async function loadVersions() {
       "
     />
     <Feedback v-if="skillRemoved" tone="info">{{ t('skill.removed') }}</Feedback>
-    <Feedback v-if="context.knowledgeExpertRef && toolMode !== 'none'" tone="warning">{{
+    <section
+      v-if="activeScene?.skills.length"
+      class="scenario-skill-choice"
+      data-testid="scenario-skill-choice"
+    >
+      <p>{{ t('skill.scenarioDeclared', { ids: activeScene.skills.join(', ') }) }}</p>
+      <p v-if="context.skillRef">
+        {{
+          t('skill.scenarioCurrent', { id: context.skillRef.id, version: context.skillRef.version })
+        }}
+      </p>
+      <Button
+        size="sm"
+        :disabled="disabled || skillBlocked"
+        data-testid="scenario-skill-open"
+        @click="skillSelector?.show(activeScene.skills)"
+        >{{ t('skill.scenarioChoose') }}</Button
+      >
+      <p v-if="skillBlocked">{{ t('skill.unavailable') }}</p>
+    </section>
+    <Feedback v-if="context.knowledgeExpertRef && toolMode !== AiToolMode.NONE" tone="warning">{{
       t('knowledgeContext.unavailable')
     }}</Feedback>
     <Feedback v-if="knowledgeRemoved" tone="info" data-testid="knowledge-removed">{{
@@ -533,34 +554,43 @@ async function loadVersions() {
         >{{ t('desktop.collab') }}：{{ expert.name }}</Tag
       >
     </div>
-    <label v-if="context.mode === 'code'" class="generation-target">
-      <span>{{ t('generation.target') }}</span>
-      <Input
-        data-testid="generation-target"
-        :model-value="context.targetPath"
-        :disabled="disabled"
-        maxlength="240"
-        :placeholder="t('generation.targetPlaceholder')"
-        @update:model-value="change('targetPath', $event)"
-      />
-      <small>{{ t('generation.targetHelp') }}</small>
-      <span>{{ t('generation.components') }}</span>
-      <Textarea
-        data-testid="generation-component-paths"
-        :model-value="(context.componentPaths ?? []).join('\n')"
-        :disabled="disabled"
-        rows="3"
-        :placeholder="t('generation.componentsHelp')"
-        @update:model-value="
-          change(
-            'componentPaths',
-            String($event)
-              .split(/\r?\n/)
-              .filter((path) => path !== ''),
-          )
-        "
-      />
-    </label>
+    <Collapse
+      v-if="context.mode === 'code'"
+      :open="workbench.executionMode !== 'plan' && !context.taskRef"
+    >
+      <template #summary
+        >{{ t('generation.target') }} ·
+        {{ context.targetPath || t('generation.targetPlaceholder') }}</template
+      >
+      <label class="generation-target">
+        <span>{{ t('generation.target') }}</span>
+        <Input
+          data-testid="generation-target"
+          :model-value="context.targetPath"
+          :disabled="disabled"
+          maxlength="240"
+          :placeholder="t('generation.targetPlaceholder')"
+          @update:model-value="change('targetPath', $event)"
+        />
+        <small>{{ t('generation.targetHelp') }}</small>
+        <span>{{ t('generation.components') }}</span>
+        <Textarea
+          data-testid="generation-component-paths"
+          :model-value="(context.componentPaths ?? []).join('\n')"
+          :disabled="disabled"
+          rows="3"
+          :placeholder="t('generation.componentsHelp')"
+          @update:model-value="
+            change(
+              'componentPaths',
+              String($event)
+                .split(/\r?\n/)
+                .filter((path) => path !== ''),
+            )
+          "
+        />
+      </label>
+    </Collapse>
     <div v-if="context.taskRef" data-testid="composer-task-binding" class="generation-target">
       <span
         >{{ t('generation.taskBinding') }}：{{ context.taskRef.projectId }} ·
@@ -666,23 +696,23 @@ async function loadVersions() {
               type="button"
               data-testid="execution-plan"
               :aria-pressed="workbench.executionMode === 'plan'"
-              :disabled="true"
-              :title="t('desktop.executionModeOff')"
+              :disabled="disabled"
+              :title="t('desktop.executionPlanBoundary')"
               @click="chooseExecution('plan')"
               >{{ t('desktop.executionPlan') }} · {{ t('desktop.executionPlanHint')
-              }}<template> · {{ t('desktop.executionModeOff') }}</template></Button
-            >
+              }}<IconCheck v-if="workbench.executionMode === 'plan'" class="choice-check"
+            /></Button>
             <Button
               variant="navigation"
               type="button"
               data-testid="execution-agent"
               :aria-pressed="workbench.executionMode === 'agent'"
-              :disabled="true"
-              :title="t('desktop.executionModeOff')"
+              :disabled="disabled || !agentAvailable"
+              :title="t('desktop.executionAgentBoundary')"
               @click="chooseExecution('agent')"
               >{{ t('desktop.executionAgent') }} · {{ t('desktop.executionAgentHint')
-              }}<template> · {{ t('desktop.executionModeOff') }}</template></Button
-            >
+              }}<IconCheck v-if="workbench.executionMode === 'agent'" class="choice-check"
+            /></Button>
             <Button
               variant="navigation"
               type="button"
@@ -754,21 +784,16 @@ async function loadVersions() {
             >
           </Popover>
         </div>
-        <Button
-          size="sm"
-          variant="icon"
-          type="button"
+        <span
           class="context-meter"
           data-testid="context-meter"
-          :disabled="disabled"
-          :aria-expanded="menu"
+          role="img"
           :aria-label="t('desktop.contextMeterHint', contextCount)"
           :title="t('desktop.contextMeterHint', contextCount)"
-          @click="openContextMenu($event)"
         >
           <Icon name="info" :size="22" />
           <span class="sr-only">{{ t('desktop.contextMeter', contextCount) }}</span>
-        </Button>
+        </span>
         <div class="composer-submit-controls">
           <div class="bar-picker model-picker">
             <Button
@@ -992,7 +1017,7 @@ async function loadVersions() {
                 v-if="context.mode === 'chat'"
                 type="button"
                 data-testid="knowledge-open"
-                :disabled="disabled || toolMode !== 'none' || !!context.skillRef"
+                :disabled="disabled || toolMode !== AiToolMode.NONE || !!context.skillRef"
                 @click="
                   () => {
                     menu = false
@@ -1080,13 +1105,16 @@ async function loadVersions() {
           </div>
         </div>
       </Popover>
-      <p
-        v-if="workbench.executionMode === 'agent' || workbench.executionMode === 'plan'"
-        class="hint"
-      >
-        {{ t('desktop.executionBlocked') }}
-      </p>
+      <Feedback v-if="workbench.executionMode === 'agent'" tone="info" data-testid="agent-boundary">
+        {{ t('desktop.executionAgentBoundary') }}
+      </Feedback>
 
+      <Feedback
+        v-if="workbench.executionMode === 'plan'"
+        tone="info"
+        data-testid="planning-boundary"
+        >{{ t('desktop.executionPlanBoundary') }}</Feedback
+      >
       <Feedback v-if="note" tone="warning">{{ note }}</Feedback>
     </div>
   </div>

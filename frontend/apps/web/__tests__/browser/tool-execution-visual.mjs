@@ -1,3 +1,4 @@
+import { loadPlaywright } from './playwright-runtime.mjs'
 // Real Chromium + the explicitly simulated mock service. No real CLI or model calls.
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
@@ -12,9 +13,7 @@ const { values } = parseArgs({
     url: { type: 'string', default: 'http://127.0.0.1:5186' },
   },
 })
-const { chromium } = createRequire(import.meta.url)(
-  values.playwright || process.env.EAP_PLAYWRIGHT_MODULE || 'playwright-core',
-)
+const { chromium } = loadPlaywright(values.playwright)
 const browser = await chromium.launch({
   executablePath: values.chromium || process.env.EAP_CHROMIUM,
   headless: true,
@@ -94,7 +93,11 @@ try {
   for (const width of [1440, 900, 390]) {
     await page.setViewportSize({ width, height: 960 })
     await button('diff-summary').scrollIntoViewIfNeeded()
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, 'diff overflow at ' + width)
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+      true,
+      'diff overflow at ' + width,
+    )
     await page.screenshot({ path: resolve(output, 'diff-cancelled-' + width + '.png') })
   }
   checks.push('diff reload recovery and three viewport bounds')
@@ -107,7 +110,10 @@ try {
     await button(operation + '-process-observation').waitFor()
     assert.match(await button(operation + '-process-observation').innerText(), /未捕获有效 PID/)
     assert.match(await button(operation + '-process-observation').innerText(), /已观察的子进程/)
-    assert.match(await button(operation + '-process-observation').innerText(), /身份匹配，进程仍存活/)
+    assert.match(
+      await button(operation + '-process-observation').innerText(),
+      /身份匹配，进程仍存活/,
+    )
     assert.match(await button(operation + '-process-observation').innerText(), /子进程证据已截断/)
     assert.equal(await button(operation + '-invoke').isDisabled(), true)
     assert.equal(await button(operation + '-review-open').isDisabled(), true)
@@ -115,12 +121,19 @@ try {
     for (const width of [1440, 900, 390]) {
       await page.setViewportSize({ width, height: 960 })
       await button(operation + '-process-observation').scrollIntoViewIfNeeded()
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true)
-      await page.screenshot({ path: resolve(output, operation + '-process-observation-' + width + '.png') })
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+        true,
+      )
+      await page.screenshot({
+        path: resolve(output, operation + '-process-observation-' + width + '.png'),
+      })
     }
 
     assert.equal(await button(operation + '-review-open').isDisabled(), true)
-    await button(operation + '-review-note').fill('mock review: fixture has no real process; related processes checked')
+    await button(operation + '-review-note').fill(
+      'mock review: fixture has no real process; related processes checked',
+    )
     await button(operation + '-review-checked').check()
     await button(operation + '-review-open').click()
     const dialog = page.getByRole('dialog', { name: '关闭这条 UNKNOWN 的启动阻塞' })
@@ -128,28 +141,47 @@ try {
     assert.match(await dialog.innerText(), /原结果仍未知/)
     for (const width of [1440, 900, 390]) {
       await page.setViewportSize({ width, height: 960 })
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true)
-      await page.screenshot({ path: resolve(output, operation + '-review-confirm-' + width + '.png') })
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+        true,
+      )
+      await page.screenshot({
+        path: resolve(output, operation + '-review-confirm-' + width + '.png'),
+      })
     }
     await dialog.getByRole('button', { name: '取消', exact: true }).click()
     assert.equal(await button(operation + '-invoke').isDisabled(), true)
-    await button(operation + '-review-note').fill('mock review: no real process was launched by this fixture')
+    await button(operation + '-review-note').fill(
+      'mock review: no real process was launched by this fixture',
+    )
     await button(operation + '-review-open').click()
     await dialog.getByRole('button', { name: '保存核对并关闭阻塞' }).click()
     await button(operation + '-review-resolution').waitFor()
-    assert.match(await button(operation + '-review-resolution').innerText(), /人工关闭（结果仍未知）/)
+    assert.match(
+      await button(operation + '-review-resolution').innerText(),
+      /人工关闭（结果仍未知）/,
+    )
     assert.equal(await button(operation + '-invoke').isDisabled(), false)
     assert.equal(await button(operation + '-cancelled').count(), 0)
     await page.reload()
     await button(operation + '-review-resolution').waitFor()
-    assert.match(await button(operation + '-review-resolution').innerText(), /SERVICE_RESTART_EXIT_UNCONFIRMED/)
+    assert.match(
+      await button(operation + '-review-resolution').innerText(),
+      /SERVICE_RESTART_EXIT_UNCONFIRMED/,
+    )
     for (const width of [1440, 900, 390]) {
       await page.setViewportSize({ width, height: 960 })
       await button(operation + '-summary').scrollIntoViewIfNeeded()
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true)
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+        true,
+      )
       await page.screenshot({ path: resolve(output, operation + '-reviewed-' + width + '.png') })
     }
-    checks.push(operation + ' explicit review, cancel confirmation, manual closure, reload and three viewport bounds')
+    checks.push(
+      operation +
+        ' explicit review, cancel confirmation, manual closure, reload and three viewport bounds',
+    )
   }
   assert.deepEqual(errors, [])
   await writeFile(

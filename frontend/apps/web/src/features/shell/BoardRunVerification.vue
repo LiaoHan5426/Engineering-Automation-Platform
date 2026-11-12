@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { isBoardVerificationStatusActive } from '@eap/runtime-client'
+import { BoardVerificationStatus, isBoardVerificationStatusActive } from '@eap/runtime-client'
 
 import { BoardVerificationErrors } from '@eap/runtime-client'
 
@@ -14,7 +14,7 @@ import {
 import { useI18n } from 'vue-i18n'
 import { isRequestError } from '@eap/request'
 const props = defineProps<{ taskId: string; projectId: string; run: BoardRun }>()
-const emit = defineEmits<{ close: []; changed: [] }>()
+const emit = defineEmits<{ close: []; changed: []; delivery: [] }>()
 const { t, te } = useI18n()
 const page = ref<BoardVerificationPage | null>(null),
   plan = ref<BoardVerificationPlan | null>(null)
@@ -283,6 +283,14 @@ onBeforeUnmount(() => {
       </section>
       <p>{{ t('boardVerification.once') }}</p>
       <p>{{ t('boardVerification.notAccepted') }}</p>
+      <Button
+        v-if="record?.status === BoardVerificationStatus.PASSED"
+        variant="primary"
+        :disabled="busy"
+        data-testid="verification-delivery"
+        @click="emit('delivery')"
+        >{{ t('boardDelivery.open') }}</Button
+      >
     </div>
     <ConfirmBox
       v-if="confirming && plan"

@@ -163,6 +163,51 @@ public class AiConversationRegistry {
         }
     }
 
+    public TaskWorkingMemory.Snapshot editWorkingMemory(UUID id, Instant expectedUpdatedAt, String goal,
+            List<String> constraints, List<TaskWorkingMemory.FactRef> facts, List<String> evidenceRefs,
+            Set<String> dependencyKeys) {
+        synchronized (lock) {
+            var session = require(id);
+            if (!session.workingMemory.snapshot().updatedAt().equals(expectedUpdatedAt))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, ChatErrors.WORKING_MEMORY_CHANGED.code());
+            return putWorkingMemory(id, goal, constraints, facts, evidenceRefs, dependencyKeys);
+        }
+    }
+
+    public record ModelHistoryUsage(int messages, int chars) {}
+
+    /** Conservative character estimate of the actual SDK window, including tool payloads.
+     * Never returns message text and never replays UI transcripts into model memory. */
+    public ModelHistoryUsage modelHistory(UUID id) {
+        synchronized (lock) {
+            require(id);
+            var messages = memory.get(ChatClients.memoryKey(PRINCIPAL, id));
+            long chars = messages.stream().mapToLong(message -> message.toString().length()).sum();
+            return new ModelHistoryUsage(messages.size(), (int) Math.min(Integer.MAX_VALUE, chars));
+        }
+    }
+
+    public void clearModelHistory(UUID id) {
+        synchronized (lock) {
+            var session = require(id);
+            if (session.busy) throw new ResponseStatusException(HttpStatus.CONFLICT, ChatErrors.CONVERSATION_BUSY.code());
+            memory.clear(ChatClients.memoryKey(PRINCIPAL, id));
+            session.touched = clock.get();
+        }
+    }
+
+    /** Only an exclusive, explicit summary request may read the SDK window as material. */
+    public String summaryMaterial(UUID id) {
+        synchronized (lock) {
+            var session = require(id);
+            if (!session.busy) throw new IllegalStateException("Summary requires exclusive turn");
+            if (session.contextSensitive)
+                throw new ResponseStatusException(HttpStatus.CONFLICT, ChatErrors.HISTORY_SUMMARY_SENSITIVE.code());
+            return memory.get(ChatClients.memoryKey(PRINCIPAL, id)).stream()
+                    .map(Object::toString).collect(java.util.stream.Collectors.joining("\n\n"));
+        }
+    }
+
     public <T> T exclusive(UUID id, Supplier<T> action) {
         synchronized (lock) {
             var session = require(id);

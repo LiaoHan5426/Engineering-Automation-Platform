@@ -103,7 +103,7 @@ public final class TaskWorkingMemory {
             dependencyKeys.clear();
             if (dependencies != null) dependencyKeys.addAll(dependencies);
             invalidation = "";
-            updatedAt = now == null ? Instant.now() : now;
+            updatedAt = nextTime(now);
         }
 
         public synchronized boolean invalidate(String reason, Instant now) {
@@ -117,8 +117,13 @@ public final class TaskWorkingMemory {
             evidenceRefs.clear();
             dependencyKeys.clear();
             invalidation = reason;
-            updatedAt = now == null ? Instant.now() : now;
+            updatedAt = nextTime(now);
             return hadContent;
+        }
+
+        private Instant nextTime(Instant now) {
+            var candidate = now == null ? Instant.now() : now;
+            return candidate.isAfter(updatedAt) ? candidate : updatedAt.plusNanos(1);
         }
     }
 

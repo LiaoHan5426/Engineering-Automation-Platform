@@ -17,6 +17,14 @@
 
 已确认：保留合理的 Capability、Expert、Rule 实现；Skill 首版仅可信本地导入并保留版本、来源、依赖和作用域；Builder 首版仅 Vue 3/Vite，仓库适配采用可扩展接口；Mission Board 是独立插件，Runtime、调度、持久化和审批属于平台核心；首版仅可信内置插件，不开发市场或任意第三方动态加载。
 
+## Skill 本地文本目录导入（2026-11-12）
+
+正式管理页支持用户通过浏览器选择本地目录，读取根 `SKILL.md` 及最多四个 `.md`/`.txt` 资源，保留相对路径。公共 `@eap/ui` FileUpload 只提供目录选择原语，Skill 文件格式、路径及内容校验归应用；选取不触发网络请求、保存、启用、脚本执行或服务器目录遍历。它与粘贴/单文件上传是同一导入草稿的输入方式，唯一生产保存路径仍是 SkillService 的预览、digest确认、不可变版本及CAS启停。
+
+目录必须有准确命名的根入口，不接受多根目录、隐藏/重复/越界路径、scripts目录、非文本文件或非法UTF-8；单文件和合计字符预算沿用现有服务端合同。所有文件先校验完成再替换原文、资源及来源草稿，任何失败整批保留旧草稿，不静默跳过文件或截断。来源标签记录所选目录名，仍须人工核实可信；版本和依赖由操作者明确填写。保存默认禁用，选精确版本/资源引用、撤权清理和无工具限制继续由原服务端合同执行，不新增导入接口、表或兼容分支。远端仓库获取、ZIP、可执行资源和任意Agent工具权限均不在该文本目录功能内。
+
+当前验证及证据见[目录导入台账](../planning-status.md#skill-directory-validation)。
+
 v1.6 补充：Spring AI 负责通用模型、工具调用和记忆，EAP 负责工程权限、执行证据和独立验证；Codex 等外部编码 Agent 继续独立适配。S1 已实现，限制见 [S1 Chat 设计](s1-chat-spring-ai-design.md)。S2 P0/P1 原型已按已确认的 [S2 插件契约](s2-workspace-plugin-contract.md) 实施。P2 先增加未执行的交接记录，见 [P2 交接契约](p2-handoff-contract.md)。Mission 第一切片只建立未执行任务壳，见 [P2 Mission 契约](p2-mission-contract.md)。只读 git-status 单步执行已按 [Mission 单步执行契约](mission-single-step-execution-contract.md) 实施，并收敛到共享运行时和单一 Git 入口。未知执行会阻塞；人工解除机制尚未实现，不能算可恢复 Mission。调度、审批流、自动续跑和独立验证仍后置。不恢复历史沙箱排查。
 
 仍待具体实施时确认：隔离 PostgreSQL 集成验证的专用环境。知识检索暂不引入向量数据库，待质量评测决定。
@@ -26,6 +34,12 @@ v1.6 补充：Spring AI 负责通用模型、工具调用和记忆，EAP 负责�
 代码复核确认自定义场景此前仅由`ScenarioWorkspace`向内存数组追加，现有Skill/Expert/Prototype表不能承担场景副本配置。因此增量增加`scenario_definition`，沿用JDBC/Flyway及同一runtime-client，不建第二资源或能力注册中心。内置预设仍是受信打包配置，服务端仅接受`custom-` ID；用户副本可变配置以revision CAS保存/删除，删除墓碑拒绝旧请求重建，不能冒充不可变原型版本。
 
 前端编辑保留草稿，显式保存后读回；失败不回退mock，冲突不覆盖，启动读取使已保存配置可供原有场景选择器使用。字段有界，工具/Skill/MCP和依赖状态只是配置声明，不是运行时授权或可用性证据；不执行资源、脚本、模型或自动发送。mock只保留开发进程内存。阶段证据及未关闭范围见[场景配置记录](../records/resource-history.md#scenario-configuration)。
+
+2026-11-12场景Skill接续：自定义场景可从当前Skill目录添加或移除ID声明，沿原scenario_definition及revision保存。详情按需读取既有Skill目录，显示启用版本数量、加载错误和明确刷新，不再把所有声明统一标作“未接通”。声明不是版本绑定或权限；无需复制Skill状态到场景表，也不通过ID猜最新版本。
+
+应用场景后，会话提供“选择场景技能版本”，复用原SkillSelector并限定为该场景声明ID对应的目录项。未导入项明确提示，禁用版本不可选；用户读取精确版本、勾选资源、服务端预览并明确采用后，原TaskContext.skillRef/skillResourcePaths持有会话引用。当前合同只引用一个Skill，多个声明不自动聚合。通用技能入口仍允许操作者独立选择其他技能，当前引用明确展示；切换场景关闭未完成的选择器但不偷偷换版。选择不发送、安装、启用或授予工具权限；发送继续由SkillService校验作用域、digest、stateRevision、启用状态和资源，旧引用不自动恢复。
+
+场景指令沿现有会话指令进入系统消息，Skill正文及资源沿服务端材料路径进入模型用户材料，两者共同参与原预算。该分层不是两套场景或技能状态。当前验证见[场景Skill整链](../planning-status.md#scenario-skill-validation)。
 
 ## 2026-11-05 插件与场景演进（当前补充）
 

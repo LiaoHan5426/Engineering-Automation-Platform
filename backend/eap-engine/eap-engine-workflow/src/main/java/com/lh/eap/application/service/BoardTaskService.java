@@ -6,6 +6,8 @@ import com.lh.eap.persistence.mapper.StateBindings;
 import com.lh.eap.error.BoardErrors;
 import com.lh.eap.error.CodeErrors;
 import com.lh.eap.error.CommonErrors;
+import com.lh.eap.error.ResourceErrors;
+import com.lh.eap.persistence.mapper.JdbcPrototypeVersionStore;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lh.eap.common.SensitiveData;
@@ -34,6 +36,8 @@ public class BoardTaskService {
     }
     public record Draft(String projectId, String title, String sessionId, String column,
                         String goal, String acceptanceCriteria, UUID requestId) {}
+    public record PrototypeDraft(String projectId, String title, String goal, String acceptanceCriteria,
+                                 UUID requestId, UUID versionId) {}
     public record Update(String projectId, long revision, String column, String notes, String priority,
                          String goal, String acceptanceCriteria) {}
     private static final String ACTIVE = "(e.status = ANY(?::text[]) OR r.verification_snapshot->>'status' = ANY(?::text[]))";
@@ -51,8 +55,26 @@ public class BoardTaskService {
         require(projectId, 120);
         return jdbc.query(SELECT + " WHERE project_id=? ORDER BY created_at DESC LIMIT 200", ROW, StateBindings.MISSION_ACTIVE, StateBindings.VERIFICATION_BLOCKING, StateBindings.CODE_BLOCKING, projectId);
     }
+    public Task get(UUID id, String projectId) {
+        require(projectId, 120);
+        return find(id, projectId, false);
+    }
 
     @Transactional public Task create(Draft draft) {
+        return create(draft, null);
+    }
+
+    /** Atomic task preparation from one immutable design; never starts code generation. */
+    @Transactional public Task fromPrototype(PrototypeDraft draft) {
+        if (draft == null || draft.versionId() == null) throw new IllegalArgumentException(BoardErrors.PROTOTYPE_INPUT_INVALID.code());
+        var version = new JdbcPrototypeVersionStore(jdbc).find(draft.versionId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ResourceErrors.PROTOTYPE_VERSION_NOT_FOUND.code()));
+        SemanticPrototype.require(version.body());
+        return create(new Draft(draft.projectId(), draft.title(), "", BoardTaskColumn.PLANNED.wire(),
+                draft.goal(), draft.acceptanceCriteria(), draft.requestId()), version.id());
+    }
+
+    private Task create(Draft draft, UUID prototypeId) {
         require(draft.projectId(), 120); require(draft.title(), 200);
         if (draft.requestId() == null) throw new IllegalArgumentException(BoardErrors.BOARD_REQUEST_ID_REQUIRED.code());
         String sessionId = draft.sessionId() == null ? "" : draft.sessionId();
@@ -63,9 +85,10 @@ public class BoardTaskService {
         String goal = text(draft.goal(), 4000), criteria = text(draft.acceptanceCriteria(), 4000);
         requireReady(column, goal, criteria);
         // The original normalized request digest is stable across subsequent task edits.
-        String fingerprint = fingerprint(List.of(draft.projectId(), title, sessionId, column, goal, criteria));
-        jdbc.update("INSERT INTO eap.board_task(id,project_id,title,session_id,column_id,goal,acceptance_criteria,request_id,request_fingerprint) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT (project_id,request_id) DO NOTHING",
-                UUID.randomUUID(), draft.projectId(), title, sessionId, column, goal, criteria, draft.requestId(), fingerprint);
+        String fingerprint = fingerprint(List.of(draft.projectId(), title, sessionId, column, goal, criteria,
+                prototypeId == null ? "" : prototypeId.toString()));
+        jdbc.update("INSERT INTO eap.board_task(id,project_id,title,session_id,column_id,goal,acceptance_criteria,request_id,request_fingerprint,prototype_version_id) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT (project_id,request_id) DO NOTHING",
+                UUID.randomUUID(), draft.projectId(), title, sessionId, column, goal, criteria, draft.requestId(), fingerprint, prototypeId);
         var tasks = jdbc.query(SELECT + " WHERE project_id=? AND request_id=?", ROW, StateBindings.MISSION_ACTIVE, StateBindings.VERIFICATION_BLOCKING, StateBindings.CODE_BLOCKING, draft.projectId(), draft.requestId());
         String savedFingerprint = jdbc.queryForObject("SELECT request_fingerprint FROM eap.board_task WHERE project_id=? AND request_id=?", String.class, draft.projectId(), draft.requestId());
         if (!fingerprint.equals(savedFingerprint)) throw conflict(BoardErrors.BOARD_REQUEST_CONFLICT.code());

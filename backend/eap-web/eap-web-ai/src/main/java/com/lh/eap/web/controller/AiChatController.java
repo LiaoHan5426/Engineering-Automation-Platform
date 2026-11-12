@@ -25,6 +25,7 @@ import com.lh.eap.ai.dto.AiConversationResponse;
 import com.lh.eap.ai.dto.ChatExecutionEvent;
 import java.io.IOException;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -54,6 +55,17 @@ public class AiChatController {
     @GetMapping("/conversations/{id}")
     public AiConversationResponse conversation(@PathVariable UUID id) { return chat.conversation(id); }
 
+    @GetMapping("/conversations/{id}/model-history")
+    public com.lh.eap.ai.AiConversationRegistry.ModelHistoryUsage modelHistory(@PathVariable UUID id) {
+        return chat.modelHistory(id);
+    }
+
+    @DeleteMapping("/conversations/{id}/model-history")
+    public void clearModelHistory(@PathVariable UUID id) { chat.clearModelHistory(id); }
+
+    @PostMapping("/conversations/{id}/model-history/summary")
+    public AiChatApplication.HistorySummary summarizeHistory(@PathVariable UUID id) { return chat.summarizeHistory(id); }
+
     @PutMapping(value = "/conversations/{id}/working-memory", consumes = MediaType.APPLICATION_JSON_VALUE)
     public TaskWorkingMemory.Snapshot putWorkingMemory(@PathVariable UUID id,
             @RequestBody(required = false) String body) {
@@ -76,6 +88,21 @@ public class AiChatController {
     @GetMapping("/workspace/source")
     public CodeChangeService.SourceExcerpt source(@RequestParam("path") String path) {
         return chat.source(path);
+    }
+    @PostMapping("/workspace/code-dependencies")
+    public CodeChangeService.Preparation dependencies(@RequestBody PreparationRequest request) {
+        return chat.dependencies(request.targetPath());
+    }
+
+    public record PreparationRequest(String targetPath, List<String> componentPaths) {}
+    public record ReferenceRequest(List<String> paths) {}
+    @PostMapping("/workspace/code-references")
+    public List<CodeChangeService.SourceExcerpt> references(@RequestBody ReferenceRequest request) {
+        return chat.references(request.paths());
+    }
+    @PostMapping("/workspace/code-preparation")
+    public CodeChangeService.Preparation preparation(@RequestBody PreparationRequest request) {
+        return chat.preparation(request.targetPath(), request.componentPaths());
     }
 
     @GetMapping("/workspace/dirty")

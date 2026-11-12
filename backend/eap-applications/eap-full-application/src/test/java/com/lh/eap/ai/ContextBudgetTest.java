@@ -6,6 +6,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
 class ContextBudgetTest {
+    @Test void actualHistoryCountsTowardPlatformBudgetWithoutCountingAsCurrentMaterial() {
+        var within = ContextBudget.account().include("system", "sys").include("user", "ask")
+                .includeChars("history", 100).enforce();
+        assertEquals(106, within.usedChars());
+        assertEquals(3, within.materialChars());
+        assertEquals(ContextBudget.METERING_CHAR_ESTIMATE, within.metering());
+        assertThrows(ResponseStatusException.class, () -> ContextBudget.account()
+                .include("user", "ask").includeChars("history", ContextBudget.PLATFORM_CONTEXT_CHARS).enforce());
+        assertThrows(ResponseStatusException.class, () -> ContextBudget.account()
+                .include("user", "ask").includeChars("history", Integer.MAX_VALUE).enforce());
+    }
 
     @Test
     void acceptsWithinBudgetAndReportsCharEstimate() {

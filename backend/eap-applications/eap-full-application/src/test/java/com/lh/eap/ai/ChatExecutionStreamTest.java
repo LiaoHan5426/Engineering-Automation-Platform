@@ -158,6 +158,43 @@ class ChatExecutionStreamTest {
         } finally { next.tryEmitComplete(); app.shutdownTurns(); }
     }
 
+    @Test void failedToolRemainsFailedInFinalEventAndReplay() {
+        var handler = new com.lh.eap.runtime.handler.CapabilityHandler() {
+            public java.util.Set<String> capabilities() { return java.util.Set.of("git-status"); }
+            public com.lh.eap.domain.model.NodeResult handle(com.lh.eap.domain.model.CapabilityContext context) {
+                throw new IllegalStateException("fixture tool failure");
+            }
+        };
+        var handlers = new CapabilityHandlerRegistry(List.of(handler));
+        var status = new AiConnectionStatus(handlers, root, root, "openai", "offline-model", "https://api.openai.com", true);
+        var memory = MessageWindowChatMemory.builder().maxMessages(20).build();
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        var model = FakeChatModels.scripted(prompt -> calls.getAndIncrement() == 0
+                ? new org.springframework.ai.chat.model.ChatResponse(List.of(new org.springframework.ai.chat.model.Generation(
+                        org.springframework.ai.chat.messages.AssistantMessage.builder().content("")
+                                .toolCalls(List.of(new org.springframework.ai.chat.messages.AssistantMessage.ToolCall(
+                                        "failed-call", "function", "gitStatus", "{}"))).build())))
+                : FakeChatModels.text("The tool failed."));
+        var service = new EngineeringChatService(EngineeringAiConfiguration.createClient(ChatClient.builder(model), memory),
+                handlers, root, new FileExecutionArtifactStore(root.resolve("failed-tool")));
+        var app = new AiChatApplication(status, new AiConversationRegistry(memory), service, root);
+        try {
+            var id = app.open("{}").conversationId();
+            var events = new ArrayList<ChatExecutionEvent>();
+            var response = app.send(id, "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}", events::add);
+            assertEquals("TOOL_FAILED", response.error());
+            assertEquals("FAILED", response.status());
+            var terminal = events.getLast();
+            assertEquals("final", terminal.type());
+            assertEquals("FAILED", terminal.status());
+            assertEquals("TOOL_FAILED", terminal.code());
+            var replay = app.executionSnapshot(id, response.executionId(), 0);
+            assertTrue(replay.complete());
+            assertEquals("FAILED", replay.status());
+            assertEquals(terminal, replay.events().getLast());
+        } finally { app.shutdownTurns(); }
+    }
+
     AiChatApplication app() {
         var handlers = new CapabilityHandlerRegistry(List.of());
         var status = new AiConnectionStatus(handlers, root, null, "openai", "offline-model", "https://api.openai.com", true);

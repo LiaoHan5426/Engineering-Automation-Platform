@@ -59,6 +59,8 @@ apps/web/src
 
 ### 3.2 暂存登记（当前）
 
+FileUpload 的 `directory` 属性提供浏览器本地目录选择，保持 File[] 及原生 webkitRelativePath，不包含 Skill 语义、目录解析或自动上传。使用方负责内容格式、相对路径、数量及预算；请求仍须另行显式操作。Skill目录导入使用该公共原语，未在应用复制文件输入控件。
+
 | 内容 | 暂存位置 | 目标模块 | 触发抽包条件 |
 |---|---|---|---|
 | Dialog / Button / Input / Select / Textarea / Checkbox / Switch / FileInput / FileUpload / Slider / Scrollbar / InfiniteScroll / Tabs / Popover | `packages/ui`（已落地） | `@eap/ui` | — |

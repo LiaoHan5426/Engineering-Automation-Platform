@@ -10,7 +10,6 @@ import RepositoryBrowser from './RepositoryBrowser.vue'
 import ProposalDiffView from './ProposalDiffView.vue'
 import { Input, Button, Collapse } from '@eap/ui'
 import { pendingWrite } from '../features/chat/pendingWrite'
-import { pagePreviewMessageKey, resolvePagePreview } from '../features/shell/pagePreview'
 import {
   chatBinding,
   currentExtras,
@@ -128,16 +127,7 @@ const pendingLabel = computed(() => {
   })
   return `desktop.pending${state.charAt(0).toUpperCase()}${state.slice(1)}`
 })
-const pagePreview = computed(() =>
-  resolvePagePreview({
-    origin: typeof window !== 'undefined' ? window.location.origin : '',
-  }),
-)
-const previewLine = computed(() =>
-  pagePreview.value.ready
-    ? t(pagePreviewMessageKey(pagePreview.value), { url: pagePreview.value.url })
-    : t(pagePreviewMessageKey(pagePreview.value)),
-)
+const previewLine = computed(() => t('desktop.deliveryPreview'))
 </script>
 
 <template>

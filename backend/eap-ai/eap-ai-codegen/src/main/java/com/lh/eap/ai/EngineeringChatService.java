@@ -98,6 +98,10 @@ public final class EngineeringChatService {
 
     public Outcome chat(Request request, boolean registerGitTool, ChatClient selected, TaskContext context,
             UUID executionId, BooleanSupplier cancelled, Consumer<String> delta) {
+        return chat(request, registerGitTool, selected, context, executionId, cancelled, delta, null);
+    }
+    Outcome chat(Request request, boolean registerGitTool, ChatClient selected, TaskContext context,
+            UUID executionId, BooleanSupplier cancelled, Consumer<String> delta, CodeSourceTool sources) {
         var active = selected != null ? selected : client;
         var id = executionId == null ? UUID.randomUUID() : executionId;
         var started = Instant.now();
@@ -114,15 +118,16 @@ public final class EngineeringChatService {
             } else {
                 // Length prefix avoids ambiguous principal/conversation concatenation.
                 String conversation = memoryKey(request.principal(), request.conversationId());
-                var prompt = active.prompt().system(context.systemInstructions()).user(request.message());
+                var prompt = active.prompt().system(context.systemInstructions() + (sources == null ? "" : sources.instructions())).user(request.message());
                 if (!context.reasoning().equals("default")) {
                     prompt = prompt.options(OpenAiChatOptions.builder()
                             .reasoningEffort(context.reasoning()));
                 }
-                if (registerGitTool) prompt = prompt.tools(tool.callback());
+                if (registerGitTool && !context.mode().equals(TaskMode.PLAN.wire())) prompt = prompt.tools(tool.callback());
+                if (sources != null) prompt = prompt.tools(sources);
                 var prepared = prompt.advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation));
                 ChatResponse response;
-                if (delta != null && context.mode().equals("chat")) {
+                if (delta != null && !context.mode().equals("code")) {
                     var text = new StringBuilder();
                     var pending = new StringBuilder();
                     ChatResponse last = null;
@@ -181,6 +186,10 @@ public final class EngineeringChatService {
                             .equals(response.getResult().getMetadata().getFinishReason())) tool.error = ToolErrors.TOOL_CALL_LIMIT.code();
                 }
                 if (!tool.error.isEmpty()) error = tool.error;
+                if (sources != null && error.isEmpty()) {
+                    error = sources.completionError();
+                    if (!error.isEmpty()) { answer = ""; status = CliExecution.Status.FAILED; }
+                }
             }
         } catch (RuntimeException failure) {
             // Do not persist exception messages: SDK errors can include headers or credentials.
@@ -191,6 +200,9 @@ public final class EngineeringChatService {
                 default -> CliExecution.Status.FAILED;
             };
         }
+        // A model answer after a failed tool does not make the requested execution successful.
+        if (status == CliExecution.Status.SUCCEEDED && !error.isEmpty()) status = CliExecution.Status.FAILED;
+        if (sources != null) tool.events.addAll(sources.events());
         var ended = Instant.now();
         var trace = new CliExecution.Trace(Map.of("started", started, "completed", ended), tool.events, "", false, tool.error);
         var refs = new ArrayList<CliExecution.Artifact>();

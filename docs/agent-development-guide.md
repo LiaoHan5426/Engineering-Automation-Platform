@@ -28,6 +28,10 @@ working directory, matching this checkout's existing `.eap` and `.eap-ai-artifac
 that previously used another directory, set `-Deap.run.working-directory=<original-absolute-directory>`; keep
 the same IDEA/JAR working directory and external configuration/data locations. No data is moved. Reimport Maven and select the new host classpath in IDEA; live restart remains a separate check.
 Stop the DevTools application before a reactor clean/rebuild, then restart it after BUILD SUCCESS.
+When an existing host must remain running, package a separate artifact without cleaning or replacing its JAR:
+`rtk proxy mvn -f backend/pom.xml -pl :eap-full-application -am package -DskipTests -Deap.application.final-name=eap-full-application-review`.
+This changes only the host artifact filename; it uses the same dependencies, Boot packaging and main class.
+Use a fresh name if that review artifact is already running. A successful package does not prove startup or business acceptance.
 Backend `.mvn/jvm.config` fixes Maven file/stdout/stderr encoding to UTF-8; an RTK encoding error
 without BUILD SUCCESS and exit 0 is not build success. Do not enable Bean overriding to hide conflicts.
 Current 32-project reactor evidence and remaining optional-composition gates are recorded in
@@ -161,6 +165,8 @@ Current production migration is V34: V32 fixed task/prototype semantics, V33 per
 BoardCodeProposalRecoveryTest (EAP_RUN_SINGLE_CONTRACTS=true and EAP_RUN_BOARD_PERSISTENCE=true) verifies real UUID-owned schema/service reconstruction without a Chat registry, exact task/workspace boundaries, apply/refuse and UNKNOWN interlocks. BoardCodeProposalControllerTest guards explicit action shape. Current production route is `/api/board/tasks/{taskId}/code-proposals`; read-only list/detail and explicit apply/refuse reuse the original CodeChangeService. Shared UI moved to apps/web/src/components without compatibility re-exports. New frontend focused checks cover 45 distinct cases; six restarted production browser groups and JDBC evidence are [recorded separately](records/delivery-history.md#board-code-recovery). No model or earlier full-suite replay.
 
 ## Component graph page delivery validation
+
+The [bounded engineering Agent](decisions/chat-engineering-task-slice.md#bounded-engineering-agent) uses the same generation/proposal/apply path. Run `CodeSourceAgentTest` for its five focused behavior checks. `EngineeringAgentAcceptanceTest` is opt-in via `EAP_ENGINEERING_AGENT_CHROMIUM=true`, uses a UUID-owned PostgreSQL schema and temporary workspace, and drives the built production app through globally installed Playwright/Chromium. Build with `rtk proxy vp build` from frontend first. The default model is an explicit Fake ChatModel at Spring AI's public boundary; real provider validation additionally requires `EAP_ENGINEERING_AGENT_REAL_MODEL=true` and an explicit `EAP_ENGINEERING_AGENT_CONNECTION_STORE` path. Never emit its credentials, reuse daily database state or repeat a real model call to refresh a screenshot. See [the separate provider and final layout evidence](planning-status.md#engineering-agent-validation). No Hermes dependency, arbitrary shell or automatic apply is involved.
 
 Current input is one targetPath plus 0..7 componentPaths, with complete pre-model source snapshots (24KB/file, 48KB total). Exact ordered file sets, bounded static imports, root reachability and cycle rejection are mandatory. Snapshot JSON companionFiles is required; no legacy runtime fallback. The same durable apply path serves all sets, with all baselines/staging/readback and UNKNOWN interlocks; this is not an OS transaction or CAS.
 

@@ -76,7 +76,7 @@ import type { WorkspaceSource } from './contracts/codeModels'
 import type { WorkspaceDirty } from './contracts/codeModels'
 import type { WorkspaceFiles } from './contracts/codeModels'
 import type { VerificationProbe } from './contracts/codeModels'
-import type { AiConversation } from './contracts/chatModels'
+import type { AiConversation, ModelHistoryUsage, ModelHistorySummary } from './contracts/chatModels'
 import type { AiConversationRecovery } from './contracts/chatModels'
 import type { TaskWorkingMemorySnapshot } from './contracts/chatModels'
 import type { AiToolMode } from './contracts/chatModels'
@@ -303,6 +303,17 @@ export const runtimeApi = {
     get<{ items: Array<{ id: string; title: string; content: string }> }>(
       '/knowledge/' + id + '/documents',
     ),
+  updateKnowledgeDocument: (
+    baseId: string,
+    documentId: string,
+    body: { title: string; content: string; expectedHash: string },
+  ) =>
+    client
+      .put(
+        '/knowledge/' + encodeURIComponent(baseId) + '/documents/' + encodeURIComponent(documentId),
+        body,
+      )
+      .then((response) => response.data),
   addKnowledgeDocument: (id: string, title: string, content: string) =>
     client.post('/knowledge/' + id + '/documents', { title, content }).then((r) => r.data),
   renameKnowledgeBase: (id: string, name: string, description: string) =>
@@ -670,8 +681,14 @@ export const runtimeApi = {
     client
       .post<BoardRun>('/board/tasks/' + encodeURIComponent(id) + '/runs', request)
       .then((response) => response.data),
+  boardTask: (id: string, projectId: string) =>
+    get<BoardTask>(
+      '/board/tasks/' + encodeURIComponent(id) + '?projectId=' + encodeURIComponent(projectId),
+    ),
   createBoardTask: (draft: BoardTaskDraft) =>
     client.post<BoardTask>('/board/tasks', draft).then((response) => response.data),
+  createPrototypeTask: (draft: import('./contracts/boardModels').PrototypeTaskDraft) =>
+    client.post<BoardTask>('/board/tasks/from-prototype', draft).then((response) => response.data),
   updateBoardTask: (
     id: string,
     update: {
@@ -954,6 +971,23 @@ export function createChatApi(
       get<WorkspaceBaseline>('/ai/workspace/baseline?path=' + encodeURIComponent(path)),
     workspaceSource: (path: string) =>
       get<WorkspaceSource>('/ai/workspace/source?path=' + encodeURIComponent(path)),
+    codeReferences: (paths: string[]) =>
+      client
+        .post<WorkspaceSource[]>('/ai/workspace/code-references', { paths })
+        .then((response) => response.data),
+    discoverCodeDependencies: (targetPath: string) =>
+      client
+        .post<import('./contracts/codeModels').CodePreparation>('/ai/workspace/code-dependencies', {
+          targetPath,
+        })
+        .then((response) => response.data),
+    prepareCode: (targetPath: string, componentPaths: string[]) =>
+      client
+        .post<import('./contracts/codeModels').CodePreparation>('/ai/workspace/code-preparation', {
+          targetPath,
+          componentPaths,
+        })
+        .then((response) => response.data),
     workspaceDirty: () => get<WorkspaceDirty>('/ai/workspace/dirty'),
     workspaceFiles: (path = '') =>
       get<WorkspaceFiles>('/ai/workspace/files?path=' + encodeURIComponent(path)),
@@ -963,9 +997,24 @@ export function createChatApi(
         .then((response) => response.data),
     aiConversation: (id: string) =>
       get<AiConversation>('/ai/conversations/' + encodeURIComponent(id)),
+    modelHistory: (id: string) =>
+      get<ModelHistoryUsage>('/ai/conversations/' + encodeURIComponent(id) + '/model-history'),
+    summarizeModelHistory: (id: string) =>
+      client
+        .post<ModelHistorySummary>(
+          '/ai/conversations/' + encodeURIComponent(id) + '/model-history/summary',
+          {},
+          { timeout: 60_000 },
+        )
+        .then((response) => response.data),
+    clearModelHistory: (id: string) =>
+      client
+        .delete('/ai/conversations/' + encodeURIComponent(id) + '/model-history')
+        .then(() => undefined),
     putWorkingMemory: (
       id: string,
       body: {
+        expectedUpdatedAt: string
         goal?: string
         constraints?: string[]
         facts?: Array<{ kind: string; id: string; revisionOrDigest: string }>

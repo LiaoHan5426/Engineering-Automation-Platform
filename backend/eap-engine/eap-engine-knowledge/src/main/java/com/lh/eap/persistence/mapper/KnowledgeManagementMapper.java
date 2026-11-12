@@ -12,6 +12,11 @@ public class KnowledgeManagementMapper {
     public List<Map<String,Object>> documents(UUID id) { return jdbc.queryForList("SELECT d.id,d.object_key AS title,string_agg(c.content, '' ORDER BY c.chunk_index) AS content FROM eap.knowledge_document d LEFT JOIN eap.knowledge_chunk c ON c.document_id=d.id WHERE d.knowledge_base_id=? GROUP BY d.id ORDER BY d.created_at DESC",id); }
     public boolean exists(UUID id) { return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM eap.knowledge_base WHERE id=?)",Boolean.class,id)); }
     public void insertDocument(UUID document,UUID base,String title,String hash) { jdbc.update("INSERT INTO eap.knowledge_document(id,knowledge_base_id,object_key,content_sha256,media_type) VALUES (?,?,?,?,?)",document,base,title,hash,"text/plain"); }
+    public List<String> lockDocument(UUID base, UUID document) { return jdbc.queryForList("SELECT content_sha256 FROM eap.knowledge_document WHERE id=? AND knowledge_base_id=? FOR UPDATE", String.class, document, base); }
+    public void replaceDocument(UUID base, UUID document, String title, String hash) {
+        jdbc.update("UPDATE eap.knowledge_document SET object_key=?,content_sha256=? WHERE id=? AND knowledge_base_id=?", title, hash, document, base);
+        jdbc.update("DELETE FROM eap.knowledge_chunk WHERE document_id=?", document);
+    }
     public void insertChunk(UUID document,int index,String content) { jdbc.update("INSERT INTO eap.knowledge_chunk(id,document_id,chunk_index,content,embedding_model) VALUES (?,?,?,?,?)",UUID.randomUUID(),document,index,content,"not-embedded"); }
     public int rename(UUID id,String name,String description) { return jdbc.update("UPDATE eap.knowledge_base SET name=?,description=? WHERE id=?",name,description,id); }
     public List<Map<String,Object>> enabledReferences(UUID id) { return jdbc.queryForList("SELECT id FROM eap.expert_definition WHERE enabled AND manifest->'knowledgeBases' @> to_jsonb(?::text)",id.toString()); }

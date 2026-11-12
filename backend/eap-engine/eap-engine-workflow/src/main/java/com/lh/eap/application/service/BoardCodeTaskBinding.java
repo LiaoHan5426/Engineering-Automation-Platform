@@ -34,7 +34,18 @@ public class BoardCodeTaskBinding {
             throw conflict(CodeErrors.CODE_TASK_PROTOTYPE_MISMATCH.code());
         var prototype = task.prototypeVersionId() == null ? null : prototypes.find(task.prototypeVersionId())
                 .orElseThrow(() -> conflict(CodeErrors.CODE_TASK_PROTOTYPE_MISMATCH.code()));
-        return new TaskSnapshot(task.projectId(), task.id(), task.revision(), task.title(), task.goal(), task.acceptanceCriteria(), prototype);
+        return new TaskSnapshot(task.projectId(), task.id(), task.revision(), task.title(), task.goal(), task.acceptanceCriteria(), task.notes(), prototype);
+    }
+
+    public TaskSnapshot planningLocked(TaskRef ref) {
+        var task = tasks.find(ref.taskId(), ref.projectId(), false);
+        if (task.revision() != ref.revision()) throw conflict(BoardErrors.BOARD_REVISION_CONFLICT.code());
+        if (!java.util.Set.of(BoardTaskColumn.PLANNED.wire(), BoardTaskColumn.READY.wire()).contains(task.column()))
+            throw conflict(BoardErrors.BOARD_PREPARATION_REQUIRED.code());
+        if (tasks.hasActiveExecution(task.id())) throw conflict(BoardErrors.BOARD_EXECUTION_ACTIVE.code());
+        var prototype = task.prototypeVersionId() == null ? null : prototypes.find(task.prototypeVersionId())
+                .orElseThrow(() -> conflict(CodeErrors.CODE_TASK_PROTOTYPE_MISMATCH.code()));
+        return new TaskSnapshot(task.projectId(), task.id(), task.revision(), task.title(), task.goal(), task.acceptanceCriteria(), task.notes(), prototype);
     }
 
     public void validateLocked(TaskSnapshot expected) {

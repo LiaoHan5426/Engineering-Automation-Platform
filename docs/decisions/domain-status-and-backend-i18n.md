@@ -35,6 +35,8 @@
 | 看板任务、交付来源及决定 | workflow按功能拆`BoardTaskColumn`、`BoardDeliverySource`、`BoardDeliveryDecision` | `contracts/boardTask.ts`、`contracts/boardDelivery.ts` | planned/ready/acceptance/done不是执行状态；ACCEPT/REJECT不是进程成功失败 |
 | 专家运行/审批 | core的`ExpertAgentState`供workflow持久适配及AI服务使用 | 拆到`contracts/expertAgent.ts`供现有expertAgent API复用 | queued/awaiting-approval/unknown等沿用当前语义，显式转换源码候选结果 |
 | Chat执行、事件、连接 | Chat执行合同归ai-chat；连接状态归对应model/codegen职责 | `contracts/chatExecution.ts`、`contracts/modelConnection.ts` | 连接可用性不等于任务成功；流结束不等于应用完成 |
+| Chat请求目的 | `ai-chat/TaskMode`：CHAT、CODE、PLAN | `contracts/taskMode.ts` | 规划请求不注册工具、不创建源码候选；Agent复用CODE目的，不增加第二个代码生成状态机 |
+| 单次Chat工具面 | `ai-chat/AiToolMode`：NONE、GIT_STATUS、CODE_SOURCES | `contracts/aiToolMode.ts` | 严格拒绝非法wire值；CODE_SOURCES仅对已绑定任务的CODE请求开放，与既有Git授权及规划无工具合同分开 |
 | 场景、插件、资源管理 | 每一原领域定义配置/依赖/发布/保存状态 | runtime共享合同分域；仅UI本地状态留对应feature | 配置/草稿/服务器不可变版本各有职责，不合并成运行状态 |
 
 后端优先使用类型安全枚举。需要不同wire值时显式提供wireValue与严格fromWire，在Jackson/JDBC边界集中转换，不依赖enum.ordinal或隐式toString；数据库和HTTP编码在没有语义变化时保持原值，这不需要旧值解析兼容分支。前端使用`as const`对象推导联合类型，运行时校验、分组和状态标签引用相同定义，禁止联合类型与另一个数组各写一遍。
@@ -50,6 +52,8 @@
 - 不为只出现一次的普通字符串制造文件；按职责和复用需要拆分，不按每个字符串建一个类。原有正确的枚举/资源复用，避免抽取后出现两套定义。
 
 ## 3. 统一错误协议
+
+2026-11-12接续：客户端已经断开时没有可交付的错误体。统一异常处理使用Spring `DisconnectedClientHelper`识别实际断连，停止再次生成500响应，调试日志只记录路由模板；真实序列化异常仍返回原平台500合同。意外错误诊断增加匹配路由模板、直接原因类名和响应提交状态，不记录异常正文、请求参数、密钥或原始路径值。实库/Chromium复现定位到关闭页面后的 `/api/capabilities`、响应已提交、Jackson写出链；修复后同场景不再出现该写出警告，不能由此声称任意断连和所有运行日志已无异常。
 
 采用现有ProblemDetail作为HTTP envelope，明确机器字段和展示字段：
 

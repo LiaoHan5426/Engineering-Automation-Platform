@@ -1,3 +1,4 @@
+import { loadPlaywright } from './playwright-runtime.mjs'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -9,7 +10,7 @@ import tailwindcss from '@tailwindcss/vite'
 const base = 'http://127.0.0.1:8080'
 const output = resolve('apps/web/__tests__/browser/artifacts/prototype-publication-recovery')
 await mkdir(output, { recursive: true })
-const { chromium } = createRequire(import.meta.url)(process.env.EAP_PLAYWRIGHT_MODULE)
+const { chromium } = loadPlaywright()
 const server = await createServer({
   configFile: false,
   root: resolve('apps/web'),

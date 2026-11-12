@@ -1,5 +1,12 @@
 export const boardDeliveryMessages = {
   'zh-CN': {
+    comparePrototype: '对照本次绑定的设计版本',
+    prototypeMismatch: '交付与本次运行的设计版本不一致，请重新核对原记录。',
+    previewAddress: '本次交付的页面预览地址',
+    previewAddressHint:
+      '登记你实际核对的本机页面地址。打开链接不代表页面对应当前源码或检查已经通过，请在人工接受前核对。地址将随决定保存。',
+    previewAddressInvalid: '请输入无账号密码的本机 HTTP/HTTPS 地址，例如 http://127.0.0.1:5173/。',
+    openPreview: '打开登记的预览页面',
     candidatesHint:
       '读取此 Run 原任务版本在同一工作区已应用的 PREBOUND 候选。选择只填写关联和路径；提交仍由服务端重新核对源码、时间及验证证据。',
     loadCandidates: '读取此任务的已应用候选',
@@ -59,6 +66,15 @@ export const boardDeliveryMessages = {
     loadFailed: '无法读取交付记录。保留已保存证据，写操作暂停；请刷新后重试。',
   },
   'en-US': {
+    comparePrototype: 'Compare the bound design version',
+    prototypeMismatch:
+      'The delivery and Run reference different design versions. Review the original records.',
+    previewAddress: 'Page preview address for this delivery',
+    previewAddressHint:
+      'Register the local page you actually reviewed. Opening it does not prove source identity or successful checks. Verify these before acceptance. The address is saved with your decision.',
+    previewAddressInvalid:
+      'Enter a local HTTP/HTTPS address without credentials, such as http://127.0.0.1:5173/.',
+    openPreview: 'Open registered page preview',
     candidatesHint:
       'Read applied PREBOUND candidates for this Run task revision and workspace. Selection only fills the reference and path; submission rechecks source, time and verification evidence.',
     loadCandidates: 'Read applied candidates for this task',

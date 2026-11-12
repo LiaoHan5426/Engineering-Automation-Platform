@@ -17,6 +17,34 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.web.server.ResponseStatusException;
 
 class AiConversationRegistryTest {
+    @Test void clearingOnlyModelWindowPreservesTaskMemoryBindingAndRejectsBusyTurns() {
+        var memory = new RecordingMemory();
+        var registry = new AiConversationRegistry(memory);
+        var session = registry.open(Path.of(".").toAbsolutePath(), "ws");
+        registry.bind(session.id, TARGET, false);
+        registry.putWorkingMemory(session.id, "retain goal", List.of("retain constraint"), List.of(), List.of(), java.util.Set.of());
+        var before = registry.workingMemory(session.id);
+        String key = ChatClients.memoryKey(AiConversationRegistry.PRINCIPAL, session.id);
+        memory.add(key, new org.springframework.ai.chat.messages.UserMessage("private history"));
+        assertEquals(1, registry.modelHistory(session.id).messages());
+        assertTrue(registry.modelHistory(session.id).chars() >= "private history".length());
+        registry.exclusive(session.id, () -> {
+            var rejected = assertThrows(ResponseStatusException.class, () -> registry.clearModelHistory(session.id));
+            assertEquals("CONVERSATION_BUSY", rejected.getReason());
+            return null;
+        });
+        assertEquals(1, registry.modelHistory(session.id).messages());
+        registry.clearModelHistory(session.id);
+        registry.clearModelHistory(session.id);
+        assertEquals(0, registry.modelHistory(session.id).chars());
+        assertEquals(before, registry.workingMemory(session.id));
+        assertSame(TARGET, registry.binding(session.id));
+        assertThrows(ResponseStatusException.class, () -> registry.clearModelHistory(UUID.randomUUID()));
+        registry.exclusive(session.id, () -> registry.clearContextMemory(session.id, true));
+        registry.clearModelHistory(session.id);
+        assertTrue(registry.exclusive(session.id, () -> registry.clearContextMemory(session.id, false)),
+                "Explicit history clear must not reset sticky material sensitivity");
+    }
     @TempDir Path root;
     private static final AiConversationRegistry.Binding TARGET = new AiConversationRegistry.Binding(
             UUID.randomUUID(), 1, "selected", "model", "endpoint", "revision", null);

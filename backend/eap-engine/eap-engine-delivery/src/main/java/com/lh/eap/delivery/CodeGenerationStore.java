@@ -39,8 +39,12 @@ public interface CodeGenerationStore {
         }
     }
     record TaskSnapshot(String projectId, UUID taskId, long revision, String title, String goal,
-                        String acceptanceCriteria, PrototypeVersion prototype) {
+                        String acceptanceCriteria, String notes, PrototypeVersion prototype) {
         public TaskRef binding() { return new TaskRef(projectId, taskId, revision); }
+    }
+    /** Read-only planning evidence; never inserts a generation or reserves execution. */
+    default TaskSnapshot planningTask(TaskRef ref) {
+        throw new IllegalStateException("Task planning requires persistent store");
     }
     /** The callback reads source inside the same task/workspace transaction that inserts the row. */
     default Snapshot capture(TaskRef ref, String workspace, String prototypeId,

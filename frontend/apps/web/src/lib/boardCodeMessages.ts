@@ -1,5 +1,27 @@
 export const boardCodeMessages = {
   'zh-CN': {
+    preparation: {
+      references: '只读参考源码（可选）',
+      referencesHelp:
+        '每行一个文件，例如路由宿主。核对后作为当前内容快照带入附件，不加入候选写入范围。最多6个文件，单文件16000字符、合计24000字符；参考文件变化后请重新核对。',
+      addReference: '浏览参考文件',
+      referenceScope:
+        '参考文件必须完整、互不重复，且不能与候选文件重叠。请检查文件范围和内容限额。',
+      title: '准备实现',
+      boundary:
+        '选择本次要修改的文件并核对读取结果。读取入口依赖会替换关联文件选择，请核对后再带入草稿。不会生成或写入源码。',
+      chooseTarget: '浏览入口文件',
+      addFile: '添加关联文件',
+      existing: '已有文件',
+      newFile: '新文件',
+      total: '选定源码共 {bytes} 字节，生成前会重新读取和校验。',
+      discover: '读取入口依赖',
+      check: '核对文件',
+      adopt: '带入实现草稿',
+      discard: '关闭实现准备？',
+      discardImpact: '尚未采用的文件选择将丢弃，任务和源码不变。',
+      close: '关闭准备',
+    },
     fileFilter: '筛选交付文件',
     evidenceTitle: '组件图交付证据',
     noMatchingFiles: '没有匹配的文件',
@@ -24,6 +46,28 @@ export const boardCodeMessages = {
     uncertain: '操作结果尚未确认。请读取原候选核对，不创建新请求、重新生成或自动重发。',
   },
   'en-US': {
+    preparation: {
+      references: 'Read-only source references (optional)',
+      referencesHelp:
+        'One file per line, such as the routing host. Checked content is attached as a snapshot, outside the candidate write scope. Up to 6 files, 16,000 characters each and 24,000 total. Check again after reference files change.',
+      addReference: 'Browse reference files',
+      referenceScope:
+        'References must be complete, distinct and outside the candidate file selection. Check the scope and content limits.',
+      title: 'Prepare implementation',
+      boundary:
+        'Choose the files to change and inspect their read status. Reading entry dependencies replaces related selections. Review before adopting; no generation or source writes.',
+      chooseTarget: 'Browse entry file',
+      addFile: 'Add related file',
+      existing: 'Existing',
+      newFile: 'New file',
+      total: '{bytes} source bytes selected. Generation reads and checks the files again.',
+      discover: 'Read entry dependencies',
+      check: 'Check files',
+      adopt: 'Use in implementation draft',
+      discard: 'Close implementation preparation?',
+      discardImpact: 'Unused file selections will be discarded. Task and source stay unchanged.',
+      close: 'Close preparation',
+    },
     fileFilter: 'Filter delivery files',
     evidenceTitle: 'Component graph delivery evidence',
     noMatchingFiles: 'No matching files',

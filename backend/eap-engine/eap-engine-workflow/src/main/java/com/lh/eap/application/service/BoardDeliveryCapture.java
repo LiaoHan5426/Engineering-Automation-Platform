@@ -11,6 +11,7 @@ import com.lh.eap.error.BoardVerificationErrors;
 import com.lh.eap.api.ProcessExecutor;
 import com.lh.eap.capability.GitCapability;
 import com.lh.eap.common.SensitiveData;
+import com.lh.eap.delivery.ComponentGraph;
 import java.nio.ByteBuffer;
 import java.nio.charset.*;
 import java.nio.file.*;
@@ -95,7 +96,9 @@ public class BoardDeliveryCapture {
     }
     static void validatePaths(List<String> paths) {
         if (paths == null || paths.isEmpty() || paths.size() > 8 || new HashSet<>(paths).size() != paths.size()) throw new IllegalArgumentException(BoardDeliveryErrors.INVALID_BOARD_DELIVERY_PATHS.code());
-        for (String path : paths) if (path == null || path.length() > 512 || !path.matches("frontend/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*\\.(vue|ts|tsx|js|jsx|mjs|cjs|css|html)") || !sourcePath(path)) throw new IllegalArgumentException(BoardDeliveryErrors.INVALID_BOARD_DELIVERY_PATHS.code());
+        for (String path : paths) if (path == null || path.length() > 512 || !path.matches("frontend/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*\\.(vue|ts|tsx|js|jsx|mjs|cjs|css|html|json)") || !sourcePath(path)
+                || (path.endsWith(".json") && !ComponentGraph.dataResource(path)))
+            throw new IllegalArgumentException(BoardDeliveryErrors.INVALID_BOARD_DELIVERY_PATHS.code());
     }
 
     private byte[] read(Path root, BoardVerificationSource.File file) {

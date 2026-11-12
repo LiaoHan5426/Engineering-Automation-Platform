@@ -39,6 +39,7 @@ it('uses the scoped delivery routes and sends only the explicit source and decis
     decision: 'ACCEPT' as const,
     criteriaConfirmed: true,
     previewConfirmed: true,
+    previewUrl: 'http://127.0.0.1:5193/',
     comment: 'checked',
   }
   expect(await runtimeApi.boardDelivery('task/a', 'run/b', request.projectId)).toEqual({

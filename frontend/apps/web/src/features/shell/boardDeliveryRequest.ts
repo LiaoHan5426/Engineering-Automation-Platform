@@ -1,4 +1,4 @@
-import { hasWireValue } from '@eap/runtime-client'
+import { hasWireValue, isLocalPreviewUrl } from '@eap/runtime-client'
 import { BoardDeliveryDecision } from '@eap/runtime-client'
 import { BoardDeliveryErrors } from '@eap/runtime-client'
 import type {
@@ -39,7 +39,8 @@ export function validDeliveryPaths(paths: unknown): paths is string[] {
       (path) =>
         typeof path === 'string' &&
         path.length <= 512 &&
-        /^frontend\/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*\/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(vue|ts|tsx|js|jsx|mjs|cjs|css|html)$/.test(
+        !/\/(?:package(?:-lock)?|[jt]sconfig(?:\.[^/.]+)*)\.json$/i.test(path) &&
+        /^frontend\/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*\/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(vue|ts|tsx|js|jsx|mjs|cjs|css|html|json)$/.test(
           path,
         ),
     )
@@ -80,6 +81,10 @@ export function readDeliveryRequest(
       ) ||
       typeof decision.criteriaConfirmed !== 'boolean' ||
       typeof decision.previewConfirmed !== 'boolean' ||
+      typeof decision.previewUrl !== 'string' ||
+      (!!decision.previewUrl && !isLocalPreviewUrl(decision.previewUrl)) ||
+      (decision.decision === BoardDeliveryDecision.ACCEPT &&
+        !isLocalPreviewUrl(decision.previewUrl)) ||
       typeof decision.comment !== 'string'
     )
       return null

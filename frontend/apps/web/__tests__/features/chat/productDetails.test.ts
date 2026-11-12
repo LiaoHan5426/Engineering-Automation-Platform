@@ -54,10 +54,10 @@ it.each([
   ['failed', [{ name: 'test', exitCode: 1, summary: 'failed' }], '检查未通过'],
   ['UNKNOWN', [], '检查结果待核对'],
 ] as const)('shows evidence-dependent verification for %s', async (recorded, checks, label) => {
-  mount(VerificationChecks, { recorded, checks, origin: 'http://127.0.0.1:5174' })
+  mount(VerificationChecks, { recorded, checks })
   await nextTick()
   expect(host.querySelector('[data-testid="verification-result"]')?.textContent).toContain(label)
-  expect(host.querySelectorAll('[data-testid="delivery-preview-link"]')).toHaveLength(1)
+  expect(host.querySelectorAll('[data-testid="delivery-preview-link"]')).toHaveLength(0)
   expect(
     (host.querySelector('[data-testid="verification-details"]') as HTMLDetailsElement).open,
   ).toBe(false)

@@ -44,6 +44,12 @@ public final class ContextBudget {
             return this;
         }
 
+        public Account includeChars(String source, int chars) {
+            if (chars < 0) throw new IllegalArgumentException("Negative context size");
+            sources.put(source, new SourceUsage(source, chars, METERING_CHAR_ESTIMATE, "included"));
+            return this;
+        }
+
         public Account unknown(String source, String reason) {
             sources.put(source, new SourceUsage(source, 0, METERING_UNKNOWN, reason));
             return this;
@@ -67,7 +73,8 @@ public final class ContextBudget {
         public Observation enforce() {
             note("COMPRESSION_NOT_ENABLED");
             int material = included("user");
-            int used = included("system") + material;
+            int used = (int) Math.min(Integer.MAX_VALUE,
+                    (long) included("system") + material + included("history"));
             boolean hasUnknown = sources.values().stream().anyMatch(s -> METERING_UNKNOWN.equals(s.metering()));
             String metering = hasUnknown ? METERING_UNKNOWN : METERING_CHAR_ESTIMATE;
             int remaining = PLATFORM_CONTEXT_CHARS - OUTPUT_RESERVE_CHARS - used;
@@ -81,7 +88,7 @@ public final class ContextBudget {
                     metering,
                     List.copyOf(sources.values()),
                     List.copyOf(notes));
-            if (material > INPUT_MATERIAL_LIMIT || used + OUTPUT_RESERVE_CHARS > PLATFORM_CONTEXT_CHARS) {
+            if (material > INPUT_MATERIAL_LIMIT || (long) used + OUTPUT_RESERVE_CHARS > PLATFORM_CONTEXT_CHARS) {
                 throw exceeded(observation);
             }
             return observation;

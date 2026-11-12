@@ -1,3 +1,5 @@
+import { prototypeInteractionProblems } from './prototypeInteraction'
+
 export type PrototypeNode = {
   id: string
   /** Registered component kind; unknown kinds block automatic delivery. */
@@ -27,6 +29,10 @@ export const PROTOTYPE_KINDS = [
   'input',
   'link',
   'list',
+  'form',
+  'select',
+  'checkbox',
+  'dialog',
 ] as const
 const KNOWN_KINDS = new Set<string>(PROTOTYPE_KINDS)
 
@@ -54,7 +60,7 @@ export function deliveryBlockers(schema: PrototypeSchema): string[] {
       reasons.push(`unregistered_kind:${node.kind}`)
     }
   })
-  return [...new Set(reasons)]
+  return [...new Set([...reasons, ...prototypeInteractionProblems(schema)])]
 }
 
 export function canAutoDeliver(schema: PrototypeSchema) {
@@ -100,6 +106,7 @@ export function parsePrototypeSchema(raw: string): PrototypeSchema | null {
       Array.isArray(parsed.grapesProject)
     )
       return null
+    if (prototypeInteractionProblems(parsed).length) return null
     return parsed
   } catch {
     return null

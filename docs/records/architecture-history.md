@@ -2,6 +2,8 @@
 
 ## 当前结论与阅读方式
 
+2026-11-12已开发内容复核新增四项修正：工具错误统一归入FAILED终态；Spring AI请求工具注册及Spring HTTP413枚举迁移至当前API；聊天附件入口去重并沿用发送预览；原型转任务补齐草稿关闭保护与首次明确4xx后的编辑恢复。改动与验证见[本轮记录](#developed-content-review)，不覆盖历史验收范围。
+
 当前后端由api、engine、ai、web、spring及applications组成，唯一Boot宿主为eap-applications/eap-full-application；库模块不得反向依赖宿主，engine不得依赖ai/web。当前结构以[架构](../architecture.md)和[模块布局](../module-layout.md)为准。下文8e020d5的五模块拆分、652项回归及19份迁移均为历史快照，不代表当前结构、IDEA实际重启或完整产品验收。
 
 2026-11-10完成[开发阶段规则排查](#development-dual-path-audit)及[五组集中收敛](#single-contract-convergence)：两处小遗留与五组兼容/重复入口均已清理，V30独立Flyway/数据库/HTTP/Git及设计器真实整链通过。该179文件已提交推送1ce0c4b。日常库旧非语义原型及测试引用已按本次授权备份处置，正式full完成V30/V31与生产页面整链；新增发布响应丢失核对随本次提交交付，沿用已有验证且不重复测试，见[当前接续](#publication-recovery)。
@@ -142,7 +144,7 @@ KISS/YAGNI体现在删除旧面与回退，不新增替代机制；DRY体现统�
 
 - 草稿恢复、本地保存历史和PostgreSQL不可变发布版本职责不同；不能因多个存储位置直接判定双状态机。显式隔离的Mock也有当前验收用途。
 - MCP stdio/SSE/Streamable HTTP属于外部协议适配；OpenAI-compatible是协议名称，Skill frontmatter compatibility是格式字段，不据此另判旧业务双轨。
-- [PrototypeFlow.vue](../../frontend/apps/web/src/features/shell/PrototypeFlow.vue)未发现生产组件导入，只有自身及测试引用；Chat的pendingMockHandoff消费有props.mock守卫。属于旧PoC/死源码候选，不能称当前存在第二条生产交付链。
+- 首次排查时，`frontend/apps/web/src/features/shell/PrototypeFlow.vue`未发现生产组件导入，只有自身及测试引用；Chat的pendingMockHandoff消费有props.mock守卫。当时属于旧PoC/死源码候选，未据此判定第二条生产交付链；2026-11-12复核该文件已删除，此处仅保留历史结论。
 - OfficialReadonlyMcpLock委托同一Matrix、LlmGateway.complete包装同一completeWithEvidence：可以评估删除多余外观，但未发现第二套MCP传输或模型循环。
 - 模型连接的存储模式/宿主属性模式需要结合实际组合目标继续判断；本次未将其认定为已证实缺陷。固定DAG与动态Agent的不同模式应显式选定，禁止把旧定义隐式升级为另一模式。
 - 已应用数据库迁移和明确标记的历史记录用于追溯，不是运行时双轨。本轮只纠正有效合同中“必须旧SQL入口兼容”的未来要求，保留既有历史证据。
@@ -391,3 +393,21 @@ core的CapabilityRequest不再包含SQL/检索字段，公共上下文使用inpu
 ExpertAnalysisPolicyResolver允许宿主从已加载专家定义选择策略；执行服务解析一次，将策略引用与不可变事实词表绑定单次Run，规则/判定/汇总/增强共用所选策略。缺配置或解析失败在执行资源/工具前拒绝；完整产品显式保留SQL兼容默认，支持用户Resolver Bean覆盖。原固定策略Java构造保留，无新增持久绑定表或HTTP字段。新增5项回归覆盖多策略、并发、在途选择/词表隔离和缺配置拒绝；策略对象仍须自身线程安全，非深复制。
 
 完整clean verify为833项（759通过、74跳过）、32项目成功、0失败/错误。IDEA原配置恢复运行，schema22无需迁移，健康/专家目录200；未启用实库业务、真实模型/MCP验收。专业角色/行为持久绑定、应用SQL合同、长事务仍待，未声称自主Agent完成；规划同步，未提交推送。
+
+<a id="developed-content-review"></a>
+
+## 2026-11-12 已开发内容：架构、当前API与交互复核
+
+基线为既有154个跟踪文件的工作区改动（4529行增加/1312行删除）及未跟踪文件，本轮只增量修复。服务沿用IDEA DevTools后端与侧边栏终端启动的5173前端；不启动第二应用、不提交推送、不调用真实模型。验证命令、失败与范围见[本轮验证](validation-history.md#developed-content-review-validation)。
+
+| 问题 | 根因与收敛 | 验证边界 |
+|---|---|---|
+| 工具错误仍标SUCCEEDED | EngineeringChatService集中在构造结果前把有error的成功态改为FAILED，沿用同一结果→事件→回放路径，保留CANCELLED/TIMED_OUT | 权限、异常、预算、参数失败及final/快照一致性；不新建状态或重复前端判定 |
+| 已弃用API | SqlExpertAgentService及Responses协议测试的请求级toolCallbacks改为tools；集合用toArray()作为Object[]传入，保留每个回调。ChatExecutionJournal的PAYLOAD_TOO_LARGE改为CONTENT_TOO_LARGE | 本地Spring AI2.0.2及Spring Framework7.0.9源码确认，后者仍HTTP413；OpenAiChatOptions上的同名有效API保留 |
+| Chat两个按钮打开同菜单 | 删除context-meter打开添加菜单的处理，只显示文件用量；添加菜单负责附件/指引，既有outgoing-preview负责发送核对 | 不新增弹窗、共享状态或第二份预览；无精确token声明 |
+| 用户反馈补查：工作区/源文件重复文件树 | 首轮遗漏了同页工具栏两两对比；两个 RepositoryBrowser 分别受 workspaceTreeOpen 与 panel 管理，可同时出现。统一保留包含仓库/本地引用/设计版本的源文件面板，删除工作区文件树组件及专用状态 | 摘要、变更、终端职责保留；完整切换、关闭及草稿复验见[补充证据](validation-history.md#chat-toolbar-review-correction)，不将入口加载等同于交互验收 |
+| 原型转任务关闭丢草稿/失败锁死 | 公共ConfirmBox保护未提交编辑；首次直接4xx且清理持久意图成功释放冻结，修正后新身份；未知/恢复/重放始终原身份 | 五项回归覆盖取消/放弃/改回、明确失败修正、丢响应后4xx、恢复意图；非首次4xx不推断未提交 |
+
+架构检查保留合理分层：场景配置与设计工作面、原型预览与设计编辑、模型连接编辑与模型目录各自职责不同。看板全局新建与列内添加共用startCreate，列内按钮传planned/ready；不把不同初始状态机械合并。ModelHistoryDialog已有重新摘要确认和未保存保护，不叠加第二次确认。
+
+后续结构债单列：CodeChangeService旧内存propose/apply及自动verify只由旧测试使用，生产走持久apply；下一切片先把旧测试迁至InMemoryCodeProposalStore再删除旧实现，保留等价恢复/授权覆盖。AiChatApplication摘要的无记忆completion与普通聊天仍有不同生命周期，不为减少行数强行合并；流式脱敏16384字符截断标记、生产大chunk与全页面深层交互继续单独验收。

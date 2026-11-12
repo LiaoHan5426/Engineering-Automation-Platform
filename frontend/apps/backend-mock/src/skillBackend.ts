@@ -1,3 +1,4 @@
+import { TaskMode } from '@eap/runtime-client'
 import { SkillErrors } from '@eap/runtime-client/contracts'
 import { createHash } from 'node:crypto'
 import type {
@@ -143,7 +144,7 @@ function parse(value: unknown): SkillSnapshot {
 /** Scalar/file validation precedes Skill resolution in runtime TaskContext.parse. */
 export function validSkillTaskFields(value: Record<string, unknown>): boolean {
   const enums: Record<string, string[]> = {
-    mode: ['chat', 'code'],
+    mode: Object.values(TaskMode),
     expert: ['general', 'sql', 'frontend'],
     reasoning: ['default', 'low', 'medium', 'high'],
     approval: ['review', 'read_only'],

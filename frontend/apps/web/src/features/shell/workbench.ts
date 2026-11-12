@@ -1,10 +1,19 @@
 import { reactive, shallowRef, watch } from 'vue'
-import type { CodeProposal, CodeTaskRef } from '@eap/runtime-client'
+import type { CodeProposal, CodeTaskRef, TaskContext } from '@eap/runtime-client'
+export type CodePreparationSelection = {
+  targetPath: string
+  componentPaths: string[]
+  referenceFiles?: TaskContext['files']
+}
 export type BoardTaskDraft = {
+  executionMode: Exclude<ExecutionMode, 'agent'>
   sessionId: string
   title: string
   taskRef?: CodeTaskRef
   prototypeVersionId?: string
+  targetPath?: string
+  componentPaths?: string[]
+  referenceFiles?: TaskContext['files']
 }
 import { apiStorageScope } from '../../lib/runtimeConfig'
 import { createScenarioCatalog } from './scenarioCatalog'
@@ -310,6 +319,7 @@ export const workbench = reactive({
   sidebarOpen: false,
   origin: 'chat',
   pendingNewChat: false,
+  boardHandoffToken: 0,
   /** Seeded into the draft once after pendingNewChat / create(). Cleared after apply. */
   pendingDraft: '',
   get selectedProjectId() {
@@ -326,7 +336,6 @@ export const workbench = reactive({
   deliveryTargetPath: DELIVERY_TARGET_PATH,
   sessionExtras: {} as Record<string, SessionExtras>,
   sessionPanels: {} as Record<string, PanelId>,
-  workspaceTreeOpen: false,
   /** Cleared after SessionPanel consumes it when the changes rail opens. */
   diffFocusPath: '',
 })
@@ -342,11 +351,6 @@ export function rememberPanel(id: string | null, panel: PanelId) {
 
 export function restorePanel(id: string | null) {
   workbench.panel = workbench.sessionPanels[id ?? 'scratch'] ?? null
-}
-
-/** UI preference: docked read-only workspace tree on the chat workbench (no write grant). */
-export function toggleWorkspaceTree(open?: boolean) {
-  workbench.workspaceTreeOpen = open ?? !workbench.workspaceTreeOpen
 }
 
 /** Open the changes rail and focus a candidate path from proposal before/content diff. */

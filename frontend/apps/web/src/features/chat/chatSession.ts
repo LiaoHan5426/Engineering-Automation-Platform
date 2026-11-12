@@ -1,4 +1,4 @@
-import { ChatErrors } from '@eap/runtime-client'
+import { AiToolMode, ChatErrors } from '@eap/runtime-client'
 
 import { hasWireValue } from '@eap/runtime-client'
 import { ChatExecutionStatus } from '@eap/runtime-client'
@@ -8,7 +8,6 @@ import type {
   AiConversationRecovery,
   AiMessageResult,
   AiStatus,
-  AiToolMode,
   ContextBudgetObservation,
   ModelConnection,
   ModelConnectionList,
@@ -67,6 +66,7 @@ export type ChatApi = {
   putWorkingMemory?: (
     id: string,
     body: {
+      expectedUpdatedAt: string
       goal?: string
       constraints?: string[]
       facts?: Array<{ kind: string; id: string; revisionOrDigest: string }>
@@ -89,6 +89,8 @@ export type ChatApi = {
 }
 
 export type ChatTurn = {
+  planningTask?: TaskContext['taskRef']
+
   errorMessage?: string
   errorLanguage?: string
   skillContext?: AiMessageResult['skillContext']
@@ -197,7 +199,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const sessionUnavailable = ref(false)
   const checkingConversation = ref(false)
   let selectionVersion = 0
-  const toolMode = ref<AiToolMode>('none')
+  const toolMode = ref<AiToolMode>(AiToolMode.NONE)
   const emptyContext = (): TaskContext => ({
     mode: 'chat',
     expert: 'general',
@@ -403,6 +405,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   }
 
   async function saveWorkingMemory(body: {
+    expectedUpdatedAt?: string
     goal?: string
     constraints?: string[]
     facts?: Array<{ kind: string; id: string; revisionOrDigest: string }>
@@ -412,7 +415,11 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     const id = conversationId.value
     const version = selectionVersion
     if (!id || !api.putWorkingMemory) return null
-    const snapshot = await api.putWorkingMemory(id, body)
+    const snapshot = await api.putWorkingMemory(id, {
+      ...body,
+      expectedUpdatedAt:
+        body.expectedUpdatedAt ?? workingMemory.value?.updatedAt ?? '1970-01-01T00:00:00Z',
+    })
     if (conversationId.value === id && selectionVersion === version) workingMemory.value = snapshot
     return snapshot
   }
@@ -643,7 +650,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     }
   }
 
-  async function send(outgoingContext?: TaskContext) {
+  async function send(outgoingContext?: TaskContext, requestedTools?: AiToolMode) {
     if (
       opening.value ||
       reconnecting.value ||
@@ -653,20 +660,23 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     )
       return
     const requestContext = outgoingContext ?? context.value
+    const planning = requestContext.mode === 'plan'
+    const selectedToolMode = planning ? AiToolMode.NONE : (requestedTools ?? toolMode.value)
     const selected = connections.value.find(
       (item) => item.id === (pendingConnectionId.value || boundConnectionId.value),
     )
     if (
-      toolMode.value !== 'none' &&
-      (selected?.kind === 'chatgpt-plan' || selected?.wireApi === 'responses')
+      selectedToolMode !== AiToolMode.NONE &&
+      (selected?.kind === 'chatgpt-plan' ||
+        (selectedToolMode === AiToolMode.GIT_STATUS && selected?.wireApi === 'responses'))
     ) {
       failure.value = 'protocol-tools-unavailable'
       return
     }
     if (
       requestContext.skillRef &&
-      (requestContext.mode !== 'chat' ||
-        toolMode.value !== 'none' ||
+      (requestContext.mode === 'code' ||
+        selectedToolMode !== AiToolMode.NONE ||
         requestContext.knowledgeExpertRef ||
         requestContext.taskRef)
     ) {
@@ -674,7 +684,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       return
     }
     if (requestContext.knowledgeExpertRef) {
-      if (requestContext.mode !== 'chat' || toolMode.value !== 'none') {
+      if (requestContext.mode === 'code' || selectedToolMode !== AiToolMode.NONE) {
         failure.value = 'knowledge-unavailable'
         return
       }
@@ -721,12 +731,15 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     }
     if (entry) entry.context = JSON.parse(JSON.stringify(context.value)) as TaskContext
     const requestMetadata = {
+      ...(planning && requestContext.taskRef
+        ? { planningTask: { ...requestContext.taskRef } }
+        : {}),
       model: boundModel.value,
       connectionName:
         connections.value.find((item) => item.id === boundConnectionId.value)?.name ?? '',
       reasoning: requestContext.reasoning,
     }
-    const mode = toolMode.value
+    const mode = selectedToolMode
     const requestLanguage = runtimeLanguage()
     const current = ++ticket
     let receivedEvent = false

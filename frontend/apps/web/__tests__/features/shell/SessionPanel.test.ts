@@ -219,7 +219,7 @@ it('traces the adopted expert version, guidance and resource scope', async () =>
   )
 })
 
-it('shows the delivery input with local UI preview still short of acceptance', async () => {
+it('shows delivery input without inventing a preview URL from a source path', async () => {
   chatBinding.value = binding({ activeId: 'a' })
   workbench.sessionExtras.a = {
     scenarioId: 'prototype-to-code',
@@ -229,7 +229,7 @@ it('shows the delivery input with local UI preview still short of acceptance', a
     delivery: {
       versionId: 'draft-1',
       pagePath: 'frontend/apps/web/src/features/chat/TaskComposer.vue',
-      pageLabel: 'preview.pageComposer',
+      pageLabel: 'desktop.sources',
     },
   }
   root = document.createElement('div')
@@ -240,8 +240,10 @@ it('shows the delivery input with local UI preview still short of acceptance', a
   expect(root.textContent).toContain('draft-1')
   expect(root.textContent).toContain('TaskComposer.vue')
   expect(root.textContent).toContain('无退出码')
-  expect(root.textContent).toContain('页面预览：可打开本机 UI')
-  expect(root.textContent).toContain('/#chat')
+  expect(root.querySelector('[data-testid=delivery-preview]')?.textContent).toBe(
+    i18n.global.t('desktop.deliveryPreview'),
+  )
+  expect(root.textContent).not.toContain('/#chat')
   expect(root.textContent).toContain('交互验收：未完成')
   expect(root.textContent).not.toContain('demo passed')
 })
@@ -320,9 +322,7 @@ it('keeps candidate, applied and unread directory changes apart', async () => {
     /未启用|verification\.enabled=false|Verification config: off/i,
   )
   expect(text).toContain('尚未运行检查')
-  expect(
-    root.querySelector('[data-testid="delivery-preview-link"]')?.getAttribute('href'),
-  ).toContain('/#chat')
+  expect(root.querySelector('[data-testid="delivery-preview-link"]')).toBeNull()
   expect(text).toContain('待人工验收')
   expect(text).not.toContain('检查已通过')
   expect(

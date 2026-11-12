@@ -1,3 +1,4 @@
+import { loadPlaywright } from './playwright-runtime.mjs'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
@@ -14,7 +15,7 @@ const host = JSON.parse(await readFile(resolve(launch.session, 'host.json'), 'ut
 const target = 'http://127.0.0.1:' + host.port
 const output = resolve('apps/web/__tests__/browser/artifacts/conversation-optimization')
 await mkdir(output, { recursive: true })
-const { chromium } = createRequire(import.meta.url)(process.env.EAP_PLAYWRIGHT_MODULE)
+const { chromium } = loadPlaywright()
 const server = await createServer({
   configFile: false,
   root: resolve('apps/web'),
@@ -113,7 +114,7 @@ try {
       await page.getByTestId('verification-result').innerText(),
       language === 'zh-CN' ? /尚未运行检查/ : /Checks have not run yet/,
     )
-    assert.equal(await page.getByTestId('delivery-preview-link').count(), 1)
+    assert.equal(await page.getByTestId('delivery-preview-link').count(), 0)
     await page.screenshot({ path: resolve(output, 'chat-' + language + '-1440.png') })
     const persisted = await page.evaluate(() =>
       JSON.parse(localStorage.getItem(encodeURIComponent('/api') + '.eap.chat.history.v1')),

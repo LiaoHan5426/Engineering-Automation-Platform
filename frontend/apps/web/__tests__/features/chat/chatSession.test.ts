@@ -41,6 +41,30 @@ function deferred<T>() {
 }
 
 describe('chat session', () => {
+  it('sends explicit planning without tools and preserves the selected implementation settings', async () => {
+    let sent: unknown[] = []
+    const session = createChatSession({
+      openAiConversation: async () => ({
+        conversationId: 'plan',
+        workspaceLabel: 'ws',
+        memory: '',
+      }),
+      sendAiMessage: async (...args) => {
+        sent = args
+        return result({ answer: 'Read-only plan' })
+      },
+    })
+    await session.openConversation()
+    session.context.value.mode = 'code'
+    session.toolMode.value = 'git_status'
+    session.draft.value = 'Plan the page'
+    await session.send({ ...session.context.value, mode: 'plan' })
+    expect(sent[2]).toBe('none')
+    expect(sent[3]).toMatchObject({ mode: 'plan' })
+    expect(session.context.value.mode).toBe('code')
+    expect(session.toolMode.value).toBe('git_status')
+    expect(session.turns.value.at(-1)?.text).toBe('Read-only plan')
+  })
   it.each(['code', 'knowledge', 'tool', 'task'])(
     'blocks incompatible Skill %s without sending or mutating its draft',
     async (mode) => {

@@ -19,6 +19,32 @@ import java.security.NoSuchAlgorithmException;
 @Service
 
 public class KnowledgeManagementService {
+    public record DocumentUpdate(String title, String content, String expectedHash) {}
+    @Transactional
+    public Map<String, Object> updateDocument(UUID base, UUID document, DocumentUpdate request) throws NoSuchAlgorithmException {
+        if (request.title() == null || request.title().isBlank() || request.title().length() > 1000 || request.content() == null || request.content().isBlank() || request.content().length() > 200000 || request.expectedHash() == null || !request.expectedHash().matches("[a-f0-9]{64}"))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, KnowledgeErrors.KNOWLEDGE_DOCUMENT_INVALID.code());
+        if (SensitiveData.containsSecret(request.title()) || SensitiveData.containsSecret(request.content()))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, KnowledgeErrors.KNOWLEDGE_CONTENT_SECRET.code());
+        var current = mapper.lockDocument(base, document);
+        if (current.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, KnowledgeErrors.KNOWLEDGE_DOCUMENT_NOT_FOUND.code());
+        if (!current.getFirst().equals(request.expectedHash()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, KnowledgeErrors.KNOWLEDGE_DOCUMENT_CHANGED.code());
+        String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(request.content().getBytes(StandardCharsets.UTF_8)));
+        mapper.replaceDocument(base, document, request.title(), hash);
+        int index = insertChunks(document, request.content());
+        return Map.of("id", document, "chunks", index);
+    }
+    private int insertChunks(UUID document, String content) {
+        int index = 0;
+        for (int offset = 0; offset < content.length();) {
+            int end = Math.min(offset + 1500, content.length());
+            if (end < content.length() && Character.isHighSurrogate(content.charAt(end - 1))) end--;
+            mapper.insertChunk(document, index++, content.substring(offset, end));
+            offset = end;
+        }
+        return index;
+    }
     private final KnowledgeRepository repository;
     private final KnowledgeManagementMapper mapper;
     public KnowledgeManagementService(KnowledgeRepository repository, KnowledgeManagementMapper mapper) { this.repository = repository; this.mapper = mapper; }
@@ -43,13 +69,7 @@ public class KnowledgeManagementService {
         var document = UUID.randomUUID();
         var hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(request.content().getBytes(StandardCharsets.UTF_8)));
         mapper.insertDocument(document,id,request.title(),hash);
-        int index = 0;
-        for (int offset = 0; offset < request.content().length();) {
-            int end=Math.min(offset+1500,request.content().length());
-            if(end<request.content().length()&&Character.isHighSurrogate(request.content().charAt(end-1)))end--;
-            mapper.insertChunk(document,index++,request.content().substring(offset,end));
-            offset=end;
-        }
+        int index = insertChunks(document, request.content());
         return Map.of("id",document,"chunks",index);
     }
 

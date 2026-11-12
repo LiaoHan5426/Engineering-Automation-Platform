@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { containsSecret } from './sensitiveData.ts'
 
 /** In-memory implementation of the existing Java knowledge-management contract. */
@@ -85,6 +85,25 @@ export function createKnowledgeBackend() {
           content: body.content,
         })
         return reply(200, { id: documentId, chunks: Math.ceil(body.content.length / 1500) })
+      }
+      if (method === 'PUT' && match[2]) {
+        const doc = documents.get(match[2])
+        if (!doc || doc.baseId !== id) return missing()
+        if (
+          typeof body.title !== 'string' ||
+          !body.title.trim() ||
+          body.title.length > 1000 ||
+          typeof body.content !== 'string' ||
+          !body.content.trim() ||
+          body.content.length > 200000 ||
+          typeof body.expectedHash !== 'string' ||
+          !/^[a-f0-9]{64}$/.test(body.expectedHash)
+        )
+          return reply(400, { code: 'KNOWLEDGE_DOCUMENT_INVALID' })
+        if (createHash('sha256').update(doc.content).digest('hex') !== body.expectedHash)
+          return reply(409, { code: 'KNOWLEDGE_DOCUMENT_CHANGED' })
+        documents.set(doc.id, { ...doc, title: body.title, content: body.content })
+        return reply(200, { id: doc.id, chunks: Math.ceil(body.content.length / 1500) })
       }
       if (method === 'DELETE') {
         if (match[2]) {

@@ -14,6 +14,8 @@ import {
   Tree,
   EmptyState,
   Collapse,
+  Checkbox,
+  Textarea,
   type TreeNode,
 } from '@eap/ui'
 import {
@@ -23,6 +25,8 @@ import {
   type EditorInspectionTarget,
 } from './editorInspection'
 import { runtimeApi, type PrototypeVersionRecord } from '@eap/runtime-client'
+import { PrototypeActionType, prototypeNodes } from '@eap/runtime-client/contracts'
+import { interactivePrototypeBlock } from './prototypeBlocks'
 import {
   clearPublicationIntent,
   readPublicationIntent,
@@ -65,7 +69,19 @@ const surface = ref('canvas')
 const selectedId = ref('')
 const savedSnapshot = ref('')
 const structure = ref<TreeNode[]>([])
-const blocks = ['section', 'text', 'heading', 'button', 'link', 'list', 'input'] as const
+const blocks = [
+  'section',
+  'text',
+  'heading',
+  'button',
+  'link',
+  'list',
+  'input',
+  'form',
+  'select',
+  'checkbox',
+  'dialog',
+] as const
 let cleanProject: import('grapesjs').ProjectData | undefined
 let cleanTitle = 'EAP layout'
 function snapshot() {
@@ -168,6 +184,36 @@ const status = ref<'loading' | 'ready' | 'offline'>('loading')
 const note = ref('')
 const selectedText = ref('')
 const selected = ref(false)
+const selectedKind = ref('')
+const actionType = ref('')
+const actionTarget = ref('')
+const fieldLabel = ref('')
+const fieldOptions = ref('')
+const fieldRequired = ref(false)
+const fieldValue = ref('')
+const fieldChecked = ref(false)
+const actionTargets = computed(() =>
+  prototypeNodes(design.value).filter((node) =>
+    actionType.value === PrototypeActionType.TOGGLE
+      ? ['section', 'dialog'].includes(node.kind)
+      : node.kind === 'form',
+  ),
+)
+function updateInteraction() {
+  activeComponent?.addAttributes({
+    'data-label': fieldLabel.value,
+    'data-action': actionType.value,
+    'data-target': actionTarget.value,
+    'data-options': fieldOptions.value,
+    'data-required': String(fieldRequired.value),
+    'data-value': fieldValue.value,
+    'data-checked': String(fieldChecked.value),
+  })
+}
+function changeActionType() {
+  actionTarget.value = ''
+  updateInteraction()
+}
 const instanceId = crypto.randomUUID()
 const documentId = ref(crypto.randomUUID())
 const revision = ref(0)
@@ -343,8 +389,15 @@ async function retryPublication() {
   }
   await sendPublication(intent)
 }
-function addBlock(kind: 'section' | 'text' | 'heading' | 'button' | 'input' | 'link' | 'list') {
+function addBlock(kind: (typeof blocks)[number]) {
   if (!editor) return
+  if (kind === 'form' || kind === 'select' || kind === 'checkbox' || kind === 'dialog') {
+    const [component] = editor.addComponents(
+      interactivePrototypeBlock(kind, (key) => t('editor.interaction.' + key)),
+    )
+    if (component) editor.select(component)
+    return
+  }
   const tags = {
     section: 'section',
     text: 'p',
@@ -525,6 +578,15 @@ async function mountEditor() {
           activeComponent = component
           selected.value = true
           selectedId.value = component.getId()
+          const attrs = component.getAttributes()
+          selectedKind.value = String(attrs['data-eap-kind'] ?? '')
+          actionType.value = String(attrs['data-action'] ?? '')
+          actionTarget.value = String(attrs['data-target'] ?? '')
+          fieldLabel.value = String(attrs['data-label'] ?? '')
+          fieldOptions.value = String(attrs['data-options'] ?? '')
+          fieldRequired.value = attrs['data-required'] === 'true'
+          fieldValue.value = String(attrs['data-value'] ?? '')
+          fieldChecked.value = attrs['data-checked'] === 'true'
           inspectorTab.value = 'component'
           layout.value = String(component.getStyle().display ?? 'block')
           spacing.value = Number.parseFloat(String(component.getStyle().gap ?? '12')) || 0
@@ -569,7 +631,9 @@ async function mountEditor() {
               attributes: { 'data-eap-kind': 'text' },
               content: 'EAP Workspace',
             },
-            { tagName: 'button', attributes: { 'data-eap-kind': 'button' }, content: 'Action' },
+            interactivePrototypeBlock('form', (key) =>
+              t('editor.interaction.' + key),
+            ) as import('grapesjs').ComponentDefinition,
           ],
         },
       ])
@@ -753,7 +817,11 @@ onUnmounted(() => {
           :disabled="status !== 'ready'"
           :data-testid="'grapes-add-' + kind"
           @click="addBlock(kind)"
-          >{{ t('desktop.grapesAdd' + kind) }}</Button
+          >{{
+            ['form', 'select', 'checkbox', 'dialog'].includes(kind)
+              ? t('editor.interaction.add.' + kind)
+              : t('desktop.grapesAdd' + kind)
+          }}</Button
         >
         <Button :disabled="status !== 'ready'" data-testid="grapes-new" @click="newDesign">{{
           t('desktop.grapesNew')
@@ -777,7 +845,7 @@ onUnmounted(() => {
       data-testid="grapes-canvas"
       :data-mode="status"
     />
-    <PrototypeSchemaPreview v-show="surface === 'preview'" :schema="schema" />
+    <PrototypeSchemaPreview v-if="surface === 'preview' && props.active" :schema="schema" />
     <p v-if="status === 'offline'" class="hint" data-testid="grapes-offline-panel">
       {{ t('desktop.grapesOfflineBody') }}
     </p>
@@ -811,9 +879,73 @@ onUnmounted(() => {
         >
       </div>
       <div v-else class="editor-controls">
-        <label v-if="selected"
+        <label v-if="selected && ['text', 'heading', 'button', 'link'].includes(selectedKind)"
           >{{ t('desktop.grapesText') }}<Input v-model="selectedText" @input="updateText"
         /></label>
+        <template
+          v-if="
+            selected && ['input', 'select', 'checkbox', 'form', 'dialog'].includes(selectedKind)
+          "
+        >
+          <label
+            >{{ t('editor.interaction.label')
+            }}<Input
+              v-model="fieldLabel"
+              data-testid="grapes-field-label"
+              @update:model-value="updateInteraction"
+          /></label>
+          <label v-if="['input', 'select'].includes(selectedKind)"
+            >{{ t('editor.interaction.initialValue')
+            }}<Input v-model="fieldValue" @update:model-value="updateInteraction"
+          /></label>
+          <label v-if="selectedKind === 'select'"
+            >{{ t('editor.interaction.options')
+            }}<Textarea
+              v-model="fieldOptions"
+              data-testid="grapes-field-options"
+              @update:model-value="updateInteraction"
+          /></label>
+          <label v-if="['input', 'select', 'checkbox'].includes(selectedKind)"
+            ><span
+              ><Checkbox v-model="fieldRequired" @update:model-value="updateInteraction" />
+              {{ t('editor.interaction.requiredSetting') }}</span
+            ></label
+          >
+          <label v-if="selectedKind === 'checkbox'"
+            ><span
+              ><Checkbox v-model="fieldChecked" @update:model-value="updateInteraction" />
+              {{ t('editor.interaction.initialChecked') }}</span
+            ></label
+          >
+        </template>
+        <template v-if="selected && selectedKind === 'button'">
+          <label
+            >{{ t('editor.interaction.action')
+            }}<Select
+              v-model="actionType"
+              data-testid="grapes-action-type"
+              @update:model-value="changeActionType"
+            >
+              <option value="">{{ t('editor.interaction.noAction') }}</option>
+              <option v-for="value in PrototypeActionType" :key="value" :value="value">
+                {{ t('editor.interaction.actions.' + value) }}
+              </option>
+            </Select></label
+          >
+          <label v-if="actionType"
+            >{{ t('editor.interaction.target')
+            }}<Select
+              v-model="actionTarget"
+              data-testid="grapes-action-target"
+              @update:model-value="updateInteraction"
+            >
+              <option value="">{{ t('editor.interaction.choose') }}</option>
+              <option v-for="node in actionTargets" :key="node.id" :value="node.id">
+                {{ node.props.label || node.id }}
+              </option>
+            </Select></label
+          >
+        </template>
         <label v-if="selected"
           >{{ t('desktop.grapesLayout')
           }}<Select v-model="layout" @change="updateLayout"

@@ -1,3 +1,4 @@
+import { loadPlaywright } from './playwright-runtime.mjs'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -12,7 +13,7 @@ const { default: vue } = await import(pathToFileURL(require.resolve('@vitejs/plu
 const { default: tailwindcss } = await import(
   pathToFileURL(require.resolve('@tailwindcss/vite')).href
 )
-const { chromium } = require(process.env.EAP_PLAYWRIGHT_MODULE || 'playwright')
+const { chromium } = loadPlaywright()
 const manifest = process.argv[2]
 const { port, id, workspace, project, title } = JSON.parse(await readFile(manifest, 'utf8'))
 const output = dirname(manifest)

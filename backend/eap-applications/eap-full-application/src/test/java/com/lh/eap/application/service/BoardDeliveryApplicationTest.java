@@ -75,11 +75,11 @@ class BoardDeliveryApplicationTest {
     @Test void acceptanceRevalidatesPersistentApplicationButRejectionDoesNotCaptureOrLookup() {
         var delivery=service().submit(taskId,run,request(true));
         when(applications.associate(any(),anyString(),any(),any(),anyList(),any(),any(),any())).thenThrow(BoardVerificationSource.denied("BOARD_DELIVERY_APPLICATION_NOT_APPLIED"));
-        var accept=new BoardDeliveryService.Decide("p",2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"test only");
+        var accept=new BoardDeliveryService.Decide("p",2,UUID.randomUUID(),delivery.id(),"ACCEPT",true,true,"test only", "http://127.0.0.1:5193/");
         assertEquals("BOARD_DELIVERY_APPLICATION_NOT_APPLIED",assertThrows(ResponseStatusException.class,()->service().decide(taskId,run,accept)).getReason());
         assertEquals("acceptance",task.column()); assertNull(service().get(taskId,run,"p").record().decision());
         clearInvocations(capture,applications);
-        var reject=new BoardDeliveryService.Decide("p",2,UUID.randomUUID(),delivery.id(),"REJECT",false,false,"fixture rejected");
+        var reject=new BoardDeliveryService.Decide("p",2,UUID.randomUUID(),delivery.id(),"REJECT",false,false,"fixture rejected", "http://127.0.0.1:5193/");
         var decided=service().decide(taskId,run,reject); assertEquals(evidence,decided.applicationEvidence()); assertEquals("ready",task.column());
         assertEquals(decided,service().decide(taskId,run,reject)); verifyNoInteractions(capture,applications);
     }

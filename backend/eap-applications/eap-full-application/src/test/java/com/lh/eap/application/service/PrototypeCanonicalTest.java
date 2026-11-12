@@ -3,6 +3,34 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 class PrototypeCanonicalTest {
+    private static final String FORM = """
+        {"format":"eap-prototype-v1","schema":{"version":1,"title":"Form","grapesProject":{},"unknownMappings":[],
+        "root":{"id":"root","kind":"page","props":{},"children":[
+          {"id":"form","kind":"form","props":{"label":"Task"},"children":[
+            {"id":"name","kind":"input","props":{"required":true},"children":[]},
+            {"id":"category","kind":"select","props":{"options":["UI","Feature"],"initialValue":"UI"},"children":[]},
+            {"id":"confirmation","kind":"checkbox","props":{"checked":false},"children":[]},
+            {"id":"submit","kind":"button","props":{"action":{"type":"SUBMIT","target":"form"}},"children":[]}]},
+          {"id":"dialog","kind":"dialog","props":{},"children":[]},
+          {"id":"open","kind":"button","props":{"action":{"type":"TOGGLE","target":"dialog"}},"children":[]}
+        ]}}}
+        """;
+    @Test void publishesDeclarativeFormAndDialogActionsAsImmutableDesignContent() {
+        var content = PrototypeCanonical.of("builder-alpha","Form",FORM,List.of("Validate and reset"));
+        assertDoesNotThrow(() -> SemanticPrototype.require(content.body()));
+        var changed = PrototypeCanonical.of("builder-alpha","Form",FORM.replace("\"SUBMIT\"","\"RESET\""),List.of("Validate and reset"));
+        assertNotEquals(content.hash(), changed.hash());
+    }
+    @Test void rejectsAmbiguousIdentityUnsafeActionsAndInvalidFieldContracts() {
+        for (var body : List.of(FORM.replace("\"target\":\"form\"", "\"target\":\"missing\""),
+                FORM.replace("\"type\":\"SUBMIT\"", "\"type\":\"TOGGLE\""),
+                FORM.replace("\"type\":\"SUBMIT\"", "\"type\":\"FETCH\""),
+                FORM.replace("\"id\":\"name\"", "\"id\":\"form\""),
+                FORM.replace("[\"UI\",\"Feature\"]","[\"UI\",\"UI\"]"),
+                FORM.replace("\"initialValue\":\"UI\"", "\"initialValue\":\"missing\""),
+                FORM.replace("\"required\":true", "\"required\":\"true\"")))
+            assertThrows(IllegalArgumentException.class, () -> SemanticPrototype.require(body));
+    }
     @Test void normalizedMetadataAndReopenedDesignKeepTheSameHash() {
         var body=SemanticPrototypeFixture.body("结算页");
         var first=PrototypeCanonical.of("builder-alpha"," 结算页 \r\n",body,List.of(" 看标题 ",""));

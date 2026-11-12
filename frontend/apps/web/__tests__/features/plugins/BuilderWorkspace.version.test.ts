@@ -144,7 +144,18 @@ describe('builder version preview', () => {
   it('renders semantic versions with real interactions instead of the legacy counter', async () => {
     const schema = emptyPrototypeSchema('语义设计')
     schema.root.children = [
-      { id: 'action', kind: 'button', props: { label: '语义按钮' }, children: [] },
+      {
+        id: 'action',
+        kind: 'button',
+        props: { label: '语义按钮', action: { type: 'TOGGLE', target: 'detail' } },
+        children: [],
+      },
+      {
+        id: 'detail',
+        kind: 'dialog',
+        props: { label: '语义说明' },
+        children: [{ id: 'message', kind: 'text', props: { text: '查看任务说明' }, children: [] }],
+      },
     ]
     const semantic = {
       ...version('semantic', '语义设计'),
@@ -159,7 +170,8 @@ describe('builder version preview', () => {
     expect(preview.querySelector('[data-testid=preview-button]')).toBeNull()
     ;(preview.querySelector('[data-testid=semantic-preview] button') as HTMLButtonElement).click()
     await settled()
-    expect(preview.querySelector('output')?.textContent).toBe('1')
+    expect(document.querySelector('[role=dialog]')?.textContent).toContain('查看任务说明')
+    expect(preview.querySelector('output')).toBeNull()
   })
 
   it('blocks unsupported semantic versions instead of treating them as legacy demos', async () => {

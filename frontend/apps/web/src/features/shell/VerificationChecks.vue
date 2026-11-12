@@ -9,13 +9,12 @@ const props = defineProps<{
   recorded?: string
   brief?: boolean
   checks?: Array<{ name: string; exitCode: number | null; summary: string }>
-  /** Optional override for tests; defaults to window.location.origin. */
-  origin?: string
+  previewUrl?: string
 }>()
 const { t } = useI18n()
 const preview = computed((): PagePreview =>
   resolvePagePreview({
-    origin: props.origin ?? (typeof window !== 'undefined' ? window.location.origin : ''),
+    url: props.previewUrl,
   }),
 )
 const previewLabel = computed(() =>
@@ -66,9 +65,14 @@ const resultLabel = computed(() => {
       </li>
     </template>
     <li data-testid="delivery-preview">
-      <a v-if="preview.ready" :href="preview.url" data-testid="delivery-preview-link">{{
-        t('desktop.openPagePreview')
-      }}</a>
+      <a
+        v-if="preview.ready"
+        :href="preview.url"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-testid="delivery-preview-link"
+        >{{ t('desktop.openPagePreview') }}</a
+      >
       <span v-else>{{ previewLabel }}</span>
     </li>
     <li>{{ t('desktop.acceptanceStillOpen') }}</li>

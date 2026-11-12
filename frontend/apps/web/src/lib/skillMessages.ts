@@ -1,5 +1,22 @@
 export const skillMessages = {
   'zh-CN': {
+    scenarioChoose: '选择场景技能版本',
+    scenarioDeclared: '场景声明的技能：{ids}',
+    scenarioCurrent: '当前会话引用：{id} · {version}',
+    scenarioSelection:
+      '从场景声明中选择一个启用版本，再核对要引用的资源。选择不会发送，也不会自动启用或升级版本。',
+    scenarioMissing: '尚未导入：{ids}。请先在技能管理中导入并启用。',
+    scenarioConfig: '从已导入技能中添加声明；这里只保存技能ID，精确版本及资源在会话发送前选择。',
+    scenarioAdd: '添加技能声明',
+    scenarioRemove: '移除声明',
+    scenarioNoVersion: '没有启用版本',
+    scenarioVersions: '{count} 个启用版本',
+    scenarioCatalogFailed: '无法读取当前技能目录，请重试。已有声明保留。',
+    directory: '选择技能目录',
+    directoryHelp:
+      '选择含根目录 SKILL.md 的本地文件夹，替换当前原文、资源和来源草稿。保留最多4个 .md/.txt 资源的相对路径；选择不会保存、启用或执行文件。',
+    directoryError:
+      '目录必须含根 SKILL.md 和最多4个文本资源；不允许脚本、ZIP、隐藏或重复路径、非法UTF-8及超限内容。整批未导入，原草稿保留。',
     title: '技能',
     hint: '导入文本，独立启停并选择精确版本。',
     import: '导入技能',
@@ -29,7 +46,7 @@ export const skillMessages = {
     pending: '上次保存结果未确认。草稿锁定；只重试原请求，不创建新版本。',
     failure: '操作失败；草稿和引用已保留。',
     limits:
-      '原文和每个资源 ≤16000 UTF-16 字符；最多 4 个资源，正文合计 ≤24000；来源 ≤200 字符；依赖最多16个。禁止目录、ZIP、脚本和凭据，不读取链接。',
+      '原文和每个资源 ≤16000 UTF-16 字符；最多 4 个资源，正文合计 ≤24000；来源 ≤200 字符；依赖最多16个。支持本地文本目录，禁止 ZIP、脚本和凭据，不读取链接。',
     subset:
       '支持 SKILL.md YAML frontmatter：必填 name、description；可选 license、compatibility、metadata（最多16个字符串键值）。正文须为非空 Markdown。其他字段（包括 allowed-tools）、别名、重复键、标签、多文档明确拒绝。version、sourceLabel、requiredCapabilities 在本表单填写。',
     boundary:
@@ -47,6 +64,25 @@ export const skillMessages = {
     conflict: '版本 / 状态冲突；刷新后需显式重新确认，不自动升级或重试启停。',
   },
   'en-US': {
+    scenarioChoose: 'Choose scenario skill version',
+    scenarioDeclared: 'Skills declared by this scenario: {ids}',
+    scenarioCurrent: 'Current conversation reference: {id} · {version}',
+    scenarioSelection:
+      'Choose one enabled version from the scenario declarations, then review the resources to include. Selection does not send, activate or upgrade a version.',
+    scenarioMissing: 'Not imported: {ids}. Import and enable it in Skills first.',
+    scenarioConfig:
+      'Add declarations from imported skills. The scenario stores IDs; choose the exact version and resources in the conversation before sending.',
+    scenarioAdd: 'Add skill declaration',
+    scenarioRemove: 'Remove declaration',
+    scenarioNoVersion: 'No enabled version',
+    scenarioVersions: '{count} enabled versions',
+    scenarioCatalogFailed:
+      'Cannot read the current skill catalog. Retry; existing declarations are retained.',
+    directory: 'Choose skill directory',
+    directoryHelp:
+      'Choose a local folder with a root SKILL.md to replace the current entry, resources and source draft. Retains relative paths for up to 4 .md/.txt resources. Selection does not save, enable or execute files.',
+    directoryError:
+      'The directory must contain a root SKILL.md and at most 4 text resources. Scripts, ZIPs, hidden or duplicate paths, invalid UTF-8 and excess content are rejected. Original draft retained.',
     title: 'Skills',
     hint: 'Import text, activate independently and select exact versions.',
     import: 'Import skill',
@@ -77,7 +113,7 @@ export const skillMessages = {
       'Save outcome unknown. Draft locked; retry the identical request, never create a new version.',
     failure: 'Operation failed; draft and reference retained.',
     limits:
-      'Raw text and each resource ≤16000 UTF-16 units; up to 4 resources, total ≤24000; source ≤200 characters; up to 16 dependencies. No directories, ZIP, scripts, credentials or linked-file reads.',
+      'Raw text and each resource ≤16000 UTF-16 units; up to 4 resources, total ≤24000; source ≤200 characters; up to 16 dependencies. Local text directories supported; no ZIP, scripts, credentials or linked-file reads.',
     subset:
       'SKILL.md requires YAML name, description and nonempty Markdown. Optional license, compatibility and metadata (up to 16 string pairs) are supported. Other fields (including allowed-tools), aliases, duplicate keys, tags and multiple documents are rejected. Set version, sourceLabel and requiredCapabilities here.',
     boundary:

@@ -10,6 +10,7 @@ it('treats server REFUSED as shared refusal evidence', () => {
 
 it('loads the same refusal status for board review projection', async () => {
   const state: CodeProposalState = {
+    dependencies: [],
     proposal: {
       id: 'p',
       conversationId: 'c',

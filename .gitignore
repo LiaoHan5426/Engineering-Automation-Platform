@@ -50,6 +50,7 @@ reports/
 .codex-local/
 .claude/
 .workbuddy/
+.dsh-meow/
 
 # Local AI execution output; audited evidence is explicitly retained under docs/audits.
 .eap-ai-artifacts/

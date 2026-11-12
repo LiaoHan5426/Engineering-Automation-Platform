@@ -333,6 +333,12 @@ onBeforeUnmount(() => {
       :task-id="task.id"
       :project-id="task.projectId"
       :run="reviewing"
+      @verify="
+        () => {
+          verifying = reviewing
+          reviewing = null
+        }
+      "
       @close="reviewing = null"
     />
     <BoardRunVerification
@@ -341,6 +347,12 @@ onBeforeUnmount(() => {
       :task-id="task.id"
       :project-id="task.projectId"
       :run="verifying"
+      @delivery="
+        () => {
+          delivering = verifying
+          verifying = null
+        }
+      "
       @changed="emit('changed')"
       @close="
         () => {

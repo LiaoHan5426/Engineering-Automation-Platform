@@ -1,3 +1,4 @@
+import { loadPlaywright } from './playwright-runtime.mjs'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -13,10 +14,7 @@ const { default: vue } = await import(pathToFileURL(require.resolve('@vitejs/plu
 const { default: tailwindcss } = await import(
   pathToFileURL(require.resolve('@tailwindcss/vite')).href
 )
-const { chromium } = require(
-  process.env.EAP_PLAYWRIGHT_MODULE ||
-    'H:/developerTools/ai/hermes/hermes-agent/node_modules/.pnpm/playwright-core@1.64.0/node_modules/playwright-core',
-)
+const { chromium } = loadPlaywright()
 const backend = process.env.EAP_LIVE_API || 'http://127.0.0.1:52025'
 const mock = process.env.EAP_MOCK_API || 'http://127.0.0.1:53200'
 const out = resolve('apps/web/__tests__/browser/artifacts/product-workspaces')

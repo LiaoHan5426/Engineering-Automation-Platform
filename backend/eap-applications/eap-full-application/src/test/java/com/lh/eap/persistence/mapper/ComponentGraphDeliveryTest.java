@@ -64,9 +64,9 @@ class ComponentGraphDeliveryTest {
  }
  @Test void rejectsCyclesDynamicImportsExternalAndAmbiguousComponents() {
   String root="frontend/Page.vue",child="frontend/Part.vue";
-  java.util.function.BiFunction<String,String,List<CodeChangeService.Change>> files=(a,b)->List.of(new CodeChangeService.Change(root,null,a,"absent"),new CodeChangeService.Change(child,null,b,"absent"));
+  java.util.function.BiFunction<String,String,List<CodeChangeService.Change>> files=(a,b)->List.of(new CodeChangeService.Change(root,null,"<script setup>\n"+a+"\n</script>","absent"),new CodeChangeService.Change(child,null,"<script setup>\n"+b+"\n</script>","absent"));
   assertEquals("CODE_GRAPH_CYCLE",assertThrows(ResponseStatusException.class,()->ComponentGraph.validate(root,files.apply("import Part from './Part.vue'","import Page from './Page.vue'"))).getReason());
-  assertEquals("CODE_GRAPH_DYNAMIC_IMPORT_DENIED",assertThrows(ResponseStatusException.class,()->ComponentGraph.validate(root,files.apply("const part=import('./Part.vue')","text"))).getReason());
+  assertEquals("CODE_GRAPH_DYNAMIC_IMPORT_DENIED",assertThrows(ResponseStatusException.class,()->ComponentGraph.validate(root,files.apply("const part=import(selectedPath)","text"))).getReason());
   assertEquals("CODE_GRAPH_IMPORT_DENIED",assertThrows(ResponseStatusException.class,()->ComponentGraph.validate(root,files.apply("import x from 'unapproved-package'","text"))).getReason());
   assertEquals("CODE_GRAPH_IMPORT_SYNTAX_DENIED",assertThrows(ResponseStatusException.class,()->ComponentGraph.validate(root,files.apply("import Part from './Part.vue'\nexport {\n dangerous\n} from 'unapproved-package'","text"))).getReason());
   assertEquals(1,ComponentGraph.validate(root,files.apply("import Part from './Part.vue'\nimport { ref } from 'vue'","<template><p>Part</p></template>")).size());

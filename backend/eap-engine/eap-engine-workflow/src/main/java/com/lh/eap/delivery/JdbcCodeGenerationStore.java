@@ -60,6 +60,12 @@ public class JdbcCodeGenerationStore implements CodeGenerationStore {
     @Override public void save(Snapshot snapshot) {
         transaction.executeWithoutResult(status -> insert(snapshot));
     }
+    @Override public TaskSnapshot planningTask(TaskRef ref) {
+        return transaction.execute(tx -> {
+            tasks.lock(ref);
+            return tasks.planningLocked(ref);
+        });
+    }
     private void insert(Snapshot snapshot) {
         var task = snapshot.taskSnapshot();
         jdbc.update("""

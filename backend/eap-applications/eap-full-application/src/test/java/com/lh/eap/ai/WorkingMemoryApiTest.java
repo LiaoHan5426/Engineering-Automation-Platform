@@ -26,11 +26,14 @@ class WorkingMemoryApiTest {
                 root);
         var opened = app.open("{}");
         var snapshot = app.putWorkingMemory(opened.conversationId(),
-                "{\"goal\":\"交付登录\",\"constraints\":[\"复用组件\"],\"facts\":[{\"kind\":\"knowledge\",\"id\":\"e1\",\"revisionOrDigest\":\"2\"}],\"evidenceRefs\":[\"run:1\"],\"dependencyKeys\":[\"knowledge:e1:2\"]}");
+                "{\"expectedUpdatedAt\":\"1970-01-01T00:00:00Z\",\"goal\":\"交付登录\",\"constraints\":[\"复用组件\"],\"facts\":[{\"kind\":\"knowledge\",\"id\":\"e1\",\"revisionOrDigest\":\"2\"}],\"evidenceRefs\":[\"run:1\"],\"dependencyKeys\":[\"knowledge:e1:2\"]}");
         assertEquals("交付登录", snapshot.goal());
         assertEquals(1, snapshot.constraints().size());
         assertEquals(1, snapshot.facts().size());
         assertTrue(app.conversation(opened.conversationId()).workingMemory().active());
+        assertEquals("WORKING_MEMORY_CHANGED", assertThrows(ResponseStatusException.class,
+                () -> app.putWorkingMemory(opened.conversationId(), "{\"expectedUpdatedAt\":\"1970-01-01T00:00:00Z\",\"goal\":\"stale\"}")).getReason());
+        assertEquals(snapshot, app.conversation(opened.conversationId()).workingMemory());
         assertEquals("INVALID_CHAT_REQUEST", assertThrows(ResponseStatusException.class,
                 () -> app.putWorkingMemory(opened.conversationId(), "{\"goal\":\"x\",\"secret\":\"no\"}")).getReason());
     }

@@ -1,5 +1,19 @@
 # SQL Agent 浏览器视觉回归
 
+## 绑定任务的工程 Agent
+
+`engineering-agent-live.mjs` 由 `EngineeringAgentAcceptanceTest` 启动，连接完整应用、UUID独立PostgreSQL及临时源码工作区；通过 `vp build` 后的生产包、全局Playwright与真实Chromium验证任务准备、选模、智能体、按需工具读取、两文件候选及明确人工应用。前端统一使用 `vp`，加载器是本目录 `playwright-runtime.mjs`，不依赖Hermes或其他仓库的node_modules。
+
+从仓库根开启默认Fake整链：
+
+```powershell
+$env:EAP_ENGINEERING_AGENT_CHROMIUM='true'
+$env:EAP_CHROMIUM='<已有的 Chromium 可执行文件>'
+rtk proxy mvn -q -f backend/pom.xml -pl :eap-full-application -am test '-Dtest=EngineeringAgentAcceptanceTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-DargLine=-Djava.io.tmpdir=J:/Code/Engineering-Automation-Platform/backend/target/local-java-tmp'
+```
+
+真实供应商另显式设置 `EAP_ENGINEERING_AGENT_REAL_MODEL=true` 和 `EAP_ENGINEERING_AGENT_CONNECTION_STORE=<本机已配置连接文件>`；夹具不注册Fake客户端，采用该文件默认API模型，不打印密钥。输出至full-application的 `target/engineering-agent-*`，包含实际模型类别、数据库/文件结果及浏览器截图。最终窄屏回归还核对对话区高度和审批按钮未被遮挡。真实供应商与最终布局使用不同证据目录，详见[完成台账](../../../../../docs/planning-status.md#engineering-agent-validation)。不为截图调整重复供应商调用，也不重跑未变化的独立验证与技术决定。
+
 ## 任务持久候选与真实重启恢复
 
 `board-code-recovery-live.mjs` 打开生产 App，连接真正 full-application 和开发库，在没有本地 Chat 历史、原 Chat 会话已返回404的条件下验证任务候选恢复。它不调用模型、不重建会话，也不重复此前真实页面交付的897项检查。上一批真实模型候选只读回核对；新增待应用/只读/陈旧候选是明确的确定性数据，实际持久到JDBC并写入隔离工作树，用于真实文件动作及拒绝边界验证。
@@ -76,7 +90,7 @@ rtk proxy node apps/web/__tests__/browser/tool-execution-visual.mjs --playwright
 在 `frontend` 目录、前后端服务已运行时执行（路径换成当前机器已安装位置，不自动安装软件）：
 
 ```powershell
-$env:EAP_PLAYWRIGHT_MODULE='E:/ai/Hermes/hermes-agent/node_modules/playwright-core'
+# Playwright is resolved from the global vp installation; no Hermes dependency.
 $env:EAP_CHROMIUM='C:/Users/admin/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe'
 node apps/web/__tests__/browser/expert-agent-visual.mjs
 ```
@@ -177,3 +191,11 @@ rtk proxy node apps/web/__tests__/browser/component-page-delivery-live.mjs
 证据、确定性故障边界和结果在[status-i18n](artifacts/status-i18n/README.md)。`status-i18n-http.py`使用backend/target/status-i18n/live/host.json描述的自有完整测试宿主；`status-i18n-live.mjs`在5174启动当前Vue页面，代理实际生产HTTP/JDBC。设置现有EAP_PLAYWRIGHT_MODULE/EAP_CHROMIUM后，从frontend运行`rtk proxy node apps/web/__tests__/browser/status-i18n-live.mjs`。测试辅助模块仅通过显式test entry加载；产品源码不导入测试目录，不使用边界忽略名单。
 
 HTTP脚本含状态变更，仅针对StatusI18nLiveFixture初始化的自有schema/工作区；会使两条候选失败、撤权并过期会话、人工关闭UNKNOWN，不可对普通开发业务记录直接重放。首次结果已完成，不以语言切换重跑模型或真实页面交付。需要再次执行时新建自有fixture身份，不删除已完成请求后盲重发。生产jar没有`/qa/status-i18n`端点。
+# Browser tooling
+
+Use `vp` for frontend commands. Install the driver with `vp i -g @playwright/test`.
+Browser scripts share `playwright-runtime.mjs`, which resolves the single global
+installation under `VP_HOME`; no Hermes checkout is required. An explicit
+`EAP_PLAYWRIGHT_MODULE` overrides this selection. Set `EAP_CHROMIUM` to an existing
+Chromium executable when the default browser for the installed driver is absent.
+The scripts do not download browsers automatically.
