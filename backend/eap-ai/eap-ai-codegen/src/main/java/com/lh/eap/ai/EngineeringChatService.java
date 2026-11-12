@@ -37,6 +37,7 @@ import org.springframework.ai.tool.annotation.Tool;
 
 /** Application service. Callers supply authenticated, server-owned scope; not an HTTP request DTO. */
 public final class EngineeringChatService {
+    private static final tools.jackson.databind.json.JsonMapper JSON = tools.jackson.databind.json.JsonMapper.builder().build();
     public record Request(String principal, UUID conversationId, Path workspace, boolean gitAllowed, String message) {
         public Request {
             if (principal == null || principal.isBlank() || conversationId == null || workspace == null
@@ -107,6 +108,7 @@ public final class EngineeringChatService {
         var started = Instant.now();
         var tool = new GitTool(id, request);
         String answer = "", error = "";
+        List<String> failureTypes = List.of();
         var status = CliExecution.Status.SUCCEEDED;
         try {
             if (cancelled != null && cancelled.getAsBoolean()) {
@@ -192,7 +194,8 @@ public final class EngineeringChatService {
                 }
             }
         } catch (RuntimeException failure) {
-            // Do not persist exception messages: SDK errors can include headers or credentials.
+            // Only bounded class names are diagnostic evidence; messages may contain credentials.
+            failureTypes = failureTypes(failure);
             error = AiErrors.classify(failure);
             status = switch (error) {
                 case "AI_CANCELLED" -> CliExecution.Status.CANCELLED;
@@ -208,13 +211,14 @@ public final class EngineeringChatService {
         var refs = new ArrayList<CliExecution.Artifact>();
         String artifactError = "";
         try {
-            // Audit only controlled codes and timestamps, never prompts, credentials or model payloads.
+            // Audit controlled codes, timestamps and bounded exception types, never exception content.
             String toolEvents = tool.events.stream().map(event -> "{\"sequence\":" + event.sequence()
                     + ",\"receivedAt\":\"" + event.receivedAt() + "\",\"code\":\"" + event.text() + "\"}")
                     .collect(Collectors.joining(",", "[", "]"));
             String json = "{\"executionId\":\"" + id + "\",\"status\":\"" + status
                     + "\",\"error\":\"" + error + "\",\"startedAt\":\"" + started
-                    + "\",\"completedAt\":\"" + ended + "\",\"toolEvents\":" + toolEvents + "}";
+                    + "\",\"completedAt\":\"" + ended + "\",\"toolEvents\":" + toolEvents
+                    + ",\"failureTypes\":" + JSON.writeValueAsString(failureTypes) + "}";
             refs.add(artifacts.save(id, "ai-trace", json.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception failure) {
             artifactError = ExecutionErrors.ARTIFACT_SAVE_FAILED.code();
@@ -225,6 +229,15 @@ public final class EngineeringChatService {
                 List.of(new CliExecution.Event(id, 1, started, CliExecution.Status.RUNNING),
                         new CliExecution.Event(id, 2, ended, status)), refs, trace, artifactError);
         return new Outcome(id, answer, error, result);
+    }
+
+    private static List<String> failureTypes(Throwable failure) {
+        var visited = Collections.newSetFromMap(new IdentityHashMap<Throwable, Boolean>());
+        var types = new ArrayList<String>();
+        for (var cause = failure; cause != null && types.size() < 8 && visited.add(cause); cause = cause.getCause()) {
+            types.add(cause.getClass().getName());
+        }
+        return List.copyOf(types);
     }
 
     private static String redact(String value) {

@@ -29,8 +29,18 @@ public class BoardApplicationEvidence {
     }
     private final CodeProposalStore proposals;
     private final CodeGenerationStore generations;
-    public BoardApplicationEvidence(CodeProposalStore proposals, CodeGenerationStore generations) {
-        this.proposals = proposals; this.generations = generations;
+    private final BoardApplicationBaseline baselines;
+    public BoardApplicationEvidence(CodeProposalStore proposals, CodeGenerationStore generations, BoardApplicationBaseline baselines) {
+        this.proposals = proposals; this.generations = generations; this.baselines=baselines;
+    }
+    public List<BoardDeliveryCapture.File> capture(BoardDeliveryService.ApplicationRef ref, String workspace,
+            BoardVerificationService.Record verification, List<String> paths, BoardDeliveryCapture capture,
+            com.lh.eap.capability.GitCapability git) {
+        var baseline=baselines.required(RuntimeWorkspace.OPERATOR_LABEL,ref.conversationId(),ref.proposalId(),workspace);
+        var row=proposals.find(RuntimeWorkspace.OPERATOR_LABEL,ref.conversationId(),ref.proposalId())
+                .orElseThrow(() -> denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_NOT_FOUND.code()));
+        return capture.captureApplication(java.nio.file.Path.of(workspace),git,verification.plan().baseCommit(),
+                verification.plan().source(),paths,baseline,row.proposal().files());
     }
     public Evidence associate(BoardDeliveryService.ApplicationRef ref, String workspace, BoardPrototypeService.Reference prototype,
                               BoardVerificationService.Record verification, List<BoardDeliveryCapture.File> files, Instant associatedAt) {
@@ -41,6 +51,10 @@ public class BoardApplicationEvidence {
                               TaskRef target, BoardRunService.Snapshot runTask) {
         var row = proposals.find(RuntimeWorkspace.OPERATOR_LABEL, ref.conversationId(), ref.proposalId())
             .orElseThrow(() -> denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_NOT_FOUND.code()));
+        var baseline=baselines.required(RuntimeWorkspace.OPERATOR_LABEL,ref.conversationId(),ref.proposalId(),workspace);
+        if (verification.plan()==null || !baseline.baseCommit().equals(verification.plan().baseCommit())
+                || row.finishedAt()==null || baseline.capturedAt().isAfter(row.finishedAt()))
+            throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_TIME_MISMATCH.code());
         var proposal = row.proposal();
         if (!RuntimeWorkspace.OPERATOR_LABEL.equals(row.principal()) || proposal == null
                 || !ref.proposalId().equals(proposal.id()) || !ref.conversationId().equals(proposal.conversationId())
@@ -66,7 +80,7 @@ public class BoardApplicationEvidence {
             var change=proposal.files().get(i);var source=generation.sources().get(i);var delivered=files.get(i);
             String after=change.content()==null?null:GitReviewCapture.hash(change.content());
             if(!source.baseHash().equals(source.content()==null?"absent":GitReviewCapture.hash(source.content())))throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_SCOPE_MISMATCH.code());
-            if(after==null||!change.path().equals(delivered.path())||!after.equals(delivered.afterHash())||!Objects.equals(change.content(),delivered.after())
+            if(after==null||!source.baseHash().equals(delivered.beforeHash())||!Objects.equals(source.content()==null?"":source.content(),delivered.before())||!change.path().equals(delivered.path())||!after.equals(delivered.afterHash())||!Objects.equals(change.content(),delivered.after())
                 ||(i==0&&!after.equals(result.afterHash()))
                 ||verification.plan().source().files().stream().filter(file->change.path().equals(file.path())&&after.equals(file.contentHash())).count()!=1)
                 throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_SOURCE_MISMATCH.code());

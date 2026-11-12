@@ -16,7 +16,7 @@ public class BoardCodeRecoveryBrowserFixture {
   if(Files.exists(file)){System.out.println("Existing owned fixture preserved; no duplicate candidate or source write");return;}
   var source=ToolUnknownReviewFixture.originalDataSource();var jdbc=new JdbcTemplate(source);var manager=new DataSourceTransactionManager(source);
   var tasks=new BoardTaskService(jdbc);var root=Path.of("backend/target/prebound-page-workspace").toRealPath();
-  var runtime=new RuntimeWorkspace(root,root.toString());var generations=new JdbcCodeGenerationStore(jdbc,manager);var proposals=new JdbcCodeProposalStore(jdbc,manager);
+  var runtime=new RuntimeWorkspace(root,root.toString());var generations=new JdbcCodeGenerationStore(jdbc,manager);var proposals=new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
   var changes=new CodeChangeService(runtime,null,ignored->"",generations,proposals);
   String project="board-candidate-recovery-"+UUID.randomUUID().toString().substring(0,8);var result=new LinkedHashMap<String,Object>();
   result.put("projectId",project);result.put("workspace",root.toString());result.put("fixtureKind","Explicit deterministic candidates in a real production workspace/database; no model call");

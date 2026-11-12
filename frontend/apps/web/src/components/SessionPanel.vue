@@ -71,23 +71,13 @@ watch(sessionKey, () => {
   selectedPath.value = ''
 })
 watch(
-  () => workbench.diffFocusPath,
-  (path) => {
-    if (!path || props.mode !== 'changes') return
+  () => [props.mode, workbench.diffFocusPath],
+  ([mode, path]) => {
+    if (mode !== 'changes' || !path) return
     selectedPath.value = path
     workbench.diffFocusPath = ''
   },
-  { flush: 'post' },
-)
-watch(
-  () => props.mode,
-  (mode) => {
-    const path = workbench.diffFocusPath
-    if (mode === 'changes' && path) {
-      selectedPath.value = path
-      workbench.diffFocusPath = ''
-    }
-  },
+  { immediate: true, flush: 'post' },
 )
 /** UI project group for this session — never invents a directory from the process path. */
 const sessionProjectLine = computed(() => {

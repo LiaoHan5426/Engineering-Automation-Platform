@@ -27,7 +27,7 @@ class TaskPlanningAcceptanceTest {
         Files.createDirectories(workspace.resolve("frontend"));
         Files.writeString(workspace.resolve("frontend/Page.vue"), "<template><h1>Existing page</h1></template>");
         try {
-            CurrentContractTestSchema.migrate(session, schema, "36");
+            CurrentContractTestSchema.migrate(session, schema, "37");
             var scoped = ToolUnknownReviewFixture.scopedDataSource(schema);
             var overrides = new SourceWriteReviewPersistenceTest.Overrides(scoped, workspace);
             try (var context = new SpringApplicationBuilder(EapApplication.class).initializers(app -> {

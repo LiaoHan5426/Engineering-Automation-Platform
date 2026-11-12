@@ -64,7 +64,7 @@ class CodeTaskBindingPersistenceTest extends CodeProposalPersistenceFixture {
                 try { assertTrue(release.await(5, java.util.concurrent.TimeUnit.SECONDS)); } catch (InterruptedException e) { throw new RuntimeException(e); }
             }
         };
-        var claimant = new JdbcCodeProposalStore(jdbc, manager, new JdbcCodeGenerationStore(jdbc, manager), binding);
+        var claimant = new JdbcCodeProposalStore(jdbc, manager, new JdbcCodeGenerationStore(jdbc, manager), binding, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
         try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
             var claim = pool.submit(() -> claimant.claim(principal, conversation, proposal.id()));
             assertTrue(taskLocked.await(5, java.util.concurrent.TimeUnit.SECONDS));

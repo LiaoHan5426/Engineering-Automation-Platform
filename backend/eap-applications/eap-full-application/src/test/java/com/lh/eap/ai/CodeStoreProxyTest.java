@@ -18,6 +18,7 @@ class CodeStoreProxyTest {
             context.registerBean(PlatformTransactionManager.class, () -> mock(PlatformTransactionManager.class));
             context.registerBean(com.lh.eap.application.service.PrototypeVersionStore.class,
                     () -> mock(com.lh.eap.application.service.PrototypeVersionStore.class));
+            context.registerBean(com.lh.eap.application.service.BoardApplicationBaseline.class, () -> mock(com.lh.eap.application.service.BoardApplicationBaseline.class));
             context.register(com.lh.eap.application.service.BoardTaskService.class,
                     com.lh.eap.application.service.BoardCodeTaskBinding.class, JdbcCodeGenerationStore.class, JdbcCodeProposalStore.class);
             assertDoesNotThrow(context::refresh);
@@ -28,7 +29,7 @@ class CodeStoreProxyTest {
     @Test void repositoryAdaptersSupportSpringClassBasedExceptionTranslationProxies() {
         var jdbc = mock(JdbcTemplate.class);
         var transactions = mock(PlatformTransactionManager.class);
-        for (Object adapter : new Object[]{new JdbcCodeGenerationStore(jdbc, transactions), new JdbcCodeProposalStore(jdbc, transactions)}) {
+        for (Object adapter : new Object[]{new JdbcCodeGenerationStore(jdbc, transactions), new JdbcCodeProposalStore(jdbc, transactions, mock(com.lh.eap.application.service.BoardApplicationBaseline.class))}) {
             var factory = new ProxyFactory(adapter);
             factory.setProxyTargetClass(true);
             assertDoesNotThrow(() -> { factory.getProxy(); });

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CodePreparationSelection } from '../shell/workbench'
 
-import { AiToolMode, CodeErrors } from '@eap/runtime-client'
+import { AiToolMode, ChatExecutionStatus, CodeErrors } from '@eap/runtime-client'
 
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -142,6 +142,14 @@ const visibleTurns = computed(() => {
   const all = session.turns.value
   const start = Math.max(0, all.length - shownTurns.value)
   return all.slice(start).map((turn, offset) => ({ turn, key: start + offset }))
+})
+// send appends a user/assistant pair and forbids another send while inflight.
+// visibleTurns keys retain the absolute transcript index, including after slicing.
+const pendingAnswerKey = computed(() => {
+  if (!session.sending.value) return null
+  const turns = session.turns.value
+  const key = turns.length - 1
+  return turns[key]?.role === 'assistant' && turns[key - 1]?.role === 'user' ? key : null
 })
 const hasOlderTurns = computed(() => shownTurns.value < session.turns.value.length)
 watch(
@@ -1106,7 +1114,15 @@ onMounted(async () => {
               :class="turn.role === 'user' ? 'turn-user' : 'turn-assistant'"
             >
               <p v-if="turn.text">{{ turn.text }}</p>
-              <p v-else-if="turn.role === 'assistant'">{{ t('chat.noAnswer') }}</p>
+              <p v-else-if="turn.role === 'assistant'">
+                {{
+                  t(
+                    key === pendingAnswerKey && turn.status === ChatExecutionStatus.RUNNING
+                      ? 'chat.waitingForAnswer'
+                      : 'chat.noAnswer',
+                  )
+                }}
+              </p>
               <Button
                 v-if="
                   workbench.workMode === 'work' &&

@@ -22,7 +22,7 @@ class CodeProposalTransactionTest {
     }
     @Test void filesystemBoundarySuspendsEvenAnEnclosingCallerTransaction() {
         var manager = new Transactions();
-        var store = new JdbcCodeProposalStore(org.mockito.Mockito.mock(org.springframework.jdbc.core.JdbcTemplate.class), manager);
+        var store = new JdbcCodeProposalStore(org.mockito.Mockito.mock(org.springframework.jdbc.core.JdbcTemplate.class), manager, org.mockito.Mockito.mock(com.lh.eap.application.service.BoardApplicationBaseline.class));
         new TransactionTemplate(manager).executeWithoutResult(tx -> {
             assertTrue(TransactionSynchronizationManager.isActualTransactionActive());
             Boolean inTransaction = store.withoutTransaction(TransactionSynchronizationManager::isActualTransactionActive);

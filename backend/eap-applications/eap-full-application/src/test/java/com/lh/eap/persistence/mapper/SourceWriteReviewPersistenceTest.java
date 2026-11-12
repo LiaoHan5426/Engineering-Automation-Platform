@@ -57,7 +57,7 @@ class SourceWriteReviewPersistenceTest {
             Files.writeString(root.resolve(PAGE), "<template><p>Before</p></template>\n");
             Files.writeString(root.resolve(CHILD), CHILD_BASE);
             var runtime = new RuntimeWorkspace(root, root.toString());
-            var store = new JdbcCodeProposalStore(jdbc, manager);
+            var store = new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
             var changes = new CodeChangeService(runtime, null, ignored -> "", new JdbcCodeGenerationStore(jdbc, manager), store);
             var project = "source-write-review";
             var task = new BoardTaskService(jdbc).create(new BoardTaskService.Draft(project, "Resume interrupted source write",
@@ -66,13 +66,19 @@ class SourceWriteReviewPersistenceTest {
             var conversation = UUID.randomUUID();
             var initial = changes.prepareGeneration(OPERATOR, conversation, PAGE, "", "", binding, List.of(CHILD));
             var proposal = changes.proposePrepared(OPERATOR, conversation, initial.id(), answer(CHILD_CANDIDATE), true);
-            assertTrue(store.claim(OPERATOR, conversation, proposal.id()));
+            jdbc.update("UPDATE eap.code_proposal SET status='APPLYING',started_at=now() WHERE id=?",proposal.id());
             Files.writeString(root.resolve(PAGE), PAGE_CANDIDATE);
 
-            CurrentContractTestSchema.migrate(session, schema, "36");
+            CurrentContractTestSchema.migrate(session, schema, "37");
             var overrides = new Overrides(source, root);
             try (var context = new SpringApplicationBuilder(EapApplication.class)
-                    .initializers(application -> ((GenericApplicationContext) application).registerBean(Overrides.class, () -> overrides))
+                    .initializers(application -> {
+                         var isolated=(GenericApplicationContext)application;
+                         isolated.registerBean(Overrides.class, () -> overrides);
+                         // This test alone models a historical non-Git workspace; shared Boot overrides use real Git.
+                         isolated.registerBean("sourceReviewLocalBaseline", com.lh.eap.application.service.BoardApplicationBaseline.class,
+                                 () -> com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc), definition -> definition.setPrimary(true));
+                     })
                     .run("--server.address=127.0.0.1", "--server.port=0", "--spring.flyway.enabled=false",
                             "--spring.main.banner-mode=off", "--spring.devtools.restart.enabled=false",
                             "--eap.ai.connection-store=" + session.resolve("connections.json"),

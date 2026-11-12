@@ -168,6 +168,7 @@ import org.springframework.context.annotation.Import;
     ModelConnections.class,
     ModelDiscovery.class,
     SpringAiModelClientSource.class,
+    com.lh.eap.application.service.BoardApplicationBaseline.class,
     BoardApplicationEvidence.class,
     BoardCodeTaskBinding.class,
     BoardCodeProposalService.class,

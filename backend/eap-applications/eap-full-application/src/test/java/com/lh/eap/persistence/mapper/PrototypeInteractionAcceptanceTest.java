@@ -24,7 +24,7 @@ class PrototypeInteractionAcceptanceTest {
         var schema = "eap_unknown_qa_" + UUID.randomUUID().toString().replace("-", "");
         var admin = new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         try {
-            CurrentContractTestSchema.migrate(session, schema, "36");
+            CurrentContractTestSchema.migrate(session, schema, "37");
             var source = ToolUnknownReviewFixture.scopedDataSource(schema);
             var override = new SourceWriteReviewPersistenceTest.Overrides(source, workspace);
             try (var context = new SpringApplicationBuilder(EapApplication.class)

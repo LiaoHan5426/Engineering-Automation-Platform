@@ -5,6 +5,7 @@ import com.lh.eap.api.error.PlatformErrorCode;
 /** BoardDelivery machine errors. User messages belong to the corresponding i18n bundle. */
 public enum BoardDeliveryErrors implements PlatformErrorCode {
     BOARD_DELIVERY_ALREADY_RECORDED,
+    BOARD_DELIVERY_APPLICATION_BASELINE_REQUIRED,
     BOARD_DELIVERY_APPLICATION_NOT_APPLIED,
     BOARD_DELIVERY_APPLICATION_NOT_FOUND,
     BOARD_DELIVERY_APPLICATION_PROTOTYPE_MISMATCH,

@@ -83,7 +83,7 @@ public class BoardDeliveryService {
             var record = stored.verification(); var plan = record.plan();
             if (!plan.workspacePath().equals(request.workspacePath())) throw denied(BoardErrors.BOARD_WORKSPACE_CHANGED.code());
             lock(task, request.workspacePath()); requireBound(executionId, request.workspacePath());
-            var files = capture.capture(Path.of(request.workspacePath()), capability(), plan.baseCommit(), plan.source(), request.paths());
+            var files = captureFiles(request.applicationRef(),request.workspacePath(),stored,request.paths());
             var now = Instant.now();
             var evidence = request.applicationRef()==null ? null : applicationEvidence(request.applicationRef(), request.workspacePath(), stored, files, now, task);
             var delivery = new Delivery(UUID.randomUUID(), evidence==null ? BoardDeliverySource.EXTERNAL_MANUAL.wire() : "PREBOUND".equals(evidence.association()) ? BoardDeliverySource.CHAT_APPLIED_PREBOUND.wire() : BoardDeliverySource.CHAT_APPLIED_POST_HOC.wire(), request.requestId(), task.revision(), task.revision()+1, request.workspacePath(), plan.baseCommit(), record.id(), plan.source().contentHash(), task.prototypeVersionId(), task.goal(), task.acceptanceCriteria(), SensitiveData.redact(request.note()), files, now, null, evidence);
@@ -113,7 +113,7 @@ public class BoardDeliveryService {
             if (request.decision().equals(BoardDeliveryDecision.ACCEPT.wire())) {
                 requireBound(executionId, delivery.workspacePath());
                 if (!sameTask(task, stored, delivery.taskRevision()) || !passed(stored.verification()) || !stored.verification().id().equals(delivery.verificationId()) || !stored.verification().plan().baseCommit().equals(delivery.baseCommit()) || !stored.verification().plan().source().contentHash().equals(delivery.sourceHash()) || delivery.files().isEmpty()) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_STALE.code());
-                var currentFiles = capture.capture(Path.of(delivery.workspacePath()), capability(), delivery.baseCommit(), stored.verification().plan().source(), delivery.files().stream().map(BoardDeliveryCapture.File::path).toList());
+                var currentFiles = captureFiles(delivery.applicationEvidence()==null?null:new ApplicationRef(delivery.applicationEvidence().conversationId(),delivery.applicationEvidence().proposalId()),delivery.workspacePath(),stored,delivery.files().stream().map(BoardDeliveryCapture.File::path).toList());
                 if (!currentFiles.equals(delivery.files())) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_STALE.code());
                 if (Set.of(BoardDeliverySource.CHAT_APPLIED_POST_HOC.wire(), BoardDeliverySource.CHAT_APPLIED_PREBOUND.wire()).contains(delivery.source())) {
                     var evidence = delivery.applicationEvidence();
@@ -126,6 +126,11 @@ public class BoardDeliveryService {
             jdbc.update("UPDATE eap.board_task_run SET delivery_snapshot=?::jsonb,delivery_decision_hash=? WHERE task_id=? AND execution_id=?", JSON.writeValueAsString(result), fingerprint(request), taskId, executionId);
             tasks.deliveryTransition(task, request.decision().equals(BoardDeliveryDecision.ACCEPT.wire()) ? BoardTaskColumn.DONE.wire() : BoardTaskColumn.READY.wire()); return result;
         });
+    }
+    private List<BoardDeliveryCapture.File> captureFiles(ApplicationRef ref,String workspace,Stored stored,List<String> paths) {
+        if(ref==null) return capture.capture(Path.of(workspace),capability(),stored.verification().plan().baseCommit(),stored.verification().plan().source(),paths);
+        if(applications==null) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_UNAVAILABLE.code());
+        return applications.capture(ref,workspace,stored.verification(),paths,capture,capability());
     }
     private BoardApplicationEvidence.Evidence applicationEvidence(ApplicationRef ref, String workspace, Stored stored, List<BoardDeliveryCapture.File> files, Instant at, BoardTaskService.Task task) {
         if (applications==null) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_UNAVAILABLE.code());

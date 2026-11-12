@@ -13,8 +13,6 @@ import tools.jackson.databind.json.JsonMapper;
 import com.lh.eap.error.ModelErrors;
 
 import com.openai.client.OpenAIClient;
-import com.openai.client.OpenAIClientImpl;
-import com.openai.core.ClientOptions;
 import com.openai.models.responses.*;
 import java.time.Duration;
 import java.util.*;
@@ -23,7 +21,6 @@ import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.model.*;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
-import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient;
 
 /** Responses wire adapter. Spring AI owns tool execution; this class never invokes callbacks. */
 class OpenAiResponsesChatModel implements ChatModel {
@@ -34,9 +31,8 @@ class OpenAiResponsesChatModel implements ChatModel {
     private final String model;
 
     OpenAiResponsesChatModel(ModelConnectionSnapshot snapshot) {
-        this(new OpenAIClientImpl(ClientOptions.builder().apiKey(snapshot.secret).baseUrl(snapshot.baseUrl)
-                .httpClient(SpringAiOpenAiHttpClient.builder().timeout(Duration.ofSeconds(45)).build())
-                .timeout(Duration.ofSeconds(45)).maxRetries(0).build()), snapshot.model);
+        this(ResponsesDeadlineInterceptor.client(snapshot.secret, snapshot.baseUrl, Duration.ofSeconds(180),
+                Duration.ofSeconds(10), Duration.ofSeconds(90), Duration.ofSeconds(30)), snapshot.model);
     }
 
     OpenAiResponsesChatModel(OpenAIClient client, String model) { this.client = client; this.model = model; }

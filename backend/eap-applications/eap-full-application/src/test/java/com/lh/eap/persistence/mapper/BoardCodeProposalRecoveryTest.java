@@ -22,13 +22,13 @@ class BoardCodeProposalRecoveryTest {
         String schema="eap_unknown_qa_"+UUID.randomUUID().toString().replace("-","");
         var admin=new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         try {
-            CurrentContractTestSchema.migrate(directory,schema);
+            CurrentContractTestSchema.migrate(directory,schema,"37");
             var jdbc=new JdbcTemplate(ToolUnknownReviewFixture.scopedDataSource(schema));
             var manager=new DataSourceTransactionManager(ToolUnknownReviewFixture.scopedDataSource(schema));
             var tasks=new BoardTaskService(jdbc);var root=Files.createDirectory(directory.resolve("workspace")).toRealPath();
             Files.createDirectory(root.resolve("frontend"));Files.writeString(root.resolve("frontend/Page.vue"),"<p>Before</p>\n");
             var runtime=new RuntimeWorkspace(root,root.toString());
-            var generations=new JdbcCodeGenerationStore(jdbc,manager);var proposals=new JdbcCodeProposalStore(jdbc,manager);
+            var generations=new JdbcCodeGenerationStore(jdbc,manager);var proposals=new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
             var changes=new CodeChangeService(runtime,null,ignored->"",generations,proposals);
             var task=tasks.create(new BoardTaskService.Draft("recovery","Recover source review","","ready","Goal","Criteria",UUID.randomUUID()));
             var conversation=UUID.randomUUID();var ref=new TaskRef(task.projectId(),task.id(),task.revision());
@@ -36,7 +36,7 @@ class BoardCodeProposalRecoveryTest {
             var json=JsonMapper.builder().build();
             var proposal=changes.proposePrepared(RuntimeWorkspace.OPERATOR_LABEL,conversation,snapshot.id(),json.writeValueAsString(Map.of("files",List.of(Map.of("path","frontend/Page.vue","content","<p>Recovered</p>\n")))),true);
             // Fresh services: no AiConversationRegistry is constructed or reconnected.
-            var recoveredChanges=new CodeChangeService(runtime,null,ignored->"",new JdbcCodeGenerationStore(jdbc,manager),new JdbcCodeProposalStore(jdbc,manager));
+            var recoveredChanges=new CodeChangeService(runtime,null,ignored->"",new JdbcCodeGenerationStore(jdbc,manager),new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc)));
             var board=new BoardCodeProposalService(tasks,jdbc,runtime,recoveredChanges);
             var listing=board.list(task.id(),task.projectId());assertEquals(1,listing.items().size());assertFalse(listing.truncated());
             assertEquals("PROPOSED",board.get(task.id(),proposal.id(),task.projectId()).status());

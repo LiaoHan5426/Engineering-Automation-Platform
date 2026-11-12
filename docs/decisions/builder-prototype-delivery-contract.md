@@ -65,13 +65,19 @@ DTO/数据库已删除buttonPresses/button_presses和interaction。请求带旧�
 
 代码生成及受控应用继续经过现有工作区、原型/任务revision、基线、独立验证与人工接受门禁，不新增执行器、状态机或能力注册表。外部Agent边界见[工具接入](tool-integration-runtime-boundaries.md)，历史handoff不作为新发布的前置兼容入口。
 
+Responses 单次 HTTP 请求总预算180秒，连接/读取空闲/写入分别10/90/30秒，自动重试为0。沿现有 Spring HTTP 适配器保留一个贯穿响应头及流式正文的有限总时钟，替换原生45秒总时钟；该时钟自身触发才用类型化超时归入既有 `AI_TIMED_OUT`，普通 I/O 中断和用户取消分别保留，不解析供应商错误消息。关闭、完成或失败后清理同一时钟，持续 delta 不延长总预算。超时不生成、应用或接受候选。失败附件仅记录最多8层、去环的异常类名，消息、栈及请求材料不落盘。验证范围见[本轮证据](../records/validation-history.md#interactive-source-delivery-validation)。
+
 ## 当前多文件源码交付（V33/V34）
 
 设计版本不直接授予源码写入。代码上下文携带targetPath入口及componentPaths（最多7个），服务端在调用模型前持久保存全部选定完整源码和hash，连同原Task/revision与原型版本；每文件24KB、合计48KB，超限拒绝，不截断。返回文件集合/顺序必须与输入完全一致。多文件图支持frontend内Vue/TS/JS及本地CSS/JSON：入口可达全部节点、无循环、无未声明相对引用。允许精确字符串指定的本地按需模块，拒绝计算路径或隐式发现；外部模块仅vue/vue-i18n/@eap/ui/@eap/runtime-client。[支持语法及边界](#route-resource-delivery)是同一合同的演进，不保留旧校验分支。
 
 生成快照及候选响应的companionFiles为当前必填数组，单文件是空数组叶子。V33一次性补齐已存叶子元数据，运行时不回退旧格式。应用沿用唯一CodeChangeService：全基线检查、全部暂存、再检、逐文件替换、全部读回及持久结果。多文件不是OS事务；部分作用/结果不明保留UNKNOWN和工作区互锁，不能自动重发或回滚他人文件。V34同步替换交付表旧单文件CHECK，源码、时间、任务、原型及每文件验证hash仍由服务端逐项核对。
 
-真实模型三文件证据面板及生产App交付/技术决定已通过；用户设计交互/产品接受及更多状态动作映射仍独立。见[多文件交付验收](../planning-status.md#component-page-delivery-validation)。
+V37 关联应用交付的写前基线已实现，定向/实库回归及完整EAP隔离重放已通过：[自身改页实测](../records/validation-history.md#self-page-diff-focus-delivery)曾在真实候选应用及完整验证成功后，因原HEAD全差异合同将既有前端修改计入本次范围而返回409。现在沿唯一受控应用链，在task/workspace锁及claim检查后、写文件前，服务端复用全frontend清单采集器保存HEAD和哈希/长度清单，与APPLYING状态同一UPDATE持久化。claim事务限90秒，采集共享65秒预算；复用现有有限Git执行器及清单扫描器，不新增执行路径。基线只允许首次PROPOSED→APPLYING设置，禁止INSERT预置、覆盖或清空。提交与ACCEPT共用核对：以原完整清单仅替换精确候选路径，结果必须与完整验证及当前Source/HEAD一致；未选路径随后新增、删除或改动均阻断。目标before来自生成快照，after来自实际候选；授权、任务/原型、时间及UNKNOWN互锁保留。外部手工交付沿原HEAD全差异合同。V37不回填旧应用，缺少基线报BOARD_DELIVERY_APPLICATION_BASELINE_REQUIRED；该错误已同步后端中英文及前端错误目录。持久化、并发、不可变约束和漂移失败分支已通过；完整EAP隔离工作区明确标注的捕获候选重放，完成显式应用、独立完整类型/测试/构建、稳定Source、交付、原型对照、技术ACCEPT及刷新读回。原应用成功但409的记录继续保留，不追溯标为已接受；不是新的真实模型调用或用户产品接受，日常应用库/既有服务未迁移重启。
+
+既有真实模型三文件证据面板及生产App交付/技术决定已通过，见[多文件交付验收](../planning-status.md#component-page-delivery-validation)。
+
+交互映射验收复用同一路径，按绑定设计检查实际源码页面的字段初值、选项可见文本、空白/必填校验、无效提交后重置、有效提交后重置及本地反馈、弹窗初态/开关/Escape，以及路由重入/刷新恢复。设计预览与实际页面分别核对；生成或构建成功不替代运行时行为，提交不得凭设计新增 API。表单可访问名称、错误标记和成功状态均纳入实际页面断言。限定样例的确定性候选、真实供应商候选和产品用户接受分别记录，见[本轮交互源码交付证据](../records/validation-history.md#interactive-source-delivery-validation)。这类隔离样例不替代 EAP 自身业务页改造及人工产品接受。
 
 <a id="source-write-review"></a>
 

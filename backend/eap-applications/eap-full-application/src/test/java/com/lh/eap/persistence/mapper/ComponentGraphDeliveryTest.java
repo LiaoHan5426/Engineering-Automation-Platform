@@ -18,14 +18,14 @@ class ComponentGraphDeliveryTest {
   var directory=Files.createTempDirectory(Path.of("target"),"component-graph-");String schema="eap_unknown_qa_"+UUID.randomUUID().toString().replace("-","");
   var admin=new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
   try {
-   CurrentContractTestSchema.migrate(directory,schema);var ds=ToolUnknownReviewFixture.scopedDataSource(schema);var jdbc=new JdbcTemplate(ds);var manager=new DataSourceTransactionManager(ds);
+   CurrentContractTestSchema.migrate(directory,schema,"37");var ds=ToolUnknownReviewFixture.scopedDataSource(schema);var jdbc=new JdbcTemplate(ds);var manager=new DataSourceTransactionManager(ds);
    var root=Files.createDirectory(directory.resolve("workspace")).toRealPath();Files.createDirectory(root.resolve("frontend"));
    String entry="frontend/Page.vue",child="frontend/Summary.vue";Files.writeString(root.resolve(entry),"<template><p>Before</p></template>\n");Files.writeString(root.resolve(child),"<template><span>Before child</span></template>\n");
    var task=new BoardTaskService(jdbc).create(new BoardTaskService.Draft("graph","Graph task","","ready","Complete page","Both files checked",UUID.randomUUID()));var ref=new TaskRef(task.projectId(),task.id(),task.revision());
-   var changes=new CodeChangeService(new RuntimeWorkspace(root,root.toString()),null,ignored->"",new JdbcCodeGenerationStore(jdbc,manager),new JdbcCodeProposalStore(jdbc,manager));UUID conversation=UUID.randomUUID();
+   var changes=new CodeChangeService(new RuntimeWorkspace(root,root.toString()),null,ignored->"",new JdbcCodeGenerationStore(jdbc,manager),new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc)));UUID conversation=UUID.randomUUID();
    var snapshot=changes.prepareGeneration(RuntimeWorkspace.OPERATOR_LABEL,conversation,entry,"","",ref,List.of(child));
    assertEquals(2,snapshot.sources().size());assertEquals(1,snapshot.reference().companionFiles().size());
-   assertEquals("34",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history ORDER BY installed_rank DESC LIMIT 1",String.class));
+   assertEquals("37",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history ORDER BY installed_rank DESC LIMIT 1",String.class));
    String page="<script setup>\nimport Summary from './Summary.vue'\n</script><template><Summary /></template>\n",component="<template><span>After child</span></template>\n";
    var json=JsonMapper.builder().build();String answer=json.writeValueAsString(Map.of("files",List.of(Map.of("path",entry,"content",page),Map.of("path",child,"content",component))));
    assertEquals("CODE_GENERATION_SCOPE_MISMATCH",assertThrows(ResponseStatusException.class,()->changes.proposePrepared(RuntimeWorkspace.OPERATOR_LABEL,conversation,snapshot.id(),json.writeValueAsString(Map.of("files",List.of(Map.of("path",entry,"content",page)))),true)).getReason());
@@ -33,8 +33,8 @@ class ComponentGraphDeliveryTest {
    assertEquals("CODE_GRAPH_UNDECLARED_IMPORT",assertThrows(ResponseStatusException.class,()->changes.proposePrepared(RuntimeWorkspace.OPERATOR_LABEL,conversation,snapshot.id(),answer.replace("./Summary.vue","./Undeclared.vue"),true)).getReason());
    var proposal=changes.proposePrepared(RuntimeWorkspace.OPERATOR_LABEL,conversation,snapshot.id(),answer,true);
    Files.writeString(root.resolve(child),"external edit");
-   assertEquals("FILE_CHANGED_SINCE_PROPOSAL",assertThrows(ResponseStatusException.class,()->changes.apply(RuntimeWorkspace.OPERATOR_LABEL,conversation,proposal.id(),true)).getReason());
-   assertTrue(Files.readString(root.resolve(entry)).contains("Before"));assertEquals("FAILED",changes.proposal(RuntimeWorkspace.OPERATOR_LABEL,conversation,proposal.id()).status());
+   assertEquals("BOARD_DELIVERY_APPLICATION_SOURCE_MISMATCH",assertThrows(ResponseStatusException.class,()->changes.apply(RuntimeWorkspace.OPERATOR_LABEL,conversation,proposal.id(),true)).getReason());
+   assertTrue(Files.readString(root.resolve(entry)).contains("Before"));assertEquals("PROPOSED",changes.proposal(RuntimeWorkspace.OPERATOR_LABEL,conversation,proposal.id()).status());
    Files.writeString(root.resolve(child),snapshot.companionSources().getFirst().content());
    var fresh=changes.prepareGeneration(RuntimeWorkspace.OPERATOR_LABEL,conversation,entry,"","",ref,List.of(child));
    var accepted=changes.proposePrepared(RuntimeWorkspace.OPERATOR_LABEL,conversation,fresh.id(),answer,true);
@@ -46,7 +46,7 @@ class ComponentGraphDeliveryTest {
    assertTrue(recovered.list(task.id(),task.projectId()).items().stream().anyMatch(item->item.id().equals(accepted.id())&&item.fileCount()==2));
    // A database result interruption after all filesystem replacements must retain UNKNOWN,
    // leave the actual bytes for human inspection and block another graph application.
-   var failing=new JdbcCodeProposalStore(jdbc,manager) {
+   var failing=new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc)) {
     @Override public void finish(String principal,UUID chat,UUID id,String status,CodeChangeService.Applied value,String reason) {
      if(status.equals("APPLIED"))throw new IllegalStateException("controlled result write interruption");
      super.finish(principal,chat,id,status,value,reason);

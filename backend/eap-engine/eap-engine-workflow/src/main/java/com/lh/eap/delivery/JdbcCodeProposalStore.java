@@ -31,16 +31,22 @@ public class JdbcCodeProposalStore implements CodeProposalStore {
     private final TransactionTemplate nonTransactional;
     private final CodeGenerationStore generations;
     private final BoardCodeTaskBinding tasks;
-    public JdbcCodeProposalStore(JdbcTemplate jdbc, PlatformTransactionManager manager) {
+    private final com.lh.eap.application.service.BoardApplicationBaseline baselines;
+    private final TransactionTemplate claimTransaction;
+    public JdbcCodeProposalStore(JdbcTemplate jdbc, PlatformTransactionManager manager, com.lh.eap.application.service.BoardApplicationBaseline baselines) {
         this(jdbc, manager, new JdbcCodeGenerationStore(jdbc, manager),
                 new BoardCodeTaskBinding(new BoardTaskService(jdbc),
-                        new JdbcPrototypeVersionStore(jdbc)));
+                        new JdbcPrototypeVersionStore(jdbc)), baselines);
     }
     @Autowired
     public JdbcCodeProposalStore(JdbcTemplate jdbc, PlatformTransactionManager manager, CodeGenerationStore generations,
-                                 BoardCodeTaskBinding tasks) {
+                                 BoardCodeTaskBinding tasks, com.lh.eap.application.service.BoardApplicationBaseline baselines) {
         this.jdbc = jdbc;
-        this.generations = generations; this.tasks = tasks;
+        this.generations = generations; this.tasks = tasks; this.baselines=Objects.requireNonNull(baselines);
+        claimTransaction=new TransactionTemplate(manager);
+        claimTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        claimTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+        claimTransaction.setTimeout(90);
         transaction = new TransactionTemplate(manager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -80,7 +86,7 @@ public class JdbcCodeProposalStore implements CodeProposalStore {
                         rs.getTimestamp("finished_at") == null ? null : rs.getTimestamp("finished_at").toInstant()), id, principal, conversation).stream().findFirst();
     }
     @Override public boolean claim(String principal, UUID conversation, UUID id) {
-        return Boolean.TRUE.equals(transaction.execute(tx -> {
+        return Boolean.TRUE.equals(claimTransaction.execute(tx -> {
             var row = find(principal, conversation, id).orElseThrow();
             if (!row.status().equals(CodeProposalStatus.PROPOSED.wire())) return false;
             // Derive the lock from immutable source evidence, not a caller/summary-selected task.
@@ -95,8 +101,9 @@ public class JdbcCodeProposalStore implements CodeProposalStore {
             if (WorkspaceInterlock.codeActive(jdbc, workspace)
                     || WorkspaceInterlock.boardActive(jdbc, workspace))
                 throw new ResponseStatusException(HttpStatus.CONFLICT, CodeErrors.CODE_WORKSPACE_BUSY.code());
-            return jdbc.update("UPDATE eap.code_proposal SET status=?,started_at=now() WHERE id=? AND principal=? AND conversation_id=? AND status=?",
-                    CodeProposalStatus.APPLYING.wire(), id, principal, conversation, CodeProposalStatus.PROPOSED.wire()) == 1;
+            var baseline=baselines.capture(row.proposal());
+            return jdbc.update("UPDATE eap.code_proposal SET application_baseline=?::jsonb,status=?,started_at=now() WHERE id=? AND principal=? AND conversation_id=? AND status=?",
+                    baseline==null?null:JSON.writeValueAsString(baseline), CodeProposalStatus.APPLYING.wire(), id, principal, conversation, CodeProposalStatus.PROPOSED.wire()) == 1;
         }));
     }
     @Override public void recoverInterrupted(String workspace) {

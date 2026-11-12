@@ -548,10 +548,6 @@ export function createMockChatBackend() {
           const context = body.context as TaskContext | undefined
           if (body.toolMode === AiToolMode.CODE_SOURCES)
             return result(503, { code: CodeErrors.CODE_GENERATION_CONTEXT_UNAVAILABLE })
-          if (context?.mode !== undefined && !Object.values(TaskMode).includes(context.mode))
-            return result(400, { code: ChatErrors.INVALID_TASK_CONTEXT })
-          if (context?.componentPaths?.length)
-            return result(409, { code: 'MOCK_COMPONENT_GRAPH_UNAVAILABLE' })
           let cleared = sensitiveConversations.has(id)
           const reply = (status: number, data: Record<string, unknown>) =>
             result(status, {
@@ -559,6 +555,10 @@ export function createMockChatBackend() {
               contextMemoryCleared: cleared,
               knowledgeMemoryCleared: cleared,
             })
+          if (context?.mode !== undefined && !Object.values(TaskMode).includes(context.mode))
+            return reply(400, { code: ChatErrors.INVALID_TASK_CONTEXT })
+          if (context?.componentPaths?.length)
+            return result(409, { code: 'MOCK_COMPONENT_GRAPH_UNAVAILABLE' })
           const hasSkill = !!context && typeof context === 'object' && 'skillRef' in context
           const hasPaths =
             !!context && typeof context === 'object' && 'skillResourcePaths' in context

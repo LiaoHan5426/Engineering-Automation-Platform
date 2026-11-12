@@ -8,6 +8,112 @@ import { dirname, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const [mode, input] = process.argv.slice(2)
+const interactiveDesign = process.env.EAP_ROUTE_INTERACTIVE_DESIGN === 'true'
+const interactiveCopy = {
+  form: 'Delivery request',
+  name: 'Task name',
+  category: 'Task category',
+  confirmation: 'I checked the request',
+  initialName: 'Draft task',
+  categories: ['Feature', 'Fix'],
+  submit: 'Submit request',
+  reset: 'Reset request',
+  open: 'Open guidance',
+  dialog: 'Request guidance',
+  close: 'Close guidance',
+  guidance: 'Review the request before implementation.',
+  success: 'Request ready for review.',
+}
+
+async function assertInteractiveInitial(surface) {
+  assert.equal(
+    await surface.getByLabel(interactiveCopy.name, { exact: true }).inputValue(),
+    interactiveCopy.initialName,
+  )
+  assert.equal(
+    await surface.getByLabel(interactiveCopy.category, { exact: true }).inputValue(),
+    'Feature',
+  )
+  assert.equal(
+    await surface
+      .getByRole('checkbox', { name: interactiveCopy.confirmation, exact: true })
+      .isChecked(),
+    false,
+  )
+  assert.equal(await surface.locator('[aria-invalid=true]').count(), 0)
+  assert.equal(await surface.getByRole('alert').count(), 0)
+}
+
+async function exerciseInteractive(page, surface, preview = false) {
+  const copy = interactiveCopy
+  const requests = []
+  const observe = (request) => {
+    if (['fetch', 'xhr'].includes(request.resourceType()))
+      requests.push(request.method() + ' ' + request.url())
+  }
+  page.on('request', observe)
+  await assertInteractiveInitial(surface)
+  assert.equal(
+    await page.getByRole('dialog', { name: copy.dialog, exact: true }).isVisible(),
+    false,
+  )
+  assert.equal(
+    await surface.getByRole(preview ? 'region' : 'form', { name: copy.form, exact: true }).count(),
+    1,
+  )
+  const name = surface.getByLabel(copy.name, { exact: true })
+  const category = surface.getByLabel(copy.category, { exact: true })
+  const confirmation = surface.getByRole('checkbox', { name: copy.confirmation, exact: true })
+  assert.deepEqual(
+    await category.locator('option').evaluateAll((nodes) => nodes.map((node) => node.value)),
+    ['', ...copy.categories],
+  )
+  assert.deepEqual(
+    await category
+      .locator('option:not([value=""])')
+      .allTextContents()
+      .then((values) => values.map((value) => value.trim())),
+    copy.categories,
+  )
+  const success = preview ? '预览提交完成，未发送数据。' : copy.success
+  assert.equal(await surface.getByText(success, { exact: true }).count(), 0)
+  const submitInvalid = async () => {
+    await name.fill('   ')
+    await category.selectOption('')
+    await surface.getByRole('button', { name: copy.submit, exact: true }).click()
+    for (const field of [name, category, confirmation])
+      assert.equal(await field.getAttribute('aria-invalid'), 'true')
+    assert.equal(await surface.getByText(success, { exact: true }).count(), 0)
+  }
+  await submitInvalid()
+  await surface.getByRole('button', { name: copy.reset, exact: true }).click()
+  await assertInteractiveInitial(surface)
+  assert.equal(await surface.getByText(success, { exact: true }).count(), 0)
+  await submitInvalid()
+  await name.fill('Implement reviewed request')
+  await category.selectOption('Fix')
+  await confirmation.check()
+  await surface.getByRole('button', { name: copy.submit, exact: true }).click()
+  await surface.getByText(success, { exact: true }).waitFor()
+  if (!preview) await surface.getByRole('status').filter({ hasText: success }).waitFor()
+  assert.equal(await surface.locator('[aria-invalid=true]').count(), 0)
+  await surface.getByRole('button', { name: copy.reset, exact: true }).click()
+  await assertInteractiveInitial(surface)
+  assert.equal(await surface.getByText(success, { exact: true }).count(), 0)
+  await surface.getByRole('button', { name: copy.open, exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: copy.dialog, exact: true })
+  await dialog.waitFor()
+  await dialog.getByText(copy.guidance, { exact: true }).waitFor()
+  assert.equal(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth + 1), true)
+  await dialog.getByRole('button', { name: copy.close, exact: true }).click()
+  await dialog.waitFor({ state: 'hidden' })
+  await surface.getByRole('button', { name: copy.open, exact: true }).click()
+  await dialog.waitFor()
+  await page.keyboard.press('Escape')
+  await dialog.waitFor({ state: 'hidden' })
+  page.off('request', observe)
+  assert.deepEqual(requests, [], 'design interactions must stay local without API calls')
+}
 const json = async (path) => JSON.parse(await readFile(path, 'utf8'))
 const save = (path, value) => writeFile(path, JSON.stringify(value, null, 2))
 const digest = (content) => createHash('sha256').update(content).digest('hex')
@@ -120,6 +226,52 @@ async function prepare(workspace) {
       '{"title":"Delivery detail","description":"Bound source and verification evidence."}\n',
     ],
   ]
+  if (interactiveDesign) {
+    files.find(([name]) => name === 'copy.json')[2] =
+      JSON.stringify({
+        title: 'Delivery detail',
+        description: 'Bound source and verification evidence.',
+        ...interactiveCopy,
+      }) + '\n'
+    files.find(([name]) => name === 'DetailPage.vue')[2] = `<script setup lang="ts">
+import { ref } from 'vue'
+import copy from './copy.json'
+import './detail.css'
+const name = ref(copy.initialName), category = ref('Feature'), checked = ref(false)
+const errors = ref(false), submitted = ref(false), guidance = ref(false)
+function submit() {
+  errors.value = true
+  submitted.value = !!name.value.trim() && !!category.value && checked.value
+}
+function reset() {
+  name.value = copy.initialName
+  category.value = 'Feature'
+  checked.value = false
+  errors.value = false
+  submitted.value = false
+}
+</script>
+<template>
+  <article class="detail" @keydown.esc="guidance = false">
+    <h1>{{ copy.title }}</h1><p>{{ copy.description }}</p>
+    <form :aria-label="copy.form" novalidate @submit.prevent="submit">
+      <label>{{ copy.name }}<input v-model="name" :aria-label="copy.name" required :aria-invalid="errors && !name.trim()" /></label>
+      <label>{{ copy.category }}<select v-model="category" :aria-label="copy.category" required :aria-invalid="errors && !category">
+        <option value="">Choose category</option><option v-for="option in copy.categories" :key="option" :value="option">{{ option }}</option>
+      </select></label>
+      <label><input v-model="checked" type="checkbox" :aria-label="copy.confirmation" required :aria-invalid="errors && !checked" />{{ copy.confirmation }}</label>
+      <p v-if="errors && (!name.trim() || !category || !checked)" role="alert">Complete the required fields.</p>
+      <button type="submit">{{ copy.submit }}</button><button type="button" @click="reset">{{ copy.reset }}</button>
+      <p v-if="submitted" role="status">{{ copy.success }}</p>
+    </form>
+    <button type="button" @click="guidance = true">{{ copy.open }}</button>
+    <section v-if="guidance" role="dialog" aria-modal="true" :aria-label="copy.dialog" tabindex="-1">
+      <h2>{{ copy.dialog }}</h2><p>{{ copy.guidance }}</p><button type="button" @click="guidance = false">{{ copy.close }}</button>
+    </section>
+  </article>
+</template>
+`
+  }
   for (const [name, before] of files) await writeFile(resolve(src, name), before)
   await save(resolve(dirname(workspace), 'answer.json'), {
     summary: 'Eager overview and bounded lazy detail with shared style and copy',
@@ -159,6 +311,7 @@ async function prepare(workspace) {
         'install',
         process.env.EAP_ROUTE_OFFLINE === 'true' ? '--offline' : '--prefer-offline',
         '--ignore-scripts',
+        '--',
         '--registry=https://registry.npmjs.org',
       ],
       project,
@@ -186,11 +339,75 @@ async function setup(manifest) {
   const { backend } = await json(manifest)
   const project = 'route-resource-delivery'
   const node = (id, kind, props, children = []) => ({ id, kind, props, children })
+  const copy = interactiveCopy
+  const interactionNodes = interactiveDesign
+    ? [
+        node('request-form', 'form', { label: copy.form }, [
+          node('request-name', 'input', {
+            label: copy.name,
+            initialValue: copy.initialName,
+            required: true,
+          }),
+          node('request-category', 'select', {
+            label: copy.category,
+            options: copy.categories,
+            initialValue: 'Feature',
+            required: true,
+          }),
+          node('request-confirmation', 'checkbox', {
+            label: copy.confirmation,
+            checked: false,
+            required: true,
+          }),
+          node('request-submit', 'button', {
+            label: copy.submit,
+            action: { type: 'SUBMIT', target: 'request-form' },
+          }),
+          node('request-reset', 'button', {
+            label: copy.reset,
+            action: { type: 'RESET', target: 'request-form' },
+          }),
+        ]),
+        node('guidance-open', 'button', {
+          label: copy.open,
+          action: { type: 'TOGGLE', target: 'request-guidance' },
+        }),
+        node('request-guidance', 'dialog', { label: copy.dialog }, [
+          node('guidance-text', 'text', { text: copy.guidance }),
+          node('guidance-close', 'button', {
+            label: copy.close,
+            action: { type: 'TOGGLE', target: 'request-guidance' },
+          }),
+        ]),
+      ]
+    : []
+  const interactionInstructions = interactiveDesign
+    ? [
+        'Implement the saved semantic design in DetailPage.vue, preserving all existing six-file route, lazy loading, error/loading state, CSS and JSON requirements.',
+        `Keep root article.detail, heading Delivery detail and description Bound source and verification evidence. Form accessible name: ${copy.form}.`,
+        `Input label ${copy.name}, initial value ${copy.initialName}. Select label ${copy.category}, initial value Feature, option values in order: empty string, Feature, Fix (empty placeholder Choose category).`,
+        `Checkbox accessible label ${copy.confirmation}, initially unchecked. All three fields are required; whitespace-only name, empty selection and unchecked confirmation are invalid.`,
+        `Button ${copy.submit} validates all three fields, explicitly sets aria-invalid=true on each invalid control, displays visible required-field feedback, and shows no success on invalid submission. Use novalidate if using a native form so browser validation does not prevent declared validation.`,
+        `Valid submission displays role=status with exact text ${copy.success}. It only updates local UI; no fetch, API, network request or persistence.`,
+        `Button ${copy.reset} restores name to ${copy.initialName}, category to Feature, checkbox unchecked, clears all aria-invalid flags and success/error feedback.`,
+        `Button ${copy.open} opens an accessible role=dialog named ${copy.dialog}, containing exact text ${copy.guidance} and button ${copy.close}. Closing by that button or Escape hides the dialog and allows reopening. Dialog is hidden initially.`,
+        'Navigating to overview and reopening detail or reloading detail restores all initial field values and clears transient errors, success and dialog state. Keep the narrow layout within 390px.',
+        'Store the labels/options/initial name/success/guidance in selected copy.json and consume it in the detail page; keep the local CSS chain. Do not add dependencies, routes, services, files, credentials or endpoints.',
+      ].join('\n')
+    : ''
   const version = await api(backend, '/prototype-versions', {
     requestId: randomUUID(),
     sourceRef: 'builder-alpha',
     title: 'Delivery overview and detail',
-    acceptance: ['Both routes are navigable', 'Detail shows local copy and styling'],
+    acceptance: [
+      'Both routes are navigable',
+      'Detail shows local copy and styling',
+      ...(interactiveDesign
+        ? [
+            'Required form fields validate, submit locally, reset to initial values, and guidance opens/closes; route reentry restores initial state.',
+          ]
+        : []),
+    ],
     body: JSON.stringify({
       format: 'eap-prototype-v1',
       schema: {
@@ -201,6 +418,7 @@ async function setup(manifest) {
         root: node('page', 'page', {}, [
           node('overview', 'heading', { text: 'Delivery overview' }),
           node('detail', 'text', { text: 'Open detail to review delivery evidence.' }),
+          ...interactionNodes,
         ]),
       },
     }),
@@ -212,7 +430,11 @@ async function setup(manifest) {
     sessionId: '',
     column: 'ready',
     goal: 'Deliver overview and detail',
-    acceptanceCriteria: 'Both routes work and detail uses its CSS and JSON.',
+    acceptanceCriteria:
+      'Both routes work and detail uses its CSS and JSON.' +
+      (interactiveDesign
+        ? ' Task name/category/confirmation preserve designed initial values and options; required validation, local submission, reset, guidance dialog close/Escape, route reentry and reload match the bound semantic design without business API calls.'
+        : ''),
   })
   const linked = await api(backend, '/board/tasks/' + task.id + '/prototype', {
     projectId: project,
@@ -224,6 +446,7 @@ async function setup(manifest) {
     taskId: task.id,
     revision: linked.revision,
     prototypeId: version.id,
+    interactionInstructions,
     answer: await json(resolve(dirname(manifest), 'answer.json')),
   })
 }
@@ -390,8 +613,29 @@ async function deliver(manifest) {
     await heading.waitFor()
     await result.getByText('Bound source and verification evidence.').waitFor()
     assert.equal(await heading.evaluate((node) => getComputedStyle(node).color), 'rgb(24, 72, 96)')
+    if (interactiveDesign) {
+      for (const width of [390, 1440]) {
+        await result.setViewportSize({ width, height: width === 390 ? 844 : 1000 })
+        await exerciseInteractive(result, result.locator('article.detail'))
+        assert.equal(
+          await result.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          true,
+        )
+        await result.screenshot({ path: resolve(out, `interactive-detail-${width}.png`) })
+      }
+      await result.getByLabel(interactiveCopy.name, { exact: true }).fill('Unsaved route state')
+      await result.getByRole('link', { name: 'Overview', exact: true }).click()
+      await result.getByRole('heading', { name: 'Delivery overview', exact: true }).waitFor()
+      await result.getByRole('link', { name: 'Detail', exact: true }).click()
+      await heading.waitFor()
+      await assertInteractiveInitial(result.locator('article.detail'))
+      assert.equal(await result.getByText(interactiveCopy.success, { exact: true }).count(), 0)
+      await result.getByLabel(interactiveCopy.name, { exact: true }).fill('Unsaved before reload')
+      await result.setViewportSize({ width: 390, height: 844 })
+    }
     await result.reload()
     await heading.waitFor()
+    if (interactiveDesign) await assertInteractiveInitial(result.locator('article.detail'))
     await result.screenshot({ path: resolve(out, 'delivered-route-detail.png') })
     await result.getByRole('link', { name: 'Overview', exact: true }).click()
     await result.getByRole('heading', { name: 'Delivery overview' }).waitFor()
@@ -468,6 +712,23 @@ async function deliver(manifest) {
     await page.getByTestId('delivery-compare-prototype').click()
     const design = page.getByTestId('prototype-version-viewer')
     await design.getByText('Delivery overview and detail', { exact: true }).waitFor()
+    if (interactiveDesign) {
+      const saved = await api(backend, '/prototype-versions/' + delivery.prototypeVersionId)
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 })
+        await exerciseInteractive(page, design, true)
+        await page.screenshot({ path: resolve(out, `interactive-design-comparison-${width}.png`) })
+      }
+      await design.getByLabel(interactiveCopy.name, { exact: true }).fill('Unsaved preview state')
+      await design.locator('[data-eap-dialog-close]').click()
+      await page.getByTestId('delivery-compare-prototype').click()
+      await design.getByText('Delivery overview and detail', { exact: true }).waitFor()
+      await assertInteractiveInitial(design)
+      const reopened = await api(backend, '/prototype-versions/' + delivery.prototypeVersionId)
+      assert.equal(reopened.body, saved.body)
+      assert.equal(reopened.contentHash, saved.contentHash)
+      await page.setViewportSize({ width: 1440, height: 1000 })
+    }
     await page.screenshot({ path: resolve(out, 'delivery-prototype-comparison.png') })
     await design.locator('[data-eap-dialog-close]').click()
     assert.equal(
@@ -517,6 +778,21 @@ async function deliver(manifest) {
       checks: verification.checks.map((check) => [check.id, check.status]),
       decision: 'technical ACCEPT; no user acceptance',
       boundPrototypeComparedWithoutLosingDeliveryDraft: true,
+      ...(interactiveDesign
+        ? {
+            interactiveDesign: {
+              prototypeVersionId: delivery.prototypeVersionId,
+              controls: interactiveCopy,
+              widths: [390, 1440],
+              requiredValidation: true,
+              localSubmissionWithoutRequests: true,
+              resetInitialValues: true,
+              dialogButtonAndEscape: true,
+              routeReentryAndReloadInitialValues: true,
+              boundPreviewSameBehaviorsAndImmutableReopen: true,
+            },
+          }
+        : {}),
       provider,
       lazyLoading: {
         chunk,

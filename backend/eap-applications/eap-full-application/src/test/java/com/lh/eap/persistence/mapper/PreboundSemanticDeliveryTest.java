@@ -35,12 +35,12 @@ class PreboundSemanticDeliveryTest {
             var root=Files.createDirectory(session.resolve("workspace")).toRealPath();Files.createDirectory(root.resolve("frontend"));
             String target="frontend/Page.vue";Files.writeString(root.resolve(target),"<p>Before</p>\n");
             var generations=new JdbcCodeGenerationStore(jdbc,manager);
-            var store=new JdbcCodeProposalStore(jdbc,manager);
+            var store=new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
             var changes=new CodeChangeService(new RuntimeWorkspace(root,root.toString()),null,ignored->"",generations,store);
             var ref=new TaskRef(task.projectId(),task.id(),task.revision());var conversation=UUID.randomUUID();
             assertThrows(RuntimeException.class,()->changes.prepareGeneration(RuntimeWorkspace.OPERATOR_LABEL,conversation,target,version.id().toString(),version.contentHash(),ref));
             assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM eap.code_generation",Integer.class));
-            CurrentContractTestSchema.migrate(session,schema);
+            CurrentContractTestSchema.migrate(session,schema,"37");
             var captured=changes.prepareGeneration(RuntimeWorkspace.OPERATOR_LABEL,conversation,target,version.id().toString(),version.contentHash(),ref);
             assertEquals(version,captured.taskSnapshot().prototype());
             var proposal=changes.proposePrepared(RuntimeWorkspace.OPERATOR_LABEL,conversation,captured.id(),
@@ -58,6 +58,7 @@ class PreboundSemanticDeliveryTest {
             assertTrue(catalog.list(ref,root.resolve("another").toString()).items().isEmpty());
             for(int i=0;i<22;i++) {
                 var id=UUID.randomUUID();var extra=new CodeChangeService.Proposal(id,conversation,root.toString(),"bounded catalog",proposal.files(),proposal.createdAt(),false,true,"not_requested",proposal.generation());
+                Files.writeString(root.resolve(target),captured.source());
                 store.save(RuntimeWorkspace.OPERATOR_LABEL,extra);assertTrue(store.claim(RuntimeWorkspace.OPERATOR_LABEL,conversation,id));
                 store.finish(RuntimeWorkspace.OPERATOR_LABEL,conversation,id,"APPLIED",new CodeChangeService.Applied(id,List.of(target),"not_requested",List.of(),"APPLIED",applied.afterHash(),""),"");
             }

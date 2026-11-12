@@ -29,7 +29,7 @@ class PlanningModeAcceptanceTest {
         var admin = new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         var calls = new AtomicInteger();
         try {
-            CurrentContractTestSchema.migrate(session, schema, "36");
+            CurrentContractTestSchema.migrate(session, schema, "37");
             var scoped = ToolUnknownReviewFixture.scopedDataSource(schema);
             var overrides = new SourceWriteReviewPersistenceTest.Overrides(scoped, workspace);
             try (var context = new SpringApplicationBuilder(EapApplication.class)

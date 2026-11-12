@@ -64,6 +64,10 @@ class EngineeringChatServiceTest {
         assertEquals(outcome.executionId(), artifact.executionId());
         assertTrue(Files.exists(root.resolve("artifacts").resolve(artifact.relativePath())));
         assertEquals(64, artifact.sha256().length());
+        var audit = tools.jackson.databind.json.JsonMapper.builder().build().readTree(
+                Files.readString(root.resolve("artifacts").resolve(artifact.relativePath())));
+        assertTrue(audit.path("failureTypes").isArray());
+        assertEquals(0, audit.path("failureTypes").size());
     }
     @Test void springAiExecutesToolAndReturnsResultToModel() throws Exception {
         var calls = new AtomicInteger(); var turns = new AtomicInteger();
@@ -108,6 +112,56 @@ class EngineeringChatServiceTest {
         var outcome = service(p -> { throw new IllegalArgumentException("Bearer top-secret"); }, null).chat(request(false));
         assertEquals("AI_PROVIDER_ERROR", outcome.error());
         assertFalse(outcome.toString().contains("top-secret"));
+    }
+    @Test void failedTracePersistsOnlyNestedExceptionClassNames() throws Exception {
+        String secret = "token=do-not-leak https://credentials.invalid/private Authorization: Bearer hidden-header";
+        var cause = new java.io.InterruptedIOException(secret);
+        cause.setStackTrace(new StackTraceElement[] {
+                new StackTraceElement("sensitive.StackFrame", "credentialMethod", "confidential-file.java", 987)
+        });
+        var failure = new com.openai.errors.OpenAIIoException(secret, cause);
+        failure.addSuppressed(new IllegalStateException("suppressed-secret"));
+        var outcome = service(p -> { throw failure; }, null).chat(request(false));
+        assertEquals("AI_PROVIDER_ERROR", outcome.error());
+        assertEquals(CliExecution.Status.FAILED, outcome.execution().status());
+        assertEquals(List.of("com.openai.errors.OpenAIIoException", "java.io.InterruptedIOException"),
+                failureTypeAudit(outcome));
+    }
+    @Test void failureTypeTraceStopsAtEightButDoesNotChangeDeepTimeoutClassification() throws Exception {
+        Throwable cause = new java.util.concurrent.TimeoutException("token=do-not-leak https://credentials.invalid/private");
+        for (int i = 0; i < 16; i++) cause = new IllegalStateException("token=do-not-leak depth=" + i, cause);
+        var failure = (RuntimeException) cause;
+        var outcome = service(p -> { throw failure; }, null).chat(request(false));
+        assertEquals("AI_TIMED_OUT", outcome.error());
+        assertEquals(CliExecution.Status.TIMED_OUT, outcome.execution().status());
+        assertEquals(Collections.nCopies(8, "java.lang.IllegalStateException"), failureTypeAudit(outcome));
+    }
+    @Test void failureTypeTraceStopsOnThrowableIdentityCycles() throws Exception {
+        var first = new IllegalStateException("token=do-not-leak https://credentials.invalid/private");
+        var second = new IllegalArgumentException("token=do-not-leak cycle-message", first);
+        first.initCause(second);
+        var outcome = service(p -> { throw first; }, null).chat(request(false));
+        assertEquals("AI_PROVIDER_ERROR", outcome.error());
+        assertEquals(CliExecution.Status.FAILED, outcome.execution().status());
+        assertEquals(List.of("java.lang.IllegalStateException", "java.lang.IllegalArgumentException"), failureTypeAudit(outcome));
+    }
+    private List<String> failureTypeAudit(EngineeringChatService.Outcome outcome) throws Exception {
+        var artifact = outcome.execution().artifacts().getFirst();
+        var raw = Files.readString(root.resolve("artifacts").resolve(artifact.relativePath()));
+        for (String forbidden : List.of("token=", "do-not-leak", "https://", "credentials.invalid", "Authorization",
+                "hidden-header", "depth=", "cycle-message", "suppressed-secret", "sensitive.StackFrame",
+                "credentialMethod", "confidential-file.java", "stackTrace", "message", "headers", "body")) {
+            assertFalse(raw.contains(forbidden), "Exception content leaked into trace: " + forbidden);
+        }
+        var audit = tools.jackson.databind.json.JsonMapper.builder().build().readTree(raw);
+        assertEquals(outcome.error(), audit.path("error").asString());
+        assertEquals(outcome.execution().status().name(), audit.path("status").asString());
+        var types = audit.path("failureTypes");
+        assertTrue(types.isArray());
+        assertTrue(types.size() <= 8);
+        var names = new ArrayList<String>();
+        for (var type : types) names.add(type.asString());
+        return names;
     }
     @Test void memoryIsIsolatedByPrincipalAndConversation() {
         var seen = new ArrayList<Prompt>();

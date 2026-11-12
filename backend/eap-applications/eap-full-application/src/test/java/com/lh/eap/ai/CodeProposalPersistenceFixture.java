@@ -34,7 +34,7 @@ abstract class CodeProposalPersistenceFixture {
     }
 
     CodeProposalStore store() {
-        return new JdbcCodeProposalStore(jdbc, manager);
+        return new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
     }
 
     CodeChangeService service(CodeProposalStore store) {

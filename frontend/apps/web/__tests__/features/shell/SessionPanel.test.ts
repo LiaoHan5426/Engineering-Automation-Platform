@@ -1,10 +1,15 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test'
-import { createApp, h, nextTick, type App } from 'vue'
+import { createApp, h, nextTick, ref, type App } from 'vue'
 import { runtimeApi, type CodeProposal } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import SessionPanel from '../../../src/components/SessionPanel.vue'
-import { chatBinding, workbench, type ChatBinding } from '../../../src/features/shell/workbench'
+import {
+  chatBinding,
+  openCandidateDiff,
+  workbench,
+  type ChatBinding,
+} from '../../../src/features/shell/workbench'
 
 let app: App | undefined
 let root: HTMLDivElement | undefined
@@ -21,6 +26,9 @@ afterEach(() => {
   root?.remove()
   chatBinding.value = null
   workbench.sessionExtras = {}
+  workbench.diffFocusPath = ''
+  workbench.panel = null
+  workbench.sessionPanels = {}
   vi.restoreAllMocks()
 })
 
@@ -281,6 +289,82 @@ it('keeps a local upload apart from the design version and the unread repository
   expect(root.querySelector('[data-testid="repo-tree-hint"]')?.textContent).toMatch(
     /展开目录|Expand folders/,
   )
+})
+
+function bindCandidateFiles() {
+  const files = ['src/First.vue', 'src/Second.vue'].map((path, index) => ({
+    path,
+    before: `before-${index}`,
+    content: `after-${index}`,
+    baseHash: `hash-${index}`,
+  }))
+  chatBinding.value = binding({
+    proposalFiles: files.map((file) => file.path),
+    proposal: {
+      id: 'focus-proposal',
+      conversationId: 's1',
+      workspace: 'w',
+      summary: 'Candidate file focus',
+      applied: false,
+      writeAllowed: false,
+      verification: 'not_requested',
+      files,
+    },
+  })
+  return files
+}
+
+function expectFocusedCandidate(path: string) {
+  expect(root!.querySelector('.codex-file[aria-pressed="true"]')?.textContent?.trim()).toBe(path)
+  expect(root!.querySelector('.codex-detail > strong')?.textContent).toBe(path)
+  expect(workbench.diffFocusPath).toBe('')
+  expect(chatBinding.value?.draft).toBe('Keep the unsent draft')
+}
+
+it('focuses a non-first candidate requested before the changes panel first mounts', async () => {
+  const files = bindCandidateFiles()
+  chatBinding.value = { ...chatBinding.value!, draft: 'Keep the unsent draft' }
+  openCandidateDiff('s1', files[1]!.path)
+  expect(workbench.panel).toBe('changes')
+  root = document.createElement('div')
+  document.body.append(root)
+  app = createApp({ render: () => h(SessionPanel, { mode: 'changes' }) })
+  app.use(i18n).mount(root)
+  await nextTick()
+  expectFocusedCandidate(files[1]!.path)
+})
+
+it('retains a pending candidate while outside changes and consumes it on mode switch', async () => {
+  const files = bindCandidateFiles()
+  chatBinding.value = { ...chatBinding.value!, draft: 'Keep the unsent draft' }
+  const mode = ref<'summary' | 'changes'>('summary')
+  root = document.createElement('div')
+  document.body.append(root)
+  app = createApp({ render: () => h(SessionPanel, { mode: mode.value }) })
+  app.use(i18n).mount(root)
+  openCandidateDiff('s1', files[1]!.path)
+  await nextTick()
+  expect(workbench.diffFocusPath).toBe(files[1]!.path)
+  expect(root.querySelector('.codex-detail')).toBeNull()
+  mode.value = 'changes'
+  await nextTick()
+  expectFocusedCandidate(files[1]!.path)
+})
+
+it('updates the requested candidate again while the changes panel stays mounted', async () => {
+  const files = bindCandidateFiles()
+  chatBinding.value = { ...chatBinding.value!, draft: 'Keep the unsent draft' }
+  root = document.createElement('div')
+  document.body.append(root)
+  app = createApp({ render: () => h(SessionPanel, { mode: 'changes' }) })
+  app.use(i18n).mount(root)
+  await nextTick()
+  openCandidateDiff('s1', files[1]!.path)
+  await nextTick()
+  expectFocusedCandidate(files[1]!.path)
+  openCandidateDiff('s1', files[0]!.path)
+  await nextTick()
+  expectFocusedCandidate(files[0]!.path)
 })
 
 it('keeps candidate, applied and unread directory changes apart', async () => {

@@ -81,6 +81,43 @@ public class BoardDeliveryCapture {
         if (!conversion.equals(conversion(root, git, expected, deadline))) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_SOURCE_STALE.code());
         return List.copyOf(result);
     }
+    public List<File> captureApplication(Path root, GitCapability git, String base, BoardVerificationSource.Source expected,
+            List<String> paths, BoardApplicationBaseline.Baseline baseline, List<com.lh.eap.delivery.CodeChangeService.Change> changes) {
+        validatePaths(paths);
+        if (!paths.equals(changes.stream().map(com.lh.eap.delivery.CodeChangeService.Change::path).toList())
+                || !base.equals(baseline.baseCommit()) || !root.toString().equals(baseline.workspacePath()))
+            throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_SCOPE_MISMATCH.code());
+        var expectedFiles=new TreeMap<String,BoardVerificationSource.File>();
+        baseline.source().files().forEach(file -> expectedFiles.put(file.path(),file));
+        for(var change:changes) {
+            var before=expectedFiles.get(change.path());
+            String beforeHash=before==null?"absent":before.contentHash();
+            if(!beforeHash.equals(change.baseHash()) || !beforeHash.equals(change.before()==null?"absent":hash(change.before().getBytes(StandardCharsets.UTF_8))))
+                throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_SOURCE_MISMATCH.code());
+            if(change.content()==null) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_APPLICATION_SOURCE_MISMATCH.code());
+            byte[] after=change.content().getBytes(StandardCharsets.UTF_8);
+            expectedFiles.put(change.path(),new BoardVerificationSource.File(change.path(),hash(after),after.length));
+        }
+        var expectedAfter=new BoardVerificationSource.Source(baseline.source().scope(),
+                GitReviewCapture.hash(tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(
+                        List.of(baseline.source().scope(),List.copyOf(expectedFiles.values()),baseline.source().exclusions()))),
+                List.copyOf(expectedFiles.values()),baseline.source().exclusions());
+        if(!expectedAfter.equals(expected)) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_SCOPE_INCOMPLETE.code());
+        long deadline=clock.getAsLong()+TimeUnit.SECONDS.toNanos(50);
+        requireCurrent(root,git,base,expected,deadline);
+        var result=new ArrayList<File>(); int total=0;
+        for(var change:changes) {
+            var file=expectedFiles.get(change.path());
+            byte[] bytes=read(root,file); String after=text(bytes);
+            String before=change.before()==null?"":change.before();
+            text(before.getBytes(StandardCharsets.UTF_8));
+            total+=before.getBytes(StandardCharsets.UTF_8).length+bytes.length;
+            if(total>1024*1024) throw denied(BoardDeliveryErrors.BOARD_DELIVERY_LIMIT.code());
+            result.add(new File(change.path(),change.baseHash(),hash(bytes),before,after));
+        }
+        requireCurrent(root,git,base,expected,deadline);
+        return List.copyOf(result);
+    }
     private BoardDeliveryConversion.Rules conversion(Path root, GitCapability git, BoardVerificationSource.Source source, long deadline) {
         return BoardDeliveryConversion.inspect(source.files().stream().map(BoardVerificationSource.File::path).toList(),
             (step, paths) -> invoke(root, git.deliveryConversionCommand(step, paths), deadline));

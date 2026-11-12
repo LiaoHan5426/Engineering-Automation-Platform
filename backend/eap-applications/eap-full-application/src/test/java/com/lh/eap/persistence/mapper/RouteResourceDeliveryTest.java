@@ -66,7 +66,9 @@ class RouteResourceDeliveryTest {
     @Test
     @EnabledIfEnvironmentVariable(named = "EAP_ROUTE_RESOURCE_CHROMIUM", matches = "true")
     void appliesAndVerifiesAnActualTwoRouteDeliveryThroughTheBoard() throws Exception {
-        var session = Files.createTempDirectory(Path.of("target").toAbsolutePath(), "route-resource-");
+        boolean interactiveDesign = "true".equals(System.getenv("EAP_ROUTE_INTERACTIVE_DESIGN"));
+        var session = Files.createTempDirectory(Path.of("target").toAbsolutePath(),
+                interactiveDesign ? "interactive-design-" : "route-resource-");
         boolean realModel = "true".equals(System.getenv("EAP_ROUTE_REAL_MODEL"));
         String capturedResult = System.getenv("EAP_ROUTE_CAPTURED_RESULT");
         assertFalse(realModel && capturedResult != null, "Choose a fresh model call or explicit captured output, never both");
@@ -82,7 +84,7 @@ class RouteResourceDeliveryTest {
         var schema = "eap_unknown_qa_" + UUID.randomUUID().toString().replace("-", "");
         var admin = new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         try {
-            CurrentContractTestSchema.migrate(session, schema, "36");
+            CurrentContractTestSchema.migrate(session, schema, "37");
             var overrides = new SourceWriteReviewPersistenceTest.Overrides(ToolUnknownReviewFixture.scopedDataSource(schema), workspace);
             try (var context = new SpringApplicationBuilder(EapApplication.class)
                     .initializers(app -> ((GenericApplicationContext) app).registerBean(
@@ -100,6 +102,8 @@ class RouteResourceDeliveryTest {
                 Files.writeString(setup, JSON.writeValueAsString(Map.of("backend", backend)));
                 runBrowser("setup", setup);
                 var inputs = JSON.readTree(Files.readString(session.resolve("inputs.json")));
+                var interactionInstructions = interactiveDesign ? inputs.path("interactionInstructions").asString("") : "";
+                if (interactiveDesign) assertFalse(interactionInstructions.isBlank(), "Interactive design requires explicit behavioral criteria");
                 var changes = context.getBean(CodeChangeService.class);
                 var task = new TaskRef(inputs.path("project").asString(),
                         UUID.fromString(inputs.path("taskId").asString()), inputs.path("revision").asLong());
@@ -157,7 +161,8 @@ class RouteResourceDeliveryTest {
                             + "copy.json has title Delivery detail and description Bound source and verification evidence. "
                             + "detail.css imports './palette.css' using a standalone quoted @import line then .detail { color:var(--review-ink); padding:16px; }. "
                             + "palette.css defines :root { --review-ink:rgb(24,72,96); }. No other files, dependencies, APIs, network calls, timers or script side effects. "
-                            + "Preserve all existing functional contracts. Return complete source for the exact six selected paths in order.");
+                            + "Preserve all existing functional contracts. Return complete source for the exact six selected paths in order. "
+                            + interactionInstructions);
                     Files.writeString(session.resolve("real-model-request.json"), JSON.writeValueAsString(request));
                     var result = app.send(realConversation, JSON.writeValueAsString(Map.of("message",
                             "Deliver the saved overview/detail design as a working two-route page, preserving loading/failure states and local CSS/JSON dependencies.",
@@ -193,7 +198,7 @@ class RouteResourceDeliveryTest {
         var schema = "eap_unknown_qa_" + UUID.randomUUID().toString().replace("-", "");
         var admin = new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         try {
-            CurrentContractTestSchema.migrate(session, schema, "36");
+            CurrentContractTestSchema.migrate(session, schema, "37");
             var overrides = new SourceWriteReviewPersistenceTest.Overrides(ToolUnknownReviewFixture.scopedDataSource(schema), workspace);
             try (var context = new SpringApplicationBuilder(EapApplication.class)
                     .initializers(app -> ((GenericApplicationContext) app).registerBean(
@@ -229,7 +234,8 @@ class RouteResourceDeliveryTest {
     }
 
     private static void runBrowser(String mode, Path input) throws Exception {
-        var frontend = Path.of("../../..").toAbsolutePath().normalize().resolve("frontend");
+        var frontend = Path.of(System.getenv().getOrDefault("EAP_ACCEPTANCE_FRONTEND",
+                Path.of("../../..").toAbsolutePath().normalize().resolve("frontend").toString()));
         var command = new ProcessBuilder("vp", "node", "apps/web/__tests__/browser/route-resource-delivery-live.mjs", mode, input.toString())
                 .directory(frontend.toFile()).inheritIO();
         command.environment().keySet().removeIf(key -> key.startsWith("EAP_DB_"));

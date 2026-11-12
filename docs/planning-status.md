@@ -1,6 +1,6 @@
 # 规划状态与验收台账
 
-> 更新日期：2026-11-12。当前本地 HEAD 为 `797c7cd`（源码写入 UNKNOWN 核对）；后续规划、工程 Agent、资源和交接改动仍在工作区。提交身份依据本地 Git，本轮文档整理未查询远端或提交/推送。
+> 更新日期：2026-11-12。当前本地 HEAD 为 `3147e64`；本轮在其上推进设计交互到源码的端到端验证，保留既有主方案任务粒度调整。提交身份依据本地 Git，未查询远端或提交/推送。
 
 本表是工作项当前状态的唯一台账；[主方案](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md)维护产品合同与验收要求，[路线图](roadmap.md)维护推进顺序，[阶段验证记录](records/validation-history.md)保存详细命令、失败与证据。实现、确定性模型、真实供应商、技术 ACCEPT 和用户接受分别记录。
 
@@ -28,19 +28,19 @@
 | 统一图标 | `@eap/ui` Icon/name入口与内部本地Lucide资源包已实现，首批工作台/Tag/Tree迁移；全量574项、类型/边界/构建、真实浅深主题及最终独立审查通过，见[记录](records/frontend-history.md#frontend-icons) | 其余管理页面/历史演示字符按语义迁移，不将领域SVG/正文标点机械替换；不是全仓清零 |
 | UI-04 Code/Work | 共用会话和模型路径；Work回答可编辑为Markdown文档、显式保存本机草稿、重开及下载，390px实际整链通过。 | 首片为本机文档处理，非Word/PDF或外部办公系统工具执行；模型办公内容质量与用户接受独立。 |
 | SC-01/02 场景 | 配置、设计、版本、准备已分面；CAS 保存/删除；save 失败后远端核对；**该切片**：mock「模拟保存断连」落盘+502→`unknown`（`:5174` 已验） | 用户产品接受仍待；真实交付及依赖授权闭环；不把可变配置revision当不可变设计版本 |
-| CP-01/02/03 输入与策略 | 目标/模式/审批分别建模，只读规划及绑定任务的有界源码Agent已接入；按需工具读取→持久候选→明确人工应用，真实供应商与最终窄屏审批分别通过，见[当前验证](#engineering-agent-validation)；未接通路径仍禁用 | 后台与跨重启推理恢复、其他工具范围及用户接受独立；不以局部布局通过代替全体验接受 |
-| MD-01 模型连接 | 凭据/目录/白名单/强度已有；追加普通API显式wireApi及Responses文本/代码提案，协议变更revision/重绑定、Git拒绝和前端/mock合同已实现并通过离线回归，见[决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验) | 原连接Responses真实文本与SQL Agent两轮工具、审批写入已验；其他网关/模型/推理档位、Responses Chat Git/账户计划工具及用户最终接受仍待 |
+| CP-01/02/03 输入与策略 | 目标/模式/审批分别建模，只读规划及绑定任务的有界源码Agent已接入；按需工具读取→持久候选→明确人工应用，真实供应商与最终窄屏审批分别通过；本轮空助手等待仅匹配当前inflight轮次，历史恢复/流式/终态及中英文回归通过，见[交互交付记录](records/validation-history.md#interactive-source-delivery-validation)及[当前验证](#engineering-agent-validation)；未接通路径仍禁用 | 后台与跨重启推理恢复、其他工具范围及用户接受独立；不以局部布局通过代替全体验接受 |
+| MD-01 模型连接 | 凭据/目录/白名单/强度已有；本轮Responses以单一180秒有限总时钟替换原45秒总时钟，连接/空闲读取/写入与取消分别保留，53项定向回归及真实交互生成整链通过，见[证据](records/validation-history.md#interactive-source-delivery-validation)；追加普通API显式wireApi及Responses文本/代码提案，协议变更revision/重绑定、Git拒绝和前端/mock合同已实现并通过离线回归，见[决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验) | 原连接Responses真实文本与SQL Agent两轮工具、审批写入已验；其他网关/模型/推理档位、Responses Chat Git/账户计划工具及用户最终接受仍待 |
 | EX-01 专家 | 父子导航、独立三栏编辑、任务摘要/按需详情、终态停止轮询与静默更新已交付，见[工作区合同](decisions/expert-workspace-navigation.md)；专业行为版本持久绑定、SQL Agent工具循环/检查点恢复/后台调度/单SQL文件审批已接通。真实Responses两轮整链及复杂SQL三类限定样例有独立证据；单专家授权知识→Chat、撤权/旧记忆隔离已有实库回归 | 新工作台原生125%/150%与用户接受；其他行为编辑器/资源整合、完整SQL作用域/生产效果；Chat引用不执行DAG或自动获得工具权限 |
-| PB-01 原型编辑 | Grapes工程与语义Schema含表单/选择/勾选/弹窗、三类声明式动作；字段校验、重置、开关、保存重开和不可变发布，版本详情直接创建关联任务，见[当前实现及验收](#interactive-design-validation) | 更丰富组件、设计到实际源码效果、原生缩放及用户接受独立 |
+| PB-01 原型编辑 | Grapes工程与语义Schema含表单/选择/勾选/弹窗、三类声明式动作；字段校验、重置、开关、保存重开和不可变发布，版本详情直接创建关联任务，见[原型验收](#interactive-design-validation)；新增隔离两路由六文件交互源码交付，确定性与真实供应商两条证据均完成390/1440px设计对照、表单/弹窗行为及独立验证，前三次实网失败与修复后通过分别记录于[本轮证据](records/validation-history.md#interactive-source-delivery-validation) | 更丰富组件、EAP自身业务页改造、原生缩放及用户产品接受独立 |
 | PB-02 生成基线 | 统一入口＋最多7个关联文件、原型及Task/revision快照；显式入口依赖读取和手工选集共用授权/预算/图语法，真实 HTTP 及390px浏览器通过，见[依赖准备验证](#dependency-preparation-validation)。明确字符串懒加载、本地 CSS/JSON 的候选图及交付沿用[跨路由验收](#route-resource-delivery-validation) | 任意TS语法、计算式路由、其他资源、快照保留期及用户产品接受仍后续 |
 | PB-03 受控应用 | 统一1～8文件持久候选/应用/全读回、互锁及POST_HOC/PREBOUND归因；[跨路由候选](#route-resource-delivery-validation)含按需页面、CSS 和 JSON；V36 [源码核对](#source-write-review-validation)保存原候选证据并释放互锁，可从当前基线新建候选 | 用户接受、计算式路由及其他资源、应用库V36迁移独立；不宣称跨文件OS事务/CAS |
-| PB-04/RK-5 独立验证 | Run独立typecheck/test/build及hash读回已实现；当前真实双路由六文件交付沿用[供应商整链](#real-route-model-validation)，早期04edef5数字见历史 | 当前frontend范围；检查成功不自动完成任务或形成用户接受 |
+| PB-04/RK-5 独立验证 | Run独立typecheck/test/build及hash读回已实现；真实双路由六文件交付沿用[供应商整链](#real-route-model-validation)，本轮表单/弹窗交互扩展同PB-01的独立验证及哈希读回通过；早期04edef5数字见历史 | 当前frontend范围；检查成功不自动完成任务或形成用户接受 |
 | 源码交付证据与人工决定 | **EXTERNAL_MANUAL 切片实现及联调通过**，见 [阶段记录](records/delivery-history.md#board-source-delivery) | 实际样例完成采集/同源验证/接受/过期拒绝/拒绝回待处理/刷新；不是平台自动开发或用户最终接受 |
 | Chat应用→交付关联 | POST_HOC（544b8f9）与PREBOUND（69892f3）原阶段保留；当前统一1～8文件应用集合，逐项核对原快照/写入/验证/交付；真实双路由六文件整链已验，见[供应商证据](#real-route-model-validation) | POST_HOC不证明生成时任务归因；用户产品接受和更广页面范围仍待，不把原切片本身当供应商效果 |
 | 生成前任务绑定 | PREBOUND任务/原型快照、应用领取互锁与归因已交付；入口＋0～7关联文件在生成前固定，明确字符串懒加载及本地 CSS/JSON 纳入[真实供应商验证](#real-route-model-validation)；[原阶段数字](records/delivery-history.md#code-task-prebinding)保留 | 用户接受、其他模型/路由框架与更广页面效果及整体PB/RK独立 |
 | RK-1～4/6 看板准备与只读Run | 已实现持久任务、revision/幂等、只读Run、原型快照和审阅；原任务规划→人工回写→ready→源码准备→候选确认应用已验，见[规划链](#board-task-planning-validation)；应用后可明确进入原任务执行页、精确读取及刷新恢复，见[交接验证](#application-task-continuation-validation) | 自主实现Run、后台Agent及跨重启接管独立；交接不启动Run、验证或接受，不自动放开任意拖done |
 | CT-01 生命周期 | SSE/cancel/快照/同ID重连保留；2026-11-08应用线程执行、断线继续、Spring AI/Responses流、完整行脱敏、事件预算/终态/并发修复，见评审记录 | 真实供应商及用户接受待验；日志仍进程内，持久回放/跨重启接管未实现 |
-| RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与测试接受/拒绝决定已有刷新回放 | EAP自身改页完整证据、SQL实际任务证据及用户接受；不重复开发已有决定回放 |
+| RV-01 证据工作面 | 摘要/源文件/Diff/终端按会话，Run按次选择；源码交付与技术决定刷新回放。自身候选首次打开非首文件Diff修复已真实生成、明确应用，完整类型/测试/构建及390/1440组件6/6通过。V37写前全frontend基线及严格漂移核对经实库回归；另建完整EAP工作区显式重放同一真实输出，应用→完整验证→交付→原型对照→技术ACCEPT→刷新读回通过，见[本轮记录](records/validation-history.md#self-page-diff-focus-delivery) | 限定自身Diff切片完成；原真实调用的409记录保留无ACCEPT，新工作区重放单列。更多自身业务页、SQL实际任务证据及用户产品接受独立；日常应用库/常驻服务未升级，不重复开发已有决定回放 |
 | Skill | 文本上传/粘贴及本地文本目录、嵌套路径、来源确认、不可变版本、CAS启停、Chat精确引用已接入，见[目录验证](#skill-directory-validation)；自定义场景持久ID声明、真实目录状态、会话精确选版/资源到模型材料的整链已补齐，见[场景引用](#scenario-skill-validation)；旧数字保留于[历史记录](records/resource-history.md#skill-text-import) | 多技能同时引用、远端仓库及超出文本子集的资源仍待；不执行脚本或授予工具权限，不支持通用Mock YAML解析；真实供应商效果与用户接受独立 |
 | MCP-01 / P0 | 保留四传输/矩阵/续传；2026-11-08增加固定read_graph Handler、持久专家grant、精确服务器匹配、环境白名单、有界IO/进程树清理；真实子进程协议夹具覆盖 | 官方memory包通过Expert入口的本机实网验收、常驻GET listen待验；运行时npx离线且拒绝自动安装 |
 | Knowledge/SQL/CLI | 保留既有确定性实现与管理；本轮真实本地知识导入/搜索/授权预览/无授权403/删除一致性通过，检索无模型；正文原位更新、哈希并发校验和命中词摘录已验，见[更新证据](#knowledge-document-update-validation)；复杂SQL修复parse.partial与NOT IN NULL规则，四组合成结果验证通过，见[知识与本地执行边界](decisions/knowledge-local-execution.md) | 不可变文档历史、检索质量评测、完整SQL作用域/生产数据与性能验证、CLI生命周期回归；不扩第二套执行器 |
@@ -58,7 +58,7 @@
 | KR-02 / FW-01 条件后续 | 当前保留Spring AI，未采用向量增强或LangChain4j迁移 | KR-01证明检索不足再评估增强；明确协作需求/可复现框架阻碍后独立批准同条件对照，记录兼容/正确性/成本/取消与迁移回归；不长期双循环 |
 | 桌面与安装器 | Electron45 preload壳、bootstrap检测脚手架 | Windows sidecar、一体启动/停止、迁移失败/恢复、包验证；签名需要用户凭据及发行决定 |
 | Mock契约与总体质量 | 网络保护持续启用；前轮34项回归已修；本轮SSE CRLF/分块/多行data、畸形拒绝、每帧1Mi UTF-16上限与final及时释放；各次全量与定向结果见[阶段记录](records/validation-history.md)，按日期和范围区分 | 其他供应商场景、后台恢复/全页面视口与用户接受不随之关闭；单帧限额不是总内存/总流上限 |
-| 最终验收 | **未完成** | EAP自身实际改页、完整证据链、用户交互接受；已验证/跳过/外部阻塞分别列明 |
+| 最终验收 | **未完成** | 自身Diff限定技术交付完成；更多自身业务页及全站证据、用户交互接受仍独立待验，已验证/跳过/外部阻塞分别列明 |
 | 后端runtime拆分 | 已由applications/full接替；唯一Boot主类与配置/迁移资源保留；旧五模块记录为历史 | 当前IDEA原配置/full宿主启动已验证；跨环境部署与实库业务接受独立，不由离线Bean图替代 |
 | BM-01～07 后端模块组合 | 十四轮边界调整及SQL证据修复已交付：唯一full宿主、core/local/Chat最小组合、显式完整装配、领域/存储/分析/授权端口、CLI通道下沉、codegen/context去workflow依赖、固定流程及版本化专业行为、SQL Agent持久恢复/后台调度/单文件审批；IDEA原配置启动已验。详见[实施与复用入口](decisions/backend-module-composition.md#implementation)及上方验证表 | 产品目录/CLI程序登记审批、Chat产品用例/工具贡献继续解耦；workflow仍依赖SQL/MCP，旧DAG长事务、领域schema及跨环境组合未收口；通用写工具、UNKNOWN人工处置、生产SQL效果及用户接受独立 |
 

@@ -28,8 +28,10 @@ class BoardApplicationEvidenceTest {
     private BoardRunService.Snapshot runTask;
     private String principal = AiConversationRegistry.PRINCIPAL, status = "APPLIED";
     private Instant finished = now.plusSeconds(1), started = now;
-    private final BoardApplicationEvidence service = new BoardApplicationEvidence(proposals, generations);
+    private final BoardApplicationBaseline baselines=mock(BoardApplicationBaseline.class);
+    private final BoardApplicationEvidence service = new BoardApplicationEvidence(proposals, generations, baselines);
     private BoardApplicationEvidence.Evidence associate() {
+        when(baselines.required(anyString(),any(),any(),anyString())).thenReturn(new BoardApplicationBaseline.Baseline("repo","base",source,now));
         when(proposals.find(AiConversationRegistry.PRINCIPAL, conversation, id)).thenReturn(Optional.of(new CodeProposalStore.Stored(principal, proposal, status, applied, "", started, finished)));
         when(generations.find(any())).thenReturn(Optional.of(generation));
         var plan = new BoardVerificationPlanSupport.Plan("plan", "repo", "base", source, List.of());
