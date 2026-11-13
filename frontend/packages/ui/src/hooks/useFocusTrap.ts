@@ -16,6 +16,23 @@ export function useEscClose(onEscape: () => void) {
   }
 }
 
+function isAvailable(node: HTMLElement) {
+  if (node.matches(':disabled, input[type="hidden"]')) return false
+  for (let current: HTMLElement | null = node; current; current = current.parentElement) {
+    const style = getComputedStyle(current)
+    if (
+      current.hidden ||
+      current.inert ||
+      current.hasAttribute('inert') ||
+      style.display === 'none' ||
+      style.visibility === 'hidden' ||
+      style.visibility === 'collapse'
+    )
+      return false
+  }
+  return true
+}
+
 export function useFocusTrap(
   root: Ref<HTMLElement | null>,
   options: {
@@ -24,19 +41,35 @@ export function useFocusTrap(
   } = {},
 ) {
   let previousFocus: HTMLElement | null = null
+  let disposed = false
   const close = options.onEscape ? useEscClose(options.onEscape) : null
 
   onMounted(() => {
     previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     void nextTick(() => {
       const node = root.value
-      if (!node) return
-      ;(options.initial?.(node) ?? node).focus()
+      if (!node || disposed) return
+      const initial = options.initial?.(node)
+      ;(initial && isAvailable(initial) ? initial : node).focus()
     })
   })
 
   onBeforeUnmount(() => {
-    if (previousFocus?.isConnected) previousFocus.focus()
+    disposed = true
+    const node = root.value
+    // Let the host remove the modal and release inert before restoring its opener.
+    void nextTick(() => {
+      const active = document.activeElement
+      // A caller may explicitly focus a newly created item or another modal.
+      if (
+        active &&
+        active !== document.body &&
+        active !== document.documentElement &&
+        !node?.contains(active)
+      )
+        return
+      if (previousFocus?.isConnected && isAvailable(previousFocus)) previousFocus.focus()
+    })
   })
 
   function onKeydown(event: KeyboardEvent) {
@@ -45,14 +78,21 @@ export function useFocusTrap(
       return
     }
     if (event.key !== 'Tab' || !root.value) return
-    const controls = Array.from(root.value.querySelectorAll<HTMLElement>(FOCUSABLE))
+    const controls = Array.from(root.value.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+      (node) => node.tabIndex >= 0 && isAvailable(node),
+    )
     const first = controls[0]
     const last = controls.at(-1)
-    if (!first || !last) return
-    if (event.shiftKey && document.activeElement === first) {
+    if (!first || !last) {
+      event.preventDefault()
+      root.value.focus()
+      return
+    }
+    const outsideSequence = !controls.includes(document.activeElement as HTMLElement)
+    if (event.shiftKey && (document.activeElement === first || outsideSequence)) {
       event.preventDefault()
       last.focus()
-    } else if (!event.shiftKey && document.activeElement === last) {
+    } else if (!event.shiftKey && (document.activeElement === last || outsideSequence)) {
       event.preventDefault()
       first.focus()
     }

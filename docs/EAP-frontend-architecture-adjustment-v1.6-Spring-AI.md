@@ -14,7 +14,7 @@ PL-01/PL-02与SC-03的历史提交及生命周期验证见[阶段记录](records
 
 | 范围 | 已有实现 / 阶段证据 | 尚未关闭的关口 |
 |---|---|---|
-| 工作面与共享UI | 五入口；场景配置/任务准备、Builder设计/版本/历史、看板任务/原型/执行审阅；主题与共享组件；统一UI Icon/name入口；EditorWorkbench三栏布局已接专家固定流程、SQL Agent及GrapesJS | 已完成16入口1440/390逐页走查及代表弹窗焦点/失败/草稿验证；其他系统缩放、完整辅助技术矩阵、管理页图标迁移及用户接受 |
+| 工作面与共享UI | 五入口；场景配置/任务准备、Builder设计/版本/历史、看板任务/原型/执行审阅；主题与共享组件；统一UI Icon/name入口；EditorWorkbench三栏布局已接专家固定流程、SQL Agent及GrapesJS；共享弹窗已补容器起点反向Tab、动态不可用控件过滤、无可用操作时保持焦点及卸载后回焦，见[局部验证](evidence/dialog-focus/README.md) | 已完成16入口1440/390逐页走查及代表弹窗焦点/失败/草稿验证；其他系统缩放、完整辅助技术矩阵、管理页图标迁移及用户接受 |
 | 全站工作面与开发基础设施（目标4～8） | 规则列表/详情/单条编辑、SQL试算/词表分面；知识/资料/技能/CLI/MCP表单及插件诊断按需打开；request独立传输与UI FileUpload；Mock独立Node服务，删除旧模式/演示分支和无效测试 | 真实Chromium已走查16入口×1440/390两种视口及8组HTTP/页面交互（含窄屏焦点/未保存保护）；前端149文件921项、typecheck/build/architecture及受影响质量检查通过；整合结果见[台账](planning-status.md#product-workspaces)。系统缩放、完整辅助技术矩阵及用户产品接受独立 |
 | 原型与本地上下文 | GrapesJS语义映射含表单/选择/勾选/弹窗及声明式开关/提交/重置，草稿保存重开、不可变版本、版本创建任务及Task/Run原型快照；显式入口＋最多7个关联文件，路由模块、页面、CSS与JSON共享完整基线；明确字符串的本地懒加载纳入同一图，详情区分加载类型 | 更丰富设计状态/动作映射及设计到源码效果、计算式路由与其他资源类型、用户设计交互接受 |
 | 源码与交付 | 统一1～8文件持久基线/候选/应用，POST_HOC/PREBOUND；任务候选重启恢复；[两路由六文件](planning-status.md#route-resource-delivery-validation)在完整应用和 Chromium 中通过受控应用、独立验证、按需加载及失败展示、技术决定与刷新读回；V36新增[源码UNKNOWN人工核对与恢复](planning-status.md#source-write-review-validation)；[工程Agent](planning-status.md#engineering-agent-validation)已接绑定任务的按需快照工具循环和人工应用，真实供应商及最终窄屏布局分别通过 | 用户产品接受、计算式路由及其他资源；V36应用库迁移独立。工程Agent仍绑定当前请求，不承诺后台或跨重启推理恢复、多文件OS事务/CAS，不把Git Run归因为作者 |
