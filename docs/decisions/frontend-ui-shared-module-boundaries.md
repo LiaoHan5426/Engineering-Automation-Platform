@@ -176,6 +176,8 @@ FileUpload 的 `directory` 属性提供浏览器本地目录选择，保持 File
 
 **叠层约定**：内容模态用 `Dialog`（约 z-index 50）；破坏性确认用 `ConfirmBox`（高于 Dialog）。禁止混用原生 top-layer `<dialog>.showModal()` 与 ConfirmBox 而不做叠层验证。
 
+**键盘合同（2026-11-14局部修复）**：二者共用现有 `ui/src/hooks/useFocusTrap.ts`，仍按 §3 暂存，不新增包。每次Tab只纳入当前可用控件，容器起点支持正反向进入；无可用控件时将焦点留在带 `tabindex="-1"` 的模态根节点。初始控件禁用时回退根节点，卸载后等待Vue完成DOM/inert更新再回焦仍连接且可用的原触发器。已搜索原语并复用；无新增暂存或业务编排。定向单测、架构检查及真实连接表单1440/390对照见[验证记录](../evidence/dialog-focus/README.md)；生成候选页面、全站焦点与辅助技术矩阵另验。
+
 ## 7. 与插件 / 原型规划的关系
 
 - **Plugin**：UI 工作台插件走 `@eap/plugin-sdk` / runtime；Skill、MCP、CLI 不是 UI 插件包。  

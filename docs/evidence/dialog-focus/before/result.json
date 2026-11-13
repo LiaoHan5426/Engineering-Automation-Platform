@@ -1,0 +1,21 @@
+{
+  "phase": "before",
+  "scenario": "Settings → Add connection → initial Shift+Tab",
+  "mock": true,
+  "results": [
+    {
+      "width": 1440,
+      "height": 900,
+      "theme": "default light",
+      "initialReverseTabContained": false,
+      "pageErrors": []
+    },
+    {
+      "width": 390,
+      "height": 900,
+      "theme": "default light",
+      "initialReverseTabContained": false,
+      "pageErrors": []
+    }
+  ]
+}

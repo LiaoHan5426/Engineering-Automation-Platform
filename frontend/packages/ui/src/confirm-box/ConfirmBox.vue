@@ -40,6 +40,7 @@ const { onKeydown } = useFocusTrap(root, {
       class="eap-confirm"
       role="dialog"
       aria-modal="true"
+      tabindex="-1"
       :aria-label="title"
       @keydown="onKeydown"
     >
