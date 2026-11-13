@@ -1,6 +1,6 @@
 # 规划状态与验收台账
 
-> 更新日期：2026-11-13。本批从 `33dcc9e` 接续，按用户要求将当前前后端实现、测试与文档归入同一条本地提交；PB-01限定设计及源码交付现状统一见[当前行](#pb-01-design-delivery)，各切片合同与证据见[设计交付索引](records/design-delivery-index.md)。保留前轮Flyway基线、可选测试数据及既有业务结论；未查询远端或推送。本次提交前回归单列于[提交验证](records/validation-history.md#implementation-commit-validation)。
+> 更新日期：2026-11-14。本次核查的实现基线为 `14963359ad093634f003a1ba215f7dc661fcae47`，核查时与获取后的 `origin/main` 一致；前后端实现及文档已在该提交中，不再标作未提交工作。本次仅整理文档，不修改产品实现、日常数据库或常驻服务。进度和风险见下表及[待推进问题](#next-work-register)，本轮检查与环境限制见[复核记录](records/validation-history.md#development-readiness-review)。PB-01各切片仍按[设计交付索引](records/design-delivery-index.md)区分结果；[11月13日提交验证](records/validation-history.md#implementation-commit-validation)保留为历史证据。
 
 本表是工作项当前状态的唯一台账；[主方案](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md)维护产品合同与验收要求，[路线图](roadmap.md)维护推进顺序，[阶段验证记录](records/validation-history.md)保存详细命令、失败与证据。实现、确定性模型、真实供应商、技术 ACCEPT 和用户接受分别记录。
 
@@ -15,7 +15,8 @@
 | 规划与任务交接 | planned→只读规划→人工回写→ready→实现材料→候选应用，以及应用后精确打开原任务/刷新恢复已验 | [规划链](records/validation-history.md#board-task-planning-validation)、[交接](records/validation-history.md#application-task-continuation-validation)；交接不自动启动 Run 或验证 |
 | 资源与上下文 | Skill 文本目录/场景精确引用、知识原位更新/摘录、历史字符预算/显式清空/摘要采用、任务记忆编辑及 Work Markdown 已有阶段证据 | Fake 模型与实库/浏览器证据按项分列；远端 Skill、多技能并用、自动压缩、精确 token 和办公工具执行仍待 |
 | 已开发内容复核 | 修正工具失败终态、迁移弃用API、收敛聊天附件入口、保护原型任务草稿及明确失败后的修正；按用户反馈补查聊天工具栏，合并工作区/源文件重复文件树 | 见[首轮证据](records/validation-history.md#developed-content-review-validation)及[工具栏补查](records/validation-history.md#chat-toolbar-review-correction)；首轮遗漏已明确，侧边栏浏览器与定向回归分列，非全量产品接受 |
-| 本轮文档核对 | 已核对相关源码、8份留存 Surefire 报告（各1项，0失败/错误/跳过）及关键证据文件存在 | 属于留存结果复核，非本轮重跑；报告可被后续运行覆盖，不拼成当前全量结果 |
+| 早期文档核对（历史） | 当时记录核对相关源码、8份留存 Surefire 报告（各1项，0失败/错误/跳过）及关键证据文件存在 | 非2026-11-14重跑；构建目录证据未入Git，本隔离检出不能据此声称已读取原产物 |
+| 2026-11-14开发准备复核 | 修正基线/迁移与验收轮次漂移，集中列缺陷/风险/优化关闭条件；已安装JDK25、Maven、Vite+，完成确定性检查 | 本轮只改文档；类型/架构/Web构建/领域合同及后端10类58项定向通过，前端全量因Builder SSR存储访问失败、完整reactor因Windows Junction测试未通过；真实模型/浏览器/实库未复验范围见[本轮证据](records/validation-history.md#development-readiness-review) |
 | 最终接受 | 尚未完成 | 用户产品接受、更多真实页面效果、全页面系统缩放和发行分别验收；不计算整体完成百分比 |
 
 ## 工作项当前状态
@@ -32,7 +33,7 @@
 | CP-01/02/03 输入与策略 | 目标/模式/审批分别建模，只读规划及绑定任务的有界源码Agent已接入；按需工具读取→持久候选→明确人工应用，真实供应商与最终窄屏审批分别通过；本轮空助手等待仅匹配当前inflight轮次，历史恢复/流式/终态及中英文回归通过，见[交互交付记录](records/validation-history.md#interactive-source-delivery-validation)及[当前验证](#engineering-agent-validation)；未接通路径仍禁用 | 后台与跨重启推理恢复、其他工具范围及用户接受独立；不以局部布局通过代替全体验接受 |
 | MD-01 模型连接 | 凭据/目录/白名单/强度已有；本轮Responses以单一180秒有限总时钟替换原45秒总时钟，连接/空闲读取/写入与取消分别保留，53项定向回归及真实交互生成整链通过，见[证据](records/validation-history.md#interactive-source-delivery-validation)；追加普通API显式wireApi及Responses文本/代码提案，协议变更revision/重绑定、Git拒绝和前端/mock合同已实现并通过离线回归，见[决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验) | 原连接Responses真实文本与SQL Agent两轮工具、审批写入已验；其他网关/模型/推理档位、Responses Chat Git/账户计划工具及用户最终接受仍待 |
 | EX-01 专家 | 父子导航、独立三栏编辑、任务摘要/按需详情、终态停止轮询与静默更新已交付，见[工作区合同](decisions/expert-workspace-navigation.md)；专业行为版本持久绑定、SQL Agent工具循环/检查点恢复/后台调度/单SQL文件审批已接通。真实Responses两轮整链及复杂SQL三类限定样例有独立证据；单专家授权知识→Chat、撤权/旧记忆隔离已有实库回归 | 新工作台原生125%/150%与用户接受；其他行为编辑器/资源整合、完整SQL作用域/生产效果；Chat引用不执行DAG或自动获得工具权限 |
-| <a id="pb-01-design-delivery"></a>PB-01 原型编辑 | **分切片技术验证，产品接受待确认**：交互原型、多行字段、独立表单、正式看板创建/已有任务目标优化、可筛选列表及详情双字段编辑已有各自限定证据；详情隔离源码整链及技术ACCEPT刷新读回通过。当前批代码保真修复已有离线回归及五阶段一致性证据；本地新增正式实现、真实发布/双字段优化与候选应用、独立检查通过。范围与分阶段结果见[设计交付索引](records/design-delivery-index.md)；当前代码纳入本地提交，离线回归及跳过项见[提交验证](records/validation-history.md#implementation-commit-validation)。 | 当前批保真复验及本地新增的生成页交互未完成整链ACCEPT：焦点约束/恢复及后续关闭控件定位失败分别保留，见[本批证据](records/validation-history.md#task-list-create-design-delivery)；先定向核对弹窗焦点与验收定位，再复验受影响整链。已有切片不据此撤销或扩大完成范围；更多组件/自身业务页、原生缩放和用户产品接受仍待。日常库新V1初始化、常驻服务升级独立核对，源码应用仅在隔离工作区。 |
+| <a id="pb-01-design-delivery"></a>PB-01 原型编辑 | **分切片技术验证，产品接受待确认**：交互原型、多行字段、独立表单、正式看板创建/已有任务目标优化、可筛选列表及详情双字段编辑已有各自限定证据；详情隔离源码整链及技术ACCEPT刷新读回通过。当前批代码保真修复已有离线回归及五阶段一致性证据；本地新增正式实现、真实发布/双字段优化与候选应用、独立检查通过。范围与分阶段结果见[设计交付索引](records/design-delivery-index.md)；当前代码已纳入 `1496335`，历史离线回归及跳过项见[提交验证](records/validation-history.md#implementation-commit-validation)。 | 当前批保真复验及本地新增的生成页交互未完成整链ACCEPT：最终焦点约束/恢复缺陷与较早候选的关闭控件失败分别保留，见[本批证据](records/validation-history.md#task-list-create-design-delivery)；先定向核对弹窗焦点与验收定位，再复验受影响整链。已有切片不据此撤销或扩大完成范围；更多组件/自身业务页、原生缩放和用户产品接受仍待。日常库新V1初始化、常驻服务升级独立核对，源码应用仅在隔离工作区。 |
 | PB-02 生成基线 | 统一入口＋最多7个关联文件、原型及Task/revision快照；显式入口依赖读取和手工选集共用授权/预算/图语法，真实 HTTP 及390px浏览器通过，见[依赖准备验证](#dependency-preparation-validation)。明确字符串懒加载、本地 CSS/JSON 的候选图及交付沿用[跨路由验收](#route-resource-delivery-validation) | 任意TS语法、计算式路由、其他资源、快照保留期及用户产品接受仍后续 |
 | PB-03 受控应用 | 统一1～8文件持久候选/应用/全读回、互锁及POST_HOC/PREBOUND归因；[跨路由候选](#route-resource-delivery-validation)含按需页面、CSS 和 JSON；V36 [源码核对](#source-write-review-validation)保存原候选证据并释放互锁，可从当前基线新建候选 | 用户接受、计算式路由及其他资源、应用库显式重新初始化独立（V36能力已合入新V1）；不宣称跨文件OS事务/CAS |
 | PB-04/RK-5 独立验证 | Run独立typecheck/test/build及hash读回已实现；真实双路由六文件交付沿用[供应商整链](#real-route-model-validation)，本轮表单/弹窗交互扩展同PB-01的独立验证及哈希读回通过；早期04edef5数字见历史 | 当前frontend范围；检查成功不自动完成任务或形成用户接受 |
@@ -63,6 +64,25 @@
 | 后端runtime拆分 | 已由applications/full接替；唯一Boot主类与配置/迁移资源保留；旧五模块记录为历史 | 当前IDEA原配置/full宿主启动已验证；跨环境部署与实库业务接受独立，不由离线Bean图替代 |
 | BM-01～07 后端模块组合 | 十四轮边界调整及SQL证据修复已交付：唯一full宿主、core/local/Chat最小组合、显式完整装配、领域/存储/分析/授权端口、CLI通道下沉、codegen/context去workflow依赖、固定流程及版本化专业行为、SQL Agent持久恢复/后台调度/单文件审批；IDEA原配置启动已验。详见[实施与复用入口](decisions/backend-module-composition.md#implementation)及上方验证表 | 产品目录/CLI程序登记审批、Chat产品用例/工具贡献继续解耦；workflow仍依赖SQL/MCP，旧DAG长事务、领域schema及跨环境组合未收口；通用写工具、UNKNOWN人工处置、生产SQL效果及用户接受独立 |
 
+
+<a id="next-work-register"></a>
+
+## 待推进问题与关闭条件
+
+以下是上表剩余关口的可执行索引，不把实现缺口或静态风险写成已复现故障。优先级表示建议处理顺序，不是新增实现授权；业务代码本轮未变。每次关闭问题应同步对应工作项及阶段证据，不能仅删除此处说明。
+
+| 优先级 / 工作项 | 性质与当前证据 | 下一步与关闭条件 |
+|---|---|---|
+| P0 / PB-01 生成页弹窗 | **历史验收缺陷未关闭**：第七轮生成页Tab逸出弹窗；第一/四轮另有关闭按钮或定位失败，属于不同候选，不能描述为第七轮后重试。正式实现局部通过不证明生成页通过。见[轮次证据](records/validation-history.md#task-list-create-design-delivery)与[验收脚本](../frontend/apps/web/__tests__/browser/task-list-create-live.mjs) | 固定失败候选和生成源码/原型版本，定向验证关闭按钮、Tab/Shift+Tab循环、Escape及关闭后焦点恢复；分清产品缺口和选择器错误，再复验受影响的候选→应用→独立检查→交付→技术ACCEPT/刷新。用户产品接受另记。 |
+| P1 / CT-01 Chat恢复 | **能力边界**：[执行日志](../backend/eap-ai/eap-ai-chat/src/main/java/com/lh/eap/ai/ChatExecutionJournal.java)使用进程内Map；普通断线续观察已实现，重启/逐出后不能取回执行日志 | 先明确持久推理/事件保留与接管合同；重启、事件预算、取消、授权变化和旧Run读回分别验收。不能用同JVM重连通过代替跨重启恢复。 |
+| P1 / BM 旧DAG执行 | **静态架构风险，非已测故障**：[executeGraph](../backend/eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service/ExpertExecutionService.java)在90秒REPEATABLE_READ事务内运行工具及模型增强；[workflow依赖](../backend/eap-engine/eap-engine-workflow/pom.xml)仍含SQL/MCP/JDBC | 先测慢外部调用时事务/连接占用，再设计短事务快照、外部调用和提交前复检的分段边界；保留取消/授权/失败恢复。SQL Agent已有的短事务与后台检查点不代表旧DAG已替换；跨模块拆分需单独评审。 |
+| P1 / EX-01 SQL UNKNOWN | **安全围栏已有，人工闭环缺口**：[审批恢复](../backend/eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service/ExpertAgentApprovalService.java)仅投影APPLIED/FAILED；UNKNOWN只核对、不重放。通用源码核对关闭候选不等于专家Run/Task恢复完成 | 明确SQL专家人工处置、证据审计与Run/Task投影合同；以写前/写后失联和重启故障注入证明无重复写入，并验收人工核对后的可继续/终止路径。不得靠自动重试解除UNKNOWN。 |
+| P1 / Mission UNKNOWN | **有意保守的功能边界**：[Mission执行](../backend/eap-engine/eap-engine-workflow/src/main/java/com/lh/eap/application/service/MissionGitExecutionService.java)重启只标记未确认，open记录阻止重复start；[回归](../backend/eap-applications/eap-full-application/src/test/java/com/lh/eap/application/service/MissionGitExecutionServiceTest.java)保留同一Run。人工解除尚未实现 | 单独定义Mission证据核对/人工解除入口与审计；证明重启不重复启动，解除不虚构进程已退出。不套用工具域CLOSED_UNKNOWN或将此写作取消失败。 |
+| P1 / Builder回归 | **本轮复现**：[Builder多实例渲染测试](../frontend/apps/web/__tests__/features/plugins/builderView.test.ts)通过Node SSR加载组件，setup调用[scopedPrototypeStorage](../frontend/apps/web/src/features/shell/prototypeDrafts.ts)默认读取不存在的 `localStorage`，抛ReferenceError；前端1031项中此1项失败 | 先明确组件setup的存储依赖与Node渲染测试合同，保持多实例隔离断言，修复后定向及全量复跑。不以补装浏览器、全局垫片或删除SSR断言掩盖根因；本次未证明普通浏览器页面同样失败。 |
+| P1 / 后端跨平台回归 | **本轮复现的测试前置缺陷**：[Junction回归](../backend/eap-engine/eap-engine-local/src/test/java/com/lh/eap/application/service/FileExecutionArtifactStoreTest.java)无条件调用Windows `cmd.exe mklink /J`，本Linux检出传入Linux路径，创建返回1，尚未进入越界拒绝断言；全量reactor因此未通过 | 先建立Windows junction与Linux symlink的对应平台前置条件/安全断言，再分别跑回归及完整reactor。保留失败，不关闭保护、不放宽断言；这不能证明产物存储已发生越界写入。本次只记录，未改测试。 |
+| P1 / 数据与常驻服务 | **部署前置**：代码已是单一V1，日常库仍未初始化；当前检出和历史常驻服务不能视为同一版本。见[迁移记录](records/validation-history.md#flyway-fresh-baseline) | 在明确目标库及数据处置授权后再重置；核对full宿主、配置和前端资源同版，跑授权范围内实库/启动/恢复检查。本次未修改日常库或常驻服务。 |
+| P2 / 公共弹窗与多实例 | **静态风险/覆盖缺口，未作浏览器复现**：[焦点原语](../frontend/packages/ui/src/hooks/useFocusTrap.ts)按可聚焦选择器取首尾，但未过滤隐藏/inert等动态状态；[任务列表](../frontend/apps/web/src/features/shell/PrototypeTaskList.vue)使用全局查询及固定表单错误id，多实例同时编辑可能发生焦点/ARIA串实例。现有正向Tab检查不覆盖完整矩阵 | 定向验证Shift+Tab、隐藏/禁用当前控件、无可聚焦项、确认框busy及关闭后DOM更新，再测试两个合法列表实例的错误回焦与ARIA唯一性。确认问题后在共享原语/组件实例内修复；不得仅改生成提示词或把静态怀疑写成所有弹窗已坏。 |
+| P2 / 前端构建与质量 | **优化机会/待复验**：本轮Web生产构建通过，但报告大chunk（含编辑器与设计器）；历史全量format/stylelint失败不等同本轮复现。见[本轮命令](records/validation-history.md#development-readiness-review) | 先按实际入口测首屏/按需加载再决定拆包，不通过提高告警阈值掩盖问题。若接手格式/样式债，先重现并界定范围；根目录build入口和应用目录build分别记录。 |
 
 ## 后续顺序
 
