@@ -137,7 +137,7 @@ flowchart TD
 | CliRetentionConfiguration | 新应用的同名配置 | 通用保留期装配可下沉spring，产品策略留应用 |
 | BuiltinResourceSeeder | 新应用 | 完整产品内置专家播种；基础库加载不能写数据库 |
 | application.yml及外置配置约定 | 新应用resources | 内容/本机值不改；部署外置配置与工作目录显式核对，不把本机配置当模板重写 |
-| db/migration全部已存在SQL | 新应用resources/db/migration | 文件名、内容/校验和不变；保留classpath位置且每份资源只能出现一次；不clean/repair/baseline |
+| db/migration全部已存在SQL | 新应用resources/db/migration | **宿主拆分阶段**保持文件名/校验和不变、资源唯一；后续经授权的V1～V37合并已形成[单V1基线](../records/validation-history.md#flyway-fresh-baseline)。当前新库用V1，已有日常库需明确授权重置；不得自动clean/repair/baseline |
 | experts/sql-expert.json | 新应用resources | 内置产品资源随应用；通用规则/Chat资源仍随所属库 |
 | META-INF/spring-devtools.properties | 新应用resources | 更新子JAR匹配范围，避免同包跨加载器；重导入与真实重启单列 |
 | 跨模块/启动/持久化门控测试 | 新应用src/test/java | 保留断言与环境门禁；纯单元测试再按实际依赖移动；库不能反向引用应用测试 |

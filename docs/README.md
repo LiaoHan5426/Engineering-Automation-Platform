@@ -6,7 +6,7 @@
 
 | 目的 | 文档 |
 |---|---|
-| 看当前进度和后续关口 | [路线图](roadmap.md)、[完整规划状态](planning-status.md) |
+| 看当前进度和后续关口 | [路线图](roadmap.md)、[完整规划状态](planning-status.md)、[缺陷/风险/优化及关闭条件](planning-status.md#next-work-register) |
 | 查阶段实施与验证的完整记录 | [主题记录总览](records/README.md) |
 | **约束：个人本机 + 本地服务（必读）** | [running-context](running-context.md) |
 | 理解平台架构和 Spring AI 边界 | [architecture](architecture.md) |
@@ -32,7 +32,7 @@
 
 ## 验收证据入口（按阶段区分）
 
-- [当前验证与待验项](planning-status.md#validation-baseline)：列明当前限定能力与剩余关口；[阶段验证记录](records/validation-history.md)按日期区分全量、定向、Fake与真实供应商结果。本次文档整理未重跑应用验收。
+- [当前验证与待验项](planning-status.md#validation-baseline)：列明当前限定能力与剩余关口；[阶段验证记录](records/validation-history.md)按日期区分全量、定向、Fake与真实供应商结果。[开发准备复核](records/validation-history.md#development-readiness-review)单列本轮工具链安装与确定性检查；真实模型/浏览器/实库业务验收未重跑。
 - [近期工程与资源证据](records/validation-history.md#engineering-agent-validation)：源码Agent、规划回写、应用后任务交接、Skill目录/场景引用、知识更新、历史摘要及Work文档；真实供应商跨路由交付见[独立记录](records/validation-history.md#real-route-model-validation)。
 - [工作台交互记录](records/frontend-history.md#expert-workspace-evolution)：三栏编辑及审批UI技术检查，fixture写入与真实本地编辑分别标注；新工作台原生缩放和用户接受仍待。
 - [SQL Agent真实Responses整链](records/backend-composition-history.md#responses-tools-acceptance)：两轮取证/候选、页面审批、独立读回及重启终态；[复杂SQL限定样例](records/backend-composition-history.md#complex-sql-acceptance)不代表完整SQL效果或用户接受。

@@ -953,9 +953,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File backend/target/board-ai-
 
 <a id="task-list-create-locator-review"></a>
 
-## 列表新增源码后续定位复核（2026-11-13文档核对）
+## 列表新增源码早期轮次定位复核（2026-11-13文档核对，11月14日校正轮次口径）
 
-本次仅读取已有产物，未重跑模型或浏览器。下列两次均标记`FAILED`，供应商字段为`real configured model; fresh generation`；不能以候选应用或独立检查推导整链通过，早期Tab焦点失败仍保留。
+11月13日核对仅读取当时已有产物，未重跑模型或浏览器；11月14日以本节与上文相同产物ID交叉核对，以下分别是**第四轮和第一轮**，不是第七轮Tab失败后的新生成。二者当时均标记`FAILED`，供应商字段为`real configured model; fresh generation`；不能以候选应用或独立检查推导整链通过。第七轮Tab焦点失败仍是未关闭的最终记录，当前干净检出没有原构建产物，未复读其内容。
 
 - [14284428458162384715/validation.json](../../backend/target/task-list-create-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-list-create-source-live-14284428458162384715/validation.json)：候选`bb6faba1-68fc-401b-a250-68bb54ceb77e`，编辑弹窗内按名称“关闭编辑”定位，`locator.click: Timeout 15000ms exceeded`。
 - [1629975388053380949/validation.json](../../backend/target/task-list-create-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-list-create-source-live-1629975388053380949/validation.json)：候选`855abfdd-e50f-4cb3-9bfb-1b50820a8000`，定位`[data-eap-dialog-close]`超时，同为`locator.click: Timeout 15000ms exceeded`。
@@ -1046,3 +1046,40 @@ Check links/paths and scripts when editing guidance. Module files specialize roo
 - 后端：在 `backend/target/commit-validation-20261113/backend` 的独立副本中通过 Maven reactor 运行全量测试，避免改动常驻 DevTools 使用的编译产物。Surefire 共214份报告、1152测试，首次1006通过、145条件跳过、1失败、0错误；唯一失败是 `SchemaAndWiringTest.everyTableAndColumnIsCommented` 检出 `code_generation` 的 `task_project_id`、`task_id`、`task_revision`、`task_snapshot` 缺少注释。只补齐四条 `COMMENT ON COLUMN`，不执行数据库变更；隔离副本同步后运行 `rtk proxy mvn -f backend/target/commit-validation-20261113/backend/pom.xml -pl :eap-full-application -am -Dtest=SchemaAndWiringTest -Dsurefire.failIfNoSpecifiedTests=false test`，4项全部通过、reactor BUILD SUCCESS。综合保留原全量与修复定向证据后为1007通过、145跳过；不是修复后再次全量重跑。
 - 跳过/未验证：本轮未启用实库、真实模型、浏览器及外部 CLI 等显式环境门控验收；未重置日常数据库，未复验历史生成页失败，不以离线回归代替这些整链结果。
 - 提交整理：仅规范新增验收脚本的 CRLF/行尾空白；生成产物和隔离副本不入 Git。文档相对链接/锚点检查及暂存区空白检查在提交前再次执行。
+
+<a id="development-readiness-review"></a>
+
+## 2026-11-14：开发准备复核与工具链安装
+
+### 范围与证据口径
+
+本轮隔离检出的实现基线为 `14963359ad093634f003a1ba215f7dc661fcae47`，获取后与当时 `origin/main` 一致。已读前后端模块、关键恢复/审批/交付实现与测试，并核对现行合同、工作项及历史验收；修改仅文档，没有改产品代码/测试。当前工作项唯一见[台账](../planning-status.md)，建议缺陷优先级、风险和关闭条件见[问题索引](../planning-status.md#next-work-register)。
+
+当前检出不包含历史 `backend/target` 验收产物，不能复读11月13日的候选、截图或Surefire原报告；上节1007通过/145跳过仍为**原全量加修复定向的历史合并结果**。本次用已提交记录的相同产物ID确认列表新增定位复核是第一/四轮，并非第七轮之后的新复验。第七轮Tab逸出与另一源码保真切片焦点恢复失败均未关闭；未新生成候选或补记ACCEPT。
+
+### 初始失败与环境安装
+
+初始 Linux 环境无Java、JAVA_HOME无效、无Vite+/RTK/前端依赖；`python3 -B scripts/verify-domain-contracts.py` exit1（缺 `rg`），不算源码失败或通过。后续明确获准安装对应开发环境，完成用户级安装，未改Windows源目录、日常数据库或常驻服务：
+
+- Temurin JDK **25.0.5+8**：来自[Adoptium官方API](https://api.adoptium.net/v3/assets/latest/25/hotspot?architecture=x64&image_type=jdk&os=linux&vendor=eclipse)指向的官方发布，SHA-256与元数据及发布校验文件一致。`java -version`、`javac -version`通过；`javac --release 25`编译及最小Java程序离线运行通过。
+- Apache Maven **3.10.0**：来自[Apache官方发布](https://maven.apache.org/download.cgi)，SHA-512校验通过；`mvn --version`确认使用上述Linux JDK。环境脚本为用户目录 `.local/env/java-maven.sh`，保留原shell配置后追加加载，登录shell可自动取得Java/Maven；非交互任务显式source该脚本。
+- Vite+全局CLI **1.6.0**：使用[官方安装器](https://vite.plus/install.sh)（`CI=true VP_NODE_MANAGER=no VP_VERSION=1.6.0`），安装器校验平台包SHA-512。环境通过用户目录 `.config/vite-plus/env`加载，`vp env doctor`通过；系统Node路径为v24.11.1。仓库锁定的本地Vite+仍为 **1.5.1**，没有升级项目依赖。
+- `vp -C frontend install --frozen-lockfile` exit0，14个workspace、494个包、pnpm **12.9.0**；安装/检查过程中包管理器给锁文件追加了自身引导元数据，审查后恢复该生成差异，不将工具安装变成依赖升级。补装官方ripgrep **15.2.0**并校验SHA-256，供领域合同脚本执行。
+
+RTK本轮仍不可用，以下实际执行的是底层命令，不伪称使用了RTK。所有命令均在隔离检出执行；构建目录和本机环境配置不纳入PR。
+
+### 本轮实际检查
+
+| 检查 | 实际命令与结果 | 边界 |
+|---|---|---|
+| 前端全量 | `vp -C frontend test run` exit1；为保留完整日志原样再运行一次，仍exit1 | 168文件中167通过/1失败；1031项中1030通过/1失败。唯一失败为 `builderView.test.ts > renders separate Builder design instances without stacking legacy demonstrations`：Node SSR中 `GrapesEditorScaffold` setup调用 `scopedPrototypeStorage` 默认参数读取 `localStorage`，抛ReferenceError；不是缺Chrome/模型。历史Windows全量通过不能覆盖本次失败，未改代码或断言 |
+| 前端类型 | `vp -C frontend run typecheck` exit0 | Vue与vsh类型任务均通过 |
+| 前端架构 | `vp -C frontend run check:architecture` exit0，`vsh check: passed` | 边界与循环检查，不是页面交互验收 |
+| Web生产构建 | `vp -C frontend/apps/web build` exit0 | 大chunk警告仍在；未宣称仓库根build入口已修复 |
+| 领域状态/错误合同 | `python3 -B scripts/verify-domain-contracts.py` exit0 | 20状态域、23错误目录、527错误码、11双语资源对；安装rg后的新结果，与初始失败分列 |
+| 后端全量尝试 | `mvn -B -f backend/pom.xml test` exit1；再以 `mvn -B -fae -f backend/pom.xml test` 评估余下独立模块，仍exit1 | `FileExecutionArtifactStoreTest.rejectsJunctionOutsideArtifactRoot`无平台前置，无条件调用Windows `cmd.exe /c mklink /J`，Linux路径创建返回1（第22行断言）；尚未进入越界保护断言。fail-at-end共生成16类63项结果：62通过/1失败/0错误/0跳过；其余依赖模块被reactor跳过，不代表已跑全量或已通过 |
+| 后端定向 | `mvn -B -f backend/pom.xml -pl :eap-full-application -am -Dtest=BackendModuleBoundaryTest,FullApplicationCompositionTest,ManagementTransactionBoundaryTest,SchemaAndWiringTest,ChatExecutionJournalTest,MissionGitExecutionServiceTest,MissionRunOutcomeTest,MissionGitAuthorizationTest,SqlExpertAgentServiceTest,SqlExpertAgentSchedulerTest -Dsurefire.failIfNoSpecifiedTests=false test` exit0 | 10类58项通过，0失败/错误/跳过；显式选择边界/装配/模式/恢复测试，未排除或削弱全量失败的断言。不是全量绿灯，也不证明真实数据库或模型恢复 |
+
+文档提交前检查：9份改动均为Markdown、UTF-8无BOM，新增本地源码/文档链接及锚点核对通过，`git -c core.autocrlf=false diff --check`通过；保留的4个历史构建产物链接在当前检出不可用，已明确注明，不伪造新产物。前后端只读审计结果经交叉自审；环境旧口径与迁移/轮次矛盾已修正。安装产生的锁文件元数据已恢复，最终无产品源码/测试/依赖文件差异。
+
+未启用真实模型、真实浏览器、数据库写入/重置、外部CLI执行的显式门控；没有复验PB-01失败生成页面。定向FullApplicationCompositionTest使用mock JDBC/事务且关闭Flyway，不能称实库启动。静态风险（旧DAG长事务）、能力边界（Chat跨重启、SQL/Mission人工UNKNOWN处置）与本轮Junction测试失败分开记入台账。

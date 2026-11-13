@@ -1,8 +1,8 @@
 # Agent 能力、本地运行环境与插件演进
 
-> 当前已提交并推送基线为 `2450bf29fe4a2e47fef69b7f402426a31bc4146b`（任务持久候选审阅与正式重启恢复），提交沿用已有测试且未重跑。接续完成1～8文件组件图、证据页面及真实三文件 PREBOUND→候选→受控应用→独立验证→技术决定，当前新增尚未提交；开发库已迁移V33/V34。详见[当前验收台账](../planning-status.md#component-page-delivery-validation)。
+> 2026-11-14文档复核：当前实现基线为 `1496335`，已包含1～8文件组件图与证据页面等接续实现，不再标为未提交。真实三文件整链属于[历史阶段证据](../planning-status.md#component-page-delivery-validation)，本次未重复真实供应商验收；当前问题及下一关口统一见[台账](../planning-status.md#next-work-register)。V33/V34是当时开发库迁移记录，当前代码已合并为单一V1，日常库初始化另行授权。
 
-状态：有效合同与增量实现记录；已推送基线 `2450bf29fe4a2e47fef69b7f402426a31bc4146b`。当前接续组件图/完整证据页面及V33/V34新增尚未提交，真实三文件整链通过，见[台账](../planning-status.md#component-page-delivery-validation)。开发演进以根[AGENTS.md](../../AGENTS.md#development-evolution)为权威，无旧JSON/单文件执行兼容路径。历史五组收敛及先前阶段证据保留。
+状态：有效合同与增量实现记录。开发演进以根[AGENTS.md](../../AGENTS.md#development-evolution)为权威，无旧JSON/单文件执行兼容路径。下文历史五组收敛及先前阶段证据按当时基线阅读；当前Chat进程内恢复、旧DAG长事务和UNKNOWN人工闭环的边界不能由某个源码交付切片外推完成。
 
 ## 1. 结论与适用范围
 
