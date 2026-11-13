@@ -1,0 +1,23 @@
+{
+  "phase": "before",
+  "scenario": "Add connection → enter name → Escape",
+  "mock": true,
+  "results": [
+    {
+      "width": 1440,
+      "height": 900,
+      "theme": "default light",
+      "dirtyCloseProtected": false,
+      "pageErrors": [],
+      "writes": []
+    },
+    {
+      "width": 390,
+      "height": 900,
+      "theme": "default light",
+      "dirtyCloseProtected": false,
+      "pageErrors": [],
+      "writes": []
+    }
+  ]
+}
