@@ -9,6 +9,10 @@
     var(--eap-color-warning) 35%,
     var(--eap-fill-color-blank)
   );
+  --eap-color-ai: #69449c;
+  --eap-color-ai-soft: #f3edff;
+  --eap-color-ai-border: #c9b5e8;
+  --eap-color-ai-hover: #e9ddfb;
   --eap-chart-accent: var(--eap-color-info);
   --eap-chart-accent-soft: var(--eap-color-info-soft);
   --eap-code-bg: var(--eap-fill-color-light);

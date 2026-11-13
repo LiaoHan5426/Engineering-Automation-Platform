@@ -32,6 +32,8 @@ import { createModelBackend } from './modelBackend.ts'
 import { createKnowledgeBackend } from './knowledgeBackend.ts'
 import { createDatabaseBackend } from './databaseBackend.ts'
 import { createBoardBackend } from './boardBackend.ts'
+import { createTaskDetailBackend } from './taskDetailBackend.ts'
+import { createTaskDescriptionBackend } from './taskDescriptionBackend.ts'
 import { createSkillBackend, validSkillTaskFields } from './skillBackend.ts'
 import { createScenarioBackend } from './scenarioBackend.ts'
 import { createMockCapabilityBackend } from './capabilityBackend.ts'
@@ -139,6 +141,8 @@ export function createMockChatBackend() {
   const skillBackend = createSkillBackend()
   const scenarioBackend = createScenarioBackend(() => versions.length)
   const databaseBackend = createDatabaseBackend()
+  const taskDetailBackend = createTaskDetailBackend()
+  const taskDescriptionBackend = createTaskDescriptionBackend()
   const boardBackend = createBoardBackend((id) => versions.some((version) => version.id === id))
   const effective = () =>
     connections.items.find(
@@ -168,6 +172,10 @@ export function createMockChatBackend() {
           source: 'mock-memory',
           note: 'Simulated service; no analysis tasks or model calls have run.',
         })
+      const detailOptimization = taskDetailBackend.handle(method, path, body)
+      if (detailOptimization) return detailOptimization
+      const optimization = taskDescriptionBackend.handle(method, path, body)
+      if (optimization) return optimization
       const scenario = scenarioBackend.handle(method, requestUrl, body)
       if (scenario) return scenario
       const skill = skillBackend.handle(method, path, body)

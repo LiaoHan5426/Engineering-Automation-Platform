@@ -48,7 +48,7 @@ function createState(schema: Ref<PrototypeSchema>) {
     }
     const fields: PrototypeNode[] = []
     const collect = (node: PrototypeNode) => {
-      if (['input', 'checkbox', 'select'].includes(node.kind)) fields.push(node)
+      if (['input', 'textarea', 'checkbox', 'select'].includes(node.kind)) fields.push(node)
       node.children.forEach(collect)
     }
     collect(target)

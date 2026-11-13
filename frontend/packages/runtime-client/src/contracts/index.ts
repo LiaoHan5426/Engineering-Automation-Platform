@@ -58,6 +58,7 @@ export { CliProgramErrors } from '../errors/cliProgramErrors.ts'
 
 export { GitErrors } from '../errors/gitErrors.ts'
 
+export * from './prototypeTaskList.ts'
 export * from './prototypeSchema.ts'
 export * from './prototypeInteraction.ts'
 

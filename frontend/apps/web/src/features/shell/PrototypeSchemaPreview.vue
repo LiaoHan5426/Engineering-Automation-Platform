@@ -18,7 +18,7 @@ const { t } = useI18n()
     }}</Feedback>
     <template v-else>
       <p class="preview-boundary">{{ t('editor.interaction.boundary') }}</p>
-      <PrototypeNodeView :key="schema.updatedAt" :node="schema.root" />
+      <PrototypeNodeView :key="JSON.stringify(schema)" :node="schema.root" />
     </template>
   </section>
 </template>

@@ -539,7 +539,7 @@ class BoardRunPersistenceTest {
     }
     private record AppliedDeliveryFixture(DeliveryFixture fixture, BoardDeliveryService.Request request, com.lh.eap.delivery.CodeChangeService.Proposal proposal) {}
     private AppliedDeliveryFixture appliedDeliveryFixture() throws Exception {
-        assertTrue(jdbc.queryForObject("SELECT pg_get_constraintdef(oid) LIKE '%CHAT_APPLIED_POST_HOC%' FROM pg_constraint WHERE conname='board_delivery_shape' AND conrelid='eap.board_task_run'::regclass", Boolean.class), "V15 not loaded: application delivery persistence is blocked; do not reset/repair the database");
+        assertTrue(jdbc.queryForObject("SELECT pg_get_constraintdef(oid) LIKE '%CHAT_APPLIED_POST_HOC%' FROM pg_constraint WHERE conname='board_delivery_shape' AND conrelid='eap.board_task_run'::regclass", Boolean.class), "Current application delivery constraint is missing; do not reset/repair the database");
         var conversation = UUID.randomUUID();
         var proposal = new java.util.concurrent.atomic.AtomicReference<com.lh.eap.delivery.CodeChangeService.Proposal>();
         var principal = com.lh.eap.ai.AiConversationRegistry.PRINCIPAL;
@@ -665,7 +665,7 @@ class BoardRunPersistenceTest {
         var decided=applicationDeliveryService(f,process).decide(f.task().id(),f.execution(),reject);
         assertEquals(delivery.applicationEvidence(),decided.applicationEvidence()); assertEquals("ready",tasks.find(f.task().id(),project,false).column()); org.mockito.Mockito.verifyNoInteractions(process);
     }
-    @Test void v15RequiresCompletePostHocEvidenceAndRetainsExternalManual() throws Exception {
+    @Test void currentBaselineRequiresCompletePostHocEvidenceAndRetainsExternalManual() throws Exception {
         var fixture=appliedDeliveryFixture(); var f=fixture.fixture(); var service=applicationDeliveryService(f,executor);
         var delivery=service.submit(f.task().id(),f.execution(),fixture.request());
         var json=tools.jackson.databind.json.JsonMapper.builder().build();

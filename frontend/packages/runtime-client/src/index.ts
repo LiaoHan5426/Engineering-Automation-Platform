@@ -103,6 +103,15 @@ import { ModelErrors } from './errors/modelErrors'
 import { ToolErrors } from './errors/toolErrors'
 import { createRequestClient, openStream, type RequestClient } from '@eap/request'
 import { createExpertAgentApi } from './expertAgent'
+import { createTaskDescriptionApi } from './taskDescription'
+import { createTaskDetailApi } from './taskDetail'
+export { createTaskDetailApi, isTaskDetailFields } from './taskDetail'
+export type { TaskDetailOptimizationRequest, TaskDetailOptimization } from './taskDetail'
+export { createTaskDescriptionApi } from './taskDescription'
+export type {
+  TaskDescriptionOptimizationRequest,
+  TaskDescriptionOptimization,
+} from './taskDescription'
 export type {
   ExpertAgentInput,
   ExpertAgentSummary,
@@ -170,6 +179,8 @@ const gitOperationApi = {
 
 export const runtimeApi = {
   ...createExpertAgentApi(client),
+  ...createTaskDescriptionApi(client),
+  ...createTaskDetailApi(client),
   scenarios: () => get<{ items: ScenarioSnapshot[] }>('/scenarios'),
   scenarioWorkflowDependencies: (signal?: AbortSignal) =>
     client

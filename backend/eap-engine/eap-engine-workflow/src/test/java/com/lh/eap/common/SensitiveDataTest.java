@@ -4,6 +4,25 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 class SensitiveDataTest {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+            "const token = epoch; if (token === epoch) refresh();",
+            "let token = epoch; if (token == epoch) refresh();",
+            "var token = epoch; if (token !== epoch) refresh();"})
+    void sourceReferencesAreNotCredentialLiteralsButTextRedactionStaysConservative(String source) {
+        assertFalse(SensitiveData.containsSecretInSource(source));
+        assertTrue(SensitiveData.containsSecret(source));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"token=epoch", "const token = 'epoch';",
+            "const token = 12345;", "const token = epoch + suffix;", "token === 'secret-value'", "token === epoch suffix",
+            "const token = sk; // sk-proj-synthetic-credential", "jdbc:postgresql://fixture/db",
+            "Authorization: Bearer fixture-credential", "-----BEGIN PRIVATE KEY-----fixture"})
+    void ambiguousAssignmentsAndExplicitSignaturesStillBlockSource(String source) {
+        assertTrue(SensitiveData.containsSecretInSource(source));
+    }
+
     @Test void doesNotTreatTaskAndMaskIdentifiersAsCredentialLiterals() {
         String source = "<section class=\"task-context\">mask-image task-state</section>";
         assertFalse(SensitiveData.containsSecret(source));

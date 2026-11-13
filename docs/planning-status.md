@@ -1,6 +1,6 @@
 # 规划状态与验收台账
 
-> 更新日期：2026-11-12。当前本地 HEAD 为 `3147e64`；本轮在其上推进设计交互到源码的端到端验证，保留既有主方案任务粒度调整。提交身份依据本地 Git，未查询远端或提交/推送。
+> 更新日期：2026-11-13。本批从 `33dcc9e` 接续，按用户要求将当前前后端实现、测试与文档归入同一条本地提交；PB-01限定设计及源码交付现状统一见[当前行](#pb-01-design-delivery)，各切片合同与证据见[设计交付索引](records/design-delivery-index.md)。保留前轮Flyway基线、可选测试数据及既有业务结论；未查询远端或推送。本次提交前回归单列于[提交验证](records/validation-history.md#implementation-commit-validation)。
 
 本表是工作项当前状态的唯一台账；[主方案](EAP-frontend-architecture-adjustment-v1.6-Spring-AI.md)维护产品合同与验收要求，[路线图](roadmap.md)维护推进顺序，[阶段验证记录](records/validation-history.md)保存详细命令、失败与证据。实现、确定性模型、真实供应商、技术 ACCEPT 和用户接受分别记录。
 
@@ -10,6 +10,7 @@
 
 | 范围 | 截至本次整理的结论 | 证据与保留边界 |
 |---|---|---|
+| 数据库全新初始化 | V1～V37合并为单一V1，保留2个CLI程序/3项操作；可选示例任务独立手动生成。450项目录对照除9处注释更新外一致，Flyway校验/二次迁移、种子幂等及19项定向回归通过 | [重置证据](records/validation-history.md#flyway-fresh-baseline)；日常库尚未重置，原迁移历史须显式初始化后使用新基线 |
 | 工程交付 | 真实供应商双路由六文件候选→明确应用→独立验证→技术决定已验；绑定任务的有界源码 Agent 另有真实供应商验证 | [跨路由](records/validation-history.md#real-route-model-validation)、[Agent](records/validation-history.md#engineering-agent-validation)；Agent 后续预算/UI及交接修改使用 Fake 定向复验，没有重复供应商调用 |
 | 规划与任务交接 | planned→只读规划→人工回写→ready→实现材料→候选应用，以及应用后精确打开原任务/刷新恢复已验 | [规划链](records/validation-history.md#board-task-planning-validation)、[交接](records/validation-history.md#application-task-continuation-validation)；交接不自动启动 Run 或验证 |
 | 资源与上下文 | Skill 文本目录/场景精确引用、知识原位更新/摘录、历史字符预算/显式清空/摘要采用、任务记忆编辑及 Work Markdown 已有阶段证据 | Fake 模型与实库/浏览器证据按项分列；远端 Skill、多技能并用、自动压缩、精确 token 和办公工具执行仍待 |
@@ -31,9 +32,9 @@
 | CP-01/02/03 输入与策略 | 目标/模式/审批分别建模，只读规划及绑定任务的有界源码Agent已接入；按需工具读取→持久候选→明确人工应用，真实供应商与最终窄屏审批分别通过；本轮空助手等待仅匹配当前inflight轮次，历史恢复/流式/终态及中英文回归通过，见[交互交付记录](records/validation-history.md#interactive-source-delivery-validation)及[当前验证](#engineering-agent-validation)；未接通路径仍禁用 | 后台与跨重启推理恢复、其他工具范围及用户接受独立；不以局部布局通过代替全体验接受 |
 | MD-01 模型连接 | 凭据/目录/白名单/强度已有；本轮Responses以单一180秒有限总时钟替换原45秒总时钟，连接/空闲读取/写入与取消分别保留，53项定向回归及真实交互生成整链通过，见[证据](records/validation-history.md#interactive-source-delivery-validation)；追加普通API显式wireApi及Responses文本/代码提案，协议变更revision/重绑定、Git拒绝和前端/mock合同已实现并通过离线回归，见[决定](decisions/model-catalog-and-chat-selection.md#普通api连接的协议选择2026-11-05实现与离线回归通过实网待验) | 原连接Responses真实文本与SQL Agent两轮工具、审批写入已验；其他网关/模型/推理档位、Responses Chat Git/账户计划工具及用户最终接受仍待 |
 | EX-01 专家 | 父子导航、独立三栏编辑、任务摘要/按需详情、终态停止轮询与静默更新已交付，见[工作区合同](decisions/expert-workspace-navigation.md)；专业行为版本持久绑定、SQL Agent工具循环/检查点恢复/后台调度/单SQL文件审批已接通。真实Responses两轮整链及复杂SQL三类限定样例有独立证据；单专家授权知识→Chat、撤权/旧记忆隔离已有实库回归 | 新工作台原生125%/150%与用户接受；其他行为编辑器/资源整合、完整SQL作用域/生产效果；Chat引用不执行DAG或自动获得工具权限 |
-| PB-01 原型编辑 | Grapes工程与语义Schema含表单/选择/勾选/弹窗、三类声明式动作；字段校验、重置、开关、保存重开和不可变发布，版本详情直接创建关联任务，见[原型验收](#interactive-design-validation)；新增隔离两路由六文件交互源码交付，确定性与真实供应商两条证据均完成390/1440px设计对照、表单/弹窗行为及独立验证，前三次实网失败与修复后通过分别记录于[本轮证据](records/validation-history.md#interactive-source-delivery-validation) | 更丰富组件、EAP自身业务页改造、原生缩放及用户产品接受独立 |
+| <a id="pb-01-design-delivery"></a>PB-01 原型编辑 | **分切片技术验证，产品接受待确认**：交互原型、多行字段、独立表单、正式看板创建/已有任务目标优化、可筛选列表及详情双字段编辑已有各自限定证据；详情隔离源码整链及技术ACCEPT刷新读回通过。当前批代码保真修复已有离线回归及五阶段一致性证据；本地新增正式实现、真实发布/双字段优化与候选应用、独立检查通过。范围与分阶段结果见[设计交付索引](records/design-delivery-index.md)；当前代码纳入本地提交，离线回归及跳过项见[提交验证](records/validation-history.md#implementation-commit-validation)。 | 当前批保真复验及本地新增的生成页交互未完成整链ACCEPT：焦点约束/恢复及后续关闭控件定位失败分别保留，见[本批证据](records/validation-history.md#task-list-create-design-delivery)；先定向核对弹窗焦点与验收定位，再复验受影响整链。已有切片不据此撤销或扩大完成范围；更多组件/自身业务页、原生缩放和用户产品接受仍待。日常库新V1初始化、常驻服务升级独立核对，源码应用仅在隔离工作区。 |
 | PB-02 生成基线 | 统一入口＋最多7个关联文件、原型及Task/revision快照；显式入口依赖读取和手工选集共用授权/预算/图语法，真实 HTTP 及390px浏览器通过，见[依赖准备验证](#dependency-preparation-validation)。明确字符串懒加载、本地 CSS/JSON 的候选图及交付沿用[跨路由验收](#route-resource-delivery-validation) | 任意TS语法、计算式路由、其他资源、快照保留期及用户产品接受仍后续 |
-| PB-03 受控应用 | 统一1～8文件持久候选/应用/全读回、互锁及POST_HOC/PREBOUND归因；[跨路由候选](#route-resource-delivery-validation)含按需页面、CSS 和 JSON；V36 [源码核对](#source-write-review-validation)保存原候选证据并释放互锁，可从当前基线新建候选 | 用户接受、计算式路由及其他资源、应用库V36迁移独立；不宣称跨文件OS事务/CAS |
+| PB-03 受控应用 | 统一1～8文件持久候选/应用/全读回、互锁及POST_HOC/PREBOUND归因；[跨路由候选](#route-resource-delivery-validation)含按需页面、CSS 和 JSON；V36 [源码核对](#source-write-review-validation)保存原候选证据并释放互锁，可从当前基线新建候选 | 用户接受、计算式路由及其他资源、应用库显式重新初始化独立（V36能力已合入新V1）；不宣称跨文件OS事务/CAS |
 | PB-04/RK-5 独立验证 | Run独立typecheck/test/build及hash读回已实现；真实双路由六文件交付沿用[供应商整链](#real-route-model-validation)，本轮表单/弹窗交互扩展同PB-01的独立验证及哈希读回通过；早期04edef5数字见历史 | 当前frontend范围；检查成功不自动完成任务或形成用户接受 |
 | 源码交付证据与人工决定 | **EXTERNAL_MANUAL 切片实现及联调通过**，见 [阶段记录](records/delivery-history.md#board-source-delivery) | 实际样例完成采集/同源验证/接受/过期拒绝/拒绝回待处理/刷新；不是平台自动开发或用户最终接受 |
 | Chat应用→交付关联 | POST_HOC（544b8f9）与PREBOUND（69892f3）原阶段保留；当前统一1～8文件应用集合，逐项核对原快照/写入/验证/交付；真实双路由六文件整链已验，见[供应商证据](#real-route-model-validation) | POST_HOC不证明生成时任务归因；用户产品接受和更广页面范围仍待，不把原切片本身当供应商效果 |

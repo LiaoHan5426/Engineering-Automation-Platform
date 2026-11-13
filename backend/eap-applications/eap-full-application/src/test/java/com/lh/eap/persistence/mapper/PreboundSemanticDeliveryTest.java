@@ -13,7 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Real V31 failure -> V32 migration, PREBOUND source and durable application catalog in owned schema. */
+/** Current semantic constraints, PREBOUND source and durable application catalog in owned schema. */
 @EnabledIfEnvironmentVariable(named="EAP_RUN_SINGLE_CONTRACTS", matches="true")
 class PreboundSemanticDeliveryTest {
     @Test void semanticPrototypeBindsWithoutRemovedFieldsAndCatalogUsesExactDurableScope() throws Exception {
@@ -21,7 +21,7 @@ class PreboundSemanticDeliveryTest {
         String schema="eap_unknown_qa_"+UUID.randomUUID().toString().replace("-","");
         var admin=new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         try {
-            CurrentContractTestSchema.migrate(session,schema,"31");
+            CurrentContractTestSchema.migrate(session,schema);
             var source=ToolUnknownReviewFixture.scopedDataSource(schema);
             var jdbc=new JdbcTemplate(source);var manager=new DataSourceTransactionManager(source);
             var versions=new PrototypeVersionService(new JdbcPrototypeVersionStore(jdbc),new JdbcPrototypeDeliveryStore(jdbc));
@@ -38,9 +38,7 @@ class PreboundSemanticDeliveryTest {
             var store=new JdbcCodeProposalStore(jdbc, manager, com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc));
             var changes=new CodeChangeService(new RuntimeWorkspace(root,root.toString()),null,ignored->"",generations,store);
             var ref=new TaskRef(task.projectId(),task.id(),task.revision());var conversation=UUID.randomUUID();
-            assertThrows(RuntimeException.class,()->changes.prepareGeneration(RuntimeWorkspace.OPERATOR_LABEL,conversation,target,version.id().toString(),version.contentHash(),ref));
             assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM eap.code_generation",Integer.class));
-            CurrentContractTestSchema.migrate(session,schema,"37");
             var captured=changes.prepareGeneration(RuntimeWorkspace.OPERATOR_LABEL,conversation,target,version.id().toString(),version.contentHash(),ref);
             assertEquals(version,captured.taskSnapshot().prototype());
             var proposal=changes.proposePrepared(RuntimeWorkspace.OPERATOR_LABEL,conversation,captured.id(),
@@ -75,7 +73,7 @@ class PreboundSemanticDeliveryTest {
                     jsonb_set(task_snapshot,'{prototype}',?::jsonb)
                 FROM eap.code_generation WHERE id=?
                 """,UUID.randomUUID(),old.toString(),captured.id()));
-            // Immutability remains enforced; migration did not rewrite captured evidence.
+            // Captured evidence remains immutable under the current baseline.
             assertThrows(org.springframework.dao.DataAccessException.class,()->jdbc.update("UPDATE eap.code_generation SET task_snapshot=jsonb_set(task_snapshot,'{prototype}',?::jsonb) WHERE id=?",old.toString(),captured.id()));
         } finally {
             assertTrue(schema.matches("eap_unknown_qa_[a-f0-9]{32}"));admin.execute("DROP SCHEMA IF EXISTS "+schema+" CASCADE");

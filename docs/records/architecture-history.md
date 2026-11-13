@@ -77,7 +77,7 @@ V31增加request_id NOT NULL UNIQUE。迁移只对已有合规语义版本一次
 
 ### 数据库与验证边界
 
-新增[V30](../../backend/eap-applications/eap-full-application/src/main/resources/db/migration/V30__single_current_contracts.sql)，不修改V1～V29。该迁移不把旧自定义行为、CLI操作键或旧文本推断成新授权/设计，不自动删除旧行；遇不合规数据事务回滚。已知内置sql-expert按当前产品种子显式更新sql-analysis/v1，不作为其他专家默认。新原型哈希只覆盖sourceRef/title/body/acceptance；原已保存哈希作为冻结证据回读，没有运行时双算法分支。
+新增V30（历史文件`backend/eap-applications/eap-full-application/src/main/resources/db/migration/V30__single_current_contracts.sql`；2026-11-13已合入[当前V1](../../backend/eap-applications/eap-full-application/src/main/resources/db/migration/V1__initial_schema.sql)），不修改V1～V29。该迁移不把旧自定义行为、CLI操作键或旧文本推断成新授权/设计，不自动删除旧行；遇不合规数据事务回滚。已知内置sql-expert按当前产品种子显式更新sql-analysis/v1，不作为其他专家默认。新原型哈希只覆盖sourceRef/title/body/acceptance；原已保存哈希作为冻结证据回读，没有运行时双算法分支。
 
 真实SingleContractAcceptanceTest在UUID自有schema执行V1～V29，插入旧CLI键/缺行为专家后证明V30拒绝且回滚，移除自有故障行后迁到V30。生产HTTP/JDBC验证程序绑定/清除、status/diff真实Git及同requestId幂等、旧invoke404、专家缺行为拒绝/显式版本保存→启用→执行→改版本停用→再启用→历史仍保留原行为、语义版本发布/回读及交付唯一。临时仓库工作文件和Git索引字节保持。
 

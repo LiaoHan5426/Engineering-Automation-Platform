@@ -11,12 +11,12 @@ import tools.jackson.databind.json.JsonMapper;
 /** Evaluate the actual migrated PostgreSQL check, including attribution and complete set limits. */
 @EnabledIfEnvironmentVariable(named="EAP_RUN_SINGLE_CONTRACTS",matches="true")
 class ComponentDeliveryConstraintTest {
- @Test void replacesRootOnlyConstraintWithoutRelaxingTaskIdentityOrFileLimits()throws Exception {
+ @Test void currentConstraintAcceptsComponentFilesWithoutRelaxingTaskIdentityOrFileLimits()throws Exception {
   String schema="eap_unknown_qa_"+UUID.randomUUID().toString().replace("-","");
   var directory=Files.createTempDirectory(Path.of("target"),"component-delivery-");
   var admin=new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
   try {
-   CurrentContractTestSchema.migrate(directory,schema,"33");
+   CurrentContractTestSchema.migrate(directory,schema);
    var jdbc=new JdbcTemplate(ToolUnknownReviewFixture.scopedDataSource(schema));
    UUID task=UUID.randomUUID();String hash="a".repeat(64);
    var evidence=new LinkedHashMap<String,Object>();
@@ -30,9 +30,7 @@ class ComponentDeliveryConstraintTest {
    delivery.put("sourceHash",hash);delivery.put("prototypeVersionId",null);delivery.put("goal","Goal");delivery.put("acceptanceCriteria","Files checked");delivery.put("note","Technical evidence");
    delivery.put("createdAt","2026-11-10T02:00:00Z");delivery.put("decision",null);delivery.put("applicationEvidence",evidence);
    var files=List.of(Map.of("path","frontend/Page.vue","afterHash",hash),Map.of("path","frontend/Part.vue","afterHash",hash),Map.of("path","frontend/model.ts","afterHash",hash));delivery.put("files",files);
-   assertFalse(check(jdbc,schema,task,delivery));
    delivery.put("files",List.of(files.getFirst()));assertTrue(check(jdbc,schema,task,delivery));
-   CurrentContractTestSchema.migrate(directory,schema,"34");
    delivery.put("files",files);assertTrue(check(jdbc,schema,task,delivery));
    evidence.put("taskBinding",Map.of("projectId","graph","taskId",UUID.randomUUID(),"revision",2));assertFalse(check(jdbc,schema,task,delivery));
    evidence.put("taskBinding",Map.of("projectId","graph","taskId",task,"revision",2));

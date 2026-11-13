@@ -1,3 +1,4 @@
+import { prototypeTaskListProblems } from './prototypeTaskList'
 import { prototypeInteractionProblems } from './prototypeInteraction'
 
 export type PrototypeNode = {
@@ -27,8 +28,10 @@ export const PROTOTYPE_KINDS = [
   'heading',
   'button',
   'input',
+  'textarea',
   'link',
   'list',
+  'task-list',
   'form',
   'select',
   'checkbox',
@@ -56,6 +59,7 @@ export function deliveryBlockers(schema: PrototypeSchema): string[] {
     reasons.push(`unknown_mappings:${schema.unknownMappings.join(',')}`)
   }
   walk(schema.root, (node) => {
+    reasons.push(...prototypeTaskListProblems(node))
     if (!KNOWN_KINDS.has(node.kind) && !schema.unknownMappings.includes(node.kind)) {
       reasons.push(`unregistered_kind:${node.kind}`)
     }
@@ -106,7 +110,11 @@ export function parsePrototypeSchema(raw: string): PrototypeSchema | null {
       Array.isArray(parsed.grapesProject)
     )
       return null
-    if (prototypeInteractionProblems(parsed).length) return null
+    let invalidTasks = false
+    walk(parsed.root, (node) => {
+      if (prototypeTaskListProblems(node).length) invalidTasks = true
+    })
+    if (invalidTasks || prototypeInteractionProblems(parsed).length) return null
     return parsed
   } catch {
     return null

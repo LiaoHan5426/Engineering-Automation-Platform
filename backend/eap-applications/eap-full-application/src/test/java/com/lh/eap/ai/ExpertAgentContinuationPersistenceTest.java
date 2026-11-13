@@ -47,7 +47,7 @@ class ExpertAgentContinuationPersistenceTest extends CodeProposalPersistenceFixt
     private CodeChangeService changes;
 
     @BeforeEach void configure() {
-        assertTrue(Boolean.TRUE.equals(jdbc.queryForObject("SELECT to_regclass('eap.expert_agent_run') IS NOT NULL", Boolean.class)), "V23 must be applied by the authorized host");
+        assertTrue(Boolean.TRUE.equals(jdbc.queryForObject("SELECT to_regclass('eap.expert_agent_run') IS NOT NULL", Boolean.class)), "Current initialization baseline must be applied by the authorized host");
         var rules = new RulePackService(jdbc);
         policies = new ExpertBehaviorCatalog(List.of(new ExpertBehaviorCatalog.Registration(SqlExpertAgentService.BINDING,
                 "SQL Agent", new SqlExpertAnalysisPolicy(rules, mock(SqlExpertService.class)), "agent", SqlExpertAgentService.TOOLS,

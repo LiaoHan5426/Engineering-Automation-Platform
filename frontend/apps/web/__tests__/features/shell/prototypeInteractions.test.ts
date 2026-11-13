@@ -19,6 +19,17 @@ const make = () => {
       children: [
         { id: 'name', kind: 'input', props: { label: '名称', required: true }, children: [] },
         {
+          id: 'description',
+          kind: 'textarea',
+          props: {
+            label: '说明',
+            placeholder: '详细说明',
+            initialValue: '第一行说明\n第二行说明',
+            required: true,
+          },
+          children: [],
+        },
+        {
           id: 'type',
           kind: 'select',
           props: { label: '类别', required: true, options: ['界面', '功能'] },
@@ -64,7 +75,10 @@ const button = (label: string) =>
   [...document.querySelectorAll<HTMLButtonElement>('button')].find(
     (node) => node.textContent?.trim() === label,
   )!
-const change = async (node: HTMLInputElement | HTMLSelectElement, value: string) => {
+const change = async (
+  node: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
+  value: string,
+) => {
   node.value = value
   node.dispatchEvent(new Event(node.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }))
   await nextTick()
@@ -76,11 +90,17 @@ it('validates a complete form, resets it and isolates interaction state from sav
   document.body.append(host)
   app = createApp({ render: () => h(Preview, { schema: schema.value }) })
   app.use(i18n).mount(host)
+  const description = host.querySelector<HTMLTextAreaElement>('textarea')!
+  expect(description.value).toBe('第一行说明\n第二行说明')
+  expect(description.required).toBe(true)
+  expect(description.placeholder).toBe('详细说明')
+  await change(description, ' \n ')
   button('提交').click()
   await nextTick()
-  expect(host.querySelectorAll('[aria-invalid=true]')).toHaveLength(3)
+  expect(host.querySelectorAll('[aria-invalid=true]')).toHaveLength(4)
   await change(host.querySelector('input:not([type=checkbox])')!, '新任务')
   await change(host.querySelector('select')!, '功能')
+  await change(description, '修改第一行\n修改第二行')
   host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click()
   button('提交').click()
   await nextTick()
@@ -90,6 +110,7 @@ it('validates a complete form, resets it and isolates interaction state from sav
   await nextTick()
   expect(host.querySelector<HTMLInputElement>('input:not([type=checkbox])')!.value).toBe('')
   expect(host.querySelector<HTMLInputElement>('input[type=checkbox]')!.checked).toBe(false)
+  expect(description.value).toBe('第一行说明\n第二行说明')
   expect(host.textContent).not.toContain('预览提交完成')
   button('说明').click()
   await nextTick()
@@ -118,7 +139,7 @@ it('refuses dangling or incompatible actions, duplicate IDs, and malformed selec
       schema.root.children[1]!.id = 'form'
     },
     (schema: ReturnType<typeof make>) => {
-      schema.root.children[0]!.children[1]!.props.options = ['重复', '重复']
+      schema.root.children[0]!.children[2]!.props.options = ['重复', '重复']
     },
   ]) {
     const schema = make()

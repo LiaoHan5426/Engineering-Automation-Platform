@@ -164,3 +164,22 @@
   outline: 3px solid var(--eap-color-primary-focus);
   outline-offset: 2px;
 }
+
+.eap-button--ai {
+  color: var(--eap-color-ai);
+  background: var(--eap-color-ai-soft);
+  border: 1px solid var(--eap-color-ai-border);
+}
+.eap-button--ai:hover:not(:disabled) {
+  background: var(--eap-color-ai-hover);
+}
+.eap-button--ai:focus-visible {
+  outline-color: var(--eap-color-ai);
+}
+.eap-button--success {
+  color: var(--eap-color-on-primary);
+  background: var(--eap-color-success);
+}
+.eap-button--success:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--eap-color-success) 85%, var(--eap-text-color-primary));
+}

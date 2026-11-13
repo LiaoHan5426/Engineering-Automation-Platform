@@ -4,6 +4,8 @@ withDefaults(
     label?: string
     variant?:
       | 'primary'
+      | 'ai'
+      | 'success'
       | 'secondary'
       | 'ghost'
       | 'danger'

@@ -21,7 +21,7 @@ class CodeApplicationBaselinePersistenceTest {
         String schema="eap_unknown_qa_"+UUID.randomUUID().toString().replace("-","");
         var admin=new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         try {
-            CurrentContractTestSchema.migrate(session,schema,"37");
+            CurrentContractTestSchema.migrate(session,schema);
             var ds=ToolUnknownReviewFixture.scopedDataSource(schema);var jdbc=new JdbcTemplate(ds);var manager=new DataSourceTransactionManager(ds);
             var root=Files.createDirectory(session.resolve("workspace")).toRealPath();Files.createDirectory(root.resolve("frontend"));
             Files.writeString(root.resolve("frontend/Page.vue"),"before");Files.writeString(root.resolve("frontend/dirty.ts"),"dirty");

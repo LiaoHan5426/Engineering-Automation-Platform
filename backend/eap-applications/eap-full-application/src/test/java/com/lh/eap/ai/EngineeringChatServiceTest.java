@@ -280,6 +280,76 @@ class EngineeringChatServiceTest {
         assertEquals(16384, outcome.answer().length());
         assertEquals(CliExecution.Status.SUCCEEDED, outcome.execution().status());
     }
+    @Test void codeProposalKeepsOriginalBytesIncludingIdentifierReferences() {
+        String source = "const token = epoch;\r\nif (token === epoch) refresh(); // 中文";
+        String proposal = proposal(source);
+        for (String answer : List.of(proposal, "```json\n" + proposal + "\n```")) {
+            var outcome = service(p -> text(answer), null).chat(request(false), false, null,
+                    TaskContext.parse(Map.of("mode", "code")));
+            assertEquals("", outcome.error());
+            assertArrayEquals(answer.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    outcome.answer().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test void codeCandidateIsPersistedUnchangedOrRejectedBeforeProposalStore() throws Exception {
+        for (String source : List.of("const token = epoch; if (token === epoch) refresh();", "const token = 'fixture-secret';")) {
+            var generations = new InMemoryCodeGenerationStore();
+            var proposals = new InMemoryCodeProposalStore();
+            var changes = new com.lh.eap.delivery.CodeChangeService(
+                    new com.lh.eap.config.RuntimeWorkspace(root, root.toString()), null, null, generations, proposals);
+            var fixture = new AiChatApplicationTest();
+            fixture.root = root;
+            var app = fixture.app(p -> FakeChatModels.text(proposal(source)), true, root, null);
+            org.springframework.test.util.ReflectionTestUtils.setField(app, "codeChanges", changes);
+            var id = app.open("{}").conversationId();
+            var response = app.send(id, "{\"message\":\"edit\",\"toolMode\":\"none\",\"context\":{\"mode\":\"code\",\"targetPath\":\"fixture.js\"}}");
+            if (source.contains("fixture-secret")) {
+                assertEquals("INVALID_CODE_PROPOSAL", response.error());
+                assertNull(response.proposal());
+                assertTrue(proposals.rows.isEmpty());
+            } else {
+                assertEquals(source, response.proposal().files().getFirst().content());
+                assertEquals(source, proposals.rows.values().iterator().next().proposal().files().getFirst().content());
+            }
+            assertFalse(Files.exists(root.resolve("fixture.js")));
+        }
+    }
+
+    private String proposal(String source) {
+        return tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(
+                Map.of("summary", "fixture", "files", List.of(Map.of("path", "fixture.js", "content", source))));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"const token = 'fixture-secret';", "token=epoch",
+            "client.apiKey('sk-proj-synthetic-credential')", "Authorization: Bearer fixture-secret",
+            "Bearer fixture-secret", "jdbc:postgresql://fixture/db", "-----BEGIN PRIVATE KEY-----fixture"})
+    void codeSecretsRejectWholeCandidateAndNeverReachAnswerOrAudit(String source) throws Exception {
+        assertRejectedProposal(proposal(source));
+    }
+
+    @Test void decodedJsonAndNonSourceFieldsAreCheckedBeforeReturningOriginalAnswer() throws Exception {
+        String benign = proposal("const token = epoch; if (token === epoch) refresh();");
+        assertRejectedProposal(proposal("const token = 'fixture-secret';").replace("token", "\\u0074oken"));
+        assertRejectedProposal(benign.replace("fixture.js", "token=fixture-secret"));
+        assertRejectedProposal(benign.replace("\"summary\":\"fixture\"", "\"summary\":\"token=fixture-secret\""));
+        assertRejectedProposal(benign.substring(0, benign.length() - 1)
+                + ",\"extra\":{\"content\":\"const token = epoch;\"}}");
+        assertRejectedProposal("{\"summary\":\"token=fixture-secret\",\"summary\":\"ok\",\"files\":[]}");
+        assertRejectedProposal(benign + " {\"token\":\"fixture-secret\"}");
+    }
+
+    private void assertRejectedProposal(String answer) throws Exception {
+        var outcome = service(p -> text(answer), null).chat(request(false), false, null,
+                TaskContext.parse(Map.of("mode", "code")));
+        assertEquals("INVALID_CODE_PROPOSAL", outcome.error());
+        assertEquals(CliExecution.Status.FAILED, outcome.execution().status());
+        assertEquals("", outcome.answer());
+        var artifact = outcome.execution().artifacts().getFirst();
+        assertFalse(Files.readString(root.resolve("artifacts").resolve(artifact.relativePath())).contains("fixture-secret"));
+    }
+
     @Test void gitToolOutputKeepsItsOriginalBound() {
         var calls = new AtomicInteger();
         CapabilityHandler handler = new CapabilityHandler() {

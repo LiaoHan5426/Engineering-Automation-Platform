@@ -71,7 +71,10 @@ class BackendModuleBoundaryTest {
                 assertTrue(List.of("EapApplication.java", "RuntimeConfiguration.java", "BuiltinResourceSeeder.java", "CliRetentionConfiguration.java", "FullApplicationConfiguration.java").contains(name), source.toString());
             }
         }
-        assertTrue(Files.isRegularFile(Path.of("src/main/resources/db/migration/V19__skill_version_comments.sql")));
+        try (var migrations = Files.list(Path.of("src/main/resources/db/migration"))) {
+            assertEquals(List.of("V1__initial_schema.sql"), migrations.filter(Files::isRegularFile)
+                    .map(path -> path.getFileName().toString()).sorted().toList());
+        }
     }
 
     @Test void httpAdaptersDoNotOwnTransactionsOrCallPersistence() throws Exception {

@@ -156,7 +156,7 @@ JDBC独立确认3条夹具为APPLIED/PROPOSED/REFUSED，pending目标hash=34c922
 
 ### 发现的真实阻断与直接收敛
 
-V30删除原型buttonPresses/interaction，V31增加requestId，但V16的code_generation_task_group仍要求旧计数快照字段，导致当前原型的PREBOUND生成无法落库。只读预检应用库task_snapshot非空0行，旧原型快照0行，无需旧数据恢复或清理。新增[V32](../../backend/eap-applications/eap-full-application/src/main/resources/db/migration/V32__prebound_semantic_prototype.sql)原子删除并重建该约束，要求requestId/当前语义格式，明确拒绝旧计数字段；没有修改已应用V16/V30/V31或补造旧字段。
+V30删除原型buttonPresses/interaction，V31增加requestId，但V16的code_generation_task_group仍要求旧计数快照字段，导致当前原型的PREBOUND生成无法落库。只读预检应用库task_snapshot非空0行，旧原型快照0行，无需旧数据恢复或清理。新增V32（历史文件`backend/eap-applications/eap-full-application/src/main/resources/db/migration/V32__prebound_semantic_prototype.sql`；2026-11-13已合入[当前V1](../../backend/eap-applications/eap-full-application/src/main/resources/db/migration/V1__initial_schema.sql)）原子删除并重建该约束，要求requestId/当前语义格式，明确拒绝旧计数字段；没有修改已应用V16/V30/V31或补造旧字段。
 
 PreboundSemanticDeliveryTest在UUID自有schema先运行V1～V31，确认当前语义原型绑定失败且generation 0行；再执行真实V32，保存原型/任务/完整源码、持久候选及应用成功，原型快照完全保留。真实数据库回归同时覆盖非APPLIED不列出、Task/project/revision/workspace隔离、20项截断、旧字段插入拒绝及不可变证据更新拒绝。完成后只删除自己创建且正则断言通过的schema，不创建/删除数据库。
 

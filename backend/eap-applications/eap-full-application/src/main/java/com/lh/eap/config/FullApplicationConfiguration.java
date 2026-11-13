@@ -157,6 +157,8 @@ import org.springframework.context.annotation.Import;
     WorkflowExpertKnowledgeAccess.class,
     SqlKnowledgeQueryEnricher.class,
     AiChatApplication.class,
+    com.lh.eap.ai.TaskDescriptionOptimizer.class,
+    com.lh.eap.web.controller.TaskDescriptionOptimizationController.class,
     AiConnectionStatus.class,
     AiConversationRegistry.class,
     ChatExecutionJournal.class,

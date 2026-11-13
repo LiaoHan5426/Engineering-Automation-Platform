@@ -28,7 +28,7 @@ class CodeGenerationPersistenceTest {
         for (var source : new org.springframework.boot.env.YamlPropertySourceLoader().load("application", new org.springframework.core.io.ClassPathResource("application.yml"))) env.getPropertySources().addLast(source);
         String url = env.getProperty("spring.datasource.url", "");
         assertTrue(url.startsWith("jdbc:postgresql://localhost:") || url.startsWith("jdbc:postgresql://127.0.0.1:"),
-                "Provide existing local PostgreSQL via SPRING_DATASOURCE_URL (V13 must already be applied)");
+                "Provide existing local PostgreSQL via SPRING_DATASOURCE_URL (current initialization baseline must already be applied)");
         var dataSource = new DriverManagerDataSource(url, env.getProperty("spring.datasource.username"), env.getProperty("spring.datasource.password"));
         jdbc = new JdbcTemplate(dataSource);
         var manager = new DataSourceTransactionManager(dataSource);

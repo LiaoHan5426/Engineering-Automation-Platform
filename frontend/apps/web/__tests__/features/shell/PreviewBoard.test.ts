@@ -15,6 +15,7 @@ import PreviewBoard from '../../../src/features/shell/PreviewBoard.vue'
 import { chatBinding, workbench, type ChatBinding } from '../../../src/features/shell/workbench'
 import { writeTaskHandoff } from '../../../src/features/shell/boardTaskHandoff'
 import { apiStorageScope } from '../../../src/lib/runtimeConfig'
+import { localProjectState } from '../../../src/features/shell/localProjects'
 vi.mock('node:url', () => ({ fileURLToPath: () => '/mock/workspace/' }))
 let app: App, root: HTMLDivElement
 const fill = (selector: string, value: string) => {
@@ -60,6 +61,7 @@ beforeEach(() => {
       } as never)
     return JSON.parse(JSON.stringify(reply.data))
   }
+  vi.spyOn(runtimeApi, 'cancelTaskDescriptionOptimization').mockResolvedValue(undefined)
   vi.spyOn(runtimeApi, 'prototypeVersions').mockResolvedValue({ items: [] })
   vi.spyOn(runtimeApi, 'boardRuns').mockResolvedValue({
     availability: {
@@ -87,7 +89,338 @@ afterEach(() => {
   window.history.replaceState(null, '', '#board')
   workbench.pendingBoardDraft = null
   chatBinding.value = null
+  localProjectState.projects = localProjectState.projects.filter(
+    (project) => project.id !== 'other-project',
+  )
   localStorage.removeItem(apiStorageScope + '.eap.board-task-handoff.v1')
+})
+const click = (id: string) =>
+  (document.querySelector(`[data-testid=${id}]`) as HTMLButtonElement).click()
+const goalValue = () =>
+  (document.querySelector('[data-testid=board-new-goal]') as HTMLTextAreaElement).value
+async function openOptimizationForm() {
+  await mountBoard()
+  click('board-create-task')
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-new-goal]')).not.toBeNull(),
+  )
+  fill('[data-testid=board-new-title]', '目标建议任务')
+  prepare()
+  await vi.waitFor(() =>
+    expect(
+      (document.querySelector('[data-testid=board-optimize-goal]') as HTMLButtonElement).disabled,
+    ).toBe(false),
+  )
+}
+const taskGoal = () => (document.querySelector('[data-testid=task-goal]') as HTMLTextAreaElement).value
+async function openEditOptimization() {
+  await mountBoard()
+  await createTask()
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=task-goal-optimize]')).not.toBeNull())
+}
+it('adopts into the existing goal draft only and saves all fields with the original CAS revision', async () => {
+  vi.spyOn(runtimeApi, 'optimizeTaskDescription').mockResolvedValue({ text: 'AI draft', connectionId: 'c', model: 'm' })
+  await openEditOptimization()
+  const task = (await runtimeApi.boardTasks(vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0].projectId)).items[0]!
+  fill('[data-testid=task-notes]', 'keep notes')
+  fill('[data-testid=task-criteria]', 'keep criteria')
+  const priority = document.querySelector('[data-testid=task-priority]') as HTMLSelectElement
+  priority.value = 'p1'
+  priority.dispatchEvent(new Event('change'))
+  click('task-goal-optimize')
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=task-goal-suggestion]')).not.toBeNull())
+  expect(taskGoal()).toBe(task.goal)
+  click('task-goal-adopt')
+  await vi.waitFor(() => expect(taskGoal()).toBe('AI draft'))
+  expect(runtimeApi.updateBoardTask).not.toHaveBeenCalled()
+  expect((document.querySelector('[data-testid=task-criteria]') as HTMLTextAreaElement).value).toBe('keep criteria')
+  expect((document.querySelector('[data-testid=task-notes]') as HTMLTextAreaElement).value).toBe('keep notes')
+  expect(priority.value).toBe('p1')
+  click('board-save-fields')
+  await vi.waitFor(() => expect(runtimeApi.updateBoardTask).toHaveBeenCalledWith(task.id, {
+    projectId: task.projectId, revision: task.revision, goal: 'AI draft',
+    acceptanceCriteria: 'keep criteria', notes: 'keep notes', priority: 'p1',
+  }))
+})
+it.each(['aba', 'cancel', 'close', 'task', 'save', 'unmount'] as const)(
+  'cancels existing goal optimization on %s and drops late results', async (action) => {
+    let finish!: (result: { text: string; connectionId: string; model: string }) => void
+    const optimize = vi.spyOn(runtimeApi, 'optimizeTaskDescription').mockImplementation(() => new Promise(resolve => { finish = resolve }))
+    await openEditOptimization()
+    if (action === 'save') fill('[data-testid=task-notes]', 'save notes')
+    click('task-goal-optimize')
+    await vi.waitFor(() => expect(optimize).toHaveBeenCalledTimes(1))
+    const [id, , options] = optimize.mock.calls[0]!
+    const original = taskGoal()
+    if (action === 'aba') { fill('[data-testid=task-goal]', 'temporary'); fill('[data-testid=task-goal]', original) }
+    else if (action === 'cancel') click('task-goal-cancel')
+    else if (action === 'close') click('board-close-detail')
+    else if (action === 'task') {
+      const task = (await runtimeApi.boardTasks(vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0].projectId)).items[0]!
+      const other = await runtimeApi.createBoardTask({ projectId: task.projectId, title: 'other', goal: 'other goal', acceptanceCriteria: 'criteria', column: 'planned', sessionId: '', requestId: crypto.randomUUID() })
+      vi.spyOn(runtimeApi, 'boardTask').mockResolvedValue(other)
+      window.history.replaceState(null, '', `#board?projectId=${task.projectId}&taskId=${other.id}`)
+      window.dispatchEvent(new Event('hashchange'))
+    } else if (action === 'save') click('board-save-fields')
+    else app.unmount()
+    await vi.waitFor(() => expect(runtimeApi.cancelTaskDescriptionOptimization).toHaveBeenCalledWith(id))
+    expect(options?.signal?.aborted).toBe(true)
+    finish({ text: 'late edit suggestion', connectionId: 'c', model: 'm' })
+    await Promise.resolve(); await Promise.resolve()
+    expect(document.querySelector('[data-testid=task-goal-suggestion]')).toBeNull()
+  },
+)
+it('invalidates a completed existing suggestion even when goal text is restored', async () => {
+  vi.spyOn(runtimeApi, 'optimizeTaskDescription').mockResolvedValue({ text: 'old advice', connectionId: 'c', model: 'm' })
+  await openEditOptimization()
+  click('task-goal-optimize')
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=task-goal-adopt]')).not.toBeNull())
+  const adopt = document.querySelector('[data-testid=task-goal-adopt]') as HTMLButtonElement
+  const original = taskGoal()
+  fill('[data-testid=task-goal]', 'temporary'); fill('[data-testid=task-goal]', original)
+  adopt.click()
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=task-goal-suggestion]')).toBeNull())
+  expect(taskGoal()).toBe(original)
+})
+it.each(['stale', 'executing'] as const)('invalidates pending and completed advice when task becomes %s', async (state) => {
+  let finish!: (result: { text: string; connectionId: string; model: string }) => void
+  const optimize = vi.spyOn(runtimeApi, 'optimizeTaskDescription')
+    .mockResolvedValueOnce({ text: 'completed advice', connectionId: 'c', model: 'm' })
+    .mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  await openEditOptimization()
+  const task = (await runtimeApi.boardTasks(vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0].projectId)).items[0]!
+  fill('[data-testid=task-notes]', 'retain local notes')
+  click('task-goal-optimize')
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=task-goal-adopt]')).not.toBeNull())
+  const adopt = document.querySelector('[data-testid=task-goal-adopt]') as HTMLButtonElement
+  click('task-goal-optimize')
+  await vi.waitFor(() => expect(optimize).toHaveBeenCalledTimes(2))
+  vi.mocked(runtimeApi.boardTasks).mockResolvedValueOnce({ items: [{ ...task,
+    revision: state === 'stale' ? task.revision + 1 : task.revision,
+    executionActive: state === 'executing',
+  }] })
+  click('board-tab-runs')
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-run-refresh]')).not.toBeNull())
+  click('board-run-refresh')
+  await vi.waitFor(() => expect(runtimeApi.cancelTaskDescriptionOptimization).toHaveBeenCalledWith(optimize.mock.calls[1]![0]))
+  finish({ text: 'late advice', connectionId: 'c', model: 'm' })
+  click('board-tab-preparation')
+  await vi.waitFor(() => expect((document.querySelector('[data-testid=task-goal-optimize]') as HTMLButtonElement).disabled).toBe(true))
+  adopt.click()
+  expect(taskGoal()).toBe(task.goal)
+  expect(document.querySelector('[data-testid=task-goal-suggestion]')).toBeNull()
+  expect(runtimeApi.updateBoardTask).not.toHaveBeenCalled()
+})
+it.each(['keep', 'latest'] as const)('preserves AI adopted goal and other drafts on CAS conflict until %s resolution', async (resolution) => {
+  vi.spyOn(runtimeApi, 'optimizeTaskDescription').mockResolvedValue({ text: 'AI local goal', connectionId: 'c', model: 'm' })
+  await openEditOptimization()
+  const task = (await runtimeApi.boardTasks(vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0].projectId)).items[0]!
+  fill('[data-testid=task-notes]', 'local notes')
+  fill('[data-testid=task-criteria]', 'local criteria')
+  click('task-goal-optimize')
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=task-goal-adopt]')).not.toBeNull())
+  click('task-goal-adopt')
+  await vi.waitFor(() => expect(taskGoal()).toBe('AI local goal'))
+  await runtimeApi.updateBoardTask(task.id, { projectId: task.projectId, revision: task.revision, goal: 'remote goal' })
+  click('board-save-fields')
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-conflict]')).not.toBeNull())
+  expect(taskGoal()).toBe('AI local goal')
+  expect((document.querySelector('[data-testid=task-notes]') as HTMLTextAreaElement).value).toBe('local notes')
+  expect((document.querySelector('[data-testid=task-criteria]') as HTMLTextAreaElement).value).toBe('local criteria')
+  expect((document.querySelector('[data-testid=task-goal-optimize]') as HTMLButtonElement).disabled).toBe(true)
+  expect(vi.mocked(runtimeApi.updateBoardTask).mock.calls[1]![1].revision).toBe(task.revision)
+  click(resolution === 'keep' ? 'board-keep-draft' : 'board-use-latest')
+  await vi.waitFor(() => expect(document.querySelector('[data-testid=board-conflict]')).toBeNull())
+  expect(taskGoal()).toBe(resolution === 'keep' ? 'AI local goal' : 'remote goal')
+  if (resolution === 'keep') {
+    click('board-save-fields')
+    await vi.waitFor(() => expect(vi.mocked(runtimeApi.updateBoardTask).mock.calls[2]![1].revision).toBe(task.revision + 1))
+  }
+})
+it('shows a suggestion before adoption and changes only the goal', async () => {
+  vi.spyOn(runtimeApi, 'optimizeTaskDescription').mockResolvedValue({
+    text: '优化后的目标',
+    connectionId: 'c',
+    model: 'm',
+  })
+  await openOptimizationForm()
+  expect(document.querySelector('[data-testid=board-link-session]')).toBeNull()
+  click('board-optimize-goal')
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-goal-suggestion]')?.textContent).toContain(
+      '优化后的目标',
+    ),
+  )
+  expect(goalValue()).toBe('完成任务目标')
+  click('board-goal-adopt')
+  await vi.waitFor(() => expect(goalValue()).toBe('优化后的目标'))
+  expect(
+    (document.querySelector('[data-testid=board-new-criteria]') as HTMLTextAreaElement).value,
+  ).toBe('构建与检查通过')
+  expect(runtimeApi.createBoardTask).not.toHaveBeenCalled()
+})
+it.each(['edit', 'cancel', 'close', 'project', 'unmount'] as const)(
+  'invalidates an optimization on %s and ignores its late response',
+  async (action) => {
+    let finish!: (result: { text: string; connectionId: string; model: string }) => void
+    const optimize = vi.spyOn(runtimeApi, 'optimizeTaskDescription').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    await openOptimizationForm()
+    click('board-optimize-goal')
+    await vi.waitFor(() => expect(optimize).toHaveBeenCalledTimes(1))
+    const [requestId, , options] = optimize.mock.calls[0]!
+    expect(
+      (document.querySelector('[data-testid=board-new-goal]') as HTMLTextAreaElement).disabled,
+    ).toBe(false)
+    if (action === 'edit') fill('[data-testid=board-new-goal]', '用户的新目标')
+    else if (action === 'cancel') click('board-optimize-cancel')
+    else if (action === 'close') {
+      click('board-create-close')
+      await vi.waitFor(() => expect(document.querySelector('.eap-confirm')).not.toBeNull())
+      ;(document.querySelector('[data-confirm-cancel]') as HTMLButtonElement).click()
+    } else if (action === 'project') {
+      localProjectState.projects.push({ id: 'other-project', label: 'Other', intendedPath: '' })
+      await vi.waitFor(() =>
+        expect(
+          document.querySelector('[data-testid=board-create-project] option[value=other-project]'),
+        ).not.toBeNull(),
+      )
+      const select = document.querySelector(
+        '[data-testid=board-create-project]',
+      ) as HTMLSelectElement
+      select.value = 'other-project'
+      select.dispatchEvent(new Event('change'))
+    } else app.unmount()
+    await vi.waitFor(() =>
+      expect(runtimeApi.cancelTaskDescriptionOptimization).toHaveBeenCalledWith(requestId),
+    )
+    expect(options?.signal?.aborted).toBe(true)
+    finish({ text: '迟到建议', connectionId: 'c', model: 'm' })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(document.querySelector('[data-testid=board-goal-suggestion]')).toBeNull()
+    if (action !== 'unmount')
+      expect(goalValue()).toBe(action === 'edit' ? '用户的新目标' : '完成任务目标')
+  },
+)
+it('discards a dirty create draft only after confirmation and blocks submission from the retired form', async () => {
+  await openOptimizationForm()
+  click('board-create-close')
+  await vi.waitFor(() => expect(document.querySelector('.eap-confirm')).not.toBeNull())
+  expect(goalValue()).toBe('完成任务目标')
+  ;(document.querySelector('.eap-confirm button') as HTMLButtonElement).click()
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-create-form]')).toBeNull(),
+  )
+  click('board-create-task')
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-new-goal]')).not.toBeNull(),
+  )
+  expect(goalValue()).toBe('')
+  fill('[data-testid=board-new-title]', '唯一创建')
+  const form = document.querySelector('form') as HTMLFormElement
+  form.requestSubmit()
+  await vi.waitFor(() => expect(detail()).not.toBeNull())
+  form.dispatchEvent(new Event('submit', { cancelable: true }))
+  await Promise.resolve()
+  expect(runtimeApi.createBoardTask).toHaveBeenCalledTimes(1)
+})
+it('keeps the original goal after an optimization error and allows retry with a fresh identity', async () => {
+  const optimize = vi
+    .spyOn(runtimeApi, 'optimizeTaskDescription')
+    .mockRejectedValueOnce(new Error('offline'))
+    .mockResolvedValue({ text: '重试建议', connectionId: 'c', model: 'm' })
+  await openOptimizationForm()
+  click('board-optimize-goal')
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-optimize-error]')).not.toBeNull(),
+  )
+  expect(goalValue()).toBe('完成任务目标')
+  click('board-optimize-goal')
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-goal-suggestion]')?.textContent).toContain(
+      '重试建议',
+    ),
+  )
+  expect(optimize.mock.calls[0]![0]).not.toBe(optimize.mock.calls[1]![0])
+  click('board-goal-dismiss')
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-goal-suggestion]')).toBeNull(),
+  )
+  expect(goalValue()).toBe('完成任务目标')
+})
+it('rejects oversized optimization output while accepting a 4000 character goal', async () => {
+  const optimize = vi
+    .spyOn(runtimeApi, 'optimizeTaskDescription')
+    .mockResolvedValue({ text: 'x'.repeat(2001), connectionId: 'c', model: 'm' })
+  await openOptimizationForm()
+  fill('[data-testid=board-new-goal]', 'a'.repeat(4000))
+  click('board-optimize-goal')
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-optimize-error]')).not.toBeNull(),
+  )
+  expect(optimize.mock.calls[0]![1].text).toHaveLength(4000)
+  expect(goalValue()).toHaveLength(4000)
+  expect(document.querySelector('[data-testid=board-goal-adopt]')).toBeNull()
+})
+it('cancels optimization on submit and freezes AI until the same unknown creation request is resolved', async () => {
+  let finish!: (result: { text: string; connectionId: string; model: string }) => void
+  vi.spyOn(runtimeApi, 'optimizeTaskDescription').mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  vi.mocked(runtimeApi.createBoardTask).mockRejectedValueOnce(new AxiosError('connection lost'))
+  await openOptimizationForm()
+  click('board-optimize-goal')
+  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-testid=board-create-note]')?.textContent).toContain(
+      '创建结果尚未确认',
+    ),
+  )
+  expect(runtimeApi.cancelTaskDescriptionOptimization).toHaveBeenCalledTimes(1)
+  expect(
+    (document.querySelector('[data-testid=board-optimize-goal]') as HTMLButtonElement).disabled,
+  ).toBe(true)
+  finish({ text: '迟到建议', connectionId: 'c', model: 'm' })
+  await Promise.resolve()
+  expect(goalValue()).toBe('完成任务目标')
+  const first = vi.mocked(runtimeApi.createBoardTask).mock.calls[0]![0]
+  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
+  await vi.waitFor(() => expect(detail()).not.toBeNull())
+  expect(vi.mocked(runtimeApi.createBoardTask).mock.calls[1]![0]).toEqual(first)
+})
+it('unfreezes the original draft after a definite 4xx and creates a corrected ready task with a new identity', async () => {
+  vi.mocked(runtimeApi.createBoardTask).mockRejectedValueOnce(
+    new AxiosError('invalid', undefined, undefined, undefined, { status: 400 } as never),
+  )
+  await openOptimizationForm()
+  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
+  await vi.waitFor(() => expect(runtimeApi.createBoardTask).toHaveBeenCalledTimes(1))
+  await vi.waitFor(() =>
+    expect(
+      (document.querySelector('[data-testid=board-optimize-goal]') as HTMLButtonElement).disabled,
+    ).toBe(false),
+  )
+  fill('[data-testid=board-new-goal]', '修正目标')
+  const column = document.querySelector('[data-testid=board-create-column]') as HTMLSelectElement
+  column.value = 'ready'
+  column.dispatchEvent(new Event('change'))
+  ;(document.querySelector('form') as HTMLFormElement).requestSubmit()
+  await vi.waitFor(() => expect(detail()).not.toBeNull())
+  const calls = vi.mocked(runtimeApi.createBoardTask).mock.calls
+  expect(calls[1]![0]).toMatchObject({
+    goal: '修正目标',
+    column: 'ready',
+    acceptanceCriteria: '构建与检查通过',
+  })
+  expect(calls[1]![0].requestId).not.toBe(calls[0]![0].requestId)
 })
 it('reads a linked task outside the recent list and opens its current runs without starting work', async () => {
   const task = await runtimeApi.createBoardTask({

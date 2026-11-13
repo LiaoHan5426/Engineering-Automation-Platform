@@ -30,7 +30,7 @@ class ModelHistoryAcceptanceTest {
         var admin = new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         var summaryCalls = new java.util.concurrent.atomic.AtomicInteger();
         try {
-            CurrentContractTestSchema.migrate(session, schema, "37");
+            CurrentContractTestSchema.migrate(session, schema);
             var override = new SourceWriteReviewPersistenceTest.Overrides(ToolUnknownReviewFixture.scopedDataSource(schema), workspace);
             try (var context = new SpringApplicationBuilder(EapApplication.class)
                     .initializers(app -> {

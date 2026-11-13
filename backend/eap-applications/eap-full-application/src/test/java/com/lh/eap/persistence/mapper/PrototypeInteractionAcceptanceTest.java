@@ -15,6 +15,18 @@ import tools.jackson.databind.json.JsonMapper;
 /** Actual designer, preview, HTTP publication and persistence. All schema and files are test-owned. */
 @EnabledIfEnvironmentVariable(named="EAP_PROTOTYPE_INTERACTION_CHROMIUM", matches="true")
 class PrototypeInteractionAcceptanceTest {
+    private static Path frontendDirectory() {
+        var configured = System.getenv("EAP_ACCEPTANCE_FRONTEND");
+        return configured == null || configured.isBlank()
+                ? Path.of("../../..").toAbsolutePath().normalize().resolve("frontend")
+                : Path.of(configured).toAbsolutePath().normalize();
+    }
+
+    private static void collectTextareas(tools.jackson.databind.JsonNode node, List<tools.jackson.databind.JsonNode> fields) {
+        if ("textarea".equals(node.path("kind").asString())) fields.add(node);
+        for (var child : node.path("children")) collectTextareas(child, fields);
+    }
+
     @Test void editsPreviewsPublishesAndReopensAnInteractiveDesign() throws Exception {
         var session = Files.createTempDirectory(Path.of("target").toAbsolutePath(), "prototype-interaction-");
         var workspace = Files.createDirectory(session.resolve("workspace")).toRealPath();
@@ -24,7 +36,7 @@ class PrototypeInteractionAcceptanceTest {
         var schema = "eap_unknown_qa_" + UUID.randomUUID().toString().replace("-", "");
         var admin = new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         try {
-            CurrentContractTestSchema.migrate(session, schema, "37");
+            CurrentContractTestSchema.migrate(session, schema);
             var source = ToolUnknownReviewFixture.scopedDataSource(schema);
             var override = new SourceWriteReviewPersistenceTest.Overrides(source, workspace);
             try (var context = new SpringApplicationBuilder(EapApplication.class)
@@ -38,7 +50,7 @@ class PrototypeInteractionAcceptanceTest {
                 Files.writeString(manifest, JsonMapper.builder().build().writeValueAsString(Map.of(
                         "backend","http://127.0.0.1:"+context.getEnvironment().getProperty("local.server.port"))));
                 var command = new ProcessBuilder("node","apps/web/__tests__/browser/prototype-interaction-live.mjs",manifest.toString())
-                        .directory(Path.of("../../..").toAbsolutePath().normalize().resolve("frontend").toFile()).inheritIO();
+                        .directory(frontendDirectory().toFile()).inheritIO();
                 command.environment().keySet().removeIf(key -> key.startsWith("EAP_DB_"));
                 var process = command.start();
                 try {
@@ -52,6 +64,16 @@ class PrototypeInteractionAcceptanceTest {
                 }
                 var jdbc = new JdbcTemplate(source);
                 assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM eap.prototype_version",Integer.class));
+                var body = jdbc.queryForObject("SELECT body FROM eap.prototype_version", String.class);
+                var root = JsonMapper.builder().build().readTree(body).path("schema").path("root");
+                var multiline = new ArrayList<tools.jackson.databind.JsonNode>();
+                collectTextareas(root, multiline);
+                assertEquals(1, multiline.size(), "Published design must retain its multiline field kind");
+                var props = multiline.getFirst().path("props");
+                assertEquals("任务说明", props.path("label").asString());
+                assertEquals("填写任务说明", props.path("placeholder").asString());
+                assertEquals("第一行说明\n第二行说明", props.path("initialValue").asString());
+                assertTrue(props.path("required").asBoolean());
                 assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM eap.code_proposal",Integer.class));
                 assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM eap.board_task WHERE prototype_version_id IS NOT NULL",Integer.class));
             }

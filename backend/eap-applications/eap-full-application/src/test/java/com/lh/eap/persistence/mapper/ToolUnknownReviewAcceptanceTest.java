@@ -17,9 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.springframework.core.io.*;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 /** Explicit opt-in: self-owned schema, crash host and processes, real HTTP + production Vue panel. */
 @EnabledIfEnvironmentVariable(named = "EAP_RUN_TOOL_UNKNOWN_REVIEW", matches = "true")
@@ -102,18 +100,8 @@ class ToolUnknownReviewAcceptanceTest {
         schema = "eap_unknown_qa_" + UUID.randomUUID().toString().replace("-", "");
         var admin = new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         var applicationDigests = admin.queryForList("SELECT id::text,md5(snapshot::text) AS digest FROM eap.tool_execution ORDER BY id");
-        admin.execute("CREATE SCHEMA " + schema);
         try {
-            for (int version : List.of(26, 27, 28, 29)) {
-                var resources = new org.springframework.core.io.support.PathMatchingResourcePatternResolver()
-                        .getResources("classpath:db/migration/V" + version + "__*.sql");
-                assertEquals(1, resources.length);
-                var sql = resources[0].getContentAsString(StandardCharsets.UTF_8).replace("eap.tool_execution", schema + ".tool_execution");
-                try (var connection = ToolUnknownReviewFixture.originalDataSource().getConnection()) {
-                    ScriptUtils.executeSqlScript(connection, new ByteArrayResource(sql.getBytes(StandardCharsets.UTF_8)));
-                }
-            }
-            admin.execute("CREATE TABLE " + schema + ".capability_setting (capability text PRIMARY KEY, enabled boolean NOT NULL, notes text, updated_at timestamptz)");
+            CurrentContractTestSchema.migrate(session, schema);
             var init = new ProcessBuilder("git", "init", "--quiet").directory(session.resolve("workspace").toFile()).start();
             assertTrue(init.waitFor(5, TimeUnit.SECONDS)); assertEquals(0, init.exitValue());
             byte[] originalIndex = null;

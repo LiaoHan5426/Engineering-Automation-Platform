@@ -10,7 +10,7 @@
 | 查阶段实施与验证的完整记录 | [主题记录总览](records/README.md) |
 | **约束：个人本机 + 本地服务（必读）** | [running-context](running-context.md) |
 | 理解平台架构和 Spring AI 边界 | [architecture](architecture.md) |
-| 配置环境、迁移旧模型属性 | [environment](environment.md) |
+| 配置环境、初始化当前数据库基线 | [environment](environment.md) |
 | 开发规范与验收要求 | [开发与验收指南](agent-development-guide.md) |
 | 找包、模块和验证入口 | [module-layout](module-layout.md)、[后端模块组合与实施](decisions/backend-module-composition.md#implementation) |
 | 当前实现基线与最近验证 | [当前基线与完成口径](planning-status.md#validation-baseline)；完整命令、失败与分阶段结果见[阶段验证记录](records/validation-history.md) |
@@ -28,7 +28,7 @@
 - [Electron 设计](desktop-spec.md)：已有安全preload壳，sidecar、一体安装与发行尚未完成。
 - [MCP 管理设计](mcp-management-design.md)：登记/授权与真实协议调用必须分开。
 - [扩展边界决策](decisions/extension-boundaries.md)、[CLI/Codex 分阶段设计](decisions/p1-cli-codex-design.md)、[工具接入与运行边界](decisions/tool-integration-runtime-boundaries.md)：有效决策；工作区/配置口径以 [running-context](running-context.md) 为准。
-- [S1 Spring AI Chat 接入设计](decisions/s1-chat-spring-ai-design.md)：v1.6 最小 API/UI 方案；**实现与限制以 roadmap 与 chat-engineering-task-slice 为准**（勿把本 README 旧「尚未实施」句当作现状）。
+- [S1 Spring AI Chat 接入设计](decisions/s1-chat-spring-ai-design.md)：v1.6 最小 API/UI 方案；当前实现与限制见[规划台账](planning-status.md)和[工程任务切片](decisions/chat-engineering-task-slice.md)。
 
 ## 验收证据入口（按阶段区分）
 

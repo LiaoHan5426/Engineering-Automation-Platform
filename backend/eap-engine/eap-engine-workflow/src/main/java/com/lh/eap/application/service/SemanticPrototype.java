@@ -11,8 +11,8 @@ import tools.jackson.databind.json.JsonMapper;
 /** Server-side publication boundary for the same semantic schema rendered by the workbench. */
 public final class SemanticPrototype {
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    private static final Set<String> KINDS = Set.of("page", "section", "text", "heading", "button", "input", "link", "list",
-            "form", "select", "checkbox", "dialog");
+    private static final Set<String> KINDS = Set.of("page", "section", "text", "heading", "button", "input", "textarea", "link", "list",
+            "form", "select", "checkbox", "dialog", "task-list");
     private SemanticPrototype() {}
 
     public static void require(String body) {
@@ -43,6 +43,35 @@ public final class SemanticPrototype {
         for (var child : node.path("children")) requireNode(child, depth + 1, nodes);
     }
 
+    private static void requireTaskList(JsonNode node) {
+        var props = node.path("props");
+        // Both capabilities are opt-in (absent means false) and independent.
+        for (String key : Set.of("editable", "creatable"))
+            if (props.has(key) && !props.path(key).isBoolean()) throw new IllegalArgumentException();
+        var items = props.path("items");
+        if (!node.path("children").isEmpty() || !items.isArray() || items.size() > 30)
+            throw new IllegalArgumentException();
+        var keys = Set.of("id", "name", "status", "priority", "summary", "goal", "acceptanceCriteria");
+        var ids = new HashSet<String>();
+        for (var item : items) {
+            if (!item.isObject() || item.size() != keys.size()) throw new IllegalArgumentException();
+            for (var key : keys) if (!item.path(key).isString()) throw new IllegalArgumentException();
+            String id = item.path("id").asString();
+            if (!id.matches("[A-Za-z][A-Za-z0-9_-]{0,79}") || !ids.add(id)
+                    || !BoardTaskColumn.isKnown(item.path("status").asString())) throw new IllegalArgumentException();
+            BoardTaskService.validatePriority(item.path("priority").asString());
+            requireTaskText(item.path("name"), 120, true);
+            requireTaskText(item.path("summary"), 240, false);
+            requireTaskText(item.path("goal"), 2000, true);
+            requireTaskText(item.path("acceptanceCriteria"), 2000, true);
+        }
+    }
+
+    private static void requireTaskText(JsonNode value, int limit, boolean required) {
+        String text = value.asString();
+        if (text.length() > limit || (required && text.isBlank())) throw new IllegalArgumentException();
+    }
+
     private static void requireInteraction(JsonNode node, Map<String, JsonNode> nodes) {
         var props = node.path("props");
         String kind = node.path("kind").asString();
@@ -61,6 +90,7 @@ public final class SemanticPrototype {
             if (props.has(key) && !props.path(key).isBoolean()) throw new IllegalArgumentException();
         if (props.has("initialValue") && (!props.path("initialValue").isString()
                 || props.path("initialValue").asString().length() > 2000)) throw new IllegalArgumentException();
+        if (kind.equals("task-list")) requireTaskList(node);
         if (kind.equals("select")) {
             var options = props.path("options");
             if (!options.isArray() || options.isEmpty() || options.size() > 30) throw new IllegalArgumentException();

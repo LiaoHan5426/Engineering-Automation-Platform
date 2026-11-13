@@ -22,7 +22,7 @@ class BoardCodeProposalRecoveryTest {
         String schema="eap_unknown_qa_"+UUID.randomUUID().toString().replace("-","");
         var admin=new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         try {
-            CurrentContractTestSchema.migrate(directory,schema,"37");
+            CurrentContractTestSchema.migrate(directory,schema);
             var jdbc=new JdbcTemplate(ToolUnknownReviewFixture.scopedDataSource(schema));
             var manager=new DataSourceTransactionManager(ToolUnknownReviewFixture.scopedDataSource(schema));
             var tasks=new BoardTaskService(jdbc);var root=Files.createDirectory(directory.resolve("workspace")).toRealPath();

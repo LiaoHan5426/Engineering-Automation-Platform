@@ -32,7 +32,7 @@ public final class StatusI18nLiveFixture {
     public static void main(String[] args) throws Exception {
         var session = Path.of(args[0]).toAbsolutePath().normalize();
         schema = args[1];
-        CurrentContractTestSchema.migrate(session, schema, "35");
+        CurrentContractTestSchema.migrate(session, schema);
         System.setProperty("spring.devtools.restart.enabled", "false");
         var context = new SpringApplicationBuilder(EapApplication.class, Overrides.class).run(
                 "--server.address=127.0.0.1", "--server.port=0", "--spring.flyway.enabled=false",

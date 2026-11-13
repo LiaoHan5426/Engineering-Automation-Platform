@@ -778,3 +778,271 @@ mvn -q -o -pl eap-applications/eap-full-application -am test '-Dtest=BoardRunPer
 最终显式重放命令在同一隔离reactor执行：`mvn -q -o -pl eap-applications/eap-full-application -am test '-Dtest=SelfPageDeliveryAcceptanceTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-DfailIfNoTests=false'`。环境 `EAP_SELF_PAGE_DELIVERY=true`，REPO为 `backend/target/self-page-replay/workspace`、ORIGINAL_REPO为主仓库，CAPTURED_RESULT为首次真实运行的 `real-model-result.json`，ACCEPTANCE_FRONTEND为主仓库frontend；实际绝对路径见该轮 `captured-replay-context.json`，Chromium及数据库过程环境沿上文。最终检查：`python scripts/verify-domain-contracts.py` 为20/23/527/11；`python backend/target/verify-interactive-docs.py` 为5文档/273本地链接/0错误；`vp -C frontend run check:boundaries` 及 `git -c core.safecrlf=false diff --check` 通过。主仓库与重放工作区候选哈希一致。未提交、推送或重启既有服务。
 
 短窗口初查曾发现发送按钮在390×480初始可视区之外，但输入表单有内部滚动，尚未证实为缺陷，未纳入修复。侧栏浏览器随后与DSH窗口断连；临时同源 `self-page-review` iframe的清理未获确认，后续不得据此声称已完成原窗口复验。另起测试浏览器仅用于独立实际页面检查，不替代该连接状态记录。
+
+
+<a id="flyway-fresh-baseline"></a>
+## Flyway全新初始化基线（2026-11-13，技术验证通过）
+
+按本次重新初始化需求，将宿主自动迁移目录V1～V37合并为唯一 `V1__initial_schema.sql`，直接定义最终29张表、15项显式索引、8个函数、7个触发器及269条注释。保留最终约束、不可变证据、UNKNOWN恢复和应用写前基线；删除仅为旧结构升级服务的ALTER、转换和历史回填。内置初始化保留Git/ripgrep两个CLI程序及git-status/git-diff/rg-search三项操作；配置默认值继续沿现有应用合同，不预置凭据、授权或执行结果。
+
+可选 `db/dev/seed_example_board_tasks.sql` 在自动Flyway目录之外，手动生成local-example项目两条planned任务。固定UUID及ON CONFLICT DO NOTHING使重复运行保留已有编辑；未创建Run、审批、授权或接受证据。
+
+验证在 `backend/target/flyway-reset-20261113/` 留存：
+
+- `CompareSchemas.java` / `run-compare.ps1`：读取修改前37份迁移备份与新V1，各自在独立随机 `eap_reset_qa_` schema执行Flyway migrate、validate及再次migrate（0新增迁移），最后仅删除自有schema。最终450项表/列/默认值/约束/索引/函数/触发器/注释/内置种子目录一致，仅9处过时说明按expected-comment-changes.json更新；不存在结构或种子差异。
+- `final-catalog.txt` 与 `original-catalog.txt` 保留对照，内置种子比较排除自动生成的updated_at。示例数据脚本执行两次，中途修改一条notes，断言仍为2行且编辑保留。
+- `run-tests.ps1` 在隔离backend副本执行离线clean reactor定向回归：`mvn -q -o -pl :eap-full-application -am '-Dtest=BackendModuleBoundaryTest,BoardVerificationPersistenceContractTest,ComponentDeliveryConstraintTest,PreboundSemanticDeliveryTest,SingleContractAcceptanceTest,SourceWriteReviewPersistenceTest,BoardCodeProposalRecoveryTest,CodeApplicationBaselinePersistenceTest,ToolExecutionPersistenceTest' '-Dsurefire.failIfNoSpecifiedTests=false' clean test`，开启EAP_RUN_SINGLE_CONTRACTS/EAP_RUN_BOARD_PERSISTENCE。9类19项通过，0失败/错误/跳过；覆盖模块资源归属、单合同/语义原型、多文件约束、UNKNOWN恢复、写前基线不可变和工具持久化。全部测试源码已重新编译；其他未选用例未宣称重跑。
+- 初次验证器的临时输出目录与备份目录重名，已从HEAD逐字节恢复37份备份并区分-relocated输出；初次列名误用id已修为capability_id。初次测试脚本把Mockito原生stderr警告当作PowerShell终止错误，保留日志并修正脚本后重跑通过。均未改动日常schema或削弱产品约束。
+
+测试夹具统一当前V1，移除仅为历史版本升级准备的中间阶段断言，保留当前坏数据约束、恢复/并发与证据断言。全新基线与旧Flyway历史存在校验差异，使用者须先停宿主并显式重置选定开发schema及其历史；应用不自动clean、repair或baseline。本轮只修改初始化资源并验证自有临时schema，日常库和常驻服务未重置或重启，未提交/推送。后续变更从V2增量推进。初始化步骤见[环境说明](../environment.md#database-initialisation)。最终修改文件UTF-8无BOM、265个本地文档链接与 `git diff --check` 通过；状态/错误词表未变，本轮未重复运行领域词表检查。
+
+
+<a id="textarea-semantic-design"></a>
+## 多行字段语义设计切片（2026-11-13，技术验证通过）
+
+PB-01原转换器把HTML textarea降为input，丢失多行语义。本片统一编辑器块与属性、HTML转换、runtime-client严格解析、后端SemanticPrototype白名单及预览为独立textarea，复用公共Textarea（固定4行，不扩展wire rows参数）。label/placeholder/initialValue/required沿用字段合同，真实换行完整保留；无data-value时取textarea正文，显式空data-value保持为空。表单提交取当前值，必填检查识别纯空白，重置恢复多行初值；未知kind、畸形属性和超限输入仍严格校验。生成材料明确多行行为、必填和重置要求；模型材料断言使用FakeChatModel，不代表真实供应商生成效果。
+
+实际Chrome＋完整EAP App/Boot＋自有UUID schema验证：Grapes属性编辑多行初值、1440/390px预览、纯空白必填失败、填写/本地反馈/重置、保存重开、不可变版本发布/回读、版本预览状态不修改已发布内容、关联任务及响应丢失后原请求身份重试。数据库断言仅1个版本、1个关联任务、0个代码候选，并核对版本JSON含textarea及真实换行。finally仅清理本次拥有的浏览器/进程和schema。日常库及常驻IDEA服务未重置或重启。
+
+证据目录为 `backend/target/textarea-design-20261113/`：
+
+- 隔离backend reactor命令：`mvn -q -o -pl :eap-full-application -am '-Dtest=SemanticTextareaTest,PrototypePublicationServiceTest,CodegenCompositionTest,PrototypeCanonicalTest,PrototypeInteractionAcceptanceTest' '-Dsurefire.failIfNoSpecifiedTests=false' test`。5类20项通过，0失败/错误/跳过；原regression.log为UTF-16LE，另保留无损转码regression-utf8.log与results.json。EAP_PROTOTYPE_INTERACTION_CHROMIUM=true、EAP_ACCEPTANCE_FRONTEND指定主仓库frontend、EAP_CHROMIUM指向已安装Chrome；数据库口令仅过程环境，不输出或落盘。
+- 首次实际浏览器证据：`backend/eap-applications/eap-full-application/target/prototype-interaction-6180759784260600859/validation.json`。390px截图初次停在表单底部，故仅补充滚动到多行字段的截图定位，再定向执行PrototypeInteractionAcceptanceTest，1/1通过，日志browser-final.log；最终目录 `backend/eap-applications/eap-full-application/target/prototype-interaction-10328359411560690308/` 保留validation.json、textarea-preview-390.png、textarea-preview-1440.png、published-interactive-design.png等；首次20项结果不被最后1项报告替换解释为全量重跑。
+- 前端：`rtk proxy vp -C frontend test run apps/web/__tests__/features/shell/prototypeSchema.test.ts apps/web/__tests__/features/shell/prototypeInteractions.test.ts apps/web/__tests__/features/shell/prototypePublication.test.ts packages/runtime-client/__tests__/prototypeSchema.test.ts` 为4文件16项通过；`rtk proxy vp -C frontend run typecheck`、`rtk proxy vp -C frontend run check:boundaries`通过。`rtk proxy vp -C frontend build`因Vite+根入口index.html解析失败，使用明确应用入口 `rtk proxy vp -C frontend/apps/web build` 成功（4749模块，既有大chunk提示）；未改配置掩盖。首次边界检查命中临时编辑脚本fs依赖，移除该脚本后复验通过，未扩大忽略名单。
+- 公共原语已检索，复用@eap/ui Textarea；业务预览及编辑仍在web，合同/严格解析在runtime-client，无新包/重复基础组件，暂存模块登记无新增。领域合同检查20状态域、23错误目录、527错误码、11成对消息束通过；状态及错误词表未变化。
+
+集成后主agent独立复跑同4文件16项前端测试通过；5份更新文档的279个本地链接/锚点检查与全工作区 `git diff --check` 通过。本片完成设计→保存→不可变版本→实现材料的限定技术结果。真实模型生成多行源码、受控应用和用户产品接受仍独立；未重做已验证的两路由交付或宣称整体PB完成。保留前轮Flyway未提交修改，未提交/推送。
+
+<a id="textarea-source-ai-optimization"></a>
+## 已确认任务表单与真实AI描述优化（2026-11-13，限定技术交付通过）
+
+用户确认第二版效果后，按独立生成样例交付任务名称、分类、多行描述、确认框、提交/重置及帮助弹窗，增加AI优化建议预览、明确采用/放弃、取消及输入变更保护。此能力不扩展通用语义预览的本地动作白名单，也不把分类改成优先级；既有看板创建与原型任务弹窗不因此重写。
+
+纯文本优化复用既有模型连接及completion入口：POST `/api/ai/task-description/optimizations/{requestId}`，DELETE同路径取消；服务端确定操作者，输入最多12000字符、输出最多2000字符、2048 tokens、60秒总预算、全局8/单操作者2个在途。超限输出报错而非截断，建议须明确采用，不创建任务、对话、记忆或工具执行；Mock只提供独立HTTP契约测试。
+
+- 主agent独立复跑前端API/Mock相邻4类25项通过；类型与模块边界检查通过，未新增基础UI包或改动现有管理页面。
+- 首次隔离后端回归中，新优化及包装测试通过，full宿主36项出现1项失败：`OpenAiResponsesProtocolTest.failedIncompleteAndTruncatedStreamsNeverSucceedOrFallback:89` 期待 `IllegalStateException`，新增脱敏包装返回 `ResponseStatusException`。原协议断言保持，修复受控异常类型及白名单码后，主agent独立复跑7类53项通过，0失败/错误/跳过（Completion包装5、优化10、Controller2、历史摘要5、Chat12、Responses11、模块边界8）。命令为隔离reactor `mvn -q -o -pl :eap-full-application -am '-Dtest=CompletionChatModelTest,TaskDescriptionOptimizerTest,TaskDescriptionOptimizationControllerTest,HistorySummaryTest,AiChatApplicationTest,OpenAiResponsesProtocolTest,BackendModuleBoundaryTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-DfailIfNoTests=false' test`，日志regression.log；首次日志保留 `backend/target/textarea-source-20261113/regression-initial-protocol-failure.log`。
+- 新独立浏览器脚本的prepare/typecheck/test/build通过。首次真实调用生成两个文件候选，经真实EAP页面明确应用及独立验证通过；交互阶段因必填标签包含星号而定位超时，未调用描述优化、未提交交付或ACCEPT。失败保留于`backend/target/textarea-source-20261113/real-delivery-initial-label-failure.log`和`backend/target/textarea-source-20261113/backend/eap-applications/eap-full-application/target/textarea-source-1311893033597590256/validation.json`。修正测试定位及空白优化的可见反馈断言后，将显式重放该次真实输出：另建工作区、会话、任务、版本和生成快照，候选内容逐字保持，重新页面应用与验证，不作为新模型生成或回填原失败记录。首次显式重放中，候选再次应用和独立验证通过，390/1440表单校验、换行、重置、帮助和本地提交通过，真实描述优化返回200且明确采用前原文保持；取消故障注入因测试过早撤销拦截而漏记异步DELETE，未形成交付/ACCEPT。保留`backend/target/textarea-source-20261113/real-delivery-replay-cancel-observation-failure.log`及`backend/target/textarea-source-20261113/backend/eap-applications/eap-full-application/target/textarea-source-113634249819428420/real-optimization.json`。已补充等待POST实际进入挂起路由、同UUID独立DELETE返回204后才释放迟到响应及撤销拦截，第二次重放已验证同UUID独立DELETE 204、迟到响应保护及全部表单/真实优化检查，并成功提交交付；随后原型对照页的同名h1/h4触发严格定位错误，尚未ACCEPT。证据保留`backend/target/textarea-source-20261113/real-delivery-replay-heading-failure.log`和`backend/target/textarea-source-20261113/backend/eap-applications/eap-full-application/target/textarea-source-14065036056326916242/cancellation-injection.json`。仅将原型对照标题限定为一级标题后复验，未改候选内容。日常数据库与常驻IDEA服务未重置或重启。
+
+最终显式重放通过（1项实际Boot/Chrome/实库验收，145.814秒，0失败/错误/跳过）：`backend/target/textarea-source-20261113/backend/eap-applications/eap-full-application/target/textarea-source-16732576559995217599/validation.json`记录新候选`d1e3a3e9-a058-42f4-9cc0-5b0fc89e1565`、Run `c3dc2deb-afc5-4f36-930a-62c5774dc6f5`，typecheck/test/build全部PASSED，390/1440px换行、空白必填、重置、帮助、本地提交通过；真实未拦截优化返回`gpt-6.1-sol`建议，原文在明确采用前保持；漂移、取消同UUID DELETE 204、错误及超限响应保护另由明确标记的故障注入覆盖。固定原型对照、PREBOUND交付、技术ACCEPT及刷新读回通过，未形成用户产品接受。
+
+- 最终工作区保留`workspace/frontend/src/TaskForm.vue`和`workspace/frontend/src/task-form.css`，与首次真实结果逐字一致；原始生成和失败记录未改写。`captured-model-result.json`、`captured-replay-context.json`与`host.json`明确本次是同一真实输出的新绑定重放，没有第二次源码模型生成或静默回退。`real-optimization.json`则为本次真实模型优化调用，故障注入清单不冒充真实模型效果。
+- 同目录保存`verification.json`、`delivery-response.json`、`delivery.json`、`cancellation-injection.json`、`textarea-form-1440.png`、`textarea-form-390.png`、`real-optimization-suggestion.png`及`delivery-prototype-comparison.png`。
+- 最终命令：设置`EAP_TEXTAREA_CAPTURED_RESULT`为首次`textarea-source-1311893033597590256/real-model-result.json`后，执行`powershell.exe -NoProfile -ExecutionPolicy Bypass -File backend/target/textarea-source-20261113/run-tests.ps1 -Real -Tests TextareaSourceDeliveryAcceptanceTest`；内层隔离reactor为`mvn -q -o -pl :eap-full-application -am '-Dtest=TextareaSourceDeliveryAcceptanceTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-DfailIfNoTests=false' test`。正式前端`vp -C frontend/apps/web build`通过（4750模块，既有chunk提示保留），新增脚本`node --check`通过。
+- 边界：独立生成表单源码在上述工作区，后端优化入口、runtime-client及HTTP Mock在正式仓库；既有管理页面和通用语义预览动作不扩展，表单提交只本地验证。测试使用自有UUID schema并清理；日常库、常驻IDEA与5173服务未改动。用户确认了第二版效果，最终产品接受、更多业务页面和其他模型仍独立。
+
+<a id="board-task-ai-creation"></a>
+
+## 正式看板创建与 AI 目标优化（2026-11-13，定向技术验收通过）
+
+用户已确认[当前效果与接入合同](../decisions/board-task-ai-creation.md)。本片在正式看板创建弹窗复用现有文本优化 API、任务创建及持久请求身份，目标与验收标准保持独立；创建不自动执行。既有独立表单的技术交付证据沿用，模拟效果检查只作为效果审阅依据。
+
+本片定向检查范围为明确采用、目标变更及取消/关闭后的迟到保护、未知创建结果的原身份核对，以及正式页面1440/390交互。实库验收另建自有UUID schema，真实模型优化单独记录；日常数据库与常驻服务保持原状。实际结果如下；效果确认与最终用户产品接受分别记录。
+
+
+本轮证据位于 `backend/target/board-ai-creation-20261113/backend/eap-applications/eap-full-application/target/board-ai-creation-14040157193181557294`：
+
+- [validation.json](../../backend/target/board-ai-creation-20261113/backend/eap-applications/eap-full-application/target/board-ai-creation-14040157193181557294/validation.json)：正式App `#board`、1440/390，无页面异常；建议未经明确采用不改目标，验收标准保留换行。一次真实配置供应商调用HTTP200，模型 `gpt-6.1-sol`，原请求、建议与身份保存于同目录 `real-optimization.json`，不含凭据。
+- [readback.json](../../backend/target/board-ai-creation-20261113/backend/eap-applications/eap-full-application/target/board-ai-creation-14040157193181557294/readback.json)：服务层与SQL独立核对3条任务（就绪、丢响应后同身份核对、空目标待规划），每个项目/请求身份仅1条；0条 `board_task_run`、0条 `mission_execution`。创建真实提交后浏览器丢失响应，重试完整请求和读回任务身份一致；明确400故障注入未写库，修正后使用新身份。
+- 迟到响应的目标漂移、主动取消和关闭为明确故障注入；均等待同一UUID的真实DELETE204后释放迟到POST，验证草稿与建议未被覆盖，证据 `faults.json`。与真实模型成功优化分列，不声称通过故障注入完成真实模型取消质量验收。
+- [桌面表单](../../backend/target/board-ai-creation-20261113/backend/eap-applications/eap-full-application/target/board-ai-creation-14040157193181557294/form-1440.png)、[窄屏真实建议](../../backend/target/board-ai-creation-20261113/backend/eap-applications/eap-full-application/target/board-ai-creation-14040157193181557294/optimization-preview-390.png)：实际正式组件与真实后端，非先前模拟HTML。
+
+验证命令及结果：
+
+```text
+vp -C frontend test run apps/web/__tests__/features/shell/PreviewBoard.test.ts apps/web/__tests__/features/shell/boardEdits.test.ts apps/web/__tests__/features/shell/boardTaskHandoff.test.ts
+# 父独立复验：3文件33项通过；frontend-tests-final.log
+vp -C frontend run typecheck
+vp -C frontend run check:boundaries
+# 均exit 0
+vp -C frontend/apps/web build
+# exit 0，4750模块，既有chunk体积提示保留
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File backend/target/board-ai-creation-20261113/run-tests.ps1 -CopyBackend
+# 隔离完整宿主：BoardTaskAiCreationAcceptanceTest 1项，0失败/错误/跳过，43.69s
+```
+
+首次前端单测29项中21项失败：项目切换夹具手插Vue管理的option触发 `TypeError: Cannot read properties of null (reading 'type')`，造成后续测试串扰。改用真实响应式 `localProjectState.projects` 产生选项，保留项目取消及迟到保护断言；父独立复跑33项通过。初始日志 `backend/target/board-ai-creation-20261113/frontend-tests-initial-fixture-failure.log` 与最终日志分列，未调整生产实现掩盖测试失败。
+
+本片只修改看板域组件、中英文文案、定向单测及新验收夹具，复用公共UI、runtime-client已有优化和创建服务；未改状态/错误词汇，沿用先前领域合同检查。保留此前Flyway/textarea/API未提交修改，未提交/推送，未清理日常库或重启常驻IDEA/5173。测试仅创建并回收自有UUID schema及临时服务；常驻服务尚未加载新后端源码，最终用户产品接受仍独立待确认。
+
+<a id="board-task-ai-editing"></a>
+
+## 已有任务详情目标 AI 优化（2026-11-13，定向技术验收通过）
+
+用户要求效果确认采用等待交互回复，已通过交互问答明确选择按当前效果实施。[效果稿](../../backend/target/board-edit-ai-preview-20261113/preview.html)在1440/390各完成21项模拟交互检查，零HTTP请求及页面错误；此组模拟不作为正式实现验收。
+
+正式接入复用已有优化 API 和 `updateBoardTask`，建议采用仅更新目标草稿；保存仍携带原revision。执行中、忙碌或存在版本冲突时暂停优化，目标编辑、任务切换、关闭、保存及revision变化使旧请求失效。定向验证将分别记录真实模型成功、显式故障注入、真实保存及409冲突核对，保留验收标准/备注/优先级和既有草稿缓存。以下为实际结果；此前新建流程未变化的技术证据沿用。
+
+
+本轮实际证据位于 `backend/target/board-ai-editing-20261113/backend/eap-applications/eap-full-application/target/board-ai-editing-317063138564617067`：
+
+- [validation.json](../../backend/target/board-ai-editing-20261113/backend/eap-applications/eap-full-application/target/board-ai-editing-317063138564617067/validation.json)：正式App `#board`，1440/390无横向溢出、保存按钮可滚动到达，零页面异常。一次真实配置模型 `gpt-6.1-sol` 优化HTTP200；建议未采用不改原文，采用仅改变目标草稿。
+- [db-checkpoints.json](../../backend/target/board-ai-editing-20261113/backend/eap-applications/eap-full-application/target/board-ai-editing-317063138564617067/db-checkpoints.json)：采用前/采用后均由Java直接SQL读取原目标，明确保存后才变为建议；验收标准、备注和优先级独立保留。3次成功UI保存使用被核对的revision，2次外部真实更新触发UI保存409；分别保留草稿或采用最新值后再保存，关闭重开及刷新读回一致。
+- [readback.json](../../backend/target/board-ai-editing-20261113/backend/eap-applications/eap-full-application/target/board-ai-editing-317063138564617067/readback.json)：最终任务字段/revision逐项一致，另一任务保持原状；2条任务、0条Run、0条执行。自有UUID schema最终回收，日常库及常驻服务原样。
+- [窄屏真实建议](../../backend/target/board-ai-editing-20261113/backend/eap-applications/eap-full-application/target/board-ai-editing-317063138564617067/suggestion-390.png)、[桌面详情](../../backend/target/board-ai-editing-20261113/backend/eap-applications/eap-full-application/target/board-ai-editing-317063138564617067/detail-1440.png)。主动取消、草稿漂移、关闭、切换任务的迟到POST为显式故障注入；每次等待同UUID真实DELETE204再释放，断言草稿未覆盖且无残余建议。此组不等同真实供应商取消质量验收。
+
+验证命令及结果：
+
+```text
+vp -C frontend test run apps/web/__tests__/features/shell/PreviewBoard.test.ts apps/web/__tests__/features/shell/boardEdits.test.ts apps/web/__tests__/features/shell/boardTaskHandoff.test.ts
+# 父独立复验3文件45项通过（41+1+3）
+vp -C frontend run typecheck
+vp -C frontend run check:boundaries
+vp -C frontend/apps/web build
+# 均exit 0，构建4750模块，既有chunk体积提示保留
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File backend/target/board-ai-editing-20261113/run-tests.ps1 -CopyBackend
+# BoardTaskAiEditingAcceptanceTest 1项，0失败/错误/跳过，46.07s
+```
+
+实现阶段新测试曾使用错误close selector，并漏stub切换任务的GET；修正测试定位和显式Mock后父独立45项全通过，未削弱网络守卫。验收脚本首跑通过。生产只扩展看板组件与两条中英文文案，复用公共UI、已有优化API及唯一更新路径；新增定向组件用例和独立完整宿主验收夹具。未更改状态或错误词汇，沿用此前领域合同检查；既有Flyway/textarea/API及新建任务修改保留，未提交/推送。效果确认和本片技术验收已记录，最终用户产品接受仍独立待确认。
+
+
+<a id="task-list-design-delivery"></a>
+
+## 可筛选任务列表与只读详情（2026-11-13，限定技术整链通过）
+
+1440/390px交互效果稿通过11组检查后，用户以等待交互回复明确确认实施。正式实现新增有界task-list语义，复用看板状态、公共UI及既有设计版本/关联任务路径；普通字符串list保持原职责，临时筛选和选中项不写入设计。
+
+前端定向4文件16项、typecheck、模块边界及生产build（4755模块）通过；后端SemanticTaskListTest/SemanticTextareaTest/PrototypePublicationServiceTest共14项通过。父独立实库/Chromium验收PrototypeTaskListAcceptanceTest 1项通过，44.68s、零失败/错误/跳过。实际编辑器修改多行goal并保存重开，1440/390px筛选交集/计数/空态/重置/对应记录详情/焦点恢复/末行可达通过；发布版本窄屏交互后body不变。
+
+证据：[浏览器记录](../../backend/target/task-list-design-20261113/backend/eap-applications/eap-full-application/target/task-list-design-16319307743237759317/validation.json)、[真实发布请求envelope](../../backend/target/task-list-design-20261113/backend/eap-applications/eap-full-application/target/task-list-design-16319307743237759317/expected-publication.json)、[数据库完整读回](../../backend/target/task-list-design-20261113/backend/eap-applications/eap-full-application/target/task-list-design-16319307743237759317/readback.json)。Java逐JSON核对原记录及Grapes工程，仅1个不可变版本、1个关联planned任务，code_proposal/board_task_run/mission_execution/tool_execution均0，自有UUID schema最终回收。
+
+首次真实浏览器在状态Select的精确名称定位处超时；包裹label包含option文本，为此补充明确本地化aria-label并强化回归，随后整链通过。原失败记录保留于acceptance-first-label-failure.log和task-list-design-12188419528003758835，不改断言绕过问题。
+
+命令：`powershell.exe -NoProfile -File backend/target/task-list-design-20261113/run-frontend.ps1`、`powershell.exe -NoProfile -File backend/target/task-list-design-20261113/run-tests.ps1 -CopyBackend`。源码验证另用TaskListSourceDeliveryAcceptanceTest，最终1项通过（248.9s，零失败/错误/跳过）：前端16项、后端14项、类型/边界/构建、实际编辑保存重开/不可变发布及实库原文核对通过；真实模型两文件候选经页面明确应用、独立typecheck/test/build及内容哈希、1440/390px逐六条记录筛选/详情/焦点/滚动、原型对照与技术ACCEPT刷新读回通过。证据：[源码整链](../../backend/target/task-list-source-20261113/backend/eap-applications/eap-full-application/target/task-list-source-5273733127732985604/validation.json)、[独立检查](../../backend/target/task-list-source-20261113/backend/eap-applications/eap-full-application/target/task-list-source-5273733127732985604/verification.json)、[交付决定](../../backend/target/task-list-source-20261113/backend/eap-applications/eap-full-application/target/task-list-source-5273733127732985604/delivery.json)。每轮承接本轮实际发布版本与关联任务，仅一次真实生成，不重放候选。首轮task-list-source-2673045188398770049在生成、明确应用、独立检查及两种宽度逐条交互后，因原型viewer把页面名当作内容标题而失败；修正为保存语义label并核对全部行。第二轮task-list-source-3595192746137489052生成页面包裹Select标签导致可访问名称混入option文本，精确名称检查再次失败；正式TaskContext及生成要求补充独立关联标签/aria-label约束后完整复验通过。acceptance-first-comparison-failure.log、acceptance-second-generated-label-failure.log及两份artifact均保留，未回填旧轮。命令：`powershell.exe -NoProfile -File backend/target/task-list-source-20261113/run-tests.ps1`。技术ACCEPT由隔离fixture明确执行，最终用户产品接受独立；生成物不直接替换正式看板。日常库、常驻服务和已有未提交工作保留。
+
+<a id="task-detail-edit-design-delivery"></a>
+
+## 任务详情本地编辑与双字段 AI 优化（2026-11-13，限定技术切片完成）
+
+用户确认底部紫色AI优化、取消、绿色保存三按钮及目标/验收标准共同建议后实施。可选 `props.editable` 仅接受boolean，缺省只读；编辑仅更新当前预览内存，发布版本保持不可变。双字段POST/DELETE复用既有模型、主体隔离、并发、截止与取消基础设施，严格解析两字段JSON；原单字段接口保留其独立职责。
+
+父独立前端8文件34项、typecheck、模块边界及最终build通过；后端隔离单测29项通过。审查修复空态重置错误恢复原记录、弹窗退出焦点、首错定位及跨记录成功提示；首次build暴露模板内多语句经格式化失效，提取命名方法后重建通过。原失败build.log保留，最终结果见build-final.log。单测发现默认工具advisor抢先处理意外工具调用，关闭自动注册后由已有严格响应边界报错，无工具执行。
+
+命令：`powershell.exe -NoProfile -File backend/target/task-detail-acceptance-20261113/run-frontend.ps1`、`python backend/target/task-detail-edit-20261113/run-tests.py`。父独立实际编辑保存重开/发布与双字段AI验收已通过：TaskDetailEditAcceptanceTest 1项、59.304秒，零失败/错误/跳过。[浏览器证据](../../backend/target/task-detail-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-detail-edit-18042299113925741585/validation.json)、[真实双字段优化](../../backend/target/task-detail-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-detail-edit-18042299113925741585/real-optimization.json)、[实库完整版本读回](../../backend/target/task-detail-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-detail-edit-18042299113925741585/readback.json)。一次真实gpt-6.1-sol调用，两项采用仅改草稿，脏退出继续后明确保存再重开精确读回；取消/ABA/关闭三项迟到响应为显式Mock注入，均等待同UUID真实DELETE204后释放。1440/390px及390×600可达性、焦点、2000/2001、记录隔离及空态重置保持已保存值通过。Java核对仅1不可变版本/1关联planned任务，proposal/Run/mission/tool执行为0，自有schema最终回收。
+
+首次真实验收task-detail-edit-5777648929675211470在390×844误以为必须有滚动条而失败；父复核截图证实全部内容可见，改按字段与末端按钮实际可达性检查，另在390×600验证真实overflow及scrollTop到末端，未改变合适的产品布局。原design-first-scroll-assumption-failure.log及artifact保留。重跑命令：`powershell.exe -NoProfile -File backend/target/task-detail-acceptance-20261113/run-tests.ps1 -Phase design -CopyBackend -AcceptanceOnly`；已通过且未变化的后端单测沿用前轮结果。首轮真实源码整链task-detail-edit-source-12956272198404567204在既有断言下1项/320.609秒通过；父复核发现生成候选仅在pending时禁用AI，空白与2001字符仍可发起优化。独立实际built浏览器只读复现两种输入下optimizationDisabled=false，API调用为0，见[原候选观察](../../backend/target/task-detail-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-detail-edit-source-12956272198404567204/input-guard-observation.json)。保留source-first-input-guard-gap.log和原候选；补齐共用真实浏览器的两字段空白/2001禁用断言、生产TaskContext与真实生成请求的前置输入守卫约束，以新真实生成重跑，未手工改写候选或回填旧证据。第二轮task-detail-edit-source-13989149545475931663通过新增两字段输入守卫断言，随后确认框内的结构选择器匹配到隐藏编辑表单按钮，触发strict mode violation（5 elements）；生成页面以v-show保留隐藏表单。将测试改为按可见角色及精确名称“放弃更改”定位，保留source-second-confirm-selector-failure.log及原artifact，未修改生成候选。第三轮task-detail-edit-source-15558358445031643340在平台typecheck失败：TaskList.vue:116/129/131中的数值代次变量token被[REDACTED]替换，出现TS1005/TS1128；保留source-third-redaction-syntax-failure.log与原候选。当前EngineeringChatService对代码答案执行redactComplete，SensitiveData会把token赋值及比较当作凭据赋值。生成约束现明确使用requestEpoch/capturedEpoch表达非凭据数值代次，凭据防护保持开启；源码准入对损坏脱敏标记的处置另行复核，未将本次命名约束宣称为通用脱敏根因修复。第四轮在真实发布通过后、源码模型调用前遇到测试任务说明超过board acceptanceCriteria的4000字符合同（BOARD_TEXT_TOO_LONG）；保留source-fourth-fixture-limit-failure.log，精简重复描述并加长度断言，未放宽正式字段限制。已在CodeChangeService的解码源码准入增加3行脱敏残片拦截，复用INVALID_CODE_PROPOSAL，整份提案在保存前失败。独立隔离离线命令`rtk proxy mvn.cmd -o -f backend/target/code-redaction-admission-20261113/backend/pom.xml -pl :eap-full-application -am -Dtest=CodeProposalBoundaryTest -Dsurefire.failIfNoSpecifiedTests=false test`通过21项/0失败/0错误/0跳过，见[准入回归日志](../../backend/target/code-redaction-admission-20261113/test-final.log)。覆盖解码Unicode/大小写marker、普通及prepared入口、多文件整份阻断、数值代次与换行源码逐字提案/应用；首次多文件fixture根路径触发CODE_GRAPH_PATH_DENIED，仅修正为frontend路径后通过，原test.log保留。该补丁不修改SensitiveData或代码答案redactComplete，通用误判根因仍待后续处理。
+
+最终使用新的真实模型候选完成限定整链：TaskDetailEditSourceAcceptanceTest 1项/299.6秒通过，0失败/错误/跳过。命令：`powershell.exe -NoProfile -File backend/target/task-detail-acceptance-20261113/run-tests.ps1 -Phase source -CopyBackend`。同一自有schema内实际编辑保存发布、关联任务ready、真实模型两文件候选、明确勾选应用、平台Run独立typecheck/test/build及进程清理、源码哈希稳定、实际built页面1440/390px双字段编辑/真实AI/输入边界/脏草稿退出/取消迟到响应、CHAT_APPLIED_PREBOUND交付及技术ACCEPT刷新读回全部通过；不可变版本正文未改变。取消/ABA/关闭的迟到响应依旧为明确Mock故障注入，其余真实优化均使用配置供应商。
+
+最终证据：[浏览器结果](../../backend/target/task-detail-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-detail-edit-source-423020493032847299/validation.json)、[平台独立验证](../../backend/target/task-detail-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-detail-edit-source-423020493032847299/verification.json)、[真实双字段优化](../../backend/target/task-detail-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-detail-edit-source-423020493032847299/real-optimization.json)、[交付与技术决定](../../backend/target/task-detail-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-detail-edit-source-423020493032847299/delivery.json)。Proposal为0e44641b-6d35-47a5-ac53-c3c47a330389，版本141b624c-5534-41fc-a2e1-fcef1b83c75c，Run为a9b1096e-db0f-4a1d-aaab-1344372a87bb，sourceHash为64601ed533f9487307ed1f099b78e6943de1206736aa88ef12295b6113f20b3d。生成的TaskList.vue/task-list.css只在隔离工作区应用；未提交或推送主仓库，未重置日常数据库或重启既有服务。限定技术切片完成；用户产品接受及上述通用脱敏误判根因在本片完成时仍分别保留为后续事项。后续处理见下一批记录，不回填本片原始证据。
+
+<a id="dsh-ai-team-first-batch"></a>
+## 2026-11-13：插件安装受阻，两个内建并行任务验收完成
+
+`dsh-ai-team@1.7.0` 包安装成功但插件激活失败，当前DSH `0.2.2-rc.2` 已移除 `installSettingsSection` 等旧接口；安装排查时先停用该包，后按用户要求卸载（`remove_bundle` changed=true、application=applied）；适配工作已终止。排查确认设置、异步投影及会话恢复存在迁移缺口，插件自动Git提交/合并路径与当前工作约定也有差异。本批未跑通插件team/task流程。完整错误、公开同版本来源与未应用草稿见[批次决策](../decisions/dsh-ai-team-batch.md)及其兼容报告。两个任务由内建subagent并行完成，经父独立审查，不计为插件能力证明。
+
+源码任务修复代码答案经通用脱敏器静默损坏的问题：严格解码完整JSON，仅files[*].content使用源码检测，其他字段通用检查；成功保持原始答案/源码字节，失败整份阻断且不持久候选。识别仅放行明确局部token标识符赋值/比较，显式凭据及含糊表达式仍阻断；相邻源码快照同步，完成候选→apply→下一轮prepare/inspectReferences原文闭环。原日志脱敏、凭据检测与残片准入保留。父独立离线隔离命令 `powershell.exe -NoProfile -File backend/target/dsh-ai-team-batch-20261113/run-review.ps1` exit 0；5组111项，0失败/错误/跳过：28 SensitiveData、33 EngineeringChatService、22 CodeProposalBoundary、12 CodeGenerationBoundary、16 TaskDescriptionOptimizer。[复核脚本](../../backend/target/dsh-ai-team-batch-20261113/run-review.ps1)及同目录review-tests.log保留；子95项不与父111项累计。未调用真实模型或数据库，未验证运行中服务。
+
+文档任务合并PB-01重复进度表达，主方案/台账/roadmap各保留合同/进度/顺序职责，新增[设计交付索引](design-delivery-index.md)聚合8切片导航；原三文档减4844字符，索引新增2166字符，净减2678字符，历史失败未删。父复核差异及UTF-8/LF、本地链接与锚点检查，`git diff --check`通过。批次检查脚本最终核对11份文档、408个本地链接，0错误，UTF-8/LF通过；未把文档整理视为业务或用户验收。既有未提交修改保留，无主仓库提交/推送、日常数据库重置或常驻服务重启。
+
+<a id="task-list-create-design-delivery"></a>
+
+## 2026-11-13：本地新增任务与源码完整性复验并行批次（进行中）
+
+用户交互确认本地新增效果后，正式实现独立 `creatable` 严格布尔开关、共享创建/编辑表单及既有双字段AI接口。新增仅保存至当前预览内存；名称≤120、目标和验收各≤2000，默认planned/none/空摘要，唯一LOCAL-UUID、未筛选总量30上限，保存去重、清筛选、首行定位、名称ABA与草稿保护。未新增业务API或持久化路径，刷新恢复发布设计。合同与效果确认见[本地新增方案](../decisions/task-list-create-design-delivery.md)。
+
+父独立命令 `powershell.exe -NoProfile -File backend/target/task-list-create-review-20261113/run-frontend.ps1` exit 0：7文件39项测试、类型检查、模块边界、正式Web构建通过，日志见[定向测试](../../backend/target/task-list-create-review-20261113/frontend-tests.log)。最初使用本机未安装的pwsh启动失败(exit127)，未执行检查，随后使用已安装powershell.exe重跑。后端隔离 `SemanticTaskListTest,SemanticTextareaTest` 共13项通过（11+2，0失败/错误/跳过），见[后端日志](../../backend/target/task-list-create-backend-20261113/maven-test.log)。这些证据尚不等于真实编辑发布或源码交付完成；两条真实验收仍在推进，源码完整性早期fixture失败及provider失败分别保留，不据此宣称业务完成。
+
+
+本地新增真实验收：`powershell.exe -NoProfile -File backend/target/task-list-create-acceptance-20261113/run-tests.ps1 -Phase design -CopyBackend -AcceptanceOnly -ModelStore J:/Code/Engineering-Automation-Platform/.eap/model-connections.json` exit0。TaskListCreateAcceptanceTest 1项通过、73.55秒、0失败/错误/跳过；1440/390必填与边界、草稿退出、焦点、保存唯一、名称ABA迟到响应及真实双字段优化1次通过。发布版本22766128-05d7-4411-a9db-68a14c0e3b87，关联任务dd4b05a8-27c4-401e-aed1-0a7bd55b2ba9；完整不可变schema/Grapes读回含6条原记录、editable/creatable=true，局部新增未写入版本。见[实际交互](../../backend/target/task-list-create-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-list-create-15425587773466102855/validation.json)、[完整读回](../../backend/target/task-list-create-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-list-create-15425587773466102855/readback.json)。首轮同版本源码整链task-list-create-source-live-1629975388053380949已完成真实生成、候选明确应用及独立type/test/build，随后脚本依赖公共Dialog内部属性[data-eap-dialog-close]而超时；实际候选已有aria-label=关闭编辑的按钮。保留source-first-close-selector-failure.log和原候选，仅将共用helper两处定位改为getByRole(button, exact关闭编辑)，保持退出/草稿/取消断言不变，新的真实生成复验进行中，未手工改写候选或回填旧记录。
+
+源码保真复验：第五轮真实生成、应用及独立type/test/build通过，原答案解码→返回候选→持久候选GET→应用文件→verification.sourceAfter五阶段一致；Vue 14826字节SHA256 af31854c0a4e58071134a53450e2af1f5c993da0a6c32f88069f3e3d26d9dec7，CSS 4982字节SHA256 b9c92137908ad6bcaaf04f1d56a0044299289f0e2a870308b9ac14f82dc65709。`const token = epoch;`及比较保留原字节。生成页在1440关闭详情时同步focus，Vue更新前背景inert尚未解除，真实断言Expected focused/Received inactive失败；保留候选和断言，无delivery/ACCEPT，390及故障阶段、next prepare/inspect均未执行。5轮中3次真实code调用（2生成成功、1provider错误），未新增优化模型调用；自有schema清理读回0。首两轮fixture路径/accessor、第三轮误把summary解析为JSON、第四轮AI_PROVIDER_ERROR、第五轮生成焦点缺陷逐项保留，未推断限额原因。见[完整复验报告](../../backend/target/source-integrity-live-20261113/task1-report.md)、[逐阶段复核](../../backend/target/source-integrity-live-20261113/backend/eap-applications/eap-full-application/target/source-integrity-live-7933020474683955981/independent-review.json)。保真修复的证据与完整交付失败分别记录。
+
+本地新增源码第二轮task-list-create-source-live-3760463560083467787在平台设计阶段发现同名关闭按钮含遮罩与标题按钮两项，严格定位歧义；未进行源码生成，保留source-second-platform-close-ambiguity.log。共用helper明确选择同名末项标题关闭按钮；确认框按隐藏而非是否卸载验证，摘要改由可见标签对应内容核对，优先级大小写与摘要标签元素类型不作实现限制，保留本地默认值及状态中文显示断言。第三轮task-list-create-source-live-9256042567483927612在平台设计阶段因helper固定使用“摘要”而平台文案为“简介”失败，未进入源码模型调用；source-third-summary-label-fixture-failure.log保留。已核对正式详情实现，摘要校验同时接受“简介/摘要”标签后对应空内容，第四轮task-list-create-source-live-14284428458162384715完成真实生成、候选应用、type/test/build独立检查后，在新增弹窗关闭路径失败。复核实际Vue只有页脚取消与Escape处理，缺少可见标题关闭按钮；这是生成能力缺口，保留source-fourth-missing-close-control-failure.log和原候选，不将取消代作关闭通过。正式TaskContext和实际生成请求补齐可见具名标题关闭按钮、共用草稿守卫，以及DOM解除inert后恢复焦点的既有行为要求，第五轮task-list-create-source-live-4390836006007572758通过关闭动作及取消、字段/名称同值还原、关闭的迟到响应检查，随后因已隐藏编辑表单与筛选框同名“任务名称”产生严格定位歧义，保留source-fifth-hidden-name-ambiguity.log；补齐可见筛选控件范围而非要求隐藏表单卸载，第六轮task-list-create-source-live-11178363593871961143完成真实生成与独立检查；helper读取0条记录，是验收根节点只认data-testid，而候选按请求使用id=task-list-preview导致。实际Vue初始保留完整6条发布记录，未据此宣称丢数据。保留source-sixth-root-attribute-fixture-failure.log；根节点定位同时支持声明的id与data-testid，第七轮task-list-create-source-live-11951652530043569850真实生成候选cb68dfa4-d3e4-4e92-86a6-3a73b7b731b6明确应用后，独立typecheck/test/build通过；真实built浏览器在helper83的Tab焦点约束失败（焦点不在编辑弹窗内），1项验收/275.6秒失败。实际Vue使用原生dialog但未实现显式Tab循环，保留source-seventh-focus-trap-failure.log与原候选；不削弱键盘断言或手工改写候选。证据：[最终交互失败](../../backend/target/task-list-create-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-list-create-source-live-11951652530043569850/validation.json)、[独立检查](../../backend/target/task-list-create-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-list-create-source-live-11951652530043569850/verification.json)、[清理证明](../../backend/target/task-list-create-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-list-create-source-live-11951652530043569850/schema-cleanup.json)（remainingSchemas=0）。未达到源码delivery/ACCEPT；后续容量30、刷新与next prepare/inspect等步骤未执行。命令为powershell.exe -NoProfile -File backend/target/task-list-create-acceptance-20261113/run-tests.ps1 -Phase source -CopyBackend -ModelStore <本地配置路径>。本批实现与分层验证结果按通过/失败/未执行分别收尾，下一关口先收敛生成页公共弹窗及显式焦点循环，以定向浏览器检查验证后再跑整链，停止反复整链随机生成。
+
+<a id="task-list-create-locator-review"></a>
+
+## 列表新增源码后续定位复核（2026-11-13文档核对）
+
+本次仅读取已有产物，未重跑模型或浏览器。下列两次均标记`FAILED`，供应商字段为`real configured model; fresh generation`；不能以候选应用或独立检查推导整链通过，早期Tab焦点失败仍保留。
+
+- [14284428458162384715/validation.json](../../backend/target/task-list-create-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-list-create-source-live-14284428458162384715/validation.json)：候选`bb6faba1-68fc-401b-a250-68bb54ceb77e`，编辑弹窗内按名称“关闭编辑”定位，`locator.click: Timeout 15000ms exceeded`。
+- [1629975388053380949/validation.json](../../backend/target/task-list-create-acceptance-20261113/backend/eap-applications/eap-full-application/target/task-list-create-source-live-1629975388053380949/validation.json)：候选`855abfdd-e50f-4cb3-9bfb-1b50820a8000`，定位`[data-eap-dialog-close]`超时，同为`locator.click: Timeout 15000ms exceeded`。
+
+需分别核对生成控件的可访问名称/定位合同与实际焦点行为，当前结果不证明后续容量检查、交付或ACCEPT已执行。
+
+<a id="design-delivery-progress-snapshot"></a>
+
+## 设计交付入口去重前快照（2026-11-13）
+
+保存整理前PB-01行及重复描述，以下失败阶段按原时点阅读，不作为第二份当前台账。
+
+| <a id="pb-01-design-delivery"></a>PB-01 原型编辑 | **限定技术交付完成，用户产品接受待确认**：交互原型、多行字段、独立表单、正式看板创建/已有任务目标优化、可筛选列表及详情双字段编辑均有各自限定证据。详情最新真实发布/双字段AI与同版本关联任务的隔离源码整链、技术ACCEPT刷新读回已通过；各切片准确范围、真实模型与Mock、失败及重放区别见[设计交付索引](../records/design-delivery-index.md)，详细结果只见[详情证据](../records/validation-history.md#task-detail-edit-design-delivery)。 | 用户产品接受、更多组件/自身业务页及原生缩放仍待；独立表单本地提交不创建看板任务。常驻服务未升级、日常库未初始化新V1；详情源码仅在隔离工作区交付。脱敏残片准入拦截已有证据，代码答案静默改写与相邻源码快照误判已在[后续批次](../decisions/dsh-ai-team-batch.md)完成限定修复和111项离线回归；复杂含糊表达式仍保守失败；本批源码保真五阶段逐字节一致、独立type/test/build通过；生成页关闭详情过早focus（Vue尚未移除inert）导致整链失败，无delivery/ACCEPT，390及next inspect未执行。[列表本地新增](../decisions/task-list-create-design-delivery.md)39项前端、13项后端检查及真实发布/一次双字段AI验收1项通过（73.55秒），真实源码候选明确应用及type/test/build通过，但第七轮生成页Tab后焦点离开编辑弹窗，整链失败，无delivery/ACCEPT，容量与后续交付读回未执行。下一关口先收敛生成弹窗/焦点实现并定向验证，停止仅靠更换随机候选的整链重试；两项均按实际边界记录，见[本批证据](../records/validation-history.md#task-list-create-design-delivery)。 |
+
+| 原型与源码 | 受支持语义设计、不可变版本→任务，以及统一1～8文件候选/应用、独立验证和源码UNKNOWN核对；限定设计交付见[索引](../records/design-delivery-index.md)，当前状态见[PB-01台账](../planning-status.md#pb-01-design-delivery) | 当前批[源码检测修复](../decisions/dsh-ai-team-batch.md)五阶段保真已验证、生成页焦点缺陷使整链未通过；[列表本地新增](../decisions/task-list-create-design-delivery.md)真实发布通过，真实候选独立检查通过，但生成页Tab焦点约束失败，尚无源码ACCEPT；下一批优先收敛生成弹窗/焦点复用与验收定位，再定向复验，避免反复整链重生成；用户产品接受单独核对，后续按实际需求推进自身业务页、计算式路由/其他资源；日常库初始化和常驻服务升级独立核对 |
+
+| PB-01 / P0 | 标题+正文+点击按钮就是可视化原型 | 支持 EAP 页面布局/交互草案 | 以 GrapesJS 工程及语义 Schema 表达受支持组件、属性、状态与声明式动作；属性编辑、草稿重开、不可变发布和版本关联任务共用合同。交互确认、候选应用、独立验证及用户接受分别操作，不承诺任意 Vue 无损导入。当前限定交付和剩余关口统一见[PB-01台账](../planning-status.md#pb-01-design-delivery)，各切片合同、失败与完整证据见[设计交付索引](../records/design-delivery-index.md)。本批源码保真五阶段一致性已验证，但生成页焦点失败，整链未接受；[本地新增](../decisions/task-list-create-design-delivery.md)正式实现和真实发布验收通过，真实候选应用及独立检查通过，生成页Tab焦点约束失败，源码整链未接受；下一关口收敛生成弹窗与焦点实现后定向复验，准确结果见台账与证据。 |
+
+<a id="development-guide-snapshots"></a>
+
+## 开发指南迁出的阶段快照（2026-11-13整理）
+
+以下从开发指南迁出，保留原提交、命令、数字、失败及覆盖去向；其中“current”“本轮”、迁移版本及授权均指记录当时。当前基线见[规划台账](../planning-status.md#validation-baseline)，当前命令见[开发指南](../agent-development-guide.md)。V30/V31及LIKE隔离方式不代表现行V1初始化方式。
+
+### PL-01/PL-02与发布恢复历史
+
+Current five-contract convergence supersedes the following PL-02-only snapshot: workspace authorization has one key, CLI bindings use program_id with a program FK, experts require explicit behavior and graph, prototype publication requires semantic designs and has no counter fields, and Git uses only durable operation executions. V30 was replayed in UUID-owned schemas with real HTTP/PostgreSQL/Git and GrapesJS acceptance; the ordinary application schema has now migrated through V31 via the production full-application jar after explicit backup/disposition of that one obsolete prototype and its two test references. No runtime compatibility bypass exists. See [current results and commands](../records/architecture-history.md#single-contract-convergence). Enable EAP_RUN_SINGLE_CONTRACTS=true for SingleContractAcceptanceTest or the read-only CurrentContractPreflightTest. DesignerLifecycleAcceptanceTest now replays V1–V31 in its own schema; the LIKE description below is retained historical evidence.
+
+Current follow-up: commit 1ce0c4b is pushed; V31 publication requestId is mandatory, and explicit GET publication lookup reconciles lost responses. New focused checks: PrototypePublicationServiceTest + PrototypeVersionControllerTest (6 passed), frontend publication helper/recovery/publish (9 passed). Formal browser checks and evidence are documented in [publication recovery](../records/architecture-history.md#publication-recovery); prior full suites were not rerun. This publication recovery batch is included in the current authorized commit; commit-stage checks reuse the recorded evidence and run no tests.
+
+Historical PL-02 delivery snapshot (fe08a99; superseded by 1ce0c4b):
+
+The latest committed implementation is `fe08a99` (PL-01, 34 files, pushed). That commit reuses previously recorded test evidence without rerunning tests, as explicitly requested. The current uncommitted PL-02/SC-03 batch implements designer contribution lifecycle, per-instance recovery drafts/local history, preserved server versions and trusted scenario composition dependencies. Development work follows one new contract; old global draft reads/migration, legacy enablement props and synthetic offline design saves are removed rather than maintained as compatibility paths. No database migration is required for this batch.
+
+The new read endpoint is `GET /api/scenarios/workflows/prototype-to-code/dependencies`. It declares required builder, optional board, readable prototype storage and a bounded count-only resource observation. UI Host state and successful current observation both gate scenario application; saved dependency labels are not grants. Existing workspace/model/verification gates remain separate.
+
+New local acceptance requires `EAP_RUN_DESIGNER_LIFECYCLE=true`, `EAP_RUN_BOARD_PERSISTENCE=true`, local database credentials and explicit existing `EAP_PLAYWRIGHT_MODULE` / `EAP_CHROMIUM` paths. Run `rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am -Dtest=DesignerLifecycleAcceptanceTest -Dsurefire.failIfNoSpecifiedTests=false test`. The final opt-in run passed one acceptance test and seven browser groups. Its three owned tables retain checks/defaults/indexes through LIKE INCLUDING ALL, without cloned FK/triggers. First publish response delay and relation rename are test-only controls; activation failure is a local Host injection. Application hashes stay unchanged and owned resources are cleaned. This is not a migration replay or full production-host startup.
+
+Companion tests use `-Dtest=ScenarioServiceTest,ScenarioApiTest,PrototypeVersionControllerTest,BackendModuleBoundaryTest,FullApplicationCompositionTest`; all 18 passed in the recorded companion phase. Failed lifecycle attempts remain failed reactor evidence. Subsequent retries select only that failed acceptance test. Frontend affected checks passed 49 files/282 tests, later 16 files/66 tests, with final plugin isolation 12 files/38 and document-replacement protection 4 files/9. These overlap and are not summed. Later local hardening uses its regression tests without repeating the real lifecycle or old full suites. Typecheck/build/architecture and scoped lint/format results are maintained in the ledger. Existing stylelint failures in ScenarioWorkspace/ChatWorkspace are reproduced from HEAD and remain separately recorded.
+
+Human review is recorded separately from executor exit/cleanup proof; it never turns UNKNOWN into success or cancellation.
+Use [the validation ledger](../planning-status.md#validation-baseline) for the latest recorded checks and their limits.
+The [backend record](../records/backend-composition-history.md) preserves migration, real-provider and gated database evidence;
+the [frontend record](../records/frontend-history.md#expert-workspace-evolution) preserves editor/browser checks.
+Documentation-only maintenance does not rerun or renew these acceptance results.
+
+For local frontend development, enter `frontend`, run `vp i`, then `vpr dev` (the existing dev script).
+The implementation-stage run used 12 workspaces and port5173. Do not equate a running dev server with acceptance.
+
+
+### 本轮整理记录（基线82aa504）
+
+历史快照：以下命令、数量与独立审查属于82aa504接续阶段，不是当前验证基线。
+
+| 范围 | 调整原因与覆盖去向 |
+|---|---|
+| 后端候选持久化 | `CodeTaskBindingPersistenceTest`继承测试类导致5项重复执行；抽出无@Test的`CodeProposalPersistenceFixture`。原5项持久候选测试正文不变，绑定专属6项保留，UNKNOWN/并发/事务/真实文件检查不删 |
+| 后端装配 | 删除按参数包名前缀猜测可注入的断言，改由`CapabilityCatalogTest`真实Spring context refresh验证；全模块构造器扫描保留 |
+| Mission历史断言 | 删除V1中不含`previous_mission`的源码字符串检查；任务创建/关联/状态/并发唯一冲突/DB失败及迁移保护保留 |
+| 前端模式检查 | 删除仅切`workbench.preview`却未切真实服务模式的伪双来源测试及Welcome重复执行；有效页面断言合并保留；旧serviceConfig与Vite模式测试已在2026-11-11删除；当前由通用API存储范围、独立Mock HTTP/SSE及架构边界验证覆盖 |
+| 前端局部夹具 | 三个Chat集成测试共用启动状态/模型目录夹具；发送、失败及证据mock仍各自显式配置，原assertion保留 |
+| 文档 | 24份阶段文件并入5个主题完整记录，日期台账改为`planning-status.md`；旧路线和台账完整保存在路线历史。主方案分离现行合同与完整历史，不删除设计参考素材 |
+
+父任务本轮执行：双门控`mvn -f backend/pom.xml clean verify`、前端`test run/typecheck/check:boundaries/build`均通过。统计以本次调用日志为准：后端647项、0失败/错误、6条件跳过（原652减5次继承重复）；前端97文件/572项通过（原574减2项无效重复）。跳过的环境/权限门禁保留；大chunk和Node localStorage实验告警未掩盖。未改生产逻辑、已应用迁移或用户配置，未重启服务、未调用真实模型。本轮不重新宣称浏览器/用户体验验收。
+
+## Consistency and delivery
+
+历史快照（82aa504接续整理）：文档独立复核确认27份来源全文（24份阶段记录、旧路线/台账、完整主方案）归一化后内容一致，27个验收ID及核心合同保留。9处旧裸引用已修正并通过补充复核；本地Markdown链接与锚点校验通过。docs内Markdown从59份整理为43份；当前主方案1685→446行、路线图750→31行，原文均可在主题历史追溯，不以删除证据换取简短。
+
+本轮测试精简的独立只读审查通过：原候选持久化测试体、迁出的初始化/工厂/清理、任务绑定断言，以及Welcome断言均程序化比对保留。原preview循环确实不消费实际服务来源。Spring context refresh只证明该测试装配成功，不是完整运行时启动或setter行为验收；审查读取已有日志，不冒充另一次全量执行。父任务链式命令退出0确认类型/边界/构建通过。
+
+Check links/paths and scripts when editing guidance. Module files specialize root guidance without duplicating its workflow. Target Plugin/Mission/Builder requirements do not authorize implementation. Record baseline dirty files and never include their changes as your work. Deliver file reasons, reuse/removal, commands/results/skips, risks, next plan and required decisions. Missing credentials, dependencies or protocol client are explicit unverified blockers, never passes.
+
+## 2026-11-09 文档统一整理
+
+实现基线 `2c7e87b`，开始时工作树干净，HEAD与origin/main一致。本次只改文档：统一入口、当前基线与剩余关口；将后端逐轮实施迁入主题记录、专家演进归入前端历史、旧台账全文归档。决策保留有效合同与旧显式锚点入口，已完成项从下一步移除。主方案、台账、路线与架构同步，修正旧“未授权推送”和模型使用范围的过度概括。
+
+维护口径：最新阶段验证只在台账集中维护，其他入口引用；历史数字按原日期保留。特别区分前轮实库门控与本轮跳过、真实供应商与fixture写请求、旧界面原生125%与新工作台浏览器比例覆盖。用户最终接受仍未完成。
+
+本次检查通过：Python本地链接/锚点核对覆盖51份Markdown、676个链接；归档正文与HEAD原稿按相对链接重定位后逐字比对，后端328行、专家135行、台账92行完整保留；原台账工作项标签全部保留。18个改动文件均为Markdown文档、UTF-8无BOM；`git -c core.autocrlf=false diff --check`通过。不重跑应用构建/业务测试、不重新调用模型或改变数据，既有结果不标成本次实测。
+
+<a id="implementation-commit-validation"></a>
+## 2026-11-13 当前前后端与文档合并提交验证
+
+用户要求提交包括当前前后端代码改动，因此将已有文档提交与当前后端、前端实现及测试归为一条本地提交，不推送。范围包括任务列表/详情/本地创建及双字段优化、严格 Schema/HTTP/Mock 合同、模型上下文与源码保真、公共 UI、V1 迁移合并和隔离验收支持。主方案 PB-01、完成台账及本地新增决策同步；已有真实模型浏览器焦点/定位失败及产品接受状态保持原结论。
+
+- 前端：仓库根运行 `rtk proxy vp -C frontend test run`，168 文件、1031 测试通过；`rtk proxy vp -C frontend run typecheck` 与 `rtk proxy vp -C frontend run check:architecture` 通过。生产构建改从 Web 应用目录运行 `rtk proxy vp build` 后通过；本轮仓库级构建入口失败不列为通过。
+- 后端：在 `backend/target/commit-validation-20261113/backend` 的独立副本中通过 Maven reactor 运行全量测试，避免改动常驻 DevTools 使用的编译产物。Surefire 共214份报告、1152测试，首次1006通过、145条件跳过、1失败、0错误；唯一失败是 `SchemaAndWiringTest.everyTableAndColumnIsCommented` 检出 `code_generation` 的 `task_project_id`、`task_id`、`task_revision`、`task_snapshot` 缺少注释。只补齐四条 `COMMENT ON COLUMN`，不执行数据库变更；隔离副本同步后运行 `rtk proxy mvn -f backend/target/commit-validation-20261113/backend/pom.xml -pl :eap-full-application -am -Dtest=SchemaAndWiringTest -Dsurefire.failIfNoSpecifiedTests=false test`，4项全部通过、reactor BUILD SUCCESS。综合保留原全量与修复定向证据后为1007通过、145跳过；不是修复后再次全量重跑。
+- 跳过/未验证：本轮未启用实库、真实模型、浏览器及外部 CLI 等显式环境门控验收；未重置日常数据库，未复验历史生成页失败，不以离线回归代替这些整链结果。
+- 提交整理：仅规范新增验收脚本的 CRLF/行尾空白；生成产物和隔离副本不入 Git。文档相对链接/锚点检查及暂存区空白检查在提交前再次执行。

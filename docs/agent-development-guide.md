@@ -39,28 +39,13 @@ Current 32-project reactor evidence and remaining optional-composition gates are
 
 ## Current implementation and validation baseline
 
-Current five-contract convergence supersedes the following PL-02-only snapshot: workspace authorization has one key, CLI bindings use program_id with a program FK, experts require explicit behavior and graph, prototype publication requires semantic designs and has no counter fields, and Git uses only durable operation executions. V30 was replayed in UUID-owned schemas with real HTTP/PostgreSQL/Git and GrapesJS acceptance; the ordinary application schema has now migrated through V31 via the production full-application jar after explicit backup/disposition of that one obsolete prototype and its two test references. No runtime compatibility bypass exists. See [current results and commands](records/architecture-history.md#single-contract-convergence). Enable EAP_RUN_SINGLE_CONTRACTS=true for SingleContractAcceptanceTest or the read-only CurrentContractPreflightTest. DesignerLifecycleAcceptanceTest now replays V1–V31 in its own schema; the LIKE description below is retained historical evidence.
+当前实现、最近验证及剩余关口统一见[规划台账](planning-status.md#validation-baseline)，各设计交付切片见[统一索引](records/design-delivery-index.md)。本指南仅维护可执行命令和验收要求，不维护第二份阶段进度。
 
-Current follow-up: commit 1ce0c4b is pushed; V31 publication requestId is mandatory, and explicit GET publication lookup reconciles lost responses. New focused checks: PrototypePublicationServiceTest + PrototypeVersionControllerTest (6 passed), frontend publication helper/recovery/publish (9 passed). Formal browser checks and evidence are documented in [publication recovery](records/architecture-history.md#publication-recovery); prior full suites were not rerun. This publication recovery batch is included in the current authorized commit; commit-stage checks reuse the recorded evidence and run no tests.
+2026-11-13 开发基线已将 V1～V37 合并为 `V1__initial_schema.sql`；现行 `CurrentContractTestSchema` 在 UUID 自有 schema 中执行该 V1，`DesignerLifecycleAcceptanceTest` 复用它。这不证明日常数据库已重置或常驻服务已升级。旧开发库使用新基线前须单独明确数据处置；后续变化采用增量迁移，不隐式 clean、repair 或 baseline。可选示例数据独立于 Flyway，见[环境说明](environment.md)。
 
-Historical PL-02 delivery snapshot (fe08a99; superseded by 1ce0c4b):
+历史提交、V30/V31实库迁移、PL-02旧隔离方式与测试数字已完整迁入[开发指南阶段快照](records/validation-history.md#development-guide-snapshots)。文档整理不续期旧验收结果；用户复核与技术ACCEPT分别记录。
 
-The latest committed implementation is `fe08a99` (PL-01, 34 files, pushed). That commit reuses previously recorded test evidence without rerunning tests, as explicitly requested. The current uncommitted PL-02/SC-03 batch implements designer contribution lifecycle, per-instance recovery drafts/local history, preserved server versions and trusted scenario composition dependencies. Development work follows one new contract; old global draft reads/migration, legacy enablement props and synthetic offline design saves are removed rather than maintained as compatibility paths. No database migration is required for this batch.
-
-The new read endpoint is `GET /api/scenarios/workflows/prototype-to-code/dependencies`. It declares required builder, optional board, readable prototype storage and a bounded count-only resource observation. UI Host state and successful current observation both gate scenario application; saved dependency labels are not grants. Existing workspace/model/verification gates remain separate.
-
-New local acceptance requires `EAP_RUN_DESIGNER_LIFECYCLE=true`, `EAP_RUN_BOARD_PERSISTENCE=true`, local database credentials and explicit existing `EAP_PLAYWRIGHT_MODULE` / `EAP_CHROMIUM` paths. Run `rtk proxy mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am -Dtest=DesignerLifecycleAcceptanceTest -Dsurefire.failIfNoSpecifiedTests=false test`. The final opt-in run passed one acceptance test and seven browser groups. Its three owned tables retain checks/defaults/indexes through LIKE INCLUDING ALL, without cloned FK/triggers. First publish response delay and relation rename are test-only controls; activation failure is a local Host injection. Application hashes stay unchanged and owned resources are cleaned. This is not a migration replay or full production-host startup.
-
-Companion tests use `-Dtest=ScenarioServiceTest,ScenarioApiTest,PrototypeVersionControllerTest,BackendModuleBoundaryTest,FullApplicationCompositionTest`; all 18 passed in the recorded companion phase. Failed lifecycle attempts remain failed reactor evidence. Subsequent retries select only that failed acceptance test. Frontend affected checks passed 49 files/282 tests, later 16 files/66 tests, with final plugin isolation 12 files/38 and document-replacement protection 4 files/9. These overlap and are not summed. Later local hardening uses its regression tests without repeating the real lifecycle or old full suites. Typecheck/build/architecture and scoped lint/format results are maintained in the ledger. Existing stylelint failures in ScenarioWorkspace/ChatWorkspace are reproduced from HEAD and remain separately recorded.
-
-Human review is recorded separately from executor exit/cleanup proof; it never turns UNKNOWN into success or cancellation.
-Use [the validation ledger](planning-status.md#validation-baseline) for the latest recorded checks and their limits.
-The [backend record](records/backend-composition-history.md) preserves migration, real-provider and gated database evidence;
-the [frontend record](records/frontend-history.md#expert-workspace-evolution) preserves editor/browser checks.
-Documentation-only maintenance does not rerun or renew these acceptance results.
-
-For local frontend development, enter `frontend`, run `vp i`, then `vpr dev` (the existing dev script).
-The implementation-stage run used 12 workspaces and port5173. Do not equate a running dev server with acceptance.
+本地前端开发进入 `frontend` 后运行 `vp i`、`vp dev`；独立Mock使用 `vp run dev:mock-server` 与 `vp run dev:mock`。启动成功不等于业务验收。
 
 ## Business acceptance matrix
 
@@ -111,37 +96,9 @@ directories, with successful-check logs removed by default and failures retained
 - Share setup only where contracts genuinely match. Fixtures must not contain inherited test methods: subclassing a test class reruns its tests and inflates reports. Do not replace behavior tests with source-string or class-name guesses.
 - Keep current work items in `planning-status.md`, a short sequence in `roadmap.md`, and complete dated evidence in topic-based `records/*-history.md`. Preserve source-to-section mappings, media and failure evidence; update Markdown links/anchors when retiring files. Dates belong in chapters, not new report filenames.
 
-### 本轮整理记录（基线82aa504）
-
-历史快照：以下命令、数量与独立审查属于82aa504接续阶段，不是当前验证基线。
-
-| 范围 | 调整原因与覆盖去向 |
-|---|---|
-| 后端候选持久化 | `CodeTaskBindingPersistenceTest`继承测试类导致5项重复执行；抽出无@Test的`CodeProposalPersistenceFixture`。原5项持久候选测试正文不变，绑定专属6项保留，UNKNOWN/并发/事务/真实文件检查不删 |
-| 后端装配 | 删除按参数包名前缀猜测可注入的断言，改由`CapabilityCatalogTest`真实Spring context refresh验证；全模块构造器扫描保留 |
-| Mission历史断言 | 删除V1中不含`previous_mission`的源码字符串检查；任务创建/关联/状态/并发唯一冲突/DB失败及迁移保护保留 |
-| 前端模式检查 | 删除仅切`workbench.preview`却未切真实服务模式的伪双来源测试及Welcome重复执行；有效页面断言合并保留；旧serviceConfig与Vite模式测试已在2026-11-11删除；当前由通用API存储范围、独立Mock HTTP/SSE及架构边界验证覆盖 |
-| 前端局部夹具 | 三个Chat集成测试共用启动状态/模型目录夹具；发送、失败及证据mock仍各自显式配置，原assertion保留 |
-| 文档 | 24份阶段文件并入5个主题完整记录，日期台账改为`planning-status.md`；旧路线和台账完整保存在路线历史。主方案分离现行合同与完整历史，不删除设计参考素材 |
-
-父任务本轮执行：双门控`mvn -f backend/pom.xml clean verify`、前端`test run/typecheck/check:boundaries/build`均通过。统计以本次调用日志为准：后端647项、0失败/错误、6条件跳过（原652减5次继承重复）；前端97文件/572项通过（原574减2项无效重复）。跳过的环境/权限门禁保留；大chunk和Node localStorage实验告警未掩盖。未改生产逻辑、已应用迁移或用户配置，未重启服务、未调用真实模型。本轮不重新宣称浏览器/用户体验验收。
-
 ## Consistency and delivery
 
-历史快照（82aa504接续整理）：文档独立复核确认27份来源全文（24份阶段记录、旧路线/台账、完整主方案）归一化后内容一致，27个验收ID及核心合同保留。9处旧裸引用已修正并通过补充复核；本地Markdown链接与锚点校验通过。docs内Markdown从59份整理为43份；当前主方案1685→446行、路线图750→31行，原文均可在主题历史追溯，不以删除证据换取简短。
-
-本轮测试精简的独立只读审查通过：原候选持久化测试体、迁出的初始化/工厂/清理、任务绑定断言，以及Welcome断言均程序化比对保留。原preview循环确实不消费实际服务来源。Spring context refresh只证明该测试装配成功，不是完整运行时启动或setter行为验收；审查读取已有日志，不冒充另一次全量执行。父任务链式命令退出0确认类型/边界/构建通过。
-
-Check links/paths and scripts when editing guidance. Module files specialize root guidance without duplicating its workflow. Target Plugin/Mission/Builder requirements do not authorize implementation. Record baseline dirty files and never include their changes as your work. Deliver file reasons, reuse/removal, commands/results/skips, risks, next plan and required decisions. Missing credentials, dependencies or protocol client are explicit unverified blockers, never passes.
-
-## 2026-11-09 文档统一整理
-
-实现基线 `2c7e87b`，开始时工作树干净，HEAD与origin/main一致。本次只改文档：统一入口、当前基线与剩余关口；将后端逐轮实施迁入主题记录、专家演进归入前端历史、旧台账全文归档。决策保留有效合同与旧显式锚点入口，已完成项从下一步移除。主方案、台账、路线与架构同步，修正旧“未授权推送”和模型使用范围的过度概括。
-
-维护口径：最新阶段验证只在台账集中维护，其他入口引用；历史数字按原日期保留。特别区分前轮实库门控与本轮跳过、真实供应商与fixture写请求、旧界面原生125%与新工作台浏览器比例覆盖。用户最终接受仍未完成。
-
-本次检查通过：Python本地链接/锚点核对覆盖51份Markdown、676个链接；归档正文与HEAD原稿按相对链接重定位后逐字比对，后端328行、专家135行、台账92行完整保留；原台账工作项标签全部保留。18个改动文件均为Markdown文档、UTF-8无BOM；`git -c core.autocrlf=false diff --check`通过。不重跑应用构建/业务测试、不重新调用模型或改变数据，既有结果不标成本次实测。
-
+修改指南时核对本地链接、锚点、脚本及当前调用方；历史整理与覆盖去向见[阶段快照](records/validation-history.md#development-guide-snapshots)。保留原有未提交修改，交付说明列明本次文件、原因、检查结果、未验证项及剩余关口。目标合同不构成启动实现或外部调用的指令。
 
 ## Controlled tool UNKNOWN acceptance
 

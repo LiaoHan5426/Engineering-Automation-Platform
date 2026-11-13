@@ -47,7 +47,7 @@ it('preserves actual editor hierarchy, text, layout and unsupported mappings', (
     ],
   })
   const section = schema.root.children[0]!.children[0]!
-  expect(section.children.map((item) => item.kind)).toEqual(['heading', 'button', 'input'])
+  expect(section.children.map((item) => item.kind)).toEqual(['heading', 'button', 'textarea'])
   expect(section.children[0]!.props.text).toBe('EAP task')
   expect(section.children[0]!.props.level).toBe(1)
   expect(section.props.style).toEqual({ display: 'flex', gap: '12px' })
@@ -186,4 +186,54 @@ it('keeps saved design versions immutable when creating another version', () => 
   const versions = loadPrototypeVersions()
   expect(versions[0]?.title).toBe('Second')
   expect(versions[1]?.title).toBe('First')
+})
+
+it('preserves distinct textarea semantics, explicit empty values and multiline versions', () => {
+  const schema = schemaFromGrapesProject('说明', {
+    pages: [
+      {
+        frames: [
+          {
+            component: {
+              tagName: 'body',
+              components: [
+                { tagName: 'input', attributes: { id: 'name', 'data-value': '单行' } },
+                {
+                  tagName: 'textarea',
+                  attributes: {
+                    id: 'description',
+                    'data-label': '任务说明',
+                    placeholder: '填写说明',
+                    'data-required': 'true',
+                  },
+                  content: '第一行\n第二行',
+                },
+                {
+                  tagName: 'textarea',
+                  attributes: { id: 'empty', 'data-value': '' },
+                  content: '旧内容',
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  })
+  const [input, textarea, empty] = schema.root.children[0]!.children
+  expect(input?.kind).toBe('input')
+  expect(textarea?.kind).toBe('textarea')
+  expect(textarea?.props).toMatchObject({
+    label: '任务说明',
+    placeholder: '填写说明',
+    initialValue: '第一行\n第二行',
+    required: true,
+  })
+  expect(empty?.props.initialValue).toBe('')
+  expect(canAutoDeliver(schema)).toBe(true)
+  const saved = savePrototypeSchema(schema)
+  expect(loadPrototypeSchema()?.root).toEqual(saved.root)
+  expect(loadPrototypeVersions()[0]?.root).toEqual(saved.root)
+  textarea!.kind = 'unregistered-textarea'
+  expect(canAutoDeliver(schema)).toBe(false)
 })

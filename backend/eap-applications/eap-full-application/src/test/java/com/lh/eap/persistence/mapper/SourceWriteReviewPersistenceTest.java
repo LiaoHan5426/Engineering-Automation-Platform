@@ -47,8 +47,8 @@ class SourceWriteReviewPersistenceTest {
         var schema = "eap_unknown_qa_" + UUID.randomUUID().toString().replace("-", "");
         var admin = new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         try {
-            // Exercise an existing V35 APPLYING record through migration and full-app startup recovery.
-            CurrentContractTestSchema.migrate(session, schema, "35");
+            // Construct an interrupted APPLYING record explicitly before full-app startup recovery.
+            CurrentContractTestSchema.migrate(session, schema);
             var source = ToolUnknownReviewFixture.scopedDataSource(schema);
             var jdbc = new JdbcTemplate(source);
             var manager = new DataSourceTransactionManager(source);
@@ -69,13 +69,12 @@ class SourceWriteReviewPersistenceTest {
             jdbc.update("UPDATE eap.code_proposal SET status='APPLYING',started_at=now() WHERE id=?",proposal.id());
             Files.writeString(root.resolve(PAGE), PAGE_CANDIDATE);
 
-            CurrentContractTestSchema.migrate(session, schema, "37");
             var overrides = new Overrides(source, root);
             try (var context = new SpringApplicationBuilder(EapApplication.class)
                     .initializers(application -> {
                          var isolated=(GenericApplicationContext)application;
                          isolated.registerBean(Overrides.class, () -> overrides);
-                         // This test alone models a historical non-Git workspace; shared Boot overrides use real Git.
+                         // Explicit non-Git workspace fixture; shared Boot overrides use real Git.
                          isolated.registerBean("sourceReviewLocalBaseline", com.lh.eap.application.service.BoardApplicationBaseline.class,
                                  () -> com.lh.eap.application.service.ApplicationBaselineFixture.create(jdbc), definition -> definition.setPrimary(true));
                      })

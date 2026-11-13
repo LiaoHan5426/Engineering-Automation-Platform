@@ -263,18 +263,17 @@ sequenceDiagram
 
 ## Persistence and migrations
 
-Flyway owns the `eap` schema (`V1` … `V12`) and validation runs on every start, which fixes three
-rules for how migrations are written. `SchemaAndWiringTest` parses the migration files themselves and
-enforces the first and the third, because both failures are invisible until the application refuses to
-start.
+Flyway owns the `eap` schema. The 2026-11-13 development reset combines V1–V37 into one
+`V1__initial_schema.sql`: 29 tables, current constraints, 8 functions, 7 triggers and built-in CLI
+registrations. Optional local example tasks are a separate manual script outside `db/migration`.
+Current-schema tests initialize this same baseline in UUID-owned schemas rather than recreating
+superseded intermediate versions. See [database initialization](environment.md#database-initialisation).
 
-**Never edit an applied migration.** Once a version is in `flyway_schema_history`, changing its text
-changes its checksum and the next start fails validation. Tables created before the gap was noticed are
-therefore documented in a *later* migration: `V11__schema_comments.sql` carries the `COMMENT ON`
-statements for everything V1–V8 created, while V9 and V12 comment their own. `MigrationConfiguration`
-deliberately never repairs an old checksum — adopting a pre-existing schema is a one-time, explicit
-operator action gated behind `EAP_ADOPT_EXISTING_SCHEMA`, which is why that flag is not set in
-`application.yml`.
+**After this reset, add incremental migrations instead of editing an applied version.** An existing
+V1–V37 Flyway history requires explicit reinitialization of the intended disposable EAP schema;
+startup does not clean, repair or baseline it. Automatic legacy adoption and
+`EAP_ADOPT_EXISTING_SCHEMA` remain retired. The consolidation embeds final comments and constraints
+in the initial schema instead of retaining historical ALTERs and backfills.
 
 **Every table and every column carries a `COMMENT ON`**, and a comment states what a value *means*
 rather than restating its name. Where a column is an enumeration, the comment lists the vocabulary and

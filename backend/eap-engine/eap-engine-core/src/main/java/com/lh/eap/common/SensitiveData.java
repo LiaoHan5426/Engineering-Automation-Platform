@@ -12,7 +12,20 @@ public final class SensitiveData {
     private static final Pattern BEARER=Pattern.compile("(?i)(\\b(?:proxy-)?authorization[\"']?\\s*[:=]\\s*[\"']?bearer[\\t ]+)[A-Za-z0-9._~+/-]+=*");
     // Redact the whole envelope, not just its marker; truncated CLI/model output is sensitive too.
     private static final Pattern PRIVATE_KEY=Pattern.compile("(?is)-----BEGIN ((?:[A-Z0-9]+ )*PRIVATE KEY)-----.*?(?:-----END \\1-----|\\z)");
+    // Source-only exceptions: these values are JS identifier references, never credential literals.
+    // Keep the conservative text/log redactor unchanged. Ambiguous bare assignments still fail closed.
+    private static final Pattern SOURCE_REFERENCE = Pattern.compile(
+            "\\b(?:const|let|var)\\s+token\\s*=(?!=)\\s*[A-Za-z_$][A-Za-z0-9_$]*\\s*(?=[;,)\\r\\n]|$)"
+            + "|\\btoken\\s*(?:===|!==|==|!=)\\s*[A-Za-z_$][A-Za-z0-9_$]*\\s*(?=[;,)\\r\\n]|$)");
     private SensitiveData(){}
+
+    /** Checks decoded source without rewriting it; uncertain assignments remain sensitive. */
+    public static boolean containsSecretInSource(String source) {
+        if (source == null) return false;
+        if (API_CREDENTIAL.matcher(source).find() || JDBC.matcher(source).find()
+                || PRIVATE_KEY.matcher(source).find() || BEARER.matcher(source).find()) return true;
+        return containsSecret(SOURCE_REFERENCE.matcher(source).replaceAll(""));
+    }
     public static String redact(String text){
         if(text==null)return "";
         text=PRIVATE_KEY.matcher(text).replaceAll("[REDACTED PRIVATE KEY]");

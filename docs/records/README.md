@@ -4,7 +4,8 @@
 
 | 主题 | 内容与边界 |
 |---|---|
-| [阶段验证记录](validation-history.md) | 从当前台账归并的完整阶段日志；源码Agent/任务交接、规划回写、跨路由交付、交互原型、Skill目录/场景引用、知识更新与HTTP断连修复、历史摘要/Work以及前轮工具恢复。保留原失败、跳过、命令及稳定锚点 |
+| [阶段验证记录](validation-history.md) | 从当前台账归并的完整阶段日志；源码Agent/任务交接、规划回写、跨路由交付、交互原型、Skill目录/场景引用、知识更新与HTTP断连修复、历史摘要/Work以及前轮工具恢复。保留原失败、跳过、命令及稳定锚点，含[开发指南阶段快照](validation-history.md#development-guide-snapshots) |
+| [设计到源码切片索引](design-delivery-index.md) | 交互原型、多行字段、表单、正式看板、列表与详情的限定范围及合同/证据导航；当前状态统一见规划台账 |
 | [任务、源码与交付](delivery-history.md) | 准备、Run、原型、审阅、验证、人工决定、生成基线、持久应用、POST_HOC/PREBOUND；10份阶段记录完整合并 |
 | [前端工作台与共享UI](frontend-history.md) | 验收清单、组件/主题、录屏对照、图标首片，[PL-01项目观测/在途停用与恢复](frontend-history.md#board-runtime-lifecycle)、[PL-02设计器与SC-03依赖整链](frontend-history.md#designer-scenario-lifecycle)，以及[专家导航/详情与三栏工作台演进](frontend-history.md#expert-workspace-evolution) |
 | [专家知识与Skill](resource-history.md) | 知识授权和Skill文本导入/使用；2份记录完整合并 |

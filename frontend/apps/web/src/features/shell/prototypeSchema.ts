@@ -4,6 +4,8 @@ import {
   type PrototypeSchema,
   type PrototypeNode,
   PROTOTYPE_KINDS,
+  parsePrototypeTaskListItems,
+  deliveryBlockers,
 } from '@eap/runtime-client/contracts'
 export {
   emptyPrototypeSchema,
@@ -64,11 +66,13 @@ export function schemaFromGrapesProject(
                 ? 'button'
                 : tag === 'a'
                   ? 'link'
-                  : ['input', 'textarea'].includes(tag)
-                    ? 'input'
-                    : tag === 'ul' || tag === 'ol'
-                      ? 'list'
-                      : `tag:${tag}`),
+                  : tag === 'textarea'
+                    ? 'textarea'
+                    : tag === 'input'
+                      ? 'input'
+                      : tag === 'ul' || tag === 'ol'
+                        ? 'list'
+                        : `tag:${tag}`),
     )
     if (!KNOWN_KINDS.has(kind)) schema.unknownMappings.push(kind)
     const props: Record<string, unknown> = {}
@@ -115,11 +119,12 @@ export function schemaFromGrapesProject(
       props.href = String(attrs.href ?? '#')
       props.label = text(source).slice(0, 200) || String(attrs['aria-label'] ?? 'Link')
     }
-    if (['input', 'select', 'checkbox', 'form', 'dialog'].includes(kind))
+    if (['input', 'textarea', 'select', 'checkbox', 'form', 'dialog'].includes(kind))
       props.label = String(attrs['data-label'] ?? attrs.placeholder ?? '')
-    if (kind === 'input') props.placeholder = String(attrs.placeholder ?? '')
-    if (['input', 'select'].includes(kind)) props.initialValue = String(attrs['data-value'] ?? '')
-    if (['input', 'select', 'checkbox'].includes(kind))
+    if (['input', 'textarea'].includes(kind)) props.placeholder = String(attrs.placeholder ?? '')
+    if (['input', 'textarea', 'select'].includes(kind))
+      props.initialValue = String(attrs['data-value'] ?? (kind === 'textarea' ? text(source) : ''))
+    if (['input', 'textarea', 'select', 'checkbox'].includes(kind))
       props.required = attrs['data-required'] === 'true' || attrs['data-required'] === true
     if (kind === 'checkbox')
       props.checked = attrs['data-checked'] === 'true' || attrs['data-checked'] === true
@@ -134,6 +139,25 @@ export function schemaFromGrapesProject(
         : typeof source.content === 'string' && source.content
           ? [source.content]
           : []
+    if (kind === 'task-list') {
+      for (const key of ['editable', 'creatable']) {
+        const value = attrs['data-' + key]
+        if (Object.hasOwn(attrs, 'data-' + key))
+          props[key] =
+            value === 'true' || value === true
+              ? true
+              : value === 'false' || value === false
+                ? false
+                : value
+      }
+      props.label = String(attrs['data-label'] ?? '')
+      // Invalid JSON remains invalid semantic data; never substitute sample records.
+      props.items =
+        typeof attrs['data-items'] === 'string'
+          ? parsePrototypeTaskListItems(attrs['data-items'])
+          : null
+      if (contents.length) schema.unknownMappings.push('task_list_children')
+    }
     if (kind === 'list') {
       props.ordered =
         tag === 'ol' || attrs['data-ordered'] === 'true' || attrs['data-ordered'] === true
@@ -175,6 +199,12 @@ export function savePrototypeSchema(
   schema: PrototypeSchema,
   storage: Storage | undefined = typeof localStorage === 'undefined' ? undefined : localStorage,
 ) {
+  if (
+    deliveryBlockers(schema).some(
+      (reason) => reason.startsWith('invalid_task_list:') || reason.includes('task_list_children'),
+    )
+  )
+    throw new Error('invalid_prototype_task_list')
   const versions = loadPrototypeVersions(storage)
   const next = JSON.parse(
     JSON.stringify({

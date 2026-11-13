@@ -19,7 +19,7 @@ class CodeProposalPersistenceTest extends CodeProposalPersistenceFixture {
                 "{\"files\":[{\"path\":\"Page.vue\",\"content\":\"candidate\"}]}", writable);
     }
     @Test void proposalIsCommittedBeforeReturnAndSurvivesOuterRollbackAndAdapterRecreation() throws Exception {
-        assertTrue(Boolean.TRUE.equals(jdbc.queryForObject("SELECT to_regclass('eap.code_proposal') IS NOT NULL", Boolean.class)), "V14 must be applied by the authorized running service");
+        assertTrue(Boolean.TRUE.equals(jdbc.queryForObject("SELECT to_regclass('eap.code_proposal') IS NOT NULL", Boolean.class)), "Current initialization baseline must be applied by the authorized running service");
         var store = store();
         Files.writeString(root.resolve("Page.vue"), "original");
         var proposal = new TransactionTemplate(manager).execute(tx -> {

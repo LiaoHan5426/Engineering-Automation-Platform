@@ -39,7 +39,7 @@ class CodegenCompositionTest {
         var selected = UUID.randomUUID();
         var query = mock(PrototypeVersionQuery.class);
         when(query.find(selected)).thenReturn(new PrototypeVersion(selected, java.util.UUID.randomUUID(), "builder-alpha", "Saved design",
-                "Immutable body", List.of("Accessible button"), "saved-hash", Instant.now()));
+                "{\"kind\":\"textarea\",\"props\":{\"label\":\"说明\",\"placeholder\":\"填写说明\",\"initialValue\":\"第一行\\n第二行\",\"required\":true}}", List.of("Accessible button"), "saved-hash", Instant.now()));
         var observed = new AtomicReference<Prompt>();
         when(model.stream(any(Prompt.class))).thenAnswer(call -> {
             observed.set(call.getArgument(0));
@@ -49,12 +49,25 @@ class CodegenCompositionTest {
         var result = app.send(app.open("{}").conversationId(), request(selected.toString()));
         assertEquals("Reviewed saved design", result.answer(), result.error());
         assertTrue(result.error().isEmpty());
-        assertTrue(observed.get().getUserMessage().getText().contains("Immutable body"));
+        var material = tools.jackson.databind.json.JsonMapper.builder().build().readTree(
+                observed.get().getUserMessage().getText().split("<saved-prototype>\\n", 2)[1].split("\\n</saved-prototype>", 2)[0]);
+        var field = tools.jackson.databind.json.JsonMapper.builder().build().readTree(material.path("body").asString());
+        assertEquals("textarea", field.path("kind").asString());
+        assertEquals("第一行\n第二行", field.path("props").path("initialValue").asString());
+        assertTrue(field.path("props").path("required").asBoolean());
         assertTrue(observed.get().getUserMessage().getText().contains("Accessible button"));
         assertFalse(result.artifacts().isEmpty());
         assertTrue(result.artifactError().isEmpty());
         verify(query).find(selected);
         verify(model).stream(any(Prompt.class));
+    }
+
+    @Test void sourceDeliveryGuidanceRequiresMultilineValuesValidationAndReset() {
+        var guidance = TaskContext.parse(java.util.Map.of("mode", "code", "expert", "frontend")).systemInstructions();
+        assertTrue(guidance.contains("textarea kind is a multiline text field"));
+        assertTrue(guidance.contains("preserve line breaks in initial and edited values"));
+        assertTrue(guidance.contains("reject blank/whitespace-only values when required"));
+        assertTrue(guidance.contains("restore the exact multiline initial value on RESET"));
     }
 
     @Test void missingPrototypeAdapterRejectsBeforeModelCall() {

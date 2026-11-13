@@ -371,6 +371,9 @@ public final class CodeChangeService {
             for (var entry : entries) {
                 String name = entry.path("path").asString(""), content = entry.path("content").asString("");
                 if (!entry.path("content").isString() || !names.add(name)) throw rejected(CodeErrors.INVALID_CODE_PROPOSAL.code());
+                String lowerContent = content.toLowerCase(Locale.ROOT);
+                if (lowerContent.contains("[redacted") || lowerContent.contains("«redacted"))
+                    throw rejected(CodeErrors.INVALID_CODE_PROPOSAL.code());
                 total += content.length();
                 if (total > MAX_PROPOSAL_CONTENT_CHARS) throw rejected(CodeErrors.CODE_PROPOSAL_TOO_LARGE.code());
                 Path path = target(name, false);
@@ -659,7 +662,7 @@ public final class CodeChangeService {
 
     private static boolean unsafeSource(String source) {
         String lower = source.toLowerCase(Locale.ROOT);
-        return SensitiveData.containsSecret(source)
+        return SensitiveData.containsSecretInSource(source)
                 || lower.contains("[redacted") || lower.contains("«redacted")
                 || lower.contains("private key-----") || lower.matches("(?s).*bearer\\s+[a-z0-9._~+/-]{8,}.*");
     }

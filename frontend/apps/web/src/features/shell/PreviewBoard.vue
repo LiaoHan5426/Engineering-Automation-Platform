@@ -124,6 +124,7 @@ function guarded(action: () => void) {
   else action()
 }
 function closeDetail() {
+  cancelGoalOptimization()
   guarded(() => {
     selectedId.value = ''
     if (window.location.hash.startsWith('#board?')) window.history.replaceState(null, '', '#board')
@@ -147,6 +148,7 @@ function startCreate(
 }
 function closeCreate() {
   if (busy.value || createRequest.value) return
+  cancelGoalOptimization()
   if (handoffActive.value) {
     persistHandoff()
     creating.value = false
@@ -303,6 +305,94 @@ function chooseCreateProject(id: string) {
 watch([title, newGoal, newCriteria, projectId, linkCurrentSession], persistHandoff, {
   flush: 'sync',
 })
+// One disposable suggestion pipeline serves both forms; persisted drafts remain independent.
+const optimizingGoal = ref(false)
+const goalSuggestion = ref('')
+const goalOptimizationError = ref(false)
+type GoalOptimization = {
+  id: string
+  text: string
+  projectId: string
+  taskId: string
+  draftRevision: number
+  revision: number
+  editEpoch: number
+  controller: AbortController
+}
+let goalEditEpoch = 0
+let suggestionBinding: GoalOptimization | null = null
+let goalOptimization: GoalOptimization | null = null
+function optimizationMatches(binding: GoalOptimization) {
+  if (busy.value || binding.projectId !== projectId.value) return false
+  if (!binding.taskId)
+    return creating.value && !createRequest.value && newGoal.value === binding.text
+  return !!selected.value && !creating.value && !selected.value.executionActive && !stale.value &&
+    selected.value.id === binding.taskId && selected.value.revision === binding.revision &&
+    draftRevision.value === binding.draftRevision && draftGoal.value === binding.text &&
+    goalEditEpoch === binding.editEpoch
+}
+function cancelGoalOptimization() {
+  const pending = goalOptimization
+  goalOptimization = null
+  optimizingGoal.value = false
+  goalSuggestion.value = ''
+  suggestionBinding = null
+  goalOptimizationError.value = false
+  if (pending) {
+    pending.controller.abort()
+    void runtimeApi.cancelTaskDescriptionOptimization(pending.id).catch(() => undefined)
+  }
+}
+async function optimizeGoal(edit = false) {
+  const text = edit ? draftGoal.value : newGoal.value
+  if (
+    busy.value || optimizingGoal.value || !text.trim() || text.length > 4000 ||
+    (edit ? !selected.value || creating.value || stale.value || selected.value.executionActive
+      : !creating.value || !!createRequest.value)
+  ) return
+  cancelGoalOptimization()
+  const pending: GoalOptimization = {
+    id: crypto.randomUUID(),
+    text,
+    projectId: projectId.value,
+    taskId: edit ? selected.value!.id : '',
+    draftRevision: draftRevision.value,
+    revision: selected.value?.revision ?? 0,
+    editEpoch: goalEditEpoch,
+    controller: new AbortController(),
+  }
+  goalOptimization = pending
+  optimizingGoal.value = true
+  try {
+    const result = await runtimeApi.optimizeTaskDescription(
+      pending.id,
+      { text: pending.text },
+      { signal: pending.controller.signal },
+    )
+    if (goalOptimization !== pending || !optimizationMatches(pending)) return
+    if (!result.text.trim() || result.text.length > 2000)
+      throw new Error('INVALID_TASK_DESCRIPTION_SUGGESTION')
+    suggestionBinding = pending
+    goalSuggestion.value = result.text
+  } catch {
+    if (goalOptimization === pending) goalOptimizationError.value = true
+  } finally {
+    if (goalOptimization === pending) {
+      goalOptimization = null
+      optimizingGoal.value = false
+    }
+  }
+}
+function adoptGoalSuggestion() {
+  if (!suggestionBinding || !optimizationMatches(suggestionBinding) || !goalSuggestion.value) return
+  const suggestion = goalSuggestion.value
+  const edit = !!suggestionBinding.taskId
+  cancelGoalOptimization()
+  if (edit) draftGoal.value = suggestion
+  else newGoal.value = suggestion
+}
+watch([newGoal, projectId, creating], cancelGoalOptimization, { flush: 'sync' })
+onBeforeUnmount(cancelGoalOptimization)
 watch(() => workbench.boardHandoffToken, readHandoff)
 onMounted(readHandoff)
 watch([busy, handoff], () => {
@@ -330,6 +420,14 @@ const previewProjects = computed(() => {
   return projects
 })
 const selected = computed(() => rows.value.find((item) => item.id === selectedId.value))
+// Synchronous invalidation catches edits even when the text is immediately restored (ABA).
+watch(draftGoal, () => {
+  goalEditEpoch++
+  cancelGoalOptimization()
+}, { flush: 'sync' })
+watch([projectId, selectedId, draftRevision, busy,
+  () => selected.value?.revision, () => selected.value?.executionActive],
+  cancelGoalOptimization, { flush: 'sync' })
 const tasks = computed(() => {
   const needle = query.value.trim().toLowerCase()
   return rows.value.filter((item) => {
@@ -526,6 +624,7 @@ async function saveNotes() {
 }
 async function create() {
   if (
+    !creating.value ||
     !title.value.trim() ||
     busy.value ||
     title.value.length > 200 ||
@@ -542,6 +641,7 @@ async function create() {
     note.value = t('desktop.boardPreparationRequired')
     return
   }
+  cancelGoalOptimization()
   busy.value = true
   createRequest.value ??= {
     projectId: projectId.value,
@@ -656,7 +756,11 @@ function open(task: BoardTask, selection?: CodePreparationSelection, planning = 
     <Dialog
       v-if="creating"
       :title="t('preview.createTask')"
-      :busy="busy || !!createRequest"
+      :busy="busy || !!createRequest || !!pendingAction"
+      :close-label="t('preview.close')"
+      close-test-id="board-create-close"
+      data-testid="board-create-dialog"
+      size="lg"
       @close="closeCreate"
     >
       <form class="new-task-form" data-testid="board-create-form" @submit.prevent="create">
@@ -668,19 +772,32 @@ function open(task: BoardTask, selection?: CodePreparationSelection, planning = 
           t('desktop.taskHandoffGoalLimit')
         }}</Feedback>
         <p v-if="handoffActive">{{ t('desktop.taskHandoffBoundary') }}</p>
-        <label
-          >{{ t('desktop.boardProject') }}
-          <Select
-            data-testid="board-create-project"
-            :disabled="busy || !!createRequest"
-            :model-value="projectId"
-            @update:model-value="chooseCreateProject(String($event))"
-          >
-            <option v-for="item in previewProjects" :key="item.id" :value="item.id">
-              {{ item.name }}
-            </option>
-          </Select>
-        </label>
+        <div class="new-task-form__placement">
+          <label
+            >{{ t('desktop.boardProject') }}
+            <Select
+              data-testid="board-create-project"
+              :disabled="busy || !!createRequest"
+              :model-value="projectId"
+              @update:model-value="chooseCreateProject(String($event))"
+            >
+              <option v-for="item in previewProjects" :key="item.id" :value="item.id">
+                {{ item.name }}
+              </option>
+            </Select>
+          </label>
+          <label
+            >{{ t('desktop.boardCreatePosition') }}
+            <Select
+              v-model="createColumn"
+              data-testid="board-create-column"
+              :disabled="busy || !!createRequest"
+            >
+              <option :value="BoardTaskColumn.PLANNED">{{ t('desktop.planned') }}</option>
+              <option :value="BoardTaskColumn.READY">{{ t('desktop.ready') }}</option>
+            </Select>
+          </label>
+        </div>
         <Collapse
           v-if="handoffActive && handoff"
           :summary="t('desktop.taskHandoffSource')"
@@ -700,16 +817,70 @@ function open(task: BoardTask, selection?: CodePreparationSelection, planning = 
             :aria-label="t('preview.taskTitle')"
             autofocus
         /></label>
-        <label class="preparation-field"
-          >{{ t('desktop.boardGoal')
-          }}<Textarea
+        <div class="new-task-form__goal-heading">
+          <label for="board-new-goal">{{ t('desktop.boardGoal') }}</label>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            data-testid="board-optimize-goal"
+            :disabled="
+              busy || !!createRequest || optimizingGoal || !newGoal.trim() || newGoal.length > 4000
+            "
+            @click="optimizeGoal()"
+            >{{ t('desktop.boardOptimizeGoal') }}</Button
+          >
+          <Button
+            v-if="optimizingGoal"
+            type="button"
+            size="sm"
+            data-testid="board-optimize-cancel"
+            @click="cancelGoalOptimization"
+            >{{ t('desktop.boardOptimizeCancel') }}</Button
+          >
+        </div>
+        <div class="preparation-field">
+          <Textarea
+            id="board-new-goal"
             v-model="newGoal"
             data-testid="board-new-goal"
             rows="4"
             maxlength="4000"
             :required="createColumn === 'ready'"
             :disabled="busy || !!createRequest"
-        /></label>
+          />
+        </div>
+        <p v-if="optimizingGoal" role="status">{{ t('desktop.boardOptimizingGoal') }}</p>
+        <Feedback v-if="goalOptimizationError" tone="error" data-testid="board-optimize-error">{{
+          t('desktop.boardOptimizeFailed')
+        }}</Feedback>
+        <section
+          v-if="goalSuggestion"
+          data-testid="board-goal-suggestion"
+          class="new-task-form__suggestion"
+          aria-live="polite"
+        >
+          <strong>{{ t('desktop.boardGoalSuggestion') }}</strong>
+          <p>{{ goalSuggestion }}</p>
+          <div class="new-task-form__actions">
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              data-testid="board-goal-adopt"
+              :disabled="busy || !!createRequest"
+              @click="adoptGoalSuggestion"
+              >{{ t('desktop.boardGoalAdopt') }}</Button
+            >
+            <Button
+              type="button"
+              size="sm"
+              data-testid="board-goal-dismiss"
+              @click="cancelGoalOptimization"
+              >{{ t('desktop.boardGoalDismiss') }}</Button
+            >
+          </div>
+        </section>
         <label class="preparation-field"
           >{{ t('desktop.boardCriteria')
           }}<Textarea
@@ -725,9 +896,6 @@ function open(task: BoardTask, selection?: CodePreparationSelection, planning = 
           <Checkbox v-model="linkCurrentSession" :disabled="busy || !!createRequest" />
           <span>{{ t('desktop.boardLinkCurrent') }} · {{ activeSessionId.slice(0, 8) }}</span>
         </label>
-        <p v-else class="board-notice" data-testid="board-link-none">
-          {{ t('desktop.boardLinkNone') }}
-        </p>
         <div class="new-task-form__actions">
           <Button
             type="submit"
@@ -943,15 +1111,35 @@ function open(task: BoardTask, selection?: CodePreparationSelection, planning = 
               <option value="p2">P2</option></Select
             ></label
           >
-          <label
-            >{{ t('desktop.boardGoal')
-            }}<Textarea
-              v-model="draftGoal"
-              data-testid="task-goal"
-              :disabled="busy || selected.executionActive"
-              rows="3"
-              maxlength="4000"
-          /></label>
+          <div class="new-task-form__goal-heading">
+            <label for="task-goal">{{ t('desktop.boardGoal') }}</label>
+            <Button size="sm" variant="secondary" data-testid="task-goal-optimize"
+              :disabled="busy || selected.executionActive || stale || optimizingGoal || !draftGoal.trim() || draftGoal.length > 4000"
+              @click="optimizeGoal(true)">{{ t('desktop.boardOptimizeGoal') }}</Button>
+            <Button v-if="optimizingGoal" size="sm" data-testid="task-goal-cancel"
+              @click="cancelGoalOptimization">{{ t('desktop.boardOptimizeCancel') }}</Button>
+          </div>
+          <Textarea id="task-goal" v-model="draftGoal" data-testid="task-goal"
+            :disabled="busy || selected.executionActive" rows="3" maxlength="4000" />
+          <p v-if="optimizingGoal" role="status">{{ t('desktop.boardOptimizingGoal') }}</p>
+          <Feedback v-if="goalOptimizationError" tone="error" data-testid="task-goal-optimize-error">
+            {{ t('desktop.boardOptimizeFailed') }}
+          </Feedback>
+          <section v-if="goalSuggestion" data-testid="task-goal-suggestion"
+            class="new-task-form__suggestion" aria-live="polite">
+            <strong>{{ t('desktop.boardGoalSuggestion') }}</strong>
+            <p>{{ goalSuggestion }}</p>
+            <p>{{ t('desktop.boardGoalDraftHint') }}</p>
+            <div class="new-task-form__actions">
+              <Button size="sm" variant="primary" data-testid="task-goal-adopt"
+                :disabled="busy || selected.executionActive || stale" @click="adoptGoalSuggestion">
+                {{ t('desktop.boardGoalAdopt') }}
+              </Button>
+              <Button size="sm" data-testid="task-goal-discard" @click="cancelGoalOptimization">
+                {{ t('desktop.boardGoalDismiss') }}
+              </Button>
+            </div>
+          </section>
           <label
             >{{ t('desktop.boardCriteria')
             }}<Textarea
@@ -1440,6 +1628,29 @@ h2 > .done {
   gap: 12px;
   min-width: 0;
 }
+.new-task-form__placement {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.new-task-form__goal-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.new-task-form__goal-heading > label {
+  margin-right: auto;
+}
+.new-task-form__suggestion {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.new-task-form__suggestion p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .new-task-form pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1557,7 +1768,7 @@ h2 > .done {
   margin: 0;
 }
 @media (max-width: 760px) {
-  .new-task-form {
+  .new-task-form__placement {
     grid-template-columns: 1fr;
   }
 }

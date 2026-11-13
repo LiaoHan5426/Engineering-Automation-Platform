@@ -34,7 +34,7 @@ class PackagedHostAcceptanceTest {
         var admin = new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         Process process = null;
         try {
-            CurrentContractTestSchema.migrate(session,schema,"37");
+            CurrentContractTestSchema.migrate(session,schema);
             int port;
             try (var socket=new ServerSocket(0)) { port=socket.getLocalPort(); }
             var workspace = Files.createDirectory(session.resolve("workspace"));

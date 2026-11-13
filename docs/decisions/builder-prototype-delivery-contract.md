@@ -21,7 +21,7 @@
 
 `POST /api/prototype-versions`仅接受requestId、sourceRef、title、body、acceptance；requestId为调用方生成的必填UUID，sourceRef限builder-alpha/builder-beta。body必须是JSON文本，format=eap-prototype-v1，携带version=1的schema、语义root、unknownMappings=[]及grapesProject对象。保留编辑器项目和语义数据，不把HTML/CSS导出当Vue源码。
 
-前后端均拒绝纯文本、未知格式、未注册组件或未知映射；后端SemanticPrototype另限正文160000字符、节点500及深度24。节点kind来自当前page/section/text/heading/button/input/link/list/form/select/checkbox/dialog映射，props为对象，children为数组，root须有内容；节点身份唯一，动作目标必须存在且种类匹配。发布内容先脱敏、统一换行/NFC与首尾空白后校验，再持久化。交付服务重验所引版本语义，不能只靠页面禁用按钮。
+前后端均拒绝纯文本、未知格式、未注册组件或未知映射；后端SemanticPrototype另限正文160000字符、节点500及深度24。节点kind来自当前page/section/text/heading/button/input/textarea/link/list/form/select/checkbox/dialog映射，props为对象，children为数组，root须有内容；节点身份唯一，动作目标必须存在且种类匹配。发布内容先脱敏、统一换行/NFC与首尾空白后校验，再持久化。交付服务重验所引版本语义，不能只靠页面禁用按钮。
 
 DTO/数据库已删除buttonPresses/button_presses和interaction。请求带旧字段、客户端哈希、仓库路径、模拟标签或授权信息均拒绝，不插入。没有旧文本解析、旧计数预览或legacy slot。原始正文只可作为转义后的只读证据查看，不能作为可交付设计放行。
 
@@ -37,7 +37,9 @@ DTO/数据库已删除buttonPresses/button_presses和interaction。请求带旧�
 
 ### 可操作的表单、弹窗与任务准备
 
-设计器可添加表单、下拉选择、勾选项、弹窗组合，配置显示名称、初始值、必填及按钮动作。按钮动作仅 TOGGLE/SUBMIT/RESET，分别操作显式选定的区块/弹窗或表单；前后端分域词表核对。预览执行必填检查、显示本地提交完成或重置字段，可打开和关闭公共 Dialog；不请求业务 API、不执行脚本、不改变已保存 Schema。没有动作的按钮只展示，不再伪造点击计数。设计时保存的是 Grapes 工程和声明式动作，发布时后端校验重复身份、悬空/错类目标、未知动作及非法选项。
+设计器可添加表单、多行文本、下拉选择、勾选项、弹窗组合，配置显示名称、初始值、必填及按钮动作。多行文本使用独立 `textarea` kind，沿用 `label/placeholder/initialValue/required`，真实换行保存到工程、语义 Schema 与不可变版本；不再降为单行 `input`。没有 `data-value` 的 HTML textarea 从正文取初值，显式空值保持为空；预览复用公共 Textarea，行数为展示配置，不添加新的 wire 属性。按钮动作仅 TOGGLE/SUBMIT/RESET，分别操作显式选定的区块/弹窗或表单；前后端分域词表核对。预览执行必填检查、显示本地提交完成或重置字段，可打开和关闭公共 Dialog；不请求业务 API、不执行脚本、不改变已保存 Schema。没有动作的按钮只展示，不再伪造点击计数。设计时保存的是 Grapes 工程和声明式动作，发布时后端校验重复身份、悬空/错类目标、未知动作及非法选项。
+
+用户确认的独立任务表单可在生成源码中调用文本优化 API；该能力不加入通用语义预览的声明式动作词表。`POST /api/ai/task-description/optimizations/{requestId}` 接收原文及可选连接/模型，沿既有模型连接的纯 completion 路径返回建议和实际连接/模型，不创建会话、任务或执行工具。输入最多12000字符，完整输出最多2000字符，模型最多2048 token，服务截止60秒；空、截断或超限输出明确失败，不截取为成功。`DELETE` 同一路径取消当前操作者的在途请求，页面先终止本地请求再单独发送取消。全局最多8个在途请求、单操作者最多2个，完成/错误/取消释放占位；错误沿用稳定错误码，供应商原文不进入响应或聚合日志。页面先展示建议，由用户明确采用或放弃；生成期间修改原文使旧建议失效，重置、关闭或取消后的迟到结果不得覆盖草稿。开发 Mock 仅通过相同 HTTP 合同显式模拟，正式页面复用 runtime-client；真实模型、受控源码应用和浏览器结果分别留证。2026-11-13已确认独立表单的两文件真实输出，在新任务/版本/快照中显式重放后完成页面应用、独立检查、390/1440px表单与真实优化、故障注入保护、固定原型对照和技术ACCEPT读回，见[限定交付证据](../records/validation-history.md#textarea-source-ai-optimization)；既有失败记录保留，用户产品接受独立。
 
 不可变版本详情可明确创建待规划任务。POST /api/board/tasks/from-prototype 在原任务服务的同一事务中保存任务及版本引用，沿用 requestId 唯一约束；指纹覆盖版本、项目和文本，相同请求返回原任务，改内容返回冲突。原型版本必须在服务端存在并通过语义校验。任务创建不生成代码、不启动 Run、不授予工作区权限。页面固定并保存原请求再发送，结果不明时只允许明确重放相同幂等请求；草稿和原型发布仍是不同操作。无需新增数据库结构或第二套任务状态。
 
@@ -57,7 +59,7 @@ DTO/数据库已删除buttonPresses/button_presses和interaction。请求带旧�
 
 准备完整的待处理任务可以打开“准备实现”，填写入口及最多七个关联文件，或从既有授权文件浏览器选择已有文件。POST /api/ai/workspace/code-preparation 只读核对当前本地工作区的授权、路径、完整 UTF-8 内容与24KB/文件、48KB合计限额；返回文件存在性、摘要和字节数，不保存源码快照、不调用模型、不写文件。它和实际生成共用 CodeChangeService 的选集校验及读取函数，不建立第二份持久准备状态或授权票据。
 
-用户改动选集后，旧核对立即失效；乱序响应不能恢复旧结果。明确采用后，将任务及原型身份、目标和关联路径一起带入现有会话草稿，再经过原有采用确认、模型选择和发送流程。实际发送重新核对任务 revision、授权与全部基线并保存生成快照，先前的只读核对不替代这些门禁。生成指令明确要求实现声明式字段/必填/选项及TOGGLE/SUBMIT/RESET，不能用点击计数替代，不凭设计发明业务 API。
+用户改动选集后，旧核对立即失效；乱序响应不能恢复旧结果。明确采用后，将任务及原型身份、目标和关联路径一起带入现有会话草稿，再经过原有采用确认、模型选择和发送流程。实际发送重新核对任务 revision、授权与全部基线并保存生成快照，先前的只读核对不替代这些门禁。生成指令明确要求实现单行/多行字段、保留多行初值及换行、必填/选项及TOGGLE/SUBMIT/RESET，不能用点击计数替代，不凭设计发明业务 API。
 
 ## 交付单与执行边界
 
@@ -318,3 +320,5 @@ previewUrl成为当前Decide/Decision合同字段，ACCEPT要求明确本机HTTP
 现有RouteResourceDeliveryTest可通过EAP_ROUTE_REAL_MODEL=true和明确EAP_ROUTE_CONNECTION_STORE启用一次真实候选请求，沿当前生产上下文/快照/候选路径运行；使用相同独立构建、测试、实际页面及人工决定断言。不会把确定性候选当作模型回退，失败不自动重试；provider证据随模式写入。连接存储必须在当前权限下可读，不通过旧进程代理获取凭据。2026-11-11本机存储读取被权限拒绝，未产生模型调用；见[当前证据边界](../planning-status.md#real-route-model-validation)。
 
 真实模型验收模式与确定性候选创建已完全分离：真实模式只允许生产send创建候选，不预先插入确定性候选。交付原型ID与Run不匹配时前端禁止接受；版本查看器校验返回ID及hash。定向28项及reactor两项通过，真实模型权限阻断保持待验，不提升既有浏览器证据。
+
+多行字段本轮技术验证见[验证记录](../records/validation-history.md#textarea-semantic-design)：实际设计器编辑、保存重开、不可变版本读回与生成材料通过；真实模型生成及新源码应用不在该证据内，用户接受仍独立。

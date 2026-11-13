@@ -84,7 +84,7 @@ class RouteResourceDeliveryTest {
         var schema = "eap_unknown_qa_" + UUID.randomUUID().toString().replace("-", "");
         var admin = new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         try {
-            CurrentContractTestSchema.migrate(session, schema, "37");
+            CurrentContractTestSchema.migrate(session, schema);
             var overrides = new SourceWriteReviewPersistenceTest.Overrides(ToolUnknownReviewFixture.scopedDataSource(schema), workspace);
             try (var context = new SpringApplicationBuilder(EapApplication.class)
                     .initializers(app -> ((GenericApplicationContext) app).registerBean(
@@ -198,7 +198,7 @@ class RouteResourceDeliveryTest {
         var schema = "eap_unknown_qa_" + UUID.randomUUID().toString().replace("-", "");
         var admin = new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         try {
-            CurrentContractTestSchema.migrate(session, schema, "37");
+            CurrentContractTestSchema.migrate(session, schema);
             var overrides = new SourceWriteReviewPersistenceTest.Overrides(ToolUnknownReviewFixture.scopedDataSource(schema), workspace);
             try (var context = new SpringApplicationBuilder(EapApplication.class)
                     .initializers(app -> ((GenericApplicationContext) app).registerBean(

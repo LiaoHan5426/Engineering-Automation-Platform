@@ -9,7 +9,6 @@ import com.lh.eap.config.RuntimeWorkspace;
 import com.lh.eap.core.*;
 import com.lh.eap.runtime.handler.*;
 import java.lang.reflect.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.sql.Connection;
 import java.time.Instant;
@@ -26,7 +25,6 @@ import org.springframework.core.io.*;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.*;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import tools.jackson.databind.json.JsonMapper;
@@ -47,17 +45,10 @@ class ToolExecutionPersistenceTest {
         assumeTrue(password != null && !password.isBlank(), "Local test datasource password required");
         var original = new DriverManagerDataSource(url, env.getProperty("spring.datasource.username"), password);
         var raw = new JdbcTemplate(original);
-        var schema = "eap_tool_qa_" + UUID.randomUUID().toString().replace("-", "");
-        assertTrue(schema.matches("eap_tool_qa_[a-f0-9]{32}"));
-        raw.execute("CREATE SCHEMA " + schema);
+        var schema = "eap_unknown_qa_" + UUID.randomUUID().toString().replace("-", "");
+        assertTrue(schema.matches("eap_unknown_qa_[a-f0-9]{32}"));
         try {
-            // Relocate only this migration and the repository SQL to the owned schema.
-            var sql = (new ClassPathResource("db/migration/V26__tool_operation_executions.sql").getContentAsString(StandardCharsets.UTF_8)
-                    + "\n" + new ClassPathResource("db/migration/V27__tool_operation_column_comments.sql").getContentAsString(StandardCharsets.UTF_8))
-                    .replace("eap.tool_execution", schema + ".tool_execution");
-            try (var connection = original.getConnection()) {
-                ScriptUtils.executeSqlScript(connection, new ByteArrayResource(sql.getBytes(StandardCharsets.UTF_8)));
-            }
+            CurrentContractTestSchema.migrate(workspace, schema, original);
             DataSource isolated = new AbstractDataSource() {
                 public Connection getConnection() throws java.sql.SQLException { return relocate(original.getConnection(), schema); }
                 public Connection getConnection(String user, String pass) throws java.sql.SQLException { return relocate(original.getConnection(user, pass), schema); }
@@ -69,16 +60,6 @@ class ToolExecutionPersistenceTest {
                         workspace.toRealPath().toString(), "git", "SUCCEEDED", false, Instant.now(), Instant.now(),
                         0, "historical status", "", false, "PROCESS_EXIT_CONFIRMED", null, List.of());
                 store.insert(historical);
-                var v28 = new ClassPathResource("db/migration/V28__git_diff_tool_executions.sql")
-                        .getContentAsString(StandardCharsets.UTF_8).replace("eap.tool_execution", schema + ".tool_execution");
-                try (var connection = original.getConnection()) {
-                    ScriptUtils.executeSqlScript(connection, new ByteArrayResource(v28.getBytes(StandardCharsets.UTF_8)));
-                }
-                var v29 = new ClassPathResource("db/migration/V29__tool_unknown_manual_closure.sql")
-                        .getContentAsString(StandardCharsets.UTF_8).replace("eap.tool_execution", schema + ".tool_execution");
-                try (var connection = original.getConnection()) {
-                    ScriptUtils.executeSqlScript(connection, new ByteArrayResource(v29.getBytes(StandardCharsets.UTF_8)));
-                }
                 assertEquals(historical, store.find(historical.id()).orElseThrow());
                 var init = new ProcessBuilder("git", "init", "--quiet").directory(workspace.toFile()).redirectErrorStream(true).start();
                 assertTrue(init.waitFor(5, TimeUnit.SECONDS)); assertEquals(0, init.exitValue());

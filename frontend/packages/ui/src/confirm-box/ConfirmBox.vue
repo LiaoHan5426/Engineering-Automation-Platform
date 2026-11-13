@@ -15,6 +15,7 @@ const props = defineProps<{
   title: string
   impact: string[]
   confirmLabel: string
+  cancelLabel?: string
   refusal?: string
   busy?: boolean
   danger?: boolean
@@ -56,7 +57,9 @@ const { onKeydown } = useFocusTrap(root, {
           >
             {{ busy ? '处理中…' : confirmLabel }}
           </Button>
-          <Button data-confirm-cancel :disabled="busy" @click="$emit('cancel')">取消</Button>
+          <Button data-confirm-cancel :disabled="busy" @click="$emit('cancel')">{{
+            cancelLabel ?? '取消'
+          }}</Button>
         </div>
       </div>
     </div>

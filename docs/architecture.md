@@ -176,8 +176,10 @@ Chat/Builder plugin prototypes and persistent Task/Run delivery slices exist; a 
 installer, autonomous planning and full process recovery do not follow from those slices.
 
 **Persistence.** PostgreSQL schema `eap`, managed by Flyway. The user-approved development reset
-consolidated V1–V18 into `V1__initial_schema.sql` on 2026-10-26. Existing development databases require
-an explicit reset; automatic legacy adoption was removed. Future changes use incremental migrations.
+consolidated V1–V37 into `V1__initial_schema.sql` on 2026-11-13 (29 tables with current constraints,
+functions, triggers and built-in CLI registrations). Existing development databases require an explicit
+reset; automatic legacy adoption remains removed. Optional planned-task examples live outside automatic
+migrations. Future changes use incremental migrations. See [initialization](environment.md#database-initialisation).
 See [runtime-workflow.md](runtime-workflow.md).
 
 ## What is planned (not yet implemented)

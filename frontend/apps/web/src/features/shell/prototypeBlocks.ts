@@ -1,3 +1,4 @@
+import { prototypeTaskListSample } from './prototypeTaskListSample'
 import type { ComponentDefinition } from 'grapesjs'
 import { PrototypeActionType } from '@eap/runtime-client/contracts'
 
@@ -56,6 +57,11 @@ export function interactivePrototypeBlock(
         'data-required': 'true',
         placeholder: label('name'),
       }),
+      node(prefix + '-description', 'textarea', 'textarea', {
+        'data-label': label('descriptionLabel'),
+        placeholder: label('description'),
+        'data-required': 'true',
+      }),
       node(prefix + '-choice', 'select', 'select', {
         'data-label': label('choice'),
         'data-options': label('optionOne') + '\n' + label('optionTwo'),
@@ -81,5 +87,20 @@ export function interactivePrototypeBlock(
         label('reset'),
       ),
     ],
+  }
+}
+
+export function taskListPrototypeBlock(): ComponentDefinition {
+  return {
+    tagName: 'section',
+    attributes: {
+      'data-eap-kind': 'task-list',
+      'data-eap-id': 'tasks-' + crypto.randomUUID(),
+      'data-items': JSON.stringify(prototypeTaskListSample),
+    },
+    components: [],
+    droppable: false,
+    editable: false,
+    style: { 'min-height': '180px', padding: '24px', 'background-color': '#f3f5f2' },
   }
 }

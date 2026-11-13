@@ -34,7 +34,7 @@ class EngineeringAgentAcceptanceTest {
         Files.writeString(workspace.resolve("frontend/Page.vue"), "<template><h1>Existing page</h1></template>");
         Files.writeString(workspace.resolve("frontend/page.css"), "h1 {color: teal}");
         try {
-            CurrentContractTestSchema.migrate(session, schema, "37");
+            CurrentContractTestSchema.migrate(session, schema);
             var scoped = ToolUnknownReviewFixture.scopedDataSource(schema);
             var overrides = new SourceWriteReviewPersistenceTest.Overrides(scoped, workspace);
             try (var context = new SpringApplicationBuilder(EapApplication.class).initializers(app -> {

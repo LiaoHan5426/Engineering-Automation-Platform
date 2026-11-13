@@ -102,6 +102,77 @@ class CodeProposalBoundaryTest {
         return service.proposePrepared(AiConversationRegistry.PRINCIPAL, conversation, snapshot.id(),
                 "{\"files\":[{\"path\":\"Page.vue\",\"content\":\"candidate\"}]}", writable);
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+            "[REDACTED]", "[redacted private key]", "«REDACTED»", "\\u005bREDACTED\\u005d"})
+    void decodedRedactionMarkersNeverBecomeCandidates(String marker) throws Exception {
+        Files.writeString(root.resolve("Page.vue"), "original");
+        var service = service();
+        var snapshot = service.prepareGeneration(AiConversationRegistry.PRINCIPAL, conversation, "Page.vue", "", "");
+        String answer = "{\"files\":[{\"path\":\"Page.vue\",\"content\":\"" + marker + "\"}]}";
+        var failure = assertThrows(ResponseStatusException.class, () -> service.proposePrepared(
+                AiConversationRegistry.PRINCIPAL, conversation, snapshot.id(), answer, true));
+        assertEquals(400, failure.getStatusCode().value());
+        assertEquals("INVALID_CODE_PROPOSAL", failure.getReason());
+        assertEquals("INVALID_CODE_PROPOSAL", assertThrows(ResponseStatusException.class,
+                () -> service.propose(conversation, answer)).getReason());
+        assertTrue(proposals.rows.isEmpty());
+        assertEquals("original", Files.readString(root.resolve("Page.vue")));
+    }
+    @Test void redactedCompanionRejectsTheWholeCandidateBeforePersistence() throws Exception {
+        Files.createDirectory(root.resolve("frontend"));
+        Files.writeString(root.resolve("frontend/Page.vue"), "original page");
+        Files.writeString(root.resolve("frontend/style.css"), "original style");
+        var service = service();
+        var snapshot = service.prepareGeneration(AiConversationRegistry.PRINCIPAL, conversation,
+                "frontend/Page.vue", "", "", null, List.of("frontend/style.css"));
+        String answer = tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(Map.of("files", List.of(
+                Map.of("path", "frontend/Page.vue", "content", "<script setup>import './style.css'</script>"),
+                Map.of("path", "frontend/style.css", "content", "/* [REDACTED] */"))));
+        var failure = assertThrows(ResponseStatusException.class, () -> service.proposePrepared(
+                AiConversationRegistry.PRINCIPAL, conversation, snapshot.id(), answer, true));
+        assertEquals(400, failure.getStatusCode().value());
+        assertEquals("INVALID_CODE_PROPOSAL", failure.getReason());
+        assertTrue(proposals.rows.isEmpty());
+        assertEquals("original page", Files.readString(root.resolve("frontend/Page.vue")));
+        assertEquals("original style", Files.readString(root.resolve("frontend/style.css")));
+    }
+    @Test void ordinaryEpochSourceIsPreservedExactlyThroughProposalAndConfirmedApply() throws Exception {
+        Files.writeString(root.resolve("Page.vue"), "original");
+        String content = "<script setup lang=\"ts\">\nlet requestEpoch = 1\nconst capturedEpoch = requestEpoch\n"
+                + "if (capturedEpoch === requestEpoch) requestEpoch++\n"
+                + "if (capturedEpoch !== requestEpoch) requestEpoch++\n</script>\n<template><p>Ready</p></template>\n";
+        var service = service();
+        var snapshot = service.prepareGeneration(AiConversationRegistry.PRINCIPAL, conversation, "Page.vue", "", "");
+        String answer = tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(
+                Map.of("files", List.of(Map.of("path", "Page.vue", "content", content))));
+        var candidate = service.proposePrepared(AiConversationRegistry.PRINCIPAL, conversation, snapshot.id(), answer, true);
+        assertEquals(content, candidate.files().getFirst().content());
+        assertEquals("original", Files.readString(root.resolve("Page.vue")));
+        assertEquals("APPLIED", service.apply(conversation, candidate.id(), true).status());
+        assertEquals(content, Files.readString(root.resolve("Page.vue")));
+    }
+    @Test void tokenSourceSurvivesApplyAndNextGenerationWithoutWeakeningSecretAdmission() throws Exception {
+        Files.writeString(root.resolve("Page.vue"), "original");
+        String content = "<script setup>const token = epoch;\r\nif (token === epoch) refresh();</script>";
+        var service = service();
+        var snapshot = service.prepareGeneration(AiConversationRegistry.PRINCIPAL, conversation, "Page.vue", "", "");
+        String answer = tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(
+                Map.of("files", List.of(Map.of("path", "Page.vue", "content", content))));
+        var candidate = service.proposePrepared(AiConversationRegistry.PRINCIPAL, conversation, snapshot.id(), answer, true);
+        assertEquals(content, proposals.rows.get(candidate.id()).proposal().files().getFirst().content());
+        assertEquals("APPLIED", service.apply(conversation, candidate.id(), true).status());
+        assertEquals(content, Files.readString(root.resolve("Page.vue")));
+        var next = service.prepareGeneration(AiConversationRegistry.PRINCIPAL, conversation, "Page.vue", "", "");
+        assertEquals(content, next.source());
+        assertEquals(content, service.inspectReferences(List.of("Page.vue")).getFirst().excerpt());
+        for (String secret : List.of("const token = 'fixture-secret';", "token=epoch", "Authorization: Bearer fixture-secret")) {
+            Files.writeString(root.resolve("Page.vue"), secret);
+            assertEquals("CODE_GENERATION_CONTEXT_UNAVAILABLE", assertThrows(ResponseStatusException.class,
+                    () -> service.prepareGeneration(AiConversationRegistry.PRINCIPAL, conversation, "Page.vue", "", "")).getReason());
+        }
+    }
+
     @Test void durableApplySurvivesServiceRecreationAndDoesNotRewriteOnReplay() throws Exception {
         Files.writeString(root.resolve("Page.vue"), "original");
         var proposal = proposal(true);

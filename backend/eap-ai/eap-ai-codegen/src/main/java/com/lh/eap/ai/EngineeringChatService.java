@@ -37,7 +37,8 @@ import org.springframework.ai.tool.annotation.Tool;
 
 /** Application service. Callers supply authenticated, server-owned scope; not an HTTP request DTO. */
 public final class EngineeringChatService {
-    private static final tools.jackson.databind.json.JsonMapper JSON = tools.jackson.databind.json.JsonMapper.builder().build();
+    private static final tools.jackson.databind.json.JsonMapper JSON = tools.jackson.databind.json.JsonMapper.builder()
+            .enable(tools.jackson.core.StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();
     public record Request(String principal, UUID conversationId, Path workspace, boolean gitAllowed, String message) {
         public Request {
             if (principal == null || principal.isBlank() || conversationId == null || workspace == null
@@ -174,12 +175,11 @@ public final class EngineeringChatService {
                             error = CodeErrors.CODE_PROPOSAL_TOO_LARGE.code();
                             status = CliExecution.Status.FAILED;
                         } else {
-                            answer = redactComplete(text);
-                            if (answer.length() > CodeChangeService.MAX_PROPOSAL_RESPONSE_CHARS) {
-                                answer = "";
-                                error = CodeErrors.CODE_PROPOSAL_TOO_LARGE.code();
+                            // Never rewrite executable content. Check decoded JSON before it can be persisted.
+                            if (sensitiveProposal(text)) {
+                                error = CodeErrors.INVALID_CODE_PROPOSAL.code();
                                 status = CliExecution.Status.FAILED;
-                            }
+                            } else answer = text == null ? "" : text;
                         }
                     } else {
                         answer = redact(text);
@@ -238,6 +238,42 @@ public final class EngineeringChatService {
             types.add(cause.getClass().getName());
         }
         return List.copyOf(types);
+    }
+
+    private static boolean sensitiveProposal(String answer) {
+        if (answer == null || answer.isBlank()) return true;
+        try {
+            String json = answer.strip();
+            if (json.startsWith("```json\n") || json.startsWith("```\n")) {
+                if (!json.endsWith("```")) return true;
+                json = json.substring(json.indexOf('\n') + 1, json.length() - 3).strip();
+            }
+            Object decoded = JSON.readValue(json, Object.class);
+            if (!(decoded instanceof Map<?, ?> root)) return true;
+            for (var entry : root.entrySet()) {
+                if (entry.getKey().equals("files") && entry.getValue() instanceof List<?> files) {
+                    for (var file : files) if (sensitiveProposalValue(file, true)) return true;
+                } else if (sensitiveProposalValue(Collections.singletonMap(entry.getKey(), entry.getValue()), false)) return true;
+            }
+            return false;
+        } catch (RuntimeException malformed) {
+            return true;
+        }
+    }
+
+    private static boolean sensitiveProposalValue(Object value, boolean fileEntry) {
+        if (value instanceof Map<?, ?> map) {
+            for (var entry : map.entrySet()) {
+                if (SensitiveData.containsSecret(Collections.singletonMap(entry.getKey(), ""))) return true;
+                if (fileEntry && entry.getKey().equals("content") && entry.getValue() instanceof String source) {
+                    if (SensitiveData.containsSecretInSource(source)
+                            || !source.equals(source.replaceAll("(?i)Bearer\\s+[^\\s\"']+", "Bearer [REDACTED]"))) return true;
+                } else if (sensitiveProposalValue(entry.getValue(), false)) return true;
+            }
+        } else if (value instanceof Iterable<?> list) {
+            for (var item : list) if (sensitiveProposalValue(item, false)) return true;
+        } else if (value instanceof String text) return !text.equals(redactComplete(text));
+        return false;
     }
 
     private static String redact(String value) {

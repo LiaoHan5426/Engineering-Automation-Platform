@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import PrototypeTaskList from './PrototypeTaskList.vue'
 import { useI18n } from 'vue-i18n'
-import { Input, Button, Checkbox, Select, Dialog, Feedback } from '@eap/ui'
+import { Input, Textarea, Button, Checkbox, Select, Dialog, Feedback } from '@eap/ui'
 import type { PrototypeAction } from '@eap/runtime-client/contracts'
 import type { PrototypeNode } from './prototypeSchema'
 import { usePrototypePreview } from './prototypePreview'
@@ -74,7 +75,7 @@ function listItems(node: PrototypeNode): string[] {
     :title="String(node.props.href || '#')"
     >{{ node.props.label || t('editor.interaction.link') }}</Button
   >
-  <label v-else-if="node.kind === 'input' || node.kind === 'select'" class="schema-field">
+  <label v-else-if="['input', 'textarea', 'select'].includes(node.kind)" class="schema-field">
     {{ node.props.label || node.props.placeholder || t('editor.interaction.field') }}
     <Input
       v-if="node.kind === 'input'"
@@ -86,6 +87,19 @@ function listItems(node: PrototypeNode): string[] {
       "
       :required="node.props.required === true"
       :aria-invalid="preview.invalid.has(node.id)"
+      maxlength="2000"
+    />
+    <Textarea
+      v-else-if="node.kind === 'textarea'"
+      :model-value="String(preview.values.get(node.id) ?? '')"
+      @update:model-value="preview.values.set(node.id, $event)"
+      :placeholder="String(node.props.placeholder || '')"
+      :aria-label="
+        String(node.props.label || node.props.placeholder || t('editor.interaction.field'))
+      "
+      :required="node.props.required === true"
+      :aria-invalid="preview.invalid.has(node.id)"
+      :rows="4"
       maxlength="2000"
     />
     <Select
@@ -119,6 +133,7 @@ function listItems(node: PrototypeNode): string[] {
       t('editor.interaction.required')
     }}</span>
   </label>
+  <PrototypeTaskList v-else-if="node.kind === 'task-list'" :node="node" />
   <component
     :is="node.props.ordered ? 'ol' : 'ul'"
     v-else-if="node.kind === 'list'"

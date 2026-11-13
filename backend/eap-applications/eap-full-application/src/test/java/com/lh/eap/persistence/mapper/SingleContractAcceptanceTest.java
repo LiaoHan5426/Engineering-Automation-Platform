@@ -45,20 +45,13 @@ class SingleContractAcceptanceTest {
         var admin=new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
         var original=DesignerLifecycleAcceptanceTest.digests(admin,"eap");
         try {
-            CurrentContractTestSchema.migrate(session,schema,"29");
+            CurrentContractTestSchema.migrate(session,schema);
             var jdbc=new JdbcTemplate(ToolUnknownReviewFixture.scopedDataSource(schema));
-            jdbc.update("INSERT INTO eap.cli_channel(capability,binary_path) VALUES ('git-status','old-git')");
-            assertThrows(RuntimeException.class,()->CurrentContractTestSchema.migrate(session,schema));
-            assertEquals("29",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1",String.class));
-            jdbc.update("DELETE FROM eap.cli_channel WHERE capability='git-status'");
-            jdbc.update("INSERT INTO eap.expert_definition(id,name,manifest) VALUES ('old-expert','old','{}'::jsonb)");
-            assertThrows(RuntimeException.class,()->CurrentContractTestSchema.migrate(session,schema));
-            jdbc.update("DELETE FROM eap.expert_definition WHERE id='old-expert'");
+            // The baseline rejects obsolete identities and malformed manifests at insertion below.
             // Shipped definitions must satisfy the exact same contract as authored definitions.
             var shipped=new String(getClass().getResourceAsStream("/experts/sql-expert.json").readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
             assertEquals(new ExpertBehaviorBinding("sql-analysis",1),com.lh.eap.domain.model.ExpertManifest.parse(shipped).behavior());
-            CurrentContractTestSchema.migrate(session,schema);
-            assertEquals("34",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1",String.class));
+            assertEquals("1",jdbc.queryForObject("SELECT version FROM eap.flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1",String.class));
             assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->jdbc.update("INSERT INTO eap.cli_channel(program_id,binary_path) VALUES ('git-status','old-git')"));
             assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->jdbc.update("INSERT INTO eap.expert_definition(id,name,manifest) VALUES ('invalid','invalid','{}'::jsonb)"));
 
@@ -117,7 +110,7 @@ class SingleContractAcceptanceTest {
             }
             assertArrayEquals(index,Files.readAllBytes(workspace.resolve(".git/index")));
             assertEquals("after\n",Files.readString(workspace.resolve("sample.txt")));
-            Files.writeString(session.resolve("result.json"),JSON.writeValueAsString(Map.of("migration",30,"migrationRejectsOldCliAndExpert",true,"cliProgramBinding",true,"statusAndDiffPersistentIdentity",true,"explicitExpertVersionAndHistory",true,"semanticPublicationAndDelivery",true,"oldInvokeRejected",true,"gitIndexUnchanged",true)));
+            Files.writeString(session.resolve("result.json"),JSON.writeValueAsString(Map.of("baseline",1,"baselineRejectsOldCliAndExpert",true,"cliProgramBinding",true,"statusAndDiffPersistentIdentity",true,"explicitExpertVersionAndHistory",true,"semanticPublicationAndDelivery",true,"oldInvokeRejected",true,"gitIndexUnchanged",true)));
         } finally {
             admin.execute("DROP SCHEMA IF EXISTS "+schema+" CASCADE");
             assertEquals(0,admin.queryForObject("SELECT count(*) FROM pg_namespace WHERE nspname=?",Integer.class,schema));

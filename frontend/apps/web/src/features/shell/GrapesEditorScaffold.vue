@@ -25,8 +25,12 @@ import {
   type EditorInspectionTarget,
 } from './editorInspection'
 import { runtimeApi, type PrototypeVersionRecord } from '@eap/runtime-client'
-import { PrototypeActionType, prototypeNodes } from '@eap/runtime-client/contracts'
-import { interactivePrototypeBlock } from './prototypeBlocks'
+import {
+  PrototypeActionType,
+  prototypeNodes,
+  parsePrototypeTaskListItems,
+} from '@eap/runtime-client/contracts'
+import { interactivePrototypeBlock, taskListPrototypeBlock } from './prototypeBlocks'
 import {
   clearPublicationIntent,
   readPublicationIntent,
@@ -76,7 +80,9 @@ const blocks = [
   'button',
   'link',
   'list',
+  'task-list',
   'input',
+  'textarea',
   'form',
   'select',
   'checkbox',
@@ -189,8 +195,25 @@ const actionType = ref('')
 const actionTarget = ref('')
 const fieldLabel = ref('')
 const fieldOptions = ref('')
+const fieldItems = ref('')
+const fieldCreatable = ref(false)
+function updateTaskCreatable() {
+  activeComponent?.addAttributes({ 'data-creatable': String(fieldCreatable.value) })
+}
+const fieldEditable = ref(false)
+function updateTaskEditable() {
+  activeComponent?.addAttributes({ 'data-editable': String(fieldEditable.value) })
+}
+const invalidItems = computed(
+  () =>
+    selectedKind.value === 'task-list' && parsePrototypeTaskListItems(fieldItems.value) === null,
+)
+function updateTaskItems() {
+  activeComponent?.addAttributes({ 'data-items': fieldItems.value })
+}
 const fieldRequired = ref(false)
 const fieldValue = ref('')
+const fieldPlaceholder = ref('')
 const fieldChecked = ref(false)
 const actionTargets = computed(() =>
   prototypeNodes(design.value).filter((node) =>
@@ -202,6 +225,9 @@ const actionTargets = computed(() =>
 function updateInteraction() {
   activeComponent?.addAttributes({
     'data-label': fieldLabel.value,
+    ...(['input', 'textarea'].includes(selectedKind.value)
+      ? { placeholder: fieldPlaceholder.value }
+      : {}),
     'data-action': actionType.value,
     'data-target': actionTarget.value,
     'data-options': fieldOptions.value,
@@ -391,6 +417,11 @@ async function retryPublication() {
 }
 function addBlock(kind: (typeof blocks)[number]) {
   if (!editor) return
+  if (kind === 'task-list') {
+    const [component] = editor.addComponents(taskListPrototypeBlock())
+    if (component) editor.select(component)
+    return
+  }
   if (kind === 'form' || kind === 'select' || kind === 'checkbox' || kind === 'dialog') {
     const [component] = editor.addComponents(
       interactivePrototypeBlock(kind, (key) => t('editor.interaction.' + key)),
@@ -403,7 +434,8 @@ function addBlock(kind: (typeof blocks)[number]) {
     text: 'p',
     heading: 'h1',
     button: 'button',
-    input: 'textarea',
+    input: 'input',
+    textarea: 'textarea',
     link: 'a',
     list: 'ul',
   }
@@ -421,20 +453,21 @@ function addBlock(kind: (typeof blocks)[number]) {
           tagName: tags[kind],
           attributes: {
             'data-eap-kind': kind,
-            ...(kind === 'input' ? { placeholder: 'Describe a task' } : {}),
+            ...(['input', 'textarea'].includes(kind)
+              ? { placeholder: t('editor.interaction.description') }
+              : {}),
             ...(kind === 'link' ? { href: '#' } : {}),
             ...(kind === 'heading' ? { 'data-level': '1' } : {}),
           },
-          content:
-            kind === 'input'
-              ? ''
-              : kind === 'button'
-                ? 'Action'
-                : kind === 'link'
-                  ? 'Link'
-                  : kind === 'heading'
-                    ? 'Heading'
-                    : 'Text',
+          content: ['input', 'textarea'].includes(kind)
+            ? ''
+            : kind === 'button'
+              ? 'Action'
+              : kind === 'link'
+                ? 'Link'
+                : kind === 'heading'
+                  ? 'Heading'
+                  : 'Text',
         },
   )
   if (component) {
@@ -583,9 +616,18 @@ async function mountEditor() {
           actionType.value = String(attrs['data-action'] ?? '')
           actionTarget.value = String(attrs['data-target'] ?? '')
           fieldLabel.value = String(attrs['data-label'] ?? '')
+          fieldPlaceholder.value = String(attrs.placeholder ?? '')
           fieldOptions.value = String(attrs['data-options'] ?? '')
+          fieldItems.value = String(attrs['data-items'] ?? '')
+          fieldEditable.value = attrs['data-editable'] === 'true' || attrs['data-editable'] === true
+          fieldCreatable.value =
+            attrs['data-creatable'] === 'true' || attrs['data-creatable'] === true
           fieldRequired.value = attrs['data-required'] === 'true'
-          fieldValue.value = String(attrs['data-value'] ?? '')
+          fieldValue.value = String(
+            attrs['data-value'] ??
+              (selectedKind.value === 'textarea' ? component.get('content') : '') ??
+              '',
+          )
           fieldChecked.value = attrs['data-checked'] === 'true'
           inspectorTab.value = 'component'
           layout.value = String(component.getStyle().display ?? 'block')
@@ -660,6 +702,14 @@ function save() {
   if (status.value !== 'ready' || !editor) return false
   const project = editor?.getProjectData?.() ?? schema.value.grapesProject ?? {}
   const next = schemaFromGrapesProject(title.value, project)
+  if (
+    deliveryBlockers(next).some(
+      (reason) => reason.startsWith('invalid_task_list:') || reason.includes('task_list_children'),
+    )
+  ) {
+    note.value = t('editor.taskList.invalid')
+    return false
+  }
   try {
     schema.value = savePrototypeSchema(next, scopedPrototypeStorage(props.sourceRef))
   } catch {
@@ -884,7 +934,10 @@ onUnmounted(() => {
         /></label>
         <template
           v-if="
-            selected && ['input', 'select', 'checkbox', 'form', 'dialog'].includes(selectedKind)
+            selected &&
+            ['input', 'textarea', 'select', 'checkbox', 'form', 'dialog', 'task-list'].includes(
+              selectedKind,
+            )
           "
         >
           <label
@@ -894,10 +947,55 @@ onUnmounted(() => {
               data-testid="grapes-field-label"
               @update:model-value="updateInteraction"
           /></label>
-          <label v-if="['input', 'select'].includes(selectedKind)"
+          <label v-if="['input', 'textarea', 'select'].includes(selectedKind)"
             >{{ t('editor.interaction.initialValue')
-            }}<Input v-model="fieldValue" @update:model-value="updateInteraction"
+            }}<Textarea
+              v-if="selectedKind === 'textarea'"
+              v-model="fieldValue"
+              data-testid="grapes-field-value"
+              maxlength="2000"
+              @update:model-value="updateInteraction" />
+            <Input
+              v-else
+              v-model="fieldValue"
+              data-testid="grapes-field-value"
+              @update:model-value="updateInteraction"
           /></label>
+          <label v-if="['input', 'textarea'].includes(selectedKind)"
+            >{{ t('editor.interaction.placeholder')
+            }}<Input
+              v-model="fieldPlaceholder"
+              data-testid="grapes-field-placeholder"
+              @update:model-value="updateInteraction"
+          /></label>
+          <template v-if="selectedKind === 'task-list'">
+            <label
+              ><Checkbox
+                v-model="fieldCreatable"
+                data-testid="grapes-task-creatable"
+                @update:model-value="updateTaskCreatable"
+              />{{ t('editor.taskList.creatable') }}</label
+            >
+            <label
+              ><Checkbox
+                v-model="fieldEditable"
+                data-testid="grapes-task-editable"
+                @update:model-value="updateTaskEditable"
+              />{{ t('editor.taskList.editable') }}</label
+            >
+            <label
+              >{{ t('editor.taskList.items')
+              }}<Textarea
+                v-model="fieldItems"
+                data-testid="grapes-field-items"
+                :rows="12"
+                :aria-invalid="invalidItems"
+                @update:model-value="updateTaskItems"
+            /></label>
+            <Feedback v-if="invalidItems" tone="warning" role="alert">{{
+              t('editor.taskList.invalid')
+            }}</Feedback>
+          </template>
           <label v-if="selectedKind === 'select'"
             >{{ t('editor.interaction.options')
             }}<Textarea
@@ -905,7 +1003,7 @@ onUnmounted(() => {
               data-testid="grapes-field-options"
               @update:model-value="updateInteraction"
           /></label>
-          <label v-if="['input', 'select', 'checkbox'].includes(selectedKind)"
+          <label v-if="['input', 'textarea', 'select', 'checkbox'].includes(selectedKind)"
             ><span
               ><Checkbox v-model="fieldRequired" @update:model-value="updateInteraction" />
               {{ t('editor.interaction.requiredSetting') }}</span

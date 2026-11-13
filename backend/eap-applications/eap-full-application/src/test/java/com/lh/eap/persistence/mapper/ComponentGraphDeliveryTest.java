@@ -18,7 +18,7 @@ class ComponentGraphDeliveryTest {
   var directory=Files.createTempDirectory(Path.of("target"),"component-graph-");String schema="eap_unknown_qa_"+UUID.randomUUID().toString().replace("-","");
   var admin=new JdbcTemplate(ToolUnknownReviewFixture.originalDataSource());
   try {
-   CurrentContractTestSchema.migrate(directory,schema,"37");var ds=ToolUnknownReviewFixture.scopedDataSource(schema);var jdbc=new JdbcTemplate(ds);var manager=new DataSourceTransactionManager(ds);
+   CurrentContractTestSchema.migrate(directory,schema);var ds=ToolUnknownReviewFixture.scopedDataSource(schema);var jdbc=new JdbcTemplate(ds);var manager=new DataSourceTransactionManager(ds);
    var root=Files.createDirectory(directory.resolve("workspace")).toRealPath();Files.createDirectory(root.resolve("frontend"));
    String entry="frontend/Page.vue",child="frontend/Summary.vue";Files.writeString(root.resolve(entry),"<template><p>Before</p></template>\n");Files.writeString(root.resolve(child),"<template><span>Before child</span></template>\n");
    var task=new BoardTaskService(jdbc).create(new BoardTaskService.Draft("graph","Graph task","","ready","Complete page","Both files checked",UUID.randomUUID()));var ref=new TaskRef(task.projectId(),task.id(),task.revision());

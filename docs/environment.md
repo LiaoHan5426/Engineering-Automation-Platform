@@ -92,22 +92,34 @@ Local HTTP tests do not establish live provider/WAF compatibility. See
 
 ## Database initialisation
 
-Flyway owns the `eap` schema. On 2026-10-26, the user approved resetting disposable development
-databases and consolidating V1–V18 into `V1__initial_schema.sql`. This baseline creates 21 tables,
-four explicit indexes and the built-in Git/ripgrep programs and operations. Other configuration
-starts empty; absent capability settings mean enabled, and absent CLI overrides use default binaries.
+Flyway owns the `eap` schema. On 2026-11-13, V1–V37 were consolidated into the single
+`V1__initial_schema.sql` for fresh EAP initialization. It creates 29 tables, 15 explicit indexes,
+8 functions and 7 triggers, including current immutable application evidence and recovery constraints.
+The baseline retains two built-in CLI programs (Git/ripgrep) and three operations (git-status,
+git-diff, rg-search). Other configuration starts empty; absent capability settings mean enabled,
+and absent CLI overrides use default binaries.
 
 Only `backend/eap-applications/eap-full-application/src/main/resources/db/migration` is active; the obsolete `backend/db`
 copies were removed. Historical CLI override conversion, duplicate comments, transitional ALTERs
 and the V5 legacy-adoption strategy were removed. Unused pgvector setup and its vector column were
 removed; existing embedding metadata fields remain for the current mapper contract.
 
-Existing V1–V18 development histories are not upgrade-compatible with this new baseline. Stop the
+Existing V1–V37 development histories are not upgrade-compatible with this new baseline. Stop the
 application, explicitly reset only the confirmed disposable EAP database/schema and its Flyway
 history, then restart with injected database credentials. Do not use Flyway repair/baseline to hide
 the mismatch. Startup never resets the database automatically; `EAP_ADOPT_EXISTING_SCHEMA` is retired.
 Subsequent schema changes use V2 and later incremental migrations. This code change does not itself
-perform any database reset. Real empty-database migration acceptance must be reported separately.
+perform any daily database reset. Stop the running EAP host before resetting its explicitly selected
+disposable schema; remove both that schema and its matching Flyway history, then restart the host to
+apply the new V1. Keep `clean-disabled` enabled in application configuration; initialization is an
+operator action, not a startup fallback.
+
+Optional development data is in
+[`seed_example_board_tasks.sql`](../backend/eap-applications/eap-full-application/src/main/resources/db/dev/seed_example_board_tasks.sql).
+After V1, execute it explicitly with a PostgreSQL client connected to the intended development database.
+It inserts two planned tasks for project `local-example`, without grants, credentials, execution,
+approval or accepted delivery evidence. Repeating it preserves edited records. It is outside Flyway's
+automatic migration directory and is never run by normal startup.
 
 ## Toolchain prerequisites
 
@@ -123,8 +135,8 @@ perform any database reset. Real empty-database migration acceptance must be rep
 These were part of an earlier plan and are explicitly deferred until a phase in
 [roadmap.md](roadmap.md) justifies them.
 
-- **Vector retrieval / embeddings.** V1 created a pgvector schema; V5 removed mandatory embeddings
-  because PostgreSQL full-text search was sufficient. Reintroduction (Phase 10) must define a stable
+- **Vector retrieval / embeddings.** The historical baseline originally used pgvector; the
+  consolidated V1 has no pgvector dependency because PostgreSQL full-text search is sufficient. Reintroduction (Phase 10) must define a stable
   embedding version, dimension, migration and re-index policy — never a silent dimension change.
 - **Object storage (RustFS / S3).** Only useful once uploaded binaries must be versioned as immutable
   evidence. Until then, document text is stored directly with a SHA-256 checksum.
