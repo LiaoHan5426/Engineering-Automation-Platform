@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Checkbox, Feedback, Input, Select } from '@eap/ui'
+import { Button, Checkbox, ConfirmBox, Feedback, Input, Select } from '@eap/ui'
 import { IconPlus } from '@eap/ui'
 import type { ModelConnection, ModelWireApi } from '@eap/runtime-client'
 import { modelApi as runtimeApi } from '../chat/chatService'
@@ -69,6 +69,26 @@ const form = ref({
   enabled: true,
   defaultSelected: true,
 })
+// Only keep the comparison snapshot in memory; never persist connection secrets.
+const initialForm = ref({ ...form.value })
+const discardConnection = ref(false)
+const connectionDirty = computed(() =>
+  (Object.keys(form.value) as (keyof typeof form.value)[]).some(
+    (key) => form.value[key] !== initialForm.value[key],
+  ),
+)
+function closeConnection() {
+  if (connectionBusy.value) return
+  discardConnection.value = false
+  editorOpen.value = false
+  editingId.value = null
+  form.value.secret = ''
+}
+function requestCloseConnection() {
+  if (connectionBusy.value) return
+  if (connectionDirty.value) discardConnection.value = true
+  else closeConnection()
+}
 const connectionPreset = computed(() =>
   form.value.baseUrl.includes('deepseek')
     ? 'https://api.deepseek.com'
@@ -96,6 +116,8 @@ function newConnection() {
     enabled: true,
     defaultSelected: connections.value.length === 0,
   }
+  initialForm.value = { ...form.value }
+  discardConnection.value = false
   connectionNote.value = ''
 }
 
@@ -110,6 +132,8 @@ function editConnection(item: ModelConnection) {
     enabled: item.enabled,
     defaultSelected: item.defaultSelected,
   }
+  initialForm.value = { ...form.value }
+  discardConnection.value = false
   connectionNote.value = ''
 }
 
@@ -297,12 +321,7 @@ async function makeDefault(item: ModelConnection) {
         v-if="editorOpen"
         :title="editingId ? t('chat.connectionEdit') : t('composerUi.addConnection')"
         :busy="connectionBusy"
-        @close="
-          () => {
-            editorOpen = false
-            form.secret = ''
-          }
-        "
+        @close="requestCloseConnection"
       >
         <form class="connection-form" @submit.prevent="saveConnection">
           <div class="connection-editor-heading">
@@ -311,12 +330,7 @@ async function makeDefault(item: ModelConnection) {
               type="button"
               variant="secondary"
               :disabled="connectionBusy"
-              @click="
-                () => {
-                  editorOpen = false
-                  form.secret = ''
-                }
-              "
+              @click="requestCloseConnection"
               >{{ t('composerUi.close') }}</Button
             >
           </div>
@@ -361,6 +375,15 @@ async function makeDefault(item: ModelConnection) {
           }}</Feedback>
         </form>
       </ConnectionDialog>
+      <ConfirmBox
+        v-if="discardConnection"
+        :title="t('product.discardTitle')"
+        :impact="[t('product.discardImpact')]"
+        :confirm-label="t('product.discard')"
+        :busy="connectionBusy"
+        @confirm="closeConnection"
+        @cancel="discardConnection = false"
+      />
       <Feedback v-if="connectionNote" :tone="connectionOk ? 'info' : 'warning'">{{
         connectionNote
       }}</Feedback>
