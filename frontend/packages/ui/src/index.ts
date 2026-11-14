@@ -1,3 +1,4 @@
+export { default as RichText } from './rich-text/RichText.vue'
 export { default as Button } from './button/Button.vue'
 export { default as Icon } from './icon/Icon.vue'
 export type { IconName } from './icon/icons'

@@ -4,6 +4,7 @@
  *   import { applyTheme } from "@eap/style";
  *   applyTheme("light"); // or "dark"
  */
+@import url('./rich-text/rich-text.css');
 @import url('./button/button.css');
 @import url('./badge/badge.css');
 @import url('./feedback/feedback.css');

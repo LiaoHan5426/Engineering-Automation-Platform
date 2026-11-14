@@ -1,3 +1,4 @@
+import { chatRichMessages } from './chatRichMessages'
 import { productMessages } from './productMessages'
 import { pluginCheckMessages } from './pluginMessages'
 import { configureRuntimeLanguage } from '@eap/runtime-client'
@@ -31,6 +32,7 @@ export const i18n = createI18n({
   messages: {
     'zh-CN': {
       ...pluginCheckMessages['zh-CN'],
+      richText: chatRichMessages['zh-CN'],
       product: productMessages['zh-CN'],
       presentation: presentationMessages['zh-CN'],
       toolExecution: toolExecutionMessages['zh-CN'],
@@ -268,6 +270,11 @@ export const i18n = createI18n({
         error: '最近一次调用失败',
         speakerYou: '你',
         speakerModel: '模型',
+        copyMessage: '复制消息',
+        downloadMessage: '下载消息',
+        messageActionFailed: '消息操作失败，请重试或检查浏览器权限。',
+        copyFailed: '复制失败，请检查浏览器剪贴板权限后重试。',
+        messageMenuUnavailable: '消息菜单暂不可用，请稍后重试。',
         noAnswer: '没有模型回答',
         waitingForAnswer: '正在等待模型回答',
         artifactFailed: '证据保存失败',
@@ -362,6 +369,7 @@ export const i18n = createI18n({
     },
     'en-US': {
       ...pluginCheckMessages['en-US'],
+      richText: chatRichMessages['en-US'],
       product: productMessages['en-US'],
       presentation: presentationMessages['en-US'],
       toolExecution: toolExecutionMessages['en-US'],
@@ -623,6 +631,11 @@ export const i18n = createI18n({
         error: 'The latest call failed',
         speakerYou: 'You',
         speakerModel: 'Model',
+        copyMessage: 'Copy message',
+        downloadMessage: 'Download message',
+        messageActionFailed: 'The message action failed. Try again or check browser permissions.',
+        copyFailed: 'Copy failed. Check clipboard permission and try again.',
+        messageMenuUnavailable: 'The message menu is unavailable. Try again shortly.',
         noAnswer: 'No model answer',
         waitingForAnswer: 'Waiting for the model answer',
         artifactFailed: 'Evidence was not saved',

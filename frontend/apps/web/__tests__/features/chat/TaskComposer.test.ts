@@ -1,7 +1,13 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref, type App } from 'vue'
-import { runtimeApi, type TaskContext } from '@eap/runtime-client'
+import {
+  runtimeApi,
+  type TaskContext,
+  type AiMessageResult,
+  type ChatGraph,
+  type ChatGraphOperation,
+} from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import TaskComposer from '../../../src/features/chat/TaskComposer.vue'
 import { workbench } from '../../../src/features/shell/workbench'
@@ -28,7 +34,9 @@ const empty = (): TaskContext => ({
   prototypeVersionId: '',
   targetPath: '',
 })
-async function mount() {
+async function mount(
+  attachmentStore?: import('../../../src/features/chat/chatAttachments').ChatAttachmentStore,
+) {
   const context = ref(empty())
   element = document.createElement('div')
   document.body.append(element)
@@ -36,6 +44,8 @@ async function mount() {
     render: () =>
       h(TaskComposer, {
         context: context.value,
+        attachmentStore,
+        attachmentOwner: 'draft:test',
         disabled: false,
         reasoningEfforts: [],
         onUpdate: (value: TaskContext) => {
@@ -49,21 +59,71 @@ async function mount() {
 }
 describe('engineering task composer', () => {
   it('selects a code target without a prototype and sends the exact target in the shared DTO', async () => {
-    const send = vi.fn(async () => ({
-      executionId: 'test',
-      answer: 'test only',
-      error: '',
-      status: 'SUCCEEDED',
-      approval: 'NOT_REQUIRED',
-      verification: 'UNVERIFIED',
-      toolEvents: [],
-      artifacts: [],
-      artifactError: '',
-    }))
-    const api = {
+    const graph: ChatGraph = { conversationId: 'c1', revision: 0, nodes: [], operations: [] }
+    const send = vi.fn<ChatApi['sendAiMessage']>(async (_id, request) => {
+      const response: AiMessageResult = {
+        executionId: 'execution',
+        answer: 'test only',
+        error: '',
+        status: 'SUCCEEDED',
+        approval: 'NOT_REQUIRED',
+        verification: 'UNVERIFIED',
+        toolEvents: [],
+        artifacts: [],
+        artifactError: '',
+      }
+      const operation: ChatGraphOperation = {
+        operationId: request.operationId,
+        executionId: response.executionId,
+        userMessageId: 'user',
+        assistantMessageId: 'assistant',
+        graphRevision: 1,
+        status: response.status,
+        response,
+      }
+      graph.revision = 1
+      graph.operations = [operation]
+      graph.nodes = [
+        {
+          id: 'user',
+          parentId: null,
+          role: 'user',
+          content: request.message,
+          executionId: null,
+          operationId: request.operationId,
+          status: 'SUCCEEDED',
+          response: null,
+        },
+        {
+          id: 'assistant',
+          parentId: 'user',
+          role: 'assistant',
+          content: response.answer,
+          executionId: response.executionId,
+          operationId: request.operationId,
+          status: response.status,
+          response,
+        },
+      ]
+      return response
+    })
+    const api: ChatApi = {
+      aiStatus: async () => ({
+        state: 'configured_unverified',
+        provider: 'test',
+        model: '',
+        configurationRevision: 'revision',
+        lastObservedAt: null,
+        errorCode: '',
+        tools: { git_status: false },
+        workspaceLabel: 'ws',
+      }),
       openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: 'ws', memory: '' }),
+      chatGraph: async () => structuredClone(graph),
+      chatOperation: async () => structuredClone(graph.operations[0]!),
+      cancelAiExecution: async (_id, executionId) => ({ cancelled: false, executionId }),
       sendAiMessage: send,
-    } as unknown as ChatApi
+    }
     const session = createChatSession(api)
     await session.openConversation()
     session.draft.value = 'Adjust this existing page'
@@ -106,14 +166,21 @@ describe('engineering task composer', () => {
     expect(send).not.toHaveBeenCalled()
     await session.send()
     expect(send.mock.calls[0]).toEqual([
-      'c1',
-      'Adjust this existing page',
-      'none',
+      session.conversationId.value,
       expect.objectContaining({
-        mode: 'code',
-        targetPath: 'frontend/apps/web/src/Example.vue',
-        componentPaths: ['frontend/apps/web/src/Summary.vue', 'frontend/apps/web/src/model.ts'],
-        prototypeVersionId: '',
+        operationId: expect.any(String),
+        expectedRevision: 0,
+        kind: 'send',
+        parentMessageId: null,
+        targetMessageId: null,
+        message: 'Adjust this existing page',
+        toolMode: 'none',
+        context: expect.objectContaining({
+          mode: 'code',
+          targetPath: 'frontend/apps/web/src/Example.vue',
+          componentPaths: ['frontend/apps/web/src/Summary.vue', 'frontend/apps/web/src/model.ts'],
+          prototypeVersionId: '',
+        }),
       }),
       { signal: expect.any(AbortSignal), onEvent: expect.any(Function) },
     ])
@@ -368,7 +435,7 @@ describe('engineering task composer', () => {
     expect(context.value.reasoning).toBe('high')
   })
 
-  it('refuses a pasted image and keeps the draft files unchanged', async () => {
+  it('reports unavailable attachment storage and keeps the draft unchanged', async () => {
     const context = await mount()
     const pasted = new Event('paste', { bubbles: true, cancelable: true })
     Object.defineProperty(pasted, 'clipboardData', {
@@ -379,7 +446,7 @@ describe('engineering task composer', () => {
     await nextTick()
     expect(pasted.defaultPrevented).toBe(true)
     expect(context.value.files).toEqual([])
-    expect(element!.textContent).toContain('图片和录屏不会被读取')
+    expect(element!.textContent).toContain('attachment.storageUnavailable')
   })
 
   it('anchors the shared popover to the toolbar control', async () => {
@@ -540,24 +607,39 @@ describe('engineering task composer', () => {
   })
 })
 
-it('ignores a file read that finishes after the composer changes conversation context', async () => {
-  const context = await mount()
-  let finish!: (text: string) => void
+it('releases a local selection finishing after the composer changes conversation context', async () => {
+  let finish!: (
+    refs: import('../../../src/features/chat/chatAttachments').LocalAttachment[],
+  ) => void
+  const remove = vi.fn(async () => {})
+  const store = {
+    select: vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    ),
+    remove,
+  } as unknown as import('../../../src/features/chat/chatAttachments').ChatAttachmentStore
+  const context = await mount(store)
   const file = new File(['content'], 'old.txt', { type: 'text/plain' })
-  vi.spyOn(file, 'text').mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve
-      }),
-  )
   const paste = new Event('paste', { bubbles: true, cancelable: true })
   Object.defineProperty(paste, 'clipboardData', { value: { files: [file] } })
   element!.querySelector('.composer-stack')!.dispatchEvent(paste)
   context.value = { ...empty(), instructions: 'other conversation' }
   await nextTick()
-  finish('old context attachment')
-  await nextTick()
-  await nextTick()
+  finish([
+    {
+      id: 'original-id',
+      name: 'old.txt',
+      mime: 'text/plain',
+      kind: 'text',
+      size: 7,
+      sha256: 'abc',
+    },
+  ])
+  await vi.waitFor(() => expect(remove).toHaveBeenCalledWith('draft:test', 'original-id'))
+  expect(context.value.attachmentRefs ?? []).toEqual([])
   expect(context.value.files).toEqual([])
   expect(context.value.instructions).toBe('other conversation')
 })

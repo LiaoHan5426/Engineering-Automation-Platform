@@ -47,7 +47,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 public class AiChatApplication {
     private static final JsonMapper JSON = JsonMapper.builder().enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();
-    private static final Set<String> MESSAGE_FIELDS = Set.of("message", "toolMode", "context");
+    private static final Set<String> MESSAGE_FIELDS = Set.of("message", "toolMode", "context", "operationId", "expectedRevision", "kind", "parentMessageId", "targetMessageId", "transientAttachments");
     @Autowired(required = false)
     private PrototypeVersionQuery prototypes;
     @Autowired(required = false)
@@ -64,6 +64,17 @@ public class AiChatApplication {
     private final Path workspace;
     private final ModelConnections connections;
     private final ChatExecutionJournal journal;
+    @Autowired(required = false)
+    private ChatPlanService plans;
+    @Autowired
+    private ChatGraphStore graphs;
+    @Autowired(required=false)
+    private com.lh.eap.runtime.mcp.client.McpWebService webService;
+    @Autowired(required=false)
+    private com.lh.eap.runtime.mcp.client.McpClientService mcpClient;
+    public List<com.lh.eap.runtime.mcp.client.McpWebService.AvailableService> webSources() {
+        return webService==null?List.of():webService.availableServices();
+    }
 
     public AiChatApplication(AiConnectionStatus status, AiConversationRegistry conversations, EngineeringChatService chat,
             Path workspace) {
@@ -129,6 +140,7 @@ public class AiChatApplication {
             var selected = connections.effectiveDefault();
             if (selected != null) conversations.bind(session.id, binding(selected), false);
         }
+        graphs.open(graphOwner(session.id));
         return conversation(session.id);
     }
 
@@ -148,10 +160,15 @@ public class AiChatApplication {
         catch (IllegalArgumentException invalid) { throw invalid(); }
         var target = connections.requireModel(connectionId, text(body, "model"));
         if (!target.usable()) throw unavailable();
-        return conversations.reconnect(id, workspace, currentLabel, binding(target));
+        graph(id);
+        return conversations.idleMutation(id,()->{
+            var recovered=conversations.reconnect(id, workspace, currentLabel, binding(target));
+            if(recovered.contextReset()||recovered.memoryCleared()) graphs.boundary(graphOwner(id));
+            return recovered;
+        });
     }
 
-    public void deleteConversation(UUID id) { conversations.delete(id); }
+    public void deleteConversation(UUID id) { conversations.idleMutation(id,()->{conversations.delete(id);graphs.delete(graphOwner(id));return null;}); }
 
     public ModelConnections.Listing connections() {
         if (connections == null) return new ModelConnections.Listing(List.of(), null);
@@ -197,11 +214,11 @@ public class AiChatApplication {
                 || allowed.stream().anyMatch(value -> !(value instanceof String))) throw invalid();
         var options = new ArrayList<ModelOption>();
         for (var entry : entries) {
-            if (!(entry instanceof Map<?, ?> item) || !item.keySet().equals(Set.of("id", "reasoningEfforts"))
+            if (!(entry instanceof Map<?, ?> item) || (!Set.of("id","reasoningEfforts","supportsImageInput").containsAll(item.keySet()) || !item.keySet().containsAll(Set.of("id","reasoningEfforts")) || item.containsKey("supportsImageInput")&&!(item.get("supportsImageInput") instanceof Boolean))
                     || !(item.get("id") instanceof String model)
                     || !(item.get("reasoningEfforts") instanceof List<?> efforts)
                     || efforts.stream().anyMatch(value -> !(value instanceof String))) throw invalid();
-            options.add(new ModelOption(model, efforts.stream().map(String.class::cast).toList()));
+            options.add(new ModelOption(model, efforts.stream().map(String.class::cast).toList(), Boolean.TRUE.equals(item.get("supportsImageInput"))));
         }
         return connections.configureModels(id, options, allowed.stream().map(String.class::cast).toList(), text(body, "defaultModel"));
     }
@@ -219,15 +236,18 @@ public class AiChatApplication {
         boolean confirm = Boolean.TRUE.equals(body.get("confirmTargetChange"));
         var target = connections.requireModel(connectionId, text(body, "model"));
         if (!target.usable()) throw unavailable();
+        return conversations.idleMutation(id,()->{
         var current = conversations.binding(id);
         var next = binding(target);
         boolean changed = current == null || !current.sameTarget(next);
         if (changed && current != null && !confirm)
             throw new ResponseStatusException(HttpStatus.CONFLICT, CodeErrors.TARGET_CHANGE_CONFIRMATION_REQUIRED.code());
         conversations.bind(id, next, changed && current != null);
+        if(changed&&current!=null) graphs.boundary(graphOwner(id));
         var bound = conversations.binding(id);
         return new AiConnectionAssignment(id, bound.connectionId, bound.name, bound.model,
                 bound.endpoint, bound.revision, changed && current != null);
+        });
     }
 
     public ExpertKnowledgeContextService.Context previewExpertContext(String json) {
@@ -277,44 +297,194 @@ public class AiChatApplication {
     public void shutdownTurns() { turns.shutdownNow(); }
 
     public AiMessageResponse send(UUID id, String json) {
-        return send(id, json, event -> {});
+        return send(id, json, null);
     }
 
+    private static Object canonical(Object value) {
+        if(value instanceof Map<?,?> map) {var sorted=new java.util.TreeMap<String,Object>();map.forEach((k,v)->sorted.put((String)k,canonical(v)));return sorted;}
+        if(value instanceof List<?> list) return list.stream().map(AiChatApplication::canonical).toList();
+        return value;
+    }
+    private static List<TransientAttachments.Ref> attachmentRefs(Object value) {
+        if(value==null)return List.of();
+        if(!(value instanceof List<?> entries)||entries.size()>6)throw invalid();
+        var result=new ArrayList<TransientAttachments.Ref>();var ids=new java.util.HashSet<String>();long total=0;
+        for(var entry:entries) {
+            if(!(entry instanceof Map<?,?> map)||!map.keySet().equals(Set.of("id","name","mime","size","sha256")))throw invalid();
+            if(!(map.get("id") instanceof String id)||id.isBlank()||id.length()>120||!ids.add(id)
+                ||!(map.get("name") instanceof String name)||name.isBlank()||name.length()>160||name.chars().anyMatch(Character::isISOControl)
+                ||!(map.get("mime") instanceof String mime)||!Set.of("image/png","image/jpeg","image/webp","text/plain").contains(mime)
+                ||!(map.get("sha256") instanceof String hash)||!hash.matches("[0-9a-f]{64}")
+                ||!(map.get("size") instanceof Number size)||!(size instanceof Integer||size instanceof Long)||size.longValue()<1||size.longValue()>TransientAttachments.MAX_FILE_BYTES||size.doubleValue()!=size.longValue())throw invalid();
+            total+=size.longValue();result.add(new TransientAttachments.Ref(id,name,mime,size.longValue(),hash));
+        }
+        if(total>TransientAttachments.MAX_TOTAL_BYTES)throw invalid();return List.copyOf(result);
+    }
+    private ChatGraphStore.Owner graphOwner(UUID id) {
+        return new ChatGraphStore.Owner(AiConversationRegistry.PRINCIPAL, workspace.toAbsolutePath().normalize().toString(), id);
+    }
+    public ChatGraphStore.View graph(UUID id) { return graphs.view(graphOwner(id)); }
+    public Map<String,Object> operation(UUID id, UUID operation) {
+        var graph=graphs.read(graphOwner(id));
+        var op=graph.operations().stream().filter(o->o.operationId().equals(operation)).findFirst()
+            .orElseThrow(()->ChatGraphStore.error(HttpStatus.NOT_FOUND,ChatGraphErrors.CHAT_OPERATION_NOT_FOUND.code()));
+        var node=ChatGraphStore.node(graph,op.assistantMessageId());
+        var result=new LinkedHashMap<String,Object>(association(graph,op));
+        result.put("observationAvailable",node.observationAvailable()); result.put("status",node.status()); result.put("response",node.response()); return result;
+    }
+    private Map<String,Object> association(ChatGraphStore.Graph graph, ChatGraphStore.Operation op) {
+        return Map.of("operationId",op.operationId(),"userMessageId",op.userMessageId(),"assistantMessageId",op.assistantMessageId(),
+            "executionId",op.executionId(),"graphRevision",op.graphRevision());
+    }
+    private AiMessageResponse retry(ChatGraphStore.Reservation prior, UUID id, Consumer<ChatExecutionEvent> sink) {
+        var node=ChatGraphStore.node(prior.graph(),prior.operation().assistantMessageId());
+        if(node.response()==null) throw observeOperation(prior);
+
+        if(sink!=null) {
+            try {journal.snapshot(id,prior.operation().executionId(),0).events().forEach(sink);}
+            catch(ResponseStatusException expired) {
+                // A durable completed result is observable; this is not resumed execution or journal recovery.
+                var acceptedPayload=new LinkedHashMap<String,Object>(association(prior.graph(),prior.operation()));
+                acceptedPayload.put("observationKind","durable_result");
+                sink.accept(ChatExecutionEvent.of(1,prior.operation().executionId(),id,null,"accepted","","",node.status(),acceptedPayload));
+                sink.accept(ChatExecutionEvent.of(node.terminalSequence(),prior.operation().executionId(),id,null,"final",node.response().answer(),node.response().error(),node.status(),node.response()));
+            }
+        }
+        return node.response();
+    }
+    private ResponseStatusException observeOperation(ChatGraphStore.Reservation prior) {
+        var unavailable=ChatGraphStore.error(HttpStatus.CONFLICT,ChatGraphErrors.CHAT_OPERATION_OBSERVE_EXECUTION.code());
+        association(prior.graph(),prior.operation()).forEach((key,value)->unavailable.getBody().setProperty(key,value));
+        unavailable.getBody().setProperty("operation",operation(prior.graph().conversationId(),prior.operation().operationId()));
+        return unavailable;
+    }
     public AiMessageResponse send(UUID id, String json, Consumer<ChatExecutionEvent> sink) {
-        return conversations.exclusive(id, () -> {
-            boolean cleared = conversations.clearContextMemory(id, false);
-            try {
-                var body = objectBody(json, MESSAGE_FIELDS);
-                var context = TaskContext.parse(body.get("context"));
-                if ((context.knowledgeExpertRef() != null || context.skillRef() != null) && !cleared) cleared = conversations.clearContextMemory(id, true);
-                return sendExclusive(id, body, context, cleared, sink == null ? event -> {} : sink);
-            } catch (ResponseStatusException rejected) {
-                rejected.getBody().setProperty("knowledgeMemoryCleared", cleared);
-                rejected.getBody().setProperty("contextMemoryCleared", cleared);
+        try { return sendGraph(id,json,sink); }
+        catch(ResponseStatusException rejected) {
+            var properties=rejected.getBody().getProperties();
+            if(properties!=null&&(properties.containsKey("contextMemoryCleared")||properties.containsKey("operationId")))throw rejected;
+            // Even malformed requests honor the sticky invalidation boundary before returning a rejection.
+            return conversations.exclusive(id,()->{
+                boolean cleared=conversations.clearContextMemory(id,false);
+                rejected.getBody().setProperty("knowledgeMemoryCleared",cleared);
+                rejected.getBody().setProperty("contextMemoryCleared",cleared);
                 throw rejected;
-            } catch (DataAccessException unavailable) {
-                var rejected = new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, AgentErrors.EXPERT_CONTEXT_UNAVAILABLE.code());
-                rejected.getBody().setProperty("knowledgeMemoryCleared", cleared);
-                rejected.getBody().setProperty("contextMemoryCleared", cleared);
+            });
+        }
+    }
+    private AiMessageResponse sendGraph(UUID id, String json, Consumer<ChatExecutionEvent> sink) {
+        var body=objectBody(json,MESSAGE_FIELDS);
+        final UUID operationId, parent, target;
+        final long revision;
+        final String kind;
+        try {
+            operationId=UUID.fromString(text(body,"operationId"));
+            parent=body.get("parentMessageId")==null?null:UUID.fromString((String)body.get("parentMessageId"));
+            target=body.get("targetMessageId")==null?null:UUID.fromString((String)body.get("targetMessageId"));
+            if(!(body.get("expectedRevision") instanceof Number number) || !(number instanceof Integer || number instanceof Long) || number.longValue()<0) throw invalid();
+            revision=number.longValue(); kind=text(body,"kind");
+            if(!Set.of("send","edit","regenerate").contains(kind)) throw invalid();
+        } catch(IllegalArgumentException | ClassCastException e) { throw invalid(); }
+        var durableBody=new LinkedHashMap<String,Object>(body); durableBody.remove("transientAttachments");
+        String payload;
+        try { payload=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(JSON.writeValueAsString(canonical(durableBody)).getBytes(StandardCharsets.UTF_8))); }
+        catch(java.security.NoSuchAlgorithmException impossible) {throw new IllegalStateException(impossible);}
+        var prior=graphs.find(graphOwner(id),operationId,payload);
+        if(prior!=null) return retry(prior,id,sink);
+        return conversations.exclusive(id, () -> {
+            boolean cleared=conversations.clearContextMemory(id,false);
+            ChatGraphStore.Reservation reservation=null;
+            try (var transientImages=TransientAttachments.parse(body.remove("transientAttachments"))) {
+                var contextBody=body.get("context") instanceof Map<?,?> c?new LinkedHashMap<Object,Object>(c):null;
+                var refs=attachmentRefs(contextBody==null?null:contextBody.remove("attachmentRefs"));
+                var context=TaskContext.parse(contextBody==null?body.get("context"):contextBody);
+                if(context.files().size()+transientImages.refs().size()>TransientAttachments.MAX_COUNT)throw invalid();
+                long attachmentBytes=transientImages.refs().stream().mapToLong(TransientAttachments.Ref::size).sum();
+                for(var file:context.files()) {
+                    int bytes=file.content().getBytes(StandardCharsets.UTF_8).length;
+                    if(bytes>TransientAttachments.MAX_FILE_BYTES)throw invalid();attachmentBytes+=bytes;
+                }
+                if(attachmentBytes>TransientAttachments.MAX_TOTAL_BYTES)throw invalid();
+                boolean sensitive=context.knowledgeExpertRef()!=null||context.skillRef()!=null;
+                if(sensitive&&!cleared) cleared=conversations.clearContextMemory(id,true);
+                final String operationPayload=payload;
+                reservation=conversations.reserveExecution(id,()->graphs.reserve(graphOwner(id),operationId,operationPayload,revision,kind,parent,target,
+                    body.get("message") instanceof String m?m:"",sensitive,refs),r->r.operation().executionId());
+                if(!reservation.fresh()) return retry(reservation,id,sink);
+                if(reservation.graph().sensitive()&&!cleared) cleared=conversations.clearContextMemory(id,true);
+                var completeHistory=graphs.history(reservation);
+                var operations=reservation.graph().operations();
+                boolean branchChanged=operations.size()>1&&(!kind.equals("send")||!java.util.Objects.equals(parent,operations.get(operations.size()-2).assistantMessageId()));
+                conversations.deriveBranchHistory(id, completeHistory.stream().map(n ->
+                    n.role().equals("user") ? (org.springframework.ai.chat.messages.Message)new org.springframework.ai.chat.messages.UserMessage(n.content()) :
+                        new org.springframework.ai.chat.messages.AssistantMessage(n.content())).toList(), reservation.graph().sensitive(),branchChanged);
+                int providerMessages=conversations.modelMessages(id).size();
+                var selectedHistory=completeHistory.subList(completeHistory.size()-providerMessages,completeHistory.size());
+                var currentNode=ChatGraphStore.node(reservation.graph(),reservation.operation().userMessageId());
+                var requiredRefs=new LinkedHashMap<String,TransientAttachments.Ref>();
+                var allowedRefs=new LinkedHashMap<String,TransientAttachments.Ref>();
+                for(var node:completeHistory)for(var ref:node.attachmentRefs())allowedRefs.put(ref.id(),ref);
+                var pathNodes=new ArrayList<>(selectedHistory);pathNodes.add(currentNode);
+                for(var node:pathNodes) for(var ref:node.attachmentRefs()) {
+                    var old=requiredRefs.putIfAbsent(ref.id(),ref);if(old!=null&&!old.equals(ref))throw invalid();
+                    allowedRefs.put(ref.id(),ref);
+                }
+                var providedRefs=new LinkedHashMap<String,TransientAttachments.Ref>();
+                for(var ref:transientImages.refs()) {
+                    if(!ref.equals(allowedRefs.get(ref.id())))throw invalid();providedRefs.put(ref.id(),ref);
+                }
+                if(!providedRefs.entrySet().containsAll(requiredRefs.entrySet()))throw invalid();
+                var effective=new LinkedHashMap<String,Object>(body);
+                effective.put("message",ChatGraphStore.node(reservation.graph(),reservation.operation().userMessageId()).content());
+                var response=sendExclusive(id,effective,context,cleared,sink==null?event->{}:sink,reservation,transientImages,selectedHistory);
+                return response;
+            } catch(RuntimeException rejected) {
+                if(reservation!=null&&reservation.fresh()) {
+                    String failureStatus=conversations.cancelRequested(id)||Thread.currentThread().isInterrupted()?ChatExecutionStatus.CANCELLED.wire():ChatExecutionStatus.REJECTED.wire();
+                    boolean observed=true;
+                    try {
+                        var snapshot=journal.snapshot(id,reservation.operation().executionId(),0);
+                        failureStatus=snapshot.status();observed=snapshot.complete();
+                    } catch(ResponseStatusException noJournal) {
+                        // No journal was opened: validation/preparation rejected before any model call.
+                    }
+                    graphs.failed(graphOwner(id),reservation,failureStatus,observed);
+                }
+                ResponseStatusException mapped=rejected instanceof ResponseStatusException r?r:
+                    rejected instanceof DataAccessException?new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,AgentErrors.EXPERT_CONTEXT_UNAVAILABLE.code()):null;
+                if(mapped!=null) {
+                    mapped.getBody().setProperty("knowledgeMemoryCleared",cleared); mapped.getBody().setProperty("contextMemoryCleared",cleared);
+                    throw mapped;
+                }
                 throw rejected;
             }
         });
     }
+    public Map<String, Object> cancel(UUID id, UUID executionId) {
+        var graph=graphs.read(graphOwner(id));
+        if(graph.operations().stream().noneMatch(o->o.executionId().equals(executionId)))
+            throw ChatGraphStore.error(HttpStatus.NOT_FOUND,com.lh.eap.error.ExecutionErrors.UNKNOWN_EXECUTION.code());
+        boolean requested=executionId.equals(graph.activeExecution())&&conversations.cancel(id,executionId);
+        if(plans!=null&&requested) plans.close(planOwner(id,executionId));
+        return Map.of("cancelled",requested,"executionId",executionId);
+    }
 
-    public Map<String, Object> cancel(UUID id) {
-        boolean requested = conversations.cancel(id);
-        UUID executionId = conversations.activeExecutionId(id);
-        return Map.of("cancelled", requested, "executionId", executionId == null ? "" : executionId.toString());
+    private ChatPlanStore.Owner planOwner(UUID conversation, UUID execution) {
+        return new ChatPlanStore.Owner(AiConversationRegistry.PRINCIPAL, workspace.toAbsolutePath().normalize().toString(), conversation, execution);
+    }
+    public com.lh.eap.ai.dto.ChatPlanSnapshot executionPlan(UUID conversation, UUID execution) {
+        if (plans == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, ChatPlanErrors.CHAT_PLAN_STORE_UNAVAILABLE.code());
+        return plans.read(planOwner(conversation, execution));
     }
 
     public ChatExecutionSnapshot executionSnapshot(UUID conversationId, UUID executionId, long afterSequence) {
-        conversations.require(conversationId);
+        graph(conversationId);
         return journal.snapshot(conversationId, executionId, afterSequence);
     }
 
     private AiMessageResponse sendExclusive(UUID id, Map<String,Object> body, TaskContext context, boolean memoryCleared,
-            Consumer<ChatExecutionEvent> sink) {
-        if (!(body.get("message") instanceof String message) || message.isBlank() || message.length() > 32000
+            Consumer<ChatExecutionEvent> sink, ChatGraphStore.Reservation reservation, TransientAttachments transientImages, List<ChatGraphStore.Node> selectedHistory) {
+        if (!(body.get("message") instanceof String message) || message.isBlank()&&ChatGraphStore.node(reservation.graph(),reservation.operation().userMessageId()).attachmentRefs().isEmpty() || message.length() > 32000
                 || !(body.get("toolMode") instanceof String toolMode))
             throw invalid();
         if (context.skillRef() != null && !toolMode.equals("none"))
@@ -324,6 +494,9 @@ public class AiChatApplication {
         if (context.mode().equals(TaskMode.PLAN.wire()) && !toolMode.equals("none")) throw invalid();
         final AiToolMode tools;
         try { tools = AiToolMode.fromWire(toolMode); } catch (IllegalArgumentException rejected) { throw invalid(); }
+        var modelAttachmentRefs=java.util.stream.Stream.concat(selectedHistory.stream().flatMap(n->n.attachmentRefs().stream()),ChatGraphStore.node(reservation.graph(),reservation.operation().userMessageId()).attachmentRefs().stream()).distinct().toList();
+        boolean transientPrompt=!modelAttachmentRefs.isEmpty();
+        boolean hasImages=modelAttachmentRefs.stream().anyMatch(ref->ref.mime().startsWith("image/"));
         boolean git = tools == AiToolMode.GIT_STATUS;
         boolean agent = tools == AiToolMode.CODE_SOURCES;
         if (agent && (!context.mode().equals("code") || context.taskRef() == null)) throw invalid();
@@ -357,6 +530,7 @@ public class AiChatApplication {
             if (codeChanges == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, CodeErrors.CODE_GENERATION_CONTEXT_UNAVAILABLE.code());
             generation = codeChanges.prepareGeneration(AiConversationRegistry.PRINCIPAL, id, context.targetPath(),
                     context.prototypeVersionId(), prototypeContentHash, context.taskRef(),context.componentPaths());
+            graphs.linkGeneration(graphOwner(id),reservation,generation.id());
             if (generation.taskSnapshot() != null) {
                 var task = generation.taskSnapshot();
                 String taskPrototype = task.prototype() == null ? "" : JSON.writeValueAsString(task.prototype());
@@ -404,11 +578,14 @@ public class AiChatApplication {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ModelErrors.AI_PROTOCOL_TOOLS_UNAVAILABLE.code());
             if (git && context.mode().equals("chat") && !status.gitStatusAvailable())
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, ToolErrors.TOOL_NOT_GRANTED.code());
-            selectedClient = connections.chatClient(live);
+            if(hasImages&&!connections.supportsImageInput(current.connectionId,current.model))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,ChatErrors.IMAGE_INPUT_NOT_SUPPORTED.code());
+            selectedClient = transientPrompt?connections.transientChatClient(live):connections.chatClient(live);
             selectedRevision = live.configurationRevision;
             if (!connections.supportsReasoning(current.connectionId, current.model, context.reasoning()))
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ModelErrors.REASONING_OPTION_NOT_SUPPORTED.code());
         }
+        if(transientPrompt&&connections==null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,ChatErrors.IMAGE_INPUT_NOT_SUPPORTED.code());
         ExpertKnowledgeContextService.Context knowledge = null;
         String material = draft;
         int knowledgeChars = 0;
@@ -439,21 +616,30 @@ public class AiChatApplication {
         var frozen = generation;
         var sourceTool = agent ? new CodeSourceTool(frozen, () -> codeChanges.checkAgentGeneration(frozen),
                 () -> conversations.cancelRequested(id)) : null;
+        var typedCurrent=transientPrompt?transientImages.userMessage(material,true,ChatGraphStore.node(reservation.graph(),reservation.operation().userMessageId()).attachmentRefs()):null;
+        List<org.springframework.ai.chat.messages.Message> typedHistory=transientPrompt?selectedHistory.stream().map(n->n.role().equals("user")?
+            (org.springframework.ai.chat.messages.Message)transientImages.userMessage(n.content(),true,n.attachmentRefs()):
+            new org.springframework.ai.chat.messages.AssistantMessage(n.content())).toList():List.of();
+        String effectiveMaterial=typedCurrent==null?material:typedCurrent.getText();
+        int historyChars=transientPrompt?typedHistory.stream().mapToInt(m->m.getText().length()+128).sum():selectedHistory.stream().mapToInt(n->n.content().length()+128).sum();
         var budgetAccount = ContextBudget.account()
                 .include("system", context.systemInstructions() + (sourceTool == null ? "" : sourceTool.instructions()))
-                .includeChars("user", material.length() + (sourceTool == null ? 0 : CodeSourceTool.reservedChars(frozen)))
+                .includeChars("user", effectiveMaterial.length() + (sourceTool == null ? 0 : CodeSourceTool.reservedChars(frozen)))
+                .includeChars("images", (int)modelAttachmentRefs.stream().filter(ref->ref.mime().startsWith("image/")).count()*8192)
                 .detail("files", fileChars)
                 .detail("prototype", prototypeChars)
                 .detail("workspace", workspaceChars)
                 .detail("task", taskChars)
                 .detail("knowledge", knowledgeChars)
                 .detail("skill", skillChars)
-                .includeChars("history", conversations.modelHistory(id).chars());
+                .includeChars("history", historyChars);
+        boolean planEligible = plans != null && (git || agent) && !context.mode().equals(TaskMode.PLAN.wire());
+        if (planEligible) budgetAccount.includeChars("execution_plan_tools", ChatPlanTool.RESERVED_CHARS);
+        if(context.webSources().enabled()) budgetAccount.includeChars("web_tools",McpWebChatTool.reservedChars());
         if (memoryCleared) budgetAccount.note("DERIVED_CLEARED_BEFORE_SEND");
         var contextBudget = budgetAccount.enforce();
         if (conversations.cancelRequested(id)) throw cancelled();
-        var executionId = UUID.randomUUID();
-        conversations.bindExecution(id, executionId);
+        var executionId = reservation.operation().executionId();
         if (!materialDeps.isEmpty()) {
             conversations.syncMaterialDependencies(id, materialDeps);
         }
@@ -461,18 +647,45 @@ public class AiChatApplication {
             conversations.linkTaskAndExecution(id, context.taskRef(), executionId);
         }
         var emitter = journal.open(executionId, id);
+        graphs.started(graphOwner(id),reservation);
         emitter.onEvent(sink);
+        emitter.emit("accepted", "", "", ChatExecutionStatus.RUNNING.wire(), association(reservation.graph(),reservation.operation()));
         try {
+        if (plans != null) plans.open(planOwner(id, executionId));
+        var planTool = planEligible
+                ? new ChatPlanTool(plans, planOwner(id, executionId), () -> conversations.cancelRequested(id),
+                    snapshot -> emitter.emit("plan.updated", "", "", "", snapshot)) : null;
         emitter.emit("status", "", "", ChatExecutionStatus.RUNNING.wire(), null);
         var streamed = new AtomicBoolean();
         EngineeringChatService.Outcome outcome;
-        try {
+        boolean webEnabled=context.webSources().enabled();
+        if(webEnabled&&(webService==null||mcpClient==null))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,ToolErrors.TOOL_POLICY_DENIED.code());
+        boolean webModelSupported=current!=null&&connections!=null&&!ModelConnections.CHATGPT_KIND.equals(connections.require(current.connectionId).kind)
+            &&!"responses".equals(connections.require(current.connectionId).wireApi);
+        String trustedWebExpert="";
+        if(webEnabled){
+            var selected=context.webSources();
+            if(selected.search())trustedWebExpert=webService.configuredExpert(selected.serverId(),com.lh.eap.runtime.mcp.client.McpWebBinding.Operation.SEARCH);
+            if(selected.read()){
+                String readExpert=webService.configuredExpert(selected.serverId(),com.lh.eap.runtime.mcp.client.McpWebBinding.Operation.READ);
+                if(!trustedWebExpert.isEmpty()&&!trustedWebExpert.equals(readExpert))throw new ResponseStatusException(HttpStatus.FORBIDDEN,ToolErrors.TOOL_POLICY_DENIED.code());
+                trustedWebExpert=readExpert;
+            }
+        }
+        try(var webTool=McpWebChatTool.open(webService,mcpClient,context.webSources(),executionId,trustedWebExpert,
+            webModelSupported,context.mode().equals("chat")&&context.skillRef()==null&&context.knowledgeExpertRef()==null,webEnabled,
+            ()->{
+                if(conversations.cancelRequested(id)||Thread.currentThread().isInterrupted())return false;
+                try{return current!=null&&java.util.Objects.equals(connections.requireModel(current.connectionId,current.model).configurationRevision,current.configurationRevision);}
+                catch(RuntimeException revoked){return false;}
+            }).orElse(null)) {
             outcome = chat.chat(new EngineeringChatService.Request(
-                    AiConversationRegistry.PRINCIPAL, id, workspace, git, material), git && context.mode().equals("chat"),
+                    AiConversationRegistry.PRINCIPAL, id, workspace, git, effectiveMaterial,typedCurrent,typedHistory), git && context.mode().equals("chat"),
                     selectedClient, context, executionId, () -> conversations.cancelRequested(id),
                     !context.mode().equals("code") ? text -> {
                         streamed.set(true); emitter.emit("answer.delta", text, "", ChatExecutionStatus.RUNNING.wire(), null);
-                    } : null, sourceTool);
+                    } : null, sourceTool, planTool, webTool);
         } catch (RuntimeException failure) {
             if (conversations.cancelRequested(id) || Thread.currentThread().isInterrupted()) {
                 Thread.interrupted();
@@ -502,17 +715,18 @@ public class AiChatApplication {
         }
         var response = new AiMessageResponse(base.executionId(), base.answer(), base.error(), base.status(), base.approval(),
                 base.verification(), base.toolEvents(), base.artifactError(), base.artifacts(), base.proposal(), knowledge, memoryCleared,
-                skillContext, memoryCleared, contextBudget);
+                skillContext, memoryCleared, contextBudget, outcome.webSources());
         if (context.mode().equals("code") && outcome.error().isEmpty() && codeChanges != null) {
             var proposal = codeChanges.proposePrepared(AiConversationRegistry.PRINCIPAL, id, generation.id(),
                     outcome.answer(), context.approval().equals("review"));
             response = new AiMessageResponse(response.executionId(), proposal.summary(), response.error(), response.status(),
                     response.approval(), response.verification(), response.toolEvents(), response.artifactError(), response.artifacts(), proposal,
                     response.knowledgeContext(), response.knowledgeMemoryCleared(), response.skillContext(), response.contextMemoryCleared(),
-                    response.contextBudget());
+                    response.contextBudget(),response.webSources());
             emitter.emit("approval", proposal.summary(), "", response.status(), proposal);
         }
         if (!response.error().isBlank()) emitter.emit("error", "", response.error(), response.status(), null);
+        graphs.finish(graphOwner(id),reservation,response,emitter.nextSequence());
         emitter.emit("final", response.answer(), response.error(), response.status(), response);
         emitter.complete(response.status());
         return response;
@@ -520,6 +734,8 @@ public class AiChatApplication {
             boolean cancelled = conversations.cancelRequested(id) || Thread.currentThread().isInterrupted();
             emitter.fail(cancelled ? ModelErrors.AI_CANCELLED.code() : ModelErrors.AI_EXECUTION_FAILED.code(), cancelled ? ChatExecutionStatus.CANCELLED.wire() : ChatExecutionStatus.FAILED.wire());
             throw failure;
+        } finally {
+            if (plans != null) plans.close(planOwner(id, executionId));
         }
     }
 
@@ -580,12 +796,23 @@ public class AiChatApplication {
         return conversations.modelHistory(id);
     }
 
-    public void clearModelHistory(UUID id) { conversations.clearModelHistory(id); }
+    public void clearModelHistory(UUID id) { conversations.idleMutation(id,()->{conversations.require(id);graphs.boundary(graphOwner(id));conversations.clearModelHistory(id);return null;}); }
 
     public record HistorySummary(String text, int sourceMessages, int sourceChars, String model) {}
 
-    public HistorySummary summarizeHistory(UUID id) {
+    private final java.util.concurrent.ConcurrentHashMap<UUID,UUID> activeSummaries=new java.util.concurrent.ConcurrentHashMap<>();
+    public Map<String,Object> cancelSummary(UUID id, UUID operationId) {
+        boolean cancelled=operationId.equals(activeSummaries.get(id))&&conversations.cancel(id,operationId);
+        return Map.of("cancelled",cancelled,"operationId",operationId);
+    }
+    public HistorySummary summarizeHistory(UUID id, String json) {
+        var body=objectBody(json,Set.of("operationId"));
+        final UUID operationId;
+        try { operationId=UUID.fromString(text(body,"operationId")); } catch(IllegalArgumentException invalid) {throw invalid();}
         return conversations.exclusive(id, () -> {
+            conversations.bindExecution(id,operationId);
+            activeSummaries.put(id,operationId);
+            try {
             var session = conversations.require(id);
             if (!session.workspace.equals(workspace))
                 throw new ResponseStatusException(HttpStatus.CONFLICT, WorkspaceErrors.WORKSPACE_MISMATCH.code());
@@ -622,6 +849,7 @@ public class AiChatApplication {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, ModelErrors.AI_RESPONSE_OUTPUT_LIMIT.code());
             return new HistorySummary(com.lh.eap.common.SensitiveData.redact(output),
                     conversations.modelHistory(id).messages(), source.length(), current.model);
+            } finally {activeSummaries.remove(id,operationId);}
         });
     }
 

@@ -1,0 +1,1923 @@
+{
+  "accepted": "39163dd30f703a79079e2d2446545cff3c453738",
+  "candidate": "39163dd30f703a79079e2d2446545cff3c453738",
+  "files": [
+    {
+      "path": "LICENSE",
+      "status": "unchanged",
+      "accepted": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+      "candidate": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+      "exports": {
+        "before": [],
+        "after": []
+      }
+    },
+    {
+      "path": "packages/util/crypto/package.json",
+      "status": "unchanged",
+      "accepted": "73eb39eeb3b8e6e0f357886f4904a5162f72ef8942ff129a6380d731ffce060e",
+      "candidate": "73eb39eeb3b8e6e0f357886f4904a5162f72ef8942ff129a6380d731ffce060e",
+      "exports": {
+        "before": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {"
+        ],
+        "after": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {"
+        ]
+      }
+    },
+    {
+      "path": "packages/util/values/package.json",
+      "status": "unchanged",
+      "accepted": "b7ffb162ed522f55542ffda1b6a08b0a8cab4cd66e214a19465aa8d52380db5c",
+      "candidate": "b7ffb162ed522f55542ffda1b6a08b0a8cab4cd66e214a19465aa8d52380db5c",
+      "exports": {
+        "before": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {"
+        ],
+        "after": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {"
+        ]
+      }
+    },
+    {
+      "path": "packages/util/values/src/index.ts",
+      "status": "unchanged",
+      "accepted": "28a44a8df506ff9481de968135b8b20c240d7771f331bdc9e8cd634d04758858",
+      "candidate": "28a44a8df506ff9481de968135b8b20c240d7771f331bdc9e8cd634d04758858",
+      "exports": {
+        "before": [
+          "export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }",
+          "export function assertNever(value: never, context?: string): never {",
+          "export function snapshotJsonValue<T>(value: T): T | undefined {",
+          "export function isJsonValue(value: unknown): boolean {",
+          "export function deepEqualJson(a: unknown, b: unknown): boolean {",
+          "export function deepFreeze<T>(value: T): T {",
+          "export class WeakMapWithValues<Key extends object, Value> {",
+          "export { PartialArguments, type LengthReadOptions } from './partial-json.ts'"
+        ],
+        "after": [
+          "export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }",
+          "export function assertNever(value: never, context?: string): never {",
+          "export function snapshotJsonValue<T>(value: T): T | undefined {",
+          "export function isJsonValue(value: unknown): boolean {",
+          "export function deepEqualJson(a: unknown, b: unknown): boolean {",
+          "export function deepFreeze<T>(value: T): T {",
+          "export class WeakMapWithValues<Key extends object, Value> {",
+          "export { PartialArguments, type LengthReadOptions } from './partial-json.ts'"
+        ]
+      }
+    },
+    {
+      "path": "packages/util/values/src/partial-json.ts",
+      "status": "unchanged",
+      "accepted": "d06228f26e0c670dc18615082b5be283f72a1562220c977c3c5d54edc0b5971e",
+      "candidate": "d06228f26e0c670dc18615082b5be283f72a1562220c977c3c5d54edc0b5971e",
+      "exports": {
+        "before": [
+          "export interface LengthReadOptions {",
+          "export class PartialArguments {"
+        ],
+        "after": [
+          "export interface LengthReadOptions {",
+          "export class PartialArguments {"
+        ]
+      }
+    },
+    {
+      "path": "packages/util/crypto/src/index.ts",
+      "status": "unchanged",
+      "accepted": "6d314b677a163808a732c53fc509eebea1f8b8cc34b67031644dcfa4a97e28f0",
+      "candidate": "6d314b677a163808a732c53fc509eebea1f8b8cc34b67031644dcfa4a97e28f0",
+      "exports": {
+        "before": [
+          "export type Uuid = `${string}-${string}-${string}-${string}-${string}`",
+          "export function bytesToBase64(data: Uint8Array): string {",
+          "export function randomUUID(): Uuid {"
+        ],
+        "after": [
+          "export type Uuid = `${string}-${string}-${string}-${string}-${string}`",
+          "export function bytesToBase64(data: Uint8Array): string {",
+          "export function randomUUID(): Uuid {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/store/package.json",
+      "status": "unchanged",
+      "accepted": "6e113624c6dfd0882c32edf57aed828b231dbab159e11cb78258c7ec26fe17c7",
+      "candidate": "6e113624c6dfd0882c32edf57aed828b231dbab159e11cb78258c7ec26fe17c7",
+      "exports": {
+        "before": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {"
+        ],
+        "after": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/package.json",
+      "status": "unchanged",
+      "accepted": "c294b99a3c0ee43b337c516902f5aee201a525a43b742fb430d89bceef0d43c3",
+      "candidate": "c294b99a3c0ee43b337c516902f5aee201a525a43b742fb430d89bceef0d43c3",
+      "exports": {
+        "before": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {",
+          "      \"inject\": [",
+          "      \"platform\": \"web\""
+        ],
+        "after": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {",
+          "      \"inject\": [",
+          "      \"platform\": \"web\""
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/package.json",
+      "status": "unchanged",
+      "accepted": "bbb9c79f9b1f79a228fc3d2e00595ef07f4d168f949656b3c0d37723c42244d1",
+      "candidate": "bbb9c79f9b1f79a228fc3d2e00595ef07f4d168f949656b3c0d37723c42244d1",
+      "exports": {
+        "before": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {"
+        ],
+        "after": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-context-menu/package.json",
+      "status": "unchanged",
+      "accepted": "02d5fb6cbe31a66b960799ba8c6547429329a9e4da2cc0b60754bf37df9b1f56",
+      "candidate": "02d5fb6cbe31a66b960799ba8c6547429329a9e4da2cc0b60754bf37df9b1f56",
+      "exports": {
+        "before": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {",
+          "      \"inject\": [",
+          "      \"platform\": \"web\""
+        ],
+        "after": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {",
+          "      \"inject\": [",
+          "      \"platform\": \"web\""
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/package.json",
+      "status": "unchanged",
+      "accepted": "eec079bbee60dd4082935bcaed3fa1583ed8e6d6333ba47df094ef82dd5d4d68",
+      "candidate": "eec079bbee60dd4082935bcaed3fa1583ed8e6d6333ba47df094ef82dd5d4d68",
+      "exports": {
+        "before": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {",
+          "      \"inject\": [",
+          "      \"platform\": \"web\","
+        ],
+        "after": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {",
+          "      \"inject\": [",
+          "      \"platform\": \"web\","
+        ]
+      }
+    },
+    {
+      "path": "packages/client/modules/package.json",
+      "status": "unchanged",
+      "accepted": "9dd9f19d20c161fc511ba95ad489a7a3f8ff99be0a628aed751656a354f184fb",
+      "candidate": "9dd9f19d20c161fc511ba95ad489a7a3f8ff99be0a628aed751656a354f184fb",
+      "exports": {
+        "before": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {",
+          "      \"platform\": \"web\",",
+          "      \"inject\": [],"
+        ],
+        "after": [
+          "  \"version\": \"0.2.2-rc.3\",",
+          "  \"exports\": {",
+          "      \"platform\": \"web\",",
+          "      \"inject\": [],"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/modules/src/client/system.ts",
+      "status": "unchanged",
+      "accepted": "1bd81a42538c5f529a33fa17ce7576b01407412b0f67e9d4c8d0f29ae93aa779",
+      "candidate": "1bd81a42538c5f529a33fa17ce7576b01407412b0f67e9d4c8d0f29ae93aa779",
+      "exports": {
+        "before": [
+          "export class ClientModuleSystem implements ClientModuleLoader {"
+        ],
+        "after": [
+          "export class ClientModuleSystem implements ClientModuleLoader {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/modules/src/client/index.ts",
+      "status": "unchanged",
+      "accepted": "b8c42092191098e78ba8e75f50fcb6a183e21d53c35ac312b2b7a3b5ad9df5bd",
+      "candidate": "b8c42092191098e78ba8e75f50fcb6a183e21d53c35ac312b2b7a3b5ad9df5bd",
+      "exports": {
+        "before": [
+          "export { ClientModuleSystem }",
+          "export { tearDownEntryFiber } from './entry-lifecycle.ts'",
+          "export type { ClientReleaseChange } from './release-change.ts'",
+          "export type { ClientEntries, ClientEntryState } from './entries.ts'",
+          "export { exactPackageSpecifier, parseBootManifest, parseDshClient, stripClientSuffix } from './manifest.ts'",
+          "export type {",
+          "export function createClientModuleSystem(",
+          "export const inject = ['loader']",
+          "export function apply(ctx: Context): void {"
+        ],
+        "after": [
+          "export { ClientModuleSystem }",
+          "export { tearDownEntryFiber } from './entry-lifecycle.ts'",
+          "export type { ClientReleaseChange } from './release-change.ts'",
+          "export type { ClientEntries, ClientEntryState } from './entries.ts'",
+          "export { exactPackageSpecifier, parseBootManifest, parseDshClient, stripClientSuffix } from './manifest.ts'",
+          "export type {",
+          "export function createClientModuleSystem(",
+          "export const inject = ['loader']",
+          "export function apply(ctx: Context): void {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/modules/src/client/notify.ts",
+      "status": "unchanged",
+      "accepted": "e1015b1044e66d86ec7d347bf1a441f672b1c2e172682195ad390087d25d0891",
+      "candidate": "e1015b1044e66d86ec7d347bf1a441f672b1c2e172682195ad390087d25d0891",
+      "exports": {
+        "before": [
+          "export function notifySubscribers(listeners: ReadonlySet<() => void>, label: string): void {"
+        ],
+        "after": [
+          "export function notifySubscribers(listeners: ReadonlySet<() => void>, label: string): void {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/modules/src/client/main-realm.ts",
+      "status": "unchanged",
+      "accepted": "77620d9c414389db366a805d43a4a374d262737779bf968e5737739ba24b1a04",
+      "candidate": "77620d9c414389db366a805d43a4a374d262737779bf968e5737739ba24b1a04",
+      "exports": {
+        "before": [
+          "export class MainScriptRealm implements Pick<ScriptRealm, 'id' | 'execute' | 'dispose'> {"
+        ],
+        "after": [
+          "export class MainScriptRealm implements Pick<ScriptRealm, 'id' | 'execute' | 'dispose'> {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/modules/src/client/release-change.ts",
+      "status": "unchanged",
+      "accepted": "756a26411ba30c4da16e48c5367a6b941b8f2f381c2e49823bc5fca65e35aada",
+      "candidate": "756a26411ba30c4da16e48c5367a6b941b8f2f381c2e49823bc5fca65e35aada",
+      "exports": {
+        "before": [
+          "export interface ClientReleaseChange {",
+          "export class ReleaseChangeGate {"
+        ],
+        "after": [
+          "export interface ClientReleaseChange {",
+          "export class ReleaseChangeGate {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/modules/src/client/entries.ts",
+      "status": "unchanged",
+      "accepted": "d056586fa8e1bfbc4e06d15a0adb753f3daaa3f9b2d158e67c789cf448b103fa",
+      "candidate": "d056586fa8e1bfbc4e06d15a0adb753f3daaa3f9b2d158e67c789cf448b103fa",
+      "exports": {
+        "before": [
+          "export interface ClientEntryState {",
+          "export class ClientEntries {"
+        ],
+        "after": [
+          "export interface ClientEntryState {",
+          "export class ClientEntries {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/modules/src/client/entry-lifecycle.ts",
+      "status": "unchanged",
+      "accepted": "de46f7131fbfa865cd85074aa8e93eca8b743cd419d09a7f219fd673ee53a491",
+      "candidate": "de46f7131fbfa865cd85074aa8e93eca8b743cd419d09a7f219fd673ee53a491",
+      "exports": {
+        "before": [
+          "export async function tearDownEntryFiber(entry: Entry): Promise<void> {"
+        ],
+        "after": [
+          "export async function tearDownEntryFiber(entry: Entry): Promise<void> {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/modules/src/client/manifest.ts",
+      "status": "unchanged",
+      "accepted": "db8f63c26aa0efa1ba633bd09ce1596f6b55417003b82766822325f10cb01770",
+      "candidate": "db8f63c26aa0efa1ba633bd09ce1596f6b55417003b82766822325f10cb01770",
+      "exports": {
+        "before": [
+          "export type { ClientBundleRequire } from '@deepseek-ai/dsh-package-manifest'",
+          "export interface WebBootEntry {",
+          "export type WebBootBatchPhase = 'bootstrap' | 'application'",
+          "export interface WebBootBatch {",
+          "export interface WebBootRelease {",
+          "export interface WebBootGraph {",
+          "export interface BootModuleRow {",
+          "export interface BootPluginRow {",
+          "export interface BootManifest {",
+          "export function optionalStringArray(subject: string, field: string, value: unknown): string[] | undefined {",
+          "export function parseDshClient(pkgName: string, value: unknown): DshClientManifest | undefined {",
+          "export function exactPackageSpecifier(specifier: string): string | undefined {",
+          "export function stripClientSuffix(spec: string): string {",
+          "export function parseBootManifest(wire: unknown): BootManifest {",
+          "export function readRelease(wire: unknown): WebBootRelease | undefined {",
+          "export type ClientBundleRegistration = DshClientModuleManifest",
+          "export interface ClientModuleCreateOptions {",
+          "export interface ClientBootstrapModule {",
+          "export interface ClientModuleLoaderTarget {",
+          "export interface DshWindow {",
+          "export interface ClientModuleRecord {",
+          "export interface ClientModuleLoader {",
+          "export interface ClientModuleSystemOptions {"
+        ],
+        "after": [
+          "export type { ClientBundleRequire } from '@deepseek-ai/dsh-package-manifest'",
+          "export interface WebBootEntry {",
+          "export type WebBootBatchPhase = 'bootstrap' | 'application'",
+          "export interface WebBootBatch {",
+          "export interface WebBootRelease {",
+          "export interface WebBootGraph {",
+          "export interface BootModuleRow {",
+          "export interface BootPluginRow {",
+          "export interface BootManifest {",
+          "export function optionalStringArray(subject: string, field: string, value: unknown): string[] | undefined {",
+          "export function parseDshClient(pkgName: string, value: unknown): DshClientManifest | undefined {",
+          "export function exactPackageSpecifier(specifier: string): string | undefined {",
+          "export function stripClientSuffix(spec: string): string {",
+          "export function parseBootManifest(wire: unknown): BootManifest {",
+          "export function readRelease(wire: unknown): WebBootRelease | undefined {",
+          "export type ClientBundleRegistration = DshClientModuleManifest",
+          "export interface ClientModuleCreateOptions {",
+          "export interface ClientBootstrapModule {",
+          "export interface ClientModuleLoaderTarget {",
+          "export interface DshWindow {",
+          "export interface ClientModuleRecord {",
+          "export interface ClientModuleLoader {",
+          "export interface ClientModuleSystemOptions {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/locale-settings.ts",
+      "status": "unchanged",
+      "accepted": "bb563ce8a6cf56d8e8676cd3604f413c66d5e5b517a87641638647fa9ccff1c5",
+      "candidate": "bb563ce8a6cf56d8e8676cd3604f413c66d5e5b517a87641638647fa9ccff1c5",
+      "exports": {
+        "before": [
+          "export const LOCALE_SETTINGS_NAMESPACE = 'locale'",
+          "export const LOCALE_PREFERENCE_FIELD = 'preference'",
+          "export const LOCALE_ID_PATTERN = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/u",
+          "export const LOCALE_IDS = ['zh', 'en'] as const",
+          "export type BuiltInLocaleId = typeof LOCALE_IDS[number]",
+          "export type LocaleId = string",
+          "export interface LocaleSettings {",
+          "export const LocaleSettingsFields = {",
+          "export const LocaleSettingsSchema = z.object(LocaleSettingsFields)"
+        ],
+        "after": [
+          "export const LOCALE_SETTINGS_NAMESPACE = 'locale'",
+          "export const LOCALE_PREFERENCE_FIELD = 'preference'",
+          "export const LOCALE_ID_PATTERN = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/u",
+          "export const LOCALE_IDS = ['zh', 'en'] as const",
+          "export type BuiltInLocaleId = typeof LOCALE_IDS[number]",
+          "export type LocaleId = string",
+          "export interface LocaleSettings {",
+          "export const LocaleSettingsFields = {",
+          "export const LocaleSettingsSchema = z.object(LocaleSettingsFields)"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/locales/zh.ts",
+      "status": "unchanged",
+      "accepted": "df60768badc3c483478f5a57e48aee8219bd48f51764876a1d722432140d0e26",
+      "candidate": "df60768badc3c483478f5a57e48aee8219bd48f51764876a1d722432140d0e26",
+      "exports": {
+        "before": [
+          "export const zh = {",
+          "export type CommonKey = keyof typeof zh"
+        ],
+        "after": [
+          "export const zh = {",
+          "export type CommonKey = keyof typeof zh"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/locales/en.ts",
+      "status": "unchanged",
+      "accepted": "8a8c556971f2cf336cd1efe36c3fae13971bc0e328fb52b04d6c3ae255dde2e8",
+      "candidate": "8a8c556971f2cf336cd1efe36c3fae13971bc0e328fb52b04d6c3ae255dde2e8",
+      "exports": {
+        "before": [
+          "export const en = {"
+        ],
+        "after": [
+          "export const en = {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/locales/de.ts",
+      "status": "unchanged",
+      "accepted": "be0c48b4330d726b1ba3670bfc93ee41ae44e1248c879e534ad6ea19856838f1",
+      "candidate": "be0c48b4330d726b1ba3670bfc93ee41ae44e1248c879e534ad6ea19856838f1",
+      "exports": {
+        "before": [
+          "export const de = {"
+        ],
+        "after": [
+          "export const de = {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/locales/index.ts",
+      "status": "unchanged",
+      "accepted": "658092cc20c9da88060c5325d20648ee0c65f514a43a8035402940f7e559ef53",
+      "candidate": "658092cc20c9da88060c5325d20648ee0c65f514a43a8035402940f7e559ef53",
+      "exports": {
+        "before": [
+          "export { zh } from './zh.ts'",
+          "export { en } from './en.ts'",
+          "export { ja } from './ja.ts'",
+          "export type { CommonKey } from './zh.ts'",
+          "export { es } from './es.ts'",
+          "export { fr } from './fr.ts'",
+          "export { de } from './de.ts'",
+          "export { ru } from './ru.ts'",
+          "export { pt } from './pt.ts'"
+        ],
+        "after": [
+          "export { zh } from './zh.ts'",
+          "export { en } from './en.ts'",
+          "export { ja } from './ja.ts'",
+          "export type { CommonKey } from './zh.ts'",
+          "export { es } from './es.ts'",
+          "export { fr } from './fr.ts'",
+          "export { de } from './de.ts'",
+          "export { ru } from './ru.ts'",
+          "export { pt } from './pt.ts'"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/locales/ja.ts",
+      "status": "unchanged",
+      "accepted": "af75b140054ea05279059acc6c765b02d68895334a73cb506c24c8f902b6db90",
+      "candidate": "af75b140054ea05279059acc6c765b02d68895334a73cb506c24c8f902b6db90",
+      "exports": {
+        "before": [
+          "export const ja = {"
+        ],
+        "after": [
+          "export const ja = {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/locales/ru.ts",
+      "status": "unchanged",
+      "accepted": "8e73a1f680eba0b2db99257401d12e3d137f9f20c09ea0984a3f61e11ce8a8af",
+      "candidate": "8e73a1f680eba0b2db99257401d12e3d137f9f20c09ea0984a3f61e11ce8a8af",
+      "exports": {
+        "before": [
+          "export const ru = {"
+        ],
+        "after": [
+          "export const ru = {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/locales/es.ts",
+      "status": "unchanged",
+      "accepted": "9b400ccb326f53e954fe957064db91b8e9b171418277cc89a83f833fce84c3ed",
+      "candidate": "9b400ccb326f53e954fe957064db91b8e9b171418277cc89a83f833fce84c3ed",
+      "exports": {
+        "before": [
+          "export const es = {"
+        ],
+        "after": [
+          "export const es = {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/locales/settings.ts",
+      "status": "unchanged",
+      "accepted": "6c2cc59e177a796f851a286009c5462332c7dc88187cbc999bb2abea29025359",
+      "candidate": "6c2cc59e177a796f851a286009c5462332c7dc88187cbc999bb2abea29025359",
+      "exports": {
+        "before": [
+          "export const zh = {",
+          "export type SettingsLocaleKey = keyof typeof zh",
+          "export const en = {",
+          "export const ja = {",
+          "export const es = {",
+          "export const fr = {",
+          "export const de = {",
+          "export const ru = {",
+          "export const pt = {"
+        ],
+        "after": [
+          "export const zh = {",
+          "export type SettingsLocaleKey = keyof typeof zh",
+          "export const en = {",
+          "export const ja = {",
+          "export const es = {",
+          "export const fr = {",
+          "export const de = {",
+          "export const ru = {",
+          "export const pt = {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/locales/fr.ts",
+      "status": "unchanged",
+      "accepted": "ca92cc28bbfaafd5c3d7b9785c139406476469d52907c8d16f2658730a56c038",
+      "candidate": "ca92cc28bbfaafd5c3d7b9785c139406476469d52907c8d16f2658730a56c038",
+      "exports": {
+        "before": [
+          "export const fr = {"
+        ],
+        "after": [
+          "export const fr = {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/locales/pt.ts",
+      "status": "unchanged",
+      "accepted": "649e526f1f8fde35e6facbae6a6f43bf989bc83595a6058675fa90d35ed29993",
+      "candidate": "649e526f1f8fde35e6facbae6a6f43bf989bc83595a6058675fa90d35ed29993",
+      "exports": {
+        "before": [
+          "export const pt = {"
+        ],
+        "after": [
+          "export const pt = {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/client/bootstrap.ts",
+      "status": "unchanged",
+      "accepted": "b14df8018958710dd808fee277b252cca6895866c99c5cde5f15981e206cdb0f",
+      "candidate": "b14df8018958710dd808fee277b252cca6895866c99c5cde5f15981e206cdb0f",
+      "exports": {
+        "before": [
+          "export interface LocaleBootstrap {",
+          "export interface LocaleBridge {",
+          "export function parseLocaleBootstrap(value: unknown): LocaleBootstrap {"
+        ],
+        "after": [
+          "export interface LocaleBootstrap {",
+          "export interface LocaleBridge {",
+          "export function parseLocaleBootstrap(value: unknown): LocaleBootstrap {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/client/index.ts",
+      "status": "unchanged",
+      "accepted": "42faa634839243668e834b84118961ea4c9dbf5df78b6596d0b2ae17094a626d",
+      "candidate": "42faa634839243668e834b84118961ea4c9dbf5df78b6596d0b2ae17094a626d",
+      "exports": {
+        "before": [
+          "export type { LanguageRowComponentProps, LanguageRowInjected } from './LanguageRow.tsx'",
+          "export type { LanguageOptionRow, LanguageRowState } from './settings-store.ts'",
+          "export type { CommonKey } from '../locales/index.ts'",
+          "export type { BuiltInLocaleId, LocaleId, LocaleSettings } from '../locale-settings.ts'",
+          "export type { Translate, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'",
+          "export type LocaleDict = Record<string, string>",
+          "export interface LanguageRegistration {",
+          "export interface LocaleDefinition {",
+          "export interface LocaleSnapshot {",
+          "export const FALLBACK_LOCALE: BuiltInLocaleId = 'en'",
+          "export const COMMON_NS = 'common'",
+          "export const SETTINGS_NS = 'settings.locale'",
+          "export class LocaleRuntime {",
+          "export const inject = ['slots', 'remote', 'configForms']",
+          "export async function apply(ctx: ClientContext): Promise<void> {"
+        ],
+        "after": [
+          "export type { LanguageRowComponentProps, LanguageRowInjected } from './LanguageRow.tsx'",
+          "export type { LanguageOptionRow, LanguageRowState } from './settings-store.ts'",
+          "export type { CommonKey } from '../locales/index.ts'",
+          "export type { BuiltInLocaleId, LocaleId, LocaleSettings } from '../locale-settings.ts'",
+          "export type { Translate, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'",
+          "export type LocaleDict = Record<string, string>",
+          "export interface LanguageRegistration {",
+          "export interface LocaleDefinition {",
+          "export interface LocaleSnapshot {",
+          "export const FALLBACK_LOCALE: BuiltInLocaleId = 'en'",
+          "export const COMMON_NS = 'common'",
+          "export const SETTINGS_NS = 'settings.locale'",
+          "export class LocaleRuntime {",
+          "export const inject = ['slots', 'remote', 'configForms']",
+          "export async function apply(ctx: ClientContext): Promise<void> {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/client/LanguageRow.module.css",
+      "status": "unchanged",
+      "accepted": "9bc002ad3828d59eb8ecf8f9ebc8077da82535f2dca704b989f80575cffe009c",
+      "candidate": "9bc002ad3828d59eb8ecf8f9ebc8077da82535f2dca704b989f80575cffe009c",
+      "exports": {
+        "before": [],
+        "after": []
+      }
+    },
+    {
+      "path": "packages/client/locale/src/client/settings-store.ts",
+      "status": "unchanged",
+      "accepted": "c6e4cdb85040c7b7783e634ac5d0c429e601784861f349aea640591874a2086e",
+      "candidate": "c6e4cdb85040c7b7783e634ac5d0c429e601784861f349aea640591874a2086e",
+      "exports": {
+        "before": [
+          "export interface LanguageOptionRow {",
+          "export interface LanguageRowState {",
+          "export function createLanguageRowStore(): EngineStoreHandle<LanguageRowState, LanguageRowActions> {"
+        ],
+        "after": [
+          "export interface LanguageOptionRow {",
+          "export interface LanguageRowState {",
+          "export function createLanguageRowStore(): EngineStoreHandle<LanguageRowState, LanguageRowActions> {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/locale/src/client/LanguageRow.tsx",
+      "status": "unchanged",
+      "accepted": "81a6fd76ae99c5d169fff05c8cb825e9f5c03c19aa831b67159ace0f94809d0e",
+      "candidate": "81a6fd76ae99c5d169fff05c8cb825e9f5c03c19aa831b67159ace0f94809d0e",
+      "exports": {
+        "before": [
+          "export interface LanguageRowInjected {",
+          "export type LanguageRowComponentProps =",
+          "export function LanguageRow({ t, setLocale, useStore }: LanguageRowComponentProps) {"
+        ],
+        "after": [
+          "export interface LanguageRowInjected {",
+          "export type LanguageRowComponentProps =",
+          "export function LanguageRow({ t, setLocale, useStore }: LanguageRowComponentProps) {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-context-menu/src/client/trigger.ts",
+      "status": "unchanged",
+      "accepted": "13979f3e830ca0120fcf656502bcb5ccb42267003892e5c26a560e5691ef64b4",
+      "candidate": "13979f3e830ca0120fcf656502bcb5ccb42267003892e5c26a560e5691ef64b4",
+      "exports": {
+        "before": [
+          "export function createContextMenuBindings<Target extends object = ContextMenuTarget>("
+        ],
+        "after": [
+          "export function createContextMenuBindings<Target extends object = ContextMenuTarget>("
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-context-menu/src/client/store.ts",
+      "status": "unchanged",
+      "accepted": "df739186fdc009636bb782c2f1fd08f7fc1dc308e4a5515423c09332260c893f",
+      "candidate": "df739186fdc009636bb782c2f1fd08f7fc1dc308e4a5515423c09332260c893f",
+      "exports": {
+        "before": [
+          "export function createMenuStore(): EngineStoreHandle<MenuState, MenuActions> {"
+        ],
+        "after": [
+          "export function createMenuStore(): EngineStoreHandle<MenuState, MenuActions> {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-context-menu/src/client/external-trigger.ts",
+      "status": "unchanged",
+      "accepted": "48916d9b88f1917170a62b71d9dd03dabe86e54911fc341dc553b5a3e5ac2f1f",
+      "candidate": "48916d9b88f1917170a62b71d9dd03dabe86e54911fc341dc553b5a3e5ac2f1f",
+      "exports": {
+        "before": [
+          "export function isContextMenuTrigger(node: Node): boolean {"
+        ],
+        "after": [
+          "export function isContextMenuTrigger(node: Node): boolean {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-context-menu/src/client/locales.ts",
+      "status": "unchanged",
+      "accepted": "32dc4d6eb44e5a7a08f08d43183103ad2f5f617d1f7698e846ac79e059817b97",
+      "candidate": "32dc4d6eb44e5a7a08f08d43183103ad2f5f617d1f7698e846ac79e059817b97",
+      "exports": {
+        "before": [
+          "export const dictionaries = {"
+        ],
+        "after": [
+          "export const dictionaries = {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-context-menu/src/client/index.ts",
+      "status": "unchanged",
+      "accepted": "a32cb93123eae4a3f91b0d5a54b944ae0d7b56051fc4edc2a38574bd084d486f",
+      "candidate": "a32cb93123eae4a3f91b0d5a54b944ae0d7b56051fc4edc2a38574bd084d486f",
+      "exports": {
+        "before": [
+          "export type { ContextMenus, ContextMenuTarget, ContextMenuTargetMap, MenuPoint, MenuAction, MenuActionView, MenuContribution, MenuResolution } from './types.ts'",
+          "export type { ContextMenuBindings, ContextMenuTriggerProps, UseContextMenu } from './types.ts'",
+          "export type { ContextMenuIcon, ContextMenuButtonProps } from './types.ts'",
+          "export { createMenuStore } from './store.ts'",
+          "export interface Config { resolutionTimeoutMs?: number }",
+          "export const Config: z<Config> = z.object({ resolutionTimeoutMs: z.natural().min(1).default(1000) })",
+          "export const inject = ['slots', 'locale', 'shortcuts']",
+          "export function apply(ctx: Context, config: Config = Config({})): void {"
+        ],
+        "after": [
+          "export type { ContextMenus, ContextMenuTarget, ContextMenuTargetMap, MenuPoint, MenuAction, MenuActionView, MenuContribution, MenuResolution } from './types.ts'",
+          "export type { ContextMenuBindings, ContextMenuTriggerProps, UseContextMenu } from './types.ts'",
+          "export type { ContextMenuIcon, ContextMenuButtonProps } from './types.ts'",
+          "export { createMenuStore } from './store.ts'",
+          "export interface Config { resolutionTimeoutMs?: number }",
+          "export const Config: z<Config> = z.object({ resolutionTimeoutMs: z.natural().min(1).default(1000) })",
+          "export const inject = ['slots', 'locale', 'shortcuts']",
+          "export function apply(ctx: Context, config: Config = Config({})): void {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-context-menu/src/client/target-key.ts",
+      "status": "unchanged",
+      "accepted": "c04d05aac4a3ad7023092e5c2463f1ee6f2b884503049d46eacbae565f9ec757",
+      "candidate": "c04d05aac4a3ad7023092e5c2463f1ee6f2b884503049d46eacbae565f9ec757",
+      "exports": {
+        "before": [
+          "export function menuTargetKey(target: ContextMenuTarget): string {"
+        ],
+        "after": [
+          "export function menuTargetKey(target: ContextMenuTarget): string {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-context-menu/src/client/View.tsx",
+      "status": "unchanged",
+      "accepted": "f7a0a203e614f82614c1210acfded5d4e0ee9139198c69809029e09c61395822",
+      "candidate": "f7a0a203e614f82614c1210acfded5d4e0ee9139198c69809029e09c61395822",
+      "exports": {
+        "before": [
+          "export function menuEntries(",
+          "export interface MenuOverlayInjected {",
+          "export function MenuOverlay({ useStore, actions, renderSlot, close, select, returnFocus, useCatalog, t }: Props) {"
+        ],
+        "after": [
+          "export function menuEntries(",
+          "export interface MenuOverlayInjected {",
+          "export function MenuOverlay({ useStore, actions, renderSlot, close, select, returnFocus, useCatalog, t }: Props) {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-context-menu/src/client/registry.ts",
+      "status": "unchanged",
+      "accepted": "26761c1dbee7cdf586a900fac97c914649a9f5f7b4e5ae83820f8bd49de78e08",
+      "candidate": "26761c1dbee7cdf586a900fac97c914649a9f5f7b4e5ae83820f8bd49de78e08",
+      "exports": {
+        "before": [
+          "export class MenuRegistry {"
+        ],
+        "after": [
+          "export class MenuRegistry {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-context-menu/src/client/Button.tsx",
+      "status": "unchanged",
+      "accepted": "b1d1c1c49156bcafc61cc7800b99500d97b7fedaedcb313b9f3fe88b90dbec58",
+      "candidate": "b1d1c1c49156bcafc61cc7800b99500d97b7fedaedcb313b9f3fe88b90dbec58",
+      "exports": {
+        "before": [
+          "export interface ContextMenuButtonInjected {",
+          "export function ContextMenuButton({ target, label, className, size, useOpener, useRegisteredKinds, toggle }: FactoryComponentPropsOf<'contextMenu.button'>) {"
+        ],
+        "after": [
+          "export interface ContextMenuButtonInjected {",
+          "export function ContextMenuButton({ target, label, className, size, useOpener, useRegisteredKinds, toggle }: FactoryComponentPropsOf<'contextMenu.button'>) {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/keyboard-composition.ts",
+      "status": "unchanged",
+      "accepted": "be1684e7f3b8306da3cb991f1a5e393065d74107892b78a1002cdf2624f23f6c",
+      "candidate": "be1684e7f3b8306da3cb991f1a5e393065d74107892b78a1002cdf2624f23f6c",
+      "exports": {
+        "before": [
+          "export function observeComposition(document: Document): {"
+        ],
+        "after": [
+          "export function observeComposition(document: Document): {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/ShortcutKeys.tsx",
+      "status": "unchanged",
+      "accepted": "9a79d439af8196f373bb064470ab2c8d38ca5746257a806fd798389929a8f751",
+      "candidate": "9a79d439af8196f373bb064470ab2c8d38ca5746257a806fd798389929a8f751",
+      "exports": {
+        "before": [
+          "export function ShortcutKeys({ keys, variant = 'plain', className }: { keys: readonly string[]; variant?: 'plain' | 'tooltip'; className?: string | undefined }) {"
+        ],
+        "after": [
+          "export function ShortcutKeys({ keys, variant = 'plain', className }: { keys: readonly string[]; variant?: 'plain' | 'tooltip'; className?: string | undefined }) {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/Tooltip.module.css",
+      "status": "unchanged",
+      "accepted": "a9cca5d85551074a9eba78f2803f8917c0cea7efe175dfce7bb0ed71b555fbeb",
+      "candidate": "a9cca5d85551074a9eba78f2803f8917c0cea7efe175dfce7bb0ed71b555fbeb",
+      "exports": {
+        "before": [],
+        "after": []
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/Button.module.css",
+      "status": "unchanged",
+      "accepted": "90183bb1a427e52cecbf08981e51177f12b3a97d61bb5f50446be49c1975ed3d",
+      "candidate": "90183bb1a427e52cecbf08981e51177f12b3a97d61bb5f50446be49c1975ed3d",
+      "exports": {
+        "before": [],
+        "after": []
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/Tooltip.tsx",
+      "status": "unchanged",
+      "accepted": "c2f931a12e7bf7ae2d5d0adbd6296ace2e4605e5415978a4e503fe8e63e41c7c",
+      "candidate": "c2f931a12e7bf7ae2d5d0adbd6296ace2e4605e5415978a4e503fe8e63e41c7c",
+      "exports": {
+        "before": [
+          "export type { TooltipSide } from './tooltip-placement.ts'",
+          "export const TooltipSuppression = createContext<((suppressed: boolean) => void) | null>(null)",
+          "export function Tooltip({ label, shortcutKeys, side = 'right', align = 'center', delayMs = 0, focusDelayMs = 0, gap = 8, disabled = false, portal = false, maxWidth, openOnClick = false, onlyWhenClipped = false, children }: { label: TooltipLabel; shortcutKeys?: readonly string[] | undefined; side?: TooltipSide; align?: 'center' | 'end'; delayMs?: number; focusDelayMs?: number; gap?: number; disabled?: boolean; portal?: boolean; maxWidth?: number; openOnClick?: boolean; onlyWhenClipped?: boolean; children: ReactElement<AnchorProps> }) {"
+        ],
+        "after": [
+          "export type { TooltipSide } from './tooltip-placement.ts'",
+          "export const TooltipSuppression = createContext<((suppressed: boolean) => void) | null>(null)",
+          "export function Tooltip({ label, shortcutKeys, side = 'right', align = 'center', delayMs = 0, focusDelayMs = 0, gap = 8, disabled = false, portal = false, maxWidth, openOnClick = false, onlyWhenClipped = false, children }: { label: TooltipLabel; shortcutKeys?: readonly string[] | undefined; side?: TooltipSide; align?: 'center' | 'end'; delayMs?: number; focusDelayMs?: number; gap?: number; disabled?: boolean; portal?: boolean; maxWidth?: number; openOnClick?: boolean; onlyWhenClipped?: boolean; children: ReactElement<AnchorProps> }) {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/Toast.tsx",
+      "status": "unchanged",
+      "accepted": "85ed92693c910decadb38f095764bbdb3a1c6992b60bf63dedabdbebccd309b6",
+      "candidate": "85ed92693c910decadb38f095764bbdb3a1c6992b60bf63dedabdbebccd309b6",
+      "exports": {
+        "before": [
+          "export function Toast({ text, icon, tone, anchor, holdMs = HOLD_MS, actions, onDone }: {"
+        ],
+        "after": [
+          "export function Toast({ text, icon, tone, anchor, holdMs = HOLD_MS, actions, onDone }: {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/Toast.module.css",
+      "status": "unchanged",
+      "accepted": "85e7e50f4d18d30751cbb64fd6d85554561a0982080d8ab57afebb848e8fe4e3",
+      "candidate": "85e7e50f4d18d30751cbb64fd6d85554561a0982080d8ab57afebb848e8fe4e3",
+      "exports": {
+        "before": [],
+        "after": []
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/MenuRow.tsx",
+      "status": "unchanged",
+      "accepted": "2c6775cdc035efe81367eec9c843275bbf88e0be57631203583f891f12793168",
+      "candidate": "2c6775cdc035efe81367eec9c843275bbf88e0be57631203583f891f12793168",
+      "exports": {
+        "before": [
+          "export function MenuRow({ children, icon, shortcut, current, disabled = false, disabledReason, danger,",
+          "export function menuIconColumns(entries: readonly MenuEntry[], contextual: boolean): ReadonlySet<MenuEntry> {",
+          "export function renderMenuDecoration(entry: MenuSeparator | MenuLabel): ReactNode {"
+        ],
+        "after": [
+          "export function MenuRow({ children, icon, shortcut, current, disabled = false, disabledReason, danger,",
+          "export function menuIconColumns(entries: readonly MenuEntry[], contextual: boolean): ReadonlySet<MenuEntry> {",
+          "export function renderMenuDecoration(entry: MenuSeparator | MenuLabel): ReactNode {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/SubmenuPanel.tsx",
+      "status": "unchanged",
+      "accepted": "a464eae9a399df43c37f2983e3f45513508aa6afdd93ae9597bb308724b38d97",
+      "candidate": "a464eae9a399df43c37f2983e3f45513508aa6afdd93ae9597bb308724b38d97",
+      "exports": {
+        "before": [
+          "export function SubmenuPanel({ entry, submenu, compact, dense, contextual, backLabel, onSelect, onClose, afterSelection }: {"
+        ],
+        "after": [
+          "export function SubmenuPanel({ entry, submenu, compact, dense, contextual, backLabel, onSelect, onClose, afterSelection }: {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/useMenuSubmenu.ts",
+      "status": "unchanged",
+      "accepted": "fe95da7625e73191de1a852527363a60032be6fa05d9ec7192c1a3a969ce4f6e",
+      "candidate": "fe95da7625e73191de1a852527363a60032be6fa05d9ec7192c1a3a969ce4f6e",
+      "exports": {
+        "before": [
+          "export function menuHoverAllowed(event: { pointerType: string }): boolean {",
+          "export function useMenuSubmenu(options: {"
+        ],
+        "after": [
+          "export function menuHoverAllowed(event: { pointerType: string }): boolean {",
+          "export function useMenuSubmenu(options: {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/MenuSurface.module.css",
+      "status": "unchanged",
+      "accepted": "9ec1f4b089ac40163475245661d27cc118a73238d3ce5e5fb5dbc4475a6f7589",
+      "candidate": "9ec1f4b089ac40163475245661d27cc118a73238d3ce5e5fb5dbc4475a6f7589",
+      "exports": {
+        "before": [],
+        "after": []
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/useModalLayer.ts",
+      "status": "unchanged",
+      "accepted": "2988fe5b7b928c0152e563c560d7e6a83e40d3a38b734facb3a47a134ffa640c",
+      "candidate": "2988fe5b7b928c0152e563c560d7e6a83e40d3a38b734facb3a47a134ffa640c",
+      "exports": {
+        "before": [
+          "export const modalSelector = '[role=\"dialog\"][aria-modal=\"true\"], [role=\"menu\"]'",
+          "export function closeTopModal(document: Document): void {",
+          "export function isBehindModal(anchor: HTMLElement | null): boolean {",
+          "export function useModalLayer(dialog: RefObject<HTMLElement | null>, open: boolean, onClose: () => void): void {"
+        ],
+        "after": [
+          "export const modalSelector = '[role=\"dialog\"][aria-modal=\"true\"], [role=\"menu\"]'",
+          "export function closeTopModal(document: Document): void {",
+          "export function isBehindModal(anchor: HTMLElement | null): boolean {",
+          "export function useModalLayer(dialog: RefObject<HTMLElement | null>, open: boolean, onClose: () => void): void {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/Menu.tsx",
+      "status": "unchanged",
+      "accepted": "f1f345c8c69b6ff89334a0054fe234ea36aaa1c0f3839d7f58357570a07c8d94",
+      "candidate": "f1f345c8c69b6ff89334a0054fe234ea36aaa1c0f3839d7f58357570a07c8d94",
+      "exports": {
+        "before": [
+          "export interface MenuItem {",
+          "export interface MenuSeparator {",
+          "export interface MenuLabel {",
+          "export type MenuEntry = MenuItem | MenuSeparator | MenuLabel",
+          "export interface MenuItemButtonProps {",
+          "export function MenuItemButton({ onSelect, ...props }: MenuItemButtonProps) {",
+          "export function Menu({ open, anchor, items = [], children, submenuBackLabel, selectedId, selectedIds, onSelect, onClose, align = 'start', side = 'bottom', portal = false, closeOnPointerLeave = false, dense = false, compact = false, autoFocus = false, selection = 'check', anchorRef, anchorPoint, minWidthFromAnchor = false, footer, className, listClassName, contextual = false, exiting, returnFocus, isExternalTrigger }: {"
+        ],
+        "after": [
+          "export interface MenuItem {",
+          "export interface MenuSeparator {",
+          "export interface MenuLabel {",
+          "export type MenuEntry = MenuItem | MenuSeparator | MenuLabel",
+          "export interface MenuItemButtonProps {",
+          "export function MenuItemButton({ onSelect, ...props }: MenuItemButtonProps) {",
+          "export function Menu({ open, anchor, items = [], children, submenuBackLabel, selectedId, selectedIds, onSelect, onClose, align = 'start', side = 'bottom', portal = false, closeOnPointerLeave = false, dense = false, compact = false, autoFocus = false, selection = 'check', anchorRef, anchorPoint, minWidthFromAnchor = false, footer, className, listClassName, contextual = false, exiting, returnFocus, isExternalTrigger }: {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/Menu.module.css",
+      "status": "unchanged",
+      "accepted": "ac03c6b4777b1b86e0e2ae09591fd2fe3c0da5718c493b458f67cbc7990b7649",
+      "candidate": "ac03c6b4777b1b86e0e2ae09591fd2fe3c0da5718c493b458f67cbc7990b7649",
+      "exports": {
+        "before": [],
+        "after": []
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/useDismissOnOutsidePointer.ts",
+      "status": "unchanged",
+      "accepted": "c7e05b448eeade540b7c6623a5c60401a63d09589bb27a573760ae5defbb4644",
+      "candidate": "c7e05b448eeade540b7c6623a5c60401a63d09589bb27a573760ae5defbb4644",
+      "exports": {
+        "before": [
+          "export function useDismissOnOutsidePointer("
+        ],
+        "after": [
+          "export function useDismissOnOutsidePointer("
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/input-modality.ts",
+      "status": "unchanged",
+      "accepted": "91268be3f5ddb7b9a1defb13628d96082477e8771cdaa5df37d6d8b16bbbf2ba",
+      "candidate": "91268be3f5ddb7b9a1defb13628d96082477e8771cdaa5df37d6d8b16bbbf2ba",
+      "exports": {
+        "before": [
+          "export const INPUT_MODALITY = { pointer: 'pointer', keyboard: 'keyboard' } as const",
+          "export const INPUT_MODALITY_ATTRIBUTE = 'data-input-modality'",
+          "export function pointerModality(): boolean {"
+        ],
+        "after": [
+          "export const INPUT_MODALITY = { pointer: 'pointer', keyboard: 'keyboard' } as const",
+          "export const INPUT_MODALITY_ATTRIBUTE = 'data-input-modality'",
+          "export function pointerModality(): boolean {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/MenuSurface.tsx",
+      "status": "unchanged",
+      "accepted": "5dbac6561f62440d168a94895ef7a4ed172e29d3ed1d3766bc358d718d5b3a3b",
+      "candidate": "5dbac6561f62440d168a94895ef7a4ed172e29d3ed1d3766bc358d718d5b3a3b",
+      "exports": {
+        "before": [
+          "export const MENU_TRANSITION_MS = Object.freeze({ enter: 40, dismiss: 80, replace: 10, prepare: 20 })",
+          "export interface MenuSurfaceProps extends ComponentPropsWithoutRef<'div'> {",
+          "export const MenuSurface = forwardRef<HTMLDivElement, MenuSurfaceProps>(function MenuSurface({"
+        ],
+        "after": [
+          "export const MENU_TRANSITION_MS = Object.freeze({ enter: 40, dismiss: 80, replace: 10, prepare: 20 })",
+          "export interface MenuSurfaceProps extends ComponentPropsWithoutRef<'div'> {",
+          "export const MenuSurface = forwardRef<HTMLDivElement, MenuSurfaceProps>(function MenuSurface({"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/menu-submenu-position.ts",
+      "status": "unchanged",
+      "accepted": "d4dca858f8eba2f2a9ac1bc9ec6def2c865695d34465347defbbac57e73990b0",
+      "candidate": "d4dca858f8eba2f2a9ac1bc9ec6def2c865695d34465347defbbac57e73990b0",
+      "exports": {
+        "before": [
+          "export const SUBMENU_GAP = 4",
+          "export const SUBMENU_MARGIN = 12",
+          "export function submenuNeedsPage(parent: DOMRect, width: number, viewportWidth: number): boolean {"
+        ],
+        "after": [
+          "export const SUBMENU_GAP = 4",
+          "export const SUBMENU_MARGIN = 12",
+          "export function submenuNeedsPage(parent: DOMRect, width: number, viewportWidth: number): boolean {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/pointer-grace.ts",
+      "status": "unchanged",
+      "accepted": "cba1529e052cf3ea09fd3851990219e2b80d61fa4b3d35da490f28ba9f9965c6",
+      "candidate": "cba1529e052cf3ea09fd3851990219e2b80d61fa4b3d35da490f28ba9f9965c6",
+      "exports": {
+        "before": [
+          "export const POINTER_GRACE_MS = 200",
+          "export interface PointerGrace {",
+          "export function usePointerGrace(close: () => void): PointerGrace {"
+        ],
+        "after": [
+          "export const POINTER_GRACE_MS = 200",
+          "export interface PointerGrace {",
+          "export function usePointerGrace(close: () => void): PointerGrace {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/tooltip-placement.ts",
+      "status": "unchanged",
+      "accepted": "1bf4e3c58875d3fe653bef762ce5e4dea80825805da7f24cbddd7c691c77b8e5",
+      "candidate": "1bf4e3c58875d3fe653bef762ce5e4dea80825805da7f24cbddd7c691c77b8e5",
+      "exports": {
+        "before": [
+          "export type TooltipSide = 'right' | 'left' | 'bottom' | 'top'",
+          "export function placeTooltip(input: PlacementInput): TooltipPlacement {"
+        ],
+        "after": [
+          "export type TooltipSide = 'right' | 'left' | 'bottom' | 'top'",
+          "export function placeTooltip(input: PlacementInput): TooltipPlacement {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/Button.tsx",
+      "status": "unchanged",
+      "accepted": "b7fa58fb0b88be96d93144be9f2a25b3487d9ef49afe991d1f6073c8a814f46f",
+      "candidate": "b7fa58fb0b88be96d93144be9f2a25b3487d9ef49afe991d1f6073c8a814f46f",
+      "exports": {
+        "before": [
+          "export type ButtonVariant = 'primary' | 'ghost' | 'outline' | 'toolbar'",
+          "export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({"
+        ],
+        "after": [
+          "export type ButtonVariant = 'primary' | 'ghost' | 'outline' | 'toolbar'",
+          "export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/focus.ts",
+      "status": "unchanged",
+      "accepted": "08d0098694d096c44d7d3027a5dd8af50384c8d1d637f16a7cac6b1bab38c344",
+      "candidate": "08d0098694d096c44d7d3027a5dd8af50384c8d1d637f16a7cac6b1bab38c344",
+      "exports": {
+        "before": [
+          "export function isMobileDevice(): boolean {",
+          "export function focusWithoutRing(element: HTMLElement, options?: FocusOptions): void {"
+        ],
+        "after": [
+          "export function isMobileDevice(): boolean {",
+          "export function focusWithoutRing(element: HTMLElement, options?: FocusOptions): void {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/ShortcutKeys.module.css",
+      "status": "unchanged",
+      "accepted": "ffa9624099dafb8dfe3e76c57fe26a523cb7943fa5bedd31d3c67e16e3351139",
+      "candidate": "ffa9624099dafb8dfe3e76c57fe26a523cb7943fa5bedd31d3c67e16e3351139",
+      "exports": {
+        "before": [],
+        "after": []
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/icons/artwork.ts",
+      "status": "unchanged",
+      "accepted": "0f24b3f813f79d726fd1784d5d9bbf0b4fc64fa801711df728a6d34363d5b964",
+      "candidate": "0f24b3f813f79d726fd1784d5d9bbf0b4fc64fa801711df728a6d34363d5b964",
+      "exports": {
+        "before": [
+          "export const ICON_REGULAR_STROKE = 1",
+          "export const ICON_MEDIUM_STROKE = 1.3",
+          "export const ICON_ARTWORK = {",
+          "export type IconGlyph = keyof typeof ICON_ARTWORK",
+          "export type IconWeight = 'regular' | 'medium'",
+          "export function iconSymbolId(glyph: IconGlyph, weight: IconWeight): IconSymbolId {",
+          "export type IconSymbolId = `dsw-icon-${IconGlyph}-${IconWeight}`",
+          "export const ICON_SYMBOLS = Object.freeze(Object.fromEntries("
+        ],
+        "after": [
+          "export const ICON_REGULAR_STROKE = 1",
+          "export const ICON_MEDIUM_STROKE = 1.3",
+          "export const ICON_ARTWORK = {",
+          "export type IconGlyph = keyof typeof ICON_ARTWORK",
+          "export type IconWeight = 'regular' | 'medium'",
+          "export function iconSymbolId(glyph: IconGlyph, weight: IconWeight): IconSymbolId {",
+          "export type IconSymbolId = `dsw-icon-${IconGlyph}-${IconWeight}`",
+          "export const ICON_SYMBOLS = Object.freeze(Object.fromEntries("
+        ]
+      }
+    },
+    {
+      "path": "packages/client/ui-primitives/src/icons/index.tsx",
+      "status": "unchanged",
+      "accepted": "e14913279865a078583c023a18dbe52df7a3597f4b752183f675aa79f11d413f",
+      "candidate": "e14913279865a078583c023a18dbe52df7a3597f4b752183f675aa79f11d413f",
+      "exports": {
+        "before": [
+          "export type { IconProps } from './props.ts'",
+          "export { ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE, ICON_SYMBOLS, type IconSymbolId } from './artwork.ts'",
+          "export const SHIELD_OUTLINE_PATH = 'M6.80132 2.14853C7.70663 1.80917 8.70422 1.80919 9.60952 2.14859L14.1296 3.84317V7.11961C14.1296 11.6089 10.7615 13.5975 8.20543 14.5779C5.64931 13.5975 2.28052 11.6089 2.28052 7.11961V3.84317L6.80132 2.14853Z'",
+          "export const IconLayersOutlineRegular = productIcon('layers-outline', 'regular')",
+          "export const IconLayersOutlineMedium = productIcon('layers-outline', 'medium')",
+          "export const IconNewChatOutlineRegular = productIcon('new-chat-outline', 'regular')",
+          "export const IconNewChatOutlineMedium = productIcon('new-chat-outline', 'medium')",
+          "export const IconSearchOutlineRegular = productIcon('search-outline', 'regular')",
+          "export const IconSearchOutlineMedium = productIcon('search-outline', 'medium')",
+          "export const IconEyeOutlineRegular = productIcon('eye-outline', 'regular')",
+          "export const IconEyeOutlineMedium = productIcon('eye-outline', 'medium')",
+          "export const IconEyeOffOutlineRegular = productIcon('eye-off-outline', 'regular')",
+          "export const IconEyeOffOutlineMedium = productIcon('eye-off-outline', 'medium')",
+          "export const IconGlobeOutlineRegular = productIcon('globe-outline', 'regular')",
+          "export const IconGlobeOutlineMedium = productIcon('globe-outline', 'medium')",
+          "export const IconSettingsOutlineRegular = productIcon('settings-outline', 'regular')",
+          "export const IconSettingsOutlineMedium = productIcon('settings-outline', 'medium')",
+          "export const IconPanelLeftOutlineRegular = productIcon('panel-left-outline', 'regular')",
+          "export const IconPanelLeftOutlineMedium = productIcon('panel-left-outline', 'medium')",
+          "export const IconEllipsisOutlineRegular = productIcon('ellipsis-outline', 'regular')",
+          "export const IconEllipsisOutlineMedium = productIcon('ellipsis-outline', 'medium')",
+          "export const IconPlusOutlineRegular = productIcon('plus-outline', 'regular')",
+          "export const IconPlusOutlineMedium = productIcon('plus-outline', 'medium')",
+          "export const IconCheckOutlineRegular = productIcon('check-outline', 'regular')",
+          "export const IconCheckOutlineMedium = productIcon('check-outline', 'medium')",
+          "export const IconMailUnreadOutlineRegular = productIcon('mail-unread-outline', 'regular')",
+          "export const IconMailUnreadOutlineMedium = productIcon('mail-unread-outline', 'medium')",
+          "export const IconMailReadOutlineRegular = productIcon('mail-read-outline', 'regular')",
+          "export const IconMailReadOutlineMedium = productIcon('mail-read-outline', 'medium')",
+          "export const IconBranchOutlineRegular = productIcon('branch-outline', 'regular')",
+          "export const IconBranchOutlineMedium = productIcon('branch-outline', 'medium')",
+          "export const IconChevronDownOutlineRegular = productIcon('chevron-down-outline', 'regular')",
+          "export const IconChevronDownOutlineMedium = productIcon('chevron-down-outline', 'medium')",
+          "export const IconChevronLeftOutlineRegular = productIcon('chevron-left-outline', 'regular')",
+          "export const IconChevronLeftOutlineMedium = productIcon('chevron-left-outline', 'medium')",
+          "export const IconChevronRightOutlineRegular = productIcon('chevron-right-outline', 'regular')",
+          "export const IconChevronRightOutlineMedium = productIcon('chevron-right-outline', 'medium')",
+          "export const IconTriangleRightFillRegular = productIcon('triangle-right-fill', 'regular')",
+          "export const IconTriangleRightFillMedium = productIcon('triangle-right-fill', 'medium')",
+          "export const IconChevronUpOutlineRegular = productIcon('chevron-up-outline', 'regular')",
+          "export const IconChevronUpOutlineMedium = productIcon('chevron-up-outline', 'medium')",
+          "export const IconCloseOutlineRegular = productIcon('close-outline', 'regular')",
+          "export const IconCloseOutlineMedium = productIcon('close-outline', 'medium')",
+          "export const IconCloseFillRegular = productIcon('close-fill', 'regular')",
+          "export const IconCloseFillMedium = productIcon('close-fill', 'medium')",
+          "export const IconCloseCircleFillRegular = productIcon('close-circle-fill', 'regular')",
+          "export const IconCloseCircleFillMedium = productIcon('close-circle-fill', 'medium')",
+          "export const IconCopyOutlineRegular = productIcon('copy-outline', 'regular')",
+          "export const IconCopyOutlineMedium = productIcon('copy-outline', 'medium')",
+          "export const IconRefreshOutlineRegular = productIcon('refresh-outline', 'regular')",
+          "export const IconRefreshOutlineMedium = productIcon('refresh-outline', 'medium')",
+          "export const IconLikeOutlineRegular = productIcon('like-outline', 'regular')",
+          "export const IconLikeOutlineMedium = productIcon('like-outline', 'medium')",
+          "export const IconLikeFillRegular = productIcon('like-fill', 'regular')",
+          "export const IconLikeFillMedium = productIcon('like-fill', 'medium')",
+          "export const IconDislikeOutlineRegular = productIcon('dislike-outline', 'regular')",
+          "export const IconDislikeOutlineMedium = productIcon('dislike-outline', 'medium')",
+          "export const IconDislikeFillRegular = productIcon('dislike-fill', 'regular')",
+          "export const IconDislikeFillMedium = productIcon('dislike-fill', 'medium')",
+          "export const IconShareOutlineRegular = productIcon('share-outline', 'regular')",
+          "export const IconShareOutlineMedium = productIcon('share-outline', 'medium')",
+          "export const IconDeliverDocRegular = productIcon('deliver-doc', 'regular')",
+          "export const IconDeliverDocMedium = productIcon('deliver-doc', 'medium')",
+          "export const IconEditOutlineRegular = productIcon('edit-outline', 'regular')",
+          "export const IconEditOutlineMedium = productIcon('edit-outline', 'medium')",
+          "export const IconThinkOutlineRegular = productIcon('think-outline', 'regular')",
+          "export const IconThinkOutlineMedium = productIcon('think-outline', 'medium')",
+          "export const IconAgentPresetOutlineRegular = productIcon('agent-preset-outline', 'regular')",
+          "export const IconAgentPresetOutlineMedium = productIcon('agent-preset-outline', 'medium')",
+          "export const IconBrowseOutlineRegular = productIcon('browse-outline', 'regular')",
+          "export const IconBrowseOutlineMedium = productIcon('browse-outline', 'medium')",
+          "export const IconContextInjectionOutlineRegular = productIcon('context-injection-outline', 'regular')",
+          "export const IconContextInjectionOutlineMedium = productIcon('context-injection-outline', 'medium')",
+          "export const IconLinkOutlineRegular = productIcon('link-outline', 'regular')",
+          "export const IconLinkOutlineMedium = productIcon('link-outline', 'medium')",
+          "export const IconRightUpOutlineRegular = productIcon('right-up-outline', 'regular')",
+          "export const IconRightUpOutlineMedium = productIcon('right-up-outline', 'medium')",
+          "export const IconEnhanceOutlineRegular = productIcon('enhance-outline', 'regular')",
+          "export const IconEnhanceOutlineMedium = productIcon('enhance-outline', 'medium')",
+          "export const IconTrashOutlineRegular = productIcon('trash-outline', 'regular')",
+          "export const IconTrashOutlineMedium = productIcon('trash-outline', 'medium')",
+          "export const IconWarningOutlineRegular = productIcon('warning-outline', 'regular')",
+          "export const IconWarningOutlineMedium = productIcon('warning-outline', 'medium')",
+          "export const IconCheckCircleFillRegular = productIcon('check-circle-fill', 'regular')",
+          "export const IconCheckCircleFillMedium = productIcon('check-circle-fill', 'medium')",
+          "export const IconWarningTriangleOutlineRegular = productIcon('warning-triangle-outline', 'regular')",
+          "export const IconWarningTriangleOutlineMedium = productIcon('warning-triangle-outline', 'medium')",
+          "export const IconUserOutlineRegular = productIcon('user-outline', 'regular')",
+          "export const IconUserOutlineMedium = productIcon('user-outline', 'medium')",
+          "export const IconUsersOutlineRegular = productIcon('users-outline', 'regular')",
+          "export const IconUsersOutlineMedium = productIcon('users-outline', 'medium')",
+          "export const IconPaperPlaneOutlineRegular = productIcon('paper-plane-outline', 'regular')",
+          "export const IconPaperPlaneOutlineMedium = productIcon('paper-plane-outline', 'medium')",
+          "export const IconStopFillRegular = productIcon('stop-fill', 'regular')",
+          "export const IconStopFillMedium = productIcon('stop-fill', 'medium')",
+          "export const IconPaperclipOutlineRegular = productIcon('paperclip-outline', 'regular')",
+          "export const IconPaperclipOutlineMedium = productIcon('paperclip-outline', 'medium')",
+          "export const IconLoadingOutlineRegular = productIcon('loading-outline', 'regular')",
+          "export const IconLoadingOutlineMedium = productIcon('loading-outline', 'medium')",
+          "export const IconDownloadOutlineRegular = productIcon('download-outline', 'regular')",
+          "export const IconDownloadOutlineMedium = productIcon('download-outline', 'medium')",
+          "export const IconUploadOutlineRegular = productIcon('upload-outline', 'regular')",
+          "export const IconUploadOutlineMedium = productIcon('upload-outline', 'medium')",
+          "export const IconPlayOutlineRegular = productIcon('play-outline', 'regular')",
+          "export const IconPlayOutlineMedium = productIcon('play-outline', 'medium')",
+          "export const IconPauseOutlineRegular = productIcon('pause-outline', 'regular')",
+          "export const IconPauseOutlineMedium = productIcon('pause-outline', 'medium')",
+          "export const IconFullscreenOutlineRegular = productIcon('fullscreen-outline', 'regular')",
+          "export const IconFullscreenOutlineMedium = productIcon('fullscreen-outline', 'medium')",
+          "export const IconCodeOutlineRegular = productIcon('code-outline', 'regular')",
+          "export const IconCodeOutlineMedium = productIcon('code-outline', 'medium')",
+          "export const IconCordisPluginOutlineRegular = productIcon('cordis-plugin-outline', 'regular')",
+          "export const IconCordisPluginOutlineMedium = productIcon('cordis-plugin-outline', 'medium')",
+          "export const IconApiOutlineRegular = productIcon('api-outline', 'regular')",
+          "export const IconApiOutlineMedium = productIcon('api-outline', 'medium')",
+          "export const IconPersonalizationOutlineRegular = productIcon('personalization-outline', 'regular')",
+          "export const IconPersonalizationOutlineMedium = productIcon('personalization-outline', 'medium')",
+          "export const IconProjectAddOutlineRegular = productIcon('project-add-outline', 'regular')",
+          "export const IconProjectAddOutlineMedium = productIcon('project-add-outline', 'medium')",
+          "export const IconFolderOpenOutlineRegular = productIcon('folder-open-outline', 'regular')",
+          "export const IconFolderOpenOutlineMedium = productIcon('folder-open-outline', 'medium')",
+          "export const IconFolderOpenRegular = productIcon('folder-open', 'regular')",
+          "export const IconFolderOpenMedium = productIcon('folder-open', 'medium')",
+          "export const IconFolderCloseRegular = productIcon('folder-close', 'regular')",
+          "export const IconFolderCloseMedium = productIcon('folder-close', 'medium')",
+          "export const IconTreeCornerRegular = productIcon('tree-corner', 'regular')",
+          "export const IconTreeCornerMedium = productIcon('tree-corner', 'medium')",
+          "export const IconLightOutlineRegular = productIcon('light-outline', 'regular')",
+          "export const IconLightOutlineMedium = productIcon('light-outline', 'medium')",
+          "export const IconDarkOutlineRegular = productIcon('dark-outline', 'regular')",
+          "export const IconDarkOutlineMedium = productIcon('dark-outline', 'medium')",
+          "export const IconFollowsystemOutlineRegular = productIcon('followsystem-outline', 'regular')",
+          "export const IconFollowsystemOutlineMedium = productIcon('followsystem-outline', 'medium')",
+          "export const IconDataOutlineRegular = productIcon('data-outline', 'regular')",
+          "export const IconDataOutlineMedium = productIcon('data-outline', 'medium')",
+          "export const IconDatabaseOutlineRegular = productIcon('database-outline', 'regular')",
+          "export const IconDatabaseOutlineMedium = productIcon('database-outline', 'medium')",
+          "export const IconClockOutlineRegular = productIcon('clock-outline', 'regular')",
+          "export const IconClockOutlineMedium = productIcon('clock-outline', 'medium')",
+          "export const IconGaugeOutlineRegular = productIcon('gauge-outline', 'regular')",
+          "export const IconGaugeOutlineMedium = productIcon('gauge-outline', 'medium')",
+          "export const IconSendOutlineRegular = productIcon('send-outline', 'regular')",
+          "export const IconSendOutlineMedium = productIcon('send-outline', 'medium')",
+          "export const IconQueueOutlineRegular = productIcon('queue-outline', 'regular')",
+          "export const IconQueueOutlineMedium = productIcon('queue-outline', 'medium')",
+          "export const IconChecklistOutlineRegular = productIcon('checklist-outline', 'regular')",
+          "export const IconChecklistOutlineMedium = productIcon('checklist-outline', 'medium')",
+          "export const IconListPenOutlineRegular = productIcon('list-pen-outline', 'regular')",
+          "export const IconListPenOutlineMedium = productIcon('list-pen-outline', 'medium')",
+          "export const IconGoalOutlineRegular = productIcon('goal-outline', 'regular')",
+          "export const IconGoalOutlineMedium = productIcon('goal-outline', 'medium')",
+          "export const IconSparkleRegular = productIcon('sparkle', 'regular')",
+          "export const IconSparkleMedium = productIcon('sparkle', 'medium')",
+          "export const IconInspectOutlineRegular = productIcon('inspect-outline', 'regular')",
+          "export const IconInspectOutlineMedium = productIcon('inspect-outline', 'medium')",
+          "export const IconSkillOutlineRegular = productIcon('skill-outline', 'regular')",
+          "export const IconSkillOutlineMedium = productIcon('skill-outline', 'medium')",
+          "export const IconQuestionOutlineRegular = productIcon('question-outline', 'regular')",
+          "export const IconQuestionOutlineMedium = productIcon('question-outline', 'medium')",
+          "export const IconInfoOutlineRegular = productIcon('info-outline', 'regular')",
+          "export const IconInfoOutlineMedium = productIcon('info-outline', 'medium')",
+          "export const IconPluginPinwheelOutlineRegular = productIcon('plugin-pinwheel-outline', 'regular')",
+          "export const IconPluginPinwheelOutlineMedium = productIcon('plugin-pinwheel-outline', 'medium')",
+          "export const IconAlarmClockOutlineRegular = productIcon('alarm-clock-outline', 'regular')",
+          "export const IconAlarmClockOutlineMedium = productIcon('alarm-clock-outline', 'medium')",
+          "export const IconArchiveOutlineRegular = productIcon('archive-outline', 'regular')",
+          "export const IconArchiveOutlineMedium = productIcon('archive-outline', 'medium')",
+          "export const IconWrapLinesOutlineRegular = productIcon('wrap-lines-outline', 'regular')",
+          "export const IconWrapLinesOutlineMedium = productIcon('wrap-lines-outline', 'medium')",
+          "export const IconNowrapFillRegular = productIcon('nowrap-fill', 'regular')",
+          "export const IconNowrapFillMedium = productIcon('nowrap-fill', 'medium')",
+          "export const IconWrapFillRegular = productIcon('wrap-fill', 'regular')",
+          "export const IconWrapFillMedium = productIcon('wrap-fill', 'medium')",
+          "export const IconCompareSplitOutlineRegular = productIcon('compare-split-outline', 'regular')",
+          "export const IconCompareSplitOutlineMedium = productIcon('compare-split-outline', 'medium')",
+          "export const IconPlanOutlineRegular = productIcon('plan-outline', 'regular')",
+          "export const IconPlanOutlineMedium = productIcon('plan-outline', 'medium')",
+          "export const IconCompactOutlineRegular = productIcon('compact-outline', 'regular')",
+          "export const IconCompactOutlineMedium = productIcon('compact-outline', 'medium')",
+          "export const IconShieldOutlineRegular = productIcon('shield-outline', 'regular')",
+          "export const IconShieldOutlineMedium = productIcon('shield-outline', 'medium')",
+          "export const IconCheckCircleOutlineRegular = productIcon('check-circle-outline', 'regular')",
+          "export const IconCheckCircleOutlineMedium = productIcon('check-circle-outline', 'medium')",
+          "export const IconUnarchiveOutlineRegular = productIcon('unarchive-outline', 'regular')",
+          "export const IconUnarchiveOutlineMedium = productIcon('unarchive-outline', 'medium')",
+          "export const IconPinOutlineRegular = productIcon('pin-outline', 'regular')",
+          "export const IconPinOutlineMedium = productIcon('pin-outline', 'medium')",
+          "export const IconPinFillRegular = productIcon('pin-fill', 'regular')",
+          "export const IconPinFillMedium = productIcon('pin-fill', 'medium')",
+          "export const IconFlatListOutlineRegular = productIcon('flat-list-outline', 'regular')",
+          "export const IconFlatListOutlineMedium = productIcon('flat-list-outline', 'medium')",
+          "export const IconWorkspaceTreeOutlineRegular = productIcon('workspace-tree-outline', 'regular')",
+          "export const IconWorkspaceTreeOutlineMedium = productIcon('workspace-tree-outline', 'medium')",
+          "export const IconChevronsUpDownOutlineRegular = productIcon('chevrons-up-down-outline', 'regular')",
+          "export const IconChevronsUpDownOutlineMedium = productIcon('chevrons-up-down-outline', 'medium')",
+          "export const IconDragHandleOutlineRegular = productIcon('drag-handle-outline', 'regular')",
+          "export const IconDragHandleOutlineMedium = productIcon('drag-handle-outline', 'medium')",
+          "export const IconArchiveOffOutlineRegular = productIcon('archive-off-outline', 'regular')",
+          "export const IconArchiveOffOutlineMedium = productIcon('archive-off-outline', 'medium')",
+          "export const IconArchiveCheckOutlineRegular = productIcon('archive-check-outline', 'regular')",
+          "export const IconArchiveCheckOutlineMedium = productIcon('archive-check-outline', 'medium')",
+          "export const IconSlidersTwoOutlineRegular = productIcon('sliders-two-outline', 'regular')",
+          "export const IconSlidersTwoOutlineMedium = productIcon('sliders-two-outline', 'medium')",
+          "export const IconMicrophoneOutlineRegular = productIcon('microphone-outline', 'regular')",
+          "export const IconMicrophoneOutlineMedium = productIcon('microphone-outline', 'medium')",
+          "export const IconAppsAddOutlineRegular = appsAddIcon('regular')",
+          "export const IconAppsAddOutlineMedium = appsAddIcon('medium')",
+          "export const IconSaveOutlineRegular = productIcon('save-outline', 'regular')",
+          "export const IconSaveOutlineMedium = productIcon('save-outline', 'medium')"
+        ],
+        "after": [
+          "export type { IconProps } from './props.ts'",
+          "export { ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE, ICON_SYMBOLS, type IconSymbolId } from './artwork.ts'",
+          "export const SHIELD_OUTLINE_PATH = 'M6.80132 2.14853C7.70663 1.80917 8.70422 1.80919 9.60952 2.14859L14.1296 3.84317V7.11961C14.1296 11.6089 10.7615 13.5975 8.20543 14.5779C5.64931 13.5975 2.28052 11.6089 2.28052 7.11961V3.84317L6.80132 2.14853Z'",
+          "export const IconLayersOutlineRegular = productIcon('layers-outline', 'regular')",
+          "export const IconLayersOutlineMedium = productIcon('layers-outline', 'medium')",
+          "export const IconNewChatOutlineRegular = productIcon('new-chat-outline', 'regular')",
+          "export const IconNewChatOutlineMedium = productIcon('new-chat-outline', 'medium')",
+          "export const IconSearchOutlineRegular = productIcon('search-outline', 'regular')",
+          "export const IconSearchOutlineMedium = productIcon('search-outline', 'medium')",
+          "export const IconEyeOutlineRegular = productIcon('eye-outline', 'regular')",
+          "export const IconEyeOutlineMedium = productIcon('eye-outline', 'medium')",
+          "export const IconEyeOffOutlineRegular = productIcon('eye-off-outline', 'regular')",
+          "export const IconEyeOffOutlineMedium = productIcon('eye-off-outline', 'medium')",
+          "export const IconGlobeOutlineRegular = productIcon('globe-outline', 'regular')",
+          "export const IconGlobeOutlineMedium = productIcon('globe-outline', 'medium')",
+          "export const IconSettingsOutlineRegular = productIcon('settings-outline', 'regular')",
+          "export const IconSettingsOutlineMedium = productIcon('settings-outline', 'medium')",
+          "export const IconPanelLeftOutlineRegular = productIcon('panel-left-outline', 'regular')",
+          "export const IconPanelLeftOutlineMedium = productIcon('panel-left-outline', 'medium')",
+          "export const IconEllipsisOutlineRegular = productIcon('ellipsis-outline', 'regular')",
+          "export const IconEllipsisOutlineMedium = productIcon('ellipsis-outline', 'medium')",
+          "export const IconPlusOutlineRegular = productIcon('plus-outline', 'regular')",
+          "export const IconPlusOutlineMedium = productIcon('plus-outline', 'medium')",
+          "export const IconCheckOutlineRegular = productIcon('check-outline', 'regular')",
+          "export const IconCheckOutlineMedium = productIcon('check-outline', 'medium')",
+          "export const IconMailUnreadOutlineRegular = productIcon('mail-unread-outline', 'regular')",
+          "export const IconMailUnreadOutlineMedium = productIcon('mail-unread-outline', 'medium')",
+          "export const IconMailReadOutlineRegular = productIcon('mail-read-outline', 'regular')",
+          "export const IconMailReadOutlineMedium = productIcon('mail-read-outline', 'medium')",
+          "export const IconBranchOutlineRegular = productIcon('branch-outline', 'regular')",
+          "export const IconBranchOutlineMedium = productIcon('branch-outline', 'medium')",
+          "export const IconChevronDownOutlineRegular = productIcon('chevron-down-outline', 'regular')",
+          "export const IconChevronDownOutlineMedium = productIcon('chevron-down-outline', 'medium')",
+          "export const IconChevronLeftOutlineRegular = productIcon('chevron-left-outline', 'regular')",
+          "export const IconChevronLeftOutlineMedium = productIcon('chevron-left-outline', 'medium')",
+          "export const IconChevronRightOutlineRegular = productIcon('chevron-right-outline', 'regular')",
+          "export const IconChevronRightOutlineMedium = productIcon('chevron-right-outline', 'medium')",
+          "export const IconTriangleRightFillRegular = productIcon('triangle-right-fill', 'regular')",
+          "export const IconTriangleRightFillMedium = productIcon('triangle-right-fill', 'medium')",
+          "export const IconChevronUpOutlineRegular = productIcon('chevron-up-outline', 'regular')",
+          "export const IconChevronUpOutlineMedium = productIcon('chevron-up-outline', 'medium')",
+          "export const IconCloseOutlineRegular = productIcon('close-outline', 'regular')",
+          "export const IconCloseOutlineMedium = productIcon('close-outline', 'medium')",
+          "export const IconCloseFillRegular = productIcon('close-fill', 'regular')",
+          "export const IconCloseFillMedium = productIcon('close-fill', 'medium')",
+          "export const IconCloseCircleFillRegular = productIcon('close-circle-fill', 'regular')",
+          "export const IconCloseCircleFillMedium = productIcon('close-circle-fill', 'medium')",
+          "export const IconCopyOutlineRegular = productIcon('copy-outline', 'regular')",
+          "export const IconCopyOutlineMedium = productIcon('copy-outline', 'medium')",
+          "export const IconRefreshOutlineRegular = productIcon('refresh-outline', 'regular')",
+          "export const IconRefreshOutlineMedium = productIcon('refresh-outline', 'medium')",
+          "export const IconLikeOutlineRegular = productIcon('like-outline', 'regular')",
+          "export const IconLikeOutlineMedium = productIcon('like-outline', 'medium')",
+          "export const IconLikeFillRegular = productIcon('like-fill', 'regular')",
+          "export const IconLikeFillMedium = productIcon('like-fill', 'medium')",
+          "export const IconDislikeOutlineRegular = productIcon('dislike-outline', 'regular')",
+          "export const IconDislikeOutlineMedium = productIcon('dislike-outline', 'medium')",
+          "export const IconDislikeFillRegular = productIcon('dislike-fill', 'regular')",
+          "export const IconDislikeFillMedium = productIcon('dislike-fill', 'medium')",
+          "export const IconShareOutlineRegular = productIcon('share-outline', 'regular')",
+          "export const IconShareOutlineMedium = productIcon('share-outline', 'medium')",
+          "export const IconDeliverDocRegular = productIcon('deliver-doc', 'regular')",
+          "export const IconDeliverDocMedium = productIcon('deliver-doc', 'medium')",
+          "export const IconEditOutlineRegular = productIcon('edit-outline', 'regular')",
+          "export const IconEditOutlineMedium = productIcon('edit-outline', 'medium')",
+          "export const IconThinkOutlineRegular = productIcon('think-outline', 'regular')",
+          "export const IconThinkOutlineMedium = productIcon('think-outline', 'medium')",
+          "export const IconAgentPresetOutlineRegular = productIcon('agent-preset-outline', 'regular')",
+          "export const IconAgentPresetOutlineMedium = productIcon('agent-preset-outline', 'medium')",
+          "export const IconBrowseOutlineRegular = productIcon('browse-outline', 'regular')",
+          "export const IconBrowseOutlineMedium = productIcon('browse-outline', 'medium')",
+          "export const IconContextInjectionOutlineRegular = productIcon('context-injection-outline', 'regular')",
+          "export const IconContextInjectionOutlineMedium = productIcon('context-injection-outline', 'medium')",
+          "export const IconLinkOutlineRegular = productIcon('link-outline', 'regular')",
+          "export const IconLinkOutlineMedium = productIcon('link-outline', 'medium')",
+          "export const IconRightUpOutlineRegular = productIcon('right-up-outline', 'regular')",
+          "export const IconRightUpOutlineMedium = productIcon('right-up-outline', 'medium')",
+          "export const IconEnhanceOutlineRegular = productIcon('enhance-outline', 'regular')",
+          "export const IconEnhanceOutlineMedium = productIcon('enhance-outline', 'medium')",
+          "export const IconTrashOutlineRegular = productIcon('trash-outline', 'regular')",
+          "export const IconTrashOutlineMedium = productIcon('trash-outline', 'medium')",
+          "export const IconWarningOutlineRegular = productIcon('warning-outline', 'regular')",
+          "export const IconWarningOutlineMedium = productIcon('warning-outline', 'medium')",
+          "export const IconCheckCircleFillRegular = productIcon('check-circle-fill', 'regular')",
+          "export const IconCheckCircleFillMedium = productIcon('check-circle-fill', 'medium')",
+          "export const IconWarningTriangleOutlineRegular = productIcon('warning-triangle-outline', 'regular')",
+          "export const IconWarningTriangleOutlineMedium = productIcon('warning-triangle-outline', 'medium')",
+          "export const IconUserOutlineRegular = productIcon('user-outline', 'regular')",
+          "export const IconUserOutlineMedium = productIcon('user-outline', 'medium')",
+          "export const IconUsersOutlineRegular = productIcon('users-outline', 'regular')",
+          "export const IconUsersOutlineMedium = productIcon('users-outline', 'medium')",
+          "export const IconPaperPlaneOutlineRegular = productIcon('paper-plane-outline', 'regular')",
+          "export const IconPaperPlaneOutlineMedium = productIcon('paper-plane-outline', 'medium')",
+          "export const IconStopFillRegular = productIcon('stop-fill', 'regular')",
+          "export const IconStopFillMedium = productIcon('stop-fill', 'medium')",
+          "export const IconPaperclipOutlineRegular = productIcon('paperclip-outline', 'regular')",
+          "export const IconPaperclipOutlineMedium = productIcon('paperclip-outline', 'medium')",
+          "export const IconLoadingOutlineRegular = productIcon('loading-outline', 'regular')",
+          "export const IconLoadingOutlineMedium = productIcon('loading-outline', 'medium')",
+          "export const IconDownloadOutlineRegular = productIcon('download-outline', 'regular')",
+          "export const IconDownloadOutlineMedium = productIcon('download-outline', 'medium')",
+          "export const IconUploadOutlineRegular = productIcon('upload-outline', 'regular')",
+          "export const IconUploadOutlineMedium = productIcon('upload-outline', 'medium')",
+          "export const IconPlayOutlineRegular = productIcon('play-outline', 'regular')",
+          "export const IconPlayOutlineMedium = productIcon('play-outline', 'medium')",
+          "export const IconPauseOutlineRegular = productIcon('pause-outline', 'regular')",
+          "export const IconPauseOutlineMedium = productIcon('pause-outline', 'medium')",
+          "export const IconFullscreenOutlineRegular = productIcon('fullscreen-outline', 'regular')",
+          "export const IconFullscreenOutlineMedium = productIcon('fullscreen-outline', 'medium')",
+          "export const IconCodeOutlineRegular = productIcon('code-outline', 'regular')",
+          "export const IconCodeOutlineMedium = productIcon('code-outline', 'medium')",
+          "export const IconCordisPluginOutlineRegular = productIcon('cordis-plugin-outline', 'regular')",
+          "export const IconCordisPluginOutlineMedium = productIcon('cordis-plugin-outline', 'medium')",
+          "export const IconApiOutlineRegular = productIcon('api-outline', 'regular')",
+          "export const IconApiOutlineMedium = productIcon('api-outline', 'medium')",
+          "export const IconPersonalizationOutlineRegular = productIcon('personalization-outline', 'regular')",
+          "export const IconPersonalizationOutlineMedium = productIcon('personalization-outline', 'medium')",
+          "export const IconProjectAddOutlineRegular = productIcon('project-add-outline', 'regular')",
+          "export const IconProjectAddOutlineMedium = productIcon('project-add-outline', 'medium')",
+          "export const IconFolderOpenOutlineRegular = productIcon('folder-open-outline', 'regular')",
+          "export const IconFolderOpenOutlineMedium = productIcon('folder-open-outline', 'medium')",
+          "export const IconFolderOpenRegular = productIcon('folder-open', 'regular')",
+          "export const IconFolderOpenMedium = productIcon('folder-open', 'medium')",
+          "export const IconFolderCloseRegular = productIcon('folder-close', 'regular')",
+          "export const IconFolderCloseMedium = productIcon('folder-close', 'medium')",
+          "export const IconTreeCornerRegular = productIcon('tree-corner', 'regular')",
+          "export const IconTreeCornerMedium = productIcon('tree-corner', 'medium')",
+          "export const IconLightOutlineRegular = productIcon('light-outline', 'regular')",
+          "export const IconLightOutlineMedium = productIcon('light-outline', 'medium')",
+          "export const IconDarkOutlineRegular = productIcon('dark-outline', 'regular')",
+          "export const IconDarkOutlineMedium = productIcon('dark-outline', 'medium')",
+          "export const IconFollowsystemOutlineRegular = productIcon('followsystem-outline', 'regular')",
+          "export const IconFollowsystemOutlineMedium = productIcon('followsystem-outline', 'medium')",
+          "export const IconDataOutlineRegular = productIcon('data-outline', 'regular')",
+          "export const IconDataOutlineMedium = productIcon('data-outline', 'medium')",
+          "export const IconDatabaseOutlineRegular = productIcon('database-outline', 'regular')",
+          "export const IconDatabaseOutlineMedium = productIcon('database-outline', 'medium')",
+          "export const IconClockOutlineRegular = productIcon('clock-outline', 'regular')",
+          "export const IconClockOutlineMedium = productIcon('clock-outline', 'medium')",
+          "export const IconGaugeOutlineRegular = productIcon('gauge-outline', 'regular')",
+          "export const IconGaugeOutlineMedium = productIcon('gauge-outline', 'medium')",
+          "export const IconSendOutlineRegular = productIcon('send-outline', 'regular')",
+          "export const IconSendOutlineMedium = productIcon('send-outline', 'medium')",
+          "export const IconQueueOutlineRegular = productIcon('queue-outline', 'regular')",
+          "export const IconQueueOutlineMedium = productIcon('queue-outline', 'medium')",
+          "export const IconChecklistOutlineRegular = productIcon('checklist-outline', 'regular')",
+          "export const IconChecklistOutlineMedium = productIcon('checklist-outline', 'medium')",
+          "export const IconListPenOutlineRegular = productIcon('list-pen-outline', 'regular')",
+          "export const IconListPenOutlineMedium = productIcon('list-pen-outline', 'medium')",
+          "export const IconGoalOutlineRegular = productIcon('goal-outline', 'regular')",
+          "export const IconGoalOutlineMedium = productIcon('goal-outline', 'medium')",
+          "export const IconSparkleRegular = productIcon('sparkle', 'regular')",
+          "export const IconSparkleMedium = productIcon('sparkle', 'medium')",
+          "export const IconInspectOutlineRegular = productIcon('inspect-outline', 'regular')",
+          "export const IconInspectOutlineMedium = productIcon('inspect-outline', 'medium')",
+          "export const IconSkillOutlineRegular = productIcon('skill-outline', 'regular')",
+          "export const IconSkillOutlineMedium = productIcon('skill-outline', 'medium')",
+          "export const IconQuestionOutlineRegular = productIcon('question-outline', 'regular')",
+          "export const IconQuestionOutlineMedium = productIcon('question-outline', 'medium')",
+          "export const IconInfoOutlineRegular = productIcon('info-outline', 'regular')",
+          "export const IconInfoOutlineMedium = productIcon('info-outline', 'medium')",
+          "export const IconPluginPinwheelOutlineRegular = productIcon('plugin-pinwheel-outline', 'regular')",
+          "export const IconPluginPinwheelOutlineMedium = productIcon('plugin-pinwheel-outline', 'medium')",
+          "export const IconAlarmClockOutlineRegular = productIcon('alarm-clock-outline', 'regular')",
+          "export const IconAlarmClockOutlineMedium = productIcon('alarm-clock-outline', 'medium')",
+          "export const IconArchiveOutlineRegular = productIcon('archive-outline', 'regular')",
+          "export const IconArchiveOutlineMedium = productIcon('archive-outline', 'medium')",
+          "export const IconWrapLinesOutlineRegular = productIcon('wrap-lines-outline', 'regular')",
+          "export const IconWrapLinesOutlineMedium = productIcon('wrap-lines-outline', 'medium')",
+          "export const IconNowrapFillRegular = productIcon('nowrap-fill', 'regular')",
+          "export const IconNowrapFillMedium = productIcon('nowrap-fill', 'medium')",
+          "export const IconWrapFillRegular = productIcon('wrap-fill', 'regular')",
+          "export const IconWrapFillMedium = productIcon('wrap-fill', 'medium')",
+          "export const IconCompareSplitOutlineRegular = productIcon('compare-split-outline', 'regular')",
+          "export const IconCompareSplitOutlineMedium = productIcon('compare-split-outline', 'medium')",
+          "export const IconPlanOutlineRegular = productIcon('plan-outline', 'regular')",
+          "export const IconPlanOutlineMedium = productIcon('plan-outline', 'medium')",
+          "export const IconCompactOutlineRegular = productIcon('compact-outline', 'regular')",
+          "export const IconCompactOutlineMedium = productIcon('compact-outline', 'medium')",
+          "export const IconShieldOutlineRegular = productIcon('shield-outline', 'regular')",
+          "export const IconShieldOutlineMedium = productIcon('shield-outline', 'medium')",
+          "export const IconCheckCircleOutlineRegular = productIcon('check-circle-outline', 'regular')",
+          "export const IconCheckCircleOutlineMedium = productIcon('check-circle-outline', 'medium')",
+          "export const IconUnarchiveOutlineRegular = productIcon('unarchive-outline', 'regular')",
+          "export const IconUnarchiveOutlineMedium = productIcon('unarchive-outline', 'medium')",
+          "export const IconPinOutlineRegular = productIcon('pin-outline', 'regular')",
+          "export const IconPinOutlineMedium = productIcon('pin-outline', 'medium')",
+          "export const IconPinFillRegular = productIcon('pin-fill', 'regular')",
+          "export const IconPinFillMedium = productIcon('pin-fill', 'medium')",
+          "export const IconFlatListOutlineRegular = productIcon('flat-list-outline', 'regular')",
+          "export const IconFlatListOutlineMedium = productIcon('flat-list-outline', 'medium')",
+          "export const IconWorkspaceTreeOutlineRegular = productIcon('workspace-tree-outline', 'regular')",
+          "export const IconWorkspaceTreeOutlineMedium = productIcon('workspace-tree-outline', 'medium')",
+          "export const IconChevronsUpDownOutlineRegular = productIcon('chevrons-up-down-outline', 'regular')",
+          "export const IconChevronsUpDownOutlineMedium = productIcon('chevrons-up-down-outline', 'medium')",
+          "export const IconDragHandleOutlineRegular = productIcon('drag-handle-outline', 'regular')",
+          "export const IconDragHandleOutlineMedium = productIcon('drag-handle-outline', 'medium')",
+          "export const IconArchiveOffOutlineRegular = productIcon('archive-off-outline', 'regular')",
+          "export const IconArchiveOffOutlineMedium = productIcon('archive-off-outline', 'medium')",
+          "export const IconArchiveCheckOutlineRegular = productIcon('archive-check-outline', 'regular')",
+          "export const IconArchiveCheckOutlineMedium = productIcon('archive-check-outline', 'medium')",
+          "export const IconSlidersTwoOutlineRegular = productIcon('sliders-two-outline', 'regular')",
+          "export const IconSlidersTwoOutlineMedium = productIcon('sliders-two-outline', 'medium')",
+          "export const IconMicrophoneOutlineRegular = productIcon('microphone-outline', 'regular')",
+          "export const IconMicrophoneOutlineMedium = productIcon('microphone-outline', 'medium')",
+          "export const IconAppsAddOutlineRegular = appsAddIcon('regular')",
+          "export const IconAppsAddOutlineMedium = appsAddIcon('medium')",
+          "export const IconSaveOutlineRegular = productIcon('save-outline', 'regular')",
+          "export const IconSaveOutlineMedium = productIcon('save-outline', 'medium')"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/src/config.ts",
+      "status": "unchanged",
+      "accepted": "401b414ecd8bb9b2c414012163ccb93bfd24187dc90f38b2a479e5a1c3d8c82c",
+      "candidate": "401b414ecd8bb9b2c414012163ccb93bfd24187dc90f38b2a479e5a1c3d8c82c",
+      "exports": {
+        "before": [
+          "export interface Config {",
+          "export const Config: z<Partial<Config>, Config> = z.object({"
+        ],
+        "after": [
+          "export interface Config {",
+          "export const Config: z<Partial<Config>, Config> = z.object({"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/src/persistence.ts",
+      "status": "unchanged",
+      "accepted": "55f463b75739b285a654ae3517d9151571aa5aa1b674427075cc351ecabccb09",
+      "candidate": "55f463b75739b285a654ae3517d9151571aa5aa1b674427075cc351ecabccb09",
+      "exports": {
+        "before": [
+          "export type ShortcutRevision = Branded<'ShortcutRevision'>",
+          "export interface ShortcutConfigSnapshot {",
+          "export interface ShortcutSaveResult {",
+          "export interface ShortcutStorage {",
+          "export interface DesktopShortcutsApi {",
+          "export function initialShortcutConfig(): ShortcutConfigSnapshot {",
+          "export class ShortcutPersistence {"
+        ],
+        "after": [
+          "export type ShortcutRevision = Branded<'ShortcutRevision'>",
+          "export interface ShortcutConfigSnapshot {",
+          "export interface ShortcutSaveResult {",
+          "export interface ShortcutStorage {",
+          "export interface DesktopShortcutsApi {",
+          "export function initialShortcutConfig(): ShortcutConfigSnapshot {",
+          "export class ShortcutPersistence {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/src/native.ts",
+      "status": "unchanged",
+      "accepted": "07d8f94e011d377e6eb944a0f5cffb88c9ca5e4038fe06f7a6643855926076ef",
+      "candidate": "07d8f94e011d377e6eb944a0f5cffb88c9ca5e4038fe06f7a6643855926076ef",
+      "exports": {
+        "before": [
+          "export type DesktopShortcutInput = {",
+          "export interface DesktopKeyboardApi {"
+        ],
+        "after": [
+          "export type DesktopShortcutInput = {",
+          "export interface DesktopKeyboardApi {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/src/configuration.ts",
+      "status": "unchanged",
+      "accepted": "d43a5b11e20c94b30398ffad0cde8037caa3c913d95b5877e2b4c4539c4ab67c",
+      "candidate": "d43a5b11e20c94b30398ffad0cde8037caa3c913d95b5877e2b4c4539c4ab67c",
+      "exports": {
+        "before": [
+          "export interface ShortcutDocument {",
+          "export interface ShortcutDefinition {",
+          "export type BindingIssue = 'reserved' | 'unsupported-browser' | 'modifier-required' | 'unsupported-key'",
+          "export interface EffectiveShortcut {",
+          "export type ShortcutEdit = { type: 'set'; id: ShortcutCommandId; binding: ShortcutBinding | null }",
+          "export function parseBinding(value: unknown): ShortcutBinding | null {",
+          "export function parseShortcutDocument(raw: string | null): ShortcutDocument | 'invalid' | 'future' {",
+          "export function bindingIssue(binding: NormalizedBinding, runtime: ShortcutRuntime, platform: ShortcutPlatform): BindingIssue | null {",
+          "export function resolveShortcutDefault(definition: ShortcutDefinition, runtime: ShortcutRuntime,",
+          "export function effectiveShortcuts(definitions: readonly ShortcutDefinition[], document: ShortcutDocument,",
+          "export function overlappingBindings(left: NormalizedBinding, right: NormalizedBinding): boolean {",
+          "export function editShortcutDocument(document: ShortcutDocument, edit: ShortcutEdit,",
+          "export function parseShortcutEdit(value: unknown): ShortcutEdit {",
+          "export function parseShortcutDefinitions(value: unknown): readonly ShortcutDefinition[] {"
+        ],
+        "after": [
+          "export interface ShortcutDocument {",
+          "export interface ShortcutDefinition {",
+          "export type BindingIssue = 'reserved' | 'unsupported-browser' | 'modifier-required' | 'unsupported-key'",
+          "export interface EffectiveShortcut {",
+          "export type ShortcutEdit = { type: 'set'; id: ShortcutCommandId; binding: ShortcutBinding | null }",
+          "export function parseBinding(value: unknown): ShortcutBinding | null {",
+          "export function parseShortcutDocument(raw: string | null): ShortcutDocument | 'invalid' | 'future' {",
+          "export function bindingIssue(binding: NormalizedBinding, runtime: ShortcutRuntime, platform: ShortcutPlatform): BindingIssue | null {",
+          "export function resolveShortcutDefault(definition: ShortcutDefinition, runtime: ShortcutRuntime,",
+          "export function effectiveShortcuts(definitions: readonly ShortcutDefinition[], document: ShortcutDocument,",
+          "export function overlappingBindings(left: NormalizedBinding, right: NormalizedBinding): boolean {",
+          "export function editShortcutDocument(document: ShortcutDocument, edit: ShortcutEdit,",
+          "export function parseShortcutEdit(value: unknown): ShortcutEdit {",
+          "export function parseShortcutDefinitions(value: unknown): readonly ShortcutDefinition[] {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/src/protocol.ts",
+      "status": "unchanged",
+      "accepted": "982aaf97945f8f41df647edc01ad7eb4c1aca9a60909c6ba50dc4b1484182877",
+      "candidate": "982aaf97945f8f41df647edc01ad7eb4c1aca9a60909c6ba50dc4b1484182877",
+      "exports": {
+        "before": [
+          "export * from './binding.ts'",
+          "export * from './configuration.ts'",
+          "export * from './persistence.ts'",
+          "export * from './native.ts'"
+        ],
+        "after": [
+          "export * from './binding.ts'",
+          "export * from './configuration.ts'",
+          "export * from './persistence.ts'",
+          "export * from './native.ts'"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/src/binding.ts",
+      "status": "unchanged",
+      "accepted": "d5a05f440aa2115ab906ff87a44bf01baf93b3078b3e5304355bf6e9546e85c5",
+      "candidate": "d5a05f440aa2115ab906ff87a44bf01baf93b3078b3e5304355bf6e9546e85c5",
+      "exports": {
+        "before": [
+          "export type ShortcutCommandId = Branded<'ShortcutCommandId'>",
+          "export type ShortcutPlatform = 'macos' | 'windows' | 'linux'",
+          "export type ShortcutRuntime = 'desktop' | 'web'",
+          "export type ShortcutProfile = `${ShortcutRuntime}:${ShortcutPlatform}`",
+          "export type ShortcutModifier = 'primary' | 'control' | 'alt' | 'shift' | 'meta'",
+          "export interface ShortcutBinding {",
+          "export interface NormalizedBinding {",
+          "export function normalizeBinding(binding: ShortcutBinding, platform: ShortcutPlatform): NormalizedBinding {",
+          "export function bindingKey(binding: NormalizedBinding): string {",
+          "export function presentBinding(binding: NormalizedBinding | null, platform: ShortcutPlatform): {",
+          "export function isWebBindingAllowed(binding: NormalizedBinding, platform: ShortcutPlatform): boolean {"
+        ],
+        "after": [
+          "export type ShortcutCommandId = Branded<'ShortcutCommandId'>",
+          "export type ShortcutPlatform = 'macos' | 'windows' | 'linux'",
+          "export type ShortcutRuntime = 'desktop' | 'web'",
+          "export type ShortcutProfile = `${ShortcutRuntime}:${ShortcutPlatform}`",
+          "export type ShortcutModifier = 'primary' | 'control' | 'alt' | 'shift' | 'meta'",
+          "export interface ShortcutBinding {",
+          "export interface NormalizedBinding {",
+          "export function normalizeBinding(binding: ShortcutBinding, platform: ShortcutPlatform): NormalizedBinding {",
+          "export function bindingKey(binding: NormalizedBinding): string {",
+          "export function presentBinding(binding: NormalizedBinding | null, platform: ShortcutPlatform): {",
+          "export function isWebBindingAllowed(binding: NormalizedBinding, platform: ShortcutPlatform): boolean {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/src/client/dom.ts",
+      "status": "unchanged",
+      "accepted": "068ecc2f5a2d65a1d67aeaa345490dbfc7b7ca08afe1afd811eba665942c8e6f",
+      "candidate": "068ecc2f5a2d65a1d67aeaa345490dbfc7b7ca08afe1afd811eba665942c8e6f",
+      "exports": {
+        "before": [
+          "export function detectEnvironment(document: Document, navigator: Navigator): {",
+          "export function installKeyboard(window: Window, shortcuts: Pick<ShortcutRegistry, 'dispatch' | 'runtime' | 'platform'>,"
+        ],
+        "after": [
+          "export function detectEnvironment(document: Document, navigator: Navigator): {",
+          "export function installKeyboard(window: Window, shortcuts: Pick<ShortcutRegistry, 'dispatch' | 'runtime' | 'platform'>,"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/src/client/index.ts",
+      "status": "unchanged",
+      "accepted": "f6ccfb7ffd617ebc0d56948fb5b540bbb7eab7c65a6dd318a8078f03da20fcaa",
+      "candidate": "f6ccfb7ffd617ebc0d56948fb5b540bbb7eab7c65a6dd318a8078f03da20fcaa",
+      "exports": {
+        "before": [
+          "export type { ShortcutCatalogEntry, ShortcutCommand, ShortcutContext, ShortcutGesture, Shortcuts } from './types.ts'",
+          "export type { ShortcutFixedInput, ShortcutFixedCommand, ShortcutFixedCatalogEntry } from './types.ts'",
+          "export type { ShortcutBinding, ShortcutCommandId, ShortcutPlatform, ShortcutRuntime } from '../protocol.ts'",
+          "export default class ShortcutsService extends Service implements Shortcuts {"
+        ],
+        "after": [
+          "export type { ShortcutCatalogEntry, ShortcutCommand, ShortcutContext, ShortcutGesture, Shortcuts } from './types.ts'",
+          "export type { ShortcutFixedInput, ShortcutFixedCommand, ShortcutFixedCatalogEntry } from './types.ts'",
+          "export type { ShortcutBinding, ShortcutCommandId, ShortcutPlatform, ShortcutRuntime } from '../protocol.ts'",
+          "export default class ShortcutsService extends Service implements Shortcuts {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/src/client/native.ts",
+      "status": "unchanged",
+      "accepted": "bbe60a71ecc79e3a1e21ed9deae1906d79a2755c345cf7abe1fac1fb66d57ec9",
+      "candidate": "bbe60a71ecc79e3a1e21ed9deae1906d79a2755c345cf7abe1fac1fb66d57ec9",
+      "exports": {
+        "before": [
+          "export function installNativeKeyboard(window: Window, keyboard: DesktopKeyboardApi, registry: ShortcutRegistry,"
+        ],
+        "after": [
+          "export function installNativeKeyboard(window: Window, keyboard: DesktopKeyboardApi, registry: ShortcutRegistry,"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/src/client/registry.ts",
+      "status": "unchanged",
+      "accepted": "73c5e66a8e49235537a893cd1273321932ca69afab0a98da6c6641715756b47e",
+      "candidate": "73c5e66a8e49235537a893cd1273321932ca69afab0a98da6c6641715756b47e",
+      "exports": {
+        "before": [
+          "export class ShortcutRegistry {"
+        ],
+        "after": [
+          "export class ShortcutRegistry {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/shortcuts/src/client/storage.ts",
+      "status": "unchanged",
+      "accepted": "1e59436c24f4c5652fbb3b98a301eccec07fda28ee736c427d9bb363e4ca3989",
+      "candidate": "1e59436c24f4c5652fbb3b98a301eccec07fda28ee736c427d9bb363e4ca3989",
+      "exports": {
+        "before": [
+          "export const SHORTCUT_STORAGE_KEY = 'dsh.keybindings.v1'",
+          "export function webShortcutStorage(window: Window, platform: ShortcutPlatform,",
+          "export function desktopShortcutStorage(window: Window): DesktopShortcutsApi | undefined {"
+        ],
+        "after": [
+          "export const SHORTCUT_STORAGE_KEY = 'dsh.keybindings.v1'",
+          "export function webShortcutStorage(window: Window, platform: ShortcutPlatform,",
+          "export function desktopShortcutStorage(window: Window): DesktopShortcutsApi | undefined {"
+        ]
+      }
+    },
+    {
+      "path": "packages/client/store/src/index.ts",
+      "status": "unchanged",
+      "accepted": "6969ed123830868c44d90b664cd40d81d4f6a8fd18245a695fdc3cca38c9da08",
+      "candidate": "6969ed123830868c44d90b664cd40d81d4f6a8fd18245a695fdc3cca38c9da08",
+      "exports": {
+        "before": [
+          "export type {",
+          "export interface SnapshotStore<T> extends ObservableSnapshot<T> {",
+          "export function notifySubscribers<Args extends readonly unknown[]>(",
+          "export function shallowEqual(a: unknown, b: unknown): boolean {",
+          "export function createSnapshotStore<T>(",
+          "export interface EngineStoreInstance<T, A extends ActionsDecl<T>> extends StoreInstance<T, A> {",
+          "export interface EngineStoreHandle<T, A extends ActionsDecl<T>> extends StoreHandle<T, A> {",
+          "export function defineStore<T, A extends ActionsDecl<T>>("
+        ],
+        "after": [
+          "export type {",
+          "export interface SnapshotStore<T> extends ObservableSnapshot<T> {",
+          "export function notifySubscribers<Args extends readonly unknown[]>(",
+          "export function shallowEqual(a: unknown, b: unknown): boolean {",
+          "export function createSnapshotStore<T>(",
+          "export interface EngineStoreInstance<T, A extends ActionsDecl<T>> extends StoreInstance<T, A> {",
+          "export interface EngineStoreHandle<T, A extends ActionsDecl<T>> extends StoreHandle<T, A> {",
+          "export function defineStore<T, A extends ActionsDecl<T>>("
+        ]
+      }
+    }
+  ],
+  "decision": "Candidate only. Explicit review, frozen fixtures and compatibility tests are required before editing accepted.json."
+}

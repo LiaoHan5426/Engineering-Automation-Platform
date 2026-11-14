@@ -1,3 +1,4 @@
+import { createMockMcpOperationBackend } from './mcpOperationBackend'
 import { ToolErrors } from '@eap/runtime-client/contracts'
 /** Minimal capability/MCP catalog for mock mode browser checks. */
 import { createMockToolExecutionBackend } from './toolExecutionBackend.ts'
@@ -72,6 +73,18 @@ export function createMockCapabilityBackend() {
     },
   ]
   const mcpServers = [
+    {
+      id: 'speech-simulated',
+      name: 'Simulated speech tools (Mock)',
+      transport: 'stdio',
+      endpoint: 'mock:simulation-only',
+      trusted: true,
+      enabled: true,
+      usable: true,
+      tools: ['simulate_asr', 'simulate_tts'],
+      productionGrantedTools: ['simulate_asr', 'simulate_tts'],
+      productionGranted: true,
+    },
     {
       id: 'official-readonly',
       name: '官方只读样例',
@@ -183,8 +196,11 @@ export function createMockCapabilityBackend() {
     return path.includes('?') ? path.slice(0, path.indexOf('?')) : path
   }
 
+  const mcpOperations = createMockMcpOperationBackend(() => mcpServers)
   return {
     async handle(method: string, path: string, body?: unknown) {
+      const operation = mcpOperations.handle(method, path, body)
+      if (operation) return operation
       const execution = await executions.handle(method, path, body)
       if (execution) return execution
       if (method === 'POST' && pathnameOnly(path) === '/cli-programs/git/probe') {

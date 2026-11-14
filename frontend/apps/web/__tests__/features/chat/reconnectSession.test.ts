@@ -1,3 +1,4 @@
+import { withChatGraph } from './graphApi.fixture'
 import { expect, it, vi } from 'vite-plus/test'
 import type { AiConversation, ModelConnection } from '@eap/runtime-client'
 import { createChatSession, type ChatApi } from '../../../src/features/chat/chatSession'
@@ -27,7 +28,7 @@ function setup() {
       memoryCleared: false,
     }),
   )
-  const api: ChatApi = {
+  const api: Omit<ChatApi, 'chatGraph' | 'chatOperation' | 'cancelAiExecution'> = {
     aiStatus: vi.fn(),
     openAiConversation: vi.fn(async () => old),
     aiConversation: vi.fn(async () => {
@@ -37,7 +38,7 @@ function setup() {
     assignConversationConnection: assign,
     sendAiMessage: vi.fn(),
   }
-  const session = createChatSession(api)
+  const session = createChatSession(withChatGraph(api))
   session.connections.value = [
     {
       id: 'desk',

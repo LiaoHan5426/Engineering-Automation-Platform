@@ -4,8 +4,9 @@ import { createApp, h, nextTick, type App } from 'vue'
 import { runtimeApi, type TaskContext } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import TaskComposer from '../../../src/features/chat/TaskComposer.vue'
-import { createChatSession, type ChatApi } from '../../../src/features/chat/chatSession'
+import { createChatSession } from '../../../src/features/chat/chatSession'
 import { workbench } from '../../../src/features/shell/workbench'
+import { graphServer } from './canonicalGraph.fixture'
 let app: App, host: HTMLDivElement
 afterEach(() => {
   app?.unmount()
@@ -35,23 +36,7 @@ function button(id: string) {
   return node!
 }
 async function setup() {
-  const send = vi.fn(async () => ({
-    answer: 'answer',
-    error: '',
-    status: 'SUCCEEDED',
-    executionId: null,
-    approval: '',
-    verification: '',
-    toolEvents: [],
-    artifacts: [],
-    artifactError: '',
-    knowledgeContext: evidence,
-    knowledgeMemoryCleared: true,
-  }))
-  const api = {
-    openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
-    sendAiMessage: send,
-  } as unknown as ChatApi
+  const { api, send } = graphServer()
   const session = createChatSession(api)
   await session.openConversation()
   session.draft.value = 'original question'
@@ -335,9 +320,20 @@ it('chooses a persisted enabled expert, previews the exact draft, then explicitl
   await session.send()
   expect(send.mock.calls[0]).toEqual([
     'c1',
-    'original question',
-    'none',
-    expect.objectContaining({ knowledgeExpertRef: expertRef, instructions: '', files: [] }),
+    expect.objectContaining({
+      operationId: expect.any(String),
+      expectedRevision: 0,
+      kind: 'send',
+      parentMessageId: null,
+      targetMessageId: null,
+      message: 'original question',
+      toolMode: 'none',
+      context: expect.objectContaining({
+        knowledgeExpertRef: expertRef,
+        instructions: '',
+        files: [],
+      }),
+    }),
     { signal: expect.any(AbortSignal), onEvent: expect.any(Function) },
   ])
 })

@@ -1076,8 +1076,19 @@
 
 /* Conversation layout: fixed tools and composer; only the transcript scrolls. */
 .body--chat > .workbench {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
+}
+.body--chat > .workbench > .eap-dsh-browser {
+  flex: 0 0 auto;
+}
+.body--chat > .workbench > .chat-workspace {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
 }
 .chat-workspace {
   height: 100%;

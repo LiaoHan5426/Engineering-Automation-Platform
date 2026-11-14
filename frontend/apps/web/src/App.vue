@@ -122,7 +122,13 @@ const activeView = ref(isKnownHash(hashView) ? hashView : DEFAULT_VIEW)
 let acceptedHash = typeof location !== 'undefined' ? location.hash : ''
 const modelSettings = ref<{ guardLeave: (onDiscard?: () => void) => boolean } | null>(null)
 const projectBoard = ref<{ guardLeave: (onDiscard?: () => void) => boolean } | null>(null)
-function guardWorkspaceLeave(view: string, onDiscard: () => void) {
+function canNavigate(onDiscard?: () => void): boolean {
+  if (!guardWorkspaceLeave(activeView.value, onDiscard)) return false
+  if (activeView.value === 'experts' && expertManager.value && !expertManager.value.guardLeave())
+    return false
+  return pluginSlot.value?.guardLeave(activeView.value, onDiscard) ?? true
+}
+function guardWorkspaceLeave(view: string, onDiscard?: () => void) {
   const target =
     view === 'model-settings' ? modelSettings.value : view === 'board' ? projectBoard.value : null
   return target?.guardLeave?.(onDiscard) ?? true
@@ -195,7 +201,14 @@ watch(activeView, (value, previous) => {
     activeView.value = previous
     return
   }
-  if (previous !== value && !(pluginSlot.value?.guardLeave(previous) ?? true)) {
+  if (
+    previous !== value &&
+    !(
+      pluginSlot.value?.guardLeave(previous, () => {
+        activeView.value = value
+      }) ?? true
+    )
+  ) {
     activeView.value = previous
     return
   }
@@ -237,8 +250,15 @@ function hashChange() {
     window.history.replaceState(null, '', acceptedHash || '#' + activeView.value)
     return
   }
-  if (id !== activeView.value && !(pluginSlot.value?.guardLeave(activeView.value) ?? true)) {
-    window.history.replaceState(null, '', '#' + activeView.value)
+  if (
+    (id !== activeView.value || (id === 'chat' && workbench.workMode !== 'code')) &&
+    !(
+      pluginSlot.value?.guardLeave(activeView.value, () => {
+        location.hash = requestedHash
+      }) ?? true
+    )
+  ) {
+    window.history.replaceState(null, '', acceptedHash || '#' + activeView.value)
     return
   }
   if (
@@ -270,8 +290,20 @@ function onShellKey(event: KeyboardEvent) {
 watch(
   () => workbench.workMode,
   (mode) => {
-    if (activeView.value === 'chat' && typeof location !== 'undefined')
-      location.hash = mode === 'work' ? 'work' : 'chat'
+    if (activeView.value !== 'chat' || typeof location === 'undefined') return
+    const acceptedMode = acceptedHash.startsWith('#work') ? 'work' : 'code'
+    if (
+      mode !== acceptedMode &&
+      !(
+        pluginSlot.value?.guardLeave('chat', () => {
+          workbench.workMode = mode
+        }) ?? true
+      )
+    ) {
+      workbench.workMode = acceptedMode
+      return
+    }
+    location.hash = mode === 'work' ? 'work' : 'chat'
   },
 )
 
@@ -281,7 +313,7 @@ const errors = ref<Record<string, string>>({})
 const capabilities = ref<string[]>([])
 const capabilityItems = ref<CapabilityItem[]>([])
 const capabilityKinds = ref<CapabilityKindSummary[]>([])
-const pluginSlot = ref<{ guardLeave: (id: string) => boolean }>()
+const pluginSlot = ref<{ guardLeave: (id: string, onDiscard?: () => void) => boolean }>()
 const expertEditing = ref(false)
 const editorSurface = computed(
   () =>
@@ -1129,9 +1161,7 @@ onUnmounted(() => {
     >
       <DesktopNavigation
         v-show="!editorSurface"
-        :can-navigate="
-          () => activeView !== 'experts' || !expertManager || expertManager.guardLeave()
-        "
+        :can-navigate="canNavigate"
         :active-view="activeView"
         :pages="pages"
         :board-enabled="pluginHost.boardContributionVisible.value"
@@ -1905,6 +1935,7 @@ onUnmounted(() => {
           :view-id="activeView"
           :host="pluginHost"
           :chat-view="ChatWorkspace"
+          @navigate="activeView = $event"
         />
       </main>
 

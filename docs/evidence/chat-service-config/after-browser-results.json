@@ -1,0 +1,513 @@
+{
+  "provenance": {
+    "head": "dfa9612c25cd12be1822bd16fc14fcd07dc5b133",
+    "sourceTreeSha256": "3621149bbab3b913b0df12db78fe5f01973e276b9611d2deb6e98f9f14f0fde8",
+    "trackedDiffSha256": "1813bdd2b3aac24c5d2cfec918e511ec615d8b865b98d6c2a2d6788811c555ff",
+    "stagedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "finalCaptures": true
+  },
+  "results": [
+    {
+      "geometry": {
+        "viewportHeight": 1000,
+        "documentHeight": 1000,
+        "windowScrollY": 0,
+        "composer": {
+          "x": 370,
+          "y": 628.609375,
+          "width": 980,
+          "height": 343.390625,
+          "top": 628.609375,
+          "right": 1350,
+          "bottom": 972,
+          "left": 370
+        },
+        "composerClientHeight": 341,
+        "composerScrollHeight": 341,
+        "workbench": {
+          "x": 288,
+          "y": 48,
+          "width": 1144,
+          "height": 944,
+          "top": 48,
+          "right": 1432,
+          "bottom": 992,
+          "left": 288
+        },
+        "workbenchScrollTop": 0,
+        "send": {
+          "x": 1299,
+          "y": 894.859375,
+          "width": 34,
+          "height": 34,
+          "top": 894.859375,
+          "right": 1333,
+          "bottom": 928.859375,
+          "left": 1299
+        },
+        "model": {
+          "x": 1179,
+          "y": 893.109375,
+          "width": 112,
+          "height": 37.5,
+          "top": 893.109375,
+          "right": 1291,
+          "bottom": 930.609375,
+          "left": 1179
+        }
+      },
+      "width": 1440,
+      "height": 1000,
+      "canonicalDisabledServerPreserved": true,
+      "chat": {
+        "errors": [],
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/api/ai/speech/services"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/status"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/connections"
+          },
+          {
+            "method": "GET",
+            "path": "/api/health"
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/databases"
+          },
+          {
+            "method": "GET",
+            "path": "/api/experts"
+          },
+          {
+            "method": "GET",
+            "path": "/api/tasks"
+          },
+          {
+            "method": "GET",
+            "path": "/api/stats"
+          },
+          {
+            "method": "GET",
+            "path": "/api/scenarios"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/speech/services"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/status"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/connections"
+          },
+          {
+            "method": "GET",
+            "path": "/api/health"
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/databases"
+          },
+          {
+            "method": "GET",
+            "path": "/api/experts"
+          },
+          {
+            "method": "GET",
+            "path": "/api/tasks"
+          },
+          {
+            "method": "GET",
+            "path": "/api/stats"
+          },
+          {
+            "method": "GET",
+            "path": "/api/scenarios"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/status"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/connections"
+          },
+          {
+            "method": "GET",
+            "path": "/api/health"
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/databases"
+          },
+          {
+            "method": "GET",
+            "path": "/api/experts"
+          },
+          {
+            "method": "GET",
+            "path": "/api/tasks"
+          },
+          {
+            "method": "GET",
+            "path": "/api/stats"
+          },
+          {
+            "method": "GET",
+            "path": "/api/scenarios"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+          }
+        ],
+        "blocked": [],
+        "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+        "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+      },
+      "mcp": {
+        "errors": [],
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/health"
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/databases"
+          },
+          {
+            "method": "GET",
+            "path": "/api/experts"
+          },
+          {
+            "method": "GET",
+            "path": "/api/tasks"
+          },
+          {
+            "method": "GET",
+            "path": "/api/stats"
+          },
+          {
+            "method": "GET",
+            "path": "/api/scenarios"
+          },
+          {
+            "method": "GET",
+            "path": "/api/runtime/trusted-tools"
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/runtime/data-layout"
+          },
+          {
+            "method": "GET",
+            "path": "/api/runtime/trusted-tools"
+          },
+          {
+            "method": "GET",
+            "path": "/api/runtime/data-layout"
+          }
+        ],
+        "blocked": []
+      }
+    },
+    {
+      "geometry": {
+        "viewportHeight": 1000,
+        "documentHeight": 1000,
+        "windowScrollY": 0,
+        "composer": {
+          "x": 72,
+          "y": 606.96875,
+          "width": 302,
+          "height": 343.03125,
+          "top": 606.96875,
+          "right": 374,
+          "bottom": 950,
+          "left": 72
+        },
+        "composerClientHeight": 341,
+        "composerScrollHeight": 385,
+        "workbench": {
+          "x": 64,
+          "y": 56,
+          "width": 318,
+          "height": 906,
+          "top": 56,
+          "right": 382,
+          "bottom": 962,
+          "left": 64
+        },
+        "workbenchScrollTop": 0,
+        "send": {
+          "x": 323,
+          "y": 917.21875,
+          "width": 34,
+          "height": 34,
+          "top": 917.21875,
+          "right": 357,
+          "bottom": 951.21875,
+          "left": 323
+        },
+        "model": {
+          "x": 203,
+          "y": 915.46875,
+          "width": 112,
+          "height": 37.5,
+          "top": 915.46875,
+          "right": 315,
+          "bottom": 952.96875,
+          "left": 203
+        }
+      },
+      "width": 390,
+      "height": 1000,
+      "canonicalDisabledServerPreserved": true,
+      "chat": {
+        "errors": [],
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/api/ai/speech/services"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/status"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/connections"
+          },
+          {
+            "method": "GET",
+            "path": "/api/health"
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/databases"
+          },
+          {
+            "method": "GET",
+            "path": "/api/experts"
+          },
+          {
+            "method": "GET",
+            "path": "/api/tasks"
+          },
+          {
+            "method": "GET",
+            "path": "/api/stats"
+          },
+          {
+            "method": "GET",
+            "path": "/api/scenarios"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/speech/services"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/status"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/connections"
+          },
+          {
+            "method": "GET",
+            "path": "/api/health"
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/databases"
+          },
+          {
+            "method": "GET",
+            "path": "/api/experts"
+          },
+          {
+            "method": "GET",
+            "path": "/api/tasks"
+          },
+          {
+            "method": "GET",
+            "path": "/api/stats"
+          },
+          {
+            "method": "GET",
+            "path": "/api/scenarios"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/status"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/connections"
+          },
+          {
+            "method": "GET",
+            "path": "/api/health"
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/databases"
+          },
+          {
+            "method": "GET",
+            "path": "/api/experts"
+          },
+          {
+            "method": "GET",
+            "path": "/api/tasks"
+          },
+          {
+            "method": "GET",
+            "path": "/api/stats"
+          },
+          {
+            "method": "GET",
+            "path": "/api/scenarios"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+          },
+          {
+            "method": "GET",
+            "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+          }
+        ],
+        "blocked": [],
+        "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+        "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+      },
+      "mcp": {
+        "errors": [],
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/health"
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/databases"
+          },
+          {
+            "method": "GET",
+            "path": "/api/experts"
+          },
+          {
+            "method": "GET",
+            "path": "/api/tasks"
+          },
+          {
+            "method": "GET",
+            "path": "/api/stats"
+          },
+          {
+            "method": "GET",
+            "path": "/api/scenarios"
+          },
+          {
+            "method": "GET",
+            "path": "/api/runtime/trusted-tools"
+          },
+          {
+            "method": "GET",
+            "path": "/api/capabilities"
+          },
+          {
+            "method": "GET",
+            "path": "/api/runtime/data-layout"
+          },
+          {
+            "method": "GET",
+            "path": "/api/runtime/trusted-tools"
+          },
+          {
+            "method": "GET",
+            "path": "/api/runtime/data-layout"
+          }
+        ],
+        "blocked": []
+      }
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { withChatGraph } from './graphApi.fixture'
 import { describe, expect, it } from 'vite-plus/test'
 import { createChatSession, type ChatApi } from '../../../src/features/chat/chatSession'
 import type { AiStatus, TaskWorkingMemorySnapshot } from '@eap/runtime-client'
@@ -55,8 +56,8 @@ describe('working memory session', () => {
       sendAiMessage: async () => {
         throw new Error('unused')
       },
-    } satisfies ChatApi
-    const session = createChatSession(api)
+    } satisfies Omit<ChatApi, 'chatGraph' | 'chatOperation' | 'cancelAiExecution'>
+    const session = createChatSession(withChatGraph(api))
     await session.openConversation()
     expect(session.workingMemory.value?.layers).toContain('task_working')
     await session.saveWorkingMemory({ goal: '交付登录页' })
@@ -108,8 +109,8 @@ describe('working memory session', () => {
           artifacts: [],
         }
       },
-    } satisfies ChatApi
-    const session = createChatSession(api)
+    } satisfies Omit<ChatApi, 'chatGraph' | 'chatOperation' | 'cancelAiExecution'>
+    const session = createChatSession(withChatGraph(api))
     await session.openConversation()
     session.draft.value = '继续'
     await session.send()
@@ -140,8 +141,8 @@ describe('working memory session', () => {
       sendAiMessage: async () => {
         throw new Error('unused')
       },
-    } satisfies ChatApi
-    const session = createChatSession(api)
+    } satisfies Omit<ChatApi, 'chatGraph' | 'chatOperation' | 'cancelAiExecution'>
+    const session = createChatSession(withChatGraph(api))
     await session.openConversation()
     await session.saveWorkingMemory({
       goal: '交付登录页',

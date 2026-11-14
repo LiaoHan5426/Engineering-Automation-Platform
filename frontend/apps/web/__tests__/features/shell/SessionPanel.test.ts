@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref, type App } from 'vue'
-import { runtimeApi, type CodeProposal } from '@eap/runtime-client'
+import { ChatExecutionStatus, runtimeApi, type CodeProposal } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import SessionPanel from '../../../src/components/SessionPanel.vue'
 import {
@@ -54,6 +54,47 @@ function binding(extra: Partial<ChatBinding> = {}): ChatBinding {
     ...extra,
   }
 }
+
+it('shows structured plan states, keeps evidence on error, retries and excludes another execution', async () => {
+  const refreshPlan = vi.fn()
+  const execution: NonNullable<ChatBinding['latestExecution']> = {
+    conversationId: 's1',
+    executionId: 'e1',
+    status: ChatExecutionStatus.CANCELLED,
+    observing: false,
+    toolEvents: [],
+    error: '',
+    refreshPlan,
+    plan: {
+      authority: 'server',
+      state: 'error',
+      snapshot: {
+        schemaVersion: 1,
+        planId: 'p1',
+        conversationId: 's1',
+        executionId: 'e1',
+        revision: 2,
+        updatedAt: '2026-11-14T12:00:00Z',
+        items: [{ id: 'stable', content: 'Review changes', status: 'in_progress' }],
+      },
+    },
+  }
+  chatBinding.value = binding({ latestExecution: execution })
+  root = document.createElement('div')
+  document.body.append(root)
+  app = createApp({ render: () => h(SessionPanel, { mode: 'summary' }) })
+  app.use(i18n)
+  app.mount(root)
+  expect(root.querySelector('[data-testid="summary-plan"]')?.textContent).toContain(
+    'Review changes',
+  )
+  expect(root.querySelector('[data-testid="summary-plan"] [role="alert"]')).not.toBeNull()
+  ;(root.querySelector('[data-testid="summary-plan"] button') as HTMLButtonElement).click()
+  expect(refreshPlan).toHaveBeenCalledOnce()
+  chatBinding.value = binding({ activeId: 'other', latestExecution: execution })
+  await nextTick()
+  expect(root.querySelector('[data-testid="summary-plan"]')).toBeNull()
+})
 
 it('replaces the summary when the active session changes', async () => {
   chatBinding.value = binding({
@@ -126,32 +167,123 @@ it('replaces the summary when the active session changes', async () => {
   expect(root.textContent).not.toContain('notes.md')
 })
 
-it("lists this session's steps and clears them with the session", async () => {
+it('shows only recorded execution evidence and isolates sessions and drafts', async () => {
+  const execution = {
+    conversationId: 'a',
+    executionId: 'exec-a',
+    status: ChatExecutionStatus.RUNNING,
+    observing: true,
+    toolEvents: [{ sequence: 2, code: 'TOOL_STARTED' }],
+    error: '',
+  }
   chatBinding.value = binding({
     activeId: 'a',
     draft: '保留正文',
     sending: true,
     proposalFiles: ['src/App.vue'],
+    latestExecution: execution,
   })
   root = document.createElement('div')
   document.body.append(root)
   app = createApp({ render: () => h(SessionPanel, { mode: 'summary' }) })
   app.use(i18n).mount(root)
   await nextTick()
-  const steps = root.querySelector('[data-testid=summary-steps]')?.textContent ?? ''
-  expect(steps).toContain('草稿仍在输入框')
-  expect(steps).toContain('发送仍在进行')
-  expect(steps).toContain('候选 1 个文件')
-  expect(steps).toContain('无执行号')
-  expect(steps).toContain('交互验收：未完成')
-  chatBinding.value = binding({ activeId: 'b', draft: '  ', sending: false, proposalFiles: [] })
+  expect(root.querySelector('[data-testid=summary-steps]')).toBeNull()
+  expect(root.querySelector('[data-testid=summary-execution-status]')?.textContent).toBe('执行中')
+  expect(root.querySelector('[data-testid=summary-execution-id]')?.textContent).toContain('exec-a')
+  expect(root.querySelector('[data-testid=summary-execution-tools]')?.textContent).toContain(
+    '2 · TOOL_STARTED',
+  )
+  expect(root.querySelector('[data-testid=summary-execution-observation]')?.textContent).toContain(
+    '正在接收',
+  )
+  expect(chatBinding.value?.draft).toBe('保留正文')
+  // A stale projection cannot appear in another conversation.
+  chatBinding.value = binding({ activeId: 'b', latestExecution: execution })
   await nextTick()
-  const next = root.querySelector('[data-testid=summary-steps]')?.textContent ?? ''
-  expect(next).toContain('输入框没有草稿')
-  expect(next).toContain('当前没有进行中的发送')
-  expect(next).toContain('无候选')
-  expect(next).not.toContain('草稿仍在输入框')
-  expect(next).toContain('无执行号')
+  expect(root.querySelector('[data-testid=summary-execution-empty]')).not.toBeNull()
+  expect(root.querySelector('[data-testid=summary-execution]')?.textContent).not.toContain('exec-a')
+  // Drafts and candidates alone do not manufacture execution progress.
+  chatBinding.value = binding({
+    activeId: null,
+    draft: 'new draft',
+    sending: true,
+    proposalFiles: ['other.vue'],
+  })
+  await nextTick()
+  expect(root.querySelector('[data-testid=summary-execution-empty]')).not.toBeNull()
+  expect(root.querySelector('[data-testid=summary-execution-status]')).toBeNull()
+})
+
+it.each(Object.values(ChatExecutionStatus))(
+  'shows the recorded %s without inferring background activity or acceptance',
+  async (status) => {
+    chatBinding.value = binding({
+      latestExecution: {
+        conversationId: 's1',
+        executionId: 'exec',
+        status,
+        observing: false,
+        toolEvents: [],
+        error: '',
+      },
+    })
+    root = document.createElement('div')
+    document.body.append(root)
+    app = createApp({ render: () => h(SessionPanel, { mode: 'summary' }) })
+    app.use(i18n).mount(root)
+    await nextTick()
+    expect(root.querySelector('[data-testid=summary-execution-status]')?.textContent).toBe(
+      i18n.global.t(`desktop.chatExecutionStatuses.${status}`),
+    )
+    const summary = root.querySelector('[data-testid=summary-execution]')!.textContent!
+    expect(summary).toContain('本地历史记录')
+    expect(summary).toContain('不代表后台仍在运行')
+    expect(summary).not.toContain('检查已通过')
+    expect(summary).not.toContain('交互验收')
+    if (status === ChatExecutionStatus.UNKNOWN)
+      expect(summary).toContain('停止等待不代表执行已取消')
+    if (status === ChatExecutionStatus.CANCELLING) expect(summary).toContain('仍需等待实际终态')
+  },
+)
+
+it('does not report an unconfirmed local placeholder as a running server execution', async () => {
+  chatBinding.value = binding({
+    latestExecution: {
+      conversationId: 's1',
+      executionId: null,
+      status: ChatExecutionStatus.RUNNING,
+      observing: true,
+      toolEvents: [],
+      error: '',
+    },
+  })
+  root = document.createElement('div')
+  document.body.append(root)
+  app = createApp({ render: () => h(SessionPanel, { mode: 'summary' }) })
+  app.use(i18n).mount(root)
+  await nextTick()
+  expect(root.querySelector('[data-testid=summary-execution-status]')?.textContent).toBe(
+    '等待执行确认',
+  )
+  expect(root.querySelector('[data-testid=summary-execution-id]')?.textContent).toContain(
+    '没有执行号',
+  )
+  chatBinding.value = binding({
+    latestExecution: {
+      conversationId: 's1',
+      executionId: null,
+      status: null,
+      observing: false,
+      toolEvents: [],
+      error: 'AI_RESPONSE_INVALID',
+    },
+  })
+  await nextTick()
+  const summary = root.querySelector('[data-testid=summary-execution]')!.textContent!
+  expect(summary).toContain('没有有效的执行状态记录')
+  expect(summary).not.toContain('结果未知')
+  expect(summary).toContain('AI_RESPONSE_INVALID')
 })
 
 it('shows an unavailable terminal without fake session controls and can close it', async () => {
@@ -252,7 +384,7 @@ it('shows delivery input without inventing a preview URL from a source path', as
     i18n.global.t('desktop.deliveryPreview'),
   )
   expect(root.textContent).not.toContain('/#chat')
-  expect(root.textContent).toContain('交互验收：未完成')
+  expect(root.textContent).toContain(i18n.global.t('desktop.acceptanceStillOpen'))
   expect(root.textContent).not.toContain('demo passed')
 })
 

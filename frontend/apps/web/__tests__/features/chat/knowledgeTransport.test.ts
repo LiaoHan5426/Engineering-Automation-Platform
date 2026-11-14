@@ -1,6 +1,6 @@
 import { expect, it } from 'vite-plus/test'
 import { createChatApi } from '@eap/runtime-client'
-import { replyChatSse, replyJson, startChatHttpFixture } from '../../chatHttpFixture'
+import { graphRequest, replyChatSse, replyJson, startChatHttpFixture } from '../../chatHttpFixture'
 
 it('preserves server null for ordinary chat and omits an unsupplied expert reference', async () => {
   const fixture = await startChatHttpFixture((_request, response) => {
@@ -10,9 +10,7 @@ it('preserves server null for ordinary chat and omits an unsupplied expert refer
     const events: string[] = []
     const answer = await createChatApi(fixture.baseURL).sendAiMessage(
       'c1',
-      'ordinary question',
-      'none',
-      undefined,
+      graphRequest('ordinary question'),
       { signal: new AbortController().signal, onEvent: (event) => events.push(event.type) },
     )
     expect(fixture.requests).toHaveLength(1)
@@ -20,10 +18,10 @@ it('preserves server null for ordinary chat and omits an unsupplied expert refer
       method: 'POST',
       url: '/ai/conversations/c1/messages',
       headers: { accept: 'text/event-stream', 'content-type': 'application/json' },
-      data: { message: 'ordinary question', toolMode: 'none' },
+      data: graphRequest('ordinary question'),
     })
-    expect(fixture.requests[0]!.data).toEqual({ message: 'ordinary question', toolMode: 'none' })
-    expect(events).toEqual(['status', 'answer.delta', 'final'])
+    expect(fixture.requests[0]!.data).toEqual(graphRequest('ordinary question'))
+    expect(events).toEqual(['accepted', 'status', 'answer.delta', 'final'])
     expect(answer.knowledgeContext).toBeNull()
     expect(answer.knowledgeMemoryCleared).toBe(false)
   } finally {
@@ -64,7 +62,7 @@ it('serializes exact expert revision and draft through the shared client without
       targetPath: '',
       knowledgeExpertRef: expertRef,
     }
-    const answer = await api.sendAiMessage('c1', 'original draft', 'none', context)
+    const answer = await api.sendAiMessage('c1', graphRequest('original draft', context))
     expect(fixture.requests.map(({ method, url, data }) => ({ method, url, data }))).toEqual([
       {
         method: 'POST',
@@ -74,7 +72,7 @@ it('serializes exact expert revision and draft through the shared client without
       {
         method: 'POST',
         url: '/ai/conversations/c1/messages',
-        data: { message: 'original draft', toolMode: 'none', context },
+        data: graphRequest('original draft', context),
       },
     ])
     expect(answer.knowledgeContext).toEqual(preview)

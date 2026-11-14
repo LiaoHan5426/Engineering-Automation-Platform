@@ -1,0 +1,983 @@
+[
+  {
+    "revision": "36b9e7a8b5e367a66b7b63bd7c8263c4af4c0581",
+    "phase": "before",
+    "viewport": {
+      "width": 1918,
+      "height": 900
+    },
+    "geometry": {
+      "viewport": {
+        "width": 1918,
+        "height": 900
+      },
+      "rootScroll": 900,
+      "rootWidth": 1918,
+      "boxes": {
+        "html": {
+          "x": 0,
+          "y": 0,
+          "width": 1918,
+          "height": 900,
+          "clientHeight": 900,
+          "scrollHeight": 900,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        "body": {
+          "x": 0,
+          "y": 0,
+          "width": 1918,
+          "height": 900,
+          "clientHeight": 900,
+          "scrollHeight": 900,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        "#app": {
+          "x": 0,
+          "y": 0,
+          "width": 1918,
+          "height": 900,
+          "clientHeight": 900,
+          "scrollHeight": 900,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        "[data-testid=\"chat-workspace\"]": {
+          "x": 288,
+          "y": 125,
+          "width": 1622,
+          "height": 767,
+          "clientHeight": 767,
+          "scrollHeight": 767,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        ".chat-page-head": {
+          "x": 288,
+          "y": 125,
+          "width": 1622,
+          "height": 162.5,
+          "clientHeight": 162,
+          "scrollHeight": 162,
+          "overflowY": "visible",
+          "display": "flex"
+        },
+        "[data-testid=\"chat-body\"]": {
+          "x": 288,
+          "y": 287.5,
+          "width": 1622,
+          "height": 604.5,
+          "clientHeight": 605,
+          "scrollHeight": 605,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        "[data-testid=\"chat-main\"]": {
+          "x": 288,
+          "y": 287.5,
+          "width": 1622,
+          "height": 604.5,
+          "clientHeight": 605,
+          "scrollHeight": 605,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        "[data-testid=\"chat-feed\"]": {
+          "x": 288,
+          "y": 287.5,
+          "width": 1622,
+          "height": 192.03125,
+          "clientHeight": 192,
+          "scrollHeight": 728,
+          "overflowY": "auto",
+          "display": "block"
+        },
+        "[data-testid=\"chat-composer\"]": {
+          "x": 609,
+          "y": 539.53125,
+          "width": 980,
+          "height": 332.46875,
+          "clientHeight": 330,
+          "scrollHeight": 341,
+          "overflowY": "auto",
+          "display": "block"
+        },
+        ".live-shortcuts": null
+      },
+      "ancestors": [
+        {
+          "tag": "DIV",
+          "class": "eap-scrollbar chat-feed preview-feed",
+          "x": 288,
+          "y": 287.5,
+          "width": 1622,
+          "height": 192.03125,
+          "clientHeight": 192,
+          "scrollHeight": 728,
+          "overflowY": "auto",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "class": "chat-main",
+          "x": 288,
+          "y": 287.5,
+          "width": 1622,
+          "height": 604.5,
+          "clientHeight": 605,
+          "scrollHeight": 605,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "class": "eap-workbench-frame chat-body",
+          "x": 288,
+          "y": 287.5,
+          "width": 1622,
+          "height": 604.5,
+          "clientHeight": 605,
+          "scrollHeight": 605,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        {
+          "tag": "SECTION",
+          "class": "view work-page chat-workspace preview-workspace live-workspace",
+          "x": 288,
+          "y": 125,
+          "width": 1622,
+          "height": 767,
+          "clientHeight": 767,
+          "scrollHeight": 767,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        {
+          "tag": "MAIN",
+          "class": "workbench",
+          "x": 288,
+          "y": 48,
+          "width": 1622,
+          "height": 844,
+          "clientHeight": 844,
+          "scrollHeight": 844,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "class": "body body--chat",
+          "x": 0,
+          "y": 48,
+          "width": 1918,
+          "height": 852,
+          "clientHeight": 852,
+          "scrollHeight": 852,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        {
+          "tag": "DIV",
+          "class": "app",
+          "x": 0,
+          "y": 0,
+          "width": 1918,
+          "height": 900,
+          "clientHeight": 900,
+          "scrollHeight": 900,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        {
+          "tag": "DIV",
+          "class": "",
+          "x": 0,
+          "y": 0,
+          "width": 1918,
+          "height": 900,
+          "clientHeight": 900,
+          "scrollHeight": 900,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        {
+          "tag": "BODY",
+          "class": "",
+          "x": 0,
+          "y": 0,
+          "width": 1918,
+          "height": 900,
+          "clientHeight": 900,
+          "scrollHeight": 900,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        {
+          "tag": "HTML",
+          "class": " ",
+          "x": 0,
+          "y": 0,
+          "width": 1918,
+          "height": 900,
+          "clientHeight": 900,
+          "scrollHeight": 900,
+          "overflowY": "visible",
+          "display": "block"
+        }
+      ]
+    },
+    "capture": {
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        }
+      ],
+      "blocked": [],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    }
+  },
+  {
+    "revision": "36b9e7a8b5e367a66b7b63bd7c8263c4af4c0581",
+    "phase": "before",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "geometry": {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "rootScroll": 1000,
+      "rootWidth": 1440,
+      "boxes": {
+        "html": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        "body": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        "#app": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        "[data-testid=\"chat-workspace\"]": {
+          "x": 288,
+          "y": 125,
+          "width": 1144,
+          "height": 867,
+          "clientHeight": 867,
+          "scrollHeight": 867,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        ".chat-page-head": {
+          "x": 288,
+          "y": 125,
+          "width": 1144,
+          "height": 162.5,
+          "clientHeight": 162,
+          "scrollHeight": 162,
+          "overflowY": "visible",
+          "display": "flex"
+        },
+        "[data-testid=\"chat-body\"]": {
+          "x": 288,
+          "y": 287.5,
+          "width": 1144,
+          "height": 704.5,
+          "clientHeight": 705,
+          "scrollHeight": 705,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        "[data-testid=\"chat-main\"]": {
+          "x": 288,
+          "y": 287.5,
+          "width": 1144,
+          "height": 704.5,
+          "clientHeight": 705,
+          "scrollHeight": 705,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        "[data-testid=\"chat-feed\"]": {
+          "x": 288,
+          "y": 287.5,
+          "width": 1144,
+          "height": 281.109375,
+          "clientHeight": 281,
+          "scrollHeight": 728,
+          "overflowY": "auto",
+          "display": "block"
+        },
+        "[data-testid=\"chat-composer\"]": {
+          "x": 370,
+          "y": 628.609375,
+          "width": 980,
+          "height": 343.390625,
+          "clientHeight": 341,
+          "scrollHeight": 341,
+          "overflowY": "auto",
+          "display": "block"
+        },
+        ".live-shortcuts": null
+      },
+      "ancestors": [
+        {
+          "tag": "DIV",
+          "class": "eap-scrollbar chat-feed preview-feed",
+          "x": 288,
+          "y": 287.5,
+          "width": 1144,
+          "height": 281.109375,
+          "clientHeight": 281,
+          "scrollHeight": 728,
+          "overflowY": "auto",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "class": "chat-main",
+          "x": 288,
+          "y": 287.5,
+          "width": 1144,
+          "height": 704.5,
+          "clientHeight": 705,
+          "scrollHeight": 705,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "class": "eap-workbench-frame chat-body",
+          "x": 288,
+          "y": 287.5,
+          "width": 1144,
+          "height": 704.5,
+          "clientHeight": 705,
+          "scrollHeight": 705,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        {
+          "tag": "SECTION",
+          "class": "view work-page chat-workspace preview-workspace live-workspace",
+          "x": 288,
+          "y": 125,
+          "width": 1144,
+          "height": 867,
+          "clientHeight": 867,
+          "scrollHeight": 867,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        {
+          "tag": "MAIN",
+          "class": "workbench",
+          "x": 288,
+          "y": 48,
+          "width": 1144,
+          "height": 944,
+          "clientHeight": 944,
+          "scrollHeight": 944,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "class": "body body--chat",
+          "x": 0,
+          "y": 48,
+          "width": 1440,
+          "height": 952,
+          "clientHeight": 952,
+          "scrollHeight": 952,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        {
+          "tag": "DIV",
+          "class": "app",
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        {
+          "tag": "DIV",
+          "class": "",
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        {
+          "tag": "BODY",
+          "class": "",
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        {
+          "tag": "HTML",
+          "class": " ",
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        }
+      ]
+    },
+    "capture": {
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        }
+      ],
+      "blocked": [],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    }
+  },
+  {
+    "revision": "36b9e7a8b5e367a66b7b63bd7c8263c4af4c0581",
+    "phase": "before",
+    "viewport": {
+      "width": 390,
+      "height": 1000
+    },
+    "geometry": {
+      "viewport": {
+        "width": 390,
+        "height": 1000
+      },
+      "rootScroll": 1000,
+      "rootWidth": 390,
+      "boxes": {
+        "html": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        "body": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        "#app": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        "[data-testid=\"chat-workspace\"]": {
+          "x": 64,
+          "y": 151,
+          "width": 318,
+          "height": 811,
+          "clientHeight": 811,
+          "scrollHeight": 811,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        ".chat-page-head": {
+          "x": 64,
+          "y": 151,
+          "width": 318,
+          "height": 187.28125,
+          "clientHeight": 186,
+          "scrollHeight": 186,
+          "overflowY": "visible",
+          "display": "flex"
+        },
+        "[data-testid=\"chat-body\"]": {
+          "x": 64,
+          "y": 338.28125,
+          "width": 318,
+          "height": 623.71875,
+          "clientHeight": 624,
+          "scrollHeight": 624,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        "[data-testid=\"chat-main\"]": {
+          "x": 64,
+          "y": 338.28125,
+          "width": 318,
+          "height": 623.71875,
+          "clientHeight": 624,
+          "scrollHeight": 624,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        "[data-testid=\"chat-feed\"]": {
+          "x": 64,
+          "y": 338.28125,
+          "width": 318,
+          "height": 208.6875,
+          "clientHeight": 209,
+          "scrollHeight": 728,
+          "overflowY": "auto",
+          "display": "block"
+        },
+        "[data-testid=\"chat-composer\"]": {
+          "x": 72,
+          "y": 606.96875,
+          "width": 302,
+          "height": 343.03125,
+          "clientHeight": 341,
+          "scrollHeight": 385,
+          "overflowY": "auto",
+          "display": "block"
+        },
+        ".live-shortcuts": null
+      },
+      "ancestors": [
+        {
+          "tag": "DIV",
+          "class": "eap-scrollbar chat-feed preview-feed",
+          "x": 64,
+          "y": 338.28125,
+          "width": 318,
+          "height": 208.6875,
+          "clientHeight": 209,
+          "scrollHeight": 728,
+          "overflowY": "auto",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "class": "chat-main",
+          "x": 64,
+          "y": 338.28125,
+          "width": 318,
+          "height": 623.71875,
+          "clientHeight": 624,
+          "scrollHeight": 624,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "class": "eap-workbench-frame chat-body",
+          "x": 64,
+          "y": 338.28125,
+          "width": 318,
+          "height": 623.71875,
+          "clientHeight": 624,
+          "scrollHeight": 624,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        {
+          "tag": "SECTION",
+          "class": "view work-page chat-workspace preview-workspace live-workspace",
+          "x": 64,
+          "y": 151,
+          "width": 318,
+          "height": 811,
+          "clientHeight": 811,
+          "scrollHeight": 811,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        {
+          "tag": "MAIN",
+          "class": "workbench",
+          "x": 64,
+          "y": 56,
+          "width": 318,
+          "height": 906,
+          "clientHeight": 906,
+          "scrollHeight": 906,
+          "overflowY": "hidden",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "class": "body body--chat",
+          "x": 0,
+          "y": 56,
+          "width": 390,
+          "height": 914,
+          "clientHeight": 914,
+          "scrollHeight": 914,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        {
+          "tag": "DIV",
+          "class": "app",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "hidden",
+          "display": "grid"
+        },
+        {
+          "tag": "DIV",
+          "class": "",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        {
+          "tag": "BODY",
+          "class": "",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        },
+        {
+          "tag": "HTML",
+          "class": " ",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 1000,
+          "clientHeight": 1000,
+          "scrollHeight": 1000,
+          "overflowY": "visible",
+          "display": "block"
+        }
+      ]
+    },
+    "capture": {
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        }
+      ],
+      "blocked": [],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    }
+  }
+]

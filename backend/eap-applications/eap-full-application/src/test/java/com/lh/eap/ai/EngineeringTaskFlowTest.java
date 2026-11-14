@@ -33,7 +33,7 @@ class EngineeringTaskFlowTest {
         })), memory);
         var service = new EngineeringChatService(client, handlers, (Path) null, new FileExecutionArtifactStore(root.resolve("artifacts")));
         var status = new AiConnectionStatus(handlers, root, null, "openai", "offline", "https://api.openai.com", true);
-        var app = new AiChatApplication(status, new AiConversationRegistry(memory), service, root);
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(status, new AiConversationRegistry(memory), service, root));
         var changes = new CodeChangeService(new RuntimeWorkspace(root, root.toString()), null, null, new InMemoryCodeGenerationStore(), new InMemoryCodeProposalStore());
         ReflectionTestUtils.setField(app, "codeChanges", changes);
         var versions = org.mockito.Mockito.mock(com.lh.eap.application.service.PrototypeVersionService.class);
@@ -44,13 +44,13 @@ class EngineeringTaskFlowTest {
         var id = app.open("{}").conversationId();
         Files.createDirectories(root.resolve("src/features/chat"));
         Files.writeString(root.resolve("src/features/chat/TaskComposer.vue"), "<script setup>existing</script>");
-        var response = app.send(id, """
+        var response = app.send(id, ChatApplicationTestSupport.request(app, id,  """
             {"message":"Implement checkout","toolMode":"none","context":{
               "mode":"code","expert":"frontend","instructions":"Use accessible labels",
               "prototypeVersionId":"116967fb-fcc8-49ec-a8a4-2042ae80ecb0",
               "targetPath":"src/features/chat/TaskComposer.vue",
               "files":[{"name":"design.md","content":"A checkout button"}]}}
-            """);
+            """));
         assertTrue(observed.get().getSystemMessage().getText().contains("Vue 3"));
         assertTrue(observed.get().getSystemMessage().getText().contains("accessible labels"));
         assertTrue(observed.get().getSystemMessage().getText().contains("<workspace-source>"));

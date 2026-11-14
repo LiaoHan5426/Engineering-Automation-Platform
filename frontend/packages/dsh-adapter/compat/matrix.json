@@ -1,0 +1,115 @@
+{
+  "baseline": "39163dd30f703a79079e2d2446545cff3c453738",
+  "scope": "Bundled browser client slice, not whole-package compatibility",
+  "plugins": [
+    {
+      "id": "@deepseek-ai/dsh-client-ui-context-menu/client",
+      "version": "0.2.2-rc.3",
+      "source": "Original client source bytes retained and digest checked before build",
+      "services": [
+        "slots",
+        "locale",
+        "shortcuts"
+      ],
+      "contributions": [
+        "contextMenu.button",
+        "shell.overlay",
+        "root.useContextMenu"
+      ],
+      "status": "interaction-regression-passed",
+      "checks": [
+        "load",
+        "render-original-MenuOverlay-and-Menu",
+        "captured-target",
+        "click-copy",
+        "Escape",
+        "outside-pointer",
+        "action-failure-original-Toast",
+        "dispose",
+        "restart"
+      ]
+    },
+    {
+      "id": "@deepseek-ai/dsh-client-ui-shortcuts/client",
+      "version": "0.2.2-rc.3",
+      "source": "Original client bytes, 39163dd pinned and digest checked",
+      "services": [
+        "shortcuts",
+        "locale",
+        "slots"
+      ],
+      "contributions": [
+        "settings.general.item:shortcuts",
+        "shell.overlay:shortcuts",
+        "shortcuts.open"
+      ],
+      "status": "interaction-regression-passed",
+      "checks": [
+        "original-reference-dialog",
+        "search-control",
+        "locale",
+        "dispose",
+        "restart-single-entry"
+      ],
+      "limits": [
+        "Browser shortcut configuration uses original local web storage only, not EAP backend settings",
+        "Fixed native/browser reference entries describe upstream behavior; only registered EAP-island commands are executable"
+      ]
+    },
+    {
+      "id": "@deepseek-ai/dsh-client-ui-file-actions/client",
+      "version": "0.2.2-rc.3",
+      "source": "Original apply and BrowserFileActions; no rewritten download wrapper",
+      "services": [],
+      "contributions": [
+        "fileActions service",
+        "eap.message:download"
+      ],
+      "status": "interaction-regression-passed",
+      "checks": [
+        "captured-text-bytes",
+        "download-requested-not-saved",
+        "object-url-revoke",
+        "dispose"
+      ],
+      "limits": [
+        "Optional workspace menus inactive: remote.workspaceFiles and remote.session unavailable",
+        "Desktop saveAs and native clipboard adapters unsupported",
+        "No arbitrary URL reader exposed by EAP port"
+      ]
+    }
+  ],
+  "providers": [
+    {
+      "id": "locale",
+      "retained": "Original LocaleRuntime class and dictionaries",
+      "adapted": "EAP injects active zh/en locale. Original configForms settings provider and LanguageRow are not activated. No remote persistence or DSH settings UI."
+    },
+    {
+      "id": "shortcuts",
+      "retained": "Original browser ShortcutsService, registry, keyboard adapter and web storage",
+      "adapted": "Browser web branch only; desktop bridge and closeWindow unavailable. No command for EAP copy is advertised."
+    },
+    {
+      "id": "ui-layout/ui-renderer",
+      "retained": "Original MenuOverlay, ContextMenuButton and browser primitives",
+      "adapted": "Bounded shell.overlay and settings.general.item registration, persistent per-contribution stores, dynamically named snapshot hooks, root props and factory ownership. Original shortcut row/reference rendered in same React root. No full DSH layout/workspace or keyed renderer."
+    },
+    {
+      "id": "modules",
+      "retained": "Original createClientModuleSystem, manifest parser, queue/live registration and static module identity cache",
+      "adapted": "Reviewed statically bundled factories only. No network scripts, URLs, Node host or hot release transport. Original ES module namespace evaluation occurs at bundle import; registration/materialization and Cordis activation remain separate."
+    }
+  ],
+  "limits": [
+    "Same-page trusted JavaScript is not sandboxed",
+    "No arbitrary npm/URL plugins",
+    "No DSH Host APIs, Agent, RPC or execution authority",
+    "Message IDs are captured EAP UI scope keys, not new persisted authority",
+    "Original View.tsx gives duplicate sibling React key warning when notice id equals menu occurrence; copy/failure behavior tested",
+    "Browser visual acceptance remains a host-level check",
+    "Host-only Node providers remain unsupported",
+    "ui-theme remote/configForms and global styles not activated",
+    "ui-commands remote.commands/session scope unavailable"
+  ]
+}

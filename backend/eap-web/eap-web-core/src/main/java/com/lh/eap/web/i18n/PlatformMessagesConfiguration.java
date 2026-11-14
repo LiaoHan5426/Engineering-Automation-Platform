@@ -10,7 +10,7 @@ import org.springframework.context.support.ResourceBundleMessageSource;
 @Configuration(proxyBeanMethods = false)
 public class PlatformMessagesConfiguration {
     public static final String COMMON_BASENAME = "i18n/common/messages";
-    public static final String PRODUCT_BASENAMES = "i18n/common/messages,i18n/code/messages,i18n/board/messages,i18n/tool/messages,i18n/agent/messages,i18n/model/messages,i18n/mcp/messages,i18n/resource/messages,i18n/knowledge/messages,i18n/database/messages,i18n/rule/messages";
+    public static final String PRODUCT_BASENAMES = "i18n/common/messages,i18n/chat/messages,i18n/code/messages,i18n/board/messages,i18n/tool/messages,i18n/agent/messages,i18n/model/messages,i18n/mcp/messages,i18n/resource/messages,i18n/knowledge/messages,i18n/database/messages,i18n/rule/messages";
 
     @Bean
     public MessageSource messageSource(@Value("${eap.web.message-basenames:" + PRODUCT_BASENAMES + "}") String basenames) {

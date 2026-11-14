@@ -1,6 +1,6 @@
 import { expect, it } from 'vite-plus/test'
 import { createChatApi } from '@eap/runtime-client'
-import { replyChatSse, replyJson, startChatHttpFixture } from '../../chatHttpFixture'
+import { graphRequest, replyChatSse, replyJson, startChatHttpFixture } from '../../chatHttpFixture'
 it('uses explicit Skill endpoints and serializes the immutable exact reference only', async () => {
   const fixture = await startChatHttpFixture((request, response) => {
     const payload = { skillContext: null, contextMemoryCleared: false }
@@ -36,7 +36,7 @@ it('uses explicit Skill endpoints and serializes the immutable exact reference o
       skillRef,
       skillResourcePaths: ['references/guide.md'],
     }
-    const answer = await api.sendAiMessage('c1', 'question', 'none', context)
+    const answer = await api.sendAiMessage('c1', graphRequest('question', context))
     expect(fixture.requests.map(({ url, data }) => ({ url, data }))).toEqual([
       { url: '/skills/preview', data: input },
       { url: '/skills', data: { input, expectedDigest: skillRef.digest, confirmed: true } },
@@ -49,7 +49,7 @@ it('uses explicit Skill endpoints and serializes the immutable exact reference o
       },
       {
         url: '/ai/conversations/c1/messages',
-        data: { message: 'question', toolMode: 'none', context },
+        data: graphRequest('question', context),
       },
     ])
     expect(answer.skillContext).toBeNull()

@@ -28,13 +28,27 @@ it('serves the normal runtime contract and SSE from an independent loopback HTTP
   })
   const api = createChatApi(origin + '/api')
   const conversation = await api.openAiConversation()
-  const reply = await api.sendAiMessage(
-    conversation.conversationId,
-    'Read the selected text',
-    'none',
-  )
+  const reply = await api.sendAiMessage(conversation.conversationId, {
+    operationId: crypto.randomUUID(),
+    expectedRevision: 0,
+    kind: 'send',
+    parentMessageId: null,
+    targetMessageId: null,
+    message: 'Read the selected text',
+    toolMode: 'none',
+  })
   expect(reply.status).toBe('SUCCEEDED')
   expect(reply.answer).toBeTruthy()
+  const graph = await api.chatGraph(conversation.conversationId)
+  expect(graph.nodes.map((node) => node.role)).toEqual(['user', 'assistant'])
+  expect(graph.nodes[1]).toMatchObject({ executionId: reply.executionId, content: reply.answer })
+  expect(
+    await api.chatOperation(conversation.conversationId, graph.operations[0]!.operationId),
+  ).toMatchObject({
+    ...graph.operations[0],
+    status: 'SUCCEEDED',
+    response: { executionId: reply.executionId },
+  })
   const failure = await fetch(origin + '/api/not-implemented', {
     headers: { 'Accept-Language': 'en-US' },
   })

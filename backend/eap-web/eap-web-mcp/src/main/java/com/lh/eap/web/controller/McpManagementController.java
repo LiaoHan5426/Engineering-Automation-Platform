@@ -21,6 +21,26 @@ public class McpManagementController {
                 "productionMatrix", OfficialReadonlyMcpMatrix.views());
     }
 
+    @GetMapping("/mcp-servers/{id}/operation-bindings")
+    public Map<String,Object> operationBindings(@PathVariable String id) {
+        try {return mcp.operationBindings(id);}
+        catch(NoSuchElementException e){throw new ResponseStatusException(HttpStatus.NOT_FOUND,e.getMessage());}
+        catch(IllegalArgumentException e){throw new ResponseStatusException(HttpStatus.BAD_REQUEST,e.getMessage());}
+    }
+    @PutMapping("/mcp-servers/{id}/operation-bindings")
+    public Map<String,Object> saveOperationBindings(@PathVariable String id,@RequestBody String json) {
+        final Object parsed;
+        try {parsed=tools.jackson.databind.json.JsonMapper.builder().enable(tools.jackson.core.StreamReadFeature.STRICT_DUPLICATE_DETECTION).build().readValue(json,Object.class);}
+        catch(RuntimeException malformed){throw new ResponseStatusException(HttpStatus.BAD_REQUEST,CommonErrors.INVALID_JSON.code());}
+        if(!(parsed instanceof Map<?,?> body)||!body.keySet().equals(Set.of("expectedRevision","bindings"))
+            ||!(body.get("expectedRevision") instanceof Number revision)||!(revision instanceof Integer||revision instanceof Long)||revision.longValue()<0)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,CommonErrors.INVALID_REQUEST.code());
+        try{return mcp.saveOperationBindings(id,revision.longValue(),body.get("bindings"));}
+        catch(NoSuchElementException e){throw new ResponseStatusException(HttpStatus.NOT_FOUND,e.getMessage());}
+        catch(IllegalStateException e){throw new ResponseStatusException(HttpStatus.CONFLICT,e.getMessage());}
+        catch(IllegalArgumentException e){throw new ResponseStatusException(HttpStatus.BAD_REQUEST,e.getMessage());}
+    }
+
     /** Register a server, or update one that is already registered. */
     @PostMapping("/mcp-servers")
     public Map<String, Object> registerServer(@RequestBody McpServerRequest request) {

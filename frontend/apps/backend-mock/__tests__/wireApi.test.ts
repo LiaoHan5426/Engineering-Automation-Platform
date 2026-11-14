@@ -1,9 +1,12 @@
 import { expect, it } from 'vite-plus/test'
 import type { AiConversation, ModelConnection, ModelConnectionList } from '@eap/runtime-client'
+import { createChatGraphFixture } from './graphRequests.fixture'
 import { createMockChatBackend } from '../src/chatBackend'
+import { randomUUID } from 'node:crypto'
+import type { ChatGraph } from '@eap/runtime-client/contracts'
 
 it('validates, defaults and preserves protocol, retaining catalog on protocol-only edits', async () => {
-  const api = createMockChatBackend()
+  const api = createChatGraphFixture()
   const input = { name: 'protocol', baseUrl: 'https://example.test', enabled: true }
   expect(
     (await api.handle('POST', '/ai/connections', { ...input, wireApi: 'invalid' })).status,
@@ -12,7 +15,7 @@ it('validates, defaults and preserves protocol, retaining catalog on protocol-on
   expect(saved.wireApi).toBe('chat-completions')
   const path = '/ai/connections/' + saved.id
   await api.handle('POST', path + '/models', {
-    models: [{ id: 'manual', reasoningEfforts: [] }],
+    models: [{ id: 'manual', reasoningEfforts: [], supportsImageInput: false }],
     allowedModels: ['manual'],
     defaultModel: 'manual',
   })
@@ -29,14 +32,14 @@ it('validates, defaults and preserves protocol, retaining catalog on protocol-on
 })
 
 it('exposes the effective account protocol without changing OAuth simulation', async () => {
-  const api = createMockChatBackend()
+  const api = createChatGraphFixture()
   await api.handle('POST', '/ai/chatgpt/login')
   const list = (await api.handle('GET', '/ai/connections')).data as ModelConnectionList
   expect(list.items.find((item) => item.kind === 'chatgpt-plan')?.wireApi).toBe('responses')
 })
 
 it('requires explicit rebind after protocol changes and refuses Git without blocking text/code', async () => {
-  const api = createMockChatBackend()
+  const api = createChatGraphFixture()
   const conversation = (await api.handle('POST', '/ai/conversations')).data as AiConversation
   const route = '/ai/conversations/' + conversation.conversationId
   const input = { name: 'mock', baseUrl: 'http://mock.local', enabled: true, wireApi: 'responses' }
@@ -78,19 +81,31 @@ it('does not allow rebind or delete while a mock turn is active', async () => {
   const api = createMockChatBackend()
   const conversation = (await api.handle('POST', '/ai/conversations')).data as AiConversation
   const route = '/ai/conversations/' + conversation.conversationId
-  const active = api.handle('POST', route + '/messages', { message: 'text', toolMode: 'none' })
+  // Prepare envelopes before the turn so readback does not delay the competing requests.
+  const graph = (await api.handle('GET', route + '/graph')).data as ChatGraph
+  const send = () => ({
+    operationId: randomUUID(),
+    expectedRevision: graph.revision,
+    kind: 'send',
+    parentMessageId: graph.nodes.at(-1)?.id ?? null,
+    targetMessageId: null,
+    message: 'text',
+    toolMode: 'none',
+  })
+  const active = api.handle('POST', route + '/messages', send())
   const competing = [
     ['POST', '/connection'],
     ['DELETE', ''],
     ['POST', '/messages'],
   ].map(([method, suffix]) =>
     api.handle(method, route + suffix, {
+      ...send(),
       connectionId: 'mock-local',
       model: 'reasoning-demo',
       confirmTargetChange: true,
     }),
   )
   for (const response of await Promise.all(competing))
-    expect(response.data).toMatchObject({ code: 'CONVERSATION_BUSY' })
-  await active
+    expect(response).toMatchObject({ status: 409, data: { code: 'CONVERSATION_BUSY' } })
+  expect(await active).toMatchObject({ status: 200, data: { status: 'SUCCEEDED' } })
 })

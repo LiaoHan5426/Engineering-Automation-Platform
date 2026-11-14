@@ -1,7 +1,7 @@
 import { expect, it } from 'vite-plus/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createMockChatBackend } from '../src/chatBackend'
+import { createChatGraphFixture as createMockChatBackend } from './graphRequests.fixture'
 import type {
   AiConversation,
   AiMessageResult,

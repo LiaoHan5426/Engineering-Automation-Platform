@@ -1,18 +1,29 @@
 <script setup lang="ts">
-import { computed, reactive, watch, type Component } from 'vue'
+import { computed, reactive, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BuilderWorkspace from './BuilderWorkspace.vue'
+import DshContextMenu from './DshContextMenu.vue'
 import type { PluginHost } from './host'
 import type { BuilderInstanceId } from './model'
 
 const props = defineProps<{ viewId: string; host: PluginHost; chatView: Component }>()
 const { t } = useI18n()
+const emit = defineEmits<{ navigate: [view: 'capabilities'] }>()
 const builders = new Map<string, { guardLeave: () => boolean }>()
 function bindBuilder(id: string, value: unknown) {
   if (value) builders.set(id, value as { guardLeave: () => boolean })
   else builders.delete(id)
 }
-defineExpose({ guardLeave: (id: string) => builders.get(id)?.guardLeave() ?? true })
+const chat = ref<{ guardLeave?: (onDiscard?: () => void) => boolean } | null>(null)
+function bindChat(value: unknown) {
+  chat.value = value as typeof chat.value
+}
+defineExpose({
+  guardLeave: (id: string, onDiscard?: () => void) =>
+    id === 'chat'
+      ? (chat.value?.guardLeave?.(onDiscard) ?? true)
+      : (builders.get(id)?.guardLeave() ?? true),
+})
 const visited = reactive(new Set<string>())
 const workspaceIds = ['chat', 'builder-alpha', 'builder-beta'] as const
 watch(
@@ -48,12 +59,18 @@ const enabled = computed(() =>
   <template v-for="id in cachedViews" :key="id">
     <component
       :is="chatView"
+      :ref="bindChat"
       v-if="id === 'chat'"
       v-show="viewId === id"
       :inert="viewId !== id"
       :aria-hidden="viewId !== id"
       :active="viewId === id"
-    />
+      @navigate="emit('navigate', $event)"
+    >
+      <template #utilities
+        ><DshContextMenu :active="viewId === 'chat' && host.installation.value.enabled.chat"
+      /></template>
+    </component>
     <BuilderWorkspace
       v-else
       :ref="(value) => bindBuilder(id, value)"

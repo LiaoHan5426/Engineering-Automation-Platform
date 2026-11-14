@@ -1,3 +1,4 @@
+import type { ChatGraphOperation } from '@eap/runtime-client'
 import { createServer, type IncomingHttpHeaders, type ServerResponse } from 'node:http'
 
 export interface FixtureRequest {
@@ -60,13 +61,18 @@ export function replyJson(response: ServerResponse, data: unknown, status = 200)
   response.end(JSON.stringify(data))
 }
 
-export function sseFrame(type: string, sequence: number, payload?: unknown) {
+export function sseFrame(
+  type: string,
+  sequence: number,
+  payload: unknown,
+  scope: { conversationId: string; executionId: string },
+) {
   return `id: fixture-exec-${sequence}\nevent: ${type}\ndata: ${JSON.stringify({
     eventId: `fixture-exec-${sequence}`,
     protocolVersion: '1',
     occurredAt: '2026-01-01T00:00:00Z',
-    executionId: 'fixture-exec',
-    conversationId: 'c1',
+    executionId: scope.executionId,
+    conversationId: scope.conversationId,
     type,
     sequence,
     status: type === 'final' ? 'SUCCEEDED' : 'RUNNING',
@@ -76,9 +82,17 @@ export function sseFrame(type: string, sequence: number, payload?: unknown) {
   })}\n\n`
 }
 
-export function replyChatSse(response: ServerResponse, payload: unknown) {
+export function replyChatSse(
+  response: ServerResponse,
+  payload: unknown,
+  conversationId: string,
+  operation: ChatGraphOperation,
+) {
   response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8' })
-  response.write(sseFrame('status', 1))
-  response.write(sseFrame('answer.delta', 2))
-  response.end(sseFrame('final', 3, payload))
+  const scope = { conversationId, executionId: operation.executionId }
+  const { status: _status, response: _response, ...binding } = operation
+  response.write(sseFrame('accepted', 0, binding, scope))
+  response.write(sseFrame('status', 1, undefined, scope))
+  response.write(sseFrame('answer.delta', 2, undefined, scope))
+  response.end(sseFrame('final', 3, payload, scope))
 }

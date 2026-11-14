@@ -1,0 +1,898 @@
+{
+  "simulated": true,
+  "realMicrophoneOrProviderUsed": false,
+  "config": {
+    "unsavedCloseCancelledRetainsDraft": true,
+    "saveReopen": true,
+    "casConflictRetainsDraft": true,
+    "readbackFailureRetainsDraft": true,
+    "noEnableTrustProbeOrToolCall": true,
+    "snapshot": {
+      "revision": 2,
+      "bindings": [
+        {
+          "expertId": "fixture-expert",
+          "approved": true,
+          "operation": "SEARCH",
+          "tool": "search",
+          "inputArgument": "query",
+          "resultsField": "items",
+          "titleField": "title",
+          "urlField": "url",
+          "textField": "text",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          }
+        },
+        {
+          "expertId": "fixture-expert",
+          "approved": true,
+          "operation": "READ",
+          "tool": "read",
+          "inputArgument": "url",
+          "resultsField": "",
+          "titleField": "title",
+          "urlField": "url",
+          "textField": "text",
+          "ownerPolicyArgument": "policy",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "policy": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "url",
+              "policy"
+            ]
+          }
+        },
+        {
+          "expertId": "fixture-conflict-draft",
+          "approved": true,
+          "operation": "ASR",
+          "tool": "transcribe",
+          "audioArgument": "audio",
+          "mimeArgument": "mime",
+          "textField": "text",
+          "resultFormat": "JSON",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "audio": {
+                "type": "string"
+              },
+              "mime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "audio",
+              "mime"
+            ]
+          }
+        },
+        {
+          "expertId": "fixture-expert",
+          "approved": true,
+          "operation": "TTS",
+          "tool": "speak",
+          "textArgument": "text",
+          "audioField": "audio",
+          "mimeField": "mime",
+          "resultFormat": "JSON",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ]
+          }
+        }
+      ]
+    },
+    "writes": [
+      {
+        "expectedRevision": 0,
+        "bindings": [
+          {
+            "expertId": "fixture-expert",
+            "approved": true,
+            "operation": "SEARCH",
+            "tool": "search",
+            "inputArgument": "query",
+            "resultsField": "items",
+            "titleField": "title",
+            "urlField": "url",
+            "textField": "text",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            }
+          },
+          {
+            "expertId": "fixture-expert",
+            "approved": true,
+            "operation": "READ",
+            "tool": "read",
+            "inputArgument": "url",
+            "resultsField": "",
+            "titleField": "title",
+            "urlField": "url",
+            "textField": "text",
+            "ownerPolicyArgument": "policy",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "policy": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "url",
+                "policy"
+              ]
+            }
+          },
+          {
+            "expertId": "fixture-expert-edited",
+            "approved": true,
+            "operation": "ASR",
+            "tool": "transcribe",
+            "audioArgument": "audio",
+            "mimeArgument": "mime",
+            "textField": "text",
+            "resultFormat": "JSON",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "audio": {
+                  "type": "string"
+                },
+                "mime": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "audio",
+                "mime"
+              ]
+            }
+          },
+          {
+            "expertId": "fixture-expert",
+            "approved": true,
+            "operation": "TTS",
+            "tool": "speak",
+            "textArgument": "text",
+            "audioField": "audio",
+            "mimeField": "mime",
+            "resultFormat": "JSON",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "expectedRevision": 1,
+        "bindings": [
+          {
+            "expertId": "fixture-expert",
+            "approved": true,
+            "operation": "SEARCH",
+            "tool": "search",
+            "inputArgument": "query",
+            "resultsField": "items",
+            "titleField": "title",
+            "urlField": "url",
+            "textField": "text",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            }
+          },
+          {
+            "expertId": "fixture-expert",
+            "approved": true,
+            "operation": "READ",
+            "tool": "read",
+            "inputArgument": "url",
+            "resultsField": "",
+            "titleField": "title",
+            "urlField": "url",
+            "textField": "text",
+            "ownerPolicyArgument": "policy",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "policy": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "url",
+                "policy"
+              ]
+            }
+          },
+          {
+            "expertId": "fixture-conflict-draft",
+            "approved": true,
+            "operation": "ASR",
+            "tool": "transcribe",
+            "audioArgument": "audio",
+            "mimeArgument": "mime",
+            "textField": "text",
+            "resultFormat": "JSON",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "audio": {
+                  "type": "string"
+                },
+                "mime": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "audio",
+                "mime"
+              ]
+            }
+          },
+          {
+            "expertId": "fixture-expert",
+            "approved": true,
+            "operation": "TTS",
+            "tool": "speak",
+            "textArgument": "text",
+            "audioField": "audio",
+            "mimeField": "mime",
+            "resultFormat": "JSON",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "expectedRevision": 1,
+        "bindings": [
+          {
+            "expertId": "fixture-expert",
+            "approved": true,
+            "operation": "SEARCH",
+            "tool": "search",
+            "inputArgument": "query",
+            "resultsField": "items",
+            "titleField": "title",
+            "urlField": "url",
+            "textField": "text",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "query"
+              ]
+            }
+          },
+          {
+            "expertId": "fixture-expert",
+            "approved": true,
+            "operation": "READ",
+            "tool": "read",
+            "inputArgument": "url",
+            "resultsField": "",
+            "titleField": "title",
+            "urlField": "url",
+            "textField": "text",
+            "ownerPolicyArgument": "policy",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "policy": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "url",
+                "policy"
+              ]
+            }
+          },
+          {
+            "expertId": "fixture-conflict-draft",
+            "approved": true,
+            "operation": "ASR",
+            "tool": "transcribe",
+            "audioArgument": "audio",
+            "mimeArgument": "mime",
+            "textField": "text",
+            "resultFormat": "JSON",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "audio": {
+                  "type": "string"
+                },
+                "mime": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "audio",
+                "mime"
+              ]
+            }
+          },
+          {
+            "expertId": "fixture-expert",
+            "approved": true,
+            "operation": "TTS",
+            "tool": "speak",
+            "textArgument": "text",
+            "audioField": "audio",
+            "mimeField": "mime",
+            "resultFormat": "JSON",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "reads": [
+      {
+        "revision": 0,
+        "failed": false
+      },
+      {
+        "revision": 1,
+        "failed": false
+      },
+      {
+        "revision": 1,
+        "failed": false
+      },
+      {
+        "revision": 2,
+        "failed": true
+      },
+      {
+        "revision": 2,
+        "failed": false
+      }
+    ],
+    "conflict": false,
+    "readbackFailure": false,
+    "responseLost": true,
+    "errors": [],
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/capabilities"
+      },
+      {
+        "method": "GET",
+        "path": "/api/health"
+      },
+      {
+        "method": "GET",
+        "path": "/api/capabilities"
+      },
+      {
+        "method": "GET",
+        "path": "/api/databases"
+      },
+      {
+        "method": "GET",
+        "path": "/api/experts"
+      },
+      {
+        "method": "GET",
+        "path": "/api/tasks"
+      },
+      {
+        "method": "GET",
+        "path": "/api/stats"
+      },
+      {
+        "method": "GET",
+        "path": "/api/scenarios"
+      },
+      {
+        "method": "GET",
+        "path": "/api/runtime/trusted-tools"
+      },
+      {
+        "method": "GET",
+        "path": "/api/capabilities"
+      },
+      {
+        "method": "GET",
+        "path": "/api/runtime/data-layout"
+      },
+      {
+        "method": "GET",
+        "path": "/api/runtime/trusted-tools"
+      },
+      {
+        "method": "GET",
+        "path": "/api/runtime/data-layout"
+      }
+    ],
+    "blocked": []
+  },
+  "speech": [
+    {
+      "width": 1440,
+      "chatConfigurationDialogSharedEditorNavigation": true,
+      "chatConfigNoAutoSelection": true,
+      "explicitRecordStopPreviewTranscribe": true,
+      "lateDraftGuard": true,
+      "explicitAppend": true,
+      "noAutoplay": true,
+      "explicitPlay": true,
+      "offlineCancelRecoverable": true,
+      "exactOwnedOperationCancellation": true,
+      "counters": {
+        "permissionRequests": 3,
+        "trackStops": 6,
+        "recordings": 3,
+        "plays": 1,
+        "pauses": 1
+      },
+      "intentional": [
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/transcriptions",
+          "operationId": "76bed4e0-c3fb-4986-80eb-419e5796aa20",
+          "simulated": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/transcriptions",
+          "operationId": "9cf9cbf2-7824-42c3-a0d8-357a5d5e2771",
+          "simulated": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/synthesis",
+          "operationId": "836f54d7-d6e3-4ef6-af38-6f2e2abe7601",
+          "simulated": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/transcriptions",
+          "operationId": "f9a45cfa-9f2c-4b9f-a329-2efbdf9d180f",
+          "simulated": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/f9a45cfa-9f2c-4b9f-a329-2efbdf9d180f/cancel",
+          "simulated": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/f9a45cfa-9f2c-4b9f-a329-2efbdf9d180f/cancel",
+          "simulated": true
+        }
+      ],
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/mcp-servers"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/web-sources"
+        }
+      ],
+      "blocked": [],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    },
+    {
+      "width": 390,
+      "chatConfigurationDialogSharedEditorNavigation": true,
+      "chatConfigNoAutoSelection": true,
+      "explicitRecordStopPreviewTranscribe": true,
+      "lateDraftGuard": true,
+      "explicitAppend": true,
+      "noAutoplay": true,
+      "explicitPlay": true,
+      "offlineCancelRecoverable": true,
+      "exactOwnedOperationCancellation": true,
+      "counters": {
+        "permissionRequests": 3,
+        "trackStops": 6,
+        "recordings": 3,
+        "plays": 1,
+        "pauses": 1
+      },
+      "intentional": [
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/transcriptions",
+          "operationId": "310d1f27-d41e-46b1-97b4-86563b0f684e",
+          "simulated": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/transcriptions",
+          "operationId": "27e0bb99-6524-4f02-9bfe-5772c7a2051e",
+          "simulated": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/synthesis",
+          "operationId": "e601348c-968b-45bb-a344-94a547906d9f",
+          "simulated": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/transcriptions",
+          "operationId": "b60ef5fd-76ff-4a42-83bf-fe086a3f2fa5",
+          "simulated": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/b60ef5fd-76ff-4a42-83bf-fe086a3f2fa5/cancel",
+          "simulated": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/b60ef5fd-76ff-4a42-83bf-fe086a3f2fa5/cancel",
+          "simulated": true
+        }
+      ],
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/mcp-servers"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/web-sources"
+        }
+      ],
+      "blocked": [],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    }
+  ]
+}

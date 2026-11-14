@@ -23,13 +23,13 @@ class CodeSourceAgentTest {
     @TempDir Path root;
     @Test void sourceAgentRequiresCodePurposeAndAnExplicitTaskBinding() {
         var handlers = new CapabilityHandlerRegistry(List.of());
-        var app = new AiChatApplication(new AiConnectionStatus(handlers, root, null, "none", "", "", false, null),
+        var app = ChatApplicationTestSupport.graph(new AiChatApplication(new AiConnectionStatus(handlers, root, null, "none", "", "", false, null),
                 new AiConversationRegistry(MessageWindowChatMemory.builder().build()),
-                new EngineeringChatService(null, handlers, root, new FileExecutionArtifactStore(root.resolve("artifacts"))), root);
+                new EngineeringChatService(null, handlers, root, new FileExecutionArtifactStore(root.resolve("artifacts"))), root));
         for (String context : List.of("{\"mode\":\"chat\"}", "{\"mode\":\"plan\"}", "{\"mode\":\"code\",\"targetPath\":\"Page.vue\"}")) {
             var conversation = app.open("{}").conversationId();
             var failure = assertThrows(org.springframework.web.server.ResponseStatusException.class,
-                    () -> app.send(conversation, "{\"message\":\"Implement task\",\"toolMode\":\"code_sources\",\"context\":" + context + "}"));
+                    () -> app.send(conversation, ChatApplicationTestSupport.request(app, conversation,  "{\"message\":\"Implement task\",\"toolMode\":\"code_sources\",\"context\":" + context + "}")));
             assertEquals(400, failure.getStatusCode().value());
             assertEquals("INVALID_CHAT_REQUEST", failure.getReason());
         }

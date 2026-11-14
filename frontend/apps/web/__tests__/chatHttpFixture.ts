@@ -1,3 +1,4 @@
+import type { ChatGraphRequest, TaskContext } from '@eap/runtime-client'
 import { createServer, type IncomingHttpHeaders, type ServerResponse } from 'node:http'
 
 export interface FixtureRequest {
@@ -78,7 +79,30 @@ export function sseFrame(type: string, sequence: number, payload?: unknown) {
 
 export function replyChatSse(response: ServerResponse, payload: unknown) {
   response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8' })
+  response.write(acceptedFrame())
   response.write(sseFrame('status', 1))
   response.write(sseFrame('answer.delta', 2))
   response.end(sseFrame('final', 3, payload))
+}
+
+export function graphRequest(message = 'draft', context?: TaskContext): ChatGraphRequest {
+  return {
+    operationId: '11111111-1111-4111-8111-111111111111',
+    expectedRevision: 0,
+    kind: 'send',
+    parentMessageId: null,
+    targetMessageId: null,
+    message,
+    toolMode: 'none',
+    ...(context ? { context } : {}),
+  }
+}
+export function acceptedFrame() {
+  return sseFrame('accepted', 0, {
+    operationId: graphRequest().operationId,
+    userMessageId: 'fixture-user',
+    assistantMessageId: 'fixture-assistant',
+    executionId: 'fixture-exec',
+    graphRevision: 1,
+  })
 }

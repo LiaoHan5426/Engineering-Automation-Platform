@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { CodePreparationSelection } from '../shell/workbench'
 
-import { AiToolMode, ChatExecutionStatus, CodeErrors } from '@eap/runtime-client'
+import {
+  AiToolMode,
+  ChatExecutionStatus,
+  CodeErrors,
+  isChatExecutionStatus,
+} from '@eap/runtime-client'
 
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -18,6 +23,7 @@ import {
   Collapse,
   WorkbenchFrame,
   Drawer,
+  Dialog,
 } from '@eap/ui'
 import { type AiConnectionState } from '@eap/runtime-client'
 import { IconEllipsis, Icon } from '@eap/ui'
@@ -39,6 +45,12 @@ import SessionPanel from '../../components/SessionPanel.vue'
 import WorkspaceWelcome from '../../components/WorkspaceWelcome.vue'
 import { chatService, chatStorage } from './chatService'
 import TaskComposer from './TaskComposer.vue'
+import ChatServiceConfigurationDialog from './ChatServiceConfigurationDialog.vue'
+import SpeechControls from './SpeechControls.vue'
+import { useChatAudio } from './useChatAudio'
+import ChatMessageBody from './ChatMessageBody.vue'
+import ChatWebSources from './ChatWebSources.vue'
+import GraphBranchActions from './GraphBranchActions.vue'
 import GenerationBaseline from '../../components/GenerationBaseline.vue'
 import ProposalApplication from '../../components/ProposalApplication.vue'
 import { apiStorageScope } from '../../lib/runtimeConfig'
@@ -79,6 +91,32 @@ const { t, locale } = useI18n()
 const props = withDefaults(defineProps<{ active?: boolean }>(), {
   active: true,
 })
+const emit = defineEmits<{ navigate: [view: 'capabilities'] }>()
+const serviceConfiguration = ref(false)
+function manageChatServices() {
+  serviceConfiguration.value = false
+  emit('navigate', 'capabilities')
+}
+function refreshChatServices() {
+  void audio.refresh()
+  void session.refreshWebSources()
+}
+const composer = ref<{ guardLeave: (onDiscard?: () => void) => boolean } | null>(null)
+function guardLeave(onDiscard?: () => void): boolean {
+  return composer.value?.guardLeave(onDiscard) ?? true
+}
+defineExpose({ guardLeave })
+function selectConversation(id: string) {
+  if (id === session.conversationId.value) return
+  if (!guardLeave(() => selectConversation(id))) return
+  void session.selectConversation(id)
+}
+function archiveConversation(id: string) {
+  const item = session.history.value.find((row) => row.id === id)
+  if (!item) return
+  if (id === session.conversationId.value && !guardLeave(() => archiveConversation(id))) return
+  session.archiveConversation(id, !item.archived)
+}
 const feedPort = ref<{ getEl: () => HTMLElement | null } | null>(null)
 const shownTurns = ref(40)
 const loadingOlder = ref(false)
@@ -90,18 +128,80 @@ let restoringFeed = false
 function feedKey(id: string | null | undefined) {
   return id || 'scratch'
 }
+const followingFeed = ref(true)
+let feedObserver: ResizeObserver | undefined
+let readingAnchor: { element: HTMLElement; offset: number } | undefined
+let programmedScroll: { node: HTMLElement; top: number } | undefined
+function setFeedTop(node: HTMLElement, top: number) {
+  node.scrollTop = top
+  // Browser scroll events are asynchronous even for assignments. Preserve the reading
+  // anchor until the viewport actually moves away from our last assigned position.
+  programmedScroll = { node, top: node.scrollTop }
+}
+function rememberReadingAnchor() {
+  const node = feed()
+  if (!node) return
+  const element = Array.from(node.querySelectorAll<HTMLElement>('.chat-log > li')).find(
+    (el) => el.getBoundingClientRect().bottom > node.getBoundingClientRect().top,
+  )
+  readingAnchor = element
+    ? { element, offset: element.getBoundingClientRect().top - node.getBoundingClientRect().top }
+    : undefined
+}
+function returnToBottom() {
+  followingFeed.value = true
+  const node = feed()
+  if (node) setFeedTop(node, node.scrollHeight)
+  session.setScrollPreference({ follow: true })
+}
+function resizeFeed() {
+  if (!props.active || restoringFeed || loadingOlder.value) return
+  const node = feed()
+  if (!node) return
+  if (followingFeed.value) setFeedTop(node, node.scrollHeight)
+  else if (readingAnchor?.element.isConnected)
+    setFeedTop(
+      node,
+      node.scrollTop +
+        readingAnchor.element.getBoundingClientRect().top -
+        node.getBoundingClientRect().top -
+        readingAnchor.offset,
+    )
+}
+onMounted(() => {
+  if (typeof ResizeObserver === 'undefined') return
+  feedObserver = new ResizeObserver(resizeFeed)
+  if (feed()) feedObserver.observe(feed()!)
+})
+onUnmounted(() => feedObserver?.disconnect())
 function onFeedScroll(event: Event) {
-  if (restoringFeed || !props.active) return
+  if (restoringFeed || loadingOlder.value || !props.active) return
   const feedNode = event.currentTarget
-  if (feedNode instanceof HTMLElement)
+  if (feedNode instanceof HTMLElement) {
+    if (
+      programmedScroll?.node === feedNode &&
+      Math.abs(feedNode.scrollTop - programmedScroll.top) < 1
+    )
+      return
+    programmedScroll = undefined
+    followingFeed.value = feedNode.scrollHeight - feedNode.scrollTop - feedNode.clientHeight < 64
+    rememberReadingAnchor()
     saveFeedScroll(feedKey(session.conversationId.value), feedNode.scrollTop)
+    session.setScrollPreference({
+      follow: followingFeed.value,
+      anchorMessageId: readingAnchor?.element.dataset.messageId,
+    })
+  }
 }
 function restoreFeed(id: string | null | undefined) {
   restoringFeed = true
   holdingFeed.value = true
   const apply = () => {
     const node = feed()
-    if (node) node.scrollTop = readFeedScroll(feedKey(id))
+    if (!node) return
+    const preference = session.scrollPreferences.value[id ?? '']
+    if (preference?.follow) setFeedTop(node, node.scrollHeight)
+    else setFeedTop(node, readFeedScroll(feedKey(id)))
   }
   const raf =
     typeof requestAnimationFrame === 'function'
@@ -114,6 +214,11 @@ function restoreFeed(id: string | null | undefined) {
       raf(() => {
         restoringFeed = false
         holdingFeed.value = false
+        const node = feed()
+        followingFeed.value =
+          session.scrollPreferences.value[id ?? '']?.follow ??
+          (!node || node.scrollHeight - node.scrollTop - node.clientHeight < 64)
+        rememberReadingAnchor()
       })
     })
   })
@@ -138,6 +243,50 @@ const session = createChatSession(
   api,
   typeof localStorage === 'undefined' ? undefined : chatStorage(localStorage),
 )
+const audio = useChatAudio({
+  active: computed(() => props.active),
+  conversationId: session.conversationId,
+  draft: session.draft,
+})
+onMounted(() => {
+  void audio.refresh()
+})
+watch(
+  () => props.active,
+  (active) => {
+    if (active) void audio.refresh()
+  },
+)
+watch(
+  () => serviceConfiguration.value,
+  (open) => {
+    if (!open) {
+      void audio.refresh()
+      void session.refreshWebSources()
+    }
+  },
+)
+watch(
+  () => session.turns.value.map((turn) => `${turn.id ?? ''}:${turn.text.length}`).join(','),
+  () => {
+    void nextTick(() => {
+      const log = feed()?.querySelector('.chat-log')
+      if (log) feedObserver?.observe(log)
+      resizeFeed()
+    })
+  },
+)
+function draftKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return
+  event.preventDefault()
+  if (
+    !session.sending.value &&
+    !session.opening.value &&
+    !session.reconnecting.value &&
+    !archived.value
+  )
+    void sendTask()
+}
 const visibleTurns = computed(() => {
   const all = session.turns.value
   const start = Math.max(0, all.length - shownTurns.value)
@@ -151,6 +300,34 @@ const pendingAnswerKey = computed(() => {
   const key = turns.length - 1
   return turns[key]?.role === 'assistant' && turns[key - 1]?.role === 'user' ? key : null
 })
+const messageMenuUnavailable = ref(false)
+watch(
+  () => session.conversationId.value,
+  () => {
+    messageMenuUnavailable.value = false
+  },
+)
+function openMessageMenu(event: MouseEvent, turn: ChatTurn, key: number, explicit = false) {
+  const conversationId = session.conversationId.value
+  const source = event.currentTarget
+  if (!conversationId || !turn.text || !(source instanceof HTMLElement)) return
+  const request = new CustomEvent('eap:message-context', {
+    bubbles: true,
+    cancelable: true,
+    detail: {
+      event,
+      // This key identifies the captured UI observation, not a durable message-graph ID.
+      target: Object.freeze({
+        conversationId,
+        messageId: turn.id ?? `${turn.executionId ?? conversationId}:${turn.role}:${key}`,
+        text: turn.text,
+      }),
+    },
+  })
+  const handled = !source.dispatchEvent(request)
+  if (handled) event.preventDefault()
+  if (explicit || handled) messageMenuUnavailable.value = !handled
+}
 const hasOlderTurns = computed(() => shownTurns.value < session.turns.value.length)
 watch(
   () => session.turns.value.length,
@@ -162,13 +339,28 @@ watch(
 function showOlderTurns() {
   if (loadingOlder.value || !hasOlderTurns.value) return
   const node = feed()
-  const before = node?.scrollHeight ?? 0
-  const top = node?.scrollTop ?? 0
+  rememberReadingAnchor()
+  const anchor = readingAnchor
+  followingFeed.value = false
   loadingOlder.value = true
   shownTurns.value = Math.min(session.turns.value.length, shownTurns.value + 40)
+  const preserve = () => {
+    if (node && anchor?.element.isConnected)
+      setFeedTop(
+        node,
+        node.scrollTop +
+          anchor.element.getBoundingClientRect().top -
+          node.getBoundingClientRect().top -
+          anchor.offset,
+      )
+    readingAnchor = anchor
+  }
   void nextTick(() => {
-    if (node) node.scrollTop = top + node.scrollHeight - before
-    loadingOlder.value = false
+    preserve()
+    requestAnimationFrame(() => {
+      preserve()
+      loadingOlder.value = false
+    })
   })
 }
 const manageId = ref<string | null>(null)
@@ -179,7 +371,14 @@ const boardNote = ref('')
 const adoptingBoardDraft = ref(false)
 const answerHandoffPending = ref(false)
 function adoptPendingBoardDraft() {
-  if (!props.active || session.sending.value || session.opening.value) return
+  if (
+    !props.active ||
+    session.sending.value ||
+    session.generationBlocking.value ||
+    session.opening.value
+  )
+    return
+  if (!guardLeave(adoptPendingBoardDraft)) return
   const pending = takeBoardDraft(true)
   if (!pending) return
   adoptingBoardDraft.value = false
@@ -210,6 +409,7 @@ watch(
 )
 const deleting = ref(false)
 const moreOpen = ref(false)
+const memoryOpen = ref(false)
 const modelHistoryOpen = ref(false)
 const taskPlan = ref<ChatTurn | null>(null)
 const preparingTask = ref<BoardTask | null>(null)
@@ -235,7 +435,14 @@ function resumeTaskHandoff() {
 }
 function taskFromAnswer(turn: ChatTurn) {
   const conversationId = session.conversationId.value
-  if (!conversationId || session.sending.value || !turn.text || turn.text.length > 20000) return
+  if (
+    !conversationId ||
+    session.sending.value ||
+    session.generationBlocking.value ||
+    !turn.text ||
+    turn.text.length > 20000
+  )
+    return
   try {
     if (readTaskHandoff(localStorage, apiStorageScope)) {
       boardNote.value = t('desktop.taskHandoffPending')
@@ -275,6 +482,7 @@ function applyPendingDraft() {
   workbench.pendingDraft = ''
 }
 function newConversation() {
+  if (!guardLeave(newConversation)) return
   historyNote.value = ''
   session.beginDraft()
   // Bind the draft to the currently selected local group (or clear for free chat).
@@ -334,7 +542,8 @@ const canRibbonRetry = computed(() => {
   )
     return false
   if (failure !== 'failed' && failure !== 'kept' && failure !== 'not-configured') return false
-  if (session.sending.value || !session.draft.value.trim()) return false
+  if (session.sending.value || session.generationBlocking.value || !session.draft.value.trim())
+    return false
   if (workbench.executionMode === 'agent' && !agentReady.value) return false
   return true
 })
@@ -403,6 +612,13 @@ function statusTone() {
 }
 async function removeConversation() {
   if (!deleteId.value) return
+  if (
+    deleteId.value === session.conversationId.value &&
+    !guardLeave(() => {
+      void removeConversation()
+    })
+  )
+    return
   deleting.value = true
   try {
     await session.deleteConversation(deleteId.value)
@@ -576,6 +792,7 @@ const displayWorkspacePath = computed(() => {
 watchEffect(() => {
   const proposal = [...session.turns.value].reverse().find((turn) => turn.proposal)?.proposal
   const activeId = session.conversationId.value
+  const latestTurn = [...session.turns.value].reverse().find((turn) => turn.role === 'assistant')
   const extras = workbench.sessionExtras[activeId ?? 'scratch']
   chatBinding.value = {
     history: session.history.value.map((item) => ({
@@ -585,16 +802,26 @@ watchEffect(() => {
       updatedAt: item.updatedAt,
     })),
     activeId,
+    latestExecution:
+      activeId && latestTurn
+        ? {
+            conversationId: activeId,
+            executionId: latestTurn.executionId || null,
+            status: isChatExecutionStatus(latestTurn.status) ? latestTurn.status : null,
+            observing: session.inflight.value[activeId] != null,
+            plan: latestTurn.plan,
+            refreshPlan: session.refreshPlan,
+            toolEvents: latestTurn.toolEvents,
+            error: latestTurn.error,
+          }
+        : null,
     busyIds: Object.keys(session.inflight.value).filter((id) => session.inflight.value[id] != null),
     rename: (id: string) => {
       const item = session.history.value.find((row) => row.id === id)
       manageId.value = id
       manageTitle.value = item?.title?.trim() || t('desktop.freeChat')
     },
-    archive: (id: string) => {
-      const item = session.history.value.find((row) => row.id === id)
-      if (item) session.archiveConversation(id, !item.archived)
-    },
+    archive: archiveConversation,
     remove: (id: string) => {
       deleteId.value = id
       historyNote.value = ''
@@ -628,9 +855,7 @@ watchEffect(() => {
       proposal?.verification ||
       'not_requested',
     verificationChecks: proposal ? (appliedChecks.value[proposal.id] ?? []) : [],
-    select: (id: string) => {
-      void session.selectConversation(id)
-    },
+    select: selectConversation,
     create: () => {
       void newConversation()
     },
@@ -677,7 +902,18 @@ const outgoingText = computed(() => {
     plan: workbench.executionMode === 'plan',
   })
 })
+function downloadLegacyHistory() {
+  const raw = session.legacyHistoryExport()
+  if (!raw) return
+  const url = URL.createObjectURL(new Blob([raw], { type: 'application/json;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'eap-chat-legacy-history.json'
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 async function sendTask() {
+  returnToBottom()
   if (workbench.executionMode === 'agent' && !agentReady.value) return
   const extras = currentExtras()
   const guidance = extras.experts.map((item) => item.guidance).join('\n')
@@ -779,6 +1015,12 @@ onMounted(async () => {
     class="view work-page chat-workspace preview-workspace live-workspace"
     data-testid="chat-workspace"
   >
+    <ChatServiceConfigurationDialog
+      v-if="serviceConfiguration"
+      @close="serviceConfiguration = false"
+      @manage="manageChatServices"
+      @saved="refreshChatServices"
+    />
     <div class="page-head chat-page-head live-utilities">
       <div class="live-utilities__row">
         <div v-if="session.phase.value === 'loading'" class="session-status">
@@ -814,6 +1056,26 @@ onMounted(async () => {
           </p>
         </div>
         <div class="session-tools">
+          <slot name="utilities" />
+          <Button
+            v-if="session.conversationId.value"
+            size="sm"
+            :disabled="session.sending.value"
+            data-testid="open-model-history"
+            @click="modelHistoryOpen = true"
+            >{{ t('contextBudget.historyTitle') }}</Button
+          >
+          <Button
+            v-if="session.conversationId.value"
+            size="sm"
+            variant="ghost"
+            data-testid="task-memory-details"
+            @click="memoryOpen = true"
+            >{{ t('workingMemory.title')
+            }}<Badge v-if="session.workingMemory.value?.invalidation" tone="warning">{{
+              t('workingMemory.invalidation')
+            }}</Badge></Button
+          >
           <Button
             size="sm"
             variant="ghost"
@@ -882,6 +1144,7 @@ onMounted(async () => {
                 disabled:
                   !session.conversationId.value ||
                   session.sending.value ||
+                  session.generationBlocking.value ||
                   !session.turns.value.length,
                 description: t('desktop.exportBoundary'),
                 testId: 'chat-export-open',
@@ -906,14 +1169,6 @@ onMounted(async () => {
           </DropdownMenu>
         </div>
       </div>
-      <Button
-        v-if="session.conversationId.value"
-        size="sm"
-        :disabled="session.sending.value"
-        data-testid="open-model-history"
-        @click="modelHistoryOpen = true"
-        >{{ t('contextBudget.historyTitle') }}</Button
-      >
       <ModelHistoryDialog
         v-if="modelHistoryOpen && session.conversationId.value"
         :conversation-id="session.conversationId.value"
@@ -924,17 +1179,12 @@ onMounted(async () => {
         "
         @close="modelHistoryOpen = false"
       />
-      <Collapse
-        v-if="session.conversationId.value"
+      <Dialog
+        v-if="memoryOpen && session.conversationId.value"
         :key="session.conversationId.value"
-        data-testid="task-memory-details"
+        :title="t('workingMemory.title')"
+        @close="memoryOpen = false"
       >
-        <template #summary>
-          {{ t('workingMemory.title') }}
-          <Badge v-if="session.workingMemory.value?.invalidation" tone="warning">{{
-            t('workingMemory.invalidation')
-          }}</Badge>
-        </template>
         <TaskMemoryPanel
           :memory="session.workingMemory.value"
           :busy="session.sending.value"
@@ -946,7 +1196,7 @@ onMounted(async () => {
             }
           "
         />
-      </Collapse>
+      </Dialog>
       <ChatExportDialog
         v-if="exportingChat && session.conversationId.value"
         :key="session.conversationId.value"
@@ -1000,6 +1250,23 @@ onMounted(async () => {
           @scroll="onFeedScroll"
           @load="showOlderTurns"
         >
+          <Button
+            v-if="session.legacyHistoryExport()"
+            size="sm"
+            variant="secondary"
+            data-testid="legacy-history-export"
+            @click="downloadLegacyHistory"
+            >{{ t('richText.legacyExport') }}</Button
+          >
+          <Feedback v-if="session.graphUnavailable.value" tone="warning">{{
+            t('richText.graphUnavailable')
+          }}</Feedback>
+          <Feedback v-if="session.failure.value === 'response-uncertain'" tone="warning"
+            >{{ t('richText.uncertain') }}
+            <Button size="sm" :disabled="session.sending.value" @click="session.recoverOperation">{{
+              t('richText.recover')
+            }}</Button></Feedback
+          >
           <Feedback v-if="session.storageError.value" tone="warning">{{
             t('historyUi.storageError')
           }}</Feedback>
@@ -1021,7 +1288,9 @@ onMounted(async () => {
           <Button
             v-if="workbench.pendingBoardDraft"
             data-testid="adopt-board-draft"
-            :disabled="session.sending.value || session.opening.value"
+            :disabled="
+              session.sending.value || session.generationBlocking.value || session.opening.value
+            "
             @click="adoptingBoardDraft = true"
             >{{ t('generation.adoptTask') }}</Button
           >
@@ -1106,232 +1375,296 @@ onMounted(async () => {
             :compact="session.turns.value.length > 0"
             @scenario="useScene"
           />
+          <Feedback
+            v-if="messageMenuUnavailable"
+            tone="warning"
+            data-testid="message-menu-unavailable"
+            >{{ t('chat.messageMenuUnavailable') }}</Feedback
+          >
           <ol v-if="visibleTurns.length" class="chat-log">
             <li
               v-for="{ turn, key } in visibleTurns"
-              :key="key"
+              :key="turn.id ?? key"
+              :data-message-id="turn.id"
               :aria-label="turn.role === 'user' ? t('chat.speakerYou') : t('chat.speakerModel')"
               :class="turn.role === 'user' ? 'turn-user' : 'turn-assistant'"
             >
-              <p v-if="turn.text">{{ turn.text }}</p>
-              <p v-else-if="turn.role === 'assistant'">
-                {{
-                  t(
-                    key === pendingAnswerKey && turn.status === ChatExecutionStatus.RUNNING
-                      ? 'chat.waitingForAnswer'
-                      : 'chat.noAnswer',
-                  )
-                }}
-              </p>
-              <Button
-                v-if="
-                  workbench.workMode === 'work' &&
-                  turn.role === 'assistant' &&
-                  turn.text &&
-                  !session.sending.value
-                "
-                size="sm"
-                data-testid="work-document-open"
-                @click="documentSource = { key: String(key), turn }"
-                >{{ t('desktop.workDocumentTitle') }}</Button
+              <ChatMessageBody
+                :text="turn.text"
+                :role="turn.role"
+                @contextmenu="openMessageMenu($event, turn, key)"
               >
-              <Button
-                v-if="
-                  turn.role === 'assistant' && turn.text && !turn.error && !session.sending.value
-                "
-                size="sm"
-                data-testid="answer-create-task"
-                @click="taskFromAnswer(turn)"
-                >{{ t('desktop.taskFromAnswer') }}</Button
-              >
-              <Button
-                v-if="
-                  turn.role === 'assistant' &&
-                  turn.planningTask &&
-                  turn.text &&
-                  !turn.error &&
-                  !session.sending.value
-                "
-                size="sm"
-                data-testid="task-plan-open"
-                @click="taskPlan = turn"
-                >{{ t('desktop.taskPlanTitle') }}</Button
-              >
-              <p v-if="turn.error">
-                {{
-                  turn.errorLanguage === locale && turn.errorMessage
-                    ? turn.errorMessage
-                    : t('presentation.failure')
-                }}
-                <code>{{ turn.error }}</code>
-              </p>
-              <p v-if="turn.artifactError">
-                {{ t('chat.artifactFailed') }}：{{ turn.artifactError }}
-              </p>
-              <section
-                v-if="turn.proposal"
-                class="code-proposal write-request"
-                data-testid="code-proposal"
-              >
-                <h3>{{ t('desktop.writeRequest', { count: turn.proposal.files.length }) }}</h3>
-                <GenerationBaseline :generation="turn.proposal.generation" />
-                <p v-if="!refused[turn.proposal.id]" class="hint" data-testid="turn-pending">
-                  {{ t(turnPending(turn)) }}
-                </p>
-                <Collapse v-for="file in turn.proposal.files" :key="file.path">
-                  <template #summary
-                    >{{ file.path }} ·
-                    {{ file.before == null ? t('task.newFile') : t('task.modifiedFile') }} ·
-                    {{ t('desktop.fileBaseline') }}：{{
-                      file.baseHash || t('desktop.summaryUnknown')
-                    }}</template
-                  >
-                  <div class="code-comparison">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      type="button"
-                      data-testid="open-proposal-diff"
-                      @click="viewProposalDiff(file.path)"
-                      >{{ t('desktop.openProposalDiff') }}</Button
-                    >
-                    <div>
-                      <strong>{{ t('task.before') }}</strong>
-                      <pre>{{ file.before ?? t('task.newFile') }}</pre>
-                    </div>
-                    <div>
-                      <strong>{{ t('task.after') }}</strong>
-                      <pre>{{ file.content }}</pre>
-                    </div>
-                  </div>
-                </Collapse>
-                <div class="proposal-actions">
-                  <Button
-                    v-if="!applied[turn.proposal.id] && !refused[turn.proposal.id]"
-                    type="button"
-                    data-testid="refuse-write"
-                    :disabled="!!refusing"
-                    @click="refuseProposal(turn)"
-                    >{{ t('desktop.refuseWrite') }}</Button
-                  >
-                </div>
-                <p
-                  v-if="refuseNote && refusing === turn.proposal.id"
-                  class="hint"
-                  role="alert"
-                  data-testid="refuse-write-error"
-                >
-                  {{ refuseNote }}
-                </p>
-                <p v-if="refused[turn.proposal.id]" class="hint" data-testid="refused-write">
-                  {{ t('desktop.refusedWrite') }}
-                </p>
-                <ProposalApplication
-                  v-if="turn.proposal.generation"
-                  :proposal="turn.proposal"
-                  @continue="continueDelivery"
-                  :read-only="
-                    session.context.value.approval === 'read_only' ||
-                    !!refused[turn.proposal.id] ||
-                    session.expired.value ||
-                    archived
-                  "
-                  @applied="
-                    (result) => {
-                      applied[turn.proposal!.id] = result.written
-                      appliedVerification[turn.proposal!.id] = result.verification
-                      appliedChecks[turn.proposal!.id] = result.checks
-                    }
-                  "
-                />
-                <template
-                  v-else-if="
-                    !applied[turn.proposal.id] &&
-                    !refused[turn.proposal.id] &&
-                    baselineReady(turn.proposal)
-                  "
-                >
-                  <label
-                    ><Checkbox v-model="writeConfirmed[turn.proposal.id]" />
-                    {{ t('task.confirmWrite') }}</label
-                  >
-                  <Button
-                    type="button"
-                    variant="primary"
+                <template #actions
+                  ><GraphBranchActions
+                    :turn="turn"
                     :disabled="
-                      !writeConfirmed[turn.proposal.id] ||
-                      !!applying ||
-                      !turn.proposal.writeAllowed ||
-                      session.context.value.approval === 'read_only'
+                      session.sending.value ||
+                      session.generationBlocking.value ||
+                      !!session.pendingOperations.value[session.conversationId.value ?? '']
                     "
-                    @click="applyProposal(turn.proposal)"
-                    >{{ t('task.apply') }}</Button
+                    @select="session.switchBranch"
+                    @edit="session.editMessage"
+                    @regenerate="session.regenerateMessage"
+                  />
+                  <Button
+                    v-if="turn.role === 'assistant' && turn.text"
+                    variant="ghost"
+                    size="sm"
+                    :disabled="
+                      audio.busy.value ||
+                      audio.unresolved.value ||
+                      !audio.selectedService.value?.synthesis ||
+                      turn.text.length > (audio.catalog.value?.limits.maxTextChars ?? 0)
+                    "
+                    @click="audio.synthesize(turn.text)"
+                    >{{ t('richText.generateSpeech') }}</Button
+                  >
+                  <Button
+                    v-if="turn.role === 'assistant' && !audio.selectedService.value?.synthesis"
+                    variant="ghost"
+                    size="sm"
+                    @click="serviceConfiguration = true"
+                    >{{ t('richText.speechSettings') }}</Button
                   >
                 </template>
-                <p v-else-if="applied[turn.proposal.id]">
-                  {{ t('task.written') }}
-                  {{ applied[turn.proposal.id]?.join('、') }}
-                </p>
-              </section>
-              <ul v-if="turn.toolEvents.length">
-                <li v-for="event in turn.toolEvents" :key="event.sequence">
-                  {{ event.sequence }}. {{ event.code }}
-                </li>
-              </ul>
-              <section v-if="turn.knowledgeContext" data-testid="turn-knowledge">
-                <h3>
-                  {{ t('knowledgeContext.title') }} · {{ turn.knowledgeContext.expertRef.id }} · r{{
-                    turn.knowledgeContext.expertRef.revision
-                  }}
-                </h3>
-                <p>
-                  {{ t('knowledgeContext.provided') }}
-                </p>
-                <p>{{ t('knowledgeContext.excerpts') }}</p>
-                <p v-if="turn.knowledgeContext.status === 'no_matches'">
-                  {{ t('knowledgeContext.no_matches') }}
-                </p>
-                <ul>
-                  <li v-for="reference in turn.knowledgeContext.references" :key="reference.id">
-                    <strong
-                      >{{ reference.id }} · {{ reference.source }} ·
-                      {{ reference.knowledgeBase }}</strong
-                    >
-                    <p>
-                      {{ reference.retrievalMode }} · {{ reference.knowledgeBaseId }} ·
-                      {{ reference.documentId }}
+                <template #references
+                  ><ChatWebSources v-if="turn.webSources?.length" :sources="turn.webSources"
+                /></template>
+                <template #evidence>
+                  <Feedback v-if="turn.observationAvailable === false" tone="info">{{
+                    t('richText.observationUnavailable')
+                  }}</Feedback>
+                  <Button
+                    v-if="turn.text"
+                    variant="ghost"
+                    size="sm"
+                    data-testid="message-actions"
+                    aria-haspopup="menu"
+                    @click="openMessageMenu($event, turn, key, true)"
+                    >{{ t('desktop.moreActions') }}</Button
+                  >
+                  <p v-else-if="turn.role === 'assistant'">
+                    {{
+                      t(
+                        key === pendingAnswerKey && turn.status === ChatExecutionStatus.RUNNING
+                          ? 'chat.waitingForAnswer'
+                          : 'chat.noAnswer',
+                      )
+                    }}
+                  </p>
+                  <Button
+                    v-if="
+                      workbench.workMode === 'work' &&
+                      turn.role === 'assistant' &&
+                      turn.text &&
+                      !session.sending.value
+                    "
+                    size="sm"
+                    data-testid="work-document-open"
+                    @click="documentSource = { key: String(key), turn }"
+                    >{{ t('desktop.workDocumentTitle') }}</Button
+                  >
+                  <Button
+                    v-if="
+                      turn.role === 'assistant' &&
+                      turn.text &&
+                      !turn.error &&
+                      !session.sending.value
+                    "
+                    size="sm"
+                    data-testid="answer-create-task"
+                    @click="taskFromAnswer(turn)"
+                    >{{ t('desktop.taskFromAnswer') }}</Button
+                  >
+                  <Button
+                    v-if="
+                      turn.role === 'assistant' &&
+                      turn.planningTask &&
+                      turn.text &&
+                      !turn.error &&
+                      !session.sending.value
+                    "
+                    size="sm"
+                    data-testid="task-plan-open"
+                    @click="taskPlan = turn"
+                    >{{ t('desktop.taskPlanTitle') }}</Button
+                  >
+                  <p v-if="turn.error">
+                    {{
+                      turn.errorLanguage === locale && turn.errorMessage
+                        ? turn.errorMessage
+                        : t('presentation.failure')
+                    }}
+                    <code>{{ turn.error }}</code>
+                  </p>
+                  <p v-if="turn.artifactError">
+                    {{ t('chat.artifactFailed') }}：{{ turn.artifactError }}
+                  </p>
+                  <section
+                    v-if="turn.proposal"
+                    class="code-proposal write-request"
+                    data-testid="code-proposal"
+                  >
+                    <h3>{{ t('desktop.writeRequest', { count: turn.proposal.files.length }) }}</h3>
+                    <GenerationBaseline :generation="turn.proposal.generation" />
+                    <p v-if="!refused[turn.proposal.id]" class="hint" data-testid="turn-pending">
+                      {{ t(turnPending(turn)) }}
                     </p>
-                    <pre>{{ reference.excerpt }}</pre>
-                  </li>
-                </ul>
-              </section>
-              <section v-if="turn.skillContext" data-testid="turn-skill">
-                <h3>
-                  {{ t('skill.title') }} · {{ turn.skillContext.skillRef.id }} ·
-                  {{ turn.skillContext.skillRef.version }} · r{{
-                    turn.skillContext.skillRef.stateRevision
-                  }}
-                </h3>
-                <p>{{ t('skill.evidence') }}</p>
+                    <Collapse v-for="file in turn.proposal.files" :key="file.path">
+                      <template #summary
+                        >{{ file.path }} ·
+                        {{ file.before == null ? t('task.newFile') : t('task.modifiedFile') }} ·
+                        {{ t('desktop.fileBaseline') }}：{{
+                          file.baseHash || t('desktop.summaryUnknown')
+                        }}</template
+                      >
+                      <div class="code-comparison">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          type="button"
+                          data-testid="open-proposal-diff"
+                          @click="viewProposalDiff(file.path)"
+                          >{{ t('desktop.openProposalDiff') }}</Button
+                        >
+                        <div>
+                          <strong>{{ t('task.before') }}</strong>
+                          <pre>{{ file.before ?? t('task.newFile') }}</pre>
+                        </div>
+                        <div>
+                          <strong>{{ t('task.after') }}</strong>
+                          <pre>{{ file.content }}</pre>
+                        </div>
+                      </div>
+                    </Collapse>
+                    <div class="proposal-actions">
+                      <Button
+                        v-if="!applied[turn.proposal.id] && !refused[turn.proposal.id]"
+                        type="button"
+                        data-testid="refuse-write"
+                        :disabled="!!refusing"
+                        @click="refuseProposal(turn)"
+                        >{{ t('desktop.refuseWrite') }}</Button
+                      >
+                    </div>
+                    <p
+                      v-if="refuseNote && refusing === turn.proposal.id"
+                      class="hint"
+                      role="alert"
+                      data-testid="refuse-write-error"
+                    >
+                      {{ refuseNote }}
+                    </p>
+                    <p v-if="refused[turn.proposal.id]" class="hint" data-testid="refused-write">
+                      {{ t('desktop.refusedWrite') }}
+                    </p>
+                    <ProposalApplication
+                      v-if="turn.proposal.generation"
+                      :proposal="turn.proposal"
+                      @continue="continueDelivery"
+                      :read-only="
+                        session.context.value.approval === 'read_only' ||
+                        !!refused[turn.proposal.id] ||
+                        session.expired.value ||
+                        archived
+                      "
+                      @applied="
+                        (result) => {
+                          applied[turn.proposal!.id] = result.written
+                          appliedVerification[turn.proposal!.id] = result.verification
+                          appliedChecks[turn.proposal!.id] = result.checks
+                        }
+                      "
+                    />
+                    <template
+                      v-else-if="
+                        !applied[turn.proposal.id] &&
+                        !refused[turn.proposal.id] &&
+                        baselineReady(turn.proposal)
+                      "
+                    >
+                      <label
+                        ><Checkbox v-model="writeConfirmed[turn.proposal.id]" />
+                        {{ t('task.confirmWrite') }}</label
+                      >
+                      <Button
+                        type="button"
+                        variant="primary"
+                        :disabled="
+                          !writeConfirmed[turn.proposal.id] ||
+                          !!applying ||
+                          !turn.proposal.writeAllowed ||
+                          session.context.value.approval === 'read_only'
+                        "
+                        @click="applyProposal(turn.proposal)"
+                        >{{ t('task.apply') }}</Button
+                      >
+                    </template>
+                    <p v-else-if="applied[turn.proposal.id]">
+                      {{ t('task.written') }}
+                      {{ applied[turn.proposal.id]?.join('、') }}
+                    </p>
+                  </section>
+                  <ul v-if="turn.toolEvents.length">
+                    <li v-for="event in turn.toolEvents" :key="event.sequence">
+                      {{ event.sequence }}. {{ event.code }}
+                    </li>
+                  </ul>
+                  <section v-if="turn.knowledgeContext" data-testid="turn-knowledge">
+                    <h3>
+                      {{ t('knowledgeContext.title') }} · {{ turn.knowledgeContext.expertRef.id }} ·
+                      r{{ turn.knowledgeContext.expertRef.revision }}
+                    </h3>
+                    <p>
+                      {{ t('knowledgeContext.provided') }}
+                    </p>
+                    <p>{{ t('knowledgeContext.excerpts') }}</p>
+                    <p v-if="turn.knowledgeContext.status === 'no_matches'">
+                      {{ t('knowledgeContext.no_matches') }}
+                    </p>
+                    <ul>
+                      <li v-for="reference in turn.knowledgeContext.references" :key="reference.id">
+                        <strong
+                          >{{ reference.id }} · {{ reference.source }} ·
+                          {{ reference.knowledgeBase }}</strong
+                        >
+                        <p>
+                          {{ reference.retrievalMode }} · {{ reference.knowledgeBaseId }} ·
+                          {{ reference.documentId }}
+                        </p>
+                        <pre>{{ reference.excerpt }}</pre>
+                      </li>
+                    </ul>
+                  </section>
+                  <section v-if="turn.skillContext" data-testid="turn-skill">
+                    <h3>
+                      {{ t('skill.title') }} · {{ turn.skillContext.skillRef.id }} ·
+                      {{ turn.skillContext.skillRef.version }} · r{{
+                        turn.skillContext.skillRef.stateRevision
+                      }}
+                    </h3>
+                    <p>{{ t('skill.evidence') }}</p>
 
-                <code>{{ turn.skillContext.skillRef.digest }}</code>
-                <pre>{{ turn.skillContext.instructions }}</pre>
-                <div v-for="resource in turn.skillContext.resources" :key="resource.path">
-                  <strong>{{ resource.path }}</strong>
-                  <pre>{{ resource.content }}</pre>
-                </div>
-                <p>{{ t('skill.dependencies') }}: {{ turn.skillContext.dependencies }}</p>
-              </section>
-              <TurnContextDetails :budget="turn.contextBudget" :artifacts="turn.artifacts" />
-              <Feedback
-                v-if="
-                  turn.knowledgeMemoryCleared &&
-                  !turn.contextMemoryCleared &&
-                  !session.contextMemoryCleared.value
-                "
-                tone="info"
-                >{{ t('knowledgeContext.cleared') }}</Feedback
-              >
+                    <code>{{ turn.skillContext.skillRef.digest }}</code>
+                    <pre>{{ turn.skillContext.instructions }}</pre>
+                    <div v-for="resource in turn.skillContext.resources" :key="resource.path">
+                      <strong>{{ resource.path }}</strong>
+                      <pre>{{ resource.content }}</pre>
+                    </div>
+                    <p>{{ t('skill.dependencies') }}: {{ turn.skillContext.dependencies }}</p>
+                  </section>
+                  <TurnContextDetails :budget="turn.contextBudget" :artifacts="turn.artifacts" />
+                  <Feedback
+                    v-if="
+                      turn.knowledgeMemoryCleared &&
+                      !turn.contextMemoryCleared &&
+                      !session.contextMemoryCleared.value
+                    "
+                    tone="info"
+                    >{{ t('knowledgeContext.cleared') }}</Feedback
+                  >
+                </template>
+              </ChatMessageBody>
             </li>
           </ol>
 
@@ -1359,6 +1692,7 @@ onMounted(async () => {
             data-testid="retry-send"
             :disabled="
               session.sending.value ||
+              session.generationBlocking.value ||
               !session.draft.value.trim() ||
               (workbench.executionMode === 'agent' && !agentReady)
             "
@@ -1453,7 +1787,11 @@ onMounted(async () => {
           <Button
             v-if="session.failure.value === 'generation-stale'"
             data-testid="retry-generation"
-            :disabled="session.sending.value || !session.draft.value.trim()"
+            :disabled="
+              session.sending.value ||
+              session.generationBlocking.value ||
+              !session.draft.value.trim()
+            "
             @click="sendTask"
             >{{ t('generation.retry') }}</Button
           >
@@ -1462,12 +1800,26 @@ onMounted(async () => {
             {{ t('desktop.effortReset', { effort: t('task.' + effortReset) }) }}
           </p>
         </InfiniteScroll>
+        <Button
+          v-if="!followingFeed && visibleTurns.length"
+          class="chat-return-bottom"
+          size="sm"
+          variant="secondary"
+          data-testid="return-bottom"
+          @click="returnToBottom"
+          >{{ t('richText.bottom') }}</Button
+        >
         <form
           class="chat-composer preview-composer preview-input-box"
           data-testid="chat-composer"
           @submit.prevent="sendTask"
         >
           <TaskComposer
+            :attachment-store="session.attachmentStore.value"
+            :attachment-owner="session.attachmentOwner.value"
+            :web-source-services="session.webSourceServices.value"
+            :web-sources-unavailable="session.webSourcesUnavailable.value"
+            ref="composer"
             :draft="session.draft.value"
             :tool-mode="
               workbench.executionMode === 'plan' ? AiToolMode.NONE : session.toolMode.value
@@ -1477,9 +1829,13 @@ onMounted(async () => {
             :model-options-available="modelChoices.length > 0"
             :agent-available="agentReady"
             :model-label="selectedModel ? selectedModel.model : ''"
+            :model-connection-id="
+              session.pendingConnectionId.value || session.boundConnectionId.value
+            "
             :context="session.context.value"
             :disabled="
               session.sending.value ||
+              session.generationBlocking.value ||
               session.opening.value ||
               session.reconnecting.value ||
               archived
@@ -1487,7 +1843,17 @@ onMounted(async () => {
             :reasoning-efforts="reasoningEfforts"
             @update="session.context.value = $event"
             @refresh="refreshModels"
+            @connections-changed="session.applyConnectionDirectory"
+            @configure="serviceConfiguration = true"
           >
+            <template #speech>
+              <Collapse :summary="t('richText.speechTitle')"
+                ><SpeechControls
+                  :audio="audio"
+                  :disabled="session.generationBlocking.value || archived"
+                  @configure="serviceConfiguration = true"
+              /></Collapse>
+            </template>
             <template #draft>
               <label>
                 <span class="sr-only">{{ t('chat.draft') }}</span>
@@ -1504,14 +1870,21 @@ onMounted(async () => {
                     )
                   "
                   rows="3"
+                  auto-resize
+                  :max-height="240"
+                  :title="t('richText.keys')"
+                  @keydown="draftKeydown"
                   :disabled="
                     session.sending.value ||
+                    session.generationBlocking.value ||
                     session.opening.value ||
                     session.reconnecting.value ||
                     archived
                   "
                 />
               </label>
+            </template>
+            <template #details>
               <Collapse class="outgoing-preview" data-testid="outgoing-preview">
                 <template #summary>{{ t('desktop.outgoing') }}</template>
                 <p>{{ t('desktop.outgoingIdle') }}</p>
@@ -1621,7 +1994,7 @@ onMounted(async () => {
             </template>
             <template #send>
               <Button
-                v-if="session.sending.value"
+                v-if="session.sending.value || session.canCancel.value"
                 class="composer-send"
                 variant="secondary"
                 type="button"
@@ -1650,7 +2023,8 @@ onMounted(async () => {
                   session.checkingConversation.value ||
                   session.sessionUnavailable.value ||
                   session.opening.value ||
-                  !session.draft.value.trim() ||
+                  session.generationBlocking.value ||
+                  (!session.draft.value.trim() && !session.context.value.attachmentRefs?.length) ||
                   (!!session.pendingConnectionId.value && !!session.conversationId.value) ||
                   !selectedModel
                 "
@@ -1883,6 +2257,26 @@ onMounted(async () => {
     flex-wrap: wrap;
   }
 }
+.chat-return-bottom {
+  align-self: center;
+  margin: 0.5rem;
+}
+.chat-workspace .chat-log {
+  gap: 1.5rem;
+  width: min(100%, 52rem);
+  margin-inline: auto;
+}
+.chat-workspace .chat-log > li.turn-assistant {
+  width: 100%;
+  max-width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.5rem 0;
+}
+.chat-workspace .chat-log > li.turn-user {
+  max-width: min(85%, 42rem);
+}
 .chat-main {
   display: flex;
   flex-direction: column;
@@ -1969,6 +2363,7 @@ onMounted(async () => {
   font: inherit;
 }
 .chat-feed {
+  overflow-anchor: none;
   flex: 1;
   min-height: 0;
   overflow: auto;

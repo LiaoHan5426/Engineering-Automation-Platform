@@ -98,6 +98,8 @@ public class ChatExecutionJournal {
             return event;
         }
 
+        public long nextSequence() { synchronized(log) {return log.latestSequence+1;} }
+
         public void complete(String status) {
             synchronized (log) {
                 if (!log.complete) {
