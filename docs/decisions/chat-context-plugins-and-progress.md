@@ -1,6 +1,6 @@
 # 聊天上下文交互、DSH 插件兼容与执行计划评估
 
-日期：2026-11-14。状态：**G1局部实现已技术验证：聊天内连接配置及真实执行摘要；完整结构化计划、DSH插件宿主、消息图尚未实施，用户接受待确认。** 本文补充[CT-02 聊天方案](deepseek-chat-adaptation.md)，不把“参考 DSH”理解为直接更换 Vue/Spring AI 或已经支持所有 DSH 插件。当前进度统一见[台账](../planning-status.md#ct-02-chat-adaptation)。
+日期：2026-11-14。状态：**G1局部实现已技术验证：聊天内连接配置及真实执行摘要；完整内置计划、DSH前端兼容模块、消息图尚未实施，用户接受待确认。** 本文补充[CT-02 聊天方案](deepseek-chat-adaptation.md)，不把“参考 DSH”理解为直接更换 Vue/Spring AI 或已经支持所有 DSH 插件。当前进度统一见[台账](../planning-status.md#ct-02-chat-adaptation)。
 
 ## 1. 日常操作留在当前对话
 
@@ -33,28 +33,28 @@
 
 实施前逐项搜索EAP现有原语与管理器，记录“保留/移植纯逻辑/按合同改写/不引入”的选择及依赖成本；优先复用现有能力和不含宿主依赖的算法，移植源码保留固定revision、版权与许可。原型验证三栏、面板切换、Dialog/Drawer、输入/草稿和窄屏后再接生产；纯源码对照不证明区域布局或原UI插件可运行。
 
-## 2. DSH 执行任务列表与摘要面板
+## 2. EAP内置执行计划与摘要面板
+
+最新用户决定：不采用独立DSH宿主；计划由EAP内置，DSH仅作行为参考。确定的前端模块、升级逻辑、领域合同和切片见[实施路线](dsh-frontend-adaptation.md)。下述上游todo语义只用于对照，不是引入DSH日志/运行时的前置。
 
 重构前[SessionPanel](../../frontend/apps/web/src/components/SessionPanel.vue)的“任务列表”是草稿、sending、候选文件数、终端和验收入口等五个固定步骤；当时[ChatBinding](../../frontend/apps/web/src/features/shell/workbench.ts)未提供执行事件或结构化 todo。它不能作为执行进度真相，也不应静态显示“无执行号/验收未完成”来替代实际证据。[ChatTurn](../../frontend/apps/web/src/features/chat/chatSession.ts)已有执行身份、状态、工具事件与候选，[事件投影辅助函数](../../frontend/apps/web/src/features/chat/eventProjector.ts)尚未被生产发送链调用，且projectEvents本身仅按sequence去重、未先隔离执行身份；不能将其单测当作在线去重/恢复保证。当前摘要适配应只投影ChatTurn已观察到的数据，不伪造有序回放或后台接管能力。
 
-DSH 参考固定为 [39163dd3](https://github.com/deepseek-ai/deepseek-harness/tree/39163dd30f703a79079e2d2446545cff3c453738)。[todo 类型](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/todo/tool-todo/src/types.ts)只有 content 与 pending/in_progress/completed，无稳定条目ID；[todo_write](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/todo/tool-todo/src/index.ts)要求所属 agent 会话，每次追加 `todo/write` **完整列表快照**，同一轮内回放以最新一次为准，可按配置允许多个进行中；实际投影在turn/start清为null，turn/end保留刚结束的列表直至下一轮开始（stateVersion 2）。列表是会话日志投影，不是业务任务状态，不是工具成功或验收证据；不能把数组下标当作跨版本任务身份。DSH列表的事件历史属于agent会话，但当前展示不跨新轮自动延续；README/类型注释的“最新列表”概述不能覆盖实现的turn/start重置。EAP桥接需映射轮次边界，不能误写为永久站立计划或EAP每执行独占列表。
+DSH 参考固定为 [39163dd3](https://github.com/deepseek-ai/deepseek-harness/tree/39163dd30f703a79079e2d2446545cff3c453738)。[todo 类型](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/todo/tool-todo/src/types.ts)只有 content 与 pending/in_progress/completed，无稳定条目ID；[todo_write](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/todo/tool-todo/src/index.ts)要求所属 agent 会话，每次追加 `todo/write` **完整列表快照**，同一轮内回放以最新一次为准，可按配置允许多个进行中；实际投影在turn/start清为null，turn/end保留刚结束的列表直至下一轮开始（stateVersion 2）。列表是会话日志投影，不是业务任务状态，不是工具成功或验收证据；不能把数组下标当作跨版本任务身份。DSH列表的事件历史属于agent会话，但当前展示不跨新轮自动延续；README/类型注释的“最新列表”概述不能覆盖实现的turn/start重置。这说明上游不是永久站立计划；EAP按自己的执行级planId/revision合同实现，不复制无条目ID的日志投影。
 
 | 摘要区域 | 唯一权威来源 | 行为与边界 |
 |---|---|---|
 | 会话概览 | 当前会话/分支、模型及引用投影 | 保留当前概览，详细内容按需展开，不重复铺陈全部诊断 |
 | 当前执行 | 选中 ChatTurn 的 executionId、状态及真实事件 | 显示进行中/取消中/真实终态；切换分支不改变执行。历史或不可恢复要明确，不能合成后台任务 |
-| 执行计划 | 原生 EAP 执行域的结构化计划，或显式选择的 DSH agent 会话的 todo 投影 | 按执行目标选择一个权威来源；没有列表则不伪造进度。DSH 列表保留源session/事件序号及产生更新的执行关联，不伪装为 EAP 原生执行状态 |
+| 执行计划 | EAP Chat执行域的结构化计划，唯一权威PlanStore | 没有列表不伪造；稳定条目ID、执行关联、完整快照及revision。没有DSH运行目标或第二份DSH todo |
 | 产物与验证 | 原 Proposal/Generation、验证结果、Task/Run 和人工决定 | 链接原证据；计划全部 completed 不自动应用源码、通过检查、完成看板任务或确认验收 |
 
-原生 EAP 路径需在现有执行域定义有界完整快照、revision/序号、会话/执行/消息关联、更新权限和读取接口；先确定是否需要跨轮延续，再设计条目身份与重排语义。状态词表由该域的后端常量拥有，前端从合同派生，不增全局状态枚举；与 DSH 源协议之间显式适配，非法状态应拒绝。模型只可写计划说明及进展，不能写审批/验收真相。若没有实际执行能力，PLAN 的文字计划仍只是计划材料，不自动拆成看板任务或启动 Run。
+原生计划采用执行级归属、稳定条目ID、CAS/幂等完整快照、后端持久化和GET读回，具体[领域合同](dsh-frontend-adaptation.md#4-任务计划由-eap-内置)已确定。任务工作记忆只保存目标/约束/事实，计划不放进前端localStorage或另一个插件状态库。既有PLAN模式无工具承诺保持，自动计划更新只在具备工具能力且有明确预算的执行中注册，不由模型文字自动触发。
 
-任务工作记忆的目标/约束/事实与执行计划职责不同，不把 todo 塞进工作记忆或另建前端 localStorage 权威库。原生列表随现有事件/快照合同同步后端、runtime-client、独立 Mock 和 UI；DSH 列表由 DSH 日志拥有，EAP只读投影，不双写两套列表。分支、会话、目标 agent 之间分别隔离；并行子 agent 列表注明归属，不能混成一份主计划。
-
-先替换误导的固定步骤为真实当前执行投影，再接结构化计划。验收包括首次无列表、完整替换/清空、DSH新轮开始清空及轮终态保留、重复/乱序/序号缺口、多个进行中策略、切换会话/分支、取消/失败后未完成项保留及真实终态。执行停止不自动把剩余项改为完成；不向 DSH 三态中塞入 EAP 的 UNKNOWN。刷新、日志淘汰及重启分别按实际存储能力说明，不能用浏览器历史或 DSH 持久日志为原生 EAP 跨重启接管背书。
+取消/失败保留最后快照，重试为新执行/新计划；计划completed不是工具、验证或接受证据。首片不实现依赖图/调度器，后续按用户需求扩展同一合同。新旧会话/执行隔离、并发冲突、取消迟到更新、刷新/重启后历史读回须验证；持久计划不等于CT-01后台执行接管。
 
 ## 3. DSH 插件复用评估
 
-目标是让已有插件在明确宿主与版本下尽量复用原包；是否“直接使用”必须逐插件、逐贡献类型验证，不能只凭 npm 安装成功或 UI 能显示就宣称兼容。
+确定采用[独立前端适配模块](dsh-frontend-adaptation.md#2-独立前端模块的具体内容)，在现有Vue内嵌DSH浏览器兼容区域，不部署Node宿主；目标是让已有插件在明确客户端依赖与版本下尽量复用原包；是否“直接使用”必须逐插件、逐贡献类型验证，不能只凭 npm 安装成功或 UI 能显示就宣称兼容。
 
 ### 3.1 宿主合同与兼容矩阵
 
@@ -66,26 +66,24 @@ DSH 参考固定为 [39163dd3](https://github.com/deepseek-ai/deepseek-harness/t
 |---|---|---|
 | SKILL.md指令、静态文本资源 | 复用原材料，经现有Skill导入、来源/digest/路径/预算/能力校验；脚本及复杂资源另评估 | 有条件复用内容，不等于支持DSH的Skill运行时 |
 | 独立MCP服务器/端点 | 用EAP自己的MCP客户端连接同一服务器，逐项验证传输、协议版本、认证、工具/资源/音频、超时取消 | 最适合首先验证的服务端产物复用；DSH的MCP客户端插件本身不是Java插件 |
-| 原生Host工具、服务、模型/provider、Agent生命周期插件 | 在版本匹配且服务齐全的DSH Node宿主运行；EAP通过显式桥接消费结果 | 原包可在DSH宿主试点，当前EAP不能原生加载；移植Java或包装远程服务属于适配 |
-| Host/client双入口UI插件 | 需完整boot图、共享模块、Cordis服务、store/React槽位、remote、主题/资源与dispose | 当前Vue Host不兼容，保留为独立兼容宿主试点；完整DSH iframe是另一工作面，不算EAP原生插件 |
+| 原生Host工具、服务、模型/provider、Agent生命周期插件 | 逐能力映射现有Java工具/服务，缺失能力需真实适配，不部署DSH运行时 | Node Host原实现不能在浏览器直接运行，不把声明导入记作原包兼容 |
+| Host/client双入口UI插件 | 由独立前端模块提供受信构建图、React/Cordis共享身份/槽位与生命周期；逐namespace补EAP后端门面 | 复用已核对的client部分；无等价后端服务不能标整包兼容，不使用完整DSH iframe或独立Host |
 | 无DSH依赖的普通JS库 | 按现有依赖、许可、体积及浏览器兼容检查选择性复用 | 库复用，不证明插件兼容 |
 | 本机可执行/浏览器/桌面能力包 | 还需目标OS、程序、显示服务、工作目录和授权；platform声明仅作准入输入 | 逐部署验证，缺依赖明确不可用，不自动安装或降级 |
 
 [DSH MCP实现](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/mcp/mcp-client/src/index.ts)的传输、命名及资源能力与EAP不应默认视为同等；不支持的协议/结果类型必须清楚拒绝。Claude Code等hook适配也只覆盖其实现子集，不能据此承诺兼容任意其他生态插件。
 
-### 3.2 三条集成路径的取舍
+### 3.2 已确定路线及被替代的比较
 
-1. **EAP原生协议/材料复用（优先）**：原Skill材料、同一MCP服务器或普通无框架逻辑进入现有EAP路径。复用范围有限但不增加第二套模型循环；最先用这一条交付可验证增强。
-2. **保留原生插件的DSH宿主桥接（条件试点）**：[SDK协议](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/sdk/protocol/README.md)和[stdio服务端](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/sdk/server/README.md)确实存在，NDJSON JSON-RPC可由Java适配。但它驱动完整agent/session，不是通用plugin.invoke或tools/call。prompt回执只是排队入箱；事件/状态是会话/agent级，不是每次请求独占结果。当前无per-session close或prompt-cancel、无协议版本协商，且事件通知包含运行时各会话，必须做所有权隔离。选择DSH目标时，由DSH单独拥有其会话、模型工具循环和日志；EAP负责接入/显示及核心业务边界，不能两个Agent同时执行同一对话。
-3. **DSH客户端兼容宿主或完整应用嵌入（后置比较）**：适合确实需要原UI插件的场景，需测完整依赖闭包、隔离与交互成本。完整应用iframe必须处理来源、身份、导航、文件及审批归属，不靠共享cookie或任意postMessage放权；选择性移植区域交互通常更适合现有Vue。不能为一句“插件兼容”重写全站。
+采用`@eap/dsh-adapter`：受信构建阶段生成模块图与产物，浏览器嵌入兼容区域，现有PluginHost装配，原Java执行/审批保持权威。浏览器模块合同明确无Node导入；此前“DSH原包执行一律需要独立Node”过于笼统，应限定为Host侧Node实现。浏览器client依赖闭包存在可复用路径，但不是挂一个React root就兼容。
 
-上游另有[类型化API网关](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/api/gateway/README.md)，按Remote声明、codec、Peer和资源所有权导出有限方法；它不是所有插件函数自动可调用的HTTP门面。需要某一服务时先核实已导出的方法及权限，未导出时需新的受审包装，不虚构通用桥接协议。
+此前SDK/stdio独立宿主与完整应用嵌入只属于**已被本轮决定排除的历史比较**，不再是G2/G3选项。上游[SDK协议](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/sdk/protocol/README.md)驱动agent/session，[API网关](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/api/gateway/README.md)仅导出声明服务，均不是任意插件函数入口；本方案不引入它们的独立执行目标。
 
-若走SDK试点，明确 EAP conversation/operation/execution 与 DSH session/message/event 的映射、排队/运行/结束边界、历史读取与恢复策略。DSH resume保留原存储身份，不把历史当新通知重新播放。请求超时不代表回滚，不自动重复提交；进程崩溃/断连不能伪报成功。无细粒度取消时只可在隔离进程范围内验证整进程停止及影响，不能把shared宿主shutdown包装成“停止当前回答”。审批与用户提问回调必须正确路由、失败关闭，插件不能获得EAP源码应用/验收权限。
+模块的baseline/manifest/graph/runtime/bridge/view/compat/upgrade职责、真实client复用范围和升级六步见[确定路线](dsh-frontend-adaptation.md)。原服务缺失时明确不可用，不写空成功响应或通用远程代理；不为支持一个插件创建第二套会话、计划或授权状态。
 
 ### 3.3 安装、凭据与运行安全
 
-[DSH插件管理器](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/boot/plugin-manager/README.md)说明Host插件在进程内执行，不受工作区沙箱约束。来源可信、固定版本/校验、依赖脚本授权、配置与实际激活分别验证；“安装成功、选中、启用、激活、可调用、需重启、失败”是不同观察，不能一个开关代表全部，也不凭空新增一套通用生命周期枚举。回滚配置/lock不保证撤销脚本和文件副作用。首批只选受审的固定产物，按隔离边界配置独立profile/home/process，必要时OS用户/容器/文件和网络边界，不能称Manifest自身能沙箱任意代码。
+[DSH插件管理器](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/boot/plugin-manager/README.md)说明Host插件在进程内执行，不受工作区沙箱约束。来源可信、固定版本/校验、依赖脚本授权、配置与实际激活分别验证；“安装成功、选中、启用、激活、可调用、需重启、失败”是不同观察，不能一个开关代表全部，也不凭空新增一套通用生命周期枚举。回滚配置/lock不保证撤销脚本和文件副作用。首批只选受审静态构建产物；前端Manifest不能沙箱同页任意代码，不开放市场或任意URL加载，不创建独立DSH profile/home/process。
 
 [凭据存储](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/credentials/credentials-local/README.md)是Host能力；完整secret不传到浏览器、配置导出或日志。共享同用户目录不等于租户隔离，轮换/重连、卸载后凭据保留/撤销/删除分别定义。安装、配置、启用、工具授权、授予构建脚本权限是不同动作，不因聊天选择插件而自动合并。
 
@@ -97,10 +95,10 @@ DSH 参考固定为 [39163dd3](https://github.com/deepseek-ai/deepseek-harness/t
 |---|---|---|
 | G0 源码与交互评审 | 当前文档阶段；完成入口分类、DSH区域对照、插件分类矩阵、会话/执行/todo归属 | 有固定源码与明确未知项；可点击原型明确模拟，用户先接受交互；不以文档代替已实现 |
 | G1 上下文与真实执行投影 | **局部已实现**：聊天连接设置复用共享编辑器，保留全局目录；摘要投影最近ChatTurn并删除固定步骤。其余聊天壳/交互尚未全量迁移 | 每个受影响入口、原草稿/引用/焦点/滚动、来源恢复、真实执行事件和UNKNOWN逐项验证；同场景真实Before/After |
-| G2 有界能力与计划试点 | 原生执行域计划合同；一个文本Skill、一个stdio及一个HTTP MCP服务；若需原生插件，以固定版本的headless `@deepseek-ai/dsh-tool-todo`为首个SDK隔离试点，依赖由DSH完整宿主提供 | 合同/Mock/调用方同批更新，失败/取消/撤权/超时/脱敏/资源释放通过；DSH试点另验session归属、回执去重、审批、重启及取消缺口，不宣称原生EAP持久接管完成 |
-| G3 原UI插件与扩大兼容 | 仅在必要时对一个双入口插件测React/Cordis兼容宿主或完整应用嵌入，与Vue选择性移植比较 | 挂载/卸载/dispose、重连、共享模块/资源/主题、窄屏、XSS、身份/审批隔离通过后才纳入兼容清单；升级只对已验证版本元组承诺 |
+| G2 前端模块与内置计划 | 按[确定路线](dsh-frontend-adaptation.md)的P1/T1纵向切片；前端兼容区域、受信原client插件，EAP持久PlanStore/工具/API/Mock/摘要 | 插件加载/缺依赖/卸载与计划CAS/幂等/隔离/取消/读回通过；无独立DSH宿主，无平行计划真相 |
+| G3 跟随升级与扩展 | 按确定路线P2/T2演练固定候选升级/回退，按实际需求增加已验证服务/插件与计划能力 | 基线/包锁/适配/夹具/证据同PR；原生包范围准确，真实Before/After；不承诺未来版本自动兼容 |
 
-前一轮交付只更新方案；本次依实施请求完成上述局部G1产品UI，使用隔离开发服务和浏览器HTTP夹具验证，未安装DSH插件、迁移会话、执行真实模型或改后端协议。后续实施需按上述合同先做最小可验证切片，不新增平行Capability注册表，不为可选DSH目标重复实现EAP已有工程写入/审批路径。用户接受、Mock交互、真实后端、供应商/DSH动态能力及构建/静态检查分别记录。
+前一轮交付只更新方案；本次依实施请求完成上述局部G1产品UI，使用隔离开发服务和浏览器HTTP夹具验证，未安装DSH插件、迁移会话、执行真实模型或改后端协议。后续实施需按上述合同先做最小可验证切片，不新增平行Capability注册表，不新增DSH执行目标或重复实现EAP已有工程写入/审批路径。用户接受、Mock交互、真实后端、供应商/DSH动态能力及构建/静态检查分别记录。
 
 规划阶段的证据为固定版本源码审阅、原实现与文档对照。后续G1的[15文件189项定向回归及完整验证记录](../records/chat-g1-validation.md)、类型/架构/构建及实际浏览器证据分别见[连接设置](../evidence/chat-model-context/README.md)与[执行摘要](../evidence/chat-execution-summary/README.md)。DSH动态插件/SDK、真实模型/MCP和数据库仍未运行；规划中的兼容结论是附条件可行性，未证明现有EAP已支持DSH原生插件。
 
@@ -112,4 +110,4 @@ DSH 参考固定为 [39163dd3](https://github.com/deepseek-ai/deepseek-harness/t
 - 执行摘要：由当前会话最近assistant的ChatTurn构造只读投影，显示实际状态/工具记录及观察边界；本地历史RUNNING不等于后台执行，首帧前不伪造已确认执行。保留原候选、审批、应用、验证和接受，未新增todo状态库、执行器或恢复协议。
 - 尚未实现：DSH原生插件/SDK调用和原生结构化任务计划、后端消息图/分支、富文本、多模态/MCP。完整聊天界面区域调整及用户交互接受也未宣称完成。
 
-下一步无法靠新增前端组件补齐：原生计划需要Chat执行域新增快照/写权限/事件/存储合同；DSH原包执行需要独立Node运行时，并由Java接入会话/消息回执/事件与审批问答，定义无单请求取消时的进程归属；分支需要消息图存储、幂等及执行级取消，同步HTTP/SSE、Mock和调用方。以上会改变多个独立模块职责与调用合同，必须先明确执行归属和接口，再推进对应实施，不以本次G1补丁冒充全范围完成。
+用户已明确后续执行归属：不部署DSH宿主，插件集中独立前端模块跟随基线升级，任务计划EAP内置。此前等待执行目标决策的前置已解除。插件所需的具体Java服务门面、计划领域持久化及消息图仍按确定路线分步实施；这些能力尚未编码，不把本次方案收敛或已有G1提升为全范围完成。

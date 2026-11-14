@@ -40,6 +40,7 @@
 | `@eap/layout` | 壳层布局原语（非业务页） | SplitPane、Dock/Rail 槽位、WorkbenchFrame、滚动区约定 | `@eap/ui` + hooks；不含 Chat/Board 业务 |
 | `@eap/toggle` *或* 并入 `@eap/ui` | 开关类控制 | Switch、Segmented、ThemeToggle（纯展示） | 默认**先做进 `@eap/ui`**；仅当体积/依赖独立时再拆 `@eap/toggle` |
 | `@eap/plugin-sdk` / `@eap/plugin-runtime` | 工作台插件契约与可信运行时 | Manifest、贡献点、启停、槽位 | 见 v1.6 §2B；**不等于** Skill/MCP |
+| `@eap/dsh-adapter`（用户已确定路线，待建） | DSH浏览器兼容、固定基线与升级；受审原client适配 | manifest/模块图、React/Cordis共享身份及dispose、精确服务门面/槽位、compat夹具与升级差异；[合同](dsh-frontend-adaptation.md) | 由现有Host注入端口，不依赖apps/features；不新建Agent/后端宿主或权威业务状态，不吞并plugin-sdk/runtime通用职责 |
 | `@eap/plugin-table` | 纯表格插件（vxe-table + `@vxe-ui/core`） | `Table`；分页用 `@eap/ui` Pagination | 不 `app.use` vxe-pc-ui，不把表格实现放进 `@eap/ui`。vxe-pc-ui 只作类型依赖 |
 | `@eap/request`（已落地） | 无领域依赖的 HTTP/流/上传/下载传输 | Axios 实例、动态 headers、超时/取消、注入 UploadRequest | 仅依赖 Axios；不导入 EAP 业务包，不含 API/凭据地址；UI FileUpload 仅引用请求函数类型 |
 | `@eap/runtime-client` | EAP API 与分域 DTO/状态/错误、业务 SSE 帧解析 | 复用 request；纯 contracts 入口供服务及测试使用 | 被 feature / 可选 L3 使用；**不被** `@eap/ui` 依赖 |
