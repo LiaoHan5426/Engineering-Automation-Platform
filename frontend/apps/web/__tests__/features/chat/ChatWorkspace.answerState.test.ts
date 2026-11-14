@@ -124,12 +124,19 @@ it.each([
       answer(ChatExecutionStatus.RUNNING),
     ])
     expect(chatBinding.value?.sending).toBe(false)
+    expect(chatBinding.value?.latestExecution).toMatchObject({
+      conversationId: 'answer-state',
+      status: ChatExecutionStatus.RUNNING,
+      executionId: null,
+      observing: false,
+    })
     expect(bubbles()[0]!.textContent).toContain(i18n.global.t('chat.noAnswer'))
     expect(bubbles()[0]!.textContent).not.toContain(i18n.global.t('chat.waitingForAnswer'))
     ;(host.querySelector('[data-testid=send-message]') as HTMLButtonElement).click()
     await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1))
     await nextTick()
     expect(chatBinding.value?.sending).toBe(true)
+    expect(chatBinding.value?.latestExecution).toMatchObject({ executionId: null, observing: true })
     expect(bubbles()[0]!.textContent).toContain(i18n.global.t('chat.noAnswer'))
     expect(bubbles()[0]!.textContent).not.toContain(i18n.global.t('chat.waitingForAnswer'))
     expect(bubbles()[1]!.textContent).toContain(i18n.global.t('chat.waitingForAnswer'))
@@ -143,6 +150,11 @@ it.each([
       status: ChatExecutionStatus.RUNNING,
     })
     await nextTick()
+    expect(chatBinding.value?.latestExecution).toMatchObject({
+      executionId: 'execution',
+      status: ChatExecutionStatus.RUNNING,
+      observing: true,
+    })
     expect(bubbles()[1]!.textContent).toContain('Partial answer')
     expect(bubbles()[1]!.textContent).not.toContain(i18n.global.t('chat.waitingForAnswer'))
     finish({
@@ -161,6 +173,11 @@ it.each([
     )
     expect(bubbles()[1]!.textContent).not.toContain(i18n.global.t('chat.waitingForAnswer'))
     expect(bubbles()[0]!.textContent).toContain(i18n.global.t('chat.noAnswer'))
+    expect(chatBinding.value?.latestExecution).toMatchObject({
+      executionId: 'execution',
+      status: ChatExecutionStatus.SUCCEEDED,
+      observing: false,
+    })
   },
 )
 it('keeps finished empty, failed and cancelled turns out of the waiting state', async () => {

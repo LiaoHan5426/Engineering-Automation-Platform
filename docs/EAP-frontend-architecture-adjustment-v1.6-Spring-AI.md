@@ -34,7 +34,7 @@ PL-01/PL-02与SC-03的历史提交及生命周期验证见[阶段记录](records
 
 | 工作项 | 本轮范围与当前状态 | 验收关口 |
 |---|---|---|
-| CT-02 DeepSeek聊天核心重做 | 按用户修订，消息/输入/滚动及编辑提问/重新生成/分支参照上游重做；富文本优先，导航/主题局部适配；附件原件前端本机保存，Java后端不持久保存原件；按需网页搜索/链接阅读/语音按MCP方向评估。已形成[源码依据、替换边界和分步方案](decisions/deepseek-chat-adaptation.md)，实现未开始；29e097c复核补齐幂等/取消/日志边界、渲染安全和附件生命周期 ；人工评审补充[上下文交互、DSH插件兼容与执行计划](decisions/chat-context-plugins-and-progress.md)：普通操作Dialog/Drawer、全工作面显式升级，DSH复用按类型/版本评估，摘要接真实执行与独立计划投影，均未实施 | 可点击交互接受→安全展示与输入→消息图存储/操作幂等/执行级取消合同→分支及上下文；本机附件、MCP网页资料与语音按方案依赖推进；分别验证真实交互、工程执行隔离、无原件落盘与真实外部服务。技术选型为方案建议，未把上游功能记作EAP完成；状态见[台账](planning-status.md#ct-02-chat-adaptation) ；逐入口关闭/焦点/草稿/返回及窄屏验收，插件按固定版本试点验证，todo完成不替代Task/Run及人工接受 |
+| CT-02 DeepSeek聊天核心重做 | **G1局部实现，整体未完成、用户接受待确认**：聊天连接设置改为复用共享编辑器的Dialog，保留当前会话/草稿；摘要由最近ChatTurn投影真实执行状态并删除固定假步骤。源码范围、目录只读刷新、未保存/读回恢复及DSH兼容评估见[补充决定](decisions/chat-context-plugins-and-progress.md)。同场景真实Before/After见[连接](evidence/chat-model-context/README.md)与[执行摘要](evidence/chat-execution-summary/README.md) | [定向15文件189项、类型/架构/构建及1440/390浏览器](records/chat-g1-validation.md)通过，含键盘/离开/迟到结果、保存后读回及会话隔离；用户接受独立；其余聊天区域/富文本/分支/本机附件/MCP仍按[方案](decisions/deepseek-chat-adaptation.md)验收。DSH原生插件需Node宿主与Java会话/审批/取消桥接，原生todo需执行域合同，消息图需存储/幂等/执行关联；这些跨模块实施前置尚未关闭。真实服务、用户接受及CT-01持久接管独立 |
 
 ## 0A. Spring AI 与技术执行边界
 

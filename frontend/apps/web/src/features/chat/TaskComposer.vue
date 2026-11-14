@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Button,
@@ -26,9 +26,13 @@ import {
   AiToolMode,
   runtimeApi,
   type TaskContext,
+  type ModelConnection,
   type PrototypeVersionRecord,
   type WorkspaceSource,
 } from '@eap/runtime-client'
+import ModelConnectionEditor from '../../components/ModelConnectionEditor.vue'
+import { modelApi } from './chatService'
+import { errorMessage } from '../../lib/presentation'
 import RepositoryBrowser from '../../components/RepositoryBrowser.vue'
 import KnowledgeExpertSelector from './KnowledgeExpertSelector.vue'
 import SkillSelector from './SkillSelector.vue'
@@ -58,6 +62,7 @@ const props = withDefaults(
     disabled: boolean
     refreshingModels?: boolean
     reasoningEfforts: Array<'low' | 'medium' | 'high'>
+    modelConnectionId?: string | null
     modelLabel?: string
     modelOptionsAvailable?: boolean
     agentAvailable?: boolean
@@ -78,8 +83,54 @@ const shownEffort = computed(() =>
     ? props.context.reasoning
     : 'default',
 )
-const emit = defineEmits<{ update: [context: TaskContext]; refresh: [] }>()
+const emit = defineEmits<{
+  update: [context: TaskContext]
+  refresh: []
+  'connections-changed': [items: ModelConnection[]]
+}>()
 const { t } = useI18n()
+const connectionEditor = ref<InstanceType<typeof ModelConnectionEditor>>()
+function guardLeave(onDiscard?: () => void): boolean {
+  return connectionEditor.value?.guardLeave(onDiscard) ?? true
+}
+defineExpose({ guardLeave })
+async function connectionClosed() {
+  await nextTick()
+  if (props.active)
+    root.value?.querySelector<HTMLButtonElement>('[data-testid="model-picker"]')?.focus()
+}
+const setupBusy = ref(false)
+const setupNote = ref('')
+let setupRequest = 0
+watch(
+  () => [props.active, sessionKey()],
+  () => {
+    setupRequest++
+    setupBusy.value = false
+    setupNote.value = ''
+  },
+)
+async function setupConnection(create = false) {
+  if (!props.active || props.disabled || setupBusy.value) return
+  const origin = sessionKey()
+  const request = ++setupRequest
+  setupBusy.value = true
+  setupNote.value = ''
+  hidePopups()
+  try {
+    const { items } = await modelApi.modelConnections()
+    if (request !== setupRequest || origin !== sessionKey() || !props.active) return
+    const current = !create && items.find((item) => item.id === props.modelConnectionId)
+    if (current && current.kind === 'chatgpt-plan')
+      connectionEditor.value?.manageConnection(current)
+    else if (current) connectionEditor.value?.editConnection(current, items)
+    else connectionEditor.value?.newConnection(items)
+  } catch (error) {
+    if (request === setupRequest && origin === sessionKey()) setupNote.value = errorMessage(error)
+  } finally {
+    if (request === setupRequest) setupBusy.value = false
+  }
+}
 const knowledgeRemoved = ref(false)
 const skillRemoved = ref(false)
 const skillSelector = ref<InstanceType<typeof SkillSelector>>()
@@ -400,6 +451,14 @@ async function loadVersions() {
 
 <template>
   <div ref="root" class="composer-stack" @paste="onPaste">
+    <ModelConnectionEditor
+      v-if="active"
+      :key="sessionKey()"
+      ref="connectionEditor"
+      @changed="emit('connections-changed', $event)"
+      @closed="connectionClosed"
+    />
+    <Feedback v-if="setupNote" tone="warning">{{ setupNote }}</Feedback>
     <SkillSelector
       v-if="active"
       ref="skillSelector"
@@ -869,12 +928,22 @@ async function loadVersions() {
               <p v-if="modelLabel && !reasoningSupported" class="hint">
                 {{ t('task.reasoningUnsupported') }}
               </p>
-              <a
-                href="#model-settings"
+              <Button
+                type="button"
+                variant="link"
                 data-testid="model-setup-link"
-                class="model-setup-link"
-                @click="closePopups"
-                >{{ t('desktop.locateSettings') }}</a
+                :disabled="disabled || setupBusy"
+                @click="setupConnection()"
+                >{{ t('composerUi.modelSettings') }}</Button
+              >
+              <Button
+                v-if="modelConnectionId"
+                type="button"
+                variant="link"
+                data-testid="model-add-connection"
+                :disabled="disabled || setupBusy"
+                @click="setupConnection(true)"
+                >{{ t('composerUi.addConnection') }}</Button
               >
               <Button
                 v-if="modelOptionsAvailable"
@@ -1285,11 +1354,7 @@ async function loadVersions() {
   display: grid;
   gap: 8px;
 }
-.model-setup-link {
-  color: var(--accent);
-  font-size: 12px;
-  padding: 4px 8px;
-}
+
 .model-effort-head {
   display: grid;
   gap: 2px;

@@ -4,6 +4,7 @@ import { createApp, nextTick, type App } from 'vue'
 import { runtimeApi } from '@eap/runtime-client'
 import Shell from '../../src/App.vue'
 import { i18n } from '../../src/lib/i18n'
+import { chatBinding, workbench } from '../../src/features/shell/workbench'
 const state = vi.hoisted(() => ({ dirty: true, resume: undefined as (() => void) | undefined }))
 vi.mock('../../src/features/chat/ChatWorkspace.vue', () => ({
   default: { template: '<section />' },
@@ -37,6 +38,9 @@ afterEach(() => {
   window.history.replaceState(null, '', '/')
   state.dirty = true
   state.resume = undefined
+  chatBinding.value = null
+  workbench.pendingNewChat = false
+  workbench.pendingDraft = ''
   localStorage.clear()
   sessionStorage.clear()
 })
@@ -73,4 +77,54 @@ it('keeps the complete board location on rejected hash navigation and resumes th
   await vi.waitFor(() =>
     expect(root!.querySelector('[data-testid="appearance-settings"]')).not.toBeNull(),
   )
+})
+
+it('does not create a conversation before the current board editor accepts the compound sidebar action', async () => {
+  window.history.replaceState(null, '', '/#board?projectId=local-eap')
+  const create = vi.fn()
+  chatBinding.value = {
+    history: [],
+    activeId: 'kept',
+    references: [],
+    draft: 'Keep this conversation draft',
+    sending: false,
+    workspaceLabel: '',
+    memory: '',
+    model: '',
+    connectionName: '',
+    approval: 'review',
+    goal: 'chat',
+    executionMode: 'chat',
+    scenarioId: null,
+    proposalFiles: [],
+    verification: 'not_requested',
+    select: vi.fn(),
+    create,
+  }
+  for (const method of [
+    'health',
+    'capabilities',
+    'databases',
+    'experts',
+    'tasks',
+    'stats',
+  ] as const) {
+    vi.spyOn(runtimeApi, method).mockRejectedValue(new Error('No service needed for shell guard'))
+  }
+  root = document.createElement('div')
+  document.body.append(root)
+  app = createApp(Shell)
+  app.use(i18n).mount(root)
+  await flush()
+  root.querySelector<HTMLButtonElement>('[data-testid=new-chat]')!.click()
+  await flush()
+  expect(create).not.toHaveBeenCalled()
+  expect(chatBinding.value?.draft).toBe('Keep this conversation draft')
+  expect(location.hash).toBe('#board?projectId=local-eap')
+  expect(state.resume).toBeTypeOf('function')
+  state.dirty = false
+  state.resume?.()
+  await flush()
+  expect(create).toHaveBeenCalledTimes(1)
+  expect(location.hash).toBe('#chat')
 })

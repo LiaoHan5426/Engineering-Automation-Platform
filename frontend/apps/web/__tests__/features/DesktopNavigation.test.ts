@@ -76,6 +76,75 @@ const pages = [
   'builder-beta',
 ].map((id) => ({ id, name: id }))
 describe('desktop navigation', () => {
+  it.each(['new-chat', 'today-journal'])(
+    'defers the whole %s action until discard without changing draft context',
+    async (action) => {
+      workbench.workMode = 'code'
+      workbench.selectedProjectId = 'local-eap'
+      workbench.pendingDraft = ''
+      workbench.pendingNewChat = false
+      let allowed = false
+      let retry: (() => void) | undefined
+      const navigate = vi.fn()
+      root = document.createElement('div')
+      document.body.append(root)
+      app = createApp(DesktopNavigation, {
+        activeView: 'chat',
+        pages,
+        onNavigate: navigate,
+        canNavigate: (onDiscard?: () => void) => {
+          if (!allowed) retry = onDiscard
+          return allowed
+        },
+      })
+      app.use(i18n).mount(root)
+      root.querySelector<HTMLButtonElement>(`[data-testid=${action}]`)!.click()
+      await nextTick()
+      expect(navigate).not.toHaveBeenCalled()
+      expect(workbench.pendingNewChat).toBe(false)
+      expect(workbench.pendingDraft).toBe('')
+      expect(workbench.selectedProjectId).toBe('local-eap')
+      expect(retry).toBeTypeOf('function')
+      allowed = true
+      retry?.()
+      await nextTick()
+      expect(navigate).toHaveBeenCalledTimes(1)
+      expect(navigate).toHaveBeenCalledWith('chat')
+      expect(workbench.pendingNewChat).toBe(true)
+      if (action === 'today-journal')
+        expect(workbench.pendingDraft).toBe(i18n.global.t('desktop.todayJournalDraft'))
+    },
+  )
+  it('defers Work mode changes and navigation together until discard', async () => {
+    workbench.workMode = 'code'
+    let allowed = false
+    let retry: (() => void) | undefined
+    const navigate = vi.fn()
+    root = document.createElement('div')
+    document.body.append(root)
+    app = createApp(DesktopNavigation, {
+      activeView: 'chat',
+      pages,
+      onNavigate: navigate,
+      canNavigate: (onDiscard?: () => void) => {
+        if (!allowed) retry = onDiscard
+        return allowed
+      },
+    })
+    app.use(i18n).mount(root)
+    const work = [...root.querySelectorAll<HTMLButtonElement>('.activity-bar button')].find(
+      (button) => button.textContent?.trim() === i18n.global.t('desktop.work'),
+    )!
+    work.click()
+    await nextTick()
+    expect(workbench.workMode).toBe('code')
+    expect(navigate).not.toHaveBeenCalled()
+    allowed = true
+    retry?.()
+    await nextTick()
+    expect(workbench.workMode).toBe('work')
+    expect(navigate).toHaveBeenCalledTimes(1)
+  })
   it('keeps the board contribution hidden only when explicitly disabled', async () => {
     workbench.selectedProjectId = 'local-eap'
     const enabled = ref(true)

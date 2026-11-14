@@ -5,6 +5,7 @@
  */
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ChatExecutionStatus } from '@eap/runtime-client'
 import VerificationChecks from '../features/shell/VerificationChecks.vue'
 import RepositoryBrowser from './RepositoryBrowser.vue'
 import ProposalDiffView from './ProposalDiffView.vue'
@@ -118,6 +119,19 @@ const pendingLabel = computed(() => {
   return `desktop.pending${state.charAt(0).toUpperCase()}${state.slice(1)}`
 })
 const previewLine = computed(() => t('desktop.deliveryPreview'))
+const execution = computed(() => {
+  const binding = chatBinding.value
+  return binding?.latestExecution?.conversationId === binding?.activeId
+    ? binding?.latestExecution
+    : null
+})
+const executionStatus = computed(() => {
+  const current = execution.value
+  if (current?.observing && !current.executionId) return t('desktop.executionWaiting')
+  return current?.status
+    ? t(`desktop.chatExecutionStatuses.${current.status}`)
+    : t('desktop.executionStatusUnavailable')
+})
 </script>
 
 <template>
@@ -207,39 +221,42 @@ const previewLine = computed(() => t('desktop.deliveryPreview'))
         <span>{{ grantIdentity }}</span>
         <span data-testid="risk-review-off">{{ t('desktop.riskReviewOff') }}</span>
       </Button>
-      <section class="summary-card">
+      <section class="summary-card" data-testid="summary-execution">
         <span class="summary-card-head"
-          ><strong>{{ t('desktop.summaryTasks') }}</strong></span
+          ><strong>{{ t('desktop.summaryExecution') }}</strong></span
         >
-        <ol data-testid="summary-steps">
-          <li>
-            <Button size="sm" variant="link" type="button" @click="emit('open', 'composer')">{{
-              chatBinding?.draft?.trim() ? t('desktop.stepDraft') : t('desktop.stepNoDraft')
-            }}</Button>
-          </li>
-          <li>
-            <Button size="sm" variant="link" type="button" @click="emit('open', 'composer')">{{
-              chatBinding?.sending ? t('desktop.stepSending') : t('desktop.stepIdle')
-            }}</Button>
-          </li>
-          <li>
-            <Button size="sm" variant="link" type="button" @click="emit('open', 'changes')">{{
-              chatBinding?.proposalFiles.length
-                ? t('desktop.summaryChanges', { count: chatBinding.proposalFiles.length })
-                : t('desktop.summaryNoChanges')
-            }}</Button>
-          </li>
-          <li>
-            <Button size="sm" variant="link" type="button" @click="emit('open', 'terminal')">{{
-              t('desktop.stepProcess')
-            }}</Button>
-          </li>
-          <li>
-            <Button size="sm" variant="link" type="button" @click="emit('open', 'changes')">{{
-              t('desktop.acceptanceOpen')
-            }}</Button>
-          </li>
-        </ol>
+        <template v-if="execution">
+          <strong data-testid="summary-execution-status">{{ executionStatus }}</strong>
+          <span class="hint" data-testid="summary-execution-observation">{{
+            execution.observing ? t('desktop.executionObserving') : t('desktop.executionRecorded')
+          }}</span>
+          <span v-if="execution.status === ChatExecutionStatus.UNKNOWN" class="hint">{{
+            t('desktop.executionUnknown')
+          }}</span>
+          <span v-if="execution.status === ChatExecutionStatus.CANCELLING" class="hint">{{
+            t('desktop.executionCancelling')
+          }}</span>
+          <Collapse :key="`${sessionKey}:${execution.executionId ?? 'pending'}`">
+            <template #summary>{{ t('desktop.executionDetails') }}</template>
+            <p data-testid="summary-execution-id">
+              {{
+                execution.executionId
+                  ? t('desktop.executionIdentity', { id: execution.executionId })
+                  : t('desktop.executionIdentityUnavailable')
+              }}
+            </p>
+            <p v-if="execution.error">{{ execution.error }}</p>
+            <p>{{ t('desktop.executionTools', { count: execution.toolEvents.length }) }}</p>
+            <ol v-if="execution.toolEvents.length" data-testid="summary-execution-tools">
+              <li v-for="(event, index) in execution.toolEvents" :key="index">
+                {{ event.sequence }} · {{ event.code }}
+              </li>
+            </ol>
+          </Collapse>
+        </template>
+        <span v-else class="hint" data-testid="summary-execution-empty">{{
+          t('desktop.executionEmpty')
+        }}</span>
       </section>
       <Button
         variant="card"
@@ -532,17 +549,15 @@ const previewLine = computed(() => t('desktop.deliveryPreview'))
   margin-top: 2px;
 }
 .summary-card ol {
+  display: grid;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
-.summary-card li button {
-  display: inline;
-  width: auto;
-  margin: 0;
+.summary-card :deep(p),
+.summary-card li {
+  overflow-wrap: anywhere;
 }
 header {
   display: flex;

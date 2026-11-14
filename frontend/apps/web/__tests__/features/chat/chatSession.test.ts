@@ -41,6 +41,77 @@ function deferred<T>() {
 }
 
 describe('chat session', () => {
+  it.each([false, true])(
+    'accepts saved connection settings without extra reads, selection changes or stale overwrite (stale failure=%s)',
+    async (staleFailure) => {
+      const connection = {
+        id: 'saved',
+        name: 'Saved connection',
+        kind: 'openai-compatible' as const,
+        enabled: true,
+        baseUrl: 'https://127.0.0.1:9/v1',
+        defaultModel: 'saved-model',
+        models: [{ id: 'saved-model', reasoningEfforts: [] }],
+        allowedModels: ['saved-model'],
+        discoveredAt: '',
+        discoveryError: '',
+        secretPresent: true,
+        revision: 1,
+        defaultSelected: true,
+        configurationRevision: 'r1',
+      }
+      let requests = 0
+      const session = createChatSession({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+        sendAiMessage: async () => result(),
+        modelConnections: async () => {
+          requests += 1
+          return { items: [{ ...connection }], effectiveDefaultId: 'saved' }
+        },
+      })
+      session.draft.value = 'Keep this draft'
+      session.applyConnectionDirectory([{ ...connection }])
+      expect(requests).toBe(0)
+      expect(session.connections.value[0]?.name).toBe('Saved connection')
+      expect(session.conversationId.value).toBeNull()
+      expect(session.pendingConnectionId.value).toBeNull()
+      expect(session.boundConnectionId.value).toBeNull()
+      expect(session.pendingModel.value).toBe('')
+      expect(session.draft.value).toBe('Keep this draft')
+      // Startup retains its intentional default selection through the same loader.
+      await session.refreshConnections()
+      expect(requests).toBe(1)
+      expect(session.pendingConnectionId.value).toBe('saved')
+      session.pendingModel.value = 'keep-pending-model'
+      connection.name = 'Edited connection'
+      session.applyConnectionDirectory([{ ...connection }])
+      expect(requests).toBe(1)
+      expect(session.connections.value[0]?.name).toBe('Edited connection')
+      expect(session.pendingConnectionId.value).toBe('saved')
+      expect(session.pendingModel.value).toBe('keep-pending-model')
+      expect(session.draft.value).toBe('Keep this draft')
+      const stale = deferred<Awaited<ReturnType<NonNullable<ChatApi['modelConnections']>>>>()
+      const concurrent = createChatSession({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
+        sendAiMessage: async () => result(),
+        modelConnections: () => stale.promise,
+      })
+      const oldRead = concurrent.refreshConnections()
+      concurrent.applyConnectionDirectory([{ ...connection, name: 'Accepted editor readback' }])
+      if (staleFailure) stale.reject(new Error('Obsolete catalog failure'))
+      else
+        stale.resolve({
+          items: [{ ...connection, name: 'Stale catalog' }],
+          effectiveDefaultId: 'saved',
+        })
+      await oldRead
+      expect(concurrent.connections.value[0]?.name).toBe('Accepted editor readback')
+      expect(concurrent.pendingConnectionId.value).toBeNull()
+      expect(concurrent.pendingModel.value).toBe('')
+    },
+  )
   it('sends explicit planning without tools and preserves the selected implementation settings', async () => {
     let sent: unknown[] = []
     const session = createChatSession({

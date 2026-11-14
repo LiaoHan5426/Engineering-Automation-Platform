@@ -1,5 +1,10 @@
 import { reactive, shallowRef, watch } from 'vue'
-import type { CodeProposal, CodeTaskRef, TaskContext } from '@eap/runtime-client'
+import type {
+  ChatExecutionStatus,
+  CodeProposal,
+  CodeTaskRef,
+  TaskContext,
+} from '@eap/runtime-client'
 export type CodePreparationSelection = {
   targetPath: string
   componentPaths: string[]
@@ -75,6 +80,15 @@ export type ChatBinding = {
   history: Array<{ id: string; title: string; archived: boolean; updatedAt?: string }>
   activeId: string | null
   busyIds?: string[]
+  /** Read-only latest assistant-turn evidence, scoped to this conversation. */
+  latestExecution?: {
+    conversationId: string
+    executionId: string | null
+    status: ChatExecutionStatus | null
+    observing: boolean
+    toolEvents: Array<{ sequence: number; code: string }>
+    error: string
+  } | null
   rename?: (id: string) => void
   archive?: (id: string) => void
   remove?: (id: string) => void

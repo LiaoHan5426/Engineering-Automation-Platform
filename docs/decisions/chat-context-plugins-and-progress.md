@@ -1,10 +1,10 @@
 # 聊天上下文交互、DSH 插件兼容与执行计划评估
 
-日期：2026-11-14。状态：**按 PR #7 人工评审补充的技术方案，未实施、未动态验证、未取得交互接受。** 本文补充[CT-02 聊天方案](deepseek-chat-adaptation.md)，不把“参考 DSH”理解为直接更换 Vue/Spring AI 或已经支持所有 DSH 插件。当前进度统一见[台账](../planning-status.md#ct-02-chat-adaptation)。
+日期：2026-11-14。状态：**G1局部实现已技术验证：聊天内连接配置及真实执行摘要；完整结构化计划、DSH插件宿主、消息图尚未实施，用户接受待确认。** 本文补充[CT-02 聊天方案](deepseek-chat-adaptation.md)，不把“参考 DSH”理解为直接更换 Vue/Spring AI 或已经支持所有 DSH 插件。当前进度统一见[台账](../planning-status.md#ct-02-chat-adaptation)。
 
 ## 1. 日常操作留在当前对话
 
-现状依据：[TaskComposer](../../frontend/apps/web/src/features/chat/TaskComposer.vue)的专家管理和模型设置入口会跳转全页；[DesktopNavigation](../../frontend/apps/web/src/features/DesktopNavigation.vue)在专家/设置区域显示返回来源会话，并按 workbench.origin 返回；[App](../../frontend/apps/web/src/App.vue)离开任务工作面时记录的是来源视图并关闭面板，来源本身不是精确会话身份。已有[知识选择](../../frontend/apps/web/src/features/chat/KnowledgeExpertSelector.vue)及[Skill 选择](../../frontend/apps/web/src/features/chat/SkillSelector.vue)使用 Dialog，可复用其上下文保护模式。问题应在入口和交互承载方式解决，不能只删“返回”按钮而仍让普通选择离开对话。
+重构前基线（34fb18f）依据：[TaskComposer](../../frontend/apps/web/src/features/chat/TaskComposer.vue)的专家管理和模型设置入口会跳转全页；[DesktopNavigation](../../frontend/apps/web/src/features/DesktopNavigation.vue)在专家/设置区域显示返回来源会话，并按 workbench.origin 返回；[App](../../frontend/apps/web/src/App.vue)离开任务工作面时记录的是来源视图并关闭面板，来源本身不是精确会话身份。已有[知识选择](../../frontend/apps/web/src/features/chat/KnowledgeExpertSelector.vue)及[Skill 选择](../../frontend/apps/web/src/features/chat/SkillSelector.vue)使用 Dialog，可复用其上下文保护模式。问题应在入口和交互承载方式解决，不能只删“返回”按钮而仍让普通选择离开对话。
 
 | 操作意图 | 默认承载 | 保留的完整工作面 |
 |---|---|---|
@@ -35,7 +35,7 @@
 
 ## 2. DSH 执行任务列表与摘要面板
 
-[SessionPanel](../../frontend/apps/web/src/components/SessionPanel.vue)现有“任务列表”是草稿、sending、候选文件数、终端和验收入口等五个固定步骤；[ChatBinding](../../frontend/apps/web/src/features/shell/workbench.ts)未提供执行事件或结构化 todo。它不能作为执行进度真相，也不应静态显示“无执行号/验收未完成”来替代实际证据。[ChatTurn](../../frontend/apps/web/src/features/chat/chatSession.ts)已有执行身份、状态、工具事件与候选，[事件投影](../../frontend/apps/web/src/features/chat/eventProjector.ts)已有执行身份和序号去重；优先利用这些真实数据。
+重构前[SessionPanel](../../frontend/apps/web/src/components/SessionPanel.vue)的“任务列表”是草稿、sending、候选文件数、终端和验收入口等五个固定步骤；当时[ChatBinding](../../frontend/apps/web/src/features/shell/workbench.ts)未提供执行事件或结构化 todo。它不能作为执行进度真相，也不应静态显示“无执行号/验收未完成”来替代实际证据。[ChatTurn](../../frontend/apps/web/src/features/chat/chatSession.ts)已有执行身份、状态、工具事件与候选，[事件投影辅助函数](../../frontend/apps/web/src/features/chat/eventProjector.ts)尚未被生产发送链调用，且projectEvents本身仅按sequence去重、未先隔离执行身份；不能将其单测当作在线去重/恢复保证。当前摘要适配应只投影ChatTurn已观察到的数据，不伪造有序回放或后台接管能力。
 
 DSH 参考固定为 [39163dd3](https://github.com/deepseek-ai/deepseek-harness/tree/39163dd30f703a79079e2d2446545cff3c453738)。[todo 类型](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/todo/tool-todo/src/types.ts)只有 content 与 pending/in_progress/completed，无稳定条目ID；[todo_write](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/todo/tool-todo/src/index.ts)要求所属 agent 会话，每次追加 `todo/write` **完整列表快照**，同一轮内回放以最新一次为准，可按配置允许多个进行中；实际投影在turn/start清为null，turn/end保留刚结束的列表直至下一轮开始（stateVersion 2）。列表是会话日志投影，不是业务任务状态，不是工具成功或验收证据；不能把数组下标当作跨版本任务身份。DSH列表的事件历史属于agent会话，但当前展示不跨新轮自动延续；README/类型注释的“最新列表”概述不能覆盖实现的turn/start重置。EAP桥接需映射轮次边界，不能误写为永久站立计划或EAP每执行独占列表。
 
@@ -96,12 +96,20 @@ DSH 参考固定为 [39163dd3](https://github.com/deepseek-ai/deepseek-harness/t
 | 阶段 | 本轮规划交付/后续实施 | 通过条件 |
 |---|---|---|
 | G0 源码与交互评审 | 当前文档阶段；完成入口分类、DSH区域对照、插件分类矩阵、会话/执行/todo归属 | 有固定源码与明确未知项；可点击原型明确模拟，用户先接受交互；不以文档代替已实现 |
-| G1 上下文与真实执行投影 | 在原A/B/C切片中接入Dialog/Drawer与当前执行摘要，删除被替代入口和误导固定步骤 | 每个受影响入口、原草稿/引用/焦点/滚动、来源恢复、真实执行事件和UNKNOWN逐项验证；同场景真实Before/After |
+| G1 上下文与真实执行投影 | **局部已实现**：聊天连接设置复用共享编辑器，保留全局目录；摘要投影最近ChatTurn并删除固定步骤。其余聊天壳/交互尚未全量迁移 | 每个受影响入口、原草稿/引用/焦点/滚动、来源恢复、真实执行事件和UNKNOWN逐项验证；同场景真实Before/After |
 | G2 有界能力与计划试点 | 原生执行域计划合同；一个文本Skill、一个stdio及一个HTTP MCP服务；若需原生插件，以固定版本的headless `@deepseek-ai/dsh-tool-todo`为首个SDK隔离试点，依赖由DSH完整宿主提供 | 合同/Mock/调用方同批更新，失败/取消/撤权/超时/脱敏/资源释放通过；DSH试点另验session归属、回执去重、审批、重启及取消缺口，不宣称原生EAP持久接管完成 |
 | G3 原UI插件与扩大兼容 | 仅在必要时对一个双入口插件测React/Cordis兼容宿主或完整应用嵌入，与Vue选择性移植比较 | 挂载/卸载/dispose、重连、共享模块/资源/主题、窄屏、XSS、身份/审批隔离通过后才纳入兼容清单；升级只对已验证版本元组承诺 |
 
-本次只更新方案，不安装插件、开新服务、迁移会话、执行模型或改产品UI。后续实施需按上述合同先做最小可验证切片，不新增平行Capability注册表，不为可选DSH目标重复实现EAP已有工程写入/审批路径。用户接受、Mock交互、真实后端、供应商/DSH动态能力及构建/静态检查分别记录。
+前一轮交付只更新方案；本次依实施请求完成上述局部G1产品UI，使用隔离开发服务和浏览器HTTP夹具验证，未安装DSH插件、迁移会话、执行真实模型或改后端协议。后续实施需按上述合同先做最小可验证切片，不新增平行Capability注册表，不为可选DSH目标重复实现EAP已有工程写入/审批路径。用户接受、Mock交互、真实后端、供应商/DSH动态能力及构建/静态检查分别记录。
 
-本轮证据为固定版本源码审阅、原实现与文档对照。应用测试、构建、浏览器、DSH动态插件/SDK、模型、MCP和数据库均未运行；规划中的兼容结论是附条件可行性，未证明现有EAP已支持DSH原生插件。
+规划阶段的证据为固定版本源码审阅、原实现与文档对照。后续G1的[15文件189项定向回归及完整验证记录](../records/chat-g1-validation.md)、类型/架构/构建及实际浏览器证据分别见[连接设置](../evidence/chat-model-context/README.md)与[执行摘要](../evidence/chat-execution-summary/README.md)。DSH动态插件/SDK、真实模型/MCP和数据库仍未运行；规划中的兼容结论是附条件可行性，未证明现有EAP已支持DSH原生插件。
 
-文档验证：`git diff --check`通过；Python 3检查六份变更Markdown的UTF-8无BOM、277个本地文件链接目标及18个固定DSH源码链接在上游树中存在，均通过。独立只读复核对照实际代码纠正了DSH todo新轮重置行为；外部链接树校验与源码审阅不是运行时兼容验证。
+规划阶段文档验证（历史证据）：`git diff --check`通过；Python 3检查六份变更Markdown的UTF-8无BOM、277个本地文件链接目标及18个固定DSH源码链接在上游树中存在，均通过。独立只读复核对照实际代码纠正了DSH todo新轮重置行为；外部链接树校验与源码审阅不是运行时兼容验证。
+
+## 5. G1实现边界与后续架构前置
+
+- 连接编辑：`ModelSettings`和`TaskComposer`共用应用L3的`ModelConnectionEditor`/`ModelCatalogEditor`，原设置页的重复表单已移除。新聊天入口只打开当前连接或新建，不切路由、不自动发送；共享编辑器已读回的目录直接更新同一个会话目录，不重复GET、不改变草稿的待选模型，并使旧读取结果失效。保存成功但目录读取失败只重试读取，不重复提交；未保存和在途表单通过现有离开保护链处理。
+- 执行摘要：由当前会话最近assistant的ChatTurn构造只读投影，显示实际状态/工具记录及观察边界；本地历史RUNNING不等于后台执行，首帧前不伪造已确认执行。保留原候选、审批、应用、验证和接受，未新增todo状态库、执行器或恢复协议。
+- 尚未实现：DSH原生插件/SDK调用和原生结构化任务计划、后端消息图/分支、富文本、多模态/MCP。完整聊天界面区域调整及用户交互接受也未宣称完成。
+
+下一步无法靠新增前端组件补齐：原生计划需要Chat执行域新增快照/写权限/事件/存储合同；DSH原包执行需要独立Node运行时，并由Java接入会话/消息回执/事件与审批问答，定义无单请求取消时的进程归属；分支需要消息图存储、幂等及执行级取消，同步HTTP/SSE、Mock和调用方。以上会改变多个独立模块职责与调用合同，必须先明确执行归属和接口，再推进对应实施，不以本次G1补丁冒充全范围完成。

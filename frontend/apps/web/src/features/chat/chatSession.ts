@@ -528,17 +528,38 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     transcripts.value = { ...transcripts.value, [id]: [...existing, turn] }
   }
 
-  let connectionsRequest: Promise<void> | undefined
-  function refreshConnections(): Promise<void> {
-    return (connectionsRequest ??= loadConnections().finally(() => {
-      connectionsRequest = undefined
-    }))
+  let connectionsRequest: Promise<ModelConnectionList | undefined> | undefined
+  let connectionsRevision = 0
+  /** Accept the editor's saved readback without changing the current or pending target. */
+  function applyConnectionDirectory(items: ModelConnection[]) {
+    connectionsRevision += 1
+    connectionsRequest = undefined
+    connections.value = [...items]
   }
-  async function loadConnections() {
-    if (!api.modelConnections) return
-    const page = await api.modelConnections()
-    connections.value = page.items
-    if (!conversationId.value && !pendingConnectionId.value) {
+  function loadConnections(): Promise<ModelConnectionList | undefined> {
+    if (!api.modelConnections) return Promise.resolve(undefined)
+    if (connectionsRequest) return connectionsRequest
+    const revision = connectionsRevision
+    const request: Promise<ModelConnectionList | undefined> = api
+      .modelConnections()
+      .then((page) => {
+        if (revision !== connectionsRevision) return undefined
+        connections.value = page.items
+        return page
+      })
+      .catch((error: unknown) => {
+        if (revision !== connectionsRevision) return undefined
+        throw error
+      })
+      .finally(() => {
+        if (connectionsRequest === request) connectionsRequest = undefined
+      })
+    connectionsRequest = request
+    return request
+  }
+  async function refreshConnections(): Promise<void> {
+    const page = await loadConnections()
+    if (page && !conversationId.value && !pendingConnectionId.value) {
       const selected = page.items.find(
         (item) =>
           item.id === page.effectiveDefaultId &&
@@ -1040,6 +1061,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     pendingConnectionId,
     targetNotice,
     refreshConnections,
+    applyConnectionDirectory,
     chooseConversationConnection,
     confirmConnectionChange,
     cancelConnectionChange,

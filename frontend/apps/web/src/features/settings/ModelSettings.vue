@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, Checkbox, ConfirmBox, Feedback, Input, Select } from '@eap/ui'
+import { Button, Feedback, Input } from '@eap/ui'
 import { IconPlus } from '@eap/ui'
-import type { ModelConnection, ModelWireApi } from '@eap/runtime-client'
+import type { ModelConnection } from '@eap/runtime-client'
 import { modelApi as runtimeApi } from '../chat/chatService'
-import ConnectionDialog from '../../components/ConnectionDialog.vue'
-import ModelCatalogEditor from './ModelCatalogEditor.vue'
+import ModelConnectionEditor from '../../components/ModelConnectionEditor.vue'
 import ChatGptAccountCard from './ChatGptAccountCard.vue'
 const accountLogin = ref<{ start: (id?: string) => Promise<void> } | null>(null)
 async function accountConnected(id: string) {
   try {
     const result = await runtimeApi.refreshConnectionModels(id)
     await refreshConnections()
-    managing.value = result
+    connectionEditor.value?.manageConnection(result)
   } catch (error) {
     connectionNote.value = errorMessage(error)
     await refreshConnections()
@@ -30,9 +29,7 @@ async function disconnect(item: ModelConnection) {
     connectionBusy.value = false
   }
 }
-const managing = ref<ModelConnection | null>(null)
-const catalogBusy = ref(false)
-const catalogEditor = ref<InstanceType<typeof ModelCatalogEditor> | null>(null)
+const connectionEditor = ref<InstanceType<typeof ModelConnectionEditor> | null>(null)
 import { errorMessage } from '../../lib/presentation'
 const { t } = useI18n()
 const connections = ref<ModelConnection[]>([])
@@ -57,156 +54,20 @@ onMounted(async () => {
     connectionNote.value = errorMessage(error)
   }
 })
-const editorOpen = ref(false)
-const editingId = ref<string | null>(null)
 const connectionNote = ref('')
 const connectionOk = ref(false)
 const connectionBusy = ref(false)
-const form = ref({
-  name: '',
-  wireApi: 'chat-completions' as ModelWireApi,
-  baseUrl: 'https://api.openai.com',
-  secret: '',
-  enabled: true,
-  defaultSelected: true,
-})
-// Only keep the comparison snapshot in memory; never persist connection secrets.
-const initialForm = ref({ ...form.value })
-const discardConnection = ref(false)
-const connectionDirty = computed(() =>
-  (Object.keys(form.value) as (keyof typeof form.value)[]).some(
-    (key) => form.value[key] !== initialForm.value[key],
-  ),
-)
-let leaveCallback: (() => void) | undefined
-function closeConnection() {
-  if (connectionBusy.value) return
-  discardConnection.value = false
-  editorOpen.value = false
-  editingId.value = null
-  form.value.secret = ''
-  const callback = leaveCallback
-  leaveCallback = undefined
-  callback?.()
-}
 function guardLeave(onDiscard?: () => void): boolean {
   if (connectionBusy.value) return false
-  if (managing.value) return catalogEditor.value?.guardLeave(onDiscard) ?? false
-  if (editorOpen.value && connectionDirty.value) {
-    leaveCallback = onDiscard
-    discardConnection.value = true
-    return false
-  }
-  closeConnection()
-  return true
-}
-function keepConnection() {
-  discardConnection.value = false
-  leaveCallback = undefined
+  return connectionEditor.value?.guardLeave(onDiscard) ?? true
 }
 defineExpose({ guardLeave })
-function requestCloseConnection() {
-  if (connectionBusy.value) return
-  if (connectionDirty.value) discardConnection.value = true
-  else closeConnection()
-}
-const connectionPreset = computed(() =>
-  form.value.baseUrl.includes('deepseek')
-    ? 'https://api.deepseek.com'
-    : form.value.baseUrl === 'https://api.openai.com'
-      ? form.value.baseUrl
-      : 'custom',
-)
-
-function presetChanged(event: Event) {
-  const value = (event.target as HTMLSelectElement).value
-  if (value === 'custom') {
-    form.value.baseUrl = ''
-    return
-  }
-  form.value.baseUrl = value
-}
 function newConnection() {
-  editorOpen.value = true
-  editingId.value = null
-  form.value = {
-    name: '',
-    wireApi: 'chat-completions',
-    baseUrl: 'https://api.openai.com',
-    secret: '',
-    enabled: true,
-    defaultSelected: connections.value.length === 0,
-  }
-  initialForm.value = { ...form.value }
-  discardConnection.value = false
-  connectionNote.value = ''
+  connectionEditor.value?.newConnection(connections.value)
 }
-
 function editConnection(item: ModelConnection) {
-  editorOpen.value = true
-  editingId.value = item.id
-  form.value = {
-    name: item.name,
-    wireApi: item.wireApi ?? 'chat-completions',
-    baseUrl: item.baseUrl,
-    secret: '',
-    enabled: item.enabled,
-    defaultSelected: item.defaultSelected,
-  }
-  initialForm.value = { ...form.value }
-  discardConnection.value = false
-  connectionNote.value = ''
+  connectionEditor.value?.editConnection(item, connections.value)
 }
-
-async function saveConnection() {
-  if (connectionBusy.value) return
-  connectionBusy.value = true
-  connectionOk.value = false
-  connectionNote.value = ''
-  try {
-    const previous = connections.value.find((item) => item.id === editingId.value)
-    const protocolOnly =
-      previous &&
-      previous.baseUrl === form.value.baseUrl &&
-      !form.value.secret.trim() &&
-      (previous.wireApi ?? 'chat-completions') !== form.value.wireApi
-    let saved = await runtimeApi.saveModelConnection(
-      { ...form.value, secret: form.value.secret },
-      editingId.value ?? undefined,
-    )
-    form.value.secret = ''
-    editorOpen.value = false
-    editingId.value = null
-    // Keep the accepted server identity even if the following overview read fails.
-    const savedIndex = connections.value.findIndex((item) => item.id === saved.id)
-    if (savedIndex < 0) connections.value.push(saved)
-    else connections.value[savedIndex] = saved
-    let catalogCached = false
-    if (saved.enabled && previous?.revision !== saved.revision && !protocolOnly) {
-      try {
-        saved = await runtimeApi.refreshConnectionModels(saved.id)
-        if (saved.discoveryError?.trim()) catalogCached = true
-      } catch {
-        catalogCached = true
-      }
-    }
-    managing.value = saved
-    connectionOk.value = !catalogCached
-    connectionNote.value = catalogCached ? t('modelUi.cached') : t('modelUi.saveThenSelect')
-    try {
-      await refreshConnections()
-    } catch (error) {
-      connectionOk.value = false
-      connectionNote.value = t('modelUi.refreshAfterSaveFailed', { error: errorMessage(error) })
-    }
-  } catch (error) {
-    connectionOk.value = false
-    connectionNote.value = errorMessage(error)
-  } finally {
-    connectionBusy.value = false
-  }
-}
-
 async function toggleConnection(item: ModelConnection) {
   if (connectionBusy.value) return
   connectionBusy.value = true
@@ -331,108 +192,19 @@ async function makeDefault(item: ModelConnection) {
             variant="secondary"
             type="button"
             :disabled="connectionBusy"
-            @click="managing = item"
+            @click="connectionEditor?.manageConnection(item)"
             >{{ t('modelUi.manage') }} · {{ item.allowedModels.length }}</Button
           >
         </li>
       </ul>
-      <ConnectionDialog
-        v-if="managing"
-        :title="t('modelUi.catalog')"
-        :busy="catalogBusy"
-        @close="catalogEditor?.requestClose()"
-        ><ModelCatalogEditor
-          ref="catalogEditor"
-          :connection="managing"
-          @busy="catalogBusy = $event"
-          @saved="refreshConnections"
-          @close="managing = null"
-      /></ConnectionDialog>
-      <ConnectionDialog
-        v-if="editorOpen"
-        :title="editingId ? t('chat.connectionEdit') : t('composerUi.addConnection')"
-        :busy="connectionBusy"
-        @close="requestCloseConnection"
-      >
-        <form class="connection-form" @submit.prevent="saveConnection">
-          <div class="connection-editor-heading">
-            <h3>{{ editingId ? t('chat.connectionEdit') : t('composerUi.addConnection') }}</h3>
-            <Button
-              type="button"
-              variant="secondary"
-              :disabled="connectionBusy"
-              @click="requestCloseConnection"
-              >{{ t('composerUi.close') }}</Button
-            >
-          </div>
-          <label
-            >{{ t('task.preset') }}
-            <Select
-              :disabled="connectionBusy"
-              :model-value="connectionPreset"
-              @change="presetChanged"
-            >
-              <option value="https://api.openai.com">OpenAI API Key</option>
-              <option value="https://api.deepseek.com">DeepSeek API Key</option>
-              <option value="custom">{{ t('composerUi.customConnection') }}</option>
-            </Select>
-          </label>
-          <label
-            >{{ t('chat.connectionName') }}
-            <Input :disabled="connectionBusy" v-model="form.name" required
-          /></label>
-          <label
-            >{{ t('chat.connectionUrl') }}
-            <Input :disabled="connectionBusy" v-model="form.baseUrl" required
-          /></label>
-          <label>
-            {{ t('modelUi.wireApi') }}
-            <Select v-model="form.wireApi" data-testid="wire-api" :disabled="connectionBusy">
-              <option value="chat-completions">Chat Completions</option>
-              <option value="responses">Responses</option>
-            </Select>
-          </label>
-          <p v-if="form.wireApi === 'responses'" class="hint">
-            {{ t('modelUi.protocolToolsUnavailable') }}
-          </p>
-          <label>
-            {{ t('chat.connectionSecret') }}
-            <Input
-              v-model="form.secret"
-              :disabled="connectionBusy"
-              type="password"
-              autocomplete="new-password"
-              :placeholder="editingId ? t('chat.connectionSecretKeep') : t('chat.connectionSecret')"
-            />
-          </label>
-          <label
-            ><Checkbox :disabled="connectionBusy" v-model="form.enabled" />
-            {{ t('chat.connectionEnabled') }}</label
-          >
-          <label
-            ><Checkbox :disabled="connectionBusy" v-model="form.defaultSelected" />
-            {{ t('chat.connectionDefault') }}</label
-          >
-          <Button variant="primary" type="submit" :disabled="connectionBusy">{{
-            t('chat.connectionSave')
-          }}</Button>
-          <Feedback v-if="connectionNote && !connectionOk" tone="warning">{{
-            connectionNote
-          }}</Feedback>
-        </form>
-      </ConnectionDialog>
-      <ConfirmBox
-        v-if="discardConnection"
-        :title="t('product.discardTitle')"
-        :impact="[t('product.discardImpact')]"
-        :confirm-label="t('product.discard')"
-        :busy="connectionBusy"
-        @confirm="closeConnection"
-        @cancel="keepConnection"
-      />
       <Feedback v-if="connectionNote" :tone="connectionOk ? 'info' : 'warning'">{{
         connectionNote
       }}</Feedback>
+      <ModelConnectionEditor
+        ref="connectionEditor"
+        @changed="connections = $event"
+        @busy="connectionBusy = $event"
+      />
     </section>
   </section>
 </template>

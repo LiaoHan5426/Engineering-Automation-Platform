@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { CodePreparationSelection } from '../shell/workbench'
 
-import { AiToolMode, ChatExecutionStatus, CodeErrors } from '@eap/runtime-client'
+import {
+  AiToolMode,
+  ChatExecutionStatus,
+  CodeErrors,
+  isChatExecutionStatus,
+} from '@eap/runtime-client'
 
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -79,6 +84,22 @@ const { t, locale } = useI18n()
 const props = withDefaults(defineProps<{ active?: boolean }>(), {
   active: true,
 })
+const composer = ref<{ guardLeave: (onDiscard?: () => void) => boolean } | null>(null)
+function guardLeave(onDiscard?: () => void): boolean {
+  return composer.value?.guardLeave(onDiscard) ?? true
+}
+defineExpose({ guardLeave })
+function selectConversation(id: string) {
+  if (id === session.conversationId.value) return
+  if (!guardLeave(() => selectConversation(id))) return
+  void session.selectConversation(id)
+}
+function archiveConversation(id: string) {
+  const item = session.history.value.find((row) => row.id === id)
+  if (!item) return
+  if (id === session.conversationId.value && !guardLeave(() => archiveConversation(id))) return
+  session.archiveConversation(id, !item.archived)
+}
 const feedPort = ref<{ getEl: () => HTMLElement | null } | null>(null)
 const shownTurns = ref(40)
 const loadingOlder = ref(false)
@@ -180,6 +201,7 @@ const adoptingBoardDraft = ref(false)
 const answerHandoffPending = ref(false)
 function adoptPendingBoardDraft() {
   if (!props.active || session.sending.value || session.opening.value) return
+  if (!guardLeave(adoptPendingBoardDraft)) return
   const pending = takeBoardDraft(true)
   if (!pending) return
   adoptingBoardDraft.value = false
@@ -275,6 +297,7 @@ function applyPendingDraft() {
   workbench.pendingDraft = ''
 }
 function newConversation() {
+  if (!guardLeave(newConversation)) return
   historyNote.value = ''
   session.beginDraft()
   // Bind the draft to the currently selected local group (or clear for free chat).
@@ -403,6 +426,13 @@ function statusTone() {
 }
 async function removeConversation() {
   if (!deleteId.value) return
+  if (
+    deleteId.value === session.conversationId.value &&
+    !guardLeave(() => {
+      void removeConversation()
+    })
+  )
+    return
   deleting.value = true
   try {
     await session.deleteConversation(deleteId.value)
@@ -576,6 +606,7 @@ const displayWorkspacePath = computed(() => {
 watchEffect(() => {
   const proposal = [...session.turns.value].reverse().find((turn) => turn.proposal)?.proposal
   const activeId = session.conversationId.value
+  const latestTurn = [...session.turns.value].reverse().find((turn) => turn.role === 'assistant')
   const extras = workbench.sessionExtras[activeId ?? 'scratch']
   chatBinding.value = {
     history: session.history.value.map((item) => ({
@@ -585,16 +616,24 @@ watchEffect(() => {
       updatedAt: item.updatedAt,
     })),
     activeId,
+    latestExecution:
+      activeId && latestTurn
+        ? {
+            conversationId: activeId,
+            executionId: latestTurn.executionId || null,
+            status: isChatExecutionStatus(latestTurn.status) ? latestTurn.status : null,
+            observing: session.inflight.value[activeId] != null,
+            toolEvents: latestTurn.toolEvents,
+            error: latestTurn.error,
+          }
+        : null,
     busyIds: Object.keys(session.inflight.value).filter((id) => session.inflight.value[id] != null),
     rename: (id: string) => {
       const item = session.history.value.find((row) => row.id === id)
       manageId.value = id
       manageTitle.value = item?.title?.trim() || t('desktop.freeChat')
     },
-    archive: (id: string) => {
-      const item = session.history.value.find((row) => row.id === id)
-      if (item) session.archiveConversation(id, !item.archived)
-    },
+    archive: archiveConversation,
     remove: (id: string) => {
       deleteId.value = id
       historyNote.value = ''
@@ -628,9 +667,7 @@ watchEffect(() => {
       proposal?.verification ||
       'not_requested',
     verificationChecks: proposal ? (appliedChecks.value[proposal.id] ?? []) : [],
-    select: (id: string) => {
-      void session.selectConversation(id)
-    },
+    select: selectConversation,
     create: () => {
       void newConversation()
     },
@@ -1468,6 +1505,7 @@ onMounted(async () => {
           @submit.prevent="sendTask"
         >
           <TaskComposer
+            ref="composer"
             :draft="session.draft.value"
             :tool-mode="
               workbench.executionMode === 'plan' ? AiToolMode.NONE : session.toolMode.value
@@ -1477,6 +1515,9 @@ onMounted(async () => {
             :model-options-available="modelChoices.length > 0"
             :agent-available="agentReady"
             :model-label="selectedModel ? selectedModel.model : ''"
+            :model-connection-id="
+              session.pendingConnectionId.value || session.boundConnectionId.value
+            "
             :context="session.context.value"
             :disabled="
               session.sending.value ||
@@ -1487,6 +1528,7 @@ onMounted(async () => {
             :reasoning-efforts="reasoningEfforts"
             @update="session.context.value = $event"
             @refresh="refreshModels"
+            @connections-changed="session.applyConnectionDirectory"
           >
             <template #draft>
               <label>

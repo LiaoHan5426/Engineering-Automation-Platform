@@ -78,6 +78,7 @@ FileUpload 的 `directory` 属性提供浏览器本地目录选择，保持 File
 | 生成快照与候选应用 | `components/GenerationBaseline.vue`、`components/ProposalApplication.vue`（从Chat移出，旧文件删除） | Chat和任务候选共同使用的L3产品组合，复用Badge/Collapse/Checkbox/Button；Board通过显式operations接入任务API，无网络错误回退另一入口 | 第二宿主复用完整候选域时再评估抽包，不增加平行应用面板 |
 | 候选文件Diff | `components/ProposalDiffView.vue`，Chat与专家审批共用 | 应用层只读候选展示，复用现有Monaco/文本降级，销毁前先解除模型绑定；审批状态/API留各feature | 第二宿主复用候选交付合同再抽包，不新增平行Diff或基础UI包 |
 | 多文件交付证据面板 | `components/DeliveryEvidencePanel.vue`、`DeliveryEvidenceSummary.vue`、`deliveryEvidenceModel.ts`，任务候选审阅消费 | L3应用交付域组合，复用Input/Button/Panel/Badge；只做计数/筛选/选择/正文展示，无API/应用/验证/接受动作；不新建基础包 | 第二宿主复用完整交付域时评估抽包；通用控件留@eap/ui |
+| 连接配置与模型目录 | `components/ModelConnectionEditor.vue`、`ModelCatalogEditor.vue`（从settings迁出） | 设置页和聊天上下文共用的L3应用模型域组合；统一表单/保存/读回/dirty和目录合同，复用ConnectionDialog及@eap/ui；不进入无领域UI包，不复制第二保存路径 | 第二宿主需要完整模型管理域时再评估抽包；未新增模块包 |
 | 场景原型工作面 | `features/ScenarioWorkspace.vue` 只组装版本选择与开发准备，设计器经既有 Builder 入口打开 | 不再复制挂载 LayoutDraft/GrapesJS；场景返回状态留应用层 | 无新增共享包 |
 
 ## 4. 何时新建 `packages/*`
