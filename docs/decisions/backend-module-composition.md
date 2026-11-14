@@ -202,6 +202,10 @@ BM-02与BM-03可在一个小的core/local闭包内交替落地，不能让临时
 
 启动目录：Maven `spring-boot:run` 显式固定到 `backend/`，与本检出已有 `.eap`、`.eap-ai-artifacts` 目录一致；自定义部署使用 `-Deap.run.working-directory=<原绝对目录>` 保持原相对路径基准。IDEA/JAR 保持原 working directory；未读取连接凭据、未移动数据。嵌套模块下直接运行时工作区检测也兼容原宿主的 backend 回退。
 
+### IDEA 启动包装器与 DevTools 的类身份
+
+IDEA 通过 `com.intellij.rt.execution.application.AppMainV2` 启动时，DevTools 会将包装器识别为重启入口。包装器使用自身类加载器执行 `Class.forName`；如果 `idea_rt.jar` 留在基础加载器，宿主配置也会落到基础加载器，而条件装配看到的是重启加载器中的领域类型，造成同名 Bean 重复注册。完整宿主的 `spring-devtools.properties` 将 `idea_rt.jar` 和既有 EAP 库一并纳入重启加载器。直接主类、Maven 和打包运行仍沿用同一宿主及条件装配，不通过允许 Bean 覆盖或逐个增加名称判断绕过类型分裂。验证与平台限制见[启动包装器回归](../records/validation-history.md#idea-devtools-launcher)。
+
 ## 10. 验证与历史入口
 
 当前代码基线、测试结果与未验收项统一见[验收台账](../planning-status.md#validation-baseline)。BM-01～07的剩余关口以第8节为准；跨环境组合、领域schema、产品目录/CLI登记审批、Chat产品编排和旧DAG长事务仍需按切片验证。

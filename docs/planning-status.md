@@ -17,6 +17,7 @@
 | 已开发内容复核 | 修正工具失败终态、迁移弃用API、收敛聊天附件入口、保护原型任务草稿及明确失败后的修正；按用户反馈补查聊天工具栏，合并工作区/源文件重复文件树 | 见[首轮证据](records/validation-history.md#developed-content-review-validation)及[工具栏补查](records/validation-history.md#chat-toolbar-review-correction)；首轮遗漏已明确，侧边栏浏览器与定向回归分列，非全量产品接受 |
 | 早期文档核对（历史） | 当时记录核对相关源码、8份留存 Surefire 报告（各1项，0失败/错误/跳过）及关键证据文件存在 | 非2026-11-14重跑；构建目录证据未入Git，本隔离检出不能据此声称已读取原产物 |
 | 2026-11-14开发准备复核 | 修正基线/迁移与验收轮次漂移，集中列缺陷/风险/优化关闭条件；已安装JDK25、Maven、Vite+，完成确定性检查 | 本轮只改文档；类型/架构/Web构建/领域合同及后端10类58项定向通过，前端全量因Builder SSR存储访问失败、完整reactor因Windows Junction测试未通过；真实模型/浏览器/实库未复验范围见[本轮证据](records/validation-history.md#development-readiness-review) |
+| IDEA + DevTools 启动 | 已定位 AppMainV2 包装器基础加载器与重启加载器的类型分裂；宿主显式包含 `idea_rt.jar`，保留默认禁止 Bean 覆盖 | [启动回归](records/validation-history.md#idea-devtools-launcher)：真实包装器重现、可移植类身份回归及完整 Bean 图分列；修复后原 Windows 命令的完整启动复验仍受本轮 WSL 原生进程通道故障阻断 |
 | 最终接受 | 尚未完成 | 用户产品接受、更多真实页面效果、全页面系统缩放和发行分别验收；不计算整体完成百分比 |
 
 ## 工作项当前状态
