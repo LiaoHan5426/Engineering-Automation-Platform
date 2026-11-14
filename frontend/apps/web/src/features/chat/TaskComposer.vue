@@ -594,22 +594,6 @@ async function loadVersions() {
     <Feedback v-if="knowledgeRemoved" tone="info" data-testid="knowledge-removed">{{
       t('knowledgeContext.removed')
     }}</Feedback>
-    <div class="composer-scope" data-testid="composer-scope">
-      <label>
-        <span class="sr-only">{{ t('desktop.composerScope') }}</span>
-        <Select
-          data-testid="composer-scope-select"
-          :disabled="disabled"
-          :model-value="scopeProjectId ?? ''"
-          @change="changeScopeProject(($event.target as HTMLSelectElement).value)"
-        >
-          <option value="">{{ t('desktop.composerScopeFree') }}</option>
-          <option v-for="project in localProjects.projects" :key="project.id" :value="project.id">
-            {{ projectLabel(project.id) }}
-          </option>
-        </Select>
-      </label>
-    </div>
     <div v-if="hasExtraChips" class="context-chips">
       <Tag
         v-if="context.knowledgeExpertRef"
@@ -769,61 +753,80 @@ async function loadVersions() {
         >
       </section>
     </div>
-    <Collapse data-testid="web-source-options">
-      <template #summary
-        >{{ t('richText.webTitle') }} ·
-        {{ context.webSources?.enabled ? t('richText.webOn') : t('richText.webOff') }}</template
-      >
-      <Feedback v-if="webSourcesUnavailable || !webSourceServices?.length" tone="info">{{
-        t('richText.webUnavailable')
-      }}</Feedback>
-      <Button variant="secondary" size="sm" @click="emit('configure')">{{
-        t('richText.configureServices')
-      }}</Button>
-      <label
-        >{{ t('richText.webService') }}
-        <Select
-          data-testid="web-source-server"
-          :model-value="context.webSources?.serverId ?? ''"
-          :disabled="disabled || webSourcesUnavailable || !webSourceServices?.length"
-          @update:model-value="selectWebService(String($event))"
-        >
-          <option value="">{{ t('richText.webSelect') }}</option>
-          <option
-            v-for="service in webSourceServices"
-            :key="service.serverId"
-            :value="service.serverId"
+    <div class="composer-options">
+      <div class="composer-scope" data-testid="composer-scope">
+        <label>
+          <span class="sr-only">{{ t('desktop.composerScope') }}</span>
+          <Select
+            data-testid="composer-scope-select"
+            :disabled="disabled"
+            :model-value="scopeProjectId ?? ''"
+            @change="changeScopeProject(($event.target as HTMLSelectElement).value)"
           >
-            {{ service.serverId }}
-          </option>
-        </Select>
-      </label>
-      <Checkbox
-        :model-value="context.webSources?.search ?? false"
-        :disabled="disabled || webSourcesUnavailable || !chosenWebService?.search"
-        @update:model-value="updateWebSource('search', $event)"
-        >{{ t('richText.webSearch') }}</Checkbox
-      >
-      <Checkbox
-        :model-value="context.webSources?.read ?? false"
-        :disabled="disabled || webSourcesUnavailable || !chosenWebService?.read"
-        @update:model-value="updateWebSource('read', $event)"
-        >{{ t('richText.webRead') }}</Checkbox
-      >
-      <Checkbox
-        data-testid="web-source-enable"
-        :model-value="context.webSources?.enabled ?? false"
-        :disabled="
-          disabled ||
-          webSourcesUnavailable ||
-          !chosenWebService ||
-          !(context.webSources?.search || context.webSources?.read)
-        "
-        @update:model-value="updateWebSource('enabled', $event)"
-        >{{ t('richText.webEnable') }}</Checkbox
-      >
-    </Collapse>
-    <slot name="speech" />
+            <option value="">{{ t('desktop.composerScopeFree') }}</option>
+            <option v-for="project in localProjects.projects" :key="project.id" :value="project.id">
+              {{ projectLabel(project.id) }}
+            </option>
+          </Select>
+        </label>
+      </div>
+      <Collapse data-testid="web-source-options">
+        <template #summary
+          >{{ t('richText.webTitle') }} ·
+          {{ context.webSources?.enabled ? t('richText.webOn') : t('richText.webOff') }}</template
+        >
+        <Feedback v-if="webSourcesUnavailable || !webSourceServices?.length" tone="info">{{
+          t('richText.webUnavailable')
+        }}</Feedback>
+        <Button variant="secondary" size="sm" @click="emit('configure')">{{
+          t('richText.configureServices')
+        }}</Button>
+        <label
+          >{{ t('richText.webService') }}
+          <Select
+            data-testid="web-source-server"
+            :model-value="context.webSources?.serverId ?? ''"
+            :disabled="disabled || webSourcesUnavailable || !webSourceServices?.length"
+            @update:model-value="selectWebService(String($event))"
+          >
+            <option value="">{{ t('richText.webSelect') }}</option>
+            <option
+              v-for="service in webSourceServices"
+              :key="service.serverId"
+              :value="service.serverId"
+            >
+              {{ service.serverId }}
+            </option>
+          </Select>
+        </label>
+        <Checkbox
+          :model-value="context.webSources?.search ?? false"
+          :disabled="disabled || webSourcesUnavailable || !chosenWebService?.search"
+          @update:model-value="updateWebSource('search', $event)"
+          >{{ t('richText.webSearch') }}</Checkbox
+        >
+        <Checkbox
+          :model-value="context.webSources?.read ?? false"
+          :disabled="disabled || webSourcesUnavailable || !chosenWebService?.read"
+          @update:model-value="updateWebSource('read', $event)"
+          >{{ t('richText.webRead') }}</Checkbox
+        >
+        <Checkbox
+          data-testid="web-source-enable"
+          :model-value="context.webSources?.enabled ?? false"
+          :disabled="
+            disabled ||
+            webSourcesUnavailable ||
+            !chosenWebService ||
+            !(context.webSources?.search || context.webSources?.read)
+          "
+          @update:model-value="updateWebSource('enabled', $event)"
+          >{{ t('richText.webEnable') }}</Checkbox
+        >
+      </Collapse>
+      <slot name="speech" />
+      <slot name="details" />
+    </div>
     <slot name="draft" />
     <div class="task-context" data-testid="task-context">
       <div class="context-toolbar">
@@ -1352,6 +1355,24 @@ async function loadVersions() {
 </template>
 
 <style scoped>
+.composer-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: center;
+  min-width: 0;
+}
+
+.composer-options > :deep(details[open]) {
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+.composer-options > :deep(details) {
+  margin: 0;
+  font-size: 12px;
+}
+
 .composer-stack {
   display: grid;
   gap: 8px;

@@ -8,17 +8,19 @@ afterEach(async () => {
   document.body.innerHTML = ''
   vi.restoreAllMocks()
 })
-async function boot(locale = 'en') {
+async function boot(locale = 'en', renderSettingsEntry = true) {
   const host = document.createElement('div')
   document.body.append(host)
   instance = await mountContextMenu(host, {
     locale,
+    renderSettingsEntry,
     copyLabel: 'Copy',
     downloadLabel: 'Download message',
     failureLabel: 'Failed',
     copyText: async () => {},
   })
-  await vi.waitFor(() => expect(document.querySelector('button')).not.toBeNull())
+  if (renderSettingsEntry)
+    await vi.waitFor(() => expect(document.querySelector('button')).not.toBeNull())
 }
 it('renders original shortcut entry and searchable reference, localizes and disposes', async () => {
   await boot()
@@ -90,4 +92,30 @@ it('downloads captured message bytes using original BrowserFileActions and revok
   expect(await create.mock.calls[0]![0].text()).toBe('original bytes')
   await instance!.dispose()
   expect(revoke).toHaveBeenCalledWith('blob:eap-download')
+})
+
+it('opens the original editor through a compact host entry without rendering the settings card', async () => {
+  await boot('en', false)
+  expect(document.body.textContent).not.toContain('View and edit available shortcuts')
+  expect(instance!.openShortcuts()).toBe(true)
+  await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).not.toBeNull())
+  expect(document.body.textContent).toContain('Keyboard shortcuts')
+  expect(document.querySelector('input')).not.toBeNull()
+  document.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }),
+  )
+  await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull())
+  document.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      key: '/',
+      code: 'Slash',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    }),
+  )
+  await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).not.toBeNull())
+  await instance!.dispose()
+  expect(instance!.openShortcuts()).toBe(false)
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
 })

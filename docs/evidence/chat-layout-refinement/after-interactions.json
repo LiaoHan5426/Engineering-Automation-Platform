@@ -1,0 +1,446 @@
+[
+  {
+    "viewport": {
+      "width": 1918,
+      "height": 900
+    },
+    "wheelScrollTop": 203,
+    "draftLocalEdit": true,
+    "shiftEnterAndIME": true,
+    "noModelSendDisabled": true,
+    "shortcutKeyboard": true,
+    "modelHistory": true,
+    "memoryDialog": true,
+    "memoryNestedDirtyCancelRetainsDraft": true,
+    "memoryDiscardLocalOnly": true,
+    "webAndSpeechEmptyServicesDisabled": true,
+    "webAndSpeechConfigAccessibleAndOpenStateRetained": true,
+    "outgoingAndProjectAndModelAccessible": true,
+    "summary": true,
+    "topMenu": true,
+    "capture": {
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/model-history"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/mcp-servers"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/web-sources"
+        },
+        {
+          "method": "GET",
+          "path": "/api/mcp-servers"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/web-sources"
+        }
+      ],
+      "blocked": [],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    }
+  },
+  {
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "wheelScrollTop": 103,
+    "draftLocalEdit": true,
+    "shiftEnterAndIME": true,
+    "noModelSendDisabled": true,
+    "shortcutKeyboard": true,
+    "modelHistory": true,
+    "memoryDialog": true,
+    "memoryNestedDirtyCancelRetainsDraft": true,
+    "memoryDiscardLocalOnly": true,
+    "webAndSpeechEmptyServicesDisabled": true,
+    "webAndSpeechConfigAccessibleAndOpenStateRetained": true,
+    "outgoingAndProjectAndModelAccessible": true,
+    "summary": true,
+    "topMenu": true,
+    "capture": {
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/model-history"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/mcp-servers"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/web-sources"
+        },
+        {
+          "method": "GET",
+          "path": "/api/mcp-servers"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/web-sources"
+        }
+      ],
+      "blocked": [],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    }
+  },
+  {
+    "viewport": {
+      "width": 390,
+      "height": 1000
+    },
+    "wheelScrollTop": 314,
+    "draftLocalEdit": true,
+    "shiftEnterAndIME": true,
+    "noModelSendDisabled": true,
+    "shortcutKeyboard": true,
+    "modelHistory": true,
+    "memoryDialog": true,
+    "memoryNestedDirtyCancelRetainsDraft": true,
+    "memoryDiscardLocalOnly": true,
+    "webAndSpeechEmptyServicesDisabled": true,
+    "webAndSpeechConfigAccessibleAndOpenStateRetained": true,
+    "outgoingAndProjectAndModelAccessible": true,
+    "summary": true,
+    "topMenu": true,
+    "capture": {
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/model-history"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/mcp-servers"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/web-sources"
+        },
+        {
+          "method": "GET",
+          "path": "/api/mcp-servers"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/web-sources"
+        }
+      ],
+      "blocked": [],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    }
+  }
+]

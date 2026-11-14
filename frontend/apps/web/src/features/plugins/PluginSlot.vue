@@ -56,7 +56,6 @@ const enabled = computed(() =>
 </script>
 
 <template>
-  <DshContextMenu :active="viewId === 'chat' && host.installation.value.enabled.chat" />
   <template v-for="id in cachedViews" :key="id">
     <component
       :is="chatView"
@@ -67,7 +66,11 @@ const enabled = computed(() =>
       :aria-hidden="viewId !== id"
       :active="viewId === id"
       @navigate="emit('navigate', $event)"
-    />
+    >
+      <template #utilities
+        ><DshContextMenu :active="viewId === 'chat' && host.installation.value.enabled.chat"
+      /></template>
+    </component>
     <BuilderWorkspace
       v-else
       :ref="(value) => bindBuilder(id, value)"

@@ -31,6 +31,8 @@ export interface MenuPorts {
   copyLabel: string
   downloadLabel?: string
   failureLabel: string
+  /** Host supplies a compact entry while the original editor and keyboard command stay active. */
+  renderSettingsEntry?: boolean
 }
 import { browserManifest, requireBrowserServices } from './graph'
 const shortcutsId = '@deepseek-ai/dsh-client-ui-shortcuts'
@@ -64,29 +66,39 @@ export async function mountContextMenu(element: HTMLElement, ports: MenuPorts) {
       React.createElement(
         React.Fragment,
         null,
-        ...[...overlays].map(([id, entry]) => {
-          const instance = entry.instance
-          const injected = entry.definition.inject()
-          const useSnapshot = (source: Snapshot, select: Selector) =>
-            select(
-              React.useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot),
-            )
-          return React.createElement(entry.component, {
-            key: id,
-            ...rootProps,
-            ...injected,
-            ...Object.fromEntries(
-              Object.entries(injected.hooks).map(([name, source]) => [
-                'use' + name[0]!.toUpperCase() + name.slice(1),
-                (select: Selector) => useSnapshot(source, select),
-              ]),
-            ),
-            useStore: (select: Selector) => useSnapshot(instance, select),
-            actions: instance.actions,
-            renderSlot: () => null,
-            t: locale.bind(entry.definition.locale),
-          })
-        }),
+        ...[...overlays]
+          .filter(
+            ([, entry]) =>
+              ports.renderSettingsEntry !== false ||
+              entry.definition.name !== 'settings.general.item',
+          )
+          .map(([id, entry]) => {
+            const instance = entry.instance
+            const injected = entry.definition.inject()
+            const useSnapshot = (source: Snapshot, select: Selector) =>
+              select(
+                React.useSyncExternalStore(
+                  source.subscribe,
+                  source.getSnapshot,
+                  source.getSnapshot,
+                ),
+              )
+            return React.createElement(entry.component, {
+              key: id,
+              ...rootProps,
+              ...injected,
+              ...Object.fromEntries(
+                Object.entries(injected.hooks).map(([name, source]) => [
+                  'use' + name[0]!.toUpperCase() + name.slice(1),
+                  (select: Selector) => useSnapshot(source, select),
+                ]),
+              ),
+              useStore: (select: Selector) => useSnapshot(instance, select),
+              actions: instance.actions,
+              renderSlot: () => null,
+              t: locale.bind(entry.definition.locale),
+            })
+          }),
       ),
     )
   }
@@ -211,6 +223,13 @@ export async function mountContextMenu(element: HTMLElement, ports: MenuPorts) {
       ],
     })
     return {
+      openShortcuts() {
+        if (disposed) return false
+        const entry = overlays.get('shell.overlay:shortcuts')
+        if (!entry?.instance.actions.open) return false
+        entry.instance.actions.open()
+        return true
+      },
       open(event: MouseEvent, target: MessageTarget) {
         if (disposed) return false
         const captured = Object.freeze({

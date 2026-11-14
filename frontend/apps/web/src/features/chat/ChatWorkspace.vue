@@ -23,6 +23,7 @@ import {
   Collapse,
   WorkbenchFrame,
   Drawer,
+  Dialog,
 } from '@eap/ui'
 import { type AiConnectionState } from '@eap/runtime-client'
 import { IconEllipsis, Icon } from '@eap/ui'
@@ -408,6 +409,7 @@ watch(
 )
 const deleting = ref(false)
 const moreOpen = ref(false)
+const memoryOpen = ref(false)
 const modelHistoryOpen = ref(false)
 const taskPlan = ref<ChatTurn | null>(null)
 const preparingTask = ref<BoardTask | null>(null)
@@ -1054,6 +1056,26 @@ onMounted(async () => {
           </p>
         </div>
         <div class="session-tools">
+          <slot name="utilities" />
+          <Button
+            v-if="session.conversationId.value"
+            size="sm"
+            :disabled="session.sending.value"
+            data-testid="open-model-history"
+            @click="modelHistoryOpen = true"
+            >{{ t('contextBudget.historyTitle') }}</Button
+          >
+          <Button
+            v-if="session.conversationId.value"
+            size="sm"
+            variant="ghost"
+            data-testid="task-memory-details"
+            @click="memoryOpen = true"
+            >{{ t('workingMemory.title')
+            }}<Badge v-if="session.workingMemory.value?.invalidation" tone="warning">{{
+              t('workingMemory.invalidation')
+            }}</Badge></Button
+          >
           <Button
             size="sm"
             variant="ghost"
@@ -1147,14 +1169,6 @@ onMounted(async () => {
           </DropdownMenu>
         </div>
       </div>
-      <Button
-        v-if="session.conversationId.value"
-        size="sm"
-        :disabled="session.sending.value"
-        data-testid="open-model-history"
-        @click="modelHistoryOpen = true"
-        >{{ t('contextBudget.historyTitle') }}</Button
-      >
       <ModelHistoryDialog
         v-if="modelHistoryOpen && session.conversationId.value"
         :conversation-id="session.conversationId.value"
@@ -1165,17 +1179,12 @@ onMounted(async () => {
         "
         @close="modelHistoryOpen = false"
       />
-      <Collapse
-        v-if="session.conversationId.value"
+      <Dialog
+        v-if="memoryOpen && session.conversationId.value"
         :key="session.conversationId.value"
-        data-testid="task-memory-details"
+        :title="t('workingMemory.title')"
+        @close="memoryOpen = false"
       >
-        <template #summary>
-          {{ t('workingMemory.title') }}
-          <Badge v-if="session.workingMemory.value?.invalidation" tone="warning">{{
-            t('workingMemory.invalidation')
-          }}</Badge>
-        </template>
         <TaskMemoryPanel
           :memory="session.workingMemory.value"
           :busy="session.sending.value"
@@ -1187,7 +1196,7 @@ onMounted(async () => {
             }
           "
         />
-      </Collapse>
+      </Dialog>
       <ChatExportDialog
         v-if="exportingChat && session.conversationId.value"
         :key="session.conversationId.value"
@@ -1874,6 +1883,8 @@ onMounted(async () => {
                   "
                 />
               </label>
+            </template>
+            <template #details>
               <Collapse class="outgoing-preview" data-testid="outgoing-preview">
                 <template #summary>{{ t('desktop.outgoing') }}</template>
                 <p>{{ t('desktop.outgoingIdle') }}</p>

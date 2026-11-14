@@ -5,6 +5,7 @@ import { runtimeApi, type TaskContext } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import { workbench } from '../../../src/features/shell/workbench'
 import TaskComposer from '../../../src/features/chat/TaskComposer.vue'
+import { Collapse } from '@eap/ui'
 
 let app: App, host: HTMLDivElement
 afterEach(() => {
@@ -71,6 +72,14 @@ async function mount(initial = empty()) {
           },
           {
             draft: () => h('textarea', { value: draft.value, 'data-testid': 'draft' }),
+            speech: () =>
+              h(Collapse, { summary: 'Speech', 'data-testid': 'speech-options' }, () =>
+                h('input', { 'data-testid': 'speech-draft' }),
+              ),
+            details: () =>
+              h(Collapse, { summary: 'Outgoing', 'data-testid': 'outgoing-options' }, () =>
+                h('pre', draft.value),
+              ),
             send: () => h('button', { type: 'submit', 'data-testid': 'layout-send' }, 'Send'),
             status: () => h('p', { 'data-testid': 'layout-status' }, 'Choose a model'),
           },
@@ -372,4 +381,29 @@ it('keeps an empty composer compact and exposes knowledge only through + experts
   await click('knowledge-cancel')
   expect(context.value).toEqual(empty())
   expect(draft.value).toBe('keep draft')
+})
+
+it('keeps optional speech and outgoing content mounted while expanding and collapsing beside the draft', async () => {
+  const { context, draft } = await mount()
+  const speech = host.querySelector<HTMLDetailsElement>('[data-testid="speech-options"]')!
+  const outgoing = host.querySelector<HTMLDetailsElement>('[data-testid="outgoing-options"]')!
+  const web = host.querySelector<HTMLDetailsElement>('[data-testid="web-source-options"]')!
+  const input = host.querySelector<HTMLInputElement>('[data-testid="speech-draft"]')!
+  expect(speech.open).toBe(false)
+  expect(outgoing.open).toBe(false)
+  expect(web.open).toBe(false)
+  input.value = 'retained recording selection'
+  for (const details of [speech, outgoing, web]) {
+    details.querySelector('summary')!.click()
+    await nextTick()
+    expect(details.open).toBe(true)
+    details.querySelector('summary')!.click()
+    await nextTick()
+    expect(details.open).toBe(false)
+  }
+  expect(host.querySelector('[data-testid="speech-draft"]')).toBe(input)
+  expect(input.value).toBe('retained recording selection')
+  expect(draft.value).toBe('keep draft')
+  expect(context.value).toEqual(empty())
+  expect(button('layout-send').disabled).toBe(false)
 })

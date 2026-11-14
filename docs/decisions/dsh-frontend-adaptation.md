@@ -117,3 +117,5 @@ ui-commands、ui-theme、ui-settings及account通知依赖闭包未满足，审�
 本轮前端全量194文件1167项、类型/边界及最终生产构建通过，覆盖当前受审适配包；不能因此扩大为未列插件或跨SHA兼容。浏览器同UUID滚动锚点偏移0.15625px通过，Mermaid标签、最终1440/390视觉及初始布局均通过，源码revision为`0f7defa437eb516ff853965f779208f5ab644679`。后端宿主仍有既有隐私断言失败及9项环境跳过；详见当前验证记录，不宣称全链全绿或用户接受。
 
 后续服务配置与有界语音的阶段结果见[新验证记录](../records/chat-service-config-validation.md)。该变化不扩大本节受审DSH插件/Host兼容范围，0f7defa的原client证据继续按历史revision读取。
+
+2026-11-15的[聊天布局优化](../records/chat-layout-refinement-validation.md)为现有适配端口增加可选 `renderSettingsEntry:false` 及实例 `openShortcuts()`：宿主以紧凑按钮打开原 `shell.overlay:shortcuts` 的store action，不再把设置说明卡常驻聊天顶部。原overlay、Ctrl+/、编辑器、本机偏好与dispose生命周期保留；未改固定上游、生成产物或106项源码清单，没有新增插件兼容承诺。宿主仍只装配公共UI按钮，不复刻原快捷键编辑器。

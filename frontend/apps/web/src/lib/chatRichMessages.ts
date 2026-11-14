@@ -1,5 +1,6 @@
 export const chatRichMessages = {
   'zh-CN': {
+    shortcuts: '快捷键',
     speechTitle: '语音',
     speechSettings: '语音设置',
     generateSpeech: '生成语音',
@@ -31,6 +32,7 @@ export const chatRichMessages = {
     keys: 'Enter 发送，Shift+Enter 换行',
   },
   'en-US': {
+    shortcuts: 'Keyboard shortcuts',
     speechTitle: 'Speech',
     speechSettings: 'Speech settings',
     generateSpeech: 'Generate speech',
