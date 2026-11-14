@@ -28,7 +28,7 @@
 
 ## 推进顺序与门禁
 
-**2026-11-14用户完整推进要求：CT-02聊天核心及其他插件兼容。** 范围覆盖聊天核心与插件兼容。按[改造方案](decisions/deepseek-chat-adaptation.md)推进；当前B/C/D/E主体及额外DSH原client已实现并完成下述技术验证；前端全量194文件1167项、类型/边界/最终生产构建通过，后端宿主仍有1项已复现基线失败及9项环境跳过，同场景最终视觉已验证，源码revision为`0f7defa437eb516ff853965f779208f5ab644679`，详见[当前记录](records/chat-core-refactor-validation.md)。真实外部网页服务和ASR/TTS尚未选择及验收，语音未实现；消息图持久化不关闭CT-01持久执行/跨重启接管缺口。
+**CT-02继续推进完整聊天核心与插件兼容。** 前轮消息图/富文本/附件/网页回调及受审原client证据保留为[0f7defa历史](records/chat-core-refactor-validation.md)。当前新增现有MCP登记表上的持久操作配置入口及有界ASR/TTS链路，见[新记录](records/chat-service-config-validation.md)；最新前端199文件1198项、类型/边界及双视口模拟行为通过，后端focused84项0失败/错误4环境跳过、18项MIME定向已有结果，不累加重叠范围。编辑器恢复与语音hook已纳入最新全量通过，双视口完整行为已通过；最终架构/构建/领域检查已通过；最新图像说明、窄屏局部可达性测量与源码提交revision归档仍待收口；实际远端服务效果未验是联调限制，不阻塞预留配置开发。消息图或语音缓存均不关闭CT-01持久接管缺口。
 
 CT-02交互边界保留聊天内Dialog/Drawer与显式独立工作面；G1、原context-menu和持久EAP内置计划的已测历史证据保留。本轮公共富文本、消息图/分支、附件及网页工具接入，以及单React/Cordis岛内原ui-shortcuts/ui-file-actions已纳入本轮前端全量通过范围，最终视觉已验证，源码revision为`0f7defa437eb516ff853965f779208f5ab644679`。插件和计划按[确定路线](decisions/dsh-frontend-adaptation.md)：一个前端适配模块、Java执行与审批、EAP原生计划，不引入独立DSH宿主或第二模型循环；原包兼容只按实际受审闭包声明。
 

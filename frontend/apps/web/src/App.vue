@@ -1935,6 +1935,7 @@ onUnmounted(() => {
           :view-id="activeView"
           :host="pluginHost"
           :chat-view="ChatWorkspace"
+          @navigate="activeView = $event"
         />
       </main>
 

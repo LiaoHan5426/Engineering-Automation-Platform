@@ -70,9 +70,13 @@ export function createMockHandler() {
     try {
       const body = await readJson(
         req,
-        /\/ai\/conversations\/[^/]+\/messages$/.test(req.url ?? '') ? 24 * 1024 * 1024 : 262144,
+        /\/ai\/conversations\/[^/]+\/messages$/.test(req.url ?? '') ||
+          /\/ai\/speech\/(transcriptions|synthesis)$/.test(req.url ?? '')
+          ? 24 * 1024 * 1024
+          : 262144,
       )
       const url = new URL(req.url ?? '/', 'http://mock.local')
+      if (url.pathname.startsWith('/ai/speech/')) res.setHeader('Cache-Control', 'no-store')
       if (url.searchParams.has('connectionId'))
         body.connectionId = url.searchParams.get('connectionId')
       const reply = await backend.handle(req.method ?? 'GET', url.pathname + url.search, body)

@@ -73,13 +73,16 @@ class McpWebServiceTest {
             when(registry.serverOf("mcp.fixture." + tool)).thenReturn(Optional.of("fixture"));
         }
         when(registry.grants("expert")).thenReturn(List.of("mcp.fixture.web_search", "mcp.fixture.web_read"));
-        service = new McpWebService(client, List.of(binding(McpWebBinding.Operation.SEARCH), binding(McpWebBinding.Operation.READ)));
+        when(registry.usableServers()).thenAnswer(invocation->List.of(registry.find("fixture").orElseThrow()));
+        when(registry.operationBindings("fixture")).thenReturn(new McpServerRegistry.OperationBindings(1,endpoint,"http",
+                List.of(binding(McpWebBinding.Operation.SEARCH),binding(McpWebBinding.Operation.READ))));
+        service = new McpWebService(client);
         client.beginExecution(execution, "expert");
     }
-    McpWebBinding binding(McpWebBinding.Operation operation) {
-        return new McpWebBinding("fixture", endpoint, "http", operation,
-                operation == McpWebBinding.Operation.SEARCH ? "web_search" : "web_read", true, schema,
-                "input", "networkPolicy", "results", "title", "url", "text");
+    McpOperationBinding.Web binding(McpWebBinding.Operation operation) {
+        return new McpOperationBinding.Web(McpOperationBinding.Operation.valueOf(operation.name()),
+                operation == McpWebBinding.Operation.SEARCH ? "web_search" : "web_read", "expert",true, schema,
+                "input", "results", "title", "url", "text", "networkPolicy");
     }
     McpWebService.Permission permission() {
         return new McpWebService.Permission(execution, "expert", "fixture", Set.of(McpWebBinding.Operation.values()), allowed::get);
@@ -106,7 +109,8 @@ class McpWebServiceTest {
         assertThrows(Exception.class, () -> service.search(permission(), "query"));
         assertThrows(Exception.class, () -> service.read(permission(), "https://example.com"));
         allowed.set(true);
-        assertThrows(Exception.class, () -> new McpWebService(client, "[]").search(permission(), "query"));
+        when(registry.operationBindings("fixture")).thenReturn(new McpServerRegistry.OperationBindings(2,endpoint,"http",List.of()));
+        assertThrows(Exception.class, () -> service.search(permission(), "query"));
         assertTrue(methods.isEmpty());
     }
     @Test void schemaMismatchPreventsToolCall() {
@@ -145,8 +149,9 @@ class McpWebServiceTest {
         assertFalse(methods.contains("tools/call"));
     }
     @Test void explicitJsonConfigurationBindsExactSchema() {
-        var configured = new McpWebService(client, json.writeValueAsString(List.of(binding(McpWebBinding.Operation.SEARCH))));
-        assertEquals(1, configured.search(permission(), "query").sources().size());
+        var parsed=McpOperationBinding.parseList(json.readValue(json.writeValueAsString(List.of(binding(McpWebBinding.Operation.SEARCH).wire())),List.class));
+        when(registry.operationBindings("fixture")).thenReturn(new McpServerRegistry.OperationBindings(2,endpoint,"http",parsed));
+        assertEquals(1, service.search(permission(), "query").sources().size());
     }
     @Test void queryBudgetAndReadOnlyPermissionPreventCalls() {
         assertThrows(Exception.class, () -> service.search(permission(), "x".repeat(513)));

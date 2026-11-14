@@ -69,3 +69,8 @@ export { AiToolMode } from './aiToolMode'
 export * from './chatGraph'
 
 export * from '../errors/chatGraphErrors'
+
+export * from './mcpOperationBindings'
+export * from './speech'
+
+export * from '../errors/speechErrors'

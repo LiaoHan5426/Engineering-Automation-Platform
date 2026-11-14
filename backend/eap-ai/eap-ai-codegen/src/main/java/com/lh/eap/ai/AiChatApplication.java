@@ -72,10 +72,8 @@ public class AiChatApplication {
     private com.lh.eap.runtime.mcp.client.McpWebService webService;
     @Autowired(required=false)
     private com.lh.eap.runtime.mcp.client.McpClientService mcpClient;
-    @org.springframework.beans.factory.annotation.Value("${eap.ai.chat.mcp-expert-id:}")
-    private String mcpExpertId="";
     public List<com.lh.eap.runtime.mcp.client.McpWebService.AvailableService> webSources() {
-        return webService==null?List.of():webService.availableServices(mcpExpertId);
+        return webService==null?List.of():webService.availableServices();
     }
 
     public AiChatApplication(AiConnectionStatus status, AiConversationRegistry conversations, EngineeringChatService chat,
@@ -661,11 +659,21 @@ public class AiChatApplication {
         var streamed = new AtomicBoolean();
         EngineeringChatService.Outcome outcome;
         boolean webEnabled=context.webSources().enabled();
-        if(webEnabled&&(webService==null||mcpClient==null||mcpExpertId.isBlank()))
+        if(webEnabled&&(webService==null||mcpClient==null))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,ToolErrors.TOOL_POLICY_DENIED.code());
         boolean webModelSupported=current!=null&&connections!=null&&!ModelConnections.CHATGPT_KIND.equals(connections.require(current.connectionId).kind)
             &&!"responses".equals(connections.require(current.connectionId).wireApi);
-        try(var webTool=McpWebChatTool.open(webService,mcpClient,context.webSources(),executionId,mcpExpertId,
+        String trustedWebExpert="";
+        if(webEnabled){
+            var selected=context.webSources();
+            if(selected.search())trustedWebExpert=webService.configuredExpert(selected.serverId(),com.lh.eap.runtime.mcp.client.McpWebBinding.Operation.SEARCH);
+            if(selected.read()){
+                String readExpert=webService.configuredExpert(selected.serverId(),com.lh.eap.runtime.mcp.client.McpWebBinding.Operation.READ);
+                if(!trustedWebExpert.isEmpty()&&!trustedWebExpert.equals(readExpert))throw new ResponseStatusException(HttpStatus.FORBIDDEN,ToolErrors.TOOL_POLICY_DENIED.code());
+                trustedWebExpert=readExpert;
+            }
+        }
+        try(var webTool=McpWebChatTool.open(webService,mcpClient,context.webSources(),executionId,trustedWebExpert,
             webModelSupported,context.mode().equals("chat")&&context.skillRef()==null&&context.knowledgeExpertRef()==null,webEnabled,
             ()->{
                 if(conversations.cancelRequested(id)||Thread.currentThread().isInterrupted())return false;

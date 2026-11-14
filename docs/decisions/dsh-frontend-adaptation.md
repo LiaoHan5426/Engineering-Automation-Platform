@@ -1,6 +1,6 @@
 # DSH 前端插件适配与 EAP 内置执行计划：确定路线
 
-日期：2026-11-14。**首个原client适配、升级差异工具及EAP内置执行计划已实现并技术验证，本轮原ui-shortcuts/ui-file-actions也已进入源码，最终回归PENDING；完整生态兼容未完成，用户接受独立。** 不部署独立 DSH 宿主，不引入 DSH Agent/模型循环，不通过 SDK 运行原生 todo。插件集中到一个独立前端适配模块，任务计划由 EAP 内置。当前可运行的 G1 局部实现与验证仍见[交互决定](chat-context-plugins-and-progress.md)及[验证记录](../records/chat-g1-validation.md)。
+日期：2026-11-14。**首个原client适配、升级差异工具及EAP内置执行计划已实现并技术验证，本轮原ui-shortcuts/ui-file-actions也已进入源码，最终回归PENDING；完整生态兼容未完成，用户验收另行确认。** 不部署独立 DSH 宿主，不引入 DSH Agent/模型循环，不通过 SDK 运行原生 todo。插件集中到一个独立前端适配模块，任务计划由 EAP 内置。当前可运行的 G1 局部实现与验证仍见[交互决定](chat-context-plugins-and-progress.md)及[验证记录](../records/chat-g1-validation.md)。
 
 ## 1. 总体归属
 
@@ -94,7 +94,7 @@ P1固定使用该基线的`@deepseek-ai/dsh-client-ui-context-menu/client`，保
 
 | 切片 | 可评审产出 | 验收 |
 |---|---|---|
-| P1（已技术验证，用户接受独立） | 在同一提交建立真实使用的独立包、固定基线/图生成及现有Host入口；按上文固定context-menu原client及明确provider替换清单，先产出依赖报告再接入 | 原包client代码实际加载/交互/dispose；缺服务不激活；模块没有独立Agent/Node服务；用户先接受改变的区域原型 |
+| P1（已技术验证，用户验收另行确认） | 在同一提交建立真实使用的独立包、固定基线/图生成及现有Host入口；按上文固定context-menu原client及明确provider替换清单，先产出依赖报告再接入 | 原包client代码实际加载/交互/dispose；缺服务不激活；模块没有独立Agent/Node服务；用户先接受改变的区域原型 |
 | P2（工具与同SHA演练已验证，扩大能力待做） | 对下一固定候选执行上述差异流程，提交新旧兼容报告；一个Skill及一个实际支持的MCP服务走已有链，双入口插件按方法补后端适配 | 升级/回退不丢配置/草稿、不双挂；调用遵守原授权/取消；依赖缺项与原包可用范围准确 |
 | T1（已技术验证） | 后端领域常量/内置工具、PlanStore迁移/GET/事件、runtime-client/Mock和摘要一起接入 | 首次无计划、创建/完整替换/清空、CAS/幂等/非法状态、越权执行、乱序/漏事件后读回、取消/失败保留、刷新及重启后历史可读；不冒充后台恢复 |
 | T2 后续按用户需求扩展 | 在统一合同上增加人工编辑、跨轮目标、子项等实际需要 | 每项变更有明确来源/冲突/生命周期及行为验收；不建立第二套todo系统 |
@@ -115,3 +115,5 @@ P1固定使用该基线的`@deepseek-ai/dsh-client-ui-context-menu/client`，保
 ui-commands、ui-theme、ui-settings及account通知依赖闭包未满足，审计明确不支持；Host-only Node provider仍不支持。来源、生命周期、缺服务拒绝、dispose/remount、单实例及窄屏真实交互已按当前受审范围验证。历史context-menu和内置PlanStore/工具/API/摘要已测结果保留，不能扩展成全插件兼容或用户接受。
 
 本轮前端全量194文件1167项、类型/边界及最终生产构建通过，覆盖当前受审适配包；不能因此扩大为未列插件或跨SHA兼容。浏览器同UUID滚动锚点偏移0.15625px通过，Mermaid标签、最终1440/390视觉及初始布局均通过，源码revision为`0f7defa437eb516ff853965f779208f5ab644679`。后端宿主仍有既有隐私断言失败及9项环境跳过；详见当前验证记录，不宣称全链全绿或用户接受。
+
+后续服务配置与有界语音的阶段结果见[新验证记录](../records/chat-service-config-validation.md)。该变化不扩大本节受审DSH插件/Host兼容范围，0f7defa的原client证据继续按历史revision读取。

@@ -1,4 +1,17 @@
 import {
+  isMcpOperationBindingsSnapshot,
+  type McpOperationBindingsSnapshot,
+  type McpOperationBindingsWrite,
+} from './contracts/mcpOperationBindings'
+import {
+  isSpeechServicesResponse,
+  isSpeechOperation,
+  type SpeechServicesResponse,
+  type SpeechOperation,
+  type SpeechTranscriptionRequest,
+  type SpeechSynthesisRequest,
+} from './contracts/speech'
+import {
   validateChatGraph,
   type ChatGraph,
   type ChatGraphRequest,
@@ -981,6 +994,73 @@ export function createChatApi(
   })
   const get = <T>(path: string) => client.get<T>(path).then((response) => response.data)
   return {
+    getMcpOperationBindings: async (id: string) => {
+      const result = await get<McpOperationBindingsSnapshot>(
+        '/mcp-servers/' + encodeURIComponent(id) + '/operation-bindings',
+      )
+      if (!isMcpOperationBindingsSnapshot(result)) throw new Error('INVALID_MCP_OPERATION_BINDINGS')
+      return result
+    },
+    saveMcpOperationBindings: async (id: string, request: McpOperationBindingsWrite) => {
+      const result = (
+        await client.put<McpOperationBindingsSnapshot>(
+          '/mcp-servers/' + encodeURIComponent(id) + '/operation-bindings',
+          request,
+        )
+      ).data
+      if (!isMcpOperationBindingsSnapshot(result)) throw new Error('INVALID_MCP_OPERATION_BINDINGS')
+      return result
+    },
+    speechServices: async (options?: { signal?: AbortSignal }) => {
+      const result = (
+        await client.get<SpeechServicesResponse>('/ai/speech/services', { signal: options?.signal })
+      ).data
+      if (!isSpeechServicesResponse(result)) throw new Error('INVALID_SPEECH_SERVICES')
+      return result
+    },
+    transcribeSpeech: async (
+      request: SpeechTranscriptionRequest,
+      options?: { signal?: AbortSignal },
+    ) => {
+      const result = (
+        await client.post<SpeechOperation>('/ai/speech/transcriptions', request, {
+          signal: options?.signal,
+        })
+      ).data
+      if (!isSpeechOperation(result)) throw new Error('INVALID_SPEECH_OPERATION')
+      return result
+    },
+    synthesizeSpeech: async (
+      request: SpeechSynthesisRequest,
+      options?: { signal?: AbortSignal },
+    ) => {
+      const result = (
+        await client.post<SpeechOperation>('/ai/speech/synthesis', request, {
+          signal: options?.signal,
+        })
+      ).data
+      if (!isSpeechOperation(result)) throw new Error('INVALID_SPEECH_OPERATION')
+      return result
+    },
+    getSpeechOperation: async (operationId: string, options?: { signal?: AbortSignal }) => {
+      const result = (
+        await client.get<SpeechOperation>(
+          '/ai/speech/operations/' + encodeURIComponent(operationId),
+          { signal: options?.signal },
+        )
+      ).data
+      if (!isSpeechOperation(result)) throw new Error('INVALID_SPEECH_OPERATION')
+      return result
+    },
+    cancelSpeechOperation: (operationId: string, options?: { signal?: AbortSignal }) =>
+      client
+        .post<{ operationId: string; cancelRequested: boolean }>(
+          '/ai/speech/' + encodeURIComponent(operationId) + '/cancel',
+          {},
+          { signal: options?.signal },
+        )
+        .then((response) => response.data),
+
     aiStatus: () => get<AiStatus>('/ai/status'),
     skills: () => get<{ items: SkillSummary[] }>('/skills'),
     skill: (id: string, version: string) =>

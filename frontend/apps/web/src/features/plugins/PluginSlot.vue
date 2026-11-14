@@ -8,6 +8,7 @@ import type { BuilderInstanceId } from './model'
 
 const props = defineProps<{ viewId: string; host: PluginHost; chatView: Component }>()
 const { t } = useI18n()
+const emit = defineEmits<{ navigate: [view: 'capabilities'] }>()
 const builders = new Map<string, { guardLeave: () => boolean }>()
 function bindBuilder(id: string, value: unknown) {
   if (value) builders.set(id, value as { guardLeave: () => boolean })
@@ -65,6 +66,7 @@ const enabled = computed(() =>
       :inert="viewId !== id"
       :aria-hidden="viewId !== id"
       :active="viewId === id"
+      @navigate="emit('navigate', $event)"
     />
     <BuilderWorkspace
       v-else

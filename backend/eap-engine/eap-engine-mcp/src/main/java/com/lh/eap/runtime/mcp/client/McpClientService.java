@@ -32,10 +32,15 @@ public class McpClientService {
     private final Map<String, Supplier<McpTransport>> inMemoryTransports = new ConcurrentHashMap<>();
     private final Duration callTimeout = Duration.ofSeconds(5);
 
-    public McpClientService(McpServerRegistry registry, McpSessionRegistry sessions) {
+    private final com.lh.eap.core.CapabilitySwitches switches;
+    @org.springframework.beans.factory.annotation.Autowired
+    public McpClientService(McpServerRegistry registry, McpSessionRegistry sessions, com.lh.eap.core.CapabilitySwitches switches) {
         this.registry = registry;
         this.sessions = sessions;
+        this.switches = Objects.requireNonNull(switches);
     }
+    /** Isolated protocol fixtures have no application capability switch store. */
+    public McpClientService(McpServerRegistry registry,McpSessionRegistry sessions){this(registry,sessions,capability->true);}
 
     /** Tests and in-process transports register a supplier keyed by MCP server id. */
     public void registerInMemoryTransport(String serverId, Supplier<McpTransport> factory) {
@@ -84,48 +89,41 @@ public class McpClientService {
         }
     }
 
-    /** Package-private entry used only by the bounded web adapter, never an arbitrary tools/call API. */
-    Map<String, Object> callWeb(UUID executionId, String expertId, McpWebBinding binding,
-                                Map<String, Object> arguments, java.util.function.BooleanSupplier currentlyAllowed) {
-        var scope = new McpCallScope(executionId, expertId, binding.serverId(), binding.capability());
-        authorizeWeb(scope, binding, currentlyAllowed);
-        var session = openSession(scope);
-        try {
-            var advertised = session.client().listTools().stream()
-                    .filter(item -> binding.tool().equals(item.get("name"))).toList();
-            if (advertised.size() != 1 || !binding.inputSchema().equals(advertised.getFirst().get("inputSchema")))
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, ToolErrors.TOOL_NOT_PUBLISHED.code());
-            // Discovery may block: recheck durable grants, endpoint and cancellation immediately before dispatch.
-            authorizeWeb(scope, binding, currentlyAllowed);
-            sessions.requireOwnership(scope, session);
-            var result = session.client().callTool(binding.tool(), arguments);
-            authorizeWeb(scope, binding, currentlyAllowed);
-            return result;
-        } finally {
-            sessions.requireOwnership(scope, session);
-        }
-    }
+    public McpServerRegistry registry() { return registry; }
 
-    boolean webAuthorized(UUID executionId, String expertId, McpWebBinding binding,
-                          java.util.function.BooleanSupplier currentlyAllowed) {
-        try {
-            authorizeWeb(new McpCallScope(executionId, expertId, binding.serverId(), binding.capability()), binding, currentlyAllowed);
-            return true;
-        } catch (RuntimeException denied) { return false; }
+    record Mapped(String serverId, long revision, String endpoint, String transport, McpOperationBinding binding) {
+        String capability(){return McpServerRegistry.capabilityId(serverId,binding.tool());}
     }
-
-    private void authorizeWeb(McpCallScope scope, McpWebBinding binding,
-                              java.util.function.BooleanSupplier currentlyAllowed) {
-        if (!currentlyAllowed.getAsBoolean())
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_TOOL_NOT_AUTHORIZED.code());
-        authorize(scope);
-        var server = registry.find(scope.serverId()).orElseThrow(() ->
-                new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_SERVER_NOT_FOUND.code()));
-        if (!binding.approved() || !server.usable() || !server.endpoint().equals(binding.endpoint())
-                || !server.transport().equals(binding.transport())
-                || !registry.grants(scope.expertId()).contains(scope.capability())
-                || Thread.currentThread().isInterrupted())
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_TOOL_NOT_AUTHORIZED.code());
+    Mapped mapped(String serverId, McpOperationBinding.Operation operation) {
+        var config=registry.operationBindings(serverId);
+        var binding=config.bindings().stream().filter(b->b.operation()==operation).findFirst().orElseThrow(()->
+                new ResponseStatusException(HttpStatus.FORBIDDEN,McpErrors.MCP_TOOL_NOT_AUTHORIZED.code()));
+        return new Mapped(serverId,config.revision(),config.endpoint(),config.transport(),binding);
+    }
+    boolean mappedAuthorized(Mapped selected, java.util.function.BooleanSupplier live) {
+        try{authorizeMapped(selected,live);return true;}catch(RuntimeException denied){return false;}
+    }
+    private void authorizeMapped(Mapped selected, java.util.function.BooleanSupplier live) {
+        var current=mapped(selected.serverId(),selected.binding().operation());
+        var server=registry.find(selected.serverId()).orElseThrow();
+        if(!live.getAsBoolean() || !switches.enabled(selected.capability()) || Thread.currentThread().isInterrupted() || !selected.equals(current)
+                || !selected.binding().approved() || !server.usable() || !server.endpoint().equals(selected.endpoint())
+                || !server.transport().equals(selected.transport()) || !server.tools().contains(selected.binding().tool())
+                || !registry.grants(selected.binding().expertId()).contains(selected.capability()))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,McpErrors.MCP_TOOL_NOT_AUTHORIZED.code());
+    }
+    Map<String,Object> callMapped(UUID executionId, Mapped selected, Map<String,Object> arguments,
+                                  java.util.function.BooleanSupplier live) {
+        authorizeMapped(selected,live);
+        var scope=new McpCallScope(executionId,selected.binding().expertId(),selected.serverId(),selected.capability());
+        var session=openSession(scope);
+        var tools=session.client().listTools().stream().filter(t->selected.binding().tool().equals(t.get("name"))).toList();
+        if(tools.size()!=1 || !selected.binding().inputSchema().equals(tools.getFirst().get("inputSchema")))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,ToolErrors.TOOL_NOT_PUBLISHED.code());
+        authorizeMapped(selected,live);sessions.requireOwnership(scope,session);
+        var result=session.client().callTool(selected.binding().tool(),arguments);
+        authorizeMapped(selected,live);sessions.requireOwnership(scope,session);
+        return result;
     }
 
     public void beginExecution(UUID executionId, String expertId) {

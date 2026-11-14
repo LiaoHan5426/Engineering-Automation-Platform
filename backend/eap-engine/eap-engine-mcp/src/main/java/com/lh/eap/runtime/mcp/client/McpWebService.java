@@ -19,21 +19,28 @@ public final class McpWebService {
     public static final int MAX_TEXT = 32_000;
     private static final java.util.concurrent.Semaphore DNS_SLOTS = new java.util.concurrent.Semaphore(4);
     private final McpClientService client;
-    private final List<McpWebBinding> bindings;
     private final JsonMapper mapper = JsonMapper.builder().build();
 
     @Autowired
-    public McpWebService(McpClientService client, @Value("${eap.mcp.web.bindings:[]}") String configuration) {
-        this(client, List.of(JsonMapper.builder().build().readValue(configuration, McpWebBinding[].class)));
+    public McpWebService(McpClientService client) {
+        this.client=client;
     }
 
-    public McpWebService(McpClientService client, List<McpWebBinding> bindings) {
-        this.client = client;
-        this.bindings = List.copyOf(bindings);
-        var identities = new HashSet<String>();
-        for (var binding : bindings) {
-            if (!identities.add(binding.serverId() + ":" + binding.operation())) throw invalid();
+    private List<McpWebBinding> bindings() {
+        var result=new ArrayList<McpWebBinding>();
+        for(var server:client.registry().usableServers()) {
+            var config=client.registry().operationBindings(server.id());
+            for(var binding:config.bindings())if(binding instanceof McpOperationBinding.Web web)
+                result.add(asWeb(server.id(),config,web));
         }
+        return List.copyOf(result);
+    }
+    private static McpWebBinding asWeb(String serverId,com.lh.eap.persistence.mapper.McpServerRegistry.OperationBindings config,McpOperationBinding.Web b){
+        return new McpWebBinding(serverId,config.endpoint(),config.transport(),McpWebBinding.Operation.valueOf(b.operation().name()),
+                b.tool(),b.approved(),b.inputSchema(),b.inputArgument(),b.ownerPolicyArgument(),b.resultsField(),b.titleField(),b.urlField(),b.textField());
+    }
+    public String configuredExpert(String serverId, McpWebBinding.Operation operation) {
+        return client.mapped(serverId,McpOperationBinding.Operation.valueOf(operation.name())).binding().expertId();
     }
 
     /** Caller resolves expert and scope on the server. The live gate must include cancellation/revocation. */
@@ -50,10 +57,10 @@ public final class McpWebService {
     public Set<McpWebBinding.Operation> available(Permission permission) {
         if (permission == null || !permission.currentlyAllowed().getAsBoolean()) return Set.of();
         var result = EnumSet.noneOf(McpWebBinding.Operation.class);
-        for (var binding : bindings) {
+        for (var binding : bindings()) {
             if (binding.approved() && binding.serverId().equals(permission.selectedServerId())
                     && permission.operations().contains(binding.operation())
-                    && client.webAuthorized(permission.executionId(), permission.expertId(), binding, permission.currentlyAllowed()))
+                    && mappedAllowed(permission,binding.operation()))
                 result.add(binding.operation());
         }
         return Set.copyOf(result);
@@ -61,16 +68,20 @@ public final class McpWebService {
 
     /** Safe discovery projection; no endpoint, credentials, schemas, or protocol calls. */
     public record AvailableService(String serverId, boolean search, boolean read) {}
-    public List<AvailableService> availableServices(String expertId) {
-        if(expertId==null||expertId.isBlank())return List.of();
+    public List<AvailableService> availableServices() {
         var result=new ArrayList<AvailableService>();
-        for(var server:bindings.stream().map(McpWebBinding::serverId).distinct().sorted().toList()) {
-            var available=available(new Permission(UUID.randomUUID(),expertId,server,EnumSet.allOf(McpWebBinding.Operation.class),()->true));
-            if(!available.isEmpty()) result.add(new AvailableService(server,available.contains(McpWebBinding.Operation.SEARCH),available.contains(McpWebBinding.Operation.READ)));
+        for(var server:client.registry().usableServers()) {
+            boolean search=false,read=false;
+            for(var binding:client.registry().operationBindings(server.id()).bindings()) {
+                if(binding instanceof McpOperationBinding.Web web && client.mappedAuthorized(client.mapped(server.id(),web.operation()),()->true)) {
+                    search|=web.operation()==McpOperationBinding.Operation.SEARCH;
+                    read|=web.operation()==McpOperationBinding.Operation.READ;
+                }
+            }
+            if(search||read)result.add(new AvailableService(server.id(),search,read));
         }
         return List.copyOf(result);
     }
-
     public Material search(Permission permission, String query) {
         if (query == null || query.isBlank() || query.length() > 512) throw invalid();
         return invoke(permission, McpWebBinding.Operation.SEARCH, query.strip());
@@ -87,13 +98,26 @@ public final class McpWebService {
         if (permission == null || !permission.currentlyAllowed().getAsBoolean()
                 || !permission.operations().contains(operation) || Thread.currentThread().isInterrupted())
             throw denied();
-        return bindings.stream().filter(binding -> binding.approved()
+        return bindings().stream().filter(binding -> binding.approved()
                 && binding.serverId().equals(permission.selectedServerId()) && binding.operation() == operation)
                 .findFirst().orElseThrow(McpWebService::denied);
     }
 
+    private boolean mappedAllowed(Permission permission,McpWebBinding.Operation operation) {
+        try {
+            var selected=client.mapped(permission.selectedServerId(),McpOperationBinding.Operation.valueOf(operation.name()));
+            return selected.binding().expertId().equals(permission.expertId()) && client.mappedAuthorized(selected,permission.currentlyAllowed());
+        }catch(RuntimeException denied){return false;}
+    }
+
     private Material invoke(Permission permission, McpWebBinding.Operation operation, String input) {
         var binding = select(permission, operation);
+        McpClientService.Mapped mapped=null;
+        {
+            mapped=client.mapped(permission.selectedServerId(),McpOperationBinding.Operation.valueOf(operation.name()));
+            if(!mapped.binding().expertId().equals(permission.expertId()) || !client.mappedAuthorized(mapped,permission.currentlyAllowed()))throw denied();
+            binding=asWeb(mapped.serverId(),new com.lh.eap.persistence.mapper.McpServerRegistry.OperationBindings(mapped.revision(),mapped.endpoint(),mapped.transport(),List.of(mapped.binding())),(McpOperationBinding.Web)mapped.binding());
+        }
         var arguments = new LinkedHashMap<String, Object>();
         arguments.put(binding.inputArgument(), input);
         if (operation == McpWebBinding.Operation.READ) {
@@ -102,8 +126,7 @@ public final class McpWebService {
             arguments.put(binding.ownerPolicyArgument(), Map.of("publicHttpsOnly", true,
                     "maxRedirects", 0, "maxBytes", 262144, "timeoutMs", 5000));
         }
-        var raw = client.callWeb(permission.executionId(), permission.expertId(), binding, arguments,
-                permission.currentlyAllowed());
+        var raw=client.callMapped(permission.executionId(),mapped,arguments,permission.currentlyAllowed());
         select(permission, operation); // discard late results after cancellation or revocation
         if (Boolean.TRUE.equals(raw.get("isError")))
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, McpErrors.MCP_TOOL_FAILED.code());

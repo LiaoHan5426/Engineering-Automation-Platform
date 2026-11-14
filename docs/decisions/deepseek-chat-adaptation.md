@@ -1,6 +1,6 @@
 # DeepSeek 聊天体验重做与前后端边界
 
-日期：2026-11-14。状态：**范围按用户本轮修订记录；技术方案持续修订；G1及首client/内置计划有历史技术证据；本轮B/C/D/E主体及更多原client已进入未提交工作区，前端全量/类型/边界/最终构建已通过，最终视觉/revision仍PENDING，整体未完成，用户接受独立。** 当前进度仅由[CT-02台账](../planning-status.md#ct-02-chat-adaptation)维护。本方案不将源码审阅、上游功能或既有测试升级为新增能力已完成。
+日期：2026-11-14。状态：**聊天核心与受审client已有0f7defa历史技术证据；当前新增服务配置与有界ASR/TTS源码，阶段检查通过，界面/双视口行为及最终检查已通过，图像说明与源码提交revision归档待收口，整体与用户验收另行确认。** 当前状态见[CT-02台账](../planning-status.md#ct-02-chat-adaptation)及[本轮验证](../records/chat-service-config-validation.md)。历史结果不自动覆盖新增能力。
 
 PR #7 后续人工评审新增三项规划范围：普通聊天操作优先 Dialog/Drawer，参照DSH会话区域与面板交互以减少重复开发，保留独立工作面的显式升级；深入评估 DSH 插件原包复用及宿主差异；将执行任务列表纳入摘要面板。具体源码评估、兼容矩阵和验收见[交互、插件与执行计划补充](chat-context-plugins-and-progress.md)，属于本方案的组成部分；局部G1实现与剩余范围见补充方案§5。
 
@@ -17,7 +17,7 @@ PR #7 后续人工评审新增三项规划范围：普通聊天操作优先 Dial
 | 编辑、重新生成、分支 | [chatSession](../../frontend/apps/web/src/features/chat/chatSession.ts)已按服务端消息图投影所选分支；上游[branches.ts](https://github.com/deepseek-ai/chat-demo/blob/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c/src/services/chat/branches.ts)用父子关系选路径 | 新建分支、保留旧分支、上下文按分支构建，执行记录保持不可变关联 |
 | 附件 | [acceptFiles](../../frontend/apps/web/src/features/chat/acceptFiles.ts)保留文本校验；本轮chatAttachments增加本机图片，[TaskContext](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/TaskContext.java)已扩展附件元数据，图片原件经临时holder/类型化Media转发；最终验证PENDING | 前端保存原件，后端有限校验及调用时转发，按模型/解析能力限定可发送格式 |
 | 存储 | [chatHistory](../../frontend/apps/web/src/features/chat/chatHistory.ts)只保存偏好/草稿/分支选择，旧正文只读导出；后端V3消息图持久化，执行事件日志仍为进程内Map | 明确草稿、已发送消息、执行证据、附件原件各自权威来源；不双写两套可编辑消息历史 |
-| MCP | [McpClientService](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/mcp/client/McpClientService.java)已有隔离及矩阵授权，本轮新增网页服务及聊天回调；[原Handler](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/handler/McpReadonlyHandler.java)的read_graph不是网页工具入口 | 网页新集成最终验证PENDING，实际MCP服务未选；语音未实现，不能把登记/tools/list当实网可用 |
+| MCP | [McpClientService](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/mcp/client/McpClientService.java)已有隔离及矩阵授权，本轮新增网页服务及聊天回调；[原Handler](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/handler/McpReadonlyHandler.java)的read_graph不是网页工具入口 | 本轮服务配置和有界ASR/TTS源码已实现，最终检查PENDING；真实远端效果未验，不把登记/tools/list当实网可用 |
 
 上游也有前端本地原件与供应商文件两种身份：[db.ts](https://github.com/deepseek-ai/chat-demo/blob/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c/src/services/chat/db.ts)存IndexedDB Blob，[attachments.ts](https://github.com/deepseek-ai/chat-demo/blob/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c/src/services/attachments.ts)通过供应商Files API上传。其选文件即上传的行为与EAP选择/上传分离合同冲突，适配时使用EAP明确操作合同。
 
@@ -104,7 +104,7 @@ C在实现前需明确以下合同，并同步DTO、HTTP/SSE、Mock和所有调�
 
 **搜索的业务含义是：在聊天回答需要外部资料或最新信息时，按需检索互联网网页。** 此处不包含仓库文件搜索、会话历史搜索或本地知识库检索；现有文件系统MCP的 `search_files` 和memory的 `read_graph` 均不能作为网页搜索实现。
 
-网页资料当前源码路径为 `前端 → EAP业务API → Spring AI聊天工具回调 → 受授权MCP客户端 → 网页搜索/网页读取服务`，复用现有MCP客户端；新集成最终验证PENDING，语音尚未实现。MCP负责接入，互联网搜索引擎、网页解析器、ASR/TTS仍由具体服务提供。
+网页资料当前源码路径为 `前端 → EAP业务API → Spring AI聊天工具回调 → 受授权MCP客户端 → 网页搜索/网页读取服务`，复用现有MCP客户端；网页回调沿用既有路径；本轮新增DB操作映射和显式语音API，最终行为验证PENDING。语音不经聊天模型工具循环。MCP负责接入，互联网搜索引擎、网页解析器、ASR/TTS仍由具体服务提供。
 
 按需触发与回答合同：
 
@@ -117,8 +117,8 @@ C在实现前需明确以下合同，并同步DTO、HTTP/SSE、Mock和所有调�
 |---|---|---|
 | 按需网页搜索 | 根据当前问题按需查询互联网网页；关键词/条数/时间等有界参数，返回网页标题、URL、摘录与来源标识 | 网页搜索服务选择、按需触发、精确授权、参数/结果校验、超时/取消与引用映射 |
 | 链接阅读 | 按需读取用户提供或搜索结果中的具体URL，返回正文/标题/来源，设大小与跳转上限 | 限制服务端可达目标及重定向，验证独立读取、失败与来源回传 |
-| 语音输入 | 前端录音，显式提交一次录音，MCP调用ASR返回文本草稿，用户再发送 | 音频传输合同、权限、格式、时长、取消；识别结束不自动发聊天消息 |
-| 回复朗读 | 显式朗读所选回答，经MCP调用TTS，前端播放及停止 | 音频结果/资源引用、大小与生命周期、播放取消；不绕道LLM生成语音工具参数 |
+| 语音输入 | 已有录音停止/本机预览、显式ASR到草稿及变化后确认追加源码，不自动发送 | 最终浏览器/恢复行为、真实音频与远端识别效果；阶段检查见新记录 |
+| 回复朗读 | 已有显式TTS生成后再播放/停止、资源清理与取消源码，不经LLM参数生成 | 最终行为与真实合成/播放效果；输出MIME仅为EAP接收上限 |
 
 MCP工具可以返回audio内容，但普通tools/call和Streamable HTTP不自动提供实时双向音频。当前方案先按录音后识别/按次朗读；若要求边说边识别或低延迟双向对话，再评估媒体通道，不能以SSE连接证明实时语音已实现。
 
@@ -126,7 +126,7 @@ MCP工具可以返回audio内容，但普通tools/call和Streamable HTTP不自�
 
 [EngineeringChatService](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/EngineeringChatService.java)现已装配网页工具回调；现有Expert的McpReadonlyHandler不会自动变成聊天模型工具。E已在源码接入选中工具schema、精确grant、参数校验、调用结果和引用接入现有Spring AI循环；不另建平行执行循环。[现有MCP会话](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/mcp/McpSessionRegistry.java)要求执行、专家、服务器三者隔离；Chat须由服务端解析可信专家/grant身份，不能把前端角色标签视作授权。新桥接必须保留Handler原有的持久grant复核，不得直接调用客户端而绕过；打开同一执行的资源作用域，并在成功/失败/取消时统一关闭。PLAN继续拒绝工具，未授权或原无工具范围不能因启用联网选项被自动升级，Responses等连接也须逐一核对实际工具能力。网页和工具返回中的指令不能获得审批或写入权限。读取服务需验证私网/本机/云元数据地址、重定向及DNS解析后的目标限制；具体限制由实际发起抓取的一侧强制执行，不能仅校验UI输入URL。
 
-网页搜索、链接阅读与语音所需的具体MCP服务/模型尚未选择，不能给出实网可用或延迟结论；选择与验证放入相应切片，不阻塞前面的展示与交互工作。
+具体远端服务效果尚未验收，不能给出实网可用或延迟结论；配置入口和有界调用无需先选定供应商即可继续开发。实际服务初始化/发现/调用与内容质量单独验收，不作为停止本轮配置开发的理由。
 
 ## 6. 分步替换与验收
 
@@ -137,7 +137,7 @@ MCP工具可以返回audio内容，但普通tools/call和Streamable HTTP不自�
 | C 分支闭环（源码已实现，最终验证PENDING） | 先定消息图存储、操作幂等、revision、执行级取消及事件关联合同，再做前后端消息图/上下文选路与投影 | 同批替换线性历史/上下文路径；验证根/深层分支、并发及过期编辑、响应丢失重试、迟到事件/取消、日志淘汰/重启的明确边界、清空/摘要/模型变更及敏感材料失效、审批/UNKNOWN和任务草稿保护；不宣称CT-01持久接管完成 |
 | D 本机附件（源码已实现，最终验证PENDING） | IndexedDB原件、预览/重选/删除、受限转发，先文本及支持模型的图片 | 替换纯name/content附件合同；HTTP/Mock/测试同批更新。验证刷新、配额失败、缺失/重选校验、分支共享回收、上传重试及连接变更、后端无落盘/日志泄露及真实模型识别 |
 | E MCP网页资料（服务/回调已实现，集成及实网验证PENDING） | 按需互联网网页搜索、链接阅读、引用卡片及聊天上下文接入 | 复用并扩展现有MCP调用/授权；验证无需联网时零调用、明确要求搜索、授权范围内按需触发、关闭/撤权后不调用、直接链接阅读、搜索→按需读页→引用，以及无结果/失败/超时/取消；真实服务初始化、发现、调用与引用一致性分别验 |
-| F MCP语音（未实现） | 录音→ASR草稿；回答→TTS播放 | 与网页搜索的授权和内容类型分别建合同；实测音频、失败、停止、刷新/离开释放资源；不扩大为实时通话承诺 |
+| F MCP语音（源码已实现，最终行为验证PENDING） | 录音→ASR草稿；回答→TTS播放 | 与网页搜索的授权和内容类型分别建合同；实测音频、失败、停止、刷新/离开释放资源；不扩大为实时通话承诺 |
 
 A→B先取得交互证据；C依赖协议/存储合同评审，D生产发送依赖C稳定消息与附件引用（本机存储可独立验证），E依赖C的执行关联且可独立于D，F依赖音频转发及资源合同，不要求先完成网页搜索。未选MCP服务不阻塞B/C。每片列出被替换入口、调用方及回归清单；UI交付保留同场景/视口/主题的真实Before/After，并标识基线与变更revision。
 
@@ -159,12 +159,20 @@ G1实施结果与同场景Before/After见[聊天内连接配置](../evidence/cha
 
 后续实施证据：[DSH前端首client与EAP内置计划](../records/chat-plugin-plan-validation.md)。该历史记录不证明本轮消息图、聊天区域/富文本、多模态/MCP最终验证或用户接受，DSH Node/SDK宿主不是本路线。
 
-## 8. 本轮扩展实施与技术验证
+## 8. 0f7defa扩展实施与技术验证（历史）
 
 [当前验证记录](../records/chat-core-refactor-validation.md)与[同场景证据索引](../evidence/chat-core-refactor/README.md)维护本轮实现、实际结果与剩余服务条件。SQL消息图是已发送消息唯一权威；`POST messages`使用operationId、expectedRevision、kind、parentMessageId/targetMessageId和规范化载荷精确SHA-256去重；GET图/操作用于刷新与响应丢失核对，分支上下文从所选祖先构建。accepted/SSE关联与执行级取消、摘要operation级取消已进入源码。重启后完成图可读不等于持久执行日志或恢复推理。
 
 通用富文本归`@eap/ui`，不在feature复制渲染器；消息图投影和附件IndexedDB域存储留Chat feature。旧浏览器正文只读导出，不回灌服务端图或双写。附件本机原件与元数据分离；后端只有请求内原件校验/类型化转发，模型图片能力显式声明、默认false，不以扩展名/模型名称推断。临时文本/图片holder、实际provider窗口预算及无持久原件回归已通过；真实供应商识别未验，不能声称任意文件/图片均可发送。
 
-网页工具新增approved固定绑定与schema/digest核对，服务端可信专家属性`eap.ai.chat.mcp-expert-id`默认空，绑定`eap.mcp.web.bindings`默认空列表；前端选择只表达意图，不成为授权。GET web-sources仅投影可用性，不探测远端协议。服务与Spring AI回调路径已实现，新增服务/回调及媒体定向25项、隔离H2消息图9项已通过；真实外部服务未验；具体网页MCP服务及ASR/TTS均未选择，语音未实现。
+以下保留为0f7defa的历史实现，当前配置来源已由§9替换：网页工具当时新增approved固定绑定与schema/digest核对，服务端可信专家属性`eap.ai.chat.mcp-expert-id`默认空，绑定`eap.mcp.web.bindings`默认空列表；前端选择只表达意图，不成为授权。GET web-sources仅投影可用性，不探测远端协议。服务与Spring AI回调路径已实现，新增服务/回调及媒体定向25项、隔离H2消息图9项已通过；真实外部服务未验；具体网页MCP服务及ASR/TTS均未选择，语音未实现。
 
 本轮已取得前端194文件1167项全量、类型/边界及最终生产构建通过；追加strict404正负用例后的graphSession6项通过单列不累加。后端上游附件/MCP25项通过，宿主130项中1项既有workspacePath隐私断言失败、9项环境跳过，未取得后端全绿。浏览器同一消息UUID锚点偏移0.15625px低于保留的3px阈值；Mermaid A/B标签、1440/390真实最终AFTER、初始模型/发送可见性及宿主无隐藏滚动已验证；源码revision为`0f7defa437eb516ff853965f779208f5ab644679`，见当前验证记录。
+
+## 9. 当前服务配置与有界语音（最终收口PENDING）
+
+[新验证记录](../records/chat-service-config-validation.md)维护本轮源码和验证事实。服务配置集中在既有MCP注册表：V4增加四列，以GET/PUT operation-bindings和expectedRevision CAS管理SEARCH/READ/ASR/TTS、expertId、approved与schema/字段映射。旧`eap.ai.chat.mcp-expert-id`及`eap.mcp.web.bindings`来源已移除，不提供属性回退。保存配置不启用、不信任、不授予权限、不探测/调用；默认空配置/关闭。调用固定revision/endpoint/transport，复核CapabilitySwitches、持久grant及tools/list精确schema一致性；不宣称完整JSON Schema验证。
+
+显式语音API实现录音停止/本机预览→转录草稿和回答生成语音→显式播放；草稿变化后确认追加，不自动发送/播放。语音只允许http/stdio，网页既有传输范围保留；MIME能力由配置输入限制、EAP格式与浏览器支持共同限定，输出列表是上限而非远端保证。4MiB音频/6MiB wire、4000字符TTS/16000字符转录；进程内最多2运行/64记录/16MiB缓存/10分钟TTL/每秒清理，不是持久执行或实时通话。
+
+本轮最新前端199文件1198项通过，类型/边界及编辑器4项/语音hook16项通过，1440/390完整配置/语音模拟行为通过，后端编译通过、focused84项0失败/错误4环境跳过及18项MIME定向通过；不相加重叠范围。配置恢复和新增语音用例、双视口模拟行为已通过；最终架构/构建/领域检查已通过；最新图像说明、窄屏局部可达性测量及源码提交revision归档仍PENDING，H2桥接验证不能升级为PG。真实服务质量未验，Fake MCP/浏览器stub不代表实际识别/声音效果；不因缺供应商停止配置开发，用户验收另行确认。

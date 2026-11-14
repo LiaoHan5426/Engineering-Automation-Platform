@@ -126,6 +126,7 @@ const emit = defineEmits<{
   update: [context: TaskContext]
   refresh: []
   'connections-changed': [items: ModelConnection[]]
+  configure: []
 }>()
 const { t } = useI18n()
 const connectionEditor = ref<InstanceType<typeof ModelConnectionEditor>>()
@@ -776,6 +777,9 @@ async function loadVersions() {
       <Feedback v-if="webSourcesUnavailable || !webSourceServices?.length" tone="info">{{
         t('richText.webUnavailable')
       }}</Feedback>
+      <Button variant="secondary" size="sm" @click="emit('configure')">{{
+        t('richText.configureServices')
+      }}</Button>
       <label
         >{{ t('richText.webService') }}
         <Select
@@ -819,6 +823,7 @@ async function loadVersions() {
         >{{ t('richText.webEnable') }}</Checkbox
       >
     </Collapse>
+    <slot name="speech" />
     <slot name="draft" />
     <div class="task-context" data-testid="task-context">
       <div class="context-toolbar">

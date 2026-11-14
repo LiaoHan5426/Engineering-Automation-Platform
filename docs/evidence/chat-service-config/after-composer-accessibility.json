@@ -1,0 +1,315 @@
+{
+  "results": [
+    {
+      "state": "collapsed",
+      "input": "actual Playwright mouse wheel inside composer padding",
+      "modelFocusedAndClicked": true,
+      "before": {
+        "composer": {
+          "x": 72,
+          "y": 606.96875,
+          "width": 302,
+          "height": 343.03125,
+          "top": 606.96875,
+          "right": 374,
+          "bottom": 950,
+          "left": 72
+        },
+        "composerTop": 0,
+        "client": 341,
+        "content": 385,
+        "send": {
+          "x": 323,
+          "y": 917.21875,
+          "width": 34,
+          "height": 34,
+          "top": 917.21875,
+          "right": 357,
+          "bottom": 951.21875,
+          "left": 323
+        },
+        "sendDisabledByFixture": true,
+        "model": {
+          "x": 203,
+          "y": 915.46875,
+          "width": 112,
+          "height": 37.5,
+          "top": 915.46875,
+          "right": 315,
+          "bottom": 952.96875,
+          "left": 203
+        },
+        "modelPointerHit": true,
+        "workbenchTop": 0,
+        "windowTop": 0,
+        "shortcut": {
+          "x": 64,
+          "y": 56,
+          "width": 318,
+          "height": 95,
+          "top": 56,
+          "right": 382,
+          "bottom": 151,
+          "left": 64
+        }
+      },
+      "after": {
+        "composer": {
+          "x": 72,
+          "y": 606.96875,
+          "width": 302,
+          "height": 343.03125,
+          "top": 606.96875,
+          "right": 374,
+          "bottom": 950,
+          "left": 72
+        },
+        "composerTop": 44,
+        "client": 341,
+        "content": 385,
+        "send": {
+          "x": 323,
+          "y": 873.21875,
+          "width": 34,
+          "height": 34,
+          "top": 873.21875,
+          "right": 357,
+          "bottom": 907.21875,
+          "left": 323
+        },
+        "sendDisabledByFixture": true,
+        "model": {
+          "x": 203,
+          "y": 871.46875,
+          "width": 112,
+          "height": 37.5,
+          "top": 871.46875,
+          "right": 315,
+          "bottom": 908.96875,
+          "left": 203
+        },
+        "modelPointerHit": true,
+        "workbenchTop": 0,
+        "windowTop": 0,
+        "shortcut": {
+          "x": 64,
+          "y": 56,
+          "width": 318,
+          "height": 95,
+          "top": 56,
+          "right": 382,
+          "bottom": 151,
+          "left": 64
+        }
+      }
+    },
+    {
+      "state": "web-expanded",
+      "input": "actual Playwright mouse wheel inside composer padding",
+      "modelFocusedAndClicked": true,
+      "before": {
+        "composer": {
+          "x": 72,
+          "y": 606.96875,
+          "width": 302,
+          "height": 343.03125,
+          "top": 606.96875,
+          "right": 374,
+          "bottom": 950,
+          "left": 72
+        },
+        "composerTop": 44,
+        "client": 341,
+        "content": 547,
+        "send": {
+          "x": 323,
+          "y": 1035.21875,
+          "width": 34,
+          "height": 34,
+          "top": 1035.21875,
+          "right": 357,
+          "bottom": 1069.21875,
+          "left": 323
+        },
+        "sendDisabledByFixture": true,
+        "model": {
+          "x": 203,
+          "y": 1033.46875,
+          "width": 112,
+          "height": 37.5,
+          "top": 1033.46875,
+          "right": 315,
+          "bottom": 1070.96875,
+          "left": 203
+        },
+        "modelPointerHit": false,
+        "workbenchTop": 0,
+        "windowTop": 0,
+        "shortcut": {
+          "x": 64,
+          "y": 56,
+          "width": 318,
+          "height": 95,
+          "top": 56,
+          "right": 382,
+          "bottom": 151,
+          "left": 64
+        }
+      },
+      "after": {
+        "composer": {
+          "x": 72,
+          "y": 606.96875,
+          "width": 302,
+          "height": 343.03125,
+          "top": 606.96875,
+          "right": 374,
+          "bottom": 950,
+          "left": 72
+        },
+        "composerTop": 206,
+        "client": 341,
+        "content": 547,
+        "send": {
+          "x": 323,
+          "y": 873.21875,
+          "width": 34,
+          "height": 34,
+          "top": 873.21875,
+          "right": 357,
+          "bottom": 907.21875,
+          "left": 323
+        },
+        "sendDisabledByFixture": true,
+        "model": {
+          "x": 203,
+          "y": 871.46875,
+          "width": 112,
+          "height": 37.5,
+          "top": 871.46875,
+          "right": 315,
+          "bottom": 908.96875,
+          "left": 203
+        },
+        "modelPointerHit": true,
+        "workbenchTop": 0,
+        "windowTop": 0,
+        "shortcut": {
+          "x": 64,
+          "y": 56,
+          "width": 318,
+          "height": 95,
+          "top": 56,
+          "right": 382,
+          "bottom": 151,
+          "left": 64
+        }
+      }
+    },
+    {
+      "state": "speech-expanded",
+      "input": "actual Playwright mouse wheel inside composer padding",
+      "modelFocusedAndClicked": true,
+      "before": {
+        "composer": {
+          "x": 72,
+          "y": 606.96875,
+          "width": 302,
+          "height": 343.03125,
+          "top": 606.96875,
+          "right": 374,
+          "bottom": 950,
+          "left": 72
+        },
+        "composerTop": 0,
+        "client": 341,
+        "content": 485,
+        "send": {
+          "x": 323,
+          "y": 1016.40625,
+          "width": 34,
+          "height": 34,
+          "top": 1016.40625,
+          "right": 357,
+          "bottom": 1050.40625,
+          "left": 323
+        },
+        "sendDisabledByFixture": true,
+        "model": {
+          "x": 203,
+          "y": 1014.65625,
+          "width": 112,
+          "height": 37.5,
+          "top": 1014.65625,
+          "right": 315,
+          "bottom": 1052.15625,
+          "left": 203
+        },
+        "modelPointerHit": false,
+        "workbenchTop": 0,
+        "windowTop": 0,
+        "shortcut": {
+          "x": 64,
+          "y": 56,
+          "width": 318,
+          "height": 95,
+          "top": 56,
+          "right": 382,
+          "bottom": 151,
+          "left": 64
+        }
+      },
+      "after": {
+        "composer": {
+          "x": 72,
+          "y": 606.96875,
+          "width": 302,
+          "height": 343.03125,
+          "top": 606.96875,
+          "right": 374,
+          "bottom": 950,
+          "left": 72
+        },
+        "composerTop": 144,
+        "client": 341,
+        "content": 485,
+        "send": {
+          "x": 323,
+          "y": 872.40625,
+          "width": 34,
+          "height": 34,
+          "top": 872.40625,
+          "right": 357,
+          "bottom": 906.40625,
+          "left": 323
+        },
+        "sendDisabledByFixture": true,
+        "model": {
+          "x": 203,
+          "y": 870.65625,
+          "width": 112,
+          "height": 37.5,
+          "top": 870.65625,
+          "right": 315,
+          "bottom": 908.15625,
+          "left": 203
+        },
+        "modelPointerHit": true,
+        "workbenchTop": 0,
+        "windowTop": 0,
+        "shortcut": {
+          "x": 64,
+          "y": 56,
+          "width": 318,
+          "height": 95,
+          "top": 56,
+          "right": 382,
+          "bottom": 151,
+          "left": 64
+        }
+      }
+    }
+  ],
+  "errors": [],
+  "blocked": []
+}

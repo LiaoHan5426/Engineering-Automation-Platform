@@ -44,6 +44,9 @@ import SessionPanel from '../../components/SessionPanel.vue'
 import WorkspaceWelcome from '../../components/WorkspaceWelcome.vue'
 import { chatService, chatStorage } from './chatService'
 import TaskComposer from './TaskComposer.vue'
+import ChatServiceConfigurationDialog from './ChatServiceConfigurationDialog.vue'
+import SpeechControls from './SpeechControls.vue'
+import { useChatAudio } from './useChatAudio'
 import ChatMessageBody from './ChatMessageBody.vue'
 import ChatWebSources from './ChatWebSources.vue'
 import GraphBranchActions from './GraphBranchActions.vue'
@@ -87,6 +90,16 @@ const { t, locale } = useI18n()
 const props = withDefaults(defineProps<{ active?: boolean }>(), {
   active: true,
 })
+const emit = defineEmits<{ navigate: [view: 'capabilities'] }>()
+const serviceConfiguration = ref(false)
+function manageChatServices() {
+  serviceConfiguration.value = false
+  emit('navigate', 'capabilities')
+}
+function refreshChatServices() {
+  void audio.refresh()
+  void session.refreshWebSources()
+}
 const composer = ref<{ guardLeave: (onDiscard?: () => void) => boolean } | null>(null)
 function guardLeave(onDiscard?: () => void): boolean {
   return composer.value?.guardLeave(onDiscard) ?? true
@@ -228,6 +241,29 @@ const api = chatService()
 const session = createChatSession(
   api,
   typeof localStorage === 'undefined' ? undefined : chatStorage(localStorage),
+)
+const audio = useChatAudio({
+  active: computed(() => props.active),
+  conversationId: session.conversationId,
+  draft: session.draft,
+})
+onMounted(() => {
+  void audio.refresh()
+})
+watch(
+  () => props.active,
+  (active) => {
+    if (active) void audio.refresh()
+  },
+)
+watch(
+  () => serviceConfiguration.value,
+  (open) => {
+    if (!open) {
+      void audio.refresh()
+      void session.refreshWebSources()
+    }
+  },
 )
 watch(
   () => session.turns.value.map((turn) => `${turn.id ?? ''}:${turn.text.length}`).join(','),
@@ -977,6 +1013,12 @@ onMounted(async () => {
     class="view work-page chat-workspace preview-workspace live-workspace"
     data-testid="chat-workspace"
   >
+    <ChatServiceConfigurationDialog
+      v-if="serviceConfiguration"
+      @close="serviceConfiguration = false"
+      @manage="manageChatServices"
+      @saved="refreshChatServices"
+    />
     <div class="page-head chat-page-head live-utilities">
       <div class="live-utilities__row">
         <div v-if="session.phase.value === 'loading'" class="session-status">
@@ -1354,7 +1396,28 @@ onMounted(async () => {
                     @select="session.switchBranch"
                     @edit="session.editMessage"
                     @regenerate="session.regenerateMessage"
-                /></template>
+                  />
+                  <Button
+                    v-if="turn.role === 'assistant' && turn.text"
+                    variant="ghost"
+                    size="sm"
+                    :disabled="
+                      audio.busy.value ||
+                      audio.unresolved.value ||
+                      !audio.selectedService.value?.synthesis ||
+                      turn.text.length > (audio.catalog.value?.limits.maxTextChars ?? 0)
+                    "
+                    @click="audio.synthesize(turn.text)"
+                    >{{ t('richText.generateSpeech') }}</Button
+                  >
+                  <Button
+                    v-if="turn.role === 'assistant' && !audio.selectedService.value?.synthesis"
+                    variant="ghost"
+                    size="sm"
+                    @click="serviceConfiguration = true"
+                    >{{ t('richText.speechSettings') }}</Button
+                  >
+                </template>
                 <template #references
                   ><ChatWebSources v-if="turn.webSources?.length" :sources="turn.webSources"
                 /></template>
@@ -1772,7 +1835,16 @@ onMounted(async () => {
             @update="session.context.value = $event"
             @refresh="refreshModels"
             @connections-changed="session.applyConnectionDirectory"
+            @configure="serviceConfiguration = true"
           >
+            <template #speech>
+              <Collapse :summary="t('richText.speechTitle')"
+                ><SpeechControls
+                  :audio="audio"
+                  :disabled="session.generationBlocking.value || archived"
+                  @configure="serviceConfiguration = true"
+              /></Collapse>
+            </template>
             <template #draft>
               <label>
                 <span class="sr-only">{{ t('chat.draft') }}</span>

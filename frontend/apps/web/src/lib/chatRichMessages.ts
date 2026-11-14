@@ -1,5 +1,9 @@
 export const chatRichMessages = {
   'zh-CN': {
+    speechTitle: '语音',
+    speechSettings: '语音设置',
+    generateSpeech: '生成语音',
+    configureServices: '配置聊天服务',
     webTitle: '网页来源',
     webOn: '已开启',
     webOff: '未开启',
@@ -27,6 +31,10 @@ export const chatRichMessages = {
     keys: 'Enter 发送，Shift+Enter 换行',
   },
   'en-US': {
+    speechTitle: 'Speech',
+    speechSettings: 'Speech settings',
+    generateSpeech: 'Generate speech',
+    configureServices: 'Configure chat services',
     webTitle: 'Web sources',
     webOn: 'Enabled',
     webOff: 'Off',
