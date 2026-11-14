@@ -8,7 +8,7 @@ PR #7 后续人工评审新增三项规划范围：普通聊天操作优先 Dial
 
 用户明确要求：Markdown、代码块、公式、图表优先；消息排版、复制、输入与滚动以及编辑提问、重新生成、消息分支参照上游重做；会话导航、移动端、主题局部适配；图片和文件原件由前端本机保存，EAP Java后端不保存原件；按需搜索互联网网页、链接阅读和语音评估通过MCP接入。
 
-上游参考固定为 [deepseek-ai/chat-demo v0.1.1 / 5d5dd754](https://github.com/deepseek-ai/chat-demo/tree/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c)。原方案的EAP审阅基线为 `cc090d7da0a4c2b4d9e951d99730b466b5b1260c`（历史记录）；原方案修订以 `29e097c30258ec918bd8ac7b8f8e6eb3b017b0f0` 为历史基线。当时工作区干净不适用于本轮；本轮BEFORE为`9e7257b9fb45f138db04b6cfe57e1839c5261597`；实现与技术证据已归档，源码revision随提交记录。当前范围覆盖完整聊天核心重构与插件兼容。保留Vue 3、Vite+、Java/Spring AI和公共包职责；React组件按交互合同改写，适用的纯TypeScript逻辑选择性移植并保留来源及许可证。重做范围为聊天核心，不扩展到五入口全站重写。
+上游参考固定为 [deepseek-ai/chat-demo v0.1.1 / 5d5dd754](https://github.com/deepseek-ai/chat-demo/tree/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c)。原方案的EAP审阅基线为 `cc090d7da0a4c2b4d9e951d99730b466b5b1260c`（历史记录）；原方案修订以 `29e097c30258ec918bd8ac7b8f8e6eb3b017b0f0` 为历史基线。当时工作区干净不适用于本轮；本轮BEFORE为`9e7257b9fb45f138db04b6cfe57e1839c5261597`；实现与技术证据已归档，源码revision为`0f7defa437eb516ff853965f779208f5ab644679`。当前范围覆盖完整聊天核心重构与插件兼容。保留Vue 3、Vite+、Java/Spring AI和公共包职责；React组件按交互合同改写，适用的纯TypeScript逻辑选择性移植并保留来源及许可证。重做范围为聊天核心，不扩展到五入口全站重写。
 
 | 能力 | 源码事实 | 本轮目标 |
 |---|---|---|
@@ -167,4 +167,4 @@ G1实施结果与同场景Before/After见[聊天内连接配置](../evidence/cha
 
 网页工具新增approved固定绑定与schema/digest核对，服务端可信专家属性`eap.ai.chat.mcp-expert-id`默认空，绑定`eap.mcp.web.bindings`默认空列表；前端选择只表达意图，不成为授权。GET web-sources仅投影可用性，不探测远端协议。服务与Spring AI回调路径已实现，新增服务/回调及媒体定向25项、隔离H2消息图9项已通过；真实外部服务未验；具体网页MCP服务及ASR/TTS均未选择，语音未实现。
 
-本轮已取得前端194文件1167项全量、类型/边界及最终生产构建通过；追加strict404正负用例后的graphSession6项通过单列不累加。后端上游附件/MCP25项通过，宿主130项中1项既有workspacePath隐私断言失败、9项环境跳过，未取得后端全绿。浏览器同一消息UUID锚点偏移0.15625px低于保留的3px阈值；Mermaid A/B标签、1440/390真实最终AFTER、初始模型/发送可见性及宿主无隐藏滚动已验证；源码revision随提交归档，见当前验证记录。
+本轮已取得前端194文件1167项全量、类型/边界及最终生产构建通过；追加strict404正负用例后的graphSession6项通过单列不累加。后端上游附件/MCP25项通过，宿主130项中1项既有workspacePath隐私断言失败、9项环境跳过，未取得后端全绿。浏览器同一消息UUID锚点偏移0.15625px低于保留的3px阈值；Mermaid A/B标签、1440/390真实最终AFTER、初始模型/发送可见性及宿主无隐藏滚动已验证；源码revision为`0f7defa437eb516ff853965f779208f5ab644679`，见当前验证记录。

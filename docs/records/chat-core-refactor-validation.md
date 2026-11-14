@@ -4,7 +4,7 @@
 
 ## 范围与实现边界
 
-本轮保留 Vue、Java/Spring AI、单 DSH 前端适配器与 EAP 原生计划。BEFORE 为 `9e7257b9fb45f138db04b6cfe57e1839c5261597`；AFTER 源码 revision 随提交归档，浏览器捕获时的生产源码树摘要为 `53e588fb58128a1a9762555b891d2a2976e65bc34e2e1697c6392e8cf8bd570f`，见[源码清单](../evidence/chat-core-refactor/after-source-manifest.json)。
+本轮保留 Vue、Java/Spring AI、单 DSH 前端适配器与 EAP 原生计划。BEFORE 为 `9e7257b9fb45f138db04b6cfe57e1839c5261597`；AFTER 源码 revision 为 `0f7defa437eb516ff853965f779208f5ab644679`，浏览器捕获时的生产源码树摘要为 `53e588fb58128a1a9762555b891d2a2976e65bc34e2e1697c6392e8cf8bd570f`，见[源码清单](../evidence/chat-core-refactor/after-source-manifest.json)。
 
 - B：公共 `@eap/ui` RichText/RichCode 支持 Markdown、代码复制/高亮、KaTeX 和手动 Mermaid。原始 HTML、远端图片及 SVG 外部资源不执行/加载；预算、过期结果及原文复制保留。Mermaid 时间预算只能丢弃超时结果，不能硬中断同步 JavaScript。
 - C：[SQL 消息图](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/ChatGraphStore.java)与 [V3](../../backend/eap-applications/eap-full-application/src/main/resources/db/migration/V3__chat_message_graph.sql)保存唯一正文权威、稳定节点/operation/execution/generation 关联、revision、分支及完成回答。前端只持久化草稿/偏好/待核对操作；旧 v1 正文只读导出。完成结果跨重启可读，不等于 CT-01 推理/事件持久接管。

@@ -1,6 +1,6 @@
 # Engineering Automation Platform：当前产品与架构合同
 
-> 更新于2026-11-14。本文维护产品、架构合同及验收关口；工作项现状统一见[台账](planning-status.md#validation-baseline)，详细命令、失败和历史数字见[阶段验证记录](records/validation-history.md)。本轮核查的实现基线为`1496335`，已包含前后端接续实现；不再将已提交能力描述为工作区改动。这属于早期全库复核快照；PR #7 的聊天重构 BEFORE 为 `9e7257b`；本轮B/C/D/E主体及原浏览器client扩展已完成技术验证与同场景视觉证据，整体仍缺语音及实网服务，变更revision随提交归档，见[当前记录](records/chat-core-refactor-validation.md)；尚未关闭的缺陷、优化和验收前置条件见[问题台账](planning-status.md#next-work-register)，不提升历史业务验收结论。
+> 更新于2026-11-14。本文维护产品、架构合同及验收关口；工作项现状统一见[台账](planning-status.md#validation-baseline)，详细命令、失败和历史数字见[阶段验证记录](records/validation-history.md)。本轮核查的实现基线为`1496335`，已包含前后端接续实现；不再将已提交能力描述为工作区改动。这属于早期全库复核快照；PR #7 的聊天重构 BEFORE 为 `9e7257b`；本轮B/C/D/E主体及原浏览器client扩展已完成技术验证与同场景视觉证据，整体仍缺语音及实网服务，源码revision为`0f7defa437eb516ff853965f779208f5ab644679`，见[当前记录](records/chat-core-refactor-validation.md)；尚未关闭的缺陷、优化和验收前置条件见[问题台账](planning-status.md#next-work-register)，不提升历史业务验收结论。
 > **优先级：用户最新明确要求 → 本文 §0B 产品合同 → §0A 技术/执行边界 → 历史资料。** 五个固定一级入口 `code · 编程 / work · 办公 / 场景 / 专家 / 设置`；旧双入口、Builder 第六入口、M0/完整 Mission 前置、插件任意扩展一级导航均不再生效。
 > 本地确定性工具优先，必要时使用 LLM/外部 Agent，结果独立验证。原型先可点击并经人确认，再按实际缺口渐进实施；不授权全量重写、任意工具调用或第三方代码注入。
 

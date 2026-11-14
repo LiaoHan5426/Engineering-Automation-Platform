@@ -4,7 +4,7 @@
 
 ## 相同场景与版本
 
-BEFORE：`9e7257b9fb45f138db04b6cfe57e1839c5261597` 的真实旧应用。AFTER：本轮实现提交对应生产源码，捕获时源码树 SHA-256 为 `53e588fb58128a1a9762555b891d2a2976e65bc34e2e1697c6392e8cf8bd570f`，提交 revision 随归档补充。[清单](after-source-manifest.json)记录每个生产/配置/lock 文件摘要。
+BEFORE：`9e7257b9fb45f138db04b6cfe57e1839c5261597` 的真实旧应用。AFTER：`0f7defa437eb516ff853965f779208f5ab644679` 对应生产源码，捕获时源码树 SHA-256 为 `53e588fb58128a1a9762555b891d2a2976e65bc34e2e1697c6392e8cf8bd570f`，提交 revision 随归档补充。[清单](after-source-manifest.json)记录每个生产/配置/lock 文件摘要。
 
 使用同一[场景](../../../frontend/apps/web/__tests__/browser/chat-core-fixture.mjs)：相同会话、问题、含 Markdown/代码/公式/Mermaid/表格的回答、未发送草稿；1440×1000 与 390×1000、浅色、reduced motion。旧应用读取 v1 history，当前应用读取偏好与 GET graph，按各自真实合同提供相同材料；没有把新 UI 冒充旧 UI。
 
