@@ -2,6 +2,18 @@
 
 > 2026-11-12 从规划台账迁入。下文按原阶段保存实现、命令、失败、跳过与证据；“本轮”“当前”“待验”和提交授权均指记录当时，不是新的执行指令。最新状态以[规划台账](../planning-status.md)为准。证据路径中的 `target/` 默认指 `backend/eap-applications/eap-full-application/target/`；包产出只覆盖其记录时点。
 
+<a id="idea-devtools-launcher"></a>
+
+## IDEA 包装器与 DevTools 启动回归（2026-11-14）
+
+**缺陷重现**：Windows JDK 25.0.1、Boot/DevTools 4.1.1、IDEA `AppMainV2`、原多模块 `target/classes` classpath 下，`capabilityHandlerRegistry` 在完整宿主和 core 自动装配之间重复注册；仅按名称避让后又出现 `runtimeWorkspace` 重复，说明不是单个 Bean 定义错误。关闭重启加载器的诊断运行可正常启动；直接主类和 Maven DevTools 启动也通过。关闭重启仅用于定位，没有作为产品修复。
+
+**原因与修复**：DevTools 选择包装器的 `main` 作为重启入口，但基础加载器中的包装器用自身加载器执行 `Class.forName`，令宿主类型与自动装配类型分裂。宿主资源新增 `restart.include.idealauncher=/idea_rt\\.jar`，使包装器、宿主和领域类型同属重启加载器。保留现有 EAP 库加载规则和默认禁止 Bean 覆盖；不增加业务 Bean、覆盖开关或逐 Bean 的名称补丁。
+
+**回归通过**：Java 25 的 reactor 定向命令 `mvn -B -ntp -f backend/pom.xml -pl :eap-full-application -am test -Dtest=DevToolsIdeaLauncherTest,FullApplicationCompositionTest,BackendModuleBoundaryTest,ModuleCompositionTest -Dsurefire.failIfNoSpecifiedTests=false`，19 项、0 失败/错误/跳过。新测试动态生成与 IDEA 具有相同反射行为的 `idea_rt.jar`，使用真实 DevTools URL 选择器和 `RestartClassLoader`：负对照验证原有类型分裂，正例读取生产配置并核对包装器、宿主、真实 registry 类型的类身份一致，不依赖 IDEA 安装或数据库。其余用例覆盖完整产品 Bean 图、宿主注册表所有权、可选组合和模块边界。
+
+**验证边界**：真实 IDEA 运行库的 Linux 包装器启动在修复后越过重复 Bean 注册，进入数据库连接阶段；此轮缺少注入凭据，不能将该诊断运行算作完整启动成功。原 Windows 命令的修复前故障已重现，但修复后重试时 WSL 原生进程通道报 `UtilAcceptVsock`，无法再次启动 Windows JVM，故该平台完整启动仍待复验。此前直接启动和 HTTP 健康结果不冒充修复后的 IDEA 完整启动；未运行供应商、浏览器或业务接受测试。
+
 ## 阅读索引
 
 - [近期源码 Agent 与任务交接](#application-task-continuation-validation)
