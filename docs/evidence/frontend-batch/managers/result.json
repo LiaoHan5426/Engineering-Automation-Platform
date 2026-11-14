@@ -1,0 +1,50 @@
+[
+  {
+    "version": "before",
+    "width": 1440,
+    "checks": [
+      "knowledge draft close",
+      "database failed load/retry",
+      "expert failed load/retry",
+      "expert save lock"
+    ],
+    "pageErrors": [],
+    "simulated": "HTTP failures, POST save response and latency; no backend writes"
+  },
+  {
+    "version": "before",
+    "width": 390,
+    "checks": [
+      "knowledge draft close",
+      "database failed load/retry",
+      "expert failed load/retry",
+      "expert save lock"
+    ],
+    "pageErrors": [],
+    "simulated": "HTTP failures, POST save response and latency; no backend writes"
+  },
+  {
+    "version": "after",
+    "width": 1440,
+    "checks": [
+      "knowledge draft close",
+      "database failed load/retry",
+      "expert failed load/retry",
+      "expert save lock"
+    ],
+    "pageErrors": [],
+    "simulated": "HTTP failures, POST save response and latency; no backend writes"
+  },
+  {
+    "version": "after",
+    "width": 390,
+    "checks": [
+      "knowledge draft close",
+      "database failed load/retry",
+      "expert failed load/retry",
+      "expert save lock"
+    ],
+    "pageErrors": [],
+    "simulated": "HTTP failures, POST save response and latency; no backend writes"
+  }
+]

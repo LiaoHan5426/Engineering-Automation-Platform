@@ -14,7 +14,10 @@ import { Table, type TableColumn } from '@eap/plugin-table'
 import { errorMessage } from '../../lib/presentation'
 
 const { t } = useI18n()
-const props = defineProps<{ items: CapabilityItem[]; kind: CapabilityKindSummary | null }>()
+const props = withDefaults(
+  defineProps<{ items: CapabilityItem[]; kind: CapabilityKindSummary | null; active?: boolean }>(),
+  { active: true },
+)
 const emit = defineEmits<{ saved: [] }>()
 const programs = ref<CliProgramItem[]>([])
 const busy = ref(false)
@@ -28,6 +31,8 @@ const operationEditing = ref(false)
 const operationForm = ref({ capabilityId: '', title: '', args: '[]', description: '' })
 const binaryDraft = ref<Record<string, string>>({})
 const notesDraft = ref<Record<string, string>>({})
+const binaryBaseline: Record<string, string> = {}
+let refreshTicket = 0
 const probes = ref<Record<string, CliProbeResult>>({})
 const pendingDelete = ref<{ programId: string; operationId?: string; title: string } | null>(null)
 const itemFor = (id: string) => props.items.find((item) => item.name === id)
@@ -52,10 +57,19 @@ const visiblePrograms = computed(() =>
   ),
 )
 async function refresh() {
-  programs.value = (await runtimeApi.cliPrograms()).items
-  for (const program of programs.value)
-    binaryDraft.value[program.id] =
-      program.channel.source === 'operator' ? program.channel.binary : ''
+  const ticket = ++refreshTicket
+  const result = await runtimeApi.cliPrograms()
+  if (ticket !== refreshTicket) return
+  programs.value = result.items
+  for (const program of programs.value) {
+    const binary = program.channel.source === 'operator' ? program.channel.binary : ''
+    if (
+      binaryDraft.value[program.id] === undefined ||
+      binaryDraft.value[program.id] === binaryBaseline[program.id]
+    )
+      binaryDraft.value[program.id] = binary
+    binaryBaseline[program.id] = binary
+  }
   for (const item of props.items)
     if (notesDraft.value[item.name] === undefined) notesDraft.value[item.name] = item.notes
 }
@@ -128,6 +142,9 @@ async function configure(program: CliProgramItem, reset = false) {
       program.id,
       reset ? '' : (binaryDraft.value[program.id] ?? ''),
     )
+    // Settle only the saved row; refreshed peers retain their unsubmitted values.
+    binaryDraft.value[program.id] = reset ? '' : (binaryDraft.value[program.id] ?? '')
+    binaryBaseline[program.id] = binaryDraft.value[program.id]!
     await changed()
   }, '程序位置已更新，对其下全部操作生效。')
 }
@@ -173,7 +190,7 @@ async function remove() {
 </script>
 
 <template>
-  <article class="eap-panel panel-block cap-group">
+  <article class="eap-panel panel-block cap-group cli-program-card">
     <header class="cap-head">
       <div class="cap-head__main">
         <h2>
@@ -203,21 +220,31 @@ async function remove() {
     </header>
     <Feedback v-if="message" :tone="failed ? 'error' : 'success'">{{ message }}</Feedback>
     <Dialog
-      v-if="programEditor"
+      v-if="active && programEditor"
       :title="t('product.registerProgram')"
       :busy="busy"
-      @close="programEditor = false"
+      @close="busy || (programEditor = false)"
     >
       <Feedback v-if="failed" tone="error">{{ message }}</Feedback>
-      <form v-if="programEditor" class="form-grid" @submit.prevent="register">
-        <label>程序标识<Input v-model="programForm.id" required placeholder="eslint" /></label>
-        <label>程序名称<Input v-model="programForm.name" required placeholder="ESLint" /></label>
+      <form v-if="active && programEditor" class="form-grid" @submit.prevent="register">
         <label
-          >可执行文件<Input v-model="programForm.binary" required placeholder="eslint 或绝对路径"
+          >程序标识<Input :disabled="busy" v-model="programForm.id" required placeholder="eslint"
+        /></label>
+        <label
+          >程序名称<Input :disabled="busy" v-model="programForm.name" required placeholder="ESLint"
+        /></label>
+        <label
+          >可执行文件<Input
+            :disabled="busy"
+            v-model="programForm.binary"
+            required
+            placeholder="eslint 或绝对路径"
         /></label>
         <div class="form-actions">
           <Button type="submit" variant="primary" :disabled="busy">登记程序</Button
-          ><Button variant="secondary" type="button" @click="programEditor = false">取消</Button>
+          ><Button variant="secondary" type="button" :disabled="busy" @click="programEditor = false"
+            >取消</Button
+          >
         </div>
       </form>
     </Dialog>
@@ -231,7 +258,11 @@ async function remove() {
       >
     </div>
   </article>
-  <article v-for="program in visiblePrograms" :key="program.id" class="eap-panel panel-block">
+  <article
+    v-for="program in visiblePrograms"
+    :key="program.id"
+    class="eap-panel panel-block cli-program-card"
+  >
     <header class="cap-head">
       <div class="cap-head__main">
         <h2>
@@ -271,6 +302,7 @@ async function remove() {
         <div class="note-row">
           <Input
             v-model="binaryDraft[program.id]"
+            :disabled="busy"
             class="mono"
             :placeholder="program.binary"
             :aria-label="program.name + ' 二进制位置'"
@@ -294,40 +326,49 @@ async function remove() {
       </div>
     </header>
     <Dialog
-      v-if="operationProgram === program.id"
+      v-if="active && operationProgram === program.id"
       :title="t('product.editOperation')"
       :busy="busy"
-      @close="operationProgram = ''"
+      @close="busy || (operationProgram = '')"
     >
       <Feedback v-if="failed" tone="error">{{ message }}</Feedback>
       <form
-        v-if="operationProgram === program.id"
+        v-if="active && operationProgram === program.id"
         class="form-grid"
         @submit.prevent="saveOperation"
       >
         <label
           >能力标识<Input
             v-model="operationForm.capabilityId"
-            :disabled="operationEditing"
+            :disabled="busy || operationEditing"
             required
             placeholder="git-log" /></label
         ><label
-          >操作名称<Input v-model="operationForm.title" required placeholder="查看最近提交"
+          >操作名称<Input
+            :disabled="busy"
+            v-model="operationForm.title"
+            required
+            placeholder="查看最近提交"
         /></label>
         <label class="wide"
           >固定参数数组<Textarea
+            :disabled="busy"
             v-model="operationForm.args"
             class="mono"
             required
             placeholder='["log", "--oneline", "-10"]'
           ></Textarea></label
-        ><label class="wide">用途说明<Input v-model="operationForm.description" /></label>
+        ><label class="wide"
+          >用途说明<Input :disabled="busy" v-model="operationForm.description"
+        /></label>
         <p class="hint wide">
           手动操作返回脱敏进程输出和退出码。被已启用专家引用的操作须先解除引用，才能修改或删除。
         </p>
         <div class="form-actions">
           <Button type="submit" variant="primary" :disabled="busy">保存操作</Button
-          ><Button variant="secondary" type="button" @click="operationProgram = ''">取消</Button>
+          ><Button variant="secondary" type="button" :disabled="busy" @click="operationProgram = ''"
+            >取消</Button
+          >
         </div>
       </form>
     </Dialog>
@@ -395,7 +436,7 @@ async function remove() {
     </p>
   </article>
   <ConfirmBox
-    v-if="pendingDelete"
+    v-if="active && pendingDelete"
     :title="'删除' + pendingDelete.title"
     :impact="[
       pendingDelete.operationId
@@ -410,3 +451,32 @@ async function remove() {
     @cancel="pendingDelete = null"
   />
 </template>
+
+<style scoped>
+@media (width <= 760px) {
+  .cli-program-card > header.cap-head {
+    grid-template-areas: 'title status' 'tools tools';
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .cli-program-card > header.cap-head:not(:has(.cap-head__status)) {
+    grid-template-areas: 'title' 'tools';
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cli-program-card .cap-head__tools {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .cli-program-card .cap-head__tools :deep(.eap-button) {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .cli-program-card .cap-head__main {
+    overflow-wrap: anywhere;
+  }
+}
+</style>

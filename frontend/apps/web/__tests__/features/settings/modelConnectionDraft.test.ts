@@ -172,6 +172,11 @@ it('blocks every close path while saving and retains the draft after a failed sa
   await fill(0, 'Pending edit')
   form()!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
   await flush()
+  const fields = [
+    ...form()!.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select'),
+  ]
+  expect(fields).toHaveLength(7)
+  expect(fields.every((field) => field.disabled)).toBe(true)
   for (const path of ['button', 'escape', 'backdrop'] as const) {
     await close(path)
     expect(form()).not.toBeNull()
@@ -179,6 +184,7 @@ it('blocks every close path while saving and retains the draft after a failed sa
   }
   rejectSave(new Error('Save unavailable'))
   await flush()
+  expect(fields.every((field) => !field.disabled)).toBe(true)
   expect(input(0).value).toBe('Pending edit')
   expect(form()!.querySelector('.eap-feedback--warning')?.textContent?.trim()).toBeTruthy()
   await close('button')

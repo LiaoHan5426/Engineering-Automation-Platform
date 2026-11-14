@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   runtimeApi,
   type CapabilityItem,
@@ -41,6 +41,14 @@ const loading = ref(false)
 const message = ref('')
 const messageKind = ref<'error' | 'success'>('success')
 const tab = ref('overview')
+const cliVisited = ref(false)
+watch(
+  tab,
+  (value) => {
+    if (value === 'cli') cliVisited.value = true
+  },
+  { flush: 'sync' },
+)
 const trustedTools = ref<TrustedToolItem[]>([])
 const trustedPrograms = ref<TrustedToolProgram[]>([])
 const displayTools = computed<TrustedToolItem[]>(() => [
@@ -87,6 +95,21 @@ const toolsDraft = ref('')
 const editing = ref('')
 const serverEditor = ref(false)
 const toolDraft = ref('')
+const serverBusy = ref(false)
+const serverError = ref('')
+const discardServer = ref(false)
+const serverSnapshot = () =>
+  JSON.stringify({ form: form.value, tools: toolsDraft.value, tool: toolDraft.value })
+const serverBaseline = ref(serverSnapshot())
+function closeServer() {
+  if (serverBusy.value) return
+  if (serverSnapshot() !== serverBaseline.value) discardServer.value = true
+  else resetForm()
+}
+function newServer() {
+  resetForm()
+  serverEditor.value = true
+}
 const deletingServer = ref<McpServerItem | null>(null)
 const deletingServerBusy = ref(false)
 const deleteRefusal = ref('')
@@ -94,7 +117,7 @@ const toolNames = computed(() => [...new Set(toolsDraft.value.split(/[,，\s]+/)
 function addTool() {
   const name = toolDraft.value.trim()
   if (!/^[a-z0-9][a-z0-9_-]{0,60}$/.test(name))
-    return feedback('error', '工具名只允许小写字母、数字、下划线和连字符。')
+    return (serverError.value = '工具名只允许小写字母、数字、下划线和连字符。')
   toolsDraft.value = [...new Set([...toolNames.value, name])].join(', ')
   toolDraft.value = ''
 }
@@ -315,6 +338,9 @@ function editServer(server: McpServerItem) {
     enabled: server.enabled,
   }
   toolsDraft.value = server.tools.join(', ')
+  toolDraft.value = ''
+  serverError.value = ''
+  serverBaseline.value = serverSnapshot()
   tab.value = 'mcp'
 }
 
@@ -323,9 +349,16 @@ function resetForm() {
   editing.value = ''
   form.value = blankForm()
   toolsDraft.value = ''
+  toolDraft.value = ''
+  serverError.value = ''
+  discardServer.value = false
+  serverBaseline.value = serverSnapshot()
 }
 
 async function submitServer() {
+  if (serverBusy.value) return
+  serverBusy.value = true
+  serverError.value = ''
   const tools = toolsDraft.value
     .split(/[,，\s]+/)
     .map((tool) => tool.trim())
@@ -339,7 +372,10 @@ async function submitServer() {
     await refresh()
     emit('saved')
   } catch (error) {
-    feedback('error', errorMessage(error))
+    serverError.value = errorMessage(error)
+    feedback('error', serverError.value)
+  } finally {
+    serverBusy.value = false
   }
 }
 </script>
@@ -679,8 +715,25 @@ async function submitServer() {
     <SourceWriteReview />
   </section>
 
+  <section v-if="cliVisited" v-show="tab === 'cli'" class="view">
+    <CliProgramManager
+      :active="tab === 'cli'"
+      :items="itemsOf('cli')"
+      :kind="kinds.find((kind) => kind.id === 'cli') ?? null"
+      @saved="
+        () => {
+          refresh()
+          emit('saved')
+        }
+      "
+    />
+  </section>
+
   <!-- 某一类 -->
-  <section v-else class="view">
+  <section
+    v-if="!['overview', 'trusted', 'source-write-reviews', 'cli'].includes(tab)"
+    class="view"
+  >
     <article v-if="currentKind && tab !== 'cli'" class="eap-panel panel-block cap-group">
       <header class="cap-head">
         <div class="cap-head__main">
@@ -762,19 +815,6 @@ async function submitServer() {
       </article>
     </template>
 
-    <!-- 本地 CLI -->
-    <CliProgramManager
-      v-else-if="tab === 'cli'"
-      :items="items"
-      :kind="currentKind"
-      @saved="
-        () => {
-          refresh()
-          emit('saved')
-        }
-      "
-    />
-
     <!-- MCP 工具 -->
     <template v-else-if="tab === 'mcp'">
       <article class="eap-panel panel-block">
@@ -790,17 +830,7 @@ async function submitServer() {
             </span>
           </div>
           <div class="cap-head__tools">
-            <Button
-              variant="primary"
-              size="sm"
-              @click="
-                () => {
-                  resetForm()
-                  serverEditor = true
-                }
-              "
-              >＋ 登记服务器</Button
-            >
+            <Button variant="primary" size="sm" @click="newServer">＋ 登记服务器</Button>
           </div>
         </header>
         <section v-if="productionMatrix.length" data-testid="mcp-production-matrix">
@@ -831,7 +861,14 @@ async function submitServer() {
           </ul>
         </section>
       </article>
-      <Dialog v-if="serverEditor" :title="pt('mcpServer')" size="lg" @close="resetForm">
+      <Dialog
+        v-if="serverEditor"
+        :title="pt('mcpServer')"
+        size="lg"
+        :busy="serverBusy"
+        @close="closeServer"
+      >
+        <Feedback v-if="serverError" tone="error">{{ serverError }}</Feedback>
         <h2>{{ editing ? '编辑服务器 ' + editing : '登记 MCP 服务器' }}</h2>
         <p class="hint">地址中不要填写 Token 或密钥。</p>
         <div class="editor-grid">
@@ -840,18 +877,18 @@ async function submitServer() {
             <Input
               v-model="form.id"
               class="mono"
-              :disabled="Boolean(editing)"
+              :disabled="serverBusy || Boolean(editing)"
               placeholder="files"
             />
             <small class="field-help">只允许小写字母、数字、下划线和连字符。</small>
           </label>
           <label class="field-label">
             显示名称
-            <Input v-model="form.name" placeholder="文件服务器" />
+            <Input :disabled="serverBusy" v-model="form.name" placeholder="文件服务器" />
           </label>
           <label class="field-label">
             传输方式
-            <Select v-model="form.transport" data-testid="mcp-transport">
+            <Select :disabled="serverBusy" v-model="form.transport" data-testid="mcp-transport">
               <option value="stdio">stdio（本机进程）</option>
               <option value="http">http（远端地址）</option>
               <option value="sse">sse（远端事件流）</option>
@@ -861,6 +898,7 @@ async function submitServer() {
           <label class="field-label">
             {{ form.transport === 'stdio' ? '启动命令' : '服务地址' }}
             <Input
+              :disabled="serverBusy"
               v-model="form.endpoint"
               class="mono"
               :placeholder="
@@ -872,7 +910,12 @@ async function submitServer() {
           </label>
           <label class="field-label">
             工具声明清单
-            <Input v-model="toolsDraft" class="mono" placeholder="search, read" />
+            <Input
+              :disabled="serverBusy"
+              v-model="toolsDraft"
+              class="mono"
+              placeholder="search, read"
+            />
             <small class="field-help"
               >工具名同样只能用小写字母、数字、下划线和连字符；清单是操作者声明，尚未与服务器协商。</small
             >
@@ -880,10 +923,11 @@ async function submitServer() {
         </div>
         <div class="form-actions">
           <Input
+            :disabled="serverBusy"
             v-model="toolDraft"
             aria-label="新增工具名称"
             placeholder="新增工具：search"
-          /><Button variant="secondary" @click="addTool">添加工具</Button>
+          /><Button variant="secondary" :disabled="serverBusy" @click="addTool">添加工具</Button>
         </div>
         <div class="form-actions">
           <Button
@@ -891,20 +935,21 @@ async function submitServer() {
             v-for="tool in toolNames"
             :key="tool"
             :aria-label="'移除工具 ' + tool"
+            :disabled="serverBusy"
             @click="removeTool(tool)"
           >
             {{ tool }} ×
           </Button>
         </div>
         <p class="hint">
-          <label><Checkbox v-model="form.enabled" /> 登记后即启用</label>
-          <label><Checkbox v-model="form.trusted" /> 登记后即信任</label>
+          <label><Checkbox :disabled="serverBusy" v-model="form.enabled" /> 登记后即启用</label>
+          <label><Checkbox :disabled="serverBusy" v-model="form.trusted" /> 登记后即信任</label>
         </p>
         <div class="form-actions">
-          <Button variant="primary" @click="submitServer">
+          <Button variant="primary" :disabled="serverBusy" @click="submitServer">
             {{ editing ? '保存修改' : '登记服务器' }}
           </Button>
-          <Button variant="ghost" @click="resetForm">取消</Button>
+          <Button variant="ghost" :disabled="serverBusy" @click="closeServer">取消</Button>
         </div>
       </Dialog>
 
@@ -1027,6 +1072,14 @@ async function submitServer() {
       已记录的开关设置：<span class="mono">{{ Object.keys(settings).join('、') }}</span>
     </p>
   </section>
+  <ConfirmBox
+    v-if="discardServer"
+    :title="pt('discardTitle')"
+    :impact="[pt('discardImpact')]"
+    :confirm-label="pt('discard')"
+    @confirm="resetForm"
+    @cancel="discardServer = false"
+  />
   <ConfirmBox
     v-if="deletingServer"
     :title="'删除 MCP 服务器 ' + deletingServer.id"

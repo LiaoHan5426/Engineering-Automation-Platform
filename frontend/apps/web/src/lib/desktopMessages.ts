@@ -1260,6 +1260,7 @@ export const modelMessages = {
     switchNew: '还没有服务端会话。这次选择不会清空已有记忆。',
     memoryKept: '这次没有清空服务端记忆。本机历史和草稿仍在。',
     saveThenSelect: '连接已保存，请选择允许使用的模型。',
+    refreshAfterSaveFailed: '连接已保存，但列表刷新失败：{error}。请稍后刷新，无需再次创建。',
     requestModel: '本次模型',
     retryTarget: '连接配置已变化，请重新选择当前模型并确认。',
     guidanceRole: '内置指导角色',
@@ -1306,6 +1307,8 @@ export const modelMessages = {
     memoryKept:
       'This switch did not clear server memory. Local history and the draft are still here.',
     saveThenSelect: 'Connection saved. Choose allowed models.',
+    refreshAfterSaveFailed:
+      'Connection saved, but the list could not refresh: {error}. Refresh later; do not create it again.',
     requestModel: 'Model used',
     retryTarget: 'Connection changed. Select and confirm the current model again.',
     guidanceRole: 'Built-in guidance role',

@@ -67,6 +67,8 @@ const newPackId = ref('')
 const newPackFromBlank = ref(true)
 const advancedOpen = ref(false)
 const advancedText = ref('')
+const advancedBaseline = ref('')
+let selectionRequest = 0
 const deleteOpen = ref(false)
 const deleteRefusal = ref('')
 
@@ -78,7 +80,11 @@ const dry = ref<DryRunResult | null>(null)
 const rules = computed<RuleDefinition[]>(() => draft.value?.rules ?? [])
 const selectedPack = computed(() => packs.value.find((pack) => pack.id === selectedId.value))
 const draftText = computed(() => (draft.value ? JSON.stringify(draft.value, null, 2) : ''))
-const dirty = computed(() => !!draft.value && !shipped.value && draftText.value !== baseline.value)
+const advancedDirty = computed(() => advancedText.value !== advancedBaseline.value)
+const dirty = computed(
+  () =>
+    !!draft.value && !shipped.value && (draftText.value !== baseline.value || advancedDirty.value),
+)
 const matchedFacts = computed(() => Object.entries(dry.value?.facts ?? {}))
 const matchedRows = computed(() =>
   matchedFacts.value.map(([key, value]) => ({ key, value: displayValue(value) })),
@@ -242,7 +248,7 @@ async function refresh() {
     facts.value = vocabulary.facts
     operators.value = vocabulary.operators
     const keep = packs.value.some((pack) => pack.id === selectedId.value)
-    if (!dirty.value) await selectPack(keep ? selectedId.value : '')
+    if (!dirty.value) await selectPack(keep ? selectedId.value : '', true)
   } catch (cause) {
     error.value = errorMessage(cause)
   } finally {
@@ -250,8 +256,13 @@ async function refresh() {
   }
 }
 
-async function selectPack(id: string) {
+async function selectPack(id: string, preserveEditor = false) {
+  const request = ++selectionRequest
   if (!id) {
+    activeRule.value = null
+    advancedOpen.value = false
+    advancedText.value = ''
+    advancedBaseline.value = ''
     selectedId.value = ''
     draft.value = null
     baseline.value = ''
@@ -260,23 +271,33 @@ async function selectPack(id: string) {
     return
   }
   selectedId.value = id
-  activeRule.value = null
-  detailTab.value = 'rules'
+  if (!preserveEditor) {
+    activeRule.value = null
+    detailTab.value = 'rules'
+    validation.value = null
+    dry.value = null
+    dryError.value = ''
+    advancedOpen.value = false
+    deleteOpen.value = false
+    deleteRefusal.value = ''
+  }
   error.value = ''
-  validation.value = null
-  dry.value = null
-  dryError.value = ''
-  advancedOpen.value = false
-  deleteOpen.value = false
-  deleteRefusal.value = ''
   try {
     const detail = await runtimeApi.rulePack(id)
+    if (request !== selectionRequest || (preserveEditor && dirty.value)) return
     const manifest = JSON.parse(detail.manifest) as RulePackManifest
     draft.value = manifest
     baseline.value = JSON.stringify(manifest, null, 2)
+    advancedText.value = baseline.value
+    advancedBaseline.value = baseline.value
     shipped.value = detail.shipped
     requirements.value = detail.requirements ?? null
   } catch (cause) {
+    if (request !== selectionRequest || (preserveEditor && dirty.value)) return
+    if (preserveEditor) {
+      error.value = errorMessage(cause)
+      return
+    }
     draft.value = null
     baseline.value = ''
     requirements.value = null
@@ -291,7 +312,7 @@ async function selectPack(id: string) {
  * 而且它还会检查浏览器看不到的东西（保留标识、跨表引用）。二者不一致时以后端为准。
  */
 async function validateDraft() {
-  if (!draft.value || busy.value) return
+  if (!draft.value || busy.value || advancedDirty.value) return
   if (!canEdit.value) {
     message.value = '内置包只读。请先复制为自定义再修改。'
     return
@@ -316,7 +337,7 @@ async function validateDraft() {
 }
 
 async function saveDraft() {
-  if (!draft.value || !selectedId.value || busy.value) return
+  if (!draft.value || !selectedId.value || busy.value || advancedDirty.value) return
   if (!canEdit.value) {
     message.value = '内置规则包不可就地修改：请先复制为自定义。'
     return
@@ -328,13 +349,14 @@ async function saveDraft() {
   busy.value = true
   message.value = ''
   try {
+    const submittedText = draftText.value
     const result = await runtimeApi.updateRulePack(
       selectedId.value,
       draft.value.name,
-      draftText.value,
+      submittedText,
     )
     message.value = `已保存，修订号 ${result.revision ?? '?'}。`
-    baseline.value = draftText.value
+    baseline.value = submittedText
     await refresh()
     emit('saved')
   } catch (cause) {
@@ -347,6 +369,8 @@ async function saveDraft() {
 function discardDraft() {
   if (!draft.value) return
   draft.value = JSON.parse(baseline.value) as RulePackManifest
+  advancedText.value = baseline.value
+  advancedBaseline.value = baseline.value
   message.value = '已放弃未保存的修改，回到上次保存的版本。'
 }
 
@@ -467,7 +491,10 @@ async function deletePack() {
 }
 
 function openAdvanced() {
-  advancedText.value = draftText.value
+  if (!advancedDirty.value) {
+    advancedText.value = draftText.value
+    advancedBaseline.value = draftText.value
+  }
   advancedOpen.value = true
 }
 function applyAdvanced() {
@@ -477,6 +504,7 @@ function applyAdvanced() {
       throw new Error('清单必须是一个 JSON 对象')
     if (!Array.isArray(parsed.rules)) throw new Error('清单必须包含 rules 数组')
     draft.value = { ...parsed, id: parsed.id ?? selectedId.value }
+    advancedBaseline.value = advancedText.value
     message.value = '已应用到草稿；复合条件可以在保存前用「校验」复核。'
   } catch (cause) {
     message.value = 'JSON 无法解析为规则包草稿：' + errorMessage(cause)
@@ -484,7 +512,7 @@ function applyAdvanced() {
 }
 
 async function runDryRun() {
-  if (dryBusy.value || !drySql.value.trim() || !draft.value) return
+  if (dryBusy.value || !drySql.value.trim() || !draft.value || advancedDirty.value) return
   if (localProblems.value.length) {
     dryError.value = localProblems.value.join('；')
     dry.value = null
@@ -493,11 +521,15 @@ async function runDryRun() {
   dryBusy.value = true
   dryError.value = ''
   dry.value = null
+  const request = selectionRequest
+  const submittedText = draftText.value
   try {
     // 试算用的是**当前草稿**：试的东西就是正在改的东西。
-    dry.value = await runtimeApi.dryRunRulePack(drySql.value, draftText.value)
+    const result = await runtimeApi.dryRunRulePack(drySql.value, submittedText)
+    if (request === selectionRequest && submittedText === draftText.value) dry.value = result
   } catch (cause) {
-    dryError.value = errorMessage(cause)
+    if (request === selectionRequest && submittedText === draftText.value)
+      dryError.value = errorMessage(cause)
   } finally {
     dryBusy.value = false
   }
@@ -630,8 +662,14 @@ defineExpose({ refresh })
               {{ shipped ? '内置只读（修改请先复制）' : dirty ? '有未保存的修改' : '已保存' }}
             </Badge>
             <template v-if="!shipped">
-              <Button variant="secondary" :disabled="busy" @click="validateDraft">校验</Button>
-              <Button variant="primary" :disabled="busy || !dirty" @click="saveDraft">
+              <Button variant="secondary" :disabled="busy || advancedDirty" @click="validateDraft"
+                >校验</Button
+              >
+              <Button
+                variant="primary"
+                :disabled="busy || !dirty || advancedDirty"
+                @click="saveDraft"
+              >
                 {{ busy ? '处理中…' : '保存草稿' }}
               </Button>
               <Button variant="secondary" :disabled="busy || !dirty" @click="discardDraft">
@@ -658,6 +696,9 @@ defineExpose({ refresh })
             </Button>
           </div>
 
+          <p v-if="advancedDirty" class="hint">
+            {{ t('product.jsonPending') }}
+          </p>
           <p v-if="shipped" class="hint">内置包只读。要修改请先复制为自定义。</p>
 
           <ul v-if="localProblems.length" class="rule-errors">
@@ -881,7 +922,11 @@ defineExpose({ refresh })
           placeholder="SELECT …"
         />
         <div class="form-actions">
-          <Button variant="primary" type="submit" :disabled="dryBusy || !drySql.trim() || !draft">
+          <Button
+            variant="primary"
+            type="submit"
+            :disabled="dryBusy || !drySql.trim() || !draft || advancedDirty"
+          >
             {{ dryBusy ? '试算中…' : '试算' }}
           </Button>
           <Button

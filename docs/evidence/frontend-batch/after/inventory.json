@@ -1,0 +1,508 @@
+[
+  {
+    "route": "chat",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "从一个具体需求开始",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "work",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "scenes",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "场景",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "expert-catalog",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "对话角色",
+      "前端实现",
+      "代码审阅",
+      "文档整理",
+      "公司政策知识专家（还在路上）",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "experts",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "我的专家",
+      "Mock · 模拟知识专家",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "model-settings",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "模型设置",
+      "ChatGPT 账号",
+      "模型连接 1",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "appearance",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "外观与布局",
+      "主题",
+      "布局预览",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "skills",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "技能",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "plugins",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "插件中心",
+      "对话 0.1.0",
+      "构建工作台 0.1.0",
+      "任务看板 0.1.0",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "rules",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "规则库",
+      "规则包",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "knowledge",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "知识库",
+      "知识工作台",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "databases",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "数据库资料",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "capabilities",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "能力目录",
+      "Git 工作区检查",
+      "数据与工具诊断",
+      "专家级 MCP 工具 mcp",
+      "全部能力",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "board",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "任务看板",
+      "待规划0",
+      "待处理0",
+      "进行中0",
+      "待验收0",
+      "已完成0",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "sql",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "分析工作台",
+      "确定性优先",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家",
+      "上下文详情"
+    ]
+  },
+  {
+    "route": "builder-alpha",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家",
+      "EAP layout",
+      "版本与代码交付"
+    ]
+  },
+  {
+    "route": "builder-beta",
+    "width": 1440,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家",
+      "EAP layout",
+      "版本与代码交付",
+      "EAP layout",
+      "版本与代码交付"
+    ]
+  },
+  {
+    "route": "chat",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "从一个具体需求开始",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "work",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "scenes",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "场景",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "expert-catalog",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "对话角色",
+      "前端实现",
+      "代码审阅",
+      "文档整理",
+      "公司政策知识专家（还在路上）",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "experts",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "我的专家",
+      "Mock · 模拟知识专家",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "model-settings",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "模型设置",
+      "ChatGPT 账号",
+      "模型连接 1",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "appearance",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "外观与布局",
+      "主题",
+      "布局预览",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "skills",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "技能",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "plugins",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "插件中心",
+      "对话 0.1.0",
+      "构建工作台 0.1.0",
+      "任务看板 0.1.0",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "rules",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "规则库",
+      "规则包",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "knowledge",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "知识库",
+      "知识工作台",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "databases",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "数据库资料",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "capabilities",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "设置",
+      "能力目录",
+      "Git 工作区检查",
+      "数据与工具诊断",
+      "专家级 MCP 工具 mcp",
+      "全部能力",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "board",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "任务看板",
+      "待规划0",
+      "待处理0",
+      "进行中0",
+      "待验收0",
+      "已完成0",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家"
+    ]
+  },
+  {
+    "route": "sql",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "分析工作台",
+      "确定性优先",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家",
+      "上下文详情"
+    ]
+  },
+  {
+    "route": "builder-alpha",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家",
+      "EAP layout",
+      "版本与代码交付"
+    ]
+  },
+  {
+    "route": "builder-beta",
+    "width": 390,
+    "overflow": false,
+    "errors": [],
+    "headings": [
+      "项目分组",
+      "自由对话",
+      "这次想完成什么？",
+      "选择场景",
+      "添加协作专家",
+      "EAP layout",
+      "版本与代码交付",
+      "EAP layout",
+      "版本与代码交付"
+    ]
+  }
+]

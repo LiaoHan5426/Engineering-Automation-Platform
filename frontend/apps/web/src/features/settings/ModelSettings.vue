@@ -32,6 +32,7 @@ async function disconnect(item: ModelConnection) {
 }
 const managing = ref<ModelConnection | null>(null)
 const catalogBusy = ref(false)
+const catalogEditor = ref<InstanceType<typeof ModelCatalogEditor> | null>(null)
 import { errorMessage } from '../../lib/presentation'
 const { t } = useI18n()
 const connections = ref<ModelConnection[]>([])
@@ -77,13 +78,33 @@ const connectionDirty = computed(() =>
     (key) => form.value[key] !== initialForm.value[key],
   ),
 )
+let leaveCallback: (() => void) | undefined
 function closeConnection() {
   if (connectionBusy.value) return
   discardConnection.value = false
   editorOpen.value = false
   editingId.value = null
   form.value.secret = ''
+  const callback = leaveCallback
+  leaveCallback = undefined
+  callback?.()
 }
+function guardLeave(onDiscard?: () => void): boolean {
+  if (connectionBusy.value) return false
+  if (managing.value) return catalogEditor.value?.guardLeave(onDiscard) ?? false
+  if (editorOpen.value && connectionDirty.value) {
+    leaveCallback = onDiscard
+    discardConnection.value = true
+    return false
+  }
+  closeConnection()
+  return true
+}
+function keepConnection() {
+  discardConnection.value = false
+  leaveCallback = undefined
+}
+defineExpose({ guardLeave })
 function requestCloseConnection() {
   if (connectionBusy.value) return
   if (connectionDirty.value) discardConnection.value = true
@@ -154,6 +175,12 @@ async function saveConnection() {
       editingId.value ?? undefined,
     )
     form.value.secret = ''
+    editorOpen.value = false
+    editingId.value = null
+    // Keep the accepted server identity even if the following overview read fails.
+    const savedIndex = connections.value.findIndex((item) => item.id === saved.id)
+    if (savedIndex < 0) connections.value.push(saved)
+    else connections.value[savedIndex] = saved
     let catalogCached = false
     if (saved.enabled && previous?.revision !== saved.revision && !protocolOnly) {
       try {
@@ -166,9 +193,12 @@ async function saveConnection() {
     managing.value = saved
     connectionOk.value = !catalogCached
     connectionNote.value = catalogCached ? t('modelUi.cached') : t('modelUi.saveThenSelect')
-    await refreshConnections()
-    editorOpen.value = false
-    editingId.value = null
+    try {
+      await refreshConnections()
+    } catch (error) {
+      connectionOk.value = false
+      connectionNote.value = t('modelUi.refreshAfterSaveFailed', { error: errorMessage(error) })
+    }
   } catch (error) {
     connectionOk.value = false
     connectionNote.value = errorMessage(error)
@@ -310,8 +340,9 @@ async function makeDefault(item: ModelConnection) {
         v-if="managing"
         :title="t('modelUi.catalog')"
         :busy="catalogBusy"
-        @close="managing = null"
+        @close="catalogEditor?.requestClose()"
         ><ModelCatalogEditor
+          ref="catalogEditor"
           :connection="managing"
           @busy="catalogBusy = $event"
           @saved="refreshConnections"
@@ -336,14 +367,24 @@ async function makeDefault(item: ModelConnection) {
           </div>
           <label
             >{{ t('task.preset') }}
-            <Select :model-value="connectionPreset" @change="presetChanged">
+            <Select
+              :disabled="connectionBusy"
+              :model-value="connectionPreset"
+              @change="presetChanged"
+            >
               <option value="https://api.openai.com">OpenAI API Key</option>
               <option value="https://api.deepseek.com">DeepSeek API Key</option>
               <option value="custom">{{ t('composerUi.customConnection') }}</option>
             </Select>
           </label>
-          <label>{{ t('chat.connectionName') }} <Input v-model="form.name" required /></label>
-          <label>{{ t('chat.connectionUrl') }} <Input v-model="form.baseUrl" required /></label>
+          <label
+            >{{ t('chat.connectionName') }}
+            <Input :disabled="connectionBusy" v-model="form.name" required
+          /></label>
+          <label
+            >{{ t('chat.connectionUrl') }}
+            <Input :disabled="connectionBusy" v-model="form.baseUrl" required
+          /></label>
           <label>
             {{ t('modelUi.wireApi') }}
             <Select v-model="form.wireApi" data-testid="wire-api" :disabled="connectionBusy">
@@ -358,14 +399,19 @@ async function makeDefault(item: ModelConnection) {
             {{ t('chat.connectionSecret') }}
             <Input
               v-model="form.secret"
+              :disabled="connectionBusy"
               type="password"
               autocomplete="new-password"
               :placeholder="editingId ? t('chat.connectionSecretKeep') : t('chat.connectionSecret')"
             />
           </label>
-          <label><Checkbox v-model="form.enabled" /> {{ t('chat.connectionEnabled') }}</label>
           <label
-            ><Checkbox v-model="form.defaultSelected" /> {{ t('chat.connectionDefault') }}</label
+            ><Checkbox :disabled="connectionBusy" v-model="form.enabled" />
+            {{ t('chat.connectionEnabled') }}</label
+          >
+          <label
+            ><Checkbox :disabled="connectionBusy" v-model="form.defaultSelected" />
+            {{ t('chat.connectionDefault') }}</label
           >
           <Button variant="primary" type="submit" :disabled="connectionBusy">{{
             t('chat.connectionSave')
@@ -382,7 +428,7 @@ async function makeDefault(item: ModelConnection) {
         :confirm-label="t('product.discard')"
         :busy="connectionBusy"
         @confirm="closeConnection"
-        @cancel="discardConnection = false"
+        @cancel="keepConnection"
       />
       <Feedback v-if="connectionNote" :tone="connectionOk ? 'info' : 'warning'">{{
         connectionNote

@@ -1,0 +1,74 @@
+[
+  {
+    "phase": "before",
+    "width": 1440,
+    "inlineError": false,
+    "prototypeConfirmed": false,
+    "deliveryConfirmed": false,
+    "navigationConfirmed": false,
+    "overflow": false,
+    "pageErrors": [],
+    "interceptedWrites": [
+      {
+        "method": "POST",
+        "path": "/api/board/tasks/11111111-1111-4111-8111-111111111111",
+        "body": "{\"projectId\":\"audit\",\"revision\":1,\"notes\":\"Retained after failure\",\"priority\":\"none\",\"goal\":\"Keep goal\",\"acceptanceCriteria\":\"Keep criteria\"}"
+      }
+    ],
+    "boundary": "Explicit deterministic browser fixtures; all non-GET requests intercepted; no real mutation authorized or executed."
+  },
+  {
+    "phase": "before",
+    "width": 390,
+    "inlineError": false,
+    "prototypeConfirmed": false,
+    "deliveryConfirmed": false,
+    "navigationConfirmed": false,
+    "overflow": false,
+    "pageErrors": [],
+    "interceptedWrites": [
+      {
+        "method": "POST",
+        "path": "/api/board/tasks/11111111-1111-4111-8111-111111111111",
+        "body": "{\"projectId\":\"audit\",\"revision\":1,\"notes\":\"Retained after failure\",\"priority\":\"none\",\"goal\":\"Keep goal\",\"acceptanceCriteria\":\"Keep criteria\"}"
+      }
+    ],
+    "boundary": "Explicit deterministic browser fixtures; all non-GET requests intercepted; no real mutation authorized or executed."
+  },
+  {
+    "phase": "after",
+    "width": 1440,
+    "inlineError": true,
+    "prototypeConfirmed": true,
+    "deliveryConfirmed": true,
+    "navigationConfirmed": true,
+    "overflow": false,
+    "pageErrors": [],
+    "interceptedWrites": [
+      {
+        "method": "POST",
+        "path": "/api/board/tasks/11111111-1111-4111-8111-111111111111",
+        "body": "{\"projectId\":\"audit\",\"revision\":1,\"notes\":\"Retained after failure\",\"priority\":\"none\",\"goal\":\"Keep goal\",\"acceptanceCriteria\":\"Keep criteria\"}"
+      }
+    ],
+    "boundary": "Explicit deterministic browser fixtures; all non-GET requests intercepted; no real mutation authorized or executed."
+  },
+  {
+    "phase": "after",
+    "width": 390,
+    "inlineError": true,
+    "prototypeConfirmed": true,
+    "deliveryConfirmed": true,
+    "navigationConfirmed": true,
+    "overflow": false,
+    "pageErrors": [],
+    "interceptedWrites": [
+      {
+        "method": "POST",
+        "path": "/api/board/tasks/11111111-1111-4111-8111-111111111111",
+        "body": "{\"projectId\":\"audit\",\"revision\":1,\"notes\":\"Retained after failure\",\"priority\":\"none\",\"goal\":\"Keep goal\",\"acceptanceCriteria\":\"Keep criteria\"}"
+      }
+    ],
+    "boundary": "Explicit deterministic browser fixtures; all non-GET requests intercepted; no real mutation authorized or executed."
+  }
+]

@@ -911,3 +911,64 @@ it('shows unavailable instead of treating a read-only successful Run as delivery
   expect(runtimeApi.submitBoardDelivery).not.toHaveBeenCalled()
   expect(runtimeApi.decideBoardDelivery).not.toHaveBeenCalled()
 })
+
+it('confirms before discarding an unsubmitted delivery draft and cancel keeps the text', async () => {
+  await mount()
+  await input('delivery-paths', 'frontend/Unsaved.vue')
+  document
+    .querySelector<HTMLElement>('.eap-dialog')!
+    .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await vi.waitFor(() => expect(document.querySelector('.eap-confirm')).not.toBeNull())
+  ;(document.querySelector('[data-confirm-cancel]') as HTMLButtonElement).click()
+  await vi.waitFor(() => expect(document.querySelector('.eap-confirm')).toBeNull())
+  expect(
+    (document.querySelector('[data-testid=delivery-paths]') as HTMLTextAreaElement).value,
+  ).toBe('frontend/Unsaved.vue')
+  expect(runtimeApi.submitBoardDelivery).not.toHaveBeenCalled()
+})
+
+it('ignores late proposal status from a previous Run', async () => {
+  const evidence = {
+    association: 'POST_HOC' as const,
+    conversationId: 'first',
+    proposalId: 'proposal',
+    generationId: 'g',
+    targetPath: 'frontend/App.vue',
+    generationBaseHash: 'before',
+    appliedAfterHash: 'after',
+    generationCapturedAt: '',
+    prototypeVersionId: null,
+    prototypeContentHash: null,
+    associatedAt: '',
+    operator: 'local-operator' as const,
+  }
+  vi.mocked(runtimeApi.boardDelivery).mockResolvedValueOnce({
+    record: { ...record, applicationEvidence: evidence },
+    prepareAllowed: false,
+    reason: '',
+  })
+  let first!: (value: never) => void
+  vi.mocked(runtimeApi.codeProposal).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        first = resolve
+      }),
+  )
+  await mount()
+  await vi.waitFor(() => expect(runtimeApi.codeProposal).toHaveBeenCalledTimes(1))
+  vi.mocked(runtimeApi.boardDelivery).mockResolvedValueOnce({
+    record: { ...record, applicationEvidence: { ...evidence, conversationId: 'second' } },
+    prepareAllowed: false,
+    reason: '',
+  })
+  vi.mocked(runtimeApi.codeProposal).mockResolvedValueOnce({ status: 'APPLIED' } as never)
+  currentRun.value = { ...run, execution: { ...run.execution, id: 'second-run' } }
+  await vi.waitFor(() =>
+    expect(
+      document.querySelector('[data-testid=delivery-proposal-status][data-refused=false]'),
+    ).not.toBeNull(),
+  )
+  first({ status: 'REFUSED' } as never)
+  await Promise.resolve()
+  expect(document.querySelector('[data-refused=true]')).toBeNull()
+})

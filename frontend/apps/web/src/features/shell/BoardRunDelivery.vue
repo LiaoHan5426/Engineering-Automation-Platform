@@ -72,12 +72,15 @@ const criteriaConfirmed = ref(false),
   comment = ref('')
 const deciding = ref<BoardDeliveryDecision | null>(null)
 const linkedProposalStatus = ref<string | null>(null)
+let proposalRequest = 0
 async function loadLinkedProposalStatus(conversation: string, proposal: string) {
+  const request = ++proposalRequest
+  linkedProposalStatus.value = null
   try {
     const state = await runtimeApi.codeProposal(conversation, proposal)
-    linkedProposalStatus.value = state.status
+    if (request === proposalRequest) linkedProposalStatus.value = state.status
   } catch {
-    linkedProposalStatus.value = null
+    if (request === proposalRequest) linkedProposalStatus.value = null
   }
 }
 const store = (() => {
@@ -103,6 +106,7 @@ watch(
   },
   (ids) => {
     if (!ids) {
+      proposalRequest++
       linkedProposalStatus.value = null
       return
     }
@@ -151,6 +155,23 @@ const canReject = computed(
     !!comment.value.trim() &&
     (!previewUrl.value || isLocalPreviewUrl(previewUrl.value)),
 )
+const discard = ref(false)
+const draftSnapshot = () =>
+  JSON.stringify([
+    pathsText.value,
+    deliveryNote.value,
+    linkApplication.value,
+    conversationId.value,
+    proposalId.value,
+    comment.value,
+    previewUrl.value,
+  ])
+let cleanDraft = ''
+function close() {
+  if (sending.value) return
+  if (!pending.value && draftSnapshot() !== cleanDraft) discard.value = true
+  else emit('close')
+}
 let generation = 0
 async function load(manual = false, confirmedRequestId?: string) {
   const current = generation
@@ -164,6 +185,8 @@ async function load(manual = false, confirmedRequestId?: string) {
     )
     if (current !== generation) return false
     page.value = data
+    if (data.record?.decision || (data.record && !comment.value && !previewUrl.value))
+      cleanDraft = draftSnapshot()
     fresh.value = true
     const savedRequestId =
       pending.value && 'decisionRequest' in pending.value
@@ -361,12 +384,14 @@ watch(
       criteriaConfirmed.value = false
       previewConfirmed.value = false
     }
+    if (!sameEntity) cleanDraft = draftSnapshot()
     note.value = pending.value ? t('boardDelivery.uncertain') : ''
     void load()
   },
   { immediate: true },
 )
 onBeforeUnmount(() => {
+  proposalRequest++
   generation++
 })
 </script>
@@ -377,7 +402,7 @@ onBeforeUnmount(() => {
     :busy="sending"
     size="lg"
     data-testid="board-delivery-dialog"
-    @close="emit('close')"
+    @close="close"
   >
     <div class="delivery">
       <p>
@@ -667,6 +692,14 @@ onBeforeUnmount(() => {
       />
     </div>
   </Dialog>
+  <ConfirmBox
+    v-if="discard"
+    :title="t('desktop.boardUnsaved')"
+    :impact="[t('desktop.boardDiscardImpact')]"
+    :confirm-label="t('desktop.boardDiscard')"
+    @confirm="emit('close')"
+    @cancel="discard = false"
+  />
 </template>
 <style scoped>
 .delivery {

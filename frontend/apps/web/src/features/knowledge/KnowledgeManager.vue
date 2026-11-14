@@ -16,6 +16,23 @@ import {
 import DocumentEditor from './DocumentEditor.vue'
 import { errorMessage } from '../../lib/presentation'
 const { t } = useI18n()
+const createDiscardOpen = ref(false)
+function openCreate() {
+  message.value = ''
+  creating.value = true
+}
+function closeCreate() {
+  if (busy.value) return
+  if (name.value.trim() || description.value.trim()) createDiscardOpen.value = true
+  else creating.value = false
+}
+function discardCreate() {
+  createDiscardOpen.value = false
+  creating.value = false
+  name.value = ''
+  description.value = ''
+  message.value = ''
+}
 const renameDiscardOpen = ref(false)
 function confirmRenameDiscard() {
   renameDiscardOpen.value = false
@@ -40,6 +57,8 @@ const matches = ref<Array<{ source: string; excerpt: string }>>([])
 const searchScope = ref('all')
 let selectionRequest = 0
 const busy = ref(false)
+const loading = ref(false)
+const loadError = ref('')
 const creating = ref(false),
   composing = ref(false),
   tab = ref('documents'),
@@ -180,7 +199,40 @@ async function deleteDocument() {
 }
 
 async function load() {
-  bases.value = (await runtimeApi.knowledgeBases()).items
+  loading.value = true
+  loadError.value = ''
+  try {
+    bases.value = (await runtimeApi.knowledgeBases()).items
+  } catch (error) {
+    loadError.value = errorMessage(error)
+    throw error
+  } finally {
+    loading.value = false
+  }
+}
+async function refreshContents() {
+  try {
+    await load()
+    if (selected.value) {
+      const selection = selected.value
+      const request = ++selectionRequest
+      const result = await runtimeApi.knowledgeDocuments(selection)
+      if (request === selectionRequest && selected.value === selection)
+        documents.value = result.items
+    }
+  } catch (error) {
+    loadError.value = errorMessage(error)
+    throw error
+  }
+}
+function retryLoad() {
+  return action(async () => {
+    try {
+      await refreshContents()
+    } catch {
+      // Read failures are already shown beside the list and its retry action.
+    }
+  })
 }
 async function select(id: string) {
   const request = ++selectionRequest
@@ -208,24 +260,44 @@ async function action(work: () => Promise<void>) {
 }
 async function create() {
   await action(async () => {
-    const result = await runtimeApi.createKnowledgeBase(name.value, description.value)
-    await load()
-    await select(result.id)
+    const submitted = { name: name.value, description: description.value }
+    const result = await runtimeApi.createKnowledgeBase(submitted.name, submitted.description)
+    // The write has succeeded. Settle this form before any fallible follow-up reads.
     name.value = ''
     description.value = ''
     creating.value = false
-    message.value = '知识库已创建'
+    selected.value = result.id
+    documents.value = []
+    matches.value = []
+    searched.value = false
+    activeDocument.value = null
+    composing.value = false
+    editing.value = false
+    bases.value = [
+      ...bases.value.filter((base) => base.id !== result.id),
+      { id: result.id, ...submitted, documents: 0 },
+    ]
+    try {
+      await refreshContents()
+      message.value = t('product.knowledgeCreated')
+    } catch {
+      message.value = t('product.knowledgeCreatedRefreshFailed')
+    }
   })
 }
 async function add() {
   await action(async () => {
-    await runtimeApi.addKnowledgeDocument(selected.value, title.value, content.value)
-    await select(selected.value)
-    await load()
+    const baseId = selected.value
+    await runtimeApi.addKnowledgeDocument(baseId, title.value, content.value)
     title.value = ''
     content.value = ''
     composing.value = false
-    message.value = '文档已分段并保存，可用于全文检索'
+    try {
+      if (selected.value === baseId) await refreshContents()
+      message.value = t('product.knowledgeDocumentSaved')
+    } catch {
+      message.value = t('product.knowledgeDocumentSavedRefreshFailed')
+    }
   })
 }
 async function search() {
@@ -239,35 +311,30 @@ async function search() {
     searched.value = true
   })
 }
-onMounted(() => action(load))
-defineExpose({
-  refresh: () =>
-    action(async () => {
-      await load()
-      if (selected.value)
-        documents.value = (await runtimeApi.knowledgeDocuments(selected.value)).items
-    }),
-})
+onMounted(retryLoad)
+defineExpose({ refresh: retryLoad })
 </script>
 <template>
   <section class="manager-workspace">
     <aside class="eap-panel manager-list">
       <div class="manager-toolbar">
         <h2>知识库</h2>
-        <Button variant="primary" :disabled="busy" @click="creating = !creating"> ＋ 新建 </Button>
+        <Button variant="primary" :disabled="busy" @click="openCreate"> ＋ 新建 </Button>
       </div>
       <Dialog
         v-if="creating"
         :title="t('product.createKnowledgeBase')"
         :busy="busy"
-        @close="creating = false"
+        @close="closeCreate"
       >
         <form v-if="creating" @submit.prevent="create">
           <Feedback v-if="message">{{ message }}</Feedback>
-          <label>名称<Input v-model="name" required /></label
-          ><label>说明<Input v-model="description" /></label
+          <label>名称<Input v-model="name" :disabled="busy" required /></label
+          ><label>说明<Input v-model="description" :disabled="busy" /></label
           ><Button type="submit" variant="primary" :disabled="busy || !name.trim()"> 创建</Button
-          ><Button variant="secondary" type="button" @click="creating = false">取消</Button>
+          ><Button variant="secondary" type="button" :disabled="busy" @click="closeCreate"
+            >取消</Button
+          >
         </form></Dialog
       >
       <Input v-model="filter" placeholder="搜索知识库" aria-label="搜索知识库" /><Button
@@ -284,7 +351,10 @@ defineExpose({
         <strong>{{ base.name }}</strong
         ><small>{{ base.documents }} 篇文档 · {{ base.description || '暂无说明' }}</small>
       </Button>
-      <EmptyState v-if="!bases.length && !busy">
+      <p v-if="loading" role="status">{{ t('product.loading') }}</p>
+      <Feedback v-if="loadError" tone="error">{{ loadError }}</Feedback>
+      <Button v-if="loadError" :disabled="busy" @click="retryLoad">{{ t('product.retry') }}</Button>
+      <EmptyState v-if="!bases.length && !busy && !loadError">
         还没有知识库，创建后即可录入业务知识。
       </EmptyState>
     </aside>
@@ -348,8 +418,8 @@ defineExpose({
         <form v-if="editing && selected" class="pack-form" @submit.prevent="renameBase">
           <Feedback v-if="message">{{ message }}</Feedback>
           <p class="hint">改名不会改动已录入的文档。</p>
-          <label>名称<Input v-model="editName" required maxlength="200" /></label
-          ><label>说明<Input v-model="editDescription" /></label>
+          <label>名称<Input v-model="editName" :disabled="busy" required maxlength="200" /></label
+          ><label>说明<Input v-model="editDescription" :disabled="busy" /></label>
           <div class="form-actions">
             <Button
               type="submit"
@@ -379,10 +449,11 @@ defineExpose({
             <Feedback v-if="message">{{ message }}</Feedback>
             <h3>录入知识文档</h3>
             <p class="hint">不要写入密码、Token 或连接串。</p>
-            <label>标题<Input v-model="title" required /></label
+            <label>标题<Input v-model="title" :disabled="busy" required /></label
             ><label
               >正文<Textarea
                 v-model="content"
+                :disabled="busy"
                 rows="12"
                 required
                 placeholder="表结构说明、业务规则或已验证优化案例"
@@ -410,7 +481,9 @@ defineExpose({
                 <strong>{{ doc.title }}</strong
                 ><small>{{ doc.content?.length || 0 }} 字符</small>
               </Button>
-              <EmptyState v-if="!documents.length">暂无文档，点击录入文档添加知识。</EmptyState>
+              <EmptyState v-if="!documents.length && !busy && !loadError"
+                >暂无文档，点击录入文档添加知识。</EmptyState
+              >
             </div>
             <Dialog
               v-if="activeDocument && !editingDocument"
@@ -491,6 +564,15 @@ defineExpose({
           editingDocument = false
         }
       "
+    />
+    <ConfirmBox
+      v-if="createDiscardOpen"
+      :title="t('product.discardTitle')"
+      :impact="[t('product.discardImpact')]"
+      :confirm-label="t('product.discard')"
+      :cancel-label="t('product.continueEditing')"
+      @confirm="discardCreate"
+      @cancel="createDiscardOpen = false"
     />
     <ConfirmBox
       v-if="renameDiscardOpen"

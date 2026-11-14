@@ -68,6 +68,17 @@ async function mount(count = 6, editable = true) {
   await tick()
   return { schema, active }
 }
+async function mountTwo() {
+  const schema = make(1)
+  schema.root.children.push({ ...structuredClone(schema.root.children[0]!), id: 'other-tasks' })
+  expect(parsePrototypeSchema(JSON.stringify(schema))).not.toBeNull()
+  host = document.createElement('div')
+  document.body.append(host)
+  app = createApp({ render: () => h(Preview, { schema }) })
+  app.use(i18n).mount(host)
+  await tick()
+  return Array.from(host.querySelectorAll<HTMLElement>('[data-testid="task-list-preview"]'))
+}
 const fill = async (name = 'New task') => {
   await change('task-edit-name', name)
   await change('task-edit-goal', 'Local goal')
@@ -258,4 +269,60 @@ it('keeps creation hidden when omitted or false, without changing existing edita
   ;(host.querySelector('[data-task-id] button') as HTMLElement).click()
   await tick()
   expect(el('task-edit-open')).not.toBeNull()
+})
+
+it('keeps validation focus and error descriptions in the second legal task list instance', async () => {
+  const lists = await mountTwo()
+  for (const list of lists) {
+    list.querySelector<HTMLElement>('[data-testid="task-create-open"]')!.click()
+    await tick()
+  }
+  const dialogs = Array.from(
+    document.querySelectorAll<HTMLElement>('[data-testid="task-edit-dialog"]'),
+  )
+  const second = dialogs[1]!
+  second.querySelector<HTMLElement>('[data-testid="task-edit-save"]')!.click()
+  await tick()
+  const field = second.querySelector<HTMLInputElement>('[data-testid="task-edit-name"]')!
+  expect(document.activeElement).toBe(field)
+  const descriptions = Array.from(document.querySelectorAll('[aria-describedby]')).map((node) =>
+    node.getAttribute('aria-describedby'),
+  )
+  expect(new Set(descriptions).size).toBe(descriptions.length)
+  for (const dialog of dialogs)
+    for (const input of dialog.querySelectorAll('[aria-describedby]')) {
+      const description = document.getElementById(input.getAttribute('aria-describedby')!)
+      expect(description).not.toBeNull()
+      expect(dialog.contains(description)).toBe(true)
+    }
+  expect(field.getAttribute('aria-invalid')).toBe('true')
+  expect(document.getElementById(field.getAttribute('aria-describedby')!)!.textContent).not.toBe('')
+})
+
+it('focuses the created row in its own list even when another list uses the same task ID', async () => {
+  const id = '00000000-0000-4000-8000-000000000000'
+  const schema = make(1)
+  const first = schema.root.children[0]!
+  first.props.items = [{ ...prototypeTaskListSample[0]!, id: 'LOCAL-' + id }]
+  schema.root.children.push({
+    ...structuredClone(first),
+    id: 'other-tasks',
+    props: { ...first.props, items: [] },
+  })
+  expect(parsePrototypeSchema(JSON.stringify(schema))).not.toBeNull()
+  host = document.createElement('div')
+  document.body.append(host)
+  app = createApp({ render: () => h(Preview, { schema }) })
+  app.use(i18n).mount(host)
+  await tick()
+  const lists = host.querySelectorAll<HTMLElement>('[data-testid="task-list-preview"]')
+  vi.spyOn(crypto, 'randomUUID').mockReturnValue(id)
+  lists[1]!.querySelector<HTMLElement>('[data-testid="task-create-open"]')!.click()
+  await tick()
+  await fill('Second instance task')
+  await click('task-edit-save')
+  const created = lists[1]!.querySelector<HTMLElement>('[data-task-id="LOCAL-' + id + '"] button')!
+  expect(created).not.toBeNull()
+  expect(document.activeElement).toBe(created)
+  expect(lists[0]!.contains(document.activeElement)).toBe(false)
 })

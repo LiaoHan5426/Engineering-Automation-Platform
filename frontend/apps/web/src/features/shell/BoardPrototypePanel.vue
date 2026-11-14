@@ -6,7 +6,13 @@ import { Button, Select } from '@eap/ui'
 import { runtimeApi, type BoardTask, type PrototypeVersionRecord } from '@eap/runtime-client'
 import PrototypeVersionViewer from './PrototypeVersionViewer.vue'
 const props = defineProps<{ task: BoardTask; disabled?: boolean }>()
-const emit = defineEmits<{ saved: [task: BoardTask]; refresh: []; pending: [value: boolean] }>()
+const emit = defineEmits<{
+  saved: [task: BoardTask]
+  refresh: []
+  pending: [value: boolean]
+  busy: [value: boolean]
+}>()
+defineExpose({ discard: adoptSaved })
 const { t } = useI18n()
 const versions = ref<PrototypeVersionRecord[]>([]),
   loading = ref(false),
@@ -110,12 +116,14 @@ watch(
     if (!busy.value && !changed.value) selectionRevision.value = props.task.revision
   },
 )
+watch(busy, (value) => emit('busy', value), { flush: 'sync' })
 watch([changed, busy, stale], () => emit('pending', changed.value || busy.value || stale.value), {
   immediate: true,
 })
 onBeforeUnmount(() => {
   ticket++
   emit('pending', false)
+  emit('busy', false)
 })
 </script>
 <template>

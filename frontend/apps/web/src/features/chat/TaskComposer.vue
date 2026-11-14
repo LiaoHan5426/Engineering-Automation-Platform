@@ -283,7 +283,9 @@ async function filesChanged(event: Event) {
   note.value = ''
   const input = event.target as HTMLInputElement
   try {
-    applyIncoming(await Promise.all(Array.from(input.files ?? []).map(describeFile)))
+    const origin = props.context
+    const incoming = await Promise.all(Array.from(input.files ?? []).map(describeFile))
+    if (origin === props.context && props.active && !props.disabled) applyIncoming(incoming)
   } catch {
     note.value = t('task.fileLimit')
   } finally {
@@ -296,7 +298,9 @@ async function onPaste(event: ClipboardEvent) {
   event.preventDefault()
   note.value = ''
   try {
-    applyIncoming(await Promise.all(files.map(describeFile)))
+    const origin = props.context
+    const incoming = await Promise.all(files.map(describeFile))
+    if (origin === props.context && props.active && !props.disabled) applyIncoming(incoming)
   } catch {
     note.value = t('task.fileLimit')
   }
@@ -1020,7 +1024,7 @@ async function loadVersions() {
                 :disabled="disabled || toolMode !== AiToolMode.NONE || !!context.skillRef"
                 @click="
                   () => {
-                    menu = false
+                    closePopups()
                     knowledgeSelector?.show()
                   }
                 "
@@ -1079,7 +1083,7 @@ async function loadVersions() {
                 :disabled="disabled || skillBlocked"
                 @click="
                   () => {
-                    menu = false
+                    closePopups()
                     skillSelector?.show()
                   }
                 "
