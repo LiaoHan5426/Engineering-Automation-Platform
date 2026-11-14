@@ -1,6 +1,6 @@
 # Chat layout refinement: actual browser evidence
 
-BEFORE is actual detached `36b9e7a8b5e367a66b7b63bd7c8263c4af4c0581`, captured before implementation started. AFTER is the frozen candidate source on the same detached HEAD; exact tracked source hashes are in [after-source-provenance.json](after-source-provenance.json). No branch switch or commit occurred during capture. Existing evidence was preserved.
+BEFORE is actual detached `36b9e7a8b5e367a66b7b63bd7c8263c4af4c0581`, captured before implementation started. AFTER is the frozen candidate source on the same detached HEAD; exact tracked source hashes are in [after-source-provenance.json](after-source-provenance.json). No branch switch or commit occurred during capture. The final implementation is `67dac90dcfabdd9da5c9490ed2052375ebcc39ac`; the parent independently matched all545 source-manifest files against that commit with zero SHA-256 mismatches. Later documentation commits only pin this evidence. Existing evidence was preserved.
 
 All paired screenshots use the same public `chat-service-config-fixture.mjs` conversation, answer, draft and unavailable-service conditions, light theme, reduced motion, feed scrolled to the start. These are viewport screenshots of the actual Vue app, without CSS injection or image manipulation. No private feedback is included. Images were inspected at desktop and narrow sizes.
 

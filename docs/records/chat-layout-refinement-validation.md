@@ -29,4 +29,4 @@
 
 三视口实际交互全部通过：按钮及Ctrl+/打开原快捷键编辑器并Escape关闭；历史读取后关闭；不可用摘要诚实禁用、提供摘要的补充GET夹具验证嵌套编辑草稿关闭确认及取消保留；草稿输入、Shift+Enter、IME和无模型时发送禁用；网页/语音空服务及共享配置关闭后保留详情状态/草稿；待发送正文和附件、模型入口可达。真实wheel使消息区滚动203/103/314px，窗口和所有祖先scrollTop保持0；没有通过隐藏祖先滚动挤出控件。所有页面errors和非预期blocked为空，未执行任何写请求、真实模型、MCP或语音服务。没有验证生成历史摘要的供应商效果。完整结果与命令见[浏览器证据索引](../evidence/chat-layout-refinement/README.md)。
 
-本轮源清单摘要为 `d787330180676aad70bc8feb385f8e63d2b5b44cd45cd7750d1dad70188f410d`；实现提交与逐文件核对在交付关联。旧服务配置证据保留历史，不替代本轮布局验证。
+本轮源清单摘要为 `d787330180676aad70bc8feb385f8e63d2b5b44cd45cd7750d1dad70188f410d`；实现提交为 [`67dac90dcfabdd9da5c9490ed2052375ebcc39ac`](https://github.com/LiaoHan5426/Engineering-Automation-Platform/commit/67dac90dcfabdd9da5c9490ed2052375ebcc39ac)。父任务已使用git show逐个核对清单内545个文件的SHA-256，全部与浏览器捕获来源一致；后续文档提交只关联证据版本。旧服务配置证据保留历史，不替代本轮布局验证。
