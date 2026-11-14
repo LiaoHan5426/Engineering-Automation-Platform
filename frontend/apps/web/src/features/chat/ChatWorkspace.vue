@@ -172,6 +172,34 @@ const pendingAnswerKey = computed(() => {
   const key = turns.length - 1
   return turns[key]?.role === 'assistant' && turns[key - 1]?.role === 'user' ? key : null
 })
+const messageMenuUnavailable = ref(false)
+watch(
+  () => session.conversationId.value,
+  () => {
+    messageMenuUnavailable.value = false
+  },
+)
+function openMessageMenu(event: MouseEvent, turn: ChatTurn, key: number, explicit = false) {
+  const conversationId = session.conversationId.value
+  const source = event.currentTarget
+  if (!conversationId || !turn.text || !(source instanceof HTMLElement)) return
+  const request = new CustomEvent('eap:message-context', {
+    bubbles: true,
+    cancelable: true,
+    detail: {
+      event,
+      // This key identifies the captured UI observation, not a durable message-graph ID.
+      target: Object.freeze({
+        conversationId,
+        messageId: `${turn.executionId ?? conversationId}:${turn.role}:${key}`,
+        text: turn.text,
+      }),
+    },
+  })
+  const handled = !source.dispatchEvent(request)
+  if (handled) event.preventDefault()
+  if (explicit || handled) messageMenuUnavailable.value = !handled
+}
 const hasOlderTurns = computed(() => shownTurns.value < session.turns.value.length)
 watch(
   () => session.turns.value.length,
@@ -623,6 +651,8 @@ watchEffect(() => {
             executionId: latestTurn.executionId || null,
             status: isChatExecutionStatus(latestTurn.status) ? latestTurn.status : null,
             observing: session.inflight.value[activeId] != null,
+            plan: latestTurn.plan,
+            refreshPlan: session.refreshPlan,
             toolEvents: latestTurn.toolEvents,
             error: latestTurn.error,
           }
@@ -1143,6 +1173,12 @@ onMounted(async () => {
             :compact="session.turns.value.length > 0"
             @scenario="useScene"
           />
+          <Feedback
+            v-if="messageMenuUnavailable"
+            tone="warning"
+            data-testid="message-menu-unavailable"
+            >{{ t('chat.messageMenuUnavailable') }}</Feedback
+          >
           <ol v-if="visibleTurns.length" class="chat-log">
             <li
               v-for="{ turn, key } in visibleTurns"
@@ -1150,7 +1186,18 @@ onMounted(async () => {
               :aria-label="turn.role === 'user' ? t('chat.speakerYou') : t('chat.speakerModel')"
               :class="turn.role === 'user' ? 'turn-user' : 'turn-assistant'"
             >
-              <p v-if="turn.text">{{ turn.text }}</p>
+              <p v-if="turn.text" @contextmenu="openMessageMenu($event, turn, key)">
+                {{ turn.text }}
+              </p>
+              <Button
+                v-if="turn.text"
+                variant="ghost"
+                size="sm"
+                data-testid="message-actions"
+                aria-haspopup="menu"
+                @click="openMessageMenu($event, turn, key, true)"
+                >{{ t('desktop.moreActions') }}</Button
+              >
               <p v-else-if="turn.role === 'assistant'">
                 {{
                   t(

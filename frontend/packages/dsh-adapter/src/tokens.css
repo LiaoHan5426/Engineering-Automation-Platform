@@ -1,0 +1,29 @@
+/* Original DSH primitives keep their CSS. Only their consumed theme aliases map to EAP. */
+[data-context-menu],
+.Toast_module_css_toast {
+  --dsw-radius-sm: var(--eap-border-radius-base);
+  --dsw-radius-md: var(--eap-border-radius-base);
+  --dsw-radius-lg: var(--eap-border-radius-card);
+  --dsw-alias-label-primary: var(--eap-text-color-primary);
+  --dsw-alias-label-tertiary: var(--eap-text-color-secondary);
+  --dsw-alias-label-caption: var(--eap-text-color-secondary);
+  --dsw-alias-menu-icon: var(--eap-text-color-secondary);
+  --dsw-alias-border-l1: var(--eap-border-color);
+  --dsw-alias-border-l2: var(--eap-border-color);
+  --dsw-alias-border-l3: var(--eap-border-color-strong);
+  --dsw-alias-bg-base: var(--eap-fill-color-blank);
+  --dsw-menu-surface-fill: var(--eap-fill-color-blank);
+  --dsw-menu-backdrop-filter: none;
+  --dsw-elevation-prominent: var(--eap-box-shadow);
+  --dsw-alias-interactive-bg-hover: var(--eap-fill-color-hover);
+  --dsw-alias-interactive-bg-hover-danger: var(--eap-color-danger-soft);
+  --dsw-alias-state-error-primary: var(--eap-color-danger);
+  --dsw-alias-state-success-primary: var(--eap-color-success);
+  --dsw-alias-state-warn-label: var(--eap-color-warning-text);
+  --dsw-alias-toast-bg: var(--eap-fill-color-blank);
+  --dsw-alias-toast-label: var(--eap-text-color-primary);
+  --dsw-alias-toast-action: var(--eap-color-primary);
+  --dsw-shadow-lv3: var(--eap-box-shadow);
+  --dsw-alias-scrollbar-bg-l2: var(--eap-border-color);
+  --dsw-alias-scrollbar-hover-l2: var(--eap-border-color-strong);
+}

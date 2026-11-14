@@ -86,6 +86,12 @@ export type ChatBinding = {
     executionId: string | null
     status: ChatExecutionStatus | null
     observing: boolean
+    plan?: {
+      snapshot: import('@eap/runtime-client').ChatPlanSnapshot | null
+      state: 'empty' | 'loading' | 'ready' | 'error'
+      authority: 'server' | 'cache'
+    }
+    refreshPlan?: () => void
     toolEvents: Array<{ sequence: number; code: string }>
     error: string
   } | null

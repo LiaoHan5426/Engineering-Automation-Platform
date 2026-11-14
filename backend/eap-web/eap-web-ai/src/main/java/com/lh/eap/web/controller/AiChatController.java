@@ -173,6 +173,15 @@ public class AiChatController {
         return chat.cancel(id);
     }
 
+    @GetMapping("/conversations/{id}/executions/{executionId}/plan")
+    public org.springframework.http.ResponseEntity<?> plan(@PathVariable UUID id, @PathVariable UUID executionId) {
+        var snapshot = chat.executionPlan(id, executionId);
+        // Spring otherwise renders a null return as an empty body rather than the JSON null contract.
+        return snapshot == null
+                ? org.springframework.http.ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body("null")
+                : org.springframework.http.ResponseEntity.ok(snapshot);
+    }
+
     @GetMapping("/conversations/{id}/executions/{executionId}/snapshot")
     public Map<String,Object> snapshot(
             @PathVariable UUID id,

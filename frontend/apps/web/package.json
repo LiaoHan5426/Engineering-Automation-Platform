@@ -10,6 +10,7 @@
     "preview": "vp preview"
   },
   "dependencies": {
+    "@eap/dsh-adapter": "workspace:*",
     "@eap/expert-sdk": "workspace:*",
     "@eap/plugin-table": "workspace:*",
     "@eap/request": "workspace:*",

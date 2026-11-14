@@ -290,6 +290,16 @@ import org.springframework.context.annotation.Import;
     SqlExpertAgentController.class
 })
 public class FullApplicationConfiguration {
+    @Bean
+    com.lh.eap.ai.ChatPlanStore chatPlanStore(org.springframework.jdbc.core.JdbcTemplate jdbc,
+            org.springframework.transaction.PlatformTransactionManager transactions) {
+        return new com.lh.eap.ai.JdbcChatPlanStore(jdbc, transactions);
+    }
+    @Bean
+    com.lh.eap.ai.ChatPlanService chatPlanService(com.lh.eap.ai.ChatPlanStore store) {
+        return new com.lh.eap.ai.ChatPlanService(store);
+    }
+
     /** Legacy manifests use SQL v1; explicit bindings must match an installed behavior version. */
     @Bean
     @ConditionalOnMissingBean(ExpertAnalysisPolicyResolver.class)

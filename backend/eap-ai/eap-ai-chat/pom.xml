@@ -8,6 +8,8 @@
     </parent>
     <artifactId>eap-ai-chat</artifactId>
     <dependencies>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-jdbc</artifactId></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-tx</artifactId></dependency>
         <dependency>
             <groupId>com.lh</groupId>
             <artifactId>eap-api</artifactId>

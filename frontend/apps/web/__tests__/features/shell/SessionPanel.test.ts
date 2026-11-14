@@ -55,6 +55,47 @@ function binding(extra: Partial<ChatBinding> = {}): ChatBinding {
   }
 }
 
+it('shows structured plan states, keeps evidence on error, retries and excludes another execution', async () => {
+  const refreshPlan = vi.fn()
+  const execution: NonNullable<ChatBinding['latestExecution']> = {
+    conversationId: 's1',
+    executionId: 'e1',
+    status: ChatExecutionStatus.CANCELLED,
+    observing: false,
+    toolEvents: [],
+    error: '',
+    refreshPlan,
+    plan: {
+      authority: 'server',
+      state: 'error',
+      snapshot: {
+        schemaVersion: 1,
+        planId: 'p1',
+        conversationId: 's1',
+        executionId: 'e1',
+        revision: 2,
+        updatedAt: '2026-11-14T12:00:00Z',
+        items: [{ id: 'stable', content: 'Review changes', status: 'in_progress' }],
+      },
+    },
+  }
+  chatBinding.value = binding({ latestExecution: execution })
+  root = document.createElement('div')
+  document.body.append(root)
+  app = createApp({ render: () => h(SessionPanel, { mode: 'summary' }) })
+  app.use(i18n)
+  app.mount(root)
+  expect(root.querySelector('[data-testid="summary-plan"]')?.textContent).toContain(
+    'Review changes',
+  )
+  expect(root.querySelector('[data-testid="summary-plan"] [role="alert"]')).not.toBeNull()
+  ;(root.querySelector('[data-testid="summary-plan"] button') as HTMLButtonElement).click()
+  expect(refreshPlan).toHaveBeenCalledOnce()
+  chatBinding.value = binding({ activeId: 'other', latestExecution: execution })
+  await nextTick()
+  expect(root.querySelector('[data-testid="summary-plan"]')).toBeNull()
+})
+
 it('replaces the summary when the active session changes', async () => {
   chatBinding.value = binding({
     activeId: 'a',

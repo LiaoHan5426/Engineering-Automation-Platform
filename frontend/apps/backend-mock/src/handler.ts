@@ -121,6 +121,26 @@ export function createMockHandler() {
               : '',
           },
         ]
+        const planReply = await backend.handle(
+          'GET',
+          `/ai/conversations/${conversationId}/executions/${executionId}/plan`,
+          {},
+        )
+        if (planReply.status === 200 && planReply.data) {
+          frames.splice(1, 0, {
+            type: 'plan.updated',
+            sequence: 2,
+            status: ChatExecutionStatus.RUNNING,
+            text: '',
+            code: '',
+            executionId,
+            conversationId,
+            payload: planReply.data,
+          } as (typeof frames)[number])
+          frames.forEach((frame, index) => {
+            frame.sequence = index + 1
+          })
+        }
         res.statusCode = 200
         res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
         res.setHeader('Cache-Control', 'no-cache')

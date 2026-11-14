@@ -64,6 +64,8 @@ public class AiChatApplication {
     private final Path workspace;
     private final ModelConnections connections;
     private final ChatExecutionJournal journal;
+    @Autowired(required = false)
+    private ChatPlanService plans;
 
     public AiChatApplication(AiConnectionStatus status, AiConversationRegistry conversations, EngineeringChatService chat,
             Path workspace) {
@@ -302,9 +304,20 @@ public class AiChatApplication {
     }
 
     public Map<String, Object> cancel(UUID id) {
+        UUID active = conversations.activeExecutionId(id);
         boolean requested = conversations.cancel(id);
+        // Cancellation must reach the running provider even when durable storage is unavailable.
+        if (plans != null && active != null) plans.close(planOwner(id, active));
         UUID executionId = conversations.activeExecutionId(id);
         return Map.of("cancelled", requested, "executionId", executionId == null ? "" : executionId.toString());
+    }
+
+    private ChatPlanStore.Owner planOwner(UUID conversation, UUID execution) {
+        return new ChatPlanStore.Owner(AiConversationRegistry.PRINCIPAL, workspace.toAbsolutePath().normalize().toString(), conversation, execution);
+    }
+    public com.lh.eap.ai.dto.ChatPlanSnapshot executionPlan(UUID conversation, UUID execution) {
+        if (plans == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, ChatPlanErrors.CHAT_PLAN_STORE_UNAVAILABLE.code());
+        return plans.read(planOwner(conversation, execution));
     }
 
     public ChatExecutionSnapshot executionSnapshot(UUID conversationId, UUID executionId, long afterSequence) {
@@ -449,6 +462,8 @@ public class AiChatApplication {
                 .detail("knowledge", knowledgeChars)
                 .detail("skill", skillChars)
                 .includeChars("history", conversations.modelHistory(id).chars());
+        boolean planEligible = plans != null && (git || agent) && !context.mode().equals(TaskMode.PLAN.wire());
+        if (planEligible) budgetAccount.includeChars("execution_plan_tools", ChatPlanTool.RESERVED_CHARS);
         if (memoryCleared) budgetAccount.note("DERIVED_CLEARED_BEFORE_SEND");
         var contextBudget = budgetAccount.enforce();
         if (conversations.cancelRequested(id)) throw cancelled();
@@ -463,6 +478,10 @@ public class AiChatApplication {
         var emitter = journal.open(executionId, id);
         emitter.onEvent(sink);
         try {
+        if (plans != null) plans.open(planOwner(id, executionId));
+        var planTool = planEligible
+                ? new ChatPlanTool(plans, planOwner(id, executionId), () -> conversations.cancelRequested(id),
+                    snapshot -> emitter.emit("plan.updated", "", "", "", snapshot)) : null;
         emitter.emit("status", "", "", ChatExecutionStatus.RUNNING.wire(), null);
         var streamed = new AtomicBoolean();
         EngineeringChatService.Outcome outcome;
@@ -472,7 +491,7 @@ public class AiChatApplication {
                     selectedClient, context, executionId, () -> conversations.cancelRequested(id),
                     !context.mode().equals("code") ? text -> {
                         streamed.set(true); emitter.emit("answer.delta", text, "", ChatExecutionStatus.RUNNING.wire(), null);
-                    } : null, sourceTool);
+                    } : null, sourceTool, planTool);
         } catch (RuntimeException failure) {
             if (conversations.cancelRequested(id) || Thread.currentThread().isInterrupted()) {
                 Thread.interrupted();
@@ -520,6 +539,8 @@ public class AiChatApplication {
             boolean cancelled = conversations.cancelRequested(id) || Thread.currentThread().isInterrupted();
             emitter.fail(cancelled ? ModelErrors.AI_CANCELLED.code() : ModelErrors.AI_EXECUTION_FAILED.code(), cancelled ? ChatExecutionStatus.CANCELLED.wire() : ChatExecutionStatus.FAILED.wire());
             throw failure;
+        } finally {
+            if (plans != null) plans.close(planOwner(id, executionId));
         }
     }
 

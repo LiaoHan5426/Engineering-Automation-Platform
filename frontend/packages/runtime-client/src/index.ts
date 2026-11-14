@@ -1,3 +1,4 @@
+import { isChatPlanSnapshot, type ChatPlanSnapshot } from './contracts/chatPlan'
 import type { GitExecutionOperation } from './contracts/toolModels'
 import type { ToolExecution } from './contracts/toolModels'
 import type { ScenarioSnapshot } from './contracts/scenarioModels'
@@ -910,11 +911,22 @@ function parseSseChunk(chunk: string): ChatExecutionEvent | null {
     (event.sequence as number) < 0
   )
     throw chatStreamError('AI_RESPONSE_INVALID')
+  if (
+    event.type === 'plan.updated' &&
+    (!isChatPlanSnapshot(event.payload) ||
+      event.payload.conversationId !== event.conversationId ||
+      event.payload.executionId !== event.executionId)
+  )
+    throw chatStreamError('AI_RESPONSE_INVALID')
   if (event.type === 'final' && event.payload != null) {
     const payload = event.payload
     if (
       !isStreamRecord(payload) ||
       (payload.status !== undefined && !isChatExecutionStatus(payload.status)) ||
+      (payload.plan != null &&
+        (!isChatPlanSnapshot(payload.plan) ||
+          payload.plan.conversationId !== event.conversationId ||
+          payload.plan.executionId !== event.executionId)) ||
       !['answer', 'error', 'status', 'approval', 'verification', 'artifactError'].every(
         (key) => payload[key] === undefined || typeof payload[key] === 'string',
       ) ||
@@ -1006,6 +1018,26 @@ export function createChatApi(
       client
         .post<VerificationProbe>('/ai/workspace/verification/probe', {})
         .then((response) => response.data),
+    chatPlan: async (
+      conversationId: string,
+      executionId: string,
+    ): Promise<ChatPlanSnapshot | null> => {
+      const plan = await get<unknown>(
+        '/ai/conversations/' +
+          encodeURIComponent(conversationId) +
+          '/executions/' +
+          encodeURIComponent(executionId) +
+          '/plan',
+      )
+      if (
+        plan !== null &&
+        (!isChatPlanSnapshot(plan) ||
+          plan.conversationId !== conversationId ||
+          plan.executionId !== executionId)
+      )
+        throw chatStreamError('AI_RESPONSE_INVALID')
+      return plan
+    },
     aiConversation: (id: string) =>
       get<AiConversation>('/ai/conversations/' + encodeURIComponent(id)),
     modelHistory: (id: string) =>

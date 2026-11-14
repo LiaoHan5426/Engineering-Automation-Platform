@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BuilderWorkspace from './BuilderWorkspace.vue'
+import DshContextMenu from './DshContextMenu.vue'
 import type { PluginHost } from './host'
 import type { BuilderInstanceId } from './model'
 
@@ -54,6 +55,7 @@ const enabled = computed(() =>
 </script>
 
 <template>
+  <DshContextMenu :active="viewId === 'chat' && host.installation.value.enabled.chat" />
   <template v-for="id in cachedViews" :key="id">
     <component
       :is="chatView"

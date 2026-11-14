@@ -1,13 +1,13 @@
 # DSH 前端插件适配与 EAP 内置执行计划：确定路线
 
-日期：2026-11-14。**方向已按用户决定收敛，本文是待实施合同，不是兼容能力已交付的声明。** 不部署独立 DSH 宿主，不引入 DSH Agent/模型循环，不通过 SDK 运行原生 todo。插件集中到一个独立前端适配模块，任务计划由 EAP 内置。当前可运行的 G1 局部实现与验证仍见[交互决定](chat-context-plugins-and-progress.md)及[验证记录](../records/chat-g1-validation.md)。
+日期：2026-11-14。**首个原client适配、升级差异工具及EAP内置执行计划已实现并技术验证，完整生态兼容及后续能力未完成，用户接受独立。** 不部署独立 DSH 宿主，不引入 DSH Agent/模型循环，不通过 SDK 运行原生 todo。插件集中到一个独立前端适配模块，任务计划由 EAP 内置。当前可运行的 G1 局部实现与验证仍见[交互决定](chat-context-plugins-and-progress.md)及[验证记录](../records/chat-g1-validation.md)。
 
 ## 1. 总体归属
 
 | 部分 | 确定承担者 | 边界 |
 |---|---|---|
 | 模型循环、工程执行、工具授权、审批、执行证据 | 现有 Java/Spring AI 与受控能力链 | 插件不获得第二套执行器，不能替代审批、应用、验证或验收 |
-| DSH 客户端模块格式、依赖图、贡献点及生命周期适配 | 拟建 `frontend/packages/dsh-adapter`（`@eap/dsh-adapter`） | 一个有版本基线的浏览器兼容模块，接现有 EAP PluginHost；不是新建独立应用、服务器或第二个全局插件目录 |
+| DSH 客户端模块格式、依赖图、贡献点及生命周期适配 | 已建 `frontend/packages/dsh-adapter`（`@eap/dsh-adapter`） | 一个有版本基线的浏览器兼容模块，接现有 EAP PluginHost；不是新建独立应用、服务器或第二个全局插件目录 |
 | 适配插件实际需要的后端服务 | 现有 Java 领域服务经 runtime-client 的明确方法 | 为具体已选插件补有界门面；不虚构 DSH 全量 Remote/Node API |
 | 结构化执行计划 | EAP Chat 执行域 | Java 权威快照及内置工具，前端仅投影；DSH 仅作为行为参考 |
 
@@ -15,7 +15,7 @@
 
 ## 2. 独立前端模块的具体内容
 
-模块不是保存一个上游链接的空壳。首个插件纵向接入时同步建立下列内容；这些目录是目标布局，尚未创建。
+模块不是保存一个上游链接的空壳。首个插件纵向接入时同步建立下列内容；当前实际实现和目录差异见[验证记录](../records/chat-plugin-plan-validation.md)：已创建包及baseline/graph/compat/upgrade，首片runtime/bridge集中在src而不预建空目录。
 
 | 目标内容 | 必须保存的职责 |
 |---|---|
@@ -45,7 +45,7 @@ Web 应用仅负责装配该模块与业务界面；通用 UI 继续归 `@eap/ui
 
 ### 固定源码依据
 
-经本轮`gh api`核对，上游HEAD当前仍为以下commit（2026-11-13）；当前**评估基线**固定为 DSH `39163dd30f703a79079e2d2446545cff3c453738`，不是 `latest`，也尚不是“已通过兼容测试的基线”。[浏览器模块系统](https://github.com/deepseek-ai/deepseek-harness/tree/39163dd30f703a79079e2d2446545cff3c453738/packages/client/modules/src/client)提供构建浏览器兼容层的依据；[服务端模块装配](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/client/modules/src/index.ts)原来生成 boot 图与资源；EAP 改为受信构建阶段产生所需图/产物，不要求部署该 Node 服务。[DSH Web平台模块](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/client/web/src/platform.ts)和[主题入口](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/client/ui-theme/package.json)说明 React 挂载本身不足以运行插件。首片必须核实实际共享身份、槽位和服务闭包，不能用 UI 主题包名称猜它没有后端依赖。
+经本轮`gh api`核对，上游HEAD当前仍为以下commit（2026-11-13）；当前**首片已验证的评估基线**固定为 DSH `39163dd30f703a79079e2d2446545cff3c453738`，不是 `latest`，仅对已记录context-menu浏览器闭包通过兼容测试。[浏览器模块系统](https://github.com/deepseek-ai/deepseek-harness/tree/39163dd30f703a79079e2d2446545cff3c453738/packages/client/modules/src/client)提供构建浏览器兼容层的依据；[服务端模块装配](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/client/modules/src/index.ts)原来生成 boot 图与资源；EAP 改为受信构建阶段产生所需图/产物，不要求部署该 Node 服务。[DSH Web平台模块](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/client/web/src/platform.ts)和[主题入口](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/client/ui-theme/package.json)说明 React 挂载本身不足以运行插件。首片必须核实实际共享身份、槽位和服务闭包，不能用 UI 主题包名称猜它没有后端依赖。
 
 ### 首个实际插件：上下文菜单
 
@@ -70,13 +70,13 @@ P1固定使用该基线的`@deepseek-ai/dsh-client-ui-context-menu/client`，保
 
 计划属于 Chat 执行域，模型通过内置计划工具提交有界完整快照；普通任务计划不依赖上述插件包，也不需要 DSH 可用。复用 DSH 易理解的待办/进行中/完成三态和完整替换方式，但采用 EAP 稳定条目 ID、revision 和关联字段。状态常量由后端领域拥有，runtime-client 派生类型，非法 wire 值拒绝；实现时同步运行状态合同验证，不新建全局状态表。
 
-记录含独立`schemaVersion`，存储行包含服务端可信principal/workspace所有权；拟定记录：`planId`、`conversationId`、执行绑定的会话上下文（消息图落地后绑定真实 branchId，不预造根分支字符串）、`executionId`、`revision`、`updatedAt`，以及有界 `items[{id, content, status}]`。首次创建时由服务端分配身份；更新保留条目 ID，重排不改 ID，新增条目由服务端分配。初始预算为最多32项、单项500字符、规范化快照最多32KiB，实施以边界/Unicode用例验证；暂不做父子任务、依赖图、百分比估算、调度器或多 Agent 聚合，不接受未执行的依赖字段。清空使用显式空快照，不靠缺字段删除。
+记录含独立`schemaVersion`，存储行包含服务端可信principal/workspace所有权；当前记录：`planId`、`conversationId`、执行绑定的会话上下文（消息图落地后绑定真实 branchId，不预造根分支字符串）、`executionId`、`revision`、`updatedAt`，以及有界 `items[{id, content, status}]`。首次创建时由服务端分配身份；更新保留条目 ID，重排不改 ID，新增条目由服务端分配。初始预算为最多32项、单项500字符、规范化快照最多32KiB，实施以边界/Unicode用例验证；暂不做父子任务、依赖图、百分比估算、调度器或多 Agent 聚合，不接受未执行的依赖字段。清空使用显式空快照，不靠缺字段删除。
 
 每次更新包含操作幂等键和期望 revision。幂等重试返回原结果，同键不同内容拒绝；并发修改冲突不覆盖。调用者身份、execution 归属及仍可更新条件由后端验证，不能让模型指定另一执行或任意会话。首版前端只读，模型和后续人工编辑若需要并存，也走同一领域命令与CAS，不在 UI 加一套本地计划。
 
-计划领域服务/状态/DTO/Store及JDBC实现归`eap-ai-chat`；内置工具接入现有`eap-ai-codegen`，HTTP/SSE边界归`eap-web-ai`。不把实现放进engine导致engine反向依赖AI。当前chat模块尚无JDBC依赖，实施须明确增加Spring JDBC/事务依赖，在FullApplicationConfiguration显式装配，不给正式环境偷偷回退内存Store。
+计划领域服务/状态/DTO/Store及JDBC实现归`eap-ai-chat`；内置工具接入现有`eap-ai-codegen`，HTTP/SSE边界归`eap-web-ai`。不把实现放进engine导致engine反向依赖AI。chat模块已增加JDBC/事务依赖，在FullApplicationConfiguration显式装配，不给正式环境偷偷回退内存Store。
 
-保留现有[PLAN模式](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/TaskContext.java)“无工具、只读方案”合同，不向该模式暗中注册计划工具，也不解析自由文本制造结构化列表。自动更新只在具备工具协议和明确执行权限的原模型循环中接入；不支持的模型可无结构化计划。现有[ChatClients](../../backend/eap-ai/eap-ai-chat/src/main/java/com/lh/eap/ai/ChatClients.java)总工具预算为4，实施必须明确核算计划回调与原源码读取的预算，不能加无界例外或挤掉必需读取后仍宣称完成。
+保留现有[PLAN模式](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/TaskContext.java)“无工具、只读方案”合同，不向该模式暗中注册计划工具，也不解析自由文本制造结构化列表。自动更新只在具备工具协议和明确执行权限的原模型循环中接入；不支持的模型可无结构化计划。[ChatClients](../../backend/eap-ai/eap-ai-chat/src/main/java/com/lh/eap/ai/ChatClients.java)保留原工具4次额度；有计划工具时额外2次，合计6，否则仍为4。18KiB预留计入真实上下文预算，计划参数/结果累计16KiB，失败尝试也计费，超限终止下一次模型调用。
 
 ### 生命周期与证据
 
@@ -86,7 +86,7 @@ P1固定使用该基线的`@deepseek-ai/dsh-client-ui-context-menu/client`，保
 
 ### 存储、事件与读取
 
-选择 Java JDBC/Flyway 落地 PlanStore 的权威快照及幂等操作记录，避免浏览器 localStorage 作为真相。保存事务提交后发布带 planId/executionId/revision 的完整快照事件；读取提供领域 GET，经 runtime-client 和独立 Mock 使用相同合同。Flyway使用full-application唯一migration目录的后续增量（拟`V2__chat_task_plan.sql`），不重写已应用V1。历史读取按持久行的principal/workspace/conversation/execution授权，不能依赖重启即消失的内存conversation注册。提交与通知间进程崩溃由GET读回修复，不声称已有持久outbox或SSE回放。具体 endpoint/机器错误码在实施合同中同批确定，不在本方案伪称现有接口已支持。
+选择 Java JDBC/Flyway 落地 PlanStore 的权威快照及幂等操作记录，避免浏览器 localStorage 作为真相。保存事务提交后发布带 planId/executionId/revision 的完整快照事件；读取提供领域 GET，经 runtime-client 和独立 Mock 使用相同合同。Flyway使用full-application唯一migration目录的后续增量（已新增`V2__chat_task_plan.sql`），不重写已应用V1。历史读取按持久行的principal/workspace/conversation/execution授权，不能依赖重启即消失的内存conversation注册。提交与通知间进程崩溃由GET读回修复，不声称已有持久outbox或SSE回放。已实现GET `/api/ai/conversations/{conversationId}/executions/{executionId}/plan`，返回严格快照或JSON null；领域错误及中英文资源同批交付。
 
 前端按计划身份与 revision 忽略重复/旧快照；序号跳跃、刷新或重连后 GET 最新快照，不把全量事件重放作为前置。DB可读取历史计划不等于旧执行能继续运行。当前执行日志/会话注册仍有进程内及淘汰边界，持久计划不能冒充 CT-01 跨重启接管；读取不到与确实无计划须可区分，读失败不显示假完成或清空旧证据。
 
@@ -94,9 +94,9 @@ P1固定使用该基线的`@deepseek-ai/dsh-client-ui-context-menu/client`，保
 
 | 切片 | 可评审产出 | 验收 |
 |---|---|---|
-| P1 适配模块骨架与首插件纵向路径 | 在同一提交建立真实使用的独立包、固定基线/图生成及现有Host入口；按上文固定context-menu原client及明确provider替换清单，先产出依赖报告再接入 | 原包client代码实际加载/交互/dispose；缺服务不激活；模块没有独立Agent/Node服务；用户先接受改变的区域原型 |
-| P2 升级演练与能力扩展 | 对下一固定候选执行上述差异流程，提交新旧兼容报告；一个Skill及一个实际支持的MCP服务走已有链，双入口插件按方法补后端适配 | 升级/回退不丢配置/草稿、不双挂；调用遵守原授权/取消；依赖缺项与原包可用范围准确 |
-| T1 内置计划纵向路径（可独立于P1推进） | 后端领域常量/内置工具、PlanStore迁移/GET/事件、runtime-client/Mock和摘要一起接入 | 首次无计划、创建/完整替换/清空、CAS/幂等/非法状态、越权执行、乱序/漏事件后读回、取消/失败保留、刷新及重启后历史可读；不冒充后台恢复 |
+| P1（已技术验证，用户接受独立） | 在同一提交建立真实使用的独立包、固定基线/图生成及现有Host入口；按上文固定context-menu原client及明确provider替换清单，先产出依赖报告再接入 | 原包client代码实际加载/交互/dispose；缺服务不激活；模块没有独立Agent/Node服务；用户先接受改变的区域原型 |
+| P2（工具与同SHA演练已验证，扩大能力待做） | 对下一固定候选执行上述差异流程，提交新旧兼容报告；一个Skill及一个实际支持的MCP服务走已有链，双入口插件按方法补后端适配 | 升级/回退不丢配置/草稿、不双挂；调用遵守原授权/取消；依赖缺项与原包可用范围准确 |
+| T1（已技术验证） | 后端领域常量/内置工具、PlanStore迁移/GET/事件、runtime-client/Mock和摘要一起接入 | 首次无计划、创建/完整替换/清空、CAS/幂等/非法状态、越权执行、乱序/漏事件后读回、取消/失败保留、刷新及重启后历史可读；不冒充后台恢复 |
 | T2 后续按用户需求扩展 | 在统一合同上增加人工编辑、跨轮目标、子项等实际需要 | 每项变更有明确来源/冲突/生命周期及行为验收；不建立第二套todo系统 |
 
-本轮只确定上述方向并修订规划，没有创建空适配包、安装第三方插件或迁移数据库；P/T为下一实施切片，不能记成已完成。此前 G1 的 189 项回归与真实 Before/After 继续有效，但不能证明本方案插件或内置计划可运行。
+本轮按实施授权完成P1、T1及P2的升级差异工具/同SHA演练；[验证记录](../records/chat-plugin-plan-validation.md)含184文件1135项前端、62项后端、真实隔离PostgreSQL18.6及同场景[计划](../evidence/chat-native-plan/README.md)/[菜单](../evidence/dsh-plugin-context/README.md)Before/After。新上游版本尚未出现，未宣称跨版本升级或全部DSH插件兼容。P2扩大插件/Skill/MCP实测、T2及消息图等后续范围仍待实际需求推进，用户接受不由测试替代。

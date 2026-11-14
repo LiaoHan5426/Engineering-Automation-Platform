@@ -125,6 +125,15 @@ const execution = computed(() => {
     ? binding?.latestExecution
     : null
 })
+const plan = computed(() => {
+  const value = execution.value?.plan
+  const snapshot = value?.snapshot
+  return !snapshot ||
+    (snapshot.conversationId === execution.value?.conversationId &&
+      snapshot.executionId === execution.value?.executionId)
+    ? value
+    : undefined
+})
 const executionStatus = computed(() => {
   const current = execution.value
   if (current?.observing && !current.executionId) return t('desktop.executionWaiting')
@@ -236,6 +245,30 @@ const executionStatus = computed(() => {
           <span v-if="execution.status === ChatExecutionStatus.CANCELLING" class="hint">{{
             t('desktop.executionCancelling')
           }}</span>
+          <section data-testid="summary-plan" class="summary-card">
+            <strong>{{ t('desktop.planTitle') }}</strong>
+            <span v-if="plan?.state === 'loading'" role="status">{{
+              t('desktop.planLoading')
+            }}</span>
+            <span v-if="plan?.state === 'error'" role="alert">{{ t('desktop.planError') }}</span>
+            <Button
+              v-if="execution.executionId"
+              size="sm"
+              variant="link"
+              @click="execution.refreshPlan?.()"
+              >{{ t('desktop.planRefresh') }}</Button
+            >
+            <span v-if="plan?.authority === 'cache'">{{ t('desktop.planCached') }}</span>
+            <ol v-if="plan?.snapshot?.items.length">
+              <li v-for="item in plan.snapshot.items" :key="item.id" :data-plan-item="item.id">
+                <span>{{ t(`desktop.planStatuses.${item.status}`) }}</span> · {{ item.content }}
+              </li>
+            </ol>
+            <span v-else-if="!plan || plan.state === 'empty' || plan.state === 'ready'">{{
+              t('desktop.planEmpty')
+            }}</span>
+            <small>{{ t('desktop.planEvidence') }}</small>
+          </section>
           <Collapse :key="`${sessionKey}:${execution.executionId ?? 'pending'}`">
             <template #summary>{{ t('desktop.executionDetails') }}</template>
             <p data-testid="summary-execution-id">

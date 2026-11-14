@@ -41,6 +41,55 @@ function deferred<T>() {
 }
 
 describe('chat session', () => {
+  it.each(['SUCCEEDED', 'CANCELLED'] as const)(
+    'retains streamed plan through final reconstruction (%s) and rejects foreign events before sequence',
+    async (finalStatus) => {
+      const id = '11111111-1111-4111-8111-111111111111'
+      const executionId = '22222222-2222-4222-8222-222222222222'
+      const snapshot: import('@eap/runtime-client').ChatPlanSnapshot = {
+        schemaVersion: 1,
+        planId: '33333333-3333-4333-8333-333333333333',
+        conversationId: id,
+        executionId,
+        revision: 1,
+        updatedAt: '2026-11-14T12:00:00Z',
+        items: [
+          { id: '44444444-4444-4444-8444-444444444444', content: 'Review', status: 'in_progress' },
+        ],
+      }
+      const session = createChatSession({
+        aiStatus: async () => status(),
+        openAiConversation: async () => ({ conversationId: id, workspaceLabel: '', memory: '' }),
+        chatPlan: async () => snapshot,
+        sendAiMessage: async (_id, _message, _mode, _context, options) => {
+          const event = {
+            type: 'plan.updated',
+            text: '',
+            status: 'RUNNING',
+            code: '',
+            executionId,
+            conversationId: id,
+            sequence: 1,
+            payload: snapshot,
+          }
+          options?.onEvent?.({ ...event, conversationId: executionId, sequence: 999 })
+          options?.onEvent?.(event)
+          options?.onEvent?.({ ...event, executionId: id, sequence: 998 })
+          options?.onEvent?.({ ...event, type: 'answer.delta', text: 'answer', sequence: 2 })
+          return result({ executionId, status: finalStatus })
+        },
+      })
+      await session.openConversation()
+      session.draft.value = 'hello'
+      await session.send()
+      expect(session.turns.value[1]).toMatchObject({
+        executionId,
+        status: finalStatus,
+        plan: { snapshot },
+      })
+      expect(session.turns.value[1]?.plan?.snapshot?.items[0]?.status).toBe('in_progress')
+    },
+  )
   it.each([false, true])(
     'accepts saved connection settings without extra reads, selection changes or stale overwrite (stale failure=%s)',
     async (staleFailure) => {

@@ -95,8 +95,8 @@ export function mockContextBudget(message: string): ContextBudgetObservation {
 export function createMockChatBackend() {
   const capabilityBackend = createMockCapabilityBackend()
   let sequence = 0
-  const instanceId = randomUUID()
   const conversations = new Map<string, AiConversation>()
+  const plans = new Map<string, import('@eap/runtime-client').ChatPlanSnapshot>()
   const modelHistory = new Map<string, { messages: number; chars: number }>()
   const bindingRevisions = new Map<string, number>()
   const busy = new Set<string>()
@@ -337,7 +337,7 @@ export function createMockChatBackend() {
         const target = effective()
         if (!target) return result(503, { error: 'MODEL_NOT_CONFIGURED' })
         const item: AiConversation = {
-          conversationId: `mock-${instanceId}-${++sequence}`,
+          conversationId: randomUUID(),
           workspaceLabel: 'ws-mock-local',
           memory: '展示历史≠模型窗口≠任务工作记忆≠绑定（模拟）',
           connectionId: target.id,
@@ -537,6 +537,9 @@ export function createMockChatBackend() {
         const wasBusy = busy.has(id)
         busy.delete(id)
         return result(200, { cancelled: wasBusy, executionId: wasBusy ? `mock-exec-${id}` : '' })
+      }
+      if (method === 'GET' && suffix?.startsWith('/executions/') && suffix.endsWith('/plan')) {
+        return result(200, plans.get(`${id}/${suffix.split('/')[2]}`) ?? null)
       }
       if (method === 'GET' && suffix?.startsWith('/executions/') && suffix.endsWith('/snapshot')) {
         return result(200, {
@@ -738,7 +741,7 @@ export function createMockChatBackend() {
           const response = {
             skillContext: skill ? (skill.data as SkillContext) : null,
             knowledgeContext: knowledge && 'expertRef' in knowledge.data ? knowledge.data : null,
-            executionId: `mock-exec-${++sequence}`,
+            executionId: randomUUID(),
             answer: proposal
               ? '模拟候选已准备，请查看变更并确认。不会修改真实文件。'
               : '这是 mock 服务返回的模拟回答。场景、专家和模型选择使用与真实服务相同的交互流程；未调用真实模型。',
@@ -752,6 +755,19 @@ export function createMockChatBackend() {
             proposal,
             contextBudget: mockContextBudget(body.message),
           } satisfies AiMessageResult
+          plans.set(`${id}/${response.executionId}`, {
+            schemaVersion: 1,
+            planId: randomUUID(),
+            conversationId: id,
+            executionId: response.executionId,
+            revision: 1,
+            updatedAt: new Date().toISOString(),
+            items: [
+              { id: randomUUID(), content: '模拟：梳理本次需求', status: 'completed' },
+              { id: randomUUID(), content: '模拟：准备变更与验证建议', status: 'in_progress' },
+              { id: randomUUID(), content: '模拟：等待人工审阅', status: 'pending' },
+            ],
+          })
           if (cleared) modelHistory.delete(id)
           const previous = modelHistory.get(id) ?? { messages: 0, chars: 0 }
           modelHistory.set(id, {

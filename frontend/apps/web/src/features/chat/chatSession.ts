@@ -1,3 +1,5 @@
+import { createPlanObserver, type PlanObservation } from './planObserver'
+import type { ChatPlanSnapshot } from '@eap/runtime-client'
 import { AiToolMode, ChatErrors } from '@eap/runtime-client'
 
 import { hasWireValue } from '@eap/runtime-client'
@@ -20,6 +22,7 @@ import { runtimeLanguage } from '@eap/runtime-client'
 import { createChatHistoryWriter, readChatHistory, type ChatHistorySnapshot } from './chatHistory'
 
 export type ChatApi = {
+  chatPlan?: (conversationId: string, executionId: string) => Promise<ChatPlanSnapshot | null>
   reconnectAiConversation?: (
     id: string,
     expectedWorkspaceLabel: string,
@@ -58,6 +61,7 @@ export type ChatApi = {
         status: string
         sequence: number
         executionId: string
+        conversationId?: string
         payload?: unknown
       }) => void
     },
@@ -89,6 +93,7 @@ export type ChatApi = {
 }
 
 export type ChatTurn = {
+  plan?: PlanObservation
   planningTask?: TaskContext['taskRef']
 
   errorMessage?: string
@@ -186,6 +191,40 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const memoryNote = ref('')
   const workingMemory = ref<TaskWorkingMemorySnapshot | null>(null)
   const transcripts = ref<Record<string, ChatTurn[]>>({})
+  const planObservers = new Map<string, ReturnType<typeof createPlanObserver>>()
+  function observePlan(id: string, index: number, executionId: string) {
+    const key = `${id}/${executionId}`
+    let observer = planObservers.get(key)
+    if (!observer && api.chatPlan) {
+      const turn = transcripts.value[id]?.[index]
+      observer = createPlanObserver(
+        id,
+        executionId,
+        () => api.chatPlan!(id, executionId),
+        (value) => {
+          const turns = transcripts.value[id]
+          if (!turns?.[index] || turns[index]?.executionId !== executionId) return
+          const next = [...turns]
+          next[index] = { ...next[index]!, plan: value }
+          transcripts.value = { ...transcripts.value, [id]: next }
+        },
+        turn?.plan?.snapshot ?? null,
+      )
+      planObservers.set(key, observer)
+      void observer.refresh()
+    }
+    return observer
+  }
+  function refreshPlan() {
+    const id = conversationId.value
+    if (!id) return
+    const turns = transcripts.value[id] ?? []
+    let index = turns.length - 1
+    while (index >= 0 && (turns[index]?.role !== 'assistant' || !turns[index]?.executionId)) index--
+    const executionId = turns[index]?.executionId
+    if (executionId) void observePlan(id, index, executionId)?.refresh()
+  }
+  watch(conversationId, () => refreshPlan(), { flush: 'post' })
   const draft = ref('')
   const expired = ref(false)
   const reconnectingIds = ref<Record<string, boolean>>({})
@@ -226,7 +265,10 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     if (saved?.version === 1 && saved.transcripts && typeof saved.transcripts === 'object') {
       for (const item of history.value)
         if (Array.isArray(saved.transcripts[item.id]))
-          transcripts.value[item.id] = saved.transcripts[item.id]!
+          transcripts.value[item.id] = saved.transcripts[item.id]!.map((turn) => ({
+            ...turn,
+            ...(turn.plan ? { plan: { ...turn.plan, authority: 'cache' as const } } : {}),
+          }))
     }
   } catch {
     storageError.value = true
@@ -785,6 +827,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     const requestLanguage = runtimeLanguage()
     const current = ++ticket
     let receivedEvent = false
+    let lastSequence = -1
+    let scopedExecution = ''
     const controller = new AbortController()
     abortControllers.value = { ...abortControllers.value, [id]: controller }
     inflight.value = { ...inflight.value, [id]: current }
@@ -826,6 +870,12 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
           signal: controller.signal,
           onEvent: (event) => {
             if (inflight.value[id] !== current) return
+            if (event.conversationId && event.conversationId !== id) return
+            if (scopedExecution && event.executionId !== scopedExecution) return
+            if (event.sequence <= lastSequence) return
+            const sequenceGap = lastSequence >= 0 && event.sequence > lastSequence + 1
+            scopedExecution ||= event.executionId
+            lastSequence = event.sequence
             receivedEvent = true
             const turns = transcripts.value[id]
             if (!turns || !turns[assistantIndex]) return
@@ -850,6 +900,11 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
             }
             next[assistantIndex] = turn
             transcripts.value = { ...transcripts.value, [id]: next }
+            if (event.executionId) {
+              const observer = observePlan(id, assistantIndex, event.executionId)
+              if (event.type === 'plan.updated') observer?.event(event.payload)
+              if (sequenceGap) void observer?.refresh()
+            }
           },
         },
       )
@@ -869,6 +924,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         knowledgeContext: result.knowledgeContext,
         knowledgeMemoryCleared: result.knowledgeMemoryCleared,
         contextBudget: result.contextBudget ?? null,
+        plan: streamedTurn?.plan,
         executionId: result.executionId || streamedTurn?.executionId,
         proposal: result.proposal,
         text: result.answer || (!succeeded ? streamedTurn?.text : '') || '',
@@ -888,6 +944,12 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         artifacts: result.artifacts ?? [],
       }
       transcripts.value = { ...transcripts.value, [id]: turns }
+      const executionId = turns[assistantIndex]?.executionId
+      if (executionId) {
+        const observer = observePlan(id, assistantIndex, executionId)
+        if (result.plan) observer?.event(result.plan)
+        void observer?.refresh()
+      }
       if (api.aiConversation && conversationId.value === id) {
         try {
           const live = await api.aiConversation(id)
@@ -1018,6 +1080,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     inflight,
     history,
     storageError,
+    refreshPlan,
     expired,
     reconnecting,
     changingConnection,

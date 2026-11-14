@@ -1,6 +1,6 @@
 # DeepSeek 聊天体验重做与前后端边界
 
-日期：2026-11-14。状态：**范围按用户本轮修订记录；技术方案持续修订；G1聊天内连接配置和真实执行摘要已局部实现，其他重构未实施，用户接受待确认。** 当前进度仅由[CT-02台账](../planning-status.md#ct-02-chat-adaptation)维护。本方案不将源码审阅、上游功能或既有测试升级为新增能力已完成。
+日期：2026-11-14。状态：**范围按用户本轮修订记录；技术方案持续修订；G1聊天内连接配置、真实执行摘要及后续首client适配/内置计划已局部实现，其他重构未实施，用户接受待确认。** 当前进度仅由[CT-02台账](../planning-status.md#ct-02-chat-adaptation)维护。本方案不将源码审阅、上游功能或既有测试升级为新增能力已完成。
 
 PR #7 后续人工评审新增三项规划范围：普通聊天操作优先 Dialog/Drawer，参照DSH会话区域与面板交互以减少重复开发，保留独立工作面的显式升级；深入评估 DSH 插件原包复用及宿主差异；将执行任务列表纳入摘要面板。具体源码评估、兼容矩阵和验收见[交互、插件与执行计划补充](chat-context-plugins-and-progress.md)，属于本方案的组成部分；局部G1实现与剩余范围见补充方案§5。
 
@@ -156,3 +156,5 @@ G1实施结果与同场景Before/After见[聊天内连接配置](../evidence/cha
 实现时从根执行 `rtk proxy vp -C frontend run typecheck`、`rtk proxy vp -C frontend run check:architecture`，按受影响文件运行 `rtk proxy vp -C frontend test run <测试路径>`；Web构建使用 `frontend/apps/web` 中的 `rtk proxy vp build`。后端按模块选择reactor回归，最终按影响执行 `rtk proxy mvn -f backend/pom.xml test`；改状态/错误目录后运行 `rtk proxy python scripts/verify-domain-contracts.py`。真实数据库、模型、MCP及浏览器按切片的实际授权和环境分别记录，不用脚本存在代替通过。
 
 参考资料：[OPFS边界](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system)、[浏览器目录选择](https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker)、[MCP工具与音频结果](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)。
+
+后续实施证据：[DSH前端首client与EAP内置计划](../records/chat-plugin-plan-validation.md)。这不关闭消息图、完整聊天区域/富文本、多模态/MCP与用户接受，DSH Node/SDK宿主不是本路线。

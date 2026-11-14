@@ -195,6 +195,7 @@ export type ContextBudgetObservation = {
 }
 
 export type AiMessageResult = {
+  plan?: import('./chatPlan').ChatPlanSnapshot | null
   errorMessage?: string
   errorLanguage?: string
   skillContext?: SkillContext | null

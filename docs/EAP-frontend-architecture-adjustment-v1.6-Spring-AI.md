@@ -34,7 +34,7 @@ PL-01/PL-02与SC-03的历史提交及生命周期验证见[阶段记录](records
 
 | 工作项 | 本轮范围与当前状态 | 验收关口 |
 |---|---|---|
-| CT-02 DeepSeek聊天核心重做 | **G1局部实现，整体未完成、用户接受待确认**：聊天连接设置改为复用共享编辑器的Dialog，保留当前会话/草稿；摘要由最近ChatTurn投影真实执行状态并删除固定假步骤。源码范围、目录只读刷新、未保存/读回恢复及DSH兼容评估见[补充决定](decisions/chat-context-plugins-and-progress.md)。同场景真实Before/After见[连接](evidence/chat-model-context/README.md)与[执行摘要](evidence/chat-execution-summary/README.md) | [定向15文件189项、类型/架构/构建及1440/390浏览器](records/chat-g1-validation.md)通过，含键盘/离开/迟到结果、保存后读回及会话隔离；用户接受独立；其余聊天区域/富文本/分支/本机附件/MCP仍按[方案](decisions/deepseek-chat-adaptation.md)验收。用户已确定[独立前端DSH适配模块及升级、EAP内置计划](decisions/dsh-frontend-adaptation.md)，不引入独立DSH宿主；该新模块/PlanStore/消息图仍待实施，执行归属决策已关闭。真实服务、用户接受及CT-01持久接管独立 |
+| CT-02 DeepSeek聊天核心重做 | **G1及插件/内置计划首片已技术验证，整体未完成、用户接受独立**：聊天连接设置改为复用共享编辑器的Dialog，保留当前会话/草稿；摘要由最近ChatTurn投影真实执行状态并删除固定假步骤。源码范围、目录只读刷新、未保存/读回恢复及DSH兼容评估见[补充决定](decisions/chat-context-plugins-and-progress.md)。同场景真实Before/After见[连接](evidence/chat-model-context/README.md)与[执行摘要](evidence/chat-execution-summary/README.md) | [定向15文件189项、类型/架构/构建及1440/390浏览器](records/chat-g1-validation.md)通过，含键盘/离开/迟到结果、保存后读回及会话隔离；用户接受独立；其余聊天区域/富文本/分支/本机附件/MCP仍按[方案](decisions/deepseek-chat-adaptation.md)验收。用户已确定[独立前端DSH适配模块及升级、EAP内置计划](decisions/dsh-frontend-adaptation.md)，不引入独立DSH宿主；独立包/原context-menu/升级工具与持久PlanStore/工具/API/摘要已实施，[184文件1135项前端、62后端、真实PostgreSQL与Before/After](records/chat-plugin-plan-validation.md)通过；跨版本升级/更广插件、消息图和其余聊天重做未完成。真实服务、用户接受及CT-01持久接管独立 |
 
 ## 0A. Spring AI 与技术执行边界
 

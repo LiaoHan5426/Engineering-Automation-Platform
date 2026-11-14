@@ -104,6 +104,10 @@ public final class EngineeringChatService {
     }
     Outcome chat(Request request, boolean registerGitTool, ChatClient selected, TaskContext context,
             UUID executionId, BooleanSupplier cancelled, Consumer<String> delta, CodeSourceTool sources) {
+        return chat(request, registerGitTool, selected, context, executionId, cancelled, delta, sources, null);
+    }
+    Outcome chat(Request request, boolean registerGitTool, ChatClient selected, TaskContext context,
+            UUID executionId, BooleanSupplier cancelled, Consumer<String> delta, CodeSourceTool sources, ChatPlanTool plan) {
         var active = selected != null ? selected : client;
         var id = executionId == null ? UUID.randomUUID() : executionId;
         var started = Instant.now();
@@ -121,13 +125,14 @@ public final class EngineeringChatService {
             } else {
                 // Length prefix avoids ambiguous principal/conversation concatenation.
                 String conversation = memoryKey(request.principal(), request.conversationId());
-                var prompt = active.prompt().system(context.systemInstructions() + (sources == null ? "" : sources.instructions())).user(request.message());
+                var prompt = active.prompt().system(context.systemInstructions() + (sources == null ? "" : sources.instructions()) + (plan == null ? "" : plan.instructions())).user(request.message());
                 if (!context.reasoning().equals("default")) {
                     prompt = prompt.options(OpenAiChatOptions.builder()
                             .reasoningEffort(context.reasoning()));
                 }
                 if (registerGitTool && !context.mode().equals(TaskMode.PLAN.wire())) prompt = prompt.tools(tool.callback());
                 if (sources != null) prompt = prompt.tools(sources);
+                if (plan != null && !context.mode().equals(TaskMode.PLAN.wire())) prompt = prompt.tools(plan);
                 var prepared = prompt.advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation));
                 ChatResponse response;
                 if (delta != null && !context.mode().equals("code")) {
@@ -196,7 +201,7 @@ public final class EngineeringChatService {
         } catch (RuntimeException failure) {
             // Only bounded class names are diagnostic evidence; messages may contain credentials.
             failureTypes = failureTypes(failure);
-            error = AiErrors.classify(failure);
+            error = plan != null && !plan.failure().isEmpty() ? plan.failure() : AiErrors.classify(failure);
             status = switch (error) {
                 case "AI_CANCELLED" -> CliExecution.Status.CANCELLED;
                 case "AI_TIMED_OUT" -> CliExecution.Status.TIMED_OUT;

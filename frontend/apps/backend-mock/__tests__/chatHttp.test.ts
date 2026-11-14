@@ -42,6 +42,18 @@ it('uses the shared runtime HTTP client for models, conversation, message and pr
         targetPath: '',
       },
     )
+    const plan = await api.chatPlan(conversation.conversationId, response.executionId!)
+    expect(plan).toMatchObject({
+      schemaVersion: 1,
+      conversationId: conversation.conversationId,
+      executionId: response.executionId,
+      revision: 1,
+    })
+    expect(plan?.items.map((item) => item.status)).toEqual(['completed', 'in_progress', 'pending'])
+    expect(await api.chatPlan(conversation.conversationId, response.executionId!)).toEqual(plan)
+    expect(
+      await api.chatPlan(conversation.conversationId, '00000000-0000-4000-8000-000000000000'),
+    ).toBeNull()
     expect(response.proposal?.files[0]?.path).toBe('Example.vue')
     expect(response.proposal?.files[0]?.baseHash).toBe('')
     const messageRequest = fixture.requests.find((request) => request.url.endsWith('/messages'))!
