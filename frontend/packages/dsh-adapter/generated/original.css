@@ -705,6 +705,584 @@ html[data-platform=darwin] .MenuSurface_module_css_backing {
   justify-content: center;
 }
 
+/* upstream/packages/client/ui-primitives/src/Modal.module.css.snapshot */
+.Modal_module_css_root {
+  pointer-events: auto;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(24px, var(--dsh-frame-overlay-top, 24px)) 24px;
+}
+.Modal_module_css_mask {
+  position: absolute;
+  inset: var(--dsh-frame-chrome-top, 0px) 0 0;
+  backdrop-filter: var(--dsw-mask-blur);
+}
+.Modal_module_css_mask::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--dsw-alias-bg-mask-1);
+  animation: Modal_module_css_modalEnter var(--ds-transition-duration) var(--ds-ease-in-out);
+}
+.Modal_module_css_dialog {
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: min(380px, 100%);
+  padding: 0 0 24px;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--dsw-radius-panel);
+  background: var(--dsw-alias-bg-layer-2);
+  box-shadow: var(--dsw-elevation-prominent);
+  animation: Modal_module_css_modalEnter var(--ds-transition-duration) var(--ds-ease-in-out);
+}
+@keyframes Modal_module_css_modalEnter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .Modal_module_css_mask::after,
+  .Modal_module_css_dialog {
+    animation: none;
+  }
+}
+.Modal_module_css_dialog:focus {
+  outline: none;
+}
+.Modal_module_css_content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.Modal_module_css_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 22px 14px 12px 24px;
+}
+.Modal_module_css_title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+.Modal_module_css_warning .Modal_module_css_title {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.Modal_module_css_warningIcon {
+  flex: none;
+  margin-top: 3px;
+  color: var(--dsw-alias-state-warn-primary);
+}
+.Modal_module_css_warning .Modal_module_css_body {
+  margin-top: 0;
+}
+.Modal_module_css_close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  cursor: pointer;
+  color: var(--dsw-alias-label-secondary);
+}
+@media (hover: hover) {
+  .Modal_module_css_close:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+.Modal_module_css_description {
+  margin: 0;
+  padding: 0 24px;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 400;
+  color: var(--dsw-alias-label-primary);
+}
+.Modal_module_css_body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-top: 20px;
+  padding: 0 24px;
+}
+.Modal_module_css_footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 24px;
+}
+
+/* upstream/packages/client/ui-shortcuts/src/client/Reference.module.css.snapshot */
+.Reference_module_css_setting,
+.Reference_module_css_row,
+.Reference_module_css_binding {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.Reference_module_css_setting {
+  box-sizing: border-box;
+  min-height: 60px;
+  padding: 16px 0;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+}
+.Reference_module_css_settingText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 48px;
+}
+.Reference_module_css_settingTitle {
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  line-height: 22px;
+}
+.Reference_module_css_settingDescription {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.Reference_module_css_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 36px;
+  min-width: 90px;
+  max-width: 280px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .Reference_module_css_button:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+.Reference_module_css_dialog {
+  box-sizing: border-box;
+  width: min(480px, 100%);
+  height: 600px;
+  max-height: calc(100dvh - 108px);
+  padding: 0;
+  gap: 0;
+  transform: translateY(30px);
+  border-radius: 24px;
+  box-shadow:
+    0 0 1px rgba(0, 0, 0, 0.2),
+    0 0 4px rgba(0, 0, 0, 0.02),
+    0 12px 32px rgba(0, 0, 0, 0.08);
+}
+.Reference_module_css_dialog:focus {
+  outline: none;
+}
+.Reference_module_css_contents {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.Reference_module_css_header {
+  position: relative;
+  flex: 0 0 46px;
+  padding: 22px 54px 0 24px;
+  box-sizing: border-box;
+}
+.Reference_module_css_title {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+}
+.Reference_module_css_close {
+  position: absolute;
+  top: 20px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+  border: 0;
+  border-radius: 28px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .Reference_module_css_close:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+.Reference_module_css_searchRow {
+  box-sizing: border-box;
+  flex: 0 0 60px;
+  display: flex;
+  align-items: center;
+  padding: 14px 20px 10px;
+}
+.Reference_module_css_searchField {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  padding: 8px 14px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-markdown-code-block);
+}
+.Reference_module_css_searchIcon {
+  flex: none;
+  color: var(--dsw-alias-label-caption);
+}
+.Reference_module_css_search {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+}
+.Reference_module_css_search::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+  opacity: 1;
+}
+.Reference_module_css_list {
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 16px 18px;
+}
+.Reference_module_css_footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 24px;
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
+  font-size: 12px;
+  line-height: 18px;
+}
+.Reference_module_css_resetAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .Reference_module_css_resetAll:enabled:hover {
+    color: var(--dsw-alias-label-secondary);
+  }
+}
+.Reference_module_css_resetAll:focus-visible {
+  outline: 1px solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+.Reference_module_css_resetAll:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.Reference_module_css_modifiedCount {
+  color: var(--dsw-alias-label-tertiary);
+}
+.Reference_module_css_group {
+  margin: 18px 8px 4px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+}
+.Reference_module_css_rows {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.Reference_module_css_row {
+  position: relative;
+  border-radius: var(--dsw-radius-md);
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 8px;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 18px;
+}
+.Reference_module_css_binding {
+  position: relative;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+.Reference_module_css_binding:has(.Reference_module_css_inlineEditor) {
+  pointer-events: auto;
+}
+.Reference_module_css_commandLabel {
+  position: relative;
+  pointer-events: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.Reference_module_css_hint {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+p.Reference_module_css_hint {
+  margin: 6px 0;
+}
+.Reference_module_css_rowActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 26px;
+  color: var(--dsw-alias-label-tertiary);
+  opacity: 0;
+}
+.Reference_module_css_row:has(:focus-visible) .Reference_module_css_rowActions {
+  opacity: 1;
+}
+@media (hover: hover) {
+  .Reference_module_css_row:hover .Reference_module_css_rowActions {
+    opacity: 1;
+  }
+}
+.Reference_module_css_inlineAction:focus-visible {
+  outline: 1px solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.Reference_module_css_rowButton {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .Reference_module_css_row:has(.Reference_module_css_rowButton:enabled):hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+.Reference_module_css_rowButton:focus-visible {
+  outline: 1px solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: -1px;
+}
+.Reference_module_css_binding .Reference_module_css_keyBadge {
+  color: var(--dsw-alias-label-secondary);
+}
+.Reference_module_css_binding .Reference_module_css_fixedKeyBadge {
+  height: 26px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.Reference_module_css_keyBadge {
+  box-sizing: border-box;
+  justify-content: center;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-module-platform);
+}
+.Reference_module_css_unbound {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 6px 16px;
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+.Reference_module_css_inlineEditor {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.Reference_module_css_binding:has(.Reference_module_css_inlineEditor) {
+  max-width: 100%;
+}
+.Reference_module_css_inlineControls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+.Reference_module_css_inlineAction {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.Reference_module_css_recorder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 96px;
+  height: 26px;
+  padding: 3px 14px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.Reference_module_css_recorder:focus-visible {
+  outline: 1px solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+.Reference_module_css_recorder.Reference_module_css_invalid {
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  box-shadow: none;
+}
+.Reference_module_css_recorded {
+  height: auto;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+.Reference_module_css_review {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.Reference_module_css_toastSuccess {
+  color: var(--dsw-alias-state-success-secondary);
+}
+.Reference_module_css_toastError {
+  color: var(--dsw-alias-state-warn-secondary);
+}
+.Reference_module_css_srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+@media (hover: none) {
+  .Reference_module_css_rowActions {
+    opacity: 1;
+  }
+}
+.Reference_module_css_button:disabled,
+.Reference_module_css_rowButton:disabled,
+.Reference_module_css_inlineAction:disabled,
+.Reference_module_css_recorder[aria-disabled=true] {
+  cursor: default;
+  opacity: 0.45;
+}
+.Reference_module_css_search::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.Reference_module_css_clearSearch {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0.5px solid var(--dsw-alias-label-tertiary);
+  border-radius: 50%;
+  corner-shape: round;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .Reference_module_css_clearSearch:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+.Reference_module_css_clearSearch:focus-visible {
+  outline: 1px solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+@media (hover: none) {
+  .Reference_module_css_rowActions {
+    opacity: 1;
+  }
+}
+
 /* upstream/packages/client/locale/src/client/LanguageRow.module.css.snapshot */
 .LanguageRow_module_css_row {
   display: flex;

@@ -35,6 +35,10 @@ public final class ChatClients {
             }
         };
     }
+    /** Tools keep their ordinary bounded loop, but no advisor retains request media. */
+    public static ChatClient createTransientClient(ChatClient.Builder builder) {
+        return builder.defaultAdvisors(ToolCallingAdvisor.builder().toolCallingManager(boundedManager()).build()).build();
+    }
     public static ChatClient createClient(ChatClient.Builder builder, ChatMemory memory) {
         return builder.defaultAdvisors(MessageChatMemoryAdvisor.builder(memory).build(),
                 ToolCallingAdvisor.builder().toolCallingManager(boundedManager()).build()).build();

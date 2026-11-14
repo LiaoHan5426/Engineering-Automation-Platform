@@ -1,4 +1,5 @@
-import { ChatErrors } from '@eap/runtime-client/contracts'
+import type { ChatGraph, ChatGraphOperation } from '@eap/runtime-client/contracts'
+import { ChatGraphErrors, ChatErrors } from '@eap/runtime-client/contracts'
 import { WorkspaceErrors } from '@eap/runtime-client/contracts'
 import { ExecutionErrors } from '@eap/runtime-client/contracts'
 import {
@@ -96,6 +97,8 @@ export function createMockChatBackend() {
   const capabilityBackend = createMockCapabilityBackend()
   let sequence = 0
   const conversations = new Map<string, AiConversation>()
+  const graphs = new Map<string, ChatGraph>()
+  const operationPayloads = new Map<string, string>()
   const plans = new Map<string, import('@eap/runtime-client').ChatPlanSnapshot>()
   const modelHistory = new Map<string, { messages: number; chars: number }>()
   const bindingRevisions = new Map<string, number>()
@@ -255,6 +258,7 @@ export function createMockChatBackend() {
         )
         return version ? result(200, version) : result(404, { error: 'VERSION_NOT_FOUND' })
       }
+      if (method === 'GET' && path === '/ai/web-sources') return result(200, [])
       if (method === 'GET' && path === '/ai/status')
         return result(200, {
           state: effective() ? 'available' : 'not_configured',
@@ -420,7 +424,11 @@ export function createMockChatBackend() {
       if (method === 'GET' && !suffix) return result(200, item)
       if (suffix === '/model-history' && method === 'GET')
         return result(200, modelHistory.get(id) ?? { messages: 0, chars: 0 })
+      if (method === 'POST' && /^\/model-history\/summary\/[^/]+\/cancel$/.test(suffix ?? ''))
+        return result(200, { cancelled: false, operationId: suffix!.split('/')[3] })
       if (suffix === '/model-history/summary' && method === 'POST') {
+        if (typeof body.operationId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.operationId))
+          return result(400, { code: ChatErrors.INVALID_CHAT_REQUEST })
         if (sensitiveConversations.has(id))
           return result(409, { code: ChatErrors.HISTORY_SUMMARY_SENSITIVE })
         const usage = modelHistory.get(id)
@@ -533,10 +541,30 @@ export function createMockChatBackend() {
         }
         return result(200, { ...item, connectionName: target.name, memoryCleared })
       }
-      if (method === 'POST' && suffix === '/cancel') {
-        const wasBusy = busy.has(id)
-        busy.delete(id)
-        return result(200, { cancelled: wasBusy, executionId: wasBusy ? `mock-exec-${id}` : '' })
+      const graph = graphs.get(id) ?? { conversationId: id, revision: 0, nodes: [], operations: [] }
+      graphs.set(id, graph)
+      if (method === 'GET' && suffix === '/graph') return result(200, structuredClone(graph))
+      if (method === 'GET' && suffix?.startsWith('/operations/')) {
+        const operation = graph.operations.find(
+          (value) => value.operationId === suffix.slice('/operations/'.length),
+        )
+        return operation
+          ? result(200, {
+              ...operation,
+              status: graph.nodes.find((node) => node.id === operation.assistantMessageId)?.status,
+              response: graph.nodes.find((node) => node.id === operation.assistantMessageId)
+                ?.response,
+            })
+          : result(404, { code: ChatGraphErrors.CHAT_OPERATION_NOT_FOUND })
+      }
+      if (method === 'POST' && /^\/executions\/[^/]+\/cancel$/.test(suffix ?? '')) {
+        const executionId = suffix!.split('/')[2]!
+        const node = graph.nodes.find(
+          (value) => value.executionId === executionId && value.role === 'assistant',
+        )
+        return node
+          ? result(200, { cancelled: false, executionId })
+          : result(404, { code: ExecutionErrors.UNKNOWN_EXECUTION })
       }
       if (method === 'GET' && suffix?.startsWith('/executions/') && suffix.endsWith('/plan')) {
         return result(200, plans.get(`${id}/${suffix.split('/')[2]}`) ?? null)
@@ -552,6 +580,43 @@ export function createMockChatBackend() {
         })
       }
       if (method === 'POST' && suffix === '/messages') {
+        const payload = JSON.stringify(body)
+        const operationId = String(body.operationId ?? '')
+        const previousOperation = graph.operations.find(
+          (value) => value.operationId === operationId,
+        )
+        if (previousOperation)
+          return operationPayloads.get(`${id}/${operationId}`) === payload
+            ? result(
+                200,
+                graph.nodes.find((node) => node.id === previousOperation.assistantMessageId)
+                  ?.response,
+              )
+            : result(409, { code: ChatGraphErrors.CHAT_OPERATION_CONFLICT })
+        if (
+          !/^[0-9a-f-]{36}$/i.test(operationId) ||
+          !['send', 'edit', 'regenerate'].includes(String(body.kind))
+        )
+          return result(400, { code: ChatErrors.INVALID_CHAT_REQUEST })
+        if (body.expectedRevision !== graph.revision)
+          return result(409, { code: ChatGraphErrors.CHAT_REVISION_CONFLICT })
+        if (busy.has(id)) return result(409, { code: ChatErrors.CONVERSATION_BUSY })
+        const parent = graph.nodes.find((value) => value.id === body.parentMessageId)
+        const targetNode = graph.nodes.find((value) => value.id === body.targetMessageId)
+        if (
+          body.kind === 'send' &&
+          (body.targetMessageId !== null ||
+            (body.parentMessageId !== null && parent?.role !== 'assistant'))
+        )
+          return result(400, { code: ChatGraphErrors.CHAT_PARENT_INVALID })
+        if (
+          body.kind !== 'send' &&
+          (!targetNode ||
+            targetNode.parentId !== body.parentMessageId ||
+            targetNode.role !== (body.kind === 'edit' ? 'user' : 'assistant'))
+        )
+          return result(409, { code: ChatGraphErrors.CHAT_TARGET_INVALID })
+        if (body.kind === 'regenerate') body = { ...body, message: parent!.content }
         busy.add(id)
         try {
           // Yield a microtask only: mock turns are exclusive, without timers or model calls.
@@ -774,6 +839,42 @@ export function createMockChatBackend() {
             messages: previous.messages + 2,
             chars: previous.chars + body.message.length + response.answer.length,
           })
+          const userId = body.kind === 'regenerate' ? parent!.id : randomUUID()
+          const assistantId = randomUUID()
+          if (body.kind !== 'regenerate')
+            graph.nodes.push({
+              id: userId,
+              parentId: body.parentMessageId as string | null,
+              role: 'user',
+              content: body.message,
+              attachmentRefs: context?.attachmentRefs ?? [],
+              executionId: response.executionId,
+              operationId,
+              status: 'SUCCEEDED',
+              response: null,
+            })
+          graph.nodes.push({
+            id: assistantId,
+            parentId: userId,
+            role: 'assistant',
+            content: response.answer,
+            executionId: response.executionId,
+            operationId,
+            status: response.status,
+            response,
+          })
+          graph.revision++
+          const operation: ChatGraphOperation = {
+            operationId,
+            userMessageId: userId,
+            assistantMessageId: assistantId,
+            executionId: response.executionId,
+            graphRevision: graph.revision,
+            status: response.status,
+            response,
+          }
+          graph.operations.push(operation)
+          operationPayloads.set(`${id}/${operationId}`, payload)
           return reply(200, response)
         } finally {
           busy.delete(id)

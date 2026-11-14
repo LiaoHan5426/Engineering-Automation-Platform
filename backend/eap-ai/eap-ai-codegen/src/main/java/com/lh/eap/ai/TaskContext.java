@@ -21,8 +21,19 @@ import tools.jackson.databind.json.JsonMapper;
 /** User-selected context, never an authority to run tools or change policy. */
 public record TaskContext(String mode, String expert, String instructions, String reasoning,
                           String approval, List<Attachment> files, String prototypeVersionId, String targetPath, TaskRef taskRef,
-                          KnowledgeExpertRef knowledgeExpertRef, SkillRef skillRef, List<String> skillResourcePaths,List<String> componentPaths) {
-    public TaskContext {componentPaths=List.copyOf(componentPaths);}
+                          KnowledgeExpertRef knowledgeExpertRef, SkillRef skillRef, List<String> skillResourcePaths,List<String> componentPaths,
+                          McpWebChatTool.Selection webSources) {
+    public TaskContext {
+        componentPaths = List.copyOf(componentPaths);
+        java.util.Objects.requireNonNull(webSources);
+    }
+    public TaskContext(String mode, String expert, String instructions, String reasoning, String approval,
+                       List<Attachment> files, String prototypeVersionId, String targetPath, TaskRef taskRef,
+                       KnowledgeExpertRef knowledgeExpertRef, SkillRef skillRef, List<String> skillResourcePaths,
+                       List<String> componentPaths) {
+        this(mode, expert, instructions, reasoning, approval, files, prototypeVersionId, targetPath, taskRef,
+                knowledgeExpertRef, skillRef, skillResourcePaths, componentPaths, McpWebChatTool.Selection.OFF);
+    }
     public TaskContext(String mode,String expert,String instructions,String reasoning,String approval,List<Attachment> files,String prototypeVersionId,String targetPath,TaskRef taskRef,KnowledgeExpertRef knowledgeExpertRef,SkillRef skillRef,List<String> skillResourcePaths) {
         this(mode,expert,instructions,reasoning,approval,files,prototypeVersionId,targetPath,taskRef,knowledgeExpertRef,skillRef,skillResourcePaths,List.of());
     }
@@ -45,7 +56,7 @@ public record TaskContext(String mode, String expert, String instructions, Strin
     public static TaskContext parse(Object value) {
         if (value == null) return EMPTY;
         if (!(value instanceof Map<?, ?> data) || data.keySet().stream().anyMatch(key ->
-                !Set.of("mode", "expert", "instructions", "reasoning", "approval", "files", "prototypeVersionId", "targetPath", "taskRef", "knowledgeExpertRef", "skillRef", "skillResourcePaths","componentPaths").contains(key))) throw invalid();
+                !Set.of("mode", "expert", "instructions", "reasoning", "approval", "files", "prototypeVersionId", "targetPath", "taskRef", "knowledgeExpertRef", "skillRef", "skillResourcePaths","componentPaths","webSources").contains(key))) throw invalid();
         String mode = text(data, "mode", "chat"), expert = text(data, "expert", "general");
         String reasoning = text(data, "reasoning", "default"), approval = text(data, "approval", "review");
         try { TaskMode.fromWire(mode); } catch (IllegalArgumentException rejected) { throw invalid(); }
@@ -105,7 +116,13 @@ public record TaskContext(String mode, String expert, String instructions, Strin
             if (mode.equals("code")) throw KnowledgeExpertRef.invalid();
             knowledgeRef = KnowledgeExpertRef.parse(data.get("knowledgeExpertRef"));
         }
-        return new TaskContext(mode, expert, instructions, reasoning, approval, List.copyOf(files), prototype, target, ref, knowledgeRef, skillRef, skillPaths,components);
+        var webSources = McpWebChatTool.Selection.OFF;
+        if (data.containsKey("webSources")) {
+            if (!(data.get("webSources") instanceof Map<?, ?>)) throw invalid();
+            webSources = McpWebChatTool.Selection.parse(data.get("webSources"));
+        }
+        return new TaskContext(mode, expert, instructions, reasoning, approval, List.copyOf(files), prototype, target,
+                ref, knowledgeRef, skillRef, skillPaths, components, webSources);
     }
 
     public String systemInstructions() {

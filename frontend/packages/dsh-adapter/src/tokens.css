@@ -1,6 +1,37 @@
 /* Original DSH primitives keep their CSS. Only their consumed theme aliases map to EAP. */
 [data-context-menu],
-.Toast_module_css_toast {
+[class~='Toast_module_css_toast'],
+.eap-dsh-browser,
+[class~='Modal_module_css_root'],
+[class~='Tooltip_module_css_bubble'] {
+  --dsw-radius-panel: var(--eap-border-radius-card);
+  --dsw-alias-tooltip-bg: var(--eap-text-color-primary);
+  --dsw-alias-tooltip-label: var(--eap-fill-color-blank);
+  --dsw-alias-tooltip-key-bg: var(--eap-fill-color-hover);
+  --dsw-alias-button-primary-fill: var(--eap-color-primary);
+  --dsw-alias-label-primary-foreground: var(--eap-color-white);
+  --dsw-alias-button-primary-hover: var(--eap-color-primary-hover);
+  --dsw-alias-interactive-bg-active: var(--eap-fill-color-hover);
+  --dsw-alias-button-tool-bar-fill: var(--eap-fill-color-light);
+  --dsw-alias-button-tool-bar-hover: var(--eap-fill-color-hover);
+  --dsw-alias-bg-mask-1: var(--eap-overlay-color);
+  --dsw-alias-bg-module-platform: var(--eap-fill-color-light);
+  --dsw-alias-markdown-code-block: var(--eap-fill-color-light);
+  --dsw-alias-border-l4: var(--eap-border-color-strong);
+  --dsw-alias-state-business-primary: var(--eap-color-primary);
+  --dsw-focus-ring-color: var(--eap-color-primary);
+  --dsw-alias-state-success-secondary: var(--eap-color-success);
+  --dsw-alias-state-warn-secondary: var(--eap-color-warning);
+  --dsw-alias-state-warn-primary: var(--eap-color-warning);
+  --dsw-mask-blur: none;
+  --dsw-font-size-base: var(--eap-font-size-base);
+  --dsw-alias-label-secondary: var(--eap-text-color-secondary);
+  --dsw-alias-bg-layer-1: var(--eap-fill-color-blank);
+  --dsw-alias-bg-layer-2: var(--eap-fill-color-light);
+  --dsw-alias-bg-overlay: var(--eap-fill-color-blank);
+  --dsw-alias-brand-primary: var(--eap-color-primary);
+  --dsw-alias-state-error-label: var(--eap-color-danger);
+  --dsw-alias-overlay-mask: var(--eap-overlay-color);
   --dsw-radius-sm: var(--eap-border-radius-base);
   --dsw-radius-md: var(--eap-border-radius-base);
   --dsw-radius-lg: var(--eap-border-radius-card);

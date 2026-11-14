@@ -12,6 +12,7 @@ import ChatWorkspace from '../../../src/features/chat/ChatWorkspace.vue'
 import { chatBinding, workbench } from '../../../src/features/shell/workbench'
 import { chatStorage } from '../../../src/features/chat/chatService'
 import type { ChatTurn } from '../../../src/features/chat/chatSession'
+import { canonicalGraph, graphServer } from './canonicalGraph.fixture'
 import { mockChatStartup } from './chatStartup.fixture'
 
 let app: App, host: HTMLDivElement
@@ -41,7 +42,10 @@ afterEach(() => {
   workbench.workMode = originalWorkMode
   i18n.global.locale.value = originalLocale
 })
-async function mount(turns: ChatTurn[] = []) {
+async function mount(
+  turns: ChatTurn[] = [],
+  server = graphServer(canonicalGraph('answer-state', turns)),
+) {
   workbench.executionMode = 'chat'
   workbench.workMode = 'code'
   workbench.pendingBoardDraft = null
@@ -61,7 +65,7 @@ async function mount(turns: ChatTurn[] = []) {
           model: 'm',
         },
       ],
-      transcripts: { 'answer-state': turns },
+      transcripts: { 'answer-state': [] },
     }),
   )
   mockChatStartup().mockResolvedValue({
@@ -92,6 +96,7 @@ async function mount(turns: ChatTurn[] = []) {
     workspaceLabel: '',
     memory: '',
   })
+  server.install()
   host = document.createElement('div')
   document.body.append(host)
   app = createApp(ChatWorkspace)
@@ -110,38 +115,58 @@ it.each([
   async (locale, finalAnswer) => {
     i18n.global.locale.value = locale
     let finish!: (result: AiMessageResult) => void
-    let stream!: NonNullable<Parameters<typeof runtimeApi.sendAiMessage>[4]>['onEvent']
+    let stream!: NonNullable<Parameters<typeof runtimeApi.sendAiMessage>[2]>['onEvent']
+    const server = graphServer(
+      canonicalGraph('answer-state', [
+        { ...answer(ChatExecutionStatus.SUCCEEDED, 'Earlier question'), role: 'user' },
+        answer(ChatExecutionStatus.SUCCEEDED),
+      ]),
+    )
     const send = vi
       .spyOn(runtimeApi, 'sendAiMessage')
-      .mockImplementation((_id, _text, _mode, _context, options) => {
+      .mockImplementation((id, request, options) => {
         stream = options!.onEvent
+        const binding = server.accept(id, request)
+        stream!({
+          type: 'execution.accepted',
+          conversationId: id,
+          executionId: binding.executionId,
+          sequence: 0,
+          text: '',
+          code: '',
+          status: 'RUNNING',
+        })
         return new Promise((resolve) => {
-          finish = resolve
+          finish = (result) => {
+            server.complete(id, request, result)
+            resolve(result)
+          }
         })
       })
-    await mount([
-      { ...answer(ChatExecutionStatus.SUCCEEDED, 'Earlier question'), role: 'user' },
-      answer(ChatExecutionStatus.RUNNING),
-    ])
+    await mount([], server)
     expect(chatBinding.value?.sending).toBe(false)
     expect(chatBinding.value?.latestExecution).toMatchObject({
       conversationId: 'answer-state',
-      status: ChatExecutionStatus.RUNNING,
-      executionId: null,
+      status: ChatExecutionStatus.SUCCEEDED,
+      executionId: 'history-execution-0',
       observing: false,
     })
     expect(bubbles()[0]!.textContent).toContain(i18n.global.t('chat.noAnswer'))
     expect(bubbles()[0]!.textContent).not.toContain(i18n.global.t('chat.waitingForAnswer'))
     ;(host.querySelector('[data-testid=send-message]') as HTMLButtonElement).click()
     await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1))
-    await nextTick()
+    await vi.waitFor(() => expect(bubbles()).toHaveLength(2))
     expect(chatBinding.value?.sending).toBe(true)
-    expect(chatBinding.value?.latestExecution).toMatchObject({ executionId: null, observing: true })
+    expect(chatBinding.value?.latestExecution).toMatchObject({
+      executionId: 'execution',
+      observing: true,
+    })
     expect(bubbles()[0]!.textContent).toContain(i18n.global.t('chat.noAnswer'))
     expect(bubbles()[0]!.textContent).not.toContain(i18n.global.t('chat.waitingForAnswer'))
     expect(bubbles()[1]!.textContent).toContain(i18n.global.t('chat.waitingForAnswer'))
     expect(bubbles()[1]!.textContent).not.toContain(i18n.global.t('chat.noAnswer'))
     stream!({
+      conversationId: 'answer-state',
       sequence: 1,
       executionId: 'execution',
       type: 'answer.delta',
@@ -149,7 +174,7 @@ it.each([
       code: '',
       status: ChatExecutionStatus.RUNNING,
     })
-    await nextTick()
+    await vi.waitFor(() => expect(bubbles()[1]!.textContent).toContain('Partial answer'))
     expect(chatBinding.value?.latestExecution).toMatchObject({
       executionId: 'execution',
       status: ChatExecutionStatus.RUNNING,
@@ -200,3 +225,23 @@ it('keeps finished empty, failed and cancelled turns out of the waiting state', 
   expect(bubbles()[3]!.textContent).not.toContain(i18n.global.t('chat.noAnswer'))
   expect(send).not.toHaveBeenCalled()
 })
+
+it.each([ChatExecutionStatus.RUNNING, ChatExecutionStatus.UNKNOWN])(
+  'blocks sending over a restored %s server execution',
+  async (status) => {
+    const send = vi.spyOn(runtimeApi, 'sendAiMessage')
+    await mount([answer(status)])
+    expect(chatBinding.value?.sending).toBe(false)
+    expect(chatBinding.value?.latestExecution).toMatchObject({ status, observing: false })
+    if (status === ChatExecutionStatus.RUNNING)
+      expect(host.querySelector('[data-testid=send-message]')).toBeNull()
+    else {
+      const button = host.querySelector<HTMLButtonElement>('[data-testid=send-message]')!
+      expect(button.disabled).toBe(true)
+      button.click()
+      await nextTick()
+    }
+    expect(bubbles()[0]!.textContent).not.toContain(i18n.global.t('chat.waitingForAnswer'))
+    expect(send).not.toHaveBeenCalled()
+  },
+)

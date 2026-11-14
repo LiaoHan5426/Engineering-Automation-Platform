@@ -18,18 +18,20 @@ async function reconcile(current: number) {
   const previous = instance
   instance = undefined
   await previous?.dispose()
+  error.value = ''
   if (!props.active || !container.value || current !== generation) return
   try {
     const mounted = await mountContextMenu(container.value, {
       locale: locale.value,
       copyLabel: t('chat.copyMessage'),
-      failureLabel: t('chat.copyFailed'),
+      downloadLabel: t('chat.downloadMessage'),
+      failureLabel: t('chat.messageActionFailed'),
       copyText: (text) => navigator.clipboard.writeText(text),
     })
     if (current !== generation) await mounted.dispose()
     else instance = mounted
   } catch {
-    error.value = t('chat.copyFailed')
+    error.value = t('chat.messageMenuUnavailable')
   }
 }
 function open(event: Event) {
@@ -48,6 +50,6 @@ onBeforeUnmount(() => {
 })
 </script>
 <template>
-  <div ref="container" data-testid="dsh-context-menu-host" />
+  <div ref="container" class="eap-dsh-browser" data-testid="dsh-context-menu-host" />
   <p v-if="error" role="status">{{ error }}</p>
 </template>

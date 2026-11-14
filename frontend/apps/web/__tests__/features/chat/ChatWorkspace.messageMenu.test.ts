@@ -29,9 +29,9 @@ async function mount() {
   workbench.workMode = 'code'
   workbench.pendingBoardDraft = null
   chatStorage(localStorage).setItem(
-    'eap.chat.history.v1',
+    'eap.chat.preferences.v2',
     JSON.stringify({
-      version: 1,
+      version: 2,
       activeId: conversationId,
       items: [
         {
@@ -43,24 +43,36 @@ async function mount() {
           model: '',
         },
       ],
-      transcripts: {
-        [conversationId]: [
-          {
-            role: 'assistant',
-            text: 'Captured original message',
-            error: '',
-            status: 'SUCCEEDED',
-            approval: '',
-            verification: '',
-            toolEvents: [],
-            artifactError: '',
-            artifacts: [],
-          },
-        ],
-      },
     }),
   )
   mockChatStartup()
+  vi.spyOn(runtimeApi, 'chatGraph').mockResolvedValue({
+    conversationId,
+    revision: 1,
+    operations: [],
+    nodes: [
+      {
+        id: '33333333-3333-4333-8333-333333333333',
+        parentId: null,
+        role: 'user',
+        content: 'Original question',
+        executionId: null,
+        operationId: 'operation',
+        status: 'SUCCEEDED',
+        response: null,
+      },
+      {
+        id: '44444444-4444-4444-8444-444444444444',
+        parentId: '33333333-3333-4333-8333-333333333333',
+        role: 'assistant',
+        content: 'Captured original message',
+        executionId: 'execution',
+        operationId: 'operation',
+        status: 'SUCCEEDED',
+        response: null,
+      },
+    ],
+  })
   vi.spyOn(runtimeApi, 'aiConversation').mockResolvedValue({
     conversationId,
     connectionId: null,
@@ -73,8 +85,9 @@ async function mount() {
   app = createApp(ChatWorkspace)
   app.use(i18n).mount(host)
   await vi.waitFor(() => expect(chatBinding.value?.draft).toBe('Unsent original draft'))
+  await vi.waitFor(() => expect(host!.innerHTML).toContain('Captured original message'))
   await nextTick()
-  return host.querySelector<HTMLParagraphElement>('.turn-assistant > p')!
+  return host.querySelector<HTMLParagraphElement>('.turn-assistant .chat-message-body')!
 }
 
 it('preserves native context behavior when the adapter is unavailable and gives feedback for the visible action', async () => {
@@ -82,7 +95,7 @@ it('preserves native context behavior when the adapter is unavailable and gives 
   const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
   text.dispatchEvent(event)
   expect(event.defaultPrevented).toBe(false)
-  host!.querySelector<HTMLButtonElement>('[data-testid="message-actions"]')!.click()
+  host!.querySelector<HTMLButtonElement>('.turn-assistant [data-testid="message-actions"]')!.click()
   await nextTick()
   expect(host!.querySelector('[data-testid="message-menu-unavailable"]')).not.toBeNull()
   expect(chatBinding.value?.draft).toBe('Unsent original draft')
@@ -99,7 +112,7 @@ it('offers the same immutable captured target from the visible action and contex
     request.preventDefault()
   }
   document.addEventListener('eap:message-context', listener)
-  host!.querySelector<HTMLButtonElement>('[data-testid="message-actions"]')!.click()
+  host!.querySelector<HTMLButtonElement>('.turn-assistant [data-testid="message-actions"]')!.click()
   const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
   text.dispatchEvent(event)
   await nextTick()

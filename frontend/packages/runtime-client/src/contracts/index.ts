@@ -65,3 +65,7 @@ export * from './prototypeInteraction.ts'
 
 export * from './taskMode'
 export { AiToolMode } from './aiToolMode'
+
+export * from './chatGraph'
+
+export * from '../errors/chatGraphErrors'

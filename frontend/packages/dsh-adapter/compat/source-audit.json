@@ -1,0 +1,37 @@
+{
+  "commit": "39163dd30f703a79079e2d2446545cff3c453738",
+  "priorBaseline": { "sources": 82, "unchanged": true, "commitUnchanged": true },
+  "expandedBaseline": { "sources": 106, "policy": "Only original build inputs plus package version/export manifests; source snapshots are never patched" },
+  "selected": [
+    {
+      "package": "@deepseek-ai/dsh-client-ui-shortcuts",
+      "version": "0.2.2-rc.3",
+      "entry": "packages/client/ui-shortcuts/src/client/index.ts",
+      "requiredServices": ["shortcuts", "locale", "slots"],
+      "runtimeImports": ["react", "clsx", "ui-primitives", "store", "util-text-search"],
+      "transitiveExternal": { "fuzzysort": "4.0.2" },
+      "ui": "Original ShortcutsRow and ShortcutReference in the existing single React island; original shortcuts.open keyboard command",
+      "authority": "Original web shortcut preferences only, no model/session/backend configuration",
+      "unsupported": ["Full DSH settings shell", "Desktop keyboard bridge"]
+    },
+    {
+      "package": "@deepseek-ai/dsh-client-ui-file-actions",
+      "version": "0.2.2-rc.3",
+      "entry": "packages/client/ui-file-actions/src/client/index.ts",
+      "requiredServices": [],
+      "optionalServices": ["contextMenus", "slots", "locale", "remote", "remote.workspaceFiles", "remote.session"],
+      "runtimeImports": ["ui-primitives", "util-file-drag", "util-workspace-path", "mime"],
+      "transitiveExternal": { "mime": "4.1.1" },
+      "ui": "Download message in existing captured-message context menu invokes original fileActions.save with a bounded Blob reader",
+      "authority": "A download request, not saved-path confirmation. No remote or filesystem port exposed",
+      "unsupported": ["Workspace file context-menu contributions needing Remote services", "Desktop saveAs", "Native file/clipboard bridge"]
+    }
+  ],
+  "rejected": [
+    { "package": "ui-commands", "reason": "Requires inputTriggers, sessions, remote and remote.commands; no current EAP command-directory contract" },
+    { "package": "ui-theme", "reason": "Durable settings/configForms and global stylesheet authority would duplicate EAP configuration/theme ownership" },
+    { "package": "ui-settings", "reason": "Requires DSH remote.settings schema and settings form lifecycle, not interchangeable with Java settings" },
+    { "package": "ui-account-notifications", "reason": "Requires remote.account and accountUi, not a general browser toast contribution" }
+  ],
+  "nodeProviders": "Explicitly unsupported; no Host package substitutions, second Host or arbitrary package loading"
+}

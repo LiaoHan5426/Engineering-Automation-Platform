@@ -13,6 +13,8 @@ import { createRoot } from 'react-dom/client'
 // Built from the immutable, digest-checked source roster; no runtime URL loading.
 import {
   contextMenu,
+  shortcutReference,
+  fileActions,
   createClientModuleSystem,
   LocaleRuntime,
   ShortcutsService,
@@ -27,19 +29,33 @@ export interface MenuPorts {
   copyText(text: string): Promise<void>
   locale: string
   copyLabel: string
+  downloadLabel?: string
   failureLabel: string
 }
-import { browserManifest } from './graph'
+import { browserManifest, requireBrowserServices } from './graph'
+const shortcutsId = '@deepseek-ai/dsh-client-ui-shortcuts'
+const filesId = '@deepseek-ai/dsh-client-ui-file-actions'
 const menuId = '@deepseek-ai/dsh-client-ui-context-menu'
 
-/** A narrow shell.overlay/factory provider, owned by the existing EAP Chat lifetime. */
+const mountedElements = new WeakSet<HTMLElement>()
+
+/** Bounded original browser contributions, owned by the existing EAP Chat lifetime. */
 export async function mountContextMenu(element: HTMLElement, ports: MenuPorts) {
+  if (mountedElements.has(element)) throw new Error('DSH_DUPLICATE_MOUNT')
   const ctx = new Context()
   const root = createRoot(element)
+  mountedElements.add(element)
   let disposed = false
   const factories = new Map<string, unknown>()
   let rootProps: Record<string, unknown> = {}
-  const overlays = new Map<string, { definition: OverlayDefinition; component: OverlayComponent }>()
+  const overlays = new Map<
+    string,
+    {
+      definition: OverlayDefinition
+      component: OverlayComponent
+      instance: ReturnType<OverlayDefinition['store']['create']>
+    }
+  >()
   const locale = new LocaleRuntime(ctx)
   locale.setLocale(ports.locale.startsWith('zh') ? 'zh' : 'en')
   const render = () => {
@@ -49,7 +65,7 @@ export async function mountContextMenu(element: HTMLElement, ports: MenuPorts) {
         React.Fragment,
         null,
         ...[...overlays].map(([id, entry]) => {
-          const instance = entry.definition.store.create()
+          const instance = entry.instance
           const injected = entry.definition.inject()
           const useSnapshot = (source: Snapshot, select: Selector) =>
             select(
@@ -59,7 +75,12 @@ export async function mountContextMenu(element: HTMLElement, ports: MenuPorts) {
             key: id,
             ...rootProps,
             ...injected,
-            useCatalog: (select: Selector) => useSnapshot(injected.hooks.catalog, select),
+            ...Object.fromEntries(
+              Object.entries(injected.hooks).map(([name, source]) => [
+                'use' + name[0]!.toUpperCase() + name.slice(1),
+                (select: Selector) => useSnapshot(source, select),
+              ]),
+            ),
             useStore: (select: Selector) => useSnapshot(instance, select),
             actions: instance.actions,
             renderSlot: () => null,
@@ -87,16 +108,21 @@ export async function mountContextMenu(element: HTMLElement, ports: MenuPorts) {
       })
     },
     inject(name: string, register: () => () => void) {
-      if (name !== 'shell.overlay') throw new Error('DSH_UNSUPPORTED_SLOT')
+      if (!['shell.overlay', 'settings.general.item'].includes(name))
+        throw new Error('DSH_UNSUPPORTED_SLOT')
       ctx.effect(register, 'eap shell.overlay')
     },
     register(definition: OverlayDefinition, component: OverlayComponent) {
-      if (definition.name !== 'shell.overlay' || overlays.has(definition.id))
+      if (
+        !['shell.overlay', 'settings.general.item'].includes(definition.name) ||
+        overlays.has(definition.name + ':' + definition.id)
+      )
         throw new Error('DSH_UNSUPPORTED_OVERLAY')
-      overlays.set(definition.id, { definition, component })
+      const key = definition.name + ':' + definition.id
+      overlays.set(key, { definition, component, instance: definition.store.create() })
       render()
       return () => {
-        overlays.delete(definition.id)
+        overlays.delete(key)
         render()
       }
     },
@@ -110,6 +136,8 @@ export async function mountContextMenu(element: HTMLElement, ports: MenuPorts) {
       boot: browserManifest,
       staticModules: [
         { id: 'react', factory: () => React },
+        { id: shortcutsId, factory: () => shortcutReference },
+        { id: filesId, factory: () => fileActions },
         { id: '@deepseek-ai/cordis', factory: () => cordis },
         { id: '@deepseek-ai/dsh-client-locale', factory: () => ({ LocaleRuntime }) },
         { id: '@deepseek-ai/dsh-client-ui-layout', factory: () => ({ slots: slots }) },
@@ -130,11 +158,21 @@ export async function mountContextMenu(element: HTMLElement, ports: MenuPorts) {
   )
   try {
     await ctx.plugin(ShortcutsService).await()
-    const plugin = await modules.import(menuId + '/client')
-    for (const service of plugin.inject)
-      if (!(ctx as unknown as Record<string, unknown>)[service])
-        throw new Error(`DSH_MISSING_SERVICE:${service}`)
-    await ctx.plugin(plugin).await()
+    for (const id of [menuId, shortcutsId, filesId]) {
+      const plugin = await modules.import(id + '/client')
+      requireBrowserServices(plugin.inject, (service) => !!ctx.get(service))
+      await ctx.plugin(plugin).await()
+    }
+    const files = (
+      ctx as unknown as {
+        fileActions: {
+          save(
+            source: { url: string; name: string; read(signal: AbortSignal): Promise<Blob> },
+            mode: 'download',
+          ): Promise<unknown>
+        }
+      }
+    ).fileActions
     const menus = (ctx as unknown as { contextMenus: MenuService }).contextMenus
     if (!menus) throw new Error('DSH_MENU_ACTIVATION_FAILED')
     const unregister = menus.register({
@@ -148,6 +186,28 @@ export async function mountContextMenu(element: HTMLElement, ports: MenuPorts) {
           failureLabel: ports.failureLabel,
           run: () => ports.copyText(target.text),
         },
+        ...(ports.downloadLabel
+          ? [
+              {
+                id: 'download',
+                label: ports.downloadLabel,
+                failureLabel: ports.failureLabel,
+                run: async () => {
+                  await files.save(
+                    {
+                      url: '',
+                      name: 'message.txt',
+                      read: async (signal) => {
+                        signal.throwIfAborted()
+                        return new Blob([target.text], { type: 'text/plain;charset=utf-8' })
+                      },
+                    },
+                    'download',
+                  )
+                },
+              },
+            ]
+          : []),
       ],
     })
     return {
@@ -179,6 +239,7 @@ export async function mountContextMenu(element: HTMLElement, ports: MenuPorts) {
         unregister()
         await ctx.fiber.dispose()
         root.unmount()
+        mountedElements.delete(element)
         await modules.dispose()
       },
     }
@@ -186,6 +247,7 @@ export async function mountContextMenu(element: HTMLElement, ports: MenuPorts) {
     disposed = true
     await ctx.fiber.dispose()
     root.unmount()
+    mountedElements.delete(element)
     await modules.dispose()
     throw error
   }

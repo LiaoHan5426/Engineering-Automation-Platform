@@ -7,4 +7,9 @@ public interface ModelClientSource {
     ChatClient conversational(ModelConnectionSnapshot snapshot);
 
     ChatClient completion(ModelConnectionSnapshot snapshot);
+
+    /** Request-scoped client without shared memory; unavailable unless implemented explicitly. */
+    default ChatClient transientConversation(ModelConnectionSnapshot snapshot) {
+        throw new UnsupportedOperationException("Transient model client unavailable");
+    }
 }

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Button,
+  Checkbox,
   Collapse,
   Feedback,
   FileInput,
@@ -29,6 +30,7 @@ import {
   type ModelConnection,
   type PrototypeVersionRecord,
   type WorkspaceSource,
+  type WebSourceService,
 } from '@eap/runtime-client'
 import ModelConnectionEditor from '../../components/ModelConnectionEditor.vue'
 import { modelApi } from './chatService'
@@ -51,11 +53,20 @@ import {
   setExecutionMode,
   workbench,
 } from '../shell/workbench'
-import { acceptFiles, FILE_CAP, type IncomingFile } from './acceptFiles'
+import { acceptFiles, FILE_CAP } from './acceptFiles'
+import {
+  createAttachmentPreviews,
+  type ChatAttachmentStore,
+  type AttachmentOwner,
+} from './chatAttachments'
 
 const props = withDefaults(
   defineProps<{
     active?: boolean
+    attachmentStore?: ChatAttachmentStore
+    attachmentOwner?: AttachmentOwner
+    webSourceServices?: WebSourceService[]
+    webSourcesUnavailable?: boolean
     draft?: string
     toolMode?: AiToolMode
     context: TaskContext
@@ -77,6 +88,34 @@ const props = withDefaults(
     agentAvailable: false,
   },
 )
+const chosenWebService = computed(() =>
+  props.webSourceServices?.find(
+    (service) => service.serverId === props.context.webSources?.serverId,
+  ),
+)
+function selectWebService(serverId: string) {
+  if (
+    props.disabled ||
+    props.webSourcesUnavailable ||
+    (serverId && !props.webSourceServices?.some((service) => service.serverId === serverId))
+  )
+    return
+  emit('update', {
+    ...props.context,
+    webSources: { enabled: false, serverId, search: false, read: false },
+  })
+}
+function updateWebSource(key: 'enabled' | 'search' | 'read', value: boolean | unknown[]) {
+  if (typeof value !== 'boolean') return
+  const current = props.context.webSources
+  const service = chosenWebService.value
+  if (!current || !service || props.disabled || props.webSourcesUnavailable) return
+  if ((key === 'search' || key === 'read') && !service[key]) return
+  if (key === 'enabled' && value && !(current.search || current.read)) return
+  const next = { ...current, [key]: value }
+  if (!next.search && !next.read) next.enabled = false
+  emit('update', { ...props.context, webSources: next })
+}
 const reasoningSupported = computed(() => props.reasoningEfforts.length > 0)
 const shownEffort = computed(() =>
   props.context.reasoning !== 'default' && props.reasoningEfforts.includes(props.context.reasoning)
@@ -290,14 +329,6 @@ function change<K extends keyof TaskContext>(key: K, value: TaskContext[K]) {
   }
   emit('update', { ...props.context, [key]: value })
 }
-function applyIncoming(incoming: IncomingFile[]) {
-  const result = acceptFiles(props.context.files, incoming)
-  if (!result.ok) {
-    note.value = t(result.reason === 'media' ? 'task.pasteMedia' : 'task.fileLimit')
-    return
-  }
-  change('files', result.files)
-}
 function referenceSource(source: WorkspaceSource) {
   if (props.disabled || source.denial || !source.exists || !source.excerpt || !source.baseHash)
     return
@@ -318,43 +349,91 @@ function referenceSource(source: WorkspaceSource) {
   note.value = ''
   workspacePicker.value = false
 }
-async function describeFile(file: File): Promise<IncomingFile> {
-  const media =
-    file.type.startsWith('image/') ||
-    file.type.startsWith('video/') ||
-    /\.(png|jpe?g|webp|mp4)$/i.test(file.name)
-  return {
-    name: file.name || 'pasted.txt',
-    size: file.size,
-    text: media ? '' : await file.text(),
-    media,
+const attachmentBusy = ref(false)
+const attachmentImages = ref<Record<string, string>>({})
+let previewLease: ReturnType<typeof createAttachmentPreviews> | undefined
+watch(
+  () => [props.attachmentStore, props.context.attachmentRefs, props.active],
+  async () => {
+    previewLease?.dispose()
+    attachmentImages.value = {}
+    if (!props.attachmentStore || !props.active) return
+    const lease = createAttachmentPreviews(props.attachmentStore)
+    previewLease = lease
+    for (const ref of props.context.attachmentRefs ?? []) {
+      if (!ref.mime.startsWith('image/')) continue
+      try {
+        const preview = await lease.acquire({ ...ref, kind: 'image' })
+        if (previewLease === lease)
+          attachmentImages.value = { ...attachmentImages.value, [ref.id]: preview.url }
+        else preview.release()
+      } catch {
+        /* Missing originals remain visible and can be reselected. */
+      }
+    }
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => previewLease?.dispose())
+function attachmentError(error: unknown) {
+  note.value = t('richText.attachmentError', {
+    code: error instanceof Error ? error.message : 'attachment.storage',
+  })
+}
+async function selectFiles(files: File[]) {
+  if (!props.active || props.disabled || attachmentBusy.value || !files.length) return
+  if (!props.attachmentStore || !props.attachmentOwner) {
+    attachmentError(new Error('attachment.storageUnavailable'))
+    return
+  }
+  const store = props.attachmentStore,
+    owner = props.attachmentOwner,
+    origin = props.context
+  attachmentBusy.value = true
+  note.value = ''
+  try {
+    const refs = await store.select(files, owner)
+    if (
+      origin !== props.context ||
+      owner !== props.attachmentOwner ||
+      !props.active ||
+      props.disabled
+    ) {
+      for (const ref of refs) await store.remove(owner, ref.id)
+      return
+    }
+    emit('update', { ...origin, attachmentRefs: [...(origin.attachmentRefs ?? []), ...refs] })
+  } catch (error) {
+    attachmentError(error)
+  } finally {
+    attachmentBusy.value = false
+  }
+}
+async function removeAttachment(ref: { id: string }) {
+  if (!props.attachmentStore || !props.attachmentOwner || props.disabled) return
+  const origin = props.context,
+    owner = props.attachmentOwner
+  try {
+    await props.attachmentStore.remove(owner, ref.id)
+    if (origin === props.context && owner === props.attachmentOwner)
+      emit('update', {
+        ...origin,
+        attachmentRefs: (origin.attachmentRefs ?? []).filter((item) => item.id !== ref.id),
+      })
+  } catch (error) {
+    attachmentError(error)
   }
 }
 async function filesChanged(event: Event) {
-  note.value = ''
   const input = event.target as HTMLInputElement
-  try {
-    const origin = props.context
-    const incoming = await Promise.all(Array.from(input.files ?? []).map(describeFile))
-    if (origin === props.context && props.active && !props.disabled) applyIncoming(incoming)
-  } catch {
-    note.value = t('task.fileLimit')
-  } finally {
-    input.value = ''
-  }
+  await selectFiles(Array.from(input.files ?? []))
+  input.value = ''
 }
 async function onPaste(event: ClipboardEvent) {
   const files = Array.from(event.clipboardData?.files ?? [])
   if (!files.length || props.disabled) return
   event.preventDefault()
-  note.value = ''
-  try {
-    const origin = props.context
-    const incoming = await Promise.all(files.map(describeFile))
-    if (origin === props.context && props.active && !props.disabled) applyIncoming(incoming)
-  } catch {
-    note.value = t('task.fileLimit')
-  }
+  await selectFiles(files)
 }
 function importPrototype() {
   if (!props.active || props.disabled) return
@@ -666,6 +745,80 @@ async function loadVersions() {
         >{{ t('generation.removeTask') }}</Button
       >
     </div>
+    <div
+      v-if="context.attachmentRefs?.length"
+      class="composer-local-attachments"
+      data-testid="local-attachments"
+    >
+      <section v-for="attachment in context.attachmentRefs" :key="attachment.id">
+        <img
+          v-if="attachmentImages[attachment.id]"
+          :src="attachmentImages[attachment.id]"
+          :alt="attachment.name"
+          width="72"
+          height="72"
+        />
+        <span>{{ attachment.name }} · {{ attachment.size }} B</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          :disabled="disabled"
+          @click="removeAttachment(attachment)"
+          >{{ t('richText.removeAttachment') }}</Button
+        >
+      </section>
+    </div>
+    <Collapse data-testid="web-source-options">
+      <template #summary
+        >{{ t('richText.webTitle') }} ·
+        {{ context.webSources?.enabled ? t('richText.webOn') : t('richText.webOff') }}</template
+      >
+      <Feedback v-if="webSourcesUnavailable || !webSourceServices?.length" tone="info">{{
+        t('richText.webUnavailable')
+      }}</Feedback>
+      <label
+        >{{ t('richText.webService') }}
+        <Select
+          data-testid="web-source-server"
+          :model-value="context.webSources?.serverId ?? ''"
+          :disabled="disabled || webSourcesUnavailable || !webSourceServices?.length"
+          @update:model-value="selectWebService(String($event))"
+        >
+          <option value="">{{ t('richText.webSelect') }}</option>
+          <option
+            v-for="service in webSourceServices"
+            :key="service.serverId"
+            :value="service.serverId"
+          >
+            {{ service.serverId }}
+          </option>
+        </Select>
+      </label>
+      <Checkbox
+        :model-value="context.webSources?.search ?? false"
+        :disabled="disabled || webSourcesUnavailable || !chosenWebService?.search"
+        @update:model-value="updateWebSource('search', $event)"
+        >{{ t('richText.webSearch') }}</Checkbox
+      >
+      <Checkbox
+        :model-value="context.webSources?.read ?? false"
+        :disabled="disabled || webSourcesUnavailable || !chosenWebService?.read"
+        @update:model-value="updateWebSource('read', $event)"
+        >{{ t('richText.webRead') }}</Checkbox
+      >
+      <Checkbox
+        data-testid="web-source-enable"
+        :model-value="context.webSources?.enabled ?? false"
+        :disabled="
+          disabled ||
+          webSourcesUnavailable ||
+          !chosenWebService ||
+          !(context.webSources?.search || context.webSources?.read)
+        "
+        @update:model-value="updateWebSource('enabled', $event)"
+        >{{ t('richText.webEnable') }}</Checkbox
+      >
+    </Collapse>
     <slot name="draft" />
     <div class="task-context" data-testid="task-context">
       <div class="context-toolbar">
@@ -1030,7 +1183,7 @@ async function loadVersions() {
               <FileInput
                 ref="filesInput"
                 multiple
-                accept=".vue,.ts,.tsx,.js,.jsx,.json,.md,.txt,.sql,.java,.css,.html"
+                accept=".vue,.ts,.tsx,.js,.jsx,.json,.md,.txt,.sql,.java,.css,.html,.png,.jpg,.jpeg,.gif,.webp"
                 hidden
                 @change="filesChanged"
               />
@@ -1038,7 +1191,7 @@ async function loadVersions() {
                 type="button"
                 variant="secondary"
                 data-testid="upload-local-file"
-                :disabled="disabled"
+                :disabled="disabled || attachmentBusy"
                 @click="filesInput?.click()"
                 >{{ t('composerUi.uploadLocal') }}</Button
               >

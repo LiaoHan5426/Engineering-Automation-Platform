@@ -32,6 +32,19 @@ it('parses plan.updated through the production stream and rejects illegal item s
         new Response(
           [
             {
+              eventId: 'accepted',
+              executionId: uuid,
+              conversationId: uuid,
+              sequence: 0,
+              type: 'accepted',
+              protocolVersion: '1',
+              occurredAt: '2026-11-14T12:00:00Z',
+              text: '',
+              code: '',
+              status: 'RUNNING',
+              payload: { operationId: uuid, executionId: uuid },
+            },
+            {
               eventId: 'e1',
               executionId: uuid,
               conversationId: uuid,
@@ -65,18 +78,27 @@ it('parses plan.updated through the production stream and rejects illegal item s
   )
   const onEvent = vi.fn()
   const api = createChatApi('http://local/api')
-  await api.sendAiMessage(uuid, 'hello', 'none', undefined, { onEvent })
-  expect(onEvent.mock.calls[0]?.[0]).toMatchObject({
+  await api.sendAiMessage(uuid, request, { onEvent })
+  expect(onEvent.mock.calls.find(([event]) => event.type === 'plan.updated')?.[0]).toMatchObject({
     type: 'plan.updated',
     status: 'RUNNING',
     payload: plan(),
   })
   payload = { ...plan(), items: [{ ...plan().items[0], status: 'UNKNOWN' }] }
-  await expect(api.sendAiMessage(uuid, 'hello', 'none')).rejects.toMatchObject({
+  await expect(api.sendAiMessage(uuid, request)).rejects.toMatchObject({
     response: { data: { code: 'AI_RESPONSE_INVALID' } },
   })
 })
 const uuid = '11111111-1111-4111-8111-111111111111'
+const request = {
+  operationId: uuid,
+  expectedRevision: 0,
+  kind: 'send' as const,
+  parentMessageId: null,
+  targetMessageId: null,
+  message: 'hello',
+  toolMode: 'none' as const,
+}
 const plan = () => ({
   schemaVersion: 1,
   planId: uuid,

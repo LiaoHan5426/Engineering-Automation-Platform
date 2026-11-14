@@ -1,10 +1,28 @@
+import { contextBudgetFromError } from './contextBudgetView'
+import { ModelErrors } from '@eap/runtime-client'
+import {
+  createChatAttachmentStore,
+  createAttachmentPreviews,
+  type LocalAttachment,
+  type AttachmentOwner,
+} from './chatAttachments'
+import { apiStorageScope } from '../../lib/runtimeConfig'
+import { selectedPath, selectBranch, siblings, type BranchSelection } from './messageGraph'
+import {
+  validateChatGraph,
+  isChatExecutionStatusActive,
+  isChatExecutionStatusBlocking,
+  isChatExecutionStatus,
+  type ChatGraph,
+  type ChatGraphRequest,
+  type ChatGraphOperation,
+} from '@eap/runtime-client'
 import { createPlanObserver, type PlanObservation } from './planObserver'
 import type { ChatPlanSnapshot } from '@eap/runtime-client'
 import { AiToolMode, ChatErrors } from '@eap/runtime-client'
 
-import { hasWireValue } from '@eap/runtime-client'
 import { ChatExecutionStatus } from '@eap/runtime-client'
-import { AgentErrors, CodeErrors, ModelErrors } from '@eap/runtime-client'
+import { AgentErrors } from '@eap/runtime-client'
 import { computed, ref, watch } from 'vue'
 import type {
   AiConversationRecovery,
@@ -17,9 +35,12 @@ import type {
   TaskWorkingMemorySnapshot,
   CodeProposal,
 } from '@eap/runtime-client'
-import { contextBudgetFromError } from './contextBudgetView'
-import { runtimeLanguage } from '@eap/runtime-client'
-import { createChatHistoryWriter, readChatHistory, type ChatHistorySnapshot } from './chatHistory'
+import {
+  createChatHistoryWriter,
+  readChatHistory,
+  exportLegacyChatHistory,
+  type ChatHistorySnapshot,
+} from './chatHistory'
 
 export type ChatApi = {
   chatPlan?: (conversationId: string, executionId: string) => Promise<ChatPlanSnapshot | null>
@@ -46,11 +67,12 @@ export type ChatApi = {
     model?: string | null
     workingMemory?: TaskWorkingMemorySnapshot | null
   }>
+  webSources?: () => Promise<import('@eap/runtime-client').WebSourceService[]>
+  chatGraph: (id: string) => Promise<ChatGraph>
+  chatOperation: (id: string, operationId: string) => Promise<ChatGraphOperation>
   sendAiMessage: (
     id: string,
-    message: string,
-    toolMode: AiToolMode,
-    context?: TaskContext,
+    request: ChatGraphRequest,
     options?: {
       signal?: AbortSignal
       onEvent?: (event: {
@@ -66,7 +88,10 @@ export type ChatApi = {
       }) => void
     },
   ) => Promise<AiMessageResult>
-  cancelAiConversation?: (id: string) => Promise<{ cancelled: boolean; executionId: string }>
+  cancelAiExecution: (
+    id: string,
+    executionId: string,
+  ) => Promise<{ cancelled: boolean; executionId: string }>
   putWorkingMemory?: (
     id: string,
     body: {
@@ -93,6 +118,12 @@ export type ChatApi = {
 }
 
 export type ChatTurn = {
+  webSources?: import('@eap/runtime-client').WebSource[]
+  attachmentRefs?: TaskContext['attachmentRefs']
+  observationAvailable?: boolean
+  id?: string
+  parentId?: string | null
+  siblings?: string[]
   plan?: PlanObservation
   planningTask?: TaskContext['taskRef']
 
@@ -175,7 +206,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   let saved: ChatHistorySnapshot | null = null
   try {
     saved = readChatHistory(storage)
-    if (saved?.version === 1 && Array.isArray(saved.items))
+    if (saved?.version === 2 && Array.isArray(saved.items))
       history.value = saved.items.filter(
         (x: ConversationHistory) =>
           typeof x.id === 'string' && typeof x.title === 'string' && typeof x.draft === 'string',
@@ -183,10 +214,60 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   } catch {
     storageError.value = true
   }
+  const webSourceServices = ref<import('@eap/runtime-client').WebSourceService[]>([])
+  const webSourcesUnavailable = ref(false)
+  async function refreshWebSources() {
+    if (!api.webSources) return
+    try {
+      webSourceServices.value = await api.webSources()
+      webSourcesUnavailable.value = false
+    } catch {
+      webSourceServices.value = []
+      webSourcesUnavailable.value = true
+    }
+  }
   const opening = ref(false)
   const phase = ref<'loading' | 'ready' | 'offline'>('loading')
   const status = ref<AiStatus | null>(null)
   const conversationId = ref<string | null>(null)
+  const attachmentStores = new Map<string, ReturnType<typeof createChatAttachmentStore>>()
+  const attachmentStore = computed(() => {
+    const path = status.value?.workspacePath?.trim() || status.value?.authorizedRootPath?.trim()
+    if (!path) return undefined
+    const namespace = `${apiStorageScope}:${path}`
+    if (!attachmentStores.has(namespace))
+      attachmentStores.set(namespace, createChatAttachmentStore(namespace))
+    return attachmentStores.get(namespace)!
+  })
+  const attachmentOwner = computed<AttachmentOwner>(
+    () => `draft:${conversationId.value ?? 'scratch'}`,
+  )
+  const attachmentPreviews = computed(() =>
+    attachmentStore.value ? createAttachmentPreviews(attachmentStore.value) : undefined,
+  )
+  watch(conversationId, () => attachmentPreviews.value?.dispose())
+  const localRefs = (refs: TaskContext['attachmentRefs'] = []): LocalAttachment[] =>
+    refs.map((ref) => ({ ...ref, kind: ref.mime.startsWith('image/') ? 'image' : 'text' }))
+  async function attachFiles(files: readonly File[]) {
+    if (!attachmentStore.value) throw new Error('attachment.storageUnavailable')
+    const refs = await attachmentStore.value.select(files, attachmentOwner.value)
+    context.value = {
+      ...context.value,
+      attachmentRefs: [
+        ...(context.value.attachmentRefs ?? []),
+        ...refs.map(({ kind: _kind, ...ref }) => ref),
+      ],
+    }
+    return refs
+  }
+  async function removeAttachment(id: string) {
+    if (!attachmentStore.value) throw new Error('attachment.storageUnavailable')
+    await attachmentStore.value.remove(attachmentOwner.value, id)
+    context.value = {
+      ...context.value,
+      attachmentRefs: context.value.attachmentRefs?.filter((ref) => ref.id !== id),
+    }
+  }
   const workspaceLabel = ref('')
   const memoryNote = ref('')
   const workingMemory = ref<TaskWorkingMemorySnapshot | null>(null)
@@ -203,9 +284,13 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         () => api.chatPlan!(id, executionId),
         (value) => {
           const turns = transcripts.value[id]
-          if (!turns?.[index] || turns[index]?.executionId !== executionId) return
+          const currentIndex =
+            turns?.findIndex(
+              (turn) => turn.executionId === executionId && turn.role === 'assistant',
+            ) ?? -1
+          if (!turns || currentIndex < 0) return
           const next = [...turns]
-          next[index] = { ...next[index]!, plan: value }
+          next[currentIndex] = { ...next[currentIndex]!, plan: value }
           transcripts.value = { ...transcripts.value, [id]: next }
         },
         turn?.plan?.snapshot ?? null,
@@ -261,17 +346,93 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const pendingModel = ref('')
   const targetNotice = ref('')
   let ticket = 0
-  try {
-    if (saved?.version === 1 && saved.transcripts && typeof saved.transcripts === 'object') {
-      for (const item of history.value)
-        if (Array.isArray(saved.transcripts[item.id]))
-          transcripts.value[item.id] = saved.transcripts[item.id]!.map((turn) => ({
-            ...turn,
-            ...(turn.plan ? { plan: { ...turn.plan, authority: 'cache' as const } } : {}),
-          }))
+  const graphs = ref<Record<string, ChatGraph>>({})
+  const branches = ref<Record<string, BranchSelection>>(saved?.branches ?? {})
+  const pendingOperations = ref<Record<string, string>>(saved?.pendingOperations ?? {})
+  const scrollPreferences = ref<NonNullable<ChatHistorySnapshot['scroll']>>(saved?.scroll ?? {})
+  function setScrollPreference(preference: { follow: boolean; anchorMessageId?: string }) {
+    const id = conversationId.value
+    if (!id) return
+    scrollPreferences.value = { ...scrollPreferences.value, [id]: { ...preference } }
+    persist()
+  }
+  const graphUnavailable = ref(false)
+  const generationBlocking = computed(() => {
+    const id = conversationId.value
+    return (
+      !!id &&
+      (!!pendingOperations.value[id] ||
+        !!graphs.value[id]?.nodes.some((node) => isChatExecutionStatusBlocking(node.status)))
+    )
+  })
+  const canCancel = computed(() => {
+    const id = conversationId.value
+    return (
+      !!id &&
+      !!graphs.value[id]?.nodes.some(
+        (node) =>
+          node.role === 'assistant' &&
+          node.observationAvailable !== false &&
+          isChatExecutionStatusActive(node.status),
+      )
+    )
+  })
+  function projectGraph(id: string) {
+    const graph = graphs.value[id]
+    if (!graph) return
+    const previous = new Map((transcripts.value[id] ?? []).map((turn) => [turn.id, turn]))
+    transcripts.value = {
+      ...transcripts.value,
+      [id]: selectedPath(graph, branches.value[id] ?? {}).map((node) => ({
+        ...previous.get(node.id),
+        attachmentRefs: node.attachmentRefs,
+        observationAvailable: node.observationAvailable,
+        id: node.id,
+        parentId: node.parentId,
+        siblings: siblings(graph, node).map((item) => item.id),
+        role: node.role,
+        text: node.content,
+        executionId: node.executionId,
+        error: '',
+        status: node.status,
+        approval: '',
+        verification: '',
+        toolEvents: [],
+        artifactError: '',
+        artifacts: [],
+        ...(node.response ? { ...node.response, text: node.response.answer || node.content } : {}),
+        plan: previous.get(node.id)?.plan,
+      })),
     }
-  } catch {
-    storageError.value = true
+  }
+  const graphReadTickets = new Map<string, number>()
+  async function refreshGraph(id = conversationId.value) {
+    if (!id) return
+    const ticket = (graphReadTickets.get(id) ?? 0) + 1
+    graphReadTickets.set(id, ticket)
+    const graph = validateChatGraph(await api.chatGraph(id), id)
+    if (graphReadTickets.get(id) !== ticket) return
+    if (graphs.value[id] && graph.revision < graphs.value[id]!.revision) return
+    graphs.value = { ...graphs.value, [id]: graph }
+    projectGraph(id)
+    graphUnavailable.value = false
+  }
+  let branchEpoch = 0
+  function switchBranch(id: string) {
+    branchEpoch++
+    const conversation = conversationId.value
+    if (!conversation || !graphs.value[conversation]) return
+    branches.value = {
+      ...branches.value,
+      [conversation]: selectBranch(
+        graphs.value[conversation]!,
+        branches.value[conversation] ?? {},
+        id,
+      ),
+    }
+    projectGraph(conversation)
+    persist()
+    refreshPlan()
   }
   let restoration = saved ? { activeId: saved.activeId, scratch: saved.scratch } : null
   let scratch = saved?.scratch
@@ -288,9 +449,11 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const historyWriter = createChatHistoryWriter(
     storage,
     () => ({
-      version: 1,
+      version: 2,
       items: history.value,
-      transcripts: transcripts.value,
+      branches: branches.value,
+      scroll: scrollPreferences.value,
+      pendingOperations: pendingOperations.value,
       activeId: conversationId.value ?? undefined,
       scratch: conversationId.value ? scratch : { draft: draft.value, context: context.value },
     }),
@@ -301,7 +464,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   const persist = historyWriter.flush
   // Streaming turns are replaced immutably. Avoid a deep traversal and a full
   // synchronous serialization for every delta, while keeping edits durable.
-  watch(transcripts, historyWriter.schedule, { flush: 'sync' })
+  watch([branches, pendingOperations], persist, { deep: true, flush: 'sync' })
   watch([history, conversationId], persist, { deep: true, flush: 'sync' })
   watch(
     draft,
@@ -453,6 +616,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       if (!transcripts.value[created.conversationId]) {
         transcripts.value = { ...transcripts.value, [created.conversationId]: [] }
       }
+      await refreshGraph(created.conversationId)
       failure.value = ''
       return created
     } finally {
@@ -481,7 +645,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   }
 
   async function selectConversation(id: string) {
-    if (!transcripts.value[id]) return
+    if (!history.value.some((item) => item.id === id)) return
     if (conversationId.value === id) return recheckConversation()
     rememberScratch()
     selectionVersion++
@@ -540,6 +704,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         conversationRequests.set(id, request)
       }
       const live = await request
+      await refreshGraph(id)
       if (!active()) return false
       applyBinding(id, live)
       memoryNote.value = live.memory || memoryNote.value
@@ -563,11 +728,6 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     } finally {
       if (active()) checkingConversation.value = false
     }
-  }
-
-  function append(id: string, turn: ChatTurn) {
-    const existing = transcripts.value[id] ?? []
-    transcripts.value = { ...transcripts.value, [id]: [...existing, turn] }
   }
 
   let connectionsRequest: Promise<ModelConnectionList | undefined> | undefined
@@ -804,278 +964,431 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       expired.value ||
       history.value.find((x) => x.id === id)?.archived ||
       inflight.value[id] != null ||
-      !text.trim() ||
+      (!text.trim() && !requestContext.attachmentRefs?.length) ||
       pendingConnectionId.value
     )
       return
-    const entry = history.value.find((x) => x.id === id)
-    if (entry) {
-      if (!entry.title) entry.title = text.trim().slice(0, 50)
-      entry.updatedAt = new Date().toISOString()
+    await generate(id, 'send', null, text, requestContext, selectedToolMode)
+  }
+
+  const preparing = new Set<string>()
+  async function generate(
+    id: string,
+    kind: ChatGraphRequest['kind'],
+    targetId: string | null,
+    text: string,
+    requestContext = context.value,
+    mode = toolMode.value,
+  ) {
+    if (preparing.has(id)) return
+    preparing.add(id)
+    try {
+      await generatePrepared(id, kind, targetId, text, requestContext, mode)
+    } catch (error) {
+      if (conversationId.value === id)
+        failure.value = error instanceof Error ? error.message : 'failed'
+    } finally {
+      preparing.delete(id)
     }
-    if (entry) entry.context = JSON.parse(JSON.stringify(context.value)) as TaskContext
-    const requestMetadata = {
-      ...(planning && requestContext.taskRef
-        ? { planningTask: { ...requestContext.taskRef } }
-        : {}),
-      model: boundModel.value,
-      connectionName:
-        connections.value.find((item) => item.id === boundConnectionId.value)?.name ?? '',
-      reasoning: requestContext.reasoning,
+  }
+  async function generatePrepared(
+    id: string,
+    kind: ChatGraphRequest['kind'],
+    targetId: string | null,
+    text: string,
+    requestContext = context.value,
+    mode = toolMode.value,
+  ) {
+    if (
+      inflight.value[id] != null ||
+      pendingOperations.value[id] ||
+      reconnecting.value ||
+      changingConnection.value ||
+      checkingConversation.value ||
+      expired.value ||
+      pendingConnectionId.value
+    )
+      return
+    if (!graphs.value[id]) await refreshGraph(id)
+    const graph = graphs.value[id]!
+    if (graph.nodes.some((node) => isChatExecutionStatusBlocking(node.status))) {
+      failure.value = 'kept'
+      return
     }
-    const mode = selectedToolMode
-    const requestLanguage = runtimeLanguage()
+    const target = targetId ? graph.nodes.find((node) => node.id === targetId) : null
+    if (kind !== 'send' && !target) return
+    const path = selectedPath(graph, branches.value[id] ?? {})
+    const parent = kind === 'send' ? (path.at(-1)?.id ?? null) : target!.parentId
+    if (kind === 'send' && path.at(-1)?.role === 'user') return
+    const requestCopy = JSON.parse(JSON.stringify(requestContext)) as TaskContext
+    if (kind !== 'send') {
+      requestCopy.files = []
+      requestCopy.attachmentRefs = (
+        (kind === 'regenerate' ? graph.nodes.find((node) => node.id === parent) : target)
+          ?.attachmentRefs ?? []
+      ).map((ref) => ({ ...ref }))
+    }
+    const store = attachmentStore.value
+    // Old unsent text drafts are moved to local originals before the first new send.
+    if (requestCopy.files.length) {
+      if (!store) throw new Error('attachment.storageUnavailable')
+      const migrated = await store.select(
+        requestCopy.files.map(
+          (file) => new File([file.content], file.name, { type: 'text/plain' }),
+        ),
+        attachmentOwner.value,
+      )
+      requestCopy.attachmentRefs = [
+        ...(requestCopy.attachmentRefs ?? []),
+        ...migrated.map(({ kind: _kind, ...ref }) => ref),
+      ]
+      requestCopy.files = []
+      if (conversationId.value === id)
+        context.value = { ...context.value, files: [], attachmentRefs: requestCopy.attachmentRefs }
+    }
+    const ancestors = parent ? selectedPath(graph, selectBranch(graph, {}, parent)) : []
+    const parentIndex = ancestors.findIndex((node) => node.id === parent)
+    const historicalRefs = ancestors
+      .slice(0, parentIndex + 1)
+      .flatMap((node) => node.attachmentRefs ?? [])
+    const refs = [
+      ...new Map(
+        [...historicalRefs, ...(requestCopy.attachmentRefs ?? [])].map((ref) => [ref.id, ref]),
+      ).values(),
+    ]
+    const connection = connections.value.find(
+      (item) => item.id === history.value.find((item) => item.id === id)?.connectionId,
+    )
+    const model = connection?.models.find(
+      (item) => item.id === history.value.find((item) => item.id === id)?.model,
+    )
+    const transientAttachments = []
+    if (store && requestCopy.attachmentRefs?.length) {
+      await store.retain(`draft:${id}`, localRefs(requestCopy.attachmentRefs))
+      for (const ref of requestCopy.attachmentRefs) await store.remove('draft:scratch', ref.id)
+    }
+    if (refs.length) {
+      if (!store) throw new Error('attachment.storageUnavailable')
+      const prepared = await store.prepareSubmission(localRefs(refs), {
+        imageMimeTypes:
+          model?.supportsImageInput === true
+            ? ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+            : [],
+      })
+      for (const item of prepared) {
+        const bytes = new Uint8Array(await item.blob.arrayBuffer())
+        let binary = ''
+        for (const byte of bytes) binary += String.fromCharCode(byte)
+        const { kind: _kind, ...ref } = item.ref
+        transientAttachments.push({ ...ref, base64: btoa(binary) })
+      }
+    }
+    const operationId = crypto.randomUUID()
+    pendingOperations.value = { ...pendingOperations.value, [id]: operationId }
     const current = ++ticket
-    let receivedEvent = false
+    inflight.value = { ...inflight.value, [id]: current }
+    const request: ChatGraphRequest = {
+      operationId,
+      expectedRevision: graph.revision,
+      kind,
+      parentMessageId: parent,
+      targetMessageId: targetId,
+      message: text,
+      toolMode: mode,
+      context: requestCopy,
+      ...(transientAttachments.length ? { transientAttachments } : {}),
+    }
+    const generationSelectionVersion = selectionVersion
+    const generationBranchEpoch = branchEpoch
+    let operationSelected = false
+    let execution = ''
     let lastSequence = -1
-    let scopedExecution = ''
     const controller = new AbortController()
     abortControllers.value = { ...abortControllers.value, [id]: controller }
-    inflight.value = { ...inflight.value, [id]: current }
-    append(id, {
-      ...requestMetadata,
-      role: 'user',
-      text,
-      error: '',
-      status: '',
-      approval: '',
-      verification: '',
-      toolEvents: [],
-      artifactError: '',
-      artifacts: [],
-    })
-    const assistantIndex = transcripts.value[id]?.length ?? 0
-    append(id, {
-      ...requestMetadata,
-      role: 'assistant',
-      text: '',
-      error: '',
-      status: ChatExecutionStatus.RUNNING,
-      approval: '',
-      verification: '',
-      toolEvents: [],
-      artifactError: '',
-      artifacts: [],
-    })
-    try {
-      const result = await api.sendAiMessage(
-        id,
-        text,
-        mode,
-        {
-          ...requestContext,
-          files: requestContext.files.map((file) => ({ ...file })),
-        },
-        {
-          signal: controller.signal,
-          onEvent: (event) => {
-            if (inflight.value[id] !== current) return
-            if (event.conversationId && event.conversationId !== id) return
-            if (scopedExecution && event.executionId !== scopedExecution) return
-            if (event.sequence <= lastSequence) return
-            const sequenceGap = lastSequence >= 0 && event.sequence > lastSequence + 1
-            scopedExecution ||= event.executionId
-            lastSequence = event.sequence
-            receivedEvent = true
-            const turns = transcripts.value[id]
-            if (!turns || !turns[assistantIndex]) return
-            const next = [...turns]
-            const turn = { ...next[assistantIndex]! }
-            if (event.executionId) turn.executionId = event.executionId
-            if (event.type === 'answer.delta') turn.text = (turn.text || '') + (event.text || '')
-            if (event.type === 'tool') {
-              turn.toolEvents = [
-                ...turn.toolEvents,
-                {
-                  sequence: event.sequence,
-                  code: event.code || event.text,
-                },
-              ]
-            }
-            if (event.status) turn.status = event.status
-            if (event.type === 'error') turn.error = event.code || event.text || turn.error
-            if (event.message) {
-              turn.errorMessage = event.message
-              turn.errorLanguage = requestLanguage
-            }
-            next[assistantIndex] = turn
-            transcripts.value = { ...transcripts.value, [id]: next }
-            if (event.executionId) {
-              const observer = observePlan(id, assistantIndex, event.executionId)
-              if (event.type === 'plan.updated') observer?.event(event.payload)
-              if (sequenceGap) void observer?.refresh()
-            }
-          },
-        },
+    const selectOperation = async (requireBinding = false) => {
+      await refreshGraph(id)
+      const operation = graphs.value[id]?.operations.find(
+        (item) => item.operationId === operationId,
       )
-      if (inflight.value[id] !== current) return
-      if (entry && result.contextMemoryCleared) entry.contextMemoryCleared = true
-      const turns = transcripts.value[id] ? [...transcripts.value[id]!] : []
-      if (conversationId.value === id && result.contextBudget)
-        lastContextBudget.value = result.contextBudget
-      const streamedTurn = turns[assistantIndex]
-      // Only a confirmed successful result clears the failed draft.
-      const succeeded = result.status === ChatExecutionStatus.SUCCEEDED && !result.error
-      turns[assistantIndex] = {
-        ...requestMetadata,
-        role: 'assistant',
-        skillContext: result.skillContext,
-        contextMemoryCleared: result.contextMemoryCleared,
-        knowledgeContext: result.knowledgeContext,
-        knowledgeMemoryCleared: result.knowledgeMemoryCleared,
-        contextBudget: result.contextBudget ?? null,
-        plan: streamedTurn?.plan,
-        executionId: result.executionId || streamedTurn?.executionId,
-        proposal: result.proposal,
-        text: result.answer || (!succeeded ? streamedTurn?.text : '') || '',
-        error: result.error,
-        errorMessage: result.errorMessage ?? streamedTurn?.errorMessage,
-        errorLanguage: result.errorLanguage ?? streamedTurn?.errorLanguage,
-        status:
-          !result.status || result.status === ChatExecutionStatus.RUNNING
-            ? ChatExecutionStatus.UNKNOWN
-            : result.status,
-        approval: result.approval,
-        verification: result.verification,
-        toolEvents: result.toolEvents?.length
-          ? result.toolEvents
-          : (streamedTurn?.toolEvents ?? []),
-        artifactError: result.artifactError,
-        artifacts: result.artifacts ?? [],
+      if (!operation && requireBinding) throw new Error('INVALID_CHAT_GRAPH')
+      if (operation) {
+        execution = operation.executionId
+        if (requestCopy.attachmentRefs?.length && store)
+          await store.retain(
+            `message:${operation.userMessageId}`,
+            localRefs(requestCopy.attachmentRefs),
+          )
+        if (!operationSelected && generationBranchEpoch === branchEpoch)
+          branches.value = {
+            ...branches.value,
+            [id]: selectBranch(
+              graphs.value[id]!,
+              branches.value[id] ?? {},
+              operation.assistantMessageId,
+            ),
+          }
+        operationSelected = true
+        projectGraph(id)
       }
-      transcripts.value = { ...transcripts.value, [id]: turns }
-      const executionId = turns[assistantIndex]?.executionId
-      if (executionId) {
-        const observer = observePlan(id, assistantIndex, executionId)
-        if (result.plan) observer?.event(result.plan)
-        void observer?.refresh()
-      }
-      if (api.aiConversation && conversationId.value === id) {
+    }
+    let eventQueue = Promise.resolve()
+    try {
+      const result = await api.sendAiMessage(id, request, {
+        signal: controller.signal,
+        onEvent(event) {
+          eventQueue = eventQueue
+            .then(async () => {
+              if (
+                inflight.value[id] !== current ||
+                event.conversationId !== id ||
+                event.sequence <= lastSequence ||
+                (execution && event.executionId !== execution)
+              )
+                return
+              // Server graph confirms the operation/execution association before any event mutates a turn.
+              if (!graphs.value[id]?.operations.some((item) => item.operationId === operationId))
+                await selectOperation()
+              const operation = graphs.value[id]?.operations.find(
+                (item) => item.operationId === operationId,
+              )
+              if (!operation) return
+              if (event.executionId !== operation.executionId) return
+              execution = operation.executionId
+              lastSequence = event.sequence
+              const node = graphs.value[id]?.nodes.find(
+                (item) => item.id === operation.assistantMessageId,
+              )
+              if (!node) return
+              if (event.type === 'answer.delta' && !node.response) node.content += event.text || ''
+              if (event.status && isChatExecutionStatus(event.status)) node.status = event.status
+              projectGraph(id)
+              const index = transcripts.value[id]?.findIndex((turn) => turn.id === node.id) ?? -1
+              if (index >= 0) {
+                if (event.type === 'reasoning.delta') {
+                  const turns = [...transcripts.value[id]!]
+                  turns[index] = {
+                    ...turns[index]!,
+                    reasoning: (turns[index]!.reasoning ?? '') + (event.text || ''),
+                  }
+                  transcripts.value = { ...transcripts.value, [id]: turns }
+                }
+                const observer = observePlan(id, index, execution)
+                if (event.type === 'plan.updated') observer?.event(event.payload)
+              }
+            })
+            .catch(() => {
+              graphUnavailable.value = true
+            })
+        },
+      })
+      await eventQueue
+      await selectOperation(true)
+      if (api.aiConversation) {
         try {
           const live = await api.aiConversation(id)
-          if (inflight.value[id] === current && conversationId.value === id) {
-            workingMemory.value = live.workingMemory ?? workingMemory.value
-          }
+          if (conversationId.value === id && selectionVersion === generationSelectionVersion)
+            workingMemory.value = live.workingMemory ?? null
         } catch {
-          /* association refresh is best-effort; send result already applied */
+          /* The generation is confirmed; retain the last observed memory snapshot. */
         }
       }
-      if (succeeded) {
-        if (entry && entry.draft === text) entry.draft = ''
+      const next = { ...pendingOperations.value }
+      delete next[id]
+      pendingOperations.value = next
+      const entry = history.value.find((item) => item.id === id)
+      if (entry) {
+        entry.updatedAt = new Date().toISOString()
+        entry.title ||= text.slice(0, 50)
+        if (result.contextMemoryCleared) entry.contextMemoryCleared = true
+        if (result.knowledgeMemoryCleared) entry.knowledgeMemoryCleared = true
+      }
+      if (kind === 'send' && result.status === ChatExecutionStatus.SUCCEEDED && !result.error) {
+        const sentRefs = requestCopy.attachmentRefs ?? []
+        if (store && sentRefs.length) {
+          const currentIds = (context.value.attachmentRefs ?? []).map((ref) => ref.id).join(',')
+          if (conversationId.value === id && currentIds === sentRefs.map((ref) => ref.id).join(','))
+            context.value = { ...context.value, attachmentRefs: [] }
+          if (
+            entry?.context?.attachmentRefs?.map((ref) => ref.id).join(',') ===
+            sentRefs.map((ref) => ref.id).join(',')
+          )
+            entry.context = { ...entry.context, attachmentRefs: [] }
+          for (const ref of sentRefs) await store.remove(`draft:${id}`, ref.id)
+        }
+        if (entry?.draft === text) entry.draft = ''
         if (conversationId.value === id && draft.value === text) draft.value = ''
-        if (conversationId.value === id) failure.value = ''
       }
-      if (conversationId.value === id && !succeeded)
-        failure.value =
-          result.error === ModelErrors.AI_CANCELLED
-            ? 'cancelled'
-            : result.error === CodeErrors.CODE_PROPOSAL_TOO_LARGE
-              ? 'generation-too-large'
-              : result.error === ChatErrors.CONTEXT_BUDGET_EXCEEDED ||
-                  result.error === 'TASK_CONTEXT_TOO_LARGE'
-                ? 'context-budget-exceeded'
-                : 'kept'
+      if (conversationId.value === id) {
+        lastContextBudget.value = result.contextBudget ?? null
+        failure.value = result.error
+          ? (generationFailure({ response: { data: { code: result.error } } }) ?? 'kept')
+          : result.status === ChatExecutionStatus.SUCCEEDED
+            ? ''
+            : 'kept'
+      }
     } catch (error) {
-      if (inflight.value[id] !== current) return
-      const detail = (error as { response?: { data?: { code?: string } } } | null)?.response?.data
-        ?.code
-      const currentTurns = transcripts.value[id] ?? []
-      // A rejected HTTP request has no accepted turn. Once streaming starts (or the
-      // transport outcome is uncertain), keep its evidence rather than erasing it.
-      if (
-        !receivedEvent &&
-        httpStatus(error) != null &&
-        detail !== ModelErrors.AI_RESPONSE_INCOMPLETE
-      ) {
-        transcripts.value = {
-          ...transcripts.value,
-          [id]: currentTurns.slice(0, assistantIndex - 1),
-        }
-      } else {
-        const next = [...currentTurns]
-        const turn = next[assistantIndex]
-        if (turn) {
-          next[assistantIndex] = {
-            ...turn,
-            status: hasWireValue(
-              [
-                ChatExecutionStatus.SUCCEEDED,
-                ChatExecutionStatus.FAILED,
-                ChatExecutionStatus.CANCELLED,
-                ChatExecutionStatus.REFUSED,
-                ChatExecutionStatus.UNKNOWN,
-              ],
-              turn.status,
-            )
-              ? turn.status
-              : ChatExecutionStatus.UNKNOWN,
-            error: turn.error || detail || ModelErrors.AI_RESPONSE_INCOMPLETE,
+      await eventQueue
+      const status = httpStatus(error)
+      const data = (
+        error as {
+          response?: {
+            data?: {
+              code?: string
+              error?: string
+              contextMemoryCleared?: boolean
+              knowledgeMemoryCleared?: boolean
+            }
           }
-          transcripts.value = { ...transcripts.value, [id]: next }
         }
-      }
-      if ((error as { name?: string } | null)?.name === 'AbortError') {
-        // Aborting the client wait does not acknowledge backend termination.
-        if (conversationId.value === id) failure.value = 'failed'
-        return
-      }
+      )?.response?.data
+      const entry = history.value.find((item) => item.id === id)
+      if (entry && data?.contextMemoryCleared === true) entry.contextMemoryCleared = true
+      if (entry && data?.knowledgeMemoryCleared === true) entry.knowledgeMemoryCleared = true
+      const observed = contextBudgetFromError(error)
+      if (conversationId.value === id && observed) lastContextBudget.value = observed
+      const accepted =
+        execution || graphs.value[id]?.operations.some((item) => item.operationId === operationId)
+      const expiredBeforeAcceptance =
+        !accepted &&
+        status === 404 &&
+        (data?.code ?? data?.error) === ChatErrors.UNKNOWN_CONVERSATION
+      if (expiredBeforeAcceptance && entry) entry.expired = true
       if (
-        entry &&
-        (error as { response?: { data?: { contextMemoryCleared?: unknown } } } | null)?.response
-          ?.data?.contextMemoryCleared === true
-      )
-        entry.contextMemoryCleared = true
-      if (
-        entry &&
-        (error as { response?: { data?: { knowledgeMemoryCleared?: unknown } } } | null)?.response
-          ?.data?.knowledgeMemoryCleared === true
-      )
-        entry.knowledgeMemoryCleared = true
-      const budget = contextBudgetFromError(error)
-      if (conversationId.value === id && budget) lastContextBudget.value = budget
-      if (httpStatus(error) === 404 && !generationFailure(error)) {
-        if (conversationId.value === id) await recheckConversation()
+        expiredBeforeAcceptance &&
+        conversationId.value === id &&
+        selectionVersion === generationSelectionVersion
+      ) {
+        expired.value = true
+        sessionUnavailable.value = false
       }
-      if (conversationId.value === id)
-        failure.value =
-          generationFailure(error) ??
-          ((error as { response?: { data?: { code?: string } } } | null)?.response?.data?.code ===
-          ModelErrors.AI_CANCELLED
-            ? 'cancelled'
-            : httpStatus(error) === 409
-              ? 'target-changed'
-              : httpStatus(error) === 403
-                ? 'model-unavailable'
-                : httpStatus(error) === 503
-                  ? 'not-configured'
-                  : 'failed')
-    } finally {
-      const nextAbort = { ...abortControllers.value }
-      delete nextAbort[id]
-      abortControllers.value = nextAbort
-      if (inflight.value[id] === current) {
-        const next = { ...inflight.value }
+      // A definite HTTP rejection before acceptance is distinct from losing an accepted response.
+      if (
+        status &&
+        !accepted &&
+        ((status >= 400 && status < 500) ||
+          (data?.code ?? data?.error) === ModelErrors.AI_NOT_CONFIGURED)
+      ) {
+        const next = { ...pendingOperations.value }
         delete next[id]
-        inflight.value = next
+        pendingOperations.value = next
       }
+      try {
+        await refreshGraph(id)
+      } catch {
+        graphUnavailable.value = true
+      }
+      if (conversationId.value === id) {
+        const code = data?.code ?? data?.error
+        failure.value = expiredBeforeAcceptance
+          ? ''
+          : (generationFailure(error) ??
+            (code === ModelErrors.AI_NOT_CONFIGURED
+              ? 'not-configured'
+              : code === ChatErrors.CONTEXT_BUDGET_EXCEEDED
+                ? 'context-budget-exceeded'
+                : pendingOperations.value[id]
+                  ? 'response-uncertain'
+                  : 'failed'))
+      }
+    } finally {
+      const next = { ...inflight.value }
+      delete next[id]
+      inflight.value = next
+      const abort = { ...abortControllers.value }
+      delete abort[id]
+      abortControllers.value = abort
       persist()
     }
   }
-
+  async function recoverOperation() {
+    const id = conversationId.value
+    const operationId = id && pendingOperations.value[id]
+    if (!id || !operationId) return
+    try {
+      const operation = await api.chatOperation(id, operationId)
+      await refreshGraph(id)
+      branches.value = {
+        ...branches.value,
+        [id]: selectBranch(
+          graphs.value[id]!,
+          branches.value[id] ?? {},
+          operation.assistantMessageId,
+        ),
+      }
+      projectGraph(id)
+      const next = { ...pendingOperations.value }
+      delete next[id]
+      pendingOperations.value = next
+      failure.value = ''
+    } catch {
+      failure.value = 'response-uncertain'
+    }
+  }
+  async function editMessage(id: string, text: string) {
+    const conversation = conversationId.value
+    if (
+      !conversation ||
+      (!text.trim() &&
+        !graphs.value[conversation]?.nodes.find((node) => node.id === id)?.attachmentRefs
+          ?.length) ||
+      graphs.value[conversation]?.nodes.find((node) => node.id === id)?.role !== 'user'
+    )
+      return
+    await generate(conversation, 'edit', id, text)
+  }
+  async function regenerateMessage(id: string) {
+    const conversation = conversationId.value
+    if (
+      !conversation ||
+      graphs.value[conversation]?.nodes.find((node) => node.id === id)?.role !== 'assistant'
+    )
+      return
+    await generate(conversation, 'regenerate', id, '')
+  }
   async function cancelSend() {
     const id = conversationId.value
-    if (!id || inflight.value[id] == null) return
-    abortControllers.value[id]?.abort()
-    if (api.cancelAiConversation) {
-      try {
-        await api.cancelAiConversation(id)
-      } catch {
-        // Local abort still stops the UI spinner even if the cancel POST fails.
-      }
+    if (!id) return
+    const graph = graphs.value[id]
+    const operationId = pendingOperations.value[id]
+    const operation = graph?.operations.find((item) => item.operationId === operationId)
+    const executionId =
+      operation?.executionId ??
+      graph?.nodes.find((node) => isChatExecutionStatusActive(node.status))?.executionId
+    if (!executionId) {
+      await recoverOperation()
+      return
+    }
+    try {
+      await api.cancelAiExecution(id, executionId)
+      await refreshGraph(id)
+    } catch {
+      failure.value = 'response-uncertain'
     }
   }
 
   return {
+    legacyHistoryExport: () => exportLegacyChatHistory(storage),
+    attachmentStore,
+    attachmentOwner,
+    attachmentPreviews,
+    attachFiles,
+    removeAttachment,
+    webSourceServices,
+    webSourcesUnavailable,
+    refreshWebSources,
+    scrollPreferences,
+    setScrollPreference,
+    graphs,
+    branches,
+    graphUnavailable,
+    generationBlocking,
+    canCancel,
+    pendingOperations,
+    refreshGraph,
+    switchBranch,
+    editMessage,
+    regenerateMessage,
+    recoverOperation,
     flushPersistence: persist,
     inflight,
     history,

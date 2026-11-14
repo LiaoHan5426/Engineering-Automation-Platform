@@ -39,14 +39,29 @@ import org.springframework.ai.tool.annotation.Tool;
 public final class EngineeringChatService {
     private static final tools.jackson.databind.json.JsonMapper JSON = tools.jackson.databind.json.JsonMapper.builder()
             .enable(tools.jackson.core.StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();
-    public record Request(String principal, UUID conversationId, Path workspace, boolean gitAllowed, String message) {
+    public record Request(String principal, UUID conversationId, Path workspace, boolean gitAllowed,
+                          @com.fasterxml.jackson.annotation.JsonIgnore String message,
+                          @com.fasterxml.jackson.annotation.JsonIgnore org.springframework.ai.chat.messages.UserMessage media,
+                          @com.fasterxml.jackson.annotation.JsonIgnore List<org.springframework.ai.chat.messages.Message> history) {
+        public Request(String principal, UUID conversationId, Path workspace, boolean gitAllowed, String message) {
+            this(principal, conversationId, workspace, gitAllowed, message, null, List.of());
+        }
+        @Override public String toString() { return "EngineeringChatRequest[" + conversationId + "]"; }
         public Request {
+            history = history == null ? List.of() : List.copyOf(history);
+            if (media != null && !Objects.equals(media.getText(), message)) throw new IllegalArgumentException("Media text mismatch");
             if (principal == null || principal.isBlank() || conversationId == null || workspace == null
-                    || message == null || message.isBlank() || message.length() > 64000)
+                    || message == null || message.isBlank() && (media == null || media.getMedia().isEmpty()) || message.length() > 64000)
                 throw new IllegalArgumentException("Invalid chat request");
         }
     }
-    public record Outcome(UUID executionId, String answer, String error, CliExecution.Result execution) {}
+    public record Outcome(UUID executionId, String answer, String error, CliExecution.Result execution,
+                          List<com.lh.eap.runtime.mcp.client.McpWebService.Source> webSources) {
+        public Outcome { webSources = List.copyOf(webSources); }
+        public Outcome(UUID executionId, String answer, String error, CliExecution.Result execution) {
+            this(executionId, answer, error, execution, List.of());
+        }
+    }
     private final ChatClient client;
     private final CapabilityHandlerRegistry registry;
     private final RuntimeWorkspace runtime;
@@ -108,6 +123,11 @@ public final class EngineeringChatService {
     }
     Outcome chat(Request request, boolean registerGitTool, ChatClient selected, TaskContext context,
             UUID executionId, BooleanSupplier cancelled, Consumer<String> delta, CodeSourceTool sources, ChatPlanTool plan) {
+        return chat(request, registerGitTool, selected, context, executionId, cancelled, delta, sources, plan, null);
+    }
+    Outcome chat(Request request, boolean registerGitTool, ChatClient selected, TaskContext context,
+            UUID executionId, BooleanSupplier cancelled, Consumer<String> delta, CodeSourceTool sources, ChatPlanTool plan,
+            McpWebChatTool web) {
         var active = selected != null ? selected : client;
         var id = executionId == null ? UUID.randomUUID() : executionId;
         var started = Instant.now();
@@ -125,13 +145,22 @@ public final class EngineeringChatService {
             } else {
                 // Length prefix avoids ambiguous principal/conversation concatenation.
                 String conversation = memoryKey(request.principal(), request.conversationId());
-                var prompt = active.prompt().system(context.systemInstructions() + (sources == null ? "" : sources.instructions()) + (plan == null ? "" : plan.instructions())).user(request.message());
+                var prompt = active.prompt().system(context.systemInstructions() + (sources == null ? "" : sources.instructions()) + (plan == null ? "" : plan.instructions()) + (web == null ? "" : web.instructions()));
+                if (request.media() == null) prompt = prompt.user(request.message());
+                else {
+                    // The selected client must be ModelConnections.transientChatClient: no shared memory advisor.
+                    if (selected == null) throw new IllegalArgumentException("Transient client required");
+                    var messages = new ArrayList<org.springframework.ai.chat.messages.Message>(request.history());
+                    messages.add(request.media());
+                    prompt = prompt.messages(messages);
+                }
                 if (!context.reasoning().equals("default")) {
                     prompt = prompt.options(OpenAiChatOptions.builder()
                             .reasoningEffort(context.reasoning()));
                 }
                 if (registerGitTool && !context.mode().equals(TaskMode.PLAN.wire())) prompt = prompt.tools(tool.callback());
                 if (sources != null) prompt = prompt.tools(sources);
+                if (web != null) prompt = prompt.tools(web.callbacks());
                 if (plan != null && !context.mode().equals(TaskMode.PLAN.wire())) prompt = prompt.tools(plan);
                 var prepared = prompt.advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation));
                 ChatResponse response;
@@ -193,6 +222,10 @@ public final class EngineeringChatService {
                             .equals(response.getResult().getMetadata().getFinishReason())) tool.error = ToolErrors.TOOL_CALL_LIMIT.code();
                 }
                 if (!tool.error.isEmpty()) error = tool.error;
+                if (web != null && error.isEmpty()) {
+                    error = web.completionError();
+                    if (!error.isEmpty()) { answer = ""; status = CliExecution.Status.FAILED; }
+                }
                 if (sources != null && error.isEmpty()) {
                     error = sources.completionError();
                     if (!error.isEmpty()) { answer = ""; status = CliExecution.Status.FAILED; }
@@ -207,10 +240,14 @@ public final class EngineeringChatService {
                 case "AI_TIMED_OUT" -> CliExecution.Status.TIMED_OUT;
                 default -> CliExecution.Status.FAILED;
             };
+        } finally {
+            if (web != null) web.close();
         }
         // A model answer after a failed tool does not make the requested execution successful.
         if (status == CliExecution.Status.SUCCEEDED && !error.isEmpty()) status = CliExecution.Status.FAILED;
         if (sources != null) tool.events.addAll(sources.events());
+        if (web != null) for (var event : web.events()) tool.events.add(new CliExecution.ReceivedLine(
+                tool.events.size() + 1, event.receivedAt(), event.text()));
         var ended = Instant.now();
         var trace = new CliExecution.Trace(Map.of("started", started, "completed", ended), tool.events, "", false, tool.error);
         var refs = new ArrayList<CliExecution.Artifact>();
@@ -233,7 +270,7 @@ public final class EngineeringChatService {
                 null, error, List.of("spring-ai", "chat"), Set.of(), "", "",
                 List.of(new CliExecution.Event(id, 1, started, CliExecution.Status.RUNNING),
                         new CliExecution.Event(id, 2, ended, status)), refs, trace, artifactError);
-        return new Outcome(id, answer, error, result);
+        return new Outcome(id, answer, error, result, web == null ? List.of() : web.sources());
     }
 
     private static List<String> failureTypes(Throwable failure) {

@@ -30,6 +30,7 @@
     "@types/nprogress": "catalog:tooling",
     "@vitejs/plugin-vue": "catalog:tooling",
     "axios": "catalog:frontend",
+    "fake-indexeddb": "6.2.4",
     "tailwindcss": "catalog:frontend",
     "typescript": "catalog:tooling",
     "vite": "catalog:tooling",

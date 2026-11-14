@@ -23,6 +23,11 @@ public final class SpringAiModelClientSource implements ModelClientSource {
     }
 
     @Override
+    public ChatClient transientConversation(ModelConnectionSnapshot snapshot) {
+        return ChatClients.createTransientClient(ChatClient.builder(model(snapshot)));
+    }
+
+    @Override
     public ChatClient completion(ModelConnectionSnapshot snapshot) {
         return ChatClient.builder(new CompletionChatModel(model(snapshot))).build();
     }

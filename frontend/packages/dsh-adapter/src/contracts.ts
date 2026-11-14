@@ -7,7 +7,7 @@ export interface Store extends Snapshot {
   actions: Record<string, (...args: never[]) => unknown>
 }
 export interface Injection {
-  hooks: { catalog: Snapshot }
+  hooks: Record<string, Snapshot>
   [key: string]: unknown
 }
 export interface OverlayDefinition {

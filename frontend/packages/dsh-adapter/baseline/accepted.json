@@ -83,7 +83,31 @@
     "packages/client/shortcuts/src/client/native.ts": "bbe60a71ecc79e3a1e21ed9deae1906d79a2755c345cf7abe1fac1fb66d57ec9",
     "packages/client/shortcuts/src/client/registry.ts": "73c5e66a8e49235537a893cd1273321932ca69afab0a98da6c6641715756b47e",
     "packages/client/shortcuts/src/client/storage.ts": "1e59436c24f4c5652fbb3b98a301eccec07fda28ee736c427d9bb363e4ca3989",
-    "packages/client/store/src/index.ts": "6969ed123830868c44d90b664cd40d81d4f6a8fd18245a695fdc3cca38c9da08"
+    "packages/client/store/src/index.ts": "6969ed123830868c44d90b664cd40d81d4f6a8fd18245a695fdc3cca38c9da08",
+    "packages/client/ui-shortcuts/package.json": "a24406653e839a1b6dc3292832a480023ae2b26b6170abba6f9795163ac755e3",
+    "packages/client/ui-shortcuts/src/client/store.ts": "51faddc0626a4516ef1461603874d58cb2ea4e8668d9ce9f45a6ae5682984e7d",
+    "packages/client/ui-shortcuts/src/client/locales.ts": "cdca3894ed33cffd9ac1ff0b5a5036a87983861ece01e518ea467cb6ed0f2338",
+    "packages/client/ui-shortcuts/src/client/index.ts": "0cc762d18b693c7a340eeec59d6e449c65977f2ab5a414641258372534fcf634",
+    "packages/client/ui-shortcuts/src/client/fixed.ts": "ace141f708be4bdcdc0f8e1ba20e275bd16f2816bcd293134d350beb053a6cda",
+    "packages/client/ui-shortcuts/src/client/feedback.ts": "0615769402db6ee6dc854fc37f4a4ae570a8a1763383a05d5be87f1b0daa8d5c",
+    "packages/client/ui-shortcuts/src/client/Reference.tsx": "9d03ce5b99855163ec08d7145cd3bffd165b8475846ec543f5576292087a93d4",
+    "packages/client/ui-shortcuts/src/client/Reference.module.css": "46cd9328084184f4306a35f28f6209e36fa7dbe9820ca029a6da5ad36f1f4c96",
+    "packages/client/ui-shortcuts/src/client/Icons.tsx": "5dd2988c9ba7335c0c9f0c56883db419a44b44faf820259cd40f77c8a6faabd5",
+    "packages/client/ui-shortcuts/src/client/Editor.tsx": "8674385dc730bfaa79552e170efff9c06620f1af9b02533f96f230bddf103d25",
+    "packages/client/ui-file-actions/package.json": "ffd8208849e2a8238d5758753688f4bcf4f8037834f6cf47abc18f39963cb03d",
+    "packages/client/ui-file-actions/src/client/locales.ts": "05ecb65a72c97ae12016b6301ce91d9bdf6f2143a56b288e2439c8148d801584",
+    "packages/client/ui-file-actions/src/client/index.ts": "06a30294ab124ce5eae9c2a9a10218fcf3e6ffae9af5d3301c8f6d3a2b214eb9",
+    "packages/client/ui-file-actions/src/client/files.ts": "dd9ccda6f76ddbd07486f6c6658f907647e99bce9101eb50c863be174a6c3695",
+    "packages/client/ui-file-actions/src/client/context-menus.tsx": "565cd803f1b353719239adb88e0c406a44c6c2dd3708a15b3ef133de8d7c5733",
+    "packages/client/ui-primitives/src/Modal.tsx": "93f81657161f56f789771552462dee152004ec70444566101f3988327891220b",
+    "packages/client/ui-primitives/src/Modal.module.css": "a6d30759ed94a511d106b978e629911dca55f33673ce35f388aeccacaefe3bb2",
+    "packages/util/text-search/package.json": "b31c48f398ff455f21378f1f5abbd580532fe93e177e9298e13ac66edba33f7e",
+    "packages/util/text-search/src/index.ts": "bad1375ced3e83aeb27e0417877409b88487e35d2fd2bef885696ccdc19a2c67",
+    "packages/util/file-drag/package.json": "77bd8bed5c601a406be42193f398e7ff464c5c9382b14156ca53a824fc63246c",
+    "packages/util/file-drag/src/index.ts": "3503a00e43ee6e056af9ed9bf1ad8784241eb153d8b1e49214243fb4efff995f",
+    "packages/util/workspace-path/package.json": "722515287c5512acef4534a2bf1e3223a7f269e408b1b06b3ddefa3d369279e9",
+    "packages/util/workspace-path/src/index.ts": "4969445e5b05d51644a85f7ae0a76d86432fd8ba43906085484cfd154ac341d4",
+    "packages/util/workspace-path/src/file-address.ts": "e54979d7970c09a777d9917a098ab0de8768c60dd198a97167480ffde9bc8f7c"
   },
   "packages": {
     "packages/util/crypto/package.json": "0.2.2-rc.3",
@@ -93,6 +117,11 @@
     "packages/client/ui-primitives/package.json": "0.2.2-rc.3",
     "packages/client/ui-context-menu/package.json": "0.2.2-rc.3",
     "packages/client/locale/package.json": "0.2.2-rc.3",
-    "packages/client/modules/package.json": "0.2.2-rc.3"
+    "packages/client/modules/package.json": "0.2.2-rc.3",
+    "packages/client/ui-shortcuts/package.json": "0.2.2-rc.3",
+    "packages/client/ui-file-actions/package.json": "0.2.2-rc.3",
+    "packages/util/text-search/package.json": "0.2.2-rc.3",
+    "packages/util/file-drag/package.json": "0.2.2-rc.3",
+    "packages/util/workspace-path/package.json": "0.2.2-rc.3"
   }
 }

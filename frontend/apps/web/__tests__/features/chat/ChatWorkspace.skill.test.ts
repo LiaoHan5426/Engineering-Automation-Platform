@@ -7,6 +7,7 @@ import { i18n } from '../../../src/lib/i18n'
 import ChatWorkspace from '../../../src/features/chat/ChatWorkspace.vue'
 import { chatBinding, workbench } from '../../../src/features/shell/workbench'
 import { mockChatStartup } from './chatStartup.fixture.ts'
+import { canonicalGraph, graphServer } from './canonicalGraph.fixture'
 let app: App, host: HTMLDivElement
 afterEach(() => {
   app?.unmount()
@@ -37,29 +38,7 @@ it('replays server-prepared Skill evidence as escaped text and one unified memor
         },
       ],
       transcripts: {
-        c1: [
-          {
-            role: 'assistant',
-            text: 'answer',
-            error: '',
-            status: 'FAILED',
-            approval: '',
-            verification: '',
-            toolEvents: [],
-            artifacts: [],
-            artifactError: '',
-            skillContext: {
-              skillRef,
-              instructions: '<script>prepared only</script>',
-              resources: [
-                { path: 'guide.txt', mediaType: 'text/plain', content: 'explicit resource' },
-              ],
-              dependencies: [],
-            },
-            contextMemoryCleared: true,
-            knowledgeMemoryCleared: true,
-          },
-        ],
+        c1: [],
       },
     }),
   )
@@ -68,6 +47,29 @@ it('replays server-prepared Skill evidence as escaped text and one unified memor
     workspaceLabel: '',
     memory: '',
   } as never)
+  graphServer(
+    canonicalGraph('c1', [
+      {
+        role: 'assistant',
+        text: 'answer',
+        error: '',
+        status: 'FAILED',
+        approval: '',
+        verification: '',
+        toolEvents: [],
+        artifacts: [],
+        artifactError: '',
+        skillContext: {
+          skillRef,
+          instructions: '<script>prepared only</script>',
+          resources: [{ path: 'guide.txt', mediaType: 'text/plain', content: 'explicit resource' }],
+          dependencies: [],
+        },
+        contextMemoryCleared: true,
+        knowledgeMemoryCleared: true,
+      },
+    ]),
+  ).install()
   host = document.createElement('div')
   document.body.append(host)
   app = createApp(ChatWorkspace)

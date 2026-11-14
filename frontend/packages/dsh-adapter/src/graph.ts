@@ -1,5 +1,18 @@
+export function requireBrowserServices(
+  services: readonly string[],
+  has: (name: string) => boolean,
+) {
+  for (const service of services)
+    if (!has(service)) throw new Error(`DSH_MISSING_SERVICE:${service}`)
+}
+
 const prefix = '@deepseek-ai/dsh-client-'
 export const browserRoster = Object.freeze([
+  {
+    id: prefix + 'ui-shortcuts',
+    inject: [prefix + 'locale', prefix + 'ui-layout', prefix + 'shortcuts'],
+  },
+  { id: prefix + 'ui-file-actions', inject: [] },
   { id: prefix + 'locale', inject: [] },
   { id: prefix + 'ui-layout', inject: [] },
   { id: prefix + 'shortcuts', inject: [prefix + 'locale'] },

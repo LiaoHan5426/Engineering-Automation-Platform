@@ -133,7 +133,7 @@ class ChatPlanPersistenceTest {
     @Test void httpReadsDirectJsonNullAndSnapshotWithNoInMemoryConversation() throws Exception {
         var durable=new ChatPlanStore.Owner(AiConversationRegistry.PRINCIPAL,root.toAbsolutePath().normalize().toString(),UUID.randomUUID(),UUID.randomUUID());
         service.open(durable);
-        var app=new AiChatApplication(null,new AiConversationRegistry(org.springframework.ai.chat.memory.MessageWindowChatMemory.builder().build()),null,root);
+        var app=ChatApplicationTestSupport.graph(new AiChatApplication(null,new AiConversationRegistry(org.springframework.ai.chat.memory.MessageWindowChatMemory.builder().build()),null,root));
         org.springframework.test.util.ReflectionTestUtils.setField(app,"plans",service);
         var mvc=org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(new com.lh.eap.web.controller.AiChatController(app,null)).build();
         String url="/api/ai/conversations/"+durable.conversationId()+"/executions/"+durable.executionId()+"/plan";
@@ -167,12 +167,12 @@ class ChatPlanPersistenceTest {
         });
         var chat=new EngineeringChatService(ChatClients.createClient(org.springframework.ai.chat.client.ChatClient.builder(model),memory),registry,root,
                 new com.lh.eap.application.service.FileExecutionArtifactStore(root.resolve("application-artifacts")));
-        var app=new AiChatApplication(status,new AiConversationRegistry(memory),chat,root);
+        var app=ChatApplicationTestSupport.graph(new AiChatApplication(status,new AiConversationRegistry(memory),chat,root));
         org.springframework.test.util.ReflectionTestUtils.setField(app,"plans",service);
         try {
             var conversation=app.open("{}").conversationId();
             var events=new ArrayList<com.lh.eap.ai.dto.ChatExecutionEvent>();
-            var response=app.send(conversation,"{\"message\":\"inspect\",\"toolMode\":\"git_status\"}",events::add);
+            var response=app.send(conversation, ChatApplicationTestSupport.request(app, conversation, "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}"),events::add);
             var event=events.stream().filter(e->e.type().equals("plan.updated")).findFirst().orElseThrow();
             assertEquals("",event.status());
             var plan=app.executionPlan(conversation,response.executionId());
@@ -184,7 +184,7 @@ class ChatPlanPersistenceTest {
             org.mockito.Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("offline")).when(failedStore).open(org.mockito.ArgumentMatchers.any());
             org.springframework.test.util.ReflectionTestUtils.setField(app,"plans",new ChatPlanService(failedStore));
             int before=calls.get();
-            code("CHAT_PLAN_STORE_UNAVAILABLE",()->app.send(conversation,"{\"message\":\"inspect\",\"toolMode\":\"git_status\"}"));
+            code("CHAT_PLAN_STORE_UNAVAILABLE",()->app.send(conversation, ChatApplicationTestSupport.request(app, conversation, "{\"message\":\"inspect\",\"toolMode\":\"git_status\"}")));
             assertEquals(before,calls.get(),"No provider execution without durable owner registration");
         } finally {app.shutdownTurns();}
     }
@@ -225,16 +225,17 @@ class ChatPlanPersistenceTest {
         var model=FakeChatModels.scripted(prompt->{calls.incrementAndGet();return FakeChatModels.text("done");});
         var chat=new EngineeringChatService(ChatClients.createClient(org.springframework.ai.chat.client.ChatClient.builder(model),memory),handlers,root,
             new com.lh.eap.application.service.FileExecutionArtifactStore(root.resolve("preflight-artifacts")));
-        var app=new AiChatApplication(status,new AiConversationRegistry(memory),chat,root);
+        var app=ChatApplicationTestSupport.graph(new AiChatApplication(status,new AiConversationRegistry(memory),chat,root));
         org.springframework.test.util.ReflectionTestUtils.setField(app,"plans",service);
         try {
             var noPlan=app.open("{}").conversationId();
             var withPlan=app.open("{}").conversationId();
-            for(var id:List.of(noPlan,withPlan)) memory.add(ChatClients.memoryKey(AiConversationRegistry.PRINCIPAL,id),new org.springframework.ai.chat.messages.UserMessage("h".repeat(40000)));
+            // Exactly 40,000 history characters in a valid completed turn; user input stays below its 32k limit.
+            for(var id:List.of(noPlan,withPlan)) ChatApplicationTestSupport.seed(app,id,"h","h".repeat(39999));
             String message="m".repeat(30000);
-            app.send(noPlan,"{\"message\":\""+message+"\",\"toolMode\":\"none\"}");
+            app.send(noPlan, ChatApplicationTestSupport.request(app, noPlan, "{\"message\":\""+message+"\",\"toolMode\":\"none\"}"));
             assertEquals(1,calls.get());
-            var rejected=assertThrows(ResponseStatusException.class,()->app.send(withPlan,"{\"message\":\""+message+"\",\"toolMode\":\"git_status\"}"));
+            var rejected=assertThrows(ResponseStatusException.class,()->app.send(withPlan, ChatApplicationTestSupport.request(app, withPlan, "{\"message\":\""+message+"\",\"toolMode\":\"git_status\"}")));
             assertEquals("CONTEXT_BUDGET_EXCEEDED",rejected.getReason()); assertEquals(1,calls.get());
             var budget=(ContextBudget.Observation)rejected.getBody().getProperties().get("contextBudget");
             assertTrue(budget.usedChars()+budget.outputReserve()>budget.platformLimit());

@@ -1,854 +1,15 @@
 var __defProp = Object.defineProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
+var __export = (target, all2) => {
+  for (var name in all2)
+    __defProp(target, name, { get: all2[name], enumerable: true });
 };
 
-// upstream/packages/client/ui-context-menu/src/client/index.ts.snapshot
+// upstream/packages/client/ui-shortcuts/src/client/index.ts.snapshot
 var index_ts_exports = {};
 __export(index_ts_exports, {
-  Config: () => Config,
   apply: () => apply,
-  createMenuStore: () => createMenuStore,
   inject: () => inject
 });
-
-// ../../node_modules/.pnpm/zustand@5.0.8_@types+react@18.3.27_immer@10.1.3_react@18.3.1/node_modules/zustand/esm/vanilla.mjs
-var createStoreImpl = (createState) => {
-  let state;
-  const listeners = /* @__PURE__ */ new Set();
-  const setState = (partial, replace) => {
-    const nextState = typeof partial === "function" ? partial(state) : partial;
-    if (!Object.is(nextState, state)) {
-      const previousState = state;
-      state = (replace != null ? replace : typeof nextState !== "object" || nextState === null) ? nextState : Object.assign({}, state, nextState);
-      listeners.forEach((listener) => listener(state, previousState));
-    }
-  };
-  const getState = () => state;
-  const getInitialState = () => initialState;
-  const subscribe = (listener) => {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  };
-  const api = { setState, getState, getInitialState, subscribe };
-  const initialState = state = createState(setState, getState, api);
-  return api;
-};
-var createStore = ((createState) => createState ? createStoreImpl(createState) : createStoreImpl);
-
-// ../../node_modules/.pnpm/zustand@5.0.8_@types+react@18.3.27_immer@10.1.3_react@18.3.1/node_modules/zustand/esm/middleware.mjs
-var subscribeWithSelectorImpl = (fn) => (set2, get, api) => {
-  const origSubscribe = api.subscribe;
-  api.subscribe = ((selector, optListener, options) => {
-    let listener = selector;
-    if (optListener) {
-      const equalityFn = (options == null ? void 0 : options.equalityFn) || Object.is;
-      let currentSlice = selector(api.getState());
-      listener = (state) => {
-        const nextSlice = selector(state);
-        if (!equalityFn(currentSlice, nextSlice)) {
-          const previousSlice = currentSlice;
-          optListener(currentSlice = nextSlice, previousSlice);
-        }
-      };
-      if (options == null ? void 0 : options.fireImmediately) {
-        optListener(currentSlice, currentSlice);
-      }
-    }
-    return origSubscribe(listener);
-  });
-  const initialState = fn(set2, get, api);
-  return initialState;
-};
-var subscribeWithSelector = subscribeWithSelectorImpl;
-
-// ../../node_modules/.pnpm/immer@10.1.3/node_modules/immer/dist/immer.mjs
-var NOTHING = Symbol.for("immer-nothing");
-var DRAFTABLE = Symbol.for("immer-draftable");
-var DRAFT_STATE = Symbol.for("immer-state");
-var errors = true ? [
-  // All error codes, starting by 0:
-  function(plugin) {
-    return `The plugin for '${plugin}' has not been loaded into Immer. To enable the plugin, import and call \`enable${plugin}()\` when initializing your application.`;
-  },
-  function(thing) {
-    return `produce can only be called on things that are draftable: plain objects, arrays, Map, Set or classes that are marked with '[immerable]: true'. Got '${thing}'`;
-  },
-  "This object has been frozen and should not be mutated",
-  function(data) {
-    return "Cannot use a proxy that has been revoked. Did you pass an object from inside an immer function to an async process? " + data;
-  },
-  "An immer producer returned a new value *and* modified its draft. Either return a new value *or* modify the draft.",
-  "Immer forbids circular references",
-  "The first or second argument to `produce` must be a function",
-  "The third argument to `produce` must be a function or undefined",
-  "First argument to `createDraft` must be a plain object, an array, or an immerable object",
-  "First argument to `finishDraft` must be a draft returned by `createDraft`",
-  function(thing) {
-    return `'current' expects a draft, got: ${thing}`;
-  },
-  "Object.defineProperty() cannot be used on an Immer draft",
-  "Object.setPrototypeOf() cannot be used on an Immer draft",
-  "Immer only supports deleting array indices",
-  "Immer only supports setting array indices and the 'length' property",
-  function(thing) {
-    return `'original' expects a draft, got: ${thing}`;
-  }
-  // Note: if more errors are added, the errorOffset in Patches.ts should be increased
-  // See Patches.ts for additional errors
-] : [];
-function die(error, ...args) {
-  if (true) {
-    const e = errors[error];
-    const msg = typeof e === "function" ? e.apply(null, args) : e;
-    throw new Error(`[Immer] ${msg}`);
-  }
-  throw new Error(
-    `[Immer] minified error nr: ${error}. Full error at: https://bit.ly/3cXEKWf`
-  );
-}
-var getPrototypeOf = Object.getPrototypeOf;
-function isDraft(value) {
-  return !!value && !!value[DRAFT_STATE];
-}
-function isDraftable(value) {
-  if (!value)
-    return false;
-  return isPlainObject(value) || Array.isArray(value) || !!value[DRAFTABLE] || !!value.constructor?.[DRAFTABLE] || isMap(value) || isSet(value);
-}
-var objectCtorString = Object.prototype.constructor.toString();
-function isPlainObject(value) {
-  if (!value || typeof value !== "object")
-    return false;
-  const proto = getPrototypeOf(value);
-  if (proto === null) {
-    return true;
-  }
-  const Ctor = Object.hasOwnProperty.call(proto, "constructor") && proto.constructor;
-  if (Ctor === Object)
-    return true;
-  return typeof Ctor == "function" && Function.toString.call(Ctor) === objectCtorString;
-}
-function each(obj, iter) {
-  if (getArchtype(obj) === 0) {
-    Reflect.ownKeys(obj).forEach((key) => {
-      iter(key, obj[key], obj);
-    });
-  } else {
-    obj.forEach((entry, index) => iter(index, entry, obj));
-  }
-}
-function getArchtype(thing) {
-  const state = thing[DRAFT_STATE];
-  return state ? state.type_ : Array.isArray(thing) ? 1 : isMap(thing) ? 2 : isSet(thing) ? 3 : 0;
-}
-function has(thing, prop) {
-  return getArchtype(thing) === 2 ? thing.has(prop) : Object.prototype.hasOwnProperty.call(thing, prop);
-}
-function set(thing, propOrOldValue, value) {
-  const t = getArchtype(thing);
-  if (t === 2)
-    thing.set(propOrOldValue, value);
-  else if (t === 3) {
-    thing.add(value);
-  } else
-    thing[propOrOldValue] = value;
-}
-function is(x, y) {
-  if (x === y) {
-    return x !== 0 || 1 / x === 1 / y;
-  } else {
-    return x !== x && y !== y;
-  }
-}
-function isMap(target) {
-  return target instanceof Map;
-}
-function isSet(target) {
-  return target instanceof Set;
-}
-function latest(state) {
-  return state.copy_ || state.base_;
-}
-function shallowCopy(base, strict) {
-  if (isMap(base)) {
-    return new Map(base);
-  }
-  if (isSet(base)) {
-    return new Set(base);
-  }
-  if (Array.isArray(base))
-    return Array.prototype.slice.call(base);
-  const isPlain = isPlainObject(base);
-  if (strict === true || strict === "class_only" && !isPlain) {
-    const descriptors = Object.getOwnPropertyDescriptors(base);
-    delete descriptors[DRAFT_STATE];
-    let keys = Reflect.ownKeys(descriptors);
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      const desc = descriptors[key];
-      if (desc.writable === false) {
-        desc.writable = true;
-        desc.configurable = true;
-      }
-      if (desc.get || desc.set)
-        descriptors[key] = {
-          configurable: true,
-          writable: true,
-          // could live with !!desc.set as well here...
-          enumerable: desc.enumerable,
-          value: base[key]
-        };
-    }
-    return Object.create(getPrototypeOf(base), descriptors);
-  } else {
-    const proto = getPrototypeOf(base);
-    if (proto !== null && isPlain) {
-      return { ...base };
-    }
-    const obj = Object.create(proto);
-    return Object.assign(obj, base);
-  }
-}
-function freeze(obj, deep = false) {
-  if (isFrozen(obj) || isDraft(obj) || !isDraftable(obj))
-    return obj;
-  if (getArchtype(obj) > 1) {
-    Object.defineProperties(obj, {
-      set: { value: dontMutateFrozenCollections },
-      add: { value: dontMutateFrozenCollections },
-      clear: { value: dontMutateFrozenCollections },
-      delete: { value: dontMutateFrozenCollections }
-    });
-  }
-  Object.freeze(obj);
-  if (deep)
-    Object.values(obj).forEach((value) => freeze(value, true));
-  return obj;
-}
-function dontMutateFrozenCollections() {
-  die(2);
-}
-function isFrozen(obj) {
-  return Object.isFrozen(obj);
-}
-var plugins = {};
-function getPlugin(pluginKey) {
-  const plugin = plugins[pluginKey];
-  if (!plugin) {
-    die(0, pluginKey);
-  }
-  return plugin;
-}
-var currentScope;
-function getCurrentScope() {
-  return currentScope;
-}
-function createScope(parent_, immer_) {
-  return {
-    drafts_: [],
-    parent_,
-    immer_,
-    // Whenever the modified draft contains a draft from another scope, we
-    // need to prevent auto-freezing so the unowned draft can be finalized.
-    canAutoFreeze_: true,
-    unfinalizedDrafts_: 0
-  };
-}
-function usePatchesInScope(scope, patchListener) {
-  if (patchListener) {
-    getPlugin("Patches");
-    scope.patches_ = [];
-    scope.inversePatches_ = [];
-    scope.patchListener_ = patchListener;
-  }
-}
-function revokeScope(scope) {
-  leaveScope(scope);
-  scope.drafts_.forEach(revokeDraft);
-  scope.drafts_ = null;
-}
-function leaveScope(scope) {
-  if (scope === currentScope) {
-    currentScope = scope.parent_;
-  }
-}
-function enterScope(immer2) {
-  return currentScope = createScope(currentScope, immer2);
-}
-function revokeDraft(draft) {
-  const state = draft[DRAFT_STATE];
-  if (state.type_ === 0 || state.type_ === 1)
-    state.revoke_();
-  else
-    state.revoked_ = true;
-}
-function processResult(result, scope) {
-  scope.unfinalizedDrafts_ = scope.drafts_.length;
-  const baseDraft = scope.drafts_[0];
-  const isReplaced = result !== void 0 && result !== baseDraft;
-  if (isReplaced) {
-    if (baseDraft[DRAFT_STATE].modified_) {
-      revokeScope(scope);
-      die(4);
-    }
-    if (isDraftable(result)) {
-      result = finalize(scope, result);
-      if (!scope.parent_)
-        maybeFreeze(scope, result);
-    }
-    if (scope.patches_) {
-      getPlugin("Patches").generateReplacementPatches_(
-        baseDraft[DRAFT_STATE].base_,
-        result,
-        scope.patches_,
-        scope.inversePatches_
-      );
-    }
-  } else {
-    result = finalize(scope, baseDraft, []);
-  }
-  revokeScope(scope);
-  if (scope.patches_) {
-    scope.patchListener_(scope.patches_, scope.inversePatches_);
-  }
-  return result !== NOTHING ? result : void 0;
-}
-function finalize(rootScope, value, path) {
-  if (isFrozen(value))
-    return value;
-  const state = value[DRAFT_STATE];
-  if (!state) {
-    each(
-      value,
-      (key, childValue) => finalizeProperty(rootScope, state, value, key, childValue, path)
-    );
-    return value;
-  }
-  if (state.scope_ !== rootScope)
-    return value;
-  if (!state.modified_) {
-    maybeFreeze(rootScope, state.base_, true);
-    return state.base_;
-  }
-  if (!state.finalized_) {
-    state.finalized_ = true;
-    state.scope_.unfinalizedDrafts_--;
-    const result = state.copy_;
-    let resultEach = result;
-    let isSet2 = false;
-    if (state.type_ === 3) {
-      resultEach = new Set(result);
-      result.clear();
-      isSet2 = true;
-    }
-    each(
-      resultEach,
-      (key, childValue) => finalizeProperty(rootScope, state, result, key, childValue, path, isSet2)
-    );
-    maybeFreeze(rootScope, result, false);
-    if (path && rootScope.patches_) {
-      getPlugin("Patches").generatePatches_(
-        state,
-        path,
-        rootScope.patches_,
-        rootScope.inversePatches_
-      );
-    }
-  }
-  return state.copy_;
-}
-function finalizeProperty(rootScope, parentState, targetObject, prop, childValue, rootPath, targetIsSet) {
-  if (childValue === targetObject)
-    die(5);
-  if (isDraft(childValue)) {
-    const path = rootPath && parentState && parentState.type_ !== 3 && // Set objects are atomic since they have no keys.
-    !has(parentState.assigned_, prop) ? rootPath.concat(prop) : void 0;
-    const res = finalize(rootScope, childValue, path);
-    set(targetObject, prop, res);
-    if (isDraft(res)) {
-      rootScope.canAutoFreeze_ = false;
-    } else
-      return;
-  } else if (targetIsSet) {
-    targetObject.add(childValue);
-  }
-  if (isDraftable(childValue) && !isFrozen(childValue)) {
-    if (!rootScope.immer_.autoFreeze_ && rootScope.unfinalizedDrafts_ < 1) {
-      return;
-    }
-    finalize(rootScope, childValue);
-    if ((!parentState || !parentState.scope_.parent_) && typeof prop !== "symbol" && (isMap(targetObject) ? targetObject.has(prop) : Object.prototype.propertyIsEnumerable.call(targetObject, prop)))
-      maybeFreeze(rootScope, childValue);
-  }
-}
-function maybeFreeze(scope, value, deep = false) {
-  if (!scope.parent_ && scope.immer_.autoFreeze_ && scope.canAutoFreeze_) {
-    freeze(value, deep);
-  }
-}
-function createProxyProxy(base, parent) {
-  const isArray = Array.isArray(base);
-  const state = {
-    type_: isArray ? 1 : 0,
-    // Track which produce call this is associated with.
-    scope_: parent ? parent.scope_ : getCurrentScope(),
-    // True for both shallow and deep changes.
-    modified_: false,
-    // Used during finalization.
-    finalized_: false,
-    // Track which properties have been assigned (true) or deleted (false).
-    assigned_: {},
-    // The parent draft state.
-    parent_: parent,
-    // The base state.
-    base_: base,
-    // The base proxy.
-    draft_: null,
-    // set below
-    // The base copy with any updated values.
-    copy_: null,
-    // Called by the `produce` function.
-    revoke_: null,
-    isManual_: false
-  };
-  let target = state;
-  let traps = objectTraps;
-  if (isArray) {
-    target = [state];
-    traps = arrayTraps;
-  }
-  const { revoke, proxy } = Proxy.revocable(target, traps);
-  state.draft_ = proxy;
-  state.revoke_ = revoke;
-  return proxy;
-}
-var objectTraps = {
-  get(state, prop) {
-    if (prop === DRAFT_STATE)
-      return state;
-    const source = latest(state);
-    if (!has(source, prop)) {
-      return readPropFromProto(state, source, prop);
-    }
-    const value = source[prop];
-    if (state.finalized_ || !isDraftable(value)) {
-      return value;
-    }
-    if (value === peek(state.base_, prop)) {
-      prepareCopy(state);
-      return state.copy_[prop] = createProxy(value, state);
-    }
-    return value;
-  },
-  has(state, prop) {
-    return prop in latest(state);
-  },
-  ownKeys(state) {
-    return Reflect.ownKeys(latest(state));
-  },
-  set(state, prop, value) {
-    const desc = getDescriptorFromProto(latest(state), prop);
-    if (desc?.set) {
-      desc.set.call(state.draft_, value);
-      return true;
-    }
-    if (!state.modified_) {
-      const current2 = peek(latest(state), prop);
-      const currentState = current2?.[DRAFT_STATE];
-      if (currentState && currentState.base_ === value) {
-        state.copy_[prop] = value;
-        state.assigned_[prop] = false;
-        return true;
-      }
-      if (is(value, current2) && (value !== void 0 || has(state.base_, prop)))
-        return true;
-      prepareCopy(state);
-      markChanged(state);
-    }
-    if (state.copy_[prop] === value && // special case: handle new props with value 'undefined'
-    (value !== void 0 || prop in state.copy_) || // special case: NaN
-    Number.isNaN(value) && Number.isNaN(state.copy_[prop]))
-      return true;
-    state.copy_[prop] = value;
-    state.assigned_[prop] = true;
-    return true;
-  },
-  deleteProperty(state, prop) {
-    if (peek(state.base_, prop) !== void 0 || prop in state.base_) {
-      state.assigned_[prop] = false;
-      prepareCopy(state);
-      markChanged(state);
-    } else {
-      delete state.assigned_[prop];
-    }
-    if (state.copy_) {
-      delete state.copy_[prop];
-    }
-    return true;
-  },
-  // Note: We never coerce `desc.value` into an Immer draft, because we can't make
-  // the same guarantee in ES5 mode.
-  getOwnPropertyDescriptor(state, prop) {
-    const owner = latest(state);
-    const desc = Reflect.getOwnPropertyDescriptor(owner, prop);
-    if (!desc)
-      return desc;
-    return {
-      writable: true,
-      configurable: state.type_ !== 1 || prop !== "length",
-      enumerable: desc.enumerable,
-      value: owner[prop]
-    };
-  },
-  defineProperty() {
-    die(11);
-  },
-  getPrototypeOf(state) {
-    return getPrototypeOf(state.base_);
-  },
-  setPrototypeOf() {
-    die(12);
-  }
-};
-var arrayTraps = {};
-each(objectTraps, (key, fn) => {
-  arrayTraps[key] = function() {
-    arguments[0] = arguments[0][0];
-    return fn.apply(this, arguments);
-  };
-});
-arrayTraps.deleteProperty = function(state, prop) {
-  if (isNaN(parseInt(prop)))
-    die(13);
-  return arrayTraps.set.call(this, state, prop, void 0);
-};
-arrayTraps.set = function(state, prop, value) {
-  if (prop !== "length" && isNaN(parseInt(prop)))
-    die(14);
-  return objectTraps.set.call(this, state[0], prop, value, state[0]);
-};
-function peek(draft, prop) {
-  const state = draft[DRAFT_STATE];
-  const source = state ? latest(state) : draft;
-  return source[prop];
-}
-function readPropFromProto(state, source, prop) {
-  const desc = getDescriptorFromProto(source, prop);
-  return desc ? `value` in desc ? desc.value : (
-    // This is a very special case, if the prop is a getter defined by the
-    // prototype, we should invoke it with the draft as context!
-    desc.get?.call(state.draft_)
-  ) : void 0;
-}
-function getDescriptorFromProto(source, prop) {
-  if (!(prop in source))
-    return void 0;
-  let proto = getPrototypeOf(source);
-  while (proto) {
-    const desc = Object.getOwnPropertyDescriptor(proto, prop);
-    if (desc)
-      return desc;
-    proto = getPrototypeOf(proto);
-  }
-  return void 0;
-}
-function markChanged(state) {
-  if (!state.modified_) {
-    state.modified_ = true;
-    if (state.parent_) {
-      markChanged(state.parent_);
-    }
-  }
-}
-function prepareCopy(state) {
-  if (!state.copy_) {
-    state.copy_ = shallowCopy(
-      state.base_,
-      state.scope_.immer_.useStrictShallowCopy_
-    );
-  }
-}
-var Immer2 = class {
-  constructor(config) {
-    this.autoFreeze_ = true;
-    this.useStrictShallowCopy_ = false;
-    this.produce = (base, recipe, patchListener) => {
-      if (typeof base === "function" && typeof recipe !== "function") {
-        const defaultBase = recipe;
-        recipe = base;
-        const self = this;
-        return function curriedProduce(base2 = defaultBase, ...args) {
-          return self.produce(base2, (draft) => recipe.call(this, draft, ...args));
-        };
-      }
-      if (typeof recipe !== "function")
-        die(6);
-      if (patchListener !== void 0 && typeof patchListener !== "function")
-        die(7);
-      let result;
-      if (isDraftable(base)) {
-        const scope = enterScope(this);
-        const proxy = createProxy(base, void 0);
-        let hasError = true;
-        try {
-          result = recipe(proxy);
-          hasError = false;
-        } finally {
-          if (hasError)
-            revokeScope(scope);
-          else
-            leaveScope(scope);
-        }
-        usePatchesInScope(scope, patchListener);
-        return processResult(result, scope);
-      } else if (!base || typeof base !== "object") {
-        result = recipe(base);
-        if (result === void 0)
-          result = base;
-        if (result === NOTHING)
-          result = void 0;
-        if (this.autoFreeze_)
-          freeze(result, true);
-        if (patchListener) {
-          const p = [];
-          const ip = [];
-          getPlugin("Patches").generateReplacementPatches_(base, result, p, ip);
-          patchListener(p, ip);
-        }
-        return result;
-      } else
-        die(1, base);
-    };
-    this.produceWithPatches = (base, recipe) => {
-      if (typeof base === "function") {
-        return (state, ...args) => this.produceWithPatches(state, (draft) => base(draft, ...args));
-      }
-      let patches, inversePatches;
-      const result = this.produce(base, recipe, (p, ip) => {
-        patches = p;
-        inversePatches = ip;
-      });
-      return [result, patches, inversePatches];
-    };
-    if (typeof config?.autoFreeze === "boolean")
-      this.setAutoFreeze(config.autoFreeze);
-    if (typeof config?.useStrictShallowCopy === "boolean")
-      this.setUseStrictShallowCopy(config.useStrictShallowCopy);
-  }
-  createDraft(base) {
-    if (!isDraftable(base))
-      die(8);
-    if (isDraft(base))
-      base = current(base);
-    const scope = enterScope(this);
-    const proxy = createProxy(base, void 0);
-    proxy[DRAFT_STATE].isManual_ = true;
-    leaveScope(scope);
-    return proxy;
-  }
-  finishDraft(draft, patchListener) {
-    const state = draft && draft[DRAFT_STATE];
-    if (!state || !state.isManual_)
-      die(9);
-    const { scope_: scope } = state;
-    usePatchesInScope(scope, patchListener);
-    return processResult(void 0, scope);
-  }
-  /**
-   * Pass true to automatically freeze all copies created by Immer.
-   *
-   * By default, auto-freezing is enabled.
-   */
-  setAutoFreeze(value) {
-    this.autoFreeze_ = value;
-  }
-  /**
-   * Pass true to enable strict shallow copy.
-   *
-   * By default, immer does not copy the object descriptors such as getter, setter and non-enumrable properties.
-   */
-  setUseStrictShallowCopy(value) {
-    this.useStrictShallowCopy_ = value;
-  }
-  applyPatches(base, patches) {
-    let i;
-    for (i = patches.length - 1; i >= 0; i--) {
-      const patch = patches[i];
-      if (patch.path.length === 0 && patch.op === "replace") {
-        base = patch.value;
-        break;
-      }
-    }
-    if (i > -1) {
-      patches = patches.slice(i + 1);
-    }
-    const applyPatchesImpl = getPlugin("Patches").applyPatches_;
-    if (isDraft(base)) {
-      return applyPatchesImpl(base, patches);
-    }
-    return this.produce(
-      base,
-      (draft) => applyPatchesImpl(draft, patches)
-    );
-  }
-};
-function createProxy(value, parent) {
-  const draft = isMap(value) ? getPlugin("MapSet").proxyMap_(value, parent) : isSet(value) ? getPlugin("MapSet").proxySet_(value, parent) : createProxyProxy(value, parent);
-  const scope = parent ? parent.scope_ : getCurrentScope();
-  scope.drafts_.push(draft);
-  return draft;
-}
-function current(value) {
-  if (!isDraft(value))
-    die(10, value);
-  return currentImpl(value);
-}
-function currentImpl(value) {
-  if (!isDraftable(value) || isFrozen(value))
-    return value;
-  const state = value[DRAFT_STATE];
-  let copy;
-  if (state) {
-    if (!state.modified_)
-      return state.base_;
-    state.finalized_ = true;
-    copy = shallowCopy(value, state.scope_.immer_.useStrictShallowCopy_);
-  } else {
-    copy = shallowCopy(value, true);
-  }
-  each(copy, (key, childValue) => {
-    set(copy, key, currentImpl(childValue));
-  });
-  if (state) {
-    state.finalized_ = false;
-  }
-  return copy;
-}
-var immer = new Immer2();
-var produce = immer.produce;
-
-// upstream/packages/client/store/src/index.ts.snapshot
-function notifySubscribers(listeners, label, ...args) {
-  for (const listener of [...listeners]) {
-    try {
-      listener(...args);
-    } catch (error) {
-      console.error(`${label} subscriber failed:`, error);
-    }
-  }
-}
-function rafBatch(notify) {
-  const schedule = typeof requestAnimationFrame === "function" ? (fn) => {
-    requestAnimationFrame(() => {
-      fn();
-    });
-  } : (fn) => {
-    queueMicrotask(fn);
-  };
-  let scheduled = false;
-  return () => {
-    if (scheduled) return;
-    scheduled = true;
-    schedule(() => {
-      scheduled = false;
-      notify();
-    });
-  };
-}
-function createSnapshotStore(init, opts) {
-  const withSelector = subscribeWithSelector(() => init);
-  const api = createStore()(withSelector);
-  if (opts?.persist) attachPersistence(api, opts.persist.name);
-  let subscribe = (fn) => api.subscribe(() => {
-    notifySubscribers([fn], "[client-store]");
-  });
-  if (opts?.flush === "raf") {
-    const listeners = /* @__PURE__ */ new Set();
-    const flush = rafBatch(() => {
-      notifySubscribers(listeners, "[client-store]");
-    });
-    api.subscribe(flush);
-    subscribe = (fn) => {
-      listeners.add(fn);
-      return () => {
-        listeners.delete(fn);
-      };
-    };
-  }
-  return {
-    getSnapshot: () => api.getState(),
-    subscribe: (fn) => subscribe(fn),
-    update: (mutator) => {
-      api.setState(produce(api.getState(), (draft) => {
-        mutator(draft);
-      }), true);
-    },
-    set: (next) => {
-      api.setState(devFreeze(next), true);
-    }
-  };
-}
-function attachPersistence(api, name) {
-  if (typeof localStorage === "undefined") return;
-  try {
-    const raw = localStorage.getItem(name);
-    if (raw !== null) {
-      api.setState(devFreeze(JSON.parse(raw)), true);
-    }
-  } catch (error) {
-    console.error(`snapshot store '${name}' rehydration failed:`, error);
-  }
-  api.subscribe((state) => {
-    try {
-      localStorage.setItem(name, JSON.stringify(state));
-    } catch (error) {
-      console.error(`snapshot store '${name}' persistence failed:`, error);
-    }
-  });
-}
-function devFreeze(value) {
-  if (false) return value;
-  return freeze(value, true);
-}
-function defineStore(decl) {
-  return {
-    spec: decl,
-    create(scopeKey) {
-      const persistKey = decl.persist === void 0 ? void 0 : scopeKey === void 0 ? decl.persist : `${decl.persist}.${scopeKey}`;
-      const store = createSnapshotStore(
-        decl.init(),
-        persistKey !== void 0 ? { persist: { name: persistKey } } : void 0
-      );
-      const actions = {};
-      for (const key of Object.keys(decl.actions)) {
-        const mutate = decl.actions[key];
-        actions[key] = (...params) => {
-          store.update((draft) => {
-            mutate(draft, ...params);
-          });
-        };
-      }
-      return {
-        actions,
-        getSnapshot: () => store.getSnapshot(),
-        subscribe: (fn) => store.subscribe(fn),
-        store,
-        clearPersisted: () => {
-          if (persistKey === void 0 || typeof localStorage === "undefined") return;
-          try {
-            localStorage.removeItem(persistKey);
-          } catch {
-          }
-        }
-      };
-    }
-  };
-}
-
-// upstream/packages/client/ui-context-menu/src/client/index.ts.snapshot
-import z from "@deepseek-ai/schemastery";
 
 // upstream/packages/client/ui-primitives/src/Menu.tsx.snapshot
 import { useEffect as useEffect4, useId as useId5, useLayoutEffect as useLayoutEffect4, useMemo, useRef as useRef6, useState as useState3 } from "react";
@@ -1147,7 +308,7 @@ function iconSymbolId(glyph, weight) {
   return `dsw-icon-${glyph}-${weight}`;
 }
 var ICON_SYMBOLS = Object.freeze(Object.fromEntries(
-  Object.entries(ICON_ARTWORK).flatMap(([glyph, artwork]) => Object.keys(STROKES).map((weight) => [iconSymbolId(glyph, weight), artwork.svg(STROKES[weight])]))
+  Object.entries(ICON_ARTWORK).flatMap(([glyph, artwork2]) => Object.keys(STROKES).map((weight) => [iconSymbolId(glyph, weight), artwork2.svg(STROKES[weight])]))
 ));
 
 // upstream/packages/client/ui-primitives/src/icons/index.tsx.snapshot
@@ -1990,10 +1151,76 @@ function focusWithoutRing(element, options) {
 // upstream/packages/client/ui-primitives/src/useModalLayer.ts.snapshot
 var modalSelector = '[role="dialog"][aria-modal="true"], [role="menu"]';
 var layers = /* @__PURE__ */ new WeakMap();
+function closeTopModal(document2) {
+  const top = layers.get(document2)?.at(-1);
+  if (top === void 0) return;
+  const foreground = [...document2.querySelectorAll(modalSelector)].at(-1);
+  if (foreground === top.element) top.close();
+}
 function isBehindModal(anchor) {
   if (anchor === null) return false;
   const top = layers.get(anchor.ownerDocument)?.at(-1);
   return top !== void 0 && !top.element.contains(anchor);
+}
+var focusable = 'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]';
+function useModalLayer(dialog, open, onClose) {
+  const close = useRef5(onClose);
+  const pendingRestore = useRef5(void 0);
+  close.current = onClose;
+  useLayoutEffect3(() => {
+    const target = pendingRestore.current;
+    pendingRestore.current = void 0;
+    const element = dialog.current;
+    if (!open && element?.contains(element.ownerDocument.activeElement) && target?.isConnected && !target.closest("[inert], [hidden]") && !isBehindModal(target)) {
+      focusWithoutRing(target, { preventScroll: true });
+    }
+    if (!open || element === null) return;
+    const document2 = element.ownerDocument;
+    const composition = observeComposition(document2);
+    const previous = document2.activeElement;
+    const stack = layers.get(document2) ?? [];
+    layers.set(document2, stack);
+    const layer = { element, close: () => {
+      close.current();
+    } };
+    stack.push(layer);
+    const initial = element.querySelector("[data-modal-autofocus]") ?? element.querySelector(focusable) ?? element;
+    if (!element.contains(document2.activeElement)) focusWithoutRing(initial);
+    const keydown = (event) => {
+      const composing = composition.guards(event);
+      if (stack.at(-1) !== layer || event.defaultPrevented || composing || event.ctrlKey || event.altKey || event.metaKey) return;
+      if (event.key === "Escape" && !event.shiftKey) {
+        event.preventDefault();
+        if (!event.repeat) close.current();
+      }
+      if (event.key !== "Tab") return;
+      if (document2.activeElement?.closest('[role="menu"]')) return;
+      const items = [...element.querySelectorAll(focusable)].filter((item) => !item.closest("[inert], [hidden]"));
+      const first = items[0] ?? element;
+      const last = items.at(-1) ?? element;
+      const atEdge = event.shiftKey ? document2.activeElement === first : document2.activeElement === last;
+      if (document2.activeElement === element || !element.contains(document2.activeElement) || atEdge) {
+        event.preventDefault();
+        const target2 = event.shiftKey ? last : first;
+        target2.focus();
+      }
+    };
+    document2.addEventListener("keydown", keydown);
+    return () => {
+      composition.dispose();
+      const wasTop = stack.at(-1) === layer;
+      stack.splice(stack.indexOf(layer), 1);
+      document2.removeEventListener("keydown", keydown);
+      if (stack.length === 0) layers.delete(document2);
+      if (wasTop) {
+        const target2 = previous instanceof HTMLElement && previous.isConnected ? previous : stack.at(-1)?.element;
+        if (target2 !== void 0) {
+          pendingRestore.current = target2;
+          focusWithoutRing(target2);
+        }
+      }
+    };
+  }, [dialog, open]);
 }
 
 // upstream/packages/client/ui-primitives/src/Menu.tsx.snapshot
@@ -2428,6 +1655,5275 @@ var Button = forwardRef2(function Button2({
   ] });
 });
 
+// upstream/packages/client/ui-primitives/src/Modal.tsx.snapshot
+import { useRef as useRef8 } from "react";
+import { createPortal as createPortal6 } from "react-dom";
+import clsx7 from "clsx";
+
+// upstream/packages/client/ui-primitives/src/Modal.module.css.snapshot
+var Modal_module_css_default = {
+  root: "Modal_module_css_root",
+  mask: "Modal_module_css_mask",
+  modalEnter: "Modal_module_css_modalEnter",
+  dialog: "Modal_module_css_dialog",
+  content: "Modal_module_css_content",
+  header: "Modal_module_css_header",
+  title: "Modal_module_css_title",
+  warning: "Modal_module_css_warning",
+  warningIcon: "Modal_module_css_warningIcon",
+  body: "Modal_module_css_body",
+  close: "Modal_module_css_close",
+  description: "Modal_module_css_description",
+  footer: "Modal_module_css_footer"
+};
+
+// upstream/packages/client/ui-primitives/src/Modal.tsx.snapshot
+import { Fragment as Fragment4, jsx as jsx10, jsxs as jsxs8 } from "react/jsx-runtime";
+function Modal({
+  open,
+  onClose,
+  title,
+  closeLabel,
+  description,
+  children,
+  footer,
+  className,
+  contentClassName,
+  onKeyDownCapture,
+  headless = false,
+  backdropBlur = true,
+  shortcutModal,
+  tone
+}) {
+  const dialog = useRef8(null);
+  useModalLayer(dialog, open, onClose);
+  if (!open) return null;
+  return createPortal6(/* @__PURE__ */ jsxs8("div", { className: Modal_module_css_default.root, role: "presentation", onKeyDownCapture, children: [
+    /* @__PURE__ */ jsx10("div", { className: Modal_module_css_default.mask, style: backdropBlur ? void 0 : { backdropFilter: "none" }, "aria-hidden": "true", onClick: onClose }),
+    /* @__PURE__ */ jsx10(
+      "div",
+      {
+        ref: dialog,
+        tabIndex: -1,
+        "data-shortcut-modal": shortcutModal,
+        className: clsx7(Modal_module_css_default.dialog, !headless && tone === "warning" && Modal_module_css_default.warning, className),
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": title,
+        children: headless ? children : /* @__PURE__ */ jsxs8(Fragment4, { children: [
+          /* @__PURE__ */ jsxs8("div", { className: clsx7(Modal_module_css_default.content, contentClassName), children: [
+            /* @__PURE__ */ jsxs8("div", { className: Modal_module_css_default.header, children: [
+              /* @__PURE__ */ jsxs8("h2", { className: Modal_module_css_default.title, children: [
+                tone === "warning" && /* @__PURE__ */ jsx10(IconWarningOutlineRegular, { size: 18, className: Modal_module_css_default.warningIcon, "aria-hidden": "true" }),
+                title
+              ] }),
+              /* @__PURE__ */ jsx10("button", { type: "button", className: Modal_module_css_default.close, "aria-label": closeLabel, onClick: onClose, children: /* @__PURE__ */ jsx10(IconCloseOutlineRegular, { size: 14 }) })
+            ] }),
+            description !== void 0 && description !== "" && /* @__PURE__ */ jsx10("p", { className: Modal_module_css_default.description, children: description }),
+            children !== void 0 && /* @__PURE__ */ jsx10("div", { className: Modal_module_css_default.body, children })
+          ] }),
+          footer !== void 0 && /* @__PURE__ */ jsx10("div", { className: Modal_module_css_default.footer, children: footer })
+        ] })
+      }
+    )
+  ] }), document.body);
+}
+
+// ../../node_modules/.pnpm/zustand@5.0.8_@types+react@18.3.27_immer@10.1.3_react@18.3.1/node_modules/zustand/esm/vanilla.mjs
+var createStoreImpl = (createState) => {
+  let state;
+  const listeners = /* @__PURE__ */ new Set();
+  const setState = (partial, replace) => {
+    const nextState = typeof partial === "function" ? partial(state) : partial;
+    if (!Object.is(nextState, state)) {
+      const previousState = state;
+      state = (replace != null ? replace : typeof nextState !== "object" || nextState === null) ? nextState : Object.assign({}, state, nextState);
+      listeners.forEach((listener) => listener(state, previousState));
+    }
+  };
+  const getState = () => state;
+  const getInitialState = () => initialState;
+  const subscribe = (listener) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  };
+  const api = { setState, getState, getInitialState, subscribe };
+  const initialState = state = createState(setState, getState, api);
+  return api;
+};
+var createStore = ((createState) => createState ? createStoreImpl(createState) : createStoreImpl);
+
+// ../../node_modules/.pnpm/zustand@5.0.8_@types+react@18.3.27_immer@10.1.3_react@18.3.1/node_modules/zustand/esm/middleware.mjs
+var subscribeWithSelectorImpl = (fn) => (set2, get, api) => {
+  const origSubscribe = api.subscribe;
+  api.subscribe = ((selector, optListener, options) => {
+    let listener = selector;
+    if (optListener) {
+      const equalityFn = (options == null ? void 0 : options.equalityFn) || Object.is;
+      let currentSlice = selector(api.getState());
+      listener = (state) => {
+        const nextSlice = selector(state);
+        if (!equalityFn(currentSlice, nextSlice)) {
+          const previousSlice = currentSlice;
+          optListener(currentSlice = nextSlice, previousSlice);
+        }
+      };
+      if (options == null ? void 0 : options.fireImmediately) {
+        optListener(currentSlice, currentSlice);
+      }
+    }
+    return origSubscribe(listener);
+  });
+  const initialState = fn(set2, get, api);
+  return initialState;
+};
+var subscribeWithSelector = subscribeWithSelectorImpl;
+
+// ../../node_modules/.pnpm/immer@10.1.3/node_modules/immer/dist/immer.mjs
+var NOTHING = Symbol.for("immer-nothing");
+var DRAFTABLE = Symbol.for("immer-draftable");
+var DRAFT_STATE = Symbol.for("immer-state");
+var errors = true ? [
+  // All error codes, starting by 0:
+  function(plugin) {
+    return `The plugin for '${plugin}' has not been loaded into Immer. To enable the plugin, import and call \`enable${plugin}()\` when initializing your application.`;
+  },
+  function(thing) {
+    return `produce can only be called on things that are draftable: plain objects, arrays, Map, Set or classes that are marked with '[immerable]: true'. Got '${thing}'`;
+  },
+  "This object has been frozen and should not be mutated",
+  function(data) {
+    return "Cannot use a proxy that has been revoked. Did you pass an object from inside an immer function to an async process? " + data;
+  },
+  "An immer producer returned a new value *and* modified its draft. Either return a new value *or* modify the draft.",
+  "Immer forbids circular references",
+  "The first or second argument to `produce` must be a function",
+  "The third argument to `produce` must be a function or undefined",
+  "First argument to `createDraft` must be a plain object, an array, or an immerable object",
+  "First argument to `finishDraft` must be a draft returned by `createDraft`",
+  function(thing) {
+    return `'current' expects a draft, got: ${thing}`;
+  },
+  "Object.defineProperty() cannot be used on an Immer draft",
+  "Object.setPrototypeOf() cannot be used on an Immer draft",
+  "Immer only supports deleting array indices",
+  "Immer only supports setting array indices and the 'length' property",
+  function(thing) {
+    return `'original' expects a draft, got: ${thing}`;
+  }
+  // Note: if more errors are added, the errorOffset in Patches.ts should be increased
+  // See Patches.ts for additional errors
+] : [];
+function die(error, ...args) {
+  if (true) {
+    const e = errors[error];
+    const msg = typeof e === "function" ? e.apply(null, args) : e;
+    throw new Error(`[Immer] ${msg}`);
+  }
+  throw new Error(
+    `[Immer] minified error nr: ${error}. Full error at: https://bit.ly/3cXEKWf`
+  );
+}
+var getPrototypeOf = Object.getPrototypeOf;
+function isDraft(value) {
+  return !!value && !!value[DRAFT_STATE];
+}
+function isDraftable(value) {
+  if (!value)
+    return false;
+  return isPlainObject(value) || Array.isArray(value) || !!value[DRAFTABLE] || !!value.constructor?.[DRAFTABLE] || isMap(value) || isSet(value);
+}
+var objectCtorString = Object.prototype.constructor.toString();
+function isPlainObject(value) {
+  if (!value || typeof value !== "object")
+    return false;
+  const proto = getPrototypeOf(value);
+  if (proto === null) {
+    return true;
+  }
+  const Ctor = Object.hasOwnProperty.call(proto, "constructor") && proto.constructor;
+  if (Ctor === Object)
+    return true;
+  return typeof Ctor == "function" && Function.toString.call(Ctor) === objectCtorString;
+}
+function each(obj, iter) {
+  if (getArchtype(obj) === 0) {
+    Reflect.ownKeys(obj).forEach((key) => {
+      iter(key, obj[key], obj);
+    });
+  } else {
+    obj.forEach((entry, index) => iter(index, entry, obj));
+  }
+}
+function getArchtype(thing) {
+  const state = thing[DRAFT_STATE];
+  return state ? state.type_ : Array.isArray(thing) ? 1 : isMap(thing) ? 2 : isSet(thing) ? 3 : 0;
+}
+function has(thing, prop) {
+  return getArchtype(thing) === 2 ? thing.has(prop) : Object.prototype.hasOwnProperty.call(thing, prop);
+}
+function set(thing, propOrOldValue, value) {
+  const t = getArchtype(thing);
+  if (t === 2)
+    thing.set(propOrOldValue, value);
+  else if (t === 3) {
+    thing.add(value);
+  } else
+    thing[propOrOldValue] = value;
+}
+function is(x, y) {
+  if (x === y) {
+    return x !== 0 || 1 / x === 1 / y;
+  } else {
+    return x !== x && y !== y;
+  }
+}
+function isMap(target) {
+  return target instanceof Map;
+}
+function isSet(target) {
+  return target instanceof Set;
+}
+function latest(state) {
+  return state.copy_ || state.base_;
+}
+function shallowCopy(base, strict) {
+  if (isMap(base)) {
+    return new Map(base);
+  }
+  if (isSet(base)) {
+    return new Set(base);
+  }
+  if (Array.isArray(base))
+    return Array.prototype.slice.call(base);
+  const isPlain = isPlainObject(base);
+  if (strict === true || strict === "class_only" && !isPlain) {
+    const descriptors = Object.getOwnPropertyDescriptors(base);
+    delete descriptors[DRAFT_STATE];
+    let keys = Reflect.ownKeys(descriptors);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      const desc = descriptors[key];
+      if (desc.writable === false) {
+        desc.writable = true;
+        desc.configurable = true;
+      }
+      if (desc.get || desc.set)
+        descriptors[key] = {
+          configurable: true,
+          writable: true,
+          // could live with !!desc.set as well here...
+          enumerable: desc.enumerable,
+          value: base[key]
+        };
+    }
+    return Object.create(getPrototypeOf(base), descriptors);
+  } else {
+    const proto = getPrototypeOf(base);
+    if (proto !== null && isPlain) {
+      return { ...base };
+    }
+    const obj = Object.create(proto);
+    return Object.assign(obj, base);
+  }
+}
+function freeze(obj, deep = false) {
+  if (isFrozen(obj) || isDraft(obj) || !isDraftable(obj))
+    return obj;
+  if (getArchtype(obj) > 1) {
+    Object.defineProperties(obj, {
+      set: { value: dontMutateFrozenCollections },
+      add: { value: dontMutateFrozenCollections },
+      clear: { value: dontMutateFrozenCollections },
+      delete: { value: dontMutateFrozenCollections }
+    });
+  }
+  Object.freeze(obj);
+  if (deep)
+    Object.values(obj).forEach((value) => freeze(value, true));
+  return obj;
+}
+function dontMutateFrozenCollections() {
+  die(2);
+}
+function isFrozen(obj) {
+  return Object.isFrozen(obj);
+}
+var plugins = {};
+function getPlugin(pluginKey) {
+  const plugin = plugins[pluginKey];
+  if (!plugin) {
+    die(0, pluginKey);
+  }
+  return plugin;
+}
+var currentScope;
+function getCurrentScope() {
+  return currentScope;
+}
+function createScope(parent_, immer_) {
+  return {
+    drafts_: [],
+    parent_,
+    immer_,
+    // Whenever the modified draft contains a draft from another scope, we
+    // need to prevent auto-freezing so the unowned draft can be finalized.
+    canAutoFreeze_: true,
+    unfinalizedDrafts_: 0
+  };
+}
+function usePatchesInScope(scope, patchListener) {
+  if (patchListener) {
+    getPlugin("Patches");
+    scope.patches_ = [];
+    scope.inversePatches_ = [];
+    scope.patchListener_ = patchListener;
+  }
+}
+function revokeScope(scope) {
+  leaveScope(scope);
+  scope.drafts_.forEach(revokeDraft);
+  scope.drafts_ = null;
+}
+function leaveScope(scope) {
+  if (scope === currentScope) {
+    currentScope = scope.parent_;
+  }
+}
+function enterScope(immer2) {
+  return currentScope = createScope(currentScope, immer2);
+}
+function revokeDraft(draft) {
+  const state = draft[DRAFT_STATE];
+  if (state.type_ === 0 || state.type_ === 1)
+    state.revoke_();
+  else
+    state.revoked_ = true;
+}
+function processResult(result, scope) {
+  scope.unfinalizedDrafts_ = scope.drafts_.length;
+  const baseDraft = scope.drafts_[0];
+  const isReplaced = result !== void 0 && result !== baseDraft;
+  if (isReplaced) {
+    if (baseDraft[DRAFT_STATE].modified_) {
+      revokeScope(scope);
+      die(4);
+    }
+    if (isDraftable(result)) {
+      result = finalize(scope, result);
+      if (!scope.parent_)
+        maybeFreeze(scope, result);
+    }
+    if (scope.patches_) {
+      getPlugin("Patches").generateReplacementPatches_(
+        baseDraft[DRAFT_STATE].base_,
+        result,
+        scope.patches_,
+        scope.inversePatches_
+      );
+    }
+  } else {
+    result = finalize(scope, baseDraft, []);
+  }
+  revokeScope(scope);
+  if (scope.patches_) {
+    scope.patchListener_(scope.patches_, scope.inversePatches_);
+  }
+  return result !== NOTHING ? result : void 0;
+}
+function finalize(rootScope, value, path) {
+  if (isFrozen(value))
+    return value;
+  const state = value[DRAFT_STATE];
+  if (!state) {
+    each(
+      value,
+      (key, childValue) => finalizeProperty(rootScope, state, value, key, childValue, path)
+    );
+    return value;
+  }
+  if (state.scope_ !== rootScope)
+    return value;
+  if (!state.modified_) {
+    maybeFreeze(rootScope, state.base_, true);
+    return state.base_;
+  }
+  if (!state.finalized_) {
+    state.finalized_ = true;
+    state.scope_.unfinalizedDrafts_--;
+    const result = state.copy_;
+    let resultEach = result;
+    let isSet2 = false;
+    if (state.type_ === 3) {
+      resultEach = new Set(result);
+      result.clear();
+      isSet2 = true;
+    }
+    each(
+      resultEach,
+      (key, childValue) => finalizeProperty(rootScope, state, result, key, childValue, path, isSet2)
+    );
+    maybeFreeze(rootScope, result, false);
+    if (path && rootScope.patches_) {
+      getPlugin("Patches").generatePatches_(
+        state,
+        path,
+        rootScope.patches_,
+        rootScope.inversePatches_
+      );
+    }
+  }
+  return state.copy_;
+}
+function finalizeProperty(rootScope, parentState, targetObject, prop, childValue, rootPath, targetIsSet) {
+  if (childValue === targetObject)
+    die(5);
+  if (isDraft(childValue)) {
+    const path = rootPath && parentState && parentState.type_ !== 3 && // Set objects are atomic since they have no keys.
+    !has(parentState.assigned_, prop) ? rootPath.concat(prop) : void 0;
+    const res = finalize(rootScope, childValue, path);
+    set(targetObject, prop, res);
+    if (isDraft(res)) {
+      rootScope.canAutoFreeze_ = false;
+    } else
+      return;
+  } else if (targetIsSet) {
+    targetObject.add(childValue);
+  }
+  if (isDraftable(childValue) && !isFrozen(childValue)) {
+    if (!rootScope.immer_.autoFreeze_ && rootScope.unfinalizedDrafts_ < 1) {
+      return;
+    }
+    finalize(rootScope, childValue);
+    if ((!parentState || !parentState.scope_.parent_) && typeof prop !== "symbol" && (isMap(targetObject) ? targetObject.has(prop) : Object.prototype.propertyIsEnumerable.call(targetObject, prop)))
+      maybeFreeze(rootScope, childValue);
+  }
+}
+function maybeFreeze(scope, value, deep = false) {
+  if (!scope.parent_ && scope.immer_.autoFreeze_ && scope.canAutoFreeze_) {
+    freeze(value, deep);
+  }
+}
+function createProxyProxy(base, parent) {
+  const isArray = Array.isArray(base);
+  const state = {
+    type_: isArray ? 1 : 0,
+    // Track which produce call this is associated with.
+    scope_: parent ? parent.scope_ : getCurrentScope(),
+    // True for both shallow and deep changes.
+    modified_: false,
+    // Used during finalization.
+    finalized_: false,
+    // Track which properties have been assigned (true) or deleted (false).
+    assigned_: {},
+    // The parent draft state.
+    parent_: parent,
+    // The base state.
+    base_: base,
+    // The base proxy.
+    draft_: null,
+    // set below
+    // The base copy with any updated values.
+    copy_: null,
+    // Called by the `produce` function.
+    revoke_: null,
+    isManual_: false
+  };
+  let target = state;
+  let traps = objectTraps;
+  if (isArray) {
+    target = [state];
+    traps = arrayTraps;
+  }
+  const { revoke, proxy } = Proxy.revocable(target, traps);
+  state.draft_ = proxy;
+  state.revoke_ = revoke;
+  return proxy;
+}
+var objectTraps = {
+  get(state, prop) {
+    if (prop === DRAFT_STATE)
+      return state;
+    const source = latest(state);
+    if (!has(source, prop)) {
+      return readPropFromProto(state, source, prop);
+    }
+    const value = source[prop];
+    if (state.finalized_ || !isDraftable(value)) {
+      return value;
+    }
+    if (value === peek(state.base_, prop)) {
+      prepareCopy(state);
+      return state.copy_[prop] = createProxy(value, state);
+    }
+    return value;
+  },
+  has(state, prop) {
+    return prop in latest(state);
+  },
+  ownKeys(state) {
+    return Reflect.ownKeys(latest(state));
+  },
+  set(state, prop, value) {
+    const desc = getDescriptorFromProto(latest(state), prop);
+    if (desc?.set) {
+      desc.set.call(state.draft_, value);
+      return true;
+    }
+    if (!state.modified_) {
+      const current2 = peek(latest(state), prop);
+      const currentState = current2?.[DRAFT_STATE];
+      if (currentState && currentState.base_ === value) {
+        state.copy_[prop] = value;
+        state.assigned_[prop] = false;
+        return true;
+      }
+      if (is(value, current2) && (value !== void 0 || has(state.base_, prop)))
+        return true;
+      prepareCopy(state);
+      markChanged(state);
+    }
+    if (state.copy_[prop] === value && // special case: handle new props with value 'undefined'
+    (value !== void 0 || prop in state.copy_) || // special case: NaN
+    Number.isNaN(value) && Number.isNaN(state.copy_[prop]))
+      return true;
+    state.copy_[prop] = value;
+    state.assigned_[prop] = true;
+    return true;
+  },
+  deleteProperty(state, prop) {
+    if (peek(state.base_, prop) !== void 0 || prop in state.base_) {
+      state.assigned_[prop] = false;
+      prepareCopy(state);
+      markChanged(state);
+    } else {
+      delete state.assigned_[prop];
+    }
+    if (state.copy_) {
+      delete state.copy_[prop];
+    }
+    return true;
+  },
+  // Note: We never coerce `desc.value` into an Immer draft, because we can't make
+  // the same guarantee in ES5 mode.
+  getOwnPropertyDescriptor(state, prop) {
+    const owner = latest(state);
+    const desc = Reflect.getOwnPropertyDescriptor(owner, prop);
+    if (!desc)
+      return desc;
+    return {
+      writable: true,
+      configurable: state.type_ !== 1 || prop !== "length",
+      enumerable: desc.enumerable,
+      value: owner[prop]
+    };
+  },
+  defineProperty() {
+    die(11);
+  },
+  getPrototypeOf(state) {
+    return getPrototypeOf(state.base_);
+  },
+  setPrototypeOf() {
+    die(12);
+  }
+};
+var arrayTraps = {};
+each(objectTraps, (key, fn) => {
+  arrayTraps[key] = function() {
+    arguments[0] = arguments[0][0];
+    return fn.apply(this, arguments);
+  };
+});
+arrayTraps.deleteProperty = function(state, prop) {
+  if (isNaN(parseInt(prop)))
+    die(13);
+  return arrayTraps.set.call(this, state, prop, void 0);
+};
+arrayTraps.set = function(state, prop, value) {
+  if (prop !== "length" && isNaN(parseInt(prop)))
+    die(14);
+  return objectTraps.set.call(this, state[0], prop, value, state[0]);
+};
+function peek(draft, prop) {
+  const state = draft[DRAFT_STATE];
+  const source = state ? latest(state) : draft;
+  return source[prop];
+}
+function readPropFromProto(state, source, prop) {
+  const desc = getDescriptorFromProto(source, prop);
+  return desc ? `value` in desc ? desc.value : (
+    // This is a very special case, if the prop is a getter defined by the
+    // prototype, we should invoke it with the draft as context!
+    desc.get?.call(state.draft_)
+  ) : void 0;
+}
+function getDescriptorFromProto(source, prop) {
+  if (!(prop in source))
+    return void 0;
+  let proto = getPrototypeOf(source);
+  while (proto) {
+    const desc = Object.getOwnPropertyDescriptor(proto, prop);
+    if (desc)
+      return desc;
+    proto = getPrototypeOf(proto);
+  }
+  return void 0;
+}
+function markChanged(state) {
+  if (!state.modified_) {
+    state.modified_ = true;
+    if (state.parent_) {
+      markChanged(state.parent_);
+    }
+  }
+}
+function prepareCopy(state) {
+  if (!state.copy_) {
+    state.copy_ = shallowCopy(
+      state.base_,
+      state.scope_.immer_.useStrictShallowCopy_
+    );
+  }
+}
+var Immer2 = class {
+  constructor(config) {
+    this.autoFreeze_ = true;
+    this.useStrictShallowCopy_ = false;
+    this.produce = (base, recipe, patchListener) => {
+      if (typeof base === "function" && typeof recipe !== "function") {
+        const defaultBase = recipe;
+        recipe = base;
+        const self = this;
+        return function curriedProduce(base2 = defaultBase, ...args) {
+          return self.produce(base2, (draft) => recipe.call(this, draft, ...args));
+        };
+      }
+      if (typeof recipe !== "function")
+        die(6);
+      if (patchListener !== void 0 && typeof patchListener !== "function")
+        die(7);
+      let result;
+      if (isDraftable(base)) {
+        const scope = enterScope(this);
+        const proxy = createProxy(base, void 0);
+        let hasError = true;
+        try {
+          result = recipe(proxy);
+          hasError = false;
+        } finally {
+          if (hasError)
+            revokeScope(scope);
+          else
+            leaveScope(scope);
+        }
+        usePatchesInScope(scope, patchListener);
+        return processResult(result, scope);
+      } else if (!base || typeof base !== "object") {
+        result = recipe(base);
+        if (result === void 0)
+          result = base;
+        if (result === NOTHING)
+          result = void 0;
+        if (this.autoFreeze_)
+          freeze(result, true);
+        if (patchListener) {
+          const p = [];
+          const ip = [];
+          getPlugin("Patches").generateReplacementPatches_(base, result, p, ip);
+          patchListener(p, ip);
+        }
+        return result;
+      } else
+        die(1, base);
+    };
+    this.produceWithPatches = (base, recipe) => {
+      if (typeof base === "function") {
+        return (state, ...args) => this.produceWithPatches(state, (draft) => base(draft, ...args));
+      }
+      let patches, inversePatches;
+      const result = this.produce(base, recipe, (p, ip) => {
+        patches = p;
+        inversePatches = ip;
+      });
+      return [result, patches, inversePatches];
+    };
+    if (typeof config?.autoFreeze === "boolean")
+      this.setAutoFreeze(config.autoFreeze);
+    if (typeof config?.useStrictShallowCopy === "boolean")
+      this.setUseStrictShallowCopy(config.useStrictShallowCopy);
+  }
+  createDraft(base) {
+    if (!isDraftable(base))
+      die(8);
+    if (isDraft(base))
+      base = current(base);
+    const scope = enterScope(this);
+    const proxy = createProxy(base, void 0);
+    proxy[DRAFT_STATE].isManual_ = true;
+    leaveScope(scope);
+    return proxy;
+  }
+  finishDraft(draft, patchListener) {
+    const state = draft && draft[DRAFT_STATE];
+    if (!state || !state.isManual_)
+      die(9);
+    const { scope_: scope } = state;
+    usePatchesInScope(scope, patchListener);
+    return processResult(void 0, scope);
+  }
+  /**
+   * Pass true to automatically freeze all copies created by Immer.
+   *
+   * By default, auto-freezing is enabled.
+   */
+  setAutoFreeze(value) {
+    this.autoFreeze_ = value;
+  }
+  /**
+   * Pass true to enable strict shallow copy.
+   *
+   * By default, immer does not copy the object descriptors such as getter, setter and non-enumrable properties.
+   */
+  setUseStrictShallowCopy(value) {
+    this.useStrictShallowCopy_ = value;
+  }
+  applyPatches(base, patches) {
+    let i;
+    for (i = patches.length - 1; i >= 0; i--) {
+      const patch = patches[i];
+      if (patch.path.length === 0 && patch.op === "replace") {
+        base = patch.value;
+        break;
+      }
+    }
+    if (i > -1) {
+      patches = patches.slice(i + 1);
+    }
+    const applyPatchesImpl = getPlugin("Patches").applyPatches_;
+    if (isDraft(base)) {
+      return applyPatchesImpl(base, patches);
+    }
+    return this.produce(
+      base,
+      (draft) => applyPatchesImpl(draft, patches)
+    );
+  }
+};
+function createProxy(value, parent) {
+  const draft = isMap(value) ? getPlugin("MapSet").proxyMap_(value, parent) : isSet(value) ? getPlugin("MapSet").proxySet_(value, parent) : createProxyProxy(value, parent);
+  const scope = parent ? parent.scope_ : getCurrentScope();
+  scope.drafts_.push(draft);
+  return draft;
+}
+function current(value) {
+  if (!isDraft(value))
+    die(10, value);
+  return currentImpl(value);
+}
+function currentImpl(value) {
+  if (!isDraftable(value) || isFrozen(value))
+    return value;
+  const state = value[DRAFT_STATE];
+  let copy;
+  if (state) {
+    if (!state.modified_)
+      return state.base_;
+    state.finalized_ = true;
+    copy = shallowCopy(value, state.scope_.immer_.useStrictShallowCopy_);
+  } else {
+    copy = shallowCopy(value, true);
+  }
+  each(copy, (key, childValue) => {
+    set(copy, key, currentImpl(childValue));
+  });
+  if (state) {
+    state.finalized_ = false;
+  }
+  return copy;
+}
+var immer = new Immer2();
+var produce = immer.produce;
+
+// upstream/packages/client/store/src/index.ts.snapshot
+function notifySubscribers(listeners, label, ...args) {
+  for (const listener of [...listeners]) {
+    try {
+      listener(...args);
+    } catch (error) {
+      console.error(`${label} subscriber failed:`, error);
+    }
+  }
+}
+function rafBatch(notify) {
+  const schedule = typeof requestAnimationFrame === "function" ? (fn) => {
+    requestAnimationFrame(() => {
+      fn();
+    });
+  } : (fn) => {
+    queueMicrotask(fn);
+  };
+  let scheduled = false;
+  return () => {
+    if (scheduled) return;
+    scheduled = true;
+    schedule(() => {
+      scheduled = false;
+      notify();
+    });
+  };
+}
+function createSnapshotStore(init, opts) {
+  const withSelector = subscribeWithSelector(() => init);
+  const api = createStore()(withSelector);
+  if (opts?.persist) attachPersistence(api, opts.persist.name);
+  let subscribe = (fn) => api.subscribe(() => {
+    notifySubscribers([fn], "[client-store]");
+  });
+  if (opts?.flush === "raf") {
+    const listeners = /* @__PURE__ */ new Set();
+    const flush = rafBatch(() => {
+      notifySubscribers(listeners, "[client-store]");
+    });
+    api.subscribe(flush);
+    subscribe = (fn) => {
+      listeners.add(fn);
+      return () => {
+        listeners.delete(fn);
+      };
+    };
+  }
+  return {
+    getSnapshot: () => api.getState(),
+    subscribe: (fn) => subscribe(fn),
+    update: (mutator) => {
+      api.setState(produce(api.getState(), (draft) => {
+        mutator(draft);
+      }), true);
+    },
+    set: (next) => {
+      api.setState(devFreeze(next), true);
+    }
+  };
+}
+function attachPersistence(api, name) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const raw = localStorage.getItem(name);
+    if (raw !== null) {
+      api.setState(devFreeze(JSON.parse(raw)), true);
+    }
+  } catch (error) {
+    console.error(`snapshot store '${name}' rehydration failed:`, error);
+  }
+  api.subscribe((state) => {
+    try {
+      localStorage.setItem(name, JSON.stringify(state));
+    } catch (error) {
+      console.error(`snapshot store '${name}' persistence failed:`, error);
+    }
+  });
+}
+function devFreeze(value) {
+  if (false) return value;
+  return freeze(value, true);
+}
+function defineStore(decl) {
+  return {
+    spec: decl,
+    create(scopeKey) {
+      const persistKey = decl.persist === void 0 ? void 0 : scopeKey === void 0 ? decl.persist : `${decl.persist}.${scopeKey}`;
+      const store = createSnapshotStore(
+        decl.init(),
+        persistKey !== void 0 ? { persist: { name: persistKey } } : void 0
+      );
+      const actions = {};
+      for (const key of Object.keys(decl.actions)) {
+        const mutate = decl.actions[key];
+        actions[key] = (...params) => {
+          store.update((draft) => {
+            mutate(draft, ...params);
+          });
+        };
+      }
+      return {
+        actions,
+        getSnapshot: () => store.getSnapshot(),
+        subscribe: (fn) => store.subscribe(fn),
+        store,
+        clearPersisted: () => {
+          if (persistKey === void 0 || typeof localStorage === "undefined") return;
+          try {
+            localStorage.removeItem(persistKey);
+          } catch {
+          }
+        }
+      };
+    }
+  };
+}
+
+// upstream/packages/client/ui-shortcuts/src/client/store.ts.snapshot
+function createShortcutsStore() {
+  return defineStore({
+    init: () => ({ open: false, query: "", focusRequest: 0 }),
+    actions: {
+      open: (d) => {
+        d.open = true;
+        d.focusRequest++;
+      },
+      close: (d) => {
+        d.open = false;
+        d.query = "";
+      },
+      search: (d, query) => {
+        d.query = query;
+      }
+    }
+  });
+}
+
+// upstream/packages/client/ui-shortcuts/src/client/Reference.tsx.snapshot
+import { useCallback as useCallback3, useEffect as useEffect7, useLayoutEffect as useLayoutEffect7, useMemo as useMemo2, useRef as useRef10, useState as useState6 } from "react";
+
+// ../../node_modules/.pnpm/fuzzysort@4.0.2/node_modules/fuzzysort/fuzzysort.js
+function single(search, target) {
+  if (!search || !target) return null;
+  let query = getQuery(search);
+  if (!isPrepared(target)) target = getPrepared(target);
+  if ((query.bitflags & target._bitflags) !== query.bitflags) return null;
+  let result = !query.hasSpace && query.lowerCodes.length === 2 ? algorithm2(query, target) : algorithm(query, target);
+  return result && materialize(result);
+}
+function go(search, targets, options) {
+  if (targets instanceof SnapshotTargets) return goSnapshot(search, targets, options);
+  let key = options?.key;
+  let keys = !key && options?.keys;
+  let firstTarget = targets[0];
+  if (!key && !keys && typeof firstTarget === "object" && firstTarget !== null && !isPrepared(firstTarget)) {
+    throw new Error("fuzzysort: key or keys is required when searching object targets");
+  }
+  if (!search) return all(targets, options);
+  let query = getQuery(search);
+  if (keys) return goKeys(query, targets, options);
+  let searchBitflags = query.bitflags;
+  let twoChar = !query.hasSpace && query.lowerCodes.length === 2;
+  let threshold = denormalizeScore(options?.threshold ?? 0.5);
+  let limit = getLimit(options);
+  let scoreFn = options?.scoreFn;
+  let resultCount = 0;
+  let limited = 0;
+  let getter = key && makeGetter(key);
+  for (let i = 0; i < targets.length; i++) {
+    let obj = targets[i];
+    let target = key ? getter === null ? obj[key] : getter(obj) : obj;
+    if (!target) continue;
+    if (!isPrepared(target)) target = getPrepared(target);
+    if ((searchBitflags & target._bitflags) !== searchBitflags) continue;
+    let result = twoChar ? algorithm2(query, target) : algorithm(query, target);
+    if (result === null) continue;
+    let resultScore = result._score;
+    if (scoreFn) {
+      result = materialize(result, key ? obj : void 0);
+      resultScore = scoreFn(result);
+      if (!resultScore) continue;
+      result._score = resultScore = denormalizeScore(resultScore);
+    }
+    if (resultScore < threshold) continue;
+    let room = resultCount < limit;
+    if (room) resultCount++;
+    else {
+      limited++;
+      if (resultScore <= heap.peek()._score) continue;
+    }
+    if (!scoreFn) result = materialize(result, key ? obj : void 0);
+    room ? heap.add(result) : heap.replaceTop(result);
+  }
+  return finishResults(resultCount, limited);
+}
+function highlight(result, open = "<b>", close = "</b>", threshold = 0.5) {
+  let callback = typeof open === "function" ? open : null;
+  let target = result.target;
+  if (result._bestKeyScore !== void 0 && normalizeScore(result._score) < normalizeScore(result._bestKeyScore) * threshold) return callback ? [target] : target;
+  let raw = result._indexes;
+  let indexes = raw === void 0 ? result.indexes : raw.slice(0, raw.len ?? raw.length).sort((a, b) => a - b);
+  if (!indexes.length) return callback ? [target] : target;
+  let output = callback ? [] : "";
+  let lastIndex = 0;
+  let matchI = 0;
+  for (let i = 0; i < indexes.length; ) {
+    let start = indexes[i++];
+    let end = start + 1;
+    while (indexes[i] === end) {
+      i++;
+      end++;
+    }
+    let before = target.slice(lastIndex, start);
+    let match = target.slice(start, end);
+    if (callback) output.push(before, callback(match, matchI++));
+    else output += before + open + match + close;
+    lastIndex = end;
+  }
+  if (callback) output.push(target.slice(lastIndex));
+  else output += target.slice(lastIndex);
+  return output;
+}
+function score(result) {
+  let value = result.score;
+  return value === void 0 ? normalizeScore(result._score) : value;
+}
+function remap(mappings) {
+  for (let char in mappings) {
+    remappings[char] = mappings[char];
+    if (char.charCodeAt(0) < 128) customAsciiRemappings = true;
+  }
+  cleanup();
+}
+function prepare(target) {
+  return prepTarget(target);
+}
+function snapshot(targets, options) {
+  return new SnapshotTargets(targets, options);
+}
+function cleanup() {
+  targetCache.clear();
+  searchCache.clear();
+  heap.clear();
+  simpleMatch = [];
+  strictMatch = [];
+  seen = [];
+  seenAt = [];
+  changes = [];
+  partials = [];
+  spaceScores = [];
+  partIndexes = [];
+  winnerIndexes = [];
+  winnerScores = [];
+  winnerKeys = [];
+  keyTargets = [];
+  keyResults = [];
+  candidateBitOffsets = [];
+  seenGeneration = 0;
+}
+function goSnapshotValues(search, snapshot2, options, singleChar) {
+  let targets = snapshot2._targets;
+  let objects = snapshot2._objects;
+  let threshold = denormalizeScore(options?.threshold ?? 0.5);
+  let limit = getLimit(options);
+  let scoreFn = options?.scoreFn;
+  let searchLen = search.lowerCodes.length;
+  let shortSearch = !search.hasSpace && searchLen <= 3;
+  let twoChar = !search.hasSpace && searchLen === 2;
+  let rows = snapshot2._candidateRows;
+  let rowsLength = snapshot2._candidateLength;
+  let matchedRows = snapshot2._rows;
+  let matchedCount = 0;
+  let resultCount = 0;
+  let limited = 0;
+  for (let n = 0; n < rowsLength; n++) {
+    let i = rows === null ? n : rows[n];
+    let target = targets[i];
+    if (target === noTarget || (search.bitflags & target._bitflags) !== search.bitflags) continue;
+    let targetShort = shortSearch && target.target.length < 65535;
+    let cutoff = !scoreFn && threshold === -INF && resultCount >= limit ? heap.peek()._score : -INF;
+    let result;
+    if (singleChar && targetShort) result = algorithm1(search, target, snapshot2._first, i);
+    else if (twoChar && targetShort) {
+      let start = snapshot2._offsets[i];
+      let end = snapshot2._offsets[i + 1];
+      result = algorithm2(search, target, snapshot2._beginnings, start, end, cutoff);
+    } else if (twoChar) result = algorithm2(search, target, null, 0, 0, cutoff);
+    else if (targetShort) {
+      let start = snapshot2._offsets[i];
+      let end = snapshot2._offsets[i + 1];
+      result = algorithm(search, target, false, false, false, true, snapshot2._beginnings, start, end, cutoff);
+    } else result = algorithm(search, target, false, false, false, true, null, 0, 0, cutoff);
+    if (result === null) continue;
+    matchedRows[matchedCount++] = i;
+    if (result === prunedMatch) {
+      limited++;
+      continue;
+    }
+    let resultScore = result._score;
+    if (scoreFn) {
+      result = materialize(result, objects?.[i]);
+      resultScore = scoreFn(result);
+      if (!resultScore) continue;
+      result._score = resultScore = denormalizeScore(resultScore);
+    }
+    if (resultScore < threshold) continue;
+    let room = resultCount < limit;
+    if (room) resultCount++;
+    else {
+      limited++;
+      if (resultScore <= heap.peek()._score) continue;
+    }
+    if (objects && !scoreFn) result = materialize(result, objects[i]);
+    room ? heap.add(result) : heap.replaceTop(result);
+  }
+  snapshot2._matchedRowsLen = matchedCount;
+  return finishResults(resultCount, limited, !objects && !scoreFn && materialize);
+}
+function goSnapshot(search, snapshot2, options) {
+  if (options?.key || options?.keys) throw new Error("fuzzysort: key/keys must be provided to snapshot(), not go()");
+  snapshot2._finish();
+  if (!search) return allSnapshot(snapshot2, options);
+  let query = getQuery(search);
+  let backtrack = snapshot2._backtrack(query, options);
+  if (backtrack) return backtrack;
+  snapshot2._beginSearch(query);
+  try {
+    let results;
+    if (snapshot2._mode < 2) {
+      let searchLen = query.lowerCodes.length;
+      let code = query.lowerCodes[0];
+      let singleChar = searchLen === 1 && code >= 97 && code <= 122;
+      results = goSnapshotValues(query, snapshot2, options, singleChar);
+    } else results = goKeys(query, snapshot2._objects, options, snapshot2);
+    snapshot2._endSearch(query);
+    snapshot2._remember(query, results, options);
+    return results;
+  } catch (error) {
+    snapshot2._resetSearch();
+    throw error;
+  }
+}
+function goKeys(query, objects, options, snapshot2) {
+  let indexed = snapshot2 !== void 0;
+  let keys = indexed ? null : options.keys;
+  let getters = indexed ? null : keys.map(makeGetter);
+  let targets = indexed ? snapshot2._targets : null;
+  let keysLength = indexed ? snapshot2._keysLength : keys.length;
+  let searchBitflags = query.bitflags;
+  let hasSpace = query.hasSpace;
+  let spaceCount = query.parts.length;
+  let threshold = denormalizeScore(options?.threshold ?? 0.5);
+  let limit = getLimit(options);
+  let searchLen = query.lowerCodes.length;
+  let short = indexed && !hasSpace && searchLen <= 3;
+  let twoChar = !hasSpace && searchLen === 2;
+  let code = query.lowerCodes[0];
+  let singleChar = short && searchLen === 1 && code >= 97 && code <= 122;
+  let scoreFn = options?.scoreFn;
+  let deferMaterialization = indexed && !scoreFn && (limit !== INF || threshold > -INF);
+  let rows = indexed ? snapshot2._candidateRows : null;
+  let rowsLength = indexed ? snapshot2._candidateLength : objects.length;
+  let matchedRows = indexed ? snapshot2._rows : null;
+  let matchedCount = 0;
+  let resultCount = 0;
+  let limited = 0;
+  outer: for (let n = 0; n < rowsLength; n++) {
+    let i = rows === null ? n : rows[n];
+    let row = i * keysLength;
+    if (indexed) {
+      if ((searchBitflags & snapshot2._bitflags[i]) !== searchBitflags) continue;
+    } else {
+      let obj = objects[i];
+      let keysBitflags = 0;
+      for (let k = 0; k < keysLength; k++) {
+        let target = getters[k] === null ? obj[keys[k]] : getters[k](obj);
+        if (!target) target = noTarget;
+        else if (!isPrepared(target)) target = getPrepared(target);
+        keyTargets[k] = target;
+        keysBitflags |= target._bitflags;
+      }
+      if ((searchBitflags & keysBitflags) !== searchBitflags) continue;
+    }
+    if (hasSpace) for (let s = 0; s < spaceCount; s++) {
+      spaceScores[s] = winnerScores[s] = -INF;
+      winnerKeys[s] = -1;
+    }
+    for (let k = 0; k < keysLength; k++) {
+      let target = indexed ? targets[row + k] : keyTargets[k];
+      if (target === noTarget) {
+        keyResults[k] = noTarget;
+        continue;
+      }
+      if (hasSpace && indexed) {
+        let possible = false;
+        for (let s = 0; s < spaceCount; s++) {
+          let partBitflags = query.parts[s].bitflags;
+          if ((partBitflags & target._bitflags) === partBitflags) {
+            possible = true;
+            break;
+          }
+        }
+        if (!possible) {
+          keyResults[k] = noTarget;
+          continue;
+        }
+      } else if (!hasSpace && (searchBitflags & target._bitflags) !== searchBitflags) {
+        keyResults[k] = noTarget;
+        continue;
+      }
+      let match;
+      if (indexed) {
+        let valueRow = row + k;
+        let targetShort = short && target.target.length < 65535;
+        if (singleChar && targetShort) match = algorithm1(query, target, snapshot2._first, valueRow);
+        else if (twoChar && targetShort) {
+          let start = snapshot2._offsets[valueRow];
+          let end = snapshot2._offsets[valueRow + 1];
+          match = algorithm2(query, target, snapshot2._beginnings, start, end);
+        } else if (twoChar) match = algorithm2(query, target);
+        else if (targetShort) {
+          let start = snapshot2._offsets[valueRow];
+          let end = snapshot2._offsets[valueRow + 1];
+          match = algorithm(query, target, false, false, false, true, snapshot2._beginnings, start, end);
+        } else match = algorithm(query, target, false, hasSpace);
+      } else match = twoChar ? algorithm2(query, target) : algorithm(query, target, false, hasSpace);
+      if (match === null) {
+        keyResults[k] = noTarget;
+        continue;
+      }
+      keyResults[k] = deferMaterialization ? match : materialize(match);
+      if (hasSpace) {
+        mergePartScores(spaceCount);
+        for (let s = 0; s < spaceCount; s++) {
+          let partScore = partials[s];
+          if (partScore <= winnerScores[s]) continue;
+          winnerScores[s] = partScore;
+          winnerKeys[s] = k;
+          let source = partIndexes[s];
+          let winner = winnerIndexes[s] ||= [];
+          winner.length = source.length;
+          for (let j = 0; j < source.length; j++) winner[j] = source[j];
+        }
+      }
+    }
+    if (hasSpace) {
+      for (let s = 0; s < spaceCount; s++) if (winnerKeys[s] !== -1) {
+        appendIndexes(keyResults[winnerKeys[s]]._indexes, winnerIndexes[s]);
+      }
+    }
+    let resultScore;
+    if (hasSpace) {
+      resultScore = 0;
+      for (let s = 0; s < spaceCount; s++) {
+        let partScore = spaceScores[s];
+        if (partScore === -INF) continue outer;
+        resultScore += partScore;
+      }
+    } else {
+      resultScore = mergeScores(keyResults, keysLength);
+      if (resultScore === -INF) continue;
+    }
+    if (indexed) matchedRows[matchedCount++] = i;
+    let result = deferMaterialization ? null : captureKeysResult(keyResults, keysLength, objects[i], resultScore, hasSpace);
+    if (scoreFn) {
+      resultScore = scoreFn(result);
+      if (!resultScore) continue;
+      result._score = resultScore = denormalizeScore(resultScore);
+    }
+    if (resultScore < threshold) continue;
+    let room = resultCount < limit;
+    if (room) resultCount++;
+    else {
+      limited++;
+      if (resultScore <= heap.peek()._score) continue;
+    }
+    if (result === null) result = captureKeysResult(keyResults, keysLength, objects[i], resultScore, hasSpace);
+    room ? heap.add(result) : heap.replaceTop(result);
+  }
+  if (indexed) snapshot2._matchedRowsLen = matchedCount;
+  return finishResults(resultCount, limited, deferMaterialization && materializeKeys);
+}
+function allSnapshot(snapshot2, options) {
+  let results = [];
+  let targets = snapshot2._targets;
+  let objects = snapshot2._objects;
+  let keysLength = snapshot2._keysLength;
+  let total = keysLength === void 0 ? targets.length : objects.length;
+  results.total = total;
+  let limit = getLimit(options);
+  for (let i = 0, length = Math.min(total, limit); i < length; i++) {
+    if (keysLength === void 0) {
+      results.push(newResult(targets[i].target, -INF, objects?.[i]));
+      continue;
+    }
+    let row = i * keysLength;
+    for (let k = 0; k < keysLength; k++) {
+      let target = targets[row + k];
+      keyResults[k] = target === noTarget ? noTarget : newResult(target.target, -INF);
+    }
+    results.push(captureKeysResult(keyResults, keysLength, objects[i], -INF));
+  }
+  return results;
+}
+function all(targets, options) {
+  let results = [];
+  results.total = targets.length;
+  let limit = getLimit(options);
+  let key = options?.key;
+  let keys = !key && options?.keys;
+  if (keys) {
+    let getters = keys.map(makeGetter);
+    for (let obj of targets) {
+      for (let k = keys.length - 1; k >= 0; k--) {
+        let target = getters[k] === null ? obj[keys[k]] : getters[k](obj);
+        if (!target) keyResults[k] = noTarget;
+        else {
+          if (!isPrepared(target)) target = getPrepared(target);
+          target._score = -INF;
+          target._indexes.len = 0;
+          keyResults[k] = target;
+        }
+      }
+      results.push(captureKeysResult(keyResults, keys.length, obj, -INF));
+      if (results.length >= limit) break;
+    }
+    return results;
+  }
+  let getter = key && makeGetter(key);
+  for (let obj of targets) {
+    let target = key ? getter === null ? obj[key] : getter(obj) : obj;
+    if (target == null) continue;
+    if (!isPrepared(target)) target = getPrepared(target);
+    if (key) target = newResult(target.target, -INF, obj);
+    else {
+      target._score = -INF;
+      target._indexes.len = 0;
+    }
+    results.push(target);
+    if (results.length >= limit) break;
+  }
+  return results;
+}
+function finishResults(length, limited, transform) {
+  if (!length) return noResults;
+  let results = new Array(length);
+  for (let i = length - 1; i >= 0; i--) {
+    let result = heap.poll();
+    if (transform) result = transform(result);
+    if (result instanceof KeysResult && !result._partWinners) markBestKeyScore(result);
+    results[i] = result;
+  }
+  results.total = length + limited;
+  return results;
+}
+function materializeKeys(result) {
+  for (let k = 0; k < result.length; k++) if (result[k] !== noTarget) result[k] = materialize(result[k]);
+  return result;
+}
+function algorithm1(search, target, firstTable, row) {
+  let matchI = target._targetLower.indexOf(search._lower);
+  if (matchI === -1) return null;
+  let beginning = firstTable[row * 26 + search.lowerCodes[0] - 97];
+  let strict = beginning !== 0;
+  if (strict) matchI = beginning - 1;
+  let score2 = matchI === 0 ? 0 : -matchI * matchI * 0.2;
+  if (!strict) score2 *= 1e3;
+  else if (target._beginningsLen > 24) score2 *= (target._beginningsLen - 24) * 10;
+  target._score = score2 - target._targetLowerCodes.length + 1;
+  target._indexes[0] = matchI;
+  target._indexes.len = 1;
+  return target;
+}
+function algorithm2(search, target, beginnings = null, start = 0, end = 0, cutoff = -INF) {
+  let targetCodes = target._targetLowerCodes;
+  let targetLen = targetCodes.length;
+  let firstCode = search.lowerCodes[0];
+  let secondCode = search.lowerCodes[1];
+  let first = 0;
+  while (targetCodes[first] !== firstCode) if (++first >= targetLen) return null;
+  let second = first + 1;
+  while (targetCodes[second] !== secondCode) if (++second >= targetLen) return null;
+  if (cutoff !== -INF && scoreCeiling(2, targetLen) <= cutoff) return prunedMatch;
+  if (beginnings === null) {
+    beginnings = target._beginnings;
+    if (beginnings === null) target._beginnings = beginnings = makeBeginnings(target);
+    end = beginnings.length;
+  }
+  let substringI = target._targetLower.indexOf(search._lower, first);
+  let substring = substringI !== -1;
+  let low = lowerBound(beginnings, start, end, substringI);
+  let substringStart = substring && low < end && beginnings[low] === substringI;
+  let strict = substringStart && substringI === first;
+  if (!strict) {
+    let firstBeginning = start;
+    while (firstBeginning < end && beginnings[firstBeginning] < first) firstBeginning++;
+    for (let backtracks = 0; firstBeginning < end; ) {
+      let strictFirst = beginnings[firstBeginning];
+      if (targetCodes[strictFirst] !== firstCode) {
+        firstBeginning++;
+        continue;
+      }
+      let consecutive = strictFirst + 1;
+      if (targetCodes[consecutive] === secondCode) {
+        first = strictFirst;
+        second = consecutive;
+        strict = true;
+        break;
+      }
+      let secondBeginning = firstBeginning + 1;
+      while (secondBeginning < end && beginnings[secondBeginning] <= consecutive) secondBeginning++;
+      while (secondBeginning < end && targetCodes[beginnings[secondBeginning]] !== secondCode) secondBeginning++;
+      if (secondBeginning < end) {
+        first = strictFirst;
+        second = beginnings[secondBeginning];
+        strict = true;
+        break;
+      }
+      if (++backtracks > 200) break;
+      firstBeginning++;
+    }
+  }
+  if (substring && !substringStart) {
+    while (low < end && beginnings[low] <= substringI) low++;
+    for (; low < end; low++) {
+      let index = beginnings[low];
+      if (targetCodes[index] === firstCode && targetCodes[index + 1] === secondCode) {
+        substringI = index;
+        substringStart = true;
+        break;
+      }
+    }
+  }
+  if (substring && (!strict || substringStart)) {
+    first = substringI;
+    second = substringI + 1;
+  }
+  let resultScore = second - first === 1 ? 0 : first - second * 2 - 11;
+  if (first) resultScore -= first * first * 0.2;
+  if (!strict) resultScore *= 1e3;
+  else if (end - start > 24) resultScore *= (end - start - 24) * 10;
+  let lengthPenalty = (targetLen - 2) / 2;
+  resultScore -= lengthPenalty;
+  if (substring) resultScore /= 5;
+  if (substringStart) resultScore /= 5;
+  resultScore -= lengthPenalty;
+  let substringEnd = substring && second === first + 1 && (second + 1 === targetLen || isBeginning(beginnings, start, end, second + 1));
+  target._score = substringEnd ? resultScore + Math.min(4, -resultScore / 2) : resultScore;
+  target._indexes[0] = first;
+  target._indexes[1] = second;
+  target._indexes.len = 2;
+  return target;
+}
+function algorithm(search, target, spaces = false, partial = false, changed = false, singleMatch = true, beginnings = null, start = 0, end = 0, cutoff = -INF) {
+  if (!spaces && search.hasSpace) return algorithmSpaces(search, target, partial);
+  let searchCodes = search.lowerCodes;
+  let targetCodes = target._targetLowerCodes;
+  let searchLen = searchCodes.length;
+  let targetLen = targetCodes.length;
+  let searchCode = searchCodes[0];
+  let searchI = 0;
+  let targetI = 0;
+  for (; ; ) {
+    if (searchCode === targetCodes[targetI]) {
+      simpleMatch[searchI] = targetI;
+      if (++searchI === searchLen) break;
+      searchCode = searchCodes[searchI];
+    }
+    if (++targetI >= targetLen) return null;
+  }
+  if (cutoff !== -INF && searchLen > 1 && scoreCeiling(searchLen, targetLen) <= cutoff) return prunedMatch;
+  if (searchLen === 1 && !changed && singleMatch) {
+    let matchI;
+    let strict2;
+    if (target._singleMatchCode === searchCode) {
+      matchI = target._singleMatchIndex;
+      strict2 = target._singleMatchStrict;
+    } else if (target._nextBeginningIndexes !== null) {
+      let next2 = target._nextBeginningIndexes;
+      targetI = simpleMatch[0] === 0 ? 0 : next2[simpleMatch[0] - 1];
+      while (targetI < targetLen && searchCode !== targetCodes[targetI]) targetI = next2[targetI];
+      strict2 = targetI < targetLen;
+      matchI = strict2 ? targetI : simpleMatch[0];
+    } else {
+      prepareSingleMatch(target, searchCode, simpleMatch[0]);
+      matchI = target._singleMatchIndex;
+      strict2 = target._singleMatchStrict;
+    }
+    let resultScore = matchI === 0 ? 0 : -matchI * matchI * 0.2;
+    if (!strict2) resultScore *= 1e3;
+    else if (target._beginningsLen > 24) resultScore *= (target._beginningsLen - 24) * 10;
+    target._score = resultScore - (targetLen - 1);
+    target._indexes[0] = matchI;
+    target._indexes.len = 1;
+    return target;
+  }
+  searchI = 0;
+  let strict = false;
+  let strictLen = 0;
+  let next = target._nextBeginningIndexes;
+  if (beginnings === null && next === null) next = target._nextBeginningIndexes = makeNextBeginnings(target);
+  let beginningLen = beginnings === null ? changed ? 0 : target._beginningsLen : end - start;
+  if (!beginningLen) {
+    beginningLen = 1;
+    for (let i = next[0]; i < targetLen; i = next[i]) beginningLen++;
+    if (!changed) target._beginningsLen = beginningLen;
+  }
+  let substringI = searchLen <= 1 ? -1 : target._targetLower.indexOf(search._lower, simpleMatch[0]);
+  let isSubstring = substringI !== -1;
+  let substringStart = isSubstring && (substringI === 0 || (beginnings ? isBeginning(beginnings, start, end, substringI) : next[substringI - 1] === substringI));
+  if (substringStart && substringI === simpleMatch[0]) strict = true;
+  else {
+    targetI = simpleMatch[0] === 0 ? 0 : beginnings ? nextBeginning(beginnings, start, end, simpleMatch[0] - 1, targetLen) : next[simpleMatch[0] - 1];
+    let backtracks = 0;
+    if (targetI !== targetLen) for (; ; ) {
+      if (targetI >= targetLen) {
+        if (searchI <= 0 || ++backtracks > 200) break;
+        searchI--;
+        let previous = strictMatch[--strictLen];
+        targetI = beginnings ? nextBeginning(beginnings, start, end, previous, targetLen) : next[previous];
+      } else if (searchCodes[searchI] === targetCodes[targetI]) {
+        strictMatch[strictLen++] = targetI;
+        if (++searchI === searchLen) {
+          strict = true;
+          break;
+        }
+        targetI++;
+      } else targetI = beginnings ? nextBeginning(beginnings, start, end, targetI, targetLen) : next[targetI];
+    }
+  }
+  if (isSubstring && !substringStart) {
+    if (beginnings) {
+      for (let b = start; b < end; b++) {
+        let i = beginnings[b];
+        if (i <= substringI) continue;
+        let s = 0;
+        for (; s < searchLen && searchCodes[s] === targetCodes[i + s]; s++) ;
+        if (s === searchLen) {
+          substringI = i;
+          substringStart = true;
+          break;
+        }
+      }
+    } else for (let i = 0; i < next.length; i = next[i]) {
+      if (i <= substringI) continue;
+      let s = 0;
+      for (; s < searchLen && searchCodes[s] === targetCodes[i + s]; s++) ;
+      if (s === searchLen) {
+        substringI = i;
+        substringStart = true;
+        break;
+      }
+    }
+  }
+  let matches;
+  if (!strict) {
+    if (isSubstring) for (let i = 0; i < searchLen; i++) simpleMatch[i] = substringI + i;
+    matches = simpleMatch;
+  } else if (substringStart) {
+    for (let i = 0; i < searchLen; i++) simpleMatch[i] = substringI + i;
+    matches = simpleMatch;
+  } else matches = strictMatch;
+  let matchEnd = matches[searchLen - 1] + 1;
+  let substringEnd = isSubstring && matchEnd - matches[0] === searchLen && (matchEnd === targetLen || (beginnings ? isBeginning(beginnings, start, end, matchEnd) : next[matchEnd - 1] === matchEnd));
+  target._score = calculateScore(matches, searchLen, targetLen, strict, beginningLen, isSubstring, substringStart, substringEnd);
+  for (let i = 0; i < searchLen; i++) target._indexes[i] = matches[i];
+  target._indexes.len = searchLen;
+  return target;
+}
+function mergePartScores(length) {
+  for (let i = 0; i < length; i++) {
+    let partial = partials[i];
+    let best = spaceScores[i];
+    if (partial > -1e3 && best > -INF) best = Math.max(best, (best + partial) / 4);
+    spaceScores[i] = Math.max(best, partial);
+  }
+}
+function appendIndexes(indexes, additions) {
+  let length = indexes.len;
+  outer: for (let i = 0; i < additions.length; i++) {
+    let index = additions[i];
+    for (let j = 0; j < length; j++) if (indexes[j] === index) continue outer;
+    indexes[length++] = index;
+  }
+  indexes.len = length;
+}
+function mergeScores(results, length) {
+  let total = -INF;
+  for (let i = 0; i < length; i++) {
+    let score2 = results[i]._score;
+    if (score2 > -1e3 && total > -INF) total = Math.max(total, (total + score2) / 4);
+    if (score2 > total) total = score2;
+  }
+  return total;
+}
+function calculateScore(matches, searchLen, targetLen, strict, beginningLen, substring, substringStart, substringEnd) {
+  let score2 = 0;
+  let groups = 0;
+  for (let i = 1; i < searchLen; i++) if (matches[i] - matches[i - 1] !== 1) {
+    score2 -= matches[i];
+    groups++;
+  }
+  let unmatchedDistance = matches[searchLen - 1] - matches[0] - (searchLen - 1);
+  score2 -= (12 + unmatchedDistance) * groups;
+  if (matches[0] !== 0) score2 -= matches[0] * matches[0] * 0.2;
+  if (!strict) score2 *= 1e3;
+  else if (beginningLen > 24) score2 *= (beginningLen - 24) * 10;
+  let lengthPenalty = (targetLen - searchLen) / 2;
+  score2 -= lengthPenalty;
+  let substringBonus = 1 + searchLen * searchLen;
+  if (substring) score2 /= substringBonus;
+  if (substringStart) score2 /= substringBonus;
+  score2 -= lengthPenalty;
+  return substringEnd ? score2 + Math.min(4, -score2 / 2) : score2;
+}
+function algorithmSpaces(search, target, partial) {
+  let seenLen = 0;
+  let generation = ++seenGeneration;
+  let score2 = 0;
+  let result = null;
+  let previousFirst = 0;
+  let searches = search.parts;
+  let changesLen = 0;
+  let matched = false;
+  for (let i = 0; i < searches.length; i++) {
+    partials[i] = -INF;
+    if (partial) (partIndexes[i] ||= []).length = 0;
+    result = algorithm(searches[i], target, false, false, changesLen !== 0, false);
+    if (result === null) {
+      if (partial) continue;
+      resetBeginnings(target, changesLen);
+      return null;
+    }
+    matched = true;
+    if (i < searches.length - 1) {
+      let indexes = result._indexes;
+      let consecutive = true;
+      for (let j = 0; j < indexes.len - 1; j++) if (indexes[j + 1] - indexes[j] !== 1) {
+        consecutive = false;
+        break;
+      }
+      if (consecutive) {
+        let beginning = indexes[indexes.len - 1] + 1;
+        let previous = target._nextBeginningIndexes[beginning - 1];
+        for (let j = beginning - 1; j >= 0 && target._nextBeginningIndexes[j] === previous; j--) {
+          target._nextBeginningIndexes[j] = beginning;
+          changes[changesLen * 2] = j;
+          changes[changesLen * 2 + 1] = previous;
+          changesLen++;
+        }
+      }
+    }
+    if (partial) {
+      let indexes = partIndexes[i];
+      indexes.length = result._indexes.len;
+      for (let j = 0; j < indexes.length; j++) indexes[j] = result._indexes[j];
+    }
+    let partScore = result._score / searches.length;
+    score2 += partScore;
+    partials[i] = partScore;
+    if (result._indexes[0] < previousFirst) score2 -= (previousFirst - result._indexes[0]) * 2;
+    previousFirst = result._indexes[0];
+    if (!partial) for (let j = 0; j < result._indexes.len; j++) {
+      let index = result._indexes[j];
+      if (seenAt[index] === generation) continue;
+      seenAt[index] = generation;
+      seen[seenLen++] = index;
+    }
+  }
+  if (partial && !matched) return null;
+  resetBeginnings(target, changesLen);
+  if (target._bitflags & SPACE_BIT) {
+    let spacedResult = algorithm(search, target, true);
+    if (spacedResult !== null && spacedResult._score > score2) {
+      if (partial) {
+        let searchFrom = 0;
+        for (let i = 0; i < searches.length; i++) {
+          partials[i] = spacedResult._score / searches.length;
+          let part = searches[i]._lower;
+          let searchI = search._lower.indexOf(part, searchFrom);
+          let indexes = partIndexes[i];
+          indexes.length = part.length;
+          for (let j = 0; j < part.length; j++) indexes[j] = spacedResult._indexes[searchI + j];
+          searchFrom = searchI + part.length;
+        }
+        if (spacedResult._score < GOOD_PART_SCORE) spacedResult._indexes.len = 0;
+      }
+      return spacedResult;
+    }
+  }
+  if (partial) {
+    result = target;
+    let targetLower = target._targetLower;
+    for (let i = 1; i < searches.length; i++) {
+      let previous = partIndexes[i - 1];
+      if (!previous.length || !partIndexes[i].length) continue;
+      let previousEnd = previous[previous.length - 1] + 1;
+      let at = previousEnd;
+      let code;
+      while ((code = targetLower.charCodeAt(at)) === 32 || code >= 9 && code <= 13) at++;
+      let part = searches[i]._lower;
+      if (!targetLower.startsWith(part, at)) continue;
+      for (let j = previousEnd; j < at; j++) previous.push(j);
+      let indexes = partIndexes[i];
+      indexes.length = part.length;
+      for (let j = 0; j < part.length; j++) indexes[j] = at + j;
+    }
+    result._indexes.len = 0;
+    for (let i = 0; i < searches.length; i++) if (partials[i] * searches.length >= GOOD_PART_SCORE) {
+      appendIndexes(result._indexes, partIndexes[i]);
+    }
+  } else {
+    for (let i = 0; i < seenLen; i++) result._indexes[i] = seen[i];
+    result._indexes.len = seenLen;
+  }
+  result._score = score2;
+  return result;
+}
+function resetBeginnings(target, changesLen) {
+  for (let i = changesLen - 1; i >= 0; i--) {
+    target._nextBeginningIndexes[changes[i * 2]] = changes[i * 2 + 1];
+  }
+}
+var SnapshotTargets = class {
+  constructor(targets, options) {
+    this._mode = options?.keys ? 2 : options?.key ? 1 : 0;
+    this._keys = this._mode === 2 ? options.keys.slice() : [options?.key];
+    this._input = targets.slice();
+    this._index = 0;
+    this._done = false;
+    this._error = null;
+    this._scheduled = null;
+    if (targets.length === 0) this._finish();
+    else this._schedule();
+  }
+  _schedule() {
+    if (this._scheduled !== null) return;
+    this._scheduled = scheduleTask((deadline) => {
+      this._scheduled = null;
+      this._run(deadline);
+    });
+  }
+  _cancel() {
+    if (this._scheduled !== null) this._scheduled();
+    this._scheduled = null;
+  }
+  _initialize() {
+    if (this._targets) return;
+    let keysLength = this._mode === 2 ? this._keys.length : 1;
+    let valueCount = this._input.length * keysLength;
+    let rowCount = this._input.length;
+    this._targets = new Array(valueCount);
+    this._first = new Uint16Array(valueCount * 26);
+    this._offsets = new Uint32Array(valueCount + 1);
+    this._buildingBeginnings = [];
+    this._rowCount = rowCount;
+    this._rowWords = rowCount + 31 >> 5;
+    this._rowBits = new Uint32Array(this._rowWords * 32);
+    this._rows = new Uint32Array(rowCount);
+    this._lastRowsLen = 0;
+    this._matchedRowsLen = 0;
+    this._lastQuery = null;
+    this._candidateRows = null;
+    this._candidateLength = rowCount;
+    this._history = [];
+    if (this._mode) {
+      this._objects = this._input;
+      this._getters = this._keys.map(makeGetter);
+    }
+    if (this._mode === 2) {
+      this._keysLength = keysLength;
+      this._bitflags = new Int32Array(rowCount);
+    }
+  }
+  _run(deadline) {
+    if (this._done || this._error) return;
+    let end = Date.now() + 4;
+    let hasTime = () => deadline && !deadline.didTimeout ? deadline.timeRemaining() > 1 : Date.now() < end;
+    try {
+      this._initialize();
+      do
+        this._prepareOne();
+      while (this._index < this._input.length && hasTime());
+      if (this._index === this._input.length) this._complete();
+      else this._schedule();
+    } catch (error) {
+      this._error = error;
+      this._done = true;
+    }
+  }
+  _indexRow(row, bitflags) {
+    let flags = bitflags >>> 0;
+    let word = row >> 5;
+    let mask = 1 << (row & 31);
+    let words = this._rowWords;
+    let bits = this._rowBits;
+    while (flags) {
+      let lowest = flags & -flags;
+      let bit = 31 - Math.clz32(lowest);
+      bits[bit * words + word] |= mask;
+      flags = (flags & flags - 1) >>> 0;
+    }
+  }
+  _prepareOne() {
+    let i = this._index++;
+    let mode = this._mode;
+    let obj = this._input[i];
+    let keysLength = mode === 2 ? this._keysLength : 1;
+    let bitflags = 0;
+    for (let k = 0; k < keysLength; k++) {
+      let value = mode === 0 ? obj : this._getters[k] === null ? obj[this._keys[k]] : this._getters[k](obj);
+      let row = mode === 2 ? i * keysLength + k : i;
+      let prepared = this._targets[row] = value ? prepTarget(value) : noTarget;
+      if (prepared !== noTarget) indexBeginnings(prepared, this._first, row, this._buildingBeginnings);
+      this._offsets[row + 1] = this._buildingBeginnings.length;
+      bitflags |= prepared._bitflags;
+    }
+    if (mode === 2) this._bitflags[i] = bitflags;
+    this._indexRow(i, bitflags);
+  }
+  _complete() {
+    this._beginnings = Uint16Array.from(this._buildingBeginnings);
+    this._buildingBeginnings = this._input = this._getters = this._keys = null;
+    this._done = true;
+  }
+  _bitOffsets(bitflags) {
+    let offsetsLen = 0;
+    let words = this._rowWords;
+    for (let bit = 0; bit < 32; bit++) if (bitflags & 1 << bit) candidateBitOffsets[offsetsLen++] = bit * words;
+    return offsetsLen;
+  }
+  _matchRows(bitflags, fill = false, stop = INF) {
+    let offsetsLen = this._bitOffsets(bitflags);
+    if (!offsetsLen) {
+      if (fill) {
+        this._candidateRows = null;
+        this._candidateLength = this._rowCount;
+      }
+      return this._rowCount;
+    }
+    let bits = this._rowBits;
+    let words = this._rowWords;
+    let rowsLen = 0;
+    for (let word = 0; word < words; word++) {
+      let matches = bits[candidateBitOffsets[0] + word];
+      for (let i = 1; i < offsetsLen && matches; i++) matches &= bits[candidateBitOffsets[i] + word];
+      if (!fill) {
+        rowsLen += bitCount(matches);
+        if (rowsLen >= stop) return rowsLen;
+        continue;
+      }
+      while (matches) {
+        let lowest = matches & -matches;
+        this._rows[rowsLen++] = (word << 5) + 31 - Math.clz32(lowest);
+        matches = (matches & matches - 1) >>> 0;
+      }
+    }
+    if (fill) {
+      this._candidateRows = this._rows;
+      this._candidateLength = rowsLen;
+    }
+    return rowsLen;
+  }
+  _beginSearch(query) {
+    this._matchedRowsLen = 0;
+    let previousQuery = this._lastQuery;
+    let previousLength = this._lastRowsLen;
+    this._lastQuery = null;
+    let bitflags = query.bitflags >>> 0;
+    if (previousQuery !== null && query._lower.startsWith(previousQuery)) {
+      let staticCount = this._matchRows(bitflags, false, previousLength);
+      if (previousLength <= staticCount) {
+        this._candidateRows = this._rows;
+        this._candidateLength = previousLength;
+        return;
+      }
+    }
+    this._matchRows(bitflags, true);
+  }
+  _endSearch(query) {
+    this._lastRowsLen = this._matchedRowsLen;
+    this._matchedRowsLen = 0;
+    this._lastQuery = query._lower || null;
+    this._candidateRows = null;
+    this._candidateLength = 0;
+  }
+  _backtrack(query, options) {
+    let history = this._history;
+    if (history.length < 2 || options?.scoreFn || options?.threshold !== void 0) return null;
+    let limit = getLimit(options);
+    if (limit === INF) return null;
+    let current2 = history[history.length - 1];
+    let value = query._lower;
+    if (current2.query === value && current2.limit === limit && current2.results) return copyResults(current2.results);
+    if (value.length >= current2.query.length || !current2.query.startsWith(value)) return null;
+    let i = history.length - 2;
+    while (i >= 0 && history[i].query.length > value.length) i--;
+    let entry = history[i];
+    if (!entry || entry.query !== value || entry.limit !== limit) return null;
+    history.length = i + 1;
+    if (!entry.results) return null;
+    this._resetSearch();
+    return copyResults(entry.results);
+  }
+  _remember(query, results, options) {
+    let history = this._history;
+    let limit = getLimit(options);
+    if (options?.scoreFn || options?.threshold !== void 0 || limit === INF || results.length > 256) {
+      history.length = 0;
+      return;
+    }
+    let value = query._lower;
+    let last = history[history.length - 1];
+    if (last && !value.startsWith(last.query)) history.length = 0;
+    else if (last?.query === value && last.limit === limit) history.pop();
+    history.push({ query: value, limit, results: value.length <= 32 ? copyResults(results) : null });
+  }
+  _resetSearch() {
+    this._lastQuery = null;
+    this._lastRowsLen = this._matchedRowsLen = this._candidateLength = 0;
+    this._candidateRows = null;
+  }
+  _finish() {
+    if (this._error) throw this._error;
+    if (this._done) return;
+    this._cancel();
+    try {
+      this._initialize();
+      while (this._index < this._input.length) this._prepareOne();
+      this._complete();
+    } catch (error) {
+      this._error = error;
+      this._done = true;
+      throw error;
+    }
+  }
+};
+function copyResult(result) {
+  if (result === noTarget) return noTarget;
+  if (result instanceof KeysResult) {
+    let copy2 = result.map(copyResult);
+    copy2.obj = result.obj;
+    copy2._score = result._score;
+    if (result._partWinners) copy2._partWinners = true;
+    return copy2;
+  }
+  let copy = materialize(result, result.obj);
+  if (result._bestKeyScore !== void 0) copy._bestKeyScore = result._bestKeyScore;
+  let indexes = result._indexes;
+  copy._indexes = indexes.slice(0, indexes.len ?? indexes.length);
+  copy._indexes.len = copy._indexes.length;
+  return copy;
+}
+function copyResults(results) {
+  let copies = results.map(copyResult);
+  copies.total = results.total;
+  return copies;
+}
+function prepTarget(target) {
+  if (isPrepared(target)) target = target.target;
+  else if (typeof target === "number") target = "" + target;
+  else if (typeof target !== "string") target = "";
+  let info = lowerInfo(target);
+  return newResult(target, -INF, null, info._lower, info.lowerCodes, info.bitflags);
+}
+function prepQuery(search) {
+  if (typeof search === "number") search = "" + search;
+  else if (typeof search !== "string") search = "";
+  search = remapChars(search).trim();
+  let info = lowerInfoRemapped(search);
+  info.bitflags &= ~SPACE_BIT;
+  info.parts = info.hasSpace ? [...new Set(info._lower.split(/\s+/))].map(prepQuery) : [];
+  return info;
+}
+function getPrepared(target) {
+  if (target.length > 999) return prepTarget(target);
+  let prepared = targetCache.get(target);
+  if (prepared === void 0) targetCache.set(target, prepared = prepTarget(target));
+  return prepared;
+}
+function getQuery(search) {
+  if (search.length > 999) return prepQuery(search);
+  let prepared = searchCache.get(search);
+  if (prepared === void 0) {
+    if (searchCache.size >= 512) searchCache.clear();
+    searchCache.set(search, prepared = prepQuery(search));
+  }
+  return prepared;
+}
+function scanBeginnings(prepared, visit) {
+  let target = remapChars(prepared.target);
+  let wasUpper = false;
+  let wasAlnum = false;
+  let count = 0;
+  for (let i = 0; i < target.length; i++) {
+    let code = target.charCodeAt(i);
+    let upper = code >= 65 && code <= 90;
+    let alnum = upper || code >= 97 && code <= 122 || code >= 48 && code <= 57;
+    let beginning = upper && !wasUpper || !wasAlnum || !alnum;
+    wasUpper = upper;
+    wasAlnum = alnum;
+    if (beginning) {
+      count++;
+      visit(i);
+    }
+  }
+  prepared._beginningsLen = count;
+}
+function indexBeginnings(prepared, firstTable, row, packed) {
+  if (prepared.target.length >= 65535) return;
+  let target = remapChars(prepared.target);
+  let lowerCodes = prepared._targetLowerCodes;
+  let offset = row * 26;
+  let wasUpper = false;
+  let wasAlnum = false;
+  let count = 0;
+  for (let i = 0; i < target.length; i++) {
+    let code = target.charCodeAt(i);
+    let upper = code >= 65 && code <= 90;
+    let alnum = upper || code >= 97 && code <= 122 || code >= 48 && code <= 57;
+    let beginning = upper && !wasUpper || !wasAlnum || !alnum;
+    wasUpper = upper;
+    wasAlnum = alnum;
+    if (!beginning) continue;
+    count++;
+    packed.push(i);
+    code = lowerCodes[i];
+    if (code >= 97 && code <= 122) {
+      let slot = offset + code - 97;
+      if (firstTable[slot] === 0) firstTable[slot] = i + 1;
+    }
+  }
+  prepared._beginningsLen = count;
+}
+function prepareSingleMatch(prepared, searchCode, fallbackIndex) {
+  let matchI = fallbackIndex;
+  let strict = false;
+  scanBeginnings(prepared, (i) => {
+    if (!strict && searchCode === prepared._targetLowerCodes[i]) {
+      matchI = i;
+      strict = true;
+    }
+  });
+  prepared._singleMatchCode = searchCode;
+  prepared._singleMatchIndex = matchI;
+  prepared._singleMatchStrict = strict;
+}
+function makeBeginnings(prepared) {
+  let beginnings = [];
+  scanBeginnings(prepared, (i) => beginnings.push(i));
+  return beginnings;
+}
+function makeNextBeginnings(prepared) {
+  let next = [];
+  let fill = 0;
+  scanBeginnings(prepared, (i) => {
+    for (; fill < i; fill++) next[fill] = i;
+  });
+  for (; fill < prepared.target.length; fill++) next[fill] = prepared.target.length;
+  return next;
+}
+function remapCharacter(char) {
+  let remapped = remappings[char];
+  if (remapped !== void 0) return remapped;
+  if (char.charCodeAt(0) < 128) return char;
+  remapped = char.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  return remapped.length === 1 ? remapped : char;
+}
+function remapChars(value) {
+  if (customAsciiRemappings) return value.replace(/[\s\S]/g, remapCharacter);
+  return /[^\x00-\x7F]|[\\"`]/.test(value) ? value.replace(/[^\x00-\x7F]|[\\"`]/g, remapCharacter) : value;
+}
+function lowerInfo(value) {
+  return lowerInfoRemapped(remapChars(value));
+}
+function lowerInfoRemapped(value) {
+  let lower = value.toLowerCase();
+  let lowerCodes = [];
+  let bitflags = 0;
+  let hasSpace = false;
+  for (let i = 0; i < lower.length; i++) {
+    let code = lowerCodes[i] = lower.charCodeAt(i);
+    if (code === 32) {
+      hasSpace = true;
+      bitflags |= SPACE_BIT;
+      continue;
+    }
+    let bit = code >= 97 && code <= 122 ? code - 97 : code >= 48 && code <= 57 ? 26 : code <= 127 ? 30 : 31;
+    bitflags |= 1 << bit;
+  }
+  return { lowerCodes, bitflags, hasSpace, _lower: lower };
+}
+var Result = class {
+  get ["indexes"]() {
+    return this._indexes.slice(0, this._indexes.len).sort((a, b) => a - b);
+  }
+  set ["indexes"](value) {
+    this._indexes = value;
+  }
+  ["highlight"](open, close, threshold) {
+    return highlight(this, open, close, threshold);
+  }
+  get ["score"]() {
+    return normalizeScore(this._score);
+  }
+};
+var KeysResult = class extends Array {
+  get ["score"]() {
+    return normalizeScore(this._score);
+  }
+};
+function newResult(target, score2 = -INF, obj = null, lower = "", lowerCodes = null, bitflags = 0) {
+  let result = new Result();
+  result.target = target;
+  result.obj = obj;
+  result._score = score2;
+  result._indexes = [];
+  result._targetLower = lower;
+  result._targetLowerCodes = lowerCodes;
+  result._nextBeginningIndexes = null;
+  result._beginnings = null;
+  result._beginningsLen = 0;
+  result._singleMatchCode = result._singleMatchIndex = -1;
+  result._singleMatchStrict = false;
+  result._bitflags = bitflags;
+  return result;
+}
+function materialize(prepared, obj = null) {
+  let result = new Result();
+  result.target = prepared.target;
+  result.obj = obj;
+  result._score = prepared._score;
+  result._indexes = prepared._indexes;
+  return result;
+}
+function markBestKeyScore(result) {
+  let best = -INF;
+  for (let i = 0; i < result.length; i++) if (result[i] !== noTarget && result[i]._score > best) best = result[i]._score;
+  for (let i = 0; i < result.length; i++) if (result[i] !== noTarget) result[i]._bestKeyScore = best;
+  return result;
+}
+function captureKeysResult(matches, keysLength, obj, score2, partWinners = false) {
+  let result = new KeysResult(keysLength);
+  for (let k = 0; k < keysLength; k++) result[k] = matches[k];
+  result.obj = obj;
+  result._score = score2;
+  if (partWinners) result._partWinners = true;
+  return result;
+}
+var normalizeScore = (value) => value === -INF ? 0 : value > 1 ? value : Math.E ** (((-value + 1) ** 0.04307 - 1) * -2);
+var denormalizeScore = (value) => value === 0 ? -INF : value > 1 ? value : 1 - Math.pow(Math.log(value) / -2 + 1, 1 / 0.04307);
+var GOOD_PART_SCORE = denormalizeScore(0.5);
+var isPrepared = (value) => typeof value === "object" && typeof value?._bitflags === "number";
+function makeGetter(key) {
+  if (typeof key === "function") return key;
+  let path = Array.isArray(key) ? key : typeof key === "string" && key.includes(".") ? key.split(".") : null;
+  if (path === null) return null;
+  return (obj) => {
+    if (path !== key) {
+      let direct = obj[key];
+      if (direct !== void 0) return direct;
+    }
+    for (let i = 0; obj && i < path.length; i++) obj = obj[path[i]];
+    return obj;
+  };
+}
+function scoreCeiling(searchLen, targetLen) {
+  let lengthPenalty = (targetLen - searchLen) / 2;
+  let bonus = 1 + searchLen * searchLen;
+  let score2 = -lengthPenalty - lengthPenalty / (bonus * bonus);
+  return score2 + Math.min(4, -score2 / 2);
+}
+function bitCount(value) {
+  value -= value >>> 1 & 1431655765;
+  value = (value & 858993459) + (value >>> 2 & 858993459);
+  return (value + (value >>> 4) & 252645135) * 16843009 >>> 24;
+}
+function lowerBound(values, start, end, value) {
+  while (start < end) {
+    let middle = start + end >> 1;
+    if (values[middle] < value) start = middle + 1;
+    else end = middle;
+  }
+  return start;
+}
+function nextBeginning(indexes, start, end, index, targetLen) {
+  let next = lowerBound(indexes, start, end, index + 1);
+  return next < end ? indexes[next] : targetLen;
+}
+function isBeginning(indexes, start, end, index) {
+  let found = lowerBound(indexes, start, end, index);
+  return found < end && indexes[found] === index;
+}
+function getLimit(options) {
+  return (options?.limit ?? 10) || INF;
+}
+function scheduleTask(run) {
+  let id;
+  if (typeof requestIdleCallback === "function") {
+    id = requestIdleCallback(run, { timeout: 100 });
+    return () => typeof cancelIdleCallback === "function" && cancelIdleCallback(id);
+  }
+  if (typeof setImmediate === "function") {
+    id = setImmediate(run);
+    return () => typeof clearImmediate === "function" && clearImmediate(id);
+  }
+  id = setTimeout(run);
+  return () => clearTimeout(id);
+}
+function createHeap() {
+  let items = [];
+  let length = 0;
+  function down() {
+    let index = 0;
+    let item = items[0];
+    for (let child = 1; child < length; child = 1 + index * 2) {
+      let right = child + 1;
+      index = right < length && items[right]._score < items[child]._score ? right : child;
+      items[index - 1 >> 1] = items[index];
+    }
+    for (let parent = index - 1 >> 1; index > 0 && item._score < items[parent]._score; parent = (index = parent) - 1 >> 1) {
+      items[index] = items[parent];
+    }
+    items[index] = item;
+  }
+  return {
+    add(item) {
+      let index = length++;
+      for (let parent = index - 1 >> 1; index > 0 && item._score < items[parent]._score; parent = (index = parent) - 1 >> 1) {
+        items[index] = items[parent];
+      }
+      items[index] = item;
+    },
+    poll() {
+      if (!length) return;
+      let root = items[0];
+      let last = items[--length];
+      items[length] = void 0;
+      if (length) {
+        items[0] = last;
+        down();
+      }
+      return root;
+    },
+    peek() {
+      return length ? items[0] : void 0;
+    },
+    replaceTop(item) {
+      items[0] = item;
+      down();
+    },
+    clear() {
+      items.length = length = 0;
+    }
+  };
+}
+var INF = Infinity;
+var SPACE_BIT = 1 << 27;
+var noResults = [];
+noResults.total = 0;
+var targetCache = /* @__PURE__ */ new Map();
+var searchCache = /* @__PURE__ */ new Map();
+var simpleMatch = [];
+var strictMatch = [];
+var seen = [];
+var seenAt = [];
+var changes = [];
+var partials = [];
+var spaceScores = [];
+var partIndexes = [];
+var winnerIndexes = [];
+var winnerScores = [];
+var winnerKeys = [];
+var keyTargets = [];
+var keyResults = [];
+var candidateBitOffsets = [];
+var seenGeneration = 0;
+var remappings = {};
+var remapFrom = '\\"`\u2018\u2019\u201A\u201B\u201C\u201D\u201E\u201F\xAB\xBB\u2039\u203A\u2010\u2013\u2014\u2212\u2044\u2215\u2026\xF8\xD8\u0142\u0141\u0111\u0110\xF0\xD0\u0131\u0127\u0126\u0167\u0166';
+var remapTo = "/''''''''''''''----//.oOlLdDdDihHtT";
+for (let i = 0; i < remapFrom.length; i++) remappings[remapFrom[i]] = remapTo[i];
+var customAsciiRemappings = false;
+var heap = createHeap();
+var noTarget = prepTarget("");
+var prunedMatch = {};
+var fuzzysort_default = { single, go, highlight, score, remap, prepare, snapshot, cleanup };
+
+// upstream/packages/util/text-search/src/index.ts.snapshot
+var FUZZY_PREFIX = 4;
+var FUZZY_SUBSTRING = 3;
+var FUZZY_SUBSEQUENCE = 2;
+var SUBSTRING = 1;
+var WORD_CHAR = /[\p{L}\p{N}]/u;
+var UPPER = /\p{Lu}/u;
+var LOWER = /\p{Ll}/u;
+var UNSPACED = /[\p{scx=Han}\p{scx=Hira}\p{scx=Kana}\p{scx=Hang}]/u;
+function codePointAt(text, index) {
+  return String.fromCodePoint(text.codePointAt(index));
+}
+function codePointBefore(text, index) {
+  const low = text.charCodeAt(index - 1);
+  const start = low >= 56320 && low <= 57343 && index >= 2 ? index - 2 : index - 1;
+  return codePointAt(text, start);
+}
+function wordStart(text, index) {
+  if (index === 0) return true;
+  const char = codePointAt(text, index);
+  const previous = codePointBefore(text, index);
+  return !WORD_CHAR.test(previous) || UNSPACED.test(char) || UPPER.test(char) && LOWER.test(previous);
+}
+var PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
+var DIACRITIC = /[\u0300-\u036f]/gu;
+var STROKED = {
+  "\xF8": "o",
+  "\xD8": "O",
+  "\u0142": "l",
+  "\u0141": "L",
+  "\u0111": "d",
+  "\u0110": "D",
+  "\xF0": "d",
+  "\xD0": "D",
+  "\u0131": "i",
+  "\u0127": "h",
+  "\u0126": "H",
+  "\u0167": "t",
+  "\u0166": "T"
+};
+var STROKED_CHAR = /[øØłŁđĐðÐıħĦŧŦ]/gu;
+function strip(value) {
+  if (PRINTABLE_ASCII.test(value)) return value;
+  return value.normalize("NFKD").replace(DIACRITIC, "").normalize("NFKC").replace(STROKED_CHAR, (char) => STROKED[char]);
+}
+function fold(value) {
+  return strip(value).toLowerCase();
+}
+function prepareKeys(keys, reuse, into) {
+  const fuzzy = (keys.fuzzy ?? []).flatMap((value) => {
+    if (value === void 0 || value === "") return [];
+    let name = into.fuzzy.get(value) ?? reuse?.fuzzy.get(value);
+    if (name === void 0) {
+      const stripped = strip(value);
+      name = { stripped, folded: stripped.toLowerCase(), starts: void 0, tails: /* @__PURE__ */ new Map() };
+    }
+    into.fuzzy.set(value, name);
+    return [name];
+  });
+  const substring = (keys.substring ?? []).flatMap((value) => {
+    if (value === void 0 || value === "") return [];
+    const folded = into.substring.get(value) ?? reuse?.substring.get(value) ?? fold(value);
+    into.substring.set(value, folded);
+    return [folded];
+  });
+  return { fuzzy, substring };
+}
+function build(items, keys, reuse) {
+  const preparations = { fuzzy: /* @__PURE__ */ new Map(), substring: /* @__PURE__ */ new Map() };
+  return { keys: items.map((item) => prepareKeys(keys(item), reuse, preparations)), preparations };
+}
+function inOrder(term, text) {
+  let at = 0;
+  for (const char of term) {
+    at = text.indexOf(char, at);
+    if (at === -1) return false;
+    at += char.length;
+  }
+  return true;
+}
+function fuzzyNameScore(term, name) {
+  if (!inOrder(term.folded, name.folded)) return void 0;
+  if (name.starts === void 0) {
+    const starts = [];
+    let index = 0;
+    for (const char of name.stripped) {
+      if (wordStart(name.stripped, index)) starts.push(index);
+      index += char.length;
+    }
+    name.starts = starts;
+  }
+  const first = codePointAt(term.stripped, 0).toLowerCase();
+  let best;
+  for (const start of name.starts) {
+    if (codePointAt(name.stripped, start).toLowerCase() !== first) continue;
+    let tail = name.tails.get(start);
+    if (tail === void 0) {
+      tail = fuzzysort_default.prepare(name.stripped.slice(start));
+      name.tails.set(start, tail);
+    }
+    const result = fuzzysort_default.single(term.stripped, tail);
+    if (result !== null && wordStart(name.stripped, start + result.indexes[0])) {
+      best = best === void 0 ? result.score : Math.max(best, result.score);
+    }
+  }
+  return best;
+}
+function termScore(term, keys) {
+  let best;
+  const take = (score2) => {
+    best = best === void 0 ? score2 : Math.max(best, score2);
+  };
+  for (const name of keys.fuzzy) {
+    const at = name.folded.indexOf(term.folded);
+    if (at === 0) take(FUZZY_PREFIX);
+    else if (at > 0) take(FUZZY_SUBSTRING);
+    else {
+      const score2 = fuzzyNameScore(term, name);
+      if (score2 !== void 0) take(FUZZY_SUBSEQUENCE + Math.min(score2, 0.99));
+    }
+  }
+  for (const text of keys.substring) {
+    if (text.includes(term.folded)) take(SUBSTRING);
+  }
+  return best;
+}
+var TextSearchIndex = class _TextSearchIndex {
+  #items;
+  #keys;
+  #preparations;
+  /**
+   * Prepare every key of every item.
+   * @param items - candidates in their display order, which ties keep.
+   * @param keys - the search text of one item, called once per item here.
+   */
+  constructor(items, keys) {
+    const built = build(items, keys, void 0);
+    this.#items = items;
+    this.#keys = built.keys;
+    this.#preparations = built.preparations;
+  }
+  /**
+   * Build the index of a changed list. Items added, removed, reordered, or
+   * changed are all expressed by the complete new list; a key string that this
+   * index already prepared is reused instead of prepared again, and strings no
+   * item uses any more are not carried over. This index stays valid.
+   * @param items - the complete new list in display order.
+   * @param keys - the search text of one item, called once per item here.
+   * @returns a new index over `items`.
+   */
+  update(items, keys) {
+    const next = new _TextSearchIndex([], keys);
+    const built = build(items, keys, this.#preparations);
+    next.#items = items;
+    next.#keys = built.keys;
+    next.#preparations = built.preparations;
+    return next;
+  }
+  /**
+   * Filter and rank the indexed items by a query.
+   * @param query - the user's search text.
+   * @returns the build list itself when the query is blank or holds only
+   * combining marks; otherwise the items matching every query term, best total
+   * score first and build order on ties.
+   */
+  search(query) {
+    const terms = query.trim().split(/\s+/u).map((term) => ({ stripped: strip(term), folded: fold(term) })).filter((term) => term.folded !== "");
+    if (terms.length === 0) return this.#items;
+    const ranked = [];
+    this.#keys.forEach((itemKeys, index) => {
+      let score2 = 0;
+      for (const term of terms) {
+        const hit = termScore(term, itemKeys);
+        if (hit === void 0) return;
+        score2 += hit;
+      }
+      ranked.push({ index, score: score2 });
+    });
+    ranked.sort((left, right) => right.score - left.score || left.index - right.index);
+    return ranked.map((entry) => this.#items[entry.index]);
+  }
+};
+
+// upstream/packages/client/ui-shortcuts/src/client/Editor.tsx.snapshot
+import { useEffect as useEffect6, useId as useId6, useLayoutEffect as useLayoutEffect6, useRef as useRef9, useState as useState5 } from "react";
+import clsx8 from "clsx";
+
+// upstream/packages/client/ui-shortcuts/src/client/feedback.ts.snapshot
+function shortcutReadFailure(config, runtime, t) {
+  const location2 = t(runtime === "desktop" ? "desktop-document" : "web-document");
+  const reload = t(runtime === "desktop" ? "desktop-reload" : "web-reload");
+  return `${t(config.error ?? "read", { location: location2, reload })} ${t(config.usingDefaults ? "using-defaults" : "using-accepted")}`;
+}
+function shortcutFailure(result, catalog, t, runtime) {
+  if (result.status === "unreadable") return shortcutReadFailure(result.snapshot, runtime, t);
+  return result.issue ? t(result.issue) : result.status === "conflict" ? t("conflict", { commands: result.conflicts?.map((id) => catalog.find((row) => row.id === id)?.label ?? id).join(", ") ?? "" }) : t(result.status);
+}
+
+// upstream/packages/client/ui-shortcuts/src/client/Reference.module.css.snapshot
+var Reference_module_css_default = {
+  setting: "Reference_module_css_setting",
+  row: "Reference_module_css_row",
+  binding: "Reference_module_css_binding",
+  settingText: "Reference_module_css_settingText",
+  settingTitle: "Reference_module_css_settingTitle",
+  settingDescription: "Reference_module_css_settingDescription",
+  button: "Reference_module_css_button",
+  dialog: "Reference_module_css_dialog",
+  contents: "Reference_module_css_contents",
+  header: "Reference_module_css_header",
+  title: "Reference_module_css_title",
+  close: "Reference_module_css_close",
+  searchRow: "Reference_module_css_searchRow",
+  searchField: "Reference_module_css_searchField",
+  searchIcon: "Reference_module_css_searchIcon",
+  search: "Reference_module_css_search",
+  list: "Reference_module_css_list",
+  footer: "Reference_module_css_footer",
+  resetAll: "Reference_module_css_resetAll",
+  modifiedCount: "Reference_module_css_modifiedCount",
+  group: "Reference_module_css_group",
+  rows: "Reference_module_css_rows",
+  inlineEditor: "Reference_module_css_inlineEditor",
+  commandLabel: "Reference_module_css_commandLabel",
+  hint: "Reference_module_css_hint",
+  rowActions: "Reference_module_css_rowActions",
+  inlineAction: "Reference_module_css_inlineAction",
+  rowButton: "Reference_module_css_rowButton",
+  keyBadge: "Reference_module_css_keyBadge",
+  fixedKeyBadge: "Reference_module_css_fixedKeyBadge",
+  unbound: "Reference_module_css_unbound",
+  inlineControls: "Reference_module_css_inlineControls",
+  recorder: "Reference_module_css_recorder",
+  invalid: "Reference_module_css_invalid",
+  recorded: "Reference_module_css_recorded",
+  review: "Reference_module_css_review",
+  toastSuccess: "Reference_module_css_toastSuccess",
+  toastError: "Reference_module_css_toastError",
+  srOnly: "Reference_module_css_srOnly",
+  clearSearch: "Reference_module_css_clearSearch"
+};
+
+// upstream/packages/client/ui-shortcuts/src/client/Editor.tsx.snapshot
+import { jsx as jsx11, jsxs as jsxs9 } from "react/jsx-runtime";
+function ShortcutEditor({
+  target,
+  onClose,
+  onSaved,
+  onError,
+  useCatalog,
+  useConfig,
+  useFixedCatalog,
+  edit,
+  recording,
+  describeBinding,
+  runtime,
+  platform,
+  t
+}) {
+  const config = useConfig((value) => value);
+  const catalog = useCatalog((value) => value);
+  const fixed = useFixedCatalog((value) => value);
+  const [revision, setRevision] = useState5(config.revision);
+  const [candidate, setCandidate] = useState5(null);
+  const [captured, setCaptured] = useState5(false);
+  const [busy, setBusy] = useState5(false);
+  const [nativeReady, setNativeReady] = useState5(runtime === "web");
+  const [message, setMessage] = useState5("");
+  const [retry, setRetry] = useState5(null);
+  const descriptionId = useId6();
+  const recorder = useRef9(null);
+  const mounted = useRef9(true);
+  const writing = useRef9(false);
+  const restart = useRef9(() => {
+  });
+  const desktopChords = runtime === "desktop" && (platform === "macos" || platform === "windows");
+  const targetId = target.id;
+  const stale = revision !== config.revision;
+  const report = (text) => {
+    setMessage(text);
+    onError(text);
+  };
+  const save = async (operation, reviewedRevision = revision) => {
+    if (writing.current) return;
+    writing.current = true;
+    setBusy(true);
+    const result = await edit(operation, reviewedRevision);
+    if (!mounted.current) return;
+    writing.current = false;
+    setBusy(false);
+    if (result.status === "saved") onSaved();
+    else {
+      setRetry(operation.type === "set" ? operation.binding : null);
+      report(shortcutFailure(result, [...catalog, ...fixed], t, runtime));
+    }
+  };
+  const capture = (binding, id) => {
+    setCandidate(binding);
+    setCaptured(true);
+    setRetry(null);
+    const described = describeBinding(binding);
+    const conflicts = described.conflicts.filter((value) => value !== id).map((value) => [...catalog, ...fixed].find((row) => row.id === value)?.label ?? value);
+    if (described.issue !== null) {
+      report(t(described.issue));
+      return;
+    }
+    if (conflicts.length > 0) {
+      report(t("conflict", { commands: conflicts.join(", ") }));
+      return;
+    }
+    if (stale) {
+      setRetry(binding);
+      report(t("stale"));
+      return;
+    }
+    if (config.status !== "ready") {
+      report(config.status === "loading" ? t("not-ready") : shortcutReadFailure(config, runtime, t));
+      return;
+    }
+    void save({ type: "set", id, binding });
+  };
+  const handlers = useRef9({ capture, report, onClose });
+  useLayoutEffect6(() => {
+    handlers.current = { capture, report, onClose };
+  });
+  useEffect6(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  useEffect6(() => {
+    let disposed = false;
+    void recording(true).then(() => {
+      if (!disposed) setNativeReady(true);
+    }, () => {
+      if (!disposed) handlers.current.report(t("native-failed"));
+    });
+    const composition = observeComposition(document);
+    let pending = null;
+    let dead = false;
+    let blocked = false;
+    const held = /* @__PURE__ */ new Set();
+    const reset = () => {
+      pending = null;
+      held.clear();
+      blocked = false;
+      dead = false;
+    };
+    restart.current = reset;
+    const down = (event) => {
+      if (composition.guards(event) || event.getModifierState("AltGraph")) {
+        if (desktopChords) reset();
+        return;
+      }
+      if ((!desktopChords || document.activeElement !== recorder.current) && event.key === "Escape" && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!event.repeat && !writing.current) handlers.current.onClose();
+        return;
+      }
+      const commandDeadKey = runtime === "web" && platform === "macos" && document.activeElement === recorder.current && event.code === "KeyN" && event.metaKey && event.altKey && !event.ctrlKey && !event.shiftKey;
+      if (event.key === "Dead" && !commandDeadKey) {
+        if (desktopChords) reset();
+        dead = true;
+        return;
+      }
+      if (dead) {
+        dead = false;
+        return;
+      }
+      const modifiers = ["control", "alt", "shift", "meta"].filter((value) => ({
+        control: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey
+      })[value]);
+      const recordTab = desktopChords || (platform === "macos" || platform === "windows") && modifiers.length >= 3;
+      if (document.activeElement !== recorder.current || event.key === "Tab" && !recordTab) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (writing.current || event.repeat) return;
+      if (/^(Control|Alt|Shift|Meta)(Left|Right)$/u.test(event.code)) {
+        if (desktopChords && pending !== null) {
+          reset();
+          setCandidate(null);
+          setCaptured(false);
+        }
+        return;
+      }
+      if (desktopChords) {
+        held.add(event.code);
+        if (blocked) return;
+        if (held.size > 2) {
+          blocked = true;
+          pending = null;
+          handlers.current.report(t("too-many-keys"));
+          return;
+        }
+      }
+      try {
+        const codes = [event.code, ...desktopChords ? [...held].filter((value) => value !== event.code) : []];
+        pending = describeBinding({ code: codes[0], ...codes[1] === void 0 ? {} : { secondCode: codes[1] }, modifiers }).binding;
+        setCandidate(pending);
+        setCaptured(desktopChords);
+        setMessage("");
+        setRetry(null);
+      } catch (_error) {
+        blocked = desktopChords;
+        pending = null;
+        handlers.current.report(t("unsupported-key"));
+      }
+    };
+    const up = (event) => {
+      held.delete(event.code);
+      if (desktopChords && document.activeElement === recorder.current) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      const binding = pending !== null && (pending.code === event.code || pending.secondCode === event.code || pending.modifiers.some((modifier) => modifier === event.code.replace(/(Left|Right)$/u, "").toLowerCase())) ? pending : null;
+      if (binding !== null) {
+        pending = null;
+        blocked = desktopChords;
+      }
+      if (desktopChords && (held.size === 0 || platform === "macos" && /^Meta(Left|Right)$/u.test(event.code))) {
+        held.clear();
+        blocked = false;
+      }
+      if (binding === null) return;
+      handlers.current.capture(binding, targetId);
+    };
+    const blur = () => {
+      reset();
+      if (desktopChords) {
+        setCandidate(null);
+        setCaptured(false);
+      }
+    };
+    const focus = () => {
+      if (document.activeElement !== recorder.current) blur();
+    };
+    document.addEventListener("keydown", down, true);
+    document.addEventListener("keyup", up, true);
+    window.addEventListener("blur", blur);
+    if (desktopChords) {
+      document.addEventListener("focusin", focus, true);
+      document.addEventListener("compositionstart", blur, true);
+    }
+    return () => {
+      disposed = true;
+      composition.dispose();
+      document.removeEventListener("keydown", down, true);
+      document.removeEventListener("keyup", up, true);
+      window.removeEventListener("blur", blur);
+      document.removeEventListener("focusin", focus, true);
+      document.removeEventListener("compositionstart", blur, true);
+      void recording(false).catch(() => {
+      });
+    };
+  }, [describeBinding, recording, t, targetId, runtime, platform, desktopChords]);
+  useEffect6(() => {
+    const element = recorder.current;
+    if (nativeReady && element !== null) focusWithoutRing(element);
+  }, [nativeReady]);
+  const readonly = busy || stale || config.status !== "ready";
+  const review = stale && /* @__PURE__ */ jsxs9("div", { className: Reference_module_css_default.review, children: [
+    /* @__PURE__ */ jsx11("span", { children: t("stale") }),
+    /* @__PURE__ */ jsx11(
+      "button",
+      {
+        type: "button",
+        className: Reference_module_css_default.inlineAction,
+        disabled: busy,
+        onClick: () => {
+          setRevision(config.revision);
+          setMessage("");
+        },
+        children: t("review")
+      }
+    )
+  ] });
+  return /* @__PURE__ */ jsxs9("div", { className: Reference_module_css_default.inlineEditor, role: "group", "aria-label": target.label, "data-shortcut-modal": "shortcut-edit", "aria-busy": busy, children: [
+    /* @__PURE__ */ jsxs9("div", { className: Reference_module_css_default.inlineControls, children: [
+      /* @__PURE__ */ jsx11("button", { type: "button", className: Reference_module_css_default.inlineAction, disabled: readonly, onClick: () => {
+        void save({ type: "reset", id: target.id });
+      }, children: t("reset") }),
+      target.binding !== null && /* @__PURE__ */ jsx11(
+        "button",
+        {
+          type: "button",
+          className: Reference_module_css_default.inlineAction,
+          disabled: readonly,
+          onClick: () => {
+            void save({ type: "set", id: target.id, binding: null });
+          },
+          children: t("clear")
+        }
+      ),
+      /* @__PURE__ */ jsx11(
+        "button",
+        {
+          ref: recorder,
+          type: "button",
+          className: clsx8(Reference_module_css_default.recorder, message && Reference_module_css_default.invalid),
+          disabled: !nativeReady,
+          "aria-disabled": busy || !nativeReady,
+          onBlur: () => {
+            restart.current();
+          },
+          "aria-label": t("record"),
+          "aria-invalid": message !== "",
+          "aria-describedby": descriptionId,
+          onClick: () => {
+            if (!writing.current) {
+              restart.current();
+              setCaptured(false);
+              setMessage("");
+              setRetry(null);
+            }
+          },
+          children: captured && message === "" ? /* @__PURE__ */ jsx11(ShortcutKeys, { keys: describeBinding(candidate).keys, className: Reference_module_css_default.recorded }) : t("record")
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsx11("span", { id: descriptionId, className: Reference_module_css_default.srOnly, children: message || (desktopChords ? "" : t(runtime === "web" ? platform === "windows" ? "windows-web-help" : platform === "macos" ? "macos-web-help" : "web-help" : "record-help")) }),
+    review,
+    retry !== null && !stale && /* @__PURE__ */ jsx11(
+      "button",
+      {
+        type: "button",
+        className: Reference_module_css_default.inlineAction,
+        disabled: readonly,
+        onClick: () => {
+          capture(retry, target.id);
+        },
+        children: t("retry-save")
+      }
+    )
+  ] });
+}
+
+// upstream/packages/client/ui-shortcuts/src/client/Icons.tsx.snapshot
+import { Fragment as Fragment5, jsx as jsx12, jsxs as jsxs10 } from "react/jsx-runtime";
+var artwork = {
+  edit: /* @__PURE__ */ jsx12(Fragment5, { children: /* @__PURE__ */ jsx12("path", { d: "M7.4553 1.01221C8.02829 0.676881 8.73746 0.676959 9.31048 1.01221C9.52928 1.14026 9.72631 1.34353 9.98255 1.59978C10.2388 1.85601 10.4421 2.05305 10.5701 2.27185C10.9053 2.84485 10.9054 3.55407 10.5701 4.12703C10.4421 4.34576 10.2387 4.54293 9.98255 4.7991L4.99422 9.78744C4.71024 10.0714 4.50494 10.2832 4.2488 10.4324C3.99266 10.5815 3.70709 10.6557 3.32001 10.7625L2.43268 11.0072C2.08118 11.1042 1.75876 11.1948 1.50071 11.2265C1.2387 11.2585 0.884455 11.2512 0.607798 10.9745C0.331166 10.6979 0.323805 10.3436 0.35587 10.0816C0.387501 9.82358 0.47815 9.50112 0.575111 9.14964L0.819864 8.26232C0.926638 7.87525 1.00083 7.58966 1.14992 7.33353C1.2991 7.07739 1.5109 6.87209 1.79489 6.58811L6.78322 1.59978C7.03941 1.34359 7.23656 1.14027 7.4553 1.01221ZM11.6568 11.13H5.6639L6.72503 10.0689H11.6568V11.13ZM2.54509 7.33831C2.22348 7.65993 2.13155 7.75784 2.06755 7.86768C2.0036 7.97757 1.96369 8.10606 1.84272 8.54454L1.59797 9.43187C1.5011 9.78304 1.44118 10.0065 1.4162 10.1653C1.57504 10.1404 1.79876 10.0814 2.15046 9.98436L3.03779 9.7396C3.47631 9.61863 3.60475 9.57874 3.71464 9.51478C3.82448 9.45077 3.92239 9.35885 4.24401 9.03723L8.04047 5.23998L6.34155 3.54106L2.54509 7.33831ZM8.77473 1.92824C8.53277 1.78664 8.233 1.78664 7.99104 1.92824C7.91987 1.97 7.83628 2.04713 7.53343 2.34998L7.09176 2.79085L8.79068 4.48977L9.23235 4.0489C9.53517 3.74608 9.61232 3.66245 9.65409 3.59128C9.79567 3.34935 9.79564 3.04954 9.65409 2.8076C9.61237 2.73635 9.53565 2.65329 9.23235 2.34998C8.92899 2.04662 8.84598 1.96995 8.77473 1.92824Z" }) }),
+  error: /* @__PURE__ */ jsxs10(Fragment5, { children: [
+    /* @__PURE__ */ jsx12("path", { d: "M8.90039 3.97328V9.07973H7.09961V3.97328H8.90039Z" }),
+    /* @__PURE__ */ jsx12("path", { d: "M8.90039 10.341V12.3654H7.09961V10.341H8.90039Z" }),
+    /* @__PURE__ */ jsx12("path", { d: "M14.5996 8C14.5996 4.35492 11.6451 1.40039 8 1.40039C4.35492 1.40039 1.40039 4.35492 1.40039 8C1.40039 11.6451 4.35492 14.5996 8 14.5996C11.6451 14.5996 14.5996 11.6451 14.5996 8ZM15.9004 8C15.9004 12.363 12.363 15.9004 8 15.9004C3.63695 15.9004 0.0996094 12.363 0.0996094 8C0.0996094 3.63695 3.63695 0.0996094 8 0.0996094C12.363 0.0996094 15.9004 3.63695 15.9004 8Z" })
+  ] }),
+  success: /* @__PURE__ */ jsxs10(Fragment5, { children: [
+    /* @__PURE__ */ jsx12("path", { d: "M12.5303 6.53027L8.80273 10.2578C8.54967 10.5109 8.31796 10.7439 8.10645 10.9141C7.88375 11.0932 7.616 11.2602 7.27344 11.3145C7.09229 11.3431 6.90771 11.3431 6.72656 11.3145C6.384 11.2602 6.11625 11.0932 5.89355 10.9141C5.68204 10.7439 5.45033 10.5109 5.19727 10.2578L3.46973 8.53027L4.53027 7.46973L6.25781 9.19727C6.53457 9.47402 6.70036 9.63859 6.83398 9.74609C6.95637 9.84453 6.98241 9.83644 6.96094 9.83301C6.98679 9.83709 7.01321 9.83709 7.03906 9.83301C7.01759 9.83644 7.04363 9.84453 7.16602 9.74609C7.29964 9.63859 7.46543 9.47402 7.74219 9.19727L11.4697 5.46973L12.5303 6.53027Z" }),
+    /* @__PURE__ */ jsx12("path", { d: "M14.5996 8C14.5996 4.35492 11.6451 1.40039 8 1.40039C4.35492 1.40039 1.40039 4.35492 1.40039 8C1.40039 11.6451 4.35492 14.5996 8 14.5996C11.6451 14.5996 14.5996 11.6451 14.5996 8ZM15.9004 8C15.9004 12.363 12.363 15.9004 8 15.9004C3.63695 15.9004 0.0996094 12.363 0.0996094 8C0.0996094 3.63695 3.63695 0.0996094 8 0.0996094C12.363 0.0996094 15.9004 3.63695 15.9004 8Z" })
+  ] })
+};
+function ShortcutIcon({ kind, className }) {
+  const size = kind === "edit" ? 12 : 16;
+  return /* @__PURE__ */ jsx12("svg", { width: size, height: size, viewBox: `0 0 ${size} ${size}`, fill: "currentColor", className, "aria-hidden": "true", children: artwork[kind] });
+}
+
+// upstream/packages/client/ui-shortcuts/src/client/Reference.tsx.snapshot
+import { Fragment as Fragment6, jsx as jsx13, jsxs as jsxs11 } from "react/jsx-runtime";
+var coreActionOrder = new Map([
+  "shortcuts.open",
+  "session.new",
+  "sidebar.left.toggle",
+  "session.search",
+  "workspace.add",
+  "session.rename",
+  "session.fork",
+  "session.archive",
+  "settings.open",
+  "fontSize.increase",
+  "fontSize.decrease",
+  "workspace.openLocal",
+  "sidebar.right.toggle",
+  "workspace.files",
+  "browser.new",
+  "terminal.new",
+  "pane.split",
+  "pane.fullscreen.toggle",
+  "page.refresh",
+  "page.close"
+].map((id, index) => [id, index]));
+function ShortcutsRow({ actions, t, useCatalog }) {
+  const shortcut = useCatalog((rows) => rows.find((row) => row.id === "shortcuts.open"));
+  return /* @__PURE__ */ jsxs11("div", { className: Reference_module_css_default.setting, children: [
+    /* @__PURE__ */ jsxs11("div", { className: Reference_module_css_default.settingText, children: [
+      /* @__PURE__ */ jsx13("div", { className: Reference_module_css_default.settingTitle, children: t("settings") }),
+      /* @__PURE__ */ jsx13("p", { className: Reference_module_css_default.settingDescription, children: t("description") })
+    ] }),
+    /* @__PURE__ */ jsx13(Tooltip, { disabled: !shortcut?.keys.length, label: t("global-hint"), shortcutKeys: shortcut?.keys, children: /* @__PURE__ */ jsx13(
+      "button",
+      {
+        className: Reference_module_css_default.button,
+        type: "button",
+        "aria-label": t("view"),
+        "aria-keyshortcuts": shortcut?.aria,
+        onClick: () => {
+          actions.open();
+        },
+        children: t("view")
+      }
+    ) })
+  ] });
+}
+function ShortcutReference({
+  useStore,
+  actions,
+  useCatalog,
+  useConfig,
+  useFixedCatalog,
+  platform,
+  runtime,
+  edit,
+  recording,
+  describeBinding,
+  t
+}) {
+  const { open, query, focusRequest } = useStore((state) => state);
+  const catalog = useCatalog((value) => value);
+  const config = useConfig((value) => value);
+  const fixedCatalog = useFixedCatalog((value) => value);
+  const [target, setTarget] = useState6(null);
+  const [resetRevision, setResetRevision] = useState6(null);
+  const [busy, setBusy] = useState6(false);
+  const [toast, setToast] = useState6(null);
+  const mounted = useRef10(true);
+  const search = useRef10(null);
+  useEffect7(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const dismissToast = useCallback3(() => {
+    setToast(null);
+  }, []);
+  const notify = useCallback3((text, error = false) => {
+    setToast((previous) => {
+      if (error && previous?.error && previous.text === text) return previous;
+      return { text, error, seq: (previous?.seq ?? 0) + 1 };
+    });
+  }, []);
+  useEffect7(() => {
+    if (open && config.status === "unreadable") notify(shortcutReadFailure(config, runtime, t), true);
+  }, [open, config, runtime, notify, t]);
+  const closeEditor = () => {
+    setTarget(null);
+    const dialog = search.current?.closest('[role="dialog"]');
+    if (dialog != null) focusWithoutRing(dialog, { preventScroll: true });
+  };
+  const closeReference = () => {
+    if (busy) return;
+    if (resetRevision !== null) setResetRevision(null);
+    else if (target !== null) closeEditor();
+    else actions.close();
+  };
+  useEffect7(() => {
+    if (!open) setResetRevision(null);
+  }, [open]);
+  const persist = async (...args) => {
+    setBusy(true);
+    const result = await edit(...args);
+    if (mounted.current) setBusy(false);
+    return result;
+  };
+  const resetAll = async () => {
+    if (resetRevision === null) return;
+    const result = await persist({ type: "reset-all" }, resetRevision);
+    if (!mounted.current) return;
+    if (result.status === "saved" || result.status === "stale") setResetRevision(null);
+    notify(result.status === "saved" ? t("reset-saved") : result.status === "write-failed" ? t("reset-failed") : shortcutFailure(result, catalog, t, runtime), result.status !== "saved");
+  };
+  const editorProps = {
+    useCatalog,
+    useConfig,
+    useFixedCatalog,
+    platform,
+    runtime,
+    edit: persist,
+    recording,
+    describeBinding,
+    t,
+    onClose: closeEditor,
+    onSaved: () => {
+      notify(t("saved"));
+      closeEditor();
+    },
+    onError: (message) => {
+      notify(message, true);
+    }
+  };
+  useLayoutEffect7(() => {
+    const input = search.current;
+    if (open && input !== null && !isBehindModal(input)) focusWithoutRing(input);
+  }, [open, focusRequest]);
+  const entryIndex = useMemo2(() => new TextSearchIndex([
+    ...catalog.map((row) => ({
+      ...row,
+      names: [...row.aliases, row.keys.filter((key) => key !== "+").join("+"), row.keys.filter((key) => key !== "+").join(""), row.aria ?? "", row.aria?.replace("Meta", "Cmd") ?? ""],
+      group: "application"
+    })),
+    ...fixedCatalog.map((row) => ({ ...row, names: [row.id, row.keys.join(" ")] }))
+  ].sort((left, right) => Number(left.id === "response.stop") - Number(right.id === "response.stop") || (coreActionOrder.get(left.id) ?? coreActionOrder.size) - (coreActionOrder.get(right.id) ?? coreActionOrder.size) || Number(left.id > right.id) - Number(left.id < right.id)), (row) => ({ fuzzy: [row.label, ...row.names] })), [catalog, fixedCatalog]);
+  const matches = entryIndex.search(query);
+  const modifiedCount = Object.keys(config.document.profiles[`${runtime}:${platform}`] ?? {}).length;
+  useLayoutEffect7(() => {
+    const input = search.current;
+    if (open && resetRevision === null && modifiedCount === 0 && document.activeElement === document.body && input !== null) {
+      focusWithoutRing(input);
+    }
+  }, [open, resetRevision, modifiedCount]);
+  return /* @__PURE__ */ jsxs11(Fragment6, { children: [
+    /* @__PURE__ */ jsx13(
+      Modal,
+      {
+        open,
+        onClose: closeReference,
+        title: t("title"),
+        headless: true,
+        shortcutModal: "shortcuts",
+        className: Reference_module_css_default.dialog,
+        children: /* @__PURE__ */ jsxs11("div", { className: Reference_module_css_default.contents, onPointerDownCapture: (event) => {
+          if (target === null || busy || !(event.target instanceof Element) || event.target.closest('button, input, a, [contenteditable="true"], [role="group"]') !== null) return;
+          event.preventDefault();
+          closeEditor();
+        }, children: [
+          /* @__PURE__ */ jsxs11("header", { className: Reference_module_css_default.header, children: [
+            /* @__PURE__ */ jsx13("h2", { className: Reference_module_css_default.title, children: t("title") }),
+            /* @__PURE__ */ jsx13("button", { type: "button", className: Reference_module_css_default.close, "aria-label": t("close"), disabled: busy, onClick: closeReference, children: /* @__PURE__ */ jsx13(IconCloseOutlineRegular, { size: 14 }) })
+          ] }),
+          /* @__PURE__ */ jsx13("div", { className: Reference_module_css_default.searchRow, children: /* @__PURE__ */ jsxs11("div", { className: Reference_module_css_default.searchField, role: "search", "aria-label": t("search"), children: [
+            /* @__PURE__ */ jsxs11("svg", { className: Reference_module_css_default.searchIcon, width: "14", height: "14", viewBox: "0 0 14 14", fill: "none", "aria-hidden": "true", children: [
+              /* @__PURE__ */ jsx13("path", { d: "M10.28 5.86536C10.28 3.41381 8.29245 1.42644 5.84094 1.42627C3.38929 1.42627 1.40186 3.4137 1.40186 5.86536C1.40203 8.31686 3.38939 10.3044 5.84094 10.3044C8.29234 10.3043 10.2799 8.31676 10.28 5.86536ZM11.4174 5.86536C11.4172 8.94498 8.92057 11.4416 5.84094 11.4418C2.76117 11.4418 0.263843 8.94509 0.263672 5.86536C0.263672 2.78548 2.76106 0.288086 5.84094 0.288086C8.92067 0.288258 11.4174 2.78559 11.4174 5.86536Z", fill: "currentColor" }),
+              /* @__PURE__ */ jsx13("path", { d: "M13.7372 12.9078L12.9323 13.7127L9.9732 10.7536L10.7781 9.94867L13.7372 12.9078Z", fill: "currentColor" })
+            ] }),
+            /* @__PURE__ */ jsx13(
+              "input",
+              {
+                ref: search,
+                "data-modal-autofocus": true,
+                className: Reference_module_css_default.search,
+                type: "search",
+                "aria-label": t("search"),
+                placeholder: t("search"),
+                value: query,
+                onChange: (event) => {
+                  actions.search(event.target.value);
+                }
+              }
+            ),
+            query !== "" && /* @__PURE__ */ jsx13(
+              "button",
+              {
+                type: "button",
+                className: Reference_module_css_default.clearSearch,
+                "aria-label": t("clear-search"),
+                onClick: () => {
+                  actions.search("");
+                  search.current?.focus();
+                },
+                children: /* @__PURE__ */ jsx13(IconCloseOutlineRegular, { size: 10 })
+              }
+            )
+          ] }) }),
+          /* @__PURE__ */ jsxs11("div", { className: Reference_module_css_default.list, "aria-busy": config.status === "loading", children: [
+            ["application", "input", "menus", "approval"].map((group) => {
+              const rows = matches.filter((row) => row.group === group);
+              if (rows.length === 0) return null;
+              return /* @__PURE__ */ jsxs11("section", { "aria-label": t(group), children: [
+                group !== "application" && /* @__PURE__ */ jsx13("h3", { className: Reference_module_css_default.group, children: t(group) }),
+                /* @__PURE__ */ jsx13("ul", { className: Reference_module_css_default.rows, children: rows.map((row) => /* @__PURE__ */ jsxs11("li", { className: Reference_module_css_default.row, children: [
+                  "modified" in row && target?.id !== row.id && /* @__PURE__ */ jsx13(
+                    "button",
+                    {
+                      type: "button",
+                      className: Reference_module_css_default.rowButton,
+                      "aria-label": t("edit-label", { command: row.label }),
+                      disabled: busy || config.status !== "ready",
+                      onClick: () => {
+                        setTarget(row);
+                      }
+                    }
+                  ),
+                  /* @__PURE__ */ jsx13("span", { className: Reference_module_css_default.commandLabel, children: row.label }),
+                  /* @__PURE__ */ jsx13("span", { className: Reference_module_css_default.binding, children: "modified" in row ? target?.id === row.id ? /* @__PURE__ */ jsx13(ShortcutEditor, { target: row, ...editorProps }, row.id) : /* @__PURE__ */ jsxs11(Fragment6, { children: [
+                    /* @__PURE__ */ jsx13("span", { className: Reference_module_css_default.rowActions, children: /* @__PURE__ */ jsx13(ShortcutIcon, { kind: "edit" }) }),
+                    row.keys.length === 0 ? /* @__PURE__ */ jsx13("span", { className: Reference_module_css_default.unbound, children: t("unbound") }) : /* @__PURE__ */ jsx13(ShortcutKeys, { keys: row.keys, className: Reference_module_css_default.keyBadge })
+                  ] }) : /* @__PURE__ */ jsx13(ShortcutKeys, { keys: row.keys, className: Reference_module_css_default.fixedKeyBadge }) })
+                ] }, row.id)) })
+              ] }, group);
+            }),
+            matches.length === 0 && /* @__PURE__ */ jsx13("p", { className: Reference_module_css_default.hint, role: "status", children: t("empty") })
+          ] }),
+          /* @__PURE__ */ jsxs11("footer", { className: Reference_module_css_default.footer, children: [
+            /* @__PURE__ */ jsxs11(
+              "button",
+              {
+                type: "button",
+                className: Reference_module_css_default.resetAll,
+                disabled: busy || config.status !== "ready" || modifiedCount === 0,
+                onClick: (event) => {
+                  event.currentTarget.focus();
+                  setTarget(null);
+                  setResetRevision(config.revision);
+                },
+                children: [
+                  /* @__PURE__ */ jsx13(IconRefreshOutlineRegular, { size: 12 }),
+                  t("reset-all")
+                ]
+              }
+            ),
+            modifiedCount > 0 && /* @__PURE__ */ jsx13("span", { className: Reference_module_css_default.modifiedCount, children: t("modified-count", { count: modifiedCount }) })
+          ] })
+        ] })
+      }
+    ),
+    /* @__PURE__ */ jsx13(
+      Modal,
+      {
+        open: open && resetRevision !== null,
+        title: t("reset-title"),
+        description: t("reset-description"),
+        closeLabel: t("close-confirmation"),
+        onClose: () => {
+          if (!busy) setResetRevision(null);
+        },
+        footer: /* @__PURE__ */ jsxs11(Fragment6, { children: [
+          /* @__PURE__ */ jsx13(Button, { "data-modal-autofocus": true, disabled: busy, onClick: () => {
+            setResetRevision(null);
+          }, children: t("cancel") }),
+          /* @__PURE__ */ jsx13(Button, { variant: "primary", disabled: busy || config.status !== "ready", onClick: () => {
+            void resetAll();
+          }, children: t("reset") })
+        ] })
+      }
+    ),
+    toast !== null && /* @__PURE__ */ jsx13(
+      Toast,
+      {
+        text: toast.text,
+        onDone: dismissToast,
+        icon: /* @__PURE__ */ jsx13(ShortcutIcon, { kind: toast.error ? "error" : "success", className: toast.error ? Reference_module_css_default.toastError : Reference_module_css_default.toastSuccess })
+      },
+      toast.seq
+    )
+  ] });
+}
+
+// upstream/packages/client/ui-shortcuts/src/client/locales.ts.snapshot
+var zh = {
+  "edit-label": "\u4FEE\u6539{command}\u5FEB\u6377\u952E",
+  record: "\u6309\u4E0B\u5FEB\u6377\u952E",
+  "record-help": "\u677E\u5F00\u7EC4\u5408\u952E\u5373\u4FDD\u5B58\u3002Tab \u5207\u6362\u64CD\u4F5C\uFF0CEsc \u9000\u51FA\u5F55\u952E\u3002",
+  "web-help": "\u6D4F\u89C8\u5668\u53EF\u7528\u7EC4\u5408\uFF1AMod+/\u3001Mod+Shift+,\u3001Mod+Shift+.\u3002Mod \u5728 Mac \u4E0A\u4E3A Command\uFF0C\u5176\u4ED6\u7CFB\u7EDF\u4E3A Ctrl\u3002",
+  "unsupported-key": "\u6682\u4E0D\u652F\u6301\u8FD9\u4E2A\u6309\u952E\u3002",
+  reserved: "\u6B64\u7EC4\u5408\u7531\u7CFB\u7EDF\u6216\u6587\u672C\u7F16\u8F91\u64CD\u4F5C\u4FDD\u7559\u3002",
+  "modifier-required": "\u8BF7\u540C\u65F6\u6309\u4E0B Command\u3001Ctrl \u6216 Alt \u4FEE\u9970\u952E\u3002",
+  "too-many-keys": "\u6700\u591A\u540C\u65F6\u6309\u4E0B\u4E24\u4E2A\u975E\u4FEE\u9970\u952E\u3002\u8BF7\u677E\u5F00\u540E\u91CD\u8BD5\u3002",
+  "macos-web-help": "\u53EF\u8BBE\u7F6E Command+/\u3001Command+,\u3001Command+\u53CD\u659C\u6760\u3001Control+\u53CD\u5F15\u53F7\u3001Command+Option+\u6309\u952E\u6216 Command+Shift+\u6309\u952E\u3002\u4E5F\u652F\u6301\u4E09\u4E2A\u6216\u56DB\u4E2A\u4E0D\u540C\u4FEE\u9970\u952E\u7684\u7EC4\u5408\u3002\u6D4F\u89C8\u5668\u6216\u7CFB\u7EDF\u5360\u7528\u7684\u7EC4\u5408\u53EF\u80FD\u65E0\u6CD5\u9001\u8FBE\u9875\u9762\u3002",
+  "windows-web-help": "\u53EF\u8BBE\u7F6E Ctrl+/\u3001Ctrl+,\u3001Ctrl+Alt+\u6309\u952E\u6216 Ctrl+Shift+\u6309\u952E\u3002\u4E5F\u652F\u6301\u4E09\u4E2A\u6216\u56DB\u4E2A\u4E0D\u540C\u4FEE\u9970\u952E\u7684\u7EC4\u5408\u3002\u6D4F\u89C8\u5668\u6216\u7CFB\u7EDF\u5360\u7528\u7684\u7EC4\u5408\u53EF\u80FD\u65E0\u6CD5\u9001\u8FBE\u9875\u9762\u3002",
+  "unsupported-browser": "\u6B64\u6D4F\u89C8\u5668\u6682\u4E0D\u652F\u6301\u8BE5\u7EC4\u5408\u3002",
+  conflict: "\u5DF2\u88AB\u300C{commands}\u300D\u5360\u7528",
+  saved: "\u5DF2\u4FEE\u6539",
+  clear: "\u79FB\u9664",
+  "retry-save": "\u91CD\u8BD5\u4FDD\u5B58",
+  reset: "\u6062\u590D\u9ED8\u8BA4",
+  "reset-all": "\u6062\u590D\u5168\u90E8\u9ED8\u8BA4",
+  "modified-count": "{count} \u9879\u5DF2\u81EA\u5B9A\u4E49",
+  "reset-title": "\u6062\u590D\u5168\u90E8\u9ED8\u8BA4\u5FEB\u6377\u952E\uFF1F",
+  "reset-description": "\u5C06\u6062\u590D\u5F53\u524D\u5E73\u53F0\u7684\u9ED8\u8BA4\u5FEB\u6377\u952E\u3002\u4F60\u4FEE\u6539\u6216\u79FB\u9664\u7684\u5FEB\u6377\u952E\u90FD\u4F1A\u6062\u590D\uFF0C\u5176\u4ED6\u5E73\u53F0\u4E0D\u53D7\u5F71\u54CD\u3002",
+  cancel: "\u53D6\u6D88",
+  "reset-saved": "\u5DF2\u6062\u590D\u9ED8\u8BA4\u5FEB\u6377\u952E",
+  "close-confirmation": "\u5173\u95ED\u786E\u8BA4",
+  "reset-failed": "\u6062\u590D\u9ED8\u8BA4\u5931\u8D25\u3002\u539F\u5FEB\u6377\u952E\u5DF2\u4FDD\u7559\uFF0C\u8BF7\u91CD\u8BD5\u3002",
+  review: "\u5DF2\u6838\u5BF9\u6700\u65B0\u914D\u7F6E",
+  stale: "\u5FEB\u6377\u952E\u914D\u7F6E\u6216\u53EF\u7528\u547D\u4EE4\u5DF2\u66F4\u65B0\u3002\u8BF7\u6838\u5BF9\u6700\u65B0\u952E\u4F4D\u540E\u518D\u4FDD\u5B58\u3002",
+  "write-failed": "\u4FDD\u5B58\u5931\u8D25\u3002\u539F\u5FEB\u6377\u952E\u548C\u5F53\u524D\u8349\u7A3F\u5DF2\u4FDD\u7559\uFF0C\u8BF7\u91CD\u8BD5\u3002",
+  "not-ready": "\u5FEB\u6377\u952E\u5C1A\u672A\u51C6\u5907\u597D\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002",
+  read: "\u65E0\u6CD5\u8BFB\u53D6 {location}\u3002\u8BF7\u68C0\u67E5\u8BBF\u95EE\u6743\u9650\u540E{reload}\u3002",
+  invalid: "{location} \u7684\u5FEB\u6377\u952E\u914D\u7F6E\u5185\u5BB9\u635F\u574F\u3002\u8BF7\u5148\u5907\u4EFD\u5E76\u4FEE\u590D\u8BE5\u914D\u7F6E\uFF0C\u7136\u540E{reload}\u3002",
+  future: "{location} \u7684\u5FEB\u6377\u952E\u914D\u7F6E\u7531\u66F4\u65B0\u7248\u672C\u521B\u5EFA\u3002\u8BF7\u5347\u7EA7 Harness \u540E\u91CD\u8BD5\u3002",
+  "web-document": "\u5F53\u524D\u7F51\u7AD9\u672C\u5730\u5B58\u50A8\u4E2D\u7684 dsh.keybindings.v1",
+  "desktop-document": "userData/keybindings.json",
+  "web-reload": "\u5237\u65B0\u9875\u9762",
+  "desktop-reload": "\u91CD\u65B0\u542F\u52A8 Harness",
+  "using-defaults": "\u5F53\u524D\u4F7F\u7528\u9ED8\u8BA4\u952E\u4F4D\u3002",
+  "using-accepted": "\u5F53\u524D\u7EE7\u7EED\u4F7F\u7528\u4E0A\u6B21\u8BFB\u53D6\u6210\u529F\u7684\u952E\u4F4D\u3002",
+  "native-failed": "\u65E0\u6CD5\u542F\u7528\u684C\u9762\u5F55\u952E\u4FDD\u62A4\uFF0C\u8BF7\u5173\u95ED\u540E\u91CD\u8BD5\u3002",
+  "global-hint": "\u5168\u5C40\u5524\u8D77\u67E5\u770B",
+  "clear-search": "\u6E05\u7A7A\u641C\u7D22",
+  title: "\u5FEB\u6377\u952E",
+  open: "\u5FEB\u6377\u952E\u901F\u67E5",
+  settings: "\u5FEB\u6377\u952E",
+  view: "\u7F16\u8F91\u5FEB\u6377\u952E",
+  description: "\u67E5\u770B\u548C\u7F16\u8F91\u5F53\u524D\u53EF\u7528\u7684\u5FEB\u6377\u952E\u548C\u8F93\u5165\u64CD\u4F5C",
+  search: "\u641C\u7D22\u5FEB\u6377\u952E",
+  close: "\u5173\u95ED\u5FEB\u6377\u952E",
+  application: "\u5E94\u7528\u64CD\u4F5C",
+  input: "\u6D88\u606F\u8F93\u5165",
+  menus: "\u83DC\u5355\u4E0E\u5F39\u5C42",
+  approval: "\u5BA1\u6279\u533A\u57DF",
+  unbound: "\u6682\u65E0\u5FEB\u6377\u952E",
+  empty: "\u6CA1\u6709\u5339\u914D\u7684\u5FEB\u6377\u952E",
+  move: "\u79FB\u52A8\u83DC\u5355\u9009\u62E9",
+  select: "\u9009\u62E9\u83DC\u5355\u9879",
+  dismiss: "\u5173\u95ED\u83DC\u5355\u6216\u9876\u5C42\u5F39\u7A97"
+};
+var en = {
+  "edit-label": "Edit shortcut for {command}",
+  record: "Press a shortcut",
+  "record-help": "Release the keys to save. Tab moves between actions; Esc cancels.",
+  "web-help": "Browser combinations: Mod+/, Mod+Shift+,, Mod+Shift+.. Mod is Command on Mac and Ctrl elsewhere.",
+  "unsupported-key": "This key is not supported.",
+  reserved: "This combination is reserved for system or text editing actions.",
+  "modifier-required": "Include Command, Ctrl, or Alt in the combination.",
+  "too-many-keys": "Hold at most two non-modifier keys. Release the keys to try again.",
+  "macos-web-help": "Use Command+/, Command+,, Command+Backslash, Control+Backquote, Command+Option+key, or Command+Shift+key. Combinations with three or four distinct modifiers are also supported. Browser or system shortcuts may not reach the page.",
+  "windows-web-help": "Use Ctrl+/, Ctrl+,, Ctrl+Alt+key, or Ctrl+Shift+key. Combinations with three or four distinct modifiers are also supported. Browser or system shortcuts may not reach the page.",
+  "unsupported-browser": "This browser does not support this combination yet.",
+  conflict: "Already used by \u201C{commands}\u201D",
+  saved: "Modified",
+  clear: "Remove",
+  "retry-save": "Retry save",
+  reset: "Restore default",
+  "reset-all": "Restore all defaults",
+  "modified-count": "{count} customized",
+  "reset-title": "Restore all default shortcuts?",
+  "reset-description": "Restore the default shortcuts for this platform. All modified or removed shortcuts will be restored. Other platforms are unaffected.",
+  cancel: "Cancel",
+  "reset-saved": "Default shortcuts restored",
+  "close-confirmation": "Close confirmation",
+  "reset-failed": "Could not restore defaults. Your shortcuts are unchanged. Please retry.",
+  review: "I have reviewed the latest configuration",
+  stale: "Shortcut configuration or available commands changed. Review the latest bindings before saving.",
+  "write-failed": "Could not save. Your previous shortcuts and current draft are preserved. Please retry.",
+  "not-ready": "Shortcuts are not ready. Please try again.",
+  read: "Could not read {location}. Check access permissions, then {reload}.",
+  invalid: "Shortcut configuration in {location} is damaged. Back up and repair this configuration, then {reload}.",
+  future: "Shortcut configuration in {location} was created by a newer version. Upgrade Harness and try again.",
+  "web-document": "this site\u2019s localStorage entry dsh.keybindings.v1",
+  "desktop-document": "userData/keybindings.json",
+  "web-reload": "reload the page",
+  "desktop-reload": "restart Harness",
+  "using-defaults": "Default bindings are active.",
+  "using-accepted": "The last successfully read bindings remain active.",
+  "native-failed": "Could not protect desktop key recording. Exit recording and try again.",
+  "global-hint": "Open from anywhere",
+  "clear-search": "Clear search",
+  title: "Keyboard shortcuts",
+  open: "Open keyboard shortcuts",
+  settings: "Keyboard shortcuts",
+  view: "Edit shortcuts",
+  description: "View and edit available shortcuts and input actions",
+  search: "Search shortcuts",
+  close: "Close keyboard shortcuts",
+  application: "Application",
+  input: "Message input",
+  menus: "Menus and dialogs",
+  approval: "Approval area",
+  unbound: "No shortcut",
+  empty: "No matching shortcuts",
+  move: "Move menu selection",
+  select: "Select menu item",
+  dismiss: "Close menu or top dialog"
+};
+var ja = {
+  "edit-label": "{command}\u306E\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u3092\u7DE8\u96C6",
+  "record": "\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u3092\u62BC\u3057\u3066\u304F\u3060\u3055\u3044",
+  "record-help": "\u30AD\u30FC\u3092\u96E2\u3059\u3068\u4FDD\u5B58\u3055\u308C\u307E\u3059\u3002Tab \u3067\u30A2\u30AF\u30B7\u30E7\u30F3\u9593\u3092\u79FB\u52D5\u3001Esc \u3067\u30AD\u30E3\u30F3\u30BB\u30EB\u3057\u307E\u3059\u3002",
+  "web-help": "\u30D6\u30E9\u30A6\u30B6\u306E\u7D44\u307F\u5408\u308F\u305B: Mod+/\u3001Mod+Shift+,\u3001Mod+Shift+.\u3002Mod \u306F Mac \u3067\u306F Command\u3001\u305D\u308C\u4EE5\u5916\u3067\u306F Ctrl \u3067\u3059\u3002",
+  "unsupported-key": "\u3053\u306E\u30AD\u30FC\u306F\u30B5\u30DD\u30FC\u30C8\u3055\u308C\u3066\u3044\u307E\u305B\u3093\u3002",
+  "reserved": "\u3053\u306E\u7D44\u307F\u5408\u308F\u305B\u306F\u30B7\u30B9\u30C6\u30E0\u64CD\u4F5C\u307E\u305F\u306F\u30C6\u30AD\u30B9\u30C8\u7DE8\u96C6\u64CD\u4F5C\u306B\u4E88\u7D04\u3055\u308C\u3066\u3044\u307E\u3059\u3002",
+  "modifier-required": "\u7D44\u307F\u5408\u308F\u305B\u306B Command\u3001Ctrl\u3001\u307E\u305F\u306F Alt \u3092\u542B\u3081\u3066\u304F\u3060\u3055\u3044\u3002",
+  "too-many-keys": "\u4FEE\u98FE\u30AD\u30FC\u4EE5\u5916\u306E\u30AD\u30FC\u306F\u6700\u5927 2 \u3064\u307E\u3067\u3067\u3059\u3002\u30AD\u30FC\u3092\u96E2\u3057\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "macos-web-help": "Command+/\u3001Command+,\u3001Command+\u30D0\u30C3\u30AF\u30B9\u30E9\u30C3\u30B7\u30E5\u3001Control+\u30D0\u30C3\u30AF\u30AF\u30A9\u30FC\u30C8\u3001Command+Option+\u30AD\u30FC\u3001\u307E\u305F\u306F Command+Shift+\u30AD\u30FC\u3092\u4F7F\u7528\u3057\u3066\u304F\u3060\u3055\u3044\u30023 \u3064\u307E\u305F\u306F 4 \u3064\u306E\u7570\u306A\u308B\u4FEE\u98FE\u30AD\u30FC\u3092\u4F7F\u3063\u305F\u7D44\u307F\u5408\u308F\u305B\u3082\u30B5\u30DD\u30FC\u30C8\u3055\u308C\u3066\u3044\u307E\u3059\u3002\u30D6\u30E9\u30A6\u30B6\u3084\u30B7\u30B9\u30C6\u30E0\u306E\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u306F\u30DA\u30FC\u30B8\u306B\u5C4A\u304B\u306A\u3044\u5834\u5408\u304C\u3042\u308A\u307E\u3059\u3002",
+  "windows-web-help": "Ctrl+/\u3001Ctrl+,\u3001Ctrl+Alt+\u30AD\u30FC\u3001\u307E\u305F\u306F Ctrl+Shift+\u30AD\u30FC\u3092\u4F7F\u7528\u3057\u3066\u304F\u3060\u3055\u3044\u30023 \u3064\u307E\u305F\u306F 4 \u3064\u306E\u7570\u306A\u308B\u4FEE\u98FE\u30AD\u30FC\u3092\u4F7F\u3063\u305F\u7D44\u307F\u5408\u308F\u305B\u3082\u30B5\u30DD\u30FC\u30C8\u3055\u308C\u3066\u3044\u307E\u3059\u3002\u30D6\u30E9\u30A6\u30B6\u3084\u30B7\u30B9\u30C6\u30E0\u306E\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u306F\u30DA\u30FC\u30B8\u306B\u5C4A\u304B\u306A\u3044\u5834\u5408\u304C\u3042\u308A\u307E\u3059\u3002",
+  "unsupported-browser": "\u3053\u306E\u30D6\u30E9\u30A6\u30B6\u306F\u3053\u306E\u7D44\u307F\u5408\u308F\u305B\u306B\u307E\u3060\u5BFE\u5FDC\u3057\u3066\u3044\u307E\u305B\u3093\u3002",
+  "conflict": "\u300C{commands}\u300D\u3067\u65E2\u306B\u4F7F\u7528\u3055\u308C\u3066\u3044\u307E\u3059",
+  "saved": "\u5909\u66F4\u6E08\u307F",
+  "clear": "\u524A\u9664",
+  "retry-save": "\u4FDD\u5B58\u3092\u518D\u8A66\u884C",
+  "reset": "\u30C7\u30D5\u30A9\u30EB\u30C8\u306B\u623B\u3059",
+  "reset-all": "\u3059\u3079\u3066\u30C7\u30D5\u30A9\u30EB\u30C8\u306B\u623B\u3059",
+  "modified-count": "{count} \u4EF6\u304C\u30AB\u30B9\u30BF\u30DE\u30A4\u30BA\u6E08\u307F",
+  "reset-title": "\u3059\u3079\u3066\u306E\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u3092\u30C7\u30D5\u30A9\u30EB\u30C8\u306B\u623B\u3057\u307E\u3059\u304B\uFF1F",
+  "reset-description": "\u3053\u306E\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u306E\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u3092\u30C7\u30D5\u30A9\u30EB\u30C8\u306B\u623B\u3057\u307E\u3059\u3002\u5909\u66F4\u307E\u305F\u306F\u524A\u9664\u3055\u308C\u305F\u3059\u3079\u3066\u306E\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u304C\u5FA9\u5143\u3055\u308C\u307E\u3059\u3002\u4ED6\u306E\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u306B\u306F\u5F71\u97FF\u3057\u307E\u305B\u3093\u3002",
+  "cancel": "\u30AD\u30E3\u30F3\u30BB\u30EB",
+  "reset-saved": "\u30C7\u30D5\u30A9\u30EB\u30C8\u306E\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u3092\u5FA9\u5143\u3057\u307E\u3057\u305F",
+  "close-confirmation": "\u78BA\u8A8D\u3092\u9589\u3058\u308B",
+  "reset-failed": "\u30C7\u30D5\u30A9\u30EB\u30C8\u3092\u5FA9\u5143\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u306F\u5909\u66F4\u3055\u308C\u3066\u3044\u307E\u305B\u3093\u3002\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "review": "\u6700\u65B0\u306E\u69CB\u6210\u3092\u78BA\u8A8D\u3057\u307E\u3057\u305F",
+  "stale": "\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u69CB\u6210\u307E\u305F\u306F\u5229\u7528\u53EF\u80FD\u306A\u30B3\u30DE\u30F3\u30C9\u304C\u5909\u66F4\u3055\u308C\u307E\u3057\u305F\u3002\u4FDD\u5B58\u3059\u308B\u524D\u306B\u6700\u65B0\u306E\u30D0\u30A4\u30F3\u30C9\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "write-failed": "\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u4EE5\u524D\u306E\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u3068\u73FE\u5728\u306E\u4E0B\u66F8\u304D\u306F\u4FDD\u6301\u3055\u308C\u3066\u3044\u307E\u3059\u3002\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "not-ready": "\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u306E\u6E96\u5099\u304C\u3067\u304D\u3066\u3044\u307E\u305B\u3093\u3002\u3082\u3046\u4E00\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002",
+  "read": "{location} \u3092\u8AAD\u307F\u53D6\u308C\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u30A2\u30AF\u30BB\u30B9\u6A29\u9650\u3092\u78BA\u8A8D\u3057\u3066\u304B\u3089\u3001{reload}\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "invalid": "{location} \u306E\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u69CB\u6210\u304C\u7834\u640D\u3057\u3066\u3044\u307E\u3059\u3002\u3053\u306E\u69CB\u6210\u3092\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u3057\u3066\u4FEE\u5FA9\u3057\u3066\u304B\u3089\u3001{reload}\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "future": "{location} \u306E\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u69CB\u6210\u306F\u65B0\u3057\u3044\u30D0\u30FC\u30B8\u30E7\u30F3\u3067\u4F5C\u6210\u3055\u308C\u3066\u3044\u307E\u3059\u3002Harness \u3092\u30A2\u30C3\u30D7\u30B0\u30EC\u30FC\u30C9\u3057\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "web-document": "\u3053\u306E\u30B5\u30A4\u30C8\u306E localStorage \u30A8\u30F3\u30C8\u30EA dsh.keybindings.v1",
+  "desktop-document": "userData/keybindings.json",
+  "web-reload": "\u30DA\u30FC\u30B8\u3092\u518D\u8AAD\u307F\u8FBC\u307F",
+  "desktop-reload": "Harness \u3092\u518D\u8D77\u52D5",
+  "using-defaults": "\u30C7\u30D5\u30A9\u30EB\u30C8\u306E\u30D0\u30A4\u30F3\u30C9\u304C\u6709\u52B9\u3067\u3059\u3002",
+  "using-accepted": "\u6700\u5F8C\u306B\u6B63\u5E38\u306B\u8AAD\u307F\u53D6\u3089\u308C\u305F\u30D0\u30A4\u30F3\u30C9\u304C\u6709\u52B9\u306A\u307E\u307E\u3067\u3059\u3002",
+  "native-failed": "\u30C7\u30B9\u30AF\u30C8\u30C3\u30D7\u3067\u306E\u30AD\u30FC\u8A18\u9332\u3092\u4FDD\u8B77\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u8A18\u9332\u3092\u7D42\u4E86\u3057\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "global-hint": "\u3069\u3053\u304B\u3089\u3067\u3082\u958B\u304F",
+  "clear-search": "\u691C\u7D22\u3092\u30AF\u30EA\u30A2",
+  "title": "\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8",
+  "open": "\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u3092\u958B\u304F",
+  "settings": "\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8",
+  "view": "\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u3092\u7DE8\u96C6",
+  "description": "\u5229\u7528\u53EF\u80FD\u306A\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u3068\u5165\u529B\u30A2\u30AF\u30B7\u30E7\u30F3\u3092\u8868\u793A\u30FB\u7DE8\u96C6",
+  "search": "\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u3092\u691C\u7D22",
+  "close": "\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u3092\u9589\u3058\u308B",
+  "application": "\u30A2\u30D7\u30EA\u30B1\u30FC\u30B7\u30E7\u30F3",
+  "input": "\u30E1\u30C3\u30BB\u30FC\u30B8\u5165\u529B",
+  "menus": "\u30E1\u30CB\u30E5\u30FC\u3068\u30C0\u30A4\u30A2\u30ED\u30B0",
+  "approval": "\u627F\u8A8D\u30A8\u30EA\u30A2",
+  "unbound": "\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u306A\u3057",
+  "empty": "\u4E00\u81F4\u3059\u308B\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u304C\u3042\u308A\u307E\u305B\u3093",
+  "move": "\u30E1\u30CB\u30E5\u30FC\u9078\u629E\u3092\u79FB\u52D5",
+  "select": "\u30E1\u30CB\u30E5\u30FC\u9805\u76EE\u3092\u9078\u629E",
+  "dismiss": "\u30E1\u30CB\u30E5\u30FC\u307E\u305F\u306F\u6700\u4E0A\u4F4D\u30C0\u30A4\u30A2\u30ED\u30B0\u3092\u9589\u3058\u308B"
+};
+var es = {
+  "edit-label": "Editar acceso directo para {command}",
+  record: "Presione un atajo",
+  "record-help": "Suelta las teclas para guardar. La pesta\xF1a se mueve entre acciones; Esc se cancela.",
+  "web-help": "Combinaciones de navegador: Mod+/, Mod+Shift+, Mod+Shift+... Mod es Comando en Mac y Ctrl en otros lugares.",
+  "unsupported-key": "Esta clave no es compatible.",
+  reserved: "Esta combinaci\xF3n est\xE1 reservada para acciones de edici\xF3n de texto o del sistema.",
+  "modifier-required": "Incluya Comando, Ctrl o Alt en la combinaci\xF3n.",
+  "too-many-keys": "Mantenga presionadas como m\xE1ximo dos teclas no modificadoras. Suelta las teclas para volver a intentarlo.",
+  "macos-web-help": "Utilice Comando+/, Comando+, Comando+barra invertida, Control+comillas invertidas, Comando+Opci\xF3n+tecla o Comando+May\xFAs+tecla. Tambi\xE9n se admiten combinaciones con tres o cuatro modificadores distintos. Es posible que los accesos directos del navegador o del sistema no lleguen a la p\xE1gina.",
+  "windows-web-help": "Utilice Ctrl+/, Ctrl+, Ctrl+Alt+tecla o Ctrl+Shift+tecla. Tambi\xE9n se admiten combinaciones con tres o cuatro modificadores distintos. Es posible que los accesos directos del navegador o del sistema no lleguen a la p\xE1gina.",
+  "unsupported-browser": "Este navegador a\xFAn no admite esta combinaci\xF3n.",
+  conflict: "Ya utilizado por \u201C{commands}\u201D",
+  saved: "Modificado",
+  clear: "Quitar",
+  "retry-save": "Reintentar guardar",
+  reset: "Restaurar valor predeterminado",
+  "reset-all": "Restaurar todos los valores predeterminados",
+  "modified-count": "{count} personalizado",
+  "reset-title": "\xBFRestaurar todos los atajos predeterminados?",
+  "reset-description": "Restaure los accesos directos predeterminados para esta plataforma. Se restaurar\xE1n todos los accesos directos modificados o eliminados. Otras plataformas no se ven afectadas.",
+  cancel: "Cancelar",
+  "reset-saved": "Accesos directos predeterminados restaurados",
+  "close-confirmation": "Cerrar confirmaci\xF3n",
+  "reset-failed": "No se pudieron restaurar los valores predeterminados. Tus atajos no han cambiado. Vuelva a intentarlo.",
+  review: "He revisado la \xFAltima configuraci\xF3n.",
+  stale: "La configuraci\xF3n de accesos directos o los comandos disponibles cambiaron. Revise los enlaces m\xE1s recientes antes de guardar.",
+  "write-failed": "No se pudo guardar. Se conservan sus atajos anteriores y el borrador actual. Vuelva a intentarlo.",
+  "not-ready": "Los atajos no est\xE1n listos. Por favor int\xE9ntalo de nuevo.",
+  read: "No se pudo leer {location}. Verifique los permisos de acceso, luego {reload}.",
+  invalid: "La configuraci\xF3n de acceso directo en {location} est\xE1 da\xF1ada. Haga una copia de seguridad y repare esta configuraci\xF3n, luego {reload}.",
+  future: "La configuraci\xF3n de acceso directo en {location} fue creada por una versi\xF3n m\xE1s reciente. Actualice el arn\xE9s e int\xE9ntelo de nuevo.",
+  "web-document": "la entrada de almacenamiento local de este sitio dsh.keybindings.v1",
+  "desktop-document": "datos de usuario/bindings.json",
+  "web-reload": "recargar la pagina",
+  "desktop-reload": "reiniciar el arn\xE9s",
+  "using-defaults": "Los enlaces predeterminados est\xE1n activos.",
+  "using-accepted": "Los \xFAltimos enlaces le\xEDdos correctamente permanecen activos.",
+  "native-failed": "No se pudo proteger la grabaci\xF3n de claves del escritorio. Salga de la grabaci\xF3n y vuelva a intentarlo.",
+  "global-hint": "Abierto desde cualquier lugar",
+  "clear-search": "Borrar b\xFAsqueda",
+  title: "Atajos de teclado",
+  open: "Abrir atajos de teclado",
+  settings: "Atajos de teclado",
+  view: "Editar atajos",
+  description: "Ver y editar atajos disponibles y acciones de entrada",
+  search: "Buscar atajos",
+  close: "Cerrar atajos de teclado",
+  application: "Solicitud",
+  input: "Entrada de mensaje",
+  menus: "Men\xFAs y cuadros de di\xE1logo",
+  approval: "\xC1rea de aprobaci\xF3n",
+  unbound: "Sin atajos",
+  empty: "No hay atajos coincidentes",
+  move: "Mover selecci\xF3n de men\xFA",
+  select: "Seleccionar elemento del men\xFA",
+  dismiss: "Cerrar men\xFA o cuadro de di\xE1logo superior"
+};
+var fr = {
+  "edit-label": "Modifier le raccourci pour {command}",
+  record: "Appuyez sur un raccourci",
+  "record-help": "Rel\xE2chez les touches pour enregistrer. L'onglet se d\xE9place entre les actions\xA0; Esc annule.",
+  "web-help": "Combinaisons de navigateur\xA0: Mod+/, Mod+Shift+,, Mod+Shift+.. Mod est Command sur Mac et Ctrl ailleurs.",
+  "unsupported-key": "Cette cl\xE9 n'est pas prise en charge.",
+  reserved: "Cette combinaison est r\xE9serv\xE9e aux actions syst\xE8me ou d'\xE9dition de texte.",
+  "modifier-required": "Incluez Commande, Ctrl ou Alt dans la combinaison.",
+  "too-many-keys": "Tenez au plus deux cl\xE9s non modificatrices. Rel\xE2chez les touches pour r\xE9essayer.",
+  "macos-web-help": "Utilisez Command+/, Command+,, Command+Backslash, Control+Backquote, Command+Option+key ou Command+Shift+key. Les combinaisons avec trois ou quatre modificateurs distincts sont \xE9galement prises en charge. Les raccourcis du navigateur ou du syst\xE8me peuvent ne pas atteindre la page.",
+  "windows-web-help": "Utilisez Ctrl+/, Ctrl+,, Ctrl+Alt+touche ou Ctrl+Shift+touche. Les combinaisons avec trois ou quatre modificateurs distincts sont \xE9galement prises en charge. Les raccourcis du navigateur ou du syst\xE8me peuvent ne pas atteindre la page.",
+  "unsupported-browser": "Ce navigateur ne prend pas encore en charge cette combinaison.",
+  conflict: "D\xE9j\xE0 utilis\xE9 par \xAB\xA0{commands}\xA0\xBB",
+  saved: "Modifi\xE9",
+  clear: "Supprimer",
+  "retry-save": "R\xE9essayez d'enregistrer",
+  reset: "Restaurer les valeurs par d\xE9faut",
+  "reset-all": "Restaurer tous les param\xE8tres par d\xE9faut",
+  "modified-count": "{count} personnalis\xE9",
+  "reset-title": "Restaurer tous les raccourcis par d\xE9faut\xA0?",
+  "reset-description": "Restaurez les raccourcis par d\xE9faut pour cette plateforme. Tous les raccourcis modifi\xE9s ou supprim\xE9s seront restaur\xE9s. Les autres plateformes ne sont pas affect\xE9es.",
+  cancel: "Annuler",
+  "reset-saved": "Raccourcis par d\xE9faut restaur\xE9s",
+  "close-confirmation": "Fermer la confirmation",
+  "reset-failed": "Impossible de restaurer les valeurs par d\xE9faut. Vos raccourcis restent inchang\xE9s. Veuillez r\xE9essayer.",
+  review: "J'ai examin\xE9 la derni\xE8re configuration",
+  stale: "La configuration des raccourcis ou les commandes disponibles ont \xE9t\xE9 modifi\xE9es. V\xE9rifiez les derni\xE8res liaisons avant de les enregistrer.",
+  "write-failed": "Impossible d'enregistrer. Vos raccourcis pr\xE9c\xE9dents et votre brouillon actuel sont conserv\xE9s. Veuillez r\xE9essayer.",
+  "not-ready": "Les raccourcis ne sont pas pr\xEAts. Veuillez r\xE9essayer.",
+  read: "Impossible de lire {location}. V\xE9rifiez les autorisations d'acc\xE8s, puis {reload}.",
+  invalid: "La configuration des raccourcis dans {location} est endommag\xE9e. Sauvegardez et r\xE9parez cette configuration, puis {reload}.",
+  future: "La configuration des raccourcis dans {location} a \xE9t\xE9 cr\xE9\xE9e par une version plus r\xE9cente. Mettez \xE0 niveau le harnais et r\xE9essayez.",
+  "web-document": "l'entr\xE9e localStorage de ce site dsh.keybindings.v1",
+  "desktop-document": "userData/keybindings.json",
+  "web-reload": "recharger la page",
+  "desktop-reload": "red\xE9marrer le harnais",
+  "using-defaults": "Les liaisons par d\xE9faut sont actives.",
+  "using-accepted": "Les derni\xE8res liaisons lues avec succ\xE8s restent actives.",
+  "native-failed": "Impossible de prot\xE9ger l'enregistrement des cl\xE9s du bureau. Quittez l'enregistrement et r\xE9essayez.",
+  "global-hint": "Ouvert de n'importe o\xF9",
+  "clear-search": "Effacer la recherche",
+  title: "Raccourcis clavier",
+  open: "Ouvrir les raccourcis clavier",
+  settings: "Raccourcis clavier",
+  view: "Modifier les raccourcis",
+  description: "Afficher et modifier les raccourcis et les actions de saisie disponibles",
+  search: "Raccourcis de recherche",
+  close: "Fermer les raccourcis clavier",
+  application: "Demande",
+  input: "Saisie des messages",
+  menus: "Menus et bo\xEEtes de dialogue",
+  approval: "Zone d'approbation",
+  unbound: "Pas de raccourci",
+  empty: "Aucun raccourci correspondant",
+  move: "D\xE9placer la s\xE9lection du menu",
+  select: "S\xE9lectionner un \xE9l\xE9ment de menu",
+  dismiss: "Fermer le menu ou la bo\xEEte de dialogue sup\xE9rieure"
+};
+var de = {
+  "edit-label": "Verkn\xFCpfung f\xFCr {command} bearbeiten",
+  record: "Dr\xFCcken Sie eine Verkn\xFCpfung",
+  "record-help": "Lassen Sie die Tasten los, um zu speichern. Tab bewegt sich zwischen Aktionen; Esc bricht ab.",
+  "web-help": "Browserkombinationen: Mod+/, Mod+Umschalt+,, Mod+Umschalt+.. Mod ist Befehl auf dem Mac und Strg anderswo.",
+  "unsupported-key": "Dieser Schl\xFCssel wird nicht unterst\xFCtzt.",
+  reserved: "Diese Kombination ist f\xFCr System- oder Textbearbeitungsaktionen reserviert.",
+  "modifier-required": "F\xFCgen Sie Befehl, Strg oder Alt in die Kombination ein.",
+  "too-many-keys": "Halten Sie h\xF6chstens zwei nicht modifizierbare Tasten gedr\xFCckt. Lassen Sie die Tasten los, um es erneut zu versuchen.",
+  "macos-web-help": "Verwenden Sie Befehl+/, Befehl+,, Befehl+Backslash, Strg+Backquote, Befehl+Wahl+Taste oder Befehl+Umschalt+Taste. Kombinationen mit drei oder vier unterschiedlichen Modifikatoren werden ebenfalls unterst\xFCtzt. Browser- oder Systemverkn\xFCpfungen erreichen die Seite m\xF6glicherweise nicht.",
+  "windows-web-help": "Verwenden Sie Strg+/, Strg+,, Strg+Alt+Taste oder Strg+Umschalt+Taste. Kombinationen mit drei oder vier unterschiedlichen Modifikatoren werden ebenfalls unterst\xFCtzt. Browser- oder Systemverkn\xFCpfungen erreichen die Seite m\xF6glicherweise nicht.",
+  "unsupported-browser": "Dieser Browser unterst\xFCtzt diese Kombination noch nicht.",
+  conflict: "Bereits verwendet von \u201E{commands}\u201C",
+  saved: "Ge\xE4ndert",
+  clear: "Entfernen",
+  "retry-save": "Speichern Sie erneut",
+  reset: "Standard wiederherstellen",
+  "reset-all": "Alle Standardeinstellungen wiederherstellen",
+  "modified-count": "{count} angepasst",
+  "reset-title": "Alle Standardverkn\xFCpfungen wiederherstellen?",
+  "reset-description": "Stellen Sie die Standardverkn\xFCpfungen f\xFCr diese Plattform wieder her. Alle ge\xE4nderten oder entfernten Verkn\xFCpfungen werden wiederhergestellt. Andere Plattformen sind davon nicht betroffen.",
+  cancel: "Abbrechen",
+  "reset-saved": "Standardverkn\xFCpfungen wiederhergestellt",
+  "close-confirmation": "Best\xE4tigung schlie\xDFen",
+  "reset-failed": "Die Standardeinstellungen konnten nicht wiederhergestellt werden. Ihre Verkn\xFCpfungen bleiben unver\xE4ndert. Bitte versuchen Sie es erneut.",
+  review: "Ich habe die neueste Konfiguration \xFCberpr\xFCft",
+  stale: "Verkn\xFCpfungskonfiguration oder verf\xFCgbare Befehle ge\xE4ndert. \xDCberpr\xFCfen Sie vor dem Speichern die neuesten Bindungen.",
+  "write-failed": "Konnte nicht gespeichert werden. Ihre vorherigen Verkn\xFCpfungen und Ihr aktueller Entwurf bleiben erhalten. Bitte versuchen Sie es erneut.",
+  "not-ready": "Verkn\xFCpfungen sind nicht bereit. Bitte versuchen Sie es erneut.",
+  read: "{location} konnte nicht gelesen werden. Zugriffsberechtigungen pr\xFCfen, dann {reload}.",
+  invalid: "Die Verkn\xFCpfungskonfiguration in {location} ist besch\xE4digt. Sichern und reparieren Sie diese Konfiguration, dann {reload}.",
+  future: "Die Verkn\xFCpfungskonfiguration in {location} wurde von einer neueren Version erstellt. Aktualisieren Sie Harness und versuchen Sie es erneut.",
+  "web-document": "Der localStorage-Eintrag dieser Site dsh.keybindings.v1",
+  "desktop-document": "userData/keybindings.json",
+  "web-reload": "Laden Sie die Seite neu",
+  "desktop-reload": "Starten Sie Harness neu",
+  "using-defaults": "Standardbindungen sind aktiv.",
+  "using-accepted": "Die zuletzt erfolgreich gelesenen Bindungen bleiben aktiv.",
+  "native-failed": "Die Desktop-Schl\xFCsselaufzeichnung konnte nicht gesch\xFCtzt werden. Beenden Sie die Aufnahme und versuchen Sie es erneut.",
+  "global-hint": "Von \xFCberall aus \xF6ffnen",
+  "clear-search": "Suche l\xF6schen",
+  title: "Tastaturk\xFCrzel",
+  open: "\xD6ffnen Sie Tastaturk\xFCrzel",
+  settings: "Tastaturk\xFCrzel",
+  view: "Verkn\xFCpfungen bearbeiten",
+  description: "Verf\xFCgbare Verkn\xFCpfungen und Eingabeaktionen anzeigen und bearbeiten",
+  search: "Suchverkn\xFCpfungen",
+  close: "Tastaturk\xFCrzel schlie\xDFen",
+  application: "Anwendung",
+  input: "Nachrichteneingabe",
+  menus: "Men\xFCs und Dialoge",
+  approval: "Genehmigungsbereich",
+  unbound: "Keine Abk\xFCrzung",
+  empty: "Keine passenden Verkn\xFCpfungen",
+  move: "Men\xFCauswahl verschieben",
+  select: "Men\xFCpunkt ausw\xE4hlen",
+  dismiss: "Men\xFC oder oberen Dialog schlie\xDFen"
+};
+var ru = {
+  "edit-label": "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u044F\u0440\u043B\u044B\u043A \u0434\u043B\u044F {command}",
+  record: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \u044F\u0440\u043B\u044B\u043A",
+  "record-help": "\u041E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u043A\u043B\u0430\u0432\u0438\u0448\u0438 \u0434\u043B\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F. Tab \u043F\u0435\u0440\u0435\u043C\u0435\u0449\u0430\u0435\u0442\u0441\u044F \u043C\u0435\u0436\u0434\u0443 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044F\u043C\u0438; Esc \u043E\u0442\u043C\u0435\u043D\u044F\u0435\u0442.",
+  "web-help": "\u041A\u043E\u043C\u0431\u0438\u043D\u0430\u0446\u0438\u0438 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430: Mod+/, Mod+Shift+, Mod+Shift+.. Mod \u2014 \u044D\u0442\u043E \u043A\u043E\u043C\u0430\u043D\u0434\u0430 \u043D\u0430 Mac, \u0430 \u0432 \u0434\u0440\u0443\u0433\u0438\u0445 \u043C\u0435\u0441\u0442\u0430\u0445 \u2014 Ctrl.",
+  "unsupported-key": "\u042D\u0442\u043E\u0442 \u043A\u043B\u044E\u0447 \u043D\u0435 \u043F\u043E\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044F.",
+  reserved: "\u042D\u0442\u0430 \u043A\u043E\u043C\u0431\u0438\u043D\u0430\u0446\u0438\u044F \u0437\u0430\u0440\u0435\u0437\u0435\u0440\u0432\u0438\u0440\u043E\u0432\u0430\u043D\u0430 \u0434\u043B\u044F \u0441\u0438\u0441\u0442\u0435\u043C\u043D\u044B\u0445 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0439 \u0438\u043B\u0438 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0439 \u043F\u043E \u0440\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044E \u0442\u0435\u043A\u0441\u0442\u0430.",
+  "modifier-required": "\u0412\u043A\u043B\u044E\u0447\u0438\u0442\u0435 \u0432 \u043A\u043E\u043C\u0431\u0438\u043D\u0430\u0446\u0438\u044E Command, Ctrl \u0438\u043B\u0438 Alt.",
+  "too-many-keys": "\u0423\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0439\u0442\u0435 \u043D\u0435 \u0431\u043E\u043B\u0435\u0435 \u0434\u0432\u0443\u0445 \u043D\u0435\u043C\u043E\u0434\u0438\u0444\u0438\u0446\u0438\u0440\u0443\u044E\u0449\u0438\u0445 \u043A\u043B\u0430\u0432\u0438\u0448. \u041E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u043A\u043B\u0430\u0432\u0438\u0448\u0438, \u0447\u0442\u043E\u0431\u044B \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u044C \u043F\u043E\u043F\u044B\u0442\u043A\u0443.",
+  "macos-web-help": "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 Command+/, Command+,, Command+\u043E\u0431\u0440\u0430\u0442\u043D\u0430\u044F \u043A\u043E\u0441\u0430\u044F \u0447\u0435\u0440\u0442\u0430, Control+\u043E\u0431\u0440\u0430\u0442\u043D\u0430\u044F \u043A\u0430\u0432\u044B\u0447\u043A\u0430, Command+Option+\u043A\u043B\u0430\u0432\u0438\u0448\u0430 \u0438\u043B\u0438 Command+Shift+\u043A\u043B\u0430\u0432\u0438\u0448\u0430. \u0422\u0430\u043A\u0436\u0435 \u043F\u043E\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u043A\u043E\u043C\u0431\u0438\u043D\u0430\u0446\u0438\u0438 \u0441 \u0442\u0440\u0435\u043C\u044F \u0438\u043B\u0438 \u0447\u0435\u0442\u044B\u0440\u044C\u043C\u044F \u0440\u0430\u0437\u043B\u0438\u0447\u043D\u044B\u043C\u0438 \u043C\u043E\u0434\u0438\u0444\u0438\u043A\u0430\u0442\u043E\u0440\u0430\u043C\u0438. \u042F\u0440\u043B\u044B\u043A\u0438 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u0438\u043B\u0438 \u0441\u0438\u0441\u0442\u0435\u043C\u044B \u043C\u043E\u0433\u0443\u0442 \u043D\u0435 \u0434\u043E\u0445\u043E\u0434\u0438\u0442\u044C \u0434\u043E \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u044B.",
+  "windows-web-help": "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 Ctrl+/, Ctrl+, Ctrl+Alt+\u043A\u043B\u0430\u0432\u0438\u0448\u0430 \u0438\u043B\u0438 Ctrl+Shift+\u043A\u043B\u0430\u0432\u0438\u0448\u0430. \u0422\u0430\u043A\u0436\u0435 \u043F\u043E\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u043A\u043E\u043C\u0431\u0438\u043D\u0430\u0446\u0438\u0438 \u0441 \u0442\u0440\u0435\u043C\u044F \u0438\u043B\u0438 \u0447\u0435\u0442\u044B\u0440\u044C\u043C\u044F \u0440\u0430\u0437\u043B\u0438\u0447\u043D\u044B\u043C\u0438 \u043C\u043E\u0434\u0438\u0444\u0438\u043A\u0430\u0442\u043E\u0440\u0430\u043C\u0438. \u042F\u0440\u043B\u044B\u043A\u0438 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u0438\u043B\u0438 \u0441\u0438\u0441\u0442\u0435\u043C\u044B \u043C\u043E\u0433\u0443\u0442 \u043D\u0435 \u0434\u043E\u0445\u043E\u0434\u0438\u0442\u044C \u0434\u043E \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u044B.",
+  "unsupported-browser": "\u042D\u0442\u043E\u0442 \u0431\u0440\u0430\u0443\u0437\u0435\u0440 \u043F\u043E\u043A\u0430 \u043D\u0435 \u043F\u043E\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442 \u044D\u0442\u0443 \u043A\u043E\u043C\u0431\u0438\u043D\u0430\u0446\u0438\u044E.",
+  conflict: "\u0423\u0436\u0435 \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0435\u0442\u0441\u044F \xAB{commands}\xBB",
+  saved: "\u041C\u043E\u0434\u0438\u0444\u0438\u0446\u0438\u0440\u043E\u0432\u0430\u043D\u043D\u044B\u0439",
+  clear: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
+  "retry-save": "\u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u044C \u043F\u043E\u043F\u044B\u0442\u043A\u0443 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F",
+  reset: "\u0412\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E",
+  "reset-all": "\u0412\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u0432\u0441\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E",
+  "modified-count": "{count} \u043F\u043E \u0438\u043D\u0434\u0438\u0432\u0438\u0434\u0443\u0430\u043B\u044C\u043D\u043E\u043C\u0443 \u0437\u0430\u043A\u0430\u0437\u0443",
+  "reset-title": "\u0412\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u0432\u0441\u0435 \u044F\u0440\u043B\u044B\u043A\u0438 \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E?",
+  "reset-description": "\u0412\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u0435 \u044F\u0440\u043B\u044B\u043A\u0438 \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0434\u043B\u044F \u044D\u0442\u043E\u0439 \u043F\u043B\u0430\u0442\u0444\u043E\u0440\u043C\u044B. \u0412\u0441\u0435 \u0438\u0437\u043C\u0435\u043D\u0435\u043D\u043D\u044B\u0435 \u0438\u043B\u0438 \u0443\u0434\u0430\u043B\u0435\u043D\u043D\u044B\u0435 \u044F\u0440\u043B\u044B\u043A\u0438 \u0431\u0443\u0434\u0443\u0442 \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u044B. \u0414\u0440\u0443\u0433\u0438\u0435 \u043F\u043B\u0430\u0442\u0444\u043E\u0440\u043C\u044B \u043D\u0435 \u0437\u0430\u0442\u0440\u043E\u043D\u0443\u0442\u044B.",
+  cancel: "\u041E\u0442\u043C\u0435\u043D\u0430",
+  "reset-saved": "\u042F\u0440\u043B\u044B\u043A\u0438 \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u044B.",
+  "close-confirmation": "\u0417\u0430\u043A\u0440\u044B\u0442\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u0435",
+  "reset-failed": "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E. \u0412\u0430\u0448\u0438 \u044F\u0440\u043B\u044B\u043A\u0438 \u043D\u0435 \u0438\u0437\u043C\u0435\u043D\u0438\u043B\u0438\u0441\u044C. \u041F\u043E\u0436\u0430\u043B\u0443\u0439\u0441\u0442\u0430, \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u043F\u044B\u0442\u043A\u0443.",
+  review: "\u042F \u0440\u0430\u0441\u0441\u043C\u043E\u0442\u0440\u0435\u043B \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u044E\u044E \u043A\u043E\u043D\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044E",
+  stale: "\u041A\u043E\u043D\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044F \u044F\u0440\u043B\u044B\u043A\u0430 \u0438\u043B\u0438 \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u044B\u0435 \u043A\u043E\u043C\u0430\u043D\u0434\u044B \u0438\u0437\u043C\u0435\u043D\u0435\u043D\u044B. \u041F\u0435\u0440\u0435\u0434 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435\u043C \u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440\u0438\u0442\u0435 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0438.",
+  "write-failed": "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C. \u0412\u0430\u0448\u0438 \u043F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0438\u0435 \u044F\u0440\u043B\u044B\u043A\u0438 \u0438 \u0442\u0435\u043A\u0443\u0449\u0438\u0439 \u0447\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u0442\u0441\u044F. \u041F\u043E\u0436\u0430\u043B\u0443\u0439\u0441\u0442\u0430, \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u043F\u044B\u0442\u043A\u0443.",
+  "not-ready": "\u042F\u0440\u043B\u044B\u043A\u0438 \u043D\u0435 \u0433\u043E\u0442\u043E\u0432\u044B. \u041F\u043E\u0436\u0430\u043B\u0443\u0439\u0441\u0442\u0430, \u043F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0435 \u0440\u0430\u0437.",
+  read: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u044C {location}. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u043F\u0440\u0430\u0432\u0430 \u0434\u043E\u0441\u0442\u0443\u043F\u0430, \u0437\u0430\u0442\u0435\u043C {reload}.",
+  invalid: "\u041A\u043E\u043D\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044F \u044F\u0440\u043B\u044B\u043A\u0430 \u0432 {location} \u043F\u043E\u0432\u0440\u0435\u0436\u0434\u0435\u043D\u0430. \u0421\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u0443\u044E \u043A\u043E\u043F\u0438\u044E \u0438 \u0438\u0441\u043F\u0440\u0430\u0432\u044C\u0442\u0435 \u044D\u0442\u0443 \u043A\u043E\u043D\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044E, \u0437\u0430\u0442\u0435\u043C {reload}.",
+  future: "\u041A\u043E\u043D\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044F \u044F\u0440\u043B\u044B\u043A\u0430 \u0432 {location} \u0431\u044B\u043B\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0430 \u0431\u043E\u043B\u0435\u0435 \u043D\u043E\u0432\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0435\u0439. \u041E\u0431\u043D\u043E\u0432\u0438\u0442\u0435 Harness \u0438 \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u043F\u044B\u0442\u043A\u0443.",
+  "web-document": "\u0437\u0430\u043F\u0438\u0441\u044C localStorage \u044D\u0442\u043E\u0433\u043E \u0441\u0430\u0439\u0442\u0430 dsh.keybindings.v1",
+  "desktop-document": "userData/keybindings.json",
+  "web-reload": "\u043F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0443",
+  "desktop-reload": "\u043F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u044C Harness",
+  "using-defaults": "\u041F\u0440\u0438\u0432\u044F\u0437\u043A\u0438 \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0430\u043A\u0442\u0438\u0432\u043D\u044B.",
+  "using-accepted": "\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0435 \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0438 \u043E\u0441\u0442\u0430\u044E\u0442\u0441\u044F \u0430\u043A\u0442\u0438\u0432\u043D\u044B\u043C\u0438.",
+  "native-failed": "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0449\u0438\u0442\u0438\u0442\u044C \u0437\u0430\u043F\u0438\u0441\u044C \u043A\u043B\u0430\u0432\u0438\u0448 \u0440\u0430\u0431\u043E\u0447\u0435\u0433\u043E \u0441\u0442\u043E\u043B\u0430. \u0412\u044B\u0439\u0434\u0438\u0442\u0435 \u0438\u0437 \u0437\u0430\u043F\u0438\u0441\u0438 \u0438 \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u043F\u044B\u0442\u043A\u0443.",
+  "global-hint": "\u041E\u0442\u043A\u0440\u044B\u0442\u043E \u0438\u0437 \u043B\u044E\u0431\u043E\u0433\u043E \u043C\u0435\u0441\u0442\u0430",
+  "clear-search": "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u043F\u043E\u0438\u0441\u043A",
+  title: "\u0421\u043E\u0447\u0435\u0442\u0430\u043D\u0438\u044F \u043A\u043B\u0430\u0432\u0438\u0448",
+  open: "\u041E\u0442\u043A\u0440\u044B\u0442\u0438\u0435 \u0441\u043E\u0447\u0435\u0442\u0430\u043D\u0438\u0439 \u043A\u043B\u0430\u0432\u0438\u0448",
+  settings: "\u0421\u043E\u0447\u0435\u0442\u0430\u043D\u0438\u044F \u043A\u043B\u0430\u0432\u0438\u0448",
+  view: "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u044F\u0440\u043B\u044B\u043A\u0438",
+  description: "\u041F\u0440\u043E\u0441\u043C\u043E\u0442\u0440 \u0438 \u0440\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u044B\u0445 \u044F\u0440\u043B\u044B\u043A\u043E\u0432 \u0438 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0439 \u0432\u0432\u043E\u0434\u0430",
+  search: "\u041F\u043E\u0438\u0441\u043A \u044F\u0440\u043B\u044B\u043A\u043E\u0432",
+  close: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C \u0441\u043E\u0447\u0435\u0442\u0430\u043D\u0438\u044F \u043A\u043B\u0430\u0432\u0438\u0448",
+  application: "\u041F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u0435",
+  input: "\u0412\u0432\u043E\u0434 \u0441\u043E\u043E\u0431\u0449\u0435\u043D\u0438\u044F",
+  menus: "\u041C\u0435\u043D\u044E \u0438 \u0434\u0438\u0430\u043B\u043E\u0433\u0438",
+  approval: "\u041E\u0431\u043B\u0430\u0441\u0442\u044C \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F",
+  unbound: "\u041D\u0435\u0442 \u044F\u0440\u043B\u044B\u043A\u0430",
+  empty: "\u041D\u0435\u0442 \u043F\u043E\u0434\u0445\u043E\u0434\u044F\u0449\u0438\u0445 \u044F\u0440\u043B\u044B\u043A\u043E\u0432",
+  move: "\u041F\u0435\u0440\u0435\u043C\u0435\u0441\u0442\u0438\u0442\u044C \u0432\u044B\u0431\u043E\u0440 \u043C\u0435\u043D\u044E",
+  select: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u043F\u0443\u043D\u043A\u0442 \u043C\u0435\u043D\u044E",
+  dismiss: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C \u043C\u0435\u043D\u044E \u0438\u043B\u0438 \u0432\u0435\u0440\u0445\u043D\u0438\u0439 \u0434\u0438\u0430\u043B\u043E\u0433"
+};
+var pt = {
+  "edit-label": "Editar atalho para {command}",
+  record: "Pressione um atalho",
+  "record-help": "Solte as teclas para salvar. A guia se move entre as a\xE7\xF5es; Esc cancela.",
+  "web-help": "Combina\xE7\xF5es de navegador: Mod+/, Mod+Shift+,, Mod+Shift+.. Mod \xE9 Command no Mac e Ctrl em outros lugares.",
+  "unsupported-key": "Esta chave n\xE3o \xE9 suportada.",
+  reserved: "Esta combina\xE7\xE3o \xE9 reservada para a\xE7\xF5es de sistema ou edi\xE7\xE3o de texto.",
+  "modifier-required": "Inclua Command, Ctrl ou Alt na combina\xE7\xE3o.",
+  "too-many-keys": "Segure no m\xE1ximo duas teclas n\xE3o modificadoras. Solte as teclas para tentar novamente.",
+  "macos-web-help": "Use Command+/, Command+,, Command+Barra invertida, Control+Backquote, Command+Option+key ou Command+Shift+key. Combina\xE7\xF5es com tr\xEAs ou quatro modificadores distintos tamb\xE9m s\xE3o suportadas. Os atalhos do navegador ou do sistema podem n\xE3o chegar \xE0 p\xE1gina.",
+  "windows-web-help": "Use Ctrl+/, Ctrl+,, Ctrl+Alt+tecla ou Ctrl+Shift+tecla. Combina\xE7\xF5es com tr\xEAs ou quatro modificadores distintos tamb\xE9m s\xE3o suportadas. Os atalhos do navegador ou do sistema podem n\xE3o chegar \xE0 p\xE1gina.",
+  "unsupported-browser": "Este navegador ainda n\xE3o suporta esta combina\xE7\xE3o.",
+  conflict: "J\xE1 usado por \u201C{commands}\u201D",
+  saved: "Modificado",
+  clear: "Remover",
+  "retry-save": "Tentar salvar novamente",
+  reset: "Restaurar padr\xE3o",
+  "reset-all": "Restaurar todos os padr\xF5es",
+  "modified-count": "{count} personalizado",
+  "reset-title": "Restaurar todos os atalhos padr\xE3o?",
+  "reset-description": "Restaure os atalhos padr\xE3o desta plataforma. Todos os atalhos modificados ou removidos ser\xE3o restaurados. Outras plataformas n\xE3o s\xE3o afetadas.",
+  cancel: "Cancelar",
+  "reset-saved": "Atalhos padr\xE3o restaurados",
+  "close-confirmation": "Fechar confirma\xE7\xE3o",
+  "reset-failed": "N\xE3o foi poss\xEDvel restaurar os padr\xF5es. Seus atalhos permanecem inalterados. Por favor, tente novamente.",
+  review: "Eu revisei a configura\xE7\xE3o mais recente",
+  stale: "Configura\xE7\xE3o de atalhos ou comandos dispon\xEDveis alterados. Revise as liga\xE7\xF5es mais recentes antes de salvar.",
+  "write-failed": "N\xE3o foi poss\xEDvel salvar. Seus atalhos anteriores e o rascunho atual ser\xE3o preservados. Por favor, tente novamente.",
+  "not-ready": "Os atalhos n\xE3o est\xE3o prontos. Por favor, tente novamente.",
+  read: "N\xE3o foi poss\xEDvel ler {location}. Verifique as permiss\xF5es de acesso e depois {reload}.",
+  invalid: "A configura\xE7\xE3o do atalho em {location} est\xE1 danificada. Fa\xE7a backup e repare esta configura\xE7\xE3o e ent\xE3o {reload}.",
+  future: "A configura\xE7\xE3o do atalho em {location} foi criada por uma vers\xE3o mais recente. Atualize o Harness e tente novamente.",
+  "web-document": "a entrada localStorage deste site dsh.keybindings.v1",
+  "desktop-document": "userData/keybindings.json",
+  "web-reload": "recarregar a p\xE1gina",
+  "desktop-reload": "reinicie o chicote",
+  "using-defaults": "As liga\xE7\xF5es padr\xE3o est\xE3o ativas.",
+  "using-accepted": "As \xFAltimas liga\xE7\xF5es lidas com sucesso permanecem ativas.",
+  "native-failed": "N\xE3o foi poss\xEDvel proteger a grava\xE7\xE3o de teclas da \xE1rea de trabalho. Saia da grava\xE7\xE3o e tente novamente.",
+  "global-hint": "Abra de qualquer lugar",
+  "clear-search": "Limpar pesquisa",
+  title: "Atalhos de teclado",
+  open: "Abra atalhos de teclado",
+  settings: "Atalhos de teclado",
+  view: "Editar atalhos",
+  description: "Visualize e edite atalhos e a\xE7\xF5es de entrada dispon\xEDveis",
+  search: "Atalhos de pesquisa",
+  close: "Fechar atalhos de teclado",
+  application: "Aplica\xE7\xE3o",
+  input: "Entrada de mensagem",
+  menus: "Menus e caixas de di\xE1logo",
+  approval: "\xC1rea de aprova\xE7\xE3o",
+  unbound: "Sem atalho",
+  empty: "Nenhum atalho correspondente",
+  move: "Mover sele\xE7\xE3o de menu",
+  select: "Selecione o item do menu",
+  dismiss: "Fechar menu ou caixa de di\xE1logo superior"
+};
+
+// upstream/packages/client/ui-shortcuts/src/client/fixed.ts.snapshot
+function fixedCommands(t) {
+  const rows = [
+    { id: "move", keys: ["\u2191", "\u2193"], bindings: [{ code: "ArrowUp", modifiers: [] }, { code: "ArrowDown", modifiers: [] }], group: "menus" },
+    { id: "select", keys: ["Enter"], bindings: [{ code: "Enter", modifiers: [] }], group: "menus" },
+    { id: "dismiss", keys: ["Esc"], bindings: [{ code: "Escape", modifiers: [] }], group: "menus" }
+  ];
+  return rows.map((row) => ({ ...row, id: `fixed.${row.id}`, label: () => t(row.id) }));
+}
+
+// upstream/packages/client/ui-shortcuts/src/client/index.ts.snapshot
+var inject = ["shortcuts", "locale", "slots"];
+function apply(ctx) {
+  ctx.effect(() => ctx.locale.register("shortcuts", { zh, en, ja, es, fr, de, ru, pt }), "shortcuts: dictionaries");
+  const t = ctx.locale.bind("shortcuts");
+  const handle = createShortcutsStore();
+  const instance = handle.create();
+  const store = { ...handle, create: () => instance };
+  const edit = (...args) => ctx.shortcuts.edit(...args);
+  const recording = (active) => ctx.shortcuts.recording(active);
+  const describeBinding = (binding) => ctx.shortcuts.describeBinding(binding);
+  for (const command of fixedCommands(t)) {
+    ctx.effect(() => ctx.shortcuts.registerFixed(command), `shortcuts: ${command.id}`);
+  }
+  const injected = () => ({
+    platform: ctx.shortcuts.platform,
+    runtime: ctx.shortcuts.runtime,
+    edit,
+    recording,
+    describeBinding,
+    hooks: { catalog: ctx.shortcuts.catalog, config: ctx.shortcuts.config, fixedCatalog: ctx.shortcuts.fixedCatalog }
+  });
+  ctx.slots.inject("settings.general.item", () => ctx.slots.register({
+    name: "settings.general.item",
+    id: "shortcuts",
+    order: 16,
+    locale: "shortcuts",
+    store,
+    inject: injected
+  }, ShortcutsRow));
+  ctx.slots.inject("shell.overlay", () => {
+    const disposeCommand = ctx.shortcuts.register({
+      id: "shortcuts.open",
+      label: () => t("open"),
+      aliases: ["shortcuts", "keyboard shortcuts"],
+      defaults: {
+        "desktop:macos": { code: "Slash", modifiers: ["primary"] },
+        "desktop:windows": { code: "Slash", modifiers: ["primary"] },
+        "desktop:linux": { code: "Slash", modifiers: ["primary"] },
+        "web:macos": { code: "Slash", modifiers: ["primary"] },
+        "web:windows": { code: "Slash", modifiers: ["primary"] },
+        "web:linux": { code: "Slash", modifiers: ["primary"] }
+      },
+      regions: ["page", "editable", "terminal"],
+      modals: ["settings", "shortcuts"],
+      resolve: ({ modal }) => {
+        if (modal !== null && modal !== "settings" && modal !== "shortcuts") return { status: "blocked", reason: "modal" };
+        return { status: "handled", run: () => {
+          if (modal === "shortcuts") closeTopModal(document);
+          else instance.actions.open();
+        } };
+      }
+    });
+    const disposeSlot = ctx.slots.register({
+      name: "shell.overlay",
+      id: "shortcuts",
+      locale: "shortcuts",
+      store,
+      inject: injected
+    }, ShortcutReference);
+    return () => {
+      disposeCommand();
+      disposeSlot();
+    };
+  });
+}
+
+// upstream/packages/client/ui-file-actions/src/client/index.ts.snapshot
+var index_ts_exports2 = {};
+__export(index_ts_exports2, {
+  apply: () => apply2,
+  inject: () => inject2
+});
+
+// upstream/packages/util/workspace-path/src/index.ts.snapshot
+function isWindowsStylePath(value) {
+  return /^[A-Za-z]:[/\\]/.test(value) || value.startsWith("\\\\");
+}
+function isAbsoluteWorkspacePath(path) {
+  return path.startsWith("/") || isWindowsStylePath(path);
+}
+function fileMediaUrl(base, path) {
+  if (!/^https?:/u.test(base) && !base.startsWith("dsh-app://app/") || !isAbsoluteWorkspacePath(path) || /^[/\\]{2}/u.test(path) || /[\u0000-\u001f\u007f]/u.test(path)) return void 0;
+  return new URL(`api/file?path=${encodeURIComponent(path)}`, base).href;
+}
+
+// ../../node_modules/.pnpm/mime@4.1.1/node_modules/mime/dist/types/other.js
+var types = {
+  "application/prs.cww": ["cww"],
+  "application/prs.xsf+xml": ["xsf"],
+  "application/vnd.1000minds.decision-model+xml": ["1km"],
+  "application/vnd.3gpp.pic-bw-large": ["plb"],
+  "application/vnd.3gpp.pic-bw-small": ["psb"],
+  "application/vnd.3gpp.pic-bw-var": ["pvb"],
+  "application/vnd.3gpp2.tcap": ["tcap"],
+  "application/vnd.3m.post-it-notes": ["pwn"],
+  "application/vnd.accpac.simply.aso": ["aso"],
+  "application/vnd.accpac.simply.imp": ["imp"],
+  "application/vnd.acucobol": ["acu"],
+  "application/vnd.acucorp": ["atc", "acutc"],
+  "application/vnd.adobe.air-application-installer-package+zip": ["air"],
+  "application/vnd.adobe.formscentral.fcdt": ["fcdt"],
+  "application/vnd.adobe.fxp": ["fxp", "fxpl"],
+  "application/vnd.adobe.xdp+xml": ["xdp"],
+  "application/vnd.adobe.xfdf": ["*xfdf"],
+  "application/vnd.age": ["age"],
+  "application/vnd.ahead.space": ["ahead"],
+  "application/vnd.airzip.filesecure.azf": ["azf"],
+  "application/vnd.airzip.filesecure.azs": ["azs"],
+  "application/vnd.amazon.ebook": ["azw"],
+  "application/vnd.americandynamics.acc": ["acc"],
+  "application/vnd.amiga.ami": ["ami"],
+  "application/vnd.android.package-archive": ["apk"],
+  "application/vnd.anser-web-certificate-issue-initiation": ["cii"],
+  "application/vnd.anser-web-funds-transfer-initiation": ["fti"],
+  "application/vnd.antix.game-component": ["atx"],
+  "application/vnd.apple.installer+xml": ["mpkg"],
+  "application/vnd.apple.keynote": ["key"],
+  "application/vnd.apple.mpegurl": ["m3u8"],
+  "application/vnd.apple.numbers": ["numbers"],
+  "application/vnd.apple.pages": ["pages"],
+  "application/vnd.apple.pkpass": ["pkpass"],
+  "application/vnd.aristanetworks.swi": ["swi"],
+  "application/vnd.astraea-software.iota": ["iota"],
+  "application/vnd.audiograph": ["aep"],
+  "application/vnd.autodesk.fbx": ["fbx"],
+  "application/vnd.balsamiq.bmml+xml": ["bmml"],
+  "application/vnd.blueice.multipass": ["mpm"],
+  "application/vnd.bmi": ["bmi"],
+  "application/vnd.businessobjects": ["rep"],
+  "application/vnd.chemdraw+xml": ["cdxml"],
+  "application/vnd.chipnuts.karaoke-mmd": ["mmd"],
+  "application/vnd.cinderella": ["cdy"],
+  "application/vnd.citationstyles.style+xml": ["csl"],
+  "application/vnd.claymore": ["cla"],
+  "application/vnd.cloanto.rp9": ["rp9"],
+  "application/vnd.clonk.c4group": ["c4g", "c4d", "c4f", "c4p", "c4u"],
+  "application/vnd.cluetrust.cartomobile-config": ["c11amc"],
+  "application/vnd.cluetrust.cartomobile-config-pkg": ["c11amz"],
+  "application/vnd.commonspace": ["csp"],
+  "application/vnd.contact.cmsg": ["cdbcmsg"],
+  "application/vnd.cosmocaller": ["cmc"],
+  "application/vnd.crick.clicker": ["clkx"],
+  "application/vnd.crick.clicker.keyboard": ["clkk"],
+  "application/vnd.crick.clicker.palette": ["clkp"],
+  "application/vnd.crick.clicker.template": ["clkt"],
+  "application/vnd.crick.clicker.wordbank": ["clkw"],
+  "application/vnd.criticaltools.wbs+xml": ["wbs"],
+  "application/vnd.ctc-posml": ["pml"],
+  "application/vnd.cups-ppd": ["ppd"],
+  "application/vnd.curl.car": ["car"],
+  "application/vnd.curl.pcurl": ["pcurl"],
+  "application/vnd.dart": ["dart"],
+  "application/vnd.data-vision.rdz": ["rdz"],
+  "application/vnd.dbf": ["dbf"],
+  "application/vnd.dcmp+xml": ["dcmp"],
+  "application/vnd.dece.data": ["uvf", "uvvf", "uvd", "uvvd"],
+  "application/vnd.dece.ttml+xml": ["uvt", "uvvt"],
+  "application/vnd.dece.unspecified": ["uvx", "uvvx"],
+  "application/vnd.dece.zip": ["uvz", "uvvz"],
+  "application/vnd.denovo.fcselayout-link": ["fe_launch"],
+  "application/vnd.dna": ["dna"],
+  "application/vnd.dolby.mlp": ["mlp"],
+  "application/vnd.dpgraph": ["dpg"],
+  "application/vnd.dreamfactory": ["dfac"],
+  "application/vnd.ds-keypoint": ["kpxx"],
+  "application/vnd.dvb.ait": ["ait"],
+  "application/vnd.dvb.service": ["svc"],
+  "application/vnd.dynageo": ["geo"],
+  "application/vnd.ecowin.chart": ["mag"],
+  "application/vnd.enliven": ["nml"],
+  "application/vnd.epson.esf": ["esf"],
+  "application/vnd.epson.msf": ["msf"],
+  "application/vnd.epson.quickanime": ["qam"],
+  "application/vnd.epson.salt": ["slt"],
+  "application/vnd.epson.ssf": ["ssf"],
+  "application/vnd.eszigno3+xml": ["es3", "et3"],
+  "application/vnd.ezpix-album": ["ez2"],
+  "application/vnd.ezpix-package": ["ez3"],
+  "application/vnd.fdf": ["*fdf"],
+  "application/vnd.fdsn.mseed": ["mseed"],
+  "application/vnd.fdsn.seed": ["seed", "dataless"],
+  "application/vnd.flographit": ["gph"],
+  "application/vnd.fluxtime.clip": ["ftc"],
+  "application/vnd.framemaker": ["fm", "frame", "maker", "book"],
+  "application/vnd.frogans.fnc": ["fnc"],
+  "application/vnd.frogans.ltf": ["ltf"],
+  "application/vnd.fsc.weblaunch": ["fsc"],
+  "application/vnd.fujitsu.oasys": ["oas"],
+  "application/vnd.fujitsu.oasys2": ["oa2"],
+  "application/vnd.fujitsu.oasys3": ["oa3"],
+  "application/vnd.fujitsu.oasysgp": ["fg5"],
+  "application/vnd.fujitsu.oasysprs": ["bh2"],
+  "application/vnd.fujixerox.ddd": ["ddd"],
+  "application/vnd.fujixerox.docuworks": ["xdw"],
+  "application/vnd.fujixerox.docuworks.binder": ["xbd"],
+  "application/vnd.fuzzysheet": ["fzs"],
+  "application/vnd.genomatix.tuxedo": ["txd"],
+  "application/vnd.geogebra.file": ["ggb"],
+  "application/vnd.geogebra.slides": ["ggs"],
+  "application/vnd.geogebra.tool": ["ggt"],
+  "application/vnd.geometry-explorer": ["gex", "gre"],
+  "application/vnd.geonext": ["gxt"],
+  "application/vnd.geoplan": ["g2w"],
+  "application/vnd.geospace": ["g3w"],
+  "application/vnd.gmx": ["gmx"],
+  "application/vnd.google-apps.document": ["gdoc"],
+  "application/vnd.google-apps.drawing": ["gdraw"],
+  "application/vnd.google-apps.form": ["gform"],
+  "application/vnd.google-apps.jam": ["gjam"],
+  "application/vnd.google-apps.map": ["gmap"],
+  "application/vnd.google-apps.presentation": ["gslides"],
+  "application/vnd.google-apps.script": ["gscript"],
+  "application/vnd.google-apps.site": ["gsite"],
+  "application/vnd.google-apps.spreadsheet": ["gsheet"],
+  "application/vnd.google-earth.kml+xml": ["kml"],
+  "application/vnd.google-earth.kmz": ["kmz"],
+  "application/vnd.gov.sk.xmldatacontainer+xml": ["xdcf"],
+  "application/vnd.grafeq": ["gqf", "gqs"],
+  "application/vnd.groove-account": ["gac"],
+  "application/vnd.groove-help": ["ghf"],
+  "application/vnd.groove-identity-message": ["gim"],
+  "application/vnd.groove-injector": ["grv"],
+  "application/vnd.groove-tool-message": ["gtm"],
+  "application/vnd.groove-tool-template": ["tpl"],
+  "application/vnd.groove-vcard": ["vcg"],
+  "application/vnd.hal+xml": ["hal"],
+  "application/vnd.handheld-entertainment+xml": ["zmm"],
+  "application/vnd.hbci": ["hbci"],
+  "application/vnd.hhe.lesson-player": ["les"],
+  "application/vnd.hp-hpgl": ["hpgl"],
+  "application/vnd.hp-hpid": ["hpid"],
+  "application/vnd.hp-hps": ["hps"],
+  "application/vnd.hp-jlyt": ["jlt"],
+  "application/vnd.hp-pcl": ["pcl"],
+  "application/vnd.hp-pclxl": ["pclxl"],
+  "application/vnd.hydrostatix.sof-data": ["sfd-hdstx"],
+  "application/vnd.ibm.minipay": ["mpy"],
+  "application/vnd.ibm.modcap": ["afp", "listafp", "list3820"],
+  "application/vnd.ibm.rights-management": ["irm"],
+  "application/vnd.ibm.secure-container": ["sc"],
+  "application/vnd.iccprofile": ["icc", "icm"],
+  "application/vnd.igloader": ["igl"],
+  "application/vnd.immervision-ivp": ["ivp"],
+  "application/vnd.immervision-ivu": ["ivu"],
+  "application/vnd.insors.igm": ["igm"],
+  "application/vnd.intercon.formnet": ["xpw", "xpx"],
+  "application/vnd.intergeo": ["i2g"],
+  "application/vnd.intu.qbo": ["qbo"],
+  "application/vnd.intu.qfx": ["qfx"],
+  "application/vnd.ipunplugged.rcprofile": ["rcprofile"],
+  "application/vnd.irepository.package+xml": ["irp"],
+  "application/vnd.is-xpr": ["xpr"],
+  "application/vnd.isac.fcs": ["fcs"],
+  "application/vnd.jam": ["jam"],
+  "application/vnd.jcp.javame.midlet-rms": ["rms"],
+  "application/vnd.jisp": ["jisp"],
+  "application/vnd.joost.joda-archive": ["joda"],
+  "application/vnd.kahootz": ["ktz", "ktr"],
+  "application/vnd.kde.karbon": ["karbon"],
+  "application/vnd.kde.kchart": ["chrt"],
+  "application/vnd.kde.kformula": ["kfo"],
+  "application/vnd.kde.kivio": ["flw"],
+  "application/vnd.kde.kontour": ["kon"],
+  "application/vnd.kde.kpresenter": ["kpr", "kpt"],
+  "application/vnd.kde.kspread": ["ksp"],
+  "application/vnd.kde.kword": ["kwd", "kwt"],
+  "application/vnd.kenameaapp": ["htke"],
+  "application/vnd.kidspiration": ["kia"],
+  "application/vnd.kinar": ["kne", "knp"],
+  "application/vnd.koan": ["skp", "skd", "skt", "skm"],
+  "application/vnd.kodak-descriptor": ["sse"],
+  "application/vnd.las.las+xml": ["lasxml"],
+  "application/vnd.llamagraphics.life-balance.desktop": ["lbd"],
+  "application/vnd.llamagraphics.life-balance.exchange+xml": ["lbe"],
+  "application/vnd.lotus-1-2-3": ["123"],
+  "application/vnd.lotus-approach": ["apr"],
+  "application/vnd.lotus-freelance": ["pre"],
+  "application/vnd.lotus-notes": ["nsf"],
+  "application/vnd.lotus-organizer": ["org"],
+  "application/vnd.lotus-screencam": ["scm"],
+  "application/vnd.lotus-wordpro": ["lwp"],
+  "application/vnd.macports.portpkg": ["portpkg"],
+  "application/vnd.mapbox-vector-tile": ["mvt"],
+  "application/vnd.mcd": ["mcd"],
+  "application/vnd.medcalcdata": ["mc1"],
+  "application/vnd.mediastation.cdkey": ["cdkey"],
+  "application/vnd.mfer": ["mwf"],
+  "application/vnd.mfmp": ["mfm"],
+  "application/vnd.micrografx.flo": ["flo"],
+  "application/vnd.micrografx.igx": ["igx"],
+  "application/vnd.mif": ["mif"],
+  "application/vnd.mobius.daf": ["daf"],
+  "application/vnd.mobius.dis": ["dis"],
+  "application/vnd.mobius.mbk": ["mbk"],
+  "application/vnd.mobius.mqy": ["mqy"],
+  "application/vnd.mobius.msl": ["msl"],
+  "application/vnd.mobius.plc": ["plc"],
+  "application/vnd.mobius.txf": ["txf"],
+  "application/vnd.mophun.application": ["mpn"],
+  "application/vnd.mophun.certificate": ["mpc"],
+  "application/vnd.mozilla.xul+xml": ["xul"],
+  "application/vnd.ms-artgalry": ["cil"],
+  "application/vnd.ms-cab-compressed": ["cab"],
+  "application/vnd.ms-excel": ["xls", "xlm", "xla", "xlc", "xlt", "xlw"],
+  "application/vnd.ms-excel.addin.macroenabled.12": ["xlam"],
+  "application/vnd.ms-excel.sheet.binary.macroenabled.12": ["xlsb"],
+  "application/vnd.ms-excel.sheet.macroenabled.12": ["xlsm"],
+  "application/vnd.ms-excel.template.macroenabled.12": ["xltm"],
+  "application/vnd.ms-fontobject": ["eot"],
+  "application/vnd.ms-htmlhelp": ["chm"],
+  "application/vnd.ms-ims": ["ims"],
+  "application/vnd.ms-lrm": ["lrm"],
+  "application/vnd.ms-officetheme": ["thmx"],
+  "application/vnd.ms-outlook": ["msg"],
+  "application/vnd.ms-pki.seccat": ["cat"],
+  "application/vnd.ms-pki.stl": ["*stl"],
+  "application/vnd.ms-powerpoint": ["ppt", "pps", "pot"],
+  "application/vnd.ms-powerpoint.addin.macroenabled.12": ["ppam"],
+  "application/vnd.ms-powerpoint.presentation.macroenabled.12": ["pptm"],
+  "application/vnd.ms-powerpoint.slide.macroenabled.12": ["sldm"],
+  "application/vnd.ms-powerpoint.slideshow.macroenabled.12": ["ppsm"],
+  "application/vnd.ms-powerpoint.template.macroenabled.12": ["potm"],
+  "application/vnd.ms-project": ["*mpp", "mpt"],
+  "application/vnd.ms-visio.viewer": ["vdx"],
+  "application/vnd.ms-word.document.macroenabled.12": ["docm"],
+  "application/vnd.ms-word.template.macroenabled.12": ["dotm"],
+  "application/vnd.ms-works": ["wps", "wks", "wcm", "wdb"],
+  "application/vnd.ms-wpl": ["wpl"],
+  "application/vnd.ms-xpsdocument": ["xps"],
+  "application/vnd.mseq": ["mseq"],
+  "application/vnd.musician": ["mus"],
+  "application/vnd.muvee.style": ["msty"],
+  "application/vnd.mynfc": ["taglet"],
+  "application/vnd.nato.bindingdataobject+xml": ["bdo"],
+  "application/vnd.neurolanguage.nlu": ["nlu"],
+  "application/vnd.nitf": ["ntf", "nitf"],
+  "application/vnd.noblenet-directory": ["nnd"],
+  "application/vnd.noblenet-sealer": ["nns"],
+  "application/vnd.noblenet-web": ["nnw"],
+  "application/vnd.nokia.n-gage.ac+xml": ["*ac"],
+  "application/vnd.nokia.n-gage.data": ["ngdat"],
+  "application/vnd.nokia.n-gage.symbian.install": ["n-gage"],
+  "application/vnd.nokia.radio-preset": ["rpst"],
+  "application/vnd.nokia.radio-presets": ["rpss"],
+  "application/vnd.novadigm.edm": ["edm"],
+  "application/vnd.novadigm.edx": ["edx"],
+  "application/vnd.novadigm.ext": ["ext"],
+  "application/vnd.oasis.opendocument.chart": ["odc"],
+  "application/vnd.oasis.opendocument.chart-template": ["otc"],
+  "application/vnd.oasis.opendocument.database": ["odb"],
+  "application/vnd.oasis.opendocument.formula": ["odf"],
+  "application/vnd.oasis.opendocument.formula-template": ["odft"],
+  "application/vnd.oasis.opendocument.graphics": ["odg"],
+  "application/vnd.oasis.opendocument.graphics-template": ["otg"],
+  "application/vnd.oasis.opendocument.image": ["odi"],
+  "application/vnd.oasis.opendocument.image-template": ["oti"],
+  "application/vnd.oasis.opendocument.presentation": ["odp"],
+  "application/vnd.oasis.opendocument.presentation-template": ["otp"],
+  "application/vnd.oasis.opendocument.spreadsheet": ["ods"],
+  "application/vnd.oasis.opendocument.spreadsheet-template": ["ots"],
+  "application/vnd.oasis.opendocument.text": ["odt"],
+  "application/vnd.oasis.opendocument.text-master": ["odm"],
+  "application/vnd.oasis.opendocument.text-template": ["ott"],
+  "application/vnd.oasis.opendocument.text-web": ["oth"],
+  "application/vnd.olpc-sugar": ["xo"],
+  "application/vnd.oma.dd2+xml": ["dd2"],
+  "application/vnd.openblox.game+xml": ["obgx"],
+  "application/vnd.openofficeorg.extension": ["oxt"],
+  "application/vnd.openstreetmap.data+xml": ["osm"],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
+    "pptx"
+  ],
+  "application/vnd.openxmlformats-officedocument.presentationml.slide": [
+    "sldx"
+  ],
+  "application/vnd.openxmlformats-officedocument.presentationml.slideshow": [
+    "ppsx"
+  ],
+  "application/vnd.openxmlformats-officedocument.presentationml.template": [
+    "potx"
+  ],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ["xlsx"],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.template": [
+    "xltx"
+  ],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    "docx"
+  ],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.template": [
+    "dotx"
+  ],
+  "application/vnd.osgeo.mapguide.package": ["mgp"],
+  "application/vnd.osgi.dp": ["dp"],
+  "application/vnd.osgi.subsystem": ["esa"],
+  "application/vnd.palm": ["pdb", "pqa", "oprc"],
+  "application/vnd.pawaafile": ["paw"],
+  "application/vnd.pg.format": ["str"],
+  "application/vnd.pg.osasli": ["ei6"],
+  "application/vnd.picsel": ["efif"],
+  "application/vnd.pmi.widget": ["wg"],
+  "application/vnd.pocketlearn": ["plf"],
+  "application/vnd.powerbuilder6": ["pbd"],
+  "application/vnd.previewsystems.box": ["box"],
+  "application/vnd.procrate.brushset": ["brushset"],
+  "application/vnd.procreate.brush": ["brush"],
+  "application/vnd.procreate.dream": ["drm"],
+  "application/vnd.proteus.magazine": ["mgz"],
+  "application/vnd.publishare-delta-tree": ["qps"],
+  "application/vnd.pvi.ptid1": ["ptid"],
+  "application/vnd.pwg-xhtml-print+xml": ["xhtm"],
+  "application/vnd.quark.quarkxpress": [
+    "qxd",
+    "qxt",
+    "qwd",
+    "qwt",
+    "qxl",
+    "qxb"
+  ],
+  "application/vnd.rar": ["rar"],
+  "application/vnd.realvnc.bed": ["bed"],
+  "application/vnd.recordare.musicxml": ["mxl"],
+  "application/vnd.recordare.musicxml+xml": ["musicxml"],
+  "application/vnd.rig.cryptonote": ["cryptonote"],
+  "application/vnd.rim.cod": ["cod"],
+  "application/vnd.rn-realmedia": ["rm"],
+  "application/vnd.rn-realmedia-vbr": ["rmvb"],
+  "application/vnd.route66.link66+xml": ["link66"],
+  "application/vnd.sailingtracker.track": ["st"],
+  "application/vnd.seemail": ["see"],
+  "application/vnd.sema": ["sema"],
+  "application/vnd.semd": ["semd"],
+  "application/vnd.semf": ["semf"],
+  "application/vnd.shana.informed.formdata": ["ifm"],
+  "application/vnd.shana.informed.formtemplate": ["itp"],
+  "application/vnd.shana.informed.interchange": ["iif"],
+  "application/vnd.shana.informed.package": ["ipk"],
+  "application/vnd.simtech-mindmapper": ["twd", "twds"],
+  "application/vnd.smaf": ["mmf"],
+  "application/vnd.smart.teacher": ["teacher"],
+  "application/vnd.software602.filler.form+xml": ["fo"],
+  "application/vnd.solent.sdkm+xml": ["sdkm", "sdkd"],
+  "application/vnd.spotfire.dxp": ["dxp"],
+  "application/vnd.spotfire.sfs": ["sfs"],
+  "application/vnd.stardivision.calc": ["sdc"],
+  "application/vnd.stardivision.draw": ["sda"],
+  "application/vnd.stardivision.impress": ["sdd"],
+  "application/vnd.stardivision.math": ["smf"],
+  "application/vnd.stardivision.writer": ["sdw", "vor"],
+  "application/vnd.stardivision.writer-global": ["sgl"],
+  "application/vnd.stepmania.package": ["smzip"],
+  "application/vnd.stepmania.stepchart": ["sm"],
+  "application/vnd.sun.wadl+xml": ["wadl"],
+  "application/vnd.sun.xml.calc": ["sxc"],
+  "application/vnd.sun.xml.calc.template": ["stc"],
+  "application/vnd.sun.xml.draw": ["sxd"],
+  "application/vnd.sun.xml.draw.template": ["std"],
+  "application/vnd.sun.xml.impress": ["sxi"],
+  "application/vnd.sun.xml.impress.template": ["sti"],
+  "application/vnd.sun.xml.math": ["sxm"],
+  "application/vnd.sun.xml.writer": ["sxw"],
+  "application/vnd.sun.xml.writer.global": ["sxg"],
+  "application/vnd.sun.xml.writer.template": ["stw"],
+  "application/vnd.sus-calendar": ["sus", "susp"],
+  "application/vnd.svd": ["svd"],
+  "application/vnd.symbian.install": ["sis", "sisx"],
+  "application/vnd.syncml+xml": ["xsm"],
+  "application/vnd.syncml.dm+wbxml": ["bdm"],
+  "application/vnd.syncml.dm+xml": ["xdm"],
+  "application/vnd.syncml.dmddf+xml": ["ddf"],
+  "application/vnd.tao.intent-module-archive": ["tao"],
+  "application/vnd.tcpdump.pcap": ["pcap", "cap", "dmp"],
+  "application/vnd.tmobile-livetv": ["tmo"],
+  "application/vnd.trid.tpt": ["tpt"],
+  "application/vnd.triscape.mxs": ["mxs"],
+  "application/vnd.trueapp": ["tra"],
+  "application/vnd.ufdl": ["ufd", "ufdl"],
+  "application/vnd.uiq.theme": ["utz"],
+  "application/vnd.umajin": ["umj"],
+  "application/vnd.unity": ["unityweb"],
+  "application/vnd.uoml+xml": ["uoml", "uo"],
+  "application/vnd.vcx": ["vcx"],
+  "application/vnd.visio": ["vsd", "vst", "vss", "vsw", "vsdx", "vtx"],
+  "application/vnd.visionary": ["vis"],
+  "application/vnd.vsf": ["vsf"],
+  "application/vnd.wap.wbxml": ["wbxml"],
+  "application/vnd.wap.wmlc": ["wmlc"],
+  "application/vnd.wap.wmlscriptc": ["wmlsc"],
+  "application/vnd.webturbo": ["wtb"],
+  "application/vnd.wolfram.player": ["nbp"],
+  "application/vnd.wordperfect": ["wpd"],
+  "application/vnd.wqd": ["wqd"],
+  "application/vnd.wt.stf": ["stf"],
+  "application/vnd.xara": ["xar"],
+  "application/vnd.xfdl": ["xfdl"],
+  "application/vnd.yamaha.hv-dic": ["hvd"],
+  "application/vnd.yamaha.hv-script": ["hvs"],
+  "application/vnd.yamaha.hv-voice": ["hvp"],
+  "application/vnd.yamaha.openscoreformat": ["osf"],
+  "application/vnd.yamaha.openscoreformat.osfpvg+xml": ["osfpvg"],
+  "application/vnd.yamaha.smaf-audio": ["saf"],
+  "application/vnd.yamaha.smaf-phrase": ["spf"],
+  "application/vnd.yellowriver-custom-menu": ["cmp"],
+  "application/vnd.zul": ["zir", "zirz"],
+  "application/vnd.zzazz.deck+xml": ["zaz"],
+  "application/x-7z-compressed": ["7z"],
+  "application/x-abiword": ["abw"],
+  "application/x-ace-compressed": ["ace"],
+  "application/x-apple-diskimage": ["*dmg"],
+  "application/x-arj": ["arj"],
+  "application/x-authorware-bin": ["aab", "x32", "u32", "vox"],
+  "application/x-authorware-map": ["aam"],
+  "application/x-authorware-seg": ["aas"],
+  "application/x-bcpio": ["bcpio"],
+  "application/x-bdoc": ["*bdoc"],
+  "application/x-bittorrent": ["torrent"],
+  "application/x-blender": ["blend"],
+  "application/x-blorb": ["blb", "blorb"],
+  "application/x-bzip": ["bz"],
+  "application/x-bzip2": ["bz2", "boz"],
+  "application/x-cbr": ["cbr", "cba", "cbt", "cbz", "cb7"],
+  "application/x-cdlink": ["vcd"],
+  "application/x-cfs-compressed": ["cfs"],
+  "application/x-chat": ["chat"],
+  "application/x-chess-pgn": ["pgn"],
+  "application/x-chrome-extension": ["crx"],
+  "application/x-cocoa": ["cco"],
+  "application/x-compressed": ["*rar"],
+  "application/x-conference": ["nsc"],
+  "application/x-cpio": ["cpio"],
+  "application/x-csh": ["csh"],
+  "application/x-debian-package": ["*deb", "udeb"],
+  "application/x-dgc-compressed": ["dgc"],
+  "application/x-director": [
+    "dir",
+    "dcr",
+    "dxr",
+    "cst",
+    "cct",
+    "cxt",
+    "w3d",
+    "fgd",
+    "swa"
+  ],
+  "application/x-doom": ["wad"],
+  "application/x-dtbncx+xml": ["ncx"],
+  "application/x-dtbook+xml": ["dtb"],
+  "application/x-dtbresource+xml": ["res"],
+  "application/x-dvi": ["dvi"],
+  "application/x-envoy": ["evy"],
+  "application/x-eva": ["eva"],
+  "application/x-font-bdf": ["bdf"],
+  "application/x-font-ghostscript": ["gsf"],
+  "application/x-font-linux-psf": ["psf"],
+  "application/x-font-pcf": ["pcf"],
+  "application/x-font-snf": ["snf"],
+  "application/x-font-type1": ["pfa", "pfb", "pfm", "afm"],
+  "application/x-freearc": ["arc"],
+  "application/x-futuresplash": ["spl"],
+  "application/x-gca-compressed": ["gca"],
+  "application/x-glulx": ["ulx"],
+  "application/x-gnumeric": ["gnumeric"],
+  "application/x-gramps-xml": ["gramps"],
+  "application/x-gtar": ["gtar"],
+  "application/x-hdf": ["hdf"],
+  "application/x-httpd-php": ["php"],
+  "application/x-install-instructions": ["install"],
+  "application/x-ipynb+json": ["ipynb"],
+  "application/x-iso9660-image": ["*iso"],
+  "application/x-iwork-keynote-sffkey": ["*key"],
+  "application/x-iwork-numbers-sffnumbers": ["*numbers"],
+  "application/x-iwork-pages-sffpages": ["*pages"],
+  "application/x-java-archive-diff": ["jardiff"],
+  "application/x-java-jnlp-file": ["jnlp"],
+  "application/x-keepass2": ["kdbx"],
+  "application/x-latex": ["latex"],
+  "application/x-lua-bytecode": ["luac"],
+  "application/x-lzh-compressed": ["lzh", "lha"],
+  "application/x-makeself": ["run"],
+  "application/x-mie": ["mie"],
+  "application/x-mobipocket-ebook": ["*prc", "mobi"],
+  "application/x-ms-application": ["application"],
+  "application/x-ms-shortcut": ["lnk"],
+  "application/x-ms-wmd": ["wmd"],
+  "application/x-ms-wmz": ["wmz"],
+  "application/x-ms-xbap": ["xbap"],
+  "application/x-msaccess": ["mdb"],
+  "application/x-msbinder": ["obd"],
+  "application/x-mscardfile": ["crd"],
+  "application/x-msclip": ["clp"],
+  "application/x-msdos-program": ["*exe"],
+  "application/x-msdownload": ["*exe", "*dll", "com", "bat", "*msi"],
+  "application/x-msmediaview": ["mvb", "m13", "m14"],
+  "application/x-msmetafile": ["*wmf", "*wmz", "*emf", "emz"],
+  "application/x-msmoney": ["mny"],
+  "application/x-mspublisher": ["pub"],
+  "application/x-msschedule": ["scd"],
+  "application/x-msterminal": ["trm"],
+  "application/x-mswrite": ["wri"],
+  "application/x-netcdf": ["nc", "cdf"],
+  "application/x-ns-proxy-autoconfig": ["pac"],
+  "application/x-nzb": ["nzb"],
+  "application/x-perl": ["pl", "pm"],
+  "application/x-pilot": ["*prc", "*pdb"],
+  "application/x-pkcs12": ["p12", "pfx"],
+  "application/x-pkcs7-certificates": ["p7b", "spc"],
+  "application/x-pkcs7-certreqresp": ["p7r"],
+  "application/x-rar-compressed": ["*rar"],
+  "application/x-redhat-package-manager": ["rpm"],
+  "application/x-research-info-systems": ["ris"],
+  "application/x-sea": ["sea"],
+  "application/x-sh": ["sh"],
+  "application/x-shar": ["shar"],
+  "application/x-shockwave-flash": ["swf"],
+  "application/x-silverlight-app": ["xap"],
+  "application/x-sql": ["*sql"],
+  "application/x-stuffit": ["sit"],
+  "application/x-stuffitx": ["sitx"],
+  "application/x-subrip": ["srt"],
+  "application/x-sv4cpio": ["sv4cpio"],
+  "application/x-sv4crc": ["sv4crc"],
+  "application/x-t3vm-image": ["t3"],
+  "application/x-tads": ["gam"],
+  "application/x-tar": ["tar"],
+  "application/x-tcl": ["tcl", "tk"],
+  "application/x-tex": ["tex"],
+  "application/x-tex-tfm": ["tfm"],
+  "application/x-texinfo": ["texinfo", "texi"],
+  "application/x-tgif": ["*obj"],
+  "application/x-ustar": ["ustar"],
+  "application/x-virtualbox-hdd": ["hdd"],
+  "application/x-virtualbox-ova": ["ova"],
+  "application/x-virtualbox-ovf": ["ovf"],
+  "application/x-virtualbox-vbox": ["vbox"],
+  "application/x-virtualbox-vbox-extpack": ["vbox-extpack"],
+  "application/x-virtualbox-vdi": ["vdi"],
+  "application/x-virtualbox-vhd": ["vhd"],
+  "application/x-virtualbox-vmdk": ["vmdk"],
+  "application/x-wais-source": ["src"],
+  "application/x-web-app-manifest+json": ["webapp"],
+  "application/x-x509-ca-cert": ["der", "crt", "pem"],
+  "application/x-xfig": ["fig"],
+  "application/x-xliff+xml": ["*xlf"],
+  "application/x-xpinstall": ["xpi"],
+  "application/x-xz": ["xz"],
+  "application/x-zip-compressed": ["*zip"],
+  "application/x-zmachine": ["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"],
+  "audio/vnd.dece.audio": ["uva", "uvva"],
+  "audio/vnd.digital-winds": ["eol"],
+  "audio/vnd.dra": ["dra"],
+  "audio/vnd.dts": ["dts"],
+  "audio/vnd.dts.hd": ["dtshd"],
+  "audio/vnd.lucent.voice": ["lvp"],
+  "audio/vnd.ms-playready.media.pya": ["pya"],
+  "audio/vnd.nuera.ecelp4800": ["ecelp4800"],
+  "audio/vnd.nuera.ecelp7470": ["ecelp7470"],
+  "audio/vnd.nuera.ecelp9600": ["ecelp9600"],
+  "audio/vnd.rip": ["rip"],
+  "audio/x-aac": ["*aac"],
+  "audio/x-aiff": ["aif", "aiff", "aifc"],
+  "audio/x-caf": ["caf"],
+  "audio/x-flac": ["flac"],
+  "audio/x-m4a": ["*m4a"],
+  "audio/x-matroska": ["mka"],
+  "audio/x-mpegurl": ["m3u"],
+  "audio/x-ms-wax": ["wax"],
+  "audio/x-ms-wma": ["wma"],
+  "audio/x-pn-realaudio": ["ram", "ra"],
+  "audio/x-pn-realaudio-plugin": ["rmp"],
+  "audio/x-realaudio": ["*ra"],
+  "audio/x-wav": ["*wav"],
+  "chemical/x-cdx": ["cdx"],
+  "chemical/x-cif": ["cif"],
+  "chemical/x-cmdf": ["cmdf"],
+  "chemical/x-cml": ["cml"],
+  "chemical/x-csml": ["csml"],
+  "chemical/x-xyz": ["xyz"],
+  "image/prs.btif": ["btif", "btf"],
+  "image/prs.pti": ["pti"],
+  "image/vnd.adobe.photoshop": ["psd"],
+  "image/vnd.airzip.accelerator.azv": ["azv"],
+  "image/vnd.blockfact.facti": ["facti"],
+  "image/vnd.dece.graphic": ["uvi", "uvvi", "uvg", "uvvg"],
+  "image/vnd.djvu": ["djvu", "djv"],
+  "image/vnd.dvb.subtitle": ["*sub"],
+  "image/vnd.dwg": ["dwg"],
+  "image/vnd.dxf": ["dxf"],
+  "image/vnd.fastbidsheet": ["fbs"],
+  "image/vnd.fpx": ["fpx"],
+  "image/vnd.fst": ["fst"],
+  "image/vnd.fujixerox.edmics-mmr": ["mmr"],
+  "image/vnd.fujixerox.edmics-rlc": ["rlc"],
+  "image/vnd.microsoft.icon": ["ico"],
+  "image/vnd.ms-dds": ["dds"],
+  "image/vnd.ms-modi": ["mdi"],
+  "image/vnd.ms-photo": ["wdp"],
+  "image/vnd.net-fpx": ["npx"],
+  "image/vnd.pco.b16": ["b16"],
+  "image/vnd.tencent.tap": ["tap"],
+  "image/vnd.valve.source.texture": ["vtf"],
+  "image/vnd.wap.wbmp": ["wbmp"],
+  "image/vnd.xiff": ["xif"],
+  "image/vnd.zbrush.pcx": ["pcx"],
+  "image/x-3ds": ["3ds"],
+  "image/x-adobe-dng": ["dng"],
+  "image/x-cmu-raster": ["ras"],
+  "image/x-cmx": ["cmx"],
+  "image/x-freehand": ["fh", "fhc", "fh4", "fh5", "fh7"],
+  "image/x-icon": ["*ico"],
+  "image/x-jng": ["jng"],
+  "image/x-mrsid-image": ["sid"],
+  "image/x-ms-bmp": ["*bmp"],
+  "image/x-pcx": ["*pcx"],
+  "image/x-pict": ["pic", "pct"],
+  "image/x-portable-anymap": ["pnm"],
+  "image/x-portable-bitmap": ["pbm"],
+  "image/x-portable-graymap": ["pgm"],
+  "image/x-portable-pixmap": ["ppm"],
+  "image/x-rgb": ["rgb"],
+  "image/x-tga": ["tga"],
+  "image/x-xbitmap": ["xbm"],
+  "image/x-xpixmap": ["xpm"],
+  "image/x-xwindowdump": ["xwd"],
+  "message/vnd.wfa.wsc": ["wsc"],
+  "model/vnd.bary": ["bary"],
+  "model/vnd.cld": ["cld"],
+  "model/vnd.collada+xml": ["dae"],
+  "model/vnd.dwf": ["dwf"],
+  "model/vnd.gdl": ["gdl"],
+  "model/vnd.gtw": ["gtw"],
+  "model/vnd.mts": ["*mts"],
+  "model/vnd.opengex": ["ogex"],
+  "model/vnd.parasolid.transmit.binary": ["x_b"],
+  "model/vnd.parasolid.transmit.text": ["x_t"],
+  "model/vnd.pytha.pyox": ["pyo", "pyox"],
+  "model/vnd.sap.vds": ["vds"],
+  "model/vnd.usda": ["usda"],
+  "model/vnd.usdz+zip": ["usdz"],
+  "model/vnd.valve.source.compiled-map": ["bsp"],
+  "model/vnd.vtu": ["vtu"],
+  "text/prs.lines.tag": ["dsc"],
+  "text/vnd.curl": ["curl"],
+  "text/vnd.curl.dcurl": ["dcurl"],
+  "text/vnd.curl.mcurl": ["mcurl"],
+  "text/vnd.curl.scurl": ["scurl"],
+  "text/vnd.dvb.subtitle": ["sub"],
+  "text/vnd.familysearch.gedcom": ["ged"],
+  "text/vnd.fly": ["fly"],
+  "text/vnd.fmi.flexstor": ["flx"],
+  "text/vnd.graphviz": ["gv"],
+  "text/vnd.in3d.3dml": ["3dml"],
+  "text/vnd.in3d.spot": ["spot"],
+  "text/vnd.sun.j2me.app-descriptor": ["jad"],
+  "text/vnd.wap.wml": ["wml"],
+  "text/vnd.wap.wmlscript": ["wmls"],
+  "text/x-asm": ["s", "asm"],
+  "text/x-c": ["c", "cc", "cxx", "cpp", "h", "hh", "dic"],
+  "text/x-component": ["htc"],
+  "text/x-fortran": ["f", "for", "f77", "f90"],
+  "text/x-handlebars-template": ["hbs"],
+  "text/x-java-source": ["java"],
+  "text/x-lua": ["lua"],
+  "text/x-markdown": ["mkd"],
+  "text/x-nfo": ["nfo"],
+  "text/x-opml": ["opml"],
+  "text/x-org": ["*org"],
+  "text/x-pascal": ["p", "pas"],
+  "text/x-processing": ["pde"],
+  "text/x-sass": ["sass"],
+  "text/x-scss": ["scss"],
+  "text/x-setext": ["etx"],
+  "text/x-sfv": ["sfv"],
+  "text/x-suse-ymp": ["ymp"],
+  "text/x-uuencode": ["uu"],
+  "text/x-vcalendar": ["vcs"],
+  "text/x-vcard": ["vcf"],
+  "video/vnd.dece.hd": ["uvh", "uvvh"],
+  "video/vnd.dece.mobile": ["uvm", "uvvm"],
+  "video/vnd.dece.pd": ["uvp", "uvvp"],
+  "video/vnd.dece.sd": ["uvs", "uvvs"],
+  "video/vnd.dece.video": ["uvv", "uvvv"],
+  "video/vnd.dvb.file": ["dvb"],
+  "video/vnd.fvt": ["fvt"],
+  "video/vnd.mpegurl": ["mxu", "m4u"],
+  "video/vnd.ms-playready.media.pyv": ["pyv"],
+  "video/vnd.uvvu.mp4": ["uvu", "uvvu"],
+  "video/vnd.vivo": ["viv"],
+  "video/x-f4v": ["f4v"],
+  "video/x-fli": ["fli"],
+  "video/x-flv": ["flv"],
+  "video/x-m4v": ["m4v"],
+  "video/x-matroska": ["mkv", "mk3d", "mks"],
+  "video/x-mng": ["mng"],
+  "video/x-ms-asf": ["asf", "asx"],
+  "video/x-ms-vob": ["vob"],
+  "video/x-ms-wm": ["wm"],
+  "video/x-ms-wmv": ["wmv"],
+  "video/x-ms-wmx": ["wmx"],
+  "video/x-ms-wvx": ["wvx"],
+  "video/x-msvideo": ["avi"],
+  "video/x-sgi-movie": ["movie"],
+  "video/x-smv": ["smv"],
+  "x-conference/x-cooltalk": ["ice"]
+};
+Object.freeze(types);
+var other_default = types;
+
+// ../../node_modules/.pnpm/mime@4.1.1/node_modules/mime/dist/types/standard.js
+var types2 = {
+  "application/andrew-inset": ["ez"],
+  "application/appinstaller": ["appinstaller"],
+  "application/applixware": ["aw"],
+  "application/appx": ["appx"],
+  "application/appxbundle": ["appxbundle"],
+  "application/atom+xml": ["atom"],
+  "application/atomcat+xml": ["atomcat"],
+  "application/atomdeleted+xml": ["atomdeleted"],
+  "application/atomsvc+xml": ["atomsvc"],
+  "application/atsc-dwd+xml": ["dwd"],
+  "application/atsc-held+xml": ["held"],
+  "application/atsc-rsat+xml": ["rsat"],
+  "application/automationml-aml+xml": ["aml"],
+  "application/automationml-amlx+zip": ["amlx"],
+  "application/bdoc": ["bdoc"],
+  "application/calendar+xml": ["xcs"],
+  "application/ccxml+xml": ["ccxml"],
+  "application/cdfx+xml": ["cdfx"],
+  "application/cdmi-capability": ["cdmia"],
+  "application/cdmi-container": ["cdmic"],
+  "application/cdmi-domain": ["cdmid"],
+  "application/cdmi-object": ["cdmio"],
+  "application/cdmi-queue": ["cdmiq"],
+  "application/cpl+xml": ["cpl"],
+  "application/cu-seeme": ["cu"],
+  "application/cwl": ["cwl"],
+  "application/dash+xml": ["mpd"],
+  "application/dash-patch+xml": ["mpp"],
+  "application/davmount+xml": ["davmount"],
+  "application/dicom": ["dcm"],
+  "application/docbook+xml": ["dbk"],
+  "application/dssc+der": ["dssc"],
+  "application/dssc+xml": ["xdssc"],
+  "application/ecmascript": ["ecma"],
+  "application/emma+xml": ["emma"],
+  "application/emotionml+xml": ["emotionml"],
+  "application/epub+zip": ["epub"],
+  "application/exi": ["exi"],
+  "application/express": ["exp"],
+  "application/fdf": ["fdf"],
+  "application/fdt+xml": ["fdt"],
+  "application/font-tdpfr": ["pfr"],
+  "application/geo+json": ["geojson"],
+  "application/gml+xml": ["gml"],
+  "application/gpx+xml": ["gpx"],
+  "application/gxf": ["gxf"],
+  "application/gzip": ["gz"],
+  "application/hjson": ["hjson"],
+  "application/hyperstudio": ["stk"],
+  "application/inkml+xml": ["ink", "inkml"],
+  "application/ipfix": ["ipfix"],
+  "application/its+xml": ["its"],
+  "application/java-archive": ["jar", "war", "ear"],
+  "application/java-serialized-object": ["ser"],
+  "application/java-vm": ["class"],
+  "application/javascript": ["*js"],
+  "application/json": ["json", "map"],
+  "application/json5": ["json5"],
+  "application/jsonml+json": ["jsonml"],
+  "application/ld+json": ["jsonld"],
+  "application/lgr+xml": ["lgr"],
+  "application/lost+xml": ["lostxml"],
+  "application/mac-binhex40": ["hqx"],
+  "application/mac-compactpro": ["cpt"],
+  "application/mads+xml": ["mads"],
+  "application/manifest+json": ["webmanifest"],
+  "application/marc": ["mrc"],
+  "application/marcxml+xml": ["mrcx"],
+  "application/mathematica": ["ma", "nb", "mb"],
+  "application/mathml+xml": ["mathml"],
+  "application/mbox": ["mbox"],
+  "application/media-policy-dataset+xml": ["mpf"],
+  "application/mediaservercontrol+xml": ["mscml"],
+  "application/metalink+xml": ["metalink"],
+  "application/metalink4+xml": ["meta4"],
+  "application/mets+xml": ["mets"],
+  "application/mmt-aei+xml": ["maei"],
+  "application/mmt-usd+xml": ["musd"],
+  "application/mods+xml": ["mods"],
+  "application/mp21": ["m21", "mp21"],
+  "application/mp4": ["*mp4", "*mpg4", "mp4s", "m4p"],
+  "application/msix": ["msix"],
+  "application/msixbundle": ["msixbundle"],
+  "application/msword": ["doc", "dot"],
+  "application/mxf": ["mxf"],
+  "application/n-quads": ["nq"],
+  "application/n-triples": ["nt"],
+  "application/node": ["cjs"],
+  "application/octet-stream": [
+    "bin",
+    "dms",
+    "lrf",
+    "mar",
+    "so",
+    "dist",
+    "distz",
+    "pkg",
+    "bpk",
+    "dump",
+    "elc",
+    "deploy",
+    "exe",
+    "dll",
+    "deb",
+    "dmg",
+    "iso",
+    "img",
+    "msi",
+    "msp",
+    "msm",
+    "buffer"
+  ],
+  "application/oda": ["oda"],
+  "application/oebps-package+xml": ["opf"],
+  "application/ogg": ["ogx"],
+  "application/omdoc+xml": ["omdoc"],
+  "application/onenote": [
+    "onetoc",
+    "onetoc2",
+    "onetmp",
+    "onepkg",
+    "one",
+    "onea"
+  ],
+  "application/oxps": ["oxps"],
+  "application/p2p-overlay+xml": ["relo"],
+  "application/patch-ops-error+xml": ["xer"],
+  "application/pdf": ["pdf"],
+  "application/pgp-encrypted": ["pgp"],
+  "application/pgp-keys": ["asc"],
+  "application/pgp-signature": ["sig", "*asc"],
+  "application/pics-rules": ["prf"],
+  "application/pkcs10": ["p10"],
+  "application/pkcs7-mime": ["p7m", "p7c"],
+  "application/pkcs7-signature": ["p7s"],
+  "application/pkcs8": ["p8"],
+  "application/pkix-attr-cert": ["ac"],
+  "application/pkix-cert": ["cer"],
+  "application/pkix-crl": ["crl"],
+  "application/pkix-pkipath": ["pkipath"],
+  "application/pkixcmp": ["pki"],
+  "application/pls+xml": ["pls"],
+  "application/postscript": ["ai", "eps", "ps"],
+  "application/provenance+xml": ["provx"],
+  "application/pskc+xml": ["pskcxml"],
+  "application/raml+yaml": ["raml"],
+  "application/rdf+xml": ["rdf", "owl"],
+  "application/reginfo+xml": ["rif"],
+  "application/relax-ng-compact-syntax": ["rnc"],
+  "application/resource-lists+xml": ["rl"],
+  "application/resource-lists-diff+xml": ["rld"],
+  "application/rls-services+xml": ["rs"],
+  "application/route-apd+xml": ["rapd"],
+  "application/route-s-tsid+xml": ["sls"],
+  "application/route-usd+xml": ["rusd"],
+  "application/rpki-ghostbusters": ["gbr"],
+  "application/rpki-manifest": ["mft"],
+  "application/rpki-roa": ["roa"],
+  "application/rsd+xml": ["rsd"],
+  "application/rss+xml": ["rss"],
+  "application/rtf": ["rtf"],
+  "application/sbml+xml": ["sbml"],
+  "application/scvp-cv-request": ["scq"],
+  "application/scvp-cv-response": ["scs"],
+  "application/scvp-vp-request": ["spq"],
+  "application/scvp-vp-response": ["spp"],
+  "application/sdp": ["sdp"],
+  "application/senml+xml": ["senmlx"],
+  "application/sensml+xml": ["sensmlx"],
+  "application/set-payment-initiation": ["setpay"],
+  "application/set-registration-initiation": ["setreg"],
+  "application/shf+xml": ["shf"],
+  "application/sieve": ["siv", "sieve"],
+  "application/smil+xml": ["smi", "smil"],
+  "application/sparql-query": ["rq"],
+  "application/sparql-results+xml": ["srx"],
+  "application/sql": ["sql"],
+  "application/srgs": ["gram"],
+  "application/srgs+xml": ["grxml"],
+  "application/sru+xml": ["sru"],
+  "application/ssdl+xml": ["ssdl"],
+  "application/ssml+xml": ["ssml"],
+  "application/swid+xml": ["swidtag"],
+  "application/tei+xml": ["tei", "teicorpus"],
+  "application/thraud+xml": ["tfi"],
+  "application/timestamped-data": ["tsd"],
+  "application/toml": ["toml"],
+  "application/trig": ["trig"],
+  "application/ttml+xml": ["ttml"],
+  "application/ubjson": ["ubj"],
+  "application/urc-ressheet+xml": ["rsheet"],
+  "application/urc-targetdesc+xml": ["td"],
+  "application/voicexml+xml": ["vxml"],
+  "application/wasm": ["wasm"],
+  "application/watcherinfo+xml": ["wif"],
+  "application/widget": ["wgt"],
+  "application/winhlp": ["hlp"],
+  "application/wsdl+xml": ["wsdl"],
+  "application/wspolicy+xml": ["wspolicy"],
+  "application/xaml+xml": ["xaml"],
+  "application/xcap-att+xml": ["xav"],
+  "application/xcap-caps+xml": ["xca"],
+  "application/xcap-diff+xml": ["xdf"],
+  "application/xcap-el+xml": ["xel"],
+  "application/xcap-ns+xml": ["xns"],
+  "application/xenc+xml": ["xenc"],
+  "application/xfdf": ["xfdf"],
+  "application/xhtml+xml": ["xhtml", "xht"],
+  "application/xliff+xml": ["xlf"],
+  "application/xml": ["xml", "xsl", "xsd", "rng"],
+  "application/xml-dtd": ["dtd"],
+  "application/xop+xml": ["xop"],
+  "application/xproc+xml": ["xpl"],
+  "application/xslt+xml": ["*xsl", "xslt"],
+  "application/xspf+xml": ["xspf"],
+  "application/xv+xml": ["mxml", "xhvml", "xvml", "xvm"],
+  "application/yang": ["yang"],
+  "application/yin+xml": ["yin"],
+  "application/zip": ["zip"],
+  "application/zip+dotlottie": ["lottie"],
+  "audio/3gpp": ["*3gpp"],
+  "audio/aac": ["adts", "aac"],
+  "audio/adpcm": ["adp"],
+  "audio/amr": ["amr"],
+  "audio/basic": ["au", "snd"],
+  "audio/midi": ["mid", "midi", "kar", "rmi"],
+  "audio/mobile-xmf": ["mxmf"],
+  "audio/mp3": ["*mp3"],
+  "audio/mp4": ["m4a", "mp4a", "m4b"],
+  "audio/mpeg": ["mpga", "mp2", "mp2a", "mp3", "m2a", "m3a"],
+  "audio/ogg": ["oga", "ogg", "spx", "opus"],
+  "audio/s3m": ["s3m"],
+  "audio/silk": ["sil"],
+  "audio/wav": ["wav"],
+  "audio/wave": ["*wav"],
+  "audio/webm": ["weba"],
+  "audio/xm": ["xm"],
+  "font/collection": ["ttc"],
+  "font/otf": ["otf"],
+  "font/ttf": ["ttf"],
+  "font/woff": ["woff"],
+  "font/woff2": ["woff2"],
+  "image/aces": ["exr"],
+  "image/apng": ["apng"],
+  "image/avci": ["avci"],
+  "image/avcs": ["avcs"],
+  "image/avif": ["avif"],
+  "image/bmp": ["bmp", "dib"],
+  "image/cgm": ["cgm"],
+  "image/dicom-rle": ["drle"],
+  "image/dpx": ["dpx"],
+  "image/emf": ["emf"],
+  "image/fits": ["fits"],
+  "image/g3fax": ["g3"],
+  "image/gif": ["gif"],
+  "image/heic": ["heic"],
+  "image/heic-sequence": ["heics"],
+  "image/heif": ["heif"],
+  "image/heif-sequence": ["heifs"],
+  "image/hej2k": ["hej2"],
+  "image/ief": ["ief"],
+  "image/jaii": ["jaii"],
+  "image/jais": ["jais"],
+  "image/jls": ["jls"],
+  "image/jp2": ["jp2", "jpg2"],
+  "image/jpeg": ["jpg", "jpeg", "jpe"],
+  "image/jph": ["jph"],
+  "image/jphc": ["jhc"],
+  "image/jpm": ["jpm", "jpgm"],
+  "image/jpx": ["jpx", "jpf"],
+  "image/jxl": ["jxl"],
+  "image/jxr": ["jxr"],
+  "image/jxra": ["jxra"],
+  "image/jxrs": ["jxrs"],
+  "image/jxs": ["jxs"],
+  "image/jxsc": ["jxsc"],
+  "image/jxsi": ["jxsi"],
+  "image/jxss": ["jxss"],
+  "image/ktx": ["ktx"],
+  "image/ktx2": ["ktx2"],
+  "image/pjpeg": ["jfif"],
+  "image/png": ["png"],
+  "image/sgi": ["sgi"],
+  "image/svg+xml": ["svg", "svgz"],
+  "image/t38": ["t38"],
+  "image/tiff": ["tif", "tiff"],
+  "image/tiff-fx": ["tfx"],
+  "image/webp": ["webp"],
+  "image/wmf": ["wmf"],
+  "message/disposition-notification": ["disposition-notification"],
+  "message/global": ["u8msg"],
+  "message/global-delivery-status": ["u8dsn"],
+  "message/global-disposition-notification": ["u8mdn"],
+  "message/global-headers": ["u8hdr"],
+  "message/rfc822": ["eml", "mime", "mht", "mhtml"],
+  "model/3mf": ["3mf"],
+  "model/gltf+json": ["gltf"],
+  "model/gltf-binary": ["glb"],
+  "model/iges": ["igs", "iges"],
+  "model/jt": ["jt"],
+  "model/mesh": ["msh", "mesh", "silo"],
+  "model/mtl": ["mtl"],
+  "model/obj": ["obj"],
+  "model/prc": ["prc"],
+  "model/step": ["step", "stp", "stpnc", "p21", "210"],
+  "model/step+xml": ["stpx"],
+  "model/step+zip": ["stpz"],
+  "model/step-xml+zip": ["stpxz"],
+  "model/stl": ["stl"],
+  "model/u3d": ["u3d"],
+  "model/vrml": ["wrl", "vrml"],
+  "model/x3d+binary": ["*x3db", "x3dbz"],
+  "model/x3d+fastinfoset": ["x3db"],
+  "model/x3d+vrml": ["*x3dv", "x3dvz"],
+  "model/x3d+xml": ["x3d", "x3dz"],
+  "model/x3d-vrml": ["x3dv"],
+  "text/cache-manifest": ["appcache", "manifest"],
+  "text/calendar": ["ics", "ifb"],
+  "text/coffeescript": ["coffee", "litcoffee"],
+  "text/css": ["css"],
+  "text/csv": ["csv"],
+  "text/html": ["html", "htm", "shtml"],
+  "text/jade": ["jade"],
+  "text/javascript": ["js", "mjs"],
+  "text/jsx": ["jsx"],
+  "text/less": ["less"],
+  "text/markdown": ["md", "markdown"],
+  "text/mathml": ["mml"],
+  "text/mdx": ["mdx"],
+  "text/n3": ["n3"],
+  "text/plain": ["txt", "text", "conf", "def", "list", "log", "in", "ini"],
+  "text/richtext": ["rtx"],
+  "text/rtf": ["*rtf"],
+  "text/sgml": ["sgml", "sgm"],
+  "text/shex": ["shex"],
+  "text/slim": ["slim", "slm"],
+  "text/spdx": ["spdx"],
+  "text/stylus": ["stylus", "styl"],
+  "text/tab-separated-values": ["tsv"],
+  "text/troff": ["t", "tr", "roff", "man", "me", "ms"],
+  "text/turtle": ["ttl"],
+  "text/uri-list": ["uri", "uris", "urls"],
+  "text/vcard": ["vcard"],
+  "text/vtt": ["vtt"],
+  "text/wgsl": ["wgsl"],
+  "text/xml": ["*xml"],
+  "text/yaml": ["yaml", "yml"],
+  "video/3gpp": ["3gp", "3gpp"],
+  "video/3gpp2": ["3g2"],
+  "video/h261": ["h261"],
+  "video/h263": ["h263"],
+  "video/h264": ["h264"],
+  "video/iso.segment": ["m4s"],
+  "video/jpeg": ["jpgv"],
+  "video/jpm": ["*jpm", "*jpgm"],
+  "video/mj2": ["mj2", "mjp2"],
+  "video/mp2t": ["ts", "m2t", "m2ts", "mts"],
+  "video/mp4": ["mp4", "mp4v", "mpg4"],
+  "video/mpeg": ["mpeg", "mpg", "mpe", "m1v", "m2v"],
+  "video/ogg": ["ogv"],
+  "video/quicktime": ["qt", "mov"],
+  "video/webm": ["webm"]
+};
+Object.freeze(types2);
+var standard_default = types2;
+
+// ../../node_modules/.pnpm/mime@4.1.1/node_modules/mime/dist/src/Mime.js
+var __classPrivateFieldGet = function(receiver, state, kind, f) {
+  if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+  if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+  return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
+var _Mime_extensionToType;
+var _Mime_typeToExtension;
+var _Mime_typeToExtensions;
+var Mime = class {
+  constructor(...args) {
+    _Mime_extensionToType.set(this, /* @__PURE__ */ new Map());
+    _Mime_typeToExtension.set(this, /* @__PURE__ */ new Map());
+    _Mime_typeToExtensions.set(this, /* @__PURE__ */ new Map());
+    for (const arg of args) {
+      this.define(arg);
+    }
+  }
+  define(typeMap, force = false) {
+    for (let [type, extensions] of Object.entries(typeMap)) {
+      type = type.toLowerCase();
+      extensions = extensions.map((ext) => ext.toLowerCase());
+      if (!__classPrivateFieldGet(this, _Mime_typeToExtensions, "f").has(type)) {
+        __classPrivateFieldGet(this, _Mime_typeToExtensions, "f").set(type, /* @__PURE__ */ new Set());
+      }
+      const allExtensions = __classPrivateFieldGet(this, _Mime_typeToExtensions, "f").get(type);
+      let first = true;
+      for (let extension of extensions) {
+        const starred = extension.startsWith("*");
+        extension = starred ? extension.slice(1) : extension;
+        allExtensions?.add(extension);
+        if (first) {
+          __classPrivateFieldGet(this, _Mime_typeToExtension, "f").set(type, extension);
+        }
+        first = false;
+        if (starred)
+          continue;
+        const currentType = __classPrivateFieldGet(this, _Mime_extensionToType, "f").get(extension);
+        if (currentType && currentType != type && !force) {
+          throw new Error(`"${type} -> ${extension}" conflicts with "${currentType} -> ${extension}". Pass \`force=true\` to override this definition.`);
+        }
+        __classPrivateFieldGet(this, _Mime_extensionToType, "f").set(extension, type);
+      }
+    }
+    return this;
+  }
+  getType(path) {
+    if (typeof path !== "string")
+      return null;
+    const last = path.replace(/^.*[/\\]/s, "").toLowerCase();
+    const ext = last.replace(/^.*\./s, "").toLowerCase();
+    const hasPath = last.length < path.length;
+    const hasDot = ext.length < last.length - 1;
+    if (!hasDot && hasPath)
+      return null;
+    return __classPrivateFieldGet(this, _Mime_extensionToType, "f").get(ext) ?? null;
+  }
+  getExtension(type) {
+    if (typeof type !== "string")
+      return null;
+    type = type?.split?.(";")[0];
+    return (type && __classPrivateFieldGet(this, _Mime_typeToExtension, "f").get(type.trim().toLowerCase())) ?? null;
+  }
+  getAllExtensions(type) {
+    if (typeof type !== "string")
+      return null;
+    type = type.split(";")[0].trim().toLowerCase();
+    return __classPrivateFieldGet(this, _Mime_typeToExtensions, "f").get(type) ?? null;
+  }
+  _freeze() {
+    this.define = () => {
+      throw new Error("define() not allowed for built-in Mime objects. See https://github.com/broofa/mime/blob/main/README.md#custom-mime-instances");
+    };
+    Object.freeze(this);
+    for (const extensions of __classPrivateFieldGet(this, _Mime_typeToExtensions, "f").values()) {
+      Object.freeze(extensions);
+    }
+    return this;
+  }
+  _getTestState() {
+    return {
+      types: __classPrivateFieldGet(this, _Mime_extensionToType, "f"),
+      extensions: __classPrivateFieldGet(this, _Mime_typeToExtension, "f")
+    };
+  }
+};
+_Mime_extensionToType = /* @__PURE__ */ new WeakMap(), _Mime_typeToExtension = /* @__PURE__ */ new WeakMap(), _Mime_typeToExtensions = /* @__PURE__ */ new WeakMap();
+var Mime_default = Mime;
+
+// ../../node_modules/.pnpm/mime@4.1.1/node_modules/mime/dist/src/index.js
+var src_default = new Mime_default(standard_default, other_default)._freeze();
+
+// upstream/packages/client/ui-file-actions/src/client/context-menus.tsx.snapshot
+function registerFileMenus(ctx, actions, t) {
+  const lifetime = new AbortController();
+  ctx.effect(() => () => {
+    lifetime.abort();
+  }, "file actions: feedback lifetime");
+  const read = (sessionId, path, mediaType, error) => async (signal) => {
+    const result = await ctx.remote.workspaceFiles.readBytes(sessionId, path, {}, signal);
+    if (!result.ok) throw new Error(error);
+    return new Blob([new Uint8Array(result.value.data)], { type: mediaType });
+  };
+  const save = async (source, mode) => {
+    const result = await actions.save(source, mode);
+    lifetime.signal.throwIfAborted();
+    if (result.status === "cancelled") return;
+    ctx.contextMenus.notify(
+      t(result.status === "requested" ? "menu.downloadStarted" : mode === "download" ? "menu.downloaded" : "menu.saved"),
+      true,
+      result.status !== "saved" ? void 0 : {
+        label: t(document.documentElement.dataset.platform === "darwin" ? "menu.finder" : "menu.reveal"),
+        failureLabel: t("path.revealError"),
+        run: async () => {
+          lifetime.signal.throwIfAborted();
+          const opened = await ctx.remote.session.openWorkspacePath({ path: result.path, action: "reveal" }, lifetime.signal);
+          if (!opened.ok) throw new Error("File location unavailable");
+        }
+      }
+    );
+  };
+  const copy = async (source) => {
+    await actions.copyImage(source);
+    ctx.contextMenus.notify(t("menu.copied"), true);
+  };
+  ctx.effect(() => ctx.contextMenus.register({
+    id: "file-actions.file",
+    target: "file",
+    order: 200,
+    resolve: async ({ sessionId, path }, signal) => {
+      let absolutePath;
+      try {
+        const result = await ctx.remote.workspaceFiles.stat(sessionId, path, signal);
+        absolutePath = result.ok ? result.value.absolutePath : void 0;
+      } catch (_error) {
+        signal.throwIfAborted();
+      }
+      signal.throwIfAborted();
+      const available = absolutePath !== void 0;
+      const mediaType = src_default.getType(path) ?? "";
+      const source = {
+        url: fileMediaUrl(document.baseURI, absolutePath ?? path) ?? path,
+        name: path.slice(Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1),
+        mediaType,
+        read: read(sessionId, path, mediaType, "Original file unavailable")
+      };
+      return [
+        ...mediaType.startsWith("image/") ? [
+          {
+            id: "copyImage",
+            icon: { key: "file-actions.copy" },
+            separatorBefore: true,
+            failureLabel: t("menu.copyFailed"),
+            label: t("menu.copyImage"),
+            disabled: !available,
+            run: () => copy(source)
+          }
+        ] : [],
+        ...mediaType.startsWith("image/") || !actions.canSaveAs ? [
+          {
+            id: "download",
+            icon: { key: "file-actions.download" },
+            failureLabel: t("menu.saveFailed"),
+            label: t("menu.download"),
+            disabled: !available,
+            run: () => save(source, "download")
+          }
+        ] : [],
+        ...actions.canSaveAs ? [
+          {
+            id: "saveAs",
+            icon: { key: "file-actions.save" },
+            failureLabel: t("menu.saveFailed"),
+            label: t("menu.saveAs"),
+            disabled: !available,
+            run: () => save(source, "saveAs")
+          }
+        ] : []
+      ];
+    }
+  }), "file actions: file menu");
+  ctx.effect(() => ctx.contextMenus.register({
+    id: "file-actions.image",
+    target: "image",
+    order: 100,
+    resolve: (target) => {
+      const { sessionId, path } = target;
+      const name = target.name ?? path?.split(/[\\/]/u).pop();
+      const mediaType = target.mediaType || src_default.getType(name ?? target.url) || void 0;
+      const source = {
+        ...target,
+        ...name === void 0 ? {} : { name },
+        ...mediaType === void 0 ? {} : { mediaType },
+        ...path === void 0 || sessionId === void 0 ? {} : {
+          read: read(sessionId, path, mediaType ?? "", "Original image unavailable")
+        }
+      };
+      return [
+        { id: "copy", icon: { key: "file-actions.copy" }, failureLabel: t("menu.copyFailed"), label: t("menu.copyImage"), run: () => copy(source) },
+        { id: "download", icon: { key: "file-actions.download" }, failureLabel: t("menu.saveFailed"), label: t("menu.download"), run: () => save(source, "download") },
+        ...actions.canSaveAs ? [
+          {
+            id: "saveAs",
+            icon: { key: "file-actions.save" },
+            failureLabel: t("menu.saveFailed"),
+            label: t("menu.saveAs"),
+            run: () => save(source, "saveAs")
+          }
+        ] : []
+      ];
+    }
+  }), "file actions: image menu");
+}
+
+// upstream/packages/client/ui-file-actions/src/client/locales.ts.snapshot
+var zh2 = {
+  "menu.finder": "\u5728 Finder \u663E\u793A",
+  "menu.reveal": "\u5728\u6587\u4EF6\u5939\u663E\u793A",
+  "menu.saveAs": "\u53E6\u5B58\u4E3A\u2026",
+  "menu.copied": "\u5DF2\u590D\u5236",
+  "menu.copyImage": "\u590D\u5236\u56FE\u7247",
+  "menu.download": "\u4E0B\u8F7D",
+  "menu.saveFailed": "\u65E0\u6CD5\u4FDD\u5B58\u6587\u4EF6\uFF0C\u8BF7\u68C0\u67E5\u6E90\u6587\u4EF6\u548C\u76EE\u6807\u4F4D\u7F6E\u540E\u91CD\u8BD5",
+  "menu.copyFailed": "\u65E0\u6CD5\u590D\u5236\uFF0C\u8BF7\u68C0\u67E5\u5185\u5BB9\u662F\u5426\u53EF\u7528\u540E\u91CD\u8BD5",
+  "menu.saved": "\u5DF2\u4FDD\u5B58",
+  "menu.downloadStarted": "\u5DF2\u5F00\u59CB\u4E0B\u8F7D",
+  "menu.downloaded": "\u4E0B\u8F7D\u5B8C\u6210",
+  "path.revealError": "\u65E0\u6CD5\u663E\u793A\u6587\u4EF6\u4F4D\u7F6E\uFF0C\u8BF7\u91CD\u8BD5"
+};
+var en2 = {
+  "menu.finder": "Show in Finder",
+  "menu.reveal": "Show in folder",
+  "menu.saveAs": "Save as\u2026",
+  "menu.copied": "Copied",
+  "menu.copyImage": "Copy image",
+  "menu.download": "Download",
+  "menu.saveFailed": "Could not save. Check the source and destination, then retry.",
+  "menu.copyFailed": "Could not copy. Check that the content is available, then retry.",
+  "menu.saved": "Saved",
+  "menu.downloadStarted": "Download started",
+  "menu.downloaded": "Download complete",
+  "path.revealError": "Could not show the file location. Try again."
+};
+var ja2 = {
+  "menu.finder": "Finder \u306B\u8868\u793A",
+  "menu.reveal": "\u30D5\u30A9\u30EB\u30C0\u30FC\u306B\u8868\u793A",
+  "menu.saveAs": "\u540D\u524D\u3092\u4ED8\u3051\u3066\u4FDD\u5B58\u2026",
+  "menu.copied": "\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F",
+  "menu.copyImage": "\u753B\u50CF\u3092\u30B3\u30D4\u30FC",
+  "menu.download": "\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9",
+  "menu.saveFailed": "\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3002\u5143\u306E\u30D5\u30A1\u30A4\u30EB\u3068\u4FDD\u5B58\u5148\u3092\u78BA\u8A8D\u3057\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "menu.copyFailed": "\u30B3\u30D4\u30FC\u3067\u304D\u307E\u305B\u3093\u3002\u5185\u5BB9\u3092\u78BA\u8A8D\u3057\u3066\u518D\u8A66\u884C\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "menu.saved": "\u4FDD\u5B58\u3057\u307E\u3057\u305F",
+  "menu.downloadStarted": "\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9\u3092\u958B\u59CB\u3057\u307E\u3057\u305F",
+  "menu.downloaded": "\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9\u3057\u307E\u3057\u305F",
+  "path.revealError": "\u30D5\u30A1\u30A4\u30EB\u306E\u5834\u6240\u3092\u8868\u793A\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002"
+};
+var es2 = {
+  "menu.finder": "Mostrar en Finder",
+  "menu.reveal": "Mostrar en la carpeta",
+  "menu.saveAs": "Guardar como\u2026",
+  "menu.copied": "Copiado",
+  "menu.copyImage": "Copiar imagen",
+  "menu.download": "Descargar",
+  "menu.saveFailed": "No se pudo guardar. Compruebe el origen y el destino e int\xE9ntelo de nuevo.",
+  "menu.copyFailed": "No se pudo copiar. Compruebe que el contenido est\xE9 disponible e int\xE9ntelo de nuevo.",
+  "menu.saved": "Guardado",
+  "menu.downloadStarted": "Descarga iniciada",
+  "menu.downloaded": "Descarga completada",
+  "path.revealError": "No se pudo mostrar la ubicaci\xF3n del archivo. Intentar otra vez."
+};
+var fr2 = {
+  "menu.finder": "Afficher dans le Finder",
+  "menu.reveal": "Afficher dans le dossier",
+  "menu.saveAs": "Enregistrer sous\u2026",
+  "menu.copied": "Copi\xE9",
+  "menu.copyImage": "Copier l\u2019image",
+  "menu.download": "T\xE9l\xE9charger",
+  "menu.saveFailed": "Impossible d\u2019enregistrer. V\xE9rifiez la source et la destination, puis r\xE9essayez.",
+  "menu.copyFailed": "Impossible de copier. V\xE9rifiez que le contenu est disponible, puis r\xE9essayez.",
+  "menu.saved": "Enregistr\xE9",
+  "menu.downloadStarted": "T\xE9l\xE9chargement d\xE9marr\xE9",
+  "menu.downloaded": "T\xE9l\xE9chargement termin\xE9",
+  "path.revealError": "Impossible d'afficher l'emplacement du fichier. Essayer \xE0 nouveau."
+};
+var de2 = {
+  "menu.finder": "Im Finder anzeigen",
+  "menu.reveal": "Im Ordner anzeigen",
+  "menu.saveAs": "Speichern unter\u2026",
+  "menu.copied": "Kopiert",
+  "menu.copyImage": "Bild kopieren",
+  "menu.download": "Herunterladen",
+  "menu.saveFailed": "Speichern fehlgeschlagen. Pr\xFCfen Sie Quelle und Ziel und versuchen Sie es erneut.",
+  "menu.copyFailed": "Kopieren fehlgeschlagen. Pr\xFCfen Sie, ob der Inhalt verf\xFCgbar ist, und versuchen Sie es erneut.",
+  "menu.saved": "Gespeichert",
+  "menu.downloadStarted": "Download gestartet",
+  "menu.downloaded": "Download abgeschlossen",
+  "path.revealError": "Der Dateispeicherort konnte nicht angezeigt werden. Versuchen Sie es erneut."
+};
+var ru2 = {
+  "menu.finder": "\u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0432 Finder",
+  "menu.reveal": "\u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0432 \u043F\u0430\u043F\u043A\u0435",
+  "menu.saveAs": "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043A\u0430\u043A\u2026",
+  "menu.copied": "\u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043D\u043E",
+  "menu.copyImage": "\u041A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0438\u0437\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435",
+  "menu.download": "\u0421\u043A\u0430\u0447\u0430\u0442\u044C",
+  "menu.saveFailed": "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0438\u0441\u0442\u043E\u0447\u043D\u0438\u043A \u0438 \u043C\u0435\u0441\u0442\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u044F \u0438 \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u043F\u044B\u0442\u043A\u0443.",
+  "menu.copyFailed": "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E\u0441\u0442\u044C \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u043C\u043E\u0433\u043E \u0438 \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0435 \u043F\u043E\u043F\u044B\u0442\u043A\u0443.",
+  "menu.saved": "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E",
+  "menu.downloadStarted": "\u0421\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 \u043D\u0430\u0447\u0430\u043B\u043E\u0441\u044C",
+  "menu.downloaded": "\u0421\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E",
+  "path.revealError": "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u043C\u0435\u0441\u0442\u043E\u043F\u043E\u043B\u043E\u0436\u0435\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0435 \u0440\u0430\u0437."
+};
+var pt2 = {
+  "menu.finder": "Mostrar no Finder",
+  "menu.reveal": "Mostrar na pasta",
+  "menu.saveAs": "Salvar como\u2026",
+  "menu.copied": "Copiado",
+  "menu.copyImage": "Copiar imagem",
+  "menu.download": "Baixar",
+  "menu.saveFailed": "N\xE3o foi poss\xEDvel salvar. Verifique a origem e o destino e tente novamente.",
+  "menu.copyFailed": "N\xE3o foi poss\xEDvel copiar. Verifique se o conte\xFAdo est\xE1 dispon\xEDvel e tente novamente.",
+  "menu.saved": "Salvo",
+  "menu.downloadStarted": "Download iniciado",
+  "menu.downloaded": "Download conclu\xEDdo",
+  "path.revealError": "N\xE3o foi poss\xEDvel mostrar o local do arquivo. Tente novamente."
+};
+
+// upstream/packages/util/file-drag/src/index.ts.snapshot
+function resolveDragFileName(request) {
+  const { name = "file", mediaType, outputExtension } = request;
+  let clean = name.replace(/[<>:"/\\|?*\x00-\x1f]/gu, "_").replace(/^[. ]+|[. ]+$/gu, "") || "file";
+  const dot = clean.lastIndexOf(".");
+  const suffix = dot < 0 ? "" : clean.slice(dot + 1);
+  const declared = mediaType.replace(/;.*$/su, "").trim().toLowerCase();
+  const preferred = src_default.getExtension(declared);
+  const explicit = outputExtension?.replace(/^\./u, "").replace(/[^a-z\d_-]/giu, "");
+  const compatible = src_default.getAllExtensions(declared)?.has(suffix.toLowerCase()) === true;
+  const extension = explicit || (suffix === "" || preferred !== null && !compatible ? preferred : suffix);
+  if (extension) clean = `${dot < 0 ? clean : clean.slice(0, dot)}.${extension}`;
+  if (/^(con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/iu.test(clean)) clean = `_${clean}`;
+  const finalDot = clean.lastIndexOf(".");
+  const tail = finalDot < 0 ? "" : clean.slice(finalDot);
+  const encoder = new TextEncoder();
+  const truncate = (value, bytes) => {
+    let result = "";
+    for (const character of value) {
+      const length = encoder.encode(character).length;
+      if (length > bytes) break;
+      result += character;
+      bytes -= length;
+    }
+    return result;
+  };
+  const extensionTail = truncate(tail, 32);
+  return `${truncate(finalDot < 0 ? clean : clean.slice(0, finalDot), 255 - encoder.encode(extensionTail).length)}${extensionTail}`;
+}
+
+// upstream/packages/client/ui-file-actions/src/client/files.ts.snapshot
+function exportName(name, mediaType) {
+  return resolveDragFileName({ name: name ?? "image", mediaType });
+}
+var BrowserFileActions = class {
+  constructor(desktop) {
+    this.desktop = desktop;
+    this.canSaveAs = desktop !== void 0;
+  }
+  downloadUrl;
+  lifetime = new AbortController();
+  canSaveAs;
+  async read(source) {
+    this.lifetime.signal.throwIfAborted();
+    if (source.read !== void 0) return source.read(this.lifetime.signal);
+    const url = new URL(source.url);
+    if (!["http:", "https:", "blob:", "data:", "dsh-app:"].includes(url.protocol)) throw new Error("Unsupported file source");
+    if (this.desktop !== void 0 && ["http:", "https:"].includes(url.protocol) && url.origin !== location.origin) {
+      const content = await this.desktop.readClipboardImage(url.href);
+      this.lifetime.signal.throwIfAborted();
+      return new Blob([new Uint8Array(content.bytes)], { type: content.mediaType || source.mediaType || "" });
+    }
+    const response = await fetch(source.url, { signal: this.lifetime.signal, referrerPolicy: "no-referrer" });
+    if (!response.ok) throw new Error("Original file unavailable");
+    return response.blob();
+  }
+  async save(source, mode) {
+    this.lifetime.signal.throwIfAborted();
+    if (this.desktop !== void 0) {
+      const blob2 = source.read === void 0 ? void 0 : await source.read(this.lifetime.signal);
+      this.lifetime.signal.throwIfAborted();
+      const url2 = blob2 === void 0 ? source.url : URL.createObjectURL(blob2);
+      try {
+        const result = await this.desktop.save({
+          url: url2,
+          mode,
+          ...source.name === void 0 ? {} : { name: source.name },
+          ...blob2?.type || source.mediaType ? { mediaType: blob2?.type || source.mediaType } : {}
+        });
+        this.lifetime.signal.throwIfAborted();
+        return result;
+      } finally {
+        if (blob2 !== void 0) URL.revokeObjectURL(url2);
+      }
+    }
+    if (mode === "saveAs") throw new Error("Save as requires Desktop");
+    const suggested = source.name ?? (URL.canParse(source.url) ? new URL(source.url).pathname.split("/").pop() : void 0);
+    const blob = await this.read(source);
+    this.lifetime.signal.throwIfAborted();
+    const name = exportName(suggested, blob.type || source.mediaType || "");
+    const url = URL.createObjectURL(blob);
+    if (this.downloadUrl !== void 0) URL.revokeObjectURL(this.downloadUrl);
+    this.downloadUrl = url;
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = name;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    return { status: "requested" };
+  }
+  async copyImage(source) {
+    this.lifetime.signal.throwIfAborted();
+    const png = this.read(source).then(async (blob) => {
+      this.lifetime.signal.throwIfAborted();
+      if (blob.type === "image/png") return blob;
+      const objectUrl = URL.createObjectURL(blob);
+      const image = new Image();
+      image.src = objectUrl;
+      await image.decode().catch((error) => {
+        URL.revokeObjectURL(objectUrl);
+        throw error;
+      });
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d");
+        if (context === null) throw new Error("Image conversion unavailable");
+        context.drawImage(image, 0, 0);
+        return await new Promise((resolve, reject) => {
+          canvas.toBlob((value) => {
+            if (value === null) reject(new Error("Image conversion failed"));
+            else resolve(value);
+          }, "image/png");
+        });
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    });
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+  }
+  /** Cancel reads and release browser download URLs when the plugin unloads. */
+  dispose() {
+    this.lifetime.abort();
+    if (this.downloadUrl !== void 0) URL.revokeObjectURL(this.downloadUrl);
+    this.downloadUrl = void 0;
+  }
+};
+
+// upstream/packages/client/ui-file-actions/src/client/index.ts.snapshot
+var inject2 = [];
+function apply2(ctx) {
+  const desktop = window.dshDesktop?.fileActions;
+  const actions = new BrowserFileActions(desktop);
+  ctx.provide("fileActions", actions);
+  ctx.effect(() => () => {
+    actions.dispose();
+  }, "file actions: lifetime");
+  ctx.inject(["contextMenus", "slots", "locale", "remote", "remote.workspaceFiles", "remote.session"], (child) => {
+    child.effect(() => child.locale.register("fileActions", { zh: zh2, en: en2, ja: ja2, es: es2, fr: fr2, de: de2, ru: ru2, pt: pt2 }), "file actions: locale");
+    child.slots.inject("contextMenu.icon", function* () {
+      for (const [key, Icon] of Object.entries({
+        "file-actions.copy": IconCopyOutlineRegular,
+        "file-actions.download": IconDownloadOutlineRegular,
+        "file-actions.save": IconSaveOutlineRegular
+      })) yield child.slots.register({ name: "contextMenu.icon", key }, Icon);
+    });
+    registerFileMenus(child, actions, child.locale.bind("fileActions"));
+  });
+}
+
+// upstream/packages/client/ui-context-menu/src/client/index.ts.snapshot
+var index_ts_exports3 = {};
+__export(index_ts_exports3, {
+  Config: () => Config,
+  apply: () => apply3,
+  createMenuStore: () => createMenuStore,
+  inject: () => inject3
+});
+import z from "@deepseek-ai/schemastery";
+
 // upstream/packages/client/ui-context-menu/src/client/target-key.ts.snapshot
 function menuTargetKey(target) {
   return JSON.stringify(target, (_key, value) => {
@@ -2489,11 +6985,11 @@ var MenuRegistry = class {
     const refresh = () => {
       source.set(providers.flatMap((provider) => provider.lifetime.signal.aborted ? [] : resolved.get(provider) ?? []));
     };
-    const cleanup = [];
+    const cleanup2 = [];
     const dispose = () => {
       if (lifetime.signal.aborted) return;
       lifetime.abort();
-      for (const detach of cleanup) detach();
+      for (const detach of cleanup2) detach();
       callbacks.clear();
       this.occurrences.delete(dispose);
     };
@@ -2509,7 +7005,7 @@ var MenuRegistry = class {
         resolved.delete(provider);
         refresh();
       };
-      const prepare = () => {
+      const prepare2 = () => {
         preparation?.abort();
         const deadline = new AbortController();
         preparation = deadline;
@@ -2565,13 +7061,13 @@ var MenuRegistry = class {
         clear();
       };
       provider.lifetime.signal.addEventListener("abort", withdraw, { once: true });
-      cleanup.push(() => {
+      cleanup2.push(() => {
         provider.lifetime.signal.removeEventListener("abort", withdraw);
         withdraw();
       });
       try {
-        for (const input of provider.observe(target)) subscriptions.push(input.subscribe(prepare));
-        prepare();
+        for (const input of provider.observe(target)) subscriptions.push(input.subscribe(prepare2));
+        prepare2();
       } catch (_error) {
         if (!lifetime.signal.aborted && !provider.lifetime.signal.aborted) this.failed();
       }
@@ -2670,7 +7166,7 @@ function isContextMenuTrigger(node) {
 }
 
 // upstream/packages/client/ui-context-menu/src/client/View.tsx.snapshot
-import { Fragment as Fragment4, jsx as jsx10, jsxs as jsxs8 } from "react/jsx-runtime";
+import { Fragment as Fragment7, jsx as jsx14, jsxs as jsxs12 } from "react/jsx-runtime";
 function menuEntries(actions, catalog, renderSlot) {
   return actions.flatMap((action) => {
     const shortcut = catalog.find((entry) => entry.id === action.commandId);
@@ -2691,8 +7187,8 @@ function menuEntries(actions, catalog, renderSlot) {
 function MenuOverlay({ useStore, actions, renderSlot, close, select, returnFocus, useCatalog, t }) {
   const catalog = useCatalog((value) => value);
   const { target, point, items, notice, occurrence, closing, replacing } = useStore((s) => s);
-  return /* @__PURE__ */ jsxs8(Fragment4, { children: [
-    /* @__PURE__ */ jsx10(
+  return /* @__PURE__ */ jsxs12(Fragment7, { children: [
+    /* @__PURE__ */ jsx14(
       Menu,
       {
         open: target !== null,
@@ -2713,7 +7209,7 @@ function MenuOverlay({ useStore, actions, renderSlot, close, select, returnFocus
       },
       occurrence
     ),
-    notice !== null && /* @__PURE__ */ jsx10(
+    notice !== null && /* @__PURE__ */ jsx14(
       Toast,
       {
         text: notice.text,
@@ -2729,10 +7225,10 @@ function MenuOverlay({ useStore, actions, renderSlot, close, select, returnFocus
 }
 
 // upstream/packages/client/ui-context-menu/src/client/Button.tsx.snapshot
-import { useId as useId6 } from "react";
-import { jsx as jsx11 } from "react/jsx-runtime";
+import { useId as useId7 } from "react";
+import { jsx as jsx15 } from "react/jsx-runtime";
 function ContextMenuButton({ target, label, className, size, useOpener, useRegisteredKinds, toggle }) {
-  const id = useId6();
+  const id = useId7();
   const expanded = useOpener((opener) => opener === id);
   const available = useRegisteredKinds((kinds) => kinds.includes(target.kind));
   if (!available) return null;
@@ -2752,8 +7248,8 @@ function ContextMenuButton({ target, label, className, size, useOpener, useRegis
       toggle(id, target, { x: rect.left, y: rect.bottom });
     }
   };
-  if (size !== "sm") return /* @__PURE__ */ jsx11("button", { ...attributes, type: "button", children: /* @__PURE__ */ jsx11(IconEllipsisOutlineRegular, {}) });
-  return /* @__PURE__ */ jsx11(Tooltip, { label, side: "bottom", align: "end", portal: true, children: /* @__PURE__ */ jsx11(Button, { ...attributes, size: "sm", icon: /* @__PURE__ */ jsx11(IconEllipsisOutlineRegular, {}) }) });
+  if (size !== "sm") return /* @__PURE__ */ jsx15("button", { ...attributes, type: "button", children: /* @__PURE__ */ jsx15(IconEllipsisOutlineRegular, {}) });
+  return /* @__PURE__ */ jsx15(Tooltip, { label, side: "bottom", align: "end", portal: true, children: /* @__PURE__ */ jsx15(Button, { ...attributes, size: "sm", icon: /* @__PURE__ */ jsx15(IconEllipsisOutlineRegular, {}) }) });
 }
 
 // upstream/packages/client/ui-context-menu/src/client/trigger.ts.snapshot
@@ -2790,8 +7286,8 @@ function createContextMenuBindings(open, active) {
 
 // upstream/packages/client/ui-context-menu/src/client/index.ts.snapshot
 var Config = z.object({ resolutionTimeoutMs: z.natural().min(1).default(1e3) });
-var inject = ["slots", "locale", "shortcuts"];
-function apply(ctx, config = Config({})) {
+var inject3 = ["slots", "locale", "shortcuts"];
+function apply3(ctx, config = Config({})) {
   ctx.effect(() => ctx.locale.register("contextMenu", dictionaries), "context menu: locale");
   const t = ctx.locale.bind("contextMenu");
   const handle = createMenuStore();
@@ -3007,7 +7503,7 @@ function parseBootManifest(wire) {
     if (seenEntryIds.has(row.id)) throw new Error(`client-modules: duplicate graph entry "${row.id}"`);
     seenEntryIds.add(row.id);
     const subject = `boot manifest entry ${where}`;
-    const inject2 = optionalStringArray(subject, "inject", row.inject);
+    const inject4 = optionalStringArray(subject, "inject", row.inject);
     const external = optionalStringArray(subject, "external", row.external);
     if (row.immediately !== void 0 && typeof row.immediately !== "boolean") {
       throw new Error(`client-modules: boot manifest entry ${where} immediately must be a boolean`);
@@ -3016,12 +7512,12 @@ function parseBootManifest(wire) {
       id: row.id,
       url: row.url,
       rev: row.rev,
-      inject: inject2 === void 0 ? [] : [...inject2],
+      inject: inject4 === void 0 ? [] : [...inject4],
       external: external === void 0 ? [] : [...external]
     });
     plugins2.push({
       id: row.id,
-      inject: inject2 === void 0 ? [] : [...inject2],
+      inject: inject4 === void 0 ? [] : [...inject4],
       immediately: row.immediately === true
     });
   }
@@ -3148,8 +7644,8 @@ var ReleaseChangeGate = class {
     this.dismissed = { release: this.host };
     this.publish(void 0);
   }
-  publish(snapshot) {
-    this.snapshot = snapshot;
+  publish(snapshot2) {
+    this.snapshot = snapshot2;
     notifySubscribers2(this.listeners, "release change");
   }
 };
@@ -3291,8 +7787,8 @@ var ClientEntries = class {
       this.publish({ syncing: false, failures: this.snapshot.failures });
     }, id);
   }
-  publish(snapshot) {
-    this.snapshot = snapshot;
+  publish(snapshot2) {
+    this.snapshot = snapshot2;
     notifySubscribers2(this.listeners, "synchronization");
   }
   enqueue(task, subject = "graph") {
@@ -3906,8 +8402,8 @@ var LocaleSettingsFields = {
 var LocaleSettingsSchema = z2.object(LocaleSettingsFields);
 
 // upstream/packages/client/locale/src/client/LanguageRow.tsx.snapshot
-import { useState as useState5 } from "react";
-import { jsx as jsx12, jsxs as jsxs9 } from "react/jsx-runtime";
+import { useState as useState7 } from "react";
+import { jsx as jsx16, jsxs as jsxs13 } from "react/jsx-runtime";
 
 // upstream/packages/client/locale/src/client/index.ts.snapshot
 var FALLBACK_LOCALE = "en";
@@ -4095,12 +8591,12 @@ var LocaleRuntime = class {
   }
   /** Fail a new definition whose complete fallback path does not reach English. */
   assertFallbackChain(start) {
-    const seen = /* @__PURE__ */ new Set();
+    const seen2 = /* @__PURE__ */ new Set();
     let current2 = this.catalog.get(localeKey(start));
     while (current2 !== void 0) {
       const key = localeKey(current2.id);
-      if (seen.has(key)) throw new Error(`locale fallback cycle includes "${current2.id}"`);
-      seen.add(key);
+      if (seen2.has(key)) throw new Error(`locale fallback cycle includes "${current2.id}"`);
+      seen2.add(key);
       if (key === localeKey(FALLBACK_LOCALE)) return;
       if (current2.fallback === void 0) {
         throw new Error(`locale "${current2.id}" fallback chain does not reach "${FALLBACK_LOCALE}"`);
@@ -4118,15 +8614,15 @@ var LocaleRuntime = class {
     const cached = this.fallbackChains.get(startKey);
     if (cached !== void 0) return cached;
     const chain = [];
-    const seen = /* @__PURE__ */ new Set();
+    const seen2 = /* @__PURE__ */ new Set();
     let current2 = this.catalog.get(startKey);
-    while (current2 !== void 0 && !seen.has(localeKey(current2.id))) {
+    while (current2 !== void 0 && !seen2.has(localeKey(current2.id))) {
       const key = localeKey(current2.id);
-      seen.add(key);
+      seen2.add(key);
       chain.push(current2.id);
       current2 = current2.fallback === void 0 ? void 0 : this.catalog.get(localeKey(current2.fallback));
     }
-    if (!seen.has(localeKey(FALLBACK_LOCALE))) chain.push(FALLBACK_LOCALE);
+    if (!seen2.has(localeKey(FALLBACK_LOCALE))) chain.push(FALLBACK_LOCALE);
     const resolved = Object.freeze(chain);
     this.fallbackChains.set(startKey, resolved);
     return resolved;
@@ -4644,7 +9140,7 @@ var PartialArguments = class _PartialArguments {
     parts.push(this.chunks[last].slice(0, end - this.#ends[last - 1]));
     return parts.join("");
   }
-  readString(entry, read, limit, materialize) {
+  readString(entry, read, limit, materialize2) {
     const end = Math.min(
       entry.end < 0 ? this.#consumed : entry.end,
       entry.invalidAt ?? Number.POSITIVE_INFINITY,
@@ -4653,7 +9149,7 @@ var PartialArguments = class _PartialArguments {
     if (!entry.needsDecoding) {
       const length = Math.min(end - read.at, limit - read.length);
       if (length <= 0) return;
-      if (materialize) read.text += this.slice(read.at, read.at + length);
+      if (materialize2) read.text += this.slice(read.at, read.at + length);
       read.at += length;
       read.length += length;
       return;
@@ -4666,7 +9162,7 @@ var PartialArguments = class _PartialArguments {
       const boundary = remaining.search(CONTENT_ESCAPE);
       const length = Math.min(boundary < 0 ? remaining.length : boundary, limit - read.length);
       if (length > 0) {
-        if (materialize) read.text += remaining.slice(0, length);
+        if (materialize2) read.text += remaining.slice(0, length);
         read.at += length;
         read.length += length;
         if (read.at === base + chunk.length) chunkIndex++;
@@ -4693,7 +9189,7 @@ var PartialArguments = class _PartialArguments {
         this.#invalidValue = true;
         return;
       }
-      if (materialize) read.text += decoded;
+      if (materialize2) read.text += decoded;
       read.length++;
       read.at += width;
       while (chunkIndex < this.chunks.length && read.at >= this.#ends[chunkIndex]) chunkIndex++;
@@ -5126,8 +9622,8 @@ var ShortcutPersistence = class {
     this.queue = next.catch(() => void 0);
     return next;
   }
-  accept(snapshot) {
-    this.snapshot = { ...snapshot, sequence: this.snapshot.sequence + 1, revision: randomUUID() };
+  accept(snapshot2) {
+    this.snapshot = { ...snapshot2, sequence: this.snapshot.sequence + 1, revision: randomUUID() };
     if (!this.active) return;
     try {
       this.publish(this.snapshot);
@@ -5469,9 +9965,9 @@ function desktopShortcutStorage(window2) {
 }
 
 // upstream/packages/client/shortcuts/src/client/native.ts.snapshot
-function installNativeKeyboard(window2, keyboard, registry, snapshot, reset) {
+function installNativeKeyboard(window2, keyboard, registry, snapshot2, reset) {
   return keyboard.subscribe((input) => {
-    if (input.revision !== snapshot().revision) return;
+    if (input.revision !== snapshot2().revision) return;
     reset?.();
     let target = window2.document.activeElement;
     while (target?.shadowRoot?.activeElement != null && !target.matches("webview[data-sidebar-browser-frame]")) {
@@ -5536,8 +10032,8 @@ var ShortcutsService = class extends Service {
     this.catalog = this.registry.catalog;
     this.config = this.registry.config;
     this.fixedCatalog = this.registry.fixedCatalog;
-    const publish2 = (snapshot) => {
-      if (this.active && this.connected && snapshot.sequence >= this.config.getSnapshot().sequence) this.registry.configure(snapshot);
+    const publish2 = (snapshot2) => {
+      if (this.active && this.connected && snapshot2.sequence >= this.config.getSnapshot().sequence) this.registry.configure(snapshot2);
     };
     const web = this.runtime === "web" ? webShortcutStorage(window, this.platform, publish2) : void 0;
     this.adapter = web ?? desktopShortcutStorage(window);
@@ -5635,9 +10131,9 @@ var ShortcutsService = class extends Service {
       this.failRead();
       return;
     }
-    void this.adapter.get(this.registry.definitions()).then((snapshot) => {
+    void this.adapter.get(this.registry.definitions()).then((snapshot2) => {
       this.connected = true;
-      if (this.active && snapshot.sequence >= this.config.getSnapshot().sequence) this.registry.configure(snapshot);
+      if (this.active && snapshot2.sequence >= this.config.getSnapshot().sequence) this.registry.configure(snapshot2);
     }, () => {
       this.failRead();
     });
@@ -5674,6 +10170,8 @@ var ShortcutsService = class extends Service {
 export {
   LocaleRuntime,
   ShortcutsService,
-  index_ts_exports as contextMenu,
-  createClientModuleSystem
+  index_ts_exports3 as contextMenu,
+  createClientModuleSystem,
+  index_ts_exports2 as fileActions,
+  index_ts_exports as shortcutReference
 };

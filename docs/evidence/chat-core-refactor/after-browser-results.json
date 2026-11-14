@@ -1,0 +1,1567 @@
+{
+  "provenance": {
+    "sourceTreeSha256": "53e588fb58128a1a9762555b891d2a2976e65bc34e2e1697c6392e8cf8bd570f",
+    "head": "9e7257b9fb45f138db04b6cfe57e1839c5261597",
+    "trackedDiffSha256": "e9255ca73cb374bcb315ad9b6c0f332ff331e0ad9737cab69b1cfd87a59eba6d",
+    "stagedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "finalCaptures": true
+  },
+  "results": [
+    {
+      "initialLayoutFits": true,
+      "geometryBefore": {
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "windowScrollY": 0,
+        "documentHeight": 1000,
+        "bodyHeight": 1000,
+        "composer": {
+          "tag": "FORM",
+          "class": "chat-composer preview-composer preview-input-box",
+          "testId": "chat-composer",
+          "rect": {
+            "x": 370,
+            "y": 674.109375,
+            "width": 980,
+            "height": 297.890625,
+            "top": 674.109375,
+            "right": 1350,
+            "bottom": 972,
+            "left": 370
+          },
+          "clientHeight": 296,
+          "offsetHeight": 298,
+          "scrollHeight": 296,
+          "scrollTop": 0,
+          "overflowY": "auto",
+          "display": "block",
+          "minHeight": "auto"
+        },
+        "send": {
+          "tag": "BUTTON",
+          "class": "eap-button eap-button--primary eap-button--md composer-send",
+          "testId": "send-message",
+          "rect": {
+            "x": 1299,
+            "y": 894.859375,
+            "width": 34,
+            "height": 34,
+            "top": 894.859375,
+            "right": 1333,
+            "bottom": 928.859375,
+            "left": 1299
+          },
+          "clientHeight": 34,
+          "offsetHeight": 34,
+          "scrollHeight": 36,
+          "scrollTop": 0,
+          "overflowY": "hidden",
+          "display": "grid",
+          "minHeight": "34px"
+        },
+        "model": {
+          "tag": "BUTTON",
+          "class": "eap-button eap-button--secondary eap-button--md",
+          "testId": "model-picker",
+          "rect": {
+            "x": 1179,
+            "y": 893.109375,
+            "width": 112,
+            "height": 37.5,
+            "top": 893.109375,
+            "right": 1291,
+            "bottom": 930.609375,
+            "left": 1179
+          },
+          "clientHeight": 38,
+          "offsetHeight": 38,
+          "scrollHeight": 38,
+          "scrollTop": 0,
+          "overflowY": "hidden",
+          "display": "inline-flex",
+          "minHeight": "36px"
+        },
+        "feed": {
+          "tag": "DIV",
+          "class": "eap-scrollbar chat-feed preview-feed",
+          "testId": "chat-feed",
+          "rect": {
+            "x": 288,
+            "y": 287.5,
+            "width": 1144,
+            "height": 378.609375,
+            "top": 287.5,
+            "right": 1432,
+            "bottom": 666.109375,
+            "left": 288
+          },
+          "clientHeight": 379,
+          "offsetHeight": 379,
+          "scrollHeight": 983,
+          "scrollTop": 604,
+          "overflowY": "auto",
+          "display": "block",
+          "minHeight": "0px"
+        },
+        "log": {
+          "tag": "OL",
+          "class": "chat-log",
+          "rect": {
+            "x": 444,
+            "y": -240.5,
+            "width": 832,
+            "height": 875.46875,
+            "top": -240.5,
+            "right": 1276,
+            "bottom": 634.96875,
+            "left": 444
+          },
+          "clientHeight": 875,
+          "offsetHeight": 875,
+          "scrollHeight": 875,
+          "scrollTop": 0,
+          "overflowY": "visible",
+          "display": "grid",
+          "minHeight": "0px"
+        },
+        "ancestors": [
+          {
+            "tag": "FORM",
+            "class": "chat-composer preview-composer preview-input-box",
+            "testId": "chat-composer",
+            "rect": {
+              "x": 370,
+              "y": 674.109375,
+              "width": 980,
+              "height": 297.890625,
+              "top": 674.109375,
+              "right": 1350,
+              "bottom": 972,
+              "left": 370
+            },
+            "clientHeight": 296,
+            "offsetHeight": 298,
+            "scrollHeight": 296,
+            "scrollTop": 0,
+            "overflowY": "auto",
+            "display": "block",
+            "minHeight": "auto"
+          },
+          {
+            "tag": "DIV",
+            "class": "chat-main",
+            "testId": "chat-main",
+            "rect": {
+              "x": 288,
+              "y": 287.5,
+              "width": 1144,
+              "height": 704.5,
+              "top": 287.5,
+              "right": 1432,
+              "bottom": 992,
+              "left": 288
+            },
+            "clientHeight": 705,
+            "offsetHeight": 705,
+            "scrollHeight": 705,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "eap-workbench-frame chat-body",
+            "testId": "chat-body",
+            "rect": {
+              "x": 288,
+              "y": 287.5,
+              "width": 1144,
+              "height": 704.5,
+              "top": 287.5,
+              "right": 1432,
+              "bottom": 992,
+              "left": 288
+            },
+            "clientHeight": 705,
+            "offsetHeight": 705,
+            "scrollHeight": 705,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "SECTION",
+            "class": "view work-page chat-workspace preview-workspace live-workspace",
+            "testId": "chat-workspace",
+            "rect": {
+              "x": 288,
+              "y": 125,
+              "width": 1144,
+              "height": 867,
+              "top": 125,
+              "right": 1432,
+              "bottom": 992,
+              "left": 288
+            },
+            "clientHeight": 867,
+            "offsetHeight": 867,
+            "scrollHeight": 867,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "MAIN",
+            "class": "workbench",
+            "rect": {
+              "x": 288,
+              "y": 48,
+              "width": 1144,
+              "height": 944,
+              "top": 48,
+              "right": 1432,
+              "bottom": 992,
+              "left": 288
+            },
+            "clientHeight": 944,
+            "offsetHeight": 944,
+            "scrollHeight": 944,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "body body--chat",
+            "rect": {
+              "x": 0,
+              "y": 48,
+              "width": 1440,
+              "height": 952,
+              "top": 48,
+              "right": 1440,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 952,
+            "offsetHeight": 952,
+            "scrollHeight": 952,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "app",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 1440,
+              "height": 1000,
+              "top": 0,
+              "right": 1440,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 1440,
+              "height": 1000,
+              "top": 0,
+              "right": 1440,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "BODY",
+            "class": "",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 1440,
+              "height": 1000,
+              "top": 0,
+              "right": 1440,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "HTML",
+            "class": " ",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 1440,
+              "height": 1000,
+              "top": 0,
+              "right": 1440,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          }
+        ]
+      },
+      "geometryAfter": {
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "windowScrollY": 0,
+        "documentHeight": 1000,
+        "bodyHeight": 1000,
+        "composer": {
+          "tag": "FORM",
+          "class": "chat-composer preview-composer preview-input-box",
+          "testId": "chat-composer",
+          "rect": {
+            "x": 370,
+            "y": 674.109375,
+            "width": 980,
+            "height": 297.890625,
+            "top": 674.109375,
+            "right": 1350,
+            "bottom": 972,
+            "left": 370
+          },
+          "clientHeight": 296,
+          "offsetHeight": 298,
+          "scrollHeight": 296,
+          "scrollTop": 0,
+          "overflowY": "auto",
+          "display": "block",
+          "minHeight": "auto"
+        },
+        "send": {
+          "tag": "BUTTON",
+          "class": "eap-button eap-button--primary eap-button--md composer-send",
+          "testId": "send-message",
+          "rect": {
+            "x": 1299,
+            "y": 894.859375,
+            "width": 34,
+            "height": 34,
+            "top": 894.859375,
+            "right": 1333,
+            "bottom": 928.859375,
+            "left": 1299
+          },
+          "clientHeight": 34,
+          "offsetHeight": 34,
+          "scrollHeight": 36,
+          "scrollTop": 0,
+          "overflowY": "hidden",
+          "display": "grid",
+          "minHeight": "34px"
+        },
+        "model": {
+          "tag": "BUTTON",
+          "class": "eap-button eap-button--secondary eap-button--md",
+          "testId": "model-picker",
+          "rect": {
+            "x": 1179,
+            "y": 893.109375,
+            "width": 112,
+            "height": 37.5,
+            "top": 893.109375,
+            "right": 1291,
+            "bottom": 930.609375,
+            "left": 1179
+          },
+          "clientHeight": 38,
+          "offsetHeight": 38,
+          "scrollHeight": 38,
+          "scrollTop": 0,
+          "overflowY": "hidden",
+          "display": "inline-flex",
+          "minHeight": "36px"
+        },
+        "feed": {
+          "tag": "DIV",
+          "class": "eap-scrollbar chat-feed preview-feed",
+          "testId": "chat-feed",
+          "rect": {
+            "x": 288,
+            "y": 287.5,
+            "width": 1144,
+            "height": 378.609375,
+            "top": 287.5,
+            "right": 1432,
+            "bottom": 666.109375,
+            "left": 288
+          },
+          "clientHeight": 379,
+          "offsetHeight": 379,
+          "scrollHeight": 983,
+          "scrollTop": 604,
+          "overflowY": "auto",
+          "display": "block",
+          "minHeight": "0px"
+        },
+        "log": {
+          "tag": "OL",
+          "class": "chat-log",
+          "rect": {
+            "x": 444,
+            "y": -240.5,
+            "width": 832,
+            "height": 875.46875,
+            "top": -240.5,
+            "right": 1276,
+            "bottom": 634.96875,
+            "left": 444
+          },
+          "clientHeight": 875,
+          "offsetHeight": 875,
+          "scrollHeight": 875,
+          "scrollTop": 0,
+          "overflowY": "visible",
+          "display": "grid",
+          "minHeight": "0px"
+        },
+        "ancestors": [
+          {
+            "tag": "FORM",
+            "class": "chat-composer preview-composer preview-input-box",
+            "testId": "chat-composer",
+            "rect": {
+              "x": 370,
+              "y": 674.109375,
+              "width": 980,
+              "height": 297.890625,
+              "top": 674.109375,
+              "right": 1350,
+              "bottom": 972,
+              "left": 370
+            },
+            "clientHeight": 296,
+            "offsetHeight": 298,
+            "scrollHeight": 296,
+            "scrollTop": 0,
+            "overflowY": "auto",
+            "display": "block",
+            "minHeight": "auto"
+          },
+          {
+            "tag": "DIV",
+            "class": "chat-main",
+            "testId": "chat-main",
+            "rect": {
+              "x": 288,
+              "y": 287.5,
+              "width": 1144,
+              "height": 704.5,
+              "top": 287.5,
+              "right": 1432,
+              "bottom": 992,
+              "left": 288
+            },
+            "clientHeight": 705,
+            "offsetHeight": 705,
+            "scrollHeight": 705,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "eap-workbench-frame chat-body",
+            "testId": "chat-body",
+            "rect": {
+              "x": 288,
+              "y": 287.5,
+              "width": 1144,
+              "height": 704.5,
+              "top": 287.5,
+              "right": 1432,
+              "bottom": 992,
+              "left": 288
+            },
+            "clientHeight": 705,
+            "offsetHeight": 705,
+            "scrollHeight": 705,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "SECTION",
+            "class": "view work-page chat-workspace preview-workspace live-workspace",
+            "testId": "chat-workspace",
+            "rect": {
+              "x": 288,
+              "y": 125,
+              "width": 1144,
+              "height": 867,
+              "top": 125,
+              "right": 1432,
+              "bottom": 992,
+              "left": 288
+            },
+            "clientHeight": 867,
+            "offsetHeight": 867,
+            "scrollHeight": 867,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "MAIN",
+            "class": "workbench",
+            "rect": {
+              "x": 288,
+              "y": 48,
+              "width": 1144,
+              "height": 944,
+              "top": 48,
+              "right": 1432,
+              "bottom": 992,
+              "left": 288
+            },
+            "clientHeight": 944,
+            "offsetHeight": 944,
+            "scrollHeight": 944,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "body body--chat",
+            "rect": {
+              "x": 0,
+              "y": 48,
+              "width": 1440,
+              "height": 952,
+              "top": 48,
+              "right": 1440,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 952,
+            "offsetHeight": 952,
+            "scrollHeight": 952,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "app",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 1440,
+              "height": 1000,
+              "top": 0,
+              "right": 1440,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 1440,
+              "height": 1000,
+              "top": 0,
+              "right": 1440,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "BODY",
+            "class": "",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 1440,
+              "height": 1000,
+              "top": 0,
+              "right": 1440,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "HTML",
+            "class": " ",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 1440,
+              "height": 1000,
+              "top": 0,
+              "right": 1440,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          }
+        ]
+      },
+      "normalEnterGuarded": true,
+      "shortcutDialogText": "快捷键\n快捷键速查\nCtrl\n/\n菜单与弹层\n关闭菜单或顶层弹窗\nEsc\n移动菜单选择\n↑\n↓\n选择菜单项\nEnter\n恢复全部默认",
+      "width": 1440,
+      "height": 1000,
+      "markdownCodeMathTable": true,
+      "manualMermaid": true,
+      "sanitizedSvg": true,
+      "mermaidFailure": null,
+      "wholeAndCodeClipboardHandler": true,
+      "shiftEnterAndIME": true,
+      "actionMenuEscapeFocus": true,
+      "menuText": "复制消息\n下载消息",
+      "download": {
+        "filename": "message.txt",
+        "exactText": true
+      },
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        }
+      ],
+      "blocked": [
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/messages"
+        }
+      ],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    },
+    {
+      "initialLayoutFits": true,
+      "geometryBefore": {
+        "viewport": {
+          "width": 390,
+          "height": 1000
+        },
+        "windowScrollY": 0,
+        "documentHeight": 1000,
+        "bodyHeight": 1000,
+        "composer": {
+          "tag": "FORM",
+          "class": "chat-composer preview-composer preview-input-box",
+          "testId": "chat-composer",
+          "rect": {
+            "x": 72,
+            "y": 608.109375,
+            "width": 302,
+            "height": 341.890625,
+            "top": 608.109375,
+            "right": 374,
+            "bottom": 950,
+            "left": 72
+          },
+          "clientHeight": 340,
+          "offsetHeight": 342,
+          "scrollHeight": 340,
+          "scrollTop": 0,
+          "overflowY": "auto",
+          "display": "block",
+          "minHeight": "auto"
+        },
+        "send": {
+          "tag": "BUTTON",
+          "class": "eap-button eap-button--primary eap-button--md composer-send",
+          "testId": "send-message",
+          "rect": {
+            "x": 323,
+            "y": 872.859375,
+            "width": 34,
+            "height": 34,
+            "top": 872.859375,
+            "right": 357,
+            "bottom": 906.859375,
+            "left": 323
+          },
+          "clientHeight": 34,
+          "offsetHeight": 34,
+          "scrollHeight": 36,
+          "scrollTop": 0,
+          "overflowY": "hidden",
+          "display": "grid",
+          "minHeight": "34px"
+        },
+        "model": {
+          "tag": "BUTTON",
+          "class": "eap-button eap-button--secondary eap-button--md",
+          "testId": "model-picker",
+          "rect": {
+            "x": 203,
+            "y": 871.109375,
+            "width": 112,
+            "height": 37.5,
+            "top": 871.109375,
+            "right": 315,
+            "bottom": 908.609375,
+            "left": 203
+          },
+          "clientHeight": 38,
+          "offsetHeight": 38,
+          "scrollHeight": 38,
+          "scrollTop": 0,
+          "overflowY": "hidden",
+          "display": "inline-flex",
+          "minHeight": "36px"
+        },
+        "feed": {
+          "tag": "DIV",
+          "class": "eap-scrollbar chat-feed preview-feed",
+          "testId": "chat-feed",
+          "rect": {
+            "x": 64,
+            "y": 338.28125,
+            "width": 318,
+            "height": 261.828125,
+            "top": 338.28125,
+            "right": 382,
+            "bottom": 600.109375,
+            "left": 64
+          },
+          "clientHeight": 262,
+          "offsetHeight": 262,
+          "scrollHeight": 813,
+          "scrollTop": 551,
+          "overflowY": "auto",
+          "display": "block",
+          "minHeight": "0px"
+        },
+        "log": {
+          "tag": "OL",
+          "class": "chat-log",
+          "rect": {
+            "x": 80,
+            "y": -136.71875,
+            "width": 286,
+            "height": 704.828125,
+            "top": -136.71875,
+            "right": 366,
+            "bottom": 568.109375,
+            "left": 80
+          },
+          "clientHeight": 705,
+          "offsetHeight": 705,
+          "scrollHeight": 705,
+          "scrollTop": 0,
+          "overflowY": "visible",
+          "display": "grid",
+          "minHeight": "0px"
+        },
+        "ancestors": [
+          {
+            "tag": "FORM",
+            "class": "chat-composer preview-composer preview-input-box",
+            "testId": "chat-composer",
+            "rect": {
+              "x": 72,
+              "y": 608.109375,
+              "width": 302,
+              "height": 341.890625,
+              "top": 608.109375,
+              "right": 374,
+              "bottom": 950,
+              "left": 72
+            },
+            "clientHeight": 340,
+            "offsetHeight": 342,
+            "scrollHeight": 340,
+            "scrollTop": 0,
+            "overflowY": "auto",
+            "display": "block",
+            "minHeight": "auto"
+          },
+          {
+            "tag": "DIV",
+            "class": "chat-main",
+            "testId": "chat-main",
+            "rect": {
+              "x": 64,
+              "y": 338.28125,
+              "width": 318,
+              "height": 623.71875,
+              "top": 338.28125,
+              "right": 382,
+              "bottom": 962,
+              "left": 64
+            },
+            "clientHeight": 624,
+            "offsetHeight": 624,
+            "scrollHeight": 624,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "eap-workbench-frame chat-body",
+            "testId": "chat-body",
+            "rect": {
+              "x": 64,
+              "y": 338.28125,
+              "width": 318,
+              "height": 623.71875,
+              "top": 338.28125,
+              "right": 382,
+              "bottom": 962,
+              "left": 64
+            },
+            "clientHeight": 624,
+            "offsetHeight": 624,
+            "scrollHeight": 624,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "SECTION",
+            "class": "view work-page chat-workspace preview-workspace live-workspace",
+            "testId": "chat-workspace",
+            "rect": {
+              "x": 64,
+              "y": 151,
+              "width": 318,
+              "height": 811,
+              "top": 151,
+              "right": 382,
+              "bottom": 962,
+              "left": 64
+            },
+            "clientHeight": 811,
+            "offsetHeight": 811,
+            "scrollHeight": 811,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "MAIN",
+            "class": "workbench",
+            "rect": {
+              "x": 64,
+              "y": 56,
+              "width": 318,
+              "height": 906,
+              "top": 56,
+              "right": 382,
+              "bottom": 962,
+              "left": 64
+            },
+            "clientHeight": 906,
+            "offsetHeight": 906,
+            "scrollHeight": 906,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "body body--chat",
+            "rect": {
+              "x": 0,
+              "y": 56,
+              "width": 390,
+              "height": 914,
+              "top": 56,
+              "right": 390,
+              "bottom": 970,
+              "left": 0
+            },
+            "clientHeight": 914,
+            "offsetHeight": 914,
+            "scrollHeight": 914,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "app",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 1000,
+              "top": 0,
+              "right": 390,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 1000,
+              "top": 0,
+              "right": 390,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "BODY",
+            "class": "",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 1000,
+              "top": 0,
+              "right": 390,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "HTML",
+            "class": " ",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 1000,
+              "top": 0,
+              "right": 390,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          }
+        ]
+      },
+      "geometryAfter": {
+        "viewport": {
+          "width": 390,
+          "height": 1000
+        },
+        "windowScrollY": 0,
+        "documentHeight": 1000,
+        "bodyHeight": 1000,
+        "composer": {
+          "tag": "FORM",
+          "class": "chat-composer preview-composer preview-input-box",
+          "testId": "chat-composer",
+          "rect": {
+            "x": 72,
+            "y": 608.109375,
+            "width": 302,
+            "height": 341.890625,
+            "top": 608.109375,
+            "right": 374,
+            "bottom": 950,
+            "left": 72
+          },
+          "clientHeight": 340,
+          "offsetHeight": 342,
+          "scrollHeight": 340,
+          "scrollTop": 0,
+          "overflowY": "auto",
+          "display": "block",
+          "minHeight": "auto"
+        },
+        "send": {
+          "tag": "BUTTON",
+          "class": "eap-button eap-button--primary eap-button--md composer-send",
+          "testId": "send-message",
+          "rect": {
+            "x": 323,
+            "y": 872.859375,
+            "width": 34,
+            "height": 34,
+            "top": 872.859375,
+            "right": 357,
+            "bottom": 906.859375,
+            "left": 323
+          },
+          "clientHeight": 34,
+          "offsetHeight": 34,
+          "scrollHeight": 36,
+          "scrollTop": 0,
+          "overflowY": "hidden",
+          "display": "grid",
+          "minHeight": "34px"
+        },
+        "model": {
+          "tag": "BUTTON",
+          "class": "eap-button eap-button--secondary eap-button--md",
+          "testId": "model-picker",
+          "rect": {
+            "x": 203,
+            "y": 871.109375,
+            "width": 112,
+            "height": 37.5,
+            "top": 871.109375,
+            "right": 315,
+            "bottom": 908.609375,
+            "left": 203
+          },
+          "clientHeight": 38,
+          "offsetHeight": 38,
+          "scrollHeight": 38,
+          "scrollTop": 0,
+          "overflowY": "hidden",
+          "display": "inline-flex",
+          "minHeight": "36px"
+        },
+        "feed": {
+          "tag": "DIV",
+          "class": "eap-scrollbar chat-feed preview-feed",
+          "testId": "chat-feed",
+          "rect": {
+            "x": 64,
+            "y": 338.28125,
+            "width": 318,
+            "height": 261.828125,
+            "top": 338.28125,
+            "right": 382,
+            "bottom": 600.109375,
+            "left": 64
+          },
+          "clientHeight": 262,
+          "offsetHeight": 262,
+          "scrollHeight": 813,
+          "scrollTop": 551,
+          "overflowY": "auto",
+          "display": "block",
+          "minHeight": "0px"
+        },
+        "log": {
+          "tag": "OL",
+          "class": "chat-log",
+          "rect": {
+            "x": 80,
+            "y": -136.71875,
+            "width": 286,
+            "height": 704.828125,
+            "top": -136.71875,
+            "right": 366,
+            "bottom": 568.109375,
+            "left": 80
+          },
+          "clientHeight": 705,
+          "offsetHeight": 705,
+          "scrollHeight": 705,
+          "scrollTop": 0,
+          "overflowY": "visible",
+          "display": "grid",
+          "minHeight": "0px"
+        },
+        "ancestors": [
+          {
+            "tag": "FORM",
+            "class": "chat-composer preview-composer preview-input-box",
+            "testId": "chat-composer",
+            "rect": {
+              "x": 72,
+              "y": 608.109375,
+              "width": 302,
+              "height": 341.890625,
+              "top": 608.109375,
+              "right": 374,
+              "bottom": 950,
+              "left": 72
+            },
+            "clientHeight": 340,
+            "offsetHeight": 342,
+            "scrollHeight": 340,
+            "scrollTop": 0,
+            "overflowY": "auto",
+            "display": "block",
+            "minHeight": "auto"
+          },
+          {
+            "tag": "DIV",
+            "class": "chat-main",
+            "testId": "chat-main",
+            "rect": {
+              "x": 64,
+              "y": 338.28125,
+              "width": 318,
+              "height": 623.71875,
+              "top": 338.28125,
+              "right": 382,
+              "bottom": 962,
+              "left": 64
+            },
+            "clientHeight": 624,
+            "offsetHeight": 624,
+            "scrollHeight": 624,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "eap-workbench-frame chat-body",
+            "testId": "chat-body",
+            "rect": {
+              "x": 64,
+              "y": 338.28125,
+              "width": 318,
+              "height": 623.71875,
+              "top": 338.28125,
+              "right": 382,
+              "bottom": 962,
+              "left": 64
+            },
+            "clientHeight": 624,
+            "offsetHeight": 624,
+            "scrollHeight": 624,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "SECTION",
+            "class": "view work-page chat-workspace preview-workspace live-workspace",
+            "testId": "chat-workspace",
+            "rect": {
+              "x": 64,
+              "y": 151,
+              "width": 318,
+              "height": 811,
+              "top": 151,
+              "right": 382,
+              "bottom": 962,
+              "left": 64
+            },
+            "clientHeight": 811,
+            "offsetHeight": 811,
+            "scrollHeight": 811,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "MAIN",
+            "class": "workbench",
+            "rect": {
+              "x": 64,
+              "y": 56,
+              "width": 318,
+              "height": 906,
+              "top": 56,
+              "right": 382,
+              "bottom": 962,
+              "left": 64
+            },
+            "clientHeight": 906,
+            "offsetHeight": 906,
+            "scrollHeight": 906,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "flex",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "body body--chat",
+            "rect": {
+              "x": 0,
+              "y": 56,
+              "width": 390,
+              "height": 914,
+              "top": 56,
+              "right": 390,
+              "bottom": 970,
+              "left": 0
+            },
+            "clientHeight": 914,
+            "offsetHeight": 914,
+            "scrollHeight": 914,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "app",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 1000,
+              "top": 0,
+              "right": 390,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "hidden",
+            "display": "grid",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "DIV",
+            "class": "",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 1000,
+              "top": 0,
+              "right": 390,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "BODY",
+            "class": "",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 1000,
+              "top": 0,
+              "right": 390,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          },
+          {
+            "tag": "HTML",
+            "class": " ",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 1000,
+              "top": 0,
+              "right": 390,
+              "bottom": 1000,
+              "left": 0
+            },
+            "clientHeight": 1000,
+            "offsetHeight": 1000,
+            "scrollHeight": 1000,
+            "scrollTop": 0,
+            "overflowY": "visible",
+            "display": "block",
+            "minHeight": "0px"
+          }
+        ]
+      },
+      "normalEnterGuarded": true,
+      "shortcutDialogText": "快捷键\n快捷键速查\nCtrl\n/\n菜单与弹层\n关闭菜单或顶层弹窗\nEsc\n移动菜单选择\n↑\n↓\n选择菜单项\nEnter\n恢复全部默认",
+      "width": 390,
+      "height": 1000,
+      "markdownCodeMathTable": true,
+      "manualMermaid": true,
+      "sanitizedSvg": true,
+      "mermaidFailure": null,
+      "wholeAndCodeClipboardHandler": true,
+      "shiftEnterAndIME": true,
+      "actionMenuEscapeFocus": true,
+      "menuText": "复制消息\n下载消息",
+      "download": {
+        "filename": "message.txt",
+        "exactText": true
+      },
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        }
+      ],
+      "blocked": [
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/messages"
+        }
+      ],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    }
+  ]
+}

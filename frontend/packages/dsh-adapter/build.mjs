@@ -6,13 +6,13 @@ import { fileURLToPath } from 'node:url'
 const root = fileURLToPath(new URL('.', import.meta.url))
 const source = (p) => resolve(root, 'upstream/packages/client', p)
 const primitives =
-  ['Menu', 'Toast', 'Button', 'Tooltip']
+  ['Menu', 'Toast', 'Button', 'Tooltip', 'Modal', 'ShortcutKeys']
     .map((n) => `export { ${n} } from ${JSON.stringify(source(`ui-primitives/src/${n}.tsx`))}`)
     .join('\n') +
-  `\nexport { MENU_TRANSITION_MS } from ${JSON.stringify(source('ui-primitives/src/MenuSurface.tsx'))}\nexport { modalSelector } from ${JSON.stringify(source('ui-primitives/src/useModalLayer.ts'))}\nexport { observeComposition } from ${JSON.stringify(source('ui-primitives/src/keyboard-composition.ts'))}\nexport { IconChevronDownOutlineRegular, IconEllipsisOutlineRegular } from ${JSON.stringify(source('ui-primitives/src/icons/index.tsx'))}`
+  `\nexport { MENU_TRANSITION_MS } from ${JSON.stringify(source('ui-primitives/src/MenuSurface.tsx'))}\nexport { focusWithoutRing } from ${JSON.stringify(source('ui-primitives/src/focus.ts'))}\nexport { closeTopModal, isBehindModal, modalSelector } from ${JSON.stringify(source('ui-primitives/src/useModalLayer.ts'))}\nexport { observeComposition } from ${JSON.stringify(source('ui-primitives/src/keyboard-composition.ts'))}\nexport { IconChevronDownOutlineRegular, IconEllipsisOutlineRegular, IconCloseOutlineRegular, IconRefreshOutlineRegular, IconCopyOutlineRegular, IconDownloadOutlineRegular, IconSaveOutlineRegular } from ${JSON.stringify(source('ui-primitives/src/icons/index.tsx'))}`
 await build({
   stdin: {
-    contents: `export * as contextMenu from ${JSON.stringify(source('ui-context-menu/src/client/index.ts'))};\nexport { createClientModuleSystem } from ${JSON.stringify(source('modules/src/client/index.ts'))};\nexport { LocaleRuntime } from ${JSON.stringify(source('locale/src/client/index.ts'))};\nexport { default as ShortcutsService } from ${JSON.stringify(source('shortcuts/src/client/index.ts'))};`,
+    contents: `export * as shortcutReference from ${JSON.stringify(source('ui-shortcuts/src/client/index.ts'))};\nexport * as fileActions from ${JSON.stringify(source('ui-file-actions/src/client/index.ts'))};\nexport * as contextMenu from ${JSON.stringify(source('ui-context-menu/src/client/index.ts'))};\nexport { createClientModuleSystem } from ${JSON.stringify(source('modules/src/client/index.ts'))};\nexport { LocaleRuntime } from ${JSON.stringify(source('locale/src/client/index.ts'))};\nexport { default as ShortcutsService } from ${JSON.stringify(source('shortcuts/src/client/index.ts'))};`,
     resolveDir: root,
     loader: 'ts',
   },
@@ -31,6 +31,18 @@ await build({
     'clsx',
   ],
   alias: {
+    '@deepseek-ai/dsh-util-workspace-path': resolve(
+      root,
+      'upstream/packages/util/workspace-path/src/index.ts.snapshot',
+    ),
+    '@deepseek-ai/dsh-util-text-search': resolve(
+      root,
+      'upstream/packages/util/text-search/src/index.ts.snapshot',
+    ),
+    '@deepseek-ai/dsh-util-file-drag': resolve(
+      root,
+      'upstream/packages/util/file-drag/src/index.ts.snapshot',
+    ),
     '@deepseek-ai/dsh-client-store': source('store/src/index.ts.snapshot'),
     '@deepseek-ai/dsh-util-crypto': resolve(
       root,

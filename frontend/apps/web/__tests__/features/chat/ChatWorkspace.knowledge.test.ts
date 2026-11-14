@@ -8,6 +8,7 @@ import ChatWorkspace from '../../../src/features/chat/ChatWorkspace.vue'
 import { chatBinding, workbench } from '../../../src/features/shell/workbench'
 import { mockChatStartup } from './chatStartup.fixture.ts'
 
+import { canonicalGraph, graphServer } from './canonicalGraph.fixture'
 let app: App, host: HTMLDivElement
 afterEach(() => {
   app?.unmount()
@@ -44,16 +45,14 @@ it('replays nullable server knowledgeContext without a knowledge evidence sectio
         c1: [
           {
             role: 'assistant',
-            text: 'ordinary answer',
+            text: 'legacy-only answer',
             error: '',
             status: 'SUCCEEDED',
             approval: '',
             verification: '',
             toolEvents: [],
-            artifactError: '',
             artifacts: [],
-            knowledgeContext: null,
-            knowledgeMemoryCleared: false,
+            artifactError: '',
           },
         ],
       },
@@ -64,12 +63,30 @@ it('replays nullable server knowledgeContext without a knowledge evidence sectio
     workspaceLabel: '',
     memory: '',
   } as never)
+  graphServer(
+    canonicalGraph('c1', [
+      {
+        role: 'assistant',
+        text: 'ordinary answer',
+        error: '',
+        status: 'SUCCEEDED',
+        approval: '',
+        verification: '',
+        toolEvents: [],
+        artifactError: '',
+        artifacts: [],
+        knowledgeContext: null,
+        knowledgeMemoryCleared: false,
+      },
+    ]),
+  ).install()
   host = document.createElement('div')
   document.body.append(host)
   app = createApp(ChatWorkspace)
   app.use(i18n).mount(host)
   await vi.waitFor(() => expect(host.textContent).toContain('ordinary answer'))
   expect(host.querySelector('[data-testid=turn-knowledge]')).toBeNull()
+  expect(host.textContent).not.toContain('legacy-only answer')
   expect(host.textContent).not.toContain('不是持久会话保证')
 })
 it('shows a rejected send memory notice only when the originating session is active', async () => {
@@ -200,31 +217,49 @@ it.each([
     const preview = vi
       .spyOn(runtimeApi, 'previewExpertContext')
       .mockResolvedValue({ expertRef, status: 'no_matches', references: [] })
-    const send = vi.spyOn(runtimeApi, 'sendAiMessage').mockResolvedValue({
-      answer: error ? '' : 'answer',
-      error,
-      status: error ? 'FAILED' : 'SUCCEEDED',
-      executionId: null,
-      approval: '',
-      verification: '',
-      toolEvents: [],
-      artifacts: [],
-      artifactError: '',
-      knowledgeMemoryCleared: true,
-      knowledgeContext: {
-        expertRef,
-        status: 'ready',
-        references: [
-          {
-            id: 'K9',
-            source: 'Server source',
-            knowledgeBase: 'Actual scope',
-            excerpt: 'server-only excerpt',
-            retrievalMode: 'keyword',
+    const server = graphServer()
+    server.install()
+    const send = vi
+      .spyOn(runtimeApi, 'sendAiMessage')
+      .mockImplementation(async (id, request, options) => {
+        const binding = server.accept(id, request)
+        options?.onEvent?.({
+          type: 'execution.accepted',
+          conversationId: id,
+          executionId: binding.executionId,
+          sequence: 0,
+          text: '',
+          code: '',
+          status: 'RUNNING',
+        })
+        const result: import('@eap/runtime-client').AiMessageResult = {
+          answer: error ? '' : 'answer',
+          error,
+          status: error ? 'FAILED' : 'SUCCEEDED',
+          executionId: null,
+          approval: '',
+          verification: '',
+          toolEvents: [],
+          artifacts: [],
+          artifactError: '',
+          knowledgeMemoryCleared: true,
+          knowledgeContext: {
+            expertRef,
+            status: 'ready',
+            references: [
+              {
+                id: 'K9',
+                source: 'Server source',
+                knowledgeBase: 'Actual scope',
+                excerpt: 'server-only excerpt',
+                retrievalMode: 'keyword',
+              },
+            ],
           },
-        ],
-      },
-    })
+        }
+        server.complete(id, request, result)
+        return result
+      })
     host = document.createElement('div')
     document.body.append(host)
     app = createApp(ChatWorkspace)
@@ -254,7 +289,7 @@ it.each([
     expect(send).not.toHaveBeenCalled()
     button('send-message').click()
     await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1))
-    expect(send.mock.calls[0]?.[3]?.knowledgeExpertRef).toEqual(expertRef)
+    expect(send.mock.calls[0]?.[1]?.context?.knowledgeExpertRef).toEqual(expertRef)
     await vi.waitFor(() => expect(host.textContent).toContain('server-only excerpt'))
     expect(host.textContent).toContain(
       locale === 'zh-CN' ? '已检索 / 准备' : 'retrieved / prepared',

@@ -1,3 +1,4 @@
+import { withChatGraph } from './graphApi.fixture'
 import { afterEach, expect, it, vi } from 'vite-plus/test'
 import { createChatSession, type ChatApi } from '../../../src/features/chat/chatSession'
 import type { AiMessageResult, AiStatus } from '@eap/runtime-client'
@@ -22,20 +23,29 @@ const finalResult: AiMessageResult = {
   artifacts: [],
 }
 function setup(saved = 'null') {
-  let value = saved
+  const values = new Map<string, string>()
+  values.set(
+    JSON.parse(saved)?.version === 1 ? 'eap.chat.history.v1' : 'eap.chat.preferences.v2',
+    saved,
+  )
   const storage = {
-    getItem: vi.fn(() => value),
+    getItem: vi.fn((key: string) => values.get(key) ?? null),
     setItem: vi.fn((_key: string, next: string) => {
-      value = next
+      values.set(_key, next)
     }),
   }
-  const api: ChatApi = {
+  const api: Omit<ChatApi, 'chatGraph' | 'chatOperation' | 'cancelAiExecution'> = {
     aiStatus: vi.fn(async () => ({ state: 'available' }) as AiStatus),
     openAiConversation: vi.fn(async () => conversation),
     aiConversation: vi.fn(async () => conversation),
     sendAiMessage: vi.fn(async () => finalResult),
   }
-  return { api, storage, session: createChatSession(api, storage), saved: () => JSON.parse(value) }
+  return {
+    api,
+    storage,
+    session: createChatSession(withChatGraph(api), storage),
+    saved: () => JSON.parse(values.get('eap.chat.preferences.v2') ?? 'null'),
+  }
 }
 
 it('reads and parses startup history once, then restores the scratch draft and context from that snapshot', async () => {
@@ -48,7 +58,7 @@ it('reads and parses startup history once, then restores the scratch draft and c
     }),
   )
   await session.restoreLastConversation()
-  expect(storage.getItem).toHaveBeenCalledTimes(1)
+  expect(storage.getItem).toHaveBeenCalledTimes(2)
   expect(session.draft.value).toBe('keep draft')
   expect(session.context.value.instructions).toBe('keep context')
   session.draft.value = 'edited after restoration'
@@ -56,26 +66,26 @@ it('reads and parses startup history once, then restores the scratch draft and c
   expect(session.draft.value).toBe('edited after restoration')
 })
 
-it('coalesces streamed deltas, keeps draft writes immediate, and flushes the final outcome without persisting translated messages', async () => {
+it('persists drafts immediately while streamed messages and localized errors remain server-only', async () => {
   vi.useFakeTimers()
   const { session, api, storage, saved } = setup()
   await session.openConversation()
   session.draft.value = 'request'
   expect(saved().items[0].draft).toBe('request')
-  let event!: NonNullable<Parameters<ChatApi['sendAiMessage']>[4]>['onEvent']
+  let event!: NonNullable<Parameters<ChatApi['sendAiMessage']>[2]>['onEvent']
   let finish!: (value: AiMessageResult) => void
-  vi.mocked(api.sendAiMessage).mockImplementationOnce(
-    async (_id, _text, _mode, _context, options) => {
-      event = options!.onEvent
-      return new Promise((resolve) => {
-        finish = resolve
-      })
-    },
-  )
+  vi.mocked(api.sendAiMessage).mockImplementationOnce(async (_id, _request, options) => {
+    event = options!.onEvent
+    return new Promise((resolve) => {
+      finish = resolve
+    })
+  })
   const pending = session.send()
+  await vi.advanceTimersByTimeAsync(0)
   storage.setItem.mockClear()
   for (let sequence = 1; sequence <= 100; sequence++)
     event!({
+      conversationId: 'one',
       executionId: 'run',
       sequence,
       type: 'answer.delta',
@@ -83,23 +93,34 @@ it('coalesces streamed deltas, keeps draft writes immediate, and flushes the fin
       code: '',
       status: 'RUNNING',
     })
+  await vi.advanceTimersByTimeAsync(0)
   expect(session.turns.value[1].text).toHaveLength(100)
   expect(storage.setItem).not.toHaveBeenCalled()
-  await vi.advanceTimersByTimeAsync(150)
-  expect(storage.setItem).toHaveBeenCalledTimes(1)
-  expect(saved().transcripts.one[1].text).toHaveLength(100)
+  expect(saved()).not.toHaveProperty('transcripts')
   finish({ ...finalResult, errorMessage: 'localized', errorLanguage: 'en-US' })
   await pending
-  expect(saved().transcripts.one[1]).toMatchObject({
+  expect(session.turns.value[1]).toMatchObject({
     text: 'complete',
     status: 'SUCCEEDED',
     executionId: 'run',
   })
-  expect(saved().transcripts.one[1]).not.toHaveProperty('errorMessage')
+  expect(JSON.stringify(saved())).not.toContain('localized')
   expect(saved().items[0].draft).toBe('')
-  const writes = storage.setItem.mock.calls.length
-  await vi.advanceTimersByTimeAsync(500)
-  expect(storage.setItem).toHaveBeenCalledTimes(writes)
+})
+
+it('keeps legacy local transcripts read-only and available for exact export', async () => {
+  const original = JSON.stringify({
+    version: 1,
+    items: [],
+    transcripts: { one: [{ role: 'assistant', text: 'local observation' }] },
+    scratch: { draft: 'unsent' },
+  })
+  const { session, saved } = setup(original)
+  expect(session.turns.value).toEqual([])
+  expect(session.legacyHistoryExport()).toBe(original)
+  session.flushPersistence()
+  expect(saved()).not.toHaveProperty('transcripts')
+  expect(session.legacyHistoryExport()).toBe(original)
 })
 
 it('shares only concurrent probes and rejects stale results after a selection changes', async () => {

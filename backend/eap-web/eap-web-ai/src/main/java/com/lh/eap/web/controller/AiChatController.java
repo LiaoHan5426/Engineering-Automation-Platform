@@ -55,6 +55,11 @@ public class AiChatController {
     @GetMapping("/conversations/{id}")
     public AiConversationResponse conversation(@PathVariable UUID id) { return chat.conversation(id); }
 
+    @GetMapping("/conversations/{id}/graph")
+    public com.lh.eap.ai.ChatGraphStore.View graph(@PathVariable UUID id) { return chat.graph(id); }
+    @GetMapping("/conversations/{id}/operations/{operationId}")
+    public Map<String,Object> operation(@PathVariable UUID id, @PathVariable UUID operationId) { return chat.operation(id,operationId); }
+
     @GetMapping("/conversations/{id}/model-history")
     public com.lh.eap.ai.AiConversationRegistry.ModelHistoryUsage modelHistory(@PathVariable UUID id) {
         return chat.modelHistory(id);
@@ -64,7 +69,9 @@ public class AiChatController {
     public void clearModelHistory(@PathVariable UUID id) { chat.clearModelHistory(id); }
 
     @PostMapping("/conversations/{id}/model-history/summary")
-    public AiChatApplication.HistorySummary summarizeHistory(@PathVariable UUID id) { return chat.summarizeHistory(id); }
+    public AiChatApplication.HistorySummary summarizeHistory(@PathVariable UUID id, @RequestBody String body) { return chat.summarizeHistory(id,body); }
+    @PostMapping("/conversations/{id}/model-history/summary/{operationId}/cancel")
+    public Map<String,Object> cancelSummary(@PathVariable UUID id, @PathVariable UUID operationId) {return chat.cancelSummary(id,operationId);}
 
     @PutMapping(value = "/conversations/{id}/working-memory", consumes = MediaType.APPLICATION_JSON_VALUE)
     public TaskWorkingMemory.Snapshot putWorkingMemory(@PathVariable UUID id,
@@ -74,6 +81,9 @@ public class AiChatController {
 
     @DeleteMapping("/conversations/{id}")
     public void deleteConversation(@PathVariable UUID id) { chat.deleteConversation(id); }
+
+    @GetMapping("/web-sources")
+    public List<com.lh.eap.runtime.mcp.client.McpWebService.AvailableService> webSources() {return chat.webSources();}
 
     @GetMapping("/status")
     public AiConnectionStatus.Snapshot status() {
@@ -168,9 +178,9 @@ public class AiChatController {
         return emitter;
     }
 
-    @PostMapping("/conversations/{id}/cancel")
-    public Map<String, Object> cancel(@PathVariable UUID id) {
-        return chat.cancel(id);
+    @PostMapping("/conversations/{id}/executions/{executionId}/cancel")
+    public Map<String, Object> cancel(@PathVariable UUID id, @PathVariable UUID executionId) {
+        return chat.cancel(id, executionId);
     }
 
     @GetMapping("/conversations/{id}/executions/{executionId}/plan")

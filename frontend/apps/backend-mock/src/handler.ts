@@ -68,7 +68,10 @@ export function createMockHandler() {
     res.setHeader('Content-Language', language)
     // This namespace never proxies to Java or any external model service.
     try {
-      const body = await readJson(req, 262144)
+      const body = await readJson(
+        req,
+        /\/ai\/conversations\/[^/]+\/messages$/.test(req.url ?? '') ? 24 * 1024 * 1024 : 262144,
+      )
       const url = new URL(req.url ?? '/', 'http://mock.local')
       if (url.searchParams.has('connectionId'))
         body.connectionId = url.searchParams.get('connectionId')
@@ -88,7 +91,22 @@ export function createMockHandler() {
         }
         const executionId = payload.executionId || 'mock-exec'
         const conversationId = url.pathname.split('/')[3] ?? ''
+        const operation = await backend.handle(
+          'GET',
+          `/ai/conversations/${conversationId}/operations/${encodeURIComponent(String(body.operationId))}`,
+          {},
+        )
         const frames = [
+          {
+            type: 'accepted',
+            sequence: 0,
+            status: ChatExecutionStatus.RUNNING,
+            text: '',
+            code: '',
+            executionId,
+            conversationId,
+            payload: operation.data,
+          },
           {
             type: 'status',
             sequence: 1,

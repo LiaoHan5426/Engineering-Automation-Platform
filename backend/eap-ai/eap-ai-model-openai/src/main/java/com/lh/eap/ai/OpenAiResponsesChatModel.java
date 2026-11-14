@@ -162,9 +162,26 @@ class OpenAiResponsesChatModel implements ChatModel {
             }
             switch (message.getMessageType()) {
                 case SYSTEM -> instructions.append(message.getText()).append('\n');
-                case USER, ASSISTANT -> input.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
-                        .role(message.getMessageType() == MessageType.USER ? EasyInputMessage.Role.USER : EasyInputMessage.Role.ASSISTANT)
-                        .content(message.getText() == null ? "" : message.getText()).build()));
+                case USER, ASSISTANT -> {
+                    var wire = EasyInputMessage.builder().role(message.getMessageType() == MessageType.USER
+                            ? EasyInputMessage.Role.USER : EasyInputMessage.Role.ASSISTANT);
+                    String text = message.getText() == null ? "" : message.getText();
+                    if (message instanceof org.springframework.ai.chat.messages.UserMessage user && !user.getMedia().isEmpty()) {
+                        var parts = new ArrayList<ResponseInputContent>();
+                        parts.add(ResponseInputContent.ofInputText(ResponseInputText.builder().text(text).build()));
+                        for (var media : user.getMedia()) {
+                            String mime = media.getMimeType().toString();
+                            if (!Set.of("image/png", "image/jpeg", "image/webp").contains(mime)
+                                    || !(media.getData() instanceof byte[]))
+                                throw new IllegalArgumentException(com.lh.eap.error.ChatErrors.IMAGE_INPUT_NOT_SUPPORTED.code());
+                            parts.add(ResponseInputContent.ofInputImage(ResponseInputImage.builder()
+                                    .detail(ResponseInputImage.Detail.AUTO)
+                                    .imageUrl("data:" + mime + ";base64," + Base64.getEncoder().encodeToString(media.getDataAsByteArray())).build()));
+                        }
+                        wire.contentOfResponseInputMessageContentList(parts);
+                    } else wire.content(text);
+                    input.add(ResponseInputItem.ofEasyInputMessage(wire.build()));
+                }
                 default -> throw new IllegalArgumentException(ModelErrors.AI_PROTOCOL_TOOLS_UNAVAILABLE.code());
             }
         }

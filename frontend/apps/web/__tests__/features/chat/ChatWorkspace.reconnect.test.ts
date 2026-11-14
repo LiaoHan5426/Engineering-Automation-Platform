@@ -1,13 +1,16 @@
+import 'fake-indexeddb/auto'
+import { Blob as NativeBlob, File as NativeFile } from 'node:buffer'
 import { chatStorage } from '../../../src/features/chat/chatService'
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from 'vite-plus/test'
 import { createApp, nextTick, type App } from 'vue'
-import { runtimeApi, type ModelConnection } from '@eap/runtime-client'
+import { ChatErrors, runtimeApi, type ModelConnection } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import ChatWorkspace from '../../../src/features/chat/ChatWorkspace.vue'
 import { chatBinding, workbench } from '../../../src/features/shell/workbench'
 import { mockChatStartup } from './chatStartup.fixture'
 
+import { graphServer } from './canonicalGraph.fixture'
 let app: App, host: HTMLDivElement
 async function flush() {
   for (let i = 0; i < 12; i++) await nextTick()
@@ -16,6 +19,7 @@ afterEach(() => {
   app?.unmount()
   host?.remove()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   localStorage.clear()
   sessionStorage.clear()
   chatBinding.value = null
@@ -24,6 +28,8 @@ afterEach(() => {
   workbench.panel = null
 })
 async function mount(draft = 'retry this', mismatch = false) {
+  vi.stubGlobal('Blob', NativeBlob)
+  vi.stubGlobal('File', NativeFile)
   chatStorage(localStorage).setItem(
     'eap.chat.history.v1',
     JSON.stringify({
@@ -69,6 +75,17 @@ async function mount(draft = 'retry this', mismatch = false) {
       } satisfies ModelConnection,
     ],
   })
+  vi.mocked(runtimeApi.aiStatus).mockResolvedValue({
+    state: 'disabled',
+    provider: 'none',
+    model: '',
+    configurationRevision: '',
+    lastObservedAt: null,
+    errorCode: '',
+    tools: { git_status: false },
+    workspaceLabel: 'saved-ws',
+    workspacePath: '/fixture/reconnect-workspace',
+  })
   vi.spyOn(runtimeApi, 'aiConversation').mockRejectedValue({ response: { status: 404 } })
   const reconnect = vi.spyOn(runtimeApi, 'reconnectAiConversation')
   if (mismatch)
@@ -94,17 +111,10 @@ async function mount(draft = 'retry this', mismatch = false) {
     revision: 1,
     memoryCleared: false,
   })
-  const send = vi.spyOn(runtimeApi, 'sendAiMessage').mockResolvedValue({
-    executionId: 'e',
-    answer: 'ok',
-    error: '',
-    status: 'SUCCEEDED',
-    approval: '',
-    verification: '',
-    toolEvents: [],
-    artifactError: '',
-    artifacts: [],
-  })
+  const server = graphServer()
+  server.install()
+  const send = vi.spyOn(runtimeApi, 'sendAiMessage').mockImplementation(server.send)
+
   workbench.executionMode = 'chat'
   workbench.sessionExtras.old = {
     projectId: 'project',
@@ -155,26 +165,38 @@ it('requires a visible confirmation before reconnect and sends the preserved dra
   click('[data-confirm-cancel]')
   await flush()
   expect(reconnect).not.toHaveBeenCalled()
+  expect(feed.scrollTop).toBe(97)
+  expect(chatBinding.value?.draft).toBe('retry this')
+  expect(chatBinding.value?.activeId).toBe('old')
   click('[data-testid="reconnect-session"]')
   await flush()
   click('.eap-confirm__actions button')
   click('.eap-confirm__actions button')
-  await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+  await vi.waitFor(() => expect(send, host.textContent ?? '').toHaveBeenCalledTimes(1))
   expect(reconnect).toHaveBeenCalledExactlyOnceWith('old', 'saved-ws', 'desk', 'm')
   expect(assign).not.toHaveBeenCalled()
   expect(send).toHaveBeenCalledWith(
     'old',
-    'retry this',
-    'none',
     expect.objectContaining({
-      instructions: expect.stringContaining('Preserve expert guidance'),
-      files: [{ name: 'keep.md', content: 'attachment' }],
+      operationId: expect.any(String),
+      expectedRevision: 0,
+      kind: 'send',
+      message: 'retry this',
+      toolMode: 'none',
+      context: expect.objectContaining({
+        instructions: expect.stringContaining('Preserve expert guidance'),
+        files: [],
+        attachmentRefs: [expect.objectContaining({ name: 'keep.md' })],
+      }),
+      transientAttachments: [
+        expect.objectContaining({ name: 'keep.md', base64: btoa('attachment') }),
+      ],
     }),
     expect.objectContaining({ signal: expect.any(AbortSignal), onEvent: expect.any(Function) }),
   )
-  expect(send.mock.calls[0][3]?.instructions).toContain('Original instruction')
+  expect(send.mock.calls[0][1]?.context?.instructions).toContain('Original instruction')
   expect(workbench.panel).toBe('summary')
-  expect(feed.scrollTop).toBe(97)
+  expect(feed.scrollTop).toBe(feed.scrollHeight)
   expect(chatBinding.value?.activeId).toBe('old')
   expect(chatBinding.value?.history).toHaveLength(1)
   expect(workbench.sessionExtras.old.projectId).toBe('project')
@@ -191,8 +213,19 @@ it('does not offer ordinary retry after a message failure confirms server expiry
   })
   click('[data-testid="recheck-session"]')
   await vi.waitFor(() => expect(host.querySelector('[data-testid="reconnect-session"]')).toBeNull())
-  send.mockRejectedValueOnce({ response: { status: 404 } })
+  send.mockRejectedValueOnce({
+    response: { status: 404, data: { code: ChatErrors.UNKNOWN_CONVERSATION } },
+  })
+  vi.mocked(runtimeApi.chatGraph).mockRejectedValueOnce({
+    response: { status: 404, data: { code: ChatErrors.UNKNOWN_CONVERSATION } },
+  })
+  await vi.waitFor(() =>
+    expect(host.querySelector<HTMLButtonElement>('[data-testid="send-message"]')?.disabled).toBe(
+      false,
+    ),
+  )
   click('[data-testid="send-message"]')
+  await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1))
   await vi.waitFor(() =>
     expect(host.querySelector('[data-testid="reconnect-session"]')).not.toBeNull(),
   )
@@ -214,7 +247,7 @@ it('does not restore the old task context into a new selection when reconnect re
   click('[data-testid="reconnect-session"]')
   await flush()
   click('.eap-confirm__actions button')
-  await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+  await vi.waitFor(() => expect(send, host.textContent ?? '').toHaveBeenCalledTimes(1))
   chatBinding.value!.create()
   await flush()
   expect(chatBinding.value?.activeId).toBeNull()

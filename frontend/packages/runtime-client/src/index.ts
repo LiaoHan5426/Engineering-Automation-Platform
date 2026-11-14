@@ -1,3 +1,9 @@
+import {
+  validateChatGraph,
+  type ChatGraph,
+  type ChatGraphRequest,
+  type ChatGraphOperation,
+} from './contracts/chatGraph'
 import { isChatPlanSnapshot, type ChatPlanSnapshot } from './contracts/chatPlan'
 import type { GitExecutionOperation } from './contracts/toolModels'
 import type { ToolExecution } from './contracts/toolModels'
@@ -80,8 +86,6 @@ import type { VerificationProbe } from './contracts/codeModels'
 import type { AiConversation, ModelHistoryUsage, ModelHistorySummary } from './contracts/chatModels'
 import type { AiConversationRecovery } from './contracts/chatModels'
 import type { TaskWorkingMemorySnapshot } from './contracts/chatModels'
-import type { AiToolMode } from './contracts/chatModels'
-import type { TaskContext } from './contracts/chatModels'
 import type { ChatExecutionSnapshot } from './contracts/chatModels'
 import type { ChatGptLoginAttempt } from './contracts/chatModels'
 import type { ChatGptLoginState } from './contracts/chatModels'
@@ -784,8 +788,9 @@ export const runtimeApi = {
 async function postChatSse(
   transport: RequestClient,
   path: string,
-  body: unknown,
-  options?: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void },
+  body: ChatGraphRequest,
+  options: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void } | undefined,
+  conversationId: string,
 ): Promise<AiMessageResult> {
   const requestLanguage = runtimeLanguage()
   const response = await openStream(transport, path, {
@@ -807,6 +812,8 @@ async function postChatSse(
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let executionId = ''
+  let latestSequence = -1
   let answer = ''
   const toolEvents: AiToolEvent[] = []
   try {
@@ -820,7 +827,20 @@ async function postChatSse(
         const chunk = buffer.slice(0, separator.index)
         buffer = buffer.slice(separator.index + separator[0].length)
         const event = parseSseChunk(chunk)
-        if (!event) continue
+        if (!event || event.conversationId !== conversationId || event.sequence <= latestSequence)
+          continue
+        if (!executionId) {
+          const accepted = event.payload as Partial<ChatGraphOperation> | null
+          if (
+            event.type !== 'accepted' ||
+            accepted?.operationId !== body.operationId ||
+            accepted.executionId !== event.executionId
+          )
+            continue
+          executionId = event.executionId
+        }
+        if (event.executionId !== executionId) continue
+        latestSequence = event.sequence
         options?.onEvent?.(event)
         if (event.type === 'answer.delta') answer += event.text ?? ''
         if (event.type === 'tool') {
@@ -1042,12 +1062,23 @@ export function createChatApi(
       get<AiConversation>('/ai/conversations/' + encodeURIComponent(id)),
     modelHistory: (id: string) =>
       get<ModelHistoryUsage>('/ai/conversations/' + encodeURIComponent(id) + '/model-history'),
-    summarizeModelHistory: (id: string) =>
+    summarizeModelHistory: (id: string, operationId: string) =>
       client
         .post<ModelHistorySummary>(
           '/ai/conversations/' + encodeURIComponent(id) + '/model-history/summary',
-          {},
+          { operationId },
           { timeout: 60_000 },
+        )
+        .then((response) => response.data),
+    cancelModelHistorySummary: (id: string, operationId: string) =>
+      client
+        .post<{ cancelled: boolean; operationId: string }>(
+          '/ai/conversations/' +
+            encodeURIComponent(id) +
+            '/model-history/summary/' +
+            encodeURIComponent(operationId) +
+            '/cancel',
+          {},
         )
         .then((response) => response.data),
     clearModelHistory: (id: string) =>
@@ -1090,23 +1121,39 @@ export function createChatApi(
       client
         .post<AiConversation>('/ai/conversations', {}, { timeout: 10_000 })
         .then((response) => response.data),
+    webSources: () => get<import('./contracts/chatModels').WebSourceService[]>('/ai/web-sources'),
+    chatGraph: async (id: string) =>
+      validateChatGraph(
+        await get<ChatGraph>('/ai/conversations/' + encodeURIComponent(id) + '/graph'),
+        id,
+      ),
+    chatOperation: (id: string, operationId: string) =>
+      get<ChatGraphOperation>(
+        '/ai/conversations/' +
+          encodeURIComponent(id) +
+          '/operations/' +
+          encodeURIComponent(operationId),
+      ),
     sendAiMessage: (
       id: string,
-      message: string,
-      toolMode: AiToolMode,
-      context?: TaskContext,
+      request: ChatGraphRequest,
       options?: { signal?: AbortSignal; onEvent?: (event: ChatExecutionEvent) => void },
     ) =>
       postChatSse(
         client,
         '/ai/conversations/' + encodeURIComponent(id) + '/messages',
-        { message, toolMode, ...(context ? { context } : {}) },
+        request,
         options,
+        id,
       ),
-    cancelAiConversation: (id: string) =>
+    cancelAiExecution: (id: string, executionId: string) =>
       client
         .post<{ cancelled: boolean; executionId: string }>(
-          '/ai/conversations/' + encodeURIComponent(id) + '/cancel',
+          '/ai/conversations/' +
+            encodeURIComponent(id) +
+            '/executions/' +
+            encodeURIComponent(executionId) +
+            '/cancel',
           {},
         )
         .then((response) => response.data),

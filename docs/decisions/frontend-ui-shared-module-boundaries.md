@@ -65,6 +65,7 @@ FileUpload 的 `directory` 属性提供浏览器本地目录选择，保持 File
 | 内容 | 暂存位置 | 目标模块 | 触发抽包条件 |
 |---|---|---|---|
 | Dialog / Button / Input / Select / Textarea / Checkbox / Switch / FileInput / FileUpload / Slider / Scrollbar / InfiniteScroll / Tabs / Popover | `packages/ui`（已落地） | `@eap/ui` | — |
+| RichText / RichCode / Markdown、公式与图表安全渲染 | `packages/ui/src/rich-text`；从 `@eap/ui` 导出 RichText | L2 无领域展示，统一解析、代码复制、内容预算与 SVG 净化；消息身份、引用、附件与执行状态由应用槽位装配 | 当前授权切片直接定义完整公共能力，不增加应用私有渲染器或平行包；验证见[聊天重构记录](../records/chat-core-refactor-validation.md) |
 | `useFocusTrap` / `useEscClose` | `packages/ui/src/hooks`（Dialog 与 ConfirmBox 共用） | `@eap/hooks` | feature 需要同一陷阱时抽包；在此之前不得另写一份 |
 | ConnectionDialog | `apps/web/src/components/ConnectionDialog.vue`（薄包装 Dialog） | 保持薄包装；壳能力只在 Dialog | 出现第三处平行弹层实现时必须删平行实现 |
 | SessionPanel / WorkspaceWelcome / RepositoryBrowser | `apps/web/src/components/`（聊天装配与会话轨共用；领域状态仍在 `features/shell`） | SessionPanel 的 Dock/Rail 契约 → `@eap/layout`；仓库 API 与懒加载留应用，通用 Tree 已在 UI 包；文件浮层组装 Drawer | 第二工作台复用同一 Dock/Rail 契约时抽 layout 包 |
@@ -126,7 +127,7 @@ FileUpload 的 `directory` 属性提供浏览器本地目录选择，保持 File
 
 ## 6. `@eap/ui` 当前清单与扩展原则
 
-**已导出（实现事实以 `packages/ui/src/index.ts` 为准，共 38 个组件）**：Button（含公共语义变体和 size/active）、Badge、Tag、Feedback、Panel、MetricCard、EmptyState、StatusCard、ConfirmBox、Dialog、Input、Select、Textarea、Checkbox、Switch、FileInput、Slider、Scrollbar、InfiniteScroll、Tabs、Popover、Collapse、Pagination、Radio、Divider、Progress、Skeleton、Descriptions、WorkbenchFrame、DatePicker、Tree、Tooltip、Segmented、Splitter、Drawer、ActionCard、DropdownMenu、SvgActionPath。TreeNode / MenuAction 为类型导出；`useFocusTrap` / `useEscClose` 从同一入口导出，仍是 `@eap/hooks` 的暂存实现。
+**已导出（实现事实以 `packages/ui/src/index.ts` 为准，共 42 个组件）**：RichText、Icon、EditorWorkbench、FileUpload、Button（含公共语义变体和 size/active）、Badge、Tag、Feedback、Panel、MetricCard、EmptyState、StatusCard、ConfirmBox、Dialog、Input、Select、Textarea、Checkbox、Switch、FileInput、Slider、Scrollbar、InfiniteScroll、Tabs、Popover、Collapse、Pagination、Radio、Divider、Progress、Skeleton、Descriptions、WorkbenchFrame、DatePicker、Tree、Tooltip、Segmented、Splitter、Drawer、ActionCard、DropdownMenu、SvgActionPath。TreeNode / MenuAction 为类型导出；`useFocusTrap` / `useEscClose` 从同一入口导出，仍是 `@eap/hooks` 的暂存实现。
 
 **目录约定（防止平行实现）**：
 

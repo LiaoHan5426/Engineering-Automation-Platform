@@ -1,6 +1,6 @@
 # DSH 前端插件适配与 EAP 内置执行计划：确定路线
 
-日期：2026-11-14。**首个原client适配、升级差异工具及EAP内置执行计划已实现并技术验证，完整生态兼容及后续能力未完成，用户接受独立。** 不部署独立 DSH 宿主，不引入 DSH Agent/模型循环，不通过 SDK 运行原生 todo。插件集中到一个独立前端适配模块，任务计划由 EAP 内置。当前可运行的 G1 局部实现与验证仍见[交互决定](chat-context-plugins-and-progress.md)及[验证记录](../records/chat-g1-validation.md)。
+日期：2026-11-14。**首个原client适配、升级差异工具及EAP内置执行计划已实现并技术验证，本轮原ui-shortcuts/ui-file-actions也已进入源码，最终回归PENDING；完整生态兼容未完成，用户接受独立。** 不部署独立 DSH 宿主，不引入 DSH Agent/模型循环，不通过 SDK 运行原生 todo。插件集中到一个独立前端适配模块，任务计划由 EAP 内置。当前可运行的 G1 局部实现与验证仍见[交互决定](chat-context-plugins-and-progress.md)及[验证记录](../records/chat-g1-validation.md)。
 
 ## 1. 总体归属
 
@@ -100,3 +100,18 @@ P1固定使用该基线的`@deepseek-ai/dsh-client-ui-context-menu/client`，保
 | T2 后续按用户需求扩展 | 在统一合同上增加人工编辑、跨轮目标、子项等实际需要 | 每项变更有明确来源/冲突/生命周期及行为验收；不建立第二套todo系统 |
 
 本轮按实施授权完成P1、T1及P2的升级差异工具/同SHA演练；[验证记录](../records/chat-plugin-plan-validation.md)含184文件1135项前端、62项后端、真实隔离PostgreSQL18.6及同场景[计划](../evidence/chat-native-plan/README.md)/[菜单](../evidence/dsh-plugin-context/README.md)Before/After。新上游版本尚未出现，未宣称跨版本升级或全部DSH插件兼容。P2扩大插件/Skill/MCP实测、T2及消息图等后续范围仍待实际需求推进，用户接受不由测试替代。
+
+## 6. 本轮原 client 扩展与技术验证
+
+本轮范围覆盖聊天核心重构与更多插件兼容，保留单前端适配器、无独立DSH宿主、Java执行和EAP原生计划方向。本轮[源码审计](../../frontend/packages/dsh-adapter/compat/source-audit.json)与[兼容矩阵](../../frontend/packages/dsh-adapter/compat/matrix.json)增加原`ui-shortcuts`/`ui-file-actions`浏览器client，仍使用同一个React/Cordis岛；并非只列插件名称或重写一个下载按钮冒充原client。
+
+固定上游`39163dd30f703a79079e2d2446545cff3c453738`不变；审计记录原82项摘要不变，source roster扩至106项。该数字是受审源码清单，不是106个插件。升级到不同上游SHA仍未验证；摘要核对和实际命令结果见[当前记录](../records/chat-core-refactor-validation.md)；浏览器原快捷键及下载已实际验证，不由矩阵字段推导未测能力。
+
+| 原client | 实际接入及权威边界 | 保留限制 |
+|---|---|---|
+| ui-shortcuts | 原ShortcutsRow/ShortcutReference、浏览器快捷键服务与本机偏好，同岛注册settings项/overlay及shortcuts.open | 不接完整DSH设置壳或桌面键盘桥；参考表的上游条目不代表EAP都有对应命令；不写EAP后端配置 |
+| ui-file-actions | 原apply及BrowserFileActions；捕获当前消息后由有界Blob reader调用原fileActions.save | 只证明下载请求及字节，不证明本机保存完成；不暴露任意URL读取；无Remote workspace/session、desktop saveAs或native clipboard桥 |
+
+ui-commands、ui-theme、ui-settings及account通知依赖闭包未满足，审计明确不支持；Host-only Node provider仍不支持。来源、生命周期、缺服务拒绝、dispose/remount、单实例及窄屏真实交互已按当前受审范围验证。历史context-menu和内置PlanStore/工具/API/摘要已测结果保留，不能扩展成全插件兼容或用户接受。
+
+本轮前端全量194文件1167项、类型/边界及最终生产构建通过，覆盖当前受审适配包；不能因此扩大为未列插件或跨SHA兼容。浏览器同UUID滚动锚点偏移0.15625px通过，Mermaid标签、最终1440/390视觉及初始布局均通过，源码revision随提交归档。后端宿主仍有既有隐私断言失败及9项环境跳过；详见当前验证记录，不宣称全链全绿或用户接受。

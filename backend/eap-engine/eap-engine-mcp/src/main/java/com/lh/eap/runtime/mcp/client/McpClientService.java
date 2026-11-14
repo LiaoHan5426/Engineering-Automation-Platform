@@ -84,6 +84,50 @@ public class McpClientService {
         }
     }
 
+    /** Package-private entry used only by the bounded web adapter, never an arbitrary tools/call API. */
+    Map<String, Object> callWeb(UUID executionId, String expertId, McpWebBinding binding,
+                                Map<String, Object> arguments, java.util.function.BooleanSupplier currentlyAllowed) {
+        var scope = new McpCallScope(executionId, expertId, binding.serverId(), binding.capability());
+        authorizeWeb(scope, binding, currentlyAllowed);
+        var session = openSession(scope);
+        try {
+            var advertised = session.client().listTools().stream()
+                    .filter(item -> binding.tool().equals(item.get("name"))).toList();
+            if (advertised.size() != 1 || !binding.inputSchema().equals(advertised.getFirst().get("inputSchema")))
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, ToolErrors.TOOL_NOT_PUBLISHED.code());
+            // Discovery may block: recheck durable grants, endpoint and cancellation immediately before dispatch.
+            authorizeWeb(scope, binding, currentlyAllowed);
+            sessions.requireOwnership(scope, session);
+            var result = session.client().callTool(binding.tool(), arguments);
+            authorizeWeb(scope, binding, currentlyAllowed);
+            return result;
+        } finally {
+            sessions.requireOwnership(scope, session);
+        }
+    }
+
+    boolean webAuthorized(UUID executionId, String expertId, McpWebBinding binding,
+                          java.util.function.BooleanSupplier currentlyAllowed) {
+        try {
+            authorizeWeb(new McpCallScope(executionId, expertId, binding.serverId(), binding.capability()), binding, currentlyAllowed);
+            return true;
+        } catch (RuntimeException denied) { return false; }
+    }
+
+    private void authorizeWeb(McpCallScope scope, McpWebBinding binding,
+                              java.util.function.BooleanSupplier currentlyAllowed) {
+        if (!currentlyAllowed.getAsBoolean())
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_TOOL_NOT_AUTHORIZED.code());
+        authorize(scope);
+        var server = registry.find(scope.serverId()).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_SERVER_NOT_FOUND.code()));
+        if (!binding.approved() || !server.usable() || !server.endpoint().equals(binding.endpoint())
+                || !server.transport().equals(binding.transport())
+                || !registry.grants(scope.expertId()).contains(scope.capability())
+                || Thread.currentThread().isInterrupted())
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, McpErrors.MCP_TOOL_NOT_AUTHORIZED.code());
+    }
+
     public void beginExecution(UUID executionId, String expertId) {
         sessions.beginExecution(executionId, expertId);
     }

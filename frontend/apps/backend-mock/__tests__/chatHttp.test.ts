@@ -1,5 +1,5 @@
 import { expect, it } from 'vite-plus/test'
-import { createChatApi } from '@eap/runtime-client'
+import { createChatApi, type ChatGraphOperation } from '@eap/runtime-client'
 import { createMockChatBackend } from '../src/chatBackend'
 import { replyChatSse, replyJson, startChatHttpFixture } from './chatHttpFixture'
 
@@ -12,9 +12,15 @@ it('uses the shared runtime HTTP client for models, conversation, message and pr
       request.method === 'POST' &&
       request.url.endsWith('/messages') &&
       request.headers.accept === 'text/event-stream'
-    )
-      replyChatSse(response, reply.data)
-    else replyJson(response, reply.data, reply.status)
+    ) {
+      const conversationId = request.url.split('/')[3]!
+      const operation = await backend.handle(
+        'GET',
+        `/ai/conversations/${conversationId}/operations/${request.data!.operationId}`,
+      )
+      expect(operation.status).toBe(200)
+      replyChatSse(response, reply.data, conversationId, operation.data as ChatGraphOperation)
+    } else replyJson(response, reply.data, reply.status)
   })
   try {
     const api = createChatApi(fixture.baseURL)
@@ -27,11 +33,15 @@ it('uses the shared runtime HTTP client for models, conversation, message and pr
       'general-demo',
     )
     expect(assigned.model).toBe('general-demo')
-    const response = await api.sendAiMessage(
-      conversation.conversationId,
-      'Review a candidate',
-      'none',
-      {
+    const response = await api.sendAiMessage(conversation.conversationId, {
+      operationId: crypto.randomUUID(),
+      expectedRevision: 0,
+      kind: 'send',
+      parentMessageId: null,
+      targetMessageId: null,
+      message: 'Review a candidate',
+      toolMode: 'none',
+      context: {
         mode: 'code',
         expert: 'frontend',
         instructions: '',
@@ -41,7 +51,7 @@ it('uses the shared runtime HTTP client for models, conversation, message and pr
         prototypeVersionId: '',
         targetPath: '',
       },
-    )
+    })
     const plan = await api.chatPlan(conversation.conversationId, response.executionId!)
     expect(plan).toMatchObject({
       schemaVersion: 1,
@@ -61,6 +71,11 @@ it('uses the shared runtime HTTP client for models, conversation, message and pr
     expect(messageRequest.url).toBe(`/ai/conversations/${conversation.conversationId}/messages`)
     expect(messageRequest.headers.accept).toBe('text/event-stream')
     expect(messageRequest.data).toEqual({
+      operationId: expect.any(String),
+      expectedRevision: 0,
+      kind: 'send',
+      parentMessageId: null,
+      targetMessageId: null,
       message: 'Review a candidate',
       toolMode: 'none',
       context: {

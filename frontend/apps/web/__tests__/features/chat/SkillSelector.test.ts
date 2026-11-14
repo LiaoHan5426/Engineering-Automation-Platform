@@ -4,8 +4,9 @@ import { createApp, h, nextTick, type App } from 'vue'
 import { runtimeApi, type SkillSnapshot, type TaskContext } from '@eap/runtime-client'
 import { i18n } from '../../../src/lib/i18n'
 import TaskComposer from '../../../src/features/chat/TaskComposer.vue'
-import { createChatSession, type ChatApi } from '../../../src/features/chat/chatSession'
+import { createChatSession } from '../../../src/features/chat/chatSession'
 import { scenarios, currentExtras } from '../../../src/features/shell/workbench'
+import { graphServer } from './canonicalGraph.fixture'
 let app: App, host: HTMLDivElement
 afterEach(() => {
   app?.unmount()
@@ -43,21 +44,8 @@ async function click(id: string) {
   await nextTick()
 }
 async function setup() {
-  const send = vi.fn(async () => ({
-    answer: 'answer',
-    error: '',
-    status: 'SUCCEEDED',
-    executionId: null,
-    approval: '',
-    verification: '',
-    toolEvents: [],
-    artifacts: [],
-    artifactError: '',
-  }))
-  const session = createChatSession({
-    openAiConversation: async () => ({ conversationId: 'c1', workspaceLabel: '', memory: '' }),
-    sendAiMessage: send,
-  } as unknown as ChatApi)
+  const { api, send } = graphServer()
+  const session = createChatSession(api)
   await session.openConversation()
   session.draft.value = 'keep question'
   vi.spyOn(runtimeApi, 'skills').mockResolvedValue({ items: [{ ...snapshot, createdAt: '' }] })
@@ -168,9 +156,20 @@ it('selects through + skills, loads full text on demand, previews checked resour
   await session.send()
   expect(send.mock.calls[0]).toEqual([
     'c1',
-    'keep question',
-    'none',
-    expect.objectContaining({ skillRef, skillResourcePaths: ['guide.txt'], instructions: '' }),
+    expect.objectContaining({
+      operationId: expect.any(String),
+      expectedRevision: 0,
+      kind: 'send',
+      parentMessageId: null,
+      targetMessageId: null,
+      message: 'keep question',
+      toolMode: 'none',
+      context: expect.objectContaining({
+        skillRef,
+        skillResourcePaths: ['guide.txt'],
+        instructions: '',
+      }),
+    }),
     { signal: expect.any(AbortSignal), onEvent: expect.any(Function) },
   ])
   await click('skill-remove')

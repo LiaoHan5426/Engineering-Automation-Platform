@@ -1,6 +1,8 @@
 import type { Context, Service } from '@deepseek-ai/cordis'
 /** Narrow public type facade over the digest-checked original browser build. */
 export const contextMenu: { inject: string[]; apply(ctx: Context): void }
+export const shortcutReference: typeof contextMenu
+export const fileActions: typeof contextMenu
 export class LocaleRuntime {
   constructor(ctx: Context)
   setLocale(value: string): void

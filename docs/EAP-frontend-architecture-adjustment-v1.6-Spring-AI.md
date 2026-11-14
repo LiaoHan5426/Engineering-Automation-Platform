@@ -1,6 +1,6 @@
 # Engineering Automation Platform：当前产品与架构合同
 
-> 更新于2026-11-14。本文维护产品、架构合同及验收关口；工作项现状统一见[台账](planning-status.md#validation-baseline)，详细命令、失败和历史数字见[阶段验证记录](records/validation-history.md)。本轮核查的实现基线为`1496335`，已包含前后端接续实现；不再将已提交能力描述为工作区改动。本次只改文档，并完成开发准备与确定性检查；尚未关闭的缺陷、优化和验收前置条件见[问题台账](planning-status.md#next-work-register)，不提升历史业务验收结论。
+> 更新于2026-11-14。本文维护产品、架构合同及验收关口；工作项现状统一见[台账](planning-status.md#validation-baseline)，详细命令、失败和历史数字见[阶段验证记录](records/validation-history.md)。本轮核查的实现基线为`1496335`，已包含前后端接续实现；不再将已提交能力描述为工作区改动。这属于早期全库复核快照；PR #7 的聊天重构 BEFORE 为 `9e7257b`；本轮B/C/D/E主体及原浏览器client扩展已完成技术验证与同场景视觉证据，整体仍缺语音及实网服务，变更revision随提交归档，见[当前记录](records/chat-core-refactor-validation.md)；尚未关闭的缺陷、优化和验收前置条件见[问题台账](planning-status.md#next-work-register)，不提升历史业务验收结论。
 > **优先级：用户最新明确要求 → 本文 §0B 产品合同 → §0A 技术/执行边界 → 历史资料。** 五个固定一级入口 `code · 编程 / work · 办公 / 场景 / 专家 / 设置`；旧双入口、Builder 第六入口、M0/完整 Mission 前置、插件任意扩展一级导航均不再生效。
 > 本地确定性工具优先，必要时使用 LLM/外部 Agent，结果独立验证。原型先可点击并经人确认，再按实际缺口渐进实施；不授权全量重写、任意工具调用或第三方代码注入。
 
@@ -34,7 +34,7 @@ PL-01/PL-02与SC-03的历史提交及生命周期验证见[阶段记录](records
 
 | 工作项 | 本轮范围与当前状态 | 验收关口 |
 |---|---|---|
-| CT-02 DeepSeek聊天核心重做 | **G1及插件/内置计划首片已技术验证，整体未完成、用户接受独立**：聊天连接设置改为复用共享编辑器的Dialog，保留当前会话/草稿；摘要由最近ChatTurn投影真实执行状态并删除固定假步骤。源码范围、目录只读刷新、未保存/读回恢复及DSH兼容评估见[补充决定](decisions/chat-context-plugins-and-progress.md)。同场景真实Before/After见[连接](evidence/chat-model-context/README.md)与[执行摘要](evidence/chat-execution-summary/README.md) | [定向15文件189项、类型/架构/构建及1440/390浏览器](records/chat-g1-validation.md)通过，含键盘/离开/迟到结果、保存后读回及会话隔离；用户接受独立；其余聊天区域/富文本/分支/本机附件/MCP仍按[方案](decisions/deepseek-chat-adaptation.md)验收。用户已确定[独立前端DSH适配模块及升级、EAP内置计划](decisions/dsh-frontend-adaptation.md)，不引入独立DSH宿主；独立包/原context-menu/升级工具与持久PlanStore/工具/API/摘要已实施，[184文件1135项前端、62后端、真实PostgreSQL与Before/After](records/chat-plugin-plan-validation.md)通过；跨版本升级/更广插件、消息图和其余聊天重做未完成。真实服务、用户接受及CT-01持久接管独立 |
+| CT-02 DeepSeek聊天核心重做 | **本轮源码已实现 B/C/D/E 的主体及更多 DSH client；前端全量/类型/边界/最终构建已通过，整体未完成、用户接受独立。** 公共富文本、消息/输入/滚动、服务端消息图及分支、操作幂等和定向取消、本机附件及类型化图片转发、MCP网页服务/聊天回调已进入当前未提交工作区。单一前端 DSH 适配模块内新增原 ui-shortcuts/ui-file-actions，Java 执行和 EAP 内置计划方向保留；不部署独立 DSH 宿主。实际范围与源码边界见[当前记录](records/chat-core-refactor-validation.md) | 前端全量194文件1167项、类型/边界及最终生产构建通过；追加strict404正负用例后graphSession定向6项通过，单列不累加。后端宿主130项中1项既有隐私断言失败、9项环境跳过，上游附件/MCP定向25项通过；不宣称后端全绿。当前revision/实际命令归档、实库及最终视觉证据仍PENDING，Mermaid标签新修待真实浏览器复核，不据此标ready或用户接受。真实网页 MCP 服务、真实多模态供应商、语音 ASR/TTS及用户接受未验；跨版本升级/任意插件兼容不成立。历史 G1 的15文件189项及 P1/T1 的184文件1135项前端、62项后端只保留为[历史 G1](records/chat-g1-validation.md)/[插件计划证据](records/chat-plugin-plan-validation.md)，不覆盖新增路径；CT-01持久执行接管缺口独立 |
 
 ## 0A. Spring AI 与技术执行边界
 

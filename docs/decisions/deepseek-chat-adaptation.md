@@ -1,6 +1,6 @@
 # DeepSeek 聊天体验重做与前后端边界
 
-日期：2026-11-14。状态：**范围按用户本轮修订记录；技术方案持续修订；G1聊天内连接配置、真实执行摘要及后续首client适配/内置计划已局部实现，其他重构未实施，用户接受待确认。** 当前进度仅由[CT-02台账](../planning-status.md#ct-02-chat-adaptation)维护。本方案不将源码审阅、上游功能或既有测试升级为新增能力已完成。
+日期：2026-11-14。状态：**范围按用户本轮修订记录；技术方案持续修订；G1及首client/内置计划有历史技术证据；本轮B/C/D/E主体及更多原client已进入未提交工作区，前端全量/类型/边界/最终构建已通过，最终视觉/revision仍PENDING，整体未完成，用户接受独立。** 当前进度仅由[CT-02台账](../planning-status.md#ct-02-chat-adaptation)维护。本方案不将源码审阅、上游功能或既有测试升级为新增能力已完成。
 
 PR #7 后续人工评审新增三项规划范围：普通聊天操作优先 Dialog/Drawer，参照DSH会话区域与面板交互以减少重复开发，保留独立工作面的显式升级；深入评估 DSH 插件原包复用及宿主差异；将执行任务列表纳入摘要面板。具体源码评估、兼容矩阵和验收见[交互、插件与执行计划补充](chat-context-plugins-and-progress.md)，属于本方案的组成部分；局部G1实现与剩余范围见补充方案§5。
 
@@ -8,16 +8,16 @@ PR #7 后续人工评审新增三项规划范围：普通聊天操作优先 Dial
 
 用户明确要求：Markdown、代码块、公式、图表优先；消息排版、复制、输入与滚动以及编辑提问、重新生成、消息分支参照上游重做；会话导航、移动端、主题局部适配；图片和文件原件由前端本机保存，EAP Java后端不保存原件；按需搜索互联网网页、链接阅读和语音评估通过MCP接入。
 
-上游参考固定为 [deepseek-ai/chat-demo v0.1.1 / 5d5dd754](https://github.com/deepseek-ai/chat-demo/tree/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c)。原方案的EAP审阅基线为 `cc090d7da0a4c2b4d9e951d99730b466b5b1260c`（历史记录）；本次修订以 `29e097c30258ec918bd8ac7b8f8e6eb3b017b0f0` 为基线，开始时工作区干净。保留Vue 3、Vite+、Java/Spring AI和公共包职责；React组件按交互合同改写，适用的纯TypeScript逻辑选择性移植并保留来源及许可证。重做范围为聊天核心，不扩展到五入口全站重写。
+上游参考固定为 [deepseek-ai/chat-demo v0.1.1 / 5d5dd754](https://github.com/deepseek-ai/chat-demo/tree/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c)。原方案的EAP审阅基线为 `cc090d7da0a4c2b4d9e951d99730b466b5b1260c`（历史记录）；原方案修订以 `29e097c30258ec918bd8ac7b8f8e6eb3b017b0f0` 为历史基线。当时工作区干净不适用于本轮；本轮BEFORE为`9e7257b9fb45f138db04b6cfe57e1839c5261597`；实现与技术证据已归档，源码revision随提交记录。当前范围覆盖完整聊天核心重构与插件兼容。保留Vue 3、Vite+、Java/Spring AI和公共包职责；React组件按交互合同改写，适用的纯TypeScript逻辑选择性移植并保留来源及许可证。重做范围为聊天核心，不扩展到五入口全站重写。
 
 | 能力 | 源码事实 | 本轮目标 |
 |---|---|---|
-| 富文本 | [ChatWorkspace](../../frontend/apps/web/src/features/chat/ChatWorkspace.vue)以文本插值显示回答；上游有AST渲染、代码高亮、KaTeX和Mermaid | 定义统一富文本展示，处理流式未闭合内容及按需加载 |
+| 富文本 | [ChatWorkspace](../../frontend/apps/web/src/features/chat/ChatWorkspace.vue)已装配公共RichText；Markdown、代码高亮、KaTeX及手动严格Mermaid已实现，最终验证PENDING | 定义统一富文本展示，处理流式未闭合内容及按需加载 |
 | 消息与输入 | 当前ChatWorkspace承担消息、输入与工程证据装配；已有草稿及滚动保护 | 按上游重做消息区、操作区、输入区及滚动行为，工程证据通过明确区域装配 |
-| 编辑、重新生成、分支 | [chatSession](../../frontend/apps/web/src/features/chat/chatSession.ts)是线性ChatTurn；上游[branches.ts](https://github.com/deepseek-ai/chat-demo/blob/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c/src/services/chat/branches.ts)用父子关系选路径 | 新建分支、保留旧分支、上下文按分支构建，执行记录保持不可变关联 |
-| 附件 | [acceptFiles](../../frontend/apps/web/src/features/chat/acceptFiles.ts)拒绝媒体；[TaskContext](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/TaskContext.java)只接收name/content文本 | 前端保存原件，后端有限校验及调用时转发，按模型/解析能力限定可发送格式 |
-| 存储 | [chatHistory](../../frontend/apps/web/src/features/chat/chatHistory.ts)使用浏览器Storage；后端聊天会话和聊天事件日志为进程内Map（不代表任务、候选等领域证据均不持久） | 明确草稿、已发送消息、执行证据、附件原件各自权威来源；不双写两套可编辑消息历史 |
-| MCP | [McpClientService](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/mcp/client/McpClientService.java)已有会话隔离及矩阵授权；[生产Handler](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/handler/McpReadonlyHandler.java)仅桥接无参read_graph | 在现有调用路径扩展按需网页搜索/链接阅读及后续语音，不能把已登记或tools/list当已接通 |
+| 编辑、重新生成、分支 | [chatSession](../../frontend/apps/web/src/features/chat/chatSession.ts)已按服务端消息图投影所选分支；上游[branches.ts](https://github.com/deepseek-ai/chat-demo/blob/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c/src/services/chat/branches.ts)用父子关系选路径 | 新建分支、保留旧分支、上下文按分支构建，执行记录保持不可变关联 |
+| 附件 | [acceptFiles](../../frontend/apps/web/src/features/chat/acceptFiles.ts)保留文本校验；本轮chatAttachments增加本机图片，[TaskContext](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/TaskContext.java)已扩展附件元数据，图片原件经临时holder/类型化Media转发；最终验证PENDING | 前端保存原件，后端有限校验及调用时转发，按模型/解析能力限定可发送格式 |
+| 存储 | [chatHistory](../../frontend/apps/web/src/features/chat/chatHistory.ts)只保存偏好/草稿/分支选择，旧正文只读导出；后端V3消息图持久化，执行事件日志仍为进程内Map | 明确草稿、已发送消息、执行证据、附件原件各自权威来源；不双写两套可编辑消息历史 |
+| MCP | [McpClientService](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/mcp/client/McpClientService.java)已有隔离及矩阵授权，本轮新增网页服务及聊天回调；[原Handler](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/handler/McpReadonlyHandler.java)的read_graph不是网页工具入口 | 网页新集成最终验证PENDING，实际MCP服务未选；语音未实现，不能把登记/tools/list当实网可用 |
 
 上游也有前端本地原件与供应商文件两种身份：[db.ts](https://github.com/deepseek-ai/chat-demo/blob/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c/src/services/chat/db.ts)存IndexedDB Blob，[attachments.ts](https://github.com/deepseek-ai/chat-demo/blob/5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c/src/services/attachments.ts)通过供应商Files API上传。其选文件即上传的行为与EAP选择/上传分离合同冲突，适配时使用EAP明确操作合同。
 
@@ -92,7 +92,7 @@ C在实现前需明确以下合同，并同步DTO、HTTP/SSE、Mock和所有调�
 
 发送合同：选取/粘贴/拖入只添加本机材料；支持inline内容的模型在用户明确发送含附件消息时，经后端校验、有限内存转发；需要供应商Files API时，独立明确上传动作及远端保留/删除行为。EAP后端不保存原件，不代表第三方模型/MCP服务不保存。原件、Base64及音频不得落入请求日志、trace、持久模型记忆、执行快照或multipart临时文件；实现时验证框架缓存与临时文件行为，超限明确拒绝。
 
-后端仍需判断真实类型、大小/数量、模型能力和目标授权。当前[EngineeringChatService](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/EngineeringChatService.java)以字符串构造user消息，[Responses适配器](../../backend/eap-ai/eap-ai-model-openai/src/main/java/com/lh/eap/ai/OpenAiResponsesChatModel.java)也将USER/ASSISTANT序列化为文本；仅修改DTO或模型目录不能打通多模态。图片需贯通类型化prompt、预算、模型记忆策略及适配器序列化，并按连接/协议分别验证实际发出的多模态载荷；PDF/Office等需有可验证的解析器或供应商文件能力，不能仅增加扩展名即可宣称可读。远端模型/MCP看不到浏览器的File、blob URL或本机路径；必须按目标协议传输实际内容或可访问的受控引用。
+后端仍需判断真实类型、大小/数量、模型能力和目标授权。原评估时[EngineeringChatService](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/EngineeringChatService.java)以字符串构造user消息，[Responses适配器](../../backend/eap-ai/eap-ai-model-openai/src/main/java/com/lh/eap/ai/OpenAiResponsesChatModel.java)也将USER/ASSISTANT序列化为文本；仅修改DTO或模型目录不能打通多模态。图片需贯通类型化prompt、预算、模型记忆策略及适配器序列化，并按连接/协议分别验证实际发出的多模态载荷；PDF/Office等需有可验证的解析器或供应商文件能力，不能仅增加扩展名即可宣称可读。远端模型/MCP看不到浏览器的File、blob URL或本机路径；必须按目标协议传输实际内容或可访问的受控引用。
 
 后续分支生成若需要历史原件，由前端补给对应本机附件；已丢失且无有效供应商引用时明确阻止相关请求并要求重选，不能静默省略。后台/跨设备任务不假定能访问这些本机原件；持久执行另按CT-01边界设计。
 
@@ -104,7 +104,7 @@ C在实现前需明确以下合同，并同步DTO、HTTP/SSE、Mock和所有调�
 
 **搜索的业务含义是：在聊天回答需要外部资料或最新信息时，按需检索互联网网页。** 此处不包含仓库文件搜索、会话历史搜索或本地知识库检索；现有文件系统MCP的 `search_files` 和memory的 `read_graph` 均不能作为网页搜索实现。
 
-目标调用路径为 `前端 → EAP业务API → 受授权MCP客户端 → 网页搜索/网页读取/语音服务`，复用现有MCP客户端，但聊天调用链尚未接通。MCP负责接入，互联网搜索引擎、网页解析器、ASR/TTS仍由具体服务提供。
+网页资料当前源码路径为 `前端 → EAP业务API → Spring AI聊天工具回调 → 受授权MCP客户端 → 网页搜索/网页读取服务`，复用现有MCP客户端；新集成最终验证PENDING，语音尚未实现。MCP负责接入，互联网搜索引擎、网页解析器、ASR/TTS仍由具体服务提供。
 
 按需触发与回答合同：
 
@@ -124,7 +124,7 @@ MCP工具可以返回audio内容，但普通tools/call和Streamable HTTP不自�
 
 当前差距：`McpProtocolClient`声明2024-11-05协议；`McpClientService`调用超时固定5秒；现有生产矩阵包含echo、顺序思考、memory及文件系统有限工具，但 `McpReadonlyHandler` 仅桥接read_graph。不能通过删除生产授权门禁或仅凭工具名/只读注解放行新服务。应扩展既有精确授权与能力合同，核对协商版本、工具schema、结果内容类型及有界调用预算，然后完成真实工具调用。搜索结果只作为资料，不作为授权或指令。
 
-[EngineeringChatService](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/EngineeringChatService.java)目前装配Git/源码工具，现有Expert的McpReadonlyHandler不会自动变成聊天模型工具。E需要把选中工具schema、精确grant、参数校验、调用结果和引用接入现有Spring AI循环；不另建平行执行循环。[现有MCP会话](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/mcp/McpSessionRegistry.java)要求执行、专家、服务器三者隔离；Chat须由服务端解析可信专家/grant身份，不能把前端角色标签视作授权。新桥接必须保留Handler原有的持久grant复核，不得直接调用客户端而绕过；打开同一执行的资源作用域，并在成功/失败/取消时统一关闭。PLAN继续拒绝工具，未授权或原无工具范围不能因启用联网选项被自动升级，Responses等连接也须逐一核对实际工具能力。网页和工具返回中的指令不能获得审批或写入权限。读取服务需验证私网/本机/云元数据地址、重定向及DNS解析后的目标限制；具体限制由实际发起抓取的一侧强制执行，不能仅校验UI输入URL。
+[EngineeringChatService](../../backend/eap-ai/eap-ai-codegen/src/main/java/com/lh/eap/ai/EngineeringChatService.java)现已装配网页工具回调；现有Expert的McpReadonlyHandler不会自动变成聊天模型工具。E已在源码接入选中工具schema、精确grant、参数校验、调用结果和引用接入现有Spring AI循环；不另建平行执行循环。[现有MCP会话](../../backend/eap-engine/eap-engine-mcp/src/main/java/com/lh/eap/runtime/mcp/McpSessionRegistry.java)要求执行、专家、服务器三者隔离；Chat须由服务端解析可信专家/grant身份，不能把前端角色标签视作授权。新桥接必须保留Handler原有的持久grant复核，不得直接调用客户端而绕过；打开同一执行的资源作用域，并在成功/失败/取消时统一关闭。PLAN继续拒绝工具，未授权或原无工具范围不能因启用联网选项被自动升级，Responses等连接也须逐一核对实际工具能力。网页和工具返回中的指令不能获得审批或写入权限。读取服务需验证私网/本机/云元数据地址、重定向及DNS解析后的目标限制；具体限制由实际发起抓取的一侧强制执行，不能仅校验UI输入URL。
 
 网页搜索、链接阅读与语音所需的具体MCP服务/模型尚未选择，不能给出实网可用或延迟结论；选择与验证放入相应切片，不阻塞前面的展示与交互工作。
 
@@ -133,17 +133,17 @@ MCP工具可以返回audio内容，但普通tools/call和Streamable HTTP不自�
 | 顺序 | 交付范围 | 替换/保留与完成关口 |
 |---|---|---|
 | A 核心交互原型 | 消息、输入、滚动、分支切换、附件本机状态、窄屏；逐入口确定Dialog/Drawer/独立工作面，纳入真实执行/计划分区；确定富文本样例 | 可点击并明确模拟；用户核对交互。列表/已有会话/新会话/编辑取消/未保存/错误状态逐项验证，不能用静态截图接受 |
-| B 展示与输入生产切片 | 公共富文本及输入原语，新消息/输入/滚动实现 | 替换原纯文本展示和对应旧交互；保留现有执行合同及工程证据。浏览器验1440/390、输入法、复制、长内容、流式未闭合、HTML/危险URL、图表失败及滚动锚点 |
-| C 分支闭环 | 先定消息图存储、操作幂等、revision、执行级取消及事件关联合同，再做前后端消息图/上下文选路与投影 | 同批替换线性历史/上下文路径；验证根/深层分支、并发及过期编辑、响应丢失重试、迟到事件/取消、日志淘汰/重启的明确边界、清空/摘要/模型变更及敏感材料失效、审批/UNKNOWN和任务草稿保护；不宣称CT-01持久接管完成 |
-| D 本机附件 | IndexedDB原件、预览/重选/删除、受限转发，先文本及支持模型的图片 | 替换纯name/content附件合同；HTTP/Mock/测试同批更新。验证刷新、配额失败、缺失/重选校验、分支共享回收、上传重试及连接变更、后端无落盘/日志泄露及真实模型识别 |
-| E MCP网页资料 | 按需互联网网页搜索、链接阅读、引用卡片及聊天上下文接入 | 复用并扩展现有MCP调用/授权；验证无需联网时零调用、明确要求搜索、授权范围内按需触发、关闭/撤权后不调用、直接链接阅读、搜索→按需读页→引用，以及无结果/失败/超时/取消；真实服务初始化、发现、调用与引用一致性分别验 |
-| F MCP语音 | 录音→ASR草稿；回答→TTS播放 | 与网页搜索的授权和内容类型分别建合同；实测音频、失败、停止、刷新/离开释放资源；不扩大为实时通话承诺 |
+| B 展示与输入生产切片（源码已实现，最终验证PENDING） | 公共富文本及输入原语，新消息/输入/滚动实现 | 替换原纯文本展示和对应旧交互；保留现有执行合同及工程证据。浏览器验1440/390、输入法、复制、长内容、流式未闭合、HTML/危险URL、图表失败及滚动锚点 |
+| C 分支闭环（源码已实现，最终验证PENDING） | 先定消息图存储、操作幂等、revision、执行级取消及事件关联合同，再做前后端消息图/上下文选路与投影 | 同批替换线性历史/上下文路径；验证根/深层分支、并发及过期编辑、响应丢失重试、迟到事件/取消、日志淘汰/重启的明确边界、清空/摘要/模型变更及敏感材料失效、审批/UNKNOWN和任务草稿保护；不宣称CT-01持久接管完成 |
+| D 本机附件（源码已实现，最终验证PENDING） | IndexedDB原件、预览/重选/删除、受限转发，先文本及支持模型的图片 | 替换纯name/content附件合同；HTTP/Mock/测试同批更新。验证刷新、配额失败、缺失/重选校验、分支共享回收、上传重试及连接变更、后端无落盘/日志泄露及真实模型识别 |
+| E MCP网页资料（服务/回调已实现，集成及实网验证PENDING） | 按需互联网网页搜索、链接阅读、引用卡片及聊天上下文接入 | 复用并扩展现有MCP调用/授权；验证无需联网时零调用、明确要求搜索、授权范围内按需触发、关闭/撤权后不调用、直接链接阅读、搜索→按需读页→引用，以及无结果/失败/超时/取消；真实服务初始化、发现、调用与引用一致性分别验 |
+| F MCP语音（未实现） | 录音→ASR草稿；回答→TTS播放 | 与网页搜索的授权和内容类型分别建合同；实测音频、失败、停止、刷新/离开释放资源；不扩大为实时通话承诺 |
 
 A→B先取得交互证据；C依赖协议/存储合同评审，D生产发送依赖C稳定消息与附件引用（本机存储可独立验证），E依赖C的执行关联且可独立于D，F依赖音频转发及资源合同，不要求先完成网页搜索。未选MCP服务不阻塞B/C。每片列出被替换入口、调用方及回归清单；UI交付保留同场景/视口/主题的真实Before/After，并标识基线与变更revision。
 
 这是一个连续改造范围的分批验收顺序，不把当前讨论理解为“只做富文本”。新增界面先满足A的交互接受，再实施对应生产切片；技术检查、确定性HTTP夹具、真实供应商/MCP及用户接受分别记账。用户本轮要求优先于旧规划中“仅局部借鉴聊天”的建议。
 
-G 扩展与执行计划按[确定路线](dsh-frontend-adaptation.md)推进：独立前端模块集中DSH基线/浏览器兼容/升级，Java保留执行和审批，计划由EAP内置。用户已排除独立DSH宿主和SDK todo试点；原包client按依赖闭包验证，Host能力逐项适配，不能承诺所有原包零修改。现有G1及未实施范围见[补充方案](chat-context-plugins-and-progress.md)。
+G 扩展与执行计划按[确定路线](dsh-frontend-adaptation.md)推进：独立前端模块集中DSH基线/浏览器兼容/升级，Java保留执行和审批，计划由EAP内置。用户已排除独立DSH宿主和SDK todo试点；原包client按依赖闭包验证，Host能力逐项适配，不能承诺所有原包零修改。现有G1历史范围见[补充方案](chat-context-plugins-and-progress.md)。
 
 ## 7. 验证入口与证据
 
@@ -157,4 +157,14 @@ G1实施结果与同场景Before/After见[聊天内连接配置](../evidence/cha
 
 参考资料：[OPFS边界](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system)、[浏览器目录选择](https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker)、[MCP工具与音频结果](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)。
 
-后续实施证据：[DSH前端首client与EAP内置计划](../records/chat-plugin-plan-validation.md)。这不关闭消息图、完整聊天区域/富文本、多模态/MCP与用户接受，DSH Node/SDK宿主不是本路线。
+后续实施证据：[DSH前端首client与EAP内置计划](../records/chat-plugin-plan-validation.md)。该历史记录不证明本轮消息图、聊天区域/富文本、多模态/MCP最终验证或用户接受，DSH Node/SDK宿主不是本路线。
+
+## 8. 本轮扩展实施与技术验证
+
+[当前验证记录](../records/chat-core-refactor-validation.md)与[同场景证据索引](../evidence/chat-core-refactor/README.md)维护本轮实现、实际结果与剩余服务条件。SQL消息图是已发送消息唯一权威；`POST messages`使用operationId、expectedRevision、kind、parentMessageId/targetMessageId和规范化载荷精确SHA-256去重；GET图/操作用于刷新与响应丢失核对，分支上下文从所选祖先构建。accepted/SSE关联与执行级取消、摘要operation级取消已进入源码。重启后完成图可读不等于持久执行日志或恢复推理。
+
+通用富文本归`@eap/ui`，不在feature复制渲染器；消息图投影和附件IndexedDB域存储留Chat feature。旧浏览器正文只读导出，不回灌服务端图或双写。附件本机原件与元数据分离；后端只有请求内原件校验/类型化转发，模型图片能力显式声明、默认false，不以扩展名/模型名称推断。临时文本/图片holder、实际provider窗口预算及无持久原件回归已通过；真实供应商识别未验，不能声称任意文件/图片均可发送。
+
+网页工具新增approved固定绑定与schema/digest核对，服务端可信专家属性`eap.ai.chat.mcp-expert-id`默认空，绑定`eap.mcp.web.bindings`默认空列表；前端选择只表达意图，不成为授权。GET web-sources仅投影可用性，不探测远端协议。服务与Spring AI回调路径已实现，新增服务/回调及媒体定向25项、隔离H2消息图9项已通过；真实外部服务未验；具体网页MCP服务及ASR/TTS均未选择，语音未实现。
+
+本轮已取得前端194文件1167项全量、类型/边界及最终生产构建通过；追加strict404正负用例后的graphSession6项通过单列不累加。后端上游附件/MCP25项通过，宿主130项中1项既有workspacePath隐私断言失败、9项环境跳过，未取得后端全绿。浏览器同一消息UUID锚点偏移0.15625px低于保留的3px阈值；Mermaid A/B标签、1440/390真实最终AFTER、初始模型/发送可见性及宿主无隐藏滚动已验证；源码revision随提交归档，见当前验证记录。
