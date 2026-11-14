@@ -2,7 +2,7 @@
 
 日期：2026-11-14。配置、语音操作与双视口浏览器技术检查已通过，用户验收另行确认。实现范围、命令与限制见[验证记录](../../records/chat-service-config-validation.md)。本目录保留前轮聊天核心与0f7defa的历史结果。
 
-BEFORE来自真实应用 `dfa9612c25cd12be1822bd16fc14fcd07dc5b133`；AFTER实现提交由验证记录关联。两侧使用同一canonical会话、回答、草稿及保持禁用/不信任的web-review服务器，浅色主题，视口1440×1000与390×1000。页面使用真实应用代码与受控HTTP响应；请求守卫阻止真实模型、MCP和其他非预期写操作。
+BEFORE来自真实应用 `dfa9612c25cd12be1822bd16fc14fcd07dc5b133`；AFTER实现为 [`13b188cd21355c6779a34a97da0ba16d70939f49`](https://github.com/LiaoHan5426/Engineering-Automation-Platform/commit/13b188cd21355c6779a34a97da0ba16d70939f49)，545个清单源码文件已与该提交逐个核对一致。两侧使用同一canonical会话、回答、草稿及保持禁用/不信任的web-review服务器，浅色主题，视口1440×1000与390×1000。页面使用真实应用代码与受控HTTP响应；请求守卫阻止真实模型、MCP和其他非预期写操作。
 
 | 场景 | Before 1440 | After 1440 | Before 390 | After 390 |
 |---|---|---|---|---|

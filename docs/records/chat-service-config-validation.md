@@ -4,7 +4,7 @@
 
 ## 1. 基线与范围
 
-本轮在既有聊天重构之后继续实现可预留、可编辑的服务配置及ASR/TTS操作。实际BEFORE为 `dfa9612c25cd12be1822bd16fc14fcd07dc5b133`，新增代码尚未提交；最终提交revision与未列命令原文归档 **PENDING**；父任务报告最终浏览器生产源码树摘要为 `3621149bbab3b913b0df12db78fe5f01973e276b9611d2deb6e98f9f14f0fde8`，最终捕获标志为true。前轮 `0f7defa` 的[聊天核心验证](chat-core-refactor-validation.md)与图像是保留历史，不能用本轮结果覆盖当时“语音未实现”或旧命令、失败、测试数字。
+本轮在既有聊天重构之后继续实现可预留、可编辑的服务配置及ASR/TTS操作。实际BEFORE为 `dfa9612c25cd12be1822bd16fc14fcd07dc5b133`，最终实现提交为 [`13b188cd21355c6779a34a97da0ba16d70939f49`](https://github.com/LiaoHan5426/Engineering-Automation-Platform/commit/13b188cd21355c6779a34a97da0ba16d70939f49)，后续只关联证据版本。已使用 `git show <revision>:<path>` 独立核对清单内545个源码文件的SHA-256全部一致；最终浏览器生产源码树摘要为 `3621149bbab3b913b0df12db78fe5f01973e276b9611d2deb6e98f9f14f0fde8`，最终捕获标志为true。前轮 `0f7defa` 的[聊天核心验证](chat-core-refactor-validation.md)与图像是保留历史，不能用本轮结果覆盖当时“语音未实现”或旧命令、失败、测试数字。
 
 仍保留Vue、Java/Spring AI、一个DSH前端适配器与EAP内置计划；本轮没有扩大DSH原包兼容范围，没有独立宿主或第二模型循环。语音操作直接调用受授权MCP服务，不通过聊天模型生成工具参数，不自动发送识别结果到聊天。
 
