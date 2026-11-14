@@ -1,6 +1,6 @@
 # 聊天内连接配置：Before / After
 
-基线：`34fb18fbde034df4dfb7c8b07caa24c53a25e306`。After为本PR的G1共享编辑器实现；最终变更提交及验证结果由PR说明标识。
+基线：`34fb18fbde034df4dfb7c8b07caa24c53a25e306`。After：`f8d4712e1b6974522c2b950c3c2e05e30ed9006a`，本PR的G1共享编辑器实现；截图采集于该提交的相同源码工作树。随后提交仅补齐证据版本引用。
 
 相同场景：实际应用`#chat`、未选择模型、草稿`Keep this draft while configuring a connection`，点击模型选择器中的连接设置入口。相同浅色主题，1440×1000及390×1000。只读HTTP夹具返回空连接目录，其余请求返回明确失败；无真实凭据、后端写入、模型或供应商调用。
 
