@@ -232,6 +232,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     storageError.value = true
   }
   let restoration = saved ? { activeId: saved.activeId, scratch: saved.scratch } : null
+  let scratch = saved?.scratch
   saved = null
   watch(
     context,
@@ -249,7 +250,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       items: history.value,
       transcripts: transcripts.value,
       activeId: conversationId.value ?? undefined,
-      scratch: conversationId.value ? undefined : { draft: draft.value, context: context.value },
+      scratch: conversationId.value ? scratch : { draft: draft.value, context: context.value },
     }),
     () => {
       storageError.value = true
@@ -316,9 +317,11 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     conversationId.value ? inflight.value[conversationId.value] != null : false,
   )
 
+  let restoringSelection = false
   async function restoreLastConversation() {
     const startup = restoration
     restoration = null
+    restoringSelection = true
     try {
       if (
         startup?.activeId &&
@@ -331,6 +334,8 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       }
     } catch {
       storageError.value = true
+    } finally {
+      restoringSelection = false
     }
   }
 
@@ -350,23 +355,29 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
     }
   }
 
+  function rememberScratch() {
+    if (!conversationId.value && !restoringSelection)
+      scratch = { draft: draft.value, context: JSON.parse(JSON.stringify(context.value)) }
+  }
   function beginDraft() {
+    rememberScratch()
     selectionVersion++
     sessionUnavailable.value = false
     checkingConversation.value = false
     reconnectNotice.value = ''
     conversationId.value = null
-    draft.value = ''
+    draft.value = scratch?.draft ?? ''
     expired.value = false
     failure.value = ''
     pendingConnectionId.value = null
     targetNotice.value = ''
-    context.value = emptyContext()
+    context.value = { ...emptyContext(), ...structuredClone(scratch?.context ?? {}) }
   }
 
   async function openConversation() {
     if (opening.value) throw new Error(ChatErrors.CONVERSATION_BUSY)
     opening.value = true
+    const origin = selectionVersion
     try {
       const created = await api.openAiConversation()
       history.value.unshift({
@@ -380,6 +391,9 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
         connectionId: created.connectionId ?? null,
         model: created.model ?? '',
       })
+      transcripts.value = { ...transcripts.value, [created.conversationId]: [] }
+      if (origin !== selectionVersion) return created
+      scratch = undefined
       conversationId.value = created.conversationId
       selectionVersion++
       sessionUnavailable.value = false
@@ -427,6 +441,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
   async function selectConversation(id: string) {
     if (!transcripts.value[id]) return
     if (conversationId.value === id) return recheckConversation()
+    rememberScratch()
     selectionVersion++
     reconnectNotice.value = ''
     conversationId.value = id
@@ -698,8 +713,13 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
       const selectedContext = JSON.parse(JSON.stringify(context.value)) as TaskContext
       const nextId = pendingConnectionId.value
       const nextModel = pendingModel.value
+      const origin = selectionVersion
+      let openedId: string | undefined
       try {
-        await openConversation()
+        const created = await openConversation()
+        openedId = created.conversationId
+        if (selectionVersion !== origin + 1 || conversationId.value !== created.conversationId)
+          return
         draft.value = text
         context.value = selectedContext
         if (nextId) {
@@ -707,6 +727,7 @@ export function createChatSession(api: ChatApi, storage?: Pick<Storage, 'getItem
           await confirmConnectionChange()
         }
       } catch {
+        if (selectionVersion !== origin && conversationId.value !== openedId) return
         draft.value = text
         context.value = selectedContext
         failure.value = 'failed'

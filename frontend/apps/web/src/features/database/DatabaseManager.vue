@@ -16,6 +16,8 @@ import {
 import { errorMessage } from '../../lib/presentation'
 const { t } = useI18n()
 const editTab = ref('profile')
+const loading = ref(false)
+const loadError = ref('')
 const discardOpen = ref(false)
 function confirmDiscard() {
   discardOpen.value = false
@@ -85,10 +87,15 @@ async function askDelete() {
   deleteOpen.value = true
 }
 async function refresh() {
+  if (loading.value) return
+  loading.value = true
+  loadError.value = ''
   try {
     items.value = (await runtimeApi.databases()).items
   } catch (error) {
-    message.value = errorMessage(error)
+    loadError.value = errorMessage(error)
+  } finally {
+    loading.value = false
   }
 }
 function create() {
@@ -209,7 +216,12 @@ onMounted(refresh)
         <strong>{{ item.label }}</strong
         ><small>{{ item.engine }} · {{ item.environment }}</small>
       </Button>
-      <EmptyState v-if="!items.length">
+      <p v-if="loading" role="status">{{ t('product.loading') }}</p>
+      <Feedback v-if="loadError" tone="error">{{ loadError }}</Feedback>
+      <Button v-if="loadError" :disabled="loading" @click="refresh">{{
+        t('product.retry')
+      }}</Button>
+      <EmptyState v-if="!items.length && !loading && !loadError">
         暂无资料。可登记脱敏表结构和索引，不需要提供连接凭据。
       </EmptyState>
     </aside>

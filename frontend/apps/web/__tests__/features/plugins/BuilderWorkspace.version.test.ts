@@ -272,6 +272,22 @@ describe('builder version preview', () => {
     expect(root!.querySelector('[data-testid="version-preview"]')).toBeNull()
   })
 
+  it('clears an old opening error when retry succeeds', async () => {
+    const item = version('retry', 'Retry version')
+    await mount([item])
+    const read = vi
+      .spyOn(runtimeApi, 'prototypeVersion')
+      .mockRejectedValueOnce(new Error('failed opening'))
+    openButton('Retry version').click()
+    await settled()
+    expect(root!.querySelector('[data-testid="version-note"]')).not.toBeNull()
+    read.mockResolvedValueOnce(item)
+    openButton('Retry version').click()
+    await settled()
+    expect(root!.querySelector('[data-testid="version-preview"]')).not.toBeNull()
+    expect(root!.querySelector('[data-testid="version-note"]')).toBeNull()
+  })
+
   it('rejects text-only versions for preview, chat and delivery', async () => {
     const invalid = { ...version('old', '旧版本'), body: 'plain old text' }
     await mount([invalid])

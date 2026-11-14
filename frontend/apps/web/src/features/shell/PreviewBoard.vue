@@ -48,6 +48,8 @@ const query = ref(''),
   note = ref('')
 const priorityFilter = ref<'all' | 'p0' | 'p1' | 'p2'>('all')
 const prototypePending = ref(false)
+const prototypeBusy = ref(false)
+const prototypePanel = ref<{ discard: () => void }>()
 const codePending = ref(false)
 const detailTab = ref('preparation')
 const preparingCode = ref(false)
@@ -119,10 +121,27 @@ const dirty = computed(
 )
 const stale = computed(() => !!selected.value && draftRevision.value !== selected.value.revision)
 function guarded(action: () => void) {
-  if (busy.value || codePending.value) return
-  if (dirty.value) pendingAction.value = action
+  if (busy.value || prototypeBusy.value || codePending.value) return
+  if (dirty.value || prototypePending.value) pendingAction.value = action
   else action()
 }
+function guardLeave(onDiscard?: () => void) {
+  if (busy.value || prototypeBusy.value || codePending.value || createRequest.value) return false
+  const createDirty =
+    creating.value && !handoffActive.value && !!(title.value || newGoal.value || newCriteria.value)
+  if (!dirty.value && !prototypePending.value && !createDirty) return true
+  pendingAction.value = () => {
+    if (createDirty) {
+      title.value = ''
+      newGoal.value = ''
+      newCriteria.value = ''
+      creating.value = false
+    }
+    onDiscard?.()
+  }
+  return false
+}
+defineExpose({ guardLeave })
 function closeDetail() {
   cancelGoalOptimization()
   guarded(() => {
@@ -133,6 +152,7 @@ function closeDetail() {
 function discardEdits() {
   const action = pendingAction.value
   pendingAction.value = null
+  prototypePanel.value?.discard()
   if (selected.value) writeBoardEdit(draftStore, selected.value.id, apiStorageScope, null)
   useLatest()
   action?.()
@@ -326,10 +346,17 @@ function optimizationMatches(binding: GoalOptimization) {
   if (busy.value || binding.projectId !== projectId.value) return false
   if (!binding.taskId)
     return creating.value && !createRequest.value && newGoal.value === binding.text
-  return !!selected.value && !creating.value && !selected.value.executionActive && !stale.value &&
-    selected.value.id === binding.taskId && selected.value.revision === binding.revision &&
-    draftRevision.value === binding.draftRevision && draftGoal.value === binding.text &&
+  return (
+    !!selected.value &&
+    !creating.value &&
+    !selected.value.executionActive &&
+    !stale.value &&
+    selected.value.id === binding.taskId &&
+    selected.value.revision === binding.revision &&
+    draftRevision.value === binding.draftRevision &&
+    draftGoal.value === binding.text &&
     goalEditEpoch === binding.editEpoch
+  )
 }
 function cancelGoalOptimization() {
   const pending = goalOptimization
@@ -346,10 +373,15 @@ function cancelGoalOptimization() {
 async function optimizeGoal(edit = false) {
   const text = edit ? draftGoal.value : newGoal.value
   if (
-    busy.value || optimizingGoal.value || !text.trim() || text.length > 4000 ||
-    (edit ? !selected.value || creating.value || stale.value || selected.value.executionActive
+    busy.value ||
+    optimizingGoal.value ||
+    !text.trim() ||
+    text.length > 4000 ||
+    (edit
+      ? !selected.value || creating.value || stale.value || selected.value.executionActive
       : !creating.value || !!createRequest.value)
-  ) return
+  )
+    return
   cancelGoalOptimization()
   const pending: GoalOptimization = {
     id: crypto.randomUUID(),
@@ -421,13 +453,26 @@ const previewProjects = computed(() => {
 })
 const selected = computed(() => rows.value.find((item) => item.id === selectedId.value))
 // Synchronous invalidation catches edits even when the text is immediately restored (ABA).
-watch(draftGoal, () => {
-  goalEditEpoch++
-  cancelGoalOptimization()
-}, { flush: 'sync' })
-watch([projectId, selectedId, draftRevision, busy,
-  () => selected.value?.revision, () => selected.value?.executionActive],
-  cancelGoalOptimization, { flush: 'sync' })
+watch(
+  draftGoal,
+  () => {
+    goalEditEpoch++
+    cancelGoalOptimization()
+  },
+  { flush: 'sync' },
+)
+watch(
+  [
+    projectId,
+    selectedId,
+    draftRevision,
+    busy,
+    () => selected.value?.revision,
+    () => selected.value?.executionActive,
+  ],
+  cancelGoalOptimization,
+  { flush: 'sync' },
+)
 const tasks = computed(() => {
   const needle = query.value.trim().toLowerCase()
   return rows.value.filter((item) => {
@@ -1055,13 +1100,14 @@ function open(task: BoardTask, selection?: CodePreparationSelection, planning = 
     <Dialog
       v-if="selected"
       :title="selected.title"
-      :busy="busy || !!pendingAction || codePending"
+      :busy="busy || !!pendingAction || codePending || prototypeBusy"
       :close-label="t('preview.close')"
       close-test-id="board-close-detail"
       size="lg"
       data-testid="board-detail-dialog"
       @close="closeDetail"
     >
+      <Feedback v-if="note" tone="warning" data-testid="board-detail-note">{{ note }}</Feedback>
       <div class="board-detail" data-testid="board-detail">
         <Tabs
           v-model="detailTab"
@@ -1113,26 +1159,62 @@ function open(task: BoardTask, selection?: CodePreparationSelection, planning = 
           >
           <div class="new-task-form__goal-heading">
             <label for="task-goal">{{ t('desktop.boardGoal') }}</label>
-            <Button size="sm" variant="secondary" data-testid="task-goal-optimize"
-              :disabled="busy || selected.executionActive || stale || optimizingGoal || !draftGoal.trim() || draftGoal.length > 4000"
-              @click="optimizeGoal(true)">{{ t('desktop.boardOptimizeGoal') }}</Button>
-            <Button v-if="optimizingGoal" size="sm" data-testid="task-goal-cancel"
-              @click="cancelGoalOptimization">{{ t('desktop.boardOptimizeCancel') }}</Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              data-testid="task-goal-optimize"
+              :disabled="
+                busy ||
+                selected.executionActive ||
+                stale ||
+                optimizingGoal ||
+                !draftGoal.trim() ||
+                draftGoal.length > 4000
+              "
+              @click="optimizeGoal(true)"
+              >{{ t('desktop.boardOptimizeGoal') }}</Button
+            >
+            <Button
+              v-if="optimizingGoal"
+              size="sm"
+              data-testid="task-goal-cancel"
+              @click="cancelGoalOptimization"
+              >{{ t('desktop.boardOptimizeCancel') }}</Button
+            >
           </div>
-          <Textarea id="task-goal" v-model="draftGoal" data-testid="task-goal"
-            :disabled="busy || selected.executionActive" rows="3" maxlength="4000" />
+          <Textarea
+            id="task-goal"
+            v-model="draftGoal"
+            data-testid="task-goal"
+            :disabled="busy || selected.executionActive"
+            rows="3"
+            maxlength="4000"
+          />
           <p v-if="optimizingGoal" role="status">{{ t('desktop.boardOptimizingGoal') }}</p>
-          <Feedback v-if="goalOptimizationError" tone="error" data-testid="task-goal-optimize-error">
+          <Feedback
+            v-if="goalOptimizationError"
+            tone="error"
+            data-testid="task-goal-optimize-error"
+          >
             {{ t('desktop.boardOptimizeFailed') }}
           </Feedback>
-          <section v-if="goalSuggestion" data-testid="task-goal-suggestion"
-            class="new-task-form__suggestion" aria-live="polite">
+          <section
+            v-if="goalSuggestion"
+            data-testid="task-goal-suggestion"
+            class="new-task-form__suggestion"
+            aria-live="polite"
+          >
             <strong>{{ t('desktop.boardGoalSuggestion') }}</strong>
             <p>{{ goalSuggestion }}</p>
             <p>{{ t('desktop.boardGoalDraftHint') }}</p>
             <div class="new-task-form__actions">
-              <Button size="sm" variant="primary" data-testid="task-goal-adopt"
-                :disabled="busy || selected.executionActive || stale" @click="adoptGoalSuggestion">
+              <Button
+                size="sm"
+                variant="primary"
+                data-testid="task-goal-adopt"
+                :disabled="busy || selected.executionActive || stale"
+                @click="adoptGoalSuggestion"
+              >
                 {{ t('desktop.boardGoalAdopt') }}
               </Button>
               <Button size="sm" data-testid="task-goal-discard" @click="cancelGoalOptimization">
@@ -1255,12 +1337,14 @@ function open(task: BoardTask, selection?: CodePreparationSelection, planning = 
           :inert="detailTab !== 'prototype'"
         >
           <BoardPrototypePanel
+            ref="prototypePanel"
             :key="selected.id + '-prototype'"
             :task="selected"
             :disabled="busy || dirty || stale"
             @saved="prototypeSaved"
             @refresh="load"
             @pending="prototypePending = $event"
+            @busy="prototypeBusy = $event"
           />
         </section>
         <section

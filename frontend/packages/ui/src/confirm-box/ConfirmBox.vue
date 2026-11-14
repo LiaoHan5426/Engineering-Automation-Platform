@@ -25,7 +25,7 @@ const emit = defineEmits<{ confirm: []; cancel: [] }>()
 const root = ref<HTMLElement | null>(null)
 /** Client moves the layer to body so it stacks above Dialog. SSR keeps it inline for string assertions. */
 const portaled = typeof document !== 'undefined'
-const { onKeydown } = useFocusTrap(root, {
+const { onKeydown, active } = useFocusTrap(root, {
   onEscape: () => {
     if (!props.busy) emit('cancel')
   },
@@ -36,6 +36,7 @@ const { onKeydown } = useFocusTrap(root, {
 <template>
   <Teleport :to="teleportTo ?? 'body'" :disabled="!portaled">
     <div
+      v-show="active"
       ref="root"
       class="eap-confirm"
       role="dialog"

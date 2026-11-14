@@ -1,0 +1,32 @@
+[
+  {
+    "phase": "before",
+    "width": 1440,
+    "simulatedHttp": true,
+    "rawDirty": false,
+    "rawRetained": false,
+    "closePrompt": false,
+    "latestSelectionRetained": false,
+    "submittedSnapshot": "Submitted browser title",
+    "laterEditRetained": false,
+    "laterEditDirty": false,
+    "overflow": false,
+    "pageErrors": [],
+    "unexpectedWrites": []
+  },
+  {
+    "phase": "before",
+    "width": 390,
+    "simulatedHttp": true,
+    "rawDirty": false,
+    "rawRetained": false,
+    "closePrompt": false,
+    "latestSelectionRetained": false,
+    "submittedSnapshot": "Submitted browser title",
+    "laterEditRetained": false,
+    "laterEditDirty": false,
+    "overflow": false,
+    "pageErrors": [],
+    "unexpectedWrites": []
+  }
+]

@@ -119,6 +119,14 @@ const pages = computed(() => [
 ])
 const hashView = typeof location !== 'undefined' ? location.hash.slice(1).split('?')[0]! : ''
 const activeView = ref(isKnownHash(hashView) ? hashView : DEFAULT_VIEW)
+let acceptedHash = typeof location !== 'undefined' ? location.hash : ''
+const modelSettings = ref<{ guardLeave: (onDiscard?: () => void) => boolean } | null>(null)
+const projectBoard = ref<{ guardLeave: (onDiscard?: () => void) => boolean } | null>(null)
+function guardWorkspaceLeave(view: string, onDiscard: () => void) {
+  const target =
+    view === 'model-settings' ? modelSettings.value : view === 'board' ? projectBoard.value : null
+  return target?.guardLeave?.(onDiscard) ?? true
+}
 if (activeView.value === 'work') {
   workbench.workMode = 'work'
   activeView.value = 'chat'
@@ -178,6 +186,15 @@ const inspector = computed(
 )
 const taskViews = new Set(['chat', 'sql', 'board'])
 watch(activeView, (value, previous) => {
+  if (
+    previous !== value &&
+    !guardWorkspaceLeave(previous, () => {
+      activeView.value = value
+    })
+  ) {
+    activeView.value = previous
+    return
+  }
   if (previous !== value && !(pluginSlot.value?.guardLeave(previous) ?? true)) {
     activeView.value = previous
     return
@@ -206,9 +223,20 @@ watch(activeView, (value, previous) => {
     !(value === 'board' && location.hash.startsWith('#board?'))
   )
     location.hash = value === 'chat' && workbench.workMode === 'work' ? 'work' : value
+  if (typeof location !== 'undefined') acceptedHash = location.hash
 })
 function hashChange() {
-  const id = location.hash.slice(1).split('?')[0]!
+  const requestedHash = location.hash
+  const id = requestedHash.slice(1).split('?')[0]!
+  if (
+    id !== activeView.value &&
+    !guardWorkspaceLeave(activeView.value, () => {
+      location.hash = requestedHash
+    })
+  ) {
+    window.history.replaceState(null, '', acceptedHash || '#' + activeView.value)
+    return
+  }
   if (id !== activeView.value && !(pluginSlot.value?.guardLeave(activeView.value) ?? true)) {
     window.history.replaceState(null, '', '#' + activeView.value)
     return
@@ -226,9 +254,13 @@ function hashChange() {
   if (id === 'work') {
     workbench.workMode = 'work'
     activeView.value = 'chat'
+    acceptedHash = requestedHash
     return
   }
-  if (isKnownHash(id)) activeView.value = id
+  if (isKnownHash(id)) {
+    activeView.value = id
+    acceptedHash = requestedHash
+  }
 }
 function onShellKey(event: KeyboardEvent) {
   if (event.key === 'Escape' && narrow.value) workbench.sidebarOpen = false
@@ -1145,6 +1177,7 @@ onUnmounted(() => {
           @navigate="activeView = $event"
         />
         <ProjectBoard
+          ref="projectBoard"
           v-else-if="activeView === 'board' && pluginHost.boardContributionVisible.value"
         />
         <section
@@ -1828,7 +1861,7 @@ onUnmounted(() => {
         </section>
 
         <AppearanceSettings v-else-if="activeView === 'appearance'" />
-        <ModelSettings v-else-if="activeView === 'model-settings'" />
+        <ModelSettings ref="modelSettings" v-else-if="activeView === 'model-settings'" />
         <PluginCenter v-else-if="activeView === 'plugins'" :host="pluginHost" />
 
         <!-- MANAGERS -->

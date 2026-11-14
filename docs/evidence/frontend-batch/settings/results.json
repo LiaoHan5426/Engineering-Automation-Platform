@@ -1,0 +1,187 @@
+{
+  "mode": "Actual App in Chromium; deterministic intercepted HTTP fixtures, no backend writes",
+  "checks": [
+    {
+      "phase": "before",
+      "width": 1440,
+      "scenario": "catalog dirty close + after navigation discard callback",
+      "passed": true
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "scenario": "MCP close guard, pending lock, after inline failure retention",
+      "passed": true
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "scenario": "CLI tab preserves binary draft; pending operation locks close; failure retained",
+      "passed": true
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "scenario": "accepted connection save then overview failure settles editor and retains accepted identity after fix",
+      "passed": true
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "scenario": "catalog dirty close + after navigation discard callback",
+      "passed": true
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "scenario": "MCP close guard, pending lock, after inline failure retention",
+      "passed": true
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "scenario": "CLI tab preserves binary draft; pending operation locks close; failure retained",
+      "passed": true
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "scenario": "accepted connection save then overview failure settles editor and retains accepted identity after fix",
+      "passed": true
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "scenario": "catalog dirty close + after navigation discard callback",
+      "passed": true
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "scenario": "MCP close guard, pending lock, after inline failure retention",
+      "passed": true
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "scenario": "CLI tab preserves binary draft; pending operation locks close; failure retained",
+      "passed": true
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "scenario": "accepted connection save then overview failure settles editor and retains accepted identity after fix",
+      "passed": true
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "scenario": "catalog dirty close + after navigation discard callback",
+      "passed": true
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "scenario": "MCP close guard, pending lock, after inline failure retention",
+      "passed": true
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "scenario": "CLI tab preserves binary draft; pending operation locks close; failure retained",
+      "passed": true
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "scenario": "accepted connection save then overview failure settles editor and retains accepted identity after fix",
+      "passed": true
+    }
+  ],
+  "requests": [
+    {
+      "phase": "before",
+      "width": 1440,
+      "method": "POST",
+      "path": "/mcp-servers",
+      "simulation": "delayed rejection; no backend write"
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "method": "POST",
+      "path": "/cli-programs/git/operations/git-fixture",
+      "simulation": "delayed rejection; no backend write"
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "method": "POST",
+      "path": "/ai/connections",
+      "simulation": "accepted fixture only; following overview read fails; no backend write"
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "method": "POST",
+      "path": "/mcp-servers",
+      "simulation": "delayed rejection; no backend write"
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "method": "POST",
+      "path": "/cli-programs/git/operations/git-fixture",
+      "simulation": "delayed rejection; no backend write"
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "method": "POST",
+      "path": "/ai/connections",
+      "simulation": "accepted fixture only; following overview read fails; no backend write"
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "method": "POST",
+      "path": "/mcp-servers",
+      "simulation": "delayed rejection; no backend write"
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "method": "POST",
+      "path": "/cli-programs/git/operations/git-fixture",
+      "simulation": "delayed rejection; no backend write"
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "method": "POST",
+      "path": "/ai/connections",
+      "simulation": "accepted fixture only; following overview read fails; no backend write"
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "method": "POST",
+      "path": "/mcp-servers",
+      "simulation": "delayed rejection; no backend write"
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "method": "POST",
+      "path": "/cli-programs/git/operations/git-fixture",
+      "simulation": "delayed rejection; no backend write"
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "method": "POST",
+      "path": "/ai/connections",
+      "simulation": "accepted fixture only; following overview read fails; no backend write"
+    }
+  ]
+}

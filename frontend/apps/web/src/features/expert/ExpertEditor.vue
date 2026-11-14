@@ -83,6 +83,7 @@ const ruleChoices = [
   { id: 'candidate-sql.must-preserve-semantics', name: '候选 SQL 必须保持原语义' },
 ]
 const loadError = ref('')
+const initializing = ref(false)
 // Capabilities and rule packs come from the backend catalog so the editor can never offer an
 // option the runtime cannot execute or resolve.
 const catalogCapabilities = ref<string[]>([])
@@ -483,6 +484,7 @@ function definition() {
   }
 }
 async function submit(save: boolean) {
+  if (busy.value) return
   validationAttempted.value = true
   try {
     assertExpertId(id.value)
@@ -568,7 +570,7 @@ async function submit(save: boolean) {
       baseline.value = submitted.manifest
       await load()
       original.value = JSON.parse(submitted.manifest) as ExpertDefinition
-      emit('saved', id.value)
+      emit('saved', (JSON.parse(submitted.manifest) as ExpertDefinition).id)
     }
   } catch (error) {
     message.value = errorMessage(error)
@@ -641,20 +643,30 @@ async function activate(value: boolean) {
   }
 }
 defineExpose({ refresh: refreshData, guardLeave })
-onMounted(async () => {
+async function initialize() {
+  if (initializing.value) return
+  initializing.value = true
   await refreshData()
-  const item = items.value.find((item) => item.id === props.expertId)
-  if (item) applyDefinition(item)
-  else if (!props.expertId) create()
-  else loadError.value = t('expertWorkspace.notFound')
-})
+  if (!loadError.value) {
+    const item = items.value.find((item) => item.id === props.expertId)
+    if (item) applyDefinition(item)
+    else if (!props.expertId) create()
+    else loadError.value = t('expertWorkspace.notFound')
+  }
+  initializing.value = false
+}
+onMounted(initialize)
 </script>
 <template>
   <section class="expert-editor">
+    <p v-if="initializing" role="status">{{ t('product.loading') }}</p>
+    <Button v-if="loadError" :disabled="busy || initializing" @click="initialize">{{
+      t('product.retry')
+    }}</Button>
     <Feedback v-if="loadError" tone="error">{{ loadError }}</Feedback>
-    <Button v-if="loadError" @click="emit('back')">{{ t('editor.back') }}</Button>
+    <Button :disabled="busy" v-if="loadError" @click="emit('back')">{{ t('editor.back') }}</Button>
     <EditorWorkbench
-      v-if="editing"
+      v-if="editing && !loadError"
       ref="frame"
       :resources-label="t('editor.resources')"
       :inspector-label="t('editor.properties')"
@@ -664,9 +676,13 @@ onMounted(async () => {
       <template #header>
         <div class="manager-toolbar editor-heading">
           <div>
-            <Button variant="link" data-testid="expert-back" @click="emit('back')">{{
-              t('editor.back')
-            }}</Button>
+            <Button
+              :disabled="busy"
+              variant="link"
+              data-testid="expert-back"
+              @click="emit('back')"
+              >{{ t('editor.back') }}</Button
+            >
             <h1 tabindex="-1">{{ name || '新专家' }}</h1>
             <small>{{
               isBuiltin
@@ -723,11 +739,11 @@ onMounted(async () => {
             <Checkbox
               v-model="agentTools"
               :value="tool"
-              :disabled="tool === 'sql.parse' || disabledPlatform.includes(tool)"
+              :disabled="busy || tool === 'sql.parse' || disabledPlatform.includes(tool)"
             />{{ tool }}
           </label>
 
-          <Button @click="showResources">{{ t('editor.agentResources') }}</Button>
+          <Button :disabled="busy" @click="showResources">{{ t('editor.agentResources') }}</Button>
         </template>
         <template v-else>
           <Tabs
@@ -740,6 +756,7 @@ onMounted(async () => {
           />
           <template v-if="resourceTab === 'library'">
             <Input
+              :disabled="busy"
               v-model="query"
               :aria-label="t('editor.search')"
               :placeholder="t('editor.search')"
@@ -754,6 +771,7 @@ onMounted(async () => {
                     t(isExpertScoped(item.name) ? 'editor.declared' : 'editor.available')
                   }}</small>
                   <Button
+                    :disabled="busy"
                     size="sm"
                     :data-testid="'node-add-' + item.name"
                     @click="addNode(item.name)"
@@ -775,7 +793,10 @@ onMounted(async () => {
               @select="selectNode($event.id)"
             />
             <EmptyState v-if="!steps.length">{{ t('editor.emptyStructure') }}</EmptyState>
-            <Button v-if="steps.length > 1 && !edges.length" @click="connectInOrder"
+            <Button
+              :disabled="busy"
+              v-if="steps.length > 1 && !edges.length"
+              @click="connectInOrder"
               >按当前排列串联</Button
             >
           </template>
@@ -787,6 +808,7 @@ onMounted(async () => {
         <label
           >{{ t('expertAgent.question')
           }}<Textarea
+            :disabled="busy"
             ref="goalInput"
             v-model="agentGoal"
             :maxlength="8000"
@@ -821,13 +843,20 @@ onMounted(async () => {
             <h3>节点属性</h3>
             <template v-if="selectedStep"
               ><small>节点标识：{{ selectedStep.id }}</small
-              ><label>显示名称<Input v-model="selectedStep.label" /></label
+              ><label>显示名称<Input :disabled="busy" v-model="selectedStep.label" /></label
               ><label
-                >调用能力<Input v-model="selectedStep.capability" placeholder="sql.parse" /></label
+                >调用能力<Input
+                  :disabled="busy"
+                  v-model="selectedStep.capability"
+                  placeholder="sql.parse" /></label
               ><small v-if="isExpertScoped(selectedStep.capability)" class="requirement-line">
                 专家级能力：不会全局启用，只在本专家本次执行的会话内调用；移除授权后该节点会一并移除。 </small
-              ><label><Checkbox v-model="selectedStep.required" /> 失败时阻止后续执行</label
-              ><Button variant="secondary" @click="removeNode">移除节点及连线</Button></template
+              ><label
+                ><Checkbox :disabled="busy" v-model="selectedStep.required" />
+                失败时阻止后续执行</label
+              ><Button :disabled="busy" variant="secondary" @click="removeNode"
+                >移除节点及连线</Button
+              ></template
             >
           </div>
 
@@ -845,9 +874,9 @@ onMounted(async () => {
               <label
                 >标识<Input
                   v-model="id"
-                  :disabled="!!original && id === original.id"
+                  :disabled="busy || (!!original && id === original.id)"
                   placeholder="sql-reviewer" /></label
-              ><label>名称<Input v-model="name" /></label>
+              ><label>名称<Input :disabled="busy" v-model="name" /></label>
               <Collapse>
                 <template #summary>由草稿生成的 Manifest（只读）</template>
                 <p class="hint">
@@ -866,13 +895,15 @@ onMounted(async () => {
               }}</EmptyState>
               <div v-else class="choice-list">
                 <label v-for="base in library" :key="base.id"
-                  ><Checkbox v-model="selectedKnowledge" :value="base.id" />{{ base.name }}</label
+                  ><Checkbox :disabled="busy" v-model="selectedKnowledge" :value="base.id" />{{
+                    base.name
+                  }}</label
                 ><label
                   v-for="base in selectedKnowledge.filter(
                     (key) => !library.some((item) => item.id === key),
                   )"
                   :key="base"
-                  ><Checkbox v-model="selectedKnowledge" :value="base" />{{
+                  ><Checkbox :disabled="busy" v-model="selectedKnowledge" :value="base" />{{
                     base
                   }}（未加载的定义引用）</label
                 >
@@ -884,7 +915,7 @@ onMounted(async () => {
               }}</EmptyState>
               <div v-else class="choice-list">
                 <label v-for="profile in databaseLibrary" :key="profile.id"
-                  ><Checkbox v-model="selectedDatabases" :value="profile.id" />{{
+                  ><Checkbox :disabled="busy" v-model="selectedDatabases" :value="profile.id" />{{
                     profile.label
                   }}</label
                 >
@@ -900,7 +931,7 @@ onMounted(async () => {
                   ><Checkbox
                     v-model="selectedRules"
                     :value="rule.id"
-                    :disabled="rule.id === 'database.credentials.never-expose'"
+                    :disabled="busy || rule.id === 'database.credentials.never-expose'"
                   />{{ rule.name }}</label
                 >
                 <label
@@ -908,7 +939,9 @@ onMounted(async () => {
                     (key) => !ruleChoices.some((item) => item.id === key),
                   )"
                   :key="rule"
-                  ><Checkbox v-model="selectedRules" :value="rule" />{{ rule }}</label
+                  ><Checkbox :disabled="busy" v-model="selectedRules" :value="rule" />{{
+                    rule
+                  }}</label
                 >
               </div>
               <small
@@ -917,7 +950,7 @@ onMounted(async () => {
               <h3>规则包（专家判定依据）</h3>
               <div class="choice-list">
                 <label v-for="pack in rulePackChoices" :key="pack.id" class="pack-choice"
-                  ><Checkbox v-model="selectedRulePacks" :value="pack.id" />
+                  ><Checkbox :disabled="busy" v-model="selectedRulePacks" :value="pack.id" />
                   <span
                     >{{ pack.name }}
                     <span class="hint"
@@ -955,7 +988,7 @@ onMounted(async () => {
               </p>
               <div class="choice-list">
                 <label v-for="tool in declaredMcpTools" :key="tool"
-                  ><Checkbox :model-value="true" @change="removeMcpTool(tool)" />
+                  ><Checkbox :disabled="busy" :model-value="true" @change="removeMcpTool(tool)" />
                   <span class="mono">{{ tool }}</span></label
                 >
                 <p v-if="!declaredMcpTools.length" class="hint">未授权任何 MCP 工具。</p>
@@ -964,13 +997,17 @@ onMounted(async () => {
                 <Select
                   v-model="mcpToolToGrant"
                   aria-label="选择要授权的 MCP 工具"
-                  :disabled="!mcpToolChoices.length"
+                  :disabled="busy || !mcpToolChoices.length"
                 >
                   <option v-for="tool in mcpToolChoices" :key="tool" :value="tool">
                     {{ tool }}
                   </option>
                 </Select>
-                <Button variant="secondary" :disabled="!mcpToolChoices.length" @click="addMcpTool">
+                <Button
+                  variant="secondary"
+                  :disabled="busy || !mcpToolChoices.length"
+                  @click="addMcpTool"
+                >
                   授权该工具
                 </Button>
               </div>
@@ -1005,7 +1042,9 @@ onMounted(async () => {
           ><template #summary>{{ t('editor.issues') }} ({{ issues.length }})</template>
           <div v-for="issue in issues" :key="issue.target + issue.text" class="editor-issue">
             <span>{{ issue.text }}</span
-            ><Button size="sm" @click="locateIssue(issue)">{{ t('editor.locate') }}</Button>
+            ><Button :disabled="busy" size="sm" @click="locateIssue(issue)">{{
+              t('editor.locate')
+            }}</Button>
           </div>
         </Collapse>
       </template>

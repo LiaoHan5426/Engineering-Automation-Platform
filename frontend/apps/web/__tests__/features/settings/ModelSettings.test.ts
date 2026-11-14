@@ -186,3 +186,45 @@ it('does not resync or replace the retained catalog on a protocol-only edit', as
   expect(refresh).not.toHaveBeenCalled()
   expect(document.querySelector('.model-catalog')?.textContent).toContain('manual-model')
 })
+
+it('settles an accepted new connection when overview refresh fails without offering duplicate creation', async () => {
+  vi.spyOn(runtimeApi, 'modelConnections')
+    .mockResolvedValueOnce({ items: [], effectiveDefaultId: null })
+    .mockRejectedValue(new Error('overview unavailable'))
+  const saved = { ...row('accepted'), name: 'Accepted connection' }
+  const save = vi.spyOn(runtimeApi, 'saveModelConnection').mockResolvedValue(saved)
+  vi.spyOn(runtimeApi, 'refreshConnectionModels').mockResolvedValue(saved)
+  root = document.createElement('div')
+  document.body.append(root)
+  app = createApp(ModelSettings)
+  app.use(i18n).mount(root)
+  await flush()
+  ;(root.querySelector('.connection-list-heading button') as HTMLButtonElement).click()
+  await flush()
+  const name = document.querySelector('.connection-form input') as HTMLInputElement
+  name.value = 'Accepted connection'
+  name.dispatchEvent(new Event('input'))
+  document
+    .querySelector('.connection-form')!
+    .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  await flush()
+  expect(save).toHaveBeenCalledOnce()
+  expect(document.querySelector('.connection-form')).toBeNull()
+  expect(document.querySelector('.model-catalog')).not.toBeNull()
+  expect(root.querySelectorAll('.connection-cards li')).toHaveLength(1)
+  expect(document.body.textContent).toContain('无需再次创建')
+  ;(
+    document.querySelector(
+      '.model-catalog .catalog-actions:last-child button:last-child',
+    ) as HTMLButtonElement
+  ).click()
+  await flush()
+  ;(root.querySelector('.connection-cards li button') as HTMLButtonElement).click()
+  await flush()
+  expect((document.querySelector('.connection-form input') as HTMLInputElement).value).toBe(
+    'Accepted connection',
+  )
+  expect(
+    (document.querySelector('.connection-form input[type="password"]') as HTMLInputElement).value,
+  ).toBe('')
+})

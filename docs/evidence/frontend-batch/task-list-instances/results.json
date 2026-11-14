@@ -1,0 +1,54 @@
+[
+  {
+    "phase": "before",
+    "width": 1440,
+    "validation": {
+      "focused": false,
+      "localDescription": false,
+      "uniqueIds": false
+    },
+    "createdFocus": false,
+    "pageErrors": [],
+    "blockedWrites": [],
+    "boundary": "Existing saved-version renderer with explicit legal two-list fixture; multi-open and UUID collision injected locally; no AI, publishing, backend mutation, or generated candidate validation."
+  },
+  {
+    "phase": "before",
+    "width": 390,
+    "validation": {
+      "focused": false,
+      "localDescription": false,
+      "uniqueIds": false
+    },
+    "createdFocus": false,
+    "pageErrors": [],
+    "blockedWrites": [],
+    "boundary": "Existing saved-version renderer with explicit legal two-list fixture; multi-open and UUID collision injected locally; no AI, publishing, backend mutation, or generated candidate validation."
+  },
+  {
+    "phase": "after",
+    "width": 1440,
+    "validation": {
+      "focused": true,
+      "localDescription": true,
+      "uniqueIds": true
+    },
+    "createdFocus": true,
+    "pageErrors": [],
+    "blockedWrites": [],
+    "boundary": "Existing saved-version renderer with explicit legal two-list fixture; multi-open and UUID collision injected locally; no AI, publishing, backend mutation, or generated candidate validation."
+  },
+  {
+    "phase": "after",
+    "width": 390,
+    "validation": {
+      "focused": true,
+      "localDescription": true,
+      "uniqueIds": true
+    },
+    "createdFocus": true,
+    "pageErrors": [],
+    "blockedWrites": [],
+    "boundary": "Existing saved-version renderer with explicit legal two-list fixture; multi-open and UUID collision injected locally; no AI, publishing, backend mutation, or generated candidate validation."
+  }
+]

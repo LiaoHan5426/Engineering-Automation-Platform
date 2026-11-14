@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ModelConnection, ModelOption } from '@eap/runtime-client'
 import { modelApi as runtimeApi } from '../chat/chatService'
-import { Button, Checkbox, Feedback, Input, Select, Collapse } from '@eap/ui'
+import { Button, Checkbox, Feedback, Input, Select, Collapse, ConfirmBox } from '@eap/ui'
 import { errorMessage } from '../../lib/presentation'
 const props = defineProps<{ connection: ModelConnection }>()
 const emit = defineEmits<{ saved: []; close: []; busy: [value: boolean] }>()
@@ -19,6 +19,36 @@ const defaultModel = ref(props.connection.defaultModel)
 const manual = ref(''),
   search = ref(''),
   note = ref('')
+const snapshot = () =>
+  JSON.stringify({ models: models.value, allowed: allowed.value, defaultModel: defaultModel.value })
+const baseline = ref(snapshot())
+const discardOpen = ref(false)
+const dirty = computed(() => snapshot() !== baseline.value || !!manual.value.trim())
+let leaveCallback: (() => void) | undefined
+function guardLeave(onDiscard?: () => void): boolean {
+  if (busy.value) return false
+  if (dirty.value) {
+    leaveCallback = onDiscard
+    discardOpen.value = true
+    return false
+  }
+  return true
+}
+function requestClose() {
+  if (guardLeave()) emit('close')
+}
+function confirmDiscard() {
+  discardOpen.value = false
+  const callback = leaveCallback
+  leaveCallback = undefined
+  emit('close')
+  callback?.()
+}
+function keepEditing() {
+  discardOpen.value = false
+  leaveCallback = undefined
+}
+defineExpose({ requestClose, guardLeave })
 const busy = ref(false)
 watch(busy, (value) => emit('busy', value), { flush: 'sync' })
 const discoveredAt = ref(props.connection.discoveredAt)
@@ -38,12 +68,18 @@ function add() {
   search.value = ''
 }
 async function refresh() {
+  if (busy.value) return
   busy.value = true
   note.value = ''
   try {
     const result = await runtimeApi.refreshConnectionModels(props.connection.id)
     for (const model of result.models)
       if (!models.value.some((item) => item.id === model.id)) models.value.push(model)
+    // Discovery persists new entries; only operator edits should need discard confirmation.
+    const saved = JSON.parse(baseline.value)
+    for (const model of result.models)
+      if (!saved.models.some((item: ModelOption) => item.id === model.id)) saved.models.push(model)
+    baseline.value = JSON.stringify(saved)
     discoveredAt.value = result.discoveredAt
     discoveryError.value = result.discoveryError
     emit('saved')
@@ -54,6 +90,7 @@ async function refresh() {
   }
 }
 async function save() {
+  if (busy.value) return
   busy.value = true
   note.value = ''
   try {
@@ -139,11 +176,19 @@ async function save() {
         variant="primary"
         :disabled="busy || !allowed.length || !allowed.includes(defaultModel)"
         >{{ t('historyUi.save') }}</Button
-      ><Button type="button" :disabled="busy" @click="emit('close')">{{
+      ><Button type="button" :disabled="busy" @click="requestClose">{{
         t('composerUi.close')
       }}</Button>
     </div>
   </form>
+  <ConfirmBox
+    v-if="discardOpen"
+    :title="t('product.discardTitle')"
+    :impact="[t('product.discardImpact')]"
+    :confirm-label="t('product.discard')"
+    @confirm="confirmDiscard"
+    @cancel="keepEditing"
+  />
 </template>
 <style scoped>
 .model-catalog {

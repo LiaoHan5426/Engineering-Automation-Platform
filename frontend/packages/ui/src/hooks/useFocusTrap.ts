@@ -1,4 +1,12 @@
-import { nextTick, onBeforeUnmount, onMounted, type Ref } from 'vue'
+import {
+  nextTick,
+  onActivated,
+  onBeforeUnmount,
+  onDeactivated,
+  onMounted,
+  ref,
+  type Ref,
+} from 'vue'
 
 /**
  * Staged for `@eap/hooks`. Dialog and ConfirmBox are the current callers.
@@ -44,14 +52,26 @@ export function useFocusTrap(
   let disposed = false
   const close = options.onEscape ? useEscClose(options.onEscape) : null
 
-  onMounted(() => {
-    previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const active = ref(true)
+  function focusInitial() {
     void nextTick(() => {
       const node = root.value
-      if (!node || disposed) return
+      if (!node || disposed || !active.value) return
       const initial = options.initial?.(node)
       ;(initial && isAvailable(initial) ? initial : node).focus()
     })
+  }
+  onMounted(() => {
+    previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    focusInitial()
+  })
+  onDeactivated(() => {
+    active.value = false
+  })
+  onActivated(() => {
+    if (active.value) return
+    active.value = true
+    focusInitial()
   })
 
   onBeforeUnmount(() => {
@@ -98,5 +118,5 @@ export function useFocusTrap(
     }
   }
 
-  return { onKeydown }
+  return { onKeydown, active }
 }

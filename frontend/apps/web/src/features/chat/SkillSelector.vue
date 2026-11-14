@@ -36,7 +36,10 @@ function invalidate() {
   preview.value = undefined
   busy.value = false
 }
+let opener: HTMLElement | null = null
 function close() {
+  if (open.value && opener?.isConnected) opener.focus()
+  opener = null
   open.value = false
   ++catalogTicket
   ++detailTicket
@@ -55,6 +58,7 @@ watch(paths, invalidate, { deep: true, flush: 'sync' })
 async function show(ids?: string[]) {
   if (props.disabled || props.blocked) return
   close()
+  opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
   open.value = true
   loading.value = true
   error.value = ''

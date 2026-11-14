@@ -539,3 +539,25 @@ describe('engineering task composer', () => {
     expect(element!.querySelector('[data-testid=model-effort-head]')?.textContent).toContain('最大')
   })
 })
+
+it('ignores a file read that finishes after the composer changes conversation context', async () => {
+  const context = await mount()
+  let finish!: (text: string) => void
+  const file = new File(['content'], 'old.txt', { type: 'text/plain' })
+  vi.spyOn(file, 'text').mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  const paste = new Event('paste', { bubbles: true, cancelable: true })
+  Object.defineProperty(paste, 'clipboardData', { value: { files: [file] } })
+  element!.querySelector('.composer-stack')!.dispatchEvent(paste)
+  context.value = { ...empty(), instructions: 'other conversation' }
+  await nextTick()
+  finish('old context attachment')
+  await nextTick()
+  await nextTick()
+  expect(context.value.files).toEqual([])
+  expect(context.value.instructions).toBe('other conversation')
+})

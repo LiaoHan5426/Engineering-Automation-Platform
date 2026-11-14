@@ -1,0 +1,110 @@
+[
+  {
+    "version": "before",
+    "width": 1440,
+    "scenario": "knowledge-list-failure",
+    "interceptedWrites": 0,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  },
+  {
+    "version": "before",
+    "width": 1440,
+    "scenario": "knowledge-created-read-failure",
+    "interceptedWrites": 1,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  },
+  {
+    "version": "before",
+    "width": 1440,
+    "scenario": "knowledge-document-read-failure",
+    "interceptedWrites": 1,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  },
+  {
+    "version": "before",
+    "width": 390,
+    "scenario": "knowledge-list-failure",
+    "interceptedWrites": 0,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  },
+  {
+    "version": "before",
+    "width": 390,
+    "scenario": "knowledge-created-read-failure",
+    "interceptedWrites": 1,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  },
+  {
+    "version": "before",
+    "width": 390,
+    "scenario": "knowledge-document-read-failure",
+    "interceptedWrites": 1,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  },
+  {
+    "version": "after",
+    "width": 1440,
+    "scenario": "knowledge-list-failure",
+    "interceptedWrites": 0,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  },
+  {
+    "version": "after",
+    "width": 1440,
+    "scenario": "knowledge-created-read-failure",
+    "interceptedWrites": 1,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  },
+  {
+    "version": "after",
+    "width": 1440,
+    "scenario": "knowledge-document-read-failure",
+    "interceptedWrites": 1,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  },
+  {
+    "version": "after",
+    "width": 390,
+    "scenario": "knowledge-list-failure",
+    "interceptedWrites": 0,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  },
+  {
+    "version": "after",
+    "width": 390,
+    "scenario": "knowledge-created-read-failure",
+    "interceptedWrites": 1,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  },
+  {
+    "version": "after",
+    "width": 390,
+    "scenario": "knowledge-document-read-failure",
+    "interceptedWrites": 1,
+    "backendWrites": 0,
+    "pageErrors": [],
+    "simulated": "All knowledge HTTP responses; reads fail after accepted POST, retry only GET"
+  }
+]

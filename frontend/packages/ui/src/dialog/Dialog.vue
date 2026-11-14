@@ -38,7 +38,7 @@ const panel = ref<HTMLElement | null>(null)
 function dismiss() {
   if (!props.busy) emit('close')
 }
-const { onKeydown } = useFocusTrap(panel, {
+const { onKeydown, active } = useFocusTrap(panel, {
   onEscape: dismiss,
   initial: (node) => node.querySelector<HTMLElement>('[data-eap-dialog-close]') ?? node,
 })
@@ -46,7 +46,7 @@ const { onKeydown } = useFocusTrap(panel, {
 
 <template>
   <Teleport :to="teleportTo">
-    <div class="eap-dialog-root" data-testid="eap-dialog" v-bind="attrs">
+    <div v-show="active" class="eap-dialog-root" data-testid="eap-dialog" v-bind="attrs">
       <button
         type="button"
         class="eap-dialog-backdrop"

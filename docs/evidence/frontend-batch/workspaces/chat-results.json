@@ -1,0 +1,38 @@
+[
+  {
+    "phase": "before",
+    "width": 1440,
+    "scratchRestored": false,
+    "focusReturned": true,
+    "pageErrors": [],
+    "blockedWrites": [],
+    "boundary": "Seeded local browser snapshot and GET fixture; all non-GETs blocked; no provider calls or backend mutations."
+  },
+  {
+    "phase": "before",
+    "width": 390,
+    "scratchRestored": false,
+    "focusReturned": true,
+    "pageErrors": [],
+    "blockedWrites": [],
+    "boundary": "Seeded local browser snapshot and GET fixture; all non-GETs blocked; no provider calls or backend mutations."
+  },
+  {
+    "phase": "after",
+    "width": 1440,
+    "scratchRestored": true,
+    "focusReturned": true,
+    "pageErrors": [],
+    "blockedWrites": [],
+    "boundary": "Seeded local browser snapshot and GET fixture; all non-GETs blocked; no provider calls or backend mutations."
+  },
+  {
+    "phase": "after",
+    "width": 390,
+    "scratchRestored": true,
+    "focusReturned": true,
+    "pageErrors": [],
+    "blockedWrites": [],
+    "boundary": "Seeded local browser snapshot and GET fixture; all non-GETs blocked; no provider calls or backend mutations."
+  }
+]

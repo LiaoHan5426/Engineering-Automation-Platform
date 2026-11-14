@@ -1,6 +1,9 @@
 /** Presentation and navigation for the management workspaces. */
 export const productMessages = {
   'zh-CN': {
+    loading: '正在读取…',
+    retry: '重试',
+    continueEditing: '继续编辑',
     editDocument: '编辑文档正文',
     documentTitle: '文档标题',
     documentBody: '文档正文',
@@ -15,11 +18,17 @@ export const productMessages = {
     trial: 'SQL 试算',
     vocabulary: '事实词表',
     jsonHelp: '编辑复合条件、阈值和策略。应用到草稿后，请校验并保存。',
+    jsonPending: 'JSON 修改尚未应用，请先展开 JSON 草稿并应用，再校验、保存或试算。',
     discardTitle: '放弃未保存的修改？',
     discardImpact: '确认后将丢弃本次未保存的编辑。',
     discard: '放弃修改',
     discarded: '已恢复上次保存的内容。',
     finishEdit: '请先保存或取消当前编辑。',
+    knowledgeDocumentSaved: '文档已分段并保存，可用于全文检索',
+    knowledgeDocumentSavedRefreshFailed:
+      '文档已保存，列表或文档刷新失败。请重试读取，无需再次提交文档。',
+    knowledgeCreated: '知识库已创建',
+    knowledgeCreatedRefreshFailed: '知识库已创建，列表或文档刷新失败。请重试读取，无需再次创建。',
     createKnowledgeBase: '新建知识库',
     editKnowledgeBase: '编辑知识库',
     addDocument: '录入文档',
@@ -45,6 +54,9 @@ export const productMessages = {
     trustedTools: '可信工具',
   },
   'en-US': {
+    loading: 'Loading…',
+    retry: 'Retry',
+    continueEditing: 'Continue editing',
     editDocument: 'Edit document',
     documentTitle: 'Document title',
     documentBody: 'Document content',
@@ -61,11 +73,19 @@ export const productMessages = {
     vocabulary: 'Fact vocabulary',
     jsonHelp:
       'Edit compound conditions, thresholds and policies. Apply to the draft, then validate and save.',
+    jsonPending:
+      'JSON changes have not been applied. Open the JSON draft and apply them before validating, saving or running a trial.',
     discardTitle: 'Discard unsaved changes?',
     discardImpact: 'This discards the edits that have not been saved.',
     discard: 'Discard changes',
     discarded: 'Restored the last saved content.',
     finishEdit: 'Save or cancel the current edit first.',
+    knowledgeDocumentSaved: 'Document saved and indexed for search',
+    knowledgeDocumentSavedRefreshFailed:
+      'The document was saved, but refreshing its list or content failed. Retry loading; do not submit the document again.',
+    knowledgeCreated: 'Knowledge base created',
+    knowledgeCreatedRefreshFailed:
+      'The knowledge base was created, but refreshing its list or documents failed. Retry loading; you do not need to create it again.',
     createKnowledgeBase: 'Create knowledge base',
     editKnowledgeBase: 'Edit knowledge base',
     addDocument: 'Add document',

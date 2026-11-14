@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, onDeactivated, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onDeactivated,
+  onBeforeUnmount,
+  reactive,
+  ref,
+  useId,
+  watch,
+} from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Button,
@@ -25,6 +34,10 @@ import {
 } from '@eap/runtime-client'
 const props = defineProps<{ node: PrototypeNode }>()
 const { t } = useI18n()
+const instanceId = useId()
+const listRoot = ref<HTMLElement | null>(null)
+const editForm = ref<HTMLElement | null>(null)
+const editButton = ref<{ $el: HTMLButtonElement } | null>(null)
 const query = ref(''),
   status = ref('all'),
   selected = ref<PrototypeTaskListItem | null>(null)
@@ -100,7 +113,11 @@ function error(key: 'name' | (typeof fields)[number]) {
 function focusField(key: string) {
   void nextTick(() =>
     nextTick(() =>
-      document.querySelector<HTMLElement>('[data-testid="task-edit-' + key + '"]')?.focus(),
+      key === 'open'
+        ? editButton.value?.$el.focus()
+        : editForm.value
+            ?.querySelector<HTMLElement>('[data-testid="task-edit-' + key + '"]')
+            ?.focus(),
     ),
   )
 }
@@ -172,7 +189,7 @@ function save() {
     exitEdit()
     created.value = true
     void nextTick(() =>
-      document.querySelector<HTMLElement>('[data-task-id="' + id + '"] button')?.focus(),
+      listRoot.value?.querySelector<HTMLElement>('[data-task-id="' + id + '"] button')?.focus(),
     )
     return
   }
@@ -241,6 +258,7 @@ onDeactivated(reset)
   <Feedback v-if="!valid" tone="warning">{{ t('editor.taskList.invalid') }}</Feedback>
   <section
     v-else
+    ref="listRoot"
     class="task-list"
     data-testid="task-list-preview"
     :data-editable="editable"
@@ -351,7 +369,7 @@ onDeactivated(reset)
       </div>
       <template #footer
         ><span v-if="saved" role="status">{{ t('editor.taskList.saved') }}</span
-        ><Button v-if="editable" data-testid="task-edit-open" @click="openEdit">{{
+        ><Button v-if="editable" ref="editButton" data-testid="task-edit-open" @click="openEdit">{{
           t('editor.taskList.edit')
         }}</Button
         ><Button @click="closeDetail">{{ t('editor.taskList.close') }}</Button></template
@@ -364,7 +382,7 @@ onDeactivated(reset)
       data-testid="task-edit-dialog"
       @close="requestExit"
     >
-      <div class="task-list__detail">
+      <div ref="editForm" class="task-list__detail">
         <template v-if="selected && !creating"
           ><small>{{ selected.id }}</small>
           <h2>{{ selected.name }}</h2>
@@ -394,11 +412,11 @@ onDeactivated(reset)
             :data-testid="'task-edit-' + key"
             :rows="5"
             :aria-invalid="attempted && !!error(key)"
-            :aria-describedby="'task-edit-error-' + key"
+            :aria-describedby="instanceId + '-task-edit-error-' + key"
             @update:model-value="updateDraft(key, $event)"
           />
           <span
-            :id="'task-edit-error-' + key"
+            :id="instanceId + '-task-edit-error-' + key"
             :role="attempted && error(key) ? 'alert' : undefined"
             >{{ attempted ? error(key) : '' }}</span
           ><small>{{ draft[key].length }} / {{ key === 'name' ? 120 : 2000 }}</small>

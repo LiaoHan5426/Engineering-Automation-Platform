@@ -27,7 +27,10 @@ function invalidatePreview() {
   result.value = undefined
   busy.value = false
 }
+let opener: HTMLElement | null = null
 function close() {
+  if (open.value && opener?.isConnected) opener.focus()
+  opener = null
   open.value = false
   ++catalogTicket
   loading.value = false
@@ -60,6 +63,7 @@ async function show() {
   const ticket = ++catalogTicket
   invalidatePreview()
   experts.value = []
+  opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
   open.value = true
   loading.value = true
   failed.value = false

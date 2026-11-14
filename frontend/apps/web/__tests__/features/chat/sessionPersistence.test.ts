@@ -175,3 +175,42 @@ it('keeps a failed target change from changing the newly selected draft', async 
   expect(session.draft.value).toBe('other draft')
   expect(session.changingConnection.value).toBe(false)
 })
+
+it('restores the unsent scratch after visiting existing history, including after reload', async () => {
+  const { session, saved } = setup()
+  await session.openConversation()
+  session.beginDraft()
+  session.draft.value = 'unsent scratch'
+  session.context.value.instructions = 'scratch context'
+  await session.selectConversation('one')
+  expect(saved().scratch.draft).toBe('unsent scratch')
+  const reloaded = setup(JSON.stringify(saved())).session
+  await reloaded.restoreLastConversation()
+  reloaded.beginDraft()
+  expect(reloaded.draft.value).toBe('unsent scratch')
+  expect(reloaded.context.value.instructions).toBe('scratch context')
+})
+
+it('does not steal selection or send when opening the scratch finishes after navigation', async () => {
+  const { session, api } = setup()
+  await session.openConversation()
+  session.beginDraft()
+  session.draft.value = 'scratch request'
+  let finish!: (value: typeof conversation) => void
+  vi.mocked(api.openAiConversation).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  const sending = session.send()
+  await session.selectConversation('one')
+  session.draft.value = 'current draft'
+  finish({ ...conversation, conversationId: 'late' })
+  await sending
+  expect(session.conversationId.value).toBe('one')
+  expect(session.draft.value).toBe('current draft')
+  expect(api.sendAiMessage).not.toHaveBeenCalled()
+  session.beginDraft()
+  expect(session.draft.value).toBe('scratch request')
+})

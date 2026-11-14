@@ -10,25 +10,27 @@ export type DesignerRecovery = {
 export const recoveryKey = (source: DesignerSource) => 'eap.prototype-recovery.v1.' + source
 
 /** Each designer has one storage namespace. Old global documents are not read or migrated. */
-export function scopedPrototypeStorage(
-  source: DesignerSource,
-  storage: Storage = localStorage,
-): Storage {
+export function scopedPrototypeStorage(source: DesignerSource, storage?: Storage): Storage {
+  const current = () => {
+    const value = storage ?? globalThis.localStorage
+    if (!value) throw new Error('DESIGNER_LOCAL_STORAGE_UNAVAILABLE')
+    return value
+  }
   return {
     get length() {
-      return storage.length
+      return current().length
     },
-    key: (index) => storage.key(index),
+    key: (index) => current().key(index),
     clear: () => {
       throw new Error('PROTOTYPE_SCOPED_CLEAR_DENIED')
     },
-    getItem: (key) => storage.getItem(key + '.' + source),
+    getItem: (key) => current().getItem(key + '.' + source),
     setItem: (key, value) => {
-      storage.setItem(key + '.' + source, value)
-      if (storage.getItem(key + '.' + source) !== value)
+      current().setItem(key + '.' + source, value)
+      if (current().getItem(key + '.' + source) !== value)
         throw new Error('DESIGNER_LOCAL_WRITE_UNCONFIRMED')
     },
-    removeItem: (key) => storage.removeItem(key + '.' + source),
+    removeItem: (key) => current().removeItem(key + '.' + source),
   }
 }
 export function writeDesignerRecovery(value: DesignerRecovery, storage: Storage = localStorage) {

@@ -209,7 +209,7 @@ onDeactivated(() => {
         >
       </div>
     </header>
-    <Feedback v-if="error" tone="error"
+    <Feedback v-if="error && !editingPage" tone="error"
       >{{ error }} <Button @click="refresh">{{ t('expertAgent.refresh') }}</Button></Feedback
     >
     <p v-if="loading" role="status">{{ t('expertAgent.loading') }}</p>

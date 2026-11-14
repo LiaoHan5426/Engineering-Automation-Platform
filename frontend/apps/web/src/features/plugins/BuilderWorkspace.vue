@@ -77,6 +77,7 @@ async function loadVersions() {
 async function openVersion(id: string) {
   taskDialog.value = false
   const request = ++openRequest
+  versionNote.value = ''
   deliveryRequest += 1
   deliveryBusy.value = false
   try {
@@ -91,6 +92,7 @@ async function openVersion(id: string) {
 }
 
 function closeVersion() {
+  versionNote.value = ''
   taskDialog.value = false
   openRequest += 1
   deliveryRequest += 1
@@ -110,6 +112,7 @@ async function createDelivery() {
   const versionId = opened.value.id
   const request = ++deliveryRequest
   deliveryBusy.value = true
+  versionNote.value = ''
   try {
     const sheet = await runtimeApi.createPrototypeDelivery(versionId)
     if (request !== deliveryRequest || opened.value?.id !== versionId) return
