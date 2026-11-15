@@ -41,4 +41,4 @@
 
 最终[浏览器证据](../evidence/chat-interaction-refinement/README.md)包含基线579c0d5的8幅与当前源码28幅实际应用捕获，1918×914和390×1000同主题、同服务响应及加载完成条件。流式状态归属、离开/返回、失败/取消和UNKNOWN只读核对通过；控件和合成麦克风各双视口通过，均无外部请求或页面错误。父任务已查看桌面默认、窄屏Before、流式及最终首次pending图像。浏览器发现欢迎卡片把本地回执推至窄屏视口外，现首次pending隐藏欢迎卡片，重新全量捕获并断言回执完整位于feed及视口内；修正后定向8项和构建通过。控件/音频范围未变，沿用上个源码摘要的已通过结果并归档范围侧录，不重复计数。
 
-最终前端源码树摘要为 `026529165d77bb440bbbeb6927dc7c296291b0c0ef5ff16e6a9d89aeb4225a6d`，各文件摘要见清单；实现提交由交付时固定。Windows交付前native Git核验：工作区clean、分支正确、HEAD579c0d5且关键文件与提交一致。原5173服务目前停止，Windows和WSL HTTP均拒绝连接，因此不能声称原服务已加载本轮内容；文件同步结果另记。模拟服务与设备不代表真实供应商或音频硬件效果。
+最终前端源码树摘要为 `026529165d77bb440bbbeb6927dc7c296291b0c0ef5ff16e6a9d89aeb4225a6d`，各文件摘要见清单；实现提交固定为 `6e4894e47f0c9e37ce52ccfde3728d33e6cd35bb`。Windows交付前native Git核验：工作区clean、分支正确、HEAD579c0d5且关键文件与提交一致。已备份到 `F:\EAP-worktree-backups\pr7-interaction-20261115-1717`，随后native Git仅fast-forward至6e4894e；同步后clean，App/ChatWorkspace/TaskComposer/SpeechControls实际文件hash-object均等于HEAD blob。原5173服务目前停止，Windows和WSL HTTP均拒绝连接，因此不能声称原服务已加载本轮内容；本轮未启动或重启用户服务。模拟服务与设备不代表真实供应商或音频硬件效果。
