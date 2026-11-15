@@ -1,0 +1,1466 @@
+{
+  "head": "53954f99d6746d06f5a5115dbbae040c1f1d53a1",
+  "phase": "after",
+  "sources": [
+    {
+      "path": "frontend/apps/web/src/App.vue",
+      "sha256": "10a661682dc3056b88d783e548e68742899872513948f618658ab0a28536f2be"
+    },
+    {
+      "path": "frontend/apps/web/src/work-pages.css",
+      "sha256": "8019045b9f7c48990ae0403bb7209423a2272acbda23dd26c4a0a98e77edf6f0"
+    }
+  ],
+  "results": [
+    {
+      "viewport": {
+        "width": 1918,
+        "height": 914
+      },
+      "states": [
+        {
+          "state": "first-pending",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 34px 832px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 82,
+                "width": 1918,
+                "height": 832,
+                "clientHeight": 832,
+                "scrollHeight": 832
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 34
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 151,
+                "width": 1622,
+                "height": 533,
+                "clientHeight": 533,
+                "scrollHeight": 544
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 692,
+                "width": 980,
+                "height": 194,
+                "clientHeight": 192,
+                "scrollHeight": 192
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "first-streaming",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 34px 832px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 82,
+                "width": 1918,
+                "height": 832,
+                "clientHeight": 832,
+                "scrollHeight": 832
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 34
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 151,
+                "width": 1622,
+                "height": 533,
+                "clientHeight": 533,
+                "scrollHeight": 533
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 692,
+                "width": 980,
+                "height": 194,
+                "clientHeight": 192,
+                "scrollHeight": 192
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "navigated-sending",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 34px 832px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 82,
+                "width": 1918,
+                "height": 832,
+                "clientHeight": 832,
+                "scrollHeight": 832
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 34
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "returned-sending",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 34px 832px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 82,
+                "width": 1918,
+                "height": 832,
+                "clientHeight": 832,
+                "scrollHeight": 832
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 34
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 151,
+                "width": 1622,
+                "height": 533,
+                "clientHeight": 533,
+                "scrollHeight": 533
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 692,
+                "width": 980,
+                "height": 194,
+                "clientHeight": 192,
+                "scrollHeight": 192
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "success",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 567,
+                "clientHeight": 567,
+                "scrollHeight": 567
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 692,
+                "width": 980,
+                "height": 194,
+                "clientHeight": 192,
+                "scrollHeight": 192
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              }
+            }
+          }
+        },
+        {
+          "state": "second-pending-failed",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 34px 832px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 82,
+                "width": 1918,
+                "height": 832,
+                "clientHeight": 832,
+                "scrollHeight": 832
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 34
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 151,
+                "width": 1622,
+                "height": 533,
+                "clientHeight": 533,
+                "scrollHeight": 533
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 692,
+                "width": 980,
+                "height": 194,
+                "clientHeight": 192,
+                "scrollHeight": 192
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "failed",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 567,
+                "clientHeight": 567,
+                "scrollHeight": 654
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 692,
+                "width": 980,
+                "height": 194,
+                "clientHeight": 192,
+                "scrollHeight": 192
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              }
+            }
+          }
+        },
+        {
+          "state": "second-pending-cancelled",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 34px 832px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 82,
+                "width": 1918,
+                "height": 832,
+                "clientHeight": 832,
+                "scrollHeight": 832
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 34
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 151,
+                "width": 1622,
+                "height": 533,
+                "clientHeight": 533,
+                "scrollHeight": 654
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 692,
+                "width": 980,
+                "height": 194,
+                "clientHeight": 192,
+                "scrollHeight": 192
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 1538,
+                "y": 836.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "cancelled",
+          "geometry": {
+            "rootHeight": 914,
+            "rootWidth": 1918,
+            "grid": "48px 0px 866px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 1918,
+                "height": 914,
+                "clientHeight": 914,
+                "scrollHeight": 914
+              },
+              ".body": {
+                "x": 0,
+                "y": 48,
+                "width": 1918,
+                "height": 866,
+                "clientHeight": 866,
+                "scrollHeight": 866
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 288,
+                "y": 117,
+                "width": 1622,
+                "height": 567,
+                "clientHeight": 567,
+                "scrollHeight": 862
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 609,
+                "y": 692,
+                "width": 980,
+                "height": 194,
+                "clientHeight": 192,
+                "scrollHeight": 192
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 1400,
+                "y": 835.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 1538,
+                "y": 837.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              }
+            }
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-1/plan"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-2/plan"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-3/plan"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-3/cancel"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        }
+      ],
+      "blocked": [],
+      "errors": [],
+      "firstSendNewConversation": true,
+      "backend": false,
+      "realProvider": false
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 1000
+      },
+      "states": [
+        {
+          "state": "first-pending",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 52px 892px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 108,
+                "width": 390,
+                "height": 892,
+                "clientHeight": 892,
+                "scrollHeight": 892
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 52,
+                "clientHeight": 52,
+                "scrollHeight": 52
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 235.5,
+                "width": 318,
+                "height": 437,
+                "clientHeight": 437,
+                "scrollHeight": 827
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 680.5,
+                "width": 302,
+                "height": 299.5,
+                "clientHeight": 298,
+                "scrollHeight": 298
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "first-streaming",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 52px 892px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 108,
+                "width": 390,
+                "height": 892,
+                "clientHeight": 892,
+                "scrollHeight": 892
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 52,
+                "clientHeight": 52,
+                "scrollHeight": 52
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 235.5,
+                "width": 318,
+                "height": 385,
+                "clientHeight": 385,
+                "scrollHeight": 385
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 680.5,
+                "width": 302,
+                "height": 299.5,
+                "clientHeight": 298,
+                "scrollHeight": 298
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "navigated-sending",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 52px 892px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 108,
+                "width": 390,
+                "height": 892,
+                "clientHeight": 892,
+                "scrollHeight": 892
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 52,
+                "clientHeight": 52,
+                "scrollHeight": 52
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "clientHeight": 0,
+                "scrollHeight": 0
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "returned-sending",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 52px 892px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 108,
+                "width": 390,
+                "height": 892,
+                "clientHeight": 892,
+                "scrollHeight": 892
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 52,
+                "clientHeight": 52,
+                "scrollHeight": 52
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 235.5,
+                "width": 318,
+                "height": 437,
+                "clientHeight": 437,
+                "scrollHeight": 437
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 680.5,
+                "width": 302,
+                "height": 299.5,
+                "clientHeight": 298,
+                "scrollHeight": 298
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "success",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 489,
+                "clientHeight": 489,
+                "scrollHeight": 489
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 680.5,
+                "width": 302,
+                "height": 299.5,
+                "clientHeight": 298,
+                "scrollHeight": 298
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 931.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              }
+            }
+          }
+        },
+        {
+          "state": "second-pending-failed",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 52px 892px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 108,
+                "width": 390,
+                "height": 892,
+                "clientHeight": 892,
+                "scrollHeight": 892
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 52,
+                "clientHeight": 52,
+                "scrollHeight": 52
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 235.5,
+                "width": 318,
+                "height": 437,
+                "clientHeight": 437,
+                "scrollHeight": 437
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 680.5,
+                "width": 302,
+                "height": 299.5,
+                "clientHeight": 298,
+                "scrollHeight": 298
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "failed",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 489,
+                "clientHeight": 489,
+                "scrollHeight": 738
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 680.5,
+                "width": 302,
+                "height": 299.5,
+                "clientHeight": 298,
+                "scrollHeight": 298
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 931.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              }
+            }
+          }
+        },
+        {
+          "state": "second-pending-cancelled",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 52px 892px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 108,
+                "width": 390,
+                "height": 892,
+                "clientHeight": 892,
+                "scrollHeight": 892
+              },
+              "[data-testid=\"send-in-flight\"]": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 52,
+                "clientHeight": 52,
+                "scrollHeight": 52
+              },
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 235.5,
+                "width": 318,
+                "height": 437,
+                "clientHeight": 437,
+                "scrollHeight": 738
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 680.5,
+                "width": 302,
+                "height": 299.5,
+                "clientHeight": 298,
+                "scrollHeight": 298
+              },
+              "[data-testid=\"cancel-message\"]": {
+                "x": 323,
+                "y": 930.25,
+                "width": 34,
+                "height": 36,
+                "clientHeight": 36,
+                "scrollHeight": 36
+              },
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": null
+            }
+          }
+        },
+        {
+          "state": "cancelled",
+          "geometry": {
+            "rootHeight": 1000,
+            "rootWidth": 390,
+            "grid": "56px 0px 944px",
+            "boxes": {
+              ".app": {
+                "x": 0,
+                "y": 0,
+                "width": 390,
+                "height": 1000,
+                "clientHeight": 1000,
+                "scrollHeight": 1000
+              },
+              ".body": {
+                "x": 0,
+                "y": 56,
+                "width": 390,
+                "height": 944,
+                "clientHeight": 944,
+                "scrollHeight": 944
+              },
+              "[data-testid=\"send-in-flight\"]": null,
+              "[data-testid=\"chat-feed\"]": {
+                "x": 64,
+                "y": 183.5,
+                "width": 318,
+                "height": 489,
+                "clientHeight": 489,
+                "scrollHeight": 967
+              },
+              "[data-testid=\"chat-composer\"]": {
+                "x": 72,
+                "y": 680.5,
+                "width": 302,
+                "height": 299.5,
+                "clientHeight": 298,
+                "scrollHeight": 298
+              },
+              "[data-testid=\"cancel-message\"]": null,
+              "[data-testid=\"model-picker\"]": {
+                "x": 185,
+                "y": 929.5,
+                "width": 130,
+                "height": 37.5,
+                "clientHeight": 38,
+                "scrollHeight": 38
+              },
+              "[data-testid=\"send-message\"]": {
+                "x": 323,
+                "y": 931.25,
+                "width": 34,
+                "height": 34,
+                "clientHeight": 34,
+                "scrollHeight": 36
+              }
+            }
+          }
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-4/plan"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-5/plan"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/messages"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-6/plan"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/executions/fixture-execution-6/cancel"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7070000-0000-4000-8000-000000000001"
+        }
+      ],
+      "blocked": [],
+      "errors": [],
+      "firstSendNewConversation": true,
+      "backend": false,
+      "realProvider": false
+    }
+  ]
+}

@@ -1,17 +1,20 @@
 /* Four work surfaces: presentation only; domain state stays in existing features. */
 
 .app {
+  grid-template-areas: 'topbar' 'notices' 'body';
+  grid-template-rows: 48px auto minmax(0, 1fr);
   height: 100dvh;
   min-height: 0;
-  grid-template-rows: 48px minmax(0, 1fr);
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
 }
 .app--analysis {
-  grid-template-rows: 48px minmax(0, 1fr) 26px;
+  grid-template-areas: 'topbar' 'notices' 'body' 'status';
+  grid-template-rows: 48px auto minmax(0, 1fr) 26px;
 }
 .body {
+  grid-area: body;
   min-height: 0;
   overflow: hidden;
 }
@@ -20,6 +23,7 @@
   overscroll-behavior: contain;
 }
 .statusbar {
+  grid-area: status;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
@@ -41,6 +45,7 @@
 .topbar {
   position: relative;
   z-index: 30;
+  grid-area: topbar;
   padding: 0 18px 0 20px;
   gap: 12px;
   border: 0;
@@ -67,12 +72,15 @@
   font-size: 13px;
   font-weight: 600;
 }
-.shell-message {
-  position: absolute;
-  z-index: 40;
-  top: 48px;
-  left: 64px;
-  right: 12px;
+
+/* Conditional statuses share one intrinsic row; the body always owns the remaining space. */
+.shell-notices {
+  grid-area: notices;
+  min-width: 0;
+  min-height: 0;
+  max-height: min(25dvh, 12rem);
+  overflow: auto;
+  overflow-wrap: anywhere;
 }
 .send-in-flight {
   margin: 0;
@@ -780,8 +788,13 @@
 
 @media (max-width: 680px) {
   .app {
-    grid-template-rows: 56px minmax(0, 1fr) 30px;
+    grid-template-rows: 56px auto minmax(0, 1fr);
   }
+
+  .app--analysis {
+    grid-template-rows: 56px auto minmax(0, 1fr) 30px;
+  }
+
   .body,
   .body--focused {
     grid-template-rows: auto minmax(0, 1fr);
@@ -1797,6 +1810,14 @@
 }
 
 /* Standalone editors own their internal resource/inspector panes. */
-.app .body.body--editor { grid-template-columns: minmax(0, 1fr); }
-.body.body--editor > .workbench { padding: 0; overflow: hidden; border-radius: 0; }
-.body.body--editor > .inspector { display: none; }
+.app .body.body--editor {
+  grid-template-columns: minmax(0, 1fr);
+}
+.body.body--editor > .workbench {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 0;
+}
+.body.body--editor > .inspector {
+  display: none;
+}

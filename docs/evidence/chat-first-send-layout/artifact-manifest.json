@@ -1,0 +1,119 @@
+{
+  "backend": false,
+  "realProvider": false,
+  "privateFeedbackPublished": false,
+  "harness": {
+    "path": "frontend/apps/web/__tests__/browser/first-send-layout-capture.mjs",
+    "sha256": "704a3b2bb12a93683ba68ea7ca3b663da0c79b3c7301f3c3ff64c52214ccbdd8"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "276338dd6bc2f92485fd7cd62f0693b7baa346ac9780ccc695453d38ea7029b1"
+    },
+    {
+      "path": "after-App.vue.txt",
+      "sha256": "10a661682dc3056b88d783e548e68742899872513948f618658ab0a28536f2be"
+    },
+    {
+      "path": "after-cancelled-1918.png",
+      "sha256": "b964105b540e72518d662268703978075197bd76ab85fa53c82b19b46efec84a"
+    },
+    {
+      "path": "after-cancelled-390.png",
+      "sha256": "9fe22c5f1fde487d22b82f92394acc60fea3ea9a270f83d309664999dc952fdc"
+    },
+    {
+      "path": "after-failed-1918.png",
+      "sha256": "c8d7d78d91774c910b741414cf64fefeb66304e7c7425a326a7c9c1a4b15f597"
+    },
+    {
+      "path": "after-failed-390.png",
+      "sha256": "2877f9ec8815270e39e793197850635f746881c222e904f953d23f50514e0d3a"
+    },
+    {
+      "path": "after-first-pending-1918.png",
+      "sha256": "a71624c598e5bc133adc4b0dd8fb1261d47b099335a66e24d5f79875c5b4a83f"
+    },
+    {
+      "path": "after-first-pending-390.png",
+      "sha256": "f671d59740798f993e87c5c30092e0c321d2711775394f8e211d3eec74abc218"
+    },
+    {
+      "path": "after-first-streaming-1918.png",
+      "sha256": "54333fc315102af1afbd733a14ecd09d26c776c0e79479fe65aa6c02e7462043"
+    },
+    {
+      "path": "after-first-streaming-390.png",
+      "sha256": "9ed2bef46199f7dcea87650cd096efbee9c0e88ae7290beac39c94f13c566be7"
+    },
+    {
+      "path": "after-manifest.json",
+      "sha256": "7de69dc8754bf6db2faa7ac62e35ceb27df893901167af70fa71df33c72f366f"
+    },
+    {
+      "path": "after-navigated-sending-1918.png",
+      "sha256": "d7dd4be723505a4ee68075ffcc0ebb16d50b3787e9c0300171e7f3b7cabdaf3d"
+    },
+    {
+      "path": "after-navigated-sending-390.png",
+      "sha256": "f3ce8a7ff4f66ad2a633c603f003fce7f4d511f1a01c31024ce9f6db1e8b118e"
+    },
+    {
+      "path": "after-returned-sending-1918.png",
+      "sha256": "81687b28af481c46e80c230cc5bc02f6106792e6b9b3f0c02d2d257c8253292f"
+    },
+    {
+      "path": "after-returned-sending-390.png",
+      "sha256": "bdbe2bd9115a412cd48c2484e0d9834311de5e0ee94a7b4332ef582c116172aa"
+    },
+    {
+      "path": "after-second-pending-cancelled-1918.png",
+      "sha256": "ab4b70abfa399a9e936d2fca57ffbe64d2cdf0d6a31af234d486fa81dc029804"
+    },
+    {
+      "path": "after-second-pending-cancelled-390.png",
+      "sha256": "7d6f5a61a6edac5a2a6be9f0c595529a814272433261a5cb2ced90aa8325bd18"
+    },
+    {
+      "path": "after-second-pending-failed-1918.png",
+      "sha256": "4b8fdd8efc8563cb5dd0978397a1e97f4fc3acab4019cd1cfed41a1e255ab786"
+    },
+    {
+      "path": "after-second-pending-failed-390.png",
+      "sha256": "743e802111bd139da701f8e6b89877a791b3dec0ce59803682ef6185f0f7d9ff"
+    },
+    {
+      "path": "after-success-1918.png",
+      "sha256": "aa8e595a136ac3da75ccd70d8da99d041425be30ec1878a485cbf8d0cf05fb26"
+    },
+    {
+      "path": "after-success-390.png",
+      "sha256": "8f217223c4c86a6f70ae09bb682ced93eb65033ab571f91752082e0a0c901f65"
+    },
+    {
+      "path": "after-work-pages.css.txt",
+      "sha256": "8019045b9f7c48990ae0403bb7209423a2272acbda23dd26c4a0a98e77edf6f0"
+    },
+    {
+      "path": "before-App.vue.txt",
+      "sha256": "7acb1edf43c917082ab238bd98bb41da5d9bb2c68038ea060f2fc4122c743ab2"
+    },
+    {
+      "path": "before-first-pending-1918.png",
+      "sha256": "caa4b74ed24320486135ca4a099117f51b21465a8ad936d5d6d6771f3553e56a"
+    },
+    {
+      "path": "before-first-pending-390.png",
+      "sha256": "bb137b8e84ec15f0ff49769ee0a4e34f0672da2493e0e4298fb479af63391ca1"
+    },
+    {
+      "path": "before-manifest.json",
+      "sha256": "3658766659122dacfed55989b057249984559980a445beb4d8af73365dced93a"
+    },
+    {
+      "path": "before-work-pages.css.txt",
+      "sha256": "03497728427262c625dde43da320d763b74b86ff1661174ef0e776e67d27697c"
+    }
+  ]
+}

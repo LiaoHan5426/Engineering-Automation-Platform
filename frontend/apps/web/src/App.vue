@@ -1141,15 +1141,17 @@ onUnmounted(() => {
         {{ sqlBusy ? '分析中…' : '运行分析' }}
       </Button>
     </header>
-    <p
-      v-if="chatBinding?.sending"
-      class="send-in-flight"
-      role="status"
-      data-testid="send-in-flight"
-    >
-      {{ i18n.global.t('desktop.sendingAway') }}
-    </p>
-    <p v-if="workspaceMessage" class="shell-message" role="status">{{ workspaceMessage }}</p>
+    <div class="shell-notices">
+      <p
+        v-if="chatBinding?.sending"
+        class="send-in-flight"
+        role="status"
+        data-testid="send-in-flight"
+      >
+        {{ i18n.global.t('desktop.sendingAway') }}
+      </p>
+      <p v-if="workspaceMessage" class="shell-message" role="status">{{ workspaceMessage }}</p>
+    </div>
 
     <div
       class="body"
