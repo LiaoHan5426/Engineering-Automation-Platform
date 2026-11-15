@@ -1,0 +1,638 @@
+{
+  "sourceRepository": "deepseek-ai/deepseek-harness",
+  "sourceCommit": "39163dd30f703a79079e2d2446545cff3c453738",
+  "treeTruncated": false,
+  "inventoryMethod": "Git tree paths only; no claim of full import or runtime audit",
+  "counts": {
+    "clientPackages": 74,
+    "clientTsAndTsx": 1236,
+    "clientTsx": 373,
+    "allSrcTsx": 469
+  },
+  "inspectedContracts": [
+    {
+      "path": "package.json",
+      "gitBlob": "cce2a504775a3c41cdde959bd1c416b31013876a",
+      "inspection": "source only; execution not verified"
+    },
+    {
+      "path": "packages/client/tsdown.client.ts",
+      "gitBlob": "8a433cf795f5d2c8afa3bbef9f30f17158928b38",
+      "inspection": "source only; execution not verified"
+    },
+    {
+      "path": "packages/client/ui-renderer/src/client/bind.ts",
+      "gitBlob": "47d6e5bc35c833bd8c84a51e3a95bd23af831c3f",
+      "inspection": "source only; execution not verified"
+    },
+    {
+      "path": "packages/client/ui-renderer/src/client/renderer.ts",
+      "gitBlob": "455d636e04147e51ec027dd9e22e996651d1ad78",
+      "inspection": "source only; execution not verified"
+    },
+    {
+      "path": "packages/client/ui-slots/src/renderer.ts",
+      "gitBlob": "caae9de6a964a81d1b485b42987d9891d15d586b",
+      "inspection": "source only; execution not verified"
+    },
+    {
+      "path": "packages/client/web/src/platform.ts",
+      "gitBlob": "3c2da79ac1a2689b47afb6adf483e6ec594669f7",
+      "inspection": "source only; execution not verified"
+    }
+  ],
+  "packages": [
+    {
+      "sourcePath": "packages/client/connection",
+      "manifestBlob": "e2ed451824d37ae30aa7a8861361ec8310c6ebc4",
+      "tsAndTsxFiles": 18,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/file-upload",
+      "manifestBlob": "334699b0053a062c594ffd9c9ec9855993f765a9",
+      "tsAndTsxFiles": 7,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/hmr",
+      "manifestBlob": "47a546bdc86450ca8c711275f9ab054707782d03",
+      "tsAndTsxFiles": 3,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/locale",
+      "manifestBlob": "0ad2c188b6fc38401341d12c6881caa70723846f",
+      "tsAndTsxFiles": 17,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/modules",
+      "manifestBlob": "218305021b6faa141ad77227ef554237c1ac97ee",
+      "tsAndTsxFiles": 10,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/product-analytics",
+      "manifestBlob": "58a56030220b0931d80784901fea9471344cf687",
+      "tsAndTsxFiles": 5,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/resources",
+      "manifestBlob": "b3d5e9e5a432b1e5e1c17362732ad93fa13ebb75",
+      "tsAndTsxFiles": 4,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/script-realm-iframe",
+      "manifestBlob": "8bfec83f43362b5ac01b03f3e3b2417169de140e",
+      "tsAndTsxFiles": 3,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/script-realm",
+      "manifestBlob": "561093cc0400fd679d5748f1b20b29d1f4677d29",
+      "tsAndTsxFiles": 3,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/shortcuts",
+      "manifestBlob": "199a5cf8e322be4989cce3dd193c0c0b66d4dba5",
+      "tsAndTsxFiles": 13,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/store",
+      "manifestBlob": "e9a1629bb59b936225c12e28071c7c5285c5fe1b",
+      "tsAndTsxFiles": 2,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-account-notifications",
+      "manifestBlob": "7c939258bb43152126b5c2d4c28c0403dab078eb",
+      "tsAndTsxFiles": 8,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-agent-preset",
+      "manifestBlob": "5b7bda05d5c1e8c1fe59f1f839ece5a943a9b66e",
+      "tsAndTsxFiles": 14,
+      "tsxFiles": 5,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-agent-team",
+      "manifestBlob": "b85d87be28788defc1ebf5d8e40f8911e442cb23",
+      "tsAndTsxFiles": 9,
+      "tsxFiles": 4,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-approval",
+      "manifestBlob": "dcdce855e6f72f3741eb5ba839e0bd2623dd1de5",
+      "tsAndTsxFiles": 8,
+      "tsxFiles": 3,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-attachment",
+      "manifestBlob": "8472f3006719178635de6df3983d50adc2820de8",
+      "tsAndTsxFiles": 11,
+      "tsxFiles": 6,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-brand-official",
+      "manifestBlob": "78d687b0f4fdf4d5a4dc3cdd2e171109e80c94e2",
+      "tsAndTsxFiles": 8,
+      "tsxFiles": 2,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-chat",
+      "manifestBlob": "709a5a28f8a7cb429cdfc23e0a56c3c6b16b8283",
+      "tsAndTsxFiles": 105,
+      "tsxFiles": 33,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-commands",
+      "manifestBlob": "c6a7f5fbab3d34aeafe9b32e3f4944b48ae5ef3c",
+      "tsAndTsxFiles": 12,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-context-menu",
+      "manifestBlob": "e9c383ed59914e1ae30b8ffd7e8df41eade127c6",
+      "tsAndTsxFiles": 11,
+      "tsxFiles": 2,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-conversation",
+      "manifestBlob": "abfcd2fdab762e1fe3e4e0004a99d389eef3f012",
+      "tsAndTsxFiles": 86,
+      "tsxFiles": 23,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-deliverables",
+      "manifestBlob": "920370bfd9f06c895ad5fd9fa357fce1a11b9930",
+      "tsAndTsxFiles": 21,
+      "tsxFiles": 6,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-directory-picker-browse",
+      "manifestBlob": "6f96eb509a629f452eaa4d78fdc16eeb0d1f6946",
+      "tsAndTsxFiles": 5,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-directory-picker-native",
+      "manifestBlob": "f6f9f381553b692047b77e2d5fac0682ad2880bc",
+      "tsAndTsxFiles": 3,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-dockkit",
+      "manifestBlob": "e10328ea59f88b5e95a874aa594e90e5dd83b839",
+      "tsAndTsxFiles": 24,
+      "tsxFiles": 8,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-entry-customization",
+      "manifestBlob": "6c45065d942082b638196762976d8b2ac02d34e2",
+      "tsAndTsxFiles": 5,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-file-actions",
+      "manifestBlob": "782be3b360bca815ef54782e6ecf750290036235",
+      "tsAndTsxFiles": 6,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-file-drag",
+      "manifestBlob": "dd40cd514c1ee2ef75d153b092d3804e4c11f9ba",
+      "tsAndTsxFiles": 5,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-goal",
+      "manifestBlob": "5ba99c090a0c62ff8ff41a104133253fd01f3499",
+      "tsAndTsxFiles": 11,
+      "tsxFiles": 3,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-input-trigger",
+      "manifestBlob": "2d3be558dac7dcc2be48a21cba9eddcc4785c8f9",
+      "tsAndTsxFiles": 13,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-jobs",
+      "manifestBlob": "299c2c47657578ee8339baa1fd74a531e28b0a19",
+      "tsAndTsxFiles": 5,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-layout",
+      "manifestBlob": "f8b6b164d1b1deab7fa4636d4cab145dee9142c9",
+      "tsAndTsxFiles": 10,
+      "tsxFiles": 2,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-message-feedback",
+      "manifestBlob": "ff314be7e8b39fecc1a92ce554a36ec559b9c3c4",
+      "tsAndTsxFiles": 10,
+      "tsxFiles": 2,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-model-selection",
+      "manifestBlob": "c594db3c561dca223c951309029a17ba7718c2c9",
+      "tsAndTsxFiles": 10,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-open-in-app",
+      "manifestBlob": "fdba0c3dc6cbc1dca3db0d2b26e497f78133646c",
+      "tsAndTsxFiles": 17,
+      "tsxFiles": 7,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-permission-presets",
+      "manifestBlob": "c5ccedd9fa3cd93f4bb2580c72df3a385f9028dd",
+      "tsAndTsxFiles": 9,
+      "tsxFiles": 2,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-plan",
+      "manifestBlob": "01b3d34b07f16237d3e7b39b208ad4e197d569d7",
+      "tsAndTsxFiles": 13,
+      "tsxFiles": 3,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-plugin-manager",
+      "manifestBlob": "35bd4f6de464e0fc5fb0647370978e083b4bf9e7",
+      "tsAndTsxFiles": 18,
+      "tsxFiles": 5,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-plugin-market",
+      "manifestBlob": "71955e765ed93c9e624ff0fb55b12b2ac776bfc0",
+      "tsAndTsxFiles": 8,
+      "tsxFiles": 2,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-primitives",
+      "manifestBlob": "6702ddf30de7271584010df91645abee3c92b7c1",
+      "tsAndTsxFiles": 109,
+      "tsxFiles": 66,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-reference",
+      "manifestBlob": "021ad6a6b1b7352c8901bc62dd1e8144b6e1bd08",
+      "tsAndTsxFiles": 5,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-renderer",
+      "manifestBlob": "5a8141a20c025bbcc0d351eba9a3ec9d4b12444a",
+      "tsAndTsxFiles": 11,
+      "tsxFiles": 3,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-schedule",
+      "manifestBlob": "b19e22e9b16d120e6e1c2a45b790b92defd765f9",
+      "tsAndTsxFiles": 45,
+      "tsxFiles": 23,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-secret-mask",
+      "manifestBlob": "606be83257a51bef058682ae0b628e2adc2582d0",
+      "tsAndTsxFiles": 10,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-session-status",
+      "manifestBlob": "b4129e6cc68d27e4283fb9b0cbd07fa2573f0c0d",
+      "tsAndTsxFiles": 9,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-session",
+      "manifestBlob": "f46ab40d1ac98d0e4106ba47179323c3b462a929",
+      "tsAndTsxFiles": 3,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-settings-account",
+      "manifestBlob": "8d291514cf75fdb011241526005046cff9813b34",
+      "tsAndTsxFiles": 40,
+      "tsxFiles": 19,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-settings-agent-loop",
+      "manifestBlob": "54bc09612b32cbcf560ac6c9bb3819b1cda99f99",
+      "tsAndTsxFiles": 6,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-settings-general",
+      "manifestBlob": "4de7e1fe215cc36750bde76b0a4bcd0d4169e155",
+      "tsAndTsxFiles": 19,
+      "tsxFiles": 9,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-settings-models",
+      "manifestBlob": "854dc5b9ddc2d4e2956b412b70d151ae5220acc1",
+      "tsAndTsxFiles": 29,
+      "tsxFiles": 14,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-settings-plugin-inventory",
+      "manifestBlob": "6b412c7b7d4896b6d39b1108c44a080c90624405",
+      "tsAndTsxFiles": 5,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-settings-plugins",
+      "manifestBlob": "f7835e7130b067915511fa18c15e5c1139d49f74",
+      "tsAndTsxFiles": 5,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-settings-session-log",
+      "manifestBlob": "78417f830203a7934b4b2a1d0e40e29b8b50f18a",
+      "tsAndTsxFiles": 6,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-settings-shell",
+      "manifestBlob": "46b445f25de63680549f14b5c875312fc03d168a",
+      "tsAndTsxFiles": 6,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-settings-subagent",
+      "manifestBlob": "9301a8d78d5ba49fc15e508ec7116394c38081a9",
+      "tsAndTsxFiles": 10,
+      "tsxFiles": 3,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-settings-web-search",
+      "manifestBlob": "ba071d8e74e0dd7dd044fc378bf5062b391a88be",
+      "tsAndTsxFiles": 6,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-settings",
+      "manifestBlob": "5d1fedef28c9ea53da12735d63fb4dca4199aa94",
+      "tsAndTsxFiles": 10,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-shortcuts",
+      "manifestBlob": "df64c2572cd9a7e0b37ca8f7858b26cead405edb",
+      "tsAndTsxFiles": 10,
+      "tsxFiles": 3,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-sidebar-browser",
+      "manifestBlob": "1f979114e72a130088bbf2cd34dc6f611b6fd39e",
+      "tsAndTsxFiles": 23,
+      "tsxFiles": 3,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-sidebar-documentpreview",
+      "manifestBlob": "55595b694ee8d97679e7157a4c75977ce6952b95",
+      "tsAndTsxFiles": 82,
+      "tsxFiles": 18,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-sidebar-files",
+      "manifestBlob": "a7f47451b2235ee4791ee0561953ba250e3df607",
+      "tsAndTsxFiles": 20,
+      "tsxFiles": 7,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-sidebar-right",
+      "manifestBlob": "ca043901eae4e9a5e3e199529a38d7541013b63d",
+      "tsAndTsxFiles": 30,
+      "tsxFiles": 7,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-sidebar-terminal",
+      "manifestBlob": "6eb85efb7bb303fa0a6f7ed7103ae5c14e7fea2d",
+      "tsAndTsxFiles": 15,
+      "tsxFiles": 8,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-sidebar",
+      "manifestBlob": "6b213729d3f2f02215d37560db7b7b3c6f7b186a",
+      "tsAndTsxFiles": 10,
+      "tsxFiles": 3,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-skill",
+      "manifestBlob": "02b0f178c35a320a3e2099f59746d4f3734e9679",
+      "tsAndTsxFiles": 7,
+      "tsxFiles": 2,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-slots",
+      "manifestBlob": "dfa9ccaac60b128ae678d2078761d5e4d5288f6c",
+      "tsAndTsxFiles": 3,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-subagent",
+      "manifestBlob": "f6b08201bc40aa8b4c936055717101061fc2b923",
+      "tsAndTsxFiles": 8,
+      "tsxFiles": 3,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-theme",
+      "manifestBlob": "399f4cb444c7628ec78c0522ede4469114c398fd",
+      "tsAndTsxFiles": 13,
+      "tsxFiles": 4,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-tool",
+      "manifestBlob": "0628fb3e478b3611f56f7d2e73dd6dc8fa208ef9",
+      "tsAndTsxFiles": 45,
+      "tsxFiles": 18,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-trajectory",
+      "manifestBlob": "27deabafc014e832223e23451bad63d626ba0362",
+      "tsAndTsxFiles": 33,
+      "tsxFiles": 8,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-user-questions",
+      "manifestBlob": "bb1b5755a217ce9e0eff001e7f899549dc127724",
+      "tsAndTsxFiles": 10,
+      "tsxFiles": 3,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-workflow-run",
+      "manifestBlob": "1a0415113839c124ae982b9dec8c62cf175a8d47",
+      "tsAndTsxFiles": 6,
+      "tsxFiles": 1,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/ui-workspace",
+      "manifestBlob": "a2d05e27b6f06ad663a89ed32bc39b39e7b62510",
+      "tsAndTsxFiles": 25,
+      "tsxFiles": 11,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    },
+    {
+      "sourcePath": "packages/client/web",
+      "manifestBlob": "317d39d597c8f4d780a96e4e696f4911708d202b",
+      "tsAndTsxFiles": 12,
+      "tsxFiles": 0,
+      "migrationStatus": "NOT_STARTED",
+      "validation": []
+    }
+  ]
+}
