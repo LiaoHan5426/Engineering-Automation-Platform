@@ -72,6 +72,7 @@ const { t, te } = useI18n({
         :disabled="
           disabled ||
           audio.busy.value ||
+          audio.unresolved.value ||
           audio.microphone.value !== 'idle' ||
           !audio.catalog.value?.services.length
         "
@@ -93,6 +94,7 @@ const { t, te } = useI18n({
         :disabled="
           disabled ||
           audio.busy.value ||
+          audio.unresolved.value ||
           !audio.recorderAvailable ||
           !audio.selectedService.value?.transcription
         "
@@ -112,9 +114,12 @@ const { t, te } = useI18n({
     <p v-else-if="!audio.recorderAvailable">{{ t('unsupported') }}</p>
     <template v-if="audio.recordingUrl.value">
       <audio :src="audio.recordingUrl.value" controls preload="none" />
-      <Button size="sm" :disabled="disabled || audio.busy.value" @click="audio.transcribe">{{
-        t('transcribe')
-      }}</Button>
+      <Button
+        size="sm"
+        :disabled="disabled || audio.busy.value || audio.unresolved.value"
+        @click="audio.transcribe"
+        >{{ t('transcribe') }}</Button
+      >
       <Button
         variant="ghost"
         size="sm"

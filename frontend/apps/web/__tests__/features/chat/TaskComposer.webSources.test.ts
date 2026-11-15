@@ -31,6 +31,9 @@ it('requires explicit service, capability and enable choices, and never grants c
       }),
   })
   app.use(i18n).mount(root)
+  expect(root.querySelector('[data-testid="web-source-server"]')).toBeNull()
+  ;(root.querySelector('[data-testid="capabilities-open"]') as HTMLButtonElement).click()
+  await nextTick()
   const select = root.querySelector<HTMLSelectElement>('[data-testid="web-source-server"]')!
   expect(select.disabled).toBe(true)
   expect(context.value.webSources).toBeUndefined()
@@ -53,6 +56,11 @@ it('requires explicit service, capability and enable choices, and never grants c
   const checkboxes = root.querySelectorAll<HTMLInputElement>(
     '[data-testid="web-source-options"] input[type="checkbox"]',
   )
+  expect(Array.from(checkboxes, (input) => input.closest('label')?.textContent?.trim())).toEqual([
+    i18n.global.t('richText.webSearch'),
+    i18n.global.t('richText.webRead'),
+    i18n.global.t('richText.webEnable'),
+  ])
   expect(checkboxes[1]!.disabled).toBe(true)
   checkboxes[0]!.click()
   await nextTick()

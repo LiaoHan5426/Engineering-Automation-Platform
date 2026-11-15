@@ -87,7 +87,7 @@ it('does not create a conversation before the current board editor accepts the c
     activeId: 'kept',
     references: [],
     draft: 'Keep this conversation draft',
-    sending: false,
+    sending: true,
     workspaceLabel: '',
     memory: '',
     model: '',
@@ -119,12 +119,19 @@ it('does not create a conversation before the current board editor accepts the c
   root.querySelector<HTMLButtonElement>('[data-testid=new-chat]')!.click()
   await flush()
   expect(create).not.toHaveBeenCalled()
+  expect(root.querySelector('[data-testid=send-in-flight]')).not.toBeNull()
+  root.querySelector<HTMLButtonElement>('[data-testid=return-running-chat]')!.click()
+  await flush()
+  expect(create).not.toHaveBeenCalled()
+  expect(location.hash).toBe('#board?projectId=local-eap')
   expect(chatBinding.value?.draft).toBe('Keep this conversation draft')
   expect(location.hash).toBe('#board?projectId=local-eap')
   expect(state.resume).toBeTypeOf('function')
   state.dirty = false
   state.resume?.()
   await flush()
-  expect(create).toHaveBeenCalledTimes(1)
+  expect(create).not.toHaveBeenCalled()
   expect(location.hash).toBe('#chat')
+  expect(root.querySelector('[data-testid=send-in-flight]')).toBeNull()
+  expect(chatBinding.value?.draft).toBe('Keep this conversation draft')
 })

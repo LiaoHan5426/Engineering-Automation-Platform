@@ -308,8 +308,8 @@ export const desktopMessages = {
     sceneKindCustom: '自定义配置',
     searchExperts: '搜索专家名称、简介或标签',
     executionBlocked: '当前执行模式未接通，发送已停用。草稿仍保留。',
-    sendingAway:
-      '发送仍在进行。可用输入区取消按钮请求中止；离开页面不会中断服务端轮次，刷新或重启后也不会继续。',
+    sendingAway: '当前所选对话的请求仍在进行。',
+    returnToChat: '返回对话',
     skills: '技能',
     mcp: 'MCP',
     skillsEmpty: '技能目录未接通；场景里列出技能不会安装或授权。',
@@ -943,8 +943,8 @@ export const desktopMessages = {
     searchExperts: 'Search expert name, intro, or tags',
     executionBlocked:
       'This execution mode is not connected. Sending is disabled. The draft is kept.',
-    sendingAway:
-      'This send is still running. Use the composer cancel button to request abort; leaving the page does not stop the server turn, and a refresh or restart will not continue it.',
+    sendingAway: 'The selected conversation has a request in progress.',
+    returnToChat: 'Return to conversation',
     skills: 'Skills',
     mcp: 'MCP',
     skillsEmpty:

@@ -137,15 +137,22 @@ describe('source-surface return through the real App navigation', () => {
 
     chatBinding.value = { ...chatBinding.value!, sending: true }
     await nextTick()
-    const status = root.querySelector('[data-testid="send-in-flight"]')!
-    expect(status.parentElement).toBe(notices)
-    expect(status.getAttribute('role')).toBe('status')
-    expect(status.textContent).toBe(i18n.global.t('desktop.sendingAway'))
+    expect(root.querySelector('[data-testid="send-in-flight"]')).toBeNull()
     expect([...shell.children]).toEqual(regions)
 
     await click('.activity-bar button:nth-child(5)')
     expect(window.location.hash).toBe('#model-settings')
-    expect(root.querySelector('[data-testid="send-in-flight"]')).toBe(status)
+    const status = root.querySelector('[data-testid="send-in-flight"]')!
+    expect(status.parentElement).toBe(notices)
+    expect(status.getAttribute('role')).toBe('status')
+    expect(status.textContent).toContain(i18n.global.t('desktop.sendingAway'))
+    await click('[data-testid="return-running-chat"]')
+    expect(window.location.hash).toBe('#chat')
+    expect(chatBinding.value?.draft).toBe('未发送的 Work 草稿')
+    expect(chatBinding.value?.activeId).toBe('source')
+    expect(create).not.toHaveBeenCalled()
+    expect(select).not.toHaveBeenCalled()
+    expect(root.querySelector('[data-testid="send-in-flight"]')).toBeNull()
     expect(shell.querySelector(':scope > .body')).toBe(body)
     expect([...shell.children]).toEqual(regions)
 

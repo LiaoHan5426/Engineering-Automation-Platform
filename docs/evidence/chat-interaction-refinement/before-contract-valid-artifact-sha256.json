@@ -1,0 +1,42 @@
+[
+  {
+    "path": "before-contract-valid/before-default-composer-1918.png",
+    "sha256": "f4f2b88e3c0c864c039e28ba8a593dea827a8ebefbe443cd5209fe7dd8db8042"
+  },
+  {
+    "path": "before-contract-valid/before-default-composer-390.png",
+    "sha256": "bf2265029ae296b85f094b540a3dc8f255064573a5985d4dba593d906bb7cd82"
+  },
+  {
+    "path": "before-contract-valid/before-first-pending-1918.png",
+    "sha256": "9f29f8d074503f5fe17c902a5b15f4aa7b43f56d22df66b5fd490efcef6d5ecb"
+  },
+  {
+    "path": "before-contract-valid/before-first-pending-390.png",
+    "sha256": "2580738dabd3e7ecdf4c95d1d5362319f16f75a135484a11295e837d53164f56"
+  },
+  {
+    "path": "before-contract-valid/before-manifest.json",
+    "sha256": "c0336ffc9c7ed73ac557ab5f030edead27744c036fdb5ba993fbeec748d5ad7f"
+  },
+  {
+    "path": "before-contract-valid/before-source-provenance.json",
+    "sha256": "be77382cdbc6661a5aa2a84e9933809b9e453016436e29b328726f94462fe5be"
+  },
+  {
+    "path": "before-contract-valid/before-speech-options-1918.png",
+    "sha256": "fab0c573c68c153df97c23b858c35a5c3598ecf337c5b5efc383d23d423ac87d"
+  },
+  {
+    "path": "before-contract-valid/before-speech-options-390.png",
+    "sha256": "ca9971edd4d242c4854c3be1605f1ba2355bd604c87ed4ac7f55136b4a0709ab"
+  },
+  {
+    "path": "before-contract-valid/before-web-options-1918.png",
+    "sha256": "312bf2a255eeb460bfa95e9b1736e16deb5f145f72eae44c3bcfd6d186872e76"
+  },
+  {
+    "path": "before-contract-valid/before-web-options-390.png",
+    "sha256": "0cf24bc3abfc5b7a7f1bc8576d9301fbc79ce043b2d50e8c646e85253be11902"
+  }
+]

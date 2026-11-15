@@ -292,14 +292,84 @@ const visibleTurns = computed(() => {
   const start = Math.max(0, all.length - shownTurns.value)
   return all.slice(start).map((turn, offset) => ({ turn, key: start + offset }))
 })
-// send appends a user/assistant pair and forbids another send while inflight.
-// visibleTurns keys retain the absolute transcript index, including after slicing.
-const pendingAnswerKey = computed(() => {
-  if (!session.sending.value) return null
-  const turns = session.turns.value
-  const key = turns.length - 1
-  return turns[key]?.role === 'assistant' && turns[key - 1]?.role === 'user' ? key : null
-})
+// Status is projected from the selected graph path; message content stays unchanged.
+function turnProgress(turn: ChatTurn) {
+  if (turn.role !== 'assistant') return ''
+  const operation = session.graphs.value[session.conversationId.value ?? '']?.operations.find(
+    (item) => item.operationId === pendingOperation.value,
+  )
+  if (
+    session.failure.value === 'response-uncertain' &&
+    operation &&
+    operation.assistantMessageId === turn.id
+  )
+    return 'richText.uncertain'
+  switch (turn.status) {
+    case ChatExecutionStatus.RUNNING:
+      return turn.observationAvailable === false || !session.sending.value
+        ? 'richText.runningUnobserved'
+        : turn.text
+          ? 'richText.generating'
+          : 'chat.waitingForAnswer'
+    case ChatExecutionStatus.UNKNOWN:
+      return 'richText.uncertain'
+    case ChatExecutionStatus.FAILED:
+      return 'richText.turnFailed'
+    case ChatExecutionStatus.CANCELLED:
+      return 'richText.turnCancelled'
+    default:
+      return ''
+  }
+}
+const pendingOperation = computed(
+  () => session.pendingOperations.value[session.conversationId.value ?? ''],
+)
+const pendingReceipt = computed(
+  () =>
+    !!pendingOperation.value &&
+    !session.graphs.value[session.conversationId.value ?? '']?.operations.some(
+      (operation) => operation.operationId === pendingOperation.value,
+    ),
+)
+function inspectTurn(turn?: ChatTurn) {
+  const operation = session.graphs.value[session.conversationId.value ?? '']?.operations.find(
+    (item) => item.operationId === pendingOperation.value,
+  )
+  if (pendingOperation.value && (!turn || operation?.assistantMessageId === turn.id))
+    void session.recoverOperation()
+  else
+    void session.refreshGraph().catch((error) => {
+      historyNote.value = errorMessage(error)
+    })
+}
+function speechEligible(turn: ChatTurn) {
+  return (
+    turn.status === ChatExecutionStatus.SUCCEEDED &&
+    !turn.error &&
+    !session.sending.value &&
+    !session.generationBlocking.value &&
+    !pendingOperation.value
+  )
+}
+function speechActions(turn: ChatTurn) {
+  return audio.selectedService.value?.synthesis
+    ? [
+        {
+          id: 'speech',
+          label: t('richText.generateSpeech'),
+          disabled:
+            !speechEligible(turn) ||
+            audio.busy.value ||
+            audio.unresolved.value ||
+            turn.text.length > (audio.catalog.value?.limits.maxTextChars ?? 0),
+        },
+      ]
+    : [{ id: 'speech-settings', label: t('richText.speechSettings') }]
+}
+function selectSpeechAction(id: string, turn: ChatTurn) {
+  if (id === 'speech-settings') serviceConfiguration.value = true
+  else if (id === 'speech' && speechEligible(turn)) void audio.synthesize(turn.text)
+}
 const messageMenuUnavailable = ref(false)
 watch(
   () => session.conversationId.value,
@@ -1261,7 +1331,13 @@ onMounted(async () => {
           <Feedback v-if="session.graphUnavailable.value" tone="warning">{{
             t('richText.graphUnavailable')
           }}</Feedback>
-          <Feedback v-if="session.failure.value === 'response-uncertain'" tone="warning"
+          <Feedback
+            v-if="
+              session.failure.value === 'response-uncertain' &&
+              !pendingReceipt &&
+              !visibleTurns.some(({ turn }) => turnProgress(turn) === 'richText.uncertain')
+            "
+            tone="warning"
             >{{ t('richText.uncertain') }}
             <Button size="sm" :disabled="session.sending.value" @click="session.recoverOperation">{{
               t('richText.recover')
@@ -1371,7 +1447,7 @@ onMounted(async () => {
           </p>
 
           <WorkspaceWelcome
-            v-if="!session.turns.value.length || workbench.workMode === 'work'"
+            v-if="!pendingReceipt && (!session.turns.value.length || workbench.workMode === 'work')"
             :compact="session.turns.value.length > 0"
             @scenario="useScene"
           />
@@ -1381,7 +1457,7 @@ onMounted(async () => {
             data-testid="message-menu-unavailable"
             >{{ t('chat.messageMenuUnavailable') }}</Feedback
           >
-          <ol v-if="visibleTurns.length" class="chat-log">
+          <ol v-if="visibleTurns.length || pendingReceipt" class="chat-log">
             <li
               v-for="{ turn, key } in visibleTurns"
               :key="turn.id ?? key"
@@ -1406,26 +1482,16 @@ onMounted(async () => {
                     @edit="session.editMessage"
                     @regenerate="session.regenerateMessage"
                   />
-                  <Button
-                    v-if="turn.role === 'assistant' && turn.text"
-                    variant="ghost"
-                    size="sm"
-                    :disabled="
-                      audio.busy.value ||
-                      audio.unresolved.value ||
-                      !audio.selectedService.value?.synthesis ||
-                      turn.text.length > (audio.catalog.value?.limits.maxTextChars ?? 0)
-                    "
-                    @click="audio.synthesize(turn.text)"
-                    >{{ t('richText.generateSpeech') }}</Button
+                  <DropdownMenu
+                    v-if="turn.role === 'assistant' && turn.text && speechEligible(turn)"
+                    :label="t('richText.answerTools')"
+                    :items="speechActions(turn)"
+                    @select="selectSpeechAction($event, turn)"
                   >
-                  <Button
-                    v-if="turn.role === 'assistant' && !audio.selectedService.value?.synthesis"
-                    variant="ghost"
-                    size="sm"
-                    @click="serviceConfiguration = true"
-                    >{{ t('richText.speechSettings') }}</Button
-                  >
+                    <Button size="sm" variant="ghost" :aria-label="t('richText.answerTools')">{{
+                      t('richText.answerTools')
+                    }}</Button>
+                  </DropdownMenu>
                 </template>
                 <template #references
                   ><ChatWebSources v-if="turn.webSources?.length" :sources="turn.webSources"
@@ -1443,14 +1509,27 @@ onMounted(async () => {
                     @click="openMessageMenu($event, turn, key, true)"
                     >{{ t('desktop.moreActions') }}</Button
                   >
-                  <p v-else-if="turn.role === 'assistant'">
-                    {{
-                      t(
-                        key === pendingAnswerKey && turn.status === ChatExecutionStatus.RUNNING
-                          ? 'chat.waitingForAnswer'
-                          : 'chat.noAnswer',
-                      )
-                    }}
+                  <div
+                    v-if="turnProgress(turn)"
+                    class="turn-progress"
+                    role="status"
+                    data-testid="turn-progress"
+                  >
+                    <span>{{ t(turnProgress(turn)) }}</span>
+                    <Button
+                      v-if="
+                        turnProgress(turn) === 'richText.uncertain' ||
+                        (turn.status === ChatExecutionStatus.RUNNING && !session.sending.value)
+                      "
+                      size="sm"
+                      variant="ghost"
+                      data-testid="inspect-turn"
+                      @click="inspectTurn(turn)"
+                      >{{ t('richText.recover') }}</Button
+                    >
+                  </div>
+                  <p v-else-if="turn.role === 'assistant' && !turn.text">
+                    {{ t('chat.noAnswer') }}
                   </p>
                   <Button
                     v-if="
@@ -1666,6 +1745,23 @@ onMounted(async () => {
                 </template>
               </ChatMessageBody>
             </li>
+            <li
+              v-if="pendingReceipt"
+              class="turn-progress"
+              role="status"
+              data-testid="pending-receipt"
+            >
+              <span>{{
+                t(session.sending.value ? 'richText.pendingReceipt' : 'richText.uncertain')
+              }}</span>
+              <Button
+                v-if="!session.sending.value"
+                size="sm"
+                variant="ghost"
+                @click="inspectTurn()"
+                >{{ t('richText.recover') }}</Button
+              >
+            </li>
           </ol>
 
           <Button
@@ -1824,6 +1920,13 @@ onMounted(async () => {
             :tool-mode="
               workbench.executionMode === 'plan' ? AiToolMode.NONE : session.toolMode.value
             "
+            :capability-attention="
+              audio.microphone.value !== 'idle' ||
+              audio.busy.value ||
+              audio.unresolved.value ||
+              !!audio.pendingText.value ||
+              !!audio.error.value
+            "
             :active="props.active"
             :refreshing-models="modelsRefreshing"
             :model-options-available="modelChoices.length > 0"
@@ -1847,12 +1950,44 @@ onMounted(async () => {
             @configure="serviceConfiguration = true"
           >
             <template #speech>
-              <Collapse :summary="t('richText.speechTitle')"
-                ><SpeechControls
-                  :audio="audio"
-                  :disabled="session.generationBlocking.value || archived"
-                  @configure="serviceConfiguration = true"
-              /></Collapse>
+              <SpeechControls
+                :audio="audio"
+                :disabled="session.generationBlocking.value || archived"
+                @configure="serviceConfiguration = true"
+              />
+            </template>
+            <template #capability-status="{ openCapabilities }">
+              <div
+                v-if="
+                  audio.microphone.value !== 'idle' ||
+                  audio.busy.value ||
+                  audio.unresolved.value ||
+                  audio.pendingText.value ||
+                  audio.error.value
+                "
+                role="status"
+                data-testid="audio-attention"
+              >
+                <span>{{
+                  t(
+                    audio.microphone.value !== 'idle'
+                      ? 'richText.recording'
+                      : audio.unresolved.value
+                        ? 'richText.audioUncertain'
+                        : 'richText.audioAttention',
+                  )
+                }}</span>
+                <Button
+                  v-if="audio.microphone.value === 'recording'"
+                  size="sm"
+                  variant="secondary"
+                  @click="audio.stopRecording"
+                  >{{ t('richText.stopRecording') }}</Button
+                >
+                <Button size="sm" variant="ghost" @click="openCapabilities">{{
+                  t('richText.speechTitle')
+                }}</Button>
+              </div>
             </template>
             <template #draft>
               <label>
@@ -1885,8 +2020,7 @@ onMounted(async () => {
               </label>
             </template>
             <template #details>
-              <Collapse class="outgoing-preview" data-testid="outgoing-preview">
-                <template #summary>{{ t('desktop.outgoing') }}</template>
+              <section class="outgoing-preview" data-testid="outgoing-preview">
                 <p>{{ t('desktop.outgoingIdle') }}</p>
                 <p>
                   {{ t('desktop.outgoingDraft') }}：{{
@@ -1894,7 +2028,9 @@ onMounted(async () => {
                   }}
                 </p>
                 <p>{{ t('desktop.outgoingGuide') }}</p>
-                <pre>{{ outgoingText || t('desktop.outgoingNone') }}</pre>
+                <Collapse :summary="t('desktop.outgoing')">
+                  <pre>{{ outgoingText || t('desktop.outgoingNone') }}</pre>
+                </Collapse>
                 <p v-if="workbench.executionMode === 'plan'">{{ t('desktop.outgoingPlan') }}</p>
                 <ul v-if="session.context.value.files.length">
                   <li v-for="file in session.context.value.files" :key="file.name">
@@ -1902,7 +2038,7 @@ onMounted(async () => {
                   </li>
                 </ul>
                 <p v-else>{{ t('desktop.outgoingNoFiles') }}</p>
-              </Collapse>
+              </section>
             </template>
             <template #settings
               ><p
@@ -2228,6 +2364,15 @@ onMounted(async () => {
   gap: 8px;
   min-width: 0;
   width: 100%;
+}
+.turn-progress {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding-block: 0.4rem;
 }
 .session-status {
   min-width: 0;

@@ -90,9 +90,7 @@ it.each(['responses', 'chat-completions', 'plan'] as const)(
       expect(host.querySelector('[data-testid="composer-add"]')).not.toBeNull(),
     )
     await flush()
-    ;(host.querySelector('[data-testid="composer-add"]') as HTMLButtonElement).click()
-    await flush()
-    ;(document.querySelector('[data-testid="composer-cat-files"]') as HTMLButtonElement).click()
+    ;(host.querySelector('[data-testid="capabilities-open"]') as HTMLButtonElement).click()
     await flush()
     const git = Array.from(
       document.querySelectorAll<HTMLButtonElement>('[data-testid="chat-tool-settings"] button'),

@@ -1,0 +1,14 @@
+[
+  {
+    "path": "after-audio/after-audio.json",
+    "sha256": "5cd2e1a3c2e59a552dde75ccdf133422f1d030b7e682a1fb52e77b9c0dc88345"
+  },
+  {
+    "path": "after-audio/after-speech-pending-append-1918.png",
+    "sha256": "6b543e2d0b74da4e71bfcd6a942badaf81375bf138895bb058519b3e75b34cfa"
+  },
+  {
+    "path": "after-audio/after-speech-pending-append-390.png",
+    "sha256": "9b5f9842a889efdd0c37f6d708114eaeb908707d18de4a22195e0a087241234b"
+  }
+]

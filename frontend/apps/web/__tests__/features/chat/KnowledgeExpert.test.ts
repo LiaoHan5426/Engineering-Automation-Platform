@@ -287,11 +287,9 @@ it('cancels replacement, removes explicitly and removes on code mode change with
   await selectCandidate()
   button('knowledge-use').click()
   await nextTick()
-  button('composer-add').click()
+  button('execution-mode').click()
   await nextTick()
-  button('composer-cat-actions').click()
-  await nextTick()
-  const mode = host.querySelector('.composer-popup-content select') as HTMLSelectElement
+  const mode = host.querySelector('.execution-menu select') as HTMLSelectElement
   expect(mode).not.toBeNull()
   mode.value = 'code'
   mode.dispatchEvent(new Event('change', { bubbles: true }))

@@ -114,6 +114,7 @@ it.each([
   'shows waiting only for the live empty turn, then real text and the final outcome (%s, %s)',
   async (locale, finalAnswer) => {
     i18n.global.locale.value = locale
+    let accept!: () => void
     let finish!: (result: AiMessageResult) => void
     let stream!: NonNullable<Parameters<typeof runtimeApi.sendAiMessage>[2]>['onEvent']
     const server = graphServer(
@@ -126,16 +127,18 @@ it.each([
       .spyOn(runtimeApi, 'sendAiMessage')
       .mockImplementation((id, request, options) => {
         stream = options!.onEvent
-        const binding = server.accept(id, request)
-        stream!({
-          type: 'execution.accepted',
-          conversationId: id,
-          executionId: binding.executionId,
-          sequence: 0,
-          text: '',
-          code: '',
-          status: 'RUNNING',
-        })
+        accept = () => {
+          const binding = server.accept(id, request)
+          stream!({
+            type: 'execution.accepted',
+            conversationId: id,
+            executionId: binding.executionId,
+            sequence: 0,
+            text: '',
+            code: '',
+            status: 'RUNNING',
+          })
+        }
         return new Promise((resolve) => {
           finish = (result) => {
             server.complete(id, request, result)
@@ -155,7 +158,13 @@ it.each([
     expect(bubbles()[0]!.textContent).not.toContain(i18n.global.t('chat.waitingForAnswer'))
     ;(host.querySelector('[data-testid=send-message]') as HTMLButtonElement).click()
     await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+    expect(bubbles()).toHaveLength(1)
+    expect(host.querySelector('[data-testid=pending-receipt]')?.textContent).toContain(
+      i18n.global.t('richText.pendingReceipt'),
+    )
+    accept()
     await vi.waitFor(() => expect(bubbles()).toHaveLength(2))
+    expect(host.querySelector('[data-testid=pending-receipt]')).toBeNull()
     expect(chatBinding.value?.sending).toBe(true)
     expect(chatBinding.value?.latestExecution).toMatchObject({
       executionId: 'execution',
@@ -181,6 +190,11 @@ it.each([
       observing: true,
     })
     expect(bubbles()[1]!.textContent).toContain('Partial answer')
+    expect(bubbles()[1]!.textContent).toContain(i18n.global.t('richText.generating'))
+    expect(
+      bubbles()[1]!.querySelector('[aria-label="' + i18n.global.t('richText.answerTools') + '"]'),
+    ).toBeNull()
+    expect(host.querySelector('[data-testid=pending-receipt]')).toBeNull()
     expect(bubbles()[1]!.textContent).not.toContain(i18n.global.t('chat.waitingForAnswer'))
     finish({
       executionId: 'execution',
@@ -214,8 +228,11 @@ it('keeps finished empty, failed and cancelled turns out of the waiting state', 
     answer(ChatExecutionStatus.CANCELLED, 'Partial text retained', 'CANCELLED'),
   ])
   expect(bubbles()).toHaveLength(4)
-  for (const bubble of bubbles().slice(0, 3)) {
-    expect(bubble.textContent).toContain(i18n.global.t('chat.noAnswer'))
+  expect(bubbles()[0]!.textContent).toContain(i18n.global.t('chat.noAnswer'))
+  expect(bubbles()[1]!.textContent).toContain(i18n.global.t('richText.turnFailed'))
+  expect(bubbles()[2]!.textContent).toContain(i18n.global.t('richText.turnCancelled'))
+  for (const bubble of bubbles().slice(1, 3)) {
+    expect(bubble.textContent).not.toContain(i18n.global.t('chat.noAnswer'))
     expect(bubble.textContent).not.toContain(i18n.global.t('chat.waitingForAnswer'))
   }
   expect(bubbles()[1]!.textContent).toContain('MODEL_CALL_FAILED')
@@ -242,6 +259,47 @@ it.each([ChatExecutionStatus.RUNNING, ChatExecutionStatus.UNKNOWN])(
       await nextTick()
     }
     expect(bubbles()[0]!.textContent).not.toContain(i18n.global.t('chat.waitingForAnswer'))
+    expect(bubbles()[0]!.textContent).not.toContain(i18n.global.t('chat.noAnswer'))
+    expect(bubbles()[0]!.textContent).toContain(
+      i18n.global.t(
+        status === ChatExecutionStatus.RUNNING
+          ? 'richText.runningUnobserved'
+          : 'richText.uncertain',
+      ),
+    )
+    expect(host.querySelector('[data-testid=retry-send]')).toBeNull()
+    const inspect = host.querySelector<HTMLButtonElement>('[data-testid=inspect-turn]')!
+    expect(inspect).not.toBeNull()
+    const reads = vi.mocked(runtimeApi.chatGraph).mock.calls.length
+    inspect.click()
+    await vi.waitFor(() =>
+      expect(vi.mocked(runtimeApi.chatGraph).mock.calls.length).toBeGreaterThan(reads),
+    )
     expect(send).not.toHaveBeenCalled()
   },
 )
+
+it('keeps a missing receipt local and offers only read recovery after a lost response', async () => {
+  const send = vi.spyOn(runtimeApi, 'sendAiMessage').mockRejectedValue(new Error('Connection lost'))
+  const recover = vi
+    .spyOn(runtimeApi, 'chatOperation')
+    .mockRejectedValue(new Error('Not yet observed'))
+  await mount()
+  ;(host.querySelector('[data-testid=send-message]') as HTMLButtonElement).click()
+  await vi.waitFor(() => expect(chatBinding.value?.sending).toBe(false))
+  await vi.waitFor(() =>
+    expect(host.querySelector('[data-testid=pending-receipt]')?.textContent).toContain(
+      i18n.global.t('richText.uncertain'),
+    ),
+  )
+  expect(bubbles()).toHaveLength(0)
+  expect(host.querySelector('[data-testid=retry-send]')).toBeNull()
+  expect(host.querySelectorAll('[data-testid=pending-receipt]')).toHaveLength(1)
+  ;(host.querySelector('[data-testid=pending-receipt] button') as HTMLButtonElement).click()
+  await vi.waitFor(() => expect(recover).toHaveBeenCalledTimes(1))
+  expect(send).toHaveBeenCalledTimes(1)
+  expect(chatBinding.value?.draft).toBe('Question')
+  expect((host.querySelector('[data-testid=send-message]') as HTMLButtonElement).disabled).toBe(
+    true,
+  )
+})

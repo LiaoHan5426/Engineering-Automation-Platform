@@ -1,0 +1,338 @@
+[
+  {
+    "viewport": {
+      "width": 1918,
+      "height": 914
+    },
+    "syntheticBrowserMicrophone": true,
+    "panelCloseKeepsRecordingAndStopReachable": true,
+    "panelReopenKeepsServiceRecordingOperationAndPendingTranscript": true,
+    "lostResponseRecoveryGetOnly": true,
+    "posts": 1,
+    "gets": 2,
+    "capture": {
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/transcriptions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/operations/95da80cf-429b-4e93-aa03-4dba3e29adbd"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/operations/95da80cf-429b-4e93-aa03-4dba3e29adbd"
+        }
+      ],
+      "blocked": [],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    }
+  },
+  {
+    "viewport": {
+      "width": 390,
+      "height": 1000
+    },
+    "syntheticBrowserMicrophone": true,
+    "panelCloseKeepsRecordingAndStopReachable": true,
+    "panelReopenKeepsServiceRecordingOperationAndPendingTranscript": true,
+    "lostResponseRecoveryGetOnly": true,
+    "posts": 1,
+    "gets": 2,
+    "capture": {
+      "errors": [],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/services"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/status"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/connections"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health"
+        },
+        {
+          "method": "GET",
+          "path": "/api/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/api/databases"
+        },
+        {
+          "method": "GET",
+          "path": "/api/experts"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stats"
+        },
+        {
+          "method": "GET",
+          "path": "/api/scenarios"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/conversations/c7020000-0000-4000-8000-000000000001/graph"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/speech/transcriptions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/operations/70eb09c7-3e61-4eac-9588-60b5dd81a914"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/speech/operations/70eb09c7-3e61-4eac-9588-60b5dd81a914"
+        }
+      ],
+      "blocked": [],
+      "storageKey": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi.eap.chat.preferences.v2",
+      "scope": "http%3A%2F%2F127.0.0.1%3A8080%2Fapi."
+    }
+  }
+]

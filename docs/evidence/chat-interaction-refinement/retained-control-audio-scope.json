@@ -1,0 +1,15 @@
+{
+  "testedSourceTreeSha256": "f9e1c2c56848e179633b4641b42ea714ca5612086d255515aee984ec9e1de75e",
+  "retainedSuites": [
+    "after-controls",
+    "after-audio"
+  ],
+  "laterSourceChanges": [
+    {
+      "path": "frontend/apps/web/src/features/chat/ChatWorkspace.vue",
+      "testedSha256": "b43cae62488a46283b08b616081ee6f26df1f7a216e39740b6ee87d6fd339066",
+      "currentSha256": "c251a2963f6546547b6c2996b93ddc893bd602bcda88b2b1d775570663fdd323"
+    }
+  ],
+  "reason": "Only first-pending welcome visibility changed; existing controls and audio behavior is unaffected. Main canonical run rechecks updated source and viewport receipt containment."
+}

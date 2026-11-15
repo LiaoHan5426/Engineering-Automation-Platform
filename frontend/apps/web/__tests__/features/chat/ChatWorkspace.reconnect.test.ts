@@ -263,7 +263,9 @@ it('does not restore the old task context into a new selection when reconnect re
     artifacts: [],
   })
   await flush()
-  expect(host.querySelector('[data-testid="outgoing-preview"]')?.textContent).not.toContain(
+  click('[data-testid="context-review"]')
+  await flush()
+  expect(document.querySelector('[data-testid="outgoing-preview"]')?.textContent).not.toContain(
     'Original instruction',
   )
 })

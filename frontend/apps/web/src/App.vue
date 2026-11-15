@@ -128,6 +128,10 @@ function canNavigate(onDiscard?: () => void): boolean {
     return false
   return pluginSlot.value?.guardLeave(activeView.value, onDiscard) ?? true
 }
+function returnToRunningChat() {
+  if (!canNavigate(returnToRunningChat)) return
+  activeView.value = 'chat'
+}
 function guardWorkspaceLeave(view: string, onDiscard?: () => void) {
   const target =
     view === 'model-settings' ? modelSettings.value : view === 'board' ? projectBoard.value : null
@@ -1143,12 +1147,19 @@ onUnmounted(() => {
     </header>
     <div class="shell-notices">
       <p
-        v-if="chatBinding?.sending"
+        v-if="activeView !== 'chat' && chatBinding?.sending"
         class="send-in-flight"
         role="status"
         data-testid="send-in-flight"
       >
         {{ i18n.global.t('desktop.sendingAway') }}
+        <Button
+          size="sm"
+          variant="ghost"
+          data-testid="return-running-chat"
+          @click="returnToRunningChat"
+          >{{ i18n.global.t('desktop.returnToChat') }}</Button
+        >
       </p>
       <p v-if="workspaceMessage" class="shell-message" role="status">{{ workspaceMessage }}</p>
     </div>

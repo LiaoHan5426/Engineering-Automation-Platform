@@ -71,7 +71,11 @@ it('requires explicit adoption and cancels without consuming or overwriting; ado
   expect(host.querySelector('[data-testid=composer-task-binding]')?.textContent).toContain(
     taskRef.taskId,
   )
-  expect((host.querySelector('[data-testid=generation-target]') as HTMLInputElement).value).toBe('')
+  ;(host.querySelector('[data-testid=context-review]') as HTMLButtonElement).click()
+  await nextTick()
+  expect(
+    (document.querySelector('[data-testid=generation-target]') as HTMLInputElement).value,
+  ).toBe('')
   expect(workbench.sessionExtras.scratch).toMatchObject({
     projectId: 'new-project',
     scenarioId: null,
