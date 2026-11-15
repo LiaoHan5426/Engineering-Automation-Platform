@@ -1,6 +1,6 @@
 # First-send notice layout evidence
 
-Actual Vue App reproduction on detached HEAD `53954f9`, using a public synthetic model and a controlled local HTTP/SSE fixture. Before and after use a clean browser page for each viewport, a newly opened conversation, identical draft text, and the real composer Send interaction. No DOM insertion, CSS injection, component-state injection, production feature switch, real backend, or provider invocation is used.
+Actual Vue App reproduction with baseline `53954f99d6746d06f5a5115dbbae040c1f1d53a1` and after implementation `a7bd75b4850bd50a110be2d5754d83a5bf738b94` (both captured while HEAD was detached at the baseline; committed after capture, independently verified production source SHA-256), using a public synthetic model and a controlled local HTTP/SSE fixture. Before and after use a clean browser page for each viewport, a newly opened conversation, identical draft text, and the real composer Send interaction. No DOM insertion, CSS injection, component-state injection, production feature switch, real backend, or provider invocation is used.
 
 | Viewport | Before notice / body | After notice / body | After terminal body |
 | --- | --- | --- | --- |
