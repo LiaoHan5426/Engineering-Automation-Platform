@@ -4,6 +4,46 @@ import { createApp, defineComponent, h, nextTick, shallowRef } from 'vue'
 import { expect, it, onTestFinished, vi } from 'vitest'
 import { ComposerContentEditable } from '../src/client/input/editor/ComposerContentEditable.tsx'
 
+it.each(['initial', 'deferred'] as const)('makes the %s editor host focusable before publishing its root', async (binding) => {
+  const editor = createEditor({ namespace: 'composer-root-focus', onError: error => { throw error } })
+  const bound = shallowRef<LexicalEditor | null>(binding === 'initial' ? editor : null)
+  const editable = shallowRef(true)
+  const container = document.createElement('div')
+  document.body.append(container)
+  const publications: Array<{ gate: string | null; editable: boolean; focused: boolean }> = []
+  const removeRootListener = editor.registerRootListener(root => {
+    if (root === null) return
+    root.focus()
+    publications.push({
+      gate: root.getAttribute('contenteditable'),
+      editable: editor.isEditable(),
+      focused: document.activeElement === root,
+    })
+  })
+  const app = createApp(defineComponent(() => () => h(ComposerContentEditable, {
+    editor: bound.value, editable: editable.value,
+  })))
+  onTestFinished(() => { app.unmount(); removeRootListener(); container.remove() })
+  app.mount(container)
+  await nextTick()
+  const host = container.querySelector<HTMLDivElement>('[data-composer-input]')!
+  if (binding === 'deferred') {
+    expect(editor.getRootElement()).toBeNull()
+    expect(host.getAttribute('contenteditable')).toBe('false')
+    expect(publications).toEqual([])
+    bound.value = editor
+    await nextTick()
+  }
+  expect(editor.getRootElement()).toBe(host)
+  expect(publications).toEqual([{ gate: 'true', editable: true, focused: true }])
+  editable.value = false
+  await nextTick()
+  editable.value = true
+  await nextTick()
+  expect(editor.getRootElement()).toBe(host)
+  expect(publications).toHaveLength(1)
+})
+
 it('commits the accepted echo before changing the resident editing host gate', async () => {
   const editor = createEditor({ namespace: 'composer-gate', onError: error => { throw error } })
   const bound = shallowRef<LexicalEditor | null>(editor)

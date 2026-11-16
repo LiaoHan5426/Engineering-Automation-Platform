@@ -8,12 +8,43 @@ import {
   acknowledgeReloadConnectionLoss, assertFixtureInventory, captureStableAria, compareOrRefreshGolden,
   launchWebScaffold, seedSession, watchConsole, webSnapshotMode, type WebScaffold,
 } from './scaffold.ts'
-import { newEnglishPage, pinBrowserClock, saveFailureShot } from './support.ts'
+import { newEnglishPage, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('../../../snapshots/web/workspace-recency', import.meta.url))
 const SEED = fileURLToPath(new URL('../../../snapshots/web/seeded-history/session.v3.jsonl', import.meta.url))
 const MODE = webSnapshotMode()
 const TITLES = ['Newest conversation', 'Middle conversation', 'Oldest conversation']
+
+// This scenario owns a logical calendar, independent of runner delays. Native
+// scheduling and Vue's event timestamp guard are unchanged. Advance only between
+// completed input actions; every handler in one event observes the same time.
+const RECENCY_CLOCK_KEY = 'dsh.test.workspace-recency.clock'
+async function stepRecencyClock(page: Page): Promise<void> {
+  await page.evaluate((key) => {
+    const current = sessionStorage.getItem(key)
+    if (current === null) throw new Error('Recency fixture clock is not installed')
+    sessionStorage.setItem(key, String(Number(current) + 1))
+  }, RECENCY_CLOCK_KEY)
+}
+
+async function installRecencyClock(page: Page, epoch: number, origin: string): Promise<void> {
+  // Install only on navigation, never evaluate in the current document: this
+  // avoids wrapping Date twice. Session storage belongs to this fresh page's
+  // context and survives its reloads; closing that context releases all state.
+  await page.addInitScript(({ key, epoch, origin }) => {
+    if (location.origin !== origin) return
+    if (sessionStorage.getItem(key) === null) sessionStorage.setItem(key, String(epoch))
+    const NativeDate = Date
+    const now = (): number => Number(sessionStorage.getItem(key))
+    window.Date = new Proxy(NativeDate, {
+      construct: (target, args, newTarget) =>
+        Reflect.construct(target, args.length === 0 ? [now()] : args, newTarget) as Date,
+      apply: () => new NativeDate(now()).toString(),
+      get: (target, property, receiver): unknown =>
+        property === 'now' ? now : Reflect.get(target, property, receiver),
+    })
+  }, { key: RECENCY_CLOCK_KEY, epoch, origin })
+}
 
 describe('web e2e: workspace recency', () => {
   let scaffold: WebScaffold
@@ -63,8 +94,7 @@ describe('web e2e: workspace recency', () => {
         else route.send(message)
       })
     })
-    // Keep expected relative ages inside their minute buckets rather than at a boundary.
-    await pinBrowserClock(page, now - 30_000)
+    await installRecencyClock(page, now - 30_000, new URL(scaffold.authenticatedUrl).origin)
     tripwire = watchConsole(page)
     await page.addInitScript(({ account, ids }) => {
       if (localStorage.getItem('dsh.workspace.view.v5') !== null) return
@@ -87,10 +117,13 @@ describe('web e2e: workspace recency', () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-workspace-recency'))
     const titles = () => page.locator('[role="treeitem"]:not([aria-expanded]) [class*="title"]').allTextContents()
     const pick = async (name: string): Promise<void> => {
+      await stepRecencyClock(page)
       await page.getByRole('button', { name: 'View options' }).click()
+      await stepRecencyClock(page)
       await page.getByRole('menuitem', { name, exact: true }).click()
     }
     const captureSidebar = async (): Promise<string> => {
+      await stepRecencyClock(page)
       await page.getByRole('button', { name: 'View options' }).hover()
       await expect.poll(() => page.getByRole('button', { name: /^Session actions for / }).count()).toBe(0)
       return captureStableAria(page, '[role="tree"][aria-label="Sessions"]', scaffold.workspaceCwd)
@@ -106,10 +139,12 @@ describe('web e2e: workspace recency', () => {
     await expect.poll(titles).toEqual(TITLES)
     const source = page.getByRole('treeitem').filter({ has: page.getByText(TITLES[2]!, { exact: true }) })
     const target = page.getByRole('treeitem').filter({ has: page.getByText(TITLES[0]!, { exact: true }) })
+    await stepRecencyClock(page)
     await source.dragTo(target, { targetPosition: { x: 30, y: 3 } })
     const dragged = [TITLES[2], TITLES[0], TITLES[1]]
     await expect.poll(titles).toEqual(dragged)
     const manualWarningStart = tripwire.warnings.length
+    await stepRecencyClock(page)
     await page.reload({ waitUntil: 'load' })
     await expect.poll(titles).toEqual(dragged)
     acknowledgeReloadConnectionLoss(tripwire, manualWarningStart)
@@ -118,6 +153,7 @@ describe('web e2e: workspace recency', () => {
     await pick('In one list')
     await expect.poll(titles).toEqual(TITLES)
     const recencyWarningStart = tripwire.warnings.length
+    await stepRecencyClock(page)
     await page.reload({ waitUntil: 'load' })
     await expect.poll(titles).toEqual(TITLES)
     acknowledgeReloadConnectionLoss(tripwire, recencyWarningStart)
@@ -128,12 +164,15 @@ describe('web e2e: workspace recency', () => {
     await pick('Manual')
     const reconnectWarningStart = tripwire.warnings.length
     holdWorkspace = true
+    await stepRecencyClock(page)
     await socket.close()
     await expect.poll(() => releaseWorkspace !== undefined).toBe(true)
     const workspaceTitle = basename(scaffold.workspaceCwd)
     // Session titles can fall back to the workspace name while reconnect projections reload.
+    await stepRecencyClock(page)
     await page.locator('[role="treeitem"][aria-expanded]')
       .filter({ has: page.getByText(workspaceTitle, { exact: true }) }).hover()
+    await stepRecencyClock(page)
     await page.getByRole('button', { name: `New session in ${workspaceTitle}` }).click()
     await pick('In one list')
     await expect.poll(titles).toEqual(['New Session', ...TITLES])
@@ -167,6 +206,7 @@ describe('web e2e: workspace recency', () => {
     releaseWorkspace = undefined
     holdWorkspace = true
     try {
+      await stepRecencyClock(page)
       await page.reload({ waitUntil: 'load' })
       await expect.poll(() => releaseWorkspace !== undefined, { timeout: 30_000 }).toBe(true)
       expect(await workspaceRow.count()).toBe(0)

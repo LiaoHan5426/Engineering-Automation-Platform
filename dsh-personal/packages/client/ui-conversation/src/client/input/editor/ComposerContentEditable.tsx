@@ -22,15 +22,6 @@ export const ComposerContentEditable = defineComponent(
   (props: ComposerContentEditableProps) => {
     const element = shallowRef<HTMLDivElement | null>(null);
     const attrs = useAttrs();
-    watchPostEffect((onCleanup) => {
-      const editor = props.editor;
-      const host = element.value;
-      if (editor === null || host === null) return;
-      editor.setRootElement(host);
-      onCleanup(() => {
-        if (editor.getRootElement() === host) editor.setRootElement(null);
-      });
-    });
     watchPostEffect(() => {
       props.editor?.setEditable(props.editable);
       // Changing a focused editing host can force layout. Apply the DOM gate
@@ -39,6 +30,16 @@ export const ComposerContentEditable = defineComponent(
         "contenteditable",
         String(props.editor !== null && props.editable),
       );
+    });
+    // Root listeners may focus immediately, so editability must already be committed.
+    watchPostEffect((onCleanup) => {
+      const editor = props.editor;
+      const host = element.value;
+      if (editor === null || host === null) return;
+      editor.setRootElement(host);
+      onCleanup(() => {
+        if (editor.getRootElement() === host) editor.setRootElement(null);
+      });
     });
     return () =>
       h("div", {

@@ -60,7 +60,7 @@ Windows 上传构建配置 TS6307 的远程根清单修复经本地移除单项�
 
 ## 最新完整产物回归（2026-11-16 18:53）
 
-远程检查点 `9f6b4704` 对应源码和既有生产产物保持不变，完整 `DSH_SNAPSHOT=replay vp run test:web:built` 已结束（3420.57秒）：250文件225通过、21失败、4跳过；1100测试1039通过、32失败、29跳过，本次无额外未处理错误汇总。原预览七项、工作区17项、Forge29项、OPC及reasoning-preview均在本次完整运行通过，覆盖上文历史待验证项；不能将失败数减少直接等同独立缺陷修复数。剩余包括插件配置入口、日程、聊天大输入300px反向、部分键盘/菜单与视图断言，须按真实栈和原断言逐项复现，不批量刷新golden。
+预览与输入夹具阶段检查点对应源码和既有生产产物保持不变，完整 `DSH_SNAPSHOT=replay vp run test:web:built` 已结束（3420.57秒）：250文件225通过、21失败、4跳过；1100测试1039通过、32失败、29跳过，本次无额外未处理错误汇总。原预览七项、工作区17项、Forge29项、OPC及reasoning-preview均在本次完整运行通过，覆盖上文历史待验证项；不能将失败数减少直接等同独立缺陷修复数。剩余包括插件配置入口、日程、聊天大输入300px反向、部分键盘/菜单与视图断言，须按真实栈和原断言逐项复现，不批量刷新golden。
 
 其中Vite入口负向测试已证明调用失效的 `.bin/vite`，该路径在Vite+core中不存在。原单例21ms在说明文字断言失败，直接启动确认ENOENT；私有内存变换只将launcher改为`.bin/vp dev`，原timeout、退出码、完整Host说明和不得listen的全部断言保留，单例345ms通过。仅适配测试CLI，不修改产品guard；现已落盘精确一行，正常配置的原两例2/2通过（1443ms，standalone303ms），根Host类型检查通过，原全部断言保留。插件卡片缓存及panel重建的真实Slot测试未复现缺失，不能据此否认实际浏览器故障；清理后的日程截图也不能证明失败时无表头。后续按实际失败瞬间的被动证据定位：带ref的computed VNode在组件render外刷新导致ScheduleCatalogAction的ref owner为null；仅将两处VNode computed改为render函数，新真实DOM负例由三条Missing ref owner警告转绿，33项及保留模块覆盖共776项、根Vue类型通过（不是第二次全量运行）。插件第三次返回时同一缓存数组四个VNode的component均已unmounted，scope失活、DOM脱离而ledger仍有四项；诊断曾额外读取view而刷新依赖并掩盖故障，改为严格相同读取集合后才获得因果证据。只缓存业务数据、每次render创建卡片，模块366项和根Vue类型通过。模型菜单实际Escape/ShiftTab各只执行一次back，旧节点移除的null-focusout在pane已是root、既有焦点交接意图尚未由post watcher消费时误关菜单；仅复用该意图阻止过早关闭，close清意图，保留外部Node立即关闭、稳定root空焦点关闭和原detail语义。真实删除事件回归旧源红/新源绿，全部101项和根Vue类型通过。AppFrame只恢复每次几何计算读取平台标记，布局137项通过。四处新源已进入八门产物39.16秒（395 Client/3 public），产物后Host9.59秒、Vue44.31秒聚合通过（两门合计44.32秒）；产物后十二套原浏览器已结束301.11秒：119项113通过、6失败（12文件8通过4失败）。插件配置11、管理26、Team20、声明推理8、DeepSeek10、默认模型15、caption1、日程catalog11全过；仍败GitHub安装3、法语日程1px、文件浏览焦点及drawer菜单焦点。完整32失败是此前全量快照，不以本次局部结果冒称新全量绿。
 
@@ -74,9 +74,11 @@ GitHub安装原三例的失败另由实际Host/受控代理实验确认：本任
 
 本轮焦点闭环：FileNavigator的七个DOM注册watch不再依赖完整info包装身份，而追踪实际元素、内容/pane标识和当前回调，cleanup使用旧绑定回调；避免同一已连接body假卸载后把用户刚点的非当前文件焦点抢回。370项行为回归通过。Sidebar在PRE阶段保留旧sidebar/portal菜单的焦点归属，在nextTick确认提交完成后查询新opener；watch cleanup取消过期、重开与释放意图，窗口失焦、显式外部焦点、inert/hidden/modal均不抢焦点。真实Menu/同次父提交旧源红→绿，122项通过。原先根vue-tsc -p调用只检查根聚合程序而不构建引用源项目，不能证明包源码通过；真实八门Client DAG首次捕获未用watchEffect导入，移除后八门24.62秒全过（395 Client/3 public），产物后Host9.31/Vue5.43秒聚合通过。刷新产物的文件浏览3/drawer7/workspace-recency1全部原浏览器通过，合计11项59.45秒。
 
-workspace-recency仅适配夹具时钟：原同epoch推进Date候选使精确分钟边界上的golden年龄前移一桶，原样保留失败证据；该例验证Manual排序、重连和空白保留而非分钟阈值。最终调用既有pinBrowserClock(page, now - 30_000)，不改NOW变量、seed、24个expect、两个golden或整个it主体，给原预期年龄桶半分钟内部余量。完整私有原例与落盘后的正常套件均通过，未改变业务时间语义。PluginsPanelIcon只移除组件VNode的空数组default slot，原七项注册/实际SVG断言通过，无对应Vue slot警告。
+workspace-recency的推进Date加半分钟余量曾通过正常原例，但不能抵御慢运行：额外35秒原生计时后第二golden年龄由now/1/2变成1/2/3。正式夹具改为仅在已完成输入动作之间显式推进页面逻辑日历，跨reload保存在该页面sessionStorage；native timers/RAF/performance和Vue事件guard不改。原dragTo、24断言、种子及两个golden保留；原例6.92秒及同一35秒延迟41.87秒通过。实际Vue验证既有祖先监听器投递、同事件新挂祖先拒绝、下一动作才可投递，事件内时钟恒定。冻结负控制失败；早期缓存串用模式结果作废，最终每模式hash及原生35000ms哨兵确认后才计入。PluginsPanelIcon只移除组件VNode的空数组default slot，原七项注册/实际SVG断言通过，无对应Vue slot警告。
 
 五条已释放Session opening诊断另经真实ClientSessionReference/SidebarSessionView的未挂载退休、最后卸载和关闭三条路径证明为自身release取消pending ready；同一FOLLOW调用的独立引用继续正常打开。三个源模块与React基线字节相同，现有活动错误控制仍通过；不借迁移修改取消协议或吞日志，也不宣称全量console零诊断。聊天300px反向已定位为Vue patch阶段修改聚焦宿主contenteditable，在同级回显提交前强制布局；DOM门禁移入既有watchPostEffect，不改变同步接受/清草稿或CAS。新增真实Vue/Lexical提交顺序回归及相关四套172项通过，八门产物25.02秒、Host9.77/Vue5.53秒聚合通过；正常原聊天滚动17/17通过78.74秒，大输入reversal与secondMovement均0、最终top3166/spacer0，原2px阈值及golden未改。完整且无丢失的原生/React CDP对照显示Vue额外布局发生在回显插入之前；原生栈和属性写入区间将首次Layout锁定在DIV contenteditable写入，焦点恢复是第二次Layout，不删除其行为。早期丢数据trace不作因果证明，所有临时探针留在未跟踪目录。
+
+初始root发布另有真实焦点顺序回归：重载调用focus时宿主已连接但contenteditable=false，focus前后active均body，随后才写true。仅将既有编辑门禁post effect移到root绑定post effect之前，使同步Lexical root监听器看到可聚焦宿主；不改变同步清草稿/CAS、提交后回显顺序或编辑状态切换不重绑root的合同。真实首次/延迟绑定两红例转绿，合计10项通过。新八门产物25.41秒及产物后Host10.23/Vue5.13秒两聚合通过；刷新产物后正常配置原工作区17、聊天17及recency共35/35全部通过（110.63秒），五个初始焦点失败关闭；大输入反向0.34375px在原2px阈值内、secondMovement0，所有原断言/golden保留。剩余文件回放继续，不宣称单次全量通过。
 
 ## 实施中的编译契约
 
