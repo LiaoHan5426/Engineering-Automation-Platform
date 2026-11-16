@@ -1,9 +1,10 @@
 import {
   h,
+  defineComponent,
+  onErrorCaptured,
   computed,
   type MaybeRefOrGetter,
   toValue,
-  watch,
   type SetupContext,
   type VNodeChild,
 } from "vue";
@@ -21,6 +22,7 @@ import type {
 } from "@deepseek-ai/dsh-client-ui-sidebar-right/client";
 import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
 import { bindSnapshotSelector, makeTranslate } from "@deepseek-ai/dsh-client-test-runtime";
+import { useObservableSelector } from "@deepseek-ai/dsh-client-ui-renderer/client";
 import type { SessionId } from "@deepseek-ai/dsh-session/types";
 import { RemoteError, type RemoteResult } from "@deepseek-ai/dsh-typert-protocol";
 import { fileAddressFor } from "@deepseek-ai/dsh-util-workspace-path";
@@ -354,6 +356,8 @@ type Faces = {
   ]: ReturnType<typeof vi.fn<ChangesTabInjected[K]>>;
 };
 interface MountOptions {
+  /** Unmount through the parent when the strict tab reader loses its record. */
+  readonly strictRemoval?: boolean;
   readonly translate?: typeof t;
   readonly source?: ChangesSource;
   readonly state?: ForgePanelState | null;
@@ -395,6 +399,8 @@ function mount(options: MountOptions = {}) {
     revision: 1,
   });
   const visibility = createSnapshotStore(true);
+  const committed = createSnapshotStore(true);
+  const useCommitted = bindSnapshotSelector(committed);
   const useVisible = bindSnapshotSelector(visibility);
   const stops: ReturnType<typeof vi.fn>[] = [];
   const activeSource = {
@@ -406,27 +412,10 @@ function mount(options: MountOptions = {}) {
     },
   };
   function usePanel(key: MaybeRefOrGetter<string | undefined>) {
-    return bindSnapshotSelector({
-      getSnapshot: () => (toValue(key) === "visible" ? panel.getSnapshot() : undefined),
-      subscribe: (listener: () => void) => {
-        // Framework keyed bindings detach their source while inactive.
-        const keyWatch = computed(() => toValue(key));
-        let release = () => {};
-        const stop = watch(
-          keyWatch,
-          (key) => {
-            release();
-            release = key === "visible" ? activeSource.subscribe(listener) : () => {};
-            listener();
-          },
-          { immediate: true, flush: "sync" },
-        );
-        return () => {
-          stop();
-          release();
-        };
-      },
-    })((value) => value);
+    return useObservableSelector(
+      () => toValue(key) === "visible" ? activeSource : undefined,
+      () => (value) => value,
+    );
   }
   const useNavigation = bindSnapshotSelector(navigation);
   const store = createChangesStore().create();
@@ -484,9 +473,11 @@ function mount(options: MountOptions = {}) {
   const annotations = createSnapshotStore<ViewAnnotations | undefined>(
     options.annotations === null ? undefined : (options.annotations ?? new Map()),
   );
-  const useAnnotationsOf = bindSnapshotSelector(annotations);
-  function useAnnotations(_key: MaybeRefOrGetter<string | undefined>) {
-    return useAnnotationsOf((value) => value);
+  function useAnnotations(key: MaybeRefOrGetter<string | undefined>) {
+    return useObservableSelector(
+      () => toValue(key) === undefined ? undefined : annotations,
+      () => (value) => value,
+    );
   }
   const slotCalls: SlotCall[] = [];
   // Records each plugin slot the view draws and draws nothing for it.
@@ -498,8 +489,9 @@ function mount(options: MountOptions = {}) {
   const props: ChangesTabProps = {
     useTabInfo: () => {
       const visible = useVisible((value) => value);
+      const isCommitted = useCommitted((value) => value);
       const nav = useNavigation((value) => value);
-      return computed(() => ({
+      const current = computed(() => ({
         sidebar: { expanded: true, fullscreen: false },
         panel: { id: "pane-1" as PaneId, isFloating: false },
         tab: {
@@ -513,6 +505,10 @@ function mount(options: MountOptions = {}) {
           actions: tabActions,
         },
       }));
+      return computed(() => {
+        if (!isCommitted.value) throw new Error(`tab ${TAB} is no longer committed`);
+        return current.value;
+      });
     },
     sessionId: SESSION,
     useStore: hookOf(store),
@@ -526,7 +522,13 @@ function mount(options: MountOptions = {}) {
     viewedFiles,
     t: options.translate ?? t,
   };
-  const view = render(h(ChangesTab, { ...props }, { default: () => [] }));
+  const errors: unknown[] = [];
+  const Frame = defineComponent(() => {
+    const isCommitted = useCommitted((value) => value);
+    onErrorCaptured((error) => { errors.push(error); return false; });
+    return () => isCommitted.value ? h(ChangesTab, { ...props }, { default: () => [] }) : null;
+  });
+  const view = render(options.strictRemoval ? h(Frame) : h(ChangesTab, { ...props }, { default: () => [] }));
   /** The section of one file. */
   const section = (path: string): HTMLElement => {
     const element = view.container.querySelector(`[data-forge-diff-file="${path}"]`);
@@ -541,6 +543,8 @@ function mount(options: MountOptions = {}) {
     view,
     panel,
     visibility,
+    committed,
+    errors,
     stops,
     navigation,
     store,
@@ -1949,6 +1953,19 @@ describe("ChangesTab change requests", () => {
       expect(m.paths()).toEqual(["docs/gone.txt", "docs/notes.txt", "src/app.ts"]);
     },
   );
+  it("unmounts a removed tab without reading its retired tab information", async () => {
+    const m = mount({ source, strictRemoval: true });
+    await settle();
+    expect(m.paths()).toEqual(["docs/gone.txt", "docs/notes.txt", "src/app.ts"]);
+    await act(() => {
+      m.committed.set(false);
+      m.store.actions.forget(TAB);
+    });
+    expect(m.errors.map(error => error instanceof Error ? error.stack : error)).toEqual([]);
+    expect(m.paths()).toEqual([]);
+    expect(m.unbind).toHaveBeenCalledOnce();
+    expect(m.faces.reviewQueue).toHaveBeenCalledOnce();
+  });
   it("keeps shown changes while a read waits for a later status, turning the refresh glyph", async () => {
     const m = mount({ source });
     await settle();

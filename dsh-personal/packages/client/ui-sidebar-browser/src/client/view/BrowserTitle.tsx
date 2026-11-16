@@ -12,7 +12,8 @@ export type BrowserTitleProps = PropsRuntime<"sidebar.right.pane.tab.title"> &
 export const BrowserTitle = defineComponent(
   (props: BrowserTitleProps) => {
     const info = props.useTabInfo();
-    const entry = props.useStore((state) => currentBrowserTarget(state.byTab[info.value.tab.id]));
+    const tabId = info.value.tab.id;
+    const entry = props.useStore((state) => currentBrowserTarget(state.byTab[tabId]));
     return () =>
       h(Fragment, null, [
         h(IconGlobeOutlineRegular, { className: css.titleIcon ?? "" }),

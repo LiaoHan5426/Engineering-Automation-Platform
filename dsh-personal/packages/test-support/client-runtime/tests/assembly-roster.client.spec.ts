@@ -109,7 +109,7 @@ describe('ClientRoster', () => {
   })
 
   it('closure treats the platform seed modules as satisfied without a row', () => {
-    const seeded = { name: 'seeded', inject: ['@deepseek-ai/dsh-client-ui-primitives', 'react', 'a'], immediately: false }
+    const seeded = { name: 'seeded', inject: ['@deepseek-ai/dsh-client-ui-primitives', 'vue', 'a'], immediately: false }
     expect(ClientRoster.of([A, seeded]).closure(['seeded']).rows.map(row => row.name)).toEqual(['a', 'seeded'])
   })
 })

@@ -117,13 +117,17 @@ class IntersectionObserverStub {
 function harness() {
   const instance = createPdfStore().create();
   const controller = new AbortController();
+  const committed = shallowRef(true);
   const tabId = "pdf-tab" as TabId;
   const useStore = bindSnapshotSelector(instance);
   const scrollportRef = vi.fn();
   const View = defineComponent(
     (viewProps: { data?: string; kind?: "bytes" | "text" }) => {
       const bytes = computed(() => new TextEncoder().encode(viewProps.data ?? "one"));
-      const tabInfo = shallowRef({ tab: { id: tabId, signal: controller.signal } });
+      const tabInfo = computed(() => {
+        if (!committed.value) throw new Error('tab is no longer committed');
+        return { tab: { id: tabId, signal: controller.signal } };
+      });
       const retainTab = vi.fn();
       return () =>
         vueH(PdfBody, {
@@ -146,10 +150,21 @@ function harness() {
     },
     { props: ["data", "kind"] },
   );
-  return { instance, controller, tabId, scrollportRef, View };
+  return { instance, controller, committed, tabId, scrollportRef, View };
 }
 const documentOf = (numPages = 3): PdfDocument => ({ numPages, getPage: vi.fn() });
 describe("PDF body", () => {
+  it('disposes a PDF after its committed tab is removed and preferences publish', async () => {
+    const h = harness();
+    h.instance.actions.page(h.tabId, 2);
+    const view = await render(vueH(h.View, null));
+    await act(() => {
+      h.committed.value = false;
+      h.instance.actions.forget(h.tabId);
+      view.unmount();
+    });
+    expect(loads[0]!.dispose).toHaveBeenCalledOnce();
+  });
   it("reports non-byte contents without starting PDF.js", async () => {
     const h = harness();
     await render(vueH(h.View, { kind: "text" }));

@@ -38,7 +38,7 @@ kind: "package-reference"
 
 [注册入口](src/client/index.ts) 在共享 [files face](src/client/face.ts) 与[分栏 store](src/client/store.ts) 上组装文件页、导航栏、开关和目录树 Factory。
 
-呈现层使用原生 Vue 组件。组件在 setup 中绑定一次框架选择器，并读取只读的选中值 ref；搜索设置与指针拖动状态保留在组件内。导航栏在 DOM 插入后注册元素，让 face 测量已连接的行并管理焦点监听器。卸载时释放这些注册、目录持有、命令绑定与 tab 附着。
+呈现层使用原生 Vue 组件。组件在 setup 中绑定一次框架选择器，并读取只读的选中值 ref；搜索设置与指针拖动状态保留在组件内。导航栏在 DOM 插入后注册元素，让 face 测量已连接的行并管理焦点监听器。保留的 tab 移到其他分栏时，宽度订阅跟随元素已提交的分栏绑定；清理时释放注册捕获的分栏，不再读取已移除的 tab。卸载时释放这些注册、目录持有、命令绑定与 tab 附着。
 
 <a id="the-navigator"></a>
 ## 导航栏

@@ -38,7 +38,7 @@ The `workspace.files` command shows the navigator beside a docked preview or exp
 
 The [registration](src/client/index.ts) assembles the page, navigator, toggle, and tree Factories over the shared [files face](src/client/face.ts) and [pane store](src/client/store.ts).
 
-The presentation uses native Vue components. Components bind framework selectors once during setup and read their readonly selected refs; search settings and pointer drag state remain local. Navigator DOM registrations run after insertion, so the face measures the connected row and owns its focus listeners. Unmount releases those registrations, directory holds, command bindings, and tab attachments.
+The presentation uses native Vue components. Components bind framework selectors once during setup and read their readonly selected refs; search settings and pointer drag state remain local. Navigator DOM registrations run after insertion, so the face measures the connected row and owns its focus listeners. Width subscriptions follow that element's committed pane binding when a retained tab moves; teardown releases the pane captured by each registration without reading a removed tab. Unmount releases those registrations, directory holds, command bindings, and tab attachments.
 
 <a id="the-navigator"></a>
 ## The navigator

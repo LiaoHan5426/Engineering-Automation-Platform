@@ -270,7 +270,14 @@ function setup() {
     } as OfficeBodyProps;
     return vueH(OfficeBody, { ...props });
   };
-  const previewProps = h.props();
+  const initialProps = h.props();
+  const initialInfo = initialProps.useTabInfo();
+  const committed = shallowRef(true);
+  const strictInfo = computed(() => {
+    if (!committed.value) throw new Error('tab is no longer committed');
+    return initialInfo.value;
+  });
+  const previewProps = { ...initialProps, useTabInfo: () => strictInfo };
   const View = defineComponent(
     (props: { renderer?: boolean; implementation?: string }) => {
       const useDocumentPreviews: TextPreviewProps["useDocumentPreviews"] = (selector) =>
@@ -290,8 +297,18 @@ function setup() {
     for (const { deferred } of pending) deferred.resolve(result());
     await Promise.allSettled(pending.map((item) => item.deferred.promise));
   });
-  return { h, office, pending, read, View, request: () => request! };
+  return { h, office, pending, read, View, committed, request: () => request! };
 }
+it('releases Office body and toolbar when their tab is removed before conversion state publishes', async () => {
+  const h = setup();
+  const mounted = await render(vueH(h.View, null));
+  await act(() => {
+    h.committed.value = false;
+    h.office.actions.forget(TAB_ID);
+    mounted.unmount();
+  });
+  expect(h.pending[0]!.signal.aborted).toBe(true);
+});
 it("retains renderer content across remounts and waits for reload when automatic refresh is paused", async () => {
   const h = setup();
   let mounted = await render(vueH(h.View, null));

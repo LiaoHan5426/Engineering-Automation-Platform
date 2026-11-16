@@ -28,6 +28,16 @@ function names(root: HTMLElement): string[] {
     return [...root.querySelectorAll('[data-files-entry]')].map(li => li.getAttribute('data-files-path')!);
 }
 describe('FilesBody', () => {
+    it('releases its drawing after the committed files tab is removed', async () => {
+        const h = mountBody();
+        await act(() => {});
+        await act(() => {
+            h.placement.committed = false;
+            h.instance.actions.searchBarShown(PANE, true);
+            h.view.unmount();
+        });
+        expect(h.row.observers.size).toBe(0);
+    });
     it('displays the effective file-tree refresh accelerator', async () => {
         const { view, script } = mountBody(ROOT, { refreshShortcut: { id: 'page.refresh' as never, label: 'Refresh', aliases: [],
                 binding: null, keys: ['Ctrl', 'R'], aria: 'Control+R', modified: true, conflicts: [], issue: null } });

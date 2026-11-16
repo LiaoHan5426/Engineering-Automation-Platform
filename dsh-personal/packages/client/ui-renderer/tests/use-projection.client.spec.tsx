@@ -202,7 +202,7 @@ describe("useProjection standard-kit delivery", () => {
     });
     expect(reads.at(-1)).toEqual({ marks: { marks: ["a", "b"] }, ghost: undefined });
   });
-  it("selects the whole value and skips selectors while the key is absent", () => {
+  it("runs the selector over the whole snapshot, including an undefined snapshot from a present source", () => {
     const h = makeHost();
     h.cells.set("test/marks", observable<unknown>({ marks: ["x", "y"] }));
     const reads: unknown[] = [];
@@ -211,11 +211,11 @@ describe("useProjection standard-kit delivery", () => {
         (props: { useProjection: UseProjectionProp }) => {
           const marks = props.useProjection(
             "test/marks",
-            (v) => (v as { marks: string[] }).marks.length,
+            (v) => (v as { marks: string[] } | undefined)?.marks.length ?? -1,
           );
-          const ghost = props.useProjection("test/ghost", (_v) => {
-            throw new Error("absent key must not select");
-          });
+          const ghost = props.useProjection("test/ghost", (v) =>
+            v === undefined ? "absent" : "present",
+          );
           return () => {
             reads.push(marks.value, ghost.value);
             return null;
@@ -230,6 +230,6 @@ describe("useProjection standard-kit delivery", () => {
     });
     h.current.set("s1");
     render(vueH(Fragment, null, [createVueSlotRenderer().renderRoot(h.host, {})]));
-    expect(reads.slice(-2)).toEqual([2, undefined]);
+    expect(reads.slice(-2)).toEqual([2, "absent"]);
   });
 });

@@ -891,6 +891,7 @@ export const ChangesTab = defineComponent(
   (props: ChangesTabProps) => {
     const bound0 = props.useTabInfo();
     const tab = computed(() => bound0.value.tab);
+    const tabId = tab.value.id;
     const bound2 = computed(() => tab.value);
     const navigation = computed(() => bound2.value.navigation);
     const signal = computed(() => bound2.value.signal);
@@ -902,13 +903,13 @@ export const ChangesTab = defineComponent(
       return address;
     });
     const source = computed(() => target.value.source);
-    const queue = computed(() => props.reviewQueue(tab.value));
+    const queue = props.reviewQueue(tab.value);
     const queueStatus = useObservableSelector(
-      () => queue.value,
-      () => () => queue.value.getStatus(),
+      () => queue,
+      () => () => queue.getStatus(),
     );
     const reviewState = computed(() => {
-      const capture9 = queue.value;
+      const capture9 = queue;
       queueStatus.value;
       return capture9.getSnapshot();
     });
@@ -932,7 +933,7 @@ export const ChangesTab = defineComponent(
       request: ForgeReviewRequest,
       complete: (url: string) => boolean,
     ): Promise<string | undefined> => {
-      const capture11 = queue.value;
+      const capture11 = queue;
       if (reviewRunning.value || !capture11.begin(request)) return props.t("review.saveFailed");
       reviewRunning.value = true;
       reviewBusy.value = true;
@@ -1012,7 +1013,7 @@ export const ChangesTab = defineComponent(
     };
     const writeReview = async (url: string, write: ForgeReviewWrite): Promise<string | undefined> =>
       (await sendWrite(url, write))?.message;
-    const choices = props.useStore((store) => store.byTab[tab.value.id]);
+    const choices = props.useStore((store) => store.byTab[tabId]);
     const wanted = shallowRef<Wanted | null>(null);
     const treeState = shallowRef<ChangedFilesState>({ query: "", collapsed: {}, selected: null });
     const treePosition = shallowRef<FileTreePosition>("left");
@@ -1789,7 +1790,7 @@ export const ChangesTab = defineComponent(
       )
         return false;
       return h(SubmitReview, {
-        queue: queue.value,
+        queue: queue,
         url: owner.url,
         headSha: owner.headSha,
         pending: pending,
@@ -1804,12 +1805,12 @@ export const ChangesTab = defineComponent(
           props.openLink(capture60.url);
         },
         reconcile: () => {
-          const capture61 = queue.value;
+          const capture61 = queue;
           capture61.finish(false);
           reviewError.value = null;
         },
         submit: () => {
-          const capture65 = queue.value;
+          const capture65 = queue;
           const capture66 = pending;
           const capture67 = owner;
           const latest = capture65.getSnapshot();
@@ -1895,7 +1896,7 @@ export const ChangesTab = defineComponent(
               commits: commitsOf(localScope.value),
             }
           : { kind: "change", url: source.value.url, headSha: "", commits: changeCommits.value }),
-      records: queue.value,
+      records: queue,
       addToInput: props.addReviewToInput,
       openLink: props.openLink,
     }));
@@ -2180,11 +2181,11 @@ export const ChangesTab = defineComponent(
                 target: target.value,
                 ...owner,
               }),
-            records: queue.value,
+            records: queue,
             openLink: props.openLink,
             reviewStarted: reviewStarted.value,
             onQuoted: (selection) => {
-              const capture91 = queue.value;
+              const capture91 = queue;
               if (!capture91.recordAgent(selection)) live.value.report("review.saveFailed");
             },
             publishingBlocked: publishingBlocked.value,
@@ -2202,7 +2203,7 @@ export const ChangesTab = defineComponent(
                             headSha: selection.source.headSha,
                             comment: selection.comment,
                           },
-                          (url) => queue.value.published(selection, url),
+                          (url) => queue.published(selection, url),
                         )
                       : Promise.resolve(live.value.t("review.stale")),
                 }
@@ -2294,7 +2295,7 @@ export const ChangesTab = defineComponent(
       const capture100 = tab.value;
       const capture101 = target.value;
       const capture102 = source.value;
-      const capture103 = queue.value;
+      const capture103 = queue;
       const capture104 = reviewState.value;
       const capture105 = reviewOpen.value;
       const capture106 = reviewBusy.value;

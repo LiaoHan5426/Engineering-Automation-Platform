@@ -38,6 +38,12 @@
 
 目录按钮替换输入框的 null-relatedTarget 焦点事件采用 nextTick 后重查现有 openGeneration/requestSeq/草稿身份和当前焦点；显式外部焦点仍立即取消，不新增状态权威。局部 94 项及实际包类型通过，刷新后装配焦点 13 项通过。无会话 agent preset 在缺源 selector 外组合 no-session 默认，保留缺源不调用 selector 的原生合同；220 项及完整 Vue Client 聚合通过。AppFrame 按现有结构赋稳定同级 key，避免 drawerMask 插入将旧列复用为另一列；136 项及真实五列/sidebar DOM、草稿/关闭态跨视口保留验证通过，不改变 CSS/布局算法。文档全跑 42 项与唯一引用门禁修正后定向检查通过。实际同场景桌面/窄屏 Before/After 已复核，测量的矩形/字体/间距一致；只证明该空工作区及展开侧栏场景。完整 Web replay、自查及 PR/CI 未关闭。Forge 部分未改 Host Git 流程仍五秒超时，一个同例在原版复现；不将其推广为所有超时已证明无关，也不声称全套通过。
 
+## Tab 消费者生命周期收尾
+
+实际 OPC 与 Forge 重开路径出现由 slot 边界捕获的异常，`pageErrors` 为空不能证明装配成功。WorkspacePicker 的非工厂组件须显式声明 locale 参数；Guide 在替换 tab 前捕获原 actions，禁止替换后再次读取已失效的 strict info。文件导航 selector 只选自己的 pane 状态集合，在组件计算中读取当前 tab；测量 key 归已提交 DOM 的 pane 绑定持有，同 pane 复用回调，移动时重绑并忽略旧绑定的迟到 null。Toggle 的提交后注册按原 pane 清理，不在卸载回调重新读取 tab。保留 strict info 的缺失报错和同实例 pane 移动能力，不新增业务状态镜像或全局缺失回退。消费者三包 1237 项及后续 occurrence 身份修复三包 1028 项分别通过，数字不可相加。浏览器复跑进一步证明：动态 resource key 的同步绑定也会在 Vue 移除旧子组件前读取失效 strict info，不能冻结 contentId 或增加缺失默认值来绕过。
+
+原生 observable 适配器保留初次 source 解析立即校验，后续 source、getSnapshot、selector、equality 错误同步发布到只读 ref，并在读取时抛出；成功更新清除错误。使用属于当前 Vue scope 的公开 `effect`、同步 runner 与 onStop 清理，使错误保护覆盖真实依赖读取。仅在 watchEffect 回调或外层 computed getter 内捕获不足：Vue 会先递归刷新依赖的 computed 再进入回调，真实负向用例已证明该路径。合法更新保持同步，selector 条件依赖、相等引用及过期回调保护保留；存活组件仍经 render 边界报告错误，不吞错或延迟 key。七项新增错误/移除/恢复回归、renderer 全部 239 项与 Forge 三套 180 项通过，完整 Vue Client 检查通过；初次及更新中由 selector 自身修改 source 的已有重入限制经固定基线对照一致，不在本次扩大行为。公开 Vue 生命周期依据见 [effect](https://github.com/vuejs/core/blob/main/packages/reactivity/src/effect.ts) 与 [effectScope](https://github.com/vuejs/core/blob/main/packages/reactivity/src/effectScope.ts)。已恢复迁移夹具被改写的原版 projection 断言：source 存在而 snapshot 为 undefined 时仍执行 selector，只有 source 缺失时跳过。最新八门产物 70.42 秒、产物后 Host/Vue Client 聚合 49.98 秒通过；原 Forge 重开失败用例与 OPC 三种独立写入器工作簿的原断言均已通过。完整 Web replay 已重新启动，尚无全量结论。
+
 ## 实施中的编译契约
 
 Client 类型面采用 `vue-tsc`、声明输出和 `rewriteRelativeImportExtensions: false`；runtime 的 Client browser/Node、静态库与 shell bundle 从对应 `src` 编译。Host 类型面仍使用 `tsc` 与既有 emitted 输入。原因是 TypeScript 6 对 `.vue` 的相对导入重写报 TS2876，不能通过关闭检查解决。源输入映射保留 package-relative cwd、原有产物名、source map 来源和资源隔离边界。

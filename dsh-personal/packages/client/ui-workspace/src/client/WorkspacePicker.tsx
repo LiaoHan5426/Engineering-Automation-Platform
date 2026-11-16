@@ -375,6 +375,7 @@ export const WorkspacePicker = defineComponent(
   },
   {
     props: [
+      "t",
       "open",
       "anchorRef",
       "selectedId",

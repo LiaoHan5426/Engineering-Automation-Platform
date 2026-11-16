@@ -66,7 +66,7 @@ Web 记录 toolbar 提交和 typed tab 打开。导航状态机把每个受控 r
 
 ### Controller
 
-每个 tab 的 `BrowserController` 负责地址校验、命令和显式恢复。`BrowserFrame` 提供与载体无关的导航状态；`IframeImpl` 使用 `BrowserNavigation`，`ElectronWebViewImpl` 观察 Chromium history。`BrowserPresentation` 负责 DOM 的物理挂载。Slot injection 向原生 Vue body 和标题提供返回只读 ref 的 `useBrowserState`、tab-info hook 与普通 callback。body 在 viewport 挂载创建 controller 后激活 keyed state seat，并在作用域结束时释放物理挂载与刷新命令绑定。tab 可见性和 navigation-info 更新在归属标识未变时保留已挂载的载体。
+每个 tab 的 `BrowserController` 负责地址校验、命令和显式恢复。`BrowserFrame` 提供与载体无关的导航状态；`IframeImpl` 使用 `BrowserNavigation`，`ElectronWebViewImpl` 观察 Chromium history。`BrowserPresentation` 负责 DOM 的物理挂载。Slot injection 向原生 Vue body 和标题提供返回只读 ref 的 `useBrowserState`、tab-info hook 与普通 callback。body 在 viewport 挂载创建 controller 后激活 keyed state seat，并在作用域结束时释放物理挂载与刷新命令绑定。tab 可见性和 navigation-info 更新在归属标识未变时保留已挂载的载体。标题的 store selector 在 setup 中捕获本次挂载的 tab id，以便 tab 离开布局后仍可清除其检查点。
 
 Desktop 主进程批准 guest 租约，并执行挂载、导航和权限策略。preload 只暴露限定范围的 Browser 操作。共享声明通过标准 `/types` 出口配合 `import type` 引入；Host 与 Client 使用独立 tsconfig 编译。Desktop Browser tab 声明 `keepMounted`，Sidebar 因而在切 tab、切 Session、收起与浮动期间保留其 DOM。
 

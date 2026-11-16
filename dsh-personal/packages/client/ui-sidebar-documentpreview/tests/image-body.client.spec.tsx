@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { h as vueH, shallowRef } from 'vue';
+import { computed, h as vueH, shallowRef } from 'vue';
 import { contextMenuHook } from '@deepseek-ai/dsh-client-test-runtime';
 /** Image Blob ownership, media types, pane-contained rendering, and failure states. */
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime';
@@ -64,6 +64,24 @@ function props(path = 'asset.png', data: Uint8Array<ArrayBuffer> = new Uint8Arra
     } as ImageBodyProps;
 }
 describe('ImageBody', () => {
+    it('releases an image when its tab is removed before the store publishes', async () => {
+        const instance = createZoomStore().create();
+        const input = props('asset.png', new Uint8Array([1]), instance);
+        const info = input.useTabInfo();
+        instance.actions.zoom(info.value.tab.id, { kind: 'fit-width' });
+        const committed = shallowRef(true);
+        const strictInfo = computed(() => {
+            if (!committed.value) throw new Error('tab is no longer committed');
+            return info.value;
+        });
+        const view = render(vueH(ImageBody, { ...input, useTabInfo: () => strictInfo }));
+        await act(() => {
+            committed.value = false;
+            instance.actions.forget(info.value.tab.id);
+            view.unmount();
+        });
+        expect(revoke).toHaveBeenCalledExactlyOnceWith('blob:https://preview.invalid/1');
+    });
     it.each([
         ['png', 'image/png'],
         ['jpg', 'image/jpeg'],

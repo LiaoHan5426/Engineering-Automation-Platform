@@ -7,7 +7,7 @@
  * it is and opens the file where the right Sidebar places it by default
  * (`FileNavigator`).
  */
-import { defineComponent, h, watchEffect } from 'vue';
+import { computed, defineComponent, h, watchEffect } from 'vue';
 import type {} from '@deepseek-ai/dsh-client-ui-context-menu/client';
 import type { InjectFace, PropsLocale, PropsRenderFactories, PropsRenderSlots, PropsRuntime, PropsStore, } from '@deepseek-ai/dsh-client-ui-slots';
 import { IconPauseOutlineRegular, IconPlayOutlineRegular, IconRefreshOutlineRegular, IconSearchOutlineRegular, PathLabel, Tooltip, } from '@deepseek-ai/dsh-client-ui-primitives';
@@ -33,11 +33,12 @@ export const FilesBody = defineComponent((props: FilesBodyProps) => {
     };
     watchEffect(onCleanup => { const { tab, panel } = info.value; onCleanup(tab.actions.bindCommands({ refresh: () => props.refresh(panel.id) })); });
     const selectedCwd = props.useSessions(sessions => sessions.byId[props.sessionId]?.cwd);
-    const selectedAutoRefresh = props.useStore(store => {
-        const tree = store.byPane[info.value.panel.id]?.tree;
+    const panes = props.useStore(store => store.byPane);
+    const selectedAutoRefresh = computed(() => {
+        const tree = panes.value[info.value.panel.id]?.tree;
         return tree?.root === selectedCwd.value ? tree?.autoRefresh : undefined;
     });
-    const selectedSearchBar = props.useStore(store => store.byPane[info.value.panel.id]?.searchBarOpen);
+    const selectedSearchBar = computed(() => panes.value[info.value.panel.id]?.searchBarOpen);
     watchEffect(onCleanup => { if (selectedCwd.value !== undefined) onCleanup(props.placeBeside(info.value.tab.id)); });
     return () => {
     const { useTabInfo, sessionId, actions, refresh, focus, setAutoRefresh, renderSlot, renderFactorySlot, t } = props;

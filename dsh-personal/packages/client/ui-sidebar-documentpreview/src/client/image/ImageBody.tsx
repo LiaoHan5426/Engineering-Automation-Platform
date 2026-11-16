@@ -60,7 +60,8 @@ export function imageMediaType(path: string): ImageMediaType | undefined {
 export const ImageBody = defineComponent((props: ImageBodyProps) => {
     const { getTriggerProps } = props.useContextMenu()
     const info = props.useTabInfo()
-    const preference = props.useStore(state => state.byTab[info.value.tab.id] ?? DEFAULT_ZOOM)
+    const tabId = info.value.tab.id
+    const preference = props.useStore(state => state.byTab[tabId] ?? DEFAULT_ZOOM)
     const path = computed(() => hostFileOf(props.resourceAddress).path)
     const mediaType = computed(() => imageMediaType(path.value))
     const data = computed(() => props.content.kind === 'bytes' ? props.content.data : undefined)

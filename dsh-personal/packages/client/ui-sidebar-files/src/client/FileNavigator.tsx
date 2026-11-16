@@ -216,8 +216,11 @@ export const FileNavigator = defineComponent((props: FactoryComponentPropsOf<'si
     const info = props.useTabInfo();
     const { getTriggerProps } = props.useContextMenu();
     const selectedCwd = props.useSessions(sessions => sessions.byId[props.sessionId]?.cwd);
-    const selectedState = props.useStore(store => store.byPane[info.value.panel.id]);
-    const selectedWidth = props.useRowWidth(computed(() => info.value.panel.id));
+    const panes = props.useStore(store => store.byPane);
+    const selectedState = computed(() => panes.value[info.value.panel.id]);
+    // The measured element owns this key; a pane move rebinds it at DOM commit.
+    const measuredPane = shallowRef<string>();
+    const selectedWidth = props.useRowWidth(measuredPane);
     const selectedCanOpen = props.useCanOpen(check => check);
     const selectedPreferences = props.useSearchPreferences(computed(() => selectedCwd.value ?? ''));
     const selectedTree = computed(() => selectedState.value?.tree?.root === selectedCwd.value ? selectedState.value?.tree : undefined);
@@ -239,7 +242,26 @@ export const FileNavigator = defineComponent((props: FactoryComponentPropsOf<'si
     const navigatorElement = shallowRef<HTMLElement | null>(null);
     const bodyElement = shallowRef<HTMLDivElement | null>(null);
     const currentElement = shallowRef<HTMLElement | null>(null);
-    const navigatorRef = (element: Element | ComponentPublicInstance | null): void => { navigatorElement.value = element instanceof HTMLElement ? element : null; };
+    let navigatorBinding: object | undefined;
+    const navigatorRef = (element: Element | ComponentPublicInstance | null, paneId: string, binding: object): void => {
+        if (element instanceof HTMLElement) {
+            navigatorBinding = binding;
+            measuredPane.value = paneId;
+            navigatorElement.value = element;
+        } else if (navigatorBinding === binding) {
+            navigatorBinding = undefined;
+            navigatorElement.value = null;
+            measuredPane.value = undefined;
+        }
+    };
+    let currentNavigatorRef: { readonly paneId: string; readonly callback: (element: Element | ComponentPublicInstance | null) => void } | undefined;
+    const navigatorRefFor = (paneId: string): (element: Element | ComponentPublicInstance | null) => void => {
+        if (currentNavigatorRef?.paneId !== paneId) {
+            const binding = {};
+            currentNavigatorRef = { paneId, callback: element => navigatorRef(element, paneId, binding) };
+        }
+        return currentNavigatorRef.callback;
+    };
     const bodyRef = (element: Element | ComponentPublicInstance | null): void => { bodyElement.value = element instanceof HTMLDivElement ? element : null; };
     const inputRef = (element: Element | ComponentPublicInstance | null): void => { input.value = element instanceof HTMLInputElement ? element : null; };
     const currentRef = (row: HTMLElement | null): void => { currentElement.value = row; };
@@ -317,7 +339,7 @@ export const FileNavigator = defineComponent((props: FactoryComponentPropsOf<'si
         input.value?.focus();
     };
     return (h("aside", {
-        "ref": navigatorRef,
+        "ref": navigatorRefFor(paneId),
         "class": clsx(css.navigator, shown === undefined ? css.wholePage : css[shown], dragging && css.dragging),
         "style": page ? undefined : { '--files-navigator-width': `${geometry.width}px` } as CSSProperties,
         "aria-label": t('guide.title'),

@@ -13,6 +13,8 @@ import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 
 import { act, cleanup } from '../../../test-support/client-runtime/src/vue-test.ts';
 import { fireEvent, within } from '@testing-library/dom';
 import { Context } from '@deepseek-ai/cordis';
+import { brandString } from '@deepseek-ai/dsh-brand';
+import type { PaneId, TabId } from '@deepseek-ai/dsh-client-ui-dockkit';
 import { createSidebarRightController } from '@deepseek-ai/dsh-client-ui-sidebar-right/src/client/service.ts';
 import { SidebarRightTabRegistry } from '@deepseek-ai/dsh-client-ui-sidebar-right/src/client/tab-registry.ts';
 import { createSidebarRightStore } from '@deepseek-ai/dsh-client-ui-sidebar-right/src/client/stores.ts';
@@ -54,6 +56,47 @@ function focusedPath(): string | null | undefined {
     return document.activeElement?.closest('[data-files-path]')?.getAttribute('data-files-path');
 }
 describe('FileNavigator beside a preview', () => {
+    it('releases the original DOM registrations after its committed tab disappears', async () => {
+        const h = mountNavigator(A);
+        await act(() => {});
+        await revealSrc(h);
+        await act(() => {
+            h.placement.committed = false;
+            h.instance.actions.resized(PANE, 280);
+            h.view.unmount();
+        });
+        expect(h.row.observers.size).toBe(0);
+    });
+    it('rebinds the retained navigator and toggle when its tab moves between panes', async () => {
+        const h = mountNavigator(A);
+        await act(() => {});
+        await revealSrc(h);
+        const original = h.view.container.querySelector('[data-files-navigator]');
+        h.rowWidthSource.mockClear();
+        await act(() => { h.rerender(); });
+        expect(h.rowWidthSource).not.toHaveBeenCalled();
+        const nextPane = brandString<PaneId>('pane-moved');
+        const retained = new AbortController();
+        const release = h.face.attach(PANE, brandString<TabId>('source-retained'), retained.signal);
+        onTestFinished(release);
+        await act(() => {
+            h.instance.actions.shown(nextPane, true);
+            h.instance.actions.resized(nextPane, 320);
+            h.placement.paneId = nextPane;
+        });
+        expect(h.view.container.querySelector('[data-files-navigator]')).toBe(original);
+        expect(original?.getAttribute('data-files-navigator')).toBe(nextPane);
+        expect((original as HTMLElement).style.getPropertyValue('--files-navigator-width')).toBe('320px');
+        await fireEvent.click(h.view.getByRole('button', { name: zh['navigator.hide'] }));
+        await act(() => {});
+        expect(h.instance.getSnapshot().byPane[nextPane]?.open).toBe(false);
+        expect(h.instance.getSnapshot().byPane[PANE]?.open).toBe(true);
+        await act(() => {
+            h.placement.committed = false;
+            h.view.unmount();
+        });
+        expect(h.row.observers.size).toBe(0);
+    });
     it('stays hidden and lists nothing until the toggle shows it', async () => {
         const h = mountNavigator(A);
 await act(() => {});

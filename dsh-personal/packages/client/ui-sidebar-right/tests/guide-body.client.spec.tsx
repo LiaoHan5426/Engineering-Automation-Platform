@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { h as vueH, defineComponent, shallowRef, type VNodeChild } from "vue";
+import { h as vueH, computed, defineComponent, shallowRef, type VNodeChild } from "vue";
 import { contextMenuHook } from "@deepseek-ai/dsh-client-test-runtime";
 /**
  * The guide tab's body: the chain seam, and the shipped guide behind it.
@@ -113,6 +113,7 @@ function mountGuide(
   let actionsOwner: SidebarRightGuideActionsOwnerProps | undefined;
   const openTab = vi.fn();
   const close = vi.fn();
+  const tabPresent = shallowRef(true);
   const renderSlot = vi.fn<GuideBodyProps["renderSlotChain"]>(
     (_seat, _owner, options) => options?.fallback,
   );
@@ -124,7 +125,9 @@ function mountGuide(
     useShortcuts: <T,>(selector: (entries: readonly ShortcutCatalogEntry[]) => T) =>
       shallowRef(selector(shortcuts)),
     useTabInfo: () =>
-      shallowRef({
+      computed(() => {
+        if (!tabPresent.value) throw new Error('guide tab is no longer committed');
+        return {
         sidebar: { expanded: true, fullscreen: false },
         panel: { id: "pane-guide" as PaneId, isFloating: false },
         tab: {
@@ -134,6 +137,7 @@ function mountGuide(
           navigation: { address: TAB.contentId, params: undefined, revision: 0 },
           actions: { bindCommands: vi.fn(() => vi.fn()), openResource: vi.fn(), openTab, close },
         },
+      };
       }),
     useGuideEntries: bindSnapshotSelector(guideEntries),
     useEntryPins: bindSnapshotSelector(entryPins),
@@ -179,6 +183,7 @@ function mountGuide(
     entryPins,
     openTab,
     close,
+    tabPresent,
     setPinned,
     renderSlot,
     entrySlot: props.renderSlot,
@@ -316,7 +321,8 @@ describe("GuideBody", () => {
     cleanup();
   });
   it("picking a box opens its page in the guide's place, then closes the guide", async () => {
-    const { view, openTab, close } = mountGuide([box("files", 10)]);
+    const { view, openTab, close, tabPresent } = mountGuide([box("files", 10)]);
+    openTab.mockImplementation(() => { tabPresent.value = false; });
     const entry = view.container.querySelector('[data-sidebar-right-guide-entry="files"]');
     if (entry === null) throw new Error("expected the files box");
     await fireEvent.click(entry);

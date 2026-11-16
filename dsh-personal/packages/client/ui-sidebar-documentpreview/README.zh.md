@@ -52,7 +52,7 @@ Web 和桌面端均通过代码工作工具选择 HTML 预览策略。渲染器�
 
 两种 HTML 模式均将 iframe 初始名称设为 `dsh-sidebar-html-<tab-id>`，供 Desktop 快捷键路由关联目标。这种关联不授予预览访问父文档的权限。
 
-正文通过 `useTabInfo().value.tab` 读取记录、导航和生命周期。框架钩子在 Vue setup 中绑定一次并返回只读 ref；渲染函数和 computed 通过 `.value` 读取当前值。`useResource<'file'>(computed(() => tabInfo.value.tab.contentId))` 提供元数据快照的只读 ref；普通 inject 回调提供内容读取：
+正文通过 `useTabInfo().value.tab` 读取记录、导航和生命周期。框架钩子在 Vue setup 中绑定一次并返回只读 ref；渲染函数和 computed 通过 `.value` 读取当前值。Store selector 在 setup 中捕获本次挂载对应的稳定 tab id，因此关闭 tab 清除其视图状态时无需读取已移除的布局记录。`useResource<'file'>(computed(() => tabInfo.value.tab.contentId))` 提供元数据快照的只读 ref；普通 inject 回调提供内容读取：
 
 - 资源快照仅包含 `status`、`value` 和 `failure`；`value` 是 `WorkspaceFileStat` 元数据。提供方可用后，内容读取无需等待首个元数据帧。观察失败优先于 Preview 的变更提示显示；元数据不可用时保留已加载内容。
 - **文本页** —— 纯文本、Markdown 和代码通过 inject 回调调用 `remote.workspaceFiles.read(sessionId, path, { offset }, signal)`。首次挂载读取第一页；滚动到正文末尾或点击 **加载更多** 会读取下一页，直到 `eof`。owner 以 `{ kind: 'text', text, pages, eof }` 提供累计前缀，包含源码偏移和行数。Markdown 和代码增量渲染此前缀，不把每页当成独立文档。第一页之后到达的更新版本页会使读取从头开始，避免混合版本。尚无内容时，失败会以文件类型图标、说明和该失败对应的出路（重试、unpreviewable 子 slot，或什么都不给）填满正文；较晚的失败保留已有内容并在其下提供重试。

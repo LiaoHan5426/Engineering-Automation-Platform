@@ -48,7 +48,8 @@ export const PdfBody = defineComponent((props: PdfBodyProps & {
     readonly loading: VNodeChild;
 }) => {
     const info = props.useTabInfo()
-    const view = props.useStore(state => state.byTab[info.value.tab.id] ?? DEFAULT_PDF_VIEW)
+    const tabId = info.value.tab.id
+    const view = props.useStore(state => state.byTab[tabId] ?? DEFAULT_PDF_VIEW)
     const data = computed(() => props.content.kind === 'bytes' ? props.content.data : undefined)
     const load = shallowRef<LoadState>()
     const attempt = ref(0)

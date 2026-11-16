@@ -49,6 +49,10 @@ interface MockedTabActions {
 }
 /** What the tab and its pane look like to the components; a spec may change it and rerender. */
 export interface Placement {
+    /** Remove the committed tab before Vue tears down its drawing. */
+    committed?: boolean;
+    /** A retained tab can move to a different pane without remounting. */
+    paneId?: PaneId;
     contentId: string;
     isFloating?: boolean;
     /** The tab drawing; a spec changes it, with `signal`, to replace the tab in the same pane. */
@@ -84,6 +88,8 @@ export interface Mounted {
     readonly placement: Placement;
     /** The width the navigator's row reports. */
     readonly row: ReturnType<typeof measureRows>['row'];
+    /** Resolves the measured row source whenever its committed pane binding changes. */
+    readonly rowWidthSource: ReturnType<typeof harness>['rowWidthSource'];
     /** The fullscreen media query, notified independently of row measurements. */
     readonly viewport: ReturnType<typeof measureRows>['viewport'];
     /** Whether a navigator that can draw a tree has the face placed beside a tab's content. */
@@ -135,17 +141,21 @@ function harness(placement: Placement, controller: AbortController, book: Worksp
         close: vi.fn<SidebarRightTabActions['close']>(),
     };
     const sessionsAt = (cwd: string | null): SessionListState => ({ byId: cwd === null ? {} : { [SESSION]: { cwd } } } as unknown as SessionListState);
-    const useTabInfo = () => computed<SidebarRightTabInfo>(() => ({
+    const useTabInfo = () => computed<SidebarRightTabInfo>(() => {
+        if (placement.committed === false) throw new Error('tab is no longer committed');
+        return {
         sidebar: { expanded: true, fullscreen: false },
-        panel: { id: PANE, isFloating: placement.isFloating ?? false },
+        panel: { id: placement.paneId ?? PANE, isFloating: placement.isFloating ?? false },
         tab: {
             id: placement.tabId, kind: 'files', contentId: placement.contentId, title: zh['type.label'], visible: true,
             navigation: { address: placement.contentId, params: undefined, revision: 1 },
             signal: placement.signal,
             actions: tabActions, refreshShortcut: placement.refreshShortcut,
         },
-    }));
+    };
+    });
     const { hooks, keyedHooks, ...members } = face;
+    const rowWidthSource = vi.fn(keyedHooks.rowWidth);
     const t = makeTranslate(zh);
     const onOpen = vi.fn<(address: string) => void>();
     const openMenu = vi.fn<(payload: object, position?: object) => void>();
@@ -164,12 +174,12 @@ function harness(placement: Placement, controller: AbortController, book: Worksp
         useStore: hookOf(instance),
         actions: instance.actions,
         ...members,
-        useRowWidth: (paneId: string | Readonly<Ref<string | undefined>>) => useObservableSelector(() => toValue(paneId) === undefined ? undefined : keyedHooks.rowWidth(toValue(paneId)!), () => value => value),
+        useRowWidth: (paneId: string | Readonly<Ref<string | undefined>>) => useObservableSelector(() => toValue(paneId) === undefined ? undefined : rowWidthSource(toValue(paneId)!), () => value => value),
         useCanOpen: hookOf(hooks.canOpen),
         useSearchPreferences: (cwd: string | Readonly<Ref<string | undefined>>) => useObservableSelector(() => toValue(cwd) === undefined ? undefined : keyedHooks.searchPreferences(toValue(cwd)!), () => value => value),
         t,
     };
-    return { instance, script, search, searches, book, face, controller, viewers, tabActions, onOpen, beside, shared };
+    return { instance, script, search, searches, book, face, controller, viewers, tabActions, onOpen, beside, shared, rowWidthSource };
 }
 /**
  * Report the spec's row width for the rows a navigator measures: the

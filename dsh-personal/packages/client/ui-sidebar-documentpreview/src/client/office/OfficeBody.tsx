@@ -44,7 +44,8 @@ export const OfficeBody = defineComponent((props: OfficeBodyProps) => {
     const info = props.useTabInfo()
     const request = computed(() => props.content.kind === 'renderer' ? props.content : undefined)
     const revision = computed(() => request.value?.revision)
-    const held = props.useStore(state => state.byTab[info.value.tab.id])
+    const tabId = info.value.tab.id
+    const held = props.useStore(state => state.byTab[tabId])
     const view = computed(() => held.value?.revision === revision.value ? held.value : undefined)
     const settled = computed(() => view.value?.file !== undefined || view.value?.failure !== undefined)
     watch(() => [props.retainTab, info.value.tab.id, info.value.tab.signal] as const, () => {

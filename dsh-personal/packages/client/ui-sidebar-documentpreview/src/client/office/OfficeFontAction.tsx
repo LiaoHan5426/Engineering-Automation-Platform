@@ -11,7 +11,8 @@ export type OfficeFontActionProps = PropsRuntime<'sidebar.right.tab.document.act
 /** Expose font details only for the currently loaded Office revision. */
 export const OfficeFontAction = defineComponent((props: OfficeFontActionProps) => {
   const info = props.useTabInfo()
-  const held = props.useStore(state => state.byTab[info.value.tab.id])
+  const tabId = info.value.tab.id
+  const held = props.useStore(state => state.byTab[tabId])
   return () => {
     const content = props.content
     const current = held.value

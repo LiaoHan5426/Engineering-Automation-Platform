@@ -133,8 +133,9 @@ export const GuideBody = defineComponent((props: GuideBodyProps) => {
     const { useTabInfo, renderSlot, renderSlotChain, setPinned, t } = props
     // A new page replaces the guide; a page already in its pane is revealed, and the guide then closes itself.
     const open = (kind: string): void => {
-        info.value.tab.actions.openTab(kind, { replaceTab: true });
-        info.value.tab.actions.close();
+        const actions = info.value.tab.actions;
+        actions.openTab(kind, { replaceTab: true });
+        actions.close();
     };
     const visibleEntries = entries.value.filter(entry => entry.kind === FIXED_GUIDE_KIND || !unpinned.value.includes(guideEntryId(entry)));
     const options = {

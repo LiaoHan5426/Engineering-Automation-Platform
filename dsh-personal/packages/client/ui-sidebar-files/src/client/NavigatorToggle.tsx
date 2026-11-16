@@ -5,7 +5,7 @@
  * the pane reads, and registers itself with the face, which hands it the
  * keyboard when Escape closes the navigator.
  */
-import { defineComponent, h, type ComponentPublicInstance } from 'vue';
+import { computed, defineComponent, h, shallowRef, watchEffect, type ComponentPublicInstance } from 'vue';
 import type { FactoryComponentPropsOf } from '@deepseek-ai/dsh-client-ui-slots';
 import type { UseSidebarRightTabInfo } from '@deepseek-ai/dsh-client-ui-sidebar-right/client';
 import { IconFolderCloseRegular, IconFolderOpenRegular, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives';
@@ -37,8 +37,17 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 export const NavigatorToggle = defineComponent((props: FactoryComponentPropsOf<'sidebar.files.navigator.toggle'>) => {
     const info = props.useTabInfo();
     const selectedCwd = props.useSessions(sessions => sessions.byId[props.sessionId]?.cwd);
-    const selectedOpen = props.useStore(store => store.byPane[info.value.panel.id]?.open);
-    const toggleRef = (button: Element | ComponentPublicInstance | null): void => { props.toggleDrawn(info.value.panel.id, button instanceof HTMLElement ? button : null); };
+    const panes = props.useStore(store => store.byPane);
+    const selectedOpen = computed(() => panes.value[info.value.panel.id]?.open);
+    const toggleElement = shallowRef<HTMLElement | null>(null);
+    const toggleRef = (button: Element | ComponentPublicInstance | null): void => { toggleElement.value = button instanceof HTMLElement ? button : null; };
+    watchEffect(onCleanup => {
+        const element = toggleElement.value;
+        if (element === null) return;
+        const paneId = info.value.panel.id;
+        props.toggleDrawn(paneId, element);
+        onCleanup(() => props.toggleDrawn(paneId, null));
+    }, { flush: 'post' });
     return () => {
     const { actions, t } = props;
     const { panel } = info.value;

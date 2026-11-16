@@ -60,7 +60,8 @@ export const TextPreview = defineComponent((props: TextPreviewProps) => {
     const meta = props.useResource<'file'>(computed(() => tab.value.contentId));
     const canRead = computed(() => meta.value !== undefined && meta.value?.status !== 'none');
     const file = computed(() => hostFileOf(tab.value.contentId));
-    const state = props.useStore(s => s.byTab[tab.value.id]);
+    const tabId = tab.value.id;
+    const state = props.useStore(s => s.byTab[tabId]);
     const definitions = props.useDocumentPreviews(value => value);
     const unviewable = computed(() => unviewableBinaryPath(file.value.path));
     const candidates = computed(() => {
