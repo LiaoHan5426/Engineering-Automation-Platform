@@ -1,0 +1,341 @@
+import { h, Fragment, shallowRef, defineComponent } from "vue";
+/** Reasoning-level declarations for a model on a hand-declared pi-ai route. */
+import {
+  IconPlusOutlineRegular,
+  IconTrashOutlineRegular,
+  Switch,
+  Tooltip,
+} from "@deepseek-ai/dsh-client-ui-primitives";
+import type { DeepSeekModelDraft } from "./DeepSeekModelsEditor.tsx";
+import { modelDrafts } from "./DeepSeekModelsEditor.tsx";
+import type { ModelsKey } from "./locales.ts";
+import styles from "./ModelsSection.module.css";
+/** Declared levels in stored order, each with the value stored for it, whatever a hand edit left there. */
+type Entries = readonly (readonly [string, unknown])[];
+/** Levels a model offers when the switch is turned on, where the schema lists them: Off plus the common OpenAI-compatible trio. */
+const INITIAL_LEVELS: readonly string[] = ["off", "low", "medium", "high"];
+/** The wire value a level sends unless its row says otherwise; `null` is the Off entry that sends nothing. */
+function defaultValue(level: string): string | null {
+  return level === "off" ? null : level;
+}
+/**
+ * Whether pi-ai accepts a stored value: a non-empty string, or nothing for Off.
+ * @param level - the declared level.
+ * @param wire - the value stored for it.
+ * @returns whether the adapter would resolve the entry.
+ */
+function acceptedValue(level: string, wire: unknown): boolean {
+  return typeof wire === "string" ? wire.length > 0 : wire === null && level === "off";
+}
+/**
+ * Read the declared levels from a row in their stored order, including a key
+ * the offered levels do not name, so an edit never drops it.
+ * @param model - model row as drafted.
+ * @returns the entries; empty for a valueless field, which pi-ai refuses, and
+ * `undefined` when the field is absent or `false`.
+ */
+function readEfforts(model: DeepSeekModelDraft): Entries | undefined {
+  const value = model["reasoningEfforts"];
+  if (value === null) return [];
+  if (typeof value !== "object" || Array.isArray(value)) return undefined;
+  return Object.entries(value);
+}
+/**
+ * Replace a row's declared levels, preserving every other field.
+ * @param model - model row as drafted.
+ * @param entries - the levels to write in row order, or `undefined` to remove the field.
+ * @returns the replacement row.
+ */
+function withEfforts(model: DeepSeekModelDraft, entries: Entries | undefined): DeepSeekModelDraft {
+  const next = { ...model };
+  if (entries === undefined) {
+    // Absent is how a hand-declared model says it does not reason.
+    Reflect.deleteProperty(next, "reasoningEfforts");
+    return next;
+  }
+  next["reasoningEfforts"] = Object.fromEntries(entries);
+  return next;
+}
+/** A reasoning-level failure the Models cards name by row. */
+export interface ReasoningEffortsFailure {
+  /** Zero-based model position. */
+  index: number;
+  /** Message key owned by the Models settings section. */
+  key: "modelReasoningValueRequired" | "modelReasoningNeedsLevel" | "modelReasoningLevelsOnly";
+}
+/**
+ * Whether an entry breaks a protocol that accepts only its offered levels,
+ * each sent under its own name.
+ * @param only - the accepted levels.
+ * @param level - the declared level.
+ * @param wire - the value stored for it.
+ * @returns whether the entry is outside the accepted levels.
+ */
+function outsideLevels(only: readonly string[], level: string, wire: unknown): boolean {
+  return !only.includes(level) || wire !== level;
+}
+/**
+ * Mirror the pi-ai refusals of a hand-declared `reasoningEfforts`, so a card
+ * names the row instead of failing at the write.
+ * @param value - drafted `models` value, or `undefined` while inherited.
+ * @param only - the levels the route's protocol accepts, each sent under its
+ * own name, or `undefined` when the protocol accepts any declared value.
+ * @returns the first refused row, or `undefined` when the adapter will accept every row.
+ */
+export function validateReasoningEfforts(
+  value: unknown,
+  only?: readonly string[],
+): ReasoningEffortsFailure | undefined {
+  for (const [index, model] of modelDrafts(value).entries()) {
+    const entries = readEfforts(model);
+    if (entries === undefined) continue;
+    if (only !== undefined && entries.some(([level, wire]) => outsideLevels(only, level, wire))) {
+      return { index, key: "modelReasoningLevelsOnly" };
+    }
+    if (entries.some(([level, wire]) => !acceptedValue(level, wire)))
+      return { index, key: "modelReasoningValueRequired" };
+    if (!entries.some(([level]) => level !== "off"))
+      return { index, key: "modelReasoningNeedsLevel" };
+  }
+  return undefined;
+}
+/** Props of {@link ModelReasoningEfforts}. */
+interface ModelReasoningEffortsProps {
+  /** Effective model row, including fields outside the curated editor. */
+  model: DeepSeekModelDraft;
+  /** Levels the adapter's schema accepts as `reasoningEfforts` keys, in escalation order. */
+  levels: readonly string[];
+  /** Whether the route's protocol accepts only {@link levels}, each sent under its own name. */
+  levelsOnly: boolean;
+  /** One-based row position for accessible names. */
+  position: number;
+  /** Prevent changes while read-only or saving. */
+  disabled: boolean;
+  /** Section copy. */
+  t: (key: ModelsKey) => string;
+  /** Replace this row, preserving unrelated configuration. */
+  onChange: (model: DeepSeekModelDraft) => void;
+}
+/**
+ * Edit the `reasoningEfforts` a hand-declared pi-ai model offers: a switch,
+ * then one row per level pairing the level with the value sent for it. Every
+ * row is read from the model, so a reused instance shows its new model.
+ * @param props - model declaration and row replacement action.
+ * @returns the reasoning-level group.
+ */
+export const ModelReasoningEfforts = defineComponent(
+  (props: ModelReasoningEffortsProps) => {
+    const typingRef = shallowRef<{
+      level: string;
+      text: string;
+    }>();
+    const setTyping = (
+      value:
+        | {
+            level: string;
+            text: string;
+          }
+        | undefined,
+    ): void => {
+      typingRef.value = value;
+    };
+    return () => {
+      const { model, levels, levelsOnly, position, disabled, t, onChange } = props;
+      const entries = readEfforts(model);
+      // Only the focused field keeps its own text, so a field cleared while typing
+      // stays empty although its level's name is stored. Leaving the field drops
+      // it, and deleting a model, resetting the list, or folding these options all
+      // move focus first, so no text outlives the field it was typed into.
+      const typing = typingRef.value;
+      const label = `${t("modelReasoning")} ${String(position)}`;
+      const used = entries?.map(([level]) => level) ?? [];
+      const write = (next: Entries | undefined): void => {
+        onChange(withEfforts(model, next));
+      };
+      const replaceAt = (
+        current: Entries,
+        index: number,
+        entry: readonly [string, unknown],
+      ): Entries => current.map((existing, at) => (at === index ? entry : existing));
+      const changeLevel = (
+        current: Entries,
+        index: number,
+        from: string,
+        wire: unknown,
+        to: string,
+      ): void => {
+        // Only a custom spelling between two thinking levels carries over; a value
+        // still spelled as its old level, or one crossing to or from Off, resets.
+        // A protocol accepting only its offered levels sends each under its own name, so nothing carries.
+        const carried =
+          !levelsOnly &&
+          typeof wire === "string" &&
+          wire.length > 0 &&
+          wire !== from &&
+          from !== "off" &&
+          to !== "off";
+        write(replaceAt(current, index, [to, carried ? wire : defaultValue(to)]));
+      };
+      const addLevel = (current: Entries): void => {
+        const highest = Math.max(-1, ...used.map((level) => levels.indexOf(level)));
+        const level =
+          levels.find((candidate, index) => index > highest && !used.includes(candidate)) ??
+          levels.find((candidate) => !used.includes(candidate));
+        /* v8 ignore next -- the add button is disabled once every level has a row */
+        if (level === undefined) return;
+        write([...current, [level, defaultValue(level)]]);
+      };
+      const editValue = (current: Entries, index: number, level: string, text: string): void => {
+        setTyping({ level, text });
+        const trimmed = text.trim();
+        write(
+          replaceAt(current, index, [level, trimmed.length === 0 ? defaultValue(level) : trimmed]),
+        );
+      };
+      const leaveValue = (current: Entries, index: number, level: string, wire: unknown): void => {
+        setTyping(undefined);
+        // Leaving a field whose stored value the adapter refuses repairs it with the level name.
+        if (!acceptedValue(level, wire))
+          write(replaceAt(current, index, [level, defaultValue(level)]));
+      };
+      // A stored key the offered levels do not name stays selectable in its own row.
+      const choicesFor = (level: string): readonly string[] => [
+        ...(levels.includes(level) ? [] : [level]),
+        ...levels.filter((choice) => choice === level || !used.includes(choice)),
+      ];
+      const initialEntries = INITIAL_LEVELS.filter((level) => levels.includes(level)).map(
+        (level) => [level, defaultValue(level)] as const,
+      );
+      const refused = entries?.some(([level, wire]) => !acceptedValue(level, wire)) === true;
+      const missingLevel = entries !== undefined && !used.some((level) => level !== "off");
+      const outside =
+        levelsOnly && entries?.some(([level, wire]) => outsideLevels(levels, level, wire)) === true;
+      return h("div", { class: styles["modelReasoning"], role: "group", "aria-label": label }, [
+        h("div", { class: styles["modelReasoningHead"] }, [
+          h("span", { class: `${styles["modelFieldLabel"]} ${styles["modelReasoningLabel"]}` }, [
+            t("modelReasoning"),
+            h(
+              Tooltip,
+              {
+                label: t("modelReasoningHelpText"),
+                side: "right",
+                delayMs: 0,
+                focusDelayMs: 0,
+                portal: true,
+                openOnClick: true,
+              },
+              {
+                default: () =>
+                  h(
+                    "button",
+                    {
+                      type: "button",
+                      class: styles["helpButton"],
+                      "aria-label": t("modelReasoningHelp"),
+                    },
+                    "?",
+                  ),
+              },
+            ),
+          ]),
+          h(Switch, {
+            checked: entries !== undefined,
+            label: label,
+            disabled: disabled,
+            onChange: (on) => {
+              write(on ? initialEntries : undefined);
+            },
+          }),
+        ]),
+        entries === undefined
+          ? null
+          : h(Fragment, null, [
+              entries.length > 0
+                ? h("div", { class: styles["modelReasoningRow"], "aria-hidden": "true" }, [
+                    h("span", { class: styles["modelFieldLabel"] }, t("modelReasoningLevel")),
+                    h("span", { class: styles["modelFieldLabel"] }, t("modelReasoningValue")),
+                  ])
+                : null,
+              entries.map(([level, wire], index) =>
+                h("div", { key: index, class: styles["modelReasoningRow"] }, [
+                  h(
+                    "select",
+                    {
+                      class: `${styles["input"]} ${styles["selectInput"]}`,
+                      value: level,
+                      "aria-label": `${t("modelReasoningLevel")} ${String(index + 1)}`,
+                      disabled: disabled,
+                      onInput: (event: InputEvent) => {
+                        changeLevel(
+                          entries,
+                          index,
+                          level,
+                          wire,
+                          (event.target as HTMLInputElement).value,
+                        );
+                      },
+                    },
+                    choicesFor(level).map((choice) =>
+                      h("option", { key: choice, value: choice }, choice),
+                    ),
+                  ),
+                  h("input", {
+                    class: `${styles["input"]} ${styles["modelReasoningValueInput"]}`,
+                    type: "text",
+                    value:
+                      typing?.level === level ? typing.text : typeof wire === "string" ? wire : "",
+                    placeholder: level === "off" ? t("modelReasoningOffValuePlaceholder") : level,
+                    "aria-label": `${level} ${t("modelReasoningValue")}`,
+                    "aria-invalid": !acceptedValue(level, wire),
+                    disabled: disabled || level === "off" || levelsOnly,
+                    onInput: (event: InputEvent) => {
+                      editValue(entries, index, level, (event.target as HTMLInputElement).value);
+                    },
+                    onBlur: () => {
+                      leaveValue(entries, index, level, wire);
+                    },
+                  }),
+                  h(
+                    "button",
+                    {
+                      type: "button",
+                      class: `${styles["iconButton"]} ${styles["iconButtonDanger"]}`,
+                      "aria-label": `${t("modelReasoningRemove")} ${level}`,
+                      title: t("modelReasoningRemove"),
+                      disabled: disabled,
+                      onClick: () => {
+                        write(entries.filter((_entry, at) => at !== index));
+                      },
+                    },
+                    h(IconTrashOutlineRegular, { size: 14 }),
+                  ),
+                ]),
+              ),
+              outside
+                ? h("p", { class: styles["error"] }, t("modelReasoningLevelsOnly"))
+                : refused
+                  ? h("p", { class: styles["error"] }, t("modelReasoningValueRequired"))
+                  : missingLevel
+                    ? h("p", { class: styles["error"] }, t("modelReasoningNeedsLevel"))
+                    : null,
+              h(
+                "button",
+                {
+                  type: "button",
+                  class: styles["addModelButton"],
+                  disabled: disabled || levels.every((level) => used.includes(level)),
+                  onClick: () => {
+                    addLevel(entries);
+                  },
+                },
+                [h(IconPlusOutlineRegular, { size: 14 }), t("modelReasoningAdd")],
+              ),
+            ]),
+      ]);
+    };
+  },
+  {
+    inheritAttrs: false,
+    props: ["model", "levels", "levelsOnly", "position", "disabled", "t", "onChange"],
+  },
+);

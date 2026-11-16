@@ -22,10 +22,13 @@
 
 ## 工作项当前状态
 
+2026-11-15 新增的独立 `dsh-personal` 迁移按 DP-01 记录；上面的 EAP 基线日期与既有验收仍作为原阶段记录保留。本次迁移不改现有 `frontend` 和 Java 后端，不代表 CT-02 已实施。
+
 各工作项引用的较早测试数字仅为该切片历史证据，不代表当前全量结果。下一关口只列剩余范围，用户接受、真实效果与平台验收独立记录。
 
 | 工作项 | 当前状态与证据 | 下一验收关口 |
 |---|---|---|
+| DP-01 独立 DSH Vue 迁移 | **实施中，尚未交付**：在独立 `dsh-personal` 分支/同名目录固定原版源码，按用户确认的全部 P0～P4 推进，使用 Vite+；不适配 EAP 后端。阶段与验收见[迁移计划](../dsh-personal/migration-plan.md)，编译/装配边界及已知限制见[契约审计](../dsh-personal/contract-audit.md)。截至 2026-11-16，原生生产 renderer、主要产品和实验 UI 已迁移并有分批回归；12 模块合并 3430 项、小型夹具 960 项、预览 608 项等分别通过，不能相加为全量结果。完整安装、八项产物构建、Host/Client 聚合检查及真实 Loader 卸载重载的 DOM/服务/console 清洁回归通过；应用产物输入审计未发现 React runtime。实际装配仍有 Host 模块导入、WorkspacePicker props/DOM 边界及表格 HTML sink/只读回归待关闭，表格受控同源脚本执行风险阻止交付。会话等待和图片拒绝两项原断言已在公开上传就绪条件后通过，确认是夹具竞态。按用户要求保存未完成阶段检查点，继续分批修复提交；原版真实浏览器基线已捕获，目标 After、最终产物刷新和交互验收未完成 | 全目标类型/构建/GUI、真实 Loader 重载、应用运行时无 React 闭包及同场景 Before/After、自查和 PR/CI；VitePress 文档工具仍有第三方间接 React，不声称工作区安装图清零。定向通过不关闭完整迁移或 CT-02，不代表用户接受 |
 | UI-01/02 桌面外壳与工作面 | 已有五入口、分组/会话、文件树和分面；媒体对照追加欢迎卡容器适配、专家/设置显式返回，四视口及Work草稿返回实测通过，最终审查见[记录](records/frontend-history.md#reference-ui-review)；2026-11-14共享焦点修复见[证据](evidence/dialog-focus/README.md)。接续按17入口×1440/390集中走查并修复草稿、异步归属、保存/刷新失败、重试和缓存浮层，逐页修改/保留理由、Before/After与本轮全量前端结果见[审计](evidence/frontend-batch/README.md)，行为合同见[决策](decisions/frontend-interaction-recovery.md) | 其他主题/系统缩放与完整辅助技术矩阵、用户接受；模拟HTTP不代表真实后端业务接受，PB-01生成候选整链关口不据此关闭 |
 | UI-03 本地服务身份 | 本机绑定和只读能力已有验证 | Electron目录选择与打包环境复核；不把分组标签当权限 |
 | 统一图标 | `@eap/ui` Icon/name入口与内部本地Lucide资源包已实现，首批工作台/Tag/Tree迁移；全量574项、类型/边界/构建、真实浅深主题及最终独立审查通过，见[记录](records/frontend-history.md#frontend-icons) | 其余管理页面/历史演示字符按语义迁移，不将领域SVG/正文标点机械替换；不是全仓清零 |

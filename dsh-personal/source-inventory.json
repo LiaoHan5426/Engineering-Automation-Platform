@@ -2,7 +2,7 @@
   "sourceRepository": "deepseek-ai/deepseek-harness",
   "sourceCommit": "39163dd30f703a79079e2d2446545cff3c453738",
   "treeTruncated": false,
-  "inventoryMethod": "Git tree paths only; no claim of full import or runtime audit",
+  "inventoryMethod": "Paths, blob IDs and counts describe the pinned upstream Git tree. migrationStatus and validation describe the current target worktree; module checks do not establish whole-product acceptance.",
   "counts": {
     "clientPackages": 74,
     "clientTsAndTsx": 1236,
@@ -71,8 +71,10 @@
       "manifestBlob": "0ad2c188b6fc38401341d12c6881caa70723846f",
       "tsAndTsxFiles": 17,
       "tsxFiles": 1,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "LanguageRow native; parent independently passed 5 LanguageRow cases in combined 207-case run; other locale behavior retained."
+      ]
     },
     {
       "sourcePath": "packages/client/modules",
@@ -127,8 +129,10 @@
       "manifestBlob": "e9a1629bb59b936225c12e28071c7c5285c5fe1b",
       "tsAndTsxFiles": 2,
       "tsxFiles": 0,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Framework-free engine preserved; selector types now readonly Vue shallow refs; parent independently passed retained store 20 cases."
+      ]
     },
     {
       "sourcePath": "packages/client/ui-account-notifications",
@@ -199,16 +203,20 @@
       "manifestBlob": "e9c383ed59914e1ae30b8ffd7e8df41eade127c6",
       "tsAndTsxFiles": 11,
       "tsxFiles": 2,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Native trigger/types direct 3 cases passed by implementer; remaining module migration in progress."
+      ]
     },
     {
       "sourcePath": "packages/client/ui-conversation",
       "manifestBlob": "abfcd2fdab762e1fe3e4e0004a99d389eef3f012",
       "tsAndTsxFiles": 86,
       "tsxFiles": 23,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Native source/tests in progress; parent QueueDock/InlineEditor run 38/39 passed; quote cross-package consumer remains React."
+      ]
     },
     {
       "sourcePath": "packages/client/ui-deliverables",
@@ -239,8 +247,10 @@
       "manifestBlob": "e10328ea59f88b5e95a874aa594e90e5dd83b839",
       "tsAndTsxFiles": 24,
       "tsxFiles": 8,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Parent independently passed all 325 native module cases; product browser validation pending."
+      ]
     },
     {
       "sourcePath": "packages/client/ui-entry-customization",
@@ -295,8 +305,10 @@
       "manifestBlob": "f8b6b164d1b1deab7fa4636d4cab145dee9142c9",
       "tsAndTsxFiles": 10,
       "tsxFiles": 2,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Parent independently passed all 135 module cases; assembled product still has staged React consumers."
+      ]
     },
     {
       "sourcePath": "packages/client/ui-message-feedback",
@@ -359,8 +371,10 @@
       "manifestBlob": "6702ddf30de7271584010df91645abee3c92b7c1",
       "tsAndTsxFiles": 109,
       "tsxFiles": 66,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Native controls/icons/overlays/Markdown in progress; content implementer reports 619 cases with unchanged snapshots, whole-module independent check pending; parent InlineEditor 3 cases passed."
+      ]
     },
     {
       "sourcePath": "packages/client/ui-reference",
@@ -375,8 +389,10 @@
       "manifestBlob": "5a8141a20c025bbcc0d351eba9a3ec9d4b12444a",
       "tsAndTsxFiles": 11,
       "tsxFiles": 3,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Parent independently passed native renderer/core/styles/store 94 cases; production entry still React; whole-product integration pending."
+      ]
     },
     {
       "sourcePath": "packages/client/ui-schedule",
@@ -407,8 +423,10 @@
       "manifestBlob": "f46ab40d1ac98d0e4106ba47179323c3b462a929",
       "tsAndTsxFiles": 3,
       "tsxFiles": 1,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Parent independently passed 52 combined session/projection/constructor cases; business session flows pending."
+      ]
     },
     {
       "sourcePath": "packages/client/ui-settings-account",
@@ -551,8 +569,10 @@
       "manifestBlob": "6b213729d3f2f02215d37560db7b7b3c6f7b186a",
       "tsAndTsxFiles": 10,
       "tsxFiles": 3,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Native source/tests in progress; independent whole-module and browser acceptance pending."
+      ]
     },
     {
       "sourcePath": "packages/client/ui-skill",
@@ -567,8 +587,10 @@
       "manifestBlob": "dfa9ccaac60b128ae678d2078761d5e4d5288f6c",
       "tsAndTsxFiles": 3,
       "tsxFiles": 0,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Vue component/ref contracts authored; parent independently passed core 30 and native constructor cases; full target typecheck pending."
+      ]
     },
     {
       "sourcePath": "packages/client/ui-subagent",
@@ -583,8 +605,10 @@
       "manifestBlob": "399f4cb444c7628ec78c0522ede4469114c398fd",
       "tsAndTsxFiles": 13,
       "tsxFiles": 4,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Parent independently passed combined theme/locale/Modal 207 cases (theme 185); full product browser comparison pending."
+      ]
     },
     {
       "sourcePath": "packages/client/ui-tool",
@@ -623,16 +647,20 @@
       "manifestBlob": "a2d05e27b6f06ad663a89ed32bc39b39e7b62510",
       "tsAndTsxFiles": 25,
       "tsxFiles": 11,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Native source/tests in progress; independent whole-module and browser acceptance pending."
+      ]
     },
     {
       "sourcePath": "packages/client/web",
       "manifestBlob": "317d39d597c8f4d780a96e4e696f4911708d202b",
       "tsAndTsxFiles": 12,
       "tsxFiles": 0,
-      "migrationStatus": "NOT_STARTED",
-      "validation": []
+      "migrationStatus": "IN_PROGRESS",
+      "validation": [
+        "Vite+ shell build and real built Host/Boot/loader/SFC HMR-stop-restart browser scenario independently passed; full product migration pending."
+      ]
     }
   ]
 }

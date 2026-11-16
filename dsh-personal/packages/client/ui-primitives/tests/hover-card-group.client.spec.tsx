@@ -1,0 +1,334 @@
+// @vitest-environment jsdom
+import { h, Fragment } from 'vue';
+import { fireEvent, screen } from '@testing-library/dom';
+import { renderVue as render, cleanupVue as cleanup, flushVue as act } from './vue-render.ts';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { HoverCard } from '../src/HoverCard.tsx';
+import { HoverCardGroup } from '../src/HoverCardGroup.tsx';
+import { Tooltip } from '../src/Tooltip.tsx';
+beforeEach(() => { vi.useFakeTimers(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
+// jsdom lacks PointerEvent; MouseEvent preserves relatedTarget for native pointer traversal checks.
+async function move(from: Element, to: Element) {
+    await act(() => fireEvent(from, new MouseEvent('pointerout', { bubbles: true, relatedTarget: to })));
+    await act(() => fireEvent(to, new MouseEvent('pointerover', { bubbles: true, relatedTarget: from })));
+    await act(() => fireEvent(from, new MouseEvent('mouseout', { bubbles: true, relatedTarget: to })));
+    await act(() => fireEvent(to, new MouseEvent('mouseover', { bubbles: true, relatedTarget: from })));
+    for (let node: Element | null = from; node !== null; node = node.parentElement) {
+        if (!node.contains(to))
+            await act(() => fireEvent(node, new MouseEvent('pointerleave', { relatedTarget: to })));
+    }
+    const entered: Element[] = [];
+    for (let node: Element | null = to; node !== null; node = node.parentElement) {
+        if (!node.contains(from))
+            entered.unshift(node);
+    }
+    for (const node of entered)
+        await act(() => fireEvent(node, new MouseEvent('pointerenter', { relatedTarget: from })));
+}
+async function tick(ms: number) { await act(() => { vi.advanceTimersByTime(ms); }); }
+function Card({ name, grouped = true, disabled = false }: {
+    name: string;
+    grouped?: boolean;
+    disabled?: boolean;
+}) {
+    return h(HoverCard, { "grouped": grouped, "disabled": disabled, "openDelayMs": 800, "copyText": name, "copyLabel": "Copy", "copiedLabel": "Copied" }, { anchor: () => h("span", null, [name, h(Tooltip, { "label": `Archive ${name}`, "delayMs": 500 }, { default: () => [h("button", { "type": "button" }, ["action ", name])] })]), default: () => h("span", null, ["details ", name]) });
+}
+describe('HoverCardGroup', () => {
+    it('keeps an inline bridge in its hover region and replaces the active card without overlap', async () => {
+        const view = render(h(HoverCardGroup, { "as": "span" }, { default: () => [h(HoverCard, { "inline": true, "grouped": true, "openDelayMs": 0 }, { anchor: () => h("span", null, ["A"]), default: () => h("span", null, ["details A"]) }), h(HoverCard, { "inline": true, "grouped": true, "openDelayMs": 0 }, { anchor: () => h("span", null, ["B"]), default: () => h("span", null, ["details B"]) })] }));
+        expect(view.container.firstElementChild?.tagName).toBe('SPAN');
+        const a = screen.getByText('A');
+        const b = screen.getByText('B');
+        await act(() => move(document.body, a));
+        await act(() => tick(0));
+        const card = screen.getByText('details A').parentElement!;
+        const bridge = card.previousElementSibling!;
+        await act(() => move(a, bridge));
+        await act(() => tick(300));
+        expect(screen.getByText('details A')).toBeTruthy();
+        await act(() => move(bridge, b));
+        expect(screen.queryByText('details A')).toBeNull();
+        expect(screen.getByText('details B')).toBeTruthy();
+        await act(() => move(b, document.body));
+        await act(() => tick(300));
+        expect(screen.queryByText('details B')).toBeNull();
+        view.unmount();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+    it('does not warm the next pointer visit when keyboard focus displays an inline card outside a pointer visit', async () => {
+        const view = render(h(Fragment, null, [h("button", { "type": "button" }, ["outside"]), h(HoverCardGroup, null, { default: () => [h(HoverCard, { "inline": true, "grouped": true, "openDelayMs": 800 }, { anchor: () => h("button", { "type": "button" }, ["A"]), default: () => h("span", null, ["details A"]) }), h(Card, { "name": "B" }, undefined)] })]));
+        const outside = screen.getByRole('button', { name: 'outside' });
+        const a = screen.getByRole('button', { name: 'A' });
+        await act(() => { outside.focus(); });
+        await act(() => fireEvent.keyDown(outside, { key: 'Tab' }));
+        // jsdom does not move focus for Tab, so apply its native focus transition without a pointer event.
+        await act(() => { a.focus(); });
+        expect(document.activeElement).toBe(a);
+        expect(screen.getByText('details A')).toBeTruthy();
+        await act(() => move(document.body, screen.getByText('B')));
+        expect(screen.queryByText('details B')).toBeNull();
+        await act(() => tick(799));
+        expect(screen.queryByText('details B')).toBeNull();
+        await act(() => tick(1));
+        expect(screen.getByText('details B')).toBeTruthy();
+        expect(screen.queryByText('details A')).toBeNull();
+        view.unmount();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+    it('waits for the first actual display, then switches instantly within one physical list', async () => {
+        render(h(HoverCardGroup, null, { default: () => [h(Card, { "name": "A" }, undefined), h("span", null, ["gap"]), h(Card, { "name": "B" }, undefined)] }));
+        const a = screen.getByText('A');
+        const b = screen.getByText('B');
+        const gap = screen.getByText('gap');
+        await act(() => move(document.body, a));
+        await act(() => tick(799));
+        expect(screen.queryByText('details A')).toBeNull();
+        await act(() => tick(1));
+        expect(screen.getByText('details A')).toBeTruthy();
+        await act(() => move(a, b));
+        expect(screen.queryByText('details A')).toBeNull();
+        expect(screen.getByText('details B')).toBeTruthy();
+        // Repositioning the old anchor must not let it claim ownership again.
+        await act(() => fireEvent(window, new Event('resize')));
+        await act(() => tick(300));
+        expect(screen.queryByText('details A')).toBeNull();
+        expect(screen.getByText('details B')).toBeTruthy();
+        await act(() => move(b, gap));
+        await act(() => tick(300));
+        await act(() => move(gap, a));
+        expect(screen.getByText('details A')).toBeTruthy();
+        await act(() => move(a, document.body));
+        await act(() => tick(300));
+        await act(() => move(document.body, b));
+        expect(screen.queryByText('details B')).toBeNull();
+        await act(() => tick(799));
+        expect(screen.queryByText('details B')).toBeNull();
+        await act(() => tick(1));
+        expect(screen.getByText('details B')).toBeTruthy();
+    });
+    it.each(['pointer exit', 'disabled'] as const)('replaces a preview fading after %s before displaying the next card', async (reason) => {
+        const markup = (disabled = false) => h(HoverCardGroup, null, { default: () => [h(HoverCard, { "grouped": true, "variant": "preview", "openDelayMs": 800, "disabled": disabled }, { anchor: () => h("span", null, ["A"]), default: () => h("span", null, ["details A"]) }), h("span", null, ["gap"]), h(Card, { "name": "B" }, undefined)] });
+        const view = render(markup());
+        const a = screen.getByText('A');
+        const gap = screen.getByText('gap');
+        await act(() => move(document.body, a));
+        await act(() => tick(800));
+        expect(screen.getByText('details A')).toBeTruthy();
+        await act(() => move(a, gap));
+        // Pointer grace expires after 200ms; disabling closes immediately. Both retain the 100ms fade.
+        if (reason === 'disabled')
+            await act(() => view.rerender(markup(true)));
+        else
+            await act(() => tick(200));
+        expect(screen.getByText('details A')).toBeTruthy();
+        await act(() => move(gap, screen.getByText('B')));
+        expect(screen.getByText('details B')).toBeTruthy();
+        expect(screen.queryByText('details A')).toBeNull();
+        await act(() => tick(100));
+        expect(screen.getByText('details B')).toBeTruthy();
+    });
+    it('keeps cancelled openings cold and shares displayed cards independently of action tooltips', async () => {
+        render(h(HoverCardGroup, null, { default: () => [h(Card, { "name": "A" }, undefined), h(Card, { "name": "B" }, undefined)] }));
+        const a = screen.getByText('A');
+        const b = screen.getByText('B');
+        await act(() => move(document.body, a));
+        await act(() => tick(400));
+        await act(() => move(a, b));
+        await act(() => tick(799));
+        expect(screen.queryByText('details A')).toBeNull();
+        expect(screen.queryByText('details B')).toBeNull();
+        await act(() => tick(1));
+        const card = screen.getByText('details B');
+        const action = screen.getByRole('button', { name: 'action B' });
+        await act(() => move(b, action));
+        await act(() => tick(500));
+        expect(screen.getByRole('tooltip').textContent).toBe('Archive B');
+        expect(screen.getByText('details B')).toBe(card);
+        await act(() => move(action, a));
+        expect(screen.queryByRole('tooltip')).toBeNull();
+        expect(screen.getByText('details A')).toBeTruthy();
+        expect(screen.queryByText('details B')).toBeNull();
+    });
+    it('shares warmth through readable, copyable portals until the pointer leaves both surfaces', async () => {
+        const previous = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+        const writeText = vi.fn(async () => { });
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+        try {
+            render(h(HoverCardGroup, null, { default: () => [h(Card, { "name": "A" }, undefined), h(Card, { "name": "B" }, undefined)] }));
+            const a = screen.getByText('A');
+            const b = screen.getByText('B');
+            await act(() => move(document.body, a));
+            await act(() => tick(800));
+            const portal = screen.getByRole('button', { name: 'Copy: A' });
+            await act(() => move(a, portal));
+            await act(() => tick(500));
+            expect(portal.isConnected).toBe(true);
+            await await act(async () => { await act(() => fireEvent.click(portal)); await Promise.resolve(); });
+            expect(writeText).toHaveBeenCalledWith('A');
+            expect(screen.getByRole('status').textContent).toBe('Copied');
+            await act(() => move(portal, b));
+            expect(screen.getByText('details B')).toBeTruthy();
+            expect(screen.queryByRole('button', { name: 'Copy: A' })).toBeNull();
+            const secondPortal = screen.getByRole('button', { name: 'Copy: B' });
+            await act(() => move(b, secondPortal));
+            await act(() => move(secondPortal, document.body));
+            await act(() => tick(300));
+            expect(screen.queryByText('details B')).toBeNull();
+            await act(() => move(document.body, a));
+            await act(() => tick(799));
+            expect(screen.queryByText('details A')).toBeNull();
+            await act(() => tick(1));
+            expect(screen.getByText('details A')).toBeTruthy();
+        }
+        finally {
+            if (previous === undefined)
+                Reflect.deleteProperty(navigator, 'clipboard');
+            else
+                Object.defineProperty(navigator, 'clipboard', previous);
+        }
+    });
+    it('bridges the list-to-card gaps with the active card existing pointer grace', async () => {
+        render(h(HoverCardGroup, null, { default: () => [h(Card, { "name": "A" }, undefined), h(Card, { "name": "B" }, undefined)] }));
+        const a = screen.getByText('A');
+        const b = screen.getByText('B');
+        await act(() => move(document.body, a));
+        await act(() => tick(800));
+        const portal = screen.getByRole('button', { name: 'Copy: A' });
+        await act(() => move(a, document.body));
+        await act(() => tick(100));
+        await act(() => move(document.body, portal));
+        await act(() => tick(500));
+        expect(portal.isConnected).toBe(true);
+        await act(() => move(portal, document.body));
+        await act(() => tick(100));
+        await act(() => move(document.body, b));
+        expect(screen.getByText('details B')).toBeTruthy();
+        expect(screen.queryByText('details A')).toBeNull();
+        await act(() => move(b, document.body));
+        await act(() => tick(300));
+        await act(() => move(document.body, a));
+        await act(() => tick(799));
+        expect(screen.queryByText('details A')).toBeNull();
+        await act(() => tick(1));
+        expect(screen.getByText('details A')).toBeTruthy();
+    });
+    it('warms a keyboard-open card only when the pointer visits that card', async () => {
+        render(h(HoverCardGroup, null, { default: () => [h(HoverCard, { "inline": true, "grouped": true, "openDelayMs": 800 }, { anchor: () => h("button", { "type": "button" }, ["A"]), default: () => h("span", null, ["details A"]) }), h(Card, { "name": "B" }, undefined)] }));
+        await act(() => fireEvent.keyDown(document, { key: 'Tab' }));
+        await act(() => { screen.getByRole('button', { name: 'A' }).focus(); });
+        const portal = screen.getByText('details A');
+        await act(() => move(document.body, portal));
+        await act(() => move(portal, screen.getByText('B')));
+        expect(screen.getByText('details B')).toBeTruthy();
+        expect(screen.queryByText('details A')).toBeNull();
+    });
+    it('rejects stale clipboard feedback after a group handoff and return', async () => {
+        const previous = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+        let finishWrite: (() => void) | undefined;
+        const writeText = vi.fn(() => new Promise<void>((resolve) => { finishWrite = resolve; }));
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+        try {
+            render(h(HoverCardGroup, null, { default: () => [h(Card, { "name": "A" }, undefined), h(Card, { "name": "B" }, undefined)] }));
+            const a = screen.getByText('A');
+            const b = screen.getByText('B');
+            await act(() => move(document.body, a));
+            await act(() => tick(800));
+            await act(() => fireEvent.keyDown(screen.getByRole('button', { name: 'Copy: A' }), { key: 'Enter' }));
+            expect(writeText).toHaveBeenCalledWith('A');
+            await act(() => move(a, b));
+            expect(screen.getByText('details B')).toBeTruthy();
+            await act(() => move(b, a));
+            expect(screen.getByText('details A')).toBeTruthy();
+            await await act(async () => { finishWrite?.(); await Promise.resolve(); });
+            expect(screen.queryByText('Copied')).toBeNull();
+            expect(screen.getByText('details A')).toBeTruthy();
+        }
+        finally {
+            finishWrite?.();
+            if (previous === undefined)
+                Reflect.deleteProperty(navigator, 'clipboard');
+            else
+                Object.defineProperty(navigator, 'clipboard', previous);
+        }
+    });
+    it('keeps separate groups cold and does not enroll ungrouped cards', async () => {
+        render(h(Fragment, null, [h(HoverCardGroup, null, { default: () => [h(Card, { "name": "A" }, undefined), h(Card, { "name": "Project", "grouped": false }, undefined)] }), h(HoverCardGroup, null, { default: () => [h(Card, { "name": "B" }, undefined)] })]));
+        const a = screen.getByText('A');
+        const project = screen.getByText('Project');
+        const b = screen.getByText('B');
+        await act(() => move(document.body, a));
+        await act(() => tick(800));
+        await act(() => move(a, project));
+        expect(screen.queryByText('details Project')).toBeNull();
+        await act(() => tick(800));
+        expect(screen.getByText('details Project')).toBeTruthy();
+        await act(() => move(project, b));
+        expect(screen.queryByText('details B')).toBeNull();
+        await act(() => tick(800));
+        expect(screen.getByText('details B')).toBeTruthy();
+    });
+    it('does not warm a group through a portal belonging to an ungrouped card', async () => {
+        render(h(HoverCardGroup, null, { default: () => [h(Card, { "name": "Project", "grouped": false }, undefined), h(Card, { "name": "B" }, undefined)] }));
+        const project = screen.getByText('Project');
+        const b = screen.getByText('B');
+        await act(() => move(document.body, project));
+        await act(() => tick(800));
+        const portal = screen.getByRole('button', { name: 'Copy: Project' });
+        await act(() => move(project, portal));
+        await act(() => tick(500));
+        expect(portal.isConnected).toBe(true);
+        await act(() => move(portal, b));
+        expect(screen.queryByText('details B')).toBeNull();
+        await act(() => tick(799));
+        expect(screen.queryByText('details B')).toBeNull();
+        await act(() => tick(1));
+        expect(screen.getByText('details B')).toBeTruthy();
+    });
+    it('cools when the active portal is removed from under the pointer', async () => {
+        const markup = (showA: boolean) => h(HoverCardGroup, null, { default: () => [showA && h(Card, { "name": "A" }, undefined), h(Card, { "name": "B" }, undefined)] });
+        const view = render(markup(true));
+        const a = screen.getByText('A');
+        await act(() => move(document.body, a));
+        await act(() => tick(800));
+        const portal = screen.getByRole('button', { name: 'Copy: A' });
+        await act(() => move(a, portal));
+        await act(() => view.rerender(markup(false)));
+        await act(() => move(portal, screen.getByText('B')));
+        expect(screen.queryByText('details B')).toBeNull();
+        await act(() => tick(800));
+        expect(screen.getByText('details B')).toBeTruthy();
+    });
+    it('cools when keyboard focus replaces the portal under the pointer', async () => {
+        render(h(HoverCardGroup, null, { default: () => [h(HoverCard, { "inline": true, "grouped": true }, { anchor: () => h("button", { "type": "button" }, ["A"]), default: () => h("span", null, ["details A"]) }), h(HoverCard, { "inline": true, "grouped": true }, { anchor: () => h("button", { "type": "button" }, ["B"]), default: () => h("span", null, ["details B"]) }), h(Card, { "name": "C" }, undefined)] }));
+        const a = screen.getByRole('button', { name: 'A' });
+        await act(() => move(document.body, a));
+        await act(() => tick(500));
+        const portal = screen.getByText('details A');
+        await act(() => move(a, portal));
+        await act(() => fireEvent.keyDown(document, { key: 'Tab' }));
+        await act(() => { screen.getByRole('button', { name: 'B' }).focus(); });
+        expect(screen.getByText('details B')).toBeTruthy();
+        await act(() => move(portal, screen.getByText('C')));
+        expect(screen.queryByText('details C')).toBeNull();
+        await act(() => tick(800));
+        expect(screen.getByText('details C')).toBeTruthy();
+    });
+    it('releases an unmounted active card without cooling its still-mounted list', async () => {
+        const markup = (showA: boolean, groupKey = 'first') => h(HoverCardGroup, { "key": groupKey }, { default: () => [showA && h(Card, { "name": "A" }, undefined), h(Card, { "name": "B" }, undefined)] });
+        const view = render(markup(true));
+        const a = screen.getByText('A');
+        await act(() => move(document.body, a));
+        await act(() => tick(800));
+        await act(() => view.rerender(markup(false)));
+        await act(() => move(a, screen.getByText('B')));
+        expect(screen.getByText('details B')).toBeTruthy();
+        await act(() => view.rerender(markup(false, 'new')));
+        await act(() => move(document.body, screen.getByText('B')));
+        expect(screen.queryByText('details B')).toBeNull();
+        await act(() => tick(800));
+        expect(screen.getByText('details B')).toBeTruthy();
+        view.unmount();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+});

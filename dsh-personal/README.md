@@ -1,24 +1,38 @@
-# DSH Personal — Vue 迁移工作区（未完成草稿）
+# DSH Personal — Vue migration workspace
 
-本目录与 `frontend/` 同级，位于 `dsh-personal` 分支。目前仅完成固定源码清单和跨模块契约审计，**没有可运行的 Vue 应用，React → Vue 迁移尚未实现**。本草稿不能作为可用前端、P0 通过或功能验收证据。
+English | [中文](README.zh.md)
 
-目标：使用 Vite+ CLI 构建原生 Vue 3 前端；本阶段不适配 EAP Java 后端。现有 `frontend/`、`backend/` 保持原状。DSH 的既有 Host/Boot/插件协议与 EAP 后端适配是两个不同工作范围。
+This directory is a sibling of `frontend/` on the `dsh-personal` branch. It imports a fixed version of DSH and is migrating the complete P0–P4 application to native Vue 3 using Vite+ CLI. **The migration is an unfinished draft.** The native renderer and many product modules have passed focused checks; the final aggregate checks, browser regression and matching Before/After evidence remain incomplete.
 
-- [源码契约审计及替换边界](./contract-audit.md)
-- [阶段计划及完成跟踪](./migration-plan.md)
-- [固定版本清单](./source-inventory.json)
+This phase does not adapt the application to the EAP Java backend. Existing EAP `frontend/` and `backend/` are unchanged. The existing DSH Host/Boot/plugin contracts remain the runtime authority; this UI migration does not introduce a second store or a React facade. Experimental UI and the desktop welcome entry are included in the authorized migration.
 
-## 固定源版本
+- [Contract audit and implementation decisions](contract-audit.md)
+- [Stage plan, completion tracker and outstanding gates](migration-plan.md)
+- [Fixed-source inventory](source-inventory.json)
+- Original upstream instructions: [English](README.upstream.md), [Chinese](README.upstream.zh.md)
 
-[deepseek-ai/deepseek-harness @ 39163dd30f703a79079e2d2446545cff3c453738](https://github.com/deepseek-ai/deepseek-harness/tree/39163dd30f703a79079e2d2446545cff3c453738)。没有使用本机正在运行的 DSH 安装目录作为迁移输入，也没有改动该安装。
+## Fixed source
 
-2026-11-15 通过 GitHub API 获取完整 Git tree（`truncated=false`），复核：74 个客户端包、客户端 src 内 1,236 个 TS/TSX 文件，其中 373 个 TSX；全仓库各 src 下 469 个 TSX。它们是文件统计，不能推导功能覆盖率或迁移完成率。
+[deepseek-ai/deepseek-harness @ 39163dd30f703a79079e2d2446545cff3c453738](https://github.com/deepseek-ai/deepseek-harness/tree/39163dd30f703a79079e2d2446545cff3c453738). The installed DSH instance is neither the migration input nor a deployment target.
 
-复核源清单的只读入口：
+The initial complete GitHub tree audit on 2026-11-15 found 74 client packages and 1,236 client TS/TSX source files, including 373 TSX files; all repository source directories contained 469 TSX files. These are historical inventory counts, not a migration completion percentage.
+
+## Run
+
+### Run from source
+
+The target uses Vite+ 1.3.0, Vue/compiler 3.5.45 and vue-tsc 3.3.14 with a committed lockfile. From this directory, use the Vite+ CLI to install and run the repository commands:
 
 ```sh
-gh api 'repos/deepseek-ai/deepseek-harness/git/trees/39163dd30f703a79079e2d2446545cff3c453738?recursive=1'
-gh api 'repos/deepseek-ai/deepseek-harness/contents/packages/client/ui-slots/src/renderer.ts?ref=39163dd30f703a79079e2d2446545cff3c453738' -H 'Accept: application/vnd.github.raw+json'
+vp install --frozen-lockfile
+vp run build
+vp run start:web
 ```
 
-尚未安装目标依赖、运行原版基线、建立 Vite+ 项目、编译或执行浏览器验证。当前没有 Before/After 应用截图；未来 UI 变更必须在相同场景和视口捕获固定基线与目标版本，才能交付为 ready。不能用占位页或 React 包装器代替真实迁移。
+The original baseline completed its full build and ran through the real Host in Chromium. The target has passed all eight artifact build gates, both Host and Client aggregate checks, the real Host/SFC lifecycle loop and numerous module regressions. **Delivery remains incomplete:** final runtime fixes, refreshed artifacts and browser regressions still need verification. Focused passes do not establish complete functionality or user acceptance; see the stage tracker for current evidence and limitations.
+
+Application React imports and direct dependencies have been removed together with their consumers. The existing Vue/VitePress documentation toolchain still brings indirect DocSearch React dependencies into the workspace installation graph. The verified Web and desktop welcome bundle inputs and compiled client registrations contain no React runtime; browser behavior still requires its separate acceptance checks. No claim is made that the entire workspace dependency graph contains zero React.
+
+## License
+
+The imported source retains its [MIT license](LICENSE). Dependency notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

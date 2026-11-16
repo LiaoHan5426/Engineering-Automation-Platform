@@ -1,0 +1,54 @@
+// @vitest-environment jsdom
+import { fireEvent, screen } from '@testing-library/dom'
+import { renderVue as render } from './vue-render.ts'
+import { h, Fragment } from 'vue'
+import { describe, expect, it, vi } from 'vitest'
+import { Switch } from '../src/Switch.tsx'
+describe('Switch', () => {
+  it('exposes its state and its caller-owned name to assistive technology', () => {
+    render(h(Switch, { "checked": true, "label": "Subagent model selection", "onChange": () => { } }))
+    const control = screen.getByRole('switch', { name: 'Subagent model selection' })
+    expect(control.getAttribute('aria-checked')).toBe('true')
+  })
+  it('reports the state the click asks for, not the state it has', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(h(Switch, { "checked": false, "label": "Toggle", "onChange": onChange }))
+    fireEvent.click(screen.getByRole('switch'))
+    expect(onChange).toHaveBeenCalledWith(true)
+    onChange.mockClear()
+    rerender(h(Switch, { "checked": true, "label": "Toggle", "onChange": onChange }))
+    fireEvent.click(screen.getByRole('switch'))
+    expect(onChange).toHaveBeenCalledWith(false)
+  })
+  it('stays silent while disabled', () => {
+    const onChange = vi.fn()
+    render(h(Switch, { "checked": false, "disabled": true, "label": "Toggle", "onChange": onChange }))
+    const control = screen.getByRole('switch')
+    expect((control as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(control)
+    expect(onChange).not.toHaveBeenCalled()
+  })
+  it('carries a lock reason as the hover title when the owner names one', () => {
+    render(h(Switch, { "checked": false, "disabled": true, "label": "Toggle", "title": "Managed by policy", "onChange": () => { } }))
+    expect(screen.getByRole('switch').getAttribute('title')).toBe('Managed by policy')
+  })
+  it('never submits a surrounding form', () => {
+    const onSubmit = vi.fn((event: {
+      preventDefault: () => void
+    }) => { event.preventDefault(); })
+    render(h("form", { "onSubmit": onSubmit }, [h(Switch, { "checked": false, "label": "Toggle", "onChange": () => { } })]))
+    fireEvent.click(screen.getByRole('switch'))
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+  it('takes focus on mount and names its description when the caller asks', () => {
+    render(h(Fragment, null, [h(Switch, { "checked": false, "autoFocus": true, "describedBy": "why", "label": "Toggle", "onChange": () => { } }), h("p", { "id": "why" }, ["Reason"])]))
+    const control = screen.getByRole('switch', { description: 'Reason' })
+    expect(document.activeElement).toBe(control)
+  })
+  it('keeps a caller class alongside its own so a render site can place it', () => {
+    render(h(Switch, { "checked": false, "className": "placed", "label": "Toggle", "onChange": () => { } }))
+    const control = screen.getByRole('switch')
+    expect(control.classList.contains('placed')).toBe(true)
+    expect(control.classList.length).toBeGreaterThan(1)
+  })
+})
