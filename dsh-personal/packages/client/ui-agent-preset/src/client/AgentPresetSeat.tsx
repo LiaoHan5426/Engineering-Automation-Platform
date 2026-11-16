@@ -77,9 +77,8 @@ export const AgentPresetSeat = defineComponent(
     const { useSessionRetainInfo, introduced, useAgentPresetSeat, useDeveloperTools } = props;
     const developerTools = useDeveloperTools((value) => value);
     const state = useAgentPresetSeat((snapshot) => snapshot);
-    const main = useSessionRetainInfo(
-      (info) => props.sessionId === undefined || (info?.retainedBy.mainView ?? 0) > 0,
-    );
+    const retainedMain = useSessionRetainInfo((info) => (info?.retainedBy.mainView ?? 0) > 0);
+    const main = computed(() => props.sessionId === undefined || retainedMain.value === true);
     const open = shallowRef(false);
     const setOpen = (
       next: typeof open.value | ((previous: typeof open.value) => typeof open.value),

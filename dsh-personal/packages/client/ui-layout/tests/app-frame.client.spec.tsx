@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { computed, h, shallowRef } from 'vue'
+import { computed, defineComponent, h, onUnmounted, ref, shallowRef } from 'vue'
 /** Frame interactions with a real store and explicitly driven browser measurements. */
 import type { RenderOpts } from '@deepseek-ai/dsh-client-ui-slots'
 import { bindSnapshotSelector } from './vue-fixture.ts'
@@ -769,6 +769,54 @@ describe('sidebar drawer', () => {
     expect(getByTestId('main-content')).toBe(main)
     expect(getByTestId('shell.leading-content')).toBe(leading)
     expect(frame.querySelector('[data-sidebar-mask]')).toBe(mask)
+  })
+
+  it('retains column DOM, drafts, and dismissed overlays across desktop and drawer layouts', async () => {
+    const setups: string[] = []
+    const disposals: string[] = []
+    const retained = ['sidebar', 'main', 'rightbar', 'shell.bottom', 'shell.overlay']
+    const Seat = defineComponent((props: { seat: string }) => {
+      const draft = ref('')
+      const dismissed = ref(false)
+      setups.push(props.seat)
+      onUnmounted(() => { disposals.push(props.seat) })
+      return () => h('section', { 'data-seat': props.seat }, [
+        h('input', { value: draft.value, onInput: (event: Event) => { draft.value = (event.target as HTMLInputElement).value } }),
+        dismissed.value ? null : h('button', { onClick: () => { dismissed.value = true } }, 'Dismiss'),
+      ])
+    }, { props: ['seat'], inheritAttrs: false })
+    const { frame, instance } = await mountFrame(1920, key => retained.includes(key) ? h(Seat, { seat: key }) : null)
+    const nodes = retained.map(key => {
+      const node = frame.querySelector<HTMLElement>(`[data-seat="${key}"]`)!
+      const input = node.querySelector('input')!
+      return { key, node, input, column: node.closest('section')!.parentElement }
+    })
+    for (const { key, node, input } of nodes) {
+      await act(() => { input.value = `${key} draft`; input.dispatchEvent(new Event('input', { bubbles: true })) })
+      await fireEvent.click(node.querySelector('button')!)
+    }
+    const assertRetained = () => {
+      for (const { key, node, input, column } of nodes) {
+        expect(frame.querySelector(`[data-seat="${key}"]`)).toBe(node)
+        expect(node.parentElement).toBe(column)
+        expect(node.querySelector('input')).toBe(input)
+        expect(input.value).toBe(`${key} draft`)
+        expect(node.querySelector('button')).toBeNull()
+      }
+      expect(setups).toEqual(retained)
+      expect(disposals).toEqual([])
+    }
+    await resize(390)
+    expect(frame.hasAttribute('data-sidebar-drawer')).toBe(true)
+    expect(frame.querySelector('[data-sidebar-mask]')).not.toBeNull()
+    assertRetained()
+    await act(() => { instance.actions.toggleSidebar() })
+    expect(frame.hasAttribute('data-sidebar-collapsed')).toBe(false)
+    assertRetained()
+    await resize(1440)
+    expect(frame.hasAttribute('data-sidebar-drawer')).toBe(false)
+    expect(frame.querySelector('[data-sidebar-mask]')).toBeNull()
+    assertRetained()
   })
 
   it('closes the drawer on navigation and restores the rail at 768px', async () => {

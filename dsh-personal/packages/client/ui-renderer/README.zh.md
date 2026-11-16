@@ -33,7 +33,7 @@ kind: "package-reference"
 
 ### 对业务插件
 
-业务插件注册普通 Slot entry 或可复用 Component Factory；渲染器在渲染位置把运行时的会话与 Workspace observable source 绑定为 selector 钩子。插件通过推导出的 Component props 收到标准 scope props——它绝不导入渲染器，也不触碰 Vue 内部机制。每个由 renderer 创建的 Component 都能渲染 Factory occurrence，Factory 也能暴露由调用方选择的局部 Component，而无需在包之间共享实现值。
+业务插件注册普通 Slot entry 或可复用 Component Factory；渲染器在渲染位置把运行时的会话与 Workspace observable source 绑定为 selector 钩子。插件通过推导出的 Component props 收到标准 scope props，不管理注册表订阅，也不触碰 Vue 内部机制。每个由 renderer 创建的 Component 都能渲染 Factory occurrence，Factory 也能暴露由调用方选择的局部 Component，而无需在包之间共享实现值。
 
 -----
 
@@ -60,6 +60,8 @@ kind: "package-reference"
 撤销 registration 会立即使 entry 或 Factory owner 失效。在 Vue 提交 outlet 移除前，仍驻留的 occurrence 停止解析 Store 和 injection face；保留的渲染授权仍会拒绝过时调用。
 
 空白的可选 Session scope 首次接纳会话时不 remount；后续上下文 generation 改变或丢失会创建新的 incarnation。SessionProvider 与 HOC 组件接受原生 default slot。每个已挂载应用拥有独立的 Vue ID 前缀，旧 mount disposer 不能移除替代挂载。卸载失败会传到 mount owner，同时仍释放模块样式。
+
+框架字段只通过对象组件和类组件声明的运行时 props 或 emits 传入，包括 mixin 与 `extends` 继承的声明。调用方输入保持原样，包括原生属性、监听器、VNode key 与 ref，并覆盖同名框架字段。函数组件接收完整输入。Factory 所选及 fallback 局部组件遵循同一规则。惰性组件通过显式声明 props 的外层组件暴露框架输入，其异步实现仍延后加载。
 
 ### 身份
 

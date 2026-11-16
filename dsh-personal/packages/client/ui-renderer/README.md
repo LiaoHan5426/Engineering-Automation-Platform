@@ -33,7 +33,7 @@ This package is infrastructure: the web shell and the boot kernel are its only d
 
 ### For business plugins
 
-A business plugin registers an ordinary Slot entry or a reusable Component Factory; the renderer binds the runtime's session and workspace observable sources into selector hooks at the render position. The plugin receives standard scope props through its derived Component props — it never imports the renderer or touches Vue internals. Every renderer-created Component can render a Factory occurrence, and a Factory can expose caller-selected local Components without sharing implementation values between packages.
+A business plugin registers an ordinary Slot entry or a reusable Component Factory; the renderer binds the runtime's session and workspace observable sources into selector hooks at the render position. The plugin receives standard scope props through its derived Component props and does not manage registry subscriptions or Vue internals. Every renderer-created Component can render a Factory occurrence, and a Factory can expose caller-selected local Components without sharing implementation values between packages.
 
 -----
 
@@ -60,6 +60,8 @@ The production client entry `@deepseek-ai/dsh-client-ui-renderer/client` exports
 Withdrawal immediately revokes an entry or Factory owner. Until Vue commits its outlet removal, the resident occurrence stops resolving Stores and injection faces; retained rendering authorizations continue to reject stale calls.
 
 A blank optional Session scope adopts its first session without remounting; a later context generation change or loss creates a fresh incarnation. SessionProvider and HOC components accept native default slots. Each mounted app owns a unique Vue ID prefix, and stale mount disposers cannot remove a replacement. Teardown failures propagate to the mount owner while module styles are still released.
+
+Framework fields enter object and class components only through their declared runtime props or emits, including inherited mixins and `extends`. Caller inputs remain unchanged, including native attributes, listeners, VNode keys and refs, and override matching framework fields. Functional components receive the complete input. Factory-selected and fallback local components follow the same rule. Lazy components expose their framework inputs through an explicit prop-declaring outer component, while their asynchronous implementation stays deferred.
 
 ### Identity
 

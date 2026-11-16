@@ -288,6 +288,7 @@ export const ConversationContent = defineComponent(
   {
     props: [
       "sessionId",
+      "variant",
       "phase",
       "hero",
       "useSession",

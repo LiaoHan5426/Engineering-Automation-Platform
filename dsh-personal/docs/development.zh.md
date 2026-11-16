@@ -219,6 +219,8 @@ Web 命令后面的参数会传给 `dsh web`，例如 `pnpm run dev:web --no-ope
 
 ### 逐字记录类型定义（`ts type-equiv`）
 
+`pnpm run doc-typecheck` 在 Host TypeScript 程序中编译普通 `ts` 围栏，在独立的 Client 程序中编译 `ts client` 围栏。两个程序各自使用对应的编译器选项与项目引用，在源码和构建声明检查中保持 Cordis Context 声明分离。TSX 围栏不参与检查。需要可编译的 Client 示例时，使用 `ts client` 与 Vue render 函数。
+
 [子系统](subsystems/README.zh.md)页面会把与源码等价的声明及其原始 JSDoc 一并粘贴，让读者看到确切类型定义和源码约定。为防止粘贴内容在源码变化时漂移，请将其围栏为 ` ```ts type-equiv `（而不是 ` ```ts `），并在 `scripts/type-equiv.manifest.json` 中登记它镜像的源文件和符号：
 
 ```json

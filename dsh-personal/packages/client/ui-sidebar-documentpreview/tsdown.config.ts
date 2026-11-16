@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -171,6 +172,61 @@ const excelWorker: NonNullable<UserConfig["plugins"]> = [
   },
 ];
 
+/**
+ * Pinned readonly engine corrections, before any worksheet text reaches an HTML sink.
+ * Formula and literal display use text nodes; only the two clipboard cell values are escaped.
+ * Grid data, cached formula values, styles, merges and table markup are left to the engine.
+ * Re-audit these upstream owners when the version, bytes or exact sink counts change.
+ */
+function readonlySpreadsheet(source: string): string {
+  if (
+    createHash("sha256").update(source).digest("hex") !==
+    "2888ee69c7b80a74f0843eed4323d0ee1d8ed79dd4f78c031441ae8993c7630d"
+  )
+    throw Error("Pinned Luckysheet 2.1.13 source changed");
+  const replace = (
+    name: string,
+    needle: string | RegExp,
+    replacement: string | ((match: string) => string),
+    count = 1,
+  ): void => {
+    const n =
+      typeof needle === "string"
+        ? source.split(needle).length - 1
+        : [...source.matchAll(needle)].length;
+    if (n !== count) throw Error(`${name}: expected ${count}, got ${n}`);
+    source = source.replace(needle, (match) =>
+      typeof replacement === "string" ? replacement : replacement(match),
+    );
+  };
+  replace(
+    "readonly text surfaces",
+    /\$\("#luckysheet-(?:functionbox-cell|rich-text-editor)(?:, #luckysheet-(?:functionbox-cell|rich-text-editor))?"\)\.html\(/g,
+    (match) => match.replace(".html(", ".text("),
+    40,
+  );
+  replace(
+    "literal formula generator",
+    `functionHTMLGenerate:function(e){return 0==e.length||"="!=e.substr(0,1)?e:(this.functionHTMLIndex=0,'<span dir="auto" class="luckysheet-formula-text-color">=</span>'+this.functionHTML(e))}`,
+    `functionHTMLGenerate:function(e){return e}`,
+  );
+  for (const [name, value, html] of [
+    ["selection copy", "S", "C"],
+    ["range HTML", "ee", "K"],
+  ] as const)
+    replace(
+      name,
+      `null==${value}&&(${value}=${value === "S" ? '""' : '" "'}),${html}+=${value}`,
+      `null==${value}&&(${value}=${value === "S" ? '""' : '" "'}),${html}+=String(${value}).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")`,
+    );
+  replace(
+    "synchronous copy cache",
+    /webWorkerFlowDataCache:function\(e\)\{var t=this;try\{.*?\}\},controlHandler:function/g,
+    "webWorkerFlowDataCache:function(e){this.deepCopyFlowDataState=!1,this.deepCopyFlowDataCache=$.extend(!0,[],e)},controlHandler:function",
+  );
+  return source;
+}
+
 /** Embed the singleton engine and every stylesheet asset inside each preview's document. */
 const spreadsheetAssets: NonNullable<UserConfig["plugins"]> = [
   {
@@ -194,7 +250,9 @@ const spreadsheetAssets: NonNullable<UserConfig["plugins"]> = [
       if (manifest.version !== "2.1.13")
         throw new Error("Spreadsheet asset adapter requires luckysheet 2.1.13");
       const scripts = ["dist/plugins/js/plugin.js", "dist/luckysheet.umd.js"].map((path) =>
-        read(join(root, path)).toString(),
+        path.endsWith("luckysheet.umd.js")
+          ? readonlySpreadsheet(read(join(root, path)).toString())
+          : read(join(root, path)).toString(),
       );
       const mime: Record<string, string> = {
         png: "image/png",

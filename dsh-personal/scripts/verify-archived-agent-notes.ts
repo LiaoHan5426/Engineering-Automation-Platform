@@ -69,7 +69,8 @@ function readBaselineManifest(ref: string): ArchiveManifest {
   runGit(['cat-file', '-e', `${ref}^{commit}`])
   const manifestEntry = runGit(['ls-tree', '--name-only', ref, '--', manifestRepoPath]).trim()
   if (manifestEntry === '') return { version: 1, files: {} }
-  return parseArchiveManifest(runGit(['show', `${ref}:${manifestRepoPath}`]))
+  // Unlike ls-tree pathspecs, show tree paths need ./ to resolve from the project directory.
+  return parseArchiveManifest(runGit(['show', `${ref}:./${manifestRepoPath}`]))
 }
 
 let manifest: ArchiveManifest = { version: 1, files: {} }

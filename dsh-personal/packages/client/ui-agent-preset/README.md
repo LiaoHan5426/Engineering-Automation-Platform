@@ -45,7 +45,7 @@ On Desktop, the optional [product analytics](../product-analytics/README.md) ser
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The picker, session label, settings cards, and guide are native Vue components. Snapshot hooks return readonly refs consumed during rendering; component scopes dispose observers, introduction timers, and the open configuration viewer. Menus and dialogs use the shared native slots and preserve nested keyboard ownership and return focus.
+The picker, session label, settings cards, and guide are native Vue components. Snapshot hooks return readonly refs consumed during rendering; the preset picker remains visible before a Session is bound and, after binding, only while the main view retains that Session. Component scopes dispose observers, introduction timers, and the open configuration viewer. Menus and dialogs use the shared native slots and preserve nested keyboard ownership and return focus.
 
 `agentPresets/list` supplies the roster and marks the current default, and `agentPresets/read` one declaration's YAML for the viewer; default changes write the `agent-preset-registry` settings namespace. The picker, blank-session synchronization and read-only session label use recorded preset identities. Connection resets and settings updates refresh the roster.
 

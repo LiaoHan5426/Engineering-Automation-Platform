@@ -30,7 +30,13 @@
 
 八项产物门禁、Host/Client 聚合检查、真实 Loader 消费者重载以及应用产物输入无 React 审计已经通过；这些不证明完整产品浏览器行为。用户已授权全部阶段，实验 UI 与桌面欢迎入口包括在原生 Vue 迁移范围；桌面 IPC、权限和 Host 领域逻辑保留既有权威，不因 UI 迁移重写。第三方 React UI 的实际消费者必须替换，不能通过排除模块或适配 facade 宣称完成。
 
-阶段性提交仅保存实施检查点，仍是未完成草稿。当前隔离 Host 的 file-upload 原始 decorator 导入问题正在按既有 hostPhase 合同修复；工厂 props 声明与 DOM 属性边界仍在收尾。表格的受控实际产物探针确认原生引擎对公式/文本 HTML sink、复制 HTML 和只读栏存在回归，甚至可执行受控同源脚本；必须在 sink 前修正并通过真实产物浏览器回归后才能交付，不能把 iframe 或旧 Fortune 补丁当成安全证明。会话提交与图片拒绝提示的两份原装配用例已确认只是上传就绪竞态，等待公开发送按钮可用后原断言全部通过，未修改生产语义。最终产物刷新、匹配 Before/After、文档门禁、自查及 PR/CI 仍待关闭。
+完整导入/原生迁移阶段检查点已推送草稿 PR #8，后续本地修复不冒充该提交的验证。file-upload 已按既有 hostPhase 合同修正，实际 Host 无导入失败或服务等待；工厂运行时 props 及属性边界已有回归。会话提交/图片拒绝两例仅等待公开上传就绪，无生产语义修改。
+
+框架 kit 在创建 VNode 前按组件实际声明的 props/emits、mixins/extends 或 class __vccOpts 过滤；调用方显式属性、事件、class/style、key/ref 完整保留并最后覆盖。函数组件仍接完整 kit；工厂和普通 slot 同用实例内缓存，不通过关闭 inheritAttrs 隐藏问题。新增真实 renderer 九项回归覆盖边界和异步外层传参，不以直接组件 fixture 代替装配证明。
+
+表格的 HTML sink 回归已在生成产物前收敛：只对固定 Luckysheet 2.1.13、固定源码 SHA 与精确命中计数执行文本/公式和复制转义变换，版本或内容漂移即构建失败。只读编辑与复制 listener 归当前实例，只处理引擎拥有的复制，保留原生栏内选中文本；不用全局 jQuery 修改，不放宽 CSP，不把 iframe 当安全边界。实际产物受控脚本计数 7→0，六种恶意缓存值、系统剪贴板双 MIME、选区、样式/合并/分页、双实例及卸载验证通过；616 项模块回归与九项构建/config/复制边界用例通过。
+
+目录按钮替换输入框的 null-relatedTarget 焦点事件采用 nextTick 后重查现有 openGeneration/requestSeq/草稿身份和当前焦点；显式外部焦点仍立即取消，不新增状态权威。局部 94 项及实际包类型通过，刷新后装配焦点 13 项通过。无会话 agent preset 在缺源 selector 外组合 no-session 默认，保留缺源不调用 selector 的原生合同；220 项及完整 Vue Client 聚合通过。AppFrame 按现有结构赋稳定同级 key，避免 drawerMask 插入将旧列复用为另一列；136 项及真实五列/sidebar DOM、草稿/关闭态跨视口保留验证通过，不改变 CSS/布局算法。文档全跑 42 项与唯一引用门禁修正后定向检查通过。完整 Web replay、发布同场景 Before/After、自查及 PR/CI 未关闭。Forge 部分未改 Host Git 流程仍五秒超时，一个同例在原版复现；不将其推广为所有超时已证明无关，也不声称全套通过。
 
 ## 实施中的编译契约
 

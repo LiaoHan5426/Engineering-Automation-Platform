@@ -129,7 +129,7 @@ Session 行可通过 Tab 聚焦，使用不带修饰键的 Enter 或空格打开
 
 调用方只需每个已注册组件都会收到的标准 `renderFactorySlot` prop，以及加载该 Factory 声明的纯类型 `ui-workspace/client` import；调用方自己的注册无需为此声明任何内容。未加载 ui-workspace 时，该调用渲染其可选的 `fallback`。菜单 portal 到 document body，并相对 `anchorRef` 定位，层级高于 primitives 的 `Modal`，因此实例可以渲染在调用方的对话框内。
 
-```ts
+```ts client
 import { defineComponent, h, shallowRef } from 'vue'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { PropsRenderFactories } from '@deepseek-ai/dsh-client-ui-slots'
@@ -165,7 +165,7 @@ const WorkspaceField = defineComponent((props: PropsRenderFactories & { label: s
 
 按照 Client 依赖规则，将 `ui-workspace`、`ui-slots`、`ui-renderer`、`client-locale` 与 `ui-primitives` 声明为浏览器／类型开发依赖。纯类型的 `ui-workspace/client` import 会加载本包的 `SlotMap` 声明；缺少该 import 时，独立编译的插件不会知道这些 slot key。Component 保持模块级稳定身份；用户可见文案由贡献包自己的 locale namespace 持有。 下方 factory 从安装方接收导出操作并返回 Client 插件；示例不提供导出实现。
 
-```ts
+```ts client
 import { defineComponent, h } from 'vue'
 import type { Context } from '@deepseek-ai/cordis'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'

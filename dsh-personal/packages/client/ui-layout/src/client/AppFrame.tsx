@@ -161,20 +161,20 @@ export const AppFrame = defineComponent((props: AppFrameProps) => {
         if (event.target === frameRef.value && event.propertyName === 'grid-template-columns') animating.value = 0
       },
     }, [
-      h(DocumentTitle, { productTitle: process.env.DSH_CLIENT_TITLE ?? props.t('brand.localBuild'), useSessions: props.useSessions, usePanelInfo: props.usePanelInfo }),
-      drawer ? h('div', { class: css.drawerMask, 'data-sidebar-mask': '', 'aria-hidden': 'true', onClick: drawerOpen ? () => { props.actions.toggleSidebar() } : undefined }) : null,
-      h('div', { class: css.sidebarCol, style: drawer ? { width: `${sidebarWidth}px` } : undefined, inert: drawer && collapsed ? '' : undefined }, [
+      h(DocumentTitle, { key: 'document-title', productTitle: process.env.DSH_CLIENT_TITLE ?? props.t('brand.localBuild'), useSessions: props.useSessions, usePanelInfo: props.usePanelInfo }),
+      drawer ? h('div', { key: 'drawer-mask', class: css.drawerMask, 'data-sidebar-mask': '', 'aria-hidden': 'true', onClick: drawerOpen ? () => { props.actions.toggleSidebar() } : undefined }) : null,
+      h('div', { key: 'sidebar', class: css.sidebarCol, style: drawer ? { width: `${sidebarWidth}px` } : undefined, inert: drawer && collapsed ? '' : undefined }, [
         props.renderSlot('sidebar', { collapsed, width: sidebarWidth, drawer }),
       ]),
-      h('div', { class: css.centerCol, inert }, [h(MainPanel, { usePanelInfo: props.usePanelInfo, renderSlot: props.renderSlot })]),
-      h('div', { class: css.rightbarCol, 'data-rightbar-col': '', inert }, [props.renderSlot('rightbar', { width: normal.rightbar, viewportWidth: viewport, canShow: normal.rightbar > 0 })]),
-      h('div', { class: css.bottomRow, 'data-shell-bottom': '', inert }, [props.renderSlot('shell.bottom', {})]),
-      h('div', { class: css.overlayLayer, 'data-shell-overlay': '' }, [props.renderSlot('shell.overlay', {})]),
-      drawer || darwin && collapsed ? h('div', { class: css.leadingSeat, 'data-shell-leading': '', inert }, [props.renderSlot('shell.leading', {})]) : null,
-      !drawer && !centeredSidebar && !collapsed ? h(DragHandle, { side: 'sidebar', left: cols.sidebar,
+      h('div', { key: 'center', class: css.centerCol, inert }, [h(MainPanel, { usePanelInfo: props.usePanelInfo, renderSlot: props.renderSlot })]),
+      h('div', { key: 'rightbar', class: css.rightbarCol, 'data-rightbar-col': '', inert }, [props.renderSlot('rightbar', { width: normal.rightbar, viewportWidth: viewport, canShow: normal.rightbar > 0 })]),
+      h('div', { key: 'bottom', class: css.bottomRow, 'data-shell-bottom': '', inert }, [props.renderSlot('shell.bottom', {})]),
+      h('div', { key: 'overlay', class: css.overlayLayer, 'data-shell-overlay': '' }, [props.renderSlot('shell.overlay', {})]),
+      drawer || darwin && collapsed ? h('div', { key: 'leading', class: css.leadingSeat, 'data-shell-leading': '', inert }, [props.renderSlot('shell.leading', {})]) : null,
+      !drawer && !centeredSidebar && !collapsed ? h(DragHandle, { key: 'sidebar-handle', side: 'sidebar', left: cols.sidebar,
         onStart: () => { sidebarBase = geometry.value.cols.sidebar; dragging.value = true },
         onDrag: (dx: number) => { props.actions.setSidebar(sidebarBase + dx) }, onEnd: endDrag }) : null,
-      info.rightbarShown && !info.rightbarFullscreen && normal.rightbar > 0 ? h(DragHandle, { side: 'rightbar', left: viewport - normal.rightbar,
+      info.rightbarShown && !info.rightbarFullscreen && normal.rightbar > 0 ? h(DragHandle, { key: 'rightbar-handle', side: 'rightbar', left: viewport - normal.rightbar,
         onStart: () => { rightbarBase = geometry.value.normal.rightbar; dragging.value = true },
         onDrag: (dx: number) => { props.actions.setRightbar(rightbarBase - dx) }, onEnd: endDrag }) : null,
     ])

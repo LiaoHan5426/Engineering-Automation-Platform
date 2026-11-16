@@ -1,4 +1,9 @@
+import { spawnSync } from 'node:child_process'
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { basename, dirname, join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { AGENT_NOTE_CLASSES } from './agent-note-tree.ts'
 import {
   extendArchiveManifest,
   gitBlobHash,
@@ -141,6 +146,72 @@ describe('archived Agent Notes', () => {
       { version: 1, files: { 'process/other.md': before } },
       { version: 1, files: { 'process/other.md': after } },
     )).toHaveLength(1)
+  })
+
+  it.each(['.', 'workspace/dsh-personal'])('checks committed seals from the project at %s', (projectPath) => {
+    const gitRoot = mkdtempSync(join(tmpdir(), 'dsh-archive-git-'))
+    try {
+      const projectRoot = resolve(gitRoot, projectPath)
+      const scripts = join(projectRoot, 'scripts')
+      const archive = join(projectRoot, '.agents/notes/archived')
+      mkdirSync(scripts, { recursive: true })
+      for (const file of ['verify-archived-agent-notes.ts', 'archived-agent-notes.ts', 'agent-note-tree.ts']) {
+        copyFileSync(join(import.meta.dirname, file), join(scripts, file))
+      }
+      writeFileSync(join(projectRoot, 'package.json'), '{"type":"module"}\n')
+      for (const kind of AGENT_NOTE_CLASSES) mkdirSync(join(archive, kind), { recursive: true })
+      writeFileSync(join(archive, 'AGENTS.md'), '# Frozen archive\n')
+      const artifacts = fixture()
+      for (const [path, content] of artifacts) writeFileSync(join(archive, path), content)
+      const manifest = join(archive, 'manifest.json')
+      writeFileSync(manifest, renderArchiveManifest(extendArchiveManifest({ version: 1, files: {} }, artifacts).files))
+      if (projectPath !== '.') {
+        // A root manifest must not substitute for the nested project's committed seals.
+        const decoy = join(gitRoot, '.agents/notes/archived')
+        mkdirSync(decoy, { recursive: true })
+        writeFileSync(join(decoy, 'manifest.json'), renderArchiveManifest({}))
+      }
+      const git = (args: string[]): void => {
+        const result = spawnSync('git', args, { cwd: gitRoot, encoding: 'utf8' })
+        expect(result.error).toBeUndefined()
+        expect(result.status, result.stderr).toBe(0)
+      }
+      git(['init', '--quiet'])
+      git(['add', '.'])
+      git(['-c', 'user.name=Archive test', '-c', 'user.email=archive@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'Seal archive fixture'])
+      const check = (args: string[] = []) => spawnSync(process.execPath, [join(scripts, 'verify-archived-agent-notes.ts'), ...args], {
+        cwd: projectRoot,
+        encoding: 'utf8',
+        env: { ...process.env, DSH_ARCHIVE_BASE_REF: 'HEAD' },
+      })
+      const unchanged = check()
+      expect(unchanged.error).toBeUndefined()
+      expect(unchanged.status, unchanged.stderr).toBe(0)
+      expect(unchanged.stdout).toContain('3 frozen artifact(s) checked')
+
+      const path = 'process/2026-07-26-example.md'
+      const changed = Buffer.concat([artifacts.get(path)!, Buffer.from('Changed frozen content.\n')])
+      artifacts.set(path, changed)
+      const zh = artifacts.get('process/2026-07-26-example.zh.md')!
+      const meta = Buffer.from(`2026-07-26-example.md: ${gitBlobHash(changed)}\n2026-07-26-example.zh.md: ${gitBlobHash(zh)}\n`)
+      artifacts.set('process/2026-07-26-example.i18n.yaml', meta)
+      writeFileSync(join(archive, path), changed)
+      writeFileSync(join(archive, 'process/2026-07-26-example.i18n.yaml'), meta)
+      writeFileSync(manifest, renderArchiveManifest(extendArchiveManifest({ version: 1, files: {} }, artifacts).files))
+      for (const args of [[], ['--write']]) {
+        const resealed = check(args)
+        expect(resealed.status).toBe(1)
+        expect(resealed.stderr).toContain(`${path}: sealed manifest hash changed`)
+      }
+      writeFileSync(manifest, renderArchiveManifest({}))
+      const removed = check()
+      expect(removed.status).toBe(1)
+      expect(removed.stderr).toContain(`${path}: sealed manifest entry is missing`)
+    } finally {
+      expect(dirname(gitRoot)).toBe(resolve(tmpdir()))
+      expect(basename(gitRoot)).toMatch(/^dsh-archive-git-/)
+      rmSync(gitRoot, { recursive: true, force: true })
+    }
   })
 
   it('round-trips the deterministic manifest schema', () => {

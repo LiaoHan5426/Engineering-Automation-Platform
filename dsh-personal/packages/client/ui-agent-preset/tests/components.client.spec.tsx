@@ -38,8 +38,7 @@ const SEAT_READY: AgentPresetSeatState = {
   error: null,
   introduce: false,
 };
-const useSessionRetainInfo = <Selected,>(selector: (value: undefined) => Selected) =>
-  shallowRef(selector(undefined));
+const useSessionRetainInfo = <Selected,>() => shallowRef<Selected>();
 /** The runtime's own `{name}` substitution, so a test reads the shown text. */
 function translate(key: keyof typeof en, params?: Record<string, unknown>): string {
   const template = en[key];

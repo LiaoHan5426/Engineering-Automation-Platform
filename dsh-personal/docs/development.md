@@ -212,6 +212,8 @@ Pick the tag that matches the urgency so anyone scanning the code can tell a rel
 
 ### Documenting types verbatim (`ts type-equiv`)
 
+`pnpm run doc-typecheck` compiles plain `ts` fences in the Host TypeScript program and `ts client` fences in a separate Client program. Each program uses its own compiler options and project references, preserving separate Cordis Context declarations in source and built-declaration checks. TSX fences are not checked. Use `ts client` with Vue render functions for a compilable Client example.
+
 The [subsystems](subsystems/README.md) pages paste source-equivalent declarations together with their original JSDoc so a reader sees the exact type definition and source contract. To keep a paste from drifting when source changes, fence it as ` ```ts type-equiv ` (instead of ` ```ts `) and register it in `scripts/type-equiv.manifest.json` with the source file and symbol it mirrors:
 
 ```json

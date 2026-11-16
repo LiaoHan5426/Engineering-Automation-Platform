@@ -776,6 +776,28 @@ describe("DirectoryBrowser", () => {
       screen.getAllByRole<HTMLButtonElement>("button", { name: "browser.open" }).at(-1)!.disabled,
     ).toBe(true);
   });
+  it("keeps the replacement path input focused after a null-destination trigger blur and cancels on outside focus", async () => {
+    mount();
+    await screen.findByRole("listitem");
+    const trigger = screen.getByRole<HTMLButtonElement>("button", { name: "browser.editPath" });
+    await act(() => {
+      trigger.focus();
+      fireEvent.click(trigger);
+      // Chromium emits this as Vue removes the focused trigger, before the input mounts.
+      fireEvent.focusOut(trigger, { relatedTarget: null });
+    });
+    const input = screen.getByRole<HTMLInputElement>("textbox", { name: "browser.editPath" });
+    expect(input.value).toBe(`${HOME}/`);
+    expect(document.activeElement).toBe(input);
+    const outside = render(h("button", { type: "button" }, "Outside"));
+    // jsdom briefly reports no document focus while moving between native elements.
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    await act(() => screen.getByRole<HTMLButtonElement>("button", { name: "Outside" }).focus());
+    hasFocus.mockRestore();
+    expect(screen.queryByRole("textbox", { name: "browser.editPath" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Outside" }));
+    outside.unmount();
+  });
   it("edits the path from the crumb bar: Enter navigates, Escape restores, blank is ignored", async () => {
     const b = mount();
     await waitFor(() => {
@@ -1465,8 +1487,8 @@ describe("DirectoryBrowser", () => {
     await act(() => fireEvent.click(screen.getByRole("button", { name: "browser.editPath" })));
     const input = screen.getByLabelText<HTMLInputElement>("browser.editPath");
     await act(() => fireEvent.input(input, { target: { value: "/somewhere/else" } }));
-    // Focus moving anywhere outside the editor abandons the draft like Escape.
-    await act(() => fireEvent.focusOut(input));
+    // Focus moving outside the dialog abandons the draft like Escape.
+    await act(() => fireEvent.focusOut(input, { relatedTarget: document.body }));
     expect(screen.queryByLabelText("browser.editPath", { selector: "input" })).toBeNull();
     // The crumb view is back and the abandoned draft was never navigated to.
     expect(screen.getByRole("button", { name: "browser.editPath" })).toBeTruthy();

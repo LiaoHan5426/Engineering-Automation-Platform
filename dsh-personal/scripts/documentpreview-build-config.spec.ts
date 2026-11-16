@@ -1,7 +1,34 @@
-import type { Rolldown, UserConfig } from "tsdown";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+import { Rolldown, type UserConfig } from "tsdown";
 import { describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ configs: [] as UserConfig[] }));
+const state = vi.hoisted(() => ({
+  configs: [] as UserConfig[],
+  tamper: undefined as "version" | "source" | undefined,
+}));
+vi.mock("node:fs", async (importOriginal) => {
+  const original = await importOriginal<typeof import("node:fs")>();
+  return {
+    ...original,
+    readFileSync: (...args: Parameters<typeof original.readFileSync>) => {
+      const value = original.readFileSync(...args);
+      const path = String(args[0]);
+      if (
+        state.tamper === "version" &&
+        path.includes("luckysheet") &&
+        path.endsWith("/package.json")
+      ) {
+        const manifest = JSON.parse(value.toString()) as { version: string };
+        manifest.version = "2.1.14";
+        return Buffer.from(JSON.stringify(manifest));
+      }
+      if (state.tamper === "source" && path.endsWith("/luckysheet.umd.js"))
+        return Buffer.from(value.toString() + "\n/* changed source */");
+      return value;
+    },
+  };
+});
 vi.mock("../packages/client/tsdown.client.ts", () => ({ clientBundle: () => () => state.configs }));
 import previewConfig from "../packages/client/ui-sidebar-documentpreview/tsdown.config.ts";
 
@@ -17,6 +44,51 @@ function configured(
 }
 
 describe("spreadsheet build resolution", () => {
+  it.each(["version", "source"] as const)(
+    "refuses a changed pinned engine %s before generating assets",
+    async (tamper) => {
+      const cwd = dirname(
+        fileURLToPath(
+          new URL("../packages/client/ui-sidebar-documentpreview/package.json", import.meta.url),
+        ),
+      );
+      state.configs = [{ name: "fixture/client" }];
+      const plugins = previewConfig({ env: {} })[0]?.plugins;
+      state.tamper = tamper;
+      const build = async () => {
+        const bundle = await Rolldown.rolldown({
+          cwd,
+          input: "readonly-asset-fixture",
+          plugins: [
+            plugins,
+            {
+              name: "readonly-asset-fixture",
+              resolveId(source) {
+                return source === "readonly-asset-fixture" ? "\0readonly-asset-fixture" : null;
+              },
+              load(id) {
+                return id === "\0readonly-asset-fixture"
+                  ? 'export { scripts } from "luckysheet-preview:assets"'
+                  : null;
+              },
+            },
+          ],
+        });
+        try {
+          await bundle.generate({ format: "es" });
+        } finally {
+          await bundle.close();
+        }
+      };
+      try {
+        await expect(build()).rejects.toThrow(
+          tamper === "version" ? "requires luckysheet 2.1.13" : "source changed",
+        );
+      } finally {
+        state.tamper = undefined;
+      }
+    },
+  );
   it("retains static input settings and applies browser lookup without creating a callback", () => {
     const result = configured({
       cwd: "/fixture",

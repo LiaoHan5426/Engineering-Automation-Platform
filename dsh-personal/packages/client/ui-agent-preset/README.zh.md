@@ -45,7 +45,7 @@ kind: "package-reference"
 <details>
 <summary>实现细节 — 点击展开</summary>
 
-选择器、会话标签、设置卡片和指南使用原生 Vue 组件。快照 hook 返回只读 ref，在渲染时读取；组件作用域释放观察器、介绍动画计时器和打开的配置查看器。菜单与对话框使用共享的原生 slot，并保留嵌套键盘事件归属与返回焦点。
+选择器、会话标签、设置卡片和指南使用原生 Vue 组件。快照 hook 返回只读 ref，在渲染时读取；绑定 Session 前显示预设选择器，绑定后仅在主视图保留该 Session 时显示。组件作用域释放观察器、介绍动画计时器和打开的配置查看器。菜单与对话框使用共享的原生 slot，并保留嵌套键盘事件归属与返回焦点。
 
 `agentPresets/list` 提供列表并标记当前默认值，`agentPresets/read` 为查看器提供一条声明的 YAML；默认值的修改写入 `agent-preset-registry` settings 命名空间。选择器、空白会话同步和只读会话标签使用记录的 preset 标识。连接重置和设置更新会刷新列表。
 

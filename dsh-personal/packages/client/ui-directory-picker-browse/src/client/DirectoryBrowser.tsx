@@ -955,11 +955,32 @@ export const DirectoryBrowser = defineComponent(
                   if (card == null) return;
                   if (event.relatedTarget instanceof Node && card.contains(event.relatedTarget))
                     return;
-                  // The user moved focus out of the card themselves: cancel without
-                  // re-parking (a lingering Enter-failure flag must not yank focus
-                  // back either).
-                  refocusEditZone.value = false;
-                  cancelPathEdit();
+                  const cancel = () => {
+                    refocusEditZone.value = false;
+                    cancelPathEdit();
+                  };
+                  if (event.relatedTarget === null) {
+                    const generation = openGeneration.value;
+                    const request = requestSeq.value;
+                    const draft = pathDraft.value;
+                    // Removing the focused trigger blurs it before Vue mounts and focuses the input.
+                    void nextTick(() => {
+                      if (
+                        !props.open ||
+                        !card.isConnected ||
+                        !document.hasFocus() ||
+                        generation !== openGeneration.value ||
+                        request !== requestSeq.value ||
+                        draft !== pathDraft.value ||
+                        card.contains(document.activeElement)
+                      )
+                        return;
+                      cancel();
+                    });
+                    return;
+                  }
+                  // Explicit focus outside the card cancels without re-parking.
+                  cancel();
                 },
               },
               [

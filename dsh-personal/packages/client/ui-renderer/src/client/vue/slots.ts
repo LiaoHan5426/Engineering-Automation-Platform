@@ -1,6 +1,7 @@
 /** Native Vue outlets over the existing slot ledger and store lifecycle. */
 import {
   computed,
+  camelize,
   Fragment,
   getCurrentInstance,
   h,
@@ -39,6 +40,68 @@ import { bindSources, contextualSeat, keyedSeat, selectorSeat } from "./seats.ts
 
 type Face = Record<string, unknown>;
 type Owner = StoredEntry | StoredFactory;
+
+/** Keep framework capabilities out of native fallthrough attrs; caller attrs stay native. */
+function componentInputPicker() {
+  // Metadata belongs to this mounted occurrence, just like its other renderer caches.
+  const cache = new WeakMap<object, { props: Set<string>; emits: Set<string> }>();
+  return (component: Component, framework: Face, caller: object): Face => {
+    let options: unknown = component;
+    if (typeof component === "function") {
+      // Functional components receive their complete input directly. Vue already
+      // restricts their automatic fallthrough to class, style and event listeners.
+      if (!("__vccOpts" in component)) return { ...framework, ...caller };
+      options = component.__vccOpts;
+    }
+    let declared = cache.get(component);
+    if (declared === undefined) {
+      const inputs = { props: new Set<string>(), emits: new Set<string>() };
+      const visited = new Set<object>();
+      const collect = (value: unknown): void => {
+        if (typeof value !== "object" || value === null || visited.has(value)) return;
+        visited.add(value);
+        if ("extends" in value) collect(value.extends);
+        if ("mixins" in value && Array.isArray(value.mixins)) {
+          for (const mixin of value.mixins) collect(mixin);
+        }
+        if ("props" in value) {
+          const props = value.props;
+          const names = Array.isArray(props)
+            ? props
+            : typeof props === "object" && props !== null
+              ? Object.keys(props)
+              : [];
+          for (const name of names) if (typeof name === "string") inputs.props.add(camelize(name));
+        }
+        if ("emits" in value) {
+          const emits = value.emits;
+          const names = Array.isArray(emits)
+            ? emits
+            : typeof emits === "object" && emits !== null
+              ? Object.keys(emits)
+              : [];
+          for (const name of names) if (typeof name === "string") inputs.emits.add(name);
+        }
+      };
+      collect(options);
+      declared = inputs;
+      cache.set(component, declared);
+    }
+    const selected: Face = {};
+    for (const [key, value] of Object.entries(framework)) {
+      let accepted = declared.props.has(camelize(key));
+      if (!accepted && /^on[^a-z]/.test(key)) {
+        const event = key.slice(2).replace(/Once$/, "");
+        accepted =
+          declared.emits.has(event) ||
+          declared.emits.has(event.replace(/\B([A-Z])/g, "-$1").toLowerCase()) ||
+          declared.emits.has(event.charAt(0).toLowerCase() + event.slice(1));
+      }
+      if (accepted) selected[key] = value;
+    }
+    return { ...selected, ...caller };
+  };
+}
 interface Tree {
   host: SlotRendererHost;
   contentErrors: Set<unknown>;
@@ -323,6 +386,7 @@ const Entry = defineSlotComponent<{
     const inherited = tree();
     const host = inherited.host;
     const owner = props.owner;
+    const pickInput = componentInputPicker();
     const scope = props.scope;
     // Registry withdrawal is immediate; Vue removes the resident occurrence in
     // its next commit. Publications in that interval must not resolve dead owners.
@@ -459,11 +523,11 @@ const Entry = defineSlotComponent<{
       }
       return h(
         owner.component as Component,
-        {
-          ...kit.value,
-          ...(props.factory ? { useFactorySlot } : {}),
-          ...props.input,
-        },
+        pickInput(
+          owner.component as Component,
+          { ...kit.value, ...(props.factory ? { useFactorySlot } : {}) },
+          props.input,
+        ),
         props.hocContent === undefined ? undefined : { default: props.hocContent },
       );
     };
@@ -485,6 +549,7 @@ function useFactorySlot(name: string, fallback: Component): Component {
     if (active === undefined || active.definition !== occurrence.definition)
       throw new SlotOwnershipError(`local slot '${name}' rendered outside its defining Factory`);
     const attrs = useAttrs();
+    const pickInput = componentInputPicker();
     const localSeats = sourcesKit(
       declaration.scope === "root" ? { ...local, scope: computed(() => undefined) } : local,
       declaration.scope === "session-maybe",
@@ -523,7 +588,7 @@ function useFactorySlot(name: string, fallback: Component): Component {
             selected === undefined ? active.definition : active.caller,
             error,
           ),
-        body: () => h(selected ?? fallback, { ...combined, ...attrs }),
+        body: () => h(selected ?? fallback, pickInput(selected ?? fallback, combined, attrs)),
       });
     };
   });

@@ -129,7 +129,7 @@ Another plugin renders the hero's Workspace picker through the root-scoped `work
 
 A caller needs only the standard `renderFactorySlot` prop that every registered component receives and the type-only `ui-workspace/client` import that loads the Factory declaration; its own registration declares nothing for the call. Without ui-workspace the call renders its optional `fallback`. The menu portals to the document body and positions against `anchorRef`, above a primitives `Modal`, so an occurrence may render inside the caller's dialog.
 
-```ts
+```ts client
 import { defineComponent, h, shallowRef } from 'vue'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { PropsRenderFactories } from '@deepseek-ai/dsh-client-ui-slots'
@@ -164,7 +164,7 @@ The existing notice overlay dispatches `workspace.toast` by notice kind. Keyed r
 
 Declare `ui-workspace`, `ui-slots`, `ui-renderer`, `client-locale`, and `ui-primitives` as browser/type development dependencies according to the Client dependency policy. The type-only `ui-workspace/client` import loads this package's `SlotMap` declaration; without it, an independently compiled plugin does not know the slot keys. Keep the Component at module scope and own visible copy in the contributing package's locale namespace. The factory below receives the export operation from its installer and returns the Client plugin; the example supplies no export implementation.
 
-```ts
+```ts client
 import { defineComponent, h } from 'vue'
 import type { Context } from '@deepseek-ai/cordis'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
