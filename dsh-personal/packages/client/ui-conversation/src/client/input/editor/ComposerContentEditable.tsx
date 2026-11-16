@@ -33,11 +33,16 @@ export const ComposerContentEditable = defineComponent(
     });
     watchPostEffect(() => {
       props.editor?.setEditable(props.editable);
+      // Changing a focused editing host can force layout. Apply the DOM gate
+      // after the sibling transcript has committed the accepted message echo.
+      element.value?.setAttribute(
+        "contenteditable",
+        String(props.editor !== null && props.editable),
+      );
     });
     return () =>
       h("div", {
         ref: element,
-        contenteditable: props.editor !== null && props.editable,
         role: "textbox",
         "aria-multiline": "true",
         "data-composer-input": "",
