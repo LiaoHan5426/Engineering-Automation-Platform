@@ -67,6 +67,22 @@ describe('FileNavigator beside a preview', () => {
         });
         expect(h.row.observers.size).toBe(0);
     });
+    it('preserves noncurrent row focus when tab information republishes without replacing its drawing', async () => {
+        const h = mountNavigator(A);
+        await act(() => {});
+        await revealSrc(h);
+        const body = h.view.container.querySelector('[data-files-content]');
+        const entry = h.view.container.querySelector<HTMLElement>(`[data-files-path="${ROOT}/src/b.ts"]`)!;
+        const row = within(entry).getByRole('button', { name: 'b.ts' });
+        await act(() => { row.focus(); });
+        expect(focusedPath()).toBe(`${ROOT}/src/b.ts`);
+        await act(() => { h.placement.isFloating = true; });
+        await endTask();
+        expect(h.view.container.querySelector('[data-files-content]')).toBe(body);
+        expect(h.view.container.querySelector(`[data-files-path="${ROOT}/src/b.ts"]`)).toBe(entry);
+        expect(document.activeElement).toBe(row);
+        expect(focusedPath()).toBe(`${ROOT}/src/b.ts`);
+    });
     it('rebinds the retained navigator and toggle when its tab moves between panes', async () => {
         const h = mountNavigator(A);
         await act(() => {});

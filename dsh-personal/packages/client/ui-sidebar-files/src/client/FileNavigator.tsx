@@ -7,7 +7,7 @@
  * follows `PUSH_FROM`, `FILL_BELOW`, and `FULLSCREEN_QUERY`; the package
  * README describes its behavior, search included.
  */
-import { defineComponent, h, Fragment, computed, ref, shallowRef, watchEffect, type CSSProperties, type ComponentPublicInstance, type VNodeChild } from 'vue';
+import { defineComponent, h, Fragment, computed, ref, shallowRef, watch, type CSSProperties, type ComponentPublicInstance, type VNodeChild } from 'vue';
 import clsx from 'clsx';
 import type { RemoteFailure } from '@deepseek-ai/dsh-api-remotes/client';
 import type { UseSidebarRightTabInfo } from '@deepseek-ai/dsh-client-ui-sidebar-right/client';
@@ -266,34 +266,36 @@ export const FileNavigator = defineComponent((props: FactoryComponentPropsOf<'si
     const inputRef = (element: Element | ComponentPublicInstance | null): void => { input.value = element instanceof HTMLInputElement ? element : null; };
     const currentRef = (row: HTMLElement | null): void => { currentElement.value = row; };
     // The face reads ancestors and geometry only after Vue inserts the drawing.
-    watchEffect(onCleanup => {
-        const element = navigatorElement.value; const pane = info.value.panel.id;
-        if (element === null) return;
-        props.navigatorDrawn(pane, element, !props.page);
-        onCleanup(() => props.navigatorDrawn(pane, null, !props.page));
-    }, { flush: 'post' });
-    watchEffect(onCleanup => {
-        const element = bodyElement.value; const { panel, tab } = info.value;
-        void resultsDrawn.value;
-        if (element === null) return;
-        props.bodyDrawn(panel.id, tab.contentId, element);
-        onCleanup(() => props.bodyDrawn(panel.id, tab.contentId, null));
-    }, { flush: 'post' });
-    watchEffect(onCleanup => {
-        const element = input.value; const pane = info.value.panel.id;
-        if (element === null) return;
-        props.searchDrawn(pane, element);
-        onCleanup(() => props.searchDrawn(pane, null));
-    }, { flush: 'post' });
-    watchEffect(onCleanup => {
-        const element = currentElement.value; const pane = info.value.panel.id;
-        if (element === null) return;
-        props.currentDrawn(pane, element);
-        onCleanup(() => props.currentDrawn(pane, null));
-    }, { flush: 'post' });
-    watchEffect(onCleanup => { const { tab, panel } = info.value; onCleanup(props.attach(panel.id, tab.id, tab.signal)); });
-    watchEffect(onCleanup => { if (!props.page && selectedCwd.value !== undefined) onCleanup(props.placeBeside(info.value.tab.id)); });
-    watchEffect(onCleanup => { const cwd = selectedCwd.value; if (cwd !== undefined && held.value) onCleanup(props.hold(info.value.panel.id, cwd)); });
+    watch([() => navigatorElement.value, () => info.value.panel.id, () => props.page, () => props.navigatorDrawn],
+        ([element, pane, page, drawn], _previous, onCleanup) => {
+            if (element === null) return;
+            drawn(pane, element, !page);
+            onCleanup(() => drawn(pane, null, !page));
+        }, { flush: 'post', immediate: true });
+    watch([() => bodyElement.value, () => info.value.panel.id, () => info.value.tab.contentId, () => resultsDrawn.value, () => props.bodyDrawn],
+        ([element, pane, contentId, _results, drawn], _previous, onCleanup) => {
+            if (element === null) return;
+            drawn(pane, contentId, element);
+            onCleanup(() => drawn(pane, contentId, null));
+        }, { flush: 'post', immediate: true });
+    watch([() => input.value, () => info.value.panel.id, () => props.searchDrawn],
+        ([element, pane, drawn], _previous, onCleanup) => {
+            if (element === null) return;
+            drawn(pane, element);
+            onCleanup(() => drawn(pane, null));
+        }, { flush: 'post', immediate: true });
+    watch([() => currentElement.value, () => info.value.panel.id, () => props.currentDrawn],
+        ([element, pane, drawn], _previous, onCleanup) => {
+            if (element === null) return;
+            drawn(pane, element);
+            onCleanup(() => drawn(pane, null));
+        }, { flush: 'post', immediate: true });
+    watch([() => info.value.panel.id, () => info.value.tab.id, () => info.value.tab.signal, () => props.attach],
+        ([pane, tabId, signal, attach], _previous, onCleanup) => { onCleanup(attach(pane, tabId, signal)); }, { immediate: true });
+    watch([() => props.page, () => selectedCwd.value, () => info.value.tab.id, () => props.placeBeside],
+        ([page, cwd, tabId, placeBeside], _previous, onCleanup) => { if (!page && cwd !== undefined) onCleanup(placeBeside(tabId)); }, { immediate: true });
+    watch([() => selectedCwd.value, () => held.value, () => info.value.panel.id, () => props.hold],
+        ([cwd, held, pane, hold], _previous, onCleanup) => { if (cwd !== undefined && held) onCleanup(hold(pane, cwd)); }, { immediate: true });
     return () => {
     const { page, onOpen, sessionId, actions, toggle, scrolled, setQuery, toggleSearch, retrySearch, setSearchPreferences, t, renderFactorySlot } = props;
     const { tab, panel } = info.value;

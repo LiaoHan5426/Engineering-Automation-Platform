@@ -8,7 +8,7 @@ import {
   acknowledgeReloadConnectionLoss, assertFixtureInventory, captureStableAria, compareOrRefreshGolden,
   launchWebScaffold, seedSession, watchConsole, webSnapshotMode, type WebScaffold,
 } from './scaffold.ts'
-import { newEnglishPage, saveFailureShot } from './support.ts'
+import { newEnglishPage, pinBrowserClock, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('../../../snapshots/web/workspace-recency', import.meta.url))
 const SEED = fileURLToPath(new URL('../../../snapshots/web/seeded-history/session.v3.jsonl', import.meta.url))
@@ -63,7 +63,8 @@ describe('web e2e: workspace recency', () => {
         else route.send(message)
       })
     })
-    await page.clock.setFixedTime(now)
+    // Keep expected relative ages inside their minute buckets rather than at a boundary.
+    await pinBrowserClock(page, now - 30_000)
     tripwire = watchConsole(page)
     await page.addInitScript(({ account, ids }) => {
       if (localStorage.getItem('dsh.workspace.view.v5') !== null) return

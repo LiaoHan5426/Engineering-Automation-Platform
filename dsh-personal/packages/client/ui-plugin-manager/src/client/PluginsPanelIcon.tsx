@@ -14,7 +14,6 @@ export function PluginsPanelIcon({ size }: PropsRuntime<"sidebar.panellist">): V
     {
       size: size,
     },
-    [],
   );
 }
 

@@ -72,6 +72,12 @@ GitHub安装原三例的失败另由实际Host/受控代理实验确认：本任
 
 法语日程1px失败另经固定原版React独立产物/原Vitest及相同Playwright/Chromium的同一原用例对照：同为800px、edit、Hebdomadaire条件，scrollWidth236/clientWidth235，所有后代矩形、样式、minWidth/flex/字体/滚动指标和首个外溢节点除生成CSS类名外逐字段相同。原45个断言保留，双侧均失败；这是当前环境下既有基线限制，不能凭本次迁移授权改产品布局、隐藏溢出或放宽1px断言，也不据此声称日程全面验收通过。
 
+本轮焦点闭环：FileNavigator的七个DOM注册watch不再依赖完整info包装身份，而追踪实际元素、内容/pane标识和当前回调，cleanup使用旧绑定回调；避免同一已连接body假卸载后把用户刚点的非当前文件焦点抢回。370项行为回归通过。Sidebar在PRE阶段保留旧sidebar/portal菜单的焦点归属，在nextTick确认提交完成后查询新opener；watch cleanup取消过期、重开与释放意图，窗口失焦、显式外部焦点、inert/hidden/modal均不抢焦点。真实Menu/同次父提交旧源红→绿，122项通过。原先根vue-tsc -p调用只检查根聚合程序而不构建引用源项目，不能证明包源码通过；真实八门Client DAG首次捕获未用watchEffect导入，移除后八门24.62秒全过（395 Client/3 public），产物后Host9.31/Vue5.43秒聚合通过。刷新产物的文件浏览3/drawer7/workspace-recency1全部原浏览器通过，合计11项59.45秒。
+
+workspace-recency仅适配夹具时钟：原同epoch推进Date候选使精确分钟边界上的golden年龄前移一桶，原样保留失败证据；该例验证Manual排序、重连和空白保留而非分钟阈值。最终调用既有pinBrowserClock(page, now - 30_000)，不改NOW变量、seed、24个expect、两个golden或整个it主体，给原预期年龄桶半分钟内部余量。完整私有原例与落盘后的正常套件均通过，未改变业务时间语义。PluginsPanelIcon只移除组件VNode的空数组default slot，原七项注册/实际SVG断言通过，无对应Vue slot警告。
+
+五条已释放Session opening诊断另经真实ClientSessionReference/SidebarSessionView的未挂载退休、最后卸载和关闭三条路径证明为自身release取消pending ready；同一FOLLOW调用的独立引用继续正常打开。三个源模块与React基线字节相同，现有活动错误控制仍通过；不借迁移修改取消协议或吞日志，也不宣称全量console零诊断。聊天300px仍无因果补丁：新增只读审计未发现数字style单位/flex/slot wrapper差异，ChatViewport类与基线相同；336px上限到36px下限解释正常300px收缩幅度，但不能解释布局开始前的反向损失。保持原断言和同步清草稿/CAS，进一步定位真实布局顺序。
+
 ## 实施中的编译契约
 
 Client 类型面采用 `vue-tsc`、声明输出和 `rewriteRelativeImportExtensions: false`；runtime 的 Client browser/Node、静态库与 shell bundle 从对应 `src` 编译。Host 类型面仍使用 `tsc` 与既有 emitted 输入。原因是 TypeScript 6 对 `.vue` 的相对导入重写报 TS2876，不能通过关闭检查解决。源输入映射保留 package-relative cwd、原有产物名、source map 来源和资源隔离边界。

@@ -18,7 +18,7 @@
  * scrollbar indirection away while it is elsewhere, so a list the user is not
  * pointing at carries no bar.
  */
-import { computed, defineComponent, h, onScopeDispose, ref, shallowRef, watch } from 'vue';
+import { computed, defineComponent, h, nextTick, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import clsx from 'clsx';
 import { FishLogo, IconAppsAddOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconPanelLeftOutlineRegular, IconPinFillRegular, focusWithoutRing, isBehindModal, isDarwinDesktop, Menu, ShortcutKeys, Toast, Tooltip, useModalLayer, writeClipboard, } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { InjectFace, PropsRenderFactories, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots';
@@ -173,15 +173,28 @@ export const SidebarRoot = defineComponent((props: SidebarRootComponentProps) =>
  let sidebarFocus: Element | null = null
  useModalLayer(column, () => props.drawer && !props.collapsed, () => props.toggleSidebar())
  // Resolve portaled focus ownership before collapsed content and its menus unmount.
-  watch(() => [props.drawer, props.collapsed], () => {
-  if (!props.collapsed) return
-  const anchors = column.value?.querySelectorAll('[aria-controls]') ?? []
+  watch([() => props.drawer, () => props.collapsed], ([drawer, collapsed], _previous, onCleanup) => {
+   const owner = column.value
+   if (!collapsed || owner === null) return
+   const doc = owner.ownerDocument
+   const focused = doc.activeElement
+   const anchors = owner.querySelectorAll('[aria-controls]')
    const controlled = [sidebarFocus, ...anchors].flatMap(control => control?.getAttribute('aria-controls')?.split(/\s+/) ?? [])
-  const ownsMenuFocus = controlled.some(id => document.getElementById(id)?.contains(document.activeElement))
-  if (sidebarFocus !== document.activeElement && !ownsMenuFocus) return
-  const opener = props.drawer ? column.value?.ownerDocument.querySelector<HTMLElement>('[data-sidebar-opener]') : column.value?.querySelector<HTMLElement>('[data-sidebar-toggle]')
-  if (opener != null && !isBehindModal(opener)) focusWithoutRing(opener, {preventScroll: true})
- }, {flush:'pre'})
+   const menus = controlled.flatMap(id => { const menu = doc.getElementById(id); return menu === null ? [] : [menu] })
+   if (sidebarFocus !== focused && !menus.some(menu => menu.contains(focused))) return
+   let pending = true
+   onCleanup(() => { pending = false })
+   // The parent inserts the drawer opener later in this same commit.
+   void nextTick(() => {
+    if (!pending || !doc.hasFocus() || column.value !== owner || !owner.isConnected || props.drawer !== drawer || props.collapsed !== collapsed) return
+    const current = doc.activeElement
+    if (current !== focused && current !== doc.body && current !== doc.documentElement
+     && !(owner.contains(current) && current?.closest('[inert]') !== null)
+     && !menus.some(menu => menu.contains(current))) return
+    const opener = drawer ? doc.querySelector<HTMLElement>('[data-sidebar-opener]') : owner.querySelector<HTMLElement>('[data-sidebar-toggle]')
+    if (opener !== null && opener.isConnected && opener.closest('[inert], [hidden]') === null && !isBehindModal(opener)) focusWithoutRing(opener, {preventScroll: true})
+   })
+  }, {flush:'pre'})
  const pointerInside = ref(false)
  let lingerTimer: number | undefined
  const cancelLinger = () => { window.clearTimeout(lingerTimer); lingerTimer = undefined }

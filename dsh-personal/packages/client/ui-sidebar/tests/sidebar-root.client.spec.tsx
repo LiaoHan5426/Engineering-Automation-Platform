@@ -42,13 +42,14 @@ function makeHeaderProps(): HeaderLeadingControlsProps {
         startSession: vi.fn(), trackEntryClick: vi.fn(), t,
     };
 }
-async function mountShell({ collapsed = false, width = 300, drawer = false, shortcuts = [], panels = [], content }: {
+async function mountShell({ collapsed = false, width = 300, drawer = false, shortcuts = [], panels = [], content, frame }: {
     collapsed?: boolean;
     width?: number;
     drawer?: boolean;
     shortcuts?: readonly ShortcutCatalogEntry[];
     panels?: readonly SidebarPanelMetadata[];
     content?: VNodeChild;
+    frame?: (sidebar: VNodeChild, state: { collapsed: boolean; width: number; drawer: boolean }) => VNodeChild;
 } = {}) {
     const startSession = vi.fn();
     const toggleSidebar = vi.fn();
@@ -91,9 +92,11 @@ async function mountShell({ collapsed = false, width = 300, drawer = false, shor
             regionContext = opts?.hookContext;
             return vueH("div", { "data-testid": "region", "data-wide": owner.wide }, [content]);
         }) as SidebarRootComponentProps['renderSlot'] }, { default: () => [] }));
-    const view = render(root());
+    const drawing = () => frame === undefined ? root() : frame(root(), current);
+    const view = render(drawing());
     await act(() => {});
     return {
+        unmount: () => view.unmount(),
         startSession,
         toggleSidebar,
         trackEntryClick,
@@ -125,7 +128,7 @@ async function mountShell({ collapsed = false, width = 300, drawer = false, shor
         sessionActionChildren: () => sessionActionChildren,
         async rerender(next: Partial<typeof current>) {
             current = { ...current, ...next };
-            await view.rerender(root());
+            await view.rerender(drawing());
         },
     };
 }
@@ -610,6 +613,9 @@ it('closes a drawer opened from a focused SVG element', async () => {
     }
 });
 it.each(['menu', 'outside', 'dialog'] as const)('closes an obscured sidebar menu while preserving %s focus', async (destination) => {
+    // Losing an inert menu's active element does not unfocus the Chromium window.
+    const windowFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+    try {
     const Content = defineComponent(() => { const open = ref(true); return () => vueH(Fragment, null, [vueH(Menu, {open:open.value,onClose:()=>{open.value=false},portal:true,items:[{id:'flat',label:'Flat list'}]}, {anchor:()=>vueH('button',null,'View options')}), destination==='dialog' ? vueH(Modal,{open:true,title:'Settings',closeLabel:'Close',onClose:vi.fn()},{default:()=>vueH('button',null,'Settings control')}):null]) });
     render(vueH(Fragment, null, [vueH("button", { "data-sidebar-opener": true }, ["Open navigation"]), vueH("button", null, ["Outside control"])]));
 await act(()=>{});
@@ -625,6 +631,7 @@ await act(()=>{});
     await waitFor(() => { expect(screen.queryByRole('menuitem')).toBeNull(); });
     expect(document.activeElement).toBe(destination === 'menu'
         ? screen.getByRole('button', { name: 'Open navigation' }) : target);
+    } finally { windowFocus.mockRestore(); }
 });
 it.each(['menu', 'outside', 'dialog'] as const)('returns global context-menu focus on collapse while preserving %s focus', async (destination) => {
     render(vueH(Fragment, null, [vueH("button", { "data-sidebar-opener": true }, ["Open navigation"]), vueH("button", null, ["Outside control"])]));
@@ -657,4 +664,56 @@ await act(()=>{});
     expect(document.activeElement).toBe(expected);
     if (hasOpener)
         expect(expected.hasAttribute('data-dsh-automatic-focus')).toBe(true);
+});
+
+it.each(['handoff', 'outside', 'reopen', 'dispose', 'unfocused'] as const)('captures portaled menu focus before the parent commits its drawer opener: %s', async (outcome) => {
+    const Content = defineComponent(() => {
+        const open = ref(true);
+        return () => vueH(Menu, { open: open.value, onClose: () => { open.value = false; }, portal: true, items: [{ id: 'flat', label: 'Flat list' }] }, { anchor: () => vueH('button', null, 'View options') });
+    });
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    let afterCommit = () => {};
+    let committedOpener: Element | null = null;
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    // Chromium keeps a focused window when inert content loses its active element.
+    const windowFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+    const shell = await mountShell({ content: vueH(Content), frame: (sidebar, state) => vueH('section', null, [
+        vueH('div', { inert: state.drawer && state.collapsed ? '' : undefined }, [sidebar]),
+        state.drawer ? vueH('button', { 'data-sidebar-opener': true, onVnodeMounted: () => { afterCommit(); } }, 'Open navigation') : null,
+    ]) });
+    try {
+        expect(document.querySelector('[data-sidebar-opener]')).toBeNull();
+        const menuItem = screen.getByRole('menuitem');
+        menuItem.focus();
+        expect(document.activeElement).toBe(menuItem);
+        afterCommit = () => {
+            // Chromium drops focus when the old sidebar becomes inert during this commit.
+            committedOpener = document.querySelector('[data-sidebar-opener]');
+            menuItem.blur();
+            if (outcome === 'unfocused') windowFocus.mockReturnValue(false);
+            if (outcome === 'outside') outside.focus();
+            if (outcome === 'reopen') void shell.rerender({ drawer: false, collapsed: false });
+            if (outcome === 'dispose') shell.unmount();
+        };
+        await shell.rerender({ drawer: true, collapsed: true });
+        await act(() => {});
+        if (outcome === 'handoff') {
+            const opener = screen.getByRole('button', { name: 'Open navigation' });
+            expect(opener.closest('[inert]')).toBeNull();
+            expect(document.activeElement).toBe(opener);
+        } else if (outcome === 'unfocused') {
+            expect(document.hasFocus()).toBe(false);
+            expect(document.activeElement).toBe(document.body);
+            expect(document.querySelector('[data-sidebar-opener]')).toBe(committedOpener);
+            expect(focus.mock.contexts).not.toContain(committedOpener);
+        } else if (outcome === 'outside') {
+            expect(focus.mock.contexts).not.toContain(committedOpener);
+            expect(document.activeElement).toBe(outside);
+        } else {
+            expect(focus.mock.contexts).not.toContain(committedOpener);
+            expect(document.querySelector('[data-sidebar-opener]')).toBeNull();
+            expect(document.activeElement).not.toBe(outside);
+        }
+    } finally { windowFocus.mockRestore(); focus.mockRestore(); outside.remove(); }
 });
