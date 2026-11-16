@@ -11,7 +11,7 @@ import {
   assertFixtureInventory, captureStableAria, compareOrRefreshGolden, fixtureUserPrompts,
   launchWebScaffold, seedSession, watchConsole, webSnapshotMode, type WebScaffold,
 } from './scaffold.ts'
-import { expandTurnProcesses, newEnglishPage, saveFailureShot, WEB_FIXTURE_TIME } from './support.ts'
+import { expandTurnProcesses, newEnglishPage, pinBrowserClock, saveFailureShot, WEB_FIXTURE_TIME } from './support.ts'
 
 const FIXTURE = fileURLToPath(new URL('../../../snapshots/session/web-fetch-transport-failure/session.v4.jsonl', import.meta.url))
 const SNAPSHOT_DIR = fileURLToPath(new URL('../../../snapshots/web/web-fetch-failure-row', import.meta.url))
@@ -35,7 +35,7 @@ describe.skipIf(MODE === 'record')('web e2e: web_fetch transport failure row', (
     await seedSession(scaffold, fixture, SEED_ID, undefined, { createdAt: WEB_FIXTURE_TIME })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
-    await page.clock.setFixedTime(WEB_FIXTURE_TIME)
+    await pinBrowserClock(page)
     tripwire = watchConsole(page)
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })

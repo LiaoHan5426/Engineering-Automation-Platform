@@ -171,12 +171,13 @@ const PdfPage = defineComponent((props: {
         const { page, onVisible } = props
         // A zoomed canvas can remain visible after its narrower page wrapper has
         // scrolled out horizontally. Observe the displayed page once it is ready.
-        const node = state.value === 'ready' ? canvas.value as HTMLCanvasElement : host.value as HTMLDivElement;
+        const node = state.value === 'ready' ? canvas.value : host.value;
         if (typeof IntersectionObserver === 'undefined') {
             requested.value = true;
             visible.value = true;
             return;
         }
+        if (node === null) return;
         let disposed = false;
         const observer = new IntersectionObserver((entries) => {
             if (disposed)

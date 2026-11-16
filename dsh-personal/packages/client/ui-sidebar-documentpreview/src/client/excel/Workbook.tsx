@@ -36,7 +36,17 @@ export const Workbook = defineComponent(
       const realm = element?.contentWindow;
       if (element === null || doc == null || realm == null) return;
       const style = doc.createElement("style");
-      style.textContent = `html,body{margin:0;width:100%;height:100%;overflow:hidden}${css}`;
+      style.textContent = `html,body{margin:0;width:100%;height:100%;overflow:hidden}${css}
+.luckysheet{border:0!important;width:100%!important;height:100%!important}
+.luckysheet-stat-area{display:block!important;height:0!important;background:none}
+.luckysheet-sta-c{height:0;border:0;background:none}
+.luckysheet-zoom-content{display:flex!important;position:absolute;bottom:0;right:0;height:31px}
+.luckysheet-zoom-content .luckysheet-zoom-minus,.luckysheet-zoom-content .luckysheet-zoom-plus{top:5px}
+.luckysheet-zoom-content .luckysheet-zoom-slider{top:5px;height:22px}
+.luckysheet-sheet-area{display:flex;align-items:center;box-sizing:border-box;padding:0 220px 0 0}
+.luckysheet-sheet-area div.luckysheet-sheet-container{max-width:none!important;min-width:0;flex:1 1 auto}
+#luckysheet-sheets-leftscroll,#luckysheet-sheets-rightscroll{flex:none}
+.luckysheet-freezebar-handle,.luckysheet-freezebar-drop,.luckysheet-sheets-item-menu{display:none!important}`;
       doc.head.append(style);
       for (const source of scripts) {
         const script = doc.createElement("script");
@@ -52,10 +62,13 @@ export const Workbook = defineComponent(
         lang: props.language,
         allowEdit: false,
         allowCopy: true,
+        fullscreenmode: false,
         forceCalculation: false,
         showtoolbar: false,
         showinfobar: false,
+        // Keep the engine's statistics height at zero; the iframe stylesheet places zoom in the tab row.
         showstatisticBar: false,
+        showstatisticBarConfig: { count: false, view: false, zoom: false },
         showsheetbar: true,
         sheetFormulaBar: true,
         enableAddRow: false,
@@ -99,6 +112,7 @@ export const Workbook = defineComponent(
           event.key === "Backspace" ||
           event.key === "Delete" ||
           event.key === "Enter" ||
+          event.key === "F2" ||
           (event.key.length === 1 && !event.ctrlKey && !event.metaKey) ||
           ((event.ctrlKey || event.metaKey) && /[vx]/iu.test(event.key))
         )
@@ -120,6 +134,8 @@ export const Workbook = defineComponent(
       }
       // Luckysheet copies its table through a temporary input; publish the table and plain cells
       // as separate native clipboard formats instead of exposing HTML as plain text.
+      let active = true;
+      const editor = doc.getElementById("luckysheet-rich-text-editor");
       const copy = (event: ClipboardEvent) => {
         const source = doc.querySelector<HTMLInputElement | HTMLTextAreaElement>(
           "input:focus, textarea:focus",
@@ -142,15 +158,101 @@ export const Workbook = defineComponent(
         event.clipboardData.setData("text/html", html);
         event.clipboardData.setData("text/plain", text);
         event.preventDefault();
+        // The engine removes its focused clipboard input without restoring non-fullscreen focus.
+        queueMicrotask(() => {
+          if (
+            active &&
+            frame.value === element &&
+            element.contentDocument === doc &&
+            doc.hasFocus() &&
+            doc.activeElement === doc.body &&
+            !source.isConnected &&
+            editor?.isConnected === true
+          ) {
+            editor.focus({ preventScroll: true });
+          }
+        });
       };
+      const wheel = (event: WheelEvent) => {
+        if (event.ctrlKey || event.metaKey || event.deltaMode !== 0 || !event.cancelable) return;
+        const path = event.composedPath();
+        const tabs = doc.querySelector<HTMLElement>("#luckysheet-sheet-container-c");
+        const grid = doc.querySelector<HTMLElement>("#luckysheet-grid-window-1");
+        if (tabs !== null && path.includes(tabs)) {
+          if (event.deltaX === 0 && event.deltaY === 0) return;
+          tabs.scrollLeft += event.deltaX || event.deltaY;
+        } else if (grid !== null && path.includes(grid)) {
+          const x = doc.querySelector<HTMLElement>("#luckysheet-scrollbar-x");
+          const y = doc.querySelector<HTMLElement>("#luckysheet-scrollbar-y");
+          if (x === null || y === null || (event.deltaX === 0 && event.deltaY === 0)) return;
+          // These scrollports notify the engine's renderer through its native scroll listeners.
+          x.scrollLeft += event.deltaX;
+          y.scrollTop += event.deltaY;
+        } else return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      };
+      const rejectSheetEdit = (event: MouseEvent) => {
+        const tabs = doc.getElementById("luckysheet-sheet-container-c");
+        if (tabs === null || !event.composedPath().includes(tabs)) return;
+        // The native click listener still selects sheets; mousedown also starts editable tab dragging.
+        event.stopImmediatePropagation();
+        if (event.type === "contextmenu" || event.button !== 0) event.preventDefault();
+      };
+      const scrollSheets = (event: MouseEvent) => {
+        if (!active || frame.value !== element || element.contentDocument !== doc) return;
+        const path = event.composedPath();
+        const left = doc.getElementById("luckysheet-sheets-leftscroll");
+        const right = doc.getElementById("luckysheet-sheets-rightscroll");
+        const direction =
+          left !== null && path.includes(left)
+            ? -1
+            : right !== null && path.includes(right)
+              ? 1
+              : 0;
+        const tabs = doc.getElementById("luckysheet-sheet-container-c");
+        if (direction === 0 || tabs === null) return;
+        tabs.scrollLeft += direction * 150;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      };
+      doc.addEventListener("click", scrollSheets, true);
+      doc.addEventListener("mousedown", rejectSheetEdit, true);
+      doc.addEventListener("contextmenu", rejectSheetEdit, true);
+      doc.addEventListener("wheel", wheel, { capture: true, passive: false });
       doc.addEventListener("copy", copy, true);
       const observer =
         typeof ResizeObserver === "undefined"
           ? undefined
-          : new ResizeObserver(() => engine.resize());
+          : new ResizeObserver(() => {
+              if (
+                !active ||
+                frame.value !== element ||
+                element.contentDocument !== doc ||
+                !element.isConnected
+              )
+                return;
+              engine.resize();
+              if (!active || frame.value !== element || element.contentDocument !== doc) return;
+              const port = doc.getElementById("luckysheet-sheet-container-c");
+              const selected = port?.querySelector(".luckysheet-sheets-item-active");
+              if (port == null || selected == null || !port.isConnected || !selected.isConnected)
+                return;
+              const viewport = port.getBoundingClientRect();
+              const tab = selected.getBoundingClientRect();
+              if (viewport.width <= 0 || tab.width <= 0) return;
+              if (tab.right > viewport.right) port.scrollLeft += tab.right - viewport.right;
+              else if (tab.width <= viewport.width && tab.left < viewport.left)
+                port.scrollLeft += tab.left - viewport.left;
+            });
       observer?.observe(element);
       dispose = () => {
+        active = false;
         observer?.disconnect();
+        doc.removeEventListener("click", scrollSheets, true);
+        doc.removeEventListener("wheel", wheel, true);
+        doc.removeEventListener("mousedown", rejectSheetEdit, true);
+        doc.removeEventListener("contextmenu", rejectSheetEdit, true);
         doc.removeEventListener("copy", copy, true);
         for (const control of controls) {
           control.removeEventListener("keydown", rejectEditKey, true);

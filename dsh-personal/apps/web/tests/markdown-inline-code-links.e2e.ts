@@ -15,7 +15,7 @@ import {
   webSnapshotMode,
   type WebScaffold,
 } from './scaffold.ts'
-import { newEnglishPage, saveFailureShot, WEB_FIXTURE_TIME } from './support.ts'
+import { newEnglishPage, pinBrowserClock, saveFailureShot, WEB_FIXTURE_TIME } from './support.ts'
 import { brandString } from '@deepseek-ai/dsh-brand'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('./expected/markdown-inline-code-links', import.meta.url))
@@ -98,7 +98,7 @@ describe('web e2e: Markdown inline-code links', () => {
     await seedSession(scaffold, markdownFixture(LINK_URL), SEED_ID, undefined, { createdAt: WEB_FIXTURE_TIME })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
-    await page.clock.setFixedTime(WEB_FIXTURE_TIME)
+    await pinBrowserClock(page)
     await page.route('http://127.0.0.1:3199/**', async route => route.fulfill({
       contentType: 'text/html',
       body: '<h1>Inline-code preview</h1>',

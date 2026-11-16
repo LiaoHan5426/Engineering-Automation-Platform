@@ -1297,7 +1297,8 @@ describe("web e2e: New Session after an outdated blank cache", () => {
       await workspace.attachSession(id);
       browser = await chromium.launch();
       const page = await newEnglishPage(browser);
-      await page.clock.setFixedTime(now);
+      // Advance wall time for Vue events, starting 30s inside the expected "now" age bucket.
+      await page.clock.install({ time: now - 30_000 });
       const tripwire = watchConsole(page);
       onTestFailed(() => saveFailureShot(page, "web-e2e-new-session-stale-blank"));
 

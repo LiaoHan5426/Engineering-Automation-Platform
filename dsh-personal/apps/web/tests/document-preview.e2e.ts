@@ -148,24 +148,48 @@ async function hideDocumentZoom(page: Page, preview: Locator): Promise<void> {
   await expect.poll(() => preview.locator('[data-document-zoom-controls]').getAttribute('data-document-zoom-visible')).toBeNull()
 }
 
+/** Resolve a requested ratio through the native reset and incremental zoom controls. */
+async function setExcelZoom(excel: Locator, percent: number): Promise<void> {
+  const ratio = excel.locator('#luckysheet-zoom-ratioText')
+  const selected = excel.locator('#luckysheet-cell-selected')
+  const initialRatio = await ratio.innerText()
+  const initialWidth = await selected.evaluate(node => node.getBoundingClientRect().width)
+  await ratio.click()
+  await expect.poll(() => ratio.innerText()).toBe('100%')
+  if (initialRatio !== '100%') {
+    await expect.poll(() => selected.evaluate(node => node.getBoundingClientRect().width)).not.toBe(initialWidth)
+  }
+  const control = excel.locator(percent < 100 ? '#luckysheet-zoom-minus' : '#luckysheet-zoom-plus')
+  for (let step = 0; step < Math.abs(percent - 100) / 10; step += 1) {
+    const width = await selected.evaluate(node => node.getBoundingClientRect().width)
+    await control.click()
+    await expect.poll(() => selected.evaluate(node => node.getBoundingClientRect().width)).not.toBe(width)
+  }
+  await expect.poll(() => ratio.innerText()).toBe(`${percent}%`)
+}
+
 /** The canvas fills the space between the formula bar and sheet tabs without a statistics row. */
 async function expectExcelLayout(excel: Locator): Promise<void> {
-  await expect.poll(() => excel.locator('.fortune-stat-area').isVisible()).toBe(false)
-  expect(await excel.locator('.luckysheet-sheets-item-function:visible').count()).toBe(0)
+  await expect.poll(() => excel.locator('#luckysheetloadingdata').isVisible()).toBe(false)
+  await expect.poll(() => excel.locator('#luckysheet-sta-content').isVisible()).toBe(false)
+  expect(await excel.locator('.luckysheet-print-viewList:visible').count()).toBe(0)
+  expect(await excel.locator('.luckysheet-sheets-item-menu:visible').count()).toBe(0)
   await expect.poll(() => excel.evaluate((node) => {
     const pane = node.getBoundingClientRect()
-    const canvas = node.querySelector('canvas')!.getBoundingClientRect()
-    const formula = node.querySelector('.fortune-workarea')!.getBoundingClientRect()
+    const canvas = node.querySelector('#luckysheetTableContent')!.getBoundingClientRect()
+    const horizontalScroll = node.querySelector('.luckysheet-scrollbar-x')!.getBoundingClientRect()
+    const verticalScroll = node.querySelector('.luckysheet-scrollbar-y')!.getBoundingClientRect()
+    const formula = node.querySelector('#luckysheet-wa-calculate')!.getBoundingClientRect()
     const tabs = node.querySelector('.luckysheet-sheet-area')!.getBoundingClientRect()
-    const scroller = node.querySelector('.fortune-sheettab-container')!.getBoundingClientRect()
-    const controls = [...node.querySelectorAll('.fortune-sheettab-scroll, .fortune-zoom-button')]
-      .map(control => control.getBoundingClientRect())
-    return Math.max(Math.abs(canvas.left - pane.left), Math.abs(canvas.width - pane.width),
-      Math.abs(canvas.top - formula.bottom), Math.abs(canvas.bottom - tabs.top), Math.abs(tabs.bottom - pane.bottom),
+    const scroller = node.querySelector('#luckysheet-sheet-container')!.getBoundingClientRect()
+    const controls = [...node.querySelectorAll('#luckysheet-sheets-leftscroll, #luckysheet-sheets-rightscroll, #luckysheet-zoom-minus, #luckysheet-zoom-slider, #luckysheet-zoom-plus, #luckysheet-zoom-ratioText')]
+      .filter(control => control.getClientRects().length > 0).map(control => control.getBoundingClientRect())
+    return Math.max(Math.abs(canvas.left - pane.left), Math.abs(canvas.width + verticalScroll.width - pane.width),
+      Math.abs(canvas.top - formula.bottom), Math.abs(canvas.bottom + horizontalScroll.height - tabs.top), Math.abs(tabs.bottom - pane.bottom),
       Math.abs(scroller.left - tabs.left), scroller.right - controls[0]!.left,
       ...controls.map((control, index) => control.right - (controls[index + 1]?.left ?? tabs.right)))
   })).toBeLessThanOrEqual(1)
-  expect(await excel.locator('.fortune-sheettab-scroll, .fortune-zoom-button').evaluateAll(controls => controls.every((control) => {
+  expect(await excel.locator('#luckysheet-sheets-leftscroll, #luckysheet-sheets-rightscroll, #luckysheet-zoom-minus, #luckysheet-zoom-plus, #luckysheet-zoom-ratioText').evaluateAll(controls => controls.filter(control => control.getClientRects().length > 0).every((control) => {
     const rect = control.getBoundingClientRect()
     return control.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2))
   }))).toBe(true)
@@ -202,22 +226,22 @@ it.skipIf(MODE === 'record').each(['en-US', 'zh-CN'])('fills the spreadsheet pan
     await column.locator('[data-sidebar-right-guide-entry="files"]').click()
     await column.locator('[data-files-state="tree"]').waitFor({ state: 'visible' })
     await column.locator('[data-files-entry="file"]').getByRole('button', { name: 'budget.xlsx', exact: true }).click()
-    const excel = column.locator('[data-excel-preview]')
+    const excel = column.locator('[data-excel-preview]').frameLocator('iframe').locator('#workbook')
     await excel.locator('.luckysheet-sheets-item-name').getByText('公式与格式', { exact: true }).click()
-    await excel.locator('.fortune-sheet-overlay').click({ position: { x: 140, y: 30 } })
-    const formula = excel.locator('.fortune-fx-input')
+    await excel.locator('#luckysheet-cell-main').click({ position: { x: 110, y: 10 } })
+    const formula = excel.locator('#luckysheet-functionbox-cell')
     await expect.poll(() => formula.innerText()).toBe('46281')
     await page.keyboard.press('Shift+ArrowLeft')
-    const selection = excel.locator('.fortune-name-box')
+    const selection = excel.locator('#luckysheet-helpbox-cell')
     await expect.poll(() => selection.innerText()).toBe('A1:B1')
     await expectExcelLayout(excel)
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(page.url()).origin })
     await page.keyboard.press('ControlOrMeta+C')
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('42\t2026-09-16')
-    const arrow = excel.locator('.luckysheet-sheets-item-function').first()
+    const arrow = excel.locator('#luckysheet-sheets-rightscroll')
     await arrow.evaluate((node) => { (node as HTMLElement).focus() })
     expect(await arrow.evaluate(node => document.activeElement === node)).toBe(false)
-    const canvas = excel.locator('canvas').first()
+    const canvas = excel.locator('#luckysheetTableContent')
     const originalCanvas = await canvas.elementHandle()
     const original = await canvas.boundingBox()
     if (original === null || originalCanvas === null) throw new Error('spreadsheet canvas is unavailable')
@@ -235,7 +259,7 @@ it.skipIf(MODE === 'record').each(['en-US', 'zh-CN'])('fills the spreadsheet pan
     await layout.evaluate((node) => { node.textContent = '[data-sidebar-right-panel] { width: 360px !important; }' })
     await expect.poll(async () => Math.round((await panel.boundingBox())!.width)).toBe(360)
     await expectExcelLayout(excel)
-    expect(await excel.locator('.fortune-sheettab-container').evaluate((node) => {
+    expect(await excel.locator('#luckysheet-sheet-container').evaluate((node) => {
       const selected = node.querySelector('.luckysheet-sheets-item-active')!.getBoundingClientRect()
       return selected.right - node.getBoundingClientRect().right
     })).toBeLessThanOrEqual(1)
@@ -252,20 +276,23 @@ it.skipIf(MODE === 'record').each(['en-US', 'zh-CN'])('fills the spreadsheet pan
     expect(await originalCanvas.evaluate(node => node.isConnected)).toBe(true)
     await expectExcelLayout(excel)
     await successShot(page, `excel-resize-restored-${locale}`)
-    const zoom = excel.locator('.fortune-zoom-ratio-current')
-    await excel.locator('.fortune-zoom-button').first().click()
+    const zoom = excel.locator('#luckysheet-zoom-ratioText')
+    const selected = excel.locator('#luckysheet-cell-selected')
+    const fullZoomWidth = await selected.evaluate(node => node.getBoundingClientRect().width)
+    await excel.locator('#luckysheet-zoom-minus').click()
     await expect.poll(() => zoom.innerText()).toBe('90%')
-    await excel.locator('.fortune-zoom-button').last().click()
+    await expect.poll(() => selected.evaluate(node => node.getBoundingClientRect().width)).not.toBe(fullZoomWidth)
+    const reducedZoomWidth = await selected.evaluate(node => node.getBoundingClientRect().width)
+    await excel.locator('#luckysheet-zoom-plus').click()
     await expect.poll(() => zoom.innerText()).toBe('100%')
-    await zoom.click()
-    await excel.locator('.fortune-zoom-ratio-item').getByText('150%', { exact: true }).click()
+    await expect.poll(() => selected.evaluate(node => node.getBoundingClientRect().width)).not.toBe(reducedZoomWidth)
+    await setExcelZoom(excel, 150)
     await expect.poll(() => zoom.innerText()).toBe('150%')
-    await zoom.click()
-    await excel.locator('.fortune-zoom-ratio-item').getByText('100%', { exact: true }).click()
+    await setExcelZoom(excel, 100)
     const filesTab = column.locator('[data-dockkit-tab]').filter({ has: page.getByText(locale === 'zh-CN' ? '文件' : 'Files', { exact: true }) })
     const preview = column.locator('[data-textpreview-url]')
     await openPreviewFile(column, filesTab, preview, 'meeting.xlsx')
-    const tabScroller = excel.locator('.fortune-sheettab-container-c')
+    const tabScroller = excel.locator('#luckysheet-sheet-container-c')
     const activeSheet = excel.locator('.luckysheet-sheets-item-active .luckysheet-sheets-item-name')
     await expect.poll(() => activeSheet.innerText()).toBe('会议信息')
     const meetingCanvas = await canvas.elementHandle()
@@ -273,7 +300,7 @@ it.skipIf(MODE === 'record').each(['en-US', 'zh-CN'])('fills the spreadsheet pan
     await expectExcelLayout(excel)
     // Arrow keys pick the cell from committed state, so a later render cannot re-resolve it
     // against the reflowed grid the way it re-resolves a pointer press.
-    const overlay = excel.locator('.fortune-sheet-overlay')
+    const overlay = column.locator('[data-excel-preview]').frameLocator('iframe').locator('#luckysheet-rich-text-editor')
     await overlay.focus()
     await expect.poll(() => overlay.evaluate(node => document.activeElement === node)).toBe(true)
     await page.keyboard.press('ArrowRight')
@@ -288,7 +315,7 @@ it.skipIf(MODE === 'record').each(['en-US', 'zh-CN'])('fills the spreadsheet pan
       await expectExcelLayout(excel)
       expect(await meetingCanvas.evaluate(node => node.isConnected)).toBe(true)
       await expect.poll(() => selection.innerText()).toBe('A1')
-      await expect.poll(() => excel.locator('.fortune-sheettab-scroll').count()).toBe(width === 360 ? 2 : 0)
+      await expect.poll(() => excel.locator('.luckysheet-sheets-scroll:visible').count()).toBe(width === 360 ? 2 : 0)
     }
     const gridOffset = await excel.locator('.luckysheet-scrollbar-x').evaluate(node => node.scrollLeft)
     await tabScroller.hover()
@@ -301,7 +328,7 @@ it.skipIf(MODE === 'record').each(['en-US', 'zh-CN'])('fills the spreadsheet pan
     expect(await zoom.innerText()).toBe('100%')
     expect(await excel.locator('.luckysheet-scrollbar-x').evaluate(node => node.scrollLeft)).toBe(gridOffset)
     for (const direction of ['right', 'left'] as const) {
-      const arrow = excel.locator(`#fortune-sheettab-${direction}scroll`)
+      const arrow = excel.locator(`#luckysheet-sheets-${direction}scroll`)
       for (let step = 0; step < 8; step += 1) {
         const { offset, maximum } = await tabScroller.evaluate(node => ({
           offset: node.scrollLeft, maximum: node.scrollWidth - node.clientWidth,
@@ -320,12 +347,15 @@ it.skipIf(MODE === 'record').each(['en-US', 'zh-CN'])('fills the spreadsheet pan
     expect(await tabScroller.evaluate(node => Math.abs(
       node.firstElementChild!.getBoundingClientRect().left - node.getBoundingClientRect().left,
     ))).toBeLessThanOrEqual(1)
-    await excel.locator('.fortune-zoom-button').first().click()
+    const navigationFullZoomWidth = await selected.evaluate(node => node.getBoundingClientRect().width)
+    await excel.locator('#luckysheet-zoom-minus').click()
     await expect.poll(() => zoom.innerText()).toBe('90%')
-    await excel.locator('.fortune-zoom-button').last().click()
+    await expect.poll(() => selected.evaluate(node => node.getBoundingClientRect().width)).not.toBe(navigationFullZoomWidth)
+    const navigationReducedZoomWidth = await selected.evaluate(node => node.getBoundingClientRect().width)
+    await excel.locator('#luckysheet-zoom-plus').click()
     await expect.poll(() => zoom.innerText()).toBe('100%')
-    await zoom.click()
-    await excel.locator('.fortune-zoom-ratio-item').getByText('150%', { exact: true }).click()
+    await expect.poll(() => selected.evaluate(node => node.getBoundingClientRect().width)).not.toBe(navigationReducedZoomWidth)
+    await setExcelZoom(excel, 150)
     await expect.poll(() => zoom.innerText()).toBe('150%')
     expect(await activeSheet.innerText()).toBe('会议信息')
     await expectExcelLayout(excel)
@@ -337,13 +367,13 @@ it.skipIf(MODE === 'record').each(['en-US', 'zh-CN'])('fills the spreadsheet pan
       await expect.poll(() => page.locator('body').getAttribute('data-ds-dark-theme')).toBe(colorScheme === 'dark' ? '' : null)
       for (const name of ['budget.xlsx', 'meeting.xlsx', 'legacy.xls', 'values.csv', 'values.tsv']) {
         await openPreviewFile(column, filesTab, preview, name)
-        await excel.locator('.fortune-sheet-overlay').waitFor()
+        await excel.locator('#luckysheet-cell-main').waitFor()
         await expectExcelLayout(excel)
         expect(await selection.evaluate(node => ({
           text: getComputedStyle(node).color, background: getComputedStyle(node).backgroundColor,
         }))).toEqual({ text: 'rgb(0, 0, 0)', background: 'rgb(255, 255, 255)' })
         if (name === 'values.csv') {
-          await excel.locator('.fortune-sheet-overlay').click({ position: { x: 70, y: 30 } })
+          await excel.locator('#luckysheet-cell-main').click({ position: { x: 40, y: 10 } })
           await expect.poll(() => formula.textContent()).toBe(longCellText)
           await layout.evaluate((node) => { node.textContent = '[data-sidebar-right-panel] { width: 360px !important; }' })
           await expectExcelLayout(excel)
@@ -380,19 +410,19 @@ async function expectExcelPanning(page: Page, excel: Locator): Promise<void> {
     x: node.querySelector('.luckysheet-scrollbar-x')!.scrollLeft,
     y: node.querySelector('.luckysheet-scrollbar-y')!.scrollTop,
   }))
-  const selection = await excel.locator('.fortune-name-box').innerText()
+  const selection = await excel.locator('#luckysheet-helpbox-cell').innerText()
   await excel.evaluate((node) => {
     node.querySelector('.luckysheet-scrollbar-x')!.scrollLeft = 240
     node.querySelector('.luckysheet-scrollbar-y')!.scrollTop = 240
   })
   await expect.poll(offset).toEqual({ x: 240, y: 240 })
-  await excel.locator('.fortune-sheet-overlay').hover({ position: { x: 260, y: 160 } })
+  await excel.locator('#luckysheet-cell-main').hover({ position: { x: 260, y: 160 } })
   for (const [dx, dy] of [[37, 19], [-13, 27], [-19, -11], [23, -17], [11, 0], [0, 13], [-9, 0], [0, -7]] as const) {
     const before = await offset()
     await wheel(dx, dy)
     await expect.poll(offset).toEqual({ x: before.x + dx, y: before.y + dy })
   }
-  expect(await excel.locator('.fortune-name-box').innerText()).toBe(selection)
+  expect(await excel.locator('#luckysheet-helpbox-cell').innerText()).toBe(selection)
   await wheel(-10000, -10000)
   await expect.poll(offset).toEqual({ x: 0, y: 0 })
   await wheel(-20, 20)
@@ -406,16 +436,14 @@ async function expectExcelPanning(page: Page, excel: Locator): Promise<void> {
 /** Sample the pixel band before the divider center, excluding the adjacent cell grid line. */
 async function freezeDividerInk(excel: Locator, axis: 'x' | 'y'): Promise<number> {
   return await excel.evaluate((node, direction) => {
-    const canvas = node.querySelector('canvas')!
+    const canvas = node.querySelector<HTMLCanvasElement>('#luckysheetTableContent')!
     const bounds = canvas.getBoundingClientRect()
     const scale = canvas.width / bounds.width
-    const columnHeader = node.querySelector<HTMLElement>('.fortune-col-header')!
-    const rowHeader = node.querySelector<HTMLElement>('.fortune-row-header')!
-    const columnHandle = node.querySelector<HTMLElement>('.fortune-cols-freeze-handle')!
-    const rowHandle = node.querySelector<HTMLElement>('.fortune-rows-freeze-handle')!
-    // Canvas coordinates include the 1.5px omitted from FortuneSheet's header elements.
-    const x = Number.parseFloat(rowHeader.style.width) + 1.5 + Number.parseFloat(columnHandle.style.left) - columnHeader.scrollLeft
-    const y = Number.parseFloat(columnHeader.style.height) + 1.5 + Number.parseFloat(rowHandle.style.top) - rowHeader.scrollTop - 2
+    const columnDrop = node.querySelector<HTMLElement>('.luckysheet-freezebar-vertical-drop')!
+    const rowDrop = node.querySelector<HTMLElement>('.luckysheet-freezebar-horizontal-drop')!
+    // Native drop positions include headers and start two pixels before the cell grid line.
+    const x = Number.parseFloat(columnDrop.style.left) + 2
+    const y = Number.parseFloat(rowDrop.style.top) + 2
     const context = canvas.getContext('2d')!
     let ink = 0
     for (let offset = -Math.round(scale); offset < 0; offset += 1) {
@@ -449,23 +477,22 @@ it.skipIf(MODE === 'record').each([1, 2])('keeps frozen headings without divider
     await page.locator('[data-sidebar-right-expand]').click()
     await column.locator('[data-sidebar-right-guide-entry="files"]').click()
     await column.locator('[data-files-entry="file"]').getByRole('button', { name: 'freeze.xlsx', exact: true }).click()
-    const excel = column.locator('[data-excel-preview]')
+    const excel = column.locator('[data-excel-preview]').frameLocator('iframe').locator('#workbook')
     const selectTopLeft = async () => {
-      await excel.locator('.fortune-sheet-overlay').click({ position: { x: 80, y: 35 } })
-      return await excel.locator('.fortune-fx-input').innerText()
+      await excel.locator('#luckysheet-cell-main').click({ position: { x: 50, y: 15 } })
+      return await excel.locator('#luckysheet-functionbox-cell').innerText()
     }
     for (const sheet of ['Both', 'Rows', 'Columns', 'None']) {
       await excel.locator('.luckysheet-sheets-item-name').getByText(sheet, { exact: true }).click()
       await expect.poll(selectTopLeft).toBe('R1C1')
-      for (const handle of ['.fortune-cols-freeze-handle', '.fortune-rows-freeze-handle']) {
+      for (const handle of ['.luckysheet-freezebar-vertical-handle', '.luckysheet-freezebar-horizontal-handle', '.luckysheet-freezebar-vertical-drop', '.luckysheet-freezebar-horizontal-drop']) {
         expect(await excel.locator(handle).isVisible()).toBe(false)
         expect(await excel.locator(handle).evaluate(node => node.getClientRects().length)).toBe(0)
       }
       for (const ratio of ['100%', '150%']) {
-        await excel.locator('.fortune-zoom-ratio-current').click()
-        await excel.locator('.fortune-zoom-ratio-item').getByText(ratio, { exact: true }).click()
-        await expect.poll(() => excel.locator('.fortune-zoom-ratio-current').innerText()).toBe(ratio)
-        await excel.locator('.fortune-fx-input').click()
+        await setExcelZoom(excel, Number.parseInt(ratio, 10))
+        await expect.poll(() => excel.locator('#luckysheet-zoom-ratioText').innerText()).toBe(ratio)
+        await excel.locator('#luckysheet-functionbox-cell').click()
         for (const axis of ['x', 'y'] as const) {
           if (sheet === 'Both' || sheet === (axis === 'x' ? 'Columns' : 'Rows')) {
             await expect.poll(() => freezeDividerInk(excel, axis)).toBe(0)
@@ -485,8 +512,8 @@ it.skipIf(MODE === 'record').each([1, 2])('keeps frozen headings without divider
     }
     await excel.locator('.luckysheet-sheets-item-name').getByText('Both', { exact: true }).click()
     await expect.poll(selectTopLeft).toBe('R1C1')
-    const canvas = await excel.locator('canvas').first().elementHandle()
-    const selection = await excel.locator('.fortune-name-box').innerText()
+    const canvas = await excel.locator('#luckysheetTableContent').elementHandle()
+    const selection = await excel.locator('#luckysheet-helpbox-cell').innerText()
     const layout = await page.addStyleTag({ content: '[data-sidebar-right-panel] { width: 360px !important; }' })
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme })
@@ -497,7 +524,7 @@ it.skipIf(MODE === 'record').each([1, 2])('keeps frozen headings without divider
     await layout.evaluate(node => node.parentNode!.removeChild(node))
     await expectExcelLayout(excel)
     expect(await canvas!.evaluate(node => node.isConnected)).toBe(true)
-    expect(await excel.locator('.fortune-name-box').innerText()).toBe(selection)
+    expect(await excel.locator('#luckysheet-helpbox-cell').innerText()).toBe(selection)
     await canvas!.dispose()
     expect(consoleErrors.pageErrors).toEqual([])
   } finally {
@@ -1330,26 +1357,27 @@ else process.exit(1);
     ].join('\n'))
 
     await openFile('budget.xlsx')
-    const excel = preview.locator('[data-excel-preview]')
+    const excelPreview = preview.locator('[data-excel-preview]')
+    const excel = excelPreview.frameLocator('iframe').locator('#workbook')
     const sheetTabs = excel.locator('.luckysheet-sheets-item-name')
     await sheetTabs.getByText('季度预算', { exact: true }).waitFor({ state: 'visible' })
     expect(await sheetTabs.getByText('隐藏页', { exact: true }).isVisible()).toBe(false)
     await successShot(page, 'excel-budget')
     expect(await preview.locator('[data-pdf-preview]').count()).toBe(0)
-    expect(await excel.locator('.fortune-toolbar').count()).toBe(0)
-    const sheetOverlay = excel.locator('.fortune-sheet-overlay')
-    const formulaInput = excel.locator('.fortune-fx-input')
+    expect(await excel.locator('#luckysheet-wa-editor:visible').count()).toBe(0)
+    const sheetOverlay = excel.locator('#luckysheet-cell-main')
+    const formulaInput = excel.locator('#luckysheet-functionbox-cell')
     await sheetOverlay.click({ position: { x: 500, y: 110 } })
     await expect.poll(() => formulaInput.innerText()).toBe('=C3/B3')
     await page.keyboard.press('ControlOrMeta+C')
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('80.0%\n')
     await sheetTabs.getByText('公式与格式', { exact: true }).click()
-    await expect.poll(() => excel.locator('.fortune-name-box').innerText()).toBe('A1')
-    await sheetOverlay.click({ position: { x: 140, y: 30 } })
+    await expect.poll(() => excel.locator('#luckysheet-helpbox-cell').innerText()).toBe('A1')
+    await sheetOverlay.click({ position: { x: 110, y: 10 } })
     await expect.poll(() => formulaInput.innerText()).toBe('46281')
     await page.keyboard.press('ControlOrMeta+C')
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('2026-09-16\n')
-    await sheetOverlay.click({ position: { x: 70, y: 30 } })
+    await sheetOverlay.click({ position: { x: 40, y: 10 } })
     await expect.poll(() => formulaInput.innerText()).toBe('=_xlfn.XLOOKUP(1,{1},{42})')
     expect(await formulaInput.getAttribute('contenteditable')).toBe('false')
     await page.keyboard.press('ControlOrMeta+C')
@@ -1360,7 +1388,7 @@ else process.exit(1);
     await successShot(page, 'excel-cached-formula')
     await openFile('chart-budget.xlsx')
     await sheetTabs.getByText('季度预算', { exact: true }).waitFor({ state: 'visible' })
-    const unsupportedNotice = excel.locator('[data-excel-unsupported-notice]')
+    const unsupportedNotice = excelPreview.locator('[data-excel-unsupported-notice]')
     const chartNotice = await unsupportedNotice.innerText()
     expect(chartNotice).toBe('This preview does not support charts, conditional formatting in this workbook. Open it in a system application for the full experience.')
     await sheetOverlay.click({ position: { x: 500, y: 110 } })
@@ -1373,21 +1401,21 @@ else process.exit(1);
     expect(await unsupportedNotice.count()).toBe(0)
     expect(await excel.getByText('Read-only preview', { exact: false }).count()).toBe(0)
     expect(await excel.getByText('Some formulas have no saved result', { exact: false }).count()).toBe(0)
-    const formulaWarning = excel.locator('[data-excel-formula-warning]')
+    const formulaWarning = excelPreview.locator('[data-excel-formula-warning]')
     await formulaWarning.hover()
     await page.getByText('This workbook contains formulas. Displayed results may be missing or inaccurate.', { exact: true }).waitFor()
     await sheetTabs.getByText('统计看板', { exact: true }).click()
-    await expect.poll(() => excel.locator('.fortune-name-box').innerText()).toBe('A1')
+    await expect.poll(() => excel.locator('#luckysheet-helpbox-cell').innerText()).toBe('A1')
     await successShot(page, 'excel-meeting')
     await openFile('budget.xls')
     await sheetTabs.getByText('预算', { exact: true }).waitFor({ state: 'visible' })
-    await expect.poll(() => excel.locator('.fortune-name-box').innerText()).toBe('A1')
-    await excel.locator('.fortune-sheet-overlay').click({ position: { x: 70, y: 30 } })
-    await expect.poll(() => excel.locator('.fortune-fx-input').innerText()).toBe('旧版预算')
+    await expect.poll(() => excel.locator('#luckysheet-helpbox-cell').innerText()).toBe('A1')
+    await excel.locator('#luckysheet-cell-main').click({ position: { x: 40, y: 10 } })
+    await expect.poll(() => excel.locator('#luckysheet-functionbox-cell').innerText()).toBe('旧版预算')
     await page.keyboard.press('ControlOrMeta+C')
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('旧版预算')
     await sheetTabs.getByText('明细', { exact: true }).click()
-    await expect.poll(() => excel.locator('.fortune-name-box').innerText()).toBe('A1')
+    await expect.poll(() => excel.locator('#luckysheet-helpbox-cell').innerText()).toBe('A1')
     await successShot(page, 'excel-legacy')
     await openFile('literal-html.xlsx')
     for (const [sheet, formula, copied] of [
@@ -1398,12 +1426,18 @@ else process.exit(1);
       await sheetTabs.getByText(sheet, { exact: true }).click()
       await expect.poll(() => formulaInput.textContent()).toBe(formula)
       expect(await formulaInput.locator('img').count()).toBe(0)
-      await excel.locator('.fortune-sheet-overlay').click({ position: { x: 70, y: 30 } })
+      await excel.locator('#luckysheet-cell-main').click({ position: { x: 40, y: 10 } })
       await page.keyboard.press('ControlOrMeta+C')
       await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`${copied}\n`)
-      const clipboardTable = excel.locator('#fortune-copy-content table')
-      expect(await clipboardTable.locator('td').textContent()).toBe(copied)
-      expect(await clipboardTable.locator('img').count()).toBe(0)
+      const clipboardTable = await page.evaluate(async () => {
+        const entries = await navigator.clipboard.read()
+        const entry = entries.find(item => item.types.includes('text/html'))
+        if (entry === undefined) throw new Error('Spreadsheet clipboard has no HTML representation')
+        const document = new DOMParser().parseFromString(await (await entry.getType('text/html')).text(), 'text/html')
+        return { text: document.querySelector('table td')?.textContent, images: document.querySelectorAll('table img').length }
+      })
+      expect(clipboardTable.text).toBe(copied)
+      expect(clipboardTable.images).toBe(0)
       expect(await page.evaluate(() => document.documentElement.dataset.spreadsheetHtml)).toBeUndefined()
     }
     const invalidExcel = 'This spreadsheet could not be opened. Check its format, contents, or password protection.'
@@ -1430,8 +1464,8 @@ else process.exit(1);
       await openFile(`table.${extension}`)
       await expect.poll(() => viewer.innerText()).toBe('Spreadsheet')
       await excel.getByText(extension.toUpperCase(), { exact: true }).waitFor()
-      await excel.locator('.fortune-sheet-overlay').click({ position: { x: 70, y: 30 } })
-      await expect.poll(() => excel.locator('.fortune-fx-input').innerText()).toBe('00123')
+      await excel.locator('#luckysheet-cell-main').click({ position: { x: 40, y: 10 } })
+      await expect.poll(() => excel.locator('#luckysheet-functionbox-cell').innerText()).toBe('00123')
       await page.keyboard.press('ControlOrMeta+C')
       await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('00123\n')
       await page.keyboard.press('ArrowRight')
@@ -1447,8 +1481,8 @@ else process.exit(1);
       await excel.getByText(extension.toUpperCase(), { exact: true }).waitFor()
       await writeFile(join(cwd, `table.${extension}`), extension === 'csv' ? '00999,更新' : '00999\t更新')
       await preview.locator('[data-textpreview-tool="reload"]').click()
-      await expect.poll(() => excel.locator('.fortune-fx-input').innerText()).toBe('00999')
-      await excel.locator('.fortune-sheet-overlay').click({ position: { x: 70, y: 30 } })
+      await expect.poll(() => excel.locator('#luckysheet-functionbox-cell').innerText()).toBe('00999')
+      await excel.locator('#luckysheet-cell-main').click({ position: { x: 40, y: 10 } })
       await page.keyboard.press('ControlOrMeta+C')
       await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('00999\n')
       await successShot(page, `excel-${extension}`)

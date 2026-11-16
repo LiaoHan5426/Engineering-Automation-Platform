@@ -15,7 +15,7 @@ import {
   webSnapshotMode,
   type WebScaffold,
 } from './scaffold.ts'
-import { newEnglishPage, saveFailureShot, WEB_FIXTURE_TIME } from './support.ts'
+import { newEnglishPage, pinBrowserClock, saveFailureShot, WEB_FIXTURE_TIME } from './support.ts'
 import { brandString } from '@deepseek-ai/dsh-brand'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('./expected/markdown-cjk-strong', import.meta.url))
@@ -98,7 +98,7 @@ describe('web e2e: CJK-adjacent Markdown strong emphasis', () => {
     await seedSession(scaffold, markdownFixture(), SEED_ID, undefined, { createdAt: WEB_FIXTURE_TIME })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
-    await page.clock.setFixedTime(WEB_FIXTURE_TIME)
+    await pinBrowserClock(page)
     tripwire = watchConsole(page)
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })

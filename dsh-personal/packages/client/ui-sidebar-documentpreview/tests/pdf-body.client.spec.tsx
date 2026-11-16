@@ -95,6 +95,7 @@ class IntersectionObserverStub {
     IntersectionObserverStub.instances.push(this);
   }
   observe(element: Element): void {
+    if (!(element instanceof Element)) throw new TypeError('IntersectionObserver requires an Element');
     this.observed.add(element);
   }
   unobserve(element: Element): void {
