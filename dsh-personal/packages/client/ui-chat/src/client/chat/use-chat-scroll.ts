@@ -174,7 +174,9 @@ export function useChatScroll(input: MaybeRefOrGetter<ChatScrollInput>): ChatScr
         reading.onScroll(event);
       },
       scrollEnd: (outer) => {
-        reading.onScrollEnd(outer);
+        const foldOwnsScrollEnd =
+          outer && viewport.motion.foldActive() && viewport.readScroll()?.movedByReader === false;
+        if (!foldOwnsScrollEnd) reading.onScrollEnd(outer);
         navigation.requestHistoryCheck();
       },
       interact: () => {

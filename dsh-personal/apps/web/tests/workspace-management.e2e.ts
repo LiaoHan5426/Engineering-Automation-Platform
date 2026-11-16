@@ -651,10 +651,17 @@ describe("web e2e: workspace management (create / rename / grouping / hover affo
 
   it("shows the session hover card after a dwell on the row", async () => {
     onTestFailed(() => saveFailureShot(page, "web-e2e-ws-hover"));
+    // Copy belongs to a real Session title, not the Untitled display fallback.
+    const { title: rowTitle } = await scaffold.ctx.sessionController.rename({
+      sessionId: brandString<SessionId>(SEED_ID),
+      title: "Workspace hover session",
+    });
     // Dwell on the seeded row; the card opens after a 500ms hover delay,
     // portaled to body.
     const sessionRow = await seededSessionRow();
-    const rowTitle = await sessionRow.locator('[class*="title"]').innerText();
+    await expect
+      .poll(() => sessionRow.locator('[class*="title"]').innerText(), { timeout: 10_000 })
+      .toBe(rowTitle);
     await sessionRow.hover();
     // Card content: the full title plus the Idle status line (no aria role —
     // text anchors are the stable selector).

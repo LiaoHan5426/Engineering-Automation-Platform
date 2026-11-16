@@ -534,12 +534,26 @@ export const InputBar = defineComponent(
       watch(
         [() => locked.value, () => sessionId.value, () => editor.value],
         (_value, _previous, onCleanup) => {
-          const cleanup = (() => {
-            if (locked.value || editor.value === null) return;
-            if (isMobileDevice()) return;
-            focusDraftEditor(editor.value, revealSelection);
-          })();
-          if (typeof cleanup === "function") onCleanup(cleanup);
+          const target = editor.value;
+          if (locked.value || target === null || isMobileDevice()) return;
+          const session = sessionId.value;
+          const intentElement = document.activeElement;
+          let pending = true;
+          let active = true;
+          // Parent post watchers can run before the resident host binds a new editor.
+          // Lexical reports both an already bound root and subsequent root readiness.
+          const remove = target.registerRootListener((root) => {
+            if (!active || !pending || root === null) return;
+            pending = false;
+            if (locked.value || editor.value !== target || sessionId.value !== session) return;
+            const focused = document.activeElement;
+            if (focused !== intentElement && focused !== document.body && focused !== root) return;
+            focusDraftEditor(target, revealSelection);
+          });
+          onCleanup(() => {
+            active = false;
+            remove();
+          });
         },
         { immediate: true, flush: "post" },
       ),

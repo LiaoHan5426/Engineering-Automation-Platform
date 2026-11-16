@@ -78,6 +78,7 @@ const ScrollHarness = defineComponent(
             ref: state.listRef,
             "data-testid": "scrollport",
             "data-initialized": state.initialized.value,
+            "data-following-tail": state.followingTail.value,
           },
           [
             h(
@@ -1318,6 +1319,64 @@ describe("Chat scroll collapse timing", () => {
   });
 });
 describe("scroll ownership across descendant visibility commits", () => {
+  it.each(["fold-owned", "reader", "process-body", "after-fold"] as const)(
+    "settles %s scrollend without overriding the descendant fold owner",
+    async (owner) => {
+      const harness = await mountScroll(true, {}, true);
+      await harness.resize();
+      harness.grow(1080);
+      await harness.update({ lastKey: "user-input", lastIsUser: true, submissionId: "input" });
+      expect(harness.scroller.querySelector('[data-chat-motion="collapse"]')).not.toBeNull();
+
+      // A reader delivery remains pending when the next fold frame acknowledges its own position.
+      harness.scroller.scrollTop -= 10;
+      await fireEvent.scroll(harness.scroller);
+      await act(() => {
+        vi.advanceTimersByTime(112);
+      });
+      expect(harness.scroller.querySelector('[data-chat-motion="collapse"]')).not.toBeNull();
+      if (owner === "after-fold") {
+        await act(() => {
+          vi.advanceTimersByTime(200);
+        });
+        expect(harness.scroller.querySelector('[data-chat-motion="collapse"]')).toBeNull();
+      }
+      if (owner === "reader" || owner === "after-fold") {
+        harness.scroller.scrollTop -= 40;
+        await fireEvent.scroll(harness.scroller);
+      }
+      const before = harness.scroller.scrollTop;
+      if (owner === "process-body") {
+        const body = document.createElement("div");
+        body.dataset.stepProcessBody = "";
+        harness.row.append(body);
+        await fireEvent(body, new Event("scrollend", { bubbles: true }));
+      } else {
+        await fireEvent(harness.scroller, new Event("scrollend"));
+      }
+
+      if (owner === "process-body") {
+        expect(harness.scroller.scrollTop).toBe(
+          harness.scroller.scrollHeight - harness.scroller.clientHeight,
+        );
+      } else {
+        expect(harness.scroller.scrollTop).toBe(before);
+        expect(harness.scroller.getAttribute("data-following-tail")).toBe(
+          owner === "fold-owned" ? "true" : "false",
+        );
+      }
+      await act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      if (owner === "fold-owned") {
+        expect(harness.scroller.scrollTop).toBe(
+          harness.scroller.scrollHeight - harness.scroller.clientHeight,
+        );
+        const spacer = harness.scroller.querySelector<HTMLElement>("[data-chat-turn-spacer]");
+        expect(Number.parseFloat(spacer?.style.height ?? "") || 0).toBe(0);
+      }
+    },
+  );
   it("does not reconcile an input commit after its owner unmounts in that commit", async () => {
     const harness = await mountScroll(true, {}, true);
     await harness.resize();

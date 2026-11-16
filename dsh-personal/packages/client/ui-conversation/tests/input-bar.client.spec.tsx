@@ -83,6 +83,8 @@ interface BenchOptions {
     subagent?: Exclude<SessionSnapshot['subagent'], null>;
     disabled?: boolean;
     inert?: boolean;
+    /** Start with the resident composer host waiting for its editor binding. */
+    deferKeyboard?: boolean;
     blocked?: {
         readonly reason: string;
     };
@@ -220,7 +222,7 @@ async function bench(over?: BenchOptions) {
                             : key === 'contextPressure' ? over?.contextPressure : undefined)),
         useInput: bindSnapshotSelector(shell.state),
         inputActions: shell.actions,
-        keyboard: shell,
+        keyboard: over?.deferKeyboard === true ? undefined : shell,
         addFiles: over?.addFiles ?? (() => null),
         useFileUploads: bindSnapshotSelector(createSnapshotStore<DraftFileUploads>(over?.fileUploads ?? {})),
         retryFileUpload: undefined,
@@ -1593,6 +1595,49 @@ describe('running and lock semantics', () => {
         // carries the newlines.
         expect(textarea.textContent).toBe('line'.repeat(40));
         expect((await bench({ draft: 'a\nb' })).shell.snapshot.draft).toBe('a\nb');
+    });
+    it.each([false, true])('late keyboard readiness focuses only desktop composers (mobile=%s)', async mobile => {
+        const device = vi.spyOn(uiPrimitives, 'isMobileDevice').mockReturnValue(mobile);
+        onTestFinished(() => { device.mockRestore(); });
+        const outside = document.createElement('input');
+        document.body.append(outside);
+        onTestFinished(() => { outside.remove(); });
+        outside.focus();
+        const { view, textarea, props, shell } = await bench({ deferKeyboard: true });
+        expect(shell.editor.getRootElement()).toBeNull();
+        expect(document.activeElement).toBe(outside);
+        await view.rerender(h(InputBar, { ...props, keyboard: shell }));
+        expect(view.container.querySelector('[data-composer-input]')).toBe(textarea);
+        expect(shell.editor.getRootElement()).toBe(textarea);
+        expect(document.activeElement).toBe(mobile ? outside : textarea);
+    });
+    it.each(['focus elsewhere', 'locked', 'unmounted', 'replaced editor'] as const)('cancels pending root focus after %s', async change => {
+        const device = vi.spyOn(uiPrimitives, 'isMobileDevice').mockReturnValue(false);
+        onTestFinished(() => { device.mockRestore(); });
+        const { view, textarea, props, shell } = await bench({ deferKeyboard: true });
+        const outside = document.createElement('input');
+        document.body.append(outside);
+        onTestFinished(() => { outside.remove(); });
+        const bindRoot = shell.editor.setRootElement.bind(shell.editor);
+        const delayed = vi.spyOn(shell.editor, 'setRootElement').mockImplementation(() => {});
+        await view.rerender(h(InputBar, { ...props, keyboard: shell }));
+        expect(shell.editor.getRootElement()).toBeNull();
+        if (change === 'focus elsewhere') outside.focus();
+        else if (change === 'locked') await view.rerender(h(InputBar, { ...props, keyboard: shell, disabled: true }));
+        else if (change === 'unmounted') view.unmount();
+        else {
+            const replacement = await bench({ deferKeyboard: true });
+            await view.rerender(h(InputBar, { ...props, keyboard: replacement.shell }));
+            expect(replacement.shell.editor.getRootElement()).toBe(textarea);
+        }
+        // A withdrawn editor must not claim the replacement editor's resident root.
+        const lateRoot = change === 'replaced editor' ? document.createElement('div') : textarea;
+        const focus = vi.spyOn(lateRoot, 'focus');
+        delayed.mockRestore();
+        bindRoot(lateRoot);
+        expect(focus).not.toHaveBeenCalled();
+        if (change === 'focus elsewhere') expect(document.activeElement).toBe(outside);
+        bindRoot(null);
     });
     it('a session switch refocuses the editable surface with preventScroll', async () => {
         const { view, textarea, props } = await bench({ draft: 'line one' });

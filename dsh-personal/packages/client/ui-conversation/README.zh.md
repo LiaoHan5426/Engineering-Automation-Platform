@@ -88,7 +88,7 @@ Session API 拥有 `conversationContinuation`，Host 准入和浏览器展示共
 
 composer 提供 `retry(failureSeq)` 处理生成失败后的恢复。输入栏通过标准 `useProjection` prop 读取 `conversationContinuation` 和 `inbox`。面向用户的操作文案为“继续生成”。
 
-composer 在挂载、切换 Session 和解除锁定时使用共享的[文字输入框聚焦策略](../ui-primitives/README.zh.md#use-this-package)。识别出的手机和平板需要点击输入框；桌面设备保留自动聚焦。在这些移动设备上，提交清空正在聚焦的草稿后，焦点移到不接受文字输入的 composer 卡片，收起键盘并保留键盘导航位置。被拒绝的提交、保留的新草稿文字，以及已经聚焦的其他控件均保留原有焦点。移动端键盘平移页面时，[Lexical 补丁](../../../patches/lexical@0.49.0.patch)让光标滚动计算与 DOM 几何使用同一坐标系。
+composer 在挂载、切换 Session 和解除锁定时使用共享的[文字输入框聚焦策略](../ui-primitives/README.zh.md#use-this-package)。识别出的手机和平板需要点击输入框；桌面设备保留自动聚焦。Session editor 晚于常驻输入框就绪时，自动聚焦等待 Lexical 注册 root；锁定、更换 editor 或 Session、卸载都会释放待完成的注册，等待期间将焦点移到其他控件会取消这次聚焦请求。在这些移动设备上，提交清空正在聚焦的草稿后，焦点移到不接受文字输入的 composer 卡片，收起键盘并保留键盘导航位置。被拒绝的提交、保留的新草稿文字，以及已经聚焦的其他控件均保留原有焦点。移动端键盘平移页面时，[Lexical 补丁](../../../patches/lexical@0.49.0.patch)让光标滚动计算与 DOM 几何使用同一坐标系。
 
 上下文占用按钮在输入卡片下方、会话统计右侧显示圆环和百分比。点击按钮可在受布局视口约束的 CSS 锚定面板中查看 token 构成，没有统计项时也可打开；上下文用量和容量尚不可用时，按钮保持隐藏。浏览器缩放和平移时面板随页面移动，因此可以超出视觉视口。Hero 之外，这一行为空时仍保留一项读数的高度，因此会话统计和上下文用量稍后到达不会改变 composer 的高度；Hero 不显示空行。
 
