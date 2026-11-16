@@ -109,6 +109,8 @@ The package injects the Client `remoteAccess` service and provides the root stan
 
 The package is one composition: both target slots are declared by other plugins, so `apply` uses `slots.inject()` to register for each declaration lifetime and re-register after a declaring slot is restored.
 
+The grouped Vue browser builds a fresh ordered key list and its row VNodes together during each render, before passing either to the deferred child slots. Animation snapshots therefore see the same membership as the committed rows: retained Workspace headers never become exit clones, while removed rows keep their ordinary exit fade. Child Workspaces precede their parent's Session rows and overflow control.
+
 The browser entry declares three root-scoped `list` child seats on each Session row: `sidebar.session.row.leading`, `sidebar.session.row.trailing`, and `sidebar.session.row.hover`. All receive only `sessionId`, which occupants use to address their own data without creating a Session binding. A Session-scoped seat would activate and retain every listed Session.
 
 The leading seat occupies the status cell only while the row's primary status is idle and leaves archived rows blank. The trailing seat accepts non-interactive icons in ascending `order`, after the time label and before the pin marker. Blank rows omit the trailing seat; an empty seat adds no spacing. The hover seat mounts only while the row's hover card is open.

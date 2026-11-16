@@ -706,12 +706,21 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
     await stackPage.emulateMedia({ colorScheme: 'dark' })
     await expect.poll(() => stackPage.locator('body').getAttribute('data-ds-dark-theme')).not.toBeNull()
     await stackPage.screenshot({ path: join(artifactDir, 'bonus-notice-stack-dark.png') })
-    const promotion = await stackPage.evaluate(() => {
+    const promotion = await stackPage.evaluate(async () => {
       const front = document.querySelector<HTMLElement>('aside[data-front="true"]')!
       const next = front.nextElementSibling as HTMLElement
       const before = next.getBoundingClientRect()
       front.querySelector('button')!.click()
-      const animation = next.getAnimations()[0]!
+      let animation: Animation | undefined
+      // Vue commits the promotion before its layout animation is created.
+      for (let frame = 0; frame < 10; frame++) {
+        if (next.getAttribute('data-front') === 'true') {
+          animation = next.getAnimations()[0]
+          if (animation !== undefined) break
+        }
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      }
+      if (animation === undefined) throw new Error('Notification promotion animation did not start')
       animation.pause()
       animation.currentTime = 0
       const start = next.getBoundingClientRect()

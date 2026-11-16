@@ -117,6 +117,51 @@ describe.each(["deepseek", "pi-ai"] as const)("%s model ordering", (family) => {
     expect(document.activeElement).toBe(toggle);
     expect(screen.getByLabelText(`${en.modelName} 1`)).toBe(name);
   });
+  it("keeps the same focused handle through eight downward moves and the upward return", async () => {
+    vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    render(
+      vh(Editor, {
+        family,
+        initial: Array.from({ length: 9 }, (_, index) => ({ id: `model-${index}` })),
+        changed: vi.fn(),
+      }),
+    );
+    const source = handle(1);
+    source.focus();
+    const focus = vi.spyOn(source, "focus");
+    const scroll = vi.fn();
+    source.scrollIntoView = scroll;
+    for (const [index, position] of [2, 3, 4, 5, 6, 7, 8, 9, 8].entries()) {
+      await act(() => fireEvent.keyDown(source, { key: index === 8 ? "ArrowUp" : "ArrowDown" }));
+      expect(handle(position)).toBe(source);
+      expect(document.activeElement).toBe(source);
+    }
+    expect(focus).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
+    expect(scroll).toHaveBeenCalledExactlyOnceWith({ block: "nearest" });
+  });
+  it.each(["other control", "unfocused document", "removed row", "unmounted editor"] as const)(
+    "does not restore a moved handle after %s takes it out of focus",
+    async (destination) => {
+      const documentFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+      const view = render(
+        vh(Editor, { family, initial: [{ id: "first" }, { id: "second" }], changed: vi.fn() }),
+      );
+      const source = handle(2);
+      source.focus();
+      const focus = vi.spyOn(source, "focus");
+      const other = screen.getByRole("button", { name: en.addModel });
+      fireEvent.keyDown(source, { key: "ArrowUp" });
+      if (destination === "other control") other.focus();
+      else if (destination === "unfocused document") documentFocus.mockReturnValue(false);
+      else if (destination === "removed row") void view.rerender(vh("p", null, "Removed"));
+      else view.unmount();
+      await act(() => {});
+      expect(focus).not.toHaveBeenCalled();
+      if (destination === "other control") expect(document.activeElement).toBe(other);
+      if (destination === "removed row" || destination === "unmounted editor")
+        expect(source.isConnected).toBe(false);
+    },
+  );
   it("moves a complete model and its expanded capacity draft to the drop position", async () => {
     const first = {
       id: "first",

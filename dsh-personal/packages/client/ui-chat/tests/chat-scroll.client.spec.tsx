@@ -1,4 +1,13 @@
-import { h, Fragment, defineComponent, watchEffect, nextTick, onUpdated } from "vue";
+import {
+  h,
+  Fragment,
+  defineComponent,
+  watchEffect,
+  nextTick,
+  onUpdated,
+  shallowRef,
+  onMounted,
+} from "vue";
 import { fireEvent as dispatchDom, within } from "@testing-library/dom";
 // @vitest-environment jsdom
 /** Chat scroll composition over the real viewport, reading owner, and fold lifecycle. */
@@ -8,8 +17,9 @@ import {
   render as mountNative,
 } from "../../../test-support/client-runtime/src/vue-test.ts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { FlowMotionRows } from "../src/client/chat/flow-motion.ts";
+import { useMotionHidden, type FlowMotionRows } from "../src/client/chat/flow-motion.ts";
 import { useChatScroll, type ChatScrollInput } from "../src/client/chat/use-chat-scroll.ts";
+import { presentationPolicyFor } from "../src/client/presentation-policy.ts";
 beforeEach(() => {
   vi.useFakeTimers();
 });
@@ -25,9 +35,31 @@ afterEach(async () => {
     vi.unstubAllGlobals();
   }
 });
+const CommitFoldRow = defineComponent(
+  (props: { hidden: boolean; motion: FlowMotionRows }) => {
+    const row = shallowRef<HTMLDivElement | null>(null);
+    useMotionHidden(row, () => props.hidden, props.motion);
+    onMounted(() => {
+      if (row.value === null) throw new Error("Missing descendant fold row");
+      Object.defineProperty(row.value, "offsetHeight", {
+        get: () => {
+          const element = row.value;
+          if (element === null || element.hidden) return 0;
+          // The row keeps its painted height during the delayed CSS close, before the batch takes it.
+          return element.style.transition === "none" && element.style.height
+            ? Number.parseFloat(element.style.height)
+            : 80;
+        },
+      });
+    });
+    return () => h("div", { ref: row, "data-commit-fold-row": "" }, "Previous process");
+  },
+  { props: ["hidden", "motion"] },
+);
 const ScrollHarness = defineComponent(
   (props: {
     afterCommit?: () => void;
+    descendantFold?: boolean;
     input: ChatScrollInput;
     onMotion: (motion: FlowMotionRows) => void;
   }) => {
@@ -48,16 +80,38 @@ const ScrollHarness = defineComponent(
             "data-initialized": state.initialized.value,
           },
           [
-            h("div", { ref: state.columnRef, "data-testid": "column", "data-chat-flow": "" }),
+            h(
+              "div",
+              {
+                ref: state.columnRef,
+                "data-testid": "column",
+                "data-chat-flow": "",
+                ...(props.descendantFold ? { "data-chat-motion": "" } : {}),
+              },
+              props.descendantFold
+                ? [
+                    h(CommitFoldRow, {
+                      hidden:
+                        props.input.lastKey !== null ||
+                        presentationPolicyFor(props.input.transcriptView).foldCompletedTurns,
+                      motion: state.motion,
+                    }),
+                  ]
+                : [],
+            ),
             h("div", { "data-chat-turn-spacer": "" }),
           ],
         ),
         h("button", { type: "button", onClick: state.returnToBottom }, ["Return to bottom"]),
       ]);
   },
-  { props: ["input", "onMotion", "afterCommit"] },
+  { props: ["input", "onMotion", "afterCommit", "descendantFold"] },
 );
-async function mountScroll(deferCompletedTurns = true, initial: Partial<ChatScrollInput> = {}) {
+async function mountScroll(
+  deferCompletedTurns = true,
+  initial: Partial<ChatScrollInput> = {},
+  descendantFold = false,
+) {
   let input: ChatScrollInput = {
     isOpen: true,
     order: [],
@@ -100,7 +154,7 @@ async function mountScroll(deferCompletedTurns = true, initial: Partial<ChatScro
   const onMotion = (motion: FlowMotionRows): void => {
     callbacks.motion = motion;
   };
-  const view = await render(h(ScrollHarness, { input: input, onMotion: onMotion }));
+  const view = await render(h(ScrollHarness, { input: input, onMotion: onMotion, descendantFold }));
   const scroller = within(view.container).getByTestId("scrollport");
   const spacer = scroller.querySelector<HTMLElement>("[data-chat-turn-spacer]");
   if (spacer === null) throw new Error("Missing fold spacer");
@@ -110,7 +164,13 @@ async function mountScroll(deferCompletedTurns = true, initial: Partial<ChatScro
   });
   Object.defineProperties(scroller, {
     clientHeight: { value: 400 },
-    scrollHeight: { get: () => height + (Number.parseFloat(spacer.style.height) || 0) },
+    scrollHeight: {
+      get: () => {
+        const foldingRow = scroller.querySelector<HTMLDivElement>("[data-commit-fold-row]");
+        const removed = foldingRow === null ? 0 : 80 - foldingRow.offsetHeight;
+        return height - removed + (Number.parseFloat(spacer.style.height) || 0);
+      },
+    },
     scrollTo: { value: scrollTo },
   });
   const row = document.createElement("div");
@@ -135,6 +195,7 @@ async function mountScroll(deferCompletedTurns = true, initial: Partial<ChatScro
         h(ScrollHarness, {
           input: input,
           onMotion: onMotion,
+          descendantFold,
           ...(afterCommit === undefined ? {} : { afterCommit }),
         }),
       );
@@ -1255,6 +1316,66 @@ describe("Chat scroll collapse timing", () => {
 
     expect(h.scrollTo).toHaveBeenCalledTimes(2);
   });
+});
+describe("scroll ownership across descendant visibility commits", () => {
+  it("does not reconcile an input commit after its owner unmounts in that commit", async () => {
+    const harness = await mountScroll(true, {}, true);
+    await harness.resize();
+    harness.scrollTo.mockClear();
+    harness.grow(1080);
+
+    await harness.update({ lastKey: "user-input", lastIsUser: true, submissionId: "input" }, () =>
+      harness.view.unmount(),
+    );
+    await act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(harness.scrollTo).not.toHaveBeenCalled();
+    expect(harness.scroller.isConnected).toBe(false);
+  });
+
+  it("follows a submitted input on the descendant fold clock without starting a separate smooth scroll", async () => {
+    const harness = await mountScroll(true, {}, true);
+    await harness.resize();
+    harness.scrollTo.mockClear();
+    harness.grow(1080);
+
+    await harness.update({ lastKey: "user-input", lastIsUser: true, submissionId: "input" });
+
+    expect(harness.scroller.querySelector('[data-chat-motion="collapse"]')).not.toBeNull();
+    expect(
+      harness.scrollTo.mock.calls.filter(([options]) => options.behavior === "smooth"),
+    ).toEqual([]);
+    await act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(harness.scroller.querySelector('[data-chat-motion="collapse"]')).toBeNull();
+    expect(harness.scroller.scrollTop).toBe(
+      harness.scroller.scrollHeight - harness.scroller.clientHeight,
+    );
+  });
+
+  it.each(["compact", "standard", "detailed"] as const)(
+    "clears reserved room after %s mode finishes the descendant fold",
+    async (transcriptView) => {
+      const harness = await mountScroll(true, {}, true);
+      await harness.resize();
+
+      await harness.update({ transcriptView });
+      expect(harness.scroller.querySelector('[data-chat-motion="collapse"]')).not.toBeNull();
+      await act(() => {
+        vi.advanceTimersByTime(400);
+      });
+
+      expect(harness.scroller.querySelector('[data-chat-motion="collapse"]')).toBeNull();
+      const spacer = harness.scroller.querySelector<HTMLElement>("[data-chat-turn-spacer]");
+      expect(Number.parseFloat(spacer?.style.height ?? "") || 0).toBe(0);
+      expect(harness.scroller.scrollTop).toBe(
+        harness.scroller.scrollHeight - harness.scroller.clientHeight,
+      );
+    },
+  );
 });
 async function render(...args: Parameters<typeof mountNative>) {
   const view = mountNative(...args);

@@ -1247,6 +1247,42 @@ describe("ModelSelect catalog size", () => {
       );
     },
   );
+  it("scrolls the highlighted row after filtering and restoring models even when its index stays zero", async () => {
+    const directory = createSnapshotStore(state({ groups: modelGroups(5), current: null }));
+    render(
+      h(ModelSelect, {
+        renderSlot: renderLabel,
+        locked: false,
+        available: true,
+        useDirectory: bindDirectory(directory),
+        load: vi.fn(),
+        resolveText,
+        select: vi.fn(),
+        t,
+      }),
+    );
+    await act(() => fireEvent.click(screen.getByRole("button", { name: "请选择模型" })));
+    const search = screen.getByRole("searchbox");
+    const first = screen.getAllByRole("menuitemradio")[0]!;
+    const last = screen.getAllByRole("menuitemradio")[4]!;
+    scrollIntoView.mockClear();
+    await act(() => fireEvent.input(search, { target: { value: "Model 5" } }));
+    const filtered = screen.getByRole("menuitemradio");
+    expect(search.getAttribute("aria-activedescendant")).toBe(filtered.id);
+    expect(scrollIntoView.mock.instances.at(-1)).toBe(filtered);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    expect(filtered).toBe(last);
+    await act(() => directory.set({ ...directory.getSnapshot() }));
+    expect(screen.getByRole("menuitemradio")).toBe(filtered);
+    scrollIntoView.mockClear();
+    await act(() => fireEvent.input(search, { target: { value: "" } }));
+    expect(screen.getAllByRole("menuitemradio")).toHaveLength(5);
+    expect(screen.getAllByRole("menuitemradio")[4]).toBe(last);
+    expect(search.getAttribute("aria-activedescendant")).toBe(first.id);
+    expect(scrollIntoView.mock.instances.at(-1)).toBe(screen.getAllByRole("menuitemradio")[0]);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    expect(document.activeElement).toBe(search);
+  });
   it("moves actual row focus with arrows, leaves Enter native, and selects with Tab in a small catalog", async () => {
     const select = vi.fn().mockResolvedValue({ ok: true, value: undefined });
     render(

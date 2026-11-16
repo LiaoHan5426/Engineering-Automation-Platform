@@ -140,6 +140,7 @@ const ObjectBranch: DefineSetupFnComponent<BranchProps> = defineComponent(
             h("summary", null, [
               field,
               link,
+              " ",
               h("span", { class: css.objectMuted }, [display.label]),
             ]),
             expanded.value &&

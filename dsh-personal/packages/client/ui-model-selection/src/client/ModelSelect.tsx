@@ -363,6 +363,7 @@ export const ModelSelect = defineComponent(
       onCleanup(observeStickyMenuGroups(viewport));
     });
     watchPostEffect(() => {
+      visibleModels.value;
       if (open.value && pane.value.kind === "model" && activeModelIndex.value >= 0) {
         itemRefs.value[activeModelIndex.value]?.scrollIntoView({ block: "nearest" });
       }
@@ -652,8 +653,15 @@ export const ModelSelect = defineComponent(
         ]);
       };
       const itemRef = (at: number): VNodeRef => {
+        let element: HTMLButtonElement | null = null;
         return (node) => {
-          itemRefs.value[at] = node instanceof HTMLButtonElement ? node : null;
+          if (node instanceof HTMLButtonElement) {
+            element = node;
+            itemRefs.value[at] = node;
+          } else if (itemRefs.value[at] === element) {
+            // A removed row must not clear another row that now occupies its index.
+            itemRefs.value[at] = null;
+          }
         };
       };
       return h(

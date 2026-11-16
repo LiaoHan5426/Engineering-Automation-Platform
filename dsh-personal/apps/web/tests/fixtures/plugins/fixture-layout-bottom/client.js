@@ -45,7 +45,7 @@ window.__ModuleLoader__.load({
           collapse: "Collapse bottom",
         };
         ctx.effect(() => ctx.locale.register("fixtureBottom", { en: labels, zh: labels }));
-        ctx.slots.injecprops.t("shell.bottom", () =>
+        ctx.slots.inject("shell.bottom", () =>
           ctx.slots.register(
             {
               name: "shell.bottom",

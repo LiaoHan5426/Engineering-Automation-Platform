@@ -8,7 +8,7 @@ import {
   shallowReadonly,
   shallowRef,
   toValue,
-  watchEffect,
+  watch,
   type Ref,
 } from "vue";
 import {
@@ -30,7 +30,9 @@ const identity: Select = (value) => value;
  * @param source - getter for the current immutable snapshot source.
  * @returns a setup hook that selects a readonly snapshot ref.
  */
-export function selectorSeat(source: () => HostObservable<unknown> | undefined): (select?: Select, equal?: Equal) => Readonly<Ref<unknown>> {
+export function selectorSeat(
+  source: () => HostObservable<unknown> | undefined,
+): (select?: Select, equal?: Equal) => Readonly<Ref<unknown>> {
   return (select: Select = identity, equal?: Equal) =>
     useObservableSelector(source, () => select, equal);
 }
@@ -43,7 +45,11 @@ export function selectorSeat(source: () => HostObservable<unknown> | undefined):
 export function keyedSeat(
   source: () => KeyedStandardSource | undefined,
   defaultKey: () => string | undefined,
-): (keyOrSelect?: Key | Select, memberOrSelect?: string | Select | Equal, equal?: Equal) => Readonly<Ref<unknown>> {
+): (
+  keyOrSelect?: Key | Select,
+  memberOrSelect?: string | Select | Equal,
+  equal?: Equal,
+) => Readonly<Ref<unknown>> {
   return (keyOrSelect?: Key | Select, memberOrSelect?: string | Select | Equal, equal?: Equal) => {
     const explicit = typeof keyOrSelect === "string" || isRef(keyOrSelect);
     const member = explicit && typeof memberOrSelect === "string" ? memberOrSelect : undefined;
@@ -110,8 +116,8 @@ export function bindSources(
 }
 
 /**
- * A contextual Hook owns a child scope for its current factory/context pair.
- * Replacing the pair disposes its subscriptions before binding the replacement.
+ * A contextual Hook owns a child scope for its factory, context, and framework values.
+ * Equivalent wrappers retain the scope; changed inputs dispose it before rebinding.
  * @param factory - getter for the current contextual hook factory.
  * @param standard - getter for framework-provided values supplied to the factory.
  * @param context - getter for the current contextual value.
@@ -125,34 +131,65 @@ export function contextualSeat(
   return (...args: unknown[]) => {
     const result = shallowRef<Readonly<Ref<unknown>>>();
     let kind: "effect" | "selector" | undefined;
-    watchEffect(
-      (onCleanup) => {
-        const currentFactory = factory();
-        const currentStandard = standard();
-        const currentContext = context();
-        const scope = effectScope();
-        onCleanup(() => {
-          scope.stop();
-        });
-        const selected = scope.run(() => {
-          const hook = currentFactory(currentStandard, currentContext);
-          if (typeof hook !== "function")
-            throw new SlotAssemblyError("contextual hook factory must return a native Vue hook");
-          return (hook as (...params: unknown[]) => unknown)(...args);
-        });
-        if (selected !== undefined && !isRef(selected))
-          throw new SlotAssemblyError("contextual selector hook must return a Vue ref");
-        const nextKind = selected === undefined ? "effect" : "selector";
-        if (kind !== undefined && kind !== nextKind)
-          throw new SlotAssemblyError("contextual hook return kind changed during rebinding");
-        kind = nextKind;
-        result.value = selected;
-      },
-      { flush: "sync" },
-    );
-    onScopeDispose(() => {
+    let activeScope: ReturnType<typeof effectScope> | undefined;
+    let bound:
+      | {
+          factory: ReturnType<typeof factory>;
+          standard: Face;
+          context: unknown;
+        }
+      | undefined;
+    const release = () => {
       result.value = undefined;
-    });
+      const previous = activeScope;
+      activeScope = undefined;
+      bound = undefined;
+      previous?.stop();
+    };
+    onScopeDispose(release);
+    watch(
+      () => ({ factory: factory(), standard: standard(), context: context() }),
+      (current) => {
+        // New props/options wrappers do not change the contextual binding. Only
+        // the factory, context, or individual framework values own its lifetime.
+        const previous = bound;
+        if (
+          previous !== undefined &&
+          Object.is(previous.factory, current.factory) &&
+          Object.is(previous.context, current.context) &&
+          Object.keys(previous.standard).length === Object.keys(current.standard).length &&
+          Object.keys(previous.standard).every(
+            (key) =>
+              Object.hasOwn(current.standard, key) &&
+              Object.is(previous.standard[key], current.standard[key]),
+          )
+        )
+          return;
+        release();
+        const scope = effectScope();
+        activeScope = scope;
+        try {
+          const selected = scope.run(() => {
+            const hook = current.factory(current.standard, current.context);
+            if (typeof hook !== "function")
+              throw new SlotAssemblyError("contextual hook factory must return a native Vue hook");
+            return (hook as (...params: unknown[]) => unknown)(...args);
+          });
+          if (selected !== undefined && !isRef(selected))
+            throw new SlotAssemblyError("contextual selector hook must return a Vue ref");
+          const nextKind = selected === undefined ? "effect" : "selector";
+          if (kind !== undefined && kind !== nextKind)
+            throw new SlotAssemblyError("contextual hook return kind changed during rebinding");
+          kind = nextKind;
+          bound = { ...current, standard: { ...current.standard } };
+          result.value = selected;
+        } catch (error) {
+          release();
+          throw error;
+        }
+      },
+      { flush: "sync", immediate: true },
+    );
     if (kind === "effect") return undefined;
     if (isReadonly(result.value)) return shallowReadonly(computed(() => result.value?.value));
     // Contextual DOM seats own writable refs. Keep one forwarding ref while

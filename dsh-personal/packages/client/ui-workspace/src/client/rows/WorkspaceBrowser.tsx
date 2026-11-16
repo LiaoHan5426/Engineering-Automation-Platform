@@ -673,8 +673,7 @@ const SessionTree = defineComponent(
         workspaceDrag.value?.over?.id === rootGroups.value[0].workspaceId &&
         workspaceDrag.value.over.half === "before",
     );
-    const rowKeys = computed<string[]>(() => (groups.value.length === 0 ? ["empty"] : []));
-    const renderGroup = (group: GroupNode, depth: number): VNodeChild => {
+    const renderGroup = (group: GroupNode, depth: number, rowKeys: string[]): VNodeChild => {
       const workspaceId = group.workspaceId;
       const children = childrenByParent.value.get(group.key) ?? [];
       const compatibleDrag =
@@ -687,13 +686,13 @@ const SessionTree = defineComponent(
       );
       const visible = watermarkRows(group.sessions, watermark);
       const sessionsExpanded = visible.hiddenCount === 0;
-      rowKeys.value.push(`workspace:${group.key}`);
+      rowKeys.push(`workspace:${group.key}`);
       const childRows = group.expanded
-        ? children.map((child) => renderGroup(child, depth + 1))
+        ? children.map((child) => renderGroup(child, depth + 1, rowKeys))
         : [];
       const sessions = visible.rows;
-      for (const node of sessions) rowKeys.value.push(`session:${node.id}`);
-      if (collapsed.hiddenCount > 0) rowKeys.value.push(`overflow:${group.key}`);
+      for (const node of sessions) rowKeys.push(`session:${node.id}`);
+      if (collapsed.hiddenCount > 0) rowKeys.push(`overflow:${group.key}`);
       const workspaceMarker =
         workspaceId !== undefined && workspaceDrag.value?.over?.id === workspaceId
           ? workspaceDrag.value.over.half
@@ -900,13 +899,15 @@ const SessionTree = defineComponent(
         ],
       );
     };
-    const groupRows = computed(() => rootGroups.value.map((group) => renderGroup(group, 0)));
     return () => {
       // Raising during render keeps the watermark monotonic without committing a lower frame first.
       if (sessionWatermarks.value !== storedWatermarks.value)
         storedWatermarks.value = ((marks) => raiseWatermarks(marks, requiredWatermarks.value))(
           storedWatermarks.value,
         );
+      // Complete membership before deferred slots or child animation snapshots run.
+      const rowKeys: string[] = groups.value.length === 0 ? ["empty"] : [];
+      const groupRows = rootGroups.value.map((group) => renderGroup(group, 0, rowKeys));
       return h(
         HoverCardGroup,
         { className: clsx(css.treeBody, css.wide) },
@@ -920,7 +921,7 @@ const SessionTree = defineComponent(
                 className: clsx(css.list, workspaceDropAtListStart.value && css.listTopDropActive),
                 role: "tree",
                 label: props.t("section.sessions"),
-                rowKeys: rowKeys.value,
+                rowKeys,
                 ready:
                   props.list.phase === "ready" && props.workspaceReady && !nativeDragActive.value,
                 resetKey: JSON.stringify([props.animationResetKey, watermarkMotionKey.value]),
@@ -933,7 +934,7 @@ const SessionTree = defineComponent(
                       onLeaveArchivedOnly: props.onLeaveArchivedOnly,
                       t: props.t,
                     }),
-                  groupRows.value,
+                  groupRows,
                 ],
               },
             ),

@@ -57,6 +57,8 @@ kind: "package-reference"
 
 生产客户端入口 `@deepseek-ai/dsh-client-ui-renderer/client` 导出 `useObservableSelector<T, S>(source: () => HostObservable<T> | undefined, selector: () => (snapshot: T) => S, equal?: (left: S, right: S) => boolean): Readonly<ShallowRef<S | undefined>>`。在组件 setup 或其他活动的 Vue effect scope 中调用一次。source 缺失时发布 `undefined` 且不调用 selector；source 存在而快照为 `undefined` 时仍调用 selector。快照与所选值的嵌套成员保留原始身份。初次解析 source 时立即校验。后续 source、快照、selector 或 equality 失败会同步发布，在读取所选 ref 时抛出；成功更新会清除错误。属于当前 scope 的同步 effect 在读取响应式依赖前进入错误保护，使 Vue 能在排队 render 前移除已退役子组件，同时让存活组件的错误继续到达 render 边界。响应式 source 和 selector getter 在所属 scope 内重新绑定，默认以 `Object.is` 判断相等。scope 销毁时释放订阅并拒绝排队的过时发布。导入此非默认 request 的客户端插件在 `dsh.client.external` 中声明其完整 specifier。
 
+Contextual hook 在 factory、hook context 和各项框架输入身份保持不变时保留自己的子 scope。新建 options 或输入包装对象不会重启 effect 或替换可写 DOM 目标。factory、context、框架 key 或框架值变化时，先释放旧 scope 再绑定；替换失败也会释放部分创建的 scope，并清空转发的 DOM 目标。factory 或 hook 内部的读取不会成为绑定依赖。
+
 撤销 registration 会立即使 entry 或 Factory owner 失效。在 Vue 提交 outlet 移除前，仍驻留的 occurrence 停止解析 Store 和 injection face；保留的渲染授权仍会拒绝过时调用。
 
 空白的可选 Session scope 首次接纳会话时不 remount；后续上下文 generation 改变或丢失会创建新的 incarnation。SessionProvider 与 HOC 组件接受原生 default slot。每个已挂载应用拥有独立的 Vue ID 前缀，旧 mount disposer 不能移除替代挂载。卸载失败会传到 mount owner，同时仍释放模块样式。

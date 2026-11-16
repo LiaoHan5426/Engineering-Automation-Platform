@@ -39,6 +39,9 @@ it("expands all JSON containers and array items without object links or collecti
   expect(ui.container.querySelectorAll("details:not([open])")).toHaveLength(0);
   expect(ui.queryByRole("button")).toBeNull();
   expect(ui.queryByText(`${en["object.properties"]}:`)).toBeNull();
+  expect(
+    [...ui.container.querySelectorAll("summary")].slice(0, 4).map((summary) => summary.textContent),
+  ).toEqual(["$:  Object", "data:  Object", "items:  Array(75)", "0:  Object"]);
   const branch = ui.getByText("data:").closest("details")!;
   branch.open = false;
   await fireEvent(branch, new Event("toggle"));
@@ -188,6 +191,7 @@ it("expands Node Data inline but keeps its title navigable and cyclic references
   const ui = await render(h(InspectorObjectTree, { ...props, value: { data } }));
   const link = ui.getByRole("button", { name: "↗ Node data · 1" });
   const branch = link.closest("details")!;
+  expect(branch.querySelector("summary")?.textContent).toBe("data: ↗ Node data · 1 Object");
   expect(branch.open).toBe(false);
   expect(ui.queryByText('"inline node data"')).toBeNull();
   branch.open = true;

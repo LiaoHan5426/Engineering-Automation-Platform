@@ -1950,6 +1950,74 @@ describe("WorkspaceBrowser", () => {
     expect(screen.queryByRole("button", { name: "工作区“未分组”的操作" })).toBeNull();
     expect(screen.queryByRole("button", { name: "在“未分组”中新建会话" })).toBeNull();
   });
+  it("keeps retained Ungrouped rows out of the exit overlay across publications and view updates", async () => {
+    const originalAnimate = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "animate");
+    const animations: { element: HTMLElement; animation: Animation }[] = [];
+    const measure = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        const rows = this.closest('[role="tree"]')?.querySelectorAll("[data-row-key]");
+        const index = rows === undefined ? 0 : Math.max(0, Array.from(rows).indexOf(this));
+        return this.dataset.rowKey === undefined
+          ? new DOMRect(0, 0, 240, 600)
+          : new DOMRect(0, index * 34, 240, 32);
+      });
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent: () => true,
+    }));
+    Object.defineProperty(HTMLElement.prototype, "animate", {
+      configurable: true,
+      value(this: HTMLElement): Animation {
+        const methods: Pick<Animation, "onfinish" | "cancel"> = { onfinish: null, cancel: vi.fn() };
+        const animation = methods as Animation;
+        animations.push({ element: this, animation });
+        return animation;
+      },
+    });
+    try {
+      const sessions = shallowRef(sessionState([summary("loose", 1), summary("leaving", 0)]));
+      const workspaces = shallowRef(workspaceState([workspace("alpha", [])]));
+      const b = await mount({
+        useSessions: (selector) => computed(() => selector(sessions.value)),
+        useWorkspaces: (selector) => computed(() => selector(workspaces.value)),
+      });
+      const tree = screen.getByRole("tree", { name: "会话" });
+      await fireEvent.pointerDown(tree);
+      // Two publications exercise both the prior committed key set and the next snapshot.
+      for (let index = 0; index < 2; index++) {
+        await act(() => {
+          sessions.value = sessionState([summary("loose", index + 2), summary("leaving", 0)]);
+        });
+        expect(screen.getAllByText("未分组")).toHaveLength(1);
+        expect(animations.filter((call) => call.element.inert)).toHaveLength(0);
+      }
+      const group = screen.getByText("未分组").closest('[role="treeitem"]');
+      await act(() => b.store.actions.setGroupExpanded(UNGROUPED_KEY, false));
+      await act(() => b.store.actions.setGroupExpanded(UNGROUPED_KEY, true));
+      expect(screen.getByText("未分组").closest('[role="treeitem"]')).toBe(group);
+      expect(screen.getByText("leaving")).toBeTruthy();
+      await rerender(b, { t: makeTranslate(zh, commonZh) });
+      expect(screen.getAllByText("未分组")).toHaveLength(1);
+      expect(
+        animations.filter(
+          (call) => call.element.inert && call.element.textContent?.includes("未分组"),
+        ),
+      ).toHaveLength(0);
+    } finally {
+      cleanup();
+      measure.mockRestore();
+      vi.unstubAllGlobals();
+      if (originalAnimate === undefined) Reflect.deleteProperty(HTMLElement.prototype, "animate");
+      else Object.defineProperty(HTMLElement.prototype, "animate", originalAnimate);
+    }
+  });
   it("keeps an already-expanded group when the selection moves within it", async () => {
     const first = sessionState([summary("a", 2), summary("b", 1)], { main: sid("a") });
     const b = await mount({

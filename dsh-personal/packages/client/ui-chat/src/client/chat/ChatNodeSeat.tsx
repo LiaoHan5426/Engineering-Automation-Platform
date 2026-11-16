@@ -167,8 +167,9 @@ export const ChatNodeSeat = defineComponent(
     };
     const wrapperRef = props.useGroupAction(processHidden, revealProcess);
     const disclosureReset = createSnapshotStore(0);
+    const turnData = computed(() => turnDataOf(node.value));
     const hookContext = computed<ChatNodeHookContext>(() => ({
-      turnData: turnDataOf(node.value),
+      turnData: turnData.value,
       disclosureReset,
       useGroupAction: props.useGroupAction,
     }));

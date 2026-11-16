@@ -1,4 +1,4 @@
-import { h, defineComponent } from "vue";
+import { h, defineComponent, nextTick } from "vue";
 /** Shared model fields and actions for both adapter catalog editors. */
 import {
   IconChevronDownOutlineRegular,
@@ -155,7 +155,25 @@ export const ModelRow = defineComponent(
                       if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
                       event.preventDefault();
                       event.stopPropagation();
+                      const handle = event.currentTarget;
+                      const focused =
+                        handle instanceof HTMLButtonElement &&
+                        handle.ownerDocument.activeElement === handle;
                       props.order.onMove(event.key === "ArrowUp" ? -1 : 1);
+                      if (focused)
+                        void nextTick(() => {
+                          const doc = handle.ownerDocument;
+                          // Moving a keyed row can blur its retained handle during DOM insertion.
+                          if (
+                            !handle.isConnected ||
+                            handle.disabled ||
+                            !doc.hasFocus() ||
+                            doc.activeElement !== doc.body
+                          )
+                            return;
+                          handle.focus({ preventScroll: true });
+                          handle.scrollIntoView({ block: "nearest" });
+                        });
                     },
                   },
                   h(IconDragHandleOutlineRegular, { size: 14 }),
