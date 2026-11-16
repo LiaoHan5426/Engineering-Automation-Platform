@@ -40,7 +40,7 @@ describe('Web development entry', () => {
     const port = await freePort()
     try {
       const probeModule = fileURLToPath(new URL('./support/listen-probe.mjs', import.meta.url))
-      const result = await execa(join(WEB_ROOT, 'node_modules/.bin/vite'), ['--host', '127.0.0.1', '--port', String(port)], {
+      const result = await execa(join(WEB_ROOT, 'node_modules/.bin/vp'), ['dev', '--host', '127.0.0.1', '--port', String(port)], {
         cwd: WEB_ROOT,
         reject: false,
         timeout: 10_000,

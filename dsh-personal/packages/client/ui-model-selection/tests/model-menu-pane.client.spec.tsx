@@ -103,6 +103,62 @@ it("dispatches a keyed page and returns focus to its invoking summary on Escape"
   expect(change).not.toHaveBeenCalled();
   expect(select).not.toHaveBeenCalled();
 });
+it("keeps the owned return focus when removing its focused detail control emits a null blur", async () => {
+  const { trigger } = await setup();
+  await act(() => fireEvent.click(screen.getByRole("menuitem", { name: "Fixture settings" })));
+  const toggle = screen.getByRole("switch");
+  expect(document.activeElement).toBe(toggle);
+  let removalBlur = 0;
+  const removeChild = Node.prototype.removeChild;
+  const removal = vi.spyOn(Node.prototype, "removeChild").mockImplementation(function <
+    T extends Node,
+  >(this: Node, child: T): T {
+    if (child.contains(toggle)) {
+      // Chromium dispatches this while the old control is still connected, after
+      // back() changes pane state and before Vue's post watcher restores focus.
+      expect(toggle.isConnected).toBe(true);
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
+      removalBlur++;
+      toggle.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
+    }
+    return removeChild.call(this, child) as T;
+  });
+  try {
+    await act(() => fireEvent.keyDown(toggle, { key: "Escape" }));
+    expect(removalBlur).toBe(1);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const summary = screen.getByRole("menuitem", { name: "Fixture settings" });
+    expect(document.activeElement).toBe(summary);
+    await act(() => fireEvent.keyDown(summary, { key: "Escape" }));
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  } finally {
+    removal.mockRestore();
+  }
+});
+it("closes immediately for an outside focus target during a pending pane return", async () => {
+  const { trigger } = await setup();
+  await act(() => fireEvent.click(screen.getByRole("menuitem", { name: "Fixture settings" })));
+  const toggle = screen.getByRole("switch");
+  await act(() => {
+    fireEvent.keyDown(toggle, { key: "Escape" });
+    toggle.dispatchEvent(
+      new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }),
+    );
+    expect(trigger.getAttribute("aria-expanded")).toBe("true"); // DOM is not committed yet.
+  });
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+});
+it("closes a settled root menu on a null blur without a pending pane handoff", async () => {
+  const { trigger } = await setup();
+  await act(() => fireEvent.click(screen.getByRole("menuitem", { name: "Fixture settings" })));
+  await act(() => fireEvent.keyDown(screen.getByRole("switch"), { key: "Escape" }));
+  await act(() => {
+    screen
+      .getByRole("menuitem", { name: "Fixture settings" })
+      .dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
+  });
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+});
 it("keeps focus on the page surface when the page places none, so Escape still returns", async () => {
   await setup(false);
   await act(() => fireEvent.click(screen.getByRole("menuitem", { name: "Fixture settings" })));

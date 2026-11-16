@@ -120,8 +120,11 @@ export async function expectWrappedCommandText(
         await page.mouse.wheel(0, await scrollport.evaluate(element => element.scrollHeight))
         await expect.poll(async () => (await geometry()).tail.y < viewport.y + viewport.height).toBe(true)
       }
-      const end = await geometry()
-      await page.mouse.move(end.tail.x - 0.1, end.tail.y, { steps: 5 })
+      await expect.poll(async () => {
+        const end = await geometry()
+        await page.mouse.move(end.tail.x - 0.1, end.tail.y)
+        return page.evaluate(() => document.getSelection()?.toString())
+      }).toBe(expected)
     } finally {
       await page.mouse.up()
     }

@@ -2286,10 +2286,10 @@ describe("Mock detail metrics shared with the task list", () => {
     // The Plugins page's macOS head clearance above that same row inset, so the
     // heading clears the hiddenInset titlebar and keeps the 76px total offset.
     expect(stylesheet).toMatch(
-      /\[data-platform='darwin'\][^{]*\.pageHeading\s*\{[^}]*padding-top:\s*calc\(28px \+ var\(--dsh-frame-top-clearance, 0px\)\);/,
+      /\[data-platform=(["'])darwin\1\][^{]*\.pageHeading\s*\{[^}]*padding-top:\s*calc\(28px \+ var\(--dsh-frame-top-clearance, 0px\)\);/,
     );
     // The column keeps no top inset of its own, on either platform.
-    expect(stylesheet).not.toMatch(/\[data-platform='darwin'\][^{]*\.pageContent\s*\{/);
+    expect(stylesheet).not.toMatch(/\[data-platform=(["'])darwin\1\][^{]*\.pageContent\s*\{/);
     // The Plugins toolbar's Add-plugin capsule, repeated by the creation action.
     expect(rule("creationActions")).toMatch(/gap:\s*16px;/);
     // The New action and the bulk cleanup share this capsule geometry.

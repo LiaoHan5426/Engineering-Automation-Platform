@@ -10,9 +10,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
-import { expect, it, onTestFinished } from 'vitest'
+import { afterAll, beforeAll, expect, it, onTestFinished } from 'vitest'
+import { isolateGitCommandLineConfig } from '../../../packages/boot/plugin-manager/tests/git-environment.ts'
 import { launchWebScaffold, captureStableAria, compareOrRefreshGolden, webSnapshotMode, watchConsole } from './scaffold.ts'
 import { ZH_BROWSER_LOCALE } from './support.ts'
+
+// The controlled proxy must receive Git's request without inherited command-line configuration.
+let restoreGitCommandLineConfig: () => void
+beforeAll(() => { restoreGitCommandLineConfig = isolateGitCommandLineConfig() })
+afterAll(() => { restoreGitCommandLineConfig() })
 
 it.each(['network', 'timeout'] as const)('offers a mirror after a GitHub %s, then another way on the mirror, and waits for replacement input', async (failure) => {
   const scratch = await mkdtemp(join(tmpdir(), 'dsh-install-github-'))

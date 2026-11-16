@@ -73,7 +73,9 @@ it('replays highlighted Python stubs, PowerShell and CSV reads with their docume
       const viewer = preview.locator('[data-document-viewer-menu]')
       if (file.name === 'table.csv') {
         await expect.poll(() => viewer.innerText()).toBe('Spreadsheet')
-        await preview.locator('[data-excel-preview] canvas').first().waitFor()
+        const workbook = preview.locator('[data-excel-preview]').frameLocator('iframe').locator('#workbook')
+        await workbook.locator('#luckysheetTableContent').waitFor()
+        await expect.poll(() => workbook.locator('#luckysheetloadingdata').isVisible()).toBe(false)
         await viewer.click()
         await page.getByRole('menuitem', { name: 'Code', exact: true }).click()
       }

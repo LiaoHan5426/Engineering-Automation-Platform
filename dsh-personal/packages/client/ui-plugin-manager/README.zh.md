@@ -132,7 +132,7 @@ ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
 
 ### 注册
 
-页面使用原生 Vue 组件。框架快照席位在 setup 中绑定一次，返回只读浅层 ref；渲染函数读取 `.value`，不把 Host 事实复制为组件状态。语言变化会刷新解析后的元信息，菜单使用原生 anchor/default slot，对话框使用原生 footer slot 与随作用域销毁的 Teleport。控制器和声明的 store 继续拥有目录、安装、取消、恢复与权限状态。
+页面使用原生 Vue 组件。每次渲染列表时，官方配置卡片都根据当前账本创建新的 VNode，从详情页返回列表时不会复用已卸载的卡片。框架快照席位在 setup 中绑定一次，返回只读浅层 ref；渲染函数读取 `.value`，不把 Host 事实复制为组件状态。语言变化会刷新解析后的元信息，菜单使用原生 anchor/default slot，对话框使用原生 footer slot 与随作用域销毁的 Teleport。控制器和声明的 store 继续拥有目录、安装、取消、恢复与权限状态。
 
 Host 入口通过生成的 Remote 接口暴露 `pluginRegistryProbe.fastest()`，共享进行中的比较、让缓存按时过期，并在卸载时中止和等待未完成探测。卸载后调用会返回拒绝的 Promise。
 

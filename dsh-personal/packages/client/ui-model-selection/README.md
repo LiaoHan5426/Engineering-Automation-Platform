@@ -73,7 +73,7 @@ Menus use the shared `MenuSurface` material, including the macOS backing for bac
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The composer seat is a native Vue component. Its injected `useDirectory` binding reads the shared directory as a readonly ref; pane, search, highlight, and focus state stay local to the component. `Teleport` mounts the menu under the document body.
+The composer seat is a native Vue component. Its injected `useDirectory` binding reads the shared directory as a readonly ref; pane, search, highlight, and focus state stay local to the component. `Teleport` mounts the menu under the document body. During a pane change, the existing pending focus intent owns the handoff until the post-render focus watcher runs. A null-target blur emitted while the browser removes the old focused control leaves that handoff intact; an explicit outside focus target still closes the menu immediately. Closing the menu clears the pending intent.
 
 The composer `ModelSelect` and `/model` option builder share [provider ordering](src/client/provider-order.ts), while both searches use the shared [text search](../../util/text-search/README.md) within each provider. The command supplies optional groups through the [popupSelect API](../ui-commands/README.md#use-this-package); both entries use `MenuGroup` and rebuild its sticky observer when the rendered groups change. The command popup fills the composer overlay, while the button retains its compact menu.
 

@@ -148,7 +148,7 @@ const SessionScheduleCatalog = defineComponent(
       open.value = false;
       triggerRef.value?.focus();
     };
-    const trigger = computed(() =>
+    const renderTrigger = () =>
       h(
         "button",
         {
@@ -169,9 +169,8 @@ const SessionScheduleCatalog = defineComponent(
           },
         },
         [h(IconClockOutlineRegular, { size: 16 })],
-      ),
-    );
-    const catalog = computed(() =>
+      );
+    const renderCatalog = () =>
       open.value
         ? h(Teleport, { to: document.body }, [
             h(
@@ -275,8 +274,7 @@ const SessionScheduleCatalog = defineComponent(
               ],
             ),
           ])
-        : null,
-    );
+        : null;
     return () => {
       if (!visible.value) return null;
       // Show the entry only once it has something to open, or a failed read to
@@ -284,8 +282,8 @@ const SessionScheduleCatalog = defineComponent(
       // answer then removes, which reads as a flash in the header.
       if (records.value.length === 0 && status.value !== "error") return null;
       return h("div", { ref: rootRef, class: css.root, onKeydown: onKeyDown }, [
-        trigger.value,
-        catalog.value,
+        renderTrigger(),
+        renderCatalog(),
       ]);
     };
   },

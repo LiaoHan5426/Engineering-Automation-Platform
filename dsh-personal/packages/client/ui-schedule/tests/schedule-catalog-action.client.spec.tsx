@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { liveFixtureProps } from "./vue-render.client.ts";
-import { h as vueH, Fragment, computed, defineComponent } from "vue";
+import { h as vueH, Fragment, computed, defineComponent, shallowRef } from "vue";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { act, cleanup, fireEvent, render, screen, within } from "./vue-render.client.ts";
@@ -375,6 +375,46 @@ describe("ScheduleCatalogAction visibility", () => {
   });
 });
 describe("ScheduleCatalogAction positioning", () => {
+  it("keeps DOM refs owned while opening and refreshing the catalog before a parent resize", async () => {
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const initial = props([entry("active", START + 60000), entry("next", START + 120000)]);
+    const catalog = shallowRef<CatalogSnapshot<Entry>>({
+      records: [entry("active", START + 60000), entry("next", START + 120000)],
+      status: "ready",
+      deleting: [],
+      settled: true,
+      readRequest: 1,
+      readSettled: 1,
+    });
+    const narrow = shallowRef(false);
+    const Parent = defineComponent(
+      () => () =>
+        vueH("section", { style: { width: narrow.value ? "360px" : "900px" } }, [
+          vueH(NativeScheduleCatalogAction, {
+            ...initial,
+            useCatalog: (select) => computed(() => select(catalog.value)),
+          }),
+        ]),
+    );
+    const view = render(vueH(Parent));
+    const trigger = screen.getByRole("button", { name: "2 automation tasks" });
+    await fireEvent.click(trigger);
+    await act(() => {
+      catalog.value = {
+        ...catalog.value,
+        records: [...catalog.value.records, entry("third", START + 180000)],
+      };
+      narrow.value = true;
+    });
+    expect(screen.getByRole("list", { name: en["list.aria"] }).parentElement).toBe(document.body);
+    expect(screen.getByRole("button", { name: "3 automation tasks" })).toBe(trigger);
+    screen.getByRole("button", { name: initial.t("list.open", { title: "third" }) }).focus();
+    await fireEvent.keyDown(screen.getByRole("list", { name: en["list.aria"] }), { key: "Escape" });
+    expect(screen.queryByRole("list", { name: en["list.aria"] })).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    view.unmount();
+    expect(warnings.mock.calls.flat().join("\n")).not.toContain("Missing ref owner context");
+  });
   it("portals the catalog to the body and binds it to the trigger CSS anchor", async () => {
     const active = [entry("active", START + 60000), entry("next", START + 120000)];
     const view = render(vueH(ScheduleCatalogAction, { ...props(active) }));

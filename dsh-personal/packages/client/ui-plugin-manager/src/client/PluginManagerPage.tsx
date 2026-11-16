@@ -3718,19 +3718,16 @@ export const PluginManagerPage = defineComponent(
           setBundleEnabled(pkg.name, enabled);
         },
       });
-    const basicCards = computed(() =>
-      ledger.value.items.map((item) =>
-        h(ItemCard, {
-          key: `item:${item.id}`,
-          item: item,
-          t: t.value,
-          renderSlot: renderSlot.value,
-          onOpen: () => {
-            setView.value({ kind: "item", id: item.id });
-          },
-        }),
-      ),
-    );
+    const basicItemCard = (item: OfficialItem): VNodeChild =>
+      h(ItemCard, {
+        key: `item:${item.id}`,
+        item: item,
+        t: t.value,
+        renderSlot: renderSlot.value,
+        onOpen: () => {
+          setView.value({ kind: "item", id: item.id });
+        },
+      });
     const renderGroup = (
       id: "basic" | "extensions" | "bundles",
       heading: string,
@@ -4306,7 +4303,7 @@ export const PluginManagerPage = defineComponent(
                   })
                 : null,
               loaded.value && installedCards.value
-                ? basicCards.value.length === 0 &&
+                ? ledger.value.items.length === 0 &&
                   official.value.length === 0 &&
                   mine.value.length === 0 &&
                   state.value.status !== "error"
@@ -4352,7 +4349,11 @@ export const PluginManagerPage = defineComponent(
                               ],
                             )
                           : h(Fragment, null, [
-                              renderGroup("basic", t.value("basicTitle"), basicCards.value),
+                              renderGroup(
+                                "basic",
+                                t.value("basicTitle"),
+                                ledger.value.items.map(basicItemCard),
+                              ),
                               renderGroup(
                                 "extensions",
                                 t.value("extensionsTitle"),

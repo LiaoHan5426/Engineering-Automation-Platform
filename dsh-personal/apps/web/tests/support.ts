@@ -189,7 +189,7 @@ export function pinHostClock(): MockInstance<typeof Date.now> {
 }
 
 /**
- * Pin a scenario page's calendar to the shared fixture day, advancing with real
+ * Pin a scenario page's calendar to its fixture day, advancing with real
  * time. Pair it with {@link pinHostClock} for a scenario that stamps its own
  * message times, and with `seedSession`'s `createdAt` for a seeded one.
  *
@@ -204,10 +204,11 @@ export function pinHostClock(): MockInstance<typeof Date.now> {
  * override is installed for every later document and on the current one, and
  * stays until the page closes.
  * @param page - page whose calendar is pinned.
+ * @param time - scenario calendar timestamp; defaults to the shared fixture time.
  */
-export async function pinBrowserClock(page: Page): Promise<void> {
+export async function pinBrowserClock(page: Page, time = WEB_FIXTURE_TIME): Promise<void> {
   // The worker's `new Date()` keeps the real clock even when `Date.now` is pinned.
-  const offset = WEB_FIXTURE_TIME - new Date().getTime();
+  const offset = time - new Date().getTime();
   const install = (offset: number): void => {
     const NativeDate = Date;
     const now = (): number => NativeDate.now() + offset;

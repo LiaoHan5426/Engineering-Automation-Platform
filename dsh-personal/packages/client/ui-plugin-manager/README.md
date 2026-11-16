@@ -132,7 +132,7 @@ Package management uses the profile's dependency records: installed bundles can 
 
 ### Registration
 
-The page uses native Vue components. Framework snapshot seats bind once during setup and expose readonly shallow refs; render functions read `.value` without copying Host facts into component state. Locale changes refresh resolved metadata, menus use native anchor/default slots, and dialogs use native footer slots and scoped Teleports. The controller and declared stores retain catalog, installation, cancellation, recovery, and permission ownership.
+The page uses native Vue components. Official configuration cards create fresh VNodes from the current ledger on each list render, so returning from a detail page never reuses an unmounted card. Framework snapshot seats bind once during setup and expose readonly shallow refs; render functions read `.value` without copying Host facts into component state. Locale changes refresh resolved metadata, menus use native anchor/default slots, and dialogs use native footer slots and scoped Teleports. The controller and declared stores retain catalog, installation, cancellation, recovery, and permission ownership.
 
 The Host entry exposes `pluginRegistryProbe.fastest()` through the generated Remote interface. It shares pending comparisons, expires cached results, and aborts and awaits outstanding probes on unload. Calls after unload return a rejected Promise.
 

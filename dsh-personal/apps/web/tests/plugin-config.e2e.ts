@@ -132,6 +132,16 @@ describe('web e2e: plugin configuration pages', () => {
     await page.keyboard.press('Space')
     expect(await extensions.getByRole('list').isVisible()).toBe(true)
     expect(await panel.locator('[data-plugin-group="more"]').count()).toBe(0)
+    for (let visit = 0; visit < 2; visit++) {
+      expect(await basic.locator(':scope > ul > li').evaluateAll(cards => cards.map(card => card.getAttribute('data-plugin-item'))))
+        .toEqual(['subagent', 'web-search', 'agent-loop', 'shell'])
+      await openPage(panel, '终端')
+      await panel.getByLabel('命令超时（毫秒）').waitFor()
+      await panel.getByRole('button', { name: '返回插件', exact: true }).click()
+      await basic.getByRole('button', { name: '查看 终端', exact: true }).waitFor()
+      expect(await basic.locator(':scope > ul > li').evaluateAll(cards => cards.map(card => card.getAttribute('data-plugin-item'))))
+        .toEqual(['subagent', 'web-search', 'agent-loop', 'shell'])
+    }
     await more.click()
     await page.reload({ waitUntil: 'load' })
     await openPlugins()

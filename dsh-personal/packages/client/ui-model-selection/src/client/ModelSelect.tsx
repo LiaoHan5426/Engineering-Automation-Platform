@@ -383,6 +383,7 @@ export const ModelSelect = defineComponent(
       setHighlightedIndex(0);
     };
     const close = (restoreFocus = false): void => {
+      paneFocus.value = null;
       setOpen(false);
       setPane(ROOT_PANE);
       if (restoreFocus)
@@ -525,8 +526,13 @@ export const ModelSelect = defineComponent(
       }
     };
     const onBlur = (event: FocusEvent): void => {
-      // Clicking explanation text can clear focus without leaving its page.
-      if (pane.value.kind === "detail" && event.relatedTarget === null) return;
+      // Removing a focused pane control can blur before the post watcher restores
+      // focus. Explanation text can also clear focus without leaving its page.
+      if (
+        event.relatedTarget === null &&
+        (paneFocus.value !== null || pane.value.kind === "detail")
+      )
+        return;
       if (
         event.relatedTarget instanceof Node &&
         (rootRef.value?.contains(event.relatedTarget) === true ||

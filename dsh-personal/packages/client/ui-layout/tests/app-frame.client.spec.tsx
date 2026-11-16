@@ -240,6 +240,43 @@ describe('AppFrame', () => {
     }
   })
 
+  it('re-reads platform markers on measured resizes without replacing sidebar content', async () => {
+    const { frame, getByTestId, sidebarOwner } = await mountFrame()
+    const sidebar = getByTestId('sidebar-content')
+    await resize(520)
+    expect(sidebarOwner().drawer).toBe(true)
+    try {
+      document.documentElement.setAttribute('data-windows-titlebar', '')
+      await resize(521)
+      expect(sidebarOwner()).toMatchObject({ drawer: false, collapsed: true, width: 0 })
+      expect(frame.style.getPropertyValue('--dsh-windows-sidebar-width')).toBe('0px')
+      expect(frame.querySelector('[data-shell-leading]')).toBeNull()
+      expect(getByTestId('sidebar-content')).toBe(sidebar)
+
+      document.documentElement.removeAttribute('data-windows-titlebar')
+      document.documentElement.dataset.platform = 'darwin'
+      await resize(520)
+      expect(sidebarOwner().drawer).toBe(true)
+      expect(frame.style.getPropertyValue('--dsh-windows-sidebar-width')).toBe('')
+      expect(frame.querySelector('[data-shell-leading]')).not.toBeNull()
+      expect(getByTestId('sidebar-content')).toBe(sidebar)
+
+      await resize(1000)
+      expect(sidebarOwner()).toMatchObject({ drawer: false, collapsed: true, width: 0 })
+      expect(frame.querySelector('[data-shell-leading]')).not.toBeNull()
+      expect(getByTestId('sidebar-content')).toBe(sidebar)
+
+      delete document.documentElement.dataset.platform
+      await resize(1001)
+      expect(sidebarOwner()).toMatchObject({ drawer: false, collapsed: true, width: 56 })
+      expect(frame.querySelector('[data-shell-leading]')).toBeNull()
+      expect(getByTestId('sidebar-content')).toBe(sidebar)
+    } finally {
+      document.documentElement.removeAttribute('data-windows-titlebar')
+      delete document.documentElement.dataset.platform
+    }
+  })
+
   it('keeps the closed sidebar mounted at its 56px rail without a handle', async () => {
     const { frame, instance, sidebarOwner, getByTestId, queryByTestId } = await mountFrame()
     await act(async () => { instance.actions.toggleSidebar() })

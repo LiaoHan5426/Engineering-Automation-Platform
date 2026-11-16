@@ -73,7 +73,7 @@ composer 菜单中的模型名称和推理等级均使用 400（regular）字重
 <details>
 <summary>实现细节——点击展开</summary>
 
-composer 模型入口使用原生 Vue 组件。注入的 `useDirectory` 绑定以只读 ref 读取共享目录；面板、搜索、高亮和焦点状态保留在组件内。`Teleport` 将菜单挂载到文档 body 下。
+composer 模型入口使用原生 Vue 组件。注入的 `useDirectory` 绑定以只读 ref 读取共享目录；面板、搜索、高亮和焦点状态保留在组件内。`Teleport` 将菜单挂载到文档 body 下。切换面板时，现有待处理焦点意图负责交接，直到渲染后的焦点 watcher 执行。浏览器移除旧聚焦控件时发出的空目标失焦事件不会中断这次交接；明确指向菜单外部的焦点目标仍会立即关闭菜单。关闭菜单时清除待处理意图。
 
 composer 的 `ModelSelect` 与 `/model` 选项构建器共用[提供方排序](src/client/provider-order.ts)，两个搜索框均在每个提供方内使用共享的[文本搜索](../../util/text-search/README.zh.md)。命令通过 [popupSelect API](../ui-commands/README.zh.md#use-this-package) 提供可选分组；两个入口均使用 `MenuGroup`，并在渲染分组变化时重建其吸顶观察器。命令弹窗撑满 composer 浮层，按钮则保留紧凑菜单。
 

@@ -36,7 +36,7 @@ import {
   webSnapshotMode,
   type WebScaffold,
 } from './scaffold.ts'
-import { openSettings, expandTurnProcesses, newEnglishPage, saveFailureShot } from './support.ts'
+import { openSettings, expandTurnProcesses, newEnglishPage, pinBrowserClock, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('./expected/clickable-links-gallery', import.meta.url))
 const UI_EXPECTED = fileURLToPath(new URL('./expected/clickable-links-gallery/ui.expected.md', import.meta.url))
@@ -335,7 +335,7 @@ describe('web e2e: clickable links gallery', () => {
       contentType: 'text/html',
       body: `<h1>${new URL(route.request().url()).pathname}</h1>`,
     }))
-    await page.clock.setFixedTime(GALLERY_TIME + 60_000)
+    await pinBrowserClock(page, GALLERY_TIME + 60_000)
     tripwire = watchConsole(page)
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })

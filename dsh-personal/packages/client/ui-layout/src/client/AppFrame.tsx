@@ -83,10 +83,11 @@ export const AppFrame = defineComponent((props: AppFrameProps) => {
   let rightbarBase = 0
   let timer: ReturnType<typeof setTimeout> | undefined
   let disposeMeasurement = () => {}
-  const windowsTitlebar = document.documentElement.hasAttribute('data-windows-titlebar')
-  const darwin = document.documentElement.dataset.platform === 'darwin'
   const geometry = computed(() => {
     const info = layout.value
+    // Platform markers can change before a measured viewport publication.
+    const windowsTitlebar = document.documentElement.hasAttribute('data-windows-titlebar')
+    const darwin = document.documentElement.dataset.platform === 'darwin'
     const viewport = info.viewportWidth
     const narrow = viewport < SIDEBAR_AUTO_COLLAPSE
     const drawer = viewport < SIDEBAR_DRAWER_BREAKPOINT && !windowsTitlebar
@@ -97,7 +98,7 @@ export const AppFrame = defineComponent((props: AppFrameProps) => {
     const collapsedWidth = drawer || darwin || windowsTitlebar ? 0 : SIDEBAR_COLLAPSED
     const normal = computeColumns(viewport, !info.rightbarShown && narrow ? 0 : sidebarPreference, rightbarPreference, collapsedWidth, centeredSidebar)
     const cols = computeColumns(viewport, drawer ? 0 : sidebarPreference, info.rightbarTrack ? rightbarPreference : 0, collapsedWidth, centeredSidebar)
-    return { viewport, drawer, centeredSidebar, collapsed, normal, cols,
+    return { viewport, windowsTitlebar, darwin, drawer, centeredSidebar, collapsed, normal, cols,
       toggle: `${collapsed}:${info.rightbarTrack}:${centeredSidebar}`,
       sidebarWidth: drawer ? Math.min(info.sidebar || SIDEBAR_DEFAULT, Math.max(0, viewport - 48)) : cols.sidebar,
       rightbarMax: cols.rightbar === 0 ? 0 : clampWidth(rightbarPreference, RIGHTBAR_MIN, viewport * RIGHTBAR_MAX_RATIO),
@@ -140,7 +141,7 @@ export const AppFrame = defineComponent((props: AppFrameProps) => {
   const endDrag = () => { dragging.value = false }
   return () => {
     const info = layout.value
-    const { viewport, drawer, centeredSidebar, collapsed, normal, cols, sidebarWidth, rightbarMax } = geometry.value
+    const { viewport, windowsTitlebar, darwin, drawer, centeredSidebar, collapsed, normal, cols, sidebarWidth, rightbarMax } = geometry.value
     const drawerOpen = drawer && !collapsed
     const inert = drawerOpen ? '' : undefined
     return h('div', {
