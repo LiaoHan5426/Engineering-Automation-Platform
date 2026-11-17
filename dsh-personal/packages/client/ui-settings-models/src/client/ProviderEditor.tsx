@@ -1,0 +1,894 @@
+import { h, Fragment, shallowRef, defineComponent, watch } from 'vue'
+import type { VNodeChild } from 'vue'
+/**
+ * One provider's editor card, hand-written per adapter family: the primary
+ * field is a single write-only **API key** input (the page never asks for an
+ * environment-variable name — a typed key stores through `credentials/set`
+ * under the profile's reference, deriving `<ROUTE>_API_KEY` when the profile
+ * has none. The pi-ai profile records that derivation as `apiKeyEnv` only when
+ * a key is entered; a blank key materializes a reference-free profile for
+ * provider-native authentication);
+ * the collapsed 自定义设置 area carries the per-family extras (`baseURL` and
+ * `retryPolicy` for both families, DeepSeek's id/name/context-window model
+ * catalog, and the display name and wire protocol of a pi-ai route the
+ * adapter does not ship — the two fields the create card asked that route
+ * for, editable here for the same reason).
+ * Reasoning effort is deliberately absent: it is a per-MODEL capability, and
+ * the models under one provider disagree about it, so a provider-scoped
+ * control can only be set to a value some of them reject. The composer's
+ * model picker offers each model its own levels; `cordis.patch.yml` keeps the
+ * profile field for a deployment that knows its route. Everything else stays
+ * owned by `cordis.patch.yml`. Profile edits land as minimal `settings.mutate`
+ * path ops against the stored section — the card names only the fields it can
+ * see instead of rebuilding the whole subtree from a partial descriptor.
+ */
+import type {
+  CredentialInfo,
+  LlmNativeAuth,
+  SettingsNamespaceView,
+  SettingsPathOpView,
+} from '@deepseek-ai/dsh-api-remotes/client'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
+import {
+  DeepSeekModelsEditor,
+  modelDrafts,
+  validateDeepSeekModels,
+} from './DeepSeekModelsEditor.tsx'
+import type { DeepSeekModelsValidationFailure } from './DeepSeekModelsEditor.tsx'
+import { apiKeyFailure } from './apiKey.ts'
+import { EditorFooter } from './EditorFooter.tsx'
+import { ModelListEditor } from './ModelListEditor.tsx'
+import { validateReasoningEfforts } from './ModelReasoningEfforts.tsx'
+import type { ReasoningEffortsFailure } from './ModelReasoningEfforts.tsx'
+import { deriveKeyRef, protocolChoices, reasoningLevelChoices } from './store.ts'
+import { protocolLabel } from './protocol-label.ts'
+import { protocolNeedsKey, protocolReasoningLevels } from './protocol-rules.ts'
+import type { ModelsOperations } from './operations.ts'
+import type { SettingsSchemaOperations } from './schema-operations.ts'
+import type { en } from './locales.ts'
+import { ApiKeyInput } from './ApiKeyInput.tsx'
+import {
+  RetryPolicyEditor,
+  retryPolicyDefaults,
+  retryPolicyFailure,
+} from './RetryPolicyEditor.tsx'
+import styles from './ModelsSection.module.css'
+/** Per-adapter-family curated field sets (unknown namespaces get the hint alone). */
+type EditorLayout = 'deepseek' | 'pi-ai' | 'unknown'
+/** Props of {@link ProviderEditor}. */
+export interface ProviderEditorProps {
+  /** Provider route id. */
+  provider: string
+  /** Display name for the card title. */
+  displayName: string
+  /** Hide the title row (the add card renders its own provider select). */
+  hideTitle?: boolean
+  /**
+   * Whether the adapter reports this route as hand-declared — absent from its
+   * installed catalog. Such a route carries its own wire protocol, chosen when
+   * it was created and editable here for the same reason; a catalog route's
+   * models each carry theirs, so a route-level protocol there could only
+   * override every one of them and the card does not offer it.
+   */
+  declared?: boolean
+  /** The owning namespace view (schema, layers, secrets). */
+  namespace: SettingsNamespaceView
+  /** Settings-owned synchronous schema and immutable path operations. */
+  schema: SettingsSchemaOperations
+  /** Path from the section root to this provider's profile. */
+  settingsPath: readonly string[]
+  /** The Host operations this card writes and interrogates through. */
+  operations: ModelsOperations
+  /** Endpoint the route uses when its profile sets no `baseURL`; absent when the adapter reports none. */
+  defaultBaseURL?: string
+  /** Environment variables used by the provider to construct its endpoint. */
+  baseURLEnv?: readonly string[]
+  /** Authentication the route performs when its profile names no credential reference; absent when the adapter reports none. */
+  nativeAuth?: LlmNativeAuth
+  /** Redacted state of the profile's named credential reference, from the page snapshot. */
+  credential?: CredentialInfo
+  /** Redacted checks for the profile's named reference or the provider's native variables. */
+  credentialChecks?: Readonly<Record<string, CredentialInfo>>
+  /** Section copy. */
+  t: (key: keyof typeof en) => string
+  /** Disable writes (read-only settings provider). */
+  readOnly: boolean
+  /** Render only the credential field and actions, without provider settings. */
+  credentialOnly?: boolean
+  /** Require a newly entered credential before this editor can submit. */
+  credentialRequired?: boolean
+  /** Give the credential field initial focus when this editor mounts. */
+  autoFocusCredential?: boolean
+  /** Override the dismiss action copy. */
+  cancelLabelKey?: keyof typeof en
+  /** Override the idle commit action copy. */
+  submitLabelKey?: keyof typeof en
+  /** Override the in-flight commit action copy. */
+  submitBusyLabelKey?: keyof typeof en
+  /** Close the editor; `changed` reports whether an Apply committed. */
+  onClose: (changed: boolean) => void
+  /** Called on a credential form submission before the save starts. */
+  onSubmitCredential?: () => void
+  /**
+   * Called once per change with whether the apply or the model list's
+   * endpoint interrogation is in flight, so the owner can hold its surface
+   * still.
+   */
+  onBusyChange?: (busy: boolean) => void
+}
+/** A user-section subtree as a plain draft object (absent → empty). */
+function draftAt(
+  schema: SettingsSchemaOperations,
+  namespace: SettingsNamespaceView,
+  path: readonly string[],
+): Record<string, unknown> {
+  const subtree = schema.getPath(namespace.user, path)
+  if (typeof subtree !== 'object' || subtree === null || Array.isArray(subtree)) return {}
+  return structuredClone(subtree) as Record<string, unknown>
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+/**
+ * The minimal path ops carrying `after` over `before`, both as the card sees
+ * them. Only keys the card observed are named; fields absent from both sides
+ * produce no op, which is why edits are path-addressed rather than a rebuilt
+ * section. Objects are diffed field by field, so an omitted field keeps the
+ * value an unset restores from the inherited layer instead of a whole-object
+ * set discarding it.
+ * @param base - path of the edited subtree inside the user section.
+ * @param before - the subtree as loaded, or undefined when it is new.
+ * @param after - the subtree as edited.
+ * @returns ordered set/unset ops; empty when nothing changed.
+ */
+export function pathOps(
+  base: readonly string[],
+  before: unknown,
+  after: Record<string, unknown>,
+): SettingsPathOpView[] {
+  const previous = isRecord(before) ? before : {}
+  const ops: SettingsPathOpView[] = []
+  for (const [key, value] of Object.entries(after)) {
+    const prior = previous[key]
+    if (JSON.stringify(prior) === JSON.stringify(value)) continue
+    if (isRecord(value) && (prior === undefined || isRecord(prior)))
+      ops.push(...pathOps([...base, key], prior, value))
+    else ops.push({ op: 'set', path: [...base, key], value: value as JsonValue })
+  }
+  for (const key of Object.keys(previous)) {
+    if (!(key in after)) ops.push({ op: 'unset', path: [...base, key] })
+  }
+  return ops
+}
+/** The editor layout the owning namespace selects. */
+function layoutOf(ns: string): EditorLayout {
+  if (ns === 'llm-deepseek') return 'deepseek'
+  if (ns === 'llm-pi-ai') return 'pi-ai'
+  return 'unknown'
+}
+/** The credential reference this profile resolves keys through. */
+function refFor(
+  schema: SettingsSchemaOperations,
+  namespace: SettingsNamespaceView,
+  path: readonly string[],
+  provider: string,
+): string {
+  const profile = schema.getPath(namespace.value, path)
+  const named =
+    typeof profile === 'object' && profile !== null
+      ? (
+        profile as {
+          apiKeyEnv?: unknown
+        }
+      ).apiKeyEnv
+      : undefined
+  return typeof named === 'string' && named.length > 0 ? named : deriveKeyRef(provider)
+}
+/**
+ * Render one provider's editing card.
+ * @param props - the addressed profile plus wire faces and copy.
+ * @returns the editor card.
+ */
+export const ProviderEditor = defineComponent(
+  (props: ProviderEditorProps) => {
+    const { namespace, schema, settingsPath } = props
+    const draftRef = shallowRef<Record<string, unknown>>(
+      (() => {
+        const loaded = draftAt(schema, namespace, settingsPath)
+        const policy = loaded['retryPolicy']
+        // A stored retry policy without a mode edits under the mode it inherits;
+        // the draft names it so a saved policy always carries one.
+        if (!isRecord(policy) || policy['mode'] !== undefined) return loaded
+        const path = [...settingsPath, 'retryPolicy']
+        const node = schema.nodeAtPath(schema.rehydrate(namespace.schema), path)
+        /* v8 ignore next -- a stored retryPolicy implies the schema declares one */
+        if (node === undefined) return loaded
+        const { mode } = retryPolicyDefaults(schema, node, schema.getPath(namespace.base, path))
+        return { ...loaded, retryPolicy: { ...policy, mode } }
+      })(),
+    )
+    const setDraft = (
+      value: typeof draftRef.value | ((previous: typeof draftRef.value) => typeof draftRef.value),
+    ): void => {
+      draftRef.value = typeof value === 'function' ? value(draftRef.value) : value
+    }
+    const keyDraftRef = shallowRef<
+      | string
+      | {
+        readonly ref: string
+        readonly removed?: true
+      }
+    >()
+    const setKeyDraft = (
+      value:
+        | typeof keyDraftRef.value
+        | ((previous: typeof keyDraftRef.value) => typeof keyDraftRef.value),
+    ): void => {
+      keyDraftRef.value = typeof value === 'function' ? value(keyDraftRef.value) : value
+    }
+    const busyRef = shallowRef(false)
+    const setBusy = (
+      value: typeof busyRef.value | ((previous: typeof busyRef.value) => typeof busyRef.value),
+    ): void => {
+      busyRef.value = typeof value === 'function' ? value(busyRef.value) : value
+    }
+    const listBusyRef = shallowRef(false)
+    const setListBusy = (
+      value:
+        | typeof listBusyRef.value
+        | ((previous: typeof listBusyRef.value) => typeof listBusyRef.value),
+    ): void => {
+      listBusyRef.value = typeof value === 'function' ? value(listBusyRef.value) : value
+    }
+    const failureRef = shallowRef<string | undefined>(undefined)
+    const setFailure = (
+      value:
+        | typeof failureRef.value
+        | ((previous: typeof failureRef.value) => typeof failureRef.value),
+    ): void => {
+      failureRef.value = typeof value === 'function' ? value(failureRef.value) : value
+    }
+    const customizedOpenRef = shallowRef(false)
+    const setCustomizedOpen = (
+      value:
+        | typeof customizedOpenRef.value
+        | ((previous: typeof customizedOpenRef.value) => typeof customizedOpenRef.value),
+    ): void => {
+      customizedOpenRef.value =
+        typeof value === 'function' ? value(customizedOpenRef.value) : value
+    }
+    const committedOriginalRef = shallowRef<unknown>(
+      (() => schema.getPath(namespace.user, settingsPath))(),
+    )
+    const setCommittedOriginal = (value: unknown): void => {
+      committedOriginalRef.value = value
+    }
+    const expectedRevisionRef = shallowRef((() => namespace.revision)())
+    const setExpectedRevision = (
+      value:
+        | typeof expectedRevisionRef.value
+        | ((previous: typeof expectedRevisionRef.value) => typeof expectedRevisionRef.value),
+    ): void => {
+      expectedRevisionRef.value =
+        typeof value === 'function' ? value(expectedRevisionRef.value) : value
+    }
+    watch(
+      [busyRef, listBusyRef, () => props.onBusyChange],
+      () => props.onBusyChange?.(busyRef.value || listBusyRef.value),
+      { immediate: true },
+    )
+    return () => {
+      const { namespace, schema, settingsPath, operations, t } = props
+      const draft = draftRef.value
+      const keyDraft = keyDraftRef.value
+      const keyText = typeof keyDraft === 'string' ? keyDraft : ''
+      const keyRemoval = typeof keyDraft === 'object' ? keyDraft : undefined
+      const busy = busyRef.value
+
+      const failure = failureRef.value
+      const customizedOpen = customizedOpenRef.value
+      const committedOriginal = committedOriginalRef.value
+      const expectedRevision = expectedRevisionRef.value
+      const root = (() => schema.rehydrate(namespace.schema))()
+      const node = (() => schema.nodeAtPath(root, settingsPath))()
+      const fallback = schema.getPath(namespace.value, settingsPath)
+      const disabled = props.readOnly || busy
+      const layout = layoutOf(namespace.ns)
+      const keyRef = refFor(schema, namespace, settingsPath, props.provider)
+      const protocols = (() => (layout === 'pi-ai' ? protocolChoices(namespace, schema) : []))()
+      const stringAt = (source: unknown, key: string): string | undefined => {
+        const value = schema.getPath(source, [key])
+        return typeof value === 'string' && value.trim().length > 0 ? value : undefined
+      }
+      const setField = (key: string, next: string | undefined): void => {
+        // A value of nothing but whitespace is cleared, not stored: `stringAt`
+        // already reports it as absent, so the field would otherwise render empty
+        // while the draft still carried the spaces into `cordis.patch.yml`, where
+        // both adapters would accept that non-empty string as a real value.
+        const value = next === undefined || next.trim().length === 0 ? undefined : next
+        setDraft(current =>
+          value === undefined
+            ? schema.deletePath(current, [key])
+            : schema.setPath(current, [key], value),
+        )
+      }
+      const clearsDerivedRef =
+        keyRemoval !== undefined &&
+        layout === 'pi-ai' &&
+        props.nativeAuth !== undefined &&
+        stringAt(draft, 'apiKeyEnv') === deriveKeyRef(props.provider)
+      const schemaReasoningLevels = (() =>
+        layout === 'pi-ai' && props.declared === true
+          ? reasoningLevelChoices(namespace, schema)
+          : [])()
+      const probeApi = stringAt(draft, 'api') ?? stringAt(fallback, 'api')
+      const reasoning = protocolReasoningLevels(probeApi, schemaReasoningLevels)
+      const editsReasoning = reasoning.levels.length > 0
+      const validateModels = (
+        value: unknown,
+      ): DeepSeekModelsValidationFailure | ReasoningEffortsFailure | undefined =>
+        validateDeepSeekModels(value) ??
+        (editsReasoning
+          ? validateReasoningEfforts(value, reasoning.levelsOnly ? reasoning.levels : undefined)
+          : undefined)
+      const modelFailure = validateModels(
+        schema.getPath(draft, ['models']) ??
+          (reasoning.levelsOnly ? schema.getPath(fallback, ['models']) : undefined),
+      )
+      const retryNode = (() =>
+        layout === 'unknown'
+          ? undefined
+          : schema.nodeAtPath(root, [...settingsPath, 'retryPolicy']))()
+      const retryDefaults =
+        retryNode === undefined
+          ? undefined
+          : retryPolicyDefaults(
+            schema,
+            retryNode,
+            schema.getPath(namespace.base, [...settingsPath, 'retryPolicy']),
+          )
+      const retryFailure =
+        retryNode === undefined || retryDefaults === undefined || props.credentialOnly === true
+          ? undefined
+          : retryPolicyFailure(
+            schema,
+            retryNode,
+            schema.getPath(draft, ['retryPolicy']),
+            retryDefaults,
+            t,
+          )
+      const keyFailure = apiKeyFailure(keyText)
+      const keyValue = keyText.trim()
+      const protocolNeedsKeyHere =
+        layout === 'pi-ai' &&
+        protocolNeedsKey(probeApi) &&
+        stringAt(draft, 'apiKeyEnv') === undefined &&
+        stringAt(fallback, 'apiKeyEnv') === undefined
+      const protocolKeyMissing = protocolNeedsKeyHere && keyValue.length === 0
+      const credentialRequiredFailure =
+        (props.credentialRequired === true && keyText.length > 0 && keyValue.length === 0) ||
+        protocolKeyMissing
+          ? ('keyRequired' as const)
+          : undefined
+      const shownKeyFailure = credentialRequiredFailure ?? keyFailure
+      const probeBaseURL = stringAt(draft, 'baseURL') ?? stringAt(fallback, 'baseURL')
+      const probe = {
+        settingsNs: namespace.ns,
+        // Naming the route lets an adapter that already describes it answer from
+        // its own registry — better metadata, no network call, no endpoint needed.
+        provider: props.provider,
+        ...(probeBaseURL === undefined ? {} : { baseURL: probeBaseURL }),
+        ...(probeApi === undefined ? {} : { api: probeApi }),
+        ...(keyValue.length === 0 ? {} : { apiKey: keyValue }),
+      }
+      const applyOnce = async (): Promise<string | undefined> => {
+        const ns = namespace.ns
+        // Removing a catalog route's conventional reference restores native auth.
+        // Other aliases and custom routes keep their named environment fallback.
+        const profileDraft = clearsDerivedRef ? schema.deletePath(draft, ['apiKeyEnv']) : draft
+        // A pi-ai profile names the conventional reference only when this page is
+        // about to store a key. Otherwise the provider keeps its native auth path.
+        const next =
+          layout === 'pi-ai' &&
+          stringAt(profileDraft, 'apiKeyEnv') === undefined &&
+          stringAt(schema.getPath(namespace.base, settingsPath), 'apiKeyEnv') === undefined &&
+          keyValue.length > 0
+            ? schema.setPath(profileDraft, ['apiKeyEnv'], keyRef)
+            : profileDraft
+        if (props.credentialOnly !== true) {
+          // The same checker gates the submit button, so a card cannot reach this
+          // with a bad row; it stays because the schema check below would refuse
+          // the write with a message naming a path instead of the row, and because
+          // nothing but this function decides what is written.
+          const failure = validateModels(schema.getPath(next, ['models']))
+          /* v8 ignore next 3 -- unreachable from the card: the same failure disables submit */
+          if (failure !== undefined) {
+            return `${t('model')} ${String(failure.index + 1)}: ${t(failure.key)}`
+          }
+        }
+        /* v8 ignore next -- apply is only reachable from the rendered card, which required a resolved node */
+        if (props.credentialOnly !== true && node !== undefined && settingsPath.length === 0) {
+          const sectionError = schema.validate(node, next)
+          if (sectionError !== undefined) return sectionError
+        }
+        const materializesNativeProfile =
+          layout === 'pi-ai' &&
+          fallback === undefined &&
+          committedOriginal === undefined &&
+          Object.keys(next).length === 0
+        const ops: SettingsPathOpView[] =
+          props.credentialOnly === true
+            ? []
+            : materializesNativeProfile
+              ? [{ op: 'set', path: [...settingsPath], value: {} }]
+              : pathOps(settingsPath, committedOriginal, next)
+        if (keyRemoval !== undefined && keyRemoval.removed !== true) {
+          const removed = await operations.removeCredential(keyRemoval.ref)
+          if (removed !== undefined) return removed
+          // A later settings failure cannot restore a secret that was deleted.
+          setKeyDraft({ ...keyRemoval, removed: true })
+        }
+        if (ops.length > 0) {
+          const written = await operations.writeSettings(ns, ops, expectedRevision)
+          if (written.kind !== 'written')
+            return written.kind === 'conflict' ? t('conflict') : written.message
+          setCommittedOriginal(schema.getPath(written.view.user, settingsPath))
+          setExpectedRevision(written.view.revision)
+          setDraft(next)
+        }
+        if (keyValue.length > 0) {
+          const stored = await operations.storeCredential(keyRef, keyValue)
+          if (stored !== undefined) return stored
+        }
+        setKeyDraft('')
+        return undefined
+      }
+      const apply = async (): Promise<void> => {
+        setBusy(true)
+        setFailure(undefined)
+        try {
+          const failure = await applyOnce()
+          if (failure !== undefined) {
+            setFailure(failure)
+            return
+          }
+          props.onClose(true)
+        } finally {
+          setBusy(false)
+        }
+      }
+      if (node === undefined) {
+        // A directory entry addressing a position its schema cannot resolve is a
+        // host-side inconsistency; showing it beats a blank card.
+        return h('p', { class: styles['error'] }, [
+          props.provider,
+          ': ',
+          props.t('settingsPathUnresolvable'),
+        ])
+      }
+      const inheritedModels = (): unknown => {
+        const pinned = schema.getPath(namespace.base, [...settingsPath, 'models'])
+        return pinned ?? schema.nodeAtPath(root, [...settingsPath, 'models'])?.meta.default
+      }
+      const curatedFields = (family: 'deepseek' | 'pi-ai'): VNodeChild => {
+        // What a hand-declared route names for itself and nothing else can supply.
+        // A whole-section `llm-deepseek` profile is a composition fact with no
+        // per-route identity for its schema to carry, hence the family test.
+        const ownsIdentity = family === 'pi-ai' && props.declared === true
+        const customModels = schema.getPath(draft, ['models'])
+        const modelsOverridden = schema.hasPath(draft, ['models'])
+        const models = modelDrafts(modelsOverridden ? customModels : inheritedModels())
+        const defaultContextWindow = schema.getPath(fallback, ['defaultContextWindow'])
+        const defaultMaxTokens = schema.getPath(fallback, ['maxTokens'])
+        const defaultInput = schema.getPath(fallback, ['defaultInput'])
+        const baseURL = stringAt(fallback, 'baseURL') ?? props.defaultBaseURL
+        const endpointEnv = props.baseURLEnv ?? []
+        const endpointHint =
+          family === 'deepseek'
+            ? t('deepSeekEndpointHint')
+            : baseURL === undefined && endpointEnv.length > 0
+              ? t('baseUrlEnvironment').replace('{env}', () => endpointEnv.join(', '))
+              : undefined
+        // A named reference is the only credential the adapter reads for this
+        // route. Without one, a catalog route authenticates the way the directory
+        // reports, and a declared route sends no key at all.
+        const namedRef = clearsDerivedRef
+          ? stringAt(schema.getPath(namespace.base, settingsPath), 'apiKeyEnv')
+          : stringAt(fallback, 'apiKeyEnv')
+        const nativeAuth = namedRef === undefined ? props.nativeAuth : undefined
+        // Display method-neutral references without changing the adapter's lookup.
+        const authRefs =
+          namedRef === undefined
+            ? (nativeAuth?.env ?? []).filter(ref => !endpointEnv.includes(ref))
+            : [namedRef]
+        const visibleRefs = authRefs.filter(ref => !ref.toLowerCase().includes('oauth'))
+        const keyHint = visibleRefs[0]
+        const checkedRefs = authRefs.map(
+          ref =>
+            [
+              ref,
+              props.credentialChecks?.[ref] ?? (ref === namedRef ? props.credential : undefined),
+            ] as const,
+        )
+        const detected = checkedRefs.find(([, info]) => info?.configured === true)
+        const detectedRef = detected?.[0]
+        const detectedVisibleRef =
+          detectedRef === undefined || !visibleRefs.includes(detectedRef) ? undefined : detectedRef
+        const missingRefs =
+          checkedRefs.length > 0 && checkedRefs.every(([, info]) => info?.configured === false)
+        const savedCredential =
+          detected?.[1]?.source === 'file' && detectedVisibleRef !== undefined
+        const credentialHint =
+          props.credentialRequired === true
+            ? undefined
+            : keyText.length > 0
+              ? savedCredential
+                ? t('keyReplacePending')
+                : undefined
+              : keyRemoval !== undefined
+                ? keyRemoval.removed === true
+                  ? t('keyRemoveApplied')
+                  : keyHint === undefined
+                    ? t('keyRemovePending')
+                    : t('keyRemovePendingEnvironment').replace('{hint}', () => keyHint)
+                : keyHint === undefined
+                  ? undefined
+                  : savedCredential
+                    ? t('keySaved')
+                    : t(
+                      detectedRef === undefined
+                        ? missingRefs
+                          ? 'keyFallbackMissing'
+                          : 'keyFallbackUnchecked'
+                        : detectedVisibleRef === undefined
+                          ? 'keyFallbackDetectedHidden'
+                          : 'keyFallbackDetected',
+                    ).replace('{hint}', () => detectedVisibleRef ?? keyHint)
+        const keyHelp =
+          visibleRefs.length === 0
+            ? undefined
+            : t('keyHelp').replace('{env}', () => visibleRefs.join(' / '))
+        const authHelp =
+          keyHelp === undefined
+            ? null
+            : h(
+              Tooltip,
+              {
+                label: keyHelp,
+                side: 'right',
+                delayMs: 0,
+                focusDelayMs: 0,
+                portal: true,
+                openOnClick: true,
+              },
+              {
+                default: () =>
+                  h(
+                    'button',
+                    { type: 'button', class: styles['helpButton'], 'aria-label': t('authHelp') },
+                    '?',
+                  ),
+              },
+            )
+        // A provider with no native key authentication has no key for this field to store.
+        const keylessNativeAuth = nativeAuth?.env.length === 0 && nativeAuth.oauth
+        const keyPlaceholder =
+          keyHint === undefined || props.credentialRequired === true
+            ? t('keyPlaceholder')
+            : t('keyPlaceholderFallback').replace('{hint}', () => keyHint)
+        /** What both family editors take: the rows, whose layer owns them, and the two writes. */
+        const catalogProps = {
+          models,
+          overridden: modelsOverridden,
+          t,
+          disabled,
+          onChange: (next: Record<string, unknown>[]) => {
+            setDraft(current => schema.setPath(current, ['models'], next))
+          },
+          onReset: () => {
+            setDraft(current => schema.deletePath(current, ['models']))
+          },
+        }
+        return h(Fragment, null, [
+          keylessNativeAuth
+            ? null
+            : h('div', { class: styles['field'] }, [
+              h('span', { class: styles['fieldLabel'] }, [t('keyInput'), authHelp]),
+              h(ApiKeyInput, {
+                t: t,
+                value: keyText,
+                ...(keyDraft === undefined && savedCredential
+                  ? {
+                    saved: {
+                      masked: detected[1].masked ?? '',
+                      ...(detected[1].writable
+                        ? {
+                          clear: () => {
+                            setKeyDraft({ ref: detected[0] })
+                            setFailure(undefined)
+                          },
+                        }
+                        : {}),
+                    },
+                  }
+                  : {}),
+                placeholder: keyPlaceholder,
+                'aria-label': t('keyInput'),
+                'aria-invalid': shownKeyFailure !== undefined && !protocolKeyMissing,
+                'aria-describedby':
+                    credentialHint === undefined ? undefined : `${props.provider}-credential-hint`,
+                required: props.credentialRequired === true || protocolNeedsKeyHere,
+                autoFocus: props.autoFocusCredential === true,
+                disabled: disabled || keyRemoval?.removed === true,
+                onInput: (event) => {
+                  setKeyDraft(
+                    (event.target as HTMLInputElement).value === '' && savedCredential
+                      ? detected[1].writable
+                        ? { ref: detected[0] }
+                        : undefined
+                      : (event.target as HTMLInputElement).value,
+                  )
+                  setFailure(undefined)
+                },
+              }),
+              credentialHint === undefined
+                ? null
+                : h(
+                  'p',
+                  {
+                    id: `${props.provider}-credential-hint`,
+                    class:
+                          styles[
+                            keyRemoval !== undefined || missingRefs
+                              ? 'notice'
+                              : keyText.length > 0 || detectedRef === undefined
+                                ? 'advancedHint'
+                                : 'savedNotice'
+                          ],
+                  },
+                  credentialHint,
+                ),
+              shownKeyFailure === undefined
+                ? null
+                : h(
+                  'p',
+                  { class: styles[protocolKeyMissing ? 'advancedHint' : 'error'] },
+                  t(shownKeyFailure),
+                ),
+            ]),
+          props.credentialOnly === true
+            ? null
+            : h(
+              'details',
+              {
+                class: styles['customized'],
+                onToggle: (event: Event) => {
+                  setCustomizedOpen((event.currentTarget as HTMLDetailsElement).open)
+                },
+              },
+              [
+                h('summary', { class: styles['customizedSummary'] }, t('customized')),
+                h('div', { class: styles['customizedBody'] }, [
+                  ownsIdentity
+                    ? h('div', { class: styles['field'] }, [
+                      h('span', { class: styles['fieldLabel'] }, t('customDisplayName')),
+                      h('input', {
+                        class: styles['input'],
+                        type: 'text',
+                        value: stringAt(draft, 'displayName') ?? '',
+                        placeholder:
+                              stringAt(
+                                schema.getPath(namespace.base, settingsPath),
+                                'displayName',
+                              ) ?? props.provider,
+                        'aria-label': t('customDisplayName'),
+                        disabled: disabled,
+                        onInput: (event: InputEvent) => {
+                          setField('displayName', (event.target as HTMLInputElement).value)
+                        },
+                      }),
+                    ])
+                    : null,
+                  h('div', { class: styles['field'] }, [
+                    h('span', { class: styles['fieldLabel'] }, t('baseUrl')),
+                    h('input', {
+                      class: styles['input'],
+                      type: 'text',
+                      value: stringAt(draft, 'baseURL') ?? '',
+                      placeholder:
+                          family === 'deepseek'
+                            ? t('deepSeekBaseUrl')
+                            : baseURL === undefined
+                              ? t(endpointEnv.length > 0 ? 'baseUrlConfigured' : 'baseUrlDefault')
+                              : t('baseUrlPlaceholder').replace('{url}', () => baseURL),
+                      'aria-describedby':
+                          endpointHint === undefined
+                            ? undefined
+                            : `${props.provider}-endpoint-hint`,
+                      'aria-label': t('baseUrl'),
+                      disabled: disabled,
+                      onInput: (event: InputEvent) => {
+                        setField(
+                          'baseURL',
+                          (event.target as HTMLInputElement).value === ''
+                            ? undefined
+                            : (event.target as HTMLInputElement).value,
+                        )
+                      },
+                    }),
+                    endpointHint ===
+                    /** The Host operations this card writes and interrogates through. */ undefined
+                      ? null
+                      : h(
+                        'span',
+                        {
+                          id: `${props.provider}-endpoint-hint`,
+                          class: styles['advancedHint'],
+                        },
+                        endpointHint,
+                      ),
+                  ]),
+                  ownsIdentity
+                    ? h('div', { class: styles['field'] }, [
+                      h('span', { class: styles['fieldLabel'] }, t('customApi')),
+                      h(
+                        'select',
+                        {
+                          class: `${styles['input']} ${styles['selectInput']}`,
+                          value: probeApi ?? '',
+                          'aria-label': t('customApi'),
+                          disabled: disabled,
+                          onInput: (event: InputEvent) => {
+                            setField('api', (event.target as HTMLInputElement).value)
+                          },
+                        },
+                        [
+                          probeApi === undefined
+                            ? h('option', { value: '' }, t('customApiUnset'))
+                            : null,
+                          protocols.map(choice =>
+                            h(
+                              'option',
+                              { key: choice, value: choice },
+                              protocolLabel(t, choice),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ])
+                    : null,
+                  retryDefaults === undefined
+                    ? null
+                    : h(RetryPolicyEditor, {
+                      policy: schema.getPath(draft, ['retryPolicy']),
+                      defaults: retryDefaults,
+                      failure: retryFailure,
+                      failureId: `${props.provider}-retry-failure`,
+                      showFailure: customizedOpen,
+                      t: t,
+                      disabled: disabled,
+                      onChange: (next) => {
+                        setDraft(current =>
+                          next === undefined
+                            ? /** Give the credential field initial focus when this editor mounts. */ schema.deletePath(
+                              current,
+                              ['retryPolicy'],
+                            )
+                            : schema.setPath(current, ['retryPolicy'], next),
+                        )
+                      },
+                    }),
+                  family === 'deepseek'
+                    ? h(DeepSeekModelsEditor, {
+                      ...catalogProps,
+                      defaultContextWindow:
+                            typeof defaultContextWindow === 'number'
+                              ? defaultContextWindow
+                              : undefined,
+                      defaultMaxTokens:
+                            typeof defaultMaxTokens === 'number' ? defaultMaxTokens : undefined,
+                    })
+                    : h(ModelListEditor, {
+                      ...catalogProps,
+                      catalogProvider: props.declared === true ? undefined : props.provider,
+                      reasoningLevels: reasoning.levels,
+                      reasoningLevelsOnly: reasoning.levelsOnly,
+                      defaultInput: Array.isArray(defaultInput) ? defaultInput : undefined,
+                      probe: probe,
+                      probeBlocked:
+                            keyRemoval !== undefined ? 'keyRemovePending' : shownKeyFailure,
+                      operations: operations,
+                      onBusyChange: setListBusy,
+                    }),
+                ]),
+              ],
+            ),
+        ])
+      }
+      return h(
+        'div',
+        { class: props.credentialOnly === true ? styles['addBlock'] : styles['editor'] },
+        [
+          props.hideTitle === true
+            ? null
+            : h('div', { class: styles['editorHeader'] }, [
+              h('span', { class: styles['editorTitle'] }, props.displayName),
+              props.provider !== props.displayName
+                ? h('span', { class: styles['editorRoute'] }, props.provider)
+                : null,
+            ]),
+          layout === 'unknown'
+            ? h('p', { class: styles['advancedHint'] }, `${t('advancedHint')} (${namespace.ns})`)
+            : curatedFields(layout),
+          failure !== undefined ? h('p', { class: styles['error'] }, failure) : null,
+          props.credentialOnly === true || modelFailure === undefined
+            ? null
+            : h(
+              'p',
+              { class: styles['advancedHint'] },
+              `${t('model')} ${String(modelFailure.index + 1)}: ${t(modelFailure.key)}`,
+            ),
+          retryFailure === undefined || customizedOpen
+            ? null
+            : h(
+              'p',
+              { id: `${props.provider}-retry-failure`, class: styles['error'] },
+              retryFailure.message,
+            ),
+          h(EditorFooter, {
+            t: t,
+            busy: busy,
+            submitDisabled:
+              disabled ||
+              layout === 'unknown' ||
+              (props.credentialOnly !== true && modelFailure !== undefined) ||
+              retryFailure !== undefined ||
+              shownKeyFailure !== undefined ||
+              (props.credentialRequired === true && keyValue.length === 0),
+            submitLabelKey: props.submitLabelKey ?? 'apply',
+            submitBusyLabelKey: props.submitBusyLabelKey ?? 'applying',
+            cancelLabelKey:
+              keyRemoval?.removed === true ? 'close' : (props.cancelLabelKey ?? 'cancel'),
+            onCancel: () => {
+              props.onClose(false)
+            },
+            onSubmit: () => {
+              props.onSubmitCredential?.()
+              void apply()
+            },
+          }),
+        ],
+      )
+    }
+  },
+  {
+    inheritAttrs: false,
+    props: [
+      'provider',
+      'displayName',
+      'hideTitle',
+      'declared',
+      'namespace',
+      'schema',
+      'settingsPath',
+      'operations',
+      'defaultBaseURL',
+      'baseURLEnv',
+      'nativeAuth',
+      'credential',
+      'credentialChecks',
+      't',
+      'readOnly',
+      'credentialOnly',
+      'credentialRequired',
+      'autoFocusCredential',
+      'cancelLabelKey',
+      'submitLabelKey',
+      'submitBusyLabelKey',
+      'onClose',
+      'onSubmitCredential',
+      'onBusyChange',
+    ],
+  },
+)

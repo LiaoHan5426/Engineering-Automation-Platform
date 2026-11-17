@@ -1,0 +1,102 @@
+# 固定源契约审计
+
+状态：实施中的契约决策记录，尚未整体交付。下表是最初固定源审计的历史发现及当时出口，不能当作当前实现状态；实际进度以迁移计划为准。未把包名或注释视为框架无关的证明。
+
+源链接统一固定到 `39163dd30f703a79079e2d2446545cff3c453738`。
+
+| 契约及已见事实 | 必要替换及消费者影响 | 验证出口 |
+| --- | --- | --- |
+| [ui-slots/renderer.ts](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/client/ui-slots/src/renderer.ts#L97)：`SlotScopeAdapter.renderArea?(binding: StandardSourceBinding, props: SessionAreaProps): ReactNode`；`RenderOpts.fallback?: ReactNode` | 该文件首行虽称 React-free，实际仍导入 ReactNode。必须定义 Vue 渲染值和作用域/slot 语义，并同步 scope adapter、outlet 及插件组件调用方；改一个 renderer 实现不能消除类型和调用协议差异 | slot/factory 多实例、两会话隔离、缺失作用域、局部失败隔离；先穷举调用方，尚未完成 |
+| [ui-renderer/bind.ts](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/client/ui-renderer/src/client/bind.ts#L20)：`bindSnapshotSelector<T>(w: HostObservable<T>): SnapshotSelectorHook<T>` 通过 `useSyncExternalStoreWithSelector` 生成 hook | 保留源的 subscribe/getSnapshot，不直接把 hook 返回值替换为 Vue ref。先定义 Vue 消费接口，再同步 selector、equality 及组件读取方式；所有现有 hook 消费者均需核查 | 订阅建立期间更新、selector 参数改变、数据源切换、卸载清理、旧回调失效 |
+| [ui-renderer/renderer.ts](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/client/ui-renderer/src/client/renderer.ts#L64)：`mount(container: HTMLElement): () => void`；`if (this.current !== mounted || mounted.releasing) return` | 保留服务形状与旧 disposer 隔离；替换 hydrateRoot/createRoot、React BootHandoff、buildRenderApp。DocumentStyles 资源所有权应保留，不能简单删掉 hydration 路径 | Boot 交接、重复 mount、挂载失败回收、renderer 替换、过期 disposer、模块样式引用 |
+| [web/platform.ts](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/client/web/src/platform.ts#L8)：`PLATFORM_MODULES` 含 react、react/jsx-runtime、react-dom、react-dom/client、@tanstack/react-virtual | 该表由 seed、external 与 Vite alias 共同使用。须协调 shell 与动态插件的共享 Vue 身份及虚拟列表替换；不能只给 Web 添加 plugin-vue | 跨插件共享同一 Vue、产物不执行 React、异步 chunk 和资源加载 |
+| [tsdown.client.ts](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/client/tsdown.client.ts#L148)：`clientBundle(packageDir: string, libEntry: readonly string[], options: ClientBundleOptions = {}): BuildFaceConfig`；client pass 读取 `lib/types/client/index.js`，产物通过 `window.__ModuleLoader__.load({id, factory, meta})` 注册 | 需要 SFC 到 JS/声明/source map 的编译阶段，并保持 closure-factory、CSS 元数据、assets 与 Host/Client 双面构建。普通 Vite SFC 示例不覆盖该插件通路 | 至少一个真实 SFC 插件经 Host 资源服务、Boot、loader 加载，启停/更新后资源清理正确 |
+
+## 当前边界决定
+
+用户已确认按规划全部实施，先前的分阶段授权问题已经解除。保留 SlotCore、SlotRegistry、原生 observable/store、DocumentStyles 和 Host 模块表作为唯一运行权威；Vue 组件与 renderer 在其上迁移。状态 selector 返回只读 shallow ref，调用方在 setup 建立读取，在 render/template 解包；不保留标量 React hook facade。普通/工厂组件接受 Vue callable 或带精确 `$props` 的 constructor，保留五份 props 校验。生产 renderer 已切为原生 Vue；尚未关闭的完整装配、类型和浏览器门禁继续阻止最终交付，不以入口切换冒充全量迁移。
+
+建议第一闭环只覆盖 Vue 状态绑定、renderer、普通 slot/factory 和一个真实 SFC 插件的构建/加载/清理。后续组件与产品功能应以该闭环的实际结果排序。原 React 输入只用于独立基线对照；目标最终不保留 React 运行时包装。Vite+ 作为目标项目的安装、开发、检查和构建入口，其 CLI 和 SFC 插件构建是不同层级。
+
+## 2026-11-16 实施决定与验证边界
+
+- 原生 Vue 3.5.45 与 Vue Virtual 3.13.36 作为 shell/插件共享身份；虚拟列表保留基线 core 3.17.8 的几何合同。平台表、seed、动态工厂及测试装配同步替换，删除被替代的 React renderer 和 scalar hook 实现。
+- selector 的外部快照发布与同步依赖选择分开，保留条件依赖追踪；contextual DOM ref 仅向当前存活的可写目标转发，业务只读源继续只读。构造器类型检查捕获真实组件 props 后逐项校验，避免 `$props` 协变放行缺少注入的组件；负类型断言继续保留。
+- 表格预览以框架无关 Luckysheet 2.1.13 替换 React UI，本地静态资源由 bundle 持有，按实例 iframe 隔离其全局状态。保留缓存公式值而不重算、格式、合并、分页、复制及只读；真实双实例浏览器证明与原生 lazy bundle/licence smoke 分别记录，不互相替代。
+- Vue 提交时序以 nextTick 和实例作用域处理，保留同步业务动作及失效结果保护；通知几何动画的 controller 归组件/stack 所有，不引入模块级状态缓存。完整消费者实际首次加载、卸载、重载的 DOM、服务及 console.error 清洁回归已通过。
+- 清理应用直接 React 依赖与实际产物运行闭包。既有 Vue/VitePress 文档工具间接使用 DocSearch React，Zustand vanilla 的可选 React peer 也可能出现在安装图；这些事实必须披露，不能将工作区安装目录有无 React 与 DSH 应用实际执行 React 混为一谈。不为清理锁文件改写状态引擎或替换文档站技术栈。
+
+## 2026-11-17 清理决定与验证边界
+
+- 纯 observable 到 Vue 的绑定归基础组件包，renderer 保留 re-export；消费者不再为通用 selector 依赖 renderer。算法及条件依赖、错误发布、订阅期间同步释放合同保留，新增重入释放回归。完整声明必须由实际 Client DAG 刷新，不能以局部源码检查替代。
+- 只展开已证明返回 void 的 watcher 初始化器；真实 unsubscribe、observer、timer、abort 清理不删除。跨 subscribe/await 的活性使用读取函数保留重入释放语义，渲染内稳定值可捕获，事件仍重新读取有效状态。测试保留同步 render 合同、事件次数及原断言；异步 UI 通过既有 act 和真实 deferred 响应验证。
+- renderer 的实例 ID 使用已有 crypto 工具，使没有 crypto.randomUUID 的明文 HTTP 环境仍可使用 getRandomValues。实际独立应用挂载、ID 唯一性与释放回归通过，不改全局随机源或引入备用 ID 状态。
+- unknown 断言门仅删除退休指纹，未增加豁免；领域依赖边与固定原版一致。最新完整 lint、八门产物及八套真实浏览器（95通过/4既有跳过）通过；Client测试augmentation统一到既有公共入口，避免内部与public ResourceParamsMap分裂，保留原合同及断言，192项回归通过。最终根聚合两门通过（Host9.65秒/Vue47.56秒）；四处vendor residue在逐字节相同的原版及checker同样复现，保留为既有限制，不将全部卫生门宣称通过。
+
+- 生成 API/slot 目录只随类型格式更新展示文本，键与契约不变；持久化生成目录仅源定位变化，66 根 digest 与 25 历史记录一致，不新增 schema history。重新生成后完整十门构建 25.07 秒通过。
+
+## 尚未证明
+
+八项产物门禁、Host/Client 聚合检查、真实 Loader 消费者重载以及应用产物输入无 React 审计已经通过；这些不证明完整产品浏览器行为。用户已授权全部阶段，实验 UI 与桌面欢迎入口包括在原生 Vue 迁移范围；桌面 IPC、权限和 Host 领域逻辑保留既有权威，不因 UI 迁移重写。第三方 React UI 的实际消费者必须替换，不能通过排除模块或适配 facade 宣称完成。
+
+完整导入/原生迁移及已验证的生命周期、属性、表格安全和文档工具修复已分阶段推送草稿 PR #8；当前浏览器诊断结果不冒充已关闭的产品验收。file-upload 已按既有 hostPhase 合同修正，实际 Host 无导入失败或服务等待；工厂运行时 props 及属性边界已有回归。会话提交/图片拒绝两例仅等待公开上传就绪，无生产语义修改。
+
+框架 kit 在创建 VNode 前按组件实际声明的 props/emits、mixins/extends 或 class __vccOpts 过滤；调用方显式属性、事件、class/style、key/ref 完整保留并最后覆盖。函数组件仍接完整 kit；工厂和普通 slot 同用实例内缓存，不通过关闭 inheritAttrs 隐藏问题。新增真实 renderer 九项回归覆盖边界和异步外层传参，不以直接组件 fixture 代替装配证明。
+
+表格的 HTML sink 回归已在生成产物前收敛：只对固定 Luckysheet 2.1.13、固定源码 SHA 与精确命中计数执行文本/公式和复制转义变换，版本或内容漂移即构建失败。只读编辑与复制 listener 归当前实例，只处理引擎拥有的复制，保留原生栏内选中文本；不用全局 jQuery 修改，不放宽 CSP，不把 iframe 当安全边界。实际产物受控脚本计数 7→0，六种恶意缓存值、系统剪贴板双 MIME、选区、样式/合并/分页、双实例及卸载验证通过；616 项模块回归与九项构建/config/复制边界用例通过。
+
+目录按钮替换输入框的 null-relatedTarget 焦点事件采用 nextTick 后重查现有 openGeneration/requestSeq/草稿身份和当前焦点；显式外部焦点仍立即取消，不新增状态权威。局部 94 项及实际包类型通过，刷新后装配焦点 13 项通过。无会话 agent preset 在缺源 selector 外组合 no-session 默认，保留缺源不调用 selector 的原生合同；220 项及完整 Vue Client 聚合通过。AppFrame 按现有结构赋稳定同级 key，避免 drawerMask 插入将旧列复用为另一列；136 项及真实五列/sidebar DOM、草稿/关闭态跨视口保留验证通过，不改变 CSS/布局算法。文档全跑 42 项与唯一引用门禁修正后定向检查通过。实际同场景桌面/窄屏 Before/After 已复核，测量的矩形/字体/间距一致；只证明该空工作区及展开侧栏场景。完整 Web replay、自查及 PR/CI 未关闭。Forge 部分未改 Host Git 流程仍五秒超时，一个同例在原版复现；不将其推广为所有超时已证明无关，也不声称全套通过。
+
+## Tab 消费者生命周期收尾
+
+实际 OPC 与 Forge 重开路径出现由 slot 边界捕获的异常，`pageErrors` 为空不能证明装配成功。WorkspacePicker 的非工厂组件须显式声明 locale 参数；Guide 在替换 tab 前捕获原 actions，禁止替换后再次读取已失效的 strict info。文件导航 selector 只选自己的 pane 状态集合，在组件计算中读取当前 tab；测量 key 归已提交 DOM 的 pane 绑定持有，同 pane 复用回调，移动时重绑并忽略旧绑定的迟到 null。Toggle 的提交后注册按原 pane 清理，不在卸载回调重新读取 tab。保留 strict info 的缺失报错和同实例 pane 移动能力，不新增业务状态镜像或全局缺失回退。消费者三包 1237 项及后续 occurrence 身份修复三包 1028 项分别通过，数字不可相加。浏览器复跑进一步证明：动态 resource key 的同步绑定也会在 Vue 移除旧子组件前读取失效 strict info，不能冻结 contentId 或增加缺失默认值来绕过。
+
+原生 observable 适配器保留初次 source 解析立即校验，后续 source、getSnapshot、selector、equality 错误同步发布到只读 ref，并在读取时抛出；成功更新清除错误。使用属于当前 Vue scope 的公开 `effect`、同步 runner 与 onStop 清理，使错误保护覆盖真实依赖读取。仅在 watchEffect 回调或外层 computed getter 内捕获不足：Vue 会先递归刷新依赖的 computed 再进入回调，真实负向用例已证明该路径。合法更新保持同步，selector 条件依赖、相等引用及过期回调保护保留；存活组件仍经 render 边界报告错误，不吞错或延迟 key。七项新增错误/移除/恢复回归、renderer 全部 239 项与 Forge 三套 180 项通过，完整 Vue Client 检查通过；初次及更新中由 selector 自身修改 source 的已有重入限制经固定基线对照一致，不在本次扩大行为。公开 Vue 生命周期依据见 [effect](https://github.com/vuejs/core/blob/main/packages/reactivity/src/effect.ts) 与 [effectScope](https://github.com/vuejs/core/blob/main/packages/reactivity/src/effectScope.ts)。已恢复迁移夹具被改写的原版 projection 断言：source 存在而 snapshot 为 undefined 时仍执行 selector，只有 source 缺失时跳过。该阶段八门产物 70.42 秒、产物后 Host/Vue Client 聚合 49.98 秒通过；原 Forge 重开失败用例与 OPC 三种独立写入器工作簿的原断言均已通过。随后完整 Web replay 已结束，完整统计及本轮修复见下一节；这些阶段结果不替代完整验收。
+
+## 完整回归中的作用域与预览修复
+
+Contextual hook 的子 scope 由 factory、hook context 与各项 framework 输入的身份共同持有；等价 options 或标准输入包装不应释放 scope。绑定依赖仅显式读取这三类输入，不把 factory/hook 内部的响应式读取纳入重建依赖。标准输入按自有可枚举 key 集及逐项 `Object.is` 比较并保存浅快照；有意义的变化先清除转发目标再释放旧 scope。失败重绑也释放部分 scope，禁止旧 DOM ref 写入已退役目标。实际 Vue 父子重渲染负例先出现多次创建，修复后保留 scope；context、factory、标准值及 key 增删仍逐次释放重绑。renderer/chat 合并 1270 项与完整 Vue Client 类型通过。ChatNodeSeat 将 turnData 提取为独立 computed，再构造 hook context，恢复原 useMemo 对 turnData 而非整 Node 的依赖：相同 turnData 的流式结算保留展开态与订阅，真正 turnData/groupAction 变化仍释放重绑；真实 Slot 负例/修复用例及三套 188 项通过。模型列表恢复 visibleModels 布局依赖，索引 DOM ref 的旧 null 回调只清理自己持有的元素，不清理新占位行；排序回焦仅恢复因原节点移动落到 body 的同一连通按钮，保留外部焦点与卸载边界，两套 93 项通过。Inspector 保留原显式空格文本节点，180 项通过，不修改 golden 或归一化器；底栏真实插件注册验证修复错误 inject 调用。上述源码已通过新八门产物 27.47 秒与产物后两侧聚合 9.94 秒，实际模型设置 Chromium/WebKit 共 19 项通过；聊天/模型合计 44 项中 33 通过、7 失败、4 跳过，聊天动画/模式切换与命令 popup 黏性标题仍未关闭。后续单例浏览器 trace 证明命令 popup 在清空搜索后主动将 Quartz 滚入视野，当前 observer 正确响应，非旧 observer 回调：PopupSelectView 的共享递增索引在延后 group slot 按不同顺序执行时分配错误。现已改为渲染前从同一 filtered rows 建立不可变索引，保持点击/高亮和选择权威顺序，真实复用 Quartz DOM 的负例红绿及 commands 五套 152 项、完整 Vue Client 类型通过；该补丁进入 33.90 秒八门产物；后续原 observer 四项通过、四项既有跳过，不改 observer 或原断言。该段较早数字保留为过程证据，不代表当前失败仍未关闭。
+
+PDF 的 immediate/post watcher 仍可能在 setup 阶段执行，观察 DOM 前须检查真实 host/canvas 元素。严格元素 observer Mock 修复前 11 项失败、修复后原 19 项通过；原虚拟化、缩放、复制和卸载断言保留。表格更换引擎不放弃原单底栏、缩放、冻结、无分隔线和只读验收；原 iframe/选择栏/引擎控件变化须以真实用户输入及等价几何证明，不能调用内部状态让夹具通过。局部测试不代替实际可用性：当前真实引擎已在 DPR 1/2、900/360/480/900 宽度证明原 31px 单底栏、原生 100→150→100 缩放及实际滚动 240px 后的冻结内容；通过 iframe 内样式重排现有控件，内部统计栏高度仍由公开选项保持零，只隐藏冻结 DROP/HANDLE，不隐藏冻结画布、修改私有 Store 或放宽只读保护。后续原产物 Office PDF、Markdown、mixed/Plain text、OPC 与安全用例通过；CSV 键盘选区旧失败已关闭，当前两语言第二本工作簿加载完成后的控件命中仍待原用例复验。WebKit 精确版本已用本地库完成默认实际启动及依赖加载验证，安装没有修改系统或仓库，产品缺失覆盖仍须重跑。完整浏览器 replay 已结束：250 文件中 167 通过、79 失败、4 跳过，1100 测试中 902 通过、130 失败、68 跳过，另有两个 reasoning-preview turn/end 超时拒绝；缺少 WebKit 与真实回归分别修复，不放宽断言或将全部失败归为旧基线。
+
+Windows 上传构建配置 TS6307 的远程根清单修复经本地移除单项再现同错、当前上传测试和 Host 聚合通过，并由用户更新后确认错误消失；没有为同一问题再造补丁，也未直接访问或修改用户的 J: 盘。
+
+聊天 DOM 协调保留同步的取消、历史状态和布局失效记账，只在后续已打开的提交中等待后代折叠注册，再协调输入/内容跟随；微任务以存活与提交代次约束，明确回底动作使旧任务失效。模式分支读取既有 presentation policy 的 foldCompletedTurns，不复制模式枚举。初次初始化仍同步，否则 activeTurn 晚发布会破坏原转轮不多渲染的断言。完整 Chat/renderer 85 套 1276 项通过，包括五项真实后代 hook 集成；最终初始化调整已进入最新 29.23 秒八门产物，产物后 Host/Vue Client 两侧聚合 47.70 秒全部通过；最新原聊天 17 项浏览器 16 项通过，折叠、内容增长与 Verbose→Standard 原断言通过，仅大输入折叠的反向运动仍失败；不得将单测或最终位置正确当作动画合同全部通过。后续真实 writer trace 证明外层 scrollEnd 经 reading.flushSample/followTail 写入尾部 floor，ResizeObserver 在同一 fold 实例内始终正确受限。新增边界仅在 outer、foldActive 且纯 readScroll 明确非 reader 时跳过 reader flush，历史检查仍执行；nested、真实 reader 与 fold 外行为保持。真实后代 fold 负例 top600→649.73，修复后原 80 项与四个新归属控制共 84 项、完整 Chat 1039 项及根类型通过，此补丁已进入 31.32 秒八门产物及产物后 9.45 秒聚合；原大输入用例最终位置/间隔正确，但折叠前仍有 300px 反向，原版同场景反向为 0。623 条被动 trace 的首个已捕获布局读取在 collapse 的 post watcher 中；延后 collapse 并协调父 nextTick 的私有顺序实验虽然 84 项集成通过，原浏览器仍精确反向 300px，已否决，不进入生产实现。尚未证明首个已捕获读取就是全部原生/Selection 布局读取。后续1252记录的首原生 focus 为既有 busy 恢复（preventScroll:true），位于 collapse 读取前且 echo 文本已插入；精确只跳过该 busy 调用的私有反事实实际命中，原浏览器仍300px，否决将其视为必要唯一原因，不删除生产焦点或改变同步接受/CAS合同。继续比较原版与新实现的非布局 CSS高度写入/DOM替换顺序。
+
+工作区列表的行键和节点应在同次渲染、进入延后 slot 前共同派生。缓存 computed 行键在 slot 执行时 push，会让 AnimatedRows 的 beforeUpdate 看到空键，错误克隆仍保留的 Ungrouped；再次计算还会累积重复键。已用相同 Vue renderer 证明并局部修复 WorkspaceBrowser；545 项工作区（含原 544 项）、原 AnimatedRows 15 项及完整 Vue Client 类型通过，保留原唯一行断言，不改全局动画算法。最新工作区原浏览器 17 项中 11 通过，剩余六项另行定位，不能将保留行修复视为全部交互通过。四项焦点断言实际发生在 Host 状态成功之后：父 InputBar post watcher 在子 ComposerContentEditable 绑定 Lexical 根之前聚焦，之后无依赖再触发；改用已有公开 registerRootListener，保留已绑定根立即处理、晚根一次意图、editor/session/锁定与卸载清理、期间显式新焦点不抢回。真实 resident/root 负例及四套 189 项、根 Vue 类型通过；后续原工作区 17 项已有 16 项通过，四项焦点及 hover 均已确认，剩余新空会话行激活另行诊断。Hover 复制夹具需先真实命名，因为原版和新实现都禁止复制空标题的 Untitled 显示回退；仅补公开 rename 准备和真实行标题等待，不放宽原 dwell/可达/剪贴板/反馈几何/关闭断言。新空会话实际 header/roster 正确，点击未触发任何行/导航回调。已用安装的 Vue 3.5.45 及原生 createApp 证明：夹具在启动前冻结 Date.now，祖先 capture 设置的事件时间与子行监听附着时间相等，Vue 拒绝子回调；仅时钟前进 1ms，同 DOM/同 invoker 即正常触发。夹具改为推进时钟，起点在原年龄桶内保留 30 秒余量，原新空会话整例已通过（2651ms），全部 124 项断言、事件/缓存种子与旧 golden 保留；前轮 16/17 加剩余单例分别通过，不声称单轮 17 项。不修改产品监听器或 blank 协议。其余 17 个固定时钟调用须逐例检查：十个启动前会话行激活场景仅属优先嫌疑；已有 advancing Date-only 的 pinBrowserClock 配合 pinHostClock，禁止在固定 worker Date 时盲换 page.clock（原 helper 记录跨日重放导致周级 timer delay）。Forge/replay 已通过的固定时钟场景保留为负控制。八个相同WEB_FIXTURE_TIME启动场景仅导入并调用既有pinBrowserClock，保持原Host advancing calendar和原生timers；八文件56个expect/全部种子/golden逐字保留，根Host类型通过，实际原浏览器八文件14项24.94秒全部通过。不同calendar的gallery/official、recency/schedule复位和已过Forge/replay不批量修改。通知原同步点击后立即读取动画的夹具改为等待真实提交和动画，原浏览器单例的同节点、起点、中点、终点几何及确认断言全部通过；同轮模型 observer 四项通过、四项既有跳过。
+
+表格复制恢复只归属于受保护的既有隐藏编辑器，只有当前 realm 存活、页面仍聚焦、临时复制输入已移除且焦点为空闲时才恢复；原生选择栏复制不抢焦点。F2 纳入既有编辑阻断，箭头/Home/End 等导航仍由引擎处理。像素滚轮限定网格/标签范围，向真实水平与垂直端口转发，保留 ctrl/meta、其他 deltaMode 和外部控件行为并清理监听。真实 DPR 1/2 复制后选区/原文、编辑拒绝、双轴渲染与冻结内容通过，十项单测通过；父任务原九项组合实际完成，OPC 与安全产物回归及 Office/Markdown 通过；另外五项仍有布局差 2px/15.125px 与 Plain text 切换菜单节点脱离失败，不能以局部证明关闭整页。后续命名几何证明窄屏 24px 箭头加 inline 空白超出固定预留，改为 iframe 内既有控件 flex 自动分配；原生箭头量化 152px 与原 150px 交互合同不同，实例内捕获原按钮仅按真实 tabs DOM 精确滚动 150px，普通标签及其他点击不改并清理监听。引擎根尺寸 Hc−2 与按 Hc 计算的 canvas 不一致，使用同 iframe 根 border0/width100%/height100% 对齐，不裁切 bitmap 或改坐标。引擎公开 fullscreenmode 默认 true，其 Fm 50ms 抢焦被实际 stack 证明；仅显式设 false，保留自有复制恢复。真实 DPR1/2×四宽度全部原几何项最大差0、六控件中心命中、31px 底栏、双向150/zoom、缓存值及冻结/选择/复制/只读/外部焦点120ms通过；十一项局部与根类型通过。最新八门产物31.32秒、产物后两侧聚合9.45秒通过，原七项5通过2失败，OPC/安全原用例通过；几何/DPR冻结/混合文件与Plain text菜单均关闭，两语言进一步走到旧不存在的导航控件焦点 selector 超时。等价映射为原生非聚焦箭头及实际键盘编辑器，保留原焦点false/true、左右选区及公式断言。原活动 tab 88/89px 裁切经 resize 后仅调整自有端口 scrollLeft，18 项含旧 realm/卸载/零宽/oversized 不振荡回归通过；刷新八门26.41秒、产物后聚合9.43秒通过，原裁切断言通过。Zoom 原生标签即时变而引擎100ms后才提交，实际单次 minus/plus trace 证明未提交90时 plus仍读1并取消旧任务产生110；夹具按既有真实选区宽度就绪，原90/100/150断言通过，不改产品 debounce。第二本工作簿全控件命中失败的实际六项同属原生 loading mask 覆盖，几何和控件不重叠；等待原生 loading 完成后六项通过，两语言推进至原键盘编辑器焦点 locator 超时，继续定位框架容器/文档范围，不以元素不存在为由取消键盘断言。文档根范围的原生键盘编辑器映射后，原焦点/B1/A1/公式断言通过。宽屏原箭头应隐藏另暴露 flex:0 1 auto 收缩容器至692px，引擎按各tab外宽求和698px（含负边距差）误认为溢出，而扣除zoom实际可用779px；仅改为 flex:1 1 auto，沿用原生显隐，不增加阈值或箭头状态副本。私有实验两语言八次宽窄变化全部原几何/命中/画布身份/选区/150px导航通过。两处直接minus/plus均按原生100ms提交后的实际选区宽度就绪，保留原90/100/150断言。最终真实生产八门25.96秒、Host9.28/Vue4.77秒聚合通过；两语言原整例2/2通过（45.12秒，含后续主题/格式/长文本/缩放循环）。完整模块628项及最终CSS后18项通过，其他五项原例此前分别通过，不声称单轮七项或全产品回归通过。历史五套43项39通过4失败仅为较早快照；所有阈值与原交互断言保留。
+
+## 最新完整产物回归（2026-11-16 18:53）
+
+预览与输入夹具阶段检查点对应源码和既有生产产物保持不变，完整 `DSH_SNAPSHOT=replay vp run test:web:built` 已结束（3420.57秒）：250文件225通过、21失败、4跳过；1100测试1039通过、32失败、29跳过，本次无额外未处理错误汇总。原预览七项、工作区17项、Forge29项、OPC及reasoning-preview均在本次完整运行通过，覆盖上文历史待验证项；不能将失败数减少直接等同独立缺陷修复数。剩余包括插件配置入口、日程、聊天大输入300px反向、部分键盘/菜单与视图断言，须按真实栈和原断言逐项复现，不批量刷新golden。
+
+其中Vite入口负向测试已证明调用失效的 `.bin/vite`，该路径在Vite+core中不存在。原单例21ms在说明文字断言失败，直接启动确认ENOENT；私有内存变换只将launcher改为`.bin/vp dev`，原timeout、退出码、完整Host说明和不得listen的全部断言保留，单例345ms通过。仅适配测试CLI，不修改产品guard；现已落盘精确一行，正常配置的原两例2/2通过（1443ms，standalone303ms），根Host类型检查通过，原全部断言保留。插件卡片缓存及panel重建的真实Slot测试未复现缺失，不能据此否认实际浏览器故障；清理后的日程截图也不能证明失败时无表头。后续按实际失败瞬间的被动证据定位：带ref的computed VNode在组件render外刷新导致ScheduleCatalogAction的ref owner为null；仅将两处VNode computed改为render函数，新真实DOM负例由三条Missing ref owner警告转绿，33项及保留模块覆盖共776项、根Vue类型通过（不是第二次全量运行）。插件第三次返回时同一缓存数组四个VNode的component均已unmounted，scope失活、DOM脱离而ledger仍有四项；诊断曾额外读取view而刷新依赖并掩盖故障，改为严格相同读取集合后才获得因果证据。只缓存业务数据、每次render创建卡片，模块366项和根Vue类型通过。模型菜单实际Escape/ShiftTab各只执行一次back，旧节点移除的null-focusout在pane已是root、既有焦点交接意图尚未由post watcher消费时误关菜单；仅复用该意图阻止过早关闭，close清意图，保留外部Node立即关闭、稳定root空焦点关闭和原detail语义。真实删除事件回归旧源红/新源绿，全部101项和根Vue类型通过。AppFrame只恢复每次几何计算读取平台标记，布局137项通过。四处新源已进入八门产物39.16秒（395 Client/3 public），产物后Host9.59秒、Vue44.31秒聚合通过（两门合计44.32秒）；产物后十二套原浏览器已结束301.11秒：119项113通过、6失败（12文件8通过4失败）。插件配置11、管理26、Team20、声明推理8、DeepSeek10、默认模型15、caption1、日程catalog11全过；仍败GitHub安装3、法语日程1px、文件浏览焦点及drawer菜单焦点。完整32失败是此前全量快照，不以本次局部结果冒称新全量绿。
+
+秘密文本等宽合同的当前失败属于已复现的运行环境前提：原React与Vue同场景、相同35字符和CSS，字体实际回退为比例字体，揭示前后均增长36.765625px；FontFaceSet loaded/check=true不能证明命名字体已安装。产品有意避免通用monospace影响Windows CJK，保留现有字体栈。仅任务私有配置补入Ubuntu fonts-liberation 1:2.1.5-3build1中的四个Liberation Mono字体，保留OFL许可、包哈希及系统CJK配置，不改全局字体/缓存。两侧使用相同FONTCONFIG_FILE、私有XDG_CACHE_HOME及显式原PLAYWRIGHT_BROWSERS_PATH后，正常原例分别2752/2495ms通过，原几何、揭示/隐藏、复制、ARIA、golden与错误断言全部保留；首次私有XDG改变浏览器查找位置的启动失败没有执行用例，修正浏览器路径后才计入结果。这不是产品源码修复，也不替代其他失败用例的因果定位。
+
+终端长命令的原生拖选必须跟踪当前端点：实际被动trace证明滚动从60继续至84时，旧端点由第一命令落入第二命令，Selection额外包含`\n$\necho done`，而命令DOM文本与原版一致。测试helper仅将缓存端点的五步移动替换为有界轮询当前几何并真实mouse.move，仍由浏览器原生Selection决定完成，不用JS设置选区；原mousedown/up、wheel、释放后精确选择和系统剪贴板、52个原expect与golden均保留。私有变换与最终落盘字节相同，原失败整例1通过/6筛选跳过（7.91秒），没有产品CSS或命令呈现补丁；仍须在后续完整回归中验证共享helper。
+
+GitHub安装原三例的失败另由实际Host/受控代理实验确认：本任务继承的Git indexed配置组在凭据名过滤后保留COUNT/VALUE却缺KEY，Git以128退出且未连接代理，分类unknown；移除整个组后同一网络/超时实验分别返回network/timeout并实际连接代理。UI未展示对应恢复信息符合实际错误类型，不能修改UI或生产过滤器掩盖环境故障。测试仅复用已有isolateGitCommandLineConfig，在套件前移除整组、结束恢复，无其他env stub；三个测试主体与原版逐字节相同。正常配置原三例27.16秒全部通过，含镜像/替换输入、不自动pnpm、完整失败Git日志、ARIA与原golden断言；8GB根Host类型检查通过。尚未将局部结果当作新完整replay结论。
+
+法语日程1px失败另经固定原版React独立产物/原Vitest及相同Playwright/Chromium的同一原用例对照：同为800px、edit、Hebdomadaire条件，scrollWidth236/clientWidth235，所有后代矩形、样式、minWidth/flex/字体/滚动指标和首个外溢节点除生成CSS类名外逐字段相同。原45个断言保留，双侧均失败；这是当前环境下既有基线限制，不能凭本次迁移授权改产品布局、隐藏溢出或放宽1px断言，也不据此声称日程全面验收通过。
+
+本轮焦点闭环：FileNavigator的七个DOM注册watch不再依赖完整info包装身份，而追踪实际元素、内容/pane标识和当前回调，cleanup使用旧绑定回调；避免同一已连接body假卸载后把用户刚点的非当前文件焦点抢回。370项行为回归通过。Sidebar在PRE阶段保留旧sidebar/portal菜单的焦点归属，在nextTick确认提交完成后查询新opener；watch cleanup取消过期、重开与释放意图，窗口失焦、显式外部焦点、inert/hidden/modal均不抢焦点。真实Menu/同次父提交旧源红→绿，122项通过。原先根vue-tsc -p调用只检查根聚合程序而不构建引用源项目，不能证明包源码通过；真实八门Client DAG首次捕获未用watchEffect导入，移除后八门24.62秒全过（395 Client/3 public），产物后Host9.31/Vue5.43秒聚合通过。刷新产物的文件浏览3/drawer7/workspace-recency1全部原浏览器通过，合计11项59.45秒。
+
+workspace-recency的推进Date加半分钟余量曾通过正常原例，但不能抵御慢运行：额外35秒原生计时后第二golden年龄由now/1/2变成1/2/3。正式夹具改为仅在已完成输入动作之间显式推进页面逻辑日历，跨reload保存在该页面sessionStorage；native timers/RAF/performance和Vue事件guard不改。原dragTo、24断言、种子及两个golden保留；原例6.92秒及同一35秒延迟41.87秒通过。实际Vue验证既有祖先监听器投递、同事件新挂祖先拒绝、下一动作才可投递，事件内时钟恒定。冻结负控制失败；早期缓存串用模式结果作废，最终每模式hash及原生35000ms哨兵确认后才计入。PluginsPanelIcon只移除组件VNode的空数组default slot，原七项注册/实际SVG断言通过，无对应Vue slot警告。
+
+五条已释放Session opening诊断另经真实ClientSessionReference/SidebarSessionView的未挂载退休、最后卸载和关闭三条路径证明为自身release取消pending ready；同一FOLLOW调用的独立引用继续正常打开。三个源模块与React基线字节相同，现有活动错误控制仍通过；不借迁移修改取消协议或吞日志，也不宣称全量console零诊断。聊天300px反向已定位为Vue patch阶段修改聚焦宿主contenteditable，在同级回显提交前强制布局；DOM门禁移入既有watchPostEffect，不改变同步接受/清草稿或CAS。新增真实Vue/Lexical提交顺序回归及相关四套172项通过，八门产物25.02秒、Host9.77/Vue5.53秒聚合通过；正常原聊天滚动17/17通过78.74秒，大输入reversal与secondMovement均0、最终top3166/spacer0，原2px阈值及golden未改。完整且无丢失的原生/React CDP对照显示Vue额外布局发生在回显插入之前；原生栈和属性写入区间将首次Layout锁定在DIV contenteditable写入，焦点恢复是第二次Layout，不删除其行为。早期丢数据trace不作因果证明，所有临时探针留在未跟踪目录。
+
+初始root发布另有真实焦点顺序回归：重载调用focus时宿主已连接但contenteditable=false，focus前后active均body，随后才写true。仅将既有编辑门禁post effect移到root绑定post effect之前，使同步Lexical root监听器看到可聚焦宿主；不改变同步清草稿/CAS、提交后回显顺序或编辑状态切换不重绑root的合同。真实首次/延迟绑定两红例转绿，合计10项通过。新八门产物25.41秒及产物后Host10.23/Vue5.13秒两聚合通过；刷新产物后正常配置原工作区17、聊天17及recency共35/35全部通过（110.63秒），五个初始焦点失败关闭；大输入反向0.34375px在原2px阈值内、secondMovement0，所有原断言/golden保留。剩余文件回放已结束；五份日志逐文件最新完整结果去重为250文件1100项1070通过/1失败/29跳过。唯一法语1px有独立React同条件失败对照，保留原断言；这是分段覆盖，不宣称单次全量通过。最终hygiene四门、domain graph及lint仍失败，须分别判断实际迁移增量，未放宽检查。
+
+## 实施中的编译契约
+
+Client 类型面采用 `vue-tsc`、声明输出和 `rewriteRelativeImportExtensions: false`；runtime 的 Client browser/Node、静态库与 shell bundle 从对应 `src` 编译。Host 类型面仍使用 `tsc` 与既有 emitted 输入。原因是 TypeScript 6 对 `.vue` 的相对导入重写报 TS2876，不能通过关闭检查解决。源输入映射保留 package-relative cwd、原有产物名、source map 来源和资源隔离边界。
+
+SFC 由 [Vue compiler-sfc](https://github.com/vuejs/core/blob/main/packages/compiler-sfc/README.md) 编译 script setup 和内联模板；样式继续由 module metadata 和 DocumentStyles 持有，插件工厂不直接写 DOM。当前显式支持 JS/TS script setup、普通和 scoped CSS、既有 CSS Module import 与 package assets；普通 script、template-only、外部块、预处理器和 `<style module>` 尚未支持，并在构建时报诊断。
+
+已知 [Vue language-tools](https://github.com/vuejs/language-tools/blob/master/packages/tsc/README.md) 3.3.14 边界：单行 script setup 紧贴 `</script>` 且没有分号/换行时，虚拟代码可能拼成 `defineProps<__VLS_Props>()type __VLS_PublicProps`，导致 props 声明变成 any。当前严格类型样例使用正常换行/分号，并验证未导入 SFC 的 template 错误；这些结果不能证明该上游边界已修复。产品 SFC 应保留标准多行排版，最终类型验收需复核声明输出。
+
+Vite+ 1.3.0 依 [官方本地 CLI 配置](https://viteplus.dev/guide/local-cli) 统一 `vite@*` → `@voidzero-dev/vite-plus-core@1.3.0` 和 `vitest@*` → 5.0.5；inline test projects 明确 `extends: false` 保留独立 roster，避免 Vitest 5 默认继承合并数组造成重复执行。父代理统一 runner 复跑编译、资源、隔离和 watcher 四组测试通过，共 143 个独立用例；这不替代真实 Host/Boot 或产品验收。
+
+真实模型演示采用清洁提交重新build及build:web，两者通过；官方媒体工具仅私有解压。生产请求实际返回MISSING_CREDENTIAL，正常模型列表无可用路由，未生成可交付GIF。此项属于缺少模型凭据的交付限制，不能以截图或回放冒充，不读取或在聊天中接收密钥。
