@@ -4,14 +4,14 @@ import type {
   SessionEventLikeEntry,
   SessionSnapshot,
   SessionSummary,
-} from "@deepseek-ai/dsh-api-session-controller/client";
-import type { WorkspaceSnapshot } from "@deepseek-ai/dsh-api-workspace-controller/client";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
+} from '@deepseek-ai/dsh-api-session-controller/client'
+import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import {
   EMPTY_CONVERSATION_SNAPSHOT,
   type ConversationSnapshot,
-} from "@deepseek-ai/dsh-client-ui-conversation/client";
-import { EMPTY_CHAT_SNAPSHOT, type ChatSnapshot } from "@deepseek-ai/dsh-client-ui-chat/client";
+} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { EMPTY_CHAT_SNAPSHOT, type ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 
 /**
  * Fixture overrides for the session behavior face: any subset of the
@@ -22,20 +22,20 @@ import { EMPTY_CHAT_SNAPSHOT, type ChatSnapshot } from "@deepseek-ai/dsh-client-
  * misnamed verb leaves the fail-loud stub in place, which names itself at
  * the first call.
  */
-export type SessionBehaviorOverrides = Partial<ISession> & Record<string, unknown>;
+export type SessionBehaviorOverrides = Partial<ISession> & Record<string, unknown>
 
 /**
  * Vue-flushed mutation runner shared by every runtime object: public mutators
  * funnel through it so tests never handle SlotCore microtask batching or
  * the Vue update queue themselves.
  */
-export type Stabilizer = (fn: () => void | Promise<void>) => Promise<void>;
+export type Stabilizer = (fn: () => void | Promise<void>) => Promise<void>
 
 /** Mutable top-level snapshot fields accepted by fixture update callbacks. */
-export type FixtureSnapshot<T> = { -readonly [Key in keyof T]: T[Key] };
+export type FixtureSnapshot<T> = { -readonly [Key in keyof T]: T[Key] }
 
 /** Writable test representation of the immutable Session Controller snapshot. */
-export type SessionFixtureSnapshot = FixtureSnapshot<SessionSnapshot>;
+export type SessionFixtureSnapshot = FixtureSnapshot<SessionSnapshot>
 
 /**
  * Session fixture accepted by {@link TestSessions.add}: identity plus optional
@@ -44,19 +44,19 @@ export type SessionFixtureSnapshot = FixtureSnapshot<SessionSnapshot>;
  * not supply, so an unstubbed call fails loud at the call site).
  */
 export interface SessionFixture {
-  id: string;
+  id: string
   /** Overrides merged over {@link sessionSnapshot}; Conversation data arrives through the event feed. */
-  snapshot?: Partial<Omit<SessionSnapshot, "sessionId">>;
+  snapshot?: Partial<Omit<SessionSnapshot, 'sessionId'>>
   /** List-row overrides merged over the defaults derived from `id`. */
-  summary?: Partial<Omit<SessionSummary, "id">>;
+  summary?: Partial<Omit<SessionSummary, 'id'>>
   /** Session behavior face: exactly the methods the feature under test calls (ISession subset + extras). */
-  session?: SessionBehaviorOverrides;
+  session?: SessionBehaviorOverrides
   /** Initial contiguous event window consumed by Conversation assembly. */
-  events?: readonly SessionEventLikeEntry[];
+  events?: readonly SessionEventLikeEntry[]
   /** Whether the initial event window has an older page. */
-  hasMore?: boolean;
+  hasMore?: boolean
   /** Optional shared initial-opening barrier for the fixture's Client generation. */
-  initialOpen?: (signal: AbortSignal) => void | Promise<void>;
+  initialOpen?: (signal: AbortSignal) => void | Promise<void>
 }
 
 /**
@@ -71,18 +71,18 @@ export function sessionSnapshot(sessionId: SessionId): SessionSnapshot {
     running: false,
     subagent: null,
     removed: false,
-    openState: "open",
+    openState: 'open',
     openError: null,
     hasMore: false,
     loadingOlder: false,
-    historyLoadStatus: "idle",
+    historyLoadStatus: 'idle',
     historyWasPartial: false,
     promptError: null,
     blank: false,
     lastAgentError: null,
     promptAttempted: false,
     awaitingFirstTurn: false,
-  };
+  }
 }
 
 /**
@@ -93,7 +93,7 @@ export function sessionSnapshot(sessionId: SessionId): SessionSnapshot {
 export function conversationSnapshot(
   overrides: Partial<ConversationSnapshot> = {},
 ): ConversationSnapshot {
-  return { ...EMPTY_CONVERSATION_SNAPSHOT, ...overrides };
+  return { ...EMPTY_CONVERSATION_SNAPSHOT, ...overrides }
 }
 
 /**
@@ -102,7 +102,7 @@ export function conversationSnapshot(
  * @returns an immutable fixture value.
  */
 export function chatSnapshot(overrides: Partial<ChatSnapshot> = {}): ChatSnapshot {
-  return { ...EMPTY_CHAT_SNAPSHOT, ...overrides };
+  return { ...EMPTY_CHAT_SNAPSHOT, ...overrides }
 }
 
 /**
@@ -114,8 +114,8 @@ export function workspaceSnapshot(): WorkspaceSnapshot {
     items: [],
     archivedSessionIds: [],
     pinnedSessionIds: [],
-    state: "idle",
-    phase: "ready",
+    state: 'idle',
+    phase: 'ready',
     error: null,
-  };
+  }
 }

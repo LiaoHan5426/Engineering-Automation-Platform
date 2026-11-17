@@ -17,7 +17,7 @@ function eyeGlyph(path: string) {
 /** Keep mask characters copyable and accessible while drawing centered marks. */
 function maskedText(masked: string) {
   let offset = 0
-  return masked.split(MASK_RUNS).map(part => {
+  return masked.split(MASK_RUNS).map((part) => {
     const key = offset
     offset += part.length
     if (part === '') return null

@@ -1,12 +1,12 @@
 /** Workspace archive and directory UI capability. */
 
-import { Service, type Context } from "@deepseek-ai/cordis";
-import type { AccessEffect, RemoteEndpoint } from "@deepseek-ai/dsh-api-remote-access/client";
+import { Service, type Context } from '@deepseek-ai/cordis'
+import type { AccessEffect, RemoteEndpoint } from '@deepseek-ai/dsh-api-remote-access/client'
 import type {
   ClientRemote,
   DirectoryListing,
   RemoteFailure,
-} from "@deepseek-ai/dsh-api-remotes/client";
+} from '@deepseek-ai/dsh-api-remotes/client'
 import type {
   ISessions,
   SessionCreateError,
@@ -14,33 +14,33 @@ import type {
   SessionReference,
   SessionTarget,
   SessionListState,
-} from "@deepseek-ai/dsh-api-session-controller/client";
+} from '@deepseek-ai/dsh-api-session-controller/client'
 // Type-only: pulls the `agentPreset` Session projection value into this program.
-import type {} from "@deepseek-ai/dsh-agent-preset-registry/types";
-import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
-import type { SubagentAddress } from "@deepseek-ai/dsh-subagent/client";
+import type {} from '@deepseek-ai/dsh-agent-preset-registry/types'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SubagentAddress } from '@deepseek-ai/dsh-subagent/client'
 import type {
   IWorkspaces,
   WorkspaceId,
   WorkspaceSnapshot,
   WorkspaceView,
-} from "@deepseek-ai/dsh-api-workspace-controller/client";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import type {} from "@deepseek-ai/dsh-client-ui-layout/client";
-import type { DraftInitializationOptions } from "@deepseek-ai/dsh-client-ui-conversation/client";
-import type { RowToast } from "./contract/slots.ts";
-import { pinOrderAccounts, pinOrderSource } from "./pin-order.ts";
-import type { WorkspaceViewStoreActions } from "./stores.ts";
+} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { DraftInitializationOptions } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { RowToast } from './contract/slots.ts'
+import { pinOrderAccounts, pinOrderSource } from './pin-order.ts'
+import type { WorkspaceViewStoreActions } from './stores.ts'
 
 interface MainSelection {
-  readonly sessionId?: SessionId;
-  readonly subagentAddress?: SubagentAddress;
+  readonly sessionId?: SessionId
+  readonly subagentAddress?: SubagentAddress
 }
 
 /** Content preparation and Agent preset for the Session a Workspace flow opens. */
 export interface StartSessionOptions extends DraftInitializationOptions {
   /** Agent preset the Session runs; the Host default when omitted. */
-  readonly agentPreset?: string;
+  readonly agentPreset?: string
 }
 
 /** Workspace archive and directory operations consumed by Client UI domains. */
@@ -49,7 +49,7 @@ export interface UiWorkspace {
    * Select a Session and show its Conversation as one UI navigation action.
    * @param target - known Session identity or durable direct-parent subagent address to display.
    */
-  openSession(target: SessionTarget): void;
+  openSession(target: SessionTarget): void
   /**
    * Connect a Workspace and open its Session unless a later navigation supersedes it.
    * @param workspaceId - target Workspace.
@@ -63,8 +63,8 @@ export interface UiWorkspace {
   openWorkspace(
     workspaceId: WorkspaceId,
     beforeOpen?: (sessionId: SessionId) => void,
-    options?: Pick<StartSessionOptions, "agentPreset">,
-  ): Promise<void>;
+    options?: Pick<StartSessionOptions, 'agentPreset'>,
+  ): Promise<void>
   /**
    * Fork a Session without changing the current selection.
    * @param sessionId - source Session.
@@ -75,8 +75,8 @@ export interface UiWorkspace {
   forkSession(
     sessionId: SessionId,
     onCreated?: (childId: SessionId) => void,
-    options?: Pick<Parameters<ISessions["fork"]>[0], "allowMigration">,
-  ): Promise<SessionId>;
+    options?: Pick<Parameters<ISessions['fork']>[0], 'allowMigration'>,
+  ): Promise<SessionId>
   /**
    * Resolve the Session for a new conversation in a Workspace: navigation names the first reusable
    * blank member — listed in the Workspace, not archived, and listing no preset or the requested one —
@@ -88,8 +88,8 @@ export interface UiWorkspace {
    */
   connectWorkspace(
     workspaceId: WorkspaceId,
-    options?: Pick<StartSessionOptions, "agentPreset">,
-  ): Promise<SessionId>;
+    options?: Pick<StartSessionOptions, 'agentPreset'>,
+  ): Promise<SessionId>
   /**
    * Open the Workspace blank `connectWorkspace` resolves, so New Session returns to that blank's
    * unsent draft. A creation the Host refuses is shown through the Workspace notice and leaves the
@@ -98,7 +98,7 @@ export interface UiWorkspace {
    * @param options - initial content, the blank's preset, and `whenDraftExists`, which decides
    * whether existing text or attachments are kept, replaced, or followed by the prompt.
    */
-  startSession(workspaceId?: WorkspaceId, options?: StartSessionOptions): void;
+  startSession(workspaceId?: WorkspaceId, options?: StartSessionOptions): void
   /**
    * Archive a Session and clear it when it is the current selection.
    * @param sessionId - Session to archive.
@@ -107,12 +107,12 @@ export interface UiWorkspace {
   archiveSession(
     sessionId: SessionId,
     options?: { readonly stopActivity?: boolean },
-  ): Promise<void>;
+  ): Promise<void>
   /**
    * Unarchive a Session, restoring it to its recorded Workspace position.
    * @param sessionId - Session to unarchive.
    */
-  unarchiveSession(sessionId: SessionId): Promise<void>;
+  unarchiveSession(sessionId: SessionId): Promise<void>
   /**
    * Pin a Session on the Host, then lead it in its accounts' saved orders
    * (its Workspace group or Ungrouped, and the flat list). The order write
@@ -120,31 +120,31 @@ export interface UiWorkspace {
    * while the Host call was pending keep their positions.
    * @param sessionId - Session to pin.
    */
-  pinSession(sessionId: SessionId): Promise<void>;
+  pinSession(sessionId: SessionId): Promise<void>
   /**
    * Unpin a Session on the Host; saved positions stay as they are.
    * @param sessionId - Session to unpin.
    */
-  unpinSession(sessionId: SessionId): Promise<void>;
+  unpinSession(sessionId: SessionId): Promise<void>
   /**
    * Open the Host-native directory picker.
    * @returns the selected directory, or null when cancelled.
    */
-  pickDirectory(): Promise<string | null>;
+  pickDirectory(): Promise<string | null>
   /**
    * List one Host directory level.
    * @param path - directory path; absent selects the Host home.
    * @param signal - cancellation for a superseded scan.
    * @returns directory entries and breadcrumb ancestry.
    */
-  listDirectory(path?: string, signal?: AbortSignal): Promise<DirectoryListing>;
+  listDirectory(path?: string, signal?: AbortSignal): Promise<DirectoryListing>
   /**
    * Create a child directory.
    * @param path - existing parent directory.
    * @param name - child directory name.
    * @returns created absolute path.
    */
-  createDirectory(path: string, name: string): Promise<string>;
+  createDirectory(path: string, name: string): Promise<string>
   /**
    * Keep `callback`'s effects installed while the current Peer may call
    * `action` on one Workspace resource, with the semantics of
@@ -159,23 +159,23 @@ export interface UiWorkspace {
     workspaceId: WorkspaceId,
     action: RemoteEndpoint,
     callback: () => AccessEffect,
-  ): () => void;
+  ): () => void
 }
 
-declare module "@deepseek-ai/cordis" {
+declare module '@deepseek-ai/cordis' {
   interface Context {
     /** Cross-Controller Workspace navigation and directory UI capability. */
-    uiWorkspace: UiWorkspace;
+    uiWorkspace: UiWorkspace
   }
 }
 
 /** Structured directory failure exposed to directory UI consumers. */
 export class DirectoryBrowseError extends Error {
-  override readonly name = "DirectoryBrowseError";
+  override readonly name = 'DirectoryBrowseError'
 
   /** @param rpcError - Host directory business failure. */
   constructor(readonly rpcError: RemoteFailure) {
-    super(`directory browse failed: ${rpcError.code}: ${rpcError.message}`);
+    super(`directory browse failed: ${rpcError.code}: ${rpcError.message}`)
   }
 }
 
@@ -185,17 +185,17 @@ class UiWorkspaceService extends Service implements UiWorkspace {
   private readonly connecting = new Map<
     WorkspaceId,
     {
-      readonly agentPreset: string | undefined;
-      readonly attempt: Promise<SessionId>;
+      readonly agentPreset: string | undefined
+      readonly attempt: Promise<SessionId>
     }
-  >();
-  private readonly lifetime = new AbortController();
+  >()
+  private readonly lifetime = new AbortController()
   private readonly selection = createSnapshotStore<MainSelection>(
     {},
-    { persist: { name: "dsh.sessions.current" } },
-  );
-  private mainReference: SessionReference | undefined;
-  private restorationNavigation: AbortSignal | undefined;
+    { persist: { name: 'dsh.sessions.current' } },
+  )
+  private mainReference: SessionReference | undefined
+  private restorationNavigation: AbortSignal | undefined
 
   /**
    * @param ctx - Client root Context.
@@ -207,30 +207,30 @@ class UiWorkspaceService extends Service implements UiWorkspace {
    */
   constructor(
     ctx: Context,
-    private readonly directoryPicker: ClientRemote["directoryPicker"],
+    private readonly directoryPicker: ClientRemote['directoryPicker'],
     private readonly workspaces: IWorkspaces,
     private readonly sessions: ISessions,
-    private readonly view: Pick<WorkspaceViewStoreActions, "pinSessionOrder">,
+    private readonly view: Pick<WorkspaceViewStoreActions, 'pinSessionOrder'>,
     private readonly notify: (toast: RowToast) => void,
   ) {
-    super(ctx, "uiWorkspace");
+    super(ctx, 'uiWorkspace')
     ctx.effect(() => {
-      const stop = this.watchNavigation();
+      const stop = this.watchNavigation()
       return () => {
-        stop();
-        this.lifetime.abort();
-        const reference = this.mainReference;
-        this.mainReference = undefined;
-        reference?.release();
-      };
-    }, "ui-workspace: Workspace navigation policy");
+        stop()
+        this.lifetime.abort()
+        const reference = this.mainReference
+        this.mainReference = undefined
+        reference?.release()
+      }
+    }, 'ui-workspace: Workspace navigation policy')
   }
 
   connectWorkspace(
     workspaceId: WorkspaceId,
-    options: Pick<StartSessionOptions, "agentPreset"> = {},
+    options: Pick<StartSessionOptions, 'agentPreset'> = {},
   ): Promise<SessionId> {
-    return this.connectBlank(workspaceId, options);
+    return this.connectBlank(workspaceId, options)
   }
 
   /**
@@ -238,36 +238,36 @@ class UiWorkspaceService extends Service implements UiWorkspace {
    */
   private async connectBlank(
     workspaceId: WorkspaceId,
-    reuse: Pick<StartSessionOptions, "agentPreset">,
+    reuse: Pick<StartSessionOptions, 'agentPreset'>,
   ): Promise<SessionId> {
     const workspace = this.workspaces.list
       .getSnapshot()
-      .items.find((item) => item.workspaceId === workspaceId);
+      .items.find(item => item.workspaceId === workspaceId)
     if (workspace === undefined) {
-      throw new Error(`uiWorkspace.connectWorkspace: unknown workspace ${workspaceId}`);
+      throw new Error(`uiWorkspace.connectWorkspace: unknown workspace ${workspaceId}`)
     }
-    const inflight = this.connecting.get(workspaceId);
+    const inflight = this.connecting.get(workspaceId)
     if (inflight !== undefined && inflight.agentPreset === reuse.agentPreset)
-      return inflight.attempt;
+      return inflight.attempt
 
     const attempt = this.createInWorkspace(workspace, reuse).finally(() => {
       if (this.connecting.get(workspaceId)?.attempt === attempt)
-        this.connecting.delete(workspaceId);
-    });
-    this.connecting.set(workspaceId, { agentPreset: reuse.agentPreset, attempt });
-    return attempt;
+        this.connecting.delete(workspaceId)
+    })
+    this.connecting.set(workspaceId, { agentPreset: reuse.agentPreset, attempt })
+    return attempt
   }
 
   /** Name the first reusable member blank; a requested preset also skips blanks listing another preset. */
   private createInWorkspace(
     workspace: WorkspaceView,
-    options: Pick<StartSessionOptions, "agentPreset">,
+    options: Pick<StartSessionOptions, 'agentPreset'>,
   ): Promise<SessionId> {
-    const archived = this.workspaces.list.getSnapshot().archivedSessionIds;
-    const sessions = this.sessions.list.getSnapshot();
+    const archived = this.workspaces.list.getSnapshot().archivedSessionIds
+    const sessions = this.sessions.list.getSnapshot()
     const blank = sessions.ids.find((id) => {
-      const summary = sessions.byId[id];
-      const listed = summary?.projectionValues?.agentPreset;
+      const summary = sessions.byId[id]
+      const listed = summary?.projectionValues?.agentPreset
       return (
         summary !== undefined &&
         summary.blank &&
@@ -275,15 +275,15 @@ class UiWorkspaceService extends Service implements UiWorkspace {
         workspace.sessionIds.includes(id) &&
         !archived.includes(id) &&
         (options.agentPreset === undefined ||
-          typeof listed !== "string" ||
+          typeof listed !== 'string' ||
           listed === options.agentPreset)
-      );
-    });
+      )
+    })
     return this.createNamed({
       workspaceId: workspace.workspaceId,
       ...(blank === undefined ? {} : { sessionId: blank }),
       ...(options.agentPreset === undefined ? {} : { agentPreset: options.agentPreset }),
-    });
+    })
   }
 
   /**
@@ -292,18 +292,18 @@ class UiWorkspaceService extends Service implements UiWorkspace {
    * its projections are reloaded so the row reflects its log.
    */
   private async createNamed(request: {
-    readonly workspaceId: WorkspaceId;
-    readonly sessionId?: SessionId;
-    readonly agentPreset?: string;
+    readonly workspaceId: WorkspaceId
+    readonly sessionId?: SessionId
+    readonly agentPreset?: string
   }): Promise<SessionId> {
-    const sessionId = await this.sessions.create(request);
-    const named = request.sessionId;
+    const sessionId = await this.sessions.create(request)
+    const named = request.sessionId
     if (named !== undefined && named !== sessionId) {
       void this.sessions.refreshProjections(named).catch((reason: unknown) => {
-        console.warn("declined blank Session projection reload failed:", reason);
-      });
+        console.warn('declined blank Session projection reload failed:', reason)
+      })
     }
-    return sessionId;
+    return sessionId
   }
 
   /**
@@ -314,140 +314,140 @@ class UiWorkspaceService extends Service implements UiWorkspace {
    * that still awaits a format migration reloads only those cached hints.
    */
   private async restoreBlank(workspaceId: WorkspaceId, sessionId: SessionId): Promise<SessionId> {
-    await this.sessions.refreshProjections(sessionId);
+    await this.sessions.refreshProjections(sessionId)
     const recorded =
-      this.sessions.list.getSnapshot().byId[sessionId]?.projectionValues?.agentPreset;
-    const request = { workspaceId, sessionId };
-    if (typeof recorded !== "string") return this.createNamed(request);
+      this.sessions.list.getSnapshot().byId[sessionId]?.projectionValues?.agentPreset
+    const request = { workspaceId, sessionId }
+    if (typeof recorded !== 'string') return this.createNamed(request)
     try {
-      return await this.createNamed({ ...request, agentPreset: recorded });
+      return await this.createNamed({ ...request, agentPreset: recorded })
     } catch (error: unknown) {
-      const code = sessionCreateErrorOf(error)?.rpcError.code;
-      if (code !== "agent-preset/not-found" && code !== "agent-preset/invalid") throw error;
-      return this.createNamed(request);
+      const code = sessionCreateErrorOf(error)?.rpcError.code
+      if (code !== 'agent-preset/not-found' && code !== 'agent-preset/invalid') throw error
+      return this.createNamed(request)
     }
   }
 
   openSession(target: SessionTarget): void {
-    this.replaceMain(target, this.lifetime.signal, "reveal");
+    this.replaceMain(target, this.lifetime.signal, 'reveal')
   }
 
   openWorkspace(
     workspaceId: WorkspaceId,
     beforeOpen?: (sessionId: SessionId) => void,
-    options: Pick<StartSessionOptions, "agentPreset"> = {},
+    options: Pick<StartSessionOptions, 'agentPreset'> = {},
   ): Promise<void> {
-    return this.openWorkspaceSession(workspaceId, beforeOpen, options);
+    return this.openWorkspaceSession(workspaceId, beforeOpen, options)
   }
 
   private async openWorkspaceSession(
     workspaceId: WorkspaceId,
     beforeOpen: ((sessionId: SessionId) => void) | undefined,
-    reuse: Pick<StartSessionOptions, "agentPreset">,
+    reuse: Pick<StartSessionOptions, 'agentPreset'>,
   ): Promise<void> {
-    const navigation = AbortSignal.any([this.ctx.layout.beginNavigation(), this.lifetime.signal]);
-    let sessionId: SessionId;
+    const navigation = AbortSignal.any([this.ctx.layout.beginNavigation(), this.lifetime.signal])
+    let sessionId: SessionId
     try {
-      sessionId = await this.connectBlank(workspaceId, reuse);
+      sessionId = await this.connectBlank(workspaceId, reuse)
     } catch (error: unknown) {
       // Reported here, not in connectWorkspace: startup restoration calls that
       // directly and stays console-only.
       if (!navigation.aborted)
-        this.notify({ kind: "createFailed", message: creationFailureMessage(error) });
-      throw error;
+        this.notify({ kind: 'createFailed', message: creationFailureMessage(error) })
+      throw error
     }
-    if (navigation.aborted) return;
-    this.replaceMain(sessionId, navigation, "reveal", beforeOpen);
+    if (navigation.aborted) return
+    this.replaceMain(sessionId, navigation, 'reveal', beforeOpen)
   }
 
   async forkSession(
     sessionId: SessionId,
     onCreated?: (childId: SessionId) => void,
-    options?: Pick<Parameters<ISessions["fork"]>[0], "allowMigration">,
+    options?: Pick<Parameters<ISessions['fork']>[0], 'allowMigration'>,
   ): Promise<SessionId> {
     return this.sessions.fork({
       sessionId,
       increaseTitle: true,
       ...(onCreated === undefined ? {} : { onCreated }),
       ...(options?.allowMigration === undefined ? {} : { allowMigration: options.allowMigration }),
-    });
+    })
   }
 
   startSession(workspaceId?: WorkspaceId, options?: StartSessionOptions): void {
-    const { agentPreset, ...draft } = options ?? {};
-    const draftOptions = options === undefined ? undefined : draft;
+    const { agentPreset, ...draft } = options ?? {}
+    const draftOptions = options === undefined ? undefined : draft
     const initializeDraft =
       draftOptions !== undefined &&
       (draftOptions.prompt !== undefined ||
         (draftOptions.whenDraftExists ??
-          (draftOptions.clearPreviousDraft === true ? "replace" : "keep")) === "replace");
-    const workspace = this.workspaces.list.getSnapshot();
-    const sessions = this.sessions.list.getSnapshot();
-    const current = this.mainReference?.sessionId;
+          (draftOptions.clearPreviousDraft === true ? 'replace' : 'keep')) === 'replace')
+    const workspace = this.workspaces.list.getSnapshot()
+    const sessions = this.sessions.list.getSnapshot()
+    const current = this.mainReference?.sessionId
     const currentWorkspaceId =
       current === undefined
         ? undefined
-        : workspace.items.find((item) => item.sessionIds.includes(current))?.workspaceId;
+        : workspace.items.find(item => item.sessionIds.includes(current))?.workspaceId
     const recent =
-      workspace.phase === "ready" && sessions.phase === "ready"
+      workspace.phase === 'ready' && sessions.phase === 'ready'
         ? recentWorkspace(workspace.items, sessions.byId)
-        : undefined;
-    const target = workspaceId ?? currentWorkspaceId ?? recent;
+        : undefined
+    const target = workspaceId ?? currentWorkspaceId ?? recent
     if (target === undefined) {
       if (initializeDraft) {
         this.notify({
-          kind: "createFailed",
-          message: this.ctx.locale.bind("workspace")("draft.workspaceRequired"),
-        });
-        return;
+          kind: 'createFailed',
+          message: this.ctx.locale.bind('workspace')('draft.workspaceRequired'),
+        })
+        return
       }
-      this.clearMain();
-      return;
+      this.clearMain()
+      return
     }
     const opening = this.openWorkspace(
       target,
       initializeDraft
         ? (id) => {
-            const binding = this.sessions.binding(id);
-            if (binding === undefined) this.draftPreparationFailed();
-            this.prepareDraft(binding, draftOptions);
-          }
+          const binding = this.sessions.binding(id)
+          if (binding === undefined) this.draftPreparationFailed()
+          this.prepareDraft(binding, draftOptions)
+        }
         : undefined,
       agentPreset === undefined ? {} : { agentPreset },
-    );
+    )
     void opening.catch((reason: unknown) => {
-      console.warn("new session failed:", reason);
-    });
+      console.warn('new session failed:', reason)
+    })
   }
 
   private prepareDraft(binding: SessionBinding, options: DraftInitializationOptions): void {
-    const conversation = this.ctx.get("conversation");
-    if (conversation === undefined) this.draftPreparationFailed();
-    if (conversation.input.requestDraftInitialization(binding, options) === "blocked")
-      this.draftPreparationFailed();
+    const conversation = this.ctx.get('conversation')
+    if (conversation === undefined) this.draftPreparationFailed()
+    if (conversation.input.requestDraftInitialization(binding, options) === 'blocked')
+      this.draftPreparationFailed()
   }
 
   private draftPreparationFailed(): never {
-    const message = this.ctx.locale.bind("workspace")("draft.initializationFailed");
-    this.notify({ kind: "createFailed", message });
-    throw new Error(message);
+    const message = this.ctx.locale.bind('workspace')('draft.initializationFailed')
+    this.notify({ kind: 'createFailed', message })
+    throw new Error(message)
   }
 
   async archiveSession(
     sessionId: SessionId,
     options: { readonly stopActivity?: boolean } = {},
   ): Promise<void> {
-    await this.workspaces.archiveSession(sessionId, options);
-    if (this.mainReference?.sessionId === sessionId) this.clearMain();
+    await this.workspaces.archiveSession(sessionId, options)
+    if (this.mainReference?.sessionId === sessionId) this.clearMain()
   }
 
   async unarchiveSession(sessionId: SessionId): Promise<void> {
-    await this.workspaces.unarchiveSession(sessionId);
+    await this.workspaces.unarchiveSession(sessionId)
   }
 
   async pinSession(sessionId: SessionId): Promise<void> {
-    await this.workspaces.pinSession(sessionId);
-    const { items, pinnedSessionIds, archivedSessionIds } = this.workspaces.list.getSnapshot();
+    await this.workspaces.pinSession(sessionId)
+    const { items, pinnedSessionIds, archivedSessionIds } = this.workspaces.list.getSnapshot()
     this.view.pinSessionOrder(
       sessionId,
       pinOrderAccounts(items, sessionId),
@@ -455,29 +455,29 @@ class UiWorkspaceService extends Service implements UiWorkspace {
         pinnedSessionIds,
         archivedSessionIds,
       }),
-    );
+    )
   }
 
   async unpinSession(sessionId: SessionId): Promise<void> {
-    await this.workspaces.unpinSession(sessionId);
+    await this.workspaces.unpinSession(sessionId)
   }
 
   async pickDirectory(): Promise<string | null> {
-    const result = await this.directoryPicker.pick();
-    if (!result.ok) throw new Error(`directory picker failed: ${result.error.message}`);
-    return result.value;
+    const result = await this.directoryPicker.pick()
+    if (!result.ok) throw new Error(`directory picker failed: ${result.error.message}`)
+    return result.value
   }
 
   async listDirectory(path?: string, signal?: AbortSignal): Promise<DirectoryListing> {
-    const result = await this.directoryPicker.list(path, signal);
-    if (!result.ok) throw new DirectoryBrowseError(result.error);
-    return result.value;
+    const result = await this.directoryPicker.list(path, signal)
+    if (!result.ok) throw new DirectoryBrowseError(result.error)
+    return result.value
   }
 
   async createDirectory(path: string, name: string): Promise<string> {
-    const result = await this.directoryPicker.createDirectory(path, name);
-    if (!result.ok) throw new DirectoryBrowseError(result.error);
-    return result.value;
+    const result = await this.directoryPicker.createDirectory(path, name)
+    if (!result.ok) throw new DirectoryBrowseError(result.error)
+    return result.value
   }
 
   whenAccess(
@@ -486,88 +486,88 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     callback: () => AccessEffect,
   ): () => void {
     // `ctx.get` traces the service to the caller's Context, which then owns the controller.
-    const access = this.ctx.get("remoteAccess");
+    const access = this.ctx.get('remoteAccess')
     /* v8 ignore next -- this plugin injects remoteAccess, so the service is active while uiWorkspace is reachable. */
     if (access === undefined)
-      throw new Error("ui-workspace: whenAccess requires the remoteAccess service");
-    return access.whenResourceAccess("workspace", workspaceId, action, callback);
+      throw new Error('ui-workspace: whenAccess requires the remoteAccess service')
+    return access.whenResourceAccess('workspace', workspaceId, action, callback)
   }
 
   private watchNavigation(): () => void {
-    let initial: "waiting" | "connecting" | "done" = "waiting";
+    let initial: 'waiting' | 'connecting' | 'done' = 'waiting'
     const reconcile = (): void => {
-      if (this.lifetime.signal.aborted) return;
-      if (this.clearArchivedCurrent()) return;
-      if (initial !== "waiting" || this.restorationNavigation?.aborted === true) return;
-      const workspace = this.workspaces.list.getSnapshot();
-      const sessions = this.sessions.list.getSnapshot();
-      if (workspace.phase !== "ready" || sessions.phase !== "ready") return;
+      if (this.lifetime.signal.aborted) return
+      if (this.clearArchivedCurrent()) return
+      if (initial !== 'waiting' || this.restorationNavigation?.aborted === true) return
+      const workspace = this.workspaces.list.getSnapshot()
+      const sessions = this.sessions.list.getSnapshot()
+      if (workspace.phase !== 'ready' || sessions.phase !== 'ready') return
       if (this.mainReference !== undefined) {
-        initial = "done";
-        return;
+        initial = 'done'
+        return
       }
-      initial = "connecting";
+      initial = 'connecting'
       void this.restoreSelection(workspace, sessions).then(
         () => {
-          initial = "done";
+          initial = 'done'
         },
         (reason: unknown) => {
-          if (this.lifetime.signal.aborted) return;
-          initial = "waiting";
-          console.warn("initial Session restoration failed:", reason);
+          if (this.lifetime.signal.aborted) return
+          initial = 'waiting'
+          console.warn('initial Session restoration failed:', reason)
         },
-      );
-    };
+      )
+    }
 
-    const disposeWorkspaces = this.workspaces.list.subscribe(reconcile);
-    const disposeSessions = this.sessions.list.subscribe(reconcile);
-    reconcile();
+    const disposeWorkspaces = this.workspaces.list.subscribe(reconcile)
+    const disposeSessions = this.sessions.list.subscribe(reconcile)
+    reconcile()
     return () => {
-      this.lifetime.abort();
-      disposeSessions();
-      disposeWorkspaces();
-    };
+      this.lifetime.abort()
+      disposeSessions()
+      disposeWorkspaces()
+    }
   }
 
   private async restoreSelection(
     workspaces: WorkspaceSnapshot,
     sessions: SessionListState,
   ): Promise<void> {
-    const saved = this.selection.getSnapshot();
+    const saved = this.selection.getSnapshot()
     if (saved.subagentAddress !== undefined) {
-      this.replaceMain(saved.subagentAddress, this.lifetime.signal, "preserve");
-      return;
+      this.replaceMain(saved.subagentAddress, this.lifetime.signal, 'preserve')
+      return
     }
-    const summary = saved.sessionId === undefined ? undefined : sessions.byId[saved.sessionId];
+    const summary = saved.sessionId === undefined ? undefined : sessions.byId[saved.sessionId]
     const workspace =
       summary === undefined
         ? undefined
-        : workspaces.items.find((item) => item.sessionIds.includes(summary.id));
+        : workspaces.items.find(item => item.sessionIds.includes(summary.id))
     if (summary !== undefined && (!summary.blank || workspace === undefined)) {
-      this.replaceMain(summary.id, this.lifetime.signal, "preserve");
-      return;
+      this.replaceMain(summary.id, this.lifetime.signal, 'preserve')
+      return
     }
-    const navigation = AbortSignal.any([this.ctx.layout.beginNavigation(), this.lifetime.signal]);
-    this.restorationNavigation = navigation;
-    let sessionId: SessionId | undefined;
+    const navigation = AbortSignal.any([this.ctx.layout.beginNavigation(), this.lifetime.signal])
+    this.restorationNavigation = navigation
+    let sessionId: SessionId | undefined
     if (
       summary !== undefined &&
       workspace !== undefined &&
       summary.cwd === workspace.path &&
       !workspaces.archivedSessionIds.includes(summary.id)
     ) {
-      sessionId = await this.restoreBlank(workspace.workspaceId, summary.id);
+      sessionId = await this.restoreBlank(workspace.workspaceId, summary.id)
     }
-    let target = workspace?.workspaceId ?? recentWorkspace(workspaces.items, sessions.byId);
+    let target = workspace?.workspaceId ?? recentWorkspace(workspaces.items, sessions.byId)
     if (target === undefined && workspaces.items.length === 0 && sessions.ids.length === 0) {
-      const prepared = await this.initializeDefaultWorkspace(navigation);
-      if (navigation.aborted) return;
-      target = prepared?.workspaceId;
+      const prepared = await this.initializeDefaultWorkspace(navigation)
+      if (navigation.aborted) return
+      target = prepared?.workspaceId
     }
     if (sessionId === undefined && target !== undefined)
-      sessionId = await this.connectWorkspace(target);
+      sessionId = await this.connectWorkspace(target)
     if (sessionId !== undefined && !navigation.aborted) {
-      this.replaceMain(sessionId, navigation, "preserve");
+      this.replaceMain(sessionId, navigation, 'preserve')
     }
   }
 
@@ -575,62 +575,62 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     signal: AbortSignal,
   ): Promise<WorkspaceView | undefined> {
     try {
-      return await this.workspaces.initializeDefault(signal);
+      return await this.workspaces.initializeDefault(signal)
     } catch (_error: unknown) {
-      if (!signal.aborted) this.notify({ kind: "defaultWorkspaceFailed" });
-      return undefined;
+      if (!signal.aborted) this.notify({ kind: 'defaultWorkspaceFailed' })
+      return undefined
     }
   }
 
   /** @returns true when an archived current selection was cleared. */
   private clearArchivedCurrent(): boolean {
-    const current = this.mainReference?.sessionId;
+    const current = this.mainReference?.sessionId
     if (
       current === undefined ||
       !this.workspaces.list.getSnapshot().archivedSessionIds.includes(current)
     )
-      return false;
-    this.clearMain();
-    return true;
+      return false
+    this.clearMain()
+    return true
   }
 
   private clearMain(): void {
-    const previous = this.mainReference;
-    this.mainReference = undefined;
-    this.selection.set({});
-    previous?.release();
-    this.ctx.layout.selectPanel(null);
+    const previous = this.mainReference
+    this.mainReference = undefined
+    this.selection.set({})
+    previous?.release()
+    this.ctx.layout.selectPanel(null)
   }
 
   private replaceMain(
     target: SessionTarget,
     signal: AbortSignal,
-    panel: "reveal" | "preserve",
+    panel: 'reveal' | 'preserve',
     beforeOpen?: (sessionId: SessionId) => void,
   ): void {
-    signal.throwIfAborted();
-    const reference = this.sessions.retain(target, { source: "mainView" });
+    signal.throwIfAborted()
+    const reference = this.sessions.retain(target, { source: 'mainView' })
     try {
-      signal.throwIfAborted();
-      beforeOpen?.(reference.sessionId);
+      signal.throwIfAborted()
+      beforeOpen?.(reference.sessionId)
       if (signal.aborted) {
-        reference.release();
-        return;
+        reference.release()
+        return
       }
       const subagentAddress =
-        typeof target === "string" ? this.sessions.subagentAddress(reference.sessionId) : target;
+        typeof target === 'string' ? this.sessions.subagentAddress(reference.sessionId) : target
       this.selection.set({
         sessionId: reference.sessionId,
         ...(subagentAddress === undefined ? {} : { subagentAddress }),
-      });
+      })
     } catch (error: unknown) {
-      reference.release();
-      throw error;
+      reference.release()
+      throw error
     }
-    const previous = this.mainReference;
-    this.mainReference = reference;
-    previous?.release();
-    if (panel === "reveal") this.ctx.layout.selectPanel(null);
+    const previous = this.mainReference
+    this.mainReference = reference
+    previous?.release()
+    if (panel === 'reveal') this.ctx.layout.selectPanel(null)
   }
 }
 
@@ -640,9 +640,9 @@ class UiWorkspaceService extends Service implements UiWorkspace {
  * name decides.
  */
 function sessionCreateErrorOf(error: unknown): SessionCreateError | undefined {
-  return error instanceof Error && error.name === "SessionCreateError"
+  return error instanceof Error && error.name === 'SessionCreateError'
     ? (error as SessionCreateError)
-    : undefined;
+    : undefined
 }
 
 /**
@@ -650,31 +650,31 @@ function sessionCreateErrorOf(error: unknown): SessionCreateError | undefined {
  * stable code and message; any other failure keeps its own message.
  */
 function creationFailureMessage(error: unknown): string {
-  const refused = sessionCreateErrorOf(error);
-  if (refused !== undefined) return `${refused.rpcError.code}: ${refused.rpcError.message}`;
-  return error instanceof Error ? error.message : String(error);
+  const refused = sessionCreateErrorOf(error)
+  if (refused !== undefined) return `${refused.rpcError.code}: ${refused.rpcError.message}`
+  return error instanceof Error ? error.message : String(error)
 }
 
 /** Stable tie-breaking follows Host Workspace order. */
 function recentWorkspace(
   workspaces: readonly WorkspaceView[],
-  sessions: SessionListState["byId"],
+  sessions: SessionListState['byId'],
 ): WorkspaceId | undefined {
-  let selected: WorkspaceId | undefined;
-  let selectedTime = Number.NEGATIVE_INFINITY;
+  let selected: WorkspaceId | undefined
+  let selectedTime = Number.NEGATIVE_INFINITY
   for (const workspace of workspaces) {
-    let latest = Number.NEGATIVE_INFINITY;
+    let latest = Number.NEGATIVE_INFINITY
     for (const sessionId of workspace.sessionIds) {
-      const session = sessions[sessionId];
-      if (session !== undefined) latest = Math.max(latest, session.updatedAt);
+      const session = sessions[sessionId]
+      if (session !== undefined) latest = Math.max(latest, session.updatedAt)
     }
-    if (latest === Number.NEGATIVE_INFINITY) latest = Date.parse(workspace.createdAt);
+    if (latest === Number.NEGATIVE_INFINITY) latest = Date.parse(workspace.createdAt)
     if (selected === undefined || latest > selectedTime) {
-      selected = workspace.workspaceId;
-      selectedTime = latest;
+      selected = workspace.workspaceId
+      selectedTime = latest
     }
   }
-  return selected;
+  return selected
 }
 
-export { UiWorkspaceService };
+export { UiWorkspaceService }

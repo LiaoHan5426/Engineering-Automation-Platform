@@ -8,34 +8,34 @@
  * `.agents/notes/implemented/process/2026-07-30-generated-third-party-notices.md`.
  */
 
-import { existsSync, globSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import * as yaml from "js-yaml";
+import { existsSync, globSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import * as yaml from 'js-yaml'
 import {
   parse as parseToml,
   type TomlTableWithoutBigInt,
   type TomlValueWithoutBigInt,
-} from "smol-toml";
-import parseSpdx from "spdx-expression-parse";
-import primaryRuntimeLock from "./primary-runtime/lock.json" with { type: "json" };
-import { browserBundledExternals } from "./browser-bundled-externals.ts";
+} from 'smol-toml'
+import parseSpdx from 'spdx-expression-parse'
+import primaryRuntimeLock from './primary-runtime/lock.json' with { type: 'json' }
+import { browserBundledExternals } from './browser-bundled-externals.ts'
 import {
   DEVTOOLS_NPM_VERSION,
   DEVTOOLS_SOURCE_REVISION,
-} from "../packages/experimental/inspector/scripts/devtools/source.ts";
+} from '../packages/experimental/inspector/scripts/devtools/source.ts'
 
-const root = resolve(import.meta.dirname, "..");
-const OUT = "THIRD_PARTY_NOTICES.md";
+const root = resolve(import.meta.dirname, '..')
+const OUT = 'THIRD_PARTY_NOTICES.md'
 
 /** Dependency-declaration kinds a consumer resolves at runtime. */
-const RUNTIME_KINDS = ["dependencies", "optionalDependencies"] as const;
+const RUNTIME_KINDS = ['dependencies', 'optionalDependencies'] as const
 /** All manifest sections that name an external package this file must disclose. */
 const ALL_KINDS = [
-  "dependencies",
-  "devDependencies",
-  "optionalDependencies",
-  "peerDependencies",
-] as const;
+  'dependencies',
+  'devDependencies',
+  'optionalDependencies',
+  'peerDependencies',
+] as const
 
 /**
  * Workspace areas that never reach a user: repository tooling and gates (the
@@ -46,41 +46,41 @@ const ALL_KINDS = [
  * `cordis.yml`.
  */
 const DEV_ONLY_AREAS = [
-  "package.json",
-  "packages/test-support/",
-  "packages/test-support/client-runtime/",
-  "website/",
-  "native/",
-] as const;
+  'package.json',
+  'packages/test-support/',
+  'packages/test-support/client-runtime/',
+  'website/',
+  'native/',
+] as const
 
 /** Third-party implementations embedded by named Host packages' shipping build configurations. */
 const HOST_BUNDLED_DEPENDENCIES: Readonly<Record<string, readonly string[]>> = {
   // subagent-oar/tsdown.config.ts embeds the patched adapter instead of installing a second copy.
-  "@deepseek-ai/dsh-experimental-subagent-oar": ["@botiverse/oar"],
-};
+  '@deepseek-ai/dsh-experimental-subagent-oar': ['@botiverse/oar'],
+}
 
 /** First-party public native packages: reachable at runtime but not third-party. */
 const FIRST_PARTY = new Set([
-  "@deepseek-ai/node-addon-system",
-  "@deepseek-ai/node-addon-system-darwin-arm64",
-  "@deepseek-ai/node-addon-system-darwin-x64",
-  "@deepseek-ai/node-addon-system-linux-arm64",
-  "@deepseek-ai/node-addon-system-linux-x64",
-]);
+  '@deepseek-ai/node-addon-system',
+  '@deepseek-ai/node-addon-system-darwin-arm64',
+  '@deepseek-ai/node-addon-system-darwin-x64',
+  '@deepseek-ai/node-addon-system-linux-arm64',
+  '@deepseek-ai/node-addon-system-linux-x64',
+])
 
 /** Official SDK identity covered by the project's narrow owner authorization. */
-export const CLAUDE_AGENT_SDK_PACKAGE = "@anthropic-ai/claude-agent-sdk";
-const CLAUDE_PLATFORM_PACKAGE_PREFIX = `${CLAUDE_AGENT_SDK_PACKAGE}-`;
-const CLAUDE_PLATFORM_DECLARED_LICENSE = "SEE LICENSE IN LICENSE.md";
-const LIBREOFFICE_KIT_PACKAGE = "@deepseek-ai/libreoffice-kit";
+export const CLAUDE_AGENT_SDK_PACKAGE = '@anthropic-ai/claude-agent-sdk'
+const CLAUDE_PLATFORM_PACKAGE_PREFIX = `${CLAUDE_AGENT_SDK_PACKAGE}-`
+const CLAUDE_PLATFORM_DECLARED_LICENSE = 'SEE LICENSE IN LICENSE.md'
+const LIBREOFFICE_KIT_PACKAGE = '@deepseek-ai/libreoffice-kit'
 const LIBREOFFICE_PACKAGES = new Set([
   LIBREOFFICE_KIT_PACKAGE,
-  "@deepseek-ai/libreoffice-kit-wasm",
-  "@deepseek-ai/libreoffice-kit-darwin-arm64",
-  "@deepseek-ai/libreoffice-kit-darwin-x64",
-  "@deepseek-ai/libreoffice-kit-win32-arm64",
-  "@deepseek-ai/libreoffice-kit-win32-x64",
-]);
+  '@deepseek-ai/libreoffice-kit-wasm',
+  '@deepseek-ai/libreoffice-kit-darwin-arm64',
+  '@deepseek-ai/libreoffice-kit-darwin-x64',
+  '@deepseek-ai/libreoffice-kit-win32-arm64',
+  '@deepseek-ai/libreoffice-kit-win32-x64',
+])
 
 /**
  * Whether a non-permissive runtime declaration has an identity-scoped owner
@@ -89,7 +89,7 @@ const LIBREOFFICE_PACKAGES = new Set([
  * @returns true only for the official Claude Agent SDK package.
  */
 export function isOwnerAuthorizedRuntime(name: string): boolean {
-  return name === CLAUDE_AGENT_SDK_PACKAGE;
+  return name === CLAUDE_AGENT_SDK_PACKAGE
 }
 
 /**
@@ -98,26 +98,26 @@ export function isOwnerAuthorizedRuntime(name: string): boolean {
  */
 const OVERRIDES: Record<string, { license?: string; repo?: string }> = {
   // Rust workspaces publishing npm bins without `license` in package.json.
-  oxlint: { license: "MIT", repo: "https://github.com/oxc-project/oxc" },
-  "oxlint-tsgolint": { license: "MIT", repo: "https://github.com/oxc-project/tsgolint" },
+  oxlint: { license: 'MIT', repo: 'https://github.com/oxc-project/oxc' },
+  'oxlint-tsgolint': { license: 'MIT', repo: 'https://github.com/oxc-project/tsgolint' },
   // `license: SEE LICENSE IN LICENSE`: the servers repo is mid MIT→Apache-2.0
   // relicensing, so the effective terms are per-contribution.
-  "@modelcontextprotocol/server-everything": {
-    license: "MIT / Apache-2.0",
-    repo: "https://github.com/modelcontextprotocol/servers",
+  '@modelcontextprotocol/server-everything': {
+    license: 'MIT / Apache-2.0',
+    repo: 'https://github.com/modelcontextprotocol/servers',
   },
-  "@modelcontextprotocol/server-filesystem": {
-    license: "MIT / Apache-2.0",
-    repo: "https://github.com/modelcontextprotocol/servers",
+  '@modelcontextprotocol/server-filesystem': {
+    license: 'MIT / Apache-2.0',
+    repo: 'https://github.com/modelcontextprotocol/servers',
   },
   // No repository field in the published manifest.
-  "node-addon-require-builtin": {
-    repo: "https://www.npmjs.com/package/node-addon-require-builtin",
+  'node-addon-require-builtin': {
+    repo: 'https://www.npmjs.com/package/node-addon-require-builtin',
   },
   // npm 2.1.13 omits license and repository; its MIT LICENSE (2020-present Mengshukeji)
   // matches dream-num/Luckysheet's v2.1.13 LICENSE after newline normalization.
-  luckysheet: { license: "MIT", repo: "https://github.com/dream-num/Luckysheet" },
-};
+  luckysheet: { license: 'MIT', repo: 'https://github.com/dream-num/Luckysheet' },
+}
 
 /**
  * Python metadata is recorded from the distributions' license and project
@@ -126,56 +126,56 @@ const OVERRIDES: Record<string, { license?: string; repo?: string }> = {
  */
 const PYTHON_METADATA: Record<string, { license: string; repo: string; role?: string }> = {
   pydantic: {
-    license: "MIT",
-    repo: "https://github.com/pydantic/pydantic",
-    role: "runtime dependency of `deepseek-harness-sdk`",
+    license: 'MIT',
+    repo: 'https://github.com/pydantic/pydantic',
+    role: 'runtime dependency of `deepseek-harness-sdk`',
   },
-  hatchling: { license: "MIT", repo: "https://github.com/pypa/hatch", role: "build backend" },
-  "et-xmlfile": { license: "MIT", repo: "https://foss.heptapod.net/openpyxl/et_xmlfile" },
-  lxml: { license: "BSD-3-Clause", repo: "https://github.com/lxml/lxml" },
-  numpy: { license: "BSD-3-Clause", repo: "https://github.com/numpy/numpy" },
-  openpyxl: { license: "MIT", repo: "https://foss.heptapod.net/openpyxl/openpyxl" },
-  pandas: { license: "BSD-3-Clause", repo: "https://github.com/pandas-dev/pandas" },
-  pillow: { license: "MIT-CMU", repo: "https://github.com/python-pillow/Pillow" },
-  "python-dateutil": {
-    license: "Apache-2.0 OR BSD-3-Clause",
-    repo: "https://github.com/dateutil/dateutil",
+  hatchling: { license: 'MIT', repo: 'https://github.com/pypa/hatch', role: 'build backend' },
+  'et-xmlfile': { license: 'MIT', repo: 'https://foss.heptapod.net/openpyxl/et_xmlfile' },
+  lxml: { license: 'BSD-3-Clause', repo: 'https://github.com/lxml/lxml' },
+  numpy: { license: 'BSD-3-Clause', repo: 'https://github.com/numpy/numpy' },
+  openpyxl: { license: 'MIT', repo: 'https://foss.heptapod.net/openpyxl/openpyxl' },
+  pandas: { license: 'BSD-3-Clause', repo: 'https://github.com/pandas-dev/pandas' },
+  pillow: { license: 'MIT-CMU', repo: 'https://github.com/python-pillow/Pillow' },
+  'python-dateutil': {
+    license: 'Apache-2.0 OR BSD-3-Clause',
+    repo: 'https://github.com/dateutil/dateutil',
   },
-  "python-docx": { license: "MIT", repo: "https://github.com/python-openxml/python-docx" },
-  "python-pptx": { license: "MIT", repo: "https://github.com/scanny/python-pptx" },
-  pytest: { license: "MIT", repo: "https://github.com/pytest-dev/pytest", role: "test-only" },
-  six: { license: "MIT", repo: "https://github.com/benjaminp/six" },
-  "typing-extensions": { license: "PSF-2.0", repo: "https://github.com/python/typing_extensions" },
-  tzdata: { license: "Apache-2.0", repo: "https://github.com/python/tzdata" },
-  xlsxwriter: { license: "BSD-2-Clause", repo: "https://github.com/jmcnamara/XlsxWriter" },
-};
+  'python-docx': { license: 'MIT', repo: 'https://github.com/python-openxml/python-docx' },
+  'python-pptx': { license: 'MIT', repo: 'https://github.com/scanny/python-pptx' },
+  pytest: { license: 'MIT', repo: 'https://github.com/pytest-dev/pytest', role: 'test-only' },
+  six: { license: 'MIT', repo: 'https://github.com/benjaminp/six' },
+  'typing-extensions': { license: 'PSF-2.0', repo: 'https://github.com/python/typing_extensions' },
+  tzdata: { license: 'Apache-2.0', repo: 'https://github.com/python/tzdata' },
+  xlsxwriter: { license: 'BSD-2-Clause', repo: 'https://github.com/jmcnamara/XlsxWriter' },
+}
 
-type PythonMetadata = typeof PYTHON_METADATA;
+type PythonMetadata = typeof PYTHON_METADATA
 
 /** The `package.json` fields this generator reads. */
 export interface Manifest {
-  name?: string;
-  version?: string;
-  private?: boolean;
-  license?: string;
-  dependencies?: Record<string, string>;
-  devDependencies?: Record<string, string>;
-  optionalDependencies?: Record<string, string>;
-  peerDependencies?: Record<string, string>;
+  name?: string
+  version?: string
+  private?: boolean
+  license?: string
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
 }
 
 /** One disclosed external npm dependency. */
 interface ExternalDep {
-  name: string;
-  license: string;
-  repo: string;
+  name: string
+  license: string
+  repo: string
   /** True when a shipped workspace consumer installs it at runtime or embeds its implementation. */
-  runtime: boolean;
+  runtime: boolean
 }
 
 /** Read and parse a workspace-relative `package.json`. */
 function readManifest(rel: string): Manifest {
-  return JSON.parse(readFileSync(resolve(root, rel), "utf8")) as Manifest;
+  return JSON.parse(readFileSync(resolve(root, rel), 'utf8')) as Manifest
 }
 
 /**
@@ -184,19 +184,19 @@ function readManifest(rel: string): Manifest {
  * @returns one glob per manifest-bearing location, repository-relative.
  */
 export function manifestPatterns(rootMembers: readonly string[]): string[] {
-  return ["package.json", ...rootMembers.map((member) => `${member}/package.json`)];
+  return ['package.json', ...rootMembers.map(member => `${member}/package.json`)]
 }
 
 /** The `packages:` member globs declared by one pnpm workspace file. */
 function workspaceMembers(rel: string): string[] {
-  const declared = (yaml.load(readFileSync(resolve(root, rel), "utf8")) as { packages?: unknown })
-    .packages;
+  const declared = (yaml.load(readFileSync(resolve(root, rel), 'utf8')) as { packages?: unknown })
+    .packages
   if (!Array.isArray(declared) || declared.length === 0) {
     throw new Error(
       `gen-third-party-notices: ${rel} declares no workspace members; the manifest set cannot be derived.`,
-    );
+    )
   }
-  return declared.map((member) => String(member));
+  return declared.map(member => String(member))
 }
 
 /**
@@ -207,49 +207,49 @@ function workspaceMembers(rel: string): string[] {
  * would silently push dev-area manifests into the runtime tier.
  */
 function loadWorkspaceManifests(): { manifests: Map<string, Manifest>; names: Set<string> } {
-  const patterns = manifestPatterns(workspaceMembers("pnpm-workspace.yaml"));
-  const manifests = new Map<string, Manifest>();
-  const names = new Set<string>();
+  const patterns = manifestPatterns(workspaceMembers('pnpm-workspace.yaml'))
+  const manifests = new Map<string, Manifest>()
+  const names = new Set<string>()
   for (const pattern of patterns) {
     for (const path of globSync(pattern, { cwd: root })) {
-      const normalized = path.replaceAll("\\", "/");
-      const manifest = readManifest(normalized);
-      manifests.set(normalized, manifest);
-      if (manifest.name !== undefined) names.add(manifest.name);
+      const normalized = path.replaceAll('\\', '/')
+      const manifest = readManifest(normalized)
+      manifests.set(normalized, manifest)
+      if (manifest.name !== undefined) names.add(manifest.name)
     }
   }
   if (manifests.size < 100)
     throw new Error(
       `gen-third-party-notices: only ${manifests.size} workspace manifests found; the glob set is stale.`,
-    );
-  return { manifests, names };
+    )
+  return { manifests, names }
 }
 
 type VirtualManifest = Manifest & {
-  claudeCodeVersion?: string;
-  license?: string;
-  repository?: string | { url?: string };
-  homepage?: string;
-};
+  claudeCodeVersion?: string
+  license?: string
+  repository?: string | { url?: string }
+  homepage?: string
+}
 
 /** One platform payload declared by the official Claude Agent SDK. */
 export interface ClaudePlatformPayload {
-  readonly name: string;
-  readonly version: string;
+  readonly name: string
+  readonly version: string
 }
 
 /** Current SDK and CLI distribution facts derived from the installed SDK manifest. */
 export interface ClaudeDistribution {
-  readonly sdkVersion: string;
-  readonly claudeCodeVersion: string;
-  readonly payloads: ClaudePlatformPayload[];
+  readonly sdkVersion: string
+  readonly claudeCodeVersion: string
+  readonly payloads: ClaudePlatformPayload[]
 }
 
 function requiredManifestString(value: string | undefined, field: string): string {
   if (value === undefined || value.length === 0) {
-    throw new Error(`gen-third-party-notices: ${CLAUDE_AGENT_SDK_PACKAGE} has no ${field}.`);
+    throw new Error(`gen-third-party-notices: ${CLAUDE_AGENT_SDK_PACKAGE} has no ${field}.`)
   }
-  return value;
+  return value
 }
 
 /**
@@ -262,30 +262,30 @@ export function claudeDistributionFromManifest(manifest: VirtualManifest): Claud
   if (manifest.name !== CLAUDE_AGENT_SDK_PACKAGE) {
     throw new Error(
       `gen-third-party-notices: expected ${CLAUDE_AGENT_SDK_PACKAGE} manifest, got ${JSON.stringify(manifest.name)}.`,
-    );
+    )
   }
-  const sdkVersion = requiredManifestString(manifest.version, "version");
-  const claudeCodeVersion = requiredManifestString(manifest.claudeCodeVersion, "claudeCodeVersion");
-  const entries = Object.entries(manifest.optionalDependencies ?? {});
+  const sdkVersion = requiredManifestString(manifest.version, 'version')
+  const claudeCodeVersion = requiredManifestString(manifest.claudeCodeVersion, 'claudeCodeVersion')
+  const entries = Object.entries(manifest.optionalDependencies ?? {})
   if (entries.length === 0) {
     throw new Error(
       `gen-third-party-notices: ${CLAUDE_AGENT_SDK_PACKAGE} declares no optional platform payloads.`,
-    );
+    )
   }
   const payloads = entries
     .map(([name, version]) => {
       if (!name.startsWith(CLAUDE_PLATFORM_PACKAGE_PREFIX)) {
         throw new Error(
           `gen-third-party-notices: ${CLAUDE_AGENT_SDK_PACKAGE} optional dependency ${name} is outside its authorized platform-payload identity.`,
-        );
+        )
       }
       return {
         name,
         version: requiredManifestString(version, `${name} optional dependency version`),
-      };
+      }
     })
-    .sort((left, right) => left.name.localeCompare(right.name));
-  return { sdkVersion, claudeCodeVersion, payloads };
+    .sort((left, right) => left.name.localeCompare(right.name))
+  return { sdkVersion, claudeCodeVersion, payloads }
 }
 
 /**
@@ -306,25 +306,25 @@ export function virtualManifest(
   name: string,
   expectedVersion?: string,
 ): VirtualManifest | undefined {
-  const prefix = `${name.replace("/", "+")}@`;
-  const entries = readdirSync(virtual);
-  for (const entry of entries.filter((dir) => dir.startsWith(prefix))) {
+  const prefix = `${name.replace('/', '+')}@`
+  const entries = readdirSync(virtual)
+  for (const entry of entries.filter(dir => dir.startsWith(prefix))) {
     const manifest = JSON.parse(
-      readFileSync(resolve(virtual, entry, "node_modules", name, "package.json"), "utf8"),
-    ) as VirtualManifest;
-    if (expectedVersion === undefined || manifest.version === expectedVersion) return manifest;
+      readFileSync(resolve(virtual, entry, 'node_modules', name, 'package.json'), 'utf8'),
+    ) as VirtualManifest
+    if (expectedVersion === undefined || manifest.version === expectedVersion) return manifest
   }
   for (const dir of entries) {
-    const candidate = resolve(virtual, dir, "node_modules", name, "package.json");
+    const candidate = resolve(virtual, dir, 'node_modules', name, 'package.json')
     if (existsSync(candidate)) {
-      const manifest = JSON.parse(readFileSync(candidate, "utf8")) as VirtualManifest;
-      if (expectedVersion === undefined || manifest.version === expectedVersion) return manifest;
+      const manifest = JSON.parse(readFileSync(candidate, 'utf8')) as VirtualManifest
+      if (expectedVersion === undefined || manifest.version === expectedVersion) return manifest
     }
   }
-  return undefined;
+  return undefined
 }
 
-const workspaceLinkedManifestCache = new Map<string, VirtualManifest | undefined>();
+const workspaceLinkedManifestCache = new Map<string, VirtualManifest | undefined>()
 
 /**
  * Resolve the package version selected for a declaring workspace instead of an
@@ -338,17 +338,17 @@ function workspaceLinkedManifest(
   name: string,
   manifests: Map<string, Manifest>,
 ): VirtualManifest | undefined {
-  if (workspaceLinkedManifestCache.has(name)) return workspaceLinkedManifestCache.get(name);
+  if (workspaceLinkedManifestCache.has(name)) return workspaceLinkedManifestCache.get(name)
   for (const [path, manifest] of manifests) {
-    if (!ALL_KINDS.some((kind) => name in (manifest[kind] ?? {}))) continue;
-    const linked = resolve(root, dirname(path), "node_modules", name, "package.json");
-    if (!existsSync(linked)) continue;
-    const found = JSON.parse(readFileSync(linked, "utf8")) as VirtualManifest;
-    workspaceLinkedManifestCache.set(name, found);
-    return found;
+    if (!ALL_KINDS.some(kind => name in (manifest[kind] ?? {}))) continue
+    const linked = resolve(root, dirname(path), 'node_modules', name, 'package.json')
+    if (!existsSync(linked)) continue
+    const found = JSON.parse(readFileSync(linked, 'utf8')) as VirtualManifest
+    workspaceLinkedManifestCache.set(name, found)
+    return found
   }
-  workspaceLinkedManifestCache.set(name, undefined);
-  return undefined;
+  workspaceLinkedManifestCache.set(name, undefined)
+  return undefined
 }
 
 /** Resolve one installed external package manifest from either pnpm store. */
@@ -357,29 +357,29 @@ function installedManifest(
   manifests: Map<string, Manifest>,
   expectedVersion?: string,
 ): VirtualManifest | undefined {
-  const linked = workspaceLinkedManifest(name, manifests);
+  const linked = workspaceLinkedManifest(name, manifests)
   if (linked !== undefined && (expectedVersion === undefined || linked.version === expectedVersion))
-    return linked;
+    return linked
   let manifest:
     | (Manifest & { license?: string; repository?: string | { url?: string }; homepage?: string })
-    | undefined;
+    | undefined
   // Workspace-local link farms can expose a dependency that is not linked at
   // the repository root; both are backed by the root workspace's lockfile.
-  for (const store of ["node_modules", "native/system/node_modules"]) {
-    const direct = resolve(root, store, name, "package.json");
+  for (const store of ['node_modules', 'native/system/node_modules']) {
+    const direct = resolve(root, store, name, 'package.json')
     if (existsSync(direct)) {
-      const candidate = JSON.parse(readFileSync(direct, "utf8")) as typeof manifest;
+      const candidate = JSON.parse(readFileSync(direct, 'utf8')) as typeof manifest
       if (expectedVersion === undefined || candidate?.version === expectedVersion) {
-        manifest = candidate;
-        break;
+        manifest = candidate
+        break
       }
     }
-    const virtual = resolve(root, store, ".pnpm");
-    if (!existsSync(virtual)) continue;
-    manifest = virtualManifest(virtual, name, expectedVersion);
-    if (manifest !== undefined) break;
+    const virtual = resolve(root, store, '.pnpm')
+    if (!existsSync(virtual)) continue
+    manifest = virtualManifest(virtual, name, expectedVersion)
+    if (manifest !== undefined) break
   }
-  return manifest;
+  return manifest
 }
 
 /** License and repository URL for an installed external package, from the pnpm store. */
@@ -387,35 +387,35 @@ function installedMetadata(
   name: string,
   manifests: Map<string, Manifest>,
 ): { license: string; repo: string } {
-  const override = OVERRIDES[name];
-  const manifest = installedManifest(name, manifests);
-  const license = override?.license ?? manifest?.license;
+  const override = OVERRIDES[name]
+  const manifest = installedManifest(name, manifests)
+  const license = override?.license ?? manifest?.license
   const rawRepo =
-    typeof manifest?.repository === "string"
+    typeof manifest?.repository === 'string'
       ? manifest.repository
-      : (manifest?.repository?.url ?? manifest?.homepage);
-  const repo = override?.repo ?? normalizeRepo(rawRepo);
+      : (manifest?.repository?.url ?? manifest?.homepage)
+  const repo = override?.repo ?? normalizeRepo(rawRepo)
   if (license === undefined || repo === undefined) {
     throw new Error(
-      `gen-third-party-notices: cannot resolve ${license === undefined ? "license" : "repository"} for ${name}; run \`pnpm install\`, or add an OVERRIDES entry.`,
-    );
+      `gen-third-party-notices: cannot resolve ${license === undefined ? 'license' : 'repository'} for ${name}; run \`pnpm install\`, or add an OVERRIDES entry.`,
+    )
   }
-  return { license, repo };
+  return { license, repo }
 }
 
 function collectClaudeDistribution(manifests: Map<string, Manifest>): ClaudeDistribution {
-  const manifest = installedManifest(CLAUDE_AGENT_SDK_PACKAGE, manifests);
+  const manifest = installedManifest(CLAUDE_AGENT_SDK_PACKAGE, manifests)
   if (manifest === undefined) {
     throw new Error(
       `gen-third-party-notices: cannot resolve ${CLAUDE_AGENT_SDK_PACKAGE}; run \`pnpm install\`.`,
-    );
+    )
   }
-  const distribution = claudeDistributionFromManifest(manifest);
-  let installedPayloads = 0;
+  const distribution = claudeDistributionFromManifest(manifest)
+  let installedPayloads = 0
   for (const payload of distribution.payloads) {
-    const installed = installedManifest(payload.name, manifests, payload.version);
-    if (installed === undefined) continue;
-    installedPayloads += 1;
+    const installed = installedManifest(payload.name, manifests, payload.version)
+    if (installed === undefined) continue
+    installedPayloads += 1
     if (
       installed.name !== payload.name ||
       installed.version !== payload.version ||
@@ -423,29 +423,29 @@ function collectClaudeDistribution(manifests: Map<string, Manifest>): ClaudeDist
     ) {
       throw new Error(
         `gen-third-party-notices: installed ${payload.name} does not match its SDK-declared version and ${CLAUDE_PLATFORM_DECLARED_LICENSE} license field.`,
-      );
+      )
     }
   }
   if (installedPayloads === 0) {
     throw new Error(
-      "gen-third-party-notices: no SDK-declared Claude platform payload is installed; install optional dependencies before regenerating.",
-    );
+      'gen-third-party-notices: no SDK-declared Claude platform payload is installed; install optional dependencies before regenerating.',
+    )
   }
-  return distribution;
+  return distribution
 }
 
 /** Normalize a manifest repository/homepage value to a browsable https URL. */
 function normalizeRepo(raw: string | undefined): string | undefined {
-  if (raw === undefined || raw === "") return undefined;
+  if (raw === undefined || raw === '') return undefined
   let url = raw
-    .replace(/^git\+ssh:\/\/git@/, "https://")
-    .replace(/^git\+/, "")
-    .replace(/^git@([^:]+):/, "https://$1/")
-    .replace(/^git:\/\//, "https://")
-    .replace(/^github:/, "https://github.com/")
-    .replace(/\.git$/, "");
-  if (!url.startsWith("http")) url = `https://github.com/${url}`;
-  return url;
+    .replace(/^git\+ssh:\/\/git@/, 'https://')
+    .replace(/^git\+/, '')
+    .replace(/^git@([^:]+):/, 'https://$1/')
+    .replace(/^git:\/\//, 'https://')
+    .replace(/^github:/, 'https://github.com/')
+    .replace(/\.git$/, '')
+  if (!url.startsWith('http')) url = `https://github.com/${url}`
+  return url
 }
 
 /**
@@ -460,7 +460,7 @@ function collectNpmDeps(
   return [...tierExternalDeps(manifests, names, browser)]
     .filter(([name]) => !FIRST_PARTY.has(name))
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, runtime]) => ({ name, ...installedMetadata(name, manifests), runtime }));
+    .map(([name, runtime]) => ({ name, ...installedMetadata(name, manifests), runtime }))
 }
 
 /**
@@ -475,30 +475,30 @@ export function tierExternalDeps(
   names: Set<string>,
   browser: ReadonlySet<string> = new Set(),
 ): Map<string, boolean> {
-  const tiers = new Map<string, boolean>();
+  const tiers = new Map<string, boolean>()
   // `tsx` is runtime by fiat: the root source-run scripts execute through its ESM hook.
-  tiers.set("tsx", true);
+  tiers.set('tsx', true)
   for (const [path, manifest] of manifests) {
-    const devOnly = DEV_ONLY_AREAS.some((area) =>
-      area.endsWith("/") ? path.startsWith(area) : path === area,
-    );
+    const devOnly = DEV_ONLY_AREAS.some(area =>
+      area.endsWith('/') ? path.startsWith(area) : path === area,
+    )
     const hostBundled =
-      manifest.name === undefined ? [] : (HOST_BUNDLED_DEPENDENCIES[manifest.name] ?? []);
+      manifest.name === undefined ? [] : (HOST_BUNDLED_DEPENDENCIES[manifest.name] ?? [])
     for (const dependency of hostBundled) {
-      if (!ALL_KINDS.some((kind) => Object.hasOwn(manifest[kind] ?? {}, dependency))) {
+      if (!ALL_KINDS.some(kind => Object.hasOwn(manifest[kind] ?? {}, dependency))) {
         throw new Error(
           `gen-third-party-notices: ${manifest.name} embeds ${dependency} but does not declare it`,
-        );
+        )
       }
     }
     for (const kind of ALL_KINDS) {
       for (const [dep, range] of Object.entries(manifest[kind] ?? {})) {
-        if (names.has(dep) || range.startsWith("workspace:")) continue;
+        if (names.has(dep) || range.startsWith('workspace:')) continue
         const runtime =
           browser.has(dep) ||
           hostBundled.includes(dep) ||
-          (!devOnly && (RUNTIME_KINDS as readonly string[]).includes(kind));
-        tiers.set(dep, (tiers.get(dep) ?? false) || runtime);
+          (!devOnly && (RUNTIME_KINDS as readonly string[]).includes(kind))
+        tiers.set(dep, (tiers.get(dep) ?? false) || runtime)
       }
     }
   }
@@ -506,17 +506,17 @@ export function tierExternalDeps(
     if (!names.has(name) && !tiers.has(name))
       throw new Error(
         `gen-third-party-notices: browser package ${name} has no workspace dependency declaration`,
-      );
+      )
   }
-  return tiers;
+  return tiers
 }
 
 /** A vendored package row parsed out of the `vendor/README.md` manifest table. */
 export interface VendoredRow {
-  npmName: string;
+  npmName: string
   /** The name this package carries upstream; MIT attribution names the fork's origin, not our scope. */
-  upstreamName: string;
-  upstream: string;
+  upstreamName: string
+  upstream: string
 }
 
 /**
@@ -525,18 +525,16 @@ export interface VendoredRow {
  * @returns one row per manifest-table entry, in table order.
  */
 export function parseVendoredRows(text: string): VendoredRow[] {
-  const rows: VendoredRow[] = [];
-  for (const line of text.split("\n")) {
-    const match = new RegExp(
-      String.raw`^\| \x60\S+\/\x60 \| \x60([^\x60]+)\x60 \| \x60([^\x60]+)\x60 \| \S+ \| ` +
-        String.raw`(https:\/\/\S+?)(?: \([^)]*\))? \| \x60[0-9a-f]+\x60 \|$`,
-    ).exec(line);
-    if (match === null) continue;
-    const [, npmName, upstreamName, upstream] = match;
-    if (npmName === undefined || upstreamName === undefined || upstream === undefined) continue;
-    rows.push({ npmName, upstreamName, upstream });
+  const rows: VendoredRow[] = []
+  for (const line of text.split('\n')) {
+    const match = new RegExp(String.raw`^\| \x60\S+\/\x60 \| \x60([^\x60]+)\x60 \| \x60([^\x60]+)\x60 \| \S+ \| `
+      + String.raw`(https:\/\/\S+?)(?: \([^)]*\))? \| \x60[0-9a-f]+\x60 \|$`).exec(line)
+    if (match === null) continue
+    const [, npmName, upstreamName, upstream] = match
+    if (npmName === undefined || upstreamName === undefined || upstream === undefined) continue
+    rows.push({ npmName, upstreamName, upstream })
   }
-  return rows;
+  return rows
 }
 
 /**
@@ -546,53 +544,53 @@ export function parseVendoredRows(text: string): VendoredRow[] {
  * rather than a package that quietly vanishes from the notices.
  */
 function collectVendored(): (VendoredRow & { sourceDirectory: string })[] {
-  const rows = parseVendoredRows(readFileSync(resolve(root, "vendor/README.md"), "utf8"));
-  const onDisk = new Map<string, string>();
-  for (const entry of readdirSync(resolve(root, "vendor"), { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const manifest = readManifest(`vendor/${entry.name}/package.json`);
-    if (manifest.name !== undefined) onDisk.set(manifest.name, entry.name);
+  const rows = parseVendoredRows(readFileSync(resolve(root, 'vendor/README.md'), 'utf8'))
+  const onDisk = new Map<string, string>()
+  for (const entry of readdirSync(resolve(root, 'vendor'), { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    const manifest = readManifest(`vendor/${entry.name}/package.json`)
+    if (manifest.name !== undefined) onDisk.set(manifest.name, entry.name)
   }
 
-  const parsed = new Set(rows.map((row) => row.npmName));
-  const missing = [...onDisk.keys()].filter((name) => !parsed.has(name));
+  const parsed = new Set(rows.map(row => row.npmName))
+  const missing = [...onDisk.keys()].filter(name => !parsed.has(name))
   if (missing.length > 0) {
     throw new Error(
-      `gen-third-party-notices: vendor/README.md has no manifest-table row for ${missing.join(", ")}; its table format changed or the sync is incomplete.`,
-    );
+      `gen-third-party-notices: vendor/README.md has no manifest-table row for ${missing.join(', ')}; its table format changed or the sync is incomplete.`,
+    )
   }
   return rows.map((row) => {
-    const dir = onDisk.get(row.npmName);
+    const dir = onDisk.get(row.npmName)
     if (dir === undefined)
       throw new Error(
         `gen-third-party-notices: vendored package ${row.npmName} from vendor/README.md has no vendor/ directory.`,
-      );
-    const license = readManifest(`vendor/${dir}/package.json`).license;
-    if (license !== "MIT") {
+      )
+    const license = readManifest(`vendor/${dir}/package.json`).license
+    if (license !== 'MIT') {
       throw new Error(
         `gen-third-party-notices: vendored ${row.npmName} declares license ${JSON.stringify(license)}; the vendored section assumes MIT throughout.`,
-      );
+      )
     }
-    return { ...row, sourceDirectory: `vendor/${dir}` };
-  });
+    return { ...row, sourceDirectory: `vendor/${dir}` }
+  })
 }
 
 /** Whether a parsed TOML value is a table rather than an array or scalar. */
 function isTomlTable(value: TomlValueWithoutBigInt | undefined): value is TomlTableWithoutBigInt {
-  return value !== undefined && typeof value === "object" && !Array.isArray(value);
+  return value !== undefined && typeof value === 'object' && !Array.isArray(value)
 }
 
 /** Parse one PEP 508 requirement string into its distribution name. */
 function parsePythonRequirement(requirement: string): string {
   const name = /^\s*([a-zA-Z][a-zA-Z0-9._-]*)\s*(?:\[[^\]]*\])?\s*(?:[<>=!~;@].*)?$/.exec(
     requirement,
-  )?.[1];
+  )?.[1]
   if (name === undefined) {
     throw new Error(
       `gen-third-party-notices: cannot read a distribution name from the requirement ${JSON.stringify(requirement)}.`,
-    );
+    )
   }
-  return name;
+  return name
 }
 
 /** Add the string requirements from one parsed TOML array. */
@@ -602,26 +600,26 @@ function collectPythonRequirementArray(
   location: string,
   allowGroupIncludes = false,
 ): void {
-  if (value === undefined) return;
+  if (value === undefined) return
   if (!Array.isArray(value)) {
-    throw new Error(`gen-third-party-notices: ${location} must be an array.`);
+    throw new Error(`gen-third-party-notices: ${location} must be an array.`)
   }
   for (const item of value) {
-    if (typeof item === "string") {
-      names.push(parsePythonRequirement(item));
-      continue;
+    if (typeof item === 'string') {
+      names.push(parsePythonRequirement(item))
+      continue
     }
     if (
       allowGroupIncludes &&
       isTomlTable(item) &&
-      typeof item["include-group"] === "string" &&
+      typeof item['include-group'] === 'string' &&
       Object.keys(item).length === 1
     ) {
-      continue;
+      continue
     }
     throw new Error(
       `gen-third-party-notices: ${location} contains an unsupported requirement entry.`,
-    );
+    )
   }
 }
 
@@ -630,8 +628,8 @@ function optionalTomlTable(
   value: TomlValueWithoutBigInt | undefined,
   location: string,
 ): TomlTableWithoutBigInt | undefined {
-  if (value === undefined || isTomlTable(value)) return value;
-  throw new Error(`gen-third-party-notices: ${location} must be a table.`);
+  if (value === undefined || isTomlTable(value)) return value
+  throw new Error(`gen-third-party-notices: ${location} must be a table.`)
 }
 
 /**
@@ -645,30 +643,30 @@ function optionalTomlTable(
  * @returns the local project name and declared requirement names.
  */
 function parsePyproject(text: string): { projectName?: string; requirements: string[] } {
-  const names: string[] = [];
-  const document = parseToml(text, { integersAsBigInt: false });
-  const buildSystem = optionalTomlTable(document["build-system"], "[build-system]");
-  const project = optionalTomlTable(document.project, "[project]");
-  const projectName = project?.name;
-  if (projectName !== undefined && typeof projectName !== "string") {
-    throw new Error("gen-third-party-notices: [project].name must be a string.");
+  const names: string[] = []
+  const document = parseToml(text, { integersAsBigInt: false })
+  const buildSystem = optionalTomlTable(document['build-system'], '[build-system]')
+  const project = optionalTomlTable(document.project, '[project]')
+  const projectName = project?.name
+  if (projectName !== undefined && typeof projectName !== 'string') {
+    throw new Error('gen-third-party-notices: [project].name must be a string.')
   }
-  collectPythonRequirementArray(names, buildSystem?.requires, "[build-system].requires");
-  collectPythonRequirementArray(names, project?.dependencies, "[project].dependencies");
+  collectPythonRequirementArray(names, buildSystem?.requires, '[build-system].requires')
+  collectPythonRequirementArray(names, project?.dependencies, '[project].dependencies')
 
   const optional = optionalTomlTable(
-    project?.["optional-dependencies"],
-    "[project.optional-dependencies]",
-  );
+    project?.['optional-dependencies'],
+    '[project.optional-dependencies]',
+  )
   for (const [group, requirements] of Object.entries(optional ?? {})) {
-    collectPythonRequirementArray(names, requirements, `[project.optional-dependencies].${group}`);
+    collectPythonRequirementArray(names, requirements, `[project.optional-dependencies].${group}`)
   }
 
-  const groups = optionalTomlTable(document["dependency-groups"], "[dependency-groups]");
+  const groups = optionalTomlTable(document['dependency-groups'], '[dependency-groups]')
   for (const [group, requirements] of Object.entries(groups ?? {})) {
-    collectPythonRequirementArray(names, requirements, `[dependency-groups].${group}`, true);
+    collectPythonRequirementArray(names, requirements, `[dependency-groups].${group}`, true)
   }
-  return projectName === undefined ? { requirements: names } : { projectName, requirements: names };
+  return projectName === undefined ? { requirements: names } : { projectName, requirements: names }
 }
 
 /**
@@ -677,12 +675,12 @@ function parsePyproject(text: string): { projectName?: string; requirements: str
  * @returns each declared requirement's distribution name, in file order.
  */
 export function parsePyprojectRequirements(text: string): string[] {
-  return parsePyproject(text).requirements;
+  return parsePyproject(text).requirements
 }
 
 /** Normalize a Python distribution name according to the packaging name rule. */
 function normalizePythonDistributionName(name: string): string {
-  return name.toLowerCase().replace(/[-_.]+/g, "-");
+  return name.toLowerCase().replace(/[-_.]+/g, '-')
 }
 
 /**
@@ -695,39 +693,39 @@ export function collectPythonDependencies(
   pyprojects: string[],
   metadata: PythonMetadata = PYTHON_METADATA,
 ): { name: string; license: string; repo: string; role: string }[] {
-  const parsed = pyprojects.map(parsePyproject);
+  const parsed = pyprojects.map(parsePyproject)
   const firstParty = new Set(
     parsed.flatMap(({ projectName }) =>
       projectName === undefined ? [] : [normalizePythonDistributionName(projectName)],
     ),
-  );
+  )
   const found = new Set(
     parsed
       .flatMap(({ requirements }) => requirements.map(normalizePythonDistributionName))
-      .filter((name) => !firstParty.has(name)),
-  );
+      .filter(name => !firstParty.has(name)),
+  )
   return [...found]
     .sort((a, b) => a.localeCompare(b))
     .map((name) => {
-      const entry = metadata[name];
+      const entry = metadata[name]
       if (entry === undefined)
         throw new Error(
           `gen-third-party-notices: python dependency ${name} is missing from PYTHON_METADATA.`,
-        );
-      return { name, ...entry, role: entry.role ?? "Python project dependency" };
-    });
+        )
+      return { name, ...entry, role: entry.role ?? 'Python project dependency' }
+    })
 }
 
 /** Direct Python dependencies named by the `pyproject.toml` manifests under `python/`. */
 function collectPython(): { name: string; license: string; repo: string; role: string }[] {
-  const manifests = globSync("python/*/pyproject.toml", { cwd: root });
+  const manifests = globSync('python/*/pyproject.toml', { cwd: root })
   if (manifests.length === 0)
     throw new Error(
-      "gen-third-party-notices: no python/*/pyproject.toml found; the Python tree moved.",
-    );
+      'gen-third-party-notices: no python/*/pyproject.toml found; the Python tree moved.',
+    )
   return collectPythonDependencies(
-    manifests.map((path) => readFileSync(resolve(root, path), "utf8")),
-  );
+    manifests.map(path => readFileSync(resolve(root, path), 'utf8')),
+  )
 }
 
 /**
@@ -740,72 +738,72 @@ export function collectBundledPythonDependencies(
   packages: Readonly<Record<string, string>>,
   metadata: PythonMetadata = PYTHON_METADATA,
 ): { name: string; version: string; license: string; repo: string }[] {
-  const normalized = new Map<string, string>();
+  const normalized = new Map<string, string>()
   for (const [distribution, version] of Object.entries(packages)) {
-    const name = normalizePythonDistributionName(distribution);
-    const previous = normalized.get(name);
+    const name = normalizePythonDistributionName(distribution)
+    const previous = normalized.get(name)
     if (previous !== undefined && previous !== version) {
       throw new Error(
         `gen-third-party-notices: bundled Python distribution ${name} has conflicting locked versions.`,
-      );
+      )
     }
     if (previous !== undefined)
       throw new Error(
         `gen-third-party-notices: bundled Python distribution ${name} has duplicate normalized names.`,
-      );
-    normalized.set(name, version);
+      )
+    normalized.set(name, version)
   }
   return [...normalized]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([name, version]) => {
-      const entry = metadata[name];
+      const entry = metadata[name]
       if (entry === undefined)
         throw new Error(
           `gen-third-party-notices: bundled Python distribution ${name} is missing from PYTHON_METADATA.`,
-        );
-      return { name, version, license: entry.license, repo: entry.repo };
-    });
+        )
+      return { name, version, license: entry.license, repo: entry.repo }
+    })
 }
 
 /** pnpm-patched external packages, from `pnpm-workspace.yaml`. */
 function collectPatched(): { spec: string; patch: string }[] {
-  const workspace = yaml.load(readFileSync(resolve(root, "pnpm-workspace.yaml"), "utf8")) as {
-    patchedDependencies?: Record<string, string>;
-  };
+  const workspace = yaml.load(readFileSync(resolve(root, 'pnpm-workspace.yaml'), 'utf8')) as {
+    patchedDependencies?: Record<string, string>
+  }
   return Object.entries(workspace.patchedDependencies ?? {}).map(([spec, patch]) => ({
     spec,
     patch,
-  }));
+  }))
 }
 
 /** SPDX identifiers this project may ship without further review. */
 const PERMISSIVE_LICENSES = new Set([
-  "MIT",
-  "MIT-CMU",
-  "ISC",
-  "BSD-2-Clause",
-  "BSD-3-Clause",
-  "Apache-2.0",
-  "0BSD",
-  "Unlicense",
-  "CC0-1.0",
-  "BlueOak-1.0.0",
-  "Python-2.0",
-  "PSF-2.0",
-]);
+  'MIT',
+  'MIT-CMU',
+  'ISC',
+  'BSD-2-Clause',
+  'BSD-3-Clause',
+  'Apache-2.0',
+  '0BSD',
+  'Unlicense',
+  'CC0-1.0',
+  'BlueOak-1.0.0',
+  'Python-2.0',
+  'PSF-2.0',
+])
 
 /** Evaluate a parsed SPDX expression under the repository's license policy. */
 function isPermissiveSpdx(expression: ReturnType<typeof parseSpdx>): boolean {
-  if ("conjunction" in expression) {
-    return expression.conjunction === "and"
+  if ('conjunction' in expression) {
+    return expression.conjunction === 'and'
       ? isPermissiveSpdx(expression.left) && isPermissiveSpdx(expression.right)
-      : isPermissiveSpdx(expression.left) || isPermissiveSpdx(expression.right);
+      : isPermissiveSpdx(expression.left) || isPermissiveSpdx(expression.right)
   }
   return (
     expression.plus !== true &&
     expression.exception === undefined &&
     PERMISSIVE_LICENSES.has(expression.license)
-  );
+  )
 }
 
 /**
@@ -820,11 +818,11 @@ function isPermissiveSpdx(expression: ReturnType<typeof parseSpdx>): boolean {
  */
 export function isPermissive(license: string): boolean {
   // Some npm manifests use a slash for a choice despite SPDX requiring `OR`.
-  const normalized = license.replace(/\s*\/\s*/g, " OR ").trim();
+  const normalized = license.replace(/\s*\/\s*/g, ' OR ').trim()
   try {
-    return isPermissiveSpdx(parseSpdx(normalized));
+    return isPermissiveSpdx(parseSpdx(normalized))
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -837,15 +835,15 @@ export function assertRuntimeLicenses(
   dependencies: readonly { name: string; license: string }[],
 ): void {
   const rejected = dependencies.filter(
-    (dep) =>
+    dep =>
       !isPermissive(dep.license) &&
       !isOwnerAuthorizedRuntime(dep.name) &&
-      !(LIBREOFFICE_PACKAGES.has(dep.name) && dep.license === "MPL-2.0"),
-  );
+      !(LIBREOFFICE_PACKAGES.has(dep.name) && dep.license === 'MPL-2.0'),
+  )
   if (rejected.length > 0) {
     throw new Error(
-      `gen-third-party-notices: runtime ${rejected.map((dep) => `${dep.name} (${dep.license})`).join(", ")} is not a permissive license; review the distribution terms and record the decision before regenerating.`,
-    );
+      `gen-third-party-notices: runtime ${rejected.map(dep => `${dep.name} (${dep.license})`).join(', ')} is not a permissive license; review the distribution terms and record the decision before regenerating.`,
+    )
   }
 }
 
@@ -856,26 +854,26 @@ export function assertRuntimeLicenses(
  * @returns the paragraph to place after the development table.
  */
 function renderNonPermissiveNote(deps: ExternalDep[]): string {
-  if (deps.length === 0) return "";
-  const named = deps.map((dep) => `\`${dep.name}\` (${dep.license})`);
+  if (deps.length === 0) return ''
+  const named = deps.map(dep => `\`${dep.name}\` (${dep.license})`)
   const subject =
-    named.length === 1 ? named[0] : `${named.slice(0, -1).join(", ")} and ${named.at(-1)}`;
-  return `\n${subject} ${named.length === 1 ? "runs" : "run"} only as development tooling; their code is not linked into or distributed with any DeepSeek Harness artifact.\n`;
+    named.length === 1 ? named[0] : `${named.slice(0, -1).join(', ')} and ${named.at(-1)}`
+  return `\n${subject} ${named.length === 1 ? 'runs' : 'run'} only as development tooling; their code is not linked into or distributed with any DeepSeek Harness artifact.\n`
 }
 
 /** Render one npm dependency table. */
 function renderNpmTable(deps: ExternalDep[]): string {
-  const lines = ["| Package | License |", "| --- | --- |"];
-  for (const dep of deps) lines.push(`| [\`${dep.name}\`](${dep.repo}) | ${dep.license} |`);
-  return lines.join("\n");
+  const lines = ['| Package | License |', '| --- | --- |']
+  for (const dep of deps) lines.push(`| [\`${dep.name}\`](${dep.repo}) | ${dep.license} |`)
+  return lines.join('\n')
 }
 
 function renderClaudeDistribution(distribution: ClaudeDistribution | undefined): string {
-  if (distribution === undefined) return "";
+  if (distribution === undefined) return ''
   const rows = distribution.payloads.map(
-    (payload) =>
+    payload =>
       `| [\`${payload.name}\`](https://www.npmjs.com/package/${payload.name}) | ${payload.version} | ${CLAUDE_PLATFORM_DECLARED_LICENSE} |`,
-  );
+  )
   return `
 ## Official Claude Code platform payloads
 
@@ -885,8 +883,8 @@ The installed SDK ${distribution.sdkVersion} declares the following optional pla
 
 | Optional platform package | Version | Declared license |
 | --- | --- | --- |
-${rows.join("\n")}
-`;
+${rows.join('\n')}
+`
 }
 
 /**
@@ -894,28 +892,28 @@ ${rows.join("\n")}
  * @returns The exact bytes THIRD_PARTY_NOTICES.md must hold after resolving browser inputs.
  */
 export async function render(): Promise<string> {
-  const browser = await browserBundledExternals(root);
+  const browser = await browserBundledExternals(root)
   // The Inspector's Host build hook compiles this standalone frontend outside the Client bundle graph.
-  browser.add("chrome-devtools-frontend");
+  browser.add('chrome-devtools-frontend')
   // The linked-manifest cache is keyed by name only, so it must not outlive
   // the manifests map it was resolved from; render() owns that single load.
-  workspaceLinkedManifestCache.clear();
-  const { manifests, names } = loadWorkspaceManifests();
-  const npm = collectNpmDeps(manifests, names, browser);
-  const runtimeDeps = npm.filter((dep) => dep.runtime);
-  const devDeps = npm.filter((dep) => !dep.runtime);
-  const kitRuntime = runtimeDeps.some((dep) => dep.name === LIBREOFFICE_KIT_PACKAGE);
-  const vendored = collectVendored();
-  const python = collectPython();
-  const bundledPython = collectBundledPythonDependencies(primaryRuntimeLock.pythonPackages);
-  const patched = collectPatched();
-  const claudeDistribution = runtimeDeps.some((dep) => dep.name === CLAUDE_AGENT_SDK_PACKAGE)
+  workspaceLinkedManifestCache.clear()
+  const { manifests, names } = loadWorkspaceManifests()
+  const npm = collectNpmDeps(manifests, names, browser)
+  const runtimeDeps = npm.filter(dep => dep.runtime)
+  const devDeps = npm.filter(dep => !dep.runtime)
+  const kitRuntime = runtimeDeps.some(dep => dep.name === LIBREOFFICE_KIT_PACKAGE)
+  const vendored = collectVendored()
+  const python = collectPython()
+  const bundledPython = collectBundledPythonDependencies(primaryRuntimeLock.pythonPackages)
+  const patched = collectPatched()
+  const claudeDistribution = runtimeDeps.some(dep => dep.name === CLAUDE_AGENT_SDK_PACKAGE)
     ? collectClaudeDistribution(manifests)
-    : undefined;
-  const nonPermissiveDev = devDeps.filter((dep) => !isPermissive(dep.license));
-  assertRuntimeLicenses(runtimeDeps);
-  assertRuntimeLicenses(bundledPython);
-  const patchedLines = patched.map(({ spec, patch }) => `- \`${spec}\` — [\`${patch}\`](${patch})`);
+    : undefined
+  const nonPermissiveDev = devDeps.filter(dep => !isPermissive(dep.license))
+  assertRuntimeLicenses(runtimeDeps)
+  assertRuntimeLicenses(bundledPython)
+  const patchedLines = patched.map(({ spec, patch }) => `- \`${spec}\` — [\`${patch}\`](${patch})`)
 
   return `<!-- Generated by scripts/gen-third-party-notices.ts — do not edit by hand.
      Run \`pnpm run gen-third-party-notices\` to regenerate. -->
@@ -934,7 +932,7 @@ The Cordis framework and its foundation libraries are source-vendored into this 
 
 | Package | Upstream name | Source | License |
 | --- | --- | --- | --- |
-${vendored.map((row) => `| \`${row.npmName}\` | \`${row.upstreamName}\` | [${row.sourceDirectory}](${row.sourceDirectory}/) | MIT |`).join("\n")}
+${vendored.map(row => `| \`${row.npmName}\` | \`${row.upstreamName}\` | [${row.sourceDirectory}](${row.sourceDirectory}/) | MIT |`).join('\n')}
 
 ## Runtime npm dependencies
 
@@ -944,7 +942,7 @@ ${renderNpmTable(runtimeDeps)}
 
 pnpm applies local patches to the following packages at install time, so shipped artifacts carry modified copies; each patch file is the complete record of the modification:
 
-${patchedLines.join("\n")}
+${patchedLines.join('\n')}
 
 ## Chrome DevTools frontend
 
@@ -956,11 +954,11 @@ ${
     ? `
 ## LibreOffice conversion kit
 
-${[...LIBREOFFICE_PACKAGES].map((name) => `\`${name}\``).join(", ")} declare MPL-2.0, which remains outside the permissive-license allowlist; the notices check accepts only these package identities at those terms. The [distribution decision](.agents/notes/implemented/architecture/2026-09-14-independent-libreoffice-kit.md) records the source obligations.
+${[...LIBREOFFICE_PACKAGES].map(name => `\`${name}\``).join(', ')} declare MPL-2.0, which remains outside the permissive-license allowlist; the notices check accepts only these package identities at those terms. The [distribution decision](.agents/notes/implemented/architecture/2026-09-14-independent-libreoffice-kit.md) records the source obligations.
 
 The [kit repository](https://github.com/deepseek-ai/dsh-libreoffice-kit) supplies the corresponding LibreOffice source pin, modifications, build instructions, Node API, and artifact validation. Its engine packages retain their license and third-party notices; the Node API retains its MPL-2.0 declaration and NOTICE. Recipients must have access to those corresponding sources and notices.
 `
-    : ""
+    : ''
 }
 
 ## Development-only npm dependencies
@@ -975,7 +973,7 @@ Direct dependencies of the \`pyproject.toml\` manifests, plus \`uv\` as the deve
 
 | Package | License | Role |
 | --- | --- | --- |
-${python.map((dep) => `| [\`${dep.name}\`](${dep.repo}) | ${dep.license} | ${dep.role} |`).join("\n")}
+${python.map(dep => `| [\`${dep.name}\`](${dep.repo}) | ${dep.license} | ${dep.role} |`).join('\n')}
 | [\`uv\`](https://github.com/astral-sh/uv) | MIT / Apache-2.0 | development workflow tool |
 
 ## Bundled Python distributions
@@ -984,42 +982,42 @@ The [shared runtime lock](scripts/primary-runtime/lock.json) records each distri
 
 | Distribution | Locked version | Project license |
 | --- | --- | --- |
-${bundledPython.map((dep) => `| [\`${dep.name}\`](${dep.repo}) | ${dep.version} | ${dep.license} |`).join("\n")}
+${bundledPython.map(dep => `| [\`${dep.name}\`](${dep.repo}) | ${dep.version} | ${dep.license} |`).join('\n')}
 
 ## First-party native packages
 
 \`@deepseek-ai/node-addon-system\` (and its platform packages) is built and released from this repository under BSD 3-Clause. It is listed here for completeness; it is first-party, not third-party.
-`;
+`
 }
 
 /** CLI entry: default writes the notices, `--check` fails if the committed copy
  * is stale. Guarded behind an entry-point check so importing this module for
  * tests neither regenerates the committed file nor calls process.exit. */
 async function main(): Promise<void> {
-  const content = await render();
-  if (process.argv.includes("--check")) {
-    let committed: string | null = null;
+  const content = await render()
+  if (process.argv.includes('--check')) {
+    let committed: string | null = null
     try {
-      committed = readFileSync(resolve(root, OUT), "utf8");
+      committed = readFileSync(resolve(root, OUT), 'utf8')
     } catch {
       // Only ENOENT (not yet generated) is expected; a present-but-unreadable
       // file is not a state this repo produces, and the remedy is the same.
-      committed = null;
+      committed = null
     }
     if (committed === content) {
-      console.log(`gen-third-party-notices: ${OUT} is up to date.`);
-      process.exit(0);
+      console.log(`gen-third-party-notices: ${OUT} is up to date.`)
+      process.exit(0)
     }
     console.error(
       `gen-third-party-notices: ${OUT} is stale. Run \`pnpm run gen-third-party-notices\` and commit ${OUT}.`,
-    );
-    process.exit(1);
+    )
+    process.exit(1)
   }
 
-  writeFileSync(resolve(root, OUT), content);
-  console.log(`gen-third-party-notices: wrote ${OUT}.`);
+  writeFileSync(resolve(root, OUT), content)
+  console.log(`gen-third-party-notices: wrote ${OUT}.`)
 }
 
 if (process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1])) {
-  await main();
+  await main()
 }

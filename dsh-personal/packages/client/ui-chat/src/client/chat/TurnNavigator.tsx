@@ -54,70 +54,70 @@ export const TurnNavigator = defineComponent((props: TurnNavigatorProps, { expos
   const activeIndex = computed(() => props.activeTurn === null ? undefined : turnIndexes.value.get(props.activeTurn))
   const focusedIndex = computed(() => focusedTurn.value === null ? undefined : turnIndexes.value.get(focusedTurn.value))
   const previewIndex = computed(() => previewTurn.value === null ? undefined : turnIndexes.value.get(previewTurn.value))
-  watch(activeIndex, index => { initialization.index = index ?? 0 }, { immediate: true, flush: 'sync' })
+  watch(activeIndex, (index) => { initialization.index = index ?? 0 }, { immediate: true, flush: 'sync' })
   const virtualizer = useVirtualizer<HTMLDivElement, HTMLButtonElement>(computed(() => {
     const focused = focusedIndex.value
     return ({
-    count: props.items.length, enabled: props.items.length >= 2,
-    useScrollendEvent: true,
-    getScrollElement: () => scrollerRef.value,
-    getItemKey: (index: number) => props.items[index]?.turn ?? index,
-    estimateSize: () => TURN_SPACING_PX,
-    measureElement: () => TURN_SPACING_PX,
-    initialRect: { width: 0, height: 0 }, initialOffset: 0,
-    scrollToFn: (offset, options, instance) => {
-      if (initialization.placed) elementScroll(offset, options, instance)
-    },
-    observeElementOffset: (instance, notify) => {
-      initialization.publishOffset = notify
-      const dispose = observeElementOffset(instance, notify)
-      return () => {
-        dispose?.()
-        initialization.placed = false
-        initialization.follow = null
-        initialization.publishOffset = null
-      }
-    },
-    observeElementRect: (instance, notify) => {
-      const element = instance.scrollElement
-      const Observer = instance.targetWindow?.ResizeObserver
-      if (element === null || Observer === undefined) return
-      const observer = new Observer(([entry]) => {
-        if (entry === undefined) return
-        const box = entry.borderBoxSize[0]
-        const rect = {
-          width: Math.round(box?.inlineSize ?? entry.contentRect.width),
-          height: Math.round(box?.blockSize ?? entry.contentRect.height),
+      count: props.items.length, enabled: props.items.length >= 2,
+      useScrollendEvent: true,
+      getScrollElement: () => scrollerRef.value,
+      getItemKey: (index: number) => props.items[index]?.turn ?? index,
+      estimateSize: () => TURN_SPACING_PX,
+      measureElement: () => TURN_SPACING_PX,
+      initialRect: { width: 0, height: 0 }, initialOffset: 0,
+      scrollToFn: (offset, options, instance) => {
+        if (initialization.placed) elementScroll(offset, options, instance)
+      },
+      observeElementOffset: (instance, notify) => {
+        initialization.publishOffset = notify
+        const dispose = observeElementOffset(instance, notify)
+        return () => {
+          dispose?.()
+          initialization.placed = false
+          initialization.follow = null
+          initialization.publishOffset = null
         }
-        const initial = initialization
-        if (!initial.placed && rect.height > 0) {
-          const max = Math.max(0, instance.getTotalSize() - rect.height)
-          const center = initial.index * TURN_SPACING_PX + RAIL_INSET_PX
-          const target = Math.max(0, Math.min(max, center - rect.height / 2))
-          initial.placed = true
-          initial.follow = { index: initial.index, count: instance.options.count, height: rect.height }
-          element.scrollTop = target
-          initial.publishOffset?.(target, false)
+      },
+      observeElementRect: (instance, notify) => {
+        const element = instance.scrollElement
+        const Observer = instance.targetWindow?.ResizeObserver
+        if (element === null || Observer === undefined) return
+        const observer = new Observer(([entry]) => {
+          if (entry === undefined) return
+          const box = entry.borderBoxSize[0]
+          const rect = {
+            width: Math.round(box?.inlineSize ?? entry.contentRect.width),
+            height: Math.round(box?.blockSize ?? entry.contentRect.height),
+          }
+          const initial = initialization
+          if (!initial.placed && rect.height > 0) {
+            const max = Math.max(0, instance.getTotalSize() - rect.height)
+            const center = initial.index * TURN_SPACING_PX + RAIL_INSET_PX
+            const target = Math.max(0, Math.min(max, center - rect.height / 2))
+            initial.placed = true
+            initial.follow = { index: initial.index, count: instance.options.count, height: rect.height }
+            element.scrollTop = target
+            initial.publishOffset?.(target, false)
+          }
+          notify(rect)
+        })
+        observer.observe(element, { box: 'border-box' })
+        return () => { observer.disconnect() }
+      },
+      paddingStart: RAIL_INSET_PX - TURN_SPACING_PX / 2,
+      paddingEnd: RAIL_INSET_PX - TURN_SPACING_PX / 2,
+      scrollPaddingStart: FADE_PX, scrollPaddingEnd: FADE_PX, overscan: 3,
+      rangeExtractor: (range: Range) => {
+        const indexes = defaultRangeExtractor(range)
+        if (focused !== undefined) {
+          const last = Math.min(range.count - 1, focused + 1)
+          for (let index = Math.max(0, focused - 1); index <= last; index++) {
+            if (!indexes.includes(index)) indexes.push(index)
+          }
+          indexes.sort((left, right) => left - right)
         }
-        notify(rect)
-      })
-      observer.observe(element, { box: 'border-box' })
-      return () => { observer.disconnect() }
-    },
-    paddingStart: RAIL_INSET_PX - TURN_SPACING_PX / 2,
-    paddingEnd: RAIL_INSET_PX - TURN_SPACING_PX / 2,
-    scrollPaddingStart: FADE_PX, scrollPaddingEnd: FADE_PX, overscan: 3,
-    rangeExtractor: (range: Range) => {
-      const indexes = defaultRangeExtractor(range)
-      if (focused !== undefined) {
-        const last = Math.min(range.count - 1, focused + 1)
-        for (let index = Math.max(0, focused - 1); index <= last; index++) {
-          if (!indexes.includes(index)) indexes.push(index)
-        }
-        indexes.sort((left, right) => left - right)
-      }
-      return indexes
-    },
+        return indexes
+      },
     })
   }))
   const scrollToIndex = (
@@ -187,7 +187,7 @@ export const TurnNavigator = defineComponent((props: TurnNavigatorProps, { expos
             const active = item.turn === props.activeTurn
             const describedBy = item.turn === previewTurn.value ? previewId : undefined
             return h('button', {
-              key: String(key), ref: element => { instance.measureElement(element instanceof HTMLButtonElement ? element : null) },
+              key: String(key), ref: (element) => { instance.measureElement(element instanceof HTMLButtonElement ? element : null) },
               'data-index': index, type: 'button',
               class: [css.mark, item.anchor.kind === 'unloaded' && css.markUnloaded,
                 active ? css.markActive : describedBy !== undefined && css.markPreview,

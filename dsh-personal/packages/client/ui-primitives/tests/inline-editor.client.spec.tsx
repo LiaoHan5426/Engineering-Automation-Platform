@@ -45,7 +45,7 @@ describe('InlineEditor', () => {
     expect(onSave).toHaveBeenCalledTimes(1)
   })
 
-  it('sizes to its content plus border, and refits when its width changes', () => {
+  it('sizes to its content plus border, and refits when its width changes', async () => {
     class FakeResizeObserver implements ResizeObserver {
       static latest: FakeResizeObserver | undefined
       readonly observe = vi.fn()
@@ -74,7 +74,7 @@ describe('InlineEditor', () => {
       expect(observer.observe).toHaveBeenCalledWith(box)
 
       scrollHeight = 60
-      act(() => { observer.fire() })
+      await act(() => { observer.fire() })
       expect(box.style.height).toBe('61px')
       view.unmount()
       expect(observer.disconnect).toHaveBeenCalledTimes(1)

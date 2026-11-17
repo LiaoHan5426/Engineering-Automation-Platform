@@ -1,5 +1,5 @@
 /** Derived observable sources for the row actions' injected hooks. */
-import type { HostObservable } from "@deepseek-ai/dsh-client-ui-slots";
+import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 
 /**
  * Project one observable into another, recomputing only when the source
@@ -13,17 +13,17 @@ export function derive<S, T>(
   source: HostObservable<S>,
   project: (snapshot: S) => T,
 ): HostObservable<T> {
-  let seen: S | undefined;
-  let value: T | undefined;
+  let seen: S | undefined
+  let value: T | undefined
   return {
     getSnapshot: () => {
-      const snapshot = source.getSnapshot();
+      const snapshot = source.getSnapshot()
       if (value === undefined || snapshot !== seen) {
-        seen = snapshot;
-        value = project(snapshot);
+        seen = snapshot
+        value = project(snapshot)
       }
-      return value;
+      return value
     },
-    subscribe: (listener) => source.subscribe(listener),
-  };
+    subscribe: listener => source.subscribe(listener),
+  }
 }

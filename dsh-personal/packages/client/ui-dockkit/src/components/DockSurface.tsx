@@ -8,13 +8,13 @@
  * clear of this surface floats it; releasing inside it without an effective
  * drop target changes nothing.
  */
-import { defineComponent, h, shallowRef, onMounted, onUpdated, onBeforeUnmount, watch } from "vue";
-import type { VNodeChild, HTMLAttributes } from "vue";
-import type { DockIntents, DockLabels, TabMenuExtras, TabRenderer } from "../contract/adapter.ts";
-import type { LayoutState, PaneId, SplitId, TabId, TabRecord } from "../contract/types.ts";
-import { clampSizes, FLOAT_DEFAULT_SIZE, MIN_PANE_FRACTION } from "../engine/constraints.ts";
-import { getSplit, topRightPaneId } from "../engine/tree.ts";
-import type { DropTarget, HalvesFit } from "../engine/geometry.ts";
+import { defineComponent, h, shallowRef, onMounted, onUpdated, onBeforeUnmount, watch } from 'vue'
+import type { VNodeChild, HTMLAttributes } from 'vue'
+import type { DockIntents, DockLabels, TabMenuExtras, TabRenderer } from '../contract/adapter.ts'
+import type { LayoutState, PaneId, SplitId, TabId, TabRecord } from '../contract/types.ts'
+import { clampSizes, FLOAT_DEFAULT_SIZE, MIN_PANE_FRACTION } from '../engine/constraints.ts'
+import { getSplit, topRightPaneId } from '../engine/tree.ts'
+import type { DropTarget, HalvesFit } from '../engine/geometry.ts'
 import {
   containsPoint,
   dividerSizes,
@@ -22,34 +22,34 @@ import {
   insertionIndex,
   passedThreshold,
   zoneInRect,
-} from "../engine/geometry.ts";
-import { fitOf, measurePaneFits, paneElements, sameFits } from "./measure.ts";
-import { useGesture } from "./pointer.ts";
-import { PaneTree, type SizePreview } from "./PaneTree.tsx";
-import { TabLayout, type TabRetention } from "./TabLayout.tsx";
-import type { PaneCallbacks, SplitBlock } from "./render.ts";
-import css from "./dockkit.module.css";
+} from '../engine/geometry.ts'
+import { fitOf, measurePaneFits, paneElements, sameFits } from './measure.ts'
+import { useGesture } from './pointer.ts'
+import { PaneTree, type SizePreview } from './PaneTree.tsx'
+import { TabLayout, type TabRetention } from './TabLayout.tsx'
+import type { PaneCallbacks, SplitBlock } from './render.ts'
+import css from './dockkit.module.css'
 /** What the docked surface needs: the layout, its limits, and the outward contracts. */
 export interface DockSurfaceProps {
-  readonly state: LayoutState;
+  readonly state: LayoutState
   /**
    * Whether another pane may still be created: the pane budget. Width is the
    * kit's own concern — a pane too narrow for two working halves keeps its
    * split control disabled with `labels.splitPaneNarrow` (see README).
    */
-  readonly canSplit: boolean;
+  readonly canSplit: boolean
   /** Hide a blocked split control — pane budget spent or pane too narrow — instead of rendering it disabled; defaults to false. */
-  readonly hideSplitWhenBlocked?: boolean;
+  readonly hideSplitWhenBlocked?: boolean
   /** Body drop geometry: all edge bands, or left/right halves with whole-pane moves once splitting is unavailable. */
-  readonly dropZones?: "edges" | "horizontal";
+  readonly dropZones?: 'edges' | 'horizontal'
   /** Smallest share a divider may leave a pane; defaults to the kit's fraction. */
-  readonly minPaneFraction?: number;
+  readonly minPaneFraction?: number
   /**
    * Whether a pane's strip draws the add control. Called per docked pane on
    * every render; omit to draw one in every pane. `false` leaves the strip's
    * end controls where they are and the chips as the only shrinking part.
    */
-  readonly canAddTab?: (paneId: PaneId) => boolean;
+  readonly canAddTab?: (paneId: PaneId) => boolean
   /**
    * Whether a tab may close via its close control, menu item, or middle click. Called
    * per rendered chip on every render; omit to keep every tab closable.
@@ -57,64 +57,64 @@ export interface DockSurfaceProps {
    * paints over the title's end rather than beside it, so the chip is the same
    * width either way. The menu still opens and carries the embedder's items.
    */
-  readonly canCloseTab?: (tabId: TabId) => boolean;
-  readonly intents: DockIntents;
-  readonly labels: DockLabels;
-  readonly renderTab: TabRenderer;
+  readonly canCloseTab?: (tabId: TabId) => boolean
+  readonly intents: DockIntents
+  readonly labels: DockLabels
+  readonly renderTab: TabRenderer
   /**
    * What a tab's chip shows as its title; omit to show the record's `title`
    * text. An embedder-internal seam: the Sidebar dispatches it to a per-kind
    * slot, and nothing outside that embedder is expected to supply it.
    */
-  readonly renderTabTitle?: TabRenderer;
+  readonly renderTabTitle?: TabRenderer
   /** Whether the embedder popup is preparing or visible; suppresses tab tooltips. */
-  readonly tabMenuOpen?: boolean | undefined;
+  readonly tabMenuOpen?: boolean | undefined
   /** Override the kit popup; the embedder owns rendering and dismissal. */
   readonly getTabTriggerProps?:
     | ((
-        tab: TabRecord,
-        paneId: PaneId,
-        handlers?: Pick<HTMLAttributes, "onContextmenu" | "onKeydown" | "tabindex">,
-      ) => Pick<HTMLAttributes, "onContextmenu" | "onKeydown" | "tabindex">)
-    | undefined;
+      tab: TabRecord,
+      paneId: PaneId,
+      handlers?: Pick<HTMLAttributes, 'onContextmenu' | 'onKeydown' | 'tabindex'>,
+    ) => Pick<HTMLAttributes, 'onContextmenu' | 'onKeydown' | 'tabindex'>)
+    | undefined
   /** Extra rows for the kit popup; ignored when getTabTriggerProps is supplied. */
-  readonly renderTabMenuItems?: TabMenuExtras;
+  readonly renderTabMenuItems?: TabMenuExtras
   /**
    * Surface-wide controls, drawn at the far end of the top-right pane's tab
    * strip so the surface needs no header of its own. The kit places them; what
    * they do is the embedder's.
    */
-  readonly chrome?: VNodeChild;
+  readonly chrome?: VNodeChild
   /**
    * Called with the room rule's latest readings whenever they change, so an
    * embedder driving splits programmatically can honour the same rule the
    * split control does. A pane absent from the map has not been measured.
    */
-  readonly onRoom?: (fits: ReadonlyMap<PaneId, HalvesFit>) => void;
+  readonly onRoom?: (fits: ReadonlyMap<PaneId, HalvesFit>) => void
 }
 /** A divider drag: the split it moves and the fractions it started from. */
 interface DividerDrag {
-  readonly splitId: SplitId;
+  readonly splitId: SplitId
   /** The boundary being moved: between child `index` and `index + 1`. */
-  readonly index: number;
-  readonly axis: "row" | "column";
+  readonly index: number
+  readonly axis: 'row' | 'column'
   /** Pointer coordinate along the axis at the press. */
-  readonly origin: number;
+  readonly origin: number
   /** The split's pixel extent along the axis, so travel converts to fractions. */
-  readonly extent: number;
-  readonly sizes: readonly number[];
+  readonly extent: number
+  readonly sizes: readonly number[]
 }
 /** What the gesture is currently showing, before anything settles. */
 interface Preview {
-  readonly draggingTabId: TabId | undefined;
-  readonly dropTarget: DropTarget | undefined;
-  readonly sizes: SizePreview | undefined;
+  readonly draggingTabId: TabId | undefined
+  readonly dropTarget: DropTarget | undefined
+  readonly sizes: SizePreview | undefined
 }
-const NO_PREVIEW: Preview = { draggingTabId: undefined, dropTarget: undefined, sizes: undefined };
+const NO_PREVIEW: Preview = { draggingTabId: undefined, dropTarget: undefined, sizes: undefined }
 /** Nothing measured yet: every pane fits until a reading says otherwise. */
-const NO_FITS: ReadonlyMap<PaneId, HalvesFit> = new Map();
+const NO_FITS: ReadonlyMap<PaneId, HalvesFit> = new Map()
 /** The default policy for the omitted callbacks: every pane offers the add control, every tab its close. */
-const ALWAYS = (): boolean => true;
+const ALWAYS = (): boolean => true
 /**
  * Resolve where a pointer sits inside the docked surface. An edge zone is only
  * offered where the split it would make is allowed: within the pane budget and
@@ -129,91 +129,91 @@ function hitTest(
   tabId: TabId,
   canSplit: boolean,
   fits: ReadonlyMap<PaneId, HalvesFit>,
-  dropZones: "edges" | "horizontal",
+  dropZones: 'edges' | 'horizontal',
 ): DropTarget | undefined {
   for (const [paneId, pane] of paneElements(root)) {
-    const rect = pane.getBoundingClientRect();
-    if (!containsPoint(rect, x, y)) continue;
-    const strip = pane.querySelector<HTMLElement>("[data-dockkit-strip]");
+    const rect = pane.getBoundingClientRect()
+    if (!containsPoint(rect, x, y)) continue
+    const strip = pane.querySelector<HTMLElement>('[data-dockkit-strip]')
     if (strip !== null && containsPoint(strip.getBoundingClientRect(), x, y)) {
-      const tabs = [...strip.querySelectorAll<HTMLElement>("[data-dockkit-tab]")];
+      const tabs = [...strip.querySelectorAll<HTMLElement>('[data-dockkit-tab]')]
       const index = insertionIndex(
-        tabs.map((tab) => tab.getBoundingClientRect()),
+        tabs.map(tab => tab.getBoundingClientRect()),
         x,
-      );
-      const sourceIndex = tabs.findIndex((tab) => tab.dataset.dockkitTab === tabId);
+      )
+      const sourceIndex = tabs.findIndex(tab => tab.dataset.dockkitTab === tabId)
       if (sourceIndex >= 0 && (index === sourceIndex || index === sourceIndex + 1))
-        return undefined;
-      return { kind: "strip", paneId, index };
+        return undefined
+      return { kind: 'strip', paneId, index }
     }
     const zone =
-      dropZones === "horizontal"
+      dropZones === 'horizontal'
         ? canSplit && fitOf(fits, paneId).row
           ? x < rect.x + rect.width / 2
-            ? "left"
-            : "right"
-          : "center"
-        : zoneInRect(rect, x, y);
-    if (zone !== "center") {
-      const fit = fitOf(fits, paneId);
-      const room = zone === "left" || zone === "right" ? fit.row : fit.column;
-      if (!canSplit || !room) return undefined;
+            ? 'left'
+            : 'right'
+          : 'center'
+        : zoneInRect(rect, x, y)
+    if (zone !== 'center') {
+      const fit = fitOf(fits, paneId)
+      const room = zone === 'left' || zone === 'right' ? fit.row : fit.column
+      if (!canSplit || !room) return undefined
     }
-    return { kind: "zone", paneId, zone };
+    return { kind: 'zone', paneId, zone }
   }
-  return undefined;
+  return undefined
 }
 /** Fractions a divider drag has reached, clamped to the pane minimum. */
 function draggedSizes(drag: DividerDrag, x: number, y: number, minimum: number): readonly number[] {
-  const moved = (drag.axis === "row" ? x : y) - drag.origin;
-  const delta = drag.extent > 0 ? moved / drag.extent : 0;
-  return clampSizes(dividerSizes(drag.sizes, drag.index, delta), minimum);
+  const moved = (drag.axis === 'row' ? x : y) - drag.origin
+  const delta = drag.extent > 0 ? moved / drag.extent : 0
+  return clampSizes(dividerSizes(drag.sizes, drag.index, delta), minimum)
 }
 /** Fractions closer than this are the same split: renormalizing recorded sizes moves them by no more. */
-const SIZE_TOLERANCE = 1e-9;
+const SIZE_TOLERANCE = 1e-9
 /** Whether two fraction lists describe the same split. */
 function sameSizes(a: readonly number[], b: readonly number[]): boolean {
   return (
     a.length === b.length &&
     a.every((size, index) => {
-      const other = b[index];
-      return other !== undefined && Math.abs(size - other) < SIZE_TOLERANCE;
+      const other = b[index]
+      return other !== undefined && Math.abs(size - other) < SIZE_TOLERANCE
     })
-  );
+  )
 }
 /** The split tree and the gestures over it. */
 const Surface = defineComponent(
   (
     props: DockSurfaceProps & {
-      readonly draw: (callbacks: PaneCallbacks, preview: SizePreview | undefined) => VNodeChild;
+      readonly draw: (callbacks: PaneCallbacks, preview: SizePreview | undefined) => VNodeChild
     },
   ) => {
-    const surface = shallowRef<HTMLDivElement | null>(null);
-    const preview = shallowRef<Preview>(NO_PREVIEW);
-    const fits = shallowRef(NO_FITS);
+    const surface = shallowRef<HTMLDivElement | null>(null)
+    const preview = shallowRef<Preview>(NO_PREVIEW)
+    const fits = shallowRef(NO_FITS)
     const setPreview = (value: Preview): void => {
-      preview.value = value;
-    };
+      preview.value = value
+    }
     const begin = useGesture(() => {
-      setPreview(NO_PREVIEW);
-    });
+      setPreview(NO_PREVIEW)
+    })
     const remeasure = (): void => {
-      if (!surface.value) return;
-      const next = measurePaneFits(surface.value, props.hideSplitWhenBlocked ?? false);
-      if (!sameFits(fits.value, next)) fits.value = next;
-    };
-    onMounted(remeasure);
-    onUpdated(remeasure);
+      if (!surface.value) return
+      const next = measurePaneFits(surface.value, props.hideSplitWhenBlocked ?? false)
+      if (!sameFits(fits.value, next)) fits.value = next
+    }
+    onMounted(remeasure)
+    onUpdated(remeasure)
     watch([fits, () => props.onRoom], () => props.onRoom?.(fits.value), {
       immediate: true,
-      flush: "post",
-    });
+      flush: 'post',
+    })
     onMounted(() => {
-      if (!surface.value || typeof ResizeObserver === "undefined") return;
-      const observer = new ResizeObserver(remeasure);
-      observer.observe(surface.value);
-      onBeforeUnmount(() => observer.disconnect());
-    });
+      if (!surface.value || typeof ResizeObserver === 'undefined') return
+      const observer = new ResizeObserver(remeasure)
+      observer.observe(surface.value)
+      onBeforeUnmount(() => { observer.disconnect() })
+    })
     return () => {
       const {
         state,
@@ -229,18 +229,18 @@ const Surface = defineComponent(
         tabMenuOpen,
         chrome,
         draw,
-        dropZones = "edges",
+        dropZones = 'edges',
         minPaneFraction = MIN_PANE_FRACTION,
         hideSplitWhenBlocked = false,
-      } = props;
+      } = props
       const withSurface = (use: (root: HTMLElement) => void): void => {
-        if (surface.value) use(surface.value);
-      };
+        if (surface.value) use(surface.value)
+      }
       /** Why a pane cannot split right now: the budget first, then its own width. */
       const splitBlock = (paneId: PaneId): SplitBlock | undefined => {
-        if (!canSplit) return "budget";
-        return fitOf(fits.value, paneId).row ? undefined : "width";
-      };
+        if (!canSplit) return 'budget'
+        return fitOf(fits.value, paneId).row ? undefined : 'width'
+      }
       const callbacks: PaneCallbacks = {
         onFocusTab: intents.focusTab.bind(intents),
         onFocusPane: intents.focusPane.bind(intents),
@@ -252,14 +252,14 @@ const Surface = defineComponent(
         // click and reports nothing here.
         onTabPressed: (tabId, event) => {
           withSurface((root) => {
-            const startX = event.clientX;
-            const startY = event.clientY;
-            let dragging = false;
+            const startX = event.clientX
+            const startY = event.clientY
+            let dragging = false
             begin(event.currentTarget, event.pointerId, {
               move: (moved) => {
                 if (!dragging) {
-                  if (!passedThreshold(startX, startY, moved.clientX, moved.clientY)) return;
-                  dragging = true;
+                  if (!passedThreshold(startX, startY, moved.clientX, moved.clientY)) return
+                  dragging = true
                 }
                 setPreview({
                   ...NO_PREVIEW,
@@ -273,10 +273,10 @@ const Surface = defineComponent(
                     fits.value,
                     dropZones,
                   ),
-                });
+                })
               },
               up: (released) => {
-                if (!dragging) return;
+                if (!dragging) return
                 const target = hitTest(
                   root,
                   released.clientX,
@@ -285,38 +285,38 @@ const Surface = defineComponent(
                   canSplit,
                   fits.value,
                   dropZones,
-                );
+                )
                 if (target === undefined) {
                   if (
                     containsPoint(root.getBoundingClientRect(), released.clientX, released.clientY)
                   )
-                    return;
+                    return
                   intents.floatTab(
                     tabId,
                     floatRectAt(released.clientX, released.clientY, FLOAT_DEFAULT_SIZE),
-                  );
-                  return;
+                  )
+                  return
                 }
-                if (target.kind === "strip") intents.placeTab(tabId, target.paneId, target.index);
-                else intents.dropTab(tabId, target.paneId, target.zone);
+                if (target.kind === 'strip') intents.placeTab(tabId, target.paneId, target.index)
+                else intents.dropTab(tabId, target.paneId, target.zone)
               },
-            });
-          });
+            })
+          })
         },
         onDividerPressed: (splitId, index, event) => {
-          const container = event.currentTarget.parentElement;
+          const container = event.currentTarget.parentElement
           /* v8 ignore next -- a divider is rendered as a child of its split's element. */
-          if (container === null) return;
-          const split = getSplit(state, splitId);
-          const box = container.getBoundingClientRect();
+          if (container === null) return
+          const split = getSplit(state, splitId)
+          const box = container.getBoundingClientRect()
           const drag: DividerDrag = {
             splitId,
             index,
             axis: split.axis,
-            origin: split.axis === "row" ? event.clientX : event.clientY,
-            extent: split.axis === "row" ? box.width : box.height,
+            origin: split.axis === 'row' ? event.clientX : event.clientY,
+            extent: split.axis === 'row' ? box.width : box.height,
             sizes: split.sizes,
-          };
+          }
           // A release that left the fractions where they were — a click on the
           // divider, a drag returned to its start, or one pushed further into the
           // clamp — is not a resize and reports nothing.
@@ -328,21 +328,21 @@ const Surface = defineComponent(
                   splitId,
                   sizes: draggedSizes(drag, moved.clientX, moved.clientY, minPaneFraction),
                 },
-              });
+              })
             },
             up: (released) => {
-              const sizes = draggedSizes(drag, released.clientX, released.clientY, minPaneFraction);
-              if (sameSizes(sizes, drag.sizes)) return;
-              intents.resizeSplit(splitId, sizes);
+              const sizes = draggedSizes(drag, released.clientX, released.clientY, minPaneFraction)
+              if (sameSizes(sizes, drag.sizes)) return
+              intents.resizeSplit(splitId, sizes)
             },
-          });
+          })
         },
         splitBlock,
         hideSplitWhenBlocked,
         canAddTab: canAddTab ?? ALWAYS,
         canCloseTab: canCloseTab ?? ALWAYS,
         dropTarget: preview.value.dropTarget,
-        horizontalDrops: dropZones === "horizontal",
+        horizontalDrops: dropZones === 'horizontal',
         draggingTabId: preview.value.draggingTabId,
         labels,
         renderTab,
@@ -352,41 +352,41 @@ const Surface = defineComponent(
         tabMenuOpen,
         chromePaneId: topRightPaneId(state),
         chrome,
-      };
+      }
       return h(
-        "div",
+        'div',
         {
           class: css.surface,
           ref: surface,
-          "data-dockkit-surface": "",
-          "data-dockkit-drop-zones": dropZones,
+          'data-dockkit-surface': '',
+          'data-dockkit-drop-zones': dropZones,
         },
         [draw(callbacks, preview.value.sizes)],
-      );
-    };
+      )
+    }
   },
   {
     props: [
-      "state",
-      "canSplit",
-      "canAddTab",
-      "canCloseTab",
-      "intents",
-      "labels",
-      "renderTab",
-      "renderTabTitle",
-      "renderTabMenuItems",
-      "getTabTriggerProps",
-      "tabMenuOpen",
-      "chrome",
-      "onRoom",
-      "draw",
-      "dropZones",
-      "minPaneFraction",
-      "hideSplitWhenBlocked",
+      'state',
+      'canSplit',
+      'canAddTab',
+      'canCloseTab',
+      'intents',
+      'labels',
+      'renderTab',
+      'renderTabTitle',
+      'renderTabMenuItems',
+      'getTabTriggerProps',
+      'tabMenuOpen',
+      'chrome',
+      'onRoom',
+      'draw',
+      'dropZones',
+      'minPaneFraction',
+      'hideSplitWhenBlocked',
     ],
   },
-);
+)
 /** Recursive docked layout; floating content is rendered separately by FloatLayer. */
 export function DockSurface(props: DockSurfaceProps): VNodeChild {
   return h(Surface, {
@@ -398,10 +398,10 @@ export function DockSurface(props: DockSurfaceProps): VNodeChild {
         callbacks: callbacks,
         preview: preview,
       }),
-  });
+  })
 }
 /** Horizontal Sidebar layout with stable tab containers across docking and floating. */
-export type DockLayoutProps = DockSurfaceProps & TabRetention;
+export type DockLayoutProps = DockSurfaceProps & TabRetention
 /**
  * Render one pane or two horizontal panes, and their floats, in one stable content tree.
  * @param props - layout, gestures and lazy body-retention policy.
@@ -417,5 +417,5 @@ export function DockLayout(props: DockLayoutProps): VNodeChild {
         callbacks: callbacks,
         preview: preview,
       }),
-  });
+  })
 }

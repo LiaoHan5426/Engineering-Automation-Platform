@@ -73,14 +73,16 @@ const QueueFile = defineComponent((props: { attachment: FileAttachmentRef; label
 
 /** One durable queued image; late loads cannot update a replaced or disposed thumbnail. */
 const QueueThumb = defineComponent((props: {
-  attachment: ImageAttachmentRef; loadImage: QueueDockInjected['loadImage']; label: string
+  attachment: ImageAttachmentRef
+  loadImage: QueueDockInjected['loadImage']
+  label: string
 }) => {
   const url = ref<string | null>(null)
   watchEffect((onCleanup) => {
     let alive = true
     onCleanup(() => { alive = false })
     void props.loadImage(props.attachment).then(
-      resolved => { if (alive) url.value = resolved },
+      (resolved) => { if (alive) url.value = resolved },
       () => { /* The durable transcript surfaces read errors; retain the placeholder. */ },
     )
   })
@@ -95,10 +97,7 @@ export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & QueueDock
 
 /** Durable and local queued submissions share one strip without duplicating admitted rows. */
 export const QueueDock = defineComponent((props: QueueDockProps) => {
-  const inboxWire = props.useProjection('inbox')
-  // Preserve the existing wire-to-fold narrowing: the Host serializes the
-  // Inbox fold unchanged, while its JSON-safe declaration erases message fields.
-  const inbox = computed(() => inboxWire.value as unknown as InboxState | undefined)
+  const inbox = props.useProjection('inbox')
   const pendingSubmissions = props.useSession(s => s.pendingSubmissions)
   const running = props.useSession(s => s.running)
   const queueMutable = props.useSession(s => s.subagent === null || s.subagent.address.mode === 'continuable')

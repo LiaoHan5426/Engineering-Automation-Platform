@@ -7,9 +7,9 @@ import { FishLogo } from '../src/FishLogo.tsx'
 import { BrandWordmark } from '../src/BrandWordmark.tsx'
 import * as permission from '../src/PermissionIcon.tsx'
 import * as reference from '../src/ReferenceIcon.tsx'
-import { IconAlarmClockOutlineRegular, IconApiOutlineRegular, IconArchiveOutlineRegular, IconFolderCloseRegular, IconAppsAddOutlineMedium, IconGoalOutlineRegular, IconSendOutlineRegular, } from '../src/icons/index.tsx'
+import { IconAlarmClockOutlineRegular, IconApiOutlineRegular, IconArchiveOutlineRegular, IconFolderCloseRegular, IconAppsAddOutlineMedium, IconGoalOutlineRegular, IconSendOutlineRegular } from '../src/icons/index.tsx'
 import { ICON_ARTWORK, type IconGlyph, type IconWeight } from '../src/icons/artwork.ts'
-import { BrowseOutlineArtwork, ChatLinesOutlineArtwork, CodeBracketsArtwork, FolderCloseArtwork, GlobeOutlineArtwork, } from '../src/icons/shared-artwork.tsx'
+import { BrowseOutlineArtwork, ChatLinesOutlineArtwork, CodeBracketsArtwork, FolderCloseArtwork, GlobeOutlineArtwork } from '../src/icons/shared-artwork.tsx'
 // Icon components all share the IconProps signature; the barrel also exports
 // non-icon atoms (different props shapes), so filter by prefix BEFORE typing.
 const icons = Object.fromEntries(Object.entries(primitives).filter(([name]) => name.startsWith('Icon'))) as Record<string, typeof primitives.IconSendOutlineRegular>
@@ -94,7 +94,7 @@ describe('product icon set', () => {
     const view = render(h(Icon, {}))
     const rendered = view.container.querySelector('svg')!
     expect([rendered.getAttribute('width'), rendered.getAttribute('height')]).toEqual(['16', '16'])
-    view.rerender(h(Icon, { "size": 14 }))
+    view.rerender(h(Icon, { 'size': 14 }))
     expect([rendered.getAttribute('width'), rendered.getAttribute('height')]).toEqual(['14', '14'])
     expect(rendered.querySelector('use')?.getAttribute('href')).toBe(`#dsw-icon-users-outline-${weight}`)
   })
@@ -125,7 +125,7 @@ describe('product icon set', () => {
     const view = render(h(Icon, {}))
     const rendered = view.container.querySelector('svg')!
     expect([rendered.getAttribute('width'), rendered.getAttribute('height')]).toEqual(['16', '16'])
-    view.rerender(h(Icon, { "size": 14 }))
+    view.rerender(h(Icon, { 'size': 14 }))
     expect([rendered.getAttribute('width'), rendered.getAttribute('height')]).toEqual(['14', '14'])
     expect(rendered.querySelector('use')?.getAttribute('href')).toBe(`#dsw-icon-layers-outline-${weight}`)
   })
@@ -175,7 +175,7 @@ describe('product icon set', () => {
   ] as const)('keeps the shared %s artwork identical to its product glyph', (glyph, Artwork) => {
     for (const weight of ['regular', 'medium'] as const) {
       const stroke = weight === 'regular' ? primitives.ICON_REGULAR_STROKE : primitives.ICON_MEDIUM_STROKE
-      const inline = render(h(Artwork, { "strokeWidth": stroke })).container.querySelector('svg')!
+      const inline = render(h(Artwork, { 'strokeWidth': stroke })).container.querySelector('svg')!
       const product = artwork(glyph, weight).documentElement
       expect(inline.getAttribute('viewBox')).toBe(product.getAttribute('viewBox'))
       expect(inline.children.length).toBe(product.children.length)
@@ -183,14 +183,14 @@ describe('product icon set', () => {
     }
   })
   it('size and className props land on the root svg', () => {
-    const { container } = render(h(IconSendOutlineRegular, { "size": 20, "className": "x" }))
+    const { container } = render(h(IconSendOutlineRegular, { 'size': 20, 'className': 'x' }))
     const svg = container.querySelector('svg')!
     expect(svg.getAttribute('width')).toBe('20')
     expect(svg.getAttribute('height')).toBe('20')
     expect(svg.classList.contains('x')).toBe(true)
   })
   it('keeps a non-square glyph at its drawn ratio', () => {
-    const svg = render(h(primitives.IconTreeCornerRegular, { "size": 20 })).container.querySelector('svg')!
+    const svg = render(h(primitives.IconTreeCornerRegular, { 'size': 20 })).container.querySelector('svg')!
     expect([svg.getAttribute('width'), svg.getAttribute('height')]).toEqual(['16', '20'])
   })
   it('uses 1px regular and 1.3px medium strokes', () => {
@@ -215,10 +215,10 @@ describe('product icon set', () => {
   })
   it('exports both weights for every reference kind', () => {
     for (const kind of ['session', 'file', 'folder'] as const) {
-      const regular = render(h(reference.ReferenceIconRegular, { "kind": kind }))
+      const regular = render(h(reference.ReferenceIconRegular, { 'kind': kind }))
       expect(regular.container.querySelector('svg')?.getAttribute('stroke-width')).toBe('1')
       regular.unmount()
-      const medium = render(h(reference.ReferenceIconMedium, { "kind": kind }))
+      const medium = render(h(reference.ReferenceIconMedium, { 'kind': kind }))
       expect(medium.container.querySelector('svg')?.getAttribute('stroke-width')).toBe('1.3')
       medium.unmount()
     }
@@ -246,7 +246,7 @@ describe('product icon set', () => {
     }
     expect(tiles('apps-add-outline')).toEqual({ result: ['2.25,2.25', '2.25,9.75', '9.75,9.75'], plus: 'M11.75 1.75v5M9.25 4.25h5' })
     expect(tiles('apps-add-compact-outline')).toEqual({ result: ['2.75,2.75', '2.75,9.25', '9.25,9.25'], plus: 'M11.25 2.25v5M8.75 4.75h5' })
-    const glyphOf = (compact: boolean) => render(h(IconAppsAddOutlineMedium, { "compact": compact })).container.querySelector('svg')!.getAttribute('data-icon')
+    const glyphOf = (compact: boolean) => render(h(IconAppsAddOutlineMedium, { 'compact': compact })).container.querySelector('svg')!.getAttribute('data-icon')
     expect([glyphOf(false), glyphOf(true)]).toEqual(['dsw-icon-apps-add-outline-medium', 'dsw-icon-apps-add-compact-outline-medium'])
   })
 })
@@ -268,7 +268,7 @@ describe('BrandWordmark', () => {
     const svg = view.container.querySelector('svg')!
     expect(svg.getAttribute('width')).toBe('182')
     expect(svg.getAttribute('viewBox')).toBe('0 0 182 24')
-    view.rerender(h(BrandWordmark, { "includeMark": false }))
+    view.rerender(h(BrandWordmark, { 'includeMark': false }))
     expect(svg.getAttribute('width')).toBe('156')
     expect(svg.getAttribute('viewBox')).toBe('26 0 156 24')
   })

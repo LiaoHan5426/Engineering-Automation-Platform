@@ -8,7 +8,10 @@ import type {} from './user-text-rules.ts'
 
 /** Session-authorized synchronous navigation; document reading belongs to the preview host. */
 export interface FileReferenceInjected {
-  /** Open or reveal a file using the originating Session's authority. @param path - decoded reference path. @throws On navigation failure, retained in the reference's retry dialog. */
+  /**
+   * Open or reveal a file using the originating Session's authority. @param path - decoded reference path. @throws On
+   * navigation failure, retained in the reference's retry dialog.
+   */
   readonly openFile: (path: string) => void
   /** Resolve a reference from the live workspace root. @param path - Reference path. @returns Host path. */
   readonly resolveFilePath: (path: string) => string

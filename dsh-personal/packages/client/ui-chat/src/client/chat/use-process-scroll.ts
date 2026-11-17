@@ -17,7 +17,8 @@ const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home
  * @returns edge fades, DOM event bindings, and one-shot positioning for manual opening.
  */
 export function useProcessScroll(
-  bodyRef: Readonly<Ref<HTMLDivElement | null>>, contentRef: Readonly<Ref<HTMLDivElement | null>>, open: MaybeRefOrGetter<boolean>, grouped: MaybeRefOrGetter<boolean>,
+  bodyRef: Readonly<Ref<HTMLDivElement | null>>, contentRef: Readonly<Ref<HTMLDivElement | null>>,
+  open: MaybeRefOrGetter<boolean>, grouped: MaybeRefOrGetter<boolean>,
 ): {
   edges: Readonly<Ref<ScrollEdges>>
   events: Pick<HTMLAttributes, 'onScroll' | 'onWheel' | 'onTouchstart' | 'onPointerdown' | 'onKeydown'>

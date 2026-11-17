@@ -36,6 +36,6 @@ export const TurnProcessNodeView = defineComponent((props: ChatNodeViewProps<'tu
       },
     }, [h('span', { class: css.label }, [label, ...(duration?.map((part, index) =>
       h('span', { key: index, class: part.numeric ? css.durationNumber : undefined }, part.text)) ?? [])]),
-      canCollapse ? h(IconChevronDownOutlineRegular, { className: css.chevron ?? '' }) : null]),
+    canCollapse ? h(IconChevronDownOutlineRegular, { className: css.chevron ?? '' }) : null]),
   ])
 }, { name: 'TurnProcessNodeView', inheritAttrs: false, props: ['node', 'turnProcess', 't'] })

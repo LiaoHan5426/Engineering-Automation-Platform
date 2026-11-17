@@ -24,4 +24,4 @@ export const LazyExcelBody = defineComponent((props: ExcelBodyProps) => () => {
   const format = excelFormat(hostFileOf(props.resourceAddress).path)
   const loading = h(LoadingIndicator, { label: props.t('loading') })
   return h(Suspense, null, { default: () => h(LoadedExcelBody, { ...props, format, loading }), fallback: () => loading })
-}, { name: 'LazyExcelBody', inheritAttrs: false, props: ["addResource","setResources","resourceAddress","content","wrap","scrollportRef","useTabInfo","useSession","sessionId","useProjection","useAccess","useConversation","useInput","inputActions","useRemoteAccess","useSessions","useSessionRetainInfo","useSessionAccess","usePanelInfo","useContextMenu","useResource","useWorkspaces","t","limits"] })
+}, { name: 'LazyExcelBody', inheritAttrs: false, props: ['addResource','setResources','resourceAddress','content','wrap','scrollportRef','useTabInfo','useSession','sessionId','useProjection','useAccess','useConversation','useInput','inputActions','useRemoteAccess','useSessions','useSessionRetainInfo','useSessionAccess','usePanelInfo','useContextMenu','useResource','useWorkspaces','t','limits'] })

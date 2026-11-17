@@ -11,4 +11,4 @@ export const TextTitle = defineComponent((props: PropsRuntime<'sidebar.right.pan
     h(FileTypeIcon, { kind: classifyFileType(info.value.tab.title), size: 16, className: css.titleIcon }),
     info.value.tab.title,
   ])
-}, { name: 'TextTitle', inheritAttrs: false, props: ["useTabInfo","useSession","sessionId","useProjection","useAccess","useConversation","useInput","inputActions","useRemoteAccess","useSessions","useSessionRetainInfo","useSessionAccess","usePanelInfo","useContextMenu","useResource","useWorkspaces"] })
+}, { name: 'TextTitle', inheritAttrs: false, props: ['useTabInfo','useSession','sessionId','useProjection','useAccess','useConversation','useInput','inputActions','useRemoteAccess','useSessions','useSessionRetainInfo','useSessionAccess','usePanelInfo','useContextMenu','useResource','useWorkspaces'] })

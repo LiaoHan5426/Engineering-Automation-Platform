@@ -94,7 +94,7 @@ describe('client-resources apply', () => {
     const open = vi.fn<ResourceProvider<'feed'>['open']>(async function* (key, { signal }) {
       signals.push(signal)
       yield { ok: true, value: key }
-      await new Promise<void>((resolve) => { signal.addEventListener('abort', () => resolve(), { once: true }) })
+      await new Promise<void>((resolve) => { signal.addEventListener('abort', () => { resolve() }, { once: true }) })
     })
     runtime.ctx.effect(() => runtime!.ctx.resources.register({ protocol: 'feed', open }), 'spec: keyed provider')
     let seat: Readonly<ShallowRef<ResourceSnapshot<string> | undefined>> | undefined

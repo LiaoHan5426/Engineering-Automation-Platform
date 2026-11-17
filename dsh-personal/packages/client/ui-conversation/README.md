@@ -155,11 +155,11 @@ Two independent Escape presses in the focused Chat or Composer stop its current 
 /** Owner values used to elect a composer takeover. */
 interface ComposerChainProps {
   /** Current Session identity used by temporary business-owned entries. */
-  sessionId: SessionId | undefined;
+  sessionId: SessionId | undefined
   /** Current Session lifecycle state, absent without a selected Session. */
-  session: SessionSnapshot | undefined;
+  session: SessionSnapshot | undefined
   /** Effective business-owned interaction awaiting the user in this Session. */
-  pendingInteraction: SessionPendingInteraction | undefined;
+  pendingInteraction: SessionPendingInteraction | undefined
 }
 ```
 

@@ -275,7 +275,7 @@ export function useChatReading(
     activeTurn: initialTurn,
   })
   const follow = useScrollFollow(state.value.followingTail, FOLLOW_THRESHOLD + 1)
-  const reading = new ChatReading(viewport, toValue(store), state.value, next => { state.value = next }, follow)
+  const reading = new ChatReading(viewport, toValue(store), state.value, (next) => { state.value = next }, follow)
   watchEffect(() => { reading.setStore(toValue(store)) }, { flush: 'post' })
   let unbind: (() => void) | undefined
   onMounted(() => { unbind = reading.bindFolds() })

@@ -1,8 +1,8 @@
 /** Pure image-card derivation from raw result content and metadata. @module */
-import type { AttachmentId } from "@deepseek-ai/dsh-attachment/types";
-import type { ImageAttachmentRef, ImageMediaType } from "@deepseek-ai/dsh-attachment";
-import type { ToolCallBlock } from "./tool-call-model.ts";
-import { parsedToolCall } from "./raw-tool-call.ts";
+import type { AttachmentId } from '@deepseek-ai/dsh-attachment/types'
+import type { ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
+import type { ToolCallBlock } from './tool-call-model.ts'
+import { parsedToolCall } from './raw-tool-call.ts'
 
 /**
  * The image-card material one settled call contributes: the read path plus the
@@ -14,16 +14,16 @@ import { parsedToolCall } from "./raw-tool-call.ts";
  */
 export interface ImageCardModel {
   /** The resolved path as recorded, unshortened; the row summary already shows the short form. */
-  path: string;
+  path: string
   /** The durable images this result returned, in result order. */
-  images: readonly { readonly attachment: ImageAttachmentRef }[];
+  images: readonly { readonly attachment: ImageAttachmentRef }[]
   /**
    * Text blocks other than the model-facing envelope (for example, text a
    * post-execute hook appended), joined in order; null when there are none.
    * The envelope itself is not repeated: its path and image facts are already
    * `path` and `images`.
    */
-  extraText: string | null;
+  extraText: string | null
 }
 
 /**
@@ -43,7 +43,7 @@ export interface ImageCardModel {
  * returns. `path` is the one fact `content` does not carry.
  */
 interface ImageMeta {
-  path: string;
+  path: string
 }
 
 /**
@@ -52,12 +52,12 @@ interface ImageMeta {
  * @returns true when it is a positive integer.
  */
 function positiveInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value > 0;
+  return typeof value === 'number' && Number.isInteger(value) && value > 0
 }
 
 /** The envelope `formatImageReadOutput` writes, matched by shape. */
 const IMAGE_ENVELOPE =
-  /^<path>[^\n]*<\/path>\n<type>image<\/type>\n<content>\n[\s\S]*\n<\/content>$/u;
+  /^<path>[^\n]*<\/path>\n<type>image<\/type>\n<content>\n[\s\S]*\n<\/content>$/u
 
 /** The media types a durable image block may claim; anything else declines.
  *  Hand-written mirror of `ImageMediaType` from dsh-attachment — the wire
@@ -65,15 +65,15 @@ const IMAGE_ENVELOPE =
  *  from each other; a new member added there must be added here too, or the
  *  decline point below silently degrades that image to the generic card. */
 const IMAGE_MEDIA_TYPES: ReadonlySet<ImageMediaType> = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-]);
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+])
 
 /** Runtime membership check; the cast is safe because the set holds exactly the four members. */
 function isImageMediaType(value: string): value is ImageMediaType {
-  return IMAGE_MEDIA_TYPES.has(value as ImageMediaType);
+  return IMAGE_MEDIA_TYPES.has(value as ImageMediaType)
 }
 
 /**
@@ -90,10 +90,10 @@ function isImageMediaType(value: string): value is ImageMediaType {
  * @returns the narrowed path, or null when it does not match.
  */
 function imageMeta(meta: unknown): ImageMeta | null {
-  if (typeof meta !== "object" || meta === null || Array.isArray(meta)) return null;
-  const { path } = meta as Record<string, unknown>;
-  if (typeof path !== "string" || path === "") return null;
-  return { path };
+  if (typeof meta !== 'object' || meta === null || Array.isArray(meta)) return null
+  const { path } = meta as Record<string, unknown>
+  if (typeof path !== 'string' || path === '') return null
+  return { path }
 }
 
 /**
@@ -113,38 +113,38 @@ function imageMeta(meta: unknown): ImageMeta | null {
  * @returns the narrowed references, or null when no valid image block is present.
  */
 function imageReferences(content: readonly unknown[]): ImageAttachmentRef[] | null {
-  const refs: ImageAttachmentRef[] = [];
+  const refs: ImageAttachmentRef[] = []
   for (const part of content) {
-    if (typeof part !== "object" || part === null) continue;
-    const { type, attachment } = part as { type?: unknown; attachment?: unknown };
-    if (type !== "image") continue;
-    if (typeof attachment !== "object" || attachment === null || Array.isArray(attachment))
-      return null;
+    if (typeof part !== 'object' || part === null) continue
+    const { type, attachment } = part as { type?: unknown; attachment?: unknown }
+    if (type !== 'image') continue
+    if (typeof attachment !== 'object' || attachment === null || Array.isArray(attachment))
+      return null
     const { attachmentId, mediaType, bytes, width, height, name, originalDimensions } =
-      attachment as Record<string, unknown>;
-    if (typeof attachmentId !== "string" || attachmentId === "") return null;
-    if (typeof mediaType !== "string" || !isImageMediaType(mediaType)) return null;
+      attachment as Record<string, unknown>
+    if (typeof attachmentId !== 'string' || attachmentId === '') return null
+    if (typeof mediaType !== 'string' || !isImageMediaType(mediaType)) return null
     // Narrowed one at a time: a loop over the three does validate them, but the
     // control-flow analysis does not carry that back to the object below.
-    if (!positiveInteger(bytes) || !positiveInteger(width) || !positiveInteger(height)) return null;
-    if (name !== undefined && typeof name !== "string") return null;
+    if (!positiveInteger(bytes) || !positiveInteger(width) || !positiveInteger(height)) return null
+    if (name !== undefined && typeof name !== 'string') return null
     // The store records input dimensions when normalization downsampled the
     // image; rebuild the pair so a renderer that needs the original size gets
     // it, and decline on a malformed pair like any other field.
-    let inputDimensions: ImageAttachmentRef["originalDimensions"] | undefined;
+    let inputDimensions: ImageAttachmentRef['originalDimensions'] | undefined
     if (originalDimensions !== undefined) {
       if (
-        typeof originalDimensions !== "object" ||
+        typeof originalDimensions !== 'object' ||
         originalDimensions === null ||
         Array.isArray(originalDimensions)
       )
-        return null;
+        return null
       const { width: inputWidth, height: inputHeight } = originalDimensions as Record<
         string,
         unknown
-      >;
-      if (!positiveInteger(inputWidth) || !positiveInteger(inputHeight)) return null;
-      inputDimensions = { width: inputWidth, height: inputHeight };
+      >
+      if (!positiveInteger(inputWidth) || !positiveInteger(inputHeight)) return null
+      inputDimensions = { width: inputWidth, height: inputHeight }
     }
     refs.push({
       attachmentId: attachmentId as AttachmentId,
@@ -154,9 +154,9 @@ function imageReferences(content: readonly unknown[]): ImageAttachmentRef[] | nu
       height,
       ...(name === undefined ? {} : { name }),
       ...(inputDimensions === undefined ? {} : { originalDimensions: inputDimensions }),
-    });
+    })
   }
-  return refs.length > 0 ? refs : null;
+  return refs.length > 0 ? refs : null
 }
 
 /**
@@ -167,12 +167,12 @@ function imageReferences(content: readonly unknown[]): ImageAttachmentRef[] | nu
  * @returns the joined text, or null when there is none.
  */
 function extraTexts(content: readonly { type: string; text?: string }[]): string | null {
-  const parts = content.flatMap((part) =>
-    part.type === "text" && typeof part.text === "string" && !IMAGE_ENVELOPE.test(part.text)
+  const parts = content.flatMap(part =>
+    part.type === 'text' && typeof part.text === 'string' && !IMAGE_ENVELOPE.test(part.text)
       ? [part.text]
       : [],
-  );
-  return parts.length > 0 ? parts.join("\n") : null;
+  )
+  return parts.length > 0 ? parts.join('\n') : null
 }
 
 /**
@@ -188,10 +188,10 @@ function extraTexts(content: readonly { type: string; text?: string }[]): string
  */
 function fullyRendered(content: readonly unknown[]): boolean {
   return content.every((part) => {
-    if (typeof part !== "object" || part === null) return false;
-    const { type, text } = part as { type?: unknown; text?: unknown };
-    return type === "image" || (type === "text" && typeof text === "string");
-  });
+    if (typeof part !== 'object' || part === null) return false
+    const { type, text } = part as { type?: unknown; text?: unknown }
+    return type === 'image' || (type === 'text' && typeof text === 'string')
+  })
 }
 
 /**
@@ -209,36 +209,36 @@ function fullyRendered(content: readonly unknown[]): boolean {
 export function imageCardModel(block: ToolCallBlock): ImageCardModel | null {
   // Result-side only: a running call is not a ToolResultNode and carries no
   // content, so it has no card here.
-  if (!("kind" in block) || block.isError) return null;
-  const call = parsedToolCall(block);
-  if (call?.name !== "read_image") return null;
-  const { file_path: filePath } = call.args;
-  if (typeof filePath !== "string" || filePath.trim() === "") return null;
+  if (!('kind' in block) || block.isError) return null
+  const call = parsedToolCall(block)
+  if (call?.name !== 'read_image') return null
+  const { file_path: filePath } = call.args
+  if (typeof filePath !== 'string' || filePath.trim() === '') return null
   // Historical nested records without metadata use the authored file_path
   // for the path. A root call with missing or malformed meta
   // declines — malformed tool data falls back to the generic card, which shows
   // the flattened content rather than an author-typed path.
-  const metaPath = imageMeta(block.meta)?.path;
-  const path = metaPath ?? (block.parentCallId !== undefined ? filePath : null);
-  if (path === null) return null;
+  const metaPath = imageMeta(block.meta)?.path
+  const path = metaPath ?? (block.parentCallId !== undefined ? filePath : null)
+  if (path === null) return null
   // The card renders only text and image blocks; a block of any other type must
   // not be silently hidden, so the whole card declines to the generic form.
-  if (!fullyRendered(block.content)) return null;
+  if (!fullyRendered(block.content)) return null
   // The references come from the result's own image blocks, the single source of
   // truth; `meta` contributes only the path, which the content does not carry.
-  const refs = imageReferences(block.content);
-  if (refs === null) return null;
+  const refs = imageReferences(block.content)
+  if (refs === null) return null
   // A result without the envelope is not a well-formed image read.
   if (
     !block.content.some(
-      (part) =>
-        part.type === "text" && typeof part.text === "string" && IMAGE_ENVELOPE.test(part.text),
+      part =>
+        part.type === 'text' && typeof part.text === 'string' && IMAGE_ENVELOPE.test(part.text),
     )
   )
-    return null;
+    return null
   return {
     path,
-    images: refs.map((ref) => ({ attachment: ref })),
+    images: refs.map(ref => ({ attachment: ref })),
     extraText: extraTexts(block.content),
-  };
+  }
 }

@@ -2,16 +2,16 @@
 import type {
   TerminalBlockLabels,
   TerminalBlockProps,
-} from "@deepseek-ai/dsh-client-ui-primitives";
-import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   isAbsoluteWorkspacePath,
   resolveWorkspacePath,
-} from "@deepseek-ai/dsh-util-workspace-path";
-import { hasSpillNotice } from "@deepseek-ai/dsh-spill-policy/notice";
-import type { ToolCallBlock } from "./tool-call-model.ts";
-import { parsedToolCall, singleResultText } from "./raw-tool-call.ts";
-import { recordedAbsolutePath } from "./recorded-path.ts";
+} from '@deepseek-ai/dsh-util-workspace-path'
+import { hasSpillNotice } from '@deepseek-ai/dsh-spill-policy/notice'
+import type { ToolCallBlock } from './tool-call-model.ts'
+import { parsedToolCall, singleResultText } from './raw-tool-call.ts'
+import { recordedAbsolutePath } from './recorded-path.ts'
 
 /**
  * Build the TerminalBlock display copy from the conversation locale seat —
@@ -21,23 +21,23 @@ import { recordedAbsolutePath } from "./recorded-path.ts";
  * @param t - the render site's conversation locale seat.
  * @returns the full label set for {@link TerminalBlockProps}'s `labels`.
  */
-export function terminalBlockLabels(t: TranslateNS<"conversation">): TerminalBlockLabels {
+export function terminalBlockLabels(t: TranslateNS<'conversation'>): TerminalBlockLabels {
   return {
-    commandLine: (line) => t("terminal.commandLine", { n: line }),
-    signal: (signal) => t("terminal.signal", { signal }),
-    exitCode: (code) => t("terminal.exitCode", { code }),
-    noExitCode: t("terminal.noExitCode"),
-    running: t("terminal.running"),
-    failed: t("terminal.failed"),
-    done: t("terminal.done"),
-    copy: t("copy"),
-    copied: t("copied"),
-    noOutput: t("terminal.noOutput"),
-    collapseAria: t("terminal.collapseAria"),
-    collapse: t("collapse"),
-    expandAria: (hidden) => t("terminal.expandAria", { n: hidden }),
-    expand: (hidden) => t("terminal.expandRest", { n: hidden }),
-  };
+    commandLine: line => t('terminal.commandLine', { n: line }),
+    signal: signal => t('terminal.signal', { signal }),
+    exitCode: code => t('terminal.exitCode', { code }),
+    noExitCode: t('terminal.noExitCode'),
+    running: t('terminal.running'),
+    failed: t('terminal.failed'),
+    done: t('terminal.done'),
+    copy: t('copy'),
+    copied: t('copied'),
+    noOutput: t('terminal.noOutput'),
+    collapseAria: t('terminal.collapseAria'),
+    collapse: t('collapse'),
+    expandAria: hidden => t('terminal.expandAria', { n: hidden }),
+    expand: hidden => t('terminal.expandRest', { n: hidden }),
+  }
 }
 
 /**
@@ -52,23 +52,23 @@ export interface TerminalCardModel {
    */
   card: Pick<
     TerminalBlockProps,
-    "cwd" | "output" | "exitCode" | "signal" | "running" | "background"
-  >;
+    'cwd' | 'output' | 'exitCode' | 'signal' | 'running' | 'background'
+  >
   /**
    * Verbatim Tool data or semantic `terminal_send` data. Product copy stays
    * unresolved until a render site supplies its locale seat.
    */
   copy:
-    | { readonly kind: "shell"; readonly command: string; readonly description: string | undefined }
-    | { readonly kind: "terminal-send"; readonly text: string; readonly sessionId: string };
+    | { readonly kind: 'shell'; readonly command: string; readonly description: string | undefined }
+    | { readonly kind: 'terminal-send'; readonly text: string; readonly sessionId: string }
 }
 
 interface LocalizedTerminalCardModel {
   readonly card: Pick<
     TerminalBlockProps,
-    "command" | "cwd" | "output" | "exitCode" | "signal" | "running" | "background"
-  >;
-  readonly description: string | undefined;
+    'command' | 'cwd' | 'output' | 'exitCode' | 'signal' | 'running' | 'background'
+  >
+  readonly description: string | undefined
 }
 
 /**
@@ -80,21 +80,21 @@ interface LocalizedTerminalCardModel {
  */
 export function localizeTerminalCardModel(
   model: TerminalCardModel,
-  t: TranslateNS<"conversation">,
+  t: TranslateNS<'conversation'>,
 ): LocalizedTerminalCardModel {
-  if (model.copy.kind === "shell") {
+  if (model.copy.kind === 'shell') {
     return {
       card: { command: model.copy.command, ...model.card },
       description: model.copy.description,
-    };
+    }
   }
   return {
     card: {
-      command: model.copy.text === "" ? t("terminal.sendInput") : model.copy.text,
+      command: model.copy.text === '' ? t('terminal.sendInput') : model.copy.text,
       ...model.card,
     },
-    description: t("terminal.session", { sessionId: model.copy.sessionId }),
-  };
+    description: t('terminal.session', { sessionId: model.copy.sessionId }),
+  }
 }
 
 /**
@@ -106,8 +106,8 @@ export function localizeTerminalCardModel(
  * @returns whether the card's exit status is a failure.
  */
 export function terminalFailed(model: TerminalCardModel): boolean {
-  const { exitCode, signal, running } = model.card;
-  return running !== true && ((exitCode !== undefined && exitCode !== 0) || signal !== undefined);
+  const { exitCode, signal, running } = model.card
+  return running !== true && ((exitCode !== undefined && exitCode !== 0) || signal !== undefined)
 }
 
 /**
@@ -118,13 +118,13 @@ export function terminalFailed(model: TerminalCardModel): boolean {
  */
 export function terminalExitLabel(
   model: TerminalCardModel | null | undefined,
-  t: TranslateNS<"conversation">,
+  t: TranslateNS<'conversation'>,
 ): string | null {
-  if (model == null || model.card.background || !terminalFailed(model)) return null;
-  const { exitCode, signal } = model.card;
-  if (signal !== undefined) return t("terminal.signal", { signal });
-  if (exitCode == null) return t("terminal.noExitCode");
-  return t("terminal.exitCode", { code: exitCode });
+  if (model == null || model.card.background || !terminalFailed(model)) return null
+  const { exitCode, signal } = model.card
+  if (signal !== undefined) return t('terminal.signal', { signal })
+  if (exitCode == null) return t('terminal.noExitCode')
+  return t('terminal.exitCode', { code: exitCode })
 }
 
 /**
@@ -140,9 +140,9 @@ function resolveTerminalCwd(
   workdir: string | undefined,
   sessionCwd: string | undefined,
 ): string | undefined {
-  if (workdir === undefined || workdir === "") return sessionCwd;
-  if (sessionCwd === undefined || sessionCwd === "") return normalizeSegments(workdir);
-  return normalizeSegments(resolveWorkspacePath(sessionCwd, workdir));
+  if (workdir === undefined || workdir === '') return sessionCwd
+  if (sessionCwd === undefined || sessionCwd === '') return normalizeSegments(workdir)
+  return normalizeSegments(resolveWorkspacePath(sessionCwd, workdir))
 }
 
 /**
@@ -158,29 +158,29 @@ function resolveTerminalCwd(
  * @returns the same path with those segments resolved.
  */
 function normalizeSegments(path: string): string {
-  if (!/(?:^|[/\\])\.\.?(?:[/\\]|$)/.test(path)) return path;
+  if (!/(?:^|[/\\])\.\.?(?:[/\\]|$)/.test(path)) return path
   // A UNC path is `\\\\server\\share\\...`: the server and share form the root,
   // so they are split off here and neither is a segment `..` may pop. Its
   // separator is fixed to a backslash, since a joined relative part may have
   // introduced a forward slash that UNC syntax does not use.
-  const unc = /^[/\\]{2}([^/\\]+)[/\\]+([^/\\]+)/.exec(path);
+  const unc = /^[/\\]{2}([^/\\]+)[/\\]+([^/\\]+)/.exec(path)
   if (unc !== null) {
     // Both groups are mandatory in the pattern, so destructuring types them as
     // strings without an assertion.
-    const [matched, server, share] = unc;
-    const root = `\\\\${String(server)}\\${String(share)}`;
+    const [matched, server, share] = unc
+    const root = `\\\\${String(server)}\\${String(share)}`
     // Rooted: what follows the share hangs off it, so a `..` at the top is
     // dropped rather than kept — Windows cannot climb above a share.
-    const rest = collapse(path.slice(matched.length), true);
-    return rest === "" ? root : `${root}\\${rest}`;
+    const rest = collapse(path.slice(matched.length), true)
+    return rest === '' ? root : `${root}\\${rest}`
   }
-  const backslashed = path.includes("\\") && !path.includes("/");
-  const separator = backslashed ? "\\" : "/";
-  const rooted = /^[/\\]/.test(path);
-  const drive = /^[A-Za-z]:/.exec(path)?.[0] ?? "";
-  const body = collapse(path.slice(drive.length), rooted || drive !== "", separator);
-  const leading = rooted ? separator : "";
-  return drive === "" ? `${leading}${body}` : `${drive}${rooted ? leading : separator}${body}`;
+  const backslashed = path.includes('\\') && !path.includes('/')
+  const separator = backslashed ? '\\' : '/'
+  const rooted = /^[/\\]/.test(path)
+  const drive = /^[A-Za-z]:/.exec(path)?.[0] ?? ''
+  const body = collapse(path.slice(drive.length), rooted || drive !== '', separator)
+  const leading = rooted ? separator : ''
+  return drive === '' ? `${leading}${body}` : `${drive}${rooted ? leading : separator}${body}`
 }
 
 /**
@@ -192,40 +192,40 @@ function normalizeSegments(path: string): string {
  * @param separator - separator to rejoin with (default `/`).
  * @returns the collapsed body, without leading or trailing separators.
  */
-function collapse(body: string, rooted: boolean, separator = "/"): string {
-  const kept: string[] = [];
+function collapse(body: string, rooted: boolean, separator = '/'): string {
+  const kept: string[] = []
   for (const segment of body.split(/[/\\]/)) {
-    if (segment === "" || segment === ".") continue;
-    if (segment === "..") {
-      if (kept.length > 0 && kept[kept.length - 1] !== "..") kept.pop();
-      else if (!rooted) kept.push(segment);
-      continue;
+    if (segment === '' || segment === '.') continue
+    if (segment === '..') {
+      if (kept.length > 0 && kept[kept.length - 1] !== '..') kept.pop()
+      else if (!rooted) kept.push(segment)
+      continue
     }
-    kept.push(segment);
+    kept.push(segment)
   }
-  return kept.join(separator);
+  return kept.join(separator)
 }
 
 interface ShellCall {
-  kind: "shell";
-  command: string;
-  description: string | undefined;
-  workdir: string | undefined;
-  persistent: boolean;
-  background: boolean;
+  kind: 'shell'
+  command: string
+  description: string | undefined
+  workdir: string | undefined
+  persistent: boolean
+  background: boolean
 }
 
 function shellCall(name: string, args: Record<string, unknown>): ShellCall | null {
-  if (name !== "bash" && name !== "pwsh") return null;
-  const { command, description, timeoutMs, workdir, run_in_background: background } = args;
-  if (typeof command !== "string" || command.trim() === "") return null;
+  if (name !== 'bash' && name !== 'pwsh') return null
+  const { command, description, timeoutMs, workdir, run_in_background: background } = args
+  if (typeof command !== 'string' || command.trim() === '') return null
   if (
     timeoutMs !== undefined &&
-    (typeof timeoutMs !== "number" || !Number.isFinite(timeoutMs) || timeoutMs <= 0)
+    (typeof timeoutMs !== 'number' || !Number.isFinite(timeoutMs) || timeoutMs <= 0)
   )
-    return null;
-  if (workdir !== undefined && typeof workdir !== "string") return null;
-  if (background !== undefined && typeof background !== "boolean") return null;
+    return null
+  if (workdir !== undefined && typeof workdir !== 'string') return null
+  if (background !== undefined && typeof background !== 'boolean') return null
   // Escalation fields stay unchecked: their validity depends on the Session's
   // sandbox mode, which only the Host knows, and a rejected call settles as an
   // error result on the generic body.
@@ -234,23 +234,23 @@ function shellCall(name: string, args: Record<string, unknown>): ShellCall | nul
     // persistent shell providers omit it. Their parameter roots stay open, so
     // unrelated fields do not change their running-card behavior.
     return {
-      kind: "shell",
+      kind: 'shell',
       command,
       description: undefined,
       workdir: undefined,
       persistent: true,
       background: false,
-    };
+    }
   }
-  if (typeof description !== "string" || description.trim() === "") return null;
+  if (typeof description !== 'string' || description.trim() === '') return null
   return {
-    kind: "shell",
+    kind: 'shell',
     command,
     description,
     workdir,
     persistent: false,
     background: background === true,
-  };
+  }
 }
 
 /**
@@ -259,8 +259,8 @@ function shellCall(name: string, args: Record<string, unknown>): ShellCall | nul
  * @returns whether the call requests a background shell job.
  */
 export function isBackgroundShellCall(block: ToolCallBlock): boolean {
-  const parsed = parsedToolCall(block);
-  return parsed !== null && shellCall(parsed.name, parsed.args)?.background === true;
+  const parsed = parsedToolCall(block)
+  return parsed !== null && shellCall(parsed.name, parsed.args)?.background === true
 }
 
 /**
@@ -271,10 +271,10 @@ export function isBackgroundShellCall(block: ToolCallBlock): boolean {
  * @returns whether the block is a settled persistent-shell call.
  */
 export function isSettledPersistentShellCall(block: ToolCallBlock): boolean {
-  if (!("kind" in block) || block.parentCallId !== undefined) return false;
-  const parsed = parsedToolCall(block);
-  if (parsed === null) return false;
-  return shellCall(parsed.name, parsed.args)?.persistent === true;
+  if (!('kind' in block) || block.parentCallId !== undefined) return false
+  const parsed = parsedToolCall(block)
+  if (parsed === null) return false
+  return shellCall(parsed.name, parsed.args)?.persistent === true
 }
 
 /**
@@ -283,34 +283,34 @@ export function isSettledPersistentShellCall(block: ToolCallBlock): boolean {
  * @returns whether the shell output must remain generic without an inferred exit status.
  */
 export function isSpilledShellCall(block: ToolCallBlock): boolean {
-  if (!("kind" in block)) return false;
-  const parsed = parsedToolCall(block);
-  if (parsed === null) return false;
-  const call = shellCall(parsed.name, parsed.args);
-  if (call === null || call.background) return false;
-  const output = singleResultText(block);
-  return output !== undefined && hasSpillNotice(output);
+  if (!('kind' in block)) return false
+  const parsed = parsedToolCall(block)
+  if (parsed === null) return false
+  const call = shellCall(parsed.name, parsed.args)
+  if (call === null || call.background) return false
+  const output = singleResultText(block)
+  return output !== undefined && hasSpillNotice(output)
 }
 
 interface TerminalSendCall {
-  kind: "terminal-send";
-  text: string;
-  sessionId: string;
-  background: boolean;
+  kind: 'terminal-send'
+  text: string
+  sessionId: string
+  background: boolean
 }
 
 function terminalSendCall(name: string, args: Record<string, unknown>): TerminalSendCall | null {
-  if (name !== "terminal_send") return null;
-  const { sessionId, text, submit, run_in_background: background } = args;
-  if (typeof sessionId !== "string" || sessionId === "" || typeof text !== "string") return null;
-  if (submit !== undefined && typeof submit !== "boolean") return null;
-  if (background !== undefined && typeof background !== "boolean") return null;
+  if (name !== 'terminal_send') return null
+  const { sessionId, text, submit, run_in_background: background } = args
+  if (typeof sessionId !== 'string' || sessionId === '' || typeof text !== 'string') return null
+  if (submit !== undefined && typeof submit !== 'boolean') return null
+  if (background !== undefined && typeof background !== 'boolean') return null
   return {
-    kind: "terminal-send",
+    kind: 'terminal-send',
     text,
     sessionId,
     background: background === true,
-  };
+  }
 }
 
 /**
@@ -320,19 +320,19 @@ function terminalSendCall(name: string, args: Record<string, unknown>): Terminal
  * @returns output with a trailing exit-code or signal marker extracted.
  */
 function parseExitStatus(text: string): {
-  output: string;
-  exitCode?: number | null;
-  signal?: string;
+  output: string
+  exitCode?: number | null
+  signal?: string
 } {
-  const signal = /\n\[killed by signal: ([^\]\n]+)\]$/.exec(text);
-  if (signal?.[1] !== undefined) return { output: text.slice(0, signal.index), signal: signal[1] };
-  const exit = /\n\[exit code: (-?\d+|null)\]$/.exec(text);
+  const signal = /\n\[killed by signal: ([^\]\n]+)\]$/.exec(text)
+  if (signal?.[1] !== undefined) return { output: text.slice(0, signal.index), signal: signal[1] }
+  const exit = /\n\[exit code: (-?\d+|null)\]$/.exec(text)
   if (exit?.[1] !== undefined)
     return {
       output: text.slice(0, exit.index),
-      exitCode: exit[1] === "null" ? null : Number(exit[1]),
-    };
-  return { output: text, exitCode: 0 };
+      exitCode: exit[1] === 'null' ? null : Number(exit[1]),
+    }
+  return { output: text, exitCode: 0 }
 }
 
 /**
@@ -350,28 +350,28 @@ export function terminalCardModel(
   block: ToolCallBlock,
   sessionCwd?: string,
 ): TerminalCardModel | null {
-  const parsed = parsedToolCall(block);
-  if (parsed === null) return null;
-  const call = shellCall(parsed.name, parsed.args) ?? terminalSendCall(parsed.name, parsed.args);
-  if (call === null || (call.kind === "terminal-send" && call.background)) return null;
+  const parsed = parsedToolCall(block)
+  if (parsed === null) return null
+  const call = shellCall(parsed.name, parsed.args) ?? terminalSendCall(parsed.name, parsed.args)
+  if (call === null || (call.kind === 'terminal-send' && call.background)) return null
 
-  const copy: TerminalCardModel["copy"] =
-    call.kind === "shell"
-      ? { kind: "shell", command: call.command, description: call.description }
-      : { kind: "terminal-send", text: call.text, sessionId: call.sessionId };
-  const workdir = call.kind === "shell" ? call.workdir : undefined;
+  const copy: TerminalCardModel['copy'] =
+    call.kind === 'shell'
+      ? { kind: 'shell', command: call.command, description: call.description }
+      : { kind: 'terminal-send', text: call.text, sessionId: call.sessionId }
+  const workdir = call.kind === 'shell' ? call.workdir : undefined
   const absoluteRequestCwd =
     workdir !== undefined && isAbsoluteWorkspacePath(workdir)
       ? normalizeSegments(workdir)
-      : undefined;
+      : undefined
   const cwd =
-    "kind" in block
-      ? (recordedAbsolutePath(block.meta, "cwd") ??
-        (call.kind === "shell" && block.parentCallId === undefined
+    'kind' in block
+      ? (recordedAbsolutePath(block.meta, 'cwd') ??
+        (call.kind === 'shell' && block.parentCallId === undefined
           ? resolveTerminalCwd(workdir, sessionCwd)
           : absoluteRequestCwd))
-      : absoluteRequestCwd;
-  if (!("kind" in block)) {
+      : absoluteRequestCwd
+  if (!('kind' in block)) {
     return {
       copy,
       card: {
@@ -380,18 +380,18 @@ export function terminalCardModel(
         exitCode: undefined,
         signal: undefined,
         running: true,
-        ...(call.kind === "shell" && call.background ? { background: call.background } : {}),
+        ...(call.kind === 'shell' && call.background ? { background: call.background } : {}),
       },
-    };
+    }
   }
-  if (block.isError || (call.kind === "shell" && call.persistent) || isSpilledShellCall(block))
-    return null;
-  if (call.kind === "shell" && call.background) {
-    return { copy, card: { cwd, running: false, background: call.background } };
+  if (block.isError || (call.kind === 'shell' && call.persistent) || isSpilledShellCall(block))
+    return null
+  if (call.kind === 'shell' && call.background) {
+    return { copy, card: { cwd, running: false, background: call.background } }
   }
-  const output = singleResultText(block);
-  if (output === undefined) return null;
-  const status = call.kind === "terminal-send" ? { output } : parseExitStatus(output);
+  const output = singleResultText(block)
+  if (output === undefined) return null
+  const status = call.kind === 'terminal-send' ? { output } : parseExitStatus(output)
   return {
     copy,
     card: {
@@ -401,5 +401,5 @@ export function terminalCardModel(
       signal: status.signal,
       running: false,
     },
-  };
+  }
 }

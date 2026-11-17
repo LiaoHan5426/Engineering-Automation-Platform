@@ -1,36 +1,36 @@
 /** Inspector-owned DOM reveal and native scrolling, without a Conversation request channel. */
 
-import { nextTick } from "vue";
-import type { InspectorChatTarget } from "../objects.ts";
-import { displayed, findChatTargets } from "./dom.ts";
-import { placeChatHighlight, visibleChatRect } from "./highlight.ts";
-import css from "../inspector.module.css";
+import { nextTick } from 'vue'
+import type { InspectorChatTarget } from '../objects.ts'
+import { displayed, findChatTargets } from './dom.ts'
+import { placeChatHighlight, visibleChatRect } from './highlight.ts'
+import css from '../inspector.module.css'
 
-const SCROLL_QUIET_MS = 150;
+const SCROLL_QUIET_MS = 150
 const SCROLL_KEYS = new Set([
-  "ArrowUp",
-  "ArrowDown",
-  "PageUp",
-  "PageDown",
-  "Home",
-  "End",
-  " ",
-  "Escape",
-]);
+  'ArrowUp',
+  'ArrowDown',
+  'PageUp',
+  'PageDown',
+  'Home',
+  'End',
+  ' ',
+  'Escape',
+])
 
 function hasRenderedBox(element: HTMLElement): boolean {
-  if (!displayed(element)) return false;
-  const box = element.getBoundingClientRect();
-  return box.width > 0 && box.height > 0;
+  if (!displayed(element)) return false
+  const box = element.getBoundingClientRect()
+  return box.width > 0 && box.height > 0
 }
 
 /** Owns one deferred reveal and body-level flash, without modifying Chat content nodes. */
 export class InspectorChatRevealer {
-  private generation = 0;
-  private frame: number | undefined;
-  private overlay: HTMLElement | undefined;
-  private animation: Animation | undefined;
-  private cancelScroll: (() => void) | undefined;
+  private generation = 0
+  private frame: number | undefined
+  private overlay: HTMLElement | undefined
+  private animation: Animation | undefined
+  private cancelScroll: (() => void) | undefined
 
   /** @param getRoot - Current Session's main Chat, or undefined when it is not displayed. */
   constructor(private readonly getRoot: () => HTMLElement | undefined) {}
@@ -42,83 +42,86 @@ export class InspectorChatRevealer {
    * @param targets - Exact and approximate Node, Group, or Turn identities in preference order.
    */
   reveal(targets: readonly InspectorChatTarget[]): void {
-    this.dispose();
-    const generation = this.generation;
-    this.frame = requestAnimationFrame(async () => {
-      this.frame = undefined;
-      const root = this.getRoot();
-      if (root === undefined) return;
+    this.dispose()
+    const generation = this.generation
+    const scheduler: {
+      requestAnimationFrame: (callback: (time: number) => void | Promise<void>) => number
+    } = globalThis
+    this.frame = scheduler.requestAnimationFrame(async () => {
+      this.frame = undefined
+      const root = this.getRoot()
+      if (root === undefined) return
       const current = () =>
-        this.generation === generation && this.getRoot() === root && root.isConnected;
+        this.generation === generation && this.getRoot() === root && root.isConnected
       for (const initial of findChatTargets(root, targets)) {
-        if (!root.contains(initial)) continue;
-        const hidden: HTMLElement[] = [];
+        if (!root.contains(initial)) continue
+        const hidden: HTMLElement[] = []
         for (
           let element: HTMLElement | null = initial;
           element !== null && element !== root;
           element = element.parentElement
         ) {
-          if (element.getAttribute("hidden") === "until-found") hidden.push(element);
+          if (element.getAttribute('hidden') === 'until-found') hidden.push(element)
         }
         if (hidden.length > 0 || visibleChatRect(initial) === undefined) {
-          root.closest("[data-conversation-scroll]")?.dispatchEvent(new Event("beforematch"));
-          await nextTick();
-          if (!current()) return;
+          root.closest('[data-conversation-scroll]')?.dispatchEvent(new Event('beforematch'))
+          await nextTick()
+          if (!current()) return
         }
         // Opening an outer fold may replace its descendants; resolve them after every commit.
-        const opened = new Set<HTMLElement>();
+        const opened = new Set<HTMLElement>()
         for (;;) {
           const candidate: HTMLElement | undefined = root.contains(initial)
             ? initial
-            : findChatTargets(root, targets)[0];
-          let folded: HTMLElement | undefined;
+            : findChatTargets(root, targets)[0]
+          let folded: HTMLElement | undefined
           for (
             let element: HTMLElement | undefined = candidate;
             element !== undefined && element !== root;
             element = element.parentElement ?? undefined
           ) {
-            if (element.getAttribute("hidden") === "until-found" && !opened.has(element))
-              folded = element;
+            if (element.getAttribute('hidden') === 'until-found' && !opened.has(element))
+              folded = element
           }
-          if (folded === undefined) break;
-          opened.add(folded);
-          folded.dispatchEvent(new Event("beforematch"));
-          await nextTick();
-          if (!current()) return;
+          if (folded === undefined) break
+          opened.add(folded)
+          folded.dispatchEvent(new Event('beforematch'))
+          await nextTick()
+          if (!current()) return
         }
-        if (!current()) return;
+        if (!current()) return
         const row = root.contains(initial)
           ? initial
-          : findChatTargets(root, targets).find(hasRenderedBox);
-        if (row === undefined || !hasRenderedBox(row)) continue;
+          : findChatTargets(root, targets).find(hasRenderedBox)
+        if (row === undefined || !hasRenderedBox(row)) continue
         if (visibleChatRect(row) === undefined) {
-          if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-            this.smoothScroll(row, root, targets);
-            return;
+          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            this.smoothScroll(row, root, targets)
+            return
           }
-          row.scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+          row.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'nearest' })
         }
-        this.queueFlash(row, root, targets);
-        return;
+        this.queueFlash(row, root, targets)
+        return
       }
       if (displayed(root) && visibleChatRect(root) !== undefined)
-        this.queueFlash(root, root, targets);
-    });
+        this.queueFlash(root, root, targets)
+    })
   }
 
   /** Cancel pending native scrolling and remove the Inspector-owned overlay. */
   dispose(): void {
-    this.generation++;
-    if (this.frame !== undefined) cancelAnimationFrame(this.frame);
-    this.frame = undefined;
-    this.cancelScroll?.();
+    this.generation++
+    if (this.frame !== undefined) cancelAnimationFrame(this.frame)
+    this.frame = undefined
+    this.cancelScroll?.()
     if (this.animation !== undefined) {
-      this.animation.onfinish = null;
-      this.animation.cancel();
+      this.animation.onfinish = null
+      this.animation.cancel()
     }
-    this.animation = undefined;
-    this.overlay?.remove();
-    this.overlay = undefined;
+    this.animation = undefined
+    this.overlay?.remove()
+    this.overlay = undefined
   }
 
   private queueFlash(
@@ -127,18 +130,18 @@ export class InspectorChatRevealer {
     targets: readonly InspectorChatTarget[],
   ): void {
     this.frame = requestAnimationFrame(() => {
-      this.frame = undefined;
+      this.frame = undefined
       if (this.getRoot() !== root) {
-        this.dispose();
-        return;
+        this.dispose()
+        return
       }
-      if (this.flash(row)) return;
+      if (this.flash(row)) return
       for (const candidate of findChatTargets(root, targets)) {
-        if (candidate !== row && this.flash(candidate)) return;
+        if (candidate !== row && this.flash(candidate)) return
       }
-      if (row !== root && this.flash(root)) return;
-      this.dispose();
-    });
+      if (row !== root && this.flash(root)) return
+      this.dispose()
+    })
   }
 
   private smoothScroll(
@@ -146,60 +149,60 @@ export class InspectorChatRevealer {
     root: HTMLElement,
     targets: readonly InspectorChatTarget[],
   ): void {
-    const parents = new Set<Element>();
+    const parents = new Set<Element>()
     for (let element = row.parentElement; element !== null; element = element.parentElement)
-      parents.add(element);
-    const moving = new Set<Element>();
-    let pending = true;
-    let quiet: number | undefined;
-    let settledFrame: number | undefined;
+      parents.add(element)
+    const moving = new Set<Element>()
+    let pending = true
+    let quiet: number | undefined
+    let settledFrame: number | undefined
     const targetOf = (event: Event): Element | undefined => {
-      const target = event.target === document ? document.scrollingElement : event.target;
-      return target instanceof Element && parents.has(target) ? target : undefined;
-    };
+      const target = event.target === document ? document.scrollingElement : event.target
+      return target instanceof Element && parents.has(target) ? target : undefined
+    }
     const cleanup = (): void => {
-      pending = false;
-      window.clearTimeout(quiet);
-      if (settledFrame !== undefined) cancelAnimationFrame(settledFrame);
-      window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("scrollend", onEnd, true);
-      for (const type of ["wheel", "touchstart", "pointerdown", "keydown"])
-        window.removeEventListener(type, interrupt, true);
-      this.cancelScroll = undefined;
-    };
+      pending = false
+      window.clearTimeout(quiet)
+      if (settledFrame !== undefined) cancelAnimationFrame(settledFrame)
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('scrollend', onEnd, true)
+      for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown'])
+        window.removeEventListener(type, interrupt, true)
+      this.cancelScroll = undefined
+    }
     const finish = (): void => {
-      if (!pending) return;
-      cleanup();
-      this.queueFlash(row, root, targets);
-    };
+      if (!pending) return
+      cleanup()
+      this.queueFlash(row, root, targets)
+    }
     const awaitQuiet = (): void => {
-      window.clearTimeout(quiet);
+      window.clearTimeout(quiet)
       // A no-op scroll and browsers without scrollend still release the observation.
-      quiet = window.setTimeout(finish, SCROLL_QUIET_MS);
-    };
+      quiet = window.setTimeout(finish, SCROLL_QUIET_MS)
+    }
     const onScroll = (event: Event): void => {
-      const target = targetOf(event);
-      if (target === undefined) return;
-      moving.add(target);
-      awaitQuiet();
-    };
+      const target = targetOf(event)
+      if (target === undefined) return
+      moving.add(target)
+      awaitQuiet()
+    }
     const onEnd = (event: Event): void => {
-      const target = targetOf(event);
+      const target = targetOf(event)
       if (
         target === undefined ||
         !moving.delete(target) ||
         moving.size > 0 ||
         settledFrame !== undefined
       )
-        return;
+        return
       settledFrame = requestAnimationFrame(() => {
-        settledFrame = undefined;
-        if (moving.size === 0) finish();
-      });
-    };
+        settledFrame = undefined
+        if (moving.size === 0) finish()
+      })
+    }
     const cancel = (): void => {
-      if (!pending) return;
-      cleanup();
+      if (!pending) return
+      cleanup()
       for (const element of parents) {
         if (
           element.isConnected &&
@@ -208,48 +211,48 @@ export class InspectorChatRevealer {
           element.scrollTo({
             top: element.scrollTop,
             left: element.scrollLeft,
-            behavior: "instant",
-          });
+            behavior: 'instant',
+          })
         }
       }
-    };
-    const interrupt = (event: Event): void => {
-      if (event instanceof KeyboardEvent && !SCROLL_KEYS.has(event.key)) return;
-      cancel();
-      this.dispose();
-    };
-    this.cancelScroll = cancel;
-    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
-    window.addEventListener("scrollend", onEnd, { capture: true, passive: true });
-    for (const type of ["wheel", "touchstart", "pointerdown", "keydown"]) {
-      window.addEventListener(type, interrupt, { capture: true, passive: true });
     }
-    awaitQuiet();
-    row.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    const interrupt = (event: Event): void => {
+      if (event instanceof KeyboardEvent && !SCROLL_KEYS.has(event.key)) return
+      cancel()
+      this.dispose()
+    }
+    this.cancelScroll = cancel
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true })
+    window.addEventListener('scrollend', onEnd, { capture: true, passive: true })
+    for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown']) {
+      window.addEventListener(type, interrupt, { capture: true, passive: true })
+    }
+    awaitQuiet()
+    row.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
   }
 
   private flash(row: HTMLElement): boolean {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      this.dispose();
-      return true;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.dispose()
+      return true
     }
-    if (!displayed(row)) return false;
-    const overlay = document.createElement("div");
-    if (!placeChatHighlight(overlay, row)) return false;
+    if (!displayed(row)) return false
+    const overlay = document.createElement('div')
+    if (!placeChatHighlight(overlay, row)) return false
     // oxlint-disable-next-line typescript/no-non-null-assertion -- This class is declared in the imported CSS Module.
-    overlay.className = css.chatReveal!;
-    overlay.dataset.sessionInspectorHighlight = "reveal";
-    overlay.setAttribute("aria-hidden", "true");
-    document.body.append(overlay);
-    this.overlay = overlay;
+    overlay.className = css.chatReveal!
+    overlay.dataset.sessionInspectorHighlight = 'reveal'
+    overlay.setAttribute('aria-hidden', 'true')
+    document.body.append(overlay)
+    this.overlay = overlay
     const animation = overlay.animate(
       [{ opacity: 0.65 }, { opacity: 0.1 }, { opacity: 0.5 }, { opacity: 0 }],
       { duration: 700 },
-    );
-    this.animation = animation;
+    )
+    this.animation = animation
     animation.onfinish = () => {
-      if (this.animation === animation) this.dispose();
-    };
-    return true;
+      if (this.animation === animation) this.dispose()
+    }
+    return true
   }
 }

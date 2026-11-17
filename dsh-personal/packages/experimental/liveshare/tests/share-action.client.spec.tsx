@@ -1,51 +1,51 @@
-import type { Component } from "vue";
-import type { LiveshareShareActionProps } from "../src/client/ShareAction.tsx";
-import type { SessionListState } from "@deepseek-ai/dsh-api-session-controller/client";
+import type { Component } from 'vue'
+import type { LiveshareShareActionProps } from '../src/client/ShareAction.tsx'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 // @vitest-environment jsdom
-import { h, computed } from "vue";
+import { h, computed } from 'vue'
 
 /**
  * The Session-header Share action: the button a local owner opens, the dialog it opens, and the live
  * relay address that dialog starts from.
  */
-import { Context } from "@deepseek-ai/cordis";
-import { LocaleRuntime } from "@deepseek-ai/dsh-client-locale/client";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import { cleanup, render } from "../../../test-support/client-runtime/src/vue-test.ts";
-import { fireEvent, screen, waitFor } from "@testing-library/dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { LiveshareShareAction } from "../src/client/ShareAction.tsx";
-import { en, NS, zh } from "../src/client/locales.ts";
-import type { OwnerShares } from "../src/client/owner-shares.ts";
-import { accepted, ownerSharesDouble, refused } from "./owner-shares-double.client.ts";
-import { rememberManagedShare, setManagedShareOpener } from "../src/client/share-navigation.ts";
-const SESSION = "owner-session" as SessionId;
+import { Context } from '@deepseek-ai/cordis'
+import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { act, cleanup, render } from '../../../test-support/client-runtime/src/vue-test.ts'
+import { fireEvent, screen, waitFor } from '@testing-library/dom'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { LiveshareShareAction } from '../src/client/ShareAction.tsx'
+import { en, NS, zh } from '../src/client/locales.ts'
+import type { OwnerShares } from '../src/client/owner-shares.ts'
+import { accepted, ownerSharesDouble, refused } from './owner-shares-double.client.ts'
+import { rememberManagedShare, setManagedShareOpener } from '../src/client/share-navigation.ts'
+const SESSION = 'owner-session' as SessionId
 // The action reads its copy through the locale seat the browser composition provides.
-const locale = new LocaleRuntime(new Context());
-locale.register(NS, { zh, en });
-locale.setLocale("zh");
-const t = locale.bind(NS);
-afterEach(cleanup);
+const locale = new LocaleRuntime(new Context())
+locale.register(NS, { zh, en })
+locale.setLocale('zh')
+const t = locale.bind(NS)
+afterEach(cleanup)
 /** One Session list carrying the Session the action belongs to, or none at all. */
 function list(displayTitle?: string): SessionListState {
   return {
     ids: displayTitle === undefined ? [] : [SESSION],
-    phase: "ready",
+    phase: 'ready',
     projectionsBySession: {},
     byId:
       displayTitle === undefined
         ? {}
         : {
-            [SESSION]: {
-              id: SESSION,
-              displayTitle,
-              running: false,
-              retainedBy: {},
-              blank: false,
-              updatedAt: 0,
-            },
+          [SESSION]: {
+            id: SESSION,
+            displayTitle,
+            running: false,
+            retainedBy: {},
+            blank: false,
+            updatedAt: 0,
           },
-  };
+        },
+  }
 }
 
 /**
@@ -54,10 +54,10 @@ function list(displayTitle?: string): SessionListState {
  * @param rows - The Session list the action reads its title from.
  * @returns The rendered container.
  */
-function renderAction(shares: OwnerShares, rows: SessionListState = list("Review the migration")) {
+function renderAction(shares: OwnerShares, rows: SessionListState = list('Review the migration')) {
   const View = LiveshareShareAction as Component<
-    Pick<LiveshareShareActionProps, "sessionId" | "shares" | "t" | "useSessions">
-  >;
+    Pick<LiveshareShareActionProps, 'sessionId' | 'shares' | 't' | 'useSessions'>
+  >
   return render(
     h(View, {
       sessionId: SESSION,
@@ -66,172 +66,172 @@ function renderAction(shares: OwnerShares, rows: SessionListState = list("Review
       useSessions: <Selected,>(selector: (state: SessionListState) => Selected) =>
         computed(() => selector(rows)),
     }),
-  );
+  )
 }
-describe("Session header Share action", () => {
-  it("opens the share dialog and asks the Host for the relay address in force", async () => {
-    const { shares, calls } = ownerSharesDouble();
-    renderAction(shares);
-    await fireEvent.click(screen.getByRole("button", { name: zh["header.action"] }));
+describe('Session header Share action', () => {
+  it('opens the share dialog and asks the Host for the relay address in force', async () => {
+    const { shares, calls } = ownerSharesDouble()
+    renderAction(shares)
+    await act(() => fireEvent.click(screen.getByRole('button', { name: zh['header.action'] })))
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
     // The dialog is told which Session it publishes, including a Session the list does not name.
-    expect(calls.map((call) => call.method)).toContain("relay");
-  });
-  it("returns to the share dialog when the manager opens this same Session", async () => {
+    expect(calls.map(call => call.method)).toContain('relay')
+  })
+  it('returns to the share dialog when the manager opens this same Session', async () => {
     const { shares } = ownerSharesDouble({
       list: async () =>
         accepted({
           shares: [
             {
-              shareId: "share",
+              shareId: 'share',
               sessionIds: [SESSION],
-              sessionTitle: "Review the migration",
-              link: "https://relay.test/?shareId=share",
-              createdAt: "2026-09-05T00:00:00Z",
+              sessionTitle: 'Review the migration',
+              link: 'https://relay.test/?shareId=share',
+              createdAt: '2026-09-05T00:00:00Z',
               online: true,
             },
           ] as never,
         }),
-    });
-    renderAction(shares);
-    await fireEvent.click(screen.getByRole("button", { name: zh["header.action"] }));
+    })
+    renderAction(shares)
+    await act(() => fireEvent.click(screen.getByRole('button', { name: zh['header.action'] })))
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
-    await fireEvent.click(screen.getByText(zh["dialog.manage"]));
-    const manage = await screen.findByRole("button", { name: zh["manage.open"] });
-    await fireEvent.click(manage);
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
+    await act(() => fireEvent.click(screen.getByText(zh['dialog.manage'])))
+    const manage = await screen.findByRole('button', { name: zh['manage.open'] })
+    await act(() => fireEvent.click(manage))
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
-    expect(screen.queryByText(zh["manage.title"])).toBeNull();
-  });
-  it("asks workspace navigation to open another Session selected in the manager", async () => {
-    const open = vi.fn();
-    setManagedShareOpener(open);
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
+    expect(screen.queryByText(zh['manage.title'])).toBeNull()
+  })
+  it('asks workspace navigation to open another Session selected in the manager', async () => {
+    const open = vi.fn()
+    setManagedShareOpener(open)
     const { shares } = ownerSharesDouble({
       list: async () =>
         accepted({
           shares: [
             {
-              shareId: "other",
-              sessionIds: ["other-session"],
-              sessionTitle: "Other session",
-              link: "https://relay.test/?shareId=other",
-              createdAt: "2026-09-05T00:00:00Z",
+              shareId: 'other',
+              sessionIds: ['other-session'],
+              sessionTitle: 'Other session',
+              link: 'https://relay.test/?shareId=other',
+              createdAt: '2026-09-05T00:00:00Z',
               online: true,
             },
           ] as never,
         }),
-    });
-    renderAction(shares);
-    await fireEvent.click(screen.getByRole("button", { name: zh["header.action"] }));
+    })
+    renderAction(shares)
+    await act(() => fireEvent.click(screen.getByRole('button', { name: zh['header.action'] })))
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
-    await fireEvent.click(screen.getByText(zh["dialog.manage"]));
-    const manage = await screen.findByRole("button", { name: zh["manage.open"] });
-    await fireEvent.click(manage);
-    expect(open).toHaveBeenCalledWith("other-session");
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
+    await act(() => fireEvent.click(screen.getByText(zh['dialog.manage'])))
+    const manage = await screen.findByRole('button', { name: zh['manage.open'] })
+    await act(() => fireEvent.click(manage))
+    expect(open).toHaveBeenCalledWith('other-session')
     await waitFor(() => {
-      expect(screen.getByText("Other session")).toBeTruthy();
-    });
-  });
-  it("opens the share dialog when the manager left a request for this Session", async () => {
-    rememberManagedShare(SESSION);
-    const { shares } = ownerSharesDouble();
-    renderAction(shares);
+      expect(screen.getByText('Other session')).toBeTruthy()
+    })
+  })
+  it('opens the share dialog when the manager left a request for this Session', async () => {
+    rememberManagedShare(SESSION)
+    const { shares } = ownerSharesDouble()
+    renderAction(shares)
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
-  });
-  it("opens the dialog for a Session the list has not published, titled by its id", async () => {
-    const { shares } = ownerSharesDouble();
-    renderAction(shares, list());
-    await fireEvent.click(screen.getByRole("button", { name: zh["header.action"] }));
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
+  })
+  it('opens the dialog for a Session the list has not published, titled by its id', async () => {
+    const { shares } = ownerSharesDouble()
+    renderAction(shares, list())
+    await act(() => fireEvent.click(screen.getByRole('button', { name: zh['header.action'] })))
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
-  });
-  it("starts from an empty address when the Host has none saved", async () => {
-    const { shares } = ownerSharesDouble({ relay: async () => accepted({}) });
-    renderAction(shares);
-    await fireEvent.click(screen.getByRole("button", { name: zh["header.action"] }));
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
+  })
+  it('starts from an empty address when the Host has none saved', async () => {
+    const { shares } = ownerSharesDouble({ relay: async () => accepted({}) })
+    renderAction(shares)
+    await act(() => fireEvent.click(screen.getByRole('button', { name: zh['header.action'] })))
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
-    expect(screen.getByLabelText(zh["dialog.relay"])).toHaveProperty("value", "");
-    expect(screen.getByText(zh["dialog.addressHint"])).toBeTruthy();
-  });
-  it("titles the dialog by the Session id when its listed row has no display title", async () => {
-    const { shares } = ownerSharesDouble();
-    renderAction(shares, list(SESSION));
-    await fireEvent.click(screen.getByRole("button", { name: zh["header.action"] }));
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
+    expect(screen.getByLabelText(zh['dialog.relay'])).toHaveProperty('value', '')
+    expect(screen.getByText(zh['dialog.addressHint'])).toBeTruthy()
+  })
+  it('titles the dialog by the Session id when its listed row has no display title', async () => {
+    const { shares } = ownerSharesDouble()
+    renderAction(shares, list(SESSION))
+    await act(() => fireEvent.click(screen.getByRole('button', { name: zh['header.action'] })))
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
-  });
-  it("opens the dialog when the Host fails to report its relay address", async () => {
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
+  })
+  it('opens the dialog when the Host fails to report its relay address', async () => {
     const { shares } = ownerSharesDouble({
       relay: async () => {
-        throw new Error("relay unavailable");
+        throw new Error('relay unavailable')
       },
-    });
-    renderAction(shares);
-    await fireEvent.click(screen.getByRole("button", { name: zh["header.action"] }));
+    })
+    renderAction(shares)
+    await act(() => fireEvent.click(screen.getByRole('button', { name: zh['header.action'] })))
     // Typing the address is still possible: a failed read is not a reason to keep the dialog closed.
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
-    expect(screen.getByText(zh["dialog.create"])).toBeTruthy();
-  });
-  it("opens the dialog when the Host answers that it could not read the relay address", async () => {
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
+    expect(screen.getByText(zh['dialog.create'])).toBeTruthy()
+  })
+  it('opens the dialog when the Host answers that it could not read the relay address', async () => {
     const { shares } = ownerSharesDouble({
-      relay: async () => refused("liveshareShares/invalid-relay-url", {}),
-    });
-    renderAction(shares);
-    await fireEvent.click(screen.getByRole("button", { name: zh["header.action"] }));
+      relay: async () => refused('liveshareShares/invalid-relay-url', {}),
+    })
+    renderAction(shares)
+    await act(() => fireEvent.click(screen.getByRole('button', { name: zh['header.action'] })))
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
-    expect(screen.getByText(zh["dialog.create"])).toBeTruthy();
-  });
-  it("moves from the share dialog to share management, which closes back to the header", async () => {
-    const { shares } = ownerSharesDouble();
-    renderAction(shares);
-    await fireEvent.click(screen.getByRole("button", { name: zh["header.action"] }));
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
+    expect(screen.getByText(zh['dialog.create'])).toBeTruthy()
+  })
+  it('moves from the share dialog to share management, which closes back to the header', async () => {
+    const { shares } = ownerSharesDouble()
+    renderAction(shares)
+    await act(() => fireEvent.click(screen.getByRole('button', { name: zh['header.action'] })))
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
-    await fireEvent.click(screen.getByText(zh["dialog.manage"]));
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
+    await act(() => fireEvent.click(screen.getByText(zh['dialog.manage'])))
     // The management surface lists this host's shares; the dialog it replaced is gone.
     await waitFor(() => {
-      expect(screen.getByText(zh["manage.title"])).toBeTruthy();
-    });
-    expect(screen.queryByText(zh["dialog.title"])).toBeNull();
-    await fireEvent.click(
-      screen.getAllByRole("button", { name: zh["manage.done"] })[0] as HTMLElement,
-    );
+      expect(screen.getByText(zh['manage.title'])).toBeTruthy()
+    })
+    expect(screen.queryByText(zh['dialog.title'])).toBeNull()
+    await act(() => fireEvent.click(
+      screen.getAllByRole('button', { name: zh['manage.done'] })[0] as HTMLElement,
+    ))
     await waitFor(() => {
-      expect(screen.queryByText(zh["manage.title"])).toBeNull();
-    });
-  });
-  it("closes the share dialog without publishing anything", async () => {
-    const { shares, calls } = ownerSharesDouble();
-    renderAction(shares);
-    await fireEvent.click(screen.getByRole("button", { name: zh["header.action"] }));
+      expect(screen.queryByText(zh['manage.title'])).toBeNull()
+    })
+  })
+  it('closes the share dialog without publishing anything', async () => {
+    const { shares, calls } = ownerSharesDouble()
+    renderAction(shares)
+    await act(() => fireEvent.click(screen.getByRole('button', { name: zh['header.action'] })))
     await waitFor(() => {
-      expect(screen.getByText(zh["dialog.title"])).toBeTruthy();
-    });
+      expect(screen.getByText(zh['dialog.title'])).toBeTruthy()
+    })
     // A fresh dialog states no link yet, so its close control is the cancel affordance.
-    await fireEvent.click(
-      screen.getAllByRole("button", { name: zh["dialog.cancel"] })[0] as HTMLElement,
-    );
+    await act(() => fireEvent.click(
+      screen.getAllByRole('button', { name: zh['dialog.cancel'] })[0] as HTMLElement,
+    ))
     await waitFor(() => {
-      expect(screen.queryByText(zh["dialog.title"])).toBeNull();
-    });
-    expect(calls.map((call) => call.method)).not.toContain("create");
-  });
-});
+      expect(screen.queryByText(zh['dialog.title'])).toBeNull()
+    })
+    expect(calls.map(call => call.method)).not.toContain('create')
+  })
+})

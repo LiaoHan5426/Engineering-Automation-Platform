@@ -12,8 +12,6 @@ kind: "package-reference"
 
 使用本包可在浏览器中渲染已记录的 Session 对话，包括历史图片、本地化操作和滚动位置恢复。工作步骤展示模式控制思考预览与过程显隐，不隐藏 Assistant 回复；完全展开模式保持已完成轮次的过程行可见。本地 transcript（文本记录）与 steering（中途引导）提交会立即显示并保留在原区域，在权威会话记录到达时原子地消失，而排队中的提交始终不进入 Chat。本包不组装或修改模型请求。
 
-文件提及提供方同时接收当前查看的会话 ID 与收尾轮次的属主信息，因此继承历史中的链接可以指向 fork 自身。
-
 ## 目录
 
 - [引用预览](#reference-previews)
@@ -30,6 +28,10 @@ kind: "package-reference"
 - [开发备注](#dev-note)
 
 -----
+
+文件提及提供方同时接收当前查看的会话 ID 与收尾轮次的属主信息，因此继承历史中的链接可以指向 fork 自身。
+
+轮次 Location-data 读取使用静态 [observable selector](../ui-primitives/README.zh.md#observable-selectors)，不请求 renderer 的运行时实现。
 
 渲染器使用原生 Vue 组件。标准、带 key、store 及 contextual selector seat 在 setup 中绑定一次，在 render 或 computed 中读取其只读浅 ref。仅产生副作用的 contextual seat 保留作用域清理。Chat 沿用现有对话模型、快照 store、属主关系与注册生命周期，不引入另一套状态 store。
 

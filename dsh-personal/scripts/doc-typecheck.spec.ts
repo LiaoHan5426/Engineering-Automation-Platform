@@ -11,7 +11,7 @@ function block(face: CompilerFace, code: string): Block {
 function validBlock(face: CompilerFace): Block {
   const imports = face === 'client'
     ? extractBlocks(join(import.meta.dirname, '../packages/client/ui-workspace/README.md')).find(fence => fence.face === 'client' && fence.kind === 'check')!.code
-    : `import { SessionId } from '@deepseek-ai/dsh-session/types'; const id = SessionId('doc-fixture'); void id;`
+    : 'import { SessionId } from \'@deepseek-ai/dsh-session/types\'; const id = SessionId(\'doc-fixture\'); void id;'
   return block(face, `${imports}\ndeclare global { interface DocumentationCompilerFace { value: '${face}' } }\nconst owner: DocumentationCompilerFace['value'] = '${face}'; void owner;`)
 }
 

@@ -1,45 +1,45 @@
-import { defineComponent, computed, watch, h, Fragment, useId, onMounted } from "vue";
+import { defineComponent, computed, watch, h, Fragment, useId, onMounted } from 'vue'
 /** Provider, language, and external-service disclosure on the Plugins page. */
-import type {} from "@deepseek-ai/dsh-client-ui-plugin-manager/client";
-import type { TranslationProvider } from "@deepseek-ai/dsh-experimental-translator/types";
+import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
+import type { TranslationProvider } from '@deepseek-ai/dsh-experimental-translator/types'
 import {
   Button,
   SettingsForm,
   SettingsValueField,
   Tag,
-} from "@deepseek-ai/dsh-client-ui-primitives";
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   HostObservable,
   InjectFace,
   PropsLocale,
   PropsRuntime,
-} from "@deepseek-ai/dsh-client-ui-slots";
-import { NS, formLabels } from "./locales.ts";
-import type { TranslationFormInjected } from "./preferences-form.ts";
-import css from "./Translation.module.css";
+} from '@deepseek-ai/dsh-client-ui-slots'
+import { NS, formLabels } from './locales.ts'
+import type { TranslationFormInjected } from './preferences-form.ts'
+import css from './Translation.module.css'
 /** Settings snapshots and explicit refresh callback supplied by the Host mirror. */
 export interface TranslationSettingsInjected extends TranslationFormInjected {
-  hooks: TranslationFormInjected["hooks"] & {
-    availableProviders: HostObservable<readonly TranslationProvider[]>;
-  };
+  hooks: TranslationFormInjected['hooks'] & {
+    availableProviders: HostObservable<readonly TranslationProvider[]>
+  }
   /** Refresh native route eligibility without sending reasoning or starting inference. */
-  refreshProviders: () => void;
+  refreshProviders: () => void
 }
-export type TranslationSettingsProps = PropsRuntime<"plugins.bundle.config"> &
+export type TranslationSettingsProps = PropsRuntime<'plugins.bundle.config'> &
   PropsLocale<typeof NS> &
-  InjectFace<TranslationSettingsInjected>;
-function providerLabel(provider: string, t: TranslationSettingsProps["t"]): string {
+  InjectFace<TranslationSettingsInjected>
+function providerLabel(provider: string, t: TranslationSettingsProps['t']): string {
   switch (provider) {
-    case "bing":
-      return t("bing");
-    case "google":
-      return t("google");
-    case "deepseek-account":
-      return t("deepseekAccount");
-    case "deepseek-official":
-      return t("deepseekOfficial");
+    case 'bing':
+      return t('bing')
+    case 'google':
+      return t('google')
+    case 'deepseek-account':
+      return t('deepseekAccount')
+    case 'deepseek-official':
+      return t('deepseekOfficial')
     default:
-      return provider;
+      return provider
   }
 }
 /**
@@ -49,34 +49,31 @@ function providerLabel(provider: string, t: TranslationSettingsProps["t"]): stri
  */
 export const TranslationSettings = defineComponent(
   (props: TranslationSettingsProps) => {
-    const t = computed(() => props.t);
-    const providerId = useId();
-    const languageId = useId();
-    const state = props.useTranslationForm((value) => value);
-    const availableProviders = props.useAvailableProviders((value) => value);
+    const t = computed(() => props.t)
+    const providerId = useId()
+    const languageId = useId()
+    const state = props.useTranslationForm(value => value)
+    const availableProviders = props.useAvailableProviders(value => value)
     const missingProvider = computed(
       () =>
-        state.value.provider.text !== "" &&
-        !availableProviders.value.some((provider) => provider === state.value.provider.text),
-    );
+        state.value.provider.text !== '' &&
+        !availableProviders.value.some(provider => provider === state.value.provider.text),
+    )
     const paid = computed(
       () =>
-        state.value.provider.text === "deepseek-account" ||
-        state.value.provider.text === "deepseek-official",
-    );
-    const disabled = computed(() => !state.value.writable || state.value.saving);
+        state.value.provider.text === 'deepseek-account' ||
+        state.value.provider.text === 'deepseek-official',
+    )
+    const disabled = computed(() => !state.value.writable || state.value.saving)
     onMounted(() =>
       watch(
         [() => props.refreshProviders],
-        (_value, _previous, onCleanup) => {
-          const cleanup = (() => {
-            props.refreshProviders();
-          })();
-          if (typeof cleanup === "function") onCleanup(cleanup);
+        () => {
+          props.refreshProviders()
         },
-        { immediate: true, flush: "post" },
+        { immediate: true, flush: 'post' },
       ),
-    );
+    )
     return () =>
       h(
         SettingsForm,
@@ -89,94 +86,94 @@ export const TranslationSettings = defineComponent(
         {
           default: () => [
             h(
-              "p",
+              'p',
               {
                 class: css.notice,
               },
-              [t.value("privacy")],
+              [t.value('privacy')],
             ),
             h(
-              "p",
+              'p',
               {
                 class: css.notice,
               },
-              [t.value(paid.value ? "paidNotice" : "anonymousNotice")],
+              [t.value(paid.value ? 'paidNotice' : 'anonymousNotice')],
             ),
             h(
-              "div",
+              'div',
               {
                 class: css.field,
               },
               [
                 h(
-                  "div",
+                  'div',
                   {
                     class: css.toolbar,
                   },
                   [
                     h(
-                      "label",
+                      'label',
                       {
                         htmlFor: providerId,
                       },
-                      [t.value("provider")],
+                      [t.value('provider')],
                     ),
                     state.value.provider.overridden &&
                       h(Fragment, null, [
                         h(
                           Tag,
                           {
-                            tone: "neutral",
+                            tone: 'neutral',
                           },
                           {
-                            default: () => [t.value("overridden")],
+                            default: () => [t.value('overridden')],
                           },
                         ),
                         h(
                           Button,
                           {
-                            size: "sm",
+                            size: 'sm',
                             disabled: disabled.value,
                             onClick: () => {
-                              props.resetField("provider");
+                              props.resetField('provider')
                             },
                           },
                           {
-                            default: () => [t.value("reset")],
+                            default: () => [t.value('reset')],
                           },
                         ),
                       ]),
                   ],
                 ),
                 h(
-                  "select",
+                  'select',
                   {
                     id: providerId,
                     value: state.value.provider.text,
                     disabled: disabled.value,
-                    "aria-invalid": state.value.provider.invalid || undefined,
+                    'aria-invalid': state.value.provider.invalid || undefined,
                     onChange: (event: Event) => {
                       if (event.target instanceof HTMLSelectElement)
-                        props.edit("provider", event.target.value);
+                        props.edit('provider', event.target.value)
                     },
                   },
                   [
                     missingProvider.value &&
                       h(
-                        "option",
+                        'option',
                         {
                           value: state.value.provider.text,
                           disabled: true,
                         },
                         [
-                          t.value("providerUnavailableOption", {
+                          t.value('providerUnavailableOption', {
                             provider: providerLabel(state.value.provider.text, t.value),
                           }),
                         ],
                       ),
-                    availableProviders.value.map((provider) =>
+                    availableProviders.value.map(provider =>
                       h(
-                        "option",
+                        'option',
                         {
                           key: provider,
                           value: provider,
@@ -188,55 +185,55 @@ export const TranslationSettings = defineComponent(
                 ),
                 state.value.provider.invalid &&
                   h(
-                    "p",
+                    'p',
                     {
-                      role: "status",
+                      role: 'status',
                     },
-                    [t.value("invalidProvider")],
+                    [t.value('invalidProvider')],
                   ),
                 missingProvider.value &&
                   !state.value.provider.invalid &&
                   h(
-                    "p",
+                    'p',
                     {
-                      role: "status",
+                      role: 'status',
                       class: css.notice,
                     },
-                    [t.value("providerUnavailable")],
+                    [t.value('providerUnavailable')],
                   ),
               ],
             ),
             h(SettingsValueField, {
               id: languageId,
-              label: t.value("targetLanguage"),
-              hint: t.value("targetLanguageHint"),
+              label: t.value('targetLanguage'),
+              hint: t.value('targetLanguageHint'),
               ...state.value.targetLanguage,
-              overriddenLabel: t.value("overridden"),
-              resetLabel: t.value("reset"),
-              invalidLabel: t.value("invalidLanguage"),
+              overriddenLabel: t.value('overridden'),
+              resetLabel: t.value('reset'),
+              invalidLabel: t.value('invalidLanguage'),
               disabled: disabled.value,
               onEdit: (value) => {
-                props.edit("targetLanguage", value);
+                props.edit('targetLanguage', value)
               },
               onReset: () => {
-                props.resetField("targetLanguage");
+                props.resetField('targetLanguage')
               },
             }),
           ],
         },
-      );
+      )
   },
   {
     props: [
-      "t",
-      "useTranslationForm",
-      "useAvailableProviders",
-      "refreshProviders",
-      "save",
-      "discard",
-      "resetField",
-      "edit",
+      't',
+      'useTranslationForm',
+      'useAvailableProviders',
+      'refreshProviders',
+      'save',
+      'discard',
+      'resetField',
+      'edit',
     ],
     inheritAttrs: false,
   },
-);
+)

@@ -1,19 +1,20 @@
-import { h, Fragment, defineComponent } from "vue";
-import { Button, IconWarningOutlineRegular, StateDot } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { PropsLocale } from "@deepseek-ai/dsh-client-ui-slots";
-import css from "./TaskManagerPage.module.css";
+import clsx from 'clsx'
+import { h, Fragment, defineComponent } from 'vue'
+import { Button, IconWarningOutlineRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import css from './TaskManagerPage.module.css'
 /** Props of the catalog states: query state, shown content, and the retry action. */
-export type CatalogFeedbackProps = PropsLocale<"schedule.manager"> & {
+export type CatalogFeedbackProps = PropsLocale<'schedule.manager'> & {
   /** Catalog query state; loading and a failed read each render their own state. */
-  readonly status: "loading" | "ready" | "error";
+  readonly status: 'loading' | 'ready' | 'error'
   /**
    * Whether catalog content is on screen: shown content keeps a compact
    * failure notice beside it, while an empty panel centers its states.
    */
-  readonly populated: boolean;
+  readonly populated: boolean
   /** Reload the catalog after a query failure. */
-  readonly onRetry: () => Promise<void>;
-};
+  readonly onRetry: () => Promise<void>
+}
 /**
  * Render the catalog's loading and query-failure states.
  *
@@ -29,44 +30,44 @@ export const CatalogFeedback = defineComponent(
   (props: CatalogFeedbackProps) => {
     return () => {
       return h(Fragment, {}, [
-        props.status === "loading" &&
+        props.status === 'loading' &&
           !props.populated &&
-          h("div", { class: css.empty, role: "status", "aria-label": props.t("list.loading") }, [
-            h(StateDot, { state: "ongoing" }),
+          h('div', { class: css.empty, role: 'status', 'aria-label': props.t('list.loading') }, [
+            h(StateDot, { state: 'ongoing' }),
           ]),
-        props.status === "error" &&
+        props.status === 'error' &&
           (props.populated
-            ? h("div", { class: css.notice }, [
-                h("p", { role: "alert" }, [props.t("list.error")]),
-                h(
-                  Button,
-                  {
-                    variant: "outline",
-                    size: "sm",
-                    onClick: () => {
-                      void props.onRetry();
-                    },
+            ? h('div', { class: css.notice }, [
+              h('p', { role: 'alert' }, [props.t('list.error')]),
+              h(
+                Button,
+                {
+                  variant: 'outline',
+                  size: 'sm',
+                  onClick: () => {
+                    void props.onRetry()
                   },
-                  { default: () => [props.t("list.retry")] },
-                ),
-              ])
-            : h("div", { class: css.empty }, [
-                h(IconWarningOutlineRegular, { size: 24, className: css.emptyGlyph! }),
-                h("p", { role: "alert", class: css.emptyTitle }, [props.t("list.error")]),
-                h(
-                  Button,
-                  {
-                    variant: "outline",
-                    className: css.emptyAction!,
-                    onClick: () => {
-                      void props.onRetry();
-                    },
+                },
+                { default: () => [props.t('list.retry')] },
+              ),
+            ])
+            : h('div', { class: css.empty }, [
+              h(IconWarningOutlineRegular, { size: 24, className: clsx(css.emptyGlyph) }),
+              h('p', { role: 'alert', class: css.emptyTitle }, [props.t('list.error')]),
+              h(
+                Button,
+                {
+                  variant: 'outline',
+                  className: clsx(css.emptyAction),
+                  onClick: () => {
+                    void props.onRetry()
                   },
-                  { default: () => [props.t("list.retry")] },
-                ),
-              ])),
-      ]);
-    };
+                },
+                { default: () => [props.t('list.retry')] },
+              ),
+            ])),
+      ])
+    }
   },
-  { props: ["status", "populated", "onRetry", "t"] },
-);
+  { props: ['status', 'populated', 'onRetry', 't'] },
+)

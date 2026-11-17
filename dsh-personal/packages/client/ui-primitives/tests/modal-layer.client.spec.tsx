@@ -38,9 +38,9 @@ it('restores the opener after a closing dialog updates its retained controls', a
   const tree = (open: boolean) => h('div', [h('button', 'Opener'), h(RetainedDialog, { open })])
   const view = await mount(tree(false))
   const opener = screen.getByRole('button', { name: 'Opener' }); opener.focus()
-  await update(() => view.rerender(tree(true)))
+  await update(() => { view.rerender(tree(true)) })
   expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }))
-  await update(() => view.rerender(tree(false)))
+  await update(() => { view.rerender(tree(false)) })
   expect(document.activeElement).toBe(opener)
 })
 
@@ -64,17 +64,17 @@ it('closes only the top modal through application commands and restores each ope
   await mount(h(Nested))
   const settings = screen.getByRole('button', { name: 'Settings' }); settings.focus(); await click('Settings')
   const reference = screen.getByRole('button', { name: 'Reference' }); reference.focus(); await click('Reference')
-  await update(() => closeTopModal(document))
+  await update(() => { closeTopModal(document) })
   expect(screen.queryByRole('dialog', { name: 'Reference' })).toBeNull()
   expect(screen.getByRole('dialog', { name: 'Settings' })).toBeTruthy()
   expect(document.activeElement).toBe(reference)
-  await update(() => closeTopModal(document))
+  await update(() => { closeTopModal(document) })
   expect(screen.queryByRole('dialog')).toBeNull()
   expect(document.activeElement).toBe(settings)
   closeTopModal(document); expect(document.activeElement).toBe(settings)
 })
 
-it.each(['menu', 'dialog'])('does not dismiss a modal behind a newer %s', async role => {
+it.each(['menu', 'dialog'])('does not dismiss a modal behind a newer %s', async (role) => {
   const onClose = vi.fn()
   await mount(modal({ open: true, title: 'Settings', closeLabel: 'Close', onClose }))
   const overlay = document.createElement('div'); overlay.setAttribute('role', role); overlay.setAttribute('aria-modal', 'true'); document.body.append(overlay)
@@ -85,7 +85,7 @@ it.each(['menu', 'dialog'])('does not dismiss a modal behind a newer %s', async 
 it('uses the latest close callback and retains a modal whose owner declines dismissal', async () => {
   const first = vi.fn(), busy = vi.fn()
   const view = await mount(modal({ open: true, title: 'Settings', closeLabel: 'Close', onClose: first }))
-  await update(() => view.rerender(modal({ open: true, title: 'Settings', closeLabel: 'Close', onClose: busy })))
+  await update(() => { view.rerender(modal({ open: true, title: 'Settings', closeLabel: 'Close', onClose: busy })) })
   closeTopModal(document)
   expect(first).not.toHaveBeenCalled(); expect(busy).toHaveBeenCalledTimes(1); expect(screen.getByRole('dialog')).toBeTruthy()
 })
@@ -141,11 +141,12 @@ it('does not steal focus when a lower layer disappears and restores a remaining 
     modal({ open: child, title: 'Child', closeLabel: 'Close child', onClose: () => {} }, () => [h('input', { 'data-modal-autofocus': '', 'aria-label': 'Child input' })]),
   ])
   const view = await mount(tree(true, false, true)); screen.getByRole('button', { name: 'Child opener' }).focus()
-  await update(() => view.rerender(tree(true, true, true))); await update(() => view.rerender(tree(true, true, false))); await update(() => view.rerender(tree(true, false, false)))
+  await update(() => { view.rerender(tree(true, true, true)) }); await update(() => { view.rerender(tree(true, true,
+    false)) }); await update(() => { view.rerender(tree(true, false, false)) })
   expect(document.activeElement).toBe(screen.getByRole('dialog', { name: 'Parent' }))
-  await update(() => view.rerender(tree(true, false, true))); screen.getByRole('button', { name: 'Child opener' }).focus(); await update(() => view.rerender(tree(true, true, true)))
-  const input = screen.getByRole('textbox'); await update(() => view.rerender(tree(false, true, true))); expect(document.activeElement).toBe(input)
-  await update(() => view.rerender(tree(false, false, true))); expect(screen.queryByRole('dialog')).toBeNull()
+  await update(() => { view.rerender(tree(true, false, true)) }); screen.getByRole('button', { name: 'Child opener' }).focus(); await update(() => { view.rerender(tree(true, true, true)) })
+  const input = screen.getByRole('textbox'); await update(() => { view.rerender(tree(false, true, true)) }); expect(document.activeElement).toBe(input)
+  await update(() => { view.rerender(tree(false, false, true)) }); expect(screen.queryByRole('dialog')).toBeNull()
 })
 
 it('gives a new modal Escape ahead of an older menu', async () => {

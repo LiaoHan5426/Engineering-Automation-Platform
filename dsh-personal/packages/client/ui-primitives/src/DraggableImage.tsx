@@ -27,6 +27,7 @@ export const DraggableImage = defineComponent({
     const drag = useImageDrag(() => ({ actions: props.fileDrag, src: props.src, name: props.name,
       original: props.original, resourceAddress: props.resourceAddress }))
     return () => h('img', { ...attrs, ...drag, src: props.src, draggable: true,
-      ref: (element: Element | ComponentPublicInstance | null) => props.elementRef?.(element instanceof HTMLImageElement ? element : null) })
+      ref: (element: Element | ComponentPublicInstance | null) => props.elementRef?.(
+        element instanceof HTMLImageElement ? element : null) })
   },
 })

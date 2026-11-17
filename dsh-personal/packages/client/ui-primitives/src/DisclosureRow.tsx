@@ -48,7 +48,8 @@ export const DisclosureRow = defineComponent((props: DisclosureRowProps, { slots
           ? h('button', { type: 'button', class: clsx(css.leading, props.leadingClassName), 'aria-label': props.title, 'aria-expanded': props.open, onClick: (event: MouseEvent) => { event.stopPropagation(); props.onToggle() } }, [leading])
           : h('span', { class: clsx(css.leading, props.leadingClassName) }, [leading]),
         h(TextShimmer, { active: props.running ?? false, className: props.contentClassName ?? '', contentClassName: props.contentLayoutClassName ?? '' }, {
-          default: () => [h(TextShimmer, { className: clsx(css.title, props.titleClassName) }, { default: () => props.title }), (props.keepContentWhenOpen || !props.open) ? props.collapsedContent : null],
+          default: () => [h(TextShimmer, { className: clsx(css.title, props.titleClassName) }, { default: () =>
+            props.title }), (props.keepContentWhenOpen || !props.open) ? props.collapsedContent : null],
         }),
       ]),
       props.headerAccessory,

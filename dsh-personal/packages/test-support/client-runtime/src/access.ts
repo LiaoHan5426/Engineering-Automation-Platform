@@ -11,29 +11,29 @@
  * @module @deepseek-ai/dsh-client-test-runtime/src/access
  */
 
-import { Service, type Context } from "@deepseek-ai/cordis";
-import { shallowReadonly, shallowRef } from "vue";
+import { Service, type Context } from '@deepseek-ai/cordis'
+import { shallowReadonly, shallowRef } from 'vue'
 import type {
   AccessEffect,
   ClientRemoteAccess,
   RemoteEndpoint,
   TypertResourceKind,
-} from "@deepseek-ai/dsh-api-remote-access/client";
+} from '@deepseek-ai/dsh-api-remote-access/client'
 import type {
   GlobalStandardProps,
   HostObservable,
   SessionStandardProps,
-} from "@deepseek-ai/dsh-client-ui-slots";
-import type {} from "@deepseek-ai/dsh-client-ui-renderer/client";
-import type {} from "@deepseek-ai/dsh-client-ui-session/client";
-import type {} from "@deepseek-ai/dsh-client-ui-workspace/client";
+} from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 
 /** The access Hooks every Slot component receives. */
 export type AccessStandardProps = Pick<
   GlobalStandardProps,
-  "useRemoteAccess" | "useSessionAccess" | "useWorkspaceAccess"
+  'useRemoteAccess' | 'useSessionAccess' | 'useWorkspaceAccess'
 > &
-  Pick<SessionStandardProps, "useAccess">;
+  Pick<SessionStandardProps, 'useAccess'>
 
 /** Access Hooks that allow every action on every resource, for hand-built component props. */
 export const allowAllAccess: AccessStandardProps = {
@@ -41,10 +41,10 @@ export const allowAllAccess: AccessStandardProps = {
   useAccess: () => shallowReadonly(shallowRef(true)),
   useSessionAccess: () => shallowReadonly(shallowRef(true)),
   useWorkspaceAccess: () => shallowReadonly(shallowRef(true)),
-};
+}
 
-const ALLOWED: HostObservable<boolean> = { getSnapshot: () => true, subscribe: () => () => {} };
-const REFUSED: HostObservable<boolean> = { getSnapshot: () => false, subscribe: () => () => {} };
+const ALLOWED: HostObservable<boolean> = { getSnapshot: () => true, subscribe: () => () => {} }
+const REFUSED: HostObservable<boolean> = { getSnapshot: () => false, subscribe: () => () => {} }
 
 /**
  * A `remoteAccess` Client service whose answers never change: `allows`
@@ -61,20 +61,20 @@ export class StaticRemoteAccess extends Service implements ClientRemoteAccess {
     ctx: Context,
     private readonly allows: (action: string) => boolean = () => true,
   ) {
-    super(ctx, "remoteAccess");
+    super(ctx, 'remoteAccess')
   }
 
   source(_kind: TypertResourceKind, _id: string, action: string): HostObservable<boolean> {
-    return this.allows(action) ? ALLOWED : REFUSED;
+    return this.allows(action) ? ALLOWED : REFUSED
   }
 
   // Prototype methods: the Cordis service proxy binds `this.ctx` to the caller's Context.
   whenAccess(action: RemoteEndpoint, callback: () => AccessEffect): () => void {
-    if (!this.allows(action)) return () => {};
-    const dispose = this.ctx.effect(callback, `remoteAccess.whenAccess(${JSON.stringify(action)})`);
+    if (!this.allows(action)) return () => {}
+    const dispose = this.ctx.effect(callback, `remoteAccess.whenAccess(${JSON.stringify(action)})`)
     return () => {
-      void dispose();
-    };
+      void dispose()
+    }
   }
 
   whenResourceAccess(
@@ -83,15 +83,15 @@ export class StaticRemoteAccess extends Service implements ClientRemoteAccess {
     action: RemoteEndpoint,
     callback: () => AccessEffect,
   ): () => void {
-    return this.whenAccess(action, callback);
+    return this.whenAccess(action, callback)
   }
 }
 
 /** The plugin shape {@link staticAccessPlugin} returns. */
 export interface StaticAccessPlugin {
-  readonly name: string;
-  readonly inject: readonly string[];
-  apply(ctx: Context): void;
+  readonly name: string
+  readonly inject: readonly string[]
+  apply(ctx: Context): void
 }
 
 /**
@@ -104,16 +104,16 @@ export interface StaticAccessPlugin {
  */
 export function staticAccessPlugin(allows: (action: string) => boolean): StaticAccessPlugin {
   return {
-    name: "client-test-runtime:static-access",
-    inject: ["slots"],
+    name: 'client-test-runtime:static-access',
+    inject: ['slots'],
     apply(ctx: Context): void {
-      new StaticRemoteAccess(ctx, allows);
+      new StaticRemoteAccess(ctx, allows)
       ctx.slots.provideRoot({
         keyedHooks: { remoteAccess: (action: string) => (allows(action) ? ALLOWED : REFUSED) },
-      });
+      })
     },
-  };
+  }
 }
 
 /** {@link staticAccessPlugin} allowing every action on every resource. */
-export const allowAllAccessPlugin: StaticAccessPlugin = staticAccessPlugin(() => true);
+export const allowAllAccessPlugin: StaticAccessPlugin = staticAccessPlugin(() => true)

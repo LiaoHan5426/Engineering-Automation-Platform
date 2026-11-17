@@ -1,7 +1,7 @@
 /** The Composer model's private Lexical editor, projections, and node operations. */
-import type { ObservableSnapshot } from "@deepseek-ai/dsh-client-store";
-import type { LexicalEditor, NodeKey } from "lexical";
-import type { QuoteSummary } from "@deepseek-ai/dsh-client-ui-primitives";
+import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+import type { LexicalEditor, NodeKey } from 'lexical'
+import type { QuoteSummary } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   $addUpdateTag,
   $createParagraphNode,
@@ -25,40 +25,40 @@ import {
   KEY_BACKSPACE_COMMAND,
   KEY_DELETE_COMMAND,
   HISTORY_PUSH_TAG,
-} from "lexical";
-import { registerPlainText } from "@lexical/plain-text";
-import { createEmptyHistoryState, registerHistory } from "@lexical/history";
-import { mergeRegister } from "@lexical/utils";
-import type { DraftQuote, DraftReference, ReferenceInsert } from "../../contract/draft-editor.ts";
-import type { CommandClaim } from "../../contract/input.ts";
-import { QuoteNode, $createQuoteNode, $isQuoteNode, REMOVE_QUOTE_COMMAND } from "./QuoteNode.tsx";
-import type { QuoteNodeLabels } from "./QuoteNode.tsx";
-import { registerReferenceActivation } from "./reference-activation.ts";
-import { ReferenceChipNode, $createReferenceChipNode } from "./chip-node.tsx";
+} from 'lexical'
+import { registerPlainText } from '@lexical/plain-text'
+import { createEmptyHistoryState, registerHistory } from '@lexical/history'
+import { mergeRegister } from '@lexical/utils'
+import type { DraftQuote, DraftReference, ReferenceInsert } from '../../contract/draft-editor.ts'
+import type { CommandClaim } from '../../contract/input.ts'
+import { QuoteNode, $createQuoteNode, $isQuoteNode, REMOVE_QUOTE_COMMAND } from './QuoteNode.tsx'
+import type { QuoteNodeLabels } from './QuoteNode.tsx'
+import { registerReferenceActivation } from './reference-activation.ts'
+import { ReferenceChipNode, $createReferenceChipNode } from './chip-node.tsx'
 import {
   CommandChipNode,
   $createCommandChipNode,
   registerCommandChipSeat,
-} from "./command-chip-node.tsx";
-import { registerCommandChipSelection } from "./command-chip-selection.ts";
-import { registerTextRefDecoration, rescanTextRefs, TextRefNode } from "./text-ref.ts";
-import type { EditorProjection } from "./projection.ts";
-import { $composerLayout, $projectComposer, detectOffsetOfClipboardOffset } from "./projection.ts";
-import { $replaceDetectSpanWithNodes, $replaceDetectSpanWithText } from "./span-map.ts";
-import type { DetectSpan } from "./span-map.ts";
+} from './command-chip-node.tsx'
+import { registerCommandChipSelection } from './command-chip-selection.ts'
+import { registerTextRefDecoration, rescanTextRefs, TextRefNode } from './text-ref.ts'
+import type { EditorProjection } from './projection.ts'
+import { $composerLayout, $projectComposer, detectOffsetOfClipboardOffset } from './projection.ts'
+import { $replaceDetectSpanWithNodes, $replaceDetectSpanWithText } from './span-map.ts'
+import type { DetectSpan } from './span-map.ts'
 
-type Lexicon = ReadonlyMap<"/" | "@", readonly string[]>;
+type Lexicon = ReadonlyMap<'/' | '@', readonly string[]>
 
 /** Model callbacks read at the same editor registration and update points. */
 interface DraftEditorRuntimeDeps {
-  readonly onUpdate: () => void;
-  readonly quoteLabels: () => QuoteNodeLabels;
+  readonly onUpdate: () => void
+  readonly quoteLabels: () => QuoteNodeLabels
   readonly openReference: (
     source: string | undefined,
-    reference: Pick<ReferenceInsert, "ref" | "appearance">,
-  ) => boolean;
-  readonly lexicon: () => Lexicon;
-  readonly resolveLexicon: () => ObservableSnapshot<Lexicon> | undefined;
+    reference: Pick<ReferenceInsert, 'ref' | 'appearance'>,
+  ) => boolean
+  readonly lexicon: () => Lexicon
+  readonly resolveLexicon: () => ObservableSnapshot<Lexicon> | undefined
 }
 
 /**
@@ -67,7 +67,7 @@ interface DraftEditorRuntimeDeps {
  * is the only legitimate source of U+FFFC in the detect projection, so a
  * literal one in text would forge chip positions.
  */
-const REFERENCE_PLACEHOLDER_RE = /[\uE100-\uE11D\uFFFC]/gu;
+const REFERENCE_PLACEHOLDER_RE = /[\uE100-\uE11D\uFFFC]/gu
 
 /**
  * Append one paragraph per line of `text` to the editor root and move the caret
@@ -75,50 +75,50 @@ const REFERENCE_PLACEHOLDER_RE = /[\uE100-\uE11D\uFFFC]/gu;
  * @param text - sanitized plain text.
  */
 function $appendParagraphs(text: string): void {
-  const root = $getRoot();
-  for (const line of text.split("\n")) {
-    const paragraph = $createParagraphNode();
-    if (line !== "") paragraph.append($createTextNode(line));
-    root.append(paragraph);
+  const root = $getRoot()
+  for (const line of text.split('\n')) {
+    const paragraph = $createParagraphNode()
+    if (line !== '') paragraph.append($createTextNode(line))
+    root.append(paragraph)
   }
-  root.selectEnd();
+  root.selectEnd()
 }
 
 /** Undo merge window for contiguous typing, in ms (the old machine's mergeWindowMs). */
-const HISTORY_MERGE_DELAY_MS = 1000;
+const HISTORY_MERGE_DELAY_MS = 1000
 
 /** Editor update that removes submitted content while retaining any newer draft suffix. */
-export const DRAFT_SUBMITTED_TAG = "dsh-draft-submitted";
+export const DRAFT_SUBMITTED_TAG = 'dsh-draft-submitted'
 
 /** One model-owned editor; registration and disposal remain with its model. */
 export class DraftEditorRuntime {
   /** The editor bound by the Composer's contenteditable host. */
-  readonly editor: LexicalEditor;
+  readonly editor: LexicalEditor
   private projected: EditorProjection = {
-    detectText: "",
-    clipboardText: "",
+    detectText: '',
+    clipboardText: '',
     occurrences: [],
     quotes: [],
     selection: null,
     caret: null,
     command: undefined,
-  };
+  }
   /** Stable occurrence ids per chip NodeKey (undo restores keys, so ids survive it too). */
-  private readonly occurrenceIds = new Map<NodeKey, number>();
-  private occurrenceSeq = 0;
+  private readonly occurrenceIds = new Map<NodeKey, number>()
+  private occurrenceSeq = 0
   /** Live lexicon subscription disposer; undefined until the controller resolves. */
-  private lexiconOff: (() => void) | undefined;
-  private lexiconSource: ObservableSnapshot<Lexicon> | undefined;
+  private lexiconOff: (() => void) | undefined
+  private lexiconSource: ObservableSnapshot<Lexicon> | undefined
 
   /** @param deps - model callbacks used by editor listeners and transforms. */
   constructor(private readonly deps: DraftEditorRuntimeDeps) {
     this.editor = createEditor({
-      namespace: "dsh-composer",
+      namespace: 'dsh-composer',
       nodes: [ReferenceChipNode, CommandChipNode, TextRefNode, QuoteNode],
       onError: (error) => {
-        throw error;
+        throw error
       },
-    });
+    })
   }
 
   /**
@@ -128,38 +128,38 @@ export class DraftEditorRuntime {
   register(): () => void {
     // A retained draft selection must not move keyboard focus back from another control.
     const preserveExternalSelection = (): false => {
-      const root = this.editor.getRootElement();
+      const root = this.editor.getRootElement()
       if (root !== null && !root.contains(root.ownerDocument.activeElement)) {
-        $addUpdateTag(SKIP_DOM_SELECTION_TAG);
+        $addUpdateTag(SKIP_DOM_SELECTION_TAG)
       }
-      return false;
-    };
+      return false
+    }
     const unregister = mergeRegister(
       registerPlainText(this.editor),
       this.editor.registerNodeTransform(QuoteNode, (node) => {
-        node.setLabels(this.deps.quoteLabels());
+        node.setLabels(this.deps.quoteLabels())
       }),
       this.editor.registerCommand(
         REMOVE_QUOTE_COMMAND,
-        (key) => this.removeQuote(key),
+        key => this.removeQuote(key),
         COMMAND_PRIORITY_CRITICAL,
       ),
       this.editor.registerCommand(
         KEY_BACKSPACE_COMMAND,
-        (event) => this.deleteAdjacentQuote(event, true),
+        event => this.deleteAdjacentQuote(event, true),
         COMMAND_PRIORITY_BEFORE_CRITICAL,
       ),
       this.editor.registerCommand(
         KEY_DELETE_COMMAND,
-        (event) => this.deleteAdjacentQuote(event, false),
+        event => this.deleteAdjacentQuote(event, false),
         COMMAND_PRIORITY_BEFORE_CRITICAL,
       ),
       this.editor.registerCommand(
         BLUR_COMMAND,
         () => {
           // Finish this batch before an explicit focus can restore its updated selection.
-          this.editor.update(preserveExternalSelection, { discrete: true });
-          return false;
+          this.editor.update(preserveExternalSelection, { discrete: true })
+          return false
         },
         COMMAND_PRIORITY_CRITICAL,
       ),
@@ -174,26 +174,26 @@ export class DraftEditorRuntime {
       ),
       registerHistory(this.editor, createEmptyHistoryState(), HISTORY_MERGE_DELAY_MS),
       this.editor.registerUpdateListener(() => {
-        this.deps.onUpdate();
+        this.deps.onUpdate()
       }),
       registerCommandChipSeat(this.editor),
       registerCommandChipSelection(this.editor),
       registerTextRefDecoration(this.editor, () => this.deps.lexicon()),
       () => {
-        this.lexiconOff?.();
-        this.lexiconOff = undefined;
-        this.lexiconSource = undefined;
+        this.lexiconOff?.()
+        this.lexiconOff = undefined
+        this.lexiconSource = undefined
       },
-    );
+    )
     return () => {
-      unregister();
-      this.editor.setRootElement(null);
-    };
+      unregister()
+      this.editor.setRootElement(null)
+    }
   }
 
   /** The latest committed editor projection. */
   get projection(): EditorProjection {
-    return this.projected;
+    return this.projected
   }
 
   /**
@@ -209,11 +209,11 @@ export class DraftEditorRuntime {
     if (this.editor._updating) {
       // Nested application joins the enclosing update (the PASTE_COMMAND
       // dispatch path always lands here), so the tag attaches to that update.
-      if (tag !== undefined) $addUpdateTag(tag);
-      fn();
-      return;
+      if (tag !== undefined) $addUpdateTag(tag)
+      fn()
+      return
     }
-    this.editor.update(fn, { discrete: true, ...(tag === undefined ? {} : { tag }) });
+    this.editor.update(fn, { discrete: true, ...(tag === undefined ? {} : { tag }) })
   }
 
   /**
@@ -221,14 +221,14 @@ export class DraftEditorRuntime {
    * The rescan reads the current editor and does not replace its content.
    */
   refreshLexiconSubscription(): void {
-    const lexicon = this.deps.resolveLexicon();
-    if (lexicon === this.lexiconSource) return;
-    this.lexiconOff?.();
-    this.lexiconSource = lexicon;
+    const lexicon = this.deps.resolveLexicon()
+    if (lexicon === this.lexiconSource) return
+    this.lexiconOff?.()
+    this.lexiconSource = lexicon
     this.lexiconOff = lexicon?.subscribe(() => {
-      rescanTextRefs(this.editor);
-    });
-    rescanTextRefs(this.editor);
+      rescanTextRefs(this.editor)
+    })
+    rescanTextRefs(this.editor)
   }
 
   /**
@@ -236,19 +236,19 @@ export class DraftEditorRuntime {
    * @returns the projection preceding this read.
    */
   refreshProjection(): EditorProjection {
-    const prev = this.projected;
+    const prev = this.projected
     this.projected = this.editor
       .getEditorState()
-      .read(() => $projectComposer((key) => this.occurrenceIdOf(key)));
-    return prev;
+      .read(() => $projectComposer(key => this.occurrenceIdOf(key)))
+    return prev
   }
 
   private occurrenceIdOf(key: NodeKey): number {
-    const existing = this.occurrenceIds.get(key);
-    if (existing !== undefined) return existing;
-    this.occurrenceSeq += 1;
-    this.occurrenceIds.set(key, this.occurrenceSeq);
-    return this.occurrenceSeq;
+    const existing = this.occurrenceIds.get(key)
+    if (existing !== undefined) return existing
+    this.occurrenceSeq += 1
+    this.occurrenceIds.set(key, this.occurrenceSeq)
+    return this.occurrenceSeq
   }
 
   /**
@@ -258,20 +258,20 @@ export class DraftEditorRuntime {
    * @param text - the full next draft.
    */
   setDraft(text: string): void {
-    const clean = text.replace(REFERENCE_PLACEHOLDER_RE, "");
+    const clean = text.replace(REFERENCE_PLACEHOLDER_RE, '')
     if (
       clean === this.projection.clipboardText &&
       this.projection.occurrences.length === 0 &&
       this.projection.quotes.length === 0
     )
-      return;
+      return
     this.editor.update(
       () => {
-        $getRoot().clear();
-        $appendParagraphs(clean);
+        $getRoot().clear()
+        $appendParagraphs(clean)
       },
       { discrete: true, tag: HISTORY_MERGE_TAG },
-    );
+    )
   }
 
   /**
@@ -282,18 +282,18 @@ export class DraftEditorRuntime {
    * @param text - plain text to add.
    */
   appendDraft(text: string): void {
-    const clean = text.replace(REFERENCE_PLACEHOLDER_RE, "");
-    if (clean === "") return;
-    if (this.projection.clipboardText === "" && this.projection.occurrences.length === 0) {
-      this.setDraft(clean);
-      return;
+    const clean = text.replace(REFERENCE_PLACEHOLDER_RE, '')
+    if (clean === '') return
+    if (this.projection.clipboardText === '' && this.projection.occurrences.length === 0) {
+      this.setDraft(clean)
+      return
     }
     this.editor.update(
       () => {
-        $appendParagraphs(clean);
+        $appendParagraphs(clean)
       },
       { discrete: true, tag: HISTORY_MERGE_TAG },
-    );
+    )
   }
 
   /**
@@ -304,20 +304,20 @@ export class DraftEditorRuntime {
    * @param text - pasted plain text.
    */
   paste(text: string): void {
-    const clean = text.replace(REFERENCE_PLACEHOLDER_RE, "");
-    if (clean === "") return;
+    const clean = text.replace(REFERENCE_PLACEHOLDER_RE, '')
+    if (clean === '') return
     this.applyEdit(() => {
-      const selection = $getSelection();
+      const selection = $getSelection()
       if ($isRangeSelection(selection)) {
-        selection.insertText(clean);
-        return;
+        selection.insertText(clean)
+        return
       }
       // No selection yet (never-focused surface): land at the document end,
       // growing the first paragraph when the tree is empty.
-      const root = $getRoot();
-      if (root.getChildrenSize() === 0) root.append($createParagraphNode());
-      root.selectEnd().insertText(clean);
-    }, PASTE_TAG);
+      const root = $getRoot()
+      if (root.getChildrenSize() === 0) root.append($createParagraphNode())
+      root.selectEnd().insertText(clean)
+    }, PASTE_TAG)
   }
 
   /**
@@ -327,9 +327,9 @@ export class DraftEditorRuntime {
    * @returns the ordered [start, end) span in detect coordinates.
    */
   caretSpan(): { start: number; end: number } {
-    if (this.projection.selection !== null) return this.projection.selection;
-    const at = this.projection.detectText.length;
-    return { start: at, end: at };
+    if (this.projection.selection !== null) return this.projection.selection
+    const at = this.projection.detectText.length
+    return { start: at, end: at }
   }
 
   /**
@@ -339,11 +339,11 @@ export class DraftEditorRuntime {
    * @returns whether the range mapped and the edit applied.
    */
   replaceText(span: DetectSpan, text: string): boolean {
-    let applied = false;
+    let applied = false
     this.applyEdit(() => {
-      applied = $replaceDetectSpanWithText(span, text);
-    });
-    return applied;
+      applied = $replaceDetectSpanWithText(span, text)
+    })
+    return applied
   }
 
   /**
@@ -353,12 +353,12 @@ export class DraftEditorRuntime {
    * @returns whether the range mapped and the edit applied.
    */
   insertAsyncText(span: DetectSpan, text: string): boolean {
-    let applied = false;
-    const clean = text.replace(REFERENCE_PLACEHOLDER_RE, "");
+    let applied = false
+    const clean = text.replace(REFERENCE_PLACEHOLDER_RE, '')
     this.applyEdit(() => {
-      applied = $replaceDetectSpanWithText(span, clean);
-    }, PASTE_TAG);
-    return applied;
+      applied = $replaceDetectSpanWithText(span, clean)
+    }, PASTE_TAG)
+    return applied
   }
 
   /**
@@ -369,15 +369,15 @@ export class DraftEditorRuntime {
    * @returns whether the range mapped and the edit applied.
    */
   insertReference(span: DetectSpan, ref: ReferenceInsert, tail: string): boolean {
-    let applied = false;
+    let applied = false
     this.applyEdit(() => {
       const nodes =
-        tail === " "
+        tail === ' '
           ? [$createReferenceChipNode(ref)]
-          : [$createReferenceChipNode(ref), $createTextNode(" ")];
-      applied = $replaceDetectSpanWithNodes(span, nodes);
-    });
-    return applied;
+          : [$createReferenceChipNode(ref), $createTextNode(' ')]
+      applied = $replaceDetectSpanWithNodes(span, nodes)
+    })
+    return applied
   }
 
   /**
@@ -396,19 +396,19 @@ export class DraftEditorRuntime {
     tail: string,
     mergeHistory = false,
   ): boolean {
-    const separator = claim.token.slice(claim.token.trimEnd().length);
-    let applied = false;
+    const separator = claim.token.slice(claim.token.trimEnd().length)
+    let applied = false
     this.applyEdit(
       () => {
         const nodes =
-          separator === "" || tail === separator.charAt(0)
+          separator === '' || tail === separator.charAt(0)
             ? [$createCommandChipNode(claim)]
-            : [$createCommandChipNode(claim), $createTextNode(separator)];
-        applied = $replaceDetectSpanWithNodes(span, nodes);
+            : [$createCommandChipNode(claim), $createTextNode(separator)]
+        applied = $replaceDetectSpanWithNodes(span, nodes)
       },
       mergeHistory ? HISTORY_MERGE_TAG : undefined,
-    );
-    return applied;
+    )
+    return applied
   }
 
   /**
@@ -417,20 +417,20 @@ export class DraftEditorRuntime {
    * @returns whether the live insertion position accepted the batch.
    */
   insertFileReferences(references: readonly ReferenceInsert[]): boolean {
-    if (references.length === 0) return true;
-    let applied = false;
+    if (references.length === 0) return true
+    let applied = false
     this.applyEdit(() => {
-      const projection = $projectComposer((key) => this.occurrenceIdOf(key));
-      const at = projection.selection?.end ?? projection.detectText.length;
-      const before = projection.detectText.slice(0, at);
-      const nodes = references.flatMap((ref) => [
+      const projection = $projectComposer(key => this.occurrenceIdOf(key))
+      const at = projection.selection?.end ?? projection.detectText.length
+      const before = projection.detectText.slice(0, at)
+      const nodes = references.flatMap(ref => [
         $createReferenceChipNode(ref),
-        $createTextNode(" "),
-      ]);
-      if (before !== "" && !/\s$/u.test(before)) nodes.unshift($createTextNode(" "));
-      applied = $replaceDetectSpanWithNodes({ start: at, end: at }, nodes);
-    }, PASTE_TAG);
-    return applied;
+        $createTextNode(' '),
+      ])
+      if (before !== '' && !/\s$/u.test(before)) nodes.unshift($createTextNode(' '))
+      applied = $replaceDetectSpanWithNodes({ start: at, end: at }, nodes)
+    }, PASTE_TAG)
+    return applied
   }
 
   /**
@@ -441,58 +441,58 @@ export class DraftEditorRuntime {
    * @returns whether the insertion position accepted the node.
    */
   insertQuote(text: string, labels: QuoteNodeLabels, summary?: QuoteSummary): boolean {
-    let applied = false;
+    let applied = false
     this.applyEdit(() => {
-      const projection = $projectComposer((key) => this.occurrenceIdOf(key));
-      const at = projection.selection?.end ?? projection.detectText.length;
+      const projection = $projectComposer(key => this.occurrenceIdOf(key))
+      const at = projection.selection?.end ?? projection.detectText.length
       applied = $replaceDetectSpanWithNodes({ start: at, end: at }, [
         $createQuoteNode(text, labels, summary),
-        $createTextNode(" "),
-      ]);
-    }, PASTE_TAG);
-    return applied;
+        $createTextNode(' '),
+      ])
+    }, PASTE_TAG)
+    return applied
   }
 
   /** Remove one quote node and leave the editor caret at its former position. */
   private removeQuote(key: NodeKey): boolean {
-    const node = $getNodeByKey(key);
-    if (!$isQuoteNode(node)) return false;
-    const parent = node.getParent();
-    const offset = node.getIndexWithinParent();
-    const separator = node.getNextSibling();
-    $addUpdateTag(HISTORY_PUSH_TAG);
-    if ($isTextNode(separator) && separator.getTextContent().startsWith(" ")) {
-      const remaining = separator.getTextContent().slice(1);
-      if (remaining === "") separator.remove();
-      else separator.setTextContent(remaining);
+    const node = $getNodeByKey(key)
+    if (!$isQuoteNode(node)) return false
+    const parent = node.getParent()
+    const offset = node.getIndexWithinParent()
+    const separator = node.getNextSibling()
+    $addUpdateTag(HISTORY_PUSH_TAG)
+    if ($isTextNode(separator) && separator.getTextContent().startsWith(' ')) {
+      const remaining = separator.getTextContent().slice(1)
+      if (remaining === '') separator.remove()
+      else separator.setTextContent(remaining)
     }
-    node.remove();
-    const caret = Math.min(offset, parent?.getChildrenSize() ?? 0);
-    parent?.select(caret, caret);
+    node.remove()
+    const caret = Math.min(offset, parent?.getChildrenSize() ?? 0)
+    parent?.select(caret, caret)
     queueMicrotask(() => {
-      this.editor.getRootElement()?.focus({ preventScroll: true });
-    });
-    return true;
+      this.editor.getRootElement()?.focus({ preventScroll: true })
+    })
+    return true
   }
 
   /** Delete the QuoteNode immediately beside one collapsed caret. */
   private deleteAdjacentQuote(event: KeyboardEvent, backward: boolean): boolean {
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection) || !selection.isCollapsed()) return false;
-    let adjacent = $getAdjacentNode(selection.anchor, backward);
-    if (!$isQuoteNode(adjacent) && backward && selection.anchor.type === "text") {
-      const anchor = selection.anchor.getNode();
+    const selection = $getSelection()
+    if (!$isRangeSelection(selection) || !selection.isCollapsed()) return false
+    let adjacent = $getAdjacentNode(selection.anchor, backward)
+    if (!$isQuoteNode(adjacent) && backward && selection.anchor.type === 'text') {
+      const anchor = selection.anchor.getNode()
       if (
         $isTextNode(anchor) &&
         selection.anchor.offset === 1 &&
-        anchor.getTextContent().startsWith(" ")
+        anchor.getTextContent().startsWith(' ')
       ) {
-        adjacent = anchor.getPreviousSibling();
+        adjacent = anchor.getPreviousSibling()
       }
     }
-    if (!$isQuoteNode(adjacent)) return false;
-    event.preventDefault();
-    return this.removeQuote(adjacent.getKey());
+    if (!$isQuoteNode(adjacent)) return false
+    event.preventDefault()
+    return this.removeQuote(adjacent.getKey())
   }
 
   /**
@@ -502,21 +502,21 @@ export class DraftEditorRuntime {
   clearCommittedDraft(prefixLength: (clipboardText: string) => number | null): void {
     this.editor.update(
       () => {
-        const layout = $composerLayout();
-        const length = prefixLength(layout.clipboardText);
+        const layout = $composerLayout()
+        const length = prefixLength(layout.clipboardText)
         if (length !== null) {
           $replaceDetectSpanWithText(
             { start: 0, end: detectOffsetOfClipboardOffset(layout, length) },
-            "",
-          );
-          return;
+            '',
+          )
+          return
         }
-        const root = $getRoot();
-        root.clear();
-        root.selectEnd();
+        const root = $getRoot()
+        root.clear()
+        root.selectEnd()
       },
       { discrete: true, tag: [HISTORY_MERGE_TAG, DRAFT_SUBMITTED_TAG] },
-    );
+    )
   }
 
   /**
@@ -530,39 +530,39 @@ export class DraftEditorRuntime {
     draft: string,
     occurrences: readonly DraftReference[],
     quotes: readonly DraftQuote[] = [],
-    labels: QuoteNodeLabels = { remove: "" },
+    labels: QuoteNodeLabels = { remove: '' },
   ): void {
     this.editor.update(
       () => {
-        const root = $getRoot();
-        root.clear();
-        let paragraph = $createParagraphNode();
-        root.append(paragraph);
+        const root = $getRoot()
+        root.clear()
+        let paragraph = $createParagraphNode()
+        root.append(paragraph)
         const appendText = (text: string): void => {
-          const lines = text.replace(REFERENCE_PLACEHOLDER_RE, "").split("\n");
+          const lines = text.replace(REFERENCE_PLACEHOLDER_RE, '').split('\n')
           for (let i = 0; i < lines.length; i += 1) {
-            const line = lines[i];
-            if (line !== "") paragraph.append($createTextNode(line));
+            const line = lines[i]
+            if (line !== '') paragraph.append($createTextNode(line))
             if (i < lines.length - 1) {
-              paragraph = $createParagraphNode();
-              root.append(paragraph);
+              paragraph = $createParagraphNode()
+              root.append(paragraph)
             }
           }
-        };
-        let cursor = 0;
+        }
+        let cursor = 0
         const spans = [
-          ...occurrences.map((reference) => ({ kind: "reference" as const, value: reference })),
-          ...quotes.map((quote) => ({ kind: "quote" as const, value: quote })),
-        ].sort((a, b) => a.value.offset - b.value.offset);
+          ...occurrences.map(reference => ({ kind: 'reference' as const, value: reference })),
+          ...quotes.map(quote => ({ kind: 'quote' as const, value: quote })),
+        ].sort((a, b) => a.value.offset - b.value.offset)
         for (const span of spans) {
-          const occurrence = span.value;
-          appendText(draft.slice(cursor, occurrence.offset));
-          if (span.kind === "quote") {
-            paragraph.append($createQuoteNode(span.value.text, labels, span.value.summary));
-            cursor = occurrence.offset + occurrence.length;
-            continue;
+          const occurrence = span.value
+          appendText(draft.slice(cursor, occurrence.offset))
+          if (span.kind === 'quote') {
+            paragraph.append($createQuoteNode(span.value.text, labels, span.value.summary))
+            cursor = occurrence.offset + occurrence.length
+            continue
           }
-          const reference = span.value;
+          const reference = span.value
           paragraph.append(
             new ReferenceChipNode(
               {
@@ -574,18 +574,18 @@ export class DraftEditorRuntime {
               },
               reference.invalid === true,
             ),
-          );
-          cursor = occurrence.offset + occurrence.length;
+          )
+          cursor = occurrence.offset + occurrence.length
         }
-        appendText(draft.slice(cursor));
-        root.selectEnd();
+        appendText(draft.slice(cursor))
+        root.selectEnd()
       },
       { discrete: true, tag: HISTORY_MERGE_TAG },
-    );
+    )
   }
 
   /** Cut the editor's undo history after a committed clear or restoration. */
   clearHistory(): void {
-    this.editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined);
+    this.editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined)
   }
 }

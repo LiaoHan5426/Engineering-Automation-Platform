@@ -4,40 +4,40 @@
  * reviews in one session keep their own choices; the bucket ends with the
  * tab record's signal.
  */
-import { defineStore, type EngineStoreHandle } from "@deepseek-ai/dsh-client-store";
-import type { TabId } from "@deepseek-ai/dsh-client-ui-dockkit";
+import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-store'
+import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 
 /** One review tab's choices. */
 export interface ReviewTabState {
   /** Original index of the shown file in the summary's files array. */
-  index: number;
+  index: number
   /** Whether deletions and additions are drawn in two columns; new tabs start enabled. */
-  split: boolean;
+  split: boolean
   /** Whether long lines wrap instead of scrolling. */
-  wrap: boolean;
+  wrap: boolean
   /** The navigation revision whose file index was last applied. */
-  navigated: number;
+  navigated: number
 }
 
 /** Every review tab's choices, keyed by tab id. */
 export interface ReviewState {
-  byTab: Record<TabId, ReviewTabState>;
+  byTab: Record<TabId, ReviewTabState>
 }
 
 function bucket(state: ReviewState, tabId: TabId): ReviewTabState {
-  const tab = state.byTab[tabId];
-  if (tab === undefined) throw new Error(`ui-deliverables: no review state for tab "${tabId}"`);
-  return tab;
+  const tab = state.byTab[tabId]
+  if (tab === undefined) throw new Error(`ui-deliverables: no review state for tab "${tabId}"`)
+  return tab
 }
 
 /** The review store's write set; every action names the tab it writes. */
 type ReviewActions = {
-  navigated: (draft: ReviewState, tabId: TabId, revision: number, index: number) => void;
-  selected: (draft: ReviewState, tabId: TabId, index: number) => void;
-  toggledSplit: (draft: ReviewState, tabId: TabId) => void;
-  toggledWrap: (draft: ReviewState, tabId: TabId) => void;
-  forget: (draft: ReviewState, tabId: TabId) => void;
-};
+  navigated: (draft: ReviewState, tabId: TabId, revision: number, index: number) => void
+  selected: (draft: ReviewState, tabId: TabId, index: number) => void
+  toggledSplit: (draft: ReviewState, tabId: TabId) => void
+  toggledWrap: (draft: ReviewState, tabId: TabId) => void
+  forget: (draft: ReviewState, tabId: TabId) => void
+}
 
 /**
  * Declare the review tab's store; the registration declares it as an
@@ -56,12 +56,12 @@ export function createReviewStore(): EngineStoreHandle<ReviewState, ReviewAction
        * @param index - the file index the navigation named, or the current one.
        */
       navigated: (d, tabId: TabId, revision: number, index: number) => {
-        const tab = d.byTab[tabId];
+        const tab = d.byTab[tabId]
         if (tab === undefined)
-          d.byTab[tabId] = { index, split: true, wrap: false, navigated: revision };
+          d.byTab[tabId] = { index, split: true, wrap: false, navigated: revision }
         else {
-          tab.index = index;
-          tab.navigated = revision;
+          tab.index = index
+          tab.navigated = revision
         }
       },
       /**
@@ -71,7 +71,7 @@ export function createReviewStore(): EngineStoreHandle<ReviewState, ReviewAction
        * @param index - original index in the summary's files array.
        */
       selected: (d, tabId: TabId, index: number) => {
-        bucket(d, tabId).index = index;
+        bucket(d, tabId).index = index
       },
       /**
        * Switch between the unified and the side-by-side view.
@@ -79,8 +79,8 @@ export function createReviewStore(): EngineStoreHandle<ReviewState, ReviewAction
        * @param tabId - the tab being drawn.
        */
       toggledSplit: (d, tabId: TabId) => {
-        const tab = bucket(d, tabId);
-        tab.split = !tab.split;
+        const tab = bucket(d, tabId)
+        tab.split = !tab.split
       },
       /**
        * Switch line wrapping.
@@ -88,8 +88,8 @@ export function createReviewStore(): EngineStoreHandle<ReviewState, ReviewAction
        * @param tabId - the tab being drawn.
        */
       toggledWrap: (d, tabId: TabId) => {
-        const tab = bucket(d, tabId);
-        tab.wrap = !tab.wrap;
+        const tab = bucket(d, tabId)
+        tab.wrap = !tab.wrap
       },
       /**
        * Drop a tab's bucket once its record is gone.
@@ -97,8 +97,8 @@ export function createReviewStore(): EngineStoreHandle<ReviewState, ReviewAction
        * @param tabId - the tab that ended.
        */
       forget: (d, tabId: TabId) => {
-        d.byTab = Object.fromEntries(Object.entries(d.byTab).filter(([id]) => id !== tabId));
+        d.byTab = Object.fromEntries(Object.entries(d.byTab).filter(([id]) => id !== tabId))
       },
     },
-  });
+  })
 }

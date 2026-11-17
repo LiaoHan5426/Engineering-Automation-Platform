@@ -1,9 +1,9 @@
 /** Atomic composer quote node and whole-node removal command. */
 
-import { h, type VNode } from "vue";
-import { QuotePreview } from "@deepseek-ai/dsh-client-ui-primitives";
-import { formatQuoteText } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { QuoteSummary } from "@deepseek-ai/dsh-client-ui-primitives";
+import { h, type VNode } from 'vue'
+import { QuotePreview } from '@deepseek-ai/dsh-client-ui-primitives'
+import { formatQuoteText } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { QuoteSummary } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   EditorConfig,
   LexicalEditor,
@@ -11,27 +11,27 @@ import type {
   NodeKey,
   SerializedLexicalNode,
   Spread,
-} from "lexical";
-import { createCommand, DecoratorNode } from "lexical";
+} from 'lexical'
+import { createCommand, DecoratorNode } from 'lexical'
 
 /** Localized non-persisted labels applied by the owning input shell. */
 export interface QuoteNodeLabels {
-  readonly remove: string;
+  readonly remove: string
 }
 
-const EMPTY_LABELS: QuoteNodeLabels = { remove: "" };
+const EMPTY_LABELS: QuoteNodeLabels = { remove: '' }
 
 /** JSON form used only by Lexical's editor-state APIs, not browser persistence. */
 export type SerializedQuoteNode = Spread<
   {
-    text: string;
-    summary?: QuoteSummary;
+    text: string
+    summary?: QuoteSummary
   },
   SerializedLexicalNode
->;
+>
 
 /** Remove one quote occurrence by its Lexical identity. */
-export const REMOVE_QUOTE_COMMAND = createCommand<NodeKey>("REMOVE_QUOTE_COMMAND");
+export const REMOVE_QUOTE_COMMAND = createCommand<NodeKey>('REMOVE_QUOTE_COMMAND')
 
 /** Pure Vue face of one quote node. */
 export function QuoteNodeView({
@@ -41,11 +41,11 @@ export function QuoteNodeView({
   summary,
   labels,
 }: {
-  readonly editor: LexicalEditor;
-  readonly nodeKey: NodeKey;
-  readonly text: string;
-  readonly summary?: QuoteSummary | undefined;
-  readonly labels: QuoteNodeLabels;
+  readonly editor: LexicalEditor
+  readonly nodeKey: NodeKey
+  readonly text: string
+  readonly summary?: QuoteSummary | undefined
+  readonly labels: QuoteNodeLabels
 }) {
   return h(QuotePreview, {
     text,
@@ -53,31 +53,31 @@ export function QuoteNodeView({
     removal: {
       label: labels.remove,
       onRemove: () => {
-        editor.dispatchCommand(REMOVE_QUOTE_COMMAND, nodeKey);
+        editor.dispatchCommand(REMOVE_QUOTE_COMMAND, nodeKey)
       },
     },
-  });
+  })
 }
 
 /** One selected transcript range represented as an atomic inline decorator. */
 export class QuoteNode extends DecoratorNode<VNode> {
-  __text: string;
-  __summary: QuoteSummary | undefined;
-  __labels: QuoteNodeLabels;
+  __text: string
+  __summary: QuoteSummary | undefined
+  __labels: QuoteNodeLabels
 
   /** Lexical node registry type tag. */
   static override getType(): string {
-    return "quote";
+    return 'quote'
   }
 
   /** @param node - node to clone. @returns a copy carrying the same NodeKey. */
   static override clone(node: QuoteNode): QuoteNode {
-    return new QuoteNode(node.__text, node.__labels, node.__summary, node.__key);
+    return new QuoteNode(node.__text, node.__labels, node.__summary, node.__key)
   }
 
   /** @param json - serialized editor node. @returns a fresh node with default runtime labels. */
   static override importJSON(json: SerializedQuoteNode): QuoteNode {
-    return new QuoteNode(json.text, EMPTY_LABELS, json.summary);
+    return new QuoteNode(json.text, EMPTY_LABELS, json.summary)
   }
 
   /**
@@ -92,64 +92,64 @@ export class QuoteNode extends DecoratorNode<VNode> {
     summary?: QuoteSummary,
     key?: NodeKey,
   ) {
-    super(key);
-    this.__text = text;
-    this.__summary = summary;
-    this.__labels = labels;
+    super(key)
+    this.__text = text
+    this.__summary = summary
+    this.__labels = labels
   }
 
   /** Serialize the quote data without its runtime presentation state. */
   override exportJSON(): SerializedQuoteNode {
     return {
       ...super.exportJSON(),
-      type: "quote",
+      type: 'quote',
       version: 1,
       text: this.__text,
       ...(this.__summary === undefined ? {} : { summary: this.__summary }),
-    };
+    }
   }
 
   /** Mount one non-editable inline host. */
   override createDOM(_config: EditorConfig): HTMLElement {
-    const element = document.createElement("span");
-    element.setAttribute("data-composer-quote", "");
-    element.setAttribute("contenteditable", "false");
-    return element;
+    const element = document.createElement('span')
+    element.setAttribute('data-composer-quote', '')
+    element.setAttribute('contenteditable', 'false')
+    return element
   }
 
   /** Updates reuse the existing host element. */
   override updateDOM(): boolean {
-    return false;
+    return false
   }
 
   /** Quotes flow with draft text and wrap at their own text boundary. */
   override isInline(): boolean {
-    return true;
+    return true
   }
 
   /** Arrow movement crosses the quote without entering a NodeSelection. */
   override isKeyboardSelectable(): boolean {
-    return false;
+    return false
   }
 
   /** Clipboard text is the exact model-visible Markdown blockquote. */
   override getTextContent(): string {
-    return formatQuoteText(this.__text);
+    return formatQuoteText(this.__text)
   }
 
   /** Selected visible quote text. */
   getQuoteText(): string {
-    return this.getLatest().__text;
+    return this.getLatest().__text
   }
 
   /** Readable display the inserting owner supplied, if any. */
   getQuoteSummary(): QuoteSummary | undefined {
-    return this.getLatest().__summary;
+    return this.getLatest().__summary
   }
 
   /** Update the localized remove label without changing persisted quote data. */
   setLabels(labels: QuoteNodeLabels): void {
-    if (this.getLatest().__labels.remove !== labels.remove) this.getWritable().__labels = labels;
+    if (this.getLatest().__labels.remove !== labels.remove) this.getWritable().__labels = labels
   }
 
   /** Render the quote body and its independent close control. */
@@ -160,7 +160,7 @@ export class QuoteNode extends DecoratorNode<VNode> {
       text: this.__text,
       summary: this.__summary,
       labels: this.__labels,
-    });
+    })
   }
 }
 
@@ -175,10 +175,10 @@ export function $createQuoteNode(
   labels: QuoteNodeLabels,
   summary?: QuoteSummary,
 ): QuoteNode {
-  return new QuoteNode(text, labels, summary);
+  return new QuoteNode(text, labels, summary)
 }
 
 /** @param node - possible Lexical node. @returns whether it is a QuoteNode. */
 export function $isQuoteNode(node: LexicalNode | null | undefined): node is QuoteNode {
-  return node instanceof QuoteNode;
+  return node instanceof QuoteNode
 }

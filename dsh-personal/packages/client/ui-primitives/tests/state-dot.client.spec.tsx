@@ -6,15 +6,15 @@ import { StateDot } from '../src/StateDot.tsx'
 import type { StateDotState } from '../src/StateDot.tsx'
 describe('StateDot', () => {
   it.each(['done', 'warning', 'ongoing', 'error', 'idle'] as const)('renders state %s as data-state', (state) => {
-    const { container } = render(h(StateDot, { "state": state }))
+    const { container } = render(h(StateDot, { 'state': state }))
     const dot = container.firstElementChild as HTMLElement
     expect(dot.dataset['state']).toBe(state)
     expect(dot.getAttribute('aria-hidden')).toBe('true')
   })
   it('solid states are spans; ongoing is an svg loading spinner', () => {
-    const { container, rerender } = render(h(StateDot, { "state": "done" }))
+    const { container, rerender } = render(h(StateDot, { 'state': 'done' }))
     expect(container.firstElementChild?.tagName).toBe('SPAN')
-    rerender(h(StateDot, { "state": "ongoing" }))
+    rerender(h(StateDot, { 'state': 'ongoing' }))
     const spinner = container.firstElementChild as SVGSVGElement
     expect(spinner.tagName).toBe('svg')
     expect(spinner.querySelectorAll('rect')).toHaveLength(0)
@@ -25,21 +25,21 @@ describe('StateDot', () => {
     expect([...rings].map(ring => ring.getAttribute('r'))).toEqual(['9.5', '9.5'])
   })
   it('sizes via the size prop in both shapes', () => {
-    const { container, rerender } = render(h(StateDot, { "state": "done", "size": 12 }))
+    const { container, rerender } = render(h(StateDot, { 'state': 'done', 'size': 12 }))
     const dot = container.firstElementChild as HTMLElement
     expect(dot.style.width).toBe('12px')
     expect(dot.style.height).toBe('12px')
-    rerender(h(StateDot, { "state": "ongoing", "size": 12 }))
+    rerender(h(StateDot, { 'state': 'ongoing', 'size': 12 }))
     const ring = container.firstElementChild as SVGSVGElement
     expect(ring.getAttribute('width')).toBe('12')
     expect(ring.getAttribute('height')).toBe('12')
   })
   it('defaults solid dots to 10px and the ongoing loader to 14px', () => {
-    const { container, rerender } = render(h(StateDot, { "state": "done" }))
+    const { container, rerender } = render(h(StateDot, { 'state': 'done' }))
     const dot = container.firstElementChild as HTMLElement
     expect(dot.style.width).toBe('10px')
     expect(dot.style.height).toBe('10px')
-    rerender(h(StateDot, { "state": "ongoing" }))
+    rerender(h(StateDot, { 'state': 'ongoing' }))
     const spinner = container.firstElementChild as SVGSVGElement
     expect(spinner.getAttribute('width')).toBe('14')
     expect(spinner.getAttribute('height')).toBe('14')
@@ -51,9 +51,9 @@ describe('StateDot', () => {
   })
 })
 it('renders completed steps with a check and pending steps without one', () => {
-  const { container, rerender } = render(h(StateDot, { "state": "done", "appearance": "step", "size": 16 }))
+  const { container, rerender } = render(h(StateDot, { 'state': 'done', 'appearance': 'step', 'size': 16 }))
   expect(container.querySelector('[data-state="done"] svg')).toBeTruthy()
-  rerender(h(StateDot, { "state": "idle", "appearance": "step", "size": 16 }))
+  rerender(h(StateDot, { 'state': 'idle', 'appearance': 'step', 'size': 16 }))
   expect(container.querySelector('[data-state="idle"] svg')).toBeNull()
   expect(container.firstElementChild?.className).toContain('step')
 })
@@ -68,7 +68,7 @@ describe('StateDot ongoing phase', () => {
     }
     proto.getAnimations = getAnimations
     try {
-      const { unmount } = render(h(StateDot, { "state": "ongoing" }))
+      const { unmount } = render(h(StateDot, { 'state': 'ongoing' }))
       expect(getAnimations).toHaveBeenCalledWith({ subtree: true })
       expect(animations.map(animation => animation.startTime)).toEqual([0, 0])
       unmount()
@@ -87,7 +87,7 @@ describe('StateDot ongoing phase', () => {
     }
     proto.getAnimations = () => animations
     try {
-      const { container } = render(h(StateDot, { "state": "ongoing" }))
+      const { container } = render(h(StateDot, { 'state': 'ongoing' }))
       animations[0]!.startTime = 438
       container.querySelector('circle')!.dispatchEvent(new Event('animationstart', { bubbles: true }))
       expect(animations[0]!.startTime).toBe(0)

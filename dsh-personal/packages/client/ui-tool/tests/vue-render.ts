@@ -41,5 +41,6 @@ export function renderVue(node: VNode) {
   }
   disposers.add(unmount)
   onTestFinished(unmount)
-  return { ...getQueriesForElement(container), container, rerender: (next: VNode) => { render(h(TestRoot, { node: next }), container) }, unmount }
+  return { ...getQueriesForElement(container), container, rerender: (next: VNode) => { render(h(TestRoot, {
+    node: next }), container) }, unmount }
 }

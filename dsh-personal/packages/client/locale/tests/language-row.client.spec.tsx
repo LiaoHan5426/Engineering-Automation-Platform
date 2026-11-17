@@ -13,10 +13,10 @@ const OPTIONS = [{ id: 'zh', label: '中文' }, { id: 'en', label: 'English' }]
 
 /** Component fixture owns subscriptions; real renderer lifecycle is tested separately. */
 function bindSnapshotSelector<T>(source: HostObservable<T>): SnapshotSelectorHook<T> {
-  return selector => {
-    const state = shallowRef(source.getSnapshot())
-    onScopeDispose(source.subscribe(() => { state.value = source.getSnapshot() }))
-    return computed(() => selector(state.value))
+  return (selector) => {
+    const state = shallowRef({ snapshot: source.getSnapshot() })
+    onScopeDispose(source.subscribe(() => { state.value = { snapshot: source.getSnapshot() } }))
+    return computed(() => selector(state.value.snapshot))
   }
 }
 

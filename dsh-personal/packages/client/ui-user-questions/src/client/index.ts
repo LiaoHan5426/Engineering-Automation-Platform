@@ -318,11 +318,12 @@ function publishContinuedQuestions(ctx: ClientContext, cards: QuestionCards): ()
         UserQuestionProjectionView | undefined
       const inbox = binding.session.projections.faceOf('inbox').getSnapshot() as InboxWireState | undefined
       const queued = new Set<string>()
-      for (const message of [...(inbox?.['next-step'] ?? []), ...(inbox?.['next-turn'] ?? [])]) {
-        if (typeof message !== 'object' || message === null || Array.isArray(message)) continue
-        const source = message.source
+      for (const wireMessage of [...(inbox?.['next-step'] ?? []), ...(inbox?.['next-turn'] ?? [])]) {
+        const message: unknown = wireMessage
+        if (typeof message !== 'object' || message === null || Array.isArray(message) || !('source' in message)) continue
+        const source: unknown = message.source
         if (typeof source !== 'object' || source === null || Array.isArray(source)) continue
-        if (source.kind === 'user-question-reply' && typeof source.callId === 'string') queued.add(source.callId)
+        if ('kind' in source && source.kind === 'user-question-reply' && 'callId' in source && typeof source.callId === 'string') queued.add(source.callId)
       }
       for (const row of projected?.active ?? []) {
         if (row.state === 'continued' && queued.has(row.callId)) continue

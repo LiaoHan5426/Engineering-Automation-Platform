@@ -11,6 +11,8 @@ kind: "package-reference"
 
 通过会话头部更多菜单或会话行、标题右键菜单中的**在应用中打开**打开会话目录。子菜单按 Host 顺序列出已安装且已本地化的应用，仅显示图标和名称，不标注默认应用。文件树、文档预览和交付控件也可通过原生应用打开文件或目录。可用性、图标和启动由 [`dsh-host-open-in-app`](../../host/open-in-app/README.zh.md) 提供；两个包应一起挂载。会话目录未知或没有符合条件的应用时，不显示在应用中打开。
 
+已挂载的文件控件通过静态 [observable selector](../ui-primitives/README.zh.md#observable-selectors) 共享应用关联读取，不请求 renderer 的运行时实现。
+
 ## 目录
 
 - [使用本包](#use-this-package)

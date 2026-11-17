@@ -1,38 +1,38 @@
 /** Draft-attachment rail: scrollbar-less horizontal overflow paged by edge arrows. */
-import clsx from "clsx";
+import clsx from 'clsx'
 import {
   IconChevronLeftOutlineRegular,
   IconChevronRightOutlineRegular,
-} from "@deepseek-ai/dsh-client-ui-primitives";
-import css from "./AttachmentRail.module.css";
-import { h, defineComponent, shallowRef, watch, type VNodeChild } from "vue";
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import css from './AttachmentRail.module.css'
+import { h, defineComponent, shallowRef, watch, type VNodeChild } from 'vue'
 /** One ordered draft attachment rendered by the rail owner. */
 export interface AttachmentRailItem {
   /** Stable attachment identity. */
-  id: string;
+  id: string
 }
 /** Rail-level strings the owner resolves from its own locale namespace. */
 export interface AttachmentRailLabels {
   /** Accessible name of the rail group. */
-  group: string;
+  group: string
   /** Accessible label of the left paging arrow. */
-  scrollLeft: string;
+  scrollLeft: string
   /** Accessible label of the right paging arrow. */
-  scrollRight: string;
+  scrollRight: string
 }
 /** Approximate pixels per wheel step for `deltaMode` LINE deltas (Firefox
  * notch wheels report lines, not pixels). */
-const WHEEL_LINE_PX = 16;
+const WHEEL_LINE_PX = 16
 /** Smooth paging unless the user asked for reduced motion. */
 function pageBehavior(): ScrollBehavior {
   // jsdom (the unit lane) implements no matchMedia despite lib.dom's
   // non-optional typing; the optional call keeps that lane on the default.
   const matchMedia = (
     window as {
-      matchMedia?: Window["matchMedia"];
+      matchMedia?: Window['matchMedia']
     }
-  ).matchMedia;
-  return matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+  ).matchMedia
+  return matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
 }
 
 /**
@@ -54,114 +54,114 @@ function pageBehavior(): ScrollBehavior {
  */
 export const AttachmentRail = defineComponent(
   <T extends AttachmentRailItem>(props: {
-    items: readonly T[];
-    labels: AttachmentRailLabels;
-    renderItem: (item: T) => VNodeChild;
+    items: readonly T[]
+    labels: AttachmentRailLabels
+    renderItem: (item: T) => VNodeChild
   }) => {
-    const railRef = shallowRef<HTMLDivElement | null>(null);
-    let count: number | null = null;
-    const edges = shallowRef({ left: false, right: false });
+    const railRef = shallowRef<HTMLDivElement | null>(null)
+    let count: number | null = null
+    const edges = shallowRef({ left: false, right: false })
     const updateEdges = () => {
-      const el = railRef.value;
-      if (el === null) return;
-      const left = el.scrollLeft > 1;
-      const right = el.scrollLeft < el.scrollWidth - el.clientWidth - 1;
-      if (edges.value.left !== left || edges.value.right !== right) edges.value = { left, right };
-    };
+      const el = railRef.value
+      if (el === null) return
+      const left = el.scrollLeft > 1
+      const right = el.scrollLeft < el.scrollWidth - el.clientWidth - 1
+      if (edges.value.left !== left || edges.value.right !== right) edges.value = { left, right }
+    }
     watch(
       [railRef, () => props.items.length],
       () => {
-        const el = railRef.value;
-        if (el === null) return;
-        const grew = count !== null && props.items.length > count;
-        count = props.items.length;
-        if (grew) el.scrollLeft = el.scrollWidth - el.clientWidth;
-        updateEdges();
+        const el = railRef.value
+        if (el === null) return
+        const grew = count !== null && props.items.length > count
+        count = props.items.length
+        if (grew) el.scrollLeft = el.scrollWidth - el.clientWidth
+        updateEdges()
       },
-      { flush: "post" },
-    );
+      { flush: 'post' },
+    )
     watch(
       railRef,
       (el, _old, onCleanup) => {
-        if (el === null) return;
+        if (el === null) return
         const observer =
-          typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(updateEdges);
-        observer?.observe(el);
+          typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(updateEdges)
+        observer?.observe(el)
         const onWheel = (event: WheelEvent) => {
-          if (event.deltaY === 0) return;
+          if (event.deltaY === 0) return
           const scale =
             event.deltaMode === WheelEvent.DOM_DELTA_LINE
               ? WHEEL_LINE_PX
               : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
                 ? el.clientWidth
-                : 1;
-          event.preventDefault();
+                : 1
+          event.preventDefault()
           el.scrollBy({
             left:
               event.deltaX !== 0
                 ? event.deltaX * scale
                 : Math.sign(event.deltaY) * Math.min(Math.abs(event.deltaY) * scale, 60),
-            behavior: "auto",
-          });
-        };
-        el.addEventListener("wheel", onWheel, { passive: false });
+            behavior: 'auto',
+          })
+        }
+        el.addEventListener('wheel', onWheel, { passive: false })
         onCleanup(() => {
-          observer?.disconnect();
-          el.removeEventListener("wheel", onWheel);
-        });
+          observer?.disconnect()
+          el.removeEventListener('wheel', onWheel)
+        })
       },
-      { flush: "post" },
-    );
+      { flush: 'post' },
+    )
     const page = (direction: -1 | 1) => {
-      const el = railRef.value;
+      const el = railRef.value
       if (el !== null)
         el.scrollBy({
           left: direction * Math.max(el.clientWidth - 64, 200),
           behavior: pageBehavior(),
-        });
-    };
+        })
+    }
     return () => {
-      const { items, labels, renderItem } = props;
-      return h("div", { class: css.root }, [
+      const { items, labels, renderItem } = props
+      return h('div', { class: css.root }, [
         edges.value.left &&
           h(
-            "button",
+            'button',
             {
-              type: "button",
+              type: 'button',
               class: clsx(css.arrow, css.arrowLeft),
-              "aria-label": labels.scrollLeft,
+              'aria-label': labels.scrollLeft,
               onClick: () => {
-                page(-1);
+                page(-1)
               },
             },
             [h(IconChevronLeftOutlineRegular, undefined, undefined)],
           ),
         h(
-          "div",
+          'div',
           {
             ref: railRef,
             class: css.rail,
-            role: "group",
-            "aria-label": labels.group,
+            role: 'group',
+            'aria-label': labels.group,
             onScroll: updateEdges,
           },
-          [items.map((item) => h("div", { key: item.id, class: css.item }, [renderItem(item)]))],
+          [items.map(item => h('div', { key: item.id, class: css.item }, [renderItem(item)]))],
         ),
         edges.value.right &&
           h(
-            "button",
+            'button',
             {
-              type: "button",
+              type: 'button',
               class: clsx(css.arrow, css.arrowRight),
-              "aria-label": labels.scrollRight,
+              'aria-label': labels.scrollRight,
               onClick: () => {
-                page(1);
+                page(1)
               },
             },
             [h(IconChevronRightOutlineRegular, undefined, undefined)],
           ),
-      ]);
-    };
+      ])
+    }
   },
-  { name: "AttachmentRail", inheritAttrs: false, props: ["items", "labels", "renderItem"] },
-);
+  { name: 'AttachmentRail', inheritAttrs: false, props: ['items', 'labels', 'renderItem'] },
+)

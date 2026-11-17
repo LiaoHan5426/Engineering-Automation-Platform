@@ -6,16 +6,16 @@
  * crosses from claiming it, which Chromium reports as a cancelled pointer and
  * an abandoned drag. Environments without the API (jsdom) simply go unhardened.
  */
-import { onBeforeUnmount } from "vue";
+import { onBeforeUnmount } from 'vue'
 
 /** Native pointer event dispatched to a docking element. */
-export type DockPointerEvent = PointerEvent & { readonly currentTarget: HTMLElement };
+export type DockPointerEvent = PointerEvent & { readonly currentTarget: HTMLElement }
 
 /** The three window listeners one gesture installs. */
 export interface PointerFollowers {
-  readonly move: (event: PointerEvent) => void;
-  readonly up: (event: PointerEvent) => void;
-  readonly cancel: () => void;
+  readonly move: (event: PointerEvent) => void
+  readonly up: (event: PointerEvent) => void
+  readonly cancel: () => void
 }
 
 /**
@@ -24,8 +24,8 @@ export interface PointerFollowers {
  * @param pointerId - the pointer to capture.
  */
 export function capturePointer(element: HTMLElement, pointerId: number): void {
-  if (typeof element.setPointerCapture !== "function") return;
-  element.setPointerCapture(pointerId);
+  if (typeof element.setPointerCapture !== 'function') return
+  element.setPointerCapture(pointerId)
 }
 
 /**
@@ -44,54 +44,54 @@ export function followPointer(
   pointerId: number,
   followers: PointerFollowers,
 ): () => void {
-  capturePointer(element, pointerId);
-  const controller = new AbortController();
-  const { signal } = controller;
-  element.dataset.dockkitPointer = String(pointerId);
+  capturePointer(element, pointerId)
+  const controller = new AbortController()
+  const { signal } = controller
+  element.dataset.dockkitPointer = String(pointerId)
   signal.addEventListener(
-    "abort",
+    'abort',
     () => {
       if (element.dataset.dockkitPointer === String(pointerId))
-        delete element.dataset.dockkitPointer;
+        delete element.dataset.dockkitPointer
     },
     { once: true },
-  );
-  const own = (event: PointerEvent): boolean => event.pointerId === pointerId;
+  )
+  const own = (event: PointerEvent): boolean => event.pointerId === pointerId
   window.addEventListener(
-    "pointermove",
+    'pointermove',
     (event) => {
-      if (own(event)) followers.move(event);
+      if (own(event)) followers.move(event)
     },
     { signal },
-  );
+  )
   window.addEventListener(
-    "pointerup",
+    'pointerup',
     (event) => {
-      if (!own(event)) return;
-      controller.abort();
-      followers.up(event);
+      if (!own(event)) return
+      controller.abort()
+      followers.up(event)
     },
     { signal },
-  );
+  )
   window.addEventListener(
-    "pointercancel",
+    'pointercancel',
     (event) => {
-      if (!own(event)) return;
-      controller.abort();
-      followers.cancel();
+      if (!own(event)) return
+      controller.abort()
+      followers.cancel()
     },
     { signal },
-  );
+  )
   return () => {
-    controller.abort();
-  };
+    controller.abort()
+  }
 }
 
 /** What one gesture does while it lasts and when it settles. */
 export interface GestureFollowers {
-  readonly move: (event: PointerEvent) => void;
+  readonly move: (event: PointerEvent) => void
   /** The release. The gesture has already ended, and its preview reset, when this runs. */
-  readonly up: (event: PointerEvent) => void;
+  readonly up: (event: PointerEvent) => void
 }
 
 /**
@@ -104,7 +104,7 @@ export type BeginGesture = (
   element: HTMLElement,
   pointerId: number,
   followers: GestureFollowers,
-) => void;
+) => void
 
 /**
  * One pointer gesture at a time for a component. A gesture ends on release, on
@@ -115,30 +115,30 @@ export type BeginGesture = (
  * @returns the gesture starter, called from a pointer-down handler.
  */
 export function useGesture(reset: () => void): BeginGesture {
-  let inFlight: { readonly stop: () => void; readonly end: () => void } | undefined;
+  let inFlight: { readonly stop: () => void; readonly end: () => void } | undefined
   onBeforeUnmount(() => {
-    inFlight?.stop();
-  });
+    inFlight?.stop()
+  })
   return (element, pointerId, followers) => {
-    inFlight?.end();
+    inFlight?.end()
     const settle = (): void => {
-      inFlight = undefined;
-      reset();
-    };
+      inFlight = undefined
+      reset()
+    }
     const stop = followPointer(element, pointerId, {
       move: followers.move,
       up: (event) => {
-        settle();
-        followers.up(event);
+        settle()
+        followers.up(event)
       },
       cancel: settle,
-    });
+    })
     inFlight = {
       stop,
       end: () => {
-        stop();
-        settle();
+        stop()
+        settle()
       },
-    };
-  };
+    }
+  }
 }

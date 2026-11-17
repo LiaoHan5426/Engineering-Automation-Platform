@@ -1,6 +1,6 @@
-import { defineComponent, h } from "vue";
+import { defineComponent, h } from 'vue'
 /** Keyed recorded-result rows sharing the compact detail body. */
-import type { Context } from "@deepseek-ai/cordis";
+import type { Context } from '@deepseek-ai/cordis'
 import {
   IconAgentPresetOutlineRegular,
   IconBranchOutlineRegular,
@@ -11,52 +11,52 @@ import {
   IconGoalOutlineRegular,
   IconSearchOutlineRegular,
   IconUsersOutlineRegular,
-} from "@deepseek-ai/dsh-client-ui-primitives";
-import type { PropsLocale } from "@deepseek-ai/dsh-client-ui-slots";
-import type { ToolCallViewProps } from "../../contract/slots.ts";
-import { CONVERSATION_NS as NS } from "../../locale.ts";
-import { ToolRow } from "../components/ToolRow.tsx";
-import { detailsCardModel } from "../models/details-card-model.ts";
-import { parsedToolCall } from "../models/raw-tool-call.ts";
-import { toolRowModel } from "../models/tool-call-model.ts";
-type DetailsRowProps = ToolCallViewProps & PropsLocale<"conversation">;
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ToolCallViewProps } from '../../contract/slots.ts'
+import { CONVERSATION_NS as NS } from '../../locale.ts'
+import { ToolRow } from '../components/ToolRow.tsx'
+import { detailsCardModel } from '../models/details-card-model.ts'
+import { parsedToolCall } from '../models/raw-tool-call.ts'
+import { toolRowModel } from '../models/tool-call-model.ts'
+type DetailsRowProps = ToolCallViewProps & PropsLocale<'conversation'>
 const LSP_TITLE_KEYS = {
-  goToDefinition: "tool.title.findDefinition",
-  findReferences: "tool.title.findReferences",
-  goToImplementation: "tool.title.findImplementation",
-  hover: "tool.title.hoverSymbol",
-} as const;
+  goToDefinition: 'tool.title.findDefinition',
+  findReferences: 'tool.title.findReferences',
+  goToImplementation: 'tool.title.findImplementation',
+  hover: 'tool.title.hoverSymbol',
+} as const
 /** Agent delegation, discovery, and coordination share the two-person icon. */
 const AGENT_TOOLS = new Set([
-  "subagent",
-  "subagent_fork",
-  "list_subagent_models",
-  "spawn_teammate",
-  "list_agents",
-  "send_message",
-  "interrupt_agent",
-  "wait_agent",
-]);
+  'subagent',
+  'subagent_fork',
+  'list_subagent_models',
+  'spawn_teammate',
+  'list_agents',
+  'send_message',
+  'interrupt_agent',
+  'wait_agent',
+])
 function detailIcon(toolName: string) {
-  if (AGENT_TOOLS.has(toolName)) return h(IconUsersOutlineRegular, { size: 14 }, undefined);
-  if (toolName.startsWith("schedule_")) return h(IconClockOutlineRegular, { size: 14 }, undefined);
-  if (toolName.endsWith("_goal")) return h(IconGoalOutlineRegular, { size: 14 }, undefined);
-  if (toolName.startsWith("cordis_")) return h(IconCordisPluginOutlineRegular, null, undefined);
-  if (toolName.startsWith("terminal_")) return h(IconCodeOutlineRegular, { size: 14 }, undefined);
-  if (toolName.startsWith("session_") || toolName === "lsp")
-    return h(IconSearchOutlineRegular, { size: 14 }, undefined);
-  if (toolName.startsWith("job_") || toolName.startsWith("team_task_"))
-    return h(IconChecklistOutlineRegular, null, undefined);
-  if (toolName === "workflow" || toolName === "ralph")
-    return h(IconBranchOutlineRegular, { size: 14 }, undefined);
-  return h(IconAgentPresetOutlineRegular, { size: 14 }, undefined);
+  if (AGENT_TOOLS.has(toolName)) return h(IconUsersOutlineRegular, { size: 14 }, undefined)
+  if (toolName.startsWith('schedule_')) return h(IconClockOutlineRegular, { size: 14 }, undefined)
+  if (toolName.endsWith('_goal')) return h(IconGoalOutlineRegular, { size: 14 }, undefined)
+  if (toolName.startsWith('cordis_')) return h(IconCordisPluginOutlineRegular, null, undefined)
+  if (toolName.startsWith('terminal_')) return h(IconCodeOutlineRegular, { size: 14 }, undefined)
+  if (toolName.startsWith('session_') || toolName === 'lsp')
+    return h(IconSearchOutlineRegular, { size: 14 }, undefined)
+  if (toolName.startsWith('job_') || toolName.startsWith('team_task_'))
+    return h(IconChecklistOutlineRegular, null, undefined)
+  if (toolName === 'workflow' || toolName === 'ralph')
+    return h(IconBranchOutlineRegular, { size: 14 }, undefined)
+  return h(IconAgentPresetOutlineRegular, { size: 14 }, undefined)
 }
 /** Read the streamed description directly; old complete calls may use their prompt instead. */
-function subagentSummary(block: ToolCallViewProps["block"]): string {
-  const description = block.args.text("description")?.trimStart();
-  if (description) return description.split(/\r?\n/u, 1)[0] ?? "";
-  if (!("kind" in block) && block.phase === "preparing") return "";
-  return block.args.text("prompt")?.trimStart().split(/\r?\n/u, 1)[0] ?? "";
+function subagentSummary(block: ToolCallViewProps['block']): string {
+  const description = block.args.text('description')?.trimStart()
+  if (description) return description.split(/\r?\n/u, 1)[0] ?? ''
+  if (!('kind' in block) && block.phase === 'preparing') return ''
+  return block.args.text('prompt')?.trimStart().split(/\r?\n/u, 1)[0] ?? ''
 }
 /**
  * Present recorded entities, receipts, and report fields in the existing expandable row.
@@ -66,25 +66,25 @@ function subagentSummary(block: ToolCallViewProps["block"]): string {
 export const DetailsRow = defineComponent(
   (props: DetailsRowProps) => {
     return () => {
-      const { toolName, block, cwd, home, openFile, inspect, useDisclosure, t } = props;
-      const model = toolRowModel(toolName, block, cwd, home);
-      const locale = document.documentElement.lang;
+      const { toolName, block, cwd, home, openFile, inspect, useDisclosure, t } = props
+      const model = toolRowModel(toolName, block, cwd, home)
+      const locale = document.documentElement.lang
       const taskSummary =
-        toolName === "subagent" || toolName === "subagent_fork"
+        toolName === 'subagent' || toolName === 'subagent_fork'
           ? subagentSummary(block)
-          : undefined;
+          : undefined
       const details = (() => {
-        const result = detailsCardModel(block, t, locale);
+        const result = detailsCardModel(block, t, locale)
         return result !== null && taskSummary !== undefined
           ? { ...result, summary: taskSummary, expandedSummary: taskSummary }
-          : result;
-      })();
-      const operation = toolName === "lsp" ? parsedToolCall(block)?.args.operation : undefined;
+          : result
+      })()
+      const operation = toolName === 'lsp' ? parsedToolCall(block)?.args.operation : undefined
       const titleKey =
-        typeof operation === "string" && Object.hasOwn(LSP_TITLE_KEYS, operation)
+        typeof operation === 'string' && Object.hasOwn(LSP_TITLE_KEYS, operation)
           ? LSP_TITLE_KEYS[operation as keyof typeof LSP_TITLE_KEYS]
-          : model.titleKey;
-      const isWait = toolName === "wait_agent";
+          : model.titleKey
+      const isWait = toolName === 'wait_agent'
       return h(
         ToolRow,
         {
@@ -95,7 +95,7 @@ export const DetailsRow = defineComponent(
           icon: detailIcon(toolName),
           title: isWait ? (details?.summary ?? t(titleKey)) : t(titleKey),
           summary: isWait
-            ? ""
+            ? ''
             : (taskSummary ??
               details?.summary ??
               details?.items[0]?.title ??
@@ -110,204 +110,204 @@ export const DetailsRow = defineComponent(
           onOpenFile: openFile,
         },
         undefined,
-      );
-    };
+      )
+    }
   },
   {
-    name: "DetailsRow",
+    name: 'DetailsRow',
     inheritAttrs: false,
     props: [
-      "useDisclosure",
-      "callId",
-      "toolName",
-      "cwd",
-      "home",
-      "openFile",
-      "loadImage",
-      "inspect",
-      "phase",
-      "block",
-      "useSession",
-      "sessionId",
-      "useProjection",
-      "useAccess",
-      "useConversation",
-      "useInput",
-      "inputActions",
-      "useChat",
-      "useRemoteAccess",
-      "useSessions",
-      "useSessionRetainInfo",
-      "useSessionAccess",
-      "useContextMenu",
-      "useWorkspaces",
-      "t",
+      'useDisclosure',
+      'callId',
+      'toolName',
+      'cwd',
+      'home',
+      'openFile',
+      'loadImage',
+      'inspect',
+      'phase',
+      'block',
+      'useSession',
+      'sessionId',
+      'useProjection',
+      'useAccess',
+      'useConversation',
+      'useInput',
+      'inputActions',
+      'useChat',
+      'useRemoteAccess',
+      'useSessions',
+      'useSessionRetainInfo',
+      'useSessionAccess',
+      'useContextMenu',
+      'useWorkspaces',
+      't',
     ],
   },
-);
+)
 /** Register recorded-result details through the standard atomic Tool slot. */
 export const detailsToolview = {
-  name: "details-toolview",
-  inject: ["slots"],
+  name: 'details-toolview',
+  inject: ['slots'],
   apply(ctx: Context): void {
-    ctx.slots.inject("tool.call.toolview", function* () {
+    ctx.slots.inject('tool.call.toolview', function* () {
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "create_goal", locale: NS },
+        { name: 'tool.call.toolview', key: 'create_goal', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "get_goal", locale: NS },
+        { name: 'tool.call.toolview', key: 'get_goal', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "update_goal", locale: NS },
+        { name: 'tool.call.toolview', key: 'update_goal', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "schedule_create", locale: NS },
+        { name: 'tool.call.toolview', key: 'schedule_create', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "schedule_list", locale: NS },
+        { name: 'tool.call.toolview', key: 'schedule_list', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "schedule_view", locale: NS },
+        { name: 'tool.call.toolview', key: 'schedule_view', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "schedule_edit", locale: NS },
+        { name: 'tool.call.toolview', key: 'schedule_edit', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "schedule_delete", locale: NS },
+        { name: 'tool.call.toolview', key: 'schedule_delete', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "schedule_update", locale: NS },
+        { name: 'tool.call.toolview', key: 'schedule_update', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "cordis_inspect_list", locale: NS },
+        { name: 'tool.call.toolview', key: 'cordis_inspect_list', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "cordis_inspect_query", locale: NS },
+        { name: 'tool.call.toolview', key: 'cordis_inspect_query', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "cordis_inspect_self", locale: NS },
+        { name: 'tool.call.toolview', key: 'cordis_inspect_self', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "workflow", locale: NS },
+        { name: 'tool.call.toolview', key: 'workflow', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "ralph", locale: NS },
+        { name: 'tool.call.toolview', key: 'ralph', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "session_event_read", locale: NS },
+        { name: 'tool.call.toolview', key: 'session_event_read', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "session_event_search", locale: NS },
+        { name: 'tool.call.toolview', key: 'session_event_search', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "session_event_trace", locale: NS },
+        { name: 'tool.call.toolview', key: 'session_event_trace', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "session_search", locale: NS },
+        { name: 'tool.call.toolview', key: 'session_search', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "session_trace", locale: NS },
+        { name: 'tool.call.toolview', key: 'session_trace', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "list_subagent_models", locale: NS },
+        { name: 'tool.call.toolview', key: 'list_subagent_models', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "subagent", locale: NS },
+        { name: 'tool.call.toolview', key: 'subagent', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "subagent_fork", locale: NS },
+        { name: 'tool.call.toolview', key: 'subagent_fork', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "list_agents", locale: NS },
+        { name: 'tool.call.toolview', key: 'list_agents', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "send_message", locale: NS },
+        { name: 'tool.call.toolview', key: 'send_message', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "interrupt_agent", locale: NS },
+        { name: 'tool.call.toolview', key: 'interrupt_agent', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "job_list", locale: NS },
+        { name: 'tool.call.toolview', key: 'job_list', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "job_output", locale: NS },
+        { name: 'tool.call.toolview', key: 'job_output', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "job_kill", locale: NS },
+        { name: 'tool.call.toolview', key: 'job_kill', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "terminal_open", locale: NS },
+        { name: 'tool.call.toolview', key: 'terminal_open', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "terminal_read", locale: NS },
+        { name: 'tool.call.toolview', key: 'terminal_read', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "terminal_list", locale: NS },
+        { name: 'tool.call.toolview', key: 'terminal_list', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "terminal_signal", locale: NS },
+        { name: 'tool.call.toolview', key: 'terminal_signal', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "terminal_close", locale: NS },
+        { name: 'tool.call.toolview', key: 'terminal_close', locale: NS },
         DetailsRow,
-      );
-      yield ctx.slots.register({ name: "tool.call.toolview", key: "lsp", locale: NS }, DetailsRow);
+      )
+      yield ctx.slots.register({ name: 'tool.call.toolview', key: 'lsp', locale: NS }, DetailsRow)
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "spawn_teammate", locale: NS },
+        { name: 'tool.call.toolview', key: 'spawn_teammate', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "team_task_create", locale: NS },
+        { name: 'tool.call.toolview', key: 'team_task_create', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "team_task_get", locale: NS },
+        { name: 'tool.call.toolview', key: 'team_task_get', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "team_task_update", locale: NS },
+        { name: 'tool.call.toolview', key: 'team_task_update', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "team_task_list", locale: NS },
+        { name: 'tool.call.toolview', key: 'team_task_list', locale: NS },
         DetailsRow,
-      );
+      )
       yield ctx.slots.register(
-        { name: "tool.call.toolview", key: "wait_agent", locale: NS },
+        { name: 'tool.call.toolview', key: 'wait_agent', locale: NS },
         DetailsRow,
-      );
-    });
+      )
+    })
   },
-};
+}

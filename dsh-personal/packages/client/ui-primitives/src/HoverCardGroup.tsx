@@ -25,38 +25,39 @@ export const HoverCardGroup = defineComponent({
   setup(props, { slots }) {
     const root = shallowRef<HTMLElement | null>(null)
     const group: GroupState = (() => {
-    let pointer: 'outside' | 'list' | 'card' = 'outside'
-    let warm = false
-    let active: { owner: symbol; dismiss: () => void; element: HTMLElement } | null = null
-    return {
-      isWarm: () => warm,
-      enter: (overCard) => {
-        pointer = overCard ? 'card' : 'list'
-        if (overCard) warm = true
-      },
-      leave: () => {
-        pointer = 'outside'
-        // A displayed card owns the grace across the gap; its release ends an outside visit.
-        if (active === null) warm = false
-      },
-      containsCard: target => target instanceof Node && active !== null && active.element.contains(target),
-      shown: (owner, dismiss, element) => {
+      let pointer: 'outside' | 'list' | 'card' = 'outside'
+      let warm = false
+      let active: { owner: symbol; dismiss: () => void; element: HTMLElement } | null = null
+      return {
+        isWarm: () => warm,
+        enter: (overCard) => {
+          pointer = overCard ? 'card' : 'list'
+          if (overCard) warm = true
+        },
+        leave: () => {
+          pointer = 'outside'
+          // A displayed card owns the grace across the gap; its release ends an outside visit.
+          if (active === null) warm = false
+        },
+        containsCard: target => target instanceof Node && active !== null && active.element.contains(target),
+        shown: (owner, dismiss, element) => {
         // Keyboard focus can replace the portal under the pointer without a pointer-out event.
-        if (pointer === 'card') { pointer = 'outside'; warm = false }
-        if (pointer === 'list') warm = true
-        const previous = active
-        active = { owner, dismiss, element }
-        if (previous !== null && previous.owner !== owner) previous.dismiss()
-      },
-      release: (owner) => {
-        if (active?.owner !== owner) return
-        active = null
-        if (pointer !== 'list') { pointer = 'outside'; warm = false }
-      },
-    }
-  })()
+          if (pointer === 'card') { pointer = 'outside'; warm = false }
+          if (pointer === 'list') warm = true
+          const previous = active
+          active = { owner, dismiss, element }
+          if (previous !== null && previous.owner !== owner) previous.dismiss()
+        },
+        release: (owner) => {
+          if (active?.owner !== owner) return
+          active = null
+          if (pointer !== 'list') { pointer = 'outside'; warm = false }
+        },
+      }
+    })()
     provide(HoverCardGroupContext, group)
-    const inside = (target: EventTarget | null) => target instanceof Node && (root.value?.contains(target) === true || group.containsCard(target))
+    const inside = (target: EventTarget | null) => target instanceof Node && (root.value?.contains(
+      target) === true || group.containsCard(target))
     const over = (event: PointerEvent) => { if (inside(event.target)) group.enter(group.containsCard(event.target)) }
     const out = (event: PointerEvent) => { if (inside(event.target) && !inside(event.relatedTarget)) group.leave() }
     onMounted(() => { document.addEventListener('pointerover', over, true); document.addEventListener('pointerout', out, true) })

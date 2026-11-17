@@ -1,34 +1,34 @@
-import { defineComponent, h, Fragment, computed, ref, shallowRef, watchEffect, useId } from "vue";
+import { defineComponent, h, Fragment, computed, ref, shallowRef, watchEffect, useId } from 'vue'
 /** Turn changes use a compact single-file card or a header with a folded file list. */
-import { resolveWorkspacePath } from "@deepseek-ai/dsh-util-workspace-path";
+import { resolveWorkspacePath } from '@deepseek-ai/dsh-util-workspace-path'
 import {
   FileTypeIcon,
   HoverCard,
   IconChevronDownOutlineRegular,
   IconChevronUpOutlineRegular,
-} from "@deepseek-ai/dsh-client-ui-primitives";
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   InjectFace,
   PropsLocale,
   SessionStandardProps,
-} from "@deepseek-ai/dsh-client-ui-slots";
-import { changesDiffUrl, type ChangesSummary } from "../changes.ts";
-import type { DeliverablesInjected } from "./Deliverables.tsx";
-import { FileDiff } from "./FileDiff.tsx";
-import diffCss from "./FileDiff.module.css";
-import { basename } from "./turn-deliverables.ts";
-import type { NS } from "./locales.ts";
-import css from "./ChangedFiles.module.css";
-type PreviewProps = Pick<InjectFace<DeliverablesInjected>, "useChangesDiff" | "loadChangesDiff"> &
-  Pick<SessionStandardProps, "sessionId">;
+} from '@deepseek-ai/dsh-client-ui-slots'
+import { changesDiffUrl, type ChangesSummary } from '../changes.ts'
+import type { DeliverablesInjected } from './Deliverables.tsx'
+import { FileDiff } from './FileDiff.tsx'
+import diffCss from './FileDiff.module.css'
+import { basename } from './turn-deliverables.ts'
+import type { NS } from './locales.ts'
+import css from './ChangedFiles.module.css'
+type PreviewProps = Pick<InjectFace<DeliverablesInjected>, 'useChangesDiff' | 'loadChangesDiff'> &
+  Pick<SessionStandardProps, 'sessionId'>
 /** Rows shown before the fold; the design's summary height for a closing message. */
-const COLLAPSED_ROWS = 4;
-const GROUPED = new Intl.NumberFormat("en-US");
+const COLLAPSED_ROWS = 4
+const GROUPED = new Intl.NumberFormat('en-US')
 const Counts = defineComponent(
   (
     props: {
-      added: number;
-      deleted: number;
+      added: number
+      deleted: number
     } & PropsLocale<typeof NS>,
   ) => {
     return (
@@ -36,126 +36,126 @@ const Counts = defineComponent(
     ) => {
       return h(Fragment, null, [
         h(
-          "span",
+          'span',
           {
             class: css.added,
           },
-          [props.t("changes.added", { count: GROUPED.format(props.added) })],
+          [props.t('changes.added', { count: GROUPED.format(props.added) })],
         ),
         h(
-          "span",
+          'span',
           {
             class: css.deleted,
           },
-          [props.t("changes.deleted", { count: GROUPED.format(props.deleted) })],
+          [props.t('changes.deleted', { count: GROUPED.format(props.deleted) })],
         ),
-      ]);
-    };
+      ])
+    }
   },
-  { name: "Counts", props: ["added", "deleted", "t"] as const },
-);
+  { name: 'Counts', props: ['added', 'deleted', 't'] as const },
+)
 export const ChangedFiles = defineComponent(
   (
     props: {
-      changes: Pick<ChangesSummary, "files" | "total" | "added" | "deleted"> & {
-        seq: number;
-      };
-      cwd: string | undefined;
-      openReview: (index: number) => void;
+      changes: Pick<ChangesSummary, 'files' | 'total' | 'added' | 'deleted'> & {
+        seq: number
+      }
+      cwd: string | undefined
+      openReview: (index: number) => void
     } & PropsLocale<typeof NS> &
       PreviewProps,
   ) => {
-    const cardRef = shallowRef<HTMLDivElement | null>(null);
-    const pathDescriptionId = useId();
-    const expanded = ref(false);
+    const cardRef = shallowRef<HTMLDivElement | null>(null)
+    const pathDescriptionId = useId()
+    const expanded = ref(false)
     const singleFile = computed(() =>
       props.changes.total === 1 ? props.changes.files[0] : undefined,
-    );
-    const foldable = computed(() => props.changes.files.length > COLLAPSED_ROWS);
+    )
+    const foldable = computed(() => props.changes.files.length > COLLAPSED_ROWS)
     const rows = computed(() =>
       foldable.value && !expanded.value
         ? props.changes.files.slice(0, COLLAPSED_ROWS)
         : props.changes.files,
-    );
+    )
     const header = computed(() =>
       h(
-        "button",
+        'button',
         {
-          type: "button",
+          type: 'button',
           class: css.header,
-          "aria-label":
+          'aria-label':
             singleFile.value === undefined
-              ? props.t("changes.openReview")
-              : props.t("changes.viewDiff", { name: singleFile.value.display }),
-          "aria-describedby": singleFile.value === undefined ? undefined : pathDescriptionId,
+              ? props.t('changes.openReview')
+              : props.t('changes.viewDiff', { name: singleFile.value.display }),
+          'aria-describedby': singleFile.value === undefined ? undefined : pathDescriptionId,
           onClick: () => {
-            props.openReview(0);
+            props.openReview(0)
           },
         },
         [
           h(
-            "span",
+            'span',
             {
               class: css.tile,
             },
             [
               singleFile.value === undefined
                 ? h(FileTypeIcon, {
-                    kind: "code",
-                    size: 20,
-                  })
+                  kind: 'code',
+                  size: 20,
+                })
                 : h(FileTypeIcon, {
-                    path: singleFile.value.path,
-                    size: 20,
-                  }),
+                  path: singleFile.value.path,
+                  size: 20,
+                }),
             ],
           ),
           h(
-            "span",
+            'span',
             {
               class: css.titles,
             },
             [
               h(
-                "span",
+                'span',
                 {
                   class: css.title,
                 },
                 [
                   singleFile.value === undefined
-                    ? props.t("changes.title", { count: String(props.changes.total) })
-                    : props.t("changes.singleTitle", { name: basename(singleFile.value.path) }),
+                    ? props.t('changes.title', { count: String(props.changes.total) })
+                    : props.t('changes.singleTitle', { name: basename(singleFile.value.path) }),
                 ],
               ),
               h(
-                "span",
+                'span',
                 {
                   class: css.stat,
                 },
                 [
                   h(
-                    "span",
+                    'span',
                     {
                       class: css.statCounts,
                     },
                     [
                       singleFile.value?.binary === true
-                        ? props.t("changes.binary")
+                        ? props.t('changes.binary')
                         : singleFile.value?.oversized === true
-                          ? props.t("changes.oversized")
+                          ? props.t('changes.oversized')
                           : h(Counts, {
-                              t: props.t,
-                              added: props.changes.added,
-                              deleted: props.changes.deleted,
-                            }),
+                            t: props.t,
+                            added: props.changes.added,
+                            deleted: props.changes.deleted,
+                          }),
                     ],
                   ),
                   h(
-                    "span",
+                    'span',
                     {
                       class: css.previewHint,
                     },
-                    [props.t("presented.preview")],
+                    [props.t('presented.preview')],
                   ),
                 ],
               ),
@@ -163,61 +163,61 @@ export const ChangedFiles = defineComponent(
           ),
         ],
       ),
-    );
+    )
     return () => {
-      const currentSingle = singleFile.value;
+      const currentSingle = singleFile.value
       return h(
-        "div",
+        'div',
         {
           ref: cardRef,
           class: css.card,
-          "data-changed-files": true,
-          "data-single": currentSingle !== undefined || undefined,
+          'data-changed-files': true,
+          'data-single': currentSingle !== undefined || undefined,
         },
         [
           currentSingle === undefined
             ? header.value
             : h(Fragment, null, [
-                h(
-                  HoverCard,
-                  {
-                    variant: "preview",
-                    widthAnchorRef: cardRef,
-                    openDelayMs: 500,
-                  },
-                  {
-                    anchor: () => header.value,
-                    default: () =>
-                      h(ChangedFilePreview, {
-                        sessionId: props.sessionId,
-                        seq: props.changes.seq,
-                        index: 0,
-                        display: resolveWorkspacePath(props.cwd, currentSingle.path),
-                        useChangesDiff: props.useChangesDiff,
-                        loadChangesDiff: props.loadChangesDiff,
-                        t: props.t,
-                      }),
-                  },
-                ),
-                h(
-                  "span",
-                  {
-                    id: pathDescriptionId,
-                    hidden: true,
-                  },
-                  [resolveWorkspacePath(props.cwd, currentSingle.path)],
-                ),
-              ]),
+              h(
+                HoverCard,
+                {
+                  variant: 'preview',
+                  widthAnchorRef: cardRef,
+                  openDelayMs: 500,
+                },
+                {
+                  anchor: () => header.value,
+                  default: () =>
+                    h(ChangedFilePreview, {
+                      sessionId: props.sessionId,
+                      seq: props.changes.seq,
+                      index: 0,
+                      display: resolveWorkspacePath(props.cwd, currentSingle.path),
+                      useChangesDiff: props.useChangesDiff,
+                      loadChangesDiff: props.loadChangesDiff,
+                      t: props.t,
+                    }),
+                },
+              ),
+              h(
+                'span',
+                {
+                  id: pathDescriptionId,
+                  hidden: true,
+                },
+                [resolveWorkspacePath(props.cwd, currentSingle.path)],
+              ),
+            ]),
           currentSingle === undefined &&
             h(
-              "ul",
+              'ul',
               {
                 class: css.list,
               },
               [
                 rows.value.map((file, index) =>
                   h(
-                    "li",
+                    'li',
                     {
                       key: file.display,
                     },
@@ -225,7 +225,7 @@ export const ChangedFiles = defineComponent(
                       h(
                         HoverCard,
                         {
-                          variant: "preview",
+                          variant: 'preview',
                           widthAnchorRef: cardRef,
                           openDelayMs: 500,
                         },
@@ -242,39 +242,39 @@ export const ChangedFiles = defineComponent(
                             }),
                           anchor: () =>
                             h(
-                              "button",
+                              'button',
                               {
-                                type: "button",
+                                type: 'button',
                                 class: css.row,
-                                "aria-label": props.t("changes.viewDiff", { name: file.display }),
-                                "aria-describedby": `${pathDescriptionId}-${index}`,
+                                'aria-label': props.t('changes.viewDiff', { name: file.display }),
+                                'aria-describedby': `${pathDescriptionId}-${index}`,
                                 onClick: () => {
-                                  props.openReview(index);
+                                  props.openReview(index)
                                 },
                               },
                               [
                                 h(
-                                  "span",
+                                  'span',
                                   {
                                     class: css.path,
                                   },
                                   [file.display],
                                 ),
                                 h(
-                                  "span",
+                                  'span',
                                   {
                                     class: css.counts,
                                   },
                                   [
                                     file.binary === true
-                                      ? props.t("changes.binary")
+                                      ? props.t('changes.binary')
                                       : file.oversized === true
-                                        ? props.t("changes.oversized")
+                                        ? props.t('changes.oversized')
                                         : h(Counts, {
-                                            t: props.t,
-                                            added: file.added,
-                                            deleted: file.deleted,
-                                          }),
+                                          t: props.t,
+                                          added: file.added,
+                                          deleted: file.deleted,
+                                        }),
                                   ],
                                 ),
                               ],
@@ -282,7 +282,7 @@ export const ChangedFiles = defineComponent(
                         },
                       ),
                       h(
-                        "span",
+                        'span',
                         {
                           id: `${pathDescriptionId}-${index}`,
                           hidden: true,
@@ -296,22 +296,22 @@ export const ChangedFiles = defineComponent(
             ),
           foldable.value &&
             h(
-              "button",
+              'button',
               {
-                type: "button",
+                type: 'button',
                 class: css.toggle,
-                "aria-expanded": expanded.value,
-                "aria-label": props.t(
-                  expanded.value ? "changes.collapseAria" : "changes.expandAria",
+                'aria-expanded': expanded.value,
+                'aria-label': props.t(
+                  expanded.value ? 'changes.collapseAria' : 'changes.expandAria',
                   { count: String(props.changes.files.length) },
                 ),
                 onClick: () => {
-                  expanded.value = ((value) => !value)(expanded.value);
+                  expanded.value = (value => !value)(expanded.value)
                 },
               },
               [
-                h("span", {}, [
-                  props.t(expanded.value ? "changes.collapse" : "changes.all", {
+                h('span', {}, [
+                  props.t(expanded.value ? 'changes.collapse' : 'changes.all', {
                     count: String(props.changes.files.length),
                   }),
                 ]),
@@ -321,56 +321,56 @@ export const ChangedFiles = defineComponent(
               ],
             ),
         ],
-      );
-    };
+      )
+    }
   },
   {
-    name: "ChangedFiles",
+    name: 'ChangedFiles',
     props: [
-      "changes",
-      "cwd",
-      "openReview",
-      "t",
-      "loadChangesDiff",
-      "useChangesDiff",
-      "sessionId",
+      'changes',
+      'cwd',
+      'openReview',
+      't',
+      'loadChangesDiff',
+      'useChangesDiff',
+      'sessionId',
     ] as const,
   },
-);
+)
 const ChangedFilePreview = defineComponent(
   (
     props: PreviewProps & {
-      seq: number;
-      index: number;
-      display: string;
+      seq: number
+      index: number
+      display: string
     } & PropsLocale<typeof NS>,
   ) => {
     const state = props.useChangesDiff(
-      (value) => value[changesDiffUrl(props.sessionId, props.seq, props.index)],
-    );
+      value => value[changesDiffUrl(props.sessionId, props.seq, props.index)],
+    )
     watchEffect(() => {
       if (state.value === undefined)
-        void props.loadChangesDiff(props.sessionId, props.seq, props.index);
-    });
+        void props.loadChangesDiff(props.sessionId, props.seq, props.index)
+    })
     return () => {
       return h(
-        "div",
+        'div',
         {
           class: `${diffCss.root} ${css.preview}`,
-          "data-changes-hover-preview": true,
+          'data-changes-hover-preview': true,
         },
         [
           h(
-            "div",
+            'div',
             {
               class: diffCss.header,
             },
             [
               h(
-                "span",
+                'span',
                 {
                   class: css.previewPath,
-                  "data-changes-preview-path": true,
+                  'data-changes-preview-path': true,
                 },
                 [props.display],
               ),
@@ -382,23 +382,23 @@ const ChangedFilePreview = defineComponent(
             wrap: false,
             t: props.t,
             retry: () => {
-              void props.loadChangesDiff(props.sessionId, props.seq, props.index);
+              void props.loadChangesDiff(props.sessionId, props.seq, props.index)
             },
           }),
         ],
-      );
-    };
+      )
+    }
   },
   {
-    name: "ChangedFilePreview",
+    name: 'ChangedFilePreview',
     props: [
-      "loadChangesDiff",
-      "useChangesDiff",
-      "sessionId",
-      "seq",
-      "index",
-      "display",
-      "t",
+      'loadChangesDiff',
+      'useChangesDiff',
+      'sessionId',
+      'seq',
+      'index',
+      'display',
+      't',
     ] as const,
   },
-);
+)

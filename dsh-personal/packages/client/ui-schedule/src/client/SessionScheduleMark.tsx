@@ -1,4 +1,4 @@
-import { h, defineComponent } from "vue";
+import { h, defineComponent } from 'vue'
 /**
  * Sidebar Session-row clock mark: one Session's active scheduled-task
  * indicator, seated in the row's leading 16px cell before the title.
@@ -9,26 +9,26 @@ import { h, defineComponent } from "vue";
  * projects the one shared Host task catalog onto this Session; it activates,
  * retains, and unarchives nothing, and it never reads a Session log.
  */
-import { IconClockOutlineRegular } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
-import type {} from "@deepseek-ai/dsh-client-ui-workspace/client";
+import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import {
   useSessionScheduleFacts,
   type SessionScheduleCatalogObservable,
-} from "./session-schedule-state.ts";
-import { NS } from "./locales.ts";
-import css from "./SessionScheduleMark.module.css";
+} from './session-schedule-state.ts'
+import { NS } from './locales.ts'
+import css from './SessionScheduleMark.module.css'
 /** Injected share of the Session-row clock mark: the shared Host task catalog. */
 export interface SessionScheduleMarkInjected {
   /** One catalog shared by every row; the renderer binds it to the `useCatalog` selector hook. */
   readonly hooks: {
-    readonly catalog: SessionScheduleCatalogObservable;
-  };
+    readonly catalog: SessionScheduleCatalogObservable
+  }
 }
 /** Full props of the Session-row clock mark. */
-export type SessionScheduleMarkProps = PropsRuntime<"sidebar.session.row.leading"> &
+export type SessionScheduleMarkProps = PropsRuntime<'sidebar.session.row.leading'> &
   PropsLocale<typeof NS> &
-  InjectFace<SessionScheduleMarkInjected>;
+  InjectFace<SessionScheduleMarkInjected>
 /**
  * Render the clock mark while this Session's active tasks are non-empty.
  * @param props.sessionId - Session this row shows.
@@ -38,39 +38,39 @@ export type SessionScheduleMarkProps = PropsRuntime<"sidebar.session.row.leading
  */
 export const SessionScheduleMark = defineComponent(
   (props: SessionScheduleMarkProps) => {
-    const facts = useSessionScheduleFacts(props.useCatalog, () => props.sessionId);
+    const facts = useSessionScheduleFacts(props.useCatalog, () => props.sessionId)
     return () => {
-      if (!facts.value.hasActive) return null;
+      if (!facts.value.hasActive) return null
       return h(
-        "span",
+        'span',
         {
           class: css.mark,
-          "data-session-schedule-mark": "",
+          'data-session-schedule-mark': '',
           onClick: (event) => {
-            event.stopPropagation();
+            event.stopPropagation()
           },
         },
         [
           h(IconClockOutlineRegular, { size: 14 }),
-          h("span", { class: css.visuallyHidden }, [
-            props.t("mark.aria", { count: facts.value.records.length }),
+          h('span', { class: css.visuallyHidden }, [
+            props.t('mark.aria', { count: facts.value.records.length }),
           ]),
         ],
-      );
-    };
+      )
+    }
   },
   {
     props: [
-      "sessionId",
-      "useRemoteAccess",
-      "useSessions",
-      "useSessionRetainInfo",
-      "useSessionAccess",
-      "usePanelInfo",
-      "useContextMenu",
-      "useWorkspaces",
-      "useCatalog",
-      "t",
+      'sessionId',
+      'useRemoteAccess',
+      'useSessions',
+      'useSessionRetainInfo',
+      'useSessionAccess',
+      'usePanelInfo',
+      'useContextMenu',
+      'useWorkspaces',
+      'useCatalog',
+      't',
     ],
   },
-);
+)

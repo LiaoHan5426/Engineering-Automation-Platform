@@ -215,7 +215,11 @@ function runHeader(props: { count: number; name: string; onToggle: () => void; o
 }
 
 const MemberRow = defineComponent((props: {
-  member: WorkflowRunMemberData; mode: ChildMode | undefined; openSession: WorkflowRunInjected['openSession']; parentSessionId: SessionId; t: WorkflowRunPanelProps['t']
+  member: WorkflowRunMemberData
+  mode: ChildMode | undefined
+  openSession: WorkflowRunInjected['openSession']
+  parentSessionId: SessionId
+  t: WorkflowRunPanelProps['t']
 }) => {
   const focused = shallowRef(false)
   return () => {
@@ -229,7 +233,8 @@ const MemberRow = defineComponent((props: {
     return h('button', { type: 'button', class: navigable ? css.memberButton : css.memberRow, 'data-member-status': member.status,
       ...(navigable ? {} : { 'aria-disabled': true, tabindex: -1 }), 'aria-label': navigable ? t('member.open', { name }) : name,
       onFocus: () => { focused.value = true }, onBlur: () => { focused.value = false },
-      onClick: () => { if (props.mode !== undefined) props.openSession({ parentSessionId: props.parentSessionId, childSessionId: props.member.childId, mode: props.mode }) },
+      onClick: () => { if (props.mode !== undefined) props.openSession({ parentSessionId: props.parentSessionId,
+        childSessionId: props.member.childId, mode: props.mode }) },
     }, content)
   }
 }, { name: 'WorkflowMemberRow', inheritAttrs: false, props: ['member', 'mode', 'openSession', 'parentSessionId', 't'] })
@@ -243,7 +248,8 @@ export const WorkflowRunPanel = defineComponent((props: WorkflowRunPanelProps) =
   const runContentRef = shallowRef<HTMLDivElement | null>(null)
   const phaseContentRefs = new Map<string, HTMLDivElement>()
   const statuses = props.useSessionStatus(value => value)
-  const navigable = props.useSessions(sessions => navigableMembers(sessions, props.node.data.phases, props.sessionId, statuses.value), shallowEqual)
+  const navigable = props.useSessions(sessions => navigableMembers(sessions, props.node.data.phases,
+    props.sessionId, statuses.value), shallowEqual)
   // Apply changed facts after the previous DOM focus boundary has committed.
   watch([phaseFacts, runFacts, () => disclosures.value.run.open], () => {
     const current = disclosures.value
@@ -252,7 +258,8 @@ export const WorkflowRunPanel = defineComponent((props: WorkflowRunPanelProps) =
     let phaseStartedCycle = false
     for (const [key, facts] of phaseFacts.value) {
       const previous = current.phases.get(key)
-      const next = previous === undefined ? initialDisclosureState(facts) : advanceDisclosureState(previous, facts, focusIsWithin(phaseContentRefs.get(key)))
+      const next = previous === undefined ? initialDisclosureState(facts) : advanceDisclosureState(previous,
+        facts, focusIsWithin(phaseContentRefs.get(key)))
       phases.set(key, next)
       if (next !== previous) phasesChanged = true
       if (previous?.mode === 'clean' && (facts.mode !== 'clean' || facts.activityCount !== previous.activityCount)) phaseStartedCycle = true
@@ -273,7 +280,8 @@ export const WorkflowRunPanel = defineComponent((props: WorkflowRunPanelProps) =
     phases.set(key, { ...phase, open: !phase.open, pendingCleanCollapse: false })
     disclosures.value = { ...current, phases }
   }
-  const remainsWithin = (event: FocusEvent) => event.currentTarget instanceof HTMLElement && event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)
+  const remainsWithin = (event: FocusEvent) => event.currentTarget instanceof HTMLElement &&
+    event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)
   const settleRunBlur = (event: FocusEvent) => {
     if (remainsWithin(event)) return
     const current = disclosures.value
@@ -296,23 +304,26 @@ export const WorkflowRunPanel = defineComponent((props: WorkflowRunPanelProps) =
     const state = disclosures.value
     return h('section', { class: css.root, 'data-workflow-run': '', 'data-run-status': node.data.status,
       onMousedownCapture: state.run.pendingCleanCollapse ? preventPendingHeaderFocus : undefined }, [
-      runHeader({ count: runFacts.value.activityCount, name: node.data.name, open: state.run.open, onToggle: toggleRun, status: node.data.status, t },
-        h('div', { ref: runContentRef, class: css.phaseList, onFocusout: settleRunBlur }, node.data.phases.length === 0
-          ? [h('span', { class: css.empty }, t('run.empty'))]
-          : node.data.phases.map(phase => {
-            const phaseState = state.phases.get(phase.key) ?? initialDisclosureState(phaseDisclosureFacts(phase))
-            return h('div', { key: phase.key, class: css.phase, onMousedownCapture: phaseState.pendingCleanCollapse ? preventPendingHeaderFocus : undefined }, [
-              disclosure({ icon: h(IconChevronRightOutlineRegular), title: readablePhase(phase.phase, t), open: phaseState.open, onToggle: () => { togglePhase(phase.key) },
-                expandOnRowClick: true, previewChevron: false, keepContentWhenOpen: true, rowClassName: css.phaseHeader ?? '',
-                contentClassName: css.headerContent ?? '', contentLayoutClassName: css.headerContentLayout ?? '', leadingClassName: css.phaseLeading ?? '', titleClassName: css.phaseTitle ?? '',
-                collapsedContent: h(Fragment, null, [h('span', { class: css.separator, 'aria-hidden': true }),
-                  h('span', { class: css.phaseCount, 'data-phase-count': '' }, memberCount(phase.members.length, t)),
-                  h('span', { class: css.phaseStatus, 'data-phase-status-text': '' }, phaseStatusSummary(phase.members, t))]),
-              }, h('div', { ref: (element: unknown) => { if (element instanceof HTMLDivElement) phaseContentRefs.set(phase.key, element); else phaseContentRefs.delete(phase.key) },
-                class: css.members, onFocusout: (event: FocusEvent) => { settlePhaseBlur(phase.key, event) } },
-              phase.members.map(member => h(MemberRow, { key: member.seq, member, mode: navigable.value.get(member.childId), openSession, parentSessionId: sessionId, t })))),
-            ])
-          }))),
+      runHeader({ count: runFacts.value.activityCount, name: node.data.name, open: state.run.open,
+        onToggle: toggleRun, status: node.data.status, t },
+      h('div', { ref: runContentRef, class: css.phaseList, onFocusout: settleRunBlur }, node.data.phases.length === 0
+        ? [h('span', { class: css.empty }, t('run.empty'))]
+        : node.data.phases.map((phase) => {
+          const phaseState = state.phases.get(phase.key) ?? initialDisclosureState(phaseDisclosureFacts(phase))
+          return h('div', { key: phase.key, class: css.phase, onMousedownCapture: phaseState.pendingCleanCollapse ? preventPendingHeaderFocus : undefined }, [
+            disclosure({ icon: h(IconChevronRightOutlineRegular), title: readablePhase(phase.phase, t),
+              open: phaseState.open, onToggle: () => { togglePhase(phase.key) },
+              expandOnRowClick: true, previewChevron: false, keepContentWhenOpen: true, rowClassName: css.phaseHeader ?? '',
+              contentClassName: css.headerContent ?? '', contentLayoutClassName: css.headerContentLayout ?? '', leadingClassName: css.phaseLeading ?? '', titleClassName: css.phaseTitle ?? '',
+              collapsedContent: h(Fragment, null, [h('span', { class: css.separator, 'aria-hidden': true }),
+                h('span', { class: css.phaseCount, 'data-phase-count': '' }, memberCount(phase.members.length, t)),
+                h('span', { class: css.phaseStatus, 'data-phase-status-text': '' }, phaseStatusSummary(phase.members, t))]),
+            }, h('div', { ref: (element: unknown) => { if (element instanceof HTMLDivElement) phaseContentRefs.set(phase.key, element); else phaseContentRefs.delete(phase.key) },
+              class: css.members, onFocusout: (event: FocusEvent) => { settlePhaseBlur(phase.key, event) } },
+            phase.members.map(member => h(MemberRow, { key: member.seq, member, mode: navigable.value.get(
+              member.childId), openSession, parentSessionId: sessionId, t })))),
+          ])
+        }))),
     ])
   }
 }, { name: 'WorkflowRunPanel', inheritAttrs: false, props: ['node', 'sessionId', 'useSessions', 'useSessionStatus', 'openSession', 't'] })

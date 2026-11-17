@@ -1,7 +1,7 @@
 /** WOFF2-only KaTeX font sources for the Web and Desktop browser bundle. */
 
-import { transform } from "lightningcss";
-import type { Plugin } from "vite";
+import { transform } from 'lightningcss'
+import type { Plugin } from 'vite'
 
 /**
  * Select WOFF2 before Vite collects KaTeX font assets, preserving every face and layout rule.
@@ -10,42 +10,42 @@ import type { Plugin } from "vite";
  */
 export function katexWoff2Fonts(): Plugin {
   return {
-    name: "dsh-katex-woff2-fonts",
-    enforce: "pre",
+    name: 'dsh-katex-woff2-fonts',
+    enforce: 'pre',
     transform(code, id) {
       if (
-        !/\/node_modules\/katex\/dist\/katex(?:\.min)?\.css(?:\?|$)/u.test(id.replaceAll("\\", "/"))
+        !/\/node_modules\/katex\/dist\/katex(?:\.min)?\.css(?:\?|$)/u.test(id.replaceAll('\\', '/'))
       )
-        return;
+        return
       const result = transform({
         filename: id,
         code: Buffer.from(code),
         sourceMap: true,
         visitor: {
           Rule: {
-            "font-face"(rule) {
+            'font-face'(rule) {
               const descriptors = rule.value.properties.filter(
-                (property) => property.type === "source",
-              );
+                property => property.type === 'source',
+              )
               if (descriptors.length === 0)
-                throw new Error("KaTeX font face requires a WOFF2 source");
+                throw new Error('KaTeX font face requires a WOFF2 source')
               for (const property of descriptors) {
                 const sources = property.value.filter(
-                  (source) => source.type === "url" && source.value.format?.type === "woff2",
-                );
+                  source => source.type === 'url' && source.value.format?.type === 'woff2',
+                )
                 if (sources.length === 0)
-                  throw new Error("KaTeX font face requires a WOFF2 source");
-                property.value = sources;
+                  throw new Error('KaTeX font face requires a WOFF2 source')
+                property.value = sources
               }
-              return rule;
+              return rule
             },
           },
         },
-      });
+      })
       return {
         code: result.code.toString(),
         ...(result.map === undefined ? {} : { map: result.map.toString() }),
-      };
+      }
     },
-  };
+  }
 }

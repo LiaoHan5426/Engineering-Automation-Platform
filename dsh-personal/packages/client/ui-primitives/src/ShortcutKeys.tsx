@@ -12,5 +12,5 @@ export function ShortcutKeys({ keys, variant = 'plain', className }: {
   variant?: 'plain' | 'tooltip'
   className?: string | undefined
 }) {
-  return h("span", { "class": clsx(css.keys, variant === 'tooltip' && css.tooltip, variant === 'tooltip' && keys.includes('+') && css.joined, className) }, [keys.map((key, index) => h("kbd", { "key": index, "class": key === '+' ? css.separator : css.key }, [key]))])
+  return h('span', { 'class': clsx(css.keys, variant === 'tooltip' && css.tooltip, variant === 'tooltip' && keys.includes('+') && css.joined, className) }, [keys.map((key, index) => h('kbd', { 'key': index, 'class': key === '+' ? css.separator : css.key }, [key]))])
 }

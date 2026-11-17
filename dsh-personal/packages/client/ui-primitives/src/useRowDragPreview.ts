@@ -58,7 +58,7 @@ export function useRowDragPreview(
       image.className = clsx(css.preview, toValue(className))
       image.inert = true
       image.setAttribute('aria-hidden', 'true')
-      toValue(inheritedProperties)?.forEach(property => {
+      toValue(inheritedProperties)?.forEach((property) => {
         image.style.setProperty(property, style.getPropertyValue(property))
       })
       Object.assign(image.style, {

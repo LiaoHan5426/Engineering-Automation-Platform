@@ -67,4 +67,4 @@ export const FrontmatterFields = defineComponent((props: FrontmatterFieldsProps)
       ]),
     ))
   }
-}, { name: 'FrontmatterFields', inheritAttrs: false, props: ["source","fallback"] })
+}, { name: 'FrontmatterFields', inheritAttrs: false, props: ['source','fallback'] })

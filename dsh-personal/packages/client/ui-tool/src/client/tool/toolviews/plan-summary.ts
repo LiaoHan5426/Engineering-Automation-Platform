@@ -13,8 +13,8 @@
  * args, so any field may be missing or mistyped.
  */
 export interface PlanItemLike {
-  content?: unknown;
-  status?: unknown;
+  content?: unknown
+  status?: unknown
 }
 
 /**
@@ -25,12 +25,12 @@ export interface PlanItemLike {
  * beside the truncatable text.
  */
 export interface PlanSummary {
-  done: number;
-  total: number;
+  done: number
+  total: number
   /** First `in_progress` content, or null when that first item is unusable. */
-  activeContent: string | null;
+  activeContent: string | null
   /** Active items beyond the first; 0 whenever there is no `activeContent` to sit beside. */
-  activeExtra: number;
+  activeExtra: number
 }
 
 /**
@@ -48,13 +48,13 @@ export interface PlanSummary {
  * @returns the done/total counts and the two summary halves.
  */
 export function planSummary(todos: readonly PlanItemLike[]): PlanSummary {
-  const active = todos.filter((t) => t.status === "in_progress");
-  const first = active[0]?.content;
-  const named = typeof first === "string" && first.trim() !== "";
+  const active = todos.filter(t => t.status === 'in_progress')
+  const first = active[0]?.content
+  const named = typeof first === 'string' && first.trim() !== ''
   return {
-    done: todos.filter((t) => t.status === "completed").length,
+    done: todos.filter(t => t.status === 'completed').length,
     total: todos.length,
     activeContent: named ? first : null,
     activeExtra: named ? active.length - 1 : 0,
-  };
+  }
 }

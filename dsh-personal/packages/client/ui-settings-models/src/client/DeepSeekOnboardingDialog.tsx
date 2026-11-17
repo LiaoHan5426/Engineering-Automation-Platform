@@ -1,4 +1,4 @@
-import { h, shallowRef, defineComponent, watchEffect } from "vue";
+import { h, shallowRef, defineComponent, watchEffect } from 'vue'
 /**
  * Official-DeepSeek first-run step. Readiness comes from the same
  * provider/settings/credential join as the Models page: any provider the user
@@ -6,44 +6,44 @@ import { h, shallowRef, defineComponent, watchEffect } from "vue";
  * official DeepSeek route. The step reuses that page's credential editor in
  * the onboarding plugin's shared modal, so the key is entered once.
  */
-import type { TrackProductEvent } from "@deepseek-ai/dsh-client-product-analytics/client";
-import type { SnapshotStore } from "@deepseek-ai/dsh-client-store";
-import type { InjectFace, PropsRuntime, PropsRenderSlots } from "@deepseek-ai/dsh-client-ui-slots";
-import type { ModelsSettingsState, ModelsSettingsStore } from "./store.ts";
-import { onboardingReadiness } from "./store.ts";
-import type { ModelsOperations } from "./operations.ts";
-import type { SettingsSchemaOperations } from "./schema-operations.ts";
-import { ProviderEditor } from "./ProviderEditor.tsx";
-import type {} from "./slot-contract.ts";
-import type { en } from "./locales.ts";
-import { OnboardingModal } from "./OnboardingModal.tsx";
-import styles from "./DeepSeekOnboardingDialog.module.css";
+import type { TrackProductEvent } from '@deepseek-ai/dsh-client-product-analytics/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { InjectFace, PropsRuntime, PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ModelsSettingsState, ModelsSettingsStore } from './store.ts'
+import { onboardingReadiness } from './store.ts'
+import type { ModelsOperations } from './operations.ts'
+import type { SettingsSchemaOperations } from './schema-operations.ts'
+import { ProviderEditor } from './ProviderEditor.tsx'
+import type {} from './slot-contract.ts'
+import type { en } from './locales.ts'
+import { OnboardingModal } from './OnboardingModal.tsx'
+import styles from './DeepSeekOnboardingDialog.module.css'
 /** Registration-side dependencies of {@link DeepSeekOnboardingDialog}. */
 export interface DeepSeekOnboardingInjected {
   /** Desktop-only event collection. */
-  track?: TrackProductEvent;
+  track?: TrackProductEvent
   /** Whether first-run setup should show automatically. Explicit requests remain available. */
-  automatic: boolean;
+  automatic: boolean
   hooks: {
     /** Shared Models-page join state, bound by the slot renderer. */
-    models: SnapshotStore<ModelsSettingsState>;
-  };
+    models: SnapshotStore<ModelsSettingsState>
+  }
   /** Shared Models-page join controller. */
-  controller: ModelsSettingsStore;
+  controller: ModelsSettingsStore
   /** The Host operations the reused Models credential editor writes through. */
-  operations: ModelsOperations;
+  operations: ModelsOperations
   /** Settings schema and immutable path callbacks. */
-  schema: SettingsSchemaOperations;
+  schema: SettingsSchemaOperations
   /** Feature copy. */
-  t: (key: keyof typeof en) => string;
+  t: (key: keyof typeof en) => string
 }
 /** Slot owner props plus the feature's injected dependencies. */
-export type DeepSeekOnboardingDialogProps = PropsRuntime<"settings.onboarding"> &
-  PropsRenderSlots<"settings.models.sign-in"> &
-  InjectFace<DeepSeekOnboardingInjected>;
+export type DeepSeekOnboardingDialogProps = PropsRuntime<'settings.onboarding'> &
+  PropsRenderSlots<'settings.models.sign-in'> &
+  InjectFace<DeepSeekOnboardingInjected>
 /* v8 ignore next 3 -- closed-union defaults only defend future source widening */
 function assertNever(_value: never): never {
-  throw new Error("unexpected DeepSeek onboarding state");
+  throw new Error('unexpected DeepSeek onboarding state')
 }
 /**
  * Prompt a first-run user for the official DeepSeek credential while no
@@ -53,25 +53,25 @@ function assertNever(_value: never): never {
  */
 export const DeepSeekOnboardingDialog = defineComponent(
   (props: DeepSeekOnboardingDialogProps) => {
-    const apiKeyRef = shallowRef(props.explicit ?? false);
+    const apiKeyRef = shallowRef(props.explicit ?? false)
     const setApiKey = (value: boolean): void => {
-      apiKeyRef.value = value;
-    };
-    const stateRef = props.useModels((snapshot) => snapshot);
+      apiKeyRef.value = value
+    }
+    const stateRef = props.useModels(snapshot => snapshot)
     watchEffect(() => {
-      if ((props.automatic || props.explicit === true) && stateRef.value.status === "idle")
-        void props.controller.load();
-    });
+      if ((props.automatic || props.explicit === true) && stateRef.value.status === 'idle')
+        void props.controller.load()
+    })
     watchEffect(() => {
-      const readiness = onboardingReadiness(stateRef.value);
+      const readiness = onboardingReadiness(stateRef.value)
       if (
         (!props.automatic && props.explicit !== true) ||
-        readiness.kind === "adapter-absent" ||
-        (props.explicit !== true && readiness.kind === "provider-ready") ||
-        readiness.kind === "unavailable"
+        readiness.kind === 'adapter-absent' ||
+        (props.explicit !== true && readiness.kind === 'provider-ready') ||
+        readiness.kind === 'unavailable'
       )
-        props.complete();
-    });
+        props.complete()
+    })
     return () => {
       const {
         complete,
@@ -82,49 +82,49 @@ export const DeepSeekOnboardingDialog = defineComponent(
         renderSlot,
         automatic,
         explicit = false,
-      } = props;
-      const apiKey = apiKeyRef.value;
-      const state = stateRef.value;
-      const readiness = onboardingReadiness(state);
-      if (!automatic && !explicit) return null;
+      } = props
+      const apiKey = apiKeyRef.value
+      const state = stateRef.value
+      const readiness = onboardingReadiness(state)
+      if (!automatic && !explicit) return null
       switch (readiness.kind) {
-        case "loading":
-        case "adapter-absent":
-        case "unavailable":
-          return null;
-        case "provider-ready":
-          if (!explicit) return null;
-          break;
-        case "credential-missing":
-          break;
+        case 'loading':
+        case 'adapter-absent':
+        case 'unavailable':
+          return null
+        case 'provider-ready':
+          if (!explicit) return null
+          break
+        case 'credential-missing':
+          break
         /* v8 ignore next -- every current readiness variant is handled above */
         default:
-          return assertNever(readiness);
+          return assertNever(readiness)
       }
       const row = state.rows.find(
-        (candidate) =>
-          candidate.entry.provider === "deepseek-official" &&
-          candidate.entry.settingsNs === "llm-deepseek" &&
+        candidate =>
+          candidate.entry.provider === 'deepseek-official' &&
+          candidate.entry.settingsNs === 'llm-deepseek' &&
           candidate.entry.settingsPath.length === 0,
-      );
-      const namespace = state.namespaces.get("llm-deepseek");
+      )
+      const namespace = state.namespaces.get('llm-deepseek')
       /* v8 ignore next 2 -- credential-missing is derived only from this exact joined row. */
-      if (row === undefined || namespace === undefined) return null;
+      if (row === undefined || namespace === undefined) return null
       const finishCredential = (changed: boolean): void => {
         if (!changed) {
-          complete();
-          return;
+          complete()
+          return
         }
-        void controller.load();
-      };
+        void controller.load()
+      }
       const editor = h(
         OnboardingModal,
-        { title: t("onboardingTitle") },
+        { title: t('onboardingTitle') },
         {
           default: () => [
-            h("p", { class: styles.description }, t("onboardingDescription")),
+            h('p', { class: styles.description }, t('onboardingDescription')),
             h(
-              "div",
+              'div',
               { class: styles.editor },
               h(ProviderEditor, {
                 provider: row.entry.provider,
@@ -138,46 +138,46 @@ export const DeepSeekOnboardingDialog = defineComponent(
                 hideTitle: true,
                 credentialOnly: true,
                 onSubmitCredential: () => {
-                  props.track?.("api_key_save_click", {});
+                  props.track?.('api_key_save_click', {})
                 },
                 credentialRequired: true,
                 autoFocusCredential: true,
-                cancelLabelKey: "onboardingLater",
-                submitLabelKey: "onboardingSave",
-                submitBusyLabelKey: "onboardingSaving",
+                cancelLabelKey: 'onboardingLater',
+                submitLabelKey: 'onboardingSave',
+                submitBusyLabelKey: 'onboardingSaving',
                 onClose: finishCredential,
               }),
             ),
           ],
         },
-      );
+      )
       return apiKey
         ? editor
         : renderSlot(
-            "settings.models.sign-in",
-            {
-              complete,
-              useApiKey: () => {
-                setApiKey(true);
-              },
+          'settings.models.sign-in',
+          {
+            complete,
+            useApiKey: () => {
+              setApiKey(true)
             },
-            { fallback: editor },
-          );
-    };
+          },
+          { fallback: editor },
+        )
+    }
   },
   {
     inheritAttrs: false,
     props: [
-      "complete",
-      "controller",
-      "useModels",
-      "operations",
-      "schema",
-      "t",
-      "renderSlot",
-      "automatic",
-      "explicit",
-      "track",
+      'complete',
+      'controller',
+      'useModels',
+      'operations',
+      'schema',
+      't',
+      'renderSlot',
+      'automatic',
+      'explicit',
+      'track',
     ],
   },
-);
+)

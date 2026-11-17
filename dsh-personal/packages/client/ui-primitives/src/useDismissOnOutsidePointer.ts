@@ -14,7 +14,7 @@ export function useDismissOnOutsidePointer(
   setOpen: (open: boolean) => void,
   portal?: Readonly<Ref<HTMLElement | null>>,
 ): void {
-  watchEffect(onCleanup => {
+  watchEffect((onCleanup) => {
     if (!open()) return
     const closeOutside = (event: PointerEvent): void => {
       if (event.target instanceof Node

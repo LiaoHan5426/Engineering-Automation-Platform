@@ -62,9 +62,11 @@ export const FontSizeRow = defineComponent((props: FontSizeRowComponentProps) =>
           h('span', { class: css.value }, fontSize.value),
           h('span', { class: css.arrows }, [
             h('button', { type: 'button', class: css.arrow, 'aria-label': t(`fontSize.${role}.increase`),
-              disabled: fontSize.value >= max, onClick: () => { props.setFontSize(fontSize.value + 1) } }, [h(IconChevronUpOutlineRegular, { size: 9 })]),
+              disabled: fontSize.value >= max, onClick: () => { props.setFontSize(fontSize.value + 1) } }, [h(
+              IconChevronUpOutlineRegular, { size: 9 })]),
             h('button', { type: 'button', class: css.arrow, 'aria-label': t(`fontSize.${role}.decrease`),
-              disabled: fontSize.value <= min, onClick: () => { props.setFontSize(fontSize.value - 1) } }, [h(IconChevronDownOutlineRegular, { size: 9 })]),
+              disabled: fontSize.value <= min, onClick: () => { props.setFontSize(fontSize.value - 1) } }, [h(
+              IconChevronDownOutlineRegular, { size: 9 })]),
           ]),
         ]),
         h('span', { class: css.unit }, t('fontSize.unit')),

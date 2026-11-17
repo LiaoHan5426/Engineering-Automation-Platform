@@ -6,7 +6,7 @@
 * link's `currentColor` rather than the brand fill that set records.
 */
 import { h, type VNode } from 'vue'
-import { siAliexpress, siApple, siBaidu, siBilibili, siCsdn, siDuckduckgo, siEbay, siFacebook, siGithub, siGitlab, siGoogle, siInstagram, siJuejin, siMdnwebdocs, siNetflix, siNpm, siPypi, siQq, siQuora, siReddit, siSinaweibo, siSpotify, siStackoverflow, siTaobao, siTelegram, siTiktok, siV2ex, siWechat, siWhatsapp, siWikipedia, siX, siYcombinator, siYoutube, siZhihu, } from 'simple-icons'
+import { siAliexpress, siApple, siBaidu, siBilibili, siCsdn, siDuckduckgo, siEbay, siFacebook, siGithub, siGitlab, siGoogle, siInstagram, siJuejin, siMdnwebdocs, siNetflix, siNpm, siPypi, siQq, siQuora, siReddit, siSinaweibo, siSpotify, siStackoverflow, siTaobao, siTelegram, siTiktok, siV2ex, siWechat, siWhatsapp, siWikipedia, siX, siYcombinator, siYoutube, siZhihu } from 'simple-icons'
 import type { SimpleIcon } from 'simple-icons'
 /**
 * Host suffix to site mark, covering the developer sites the transcript
@@ -103,5 +103,5 @@ export function siteGlyph({ href, size, className }: SiteGlyphProps): VNode | un
   const icon = href === undefined ? undefined : siteIcon(href)
   if (icon === undefined)
     return undefined
-  return (h("svg", { "width": size, "height": size, "class": className, "viewBox": "-2 -2 28 28", "fill": "none", "xmlns": "http://www.w3.org/2000/svg", "aria-hidden": true }, [h("path", { "d": icon.path, "fill": "currentColor" })]))
+  return (h('svg', { 'width': size, 'height': size, 'class': className, 'viewBox': '-2 -2 28 28', 'fill': 'none', 'xmlns': 'http://www.w3.org/2000/svg', 'aria-hidden': true }, [h('path', { 'd': icon.path, 'fill': 'currentColor' })]))
 }

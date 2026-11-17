@@ -1,254 +1,254 @@
 // @vitest-environment jsdom
 /** Shared zoom fitting follows pane size until the reader selects a fixed scale. */
-import { defineComponent, h, ref, type CSSProperties } from 'vue';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { act, cleanup, render } from '../../../test-support/client-runtime/src/vue-test.ts';
-import { fireEvent, screen } from '@testing-library/dom';
-import { fitWidthZoom, ZoomViewport, zoomSurfaceClass } from '../src/client/zoom/ZoomViewport.tsx';
-import { FIT_WIDTH, type ZoomPreference } from '../src/client/zoom/types.ts';
-let width = 500;
-let resize: ResizeObserverCallback | undefined;
-let elementFromPointDescriptor: PropertyDescriptor | undefined;
+import { defineComponent, h, ref } from 'vue'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { act, cleanup, render } from '../../../test-support/client-runtime/src/vue-test.ts'
+import { fireEvent, screen } from '@testing-library/dom'
+import { fitWidthZoom, ZoomViewport, zoomSurfaceClass } from '../src/client/zoom/ZoomViewport.tsx'
+import { FIT_WIDTH, type ZoomPreference } from '../src/client/zoom/types.ts'
+let width = 500
+let resize: ResizeObserverCallback | undefined
+let elementFromPointDescriptor: PropertyDescriptor | undefined
 beforeEach(() => {
-    width = 500;
-    elementFromPointDescriptor = Object.getOwnPropertyDescriptor(document, 'elementFromPoint');
-    Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => null });
-    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => width);
-    vi.stubGlobal('ResizeObserver', class {
-        constructor(private readonly callback: ResizeObserverCallback) { }
-        observe(target: Element): void {
-            if (target.hasAttribute('data-document-zoom-scrollport'))
-                resize = this.callback;
-        }
-        disconnect(): void { }
-    });
-});
+  width = 500
+  elementFromPointDescriptor = Object.getOwnPropertyDescriptor(document, 'elementFromPoint')
+  Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => null })
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => width)
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(private readonly callback: ResizeObserverCallback) { }
+    observe(target: Element): void {
+      if (target.hasAttribute('data-document-zoom-scrollport'))
+        resize = this.callback
+    }
+    disconnect(): void { }
+  })
+})
 afterEach(() => {
-    cleanup();
-    if (elementFromPointDescriptor === undefined)
-        Reflect.deleteProperty(document, 'elementFromPoint');
-    else
-        Object.defineProperty(document, 'elementFromPoint', elementFromPointDescriptor);
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-    vi.useRealTimers();
-});
+  cleanup()
+  if (elementFromPointDescriptor === undefined)
+    Reflect.deleteProperty(document, 'elementFromPoint')
+  else
+    Object.defineProperty(document, 'elementFromPoint', elementFromPointDescriptor)
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+  vi.useRealTimers()
+})
 it('fits without upscaling, follows resize, and leaves fixed zoom unchanged', async () => {
-    const onRenderZoom = vi.fn();
-    const View = defineComponent(() => {
-        const preference = ref<ZoomPreference>(FIT_WIDTH);
-const signal = new AbortController().signal;
-const setPreference = (value: ZoomPreference): void => { preference.value = value };
-        return () => h(ZoomViewport, {
-            "preference": preference.value,
-            "intrinsicWidth": 1000,
-            "horizontalInset": 20,
-            "labels": { controls: 'Zoom controls', menu: 'Choose zoom', out: 'Zoom out', into: 'Zoom in',
-                fitWidth: 'Fit width', value: percent => `${String(percent)}%` },
-            "signal": signal,
-            "scrollportRef": () => { },
-            "onPreference": setPreference,
-            "onRenderZoom": onRenderZoom,
-            children: [
-                h("div", {
-                    "class": zoomSurfaceClass,
-                    "style": { '--document-zoom-width': '1000px' } as CSSProperties
-                })
-            ]
-        });
-    });
-    const view = render(h(View, {}));
-await act(() => {});
-    expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('48%');
-    expect(onRenderZoom).toHaveBeenLastCalledWith(0.48);
-    expect(view.container.querySelector('[data-document-zoom-mode]')?.getAttribute('data-document-zoom-mode')).toBe('fit-width');
-    width = 320;
-    await act(() => { resize?.([], {} as ResizeObserver); });
-    expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('30%');
-    expect(onRenderZoom).toHaveBeenLastCalledWith(0.3);
-    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Choose zoom' })));
-    await act(() => fireEvent.click(screen.getByRole('menuitem', { name: '100%' })));
-    width = 220;
-    await act(() => { resize?.([], {} as ResizeObserver); });
-    expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('100%');
-    expect(onRenderZoom).toHaveBeenLastCalledWith(1);
-    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Choose zoom' })));
-    await act(() => fireEvent.click(screen.getByRole('menuitem', { name: 'Fit width' })));
-    expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('20%');
-    await act(() => fireEvent.wheel(view.container.querySelector('[data-document-zoom-scrollport]') as HTMLDivElement, { ctrlKey: true, deltaY: 40 }));
-    expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('25%');
-});
+  const onRenderZoom = vi.fn()
+  const View = defineComponent(() => {
+    const preference = ref<ZoomPreference>(FIT_WIDTH)
+    const signal = new AbortController().signal
+    const setPreference = (value: ZoomPreference): void => { preference.value = value }
+    return () => h(ZoomViewport, {
+      'preference': preference.value,
+      'intrinsicWidth': 1000,
+      'horizontalInset': 20,
+      'labels': { controls: 'Zoom controls', menu: 'Choose zoom', out: 'Zoom out', into: 'Zoom in',
+        fitWidth: 'Fit width', value: percent => `${String(percent)}%` },
+      'signal': signal,
+      'scrollportRef': () => { },
+      'onPreference': setPreference,
+      'onRenderZoom': onRenderZoom,
+      children: [
+        h('div', {
+          'class': zoomSurfaceClass,
+          'style': { '--document-zoom-width': '1000px' },
+        }),
+      ],
+    })
+  })
+  const view = render(h(View, {}))
+  await act(() => {})
+  expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('48%')
+  expect(onRenderZoom).toHaveBeenLastCalledWith(0.48)
+  expect(view.container.querySelector('[data-document-zoom-mode]')?.getAttribute('data-document-zoom-mode')).toBe('fit-width')
+  width = 320
+  await act(() => { resize?.([], {} as ResizeObserver) })
+  expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('30%')
+  expect(onRenderZoom).toHaveBeenLastCalledWith(0.3)
+  await act(() => fireEvent.click(screen.getByRole('button', { name: 'Choose zoom' })))
+  await act(() => fireEvent.click(screen.getByRole('menuitem', { name: '100%' })))
+  width = 220
+  await act(() => { resize?.([], {} as ResizeObserver) })
+  expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('100%')
+  expect(onRenderZoom).toHaveBeenLastCalledWith(1)
+  await act(() => fireEvent.click(screen.getByRole('button', { name: 'Choose zoom' })))
+  await act(() => fireEvent.click(screen.getByRole('menuitem', { name: 'Fit width' })))
+  expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('20%')
+  await act(() => fireEvent.wheel(view.container.querySelector('[data-document-zoom-scrollport]') as HTMLDivElement, { ctrlKey: true, deltaY: 40 }))
+  expect(screen.getByRole('button', { name: 'Choose zoom' }).textContent).toContain('25%')
+})
 it('resolves missing and small content to 100 percent', async () => {
-    expect(fitWidthZoom(200, undefined, 24)).toBe(1);
-    expect(fitWidthZoom(200, 0, 24)).toBe(1);
-    expect(fitWidthZoom(200, 100, 24)).toBe(1);
-});
+  expect(fitWidthZoom(200, undefined, 24)).toBe(1)
+  expect(fitWidthZoom(200, 0, 24)).toBe(1)
+  expect(fitWidthZoom(200, 100, 24)).toBe(1)
+})
 it('fits the initial pane and allows fixed zoom without resize observation', async () => {
-    vi.stubGlobal('ResizeObserver', undefined);
-    const onPreference = vi.fn();
-    render(h(ZoomViewport, {
-        "preference": FIT_WIDTH,
-        "intrinsicWidth": 1000,
-        "horizontalInset": 20,
-        "labels": { controls: 'Zoom controls', menu: 'Choose zoom', out: 'Zoom out', into: 'Zoom in',
-            fitWidth: 'Fit width', value: percent => `${String(percent)}%` },
-        "signal": new AbortController().signal,
-        "scrollportRef": () => { },
-        "onPreference": onPreference,
-        children: [
-            h("div", {
-                "class": zoomSurfaceClass
-            })
-        ]
-    }));
-await act(() => {});
-    const menu = screen.getByRole('button', { name: 'Choose zoom' });
-    expect(menu.textContent).toContain('48%');
-    await act(() => fireEvent.click(menu));
-    await act(() => fireEvent.click(screen.getByRole('menuitem', { name: '100%' })));
-    expect(onPreference).toHaveBeenCalledExactlyOnceWith({ kind: 'fixed', scale: 1 });
-    expect(menu.textContent).toContain('100%');
-});
+  vi.stubGlobal('ResizeObserver', undefined)
+  const onPreference = vi.fn()
+  render(h(ZoomViewport, {
+    'preference': FIT_WIDTH,
+    'intrinsicWidth': 1000,
+    'horizontalInset': 20,
+    'labels': { controls: 'Zoom controls', menu: 'Choose zoom', out: 'Zoom out', into: 'Zoom in',
+      fitWidth: 'Fit width', value: percent => `${String(percent)}%` },
+    'signal': new AbortController().signal,
+    'scrollportRef': () => { },
+    'onPreference': onPreference,
+    children: [
+      h('div', {
+        'class': zoomSurfaceClass,
+      }),
+    ],
+  }))
+  await act(() => {})
+  const menu = screen.getByRole('button', { name: 'Choose zoom' })
+  expect(menu.textContent).toContain('48%')
+  await act(() => fireEvent.click(menu))
+  await act(() => fireEvent.click(screen.getByRole('menuitem', { name: '100%' })))
+  expect(onPreference).toHaveBeenCalledExactlyOnceWith({ kind: 'fixed', scale: 1 })
+  expect(menu.textContent).toContain('100%')
+})
 it('keeps a centred surface point under the pointer while crossing into overflow', async () => {
-    const onPreference = vi.fn();
-    const view = render(h(ZoomViewport, {
-        "preference": { kind: 'fixed', scale: 0.5 },
-        "intrinsicWidth": 400,
-        "labels": { controls: 'Zoom controls', menu: 'Choose zoom', out: 'Zoom out', into: 'Zoom in',
-            fitWidth: 'Fit width', value: percent => `${String(percent)}%` },
-        "signal": new AbortController().signal,
-        "scrollportRef": () => { },
-        "onPreference": onPreference,
-        children: [
-            h("div", {
-                "class": zoomSurfaceClass,
-                "data-document-zoom-surface": "",
-                "style": { '--document-zoom-width': '400px' } as CSSProperties
-            })
-        ]
-    }));
-await act(() => {});
-    const frame = view.container.querySelector('[data-document-zoom-frame]') as HTMLElement;
-    const scrollport = view.container.querySelector('[data-document-zoom-scrollport]') as HTMLDivElement;
-    const surface = view.container.querySelector('[data-document-zoom-surface]') as HTMLDivElement;
-    Object.defineProperties(scrollport, {
-        clientWidth: { configurable: true, value: 600 },
-        clientHeight: { configurable: true, value: 400 },
-    });
-    scrollport.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 600, bottom: 400,
-        width: 600, height: 400, toJSON: () => ({}) });
-    surface.getBoundingClientRect = () => {
-        const scale = Number(frame.style.getPropertyValue('--document-zoom'));
-        const surfaceWidth = 400 * scale;
-        const surfaceHeight = 200 * scale;
-        const left = (surfaceWidth < 600 ? (600 - surfaceWidth) / 2 : 0) - scrollport.scrollLeft;
-        const top = (400 - surfaceHeight) / 2 - scrollport.scrollTop;
-        return { x: left, y: top, left, top, right: left + surfaceWidth, bottom: top + surfaceHeight,
-            width: surfaceWidth, height: surfaceHeight, toJSON: () => ({}) };
-    };
-    const elementFromPoint = Object.getOwnPropertyDescriptor(document, 'elementFromPoint');
-    Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => surface });
-    try {
-        for (let index = 0; index < 3; index++) {
-            scrollport.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: true,
-                deltaY: -40, clientX: 300, clientY: 200 }));
-        }
-        const scale = 0.5 * Math.exp(1.2);
-        expect(Number(frame.style.getPropertyValue('--document-zoom'))).toBeCloseTo(scale);
-        expect(scrollport.scrollLeft).toBeCloseTo((400 * scale - 600) / 2);
-        expect(scrollport.scrollTop).toBeCloseTo(0);
-        expect(onPreference).not.toHaveBeenCalled();
+  const onPreference = vi.fn()
+  const view = render(h(ZoomViewport, {
+    'preference': { kind: 'fixed', scale: 0.5 },
+    'intrinsicWidth': 400,
+    'labels': { controls: 'Zoom controls', menu: 'Choose zoom', out: 'Zoom out', into: 'Zoom in',
+      fitWidth: 'Fit width', value: percent => `${String(percent)}%` },
+    'signal': new AbortController().signal,
+    'scrollportRef': () => { },
+    'onPreference': onPreference,
+    children: [
+      h('div', {
+        'class': zoomSurfaceClass,
+        'data-document-zoom-surface': '',
+        'style': { '--document-zoom-width': '400px' },
+      }),
+    ],
+  }))
+  await act(() => {})
+  const frame = view.container.querySelector('[data-document-zoom-frame]') as HTMLElement
+  const scrollport = view.container.querySelector('[data-document-zoom-scrollport]') as HTMLDivElement
+  const surface = view.container.querySelector('[data-document-zoom-surface]') as HTMLDivElement
+  Object.defineProperties(scrollport, {
+    clientWidth: { configurable: true, value: 600 },
+    clientHeight: { configurable: true, value: 400 },
+  })
+  scrollport.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 600, bottom: 400,
+    width: 600, height: 400, toJSON: () => ({}) })
+  surface.getBoundingClientRect = () => {
+    const scale = Number(frame.style.getPropertyValue('--document-zoom'))
+    const surfaceWidth = 400 * scale
+    const surfaceHeight = 200 * scale
+    const left = (surfaceWidth < 600 ? (600 - surfaceWidth) / 2 : 0) - scrollport.scrollLeft
+    const top = (400 - surfaceHeight) / 2 - scrollport.scrollTop
+    return { x: left, y: top, left, top, right: left + surfaceWidth, bottom: top + surfaceHeight,
+      width: surfaceWidth, height: surfaceHeight, toJSON: () => ({}) }
+  }
+  const elementFromPoint = Object.getOwnPropertyDescriptor(document, 'elementFromPoint')
+  Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => surface })
+  try {
+    for (let index = 0; index < 3; index++) {
+      scrollport.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: true,
+        deltaY: -40, clientX: 300, clientY: 200 }))
     }
-    finally {
-        if (elementFromPoint === undefined)
-            Reflect.deleteProperty(document, 'elementFromPoint');
-        else
-            Object.defineProperty(document, 'elementFromPoint', elementFromPoint);
-    }
-});
+    const scale = 0.5 * Math.exp(1.2)
+    expect(Number(frame.style.getPropertyValue('--document-zoom'))).toBeCloseTo(scale)
+    expect(scrollport.scrollLeft).toBeCloseTo((400 * scale - 600) / 2)
+    expect(scrollport.scrollTop).toBeCloseTo(0)
+    expect(onPreference).not.toHaveBeenCalled()
+  }
+  finally {
+    if (elementFromPoint === undefined)
+      Reflect.deleteProperty(document, 'elementFromPoint')
+    else
+      Object.defineProperty(document, 'elementFromPoint', elementFromPoint)
+  }
+})
 it('does not keep revealed controls visible after a touch enters', async () => {
-    vi.useFakeTimers();
-    const view = render(h(ZoomViewport, {
-        "preference": FIT_WIDTH,
-        "intrinsicWidth": 400,
-        "labels": { controls: 'Zoom controls', menu: 'Choose zoom', out: 'Zoom out', into: 'Zoom in',
-            fitWidth: 'Fit width', value: percent => `${String(percent)}%` },
-        "signal": new AbortController().signal,
-        "scrollportRef": () => { },
-        "onPreference": () => { },
-        children: [
-            h("div", {
-                "class": zoomSurfaceClass
-            })
-        ]
-    }));
-await act(() => {});
-    const frame = view.container.querySelector('[data-document-zoom-frame]') as HTMLElement;
-    const controls = view.container.querySelector('[data-document-zoom-controls]') as HTMLElement;
-    frame.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 500, bottom: 400,
-        width: 500, height: 400, toJSON: () => ({}) });
-    await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 350 }));
-    expect(controls.getAttribute('data-document-zoom-visible')).toBe('true');
-    await act(() => fireEvent.pointerEnter(controls, { pointerType: 'touch' }));
-    await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 100 }));
-    await act(async () => { await vi.advanceTimersByTimeAsync(420); });
-    expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false);
-});
+  vi.useFakeTimers()
+  const view = render(h(ZoomViewport, {
+    'preference': FIT_WIDTH,
+    'intrinsicWidth': 400,
+    'labels': { controls: 'Zoom controls', menu: 'Choose zoom', out: 'Zoom out', into: 'Zoom in',
+      fitWidth: 'Fit width', value: percent => `${String(percent)}%` },
+    'signal': new AbortController().signal,
+    'scrollportRef': () => { },
+    'onPreference': () => { },
+    children: [
+      h('div', {
+        'class': zoomSurfaceClass,
+      }),
+    ],
+  }))
+  await act(() => {})
+  const frame = view.container.querySelector('[data-document-zoom-frame]') as HTMLElement
+  const controls = view.container.querySelector('[data-document-zoom-controls]') as HTMLElement
+  frame.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 500, bottom: 400,
+    width: 500, height: 400, toJSON: () => ({}) })
+  await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 350 }))
+  expect(controls.getAttribute('data-document-zoom-visible')).toBe('true')
+  await act(() => fireEvent.pointerEnter(controls, { pointerType: 'touch' }))
+  await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 100 }))
+  await act(async () => { await vi.advanceTimersByTimeAsync(420) })
+  expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false)
+})
 it('reveals from the bottom zone and delays hiding while controls stay active', async () => {
-    vi.useFakeTimers();
-    const view = render(h(ZoomViewport, {
-        "preference": FIT_WIDTH,
-        "intrinsicWidth": 400,
-        "labels": { controls: 'Zoom controls', menu: 'Choose zoom', out: 'Zoom out', into: 'Zoom in',
-            fitWidth: 'Fit width', value: percent => `${String(percent)}%` },
-        "signal": new AbortController().signal,
-        "scrollportRef": () => { },
-        "onPreference": () => { },
-        children: [
-            h("div", {
-                "class": zoomSurfaceClass,
-                "style": { '--document-zoom-width': '400px' } as CSSProperties
-            })
-        ]
-    }));
-await act(() => {});
-    const frame = view.container.querySelector('[data-document-zoom-frame]') as HTMLElement;
-    const controls = view.container.querySelector('[data-document-zoom-controls]') as HTMLElement;
-    frame.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 500, bottom: 400,
-        width: 500, height: 400, toJSON: () => ({}) });
-    expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false);
-    await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 350 }));
-    expect(controls.getAttribute('data-document-zoom-visible')).toBe('true');
-    await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 100 }));
-    await act(async () => { await vi.advanceTimersByTimeAsync(419); });
-    expect(controls.getAttribute('data-document-zoom-visible')).toBe('true');
-    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
-    expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false);
-    await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 350 }));
-    await act(() => fireEvent.pointerEnter(controls));
-    await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 100 }));
-    await act(async () => { await vi.advanceTimersByTimeAsync(500); });
-    expect(controls.getAttribute('data-document-zoom-visible')).toBe('true');
-    await act(() => fireEvent.pointerLeave(controls));
-    await act(async () => { await vi.advanceTimersByTimeAsync(420); });
-    expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false);
-    const menuButton = screen.getByRole('button', { name: 'Choose zoom' });
-    await act(() => fireEvent.focus(menuButton));
-    expect(controls.getAttribute('data-document-zoom-visible')).toBe('true');
-    await act(() => fireEvent.pointerLeave(frame));
-    await act(async () => { await vi.advanceTimersByTimeAsync(500); });
-    expect(controls.getAttribute('data-document-zoom-visible')).toBe('true');
-    await act(() => fireEvent.blur(menuButton));
-    await act(async () => { await vi.advanceTimersByTimeAsync(420); });
-    expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false);
-    await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 350 }));
-    await act(() => fireEvent.click(menuButton));
-    await act(() => fireEvent.pointerLeave(frame));
-    await act(async () => { await vi.advanceTimersByTimeAsync(500); });
-    expect(controls.getAttribute('data-document-zoom-visible')).toBe('true');
-    await act(() => fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' }));
-    await act(async () => { await vi.advanceTimersByTimeAsync(420); });
-    expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false);
-    view.unmount();
-    expect(vi.getTimerCount()).toBe(0);
-});
+  vi.useFakeTimers()
+  const view = render(h(ZoomViewport, {
+    'preference': FIT_WIDTH,
+    'intrinsicWidth': 400,
+    'labels': { controls: 'Zoom controls', menu: 'Choose zoom', out: 'Zoom out', into: 'Zoom in',
+      fitWidth: 'Fit width', value: percent => `${String(percent)}%` },
+    'signal': new AbortController().signal,
+    'scrollportRef': () => { },
+    'onPreference': () => { },
+    children: [
+      h('div', {
+        'class': zoomSurfaceClass,
+        'style': { '--document-zoom-width': '400px' },
+      }),
+    ],
+  }))
+  await act(() => {})
+  const frame = view.container.querySelector('[data-document-zoom-frame]') as HTMLElement
+  const controls = view.container.querySelector('[data-document-zoom-controls]') as HTMLElement
+  frame.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 500, bottom: 400,
+    width: 500, height: 400, toJSON: () => ({}) })
+  expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false)
+  await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 350 }))
+  expect(controls.getAttribute('data-document-zoom-visible')).toBe('true')
+  await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 100 }))
+  await act(async () => { await vi.advanceTimersByTimeAsync(419) })
+  expect(controls.getAttribute('data-document-zoom-visible')).toBe('true')
+  await act(async () => { await vi.advanceTimersByTimeAsync(1) })
+  expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false)
+  await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 350 }))
+  await act(() => fireEvent.pointerEnter(controls))
+  await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 100 }))
+  await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+  expect(controls.getAttribute('data-document-zoom-visible')).toBe('true')
+  await act(() => fireEvent.pointerLeave(controls))
+  await act(async () => { await vi.advanceTimersByTimeAsync(420) })
+  expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false)
+  const menuButton = screen.getByRole('button', { name: 'Choose zoom' })
+  await act(() => fireEvent.focus(menuButton))
+  expect(controls.getAttribute('data-document-zoom-visible')).toBe('true')
+  await act(() => fireEvent.pointerLeave(frame))
+  await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+  expect(controls.getAttribute('data-document-zoom-visible')).toBe('true')
+  await act(() => fireEvent.blur(menuButton))
+  await act(async () => { await vi.advanceTimersByTimeAsync(420) })
+  expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false)
+  await act(() => fireEvent.pointerMove(frame, { pointerType: 'mouse', clientY: 350 }))
+  await act(() => fireEvent.click(menuButton))
+  await act(() => fireEvent.pointerLeave(frame))
+  await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+  expect(controls.getAttribute('data-document-zoom-visible')).toBe('true')
+  await act(() => fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' }))
+  await act(async () => { await vi.advanceTimersByTimeAsync(420) })
+  expect(controls.hasAttribute('data-document-zoom-visible')).toBe(false)
+  view.unmount()
+  expect(vi.getTimerCount()).toBe(0)
+})

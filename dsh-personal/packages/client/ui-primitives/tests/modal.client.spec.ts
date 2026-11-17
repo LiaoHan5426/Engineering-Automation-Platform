@@ -49,7 +49,7 @@ it('renders a headless custom surface without close chrome or backdrop blur', as
 
 it('lets a local capture handler own Escape before the modal layer', async () => {
   const onClose = vi.fn()
-  renderVue(h(Modal, { open: true, title: 'Search', closeLabel: 'Close', onClose, onKeyDownCapture: event => event.preventDefault() }, { default: () => h('input', { 'aria-label': 'Search' }) }))
+  renderVue(h(Modal, { open: true, title: 'Search', closeLabel: 'Close', onClose, onKeyDownCapture: (event) => { event.preventDefault() } }, { default: () => h('input', { 'aria-label': 'Search' }) }))
   await nextTick()
   fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
   expect(onClose).not.toHaveBeenCalled()

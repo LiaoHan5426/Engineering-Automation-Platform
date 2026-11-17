@@ -25,10 +25,10 @@ export const ExcelBody = defineComponent((props: LoadedExcelBodyProps) => {
     const controller = new AbortController()
     state.value = undefined
     void parseExcel(bytes, props.format, props.limits, controller.signal).then(
-      value => { if (!controller.signal.aborted) state.value = { data: bytes, format: props.format, value } },
+      (value) => { if (!controller.signal.aborted) state.value = { data: bytes, format: props.format, value } },
       (error: unknown) => { if (!controller.signal.aborted) state.value = { data: bytes, format: props.format, error: error instanceof Error ? error.message : 'invalid' } },
     )
-    onCleanup(() => controller.abort())
+    onCleanup(() => { controller.abort() })
   }, { immediate: true })
   return () => {
     const current = state.value
@@ -50,4 +50,4 @@ export const ExcelBody = defineComponent((props: LoadedExcelBodyProps) => {
       ]),
     ])
   }
-}, { name: 'ExcelBody', props: ["addResource","setResources","resourceAddress","content","wrap","scrollportRef","useTabInfo","useSession","sessionId","useProjection","useAccess","useConversation","useInput","inputActions","useRemoteAccess","useSessions","useSessionRetainInfo","useSessionAccess","usePanelInfo","useContextMenu","useResource","useWorkspaces","t","limits","format","loading"], inheritAttrs: false })
+}, { name: 'ExcelBody', props: ['addResource','setResources','resourceAddress','content','wrap','scrollportRef','useTabInfo','useSession','sessionId','useProjection','useAccess','useConversation','useInput','inputActions','useRemoteAccess','useSessions','useSessionRetainInfo','useSessionAccess','usePanelInfo','useContextMenu','useResource','useWorkspaces','t','limits','format','loading'], inheritAttrs: false })

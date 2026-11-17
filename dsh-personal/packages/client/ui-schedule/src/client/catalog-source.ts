@@ -1,21 +1,21 @@
 /** Authoritative Schedule queries and deletion for Session and Host catalogs. */
 
-import type { RemoteResult } from "@deepseek-ai/dsh-api-remotes/client";
-import type { HostObservable } from "@deepseek-ai/dsh-client-ui-slots";
+import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
+import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
   ScheduleDeleteResult,
   ScheduleId,
   ScheduleRecord,
-} from "@deepseek-ai/dsh-schedule/client";
+} from '@deepseek-ai/dsh-schedule/client'
 
 /** How one deletion settled; the wiring reports it as a transient notice. */
-export type CatalogDeleteOutcome = "deleted" | "failed" | "pending";
+export type CatalogDeleteOutcome = 'deleted' | 'failed' | 'pending'
 
 /** Query and mutation state exposed to a catalog component. */
 export interface CatalogSnapshot<Item extends { readonly id: ScheduleId } = ScheduleRecord> {
-  readonly records: readonly Item[];
-  readonly status: "loading" | "ready" | "error";
-  readonly deleting: readonly ScheduleId[];
+  readonly records: readonly Item[]
+  readonly status: 'loading' | 'ready' | 'error'
+  readonly deleting: readonly ScheduleId[]
   /**
    * Whether an authoritative list read has ever succeeded.
    *
@@ -24,7 +24,7 @@ export interface CatalogSnapshot<Item extends { readonly id: ScheduleId } = Sche
    * `loading` over the records of the last successful read, so `status` alone
    * cannot separate a first read from a refresh. A failed read leaves it alone.
    */
-  readonly settled: boolean;
+  readonly settled: boolean
   /**
    * Count of reads this source has been asked for - by a consumer, and by its own
    * `schedule/changed`, connection-reset, and post-deletion acknowledgement paths.
@@ -38,25 +38,25 @@ export interface CatalogSnapshot<Item extends { readonly id: ScheduleId } = Sche
    * Counters rather than timestamps, so the answer never compares the browser's
    * clock with the Host's.
    */
-  readonly readRequest: number;
+  readonly readRequest: number
   /**
    * Ordinal of the read whose result the current records came from, and 0 before
    * any read succeeded. A failed read leaves it alone.
    */
-  readonly readSettled: number;
+  readonly readSettled: number
 }
 
 /** Remote operations and invalidations scoped by the registering entry. */
 export interface CatalogDependencies<Item extends { readonly id: ScheduleId } = ScheduleRecord> {
-  readonly list: () => Promise<RemoteResult<Item[]>>;
-  readonly remove: (id: ScheduleId) => Promise<RemoteResult<ScheduleDeleteResult>>;
-  readonly subscribeChanged: (listener: () => void) => () => void;
-  readonly subscribeReset: (listener: () => void) => () => void;
+  readonly list: () => Promise<RemoteResult<Item[]>>
+  readonly remove: (id: ScheduleId) => Promise<RemoteResult<ScheduleDeleteResult>>
+  readonly subscribeChanged: (listener: () => void) => () => void
+  readonly subscribeReset: (listener: () => void) => () => void
 }
 
 /** Props injected through a catalog slot. */
 export interface CatalogInjected<Item extends { readonly id: ScheduleId } = ScheduleRecord> {
-  readonly hooks: { readonly catalog: HostObservable<CatalogSnapshot<Item>> };
+  readonly hooks: { readonly catalog: HostObservable<CatalogSnapshot<Item>> }
   /**
    * Delete one reminder and refresh after the Remote acknowledgement.
    * @param id - reminder shown in this catalog.
@@ -64,7 +64,7 @@ export interface CatalogInjected<Item extends { readonly id: ScheduleId } = Sche
    * 'failed' when the deletion was not confirmed, and 'pending' when a deletion
    * of the same reminder was already in flight.
    */
-  readonly onDelete: (id: ScheduleId) => Promise<CatalogDeleteOutcome>;
+  readonly onDelete: (id: ScheduleId) => Promise<CatalogDeleteOutcome>
   /**
    * Reload the catalog: after a query failure or an acknowledged timing update,
    * and from a created-task card that needs a read newer than its own result.
@@ -77,7 +77,7 @@ export interface CatalogInjected<Item extends { readonly id: ScheduleId } = Sche
    * @param since - request ordinal the caller last observed, 0 to share any read in flight.
    * @returns Resolution after publishing the read result; failures remain in catalog state.
    */
-  readonly onRetry: (since?: number) => Promise<void>;
+  readonly onRetry: (since?: number) => Promise<void>
 }
 
 /**
@@ -91,49 +91,49 @@ export function createCatalogSource<Item extends { readonly id: ScheduleId } = S
   deps: CatalogDependencies<Item>,
 ): CatalogInjected<Item> & {
   /** Retain a Host-confirmed creation until the next successful catalog read. */
-  readonly retainCreated: (record: Item) => void;
+  readonly retainCreated: (record: Item) => void
 } {
   let snapshot: CatalogSnapshot<Item> = {
     records: [],
-    status: "loading",
+    status: 'loading',
     deleting: [],
     settled: false,
     readRequest: 0,
     readSettled: 0,
-  };
-  const listeners = new Set<() => void>();
-  let disposers: readonly (() => void)[] = [];
-  let epoch = 0;
-  let lifecycle = 0;
+  }
+  const listeners = new Set<() => void>()
+  let disposers: readonly (() => void)[] = []
+  let epoch = 0
+  let lifecycle = 0
   const publish = (next: CatalogSnapshot<Item>): void => {
-    snapshot = next;
-    for (const listener of listeners) listener();
-  };
+    snapshot = next
+    for (const listener of listeners) listener()
+  }
   const read = async (request: number, current: number): Promise<void> => {
-    let result: RemoteResult<Item[]>;
+    let result: RemoteResult<Item[]>
     try {
-      result = await deps.list();
+      result = await deps.list()
     } catch (_error: unknown) {
       // Transport rejection has the same visible retry path as a Remote failure.
-      if (current === epoch) publish({ ...snapshot, status: "error" });
-      return;
+      if (current === epoch) publish({ ...snapshot, status: 'error' })
+      return
     }
-    if (current !== epoch) return;
+    if (current !== epoch) return
     publish(
       result.ok
         ? {
-            ...snapshot,
-            records: result.value,
-            status: "ready",
-            settled: true,
-            readSettled: request,
-          }
-        : { ...snapshot, status: "error" },
-    );
-  };
-  let batching = false;
-  let inFlight: Promise<void> | undefined;
-  let inFlightRequest = 0;
+          ...snapshot,
+          records: result.value,
+          status: 'ready',
+          settled: true,
+          readSettled: request,
+        }
+        : { ...snapshot, status: 'error' },
+    )
+  }
+  let batching = false
+  let inFlight: Promise<void> | undefined
+  let inFlightRequest = 0
   // Every mount effect of one commit flushes in one task, so requests made in the
   // same commit share one read: a conversation that renders several created-task
   // cards still sends one `list()` for all of them, which is the "one read for any
@@ -143,74 +143,74 @@ export function createCatalogSource<Item extends { readonly id: ScheduleId } = S
   // a later commit of the same task, or a caller naming that ordinal - starts its
   // own read and supersedes it, so a change published in between is not missed.
   const refresh = (supersede = false, since = 0): Promise<void> => {
-    const request = snapshot.readRequest + 1;
-    publish({ ...snapshot, status: "loading", readRequest: request });
+    const request = snapshot.readRequest + 1
+    publish({ ...snapshot, status: 'loading', readRequest: request })
     if (!supersede && batching && inFlight !== undefined && inFlightRequest > since)
-      return inFlight;
+      return inFlight
     if (!batching) {
-      batching = true;
+      batching = true
       void Promise.resolve().then(() => {
-        batching = false;
-      });
+        batching = false
+      })
     }
-    const current = ++epoch;
-    const pending = read(request, current);
-    inFlightRequest = request;
-    inFlight = pending;
+    const current = ++epoch
+    const pending = read(request, current)
+    inFlightRequest = request
+    inFlight = pending
     // Only this read may clear the field: a newer request can replace it while it
     // is still in flight, and that handle stays joinable.
     void pending.finally(() => {
-      if (inFlight === pending) inFlight = undefined;
-    });
-    return pending;
-  };
+      if (inFlight === pending) inFlight = undefined
+    })
+    return pending
+  }
   // A change or a reset states that the connection moved, so its read supersedes
   // whatever is in flight instead of joining it; only consumers asking for a
   // current answer - the created-task cards - share a read with their commit.
   const invalidate = (): void => {
-    void refresh(true);
-  };
+    void refresh(true)
+  }
   const remove = async (id: ScheduleId): Promise<CatalogDeleteOutcome> => {
-    if (snapshot.deleting.includes(id)) return "pending";
-    const started = lifecycle;
-    publish({ ...snapshot, deleting: [...snapshot.deleting, id] });
-    let result: RemoteResult<ScheduleDeleteResult>;
+    if (snapshot.deleting.includes(id)) return 'pending'
+    const started = lifecycle
+    publish({ ...snapshot, deleting: [...snapshot.deleting, id] })
+    let result: RemoteResult<ScheduleDeleteResult>
     try {
-      result = await deps.remove(id);
+      result = await deps.remove(id)
     } catch (_error: unknown) {
       // A rejected deletion does not establish that the durable record changed.
       if (started === lifecycle) {
-        publish({ ...snapshot, deleting: snapshot.deleting.filter((value) => value !== id) });
+        publish({ ...snapshot, deleting: snapshot.deleting.filter(value => value !== id) })
       }
-      return "failed";
+      return 'failed'
     }
-    if (started !== lifecycle) return result.ok ? "deleted" : "failed";
-    publish({ ...snapshot, deleting: snapshot.deleting.filter((value) => value !== id) });
+    if (started !== lifecycle) return result.ok ? 'deleted' : 'failed'
+    publish({ ...snapshot, deleting: snapshot.deleting.filter(value => value !== id) })
     // The deletion changed the authoritative state, so the acknowledgement reads
     // again rather than joining a read that may have been sent before it.
-    if (result.ok) await refresh(true);
-    return result.ok ? "deleted" : "failed";
-  };
+    if (result.ok) await refresh(true)
+    return result.ok ? 'deleted' : 'failed'
+  }
   return {
     hooks: {
       catalog: {
         getSnapshot: () => snapshot,
         subscribe(listener) {
-          listeners.add(listener);
+          listeners.add(listener)
           if (listeners.size === 1) {
-            lifecycle++;
-            disposers = [deps.subscribeChanged(invalidate), deps.subscribeReset(invalidate)];
-            invalidate();
+            lifecycle++
+            disposers = [deps.subscribeChanged(invalidate), deps.subscribeReset(invalidate)]
+            invalidate()
           }
           return () => {
-            listeners.delete(listener);
-            if (listeners.size !== 0) return;
-            for (const dispose of disposers) dispose();
-            disposers = [];
-            epoch++;
-            lifecycle++;
-            snapshot = { ...snapshot, deleting: [] };
-          };
+            listeners.delete(listener)
+            if (listeners.size !== 0) return
+            for (const dispose of disposers) dispose()
+            disposers = []
+            epoch++
+            lifecycle++
+            snapshot = { ...snapshot, deleting: [] }
+          }
         },
       },
     },
@@ -218,9 +218,9 @@ export function createCatalogSource<Item extends { readonly id: ScheduleId } = S
     onRetry: (since = 0) => refresh(false, since),
     retainCreated: (record) => {
       // A read started before creation cannot replace its acknowledged result.
-      epoch++;
-      if (!snapshot.records.some((item) => item.id === record.id))
-        publish({ ...snapshot, records: [...snapshot.records, record] });
+      epoch++
+      if (!snapshot.records.some(item => item.id === record.id))
+        publish({ ...snapshot, records: [...snapshot.records, record] })
     },
-  };
+  }
 }

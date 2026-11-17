@@ -167,14 +167,14 @@ function elementProps(source: string): string[] {
   const elements: string[] = []
   const visit = (node: ts.Node): void => {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
-      elements.push(node.attributes.properties.filter(ts.isJsxAttribute).map(attribute => {
+      elements.push(node.attributes.properties.filter(ts.isJsxAttribute).map((attribute) => {
         const name = attribute.name.getText(file)
         return name === 'class' || name === 'className' ? attribute.getText(file) : name
       }).join(' '))
     } else if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'h') {
       const props = node.arguments[1]
       if (props !== undefined && ts.isObjectLiteralExpression(props)) {
-        elements.push(props.properties.filter(ts.isPropertyAssignment).map(property => {
+        elements.push(props.properties.filter(ts.isPropertyAssignment).map((property) => {
           const name = property.name.getText(file)
           return /^(?:['"])?class(?:Name)?(?:['"])?$/.test(name) ? property.getText(file) : name
         }).join(' '))
@@ -230,12 +230,12 @@ describe('window drag-region ownership', () => {
   })
 
   it('recognizes native Vue marks without borrowing marks or classes from child elements', () => {
-    const attrs = elementProps(`h('div', { class: css.wrapper }, [h('div', { class: css.header, 'data-window-drag': '' })])`)
+    const attrs = elementProps('h(\'div\', { class: css.wrapper }, [h(\'div\', { class: css.header, \'data-window-drag\': \'\' })])')
     const marked = attrs.filter(tag => DRAG_MARK_PATTERN.test(tag))
     expect(marked).toHaveLength(1)
     expect(referencesRow(marked[0]!, { file: '', markup: '', selector: '.header' })).toBe(true)
     expect(referencesRow(marked[0]!, { file: '', markup: '', selector: '.wrapper' })).toBe(false)
-    expect(elementProps(`h('div', { class: css.header, 'data-window-drag-recall': '' })`).filter(tag => DRAG_MARK_PATTERN.test(tag))).toEqual([])
+    expect(elementProps('h(\'div\', { class: css.header, \'data-window-drag-recall\': \'\' })').filter(tag => DRAG_MARK_PATTERN.test(tag))).toEqual([])
   })
 
   it('declares the window drag surface in exactly two places', () => {

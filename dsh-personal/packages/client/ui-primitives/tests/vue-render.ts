@@ -30,7 +30,7 @@ export function renderVue(node: VNode) {
   const app = createApp(TestRoot, { node })
   app.config.idPrefix = `test-${mountId++}`
   const failure: { error?: unknown } = {}
-  app.config.errorHandler = error => { if (!('error' in failure)) failure.error = error }
+  app.config.errorHandler = (error) => { if (!('error' in failure)) failure.error = error }
   try {
     app.mount(container)
   } catch (error) {

@@ -28,11 +28,17 @@ export function bindDisclosure(reset: ObservableSnapshot<number>): UseDisclosure
     if (getCurrentScope() === undefined) throw new Error('disclosure requires an active Vue effect scope')
     const version = shallowRef(reset.getSnapshot())
     let active = true
-    let unsubscribe: (() => void) | undefined
-    onScopeDispose(() => { active = false; unsubscribe?.() })
-    const read = (): void => { if (active) version.value = reset.getSnapshot() }
-    unsubscribe = reset.subscribe(read)
-    if (!active) unsubscribe()
+    const isActive = () => active
+    const release: { unsubscribe?: () => void } = {}
+    onScopeDispose(() => {
+      active = false
+      const unsubscribe = release.unsubscribe
+      unsubscribe?.()
+    })
+    const read = (): void => { if (isActive()) version.value = reset.getSnapshot() }
+    const unsubscribe = reset.subscribe(read)
+    release.unsubscribe = unsubscribe
+    if (!isActive()) unsubscribe()
     else read()
     return useDisclosure(version)
   }

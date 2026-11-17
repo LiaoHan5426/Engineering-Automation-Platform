@@ -1,5 +1,5 @@
 /** Direct component fixture for the tree's framework seats; integration specs use the real renderer. */
-import { defineComponent, h, type Component } from 'vue';
+import { defineComponent, h, type Component } from 'vue'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type { FactoryComponentPropsOf, FactoryLocalComponent, SlotFactoryMap, FactoryLocalComponentPropsOf } from '@deepseek-ai/dsh-client-ui-slots'
 import { FileTree } from '../src/client/FileTree.tsx'

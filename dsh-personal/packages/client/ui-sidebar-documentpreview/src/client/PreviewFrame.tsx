@@ -13,11 +13,11 @@ const NavigatorSeat = defineComponent((props: NavigatorSeatProps) => {
   const info = props.useTabInfo()
   const onOpen = (address: string): void => { info.value.tab.actions.openResource(address, { replaceTab: true }) }
   return () => props.renderFactorySlot('sidebar.files.navigator', { useTabInfo: props.useTabInfo, page: false, onOpen })
-}, { name: 'DocumentNavigatorSeat', inheritAttrs: false, props: ["useTabInfo","renderFactorySlot"] })
+}, { name: 'DocumentNavigatorSeat', inheritAttrs: false, props: ['useTabInfo','renderFactorySlot'] })
 
 const NavigatorToggleSeat = defineComponent((props: NavigatorSeatProps) =>
   () => props.renderFactorySlot('sidebar.files.navigator.toggle', { useTabInfo: props.useTabInfo }),
-{ name: 'DocumentNavigatorToggleSeat', inheritAttrs: false, props: ["useTabInfo","renderFactorySlot"] })
+{ name: 'DocumentNavigatorToggleSeat', inheritAttrs: false, props: ['useTabInfo','renderFactorySlot'] })
 
 /** Header and content nodes stay internal to this package. */
 export type PreviewFrameProps = NavigatorSeatProps & {

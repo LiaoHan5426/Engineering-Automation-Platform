@@ -174,7 +174,7 @@ export const ZoomViewport = defineComponent((props: ZoomViewportProps) => {
     props.onRenderZoom?.(zoom.value)
   }, { flush: 'post', immediate: true })
   watch([scrollport, () => props.signal], (_, _previous, onCleanup) => {
-    const node = scrollport.value as HTMLDivElement
+    const node = scrollport.value
     if (node === null) return
     const signal = props.signal
     const clearPendingPinch = (): void => {
@@ -217,7 +217,7 @@ export const ZoomViewport = defineComponent((props: ZoomViewportProps) => {
       fit: { label: props.labels.fitWidth, selected: modeRef.value === 'fit-width', onSelect: fitWidth },
       labels: props.labels, visible: controlsVisible.value, onZoom: setZoom, onActiveChange: handleControlsActive }),
   ])
-}, { name: 'ZoomViewport', inheritAttrs: false, props: ["preference","intrinsicWidth","horizontalInset","labels","signal","scrollportRef","onPreference","onRenderZoom","children"] })
+}, { name: 'ZoomViewport', inheritAttrs: false, props: ['preference','intrinsicWidth','horizontalInset','labels','signal','scrollportRef','onPreference','onRenderZoom','children'] })
 
 /** Shared surface class for actual-size and fit-width layout. */
 export const zoomSurfaceClass = css.surface as string

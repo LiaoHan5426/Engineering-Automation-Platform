@@ -7,43 +7,43 @@
  * projection (trigger scanning and TokenSpan coordinates) counts every chip
  * as one U+FFFC instead; see projection.ts.
  */
-import { h, type VNode } from "vue";
-import type { EditorConfig, LexicalNode, NodeKey, SerializedLexicalNode, Spread } from "lexical";
-import { DecoratorNode } from "lexical";
-import type { ReferenceInsert } from "../../contract/draft-editor.ts";
-import { ReferenceChip } from "./ReferenceChip.tsx";
+import { h, type VNode } from 'vue'
+import type { EditorConfig, LexicalNode, NodeKey, SerializedLexicalNode, Spread } from 'lexical'
+import { DecoratorNode } from 'lexical'
+import type { ReferenceInsert } from '../../contract/draft-editor.ts'
+import { ReferenceChip } from './ReferenceChip.tsx'
 
 /** JSON form of one chip (Lexical node serialization contract). */
 export type SerializedReferenceChipNode = Spread<
   {
-    source: string;
-    ref: string;
-    label: string;
-    appearance?: ReferenceInsert["appearance"];
-    clipboardText: string;
-    invalid: boolean;
+    source: string
+    ref: string
+    label: string
+    appearance?: ReferenceInsert['appearance']
+    clipboardText: string
+    invalid: boolean
   },
   SerializedLexicalNode
->;
+>
 
 /** One inline reference occurrence as an atomic decorator node. */
 export class ReferenceChipNode extends DecoratorNode<VNode> {
   /** Owning source name (serializer routing key). */
-  __source: string;
+  __source: string
   /** Owner-scoped reference id. */
-  __ref: string;
+  __ref: string
   /** Inline display label (insert-time cache). */
-  __label: string;
+  __label: string
   /** Optional domain glyph (insert-time cache). */
-  __appearance: ReferenceInsert["appearance"];
+  __appearance: ReferenceInsert['appearance']
   /** Clipboard / persistence projection, e.g. `/name` (never the model form). */
-  __clipboardText: string;
+  __clipboardText: string
   /** Owner-resolution failure flag: chip renders invalid; serialization must fail. */
-  __invalid: boolean;
+  __invalid: boolean
 
   /** Lexical node registry type tag. */
   static override getType(): string {
-    return "reference-chip";
+    return 'reference-chip'
   }
 
   /**
@@ -62,7 +62,7 @@ export class ReferenceChipNode extends DecoratorNode<VNode> {
       },
       node.__invalid,
       node.__key,
-    );
+    )
   }
 
   /**
@@ -80,7 +80,7 @@ export class ReferenceChipNode extends DecoratorNode<VNode> {
         clipboardText: json.clipboardText,
       },
       json.invalid,
-    );
+    )
   }
 
   /**
@@ -89,24 +89,24 @@ export class ReferenceChipNode extends DecoratorNode<VNode> {
    * @param key - Lexical clone-path key; absent for fresh nodes.
    */
   constructor(
-    insert: Omit<ReferenceInsert, "appearance"> & { appearance?: ReferenceInsert["appearance"] },
+    insert: Omit<ReferenceInsert, 'appearance'> & { appearance?: ReferenceInsert['appearance'] },
     invalid = false,
     key?: NodeKey,
   ) {
-    super(key);
-    this.__source = insert.source;
-    this.__ref = insert.ref;
-    this.__label = insert.label;
-    this.__appearance = insert.appearance;
-    this.__clipboardText = insert.clipboardText;
-    this.__invalid = invalid;
+    super(key)
+    this.__source = insert.source
+    this.__ref = insert.ref
+    this.__label = insert.label
+    this.__appearance = insert.appearance
+    this.__clipboardText = insert.clipboardText
+    this.__invalid = invalid
   }
 
   /** Serialize to the JSON node form. */
   override exportJSON(): SerializedReferenceChipNode {
     return {
       ...super.exportJSON(),
-      type: "reference-chip",
+      type: 'reference-chip',
       version: 1,
       source: this.__source,
       ref: this.__ref,
@@ -114,7 +114,7 @@ export class ReferenceChipNode extends DecoratorNode<VNode> {
       ...(this.__appearance === undefined ? {} : { appearance: this.__appearance }),
       clipboardText: this.__clipboardText,
       invalid: this.__invalid,
-    };
+    }
   }
 
   /**
@@ -122,20 +122,20 @@ export class ReferenceChipNode extends DecoratorNode<VNode> {
    * @returns an inline, non-editable span carrying the test/e2e anchor.
    */
   override createDOM(_config: EditorConfig): HTMLElement {
-    const el = document.createElement("span");
-    el.setAttribute("data-composer-chip", this.__source);
-    el.setAttribute("contenteditable", "false");
-    return el;
+    const el = document.createElement('span')
+    el.setAttribute('data-composer-chip', this.__source)
+    el.setAttribute('contenteditable', 'false')
+    return el
   }
 
   /** Host element never changes shape. */
   override updateDOM(): boolean {
-    return false;
+    return false
   }
 
   /** Chips sit in the text line. */
   override isInline(): boolean {
-    return true;
+    return true
   }
 
   /**
@@ -146,12 +146,12 @@ export class ReferenceChipNode extends DecoratorNode<VNode> {
    * ignore, deadlocking arrows, typing, and deletion at the chip edge.
    */
   override isKeyboardSelectable(): boolean {
-    return false;
+    return false
   }
 
   /** Clipboard / persistence projection (native copy reads this). */
   override getTextContent(): string {
-    return this.__clipboardText;
+    return this.__clipboardText
   }
 
   /**
@@ -159,33 +159,33 @@ export class ReferenceChipNode extends DecoratorNode<VNode> {
    * @param invalid - next bit; no-op writes are the caller's concern.
    */
   setInvalid(invalid: boolean): void {
-    const writable = this.getWritable();
-    writable.__invalid = invalid;
+    const writable = this.getWritable()
+    writable.__invalid = invalid
   }
 
   /** Owner-resolution failure bit. */
   isInvalid(): boolean {
-    return this.getLatest().__invalid;
+    return this.getLatest().__invalid
   }
 
   /** Owning source name. */
   getSource(): string {
-    return this.getLatest().__source;
+    return this.getLatest().__source
   }
 
   /** Owner-scoped reference id. */
   getReference(): string {
-    return this.getLatest().__ref;
+    return this.getLatest().__ref
   }
 
   /** Inline display label. */
   getLabel(): string {
-    return this.getLatest().__label;
+    return this.getLatest().__label
   }
 
   /** Optional domain glyph. */
-  getAppearance(): ReferenceInsert["appearance"] {
-    return this.getLatest().__appearance;
+  getAppearance(): ReferenceInsert['appearance'] {
+    return this.getLatest().__appearance
   }
 
   /** Vue face rendered into the host element by the decorator portal. */
@@ -194,7 +194,7 @@ export class ReferenceChipNode extends DecoratorNode<VNode> {
       label: this.__label,
       appearance: this.__appearance,
       invalid: this.__invalid,
-    });
+    })
   }
 }
 
@@ -204,7 +204,7 @@ export class ReferenceChipNode extends DecoratorNode<VNode> {
  * @returns the fresh node.
  */
 export function $createReferenceChipNode(insert: ReferenceInsert): ReferenceChipNode {
-  return new ReferenceChipNode(insert);
+  return new ReferenceChipNode(insert)
 }
 
 /**
@@ -215,5 +215,5 @@ export function $createReferenceChipNode(insert: ReferenceInsert): ReferenceChip
 export function $isReferenceChipNode(
   node: LexicalNode | null | undefined,
 ): node is ReferenceChipNode {
-  return node instanceof ReferenceChipNode;
+  return node instanceof ReferenceChipNode
 }

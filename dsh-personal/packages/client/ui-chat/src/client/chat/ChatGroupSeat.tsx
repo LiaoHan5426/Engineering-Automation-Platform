@@ -59,7 +59,7 @@ function sameLiveProcessTitle(left: LiveProcessTitle, right: LiveProcessTitle): 
 function useStableLiveProcessTitle(desired: () => LiveProcessTitle, active: () => boolean) {
   const displayed = shallowRef(desired())
   let displayedAt = Date.now()
-  watchEffect(onCleanup => {
+  watchEffect((onCleanup) => {
     const next = desired()
     if (!active() || sameLiveProcessTitle(displayed.value, next)) return
     const remaining = PROCESS_TITLE_MINIMUM_MS - (Date.now() - displayedAt)
@@ -139,7 +139,7 @@ export const ChatGroupSeat = defineComponent((props: ChatGroupSeatProps) => {
   const bottom = props.useChatNodeBottom(firstKey)
   const deferCollapse = computed(() => bottom.value === true && props.deferCollapse)
   const presentation = props.useChatNodeProcess(firstKey)
-  const turnLocation = props.useChatNode(firstKey, node => {
+  const turnLocation = props.useChatNode(firstKey, (node) => {
     const location = node?.location
     return location?.kind === 'turn' || location?.kind === 'step' ? location.turn : undefined
   })
@@ -165,7 +165,7 @@ export const ChatGroupSeat = defineComponent((props: ChatGroupSeatProps) => {
   watch([outerHidden, rootRef], () => {
     if (outerHidden.value && rootRef.value !== null && hiddenOrCollapsing(rootRef.value)) disclosure.value.setExpanded(false)
   }, { flush: 'post', immediate: true })
-  const bodyRef = props.useGroupAction(() => grouped.value && !disclosure.value.expanded, () => disclosure.value.setExpanded(true))
+  const bodyRef = props.useGroupAction(() => grouped.value && !disclosure.value.expanded, () => { disclosure.value.setExpanded(true) })
   const contentRef = shallowRef<HTMLDivElement | null>(null)
   const bodyId = useId()
   const { edges, events, initialize } = useProcessScroll(bodyRef, contentRef, () => disclosure.value.expanded, grouped)
@@ -175,7 +175,7 @@ export const ChatGroupSeat = defineComponent((props: ChatGroupSeatProps) => {
   }
   const shownCap = computed(() => !grouped.value ? false : disclosure.value.expanded ? true : undefined)
   const closingCap = ref(shownCap.value ?? true)
-  watch(shownCap, next => { if (next !== undefined) closingCap.value = next }, { flush: 'sync' })
+  watch(shownCap, (next) => { if (next !== undefined) closingCap.value = next }, { flush: 'sync' })
   return () => {
     if (members.value === undefined) return null
     const capped = grouped.value && (!deferCompletedTurns.value || (shownCap.value ?? closingCap.value))

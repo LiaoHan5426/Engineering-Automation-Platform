@@ -12,8 +12,6 @@ Desktop product events use the optional [product analytics service](../product-a
 
 Use this package to render a browser chat from recorded Session conversations, including historical images, localized actions, and restored scroll position. Work-details modes control reasoning previews and process visibility without hiding Assistant replies; Verbose keeps completed-turn process rows visible. Local transcript and steering submissions appear immediately, remain in their original surface, and disappear atomically when authoritative Session records arrive, while queued submissions stay outside Chat. The package does not assemble or modify model requests.
 
-File-mention providers receive the viewed Session ID with the closing-turn owner, so links into inherited history can address the fork itself.
-
 ## Table of Contents
 
 - [Reference previews](#reference-previews)
@@ -30,6 +28,10 @@ File-mention providers receive the viewed Session ID with the closing-turn owner
 - [Dev Note](#dev-note)
 
 -----
+
+File-mention providers receive the viewed Session ID with the closing-turn owner, so links into inherited history can address the fork itself.
+
+Turn Location-data reads use the static [observable selector](../ui-primitives/README.md#observable-selectors); this package does not request the renderer's runtime implementation.
 
 The renderer uses native Vue components. Bind standard, keyed, store and contextual selector seats once during setup, and read their readonly shallow refs inside render or computed functions. Effect-only contextual seats retain their scoped disposal. Chat keeps its existing conversation models, snapshot stores, ownership and registration lifecycle; it does not introduce another state store.
 

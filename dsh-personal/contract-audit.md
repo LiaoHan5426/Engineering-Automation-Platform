@@ -26,6 +26,15 @@
 - Vue 提交时序以 nextTick 和实例作用域处理，保留同步业务动作及失效结果保护；通知几何动画的 controller 归组件/stack 所有，不引入模块级状态缓存。完整消费者实际首次加载、卸载、重载的 DOM、服务及 console.error 清洁回归已通过。
 - 清理应用直接 React 依赖与实际产物运行闭包。既有 Vue/VitePress 文档工具间接使用 DocSearch React，Zustand vanilla 的可选 React peer 也可能出现在安装图；这些事实必须披露，不能将工作区安装目录有无 React 与 DSH 应用实际执行 React 混为一谈。不为清理锁文件改写状态引擎或替换文档站技术栈。
 
+## 2026-11-17 清理决定与验证边界
+
+- 纯 observable 到 Vue 的绑定归基础组件包，renderer 保留 re-export；消费者不再为通用 selector 依赖 renderer。算法及条件依赖、错误发布、订阅期间同步释放合同保留，新增重入释放回归。完整声明必须由实际 Client DAG 刷新，不能以局部源码检查替代。
+- 只展开已证明返回 void 的 watcher 初始化器；真实 unsubscribe、observer、timer、abort 清理不删除。跨 subscribe/await 的活性使用读取函数保留重入释放语义，渲染内稳定值可捕获，事件仍重新读取有效状态。测试保留同步 render 合同、事件次数及原断言；异步 UI 通过既有 act 和真实 deferred 响应验证。
+- renderer 的实例 ID 使用已有 crypto 工具，使没有 crypto.randomUUID 的明文 HTTP 环境仍可使用 getRandomValues。实际独立应用挂载、ID 唯一性与释放回归通过，不改全局随机源或引入备用 ID 状态。
+- unknown 断言门仅删除退休指纹，未增加豁免；领域依赖边与固定原版一致。最新完整 lint、八门产物及八套真实浏览器（95通过/4既有跳过）通过；Client测试augmentation统一到既有公共入口，避免内部与public ResourceParamsMap分裂，保留原合同及断言，192项回归通过。最终根聚合两门通过（Host9.65秒/Vue47.56秒）；四处vendor residue在逐字节相同的原版及checker同样复现，保留为既有限制，不将全部卫生门宣称通过。
+
+- 生成 API/slot 目录只随类型格式更新展示文本，键与契约不变；持久化生成目录仅源定位变化，66 根 digest 与 25 历史记录一致，不新增 schema history。重新生成后完整十门构建 25.07 秒通过。
+
 ## 尚未证明
 
 八项产物门禁、Host/Client 聚合检查、真实 Loader 消费者重载以及应用产物输入无 React 审计已经通过；这些不证明完整产品浏览器行为。用户已授权全部阶段，实验 UI 与桌面欢迎入口包括在原生 Vue 迁移范围；桌面 IPC、权限和 Host 领域逻辑保留既有权威，不因 UI 迁移重写。第三方 React UI 的实际消费者必须替换，不能通过排除模块或适配 facade 宣称完成。
@@ -78,7 +87,7 @@ workspace-recency的推进Date加半分钟余量曾通过正常原例，但不�
 
 五条已释放Session opening诊断另经真实ClientSessionReference/SidebarSessionView的未挂载退休、最后卸载和关闭三条路径证明为自身release取消pending ready；同一FOLLOW调用的独立引用继续正常打开。三个源模块与React基线字节相同，现有活动错误控制仍通过；不借迁移修改取消协议或吞日志，也不宣称全量console零诊断。聊天300px反向已定位为Vue patch阶段修改聚焦宿主contenteditable，在同级回显提交前强制布局；DOM门禁移入既有watchPostEffect，不改变同步接受/清草稿或CAS。新增真实Vue/Lexical提交顺序回归及相关四套172项通过，八门产物25.02秒、Host9.77/Vue5.53秒聚合通过；正常原聊天滚动17/17通过78.74秒，大输入reversal与secondMovement均0、最终top3166/spacer0，原2px阈值及golden未改。完整且无丢失的原生/React CDP对照显示Vue额外布局发生在回显插入之前；原生栈和属性写入区间将首次Layout锁定在DIV contenteditable写入，焦点恢复是第二次Layout，不删除其行为。早期丢数据trace不作因果证明，所有临时探针留在未跟踪目录。
 
-初始root发布另有真实焦点顺序回归：重载调用focus时宿主已连接但contenteditable=false，focus前后active均body，随后才写true。仅将既有编辑门禁post effect移到root绑定post effect之前，使同步Lexical root监听器看到可聚焦宿主；不改变同步清草稿/CAS、提交后回显顺序或编辑状态切换不重绑root的合同。真实首次/延迟绑定两红例转绿，合计10项通过。新八门产物25.41秒及产物后Host10.23/Vue5.13秒两聚合通过；刷新产物后正常配置原工作区17、聊天17及recency共35/35全部通过（110.63秒），五个初始焦点失败关闭；大输入反向0.34375px在原2px阈值内、secondMovement0，所有原断言/golden保留。剩余文件回放继续，不宣称单次全量通过。
+初始root发布另有真实焦点顺序回归：重载调用focus时宿主已连接但contenteditable=false，focus前后active均body，随后才写true。仅将既有编辑门禁post effect移到root绑定post effect之前，使同步Lexical root监听器看到可聚焦宿主；不改变同步清草稿/CAS、提交后回显顺序或编辑状态切换不重绑root的合同。真实首次/延迟绑定两红例转绿，合计10项通过。新八门产物25.41秒及产物后Host10.23/Vue5.13秒两聚合通过；刷新产物后正常配置原工作区17、聊天17及recency共35/35全部通过（110.63秒），五个初始焦点失败关闭；大输入反向0.34375px在原2px阈值内、secondMovement0，所有原断言/golden保留。剩余文件回放已结束；五份日志逐文件最新完整结果去重为250文件1100项1070通过/1失败/29跳过。唯一法语1px有独立React同条件失败对照，保留原断言；这是分段覆盖，不宣称单次全量通过。最终hygiene四门、domain graph及lint仍失败，须分别判断实际迁移增量，未放宽检查。
 
 ## 实施中的编译契约
 

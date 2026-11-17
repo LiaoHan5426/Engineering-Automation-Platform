@@ -1,25 +1,25 @@
 // @vitest-environment jsdom
-import { h } from "vue";
+import { h } from 'vue'
 /** Capture delivery action ownership without duplicating the opening-control implementation. */
-import type { PropsRenderSlots, SlotMap } from "@deepseek-ai/dsh-client-ui-slots";
-import type {} from "../src/client/index.ts";
+import type { PropsRenderSlots, SlotMap } from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '../src/client/index.ts'
 /** Slot renderer exposing the owning route and gesture for component tests. */
 export const renderFileActions: PropsRenderSlots<
-  "deliverables.file.actions" | "deliverables.review.file.actions"
->["renderSlot"] = (_name: string, input: object) => {
-  const props = input as SlotMap["deliverables.file.actions"]["owner"];
+  'deliverables.file.actions' | 'deliverables.review.file.actions'
+>['renderSlot'] = (_name: string, input: object) => {
+  const props = input as SlotMap['deliverables.file.actions']['owner']
   return props.available
     ? h(
-        "button",
-        {
-          type: "button",
-          "data-action-url": props.actionUrl,
-          disabled: props.pending,
-          onClick: () => {
-            void props.onAction("open");
-          },
+      'button',
+      {
+        type: 'button',
+        'data-action-url': props.actionUrl,
+        disabled: props.pending,
+        onClick: () => {
+          void props.onAction('open')
         },
-        ["Native file action"],
-      )
-    : null;
-};
+      },
+      ['Native file action'],
+    )
+    : null
+}

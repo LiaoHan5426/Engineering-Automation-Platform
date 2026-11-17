@@ -6,18 +6,18 @@ const mounted = new Set<() => void>()
 export function cleanup(): void { for (const dispose of mounted) dispose(); mounted.clear() }
 export async function act(action: () => void | Promise<void>): Promise<void> { await action(); await nextTick() }
 export function bindSnapshotSelector<T>(source: HostObservable<T>): SnapshotSelectorHook<T> {
-  return selector => {
-    const state = shallowRef(source.getSnapshot())
-    const off = source.subscribe(() => { state.value = source.getSnapshot() })
+  return (selector) => {
+    const state = shallowRef({ snapshot: source.getSnapshot() })
+    const off = source.subscribe(() => { state.value = { snapshot: source.getSnapshot() } })
     onScopeDispose(off)
-    return computed(() => selector(state.value))
+    return computed(() => selector(state.value.snapshot))
   }
 }
 export async function render(element: () => VNode) {
   const revision = shallowRef(0)
   const container = document.createElement('div')
   document.body.append(container)
-  const app = createApp({ setup: () => () => { revision.value; return element() } })
+  const app = createApp({ setup: () => () => { void revision.value; return element() } })
   app.mount(container)
   const unmount = () => { app.unmount(); container.remove(); mounted.delete(unmount) }
   mounted.add(unmount)

@@ -105,7 +105,7 @@ export function apply(ctx: Context): void {
         key: 'timeline_tasks',
         locale: 'timeline',
         store: viewStore,
-        inject: (sessionId: SessionId, actions: {open:(tree:import('../records.ts').Tree['id'],task?:import('../records.ts').Task['id'])=>void}): TaskCardInjected => ({
+        inject: (sessionId: SessionId, actions: { open:(tree:import('../records.ts').Tree['id'],task?:import('../records.ts').Task['id'])=>void }): TaskCardInjected => ({
           hooks: { settings, locale: ctx.locale },
           openTask: (tree, task) => {
             actions.open(tree, task)

@@ -1,5 +1,6 @@
 import {
   h,
+  normalizeClass,
   Fragment,
   defineComponent,
   computed,
@@ -7,7 +8,7 @@ import {
   watch,
   type Ref,
   type VNodeChild,
-} from "vue";
+} from 'vue'
 /**
  * Workspace pick/add flow. WorkspacePickFlow is the reusable core (menu +
  * path error dialog) consumed directly by WorkspaceBrowser (same package) and
@@ -26,46 +27,46 @@ import {
   Menu,
   Modal,
   type MenuEntry,
-} from "@deepseek-ai/dsh-client-ui-primitives";
-import type { WorkspaceId, WorkspaceView } from "@deepseek-ai/dsh-api-workspace-controller/client";
-import { workspaceDisplayTitle } from "@deepseek-ai/dsh-api-workspace-controller/default-workspace";
-import type { SnapshotSelectorHook } from "@deepseek-ai/dsh-client-ui-slots";
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import { workspaceDisplayTitle } from '@deepseek-ai/dsh-api-workspace-controller/default-workspace'
+import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
   DirectoryFlowOwnerProps,
   WorkspacePickerFactoryProps,
   WorkspacePickerProps,
-} from "./contract/slots.ts";
-import { distinguishingPathSuffixes } from "./path-suffix.ts";
-import css from "./WorkspacePicker.module.css";
-const ADD_WORKSPACE = "::add-workspace";
+} from './contract/slots.ts'
+import { distinguishingPathSuffixes } from './path-suffix.ts'
+import css from './WorkspacePicker.module.css'
+const ADD_WORKSPACE = '::add-workspace'
 /** Core flow props: the owner supplies popover control and pick semantics. */
 export interface WorkspacePickFlowProps {
   /** The standard locale seat, forwarded by whichever slot entry hosts the flow. */
-  t: WorkspacePickerProps["t"];
+  t: WorkspacePickerProps['t']
   /** Popover visibility (anchor button toggle state, owner-local). */
-  open: boolean;
+  open: boolean
   /** The anchor button element — the popover's placement anchor. */
-  anchorRef?: Ref<HTMLElement | null> | undefined;
+  anchorRef?: Ref<HTMLElement | null> | undefined
   /** Selector hook over the workspace list (framework standard hook). */
-  useWorkspaces: WorkspacePickerProps["useWorkspaces"];
+  useWorkspaces: WorkspacePickerProps['useWorkspaces']
   /** Adopt a picked host directory as a real Workspace. */
-  createWorkspace: (input: { path: string }) => Promise<WorkspaceView>;
+  createWorkspace: (input: { path: string }) => Promise<WorkspaceView>
   /** Bound occupancy selector hook for this surface's directory-flow hole (empty leaves the surface with no add action). */
-  useDirectoryFlow: SnapshotSelectorHook<boolean>;
+  useDirectoryFlow: SnapshotSelectorHook<boolean>
   /** Render this surface's directory-flow hole with the owner conversation (the entry's narrowed renderSlot). */
-  renderDirectoryFlow: (owner: DirectoryFlowOwnerProps) => VNodeChild;
+  renderDirectoryFlow: (owner: DirectoryFlowOwnerProps) => VNodeChild
   /** A real Workspace was picked or created. */
-  onPick: (workspaceId: WorkspaceId) => void;
+  onPick: (workspaceId: WorkspaceId) => void
   /** Close the popover (outside click / Escape / post-pick). */
-  onClose: () => void;
+  onClose: () => void
   /** Report the picking interaction and adoption occupancy. */
-  onBusyChange?: (busy: boolean) => void;
+  onBusyChange?: (busy: boolean) => void
   /** Only offer the add action, hide existing workspaces. */
-  addOnly?: boolean;
+  addOnly?: boolean
   /** Menu opening direction relative to the anchor. */
-  side?: "bottom" | "top" | "right";
+  side?: 'bottom' | 'top' | 'right'
   /** Currently active workspace (trailing check in the picker list). */
-  selectedId?: WorkspaceId | undefined;
+  selectedId?: WorkspaceId | undefined
 }
 /**
  * Render the pick menu plus the adoption error dialog.
@@ -74,25 +75,22 @@ export interface WorkspacePickFlowProps {
  */
 export const WorkspacePickFlow = defineComponent(
   (props: WorkspacePickFlowProps) => {
-    const absentAnchor = shallowRef<HTMLElement | null>(null);
-    const workspaceSnapshot = props.useWorkspaces((state) => state);
-    const workspaces = computed(() => workspaceSnapshot.value.items);
-    const errorOpen = shallowRef(false);
-    const modalError = shallowRef<string | null>(null);
-    const flowOpen = shallowRef(false);
-    const pickingFolder = shallowRef(false);
-    const flowBusy = computed(() => flowOpen.value || pickingFolder.value);
+    const absentAnchor = shallowRef<HTMLElement | null>(null)
+    const workspaceSnapshot = props.useWorkspaces(state => state)
+    const workspaces = computed(() => workspaceSnapshot.value.items)
+    const errorOpen = shallowRef(false)
+    const modalError = shallowRef<string | null>(null)
+    const flowOpen = shallowRef(false)
+    const pickingFolder = shallowRef(false)
+    const flowBusy = computed(() => flowOpen.value || pickingFolder.value)
     watch(
       [() => flowBusy.value, () => props.onBusyChange],
-      (_value, _previous, onCleanup) => {
-        const cleanup: void | (() => void) = (() => {
-          props.onBusyChange?.(flowBusy.value);
-        })();
-        if (typeof cleanup === "function") onCleanup(cleanup);
+      () => {
+        props.onBusyChange?.(flowBusy.value)
       },
-      { immediate: true, flush: "post" },
-    );
-    const flowAvailable = props.useDirectoryFlow((occupied) => occupied);
+      { immediate: true, flush: 'post' },
+    )
+    const flowAvailable = props.useDirectoryFlow(occupied => occupied)
     // An occupant that unloads mid-interaction leaves nobody to cancel: an
     // open flow over an empty hole withdraws so the menu actions come back.
     // flowOpen is a dependency because the flow can also OPEN over an already
@@ -105,88 +103,85 @@ export const WorkspacePickFlow = defineComponent(
     // dialog up) — that transition must snap back too, not just occupancy loss.
     watch(
       [() => flowOpen.value, () => flowAvailable.value],
-      (_value, _previous, onCleanup) => {
-        const cleanup: void | (() => void) = (() => {
-          if (flowOpen.value && !flowAvailable.value) flowOpen.value = false;
-        })();
-        if (typeof cleanup === "function") onCleanup(cleanup);
+      () => {
+        if (flowOpen.value && !flowAvailable.value) flowOpen.value = false
       },
-      { immediate: true, flush: "post" },
-    );
+      { immediate: true, flush: 'post' },
+    )
     const addEntries = computed<MenuEntry[]>(() =>
       flowAvailable.value
         ? [
-            {
-              id: ADD_WORKSPACE,
-              label: props.t("menu.addWorkspace"),
-              icon: h(IconPlusOutlineRegular, { size: 16 }),
-              disabled: flowBusy.value,
-            },
-          ]
+          {
+            id: ADD_WORKSPACE,
+            label: props.t('menu.addWorkspace'),
+            icon: h(IconPlusOutlineRegular, { size: 16 }),
+            disabled: flowBusy.value,
+          },
+        ]
         : [],
-    );
+    )
     // With workspaces listed, the add action pins below the scroll region
     // (divider + always visible); otherwise it IS the menu.
-    const pinAdd = computed(() => !(props.addOnly ?? false) && workspaces.value.length > 0);
+    const pinAdd = computed(() => !(props.addOnly ?? false) && workspaces.value.length > 0)
     // The resolved name, not `t`, is the memo dependency: the bound seat keeps
     // its identity across a language switch.
-    const defaultWorkspaceName = computed(() => props.t("workspace.defaultName"));
+    const defaultWorkspaceName = computed(() => props.t('workspace.defaultName'))
     const listed = computed(() => {
-      if (!pinAdd.value) return [];
-      const rows = workspaces.value.map((workspace) => ({
+      if (!pinAdd.value) return []
+      const rows = workspaces.value.map(workspace => ({
         id: workspace.workspaceId,
         title: workspaceDisplayTitle(workspace.title, defaultWorkspaceName.value),
         path: workspace.path,
-      }));
-      const suffixes = distinguishingPathSuffixes(rows);
-      return rows.map((row) => ({ ...row, suffix: suffixes.get(row.id) }));
-    });
+      }))
+      const suffixes = distinguishingPathSuffixes(rows)
+      return rows.map(row => ({ ...row, suffix: suffixes.get(row.id) }))
+    })
     const items = computed<MenuEntry[]>(() =>
       pinAdd.value
         ? listed.value.map(({ id, title, path, suffix }) => ({
-            id,
-            // The title gives way first, so the suffix that tells the rows apart
-            // stays visible; the native tooltip carries the full path.
-            label:
+          id,
+          // The title gives way first, so the suffix that tells the rows apart
+          // stays visible; the native tooltip carries the full path.
+          label:
               suffix === undefined
                 ? title
-                : h("span", { class: css.disambiguated, title: path }, [
-                    h("span", { class: css.title }, [title]),
-                    " ",
-                    h("span", { class: css.pathSuffix }, [suffix]),
-                  ]),
-            icon: h(IconFolderCloseRegular, { size: 16 }),
-            disabled: flowBusy.value,
-          }))
+                : h('span', { class: css.disambiguated, title: path }, [
+                  h('span', { class: css.title }, [title]),
+                  ' ',
+                  h('span', { class: css.pathSuffix }, [suffix]),
+                ]),
+          icon: h(IconFolderCloseRegular, { size: 16 }),
+          disabled: flowBusy.value,
+        }))
         : addEntries.value,
-    );
+    )
     // Nothing listed and nothing to add with (a composition that mounts this
     // package without any directory-picker): an empty popover would claim a
     // choice that does not exist, so the anchor gesture shows nothing at all.
-    const menuIsEmpty = computed(() => items.value.length === 0);
+    const menuIsEmpty = computed(() => items.value.length === 0)
     const closeModal = (): void => {
-      errorOpen.value = false;
-      modalError.value = null;
-    };
+      errorOpen.value = false
+      modalError.value = null
+    }
     /** Adopt a picked directory; failures land in the folder-error dialog (Choose again reopens the flow). */
     const adoptDirectory = (path: string): Promise<void> =>
       props
         .createWorkspace({ path })
         .then((workspace) => {
-          flowOpen.value = false;
-          props.onPick(workspace.workspaceId);
+          flowOpen.value = false
+          props.onPick(workspace.workspaceId)
         })
         .catch((reason: unknown) => {
-          modalError.value = reason instanceof Error ? reason.message : String(reason);
-          flowOpen.value = false;
-          errorOpen.value = true;
-        });
+          modalError.value = reason instanceof Error ? reason.message : String(reason)
+          flowOpen.value = false
+          errorOpen.value = true
+        })
     const openDirectoryFlow = (): void => {
-      props.onClose();
-      errorOpen.value = false;
-      modalError.value = null;
-      flowOpen.value = true;
-    };
+      props.onClose()
+      errorOpen.value = false
+      modalError.value = null
+      flowOpen.value = true
+    }
     // A menu exists to disambiguate between targets. With no workspaces listed
     // and the add action the only entry left, the anchor gesture IS that action:
     // a one-row popover would cost a click and offer nothing to choose between.
@@ -196,11 +191,11 @@ export const WorkspacePickFlow = defineComponent(
     // loading status instead of jumping into a flow the arriving list would have
     // made unnecessary; the add-only surface lists nothing and never waits.
     const listSettled = computed(
-      () => (props.addOnly ?? false) || workspaceSnapshot.value.phase === "ready",
-    );
+      () => (props.addOnly ?? false) || workspaceSnapshot.value.phase === 'ready',
+    )
     const addIsTheOnlyEntry = computed(
       () => !pinAdd.value && listSettled.value && addEntries.value.length === 1,
-    );
+    )
     // `flowBusy` gates this exactly as it disables the equivalent menu entry: a
     // pick still being adopted owns the surface until it settles.
     // `flowBusy` gates this exactly as it disables the equivalent menu entry: a
@@ -212,39 +207,36 @@ export const WorkspacePickFlow = defineComponent(
         () => flowBusy.value,
         () => openDirectoryFlow,
       ],
-      (_value, _previous, onCleanup) => {
-        const cleanup: void | (() => void) = (() => {
-          if (props.open && addIsTheOnlyEntry.value && !flowBusy.value) openDirectoryFlow();
-        })();
-        if (typeof cleanup === "function") onCleanup(cleanup);
+      () => {
+        if (props.open && addIsTheOnlyEntry.value && !flowBusy.value) openDirectoryFlow()
       },
-      { immediate: true, flush: "post" },
-    );
+      { immediate: true, flush: 'post' },
+    )
     const flowOwner = computed<DirectoryFlowOwnerProps>(() => ({
       open: flowOpen.value,
       busy: pickingFolder.value,
       onPicked: (path) => {
-        pickingFolder.value = true;
+        pickingFolder.value = true
         void adoptDirectory(path).finally(() => {
-          pickingFolder.value = false;
-        });
+          pickingFolder.value = false
+        })
       },
       onCancel: () => {
-        flowOpen.value = false;
+        flowOpen.value = false
       },
       onError: (message) => {
-        flowOpen.value = false;
-        modalError.value = message;
-        errorOpen.value = true;
+        flowOpen.value = false
+        modalError.value = message
+        errorOpen.value = true
       },
-    }));
+    }))
     const handleSelect = (id: string): void => {
       if (id === ADD_WORKSPACE) {
-        openDirectoryFlow();
-        return;
+        openDirectoryFlow()
+        return
       }
-      props.onPick(id as WorkspaceId);
-    };
+      props.onPick(id as WorkspaceId)
+    }
     return () => {
       return h(Fragment, {}, [
         h(Menu, {
@@ -254,83 +246,83 @@ export const WorkspacePickFlow = defineComponent(
           ...(props.selectedId === undefined ? {} : { selectedId: props.selectedId }),
           onSelect: handleSelect,
           onClose: props.onClose,
-          side: props.side ?? "bottom",
+          side: props.side ?? 'bottom',
           portal: true,
           anchorRef: props.anchorRef ?? absentAnchor,
         }),
         props.open &&
           !addIsTheOnlyEntry.value &&
           !menuIsEmpty.value &&
-          workspaceSnapshot.value.phase === "pending" &&
-          h("div", { class: css.menuStatus, role: "status" }, [props.t("picker.loading")]),
+          workspaceSnapshot.value.phase === 'pending' &&
+          h('div', { class: css.menuStatus, role: 'status' }, [props.t('picker.loading')]),
         props.renderDirectoryFlow(flowOwner.value),
         h(
           Modal,
           {
             open: errorOpen.value,
             onClose: closeModal,
-            closeLabel: props.t("close"),
-            title: props.t("folderError.title"),
+            closeLabel: props.t('close'),
+            title: props.t('folderError.title'),
           },
           {
             footer: () =>
               h(Fragment, {}, [
                 h(
                   Button,
-                  { variant: "outline", className: css.modalAction!, onClick: closeModal },
-                  { default: () => [props.t("cancel")] },
+                  { variant: 'outline', className: normalizeClass(css.modalAction), onClick: closeModal },
+                  { default: () => [props.t('cancel')] },
                 ),
                 h(
                   Button,
                   {
-                    variant: "primary",
-                    className: css.modalAction!,
+                    variant: 'primary',
+                    className: normalizeClass(css.modalAction),
                     disabled: !flowAvailable.value,
                     onClick: openDirectoryFlow,
                   },
-                  { default: () => [props.t("folderError.retry")] },
+                  { default: () => [props.t('folderError.retry')] },
                 ),
               ]),
-            default: () => [h("div", { class: css.modalError, role: "alert" }, [modalError.value])],
+            default: () => [h('div', { class: css.modalError, role: 'alert' }, [modalError.value])],
           },
         ),
-      ]);
-    };
+      ])
+    }
   },
   {
     props: [
-      "t",
-      "open",
-      "anchorRef",
-      "useWorkspaces",
-      "createWorkspace",
-      "useDirectoryFlow",
-      "renderDirectoryFlow",
-      "onPick",
-      "onClose",
-      "onBusyChange",
-      "addOnly",
-      "side",
-      "selectedId",
+      't',
+      'open',
+      'anchorRef',
+      'useWorkspaces',
+      'createWorkspace',
+      'useDirectoryFlow',
+      'renderDirectoryFlow',
+      'onPick',
+      'onClose',
+      'onBusyChange',
+      'addOnly',
+      'side',
+      'selectedId',
     ],
   },
-);
+)
 /**
  * The flow inputs both picker surfaces forward unchanged; each surface
  * supplies only the render function of its own directory-flow hole.
  */
 type PickerSurfaceProps = Pick<
   WorkspacePickFlowProps,
-  | "t"
-  | "open"
-  | "anchorRef"
-  | "useWorkspaces"
-  | "createWorkspace"
-  | "useDirectoryFlow"
-  | "selectedId"
-  | "onPick"
-  | "onClose"
->;
+  | 't'
+  | 'open'
+  | 'anchorRef'
+  | 'useWorkspaces'
+  | 'createWorkspace'
+  | 'useDirectoryFlow'
+  | 'selectedId'
+  | 'onPick'
+  | 'onClose'
+>
 function surfaceFlow(
   {
     t,
@@ -343,7 +335,7 @@ function surfaceFlow(
     onPick,
     onClose,
   }: PickerSurfaceProps,
-  renderDirectoryFlow: WorkspacePickFlowProps["renderDirectoryFlow"],
+  renderDirectoryFlow: WorkspacePickFlowProps['renderDirectoryFlow'],
 ): VNodeChild {
   return h(WorkspacePickFlow, {
     t: t,
@@ -356,7 +348,7 @@ function surfaceFlow(
     selectedId: selectedId,
     onPick: onPick,
     onClose: onClose,
-  });
+  })
 }
 /**
  * The conversation empty-state registration: adapts the owner share to the
@@ -366,36 +358,36 @@ function surfaceFlow(
  */
 export const WorkspacePicker = defineComponent(
   (props: WorkspacePickerProps) => {
-    const { renderSlot } = props;
+    const { renderSlot } = props
     return () => {
-      return surfaceFlow(props, (owner) =>
-        renderSlot("conversation.hero.workspace.directoryFlow", owner),
-      );
-    };
+      return surfaceFlow(props, owner =>
+        renderSlot('conversation.hero.workspace.directoryFlow', owner),
+      )
+    }
   },
   {
     props: [
-      "t",
-      "open",
-      "anchorRef",
-      "selectedId",
-      "onPick",
-      "onClose",
-      "useRemoteAccess",
-      "useSessions",
-      "useSessionRetainInfo",
-      "useSessionAccess",
-      "usePanelInfo",
-      "useContextMenu",
-      "useSessionStatus",
-      "useWorkspaces",
-      "renderSlot",
-      "__renders",
-      "createWorkspace",
-      "useDirectoryFlow",
+      't',
+      'open',
+      'anchorRef',
+      'selectedId',
+      'onPick',
+      'onClose',
+      'useRemoteAccess',
+      'useSessions',
+      'useSessionRetainInfo',
+      'useSessionAccess',
+      'usePanelInfo',
+      'useContextMenu',
+      'useSessionStatus',
+      'useWorkspaces',
+      'renderSlot',
+      '__renders',
+      'createWorkspace',
+      'useDirectoryFlow',
     ],
   },
-);
+)
 /**
  * The `workspace.picker` Factory definition: the same flow for another
  * plugin's surface, under the Factory's own directory-flow hole.
@@ -404,23 +396,23 @@ export const WorkspacePicker = defineComponent(
  */
 export const WorkspacePickerFactory = defineComponent(
   (props: WorkspacePickerFactoryProps) => {
-    const { renderSlot } = props;
+    const { renderSlot } = props
     return () => {
-      return surfaceFlow(props, (owner) => renderSlot("workspace.picker.directoryFlow", owner));
-    };
+      return surfaceFlow(props, owner => renderSlot('workspace.picker.directoryFlow', owner))
+    }
   },
   {
     props: [
-      "renderSlot",
-      "t",
-      "open",
-      "anchorRef",
-      "useWorkspaces",
-      "createWorkspace",
-      "useDirectoryFlow",
-      "selectedId",
-      "onPick",
-      "onClose",
+      'renderSlot',
+      't',
+      'open',
+      'anchorRef',
+      'useWorkspaces',
+      'createWorkspace',
+      'useDirectoryFlow',
+      'selectedId',
+      'onPick',
+      'onClose',
     ],
   },
-);
+)

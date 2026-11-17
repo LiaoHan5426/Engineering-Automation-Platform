@@ -4,31 +4,31 @@
  * `RemoteMock` bound to that client's Connection plugin instance.
  * @module @deepseek-ai/dsh-client-test-runtime/src/assembly/test-client
  */
-import { Context, type Plugin } from "@deepseek-ai/cordis";
-import type { Entry } from "@deepseek-ai/cordis-plugin-loader";
-import { tearDownEntryFiber } from "@deepseek-ai/dsh-client-modules/client";
+import { Context, type Plugin } from '@deepseek-ai/cordis'
+import type { Entry } from '@deepseek-ai/cordis-plugin-loader'
+import { tearDownEntryFiber } from '@deepseek-ai/dsh-client-modules/client'
 import {
   installConnection,
   type ConnectionHandle,
-} from "@deepseek-ai/dsh-client-connection/client";
-import { assertEntriesActive, bootClient } from "@deepseek-ai/dsh-client-web/src/boot-client.ts";
-import { mountClient } from "@deepseek-ai/dsh-client-web/src/mount.ts";
-import type { RemoteMock } from "@deepseek-ai/dsh-remote-mock";
-import { flushPendingClientWork } from "../flush.ts";
-import { createInProcessModules, loadPluginModules } from "./modules.ts";
-import { assertPlan, graphFromRoster, type AssemblyPlan } from "./roster.ts";
-import { REMOTES_PACKAGE, remoteNamespacesOf, remoteProxiesPlugin } from "./remote-proxies.ts";
-import { allowAllAccessPlugin, staticAccessPlugin } from "../access.ts";
+} from '@deepseek-ai/dsh-client-connection/client'
+import { assertEntriesActive, bootClient } from '@deepseek-ai/dsh-client-web/src/boot-client.ts'
+import { mountClient } from '@deepseek-ai/dsh-client-web/src/mount.ts'
+import type { RemoteMock } from '@deepseek-ai/dsh-remote-mock'
+import { flushPendingClientWork } from '../flush.ts'
+import { createInProcessModules, loadPluginModules } from './modules.ts'
+import { assertPlan, graphFromRoster, type AssemblyPlan } from './roster.ts'
+import { REMOTES_PACKAGE, remoteNamespacesOf, remoteProxiesPlugin } from './remote-proxies.ts'
+import { allowAllAccessPlugin, staticAccessPlugin } from '../access.ts'
 
 /** The remote-access row: it mounts its own generated Remote contribution and publishes the access Hooks. */
-const REMOTE_ACCESS_PACKAGE = "@deepseek-ai/dsh-api-remote-access";
+const REMOTE_ACCESS_PACKAGE = '@deepseek-ai/dsh-api-remote-access'
 
 /**
  * Rows whose generated Remote contributions exist only in built `lib/`. The
  * tier drops them: `remote.<ns>` proxies stand in for the namespaces and
  * allow-all access Hooks stand in for remote-access.
  */
-const GENERATED_REMOTE_PACKAGES: readonly string[] = [REMOTES_PACKAGE, REMOTE_ACCESS_PACKAGE];
+const GENERATED_REMOTE_PACKAGES: readonly string[] = [REMOTES_PACKAGE, REMOTE_ACCESS_PACKAGE]
 
 /** Carrier options. */
 export interface TestClientOptions {
@@ -36,24 +36,24 @@ export interface TestClientOptions {
    * Mount `uiRenderer` into an element (a fresh `document.body` child when `true`); requires jsdom and a roster
    * that provides `uiRenderer`. Default false.
    */
-  readonly mount?: boolean | HTMLElement;
+  readonly mount?: boolean | HTMLElement
   /** Wait for `ctx.connection.state === 'connected'` before returning. Default true. */
-  readonly awaitConnected?: boolean;
+  readonly awaitConnected?: boolean
   /** Readiness budget in milliseconds before `start` rejects with the mock log summary. Default 5000. */
-  readonly connectTimeoutMs?: number;
+  readonly connectTimeoutMs?: number
   /** The fixed access answer for each action on every resource. Default: every action is allowed. */
-  readonly access?: (action: string) => boolean;
+  readonly access?: (action: string) => boolean
   /**
    * Tolerate inactive roster entries outside the Web client's required list, as the product boot does. Default
    * false: every roster entry must activate, so a plugin that fails to import or activate, or waits on a missing
    * service, rejects `start` with its audit reason.
    */
-  readonly allowInactiveEntries?: boolean;
+  readonly allowInactiveEntries?: boolean
   /**
    * Remote namespaces mounted by real roster plugins instead of test proxies. The caller must include
    * those plugins and script their Gateway requests; unmatched requests still fail teardown.
    */
-  readonly mountedRemoteNamespaces?: readonly string[];
+  readonly mountedRemoteNamespaces?: readonly string[]
 }
 
 /**
@@ -61,8 +61,8 @@ export interface TestClientOptions {
  * installs missing shims and the last release removes exactly those shims.
  */
 class SharedJsdomShims {
-  private holders = 0;
-  private removeShims: (() => void) | undefined;
+  private holders = 0
+  private removeShims: (() => void) | undefined
 
   /**
    * Hold the shims for one client.
@@ -70,24 +70,24 @@ class SharedJsdomShims {
    */
   acquire(): () => void {
     if (this.holders === 0) {
-      this.removeShims = installJsdomShims();
+      this.removeShims = installJsdomShims()
     }
-    this.holders += 1;
+    this.holders += 1
     return () => {
-      this.holders -= 1;
-      if (this.holders > 0) return;
-      this.removeShims?.();
-      this.removeShims = undefined;
-    };
+      this.holders -= 1
+      if (this.holders > 0) return
+      this.removeShims?.()
+      this.removeShims = undefined
+    }
   }
 }
 
-const sharedJsdomShims = new SharedJsdomShims();
+const sharedJsdomShims = new SharedJsdomShims()
 
-const CONNECTION_PACKAGE = "@deepseek-ai/dsh-client-connection";
+const CONNECTION_PACKAGE = '@deepseek-ai/dsh-client-connection'
 
 /** Default readiness budget; the mock answers `$events` immediately, so a miss means a boot-time fixture is absent. */
-const DEFAULT_CONNECT_TIMEOUT_MS = 5_000;
+const DEFAULT_CONNECT_TIMEOUT_MS = 5_000
 
 /**
  * Browser globals jsdom lacks that roster plugins touch at apply or mount:
@@ -111,95 +111,95 @@ const JSDOM_SHIMS: Readonly<Record<string, unknown>> = {
     observe(): void {}
     disconnect(): void {}
   },
-};
+}
 
 /** Install a shim for each absent global; the disposer deletes exactly those. */
 function installJsdomShims(): () => void {
-  const globals = globalThis as Record<string, unknown>;
-  const installed = Object.keys(JSDOM_SHIMS).filter((name) => globals[name] === undefined);
-  for (const name of installed) globals[name] = JSDOM_SHIMS[name];
+  const globals = globalThis as Record<string, unknown>
+  const installed = Object.keys(JSDOM_SHIMS).filter(name => globals[name] === undefined)
+  for (const name of installed) globals[name] = JSDOM_SHIMS[name]
   const fontDocument: { readonly fonts?: EventTarget } | undefined =
-    typeof document === "undefined" ? undefined : document;
-  const shimFonts = fontDocument !== undefined && fontDocument.fonts === undefined;
+    typeof document === 'undefined' ? undefined : document
+  const shimFonts = fontDocument !== undefined && fontDocument.fonts === undefined
   const fontsDescriptor =
-    fontDocument === undefined ? undefined : Object.getOwnPropertyDescriptor(fontDocument, "fonts");
+    fontDocument === undefined ? undefined : Object.getOwnPropertyDescriptor(fontDocument, 'fonts')
   if (shimFonts)
-    Object.defineProperty(fontDocument, "fonts", { configurable: true, value: new EventTarget() });
+    Object.defineProperty(fontDocument, 'fonts', { configurable: true, value: new EventTarget() })
   return () => {
-    for (const name of installed) Reflect.deleteProperty(globals, name);
+    for (const name of installed) Reflect.deleteProperty(globals, name)
     if (shimFonts) {
-      if (fontsDescriptor === undefined) Reflect.deleteProperty(fontDocument, "fonts");
-      else Object.defineProperty(fontDocument, "fonts", fontsDescriptor);
+      if (fontsDescriptor === undefined) Reflect.deleteProperty(fontDocument, 'fonts')
+      else Object.defineProperty(fontDocument, 'fonts', fontsDescriptor)
     }
-  };
+  }
 }
 
 /** The Error a thrown value stands for: itself, or a new Error carrying its string form. */
 function toError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
+  return error instanceof Error ? error : new Error(String(error))
 }
 
 function messageOf(error: unknown): string {
-  return toError(error).message;
+  return toError(error).message
 }
 
 function connectionOf(ctx: Context): ConnectionHandle {
-  const connection = ctx.get("connection") as ConnectionHandle | undefined;
+  const connection = ctx.get('connection') as ConnectionHandle | undefined
   if (connection === undefined) {
-    throw new Error("client-test-runtime: the roster provides no `connection` service");
+    throw new Error('client-test-runtime: the roster provides no `connection` service')
   }
-  return connection;
+  return connection
 }
 
 /** Mount point plus whether `start` created it (and so removes it on dispose). */
 interface MountPoint {
-  readonly element: HTMLElement | undefined;
-  readonly owned: boolean;
+  readonly element: HTMLElement | undefined
+  readonly owned: boolean
 }
 
 function resolveMountPoint(mount: boolean | HTMLElement | undefined): MountPoint {
-  if (mount === undefined || mount === false) return { element: undefined, owned: false };
-  if (typeof document === "undefined") {
+  if (mount === undefined || mount === false) return { element: undefined, owned: false }
+  if (typeof document === 'undefined') {
     throw new Error(
-      "client-test-runtime: mount requires a DOM; add `// @vitest-environment jsdom` to the spec",
-    );
+      'client-test-runtime: mount requires a DOM; add `// @vitest-environment jsdom` to the spec',
+    )
   }
   if (mount === true) {
-    const element = document.createElement("div");
-    document.body.appendChild(element);
-    return { element, owned: true };
+    const element = document.createElement('div')
+    document.body.appendChild(element)
+    return { element, owned: true }
   }
-  return { element: mount, owned: false };
+  return { element: mount, owned: false }
 }
 
 /** Drain currently queued Promise work before committing native render updates. */
 async function settle(fn: () => Promise<void>): Promise<void> {
-  await fn();
-  await flushPendingClientWork();
+  await fn()
+  await flushPendingClientWork()
 }
 
 async function awaitConnected(ctx: Context, mock: RemoteMock, timeoutMs: number): Promise<void> {
-  const { state } = connectionOf(ctx);
-  if (state.getSnapshot() === "connected") return;
+  const { state } = connectionOf(ctx)
+  if (state.getSnapshot() === 'connected') return
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => {
-      unsubscribe();
-      const unmatched = mock.log.unmatched().map((row) => `${row.mode} ${row.endpoint}`);
-      const streams = mock.log.streams().map((row) => `${row.endpoint} (${row.state})`);
+      unsubscribe()
+      const unmatched = mock.log.unmatched().map(row => `${row.mode} ${row.endpoint}`)
+      const streams = mock.log.streams().map(row => `${row.endpoint} (${row.state})`)
       reject(
         new Error(
           `client-test-runtime: connection state is ${String(state.getSnapshot())} after ${timeoutMs}ms; ` +
-            `unmatched: [${unmatched.join(", ")}]; streams: [${streams.join(", ")}]`,
+            `unmatched: [${unmatched.join(', ')}]; streams: [${streams.join(', ')}]`,
         ),
-      );
-    }, timeoutMs);
+      )
+    }, timeoutMs)
     const unsubscribe = state.subscribe(() => {
-      if (state.getSnapshot() !== "connected") return;
-      clearTimeout(timer);
-      unsubscribe();
-      resolve();
-    });
-  });
+      if (state.getSnapshot() !== 'connected') return
+      clearTimeout(timer)
+      unsubscribe()
+      resolve()
+    })
+  })
 }
 
 /** A booted client under test. */
@@ -235,89 +235,89 @@ export class TestClient {
     mock: RemoteMock,
     options: TestClientOptions = {},
   ): Promise<TestClient> {
-    assertPlan(plan);
+    assertPlan(plan)
     for (const name of GENERATED_REMOTE_PACKAGES) {
       if (plan.provide?.[name] !== undefined) {
         throw new Error(
           `client-test-runtime: ${name} cannot be provided; the tier replaces its generated Remote mount`,
-        );
+        )
       }
     }
-    const generated = GENERATED_REMOTE_PACKAGES.filter((name) =>
-      plan.roster.rows.some((row) => row.name === name),
-    );
-    const roster = generated.length > 0 ? plan.roster.without(generated) : plan.roster;
-    const ctx = new Context();
+    const generated = GENERATED_REMOTE_PACKAGES.filter(name =>
+      plan.roster.rows.some(row => row.name === name),
+    )
+    const roster = generated.length > 0 ? plan.roster.without(generated) : plan.roster
+    const ctx = new Context()
     const pageLocation =
-      typeof location === "undefined" ? undefined : { hostname: location.hostname };
-    let mountPoint: MountPoint = { element: undefined, owned: false };
-    let release: (() => void) | undefined;
+      typeof location === 'undefined' ? undefined : { hostname: location.hostname }
+    let mountPoint: MountPoint = { element: undefined, owned: false }
+    let release: (() => void) | undefined
     const restore = (): void => {
-      if (mountPoint.owned) mountPoint.element?.remove();
-      release?.();
-    };
+      if (mountPoint.owned) mountPoint.element?.remove()
+      release?.()
+    }
     try {
-      const modules = new Map(await loadPluginModules({ ...plan, roster }));
-      const connection = modules.get(CONNECTION_PACKAGE);
+      const modules = new Map(await loadPluginModules({ ...plan, roster }))
+      const connection = modules.get(CONNECTION_PACKAGE)
       if (connection !== undefined && plan.provide?.[CONNECTION_PACKAGE] === undefined) {
         modules.set(CONNECTION_PACKAGE, {
           ...connection,
           apply: (connectionCtx) => {
             installConnection(connectionCtx, {
-              interactions: "answer",
+              interactions: 'answer',
               transport: { rpc: mock.rpc },
               ...(pageLocation === undefined ? {} : { location: pageLocation }),
-            });
+            })
           },
-        });
+        })
       }
-      mountPoint = resolveMountPoint(options.mount);
-      release = sharedJsdomShims.acquire();
-      const system = createInProcessModules(graphFromRoster(roster.rows), modules);
-      const mountedNamespaces = new Set(options.mountedRemoteNamespaces);
+      mountPoint = resolveMountPoint(options.mount)
+      release = sharedJsdomShims.acquire()
+      const system = createInProcessModules(graphFromRoster(roster.rows), modules)
+      const mountedNamespaces = new Set(options.mountedRemoteNamespaces)
       const proxyNamespaces = remoteNamespacesOf(modules.values(), mock).filter(
-        (namespace) => !mountedNamespaces.has(namespace),
-      );
-      ctx.plugin(remoteProxiesPlugin(proxyNamespaces, mock) as Plugin);
+        namespace => !mountedNamespaces.has(namespace),
+      )
+      ctx.plugin(remoteProxiesPlugin(proxyNamespaces, mock) as Plugin)
       // The dropped remote-access row's Hooks: every action is allowed on every resource unless the spec fixes the answers.
       if (generated.includes(REMOTE_ACCESS_PACKAGE)) {
         ctx.plugin(
           options.access === undefined ? allowAllAccessPlugin : staticAccessPlugin(options.access),
-        );
+        )
       }
-      await bootClient({ ctx, modules: system, manifest: system.manifest });
+      await bootClient({ ctx, modules: system, manifest: system.manifest })
       if (options.allowInactiveEntries !== true) {
         await assertEntriesActive(ctx, system, (report) => {
           throw new Error(
             `client-test-runtime: every roster entry must activate; pass allowInactiveEntries to tolerate it\n${report}`,
-          );
-        });
+          )
+        })
       }
       if (mountPoint.element !== undefined) {
-        if (ctx.get("uiRenderer") === undefined) {
+        if (ctx.get('uiRenderer') === undefined) {
           throw new Error(
-            "client-test-runtime: mount requested, but the roster provides no `uiRenderer`",
-          );
+            'client-test-runtime: mount requested, but the roster provides no `uiRenderer`',
+          )
         }
-        await mountClient(ctx, mountPoint.element);
+        await mountClient(ctx, mountPoint.element)
       }
       if (options.awaitConnected !== false) {
-        await awaitConnected(ctx, mock, options.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS);
+        await awaitConnected(ctx, mock, options.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS)
       }
     } catch (error) {
       try {
-        await settle(() => ctx.fiber.dispose());
+        await settle(() => ctx.fiber.dispose())
       } catch {
         // The boot failure is the error to report; a half-built tree failing to dispose adds nothing to it.
       } finally {
-        restore();
+        restore()
       }
-      throw error;
+      throw error
     }
-    return new TestClient(ctx, mock, mountPoint.element, restore);
+    return new TestClient(ctx, mock, mountPoint.element, restore)
   }
 
-  private disposing: Promise<void> | undefined;
+  private disposing: Promise<void> | undefined
 
   private constructor(
     readonly ctx: Context,
@@ -328,12 +328,12 @@ export class TestClient {
 
   /** The roster's Connection service (no `Context` augmentation declares it); throws when the roster provides none. */
   get connection(): ConnectionHandle {
-    return connectionOf(this.ctx);
+    return connectionOf(this.ctx)
   }
 
   /** Flush native render work and microtasks (plain microtask flush without a DOM). */
   async flush(): Promise<void> {
-    await settle(() => Promise.resolve());
+    await settle(() => Promise.resolve())
   }
 
   /**
@@ -345,10 +345,10 @@ export class TestClient {
    * @param name - package name of the row.
    */
   async reload(name: string): Promise<void> {
-    const entry = this.entryOf(name);
-    await tearDownEntryFiber(entry);
-    await entry.refresh();
-    await this.ctx.loader.await();
+    const entry = this.entryOf(name)
+    await tearDownEntryFiber(entry)
+    await entry.refresh()
+    await this.ctx.loader.await()
   }
 
   /**
@@ -356,10 +356,10 @@ export class TestClient {
    * @param name - package name of the row.
    */
   async unload(name: string): Promise<void> {
-    const entry = this.entryOf(name);
-    const disposal = entry.fiber?.dispose();
-    this.ctx.loader.remove(entry.id);
-    await disposal;
+    const entry = this.entryOf(name)
+    const disposal = entry.fiber?.dispose()
+    this.ctx.loader.remove(entry.id)
+    await disposal
   }
 
   /**
@@ -372,45 +372,45 @@ export class TestClient {
    */
   async dispose(): Promise<void> {
     if (this.disposing !== undefined) {
-      await this.disposing.catch(() => undefined);
-      return;
+      await this.disposing.catch(() => undefined)
+      return
     }
-    this.disposing = this.teardown();
-    await this.disposing;
+    this.disposing = this.teardown()
+    await this.disposing
   }
 
   private async teardown(): Promise<void> {
-    let failure: Error | undefined;
+    let failure: Error | undefined
     try {
-      await settle(() => this.ctx.fiber.dispose());
+      await settle(() => this.ctx.fiber.dispose())
     } catch (error) {
-      failure = toError(error);
+      failure = toError(error)
     } finally {
-      this.restore();
+      this.restore()
     }
     if (failure === undefined) {
-      this.mock.assertNoUnmatched();
-      return;
+      this.mock.assertNoUnmatched()
+      return
     }
     try {
-      this.mock.assertNoUnmatched();
+      this.mock.assertNoUnmatched()
     } catch (unmatched) {
       throw new Error(
         `${messageOf(unmatched)}\nclient-test-runtime: the plugin tree also failed to dispose: ${failure.message}`,
         { cause: failure },
-      );
+      )
     }
-    throw failure;
+    throw failure
   }
 
   private entryOf(name: string): Entry {
-    const entries = [...this.ctx.loader.entries()];
-    const entry = entries.find((candidate) => candidate.options.name === name);
+    const entries = [...this.ctx.loader.entries()]
+    const entry = entries.find(candidate => candidate.options.name === name)
     if (entry === undefined) {
       throw new Error(
-        `client-test-runtime: no Loader entry named ${name}; entries: ${entries.map((row) => row.options.name).join(", ")}`,
-      );
+        `client-test-runtime: no Loader entry named ${name}; entries: ${entries.map(row => row.options.name).join(', ')}`,
+      )
     }
-    return entry;
+    return entry
   }
 }

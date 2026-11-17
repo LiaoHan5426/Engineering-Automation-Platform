@@ -1,17 +1,17 @@
 /** Shared native-open status for delivery cards, the changed-files card, and closing-message file mentions. */
-import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import { changedFileUrl } from "../changes.ts";
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { changedFileUrl } from '../changes.ts'
 import {
   presentedFileUrl,
   PRESENT_HOST_ROUTE,
   isPresentedHost,
   type PresentedAction,
   type PresentedHost,
-} from "../presented.ts";
+} from '../presented.ts'
 
 /** Failure feedback for the shared native opening control. */
-export type PresentedOpenFailure = "openError" | "revealError";
+export type PresentedOpenFailure = 'openError' | 'revealError'
 
 /**
  * Settled result of one native file gesture, for the contributed control to
@@ -21,29 +21,29 @@ export type PresentedOpenFailure = "openError" | "revealError";
  * acknowledged operation may be announced as a success.
  */
 export type PresentedOpenOutcome =
-  | { readonly kind: "opened" }
-  | { readonly kind: "revealed" }
-  | { readonly kind: "failed"; readonly failure: PresentedOpenFailure }
-  | { readonly kind: "skipped" };
+  | { readonly kind: 'opened' }
+  | { readonly kind: 'revealed' }
+  | { readonly kind: 'failed'; readonly failure: PresentedOpenFailure }
+  | { readonly kind: 'skipped' }
 
 /** State published on the owning file card. */
 export type PresentedOpenPhase =
-  | "opening"
-  | "revealing"
-  | "error"
-  | "revealError"
-  | "nativeUnavailable";
+  | 'opening'
+  | 'revealing'
+  | 'error'
+  | 'revealError'
+  | 'nativeUnavailable'
 
 /** One browser plugin's file-open requests, cancelled when that plugin is disposed. */
 export class PresentedOpenController {
   /** File action URLs key the state across Sessions, turns, and both clickable surfaces. */
-  readonly state = createSnapshotStore<Record<string, PresentedOpenPhase | undefined>>({});
+  readonly state = createSnapshotStore<Record<string, PresentedOpenPhase | undefined>>({})
   /** Native destination metadata, or a retryable read failure. */
-  readonly host = createSnapshotStore<PresentedHost | "error" | null>(null);
-  private loading: Promise<void> | undefined;
-  private metadata = new AbortController();
-  private readonly lifetime = new AbortController();
-  private readonly pending = new Set<Promise<void | PresentedOpenOutcome>>();
+  readonly host = createSnapshotStore<PresentedHost | 'error' | null>(null)
+  private loading: Promise<void> | undefined
+  private metadata = new AbortController()
+  private readonly lifetime = new AbortController()
+  private readonly pending = new Set<Promise<void | PresentedOpenOutcome>>()
 
   /**
    * Open a declared file once while a request for the same coordinates is pending.
@@ -60,10 +60,10 @@ export class PresentedOpenController {
     sessionId: SessionId,
     seq: number,
     index: number,
-    action: PresentedAction = "open",
+    action: PresentedAction = 'open',
     application?: string,
   ): Promise<PresentedOpenOutcome> {
-    return this.openUrl(presentedFileUrl(sessionId, seq, index), action, application);
+    return this.openUrl(presentedFileUrl(sessionId, seq, index), action, application)
   }
 
   /**
@@ -80,10 +80,10 @@ export class PresentedOpenController {
     sessionId: SessionId,
     seq: number,
     index: number,
-    action: PresentedAction = "open",
+    action: PresentedAction = 'open',
     application?: string,
   ): Promise<PresentedOpenOutcome> {
-    return this.openUrl(changedFileUrl(sessionId, seq, index), action, application);
+    return this.openUrl(changedFileUrl(sessionId, seq, index), action, application)
   }
 
   private async openUrl(
@@ -91,18 +91,18 @@ export class PresentedOpenController {
     action: PresentedAction,
     application?: string,
   ): Promise<PresentedOpenOutcome> {
-    const phase = this.state.getSnapshot()[url];
-    if (this.lifetime.signal.aborted || phase === "opening" || phase === "revealing")
-      return { kind: "skipped" };
+    const phase = this.state.getSnapshot()[url]
+    if (this.lifetime.signal.aborted || phase === 'opening' || phase === 'revealing')
+      return { kind: 'skipped' }
     this.state.update((state) => {
-      state[url] = action === "open" ? "opening" : "revealing";
-    });
-    const task = this.request(url, action, application);
-    this.pending.add(task);
+      state[url] = action === 'open' ? 'opening' : 'revealing'
+    })
+    const task = this.request(url, action, application)
+    this.pending.add(task)
     try {
-      return await task;
+      return await task
     } finally {
-      this.pending.delete(task);
+      this.pending.delete(task)
     }
   }
 
@@ -111,48 +111,48 @@ export class PresentedOpenController {
    * @returns after metadata or a retryable error is published.
    */
   async loadHost(): Promise<void> {
-    if (this.lifetime.signal.aborted) return;
-    if (this.loading !== undefined) return this.loading;
-    this.host.set(null);
-    const task = this.readHost(AbortSignal.any([this.lifetime.signal, this.metadata.signal]));
-    this.loading = task;
-    this.pending.add(task);
+    if (this.lifetime.signal.aborted) return
+    if (this.loading !== undefined) return this.loading
+    this.host.set(null)
+    const task = this.readHost(AbortSignal.any([this.lifetime.signal, this.metadata.signal]))
+    this.loading = task
+    this.pending.add(task)
     try {
-      await task;
+      await task
     } finally {
-      if (this.loading === task) this.loading = undefined;
-      this.pending.delete(task);
+      if (this.loading === task) this.loading = undefined
+      this.pending.delete(task)
     }
   }
 
   /** Invalidate desktop metadata on connection replacement; mounted cards request the new Host. */
   resetHost(): void {
-    const wasLoading = this.loading !== undefined;
-    this.metadata.abort();
-    this.metadata = new AbortController();
-    this.loading = undefined;
-    this.host.set(null);
-    if (wasLoading) void this.loadHost();
+    const wasLoading = this.loading !== undefined
+    this.metadata.abort()
+    this.metadata = new AbortController()
+    this.loading = undefined
+    this.host.set(null)
+    if (wasLoading) void this.loadHost()
   }
 
   private async readHost(signal: AbortSignal): Promise<void> {
-    let host: PresentedHost | "error" = "error";
+    let host: PresentedHost | 'error' = 'error'
     try {
-      const response = await fetch(PRESENT_HOST_ROUTE, { signal });
+      const response = await fetch(PRESENT_HOST_ROUTE, { signal })
       if (response.ok) {
-        const value: unknown = await response.json();
-        if (isPresentedHost(value)) host = value;
+        const value: unknown = await response.json()
+        if (isPresentedHost(value)) host = value
       }
     } catch {
-      host = "error";
+      host = 'error'
     }
-    if (!signal.aborted) this.host.set(host);
+    if (!signal.aborted) this.host.set(host)
   }
 
   /** Cancel outstanding requests, suppress their announcements, and wait until they settle. */
   async dispose(): Promise<void> {
-    this.lifetime.abort();
-    await Promise.all(this.pending);
+    this.lifetime.abort()
+    await Promise.all(this.pending)
   }
 
   private async request(
@@ -160,29 +160,29 @@ export class PresentedOpenController {
     action: PresentedAction,
     application?: string,
   ): Promise<PresentedOpenOutcome> {
-    const failure = action === "open" ? "error" : "revealError";
-    let phase: PresentedOpenPhase | undefined;
+    const failure = action === 'open' ? 'error' : 'revealError'
+    let phase: PresentedOpenPhase | undefined
     try {
       const target =
-        action === "reveal"
+        action === 'reveal'
           ? `${url}&action=reveal`
           : application === undefined
             ? url
-            : `${url}&application=${encodeURIComponent(application)}`;
-      const response = await fetch(target, { method: "POST", signal: this.lifetime.signal });
-      if (!response.ok) phase = response.status === 422 ? "nativeUnavailable" : failure;
+            : `${url}&application=${encodeURIComponent(application)}`
+      const response = await fetch(target, { method: 'POST', signal: this.lifetime.signal })
+      if (!response.ok) phase = response.status === 422 ? 'nativeUnavailable' : failure
     } catch {
       // Transport failures share the retryable card state with Host open failures.
-      phase = failure;
+      phase = failure
     }
     if (!this.lifetime.signal.aborted) {
       this.state.update((state) => {
-        if (phase === undefined) Reflect.deleteProperty(state, url);
-        else state[url] = phase;
-      });
+        if (phase === undefined) Reflect.deleteProperty(state, url)
+        else state[url] = phase
+      })
     }
-    if (this.lifetime.signal.aborted) return { kind: "skipped" };
-    if (phase === undefined) return { kind: action === "open" ? "opened" : "revealed" };
-    return { kind: "failed", failure: action === "reveal" ? "revealError" : "openError" };
+    if (this.lifetime.signal.aborted) return { kind: 'skipped' }
+    if (phase === undefined) return { kind: action === 'open' ? 'opened' : 'revealed' }
+    return { kind: 'failed', failure: action === 'reveal' ? 'revealError' : 'openError' }
   }
 }

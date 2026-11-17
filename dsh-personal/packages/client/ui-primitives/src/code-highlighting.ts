@@ -15,12 +15,13 @@ export type CodeHighlighter = (code: string) => HighlightSpan[][] | undefined
 /**
  * Bind the shared lazy highlighter to one language and refresh after its grammar loads.
  * @param language - Getter for the grammar hint selected from the source filename.
- * @returns A stable fragment highlighter; unknown and loading grammars return `undefined` for plain-text fallback. Calls during rendering track grammar changes until the owning scope is disposed.
+ * @returns A stable fragment highlighter; unknown and loading grammars return `undefined` for plain-text fallback. Calls
+ * during rendering track grammar changes until the owning scope is disposed.
  */
 export function useCodeHighlighter(language: () => string | undefined): CodeHighlighter {
   const loaded = shallowRef(grammarLoadCount())
   onScopeDispose(subscribeGrammarLoaded(() => { loaded.value = grammarLoadCount() }))
-  return code => {
+  return (code) => {
     void loaded.value
     return highlightLines(code, language())
   }

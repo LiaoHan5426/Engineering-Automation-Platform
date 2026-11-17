@@ -49,7 +49,7 @@ const HtmlFrame = defineComponent((props: FrameInput & { t: HtmlBodyProps['t'] }
           const html = createHtmlDocument(bundle)
           url = URL.createObjectURL(new Blob([html], { type: 'text/html' }))
           frame.value = { data, readRelated, url }
-        } catch (error) {
+        } catch (_error) {
           // Packing failures have one localized preview message; cancellation publishes nothing.
           if (!controller.signal.aborted) frame.value = { data, readRelated, url: undefined }
         } finally {
@@ -68,7 +68,7 @@ const HtmlFrame = defineComponent((props: FrameInput & { t: HtmlBodyProps['t'] }
     return h('iframe', { key: current.url, name: props.frameName, class: css.frame, src: current.url,
       sandbox: 'allow-scripts', title: props.t('frame'), 'data-html-preview': '' })
   }
-}, { name: 'HtmlFrame', inheritAttrs: false, props: ["readRelated","resourceAddress","addResource","setResources","data","signal","frameName","t"] })
+}, { name: 'HtmlFrame', inheritAttrs: false, props: ['readRelated','resourceAddress','addResource','setResources','data','signal','frameName','t'] })
 
 /** Mode changes retire the previous frame and its related-file ownership. */
 export const HtmlBody = defineComponent((props: HtmlBodyProps) => {
@@ -85,18 +85,18 @@ export const HtmlBody = defineComponent((props: HtmlBodyProps) => {
       readRelated: props.readRelated, signal: info.value.tab.signal, frameName, addResource: props.addResource,
       setResources: props.setResources, t: props.t })
   }
-}, { name: 'HtmlBody', inheritAttrs: false, props: ["addResource","setResources","resourceAddress","content","wrap","scrollportRef","useTabInfo","useSession","sessionId","useProjection","useAccess","useConversation","useInput","inputActions","useRemoteAccess","useSessions","useSessionRetainInfo","useSessionAccess","usePanelInfo","useContextMenu","useResource","useWorkspaces","t","readRelated","useInteractivePreview"] })
+}, { name: 'HtmlBody', inheritAttrs: false, props: ['addResource','setResources','resourceAddress','content','wrap','scrollportRef','useTabInfo','useSession','sessionId','useProjection','useAccess','useConversation','useInput','inputActions','useRemoteAccess','useSessions','useSessionRetainInfo','useSessionAccess','usePanelInfo','useContextMenu','useResource','useWorkspaces','t','readRelated','useInteractivePreview'] })
 
 /** Static preview uses a separate browsing context from the scripted preview. */
 const BasicHtmlFrame = defineComponent((props: Pick<FrameInput, 'data' | 'frameName'> & { t: HtmlBodyProps['t'] }) => {
   const html = computed(() => {
     try {
       return createBasicHtmlDocument(props.data)
-    } catch (error) {
+    } catch (_error) {
       // Malformed UTF-8 files cannot produce a document.
       return undefined
     }
   })
   return () => html.value === undefined ? h('p', { class: css.status, role: 'alert' }, props.t('failed'))
     : h('iframe', { name: props.frameName, class: css.frame, srcdoc: html.value, sandbox: '', title: props.t('frame'), 'data-html-preview': '' })
-}, { name: 'BasicHtmlFrame', inheritAttrs: false, props: ["data","frameName","t"] })
+}, { name: 'BasicHtmlFrame', inheritAttrs: false, props: ['data','frameName','t'] })

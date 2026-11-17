@@ -7,7 +7,7 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { InboxWireState } from '@deepseek-ai/dsh-agent/types'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { brandString } from '@deepseek-ai/dsh-brand'
-import type { ToolCallId } from '@deepseek-ai/dsh-llm'
+import type { MessageId, ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { PendingUserQuestion, UserQuestionProjectionView } from '@deepseek-ai/dsh-user-questions/types'
 import { QuestionComposer } from '../src/client/QuestionComposer.tsx'
 import { PendingQuestion } from '../src/client/contract/slots.ts'
@@ -34,7 +34,8 @@ const CONTINUED: PendingUserQuestion = { callId: CALL, questions: [...QUESTIONS]
 const view = (active: readonly PendingUserQuestion[]): UserQuestionProjectionView => ({ active, settled: [] })
 const emptyInbox = (): InboxWireState => ({ 'next-step': [], 'next-turn': [] })
 const queuedInbox = (callId: ToolCallId): InboxWireState => ({
-  'next-step': [{ source: { kind: 'user-question-reply', callId }, content: [] }],
+  'next-step': [{ id: brandString<MessageId>(`reply-${callId}`), role: 'user',
+    source: { kind: 'user-question-reply', callId, outcome: 'answered' }, content: [] }],
   'next-turn': [],
 })
 
@@ -81,7 +82,8 @@ async function bench(
     candidate as Context & { [SESSION_SCOPE]?: SessionId }
   )[SESSION_SCOPE])
   const projection = createSnapshotStore<UserQuestionProjectionView | undefined>(durable === 'absent' ? undefined : view(durable))
-  const inbox = createSnapshotStore<InboxWireState | undefined>(initialInbox)
+  // Projection faces expose raw values; malformed payload cases exercise the consumer boundary.
+  const inbox = createSnapshotStore<unknown>(initialInbox)
   const list = createSnapshotStore({
     ids: [SESSION_ID],
     byId: { [SESSION_ID]: { id: SESSION_ID } },

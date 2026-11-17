@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 Open a Session’s directory through **Open in** in its Header More menu or its row/title context menu. The submenu lists installed, localized applications in Host order with icons and names, without a default marker. File-tree, document-preview, and delivery controls also open files or directories through native applications. Availability, icons, and launches come from [`dsh-host-open-in-app`](../../host/open-in-app/README.md); mount both packages together. A Session without a known directory or eligible application has no Open in item.
 
+Mounted file controls share association reads through the static [observable selector](../ui-primitives/README.md#observable-selectors); this package does not request the renderer's runtime implementation.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

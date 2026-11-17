@@ -9,7 +9,13 @@
   ],
   "references": [
     {
+      "path": "../../util/crypto"
+    },
+    {
       "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../ui-primitives"
     },
     {
       "path": "../ui-slots"

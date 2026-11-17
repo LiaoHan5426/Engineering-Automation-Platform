@@ -62,7 +62,8 @@ export type UseResource = {
   /** @param address - fixed resource address. @returns its live readonly snapshot seat. */
   <P extends ResourceProtocol>(address: string): Readonly<ShallowRef<ResourceSnapshot<ResourceProtocolMap[P]>>>
   /** @param address - reactive address; an absent key releases the source. @returns its live seat, absent while the key is absent. */
-  <P extends ResourceProtocol>(address: string | Readonly<Ref<string | undefined>>): Readonly<ShallowRef<ResourceSnapshot<ResourceProtocolMap[P]> | undefined>>
+  <P extends ResourceProtocol>(
+    address: string | Readonly<Ref<string | undefined>>): Readonly<ShallowRef<ResourceSnapshot<ResourceProtocolMap[P]> | undefined>>
 }
 
 /** What a provider's `open` receives beside the address. */

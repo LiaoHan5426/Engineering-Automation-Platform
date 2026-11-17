@@ -4,7 +4,7 @@ import { h, Fragment } from 'vue'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { classifyFileType, FileTypeIcon, type CodeFileType, type FileTypeProjectContext, } from '../src/FileTypeIcon.tsx'
+import { classifyFileType, FileTypeIcon, type CodeFileType, type FileTypeProjectContext } from '../src/FileTypeIcon.tsx'
 import { CODE_FILE_ARTWORK, CODE_FILE_ICON_ID_TOKEN } from '../src/code-file-icon-artwork.ts'
 import { CODE_FILE_TYPES } from '../src/code-file-types.ts'
 const flutter: FileTypeProjectContext = {
@@ -64,7 +64,7 @@ describe('code-file classification', () => {
     ['file.zig', 'zig'],
   ] as [
     string,
-    CodeFileType
+    CodeFileType,
   ][])('%s → %s', (path, type) => {
     expect(classifyFileType(path)).toBe(type)
   })
@@ -79,8 +79,8 @@ describe('code-file classification', () => {
     expect(classifyFileType('lib/main.dart')).toBe('dart')
     expect(classifyFileType('lib/main.dart', { files: { 'pubspec.yaml': 'name: demo' } })).toBe('dart')
     expect(classifyFileType('lib/main.dart', flutter)).toBe('flutter')
-    const view = render(h(FileTypeIcon, { "path": "lib/main.dart", "context": flutter }))
-    const explicit = render(h(FileTypeIcon, { "kind": "flutter" }))
+    const view = render(h(FileTypeIcon, { 'path': 'lib/main.dart', 'context': flutter }))
+    const explicit = render(h(FileTypeIcon, { 'kind': 'flutter' }))
     expect(normalizeCodeIconIds(view.container.innerHTML))
       .toBe(normalizeCodeIconIds(explicit.container.innerHTML))
   })
@@ -128,7 +128,7 @@ describe('full-color code-file artwork', () => {
     expect(manifest.excluded).toEqual(['markdown'])
   })
   it.each(CODE_FILE_TYPES)('%s renders its supplied square SVG', (type) => {
-    const { container } = render(h(FileTypeIcon, { "kind": type }))
+    const { container } = render(h(FileTypeIcon, { 'kind': type }))
     const svg = container.querySelector('svg')!
     expect(svg.getAttribute('viewBox')).toBe('0 0 20 20')
     expect(svg.getAttribute('width')).toBe('28')
@@ -138,13 +138,13 @@ describe('full-color code-file artwork', () => {
   })
   it('keeps every code category visually distinct', () => {
     const artwork = CODE_FILE_TYPES.map((type) => {
-      const { container } = render(h(FileTypeIcon, { "kind": type }))
+      const { container } = render(h(FileTypeIcon, { 'kind': type }))
       return container.querySelector('svg')!.innerHTML
     })
     expect(new Set(artwork).size).toBe(CODE_FILE_TYPES.length)
   })
   it('uses instance-safe gradient ids and forwards sizing classes', () => {
-    const { container } = render(h(Fragment, null, [h(FileTypeIcon, { "kind": "elixir" }), h(FileTypeIcon, { "kind": "elixir" })]))
+    const { container } = render(h(Fragment, null, [h(FileTypeIcon, { 'kind': 'elixir' }), h(FileTypeIcon, { 'kind': 'elixir' })]))
     const ids = [...container.querySelectorAll('[id]')].map(element => element.id)
     expect(ids.length).toBeGreaterThan(2)
     expect(new Set(ids).size).toBe(ids.length)
@@ -153,7 +153,7 @@ describe('full-color code-file artwork', () => {
     expect(references.length).toBeGreaterThan(0)
     for (const reference of references)
       expect(ids).toContain(reference)
-    const sized = render(h(FileTypeIcon, { "path": "file.ts", "size": 16, "className": "x" }))
+    const sized = render(h(FileTypeIcon, { 'path': 'file.ts', 'size': 16, 'className': 'x' }))
     const svg = sized.container.querySelector('svg')!
     expect(svg.getAttribute('width')).toBe('16')
     expect(svg.getAttribute('height')).toBe('16')

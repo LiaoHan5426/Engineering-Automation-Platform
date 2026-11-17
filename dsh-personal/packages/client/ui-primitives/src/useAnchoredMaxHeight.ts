@@ -12,7 +12,8 @@ const MARGIN = 12
  * @param margin - minimum viewport top inset, widened by the frame's overlay inset.
  * @returns reactive maximum height in pixels; listeners leave with the current scope.
  */
-export function useAnchoredMaxHeight(element: Readonly<Ref<HTMLElement | null>>, cap: number, signal: () => unknown, margin: number = MARGIN): Readonly<Ref<number>> {
+export function useAnchoredMaxHeight(element: Readonly<Ref<HTMLElement | null>>, cap: number, signal: () =>
+unknown, margin: number = MARGIN): Readonly<Ref<number>> {
   const maxHeight = shallowRef(cap)
   watch([element, signal], (_, __, onCleanup) => {
     const el = element.value

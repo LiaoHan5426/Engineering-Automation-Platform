@@ -66,7 +66,7 @@ async function mountFrame(windowWidth = frameWidth, content?: AppFrameProps['ren
     return content?.(key, owner, options) ?? h('div', { 'data-testid': `${key}-content`, 'data-entry-key': options?.entryKey })
   }
   const revision = shallowRef(0)
-  const useSessions: AppFrameProps['useSessions'] = sel => computed(() => { revision.value; return sel({
+  const useSessions: AppFrameProps['useSessions'] = sel => computed(() => { void revision.value; return sel({
     ids: selectedSession === undefined ? [] : [selectedSession],
     byId: selectedSession === undefined ? {} : {
       [selectedSession]: {
@@ -823,7 +823,7 @@ describe('sidebar drawer', () => {
       ])
     }, { props: ['seat'], inheritAttrs: false })
     const { frame, instance } = await mountFrame(1920, key => retained.includes(key) ? h(Seat, { seat: key }) : null)
-    const nodes = retained.map(key => {
+    const nodes = retained.map((key) => {
       const node = frame.querySelector<HTMLElement>(`[data-seat="${key}"]`)!
       const input = node.querySelector('input')!
       return { key, node, input, column: node.closest('section')!.parentElement }

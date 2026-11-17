@@ -1,7 +1,7 @@
-import { Teleport, defineComponent, h, onBeforeUnmount, onMounted, shallowRef, watch } from "vue";
+import { Teleport, defineComponent, h, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue'
 /** Body-portaled introduction with shared background interaction ownership. */
-import { acquireOverlayInert } from "./overlay-inert.ts";
-import css from "./OnboardingSurface.module.css";
+import { acquireOverlayInert } from './overlay-inert.ts'
+import css from './OnboardingSurface.module.css'
 /**
  * Render a body-portaled onboarding stage and keep the application root inert
  * while mounted. Completion reveals the root beneath a fading stage;
@@ -13,63 +13,62 @@ import css from "./OnboardingSurface.module.css";
 export const OnboardingSurface = defineComponent(
   (
     componentProps: {
-      exiting?: boolean;
+      exiting?: boolean
     },
     { slots },
   ) => {
     const rootState = shallowRef<{
-      element: HTMLElement;
-      opacity: string;
-    } | null | null>(null);
+      element: HTMLElement
+      opacity: string
+    } | null>(null)
     onMounted(() => {
       const dispose = (() => {
-        const appRoot = document.getElementById("root");
-        if (appRoot === null) return;
-        const releaseInert = acquireOverlayInert(appRoot);
-        const previousOpacity = appRoot.style.opacity;
-        rootState.value = { element: appRoot, opacity: previousOpacity };
-        appRoot.style.opacity = "0";
+        const appRoot = document.getElementById('root')
+        if (appRoot === null) return
+        const releaseInert = acquireOverlayInert(appRoot)
+        const previousOpacity = appRoot.style.opacity
+        rootState.value = { element: appRoot, opacity: previousOpacity }
+        appRoot.style.opacity = '0'
         return () => {
-          releaseInert();
-          appRoot.style.opacity = previousOpacity;
-          rootState.value = null;
-        };
-      })();
-      if (typeof dispose === "function") onBeforeUnmount(dispose);
-    });
+          releaseInert()
+          appRoot.style.opacity = previousOpacity
+          rootState.value = null
+        }
+      })()
+      if (typeof dispose === 'function') onBeforeUnmount(dispose)
+    })
     onMounted(() => {
       watch(
         () => [componentProps.exiting ?? false],
-        (_values, _old, onCleanup) => {
-          const dispose = (() => {
-            const root = rootState.value;
+        (_values, _old) => {
+          (() => {
+            const root = rootState.value
             if (root !== null)
-              root.element.style.opacity = (componentProps.exiting ?? false) ? root.opacity : "0";
-          })();
-          if (typeof dispose === "function") onCleanup(dispose);
+              root.element.style.opacity = (componentProps.exiting ?? false) ? root.opacity : '0'
+          })()
         },
-        { immediate: true, flush: "post" },
-      );
-    });
+        { immediate: true, flush: 'post' },
+      )
+    })
     return () => {
-      const render_prop_exiting = componentProps.exiting;
+      const render_prop_exiting = componentProps.exiting
       return h(Teleport, { to: document.body }, [
         h(
-          "div",
+          'div',
           {
             class: css.onboardingOverlay,
-            "data-exiting": (render_prop_exiting ?? false) || undefined,
-            role: "presentation",
+            'data-exiting': (render_prop_exiting ?? false) || undefined,
+            role: 'presentation',
           },
           [
-            h("div", { class: css.dragBand, "data-window-drag": true, "aria-hidden": "true" }),
-            h("div", { class: css.onboardingStage, "data-window-drag-controls": true }, [
+            h('div', { class: css.dragBand, 'data-window-drag': true, 'aria-hidden': 'true' }),
+            h('div', { class: css.onboardingStage, 'data-window-drag-controls': true }, [
               slots.default?.(),
             ]),
           ],
         ),
-      ]);
-    };
+      ])
+    }
   },
-  { inheritAttrs: false, props: ["exiting"] },
-);
+  { inheritAttrs: false, props: ['exiting'] },
+)

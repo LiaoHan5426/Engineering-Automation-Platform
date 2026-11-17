@@ -1,7 +1,7 @@
 import { h, type VNodeChild } from 'vue'
 import { ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE } from './icons/index.tsx'
 import type { IconProps } from './icons/props.ts'
-import { BrowseOutlineArtwork, ChatLinesOutlineArtwork, FolderCloseArtwork, } from './icons/shared-artwork.tsx'
+import { BrowseOutlineArtwork, ChatLinesOutlineArtwork, FolderCloseArtwork } from './icons/shared-artwork.tsx'
 /** Reference domains with distinct composer and transcript glyphs. */
 export type ReferenceIconKind = 'session' | 'file' | 'folder'
 /** Props shared by inline reference glyphs. */
@@ -18,9 +18,9 @@ interface WeightedReferenceIconProps extends ReferenceIconProps {
 */
 function ReferenceIconArtwork({ kind, size = 16, className, strokeWidth }: WeightedReferenceIconProps): VNodeChild {
   switch (kind) {
-    case 'session': return h(ChatLinesOutlineArtwork, { "size": size, "className": className, "strokeWidth": strokeWidth })
-    case 'file': return h(BrowseOutlineArtwork, { "size": size, "className": className, "strokeWidth": strokeWidth })
-    case 'folder': return h(FolderCloseArtwork, { "size": size, "className": className, "strokeWidth": strokeWidth })
+    case 'session': return h(ChatLinesOutlineArtwork, { 'size': size, 'className': className, 'strokeWidth': strokeWidth })
+    case 'file': return h(BrowseOutlineArtwork, { 'size': size, 'className': className, 'strokeWidth': strokeWidth })
+    case 'folder': return h(FolderCloseArtwork, { 'size': size, 'className': className, 'strokeWidth': strokeWidth })
   }
 }
 /**
@@ -29,7 +29,7 @@ function ReferenceIconArtwork({ kind, size = 16, className, strokeWidth }: Weigh
 * @returns The regular decorative reference glyph.
 */
 export function ReferenceIconRegular(props: ReferenceIconProps): VNodeChild {
-  return h(ReferenceIconArtwork, { ...props, "strokeWidth": ICON_REGULAR_STROKE })
+  return h(ReferenceIconArtwork, { ...props, 'strokeWidth': ICON_REGULAR_STROKE })
 }
 /**
 * Render a medium 1.3px reference icon.
@@ -37,5 +37,5 @@ export function ReferenceIconRegular(props: ReferenceIconProps): VNodeChild {
 * @returns The medium decorative reference glyph.
 */
 export function ReferenceIconMedium(props: ReferenceIconProps): VNodeChild {
-  return h(ReferenceIconArtwork, { ...props, "strokeWidth": ICON_MEDIUM_STROKE })
+  return h(ReferenceIconArtwork, { ...props, 'strokeWidth': ICON_MEDIUM_STROKE })
 }

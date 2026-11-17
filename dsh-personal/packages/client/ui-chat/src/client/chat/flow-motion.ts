@@ -533,7 +533,8 @@ function useFlowTransition(motion: FlowMotionRows | undefined, grow: boolean): H
  * @param motion - owning viewport's row callbacks; undefined applies visibility synchronously.
  * @returns the stable subtree ref.
  */
-export function useFlowHidden(hidden: MaybeRefOrGetter<boolean>, reveal: () => void, motion: FlowMotionRows | undefined): ShallowRef<HTMLDivElement | null> {
+export function useFlowHidden(hidden: MaybeRefOrGetter<boolean>, reveal: () => void,
+  motion: FlowMotionRows | undefined): ShallowRef<HTMLDivElement | null> {
   return useSearchableHidden(hidden, reveal, useFlowTransition(motion, false))
 }
 
@@ -543,7 +544,8 @@ export function useFlowHidden(hidden: MaybeRefOrGetter<boolean>, reveal: () => v
  * @param hidden - desired hidden state.
  * @param motion - containing viewport's row callbacks.
  */
-export function useMotionHidden(ref: Readonly<Ref<HTMLElement | null>>, hidden: MaybeRefOrGetter<boolean>, motion: FlowMotionRows | undefined): void {
+export function useMotionHidden(ref: Readonly<Ref<HTMLElement | null>>, hidden: MaybeRefOrGetter<boolean>,
+  motion: FlowMotionRows | undefined): void {
   const transition = useFlowTransition(motion, true)
   watch([ref, () => toValue(hidden)], ([element, isHidden]) => {
     if (element === null) return

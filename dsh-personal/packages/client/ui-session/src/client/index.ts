@@ -143,7 +143,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     useSessions: UseSessions
     useSessionRetainInfo: UseSessionRetainInfo
     /** Whether the current Peer may call `action` on one Session resource. */
-    useSessionAccess: (sessionId: SessionId | Readonly<Ref<SessionId | undefined>>, action: RemoteEndpoint) => Readonly<ShallowRef<boolean | undefined>>
+    useSessionAccess: (sessionId: SessionId | Readonly<Ref<SessionId | undefined>>, action: RemoteEndpoint) =>
+    Readonly<ShallowRef<boolean | undefined>>
   }
 
   interface SessionStandardProps {

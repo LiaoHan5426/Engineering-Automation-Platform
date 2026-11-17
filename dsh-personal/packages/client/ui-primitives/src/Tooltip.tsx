@@ -43,7 +43,7 @@ export const Tooltip = defineComponent({
     const pinned = shallowRef(false)
     const suppressed = shallowRef(false)
     const announce = inject(TooltipSuppression, undefined)
-    provide(TooltipSuppression, active => { suppressed.value = active })
+    provide(TooltipSuppression, (active) => { suppressed.value = active })
     const triggers = { hover: false, focus: false }
     let showTimer: ReturnType<typeof setTimeout> | null = null
     const visible = () => pos.value !== null && !props.disabled
@@ -82,13 +82,13 @@ export const Tooltip = defineComponent({
       if (pinned.value && (props.disabled || !props.openOnClick)) pinned.value = false
       if (props.disabled) dismiss()
     }, { flush: 'sync' })
-    watchEffect(onCleanup => {
+    watchEffect((onCleanup) => {
       announce?.(visible())
       onCleanup(() => { announce?.(false) })
     })
     onScopeDispose(() => { cancelShow(); announce?.(false) })
     useDismissOnOutsidePointer(anchor, () => props.openOnClick && visible(), dismiss, bubble)
-    watchEffect(onCleanup => {
+    watchEffect((onCleanup) => {
       if (!props.openOnClick || !visible()) return
       const onKeyDown = (event: KeyboardEvent) => {
         if (event.key !== 'Escape' && event.key !== 'Tab') return
@@ -98,7 +98,7 @@ export const Tooltip = defineComponent({
       document.addEventListener('keydown', onKeyDown, true)
       onCleanup(() => { document.removeEventListener('keydown', onKeyDown, true) })
     })
-    watchEffect(onCleanup => {
+    watchEffect((onCleanup) => {
       const el = bubble.value
       if (!visible() || suppressed.value || el === null || pos.value === null) return
       const { side, align, gap } = props
@@ -120,7 +120,7 @@ export const Tooltip = defineComponent({
         if (anchor.value !== null) anchorRect = anchor.value.getBoundingClientRect()
         fit()
       }
-      const observer = new ResizeObserver(entries => { size = entries[0]?.borderBoxSize[0]; fit() })
+      const observer = new ResizeObserver((entries) => { size = entries[0]?.borderBoxSize[0]; fit() })
       observer.observe(el, { box: 'border-box' })
       window.addEventListener('resize', onResize)
       onCleanup(() => { observer.disconnect(); window.removeEventListener('resize', onResize) })
@@ -128,12 +128,13 @@ export const Tooltip = defineComponent({
     return () => {
       const child = slots.default?.()[0]
       if (child === undefined) return null
+      const describedBy: unknown = child.props?.['aria-describedby']
       const anchorNode = cloneVNode(child, {
         onVnodeMounted: (node) => { anchor.value = node.el instanceof HTMLElement ? node.el : null },
         onVnodeUpdated: (node) => { anchor.value = node.el instanceof HTMLElement ? node.el : null },
         onVnodeUnmounted: () => { anchor.value = null },
         'aria-describedby': props.openOnClick && visible()
-          ? [child.props?.['aria-describedby'], id].filter(Boolean).join(' ') : child.props?.['aria-describedby'],
+          ? [describedBy, id].filter(Boolean).join(' ') : describedBy,
         onPointerenter: (event: PointerEvent) => {
           if (event.pointerType === 'touch') return
           if (event.pointerType === 'mouse' && !window.matchMedia('(any-hover: hover)').matches) return

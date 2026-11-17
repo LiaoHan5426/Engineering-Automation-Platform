@@ -32,14 +32,14 @@ const FeedbackRatingButtons = defineComponent((props: MessageFeedbackActionProps
     pending.value = true
     failure.value = null
     const messageId = props.messageId
-    void props.ensure().then(loaded => {
+    void props.ensure().then((loaded) => {
       if (!alive) return
       if (!loaded.ok || props.current(messageId)?.rating !== rating) {
         pending.value = false
         props.openDialog(messageId, rating)
         return
       }
-      void props.retract(messageId, rating).then(result => {
+      void props.retract(messageId, rating).then((result) => {
         if (!alive) return
         pending.value = false
         if (!result.ok) failure.value = props.t(result.error.code === 'version-conflict' ? 'error.conflict' : 'error.generic')

@@ -96,8 +96,10 @@ export const AppFrame = defineComponent((props: AppFrameProps) => {
     const sidebarPreference = collapsed ? 0 : info.sidebar === 0 ? SIDEBAR_DEFAULT : info.sidebar
     const rightbarPreference = info.rightbar ?? viewport * RIGHTBAR_DEFAULT_RATIO
     const collapsedWidth = drawer || darwin || windowsTitlebar ? 0 : SIDEBAR_COLLAPSED
-    const normal = computeColumns(viewport, !info.rightbarShown && narrow ? 0 : sidebarPreference, rightbarPreference, collapsedWidth, centeredSidebar)
-    const cols = computeColumns(viewport, drawer ? 0 : sidebarPreference, info.rightbarTrack ? rightbarPreference : 0, collapsedWidth, centeredSidebar)
+    const normal = computeColumns(viewport, !info.rightbarShown && narrow ? 0 : sidebarPreference,
+      rightbarPreference, collapsedWidth, centeredSidebar)
+    const cols = computeColumns(viewport, drawer ? 0 : sidebarPreference,
+      info.rightbarTrack ? rightbarPreference : 0, collapsedWidth, centeredSidebar)
     return { viewport, windowsTitlebar, darwin, drawer, centeredSidebar, collapsed, normal, cols,
       toggle: `${collapsed}:${info.rightbarTrack}:${centeredSidebar}`,
       sidebarWidth: drawer ? Math.min(info.sidebar || SIDEBAR_DEFAULT, Math.max(0, viewport - 48)) : cols.sidebar,
@@ -113,12 +115,13 @@ export const AppFrame = defineComponent((props: AppFrameProps) => {
     if (next.viewport !== previous.viewport) animating.value = 0
     else if (next.toggle !== previous.toggle) animating.value++
   }, { flush: 'sync' })
-  watch(animating, token => {
+  watch(animating, (token) => {
     clearTimeout(timer)
     if (token > 0) timer = setTimeout(() => { animating.value = 0 }, 600)
   }, { flush: 'sync' })
   onMounted(() => {
-    const element = frameRef.value!
+    const element = frameRef.value
+    if (element === null) return
     let raf: number | null = null
     let disposed = false
     const measure = () => {
@@ -141,7 +144,8 @@ export const AppFrame = defineComponent((props: AppFrameProps) => {
   const endDrag = () => { dragging.value = false }
   return () => {
     const info = layout.value
-    const { viewport, windowsTitlebar, darwin, drawer, centeredSidebar, collapsed, normal, cols, sidebarWidth, rightbarMax } = geometry.value
+    const { viewport, windowsTitlebar, darwin, drawer, centeredSidebar, collapsed, normal, cols, sidebarWidth,
+      rightbarMax } = geometry.value
     const drawerOpen = drawer && !collapsed
     const inert = drawerOpen ? '' : undefined
     return h('div', {

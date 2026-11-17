@@ -1,81 +1,81 @@
 /** Browser-safe formatting shared by Session and Host reminder catalogs. */
-import type { Translate } from "@deepseek-ai/dsh-client-ui-slots";
-import type { ScheduleRecord } from "@deepseek-ai/dsh-schedule/client";
-import { hostFrequencyKind, ruleFields, taskNextRunAt } from "./task-record.ts";
-import { assertNever } from "@deepseek-ai/dsh-util-values";
-import type { CronDescriptionKey } from "./task-cron.ts";
-import { cronPreview, parseCronExpression } from "./task-cron.ts";
+import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ScheduleRecord } from '@deepseek-ai/dsh-schedule/client'
+import { hostFrequencyKind, ruleFields, taskNextRunAt } from './task-record.ts'
+import { assertNever } from '@deepseek-ai/dsh-util-values'
+import type { CronDescriptionKey } from './task-cron.ts'
+import { cronPreview, parseCronExpression } from './task-cron.ts'
 
-type TimeUnit = "day" | "hour" | "minute" | "second";
-type UnitKey = `unit.${TimeUnit}.${"one" | "other"}`;
-type WeekdayKey = `frequency.weekday.${1 | 2 | 3 | 4 | 5 | 6 | 7}`;
+type TimeUnit = 'day' | 'hour' | 'minute' | 'second'
+type UnitKey = `unit.${TimeUnit}.${'one' | 'other'}`
+type WeekdayKey = `frequency.weekday.${1 | 2 | 3 | 4 | 5 | 6 | 7}`
 
 /** Dictionary keys required to display exact reminder frequencies. */
 export type FrequencyKey =
-  | "frequency.hostMonthly"
-  | "frequency.hostDailyInterval"
-  | "frequency.hostWeeklyInterval"
-  | "frequency.hostMonthlyInterval"
-  | "frequency.hostZone"
-  | "frequency.hostCustom"
-  | "time.locale"
-  | "time.utcPrefix"
-  | "frequency.once"
-  | "frequency.every"
-  | "frequency.daily"
-  | "frequency.dailyLocal"
-  | "frequency.weekly"
-  | "frequency.weeklyLocal"
-  | "frequency.cron"
-  | "frequency.cronLocal"
-  | "frequency.cronRule"
-  | "frequency.weekday.join"
+  | 'frequency.hostMonthly'
+  | 'frequency.hostDailyInterval'
+  | 'frequency.hostWeeklyInterval'
+  | 'frequency.hostMonthlyInterval'
+  | 'frequency.hostZone'
+  | 'frequency.hostCustom'
+  | 'time.locale'
+  | 'time.utcPrefix'
+  | 'frequency.once'
+  | 'frequency.every'
+  | 'frequency.daily'
+  | 'frequency.dailyLocal'
+  | 'frequency.weekly'
+  | 'frequency.weeklyLocal'
+  | 'frequency.cron'
+  | 'frequency.cronLocal'
+  | 'frequency.cronRule'
+  | 'frequency.weekday.join'
   | WeekdayKey
   | UnitKey
-  | CronDescriptionKey;
+  | CronDescriptionKey
 
 /** Namespace-independent translator for reminder frequencies and time units. */
-export type FrequencyTranslator = Translate<FrequencyKey>;
+export type FrequencyTranslator = Translate<FrequencyKey>
 
 /** Dictionary keys required to localize a zone and mark the host's zone. */
-export type ZoneLabelKey = "time.locale" | "time.utcPrefix" | "rule.zone.system";
-type ZoneLocaleKey = Extract<ZoneLabelKey, "time.locale" | "time.utcPrefix">;
+export type ZoneLabelKey = 'time.locale' | 'time.utcPrefix' | 'rule.zone.system'
+type ZoneLocaleKey = Extract<ZoneLabelKey, 'time.locale' | 'time.utcPrefix'>
 
 /** Universal fallback when a runtime cannot enumerate its ICU time-zone data. */
-export const FALLBACK_ZONES = ["UTC"] as const;
+export const FALLBACK_ZONES = ['UTC'] as const
 
 /** Host-zone context a frequency line uses to omit or name a rule's stored zone. */
 export interface FrequencyZone {
   /** Host's current IANA zone; a rule storing this zone shows no zone. */
-  readonly system: string;
+  readonly system: string
   /** ICU-localized name and offset of one zone. */
-  readonly label: (zone: string) => string;
+  readonly label: (zone: string) => string
 }
 
 /** Dictionary keys required to display relative reminder targets. */
-export type RelativeTimeKey = UnitKey | "relative.now" | "relative.future" | "relative.overdue";
+export type RelativeTimeKey = UnitKey | 'relative.now' | 'relative.future' | 'relative.overdue'
 
-const SECOND_MS = 1_000;
-const SECOND_UNIT = { unit: "second", seconds: 1 } as const;
+const SECOND_MS = 1_000
+const SECOND_UNIT = { unit: 'second', seconds: 1 } as const
 const UNIT_SECONDS: readonly { unit: TimeUnit; seconds: number }[] = [
-  { unit: "day", seconds: 86_400 },
-  { unit: "hour", seconds: 3_600 },
-  { unit: "minute", seconds: 60 },
+  { unit: 'day', seconds: 86_400 },
+  { unit: 'hour', seconds: 3_600 },
+  { unit: 'minute', seconds: 60 },
   SECOND_UNIT,
-];
+]
 const WEEKDAY_KEYS = [
-  "frequency.weekday.1",
-  "frequency.weekday.2",
-  "frequency.weekday.3",
-  "frequency.weekday.4",
-  "frequency.weekday.5",
-  "frequency.weekday.6",
-  "frequency.weekday.7",
-] as const satisfies readonly WeekdayKey[];
+  'frequency.weekday.1',
+  'frequency.weekday.2',
+  'frequency.weekday.3',
+  'frequency.weekday.4',
+  'frequency.weekday.5',
+  'frequency.weekday.6',
+  'frequency.weekday.7',
+] as const satisfies readonly WeekdayKey[]
 
 /** Localized unit word for one integral magnitude. */
 function unitLabel(unit: TimeUnit, value: number, t: Translate<UnitKey>): string {
-  return t(`unit.${unit}.${value === 1 ? "one" : "other"}`, { count: value });
+  return t(`unit.${unit}.${value === 1 ? 'one' : 'other'}`, { count: value })
 }
 
 /**
@@ -89,12 +89,12 @@ function unitLabel(unit: TimeUnit, value: number, t: Translate<UnitKey>): string
  * @returns the stored title.
  */
 export function taskName(record: ScheduleRecord): string {
-  return record.title;
+  return record.title
 }
 
 /** Localized clock text that omits fractional seconds and zero seconds. */
 function clockLabel(time: string): string {
-  return time.replace(/\.\d+$/, "").replace(/:00$/, "");
+  return time.replace(/\.\d+$/, '').replace(/:00$/, '')
 }
 
 /**
@@ -105,37 +105,37 @@ function clockLabel(time: string): string {
  */
 export function formatWeekdays(weekdays: readonly number[], t: FrequencyTranslator): string {
   return weekdays
-    .map((weekday) => t(WEEKDAY_KEYS[weekday - 1] ?? "frequency.weekday.1"))
-    .join(t("frequency.weekday.join"));
+    .map(weekday => t(WEEKDAY_KEYS[weekday - 1] ?? 'frequency.weekday.1'))
+    .join(t('frequency.weekday.join'))
 }
 
 /** UTC offset, in minutes, of one IANA zone at the current instant. */
 function zoneOffset(zone: string, at: number): number | undefined {
   try {
-    const value = new Intl.DateTimeFormat("en-US", {
+    const value = new Intl.DateTimeFormat('en-US', {
       timeZone: zone,
-      timeZoneName: "longOffset",
+      timeZoneName: 'longOffset',
     })
       .formatToParts(at)
-      .find((part) => part.type === "timeZoneName")?.value;
-    if (value === "GMT") return 0;
-    const match = /^GMT([+-])(\d{2}):(\d{2})$/.exec(value ?? "");
-    if (match === null) return undefined;
-    const minutes = Number(match[2]) * 60 + Number(match[3]);
-    return match[1] === "-" ? -minutes : minutes;
+      .find(part => part.type === 'timeZoneName')?.value
+    if (value === 'GMT') return 0
+    const match = /^GMT([+-])(\d{2}):(\d{2})$/.exec(value ?? '')
+    if (match === null) return undefined
+    const minutes = Number(match[2]) * 60 + Number(match[3])
+    return match[1] === '-' ? -minutes : minutes
   } catch {
-    return undefined;
+    return undefined
   }
 }
 
 /** Stable UTC-offset label for one valid IANA zone. */
 function zoneOffsetLabel(zone: string, at: number, prefix: string): string | undefined {
-  const minutes = zoneOffset(zone, at);
-  if (minutes === undefined) return undefined;
-  const absolute = Math.abs(minutes);
-  const hours = String(Math.floor(absolute / 60)).padStart(2, "0");
-  const remainder = String(absolute % 60).padStart(2, "0");
-  return `${prefix}${minutes < 0 ? "-" : "+"}${hours}:${remainder}`;
+  const minutes = zoneOffset(zone, at)
+  if (minutes === undefined) return undefined
+  const absolute = Math.abs(minutes)
+  const hours = String(Math.floor(absolute / 60)).padStart(2, '0')
+  const remainder = String(absolute % 60).padStart(2, '0')
+  return `${prefix}${minutes < 0 ? '-' : '+'}${hours}:${remainder}`
 }
 
 /**
@@ -148,18 +148,18 @@ function zoneOffsetLabel(zone: string, at: number, prefix: string): string | und
  * @returns the UTC offset and localized zone name.
  */
 export function zoneLabel(zone: string, t: Translate<ZoneLocaleKey>, at = Date.now()): string {
-  const offset = zoneOffsetLabel(zone, at, t("time.utcPrefix"));
+  const offset = zoneOffsetLabel(zone, at, t('time.utcPrefix'))
   try {
-    const name = new Intl.DateTimeFormat(t("time.locale"), {
+    const name = new Intl.DateTimeFormat(t('time.locale'), {
       timeZone: zone,
-      timeZoneName: "longGeneric",
+      timeZoneName: 'longGeneric',
     })
       .formatToParts(at)
-      .find((part) => part.type === "timeZoneName")?.value;
-    if (offset === undefined) return name ?? zone;
-    return name === undefined || /^GMT(?:[+-]|$)/.test(name) ? offset : `${offset} · ${name}`;
+      .find(part => part.type === 'timeZoneName')?.value
+    if (offset === undefined) return name ?? zone
+    return name === undefined || /^GMT(?:[+-]|$)/.test(name) ? offset : `${offset} · ${name}`
   } catch {
-    return offset === undefined ? zone : `${offset} · ${zone}`;
+    return offset === undefined ? zone : `${offset} · ${zone}`
   }
 }
 
@@ -177,8 +177,8 @@ export function zoneName(
   t: Translate<ZoneLabelKey>,
   at = Date.now(),
 ): string {
-  const name = zoneLabel(zone, t, at);
-  return zone === system ? `${name}${t("rule.zone.system")}` : name;
+  const name = zoneLabel(zone, t, at)
+  return zone === system ? `${name}${t('rule.zone.system')}` : name
 }
 
 /**
@@ -192,10 +192,10 @@ export function zoneName(
  */
 function timeZoneInventory(): readonly string[] | undefined {
   try {
-    return Intl.supportedValuesOf("timeZone");
+    return Intl.supportedValuesOf('timeZone')
   } catch {
     // Enumeration is optional engine support; the minimal fallback covers its absence.
-    return undefined;
+    return undefined
   }
 }
 
@@ -215,20 +215,20 @@ function timeZoneInventory(): readonly string[] | undefined {
  * @returns IANA zones in menu order, de-duplicated.
  */
 export function zoneChoices(stored: string, system: string, at = Date.now()): readonly string[] {
-  const inventory = timeZoneInventory();
-  const zones = inventory === undefined ? FALLBACK_ZONES : [...FALLBACK_ZONES, ...inventory];
-  const choices = [...new Set([...zones, stored])].filter((zone) => zone !== system);
+  const inventory = timeZoneInventory()
+  const zones = inventory === undefined ? FALLBACK_ZONES : [...FALLBACK_ZONES, ...inventory]
+  const choices = [...new Set([...zones, stored])].filter(zone => zone !== system)
   // One offset per zone, read once alongside the zone it belongs to: each
   // `zoneOffset` builds a formatter, so resolving offsets inside the comparator
   // would build O(n log n) of them for the several hundred zones the inventory lists.
   const ordered = choices
-    .map((zone) => ({ zone, offset: zoneOffset(zone, at) ?? Number.POSITIVE_INFINITY }))
+    .map(zone => ({ zone, offset: zoneOffset(zone, at) ?? Number.POSITIVE_INFINITY }))
     .sort((left, right) => {
-      if (left.offset !== right.offset) return left.offset - right.offset;
-      return left.zone < right.zone ? -1 : 1;
+      if (left.offset !== right.offset) return left.offset - right.offset
+      return left.zone < right.zone ? -1 : 1
     })
-    .map((entry) => entry.zone);
-  return [system, ...ordered];
+    .map(entry => entry.zone)
+  return [system, ...ordered]
 }
 
 /**
@@ -241,16 +241,16 @@ export function zoneChoices(stored: string, system: string, at = Date.now()): re
  * @returns the stored IANA zone, or undefined when the record stores none.
  */
 export function recordTimeZone(record: ScheduleRecord): string | undefined {
-  if (record.kind === "rrule") return /^DTSTART;TZID=([^:]+):/m.exec(record.rrule)?.[1];
+  if (record.kind === 'rrule') return /^DTSTART;TZID=([^:]+):/m.exec(record.rrule)?.[1]
   switch (record.kind) {
-    case "after":
-    case "at":
-    case "every":
-      return undefined;
-    case "daily":
-    case "weekly":
-    case "cron":
-      return record.timeZone;
+    case 'after':
+    case 'at':
+    case 'every':
+      return undefined
+    case 'daily':
+    case 'weekly':
+    case 'cron':
+      return record.timeZone
   }
 }
 
@@ -271,111 +271,111 @@ export function formatScheduleFrequency(
   t: FrequencyTranslator,
   zone?: FrequencyZone,
 ): string {
-  if (record.kind === "rrule") {
-    const kind = hostFrequencyKind(record);
-    if (kind === "custom") return t("frequency.hostCustom");
-    const fields = ruleFields(record.rrule);
-    if (kind === "once") return t("frequency.once");
+  if (record.kind === 'rrule') {
+    const kind = hostFrequencyKind(record)
+    if (kind === 'custom') return t('frequency.hostCustom')
+    const fields = ruleFields(record.rrule)
+    if (kind === 'once') return t('frequency.once')
     // hostFrequencyKind returns custom for a rule without a DTSTART clock.
-    const clock = (/T(\d{6})/.exec(record.rrule) as RegExpExecArray)[1] as string;
-    const hour = String(Number(fields.get("BYHOUR") ?? clock.slice(0, 2))).padStart(2, "0");
-    const minute = String(Number(fields.get("BYMINUTE") ?? clock.slice(2, 4))).padStart(2, "0");
-    const time = clockLabel(`${hour}:${minute}:${clock.slice(4)}`);
-    const timeZone = recordTimeZone(record) ?? "UTC";
-    const interval = Number(fields.get("INTERVAL") ?? 1);
+    const clock = (/T(\d{6})/.exec(record.rrule) as RegExpExecArray)[1] as string
+    const hour = String(Number(fields.get('BYHOUR') ?? clock.slice(0, 2))).padStart(2, '0')
+    const minute = String(Number(fields.get('BYMINUTE') ?? clock.slice(2, 4))).padStart(2, '0')
+    const time = clockLabel(`${hour}:${minute}:${clock.slice(4)}`)
+    const timeZone = recordTimeZone(record) ?? 'UTC'
+    const interval = Number(fields.get('INTERVAL') ?? 1)
     const withZone = (text: string): string =>
       zone?.system === timeZone
         ? text
-        : t("frequency.hostZone", {
-            rule: text,
-            timeZone: zone?.label(timeZone) ?? zoneLabel(timeZone, t),
-          });
-    if (kind === "weekly") {
-      const days = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
-      const weekdays = (fields.get("BYDAY") as string)
-        .split(",")
-        .map((day) => days.indexOf(day) + 1)
-        .filter((day) => day > 0);
+        : t('frequency.hostZone', {
+          rule: text,
+          timeZone: zone?.label(timeZone) ?? zoneLabel(timeZone, t),
+        })
+    if (kind === 'weekly') {
+      const days = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
+      const weekdays = (fields.get('BYDAY') as string)
+        .split(',')
+        .map(day => days.indexOf(day) + 1)
+        .filter(day => day > 0)
       return withZone(
-        t(interval === 1 ? "frequency.weeklyLocal" : "frequency.hostWeeklyInterval", {
+        t(interval === 1 ? 'frequency.weeklyLocal' : 'frequency.hostWeeklyInterval', {
           weekdays: formatWeekdays(weekdays, t),
           time,
           interval,
         }),
-      );
+      )
     }
-    if (kind === "daily")
+    if (kind === 'daily')
       return withZone(
-        t(interval === 1 ? "frequency.dailyLocal" : "frequency.hostDailyInterval", {
+        t(interval === 1 ? 'frequency.dailyLocal' : 'frequency.hostDailyInterval', {
           time,
           interval,
         }),
-      );
-    if (kind === "minutely" || kind === "hourly") {
-      const unit = kind === "minutely" ? "minute" : "hour";
-      return t("frequency.every", { value: interval, unit: unitLabel(unit, interval, t) });
+      )
+    if (kind === 'minutely' || kind === 'hourly') {
+      const unit = kind === 'minutely' ? 'minute' : 'hour'
+      return t('frequency.every', { value: interval, unit: unitLabel(unit, interval, t) })
     }
-    const days = (fields.get("BYMONTHDAY") as string).split(",")[0] as string;
+    const days = (fields.get('BYMONTHDAY') as string).split(',')[0] as string
     return withZone(
-      t(interval === 1 ? "frequency.hostMonthly" : "frequency.hostMonthlyInterval", {
+      t(interval === 1 ? 'frequency.hostMonthly' : 'frequency.hostMonthlyInterval', {
         days,
         time,
         interval,
       }),
-    );
+    )
   }
   switch (record.kind) {
-    case "after":
-    case "at":
-      return t("frequency.once");
-    case "cron": {
-      const parsed = parseCronExpression(record.expression);
+    case 'after':
+    case 'at':
+      return t('frequency.once')
+    case 'cron': {
+      const parsed = parseCronExpression(record.expression)
       if (parsed !== undefined) {
-        const rule = cronPreview(parsed, t, t("time.locale"));
+        const rule = cronPreview(parsed, t, t('time.locale'))
         if (zone === undefined)
-          return t("frequency.cronRule", { rule, timeZone: zoneLabel(record.timeZone, t) });
+          return t('frequency.cronRule', { rule, timeZone: zoneLabel(record.timeZone, t) })
         return zone.system === record.timeZone
           ? rule
-          : t("frequency.cronRule", { rule, timeZone: zone.label(record.timeZone) });
+          : t('frequency.cronRule', { rule, timeZone: zone.label(record.timeZone) })
       }
       if (zone === undefined)
-        return t("frequency.cron", { timeZone: zoneLabel(record.timeZone, t) });
+        return t('frequency.cron', { timeZone: zoneLabel(record.timeZone, t) })
       return zone.system === record.timeZone
-        ? t("frequency.cronLocal")
-        : t("frequency.cron", { timeZone: zone.label(record.timeZone) });
+        ? t('frequency.cronLocal')
+        : t('frequency.cron', { timeZone: zone.label(record.timeZone) })
     }
-    case "daily": {
-      const time = clockLabel(record.time);
+    case 'daily': {
+      const time = clockLabel(record.time)
       if (zone === undefined)
-        return t("frequency.daily", { time, timeZone: zoneLabel(record.timeZone, t) });
+        return t('frequency.daily', { time, timeZone: zoneLabel(record.timeZone, t) })
       return zone.system === record.timeZone
-        ? t("frequency.dailyLocal", { time })
-        : t("frequency.daily", { time, timeZone: zone.label(record.timeZone) });
+        ? t('frequency.dailyLocal', { time })
+        : t('frequency.daily', { time, timeZone: zone.label(record.timeZone) })
     }
-    case "weekly": {
+    case 'weekly': {
       const params = {
         weekdays: formatWeekdays(record.weekdays, t),
         time: clockLabel(record.time),
-      };
-      if (zone === undefined)
-        return t("frequency.weekly", { ...params, timeZone: zoneLabel(record.timeZone, t) });
-      return zone.system === record.timeZone
-        ? t("frequency.weeklyLocal", params)
-        : t("frequency.weekly", { ...params, timeZone: zone.label(record.timeZone) });
-    }
-    case "every": {
-      let selected: { unit: TimeUnit; seconds: number } = SECOND_UNIT;
-      for (const candidate of UNIT_SECONDS) {
-        if (record.everySeconds % candidate.seconds !== 0) continue;
-        selected = candidate;
-        break;
       }
-      const value = record.everySeconds / selected.seconds;
-      return t("frequency.every", { value, unit: unitLabel(selected.unit, value, t) });
+      if (zone === undefined)
+        return t('frequency.weekly', { ...params, timeZone: zoneLabel(record.timeZone, t) })
+      return zone.system === record.timeZone
+        ? t('frequency.weeklyLocal', params)
+        : t('frequency.weekly', { ...params, timeZone: zone.label(record.timeZone) })
+    }
+    case 'every': {
+      let selected: { unit: TimeUnit; seconds: number } = SECOND_UNIT
+      for (const candidate of UNIT_SECONDS) {
+        if (record.everySeconds % candidate.seconds !== 0) continue
+        selected = candidate
+        break
+      }
+      const value = record.everySeconds / selected.seconds
+      return t('frequency.every', { value, unit: unitLabel(selected.unit, value, t) })
     }
   }
   /* v8 ignore next -- The Remote decoder validates this closed union. */
-  return assertNever(record);
+  return assertNever(record)
 }
 
 /**
@@ -404,18 +404,18 @@ export function formatScheduleNextRun(
   locale: string,
   timeZone?: string,
 ): string {
-  const at = Date.parse(scheduledAt);
-  if (Number.isNaN(at)) return scheduledAt;
-  const zone = timeZone === undefined ? {} : { timeZone };
-  const yearOf = new Intl.DateTimeFormat("en-US", { year: "numeric", ...zone });
+  const at = Date.parse(scheduledAt)
+  if (Number.isNaN(at)) return scheduledAt
+  const zone = timeZone === undefined ? {} : { timeZone }
+  const yearOf = new Intl.DateTimeFormat('en-US', { year: 'numeric', ...zone })
   return new Intl.DateTimeFormat(locale, {
-    ...(yearOf.format(at) === yearOf.format(Date.now()) ? {} : { year: "numeric" as const }),
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+    ...(yearOf.format(at) === yearOf.format(Date.now()) ? {} : { year: 'numeric' as const }),
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
     ...zone,
-  }).format(at);
+  }).format(at)
 }
 
 /**
@@ -424,8 +424,8 @@ export function formatScheduleNextRun(
  * language joins English: silently dropping the year would hide the year of a
  * target that can sit months or a year away.
  */
-const YEAR_LANGUAGES: readonly string[] = ["en"];
-const NO_YEAR_LANGUAGES: readonly string[] = ["zh"];
+const YEAR_LANGUAGES: readonly string[] = ['en']
+const NO_YEAR_LANGUAGES: readonly string[] = ['zh']
 
 /**
  * Whether one locale's absolute date states the year.
@@ -433,12 +433,12 @@ const NO_YEAR_LANGUAGES: readonly string[] = ["zh"];
  * @returns whether the year is stated; an unlisted language states it.
  */
 function statesYear(locale: string): boolean {
-  const language = locale.toLowerCase().replace(/-.*$/, "");
-  if (YEAR_LANGUAGES.includes(language)) return true;
-  if (NO_YEAR_LANGUAGES.includes(language)) return false;
+  const language = locale.toLowerCase().replace(/-.*$/, '')
+  if (YEAR_LANGUAGES.includes(language)) return true
+  if (NO_YEAR_LANGUAGES.includes(language)) return false
   // Unlisted languages take the stated default, so no language silently loses
   // the year for a target that can sit months or a year away.
-  return true;
+  return true
 }
 
 /**
@@ -460,17 +460,17 @@ function statesYear(locale: string): boolean {
  * @returns the localized absolute next run in the device zone, or the raw instant when it cannot be parsed.
  */
 export function formatScheduleAbsolute(scheduledAt: string, locale: string): string {
-  const at = Date.parse(scheduledAt);
-  if (Number.isNaN(at)) return scheduledAt;
+  const at = Date.parse(scheduledAt)
+  if (Number.isNaN(at)) return scheduledAt
   return new Intl.DateTimeFormat(locale, {
-    ...(statesYear(locale) ? { year: "numeric" as const } : {}),
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+    ...(statesYear(locale) ? { year: 'numeric' as const } : {}),
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
     // `hour12: false` leaves midnight's hour open in older engines, which may render `24:00`.
-    hourCycle: "h23",
-  }).format(at);
+    hourCycle: 'h23',
+  }).format(at)
 }
 
 /**
@@ -485,14 +485,14 @@ export function formatScheduleAbsolute(scheduledAt: string, locale: string): str
  * @returns the localized clock time, with the month and day when `at` falls on another day.
  */
 export function formatAvailableAt(at: number, locale: string, now: number): string {
-  const today = new Date(at).toDateString() === new Date(now).toDateString();
+  const today = new Date(at).toDateString() === new Date(now).toDateString()
   return new Intl.DateTimeFormat(locale, {
-    ...(today ? {} : { month: "short" as const, day: "numeric" as const }),
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).format(at);
+    ...(today ? {} : { month: 'short' as const, day: 'numeric' as const }),
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).format(at)
 }
 
 /**
@@ -517,7 +517,7 @@ export function nextRunParts(
   return {
     absolute: formatScheduleAbsolute(scheduledAt, locale),
     relative: `(${formatScheduleRelative(scheduledAt, now, t)})`,
-  };
+  }
 }
 
 /**
@@ -532,19 +532,19 @@ export function formatScheduleRelative(
   now: number,
   t: Translate<RelativeTimeKey>,
 ): string {
-  const difference = Date.parse(scheduledAt) - now;
-  if (difference === 0) return t("relative.now");
-  const absoluteSeconds = Math.abs(difference) / SECOND_MS;
+  const difference = Date.parse(scheduledAt) - now
+  if (difference === 0) return t('relative.now')
+  const absoluteSeconds = Math.abs(difference) / SECOND_MS
   const selected =
-    UNIT_SECONDS.find((candidate) => absoluteSeconds >= candidate.seconds) ?? SECOND_UNIT;
+    UNIT_SECONDS.find(candidate => absoluteSeconds >= candidate.seconds) ?? SECOND_UNIT
   const value = Math.max(
     1,
     difference > 0
       ? Math.ceil(absoluteSeconds / selected.seconds)
       : Math.floor(absoluteSeconds / selected.seconds),
-  );
-  const unit = unitLabel(selected.unit, value, t);
-  return t(difference > 0 ? "relative.future" : "relative.overdue", { value, unit });
+  )
+  const unit = unitLabel(selected.unit, value, t)
+  return t(difference > 0 ? 'relative.future' : 'relative.overdue', { value, unit })
 }
 
 /**
@@ -560,12 +560,12 @@ export function orderScheduleRecords<T extends ScheduleRecord>(
   return records
     .map((record, index) => ({ record, index }))
     .sort((left, right) => {
-      const leftTime = Date.parse(taskNextRunAt(left.record));
-      const rightTime = Date.parse(taskNextRunAt(right.record));
-      const leftOverdue = leftTime <= now;
-      const rightOverdue = rightTime <= now;
-      if (leftOverdue !== rightOverdue) return Number(rightOverdue) - Number(leftOverdue);
-      return leftTime - rightTime || left.index - right.index;
+      const leftTime = Date.parse(taskNextRunAt(left.record))
+      const rightTime = Date.parse(taskNextRunAt(right.record))
+      const leftOverdue = leftTime <= now
+      const rightOverdue = rightTime <= now
+      if (leftOverdue !== rightOverdue) return Number(rightOverdue) - Number(leftOverdue)
+      return leftTime - rightTime || left.index - right.index
     })
-    .map(({ record }) => record);
+    .map(({ record }) => record)
 }

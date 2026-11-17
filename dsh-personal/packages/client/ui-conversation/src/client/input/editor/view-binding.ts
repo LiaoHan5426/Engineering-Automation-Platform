@@ -1,13 +1,13 @@
 /** DOM and keymap bindings installed by the InputBar's existing effects. */
-import type { Ref } from "vue";
-import type { LexicalEditor } from "lexical";
-import { $getRoot } from "lexical";
-import { focusWithoutRing, isMobileDevice } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { ComposerKeyboard } from "../../contract/draft-editor.ts";
-import type { BusyEnterBehavior } from "../../contract/composer-submission.ts";
-import { resolveSubmitMode } from "../submission-policy.ts";
-import { registerComposerKeymap } from "./keymap.ts";
-import { DRAFT_SUBMITTED_TAG } from "./runtime.ts";
+import type { Ref } from 'vue'
+import type { LexicalEditor } from 'lexical'
+import { $getRoot } from 'lexical'
+import { focusWithoutRing, isMobileDevice } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ComposerKeyboard } from '../../contract/draft-editor.ts'
+import type { BusyEnterBehavior } from '../../contract/composer-submission.ts'
+import { resolveSubmitMode } from '../submission-policy.ts'
+import { registerComposerKeymap } from './keymap.ts'
+import { DRAFT_SUBMITTED_TAG } from './runtime.ts'
 
 /**
  * Transfer mobile editor focus after a submission empties the draft.
@@ -21,31 +21,31 @@ export function installDraftKeyboardDismissal(
   destination: Ref<HTMLElement | null>,
 ): () => void {
   return editor.registerUpdateListener(({ editorState, tags }) => {
-    if (!tags.has(DRAFT_SUBMITTED_TAG) || !isMobileDevice()) return;
-    const input = editor.getRootElement();
-    if (input === null || input.ownerDocument.activeElement !== input) return;
+    if (!tags.has(DRAFT_SUBMITTED_TAG) || !isMobileDevice()) return
+    const input = editor.getRootElement()
+    if (input === null || input.ownerDocument.activeElement !== input) return
     if (
       editorState.read(() => $getRoot().getTextContentSize() === 0) &&
       destination.value !== null
     ) {
-      focusWithoutRing(destination.value, { preventScroll: true });
+      focusWithoutRing(destination.value, { preventScroll: true })
     }
-  });
+  })
 }
 
 interface DraftViewGate {
-  locked: boolean;
-  machineBusy: boolean;
-  canSteerQueue: boolean;
-  running: boolean;
-  steeringAvailable: boolean;
-  busyEnter: BusyEnterBehavior;
-  intakeFiles: (files: readonly File[], directories?: ReadonlySet<File>) => void;
-  uploadsPending: boolean;
+  locked: boolean
+  machineBusy: boolean
+  canSteerQueue: boolean
+  running: boolean
+  steeringAvailable: boolean
+  busyEnter: BusyEnterBehavior
+  intakeFiles: (files: readonly File[], directories?: ReadonlySet<File>) => void
+  uploadsPending: boolean
   /** Toast text explaining why pending uploads hold the send. */
-  uploadsHeldText: string;
-  showToast: (text: string) => void;
-  canAcceptDrop: boolean;
+  uploadsHeldText: string
+  showToast: (text: string) => void
+  canAcceptDrop: boolean
 }
 
 /**
@@ -53,23 +53,23 @@ interface DraftViewGate {
  * @param scrollRef - the InputBar-owned scrollport reference.
  */
 export function revealDraftSelection(scrollRef: Ref<HTMLDivElement | null>): void {
-  const scrollEl = scrollRef.value;
-  if (scrollEl === null || scrollEl.scrollHeight <= scrollEl.clientHeight) return;
-  const selection = window.getSelection();
-  if (selection === null || selection.rangeCount === 0) return;
-  const range = selection.getRangeAt(0);
-  let rect = range.getBoundingClientRect();
+  const scrollEl = scrollRef.value
+  if (scrollEl === null || scrollEl.scrollHeight <= scrollEl.clientHeight) return
+  const selection = window.getSelection()
+  if (selection === null || selection.rangeCount === 0) return
+  const range = selection.getRangeAt(0)
+  let rect = range.getBoundingClientRect()
   if (rect.height === 0 && rect.width === 0) {
     // A collapsed caret at an empty line reports a zero rect in some
     // engines; the anchor's element box is the line the caret sits on.
-    const anchor = selection.anchorNode;
-    const el = anchor instanceof HTMLElement ? anchor : anchor?.parentElement;
-    if (el === undefined || el === null) return;
-    rect = el.getBoundingClientRect();
+    const anchor = selection.anchorNode
+    const el = anchor instanceof HTMLElement ? anchor : anchor?.parentElement
+    if (el === undefined || el === null) return
+    rect = el.getBoundingClientRect()
   }
-  const box = scrollEl.getBoundingClientRect();
-  if (rect.bottom > box.bottom) scrollEl.scrollTop += rect.bottom - box.bottom;
-  else if (rect.top < box.top) scrollEl.scrollTop -= box.top - rect.top;
+  const box = scrollEl.getBoundingClientRect()
+  if (rect.bottom > box.bottom) scrollEl.scrollTop += rect.bottom - box.bottom
+  else if (rect.top < box.top) scrollEl.scrollTop -= box.top - rect.top
 }
 
 /**
@@ -80,10 +80,10 @@ export function revealDraftSelection(scrollRef: Ref<HTMLDivElement | null>): voi
 export function focusDraftEditor(editor: LexicalEditor, revealSelection: () => void): void {
   // Lexical's focus() restores the editor selection but never calls the DOM
   // focus itself; preventScroll keeps the conversation scrollport still.
-  editor.getRootElement()?.focus({ preventScroll: true });
+  editor.getRootElement()?.focus({ preventScroll: true })
   editor.focus(() => {
-    revealSelection();
-  });
+    revealSelection()
+  })
 }
 
 /**
@@ -92,21 +92,21 @@ export function focusDraftEditor(editor: LexicalEditor, revealSelection: () => v
  * @returns the listener cleanup, or undefined when the element is absent.
  */
 export function installDraftWheel(scrollRef: Ref<HTMLDivElement | null>): (() => void) | undefined {
-  const el = scrollRef.value;
-  if (el === null) return;
+  const el = scrollRef.value
+  if (el === null) return
   const onWheel = (e: WheelEvent): void => {
-    const host = el.closest("[data-conversation-scroll]");
-    if (!(host instanceof HTMLElement) || e.deltaY === 0) return;
-    const atTop = el.scrollTop <= 0;
-    const atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-    if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atEnd)) return;
-    e.preventDefault();
-    host.scrollTop += e.deltaY;
-  };
-  el.addEventListener("wheel", onWheel, { passive: false });
+    const host = el.closest('[data-conversation-scroll]')
+    if (!(host instanceof HTMLElement) || e.deltaY === 0) return
+    const atTop = el.scrollTop <= 0
+    const atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 1
+    if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atEnd)) return
+    e.preventDefault()
+    host.scrollTop += e.deltaY
+  }
+  el.addEventListener('wheel', onWheel, { passive: false })
   return () => {
-    el.removeEventListener("wheel", onWheel);
-  };
+    el.removeEventListener('wheel', onWheel)
+  }
 }
 
 /**
@@ -118,16 +118,16 @@ export function installDraftWheel(scrollRef: Ref<HTMLDivElement | null>): (() =>
  */
 export function installDraftFilePicker(
   keyboard: ComposerKeyboard,
-  gate: Readonly<Ref<Pick<DraftViewGate, "canAcceptDrop">>>,
+  gate: Readonly<Ref<Pick<DraftViewGate, 'canAcceptDrop'>>>,
   fileInputRef: Ref<HTMLInputElement | null>,
 ): () => void {
   return keyboard.bindFilePicker({
     available: () =>
       gate.value.canAcceptDrop && fileInputRef.value !== null && !fileInputRef.value.disabled,
     open: () => {
-      fileInputRef.value?.click();
+      fileInputRef.value?.click()
     },
-  });
+  })
 }
 
 /**
@@ -145,44 +145,44 @@ export function installDraftKeymap(
   return registerComposerKeymap(editor, {
     arbitrate: (key, composing) => keyboard.arbitrate(key, composing),
     space: () => {
-      if (gate.value.machineBusy || gate.value.locked) return false;
-      return keyboard.space();
+      if (gate.value.machineBusy || gate.value.locked) return false
+      return keyboard.space()
     },
     dismissPopup: () => {
-      keyboard.dismissPopup();
+      keyboard.dismissPopup()
     },
     canSubmit: () => !gate.value.locked && !gate.value.machineBusy,
     submit: (accelerated) => {
-      const g = gate.value;
+      const g = gate.value
       // Empty-draft accelerated Enter acts on the queue instead of the
       // (empty) draft: the machine rejects empty drafts, so the gesture
       // steers every still-pending queued message into the running turn.
       if (accelerated && g.canSteerQueue) {
-        keyboard.steerQueue();
-        return;
+        keyboard.steerQueue()
+        return
       }
       if (g.uploadsPending) {
-        g.showToast(g.uploadsHeldText);
-        return;
+        g.showToast(g.uploadsHeldText)
+        return
       }
       keyboard.submit(
         resolveSubmitMode(
           g.busyEnter,
           g.running,
-          accelerated ? "accelerated" : "enter",
+          accelerated ? 'accelerated' : 'enter',
           g.steeringAvailable,
         ),
-        "enter",
-      );
+        'enter',
+      )
     },
     intakeFiles: (files, directories) => {
-      gate.value.intakeFiles(files, directories);
+      gate.value.intakeFiles(files, directories)
     },
     pasteText: (text) => {
-      if (gate.value.machineBusy || gate.value.locked) return;
-      keyboard.paste(text);
+      if (gate.value.machineBusy || gate.value.locked) return
+      keyboard.paste(text)
     },
-  });
+  })
 }
 
 /**
@@ -191,6 +191,6 @@ export function installDraftKeymap(
  * @param editor - the borrowed editor, absent in the inert view.
  */
 export function keepDraftFocus(event: MouseEvent, editor: LexicalEditor | null): void {
-  event.preventDefault();
-  editor?.getRootElement()?.focus({ preventScroll: true });
+  event.preventDefault()
+  editor?.getRootElement()?.focus({ preventScroll: true })
 }

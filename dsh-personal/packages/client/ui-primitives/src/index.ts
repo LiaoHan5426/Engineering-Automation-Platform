@@ -1,6 +1,8 @@
 /**
- * Cordis-free React primitives styled only through `--dsw-*` tokens.
+ * Cordis-free Vue primitives styled only through `--dsw-*` tokens.
  */
+
+export { useObservableSelector } from './vue-observable.ts'
 
 export type { CodeToolbarLabels } from './CodeToolbar.tsx'
 export { UserMessageBubble } from './UserMessageBubble.tsx'

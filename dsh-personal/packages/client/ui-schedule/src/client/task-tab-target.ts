@@ -9,28 +9,28 @@
  * missing task.
  * @module
  */
-import { computed, watch, type Ref } from "vue";
-import type { SidebarRightNavigationParams } from "@deepseek-ai/dsh-client-ui-sidebar-right/client";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import { scheduleTaskParams } from "./definition.ts";
-import type { TaskTabBindings, TaskTabPage, TaskTabTarget } from "./task-tab-bindings.ts";
+import { computed, watch, type Ref } from 'vue'
+import type { SidebarRightNavigationParams } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { scheduleTaskParams } from './definition.ts'
+import type { TaskTabBindings, TaskTabPage, TaskTabTarget } from './task-tab-bindings.ts'
 
 /** The layout and navigation fields one task tab carries. */
 export interface TaskTabSource extends TaskTabPage {
   /** Navigation the tab's last open carried; a restored record carries no parameters. */
-  readonly navigation: { readonly params: SidebarRightNavigationParams; readonly revision: number };
+  readonly navigation: { readonly params: SidebarRightNavigationParams; readonly revision: number }
 }
 
 /** The task one task tab resolves, and where it came from. */
 export interface TaskTabTargetResolution {
   /** Whether the current layout still carries the opener's navigation parameters. */
-  readonly navigated: boolean;
+  readonly navigated: boolean
   /** Task the navigation named, or undefined when it carried another type's parameters. */
-  readonly navigation: TaskTabTarget | undefined;
+  readonly navigation: TaskTabTarget | undefined
   /** Binding this page kind wrote for this layout id, read only for a restored record. */
-  readonly recovered: TaskTabTarget | undefined;
+  readonly recovered: TaskTabTarget | undefined
   /** Task to show: the navigation's, or the restored binding's. */
-  readonly params: TaskTabTarget | undefined;
+  readonly params: TaskTabTarget | undefined
 }
 
 /**
@@ -45,16 +45,16 @@ export function useTaskTabTarget(
   tab: () => TaskTabSource,
   taskBindings: () => TaskTabBindings,
 ): Readonly<Ref<TaskTabTargetResolution>> {
-  const navigated = computed(() => tab().navigation.params !== undefined);
+  const navigated = computed(() => tab().navigation.params !== undefined)
   const recovered = computed(() =>
     navigated.value
       ? undefined
       : taskBindings().read(sessionId(), {
-          id: tab().id,
-          kind: tab().kind,
-          contentId: tab().contentId,
-        }),
-  );
+        id: tab().id,
+        kind: tab().kind,
+        contentId: tab().contentId,
+      }),
+  )
   watch(
     [
       taskBindings,
@@ -71,17 +71,17 @@ export function useTaskTabTarget(
           id: tab().id,
           kind: tab().kind,
           contentId: tab().contentId,
-        });
+        })
     },
-    { immediate: true, flush: "post" },
-  );
+    { immediate: true, flush: 'post' },
+  )
   return computed(() => {
-    const navigation = scheduleTaskParams(tab().navigation.params);
+    const navigation = scheduleTaskParams(tab().navigation.params)
     return {
       navigated: navigated.value,
       navigation,
       recovered: recovered.value,
       params: navigation ?? recovered.value,
-    };
-  });
+    }
+  })
 }

@@ -1,10 +1,10 @@
-import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
-import type { AutoReviewDenial } from "./tool-call-model.ts";
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
+import type { AutoReviewDenial } from './tool-call-model.ts'
 
 /** Localized copy that replaces ordinary failed-call output for an Auto denial. */
 export interface AutoReviewDenialPresentation {
-  summary: string;
-  output: string;
+  summary: string
+  output: string
 }
 
 /**
@@ -13,9 +13,9 @@ export interface AutoReviewDenialPresentation {
  * @returns one display line, or null when the reason has no displayable text.
  */
 export function normalizeAutoReviewReason(reason: string | null): string | null {
-  if (reason === null) return null;
-  const normalized = reason.trim().replace(/[\r\n\u2028\u2029]+/gu, " ");
-  return normalized === "" ? null : normalized;
+  if (reason === null) return null
+  const normalized = reason.trim().replace(/[\r\n\u2028\u2029]+/gu, ' ')
+  return normalized === '' ? null : normalized
 }
 
 /**
@@ -26,11 +26,11 @@ export function normalizeAutoReviewReason(reason: string | null): string | null 
  */
 export function localizeAutoReviewDenial(
   denial: AutoReviewDenial,
-  t: TranslateNS<"conversation">,
+  t: TranslateNS<'conversation'>,
 ): AutoReviewDenialPresentation {
-  const reason = normalizeAutoReviewReason(denial.reason) ?? t("tool.autoReviewReasonFallback");
+  const reason = normalizeAutoReviewReason(denial.reason) ?? t('tool.autoReviewReasonFallback')
   return {
-    summary: t("tool.autoReviewRejected"),
-    output: t("tool.autoReviewNotExecuted", { reason }),
-  };
+    summary: t('tool.autoReviewRejected'),
+    output: t('tool.autoReviewNotExecuted', { reason }),
+  }
 }

@@ -8,142 +8,142 @@ import {
   symlinkSync,
   unlinkSync,
   writeFileSync,
-} from "node:fs";
-import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
-import { afterEach, describe, expect, it, vi } from "vitest";
+} from 'node:fs'
+import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   browserBundledExternals,
   browserPackageOfFile,
   browserSourceAliases,
-} from "./browser-bundled-externals.ts";
-import { tierExternalDeps } from "./gen-third-party-notices.ts";
+} from './browser-bundled-externals.ts'
+import { tierExternalDeps } from './gen-third-party-notices.ts'
 
-const filesystem = vi.hoisted(() => ({ preservedAlias: undefined as string | undefined }));
-vi.mock("node:fs", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:fs")>();
+const filesystem = vi.hoisted(() => ({ preservedAlias: undefined as string | undefined }))
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>()
   return {
     ...actual,
     realpathSync: Object.assign(
       (...args: Parameters<typeof actual.realpathSync>) => {
         // Windows' JavaScript realpath can retain an 8.3 alias that Vite's native resolution expands.
-        if (typeof args[0] === "string" && args[0] === filesystem.preservedAlias) return args[0];
-        return actual.realpathSync(...args);
+        if (typeof args[0] === 'string' && args[0] === filesystem.preservedAlias) return args[0]
+        return actual.realpathSync(...args)
       },
       { native: actual.realpathSync.native },
     ),
-  };
-});
+  }
+})
 
-const roots: string[] = [];
-const dependencyLinks: string[] = [];
-const repositoryRoot = resolve(import.meta.dirname, "..");
+const roots: string[] = []
+const dependencyLinks: string[] = []
+const repositoryRoot = resolve(import.meta.dirname, '..')
 
 afterEach(() => {
-  filesystem.preservedAlias = undefined;
-  for (const link of dependencyLinks.splice(0)) unlinkSync(link);
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+  filesystem.preservedAlias = undefined
+  for (const link of dependencyLinks.splice(0)) unlinkSync(link)
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
+})
 
 function fixture(): string {
-  const root = realpathSync.native(mkdtempSync(join(tmpdir(), "dsh-browser-notices-")));
-  roots.push(root);
-  write(root, "package.json", '{"type":"module"}');
+  const root = realpathSync.native(mkdtempSync(join(tmpdir(), 'dsh-browser-notices-')))
+  roots.push(root)
+  write(root, 'package.json', '{"type":"module"}')
   write(
     root,
-    "tsconfig.base.json",
+    'tsconfig.base.json',
     JSON.stringify({
       compilerOptions: {
-        module: "esnext",
-        target: "es2022",
-        jsx: "preserve",
-        jsxImportSource: "vue",
-        paths: { "@fixture/static": ["./packages/client/static/src/index.ts"] },
+        module: 'esnext',
+        target: 'es2022',
+        jsx: 'preserve',
+        jsxImportSource: 'vue',
+        paths: { '@fixture/static': ['./packages/client/static/src/index.ts'] },
       },
     }),
-  );
-  write(root, "tsconfig.base.client.json", '{"extends":"./tsconfig.base.json"}');
-  return root;
+  )
+  write(root, 'tsconfig.base.client.json', '{"extends":"./tsconfig.base.json"}')
+  return root
 }
 
 function write(root: string, path: string, text: string): void {
-  const target = join(root, path);
-  mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(target, text);
+  const target = join(root, path)
+  mkdirSync(dirname(target), { recursive: true })
+  writeFileSync(target, text)
 }
 
-function library(root: string, name: string, source = "export const value = 1"): void {
+function library(root: string, name: string, source = 'export const value = 1'): void {
   write(
     root,
     `node_modules/${name}/package.json`,
-    JSON.stringify({ name, type: "module", exports: "./index.js" }),
-  );
-  write(root, `node_modules/${name}/index.js`, source);
+    JSON.stringify({ name, type: 'module', exports: './index.js' }),
+  )
+  write(root, `node_modules/${name}/index.js`, source)
 }
 
 function dynamicPlugin(root: string, source: string): void {
   write(
     root,
-    "packages/client/dynamic/package.json",
+    'packages/client/dynamic/package.json',
     JSON.stringify({
-      name: "@fixture/dynamic",
-      dsh: { client: { platform: "web" } },
+      name: '@fixture/dynamic',
+      dsh: { client: { platform: 'web' } },
     }),
-  );
+  )
   write(
     root,
-    "packages/client/dynamic/tsdown.config.ts",
+    'packages/client/dynamic/tsdown.config.ts',
     [
-      "export default {",
+      'export default {',
       '  name: "@fixture/dynamic/client",',
       '  entry: { client: "src/client/index.ts" },',
       '  inputOptions: { resolve: { conditionNames: ["browser", "import", "default"] } },',
-      "}",
-    ].join("\n"),
-  );
-  write(root, "packages/client/dynamic/src/client/index.ts", source);
+      '}',
+    ].join('\n'),
+  )
+  write(root, 'packages/client/dynamic/src/client/index.ts', source)
 }
 
-describe("browser dependency discovery", () => {
-  it("records runtime imports through the client config without following upstream dependencies or erased types", async () => {
-    const root = fixture();
-    library(root, "browser-lib", 'export { value } from "transitive-lib"');
-    library(root, "transitive-lib");
+describe('browser dependency discovery', () => {
+  it('records runtime imports through the client config without following upstream dependencies or erased types', async () => {
+    const root = fixture()
+    library(root, 'browser-lib', 'export { value } from "transitive-lib"')
+    library(root, 'transitive-lib')
     dynamicPlugin(
       root,
       [
         'import type { MissingType } from "type-only-lib"',
         'import { value } from "browser-lib"',
-        "export const output: MissingType = value",
-      ].join("\n"),
-    );
+        'export const output: MissingType = value',
+      ].join('\n'),
+    )
 
-    expect(await browserBundledExternals(root)).toEqual(new Set(["browser-lib"]));
-    expect(existsSync(join(root, "packages/client/dynamic/lib"))).toBe(false);
-  });
+    expect(await browserBundledExternals(root)).toEqual(new Set(['browser-lib']))
+    expect(existsSync(join(root, 'packages/client/dynamic/lib'))).toBe(false)
+  })
 
   it.each([false, true])(
-    "preserves source Client output hooks without writing artifacts (styles: %s)",
+    'preserves source Client output hooks without writing artifacts (styles: %s)',
     async (styles) => {
-      const root = fixture();
-      library(root, "browser-lib");
+      const root = fixture()
+      library(root, 'browser-lib')
       dynamicPlugin(
         root,
         [
           'import { value } from "browser-lib"',
           ...(styles ? ['import "./theme.css"'] : []),
-          "export const output = value",
-        ].join("\n"),
-      );
+          'export const output = value',
+        ].join('\n'),
+      )
       if (styles)
-        write(root, "packages/client/dynamic/src/client/theme.css", ".fixture { color: red }");
+        write(root, 'packages/client/dynamic/src/client/theme.css', '.fixture { color: red }')
       write(
         root,
-        "packages/client/dynamic/tsdown.config.ts",
+        'packages/client/dynamic/tsdown.config.ts',
         `
-      import { clientBundle } from ${JSON.stringify(pathToFileURL(resolve(repositoryRoot, "packages/client/tsdown.client.ts")).href)}
+      import { clientBundle } from ${JSON.stringify(pathToFileURL(resolve(repositoryRoot, 'packages/client/tsdown.client.ts')).href)}
       export default async (...args) => {
         const configs = await clientBundle(import.meta.dirname, ['src/index.ts'], {
           clientBanner: () => '/* fixture-client-banner */',
@@ -165,32 +165,32 @@ describe("browser dependency discovery", () => {
         return configs
       }
     `,
-      );
+      )
 
-      expect(await browserBundledExternals(root)).toEqual(new Set(["browser-lib"]));
-      expect(existsSync(join(root, "packages/client/dynamic/lib"))).toBe(false);
+      expect(await browserBundledExternals(root)).toEqual(new Set(['browser-lib']))
+      expect(existsSync(join(root, 'packages/client/dynamic/lib'))).toBe(false)
     },
-  );
+  )
 
   it.each([true, false])(
-    "discloses resolver-owned inline assets without promoting unrelated tooling (installed: %s)",
+    'discloses resolver-owned inline assets without promoting unrelated tooling (installed: %s)',
     async (installed) => {
-      const root = fixture();
+      const root = fixture()
       if (installed) {
-        write(root, "node_modules/asset-lib/package.json", '{"name":"asset-lib"}');
-        write(root, "node_modules/asset-lib/engine.js", "window.fixtureEngine = true");
+        write(root, 'node_modules/asset-lib/package.json', '{"name":"asset-lib"}')
+        write(root, 'node_modules/asset-lib/engine.js', 'window.fixtureEngine = true')
       }
-      library(root, "unused-tool");
-      dynamicPlugin(root, 'import text from "fixture:inline-assets"; export const output = text');
+      library(root, 'unused-tool')
+      dynamicPlugin(root, 'import text from "fixture:inline-assets"; export const output = text')
       const manifest = {
-        name: "@fixture/dynamic",
-        dsh: { client: { platform: "web" } },
-        devDependencies: { "asset-lib": "^1", "unused-tool": "^1" },
-      };
-      write(root, "packages/client/dynamic/package.json", JSON.stringify(manifest));
+        name: '@fixture/dynamic',
+        dsh: { client: { platform: 'web' } },
+        devDependencies: { 'asset-lib': '^1', 'unused-tool': '^1' },
+      }
+      write(root, 'packages/client/dynamic/package.json', JSON.stringify(manifest))
       write(
         root,
-        "packages/client/dynamic/tsdown.config.ts",
+        'packages/client/dynamic/tsdown.config.ts',
         `
       import { readFileSync } from 'node:fs'
       import { createRequire } from 'node:module'
@@ -212,121 +212,121 @@ describe("browser dependency discovery", () => {
         }],
       }
     `,
-      );
+      )
       if (!installed) {
         await expect(browserBundledExternals(root)).rejects.toThrow(
-          "cannot resolve asset-lib/package.json",
-        );
-        return;
+          'cannot resolve asset-lib/package.json',
+        )
+        return
       }
-      const manifests = new Map([["packages/client/dynamic/package.json", manifest]]);
-      const names = new Set(["@fixture/dynamic"]);
-      expect(tierExternalDeps(manifests, names).get("asset-lib")).toBe(false);
-      const inputs = await browserBundledExternals(root);
-      expect(inputs).toEqual(new Set(["asset-lib"]));
-      const tiers = tierExternalDeps(manifests, names, inputs);
-      expect(tiers.get("asset-lib")).toBe(true);
-      expect(tiers.get("unused-tool")).toBe(false);
-      expect(existsSync(join(root, "packages/client/dynamic/lib"))).toBe(false);
+      const manifests = new Map([['packages/client/dynamic/package.json', manifest]])
+      const names = new Set(['@fixture/dynamic'])
+      expect(tierExternalDeps(manifests, names).get('asset-lib')).toBe(false)
+      const inputs = await browserBundledExternals(root)
+      expect(inputs).toEqual(new Set(['asset-lib']))
+      const tiers = tierExternalDeps(manifests, names, inputs)
+      expect(tiers.get('asset-lib')).toBe(true)
+      expect(tiers.get('unused-tool')).toBe(false)
+      expect(existsSync(join(root, 'packages/client/dynamic/lib'))).toBe(false)
     },
-  );
+  )
 
-  it("rejects unresolved Client output options before walking the build", async () => {
-    const root = fixture();
-    dynamicPlugin(root, "export const output = 1");
+  it('rejects unresolved Client output options before walking the build', async () => {
+    const root = fixture()
+    dynamicPlugin(root, 'export const output = 1')
     write(
       root,
-      "packages/client/dynamic/tsdown.config.ts",
+      'packages/client/dynamic/tsdown.config.ts',
       `
       export default {
         name: '@fixture/dynamic/client', entry: 'src/client/index.ts',
         outputOptions: () => ({}),
       }
     `,
-    );
-    await expect(browserBundledExternals(root)).rejects.toThrow("needs resolved output options");
-    expect(existsSync(join(root, "packages/client/dynamic/lib"))).toBe(false);
-  });
+    )
+    await expect(browserBundledExternals(root)).rejects.toThrow('needs resolved output options')
+    expect(existsSync(join(root, 'packages/client/dynamic/lib'))).toBe(false)
+  })
 
-  it("rejects an unresolved runtime library", async () => {
-    const root = fixture();
-    dynamicPlugin(root, 'export { value } from "missing-browser-lib"');
+  it('rejects an unresolved runtime library', async () => {
+    const root = fixture()
+    dynamicPlugin(root, 'export { value } from "missing-browser-lib"')
     await expect(browserBundledExternals(root)).rejects.toThrow(
-      "cannot resolve missing-browser-lib",
-    );
-  });
+      'cannot resolve missing-browser-lib',
+    )
+  })
 
-  it("rejects a declared client without its browser config", async () => {
-    const root = fixture();
-    dynamicPlugin(root, "export const value = 1");
+  it('rejects a declared client without its browser config', async () => {
+    const root = fixture()
+    dynamicPlugin(root, 'export const value = 1')
     write(
       root,
-      "packages/client/dynamic/tsdown.config.ts",
+      'packages/client/dynamic/tsdown.config.ts',
       'export default { name: "@fixture/dynamic", entry: "src/index.ts" }',
-    );
-    await expect(browserBundledExternals(root)).rejects.toThrow("has no browser build config");
-  });
+    )
+    await expect(browserBundledExternals(root)).rejects.toThrow('has no browser build config')
+  })
 
   it.each([
-    ["shell", false, false],
-    ["shell", true, false],
-    ["shell", true, true],
-    ["test runner", false, false],
-    ["test runner", true, false],
-    ["test runner", true, true],
+    ['shell', false, false],
+    ['shell', true, false],
+    ['shell', true, true],
+    ['test runner', false, false],
+    ['test runner', true, false],
+    ['test runner', true, true],
   ] as const)(
-    "follows shell aliases, CSS and lazy imports without writing output (Vite+ from %s, symlinked root: %s, retained alias: %s)",
+    'follows shell aliases, CSS and lazy imports without writing output (Vite+ from %s, symlinked root: %s, retained alias: %s)',
     async (ownerKind, linked, preserveAlias) => {
-      const root = fixture();
-      library(root, "shell-lib");
-      library(root, "lazy-lib");
-      library(root, "asset-lib");
+      const root = fixture()
+      library(root, 'shell-lib')
+      library(root, 'lazy-lib')
+      library(root, 'asset-lib')
       write(
         root,
-        "node_modules/asset-lib/package.json",
+        'node_modules/asset-lib/package.json',
         JSON.stringify({
-          name: "asset-lib",
-          exports: { "./theme.css": "./theme.css" },
+          name: 'asset-lib',
+          exports: { './theme.css': './theme.css' },
         }),
-      );
-      write(root, "node_modules/asset-lib/theme.css", ".fixture { color: red }");
-      write(root, "packages/client/static/package.json", '{"name":"@fixture/static"}');
+      )
+      write(root, 'node_modules/asset-lib/theme.css', '.fixture { color: red }')
+      write(root, 'packages/client/static/package.json', '{"name":"@fixture/static"}')
       write(
         root,
-        "packages/client/static/src/index.ts",
+        'packages/client/static/src/index.ts',
         [
           'import { value } from "shell-lib"',
           'import "asset-lib/theme.css"',
-          "export const output = value",
+          'export const output = value',
           'export const lazy = () => import("lazy-lib")',
-        ].join("\n"),
-      );
-      const app = join(root, "apps/web");
+        ].join('\n'),
+      )
+      const app = join(root, 'apps/web')
       write(
         root,
-        "apps/web/package.json",
+        'apps/web/package.json',
         '{"name":"@fixture/web","type":"module","exports":{"./dist/*":"./dist/*"}}',
-      );
+      )
       const owner =
-        ownerKind === "shell"
-          ? resolve(repositoryRoot, "apps/web/package.json")
-          : createRequire(resolve(repositoryRoot, "package.json")).resolve("vitest/package.json");
-      const viteDirectory = dirname(createRequire(owner).resolve("vite/package.json"));
-      const viteLink = join(app, "node_modules/vite");
-      mkdirSync(dirname(viteLink), { recursive: true });
-      symlinkSync(viteDirectory, viteLink, "junction");
-      dependencyLinks.push(viteLink);
-      write(root, "apps/web/index.html", '<script type="module" src="./main.ts"></script>');
+        ownerKind === 'shell'
+          ? resolve(repositoryRoot, 'apps/web/package.json')
+          : createRequire(resolve(repositoryRoot, 'package.json')).resolve('vitest/package.json')
+      const viteDirectory = dirname(createRequire(owner).resolve('vite/package.json'))
+      const viteLink = join(app, 'node_modules/vite')
+      mkdirSync(dirname(viteLink), { recursive: true })
+      symlinkSync(viteDirectory, viteLink, 'junction')
+      dependencyLinks.push(viteLink)
+      write(root, 'apps/web/index.html', '<script type="module" src="./main.ts"></script>')
       write(
         root,
-        "apps/web/main.ts",
+        'apps/web/main.ts',
         'import { output, lazy } from "@fixture/static"; console.log(output); void lazy()',
-      );
+      )
       write(
         root,
-        "apps/web/vite.config.ts",
+        'apps/web/vite.config.ts',
         `
-      import { productWebBundleIsolation } from ${JSON.stringify(resolve(repositoryRoot, "apps/web/product-isolation.ts").replaceAll("\\", "/"))}
+      import { productWebBundleIsolation } from ${JSON.stringify(resolve(repositoryRoot, 'apps/web/product-isolation.ts').replaceAll('\\', '/'))}
       export default ({ mode }) => {
         if (mode !== 'production') throw new Error('notice discovery must use the production build mode')
         return {
@@ -337,47 +337,47 @@ describe("browser dependency discovery", () => {
               if (actual !== 'Rolldown') throw new Error('unexpected Vite+ bundler: ' + actual)
             },
           }],
-          build: { rollupOptions: { input: { index: ${JSON.stringify(join(app, "index.html"))}, preview: "missing-preview.ts" } } }
+          build: { rollupOptions: { input: { index: ${JSON.stringify(join(app, 'index.html'))}, preview: "missing-preview.ts" } } }
         }
       }
     `,
-      );
-      write(root, "apps/web/dist/sentinel.txt", "untouched");
+      )
+      write(root, 'apps/web/dist/sentinel.txt', 'untouched')
 
-      const scanRoot = linked ? join(fixture(), "linked") : root;
-      if (linked) symlinkSync(root, scanRoot, "junction");
-      if (preserveAlias) filesystem.preservedAlias = scanRoot;
+      const scanRoot = linked ? join(fixture(), 'linked') : root
+      if (linked) symlinkSync(root, scanRoot, 'junction')
+      if (preserveAlias) filesystem.preservedAlias = scanRoot
       try {
         expect(await browserBundledExternals(scanRoot)).toEqual(
-          new Set(["shell-lib", "lazy-lib", "asset-lib"]),
-        );
+          new Set(['shell-lib', 'lazy-lib', 'asset-lib']),
+        )
       } finally {
-        filesystem.preservedAlias = undefined;
-        if (linked) unlinkSync(scanRoot);
+        filesystem.preservedAlias = undefined
+        if (linked) unlinkSync(scanRoot)
       }
-      expect(readFileSync(join(app, "dist/sentinel.txt"), "utf8")).toBe("untouched");
-      expect(existsSync(join(app, "dist/index.html"))).toBe(false);
-      expect(existsSync(join(root, "packages/client/static/lib"))).toBe(false);
+      expect(readFileSync(join(app, 'dist/sentinel.txt'), 'utf8')).toBe('untouched')
+      expect(existsSync(join(app, 'dist/index.html'))).toBe(false)
+      expect(existsSync(join(root, 'packages/client/static/lib'))).toBe(false)
     },
-  );
+  )
 
-  it("normalizes installed module ids and excludes virtual/workspace modules", () => {
-    expect(browserPackageOfFile("/repo/node_modules/.pnpm/pkg@1/node_modules/pkg/a.js")).toBe(
-      "pkg",
-    );
-    expect(browserPackageOfFile("C:\\repo\\node_modules\\@scope\\pkg\\a.css?url")).toBe(
-      "@scope/pkg",
-    );
-    expect(browserPackageOfFile("/repo/packages/client/a.ts")).toBeUndefined();
-    expect(browserPackageOfFile("\0vite/modulepreload-polyfill")).toBeUndefined();
-  });
+  it('normalizes installed module ids and excludes virtual/workspace modules', () => {
+    expect(browserPackageOfFile('/repo/node_modules/.pnpm/pkg@1/node_modules/pkg/a.js')).toBe(
+      'pkg',
+    )
+    expect(browserPackageOfFile('C:\\repo\\node_modules\\@scope\\pkg\\a.css?url')).toBe(
+      '@scope/pkg',
+    )
+    expect(browserPackageOfFile('/repo/packages/client/a.ts')).toBeUndefined()
+    expect(browserPackageOfFile('\0vite/modulepreload-polyfill')).toBeUndefined()
+  })
 
-  it("maps exact names and subpaths from the source facade", () => {
-    const root = fixture();
-    const aliases = browserSourceAliases(root);
-    expect("@fixture/static".replace(aliases[0]!.find, aliases[0]!.replacement)).toBe(
-      join(root, "packages/client/static/src/index.ts"),
-    );
-    expect(aliases[0]!.find.test("@fixture/static-extra")).toBe(false);
-  });
-});
+  it('maps exact names and subpaths from the source facade', () => {
+    const root = fixture()
+    const aliases = browserSourceAliases(root)
+    expect('@fixture/static'.replace(aliases[0]!.find, aliases[0]!.replacement)).toBe(
+      join(root, 'packages/client/static/src/index.ts'),
+    )
+    expect(aliases[0]!.find.test('@fixture/static-extra')).toBe(false)
+  })
+})

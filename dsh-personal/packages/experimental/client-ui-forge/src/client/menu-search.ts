@@ -10,8 +10,8 @@ export function searchFieldKeyDown(
   event: KeyboardEvent,
   chooseFirst: (() => void) | undefined,
 ): void {
-  if (["Home", "End", "ArrowLeft", "ArrowRight"].includes(event.key)) event.stopPropagation();
-  if (event.key !== "Enter" || event.isComposing || chooseFirst === undefined) return;
-  event.preventDefault();
-  chooseFirst();
+  if (['Home', 'End', 'ArrowLeft', 'ArrowRight'].includes(event.key)) event.stopPropagation()
+  if (event.key !== 'Enter' || event.isComposing || chooseFirst === undefined) return
+  event.preventDefault()
+  chooseFirst()
 }

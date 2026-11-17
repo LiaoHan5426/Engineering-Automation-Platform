@@ -1,4 +1,4 @@
-import { defineComponent, h, shallowRef, watchEffect } from "vue";
+import { defineComponent, h, shallowRef, watchEffect } from 'vue'
 
 /**
  * The viewer composer's permission seat: which tier this share carries, stated and not selectable.
@@ -11,27 +11,27 @@ import { defineComponent, h, shallowRef, watchEffect } from "vue";
  *
  * @module @deepseek-ai/dsh-experimental-liveshare/src/client/viewer-permission
  */
-import type { Context as ClientContext } from "@deepseek-ai/cordis";
-import type {} from "@deepseek-ai/dsh-client-ui-renderer/client";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import type { PropsLocale } from "@deepseek-ai/dsh-client-ui-slots";
-import { type LiveshareKey, NS, type ViewerTranslate } from "./locales.ts";
-import { viewerCapabilities, type ViewerCapabilities } from "./viewer-capabilities.ts";
-import { ViewerSeat, VIEWER_SEAT_PRIORITY } from "./viewer-seat.tsx";
-export const name = "liveshare-viewer-permission";
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import { type LiveshareKey, NS, type ViewerTranslate } from './locales.ts'
+import { viewerCapabilities, type ViewerCapabilities } from './viewer-capabilities.ts'
+import { ViewerSeat, VIEWER_SEAT_PRIORITY } from './viewer-seat.tsx'
+export const name = 'liveshare-viewer-permission'
 /** Composer slot registry this seat occupies. */
-export const inject: readonly string[] = ["slots"];
+export const inject: readonly string[] = ['slots']
 /** The observation face this page's capability store exposes. */
 interface CapabilityFace {
-  subscribe(listener: () => void): () => void;
-  getSnapshot(): ViewerCapabilities;
+  subscribe(listener: () => void): () => void
+  getSnapshot(): ViewerCapabilities
 }
 /** Everything the seat reads: what the share's own answer granted this page. */
 export interface ViewerPermissionSeatProps {
   /** Whether the composer's own owner disabled the seat; a stated tier stays a label either way. */
-  readonly locked: boolean;
+  readonly locked: boolean
   /** The one capability set this page holds for the share it presents. */
-  readonly capabilities: CapabilityFace;
+  readonly capabilities: CapabilityFace
 }
 /**
  * The tier this seat states, in the reader's words.
@@ -43,8 +43,8 @@ export interface ViewerPermissionSeatProps {
  * @returns The tier's label.
  */
 function tierValue(page: ViewerCapabilities, t: ViewerTranslate): string {
-  if (page.unconfirmed === true) return t("viewer.permission.unconfirmed");
-  return t(`dialog.sessionMode.${page.mode}` as const satisfies LiveshareKey);
+  if (page.unconfirmed === true) return t('viewer.permission.unconfirmed')
+  return t(`dialog.sessionMode.${page.mode}` as const satisfies LiveshareKey)
 }
 /**
  * Render the permission this share carries.
@@ -53,43 +53,43 @@ function tierValue(page: ViewerCapabilities, t: ViewerTranslate): string {
  */
 export const ViewerPermissionSeat = defineComponent(
   (componentProps: ViewerPermissionSeatProps & PropsLocale<typeof NS>) => {
-    const pageRead = () => componentProps.capabilities.getSnapshot();
-    const pageRef = shallowRef(pageRead());
+    const pageRead = () => componentProps.capabilities.getSnapshot()
+    const pageRef = shallowRef(pageRead())
     watchEffect((onCleanup) => {
       const refresh = () => {
-        pageRef.value = pageRead();
-      };
-      onCleanup(((listener) => componentProps.capabilities.subscribe(listener))(refresh));
-      refresh();
-    });
+        pageRef.value = pageRead()
+      }
+      onCleanup((listener => componentProps.capabilities.subscribe(listener))(refresh))
+      refresh()
+    })
     return () => {
       return h(ViewerSeat, {
-        kind: "permission",
+        kind: 'permission',
         value: tierValue(pageRef.value, componentProps.t),
-        title: componentProps.t("viewer.permission.title"),
-        note: componentProps.t("viewer.permission.locked"),
+        title: componentProps.t('viewer.permission.title'),
+        note: componentProps.t('viewer.permission.locked'),
         readOnly: true,
-      });
-    };
+      })
+    }
   },
-  { inheritAttrs: false, props: ["capabilities", "t"] },
-);
+  { inheritAttrs: false, props: ['capabilities', 't'] },
+)
 /**
  * Fill the composer's permission seat with the share's own tier.
  * @param ctx - the viewer page's root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.inject(["slots"], (scope: ClientContext) => {
-    scope.slots.inject("conversation.input.permission", () =>
+  ctx.inject(['slots'], (scope: ClientContext) => {
+    scope.slots.inject('conversation.input.permission', () =>
       scope.slots.register(
         {
-          name: "conversation.input.permission",
+          name: 'conversation.input.permission',
           priority: VIEWER_SEAT_PRIORITY,
           locale: NS,
           inject: (_sessionId: SessionId) => ({ capabilities: viewerCapabilities }),
         },
         ViewerPermissionSeat,
       ),
-    );
-  });
+    )
+  })
 }

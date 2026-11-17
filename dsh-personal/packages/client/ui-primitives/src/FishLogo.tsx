@@ -11,5 +11,5 @@ export const FISH_LOGO_PATH = 'M22.9168 1.43018C22.6713 1.31018 22.5658 1.53918 
 * @returns the logo svg (aria-hidden; pair with the wordmark for accessibility).
 */
 export function FishLogo({ size = 24, className }: IconProps) {
-  return (h("svg", { "width": size, "height": (size * FISH_LOGO_VIEWBOX.height) / FISH_LOGO_VIEWBOX.width, "class": className, "viewBox": `0 0 ${FISH_LOGO_VIEWBOX.width} ${FISH_LOGO_VIEWBOX.height}`, "fill": "none", "aria-hidden": "true" }, [h("path", { "d": FISH_LOGO_PATH, "fill": "currentColor" })]))
+  return (h('svg', { 'width': size, 'height': (size * FISH_LOGO_VIEWBOX.height) / FISH_LOGO_VIEWBOX.width, 'class': className, 'viewBox': `0 0 ${FISH_LOGO_VIEWBOX.width} ${FISH_LOGO_VIEWBOX.height}`, 'fill': 'none', 'aria-hidden': 'true' }, [h('path', { 'd': FISH_LOGO_PATH, 'fill': 'currentColor' })]))
 }

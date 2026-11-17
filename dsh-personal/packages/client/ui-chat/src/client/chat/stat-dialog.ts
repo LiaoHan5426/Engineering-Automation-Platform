@@ -26,7 +26,7 @@ export function useStatDialog(): StatDialogSeat {
 
   useDismissOnOutsidePointer(rootRef, () => open.value, setOpen, panelRef)
   // Capture closes this dialog before keyboard activation opens a sibling.
-  watchEffect(onCleanup => {
+  watchEffect((onCleanup) => {
     if (!open.value) return
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') setOpen(false)

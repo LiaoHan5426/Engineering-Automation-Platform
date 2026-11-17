@@ -63,18 +63,21 @@ export const TranscriptViewRow = defineComponent((props: TranscriptViewRowProps)
     h(PreferenceRow, { title: props.t('settings.transcript.title'), description: props.t('settings.transcript.description'),
       value: mode.value, selectedLabel: props.t(LABELS[mode.value]),
       options: TRANSCRIPT_VIEW_MODES.map(id => ({ id, label: props.t(LABELS[id]) })),
-      onSelect: (value: string) => { const option = TRANSCRIPT_VIEW_MODES.find(id => id === value); if (option !== undefined) props.setTranscriptView(option) },
+      onSelect: (value: string) => { const option = TRANSCRIPT_VIEW_MODES.find(id => id === value); if (
+        option !== undefined) props.setTranscriptView(option) },
     }),
     h(PreferenceRow, { title: props.t('settings.collapse.title'), description: props.t('settings.collapse.description'),
       value: timing.value, selectedLabel: props.t(COLLAPSE_LABELS[timing.value]),
       options: COLLAPSE_TIMINGS.map(id => ({ id, label: props.t(COLLAPSE_LABELS[id]) })),
-      onSelect: (value: string) => { const option = COLLAPSE_TIMINGS.find(id => id === value); if (option !== undefined) props.setCollapseTiming(option) },
+      onSelect: (value: string) => { const option = COLLAPSE_TIMINGS.find(id => id === value); if (
+        option !== undefined) props.setCollapseTiming(option) },
     }),
     mode.value === 'verbose' ? null : h(PreferenceRow, {
       title: props.t('settings.foldedReplies.title'), description: props.t('settings.foldedReplies.description'),
       value: replies.value, selectedLabel: props.t(FOLDED_REPLY_LABELS[replies.value]),
       options: FOLDED_REPLIES.map(id => ({ id, label: props.t(FOLDED_REPLY_LABELS[id]) })),
-      onSelect: (value: string) => { const option = FOLDED_REPLIES.find(id => id === value); if (option !== undefined) props.setFoldedReplies(option) },
+      onSelect: (value: string) => { const option = FOLDED_REPLIES.find(id => id === value); if (
+        option !== undefined) props.setFoldedReplies(option) },
     }),
   ])
 }, { name: 'TranscriptViewRow', inheritAttrs: false, props: ['useTranscriptView', 'setTranscriptView', 'useCollapseTiming', 'setCollapseTiming', 'useFoldedReplies', 'setFoldedReplies', 't'] })

@@ -718,7 +718,7 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
           animation = next.getAnimations()[0]
           if (animation !== undefined) break
         }
-        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+        await new Promise<void>(resolve => requestAnimationFrame(() => { resolve() }))
       }
       if (animation === undefined) throw new Error('Notification promotion animation did not start')
       animation.pause()

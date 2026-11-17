@@ -7,31 +7,31 @@
  * reaches the model through the load report.
  */
 
-import * as Vue from "vue";
-import type { CordisDynamicPluginId } from "@deepseek-ai/dsh-api-remotes/client";
+import * as Vue from 'vue'
+import type { CordisDynamicPluginId } from '@deepseek-ai/dsh-api-remotes/client'
 
 /** A mountable plugin as the closure must return it (FUNCTION or OBJECT form). */
 export interface DynamicCordisEvaluatedPlugin {
   /** Optional plugin name; the runner overwrites it with the module id. */
-  name?: string;
+  name?: string
   /** Services the browser half declares; the runner overwrites it from the dispatched row. */
-  inject?: string[];
+  inject?: string[]
   /** Plugin body receiving the guard facade. */
-  apply: (ctx: unknown, config?: unknown) => unknown;
+  apply: (ctx: unknown, config?: unknown) => unknown
 }
 
 /** What the evaluator needs from the runner to build one package's closure. */
 export interface DynamicCordisClosureEnv {
   /** Route `host.call` to this package's host half over the wire. */
-  invoke(method: string, args: unknown): Promise<unknown>;
+  invoke(method: string, args: unknown): Promise<unknown>
   /** Mirror one runtime error text into the load report (console.error copies). */
-  noteError(message: string): void;
+  noteError(message: string): void
 }
 
 const TIMER_REDIRECT =
   "browser timer globals are unavailable in dynamic packages. Declare inject: ['timer'] on the returned plugin, " +
-  "query Client Service.listService for the exact API, and close over that plugin ctx. In Vue, create timers " +
-  "from an event handler or Vue.watch, register watcher cleanup with onCleanup, and dispose setup-owned timers with Vue.onBeforeUnmount.";
+  'query Client Service.listService for the exact API, and close over that plugin ctx. In Vue, create timers ' +
+  'from an event handler or Vue.watch, register watcher cleanup with onCleanup, and dispose setup-owned timers with Vue.onBeforeUnmount.'
 
 /**
  * Where each withheld browser global sends the author instead. One home for two
@@ -46,20 +46,20 @@ export const DYNAMIC_CLIENT_REDIRECTS: Readonly<Record<string, string>> = {
   clearTimeout: TIMER_REDIRECT,
   clearInterval: TIMER_REDIRECT,
   fetch:
-    "network belongs to the HOST half: register a handler there with harness.handle(method, fn) and call it here via host.call(method, args).",
+    'network belongs to the HOST half: register a handler there with harness.handle(method, fn) and call it here via host.call(method, args).',
   require:
-    "modules cannot be imported here. Vue arrives as the `Vue` closure symbol; everything else goes through ctx services or host.call.",
-};
+    'modules cannot be imported here. Vue arrives as the `Vue` closure symbol; everything else goes through ctx services or host.call.',
+}
 
 /** Callable teaching traps shadowing the ambient globals the closure must not reach. */
 function closureTraps(): Record<string, () => never> {
-  const traps: Record<string, () => never> = {};
+  const traps: Record<string, () => never> = {}
   for (const [name, redirect] of Object.entries(DYNAMIC_CLIENT_REDIRECTS)) {
     traps[name] = (): never => {
-      throw new Error(`${name} is not available in a dynamic client half — ${redirect}`);
-    };
+      throw new Error(`${name} is not available in a dynamic client half — ${redirect}`)
+    }
   }
-  return traps;
+  return traps
 }
 
 /** The `harness` seat exists only host-side; any touch teaches the split. */
@@ -70,16 +70,16 @@ function harnessTrap(): unknown {
       get(_target, prop) {
         throw new Error(
           `harness.${String(prop)} belongs to the HOST half (\`code\`): register handlers there with harness.handle(method, fn); ` +
-            "the browser half calls them via host.call(method, args).",
-        );
+            'the browser half calls them via host.call(method, args).',
+        )
       },
     },
-  );
+  )
 }
 
 /** Per-package style-tag bookkeeping behind the `styles.insert` symbol. */
 export class DynamicCordisStyles {
-  private readonly tags = new Set<HTMLStyleElement>();
+  private readonly tags = new Set<HTMLStyleElement>()
 
   /** @param pluginId - owning Plugin ID, stamped as `data-dyn` on every tag. */
   constructor(private readonly pluginId: CordisDynamicPluginId) {}
@@ -90,41 +90,41 @@ export class DynamicCordisStyles {
    * @returns disposer removing this one tag early.
    */
   insert(css: string): () => void {
-    if (typeof css !== "string") throw new Error("styles.insert(css) needs a CSS string");
-    const tag = document.createElement("style");
-    tag.dataset.dyn = this.pluginId;
-    tag.textContent = css;
-    document.head.append(tag);
-    this.tags.add(tag);
+    if (typeof css !== 'string') throw new Error('styles.insert(css) needs a CSS string')
+    const tag = document.createElement('style')
+    tag.dataset.dyn = this.pluginId
+    tag.textContent = css
+    document.head.append(tag)
+    this.tags.add(tag)
     return () => {
-      this.tags.delete(tag);
-      tag.remove();
-    };
+      this.tags.delete(tag)
+      tag.remove()
+    }
   }
 
   /** Live tag count (load-report contribution summary). */
   get count(): number {
-    return this.tags.size;
+    return this.tags.size
   }
 
   /** Remove every tag this package still owns (unload path). */
   dispose(): void {
-    for (const tag of this.tags) tag.remove();
-    this.tags.clear();
+    for (const tag of this.tags) tag.remove()
+    this.tags.clear()
   }
 }
 
 /** Stringify one console argument for the error mirror. */
 function errorText(arg: unknown): string {
-  if (arg instanceof Error) return arg.message;
-  if (typeof arg === "string") return arg;
-  if (arg === undefined) return "undefined";
+  if (arg instanceof Error) return arg.message
+  if (typeof arg === 'string') return arg
+  if (arg === undefined) return 'undefined'
   try {
-    return JSON.stringify(arg);
+    return JSON.stringify(arg)
   } catch {
     // A circular or otherwise non-serializable console argument: the mirror
     // carries the message, and nothing else here can fail.
-    return "[unserializable console argument]";
+    return '[unserializable console argument]'
   }
 }
 
@@ -133,22 +133,22 @@ function taggedConsole(
   pluginId: CordisDynamicPluginId,
   noteError: (message: string) => void,
 ): Console {
-  const tag = `[cordis:${pluginId}]`;
+  const tag = `[cordis:${pluginId}]`
   const forward =
-    (level: "log" | "info" | "warn" | "error" | "debug") =>
-    (...args: unknown[]): void => {
-      console[level](tag, ...args);
-      if (level !== "error") return;
-      noteError(args.map(errorText).join(" ").slice(0, 500));
-    };
+    (level: 'log' | 'info' | 'warn' | 'error' | 'debug') =>
+      (...args: unknown[]): void => {
+        console[level](tag, ...args)
+        if (level !== 'error') return
+        noteError(args.map(errorText).join(' ').slice(0, 500))
+      }
   return {
     ...console,
-    log: forward("log"),
-    info: forward("info"),
-    warn: forward("warn"),
-    error: forward("error"),
-    debug: forward("debug"),
-  };
+    log: forward('log'),
+    info: forward('info'),
+    warn: forward('warn'),
+    error: forward('error'),
+    debug: forward('debug'),
+  }
 }
 
 /**
@@ -159,12 +159,12 @@ function taggedConsole(
 export function isDynamicCordisPlugin(
   value: unknown,
 ): value is DynamicCordisEvaluatedPlugin | ((ctx: unknown) => unknown) {
-  if (typeof value === "function") return true;
+  if (typeof value === 'function') return true
   return (
-    typeof value === "object" &&
+    typeof value === 'object' &&
     value !== null &&
-    typeof (value as { apply?: unknown }).apply === "function"
-  );
+    typeof (value as { apply?: unknown }).apply === 'function'
+  )
 }
 
 /**
@@ -182,33 +182,33 @@ export async function evaluateClientHalf(
   env: DynamicCordisClosureEnv,
   styles: DynamicCordisStyles,
 ): Promise<DynamicCordisEvaluatedPlugin | ((ctx: unknown) => unknown)> {
-  const traps = closureTraps();
+  const traps = closureTraps()
   const parameters = [
-    "Vue",
-    "console",
-    "styles",
-    "host",
-    "harness",
+    'Vue',
+    'console',
+    'styles',
+    'host',
+    'harness',
     ...Object.keys(traps),
-    "process",
-    "Buffer",
-  ];
-  let closure: (...args: unknown[]) => Promise<unknown>;
+    'process',
+    'Buffer',
+  ]
+  let closure: (...args: unknown[]) => Promise<unknown>
   try {
     // The wrapper mirrors the host precheck exactly, so line offsets match.
     // Evaluating a definition's browser half IS this package's product: the
     // source arrived from a host process that accepted and prechecked it.
     // oxlint-disable-next-line typescript/no-implied-eval -- see above
-    const factory = new Function(...parameters, `return (async () => {\n${clientCode}\n})()`);
-    closure = factory as (...args: unknown[]) => Promise<unknown>;
+    const factory = new Function(...parameters, `return (async () => {\n${clientCode}\n})()`)
+    closure = factory as (...args: unknown[]) => Promise<unknown>
   } catch (error) {
-    if (!(error instanceof SyntaxError)) throw error;
+    if (!(error instanceof SyntaxError)) throw error
     // Engine-divergence fallback: the host precheck already carried the
     // line/caret teaching; browsers give only the message.
     throw new Error(
       `client half failed to parse in this browser: ${error.message}\n` +
-        "The browser half is plain JavaScript (no JSX, no TypeScript); build elements with Vue.h.",
-    );
+        'The browser half is plain JavaScript (no JSX, no TypeScript); build elements with Vue.h.',
+    )
   }
   const host = {
     /**
@@ -219,11 +219,11 @@ export async function evaluateClientHalf(
      * would invent an empty argument the caller never wrote.
      */
     call: (method: string, args: unknown = null): Promise<unknown> => env.invoke(method, args),
-  };
+  }
   const returned = await closure(
     Vue,
     taggedConsole(pluginId, (message) => {
-      env.noteError(message);
+      env.noteError(message)
     }),
     styles,
     host,
@@ -231,18 +231,18 @@ export async function evaluateClientHalf(
     ...Object.values(traps),
     undefined, // process: undefined keeps `typeof process` probes safe
     undefined, // Buffer
-  );
+  )
   if (!isDynamicCordisPlugin(returned)) {
     if (returned === undefined) {
       throw new Error(
-        "client half returned `undefined` — did you forget `return`?\n" +
-          "  ✓ return (ctx) => { … }\n" +
+        'client half returned `undefined` — did you forget `return`?\n' +
+          '  ✓ return (ctx) => { … }\n' +
           "  ✓ return { name: '…', inject: ['slots'], apply(ctx) { … } }",
-      );
+      )
     }
     throw new Error(
-      "client half must `return` a plugin: a function, or an object with an `apply(ctx)` method",
-    );
+      'client half must `return` a plugin: a function, or an object with an `apply(ctx)` method',
+    )
   }
-  return returned;
+  return returned
 }

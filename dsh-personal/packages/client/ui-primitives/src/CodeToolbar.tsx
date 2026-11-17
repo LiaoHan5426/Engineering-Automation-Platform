@@ -1,6 +1,6 @@
 import { h } from 'vue'
 /** Shared language, wrapping, and clipboard controls for code cards. */
-import { IconCheckOutlineRegular, IconCopyOutlineRegular, IconNowrapFillRegular, IconWrapFillRegular, } from './icons/index.tsx'
+import { IconCheckOutlineRegular, IconCopyOutlineRegular, IconNowrapFillRegular, IconWrapFillRegular } from './icons/index.tsx'
 import { Tooltip } from './Tooltip.tsx'
 import { supportsHighlighting } from './markdown/highlight.ts'
 import css from './CodeCard.module.css'
@@ -34,5 +34,5 @@ interface CodeToolbarProps {
 export function CodeToolbar({ lang, title, status, labels, copyLabel, copiedLabel, copied, wrapped, onCopy, onWrap }: CodeToolbarProps) {
   const wrapLabel = wrapped ? labels.unwrapLabel : labels.wrapLabel
   const clipboardLabel = copied ? copiedLabel : copyLabel
-  return (h("div", { "class": css.header, "data-code-block-banner": true }, [h("div", { "class": css.heading }, [h("span", { "class": css.language }, [supportsHighlighting(lang) ? lang : labels.codeLabel]), title !== undefined && h("span", { "class": css.title, "title": title }, [title])]), h("div", { "class": css.actions }, [status !== undefined && h("span", { "class": css.status }, [status]), onWrap !== undefined && h(Tooltip, { "label": wrapLabel, "side": "top", "portal": true }, () => [h("button", { "type": "button", "class": css.action, "aria-label": labels.wrapLabel, "aria-pressed": wrapped, "onClick": onWrap }, [wrapped ? h(IconNowrapFillRegular, { "size": 14 }) : h(IconWrapFillRegular, { "size": 14 })])]), onCopy !== undefined && h(Tooltip, { "label": clipboardLabel, "side": "top", "portal": true }, () => [h("button", { "type": "button", "class": css.action, "aria-label": clipboardLabel, "onClick": onCopy }, [copied ? h(IconCheckOutlineRegular, { "size": 14 }) : h(IconCopyOutlineRegular, { "size": 14 })])])])]))
+  return (h('div', { 'class': css.header, 'data-code-block-banner': true }, [h('div', { 'class': css.heading }, [h('span', { 'class': css.language }, [supportsHighlighting(lang) ? lang : labels.codeLabel]), title !== undefined && h('span', { 'class': css.title, 'title': title }, [title])]), h('div', { 'class': css.actions }, [status !== undefined && h('span', { 'class': css.status }, [status]), onWrap !== undefined && h(Tooltip, { 'label': wrapLabel, 'side': 'top', 'portal': true }, () => [h('button', { 'type': 'button', 'class': css.action, 'aria-label': labels.wrapLabel, 'aria-pressed': wrapped, 'onClick': onWrap }, [wrapped ? h(IconNowrapFillRegular, { 'size': 14 }) : h(IconWrapFillRegular, { 'size': 14 })])]), onCopy !== undefined && h(Tooltip, { 'label': clipboardLabel, 'side': 'top', 'portal': true }, () => [h('button', { 'type': 'button', 'class': css.action, 'aria-label': clipboardLabel, 'onClick': onCopy }, [copied ? h(IconCheckOutlineRegular, { 'size': 14 }) : h(IconCopyOutlineRegular, { 'size': 14 })])])])]))
 }

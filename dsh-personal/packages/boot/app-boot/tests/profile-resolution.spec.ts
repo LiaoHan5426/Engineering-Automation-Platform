@@ -649,7 +649,7 @@ describe('runtime resolution', { concurrent: false }, () => {
     await expect(importFrom('#library', parent)).resolves.toMatchObject({ marker: 1 })
     await expect(importFrom('#missing', parent)).rejects.toMatchObject({
       code: 'ERR_PACKAGE_PATH_NOT_EXPORTED',
-      message: expect.stringContaining(fileURLToPath(parent)) as unknown as string,
+      message: expect.stringContaining(fileURLToPath(parent)) as string,
     })
   })
 

@@ -185,7 +185,8 @@ async function expectExcelLayout(excel: Locator): Promise<void> {
     const controls = [...node.querySelectorAll('#luckysheet-sheets-leftscroll, #luckysheet-sheets-rightscroll, #luckysheet-zoom-minus, #luckysheet-zoom-slider, #luckysheet-zoom-plus, #luckysheet-zoom-ratioText')]
       .filter(control => control.getClientRects().length > 0).map(control => control.getBoundingClientRect())
     return Math.max(Math.abs(canvas.left - pane.left), Math.abs(canvas.width + verticalScroll.width - pane.width),
-      Math.abs(canvas.top - formula.bottom), Math.abs(canvas.bottom + horizontalScroll.height - tabs.top), Math.abs(tabs.bottom - pane.bottom),
+      Math.abs(canvas.top - formula.bottom), Math.abs(canvas.bottom + horizontalScroll.height - tabs.top),
+      Math.abs(tabs.bottom - pane.bottom),
       Math.abs(scroller.left - tabs.left), scroller.right - controls[0]!.left,
       ...controls.map((control, index) => control.right - (controls[index + 1]?.left ?? tabs.right)))
   })).toBeLessThanOrEqual(1)

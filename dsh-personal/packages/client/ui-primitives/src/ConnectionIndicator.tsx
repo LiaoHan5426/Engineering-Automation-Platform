@@ -19,7 +19,7 @@ interface ConnectionIndicatorProps {
 /** Render localized retry feedback and retain its last state during the exit transition. */
 export const ConnectionIndicator = defineComponent((props: ConnectionIndicatorProps) => {
   const rendered = shallowRef(props.state)
-  watchEffect(onCleanup => {
+  watchEffect((onCleanup) => {
     if (props.state !== undefined) {
       rendered.value = props.state
       return

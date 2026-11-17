@@ -1,8 +1,8 @@
-import { h, defineComponent } from "vue";
+import { h, defineComponent } from 'vue'
 /** Decorative occupant for the task-manager sidebar entry. */
-import { IconClockOutlineRegular } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
-import type {} from "@deepseek-ai/dsh-client-ui-sidebar/client";
+import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 /**
  * Render the clock glyph at the size the sidebar asks for; the sidebar owns
  * its accessible navigation label. The glyph is the row's direct icon child,
@@ -12,22 +12,22 @@ import type {} from "@deepseek-ai/dsh-client-ui-sidebar/client";
  * @returns decorative clock icon.
  */
 export const TaskManagerIcon = defineComponent(
-  (props: PropsRuntime<"sidebar.panellist">) => {
+  (props: PropsRuntime<'sidebar.panellist'>) => {
     return () => {
-      return h(IconClockOutlineRegular, { size: props.size });
-    };
+      return h(IconClockOutlineRegular, { size: props.size })
+    }
   },
   {
     props: [
-      "size",
-      "active",
-      "useRemoteAccess",
-      "useSessions",
-      "useSessionRetainInfo",
-      "useSessionAccess",
-      "usePanelInfo",
-      "useContextMenu",
-      "useWorkspaces",
+      'size',
+      'active',
+      'useRemoteAccess',
+      'useSessions',
+      'useSessionRetainInfo',
+      'useSessionAccess',
+      'usePanelInfo',
+      'useContextMenu',
+      'useWorkspaces',
     ],
   },
-);
+)

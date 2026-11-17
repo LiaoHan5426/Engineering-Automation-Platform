@@ -15,7 +15,7 @@ const artworks = {
 } as const
 describe('plugin artwork', () => {
   it.each(Object.entries(artworks))('%s renders its 36-viewBox svg honoring size and className', (_name, Artwork) => {
-    const { container } = render(h(Artwork, { "size": 30, "className": "deco" }))
+    const { container } = render(h(Artwork, { 'size': 30, 'className': 'deco' }))
     const svg = container.querySelector('svg')
     expect(svg?.getAttribute('viewBox')).toBe('0 0 36 36')
     expect(svg?.getAttribute('width')).toBe('30')

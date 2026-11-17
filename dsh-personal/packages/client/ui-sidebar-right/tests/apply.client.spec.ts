@@ -10,6 +10,7 @@
  */
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { isVNode, type Component } from 'vue'
 import { MenuRegistry } from '@deepseek-ai/dsh-client-ui-context-menu/src/client/registry.ts'
 import { IconCloseOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -43,7 +44,7 @@ interface Recorded {
   store?: unknown
   children?: unknown
   inject?: (sessionId: SessionId) => unknown
-  component: unknown
+  component: Component
 }
 
 async function boot(shortcuts: Partial<Shortcuts> = {}) {
@@ -51,7 +52,7 @@ async function boot(shortcuts: Partial<Shortcuts> = {}) {
   const registered: Recorded[] = []
   const slots = {
     inject: vi.fn((_name: string, register: Parameters<SlotRegistry['inject']>[1]) => ctx.effect(register)),
-    register: vi.fn((options: Omit<Recorded, 'component'>, component: unknown) => {
+    register: vi.fn((options: Omit<Recorded, 'component'>, component: Component) => {
       const entry: Recorded = { ...options, component }
       registered.push(entry)
       return () => { registered.splice(registered.indexOf(entry), 1) }
@@ -148,7 +149,9 @@ describe('ui-sidebar-right apply', () => {
     const closeIcon = seat('contextMenu.icon').component
     expect(typeof closeIcon).toBe('function')
     if (typeof closeIcon !== 'function') throw new Error('Missing close icon component')
-    expect(closeIcon().type).toBe(IconCloseOutlineRegular)
+    const closeIconNode: unknown = Reflect.apply(closeIcon, undefined, [])
+    if (!isVNode(closeIconNode)) throw new Error('Expected close icon VNode')
+    expect(closeIconNode.type).toBe(IconCloseOutlineRegular)
     // The panel declares the extension seats; the guide declares its chain child.
     expect(Object.keys(seat('rightbar.session').children as object)).toEqual([
       'sidebar.right.pane.tab', 'sidebar.right.pane.tab.title',

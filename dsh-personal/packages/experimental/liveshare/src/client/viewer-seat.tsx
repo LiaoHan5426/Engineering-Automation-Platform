@@ -1,4 +1,4 @@
-import { Fragment, computed, defineComponent, h } from "vue";
+import { Fragment, computed, defineComponent, h } from 'vue'
 
 /**
  * One composer seat a viewer page states but does not choose.
@@ -12,7 +12,7 @@ import { Fragment, computed, defineComponent, h } from "vue";
  *
  * @module @deepseek-ai/dsh-experimental-liveshare/src/client/viewer-seat
  */
-import css from "./viewer-seat.module.css";
+import css from './viewer-seat.module.css'
 /**
  * Rank at which the viewer's seats register into the composer's single slots.
  *
@@ -21,22 +21,22 @@ import css from "./viewer-seat.module.css";
  * default rank 0 rather than beside it. This is the shadow rank the shipped seats are replaced
  * through; it sits below the default rank every shipped registration of these seats uses.
  */
-export const VIEWER_SEAT_PRIORITY = -10;
+export const VIEWER_SEAT_PRIORITY = -10
 /** Which fact one seat states; also the seat's own data attribute. */
-export type ViewerSeatKind = "model" | "permission";
+export type ViewerSeatKind = 'model' | 'permission'
 /** One read-only or selectable statement about the Session this page presents. */
 export interface ViewerSeatProps {
   /** Fact this seat states. */
-  readonly kind: ViewerSeatKind;
+  readonly kind: ViewerSeatKind
   /** What this seat states, already localized. */
-  readonly value: string;
+  readonly value: string
   /** Longer statement of the same fact, used as the seat's tooltip. */
-  readonly title: string;
+  readonly title: string
   /**
    * Visible statement of the restriction, so a reader who never hovers still learns why the seat is
    * not theirs to change.
    */
-  readonly note: string;
+  readonly note: string
   /**
    * Whether this seat is a label.
    *
@@ -44,9 +44,9 @@ export interface ViewerSeatProps {
    * reconfigure it. A `false` value renders the same component as a control that calls
    * {@link ViewerSeatProps.select}, which is the wiring point for a future grant.
    */
-  readonly readOnly: boolean;
+  readonly readOnly: boolean
   /** What the selectable form does. Read only when {@link ViewerSeatProps.readOnly} is false. */
-  readonly select?: () => void;
+  readonly select?: () => void
 }
 /**
  * Render one statement about the shared Session.
@@ -55,38 +55,38 @@ export interface ViewerSeatProps {
  */
 export const ViewerSeat = defineComponent(
   (componentProps: ViewerSeatProps) => {
-    const attributeRef = computed(() => ({ "data-liveshare-viewer-seat": componentProps.kind }));
+    const attributeRef = computed(() => ({ 'data-liveshare-viewer-seat': componentProps.kind }))
     const bodyRef = computed(() =>
       h(Fragment, null, [
-        h("span", { class: css.value }, [componentProps.value]),
-        h("span", { class: css.note }, [componentProps.note]),
+        h('span', { class: css.value }, [componentProps.value]),
+        h('span', { class: css.note }, [componentProps.note]),
       ]),
-    );
+    )
     return () => {
       if (componentProps.readOnly) {
         return h(
-          "span",
+          'span',
           {
             class: css.seat,
-            "aria-disabled": "true",
+            'aria-disabled': 'true',
             title: componentProps.title,
             ...attributeRef.value,
           },
           [bodyRef.value],
-        );
+        )
       }
       return h(
-        "button",
+        'button',
         {
-          type: "button",
+          type: 'button',
           class: css.seat,
           title: componentProps.title,
           onClick: componentProps.select,
           ...attributeRef.value,
         },
         [bodyRef.value],
-      );
-    };
+      )
+    }
   },
-  { inheritAttrs: false, props: ["kind", "value", "title", "note", "readOnly", "select"] },
-);
+  { inheritAttrs: false, props: ['kind', 'value', 'title', 'note', 'readOnly', 'select'] },
+)

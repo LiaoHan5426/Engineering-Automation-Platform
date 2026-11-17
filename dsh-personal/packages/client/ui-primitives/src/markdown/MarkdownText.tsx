@@ -1,4 +1,4 @@
-import { h, defineComponent, type VNodeChild } from 'vue';
+import { h, defineComponent, type VNodeChild } from 'vue'
 /**
  * Untrusted assistant-Markdown renderer over the direct mdast pipeline:
  * `parse.ts` grammars, the incremental streaming parser, and `render.tsx`.
@@ -11,37 +11,38 @@ import { h, defineComponent, type VNodeChild } from 'vue';
  * other side of the freeze boundary renders literally until the settled
  * full parse self-heals it.
  */
-import clsx from 'clsx';
-import { copyKatexAsTex } from './copy-tex.ts';
-import { IncrementalMarkdownParser } from './incremental.ts';
-import { parseGfm, parseGfmWithMath } from './parse.ts';
-import { collectReferenceTargets, createReferenceTargets, renderBlocks, renderFootnoteSection, wrapBlockChildren, } from './render.tsx';
-import type { MarkdownFileMentions, MarkdownLabels, MarkdownPathImages, MarkdownRenderContext, ReferenceTargets } from './render.tsx';
-import 'katex/dist/katex.min.css';
-import css from './MarkdownText.module.css';
-export type { MarkdownCodeLabels, MarkdownFileMentions, MarkdownLabels, MarkdownPathImages } from './render.tsx';
+import clsx from 'clsx'
+import { copyKatexAsTex } from './copy-tex.ts'
+import { IncrementalMarkdownParser } from './incremental.ts'
+import { parseGfm, parseGfmWithMath } from './parse.ts'
+import { collectReferenceTargets, createReferenceTargets, renderBlocks, renderFootnoteSection, wrapBlockChildren } from './render.tsx'
+import type { MarkdownFileMentions, MarkdownLabels, MarkdownPathImages, MarkdownRenderContext, ReferenceTargets } from './render.tsx'
+import 'katex/dist/katex.min.css'
+import css from './MarkdownText.module.css'
+export type { MarkdownCodeLabels, MarkdownFileMentions, MarkdownLabels, MarkdownPathImages } from './render.tsx'
 /** One settled full render: parse with math, resolve references, append the footnote section. */
-function renderSettled(text: string, labels: MarkdownLabels, fileMentions: MarkdownFileMentions | undefined, pathImages: MarkdownPathImages | undefined, omitHtml: boolean): VNodeChild[] {
-    const root = parseGfmWithMath(text);
-    const targets = createReferenceTargets();
-    collectReferenceTargets(root.children, targets);
-    const context: MarkdownRenderContext = {
-        streaming: false,
-        labels,
-        fileMentions,
-        pathImages,
-        omitHtml,
-        targets,
-        footnoteOrder: [],
-        footnoteCounts: new Map(),
-    };
-    const blocks = wrapBlockChildren(renderBlocks(root.children.map((node, index) => ({
-        node,
-        /* v8 ignore next -- parseFull uses parseGfm, which stamps every top-level node. */
-        key: node.position?.start.offset ?? -(index + 1),
-    })), context), false);
-    const section = renderFootnoteSection(context);
-    return section === null ? blocks : [...blocks, '\n', section];
+function renderSettled(text: string, labels: MarkdownLabels, fileMentions: MarkdownFileMentions | undefined,
+  pathImages: MarkdownPathImages | undefined, omitHtml: boolean): VNodeChild[] {
+  const root = parseGfmWithMath(text)
+  const targets = createReferenceTargets()
+  collectReferenceTargets(root.children, targets)
+  const context: MarkdownRenderContext = {
+    streaming: false,
+    labels,
+    fileMentions,
+    pathImages,
+    omitHtml,
+    targets,
+    footnoteOrder: [],
+    footnoteCounts: new Map(),
+  }
+  const blocks = wrapBlockChildren(renderBlocks(root.children.map((node, index) => ({
+    node,
+    /* v8 ignore next -- parseFull uses parseGfm, which stamps every top-level node. */
+    key: node.position?.start.offset ?? -(index + 1),
+  })), context), false)
+  const section = renderFootnoteSection(context)
+  return section === null ? blocks : [...blocks, '\n', section]
 }
 /**
  * Streaming render state for one growing message: the incremental parser,
@@ -50,93 +51,93 @@ function renderSettled(text: string, labels: MarkdownLabels, fileMentions: Markd
  * final, so the tail continues from a copy of it each frame).
  */
 class StreamingRenderer {
-    private readonly parser = new IncrementalMarkdownParser(parseGfm);
-    private generation = -1;
-    private frozenCount = 0;
-    private frozenElements: VNodeChild[] = [];
-    private frozenTargets: ReferenceTargets = createReferenceTargets();
-    private frozenFootnoteOrder: string[] = [];
-    private frozenFootnoteCounts = new Map<string, number>();
-    private lastText: string | null = null;
-    private lastRendered: VNodeChild[] = [];
-    /**
+  private readonly parser = new IncrementalMarkdownParser(parseGfm)
+  private generation = -1
+  private frozenCount = 0
+  private frozenElements: VNodeChild[] = []
+  private frozenTargets: ReferenceTargets = createReferenceTargets()
+  private frozenFootnoteOrder: string[] = []
+  private frozenFootnoteCounts = new Map<string, number>()
+  private lastText: string | null = null
+  private lastRendered: VNodeChild[] = []
+  /**
      * @param labels - Localized Markdown chrome baked into cached elements; the owner replaces the renderer when it changes.
      * @param omitHtml - Whether raw HTML renders nothing; the owner replaces the renderer when it changes.
      */
-    constructor(private readonly labels: MarkdownLabels, readonly omitHtml: boolean) { }
-    /**
+  constructor(private readonly labels: MarkdownLabels, readonly omitHtml: boolean) { }
+  /**
      * Render the current accumulated text. Idempotent per text value, so Vue
      * may re-execute the calling render freely.
      * @param text - The full accumulated markdown source.
      * @returns Frozen elements, re-rendered tail, and the footnote section.
      */
-    render(text: string): VNodeChild[] {
-        if (text === this.lastText)
-            return this.lastRendered;
-        const { frozen, tail, generation } = this.parser.update(text);
-        if (generation !== this.generation) {
-            this.generation = generation;
-            this.frozenCount = 0;
-            this.frozenElements = [];
-            this.frozenTargets = createReferenceTargets();
-            this.frozenFootnoteOrder = [];
-            this.frozenFootnoteCounts = new Map();
-        }
-        const newlyFrozen = frozen.slice(this.frozenCount);
-        collectReferenceTargets(newlyFrozen.map(block => block.node), this.frozenTargets);
-        // Targets visible this frame: everything frozen so far plus the current
-        // tail parse — a newly frozen block's references resolved against the
-        // same parse tree its definitions came from.
-        const frameTargets: ReferenceTargets = {
-            definitions: new Map(this.frozenTargets.definitions),
-            footnotes: new Map(this.frozenTargets.footnotes),
-        };
-        collectReferenceTargets(tail.map(block => block.node), frameTargets);
-        if (newlyFrozen.length > 0) {
-            const frozenContext: MarkdownRenderContext = {
-                streaming: true,
-                labels: this.labels,
-                fileMentions: undefined,
-                pathImages: undefined,
-                omitHtml: this.omitHtml,
-                targets: frameTargets,
-                footnoteOrder: this.frozenFootnoteOrder,
-                footnoteCounts: this.frozenFootnoteCounts,
-            };
-            // Separator newlines are cached alongside the elements so the
-            // assembled children match the settled pipeline's block wrapping.
-            const batch = [...this.frozenElements];
-            for (const element of renderBlocks(newlyFrozen, frozenContext)) {
-                if (batch.length > 0)
-                    batch.push('\n');
-                batch.push(element);
-            }
-            this.frozenElements = batch;
-            this.frozenCount = frozen.length;
-        }
-        const tailContext: MarkdownRenderContext = {
-            streaming: true,
-            labels: this.labels,
-            fileMentions: undefined,
-            pathImages: undefined,
-            omitHtml: this.omitHtml,
-            targets: frameTargets,
-            footnoteOrder: [...this.frozenFootnoteOrder],
-            footnoteCounts: new Map(this.frozenFootnoteCounts),
-        };
-        const children = [...this.frozenElements];
-        for (const element of renderBlocks(tail, tailContext)) {
-            if (children.length > 0)
-                children.push('\n');
-            children.push(element);
-        }
-        const section = renderFootnoteSection(tailContext);
-        if (section !== null)
-            children.push('\n', section);
-        this.lastText = text;
-        this.lastRendered = children;
-        return this.lastRendered;
+  render(text: string): VNodeChild[] {
+    if (text === this.lastText)
+      return this.lastRendered
+    const { frozen, tail, generation } = this.parser.update(text)
+    if (generation !== this.generation) {
+      this.generation = generation
+      this.frozenCount = 0
+      this.frozenElements = []
+      this.frozenTargets = createReferenceTargets()
+      this.frozenFootnoteOrder = []
+      this.frozenFootnoteCounts = new Map()
     }
+    const newlyFrozen = frozen.slice(this.frozenCount)
+    collectReferenceTargets(newlyFrozen.map(block => block.node), this.frozenTargets)
+    // Targets visible this frame: everything frozen so far plus the current
+    // tail parse — a newly frozen block's references resolved against the
+    // same parse tree its definitions came from.
+    const frameTargets: ReferenceTargets = {
+      definitions: new Map(this.frozenTargets.definitions),
+      footnotes: new Map(this.frozenTargets.footnotes),
+    }
+    collectReferenceTargets(tail.map(block => block.node), frameTargets)
+    if (newlyFrozen.length > 0) {
+      const frozenContext: MarkdownRenderContext = {
+        streaming: true,
+        labels: this.labels,
+        fileMentions: undefined,
+        pathImages: undefined,
+        omitHtml: this.omitHtml,
+        targets: frameTargets,
+        footnoteOrder: this.frozenFootnoteOrder,
+        footnoteCounts: this.frozenFootnoteCounts,
+      }
+      // Separator newlines are cached alongside the elements so the
+      // assembled children match the settled pipeline's block wrapping.
+      const batch = [...this.frozenElements]
+      for (const element of renderBlocks(newlyFrozen, frozenContext)) {
+        if (batch.length > 0)
+          batch.push('\n')
+        batch.push(element)
+      }
+      this.frozenElements = batch
+      this.frozenCount = frozen.length
+    }
+    const tailContext: MarkdownRenderContext = {
+      streaming: true,
+      labels: this.labels,
+      fileMentions: undefined,
+      pathImages: undefined,
+      omitHtml: this.omitHtml,
+      targets: frameTargets,
+      footnoteOrder: [...this.frozenFootnoteOrder],
+      footnoteCounts: new Map(this.frozenFootnoteCounts),
+    }
+    const children = [...this.frozenElements]
+    for (const element of renderBlocks(tail, tailContext)) {
+      if (children.length > 0)
+        children.push('\n')
+      children.push(element)
+    }
+    const section = renderFootnoteSection(tailContext)
+    if (section !== null)
+      children.push('\n', section)
+    this.lastText = text
+    this.lastRendered = children
+    return this.lastRendered
+  }
 }
 /**
  * Render untrusted assistant-authored Markdown as semantic Vue elements.
@@ -171,32 +172,32 @@ class StreamingRenderer {
  * absolute HTTP(S) images render directly.
  */
 export const MarkdownText = defineComponent((props: {
-    text: string;
-    streaming?: boolean;
-    labels: MarkdownLabels;
-    fileMentions?: MarkdownFileMentions | undefined;
-    pathImages?: MarkdownPathImages | undefined;
-    variant?: 'body' | 'compact';
-    omitHtml?: boolean;
-    textInteractionSource?: boolean;
+  text: string
+  streaming?: boolean
+  labels: MarkdownLabels
+  fileMentions?: MarkdownFileMentions | undefined
+  pathImages?: MarkdownPathImages | undefined
+  variant?: 'body' | 'compact'
+  omitHtml?: boolean
+  textInteractionSource?: boolean
 }) => {
-    const streamRef: {
-        value: StreamingRenderer | null;
-    } = { value: null };
-    const streamLabelsRef = { "value": props.labels };
-    return () => {
-        const { text, streaming = false, labels, fileMentions, pathImages, variant = 'body', omitHtml = false, textInteractionSource = false, } = props;
-        const children = (() => {
-            if (!streaming) {
-                streamRef.value = null;
-                return renderSettled(text, labels, fileMentions, pathImages, omitHtml);
-            }
-            if (streamRef.value === null || streamLabelsRef.value !== labels || streamRef.value.omitHtml !== omitHtml) {
-                streamRef.value = new StreamingRenderer(labels, omitHtml);
-                streamLabelsRef.value = labels;
-            }
-            return streamRef.value.render(text);
-        })();
-        return h("div", { "class": clsx(css.markdown, variant === 'compact' && css.compact), "data-text-interaction-source": textInteractionSource ? '' : undefined, "data-markdown-variant": variant === 'compact' ? variant : undefined, "onCopy": (event) => { copyKatexAsTex(event, event.currentTarget as HTMLElement); } }, [children]);
-    };
-}, { "name": "MarkdownText", "props": ["text", "streaming", "labels", "fileMentions", "pathImages", "variant", "omitHtml", "textInteractionSource"] });
+  const streamRef: {
+    value: StreamingRenderer | null
+  } = { value: null }
+  const streamLabelsRef = { 'value': props.labels }
+  return () => {
+    const { text, streaming = false, labels, fileMentions, pathImages, variant = 'body', omitHtml = false, textInteractionSource = false } = props
+    const children = (() => {
+      if (!streaming) {
+        streamRef.value = null
+        return renderSettled(text, labels, fileMentions, pathImages, omitHtml)
+      }
+      if (streamRef.value === null || streamLabelsRef.value !== labels || streamRef.value.omitHtml !== omitHtml) {
+        streamRef.value = new StreamingRenderer(labels, omitHtml)
+        streamLabelsRef.value = labels
+      }
+      return streamRef.value.render(text)
+    })()
+    return h('div', { 'class': clsx(css.markdown, variant === 'compact' && css.compact), 'data-text-interaction-source': textInteractionSource ? '' : undefined, 'data-markdown-variant': variant === 'compact' ? variant : undefined, 'onCopy': (event) => { copyKatexAsTex(event, event.currentTarget as HTMLElement) } }, [children])
+  }
+}, { 'name': 'MarkdownText', 'props': ['text', 'streaming', 'labels', 'fileMentions', 'pathImages', 'variant', 'omitHtml', 'textInteractionSource'] })

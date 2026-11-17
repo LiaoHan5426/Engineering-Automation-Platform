@@ -1,21 +1,21 @@
 /** Editable reference tokens share chip hover styling while retaining ordinary text semantics. */
-import clsx from "clsx";
-import type { EditorConfig, LexicalEditor, SerializedTextNode } from "lexical";
-import { TextNode } from "lexical";
-import { registerLexicalTextEntity } from "@lexical/text";
-import { mergeRegister } from "@lexical/utils";
-import { $getRoot, HISTORY_MERGE_TAG } from "lexical";
-import { scanTextRefs } from "../decorations.ts";
-import css from "./composer-editor.module.css";
+import clsx from 'clsx'
+import type { EditorConfig, LexicalEditor, SerializedTextNode } from 'lexical'
+import { TextNode } from 'lexical'
+import { registerLexicalTextEntity } from '@lexical/text'
+import { mergeRegister } from '@lexical/utils'
+import { $getRoot, HISTORY_MERGE_TAG } from 'lexical'
+import { scanTextRefs } from '../decorations.ts'
+import css from './composer-editor.module.css'
 
 /** JSON form of one text-ref node. */
-export type SerializedTextRefNode = SerializedTextNode;
+export type SerializedTextRefNode = SerializedTextNode
 
 /** One matched plain-text reference as a styled, fully editable text node. */
 export class TextRefNode extends TextNode {
   /** Lexical node registry type tag. */
   static override getType(): string {
-    return "composer-text-ref";
+    return 'composer-text-ref'
   }
 
   /**
@@ -24,7 +24,7 @@ export class TextRefNode extends TextNode {
    * @returns a copy carrying the same NodeKey.
    */
   static override clone(node: TextRefNode): TextRefNode {
-    return new TextRefNode(node.__text, node.__key);
+    return new TextRefNode(node.__text, node.__key)
   }
 
   /**
@@ -33,44 +33,44 @@ export class TextRefNode extends TextNode {
    * @returns a fresh node.
    */
   static override importJSON(json: SerializedTextRefNode): TextRefNode {
-    const node = new TextRefNode(json.text);
-    node.setFormat(json.format);
-    node.setDetail(json.detail);
-    node.setMode(json.mode);
-    node.setStyle(json.style);
-    return node;
+    const node = new TextRefNode(json.text)
+    node.setFormat(json.format)
+    node.setDetail(json.detail)
+    node.setMode(json.mode)
+    node.setStyle(json.style)
+    return node
   }
 
   /** Serialize to the JSON node form. */
   override exportJSON(): SerializedTextRefNode {
     return {
       ...super.exportJSON(),
-      type: "composer-text-ref",
-    };
+      type: 'composer-text-ref',
+    }
   }
 
   /** Style the span the base TextNode mounts. */
   override createDOM(config: EditorConfig): HTMLElement {
-    const el = super.createDOM(config);
+    const el = super.createDOM(config)
     el.className = clsx(
       el.className,
       css.reference,
       css.textRef,
-      this.getTextContent().startsWith("/") && css.openable,
-    );
-    el.setAttribute("spellcheck", "false");
-    el.setAttribute("data-composer-text-ref", "");
-    return el;
+      this.getTextContent().startsWith('/') && css.openable,
+    )
+    el.setAttribute('spellcheck', 'false')
+    el.setAttribute('data-composer-text-ref', '')
+    return el
   }
 
   /** Entity nodes never merge with plain siblings (the transform owns their bounds). */
   override isTextEntity(): true {
-    return true;
+    return true
   }
 
   /** Editing continues inside; the transform re-evaluates match shape per edit. */
   override canInsertTextBefore(): boolean {
-    return true;
+    return true
   }
 }
 
@@ -82,20 +82,20 @@ export class TextRefNode extends TextNode {
  */
 export function registerTextRefDecoration(
   editor: LexicalEditor,
-  lexiconOf: () => ReadonlyMap<"/" | "@", readonly string[]>,
+  lexiconOf: () => ReadonlyMap<'/' | '@', readonly string[]>,
 ): () => void {
   const getMatch = (text: string): { start: number; end: number } | null => {
-    const range = scanTextRefs(text, lexiconOf())[0];
-    return range === undefined ? null : { start: range.start, end: range.end };
-  };
+    const range = scanTextRefs(text, lexiconOf())[0]
+    return range === undefined ? null : { start: range.start, end: range.end }
+  }
   return mergeRegister(
     ...registerLexicalTextEntity(
       editor,
       getMatch,
       TextRefNode,
-      (node) => new TextRefNode(node.getTextContent()),
+      node => new TextRefNode(node.getTextContent()),
     ),
-  );
+  )
 }
 
 /**
@@ -107,8 +107,8 @@ export function registerTextRefDecoration(
 export function rescanTextRefs(editor: LexicalEditor): void {
   editor.update(
     () => {
-      for (const node of $getRoot().getAllTextNodes()) node.markDirty();
+      for (const node of $getRoot().getAllTextNodes()) node.markDirty()
     },
     { tag: HISTORY_MERGE_TAG },
-  );
+  )
 }

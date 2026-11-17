@@ -56,7 +56,7 @@ async function createNativeBench() {
   const slots = ctx.slots as { register(options: object, component: unknown): () => void }
   return {
     ctx, bench, slots,
-    async mount() {
+    mount: async () => {
       const container = document.createElement('main')
       document.body.append(container)
       const app = createApp({ render: () => ctx.slots.renderSlot('root', {}) })

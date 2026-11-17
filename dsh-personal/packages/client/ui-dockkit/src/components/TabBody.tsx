@@ -4,13 +4,13 @@
  * drag) on every frame; the body is memoized on the renderer and the tab
  * record, so such a frame leaves it untouched.
  */
-import { defineComponent } from "vue";
-import type { TabRenderer } from "../contract/adapter.ts";
-import type { TabRecord } from "../contract/types.ts";
+import { defineComponent } from 'vue'
+import type { TabRenderer } from '../contract/adapter.ts'
+import type { TabRecord } from '../contract/types.ts'
 /** One tab's body, re-rendered only when `renderTab` or `tab` is a new object. */
 export const TabBody = defineComponent(
   (props: { readonly tab: TabRecord; readonly renderTab: TabRenderer }) => {
-    return () => props.renderTab(props.tab);
+    return () => props.renderTab(props.tab)
   },
-  { props: ["tab", "renderTab"] },
-);
+  { props: ['tab', 'renderTab'] },
+)

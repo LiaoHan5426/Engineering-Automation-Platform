@@ -18,8 +18,11 @@
   en: cea5016277d172b7
   zh: c1a14b1e64ed600c
 /deepseek-ai-dsh-client-ui-primitives/use-this-package/native-vue-contracts:
-  en: 467665a17bb2686c
-  zh: 779d9d479c4789fc
+  en: 28df1e5447406691
+  zh: 4b92806dcff86cec
+/deepseek-ai-dsh-client-ui-primitives/use-this-package/observable-selectors:
+  en: 6d441552a1dab63f
+  zh: 8880f4649215efe5
 /deepseek-ai-dsh-client-ui-primitives/use-this-package/component-catalog:
   en: ac5e97ff14d2b24d
   zh: 2e28db6c2251f2dd

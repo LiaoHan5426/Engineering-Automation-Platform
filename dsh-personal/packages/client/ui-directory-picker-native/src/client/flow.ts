@@ -3,14 +3,14 @@
  * exposes only the Loader exports). Same-package tests exercise it directly
  * through this module.
  */
-import { defineComponent, onScopeDispose, watch } from "vue";
+import { defineComponent, onScopeDispose, watch } from 'vue'
 // Type-only: the owner contract of the directory-flow holes.
-import type { DirectoryFlowOwnerProps } from "@deepseek-ai/dsh-client-ui-workspace/client";
+import type { DirectoryFlowOwnerProps } from '@deepseek-ai/dsh-client-ui-workspace/client'
 
 /** Injected face: the native chooser call the flow drives (bound in apply's closure). */
 export interface NativeFlowInjected {
   /** Open the local desktop or Host single-directory chooser. */
-  pick: () => Promise<string | null>;
+  pick: () => Promise<string | null>
 }
 
 /**
@@ -23,30 +23,30 @@ export interface NativeFlowInjected {
  */
 export const NativeDirectoryFlow = defineComponent(
   (props: DirectoryFlowOwnerProps & NativeFlowInjected) => {
-    let alive = true;
+    let alive = true
     // The chooser cannot abort; disposal retires its callbacks while it finishes.
     onScopeDispose(() => {
-      alive = false;
-    });
+      alive = false
+    })
     watch(
       () => props.open,
       (open) => {
-        if (!open) return;
+        if (!open) return
         props.pick().then(
           (path) => {
-            if (!alive) return;
-            if (path === null) props.onCancel();
-            else props.onPicked(path);
+            if (!alive) return
+            if (path === null) props.onCancel()
+            else props.onPicked(path)
           },
           (reason: unknown) => {
-            if (!alive) return;
-            props.onError(reason instanceof Error ? reason.message : String(reason));
+            if (!alive) return
+            props.onError(reason instanceof Error ? reason.message : String(reason))
           },
-        );
+        )
       },
       { immediate: true },
-    );
-    return () => null;
+    )
+    return () => null
   },
-  { props: ["open", "busy", "onPicked", "onCancel", "onError", "pick"], inheritAttrs: false },
-);
+  { props: ['open', 'busy', 'onPicked', 'onCancel', 'onError', 'pick'], inheritAttrs: false },
+)

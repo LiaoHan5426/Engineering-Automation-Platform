@@ -1,21 +1,21 @@
 /** Explicit framework seats for direct tool-row fixtures. */
-import { contextMenuHook } from "@deepseek-ai/dsh-client-test-runtime";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import { defineComponent } from "vue";
-import type { SessionAreaProps } from "@deepseek-ai/dsh-client-ui-slots";
+import { contextMenuHook } from '@deepseek-ai/dsh-client-test-runtime'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { defineComponent } from 'vue'
+import type { SessionAreaProps } from '@deepseek-ai/dsh-client-ui-slots'
 
 function unusedSeat(): never {
-  throw new Error("Unexpected framework seat in a direct tool-row fixture");
+  throw new Error('Unexpected framework seat in a direct tool-row fixture')
 }
 
 export const toolSeats = {
-  callId: "call",
-  toolName: "custom_tool",
+  callId: 'call',
+  toolName: 'custom_tool',
   openFile: unusedSeat,
-  sessionId: "tool-fixture" as SessionId,
+  sessionId: 'tool-fixture' as SessionId,
   loadImage: unusedSeat,
   SessionProvider: defineComponent((_props: SessionAreaProps) => unusedSeat, {
-    props: ["session", "empty"],
+    props: ['session', 'empty'],
   }),
   useSession: unusedSeat,
   useProjection: unusedSeat,
@@ -45,4 +45,4 @@ export const toolSeats = {
   useWorkspaces: unusedSeat,
   useResource: unusedSeat,
   useWorkspaceAccess: unusedSeat,
-};
+}

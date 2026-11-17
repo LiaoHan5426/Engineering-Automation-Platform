@@ -1,5 +1,5 @@
 /** Native Vue setup components with explicit runtime prop names. */
-import { defineComponent, type DefineSetupFnComponent, type VNodeChild } from "vue";
+import { defineComponent, type DefineSetupFnComponent, type VNodeChild } from 'vue'
 
 /**
  * Declare a native Vue component with the slot-derived input type.
@@ -11,5 +11,5 @@ export function defineSlotComponent<P extends object>(
   keys: (keyof P & string)[],
   setup: (props: P) => () => VNodeChild,
 ): DefineSetupFnComponent<P> {
-  return defineComponent(setup, { props: keys, inheritAttrs: false });
+  return defineComponent(setup, { props: keys, inheritAttrs: false })
 }

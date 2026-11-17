@@ -45,7 +45,7 @@ export const ExpandButton = defineComponent((props: ExpandButtonProps) => {
       size: 'sm', className: clsx(css.button, expanded.value && css.expanded),
       disabled: expanded.value, 'aria-label': props.t('chrome.expandAria'),
       'aria-keyshortcuts': shortcut.value?.aria, 'data-sidebar-right-expand': '',
-      onClick: () => props.actions.setExpanded(props.sessionId, true),
+      onClick: () => { props.actions.setExpanded(props.sessionId, true) },
     }, { default: () => h(IconPanelLeftOutlineRegular, { className: clsx(css.icon) }) }) })
   }
 }, { name: 'ExpandButton', props: ['sessionId', 'useStore', 'actions', 't', 'useShortcuts', 'useRemoteAccess', 'useSessions', 'useSessionRetainInfo', 'useSessionAccess', 'usePanelInfo'], inheritAttrs: false })

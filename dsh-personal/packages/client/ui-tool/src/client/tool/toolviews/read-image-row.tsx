@@ -1,4 +1,4 @@
-import { defineComponent } from "vue";
+import { defineComponent } from 'vue'
 // read_image toolview registrant: the keyed toolview hole for the read_image
 // tool. The row composes the shared read-family assembly and feeds it the durable
 // image reference as ToolRow's `image` card material, so the image renders through
@@ -17,11 +17,11 @@ import { defineComponent } from "vue";
 // Like the read card, the image card is result-side only: a call carries no
 // content until `execute` returns, so a running read_image shows the summary row
 // alone.
-import { toolFileInject } from "../file-menu.ts";
-import type { Context } from "@deepseek-ai/cordis";
-import { imageCardModel } from "../models/image-card-model.ts";
-import { readFamilyRow, type ReadImageRowProps } from "./read-family-row.tsx";
-import { CONVERSATION_NS as NS } from "../../locale.ts";
+import { toolFileInject } from '../file-menu.ts'
+import type { Context } from '@deepseek-ai/cordis'
+import { imageCardModel } from '../models/image-card-model.ts'
+import { readFamilyRow, type ReadImageRowProps } from './read-family-row.tsx'
+import { CONVERSATION_NS as NS } from '../../locale.ts'
 /**
  * read_image row: the read-family chrome with the durably committed image as the
  * row's collapsed-by-default card body, rendered through the `tool.call.images`
@@ -29,10 +29,10 @@ import { CONVERSATION_NS as NS } from "../../locale.ts";
  */
 export const ReadImageRow = defineComponent(
   (props: ReadImageRowProps) => {
-    const _seat0 = props.useContextMenu();
+    const _seat0 = props.useContextMenu()
     return () => {
-      const { block, renderSlot, loadImage } = props;
-      const { getTriggerProps } = _seat0;
+      const { block, renderSlot, loadImage } = props
+      const { getTriggerProps } = _seat0
       return readFamilyRow(
         props,
         {
@@ -41,45 +41,45 @@ export const ReadImageRow = defineComponent(
           loadImage,
         },
         getTriggerProps,
-      );
-    };
+      )
+    }
   },
   {
-    name: "ReadImageRow",
+    name: 'ReadImageRow',
     inheritAttrs: false,
     props: [
-      "useDisclosure",
-      "callId",
-      "toolName",
-      "cwd",
-      "home",
-      "openFile",
-      "loadImage",
-      "inspect",
-      "phase",
-      "block",
-      "useSession",
-      "sessionId",
-      "useProjection",
-      "useAccess",
-      "useConversation",
-      "useInput",
-      "inputActions",
-      "useChat",
-      "useRemoteAccess",
-      "useSessions",
-      "useSessionRetainInfo",
-      "useSessionAccess",
-      "useContextMenu",
-      "useWorkspaces",
-      "resolveFilePath",
-      "t",
-      "renderSlot",
-      "__renders",
-      "SessionProvider",
+      'useDisclosure',
+      'callId',
+      'toolName',
+      'cwd',
+      'home',
+      'openFile',
+      'loadImage',
+      'inspect',
+      'phase',
+      'block',
+      'useSession',
+      'sessionId',
+      'useProjection',
+      'useAccess',
+      'useConversation',
+      'useInput',
+      'inputActions',
+      'useChat',
+      'useRemoteAccess',
+      'useSessions',
+      'useSessionRetainInfo',
+      'useSessionAccess',
+      'useContextMenu',
+      'useWorkspaces',
+      'resolveFilePath',
+      't',
+      'renderSlot',
+      '__renders',
+      'SessionProvider',
     ],
   },
-);
+)
 /**
  * The read_image row as a plain registrant plugin following the atomic Tool-view
  * declaration across independent activation and reload lifetimes. Declaring
@@ -87,24 +87,24 @@ export const ReadImageRow = defineComponent(
  * dispatch the gallery.
  */
 export const readImageToolview = {
-  name: "read-image-toolview",
-  inject: ["slots", "sessions"],
+  name: 'read-image-toolview',
+  inject: ['slots', 'sessions'],
   /**
    * Register the read_image row into the Tool-owned keyed view slot.
    * @param ctx - registrant context (disposal rides ctx.effect inside slots.register).
    */
   apply(ctx: Context): void {
-    ctx.slots.inject("tool.call.toolview", () =>
+    ctx.slots.inject('tool.call.toolview', () =>
       ctx.slots.register(
         {
-          name: "tool.call.toolview",
-          key: "read_image",
+          name: 'tool.call.toolview',
+          key: 'read_image',
           locale: NS,
           inject: toolFileInject(ctx),
-          children: { "tool.call.images": { kind: "single", scope: "session" } },
+          children: { 'tool.call.images': { kind: 'single', scope: 'session' } },
         },
         ReadImageRow,
       ),
-    );
+    )
   },
-};
+}

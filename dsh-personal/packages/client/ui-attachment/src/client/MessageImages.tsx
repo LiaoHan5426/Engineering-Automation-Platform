@@ -2,12 +2,12 @@
 import type {
   FactoryComponentPropsOf,
   PropsRenderFactories,
-} from "@deepseek-ai/dsh-client-ui-slots";
-import type { MessageImagesOwnerProps } from "@deepseek-ai/dsh-client-ui-conversation/client";
-import { ImageGallery } from "../MessageImage.tsx";
-import { messageImageLabels } from "./labels.ts";
-import { h, defineComponent } from "vue";
-type MessageImagesProps = MessageImagesOwnerProps & PropsRenderFactories;
+} from '@deepseek-ai/dsh-client-ui-slots'
+import type { MessageImagesOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { ImageGallery } from '../MessageImage.tsx'
+import { messageImageLabels } from './labels.ts'
+import { h, defineComponent } from 'vue'
+type MessageImagesProps = MessageImagesOwnerProps & PropsRenderFactories
 
 /**
  * Render a gallery with an authorized loader and caller-owned or default labels.
@@ -15,8 +15,8 @@ type MessageImagesProps = MessageImagesOwnerProps & PropsRenderFactories;
  * @returns the official gallery; no Session binding is needed by this component.
  */
 export const MessageImagesContent = defineComponent(
-  (props: FactoryComponentPropsOf<"conversation.images.content">) => {
-    const { getTriggerProps } = props.useContextMenu();
+  (props: FactoryComponentPropsOf<'conversation.images.content'>) => {
+    const { getTriggerProps } = props.useContextMenu()
     return () => {
       const {
         images,
@@ -27,8 +27,8 @@ export const MessageImagesContent = defineComponent(
         labels,
         t,
         fileDrag,
-      } = props;
-      const resolved = labels ?? messageImageLabels(t);
+      } = props
+      const resolved = labels ?? messageImageLabels(t)
       return h(
         ImageGallery,
         {
@@ -42,25 +42,25 @@ export const MessageImagesContent = defineComponent(
           getTriggerProps: getTriggerProps,
         },
         undefined,
-      );
-    };
+      )
+    }
   },
   {
-    name: "MessageImagesContent",
+    name: 'MessageImagesContent',
     inheritAttrs: false,
     props: [
-      "images",
-      "loadImage",
-      "align",
-      "compact",
-      "thumbnail",
-      "labels",
-      "t",
-      "fileDrag",
-      "useContextMenu",
+      'images',
+      'loadImage',
+      'align',
+      'compact',
+      'thumbnail',
+      'labels',
+      't',
+      'fileDrag',
+      'useContextMenu',
     ],
   },
-);
+)
 
 /**
  * Fill a message, trajectory, or tool image position through the shared Content Factory.
@@ -75,11 +75,11 @@ export function MessageImages({
   thumbnail,
   renderFactorySlot,
 }: MessageImagesProps) {
-  return renderFactorySlot("conversation.images.content", {
+  return renderFactorySlot('conversation.images.content', {
     images,
     loadImage,
     align,
     ...(compact === undefined ? {} : { compact }),
     ...(thumbnail === undefined ? {} : { thumbnail }),
-  });
+  })
 }

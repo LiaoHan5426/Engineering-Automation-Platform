@@ -1,4 +1,4 @@
-import { h, defineComponent } from "vue";
+import { h, defineComponent } from 'vue'
 /**
  * The action row every provider card ends with: dismiss on the left, commit on
  * the right.
@@ -13,26 +13,26 @@ import { h, defineComponent } from "vue";
  *
  * @module dsh-client-ui-settings-models/client/EditorFooter
  */
-import type { en } from "./locales.ts";
-import styles from "./ModelsSection.module.css";
+import type { en } from './locales.ts'
+import styles from './ModelsSection.module.css'
 /** Props of {@link EditorFooter}. */
 export interface EditorFooterProps {
   /** Localizer for the row's own labels. */
-  t: (key: keyof typeof en) => string;
+  t: (key: keyof typeof en) => string
   /** Whether a commit is in flight; holds Cancel and swaps the commit label. */
-  busy: boolean;
+  busy: boolean
   /** Whether the commit is refused, as judged by the owning card. */
-  submitDisabled: boolean;
+  submitDisabled: boolean
   /** Commit label while idle. */
-  submitLabelKey: keyof typeof en;
+  submitLabelKey: keyof typeof en
   /** Commit label while a commit is in flight. */
-  submitBusyLabelKey: keyof typeof en;
+  submitBusyLabelKey: keyof typeof en
   /** Dismiss label; defaults to the settings editor copy. */
-  cancelLabelKey?: keyof typeof en;
+  cancelLabelKey?: keyof typeof en
   /** Dismiss the card without committing. */
-  onCancel: () => void;
+  onCancel: () => void
   /** Run the card's commit. */
-  onSubmit: () => void;
+  onSubmit: () => void
 }
 /**
  * Render one provider card's action row.
@@ -42,42 +42,42 @@ export interface EditorFooterProps {
 export const EditorFooter = defineComponent(
   (props: EditorFooterProps) => {
     return () => {
-      const { t } = props;
-      return h("div", { class: styles["editorActions"] }, [
+      const { t } = props
+      return h('div', { class: styles['editorActions'] }, [
         h(
-          "button",
+          'button',
           {
-            type: "button",
-            class: styles["secondaryButton"],
+            type: 'button',
+            class: styles['secondaryButton'],
             disabled: props.busy,
             onClick: props.onCancel,
           },
-          t(props.cancelLabelKey ?? "cancel"),
+          t(props.cancelLabelKey ?? 'cancel'),
         ),
         h(
-          "button",
+          'button',
           {
-            type: "button",
-            class: styles["primaryButton"],
+            type: 'button',
+            class: styles['primaryButton'],
             disabled: props.submitDisabled,
             onClick: props.onSubmit,
           },
           props.busy ? t(props.submitBusyLabelKey) : t(props.submitLabelKey),
         ),
-      ]);
-    };
+      ])
+    }
   },
   {
     inheritAttrs: false,
     props: [
-      "t",
-      "busy",
-      "submitDisabled",
-      "submitLabelKey",
-      "submitBusyLabelKey",
-      "cancelLabelKey",
-      "onCancel",
-      "onSubmit",
+      't',
+      'busy',
+      'submitDisabled',
+      'submitLabelKey',
+      'submitBusyLabelKey',
+      'cancelLabelKey',
+      'onCancel',
+      'onSubmit',
     ],
   },
-);
+)

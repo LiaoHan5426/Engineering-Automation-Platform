@@ -18,35 +18,35 @@
  * succeeded after the tab appeared cannot resolve. Only the task's Session and id are stored; its name, instruction, and
  * deliveries are not.
  */
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import type { ScheduleId } from "@deepseek-ai/dsh-schedule/client";
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { ScheduleId } from '@deepseek-ai/dsh-schedule/client'
 
 /** The Sidebar fields that identify one task tab page across a reload. */
 export interface TaskTabPage {
   /** The persisted layout record's own id. */
-  readonly id: string;
+  readonly id: string
   /** That record's registered page kind. */
-  readonly kind: string;
+  readonly kind: string
   /** That record's content identity, shared by every tab of this page kind. */
-  readonly contentId: string;
+  readonly contentId: string
 }
 
 /** The task one tab page last showed. */
 export interface TaskTabTarget {
   /** The Session that owns the task. */
-  readonly sessionId: SessionId;
+  readonly sessionId: SessionId
   /** The task's own identity. */
-  readonly id: ScheduleId;
+  readonly id: ScheduleId
 }
 
 /** One stored entry: the page it belongs to and the task it showed. */
 interface StoredEntry extends TaskTabTarget {
-  readonly kind: string;
-  readonly contentId: string;
+  readonly kind: string
+  readonly contentId: string
 }
 
 /** Storage prefix; one key per Session holds that Session's entries. */
-const PREFIX = "dsh.schedule.task-tab.v1.";
+const PREFIX = 'dsh.schedule.task-tab.v1.'
 
 /**
  * The committed tab ids of one Session, read when an entry is stored so a closed
@@ -55,7 +55,7 @@ const PREFIX = "dsh.schedule.task-tab.v1.";
  * not adopted as well as for one whose adopted layout holds no tabs, and pruning
  * against that answer would drop entries a restored tab still resolves through.
  */
-export type TaskTabLiveIds = (sessionId: SessionId) => readonly string[] | undefined;
+export type TaskTabLiveIds = (sessionId: SessionId) => readonly string[] | undefined
 
 /**
  * Whether a parsed storage value is a record rather than an array or a scalar.
@@ -63,7 +63,7 @@ export type TaskTabLiveIds = (sessionId: SessionId) => readonly string[] | undef
  * @returns `true` for a plain record.
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /**
@@ -72,11 +72,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * @returns the entry, or undefined for a value this store did not write.
  */
 function entryOf(value: unknown): StoredEntry | undefined {
-  if (!isRecord(value)) return undefined;
-  const { kind, contentId, sessionId, id } = value;
-  if (typeof kind !== "string" || typeof contentId !== "string") return undefined;
-  if (typeof sessionId !== "string" || typeof id !== "string") return undefined;
-  return { kind, contentId, sessionId: sessionId as SessionId, id: id as ScheduleId };
+  if (!isRecord(value)) return undefined
+  const { kind, contentId, sessionId, id } = value
+  if (typeof kind !== 'string' || typeof contentId !== 'string') return undefined
+  if (typeof sessionId !== 'string' || typeof id !== 'string') return undefined
+  return { kind, contentId, sessionId: sessionId as SessionId, id: id as ScheduleId }
 }
 
 /**
@@ -85,19 +85,19 @@ function entryOf(value: unknown): StoredEntry | undefined {
  * @returns the entries it holds; unparseable text and malformed values are dropped.
  */
 function entriesOf(raw: string): Map<string, StoredEntry> {
-  let parsed: unknown;
+  let parsed: unknown
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(raw)
   } catch (_invalidJson) {
-    return new Map();
+    return new Map()
   }
-  if (!isRecord(parsed)) return new Map();
-  const entries = new Map<string, StoredEntry>();
+  if (!isRecord(parsed)) return new Map()
+  const entries = new Map<string, StoredEntry>()
   for (const [tabId, value] of Object.entries(parsed)) {
-    const entry = entryOf(value);
-    if (entry !== undefined) entries.set(tabId, entry);
+    const entry = entryOf(value)
+    if (entry !== undefined) entries.set(tabId, entry)
   }
-  return entries;
+  return entries
 }
 
 /**
@@ -108,7 +108,7 @@ function entriesOf(raw: string): Map<string, StoredEntry> {
  * stored document on every render.
  */
 export class TaskTabBindings {
-  private readonly memory = new Map<SessionId, Map<string, StoredEntry>>();
+  private readonly memory = new Map<SessionId, Map<string, StoredEntry>>()
 
   /**
    * @param liveTabIds - the committed layout's tab ids for one Session, read when an entry is stored.
@@ -126,10 +126,10 @@ export class TaskTabBindings {
    * @returns the task to show, or undefined when the page has no applicable entry.
    */
   read(sessionId: SessionId, page: TaskTabPage): TaskTabTarget | undefined {
-    const entry = this.document(sessionId).get(page.id);
-    if (entry === undefined) return undefined;
-    if (entry.kind !== page.kind || entry.contentId !== page.contentId) return undefined;
-    return { sessionId: entry.sessionId, id: entry.id };
+    const entry = this.document(sessionId).get(page.id)
+    if (entry === undefined) return undefined
+    if (entry.kind !== page.kind || entry.contentId !== page.contentId) return undefined
+    return { sessionId: entry.sessionId, id: entry.id }
   }
 
   /**
@@ -142,10 +142,10 @@ export class TaskTabBindings {
    * @param page - the layout record the stored entry has to match.
    */
   dropMismatched(sessionId: SessionId, page: TaskTabPage): void {
-    const entry = this.document(sessionId).get(page.id);
+    const entry = this.document(sessionId).get(page.id)
     if (entry === undefined || (entry.kind === page.kind && entry.contentId === page.contentId))
-      return;
-    this.forget(sessionId, page);
+      return
+    this.forget(sessionId, page)
   }
 
   /**
@@ -155,9 +155,9 @@ export class TaskTabBindings {
    * @param target - the task the navigation named.
    */
   write(sessionId: SessionId, page: TaskTabPage, target: TaskTabTarget): void {
-    const entries = new Map(this.document(sessionId));
-    entries.set(page.id, { kind: page.kind, contentId: page.contentId, ...target });
-    this.store(sessionId, entries);
+    const entries = new Map(this.document(sessionId))
+    entries.set(page.id, { kind: page.kind, contentId: page.contentId, ...target })
+    this.store(sessionId, entries)
   }
 
   /**
@@ -167,14 +167,14 @@ export class TaskTabBindings {
    * @param page - the layout record whose entry is removed.
    */
   forget(sessionId: SessionId, page: TaskTabPage): void {
-    const entries = new Map(this.document(sessionId));
-    entries.delete(page.id);
-    this.store(sessionId, entries);
+    const entries = new Map(this.document(sessionId))
+    entries.delete(page.id)
+    this.store(sessionId, entries)
   }
 
   /** Release this window's cached documents. */
   clear(): void {
-    this.memory.clear();
+    this.memory.clear()
   }
 
   /**
@@ -183,19 +183,19 @@ export class TaskTabBindings {
    * @returns its entries, empty when nothing is saved or storage is unreachable.
    */
   private document(sessionId: SessionId): Map<string, StoredEntry> {
-    const cached = this.memory.get(sessionId);
-    if (cached !== undefined) return cached;
-    if (typeof localStorage === "undefined") return new Map();
-    let raw: string | null;
+    const cached = this.memory.get(sessionId)
+    if (cached !== undefined) return cached
+    if (typeof localStorage === 'undefined') return new Map()
+    let raw: string | null
     try {
-      raw = localStorage.getItem(PREFIX + sessionId);
+      raw = localStorage.getItem(PREFIX + sessionId)
     } catch (_storageUnavailable) {
-      return new Map();
+      return new Map()
     }
-    if (raw === null) return new Map();
-    const entries = entriesOf(raw);
-    this.memory.set(sessionId, entries);
-    return entries;
+    if (raw === null) return new Map()
+    const entries = entriesOf(raw)
+    this.memory.set(sessionId, entries)
+    return entries
   }
 
   /**
@@ -207,19 +207,19 @@ export class TaskTabBindings {
    * @param entries - the complete replacement set.
    */
   private store(sessionId: SessionId, entries: Map<string, StoredEntry>): void {
-    const live = this.liveTabIds?.(sessionId);
+    const live = this.liveTabIds?.(sessionId)
     const kept =
       live === undefined || live.length === 0
         ? entries
-        : new Map([...entries].filter(([tabId]) => live.includes(tabId)));
-    this.memory.set(sessionId, kept);
-    if (typeof localStorage === "undefined") return;
+        : new Map([...entries].filter(([tabId]) => live.includes(tabId)))
+    this.memory.set(sessionId, kept)
+    if (typeof localStorage === 'undefined') return
     try {
-      const key = PREFIX + sessionId;
-      if (kept.size === 0) localStorage.removeItem(key);
-      else localStorage.setItem(key, JSON.stringify(Object.fromEntries(kept)));
+      const key = PREFIX + sessionId
+      if (kept.size === 0) localStorage.removeItem(key)
+      else localStorage.setItem(key, JSON.stringify(Object.fromEntries(kept)))
     } catch (error) {
-      console.error("Task tab binding persistence failed:", error);
+      console.error('Task tab binding persistence failed:', error)
     }
   }
 }

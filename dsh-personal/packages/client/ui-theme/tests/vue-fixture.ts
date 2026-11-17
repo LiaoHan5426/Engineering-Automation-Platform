@@ -7,10 +7,10 @@ const mounted = new Set<() => void>()
 export function cleanup(): void { for (const dispose of mounted) dispose(); mounted.clear() }
 export async function act(action: () => void): Promise<void> { action(); await nextTick() }
 export function bindSnapshotSelector<T>(source: HostObservable<T>): SnapshotSelectorHook<T> {
-  return selector => {
-    const state = shallowRef(source.getSnapshot())
-    onScopeDispose(source.subscribe(() => { state.value = source.getSnapshot() }))
-    return computed(() => selector(state.value))
+  return (selector) => {
+    const state = shallowRef({ snapshot: source.getSnapshot() })
+    onScopeDispose(source.subscribe(() => { state.value = { snapshot: source.getSnapshot() } }))
+    return computed(() => selector(state.value.snapshot))
   }
 }
 const unusedSeat = (): never => { throw new Error('Theme row unexpectedly consumed an unrelated framework seat') }

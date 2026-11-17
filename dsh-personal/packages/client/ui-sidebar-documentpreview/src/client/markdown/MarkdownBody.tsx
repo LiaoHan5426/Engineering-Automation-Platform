@@ -11,7 +11,7 @@ import css from './MarkdownBody.module.css'
 
 /** Show the verbatim frontmatter while its field-list chunk is unavailable. */
 const FrontmatterFallback = defineComponent((props: FrontmatterFieldsProps) => () => props.fallback,
-  { name: 'FrontmatterFallback', inheritAttrs: false, props: ["source","fallback"] })
+  { name: 'FrontmatterFallback', inheritAttrs: false, props: ['source','fallback'] })
 
 const FrontmatterFields = defineAsyncComponent({
   loader: () => import('./frontmatter-fields.tsx').then(
@@ -48,7 +48,7 @@ export const MarkdownBody = defineComponent((props: MarkdownBodyProps) => {
         labels: labels.value, pathImages: pathImages.value }),
     ])
   }
-}, { name: 'MarkdownBody', inheritAttrs: false, props: ["addResource","setResources","resourceAddress","content","wrap","scrollportRef","useTabInfo","useSession","sessionId","useProjection","useAccess","useConversation","useInput","inputActions","useRemoteAccess","useSessions","useSessionRetainInfo","useSessionAccess","usePanelInfo","useContextMenu","useResource","useWorkspaces","t"] })
+}, { name: 'MarkdownBody', inheritAttrs: false, props: ['addResource','setResources','resourceAddress','content','wrap','scrollportRef','useTabInfo','useSession','sessionId','useProjection','useAccess','useConversation','useInput','inputActions','useRemoteAccess','useSessions','useSessionRetainInfo','useSessionAccess','usePanelInfo','useContextMenu','useResource','useWorkspaces','t'] })
 
 /**
  * @param props - YAML between the frontmatter delimiters.

@@ -1,7 +1,7 @@
-import {} from "vue";
+import {} from 'vue'
 /** Root-scoped main occupant; Session binding belongs to its Conversation child. */
-import type { PropsRenderSlots, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
-import type {} from "../contract/slots.ts";
+import type { PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '../contract/slots.ts'
 /**
  * Render the Conversation with optional current-Session binding.
  * @param props - main-slot inputs and the declared Conversation renderer.
@@ -9,6 +9,6 @@ import type {} from "../contract/slots.ts";
  */
 export function ConversationPanel({
   renderSlot,
-}: PropsRuntime<"main"> & PropsRenderSlots<"main.conversation">) {
-  return renderSlot("main.conversation", {});
+}: PropsRuntime<'main'> & PropsRenderSlots<'main.conversation'>) {
+  return renderSlot('main.conversation', {})
 }

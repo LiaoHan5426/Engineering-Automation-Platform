@@ -3,21 +3,21 @@
  * exposes only the Loader exports). Same-package tests exercise it directly
  * through this module.
  */
-import { defineComponent, h } from "vue";
-import type { DirectoryListing } from "@deepseek-ai/dsh-api-remotes/client";
-import type { Translate } from "@deepseek-ai/dsh-client-locale/client";
+import { defineComponent, h } from 'vue'
+import type { DirectoryListing } from '@deepseek-ai/dsh-api-remotes/client'
+import type { Translate } from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: the owner contract of the directory-flow holes.
-import type { DirectoryFlowOwnerProps } from "@deepseek-ai/dsh-client-ui-workspace/client";
-import { DirectoryBrowser } from "./DirectoryBrowser.tsx";
+import type { DirectoryFlowOwnerProps } from '@deepseek-ai/dsh-client-ui-workspace/client'
+import { DirectoryBrowser } from './DirectoryBrowser.tsx'
 
 /** Injected face: the browse wire calls and copy the dialog drives (bound in apply's closure). */
 export interface BrowseFlowInjected {
   /** List one directory level (absent path = the Host home directory); the signal aborts a superseded scan. */
-  listDirectory: (path?: string, signal?: AbortSignal) => Promise<DirectoryListing>;
+  listDirectory: (path?: string, signal?: AbortSignal) => Promise<DirectoryListing>
   /** Create one child directory under an existing parent. */
-  createDirectory: (path: string, name: string) => Promise<string>;
+  createDirectory: (path: string, name: string) => Promise<string>
   /** Localized dialog copy (this package's namespace). */
-  t: Translate;
+  t: Translate
 }
 
 /**
@@ -39,19 +39,19 @@ export const BrowseDirectoryFlow = defineComponent(
       t: props.t,
       onOpen: props.onPicked,
       onClose: props.onCancel,
-    });
+    })
   },
   {
     props: [
-      "open",
-      "busy",
-      "onPicked",
-      "onCancel",
-      "onError",
-      "listDirectory",
-      "createDirectory",
-      "t",
+      'open',
+      'busy',
+      'onPicked',
+      'onCancel',
+      'onError',
+      'listDirectory',
+      'createDirectory',
+      't',
     ],
     inheritAttrs: false,
   },
-);
+)

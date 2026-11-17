@@ -1,5 +1,5 @@
 /** Text activity animation shared by a row and its nested text fragments. */
-import { cloneVNode, defineComponent, h, inject, isVNode, provide, Text, type InjectionKey, type VNode, type VNodeChild } from 'vue'
+import { cloneVNode, defineComponent, h, inject, isVNode, provide, Text, type InjectionKey, type Slot, type VNode, type VNodeChild } from 'vue'
 import clsx from 'clsx'
 import css from './TextShimmer.module.css'
 
@@ -40,7 +40,10 @@ function copyContent(content: VNodeChild): VNodeChild {
   else if (content.children !== null && typeof content.children === 'object') {
     const childSlots = content.children
     const renderDefault = childSlots.default
-    if (typeof renderDefault === 'function') copy.children = { ...childSlots, default: () => copyContent(renderDefault()) }
+    if (typeof renderDefault === 'function') {
+      const defaultSlot = renderDefault as Slot
+      copy.children = { ...childSlots, default: () => copyContent(defaultSlot()) }
+    }
   }
   return copy
 }

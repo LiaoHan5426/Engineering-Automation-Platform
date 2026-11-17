@@ -7,191 +7,189 @@
 //
 // Keyless and deterministic: the fixture is the fake server, so nothing here
 // reaches a model or the network.
-import { globSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
-import { act, cleanup } from "@deepseek-ai/dsh-client-test-runtime/src/vue-test.ts";
-import { fireEvent, screen, waitFor } from "@testing-library/dom";
-import { afterEach, beforeEach, vi } from "vitest";
-import { bootInjections, orderByModuleGraph } from "@deepseek-ai/dsh-client-modules";
+import { globSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { dirname, join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { act, cleanup } from '@deepseek-ai/dsh-client-test-runtime/src/vue-test.ts'
+import { fireEvent, screen, waitFor } from '@testing-library/dom'
+import { afterEach, beforeEach, vi } from 'vitest'
+import { bootInjections, orderByModuleGraph } from '@deepseek-ai/dsh-client-modules'
 import type {
   ClientModuleLoaderTarget,
   WebBootEntry,
   WebBootGraph,
-} from "@deepseek-ai/dsh-client-modules/client";
-import type { RemoteMock } from "@deepseek-ai/dsh-remote-mock";
-import { AppWebEntry } from "@deepseek-ai/dsh-client-web";
+} from '@deepseek-ai/dsh-client-modules/client'
+import type { RemoteMock } from '@deepseek-ai/dsh-remote-mock'
+import { AppWebEntry } from '@deepseek-ai/dsh-client-web'
 import {
   createAssembledRemote,
   type AssembledRemote,
   type AssembledRemoteOptions,
-} from "./assembled-remote.ts";
+} from './assembled-remote.ts'
 
 // Dynamic plugins use built bundles; this in-process shell shares source platform namespaces.
 vi.mock(
-  "@deepseek-ai/dsh-client-web/src/seed.ts",
-  () => import("./source-static-modules.client.ts"),
-);
+  '@deepseek-ai/dsh-client-web/src/seed.ts',
+  () => import('./source-static-modules.client.ts'),
+)
 
 interface AssembledPlugin extends WebBootEntry {
   /** Absolute path to the built client artifact declared by this package. */
-  bundlePath: string;
+  bundlePath: string
 }
 
 interface AssembledBootOptions {
   /** Package ids omitted from this mounted composition. */
-  readonly exclude?: readonly string[];
+  readonly exclude?: readonly string[]
   /** Remote answers owned by this assembled case. */
-  readonly remote?: AssembledRemoteOptions;
+  readonly remote?: AssembledRemoteOptions
 }
 
 interface ClientPackageManifest {
-  name?: string;
-  exports?: Record<string, string | { default?: string }>;
+  name?: string
+  exports?: Record<string, string | { default?: string }>
   dsh?: {
     client?: {
-      platform?: string;
-      inject?: string[];
-      external?: string[];
-      immediately?: boolean;
-    };
-  };
+      platform?: string
+      inject?: string[]
+      external?: string[]
+      immediately?: boolean
+    }
+  }
 }
 
 interface ComposedEntry {
-  name?: unknown;
-  disabled?: unknown;
+  name?: unknown
+  disabled?: unknown
 }
 
 interface BootComposition {
-  bundlePatchPaths(packageDir: string, bundle: { patch: string | string[] }): string[];
-  loadOverlayPatches(binName: string, file: string): unknown[];
-  composeEntries(layers: readonly unknown[][]): ComposedEntry[];
+  bundlePatchPaths(packageDir: string, bundle: { patch: string | string[] }): string[]
+  loadOverlayPatches(binName: string, file: string): unknown[]
+  composeEntries(layers: readonly unknown[][]): ComposedEntry[]
 }
 
-const REPO_ROOT = process.cwd();
-const BUNDLE_LAYERS = ["packages/bundle/base", "packages/bundle/web-app"].map((dir) => ({
+const REPO_ROOT = process.cwd()
+const BUNDLE_LAYERS = ['packages/bundle/base', 'packages/bundle/web-app'].map(dir => ({
   dir: join(REPO_ROOT, dir),
-  manifest: join(REPO_ROOT, dir, "package.json"),
-}));
-const bundleResolvers = BUNDLE_LAYERS.map((layer) => createRequire(layer.manifest));
-const webBundleResolver = bundleResolvers[1];
-if (webBundleResolver === undefined) throw new Error("assembled boot: web bundle resolver missing");
+  manifest: join(REPO_ROOT, dir, 'package.json'),
+}))
+const bundleResolvers = BUNDLE_LAYERS.map(layer => createRequire(layer.manifest))
+const webBundleResolver = bundleResolvers[1]
+if (webBundleResolver === undefined) throw new Error('assembled boot: web bundle resolver missing')
 const workspacePackageManifests = new Map(
-  globSync("packages/*/*/package.json", { cwd: REPO_ROOT }).map((relative) => {
-    const path = join(REPO_ROOT, relative);
-    const pkg = JSON.parse(readFileSync(path, "utf8")) as ClientPackageManifest;
+  globSync('packages/*/*/package.json', { cwd: REPO_ROOT }).map((relative) => {
+    const path = join(REPO_ROOT, relative)
+    const pkg = JSON.parse(readFileSync(path, 'utf8')) as ClientPackageManifest
     if (pkg.name === undefined)
-      throw new Error(`assembled boot: workspace package has no name: ${path}`);
-    return [pkg.name, path];
+      throw new Error(`assembled boot: workspace package has no name: ${path}`)
+    return [pkg.name, path]
   }),
-);
-const appBoot = (await import(
-  pathToFileURL(webBundleResolver.resolve("@deepseek-ai/dsh-app-boot")).href
-)) as unknown as BootComposition;
+)
+const appBoot = await import(pathToFileURL(webBundleResolver.resolve('@deepseek-ai/dsh-app-boot')).href) as unknown as BootComposition
 
 function resolvePackageManifest(specifier: string): string | undefined {
-  return workspacePackageManifests.get(specifier);
+  return workspacePackageManifests.get(specifier)
 }
 
 function resolveClientExport(packagePath: string, pkg: ClientPackageManifest): string {
-  const declared = pkg.exports?.["./client"];
-  const relative = typeof declared === "string" ? declared : declared?.default;
+  const declared = pkg.exports?.['./client']
+  const relative = typeof declared === 'string' ? declared : declared?.default
   if (relative === undefined) {
     throw new Error(
       `assembled boot: ${pkg.name ?? packagePath} declares dsh.client without a ./client export`,
-    );
+    )
   }
-  return resolve(dirname(packagePath), relative);
+  return resolve(dirname(packagePath), relative)
 }
 
 /** App-directory-relative combo references, matching the wire the Host composes. */
 const comboReference = (ids: readonly string[], rev: string): string =>
-  `plugins/??${ids.map((id) => `${id}/client.js`).join(",")}&rev=${rev}`;
+  `plugins/??${ids.map(id => `${id}/client.js`).join(',')}&rev=${rev}`
 
 /** Derive the assembled browser graph from the same bundle patches and package declarations as `dsh web`. */
 function loadAssembledPlugins(): readonly AssembledPlugin[] {
   const entries = appBoot.composeEntries(
     BUNDLE_LAYERS.map((layer) => {
       const declared = (
-        JSON.parse(readFileSync(layer.manifest, "utf8")) as {
-          dsh: { bundle: { patch: string | string[] } };
+        JSON.parse(readFileSync(layer.manifest, 'utf8')) as {
+          dsh: { bundle: { patch: string | string[] } }
         }
-      ).dsh.bundle;
+      ).dsh.bundle
       return appBoot
         .bundlePatchPaths(layer.dir, declared)
-        .flatMap((patch) => appBoot.loadOverlayPatches("assembled boot", patch));
+        .flatMap(patch => appBoot.loadOverlayPatches('assembled boot', patch))
     }),
-  );
-  const plugins = new Map<string, AssembledPlugin>();
+  )
+  const plugins = new Map<string, AssembledPlugin>()
   for (const entry of entries) {
-    if (entry.disabled === true || typeof entry.name !== "string") continue;
-    const packagePath = resolvePackageManifest(entry.name);
-    if (packagePath === undefined) continue;
-    const pkg = JSON.parse(readFileSync(packagePath, "utf8")) as ClientPackageManifest;
-    const declaration = pkg.dsh?.client;
-    if (declaration?.platform !== "web") continue;
+    if (entry.disabled === true || typeof entry.name !== 'string') continue
+    const packagePath = resolvePackageManifest(entry.name)
+    if (packagePath === undefined) continue
+    const pkg = JSON.parse(readFileSync(packagePath, 'utf8')) as ClientPackageManifest
+    const declaration = pkg.dsh?.client
+    if (declaration?.platform !== 'web') continue
     if (pkg.name !== entry.name) {
-      throw new Error(`assembled boot: ${entry.name} resolved package ${pkg.name ?? "<unnamed>"}`);
+      throw new Error(`assembled boot: ${entry.name} resolved package ${pkg.name ?? '<unnamed>'}`)
     }
     plugins.set(entry.name, {
       id: entry.name,
       bundlePath: resolveClientExport(packagePath, pkg),
-      url: comboReference([entry.name], "fx"),
-      rev: "fx",
+      url: comboReference([entry.name], 'fx'),
+      rev: 'fx',
       ...(declaration.inject === undefined ? {} : { inject: declaration.inject }),
       ...(declaration.external === undefined ? {} : { external: declaration.external }),
       ...(declaration.immediately === true ? { immediately: true } : {}),
-    });
+    })
   }
   return orderByModuleGraph([...plugins.values()]).map(({ id }) => {
-    const plugin = plugins.get(id);
+    const plugin = plugins.get(id)
     /* v8 ignore next -- orderByModuleGraph returns the input row identities */
     if (plugin === undefined)
-      throw new Error(`assembled boot: ordered unknown client package ${id}`);
-    return plugin;
-  });
+      throw new Error(`assembled boot: ordered unknown client package ${id}`)
+    return plugin
+  })
 }
 
-const PLUGINS = loadAssembledPlugins();
+const PLUGINS = loadAssembledPlugins()
 
-const BOOTSTRAP_IDS = ["@deepseek-ai/dsh-client-modules"] as const;
+const BOOTSTRAP_IDS = ['@deepseek-ai/dsh-client-modules'] as const
 
 /** Build the fixture graph after applying per-scenario package exclusions. */
 function bootGraph(plugins: readonly AssembledPlugin[]): WebBootGraph {
   const bootstrapEntries = plugins
-    .map((plugin) => plugin.id)
-    .filter((id) => BOOTSTRAP_IDS.includes(id as (typeof BOOTSTRAP_IDS)[number]));
+    .map(plugin => plugin.id)
+    .filter(id => BOOTSTRAP_IDS.includes(id as (typeof BOOTSTRAP_IDS)[number]))
   const applicationEntries = plugins
-    .map((plugin) => plugin.id)
-    .filter((id) => !BOOTSTRAP_IDS.includes(id as (typeof BOOTSTRAP_IDS)[number]));
+    .map(plugin => plugin.id)
+    .filter(id => !BOOTSTRAP_IDS.includes(id as (typeof BOOTSTRAP_IDS)[number]))
   return {
-    rev: "fx",
+    rev: 'fx',
     entries: plugins.map(({ bundlePath: _bundlePath, ...plugin }) => plugin),
     batches: [
       ...(bootstrapEntries.length === 0
         ? []
         : [
-            {
-              phase: "bootstrap" as const,
-              url: comboReference(bootstrapEntries, "fx"),
-              rev: "fx",
-              entries: bootstrapEntries,
-            },
-          ]),
+          {
+            phase: 'bootstrap' as const,
+            url: comboReference(bootstrapEntries, 'fx'),
+            rev: 'fx',
+            entries: bootstrapEntries,
+          },
+        ]),
       ...(applicationEntries.length === 0
         ? []
         : [
-            {
-              phase: "application" as const,
-              url: comboReference(applicationEntries, "fx"),
-              rev: "fx",
-              entries: applicationEntries,
-            },
-          ]),
+          {
+            phase: 'application' as const,
+            url: comboReference(applicationEntries, 'fx'),
+            rev: 'fx',
+            entries: applicationEntries,
+          },
+        ]),
     ],
-  };
+  }
 }
 
 /** Build single-resource and startup combo script bodies for one fixture composition. */
@@ -200,32 +198,32 @@ function bundleTable(
   plugins: readonly AssembledPlugin[],
 ): Map<string, string> {
   const bundles = new Map(
-    plugins.map((plugin) => [plugin.url, readFileSync(plugin.bundlePath, "utf8")]),
-  );
+    plugins.map(plugin => [plugin.url, readFileSync(plugin.bundlePath, 'utf8')]),
+  )
   for (const batch of graph.batches) {
     bundles.set(
       batch.url,
       batch.entries
         .map((id) => {
-          const plugin = plugins.find((candidate) => candidate.id === id);
+          const plugin = plugins.find(candidate => candidate.id === id)
           if (plugin === undefined)
-            throw new Error(`assembled boot: batch names unknown plugin ${id}`);
-          const code = bundles.get(plugin.url);
+            throw new Error(`assembled boot: batch names unknown plugin ${id}`)
+          const code = bundles.get(plugin.url)
           if (code === undefined)
-            throw new Error(`assembled boot: missing built bundle ${plugin.url}`);
-          return code;
+            throw new Error(`assembled boot: missing built bundle ${plugin.url}`)
+          return code
         })
-        .join("\n;\n"),
-    );
+        .join('\n;\n'),
+    )
   }
-  return bundles;
+  return bundles
 }
 
 interface FixtureWindow extends Window {
-  __DSH_BOOT__?: WebBootGraph;
-  __ModuleLoader__?: ClientModuleLoaderTarget;
-  __DSH_TRANSPORT__?: { readonly rpc: RemoteMock["rpc"] };
-  __DSH_FILE_UPLOAD__?: { readonly fetch: AssembledRemote["fileUpload"] };
+  __DSH_BOOT__?: WebBootGraph
+  __ModuleLoader__?: ClientModuleLoaderTarget
+  __DSH_TRANSPORT__?: { readonly rpc: RemoteMock['rpc'] }
+  __DSH_FILE_UPLOAD__?: { readonly fetch: AssembledRemote['fileUpload'] }
 }
 
 class ResizeObserverStub {
@@ -239,11 +237,11 @@ class EventSourceStub {
   close(): void {}
 }
 
-const win = window as FixtureWindow;
-let unmount: (() => Promise<void>) | undefined;
-let mountedRemote: RemoteMock | undefined;
+const win = window as FixtureWindow
+let unmount: (() => Promise<void>) | undefined
+let mountedRemote: RemoteMock | undefined
 /** Boot audit warnings of the current test; the product boot tolerates inactive optional entries, this lane does not. */
-let bootWarnings: string[] = [];
+let bootWarnings: string[] = []
 
 /**
  * Register the per-test jsdom setup and teardown the assembled boot needs:
@@ -257,12 +255,12 @@ export function installAssembledBootEnv(): void {
   // jsdom implements no scroll geometry: the trigger menu reveals its
   // highlight with scrollIntoView on open, which a pasted leading token now
   // reaches in this lane (the editor re-tracks at the settled caret).
-  if (typeof Element.prototype.scrollIntoView !== "function") {
-    Element.prototype.scrollIntoView = () => {};
+  if (typeof Element.prototype.scrollIntoView !== 'function') {
+    Element.prototype.scrollIntoView = () => {}
   }
   // jsdom implements no Range geometry either: Lexical's selection reveal
   // measures the caret with one after a programmatic edit settles focus.
-  if (typeof Range.prototype.getBoundingClientRect !== "function") {
+  if (typeof Range.prototype.getBoundingClientRect !== 'function') {
     Range.prototype.getBoundingClientRect = () => ({
       top: 0,
       bottom: 0,
@@ -273,89 +271,87 @@ export function installAssembledBootEnv(): void {
       x: 0,
       y: 0,
       toJSON: () => ({}),
-    });
+    })
   }
-  let fontsDescriptor: PropertyDescriptor | undefined;
-  let restoreWarn: (() => void) | undefined;
+  let fontsDescriptor: PropertyDescriptor | undefined
+  let restoreWarn: (() => void) | undefined
   beforeEach(() => {
-    bootWarnings = [];
-    const warn = console.warn.bind(console);
+    bootWarnings = []
+    const warn = console.warn.bind(console)
     const spy = vi
-      .spyOn(console, "warn")
+      .spyOn(console, 'warn')
       .mockImplementation((message?: unknown, ...rest: unknown[]) => {
-        if (typeof message === "string" && message.startsWith("web boot: warning"))
-          bootWarnings.push(message);
-        warn(message, ...rest);
-      });
+        if (typeof message === 'string' && message.startsWith('web boot: warning'))
+          bootWarnings.push(message)
+        warn(message, ...rest)
+      })
     restoreWarn = () => {
-      spy.mockRestore();
-    };
-    fontsDescriptor = Object.getOwnPropertyDescriptor(document, "fonts");
-    Object.defineProperty(document, "fonts", { configurable: true, value: new EventTarget() });
-    localStorage.clear();
+      spy.mockRestore()
+    }
+    fontsDescriptor = Object.getOwnPropertyDescriptor(document, 'fonts')
+    Object.defineProperty(document, 'fonts', { configurable: true, value: new EventTarget() })
+    localStorage.clear()
     // The locale service derives its provisional locale from the browser and
     // takes an explicit choice only from Host settings. This scenario serves no
     // locale setting, so pinning the navigator selects English.
-    Object.defineProperty(navigator, "languages", { value: ["en-US"], configurable: true });
-    Object.defineProperty(navigator, "language", { value: "en-US", configurable: true });
-    document.title = "DeepSeek Harness";
-    vi.stubGlobal("ResizeObserver", ResizeObserverStub);
-    vi.stubGlobal("EventSource", EventSourceStub);
+    Object.defineProperty(navigator, 'languages', { value: ['en-US'], configurable: true })
+    Object.defineProperty(navigator, 'language', { value: 'en-US', configurable: true })
+    document.title = 'DeepSeek Harness'
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    vi.stubGlobal('EventSource', EventSourceStub)
     vi.stubGlobal(
-      "requestAnimationFrame",
+      'requestAnimationFrame',
       (callback: FrameRequestCallback) =>
-        setTimeout(() => {
-          callback(0);
-        }, 0) as unknown as number,
-    );
-    vi.stubGlobal("cancelAnimationFrame", (id: number) => {
-      clearTimeout(id);
-    });
-  });
+        setTimeout(() => { callback(0) }, 0) as unknown as number,
+    )
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      clearTimeout(id)
+    })
+  })
 
   afterEach(async () => {
-    const failures: unknown[] = [];
+    const failures: unknown[] = []
     try {
       await act(async () => {
-        await unmount?.();
-      });
+        await unmount?.()
+      })
     } catch (error) {
-      failures.push(error);
+      failures.push(error)
     }
     try {
-      mountedRemote?.assertNoUnmatched();
+      mountedRemote?.assertNoUnmatched()
     } catch (error) {
-      failures.push(error);
+      failures.push(error)
     }
-    unmount = undefined;
-    mountedRemote = undefined;
-    cleanup();
-    delete win.__DSH_BOOT__;
-    delete win.__ModuleLoader__;
-    delete win.__DSH_TRANSPORT__;
-    delete win.__DSH_FILE_UPLOAD__;
-    document.body.innerHTML = "";
-    document.head.querySelectorAll("style[data-plugin]").forEach((style) => {
-      style.remove();
-    });
-    document.title = "";
-    history.replaceState(null, "", "/");
+    unmount = undefined
+    mountedRemote = undefined
+    cleanup()
+    delete win.__DSH_BOOT__
+    delete win.__ModuleLoader__
+    delete win.__DSH_TRANSPORT__
+    delete win.__DSH_FILE_UPLOAD__
+    document.body.innerHTML = ''
+    document.head.querySelectorAll('style[data-plugin]').forEach((style) => {
+      style.remove()
+    })
+    document.title = ''
+    history.replaceState(null, '', '/')
     // Deleting the own properties uncovers jsdom's own accessors again
     // (Navigator declares both readonly, hence the erased receiver).
-    const ownNavigator = navigator as unknown as Record<string, unknown>;
-    delete ownNavigator.languages;
-    delete ownNavigator.language;
-    vi.unstubAllGlobals();
-    if (fontsDescriptor === undefined) Reflect.deleteProperty(document, "fonts");
-    else Object.defineProperty(document, "fonts", fontsDescriptor);
-    restoreWarn?.();
-    restoreWarn = undefined;
+    const ownNavigator = navigator as unknown as Record<string, unknown>
+    delete ownNavigator.languages
+    delete ownNavigator.language
+    vi.unstubAllGlobals()
+    if (fontsDescriptor === undefined) Reflect.deleteProperty(document, 'fonts')
+    else Object.defineProperty(document, 'fonts', fontsDescriptor)
+    restoreWarn?.()
+    restoreWarn = undefined
     if (bootWarnings.length > 0)
       failures.push(
-        new Error(`assembled boot: every entry must activate\n${bootWarnings.join("\n")}`),
-      );
-    if (failures.length > 0) throw new AggregateError(failures, "assembled boot teardown failed");
-  });
+        new Error(`assembled boot: every entry must activate\n${bootWarnings.join('\n')}`),
+      )
+    if (failures.length > 0) throw new AggregateError(failures, 'assembled boot teardown failed')
+  })
 }
 
 /**
@@ -365,39 +361,39 @@ export function installAssembledBootEnv(): void {
  * @returns the test-owned RemoteMock world.
  */
 export function mountAssembledApp(options: AssembledBootOptions = {}): AssembledRemote {
-  const excluded = new Set(options.exclude);
-  const plugins = PLUGINS.filter((plugin) => !excluded.has(plugin.id));
-  const remote = createAssembledRemote(options.remote);
-  mountedRemote = remote.mock;
-  win.__DSH_TRANSPORT__ = { rpc: remote.mock.rpc };
-  win.__DSH_FILE_UPLOAD__ = { fetch: remote.fileUpload };
-  history.replaceState(null, "", "/");
-  const root = document.createElement("div");
-  root.id = "root";
-  document.body.appendChild(root);
-  const graph = bootGraph(plugins);
-  const bundles = bundleTable(graph, plugins);
-  win.__DSH_BOOT__ = graph;
-  const [facadeRow] = bootInjections(win.__DSH_BOOT__);
-  if (facadeRow?.kind !== "script") throw new Error("missing injected ModuleLoader facade row");
-  (0, eval)(facadeRow.text);
+  const excluded = new Set(options.exclude)
+  const plugins = PLUGINS.filter(plugin => !excluded.has(plugin.id))
+  const remote = createAssembledRemote(options.remote)
+  mountedRemote = remote.mock
+  win.__DSH_TRANSPORT__ = { rpc: remote.mock.rpc }
+  win.__DSH_FILE_UPLOAD__ = { fetch: remote.fileUpload }
+  history.replaceState(null, '', '/')
+  const root = document.createElement('div')
+  root.id = 'root'
+  document.body.appendChild(root)
+  const graph = bootGraph(plugins)
+  const bundles = bundleTable(graph, plugins)
+  win.__DSH_BOOT__ = graph
+  const [facadeRow] = bootInjections(win.__DSH_BOOT__)
+  if (facadeRow?.kind !== 'script') throw new Error('missing injected ModuleLoader facade row');
+  (0, eval)(facadeRow.text)
   // Mirror the blocking Host-injected bootstrap batch before the Vite entry calls create().
-  const bootstrapUrl = graph.batches.find((batch) => batch.phase === "bootstrap")?.url;
-  const bootstrap = bootstrapUrl === undefined ? undefined : bundles.get(bootstrapUrl);
-  if (bootstrap === undefined) throw new Error("missing parser-preloaded fixture batch");
-  (0, eval)(bootstrap);
+  const bootstrapUrl = graph.batches.find(batch => batch.phase === 'bootstrap')?.url
+  const bootstrap = bootstrapUrl === undefined ? undefined : bundles.get(bootstrapUrl)
+  if (bootstrap === undefined) throw new Error('missing parser-preloaded fixture batch');
+  (0, eval)(bootstrap)
   {
     const entry = new AppWebEntry(root, {
       loadBundle: async (url) => {
-        const code = bundles.get(url);
+        const code = bundles.get(url)
         if (code === undefined) throw new Error(`missing built bundle ${url}`);
-        (0, eval)(code);
+        (0, eval)(code)
       },
-    });
-    void entry.run();
-    unmount = () => entry.dispose();
+    })
+    void entry.run()
+    unmount = () => entry.dispose()
   }
-  return remote;
+  return remote
 }
 
 /**
@@ -408,33 +404,33 @@ export function mountAssembledApp(options: AssembledBootOptions = {}): Assembled
 export async function createAssembledSessionComposer(
   remote: AssembledRemote,
 ): Promise<HTMLElement> {
-  const tree = await screen.findByRole("tree", { name: "Sessions" }, { timeout: 10_000 });
+  const tree = await screen.findByRole('tree', { name: 'Sessions' }, { timeout: 10_000 })
   const start = tree.querySelector<HTMLButtonElement>(
     'button[aria-label="New session in fixture"]',
-  );
-  if (start === null) throw new Error("fixture Workspace new-session action missing");
-  const previousCalls = remote.mock.log.calls("session/create").length;
-  fireEvent.click(start);
+  )
+  if (start === null) throw new Error('fixture Workspace new-session action missing')
+  const previousCalls = remote.mock.log.calls('session/create').length
+  fireEvent.click(start)
   return await waitFor(
     () => {
-      const creation = remote.mock.log.calls("session/create")[previousCalls];
-      if (creation?.state !== "answered")
-        throw new Error("fixture Session creation has not completed");
+      const creation = remote.mock.log.calls('session/create')[previousCalls]
+      if (creation?.state !== 'answered')
+        throw new Error('fixture Session creation has not completed')
       const {
         value: { sessionId },
-      } = creation.result as { value: { sessionId: string } };
+      } = creation.result as { value: { sessionId: string } }
       const conversation = [
-        ...document.querySelectorAll<HTMLElement>("[data-conversation-session]"),
-      ].find((element) => element.getAttribute("data-conversation-session") === sessionId);
+        ...document.querySelectorAll<HTMLElement>('[data-conversation-session]'),
+      ].find(element => element.getAttribute('data-conversation-session') === sessionId)
       const composer = conversation?.querySelector<HTMLElement>(
         '[data-composer-input][contenteditable="true"]',
-      );
+      )
       if (composer === undefined || composer === null)
-        throw new Error(`composer for Session ${sessionId} has not mounted`);
-      return composer;
+        throw new Error(`composer for Session ${sessionId} has not mounted`)
+      return composer
     },
     { timeout: 10_000 },
-  );
+  )
 }
 
 /**
@@ -449,12 +445,12 @@ export async function createAssembledSessionComposer(
  */
 export function hasClass(el: Element, name: string): boolean {
   return [...el.classList].some(
-    (cls) =>
+    cls =>
       cls === name ||
       cls.endsWith(`_${name}`) ||
       cls.startsWith(`_${name}_`) ||
       cls.includes(`_${name}_`),
-  );
+  )
 }
 
 /**
@@ -463,4 +459,4 @@ export function hasClass(el: Element, name: string): boolean {
  * scratch, `refresh` re-derives the expected text from the existing ones).
  */
 export const REFRESHING_GOLDEN =
-  process.env.DSH_SNAPSHOT === "record" || process.env.DSH_SNAPSHOT === "refresh";
+  process.env.DSH_SNAPSHOT === 'record' || process.env.DSH_SNAPSHOT === 'refresh'

@@ -19,7 +19,7 @@ const scopes: EffectScope[] = []
 function renderHook(hook: UseSidebarRightTabInfo) {
   const scope = effectScope(); scopes.push(scope)
   const value = scope.run(hook)!
-  return { result: { get current() { return value.value } }, unmount: () => scope.stop() }
+  return { result: { get current() { return value.value } }, unmount: () => { scope.stop() } }
 }
 
 afterEach(() => {

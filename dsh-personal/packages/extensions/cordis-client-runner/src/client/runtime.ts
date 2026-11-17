@@ -14,21 +14,21 @@
  * serialization keeps a second request from interleaving with one in flight.
  */
 
-import type { Context } from "@deepseek-ai/cordis";
-import type { Loader } from "@deepseek-ai/cordis-plugin-loader";
+import type { Context } from '@deepseek-ai/cordis'
+import type { Loader } from '@deepseek-ai/cordis-plugin-loader'
 import type {
   CordisDynamicPackageId,
   CordisDynamicPluginId,
   CordisDynamicPluginRunId,
   DynamicCordisPackage,
   SessionId,
-} from "@deepseek-ai/dsh-api-remotes/client";
-import type { ClientModuleSystem } from "@deepseek-ai/dsh-client-modules/client";
-import type { SlotRegistry } from "@deepseek-ai/dsh-client-ui-renderer/client";
-import { DynamicCordisStyles, evaluateClientHalf, DYNAMIC_CLIENT_REDIRECTS } from "./evaluator.ts";
-import type { DynamicCordisEvaluatedPlugin } from "./evaluator.ts";
-import { dynamicCordisContext } from "./guard.ts";
-import type { DynamicCordisSlotLedgerRow } from "./guard.ts";
+} from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientModuleSystem } from '@deepseek-ai/dsh-client-modules/client'
+import type { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
+import { DynamicCordisStyles, evaluateClientHalf, DYNAMIC_CLIENT_REDIRECTS } from './evaluator.ts'
+import type { DynamicCordisEvaluatedPlugin } from './evaluator.ts'
+import { dynamicCordisContext } from './guard.ts'
+import type { DynamicCordisSlotLedgerRow } from './guard.ts'
 
 /**
  * Snapshot source a surface can subscribe to (the render seam's observable
@@ -37,40 +37,40 @@ import type { DynamicCordisSlotLedgerRow } from "./guard.ts";
  */
 export interface CordisObservable<T> {
   /** Current value; the reference is stable between mutations. */
-  getSnapshot(): T;
+  getSnapshot(): T
   /**
    * Observe mutations.
    * @param fn - notified after each committed change.
    * @returns unsubscribe.
    */
-  subscribe(fn: () => void): () => void;
+  subscribe(fn: () => void): () => void
 }
 
 /** Which stage of a load failed, as the page classified it. */
-export type DynamicCordisLoadErrorCause = "evaluate" | "module-import" | "activate";
+export type DynamicCordisLoadErrorCause = 'evaluate' | 'module-import' | 'activate'
 
 /** Error fields retained by the page runner and Host transport. */
 export interface CordisErrorDetails {
   /** Original error message. */
-  message: string;
+  message: string
   /** Original stack when the thrown value supplied one. */
-  stack?: string;
+  stack?: string
 }
 
 /** One package's browser half as the host handed it over. */
 export interface DynamicCordisClientHalf {
   /** Stable Plugin instance. */
-  pluginId: CordisDynamicPluginId;
+  pluginId: CordisDynamicPluginId
   /** Immutable Package source version. */
-  packageId: CordisDynamicPackageId;
+  packageId: CordisDynamicPackageId
   /** Exact activation. */
-  pluginRunId: CordisDynamicPluginRunId;
+  pluginRunId: CordisDynamicPluginRunId
   /** Session the run is carried out for; a later render failure is reported under it. */
-  agentId: SessionId;
+  agentId: SessionId
   /** Label from the define call; also the plugin name. */
-  name: string;
+  name: string
   /** Browser-half source: an async function body returning a plugin. */
-  code: string;
+  code: string
 }
 
 /**
@@ -81,13 +81,13 @@ export interface DynamicCordisClientHalf {
  */
 export interface DynamicCordisRenderFailure {
   /** Slot key the crashed entry rendered under. */
-  slot: string;
+  slot: string
   /** What the author has to read to fix it: the crash text, plus a redirect when it names a withheld global. */
-  message: string;
+  message: string
   /** Original render failure stack when available. */
-  stack?: string;
+  stack?: string
   /** Whether the crash retired the entry from its cell — the package's UI is gone, not merely broken. */
-  abdicated: boolean;
+  abdicated: boolean
 }
 
 /**
@@ -96,42 +96,42 @@ export interface DynamicCordisRenderFailure {
  */
 export type DynamicCordisLoadResult =
   | { ok: true; pluginRunId: CordisDynamicPluginRunId; waitingFor?: string[] }
-  | ({ ok: false; cause: DynamicCordisLoadErrorCause; error?: unknown } & CordisErrorDetails);
+  | ({ ok: false; cause: DynamicCordisLoadErrorCause; error?: unknown } & CordisErrorDetails)
 
 /** The `window.__ModuleLoader__` registration sink (client-modules contract C6). */
 interface ModuleLoaderSink {
   __ModuleLoader__?: {
-    load(handoff: { id: string; factory: (require: (spec: string) => unknown) => unknown }): void;
-  };
+    load(handoff: { id: string; factory: (require: (spec: string) => unknown) => unknown }): void
+  }
 }
 
 /** One live package's bookkeeping. */
 interface LivePackage {
-  pkg: DynamicCordisPackage;
-  entryId: string;
-  styles: DynamicCordisStyles;
-  ledger: DynamicCordisSlotLedgerRow[];
+  pkg: DynamicCordisPackage
+  entryId: string
+  styles: DynamicCordisStyles
+  ledger: DynamicCordisSlotLedgerRow[]
   /** Services the browser half declared and this page has not got (parked, still a success). */
-  waitingFor: string[];
+  waitingFor: string[]
 }
 
 /** Runner dependencies, resolved by the plugin entry at activation. */
 export interface DynamicCordisRunnerEnv {
   /** The client root context (service reads and the guard's fiber owner). */
-  ctx: Context;
+  ctx: Context
   /** Client cordis Loader: dynamic packages become entries under it. */
-  loader: Loader;
+  loader: Loader
   /** Module table, for factory invalidation before every (re-)registration. */
-  modules: ClientModuleSystem;
+  modules: ClientModuleSystem
   /** Slot registry, for the entry-crash supervision seam. */
-  slots: SlotRegistry;
+  slots: SlotRegistry
   /** Route one `host.call` to the package's host half through the Remote namespace. */
   invoke(
     pluginId: CordisDynamicPluginId,
     pluginRunId: CordisDynamicPluginRunId,
     method: string,
     args: unknown,
-  ): Promise<unknown>;
+  ): Promise<unknown>
   /**
    * Send one render-time crash back to the session that authored the package.
    * Fire-and-forget by contract: the crash already happened, and a failed report
@@ -145,45 +145,45 @@ export interface DynamicCordisRunnerEnv {
     pluginId: CordisDynamicPluginId,
     pluginRunId: CordisDynamicPluginRunId,
     failure: DynamicCordisRenderFailure,
-  ): void;
+  ): void
   /** Send one post-activation Client guard rejection to the owning Agent. */
   reportGuardFailure(
     agentId: SessionId,
     pluginId: CordisDynamicPluginId,
     pluginRunId: CordisDynamicPluginRunId,
     failure: CordisErrorDetails,
-  ): void;
+  ): void
 }
 
 /** Module-table id of one package (also its loader entry name and fiber name). */
 function moduleIdOf(id: CordisDynamicPluginId): string {
-  return `dyn/${id}`;
+  return `dyn/${id}`
 }
 
 /** One live package's contribution summary in this page. */
 export interface DynamicCordisLivePackage {
   /** Stable Plugin instance. */
-  pluginId: CordisDynamicPluginId;
+  pluginId: CordisDynamicPluginId
   /** Immutable Package source version. */
-  packageId: CordisDynamicPackageId;
+  packageId: CordisDynamicPackageId
   /** Exact activation loaded in this page. */
-  pluginRunId: CordisDynamicPluginRunId;
+  pluginRunId: CordisDynamicPluginRunId
   /** Label from the define call. */
-  name: string;
+  name: string
   /** Slot names and `factory:<name>` definitions this package registered here. */
-  slots: string[];
+  slots: string[]
   /** Live injected-style tag count. */
-  styleCount: number;
+  styleCount: number
 }
 
 /** The browser-side load engine for dynamic packages. */
 export class DynamicCordisPackageRunner {
-  private readonly live = new Map<CordisDynamicPluginId, LivePackage>();
+  private readonly live = new Map<CordisDynamicPluginId, LivePackage>()
   /** Serializes load/unload per package id (a second request can outrun a slow load). */
-  private readonly queues = new Map<CordisDynamicPluginId, Promise<unknown>>();
-  private readonly changeListeners = new Set<() => void>();
+  private readonly queues = new Map<CordisDynamicPluginId, Promise<unknown>>()
+  private readonly changeListeners = new Set<() => void>()
   /** Page-local shadowing rank. A later registration receives a lower priority. */
-  private nextPriority = 0;
+  private nextPriority = 0
   /**
    * Which package seated which component, and for whom. Component identity is the
    * only attribution key that holds:
@@ -205,39 +205,39 @@ export class DynamicCordisPackageRunner {
   private readonly owners = new WeakMap<
     object,
     {
-      pluginId: CordisDynamicPluginId;
-      pluginRunId: CordisDynamicPluginRunId;
-      agentId: SessionId;
+      pluginId: CordisDynamicPluginId
+      pluginRunId: CordisDynamicPluginRunId
+      agentId: SessionId
     }
-  >();
+  >()
   /** This page's last render crash per package: what a run surface shows on the row. */
-  private readonly failures = new Map<CordisDynamicPluginId, DynamicCordisRenderFailure>();
-  private readonly unwatch: () => void;
-  private snapshotCache: readonly DynamicCordisLivePackage[] | undefined;
-  private failureCache: ReadonlyMap<CordisDynamicPluginId, DynamicCordisRenderFailure> | undefined;
+  private readonly failures = new Map<CordisDynamicPluginId, DynamicCordisRenderFailure>()
+  private readonly unwatch: () => void
+  private snapshotCache: readonly DynamicCordisLivePackage[] | undefined
+  private failureCache: ReadonlyMap<CordisDynamicPluginId, DynamicCordisRenderFailure> | undefined
 
   /** @param env - loader/module/slot wiring plus the two host verbs this engine uses. */
   constructor(private readonly env: DynamicCordisRunnerEnv) {
     // The supervision seam fires for EVERY entry crash on the page, factory UI
     // included; only the ones this runner seated are ours to report.
     this.unwatch = env.slots.onEntryError((slot, entry, error, info) => {
-      const component: unknown = (entry as { component?: unknown }).component;
-      const owner = indexable(component) ? this.owners.get(component) : undefined;
-      if (owner === undefined) return;
-      const details = errorDetails(error);
+      const component: unknown = (entry as { component?: unknown }).component
+      const owner = indexable(component) ? this.owners.get(component) : undefined
+      if (owner === undefined) return
+      const details = errorDetails(error)
       const failure: DynamicCordisRenderFailure = {
         slot,
         message: renderFailureMessage(slot, details.message),
         ...(details.stack === undefined ? {} : { stack: details.stack }),
         abdicated: info.abdicated,
-      };
+      }
       // One observation, two outlets with different owners and lifetimes: the host
       // keeps the last crash ACROSS pages for the model, this map is what THIS page
       // currently shows. Neither is derived from the other.
-      env.reportRenderFailure(owner.agentId, owner.pluginId, owner.pluginRunId, failure);
-      this.failures.set(owner.pluginId, failure);
-      this.notify();
-    });
+      env.reportRenderFailure(owner.agentId, owner.pluginId, owner.pluginRunId, failure)
+      this.failures.set(owner.pluginId, failure)
+      this.notify()
+    })
   }
 
   /**
@@ -246,10 +246,10 @@ export class DynamicCordisPackageRunner {
    * @returns unsubscribe.
    */
   subscribe(fn: () => void): () => void {
-    this.changeListeners.add(fn);
+    this.changeListeners.add(fn)
     return () => {
-      this.changeListeners.delete(fn);
-    };
+      this.changeListeners.delete(fn)
+    }
   }
 
   /**
@@ -261,8 +261,8 @@ export class DynamicCordisPackageRunner {
     ReadonlyMap<CordisDynamicPluginId, DynamicCordisRenderFailure>
   > = {
     getSnapshot: () => (this.failureCache ??= new Map(this.failures)),
-    subscribe: (fn) => this.subscribe(fn),
-  };
+    subscribe: fn => this.subscribe(fn),
+  }
 
   /**
    * What this page currently has loaded (stable reference between mutations, so
@@ -275,9 +275,9 @@ export class DynamicCordisPackageRunner {
       packageId: pkg.packageId,
       pluginRunId: pkg.pluginRunId,
       name: pkg.name,
-      slots: [...new Set(ledger.map((row) => row.slot))],
+      slots: [...new Set(ledger.map(row => row.slot))],
       styleCount: styles.count,
-    })));
+    })))
   }
 
   /**
@@ -287,7 +287,7 @@ export class DynamicCordisPackageRunner {
    * @returns true while one activation of the Plugin is live here.
    */
   isLoaded(pluginId: CordisDynamicPluginId): boolean {
-    return this.live.has(pluginId);
+    return this.live.has(pluginId)
   }
 
   /**
@@ -297,17 +297,17 @@ export class DynamicCordisPackageRunner {
    */
   load(half: DynamicCordisClientHalf): Promise<DynamicCordisLoadResult> {
     return this.enqueue(half.pluginId, async () => {
-      const current = this.live.get(half.pluginId);
+      const current = this.live.get(half.pluginId)
       if (current !== undefined) {
         // Already running this activation here: nothing to load, but the caller
         // still needs an answer (a replayed run must not look unacknowledged).
-        if (current.pkg.pluginRunId === half.pluginRunId) return settled(current);
-        await this.teardown(current.pkg.pluginId, current.entryId, current.styles);
+        if (current.pkg.pluginRunId === half.pluginRunId) return settled(current)
+        await this.teardown(current.pkg.pluginId, current.entryId, current.styles)
       }
-      const result = await this.mount(half);
-      this.notify();
-      return result;
-    });
+      const result = await this.mount(half)
+      this.notify()
+      return result
+    })
   }
 
   /**
@@ -318,32 +318,32 @@ export class DynamicCordisPackageRunner {
    */
   retract(pluginId: CordisDynamicPluginId, pluginRunId: CordisDynamicPluginRunId): void {
     void this.enqueue(pluginId, async () => {
-      const current = this.live.get(pluginId);
-      if (current === undefined || current.pkg.pluginRunId !== pluginRunId) return;
-      await this.teardown(pluginId, current.entryId, current.styles);
-      this.notify();
-    });
+      const current = this.live.get(pluginId)
+      if (current === undefined || current.pkg.pluginRunId !== pluginRunId) return
+      await this.teardown(pluginId, current.entryId, current.styles)
+      this.notify()
+    })
   }
 
   /** Unload everything (plugin disposal path). */
   async dispose(): Promise<void> {
-    this.unwatch();
+    this.unwatch()
     for (const current of [...this.live.values()]) {
-      await this.teardown(current.pkg.pluginId, current.entryId, current.styles);
+      await this.teardown(current.pkg.pluginId, current.entryId, current.styles)
     }
-    this.notify();
+    this.notify()
   }
 
   private notify(): void {
-    this.snapshotCache = undefined;
-    this.failureCache = undefined;
-    for (const fn of [...this.changeListeners]) fn();
+    this.snapshotCache = undefined
+    this.failureCache = undefined
+    for (const fn of [...this.changeListeners]) fn()
   }
 
   /** Queue one package operation behind that package's previous ones. */
   private enqueue<T>(id: CordisDynamicPluginId, op: () => Promise<T>): Promise<T> {
-    const previous = this.queues.get(id) ?? Promise.resolve();
-    const next = previous.then(op);
+    const previous = this.queues.get(id) ?? Promise.resolve()
+    const next = previous.then(op)
     // The queue tail must survive this operation's failure, or one rejection
     // would wedge every later operation on the same package.
     this.queues.set(
@@ -352,14 +352,14 @@ export class DynamicCordisPackageRunner {
         () => {},
         () => {},
       ),
-    );
-    return next;
+    )
+    return next
   }
 
   private async mount(half: DynamicCordisClientHalf): Promise<DynamicCordisLoadResult> {
-    const styles = new DynamicCordisStyles(half.pluginId);
-    const ledger: DynamicCordisSlotLedgerRow[] = [];
-    let plugin: DynamicCordisEvaluatedPlugin | ((ctx: unknown) => unknown);
+    const styles = new DynamicCordisStyles(half.pluginId)
+    const ledger: DynamicCordisSlotLedgerRow[] = []
+    let plugin: DynamicCordisEvaluatedPlugin | ((ctx: unknown) => unknown)
     try {
       plugin = await evaluateClientHalf(
         half.pluginId,
@@ -369,14 +369,14 @@ export class DynamicCordisPackageRunner {
           noteError: (message) => {
             // A loaded package's own console.error: a page-local diagnostic with
             // no wire carrier (the run round trip settled long before).
-            console.error(`[cordis-client-runner] ${half.pluginId} logged an error:`, message);
+            console.error(`[cordis-client-runner] ${half.pluginId} logged an error:`, message)
           },
         },
         styles,
-      );
+      )
     } catch (error) {
-      styles.dispose();
-      return { ok: false, cause: "evaluate", ...errorDetails(error), error };
+      styles.dispose()
+      return { ok: false, cause: 'evaluate', ...errorDetails(error), error }
     }
 
     const pkg: DynamicCordisPackage = {
@@ -384,48 +384,48 @@ export class DynamicCordisPackageRunner {
       packageId: half.packageId,
       pluginRunId: half.pluginRunId,
       name: half.name,
-    };
-    const surface = this.guardedSurface(pkg, half.agentId, plugin, ledger);
-    const moduleId = moduleIdOf(half.pluginId);
+    }
+    const surface = this.guardedSurface(pkg, half.agentId, plugin, ledger)
+    const moduleId = moduleIdOf(half.pluginId)
     // Invalidate-then-register keeps re-loading legal: the module table throws
     // loudly on a duplicate factory registration.
-    this.env.modules.invalidate(moduleId);
-    const sink = (globalThis as ModuleLoaderSink).__ModuleLoader__;
+    this.env.modules.invalidate(moduleId)
+    const sink = (globalThis as ModuleLoaderSink).__ModuleLoader__
     if (sink === undefined) {
       throw new Error(
-        "cordis-client-runner: window.__ModuleLoader__ is missing (booted outside the web shell?)",
-      );
+        'cordis-client-runner: window.__ModuleLoader__ is missing (booted outside the web shell?)',
+      )
     }
-    sink.load({ id: moduleId, factory: () => surface });
+    sink.load({ id: moduleId, factory: () => surface })
 
-    const entryId = await this.env.loader.create({ name: moduleId });
-    const fiber = this.env.loader.resolve(entryId).fiber;
+    const entryId = await this.env.loader.create({ name: moduleId })
+    const fiber = this.env.loader.resolve(entryId).fiber
     if (fiber === undefined) {
-      await this.teardown(half.pluginId, entryId, styles);
+      await this.teardown(half.pluginId, entryId, styles)
       return {
         ok: false,
-        cause: "module-import",
-        message: "module import failed (see the browser console)",
-      };
+        cause: 'module-import',
+        message: 'module import failed (see the browser console)',
+      }
     }
     try {
-      await fiber.await();
+      await fiber.await()
     } catch (error) {
-      await this.teardown(half.pluginId, entryId, styles);
-      return { ok: false, cause: "activate", ...errorDetails(error), error };
+      await this.teardown(half.pluginId, entryId, styles)
+      return { ok: false, cause: 'activate', ...errorDetails(error), error }
     }
     // Settled but not active = legal pending on an unsatisfied declaration. The
     // record is seated only now, so an error mirrored during `apply` cannot
     // claim the package is already live.
     const waitingFor = Object.keys(fiber.inject).filter(
-      (name) => this.env.ctx.get(name) === undefined,
-    );
-    const record: LivePackage = { pkg, entryId, styles, ledger, waitingFor };
-    this.live.set(half.pluginId, record);
+      name => this.env.ctx.get(name) === undefined,
+    )
+    const record: LivePackage = { pkg, entryId, styles, ledger, waitingFor }
+    this.live.set(half.pluginId, record)
     // A fresh load answers for itself: whatever this page last showed as crashed
     // is no longer true of what is mounted now.
-    this.failures.delete(half.pluginId);
-    return settled(record);
+    this.failures.delete(half.pluginId)
+    return settled(record)
   }
 
   /**
@@ -447,9 +447,9 @@ export class DynamicCordisPackageRunner {
           pluginId: pkg.pluginId,
           pluginRunId: pkg.pluginRunId,
           agentId,
-        });
+        })
       }
-    };
+    }
     const guarded = (ctx: unknown): Context =>
       dynamicCordisContext(ctx as Context, {
         pkg,
@@ -457,17 +457,17 @@ export class DynamicCordisPackageRunner {
         claim,
         allocatePriority: () => --this.nextPriority,
         reportFailure: (error) => {
-          this.env.reportGuardFailure(agentId, pkg.pluginId, pkg.pluginRunId, errorDetails(error));
+          this.env.reportGuardFailure(agentId, pkg.pluginId, pkg.pluginRunId, errorDetails(error))
         },
-      });
-    if (typeof plugin === "function") {
-      return { name: moduleIdOf(pkg.pluginId), apply: (ctx: unknown) => plugin(guarded(ctx)) };
+      })
+    if (typeof plugin === 'function') {
+      return { name: moduleIdOf(pkg.pluginId), apply: (ctx: unknown) => plugin(guarded(ctx)) }
     }
     return {
       ...plugin,
       name: moduleIdOf(pkg.pluginId),
       apply: (ctx: unknown, config?: unknown) => plugin.apply(guarded(ctx), config),
-    };
+    }
   }
 
   /**
@@ -479,30 +479,30 @@ export class DynamicCordisPackageRunner {
     entryId: string,
     styles: DynamicCordisStyles,
   ): Promise<void> {
-    this.live.delete(id);
+    this.live.delete(id)
     // Nothing of this package renders here any more, so a crash row would outlive
     // the thing it described.
-    this.failures.delete(id);
+    this.failures.delete(id)
     // Entry removal disposes the fiber (slot entries and facade effects
     // cascade); the factory invalidation makes a later re-load legal.
-    const disposal = this.env.loader.resolve(entryId).fiber?.dispose();
-    this.env.loader.remove(entryId);
-    await disposal;
-    this.env.modules.invalidate(moduleIdOf(id));
-    styles.dispose();
+    const disposal = this.env.loader.resolve(entryId).fiber?.dispose()
+    this.env.loader.remove(entryId)
+    await disposal
+    this.env.modules.invalidate(moduleIdOf(id))
+    styles.dispose()
   }
 }
 
 /** The success answer for a package that is live here, parked or active. */
 function settled(record: {
-  pkg: DynamicCordisPackage;
-  waitingFor: string[];
+  pkg: DynamicCordisPackage
+  waitingFor: string[]
 }): DynamicCordisLoadResult {
   return {
     ok: true,
     pluginRunId: record.pkg.pluginRunId,
     ...(record.waitingFor.length > 0 ? { waitingFor: record.waitingFor } : {}),
-  };
+  }
 }
 
 /**
@@ -513,7 +513,7 @@ function settled(record: {
  * @returns true when the value can be indexed by identity.
  */
 function indexable(component: unknown): component is object {
-  return (typeof component === "object" && component !== null) || typeof component === "function";
+  return (typeof component === 'object' && component !== null) || typeof component === 'function'
 }
 
 /**
@@ -523,13 +523,13 @@ function indexable(component: unknown): component is object {
  */
 /* jscpd:ignore-start */
 export function errorDetails(error: unknown): CordisErrorDetails {
-  if (typeof error !== "object" || error === null) return { message: String(error) };
+  if (typeof error !== 'object' || error === null) return { message: String(error) }
   const message =
-    "message" in error && typeof error.message === "string"
+    'message' in error && typeof error.message === 'string'
       ? error.message
-      : Object.prototype.toString.call(error);
-  const stack = "stack" in error && typeof error.stack === "string" ? error.stack : undefined;
-  return { message, ...(stack === undefined ? {} : { stack }) };
+      : Object.prototype.toString.call(error)
+  const stack = 'stack' in error && typeof error.stack === 'string' ? error.stack : undefined
+  return { message, ...(stack === undefined ? {} : { stack }) }
 }
 /* jscpd:ignore-end */
 
@@ -542,12 +542,12 @@ export function errorDetails(error: unknown): CordisErrorDetails {
 function renderFailureMessage(slot: string, message: string): string {
   const redirect = Object.entries(DYNAMIC_CLIENT_REDIRECTS).find(
     ([name, text]) => message.includes(name) && !message.includes(text),
-  )?.[1];
-  const subject = slot.startsWith("factory:")
-    ? `your component in Factory "${slot.slice("factory:".length)}"`
-    : `your entry in slot "${slot}"`;
+  )?.[1]
+  const subject = slot.startsWith('factory:')
+    ? `your component in Factory "${slot.slice('factory:'.length)}"`
+    : `your entry in slot "${slot}"`
   return (
     `${subject} crashed while Vue rendered it: ${message}` +
-    (redirect === undefined ? "" : `\n${redirect}`)
-  );
+    (redirect === undefined ? '' : `\n${redirect}`)
+  )
 }

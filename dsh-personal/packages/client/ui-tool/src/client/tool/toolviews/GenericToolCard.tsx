@@ -1,5 +1,5 @@
-import type { ContextMenuTriggerProps } from "@deepseek-ai/dsh-client-ui-context-menu/client";
-import { h, type VNodeChild } from "vue";
+import type { ContextMenuTriggerProps } from '@deepseek-ai/dsh-client-ui-context-menu/client'
+import { h, type VNodeChild } from 'vue'
 import {
   IconApiOutlineRegular,
   IconBrowseOutlineRegular,
@@ -7,16 +7,16 @@ import {
   IconEditOutlineRegular,
   IconSearchOutlineRegular,
   IconSparkleRegular,
-} from "@deepseek-ai/dsh-client-ui-primitives";
-import type { ToolCallOwnerProps, ToolTreeProps } from "../../contract/slots.ts";
-import { readCardModel } from "../models/read-card-model.ts";
-import { diffCardModel } from "../models/diff-card-model.ts";
-import { searchCardModel } from "../models/search-card-model.ts";
-import { terminalCardModel, terminalFailed } from "../models/terminal-card-model.ts";
-import { webCardModel } from "../models/web-card-model.ts";
-import { toolRowModel, type ToolRowVariant } from "../models/tool-call-model.ts";
-import { localizeAutoReviewDenial } from "../models/auto-review-denial.ts";
-import { ToolRow } from "../components/ToolRow.tsx";
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ToolCallOwnerProps, ToolTreeProps } from '../../contract/slots.ts'
+import { readCardModel } from '../models/read-card-model.ts'
+import { diffCardModel } from '../models/diff-card-model.ts'
+import { searchCardModel } from '../models/search-card-model.ts'
+import { terminalCardModel, terminalFailed } from '../models/terminal-card-model.ts'
+import { webCardModel } from '../models/web-card-model.ts'
+import { toolRowModel, type ToolRowVariant } from '../models/tool-call-model.ts'
+import { localizeAutoReviewDenial } from '../models/auto-review-denial.ts'
+import { ToolRow } from '../components/ToolRow.tsx'
 /** Variant leading icons (figma table); all glyphs render at 14 inside the 16px leading box. */
 const VARIANT_ICONS: Record<ToolRowVariant, VNodeChild> = {
   search: h(IconSearchOutlineRegular, { size: 14 }, undefined),
@@ -26,13 +26,13 @@ const VARIANT_ICONS: Record<ToolRowVariant, VNodeChild> = {
   edit: h(IconEditOutlineRegular, { size: 14 }, undefined),
   code: h(IconCodeOutlineRegular, { size: 14 }, undefined),
   others: h(IconSparkleRegular, { size: 14 }, undefined),
-};
+}
 /** Card props: the owner payload plus the render site's locale seat (plain prop). */
 export type GenericToolCardProps = ToolCallOwnerProps & {
-  t: ToolTreeProps["t"];
+  t: ToolTreeProps['t']
   /** Bind the recorded file to the original Session. */
-  getFileTriggerProps: (path: string) => ContextMenuTriggerProps;
-};
+  getFileTriggerProps: (path: string) => ContextMenuTriggerProps
+}
 /** @param props - current tool stage and locale. @returns its preparation or dispatched card. */
 export function GenericToolCard({
   toolName,
@@ -46,31 +46,31 @@ export function GenericToolCard({
   t,
 }: GenericToolCardProps) {
   const model = toolRowModel(toolName, block, cwd, home, (image) => {
-    if (typeof image !== "object" || image === null || Array.isArray(image)) return undefined;
-    const { attachmentId, name, width, height, bytes } = image as Record<string, unknown>;
+    if (typeof image !== 'object' || image === null || Array.isArray(image)) return undefined
+    const { attachmentId, name, width, height, bytes } = image as Record<string, unknown>
     if (
-      typeof attachmentId !== "string" ||
-      attachmentId === "" ||
-      (name !== undefined && typeof name !== "string") ||
+      typeof attachmentId !== 'string' ||
+      attachmentId === '' ||
+      (name !== undefined && typeof name !== 'string') ||
       ![width, height, bytes].every(
-        (value) => typeof value === "number" && Number.isInteger(value) && value > 0,
+        value => typeof value === 'number' && Number.isInteger(value) && value > 0,
       )
     )
-      return undefined;
-    return `${name ?? attachmentId} (${t("row.imageSize", { width, height, bytes })})`;
-  });
+      return undefined
+    return `${name ?? attachmentId} (${t('row.imageSize', { width, height, bytes })})`
+  })
   const autoReview =
-    model.autoReviewDenial === null ? null : localizeAutoReviewDenial(model.autoReviewDenial, t);
-  const terminal = terminalCardModel(block, cwd);
-  const read = readCardModel(block, cwd, home);
-  const diff = diffCardModel(block);
-  const search = searchCardModel(block);
-  const web = webCardModel(block);
+    model.autoReviewDenial === null ? null : localizeAutoReviewDenial(model.autoReviewDenial, t)
+  const terminal = terminalCardModel(block, cwd)
+  const read = readCardModel(block, cwd, home)
+  const diff = diffCardModel(block)
+  const search = searchCardModel(block)
+  const web = webCardModel(block)
   // A failing exit status is the terminal card's own error signal (the call
   // itself settles isError:false), surfaced through the row's error summary.
   const state =
-    model.state === "ok" && terminal !== null && terminalFailed(terminal) ? "error" : model.state;
-  const singleFile = model.filePath !== undefined;
+    model.state === 'ok' && terminal !== null && terminalFailed(terminal) ? 'error' : model.state
+  const singleFile = model.filePath !== undefined
   return h(
     ToolRow,
     {
@@ -97,5 +97,5 @@ export function GenericToolCard({
       inspect: inspect,
     },
     undefined,
-  );
+  )
 }

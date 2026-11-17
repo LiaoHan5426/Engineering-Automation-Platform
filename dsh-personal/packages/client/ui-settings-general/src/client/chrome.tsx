@@ -4,14 +4,14 @@
  * The shell renders the surrounding chrome (button, nav heading row) and
  * reads each entry's `label` option for aria text.
  */
-import { h, Fragment } from "vue";
-import { IconSettingsOutlineMedium } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
-import css from "./chrome.module.css";
+import { h, Fragment } from 'vue'
+import { IconSettingsOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import css from './chrome.module.css'
 /** Trigger content props: the sidebar column state + the standard locale seat. */
-export type TriggerContentProps = PropsRuntime<"settings.trigger"> & PropsLocale<"settings">;
+export type TriggerContentProps = PropsRuntime<'settings.trigger'> & PropsLocale<'settings'>
 /** Header content props: the standard locale seat only. */
-export type HeaderContentProps = PropsRuntime<"settings.header"> & PropsLocale<"settings">;
+export type HeaderContentProps = PropsRuntime<'settings.header'> & PropsLocale<'settings'>
 /**
  * Render the trigger row content (icon; label only in the wide column).
  * @param props - composed slot props.
@@ -20,8 +20,8 @@ export type HeaderContentProps = PropsRuntime<"settings.header"> & PropsLocale<"
 export function TriggerContent({ wide, t }: TriggerContentProps) {
   return h(Fragment, null, [
     h(IconSettingsOutlineMedium, { size: wide ? 16 : 18 }),
-    wide && h("span", { class: css.triggerLabel }, [t("trigger")]),
-  ]);
+    wide && h('span', { class: css.triggerLabel }, [t('trigger')]),
+  ])
 }
 /**
  * Render the panel title text.
@@ -29,15 +29,15 @@ export function TriggerContent({ wide, t }: TriggerContentProps) {
  * @returns the title text node.
  */
 export function HeaderContent({ t }: HeaderContentProps) {
-  return h(Fragment, null, [t("title")]);
+  return h(Fragment, null, [t('title')])
 }
 /** Close-button label text props: the standard locale seat only. */
-export type CloseLabelProps = PropsRuntime<"settings.close"> & PropsLocale<"settings">;
+export type CloseLabelProps = PropsRuntime<'settings.close'> & PropsLocale<'settings'>
 /**
  * Render the close button's visually-hidden label text.
  * @param props - composed slot props.
  * @returns the label text node.
  */
 export function CloseLabel({ t }: CloseLabelProps) {
-  return h(Fragment, null, [t("close")]);
+  return h(Fragment, null, [t('close')])
 }

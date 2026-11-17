@@ -60,7 +60,8 @@ export const FeedbackDialog = defineComponent((props: FeedbackDialogProps) => {
             }, props.t(`category.${category}`)))),
           h('textarea', { class: css.detail, 'aria-label': props.t('dialog.detail'), placeholder: props.t('dialog.hint'),
             value: current.text, readonly: current.submitting,
-            onInput: (event: Event) => { if (event.currentTarget instanceof HTMLTextAreaElement) props.edit({ text: event.currentTarget.value }) },
+            onInput: (event: Event) => { if (event.currentTarget instanceof HTMLTextAreaElement) props.edit({
+              text: event.currentTarget.value }) },
           }),
         ],
       }),

@@ -1,4 +1,4 @@
-import { defineComponent, h } from "vue";
+import { defineComponent, h } from 'vue'
 
 /**
  * The reader page's own answer for a workspace-file address a share cannot open.
@@ -12,18 +12,18 @@ import { defineComponent, h } from "vue";
  *
  * @module @deepseek-ai/dsh-experimental-liveshare/src/client/viewer-share-path
  */
-import type { Context as ClientContext } from "@deepseek-ai/cordis";
-import type { PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
-import type { SidebarRightTabDefinition } from "@deepseek-ai/dsh-client-ui-sidebar-right/client";
-import { NS } from "./locales.ts";
-import css from "./viewer-share-path.module.css";
-export const name = "liveshare-viewer-share-path";
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SidebarRightTabDefinition } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import { NS } from './locales.ts'
+import css from './viewer-share-path.module.css'
+export const name = 'liveshare-viewer-share-path'
 /** The tab-type registry and the slot ledger; the parent face registers this page's copy. */
-export const inject: readonly string[] = ["slots", "sidebarRightTabs"];
+export const inject: readonly string[] = ['slots', 'sidebarRightTabs']
 /** This implementation's identity in the tab system; also the key its body registers under. */
-const SHARE_PATH_ID = "@deepseek-ai/dsh-experimental-liveshare/viewer-share-path";
+const SHARE_PATH_ID = '@deepseek-ai/dsh-experimental-liveshare/viewer-share-path'
 /** The tab kind this page owns. */
-const SHARE_PATH_KIND = "liveshare-share-path";
+const SHARE_PATH_KIND = 'liveshare-share-path'
 /* jscpd:ignore-start -- the address-basename rule is restated here rather than imported: a feature
  * plugin reaches another plugin's behavior through services and slots, never through its values. */
 /**
@@ -35,13 +35,13 @@ const SHARE_PATH_KIND = "liveshare-share-path";
  * @returns the decoded last path segment, or the address itself when it has none.
  */
 function basenameOf(address: string): string {
-  const name = address.slice(address.lastIndexOf("/") + 1);
-  if (name === "") return address;
+  const name = address.slice(address.lastIndexOf('/') + 1)
+  if (name === '') return address
   try {
-    return decodeURIComponent(name);
+    return decodeURIComponent(name)
   } catch {
     // A malformed percent sequence is still a name; showing it raw beats refusing the address.
-    return name;
+    return name
   }
 }
 /* jscpd:ignore-end */
@@ -56,14 +56,14 @@ function sharePathDefinition(): SidebarRightTabDefinition {
   return {
     id: SHARE_PATH_ID,
     kind: SHARE_PATH_KIND,
-    patterns: ["dsh-resource://file/**"],
-    priority: "builtin",
+    patterns: ['dsh-resource://file/**'],
+    priority: 'builtin',
     title: basenameOf,
-  };
+  }
 }
 /** The body's composed props: the tab it draws and this page's copy. */
-export type ViewerSharePathBodyProps = PropsRuntime<"sidebar.right.pane.tab"> &
-  PropsLocale<"liveshare">;
+export type ViewerSharePathBodyProps = PropsRuntime<'sidebar.right.pane.tab'> &
+  PropsLocale<'liveshare'>
 /**
  * State why this page cannot show the file the reader asked for.
  * @param props - the tab's framework share and this page's locale seat.
@@ -71,17 +71,17 @@ export type ViewerSharePathBodyProps = PropsRuntime<"sidebar.right.pane.tab"> &
  */
 export const ViewerSharePathBody = defineComponent(
   (componentProps: ViewerSharePathBodyProps) => {
-    const snapshot0Ref = componentProps.useTabInfo();
+    const snapshot0Ref = componentProps.useTabInfo()
     return () => {
       return h(
-        "p",
-        { class: css.unavailable, "data-liveshare-share-path": snapshot0Ref.value.tab.contentId },
-        [componentProps.t("viewer.sharePath.unavailable")],
-      );
-    };
+        'p',
+        { class: css.unavailable, 'data-liveshare-share-path': snapshot0Ref.value.tab.contentId },
+        [componentProps.t('viewer.sharePath.unavailable')],
+      )
+    }
   },
-  { inheritAttrs: false, props: ["useTabInfo", "t"] },
-);
+  { inheritAttrs: false, props: ['useTabInfo', 't'] },
+)
 /**
  * Claim workspace-file addresses on the reader's page and answer them in place.
  * @param ctx - browser context of the viewer's module table.
@@ -89,16 +89,16 @@ export const ViewerSharePathBody = defineComponent(
 export function apply(ctx: ClientContext): void {
   ctx.effect(
     () => ctx.sidebarRightTabs.register(sharePathDefinition()),
-    "liveshare: viewer share-path type",
-  );
+    'liveshare: viewer share-path type',
+  )
   ctx.effect(
     () =>
-      ctx.slots.inject("sidebar.right.pane.tab", () =>
+      ctx.slots.inject('sidebar.right.pane.tab', () =>
         ctx.slots.register(
-          { name: "sidebar.right.pane.tab", key: SHARE_PATH_ID, locale: NS },
+          { name: 'sidebar.right.pane.tab', key: SHARE_PATH_ID, locale: NS },
           ViewerSharePathBody,
         ),
       ),
-    "liveshare: viewer share-path tab body",
-  );
+    'liveshare: viewer share-path tab body',
+  )
 }

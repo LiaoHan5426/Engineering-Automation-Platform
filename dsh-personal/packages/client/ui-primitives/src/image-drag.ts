@@ -88,5 +88,6 @@ export function useImageDrag(
     event.stopPropagation()
     dragged = false
   })
-  return { onPointerenter: intent, onPointerdown: onPointerDown, onPointerleave: onPointerLeave, onDragstart: onDragStart, onDragend: release, onClickCapture }
+  return { onPointerenter: intent, onPointerdown: onPointerDown, onPointerleave: onPointerLeave,
+    onDragstart: onDragStart, onDragend: release, onClickCapture }
 }

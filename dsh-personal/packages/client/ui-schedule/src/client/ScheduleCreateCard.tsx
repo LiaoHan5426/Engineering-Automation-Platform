@@ -1,25 +1,26 @@
-import { h, defineComponent, computed } from "vue";
-import { Button, IconClockOutlineRegular } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { InjectFace, PropsLocale } from "@deepseek-ai/dsh-client-ui-slots";
-import type { ToolCallViewProps } from "@deepseek-ai/dsh-client-ui-tool/client";
-import type { ScheduleId, ScheduleRecord } from "@deepseek-ai/dsh-schedule/client";
-import { formatScheduleFrequency, taskName } from "./schedule-format.ts";
-import { scheduleCreateCardModel } from "./schedule-create-card.ts";
-import css from "./ScheduleCreateCard.module.css";
+import clsx from 'clsx'
+import { h, defineComponent, computed } from 'vue'
+import { Button, IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
+import type { ScheduleId, ScheduleRecord } from '@deepseek-ai/dsh-schedule/client'
+import { formatScheduleFrequency, taskName } from './schedule-format.ts'
+import { scheduleCreateCardModel } from './schedule-create-card.ts'
+import css from './ScheduleCreateCard.module.css'
 /** Task navigation the card receives from its Turn-tail registration. */
 export interface ScheduleCreateCardInjected {
   /**
    * Show one created task's detail in the right Sidebar.
    * @param id - Task created by this call.
    */
-  readonly openTaskDetail: (id: ScheduleId) => void;
+  readonly openTaskDetail: (id: ScheduleId) => void
 }
 /** Props of the `schedule_create` transcript card. */
 export type ScheduleCreateCardProps = ToolCallViewProps &
-  PropsLocale<"schedule.manager"> &
+  PropsLocale<'schedule.manager'> &
   InjectFace<ScheduleCreateCardInjected> & {
-    readonly currentTask?: ScheduleRecord | null;
-  };
+    readonly currentTask?: ScheduleRecord | null
+  }
 /**
  * Fields one card reads.
  *
@@ -30,8 +31,8 @@ export type ScheduleCreateCardProps = ToolCallViewProps &
  */
 export type ScheduleCreateCardInput = Pick<
   ScheduleCreateCardProps,
-  "callId" | "toolName" | "block" | "openTaskDetail" | "t" | "currentTask"
->;
+  'callId' | 'toolName' | 'block' | 'openTaskDetail' | 't' | 'currentTask'
+>
 /**
  * Render one `schedule_create` call as the created task's card.
  *
@@ -45,59 +46,63 @@ export type ScheduleCreateCardInput = Pick<
  */
 export const ScheduleCreateCard = defineComponent(
   (props: ScheduleCreateCardInput) => {
-    const model = computed(() => scheduleCreateCardModel(props.block, props.toolName));
-    const task = computed(() => props.currentTask ?? model.value.task);
-    const deleted = computed(() => props.currentTask === null);
+    const model = computed(() => scheduleCreateCardModel(props.block, props.toolName))
+    const task = computed(() => props.currentTask ?? model.value.task)
+    const deleted = computed(() => props.currentTask === null)
     const title = computed(() =>
       props.currentTask === undefined || props.currentTask === null
         ? model.value.title
         : taskName(props.currentTask),
-    );
-    const openable = computed(() => task.value !== undefined && !deleted.value);
+    )
+    const openable = computed(() => task.value !== undefined && !deleted.value)
     return () => {
-      return h("div", { class: css.card, "data-tool": "schedule_create" }, [
+      return h('div', { class: css.card, 'data-tool': 'schedule_create' }, [
         openable.value
-          ? h("button", {
-              type: "button",
-              class: css.cardOpen,
-              "aria-label": props.t("card.openLabel", { title: title.value }),
-              onClick: () => {
-                props.openTaskDetail(task.value!.id);
-              },
-            })
+          ? h('button', {
+            type: 'button',
+            class: css.cardOpen,
+            'aria-label': props.t('card.openLabel', { title: title.value }),
+            onClick: () => {
+              const current = task.value
+              if (current === undefined || deleted.value) return
+              props.openTaskDetail(current.id)
+            },
+          })
           : null,
-        h("div", { class: css.row }, [
-          h("span", { class: css.leading }, [h(IconClockOutlineRegular, { size: 18 })]),
-          h("span", { class: css.body }, [
-            h("span", { class: css.title }, [title.value]),
+        h('div', { class: css.row }, [
+          h('span', { class: css.leading }, [h(IconClockOutlineRegular, { size: 18 })]),
+          h('span', { class: css.body }, [
+            h('span', { class: css.title }, [title.value]),
             task.value !== undefined
-              ? h("span", { class: css.frequency }, [
-                  deleted.value
-                    ? props.t("card.deleted")
-                    : formatScheduleFrequency(task.value, props.t),
-                ])
+              ? h('span', { class: css.frequency }, [
+                deleted.value
+                  ? props.t('card.deleted')
+                  : formatScheduleFrequency(task.value, props.t),
+              ])
               : null,
           ]),
           openable.value
             ? h(
-                Button,
-                {
-                  variant: "outline",
-                  size: "sm",
-                  className: css.openButton!,
-                  onClick: () => {
-                    props.openTaskDetail(task.value!.id);
-                  },
+              Button,
+              {
+                variant: 'outline',
+                size: 'sm',
+                className: clsx(css.openButton),
+                onClick: () => {
+                  const current = task.value
+                  if (current === undefined || deleted.value) return
+                  props.openTaskDetail(current.id)
                 },
-                { default: () => [props.t("card.open")] },
-              )
+              },
+              { default: () => [props.t('card.open')] },
+            )
             : null,
         ]),
         task.value === undefined && model.value.output !== null
-          ? h("pre", { class: css.fallback }, [model.value.output])
+          ? h('pre', { class: css.fallback }, [model.value.output])
           : null,
-      ]);
-    };
+      ])
+    }
   },
-  { props: ["openTaskDetail", "callId", "toolName", "block", "t", "currentTask"] },
-);
+  { props: ['openTaskDetail', 'callId', 'toolName', 'block', 't', 'currentTask'] },
+)

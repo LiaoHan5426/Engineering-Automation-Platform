@@ -453,7 +453,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Renderer for one consecutive group of durable message images. The owner\nsupplies image references, an authorized loader, and alignment. A\nregistration replaces the shipped gallery; without one, images are omitted.',
     registerOptions: [],
     ownerProps: [
-      '/** Message image group handed to the optional attachment presentation plugin. */\nexport interface MessageImagesOwnerProps {\n  /** Durable references or submission-echo previews in source order. */\n  images: readonly MessageImageSource[];\n  /** Gateway-authorized image URL loader for the durable arm. */\n  loadImage: MessageImageLoader;\n  /** Horizontal placement inside the owning record. */\n  align: "start" | "end";\n  /** Force every image into the compact message-attachment tile size. */\n  compact?: boolean;\n  /** Fixed, uncropped thumbnail for an attachment list row. */\n  thumbnail?: boolean;\n}',
+      '/** Message image group handed to the optional attachment presentation plugin. */\nexport interface MessageImagesOwnerProps {\n  /** Durable references or submission-echo previews in source order. */\n  images: readonly MessageImageSource[]\n  /** Gateway-authorized image URL loader for the durable arm. */\n  loadImage: MessageImageLoader\n  /** Horizontal placement inside the owning record. */\n  align: \'start\' | \'end\'\n  /** Force every image into the compact message-attachment tile size. */\n  compact?: boolean\n  /** Fixed, uncropped thumbnail for an attachment list row. */\n  thumbnail?: boolean\n}',
     ],
     ownerPropsReferences: [
       'Message',
@@ -786,7 +786,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'User-message images, including pending and local-echo previews, independently replaceable from output images.',
     registerOptions: [],
     ownerProps: [
-      '/** Message image group handed to the optional attachment presentation plugin. */\nexport interface MessageImagesOwnerProps {\n  /** Durable references or submission-echo previews in source order. */\n  images: readonly MessageImageSource[];\n  /** Gateway-authorized image URL loader for the durable arm. */\n  loadImage: MessageImageLoader;\n  /** Horizontal placement inside the owning record. */\n  align: "start" | "end";\n  /** Force every image into the compact message-attachment tile size. */\n  compact?: boolean;\n  /** Fixed, uncropped thumbnail for an attachment list row. */\n  thumbnail?: boolean;\n}',
+      '/** Message image group handed to the optional attachment presentation plugin. */\nexport interface MessageImagesOwnerProps {\n  /** Durable references or submission-echo previews in source order. */\n  images: readonly MessageImageSource[]\n  /** Gateway-authorized image URL loader for the durable arm. */\n  loadImage: MessageImageLoader\n  /** Horizontal placement inside the owning record. */\n  align: \'start\' | \'end\'\n  /** Force every image into the compact message-attachment tile size. */\n  compact?: boolean\n  /** Fixed, uncropped thumbnail for an attachment list row. */\n  thumbnail?: boolean\n}',
     ],
     ownerPropsReferences: [
       'Message',
@@ -840,7 +840,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Owner values used to elect a composer takeover. */\nexport interface ComposerChainProps {\n  /** Current Session identity used by temporary business-owned entries. */\n  sessionId: SessionId | undefined;\n  /** Current Session lifecycle state, absent without a selected Session. */\n  session: SessionSnapshot | undefined;\n  /** Effective business-owned interaction awaiting the user in this Session. */\n  pendingInteraction: SessionPendingInteraction | undefined;\n}',
+      '/** Owner values used to elect a composer takeover. */\nexport interface ComposerChainProps {\n  /** Current Session identity used by temporary business-owned entries. */\n  sessionId: SessionId | undefined\n  /** Current Session lifecycle state, absent without a selected Session. */\n  session: SessionSnapshot | undefined\n  /** Effective business-owned interaction awaiting the user in this Session. */\n  pendingInteraction: SessionPendingInteraction | undefined\n}',
     ],
     ownerPropsReferences: [
       'SessionId',
@@ -890,7 +890,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Resident composer body, including the no-Session inert state; fixed overlays must portal to\nthe document body because the docked composer contains them.',
     registerOptions: [],
     ownerProps: [
-      '/** Owner share of the resident composer bar. */\nexport interface ComposerBarOwnerProps {\n  /** Hero uses centered placement; composer uses the active bottom placement. */\n  variant: "hero" | "composer";\n  /** Conversation content occurrence rendering this composer; an unaddressed document paste reaches the main one. */\n  occurrence: ConversationContentInputProps["variant"];\n  /** A feature-owned reason that makes message input inert while leaving model selection live. */\n  blocked?: { readonly reason: string };\n  /** Lock all message actions while preserving the resident composer surface. */\n  disabled?: boolean;\n  /** Whether the shared Workspace picker is expanded. */\n  workspacePickerOpen?: boolean;\n  /** Open the Workspace picker from the inert composer surface. */\n  onRequestWorkspace?: () => void;\n  placeholder?: string;\n  /** Optional content rendered above the composer surface. */\n  accessory?: VNodeChild;\n}',
+      '/** Owner share of the resident composer bar. */\nexport interface ComposerBarOwnerProps {\n  /** Hero uses centered placement; composer uses the active bottom placement. */\n  variant: \'hero\' | \'composer\'\n  /** Conversation content occurrence rendering this composer; an unaddressed document paste reaches the main one. */\n  occurrence: ConversationContentInputProps[\'variant\']\n  /** A feature-owned reason that makes message input inert while leaving model selection live. */\n  blocked?: { readonly reason: string }\n  /** Lock all message actions while preserving the resident composer surface. */\n  disabled?: boolean\n  /** Whether the shared Workspace picker is expanded. */\n  workspacePickerOpen?: boolean\n  /** Open the Workspace picker from the inert composer surface. */\n  onRequestWorkspace?: () => void\n  placeholder?: string\n  /** Optional content rendered above the composer surface. */\n  accessory?: VNodeChild\n}',
     ],
     ownerPropsReferences: [
       'ConversationContentInputProps',
@@ -1034,7 +1034,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Global navigation before the Session title, available without a Session.',
     registerOptions: [],
     ownerProps: [
-      '/** The leading seat exposes global navigation independently of a Session. */\nexport interface ConversationHeaderLeadingOwnerProps {\n  /** Marker field: the occupant receives no owner-specific values. */\n  children?: never;\n}',
+      '/** The leading seat exposes global navigation independently of a Session. */\nexport interface ConversationHeaderLeadingOwnerProps {\n  /** Marker field: the occupant receives no owner-specific values. */\n  children?: never\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1066,7 +1066,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Agent-preset control staged for a New Session.',
     registerOptions: [],
     ownerProps: [
-      '/** Owner share of the Hero agent-preset control. */\nexport interface HeroAgentPresetOwnerProps {\n  /** Marker field: the occupant owns its roster and staged selection. */\n  children?: never;\n}',
+      '/** Owner share of the Hero agent-preset control. */\nexport interface HeroAgentPresetOwnerProps {\n  /** Marker field: the occupant owns its roster and staged selection. */\n  children?: never\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1107,7 +1107,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Brand mark shown before the blank-session headline.',
     registerOptions: [],
     ownerProps: [
-      '/** Brand-mark presentation selected by the blank home. */\nexport interface HeroBrandMarkOwnerProps {\n  /** Requested square edge in pixels. */\n  size: number;\n  /** Host class preserving the surrounding mark geometry. */\n  className?: string | undefined;\n}',
+      '/** Brand-mark presentation selected by the blank home. */\nexport interface HeroBrandMarkOwnerProps {\n  /** Requested square edge in pixels. */\n  size: number\n  /** Host class preserving the surrounding mark geometry. */\n  className?: string | undefined\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1158,7 +1158,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Conversation state exposed to scroll-body frame layers. */\nexport interface HeroFrameOwnerProps {\n  /** Whether the body shows the blank home of a standalone, non-embedded Conversation. */\n  hero: boolean;\n}',
+      '/** Conversation state exposed to scroll-body frame layers. */\nexport interface HeroFrameOwnerProps {\n  /** Whether the body shows the blank home of a standalone, non-embedded Conversation. */\n  hero: boolean\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1252,7 +1252,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Workspace picker shown by the blank-session Hero.',
     registerOptions: [],
     ownerProps: [
-      '/** Owner share common to blank-session Workspace pickers. */\nexport interface EmptyWorkspaceOwnerProps {\n  open: boolean;\n  anchorRef?: Ref<HTMLElement | null>;\n  /** Currently selected Workspace, when available. */\n  selectedId?: WorkspaceId | undefined;\n  onPick: (workspaceId: WorkspaceId) => void;\n  onClose: () => void;\n}',
+      '/** Owner share common to blank-session Workspace pickers. */\nexport interface EmptyWorkspaceOwnerProps {\n  open: boolean\n  anchorRef?: Ref<HTMLElement | null>\n  /** Currently selected Workspace, when available. */\n  selectedId?: WorkspaceId | undefined\n  onPick: (workspaceId: WorkspaceId) => void\n  onClose: () => void\n}',
     ],
     ownerPropsReferences: [
       'Workspace',
@@ -1288,7 +1288,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Directory-flow hole under the conversation empty-state picker (declared by the WorkspacePicker entry).',
     registerOptions: [],
     ownerProps: [
-      '/**\n * Owner share of the directory-flow holes: the complete conversation between\n * the trigger surface and the picking interaction. The occupant reads `open`\n * to run/render its interaction and reports exactly one outcome per open.\n */\nexport interface DirectoryFlowOwnerProps {\n  /** True while a picking interaction is requested; flipping back to false withdraws the request. */\n  open: boolean;\n  /** True while the owner adopts a picked path (`createWorkspace` in flight); occupants disable their commit affordances. */\n  busy: boolean;\n  /** The operator picked a directory (absolute host path); the owner adopts it. */\n  onPicked: (path: string) => void;\n  /** The operator dismissed the interaction; the owner just closes the flow. */\n  onCancel: () => void;\n  /** The interaction itself failed (chooser missing, listing denied); the owner shows its error surface. */\n  onError: (message: string) => void;\n}',
+      '/**\n * Owner share of the directory-flow holes: the complete conversation between\n * the trigger surface and the picking interaction. The occupant reads `open`\n * to run/render its interaction and reports exactly one outcome per open.\n */\nexport interface DirectoryFlowOwnerProps {\n  /** True while a picking interaction is requested; flipping back to false withdraws the request. */\n  open: boolean\n  /** True while the owner adopts a picked path (`createWorkspace` in flight); occupants disable their commit affordances. */\n  busy: boolean\n  /** The operator picked a directory (absolute host path); the owner adopts it. */\n  onPicked: (path: string) => void\n  /** The operator dismissed the interaction; the owner just closes the flow. */\n  onCancel: () => void\n  /** The interaction itself failed (chooser missing, listing denied); the owner shows its error surface. */\n  onError: (message: string) => void\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1323,7 +1323,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Compact action after the model selector; it can expand across the toolbar while retaining the\neditor and submit action, and fixed overlays must portal to the document body because the\ndocked composer contains them.',
     registerOptions: [],
     ownerProps: [
-      '/** A toolbar activity hides ordinary accessory controls while expanded; its occupant must release expansion on unmount. */\nexport interface InputActivityOwnerProps extends InputControlOwnerProps {\n  /** @param active - whether the occupant needs the toolbar width before the submit action. */\n  onActiveChange: (active: boolean) => void;\n}',
+      '/** A toolbar activity hides ordinary accessory controls while expanded; its occupant must release expansion on unmount. */\nexport interface InputActivityOwnerProps extends InputControlOwnerProps {\n  /** @param active - whether the occupant needs the toolbar width before the submit action. */\n  onActiveChange: (active: boolean) => void\n}',
     ],
     ownerPropsReferences: [
       'InputControlOwnerProps',
@@ -1368,7 +1368,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Optional draft-attachment rail and drop target; fixed overlays must portal to the document\nbody because the docked composer contains them.',
     registerOptions: [],
     ownerProps: [
-      '/** Input state handed to the optional attachment presentation plugin. */\nexport interface ComposerAttachmentsOwnerProps {\n  /** Browser-owned draft attachments in input order. */\n  attachments: readonly ComposerAttachment[];\n  /** Whether a document-level file drop may add attachments now. */\n  canAcceptDrop: boolean;\n  /**\n   * Add one dropped batch through the composer\'s validation path.\n   * @param files - dropped, pasted, or picked browser files in source order.\n   * @param directories - members of `files` the drop source identified as directories.\n   */\n  onAddFiles: (files: readonly File[], directories?: ReadonlySet<File>) => void;\n  /** Remove one draft attachment through the Conversation service. */\n  onRemoveAttachment: (id: DraftAttachmentId) => void;\n  /** Current per-draft upload states for file-kind attachments. */\n  uploads: DraftFileUploads;\n  /** Restart one failed file upload. */\n  onRetryFile: (id: DraftAttachmentId) => void;\n  /**\n   * Explain one upload the Host refused; such a draft cannot be retried and\n   * stays until it is removed.\n   * @param reason - the refusal `reason` the failed upload carries.\n   * @returns localized text naming the limit or the way  /* …truncated — full shape in source */',
+      '/** Input state handed to the optional attachment presentation plugin. */\nexport interface ComposerAttachmentsOwnerProps {\n  /** Browser-owned draft attachments in input order. */\n  attachments: readonly ComposerAttachment[]\n  /** Whether a document-level file drop may add attachments now. */\n  canAcceptDrop: boolean\n  /**\n   * Add one dropped batch through the composer\'s validation path.\n   * @param files - dropped, pasted, or picked browser files in source order.\n   * @param directories - members of `files` the drop source identified as directories.\n   */\n  onAddFiles: (files: readonly File[], directories?: ReadonlySet<File>) => void\n  /** Remove one draft attachment through the Conversation service. */\n  onRemoveAttachment: (id: DraftAttachmentId) => void\n  /** Current per-draft upload states for file-kind attachments. */\n  uploads: DraftFileUploads\n  /** Restart one failed file upload. */\n  onRetryFile: (id: DraftAttachmentId) => void\n  /**\n   * Explain one upload the Host refused; such a draft cannot be retried and\n   * stays until it is removed.\n   * @param reason - the refusal `reason` the failed upload carries.\n   * @returns localized text naming the limit or the way out.\n  /* …truncated — full shape in source */',
     ],
     ownerPropsReferences: [
       'ComposerAttachment',
@@ -1432,7 +1432,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Point-in-time owner values for composer extension entries. */\nexport interface InputZone {\n  readonly session: SessionSnapshot;\n  readonly input: InputState;\n}',
+      '/** Point-in-time owner values for composer extension entries. */\nexport interface InputZone {\n  readonly session: SessionSnapshot\n  readonly input: InputState\n}',
     ],
     ownerPropsReferences: [
       'InputState',
@@ -1541,7 +1541,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Model selector inside the composer tool row. When expanded controls cannot\nshare a line, the row sets --dsh-composer-model-text-display to none and\n--dsh-composer-model-icon-display to block for an occupant\'s compact display.\nFixed overlays must portal to the document body because the docked composer contains them.',
     registerOptions: [],
     ownerProps: [
-      '/** Owner share of the named plan, permission, and model controls. */\nexport interface InputControlOwnerProps {\n  /** Whether the composer currently refuses interaction. */\n  locked: boolean;\n}',
+      '/** Owner share of the named plan, permission, and model controls. */\nexport interface InputControlOwnerProps {\n  /** Whether the composer currently refuses interaction. */\n  locked: boolean\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1585,7 +1585,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Non-interactive inline model label; selection controls remain owner-managed.\nWithout a contribution, the badge precedes the catalog name in the trigger\nand follows it in menus.',
     registerOptions: [],
     ownerProps: [
-      '/** Catalog data for a model name inside the composer\'s existing controls. */\nexport interface ModelLabelOwner {\n  /** Provider identity and localized display name; contains no connection configuration. */\n  provider: Pick<ModelProviderGroup, "id" | "name">;\n  /** The exact provider\'s model catalog entry. */\n  model: ModelCatalogModel;\n  /** Trigger caption, root-menu current value, or selectable model row. */\n  placement: "trigger" | "menu" | "option";\n  /** Whether this provider/model pair is the current selection. */\n  selected: boolean;\n}',
+      '/** Catalog data for a model name inside the composer\'s existing controls. */\nexport interface ModelLabelOwner {\n  /** Provider identity and localized display name; contains no connection configuration. */\n  provider: Pick<ModelProviderGroup, \'id\' | \'name\'>\n  /** The exact provider\'s model catalog entry. */\n  model: ModelCatalogModel\n  /** Trigger caption, root-menu current value, or selectable model row. */\n  placement: \'trigger\' | \'menu\' | \'option\'\n  /** Whether this provider/model pair is the current selection. */\n  selected: boolean\n}',
     ],
     ownerPropsReferences: [
       'ModelCatalogModel',
@@ -1648,8 +1648,8 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Selection state and feedback shared by menu option entries and detail panes. */\nexport interface ModelMenuControls {\n  /** Whether the composer refuses changes, including while a model selection is saving. */\n  locked: boolean;\n  /** Close the menu and focus its trigger synchronously before opening another overlay. */\n  dismiss: () => void;\n  /** Report a failed selection through the menu owner\'s persistent toast. */\n  reportFailure: (message: string) => void;\n}',
-      '/** Root-menu controls for opening plugin-owned settings panes. */\nexport type ModelMenuOptions = ModelMenuControls & {\n  /**\n   * Open pane.key in conversation.input.model.pane with pane.title as its localized accessible name.\n   * The root button\'s data-model-menu-pane must match pane.key for focus return.\n   */\n  openPane: (pane: ModelMenuPaneRef) => void;\n};',
+      '/** Selection state and feedback shared by menu option entries and detail panes. */\nexport interface ModelMenuControls {\n  /** Whether the composer refuses changes, including while a model selection is saving. */\n  locked: boolean\n  /** Close the menu and focus its trigger synchronously before opening another overlay. */\n  dismiss: () => void\n  /** Report a failed selection through the menu owner\'s persistent toast. */\n  reportFailure: (message: string) => void\n}',
+      '/** Root-menu controls for opening plugin-owned settings panes. */\nexport type ModelMenuOptions = ModelMenuControls & {\n  /**\n   * Open pane.key in conversation.input.model.pane with pane.title as its localized accessible name.\n   * The root button\'s data-model-menu-pane must match pane.key for focus return.\n   */\n  openPane: (pane: ModelMenuPaneRef) => void\n}',
     ],
     ownerPropsReferences: [
       'ModelMenuPaneRef',
@@ -1701,7 +1701,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Selection state and feedback shared by menu option entries and detail panes. */\nexport interface ModelMenuControls {\n  /** Whether the composer refuses changes, including while a model selection is saving. */\n  locked: boolean;\n  /** Close the menu and focus its trigger synchronously before opening another overlay. */\n  dismiss: () => void;\n  /** Report a failed selection through the menu owner\'s persistent toast. */\n  reportFailure: (message: string) => void;\n}',
+      '/** Selection state and feedback shared by menu option entries and detail panes. */\nexport interface ModelMenuControls {\n  /** Whether the composer refuses changes, including while a model selection is saving. */\n  locked: boolean\n  /** Close the menu and focus its trigger synchronously before opening another overlay. */\n  dismiss: () => void\n  /** Report a failed selection through the menu owner\'s persistent toast. */\n  reportFailure: (message: string) => void\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1806,7 +1806,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Current-session permission control inside the composer tool row; fixed overlays must portal\nto the document body because the docked composer contains them.',
     registerOptions: [],
     ownerProps: [
-      '/** Owner share of the named plan, permission, and model controls. */\nexport interface InputControlOwnerProps {\n  /** Whether the composer currently refuses interaction. */\n  locked: boolean;\n}',
+      '/** Owner share of the named plan, permission, and model controls. */\nexport interface InputControlOwnerProps {\n  /** Whether the composer currently refuses interaction. */\n  locked: boolean\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1850,7 +1850,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Plan control inside the composer tool row; fixed overlays must portal to the document body\nbecause the docked composer contains them.',
     registerOptions: [],
     ownerProps: [
-      '/** Owner share of the named plan, permission, and model controls. */\nexport interface InputControlOwnerProps {\n  /** Whether the composer currently refuses interaction. */\n  locked: boolean;\n}',
+      '/** Owner share of the named plan, permission, and model controls. */\nexport interface InputControlOwnerProps {\n  /** Whether the composer currently refuses interaction. */\n  locked: boolean\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -2114,7 +2114,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Header actions derive their state from standard Session props. */\nexport interface ConversationHeaderActionOwnerProps {\n  /** Marker field: entries receive no owner-specific values. */\n  children?: never;\n}',
+      '/** Header actions derive their state from standard Session props. */\nexport interface ConversationHeaderActionOwnerProps {\n  /** Marker field: entries receive no owner-specific values. */\n  children?: never\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -2220,7 +2220,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'The header\'s far-right corner, past the utilities\' edge and into the\nheader\'s own padding, for one control. The corner is laid out only while\nits occupant renders something; an occupant with nothing to show renders\nnothing, and the utilities take the header\'s edge.',
     registerOptions: [],
     ownerProps: [
-      '/** The header corner\'s occupant derives its state from standard Session props. */\nexport interface ConversationHeaderCornerOwnerProps {\n  /** Marker field: the occupant receives no owner-specific values. */\n  children?: never;\n}',
+      '/** The header corner\'s occupant derives its state from standard Session props. */\nexport interface ConversationHeaderCornerOwnerProps {\n  /** Marker field: the occupant receives no owner-specific values. */\n  children?: never\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -2263,7 +2263,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Optional replacement for one Session breadcrumb title; overlays must portal because the title area clips overflow.',
     registerOptions: [],
     ownerProps: [
-      '/** Plain breadcrumb data handed to the optional lineage renderer. */\nexport interface ConversationHeaderLineageOwnerProps {\n  /** Session represented by this breadcrumb title. */\n  lineageSessionId: SessionId;\n  /** Display title available to a combined title/control renderer. */\n  displayTitle: string;\n  /** Navigate to an ancestor title when present. */\n  openTitle?: () => void;\n}',
+      '/** Plain breadcrumb data handed to the optional lineage renderer. */\nexport interface ConversationHeaderLineageOwnerProps {\n  /** Session represented by this breadcrumb title. */\n  lineageSessionId: SessionId\n  /** Display title available to a combined title/control renderer. */\n  displayTitle: string\n  /** Navigate to an ancestor title when present. */\n  openTitle?: () => void\n}',
     ],
     ownerPropsReferences: [
       'SessionId',
@@ -2327,7 +2327,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Header actions derive their state from standard Session props. */\nexport interface ConversationHeaderActionOwnerProps {\n  /** Marker field: entries receive no owner-specific values. */\n  children?: never;\n}',
+      '/** Header actions derive their state from standard Session props. */\nexport interface ConversationHeaderActionOwnerProps {\n  /** Marker field: entries receive no owner-specific values. */\n  children?: never\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -2391,7 +2391,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Owner share of the View tab row\'s More menu rows. */\nexport interface ConversationViewActionsOwnerProps {\n  /** Views outside the header in registration order. */\n  readonly entries: readonly ConversationViewActionEntry[];\n  /**\n   * Select a View in this Session without changing its pin state.\n   * @param id - Listed View id.\n   */\n  readonly onOpen: (id: string) => void;\n  /**\n   * Pin or unpin a View in every Session.\n   * @param id - Listed View id.\n   * @param pinned - Whether the View is manually pinned; the width budget can still fold it into More.\n   */\n  readonly onPinnedChange: (id: string, pinned: boolean) => void;\n  /** Close the More menu. */\n  readonly onDismiss: () => void;\n}',
+      '/** Owner share of the View tab row\'s More menu rows. */\nexport interface ConversationViewActionsOwnerProps {\n  /** Views outside the header in registration order. */\n  readonly entries: readonly ConversationViewActionEntry[]\n  /**\n   * Select a View in this Session without changing its pin state.\n   * @param id - Listed View id.\n   */\n  readonly onOpen: (id: string) => void\n  /**\n   * Pin or unpin a View in every Session.\n   * @param id - Listed View id.\n   * @param pinned - Whether the View is manually pinned; the width budget can still fold it into More.\n   */\n  readonly onPinnedChange: (id: string, pinned: boolean) => void\n  /** Close the More menu. */\n  readonly onDismiss: () => void\n}',
     ],
     ownerPropsReferences: [
       'ConversationViewActionEntry',
@@ -2427,7 +2427,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Renderer for one group of durable record images in the Trajectory\nledger. The owner supplies image references, an authorized loader, and\nalignment. A registration replaces the shipped gallery; without one,\nimages are omitted.',
     registerOptions: [],
     ownerProps: [
-      '/** Message image group handed to the optional attachment presentation plugin. */\nexport interface MessageImagesOwnerProps {\n  /** Durable references or submission-echo previews in source order. */\n  images: readonly MessageImageSource[];\n  /** Gateway-authorized image URL loader for the durable arm. */\n  loadImage: MessageImageLoader;\n  /** Horizontal placement inside the owning record. */\n  align: "start" | "end";\n  /** Force every image into the compact message-attachment tile size. */\n  compact?: boolean;\n  /** Fixed, uncropped thumbnail for an attachment list row. */\n  thumbnail?: boolean;\n}',
+      '/** Message image group handed to the optional attachment presentation plugin. */\nexport interface MessageImagesOwnerProps {\n  /** Durable references or submission-echo previews in source order. */\n  images: readonly MessageImageSource[]\n  /** Gateway-authorized image URL loader for the durable arm. */\n  loadImage: MessageImageLoader\n  /** Horizontal placement inside the owning record. */\n  align: \'start\' | \'end\'\n  /** Force every image into the compact message-attachment tile size. */\n  compact?: boolean\n  /** Fixed, uncropped thumbnail for an attachment list row. */\n  thumbnail?: boolean\n}',
     ],
     ownerPropsReferences: [
       'Message',
@@ -2481,7 +2481,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** JSON-only owner data common to every business text node. */\nexport interface UserTextNodeOwnerProps {\n  readonly raw: string;\n  readonly interactive: boolean;\n}',
+      '/** JSON-only owner data common to every business text node. */\nexport interface UserTextNodeOwnerProps {\n  readonly raw: string\n  readonly interactive: boolean\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -2550,7 +2550,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Conversation View entries obtain their data from registered standard hooks. */\nexport interface ConvViewOwnerProps {\n  /** Open a tool call\'s inspector when an inspection target is available. */\n  inspectCall: ((callId: string) => void) | undefined;\n  /** Focus request addressed to the selected View. */\n  viewRequest: import("./views.ts").ConversationViewRequest | null;\n  /** Select a View and address one opaque focus identity to it. */\n  openView: (view: string, focus: string) => void;\n  /** Acknowledge the current one-shot focus request. */\n  completeViewRequest: () => void;\n}',
+      '/** Conversation View entries obtain their data from registered standard hooks. */\nexport interface ConvViewOwnerProps {\n  /** Open a tool call\'s inspector when an inspection target is available. */\n  inspectCall: ((callId: string) => void) | undefined\n  /** Focus request addressed to the selected View. */\n  viewRequest: import(\'./views.ts\').ConversationViewRequest | null\n  /** Select a View and address one opaque focus identity to it. */\n  openView: (view: string, focus: string) => void\n  /** Acknowledge the current one-shot focus request. */\n  completeViewRequest: () => void\n}',
     ],
     ownerPropsReferences: [
       'ConversationViewRequest',
@@ -2617,7 +2617,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     ownerProps: [
       '/** Native file action selected by an explicit user gesture. */\nexport type PresentedAction = \'open\' | \'reveal\'',
-      '/**\n * Settled result of one native file gesture, for the contributed control to\n * announce: the Host acknowledged an application open or a file-manager\n * reveal, the gesture failed, or the request was deliberately dropped because\n * the same file was already opening or this controller was disposed. Only an\n * acknowledged operation may be announced as a success.\n */\nexport type PresentedOpenOutcome =\n  | { readonly kind: "opened" }\n  | { readonly kind: "revealed" }\n  | { readonly kind: "failed"; readonly failure: PresentedOpenFailure }\n  | { readonly kind: "skipped" };',
+      '/**\n * Settled result of one native file gesture, for the contributed control to\n * announce: the Host acknowledged an application open or a file-manager\n * reveal, the gesture failed, or the request was deliberately dropped because\n * the same file was already opening or this controller was disposed. Only an\n * acknowledged operation may be announced as a success.\n */\nexport type PresentedOpenOutcome =\n  | { readonly kind: \'opened\' }\n  | { readonly kind: \'revealed\' }\n  | { readonly kind: \'failed\'; readonly failure: PresentedOpenFailure }\n  | { readonly kind: \'skipped\' }',
     ],
     ownerPropsReferences: [
       'PresentedOpenFailure',
@@ -5113,7 +5113,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     keyDomain: 'open: any string the owner dispatches (no compile-time key set), none are taken yet',
     hookContext: 'UseSidebarRightTabInfo',
-    slotInject: '{ hooks: { tabInfo: SlotHookFactory<\'sidebar.right.tab.document\', UseSidebarRightTabInfo>; }; }',
+    slotInject: '{ hooks: { tabInfo: SlotHookFactory<\'sidebar.right.tab.document\', UseSidebarRightTabInfo> } }',
     declaredBy: 'an entry in \'sidebar.right.tab.document\' (client-ui-sidebar-documentpreview), so it exists while that entry is mounted',
     occupants: [
       'client-ui-sidebar-documentpreview LazyPdfBody',
@@ -5535,7 +5535,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/**\n * Owner share of the two Session-row schedule seats. Both receive only the\n * row\'s Session identity: the occupant reads that Session\'s own scheduled\n * tasks, and reading them activates nothing.\n */\nexport interface SessionRowScheduleOwnerProps {\n  /** Session this row shows; the occupant addresses its own data by this id. */\n  readonly sessionId: SessionId;\n}',
+      '/**\n * Owner share of the two Session-row schedule seats. Both receive only the\n * row\'s Session identity: the occupant reads that Session\'s own scheduled\n * tasks, and reading them activates nothing.\n */\nexport interface SessionRowScheduleOwnerProps {\n  /** Session this row shows; the occupant addresses its own data by this id. */\n  readonly sessionId: SessionId\n}',
     ],
     ownerPropsReferences: [
       'SessionId',
@@ -5591,7 +5591,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/**\n * Owner share of the two Session-row schedule seats. Both receive only the\n * row\'s Session identity: the occupant reads that Session\'s own scheduled\n * tasks, and reading them activates nothing.\n */\nexport interface SessionRowScheduleOwnerProps {\n  /** Session this row shows; the occupant addresses its own data by this id. */\n  readonly sessionId: SessionId;\n}',
+      '/**\n * Owner share of the two Session-row schedule seats. Both receive only the\n * row\'s Session identity: the occupant reads that Session\'s own scheduled\n * tasks, and reading them activates nothing.\n */\nexport interface SessionRowScheduleOwnerProps {\n  /** Session this row shows; the occupant addresses its own data by this id. */\n  readonly sessionId: SessionId\n}',
     ],
     ownerPropsReferences: [
       'SessionId',
@@ -5647,7 +5647,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Owner share of the trailing icon list; rendering does not bind the Session. */\nexport interface SessionRowTrailingOwnerProps {\n  /** Session this row shows. */\n  readonly sessionId: SessionId;\n}',
+      '/** Owner share of the trailing icon list; rendering does not bind the Session. */\nexport interface SessionRowTrailingOwnerProps {\n  /** Session this row shows. */\n  readonly sessionId: SessionId\n}',
     ],
     ownerPropsReferences: [
       'SessionId',
@@ -5783,7 +5783,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Directory-flow hole under the sidebar browsing region (declared by the WorkspaceBrowser entry).',
     registerOptions: [],
     ownerProps: [
-      '/**\n * Owner share of the directory-flow holes: the complete conversation between\n * the trigger surface and the picking interaction. The occupant reads `open`\n * to run/render its interaction and reports exactly one outcome per open.\n */\nexport interface DirectoryFlowOwnerProps {\n  /** True while a picking interaction is requested; flipping back to false withdraws the request. */\n  open: boolean;\n  /** True while the owner adopts a picked path (`createWorkspace` in flight); occupants disable their commit affordances. */\n  busy: boolean;\n  /** The operator picked a directory (absolute host path); the owner adopts it. */\n  onPicked: (path: string) => void;\n  /** The operator dismissed the interaction; the owner just closes the flow. */\n  onCancel: () => void;\n  /** The interaction itself failed (chooser missing, listing denied); the owner shows its error surface. */\n  onError: (message: string) => void;\n}',
+      '/**\n * Owner share of the directory-flow holes: the complete conversation between\n * the trigger surface and the picking interaction. The occupant reads `open`\n * to run/render its interaction and reports exactly one outcome per open.\n */\nexport interface DirectoryFlowOwnerProps {\n  /** True while a picking interaction is requested; flipping back to false withdraws the request. */\n  open: boolean\n  /** True while the owner adopts a picked path (`createWorkspace` in flight); occupants disable their commit affordances. */\n  busy: boolean\n  /** The operator picked a directory (absolute host path); the owner adopts it. */\n  onPicked: (path: string) => void\n  /** The operator dismissed the interaction; the owner just closes the flow. */\n  onCancel: () => void\n  /** The interaction itself failed (chooser missing, listing denied); the owner shows its error surface. */\n  onError: (message: string) => void\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -5837,7 +5837,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Owner share of one Session row action occurrence: the row the action belongs to. */\nexport interface SessionRowOwnerProps {\n  /** Session the row shows. */\n  sessionId: SessionId;\n  /** Row display title: persisted title, or empty when the Session has none. */\n  displayTitle: string;\n}',
+      '/** Owner share of one Session row action occurrence: the row the action belongs to. */\nexport interface SessionRowOwnerProps {\n  /** Session the row shows. */\n  sessionId: SessionId\n  /** Row display title: persisted title, or empty when the Session has none. */\n  displayTitle: string\n}',
     ],
     ownerPropsReferences: [
       'SessionId',
@@ -5856,7 +5856,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     keyDomain: '',
     hookContext: 'MenuOpenState',
-    slotInject: '{ hooks: { menuOpenState: SlotHookFactory<"sidebar.workspaces.session.menu.item", UseMenuOpenState>; shortcuts: HostObservable<readonly ShortcutCatalogEntry[]>; }; }',
+    slotInject: '{ hooks: { menuOpenState: SlotHookFactory<\'sidebar.workspaces.session.menu.item\', UseMenuOpenState> shortcuts: HostObservable<readonly ShortcutCatalogEntry[]> } }',
     declaredBy: 'an entry in \'contextMenu.content\' (client-ui-workspace), so it exists while that entry is mounted',
     occupants: [],
     replaceRisk: 'none',
@@ -5890,7 +5890,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Owner share of one Session row action occurrence: the row the action belongs to. */\nexport interface SessionRowOwnerProps {\n  /** Session the row shows. */\n  sessionId: SessionId;\n  /** Row display title: persisted title, or empty when the Session has none. */\n  displayTitle: string;\n}',
+      '/** Owner share of one Session row action occurrence: the row the action belongs to. */\nexport interface SessionRowOwnerProps {\n  /** Session the row shows. */\n  sessionId: SessionId\n  /** Row display title: persisted title, or empty when the Session has none. */\n  displayTitle: string\n}',
     ],
     ownerPropsReferences: [
       'SessionId',
@@ -5927,7 +5927,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Durable images of a settled image-bearing Tool call, rendered through\nthe attachment presentation plugin. The Tool layer never imports an\nattachment implementation: a toolview declares this slot as a child and\nrenders it with the image card\'s references plus the Gateway-authorized\nloader it received in its owner, and the attachment plugin fills the\ngallery. Composing no attachment presentation plugin renders nothing,\nwhich is why the image card keeps its own envelope text beside the\ngallery. A child slot is declared by exactly one entry: registering a\nsecond toolview that declares the same child throws at load, so a\nfuture image-bearing tool must reuse this entry or own a distinct\nslot.',
     registerOptions: [],
     ownerProps: [
-      '/** Owner currency of the Tool image gallery slot: references plus the loader. */\nexport interface ToolImagesOwnerProps {\n  /** Durable references or submission-echo previews in result order. */\n  images: readonly MessageImageSource[];\n  /** Gateway-authorized image URL loader for the durable arm. */\n  loadImage: MessageImageLoader;\n  /** Horizontal placement inside the owning record. */\n  align: "start" | "end";\n}',
+      '/** Owner currency of the Tool image gallery slot: references plus the loader. */\nexport interface ToolImagesOwnerProps {\n  /** Durable references or submission-echo previews in result order. */\n  images: readonly MessageImageSource[]\n  /** Gateway-authorized image URL loader for the durable arm. */\n  loadImage: MessageImageLoader\n  /** Horizontal placement inside the owning record. */\n  align: \'start\' | \'end\'\n}',
     ],
     ownerPropsReferences: [
       'MessageImageLoader',
@@ -5980,9 +5980,9 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Standard owner currency supplied to every atomic Tool view. */\nexport interface ToolCallCommonProps {\n  /** Stable Hook; each invocation owns its open state and subscribes to enclosing-Turn resets. */\n  useDisclosure: UseDisclosure;\n  /** Call identity, stable across all stages. */\n  callId: string;\n  /** Wire Tool name and keyed dispatch value. */\n  toolName: string;\n  /** Session workspace root for relative summaries. */\n  cwd?: string | undefined;\n  /** Host account home; POSIX home-rooted summaries display as `~`. */\n  home?: string | undefined;\n  /** Open an argument path at its optional requested line. */\n  openFile: (path: string, options?: OpenFileOptions) => void;\n  /** Chat-supplied, Gateway-authorized loader for durable images; Tool views do not manage attachment URLs. */\n  loadImage: MessageImageLoader;\n  /** Inspect this call in the trajectory view when available. */\n  inspect?: (() => void) | undefined;\n}',
-      '/** Common owner callbacks and the data admitted at the current tool stage. */\nexport type ToolCallOwnerProps = ToolCallCommonProps & ToolCallPhaseProps;',
-      '/** Stage-specific tool data; only start/result expose the dispatched call material. */\nexport type ToolCallPhaseProps =\n  | { readonly phase: "preparing"; readonly block: PreparingToolCall }\n  | { readonly phase: "start"; readonly block: StartedToolCall }\n  | { readonly phase: "result"; readonly block: ToolResultNode };',
+      '/** Standard owner currency supplied to every atomic Tool view. */\nexport interface ToolCallCommonProps {\n  /** Stable Hook; each invocation owns its open state and subscribes to enclosing-Turn resets. */\n  useDisclosure: UseDisclosure\n  /** Call identity, stable across all stages. */\n  callId: string\n  /** Wire Tool name and keyed dispatch value. */\n  toolName: string\n  /** Session workspace root for relative summaries. */\n  cwd?: string | undefined\n  /** Host account home; POSIX home-rooted summaries display as `~`. */\n  home?: string | undefined\n  /** Open an argument path at its optional requested line. */\n  openFile: (path: string, options?: OpenFileOptions) => void\n  /** Chat-supplied, Gateway-authorized loader for durable images; Tool views do not manage attachment URLs. */\n  loadImage: MessageImageLoader\n  /** Inspect this call in the trajectory view when available. */\n  inspect?: (() => void) | undefined\n}',
+      '/** Common owner callbacks and the data admitted at the current tool stage. */\nexport type ToolCallOwnerProps = ToolCallCommonProps & ToolCallPhaseProps',
+      '/** Stage-specific tool data; only start/result expose the dispatched call material. */\nexport type ToolCallPhaseProps =\n  | { readonly phase: \'preparing\'; readonly block: PreparingToolCall }\n  | { readonly phase: \'start\'; readonly block: StartedToolCall }\n  | { readonly phase: \'result\'; readonly block: ToolResultNode }',
     ],
     ownerPropsReferences: [
       'MessageImageLoader',
@@ -6146,7 +6146,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Directory-flow hole under every `workspace.picker` Factory occurrence\n(declared by the Factory definition). A directory-picker package\nregisters the same occupant here as in the other two directory-flow\nholes; while this hole is empty, Factory occurrences offer no\n"Add workspace…" entry.',
     registerOptions: [],
     ownerProps: [
-      '/**\n * Owner share of the directory-flow holes: the complete conversation between\n * the trigger surface and the picking interaction. The occupant reads `open`\n * to run/render its interaction and reports exactly one outcome per open.\n */\nexport interface DirectoryFlowOwnerProps {\n  /** True while a picking interaction is requested; flipping back to false withdraws the request. */\n  open: boolean;\n  /** True while the owner adopts a picked path (`createWorkspace` in flight); occupants disable their commit affordances. */\n  busy: boolean;\n  /** The operator picked a directory (absolute host path); the owner adopts it. */\n  onPicked: (path: string) => void;\n  /** The operator dismissed the interaction; the owner just closes the flow. */\n  onCancel: () => void;\n  /** The interaction itself failed (chooser missing, listing denied); the owner shows its error surface. */\n  onError: (message: string) => void;\n}',
+      '/**\n * Owner share of the directory-flow holes: the complete conversation between\n * the trigger surface and the picking interaction. The occupant reads `open`\n * to run/render its interaction and reports exactly one outcome per open.\n */\nexport interface DirectoryFlowOwnerProps {\n  /** True while a picking interaction is requested; flipping back to false withdraws the request. */\n  open: boolean\n  /** True while the owner adopts a picked path (`createWorkspace` in flight); occupants disable their commit affordances. */\n  busy: boolean\n  /** The operator picked a directory (absolute host path); the owner adopts it. */\n  onPicked: (path: string) => void\n  /** The operator dismissed the interaction; the owner just closes the flow. */\n  onCancel: () => void\n  /** The interaction itself failed (chooser missing, listing denied); the owner shows its error surface. */\n  onError: (message: string) => void\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -6188,7 +6188,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Owner operations available to every keyed Workspace notice. */\nexport interface WorkspaceToastOwnerProps {\n  /** Dismiss the displayed notice. */\n  dismissToast: () => void;\n}',
+      '/** Owner operations available to every keyed Workspace notice. */\nexport interface WorkspaceToastOwnerProps {\n  /** Dismiss the displayed notice. */\n  dismissToast: () => void\n}',
     ],
     ownerPropsReferences: [
       'Workspace',
@@ -6210,16 +6210,16 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     slotInject: '',
     declaredBy: 'an entry in \'shell.overlay\' (client-ui-workspace), so it exists while that entry is mounted',
     occupants: [
-      'client-ui-workspace createToastEntry<PropsRuntime<"workspace.toast", "reading… key \'readingFailed\'',
-      'client-ui-workspace createToastEntry<PropsRuntime<"workspace.toast", "session… key \'sessionIdCopied\'',
-      'client-ui-workspace createToastEntry<PropsRuntime<"workspace.toast", "session… key \'sessionIdCopyFailed\'',
-      'client-ui-workspace createToastEntry<PropsRuntime<"workspace.toast", "pinFail… key \'pinFailed\'',
-      'client-ui-workspace createToastEntry<PropsRuntime<"workspace.toast", "unpinFa… key \'unpinFailed\'',
-      'client-ui-workspace createToastEntry<PropsRuntime<"workspace.toast", "archive… key \'archivedNotOpenable\'',
-      'client-ui-workspace createToastEntry<PropsRuntime<"workspace.toast", "default… key \'defaultWorkspaceFailed\'',
-      'client-ui-workspace createToastEntry<PropsRuntime<"workspace.toast", "shortcu… key \'shortcutForkFailed\'',
-      'client-ui-workspace createToastEntry<PropsRuntime<"workspace.toast", "createF… key \'createFailed\'',
-      'client-ui-workspace createToastEntry<PropsRuntime<"workspace.toast", "forkReq… key \'forkRequiresOpen\'',
+      'client-ui-workspace createToastEntry<PropsRuntime<\'workspace.toast\', \'reading… key \'readingFailed\'',
+      'client-ui-workspace createToastEntry<PropsRuntime<\'workspace.toast\', \'session… key \'sessionIdCopied\'',
+      'client-ui-workspace createToastEntry<PropsRuntime<\'workspace.toast\', \'session… key \'sessionIdCopyFailed\'',
+      'client-ui-workspace createToastEntry<PropsRuntime<\'workspace.toast\', \'pinFail… key \'pinFailed\'',
+      'client-ui-workspace createToastEntry<PropsRuntime<\'workspace.toast\', \'unpinFa… key \'unpinFailed\'',
+      'client-ui-workspace createToastEntry<PropsRuntime<\'workspace.toast\', \'archive… key \'archivedNotOpenable\'',
+      'client-ui-workspace createToastEntry<PropsRuntime<\'workspace.toast\', \'default… key \'defaultWorkspaceFailed\'',
+      'client-ui-workspace createToastEntry<PropsRuntime<\'workspace.toast\', \'shortcu… key \'shortcutForkFailed\'',
+      'client-ui-workspace createToastEntry<PropsRuntime<\'workspace.toast\', \'createF… key \'createFailed\'',
+      'client-ui-workspace createToastEntry<PropsRuntime<\'workspace.toast\', \'forkReq… key \'forkRequiresOpen\'',
       'client-ui-workspace ArchiveToastEntry',
     ],
     replaceRisk: 'shadows-shipped-ui',

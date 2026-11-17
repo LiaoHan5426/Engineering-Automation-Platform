@@ -22,8 +22,8 @@ function mountCopy(text: string) {
   const scope = effectScope()
   const result = scope.run(() => useClipboardCopy(() => source.value))
   if (result === undefined) throw new Error('Missing copy scope')
-  onTestFinished(() => scope.stop())
-  return { result, rerender: (next: { text: string }) => { source.value = next.text }, unmount: () => scope.stop() }
+  onTestFinished(() => { scope.stop() })
+  return { result, rerender: (next: { text: string }) => { source.value = next.text }, unmount: () => { scope.stop() } }
 }
 
 /** Complete the clipboard promise and its success feedback callback. */

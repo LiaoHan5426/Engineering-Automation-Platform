@@ -5,7 +5,7 @@
  */
 
 import type { ReasoningEffortId } from '@deepseek-ai/dsh-llm/types'
-import type { UserMessage } from '@deepseek-ai/dsh-llm/types'
+import type { ModelMessageSource, UserMessage } from '@deepseek-ai/dsh-llm/types'
 // Type-only: the Workspace registry's archive-admission family map this registry merges `turn` into.
 import type {} from '@deepseek-ai/dsh-workspace/types'
 import type { OptionalSessionSeq, SessionId, SessionSeq } from '@deepseek-ai/dsh-session/types'
@@ -45,15 +45,20 @@ export interface InboxState {
   readonly 'next-step': readonly UserMessage[]
 }
 
-/**
- * Wire-JSON pending Inbox value. Each message round-trips the session log
- * losslessly, but the fold state's full `UserMessage` type cannot cross a
- * typert Remote boundary (its source union carries an `unknown` replay
- * field), so the typed projection table keeps this JSON-safe form.
- */
+/** Preserve producer fields while exposing persisted model replay data as lossless JSON. */
+type InboxWireSource<S> = S extends ModelMessageSource
+  ? Omit<S, 'replayState'> & { replayState?: JsonValue }
+  : S
+
+/** The durable message shape; only opaque provider replay data needs a wire-specific type. */
+type InboxWireMessage = Omit<UserMessage, 'source'> & {
+  readonly source: InboxWireSource<UserMessage['source']>
+}
+
+/** Pending Inbox messages cross the wire unchanged after lossless session persistence. */
 export interface InboxWireState {
-  readonly 'next-turn': readonly JsonValue[]
-  readonly 'next-step': readonly JsonValue[]
+  readonly 'next-turn': readonly InboxWireMessage[]
+  readonly 'next-step': readonly InboxWireMessage[]
 }
 
 declare module '@deepseek-ai/dsh-session-projection/types' {

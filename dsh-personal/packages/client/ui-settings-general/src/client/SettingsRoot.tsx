@@ -23,8 +23,8 @@ import {
   watch,
   watchEffect,
   useId,
-} from "vue";
-import clsx from "clsx";
+} from 'vue'
+import clsx from 'clsx'
 import {
   ConnectionIndicator,
   Tooltip,
@@ -36,30 +36,30 @@ import {
   IconPersonalizationOutlineMedium,
   IconSettingsOutlineMedium,
   IconUserOutlineMedium,
-} from "@deepseek-ai/dsh-client-ui-primitives";
-import type { ConnectionIndicatorState } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { SettingsRootComponentProps, SettingsSectionRow } from "./shell-contract.ts";
-import css from "./SettingsRoot.module.css";
-import { DesktopUpdateIndicator } from "./DesktopUpdateIndicator.tsx";
-const RECOVERY_CONFIRMATION_MS = 2000;
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ConnectionIndicatorState } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { SettingsRootComponentProps, SettingsSectionRow } from './shell-contract.ts'
+import css from './SettingsRoot.module.css'
+import { DesktopUpdateIndicator } from './DesktopUpdateIndicator.tsx'
+const RECOVERY_CONFIRMATION_MS = 2000
 /** Minimum visible time for the connecting pill; shorter attempts read as flicker. */
-const CONNECTING_MIN_VISIBLE_MS = 800;
+const CONNECTING_MIN_VISIBLE_MS = 800
 /** Nav glyph by section id; unknown ids fall back to the settings gear. */
 function navIcon(id: string) {
-  if (id === "account") return h(IconUserOutlineMedium, { size: 16 });
-  if (id === "models") return h(IconDataOutlineMedium, { size: 16 });
-  if (id === "agent-presets") return h(IconAgentPresetOutlineMedium, { size: 16 });
-  if (id === "plugins") return h(IconPersonalizationOutlineMedium, { size: 16 });
-  if (id === "archived-sessions") return h(IconArchiveOutlineMedium, { size: 16 });
-  return h(IconSettingsOutlineMedium, { size: 16 });
+  if (id === 'account') return h(IconUserOutlineMedium, { size: 16 })
+  if (id === 'models') return h(IconDataOutlineMedium, { size: 16 })
+  if (id === 'agent-presets') return h(IconAgentPresetOutlineMedium, { size: 16 })
+  if (id === 'plugins') return h(IconPersonalizationOutlineMedium, { size: 16 })
+  if (id === 'archived-sessions') return h(IconArchiveOutlineMedium, { size: 16 })
+  return h(IconSettingsOutlineMedium, { size: 16 })
 }
 type PanelProps = {
-  rows: readonly SettingsSectionRow[];
-  renderSlot: SettingsRootComponentProps["renderSlot"];
-  activeId: string | undefined;
-  onSelect: (id: string) => void;
-  onClose: () => void;
-};
+  rows: readonly SettingsSectionRow[]
+  renderSlot: SettingsRootComponentProps['renderSlot']
+  activeId: string | undefined
+  onSelect: (id: string) => void
+  onClose: () => void
+}
 /**
  * Body-portaled modal layer: full-viewport mask + centered panel. Close paths: the
  * header button, a mask click, and document-level Escape (mounted only while
@@ -69,71 +69,71 @@ const SettingsPanel = defineComponent(
   (props: PanelProps) => {
     // Entries can unmount underneath the requested id, so the render-time
     // projection falls back to the first row when the id is gone.
-    const titleId = useId();
-    const panel = shallowRef<HTMLDivElement | null>(null);
-    useModalLayer(panel, true, () => props.onClose());
+    const titleId = useId()
+    const panel = shallowRef<HTMLDivElement | null>(null)
+    useModalLayer(panel, true, () => { props.onClose() })
     return () => {
-      const { rows, renderSlot, activeId, onSelect, onClose } = props;
-      const active = rows.find((r) => r.id === activeId)?.id ?? rows[0]?.id;
+      const { rows, renderSlot, activeId, onSelect, onClose } = props
+      const active = rows.find(r => r.id === activeId)?.id ?? rows[0]?.id
       // Portalled beside #root like the Modal primitive: a covering surface mounted
       // inside the root would precede the columns' chrome in document order, so a
       // chrome row that declares window drag after it would override its subtraction.
       // Beside the root, base.css's `body > :not(#root)` rule subtracts it instead.
       return h(
         Teleport,
-        { to: "body" },
+        { to: 'body' },
         {
           default: () => [
-            h("div", { class: css.overlay, role: "presentation" }, [
-              h("div", { class: css.mask, "aria-hidden": "true", onClick: onClose }),
+            h('div', { class: css.overlay, role: 'presentation' }, [
+              h('div', { class: css.mask, 'aria-hidden': 'true', onClick: onClose }),
               h(
-                "div",
+                'div',
                 {
                   ref: panel,
                   tabIndex: -1,
-                  "data-shortcut-modal": "settings",
+                  'data-shortcut-modal': 'settings',
                   class: css.panel,
-                  role: "dialog",
-                  "aria-modal": "true",
-                  "aria-labelledby": titleId,
+                  role: 'dialog',
+                  'aria-modal': 'true',
+                  'aria-labelledby': titleId,
                 },
                 [
                   h(
-                    "div",
+                    'div',
                     {
                       class: css.navTitle,
                       id: titleId,
                       tabIndex: -1,
-                      "data-modal-autofocus": active === undefined ? "" : undefined,
+                      'data-modal-autofocus': active === undefined ? '' : undefined,
                     },
-                    [renderSlot("settings.header", {})],
+                    [renderSlot('settings.header', {})],
                   ),
-                  h("nav", { class: css.nav }, [
-                    h("div", { class: css.navList }, [
-                      rows.map((row) =>
+                  h('nav', { class: css.nav }, [
+                    h('div', { class: css.navList }, [
+                      rows.map(row =>
                         h(
-                          "button",
+                          'button',
                           {
                             key: row.id,
-                            type: "button",
+                            type: 'button',
                             class: clsx(css.navCell, row.id === active && css.active),
-                            "aria-current": row.id === active ? "true" : undefined,
-                            "data-modal-autofocus": row.id === active ? "" : undefined,
+                            'aria-current': row.id === active ? 'true' : undefined,
+                            'data-modal-autofocus': row.id === active ? '' : undefined,
                             onFocus: (event) => {
                               if (event.currentTarget instanceof HTMLElement)
                                 event.currentTarget.scrollIntoView({
-                                  block: "nearest",
-                                  inline: "nearest",
-                                });
+                                  block: 'nearest',
+                                  inline: 'nearest',
+                                })
                             },
                             onClick: () => {
-                              onSelect(row.id);
+                              onSelect(row.id)
                             },
                           },
                           [
-                            h("span", { class: css.navIcon, "aria-hidden": "true" }, [
+                            h('span', { class: css.navIcon, 'aria-hidden': 'true' }, [
                               renderSlot(
-                                "settings.section.icon",
+                                'settings.section.icon',
                                 { size: 16, active: row.id === active },
                                 {
                                   only: row.id,
@@ -141,33 +141,33 @@ const SettingsPanel = defineComponent(
                                 },
                               ),
                             ]),
-                            h("span", { class: css.navLabel }, [row.label]),
+                            h('span', { class: css.navLabel }, [row.label]),
                           ],
                         ),
                       ),
                     ]),
                   ]),
-                  h("div", { class: css.header }, [
-                    h("div", { class: css.actions }, [renderSlot("settings.action", {})]),
-                    h("button", { type: "button", class: css.close, onClick: onClose }, [
+                  h('div', { class: css.header }, [
+                    h('div', { class: css.actions }, [renderSlot('settings.action', {})]),
+                    h('button', { type: 'button', class: css.close, onClick: onClose }, [
                       h(IconCloseOutlineRegular, { size: 14 }),
-                      h("span", { class: css.hiddenLabel }, [renderSlot("settings.close", {})]),
+                      h('span', { class: css.hiddenLabel }, [renderSlot('settings.close', {})]),
                     ]),
                   ]),
-                  h("div", { class: css.options }, [
+                  h('div', { class: css.options }, [
                     active !== undefined &&
-                      renderSlot("settings.section", { close: onClose }, { only: active }),
+                      renderSlot('settings.section', { close: onClose }, { only: active }),
                   ]),
                 ],
               ),
             ]),
           ],
         },
-      );
-    };
+      )
+    }
   },
-  { inheritAttrs: false, props: ["rows", "renderSlot", "activeId", "onSelect", "onClose"] },
-);
+  { inheritAttrs: false, props: ['rows', 'renderSlot', 'activeId', 'onSelect', 'onClose'] },
+)
 /**
  * Render the settings trigger and panel.
  * @param props - composed slot props (contract/slots.ts).
@@ -175,119 +175,119 @@ const SettingsPanel = defineComponent(
  */
 export const SettingsRoot = defineComponent(
   (props: SettingsRootComponentProps) => {
-    const shell = props.useStore((state) => state);
-    const shortcutRef = props.useShortcuts((rows) =>
-      rows.find((row) => row.id === "settings.open"),
-    );
-    const rowsRef = props.useSections((value) => value);
-    const desktopRef = props.useDesktopUpdate((value) => value);
-    const connectionRef = props.useConnectionState((value) => value);
-    const stepsRef = props.useOnboardingSteps((value) => value);
+    const shell = props.useStore(state => state)
+    const shortcutRef = props.useShortcuts(rows =>
+      rows.find(row => row.id === 'settings.open'),
+    )
+    const rowsRef = props.useSections(value => value)
+    const desktopRef = props.useDesktopUpdate(value => value)
+    const connectionRef = props.useConnectionState(value => value)
+    const stepsRef = props.useOnboardingSteps(value => value)
     const onboardingActive = props.useSessions((state) => {
       const main = Object.values(state.byId).find(
-        (session) => (session.retainedBy.mainView ?? 0) > 0,
-      );
-      return state.phase === "ready" && (main === undefined || main.blank);
-    });
-    const requestedOnboarding = shallowRef<string>();
-    const completedOnboarding = shallowRef<ReadonlySet<string>>(new Set());
-    const showRecovery = shallowRef(false);
-    const holdConnecting = shallowRef(false);
-    let connectingShownAt: number | undefined;
+        session => (session.retainedBy.mainView ?? 0) > 0,
+      )
+      return state.phase === 'ready' && (main === undefined || main.blank)
+    })
+    const requestedOnboarding = shallowRef<string>()
+    const completedOnboarding = shallowRef<ReadonlySet<string>>(new Set())
+    const showRecovery = shallowRef(false)
+    const holdConnecting = shallowRef(false)
+    let connectingShownAt: number | undefined
     const onboarding = computed(() =>
       requestedOnboarding.value !== undefined
-        ? stepsRef.value.find((step) => step.id === requestedOnboarding.value)
+        ? stepsRef.value.find(step => step.id === requestedOnboarding.value)
         : onboardingActive.value
-          ? stepsRef.value.find((step) => !completedOnboarding.value.has(step.id))
+          ? stepsRef.value.find(step => !completedOnboarding.value.has(step.id))
           : undefined,
-    );
+    )
     watch(onboardingActive, (active) => {
-      if (!active) completedOnboarding.value = new Set();
-    });
+      if (!active) completedOnboarding.value = new Set()
+    })
     watch(onboarding, (step, previous) => {
-      if (previous === undefined && step !== undefined && shell.value.open) props.actions.close();
-    });
+      if (previous === undefined && step !== undefined && shell.value.open) props.actions.close()
+    })
     watch(
       connectionRef,
       (state, previous) => {
-        if (state !== "connected") showRecovery.value = false;
-        else if (previous === "disconnected" || previous === "connecting")
-          showRecovery.value = true;
+        if (state !== 'connected') showRecovery.value = false
+        else if (previous === 'disconnected' || previous === 'connecting')
+          showRecovery.value = true
       },
-      { flush: "sync" },
-    );
+      { flush: 'sync' },
+    )
     watchEffect(
       (onCleanup) => {
-        if (!showRecovery.value || holdConnecting.value) return;
+        if (!showRecovery.value || holdConnecting.value) return
         const timeout = window.setTimeout(() => {
-          showRecovery.value = false;
-        }, RECOVERY_CONFIRMATION_MS);
+          showRecovery.value = false
+        }, RECOVERY_CONFIRMATION_MS)
         onCleanup(() => {
-          window.clearTimeout(timeout);
-        });
+          window.clearTimeout(timeout)
+        })
       },
-      { flush: "sync" },
-    );
+      { flush: 'sync' },
+    )
     watch(
       connectionRef,
       (state, _previous, onCleanup) => {
-        if (state === "connecting") {
-          connectingShownAt = Date.now();
-          return;
+        if (state === 'connecting') {
+          connectingShownAt = Date.now()
+          return
         }
-        const shownAt = connectingShownAt;
-        if (shownAt === undefined) return;
-        connectingShownAt = undefined;
-        const remaining = CONNECTING_MIN_VISIBLE_MS - (Date.now() - shownAt);
-        if (remaining <= 0) return;
-        holdConnecting.value = true;
+        const shownAt = connectingShownAt
+        if (shownAt === undefined) return
+        connectingShownAt = undefined
+        const remaining = CONNECTING_MIN_VISIBLE_MS - (Date.now() - shownAt)
+        if (remaining <= 0) return
+        holdConnecting.value = true
         const timeout = window.setTimeout(() => {
-          holdConnecting.value = false;
-        }, remaining);
+          holdConnecting.value = false
+        }, remaining)
         onCleanup(() => {
-          window.clearTimeout(timeout);
-          holdConnecting.value = false;
-        });
+          window.clearTimeout(timeout)
+          holdConnecting.value = false
+        })
       },
-      { immediate: true, flush: "sync" },
-    );
+      { immediate: true, flush: 'sync' },
+    )
     const setRequestedOnboarding = (id: string | undefined) => {
-      requestedOnboarding.value = id;
-    };
+      requestedOnboarding.value = id
+    }
     const completeOnboardingStep = (id: string) => {
-      requestedOnboarding.value = undefined;
-      completedOnboarding.value = new Set([...completedOnboarding.value, id]);
-    };
+      requestedOnboarding.value = undefined
+      completedOnboarding.value = new Set([...completedOnboarding.value, id])
+    }
     return () => {
-      const { wide, reconnect, renderSlot, t, openDesktopUpdate, actions } = props;
-      const { close, openSection } = actions;
-      const { open, activeId } = shell.value;
-      const shortcut = shortcutRef.value;
-      const rows = rowsRef.value;
-      const desktopUpdate = desktopRef.value;
-      const onboardingStep = onboarding.value;
-      let connectionIndicator: ConnectionIndicatorState | undefined;
-      if (connectionRef.value === "connecting" || holdConnecting.value)
-        connectionIndicator = "connecting";
-      else if (connectionRef.value === "disconnected") connectionIndicator = "disconnected";
-      else if (showRecovery.value) connectionIndicator = "recovered";
+      const { wide, reconnect, renderSlot, t, openDesktopUpdate, actions } = props
+      const { close, openSection } = actions
+      const { open, activeId } = shell.value
+      const shortcut = shortcutRef.value
+      const rows = rowsRef.value
+      const desktopUpdate = desktopRef.value
+      const onboardingStep = onboarding.value
+      let connectionIndicator: ConnectionIndicatorState | undefined
+      if (connectionRef.value === 'connecting' || holdConnecting.value)
+        connectionIndicator = 'connecting'
+      else if (connectionRef.value === 'disconnected') connectionIndicator = 'disconnected'
+      else if (showRecovery.value) connectionIndicator = 'recovered'
       return h(Fragment, null, [
-        h("div", { class: clsx(css.triggerRow, !wide && css.railRow) }, [
+        h('div', { class: clsx(css.triggerRow, !wide && css.railRow) }, [
           renderSlot(
-            "settings.launcher",
+            'settings.launcher',
             {
               wide,
               settingsOpen: open,
               openSettings: (sectionId) => {
-                if (sectionId === undefined) actions.open();
-                else actions.openSection(sectionId);
+                if (sectionId === undefined) actions.open()
+                else actions.openSection(sectionId)
               },
               ...(shortcut?.keys.length
                 ? { settingsShortcut: { keys: shortcut.keys, aria: shortcut.aria } }
                 : {}),
               openOnboarding: (id) => {
-                close();
-                setRequestedOnboarding(id);
+                close()
+                setRequestedOnboarding(id)
               },
             },
             {
@@ -295,25 +295,25 @@ export const SettingsRoot = defineComponent(
                 Tooltip,
                 {
                   disabled: open,
-                  label: t("trigger"),
+                  label: t('trigger'),
                   ...(shortcut === undefined ? {} : { shortcutKeys: shortcut.keys }),
                 },
                 {
                   default: () => [
                     h(
-                      "button",
+                      'button',
                       {
-                        type: "button",
+                        type: 'button',
                         class: clsx(css.trigger, !wide && css.rail),
-                        "aria-label": t("trigger"),
-                        "aria-keyshortcuts": shortcut?.aria,
-                        "aria-haspopup": "dialog",
-                        "aria-expanded": open,
+                        'aria-label': t('trigger'),
+                        'aria-keyshortcuts': shortcut?.aria,
+                        'aria-haspopup': 'dialog',
+                        'aria-expanded': open,
                         onClick: () => {
-                          actions.open();
+                          actions.open()
                         },
                       },
-                      [renderSlot("settings.trigger", { wide })],
+                      [renderSlot('settings.trigger', { wide })],
                     ),
                   ],
                 },
@@ -322,21 +322,21 @@ export const SettingsRoot = defineComponent(
           ),
           h(ConnectionIndicator, {
             state:
-              wide && desktopUpdate.presentation?.phase !== "installing"
+              wide && desktopUpdate.presentation?.phase !== 'installing'
                 ? connectionIndicator
                 : undefined,
-            disconnectedLabel: t("connection.error"),
-            connectingLabel: t("connection.connecting"),
-            recoveredLabel: t("connection.connected"),
-            reconnectActionLabel: t("connection.reconnect"),
-            restartActionLabel: t("connection.restart"),
+            disconnectedLabel: t('connection.error'),
+            connectingLabel: t('connection.connecting'),
+            recoveredLabel: t('connection.connected'),
+            reconnectActionLabel: t('connection.reconnect'),
+            restartActionLabel: t('connection.restart'),
             onReconnect: reconnect,
           }),
           h(DesktopUpdateIndicator, {
             wide: wide,
             hidden:
               connectionIndicator !== undefined &&
-              desktopUpdate.presentation?.phase !== "installing",
+              desktopUpdate.presentation?.phase !== 'installing',
             t: t,
             view: desktopUpdate,
             onOpen: openDesktopUpdate,
@@ -352,36 +352,36 @@ export const SettingsRoot = defineComponent(
           }),
         onboardingStep !== undefined &&
           renderSlot(
-            "settings.onboarding",
+            'settings.onboarding',
             {
               stepId: onboardingStep.id,
               explicit: requestedOnboarding.value !== undefined,
               complete: () => {
-                completeOnboardingStep(onboardingStep.id);
+                completeOnboardingStep(onboardingStep.id)
               },
               openSection,
             },
             { only: onboardingStep.id },
           ),
-      ]);
-    };
+      ])
+    }
   },
   {
     inheritAttrs: false,
     props: [
-      "wide",
-      "reconnect",
-      "renderSlot",
-      "t",
-      "openDesktopUpdate",
-      "actions",
-      "useStore",
-      "useShortcuts",
-      "useSections",
-      "useDesktopUpdate",
-      "useConnectionState",
-      "useOnboardingSteps",
-      "useSessions",
+      'wide',
+      'reconnect',
+      'renderSlot',
+      't',
+      'openDesktopUpdate',
+      'actions',
+      'useStore',
+      'useShortcuts',
+      'useSections',
+      'useDesktopUpdate',
+      'useConnectionState',
+      'useOnboardingSteps',
+      'useSessions',
     ],
   },
-);
+)

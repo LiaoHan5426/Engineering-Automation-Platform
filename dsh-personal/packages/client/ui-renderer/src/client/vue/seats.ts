@@ -10,21 +10,21 @@ import {
   toValue,
   watch,
   type Ref,
-} from "vue";
+} from 'vue'
 import {
   standardHookPropName,
   type HostObservable,
   type KeyedStandardSource,
-} from "@deepseek-ai/dsh-client-ui-slots";
-import { SlotAssemblyError } from "../errors.ts";
-import { useObservableSelector } from "../vue-observable.ts";
+} from '@deepseek-ai/dsh-client-ui-slots'
+import { SlotAssemblyError } from '../errors.ts'
+import { useObservableSelector } from '@deepseek-ai/dsh-client-ui-primitives'
 
 /** Named values supplied to a component or contextual hook. */
-export type Face = Record<string, unknown>;
-type Select = (value: unknown) => unknown;
-type Equal = (left: unknown, right: unknown) => boolean;
-type Key = string | Readonly<Ref<string | undefined>>;
-const identity: Select = (value) => value;
+export type Face = Record<string, unknown>
+type Select = (value: unknown) => unknown
+type Equal = (left: unknown, right: unknown) => boolean
+type Key = string | Readonly<Ref<string | undefined>>
+const identity: Select = value => value
 
 /** A hook follows its source getter throughout the component's setup lifetime.
  * @param source - getter for the current immutable snapshot source.
@@ -34,7 +34,7 @@ export function selectorSeat(
   source: () => HostObservable<unknown> | undefined,
 ): (select?: Select, equal?: Equal) => Readonly<Ref<unknown>> {
   return (select: Select = identity, equal?: Equal) =>
-    useObservableSelector(source, () => select, equal);
+    useObservableSelector(source, () => select, equal)
 }
 
 /** Explicit keys may be refs; the selector-only form follows the inherited session key.
@@ -51,28 +51,28 @@ export function keyedSeat(
   equal?: Equal,
 ) => Readonly<Ref<unknown>> {
   return (keyOrSelect?: Key | Select, memberOrSelect?: string | Select | Equal, equal?: Equal) => {
-    const explicit = typeof keyOrSelect === "string" || isRef(keyOrSelect);
-    const member = explicit && typeof memberOrSelect === "string" ? memberOrSelect : undefined;
+    const explicit = typeof keyOrSelect === 'string' || isRef(keyOrSelect)
+    const member = explicit && typeof memberOrSelect === 'string' ? memberOrSelect : undefined
     const select = explicit
-      ? typeof memberOrSelect === "function"
+      ? typeof memberOrSelect === 'function'
         ? (memberOrSelect as Select)
         : identity
-      : ((keyOrSelect as Select | undefined) ?? identity);
-    const compare = explicit ? equal : (memberOrSelect as Equal | undefined);
+      : (keyOrSelect ?? identity)
+    const compare = explicit ? equal : (memberOrSelect as Equal | undefined)
     return useObservableSelector(
       () => {
-        const key = explicit ? toValue(keyOrSelect as Key) : defaultKey();
-        const resolver = source();
+        const key = explicit ? toValue(keyOrSelect) : defaultKey()
+        const resolver = source()
         return key === undefined || resolver === undefined
           ? undefined
           : member === undefined
             ? resolver(key)
-            : resolver(key, member);
+            : resolver(key, member)
       },
       () => select,
       compare,
-    );
-  };
+    )
+  }
 }
 
 /** Bind bare fixed/keyed inject sources while keeping source replacement reactive.
@@ -84,35 +84,35 @@ export function bindSources(
   face: () => Face,
   defaultKey: () => string | undefined,
 ): Readonly<Ref<Face>> {
-  const fixed = new Map<string, ReturnType<typeof selectorSeat>>();
-  const keyed = new Map<string, ReturnType<typeof keyedSeat>>();
+  const fixed = new Map<string, ReturnType<typeof selectorSeat>>()
+  const keyed = new Map<string, ReturnType<typeof keyedSeat>>()
   return computed(() => {
-    const bound: Face = {};
-    for (const name of Object.keys((face()["hooks"] ?? {}) as Face)) {
-      let seat = fixed.get(name);
+    const bound: Face = {}
+    for (const name of Object.keys(face()['hooks'] ?? {})) {
+      let seat = fixed.get(name)
       if (seat === undefined) {
         seat = selectorSeat(
           () =>
-            ((face()["hooks"] ?? {}) as Record<string, HostObservable<unknown> | undefined>)[name],
-        );
-        fixed.set(name, seat);
+            ((face()['hooks'] ?? {}) as Record<string, HostObservable<unknown> | undefined>)[name],
+        )
+        fixed.set(name, seat)
       }
-      bound[standardHookPropName(name)] = seat;
+      bound[standardHookPropName(name)] = seat
     }
-    for (const name of Object.keys((face()["keyedHooks"] ?? {}) as Face)) {
-      let seat = keyed.get(name);
+    for (const name of Object.keys(face()['keyedHooks'] ?? {})) {
+      let seat = keyed.get(name)
       if (seat === undefined) {
         seat = keyedSeat(
           () =>
-            ((face()["keyedHooks"] ?? {}) as Record<string, KeyedStandardSource | undefined>)[name],
+            ((face()['keyedHooks'] ?? {}) as Record<string, KeyedStandardSource | undefined>)[name],
           defaultKey,
-        );
-        keyed.set(name, seat);
+        )
+        keyed.set(name, seat)
       }
-      bound[standardHookPropName(name)] = seat;
+      bound[standardHookPropName(name)] = seat
     }
-    return bound;
-  });
+    return bound
+  })
 }
 
 /**
@@ -129,77 +129,77 @@ export function contextualSeat(
   context: () => unknown,
 ): (...args: unknown[]) => Ref<unknown> | undefined {
   return (...args: unknown[]) => {
-    const result = shallowRef<Readonly<Ref<unknown>>>();
-    let kind: "effect" | "selector" | undefined;
-    let activeScope: ReturnType<typeof effectScope> | undefined;
+    const result = shallowRef<Readonly<Ref<unknown>>>()
+    let kind: 'effect' | 'selector' | undefined
+    let activeScope: ReturnType<typeof effectScope> | undefined
     let bound:
       | {
-          factory: ReturnType<typeof factory>;
-          standard: Face;
-          context: unknown;
-        }
-      | undefined;
+        factory: ReturnType<typeof factory>
+        standard: Face
+        context: unknown
+      }
+      | undefined
     const release = () => {
-      result.value = undefined;
-      const previous = activeScope;
-      activeScope = undefined;
-      bound = undefined;
-      previous?.stop();
-    };
-    onScopeDispose(release);
+      result.value = undefined
+      const previous = activeScope
+      activeScope = undefined
+      bound = undefined
+      previous?.stop()
+    }
+    onScopeDispose(release)
     watch(
       () => ({ factory: factory(), standard: standard(), context: context() }),
       (current) => {
         // New props/options wrappers do not change the contextual binding. Only
         // the factory, context, or individual framework values own its lifetime.
-        const previous = bound;
+        const previous = bound
         if (
           previous !== undefined &&
           Object.is(previous.factory, current.factory) &&
           Object.is(previous.context, current.context) &&
           Object.keys(previous.standard).length === Object.keys(current.standard).length &&
           Object.keys(previous.standard).every(
-            (key) =>
+            key =>
               Object.hasOwn(current.standard, key) &&
               Object.is(previous.standard[key], current.standard[key]),
           )
         )
-          return;
-        release();
-        const scope = effectScope();
-        activeScope = scope;
+          return
+        release()
+        const scope = effectScope()
+        activeScope = scope
         try {
           const selected = scope.run(() => {
-            const hook = current.factory(current.standard, current.context);
-            if (typeof hook !== "function")
-              throw new SlotAssemblyError("contextual hook factory must return a native Vue hook");
-            return (hook as (...params: unknown[]) => unknown)(...args);
-          });
+            const hook = current.factory(current.standard, current.context)
+            if (typeof hook !== 'function')
+              throw new SlotAssemblyError('contextual hook factory must return a native Vue hook')
+            return (hook as (...params: unknown[]) => unknown)(...args)
+          })
           if (selected !== undefined && !isRef(selected))
-            throw new SlotAssemblyError("contextual selector hook must return a Vue ref");
-          const nextKind = selected === undefined ? "effect" : "selector";
+            throw new SlotAssemblyError('contextual selector hook must return a Vue ref')
+          const nextKind = selected === undefined ? 'effect' : 'selector'
           if (kind !== undefined && kind !== nextKind)
-            throw new SlotAssemblyError("contextual hook return kind changed during rebinding");
-          kind = nextKind;
-          bound = { ...current, standard: { ...current.standard } };
-          result.value = selected;
+            throw new SlotAssemblyError('contextual hook return kind changed during rebinding')
+          kind = nextKind
+          bound = { ...current, standard: { ...current.standard } }
+          result.value = selected
         } catch (error) {
-          release();
-          throw error;
+          release()
+          throw error
         }
       },
-      { flush: "sync", immediate: true },
-    );
-    if (kind === "effect") return undefined;
-    if (isReadonly(result.value)) return shallowReadonly(computed(() => result.value?.value));
+      { flush: 'sync', immediate: true },
+    )
+    if (kind === 'effect') return undefined
+    if (isReadonly(result.value)) return shallowReadonly(computed(() => result.value?.value))
     // Contextual DOM seats own writable refs. Keep one forwarding ref while
     // rebinding its target, so Vue's ref writer reaches the current scope only.
     return computed({
       get: () => result.value?.value,
       set: (value: unknown) => {
-        const target = result.value;
-        if (target !== undefined && !isReadonly(target)) (target as Ref<unknown>).value = value;
+        const target = result.value
+        if (target !== undefined && !isReadonly(target)) (target as Ref<unknown>).value = value
       },
-    });
-  };
+    })
+  }
 }

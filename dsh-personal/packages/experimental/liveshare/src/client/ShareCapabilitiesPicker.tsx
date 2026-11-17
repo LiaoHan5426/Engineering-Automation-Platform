@@ -1,4 +1,4 @@
-import { Fragment, computed, defineComponent, h } from "vue";
+import { Fragment, computed, defineComponent, h } from 'vue'
 
 /**
  * The share dialog's installed-plugin method control and the helpers that read one share's policies.
@@ -12,22 +12,22 @@ import {
   Checkbox,
   SegmentedControl,
   type SegmentedControlOption,
-} from "@deepseek-ai/dsh-client-ui-primitives";
-import type { PropsLocale } from "@deepseek-ai/dsh-client-ui-slots";
-import type { NS } from "./locales.ts";
-import type { OfferedPlugin, ViewerPluginPolicy } from "./share-types.ts";
-import css from "./ShareDialog.module.css";
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type { NS } from './locales.ts'
+import type { OfferedPlugin, ViewerPluginPolicy } from './share-types.ts'
+import css from './ShareDialog.module.css'
 /** How one plugin's offered methods appear for one share. */
-export type PluginExposure = "none" | "all" | "partial";
+export type PluginExposure = 'none' | 'all' | 'partial'
 /** The share's global switch over installed plugin methods. */
-export type PluginAccess = "all" | "none" | "custom";
+export type PluginAccess = 'all' | 'none' | 'custom'
 /**
  * The interface language this page renders in.
  * @returns A lowercase language tag, or `en` outside a document.
  */
 function activeLanguage(): string {
   /* v8 ignore next -- split returns at least one element, so the tag itself always answers. */
-  return (document.documentElement.lang || "en").split("-")[0]?.toLowerCase() ?? "en";
+  return (document.documentElement.lang || 'en').split('-')[0]?.toLowerCase() ?? 'en'
 }
 /**
  * Turn a package or namespace identifier into a readable fallback label.
@@ -36,15 +36,15 @@ function activeLanguage(): string {
  */
 function humanize(value: string): string {
   /* v8 ignore next -- split returns at least one element, so pop() always yields a segment. */
-  const segment = value.split("/").pop() ?? value;
+  const segment = value.split('/').pop() ?? value
   const words = segment
-    .replace(/^dsh-/, "")
-    .replace(/^experimental-/, "")
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/[-_]+/g, " ")
-    .trim();
-  const sentence = words.toLowerCase();
-  return sentence === "" ? value : sentence.charAt(0).toUpperCase() + sentence.slice(1);
+    .replace(/^dsh-/, '')
+    .replace(/^experimental-/, '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[-_]+/g, ' ')
+    .trim()
+  const sentence = words.toLowerCase()
+  return sentence === '' ? value : sentence.charAt(0).toUpperCase() + sentence.slice(1)
 }
 /**
  * The product name to show for one plugin group.
@@ -56,21 +56,21 @@ function humanize(value: string): string {
  * @returns The display name.
  */
 export function pluginDisplayName(group: OfferedPlugin, language: string): string {
-  const titles = group.titles;
-  const localized = titles?.[language];
-  if (localized !== undefined && localized !== "") return localized;
-  const english = titles?.en;
-  const packageSegment = group.package?.split("/").pop();
-  const packageWords = packageSegment?.replace(/^(dsh|experimental)-/, "");
+  const titles = group.titles
+  const localized = titles?.[language]
+  if (localized !== undefined && localized !== '') return localized
+  const english = titles?.en
+  const packageSegment = group.package?.split('/').pop()
+  const packageWords = packageSegment?.replace(/^(dsh|experimental)-/, '')
   if (
     english !== undefined &&
-    english !== "" &&
+    english !== '' &&
     english !== packageSegment &&
     english !== packageWords
   ) {
-    return english;
+    return english
   }
-  return humanize(packageSegment ?? group.plugin);
+  return humanize(packageSegment ?? group.plugin)
 }
 /**
  * The exposure one plugin has in a share's policies.
@@ -82,9 +82,9 @@ export function pluginExposure(
   selection: readonly ViewerPluginPolicy[],
   plugin: string,
 ): PluginExposure {
-  const policy = selection.find((entry) => entry.plugin === plugin);
-  if (policy === undefined || policy.mode === "none") return "none";
-  return policy.mode === "all" ? "all" : "partial";
+  const policy = selection.find(entry => entry.plugin === plugin)
+  if (policy === undefined || policy.mode === 'none') return 'none'
+  return policy.mode === 'all' ? 'all' : 'partial'
 }
 /**
  * The endpoints one policy effectively exposes for one offered plugin.
@@ -96,10 +96,10 @@ export function policyEndpoints(
   offered: readonly OfferedPlugin[],
   policy: ViewerPluginPolicy,
 ): readonly string[] {
-  const endpoints = offered.find((group) => group.plugin === policy.plugin)?.endpoints ?? [];
-  if (policy.mode === "all") return endpoints;
-  if (policy.mode === "none") return [];
-  return (policy.endpoints ?? []).filter((endpoint) => endpoints.includes(endpoint));
+  const endpoints = offered.find(group => group.plugin === policy.plugin)?.endpoints ?? []
+  if (policy.mode === 'all') return endpoints
+  if (policy.mode === 'none') return []
+  return (policy.endpoints ?? []).filter(endpoint => endpoints.includes(endpoint))
 }
 /**
  * Whether one endpoint is exposed by a share's policies.
@@ -115,8 +115,8 @@ export function endpointSelected(
   plugin: string,
   endpoint: string,
 ): boolean {
-  const policy = selection.find((entry) => entry.plugin === plugin);
-  return policy === undefined ? false : policyEndpoints(offered, policy).includes(endpoint);
+  const policy = selection.find(entry => entry.plugin === plugin)
+  return policy === undefined ? false : policyEndpoints(offered, policy).includes(endpoint)
 }
 /**
  * Replace one plugin's policy, keeping the other plugins in their current order.
@@ -128,7 +128,7 @@ function replacePolicy(
   selection: readonly ViewerPluginPolicy[],
   policy: ViewerPluginPolicy,
 ): readonly ViewerPluginPolicy[] {
-  return [...selection.filter((entry) => entry.plugin !== policy.plugin), policy];
+  return [...selection.filter(entry => entry.plugin !== policy.plugin), policy]
 }
 /**
  * Set one plugin's exposure.
@@ -144,11 +144,11 @@ export function setPluginExposure(
   plugin: string,
   exposure: PluginExposure,
 ): readonly ViewerPluginPolicy[] {
-  if (exposure === "none") return selection.filter((policy) => policy.plugin !== plugin);
-  if (exposure === "all") return replacePolicy(selection, { plugin, mode: "all" });
-  const existing = selection.find((policy) => policy.plugin === plugin);
-  const endpoints = existing === undefined ? [] : policyEndpoints(offered, existing);
-  return replacePolicy(selection, { plugin, mode: "selected", endpoints: [...endpoints].sort() });
+  if (exposure === 'none') return selection.filter(policy => policy.plugin !== plugin)
+  if (exposure === 'all') return replacePolicy(selection, { plugin, mode: 'all' })
+  const existing = selection.find(policy => policy.plugin === plugin)
+  const endpoints = existing === undefined ? [] : policyEndpoints(offered, existing)
+  return replacePolicy(selection, { plugin, mode: 'selected', endpoints: [...endpoints].sort() })
 }
 /**
  * Select or clear one endpoint for a plugin.
@@ -166,13 +166,13 @@ export function setEndpointSelected(
   endpoint: string,
   selected: boolean,
 ): readonly ViewerPluginPolicy[] {
-  const offeredGroup = offered.find((group) => group.plugin === plugin);
-  if (offeredGroup === undefined || !offeredGroup.endpoints.includes(endpoint)) return selection;
-  const existing = selection.find((policy) => policy.plugin === plugin);
-  const endpoints = new Set(existing === undefined ? [] : policyEndpoints(offered, existing));
-  if (selected) endpoints.add(endpoint);
-  else endpoints.delete(endpoint);
-  return replacePolicy(selection, { plugin, mode: "selected", endpoints: [...endpoints].sort() });
+  const offeredGroup = offered.find(group => group.plugin === plugin)
+  if (offeredGroup === undefined || !offeredGroup.endpoints.includes(endpoint)) return selection
+  const existing = selection.find(policy => policy.plugin === plugin)
+  const endpoints = new Set(existing === undefined ? [] : policyEndpoints(offered, existing))
+  if (selected) endpoints.add(endpoint)
+  else endpoints.delete(endpoint)
+  return replacePolicy(selection, { plugin, mode: 'selected', endpoints: [...endpoints].sort() })
 }
 /**
  * Narrow one policy list to what the host currently offers, dropping closed plugins.
@@ -185,14 +185,14 @@ export function selectionForOffered(
   selection: readonly ViewerPluginPolicy[],
 ): readonly ViewerPluginPolicy[] {
   return offered.flatMap((group): readonly ViewerPluginPolicy[] => {
-    const policy = selection.find((entry) => entry.plugin === group.plugin);
-    if (policy === undefined || policy.mode === "none") return [];
-    if (policy.mode === "all") return [{ plugin: group.plugin, mode: "all" }];
+    const policy = selection.find(entry => entry.plugin === group.plugin)
+    if (policy === undefined || policy.mode === 'none') return []
+    if (policy.mode === 'all') return [{ plugin: group.plugin, mode: 'all' }]
     const endpoints = (policy.endpoints ?? [])
-      .filter((endpoint) => group.endpoints.includes(endpoint))
-      .sort();
-    return endpoints.length === 0 ? [] : [{ plugin: group.plugin, mode: "selected", endpoints }];
-  });
+      .filter(endpoint => group.endpoints.includes(endpoint))
+      .sort()
+    return endpoints.length === 0 ? [] : [{ plugin: group.plugin, mode: 'selected', endpoints }]
+  })
 }
 /**
  * The endpoints one policy list exposes, as comparable keys.
@@ -204,13 +204,13 @@ export function selectionKeys(
   offered: readonly OfferedPlugin[],
   selection: readonly ViewerPluginPolicy[],
 ): readonly string[] {
-  const keys: string[] = [];
+  const keys: string[] = []
   for (const policy of selection) {
     for (const endpoint of policyEndpoints(offered, policy)) {
-      keys.push(`${policy.plugin}\u0000${endpoint}`);
+      keys.push(`${policy.plugin}\u0000${endpoint}`)
     }
   }
-  return keys.sort();
+  return keys.sort()
 }
 /**
  * Whether two key lists name exactly the same endpoints.
@@ -219,24 +219,24 @@ export function selectionKeys(
  * @returns True when both name the same endpoints once each.
  */
 export function sameKeys(left: readonly string[], right: readonly string[]): boolean {
-  return left.length === right.length && left.every((key, index) => key === right[index]);
+  return left.length === right.length && left.every((key, index) => key === right[index])
 }
 /** Props for the plugin-method control. */
 export interface ShareCapabilitiesPickerProps extends PropsLocale<typeof NS> {
   /** Installed plugins the Host currently offers; an empty list renders only the global switch. */
-  readonly offered: readonly OfferedPlugin[];
+  readonly offered: readonly OfferedPlugin[]
   /** Global switch this share carries. */
-  readonly access: PluginAccess;
+  readonly access: PluginAccess
   /** Policies this share carries. */
-  readonly selection: readonly ViewerPluginPolicy[];
+  readonly selection: readonly ViewerPluginPolicy[]
   /** Whether the control is unavailable. */
-  readonly disabled: boolean;
+  readonly disabled: boolean
   /** Base id the per-plugin controls derive from. */
-  readonly controlId: string;
+  readonly controlId: string
   /** Record the owner's global switch. */
-  readonly onAccessChange: (access: PluginAccess) => void;
+  readonly onAccessChange: (access: PluginAccess) => void
   /** Record the owner's per-plugin selection. */
-  readonly onChange: (selection: readonly ViewerPluginPolicy[]) => void;
+  readonly onChange: (selection: readonly ViewerPluginPolicy[]) => void
 }
 /**
  * Render the global switch, a search field, and one row per installed plugin with its method
@@ -247,119 +247,119 @@ export interface ShareCapabilitiesPickerProps extends PropsLocale<typeof NS> {
 export const ShareCapabilitiesPicker = defineComponent(
   (componentProps: ShareCapabilitiesPickerProps) => {
     const groupsRef = computed(() =>
-      componentProps.offered.filter((group) => group.endpoints.length > 0),
-    );
+      componentProps.offered.filter(group => group.endpoints.length > 0),
+    )
     return () => {
-      if (groupsRef.value.length === 0) return null;
-      const language = activeLanguage();
+      if (groupsRef.value.length === 0) return null
+      const language = activeLanguage()
       const globalOptions: readonly SegmentedControlOption<PluginAccess>[] = [
-        { value: "none", label: componentProps.t("dialog.capabilities.global.none") },
-        { value: "custom", label: componentProps.t("dialog.capabilities.global.custom") },
-        { value: "all", label: componentProps.t("dialog.capabilities.global.all") },
-      ];
+        { value: 'none', label: componentProps.t('dialog.capabilities.global.none') },
+        { value: 'custom', label: componentProps.t('dialog.capabilities.global.custom') },
+        { value: 'all', label: componentProps.t('dialog.capabilities.global.all') },
+      ]
       const options: readonly SegmentedControlOption<PluginExposure>[] = [
-        { value: "none", label: componentProps.t("dialog.capabilities.tier.none") },
-        { value: "all", label: componentProps.t("dialog.capabilities.tier.all") },
-        { value: "partial", label: componentProps.t("dialog.capabilities.partial") },
-      ];
+        { value: 'none', label: componentProps.t('dialog.capabilities.tier.none') },
+        { value: 'all', label: componentProps.t('dialog.capabilities.tier.all') },
+        { value: 'partial', label: componentProps.t('dialog.capabilities.partial') },
+      ]
       const pickAccess = (next: PluginAccess): void => {
-        if (next !== "custom") componentProps.onChange([]);
-        componentProps.onAccessChange(next);
-      };
+        if (next !== 'custom') componentProps.onChange([])
+        componentProps.onAccessChange(next)
+      }
       const pickPlugin = (plugin: string, next: PluginExposure): void => {
         const policies = setPluginExposure(
           componentProps.offered,
           componentProps.selection,
           plugin,
           next,
-        );
-        componentProps.onAccessChange(policies.length === 0 ? "none" : "custom");
-        componentProps.onChange(policies);
-      };
+        )
+        componentProps.onAccessChange(policies.length === 0 ? 'none' : 'custom')
+        componentProps.onChange(policies)
+      }
       return h(Fragment, null, [
-        h("div", { class: css.row }, [
-          h("span", { class: css.rowLabel }, [componentProps.t("dialog.capabilities.global")]),
+        h('div', { class: css.row }, [
+          h('span', { class: css.rowLabel }, [componentProps.t('dialog.capabilities.global')]),
           h(SegmentedControl<PluginAccess>, {
-            id: componentProps.controlId + "-global",
-            label: componentProps.t("dialog.capabilities.global"),
+            id: componentProps.controlId + '-global',
+            label: componentProps.t('dialog.capabilities.global'),
             value: componentProps.access,
             disabled: componentProps.disabled,
             options: globalOptions,
             onChange: pickAccess,
           }),
         ]),
-        componentProps.access === "custom"
+        componentProps.access === 'custom'
           ? h(Fragment, null, [
-              h("div", { class: css.capabilityList }, [
-                groupsRef.value.map((group, index) => {
-                  const exposure = pluginExposure(componentProps.selection, group.plugin);
-                  const name = pluginDisplayName(group, language);
-                  return h("div", { key: group.plugin, class: css.capabilityPlugin }, [
-                    h("div", { class: css.row }, [
-                      h("span", { class: css.rowLabel, title: group.plugin }, [name]),
-                      h(SegmentedControl<PluginExposure>, {
-                        id: `${componentProps.controlId}-plugin-${String(index)}`,
-                        label: name,
-                        value: exposure,
-                        disabled: componentProps.disabled,
-                        options: options,
-                        onChange: (next) => {
-                          pickPlugin(group.plugin, next);
-                        },
-                      }),
-                    ]),
-                    exposure === "partial"
-                      ? h("div", { class: css.methodList }, [
-                          group.endpoints.map((endpoint) => {
-                            const description = group.descriptions?.[endpoint];
-                            return h("div", { key: endpoint, class: css.methodItem }, [
-                              h(Checkbox, {
-                                label: endpoint.slice(endpoint.lastIndexOf("/") + 1),
-                                checked: endpointSelected(
+            h('div', { class: css.capabilityList }, [
+              groupsRef.value.map((group, index) => {
+                const exposure = pluginExposure(componentProps.selection, group.plugin)
+                const name = pluginDisplayName(group, language)
+                return h('div', { key: group.plugin, class: css.capabilityPlugin }, [
+                  h('div', { class: css.row }, [
+                    h('span', { class: css.rowLabel, title: group.plugin }, [name]),
+                    h(SegmentedControl<PluginExposure>, {
+                      id: `${componentProps.controlId}-plugin-${String(index)}`,
+                      label: name,
+                      value: exposure,
+                      disabled: componentProps.disabled,
+                      options: options,
+                      onChange: (next) => {
+                        pickPlugin(group.plugin, next)
+                      },
+                    }),
+                  ]),
+                  exposure === 'partial'
+                    ? h('div', { class: css.methodList }, [
+                      group.endpoints.map((endpoint) => {
+                        const description = group.descriptions?.[endpoint]
+                        return h('div', { key: endpoint, class: css.methodItem }, [
+                          h(Checkbox, {
+                            label: endpoint.slice(endpoint.lastIndexOf('/') + 1),
+                            checked: endpointSelected(
+                              componentProps.offered,
+                              componentProps.selection,
+                              group.plugin,
+                              endpoint,
+                            ),
+                            disabled: componentProps.disabled,
+                            onChange: (checked) => {
+                              componentProps.onChange(
+                                setEndpointSelected(
                                   componentProps.offered,
                                   componentProps.selection,
                                   group.plugin,
                                   endpoint,
+                                  checked,
                                 ),
-                                disabled: componentProps.disabled,
-                                onChange: (checked) => {
-                                  componentProps.onChange(
-                                    setEndpointSelected(
-                                      componentProps.offered,
-                                      componentProps.selection,
-                                      group.plugin,
-                                      endpoint,
-                                      checked,
-                                    ),
-                                  );
-                                },
-                              }),
-                              h("p", { class: css.methodDescription, title: description }, [
-                                description,
-                              ]),
-                            ]);
+                              )
+                            },
                           }),
+                          h('p', { class: css.methodDescription, title: description }, [
+                            description,
+                          ]),
                         ])
-                      : null,
-                  ]);
-                }),
-              ]),
-            ])
+                      }),
+                    ])
+                    : null,
+                ])
+              }),
+            ]),
+          ])
           : null,
-      ]);
-    };
+      ])
+    }
   },
   {
     inheritAttrs: false,
     props: [
-      "offered",
-      "access",
-      "selection",
-      "disabled",
-      "controlId",
-      "onAccessChange",
-      "onChange",
-      "t",
+      'offered',
+      'access',
+      'selection',
+      'disabled',
+      'controlId',
+      'onAccessChange',
+      'onChange',
+      't',
     ],
   },
-);
+)

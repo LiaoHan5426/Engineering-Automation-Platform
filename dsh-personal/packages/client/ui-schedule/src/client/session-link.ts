@@ -1,10 +1,10 @@
 /** Original-Session link availability from the current public Session and Workspace feeds. */
-import type { SessionListState } from "@deepseek-ai/dsh-api-session-controller/client";
-import type { WorkspaceSnapshot } from "@deepseek-ai/dsh-api-workspace-controller/client";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 /** Navigation state shown beside the retained task's original Session id. */
-export type SessionLinkState = "available" | "loading" | "archived" | "unavailable";
+export type SessionLinkState = 'available' | 'loading' | 'archived' | 'unavailable'
 
 /**
  * Check Host-list membership and archive state without activating or restoring anything.
@@ -23,9 +23,9 @@ export function sessionLinkState(
   sessions: SessionListState,
   workspaces: WorkspaceSnapshot,
 ): SessionLinkState {
-  if (workspaces.state === "error") return "unavailable";
-  if (sessions.phase === "pending" || workspaces.phase === "pending") return "loading";
-  if (workspaces.archivedSessionIds.includes(id)) return "archived";
-  if (!sessions.ids.includes(id)) return "unavailable";
-  return "available";
+  if (workspaces.state === 'error') return 'unavailable'
+  if (sessions.phase === 'pending' || workspaces.phase === 'pending') return 'loading'
+  if (workspaces.archivedSessionIds.includes(id)) return 'archived'
+  if (!sessions.ids.includes(id)) return 'unavailable'
+  return 'available'
 }

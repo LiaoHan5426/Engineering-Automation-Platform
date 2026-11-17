@@ -17,7 +17,7 @@ type ViewProps = Pick<RootProps, 'SessionProvider' | 'renderSlot' | 'mountView' 
   & { readonly view: SidebarSessionViewSnapshot; readonly visible: boolean }
 
 const SessionView = defineComponent((props: ViewProps) => {
-  watchEffect(onCleanup => { onCleanup(props.mountView(props.view.reference)) })
+  watchEffect((onCleanup) => { onCleanup(props.mountView(props.view.reference)) })
   return () => h('div', {
     class: css.session, hidden: !(props.visible && props.view.selected), 'data-sidebar-right-session': props.view.sessionId,
   }, h(props.SessionProvider, { session: props.view.reference, children: props.renderSlot('rightbar.session', {

@@ -42,6 +42,11 @@ Components use Vue props and slots. `Button` and `Input` accept an `icon` slot; 
 
 Call composables during setup and read their refs in render functions or templates. `useClipboardCopy` accepts a text getter and returns a readonly `copied` ref and `onCopy`; `useCodeHighlighter` accepts a language getter. `useDetailDocumentLabels` accepts a translated-copy getter and returns computed labels. `useAnchoredMaxHeight` accepts an element ref, a height cap, and a reactive signal getter, and returns a readonly height ref. `useModalLayer` accepts a dialog ref, a reactive open value or getter, and the close callback. Scope disposal releases their observers, listeners, and timers.
 
+<a id="observable-selectors"></a>
+### Observable selectors
+
+The static shared library `@deepseek-ai/dsh-client-ui-primitives` exports `useObservableSelector<T, S>(source: () => ObservableSnapshot<T> | undefined, selector: () => (snapshot: T) => S, equal?: (left: S, right: S) => boolean): Readonly<ShallowRef<S | undefined>>`. Call it once in component setup or another active Vue effect scope. An absent source publishes `undefined` without invoking the selector; a present source whose snapshot is `undefined` still invokes it. Snapshots and selected nested values retain their raw identity. Initial source resolution validates immediately. Later source, snapshot, selector, or equality failures are published synchronously and thrown when the selected ref is read; a successful update clears the error. Scope-owned synchronous effects run their error guard before reading reactive dependencies, so Vue can remove a retired child before its queued render while live failures still reach its render boundary. Reactive source and selector getters rebind within that scope, with `Object.is` as the default equality. Scope disposal releases the subscription and rejects queued stale publications. The adapter does not access Cordis or the slot registry; ctx-to-Vue binding remains renderer-owned.
+
 ### Component catalog
 
 Check this table before writing a control in a feature package. A plugin cannot import another plugin's component, so this package is the only place a control can be shared: reuse what fits, and lift a deliberate visual difference into a prop rather than starting a second copy.

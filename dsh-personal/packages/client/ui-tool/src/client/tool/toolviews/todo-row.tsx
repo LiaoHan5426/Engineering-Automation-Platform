@@ -1,29 +1,29 @@
-import { defineComponent, h } from "vue";
-import { IconChecklistOutlineRegular } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { Context } from "@deepseek-ai/cordis";
+import { defineComponent, h } from 'vue'
+import { IconChecklistOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { Context } from '@deepseek-ai/cordis'
 import type {
   HostObservable,
   InjectFace,
   PropsLocale,
   SessionIdOf,
-} from "@deepseek-ai/dsh-client-ui-slots";
-import type { ToolCallViewProps } from "../../contract/slots.ts";
-import { registerTodoHistory, type TodoHistory } from "../models/todo-history.ts";
-import { todoDiffModel } from "../models/todo-diff-model.ts";
-import { toolRowModel } from "../models/tool-call-model.ts";
-import { ToolRow } from "../components/ToolRow.tsx";
-import { CONVERSATION_NS as NS } from "../../locale.ts";
-import { planSummary, type PlanItemLike } from "./plan-summary.ts";
+} from '@deepseek-ai/dsh-client-ui-slots'
+import type { ToolCallViewProps } from '../../contract/slots.ts'
+import { registerTodoHistory, type TodoHistory } from '../models/todo-history.ts'
+import { todoDiffModel } from '../models/todo-diff-model.ts'
+import { toolRowModel } from '../models/tool-call-model.ts'
+import { ToolRow } from '../components/ToolRow.tsx'
+import { CONVERSATION_NS as NS } from '../../locale.ts'
+import { planSummary, type PlanItemLike } from './plan-summary.ts'
 type TodoHistoryInjected = {
   hooks: {
-    todoHistory: HostObservable<TodoHistory | undefined>;
-  };
-};
+    todoHistory: HostObservable<TodoHistory | undefined>
+  }
+}
 type TodoRowProps = ToolCallViewProps &
-  PropsLocale<"conversation"> &
-  InjectFace<TodoHistoryInjected>;
+  PropsLocale<'conversation'> &
+  InjectFace<TodoHistoryInjected>
 function isItem(value: unknown): value is PlanItemLike {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null
 }
 /**
  * The row's summary split at the ellipsis boundary: `text` truncates, `extra`
@@ -31,46 +31,46 @@ function isItem(value: unknown): value is PlanItemLike {
  * one part that says several tasks are running.
  */
 interface RowSummary {
-  text: string;
-  extra: number;
+  text: string
+  extra: number
 }
-function summarize(argsRaw: string | null, t: TodoRowProps["t"]): RowSummary | null {
-  if (argsRaw === null) return null;
-  let parsed: unknown;
+function summarize(argsRaw: string | null, t: TodoRowProps['t']): RowSummary | null {
+  if (argsRaw === null) return null
+  let parsed: unknown
   try {
-    parsed = JSON.parse(argsRaw);
+    parsed = JSON.parse(argsRaw)
   } catch {
     // Mid-stream truncation or malformed model JSON: fall back to the generic summary.
-    return null;
+    return null
   }
   // Valid JSON with invalid todo fields (null root, non-array todos, null items —
   // a rejected tool/call retains such args verbatim): same generic fallback.
-  if (typeof parsed !== "object" || parsed === null) return null;
+  if (typeof parsed !== 'object' || parsed === null) return null
   const todos = (
     parsed as {
-      todos?: unknown;
+      todos?: unknown
     }
-  ).todos;
-  if (!Array.isArray(todos) || !todos.every(isItem)) return null;
-  const { done, total, activeContent, activeExtra } = planSummary(todos);
-  const head = t("todo.completed", { done, total });
+  ).todos
+  if (!Array.isArray(todos) || !todos.every(isItem)) return null
+  const { done, total, activeContent, activeExtra } = planSummary(todos)
+  const head = t('todo.completed', { done, total })
   return {
     text: activeContent === null ? head : `${head} · ${activeContent}`,
     extra: activeExtra,
-  };
+  }
 }
 /** Summarizes a plan update without presenting a cancelled call as completed. */
 export const TodoRow = defineComponent(
   (props: TodoRowProps) => {
-    const _seat0 = props.useTodoHistory((snapshot) => snapshot?.get(props.block.callId));
-    const _seat1 = props.useSession((snapshot) => snapshot.hasMore);
+    const _seat0 = props.useTodoHistory(snapshot => snapshot?.get(props.block.callId))
+    const _seat1 = props.useSession(snapshot => snapshot.hasMore)
     return () => {
-      const { toolName, block, inspect, useDisclosure, t } = props;
-      const baseline = _seat0.value;
-      const hasMore = _seat1.value;
-      const diff = (() => todoDiffModel(block, baseline, hasMore, t))();
-      const model = toolRowModel(toolName, block);
-      const summary = summarize(model.bodyRaw, t) ?? { text: model.summary, extra: 0 };
+      const { toolName, block, inspect, useDisclosure, t } = props
+      const baseline = _seat0.value
+      const hasMore = _seat1.value
+      const diff = (() => todoDiffModel(block, baseline, hasMore, t))()
+      const model = toolRowModel(toolName, block)
+      const summary = summarize(model.bodyRaw, t) ?? { text: model.summary, extra: 0 }
       return h(
         ToolRow,
         {
@@ -84,7 +84,7 @@ export const TodoRow = defineComponent(
           summarySuffix:
             [diff?.summary, summary.extra > 0 ? `+${summary.extra}` : null]
               .filter((part): part is string => part !== null && part !== undefined)
-              .join(" · ") || null,
+              .join(' · ') || null,
           bodyRaw: model.bodyRaw,
           output: model.output,
           details: diff?.details,
@@ -93,62 +93,62 @@ export const TodoRow = defineComponent(
           inspect: inspect,
         },
         undefined,
-      );
-    };
+      )
+    }
   },
   {
-    name: "TodoRow",
+    name: 'TodoRow',
     inheritAttrs: false,
     props: [
-      "useDisclosure",
-      "callId",
-      "toolName",
-      "cwd",
-      "home",
-      "openFile",
-      "loadImage",
-      "inspect",
-      "phase",
-      "block",
-      "useSession",
-      "sessionId",
-      "useProjection",
-      "useAccess",
-      "useConversation",
-      "useInput",
-      "inputActions",
-      "useChat",
-      "useRemoteAccess",
-      "useSessions",
-      "useSessionRetainInfo",
-      "useSessionAccess",
-      "useContextMenu",
-      "useWorkspaces",
-      "t",
-      "useTodoHistory",
+      'useDisclosure',
+      'callId',
+      'toolName',
+      'cwd',
+      'home',
+      'openFile',
+      'loadImage',
+      'inspect',
+      'phase',
+      'block',
+      'useSession',
+      'sessionId',
+      'useProjection',
+      'useAccess',
+      'useConversation',
+      'useInput',
+      'inputActions',
+      'useChat',
+      'useRemoteAccess',
+      'useSessions',
+      'useSessionRetainInfo',
+      'useSessionAccess',
+      'useContextMenu',
+      'useWorkspaces',
+      't',
+      'useTodoHistory',
     ],
   },
-);
+)
 /** Registers the todo conversation row. */
 export const todoToolview = {
-  name: "todo-toolview",
-  inject: ["slots", "uiConversation"],
+  name: 'todo-toolview',
+  inject: ['slots', 'uiConversation'],
   apply(ctx: Context): void {
-    registerTodoHistory(ctx);
-    ctx.slots.inject("tool.call.toolview", () =>
+    registerTodoHistory(ctx)
+    ctx.slots.inject('tool.call.toolview', () =>
       ctx.slots.register(
         {
-          name: "tool.call.toolview",
-          key: "todo_write",
+          name: 'tool.call.toolview',
+          key: 'todo_write',
           locale: NS,
           inject: (sessionId: SessionIdOf): TodoHistoryInjected => ({
             hooks: {
-              todoHistory: ctx.uiConversation.binding(sessionId).target("tool-todo-history"),
+              todoHistory: ctx.uiConversation.binding(sessionId).target('tool-todo-history'),
             },
           }),
         },
         TodoRow,
       ),
-    );
+    )
   },
-};
+}

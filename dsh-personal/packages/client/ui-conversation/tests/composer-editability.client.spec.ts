@@ -5,13 +5,13 @@ import { expect, it, onTestFinished, vi } from 'vitest'
 import { ComposerContentEditable } from '../src/client/input/editor/ComposerContentEditable.tsx'
 
 it.each(['initial', 'deferred'] as const)('makes the %s editor host focusable before publishing its root', async (binding) => {
-  const editor = createEditor({ namespace: 'composer-root-focus', onError: error => { throw error } })
+  const editor = createEditor({ namespace: 'composer-root-focus', onError: (error) => { throw error } })
   const bound = shallowRef<LexicalEditor | null>(binding === 'initial' ? editor : null)
   const editable = shallowRef(true)
   const container = document.createElement('div')
   document.body.append(container)
   const publications: Array<{ gate: string | null; editable: boolean; focused: boolean }> = []
-  const removeRootListener = editor.registerRootListener(root => {
+  const removeRootListener = editor.registerRootListener((root) => {
     if (root === null) return
     root.focus()
     publications.push({
@@ -45,7 +45,7 @@ it.each(['initial', 'deferred'] as const)('makes the %s editor host focusable be
 })
 
 it('commits the accepted echo before changing the resident editing host gate', async () => {
-  const editor = createEditor({ namespace: 'composer-gate', onError: error => { throw error } })
+  const editor = createEditor({ namespace: 'composer-gate', onError: (error) => { throw error } })
   const bound = shallowRef<LexicalEditor | null>(editor)
   const editable = shallowRef(true)
   const echo = shallowRef('')

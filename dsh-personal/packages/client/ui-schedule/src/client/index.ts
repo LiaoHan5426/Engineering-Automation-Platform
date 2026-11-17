@@ -28,48 +28,48 @@
  * source onto the open Session's active tasks.
  */
 
-import type { Context as ClientContext } from "@deepseek-ai/cordis";
-import type {} from "@deepseek-ai/dsh-client-locale/client";
-import type {} from "@deepseek-ai/dsh-client-ui-conversation/client";
-import type {} from "@deepseek-ai/dsh-client-ui-renderer/client";
-import type {} from "@deepseek-ai/dsh-client-ui-session/client";
-import type {} from "@deepseek-ai/dsh-client-ui-sidebar/client";
-import type {} from "@deepseek-ai/dsh-client-ui-sidebar-right/client";
-import type {} from "@deepseek-ai/dsh-client-ui-tool/client";
-import type {} from "@deepseek-ai/dsh-client-ui-workspace/client";
-import type {} from "@deepseek-ai/dsh-api-remote-access/client";
-import type { MainPanelId } from "@deepseek-ai/dsh-client-ui-layout/client";
-import type { RemoteFailure, RemoteResult } from "@deepseek-ai/dsh-api-remotes/client";
-import type {} from "@deepseek-ai/dsh-client-connection/client";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type {} from '@deepseek-ai/dsh-api-remote-access/client'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { RemoteFailure, RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-client-connection/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
   ScheduleId,
   ScheduleCatalogEntry,
   ScheduleDeleteResult,
-} from "@deepseek-ai/dsh-schedule/client";
-import { createCatalogSource, type CatalogDeleteOutcome } from "./catalog-source.ts";
-import { createClearEnded } from "./clear-ended.ts";
-import { createDeleteToastSource, ScheduleDeleteToast } from "./DeleteToast.tsx";
-import { SCHEDULE_TASK_ID, SCHEDULE_TASK_KIND, scheduleTaskDefinition } from "./definition.ts";
-import { ScheduleCatalogAction } from "./ScheduleCatalogAction.tsx";
-import { ScheduleTurnCard, type ScheduleTurnCardInjected } from "./ScheduleTurnCard.tsx";
-import { scheduleTurnDefinition } from "./schedule-turn.ts";
+} from '@deepseek-ai/dsh-schedule/client'
+import { createCatalogSource, type CatalogDeleteOutcome } from './catalog-source.ts'
+import { createClearEnded } from './clear-ended.ts'
+import { createDeleteToastSource, ScheduleDeleteToast } from './DeleteToast.tsx'
+import { SCHEDULE_TASK_ID, SCHEDULE_TASK_KIND, scheduleTaskDefinition } from './definition.ts'
+import { ScheduleCatalogAction } from './ScheduleCatalogAction.tsx'
+import { ScheduleTurnCard, type ScheduleTurnCardInjected } from './ScheduleTurnCard.tsx'
+import { scheduleTurnDefinition } from './schedule-turn.ts'
 import {
   ScheduleTaskTab,
   type ScheduleTaskBindingInjected,
   type ScheduleTaskCatalogInjected,
   type ScheduleTaskTabInjected,
-} from "./ScheduleTaskTab.tsx";
-import { ScheduleTaskTabTitle } from "./ScheduleTaskTabTitle.tsx";
-import { SessionScheduleHover } from "./SessionScheduleHover.tsx";
-import { SessionScheduleMark } from "./SessionScheduleMark.tsx";
-import { TaskTabBindings } from "./task-tab-bindings.ts";
-import { createEditorStore } from "./editor-store.ts";
-import { TaskManagerPage, type TaskManagerInjected } from "./TaskManagerPage.tsx";
-import type { TaskDetailInjected } from "./TaskDetail.tsx";
-import { TaskManagerIcon } from "./TaskManagerIcon.tsx";
-import { sessionLinkState } from "./session-link.ts";
-import { en, ja, es, fr, de, ru, pt, NS, zh, type ScheduleCatalogKey } from "./locales.ts";
+} from './ScheduleTaskTab.tsx'
+import { ScheduleTaskTabTitle } from './ScheduleTaskTabTitle.tsx'
+import { SessionScheduleHover } from './SessionScheduleHover.tsx'
+import { SessionScheduleMark } from './SessionScheduleMark.tsx'
+import { TaskTabBindings } from './task-tab-bindings.ts'
+import { createEditorStore } from './editor-store.ts'
+import { TaskManagerPage, type TaskManagerInjected } from './TaskManagerPage.tsx'
+import type { TaskDetailInjected } from './TaskDetail.tsx'
+import { TaskManagerIcon } from './TaskManagerIcon.tsx'
+import { sessionLinkState } from './session-link.ts'
+import { en, ja, es, fr, de, ru, pt, NS, zh, type ScheduleCatalogKey } from './locales.ts'
 import {
   en as managerEn,
   ja as managerJa,
@@ -80,57 +80,57 @@ import {
   pt as managerPt,
   zh as managerZh,
   type TaskManagerKey,
-} from "./task-manager-locales.ts";
+} from './task-manager-locales.ts'
 
-const MANAGER_NS = "schedule.manager";
-const PANEL_ID = "schedules" as MainPanelId;
+const MANAGER_NS = 'schedule.manager'
+const PANEL_ID = 'schedules' as MainPanelId
 
-declare module "@deepseek-ai/dsh-client-ui-slots" {
+declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Active Schedule catalog copy. */
-    "schedule.catalog": ScheduleCatalogKey;
+    'schedule.catalog': ScheduleCatalogKey
     /** Host task management page and task tab copy. */
-    "schedule.manager": TaskManagerKey;
+    'schedule.manager': TaskManagerKey
   }
 }
 
 /** Required services for catalogs, ambient Session marks, the right Sidebar, Remote queries, linked-Session navigation, and access. */
 export const inject = [
-  "slots",
-  "locale",
-  "remote",
-  "remote.schedule",
-  "conversation",
-  "uiConversation",
-  "uiWorkspace",
-  "sessions",
-  "workspaces",
-  "sidebarRightTabs",
-  "sidebarRight",
-  "remoteAccess",
-];
+  'slots',
+  'locale',
+  'remote',
+  'remote.schedule',
+  'conversation',
+  'uiConversation',
+  'uiWorkspace',
+  'sessions',
+  'workspaces',
+  'sidebarRightTabs',
+  'sidebarRight',
+  'remoteAccess',
+]
 
 async function settle<T>(
   call: () => Promise<RemoteResult<T>>,
 ): Promise<RemoteResult<T> | undefined> {
   try {
-    return await call();
+    return await call()
   } catch (_error: unknown) {
     // A rejected call leaves the outcome unknown, so its caller shows the same localized retry as a Remote failure.
-    return undefined;
+    return undefined
   }
 }
 
-function inputCorrection(error: RemoteFailure): "host.notFuture" | "host.invalidRule" | undefined {
-  if (error.code !== "schedule/input-invalid") return undefined;
-  const { code } = error.details;
-  if (code === "not_future") return "host.notFuture";
-  return code === "invalid_rule" ||
-    code === "frequency_too_high" ||
-    code === "invalid_time_zone" ||
-    code === "time_out_of_range"
-    ? "host.invalidRule"
-    : undefined;
+function inputCorrection(error: RemoteFailure): 'host.notFuture' | 'host.invalidRule' | undefined {
+  if (error.code !== 'schedule/input-invalid') return undefined
+  const { code } = error.details
+  if (code === 'not_future') return 'host.notFuture'
+  return code === 'invalid_rule' ||
+    code === 'frequency_too_high' ||
+    code === 'invalid_time_zone' ||
+    code === 'time_out_of_range'
+    ? 'host.invalidRule'
+    : undefined
 }
 
 /**
@@ -142,8 +142,8 @@ function inputCorrection(error: RemoteFailure): "host.notFuture" | "host.invalid
 export function apply(ctx: ClientContext): void {
   ctx.effect(
     () => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }),
-    "ui-schedule: dictionaries",
-  );
+    'ui-schedule: dictionaries',
+  )
   const managerDictionaries = {
     zh: managerZh,
     en: managerEn,
@@ -153,72 +153,72 @@ export function apply(ctx: ClientContext): void {
     de: managerDe,
     ru: managerRu,
     pt: managerPt,
-  };
+  }
   ctx.effect(
     () => ctx.locale.register(MANAGER_NS, managerDictionaries),
-    "ui-schedule: manager dictionaries",
-  );
-  const t = ctx.locale.bind(MANAGER_NS);
+    'ui-schedule: manager dictionaries',
+  )
+  const t = ctx.locale.bind(MANAGER_NS)
   ctx.effect(
     () => ctx.sidebarRightTabs.register(scheduleTaskDefinition(t)),
-    "ui-schedule: task tab type",
-  );
+    'ui-schedule: task tab type',
+  )
   // The created task is a Turn-level element, not a Tool-group row: the Turn
   // Definition publishes the settled result and the tail list entry below
   // renders the card beneath the closing prose.
-  ctx.uiConversation.events.register(scheduleTurnDefinition);
-  ctx.remoteAccess.whenAccess("schedule/catalog", function* () {
+  ctx.uiConversation.events.register(scheduleTurnDefinition)
+  ctx.remoteAccess.whenAccess('schedule/catalog', function* () {
     const manager = createCatalogSource<ScheduleCatalogEntry>({
       list: () => ctx.remote.schedule.catalog(),
       remove: async (id): Promise<RemoteResult<ScheduleDeleteResult>> => {
-        const result = await ctx.remote.schedule.edit({ id, action: "delete" });
-        if (!result.ok) return result;
+        const result = await ctx.remote.schedule.edit({ id, action: 'delete' })
+        if (!result.ok) return result
         return {
           ok: true,
           value:
-            "deleted" in result.value
+            'deleted' in result.value
               ? { id, deleted: true }
-              : { id, deleted: false, code: "schedule_not_found" },
-        };
+              : { id, deleted: false, code: 'schedule_not_found' },
+        }
       },
-      subscribeChanged: (listener) => ctx.remote.$on("schedule/changed", listener),
-      subscribeReset: (listener) => ctx.on("connection/reset", listener),
-    });
+      subscribeChanged: listener => ctx.remote.$on('schedule/changed', listener),
+      subscribeReset: listener => ctx.on('connection/reset', listener),
+    })
     // One outcome store behind one `shell.overlay` entry announces every deletion
     // this plugin's surfaces settle, so the notice outlives the panel, popover, or
     // tab the deletion started in.
-    const deleteToast = createDeleteToastSource();
+    const deleteToast = createDeleteToastSource()
     const reportedDelete =
       (onDelete: (id: ScheduleId) => Promise<CatalogDeleteOutcome>) =>
-      async (id: ScheduleId): Promise<CatalogDeleteOutcome> => {
-        const outcome = await onDelete(id);
-        deleteToast.report(outcome);
-        return outcome;
-      };
-    yield ctx.slots.inject("shell.overlay", () =>
+        async (id: ScheduleId): Promise<CatalogDeleteOutcome> => {
+          const outcome = await onDelete(id)
+          deleteToast.report(outcome)
+          return outcome
+        }
+    yield ctx.slots.inject('shell.overlay', () =>
       ctx.slots.register(
         {
-          name: "shell.overlay",
-          id: "schedule.delete-toast",
+          name: 'shell.overlay',
+          id: 'schedule.delete-toast',
           locale: MANAGER_NS,
           inject: () => ({ hooks: deleteToast.hooks, dismiss: deleteToast.dismiss }),
         },
         ScheduleDeleteToast,
       ),
-    );
+    )
     // The Host answered, so this readback must not join a read that was sent
     // before it: naming every request seen so far makes the source issue a new
     // one, the way the post-deletion readback supersedes.
     const refresh = (): Promise<void> =>
-      manager.onRetry(manager.hooks.catalog.getSnapshot().readRequest);
+      manager.onRetry(manager.hooks.catalog.getSnapshot().readRequest)
     const openSession = (id: SessionId): void => {
       if (
         sessionLinkState(id, ctx.sessions.list.getSnapshot(), ctx.workspaces.list.getSnapshot()) ===
-        "available"
+        'available'
       ) {
-        ctx.uiWorkspace.openSession(id);
+        ctx.uiWorkspace.openSession(id)
       }
-    };
+    }
     /**
      * Remove every ended Host task and read the catalog back.
      *
@@ -229,53 +229,53 @@ export function apply(ctx: ClientContext): void {
     const clearEnded = createClearEnded({
       removeInactive: () => ctx.remote.schedule.deleteInactive(),
       refresh,
-    });
+    })
     const detail: TaskDetailInjected & ScheduleTaskCatalogInjected = {
       hooks: manager.hooks,
       onDelete: reportedDelete(manager.onDelete),
       onRetry: manager.onRetry,
-      loadHistory: (request) => ctx.remote.schedule.history(request),
+      loadHistory: request => ctx.remote.schedule.history(request),
       onOpenSession: openSession,
       hostActions: {
         edit: async (request) => {
-          const result = await settle(() => ctx.remote.schedule.edit(request));
-          if (result === undefined) return { failed: "host.saveError" };
-          if (!result.ok) return { failed: inputCorrection(result.error) ?? "host.saveError" };
-          await refresh();
-          if (!("code" in result.value)) return "saved";
+          const result = await settle(() => ctx.remote.schedule.edit(request))
+          if (result === undefined) return { failed: 'host.saveError' }
+          if (!result.ok) return { failed: inputCorrection(result.error) ?? 'host.saveError' }
+          await refresh()
+          if (!('code' in result.value)) return 'saved'
           return {
-            failed: result.value.code === "schedule_conflict" ? "host.conflict" : "detail.missing",
-          };
+            failed: result.value.code === 'schedule_conflict' ? 'host.conflict' : 'detail.missing',
+          }
         },
         run: async (id) => {
-          const result = await settle(() => ctx.remote.schedule.run({ id }));
-          if (result === undefined || !result.ok) return { failed: "host.runError" };
-          await refresh();
-          if (!("code" in result.value)) return "queued";
+          const result = await settle(() => ctx.remote.schedule.run({ id }))
+          if (result === undefined || !result.ok) return { failed: 'host.runError' }
+          await refresh()
+          if (!('code' in result.value)) return 'queued'
           return {
             failed:
-              result.value.code === "schedule_execution_pending"
-                ? "host.executionPending"
-                : "detail.missing",
-          };
+              result.value.code === 'schedule_execution_pending'
+                ? 'host.executionPending'
+                : 'detail.missing',
+          }
         },
         loadNewSessionInterval: async () => {
-          const result = await settle(() => ctx.remote.schedule.deliveryLimits());
-          return result?.ok === true ? result.value.newSessionIntervalSeconds : undefined;
+          const result = await settle(() => ctx.remote.schedule.deliveryLimits())
+          return result?.ok === true ? result.value.newSessionIntervalSeconds : undefined
         },
       },
-    };
+    }
     // The Sidebar persists a tab's layout record and not its navigation
     // parameters, so this page type keeps the task it last showed per Session and
     // tab id. That Session's committed tab ids bound every write, so a closed tab
     // leaves no entry behind.
-    const taskBindings = new TaskTabBindings((sessionId) =>
-      ctx.sidebarRight.tabsIn(sessionId).map((tab) => tab.id),
-    );
-    yield ctx.slots.inject("sidebar.right.pane.tab", () =>
+    const taskBindings = new TaskTabBindings(sessionId =>
+      ctx.sidebarRight.tabsIn(sessionId).map(tab => tab.id),
+    )
+    yield ctx.slots.inject('sidebar.right.pane.tab', () =>
       ctx.slots.register(
         {
-          name: "sidebar.right.pane.tab",
+          name: 'sidebar.right.pane.tab',
           key: SCHEDULE_TASK_ID,
           locale: MANAGER_NS,
           store: createEditorStore(),
@@ -283,11 +283,11 @@ export function apply(ctx: ClientContext): void {
         },
         ScheduleTaskTab,
       ),
-    );
-    yield ctx.slots.inject("sidebar.right.pane.tab.title", () =>
+    )
+    yield ctx.slots.inject('sidebar.right.pane.tab.title', () =>
       ctx.slots.register(
         {
-          name: "sidebar.right.pane.tab.title",
+          name: 'sidebar.right.pane.tab.title',
           key: SCHEDULE_TASK_ID,
           locale: MANAGER_NS,
           inject: (): ScheduleTaskCatalogInjected & ScheduleTaskBindingInjected => ({
@@ -297,11 +297,11 @@ export function apply(ctx: ClientContext): void {
         },
         ScheduleTaskTabTitle,
       ),
-    );
-    yield ctx.slots.inject("main", () =>
+    )
+    yield ctx.slots.inject('main', () =>
       ctx.slots.register(
         {
-          name: "main",
+          name: 'main',
           key: PANEL_ID,
           locale: MANAGER_NS,
           store: createEditorStore(),
@@ -309,106 +309,106 @@ export function apply(ctx: ClientContext): void {
             ...detail,
             onNewTask: () => {
               ctx.uiWorkspace.startSession(undefined, {
-                prompt: t("host.createPrompt"),
-                whenDraftExists: "append",
-              });
+                prompt: t('host.createPrompt'),
+                whenDraftExists: 'append',
+              })
             },
             onClearEnded: async () => {
-              const outcome = await clearEnded();
-              deleteToast.reportClear(outcome);
+              const outcome = await clearEnded()
+              deleteToast.reportClear(outcome)
             },
             onCreateTask: async (request) => {
-              const result = await settle(() => ctx.remote.schedule.create(request));
-              if (result === undefined) return { failed: "host.createError" };
+              const result = await settle(() => ctx.remote.schedule.create(request))
+              if (result === undefined) return { failed: 'host.createError' }
               if (!result.ok)
-                return { failed: inputCorrection(result.error) ?? "host.createError" };
-              manager.retainCreated(result.value);
-              await refresh();
-              return { created: result.value };
+                return { failed: inputCorrection(result.error) ?? 'host.createError' }
+              manager.retainCreated(result.value)
+              await refresh()
+              return { created: result.value }
             },
           }),
         },
         TaskManagerPage,
       ),
-    );
-    yield ctx.slots.inject("sidebar.panellist", () =>
+    )
+    yield ctx.slots.inject('sidebar.panellist', () =>
       ctx.slots.register(
         {
-          name: "sidebar.panellist",
+          name: 'sidebar.panellist',
           id: PANEL_ID,
           order: 10,
           locale: MANAGER_NS,
-          label: () => t("panel"),
+          label: () => t('panel'),
         },
         TaskManagerIcon,
       ),
-    );
-    yield ctx.slots.inject("conversation.chat.turnTail", () =>
+    )
+    yield ctx.slots.inject('conversation.chat.turnTail', () =>
       ctx.slots.register(
         {
-          name: "conversation.chat.turnTail",
-          id: "schedule-created",
+          name: 'conversation.chat.turnTail',
+          id: 'schedule-created',
           order: 20,
           locale: MANAGER_NS,
           inject: (sessionId: SessionId): ScheduleTurnCardInjected => ({
             hooks: { catalog: manager.hooks.catalog },
             onRetry: manager.onRetry,
             openTaskDetail: (id) => {
-              ctx.sidebarRight.openTab(SCHEDULE_TASK_KIND, { params: { sessionId, id } });
+              ctx.sidebarRight.openTab(SCHEDULE_TASK_KIND, { params: { sessionId, id } })
             },
           }),
         },
         ScheduleTurnCard,
       ),
-    );
-    yield ctx.slots.inject("conversation.session.header.utilities", () =>
+    )
+    yield ctx.slots.inject('conversation.session.header.utilities', () =>
       ctx.slots.register(
         {
-          name: "conversation.session.header.utilities",
-          id: "schedule-catalog",
+          name: 'conversation.session.header.utilities',
+          id: 'schedule-catalog',
           // Sits left of the overflow menu (order 0) and right of the header's
           // leading utilities (order -10), matching the shipped mock.
           order: -5,
           locale: NS,
           inject: (
             sessionId: SessionId,
-          ): import("./catalog-source.ts").CatalogInjected<ScheduleCatalogEntry> & {
-            openTaskDetail: (id: ScheduleId) => void;
+          ): import('./catalog-source.ts').CatalogInjected<ScheduleCatalogEntry> & {
+            openTaskDetail: (id: ScheduleId) => void
           } => ({
             hooks: manager.hooks,
             onRetry: manager.onRetry,
             onDelete: detail.onDelete,
             openTaskDetail: (id: ScheduleId) => {
-              ctx.sidebarRight.openTab(SCHEDULE_TASK_KIND, { params: { sessionId, id } });
+              ctx.sidebarRight.openTab(SCHEDULE_TASK_KIND, { params: { sessionId, id } })
             },
           }),
         },
         ScheduleCatalogAction,
       ),
-    );
-    yield ctx.slots.inject("sidebar.session.row.leading", () =>
+    )
+    yield ctx.slots.inject('sidebar.session.row.leading', () =>
       ctx.slots.register(
         {
-          name: "sidebar.session.row.leading",
-          id: "schedule-mark",
+          name: 'sidebar.session.row.leading',
+          id: 'schedule-mark',
           order: 10,
           locale: NS,
           inject: () => ({ hooks: { catalog: manager.hooks.catalog } }),
         },
         SessionScheduleMark,
       ),
-    );
-    yield ctx.slots.inject("sidebar.session.row.hover", () =>
+    )
+    yield ctx.slots.inject('sidebar.session.row.hover', () =>
       ctx.slots.register(
         {
-          name: "sidebar.session.row.hover",
-          id: "schedule-tasks",
+          name: 'sidebar.session.row.hover',
+          id: 'schedule-tasks',
           order: 10,
           locale: NS,
           inject: () => ({ hooks: { catalog: manager.hooks.catalog } }),
         },
         SessionScheduleHover,
       ),
-    );
-  });
+    )
+  })
 }

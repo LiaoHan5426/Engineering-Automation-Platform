@@ -1,9 +1,9 @@
-import { defineComponent, watch } from 'vue';
+import { defineComponent, watch } from 'vue'
 /** A displayed Session's header watches its terminals and opens the ones its Agent starts. */
 /** The plugin owns tab placement; the component only ties the watch to the displayed Session. */
 export interface AgentTerminalOpenerInjected {
-    /** @returns the release of this Session's terminal watch. */
-    readonly watchAgentTerminals: () => () => void;
+  /** @returns the release of this Session's terminal watch. */
+  readonly watchAgentTerminals: () => () => void
 }
 /**
  * Watch Agent terminals while the Session header is displayed, so its sidebar store accepts new tabs.
@@ -11,6 +11,6 @@ export interface AgentTerminalOpenerInjected {
  * @returns nothing; the effect is the whole component.
  */
 export const AgentTerminalOpener = defineComponent((props: AgentTerminalOpenerInjected) => {
-    watch(() => props.watchAgentTerminals, (start, _old, cleanup) => { cleanup(start()); }, { immediate: true });
-    return () => null;
-}, { props: ['watchAgentTerminals'], inheritAttrs: false });
+  watch(() => props.watchAgentTerminals, (start, _old, cleanup) => { cleanup(start()) }, { immediate: true })
+  return () => null
+}, { props: ['watchAgentTerminals'], inheritAttrs: false })

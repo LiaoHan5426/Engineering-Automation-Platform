@@ -5,25 +5,25 @@
  * task named by navigation parameters rather than by an address, and is opened
  * by kind. `builtin` is the ordinary band for a type shipped with the product.
  */
-import type { TranslateNS } from "@deepseek-ai/dsh-client-locale/client";
+import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import type {
   SidebarRightTabDefinition,
   SidebarRightTabParamsMap,
   SidebarRightNavigationParams,
-} from "@deepseek-ai/dsh-client-ui-sidebar-right/client";
-import type { ScheduleId } from "@deepseek-ai/dsh-schedule/client";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
+} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type { ScheduleId } from '@deepseek-ai/dsh-schedule/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 /** This implementation's identity in the tab system: the key its body and title register under. */
-export const SCHEDULE_TASK_ID = "@deepseek-ai/dsh-client-ui-schedule/task";
+export const SCHEDULE_TASK_ID = '@deepseek-ai/dsh-client-ui-schedule/task'
 
 /** The tab kind this package owns. */
-export const SCHEDULE_TASK_KIND = "scheduleTask";
+export const SCHEDULE_TASK_KIND = 'scheduleTask'
 
-declare module "@deepseek-ai/dsh-client-ui-sidebar-right/client" {
+declare module '@deepseek-ai/dsh-client-ui-sidebar-right/client' {
   interface SidebarRightTabParamsMap {
     /** One retained task, named by its original Session and its own identity. */
-    scheduleTask: { sessionId: SessionId; id: ScheduleId };
+    scheduleTask: { sessionId: SessionId; id: ScheduleId }
   }
 }
 
@@ -36,14 +36,14 @@ declare module "@deepseek-ai/dsh-client-ui-sidebar-right/client" {
  * @returns the definition to register.
  */
 export function scheduleTaskDefinition(
-  t: TranslateNS<"schedule.manager">,
+  t: TranslateNS<'schedule.manager'>,
 ): SidebarRightTabDefinition {
   return {
     id: SCHEDULE_TASK_ID,
     kind: SCHEDULE_TASK_KIND,
-    priority: "builtin",
-    title: () => t("detail.label"),
-  };
+    priority: 'builtin',
+    title: () => t('detail.label'),
+  }
 }
 
 /**
@@ -53,7 +53,7 @@ export function scheduleTaskDefinition(
  */
 export function scheduleTaskParams(
   params: SidebarRightNavigationParams,
-): SidebarRightTabParamsMap["scheduleTask"] | undefined {
-  if (params === undefined || !("sessionId" in params) || !("id" in params)) return undefined;
-  return { sessionId: params.sessionId, id: params.id };
+): SidebarRightTabParamsMap['scheduleTask'] | undefined {
+  if (params === undefined || !('sessionId' in params) || !('id' in params)) return undefined
+  return { sessionId: params.sessionId, id: params.id }
 }

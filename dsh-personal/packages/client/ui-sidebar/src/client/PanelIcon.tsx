@@ -10,4 +10,4 @@ import type {} from './contract/slots.ts'
  */
 export const PanelIcon = defineComponent((props: FactoryComponentPropsOf<'sidebar.panel.icon'>) => {
   return () => props.renderSlot('sidebar.panellist', { size: props.size, active: props.active }, { only: props.id })
-}, {props: ['id','size','active','renderSlot','renderFactorySlot','useFactorySlot','useSessions','usePanelInfo','useSessionRetainInfo','useRemoteAccess','useSessionAccess',], inheritAttrs:false})
+}, { props: ['id','size','active','renderSlot','renderFactorySlot','useFactorySlot','useSessions','usePanelInfo','useSessionRetainInfo','useRemoteAccess','useSessionAccess'], inheritAttrs:false })

@@ -1,5 +1,5 @@
-import { shallowReadonly, shallowRef, watchEffect } from "vue";
-import type { ShallowRef } from "vue";
+import { shallowReadonly, shallowRef, watchEffect } from 'vue'
+import type { ShallowRef } from 'vue'
 
 /**
  * The name the owner's own identity carries, shared with surfaces that do not
@@ -12,32 +12,32 @@ import type { ShallowRef } from "vue";
  *
  * @module @deepseek-ai/dsh-experimental-liveshare/src/client/owner-display
  */
-import type { OwnerShares } from "./owner-shares.ts";
-import { readOwnerIdentity } from "./owner-identity.ts";
+import type { OwnerShares } from './owner-shares.ts'
+import { readOwnerIdentity } from './owner-identity.ts'
 /** Display facts one verified owner identity carries. */
 export interface OwnerDisplay {
   /** Subject the owner identity belongs to. */
-  readonly subjectId?: string;
+  readonly subjectId?: string
   /** Verified display name; absent when the identity published none. */
-  readonly displayName?: string;
+  readonly displayName?: string
 }
-let current: OwnerDisplay = {};
-const listeners = new Set<() => void>();
+let current: OwnerDisplay = {}
+const listeners = new Set<() => void>()
 /**
  * Record the owner identity the host reported.
  * @param identity - Subject and display name, when the host reported a verified identity.
  */
 export function rememberOwnerDisplay(identity: OwnerDisplay): void {
   if (identity.subjectId === current.subjectId && identity.displayName === current.displayName)
-    return;
-  current = identity;
-  for (const listener of [...listeners]) listener();
+    return
+  current = identity
+  for (const listener of [...listeners]) listener()
 }
 /** Forget the name when the face unloads or the identity stops being verified. */
 export function forgetOwnerDisplay(): void {
-  if (current.subjectId === undefined && current.displayName === undefined) return;
-  current = {};
-  for (const listener of [...listeners]) listener();
+  if (current.subjectId === undefined && current.displayName === undefined) return
+  current = {}
+  for (const listener of [...listeners]) listener()
 }
 /**
  * Read the owner identity the host reports and remember its display name.
@@ -48,18 +48,18 @@ export function forgetOwnerDisplay(): void {
  * @returns Nothing; the store holds the result.
  */
 export async function rememberOwnerIdentity(shares: OwnerShares): Promise<void> {
-  if (typeof shares.identity !== "function") return;
+  if (typeof shares.identity !== 'function') return
   try {
-    const reported = await shares.identity({});
+    const reported = await shares.identity({})
     if (!reported.ok) {
-      forgetOwnerDisplay();
-      return;
+      forgetOwnerDisplay()
+      return
     }
-    const identity = readOwnerIdentity(reported.value, "");
-    if (identity.state === "verified") rememberOwnerDisplay(identity);
-    else forgetOwnerDisplay();
+    const identity = readOwnerIdentity(reported.value, '')
+    if (identity.state === 'verified') rememberOwnerDisplay(identity)
+    else forgetOwnerDisplay()
   } catch {
-    forgetOwnerDisplay();
+    forgetOwnerDisplay()
   }
 }
 /**
@@ -67,21 +67,21 @@ export async function rememberOwnerIdentity(shares: OwnerShares): Promise<void> 
  * @returns The current owner display facts.
  */
 export function useOwnerDisplay(): Readonly<ShallowRef<OwnerDisplay>> {
-  const read = () => current;
-  const currentRef = shallowRef(read());
+  const read = () => current
+  const currentRef = shallowRef(read())
   watchEffect((onCleanup) => {
     const refresh = () => {
-      currentRef.value = read();
-    };
+      currentRef.value = read()
+    }
     onCleanup(
       ((listener) => {
-        listeners.add(listener);
+        listeners.add(listener)
         return () => {
-          listeners.delete(listener);
-        };
+          listeners.delete(listener)
+        }
       })(refresh),
-    );
-    refresh();
-  });
-  return shallowReadonly(currentRef);
+    )
+    refresh()
+  })
+  return shallowReadonly(currentRef)
 }

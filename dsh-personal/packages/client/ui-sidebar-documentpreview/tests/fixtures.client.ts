@@ -39,7 +39,7 @@ export const TextPreviewFixture = defineComponent((props: TextPreviewProps) => {
   const tabInfo = computed(() => props.useTabInfo().value)
   const useDocumentPreviews: TextPreviewProps['useDocumentPreviews'] = selector => computed(() => props.useDocumentPreviews(selector).value)
   return () => createElement(NativeTextPreview, { ...props, useTabInfo: () => tabInfo, useDocumentPreviews })
-}, { inheritAttrs: false, props: ["useTabInfo","useSession","sessionId","useProjection","useAccess","useConversation","useInput","inputActions","useRemoteAccess","useSessions","useSessionRetainInfo","useSessionAccess","usePanelInfo","useContextMenu","useResource","useWorkspaces","renderSlot","__renders","SessionProvider","renderFactorySlot","useStore","actions","addResource","setResources","loadPage","reloadPages","loadAll","reloadAll","prepareRenderer","useDocumentPreviews","t"] })
+}, { inheritAttrs: false, props: ['useTabInfo','useSession','sessionId','useProjection','useAccess','useConversation','useInput','inputActions','useRemoteAccess','useSessions','useSessionRetainInfo','useSessionAccess','usePanelInfo','useContextMenu','useResource','useWorkspaces','renderSlot','__renders','SessionProvider','renderFactorySlot','useStore','actions','addResource','setResources','loadPage','reloadPages','loadAll','reloadAll','prepareRenderer','useDocumentPreviews','t'] })
 
 export function createResources(): ResourceRegistry {
   const ctx = new Context()
@@ -174,21 +174,21 @@ export function harness(script: Record<number, RemoteResult<WorkspaceFileText>> 
       },
     } as ReturnType<TextPreviewProps['useTabInfo']>['value']
     return { useTabInfo: () => computed(() => tabInfo.value!),
-    sessionId: SESSION,
-    useResource,
-    useContextMenu: contextMenuHook(),
-    useStore: hookOf(instance),
-    actions: instance.actions,
-    loadPage: face.loadPage,
-    reloadPages: face.reloadPages,
-    prepareRenderer: face.prepareRenderer, loadAll: face.loadAll,
-    reloadAll: face.reloadAll,
-    addResource: face.addResource, setResources: face.setResources,
-    useDocumentPreviews: selector => computed(() => selector(definitions)),
-    renderSlot,
-    renderFactorySlot: (key: string) => createElement('div', { 'data-navigator-factory': key }),
-    t,
-  } as TextPreviewProps
+      sessionId: SESSION,
+      useResource,
+      useContextMenu: contextMenuHook(),
+      useStore: hookOf(instance),
+      actions: instance.actions,
+      loadPage: face.loadPage,
+      reloadPages: face.reloadPages,
+      prepareRenderer: face.prepareRenderer, loadAll: face.loadAll,
+      reloadAll: face.reloadAll,
+      addResource: face.addResource, setResources: face.setResources,
+      useDocumentPreviews: selector => computed(() => selector(definitions)),
+      renderSlot,
+      renderFactorySlot: (key: string) => createElement('div', { 'data-navigator-factory': key }),
+      t,
+    } as TextPreviewProps
   }
   return {
     instance,

@@ -1,1495 +1,1501 @@
-import { h, shallowRef, defineComponent, type VNodeChild } from 'vue';
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime';
-import { es, pt } from '../src/client/locales.ts';
+import { h, shallowRef, defineComponent, type VNodeChild, nextTick } from 'vue'
+import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
+import { es, pt } from '../src/client/locales.ts'
 // @vitest-environment jsdom
 /** Trajectory ledger selection, details, status, and fold behavior. */
-import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
-import { act, cleanup, render } from '../../../test-support/client-runtime/src/vue-test.ts';
-import { fireEvent, screen, waitFor, within } from '@testing-library/dom';
-import type { AttachmentId } from '@deepseek-ai/dsh-attachment/types';
-import { brandString } from '@deepseek-ai/dsh-brand';
-import type { JsonValue } from '@deepseek-ai/dsh-util-values';
-import type { SessionId } from '@deepseek-ai/dsh-session/types';
-import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime';
-import type { MessageImageLoader, MessageImagesOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client';
-import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots';
-import { TrajectoryTable as LocalizedTrajectoryTable } from '../src/client/TrajectoryTable.tsx';
-import { deriveTrajectoryLayout, type TrajectoryTurnModel } from '../src/client/layout.ts';
-import { trajectoryRecordId, type TrajectoryCellProps } from '../src/client/trajectory-record.ts';
-import { t, tZh } from './locale.client.ts';
-const loadImage: MessageImageLoader = async () => 'blob:trajectory';
-const renderNoImages: PropsRenderSlots<'conversation.trajectory.images'>['renderSlot'] = () => null;
-const RecordImages = ({ images }: MessageImagesOwnerProps) => (h("div", { "data-testid": "record-images", "data-count": images.length }, [
-    images.map((image, index) => (h("span", { "key": index, "data-attachment-id": 'attachment' in image ? image.attachment.attachmentId : image.preview.url })))
-]));
-async function imageSlotFixture() {
-    const runtime = await SlotTestRuntime.create();
-    onTestFinished(() => runtime.dispose());
-    await runtime.sessions.add({ id: 'trajectory-images' });
-    const session = runtime.sessions.retainFor(runtime.ctx, brandString<SessionId>('trajectory-images'));
-    type Seats = import('@deepseek-ai/dsh-client-ui-slots').ComposedProps<'root', never, 'conversation.trajectory.images', undefined, object>;
-    const captured: {
-        seats?: Seats;
-        setContent?: (content: VNodeChild) => void;
-    } = {};
-    await runtime.root.declare({ 'conversation.trajectory.images': { kind: 'single', scope: 'session' } }, defineComponent((props: Seats) => {
-        const content = shallowRef<VNodeChild>(null);
-        const setContent = (next: VNodeChild) => { content.value = next; };
-        captured.seats = props;
-        captured.setContent = setContent;
-        const { SessionProvider } = props;
-        return () => h(SessionProvider, { "session": session, children: null }, { default: () => [
-                content.value
-            ] });
-    }, { props: ['SessionProvider', 'renderSlot'], inheritAttrs: false }));
-    runtime.slots.register({ name: 'conversation.trajectory.images' }, RecordImages);
-    const view = runtime.renderRoot();
-    await act(() => { });
-    await runtime.flush();
-    const { seats, setContent } = captured;
-    if (seats === undefined || setContent === undefined)
-        throw new Error('trajectory image fixture root did not render');
-    return {
-        renderSlot: seats.renderSlot,
-        render: async (content: VNodeChild) => {
-            await act(() => { setContent(content); });
-            return view;
-        },
-    };
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
+import { act, cleanup, render as renderNative } from '../../../test-support/client-runtime/src/vue-test.ts'
+const render = async (...args: Parameters<typeof renderNative>) => {
+  const view = renderNative(...args)
+  await nextTick()
+  return view
 }
-type TableProps = InstanceType<typeof LocalizedTrajectoryTable>['$props'];
+import { fireEvent, screen, waitFor, within } from '@testing-library/dom'
+import type { AttachmentId } from '@deepseek-ai/dsh-attachment/types'
+import { brandString } from '@deepseek-ai/dsh-brand'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
+import type { MessageImageLoader, MessageImagesOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
+import { TrajectoryTable as LocalizedTrajectoryTable } from '../src/client/TrajectoryTable.tsx'
+import { deriveTrajectoryLayout, type TrajectoryTurnModel } from '../src/client/layout.ts'
+import { trajectoryRecordId, type TrajectoryCellProps } from '../src/client/trajectory-record.ts'
+import { t, tZh } from './locale.client.ts'
+const loadImage: MessageImageLoader = async () => 'blob:trajectory'
+const renderNoImages: PropsRenderSlots<'conversation.trajectory.images'>['renderSlot'] = () => null
+const RecordImages = ({ images }: MessageImagesOwnerProps) => (h('div', { 'data-testid': 'record-images', 'data-count': images.length }, [
+  images.map((image, index) => (h('span', { 'key': index, 'data-attachment-id': 'attachment' in image ? image.attachment.attachmentId : image.preview.url }))),
+]))
+async function imageSlotFixture() {
+  const runtime = await SlotTestRuntime.create()
+  onTestFinished(() => runtime.dispose())
+  await runtime.sessions.add({ id: 'trajectory-images' })
+  const session = runtime.sessions.retainFor(runtime.ctx, brandString<SessionId>('trajectory-images'))
+  type Seats = import('@deepseek-ai/dsh-client-ui-slots').ComposedProps<'root', never, 'conversation.trajectory.images', undefined, object>
+  const captured: {
+    seats?: Seats
+    setContent?: (content: VNodeChild) => void
+  } = {}
+  await runtime.root.declare({ 'conversation.trajectory.images': { kind: 'single', scope: 'session' } }, defineComponent((props: Seats) => {
+    const content = shallowRef<VNodeChild>(null)
+    const setContent = (next: VNodeChild) => { content.value = next }
+    captured.seats = props
+    captured.setContent = setContent
+    const { SessionProvider } = props
+    return () => h(SessionProvider, { 'session': session, children: null }, { default: () => [
+      content.value,
+    ] })
+  }, { props: ['SessionProvider', 'renderSlot'], inheritAttrs: false }))
+  runtime.slots.register({ name: 'conversation.trajectory.images' }, RecordImages)
+  const view = runtime.renderRoot()
+  await act(() => { })
+  await runtime.flush()
+  const { seats, setContent } = captured
+  if (seats === undefined || setContent === undefined)
+    throw new Error('trajectory image fixture root did not render')
+  return {
+    renderSlot: seats.renderSlot,
+    render: async (content: VNodeChild) => {
+      await act(() => { setContent(content) })
+      return view
+    },
+  }
+}
+type TableProps = InstanceType<typeof LocalizedTrajectoryTable>['$props']
 function TrajectoryTable(props: Omit<TableProps, 't' | 'renderSlot' | 'loadImage'> & Partial<Pick<TableProps, 'renderSlot' | 'loadImage'>>) {
-    const inferred: Array<NonNullable<typeof props.requestNumbers>[number] & {
-        firstIndex: number;
-    }> = [];
-    for (const turn of props.turns) {
-        for (const group of turn.groups) {
-            const step = /^Step (\d+)$/.exec(group.title)?.[1];
-            const compaction = /^Compaction (\d+)$/.exec(group.title)?.[1];
-            const firstIndex = group.cells[0]?.index ?? Number.MAX_SAFE_INTEGER;
-            if (compaction !== undefined) {
-                inferred.push({
-                    turn: turn.turn,
-                    step: 0,
-                    seq: Number(compaction),
-                    group: group.title,
-                    number: 0,
-                    purpose: 'compaction',
-                    firstIndex,
-                });
-            }
-            else if (step !== undefined && turn.turn !== null) {
-                inferred.push({
-                    turn: turn.turn,
-                    step: Number(step),
-                    group: group.title,
-                    number: 0,
-                    firstIndex,
-                });
-            }
-        }
+  const inferred: Array<NonNullable<typeof props.requestNumbers>[number] & {
+    firstIndex: number
+  }> = []
+  for (const turn of props.turns) {
+    for (const group of turn.groups) {
+      const step = /^Step (\d+)$/.exec(group.title)?.[1]
+      const compaction = /^Compaction (\d+)$/.exec(group.title)?.[1]
+      const firstIndex = group.cells[0]?.index ?? Number.MAX_SAFE_INTEGER
+      if (compaction !== undefined) {
+        inferred.push({
+          turn: turn.turn,
+          step: 0,
+          seq: Number(compaction),
+          group: group.title,
+          number: 0,
+          purpose: 'compaction',
+          firstIndex,
+        })
+      }
+      else if (step !== undefined && turn.turn !== null) {
+        inferred.push({
+          turn: turn.turn,
+          step: Number(step),
+          group: group.title,
+          number: 0,
+          firstIndex,
+        })
+      }
     }
-    const requestNumbers = props.requestNumbers ?? inferred
-        .sort((left, right) => left.firstIndex - right.firstIndex)
-        .map(({ firstIndex: _firstIndex, ...request }, index) => ({ ...request, number: index + 1 }));
-    return (h(LocalizedTrajectoryTable, { "renderSlot": renderNoImages, "loadImage": loadImage, ...props, "requestNumbers": requestNumbers, "t": t }));
+  }
+  const requestNumbers = props.requestNumbers ?? inferred
+    .sort((left, right) => left.firstIndex - right.firstIndex)
+    .map(({ firstIndex: _firstIndex, ...request }, index) => ({ ...request, number: index + 1 }))
+  return (h(LocalizedTrajectoryTable, { 'renderSlot': renderNoImages, 'loadImage': loadImage, ...props, 'requestNumbers': requestNumbers, 't': t }))
 }
 afterEach(() => {
-    cleanup();
-    vi.restoreAllMocks();
-    Reflect.deleteProperty(HTMLElement.prototype, 'scrollTo');
-});
+  cleanup()
+  vi.restoreAllMocks()
+  Reflect.deleteProperty(HTMLElement.prototype, 'scrollTo')
+})
 const TURNS: readonly TrajectoryTurnModel[] = [{
+  turn: 1,
+  groups: [{
+    title: 'Step 1',
+    description: '1.5s bash×2',
+    cells: [
+      {
+        index: 1,
+        kind: 'message',
+        text: 'Checking files',
+        outputDetail: 'Checking files',
+        input: 10,
+        output: 20,
+        think: 5,
+        timeSeconds: 1.5,
+        assistantMetrics: {
+          timingRecorded: true,
+          stepStartTime: 1000,
+          firstTokenTime: 1500,
+          completedTime: 2500,
+          usageProvided: true,
+          outputTokens: 20,
+        },
+      },
+      {
+        index: 2,
+        kind: 'tool',
+        text: 'bash · {"command":"pwd"}',
+        inputDetail: '{"command":"pwd"}',
+        timeSeconds: null,
+      },
+      {
+        index: 3,
+        kind: 'tool',
+        text: 'bash · {"command":"false"}',
+        inputDetail: '{"command":"false"}',
+        outputDetail: 'ToolError: non_zero_exit',
+        result: 'non_zero_exit',
+        isError: true,
+        timeSeconds: 0.2,
+      },
+    ],
+  }],
+}]
+const FOLD_PROPS = {
+  collapsedTurns: new Set<number>(),
+  onToggleTurn: () => { },
+  collapsedAssistants: new Set<string>(),
+  onToggleAssistant: () => { },
+  collapsedTools: new Set<string>(),
+  onToggleTool: () => { },
+}
+describe('TrajectoryTable', () => {
+  it('shows known standalone prompt text without a fabricated tool catalog or request options', async () => {
+    const turns = deriveTrajectoryLayout({
+      nodes: [], partial: null, runningCalls: [],
+      systemPrompts: [{ seq: 10, time: 10, turn: 2, step: 1, text: '# Known instructions', update: false }],
+    }, t)
+    expect(turns.flatMap(turn => turn.groups.flatMap(group => group.cells))).toMatchObject([
+      { kind: 'system', text: 'Initial System Prompt', systemPromptDetail: '# Known instructions' },
+    ])
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /SYSTEM/ })))
+    expect(screen.getByRole('heading', { name: 'Known instructions' })).toBeTruthy()
+    expect(screen.getAllByRole('tab').map(tab => tab.textContent)).toEqual(['System Prompt'])
+  })
+  it('shows a muted placeholder for an assistant response containing only tool calls', async () => {
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Step 1',
+        cells: [{
+          index: 1,
+          kind: 'message',
+          text: 'Tool call only',
+          sourceBlocks: [{
+            type: 'tool-call', content: '{}', callId: 'call-1', toolName: 'read',
+          }],
+          timeSeconds: 1,
+        }],
+      }],
+    }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(screen.getByText('(tool call only)')).toBeTruthy()
+  })
+  it('localizes the summary for folded Assistant tool calls', async () => {
+    const assistant = TURNS[0]!.groups[0]!.cells[0]!
+    await (async () => {
+      const nativeView = await render(h(LocalizedTrajectoryTable, { 't': tZh, 'renderSlot': renderNoImages, 'loadImage': loadImage, 'turns': TURNS, 'collapsedTurns': new Set<number>(), 'onToggleTurn': () => { }, 'collapsedAssistants': new Set([trajectoryRecordId(assistant)]), 'onToggleAssistant': () => { }, 'collapsedTools': new Set<string>(), 'onToggleTool': () => { } }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(screen.getByText('2 个工具调用 · bash')).toBeTruthy()
+  })
+  it('shows assistant timing facts after keyboard selection', async () => {
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.keyDown(screen.getByRole('row', { name: /ASSISTANT/ }), { key: 'Enter' }))
+    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Request Timing' })))
+    expect(screen.getByText('500 ms')).toBeTruthy()
+    expect(screen.getByText('1.00 s')).toBeTruthy()
+    expect(screen.getByText('20.0 tok/s')).toBeTruthy()
+  })
+  it('shows a tool record Duration as exact milliseconds', async () => {
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Step 1',
+        cells: [{
+          index: 1,
+          kind: 'tool',
+          text: 'bash · {"command":"pwd"}',
+          inputDetail: '{"command":"pwd"}',
+          timeSeconds: 1.5,
+        }],
+      }],
+    }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /TOOL/ })))
+    expect(screen.getByText('1,500 ms', { selector: 'dd' })).toBeTruthy()
+  })
+  it('breaks output tokens into labeled reasoning and content rows', async () => {
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /ASSISTANT/ })))
+    expect(screen.getByText('Tokens')).toBeTruthy()
+    expect(screen.getByText('20 tok')).toBeTruthy()
+    expect(screen.getByText('Reasoning')).toBeTruthy()
+    expect(screen.getByText('5 tok')).toBeTruthy()
+    expect(screen.getByText('Content')).toBeTruthy()
+    expect(screen.getByText('15 tok')).toBeTruthy()
+  })
+  it('marks Summary scroll regions for interaction-only scrollbar thumbs', async () => {
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /ASSISTANT/ })))
+    const panel = screen.getByRole('tabpanel')
+    expect(panel.querySelectorAll('[data-summary-scroll-region]').length).toBeGreaterThan(1)
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Preview' })))
+    expect(panel.querySelector('[data-summary-scroll-region]')).toBeNull()
+  })
+  it.each([
+    { outputDetail: undefined, toolCall: false },
+    { outputDetail: 'Visible answer', toolCall: false },
+    { outputDetail: undefined, toolCall: true },
+    { outputDetail: 'Visible answer', toolCall: true },
+  ])('opens thinking with output=$outputDetail and toolCall=$toolCall', async ({ outputDetail, toolCall }) => {
+    const thinking = 'private chain '.repeat(1000)
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Step 1',
+        cells: [{
+          index: 1,
+          kind: 'message',
+          text: 'private chain…',
+          thinkingDetail: thinking,
+          ...(outputDetail === undefined ? {} : { outputDetail }),
+          ...(toolCall ? { sourceBlocks: [{
+            type: 'tool-call', content: '{}', callId: 'call-1', toolName: 'read',
+          }] } : {}),
+          timeSeconds: 1,
+        }],
+      }],
+    }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /ASSISTANT/ })))
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Preview' })))
+    const toggle = screen.getByRole('button', { name: 'Thinking' })
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(toggle.parentElement?.textContent?.length).toBeGreaterThan(thinking.length)
+    await act(() => fireEvent.click(toggle))
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByText(thinking)).toBeNull()
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Summary' })))
+    expect(screen.getByRole('button', { name: 'Thinking' }).getAttribute('aria-expanded')).toBe('false')
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Preview' })))
+    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Thinking' })))
+    expect(screen.getByRole('button', { name: 'Thinking' }).getAttribute('aria-expanded')).toBe('true')
+  })
+  it('renders thinking as compact Markdown while keeping answer typography separate', async () => {
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Step 1',
+        cells: [{
+          index: 1,
+          kind: 'message',
+          text: 'Answer',
+          outputDetail: '# Answer heading\n\nAnswer body.',
+          thinkingDetail: '# Thinking heading\n\nReasoning **emphasis**.',
+          timeSeconds: 1,
+        }],
+      }],
+    }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /ASSISTANT/ })))
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Preview' })))
+    expect(screen.getByRole('heading', { name: 'Thinking heading' })
+      .closest('[data-markdown-variant="compact"]')).not.toBeNull()
+    expect(screen.getByText('emphasis').tagName).toBe('STRONG')
+    expect(screen.getByRole('heading', { name: 'Answer heading' })
+      .closest('[data-markdown-variant="compact"]')).toBeNull()
+    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Thinking' })))
+    expect(screen.queryByRole('heading', { name: 'Thinking heading' })).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Answer heading' })).toBeTruthy()
+  })
+  it('opens thinking on another record after collapsing the selected record', async () => {
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Step 1',
+        cells: [1, 2].map(index => ({
+          index, kind: 'message', text: `Answer ${index}`, outputDetail: `Answer ${index}`,
+          thinkingDetail: `Reasoning ${index}`, timeSeconds: 1,
+        })),
+      }],
+    }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /ASSISTANT, Answer 1/ })))
+    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Thinking' })))
+    expect(screen.getByRole('button', { name: 'Thinking' }).getAttribute('aria-expanded')).toBe('false')
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /ASSISTANT, Answer 2/ })))
+    expect(screen.getByRole('button', { name: 'Thinking' }).getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByText('Reasoning 2')).toBeTruthy()
+  })
+  it('keeps raw HTML tags in a Markdown-derived context preview', async () => {
+    const html = [
+      '<background-job-complete id="trajectory-ui-watch">',
+      'Command: pnpm test',
+      'Exit code: 0',
+      '</background-job-complete>',
+    ].join('\n')
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Message',
+        cells: [{
+          index: 1,
+          kind: 'context',
+          text: '',
+          inputDetail: html,
+          timeSeconds: 0,
+        }],
+      }],
+    }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(screen.getByText('<background-job-complete id="trajectory-ui-watch"> Command: pnpm test Exit code: 0 </background-job-complete>')).toBeTruthy()
+  })
+  it('clears the selected row when ledger whitespace is clicked', async () => {
+    const onClearSelection = vi.fn()
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS, 'onClearSelection': onClearSelection }))
+      await act(() => { })
+      return nativeView
+    })()
+    const row = screen.getByRole('row', { name: /ASSISTANT/ })
+    await act(() => fireEvent.click(row))
+    expect(row.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('complementary', { name: 'Event details' })).toBeTruthy()
+    const tablePane = screen.getByRole('table').parentElement
+    expect(tablePane).not.toBeNull()
+    await act(() => fireEvent.click(tablePane as HTMLElement))
+    expect(row.getAttribute('aria-selected')).toBe('false')
+    expect(screen.queryByRole('complementary', { name: 'Event details' })).toBeNull()
+    expect(onClearSelection).toHaveBeenCalledOnce()
+  })
+  it('keeps the selected record when older rows shift projection indexes', async () => {
+    const tail = (index: number): TrajectoryTurnModel => ({
+      turn: 2,
+      groups: [{
+        title: 'Step 1',
+        cells: [{
+          index,
+          kind: 'message',
+          sourceSeq: 100,
+          text: 'selected tail response',
+          outputDetail: 'selected tail response detail',
+          timeSeconds: 1,
+        }],
+      }],
+    })
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': [tail(1)], ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /selected tail response/ })))
+    await view.rerender(h(TrajectoryTable, { 'turns': [{
+      turn: 1,
+      groups: [{
+        title: 'Message',
+        cells: [{
+          index: 1,
+          kind: 'user',
+          sourceSeq: 1,
+          text: 'older prompt',
+          timeSeconds: 0,
+        }],
+      }],
+    }, tail(2)], ...FOLD_PROPS }))
+    expect(screen.getByRole('row', { name: /selected tail response/ })
+      .getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByText('selected tail response detail')).toBeTruthy()
+  })
+  it('keeps a selected request when prepending changes its display number', async () => {
+    const tail = (index: number): TrajectoryTurnModel => ({
+      turn: 2,
+      groups: [{
+        title: 'Step 1',
+        cells: [{
+          index,
+          kind: 'message',
+          sourceSeq: 100,
+          text: 'tail response',
+          timeSeconds: 1,
+        }],
+      }],
+    })
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': [tail(1)], ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Request #1' })))
+    await view.rerender(h(TrajectoryTable, { 'turns': [{
+      turn: 1,
+      groups: [{
+        title: 'Step 1',
+        cells: [{
+          index: 1,
+          kind: 'message',
+          sourceSeq: 1,
+          text: 'older response',
+          timeSeconds: 1,
+        }],
+      }],
+    }, tail(2)], ...FOLD_PROPS }))
+    expect(screen.getByRole('button', { name: 'Request #2' })
+      .getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('Request #2')).toBeTruthy()
+  })
+  it('keeps a selected request when its localized group label changes', async () => {
+    const turn = (group: string): TrajectoryTurnModel => ({
+      turn: 1,
+      groups: [{
+        title: group,
+        cells: [{
+          index: 1,
+          kind: 'message',
+          sourceSeq: 10,
+          text: 'response',
+          timeSeconds: 1,
+        }],
+      }],
+    })
+    const request = (group: string) => [{
+      turn: 1,
+      step: 1,
+      seq: 10,
+      group,
+      number: 1,
+    }] as const
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': [turn('Step 1')], 'requestNumbers': request('Step 1'), ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Request #1' })))
+    await view.rerender(h(TrajectoryTable, { 'turns': [turn('步骤 1')], 'requestNumbers': request('步骤 1'), ...FOLD_PROPS }))
+    expect(screen.getByRole('button', { name: 'Request #1' })
+      .getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('Request #1')).toBeTruthy()
+  })
+  it('places the request boundary after leading steering input', async () => {
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Step 2',
+        cells: [{
+          index: 1,
+          kind: 'user',
+          sourceSeq: 3,
+          text: 'change direction',
+          timeSeconds: 0,
+        }, {
+          index: 2,
+          kind: 'message',
+          sourceSeq: 4,
+          text: 'continued',
+          timeSeconds: 1,
+        }],
+      }],
+    }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, 'requestNumbers': [{
+        seq: 2,
+        turn: 1,
+        step: 2,
+        group: 'Step 2',
+        number: 1,
+      }], ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    const request = screen.getByRole('button', { name: 'Request #1' })
+    expect(request.closest('tr')?.getAttribute('aria-label')).toContain('ASSISTANT')
+  })
+  it('follows appended records only while the ledger is already at the bottom', async () => {
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    const tablePane = screen.getByRole('table').parentElement as HTMLElement
+    let scrollHeight = 200
+    Object.defineProperties(tablePane, {
+      clientHeight: { configurable: true, get: () => 100 },
+      scrollHeight: { configurable: true, get: () => scrollHeight },
+    })
+    tablePane.scrollTop = 100
+    await act(() => fireEvent.scroll(tablePane))
+    scrollHeight = 260
+    await view.rerender(h(TrajectoryTable, { 'turns': [...TURNS, {
+      turn: 2,
+      groups: [{
+        title: 'Step 1',
+        cells: [{ index: 4, kind: 'message', text: 'new reply', timeSeconds: 0.1 }],
+      }],
+    }], ...FOLD_PROPS }))
+    expect(tablePane.scrollTop).toBe(260)
+    tablePane.scrollTop = 20
+    await act(() => fireEvent.scroll(tablePane))
+    scrollHeight = 320
+    await view.rerender(h(TrajectoryTable, { 'turns': [...TURNS, {
+      turn: 2,
+      groups: [{
+        title: 'Step 1',
+        cells: [
+          { index: 4, kind: 'message', text: 'new reply', timeSeconds: 0.1 },
+          { index: 5, kind: 'tool', text: 'new tool', timeSeconds: 0.1 },
+        ],
+      }],
+    }], ...FOLD_PROPS }))
+    expect(tablePane.scrollTop).toBe(20)
+  })
+  it('preserves the visible anchor when the last older page disables virtualization', async () => {
+    let resolveOlder: ((advanced: boolean) => void) | undefined
+    const older = new Promise<boolean>((resolve) => { resolveOlder = resolve })
+    const onLoadOlder = vi.fn(() => older)
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS, 'historyStartSeq': 1, 'hasOlderRecords': true, 'onLoadOlder': onLoadOlder }))
+      await act(() => { })
+      return nativeView
+    })()
+    const tablePane = screen.getByRole('table').parentElement as HTMLElement
+    let scrollHeight = 200
+    Object.defineProperties(tablePane, {
+      clientHeight: { configurable: true, get: () => 100 },
+      scrollHeight: { configurable: true, get: () => scrollHeight },
+    })
+    tablePane.scrollTop = 0
+    await act(() => fireEvent.scroll(tablePane))
+    await act(() => fireEvent.scroll(tablePane))
+    await waitFor(() => { expect(onLoadOlder).toHaveBeenCalledOnce() })
+    expect(screen.getByRole('status').textContent).toContain('Loading earlier history…')
+    resolveOlder?.(true)
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toBe('')
+    })
+    scrollHeight = 260
+    await view.rerender(h(TrajectoryTable, { 'turns': [{
+      turn: 0,
+      groups: [{
+        title: 'Step 1',
+        cells: [{ index: 0, kind: 'user', text: 'older prompt', timeSeconds: 0 }],
+      }],
+    }, ...TURNS], ...FOLD_PROPS, 'historyStartSeq': 0, 'onLoadOlder': onLoadOlder }))
+    expect(tablePane.scrollTop).toBe(60)
+  })
+  it('keeps an idle older-history control as the first row until paging completes', async () => {
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600)
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: vi.fn(),
+    })
+    let resolveOlder: ((advanced: boolean) => void) | undefined
+    const older = new Promise<boolean>((resolve) => { resolveOlder = resolve })
+    const onLoadOlder = vi.fn(() => older)
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS, 'hasOlderRecords': true, 'onLoadOlder': onLoadOlder }))
+      await act(() => { })
+      return nativeView
+    })()
+    const table = screen.getByRole('table')
+    const loadButton = screen.getByRole('button', { name: 'Load earlier history' })
+    const loadRow = table.querySelector('tbody > tr:first-child')
+    expect(loadRow?.contains(loadButton)).toBe(true)
+    expect(loadRow?.getAttribute('aria-rowindex')).toBe('1')
+    expect(screen.getByRole('status').textContent).toBe('')
+    expect(table.getAttribute('aria-rowcount')).toBe('4')
+    expect((await screen.findByRole('row', { name: /ASSISTANT/ })).getAttribute('aria-rowindex'))
+      .toBe('2')
+    await act(() => fireEvent.click(loadButton))
+    expect(onLoadOlder).toHaveBeenCalledOnce()
+    expect(loadButton.hasAttribute('disabled')).toBe(true)
+    expect(screen.getByRole('status').textContent).toBe('Loading earlier history…')
+    expect(screen.getByRole('button', { name: 'Loading earlier history…' }).querySelector('[data-state="ongoing"]')).not.toBeNull()
+    resolveOlder?.(false)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Load earlier history' })
+        .hasAttribute('disabled')).toBe(false)
+    })
+    await view.rerender(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS }))
+    expect(screen.queryByRole('button', { name: 'Load earlier history' })).toBeNull()
+    expect(table.getAttribute('aria-rowcount')).toBe('3')
+  })
+  it('reflects an older page started outside the ledger in the persistent control', async () => {
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS, 'hasOlderRecords': true, 'olderHistoryLoading': true, 'onLoadOlder': vi.fn(async () => true) }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(screen.getByRole('button', { name: 'Loading earlier history…' })
+      .hasAttribute('disabled')).toBe(true)
+    expect(screen.getByRole('status').textContent).toBe('Loading earlier history…')
+  })
+  it('covers the ledger while the initial tail is loading', async () => {
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS, 'historyLoading': true }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(screen.getByRole('status').textContent).toContain('Loading trajectory…')
+    expect(screen.getByRole('status').querySelector('[data-state="ongoing"]')).not.toBeNull()
+    expect(screen.getByRole('table').getAttribute('data-scroll-ready')).toBeNull()
+    await view.rerender(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS }))
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByRole('table').getAttribute('data-scroll-ready')).toBe('true')
+  })
+  it('keeps a paged tail virtualized before its loaded window crosses the row threshold', async () => {
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600)
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: vi.fn(),
+    })
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS, 'hasOlderRecords': true }))
+      await act(() => { })
+      return nativeView
+    })()
+    await waitFor(() => {
+      expect(view.container.querySelector('tr[data-virtual-position]')).toBeTruthy()
+    })
+  })
+  it('mounts only the visible window for a long ledger', async () => {
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600)
+    const scrollTo = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: scrollTo,
+    })
+    const cells = Array.from({ length: 500 }, (_, index) => ({
+      index: index + 1,
+      kind: 'context' as const,
+      text: `Context ${index + 1}`,
+      timeSeconds: 0,
+    }))
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{ title: 'Context', cells }],
+    }]
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await waitFor(() => {
+      expect(view.container.querySelectorAll('tr[data-virtual-position]').length)
+        .toBeGreaterThan(0)
+    })
+    expect(view.container.querySelectorAll('tr[data-virtual-position]').length)
+      .toBeLessThan(cells.length)
+    expect(screen.getByRole('table').getAttribute('aria-rowcount')).toBe('500')
+    expect(view.container.querySelector('tr[data-trajectory-row-key]')
+      ?.getAttribute('aria-rowindex')).toBe('1')
+    expect(scrollTo).toHaveBeenCalled()
+    expect(view.container.querySelector('tr[data-virtual-spacer="bottom"]')).toBeTruthy()
+    expect(screen.getByText('Context 1')).toBeTruthy()
+    expect(screen.queryByText('Context 500')).toBeNull()
+    const tablePane = screen.getByRole('table').parentElement as HTMLElement
+    tablePane.scrollTop = 9000
+    await act(() => fireEvent.scroll(tablePane))
+    await waitFor(() => {
+      expect(Number(view.container.querySelector('tr[data-virtual-position]')?.getAttribute('data-virtual-position'))).toBeGreaterThan(0)
+    })
+    expect(view.container.querySelector('tr[data-virtual-spacer="top"]')).toBeTruthy()
+    expect(screen.queryByText('Context 1')).toBeNull()
+  })
+  it('does not re-scroll a virtual ledger when streaming only changes row content', async () => {
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600)
+    const scrollTo = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: scrollTo,
+    })
+    const cells = Array.from({ length: 500 }, (_, index) => ({
+      index: index + 1,
+      kind: 'context' as const,
+      sourceSeq: index + 1,
+      text: `Context ${index + 1}`,
+      timeSeconds: 0,
+    }))
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{ title: 'Context', cells }],
+    }]
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await waitFor(() => {
+      expect(view.container.querySelector('tr[data-virtual-position]')).toBeTruthy()
+    })
+    scrollTo.mockClear()
+    await view.rerender(h(TrajectoryTable, { 'turns': turns, 'streamingCells': [{ ...cells[0]!, text: 'Context 1 streaming update' }], ...FOLD_PROPS }))
+    expect(scrollTo).not.toHaveBeenCalled()
+    expect(screen.getByText('Context 1 streaming update')).toBeTruthy()
+  })
+  it('keeps the virtual tail reachable with collapsed-summary row heights', async () => {
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600)
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: vi.fn(),
+    })
+    const turns: readonly TrajectoryTurnModel[] = Array.from({ length: 101 }, (_, index) => ({
+      turn: index + 1,
+      groups: [{
+        title: 'Step 1',
+        cells: [
+          {
+            index: index * 2 + 1,
+            kind: 'message' as const,
+            sourceSeq: index * 2 + 1,
+            text: `Message ${index + 1}`,
+            timeSeconds: 1,
+          },
+          {
+            index: index * 2 + 2,
+            kind: 'tool' as const,
+            callId: `call-${index + 1}`,
+            text: `Tool ${index + 1}`,
+            timeSeconds: 1,
+          },
+        ],
+      }],
+    }))
+    const collapsedTurns = new Set(turns.flatMap(turn => turn.turn === null ? [] : [turn.turn]))
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS, 'collapsedTurns': collapsedTurns }))
+      await act(() => { })
+      return nativeView
+    })()
+    const tablePane = screen.getByRole('table').parentElement as HTMLElement
+    tablePane.scrollTop = 5000
+    await act(() => fireEvent.scroll(tablePane))
+    await waitFor(() => {
+      expect(view.container.querySelector('tr[data-virtual-position="201"]')).toBeTruthy()
+    })
+  })
+  it('keeps running and failure semantics distinct from record roles', async () => {
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(view.container.querySelector('tr[data-kind="tool"][data-running="true"]')).toBeTruthy()
+    expect(view.container.querySelector('tr[data-kind="tool"][data-error="true"]')).toBeTruthy()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /TOOL, bash \{"command":"pwd"\}/ })))
+    expect(screen.getByText('Pending')).toBeTruthy()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /TOOL, bash \{"command":"false"\}/ })))
+    expect(screen.getByText('Failed')).toBeTruthy()
+    expect(screen.getByText('Failed').className).toContain('error')
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Result' })))
+    const errorResult = screen.getByText('ToolError: non_zero_exit')
+    expect(errorResult.closest('[class*="errorPayload"]')).toBeTruthy()
+  })
+  it('does not expose a request placeholder as a completed assistant result', async () => {
+    const turns = deriveTrajectoryLayout({
+      nodes: [], partial: null, runningCalls: [],
+      requests: [{
+        purpose: 'assistant', startSeq: 2, turn: 1, step: 1,
+        startedAt: 2000, completedAt: null, status: 'running',
+      }],
+    }, t)
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, 'requestNumbers': [{
+        turn: 1, step: 1, seq: 2, group: 'Step 1', number: 1,
+        status: 'running', startedAt: 2000, completedAt: null,
+      }], ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Request #1' })))
+    expect(screen.getByText('Pending')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Assistant Message' })).toBeNull()
+    expect(screen.queryByText('Completed')).toBeNull()
+  })
+  it.each([false, true])('places the request separator after input and prompt rows (waiting: %s)', async (waiting) => {
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 2,
+      groups: [{
+        title: 'Step 1',
+        cells: [
+          { index: 1, kind: 'user', text: 'Continue', timeSeconds: 0 },
+          { index: 2, kind: 'context', text: 'Tool added: search', timeSeconds: 0 },
+          { index: 3, kind: 'system', text: 'Tools Updated', timeSeconds: 0 },
+          { index: 4, kind: 'message', text: waiting ? '' : 'Answer', requestOnly: waiting, timeSeconds: 0 },
+        ],
+      }],
+    }]
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    const rows = [...view.container.querySelectorAll('tr[data-kind]')]
+    const requestRow = screen.getByRole('button', { name: 'Request #1' }).closest('tr')
+    expect(rows.indexOf(requestRow!)).toBe(3)
+    expect(screen.getByRole('row', { name: 'SYSTEM, Tools Updated' }).contains(requestRow)).toBe(false)
+  })
+  it('marks failed requests and lays coincident request markers left to right', async () => {
+    const turns: readonly TrajectoryTurnModel[] = [
+      {
         turn: 1,
         groups: [{
-                title: 'Step 1',
-                description: '1.5s bash×2',
-                cells: [
-                    {
-                        index: 1,
-                        kind: 'message',
-                        text: 'Checking files',
-                        outputDetail: 'Checking files',
-                        input: 10,
-                        output: 20,
-                        think: 5,
-                        timeSeconds: 1.5,
-                        assistantMetrics: {
-                            timingRecorded: true,
-                            stepStartTime: 1000,
-                            firstTokenTime: 1500,
-                            completedTime: 2500,
-                            usageProvided: true,
-                            outputTokens: 20,
-                        },
-                    },
-                    {
-                        index: 2,
-                        kind: 'tool',
-                        text: 'bash · {"command":"pwd"}',
-                        inputDetail: '{"command":"pwd"}',
-                        timeSeconds: null,
-                    },
-                    {
-                        index: 3,
-                        kind: 'tool',
-                        text: 'bash · {"command":"false"}',
-                        inputDetail: '{"command":"false"}',
-                        outputDetail: 'ToolError: non_zero_exit',
-                        result: 'non_zero_exit',
-                        isError: true,
-                        timeSeconds: 0.2,
-                    },
-                ],
-            }],
-    }];
-const FOLD_PROPS = {
-    collapsedTurns: new Set<number>(),
-    onToggleTurn: () => { },
-    collapsedAssistants: new Set<string>(),
-    onToggleAssistant: () => { },
-    collapsedTools: new Set<string>(),
-    onToggleTool: () => { },
-};
-describe('TrajectoryTable', () => {
-    it('shows known standalone prompt text without a fabricated tool catalog or request options', async () => {
-        const turns = deriveTrajectoryLayout({
-            nodes: [], partial: null, runningCalls: [],
-            systemPrompts: [{ seq: 10, time: 10, turn: 2, step: 1, text: '# Known instructions', update: false }],
-        }, t);
-        expect(turns.flatMap(turn => turn.groups.flatMap(group => group.cells))).toMatchObject([
-            { kind: 'system', text: 'Initial System Prompt', systemPromptDetail: '# Known instructions' },
-        ]);
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /SYSTEM/ }));
-        expect(screen.getByRole('heading', { name: 'Known instructions' })).toBeTruthy();
-        expect(screen.getAllByRole('tab').map(tab => tab.textContent)).toEqual(['System Prompt']);
-    });
-    it('shows a muted placeholder for an assistant response containing only tool calls', async () => {
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [{
-                                index: 1,
-                                kind: 'message',
-                                text: 'Tool call only',
-                                sourceBlocks: [{
-                                        type: 'tool-call', content: '{}', callId: 'call-1', toolName: 'read',
-                                    }],
-                                timeSeconds: 1,
-                            }],
-                    }],
-            }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(screen.getByText('(tool call only)')).toBeTruthy();
-    });
-    it('localizes the summary for folded Assistant tool calls', async () => {
-        const assistant = TURNS[0]!.groups[0]!.cells[0]!;
-        await (async () => {
-            const nativeView = await render(h(LocalizedTrajectoryTable, { "t": tZh, "renderSlot": renderNoImages, "loadImage": loadImage, "turns": TURNS, "collapsedTurns": new Set<number>(), "onToggleTurn": () => { }, "collapsedAssistants": new Set([trajectoryRecordId(assistant)]), "onToggleAssistant": () => { }, "collapsedTools": new Set<string>(), "onToggleTool": () => { } }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(screen.getByText('2 个工具调用 · bash')).toBeTruthy();
-    });
-    it('shows assistant timing facts after keyboard selection', async () => {
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.keyDown(screen.getByRole('row', { name: /ASSISTANT/ }), { key: 'Enter' });
-        await fireEvent.click(screen.getByRole('button', { name: 'Request Timing' }));
-        expect(screen.getByText('500 ms')).toBeTruthy();
-        expect(screen.getByText('1.00 s')).toBeTruthy();
-        expect(screen.getByText('20.0 tok/s')).toBeTruthy();
-    });
-    it('shows a tool record Duration as exact milliseconds', async () => {
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [{
-                                index: 1,
-                                kind: 'tool',
-                                text: 'bash · {"command":"pwd"}',
-                                inputDetail: '{"command":"pwd"}',
-                                timeSeconds: 1.5,
-                            }],
-                    }],
-            }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /TOOL/ }));
-        expect(screen.getByText('1,500 ms', { selector: 'dd' })).toBeTruthy();
-    });
-    it('breaks output tokens into labeled reasoning and content rows', async () => {
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /ASSISTANT/ }));
-        expect(screen.getByText('Tokens')).toBeTruthy();
-        expect(screen.getByText('20 tok')).toBeTruthy();
-        expect(screen.getByText('Reasoning')).toBeTruthy();
-        expect(screen.getByText('5 tok')).toBeTruthy();
-        expect(screen.getByText('Content')).toBeTruthy();
-        expect(screen.getByText('15 tok')).toBeTruthy();
-    });
-    it('marks Summary scroll regions for interaction-only scrollbar thumbs', async () => {
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /ASSISTANT/ }));
-        const panel = screen.getByRole('tabpanel');
-        expect(panel.querySelectorAll('[data-summary-scroll-region]').length).toBeGreaterThan(1);
-        await fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
-        expect(panel.querySelector('[data-summary-scroll-region]')).toBeNull();
-    });
-    it.each([
-        { outputDetail: undefined, toolCall: false },
-        { outputDetail: 'Visible answer', toolCall: false },
-        { outputDetail: undefined, toolCall: true },
-        { outputDetail: 'Visible answer', toolCall: true },
-    ])('opens thinking with output=$outputDetail and toolCall=$toolCall', async ({ outputDetail, toolCall }) => {
-        const thinking = 'private chain '.repeat(1000);
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [{
-                                index: 1,
-                                kind: 'message',
-                                text: 'private chain…',
-                                thinkingDetail: thinking,
-                                ...(outputDetail === undefined ? {} : { outputDetail }),
-                                ...(toolCall ? { sourceBlocks: [{
-                                            type: 'tool-call', content: '{}', callId: 'call-1', toolName: 'read',
-                                        }] } : {}),
-                                timeSeconds: 1,
-                            }],
-                    }],
-            }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /ASSISTANT/ }));
-        await fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
-        const toggle = screen.getByRole('button', { name: 'Thinking' });
-        expect(toggle.getAttribute('aria-expanded')).toBe('true');
-        expect(toggle.parentElement?.textContent?.length).toBeGreaterThan(thinking.length);
-        await fireEvent.click(toggle);
-        expect(toggle.getAttribute('aria-expanded')).toBe('false');
-        expect(screen.queryByText(thinking)).toBeNull();
-        await fireEvent.click(screen.getByRole('tab', { name: 'Summary' }));
-        expect(screen.getByRole('button', { name: 'Thinking' }).getAttribute('aria-expanded')).toBe('false');
-        await fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
-        await fireEvent.click(screen.getByRole('button', { name: 'Thinking' }));
-        expect(screen.getByRole('button', { name: 'Thinking' }).getAttribute('aria-expanded')).toBe('true');
-    });
-    it('renders thinking as compact Markdown while keeping answer typography separate', async () => {
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [{
-                                index: 1,
-                                kind: 'message',
-                                text: 'Answer',
-                                outputDetail: '# Answer heading\n\nAnswer body.',
-                                thinkingDetail: '# Thinking heading\n\nReasoning **emphasis**.',
-                                timeSeconds: 1,
-                            }],
-                    }],
-            }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /ASSISTANT/ }));
-        await fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
-        expect(screen.getByRole('heading', { name: 'Thinking heading' })
-            .closest('[data-markdown-variant="compact"]')).not.toBeNull();
-        expect(screen.getByText('emphasis').tagName).toBe('STRONG');
-        expect(screen.getByRole('heading', { name: 'Answer heading' })
-            .closest('[data-markdown-variant="compact"]')).toBeNull();
-        await fireEvent.click(screen.getByRole('button', { name: 'Thinking' }));
-        expect(screen.queryByRole('heading', { name: 'Thinking heading' })).toBeNull();
-        expect(screen.getByRole('heading', { name: 'Answer heading' })).toBeTruthy();
-    });
-    it('opens thinking on another record after collapsing the selected record', async () => {
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [1, 2].map(index => ({
-                            index, kind: 'message', text: `Answer ${index}`, outputDetail: `Answer ${index}`,
-                            thinkingDetail: `Reasoning ${index}`, timeSeconds: 1,
-                        })),
-                    }],
-            }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /ASSISTANT, Answer 1/ }));
-        await fireEvent.click(screen.getByRole('button', { name: 'Thinking' }));
-        expect(screen.getByRole('button', { name: 'Thinking' }).getAttribute('aria-expanded')).toBe('false');
-        await fireEvent.click(screen.getByRole('row', { name: /ASSISTANT, Answer 2/ }));
-        expect(screen.getByRole('button', { name: 'Thinking' }).getAttribute('aria-expanded')).toBe('true');
-        expect(screen.getByText('Reasoning 2')).toBeTruthy();
-    });
-    it('keeps raw HTML tags in a Markdown-derived context preview', async () => {
-        const html = [
-            '<background-job-complete id="trajectory-ui-watch">',
-            'Command: pnpm test',
-            'Exit code: 0',
-            '</background-job-complete>',
-        ].join('\n');
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Message',
-                        cells: [{
-                                index: 1,
-                                kind: 'context',
-                                text: '',
-                                inputDetail: html,
-                                timeSeconds: 0,
-                            }],
-                    }],
-            }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(screen.getByText('<background-job-complete id="trajectory-ui-watch"> Command: pnpm test Exit code: 0 </background-job-complete>')).toBeTruthy();
-    });
-    it('clears the selected row when ledger whitespace is clicked', async () => {
-        const onClearSelection = vi.fn();
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS, "onClearSelection": onClearSelection }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const row = screen.getByRole('row', { name: /ASSISTANT/ });
-        await fireEvent.click(row);
-        expect(row.getAttribute('aria-selected')).toBe('true');
-        expect(screen.getByRole('complementary', { name: 'Event details' })).toBeTruthy();
-        const tablePane = screen.getByRole('table').parentElement;
-        expect(tablePane).not.toBeNull();
-        await fireEvent.click(tablePane as HTMLElement);
-        expect(row.getAttribute('aria-selected')).toBe('false');
-        expect(screen.queryByRole('complementary', { name: 'Event details' })).toBeNull();
-        expect(onClearSelection).toHaveBeenCalledOnce();
-    });
-    it('keeps the selected record when older rows shift projection indexes', async () => {
-        const tail = (index: number): TrajectoryTurnModel => ({
-            turn: 2,
-            groups: [{
-                    title: 'Step 1',
-                    cells: [{
-                            index,
-                            kind: 'message',
-                            sourceSeq: 100,
-                            text: 'selected tail response',
-                            outputDetail: 'selected tail response detail',
-                            timeSeconds: 1,
-                        }],
-                }],
-        });
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": [tail(1)], ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /selected tail response/ }));
-        await view.rerender(h(TrajectoryTable, { "turns": [{
-                    turn: 1,
-                    groups: [{
-                            title: 'Message',
-                            cells: [{
-                                    index: 1,
-                                    kind: 'user',
-                                    sourceSeq: 1,
-                                    text: 'older prompt',
-                                    timeSeconds: 0,
-                                }],
-                        }],
-                }, tail(2)], ...FOLD_PROPS }));
-        expect(screen.getByRole('row', { name: /selected tail response/ })
-            .getAttribute('aria-selected')).toBe('true');
-        expect(screen.getByText('selected tail response detail')).toBeTruthy();
-    });
-    it('keeps a selected request when prepending changes its display number', async () => {
-        const tail = (index: number): TrajectoryTurnModel => ({
-            turn: 2,
-            groups: [{
-                    title: 'Step 1',
-                    cells: [{
-                            index,
-                            kind: 'message',
-                            sourceSeq: 100,
-                            text: 'tail response',
-                            timeSeconds: 1,
-                        }],
-                }],
-        });
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": [tail(1)], ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('button', { name: 'Request #1' }));
-        await view.rerender(h(TrajectoryTable, { "turns": [{
-                    turn: 1,
-                    groups: [{
-                            title: 'Step 1',
-                            cells: [{
-                                    index: 1,
-                                    kind: 'message',
-                                    sourceSeq: 1,
-                                    text: 'older response',
-                                    timeSeconds: 1,
-                                }],
-                        }],
-                }, tail(2)], ...FOLD_PROPS }));
-        expect(screen.getByRole('button', { name: 'Request #2' })
-            .getAttribute('aria-pressed')).toBe('true');
-        expect(screen.getByText('Request #2')).toBeTruthy();
-    });
-    it('keeps a selected request when its localized group label changes', async () => {
-        const turn = (group: string): TrajectoryTurnModel => ({
-            turn: 1,
-            groups: [{
-                    title: group,
-                    cells: [{
-                            index: 1,
-                            kind: 'message',
-                            sourceSeq: 10,
-                            text: 'response',
-                            timeSeconds: 1,
-                        }],
-                }],
-        });
-        const request = (group: string) => [{
-                turn: 1,
-                step: 1,
-                seq: 10,
-                group,
-                number: 1,
-            }] as const;
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": [turn('Step 1')], "requestNumbers": request('Step 1'), ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('button', { name: 'Request #1' }));
-        await view.rerender(h(TrajectoryTable, { "turns": [turn('步骤 1')], "requestNumbers": request('步骤 1'), ...FOLD_PROPS }));
-        expect(screen.getByRole('button', { name: 'Request #1' })
-            .getAttribute('aria-pressed')).toBe('true');
-        expect(screen.getByText('Request #1')).toBeTruthy();
-    });
-    it('places the request boundary after leading steering input', async () => {
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Step 2',
-                        cells: [{
-                                index: 1,
-                                kind: 'user',
-                                sourceSeq: 3,
-                                text: 'change direction',
-                                timeSeconds: 0,
-                            }, {
-                                index: 2,
-                                kind: 'message',
-                                sourceSeq: 4,
-                                text: 'continued',
-                                timeSeconds: 1,
-                            }],
-                    }],
-            }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, "requestNumbers": [{
-                        seq: 2,
-                        turn: 1,
-                        step: 2,
-                        group: 'Step 2',
-                        number: 1,
-                    }], ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const request = screen.getByRole('button', { name: 'Request #1' });
-        expect(request.closest('tr')?.getAttribute('aria-label')).toContain('ASSISTANT');
-    });
-    it('follows appended records only while the ledger is already at the bottom', async () => {
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const tablePane = screen.getByRole('table').parentElement as HTMLElement;
-        let scrollHeight = 200;
-        Object.defineProperties(tablePane, {
-            clientHeight: { configurable: true, get: () => 100 },
-            scrollHeight: { configurable: true, get: () => scrollHeight },
-        });
-        tablePane.scrollTop = 100;
-        await fireEvent.scroll(tablePane);
-        scrollHeight = 260;
-        await view.rerender(h(TrajectoryTable, { "turns": [...TURNS, {
-                    turn: 2,
-                    groups: [{
-                            title: 'Step 1',
-                            cells: [{ index: 4, kind: 'message', text: 'new reply', timeSeconds: 0.1 }],
-                        }],
-                }], ...FOLD_PROPS }));
-        expect(tablePane.scrollTop).toBe(260);
-        tablePane.scrollTop = 20;
-        await fireEvent.scroll(tablePane);
-        scrollHeight = 320;
-        await view.rerender(h(TrajectoryTable, { "turns": [...TURNS, {
-                    turn: 2,
-                    groups: [{
-                            title: 'Step 1',
-                            cells: [
-                                { index: 4, kind: 'message', text: 'new reply', timeSeconds: 0.1 },
-                                { index: 5, kind: 'tool', text: 'new tool', timeSeconds: 0.1 },
-                            ],
-                        }],
-                }], ...FOLD_PROPS }));
-        expect(tablePane.scrollTop).toBe(20);
-    });
-    it('preserves the visible anchor when the last older page disables virtualization', async () => {
-        let resolveOlder: ((advanced: boolean) => void) | undefined;
-        const older = new Promise<boolean>((resolve) => { resolveOlder = resolve; });
-        const onLoadOlder = vi.fn(() => older);
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS, "historyStartSeq": 1, "hasOlderRecords": true, "onLoadOlder": onLoadOlder }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const tablePane = screen.getByRole('table').parentElement as HTMLElement;
-        let scrollHeight = 200;
-        Object.defineProperties(tablePane, {
-            clientHeight: { configurable: true, get: () => 100 },
-            scrollHeight: { configurable: true, get: () => scrollHeight },
-        });
-        tablePane.scrollTop = 0;
-        await fireEvent.scroll(tablePane);
-        await fireEvent.scroll(tablePane);
-        await waitFor(() => { expect(onLoadOlder).toHaveBeenCalledOnce(); });
-        expect(screen.getByRole('status').textContent).toContain('Loading earlier history…');
-        resolveOlder?.(true);
-        await waitFor(() => {
-            expect(screen.getByRole('status').textContent).toBe('');
-        });
-        scrollHeight = 260;
-        await view.rerender(h(TrajectoryTable, { "turns": [{
-                    turn: 0,
-                    groups: [{
-                            title: 'Step 1',
-                            cells: [{ index: 0, kind: 'user', text: 'older prompt', timeSeconds: 0 }],
-                        }],
-                }, ...TURNS], ...FOLD_PROPS, "historyStartSeq": 0, "onLoadOlder": onLoadOlder }));
-        expect(tablePane.scrollTop).toBe(60);
-    });
-    it('keeps an idle older-history control as the first row until paging completes', async () => {
-        vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600);
-        Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
-            configurable: true,
-            value: vi.fn(),
-        });
-        let resolveOlder: ((advanced: boolean) => void) | undefined;
-        const older = new Promise<boolean>((resolve) => { resolveOlder = resolve; });
-        const onLoadOlder = vi.fn(() => older);
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS, "hasOlderRecords": true, "onLoadOlder": onLoadOlder }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const table = screen.getByRole('table');
-        const loadButton = screen.getByRole('button', { name: 'Load earlier history' });
-        const loadRow = table.querySelector('tbody > tr:first-child');
-        expect(loadRow?.contains(loadButton)).toBe(true);
-        expect(loadRow?.getAttribute('aria-rowindex')).toBe('1');
-        expect(screen.getByRole('status').textContent).toBe('');
-        expect(table.getAttribute('aria-rowcount')).toBe('4');
-        expect((await screen.findByRole('row', { name: /ASSISTANT/ })).getAttribute('aria-rowindex'))
-            .toBe('2');
-        await fireEvent.click(loadButton);
-        expect(onLoadOlder).toHaveBeenCalledOnce();
-        expect(loadButton.hasAttribute('disabled')).toBe(true);
-        expect(screen.getByRole('status').textContent).toBe('Loading earlier history…');
-        expect(screen.getByRole('button', { name: 'Loading earlier history…' }).querySelector('[data-state="ongoing"]')).not.toBeNull();
-        resolveOlder?.(false);
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: 'Load earlier history' })
-                .hasAttribute('disabled')).toBe(false);
-        });
-        await view.rerender(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS }));
-        expect(screen.queryByRole('button', { name: 'Load earlier history' })).toBeNull();
-        expect(table.getAttribute('aria-rowcount')).toBe('3');
-    });
-    it('reflects an older page started outside the ledger in the persistent control', async () => {
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS, "hasOlderRecords": true, "olderHistoryLoading": true, "onLoadOlder": vi.fn(async () => true) }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(screen.getByRole('button', { name: 'Loading earlier history…' })
-            .hasAttribute('disabled')).toBe(true);
-        expect(screen.getByRole('status').textContent).toBe('Loading earlier history…');
-    });
-    it('covers the ledger while the initial tail is loading', async () => {
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS, "historyLoading": true }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(screen.getByRole('status').textContent).toContain('Loading trajectory…');
-        expect(screen.getByRole('status').querySelector('[data-state="ongoing"]')).not.toBeNull();
-        expect(screen.getByRole('table').getAttribute('data-scroll-ready')).toBeNull();
-        await view.rerender(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS }));
-        expect(screen.queryByRole('status')).toBeNull();
-        expect(screen.getByRole('table').getAttribute('data-scroll-ready')).toBe('true');
-    });
-    it('keeps a paged tail virtualized before its loaded window crosses the row threshold', async () => {
-        vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600);
-        Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
-            configurable: true,
-            value: vi.fn(),
-        });
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS, "hasOlderRecords": true }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await waitFor(() => {
-            expect(view.container.querySelector('tr[data-virtual-position]')).toBeTruthy();
-        });
-    });
-    it('mounts only the visible window for a long ledger', async () => {
-        vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600);
-        const scrollTo = vi.fn();
-        Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
-            configurable: true,
-            value: scrollTo,
-        });
-        const cells = Array.from({ length: 500 }, (_, index) => ({
-            index: index + 1,
-            kind: 'context' as const,
-            text: `Context ${index + 1}`,
-            timeSeconds: 0,
-        }));
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{ title: 'Context', cells }],
-            }];
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await waitFor(() => {
-            expect(view.container.querySelectorAll('tr[data-virtual-position]').length)
-                .toBeGreaterThan(0);
-        });
-        expect(view.container.querySelectorAll('tr[data-virtual-position]').length)
-            .toBeLessThan(cells.length);
-        expect(screen.getByRole('table').getAttribute('aria-rowcount')).toBe('500');
-        expect(view.container.querySelector('tr[data-trajectory-row-key]')
-            ?.getAttribute('aria-rowindex')).toBe('1');
-        expect(scrollTo).toHaveBeenCalled();
-        expect(view.container.querySelector('tr[data-virtual-spacer="bottom"]')).toBeTruthy();
-        expect(screen.getByText('Context 1')).toBeTruthy();
-        expect(screen.queryByText('Context 500')).toBeNull();
-        const tablePane = screen.getByRole('table').parentElement as HTMLElement;
-        tablePane.scrollTop = 9000;
-        await fireEvent.scroll(tablePane);
-        await waitFor(() => {
-            expect(Number(view.container.querySelector('tr[data-virtual-position]')?.getAttribute('data-virtual-position'))).toBeGreaterThan(0);
-        });
-        expect(view.container.querySelector('tr[data-virtual-spacer="top"]')).toBeTruthy();
-        expect(screen.queryByText('Context 1')).toBeNull();
-    });
-    it('does not re-scroll a virtual ledger when streaming only changes row content', async () => {
-        vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600);
-        const scrollTo = vi.fn();
-        Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
-            configurable: true,
-            value: scrollTo,
-        });
-        const cells = Array.from({ length: 500 }, (_, index) => ({
-            index: index + 1,
-            kind: 'context' as const,
-            sourceSeq: index + 1,
-            text: `Context ${index + 1}`,
-            timeSeconds: 0,
-        }));
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{ title: 'Context', cells }],
-            }];
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await waitFor(() => {
-            expect(view.container.querySelector('tr[data-virtual-position]')).toBeTruthy();
-        });
-        scrollTo.mockClear();
-        await view.rerender(h(TrajectoryTable, { "turns": turns, "streamingCells": [{ ...cells[0]!, text: 'Context 1 streaming update' }], ...FOLD_PROPS }));
-        expect(scrollTo).not.toHaveBeenCalled();
-        expect(screen.getByText('Context 1 streaming update')).toBeTruthy();
-    });
-    it('keeps the virtual tail reachable with collapsed-summary row heights', async () => {
-        vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600);
-        Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
-            configurable: true,
-            value: vi.fn(),
-        });
-        const turns: readonly TrajectoryTurnModel[] = Array.from({ length: 101 }, (_, index) => ({
-            turn: index + 1,
-            groups: [{
-                    title: 'Step 1',
-                    cells: [
-                        {
-                            index: index * 2 + 1,
-                            kind: 'message' as const,
-                            sourceSeq: index * 2 + 1,
-                            text: `Message ${index + 1}`,
-                            timeSeconds: 1,
-                        },
-                        {
-                            index: index * 2 + 2,
-                            kind: 'tool' as const,
-                            callId: `call-${index + 1}`,
-                            text: `Tool ${index + 1}`,
-                            timeSeconds: 1,
-                        },
-                    ],
-                }],
-        }));
-        const collapsedTurns = new Set(turns.flatMap(turn => turn.turn === null ? [] : [turn.turn]));
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS, "collapsedTurns": collapsedTurns }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const tablePane = screen.getByRole('table').parentElement as HTMLElement;
-        tablePane.scrollTop = 5000;
-        await fireEvent.scroll(tablePane);
-        await waitFor(() => {
-            expect(view.container.querySelector('tr[data-virtual-position="201"]')).toBeTruthy();
-        });
-    });
-    it('keeps running and failure semantics distinct from record roles', async () => {
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(view.container.querySelector('tr[data-kind="tool"][data-running="true"]')).toBeTruthy();
-        expect(view.container.querySelector('tr[data-kind="tool"][data-error="true"]')).toBeTruthy();
-        await fireEvent.click(screen.getByRole('row', { name: /TOOL, bash \{"command":"pwd"\}/ }));
-        expect(screen.getByText('Pending')).toBeTruthy();
-        await fireEvent.click(screen.getByRole('row', { name: /TOOL, bash \{"command":"false"\}/ }));
-        expect(screen.getByText('Failed')).toBeTruthy();
-        expect(screen.getByText('Failed').className).toContain('error');
-        await fireEvent.click(screen.getByRole('tab', { name: 'Result' }));
-        const errorResult = screen.getByText('ToolError: non_zero_exit');
-        expect(errorResult.closest('[class*="errorPayload"]')).toBeTruthy();
-    });
-    it('does not expose a request placeholder as a completed assistant result', async () => {
-        const turns = deriveTrajectoryLayout({
-            nodes: [], partial: null, runningCalls: [],
-            requests: [{
-                    purpose: 'assistant', startSeq: 2, turn: 1, step: 1,
-                    startedAt: 2000, completedAt: null, status: 'running',
-                }],
-        }, t);
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, "requestNumbers": [{
-                        turn: 1, step: 1, seq: 2, group: 'Step 1', number: 1,
-                        status: 'running', startedAt: 2000, completedAt: null,
-                    }], ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('button', { name: 'Request #1' }));
-        expect(screen.getByText('Pending')).toBeTruthy();
-        expect(screen.queryByRole('button', { name: 'Assistant Message' })).toBeNull();
-        expect(screen.queryByText('Completed')).toBeNull();
-    });
-    it.each([false, true])('places the request separator after input and prompt rows (waiting: %s)', async (waiting) => {
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 2,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [
-                            { index: 1, kind: 'user', text: 'Continue', timeSeconds: 0 },
-                            { index: 2, kind: 'context', text: 'Tool added: search', timeSeconds: 0 },
-                            { index: 3, kind: 'system', text: 'Tools Updated', timeSeconds: 0 },
-                            { index: 4, kind: 'message', text: waiting ? '' : 'Answer', requestOnly: waiting, timeSeconds: 0 },
-                        ],
-                    }],
-            }];
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const rows = [...view.container.querySelectorAll('tr[data-kind]')];
-        const requestRow = screen.getByRole('button', { name: 'Request #1' }).closest('tr');
-        expect(rows.indexOf(requestRow!)).toBe(3);
-        expect(screen.getByRole('row', { name: 'SYSTEM, Tools Updated' }).contains(requestRow)).toBe(false);
-    });
-    it('marks failed requests and lays coincident request markers left to right', async () => {
-        const turns: readonly TrajectoryTurnModel[] = [
-            {
-                turn: 1,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [{
-                                index: 1,
-                                kind: 'message',
-                                text: '',
-                                requestOnly: true,
-                                isError: true,
-                                timeSeconds: 0.1,
-                            }],
-                    }],
-            },
-            {
-                turn: 2,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [{
-                                index: 2,
-                                kind: 'message',
-                                text: '',
-                                requestOnly: true,
-                                isError: true,
-                                timeSeconds: 0.1,
-                            }],
-                    }],
-            },
-            {
-                turn: 3,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [{
-                                index: 3,
-                                kind: 'message',
-                                text: 'Recovered response',
-                                timeSeconds: 0.1,
-                            }],
-                    }],
-            },
-        ];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const failed = screen.getByRole('button', { name: 'Request #1' });
-        const retry = screen.getByRole('button', { name: 'Request #2' });
-        const recovered = screen.getByRole('button', { name: 'Request #3' });
-        expect(failed.getAttribute('data-request-status')).toBe('error');
-        expect(failed.getAttribute('data-request-run-index')).toBe('0');
-        expect(failed.style.getPropertyValue('--request-boundary-offset')).toBe('0px');
-        expect(retry.getAttribute('data-request-run-index')).toBe('1');
-        expect(retry.style.getPropertyValue('--request-boundary-offset')).toBe('8px');
-        expect(recovered.getAttribute('data-request-run-index')).toBe('2');
-        expect(recovered.style.getPropertyValue('--request-boundary-offset')).toBe('16px');
-    });
-    it.each([
-        ['English', t, 'Pending', 'Completed', 'Failed', 'Last attempt error', 'Error'],
-        ['Chinese', tZh, '等待中', '已完成', '失败', '上次尝试错误', '错误'],
-    ] as const)('distinguishes retry history from the current request status in %s', async (_locale, translate, pending, completed, failed, lastAttemptError, error) => {
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{ title: 'Step 1', cells: [{
-                                index: 1, kind: 'message', text: 'response', timeSeconds: null,
-                            }] }],
-            }];
-        const table = (status: 'running' | 'complete' | 'error') => (h(LocalizedTrajectoryTable, { "turns": turns, ...FOLD_PROPS, "t": translate, "renderSlot": renderNoImages, "loadImage": loadImage, "requestNumbers": [{
-                    turn: 1, step: 1, group: 'Step 1', number: 1, status,
-                    error: 'upstream 503', errorCode: 'SERVER', retry: 1, maxRetries: 2,
-                }] }));
-        const view = await (async () => {
-            const nativeView = await render(table('running'));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('button', { name: translate('request.label', { request: 1 }) }));
-        const panel = within(screen.getByRole('tabpanel'));
-        expect(panel.getByText(pending)).toBeTruthy();
-        expect(panel.getByText(lastAttemptError)).toBeTruthy();
-        expect(panel.queryByText(error, { exact: true })).toBeNull();
-        expect(panel.getByText('upstream 503').className).not.toContain('error');
-        await view.rerender(table('complete'));
-        expect(panel.getByText(completed)).toBeTruthy();
-        expect(panel.getByText(lastAttemptError)).toBeTruthy();
-        expect(panel.queryByText(error, { exact: true })).toBeNull();
-        expect(panel.getByText(translate('request.retryProgress', { retry: 1, maximum: 2 }))).toBeTruthy();
-        expect(panel.getByText('upstream 503').className).not.toContain('error');
-        await view.rerender(table('error'));
-        expect(panel.getByText(failed)).toBeTruthy();
-        expect(panel.getByText(error, { exact: true })).toBeTruthy();
-        expect(panel.queryByText(lastAttemptError)).toBeNull();
-        expect(panel.getByText('upstream 503').className).toContain('error');
-    });
-    it('localizes a sanitized AUTH request failure from its stable code', async () => {
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [{
-                                index: 1,
-                                kind: 'message',
-                                text: '',
-                                requestOnly: true,
-                                isError: true,
-                                timeSeconds: 0.1,
-                            }],
-                    }],
-            }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, "requestNumbers": [{
-                        turn: 1,
-                        step: 1,
-                        seq: 1,
-                        group: 'Step 1',
-                        number: 1,
-                        status: 'error',
-                        error: '',
-                        errorCode: 'AUTH',
-                    }], ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('button', { name: 'Request #1' }));
-        expect(screen.getByText('API key is invalid')).toBeTruthy();
-    });
-    it('shows the custom role tooltip only from the responsive icon', async () => {
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const toolTag = view.container.querySelector<HTMLElement>('[data-role-kind="tool"]');
-        const toolIcon = toolTag?.querySelector<HTMLElement>('[data-role-icon="wrench"]');
-        expect(toolTag).not.toBeNull();
-        expect(toolTag?.getAttribute('title')).toBeNull();
-        expect(toolIcon).toBeTruthy();
-        await fireEvent.pointerEnter(toolTag as HTMLElement);
-        expect(screen.queryByRole('tooltip')).toBeNull();
-        await fireEvent.pointerEnter(toolIcon?.parentElement as HTMLElement);
-        const tooltip = await screen.findByRole('tooltip');
-        expect(tooltip.textContent).toBe('TOOL');
-        expect(tooltip.getAttribute('data-side')).toBe('right');
-        await fireEvent.pointerLeave(toolIcon?.parentElement as HTMLElement);
-        expect(screen.queryByRole('tooltip')).toBeNull();
-    });
-    it('uses information and compression glyphs for injected and compacted context', async () => {
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Context',
-                        cells: [
-                            { index: 1, kind: 'context', text: 'Workspace context', timeSeconds: 0 },
-                            { index: 2, kind: 'compacted', text: 'Compacted history', timeSeconds: 0 },
-                        ],
-                    }],
-            }];
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(view.container.querySelector('[data-role-kind="context"] [data-role-icon="information"]')).toBeTruthy();
-        expect(view.container.querySelector('[data-role-kind="compacted"] [data-role-icon="compacted"]')).toBeTruthy();
-    });
-    it('keeps a compact turn label available for narrow layouts', async () => {
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const turnLabel = screen.getByLabelText('Turn 1');
-        expect(turnLabel.textContent).toContain('Turn 1');
-        expect(turnLabel.textContent).toContain('#1');
-    });
-    it.each([null, false, 0, '', { answer: 42 }])('shows raw value %j above rendered output and releases it across selections', async (value) => {
-        const turns: readonly TrajectoryTurnModel[] = [{ turn: 1, groups: [{ title: 'Step 1', cells: [
-                            { index: 1, kind: 'tool', text: 'recorded', outputDetail: 'rendered answer', resultSeq: 42, timeSeconds: 0.1 },
-                            { index: 2, kind: 'subtool', text: 'historical', outputDetail: 'old answer', timeSeconds: 0.1 },
-                        ] }] }];
-        const dispose = vi.fn();
-        const watchToolResult = vi.fn<NonNullable<TableProps['watchToolResult']>>((_seq, publish) => {
-            publish(value);
-            return dispose;
-        });
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS, "watchToolResult": watchToolResult }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /recorded/ }));
-        expect(watchToolResult).not.toHaveBeenCalled();
-        await fireEvent.click(screen.getByRole('tab', { name: 'Result' }));
-        const raw = screen.getByRole('region', { name: 'Raw result' });
-        const rendered = screen.getByRole('region', { name: 'Rendered result' });
-        expect(raw.compareDocumentPosition(rendered) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        expect(raw.textContent).toContain(typeof value === 'object' && value !== null ? 'answer:' : JSON.stringify(value));
-        expect(within(rendered).getByText('rendered answer')).toBeTruthy();
-        expect(screen.queryByRole('button', { name: 'Raw result' })).toBeNull();
-        await fireEvent.click(screen.getByRole('row', { name: /historical/ }));
-        expect(dispose).toHaveBeenCalledOnce();
-        expect(screen.getByText('Raw results are only available for live tool calls')).toBeTruthy();
-        expect(screen.getByText('old answer')).toBeTruthy();
-        await fireEvent.click(screen.getByRole('row', { name: /recorded/ }));
-        expect(screen.queryByText('Raw results are only available for live tool calls')).toBeNull();
-        await fireEvent.click(screen.getByRole('tab', { name: 'Summary' }));
-        expect(dispose).toHaveBeenCalledTimes(2);
-        view.unmount();
-    });
-    it.each(['tool', 'subtool'] as const)('shows an in-flight PTC %s as running before retaining its failure output', async (kind) => {
-        const cell: TrajectoryCellProps = {
-            index: 1, kind, text: 'pending-call', timeSeconds: null, toolName: 'run_code',
-            inputDetail: JSON.stringify({ code: 'return 42', description: 'pending-call' }),
-        };
-        const turns = (current: TrajectoryCellProps): readonly TrajectoryTurnModel[] => [
-            { turn: 1, groups: [{ title: 'Step 1', cells: [current] }] },
-        ];
-        const view = await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns(cell), ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /pending-call/ }));
-        await fireEvent.click(screen.getByRole('tab', { name: 'Result' }));
-        const raw = screen.getByRole('region', { name: 'Raw result' });
-        expect(within(raw).getByText('Running…')).toBeTruthy();
-        expect(within(raw).queryByText('Raw results are only available for live tool calls')).toBeNull();
-        await view.rerender(h(TrajectoryTable, { "turns": turns({
-                ...cell, isError: true, outputDetail: 'Error: execution failed', timeSeconds: 0.1,
-            }), ...FOLD_PROPS }));
-        expect(within(raw).getByText('Raw results are only available for live tool calls')).toBeTruthy();
-        expect(screen.getByRole('region', { name: 'Rendered result' }).textContent).toContain('Error: execution failed');
-    });
-    it('keeps rendered output visible when the raw value unloads and ignores stale callbacks', async () => {
-        const callbacks: ((value: JsonValue | undefined) => void)[] = [];
-        const dispose = vi.fn();
-        const watchToolResult: NonNullable<TableProps['watchToolResult']> = (_seq, publish) => {
-            callbacks.push(publish);
-            publish({ live: true });
-            return dispose;
-        };
-        const turns: readonly TrajectoryTurnModel[] = [{ turn: 1, groups: [{ title: 'Step 1', cells: [
-                            { index: 1, kind: 'tool', text: 'live result', outputDetail: 'rendered', resultSeq: 42, timeSeconds: 0.1 },
-                            { index: 2, kind: 'tool', text: 'historical result', outputDetail: 'historical', timeSeconds: 0.1 },
-                        ] }] }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS, "watchToolResult": watchToolResult }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /live result/ }));
-        await fireEvent.click(screen.getByRole('tab', { name: 'Result' }));
-        expect(screen.getByRole('region', { name: 'Raw result' }).textContent).toContain('live:');
-        await act(() => { callbacks[0]?.(undefined); });
-        expect(screen.getByText('Raw results are only available for live tool calls')).toBeTruthy();
-        expect(screen.getByText('rendered')).toBeTruthy();
-        await fireEvent.click(screen.getByRole('row', { name: /historical result/ }));
-        expect(dispose).toHaveBeenCalledOnce();
-        await act(() => { callbacks[0]?.({ live: true }); });
-        expect(screen.getByText('Raw results are only available for live tool calls')).toBeTruthy();
-        expect(screen.getByText('historical')).toBeTruthy();
-    });
-    it('keeps both result sections when rendered JSON equals the raw value', async () => {
-        const turns: readonly TrajectoryTurnModel[] = [{ turn: 1, groups: [{ title: 'Step 1', cells: [{
-                                index: 1, kind: 'tool', text: 'json-result', outputDetail: '{"answer":42}', resultSeq: 42, timeSeconds: 0.1,
-                                outputBlocks: [{ type: 'text', content: '{"answer":42}' }],
-                            }] }] }];
-        const watchToolResult: NonNullable<TableProps['watchToolResult']> = (_seq, publish) => {
-            publish({ answer: 42 });
-            return () => { };
-        };
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS, "watchToolResult": watchToolResult }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /json-result/ }));
-        await fireEvent.click(screen.getByRole('tab', { name: 'Result' }));
-        for (const name of ['Raw result', 'Rendered result']) {
-            const section = within(screen.getByRole('region', { name }));
-            expect(section.getByRole('tree').textContent).toContain('answer:42');
-            expect(section.queryAllByRole('button')).toHaveLength(0);
-        }
-    });
-    it('renders a single-text JSON tool result as a JSON tree', async () => {
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [{
-                                index: 1,
-                                kind: 'tool',
-                                text: 'read {"path":"result.json"}',
-                                outputDetail: '{"value":1,"nested":{"ok":true}}',
-                                outputBlocks: [{
-                                        type: 'text',
-                                        content: '{"value":1,"nested":{"ok":true}}',
-                                    }],
-                                timeSeconds: 0.1,
-                            }],
-                    }],
-            }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /TOOL/ }));
-        await fireEvent.click(screen.getByRole('tab', { name: 'Result' }));
-        expect(screen.getByRole('tree', { name: 'Result JSON' })).toBeTruthy();
-        expect(screen.getByText('value:')).toBeTruthy();
-    });
-    it.each([['English', t, 'Attachments', 'Image 1', 'Summary', 'Preview', 'Raw'],
-        ['Chinese', tZh, '附件', '图片 1', '概述', '预览', '原始内容']] as const)('keeps mixed attachments ordered and raw fields complete in %s', async (_locale, translate, listLabel, imageLabel, summaryTab, previewTab, rawTab) => {
-        const attachment = {
-            attachmentId: brandString<AttachmentId>(`sha256:${'a'.repeat(64)}`),
-            mediaType: 'image/png' as const,
-            bytes: 68,
-            width: 40,
-            height: 800,
-            originalDimensions: { width: 400, height: 8000 },
-        };
-        const file = {
-            attachmentId: brandString<AttachmentId>(`sha256:${'b'.repeat(64)}`),
-            name: `${'long-filename-'.repeat(12)}.txt`,
-            bytes: 0,
-        };
-        const content = [
-            { type: 'text' as const, text: '**before**' },
-            { type: 'image' as const, attachment },
-            { type: 'text' as const, text: 'after' },
-            { type: 'file' as const, attachment: file },
-            { type: 'image' as const, attachment },
-        ];
-        const turns = deriveTrajectoryLayout({
-            nodes: [{ kind: 'user', seq: 1, time: 1000, source: { kind: 'user' }, content }],
-            partial: null,
-            runningCalls: [],
-        }, translate);
-        const { render, renderSlot: slotRenderer } = await imageSlotFixture();
-        const renderSlot = vi.fn((name: 'conversation.trajectory.images', owner: object) => slotRenderer(name, owner as MessageImagesOwnerProps));
-        const view = await (async () => {
-            const nativeView = await render(h(LocalizedTrajectoryTable, { "turns": turns, ...FOLD_PROPS, "t": translate, "renderSlot": renderSlot, "loadImage": loadImage }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(view.container.querySelector('[data-trajectory-row-key]')!);
-        for (const tab of [summaryTab, previewTab]) {
-            await fireEvent.click(screen.getByRole('tab', { name: tab }));
-            const list = screen.getByRole('list', { name: listLabel });
-            const names = [...list.querySelectorAll('[title]')].map(el => el.getAttribute('title'));
-            expect(names).toEqual([imageLabel, file.name, imageLabel.replace('1', '2')]);
-            expect(within(list).getByText('TXT · 0B')).toBeTruthy();
-            expect(within(list).getAllByText('image/png · 68B · 40 × 800')).toHaveLength(2);
-            expect(renderSlot).toHaveBeenCalledWith('conversation.trajectory.images', {
-                images: [{ attachment, label: imageLabel }], align: 'start', thumbnail: true, loadImage,
-            });
-        }
-        await fireEvent.click(screen.getByRole('tab', { name: rawTab }));
-        expect(screen.queryByTestId('record-images')).toBeNull();
-        const disclosures = [...view.container.querySelectorAll('details')];
-        expect(disclosures).toHaveLength(3);
-        expect(disclosures.every(el => !el.open)).toBe(true);
-        expect(disclosures.map((el): unknown => JSON.parse(el.querySelector('pre')!.textContent)))
-            .toEqual([content[1], content[3], content[4]]);
-        const blocks = [...disclosures[0]!.parentElement!.children];
-        expect(blocks.map(el => el.tagName)).toEqual(['SECTION', 'DETAILS', 'SECTION', 'DETAILS', 'DETAILS']);
-        expect(blocks[0]!.querySelector('pre')!.textContent).toBe('**before**');
-        expect(blocks[2]!.querySelector('pre')!.textContent).toBe('after');
-    });
-    it('renders a tool-result image through the shared gallery in the Result tab', async () => {
-        const { render, renderSlot } = await imageSlotFixture();
-        const attachment = {
-            attachmentId: brandString<AttachmentId>(`sha256:${'b'.repeat(64)}`),
-            mediaType: 'image/png',
-            bytes: 68,
-            width: 320,
-            height: 640,
-            name: 'capture.png',
-        } satisfies NonNullable<NonNullable<TrajectoryTurnModel['groups'][number]['cells'][number]['outputBlocks']>[number]['attachment']>;
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [{
-                                index: 1,
-                                kind: 'tool',
-                                text: 'read_image {"path":"a.png"}',
-                                outputDetail: 'Images ×1',
-                                outputBlocks: [{ type: 'image', content: '', attachment }],
-                                timeSeconds: 0.1,
-                            }],
-                    }],
-            }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS, "renderSlot": renderSlot }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /TOOL/ }));
-        await fireEvent.click(screen.getByRole('tab', { name: 'Result' }));
-        const gallery = screen.getAllByTestId('record-images').at(-1);
-        expect(gallery?.getAttribute('data-count')).toBe('1');
-        expect(gallery?.querySelector('[data-attachment-id]')?.getAttribute('data-attachment-id'))
-            .toBe(String(attachment.attachmentId));
-    });
-    it('keeps the failure name beside an image-only error result', async () => {
-        const { render, renderSlot } = await imageSlotFixture();
-        const attachment = {
-            attachmentId: brandString<AttachmentId>(`sha256:${'c'.repeat(64)}`),
-            mediaType: 'image/png',
-            bytes: 68,
-            width: 320,
-            height: 320,
-            name: 'failed.png',
-        } satisfies NonNullable<NonNullable<TrajectoryTurnModel['groups'][number]['cells'][number]['outputBlocks']>[number]['attachment']>;
-        const turns: readonly TrajectoryTurnModel[] = [{
-                turn: 1,
-                groups: [{
-                        title: 'Step 1',
-                        cells: [{
-                                index: 1,
-                                kind: 'tool',
-                                text: 'render {"target":"chart"}',
-                                outputDetail: 'ToolError: RENDER_TRUNCATED',
-                                outputBlocks: [{ type: 'image', content: '', attachment }],
-                                isError: true,
-                                timeSeconds: 0.1,
-                            }],
-                    }],
-            }];
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": turns, ...FOLD_PROPS, "renderSlot": renderSlot }));
-            await act(() => { });
-            return nativeView;
-        })();
-        await fireEvent.click(screen.getByRole('row', { name: /TOOL/ }));
-        await fireEvent.click(screen.getByRole('tab', { name: 'Result' }));
-        expect(screen.getByText('ToolError: RENDER_TRUNCATED')).toBeTruthy();
-        const gallery = screen.getAllByTestId('record-images').at(-1);
-        expect(gallery?.getAttribute('data-count')).toBe('1');
-    });
-    it('keeps the first row and a compact summary when a turn is collapsed', async () => {
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": TURNS, ...FOLD_PROPS, "collapsedTurns": new Set([1]) }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(screen.queryByRole('columnheader')).toBeNull();
-        expect(screen.getByRole('row', { name: /ASSISTANT/ })).toBeTruthy();
-        expect(screen.getByRole('row', { name: /Collapsed turn summary/ })).toBeTruthy();
-    });
-    const CALL_TURNS: readonly TrajectoryTurnModel[] = [{
-            turn: 1,
-            groups: [{
-                    title: 'Step 1',
-                    cells: [{
-                            index: 1,
-                            kind: 'tool',
-                            text: 'bash · {"command":"pwd"}',
-                            inputDetail: '{"command":"pwd"}',
-                            callId: 'call-1',
-                            timeSeconds: 0.1,
-                        }],
-                }],
-        }];
-    const NESTED_CALL_TURNS: readonly TrajectoryTurnModel[] = [{
-            turn: 1,
-            groups: [{
-                    title: 'Step 1',
-                    cells: [
-                        {
-                            index: 1,
-                            kind: 'message',
-                            text: 'Plan',
-                            outputDetail: 'Plan',
-                            timeSeconds: 1,
-                        },
-                        {
-                            index: 2,
-                            kind: 'tool',
-                            text: 'run_code · {"code":"..."}',
-                            inputDetail: '{"code":"..."}',
-                            callId: 'root',
-                            timeSeconds: 0.5,
-                        },
-                        {
-                            index: 3,
-                            kind: 'subtool',
-                            text: 'bash · {"command":"ls"}',
-                            callId: 'nested-first',
-                            timeSeconds: 0.1,
-                        },
-                        {
-                            index: 4,
-                            kind: 'subtool',
-                            text: 'read · {"file":"a"}',
-                            callId: 'nested-target',
-                            timeSeconds: 0.1,
-                        },
-                        {
-                            index: 5,
-                            kind: 'tool',
-                            text: 'write · {"file":"b"}',
-                            callId: 'sibling',
-                            timeSeconds: 0.2,
-                        },
-                    ],
-                }],
-        }];
-    const NESTED_CALLS = NESTED_CALL_TURNS[0]!.groups[0]!.cells;
-    const NESTED_ASSISTANT_ID = trajectoryRecordId(NESTED_CALLS[0]!);
-    const NESTED_TOOL_ID = trajectoryRecordId(NESTED_CALLS[1]!);
-    function toggled<T>(current: ReadonlySet<T>, id: T): Set<T> {
-        const next = new Set(current);
-        if (next.has(id))
-            next.delete(id);
-        else
-            next.add(id);
-        return next;
+          title: 'Step 1',
+          cells: [{
+            index: 1,
+            kind: 'message',
+            text: '',
+            requestOnly: true,
+            isError: true,
+            timeSeconds: 0.1,
+          }],
+        }],
+      },
+      {
+        turn: 2,
+        groups: [{
+          title: 'Step 1',
+          cells: [{
+            index: 2,
+            kind: 'message',
+            text: '',
+            requestOnly: true,
+            isError: true,
+            timeSeconds: 0.1,
+          }],
+        }],
+      },
+      {
+        turn: 3,
+        groups: [{
+          title: 'Step 1',
+          cells: [{
+            index: 3,
+            kind: 'message',
+            text: 'Recovered response',
+            timeSeconds: 0.1,
+          }],
+        }],
+      },
+    ]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    const failed = screen.getByRole('button', { name: 'Request #1' })
+    const retry = screen.getByRole('button', { name: 'Request #2' })
+    const recovered = screen.getByRole('button', { name: 'Request #3' })
+    expect(failed.getAttribute('data-request-status')).toBe('error')
+    expect(failed.getAttribute('data-request-run-index')).toBe('0')
+    expect(failed.style.getPropertyValue('--request-boundary-offset')).toBe('0px')
+    expect(retry.getAttribute('data-request-run-index')).toBe('1')
+    expect(retry.style.getPropertyValue('--request-boundary-offset')).toBe('8px')
+    expect(recovered.getAttribute('data-request-run-index')).toBe('2')
+    expect(recovered.style.getPropertyValue('--request-boundary-offset')).toBe('16px')
+  })
+  it.each([
+    ['English', t, 'Pending', 'Completed', 'Failed', 'Last attempt error', 'Error'],
+    ['Chinese', tZh, '等待中', '已完成', '失败', '上次尝试错误', '错误'],
+  ] as const)('distinguishes retry history from the current request status in %s', async (_locale, translate, pending, completed, failed, lastAttemptError, error) => {
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{ title: 'Step 1', cells: [{
+        index: 1, kind: 'message', text: 'response', timeSeconds: null,
+      }] }],
+    }]
+    const table = (status: 'running' | 'complete' | 'error') => (h(LocalizedTrajectoryTable, { 'turns': turns, ...FOLD_PROPS, 't': translate, 'renderSlot': renderNoImages, 'loadImage': loadImage, 'requestNumbers': [{
+      turn: 1, step: 1, group: 'Step 1', number: 1, status,
+      error: 'upstream 503', errorCode: 'SERVER', retry: 1, maxRetries: 2,
+    }] }))
+    const view = await (async () => {
+      const nativeView = await render(table('running'))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('button', { name: translate('request.label', { request: 1 }) })))
+    const panel = within(screen.getByRole('tabpanel'))
+    expect(panel.getByText(pending)).toBeTruthy()
+    expect(panel.getByText(lastAttemptError)).toBeTruthy()
+    expect(panel.queryByText(error, { exact: true })).toBeNull()
+    expect(panel.getByText('upstream 503').className).not.toContain('error')
+    await view.rerender(table('complete'))
+    expect(panel.getByText(completed)).toBeTruthy()
+    expect(panel.getByText(lastAttemptError)).toBeTruthy()
+    expect(panel.queryByText(error, { exact: true })).toBeNull()
+    expect(panel.getByText(translate('request.retryProgress', { retry: 1, maximum: 2 }))).toBeTruthy()
+    expect(panel.getByText('upstream 503').className).not.toContain('error')
+    await view.rerender(table('error'))
+    expect(panel.getByText(failed)).toBeTruthy()
+    expect(panel.getByText(error, { exact: true })).toBeTruthy()
+    expect(panel.queryByText(lastAttemptError)).toBeNull()
+    expect(panel.getByText('upstream 503').className).toContain('error')
+  })
+  it('localizes a sanitized AUTH request failure from its stable code', async () => {
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Step 1',
+        cells: [{
+          index: 1,
+          kind: 'message',
+          text: '',
+          requestOnly: true,
+          isError: true,
+          timeSeconds: 0.1,
+        }],
+      }],
+    }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, 'requestNumbers': [{
+        turn: 1,
+        step: 1,
+        seq: 1,
+        group: 'Step 1',
+        number: 1,
+        status: 'error',
+        error: '',
+        errorCode: 'AUTH',
+      }], ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Request #1' })))
+    expect(screen.getByText('API key is invalid')).toBeTruthy()
+  })
+  it('shows the custom role tooltip only from the responsive icon', async () => {
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    const toolTag = view.container.querySelector<HTMLElement>('[data-role-kind="tool"]')
+    const toolIcon = toolTag?.querySelector<HTMLElement>('[data-role-icon="wrench"]')
+    expect(toolTag).not.toBeNull()
+    expect(toolTag?.getAttribute('title')).toBeNull()
+    expect(toolIcon).toBeTruthy()
+    await act(() => fireEvent.pointerEnter(toolTag as HTMLElement))
+    expect(screen.queryByRole('tooltip')).toBeNull()
+    await act(() => fireEvent.pointerEnter(toolIcon?.parentElement as HTMLElement))
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip.textContent).toBe('TOOL')
+    expect(tooltip.getAttribute('data-side')).toBe('right')
+    await act(() => fireEvent.pointerLeave(toolIcon?.parentElement as HTMLElement))
+    expect(screen.queryByRole('tooltip')).toBeNull()
+  })
+  it('uses information and compression glyphs for injected and compacted context', async () => {
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Context',
+        cells: [
+          { index: 1, kind: 'context', text: 'Workspace context', timeSeconds: 0 },
+          { index: 2, kind: 'compacted', text: 'Compacted history', timeSeconds: 0 },
+        ],
+      }],
+    }]
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(view.container.querySelector('[data-role-kind="context"] [data-role-icon="information"]')).toBeTruthy()
+    expect(view.container.querySelector('[data-role-kind="compacted"] [data-role-icon="compacted"]')).toBeTruthy()
+  })
+  it('keeps a compact turn label available for narrow layouts', async () => {
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    const turnLabel = screen.getByLabelText('Turn 1')
+    expect(turnLabel.textContent).toContain('Turn 1')
+    expect(turnLabel.textContent).toContain('#1')
+  })
+  it.each([null, false, 0, '', { answer: 42 }])('shows raw value %j above rendered output and releases it across selections', async (value) => {
+    const turns: readonly TrajectoryTurnModel[] = [{ turn: 1, groups: [{ title: 'Step 1', cells: [
+      { index: 1, kind: 'tool', text: 'recorded', outputDetail: 'rendered answer', resultSeq: 42, timeSeconds: 0.1 },
+      { index: 2, kind: 'subtool', text: 'historical', outputDetail: 'old answer', timeSeconds: 0.1 },
+    ] }] }]
+    const dispose = vi.fn()
+    const watchToolResult = vi.fn<NonNullable<TableProps['watchToolResult']>>((_seq, publish) => {
+      publish(value)
+      return dispose
+    })
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS, 'watchToolResult': watchToolResult }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /recorded/ })))
+    expect(watchToolResult).not.toHaveBeenCalled()
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Result' })))
+    const raw = screen.getByRole('region', { name: 'Raw result' })
+    const rendered = screen.getByRole('region', { name: 'Rendered result' })
+    expect(raw.compareDocumentPosition(rendered) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(raw.textContent).toContain(typeof value === 'object' && value !== null ? 'answer:' : JSON.stringify(value))
+    expect(within(rendered).getByText('rendered answer')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Raw result' })).toBeNull()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /historical/ })))
+    expect(dispose).toHaveBeenCalledOnce()
+    expect(screen.getByText('Raw results are only available for live tool calls')).toBeTruthy()
+    expect(screen.getByText('old answer')).toBeTruthy()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /recorded/ })))
+    expect(screen.queryByText('Raw results are only available for live tool calls')).toBeNull()
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Summary' })))
+    expect(dispose).toHaveBeenCalledTimes(2)
+    view.unmount()
+  })
+  it.each(['tool', 'subtool'] as const)('shows an in-flight PTC %s as running before retaining its failure output', async (kind) => {
+    const cell: TrajectoryCellProps = {
+      index: 1, kind, text: 'pending-call', timeSeconds: null, toolName: 'run_code',
+      inputDetail: JSON.stringify({ code: 'return 42', description: 'pending-call' }),
     }
-    const NestedCallTable = defineComponent(({ initialAssistants = [], initialTools = [], initialTurns = [], inspectCallId, onInspectApplied }: {
-        initialAssistants?: readonly string[];
-        initialTools?: readonly string[];
-        initialTurns?: readonly number[];
-        inspectCallId?: string;
-        onInspectApplied?: () => void;
-    }) => {
-        const collapsedAssistants = shallowRef(new Set(initialAssistants));
-        const collapsedTools = shallowRef(new Set(initialTools));
-        const collapsedTurns = shallowRef(new Set(initialTurns));
-        return () => (h(TrajectoryTable, { "turns": NESTED_CALL_TURNS, "collapsedAssistants": collapsedAssistants.value, "onToggleAssistant": (id) => { collapsedAssistants.value = toggled(collapsedAssistants.value, id); }, "collapsedTools": collapsedTools.value, "onToggleTool": (id) => { collapsedTools.value = toggled(collapsedTools.value, id); }, "collapsedTurns": collapsedTurns.value, "onToggleTurn": (turn) => { collapsedTurns.value = toggled(collapsedTurns.value, turn); }, ...(inspectCallId === undefined ? {} : { inspectCallId }), ...(onInspectApplied === undefined ? {} : { onInspectApplied }) }));
-    }, { props: ["initialAssistants", "initialTools", "initialTurns", "inspectCallId", "onInspectApplied"] });
-    it('folds only a tool\'s subcalls and keeps its sibling tool visible', async () => {
-        await (async () => {
-            const nativeView = await render(h(NestedCallTable, { "initialTools": [NESTED_TOOL_ID] }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const summary = screen.getByRole('row', {
-            name: /Collapsed subcalls summary, 2 tool calls · bash, read/,
-        });
-        expect(summary.getAttribute('data-collapsed-summary')).toBe('tool');
-        expect(summary.textContent).toBe('…2 tool calls · bash, read');
-        expect(summary.tabIndex).toBe(0);
-        expect(screen.getByRole('row', { name: /TOOL.*run_code/ })).toBeTruthy();
-        expect(screen.getByRole('row', { name: /TOOL.*write/ })).toBeTruthy();
-        expect(screen.queryByRole('row', { name: /SUBTOOL/ })).toBeNull();
-    });
-    it.each(['click', 'Enter', ' '])('expands a folded subcall summary with %j', async (activation) => {
-        await (async () => {
-            const nativeView = await render(h(NestedCallTable, { "initialTools": [NESTED_TOOL_ID] }));
-            await act(() => { });
-            return nativeView;
-        })();
-        const summary = screen.getByRole('row', { name: /Collapsed subcalls summary/ });
-        if (activation === 'click')
-            await fireEvent.click(summary);
-        else
-            await fireEvent.keyDown(summary, { key: activation });
-        expect(screen.getAllByRole('row', { name: /SUBTOOL/ })).toHaveLength(2);
-        expect(screen.queryByRole('row', { name: /Collapsed subcalls summary/ })).toBeNull();
-    });
-    it('preserves nested fold state while outer summaries expand', async () => {
-        await (async () => {
-            const nativeView = await render(h(NestedCallTable, { "initialAssistants": [NESTED_ASSISTANT_ID], "initialTools": [NESTED_TOOL_ID], "initialTurns": [1] }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(screen.getByRole('row', { name: /Collapsed turn summary/ })).toBeTruthy();
-        expect(screen.queryByRole('row', { name: /Collapsed assistant summary/ })).toBeNull();
-        expect(screen.queryByRole('row', { name: /Collapsed subcalls summary/ })).toBeNull();
-        await fireEvent.click(screen.getByRole('row', { name: /Collapsed turn summary/ }));
-        expect(screen.getByRole('row', { name: /Collapsed assistant summary, 4 tool calls/ }))
-            .toBeTruthy();
-        expect(screen.queryByRole('row', { name: /Collapsed subcalls summary/ })).toBeNull();
-        await fireEvent.click(screen.getByRole('row', { name: /Collapsed assistant summary/ }));
-        expect(screen.getByRole('row', { name: /Collapsed subcalls summary, 2 tool calls/ }))
-            .toBeTruthy();
-        expect(screen.getByRole('row', { name: /TOOL.*write/ })).toBeTruthy();
-        expect(screen.queryByRole('row', { name: /SUBTOOL/ })).toBeNull();
-        await fireEvent.click(screen.getByRole('row', { name: /Collapsed subcalls summary/ }));
-        expect(screen.getAllByRole('row', { name: /SUBTOOL/ })).toHaveLength(2);
-        expect(screen.queryByRole('row', { name: /Collapsed/ })).toBeNull();
-    });
-    it('expands every collapsed parent when inspecting a nested subcall', async () => {
-        const onInspectApplied = vi.fn();
-        await (async () => {
-            const nativeView = await render(h(NestedCallTable, { "initialAssistants": [NESTED_ASSISTANT_ID], "initialTools": [NESTED_TOOL_ID], "inspectCallId": "nested-target", "onInspectApplied": onInspectApplied }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(onInspectApplied).toHaveBeenCalledOnce();
-        expect(screen.getByRole('row', { name: /SUBTOOL.*read/ }).getAttribute('aria-selected'))
-            .toBe('true');
-        expect(screen.queryByRole('row', { name: /Collapsed/ })).toBeNull();
-    });
-    it('an inspect target opens the matching record and acknowledges once', async () => {
-        const onInspectApplied = vi.fn();
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": CALL_TURNS, ...FOLD_PROPS, "inspectCallId": "call-1", "onInspectApplied": onInspectApplied }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(screen.getByRole('row', { name: /TOOL/ }).getAttribute('aria-selected')).toBe('true');
-        expect(screen.getByRole('complementary', { name: 'Event details' })).toBeTruthy();
-        expect(onInspectApplied).toHaveBeenCalledOnce();
-    });
-    it('an unmatched inspect target stays pending without acknowledgement', async () => {
-        const onInspectApplied = vi.fn();
-        await (async () => {
-            const nativeView = await render(h(TrajectoryTable, { "turns": CALL_TURNS, ...FOLD_PROPS, "inspectCallId": "call-missing", "onInspectApplied": onInspectApplied }));
-            await act(() => { });
-            return nativeView;
-        })();
-        expect(screen.getByRole('row', { name: /TOOL/ }).getAttribute('aria-selected')).toBe('false');
-        expect(onInspectApplied).not.toHaveBeenCalled();
-    });
-});
+    const turns = (current: TrajectoryCellProps): readonly TrajectoryTurnModel[] => [
+      { turn: 1, groups: [{ title: 'Step 1', cells: [current] }] },
+    ]
+    const view = await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns(cell), ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /pending-call/ })))
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Result' })))
+    const raw = screen.getByRole('region', { name: 'Raw result' })
+    expect(within(raw).getByText('Running…')).toBeTruthy()
+    expect(within(raw).queryByText('Raw results are only available for live tool calls')).toBeNull()
+    await view.rerender(h(TrajectoryTable, { 'turns': turns({
+      ...cell, isError: true, outputDetail: 'Error: execution failed', timeSeconds: 0.1,
+    }), ...FOLD_PROPS }))
+    expect(within(raw).getByText('Raw results are only available for live tool calls')).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Rendered result' }).textContent).toContain('Error: execution failed')
+  })
+  it('keeps rendered output visible when the raw value unloads and ignores stale callbacks', async () => {
+    const callbacks: ((value: JsonValue | undefined) => void)[] = []
+    const dispose = vi.fn()
+    const watchToolResult: NonNullable<TableProps['watchToolResult']> = (_seq, publish) => {
+      callbacks.push(publish)
+      publish({ live: true })
+      return dispose
+    }
+    const turns: readonly TrajectoryTurnModel[] = [{ turn: 1, groups: [{ title: 'Step 1', cells: [
+      { index: 1, kind: 'tool', text: 'live result', outputDetail: 'rendered', resultSeq: 42, timeSeconds: 0.1 },
+      { index: 2, kind: 'tool', text: 'historical result', outputDetail: 'historical', timeSeconds: 0.1 },
+    ] }] }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS, 'watchToolResult': watchToolResult }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /live result/ })))
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Result' })))
+    expect(screen.getByRole('region', { name: 'Raw result' }).textContent).toContain('live:')
+    await act(() => { callbacks[0]?.(undefined) })
+    expect(screen.getByText('Raw results are only available for live tool calls')).toBeTruthy()
+    expect(screen.getByText('rendered')).toBeTruthy()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /historical result/ })))
+    expect(dispose).toHaveBeenCalledOnce()
+    await act(() => { callbacks[0]?.({ live: true }) })
+    expect(screen.getByText('Raw results are only available for live tool calls')).toBeTruthy()
+    expect(screen.getByText('historical')).toBeTruthy()
+  })
+  it('keeps both result sections when rendered JSON equals the raw value', async () => {
+    const turns: readonly TrajectoryTurnModel[] = [{ turn: 1, groups: [{ title: 'Step 1', cells: [{
+      index: 1, kind: 'tool', text: 'json-result', outputDetail: '{"answer":42}', resultSeq: 42, timeSeconds: 0.1,
+      outputBlocks: [{ type: 'text', content: '{"answer":42}' }],
+    }] }] }]
+    const watchToolResult: NonNullable<TableProps['watchToolResult']> = (_seq, publish) => {
+      publish({ answer: 42 })
+      return () => { }
+    }
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS, 'watchToolResult': watchToolResult }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /json-result/ })))
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Result' })))
+    for (const name of ['Raw result', 'Rendered result']) {
+      const section = within(screen.getByRole('region', { name }))
+      expect(section.getByRole('tree').textContent).toContain('answer:42')
+      expect(section.queryAllByRole('button')).toHaveLength(0)
+    }
+  })
+  it('renders a single-text JSON tool result as a JSON tree', async () => {
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Step 1',
+        cells: [{
+          index: 1,
+          kind: 'tool',
+          text: 'read {"path":"result.json"}',
+          outputDetail: '{"value":1,"nested":{"ok":true}}',
+          outputBlocks: [{
+            type: 'text',
+            content: '{"value":1,"nested":{"ok":true}}',
+          }],
+          timeSeconds: 0.1,
+        }],
+      }],
+    }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /TOOL/ })))
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Result' })))
+    expect(screen.getByRole('tree', { name: 'Result JSON' })).toBeTruthy()
+    expect(screen.getByText('value:')).toBeTruthy()
+  })
+  it.each([['English', t, 'Attachments', 'Image 1', 'Summary', 'Preview', 'Raw'],
+    ['Chinese', tZh, '附件', '图片 1', '概述', '预览', '原始内容']] as const)('keeps mixed attachments ordered and raw fields complete in %s', async (_locale, translate, listLabel, imageLabel, summaryTab, previewTab, rawTab) => {
+    const attachment = {
+      attachmentId: brandString<AttachmentId>(`sha256:${'a'.repeat(64)}`),
+      mediaType: 'image/png' as const,
+      bytes: 68,
+      width: 40,
+      height: 800,
+      originalDimensions: { width: 400, height: 8000 },
+    }
+    const file = {
+      attachmentId: brandString<AttachmentId>(`sha256:${'b'.repeat(64)}`),
+      name: `${'long-filename-'.repeat(12)}.txt`,
+      bytes: 0,
+    }
+    const content = [
+      { type: 'text' as const, text: '**before**' },
+      { type: 'image' as const, attachment },
+      { type: 'text' as const, text: 'after' },
+      { type: 'file' as const, attachment: file },
+      { type: 'image' as const, attachment },
+    ]
+    const turns = deriveTrajectoryLayout({
+      nodes: [{ kind: 'user', seq: 1, time: 1000, source: { kind: 'user' }, content }],
+      partial: null,
+      runningCalls: [],
+    }, translate)
+    const { render, renderSlot: slotRenderer } = await imageSlotFixture()
+    const renderSlot = vi.fn((name: 'conversation.trajectory.images', owner: object) => slotRenderer(name, owner as MessageImagesOwnerProps))
+    const view = await (async () => {
+      const nativeView = await render(h(LocalizedTrajectoryTable, { 'turns': turns, ...FOLD_PROPS, 't': translate, 'renderSlot': renderSlot, 'loadImage': loadImage }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(view.container.querySelector('[data-trajectory-row-key]')!))
+    for (const tab of [summaryTab, previewTab]) {
+      await act(() => fireEvent.click(screen.getByRole('tab', { name: tab })))
+      const list = screen.getByRole('list', { name: listLabel })
+      const names = [...list.querySelectorAll('[title]')].map(el => el.getAttribute('title'))
+      expect(names).toEqual([imageLabel, file.name, imageLabel.replace('1', '2')])
+      expect(within(list).getByText('TXT · 0B')).toBeTruthy()
+      expect(within(list).getAllByText('image/png · 68B · 40 × 800')).toHaveLength(2)
+      expect(renderSlot).toHaveBeenCalledWith('conversation.trajectory.images', {
+        images: [{ attachment, label: imageLabel }], align: 'start', thumbnail: true, loadImage,
+      })
+    }
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: rawTab })))
+    expect(screen.queryByTestId('record-images')).toBeNull()
+    const disclosures = [...view.container.querySelectorAll('details')]
+    expect(disclosures).toHaveLength(3)
+    expect(disclosures.every(el => !el.open)).toBe(true)
+    expect(disclosures.map((el): unknown => JSON.parse(el.querySelector('pre')!.textContent)))
+      .toEqual([content[1], content[3], content[4]])
+    const blocks = [...disclosures[0]!.parentElement!.children]
+    expect(blocks.map(el => el.tagName)).toEqual(['SECTION', 'DETAILS', 'SECTION', 'DETAILS', 'DETAILS'])
+    expect(blocks[0]!.querySelector('pre')!.textContent).toBe('**before**')
+    expect(blocks[2]!.querySelector('pre')!.textContent).toBe('after')
+  })
+  it('renders a tool-result image through the shared gallery in the Result tab', async () => {
+    const { render, renderSlot } = await imageSlotFixture()
+    const attachment = {
+      attachmentId: brandString<AttachmentId>(`sha256:${'b'.repeat(64)}`),
+      mediaType: 'image/png',
+      bytes: 68,
+      width: 320,
+      height: 640,
+      name: 'capture.png',
+    } satisfies NonNullable<NonNullable<TrajectoryTurnModel['groups'][number]['cells'][number]['outputBlocks']>[number]['attachment']>
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Step 1',
+        cells: [{
+          index: 1,
+          kind: 'tool',
+          text: 'read_image {"path":"a.png"}',
+          outputDetail: 'Images ×1',
+          outputBlocks: [{ type: 'image', content: '', attachment }],
+          timeSeconds: 0.1,
+        }],
+      }],
+    }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS, 'renderSlot': renderSlot }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /TOOL/ })))
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Result' })))
+    const gallery = screen.getAllByTestId('record-images').at(-1)
+    expect(gallery?.getAttribute('data-count')).toBe('1')
+    expect(gallery?.querySelector('[data-attachment-id]')?.getAttribute('data-attachment-id'))
+      .toBe(String(attachment.attachmentId))
+  })
+  it('keeps the failure name beside an image-only error result', async () => {
+    const { render, renderSlot } = await imageSlotFixture()
+    const attachment = {
+      attachmentId: brandString<AttachmentId>(`sha256:${'c'.repeat(64)}`),
+      mediaType: 'image/png',
+      bytes: 68,
+      width: 320,
+      height: 320,
+      name: 'failed.png',
+    } satisfies NonNullable<NonNullable<TrajectoryTurnModel['groups'][number]['cells'][number]['outputBlocks']>[number]['attachment']>
+    const turns: readonly TrajectoryTurnModel[] = [{
+      turn: 1,
+      groups: [{
+        title: 'Step 1',
+        cells: [{
+          index: 1,
+          kind: 'tool',
+          text: 'render {"target":"chart"}',
+          outputDetail: 'ToolError: RENDER_TRUNCATED',
+          outputBlocks: [{ type: 'image', content: '', attachment }],
+          isError: true,
+          timeSeconds: 0.1,
+        }],
+      }],
+    }]
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': turns, ...FOLD_PROPS, 'renderSlot': renderSlot }))
+      await act(() => { })
+      return nativeView
+    })()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /TOOL/ })))
+    await act(() => fireEvent.click(screen.getByRole('tab', { name: 'Result' })))
+    expect(screen.getByText('ToolError: RENDER_TRUNCATED')).toBeTruthy()
+    const gallery = screen.getAllByTestId('record-images').at(-1)
+    expect(gallery?.getAttribute('data-count')).toBe('1')
+  })
+  it('keeps the first row and a compact summary when a turn is collapsed', async () => {
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': TURNS, ...FOLD_PROPS, 'collapsedTurns': new Set([1]) }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(screen.queryByRole('columnheader')).toBeNull()
+    expect(screen.getByRole('row', { name: /ASSISTANT/ })).toBeTruthy()
+    expect(screen.getByRole('row', { name: /Collapsed turn summary/ })).toBeTruthy()
+  })
+  const CALL_TURNS: readonly TrajectoryTurnModel[] = [{
+    turn: 1,
+    groups: [{
+      title: 'Step 1',
+      cells: [{
+        index: 1,
+        kind: 'tool',
+        text: 'bash · {"command":"pwd"}',
+        inputDetail: '{"command":"pwd"}',
+        callId: 'call-1',
+        timeSeconds: 0.1,
+      }],
+    }],
+  }]
+  const NESTED_CALL_TURNS: readonly TrajectoryTurnModel[] = [{
+    turn: 1,
+    groups: [{
+      title: 'Step 1',
+      cells: [
+        {
+          index: 1,
+          kind: 'message',
+          text: 'Plan',
+          outputDetail: 'Plan',
+          timeSeconds: 1,
+        },
+        {
+          index: 2,
+          kind: 'tool',
+          text: 'run_code · {"code":"..."}',
+          inputDetail: '{"code":"..."}',
+          callId: 'root',
+          timeSeconds: 0.5,
+        },
+        {
+          index: 3,
+          kind: 'subtool',
+          text: 'bash · {"command":"ls"}',
+          callId: 'nested-first',
+          timeSeconds: 0.1,
+        },
+        {
+          index: 4,
+          kind: 'subtool',
+          text: 'read · {"file":"a"}',
+          callId: 'nested-target',
+          timeSeconds: 0.1,
+        },
+        {
+          index: 5,
+          kind: 'tool',
+          text: 'write · {"file":"b"}',
+          callId: 'sibling',
+          timeSeconds: 0.2,
+        },
+      ],
+    }],
+  }]
+  const NESTED_CALLS = NESTED_CALL_TURNS[0]!.groups[0]!.cells
+  const NESTED_ASSISTANT_ID = trajectoryRecordId(NESTED_CALLS[0]!)
+  const NESTED_TOOL_ID = trajectoryRecordId(NESTED_CALLS[1]!)
+  function toggled<T>(current: ReadonlySet<T>, id: T): Set<T> {
+    const next = new Set(current)
+    if (next.has(id))
+      next.delete(id)
+    else
+      next.add(id)
+    return next
+  }
+  const NestedCallTable = defineComponent(({ initialAssistants = [], initialTools = [], initialTurns = [],
+    inspectCallId, onInspectApplied }: {
+    initialAssistants?: readonly string[]
+    initialTools?: readonly string[]
+    initialTurns?: readonly number[]
+    inspectCallId?: string
+    onInspectApplied?: () => void
+  }) => {
+    const collapsedAssistants = shallowRef(new Set(initialAssistants))
+    const collapsedTools = shallowRef(new Set(initialTools))
+    const collapsedTurns = shallowRef(new Set(initialTurns))
+    return () => (h(TrajectoryTable, { 'turns': NESTED_CALL_TURNS, 'collapsedAssistants': collapsedAssistants.value, 'onToggleAssistant': (id) => { collapsedAssistants.value = toggled(collapsedAssistants.value, id) }, 'collapsedTools': collapsedTools.value, 'onToggleTool': (id) => { collapsedTools.value = toggled(collapsedTools.value, id) }, 'collapsedTurns': collapsedTurns.value, 'onToggleTurn': (turn) => { collapsedTurns.value = toggled(collapsedTurns.value, turn) }, ...(inspectCallId === undefined ? {} : { inspectCallId }), ...(onInspectApplied === undefined ? {} : { onInspectApplied }) }))
+  }, { props: ['initialAssistants', 'initialTools', 'initialTurns', 'inspectCallId', 'onInspectApplied'] })
+  it('folds only a tool\'s subcalls and keeps its sibling tool visible', async () => {
+    await (async () => {
+      const nativeView = await render(h(NestedCallTable, { 'initialTools': [NESTED_TOOL_ID] }))
+      await act(() => { })
+      return nativeView
+    })()
+    const summary = screen.getByRole('row', {
+      name: /Collapsed subcalls summary, 2 tool calls · bash, read/,
+    })
+    expect(summary.getAttribute('data-collapsed-summary')).toBe('tool')
+    expect(summary.textContent).toBe('…2 tool calls · bash, read')
+    expect(summary.tabIndex).toBe(0)
+    expect(screen.getByRole('row', { name: /TOOL.*run_code/ })).toBeTruthy()
+    expect(screen.getByRole('row', { name: /TOOL.*write/ })).toBeTruthy()
+    expect(screen.queryByRole('row', { name: /SUBTOOL/ })).toBeNull()
+  })
+  it.each(['click', 'Enter', ' '])('expands a folded subcall summary with %j', async (activation) => {
+    await (async () => {
+      const nativeView = await render(h(NestedCallTable, { 'initialTools': [NESTED_TOOL_ID] }))
+      await act(() => { })
+      return nativeView
+    })()
+    const summary = screen.getByRole('row', { name: /Collapsed subcalls summary/ })
+    if (activation === 'click')
+      await act(() => fireEvent.click(summary))
+    else
+      await act(() => fireEvent.keyDown(summary, { key: activation }))
+    expect(screen.getAllByRole('row', { name: /SUBTOOL/ })).toHaveLength(2)
+    expect(screen.queryByRole('row', { name: /Collapsed subcalls summary/ })).toBeNull()
+  })
+  it('preserves nested fold state while outer summaries expand', async () => {
+    await (async () => {
+      const nativeView = await render(h(NestedCallTable, { 'initialAssistants': [NESTED_ASSISTANT_ID], 'initialTools': [NESTED_TOOL_ID], 'initialTurns': [1] }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(screen.getByRole('row', { name: /Collapsed turn summary/ })).toBeTruthy()
+    expect(screen.queryByRole('row', { name: /Collapsed assistant summary/ })).toBeNull()
+    expect(screen.queryByRole('row', { name: /Collapsed subcalls summary/ })).toBeNull()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /Collapsed turn summary/ })))
+    expect(screen.getByRole('row', { name: /Collapsed assistant summary, 4 tool calls/ }))
+      .toBeTruthy()
+    expect(screen.queryByRole('row', { name: /Collapsed subcalls summary/ })).toBeNull()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /Collapsed assistant summary/ })))
+    expect(screen.getByRole('row', { name: /Collapsed subcalls summary, 2 tool calls/ }))
+      .toBeTruthy()
+    expect(screen.getByRole('row', { name: /TOOL.*write/ })).toBeTruthy()
+    expect(screen.queryByRole('row', { name: /SUBTOOL/ })).toBeNull()
+    await act(() => fireEvent.click(screen.getByRole('row', { name: /Collapsed subcalls summary/ })))
+    expect(screen.getAllByRole('row', { name: /SUBTOOL/ })).toHaveLength(2)
+    expect(screen.queryByRole('row', { name: /Collapsed/ })).toBeNull()
+  })
+  it('expands every collapsed parent when inspecting a nested subcall', async () => {
+    const onInspectApplied = vi.fn()
+    await (async () => {
+      const nativeView = await render(h(NestedCallTable, { 'initialAssistants': [NESTED_ASSISTANT_ID], 'initialTools': [NESTED_TOOL_ID], 'inspectCallId': 'nested-target', 'onInspectApplied': onInspectApplied }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(onInspectApplied).toHaveBeenCalledOnce()
+    expect(screen.getByRole('row', { name: /SUBTOOL.*read/ }).getAttribute('aria-selected'))
+      .toBe('true')
+    expect(screen.queryByRole('row', { name: /Collapsed/ })).toBeNull()
+  })
+  it('an inspect target opens the matching record and acknowledges once', async () => {
+    const onInspectApplied = vi.fn()
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': CALL_TURNS, ...FOLD_PROPS, 'inspectCallId': 'call-1', 'onInspectApplied': onInspectApplied }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(screen.getByRole('row', { name: /TOOL/ }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('complementary', { name: 'Event details' })).toBeTruthy()
+    expect(onInspectApplied).toHaveBeenCalledOnce()
+  })
+  it('an unmatched inspect target stays pending without acknowledgement', async () => {
+    const onInspectApplied = vi.fn()
+    await (async () => {
+      const nativeView = await render(h(TrajectoryTable, { 'turns': CALL_TURNS, ...FOLD_PROPS, 'inspectCallId': 'call-missing', 'onInspectApplied': onInspectApplied }))
+      await act(() => { })
+      return nativeView
+    })()
+    expect(screen.getByRole('row', { name: /TOOL/ }).getAttribute('aria-selected')).toBe('false')
+    expect(onInspectApplied).not.toHaveBeenCalled()
+  })
+})
 it('preserves seconds and token units in translated metric labels', () => {
-    expect(makeTranslate(es)('unit.seconds', { value: '1.25' })).toBe('1.25 s');
-    expect(makeTranslate(pt)('unit.tokens', { value: 42 })).toBe('42 tok');
-});
+  expect(makeTranslate(es)('unit.seconds', { value: '1.25' })).toBe('1.25 s')
+  expect(makeTranslate(pt)('unit.tokens', { value: 42 })).toBe('42 tok')
+})

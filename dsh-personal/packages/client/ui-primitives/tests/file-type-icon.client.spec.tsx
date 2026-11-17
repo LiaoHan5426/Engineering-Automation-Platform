@@ -2,7 +2,7 @@
 import { renderVue as render } from './vue-render.ts'
 import { h } from 'vue'
 import { describe, expect, it } from 'vitest'
-import { classifyFileType, fileExtension, FileTypeIcon, type FileTypeKind, } from '../src/FileTypeIcon.tsx'
+import { classifyFileType, fileExtension, FileTypeIcon, type FileTypeKind } from '../src/FileTypeIcon.tsx'
 import { classifyCodeFileType } from '../src/code-file-types.ts'
 import css from '../src/FileTypeIcon.module.css'
 describe('fileExtension', () => {
@@ -51,7 +51,7 @@ describe('classifyFileType', () => {
     ['archive.tar/.hidden', 'other'],
   ] as [
     string,
-    Exclude<FileTypeKind, 'folder'>
+    Exclude<FileTypeKind, 'folder'>,
   ][])('%s → %s', (path, type) => {
     expect(classifyFileType(path)).toBe(type)
   })
@@ -66,7 +66,7 @@ describe('Object.prototype key names', () => {
     [`${key}.ts`, 'typescript'],
   ] as [
     string,
-    Exclude<FileTypeKind, 'folder'>
+    Exclude<FileTypeKind, 'folder'>,
   ][]))('%s → %s', (path, type) => {
     expect(classifyFileType(path)).toBe(type)
   })
@@ -75,7 +75,7 @@ describe('Object.prototype key names', () => {
     expect(classifyCodeFileType(key, 'ts')).toBe('typescript')
   })
   it.each(keys.flatMap(key => [key, `notes.${key}`]))('%s renders the generic file glyph', (path) => {
-    const { container } = render(h(FileTypeIcon, { "path": path }))
+    const { container } = render(h(FileTypeIcon, { 'path': path }))
     expect(container.querySelector('svg')!.classList.contains(css.other!)).toBe(true)
   })
 })
@@ -84,7 +84,7 @@ describe('FileTypeIcon', () => {
     'code', 'excel', 'folder', 'html', 'image', 'markdown', 'other', 'pdf', 'ppt', 'video', 'word',
   ]
   it.each(types)('%s renders a distinct aria-hidden svg without literal colors', (type) => {
-    const { container } = render(h(FileTypeIcon, { "kind": type }))
+    const { container } = render(h(FileTypeIcon, { 'kind': type }))
     const svg = container.querySelector('svg')!
     expect(svg).not.toBeNull()
     expect(svg.getAttribute('aria-hidden')).toBe('true')
@@ -99,55 +99,55 @@ describe('FileTypeIcon', () => {
     ].includes(value))).toBe(true)
   })
   it.each(types)('%s uses a solid sheet fill', (type) => {
-    const { container } = render(h(FileTypeIcon, { "kind": type }))
+    const { container } = render(h(FileTypeIcon, { 'kind': type }))
     const sheet = container.querySelector('svg > path')!
     expect(sheet.getAttribute('fill')).toBe('currentColor')
     expect(sheet.getAttribute('fill-opacity')).toBeNull()
   })
   it('uses white marks and fold for coloured sheets, with a darker grey fold for other', () => {
-    const coloured = render(h(FileTypeIcon, { "kind": "pdf" })).container
+    const coloured = render(h(FileTypeIcon, { 'kind': 'pdf' })).container
     expect(coloured.querySelector('[data-file-type-mark]')?.getAttribute('color'))
       .toBe('var(--dsw-static-neutral-00)')
     expect(coloured.querySelector('svg > path:nth-of-type(2)')?.getAttribute('fill'))
       .toBe('var(--dsw-static-neutral-00)')
-    const other = render(h(FileTypeIcon, { "kind": "other" })).container
+    const other = render(h(FileTypeIcon, { 'kind': 'other' })).container
     expect(other.querySelector('svg > path:nth-of-type(2)')?.getAttribute('fill'))
       .toBe('var(--dsw-static-neutral-400)')
   })
   it('draws one distinct glyph for every category', () => {
     const paths = types.map((type) => {
-      const { container } = render(h(FileTypeIcon, { "kind": type }))
+      const { container } = render(h(FileTypeIcon, { 'kind': type }))
       return [...container.querySelectorAll('path')].map(path => path.getAttribute('d')).join('|')
     })
     expect(new Set(paths).size).toBe(types.length)
   })
   it.each(['folder', 'html', 'image', 'video'] as const)('enlarges the %s center mark without scaling the file shell', (type) => {
-    const { container } = render(h(FileTypeIcon, { "kind": type }))
+    const { container } = render(h(FileTypeIcon, { 'kind': type }))
     expect(container.querySelector('[data-file-type-mark]')?.getAttribute('transform')).toContain('scale(1.12)')
     expect(container.querySelector('svg > path')?.getAttribute('transform')).toBeNull()
   })
   it.each(['markdown', 'pdf', 'ppt', 'word'] as const)('gives the %s center mark the larger emphasis scale', (type) => {
-    const { container } = render(h(FileTypeIcon, { "kind": type }))
+    const { container } = render(h(FileTypeIcon, { 'kind': type }))
     expect(container.querySelector('[data-file-type-mark]')?.getAttribute('transform')).toContain('scale(1.22)')
     expect(container.querySelector('svg > path')?.getAttribute('transform')).toBeNull()
   })
   it('uses the supplied unscaled 1.2px table grid for spreadsheet files', () => {
-    const { container } = render(h(FileTypeIcon, { "kind": "excel" }))
+    const { container } = render(h(FileTypeIcon, { 'kind': 'excel' }))
     const mark = container.querySelector('[data-file-type-mark]')
     expect(mark?.getAttribute('transform')).toBeNull()
     expect(mark?.querySelector('path')?.getAttribute('stroke')).toBe('currentColor')
     expect(mark?.querySelector('path')?.getAttribute('stroke-width')).toBe('1.2')
   })
   it('keeps the generic file glyph without an invented center mark', () => {
-    const { container } = render(h(FileTypeIcon, { "kind": "other" }))
+    const { container } = render(h(FileTypeIcon, { 'kind': 'other' }))
     expect(container.querySelector('[data-file-type-mark]')).toBeNull()
   })
   it('classifies the path by default and forwards size and className', () => {
-    const inferred = render(h(FileTypeIcon, { "path": "report.pdf" }))
-    const explicit = render(h(FileTypeIcon, { "kind": "pdf" }))
+    const inferred = render(h(FileTypeIcon, { 'path': 'report.pdf' }))
+    const explicit = render(h(FileTypeIcon, { 'kind': 'pdf' }))
     expect(inferred.container.innerHTML).toBe(explicit.container.innerHTML)
     expect(inferred.container.querySelector('svg')!.getAttribute('width')).toBe('28')
-    const sized = render(h(FileTypeIcon, { "path": "photo.png", "size": 20, "className": "x" }))
+    const sized = render(h(FileTypeIcon, { 'path': 'photo.png', 'size': 20, 'className': 'x' }))
     const svg = sized.container.querySelector('svg')!
     expect(svg.getAttribute('width')).toBe('20')
     expect(svg.getAttribute('height')).toBe('20')

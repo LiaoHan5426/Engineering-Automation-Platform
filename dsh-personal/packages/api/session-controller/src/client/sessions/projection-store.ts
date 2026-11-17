@@ -37,7 +37,8 @@ export type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/t
  * only when a frame or baseline lands).
  */
 export type UseProjection = {
-  <K extends Extract<keyof SessionProjectionMap, string>>(key: K | Readonly<Ref<K | undefined>>): Readonly<ShallowRef<SessionProjectionMap[K] | undefined>>
+  <K extends Extract<keyof SessionProjectionMap, string>>(
+    key: K | Readonly<Ref<K | undefined>>): Readonly<ShallowRef<SessionProjectionMap[K] | undefined>>
   <K extends Extract<keyof SessionProjectionMap, string>, S>(
     key: K | Readonly<Ref<K | undefined>>,
     selector: (value: SessionProjectionMap[K] | undefined) => S,

@@ -42,7 +42,8 @@ export const InlineEditor = defineComponent((props: InlineEditorProps) => {
       return
     }
     // keyCode 229 is the legacy composition signal some engines emit.
-    if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return
+    const compositionEvent: { readonly keyCode: number } = event
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing || compositionEvent.keyCode === 229) return
     event.preventDefault()
     props.onSave()
   }

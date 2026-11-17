@@ -5,45 +5,46 @@
 // Each tab is `<id>-<value>` and controls the panel `<id>-<value>-panel`, the
 // element the owner renders for that mode and points back at the tab with
 // `aria-labelledby`.
-import { defineComponent, h, shallowRef, watch, type CSSProperties } from 'vue';
-import clsx from 'clsx';
-import css from './SegmentedControl.module.css';
+import { defineComponent, h, shallowRef, watch, type CSSProperties } from 'vue'
+import clsx from 'clsx'
+import css from './SegmentedControl.module.css'
 /** One segment of a {@link SegmentedControl}. */
 export interface SegmentedControlOption<Value extends string> {
-    /** The value the owner receives when this segment is chosen. */
-    value: Value;
-    /** Localized segment text. */
-    label: string;
-    /** Whether the segment refuses selection. */
-    disabled?: boolean;
-    /** Localized hover text, typically why the segment is locked. */
-    title?: string;
+  /** The value the owner receives when this segment is chosen. */
+  value: Value
+  /** Localized segment text. */
+  label: string
+  /** Whether the segment refuses selection. */
+  disabled?: boolean
+  /** Localized hover text, typically why the segment is locked. */
+  title?: string
 }
 /** The keys that walk the tablist, per the WAI-ARIA tabs pattern. */
-type WalkKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown' | 'Home' | 'End';
+type WalkKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown' | 'Home' | 'End'
 function isWalkKey(key: string): key is WalkKey {
-    return key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown'
-        || key === 'Home' || key === 'End';
+  return key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown'
+        || key === 'Home' || key === 'End'
 }
 /**
  * The enabled option a walk key lands on from the selected one: arrows step
  * to the nearest enabled neighbour and wrap, Home and End jump to the first
  * and last enabled option.
  */
-function walk<Value extends string>(options: readonly SegmentedControlOption<Value>[], from: number, key: WalkKey): SegmentedControlOption<Value> | undefined {
-    const enabled = options.filter(option => option.disabled !== true);
-    if (key === 'Home')
-        return enabled[0];
-    if (key === 'End')
-        return enabled[enabled.length - 1];
-    const step = key === 'ArrowRight' || key === 'ArrowDown' ? 1 : -1;
-    const count = options.length;
-    for (let offset = 1; offset < count; offset += 1) {
-        const candidate = options[((from + step * offset) % count + count) % count];
-        if (candidate !== undefined && candidate.disabled !== true)
-            return candidate;
-    }
-    return undefined;
+function walk<Value extends string>(options: readonly SegmentedControlOption<Value>[], from: number,
+  key: WalkKey): SegmentedControlOption<Value> | undefined {
+  const enabled = options.filter(option => option.disabled !== true)
+  if (key === 'Home')
+    return enabled[0]
+  if (key === 'End')
+    return enabled[enabled.length - 1]
+  const step = key === 'ArrowRight' || key === 'ArrowDown' ? 1 : -1
+  const count = options.length
+  for (let offset = 1; offset < count; offset += 1) {
+    const candidate = options[((from + step * offset) % count + count) % count]
+    if (candidate !== undefined && candidate.disabled !== true)
+      return candidate
+  }
+  return undefined
 }
 /**
  * Render a segmented control.
@@ -60,47 +61,47 @@ function walk<Value extends string>(options: readonly SegmentedControlOption<Val
  * @returns the tablist element.
  */
 export const SegmentedControl = defineComponent(<Value extends string>(props: {
-    id: string;
-    value: Value;
-    options: readonly SegmentedControlOption<Value>[];
-    onChange: (next: Value) => void;
-    label: string;
-    disabled?: boolean;
-    // `| undefined` so a caller can forward an optional class straight through
-    // under exactOptionalPropertyTypes (a CSS-module lookup is string|undefined).
-    className?: string | undefined;
+  id: string
+  value: Value
+  options: readonly SegmentedControlOption<Value>[]
+  onChange: (next: Value) => void
+  label: string
+  disabled?: boolean
+  // `| undefined` so a caller can forward an optional class straight through
+  // under exactOptionalPropertyTypes (a CSS-module lookup is string|undefined).
+  className?: string | undefined
 }) => {
-    const list = shallowRef<HTMLDivElement | null>(null);
-    // A walk key reports the next value and the owner re-renders with it; the
-    // keyboard then follows the selection so the roving tabindex stays usable.
-    watch(() => props.value, () => {
-        const root = list.value;
-        /* v8 ignore next -- the ref is attached to the always-rendered root before any effect runs. */
-        if (root === null)
-            return;
-        if (!root.contains(document.activeElement))
-            return;
-        root.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')?.focus();
-    }, { flush: 'post' });
-    return () => {
-        const { id, value, options, onChange, label, disabled = false, className } = props;
-        const selected = options.findIndex(option => option.value === value);
-        const onKeyDown = (event: KeyboardEvent): void => {
-            if (!isWalkKey(event.key))
-                return;
-            event.preventDefault();
-            const target = walk(options, selected, event.key);
-            if (target !== undefined && target.value !== value)
-                onChange(target.value);
-        };
-        const indicator = {
-            '--dsh-segment-count': String(options.length),
-            '--dsh-segment-index': String(selected),
-        } as CSSProperties;
-        return (h("div", { "ref": list, "role": "tablist", "aria-label": label, "class": clsx(css.control, className), "style": indicator }, [h("span", { "aria-hidden": "true", "class": css.indicator }, undefined), options.map((option) => {
-                const active = option.value === value;
-                return (h("button", { "key": option.value, "id": `${id}-${option.value}`, "type": "button", "role": "tab", "aria-selected": active, "aria-controls": `${id}-${option.value}-panel`, "tabIndex": active ? 0 : -1, "disabled": disabled || option.disabled === true, "title": option.title, "class": css.tab, "onClick": () => { if (!active)
-                        onChange(option.value); }, "onKeydown": onKeyDown }, [option.label]));
-            })]));
-    };
-}, { props: ['id', 'value', 'options', 'onChange', 'label', 'disabled', 'className'] });
+  const list = shallowRef<HTMLDivElement | null>(null)
+  // A walk key reports the next value and the owner re-renders with it; the
+  // keyboard then follows the selection so the roving tabindex stays usable.
+  watch(() => props.value, () => {
+    const root = list.value
+    /* v8 ignore next -- the ref is attached to the always-rendered root before any effect runs. */
+    if (root === null)
+      return
+    if (!root.contains(document.activeElement))
+      return
+    root.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')?.focus()
+  }, { flush: 'post' })
+  return () => {
+    const { id, value, options, onChange, label, disabled = false, className } = props
+    const selected = options.findIndex(option => option.value === value)
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!isWalkKey(event.key))
+        return
+      event.preventDefault()
+      const target = walk(options, selected, event.key)
+      if (target !== undefined && target.value !== value)
+        onChange(target.value)
+    }
+    const indicator = {
+      '--dsh-segment-count': String(options.length),
+      '--dsh-segment-index': String(selected),
+    } as CSSProperties
+    return (h('div', { 'ref': list, 'role': 'tablist', 'aria-label': label, 'class': clsx(css.control, className), 'style': indicator }, [h('span', { 'aria-hidden': 'true', 'class': css.indicator }, undefined), options.map((option) => {
+      const active = option.value === value
+      return (h('button', { 'key': option.value, 'id': `${id}-${option.value}`, 'type': 'button', 'role': 'tab', 'aria-selected': active, 'aria-controls': `${id}-${option.value}-panel`, 'tabIndex': active ? 0 : -1, 'disabled': disabled || option.disabled === true, 'title': option.title, 'class': css.tab, 'onClick': () => { if (!active)
+        onChange(option.value) }, 'onKeydown': onKeyDown }, [option.label]))
+    })]))
+  }
+}, { props: ['id', 'value', 'options', 'onChange', 'label', 'disabled', 'className'] })

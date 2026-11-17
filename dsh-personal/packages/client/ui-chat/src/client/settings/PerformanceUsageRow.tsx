@@ -35,6 +35,7 @@ export const PerformanceUsageRow = defineComponent((props: PerformanceUsageRowPr
     title: props.t('settings.performance.title'), description: props.t('settings.performance.description'),
     value: mode.value, selectedLabel: props.t(mode.value === 'detailed' ? 'settings.performance.detailed' : 'settings.performance.compact'),
     options: OPTIONS.map(option => ({ id: option.id, label: props.t(option.label) })),
-    onSelect: (value: string) => { const option = OPTIONS.find(option => option.id === value); if (option !== undefined) props.setPerformanceUsage(option.id) },
+    onSelect: (value: string) => { const option = OPTIONS.find(option => option.id === value); if (
+      option !== undefined) props.setPerformanceUsage(option.id) },
   })
 }, { name: 'PerformanceUsageRow', inheritAttrs: false, props: ['usePerformanceUsage', 'setPerformanceUsage', 't'] })

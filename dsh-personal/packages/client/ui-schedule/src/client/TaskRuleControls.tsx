@@ -1,23 +1,23 @@
-import { h, defineComponent, type CSSProperties } from "vue";
-import clsx from "clsx";
-import type { PropsLocale } from "@deepseek-ai/dsh-client-ui-slots";
+import { h, defineComponent } from 'vue'
+import clsx from 'clsx'
+import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   IconChevronDownOutlineRegular,
   IconChevronUpOutlineRegular,
   Pill,
-} from "@deepseek-ai/dsh-client-ui-primitives";
-import css from "./TaskManagerPage.module.css";
-type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const;
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import css from './TaskManagerPage.module.css'
+type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const
 const WEEKDAY_LABELS = {
-  1: "frequency.weekday.1",
-  2: "frequency.weekday.2",
-  3: "frequency.weekday.3",
-  4: "frequency.weekday.4",
-  5: "frequency.weekday.5",
-  6: "frequency.weekday.6",
-  7: "frequency.weekday.7",
-} as const;
+  1: 'frequency.weekday.1',
+  2: 'frequency.weekday.2',
+  3: 'frequency.weekday.3',
+  4: 'frequency.weekday.4',
+  5: 'frequency.weekday.5',
+  6: 'frequency.weekday.6',
+  7: 'frequency.weekday.7',
+} as const
 /**
  * Render the weekly rule's Weekday row: one pill per weekday, named by the row's
  * label and toggled in the rule the caller is editing.
@@ -30,68 +30,68 @@ const WEEKDAY_LABELS = {
  */
 export const RuleWeekdayRow = defineComponent(
   (props: {
-    weekdays: readonly number[];
-    disabled: boolean;
-    t: PropsLocale<"schedule.manager">["t"];
-    rowId: (name: string) => string;
-    onToggle: (weekday: Weekday) => void;
+    weekdays: readonly number[]
+    disabled: boolean
+    t: PropsLocale<'schedule.manager'>['t']
+    rowId: (name: string) => string
+    onToggle: (weekday: Weekday) => void
   }) => {
     return () => {
-      return h("div", { class: css.ruleRow }, [
-        h("span", { class: css.ruleLabel, id: props.rowId("weekday") }, [props.t("rule.weekday")]),
+      return h('div', { class: css.ruleRow }, [
+        h('span', { class: css.ruleLabel, id: props.rowId('weekday') }, [props.t('rule.weekday')]),
         h(
-          "div",
+          'div',
           {
             class: clsx(css.ruleWeekdays, css.ruleControl),
-            role: "group",
-            "aria-labelledby": props.rowId("weekday"),
+            role: 'group',
+            'aria-labelledby': props.rowId('weekday'),
           },
           [
             WEEKDAYS.map((weekday) => {
-              const selected = props.weekdays.includes(weekday);
+              const selected = props.weekdays.includes(weekday)
               return h(
                 Pill,
                 {
                   key: weekday,
-                  className: css.ruleControl!,
+                  className: clsx(css.ruleControl),
                   active: selected,
                   disabled: props.disabled,
-                  "aria-pressed": selected,
-                  "aria-label": props.t("rule.weekdayOption", {
+                  'aria-pressed': selected,
+                  'aria-label': props.t('rule.weekdayOption', {
                     weekday: props.t(WEEKDAY_LABELS[weekday]),
                   }),
                   onClick: () => {
-                    props.onToggle(weekday);
+                    props.onToggle(weekday)
                   },
                 },
                 { default: () => [props.t(WEEKDAY_LABELS[weekday])] },
-              );
+              )
             }),
           ],
         ),
-      ]);
-    };
+      ])
+    }
   },
-  { props: ["weekdays", "disabled", "t", "rowId", "onToggle"] },
-);
+  { props: ['weekdays', 'disabled', 't', 'rowId', 'onToggle'] },
+)
 /** Inputs of one whole-number stepper of the task rule form. */
 interface RuleStepperProps {
   /** Id the row's label points at. */
-  readonly id: string;
+  readonly id: string
   /** Smallest value the field accepts. */
-  readonly min: number;
+  readonly min: number
   /** Largest value the field accepts. */
-  readonly max: number;
+  readonly max: number
   /** Staged value. */
-  readonly value: number;
+  readonly value: number
   /** Whether every edit is blocked. */
-  readonly disabled: boolean;
+  readonly disabled: boolean
   /** Accessible name of the up arrow. */
-  readonly increaseLabel: string;
+  readonly increaseLabel: string
   /** Accessible name of the down arrow. */
-  readonly decreaseLabel: string;
+  readonly decreaseLabel: string
   /** Stage one clamped whole value. */
-  readonly onChange: (value: number) => void;
+  readonly onChange: (value: number) => void
 }
 /**
  * One whole-number stepper of the task rule form, such as the repeat interval or
@@ -102,70 +102,70 @@ interface RuleStepperProps {
  */
 export const RuleStepper = defineComponent(
   (props: RuleStepperProps) => {
-    const clamp = (next: number): number => Math.min(props.max, Math.max(props.min, next));
+    const clamp = (next: number): number => Math.min(props.max, Math.max(props.min, next))
     return () => {
       return h(
-        "span",
+        'span',
         {
           class: css.ruleIntervalStepper,
-          style: { "--interval-digits": String(props.value).length } as CSSProperties,
+          style: { '--interval-digits': String(props.value).length },
         },
         [
-          h("input", {
+          h('input', {
             id: props.id,
             class: clsx(css.ruleInput, css.ruleControl, css.ruleIntervalInput),
-            type: "number",
+            type: 'number',
             min: props.min,
             max: props.max,
             step: 1,
             disabled: props.disabled,
             value: props.value,
             onInput: (event) => {
-              const next = Number((event.currentTarget as HTMLInputElement).value);
+              const next = Number((event.currentTarget as HTMLInputElement).value)
               if (
-                (event.currentTarget as HTMLInputElement).value === "" ||
+                (event.currentTarget as HTMLInputElement).value === '' ||
                 !Number.isSafeInteger(next)
               ) {
-                (event.currentTarget as HTMLInputElement).value = String(props.value);
-                return;
+                (event.currentTarget as HTMLInputElement).value = String(props.value)
+                return
               }
-              (event.currentTarget as HTMLInputElement).value = String(clamp(next));
-              props.onChange(clamp(next));
+              (event.currentTarget as HTMLInputElement).value = String(clamp(next))
+              props.onChange(clamp(next))
             },
           }),
-          h("span", { class: css.ruleIntervalArrows }, [
+          h('span', { class: css.ruleIntervalArrows }, [
             h(
-              "button",
+              'button',
               {
-                type: "button",
+                type: 'button',
                 class: css.ruleIntervalArrow,
-                "aria-label": props.increaseLabel,
+                'aria-label': props.increaseLabel,
                 disabled: props.disabled || props.value >= props.max,
                 onClick: () => {
-                  props.onChange(clamp(props.value + 1));
+                  props.onChange(clamp(props.value + 1))
                 },
               },
               [h(IconChevronUpOutlineRegular, { size: 9 })],
             ),
             h(
-              "button",
+              'button',
               {
-                type: "button",
+                type: 'button',
                 class: css.ruleIntervalArrow,
-                "aria-label": props.decreaseLabel,
+                'aria-label': props.decreaseLabel,
                 disabled: props.disabled || props.value <= props.min,
                 onClick: () => {
-                  props.onChange(clamp(props.value - 1));
+                  props.onChange(clamp(props.value - 1))
                 },
               },
               [h(IconChevronDownOutlineRegular, { size: 9 })],
             ),
           ]),
         ],
-      );
-    };
+      )
+    }
   },
   {
-    props: ["id", "min", "max", "value", "disabled", "increaseLabel", "decreaseLabel", "onChange"],
+    props: ['id', 'min', 'max', 'value', 'disabled', 'increaseLabel', 'decreaseLabel', 'onChange'],
   },
-);
+)

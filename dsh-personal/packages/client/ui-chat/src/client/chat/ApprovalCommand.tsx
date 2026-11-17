@@ -1,12 +1,12 @@
-import type {} from "@deepseek-ai/dsh-client-ui-approval/client";
-import { defineComponent } from "vue";
+import type {} from '@deepseek-ai/dsh-client-ui-approval/client'
+import { defineComponent } from 'vue'
 /** Chat-owned approval detail resolving a correlated Tool call's command. */
-import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
-import type { ChatNode } from "../contract/chat-nodes.ts";
+import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ChatNode } from '../contract/chat-nodes.ts'
 interface ApprovalToolCall {
-  readonly callId: string;
-  readonly name: string;
-  readonly argsRaw: string;
+  readonly callId: string
+  readonly name: string
+  readonly argsRaw: string
 }
 /**
  * Extract the command line from a correlated Tool call: a shell `command`, or the text `terminal_send` types into a terminal.
@@ -14,13 +14,13 @@ interface ApprovalToolCall {
  * @returns command text, or undefined for absent, empty, malformed, or unrelated arguments.
  */
 export function commandOf(call: ApprovalToolCall | undefined): string | undefined {
-  if (call === undefined) return undefined;
+  if (call === undefined) return undefined
   try {
-    const args = JSON.parse(call.argsRaw) as Record<string, unknown>;
-    const command = call.name === "terminal_send" ? args.text : args.command;
-    return typeof command === "string" && command.length > 0 ? command : undefined;
+    const args = JSON.parse(call.argsRaw) as Record<string, unknown>
+    const command = call.name === 'terminal_send' ? args.text : args.command
+    return typeof command === 'string' && command.length > 0 ? command : undefined
   } catch {
-    return undefined;
+    return undefined
   }
 }
 /**
@@ -29,24 +29,24 @@ export function commandOf(call: ApprovalToolCall | undefined): string | undefine
  * @returns command text when the correlated call carries one.
  */
 export const ApprovalCommand = defineComponent(
-  (props: PropsRuntime<"conversation.approval.detail">) => {
+  (props: PropsRuntime<'conversation.approval.detail'>) => {
     const command = props.useChat((snapshot) => {
       for (const node of snapshot.nodes.values()) {
         const root =
-          node.kind === "tool-call" ? (node as ChatNode<"tool-call">).data.root : undefined;
+          node.kind === 'tool-call' ? (node as ChatNode<'tool-call'>).data.root : undefined
         if (
           root !== undefined &&
           root.callId === props.callId &&
-          !("kind" in root) &&
-          root.phase === "start"
+          !('kind' in root) &&
+          root.phase === 'start'
         )
-          return commandOf(root);
+          return commandOf(root)
       }
-      return undefined;
-    });
+      return undefined
+    })
     return () => {
-      return command.value ?? null;
-    };
+      return command.value ?? null
+    }
   },
-  { name: "ApprovalCommand", inheritAttrs: false, props: ["callId", "useChat"] },
-);
+  { name: 'ApprovalCommand', inheritAttrs: false, props: ['callId', 'useChat'] },
+)

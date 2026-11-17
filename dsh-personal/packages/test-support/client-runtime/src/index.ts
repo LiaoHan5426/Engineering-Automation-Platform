@@ -15,8 +15,8 @@
  * `keyof SlotMap & string` is the declare-merge key pattern (see ui-slots):
  * this compilation unit sees only the runtime's 'root' row, but consumer
  * programs merge their own keys in; the rule fires on the narrow-map view. */
-import { Context, Inject } from "@deepseek-ai/cordis";
-import type { Fiber, Plugin } from "@deepseek-ai/cordis";
+import { Context, Inject } from '@deepseek-ai/cordis'
+import type { Fiber, Plugin } from '@deepseek-ai/cordis'
 import {
   defineComponent,
   h,
@@ -25,26 +25,26 @@ import {
   nextTick,
   type ShallowRef,
   type VNodeChild,
-} from "vue";
-import { within } from "@testing-library/dom";
-import { act, render, type RenderResult } from "./vue-test.ts";
-import { flushPendingClientWork } from "./flush.ts";
-import type { queries } from "@testing-library/dom";
-import type { BoundFunctions } from "@testing-library/dom";
-import { SlotRegistry, useObservableSelector } from "@deepseek-ai/dsh-client-ui-renderer/client";
-import { createVueSlotRenderer as createRenderer } from "@deepseek-ai/dsh-client-ui-renderer/src/client/vue/slots.ts";
+} from 'vue'
+import { within } from '@testing-library/dom'
+import { act, render, type RenderResult } from './vue-test.ts'
+import { flushPendingClientWork } from './flush.ts'
+import type { queries } from '@testing-library/dom'
+import type { BoundFunctions } from '@testing-library/dom'
+import { SlotRegistry, useObservableSelector } from '@deepseek-ai/dsh-client-ui-renderer/client'
+import { createVueSlotRenderer as createRenderer } from '@deepseek-ai/dsh-client-ui-renderer/src/client/vue/slots.ts'
 import {
   apply as applyUiSession,
   inject as uiSessionInject,
-} from "@deepseek-ai/dsh-client-ui-session/client";
+} from '@deepseek-ai/dsh-client-ui-session/client'
 import {
   apply as applySessionStatus,
   inject as sessionStatusInject,
-} from "@deepseek-ai/dsh-client-ui-session-status/client";
-import type { SessionReference } from "@deepseek-ai/dsh-api-session-controller/client";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
-import type { PanelInfo } from "@deepseek-ai/dsh-client-ui-layout/client";
+} from '@deepseek-ai/dsh-client-ui-session-status/client'
+import type { SessionReference } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { PanelInfo } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {
   ChildrenDecl,
   ComposedProps,
@@ -62,44 +62,44 @@ import type {
   SnapshotSelectorHook,
   StoredFactory,
   StoreInstanceLike,
-} from "@deepseek-ai/dsh-client-ui-slots";
-import { registerDomSnapshotSerializer } from "./snapshot.ts";
-import { TestRemote } from "./remote.ts";
-import { TestSessions } from "./sessions.ts";
-import { TestWorkspaces } from "./workspaces.ts";
-import type { Stabilizer } from "./fixtures.ts";
-import { allowAllAccessPlugin } from "./access.ts";
+} from '@deepseek-ai/dsh-client-ui-slots'
+import { registerDomSnapshotSerializer } from './snapshot.ts'
+import { TestRemote } from './remote.ts'
+import { TestSessions } from './sessions.ts'
+import { TestWorkspaces } from './workspaces.ts'
+import type { Stabilizer } from './fixtures.ts'
+import { allowAllAccessPlugin } from './access.ts'
 
-export type { UseSession } from "@deepseek-ai/dsh-client-ui-session/client";
-export { domSnapshotSerializer, registerDomSnapshotSerializer } from "./snapshot.ts";
-export { FixtureSession, TestSessions } from "./sessions.ts";
-export { stubConfigForm } from "./config-form.ts";
-export type { StubConfigForm } from "./config-form.ts";
-export { TestWorkspaces } from "./workspaces.ts";
-export { RemoteError, TestRemote } from "./remote.ts";
+export type { UseSession } from '@deepseek-ai/dsh-client-ui-session/client'
+export { domSnapshotSerializer, registerDomSnapshotSerializer } from './snapshot.ts'
+export { FixtureSession, TestSessions } from './sessions.ts'
+export { stubConfigForm } from './config-form.ts'
+export type { StubConfigForm } from './config-form.ts'
+export { TestWorkspaces } from './workspaces.ts'
+export { RemoteError, TestRemote } from './remote.ts'
 export {
   chatSnapshot,
   conversationSnapshot,
   sessionSnapshot,
   workspaceSnapshot,
-} from "./fixtures.ts";
+} from './fixtures.ts'
 export type {
   FixtureSnapshot,
   SessionBehaviorOverrides,
   SessionFixture,
   SessionFixtureSnapshot,
   Stabilizer,
-} from "./fixtures.ts";
-export { contextMenuHook } from "./context-menu.ts";
-export { makeTranslate } from "./translate.ts";
+} from './fixtures.ts'
+export { contextMenuHook } from './context-menu.ts'
+export { makeTranslate } from './translate.ts'
 export {
   allowAllAccess,
   allowAllAccessPlugin,
   StaticRemoteAccess,
   staticAccessPlugin,
-} from "./access.ts";
-export type { AccessStandardProps, StaticAccessPlugin } from "./access.ts";
-export { usePinnedBrowserLanguages } from "./locale-env.ts";
+} from './access.ts'
+export type { AccessStandardProps, StaticAccessPlugin } from './access.ts'
+export { usePinnedBrowserLanguages } from './locale-env.ts'
 
 /**
  * Bind an observable source to the production renderer's selector hook.
@@ -112,7 +112,7 @@ export function bindSnapshotSelector<T>(source: HostObservable<T>): SnapshotSele
       () => source,
       () => select,
       equal,
-    ) as Readonly<ShallowRef<S>>;
+    ) as Readonly<ShallowRef<S>>
 }
 
 /**
@@ -120,15 +120,15 @@ export function bindSnapshotSelector<T>(source: HostObservable<T>): SnapshotSele
  * @returns Slot renderer instance.
  */
 export function createSlotRenderer(): SlotRenderer {
-  return createRenderer();
+  return createRenderer()
 }
 
 /** Erased register face for the internal root call (the public declaration contract holds the typing). */
-type ErasedRegister = (options: object, component: unknown) => () => void;
+type ErasedRegister = (options: object, component: unknown) => () => void
 
 /** Per-view render options; the caller owns the explicitly supplied Session reference. */
 export interface SlotTestRenderOptions extends RenderOpts {
-  readonly session?: SessionReference | undefined;
+  readonly session?: SessionReference | undefined
 }
 
 /**
@@ -140,16 +140,16 @@ export interface SlotTestRenderOptions extends RenderOpts {
  */
 export interface SlotView<K extends keyof SlotMap & string> {
   /** The renderer's `<div data-slot="<key>">` anchor around the slot's rendered output. */
-  readonly container: HTMLElement;
+  readonly container: HTMLElement
   /** Testing Library queries scoped to {@link SlotView.container}. */
-  readonly view: BoundFunctions<typeof queries>;
+  readonly view: BoundFunctions<typeof queries>
   /**
    * Replace the owner props and flush the re-render (the render-site update:
    * in production the owner recomputes the share and Vue re-renders).
    * @param owner - the next owner props share.
    * @param opts - replacement render options and borrowed reference; omission keeps this view's options.
    */
-  update(owner: OwnerOf<K>, opts?: SlotTestRenderOptions): Promise<void>;
+  update(owner: OwnerOf<K>, opts?: SlotTestRenderOptions): Promise<void>
 }
 
 /**
@@ -159,20 +159,20 @@ export interface SlotView<K extends keyof SlotMap & string> {
  */
 export interface FeatureHandle {
   /** The plugin's live Cordis fiber (state assertions, escape hatch). */
-  readonly fiber: Fiber;
+  readonly fiber: Fiber
   /**
    * Dispose the plugin fiber inside the Vue update queue; repeated calls no-op.
    * @returns completion of the unload cascade.
    */
-  dispose(): Promise<void>;
+  dispose(): Promise<void>
 }
 
 /** Mutable fail-loud file-upload stub installed by {@link SlotTestRuntime}. */
 export interface TestFileUpload {
   /** Test-supplied upload behavior; the default rejects every call. */
-  upload: (sessionId: SessionId, ...args: unknown[]) => Promise<unknown>;
+  upload: (sessionId: SessionId, ...args: unknown[]) => Promise<unknown>
   /** Test-supplied image upload behavior; the default rejects every call. */
-  uploadImage: (sessionId: SessionId, ...args: unknown[]) => Promise<unknown>;
+  uploadImage: (sessionId: SessionId, ...args: unknown[]) => Promise<unknown>
 }
 
 /**
@@ -184,11 +184,11 @@ class OwnerPropsCell {
   private readonly owners = new Map<
     string,
     { owner: object; opts: SlotTestRenderOptions | undefined }
-  >();
-  private readonly version = shallowRef(0);
+  >()
+  private readonly version = shallowRef(0)
 
   /** Snapshot version for native render tracking pairing (bumped on every set). */
-  readonly getVersion = (): number => this.version.value;
+  readonly getVersion = (): number => this.version.value
 
   /**
    * Install or replace one key's owner props and notify (synchronous; the
@@ -198,8 +198,8 @@ class OwnerPropsCell {
    * @param opts - explicit keyed or list selection for the render site.
    */
   set(key: string, owner: object, opts?: SlotTestRenderOptions): void {
-    this.owners.set(key, { owner, opts });
-    this.version.value += 1;
+    this.owners.set(key, { owner, opts })
+    this.version.value += 1
   }
 
   /** Keys with supplied owner props, in first-supply order. */
@@ -207,7 +207,7 @@ class OwnerPropsCell {
     string,
     { owner: object; opts: SlotTestRenderOptions | undefined },
   ])[] {
-    return [...this.owners.entries()];
+    return [...this.owners.entries()]
   }
 }
 
@@ -217,7 +217,7 @@ class OwnerPropsCell {
  * the runtime never guesses a feature's page structure.
  */
 export class TestRoot {
-  private disposeEntry: (() => void) | undefined;
+  private disposeEntry: (() => void) | undefined
 
   /**
    * @param slots - the runtime SlotRegistry.
@@ -240,14 +240,14 @@ export class TestRoot {
     children: D,
     frame: (
       props: ComposedProps<
-        "root",
+        'root',
         never,
         keyof NoInfer<D> & keyof SlotMap & string,
         undefined,
         object
       >,
     ) => VNodeChild,
-  ): Promise<void>;
+  ): Promise<void>
   /**
    * Register a setup component with the root's declared child slots.
    * @param children - child-slot declaration and render authorization.
@@ -258,30 +258,30 @@ export class TestRoot {
     children: D,
     frame: C &
       (ComposedProps<
-        "root",
+        'root',
         never,
         keyof NoInfer<D> & keyof SlotMap & string,
         undefined,
         object
-      > extends InstanceType<C>["$props"]
+      > extends InstanceType<C>['$props']
         ? unknown
-        : { "frame requires unavailable props": never }),
-  ): Promise<void>;
+        : { 'frame requires unavailable props': never }),
+  ): Promise<void>
   async declare(children: ChildrenDecl, frame: object): Promise<void> {
     await this.stabilize(() => {
       // Erased hop (same pattern as SlotRegistry's own implementation arm);
       // the declaration signature above is the typed contract.
       this.disposeEntry = (this.slots.register as ErasedRegister)(
-        { name: "root", children },
+        { name: 'root', children },
         frame,
-      );
-    });
+      )
+    })
   }
 
   /** Remove the root registration and collapse its declarations (runtime dispose path). */
   release(): void {
-    this.disposeEntry?.();
-    this.disposeEntry = undefined;
+    this.disposeEntry?.()
+    this.disposeEntry = undefined
   }
 }
 
@@ -293,73 +293,73 @@ export class TestRoot {
  */
 export class SlotTestRuntime {
   /** The runtime's Cordis root for owner APIs and explicit test-only services. */
-  readonly ctx: Context;
+  readonly ctx: Context
   /** The production SlotRegistry mounted on {@link SlotTestRuntime.ctx}. */
-  readonly slots: SlotRegistry;
+  readonly slots: SlotRegistry
   /** The test-owned 'root' occupant. */
-  readonly root: TestRoot;
+  readonly root: TestRoot
   /** Fixture catalog, explicit references, scoped contexts, and behavior faces. */
-  readonly sessions: TestSessions;
+  readonly sessions: TestSessions
   /** One Remote double shared by every feature mounted in this runtime. */
-  readonly remote: TestRemote;
+  readonly remote: TestRemote
   /** Workspaces double (list observable, recorded intent actions). */
-  readonly workspaces: TestWorkspaces;
+  readonly workspaces: TestWorkspaces
   /** Test-owned panel selection used by the framework's usePanelInfo hook. */
-  readonly panelInfo = createSnapshotStore<PanelInfo>({ activePanelId: null });
+  readonly panelInfo = createSnapshotStore<PanelInfo>({ activePanelId: null })
   /** Mutable file-upload stub; replace `upload` in suites that exercise the capability. */
-  readonly fileUpload: TestFileUpload;
+  readonly fileUpload: TestFileUpload
 
   private readonly stabilizer: Stabilizer = async (fn) => {
     await act(async () => {
-      await fn();
-    });
-  };
+      await fn()
+    })
+  }
 
-  private host: SlotRendererHost | undefined;
-  private readonly views: RenderResult[] = [];
-  private readonly handles: FeatureHandle[] = [];
-  private disposed = false;
+  private host: SlotRendererHost | undefined
+  private readonly views: RenderResult[] = []
+  private readonly handles: FeatureHandle[] = []
+  private disposed = false
   /** Auto-frame state ({@link SlotTestRuntime.declare} / {@link SlotTestRuntime.renderSlot}). */
-  private readonly ownerCell = new OwnerPropsCell();
-  private readonly autoDeclared = new Set<string>();
-  private autoRootView: RenderResult | undefined;
-  private readonly disposeWorkspaceSource: () => void;
-  private readonly disposePanelInfoSource: () => void;
+  private readonly ownerCell = new OwnerPropsCell()
+  private readonly autoDeclared = new Set<string>()
+  private autoRootView: RenderResult | undefined
+  private readonly disposeWorkspaceSource: () => void
+  private readonly disposePanelInfoSource: () => void
 
   private constructor(ctx: Context, slots: SlotRegistry) {
-    this.ctx = ctx;
-    this.slots = slots;
-    this.root = new TestRoot(slots, this.stabilizer);
-    this.sessions = new TestSessions(this.stabilizer, ctx);
-    this.remote = new TestRemote(ctx);
-    this.workspaces = new TestWorkspaces(this.stabilizer);
+    this.ctx = ctx
+    this.slots = slots
+    this.root = new TestRoot(slots, this.stabilizer)
+    this.sessions = new TestSessions(this.stabilizer, ctx)
+    this.remote = new TestRemote(ctx)
+    this.workspaces = new TestWorkspaces(this.stabilizer)
     this.fileUpload = {
-      upload: () => Promise.reject(new Error("client test runtime: file upload is not stubbed")),
+      upload: () => Promise.reject(new Error('client test runtime: file upload is not stubbed')),
       uploadImage: () =>
-        Promise.reject(new Error("client test runtime: image upload is not stubbed")),
-    };
-    ctx.provide("sessions", this.sessions);
-    ctx.provide("workspaces", this.workspaces);
-    ctx.provide("fileUpload", this.fileUpload as never);
+        Promise.reject(new Error('client test runtime: image upload is not stubbed')),
+    }
+    ctx.provide('sessions', this.sessions)
+    ctx.provide('workspaces', this.workspaces)
+    ctx.provide('fileUpload', this.fileUpload as never)
     this.remote.provideNamespaces({
       sessionStatus: {
         follow: (signal: AbortSignal) => idleReadingStream(signal),
-        mark: () => Promise.reject(new Error("client test runtime: reading mark is not stubbed")),
+        mark: () => Promise.reject(new Error('client test runtime: reading mark is not stubbed')),
       },
-    });
+    })
     this.disposeWorkspaceSource = slots.provideRoot({
       hooks: { workspaces: this.workspaces.list },
-    });
-    this.disposePanelInfoSource = slots.provideRoot({ hooks: { panelInfo: this.panelInfo } });
+    })
+    this.disposePanelInfoSource = slots.provideRoot({ hooks: { panelInfo: this.panelInfo } })
     // Capturing install: the production renderer does the rendering; the
     // wrapper only takes the host face for storeOf (no machinery copied).
-    const renderer = createSlotRenderer();
+    const renderer = createSlotRenderer()
     slots.install({
       renderRoot: (host, ownerProps) => {
-        this.host = host;
-        return renderer.renderRoot(host, ownerProps);
+        this.host = host
+        return renderer.renderRoot(host, ownerProps)
       },
-    });
+    })
   }
 
   /**
@@ -368,15 +368,15 @@ export class SlotTestRuntime {
    * @returns the ready runtime.
    */
   static async create(): Promise<SlotTestRuntime> {
-    registerDomSnapshotSerializer();
-    const ctx = new Context();
-    const fiber = ctx.plugin(SlotRegistry);
-    await fiber.await();
-    const runtime = new SlotTestRuntime(ctx, ctx.get("slots") as SlotRegistry);
-    await ctx.plugin(allowAllAccessPlugin).await();
-    await ctx.plugin({ inject: [...uiSessionInject], apply: applyUiSession }).await();
-    await ctx.plugin({ inject: [...sessionStatusInject], apply: applySessionStatus }).await();
-    return runtime;
+    registerDomSnapshotSerializer()
+    const ctx = new Context()
+    const fiber = ctx.plugin(SlotRegistry)
+    await fiber.await()
+    const runtime = new SlotTestRuntime(ctx, ctx.get('slots') as SlotRegistry)
+    await ctx.plugin(allowAllAccessPlugin).await()
+    await ctx.plugin({ inject: [...uiSessionInject], apply: applyUiSession }).await()
+    await ctx.plugin({ inject: [...sessionStatusInject], apply: applySessionStatus }).await()
+    return runtime
   }
 
   /**
@@ -387,38 +387,38 @@ export class SlotTestRuntime {
    * @returns handle owning the fiber's explicit disposal.
    */
   async mount(plugin: Plugin): Promise<FeatureHandle> {
-    const required = Object.keys(Inject.resolve((plugin as { inject?: Inject }).inject));
-    const missing = required.filter((name) => this.ctx.get(name) === undefined);
+    const required = Object.keys(Inject.resolve((plugin as { inject?: Inject }).inject))
+    const missing = required.filter(name => this.ctx.get(name) === undefined)
     if (missing.length > 0) {
       throw new Error(
-        `mount would suspend: missing service(s) ${missing.join(", ")} — provide() them first`,
-      );
+        `mount would suspend: missing service(s) ${missing.join(', ')} — provide() them first`,
+      )
     }
-    const fiber = this.ctx.plugin(plugin);
+    const fiber = this.ctx.plugin(plugin)
     await this.stabilizer(async () => {
-      await fiber.await();
-    });
-    let disposed = false;
+      await fiber.await()
+    })
+    let disposed = false
     const handle: FeatureHandle = {
       fiber,
       dispose: async () => {
-        if (disposed) return;
-        disposed = true;
-        await this.stabilizer(() => fiber.dispose());
+        if (disposed) return
+        disposed = true
+        await this.stabilizer(() => fiber.dispose())
       },
-    };
-    this.handles.push(handle);
-    return handle;
+    }
+    this.handles.push(handle)
+    return handle
   }
 
   /** Release the default Workspace hook before mounting its production owner. */
   releaseWorkspaceSource(): void {
-    this.disposeWorkspaceSource();
+    this.disposeWorkspaceSource()
   }
 
   /** Release the default panel hook before mounting the production Layout owner. */
   releasePanelInfoSource(): void {
-    this.disposePanelInfoSource();
+    this.disposePanelInfoSource()
   }
 
   /**
@@ -427,9 +427,9 @@ export class SlotTestRuntime {
    * @returns the Testing Library view.
    */
   renderRoot(): RenderResult {
-    const view = render(h(Fragment, null, [this.slots.renderSlot("root", {})]));
-    this.views.push(view);
-    return view;
+    const view = render(h(Fragment, null, [this.slots.renderSlot('root', {})]))
+    this.views.push(view)
+    return view
   }
 
   /**
@@ -443,34 +443,34 @@ export class SlotTestRuntime {
    * @returns completion of the Vue-flushed registration.
    */
   async declare(children: ChildrenDecl): Promise<void> {
-    for (const key of Object.keys(children)) this.autoDeclared.add(key);
-    const cell = this.ownerCell;
+    for (const key of Object.keys(children)) this.autoDeclared.add(key)
+    const cell = this.ownerCell
     const AutoFrame = defineComponent(
       (props: {
-        renderSlot: (key: string, owner: object, opts?: RenderOpts) => VNodeChild;
-        SessionProvider: SessionProviderComponent;
+        renderSlot: (key: string, owner: object, opts?: RenderOpts) => VNodeChild
+        SessionProvider: SessionProviderComponent
       }) =>
         () => {
-          cell.getVersion();
+          cell.getVersion()
           return h(
             Fragment,
             null,
             cell.entries().map(([key, { owner, opts }]) => {
-              const body = props.renderSlot(key, owner, opts);
-              const spec = children[key as keyof typeof children] as SlotSpec<SlotEntryDef>;
-              if (spec.scope === "root") return h(Fragment, { key }, [body]);
+              const body = props.renderSlot(key, owner, opts)
+              const spec = children[key as keyof typeof children] as SlotSpec<SlotEntryDef>
+              if (spec.scope === 'root') return h(Fragment, { key }, [body])
               return h(props.SessionProvider, {
                 key,
                 session: opts?.session,
                 children: body,
-                ...(spec.scope === "session-maybe" ? { empty: () => body } : {}),
-              });
+                ...(spec.scope === 'session-maybe' ? { empty: () => body } : {}),
+              })
             }),
-          );
+          )
         },
-      { props: ["renderSlot", "SessionProvider"], inheritAttrs: false },
-    );
-    await this.root.declare(children as never, AutoFrame as never);
+      { props: ['renderSlot', 'SessionProvider'], inheritAttrs: false },
+    )
+    await this.root.declare(children as never, AutoFrame as never)
   }
 
   /**
@@ -492,24 +492,24 @@ export class SlotTestRuntime {
     if (!this.autoDeclared.has(key)) {
       throw new Error(
         `renderSlot('${key}') without declare() — declare the key first (or use root.declare for a custom frame)`,
-      );
+      )
     }
-    let options = opts;
+    let options = opts
     const install = async (next: object, nextOptions = options): Promise<void> => {
-      options = nextOptions;
-      this.ownerCell.set(key, next, options);
-      await nextTick();
-    };
-    this.ownerCell.set(key, owner, options);
-    this.autoRootView ??= this.renderRoot();
-    await nextTick();
-    const container = this.autoRootView.container.querySelector(`[data-slot="${key}"]`);
+      options = nextOptions
+      this.ownerCell.set(key, next, options)
+      await nextTick()
+    }
+    this.ownerCell.set(key, owner, options)
+    this.autoRootView ??= this.renderRoot()
+    await nextTick()
+    const container = this.autoRootView.container.querySelector(`[data-slot="${key}"]`)
     if (!(container instanceof HTMLElement)) {
       throw new Error(
         `renderSlot('${key}'): the auto frame rendered no wrapper — was the runtime already disposed?`,
-      );
+      )
     }
-    return { container, view: within(container), update: install };
+    return { container, view: within(container), update: install }
   }
 
   /**
@@ -524,22 +524,22 @@ export class SlotTestRuntime {
   storeOf(key: keyof SlotMap & string, session?: SessionReference): StoreInstanceLike {
     if (this.host === undefined) {
       throw new Error(
-        "storeOf before renderRoot() — the host face exists only inside the installed renderer",
-      );
+        'storeOf before renderRoot() — the host face exists only inside the installed renderer',
+      )
     }
-    const entry = this.host.entriesOf(key)[0];
-    if (entry === undefined) throw new Error(`storeOf('${key}'): no registration on the ledger`);
-    const adapter = session === undefined ? undefined : this.host.scope("session");
+    const entry = this.host.entriesOf(key)[0]
+    if (entry === undefined) throw new Error(`storeOf('${key}'): no registration on the ledger`)
+    const adapter = session === undefined ? undefined : this.host.scope('session')
     const resolved =
-      session === undefined ? undefined : adapter?.bindingSource(session).getSnapshot();
+      session === undefined ? undefined : adapter?.bindingSource(session).getSnapshot()
     const scopeBinding =
-      resolved?.key === undefined ? undefined : (resolved as ScopedStandardSourceBinding);
+      resolved?.key === undefined ? undefined : (resolved as ScopedStandardSourceBinding)
     if (session !== undefined && scopeBinding === undefined) {
-      throw new Error(`storeOf('${key}'): no live Session binding for '${session.sessionId}'`);
+      throw new Error(`storeOf('${key}'): no live Session binding for '${session.sessionId}'`)
     }
-    const instance = this.host.storeOf(entry, scopeBinding);
-    if (instance === undefined) throw new Error(`storeOf('${key}'): the entry declares no store`);
-    return instance;
+    const instance = this.host.storeOf(entry, scopeBinding)
+    if (instance === undefined) throw new Error(`storeOf('${key}'): the entry declares no store`)
+    return instance
   }
 
   /**
@@ -548,10 +548,10 @@ export class SlotTestRuntime {
    * @returns the live Factory definition.
    */
   factoryOf(name: keyof SlotFactoryMap & string): StoredFactory {
-    if (this.host === undefined) throw new Error("factoryOf before renderRoot()");
-    const definition = this.host.factoryOf(name);
-    if (definition === undefined) throw new Error(`factoryOf('${name}'): no definition`);
-    return definition;
+    if (this.host === undefined) throw new Error('factoryOf before renderRoot()')
+    const definition = this.host.factoryOf(name)
+    if (definition === undefined) throw new Error(`factoryOf('${name}'): no definition`)
+    return definition
   }
 
   /**
@@ -560,8 +560,8 @@ export class SlotTestRuntime {
    * @returns completion after queued Promise work and native updates.
    */
   async flush(): Promise<void> {
-    await this.stabilizer(() => {});
-    await flushPendingClientWork();
+    await this.stabilizer(() => {})
+    await flushPendingClientWork()
   }
 
   /**
@@ -571,33 +571,33 @@ export class SlotTestRuntime {
    * @returns completion of the teardown.
    */
   async dispose(): Promise<void> {
-    if (this.disposed) return;
-    this.disposed = true;
-    this.autoRootView = undefined;
-    for (const view of this.views.splice(0)) view.unmount();
-    for (const handle of this.handles.splice(0)) await handle.dispose();
-    this.root.release();
-    this.disposeWorkspaceSource();
-    this.disposePanelInfoSource();
-    await this.sessions.disposeScopes();
-    await this.stabilizer(() => this.ctx.fiber.dispose());
-    localStorage.clear();
+    if (this.disposed) return
+    this.disposed = true
+    this.autoRootView = undefined
+    for (const view of this.views.splice(0)) view.unmount()
+    for (const handle of this.handles.splice(0)) await handle.dispose()
+    this.root.release()
+    this.disposeWorkspaceSource()
+    this.disposePanelInfoSource()
+    await this.sessions.disposeScopes()
+    await this.stabilizer(() => this.ctx.fiber.dispose())
+    localStorage.clear()
   }
 }
 
 /** Empty reading baseline held open until the stream generation is cancelled. */
 async function* idleReadingStream(
   signal: AbortSignal,
-): AsyncGenerator<{ readonly type: "baseline"; readonly items: readonly [] }> {
-  yield { type: "baseline", items: [] };
-  signal.throwIfAborted();
+): AsyncGenerator<{ readonly type: 'baseline'; readonly items: readonly [] }> {
+  yield { type: 'baseline', items: [] }
+  signal.throwIfAborted()
   await new Promise<void>((resolve) => {
     signal.addEventListener(
-      "abort",
+      'abort',
       () => {
-        resolve();
+        resolve()
       },
       { once: true },
-    );
-  });
+    )
+  })
 }

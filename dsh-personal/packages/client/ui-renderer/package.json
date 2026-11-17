@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-renderer",
-  "description": "Browser UI renderer: React slot bindings, ctx.uiRenderer, and the assembled application root",
+  "description": "Browser UI renderer: native Vue slot bindings, ctx.uiRenderer, and the assembled application root",
   "version": "0.2.2-rc.3",
   "publishConfig": {
     "access": "public"
@@ -47,8 +47,10 @@
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-client-modules": "workspace:*",
     "@deepseek-ai/dsh-client-test-runtime": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-primitives": "workspace:*",
     "@deepseek-ai/dsh-client-ui-slots": "workspace:*",
     "@deepseek-ai/dsh-package-manifest": "workspace:*",
+    "@deepseek-ai/dsh-util-crypto": "workspace:*",
     "vue": "3.5.45",
     "@testing-library/dom": "10.4.1"
   },

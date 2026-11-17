@@ -75,7 +75,7 @@ export const PermissionSelect = defineComponent((props: PermissionSelectProps) =
       ? pick.value : currentSelection.currentValue
     const current = currentCatalog.options.find(option => option.value === currentValue)
     const label = permissionLabel(currentValue, current?.name ?? currentValue, props.t)
-    const items: MenuEntry[] = currentCatalog.options.map(option => {
+    const items: MenuEntry[] = currentCatalog.options.map((option) => {
       const icon = permissionGlyph(option.value)
       const text = permissionLabel(option.value, option.name, props.t)
       const badge = option.value === AUTO_REVIEW ? props.t('auto.badge') : undefined

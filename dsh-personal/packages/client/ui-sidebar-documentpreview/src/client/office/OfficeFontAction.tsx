@@ -19,4 +19,4 @@ export const OfficeFontAction = defineComponent((props: OfficeFontActionProps) =
     if (content.kind !== 'renderer' || current?.revision !== content.revision || current.file === undefined) return null
     return h(FontNotice, { key: content.revision, fonts: current.file.missingFonts, t: props.t })
   }
-}, { name: 'OfficeFontAction', inheritAttrs: false, props: ["content","useTabInfo","useSession","sessionId","useProjection","useAccess","useConversation","useInput","inputActions","useRemoteAccess","useSessions","useSessionRetainInfo","useSessionAccess","usePanelInfo","useContextMenu","useResource","useWorkspaces","useStore","actions","t"] })
+}, { name: 'OfficeFontAction', inheritAttrs: false, props: ['content','useTabInfo','useSession','sessionId','useProjection','useAccess','useConversation','useInput','inputActions','useRemoteAccess','useSessions','useSessionRetainInfo','useSessionAccess','usePanelInfo','useContextMenu','useResource','useWorkspaces','useStore','actions','t'] })

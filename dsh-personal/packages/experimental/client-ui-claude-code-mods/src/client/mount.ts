@@ -1,51 +1,51 @@
 /** Source-safe browser registration of the mods band: the Remote stream behind a store, the dock entry, the press. */
 
-import type { Context } from "@deepseek-ai/cordis";
-import type {} from "@deepseek-ai/dsh-api-remotes/client";
-import type {} from "@deepseek-ai/dsh-api-session-controller/client";
-import type {} from "@deepseek-ai/dsh-client-locale/client";
-import type {} from "@deepseek-ai/dsh-client-ui-conversation/client";
-import type {} from "@deepseek-ai/dsh-client-ui-renderer/client";
-import type {} from "@deepseek-ai/dsh-experimental-claude-code-mods/remote";
-import type { SurfaceSnapshot } from "@deepseek-ai/dsh-experimental-claude-code-mods/types";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import type { TypertRemoteContribution } from "@deepseek-ai/dsh-typert-protocol";
-import { Band, type BandInjected } from "./Band.tsx";
-import { en, ja, es, fr, de, ru, pt, NS, zh, type ModsBandKey } from "./locales.ts";
+import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-experimental-claude-code-mods/remote'
+import type { SurfaceSnapshot } from '@deepseek-ai/dsh-experimental-claude-code-mods/types'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
+import { Band, type BandInjected } from './Band.tsx'
+import { en, ja, es, fr, de, ru, pt, NS, zh, type ModsBandKey } from './locales.ts'
 
-declare module "@deepseek-ai/dsh-client-ui-slots" {
+declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Chrome copy around a mod's band. */
-    "claude-code-mods": ModsBandKey;
+    'claude-code-mods': ModsBandKey
   }
 }
 
 /** Required browser services: the Remote namespace, slots, and localized copy. */
-export const inject = ["remote", "slots", "locale"];
+export const inject = ['remote', 'slots', 'locale']
 
 function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return error instanceof Error ? error.message : String(error)
 }
 
 /** A minimal observable the slot renderer turns into `useBand`. */
 class BandStore {
-  private snapshot: SurfaceSnapshot | undefined;
-  private readonly listeners = new Set<() => void>();
+  private snapshot: SurfaceSnapshot | undefined
+  private readonly listeners = new Set<() => void>()
 
   getSnapshot(): SurfaceSnapshot | undefined {
-    return this.snapshot;
+    return this.snapshot
   }
 
   subscribe(listener: () => void): () => void {
-    this.listeners.add(listener);
+    this.listeners.add(listener)
     return () => {
-      this.listeners.delete(listener);
-    };
+      this.listeners.delete(listener)
+    }
   }
 
   set(next: SurfaceSnapshot | undefined): void {
-    this.snapshot = next;
-    for (const listener of [...this.listeners]) listener();
+    this.snapshot = next
+    for (const listener of [...this.listeners]) listener()
   }
 }
 
@@ -59,57 +59,57 @@ function watchSession(
   sessionId: SessionId,
   onEnd: () => void,
 ): { store: BandStore; dispose: () => void } {
-  const store = new BandStore();
-  const controller = new AbortController();
-  const handle = ctx.remote.claudeCodeMods.watchBand(sessionId, controller.signal);
+  const store = new BandStore()
+  const controller = new AbortController()
+  const handle = ctx.remote.claudeCodeMods.watchBand(sessionId, controller.signal)
   void (async () => {
     try {
-      for await (const snapshot of handle) store.set(snapshot);
+      for await (const snapshot of handle) store.set(snapshot)
     } catch (error: unknown) {
       if (!controller.signal.aborted)
-        ctx.logger.warn(`claude-code-mods band: watch of ${sessionId} ended: ${messageOf(error)}`);
+        ctx.logger.warn(`claude-code-mods band: watch of ${sessionId} ended: ${messageOf(error)}`)
     } finally {
-      onEnd();
+      onEnd()
     }
-  })();
+  })()
   return {
     store,
     dispose: () => {
-      controller.abort();
-      handle.dispose();
+      controller.abort()
+      handle.dispose()
     },
-  };
+  }
 }
 
 function registerUi(ctx: Context): void {
   ctx.effect(
     () => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }),
-    "client-ui-claude-code-mods: dictionaries",
-  );
-  const watches = new Map<SessionId, ReturnType<typeof watchSession>>();
+    'client-ui-claude-code-mods: dictionaries',
+  )
+  const watches = new Map<SessionId, ReturnType<typeof watchSession>>()
   ctx.effect(
     () => () => {
-      for (const watch of watches.values()) watch.dispose();
-      watches.clear();
+      for (const watch of watches.values()) watch.dispose()
+      watches.clear()
     },
-    "client-ui-claude-code-mods: band watches",
-  );
+    'client-ui-claude-code-mods: band watches',
+  )
   const watchOf = (sessionId: SessionId): ReturnType<typeof watchSession> => {
-    let watch = watches.get(sessionId);
+    let watch = watches.get(sessionId)
     if (watch === undefined) {
       const opened: ReturnType<typeof watchSession> = watchSession(ctx, sessionId, () => {
-        if (watches.get(sessionId) === opened) watches.delete(sessionId);
-      });
-      watch = opened;
-      watches.set(sessionId, watch);
+        if (watches.get(sessionId) === opened) watches.delete(sessionId)
+      })
+      watch = opened
+      watches.set(sessionId, watch)
     }
-    return watch;
-  };
-  ctx.slots.inject("conversation.input.dock", () =>
+    return watch
+  }
+  ctx.slots.inject('conversation.input.dock', () =>
     ctx.slots.register(
       {
-        name: "conversation.input.dock",
-        id: "claude-code-mods",
+        name: 'conversation.input.dock',
+        id: 'claude-code-mods',
         order: 20,
         locale: NS,
         inject: (sessionId: SessionId): BandInjected => ({
@@ -119,15 +119,15 @@ function registerUi(ctx: Context): void {
               sessionId,
               generation,
               actionId,
-            );
-            if (!result.ok) throw result.error;
-            watchOf(sessionId).store.set(result.value);
+            )
+            if (!result.ok) throw result.error
+            watchOf(sessionId).store.set(result.value)
           },
         }),
       },
       Band,
     ),
-  );
+  )
 }
 
 /**
@@ -140,17 +140,17 @@ export async function mountModsBand(
   ctx: Context,
   contribution: TypertRemoteContribution,
 ): Promise<() => Promise<void>> {
-  const disposeRemote = await ctx.remote.$mount(contribution);
-  const ui = ctx.inject(["remote.claudeCodeMods", "slots", "locale"], registerUi);
+  const disposeRemote = await ctx.remote.$mount(contribution)
+  const ui = ctx.inject(['remote.claudeCodeMods', 'slots', 'locale'], registerUi)
   try {
-    await ui;
+    await ui
   } catch (error) {
-    await ui.dispose();
-    await disposeRemote();
-    throw error;
+    await ui.dispose()
+    await disposeRemote()
+    throw error
   }
   return async () => {
-    await ui.dispose();
-    await disposeRemote();
-  };
+    await ui.dispose()
+    await disposeRemote()
+  }
 }

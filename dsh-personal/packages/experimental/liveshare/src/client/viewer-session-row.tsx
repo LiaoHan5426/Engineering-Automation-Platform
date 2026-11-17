@@ -1,4 +1,4 @@
-import { defineComponent, h } from "vue";
+import { defineComponent, h } from 'vue'
 
 /**
  * The viewer page's branch lineage markers.
@@ -11,51 +11,51 @@ import { defineComponent, h } from "vue";
  * The Liveshare client face mounts this module only on a viewer page.
  * @module @deepseek-ai/dsh-experimental-liveshare/src/client/viewer-session-row
  */
-import type { Context as ClientContext } from "@deepseek-ai/cordis";
-import { IconBranchOutlineRegular, Tooltip } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
-import type { SessionProjectionValues } from "@deepseek-ai/dsh-api-session-controller/types";
-import { brandString } from "@deepseek-ai/dsh-brand";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import { NS } from "./locales.ts";
-export const name = "liveshare-viewer-session-row";
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import { IconBranchOutlineRegular, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SessionProjectionValues } from '@deepseek-ai/dsh-api-session-controller/types'
+import { brandString } from '@deepseek-ai/dsh-brand'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { NS } from './locales.ts'
+export const name = 'liveshare-viewer-session-row'
 /** The slot ledger and locale seat used by branch lineage markers. */
-export const inject: readonly string[] = ["slots", "locale"];
+export const inject: readonly string[] = ['slots', 'locale']
 /** Liveshare interprets its own lineage projection without retaining every listed Session. */
 const ViewerForkMarker = defineComponent(
-  (props: PropsRuntime<"sidebar.session.row.leading"> & PropsLocale<"liveshare">) => {
+  (props: PropsRuntime<'sidebar.session.row.leading'> & PropsLocale<'liveshare'>) => {
     const lineage = props.useSessions((list) => {
       const values = list.byId[props.sessionId]?.projectionValues as
         | SessionProjectionValues
-        | undefined;
-      const value = values?.["forkLineage"];
+        | undefined
+      const value = values?.['forkLineage']
       if (
-        typeof value !== "object" ||
+        typeof value !== 'object' ||
         value === null ||
         Array.isArray(value) ||
-        value.origin !== "fork" ||
+        value.origin !== 'fork' ||
         value.workspaceReadOnly !== true
       )
-        return undefined;
-      return typeof value.sourceSessionId === "string" ? value.sourceSessionId : "";
-    });
-    const sourceTitle = props.useSessions((list) =>
+        return undefined
+      return typeof value.sourceSessionId === 'string' ? value.sourceSessionId : ''
+    })
+    const sourceTitle = props.useSessions(list =>
       lineage.value ? list.byId[brandString<SessionId>(lineage.value)]?.title : undefined,
-    );
+    )
     return () => {
-      if (lineage.value === undefined) return null;
+      if (lineage.value === undefined) return null
       const label = sourceTitle.value
-        ? props.t("viewer.row.forkSource", { title: sourceTitle.value })
-        : props.t("viewer.row.fork");
+        ? props.t('viewer.row.forkSource', { title: sourceTitle.value })
+        : props.t('viewer.row.fork')
       return h(
         Tooltip,
         { label },
-        { default: () => h("span", null, [h(IconBranchOutlineRegular, { size: 14 })]) },
-      );
-    };
+        { default: () => h('span', null, [h(IconBranchOutlineRegular, { size: 14 })]) },
+      )
+    }
   },
-  { inheritAttrs: false, props: ["sessionId", "useSessions", "t"] },
-);
+  { inheritAttrs: false, props: ['sessionId', 'useSessions', 't'] },
+)
 /**
  * Register the viewer's branch lineage marker.
  * @param ctx - browser context of the viewer's module table.
@@ -63,16 +63,16 @@ const ViewerForkMarker = defineComponent(
 export function apply(ctx: ClientContext): void {
   ctx.effect(
     () =>
-      ctx.slots.inject("sidebar.session.row.leading", () =>
+      ctx.slots.inject('sidebar.session.row.leading', () =>
         ctx.slots.register(
           {
-            name: "sidebar.session.row.leading",
-            id: "liveshare.fork",
+            name: 'sidebar.session.row.leading',
+            id: 'liveshare.fork',
             locale: NS,
           },
           ViewerForkMarker,
         ),
       ),
-    "liveshare: branch lineage marker",
-  );
+    'liveshare: branch lineage marker',
+  )
 }

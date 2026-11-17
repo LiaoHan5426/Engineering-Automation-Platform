@@ -5,8 +5,8 @@
  * tab body, and every net gesture result. The kit itself holds no copy, no icon
  * set, and no knowledge of what a tab's `kind` means.
  */
-import type { VNodeChild } from "vue";
-import type { DockZone, FloatRect, PaneId, SplitId, TabId, TabRecord } from "./types.ts";
+import type { VNodeChild } from 'vue'
+import type { DockZone, FloatRect, PaneId, SplitId, TabId, TabRecord } from './types.ts'
 
 /**
  * Every string the kit renders, already localized by the embedder.
@@ -16,31 +16,31 @@ import type { DockZone, FloatRect, PaneId, SplitId, TabId, TabRecord } from "./t
  */
 export interface DockLabels {
   /** Body of a pane holding no tabs. */
-  readonly emptyPane: string;
+  readonly emptyPane: string
   /** The split control, while splitting is allowed. */
-  readonly splitPane: string;
+  readonly splitPane: string
   /** ARIA combination from the effective binding, when bound. */
-  readonly splitPaneShortcut?: string | undefined;
+  readonly splitPaneShortcut?: string | undefined
   /** Effective split keys shown as separate tooltip keycaps. */
-  readonly splitPaneKeys?: readonly string[] | undefined;
+  readonly splitPaneKeys?: readonly string[] | undefined
   /** The split control, once the pane budget is spent. */
-  readonly splitPaneDisabled: string;
+  readonly splitPaneDisabled: string
   /** The split control, while the pane is too narrow for two working halves. */
-  readonly splitPaneNarrow: string;
+  readonly splitPaneNarrow: string
   /** Destroy a tab: the chip's close control and the menu's close item. */
-  readonly closeTab: string;
+  readonly closeTab: string
   /** Effective close combination, when bound. */
-  readonly closeTabShortcut?: string | undefined;
+  readonly closeTabShortcut?: string | undefined
   /** Effective close keys shown as separate tooltip keycaps. */
-  readonly closeTabKeys?: readonly string[] | undefined;
+  readonly closeTabKeys?: readonly string[] | undefined
   /** The strip's add control, which seats the embedder's seeded tab. */
-  readonly addTab: string;
+  readonly addTab: string
   /** Send a floating panel back into the docked tree. */
-  readonly dockFloat: string;
+  readonly dockFloat: string
   /** Close a floating panel. */
-  readonly closeFloat: string;
+  readonly closeFloat: string
   /** The drop hint's caption for each body zone a dragged tab can land on. */
-  readonly dropZone: Readonly<Record<DockZone, string>>;
+  readonly dropZone: Readonly<Record<DockZone, string>>
 }
 
 /**
@@ -51,7 +51,7 @@ export interface DockLabels {
  * must follow from `tab` and the values the renderer captures, and any other
  * input reaches it through a new renderer or the body's own hooks and context.
  */
-export type TabRenderer = (tab: TabRecord) => VNodeChild;
+export type TabRenderer = (tab: TabRecord) => VNodeChild
 
 /**
  * Renders extra items at the end of one tab's context menu (opened by a
@@ -66,7 +66,7 @@ export type TabRenderer = (tab: TabRecord) => VNodeChild;
  * @param dismiss - close the menu without acting.
  * @returns extra actions with ARIA menuitem, menuitemcheckbox, or menuitemradio roles, or nothing.
  */
-export type TabMenuExtras = (tab: TabRecord, dismiss: () => void) => VNodeChild;
+export type TabMenuExtras = (tab: TabRecord, dismiss: () => void) => VNodeChild
 
 /**
  * Net gesture results the kit reports. Each call is one settled intent — never a
@@ -77,33 +77,33 @@ export type TabMenuExtras = (tab: TabRecord, dismiss: () => void) => VNodeChild;
  */
 export interface DockIntents {
   /** Focus a tab and its pane. */
-  readonly focusTab: (tabId: TabId) => void;
+  readonly focusTab: (tabId: TabId) => void
   /** Focus a pane, raising it when it floats. */
-  readonly focusPane: (paneId: PaneId) => void;
+  readonly focusPane: (paneId: PaneId) => void
   /** Split a pane and seed the new one. */
-  readonly splitPane: (paneId: PaneId) => void;
+  readonly splitPane: (paneId: PaneId) => void
   /** Add the embedder's seeded tab to a pane (the strip's `+`). */
-  readonly addTab: (paneId: PaneId) => void;
+  readonly addTab: (paneId: PaneId) => void
   /** Destroy a tab. */
-  readonly closeTab: (tabId: TabId) => void;
+  readonly closeTab: (tabId: TabId) => void
   /** Copy a tab beside itself. No kit control drives this; embedders reach it through their own API. */
-  readonly duplicateTab: (tabId: TabId) => void;
+  readonly duplicateTab: (tabId: TabId) => void
   /** Float a tab, at `rect` when the release point decided one (a drag released clear of the surface). */
-  readonly floatTab: (tabId: TabId, rect?: FloatRect) => void;
+  readonly floatTab: (tabId: TabId, rect?: FloatRect) => void
   /** Return a floating panel's tab to the docked tree. */
-  readonly unfloatPane: (paneId: PaneId) => void;
+  readonly unfloatPane: (paneId: PaneId) => void
   /**
    * Put a tab at an explicit strip slot: a reorder, a move, or a return. `index`
    * is the caret slot counted over the destination strip's chips as drawn, the
    * dragged chip included when the strip is its own.
    */
-  readonly placeTab: (tabId: TabId, toPaneId: PaneId, index: number) => void;
+  readonly placeTab: (tabId: TabId, toPaneId: PaneId, index: number) => void
   /** Resolve a release on a pane body: the centre moves in, an edge splits. */
-  readonly dropTab: (tabId: TabId, paneId: PaneId, zone: DockZone) => void;
+  readonly dropTab: (tabId: TabId, paneId: PaneId, zone: DockZone) => void
   /** Net position of a floating-panel drag; the operation it records focuses and raises the panel too. */
-  readonly moveFloat: (paneId: PaneId, x: number, y: number) => void;
+  readonly moveFloat: (paneId: PaneId, x: number, y: number) => void
   /** Net rectangle of a floating-panel resize; the operation it records focuses and raises the panel too. */
-  readonly resizeFloat: (paneId: PaneId, rect: FloatRect) => void;
+  readonly resizeFloat: (paneId: PaneId, rect: FloatRect) => void
   /** Net fractions of a divider drag. */
-  readonly resizeSplit: (splitId: SplitId, sizes: readonly number[]) => void;
+  readonly resizeSplit: (splitId: SplitId, sizes: readonly number[]) => void
 }

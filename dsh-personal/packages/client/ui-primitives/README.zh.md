@@ -42,6 +42,11 @@ kind: "package-library"
 
 在 setup 中调用 composable，在渲染函数或模板中读取返回的 ref。`useClipboardCopy` 接收文本 getter，返回只读 `copied` ref 和 `onCopy`；`useCodeHighlighter` 接收语言 getter。`useDetailDocumentLabels` 接收翻译文案 getter，返回计算标签。`useAnchoredMaxHeight` 接收元素 ref、高度上限及响应式信号 getter，返回只读高度 ref。`useModalLayer` 接收对话框 ref、响应式打开值或 getter，以及关闭回调。作用域释放时清理观察器、监听和计时器。
 
+<a id="observable-selectors"></a>
+### Observable selector
+
+静态共享库 `@deepseek-ai/dsh-client-ui-primitives` 导出 `useObservableSelector<T, S>(source: () => ObservableSnapshot<T> | undefined, selector: () => (snapshot: T) => S, equal?: (left: S, right: S) => boolean): Readonly<ShallowRef<S | undefined>>`。在组件 setup 或其他活动的 Vue effect scope 中调用一次。source 缺失时发布 `undefined` 且不调用 selector；source 存在而快照为 `undefined` 时仍调用 selector。快照与所选值的嵌套成员保留原始身份。初次解析 source 时立即校验。后续 source、快照、selector 或 equality 失败会同步发布，在读取所选 ref 时抛出；成功更新会清除错误。属于当前 scope 的同步 effect 在读取响应式依赖前进入错误保护，使 Vue 能在排队 render 前移除已退役子组件，同时让存活组件的错误继续到达 render 边界。响应式 source 和 selector getter 在所属 scope 内重新绑定，默认以 `Object.is` 判断相等。scope 销毁时释放订阅并拒绝排队的过时发布。本适配器不接触 Cordis 或 slot 注册表；ctx 到 Vue 的绑定仍由 renderer 持有。
+
 ### 组件目录
 
 在功能包里写控件之前，先查这张表。插件无法导入另一个插件的组件，因此本包是控件唯一可以共享的地方：合适的就复用，有意的视觉差异提升成 prop，而不是另起一份拷贝。

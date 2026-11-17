@@ -299,10 +299,14 @@ export class ChatNavigation {
  */
 export function useChatNavigation(
   viewport: ChatViewport, reading: ChatReading, input: MaybeRefOrGetter<ChatNavigationInput>,
-): { navigation: ChatNavigation; busyTurn: Readonly<Ref<number | null>>; historyPending: Readonly<Ref<boolean>>; historyProcessing: Readonly<Ref<boolean>> } {
+): { navigation: ChatNavigation
+  busyTurn: Readonly<Ref<number | null>>
+  historyPending: Readonly<Ref<boolean>>
+  historyProcessing: Readonly<Ref<boolean>> } {
   const busyTurn = shallowRef<number | null>(null)
   const historyIntent = shallowRef<HistoryIntent>('none')
-  const navigation = new ChatNavigation(viewport, reading, toValue(input), value => { busyTurn.value = value }, value => { historyIntent.value = value })
+  const navigation = new ChatNavigation(viewport, reading, toValue(input), (value) => { busyTurn.value = value },
+    (value) => { historyIntent.value = value })
   watchEffect(() => { navigation.setInput(toValue(input)) }, { flush: 'post' })
   onScopeDispose(() => { navigation.dispose() })
   return { navigation, busyTurn: shallowReadonly(busyTurn), historyPending: computed(() => historyIntent.value === 'manual'), historyProcessing: computed(() => historyIntent.value !== 'none') }

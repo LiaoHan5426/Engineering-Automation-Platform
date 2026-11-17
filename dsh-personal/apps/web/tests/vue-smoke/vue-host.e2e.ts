@@ -102,8 +102,8 @@ it('boots native Vue factories and releases effects, components and styles acros
     child = spawn(process.execPath, ['--import', import.meta.resolve('tsx/esm'), join(repo, 'apps/cli/lib/bin.js'), '--profile', 'vue-smoke'], {
       cwd: root, env: { ...process.env, DSH_HOME: home, NODE_ENV: 'test' }, stdio: ['ignore', 'pipe', 'pipe'],
     })
-    child.stdout?.on('data', chunk => { logs += String(chunk) })
-    child.stderr?.on('data', chunk => { logs += String(chunk) })
+    child.stdout?.on('data', (chunk) => { logs += String(chunk) })
+    child.stderr?.on('data', (chunk) => { logs += String(chunk) })
     await expect.poll(async () => {
       if (child?.exitCode !== null) throw new Error(`smoke Host exited: ${logs}`)
       return existsSync(ready)
@@ -112,10 +112,10 @@ it('boots native Vue factories and releases effects, components and styles acros
     browser = await chromium.launch({ headless: true })
     const page = await browser.newPage({ extraHTTPHeaders: { 'x-vue-smoke': 'local-test' } })
     const errors: string[] = []
-    page.on('pageerror', error => { errors.push(error.message); logs += `\nbrowser error: ${error.message}` })
-    page.on('console', message => { if (message.type() === 'error') logs += `\nbrowser console: ${message.text()}` })
+    page.on('pageerror', (error) => { errors.push(error.message); logs += `\nbrowser error: ${error.message}` })
+    page.on('console', (message) => { if (message.type() === 'error') logs += `\nbrowser console: ${message.text()}` })
     const requests: string[] = []
-    await page.route('**/*', route => {
+    await page.route('**/*', (route) => {
       const url = new URL(route.request().url())
       if (url.origin !== `http://127.0.0.1:${port}`) return route.abort('blockedbyclient')
       return route.continue()
@@ -150,7 +150,7 @@ it('boots native Vue factories and releases effects, components and styles acros
     expect(await page.locator('[data-vue-smoke]').evaluate(element => getComputedStyle(element).borderTopWidth)).toBe('9px')
     expect(await styles.count()).toBe(ownedStyleCount)
     expect(await tick()).toBe('2')
-    expect(await page.evaluate(() => ({ ...document.documentElement.dataset }))).toMatchObject({ smokeEffects: '1', smokeMounts: '2', smokeUnmounts: '1' })
+    expect(await page.evaluate(() => Object.fromEntries(Object.entries(document.documentElement.dataset)))).toMatchObject({ smokeEffects: '1', smokeMounts: '2', smokeUnmounts: '1' })
 
     // Toggle the real Host entry; the graph event removes and later reactivates its client row.
     const ownedStyles = await styles.elementHandles()
@@ -163,13 +163,13 @@ it('boots native Vue factories and releases effects, components and styles acros
     await expect.poll(() => styles.count()).toBe(0)
     for (const style of ownedStyles) expect(await style.evaluate(element => element.isConnected)).toBe(false)
     expect(await tick()).toBe('2')
-    expect(await page.evaluate(() => ({ ...document.documentElement.dataset }))).toMatchObject({ smokeEffects: '0', smokeMounts: '2', smokeUnmounts: '2' })
+    expect(await page.evaluate(() => Object.fromEntries(Object.entries(document.documentElement.dataset)))).toMatchObject({ smokeEffects: '0', smokeMounts: '2', smokeUnmounts: '2' })
     await toggle(false)
     await page.locator('[data-vue-smoke]').waitFor({ state: 'visible', timeout: 15000 })
     expect(await page.locator('[data-vue-smoke]').count()).toBe(1)
     expect(await styles.count()).toBe(ownedStyleCount)
     expect(await tick()).toBe('3')
-    expect(await page.evaluate(() => ({ ...document.documentElement.dataset }))).toMatchObject({ smokeEffects: '1', smokeMounts: '3', smokeUnmounts: '2' })
+    expect(await page.evaluate(() => Object.fromEntries(Object.entries(document.documentElement.dataset)))).toMatchObject({ smokeEffects: '1', smokeMounts: '3', smokeUnmounts: '2' })
     expect(await documentIdentity.evaluate(value => value === document)).toBe(true)
     await documentIdentity.dispose()
     await initialButton?.dispose()

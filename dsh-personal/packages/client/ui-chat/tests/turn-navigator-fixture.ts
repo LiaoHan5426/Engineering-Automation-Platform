@@ -21,12 +21,12 @@ export function installTurnNavigatorObserver(initialHeight: number | null = 300)
         if (next === element.scrollTop) return
         element.scrollTop = next
         queueMicrotask(() => {
-          if (element.isConnected) act(() => { element.dispatchEvent(new Event('scroll')) })
+          if (element.isConnected) void act(() => { element.dispatchEvent(new Event('scroll')) })
         })
       }
       queueMicrotask(() => {
         const currentHeight = height
-        if (currentHeight !== null && rails.get(element) === this) act(() => { this.deliver(element, currentHeight) })
+        if (currentHeight !== null && rails.get(element) === this) void act(() => { this.deliver(element, currentHeight) })
       })
     }
 

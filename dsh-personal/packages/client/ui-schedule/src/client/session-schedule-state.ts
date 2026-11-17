@@ -7,32 +7,32 @@
  * invalidation instead of issuing a query per row or header.
  */
 
-import { toValue, type MaybeRefOrGetter, type Ref } from "vue";
-import type { HostObservable, SnapshotSelectorHook } from "@deepseek-ai/dsh-client-ui-slots";
-import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import type { ScheduleCatalogEntry } from "@deepseek-ai/dsh-schedule/client";
-import { taskInvolvesSession } from "./task-record.ts";
-import type { CatalogSnapshot } from "./catalog-source.ts";
+import { toValue, type MaybeRefOrGetter, type Ref } from 'vue'
+import type { HostObservable, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { ScheduleCatalogEntry } from '@deepseek-ai/dsh-schedule/client'
+import { taskInvolvesSession } from './task-record.ts'
+import type { CatalogSnapshot } from './catalog-source.ts'
 
 /** Selector hook the renderer binds from a slot's `hooks.catalog` observable. */
 export type SessionScheduleCatalogHook = SnapshotSelectorHook<
   CatalogSnapshot<ScheduleCatalogEntry>
->;
+>
 
 /** Shared Host catalog observable an ambient surface injects through its slot. */
 export type SessionScheduleCatalogObservable = HostObservable<
   CatalogSnapshot<ScheduleCatalogEntry>
->;
+>
 
 /** One Session's active scheduled tasks as projected from the shared Host catalog. */
 export interface SessionScheduleFacts {
   /** Whether the settled catalog holds at least one active task for the Session. */
-  readonly hasActive: boolean;
+  readonly hasActive: boolean
   /** Active tasks of the Session in catalog order; empty unless the read settled. */
-  readonly records: readonly ScheduleCatalogEntry[];
+  readonly records: readonly ScheduleCatalogEntry[]
 }
 
-const NO_RECORDS: readonly ScheduleCatalogEntry[] = [];
+const NO_RECORDS: readonly ScheduleCatalogEntry[] = []
 
 /**
  * Project the shared Host catalog onto one Session's active tasks.
@@ -52,11 +52,11 @@ export function selectSessionScheduleFacts(
   snapshot: CatalogSnapshot<ScheduleCatalogEntry>,
   sessionId: SessionId,
 ): SessionScheduleFacts {
-  if (!snapshot.settled) return { hasActive: false, records: NO_RECORDS };
+  if (!snapshot.settled) return { hasActive: false, records: NO_RECORDS }
   const records = snapshot.records.filter(
-    (record) => taskInvolvesSession(record, sessionId) && record.status === "active",
-  );
-  return { hasActive: records.length > 0, records };
+    record => taskInvolvesSession(record, sessionId) && record.status === 'active',
+  )
+  return { hasActive: records.length > 0, records }
 }
 
 /**
@@ -74,7 +74,7 @@ function sameSessionScheduleFacts(
     left.hasActive === right.hasActive &&
     left.records.length === right.records.length &&
     left.records.every((record, index) => record === right.records[index])
-  );
+  )
 }
 
 /**
@@ -88,7 +88,7 @@ export function useSessionScheduleFacts(
   sessionId: MaybeRefOrGetter<SessionId>,
 ): Readonly<Ref<SessionScheduleFacts>> {
   return useCatalog(
-    (snapshot) => selectSessionScheduleFacts(snapshot, toValue(sessionId)),
+    snapshot => selectSessionScheduleFacts(snapshot, toValue(sessionId)),
     sameSessionScheduleFacts,
-  );
+  )
 }
