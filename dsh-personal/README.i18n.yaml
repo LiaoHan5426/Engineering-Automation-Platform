@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
 /dsh-personal-vue-migration-workspace:
-  en: c6d2706b0206060d
-  zh: ccb71a801c8e1e66
+  en: 8110867806182695
+  zh: 73e10dfd3047708c
 /dsh-personal-vue-migration-workspace/fixed-source:
   en: 7ac47a89da3c0f44
   zh: 4e5d036a001ecfa8

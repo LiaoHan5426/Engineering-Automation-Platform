@@ -44,7 +44,7 @@ Documentation initially passed 19 of 21 gates. Both failures have been corrected
 
 The broader `vp run doc-sync` subsequently passed 38 of 43 gates. Its five stale generated outputs were regenerated and their owning checks passed: API and slot catalogs changed only displayed type formatting, package listings reflect Vue descriptions, and persistence catalogs changed source locations only. All 66 persistence root digests remain unchanged and match 25 history records. Because inspection providers consume the generated text at runtime, a fresh complete `vp run build` followed: all ten gates passed in 25.07 seconds, with 395 Client artifacts and three public values. The catalog text changes do not invalidate the earlier UI interaction results.
 
-The final aggregates are complete. The PR remains a draft while submission and review are finalized; the explicitly recorded baseline and platform limits remain.
+The final aggregates are complete. PR #8 has merged; baseline and platform limits remain recorded separately.
 
 ## Limits
 
@@ -56,8 +56,16 @@ Repository automation currently exposes no GitHub Actions workflows or PR checks
 
 Actual matched screenshots and revision details are recorded in [the visual evidence](README.md).
 
-## Remaining demonstration prerequisite
+## Current OpenAI acceptance — 2026-11-17
 
-No publishable real-model GIF exists. The clean implementation commit built successfully with both `build` and `build:web`. Official Ubuntu FFmpeg/ffprobe 8.0.1 were extracted privately without a system installation, resolving the media-tool prerequisite. A real production submission then returned `MISSING_CREDENTIAL` for `deepseek-official`, and the normal model picker displayed “No models available.” No alternative configured route was offered. Failed recordings remain diagnostic-only.
+Migration implementation and real-model demonstration are complete. User acceptance remains separate. The user's instruction defers verified upstream issues; it does not turn failures or skips into passes.
 
-Recording is stopped until an authorized model credential is configured through the normal Models / Add API Key interface. That official provider targets the existing credentials file, not the scratch home; no secret values were read or displayed. After configuration, recording must restart with fresh state roots. Actual Before/After captures and keyless browser tests are not substituted for this real-model demonstration, so the handoff remains incomplete.
+The candidate used an isolated DSH_HOME with the current desktop OpenAI route, model openai/gpt-6-astra, and the existing credentials plugin file reference. No credential value or bootstrap token was exported. The prepared worktree's application source matched the main checkout before testing.
+
+Actual UI requests returned DSH_OPENAI_MIGRATION_OK and DSH_TOOL_OK:323. The trajectory independently shows pwsh executing node -p "17*19" with output 323. A third real request returned DSH_NATIVE_CAPTURE_OK; reload restored the conversation. Edge 141.0.3537.71 captured ten native frames during that request. The [GIF](openai-validation.gif) combines those frames with before/after and tool evidence; it is sampled recording, not a continuous video. Blank DOM-rendered captures were replaced.
+
+The [Forge review](forge-review.json) preserves exact failures and skips; [source comparison](forge-source-comparison.json) verifies 21 files against fixed upstream blobs. Five-second execution: 46 passed, 6 failed, 19 skipped, 43.37 seconds. Thirty-second diagnostic: 51 passed, 1 failed, 19 skipped, 152.67 seconds. The remaining timeout is the HEAD/index/first-commit case. This 71-case run does not reconstruct the historical 167-case roster. Platform skips retain their original conditions.
+
+Maintenance documentation: bilingual records generated and Chinese testing link corrected. vp run test:docs passed all 21 checks in 44.66 seconds. vp run doc-sync completed 41/43 in 394.02 seconds; its pairing failure was subsequently fixed and passed in test:docs. The remaining documentation-site failure is EPERM while creating a symlink in scripts/project-doc-site.spec.ts:160 on Windows. No assertion or test budget source was weakened. Earlier build and browser results above remain the evidence for unchanged production code; this round does not claim a new full-suite pass.
+
+Final static rerun: vp run lint checked 7,301 files with 90 rules and found one redundant type assertion in the ChangesTab test helper. Removed that assertion and its obsolete comment; no production code or behavioral assertion changed. Focused lint passed with zero warnings/errors (5.8 seconds); the existing ChangesTab suite passed 149/149 (39.65 seconds). vp run build:check passed both Host and Vue Client aggregates in 128.35 seconds after the edit. The full lint run remains recorded as one failure followed by a focused fix verification, not a second full green run. The negative stale-tab test emitted a Vue render warning; no diagnostic was suppressed.

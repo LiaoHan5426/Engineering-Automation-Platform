@@ -52,6 +52,14 @@ reports/
 .workbuddy/
 .dsh-meow/
 
+# Repository-local scratch and runtime state (snapshot fixtures remain tracked)
+/.tmp/
+/.dsh/
+/dsh-personal/.tmp/
+
+# Locally generated, comment-only Lefthook example; nested project config is tracked
+/lefthook.yml
+
 # Local AI execution output; audited evidence is explicitly retained under docs/audits.
 .eap-ai-artifacts/
 .eap/

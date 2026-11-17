@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for sync-dsh-upstream.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/cookbook/sync-dsh-upstream.md
+/cookbook-synchronizing-dsh-personal-with-upstream:
+  en: dec55c95419d7b04
+  zh: 134a8dc75b89e3aa
+/cookbook-synchronizing-dsh-personal-with-upstream/summary:
+  en: bb52a407ed5e7a0d
+  zh: 3a62a4b9159b23fe
+/cookbook-synchronizing-dsh-personal-with-upstream/contents:
+  en: 9d727f93c1c523c7
+  zh: 3e37c98faaa512d7
+/cookbook-synchronizing-dsh-personal-with-upstream/1-prepare-an-isolated-update:
+  en: 97b17ebe3775bab6
+  zh: 96d59a6aad3ff963
+/cookbook-synchronizing-dsh-personal-with-upstream/2-compare-upstream-changes-and-local-changes:
+  en: f7f0553bd89ddecd
+  zh: 926c5aa92be6d4c8
+/cookbook-synchronizing-dsh-personal-with-upstream/3-integrate-by-behavior:
+  en: 643c5c6645caeecd
+  zh: 25595f17252986f7
+/cookbook-synchronizing-dsh-personal-with-upstream/4-validate-accept-or-recover:
+  en: 3f113dd213b23946
+  zh: d9ba57bb5ceecce9
+/cookbook-synchronizing-dsh-personal-with-upstream/reference-upgrade-record-template:
+  en: 463604b52d3f03f0
+  zh: 0eb4a3a5fb3fe396
+/cookbook-synchronizing-dsh-personal-with-upstream/dev-note:
+  en: e6f989f35bfcfec0
+  zh: e32ea1733872b120

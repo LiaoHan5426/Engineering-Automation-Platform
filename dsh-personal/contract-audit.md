@@ -1,6 +1,6 @@
 # 固定源契约审计
 
-状态：实施中的契约决策记录，尚未整体交付。下表是最初固定源审计的历史发现及当时出口，不能当作当前实现状态；实际进度以迁移计划为准。未把包名或注释视为框架无关的证明。
+状态（2026-11-17）：迁移实现已合并，真实 OpenAI 模型、工具调用及刷新恢复已验证，技术交付完成。已证实上游问题按用户要求延后；用户接受及未验证平台范围独立记录。本文后续各阶段发现和出口均为历史审计快照，当前结果以[迁移计划](migration-plan.md)和[验证记录](../docs/evidence/dsh-personal/validation.md)为准。
 
 源链接统一固定到 `39163dd30f703a79079e2d2446545cff3c453738`。
 
@@ -99,4 +99,4 @@ SFC 由 [Vue compiler-sfc](https://github.com/vuejs/core/blob/main/packages/comp
 
 Vite+ 1.3.0 依 [官方本地 CLI 配置](https://viteplus.dev/guide/local-cli) 统一 `vite@*` → `@voidzero-dev/vite-plus-core@1.3.0` 和 `vitest@*` → 5.0.5；inline test projects 明确 `extends: false` 保留独立 roster，避免 Vitest 5 默认继承合并数组造成重复执行。父代理统一 runner 复跑编译、资源、隔离和 watcher 四组测试通过，共 143 个独立用例；这不替代真实 Host/Boot 或产品验收。
 
-真实模型演示采用清洁提交重新build及build:web，两者通过；官方媒体工具仅私有解压。生产请求实际返回MISSING_CREDENTIAL，正常模型列表无可用路由，未生成可交付GIF。此项属于缺少模型凭据的交付限制，不能以截图或回放冒充，不读取或在聊天中接收密钥。
+历史录制曾在 build/build:web 通过后遇到 MISSING_CREDENTIAL。2026-11-17 已通过隔离状态目录复用当前 DSH OpenAI 配置完成真实请求、终端输出 323、模型后续回复及刷新恢复；[原生浏览器 GIF](../docs/evidence/dsh-personal/openai-validation.gif)已生成，旧凭据阻塞关闭。未导出凭据值，未改变生产配置；本轮维护文档及上游对照范围见验证记录。

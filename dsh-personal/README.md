@@ -9,6 +9,7 @@ This phase does not adapt the application to the EAP Java backend. Existing EAP 
 - [Contract audit and implementation decisions](contract-audit.md)
 - [Stage plan, completion tracker and outstanding gates](migration-plan.md)
 - [Fixed-source inventory](source-inventory.json)
+- [Upstream synchronization maintenance guide](docs/cookbook/sync-dsh-upstream.md)
 - Original upstream instructions: [English](README.upstream.md), [Chinese](README.upstream.zh.md)
 
 ## Fixed source

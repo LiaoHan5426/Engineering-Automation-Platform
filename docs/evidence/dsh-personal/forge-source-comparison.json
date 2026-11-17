@@ -1,0 +1,132 @@
+{
+  "upstreamCommit": "39163dd30f703a79079e2d2446545cff3c453738",
+  "method": "GitHub fixed-commit Contents API SHA compared with local git hash-object",
+  "results": [
+    {
+      "path": "packages/experimental/client-ui-forge/src/commit-range.ts",
+      "upstream": "b2624e1b11e37fb6dea24eee6a4e7dd5ba5aae4c",
+      "local": "b2624e1b11e37fb6dea24eee6a4e7dd5ba5aae4c",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/css-modules.d.ts",
+      "upstream": "b63bfbe015c01061680ad71495e7cc549a19f1c0",
+      "local": "b63bfbe015c01061680ad71495e7cc549a19f1c0",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/diff.ts",
+      "upstream": "02c75bf06b68011d4880c754ca277e426881a156",
+      "local": "02c75bf06b68011d4880c754ca277e426881a156",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/git.ts",
+      "upstream": "c8db71c7a9350ae5057495dc63a508d7a25bddf8",
+      "local": "c8db71c7a9350ae5057495dc63a508d7a25bddf8",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/index.ts",
+      "upstream": "ebc09dcb61a2075dee2032a2a291a29270cf6b37",
+      "local": "ebc09dcb61a2075dee2032a2a291a29270cf6b37",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/layers.ts",
+      "upstream": "8b6eb79a933ae7f4d44dd62db508280356cb3e83",
+      "local": "8b6eb79a933ae7f4d44dd62db508280356cb3e83",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/lens-version.ts",
+      "upstream": "cca6dea479cd548944365ec20d4ace16a6f6175e",
+      "local": "cca6dea479cd548944365ec20d4ace16a6f6175e",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/lenses.ts",
+      "upstream": "0251503d5d6cbf6a5fab8c2d0b0dc522c09357c1",
+      "local": "0251503d5d6cbf6a5fab8c2d0b0dc522c09357c1",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/local-diff.ts",
+      "upstream": "17c753643a0873c4c149490302301eb753412948",
+      "local": "17c753643a0873c4c149490302301eb753412948",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/panel.ts",
+      "upstream": "15e6b3408d40fafbc17049b8f7d4f24455316766",
+      "local": "15e6b3408d40fafbc17049b8f7d4f24455316766",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/parse.ts",
+      "upstream": "b163c40e4aac152882095da200f62e4347d3104b",
+      "local": "b163c40e4aac152882095da200f62e4347d3104b",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/patch-cache.ts",
+      "upstream": "f331c08c19599ffe2991c08e93c10d6b837fc31f",
+      "local": "f331c08c19599ffe2991c08e93c10d6b837fc31f",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/review-cache.ts",
+      "upstream": "fa8c54f53aae559adca70a838bb0b198d3c90b03",
+      "local": "fa8c54f53aae559adca70a838bb0b198d3c90b03",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/states.ts",
+      "upstream": "4ea03c6349601d286a9714c66ef728413701a673",
+      "local": "4ea03c6349601d286a9714c66ef728413701a673",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/types.ts",
+      "upstream": "2be78af676082df98770eadafba96a13875fb0e8",
+      "local": "2be78af676082df98770eadafba96a13875fb0e8",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/wildmatch.ts",
+      "upstream": "bed56ef8c5f9538cd96534f096e358a36be72acf",
+      "local": "bed56ef8c5f9538cd96534f096e358a36be72acf",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/src/worktree.ts",
+      "upstream": "122a05efc524d1f8838c77a213ff921d84b8bd86",
+      "local": "122a05efc524d1f8838c77a213ff921d84b8bd86",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tests/git.host.spec.ts",
+      "upstream": "b956f0b8580c6726c3fb0252dea7ceb9eabf2d15",
+      "local": "b956f0b8580c6726c3fb0252dea7ceb9eabf2d15",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tests/harness.ts",
+      "upstream": "1decdb662f988b24ab7ed930d5b1a97eb3e64414",
+      "local": "1decdb662f988b24ab7ed930d5b1a97eb3e64414",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tests/lens-panel.host.spec.ts",
+      "upstream": "e382d9382f44f25d4019b711adede98d8f08680c",
+      "local": "e382d9382f44f25d4019b711adede98d8f08680c",
+      "equal": true
+    },
+    {
+      "path": "packages/experimental/client-ui-forge/tests/lenses.host.spec.ts",
+      "upstream": "6ca323454f45bd02c67eb4d9eb69c227592b9e6e",
+      "local": "6ca323454f45bd02c67eb4d9eb69c227592b9e6e",
+      "equal": true
+    }
+  ]
+}

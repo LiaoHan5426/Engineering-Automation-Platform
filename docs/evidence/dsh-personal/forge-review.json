@@ -1,0 +1,77 @@
+{
+  "fixedUpstream": "39163dd30f703a79079e2d2446545cff3c453738",
+  "runs": [
+    {
+      "log": "forge.log",
+      "failed": [
+        " FAIL  |thread-safe| packages/experimental/client-ui-forge/tests/lens-panel.host.spec.ts > forgePanel lenses over local changes > classifies the shown files with both sides read in the Session's checkout, then reuses the result",
+        " FAIL  |thread-safe| packages/experimental/client-ui-forge/tests/lens-panel.host.spec.ts > forgePanel lenses over local changes > reads the old side at HEAD, at the index, and before the first chosen commit",
+        " FAIL  |thread-safe| packages/experimental/client-ui-forge/tests/lens-panel.host.spec.ts > forgePanel lenses over local changes > reads a renamed file's old side at its previous path and a deleted file's new side as missing",
+        " FAIL  |thread-safe| packages/experimental/client-ui-forge/tests/lens-panel.host.spec.ts > forgePanel lenses over local changes > refuses a request for other files, maps a failed lens, and reports a lens withdrawn while it runs as missing",
+        " FAIL  |thread-safe| packages/experimental/client-ui-forge/tests/lens-panel.host.spec.ts > forgePanel lenses over local changes > neither runs nor answers from memory for a lens withdrawn while the files are read",
+        " FAIL  |thread-safe| packages/experimental/client-ui-forge/tests/lens-panel.host.spec.ts > forgePanel lenses over local changes > neither sends nor keeps a result after the local files changed while the lens read them"
+      ],
+      "skipped": [
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > never runs a configured filter, because it reads no working tree file",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > runs Git with a cleared repository selector and disabled prompts, locks, and lazy fetches",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > resolves the top-level and shared Git directories Git prints into canonical process paths",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on an unexpected exit",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on another rev-parse error",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on a signal",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on missing output",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on oversized output",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on a timeout",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails when the Git executable is missing",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing common-dir command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing git-dir command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing head command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing symbolic-ref command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing upstream command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing remote command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > rejects a shared Git directory that Git does not print",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > listBranches > names a failing branch listing",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > Git inspection under the local sandbox > reads a checkout and lists its branches under read-only confinement without writing its index"
+      ],
+      "totals": [
+        " Test Files  1 failed | 2 passed (3)",
+        "      Tests  6 failed | 46 passed | 19 skipped (71)",
+        "   Duration  43.37s (tests 97%, import 2%, transform 1%)"
+      ]
+    },
+    {
+      "log": "forge-budget.log",
+      "failed": [
+        " FAIL  |thread-safe| packages/experimental/client-ui-forge/tests/lens-panel.host.spec.ts > forgePanel lenses over local changes > reads the old side at HEAD, at the index, and before the first chosen commit"
+      ],
+      "skipped": [
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > never runs a configured filter, because it reads no working tree file",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > runs Git with a cleared repository selector and disabled prompts, locks, and lazy fetches",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > resolves the top-level and shared Git directories Git prints into canonical process paths",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on an unexpected exit",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on another rev-parse error",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on a signal",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on missing output",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on oversized output",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails on a timeout",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > fails when the Git executable is missing",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing common-dir command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing git-dir command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing head command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing symbolic-ref command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing upstream command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > names a failing remote command after the top-level directory",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > inspectCheckout with a stand-in Git > rejects a shared Git directory that Git does not print",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > listBranches > names a failing branch listing",
+        " ↓ |thread-safe| packages/experimental/client-ui-forge/tests/git.host.spec.ts > Git inspection under the local sandbox > reads a checkout and lists its branches under read-only confinement without writing its index"
+      ],
+      "totals": [
+        " Test Files  1 failed | 2 passed (3)",
+        "      Tests  1 failed | 51 passed | 19 skipped (71)",
+        "   Duration  152.67s (tests 99%, import 1%)"
+      ]
+    }
+  ],
+  "scope": "Three specified files, 71 tests; not historical 167-case roster",
+  "sourceComparison": "21 checked files equal fixed upstream Git blobs; see forge-source-comparison.json",
+  "conclusion": "Original 5000ms remains failed. 30000ms diagnosis improves 46/6 to 51/1 (passed/failed), 19 unchanged platform skips. Remaining HEAD/index/first chosen commit case still unverified under configured budgets. No source or assertion edits."
+}

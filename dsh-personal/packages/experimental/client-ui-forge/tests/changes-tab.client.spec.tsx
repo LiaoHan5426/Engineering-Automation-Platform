@@ -309,15 +309,11 @@ const REFUSED = {
   },
   notBound: { ok: false, error: new RemoteError('forgePanel/not-bound', 'not bound', {}) },
 } satisfies Record<string, RemoteResult<never>>
-/**
- * Carry changes tab parameters in a navigation record. In the aggregate client
- * program, the navigation parameter union lacks the resource parameters that
- * packages declare through the Sidebar's entry point, so the parameters are asserted.
- */
+/** Carry changes tab parameters in a navigation record. */
 function navigationParams(
   params: ChangesParams | undefined,
 ): SidebarRightTabInfo['tab']['navigation']['params'] {
-  return params as SidebarRightTabInfo['tab']['navigation']['params']
+  return params
 }
 /** A promise the test settles by hand. */
 function deferred<T>() {

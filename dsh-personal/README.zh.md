@@ -9,6 +9,7 @@
 - [契约审计及实施决定](contract-audit.md)
 - [阶段计划、完成跟踪及剩余门禁](migration-plan.md)
 - [固定源清单](source-inventory.json)
+- [上游同步维护指南](docs/cookbook/sync-dsh-upstream.zh.md)
 - 原版上游说明：[英文](README.upstream.md)、[中文](README.upstream.zh.md)
 
 ## 固定源版本
