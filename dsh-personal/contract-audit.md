@@ -98,3 +98,5 @@ SFC 由 [Vue compiler-sfc](https://github.com/vuejs/core/blob/main/packages/comp
 已知 [Vue language-tools](https://github.com/vuejs/language-tools/blob/master/packages/tsc/README.md) 3.3.14 边界：单行 script setup 紧贴 `</script>` 且没有分号/换行时，虚拟代码可能拼成 `defineProps<__VLS_Props>()type __VLS_PublicProps`，导致 props 声明变成 any。当前严格类型样例使用正常换行/分号，并验证未导入 SFC 的 template 错误；这些结果不能证明该上游边界已修复。产品 SFC 应保留标准多行排版，最终类型验收需复核声明输出。
 
 Vite+ 1.3.0 依 [官方本地 CLI 配置](https://viteplus.dev/guide/local-cli) 统一 `vite@*` → `@voidzero-dev/vite-plus-core@1.3.0` 和 `vitest@*` → 5.0.5；inline test projects 明确 `extends: false` 保留独立 roster，避免 Vitest 5 默认继承合并数组造成重复执行。父代理统一 runner 复跑编译、资源、隔离和 watcher 四组测试通过，共 143 个独立用例；这不替代真实 Host/Boot 或产品验收。
+
+真实模型演示采用清洁提交重新build及build:web，两者通过；官方媒体工具仅私有解压。生产请求实际返回MISSING_CREDENTIAL，正常模型列表无可用路由，未生成可交付GIF。此项属于缺少模型凭据的交付限制，不能以截图或回放冒充，不读取或在聊天中接收密钥。
