@@ -121,6 +121,7 @@ const LISTING: MarketSearchResult = {
 };
 const READY: DiscoverState = {
   status: "ready",
+  sourceOptions: { path: "", ref: "" },
   indexes: [{ url: A, title: LISTING.title }, { url: B }],
   selected: A,
   listing: {

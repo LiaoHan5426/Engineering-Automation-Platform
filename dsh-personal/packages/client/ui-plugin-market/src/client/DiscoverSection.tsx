@@ -1,3 +1,4 @@
+import { isGitMarketIndexSourceAddress } from '@deepseek-ai/dsh-plugin-market-index/source'
 /** Discover: search one plugin market index, read an entry's page, and install or update a version. */
 import {
   h,
@@ -44,6 +45,7 @@ import type {
 import {
   displayDeclarations,
   indexLabel,
+  indexMenuItems,
   presentedVersion,
   sourceFacts,
   withText,
@@ -105,6 +107,7 @@ const MarketIcon = defineComponent(
 )
 function sourceFailureText(failure: SourceFailure, t: Translate): string {
   switch (failure.kind) {
+    case 'invalid-git': return t('sourceInvalidGit')
     case 'invalid':
       return t('sourceInvalid')
     case 'duplicate':
@@ -706,30 +709,12 @@ function SourcesDialog({
               },
             },
             [
-              h(Input, {
-                className: normalizeClass(css.grow),
-                value: state.draft,
-                placeholder: t('sourcePlaceholder'),
-                'aria-label': t('sourceUrl'),
-                'aria-invalid': state.sourceFailure !== null,
-                'data-modal-autofocus': true,
-                onInput: (event: Event) => {
-                  if (event.target instanceof HTMLInputElement) face.editDraft(event.target.value)
-                },
-              }),
-              h(
-                Button,
-                {
-                  type: 'submit',
-                  variant: 'primary',
-                  size: 'sm',
-                  disabled: state.saving || state.draft.trim() === '',
-                },
-                {
-                  icon: () => h(IconPlusOutlineRegular, { size: 13 }),
-                  default: () => t('addSource'),
-                },
-              ),
+              h('label', { class: css.sourceField }, [t('sourceUrl'), h(Input, { value: state.draft, placeholder: t(isGitMarketIndexSourceAddress(state.draft) ? 'sourceRepositoryPlaceholder' : 'sourcePlaceholder'), 'aria-invalid': state.sourceFailure !== null, disabled: state.saving, autocomplete: 'off', spellcheck: false, 'data-modal-autofocus': '', onInput: (event: Event) => { if(event.target instanceof HTMLInputElement) face.editDraft(event.target.value) } })]),
+              ...(isGitMarketIndexSourceAddress(state.draft) ? [
+                h('label', { class: css.sourceField }, [t('sourcePath'), h(Input, { value: state.sourceOptions.path, placeholder: t('sourcePathPlaceholder'), disabled: state.saving, spellcheck: false, onInput: (event: Event) => { if(event.target instanceof HTMLInputElement) face.editSourceOptions({ path: event.target.value }) } })]),
+                h('label', { class: css.sourceField }, [t('sourceRef'), h(Input, { value: state.sourceOptions.ref, placeholder: t('sourceDefaultRef'), disabled: state.saving, spellcheck: false, onInput: (event: Event) => { if(event.target instanceof HTMLInputElement) face.editSourceOptions({ ref: event.target.value }) } })]),
+              ] : []),
+              h('div', { class: css.sourceActions }, [h(Button, { type: 'submit', variant: 'primary', size: 'sm', disabled: state.saving || state.draft.trim() === '' }, { icon: () => h(IconPlusOutlineRegular, { size: 13 }), default: () => t('addSource') })]),
             ],
           ),
           state.sourceFailure === null
@@ -942,10 +927,8 @@ const Browser = defineComponent(
           },
         })
       }
-      const selected = state.indexes.find(index => index.url === listing.url) ?? {
-        url: listing.url,
-      }
-      const market = indexLabel(selected, face.resolveText)
+      const indexItems = indexMenuItems(state.indexes, face.resolveText)
+      const market = indexItems.find(item => item.id === listing.url)?.label ?? indexLabel({ url: listing.url }, face.resolveText)
       const { sort } = query
       const sortOptions = [
         ...(query.text.trim() === '' ? [] : [{ id: 'relevance', label: t('sortRelevance') }]),
@@ -1001,10 +984,7 @@ const Browser = defineComponent(
               portal: true,
               autoFocus: true,
               selectedId: listing.url,
-              items: state.indexes.map(index => ({
-                id: index.url,
-                label: indexLabel(index, face.resolveText),
-              })),
+              items: indexItems.map(({ id, label }) => ({ id, label: h('span', { class: css.indexMenuName }, label) })),
               footer: [
                 {
                   id: 'manage',
@@ -1029,6 +1009,7 @@ const Browser = defineComponent(
                     'aria-haspopup': 'menu',
                     'aria-expanded': menu === 'market',
                     'aria-label': t('marketMenu', { market }),
+                    title: market,
                     onClick: () => {
                       toggleMenu('market')
                     },

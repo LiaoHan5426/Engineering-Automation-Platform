@@ -16,6 +16,7 @@ import { mountAgentLoopTestDependencies } from "@deepseek-ai/dsh-agent-loop-test
 import type { SessionId } from "@deepseek-ai/dsh-session";
 import * as JsonlSessionPersistence from "@deepseek-ai/dsh-session-persistence-jsonl";
 import SubagentRuntime, { SubagentError } from "@deepseek-ai/dsh-subagent";
+import TeamService from "@deepseek-ai/dsh-agent-team";
 import * as SubagentFork from "@deepseek-ai/dsh-subagent-fork-in-process";
 import * as SubagentSpawn from "@deepseek-ai/dsh-subagent-spawn-in-process";
 import type { GenerateOptions, StreamChunk } from "@deepseek-ai/dsh-llm";
@@ -192,9 +193,9 @@ describe("dsh-tool-subagent-control", () => {
     const texts = prompt.data.content.flatMap((block) =>
       block.type === "text" ? [block.text] : [],
     );
-    expect(texts[0]).toBe("fork task");
-    expect(texts[1]).toContain("Your final answer is delivered automatically");
-    expect(texts[1]).not.toContain("send_message");
+    expect(texts.slice(0, 2)).toEqual(["Agent lead sent a message: ", "fork task"]);
+    expect(texts[2]).toContain("Your final answer is delivered automatically");
+    expect(texts[2]).not.toContain("send_message");
     expect(JSON.stringify(adapter.requests[1]!.messages)).toContain(
       "You are a subagent delegated by agent",
     );
@@ -248,10 +249,16 @@ describe("dsh-tool-subagent-control", () => {
   });
 
   it.each([
+    {
+      name: "send_message",
+      instruction:
+        "use send_message to send a self-contained result to the agent that delegated you",
+      other: "Use list_agents",
+    },
     { name: "send_message", instruction: "To message other agents", other: "Use list_agents" },
     { name: "list_agents", instruction: "Use list_agents", other: "To message other agents" },
   ])(
-    "gates $name guidance independently in an agent scope",
+    'gates $name guidance "$instruction" independently in an agent scope',
     async ({ name, instruction, other }) => {
       const { ctx, parent } = await setup([]);
       const { agent: child } = await ctx.agents.create({
@@ -298,6 +305,30 @@ describe("dsh-tool-subagent-control", () => {
       toolSet.dispose();
     },
   );
+
+  it("asks a delegated agent to report with send_message only while Team mode is off", async () => {
+    const { ctx, parent } = await setup([]);
+    await ctx.plugin(TeamService);
+    const { agent: child } = await ctx.agents.create({
+      sessionId: brandString<SessionId>("team-child"),
+      meta: { origin: "subagent", parentSession: parent.id },
+      setup: (_ctx, agent) => {
+        bindSubagentActivation(ctx, agent, parent);
+      },
+    });
+    const report =
+      "When you finish, use send_message to send a self-contained result to the agent that delegated you.";
+    const communication = async () =>
+      renderContextSnapshot(await ctx.systemPrompt.assemble({ agent: child, scope: child }));
+    await ctx.agentTeams.setEnabled(parent, false);
+    expect(await communication()).toContain(report);
+    await ctx.agentTeams.setEnabled(parent, true);
+    const team = await communication();
+    expect(team).not.toContain(report);
+    expect(team).toContain("To message other agents");
+    await ctx.agentTeams.setEnabled(parent, false);
+    expect(await communication()).toContain(report);
+  });
 
   it("keeps collaboration instructions when controls are mounted in an agent scope", async () => {
     const { ctx, parent, controlFiber } = await setup([]);
@@ -553,7 +584,12 @@ describe("dsh-tool-subagent-control", () => {
           )
         : [],
     );
-    expect(prompts).toEqual(["long work", "Agent lead sent a message: ", "also consider Y"]);
+    expect(prompts).toEqual([
+      "Agent lead sent a message: ",
+      "long work",
+      "Agent lead sent a message: ",
+      "also consider Y",
+    ]);
   });
 
   it("reports a delivery failure as an errored, not-delivered result", async () => {
@@ -749,6 +785,7 @@ describe("dsh-tool-subagent-control interrupt_agent", () => {
         : [],
     );
     expect(prompts).toEqual([
+      "Agent lead sent a message: ",
       "long work",
       "Agent lead sent a message: ",
       "parked follow-up",

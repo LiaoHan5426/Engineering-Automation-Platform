@@ -1,4 +1,5 @@
 import { defineComponent, h } from 'vue'
+import { extractTextContent } from '@deepseek-ai/dsh-llm/message'
 // Office toolview links target the input, not the temporary output. Rows show the
 // result's text blocks; rendered page images reach the model but are not displayed.
 import { IconBrowseOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -38,8 +39,7 @@ export const OfficeRow = defineComponent(
       // Image blocks flatten to JSON attachment references, so a settled result with only images shows no body.
       const output =
         'kind' in block
-          ? block.content.flatMap(part => (part.type === 'text' ? [part.text] : [])).join('\n') ||
-            null
+          ? extractTextContent(block.content, { separator: '\n' }) || null
           : row.output
       const path = office.filePath
       return h(

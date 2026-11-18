@@ -55,7 +55,7 @@ describe("forge registry", () => {
     },
   );
 
-  it("resolves remotes and change request URLs through the first provider that serves them", async () => {
+  it("resolves remotes and change request URLs through the provider that serves their host", async () => {
     ctx = await forgeContext();
     await provide(ctx, new FakeProvider("fake"));
     await provide(ctx, new FakeProvider("other"));
@@ -69,13 +69,43 @@ describe("forge registry", () => {
     expect(ctx.forge.changeRequestFromUrl("https://fake.test/Octo/Demo/change/7")).toEqual(ref(7));
     expect(ctx.forge.repositoryFromRemote("https://unknown.test/a/b")).toBeUndefined();
     expect(ctx.forge.changeRequestFromUrl("https://unknown.test/a/b/pull/1")).toBeUndefined();
+    expect(ctx.forge.changeRequestFromUrl("https://other.test/a/b/change/2")).toEqual({
+      repository: { forge: "other", host: "other.test", owner: "a", name: "b" },
+      number: 2,
+    });
+  });
+
+  it("refuses a provider that lists a host another provider serves, compared without case", async () => {
+    ctx = await forgeContext();
+    await provide(ctx, new FakeProvider("fake", ["fake.test", "shared.test"]));
+
+    await expect(
+      provide(ctx, new FakeProvider("other", ["other.test", "Shared.TEST"])),
+    ).rejects.toThrow('forge: host "Shared.TEST" is already served by the "fake" provider');
+    expect(ctx.forge.describe("other")).toBeUndefined();
+  });
+
+  it("describes the family of each registered provider", async () => {
+    ctx = await forgeContext();
+    await provide(ctx, new FakeProvider());
+
+    expect(ctx.forge.describe("fake")).toEqual({
+      forge: "fake",
+      label: "Fake",
+      changeRequestNoun: "pull-request",
+    });
+    expect(ctx.forge.describe("missing")).toBeUndefined();
   });
 
   it("delegates repository operations to the provider of their forge", async () => {
     ctx = await forgeContext();
     const provider = new FakeProvider();
     provider.heads.set("Octo/Demo:topic", [ref(3)]);
-    provider.readinessResult = { state: "unauthenticated", message: "run gh auth login" };
+    provider.readinessResult = {
+      state: "unauthenticated",
+      message: "run gh auth login",
+      signIn: { command: "gh auth login" },
+    };
     await provide(ctx, provider);
     const signal = new AbortController().signal;
 
@@ -84,6 +114,7 @@ describe("forge registry", () => {
     await expect(ctx.forge.readiness(demo, signal)).resolves.toEqual({
       state: "unauthenticated",
       message: "run gh auth login",
+      signIn: { command: "gh auth login" },
     });
   });
 
@@ -204,6 +235,7 @@ describe("forge registry", () => {
       truncated: false,
       pendingReview: null,
       viewerCanReview: false,
+      reviewEvents: [],
     };
     const readReview = vi.fn(async () => review);
     Object.assign(provider, { readReview });

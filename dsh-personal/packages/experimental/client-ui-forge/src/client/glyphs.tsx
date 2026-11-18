@@ -1,10 +1,10 @@
 /** Lifecycle glyphs of change requests and outcome glyphs of their checks. */
 import { h, Fragment, type VNodeChild } from 'vue'
 import clsx from 'clsx'
-import { IconCheckCircleFillRegular, IconCloseCircleFillRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCheckCircleFillRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { CheckState, ChecksRollup } from '@deepseek-ai/dsh-experimental-forge/types'
 import type { ChangeRequestTone } from './status.ts'
-import css from './ForgeTab.module.css'
+import css from './Forge.module.css'
 const BRANCH_ENDS = () => (h(Fragment, null, [h('circle', {
   'cx': '4',
   'cy': '3.5',
@@ -137,34 +137,14 @@ export function CheckGlyph({ state, size = 16 }: {
   readonly state: CheckState
   readonly size?: number | undefined
 }): VNodeChild {
-  const running = state === 'pending'
-  return (h('span', {
-    'class': clsx(css.checkGlyph, CHECK_TONE[state]),
-    'data-forge-check': state,
-    'aria-hidden': 'true',
-  }, [state === 'success' && h(IconCheckCircleFillRegular, {
-    'size': size,
-  }), state === 'failure' && h(IconCloseCircleFillRegular, {
-    'size': size,
-  }), state !== 'success' && state !== 'failure' && (h('svg', {
-    'width': size,
-    'height': size,
-    'viewBox': '0 0 16 16',
-    'fill': 'none',
-  }, [h('circle', {
-    'cx': '8',
-    'cy': '8',
-    'r': '6.25',
-    'stroke': 'currentColor',
-    'strokeWidth': 1.5,
-  }), running
-    ? h('path', {
-      'd': 'M8 3.5A4.5 4.5 0 0 1 8 12.5Z',
-      'fill': 'currentColor',
-    }) : h('path', {
-      'd': 'M5.5 8H10.5',
-      'stroke': 'currentColor',
-      'strokeWidth': 1.5,
-      'strokeLinecap': 'round',
-    })]))]))
+  return h('span', { class: clsx(css.checkGlyph, CHECK_TONE[state]), 'data-forge-check': state, 'aria-hidden': 'true' }, [
+    state === 'success' ? h(IconCheckCircleFillRegular, { size }) : h('svg', { width: size, height: size, viewBox: '0 0 16 16', fill: 'none' }, [
+      h('circle', { cx: '8', cy: '8', r: '7.25', stroke: 'currentColor', 'stroke-width': 1.3 }),
+      state === 'failure'
+        ? h('path', { d: 'M5.9 5.9L10.1 10.1M10.1 5.9L5.9 10.1', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linecap': 'square' })
+        : state === 'pending'
+          ? h('path', { d: 'M8 2.8A5.2 5.2 0 0 1 8 13.2Z', fill: 'currentColor' })
+          : h('path', { d: 'M5.5 8H10.5', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linecap': 'round' }),
+    ]),
+  ])
 }

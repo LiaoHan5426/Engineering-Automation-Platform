@@ -60,34 +60,18 @@ function hunkHighlights(hunk: WorkspaceDiffHunk, highlighter: CodeHighlighter): 
     new: highlightedSide(rows, 'new', highlighter),
   }
 }
-const DiffText = defineComponent(
-  (props: { text: string; spans: readonly HighlightSpan[] | undefined }) => {
-    return () => {
-      return h(
-        'span',
-        {
-          class: css.text,
-          'data-diff-code': props.spans === undefined ? undefined : '',
-        },
-        [
-          props.spans === undefined
-            ? props.text
-            : props.spans.map((span, index) =>
-              h(
-                'span',
-                {
-                  key: index,
-                  style: span.style,
-                },
-                [span.text],
-              ),
-            ),
-        ],
-      )
-    }
-  },
-  { name: 'DiffText', props: ['text', 'spans'] as const },
-)
+/** Draw a line directly; thousands of stateless rows need no component instances. */
+function diffText(props: { text: string; spans: readonly HighlightSpan[] | undefined }) {
+  return h('span', {
+    class: css.text,
+    'data-diff-code': props.spans === undefined ? undefined : '',
+  }, props.spans === undefined
+    ? props.text
+    : props.spans.map((span, index) => h('span', {
+      key: index,
+      style: span.style,
+    }, [span.text])))
+}
 /**
  * Number a hunk's lines: context lines count on both sides, deletions on the
  * old side, additions on the new side.
@@ -354,7 +338,7 @@ const SplitColumns = defineComponent(
                               },
                               [cell?.no ?? ''],
                             ),
-                            h(DiffText, {
+                            diffText({
                               text: cell?.text ?? '',
                               spans: spans,
                             }),
@@ -473,7 +457,7 @@ const TextDiff = defineComponent(
                                 },
                                 [row.left?.no ?? ''],
                               ),
-                              h(DiffText, {
+                              diffText({
                                 text: row.left?.text ?? '',
                                 spans:
                                       row.left === undefined
@@ -495,7 +479,7 @@ const TextDiff = defineComponent(
                                 },
                                 [row.right?.no ?? ''],
                               ),
-                              h(DiffText, {
+                              diffText({
                                 text: row.right?.text ?? '',
                                 spans:
                                       row.right === undefined
@@ -537,7 +521,7 @@ const TextDiff = defineComponent(
                             },
                             [row.kind === 'add' ? '+' : row.kind === 'del' ? '-' : ' '],
                           ),
-                          h(DiffText, {
+                          diffText({
                             text: row.text,
                             spans:
                                   row.kind === 'add'

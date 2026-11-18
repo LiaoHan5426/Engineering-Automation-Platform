@@ -3,7 +3,7 @@ import { h as vueH } from "vue";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "./vue-render.client.ts";
 import { afterEach, expect, it, vi } from "vite-plus/test";
 import { brandString } from "@deepseek-ai/dsh-brand";
-import type { ToolCallId } from "@deepseek-ai/dsh-llm/types";
+import type { ActionCardId } from "@deepseek-ai/dsh-action-cards/types";
 import type { SessionId } from "@deepseek-ai/dsh-session/types";
 import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
 import { makeTranslate } from "@deepseek-ai/dsh-client-test-runtime";
@@ -14,7 +14,7 @@ import type { RecommendationDetails } from "@deepseek-ai/dsh-plugin-recommendati
 import { PluginCardBody, type CatalogDetails, type PluginCardProps } from "../src/client/Card.tsx";
 import { de, en, es, fr, ja, pt, ru, zh } from "../src/client/locales.ts";
 afterEach(cleanup);
-const callId = brandString<ToolCallId>("call-plugin-1");
+const cardId = brandString<ActionCardId>("call-plugin-1");
 const ACTION = "enable_official_plugin";
 type Act = (verb: string, payload?: ActionCardFields) => Promise<ActionCardResult | undefined>;
 type Describe = PluginCardProps["describe"];
@@ -25,7 +25,7 @@ const available: RecommendationDetails = {
   enabled: false,
 };
 const proposal = {
-  callId,
+  cardId,
   turn: 1,
   action: ACTION,
   title: "搜索旧会话",
@@ -45,13 +45,14 @@ function props(
 ) {
   return {
     proposal,
-    decision: decision === undefined ? undefined : { callId, action: ACTION, ...decision },
+    decision: decision === undefined ? undefined : { cardId, action: ACTION, ...decision },
     sessionId: brandString<SessionId>("session-1"),
     summary: vueH("strong", {}, [proposal.title]),
+    fallback: vueH("p", {}, ["frame fallback"]),
     Folded: FoldedText,
     act: vi.fn<Act>(async () => ({
       status: "settled",
-      decision: { callId, action: ACTION, phase: "enabled" },
+      decision: { cardId, action: ACTION, phase: "enabled" },
     })),
     catalog: store,
     describe: vi.fn<Describe>(async () => details),
@@ -63,7 +64,7 @@ function props(
 async function shown(value: PluginCardProps) {
   const view = render(vueH(PluginCardBody, { ...value }));
   await waitFor(() => {
-    expect(value.describe).toHaveBeenCalledWith("session-1", callId);
+    expect(value.describe).toHaveBeenCalledWith("session-1", cardId);
   });
   await act(async () => {});
   return view;
@@ -120,7 +121,7 @@ it.each([
     await act(async () => {
       pending.resolve({
         status: "settled",
-        decision: { callId, action: ACTION, phase: "dismissed" },
+        decision: { cardId, action: ACTION, phase: "dismissed" },
       });
     });
     expect(screen.getByRole("button", { name: clicked }).hasAttribute("disabled")).toBe(false);
@@ -270,10 +271,11 @@ it("renders a remembered plugin at once on a later card while refusals and lost 
   expect(screen.getByRole("alert").textContent).toBe(zh.unavailable);
   expect(screen.queryByRole("button", { name: "启用" })).toBeNull();
 });
-it("renders only the frame summary when the card names no plugin", () => {
+it("shows only the frame fallback when the card names no plugin", () => {
   const value = { ...props(), proposal: { ...proposal, details: {} } };
   render(vueH(PluginCardBody, { ...value }));
-  expect(screen.getByText("搜索旧会话")).toBeTruthy();
+  expect(screen.getByText("frame fallback")).toBeTruthy();
+  expect(screen.queryByText("搜索旧会话")).toBeNull();
   expect(screen.queryByRole("button")).toBeNull();
   expect(value.describe).not.toHaveBeenCalled();
 });

@@ -3,7 +3,6 @@ import {
   createNoticeSource,
   createPanelSource,
   createStreamSource,
-  createVisibilitySource,
   foldStates,
 } from "../src/client/source.ts";
 import type { PanelStream } from "../src/client/source.ts";
@@ -371,26 +370,5 @@ describe("createNoticeSource", () => {
       seq: 1,
     });
     expect(undo).not.toHaveBeenCalled();
-  });
-});
-
-describe("createVisibilitySource", () => {
-  it("starts hidden and notifies only when the visibility changes", () => {
-    const visibility = createVisibilitySource();
-    const listener = vi.fn();
-    const unsubscribe = visibility.hooks.visible.subscribe(listener);
-    expect(visibility.hooks.visible.getSnapshot()).toBe(false);
-
-    visibility.set(false);
-    expect(listener).not.toHaveBeenCalled();
-    visibility.set(true);
-    visibility.set(true);
-    expect(listener).toHaveBeenCalledOnce();
-    expect(visibility.hooks.visible.getSnapshot()).toBe(true);
-
-    unsubscribe();
-    visibility.set(false);
-    expect(listener).toHaveBeenCalledOnce();
-    expect(visibility.hooks.visible.getSnapshot()).toBe(false);
   });
 });

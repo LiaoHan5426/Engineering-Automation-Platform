@@ -174,6 +174,32 @@ function childMenu() {
   return screen.getByRole("menuitem", { name: "First app" }).closest<HTMLElement>('[role="menu"]')!;
 }
 describe("Menu submenus", () => {
+  it("closes when another popup trigger isolates pointer presses", async () => {
+    const close = vi.fn();
+    render(h(Fragment, null, [
+      h("button", { type: "button", "aria-haspopup": "menu", onPointerdown: (event: PointerEvent) => event.stopPropagation(), onClick: (event: MouseEvent) => event.stopPropagation() }, "Isolated more"),
+      h("button", { type: "button" }, "Plain"),
+      h(Menu, { open: true, items: entries, onClose: close }, { anchor: () => h("button", { type: "button", "aria-haspopup": "menu" }, "Own") }),
+    ]));
+    await act(() => fireEvent.click(screen.getByRole("button", { name: "Own" })));
+    await act(() => fireEvent.click(screen.getByRole("menuitem", { name: "Applications" })));
+    await act(() => fireEvent.click(screen.getByRole("button", { name: "Plain" })));
+    expect(close).not.toHaveBeenCalled();
+    const isolated = screen.getByRole("button", { name: "Isolated more" });
+    await act(() => fireEvent.pointerDown(isolated));
+    expect(close).not.toHaveBeenCalled();
+    await act(() => fireEvent.click(isolated));
+    expect(close).toHaveBeenCalledOnce();
+  });
+  it("leaves a claimed popup trigger to its owning popup", async () => {
+    const close = vi.fn();
+    render(h(Fragment, null, [
+      h("button", { type: "button", "data-context-menu-trigger": "", "aria-haspopup": "menu" }, "Claimed"),
+      h(Menu, { open: true, items: entries, onClose: close, isExternalTrigger: (node: Node) => node instanceof Element && node.hasAttribute("data-context-menu-trigger") }),
+    ]));
+    await act(() => fireEvent.click(screen.getByRole("button", { name: "Claimed" })));
+    expect(close).not.toHaveBeenCalled();
+  });
   it("links a portaled named anchor to its menu and restores existing controls after closing", async () => {
     const anchor = () => h("button", { "aria-controls": "existing-panel" }, "Linked anchor");
     const view = render(

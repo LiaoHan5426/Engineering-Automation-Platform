@@ -36,7 +36,11 @@ async function setup(
     ]),
   );
   if (options.settle !== undefined)
-    ctx.provide("loader", { await: options.settle, entries: () => [] } as never);
+    ctx.provide("loader", {
+      await: options.settle,
+      entries: () => [],
+      root: { data: [] },
+    } as never);
   const server: Pick<WebServer, "host" | "protocol" | "registerFallback"> = {
     host: "127.0.0.1",
     protocol: "http:",

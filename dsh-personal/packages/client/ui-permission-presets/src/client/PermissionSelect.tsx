@@ -1,6 +1,7 @@
 import { defineComponent, Fragment, h, ref, watchEffect, type Component, type VNodeChild } from 'vue'
 import clsx from 'clsx'
 import {
+  PermissionIconAutoReviewMedium, PermissionIconFullAccessMedium, PermissionIconReadOnlyMedium, PermissionIconWorkspaceWriteMedium,
   IconChevronDownOutlineRegular, Menu, PermissionIconAutoReviewRegular, PermissionIconFullAccessRegular,
   PermissionIconReadOnlyRegular, PermissionIconWorkspaceWriteRegular, RiskConfirmation,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -13,14 +14,14 @@ import { PERMISSION_ACCESS_NS } from './locales.ts'
 import { AUTO_REVIEW_PRESET as AUTO_REVIEW, displayPermissionPreset, FULL_ACCESS_PRESET as FULL_ACCESS } from './presentation.ts'
 import css from './PermissionSelect.module.css'
 
-const permissionGlyphs = new Map<string, Component>([
-  ['read-only', PermissionIconReadOnlyRegular],
-  ['workspace-write', PermissionIconWorkspaceWriteRegular],
-  [FULL_ACCESS, PermissionIconFullAccessRegular],
-  [AUTO_REVIEW, PermissionIconAutoReviewRegular],
+const permissionGlyphs = new Map<string, { menu: Component; trigger: Component }>([
+  ['read-only', { menu: PermissionIconReadOnlyRegular, trigger: PermissionIconReadOnlyMedium }],
+  ['workspace-write', { menu: PermissionIconWorkspaceWriteRegular, trigger: PermissionIconWorkspaceWriteMedium }],
+  [FULL_ACCESS, { menu: PermissionIconFullAccessRegular, trigger: PermissionIconFullAccessMedium }],
+  [AUTO_REVIEW, { menu: PermissionIconAutoReviewRegular, trigger: PermissionIconAutoReviewMedium }],
 ])
-function permissionGlyph(value: string): VNodeChild {
-  const icon = permissionGlyphs.get(value)
+function permissionGlyph(value: string, surface: 'menu' | 'trigger'): VNodeChild {
+  const icon = permissionGlyphs.get(value)?.[surface]
   return icon === undefined ? undefined : h(icon)
 }
 function permissionLabel(value: string, name: string, t: PermissionSelectProps['t']): string {
@@ -76,7 +77,7 @@ export const PermissionSelect = defineComponent((props: PermissionSelectProps) =
     const current = currentCatalog.options.find(option => option.value === currentValue)
     const label = permissionLabel(currentValue, current?.name ?? currentValue, props.t)
     const items: MenuEntry[] = currentCatalog.options.map((option) => {
-      const icon = permissionGlyph(option.value)
+      const icon = permissionGlyph(option.value, 'menu')
       const text = permissionLabel(option.value, option.name, props.t)
       const badge = option.value === AUTO_REVIEW ? props.t('auto.badge') : undefined
       return {
@@ -94,7 +95,7 @@ export const PermissionSelect = defineComponent((props: PermissionSelectProps) =
         open: open.value, items, selectedId: currentValue, onSelect: choose,
         onClose: () => { open.value = false }, side: 'top', portal: true,
       }, { anchor: () => {
-        const icon = permissionGlyph(currentValue)
+        const icon = permissionGlyph(currentValue, 'trigger')
         return h('button', {
           type: 'button', class: css.trigger, 'aria-label': props.t('mode', { name: label }),
           title: current === undefined ? undefined : optionDescription(current, props.t),

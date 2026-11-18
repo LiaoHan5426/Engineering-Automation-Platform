@@ -168,6 +168,7 @@ describe("Sidebar chat registration", () => {
     expect(retain).toHaveBeenCalledWith(ADDRESS, {
       source: "sidebarChat",
       signal: controller.signal,
+      facets: { conversation: true },
     });
     const completion = stream.next();
     await Promise.resolve();

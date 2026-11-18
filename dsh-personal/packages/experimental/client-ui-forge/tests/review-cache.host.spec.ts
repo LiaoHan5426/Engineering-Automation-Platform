@@ -16,6 +16,7 @@ function review(head: string): ForgeReviewData {
     truncated: false,
     pendingReview: null,
     viewerCanReview: false,
+    reviewEvents: [],
   };
 }
 

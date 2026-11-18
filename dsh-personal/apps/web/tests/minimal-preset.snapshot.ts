@@ -165,7 +165,6 @@ describe("minimal agent preset", () => {
         "tools": [
           "bash",
           "read_image",
-          "working_directory",
         ],
       }
     `);
@@ -507,7 +506,6 @@ describe("minimal image reading", () => {
     expect(session.requestHeader()?.tools?.map((tool) => tool.name)).toEqual([
       "bash",
       "read_image",
-      "working_directory",
     ]);
     const result = session.snapshotEvents().find((event) => event.type === "tool/result");
     expect(result?.data.message.isError).toBe(false);

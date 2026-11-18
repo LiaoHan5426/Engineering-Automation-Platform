@@ -216,7 +216,7 @@ async function fixture(
     cwd: home,
     installAnchor: join(home, "package.json"),
     startedBundles: bundles,
-    overlays: [],
+    overlayPaths: [],
     telemetryDisabledEnv: undefined,
   };
   writeFileSync(

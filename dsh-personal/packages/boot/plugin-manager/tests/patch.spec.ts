@@ -38,7 +38,7 @@ async function fixture(text?: string, rows: object[] = []): Promise<ProfileConte
     cwd: home,
     home,
     startedBundles: ["bundle"],
-    overlays: [],
+    overlayPaths: [],
     telemetryDisabledEnv: undefined,
   };
 }
@@ -117,9 +117,9 @@ it("updates the last matching named override and leaves mismatched names untouch
     },
     { id: "tool", name: "another-package", disabled: true },
   ]);
-  expect(applyEntryPatches([{ id: "tool", name: "package" }], patches, () => {})).toMatchObject([
-    { id: "tool", name: "package", disabled: false },
-  ]);
+  expect(
+    applyEntryPatches([{ id: "tool", name: "package" }], patches, () => {}).data,
+  ).toMatchObject([{ id: "tool", name: "package", disabled: false }]);
   expect(await writePluginEnabled(profile, "tool", "package", true)).toBe(false);
   expect(await readFile(profile.patchPath, "utf8")).toBe(text);
   expect(await writePluginEnabled(profile, "tool", "package", false)).toBe(true);

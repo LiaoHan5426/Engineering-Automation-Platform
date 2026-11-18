@@ -13,7 +13,7 @@ const KEPT_END = 12
 /** Shortest start worth shortening; a text this much longer than its kept end is split. */
 const MIN_START = 4
 /** Hover delay before the complete path shows, so moving across a list does not flash it. */
-const TOOLTIP_DELAY_MS = 400
+const TOOLTIP_DELAY_MS = 500
 /** Split off the end that stays whole, by characters so a surrogate pair is never cut. */
 function partsOf(text: string): {
   readonly start: string

@@ -65,6 +65,7 @@ function observe(
 }
 function fixture() {
   const state = createSnapshotStore<PermissionView>({
+    windowsProvider: { value: null, busy: false, error: null },
     runtime: { value: { persistent: false, writable: true }, busy: false, error: null },
     system: { value: null, busy: true, error: null },
     applications: { value: null, busy: true, error: null },
@@ -847,7 +848,9 @@ it.each([true, false, null] as const)(
         ...f.props,
       }),
     );
-    const desktop = screen.getByRole("group", { name: en.windowsDesktop });
+    expect(screen.getByText(en.previewNotice)).toBeTruthy();
+  expect(screen.getByText(/helperPath/)).toBeTruthy();
+  const desktop = screen.getByRole("group", { name: en.windowsDesktop });
     const capture = screen.getByRole("group", { name: en.windowsCapture });
     expect(
       within(desktop).getByText(
@@ -927,3 +930,25 @@ it.each([
     } else expect(onDismiss).toHaveBeenCalledOnce();
   },
 );
+
+it("shows Windows setup above the controls even when the helper is missing", async () => {
+  const f = fixture();
+  await f.publish({ system: { value: null, error: "helper missing", busy: false }, windowsProvider: { value: true, error: null, busy: false } });
+  render(h(PermissionPanel, { ...f.props }));
+  const instructions = screen.getByText(/pnpm run build:native:x64/);
+  const firstSetting = screen.getByRole("group", { name: en.defaultTitle });
+  expect(instructions.compareDocumentPosition(firstSetting) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByText(/helperPath/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: en.request })).toBeNull();
+});
+it("keeps the provider lookup diagnostic beside the native error until the platform is known", async () => {
+  const f = fixture();
+  await f.publish({ system: { value: null, error: "helper missing", busy: false }, windowsProvider: { value: null, error: "offline", busy: false } });
+  render(h(PermissionPanel, { ...f.props }));
+  const diagnostic = en.providerLookupFailed.replace("{message}", "offline");
+  expect(screen.getByText(diagnostic)).toBeTruthy();
+  await act(() => fireEvent.click(screen.getByRole("button", { name: en.retry })));
+  expect(f.props.refresh).toHaveBeenCalledTimes(2);
+  await f.publish({ system: { value: value.system, error: null, busy: false } });
+  expect(screen.queryByText(diagnostic)).toBeNull();
+});

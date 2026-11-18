@@ -88,6 +88,66 @@ describe("unique object-name prefix search", () => {
   });
 });
 
+describe("operational upstream sync state", () => {
+  const commit = "ab".repeat(20);
+  const commits = new Set([commit, commit.slice(0, 7)]);
+  const file = "upstream-sync-state.json";
+
+  it("accepts only the four full commit fields and preserves null state values", () => {
+    const source = JSON.stringify({
+      schemaVersion: 1,
+      acceptedUpstreamCommit: commit,
+      acceptedPersonalCommit: null,
+      pending: { targetUpstreamCommit: commit, personalBaseCommit: commit },
+    }, null, 2);
+    expect(findRepositoryReferences(file, source, commits)).toEqual([]);
+    expect(findRepositoryReferences(file, JSON.stringify({ acceptedPersonalCommit: commit.toUpperCase() }), commits)).toEqual([]);
+  });
+
+  it("still detects the same commit in another field on the same line", () => {
+    const source = JSON.stringify({ acceptedUpstreamCommit: commit, note: commit });
+    expect(findRepositoryReferences(file, source, commits)).toEqual([{ file, line: 1, kind: "commit-hash" }]);
+    const multiline = JSON.stringify({ acceptedUpstreamCommit: commit, note: commit }, null, 2);
+    expect(findRepositoryReferences(file, multiline, commits)).toEqual([{ file, line: 3, kind: "commit-hash" }]);
+  });
+
+  it.each([
+    { targetUpstreamCommit: commit },
+    { personalBaseCommit: commit },
+    { candidate: { targetUpstreamCommit: commit } },
+    { pending: { acceptedUpstreamCommit: commit } },
+    { pending: { nested: { targetUpstreamCommit: commit } } },
+    { pending: [{ targetUpstreamCommit: commit }] },
+    { acceptedUpstreamCommit: { value: commit } },
+    { acceptedUpstreamCommit: commit.slice(0, 7) },
+    { acceptedUpstreamCommit: "commit " + commit },
+  ])("keeps nonmatching state values detectable: %j", (value) => {
+    expect(findRepositoryReferences(file, JSON.stringify(value), commits)).toEqual([{ file, line: 1, kind: "commit-hash" }]);
+  });
+
+  it.each(["other-state.json", "nested/upstream-sync-state.json", "source.ts", "notes.md"])(
+    "does not extend the exception to %s", (other) => {
+      expect(findRepositoryReferences(other, JSON.stringify({ acceptedUpstreamCommit: commit }), commits)).toEqual([
+        { file: other, line: 1, kind: "commit-hash" },
+      ]);
+    },
+  );
+
+  it.each([
+    '{"acceptedUpstreamCommit":"' + commit + '",}',
+    '{"acceptedUpstreamCommit":"' + commit + '"',
+    '{/* comment */"acceptedUpstreamCommit":"' + commit + '"}',
+  ])("keeps malformed JSON subject to hash detection", (source) => {
+    expect(findRepositoryReferences(file, source, commits)).toEqual([{ file, line: 1, kind: "commit-hash" }]);
+  });
+
+  it("keeps organization URLs detectable even in state metadata", () => {
+    expect(findRepositoryReferences(file, JSON.stringify({ acceptedUpstreamCommit: commit, acceptedPersonalCommit: organizationUrl }), commits)).toEqual([
+      { file, line: 1, kind: "organization-url" },
+    ]);
+  });
+});
+
 describe("maintained repository reference policy", () => {
   const numericCommit = String(6_344_383);
 

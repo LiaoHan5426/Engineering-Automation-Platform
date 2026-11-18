@@ -10,7 +10,15 @@ import { fileURLToPath } from "node:url";
 import type { Browser, Locator, Page } from "playwright";
 import { chromium } from "playwright";
 import { HIDDEN_BUNDLES } from "@deepseek-ai/dsh-official-bundles";
-import { afterAll, beforeAll, describe, expect, it, onTestFailed } from "vite-plus/test";
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  onTestFailed,
+  onTestFinished,
+} from "vite-plus/test";
 import { join } from "node:path";
 import {
   assertFixtureInventory,
@@ -21,7 +29,7 @@ import {
   webSnapshotMode,
   type WebScaffold,
 } from "./scaffold.ts";
-import { ZH_BROWSER_LOCALE, saveFailureShot } from "./support.ts";
+import { ZH_BROWSER_LOCALE, openSettings, saveFailureShot } from "./support.ts";
 
 const SNAPSHOT_DIR = fileURLToPath(new URL("./expected/plugin-config", import.meta.url));
 const OFFICIAL_EXPECTED = join(SNAPSHOT_DIR, "official.expected.md");
@@ -30,6 +38,9 @@ const BUNDLE_EXPECTED = join(SNAPSHOT_DIR, "bundle.expected.md");
 const FIXTURE_PLUGINS = fileURLToPath(new URL("./fixtures/plugins", import.meta.url));
 const MODE = webSnapshotMode();
 const UNUSED_KEY_ENV = "DSH_PLUGIN_CONFIG_E2E_UNUSED_KEY";
+// The base profile composes PowerShell on Windows and Bash elsewhere.
+const SHELL_ENTRY_ID = process.platform === "win32" ? "pwsh-sandbox" : "bash-sandbox";
+const SHELL_DEFAULT_TIMEOUT_MS = process.platform === "win32" ? "120000" : "60000";
 
 describe("web e2e: plugin configuration pages", () => {
   let scaffold: WebScaffold;
@@ -473,14 +484,14 @@ describe("web e2e: plugin configuration pages", () => {
     const panel = await openPlugins();
     await openPage(panel, "终端");
     const entry = [...scaffold.ctx.loader.entries()].find(
-      (row) => row.options.id === "bash-sandbox",
+      (row) => row.options.id === SHELL_ENTRY_ID,
     )!;
     const fiber = entry.fiber;
 
     const timeout = panel.getByLabel("命令超时（毫秒）");
     await timeout.waitFor({ timeout: 10_000 });
     // The composed default this deployment ships, before any user layer.
-    expect(await timeout.inputValue()).toBe("60000");
+    expect(await timeout.inputValue()).toBe(SHELL_DEFAULT_TIMEOUT_MS);
     await timeout.fill("12000");
     await timeout.blur();
 
@@ -554,7 +565,7 @@ describe("web e2e: plugin configuration pages", () => {
     // The reset stages the composed default; the document still carries the
     // override until the save lands.
     await panel.getByRole("button", { name: "恢复默认" }).click();
-    await expect.poll(() => timeout.inputValue(), { timeout: 5_000 }).toBe("60000");
+    await expect.poll(() => timeout.inputValue(), { timeout: 5_000 }).toBe(SHELL_DEFAULT_TIMEOUT_MS);
     expect(await settingsDocument()).toContain("timeoutMs: 12000");
 
     await panel.getByRole("button", { name: "保存", exact: true }).click();
@@ -562,7 +573,7 @@ describe("web e2e: plugin configuration pages", () => {
     await expect
       .poll(async () => (await settingsDocument()).includes("timeoutMs"), { timeout: 10_000 })
       .toBe(false);
-    expect(await timeout.inputValue()).toBe("60000");
+    expect(await timeout.inputValue()).toBe(SHELL_DEFAULT_TIMEOUT_MS);
     expect(await panel.getByText("已覆盖").count()).toBe(0);
     expect(tripwire.pageErrors).toEqual([]);
   }, 60_000);
@@ -601,12 +612,14 @@ describe("web e2e: plugin configuration pages", () => {
         .getByText("来自夹具的区块内容")
         .count(),
     ).toBe(1);
+    const fixtureSource = `file:${join(FIXTURE_PLUGINS, "fixture-live-client")}`;
+    expect(await bundlePage.getByText(fixtureSource, { exact: true }).count()).toBe(1);
     const bundleSnapshot = await captureStableAria(
       page,
       "[data-plugin-panel]",
       scaffold.workspaceCwd,
       {
-        replacements: [[FIXTURE_PLUGINS, "{{fixtures}}"]],
+        replacements: [[fixtureSource, "file:{{fixtures}}/fixture-live-client"]],
       },
     );
     await compareOrRefreshGolden(BUNDLE_EXPECTED, bundleSnapshot, MODE);
@@ -658,4 +671,63 @@ describe("web e2e: plugin configuration pages", () => {
       "web-search.expected.md",
     ]);
   });
+});
+
+describe("web e2e: a community plugin settings page", () => {
+  it("shows a settings.section entry in Settings and on its bundle row", async () => {
+    const scaffold = await launchWebScaffold({
+      profile: { packages: [{ dir: join(FIXTURE_PLUGINS, "fixture-settings-section") }] },
+    });
+    onTestFinished(() => scaffold.close());
+    const browser = await chromium.launch();
+    onTestFinished(() => browser.close());
+    const page = await browser.newPage({
+      viewport: { width: 1680, height: 1000 },
+      locale: ZH_BROWSER_LOCALE,
+    });
+    const console = watchConsole(page);
+    onTestFailed(() => saveFailureShot(page, "web-e2e-plugin-config-settings-section"));
+    await page.goto(scaffold.authenticatedUrl, { waitUntil: "load" });
+    await page
+      .getByRole("navigation", { name: "全局面板" })
+      .getByRole("button", { name: "插件", exact: true })
+      .click();
+    const panel = page.locator("[data-plugin-panel]");
+    await panel
+      .getByRole("button", { name: "查看 @fixture/settings-section", exact: true })
+      .click({ timeout: 20_000 });
+    const row = panel.locator("[data-plugin-row]", { hasText: "fixture-settings-section" });
+    await row.waitFor({ timeout: 10_000 });
+    const configure = panel.getByRole("button", { name: "配置 @fixture/settings-section" });
+    expect(await configure.count()).toBe(0);
+
+    // Switched on, the browser half mounts and its settings page claims the row.
+    await panel.getByRole("switch", { name: "启用 @fixture/settings-section" }).click();
+    await configure.waitFor({ timeout: 30_000 });
+    await configure.click();
+    const rowPage = panel.locator(
+      '[data-plugin-row-detail="@fixture/settings-section#fixture-settings-section"]',
+    );
+    await rowPage.waitFor({ timeout: 10_000 });
+    await rowPage
+      .getByRole("region", { name: "Fixture settings", exact: true })
+      .getByText("Settings content from the fixture", { exact: true })
+      .waitFor({ timeout: 10_000 });
+
+    // Settings keeps the same page in its navigation.
+    await openSettings(page, "zh");
+    const dialog = page.getByRole("dialog", { name: "设置", exact: true });
+    await dialog
+      .getByRole("navigation")
+      .getByRole("button", { name: "Fixture settings", exact: true })
+      .click();
+    await dialog
+      .getByRole("region", { name: "Fixture settings", exact: true })
+      .getByText("Settings content from the fixture", { exact: true })
+      .waitFor({ timeout: 10_000 });
+    await page.keyboard.press("Escape");
+    await expect.poll(() => dialog.count(), { timeout: 5_000 }).toBe(0);
+    expect(console.pageErrors).toEqual([]);
+    expect(console.warnings).toEqual([]);
+  }, 90_000);
 });

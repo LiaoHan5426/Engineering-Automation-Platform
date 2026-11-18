@@ -166,7 +166,7 @@ it("mounts a profile-denied row disabled and the same row active once exempted",
     cwd: dir,
     installAnchor: join(dir, "package.json"),
     startedBundles: [],
-    overlays: [],
+    overlayPaths: [],
     telemetryDisabledEnv: undefined,
   } satisfies ProfileContext);
   const row = { id: "row", name: pathToFileURL(join(pluginDir, "index.mjs")).href };

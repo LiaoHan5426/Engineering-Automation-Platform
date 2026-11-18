@@ -33,6 +33,12 @@ const tmp = (): string => {
   return dir;
 };
 
+/** Give a fake Loader the root group that the startup audit reads for rejected options. */
+function withRoot(ctx: Context, rows: unknown[] = []): Context {
+  const root = { data: rows, getOuterStack: () => [] };
+  Object.assign(ctx.loader, { root });
+  return ctx;
+}
 describe("resolveConfigPath", () => {
   it("resolves relative to the given cwd outside replay mode", () => {
     expect(resolveConfigPath("./cordis.yml", undefined, `${sep}base`)).toBe(
@@ -611,7 +617,7 @@ describe("installFailLoud", () => {
     const error = new Error("assembled activation failure");
     const warn = vi.fn();
     const audit = auditStartupEntries(
-      {
+      withRoot({
         loader: {
           entries: () =>
             ["broken-a", "broken-b"].map((name) => ({
@@ -626,7 +632,7 @@ describe("installFailLoud", () => {
               },
             })),
         },
-      } as unknown as Context,
+      } as unknown as Context),
       NAME,
       warn,
     );
@@ -778,10 +784,13 @@ describe("auditStartupEntries", () => {
     parent?: { tree: { import(name: string): Promise<unknown> } };
   }
 
-  const ctxWith = (entries: FakeEntry[]): Context =>
-    ({
-      loader: { entries: () => entries.values() },
-    }) as unknown as Context;
+  const ctxWith = (entries: FakeEntry[], rows: unknown[] = []): Context =>
+    withRoot(
+      {
+        loader: { entries: () => entries.values() },
+      } as unknown as Context,
+      rows,
+    );
 
   const fiber = (
     state: number,
@@ -1017,6 +1026,43 @@ describe("auditStartupEntries", () => {
     },
   );
 
+  it("fails startup for required options their group rejected and lists optional ones", async () => {
+    const error = await auditStartupEntries(
+      ctxWith(
+        [],
+        [
+          { id: "webserver", name: "./webserver.mjs", disabled: "yes" },
+          { id: "tool-todo", name: 7 },
+          { id: "valid", name: "./valid.mjs" },
+        ],
+      ),
+      NAME,
+      vi.fn(),
+    ).catch((error: unknown) => error);
+    expect(error).toBeInstanceOf(StartupError);
+    const message = (error as Error).message;
+    expect(message).toContain(`${NAME}: startup failed: 1 required plugin did not activate`);
+    expect(message).toContain(
+      "  webserver (required)\n    Package: ./webserver.mjs\n    invalid entry options: EntryValidationError: invalid entry options:\n      - disabled must be a boolean (at disabled)",
+    );
+    expect(message).toContain("  tool-todo\n    Package: 7\n");
+    expect(message).not.toContain("valid.mjs");
+    expect(
+      (error as StartupError).entries.map((entry) => [entry.id, entry.required, entry.fiberState]),
+    ).toEqual([
+      ["webserver", true, undefined],
+      ["tool-todo", false, undefined],
+    ]);
+  });
+
+  it("warns about rejected options without an id", async () => {
+    const warn = vi.fn();
+    await auditStartupEntries(ctxWith([], [null]), NAME, warn);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("(no id) (undefined): invalid entry options:"),
+    );
+  });
+
   it("omits an error cause when required plugins are only waiting for services", async () => {
     const error = await auditStartupEntries(
       ctxWith([
@@ -1154,7 +1200,7 @@ describe("loadOverlayPatches", () => {
       `${NAME}: failed to read overlay`,
     );
     const malformed = join(dir, "malformed.yml");
-    writeFileSync(malformed, ": bad");
+    writeFileSync(malformed, "- [bad\n");
     expect(() => loadOverlayPatches(NAME, malformed)).toThrow(`${NAME}: failed to parse overlay`);
     const mapping = join(dir, "mapping.yml");
     writeFileSync(mapping, "id: target\n");
@@ -1548,7 +1594,7 @@ describe("boot", () => {
 
   it.each([
     ["missing", undefined, "config file not found"],
-    ["malformed", "invalid: [unclosed\n", "unexpected end"],
+    ["malformed", "invalid: [unclosed\n", "must be sufficiently indented and end with a ] (at "],
     ["non-array", "entries: []\n", "top-level array"],
   ])("rejects a %s root configuration", async (_kind, content, message) => {
     const dir = tmp();

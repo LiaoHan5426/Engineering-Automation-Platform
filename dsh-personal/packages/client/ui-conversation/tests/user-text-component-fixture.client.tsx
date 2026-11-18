@@ -1,6 +1,8 @@
 /** Production UserText assembly for component units that supply their own outer Slot seats. */
 import { Context } from "@deepseek-ai/cordis";
-import { defineComponent, h, type VNodeChild } from "vue";
+import { computed, defineComponent, h, type ComputedRef, type VNodeChild } from "vue";
+import type { KeyedSnapshotSelectorHook } from "@deepseek-ai/dsh-client-ui-slots";
+import type { PathPresence } from "../../ui-reference/src/client/path-presence.ts";
 type ComponentProps<C> = C extends new (...args: never[]) => { $props: infer P }
   ? P
   : C extends (props: infer P) => unknown
@@ -44,6 +46,17 @@ interface UserTextFixtureActions {
 }
 
 type UserTextProps = ComponentProps<typeof UserText>;
+
+/** Bind a fixed Host presence value with the production selector overloads. */
+export function fixedPathPresence(presence: PathPresence | undefined): KeyedSnapshotSelectorHook<PathPresence> {
+  type Key = Parameters<KeyedSnapshotSelectorHook<PathPresence>>[0];
+  function usePresence(key: Key): ComputedRef<PathPresence | undefined>;
+  function usePresence<Selected>(key: Key, selector: (value: PathPresence) => Selected, equal?: (left: Selected, right: Selected) => boolean): ComputedRef<Selected | undefined>;
+  function usePresence<Selected>(_key: Key, selector?: (value: PathPresence) => Selected): ComputedRef<PathPresence | Selected | undefined> {
+    return computed(() => presence === undefined || selector === undefined ? presence : selector(presence));
+  }
+  return usePresence;
+}
 
 /** Framework seats are supplied by real Slot integration; component units fail if they consume one. */
 const unusedFrameworkSeat = (): never => {
@@ -132,6 +145,7 @@ export function createUserTextFixture(
       throw new Error("This fixture has no skill navigation action");
     });
   const t = makeTranslate(referenceZh, commonZh);
+  const usePathPresence = fixedPathPresence("present");
   const renderSlot: UserTextProps["renderSlot"] = (
     name: string,
     input: object,
@@ -152,14 +166,17 @@ export function createUserTextFixture(
         return h(SessionReference, owner as ComponentProps<typeof SessionReference>);
       case "file":
         return h(FileReference, {
+          ...userTextFrameworkProps,
           ...owner,
+          node: owner.node,
           openFile,
+          usePathPresence,
           t,
           useContextMenu: contextMenuHook(),
           resolveFilePath: (path: string) => path,
-        } as ComponentProps<typeof FileReference>);
+        } satisfies ComponentProps<typeof FileReference>);
       case "folder":
-        return h(FolderReference, owner as ComponentProps<typeof FolderReference>);
+        return h(FolderReference, { ...userTextFrameworkProps, ...owner, node: owner.node, usePathPresence } satisfies ComponentProps<typeof FolderReference>);
       case "skill":
         return h(SkillReference, { ...owner, openSkill } as ComponentProps<typeof SkillReference>);
       case "command":

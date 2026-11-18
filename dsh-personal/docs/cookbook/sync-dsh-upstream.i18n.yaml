@@ -4,28 +4,28 @@
 #   pnpm run verify-translation-pairing --write docs/cookbook/sync-dsh-upstream.md
 /cookbook-synchronizing-dsh-personal-with-upstream:
   en: dec55c95419d7b04
-  zh: 134a8dc75b89e3aa
+  zh: c067acbefb5fda1e
 /cookbook-synchronizing-dsh-personal-with-upstream/summary:
-  en: bb52a407ed5e7a0d
-  zh: 3a62a4b9159b23fe
+  en: 81e9f6dfc3569522
+  zh: b53603370023a5ae
 /cookbook-synchronizing-dsh-personal-with-upstream/contents:
-  en: 9d727f93c1c523c7
-  zh: 3e37c98faaa512d7
-/cookbook-synchronizing-dsh-personal-with-upstream/1-prepare-an-isolated-update:
-  en: 97b17ebe3775bab6
-  zh: 96d59a6aad3ff963
-/cookbook-synchronizing-dsh-personal-with-upstream/2-compare-upstream-changes-and-local-changes:
-  en: f7f0553bd89ddecd
-  zh: 926c5aa92be6d4c8
-/cookbook-synchronizing-dsh-personal-with-upstream/3-integrate-by-behavior:
-  en: 643c5c6645caeecd
-  zh: 25595f17252986f7
+  en: cd6dbd51c146b471
+  zh: b034d31645520503
+/cookbook-synchronizing-dsh-personal-with-upstream/1-fix-the-three-inputs:
+  en: d93f0c4034cf02a0
+  zh: 3f2e01e1c268cd10
+/cookbook-synchronizing-dsh-personal-with-upstream/2-produce-the-complete-read-only-plan:
+  en: e21cdb92e5950fa7
+  zh: 767e8ee03bf00846
+/cookbook-synchronizing-dsh-personal-with-upstream/3-reconcile-behavior-in-an-isolated-candidate:
+  en: 3d5020b24d54153d
+  zh: bf19079e1e7b96fe
 /cookbook-synchronizing-dsh-personal-with-upstream/4-validate-accept-or-recover:
-  en: 3f113dd213b23946
-  zh: d9ba57bb5ceecce9
+  en: a970cf6aa6574396
+  zh: 22cfd792da6e7194
 /cookbook-synchronizing-dsh-personal-with-upstream/reference-upgrade-record-template:
-  en: 463604b52d3f03f0
-  zh: 0eb4a3a5fb3fe396
+  en: 578a0130db82e38b
+  zh: 82c2ba7c7dda2175
 /cookbook-synchronizing-dsh-personal-with-upstream/dev-note:
-  en: e6f989f35bfcfec0
-  zh: e32ea1733872b120
+  en: 2143713318d34451
+  zh: 3af743d716365a8c

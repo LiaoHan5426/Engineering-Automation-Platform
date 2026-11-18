@@ -1089,13 +1089,17 @@ describe.skipIf(MODE === "record")("web e2e: active Schedule catalog", () => {
         timing: { kind: "at", at: "2099-08-25T12:08:00.000Z" },
         target: { kind: "session", sessionId: otherSessionId },
       },
-      otherSessionId,
+      CATALOG_SESSION_ID,
     );
     await page.getByRole("button", { name: "Automation tasks", exact: true }).click();
     const manager = page.getByTestId("task-manager-page");
     await manager.getByRole("heading", { name: "Automation tasks", exact: true }).waitFor();
     const tasks = manager.getByRole("list", { name: "Task catalog" });
     await expect.poll(() => tasks.getByRole("listitem").count()).toBe(4);
+    const creatorMark = page.locator(
+      `[data-row-key="session:${CATALOG_SESSION_ID}"] [data-session-schedule-mark]`,
+    );
+    await expect.poll(() => creatorMark.textContent()).toBe("3 automation tasks");
     expect(scaffold.ctx.agents.get(CATALOG_SESSION_ID)).toBeUndefined();
     expect(scaffold.ctx.agents.get(otherSessionId)).toBeUndefined();
 

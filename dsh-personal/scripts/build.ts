@@ -115,6 +115,15 @@ export function buildGates(
         libraryGate(step, step.id === "host-src" ? ["native", ...step.needs] : step.needs, env),
       );
     }
+    gates.push({
+      id: "host-runtime-exports",
+      label: "Host runtime exports",
+      displayCommand: "node scripts/verify-host-runtime-exports.ts",
+      command: process.execPath,
+      args: [resolve(root, "scripts/verify-host-runtime-exports.ts")],
+      needs: ["host-bundle"],
+      env,
+    });
     gates.push(pnpmGate("web", "Web build", ["run", "build:web"], ["client-bundle"], env));
   }
   if (scope === "typecheck") {

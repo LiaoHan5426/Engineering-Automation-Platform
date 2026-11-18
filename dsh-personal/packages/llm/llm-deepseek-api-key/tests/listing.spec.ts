@@ -4,6 +4,7 @@ import { Context } from "@deepseek-ai/cordis";
 import LlmRuntime from "@deepseek-ai/dsh-llm";
 import { liveConfig } from "../../../settings/settings/tests/live-config.ts";
 import * as ApiKey from "../src/index.ts";
+import DeepSeekAuth from "@deepseek-ai/dsh-deepseek-auth";
 
 const LISTING_URL = "https://api.deepseek.com/models";
 const MESSAGES = { output_modalities: ["text"], api_capabilities: { anthropic_messages: {} } };
@@ -72,6 +73,7 @@ it("follows the official listing while the catalog is the built-in one", async (
     listing(FLASH, { ...PRO, id: "deepseek-v5", ...requires("0.0.1") }, PRO),
   );
   const { ctx, diagnostics } = await host();
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(ApiKey, {});
   expect(await ids(ctx)).toEqual(["deepseek-flash", "deepseek-v5", "deepseek-v4-pro"]);
   await expect(
@@ -93,6 +95,7 @@ it("advertises listed badges only while it follows the listing", async () => {
   const badge = { text: "1017", tone: "info" };
   officialListing(listing({ ...FLASH, client_metadata: { "deepseek-harness": { badge } } }, PRO));
   const { ctx } = await host();
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(ApiKey, {});
   const listed = await ctx.llm.listModels("deepseek-official");
   expect(listed.map((model) => [model.id, model.badge])).toEqual([
@@ -104,6 +107,7 @@ it("advertises listed badges only while it follows the listing", async () => {
   ).resolves.not.toHaveProperty("badge");
 
   const other = await host();
+  await other.ctx.plugin(DeepSeekAuth);
   await other.ctx.plugin(ApiKey, { baseURL: "http://127.0.0.1:9/anthropic" });
   expect(
     (await other.ctx.llm.listModels("deepseek-official")).some(
@@ -115,6 +119,7 @@ it("advertises listed badges only while it follows the listing", async () => {
 it("keeps a customized catalog without requesting the listing", async () => {
   const requests = officialListing(listing(FLASH));
   const { ctx } = await host();
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(ApiKey, { models: [{ id: "custom", name: "Custom" }] });
   expect(await ids(ctx)).toEqual(["custom"]);
   await expect(ctx.llm.resolveModelInfo("deepseek-official", "custom")).resolves.toMatchObject({
@@ -126,6 +131,7 @@ it("keeps a customized catalog without requesting the listing", async () => {
 it("serves the built-in catalog on another endpoint without requesting a listing", async () => {
   const requests = officialListing(listing(FLASH));
   const { ctx } = await host();
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(ApiKey, { baseURL: "http://127.0.0.1:9/anthropic" });
   expect(await ids(ctx)).toEqual(BUILT_IN);
   expect(requests).toEqual([]);
@@ -134,6 +140,7 @@ it("serves the built-in catalog on another endpoint without requesting a listing
 it("falls back to the built-in catalog when the listing fails", async () => {
   officialListing(() => new Response("down", { status: 503 }));
   const { ctx, warn } = await host();
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(ApiKey, {});
   expect(await ids(ctx)).toEqual(BUILT_IN);
   expect(warn).toHaveBeenCalledExactlyOnceWith(
@@ -152,6 +159,7 @@ it("refuses listed models this build cannot serve before any inference request",
     ),
   );
   const { ctx, warn } = await host();
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(ApiKey, {});
   expect(await ids(ctx)).toEqual(["deepseek-flash"]);
   await expect(
@@ -179,6 +187,7 @@ it("leaves a malformed replacement key to the request instead of refusing by the
   );
   const { ctx } = await host();
   vi.stubEnv("MALFORMED_DEEPSEEK_API_KEY", "invalid\nheader");
+  await ctx.plugin(DeepSeekAuth);
   const live = await liveConfig(ctx, ApiKey, {});
   await expect(
     ctx.llm.prepareCall({ provider: "deepseek-official", model: "deepseek-v5-next" }),
@@ -206,6 +215,7 @@ it("lets a caller abandon the first listing wait", async () => {
       }),
   );
   const { ctx } = await host();
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(ApiKey, {});
   const caller = new AbortController();
   const pending = ctx.llm.resolveModelInfo("deepseek-official", "deepseek-flash", caller.signal);
@@ -219,6 +229,7 @@ it.each([[{}], [{ models: [{ id: "custom" }] }]])(
   async (config) => {
     const requests = officialListing(listing(FLASH));
     const { ctx } = await host("");
+    await ctx.plugin(DeepSeekAuth);
     await ctx.plugin(ApiKey, config);
     expect(await ids(ctx)).toEqual([]);
     expect(requests).toEqual([]);
@@ -232,6 +243,7 @@ it("reloads the listing once when the catalog returns to the built-in one", asyn
       : listing(FLASH, PRO, { ...PRO, id: "deepseek-v5", ...requires("0.0.1") }))(),
   );
   const { ctx } = await host();
+  await ctx.plugin(DeepSeekAuth);
   const live = await liveConfig(ctx, ApiKey, {});
   expect(await ids(ctx)).toEqual(BUILT_IN);
   await live.update({ models: [{ id: "custom" }] });
@@ -245,6 +257,7 @@ it("reloads the listing once when the catalog returns to the built-in one", asyn
 it("keeps following the listing across an update the adapter rejects", async () => {
   const requests = officialListing(listing(FLASH, PRO));
   const { ctx } = await host();
+  await ctx.plugin(DeepSeekAuth);
   const live = await liveConfig(ctx, ApiKey, {});
   expect(await ids(ctx)).toEqual(BUILT_IN);
   await live.update({ thinking: "disabled", reasoningEffort: "high" });
@@ -265,6 +278,7 @@ it.each([undefined, null])(
       listing({ ...FLASH, client_metadata: { "deepseek-harness": { badge } } })(),
     );
     const { ctx } = await host();
+    await ctx.plugin(DeepSeekAuth);
     await ctx.plugin(ApiKey, {});
     const changed = vi.fn();
     ctx.on("llm/models-updated", changed);

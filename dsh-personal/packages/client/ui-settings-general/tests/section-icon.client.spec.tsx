@@ -11,6 +11,7 @@ usePinnedBrowserLanguages("en-US");
 import { SlotTestRuntime, bindSnapshotSelector } from "@deepseek-ai/dsh-client-test-runtime";
 import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
 import { SettingsRoot } from "../src/client/SettingsRoot.tsx";
+import { SettingsSectionView } from "../src/client/SettingsSectionView.tsx";
 import type { SettingsRootComponentProps } from "../src/client/shell-contract.ts";
 import { createSettingsShellStore } from "../src/client/shell-store.ts";
 import { en } from "../src/client/locales.ts";
@@ -117,6 +118,7 @@ it("renders a contributed section icon and restores the default after its plugin
       inheritAttrs: false,
       props: [
         "renderSlot",
+        "renderFactorySlot",
         "useSessions",
         "useSessionStatus",
         "usePanelInfo",
@@ -130,9 +132,9 @@ it("renders a contributed section icon and restores the default after its plugin
   );
   await runtime.root.declare(
     {
-      "settings.section": { kind: "list", scope: "root" },
       "settings.section.icon": { kind: "list", scope: "root", inline: true },
       "settings.trigger": { kind: "single", scope: "root" },
+      "settings.notice": { kind: "single", scope: "root" },
       "settings.header": { kind: "single", scope: "root" },
       "settings.close": { kind: "single", scope: "root" },
       "settings.action": { kind: "list", scope: "root" },
@@ -141,6 +143,10 @@ it("renders a contributed section icon and restores the default after its plugin
     },
     Root as never,
   );
+  c.slots.registerFactory({
+    name: "settings.section.view", scope: "root",
+    children: { "settings.section": { kind: "list", scope: "root" } },
+  }, SettingsSectionView);
   c.slots.register({ name: "settings.section", id: "general", label: "General" }, Section);
   for (const [name, text] of [
     ["settings.trigger", "Settings"],

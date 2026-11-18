@@ -31,6 +31,16 @@ const shellParserOnlyPlugin = {
   },
 }
 
+/** Resolve the npm buffer package independently of installer hoisting. */
+const BUFFER_ENTRY = resolveFrom.resolve('buffer/')
+
+const bufferPackagePlugin = {
+  name: 'dsh-buffer-package',
+  resolveId(source: string): string | null {
+    return source === 'buffer' ? BUFFER_ENTRY : null
+  },
+}
+
 /**
  * Resolve the module proxy table at bundle time: every Node builtin or
  * replaced external the worker graph imports lands on its `./node/` proxy,
@@ -78,7 +88,7 @@ export default defineConfig({
     dts: false,
     clean: false,
     deps: { alwaysBundle: [/.*/] },
-    plugins: [moduleProxyPlugin, shellParserOnlyPlugin],
+    plugins: [moduleProxyPlugin, shellParserOnlyPlugin, bufferPackagePlugin],
     outputOptions: { inlineDynamicImports: true },
   }, {
     // Page half: an ordinary browser ES module the deployment's page imports. It

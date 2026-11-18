@@ -20,6 +20,7 @@ import { Context } from "@deepseek-ai/cordis";
 import type { SessionId } from "@deepseek-ai/dsh-session";
 import AgentLoop from "@deepseek-ai/dsh-agent-loop";
 import {
+  PtcInspectableValue,
   PtcRuntime,
   type PtcRunRequest,
   type PtcRunResult,
@@ -816,7 +817,8 @@ describe("current working directory", () => {
         async run(spec: PtcRunSpec): Promise<PtcRunResult> {
           const read = spec.bindings.find((binding) => binding.global === "tools")?.functions.read;
           if (read === undefined) throw new Error("missing read binding");
-          const value = await read({ file_path: "note.txt" });
+          const resolved = await read({ file_path: "note.txt" });
+          const value = resolved instanceof PtcInspectableValue ? resolved.value : resolved;
           expect(JSON.stringify(value)).toContain("current");
           return { output: [], value };
         }

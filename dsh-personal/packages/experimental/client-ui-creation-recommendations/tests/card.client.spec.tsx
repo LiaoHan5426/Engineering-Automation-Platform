@@ -3,7 +3,7 @@ import { h as vueH, Fragment, reactive } from "vue";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "./vue-render.client.ts";
 import { afterEach, expect, it, vi } from "vite-plus/test";
 import { brandString } from "@deepseek-ai/dsh-brand";
-import type { ToolCallId } from "@deepseek-ai/dsh-llm/types";
+import type { ActionCardId } from "@deepseek-ai/dsh-action-cards/types";
 import type { SessionId } from "@deepseek-ai/dsh-session/types";
 import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
 import { FoldedText } from "@deepseek-ai/dsh-client-ui-action-cards/src/client/Card.tsx";
@@ -15,7 +15,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
-const callId = brandString<ToolCallId>("creation-1");
+const cardId = brandString<ActionCardId>("creation-1");
 const ACTION = "create_personalized_page";
 type Act = (verb: string, payload?: ActionCardFields) => Promise<ActionCardResult | undefined>;
 function props(
@@ -29,7 +29,7 @@ function props(
   act: ReturnType<typeof vi.fn<Act>>;
 } {
   const proposal = {
-    callId,
+    cardId,
     turn: 1,
     action: ACTION,
     title: "Counter",
@@ -38,12 +38,13 @@ function props(
   };
   return {
     proposal,
-    decision: decision === undefined ? undefined : { callId, action: ACTION, ...decision },
+    decision: decision === undefined ? undefined : { cardId, action: ACTION, ...decision },
     sessionId: brandString<SessionId>("session-1"),
     summary: vueH(Fragment, {}, [
       vueH("strong", {}, [proposal.title]),
       vueH("p", {}, [proposal.brief]),
     ]),
+    fallback: vueH("p", {}, ["frame fallback"]),
     Folded: FoldedText,
     act: vi.fn<Act>(async () => ({ status: "accepted" })),
     infoDismissed: createSnapshotStore(true),
@@ -80,7 +81,8 @@ it("ignores a stale Create button when proposal details become invalid before th
   });
   expect(value.act).not.toHaveBeenCalled();
   expect(screen.queryByRole("button", { name: "Create" })).toBeNull();
-  expect(screen.getByText("Counter")).toBeTruthy();
+  expect(screen.getByText("frame fallback")).toBeTruthy();
+  expect(screen.queryByText("Counter")).toBeNull();
 });
 it("requires a written location, preserves its draft, and passes only the chosen location on Create", async () => {
   const value = props();
@@ -192,7 +194,7 @@ it("disables pending decisions, labels only a pending Create as starting, and su
   await act(async () => {
     dismissal.resolve({
       status: "settled",
-      decision: { callId, action: ACTION, phase: "dismissed" },
+      decision: { cardId, action: ACTION, phase: "dismissed" },
     });
   });
   await fireEvent.click(screen.getByRole("button", { name: "创建" }));
@@ -401,9 +403,10 @@ it("shows supplied initial content as folded data below the plan and omits it ot
     "true",
   );
 });
-it("falls back to the summary for invalid fields and ignores unknown phases and invalid data", () => {
+it("shows only the frame fallback for invalid fields and ignores unknown phases and invalid data", () => {
   const invalid = render(vueH(PageCardBody, { ...props(undefined, true, { slot: "elsewhere" }) }));
-  expect(screen.getByText("Counter")).toBeTruthy();
+  expect(screen.getByText("frame fallback")).toBeTruthy();
+  expect(screen.queryByText("Counter")).toBeNull();
   expect(screen.queryByRole("button")).toBeNull();
   invalid.unmount();
   render(

@@ -196,7 +196,7 @@ export function apply(ctx) {
     cwd: home,
     home,
     startedBundles: loaded.layers.map((layer) => layer.packageName),
-    overlays: [],
+    overlayPaths: [],
     telemetryDisabledEnv: undefined,
   };
   const resolution = await createRuntimeResolution({ installAnchor, profile: loaded, home });

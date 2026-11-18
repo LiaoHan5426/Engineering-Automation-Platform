@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { PROTOCOL_VERSION } from "@agentclientprotocol/sdk";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AttachmentError } from "@deepseek-ai/dsh-attachment";
+import LocalFileSystem from "@deepseek-ai/dsh-fs-local";
 import type { ToolCallId, StreamChunk } from "@deepseek-ai/dsh-llm";
 import {
   SESSION_FORMAT_VERSION,
@@ -131,6 +132,28 @@ describe("automation-only ACP bridge", () => {
     expect(harness.adapter.requests[0]?.messages.at(-1)?.content).toEqual([
       { type: "text", text: "say hello" },
     ]);
+  });
+
+  it("records the canonical workspace directory in the Session header", async () => {
+    harness = await makeBridgeHarness({ script: [textResponse("ok")] });
+    const scratch = await realpath(await mkdtemp(join(tmpdir(), "dsh-acp-canonical-")));
+    try {
+      const real = join(scratch, "real");
+      const link = join(scratch, "link");
+      await mkdir(real);
+      await symlink(real, link);
+      await harness.ctx.plugin(LocalFileSystem, { cwd: real });
+      await harness.client.initialize({
+        protocolVersion: PROTOCOL_VERSION,
+        clientCapabilities: {},
+      });
+      const { sessionId } = await harness.client.newSession({ cwd: link, mcpServers: [] });
+      expect(harness.ctx.agents.get(brandString<SessionId>(sessionId))?.session.header.cwd).toBe(
+        real,
+      );
+    } finally {
+      await rm(scratch, { recursive: true, force: true });
+    }
   });
 
   it("closes one active session without affecting its neighbor", async () => {

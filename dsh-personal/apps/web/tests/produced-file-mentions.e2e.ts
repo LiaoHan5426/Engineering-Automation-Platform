@@ -78,7 +78,7 @@ function mentionFixture(): string {
   );
   for (const call of calls) {
     if (call.path === "report.txt")
-      session.append("working-directory/change", { cwd: "{{cwd}}/child" });
+      session.append("workspace-root/change", { cwd: "{{cwd}}/child" });
     const source = session.append("tool/call", {
       turn: 1,
       step: 1,
@@ -103,7 +103,7 @@ function mentionFixture(): string {
       { surfaceOp: "append", sourceEventSeqs: [source.seq] },
     );
   }
-  session.append("working-directory/change", { cwd: "{{cwd}}" });
+  session.append("workspace-root/change", { cwd: "{{cwd}}" });
   session.append("deliverables/presented", {
     turn: 1,
     callId: brandString<ToolCallId>("present-child"),

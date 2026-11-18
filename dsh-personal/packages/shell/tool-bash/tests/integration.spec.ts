@@ -12,6 +12,7 @@ import * as JsonlSessionPersistence from "@deepseek-ai/dsh-session-persistence-j
 import type { Agent } from "@deepseek-ai/dsh-agent";
 import AgentLoop from "@deepseek-ai/dsh-agent-loop";
 import {
+  PtcInspectableValue,
   PtcRuntime,
   type PtcRunRequest,
   type PtcRunResult,
@@ -129,7 +130,8 @@ describe("bash tool through the agent loop", () => {
         async run(spec: PtcRunSpec): Promise<PtcRunResult> {
           const bash = spec.bindings.find((binding) => binding.global === "tools")?.functions.bash;
           if (bash === undefined) throw new Error("missing bash binding");
-          const value = await bash({ command: "pwd", description: "Print launch directory" });
+          const resolved = await bash({ command: "pwd", description: "Print launch directory" });
+          const value = resolved instanceof PtcInspectableValue ? resolved.value : resolved;
           expect(value).toMatchObject({ cwd: selected, stdout: { text: `${selected}\n` } });
           return { output: [], value };
         }

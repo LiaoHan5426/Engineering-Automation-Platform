@@ -3,3 +3,13 @@
 - id: session-controller
   config:
     nativeOpen: false
+
+# The recorded calls name Bash and use POSIX commands on every replay host.
+- id: bash-sandbox
+  disabled: false
+- id: pwsh-sandbox
+  disabled: true
+- id: tool-bash
+  disabled: false
+- id: tool-pwsh
+  disabled: true

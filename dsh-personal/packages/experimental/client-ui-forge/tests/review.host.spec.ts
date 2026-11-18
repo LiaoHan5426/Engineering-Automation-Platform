@@ -46,6 +46,7 @@ function review(headSha: string, path = "src/a.ts"): ForgeReviewData {
     truncated: false,
     pendingReview: null,
     viewerCanReview: true,
+    reviewEvents: ["comment", "approve", "request-changes"],
     threads: [
       {
         id: "thread-1" as ForgeThreadId,

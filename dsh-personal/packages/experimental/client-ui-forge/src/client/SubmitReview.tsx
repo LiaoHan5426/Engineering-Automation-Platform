@@ -4,7 +4,7 @@ import { useObservableSelector } from '@deepseek-ai/dsh-client-ui-renderer/clien
 import clsx from 'clsx'
 import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ForgePendingReview } from '@deepseek-ai/dsh-experimental-forge/types'
+import type { ForgePendingReview, ForgeReviewEvent } from '@deepseek-ai/dsh-experimental-forge/types'
 import type { ReviewQueue } from './review-queue.ts'
 import type { NS } from './locales.ts'
 import css from './SubmitReview.module.css'
@@ -16,7 +16,7 @@ export const SubmitReview = defineComponent(
       readonly url: string
       readonly headSha: string
       readonly pending: ForgePendingReview | null
-      readonly own: boolean
+      readonly events: readonly ForgeReviewEvent[] | null
       readonly busy: boolean
       readonly error: string | null
       readonly submit: () => void
@@ -36,7 +36,9 @@ export const SubmitReview = defineComponent(
     const summaryHint = computed(() => `${name}-summary-hint`)
     const requiresSummary = computed(() => state.value.event === 'request-changes')
     const locked = computed(() => props.busy || state.value.uncertain !== null)
-    const refused = computed(() => props.own && state.value.event !== 'comment')
+    const allowed = (event: ForgeReviewEvent): boolean => props.events === null || props.events.includes(event)
+    const refused = computed(() => !allowed(state.value.event))
+    const commentOnly = computed(() => props.events !== null && props.events.length === 1 && props.events[0] === 'comment')
     const count = computed(() => props.pending?.comments ?? state.value.comments.length)
     const blocked = computed(() => props.pending !== null && state.value.comments.length > 0)
     const stale = computed(
@@ -214,7 +216,7 @@ export const SubmitReview = defineComponent(
                             name: name,
                             value: value,
                             checked: renderState.event === value,
-                            disabled: renderLocked || (props.own && value !== 'comment'),
+                            disabled: renderLocked || !allowed(value),
                             onInput: () => {
                               props.queue.summarize(renderState.body, value)
                             },
@@ -231,13 +233,13 @@ export const SubmitReview = defineComponent(
                     ),
                   ],
                 ),
-                props.own &&
+                commentOnly.value &&
                   h(
                     'div',
                     {
                       class: css.hint,
                     },
-                    [props.t('review.ownChangeRequest')],
+                    [props.t('review.decisionsLimited')],
                   ),
                 renderNotice !== null &&
                   h(
@@ -337,7 +339,7 @@ export const SubmitReview = defineComponent(
       'url',
       'headSha',
       'pending',
-      'own',
+      'events',
       'busy',
       'error',
       'submit',

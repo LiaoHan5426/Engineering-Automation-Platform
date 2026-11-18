@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it, vi } from "vite-plus/test";
-import { Context } from "@deepseek-ai/cordis";
+import { Context, Service } from "@deepseek-ai/cordis";
 import AgentRegistry from "@deepseek-ai/dsh-agent";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import SessionStore, { SESSION_FORMAT_VERSION, SessionSeq } from "@deepseek-ai/dsh-session";
@@ -77,6 +77,10 @@ class SearchSessionQuery extends SessionQueryEngine {
     super(ctx);
   }
 
+  initialize(): Promise<void> {
+    return this[Service.init]();
+  }
+
   override searchSessions(
     ...args: Parameters<SessionQueryEngine["searchSessions"]>
   ): ReturnType<SessionQueryEngine["searchSessions"]> {
@@ -91,8 +95,8 @@ class SearchSessionQuery extends SessionQueryEngine {
 function installSearchQuery(
   ctx: Context,
   searchSessions: (...args: Parameters<SessionQueryEngine["searchSessions"]>) => Promise<unknown>,
-): void {
-  new SearchSessionQuery(ctx, searchSessions);
+): Promise<void> {
+  return new SearchSessionQuery(ctx, searchSessions).initialize();
 }
 
 describe("session.search", () => {
@@ -161,7 +165,7 @@ describe("session.search", () => {
           ],
         }),
     );
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
     const remote = await createSessionTestRemote(ctx, defaults);
     const signal = new AbortController().signal;
 
@@ -197,7 +201,7 @@ describe("session.search", () => {
     const ctx = await baseContext();
     ctx.sessions.create(sid("visible"), { meta: header("visible") });
     const searchSessions = vi.fn();
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
     const remote = await createSessionTestRemote(ctx, defaults);
 
     for (const query of ["", "   ", "contains\0nul", "x".repeat(501)]) {
@@ -212,7 +216,7 @@ describe("session.search", () => {
   it("returns an empty page without invoking the index when no session is visible", async () => {
     const ctx = await baseContext();
     const searchSessions = vi.fn();
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
     const remote = await createSessionTestRemote(ctx, defaults);
 
     const response = await remote.search(request("anything"), new AbortController().signal);
@@ -235,7 +239,7 @@ describe("session.search", () => {
       const base = hit("visible", index);
       return { ...base, bestMatch: { ...base.bestMatch, ...bestMatch } };
     };
-    installSearchQuery(ctx, () =>
+    await installSearchQuery(ctx, () =>
       Promise.resolve({
         items: [
           withBestMatch(0, { sessionId: sid("hidden") }),
@@ -272,7 +276,7 @@ describe("session.search", () => {
         nextCursor: "page-2",
       })
       .mockResolvedValueOnce({ items: items.slice(19) });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
     const response = await (
       await createSessionTestRemote(ctx, defaults)
     ).search(request("match"), new AbortController().signal);
@@ -313,7 +317,7 @@ describe("session.search", () => {
         ...(end < items.length ? { nextCursor: `offset-${end}` } : {}),
       });
     });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -358,7 +362,7 @@ describe("session.search", () => {
         nextCursor: `page-${searchSessions.mock.calls.length}`,
       });
     });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -422,7 +426,7 @@ describe("session.search", () => {
           return Promise.reject(new Error("unexpected provider call"));
       }
     });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -460,7 +464,7 @@ describe("session.search", () => {
         nextCursor: `cursor-${searchSessions.mock.calls.length}`,
       });
     });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -489,7 +493,7 @@ describe("session.search", () => {
         controller.abort();
         return Promise.reject(stale);
       });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -513,7 +517,7 @@ describe("session.search", () => {
         ),
       ),
     );
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -536,7 +540,7 @@ describe("session.search", () => {
       .mockRejectedValueOnce(
         new SessionQueryError("continuation limit is invalid", "SESSION_QUERY_INVALID_LIMIT"),
       );
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -565,7 +569,7 @@ describe("session.search", () => {
         ),
       ),
     );
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -590,7 +594,7 @@ describe("session.search", () => {
         new SessionQueryError("provider rejects 20", "SESSION_QUERY_INVALID_LIMIT"),
       );
     });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -608,7 +612,7 @@ describe("session.search", () => {
     ctx.sessions.create(sid("visible"), { meta: header("visible") });
     const oversized = Array.from({ length: 21 }, (_, index) => hit(`oversized-${index}`));
     const searchSessions = vi.fn(() => Promise.resolve({ items: oversized }));
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -632,7 +636,7 @@ describe("session.search", () => {
       }
       return Promise.resolve({ items: oversized });
     });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -657,7 +661,7 @@ describe("session.search", () => {
         snippet: `${expected}${"y".repeat(10_000)}`,
       },
     };
-    installSearchQuery(ctx, () => Promise.resolve({ items: [overlong] }));
+    await installSearchQuery(ctx, () => Promise.resolve({ items: [overlong] }));
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -679,7 +683,7 @@ describe("session.search", () => {
       .fn()
       .mockResolvedValueOnce({ items: [], nextCursor: "repeated" })
       .mockResolvedValueOnce({ items: [], nextCursor: "repeated" });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -702,7 +706,7 @@ describe("session.search", () => {
       .fn()
       .mockResolvedValueOnce({ items: items.slice(0, 20), nextCursor: "repeated" })
       .mockResolvedValueOnce({ items: items.slice(20), nextCursor: "repeated" });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -729,7 +733,7 @@ describe("session.search", () => {
       .mockResolvedValueOnce({ items: items.slice(0, 20), nextCursor: "page-2" })
       .mockResolvedValueOnce({ items: items.slice(0, 20), nextCursor: "page-3" })
       .mockResolvedValueOnce({ items: items.slice(20) });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -757,7 +761,7 @@ describe("session.search", () => {
         controller.abort();
         return Promise.resolve({ items: [] });
       });
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -789,7 +793,7 @@ describe("session.search", () => {
         items: [hit("cold-32750")],
       }),
     );
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -829,7 +833,7 @@ describe("session.search", () => {
       }) as never,
     );
     const searchSessions = vi.fn();
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -860,7 +864,7 @@ describe("session.search", () => {
       }) as never,
     );
     const searchSessions = vi.fn(() => Promise.resolve({ items: [] }));
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
 
     const response = await (
       await createSessionTestRemote(ctx, defaults)
@@ -896,7 +900,7 @@ describe("session.search", () => {
       .fn()
       .mockRejectedValueOnce(aborted)
       .mockRejectedValueOnce(new Error("database unavailable"));
-    installSearchQuery(ctx, searchSessions);
+    await installSearchQuery(ctx, searchSessions);
     const remote = await createSessionTestRemote(ctx, defaults);
 
     const cancelled = await remote.search(request("first"), new AbortController().signal);

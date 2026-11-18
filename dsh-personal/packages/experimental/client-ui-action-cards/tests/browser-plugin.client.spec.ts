@@ -5,11 +5,11 @@ import { SlotRegistry } from "@deepseek-ai/dsh-client-ui-renderer/client";
 import { LocaleRuntime } from "@deepseek-ai/dsh-client-locale/client";
 import type { SessionId } from "@deepseek-ai/dsh-session/types";
 import { brandString } from "@deepseek-ai/dsh-brand";
-import type { ToolCallId } from "@deepseek-ai/dsh-llm/types";
+import type { ActionCardId } from "@deepseek-ai/dsh-action-cards/types";
 import { expect, it, onTestFinished, vi } from "vite-plus/test";
 import { mountActionCards, inject } from "../src/client/mount.ts";
 import { apply as hostApply } from "../src/index.ts";
-import type { TailInjected } from "../src/client/Card.tsx";
+import { HiddenCardBlock, type TailInjected } from "../src/client/Card.tsx";
 
 const apply = (ctx: Context) =>
   mountActionCards(ctx, { package: "@deepseek-ai/dsh-action-cards", descriptors: [] });
@@ -26,7 +26,7 @@ it("binds actions to the displayed session, serves registered bodies and removes
       name: "root",
       children: {
         "conversation.chat.turnTail": { kind: "list", scope: "session" },
-        "tool.call.toolview": { kind: "keyed", scope: "session" },
+        "conversation.chat.markdown.fence": { kind: "hoc", scope: "session" },
       },
     },
     (_props: { renderSlot?: unknown }) => null,
@@ -39,19 +39,22 @@ it("binds actions to the displayed session, serves registered bodies and removes
   ctx.provide("locale", locale);
   const fiber = await ctx.plugin({ inject, apply });
   const entry = slots.entries("conversation.chat.turnTail")[0]!;
-  expect(slots.entries("tool.call.toolview").map((item) => item.options.key)).toEqual([
-    "propose_action",
-  ]);
+  expect(
+    slots
+      .entries("conversation.chat.markdown.fence")
+      .map((item) => [item.options.key, item.component]),
+  ).toEqual([["action-card", HiddenCardBlock]]);
+  expect(HiddenCardBlock()).toBeNull();
   const resolve = entry.inject as NonNullable<typeof entry.inject> &
     ((sessionId: SessionId) => TailInjected);
   const bound = resolve(brandString<SessionId>("session-one"));
   expect(bound.sessionId).toBe("session-one");
-  expect(await bound.act(brandString<ToolCallId>("card"), "create", { slot: "page" })).toEqual({
+  expect(await bound.act(brandString<ActionCardId>("card"), "create", { slot: "page" })).toEqual({
     status: "accepted",
   });
   expect(act).toHaveBeenCalledWith("session-one", "card", "create", { slot: "page" });
   act.mockResolvedValueOnce({ ok: false });
-  expect(await bound.act(brandString<ToolCallId>("card"), "dismiss")).toBeUndefined();
+  expect(await bound.act(brandString<ActionCardId>("card"), "dismiss")).toBeUndefined();
   expect(bound.bind("actionCards")("dismiss")).toBe("Not now");
   const changes = vi.fn();
   const unsubscribe = bound.hooks.bodies.subscribe(changes);
@@ -71,7 +74,7 @@ it("binds actions to the displayed session, serves registered bodies and removes
     .render(
       {
         proposal: {
-          callId: brandString<ToolCallId>("card"),
+          cardId: brandString<ActionCardId>("card"),
           turn: 1,
           action: "test_action",
           title: "Counter",
@@ -81,6 +84,7 @@ it("binds actions to the displayed session, serves registered bodies and removes
         decision: undefined,
         sessionId: brandString<SessionId>("session-one"),
         summary: null,
+        fallback: null,
         Folded: Body,
         act: vi.fn(),
       },
@@ -104,7 +108,7 @@ it("binds actions to the displayed session, serves registered bodies and removes
   await fiber.dispose();
   expect(unmount).toHaveBeenCalledOnce();
   expect(slots.entries("conversation.chat.turnTail")).toHaveLength(0);
-  expect(slots.entries("tool.call.toolview")).toHaveLength(0);
+  expect(slots.entries("conversation.chat.markdown.fence")).toHaveLength(0);
   expect(ctx.get("actionCards")).toBeUndefined();
   vi.spyOn(locale, "register").mockImplementation(() => {
     throw new Error("registration failed");

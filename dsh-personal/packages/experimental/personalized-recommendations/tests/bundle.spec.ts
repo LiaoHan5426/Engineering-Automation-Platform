@@ -144,7 +144,7 @@ it("addresses every row through its own id and switches the shared card service 
     startedBundles: loadProfileDirectory("test", dir, anchor).layers.map(
       (layer) => layer.packageName,
     ),
-    overlays: [],
+    overlayPaths: [],
     telemetryDisabledEnv: undefined,
   };
   const ctx = await boot(

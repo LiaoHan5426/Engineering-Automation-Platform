@@ -37,7 +37,7 @@ it("loads one shared conversion row and retains caller-owned PDFs after disposal
     (message) => {
       throw new Error(message);
     },
-  );
+  ).data;
   const configPath = join(directory, "cordis.yml");
   await writeFile(configPath, JSON.stringify(configured));
   ctx.baseUrl = pathToFileURL(directory).href + "/";

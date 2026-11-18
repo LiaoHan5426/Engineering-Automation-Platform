@@ -18,7 +18,12 @@ import DefaultModel from "@deepseek-ai/dsh-agent-default-model";
 import Settings from "../src/index.ts";
 
 export async function configurationFixture(
-  options: { schema?: z; apply?: (ctx: Context, config: unknown) => void; hmr?: boolean } = {},
+  options: {
+    schema?: z;
+    apply?: (ctx: Context, config: unknown) => void;
+    hmr?: boolean;
+    overlay?: string;
+  } = {},
 ) {
   const home = realpathSync(mkdtempSync(join(tmpdir(), "settings-config-")));
   const dir = join(home, "profiles", "test");
@@ -56,6 +61,8 @@ export async function configurationFixture(
     ]),
   );
   writeFileSync(join(dir, "cordis.yml"), "[]\n");
+  const overlayPath = join(home, "overlay.patch.yml");
+  if (options.overlay !== undefined) writeFileSync(overlayPath, options.overlay);
   const profile: ProfileContext = {
     name: "test",
     startedBundles: ["test-bundle"],
@@ -64,7 +71,7 @@ export async function configurationFixture(
     installAnchor: join(home, "package.json"),
     cwd: home,
     home,
-    overlays: [],
+    overlayPaths: options.overlay === undefined ? [] : [overlayPath],
     telemetryDisabledEnv: undefined,
   };
   const Probe = {
@@ -112,5 +119,5 @@ export async function configurationFixture(
     }
     return ctx;
   };
-  return { ctx: await start(), profile, home, start };
+  return { ctx: await start(), profile, home, overlayPath, start };
 }

@@ -1,7 +1,8 @@
-import { defineComponent, h, computed, shallowRef, watch, type VNodeChild } from 'vue'
+import { defineComponent, h, computed, shallowRef, watch, onMounted, onScopeDispose, type VNodeChild } from 'vue'
 /** Changed-file navigation shared by the toolbar menu and wide diff pane, with a disclosure column on every row. */
 import clsx from 'clsx'
 import {
+  MarqueeText, useHoverMarquee,
   FileTypeIcon,
   IconChevronDownOutlineRegular,
   IconFolderCloseRegular,
@@ -15,7 +16,7 @@ import { Counts } from './DiffFile.tsx'
 import {
   changedFileTree,
   filesInTreeOrder,
-  filterFileTree,
+  filterFileTree, viewedNodes,
   type ChangedFileNode,
 } from './file-tree.ts'
 import type { NS } from './locales.ts'
@@ -28,6 +29,8 @@ export interface ChangedFilesState {
 }
 /** Data and actions of the changed-file navigator. */
 export interface ChangedFilesProps extends PropsLocale<typeof NS> {
+  readonly viewed?: ReadonlySet<string>
+  readonly loading?: boolean
   readonly files: readonly ForgeDiffFile[]
   readonly state: ChangedFilesState
   readonly filter: (query: string) => void
@@ -38,12 +41,29 @@ export interface ChangedFilesProps extends PropsLocale<typeof NS> {
   /** Unresolved host review threads by file path; files without any are absent. */
   readonly threadCounts?: ReadonlyMap<string, number>
 }
+const FileName = defineComponent((props: { readonly name: string }) => {
+  const text = shallowRef<HTMLSpanElement | null>(null)
+  const marquee = useHoverMarquee(text)
+  let row: HTMLElement | null = null
+  onMounted(() => {
+    row = text.value?.closest('button') ?? null
+    row?.addEventListener('pointerenter', marquee.onPointerEnter)
+    row?.addEventListener('pointerleave', marquee.onPointerLeave)
+  })
+  onScopeDispose(() => {
+    row?.removeEventListener('pointerenter', marquee.onPointerEnter)
+    row?.removeEventListener('pointerleave', marquee.onPointerLeave)
+  })
+  return () => h('span', { onPointerenter: marquee.onPointerEnter, onPointerleave: marquee.onPointerLeave }, [h(MarqueeText, { elementRef: el => { text.value = el }, className: css.name ?? '', 'data-forge-tree-name': '' }, { default: () => props.name })])
+}, { props: ['name'] })
 function Rows({
   nodes,
   depth,
+  done,
   props,
 }: {
   readonly nodes: readonly ChangedFileNode[]
+  readonly done: ReadonlySet<string>
   readonly depth: number
   readonly props: ChangedFilesProps
 }): VNodeChild {
@@ -59,7 +79,7 @@ function Rows({
     return h('div', { key: node.path }, [
       h(
         Tooltip,
-        { label: label, portal: true, side: 'left' },
+        { label: label, portal: true, side: 'left', delayMs: 500, disabled: node.kind !== 'file' || node.file.previousPath === null },
         {
           default: () => [
             h(
@@ -69,10 +89,13 @@ function Rows({
                 role: props.menu ? 'menuitem' : undefined,
                 class: clsx(
                   css.row,
+                  done.has(node.path) && css.viewed,
                   !directory && props.state.selected === node.path && css.selected,
                 ),
                 style: { paddingInlineStart: `${8 + depth * 14}px` },
                 'aria-label': label,
+                'data-viewed': done.has(node.path) ? '' : undefined,
+                'aria-description': done.has(node.path) ? props.t(directory ? 'viewed.directory' : 'viewed.label') : undefined,
                 'aria-expanded': directory ? expanded : undefined,
                 'aria-current':
                   !directory && props.state.selected === node.path ? 'true' : undefined,
@@ -99,13 +122,9 @@ function Rows({
                 directory
                   ? h(IconFolderCloseRegular, { size: 14 })
                   : h(FileTypeIcon, { path: node.path, size: 14 }),
-                h('span', { class: css.name }, [node.name]),
+                h(FileName, { name: node.name }),
                 threads > 0 &&
-                  h(
-                    'span',
-                    { class: css.threads, title: props.t('thread.treeCount', { count: threads }) },
-                    [threads],
-                  ),
+                  h(Tooltip, { label: props.t('thread.treeCount', { count: threads }), delayMs: 500, portal: true, side: 'left' }, { default: () => h('span', { class: css.threads }, [threads]) }),
                 node.kind === 'file' && h(Counts, { file: node.file, t: props.t }),
               ],
             ),
@@ -114,7 +133,7 @@ function Rows({
       ),
       node.kind === 'directory' &&
         expanded &&
-        h(Rows, { nodes: node.children, depth: depth + 1, props: props }),
+        h(Rows, { nodes: node.children, depth: depth + 1, done, props: props }),
     ])
   })
 }
@@ -142,6 +161,7 @@ function revealRow(container: HTMLElement, row: HTMLElement, align: 'center' | '
 export const ChangedFiles = defineComponent(
   (props: ChangedFilesProps) => {
     const tree = computed(() => changedFileTree(props.files))
+    const done = computed(() => viewedNodes(tree.value, props.viewed ?? new Set<string>()))
     const nodes = computed(() => filterFileTree(tree.value, props.state.query))
     const order = computed(() => filesInTreeOrder(tree.value))
     const selectedIndex = computed(() =>
@@ -199,12 +219,12 @@ export const ChangedFiles = defineComponent(
         h('div', { ref: rows, class: css.rows }, [
           nodes.value.length === 0
             ? h('div', { class: css.empty }, [props.t('diff.noMatchingFiles')])
-            : h(Rows, { nodes: nodes.value, depth: 0, props: props }),
+            : h(Rows, { nodes: nodes.value, depth: 0, done: done.value, props: props }),
         ]),
       ])
     }
   },
-  { props: ['files', 'state', 'filter', 'toggle', 'jump', 'menu', 'threadCounts', 't'] },
+  { props: ['files', 'state', 'filter', 'toggle', 'jump', 'menu', 'threadCounts', 'viewed', 'loading', 't'] },
 )
 /**
  * Open directory navigation through the existing files toolbar entry.
@@ -253,7 +273,7 @@ export const ChangedFilesMenu = defineComponent(
               },
               [
                 h('span', { class: css.triggerLabel }, [
-                  props.t('diff.allFiles', { count: props.files.length }),
+                  props.loading ? props.t('diff.allFilesLoading') : props.t('diff.allFiles', { count: props.files.length }),
                 ]),
                 h(IconChevronDownOutlineRegular, { size: 12, className: css.triggerChevron ?? '' }),
               ],
@@ -272,5 +292,5 @@ export const ChangedFilesMenu = defineComponent(
       )
     }
   },
-  { props: ['visible', 'files', 'state', 'filter', 'toggle', 'jump', 'menu', 'threadCounts', 't'] },
+  { props: ['visible', 'files', 'state', 'filter', 'toggle', 'jump', 'menu', 'threadCounts', 'viewed', 'loading', 't'] },
 )

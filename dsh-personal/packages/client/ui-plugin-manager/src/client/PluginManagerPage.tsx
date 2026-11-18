@@ -93,6 +93,11 @@ import type { PluginPackageRef, PluginRowRef, PluginsSubject } from './slot-cont
 import type { ConfigPageForm } from './slot-contract.ts'
 import { UpdateDialog, VersionSection } from './versions.tsx'
 import { BundleDetailSection } from './BundleDetailSection.tsx'
+import { ClientSyncNotice } from './ClientSyncNotice.tsx'
+import type { ClientEntryState } from '@deepseek-ai/dsh-client-modules/client'
+import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+import type { PropsRenderFactories } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SettingsSectionItem } from './config-ledger.ts'
 import css from './PluginManagerPage.module.css'
 /** Full component props assembled by the main slot renderer. */
 export type PluginManagerPageProps = PropsRuntime<'main'> &
@@ -108,9 +113,15 @@ export type PluginManagerPageProps = PropsRuntime<'main'> &
     | 'plugins.detail.badge'
     | 'plugins.detail.section'
   > &
+  PropsRenderFactories & InjectFace<ClientSyncFace> &
   InjectFace<PluginManagerFace & PluginHeaderLayoutFace> &
   PropsStore<ReturnType<typeof createNavigationStore>>
 /** The page's slot renderer, narrowed to the configuration slots. */
+export interface ClientSyncFace {
+ readonly hooks: { readonly clientSync: ObservableSnapshot<ClientEntryState> }
+ readonly retryClient: () => void
+}
+type RenderFactory = PluginManagerPageProps['renderFactorySlot']
 type RenderConfig = PluginManagerPageProps['renderSlot']
 type ResolveText = PluginManagerFace['resolveText']
 type RowPhase = NonNullable<PackageRow['phase']>
@@ -1456,6 +1467,8 @@ function RowDetail({
   resolveText,
   onBack,
   renderSlot,
+  renderFactory,
+  sections,
   form,
 }: {
   readonly pkg: PackageView
@@ -1465,6 +1478,8 @@ function RowDetail({
   readonly onBack: () => void
   readonly renderSlot: RenderConfig
   readonly form: ConfigPageForm | undefined
+  readonly sections: readonly SettingsSectionItem[]
+  readonly renderFactory: RenderFactory
 }): VNodeChild {
   const { title } = packageText(pkg, resolveText)
   const { title: rowTitle, description } = rowText(row, resolveText)
@@ -1561,6 +1576,7 @@ function RowDetail({
         },
         [
           renderSlot('plugins.row.config', { view: 'page', form }, { entryKey: key }),
+          ...sections.map(section => h(Fragment, { key: section.id }, [renderFactory('settings.section.view', { id: section.id, close: onBack })])),
           renderSlot('plugins.detail.section', { subject }),
         ],
       ),
@@ -1583,6 +1599,8 @@ function PackageDetail({
   rowBusy,
   configured,
   configure,
+  sections,
+  renderFactory,
   renderSlot,
   inMore,
   versions,
@@ -1609,6 +1627,8 @@ function PackageDetail({
   /** Whether the bundle registered a configuration of its own. */
   readonly configured: boolean
   readonly configure: RowConfigure
+  readonly sections: readonly SettingsSectionItem[]
+  readonly renderFactory: RenderFactory
   readonly renderSlot: RenderConfig
   readonly inMore: boolean
   readonly onBack: () => void
@@ -1860,6 +1880,7 @@ function PackageDetail({
               [renderSlot('plugins.bundle.config', { view: 'page' }, { entryKey: pkg.name })],
             )
             : null,
+          ...sections.map(section => h('section', { key: section.id, class: css.detailSection, 'data-plugin-config': true }, [renderFactory('settings.section.view', { id: section.id, close: onBack })])),
           pkg.availability === 'missing' || (pkg.error !== undefined && pkg.rows.length === 0)
             ? null
             : h(RowsSection, {
@@ -3557,6 +3578,12 @@ export const PluginManagerPage = defineComponent(
     }
     const state = props.usePluginManager(snapshot => snapshot)
     const ledger = props.useConfigLedger(snapshot => snapshot)
+    const clientSync = props.useClientSync(snapshot => snapshot)
+    const sectionsOf = (pkg: PackageView, row: PackageRow): readonly SettingsSectionItem[] => ledger.value.rows.has(rowConfigKey(pkg.name, row.rowId)) ? [] : ledger.value.sections.filter(section => section.module === row.moduleName)
+    const bundleSections = (pkg: PackageView): readonly SettingsSectionItem[] => {
+      const rowModules = new Set(listed.value.flatMap(item => item.rows.map(row => row.moduleName)))
+      return ledger.value.bundles.has(pkg.name) || rowModules.has(pkg.name) ? [] : ledger.value.sections.filter(section => section.module === pkg.name)
+    }
     const view = props.useStore(snapshot => snapshot.view)
     const projection1 = computed(() => props.actions)
     const setView = computed(() => projection1.value.setView)
@@ -3685,7 +3712,7 @@ export const PluginManagerPage = defineComponent(
       if (row.entryId !== undefined) props.setRowEnabled(row.entryId, enabled)
     }
     const configure = (pkg: PackageView): RowConfigure => ({
-      has: row => ledger.value.rows.has(rowConfigKey(pkg.name, row.rowId)),
+      has: row => ledger.value.rows.has(rowConfigKey(pkg.name, row.rowId)) || sectionsOf(pkg, row).length > 0,
       open: (row) => {
         setView.value({ kind: 'row', name: pkg.name, rowId: row.rowId, ...pkgOrigin.value })
       },
@@ -4117,6 +4144,7 @@ export const PluginManagerPage = defineComponent(
                   ],
                 )
                 : null,
+              h(ClientSyncNotice, { sync: clientSync.value, t: t.value, retry: props.retryClient }),
               !onInstalled.value
                 ? h(
                   'div',
@@ -4229,6 +4257,8 @@ export const PluginManagerPage = defineComponent(
                   pkg: packageNow,
                   row: openRow.value,
                   form: formFor(openRow.value.rowId),
+                  sections: sectionsOf(packageNow, openRow.value),
+                  renderFactory: props.renderFactorySlot,
                   t: t.value,
                   resolveText: resolveText.value,
                   renderSlot: renderSlot.value,
@@ -4249,6 +4279,8 @@ export const PluginManagerPage = defineComponent(
                   rowBusy: row =>
                     row.entryId !== undefined && state.value.busy.includes(rowKey(row.entryId)),
                   configured: ledger.value.bundles.has(packageNow.name),
+                  sections: bundleSections(packageNow),
+                  renderFactory: props.renderFactorySlot,
                   configure: configure(packageNow),
                   renderSlot: renderSlot.value,
                   inMore: backToMore.value,
@@ -4484,6 +4516,9 @@ export const PluginManagerPage = defineComponent(
       't',
       'ensure',
       'renderSlot',
+      'renderFactorySlot',
+      'useClientSync',
+      'retryClient',
       'resolveText',
       'useConfigurations',
       'configForm',

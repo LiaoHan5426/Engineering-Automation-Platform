@@ -227,7 +227,8 @@ it.each(["light", "dark"] as const)(
 async function compileFixture(): Promise<{ script: string; css: string }> {
   const source = (relative: string): string =>
     JSON.stringify(join(REPO_ROOT, "packages/client", relative).replaceAll("\\", "/"));
-  const entry = join(REPO_ROOT, "apps/web/focus-rings-fixture.tsx").replaceAll("\\", "/");
+  const entry = "virtual:dsh-focus-rings-fixture";
+  const resolvedEntry = `\0${entry}`;
   const code = `
     import { createApp, defineComponent, h, shallowRef } from 'vue'
     import { Menu } from ${source("ui-primitives/src/Menu.tsx")}
@@ -283,10 +284,10 @@ async function compileFixture(): Promise<{ script: string; css: string }> {
       {
         name: "focus-rings-fixture",
         resolveId(id) {
-          if (id === entry) return entry;
+          if (id === entry) return resolvedEntry;
         },
         load(id) {
-          if (id === entry) return code;
+          if (id === resolvedEntry) return code;
         },
       },
     ],
@@ -295,6 +296,7 @@ async function compileFixture(): Promise<{ script: string; css: string }> {
       write: false,
       minify: false,
       lib: { entry, name: "FocusRingsFixture", formats: ["iife"] },
+      rolldownOptions: { input: entry },
     },
   });
   if ("on" in result) throw new Error("expected an in-memory build, not a watcher");

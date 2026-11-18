@@ -318,7 +318,7 @@ describe("menu contribution lifecycle", () => {
 it("omits a provider that misses its deadline and ignores its late result", async () => {
   vi.useFakeTimers();
   const failed = vi.fn(),
-    registry = new MenuRegistry(failed, 50);
+    registry = new MenuRegistry(failed, () => 50);
   const waiting = deferred<readonly MenuAction[]>();
   let signal!: AbortSignal;
   registry.register({

@@ -90,7 +90,7 @@ export function apply() { record('apply:${name}') }
     cwd: dir,
     home: dir,
     startedBundles: [],
-    overlays: [],
+    overlayPaths: [],
     telemetryDisabledEnv: undefined,
   };
   const configPath = join(dir, "cordis.yml");

@@ -19,6 +19,7 @@ import {
   type StreamChunk,
 } from "@deepseek-ai/dsh-llm";
 import {
+  PtcInspectableValue,
   PtcRuntime,
   type PtcRunRequest,
   type PtcRunResult,
@@ -82,7 +83,11 @@ class SkillRuntime extends PtcRuntime {
     };
   }
   async run(request: PtcRunRequest): Promise<PtcRunResult> {
-    return { output: [], value: await request.bindings[0]!.functions.skill!({ name: this.skill }) };
+    const resolved = await request.bindings[0]!.functions.skill!({ name: this.skill });
+    return {
+      output: [],
+      value: resolved instanceof PtcInspectableValue ? resolved.value : resolved,
+    };
   }
 }
 

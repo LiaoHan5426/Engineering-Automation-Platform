@@ -49,7 +49,7 @@ describe("SessionController facade", () => {
     let first = true;
     vi.spyOn(ctx.sessionProjections, "register").mockImplementation(
       async (...args: Parameters<typeof original>) => {
-        if (first) {
+        if (first && args[0].key === "imageLimits") {
           first = false;
           entered.resolve(undefined);
           await gate.promise;

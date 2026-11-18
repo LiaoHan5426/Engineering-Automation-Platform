@@ -212,7 +212,7 @@ export const PageCardBody = defineComponent(
     }
     return () => {
       const currentDetails = details.value
-      if (!currentDetails.success) return h('div', { class: css.body }, [props.summary])
+      if (!currentDetails.success) return props.fallback
       return h(Fragment, {}, [
         h('header', { class: css.header }, [
           h('span', { class: css.heading }, [
@@ -410,6 +410,6 @@ export const PageCardBody = defineComponent(
     }
   },
   {
-    props: ['proposal', 'decision', 'sessionId', 'summary', 'Folded', 'act', 't', 'infoDismissed'],
+    props: ['proposal', 'decision', 'sessionId', 'summary', 'fallback', 'Folded', 'act', 't', 'infoDismissed'],
   },
 )

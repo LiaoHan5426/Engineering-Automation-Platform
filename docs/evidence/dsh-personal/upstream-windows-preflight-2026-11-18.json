@@ -1,0 +1,10 @@
+{
+  "platform": "win32",
+  "scope": "incremental",
+  "checked": [
+    "apps/web/tests/focus-rings.e2e.ts",
+    "apps/web/tests/reference-composer.e2e.ts"
+  ],
+  "skipped": [],
+  "findings": []
+}

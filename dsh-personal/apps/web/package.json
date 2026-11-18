@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-web-frontend",
-  "version": "0.2.2-rc.3",
+  "version": "0.2.2-rc.4",
   "description": "Web application entry: vite build over the @deepseek-ai/dsh-client-web shell library; dist/ served by apps/cli's dsh web",
   "license": "MIT",
   "repository": {

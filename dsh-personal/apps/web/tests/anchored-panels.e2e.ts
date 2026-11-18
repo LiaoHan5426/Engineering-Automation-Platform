@@ -35,7 +35,7 @@ const PANELS = [
     align: "start",
   },
   {
-    file: "client/ui-subagent/src/client/SubagentHeaderLineage.module.css",
+    file: "client/ui-subagent/src/client/SubagentCatalog.module.css",
     classes: "menu",
     align: "start",
   },
@@ -44,7 +44,6 @@ const PANELS = [
     classes: "warningPopover",
     align: "end",
   },
-  { file: "client/ui-jobs/src/client/JobListAction.module.css", classes: "menu", align: "start" },
   {
     file: "client/ui-conversation/src/client/skeleton/ContextMeter.module.css",
     classes: "panel",

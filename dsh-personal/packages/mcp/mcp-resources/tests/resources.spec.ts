@@ -10,6 +10,7 @@ import type { ToolCallId } from "@deepseek-ai/dsh-llm";
 import type { Agent } from "@deepseek-ai/dsh-agent";
 import { bindScopeParent, createScope, type Scope } from "@deepseek-ai/dsh-scope";
 import {
+  PtcInspectableValue,
   PtcRuntime,
   type PtcRunRequest,
   type PtcRunResult,
@@ -279,7 +280,10 @@ describe("MCP resource tools", () => {
     const runtime = ctx.ptcRuntime as BindingProbe;
     runtime.behavior = async (spec) => {
       const binding = spec.bindings[0]!.functions["list_mcp_resources"]!;
-      expect(await binding({ server: "docs" })).toEqual({ resources: [] });
+      const resolved = await binding({ server: "docs" });
+      expect(resolved instanceof PtcInspectableValue ? resolved.value : resolved).toEqual({
+        resources: [],
+      });
       remove();
       await expect(binding({ server: "docs" })).rejects.toThrow("unknown tool");
       return { output: [] };

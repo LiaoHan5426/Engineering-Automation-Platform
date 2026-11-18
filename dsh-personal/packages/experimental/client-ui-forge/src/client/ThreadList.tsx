@@ -309,7 +309,7 @@ export const ThreadList = defineComponent(
                 h(
                   Tooltip,
                   {
-                    label: renderT('thread.close'),
+                    label: renderT('thread.close'), delayMs: 500,
                     side: 'bottom',
                   },
                   {

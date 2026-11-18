@@ -90,7 +90,7 @@ describe("ShellEnvRegistry", () => {
       cwd: "/work",
       home: "/home",
       startedBundles: [],
-      overlays: [],
+      overlayPaths: [],
       telemetryDisabledEnv: undefined,
     });
     const registry = new ShellEnvRegistry(ctx, { dshHome: "./test-dsh-home" });

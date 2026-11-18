@@ -1,8 +1,7 @@
 import { h, Fragment, ref, shallowRef, defineComponent, watchEffect } from 'vue'
 /** Live terminal names in docked and floating tab chrome. */
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import { Tag } from '@deepseek-ai/dsh-client-ui-primitives'
-import { TerminalIcon } from './TerminalIcon.tsx'
+import { IconApiOutlineRegular, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { TerminalInjected } from './face.ts'
 import css from './TerminalTitle.module.css'
 /**
@@ -34,7 +33,7 @@ export const TerminalTitle = defineComponent((props: Pick<PropsRuntime<'sidebar.
     const title = titleRef.value ?? tab.title, agentControl = agent.value, sandboxMode = sandbox.value
     const sandboxHint = sandboxMode === 'read-only' ? t('badge.readOnlyHint') : sandboxMode === 'workspace-write' ? t('badge.workspaceWriteHint') : undefined
     return h(Fragment, null, [
-      h(TerminalIcon, null),
+      h(IconApiOutlineRegular, { size: 16 }),
       agentControl
         ? h('span', { 'class': css.badge, 'title': sandboxHint === undefined ? t('badge.agentHint') : `${t('badge.agentHint')} ${sandboxHint}` }, [
           h(Tag, { 'tone': 'info' }, { default: () => [

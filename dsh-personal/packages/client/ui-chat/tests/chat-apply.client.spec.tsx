@@ -1,3 +1,4 @@
+import { syncedConfig } from '@deepseek-ai/dsh-client-test-runtime'
 import { h, defineComponent, shallowRef, nextTick } from "vue";
 // @vitest-environment jsdom
 import {
@@ -94,7 +95,7 @@ async function bench() {
   runtime.ctx.provide("locale", locale);
   runtime.slots.installLocale(locale);
   runtime.ctx.provide("shortcuts", { catalog: createSnapshotStore([]) });
-  await runtime.mount({ inject: [...injectMenus], apply: applyMenus });
+  await runtime.mount({ inject: [...injectMenus], apply: applyMenus }, syncedConfig({ resolutionTimeoutMs: 1000 }));
   await runtime.root.declare(
     {
       main: { kind: "keyed", scope: "root" },
@@ -104,10 +105,7 @@ async function bench() {
     },
     (_props: { renderSlot?: unknown }) => null,
   );
-  const conversation = await runtime.mount({
-    inject: [...injectConversation],
-    apply: applyConversation,
-  });
+  const conversation = await runtime.mount({ inject: [...injectConversation], apply: applyConversation }, syncedConfig({ busyEnter: 'queue', maxConcurrentFileUploads: 2 }));
   const provide = vi.spyOn(runtime.ctx.uiSession, "provide");
   const chat = await runtime.mount({ inject: [...injectChat], apply: applyChat });
   const sourceDescriptor = provide.mock.calls[0]?.[0];

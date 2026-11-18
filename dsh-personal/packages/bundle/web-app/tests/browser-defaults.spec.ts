@@ -31,7 +31,7 @@ it.each([
       (message) => {
         throw new Error(message);
       },
-    );
+    ).data;
     const ctx = new Context();
     onTestFinished(() => ctx.fiber.dispose());
     if (profile !== undefined) {
@@ -43,7 +43,7 @@ it.each([
         cwd: "/workspace",
         home: "/home",
         startedBundles: [],
-        overlays: [],
+        overlayPaths: [],
         telemetryDisabledEnv: undefined,
       });
     }

@@ -377,19 +377,14 @@ export function gatesForMode(selected: Mode): Gate[] {
       return nodeCompatGates();
     case "check-all":
       return [
-        pnpmScript("runtime-closure", "verify-runtime-closure", { label: "runtime closure" }),
-        pnpmScript("cordis-config", "verify-cordis-config", { label: "Cordis config" }),
-        pnpmScript("client-domain-graph", "verify-client-domain-graph", {
-          label: "client domain graph",
-        }),
-        pnpmScript("test", "test"),
-        pnpmScript("approval-policy", "test:approval-policy", {
-          label: "Weighted approval policy",
-        }),
-        pnpmScript("issue-management", "test:issue-management", {
-          label: "Issue management policy",
-        }),
-        pnpmScript("duplication", "duplication"),
+        pnpmScript('runtime-closure', 'verify-runtime-closure', { label: 'runtime closure' }),
+        pnpmScript('cordis-config', 'verify-cordis-config', { label: 'Cordis config' }),
+        pnpmScript('client-domain-graph', 'verify-client-domain-graph', { label: 'client domain graph' }),
+        pnpmScript('test', 'test'),
+        pnpmScript('approval-policy', 'test:approval-policy', { label: 'Weighted approval policy' }),
+        pnpmScript('issue-management', 'test:issue-management', { label: 'Issue management policy' }),
+        pnpmScript('stale-pull-requests', 'test:stale-pull-requests', { label: 'Stale pull-request reminders' }),
+        pnpmScript('duplication', 'duplication'),
         snapshotGate(),
         expectedOutputGate(),
         pnpmScript("build", "build"),
@@ -441,9 +436,10 @@ function ciSharedStaticGates(): Gate[] {
     pnpmScript("package-meta", "verify-package-meta", { label: "package metadata" }),
     pnpmScript("cordis-config", "verify-cordis-config", { label: "Cordis config" }),
     ...sharedHygieneGates(),
-    pnpmScript("approval-policy", "test:approval-policy", { label: "Weighted approval policy" }),
-    pnpmScript("issue-management", "test:issue-management", { label: "Issue management policy" }),
-  ];
+    pnpmScript('approval-policy', 'test:approval-policy', { label: 'Weighted approval policy' }),
+    pnpmScript('issue-management', 'test:issue-management', { label: 'Issue management policy' }),
+    pnpmScript('stale-pull-requests', 'test:stale-pull-requests', { label: 'Stale pull-request reminders' }),
+  ]
 }
 
 function i18nGates(includeDictionaries: boolean): Gate[] {
@@ -457,8 +453,7 @@ function i18nGates(includeDictionaries: boolean): Gate[] {
           pnpmExec(
             "locale-dictionaries",
             [
-              "vitest",
-              "run",
+              "vp", "test", "run", "--config", "vitest.config.ts",
               "scripts/locale-dictionary-parity.spec.ts",
               "scripts/shipped-locales.spec.ts",
               "packages/client/locale/tests/apply.client.spec.ts",
@@ -477,25 +472,16 @@ function sharedHygieneGates(): Gate[] {
     }),
     pnpmScript("client-packages", "verify-client-packages", { label: "client packages" }),
     ...i18nGates(false),
-    pnpmScript("client-ui-i18n", "verify-client-ui-i18n", { label: "client UI i18n" }),
-    pnpmScript("client-route-resolution", "verify-client-route-resolution", {
-      label: "client route resolution",
-    }),
-    pnpmScript("no-bare-dispatcher", "verify-no-bare-dispatcher", {
-      label: "proxy-aware dispatchers",
-    }),
-    pnpmScript("plugin-record-callers", "verify-plugin-record-callers", {
-      label: "plugin record callers",
-    }),
-    pnpmScript("no-unknown-casts", "verify-no-unknown-casts", { label: "no new unknown casts" }),
-    pnpmScript("empty-catch", "verify-empty-catch", { label: "no new silent catches" }),
-    pnpmScript("no-top-level-await", "verify-no-top-level-await", {
-      label: "no module-scope await",
-    }),
-    pnpmScript("plugin-entry-exports", "verify-plugin-entry-exports", {
-      label: "plugin entry exports",
-    }),
-  ];
+    pnpmScript('client-ui-i18n', 'verify-client-ui-i18n', { label: 'client UI i18n' }),
+    pnpmScript('client-route-resolution', 'verify-client-route-resolution', { label: 'client route resolution' }),
+    pnpmScript('no-bare-dispatcher', 'verify-no-bare-dispatcher', { label: 'proxy-aware dispatchers' }),
+    pnpmScript('plugin-record-callers', 'verify-plugin-record-callers', { label: 'plugin record callers' }),
+    pnpmScript('no-unknown-casts', 'verify-no-unknown-casts', { label: 'no new unknown casts' }),
+    pnpmScript('empty-catch', 'verify-empty-catch', { label: 'no new silent catches' }),
+    pnpmScript('cordis-root', 'verify-cordis-root', { label: 'no new Cordis root reads' }),
+    pnpmScript('no-top-level-await', 'verify-no-top-level-await', { label: 'no module-scope await' }),
+    pnpmScript('plugin-entry-exports', 'verify-plugin-entry-exports', { label: 'plugin entry exports' }),
+  ]
 }
 
 function ciPrimaryGates(): Gate[] {
@@ -549,8 +535,7 @@ function nodeCompatSmokeGates(options: { cliSmoke?: boolean } = {}): Gate[] {
     pnpmExec(
       "source-compat-smokes",
       [
-        "vitest",
-        "run",
+        "vp", "test", "run", "--config", "vitest.config.ts",
         "packages/workflow/workflow-ptc/tests/source-runtime.compat.spec.ts",
         "packages/session/session-persistence-jsonl/tests/zstd.compat.spec.ts",
         "apps/cli/tests/source-launch.compat.spec.ts",
@@ -569,7 +554,7 @@ function nodeCompatSmokeGates(options: { cliSmoke?: boolean } = {}): Gate[] {
     gates.push(
       pnpmExec(
         "cli-lazy-search-startup-smoke",
-        ["vitest", "run", "apps/cli/tests/lazy-search-startup.compat.spec.ts"],
+        ["vp", "test", "run", "--config", "vitest.config.ts", "apps/cli/tests/lazy-search-startup.compat.spec.ts"],
         {
           label: "CLI lazy-search startup smoke",
           env: { DSH_REQUIRE_BUILT_CLI_SMOKE: "1" },
@@ -816,7 +801,7 @@ function coverageGates(platform: NodeJS.Platform = process.platform): Gate[] {
   const partitions = parseCoveragePartitionCount(process.env[COVERAGE_PARTITIONS_ENV]);
   const instrumented =
     partitions === undefined
-      ? pnpmExec("coverage", ["vitest", "run", "--coverage", ...workers.instrumented], {
+      ? pnpmExec("coverage", ["vp", "test", "run", "--config", "vitest.config.ts", "--coverage", ...workers.instrumented], {
           label: "test:coverage",
           env: { [COVERAGE_EXEMPT_ENV]: "1" },
         })
@@ -833,8 +818,7 @@ function coverageGates(platform: NodeJS.Platform = process.platform): Gate[] {
     pnpmExec(
       "coverage-exempt-heavy",
       [
-        "vitest",
-        "run",
+        "vp", "test", "run", "--config", "vitest.config.ts",
         ...coverageExemptHeavySuites.map((suite) => suite.filter),
         ...workers.exempt,
       ],
@@ -855,7 +839,7 @@ function coverageGates(platform: NodeJS.Platform = process.platform): Gate[] {
 function ciUnitGates(): Gate[] {
   return [
     pnpmScript("native-system", "build:native-system"),
-    pnpmExec("unit", ["vp", "test", "run"], {
+    pnpmExec("unit", ["vp", "test", "run", "--config", "vitest.config.ts"], {
       label: "test",
       needs: ["native-system"],
       streamOutput: true,
@@ -1050,15 +1034,14 @@ function docSyncLeafGates(
     }),
     pnpmScript("doc-budgets", "verify-doc-budgets", { label: "doc budgets", quick: true }),
     pnpmScript("upgrade-guides", "verify-upgrade-guides", { label: "upgrade guides", quick: true }),
-    pnpmExec("doc-standard-tests", ["vitest", "run", "scripts/doc-standard.spec.ts"], {
+    pnpmExec("doc-standard-tests", ["vp", "test", "run", "--config", "vitest.config.ts", "scripts/doc-standard.spec.ts"], {
       label: "documentation standard tests",
       quick: true,
     }),
     pnpmExec(
       "docs-site-projection",
       [
-        "vitest",
-        "run",
+        "vp", "test", "run", "--config", "vitest.config.ts",
         "scripts/project-doc-site.spec.ts",
         "scripts/verify-doc-site-fragments.spec.ts",
         "website/tests/mermaid-viewer.spec.ts",
@@ -1092,10 +1075,7 @@ function builtBinSmokeGate(needs: string[] = ["build"]): Gate {
   return pnpmExec(
     "built-bin-smoke",
     [
-      "vitest",
-      "run",
-      "--config",
-      "vitest.e2e.config.ts",
+      "vp", "test", "run", "--config", "vitest.e2e.config.ts",
       "apps/cli/tests/profiles/headless/tests/keyless-smoke.e2e.ts",
       "apps/cli/tests/profiles/headless/tests/source-tool.built.e2e.ts",
       "apps/cli/tests/built-bin.e2e.ts",
@@ -1453,8 +1433,8 @@ export async function runGate(gate: Gate, signal?: AbortSignal): Promise<GateRes
       // ignored SIGTERM without re-enumerating.
       for (const descendantPid of descendants) {
         try {
-          process.kill(descendantPid, signalToSend);
-        } catch {
+          process.kill(descendantPid, signalToSend)
+        } catch (_descendantExited) {
           // The descendant exited between the enumeration and the signal.
         }
       }
@@ -1707,6 +1687,28 @@ function processAlive(pid: number): boolean {
 }
 
 /**
+ * Read the parsed `/proc/<pid>/stat` fields of every process listed in `/proc`.
+ * @returns one row per process still present when its stat file is read.
+ * @throws when `/proc` cannot be listed.
+ */
+function procStatRows(): { pid: number; fields: { state: string; ppid: number; pgrp: number } }[] {
+  const rows: { pid: number; fields: { state: string; ppid: number; pgrp: number } }[] = []
+  for (const entry of readdirSync('/proc')) {
+    if (!/^\d+$/.test(entry)) continue
+    let stat: string
+    try {
+      stat = readFileSync(`/proc/${entry}/stat`, 'utf8')
+    } catch (_exitedMidScan) {
+      // The process exited mid-scan; it is neither a live member nor a descendant.
+      continue
+    }
+    const fields = procStatFields(stat)
+    if (fields !== undefined) rows.push({ pid: Number(entry), fields })
+  }
+  return rows
+}
+
+/**
  * Whether any member of the child's POSIX process group is still executing.
  * Zombie entries (state `Z`) do not count: they are dead records awaiting
  * reaping, and the kill(-pid, 0) group probe would report them as alive.
@@ -1725,16 +1727,7 @@ function groupAlive(pid: number | undefined): boolean {
       return false;
     }
     try {
-      for (const entry of readdirSync("/proc")) {
-        if (!/^\d+$/.test(entry)) continue;
-        try {
-          const parsed = procStatFields(readFileSync(`/proc/${entry}/stat`, "utf8"));
-          if (parsed !== undefined && parsed.pgrp === pid && parsed.state !== "Z") return true;
-        } catch {
-          // The process exited mid-scan; it is not a live member.
-        }
-      }
-      return false;
+      return procStatRows().some(({ fields }) => fields.pgrp === pid && fields.state !== 'Z')
     } catch {
       return false;
     }
@@ -1760,19 +1753,11 @@ function groupAlive(pid: number | undefined): boolean {
  * @returns descendant pids in breadth-first order; empty on enumeration failure.
  */
 function descendantPids(root: number): number[] {
-  if (root <= 0) return [];
-  if (process.platform === "linux") {
-    const rows: Array<[number, number]> = [];
+  if (root <= 0) return []
+  if (process.platform === 'linux') {
+    let rows: Array<[number, number]>
     try {
-      for (const entry of readdirSync("/proc")) {
-        if (!/^\d+$/.test(entry)) continue;
-        try {
-          const parsed = procStatFields(readFileSync(`/proc/${entry}/stat`, "utf8"));
-          if (parsed !== undefined) rows.push([Number(entry), parsed.ppid]);
-        } catch {
-          // The process exited mid-scan; skip it.
-        }
-      }
+      rows = procStatRows().map(({ pid, fields }) => [pid, fields.ppid])
     } catch {
       return [];
     }

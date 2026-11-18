@@ -117,12 +117,15 @@ const windowsRunnerCoverageExclusions =
         // win32.spec's injected bindings and exercised natively by every
         // Windows suite through the real backend.
         "packages/session/session-persistence-jsonl/src/lease.ts",
+        "packages/session/session-persistence-sqlite/src/lease.ts",
         // The macOS provider transport uses Unix sockets; POSIX lanes cover its real socket lifecycle.
         "packages/experimental/cua-macos/src/shared-native.ts",
         // The GitHub CLI runner's suite stands in for `gh` with POSIX shell
         // scripts and skips on Windows: the Linux and macOS lanes hold its
         // per-file 100%, while the provider suite pins its callers everywhere.
         "packages/experimental/forge-github/src/gh.ts",
+        // The GitLab CLI runner uses the same POSIX shell stand-in.
+        "packages/experimental/forge-gitlab/src/glab.ts",
         // The panel's Git failure and environment cases stand in for `git` with
         // POSIX shell scripts and skip on Windows: the Linux and macOS lanes hold
         // its per-file 100%, while its real-Git cases run everywhere.
@@ -217,7 +220,7 @@ const claudeCodeTestingAliases = {
   ),
 };
 
-// The LiveShare client entry statically imports its generated `./remote` contribution, which exists
+// These client entries statically import generated `./remote` contributions, which exist
 // only in built `lib/` output. On a clean checkout Vite resolves that import while transforming the
 // entry, before `vi.mock` can answer it, so the jsdom assembly suites need a resolvable stand-in.
 const liveshareRemoteBuild = fileURLToPath(
@@ -229,7 +232,17 @@ const chatImportRemoteBuild = fileURLToPath(
     import.meta.url,
   ),
 );
+const hmrRemoteBuild = fileURLToPath(
+  new URL("./packages/client/hmr/lib/typert.remote-client.js", import.meta.url),
+);
 const generatedRemoteAliases = {
+  ...(existsSync(hmrRemoteBuild)
+    ? {}
+    : {
+        "@deepseek-ai/dsh-client-hmr/remote": fileURLToPath(
+          new URL("./packages/client/hmr/tests/generated-remote-stub.ts", import.meta.url),
+        ),
+      }),
   ...(existsSync(liveshareRemoteBuild)
     ? {}
     : {

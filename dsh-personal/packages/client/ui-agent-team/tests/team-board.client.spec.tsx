@@ -2,7 +2,7 @@
 import { h } from "vue";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { act, cleanup, render } from "../../../test-support/client-runtime/src/vue-test.ts";
-import { fireEvent, screen, within } from "@testing-library/dom";
+import { fireEvent, screen } from "@testing-library/dom";
 import type { SessionId } from "@deepseek-ai/dsh-session/types";
 import type {
   TeamProjection,
@@ -16,8 +16,9 @@ import type {
 import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
 import { bindSnapshotSelector, makeTranslate } from "@deepseek-ai/dsh-client-test-runtime";
 import { zh as commonZh } from "@deepseek-ai/dsh-client-locale/src/locales/zh.ts";
-import { TeamBoard, type TeamBoardProps } from "../src/client/TeamBoard.tsx";
-import { en, zh } from "../src/client/locales.ts";
+import { TeamBoard, TeamProgress, type TeamBoardProps } from "../src/client/TeamBoard.tsx";
+import { createTeamBoardStore } from "../src/client/team-board-store.ts";
+import { zh } from "../src/client/locales.ts";
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -25,8 +26,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 const SESSION = "root-session-id" as SessionId;
-const WORKER = "worker-id" as SessionId;
-const NESTED = "nested-id" as SessionId;
 const TASK_1 = "task-1" as TeamTaskId;
 const TASK_2 = "task-2" as TeamTaskId;
 const task: TeamTask = {
@@ -81,13 +80,17 @@ function bench(
       const value = state.projectionsBySession[sessionId]?.values.agentTeam;
       return selector === undefined ? value : selector(value);
     })) as TeamBoardProps["useProjection"];
+  const store = createTeamBoardStore().create();
   const props = {
     sessionId,
+    useStore: bindSnapshotSelector(store),
+    actions: store.actions,
+    renderFactorySlot: (_name: string, p: { onToggle?: () => void; label?: string }) => p.onToggle ? h("button", { onClick: p.onToggle }, p.label) : null,
     useProjection,
     useSessions: bindSnapshotSelector(sessions),
     t: makeTranslate(zh, commonZh),
   } as TeamBoardProps;
-  return { props, sessions };
+  return { props, sessions, store };
 }
 async function setProjectionSnapshot(
   sessions: ReturnType<typeof bench>["sessions"],
@@ -113,495 +116,47 @@ async function setProjection(
     values: { agentTeam: value },
   });
 }
-function row(subject = task.subject): HTMLElement {
-  return screen.getByRole("button", { name: new RegExp(subject, "u") });
-}
-function ownerValue(): string | null {
-  return document.querySelector("[data-team-task-owner] span:last-child")?.textContent ?? null;
-}
-function enableTooltips(): void {
-  class TooltipObserver implements ResizeObserver {
-    constructor(private readonly callback: ResizeObserverCallback) {}
-    observe(target: Element): void {
-      const size = { inlineSize: 160, blockSize: 30 };
-      this.callback(
-        [
-          {
-            target,
-            borderBoxSize: [size],
-            contentBoxSize: [size],
-            devicePixelContentBoxSize: [size],
-            contentRect: new DOMRect(),
-          },
-        ],
-        this,
-      );
-    }
-    unobserve(): void {}
-    disconnect(): void {}
-  }
-  vi.stubGlobal("ResizeObserver", TooltipObserver);
-  vi.stubGlobal(
-    "matchMedia",
-    vi.fn(() => ({ matches: true })),
-  );
-}
-describe("TeamBoard", () => {
-  it("shows a nonclickable Checklist header and compact initially closed rows", () => {
-    const b = bench();
-    render(h(TeamBoard, { ...b.props }));
-    const heading = screen.getByRole("heading");
-    expect(heading.textContent).toBe(`${zh.tasks}${b.props.t("progress.active", { count: 1 })}`);
-    expect(heading.querySelector("button")).toBeNull();
-    expect(heading.querySelector('[data-icon="dsw-icon-checklist-outline-regular"]')).toBeTruthy();
-    expect(screen.getAllByRole("button")).toEqual([row()]);
-    expect(row().getAttribute("aria-expanded")).toBe("false");
-    expect(row().textContent).toBe(task.subject);
-    expect(within(row()).getByRole("img", { name: zh["status.in_progress"] })).toBeTruthy();
-    expect(row().querySelector('[data-state="ongoing"]')).toBeTruthy();
-    expect(row().querySelector('[data-icon="dsw-icon-chevron-down-outline-regular"]')).toBeTruthy();
-    expect(screen.queryByText(task.description)).toBeNull();
-    expect(screen.queryByText(zh.owner)).toBeNull();
-    expect(screen.queryByRole("button", { name: "展开" })).toBeNull();
-  });
-  it("expands the full description before the owner and keeps only one task open", async () => {
-    const longSubject = "A complete subject that must remain readable when the task is expanded";
-    const description = "First line\n".repeat(30) + "Final description line";
-    const b = bench({
-      value: {
-        ...team,
-        tasks: [
-          { ...task, subject: longSubject, description },
-          {
-            ...task,
-            id: TASK_2,
-            subject: "Review implementation",
-            ownerId: WORKER,
-            ownerName: "worker",
-          },
-        ],
-      },
-    });
-    render(h(TeamBoard, { ...b.props }));
-    const first = row(longSubject);
-    await act(() => {
-      fireEvent.click(first);
-    });
-    expect(first.getAttribute("aria-expanded")).toBe("true");
-    expect(row(longSubject)).toBe(first);
-    const details = document.getElementById(first.getAttribute("aria-controls")!)!;
-    const owner = details.querySelector("[data-team-task-owner]")!;
-    expect(owner.tagName).toBe("P");
-    expect(owner.textContent).toBe(`${zh.owner}: lead`);
-    expect(ownerValue()).toBe("lead");
-    const paragraphs = details.querySelectorAll("p");
-    expect(paragraphs).toHaveLength(2);
-    expect(paragraphs[0]?.textContent).toBe(description);
-    expect(paragraphs[1]).toBe(owner);
-    expect(details.querySelector("dl, dt, dd")).toBeNull();
-    expect(screen.queryByText(TASK_1)).toBeNull();
-    expect(screen.queryByText("src")).toBeNull();
-    expect(screen.queryByText(task.writeScopeWarnings[0]!)).toBeNull();
-    expect(screen.getAllByRole("button")).toHaveLength(2);
-    await act(() => {
-      fireEvent.click(row("Review implementation"));
-    });
-    expect(first.getAttribute("aria-expanded")).toBe("false");
-    expect(ownerValue()).toBe("worker");
-    expect(document.querySelectorAll("[data-team-task-details]")).toHaveLength(1);
-    expect(screen.queryByText(description)).toBeNull();
-    await act(() => {
-      fireEvent.click(row("Review implementation"));
-    });
-    expect(ownerValue()).toBeNull();
-    expect(
-      screen
-        .getAllByRole("button")
-        .every((button) => button.getAttribute("aria-expanded") === "false"),
-    ).toBe(true);
-  });
-  it("preserves source order, keeps completed tasks, and excludes deleted tombstones from rows and counts", async () => {
-    const b = bench({
-      value: {
-        ...team,
-        tasks: [
-          { ...task, subject: "Pending first", status: "pending", ready: true },
-          { ...task, id: TASK_2, subject: "Completed second", status: "completed" },
-          { ...task, id: "third" as TeamTaskId, subject: "Active third" },
-          { ...task, id: "deleted" as TeamTaskId, subject: "Deleted task", status: "deleted" },
-        ],
-      },
-    });
-    render(h(TeamBoard, { ...b.props }));
-    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
-      "Pending first",
-      "Completed second",
-      "Active third",
-    ]);
-    expect(screen.getByRole("heading").textContent).toBe(
-      `${zh.tasks}${[
-        b.props.t("progress.completed", { count: 1 }),
-        b.props.t("progress.active", { count: 1 }),
-        b.props.t("progress.pending", { count: 1 }),
-      ].join("\u2002·\u2002")}`,
-    );
-    expect(screen.queryByText("Deleted task")).toBeNull();
-    expect(row("Pending first").querySelector('[data-state="idle"]')).toBeTruthy();
-    expect(row("Completed second").querySelector('[data-state="done"]')).toBeTruthy();
-    await act(() => {
-      fireEvent.click(row("Completed second"));
-    });
-    expect(row("Completed second").getAttribute("aria-expanded")).toBe("true");
-    expect(ownerValue()).toBe("lead");
-    expect(screen.getByText(task.description)).toBeTruthy();
-  });
-  it("announces blocked status without displaying readiness, dependencies, scopes, warnings, or task ids", async () => {
-    const { ownerId: _ownerId, ownerName: _ownerName, ...unowned } = task;
-    const b = bench({
-      value: {
-        ...team,
-        tasks: [
-          { ...unowned, status: "pending", blockedBy: [TASK_2, "missing" as TeamTaskId] },
-          { ...task, id: TASK_2, subject: "Prepare shared types", status: "completed" },
-        ],
-      },
-    });
-    render(h(TeamBoard, { ...b.props }));
-    expect(within(row()).getByRole("img", { name: zh.blocked })).toBeTruthy();
-    expect(row().querySelector('[data-state="warning"]')).toBeTruthy();
-    await act(() => {
-      fireEvent.click(row());
-    });
-    expect(ownerValue()).toBe(zh.unowned);
-    const details = document.querySelector<HTMLElement>("[data-team-task-details]")!;
-    expect(details.textContent).toBe(`${task.description}${zh.owner}: ${zh.unowned}`);
-    expect(details.querySelector("dl, dt, dd")).toBeNull();
-    for (const metadata of [
-      TASK_1,
-      TASK_2,
-      "Prepare shared types",
-      "missing",
-      "src",
-      task.writeScopeWarnings[0]!,
-      zh.blocked,
-    ])
-      expect(within(details).queryByText(metadata)).toBeNull();
-    expect(
-      b.sessions.getSnapshot().projectionsBySession[SESSION]!.values.agentTeam?.tasks[0],
-    ).toEqual({
-      ...unowned,
-      status: "pending",
-      blockedBy: [TASK_2, "missing" as TeamTaskId],
-    });
-  });
-  it("keeps the pending glyph and shows only the owner when description is empty", async () => {
-    render(
-      h(TeamBoard, {
-        ...bench({
-          value: {
-            ...team,
-            tasks: [
-              {
-                ...task,
-                status: "pending",
-                ready: true,
-                description: "",
-                writeScopes: [],
-                writeScopeWarnings: [],
-              },
-            ],
-          },
-        }).props,
-      }),
-    );
-    await act(() => {
-      fireEvent.click(row());
-    });
-    expect(within(row()).getByRole("img", { name: zh["status.pending"] })).toBeTruthy();
-    expect(row().querySelector('[data-state="idle"]')).toBeTruthy();
-    expect(ownerValue()).toBe("lead");
-    expect(document.querySelector("[data-team-task-details]")?.children).toHaveLength(1);
-    expect(
-      document.querySelector("[data-team-task-details] p:not([data-team-task-owner])"),
-    ).toBeNull();
-  });
-  it("renders a saved owner path without loading its parent catalog", async () => {
-    const b = bench({
-      value: { ...team, tasks: [{ ...task, ownerId: NESTED, ownerName: "worker/checker" }] },
-    });
-    render(h(TeamBoard, { ...b.props }));
-    await act(() => {
-      fireEvent.click(row());
-    });
-    expect(ownerValue()).toBe("worker/checker");
-    await act(() => {
-      b.sessions.update((draft) => {
-        draft.byId[NESTED] = { ...summary(NESTED), displayTitle: "Display title" };
-      });
-    });
-    expect(ownerValue()).toBe("worker/checker");
-  });
-  it("uses the owner Session ID when the saved task has no name", async () => {
-    const { ownerName: _ownerName, ...historical } = task;
-    const b = bench({
-      value: { ...team, tasks: [{ ...historical, ownerId: WORKER }] },
-      projections: {
-        [SESSION]: {
-          state: "ready",
-          error: null,
-          values: {
-            agentTeam: { ...team, tasks: [{ ...historical, ownerId: WORKER }] },
-            subagentCatalog: [
-              { id: WORKER, createdAt: 0, mode: "continuable", label: "Worker", name: "worker" },
-            ],
-          },
-        },
-      },
-    });
-    render(h(TeamBoard, { ...b.props }));
-    await act(() => {
-      fireEvent.click(row());
-    });
-    expect(ownerValue()).toBe(WORKER);
-  });
-  it("hides retained tasks while Team is disabled and shows them when enabled", async () => {
-    const b = bench();
-    render(h(TeamBoard, { ...b.props }));
-    await setProjection(b.sessions, SESSION, { ...team, enabled: false });
-    expect(screen.queryByRole("region")).toBeNull();
-    expect(screen.queryByText(task.subject)).toBeNull();
-    await setProjection(b.sessions, SESSION, team);
-    expect(row()).toBeTruthy();
-  });
-  it("accepts absent baselines, capability removal, empty tasks, and deleted-only snapshots", async () => {
-    const b = bench({ projections: {} });
-    render(h(TeamBoard, { ...b.props }));
-    expect(screen.queryByRole("region")).toBeNull();
-    await setProjectionSnapshot(b.sessions, SESSION, {
-      state: "idle",
-      error: null,
-      values: { agentTeam: team },
-    });
-    expect(row()).toBeTruthy();
-    await setProjectionSnapshot(b.sessions, SESSION, { state: "idle", error: null, values: {} });
-    expect(screen.queryByRole("region")).toBeNull();
-    for (const tasks of [[], [{ ...task, status: "deleted" as const }]]) {
-      await setProjection(b.sessions, SESSION, { enabled: true, tasks });
-      expect(screen.queryByText(zh.empty)).toBeNull();
-      expect(screen.queryByRole("heading")).toBeNull();
-      expect(screen.queryByRole("button")).toBeNull();
-      expect(screen.queryByRole("region")).toBeNull();
-      expect(document.querySelector("[data-team-panel]")).toBeNull();
-    }
-  });
-  it("reads only the current Session projection", async () => {
-    const b = bench({ sessionId: WORKER });
-    render(h(TeamBoard, { ...b.props }));
-    expect(screen.queryByRole("region")).toBeNull();
-    await setProjection(b.sessions, WORKER, {
-      ...team,
-      tasks: [{ ...task, subject: "Current task" }],
-    });
-    expect(row("Current task")).toBeTruthy();
-    await setProjection(b.sessions, SESSION, {
-      ...team,
-      tasks: [{ ...task, subject: "Other task" }],
-    });
-    expect(screen.queryByText("Other task")).toBeNull();
-  });
-  it("keeps failures beside valid tasks but shows only an alert without visible tasks", async () => {
-    const b = bench({ value: { ...team, failure: "revision is not contiguous" } });
-    const view = render(h(TeamBoard, { ...b.props }));
-    expect(screen.getByRole("alert").textContent).toBe("任务记录无效：revision is not contiguous");
-    expect(row()).toBeTruthy();
-    expect(screen.getByRole("heading")).toBeTruthy();
-    for (const tasks of [[], [{ ...task, status: "deleted" as const }]]) {
-      await setProjectionSnapshot(b.sessions, SESSION, {
-        state: "ready",
-        error: null,
-        values: {
-          agentTeam: { enabled: true, tasks, failure: "invalid task" },
-          subagentCatalog: [{ id: WORKER, createdAt: 0, mode: "continuable", label: "Worker" }],
-        },
-      });
-      const alert = screen.getByRole("alert");
-      expect(alert.textContent).toBe("任务记录无效：invalid task");
-      expect(screen.getAllByRole("alert")).toHaveLength(1);
-      expect(view.container.textContent).toBe(alert.textContent);
-      expect(view.container.querySelector('[data-with-members="true"]')).toBeNull();
-      expect(screen.queryByRole("heading")).toBeNull();
-      expect(screen.queryByRole("region")).toBeNull();
-      expect(screen.queryByText(zh.empty)).toBeNull();
-      expect(document.querySelector("[data-team-panel]")).toBeNull();
-    }
-    await setProjection(b.sessions, SESSION, {
-      enabled: false,
-      tasks: [],
-      failure: "invalid task",
-    });
-    expect(view.container.childElementCount).toBe(0);
-  });
-  it("renders nothing for empty or deleted-only tasks even when members exist", async () => {
-    const b = bench();
-    const view = render(h(TeamBoard, { ...b.props }));
-    for (const tasks of [[], [{ ...task, status: "deleted" as const }]]) {
-      await setProjectionSnapshot(b.sessions, SESSION, {
-        state: "ready",
-        error: null,
-        values: {
-          agentTeam: { enabled: true, tasks },
-          subagentCatalog: [{ id: WORKER, createdAt: 0, mode: "continuable", label: "Worker" }],
-        },
-      });
-      expect(view.container.childElementCount).toBe(0);
-    }
-  });
-  it("keeps live updates and expansion tied to task identity without sorting or polling", async () => {
-    const b = bench();
-    render(h(TeamBoard, { ...b.props }));
-    await act(() => {
-      fireEvent.click(row());
-    });
-    await setProjection(b.sessions, SESSION, {
-      ...team,
-      tasks: [
-        { ...task, id: TASK_2, subject: "New task", status: "pending", ready: true },
-        { ...task, status: "completed", description: "Updated details" },
-      ],
-    });
-    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
-      "New task",
-      task.subject,
-    ]);
-    expect(row().getAttribute("aria-expanded")).toBe("true");
-    expect(row("New task").getAttribute("aria-expanded")).toBe("false");
-    expect(screen.getByText("Updated details")).toBeTruthy();
-    await setProjection(b.sessions, SESSION, { ...team, tasks: [{ ...task, status: "deleted" }] });
-    expect(screen.queryByText("Updated details")).toBeNull();
-  });
-  it("uses translated English progress and details without Show more or Show less controls", async () => {
-    const b = bench();
-    render(h(TeamBoard, { ...b.props, t: makeTranslate(en) }));
-    expect(screen.getByRole("heading").textContent).toBe(
-      `${en.tasks}${makeTranslate(en)("progress.active", { count: 1 })}`,
-    );
-    await act(() => {
-      fireEvent.click(row());
-    });
-    expect(ownerValue()).toBe("lead");
-    expect(document.querySelector("[data-team-task-owner]")?.textContent).toBe(`${en.owner}: lead`);
-    expect(screen.queryByText(TASK_1)).toBeNull();
-    expect(screen.queryByText("Show more")).toBeNull();
-    expect(screen.queryByText("Show less")).toBeNull();
-  });
-  it("shows the clipped owner tooltip after 500ms of hover", async () => {
-    vi.useFakeTimers();
-    enableTooltips();
-    const ownerId = "8c0404a0-4c67-48ab-9513-50b4a755d6de" as SessionId;
-    const { ownerName: _ownerName, ...historical } = task;
-    const b = bench({
-      value: { ...team, tasks: [{ ...historical, ownerId }] },
-    });
-    const view = render(h(TeamBoard, { ...b.props }));
-    await act(() => {
-      fireEvent.click(row());
-    });
-    const owner = screen.getByText(ownerId);
-    expect(owner.parentElement?.hasAttribute("data-team-task-owner")).toBe(true);
-    const scrollWidth = vi.spyOn(Element.prototype, "scrollWidth", "get").mockReturnValue(80);
-    vi.spyOn(Element.prototype, "clientWidth", "get").mockReturnValue(80);
-    await act(() => {
-      fireEvent.pointerEnter(owner);
-    });
-    await act(() => {
-      vi.advanceTimersByTime(500);
-    });
-    expect(screen.queryByRole("tooltip")).toBeNull();
-    await act(() => {
-      fireEvent.pointerLeave(owner);
-    });
-    scrollWidth.mockImplementation(function (this: Element) {
-      return this === owner ? 240 : 80;
-    });
-    await act(() => {
-      fireEvent.pointerEnter(owner);
-    });
-    await act(() => {
-      vi.advanceTimersByTime(499);
-    });
-    expect(screen.queryByRole("tooltip")).toBeNull();
-    await act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(screen.getByRole("tooltip").textContent).toBe(ownerId);
-    expect(view.container.contains(screen.getByRole("tooltip"))).toBe(false);
-    expect(document.querySelectorAll("[data-team-task-owner]")).toHaveLength(1);
-    await act(() => {
-      fireEvent.click(row());
-    });
-    expect(screen.queryByRole("tooltip")).toBeNull();
-    expect(ownerValue()).toBeNull();
-  });
-  it("delays clipped collapsed subject hover by 500ms while keeping keyboard focus immediate", async () => {
-    vi.useFakeTimers();
-    enableTooltips();
-    const view = render(h(TeamBoard, { ...bench().props }));
-    const button = row();
-    const subject = screen.getByText(task.subject);
-    const scrollWidth = vi.spyOn(Element.prototype, "scrollWidth", "get").mockReturnValue(80);
-    vi.spyOn(Element.prototype, "clientWidth", "get").mockReturnValue(80);
-    await act(() => {
-      fireEvent.pointerEnter(button);
-    });
-    await act(() => {
-      vi.advanceTimersByTime(500);
-    });
-    expect(screen.queryByRole("tooltip")).toBeNull();
-    await act(() => {
-      fireEvent.pointerLeave(button);
-    });
-    scrollWidth.mockImplementation(function (this: Element) {
-      return this === subject ? 180 : 80;
-    });
-    await act(() => {
-      fireEvent.pointerEnter(button);
-    });
-    await act(() => {
-      vi.advanceTimersByTime(499);
-    });
-    expect(screen.queryByRole("tooltip")).toBeNull();
-    await act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(screen.getByRole("tooltip").textContent).toBe(task.subject);
-    expect(view.container.contains(screen.getByRole("tooltip"))).toBe(false);
-    await act(() => {
-      fireEvent.click(button);
-    });
-    expect(row()).toBe(button);
-    expect(screen.queryByRole("tooltip")).toBeNull();
-    await act(() => {
-      fireEvent.pointerLeave(button);
-    });
-    await act(() => {
-      fireEvent.pointerEnter(button);
-    });
-    await act(() => {
-      vi.advanceTimersByTime(500);
-    });
-    expect(screen.queryByRole("tooltip")).toBeNull();
-    await act(() => {
-      fireEvent.click(button);
-    });
-    await act(() => {
-      fireEvent.pointerLeave(button);
-    });
-    await act(() => {
-      fireEvent.keyDown(document.body, { key: "Tab" });
-    });
-    await act(() => {
-      fireEvent.focus(button);
-    });
-    expect(screen.getByRole("tooltip").textContent).toBe(task.subject);
-  });
-});
+function row(subject = task.subject): HTMLElement { return screen.getByRole('button', { name: new RegExp(subject, 'u') }) }
+describe('Team panel', () => {
+  it('hides disabled and empty sections and exposes a failure without requiring tasks', () => {
+    let b = bench({ value: { enabled: false, tasks: [] } }); let view = render(h(TeamBoard, b.props)); expect(view.container.textContent).toBe(''); view.unmount()
+    b = bench({ value: { enabled: true, tasks: [], failure: 'transport disconnected' } }); view = render(h(TeamBoard, b.props)); expect(view.getByRole('alert').textContent).toContain('transport disconnected')
+  })
+  it('orders active, pending and reversed completed tasks and excludes deleted rows', () => {
+    const b = bench({ value: { ...team, tasks: [
+      { ...task, id: 'pending' as TeamTaskId, subject: 'Pending', status: 'pending', ready: true },
+      { ...task, id: 'done1' as TeamTaskId, subject: 'Done first', status: 'completed' },
+      { ...task, id: 'done2' as TeamTaskId, subject: 'Done second', status: 'completed' },
+      task, { ...task, id: 'deleted' as TeamTaskId, subject: 'Deleted', status: 'deleted' },
+    ] } })
+    const view = render(h(TeamBoard, b.props))
+    expect([...view.container.querySelectorAll('[data-team-task]')].map(el => el.getAttribute('data-team-task'))).toEqual([TASK_1, 'pending', 'done2', 'done1'])
+    expect(view.queryByText('Deleted')).toBeNull(); expect(view.queryByRole('heading')).toBeNull()
+  })
+  it('expands description and owner and keeps only one task open', async () => {
+    const b = bench({ value: { ...team, tasks: [task, { ...task, id: TASK_2, subject: 'Review', ownerName: 'worker' }] } })
+    const view = render(h(TeamBoard, b.props))
+    await act(() => fireEvent.click(row())); expect(row().getAttribute('aria-expanded')).toBe('true')
+    expect(view.getByText(task.description)).toBeTruthy(); expect(view.getByText('lead')).toBeTruthy()
+    await act(() => fireEvent.click(row('Review'))); expect(row().getAttribute('aria-expanded')).toBe('false')
+    expect(view.getByText('worker')).toBeTruthy(); expect(view.container.querySelectorAll('[data-team-task-details]')).toHaveLength(1)
+  })
+  it('announces a pending blocked task without exposing machine ids or write scope warnings', () => {
+    const b = bench({ value: { ...team, tasks: [{ ...task, status: 'pending', ready: false }] } })
+    const view = render(h(TeamBoard, b.props)); expect(view.getByRole('img', { name: b.props.t('blocked') })).toBeTruthy()
+    expect(view.queryByText(TASK_1)).toBeNull(); expect(view.queryByText(task.writeScopeWarnings[0]!)).toBeNull()
+  })
+  it('folds only more than six tasks and retains unfolding across a remount', async () => {
+    const b = bench({ value: { ...team, tasks: Array.from({ length: 7 }, (_, i) => ({ ...task, id: ('task-' + i) as TeamTaskId, subject: 'Task ' + i })) } })
+    let view = render(h(TeamBoard, b.props)); expect(view.container.querySelectorAll('[data-team-task]')).toHaveLength(5)
+    await act(() => fireEvent.click(view.getByRole('button', { name: b.props.t('list.more', { count: 2 }) })))
+    expect(view.container.querySelectorAll('[data-team-task]')).toHaveLength(7); view.unmount()
+    view = render(h(TeamBoard, b.props)); expect(view.container.querySelectorAll('[data-team-task]')).toHaveLength(7)
+  })
+  it('publishes progress separately from the body and follows projection changes', async () => {
+    const b = bench(), view = render(h(TeamProgress, b.props))
+    expect(view.container.textContent).toContain(b.props.t('progress.active', { count: 1 }))
+    await setProjection(b.sessions, SESSION, { enabled: true, tasks: [{ ...task, status: 'completed' }] })
+    expect(view.container.textContent).toContain(b.props.t('progress.completed', { count: 1 }))
+  })
+})

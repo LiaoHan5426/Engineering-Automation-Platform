@@ -84,11 +84,15 @@ async function observeDraftApi(page: Page): Promise<void> {
                   `ui-workspace factory returned keys ${Object.keys(exports).join(",")}; apply is ${typeof exports.apply}`,
                 );
               }
-              const originalApply = exports.apply as (ctx: WorkspaceApplyContext) => unknown;
+              const originalApply = exports.apply as (
+                ctx: WorkspaceApplyContext,
+                ...rest: readonly unknown[]
+              ) => unknown;
               return {
                 ...exports,
-                apply(ctx: WorkspaceApplyContext) {
-                  const result = originalApply.call(exports, ctx);
+                // Forward the synced Config and any later argument the Loader passes.
+                apply(ctx: WorkspaceApplyContext, ...rest: readonly unknown[]) {
+                  const result = originalApply.call(exports, ctx, ...rest);
                   observation.startSession = (workspaceId, options) => {
                     const workspace = ctx.get("uiWorkspace");
                     if (workspace === undefined)

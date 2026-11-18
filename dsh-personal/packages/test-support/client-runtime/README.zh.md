@@ -29,6 +29,8 @@ kind: "package-library"
 <a id="use-this-package"></a>
 ## 使用本包
 
+发布的运行时包含 JavaScript 入口及 Vitest 快照操作依赖的同目录分块。
+
 本包让浏览器功能测试拥有可挂载的真实运行时：创建测试台，声明你的功能所占用的 slot，挂载功能插件，渲染一个 slot，在局部视图上断言，然后 dispose（资源释放）——全程不存在生产逻辑的第二份实现。
 
 ### 搭建功能测试

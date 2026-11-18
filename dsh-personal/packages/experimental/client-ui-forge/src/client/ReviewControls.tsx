@@ -1,4 +1,4 @@
-import { defineComponent, h, shallowRef, type VNodeChild } from 'vue'
+import { defineComponent, h, shallowRef, computed, watchPostEffect, type VNodeChild } from 'vue'
 /**
  * Review controls of the changes toolbar: the lens that keeps the files of one review layer, as a full-width
  * radio group above the file tree or as a menu where no tree shows; the switch that hides test files; and the
@@ -57,6 +57,8 @@ export const SegmentedChoice = defineComponent(
     readonly value: Value
     readonly choose: (value: Value) => void
     readonly label: string
+    readonly sizing?: 'equal' | 'content'
+    readonly counted?: boolean
   }) => {
     const group = shallowRef<HTMLDivElement | null>(null)
     return () => {
@@ -93,7 +95,7 @@ export const SegmentedChoice = defineComponent(
       }
       return h(
         'div',
-        { ref: group, role: 'radiogroup', 'aria-label': props.label, class: css.segmented },
+        { ref: group, role: 'radiogroup', 'aria-label': props.label, class: css.segmented, 'data-sizing': props.sizing ?? 'equal' },
         [
           props.segments.map((segment) => {
             const button = h(
@@ -114,46 +116,71 @@ export const SegmentedChoice = defineComponent(
               },
               [
                 h('span', { class: css.segmentLabel }, [segment.label]),
-                h('span', { class: css.count }, [segment.count ?? '']),
+                h('span', { class: (props.counted ?? true) ? css.count : css.hiddenCount }, [segment.count ?? '']),
               ],
             )
-            return segment.disabledTip === null
-              ? button
-              : h(
-                Tooltip,
-                { key: segment.value, label: segment.disabledTip, side: 'bottom' },
-                { default: () => [button] },
-              )
+            const tip = segment.disabledTip ?? ((props.counted ?? true) || segment.count === null ? null : `${segment.label} ${String(segment.count)}`)
+            return h(Tooltip, { key: segment.value, label: tip ?? segment.label, side: 'bottom', delayMs: 500, disabled: tip === null }, { default: () => [button] })
           }),
         ],
       )
     }
   },
-  { props: ['segments', 'value', 'choose', 'label'] },
+  { props: ['segments', 'value', 'choose', 'label', 'sizing', 'counted'] },
 )
 /**
  * Render the lens as a radio group whose segments share its width.
  * @param props - the lens, its counts, whether test files hide, the choose action, and copy.
  * @returns the radio group.
  */
-export function LensControl({ lens, counts, hideTests, choose, t }: LensProps): VNodeChild {
-  // A disabled lens shows no count, since hidden test files are not counted.
-  return h(SegmentedChoice<ChangesLens>, {
-    label: t('lens.aria'),
-    value: lens,
-    choose: choose,
-    segments: LENSES.map(item =>
-      item === 'test' && hideTests
-        ? {
-          value: item,
-          label: t(LENS_LABEL[item]),
-          count: null,
-          disabledTip: t('lens.testHidden'),
-        }
-        : { value: item, label: t(LENS_LABEL[item]), count: counts[item], disabledTip: null },
-    ),
+export const LensControl = defineComponent((props: LensProps & {
+  /** Receives the cell width, padding included, at which labels fit without counts. */
+  readonly need: (width: number) => void
+}) => {
+  const root = shallowRef<HTMLDivElement | null>(null)
+  const withCounts = shallowRef<HTMLDivElement | null>(null)
+  const labelsOnly = shallowRef<HTMLDivElement | null>(null)
+  const counted = shallowRef(true)
+  const segments = computed(() => LENSES.map((item): Segment<ChangesLens> => item === 'test' && props.hideTests
+    ? { value: item, label: props.t(LENS_LABEL[item]), count: null, disabledTip: props.t('lens.testHidden') }
+    : { value: item, label: props.t(LENS_LABEL[item]), count: props.counts[item], disabledTip: null }))
+  watchPostEffect((onCleanup) => {
+    JSON.stringify(segments.value.map(segment => [segment.label, segment.count]))
+    const element = root.value
+    const full = withCounts.value
+    const bare = labelsOnly.value
+    const cell = element?.parentElement
+    if (element === null || full === null || bare === null || cell === null || cell === undefined) return
+    let live = true
+    const width = (node: Element): number => node.getBoundingClientRect().width
+    const measure = (): void => {
+      const available = width(element)
+      if (!live || available === 0) return
+      counted.value = width(full) <= available
+      props.need(Math.ceil(width(bare) + width(cell) - available))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    const fonts = document.fonts
+    fonts.addEventListener('loadingdone', measure)
+    onCleanup(() => {
+      live = false
+      observer.disconnect()
+      fonts.removeEventListener('loadingdone', measure)
+    })
   })
-}
+  return () => {
+    const common = { label: props.t('lens.aria'), value: props.lens, choose: props.choose, segments: segments.value, sizing: 'content' as const }
+    return h('div', { ref: root, class: css.lensFit }, [
+      h(SegmentedChoice<ChangesLens>, { ...common, counted: counted.value }),
+      h('div', { class: css.measures, 'aria-hidden': 'true', inert: '' }, [
+        h('div', { ref: withCounts }, [h(SegmentedChoice<ChangesLens>, { ...common, label: '' })]),
+        h('div', { ref: labelsOnly }, [h(SegmentedChoice<ChangesLens>, { ...common, label: '', counted: false })]),
+      ]),
+    ])
+  }
+}, { name: 'LensControl', props: ['lens', 'counts', 'hideTests', 'choose', 'need', 't'] })
 /**
  * Render the lens as a menu button, for a toolbar without the file tree beside it.
  * @param props - the lens, its counts, whether test files hide, the choose action, copy, and whether the owning tab is visible.
@@ -240,7 +267,7 @@ export function HideTestsSwitch({
 }): VNodeChild {
   return h(
     Tooltip,
-    { label: t('tests.hideHint'), side: 'bottom' },
+    { label: t('tests.hideHint'), side: 'bottom', delayMs: 500 },
     {
       default: () => [
         h('label', { class: css.switch, 'data-forge-hide-tests': '' }, [

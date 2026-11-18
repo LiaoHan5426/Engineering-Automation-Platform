@@ -1315,8 +1315,8 @@ describe("ConversationRoot resident composer", () => {
       return captured.has(this);
     };
     try {
-      // Base resolves from the adaptive clamp: min(1600*0.64, 920) = 920.
-      // Dragging the right handle outward by 25px widens by 2×25 = 50 → 970,
+      // Base resolves from the adaptive clamp: min(1600*0.64, 880) = 880.
+      // Dragging the right handle outward by 25px widens by 2×25 = 50 → 930,
       // inside both bounds (max = 1600 − 176 = 1424 keeps the handles on-column).
       await act(() => {
         fireEvent.pointerDown(handle, { pointerId: 1, clientX: 800, clientY: 300 });
@@ -1329,8 +1329,8 @@ describe("ConversationRoot resident composer", () => {
         fireEvent.pointerUp(handle, { pointerId: 1, clientX: 825, clientY: 300 });
       });
       expect(handle.hasAttribute("data-dragging")).toBe(false);
-      expect(root.style.getPropertyValue("--dsh-chat-user-width")).toBe("970px");
-      expect(localStorage.getItem("dsh.conversation.contentWidth")).toBe("970");
+      expect(root.style.getPropertyValue("--dsh-chat-user-width")).toBe("930px");
+      expect(localStorage.getItem("dsh.conversation.contentWidth")).toBe("930");
       // Window shrinks: the displayed width re-clamps (900 − 176 = 724) but the
       // preference stays.
       Object.defineProperty(content, "offsetWidth", { value: 900, configurable: true });
@@ -1338,7 +1338,7 @@ describe("ConversationRoot resident composer", () => {
         fireResize(content);
       });
       expect(root.style.getPropertyValue("--dsh-chat-user-width")).toBe("724px");
-      expect(localStorage.getItem("dsh.conversation.contentWidth")).toBe("970");
+      expect(localStorage.getItem("dsh.conversation.contentWidth")).toBe("930");
       // A press without travel (a real double-click delivers two such
       // press/release rounds) must not commit the clamped display value over
       // the stored preference.
@@ -1348,13 +1348,13 @@ describe("ConversationRoot resident composer", () => {
       await act(() => {
         fireEvent.pointerUp(handle, { pointerId: 1, clientX: 800, clientY: 300 });
       });
-      expect(localStorage.getItem("dsh.conversation.contentWidth")).toBe("970");
+      expect(localStorage.getItem("dsh.conversation.contentWidth")).toBe("930");
       expect(root.style.getPropertyValue("--dsh-chat-user-width")).toBe("724px");
       // No reset affordance on the handle: double-click leaves the preference alone.
       await act(() => {
         fireEvent.doubleClick(handle);
       });
-      expect(localStorage.getItem("dsh.conversation.contentWidth")).toBe("970");
+      expect(localStorage.getItem("dsh.conversation.contentWidth")).toBe("930");
     } finally {
       for (const [name, descriptor] of originals) {
         if (descriptor === undefined) Reflect.deleteProperty(Element.prototype, name);

@@ -213,7 +213,7 @@ describe("HoverCard", () => {
       expect(screen.getByText("card body")).toBeTruthy();
     },
   );
-  it("opens after the dwell delay, positioned right of the anchor", async () => {
+  it("opens after the dwell delay, anchored to its wrapper by name", async () => {
     const { wrapper } = mount();
     await act(() => fireEvent.pointerEnter(wrapper));
     expect(screen.queryByText("card body")).toBeNull();
@@ -226,8 +226,12 @@ describe("HoverCard", () => {
     });
     const card = screen.getByText("card body").parentElement as HTMLElement;
     expect(card.parentElement?.parentElement).toBe(document.body);
-    expect(card.style.left).toBe("208px");
-    expect(card.style.top).toBe("40px");
+    expect(wrapper.style.anchorName).toMatch(/^--dsh-hover-card-/);
+    expect(card.style.positionAnchor).toBe(wrapper.style.anchorName);
+    expect([card.style.left, card.style.top]).toEqual(["", ""]);
+    await act(() => fireEvent.pointerLeave(wrapper));
+    await act(() => { vi.advanceTimersByTime(POINTER_GRACE_MS); });
+    expect(wrapper.style.anchorName).toBe("");
   });
   it("insets a preview by 24px on each side and follows anchor resizing", async () => {
     const { wrapper } = mount({ variant: "preview" });
@@ -814,62 +818,30 @@ describe("HoverCard", () => {
     });
     expect(screen.queryByText("card body")).toBeNull();
   });
-  it("corrects the bottom-edge clamp once the mounted card height is measurable", async () => {
-    // First placement reads height 0 (card not yet mounted) and keeps the
-    // anchor top; the post-mount correction re-clamps with the real height.
-    window.innerHeight = 300;
-    const offsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight")!;
-    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
-      configurable: true,
-      get: () => 120,
-    });
-    try {
-      const { wrapper } = mount();
-      stubAnchorRect(screen.getByText("row"), { top: 280, right: 200 });
-      await act(() => fireEvent.pointerEnter(wrapper));
-      await act(() => {
-        vi.advanceTimersByTime(500);
-      });
-      const card = screen.getByText("card body").parentElement as HTMLElement;
-      // 300 - 120 - 8 = 172, instead of the anchor top 280.
-      expect(card.style.top).toBe("172px");
-    } finally {
-      Object.defineProperty(HTMLElement.prototype, "offsetHeight", offsetHeight);
-    }
+  it("gives each compact card its own anchor name", async () => {
+    render(h(Fragment, null, [
+      h(HoverCard, {}, { anchor: () => h("span", "first"), default: () => h("div", "first body") }),
+      h(HoverCard, {}, { anchor: () => h("span", "second"), default: () => h("div", "second body") }),
+    ]));
+    const wrappers = ["first", "second"].map(text => screen.getByText(text).parentElement as HTMLElement);
+    await act(() => { for (const wrapper of wrappers) fireEvent.pointerEnter(wrapper); });
+    await act(() => { vi.advanceTimersByTime(500); });
+    const names = wrappers.map(wrapper => wrapper.style.anchorName);
+    expect(new Set(names).size).toBe(2);
+    expect(["first body", "second body"].map(text => (screen.getByText(text).parentElement as HTMLElement).style.positionAnchor)).toEqual(names);
   });
-  it("clamps inside placement itself when the card is already measured (resize path)", async () => {
-    window.innerHeight = 300;
+  it("measures nothing for a compact card on open, scroll, or resize", async () => {
     const { wrapper } = mount();
-    stubAnchorRect(screen.getByText("row"), { top: 280, right: 200 });
+    const rect = vi.spyOn(wrapper, "getBoundingClientRect");
+    const listen = vi.spyOn(window, "addEventListener");
     await act(() => fireEvent.pointerEnter(wrapper));
-    await act(() => {
-      vi.advanceTimersByTime(500);
-    });
+    await act(() => { vi.advanceTimersByTime(500); });
     const card = screen.getByText("card body").parentElement as HTMLElement;
-    Object.defineProperty(card, "offsetHeight", { value: 120 });
-    await act(async () => {
-      await act(() => fireEvent.resize(window));
-    });
-    expect(card.style.top).toBe("172px");
-  });
-  it("repositions on capture-phase scroll while open and stops listening after close", async () => {
-    const { wrapper } = mount();
-    await act(() => fireEvent.pointerEnter(wrapper));
-    await act(() => {
-      vi.advanceTimersByTime(500);
-    });
-    stubAnchorRect(screen.getByText("row"), { top: 90, right: 300 });
-    await act(async () => {
-      await act(() => fireEvent.scroll(document));
-    });
-    const card = screen.getByText("card body").parentElement as HTMLElement;
-    expect(card.style.left).toBe("308px");
-    expect(card.style.top).toBe("90px");
-    await act(() => fireEvent.pointerLeave(wrapper));
-    await act(() => {
-      vi.advanceTimersByTime(POINTER_GRACE_MS);
-    });
-    expect(screen.queryByText("card body")).toBeNull();
+    await act(() => fireEvent.scroll(document));
+    await act(() => fireEvent.resize(window));
+    expect(rect).not.toHaveBeenCalled();
+    expect(listen.mock.calls.map(([type]) => type).filter(type => type === "scroll" || type === "resize")).toEqual([]);
+    expect([card.style.left, card.style.top]).toEqual(["", ""]);
   });
   it("unmount clears a pending open timer", async () => {
     const { view, wrapper } = mount();

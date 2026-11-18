@@ -5,7 +5,7 @@ import { act, cleanup, render, screen } from "./vue-render.client.ts";
 import { Context } from "@deepseek-ai/cordis";
 import { LocaleRuntime } from "@deepseek-ai/dsh-client-locale/client";
 import { brandString } from "@deepseek-ai/dsh-brand";
-import type { ToolCallId } from "@deepseek-ai/dsh-llm/types";
+import type { ActionCardId } from "@deepseek-ai/dsh-action-cards/types";
 import type { SessionId } from "@deepseek-ai/dsh-session/types";
 import type { ActionCardDescriptor } from "@deepseek-ai/dsh-client-ui-action-cards/client";
 import { FoldedText } from "@deepseek-ai/dsh-client-ui-action-cards/src/client/Card.tsx";
@@ -56,7 +56,7 @@ it("registers the plugin body, its copy and Remote for the plugin lifetime and s
   });
   expect(locale.bind("pluginRecommendations")("heading")).toBe("Recommended plugin");
   const proposal = {
-    callId: brandString<ToolCallId>("card"),
+    cardId: brandString<ActionCardId>("card"),
     turn: 1,
     action: "enable_official_plugin",
     title: "Search",
@@ -69,7 +69,8 @@ it("registers the plugin body, its copy and Remote for the plugin lifetime and s
       decision: undefined,
       sessionId: brandString<SessionId>("session-one"),
       summary: null,
-      Folded: FoldedText,
+      fallback: null,
+    Folded: FoldedText,
       act: vi.fn(),
       t: locale.bind("pluginRecommendations"),
     });

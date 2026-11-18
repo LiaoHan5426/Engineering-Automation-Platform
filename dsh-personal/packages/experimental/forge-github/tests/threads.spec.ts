@@ -116,6 +116,7 @@ function firstPage(
           id: "pull-7",
           headRefOid,
           locked: false,
+          viewerDidAuthor: false,
           reviews: { nodes: [] },
           reviewThreads: threads,
           ...pull,
@@ -163,6 +164,7 @@ describe("GitHub provider review threads", () => {
       truncated: false,
       pendingReview: null,
       viewerCanReview: true,
+      reviewEvents: ["comment", "approve", "request-changes"],
       threads: [
         {
           id: "t1",
@@ -439,9 +441,19 @@ describe("GitHub provider review threads", () => {
 
       await expect(provider(gh.run).readReview(pull(7), head, signal)).resolves.toMatchObject({
         viewerCanReview: expected,
+        reviewEvents: expected ? ["comment", "approve", "request-changes"] : [],
       });
     },
   );
+
+  it("lets the author of the pull request only comment, as GitHub allows", async () => {
+    const gh = review(firstPage(page([]), head, { login: "octo" }, { viewerDidAuthor: true }));
+
+    await expect(provider(gh.run).readReview(pull(7), head, signal)).resolves.toMatchObject({
+      viewerCanReview: true,
+      reviewEvents: ["comment"],
+    });
+  });
 
   it("reads the following thread and comment pages, asking only for the threads left under maxReviewThreads", async () => {
     const gh = review(
@@ -532,6 +544,7 @@ describe("GitHub provider review threads", () => {
       truncated: true,
       pendingReview: null,
       viewerCanReview: true,
+      reviewEvents: ["comment", "approve", "request-changes"],
     });
 
     const commentBytes = JSON.stringify(comments["comments-1"]).length;

@@ -290,8 +290,13 @@ export function useShareEdit(options: UseShareEditOptions): ShareEditState {
         const dispose = (() => {
           let cancelled = false
           const load = async (): Promise<void> => {
+            let listed
             try {
-              const listed = await options.shares.list()
+              listed = await options.shares.list()
+            } catch (_pollFailed) {
+              // Preserve the last list when polling fails.
+              return
+            }
               if (cancelled || !listed.ok) return
               const existing = listed.value.shares.find(
                 share =>
@@ -315,9 +320,6 @@ export function useShareEdit(options: UseShareEditOptions): ShareEditState {
                 }
                 /* v8 ignore stop */
               }
-            } catch {
-              /* The dialog keeps the last known list when polling fails. */
-            }
           }
           void load()
           const timer = setInterval(() => {
@@ -340,13 +342,15 @@ export function useShareEdit(options: UseShareEditOptions): ShareEditState {
         const dispose = (() => {
           let cancelled = false
           const load = async (): Promise<void> => {
+            let offeredNow
             try {
-              const offeredNow = await options.shares.capabilities()
+              offeredNow = await options.shares.capabilities()
+            } catch (_hostUnanswered) {
+              // An unanswered host offers no capabilities.
+              return
+            }
               if (!cancelled && offeredNow.ok)
                 setOffered(readOfferedPlugins(offeredNow.value.capabilities))
-            } catch {
-              /* A host that cannot answer offers nothing; the section stays hidden. */
-            }
           }
           void load()
           return () => {

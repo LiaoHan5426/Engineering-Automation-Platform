@@ -5,7 +5,7 @@ import { Context } from "@deepseek-ai/cordis";
 import { SandboxUnavailableError } from "@deepseek-ai/dsh-sandbox";
 import LocalSandbox from "@deepseek-ai/dsh-sandbox-local";
 import { setSandboxMode } from "@deepseek-ai/dsh-sandbox-policy";
-import { hasBranch, inspectCheckout, listBranches } from "../src/git.ts";
+import { hasBranch, inspectCheckout } from "../src/git.ts";
 import type { GitConfig } from "../src/git.ts";
 import {
   commitAt,
@@ -91,13 +91,9 @@ describe("Session permissions for Git inspection", () => {
       await expect(inspectCheckout(ctx, CONFIG, current, repo, live())).resolves.toMatchObject({
         checkout: { branch: "main" },
       });
-      await expect(listBranches(ctx, CONFIG, current, repo, 50, live())).resolves.toEqual({
-        current: "main",
-        branches: ["main"],
-      });
       await expect(hasBranch(ctx, CONFIG, current, repo, "main", live())).resolves.toBe(true);
 
-      expect(record.calls).toHaveLength(mode === "danger-full-access" ? 0 : 10);
+      expect(record.calls).toHaveLength(mode === "danger-full-access" ? 0 : 8);
       expect(record.calls.every((call) => call.policy.mode === mode)).toBe(true);
       expect(await readFile(index)).toEqual(before);
       expect((await stat(index)).mtimeMs).toBe(beforeStat.mtimeMs);
@@ -171,7 +167,7 @@ describe("inspectCheckout", () => {
       "rev-parse --path-format=absolute --git-dir",
       "rev-parse --short HEAD",
       "rev-parse --show-toplevel",
-      "symbolic-ref --quiet --short HEAD",
+      "symbolic-ref --quiet HEAD",
     ]);
     for (const call of record.calls) {
       expect(call.policy).toMatchObject({ mode: "workspace-write", workspaceRoot: repo });
@@ -238,6 +234,23 @@ describe("inspectCheckout", () => {
       upstream: null,
       remotes: [],
     });
+  });
+
+  it("names the checked-out branch while a tag shares its name, and no branch while HEAD names another ref", async () => {
+    const root = await directory();
+    const repo = await repository(root);
+    await git(repo, "tag", "main");
+    const ctx = await context(sandboxRecord(), repo);
+
+    // `git symbolic-ref --short HEAD` prints `heads/main` here.
+    expect((await inspectCheckout(ctx, CONFIG, session(repo), repo, live()))?.checkout.branch).toBe(
+      "main",
+    );
+    await git(repo, "update-ref", "refs/remotes/origin/main", "HEAD");
+    await git(repo, "symbolic-ref", "HEAD", "refs/remotes/origin/main");
+    expect(
+      (await inspectCheckout(ctx, CONFIG, session(repo), repo, live()))?.checkout.branch,
+    ).toBeNull();
   });
 
   it("stops when the caller aborts", async () => {
@@ -321,7 +334,7 @@ describe.skipIf(!posix)("inspectCheckout with a stand-in Git", () => {
         `  *--git-common-dir*) echo "${alias}/.git" ;;`,
         `  *--git-dir*) echo "${alias}/.git" ;;`,
         '  *"rev-parse --short"*) echo 0a1b2c3 ;;',
-        "  *symbolic-ref*) echo main ;;",
+        "  *symbolic-ref*) echo refs/heads/main ;;",
         "  *--abbrev-ref*) echo origin/main ;;",
         "esac",
       ].join("\n"),
@@ -454,98 +467,6 @@ describe.skipIf(!posix)("inspectCheckout with a stand-in Git", () => {
   });
 });
 
-describe("listBranches", () => {
-  it("lists the checked-out branch first, then local branches by latest commit, with two read-only commands", async () => {
-    const root = await directory();
-    const repo = await branched(root);
-    const record = sandboxRecord();
-    const ctx = await context(record, repo);
-
-    await expect(listBranches(ctx, CONFIG, session(repo), repo, 50, live())).resolves.toEqual({
-      current: "main",
-      branches: ["main", "newer", "older"],
-    });
-    expect(commands(record)).toEqual([
-      "for-each-ref --sort=-committerdate --count=50 --format=%(refname:lstrip=2) refs/heads/",
-      "symbolic-ref --quiet --short HEAD",
-    ]);
-    for (const call of record.calls) {
-      expect(call.policy).toMatchObject({ mode: "workspace-write", workspaceRoot: repo });
-      expect(call.argv.slice(1, 1 + GIT_PREFIX.length)).toEqual(GIT_PREFIX);
-    }
-  });
-
-  it("keeps the checked-out branch first when the limit cuts it from the listing", async () => {
-    const root = await directory();
-    const repo = await branched(root);
-    await git(repo, "checkout", "older");
-    const ctx = await context(sandboxRecord(), repo);
-
-    await expect(listBranches(ctx, CONFIG, session(repo), repo, 2, live())).resolves.toEqual({
-      current: "older",
-      branches: ["older", "main"],
-    });
-    await expect(listBranches(ctx, CONFIG, session(repo), repo, 1, live())).resolves.toEqual({
-      current: "older",
-      branches: ["older"],
-    });
-  });
-
-  it("lists the branches of a detached HEAD without a current one, and an unborn branch alone", async () => {
-    const root = await directory();
-    const repo = await branched(root);
-    await git(repo, "checkout", "--detach", "main");
-    await git(root, "init", "-b", "main", "empty");
-    const ctx = await context(sandboxRecord(), root);
-
-    await expect(listBranches(ctx, CONFIG, session(root), repo, 2, live())).resolves.toEqual({
-      current: null,
-      branches: ["main", "newer"],
-    });
-    await expect(
-      listBranches(ctx, CONFIG, session(root), join(root, "empty"), 50, live()),
-    ).resolves.toEqual({ current: "main", branches: ["main"] });
-  });
-
-  it("fails outside a checkout", async () => {
-    const root = await directory();
-    const ctx = await context(sandboxRecord(), root);
-
-    await expect(listBranches(ctx, CONFIG, session(root), root, 50, live())).rejects.toThrow(
-      /^git (symbolic-ref|for-each-ref) failed \(128\): fatal: not a git repository/,
-    );
-  });
-
-  it.skipIf(!posix)("names a failing branch listing", async () => {
-    const root = await directory();
-    const fake = await script(
-      join(root, "git"),
-      [
-        'case "$*" in',
-        '  *for-each-ref*) echo "fatal: bad ref" >&2; exit 2 ;;',
-        "  *symbolic-ref*) echo main ;;",
-        "esac",
-      ].join("\n"),
-    );
-    const ctx = await context(sandboxRecord(), root);
-
-    await expect(
-      listBranches(ctx, { ...CONFIG, gitCommand: fake }, session(root), root, 50, live()),
-    ).rejects.toThrow("git for-each-ref failed (2): fatal: bad ref");
-  });
-
-  it("stops when the caller aborts", async () => {
-    const root = await directory();
-    const ctx = await context(sandboxRecord(), root);
-    const controller = new AbortController();
-    controller.abort(new Error("closed"));
-
-    await expect(
-      listBranches(ctx, CONFIG, session(root), root, 50, controller.signal),
-    ).rejects.toThrow("closed");
-  });
-});
-
 describe("hasBranch", () => {
   it("reports whether a local branch exists with one read-only command per question", async () => {
     const root = await directory();
@@ -621,7 +542,7 @@ const sandboxUsable = await (async () => {
 })();
 
 describe.skipIf(!sandboxUsable)("Git inspection under the local sandbox", () => {
-  it("reads a checkout and lists its branches under read-only confinement without writing its index", async () => {
+  it("reads a checkout under read-only confinement without writing its index", async () => {
     const root = await directory();
     const repo = await repository(root);
     await writeFile(join(repo, "tracked.txt"), "changed\n");
@@ -643,12 +564,8 @@ describe.skipIf(!sandboxUsable)("Git inspection under the local sandbox", () => 
       upstream: null,
       remotes: [],
     });
-    await expect(listBranches(ctx, CONFIG, readOnly, repo, 50, live())).resolves.toEqual({
-      current: "main",
-      branches: ["main"],
-    });
 
-    expect(confine).toHaveBeenCalledTimes(9);
+    expect(confine).toHaveBeenCalledTimes(7);
     expect(confine.mock.calls.every((call) => call[1].mode === "read-only")).toBe(true);
     expect((await stat(index)).mtimeMs).toBe(before.mtimeMs);
     await expect(access(join(repo, ".git", "index.lock"))).rejects.toThrow();
@@ -656,61 +573,54 @@ describe.skipIf(!sandboxUsable)("Git inspection under the local sandbox", () => 
 });
 
 describe("parallel inspection cleanup", () => {
-  it.each(["checkout", "branches"] as const)(
-    "cancels and joins sibling reads when %s inspection fails",
-    async (kind) => {
-      const root = await directory();
-      const repo = await repository(root);
-      const ctx = await context(sandboxRecord(), repo);
-      const entered: PromiseWithResolvers<void> = Promise.withResolvers();
-      const released: PromiseWithResolvers<void> = Promise.withResolvers();
-      const original = ctx.sandbox.confine.bind(ctx.sandbox);
-      let sibling: AbortSignal | undefined;
-      const failure = new Error("inspection failed");
-      const heldArg = kind === "checkout" ? "--git-common-dir" : "symbolic-ref";
-      const failedArg = kind === "checkout" ? "remote" : "for-each-ref";
-      const probe = vi
-        .spyOn(ctx.sandbox, "confine")
-        .mockImplementation(async (argv, policy, signal) => {
-          if (argv.includes(heldArg)) {
-            sibling = signal;
-            entered.resolve();
-            await released.promise;
-          }
-          if (argv.includes(failedArg)) {
-            await entered.promise;
-            throw failure;
-          }
-          return original(argv, policy, signal);
-        });
-      let settled = false;
-      const operation = (
-        kind === "checkout"
-          ? inspectCheckout(ctx, CONFIG, session(repo), repo, live())
-          : listBranches(ctx, CONFIG, session(repo), repo, 50, live())
-      ).then(
-        () => {
-          settled = true;
-          return undefined;
-        },
-        (error: unknown) => {
-          settled = true;
-          return error;
-        },
-      );
-      try {
-        await entered.promise;
-        await vi.waitFor(() => {
-          expect(sibling?.aborted).toBe(true);
-        });
-        expect(settled).toBe(false);
-        released.resolve();
-        expect(await operation).toBe(failure);
-      } finally {
-        released.resolve();
-        await operation;
-        probe.mockRestore();
-      }
-    },
-  );
+  it("cancels and joins sibling reads when checkout inspection fails", async () => {
+    const root = await directory();
+    const repo = await repository(root);
+    const ctx = await context(sandboxRecord(), repo);
+    const entered: PromiseWithResolvers<void> = Promise.withResolvers();
+    const released: PromiseWithResolvers<void> = Promise.withResolvers();
+    const original = ctx.sandbox.confine.bind(ctx.sandbox);
+    let sibling: AbortSignal | undefined;
+    const failure = new Error("inspection failed");
+    const heldArg = "--git-common-dir";
+    const failedArg = "remote";
+    const probe = vi
+      .spyOn(ctx.sandbox, "confine")
+      .mockImplementation(async (argv, policy, signal) => {
+        if (argv.includes(heldArg)) {
+          sibling = signal;
+          entered.resolve();
+          await released.promise;
+        }
+        if (argv.includes(failedArg)) {
+          await entered.promise;
+          throw failure;
+        }
+        return original(argv, policy, signal);
+      });
+    let settled = false;
+    const operation = inspectCheckout(ctx, CONFIG, session(repo), repo, live()).then(
+      () => {
+        settled = true;
+        return undefined;
+      },
+      (error: unknown) => {
+        settled = true;
+        return error;
+      },
+    );
+    try {
+      await entered.promise;
+      await vi.waitFor(() => {
+        expect(sibling?.aborted).toBe(true);
+      });
+      expect(settled).toBe(false);
+      released.resolve();
+      expect(await operation).toBe(failure);
+    } finally {
+      released.resolve();
+      await operation;
+      probe.mockRestore();
+    }
+  });
 });

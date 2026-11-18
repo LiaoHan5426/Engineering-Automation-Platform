@@ -8,6 +8,7 @@ function render(node: Parameters<typeof renderVue>[0]) {
   return { ...view, ...within(document.body) };
 }
 import type { Context } from "@deepseek-ai/cordis";
+import type { ComposerBlock } from "../src/client/contract/composer-blocks.ts";
 import {
   KEY_BACKSPACE_COMMAND,
   KEY_DELETE_COMMAND,
@@ -28,7 +29,7 @@ import {
 } from "../src/client/input/editor/QuoteNode.tsx";
 import { $selectDetectSpan } from "../src/client/input/editor/span-map.ts";
 const quote = "selected source text";
-function bench(quoteInsertionAllowed?: () => boolean) {
+function bench(composerBlock?: () => ComposerBlock | undefined) {
   const sink = vi.fn(() => Promise.resolve<SubmitOutcome>({ kind: "success" }));
   const shell = new SessionInputShell({
     actx: {} as Context,
@@ -39,7 +40,7 @@ function bench(quoteInsertionAllowed?: () => boolean) {
       unsupportedNotice: () => "unsupported",
     },
     quoteRemoveLabel: () => "Remove quote",
-    ...(quoteInsertionAllowed === undefined ? {} : { quoteInsertionAllowed }),
+    ...(composerBlock === undefined ? {} : { composerBlock }),
   });
   return { shell, sink };
 }
@@ -50,13 +51,13 @@ function quoteKeys(shell: SessionInputShell): string[] {
 }
 describe("QuoteNode composer lifecycle", () => {
   it("preserves the draft when its Session cannot accept an inserted quote", () => {
-    let allowed = false;
-    const { shell } = bench(() => allowed);
+    let block: ComposerBlock | undefined = { reason: "Unavailable" };
+    const { shell } = bench(() => block);
     shell.setDraft("base ");
     const before = shell.draftSnapshot;
     expect(shell.insertQuote(quote)).toBe(false);
     expect(shell.draftSnapshot).toBe(before);
-    allowed = true;
+    block = undefined;
     expect(shell.insertQuote(quote)).toBe(true);
   });
   it("renders quote text as a non-interactive container and keeps close accessible", async () => {

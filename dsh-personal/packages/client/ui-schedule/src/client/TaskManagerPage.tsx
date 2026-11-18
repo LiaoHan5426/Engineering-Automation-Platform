@@ -40,6 +40,7 @@ import { useRelativeClock } from './relative-clock.ts'
 import { formatScheduleFrequency, nextRunParts, taskName, zoneLabel } from './schedule-format.ts'
 import type { FrequencyZone } from './schedule-format.ts'
 import { ScheduleEmptyIllustration } from './ScheduleEmptyIllustration.tsx'
+import { ScheduleRecommendations } from './ScheduleRecommendations.tsx'
 import css from './TaskManagerPage.module.css'
 /** Injected catalog and task actions for the management page. */
 export interface TaskManagerInjected extends TaskDetailInjected {
@@ -52,6 +53,8 @@ export interface TaskManagerInjected extends TaskDetailInjected {
    * schedule it, using the existing new-conversation action.
    */
   readonly onNewTask: () => void
+  /** Start a new Session with a localized recommendation request prefilled. */
+  readonly onUseRecommendation: (prompt: string) => void
   /**
    * Remove every ended Host task, after this page has confirmed the action.
    *
@@ -500,6 +503,9 @@ export const TaskManagerPage = defineComponent(
                         { default: () => [props.t('empty.action')] },
                       ),
                     ]),
+                  status.value === 'ready' && rows.value.length === 0 && search.value.trim() === '' &&
+                    (statusFilter.value === 'active' || statusFilter.value === 'all') &&
+                    h(ScheduleRecommendations, { t: props.t, onUse: props.onUseRecommendation }),
                   h(
                     'ul',
                     {
@@ -668,6 +674,7 @@ export const TaskManagerPage = defineComponent(
       'onOpenSession',
       'loadHistory',
       'onNewTask',
+      'onUseRecommendation',
       'onClearEnded',
       'onCreateTask',
       'useCatalog',

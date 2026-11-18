@@ -663,3 +663,8 @@ export const IconSaveOutlineRegular = productIcon('save-outline', 'regular')
 
 /** Medium floppy-disk save action. */
 export const IconSaveOutlineMedium = productIcon('save-outline', 'medium')
+
+/** Regular one-pixel files diff artwork. */
+export const IconFilesDiffOutlineRegular = productIcon('files-diff-outline', 'regular')
+/** Medium files diff artwork with a fixed 1.3px stroke. */
+export const IconFilesDiffOutlineMedium = productIcon('files-diff-outline', 'medium')

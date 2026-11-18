@@ -22,7 +22,7 @@ import type {
   ToolExecutionResult,
   ToolExecutionToken,
 } from "@deepseek-ai/dsh-tools";
-import { bench, pullUrl } from "./fixtures.ts";
+import { bench, pullUrl, settled } from "./fixtures.ts";
 
 const contexts: Context[] = [];
 const releases: (() => void)[] = [];
@@ -39,7 +39,7 @@ function output(overrides: Partial<ShellRunResult> = {}): ShellRunResult {
     timedOut: false,
     aborted: false,
     timeoutMs: 1_234,
-    stdout: { text: JSON.stringify({ url: pullUrl(9) }), truncated: false },
+    stdout: { text: `${pullUrl(9)}\n`, truncated: false },
     stderr: { text: "", truncated: false },
     ...overrides,
   };
@@ -135,7 +135,7 @@ describe("PR reference lookup", () => {
     });
     expect(resolve).toHaveBeenCalledWith(
       expect.objectContaining({
-        command: "env gh pr view 9 --repo octo/demo --json url",
+        command: "env gh pr view 9 --repo octo/demo --json url --jq .url",
         workdir: process.cwd(),
         timeoutMs: 1_234,
         dshEnv: f.ctx.shellEnv.collect(f.exec),
@@ -161,12 +161,10 @@ describe("PR reference lookup", () => {
     ["timeout", { timedOut: true }],
     ["abort result", { aborted: true }],
     ["truncated output", { stdout: { text: "{", truncated: true } }],
-    ["invalid JSON", { stdout: { text: "{", truncated: false } }],
-    ["missing URL", { stdout: { text: "{}", truncated: false } }],
-    [
-      "non-PR URL",
-      { stdout: { text: '{"url":"https://fake.test/octo/demo/issues/9"}', truncated: false } },
-    ],
+    ["JSON output", { stdout: { text: JSON.stringify({ url: pullUrl(9) }), truncated: false } }],
+    ["empty output", { stdout: { text: "", truncated: false } }],
+    ["two URLs", { stdout: { text: `${pullUrl(9)}\n${pullUrl(10)}`, truncated: false } }],
+    ["non-PR URL", { stdout: { text: "https://fake.test/octo/demo/issues/9", truncated: false } }],
   ] satisfies [string, Partial<ShellRunResult>][])(
     "reports %s without changing bindings or the completed tool result",
     async (_label, overrides) => {
@@ -174,12 +172,23 @@ describe("PR reference lookup", () => {
       f.execute.mockResolvedValue(execution(async () => output(overrides)));
       f.emit();
       await vi.waitFor(() => {
-        expect(f.warn).toHaveBeenCalledWith(expect.stringContaining("PR reference lookup failed"));
+        expect(f.warn).toHaveBeenCalledWith(
+          expect.stringContaining("change request reference lookup failed"),
+        );
       });
       expect(f.records()).toEqual([]);
       expect(f.result.isError).toBe(false);
     },
   );
+
+  it("runs no lookup for the commands of a rule whose registration ended", async () => {
+    const f = await fixture();
+    await f.rules.dispose();
+    f.emit();
+    await settled();
+    expect(f.execute).not.toHaveBeenCalled();
+    expect(f.records()).toEqual([]);
+  });
 
   it("reports a shell preparation rejection that is not an Error", async () => {
     const f = await fixture();
@@ -348,12 +357,12 @@ describe("PR reference lookup", () => {
         resolve.mock.calls.map(([request]) => [request.command, request.workdir, request.dshEnv]),
       ).toEqual([
         [
-          "env gh pr view 9 --repo octo/demo --json url",
+          "env gh pr view 9 --repo octo/demo --json url --jq .url",
           "/tmp/first",
           f.ctx.shellEnv.collect(first),
         ],
         [
-          "env gh pr view 7 --repo octo/other --json url",
+          "env gh pr view 7 --repo octo/other --json url --jq .url",
           "/tmp/second",
           f.ctx.shellEnv.collect(second),
         ],
@@ -401,7 +410,9 @@ describe("PR reference lookup", () => {
         expect(f.records()).toEqual([{ action: "reference", url: pullUrl(9) }]);
       });
       expect(f.warn).toHaveBeenCalledTimes(1);
-      expect(f.warn).toHaveBeenCalledWith(expect.stringContaining("PR reference lookup failed"));
+      expect(f.warn).toHaveBeenCalledWith(
+        expect.stringContaining("change request reference lookup failed"),
+      );
     });
 
     it("drops queued lookups when the root call is cancelled, and skips calls whose output names their own URL", async () => {

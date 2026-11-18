@@ -1,5 +1,6 @@
-import { h, nextTick } from "vue";
 // @vitest-environment jsdom
+import { h, nextTick } from "vue";
+import { fixedPathPresence, userTextFrameworkProps } from "../../ui-conversation/tests/user-text-component-fixture.client.tsx";
 import { contextMenuHook } from "@deepseek-ai/dsh-client-test-runtime";
 import { render, cleanup, act } from "@deepseek-ai/dsh-client-test-runtime/src/vue-test.ts";
 import { fireEvent } from "@testing-library/dom";
@@ -16,19 +17,32 @@ import { en } from "../src/client/locales.ts";
 import { brandString } from "@deepseek-ai/dsh-brand";
 afterEach(cleanup);
 type Props = ComponentProps<typeof FileReference>;
-function props(openFile: Props["openFile"]): Props {
+function props(openFile: Props["openFile"], presence: "present" | "absent" | undefined = "present"): Props {
   return {
+    ...userTextFrameworkProps,
     node: { id: "file", start: 0, end: 14, data: { path: "docs/a b.md", label: "a b.md" } },
     raw: '@"docs/a b.md"',
     interactive: true,
     openFile,
+    usePathPresence: fixedPathPresence(presence),
     t: makeTranslate(en),
     useContextMenu: contextMenuHook(),
     sessionId: brandString<SessionId>("original"),
     resolveFilePath: (path) => `/workspace/${path}`,
-  } as Props;
+  } satisfies Props;
 }
 describe("FileReference", () => {
+  it("keeps original spelling until the Host confirms existence", () => {
+    const openFile = vi.fn();
+    for (const presence of [undefined, "absent"] as const) {
+      const input = { ...props(openFile), usePathPresence: fixedPathPresence(presence) };
+      const view = render(h("div", null, [h(FileReference, input), h(FolderReference, { ...input, node: { id: "folder", start: 0, end: 6, data: { path: "docs/", label: "docs" } }, raw: "@docs/" })]));
+      expect(view.container.textContent).toBe('@"docs/a b.md"@docs/');
+      expect(view.container.querySelector("[data-ref-chip]")).toBeNull();
+      view.unmount();
+    }
+    expect(openFile).not.toHaveBeenCalled();
+  });
   it("opens the decoded path and leaves summaries and folders non-interactive", async () => {
     const openFile = vi.fn();
     const input = props(openFile);

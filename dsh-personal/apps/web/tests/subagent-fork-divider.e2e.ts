@@ -11,7 +11,12 @@ import { expect, it, onTestFailed } from "vite-plus/test";
 import { parseSessionLog } from "@deepseek-ai/dsh-llm-replay";
 import type {} from "@deepseek-ai/dsh-subagent";
 import { launchWebScaffold, selectedSessionFixture, watchConsole } from "./scaffold.ts";
-import { connectFreshWorkspace, newEnglishPage, saveFailureShot } from "./support.ts";
+import {
+  connectFreshWorkspace,
+  newEnglishPage,
+  saveFailureShot,
+  showSessionPanel,
+} from "./support.ts";
 
 const DIR = fileURLToPath(
   new URL("../../../snapshots/web/subagent-fork-schedule", import.meta.url),
@@ -26,9 +31,9 @@ it("places the inherited-history divider between the parent turn and the child p
     ),
   );
   const childPrompt = parseSessionLog(await readFile(paths[1]!, "utf8")).findLast(
-    (event) => event.type === "user/message" && event.data.source.kind === "user",
+    (event) => event.type === "user/message" && event.data.source.kind === "agent-message",
   );
-  if (childPrompt?.type !== "user/message") throw new Error("child fixture has no user prompt");
+  if (childPrompt?.type !== "user/message") throw new Error("child fixture has no delegated task");
   const scaffold = await launchWebScaffold({
     replayFixture: paths[0]!,
     replayChildFixtures: [paths[1]!],
@@ -57,15 +62,17 @@ it("places the inherited-history divider between the parent turn and the child p
       delivery: "caller",
       signal: new AbortController().signal,
       parent,
-      prompt: [...childPrompt.data.content],
+      prompt: childPrompt.data.content.slice(1),
     });
     try {
       await activation.result;
     } finally {
       await activation.dispose();
     }
-    await page.getByRole("button", { name: "1 subagent" }).click();
-    await page
+    const subagents = (await showSessionPanel(page)).locator(
+      '[data-session-panel-section="subagents"]',
+    );
+    await subagents
       .getByRole("tree", { name: "Subagent sessions" })
       .getByRole("treeitem", { name: new RegExp(LABEL) })
       .click();

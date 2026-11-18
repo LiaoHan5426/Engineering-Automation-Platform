@@ -1,4 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
+import { extractTextContent } from '@deepseek-ai/dsh-llm/message'
 import { computed, defineComponent, h, ref, shallowRef, useId, watchEffect } from 'vue'
 import type { VNode } from 'vue'
 import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
@@ -24,7 +25,7 @@ const QUEUE_TEXT_FACTS: Readonly<Partial<UserTextFacts>> = {
 
 function textOf(content: InboxState['next-turn'][number]['content']): string | null {
   if (!content.every(block => block.type === 'text')) return null
-  return content.map(block => block.text).join('')
+  return extractTextContent(content)
 }
 
 /** Queue operations injected by the session-scoped registration. */
@@ -170,7 +171,7 @@ export const QueueDock = defineComponent((props: QueueDockProps) => {
           attachments.length > 0 ? h('span', { class: css.attachments }, attachments.map((item, index) => item.type === 'image'
             ? h(QueueThumb, { key: `${item.attachment.attachmentId}:${index}`, attachment: item.attachment, loadImage: props.loadImage, label: props.t('queue.image') })
             : h(QueueFile, { key: `${item.attachment.attachmentId}:${item.attachment.name}:${index}`, attachment: item.attachment, label: props.t('queue.file', { name: item.attachment.name }) }))) : null,
-          preview(row.content.filter(block => block.type === 'text').map(block => block.text).join('')),
+          preview(extractTextContent(row.content)),
         ],
         queueMutable.value ? h('div', { class: css.actions }, draft !== null ? [
           actionButton('queue.save', h(IconCheckOutlineRegular, { size: 14 }), () => { void saveEdit() }, busy.value !== null || draft.text.trim() === ''),

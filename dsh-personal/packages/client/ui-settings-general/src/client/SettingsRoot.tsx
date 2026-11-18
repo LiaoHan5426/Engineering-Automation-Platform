@@ -56,6 +56,7 @@ function navIcon(id: string) {
 type PanelProps = {
   rows: readonly SettingsSectionRow[]
   renderSlot: SettingsRootComponentProps['renderSlot']
+  renderFactorySlot: SettingsRootComponentProps['renderFactorySlot']
   activeId: string | undefined
   onSelect: (id: string) => void
   onClose: () => void
@@ -73,7 +74,7 @@ const SettingsPanel = defineComponent(
     const panel = shallowRef<HTMLDivElement | null>(null)
     useModalLayer(panel, true, () => { props.onClose() })
     return () => {
-      const { rows, renderSlot, activeId, onSelect, onClose } = props
+      const { rows, renderSlot, renderFactorySlot, activeId, onSelect, onClose } = props
       const active = rows.find(r => r.id === activeId)?.id ?? rows[0]?.id
       // Portalled beside #root like the Modal primitive: a covering surface mounted
       // inside the root would precede the columns' chrome in document order, so a
@@ -156,7 +157,7 @@ const SettingsPanel = defineComponent(
                   ]),
                   h('div', { class: css.options }, [
                     active !== undefined &&
-                      renderSlot('settings.section', { close: onClose }, { only: active }),
+                      renderFactorySlot('settings.section.view', { id: active, close: onClose }),
                   ]),
                 ],
               ),
@@ -166,7 +167,7 @@ const SettingsPanel = defineComponent(
       )
     }
   },
-  { inheritAttrs: false, props: ['rows', 'renderSlot', 'activeId', 'onSelect', 'onClose'] },
+  { inheritAttrs: false, props: ['rows', 'renderSlot', 'renderFactorySlot', 'activeId', 'onSelect', 'onClose'] },
 )
 /**
  * Render the settings trigger and panel.
@@ -259,7 +260,7 @@ export const SettingsRoot = defineComponent(
       completedOnboarding.value = new Set([...completedOnboarding.value, id])
     }
     return () => {
-      const { wide, reconnect, renderSlot, t, openDesktopUpdate, actions } = props
+      const { wide, reconnect, renderSlot, renderFactorySlot, t, openDesktopUpdate, actions } = props
       const { close, openSection } = actions
       const { open, activeId } = shell.value
       const shortcut = shortcutRef.value
@@ -271,7 +272,12 @@ export const SettingsRoot = defineComponent(
         connectionIndicator = 'connecting'
       else if (connectionRef.value === 'disconnected') connectionIndicator = 'disconnected'
       else if (showRecovery.value) connectionIndicator = 'recovered'
+      const openSettings = (sectionId?: string): void => {
+        if (sectionId === undefined) actions.open()
+        else actions.openSection(sectionId)
+      }
       return h(Fragment, null, [
+        h('div', { class: css.noticeRow, hidden: !wide }, [h('div', { class: css.notice }, [renderSlot('settings.notice', { openSettings })])]),
         h('div', { class: clsx(css.triggerRow, !wide && css.railRow) }, [
           renderSlot(
             'settings.launcher',
@@ -346,6 +352,7 @@ export const SettingsRoot = defineComponent(
           h(SettingsPanel, {
             rows: rows,
             renderSlot: renderSlot,
+            renderFactorySlot,
             activeId: activeId,
             onSelect: actions.select,
             onClose: close,
@@ -372,6 +379,7 @@ export const SettingsRoot = defineComponent(
       'wide',
       'reconnect',
       'renderSlot',
+      'renderFactorySlot',
       't',
       'openDesktopUpdate',
       'actions',

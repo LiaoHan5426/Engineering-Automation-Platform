@@ -29,6 +29,8 @@ Linked bundles resolve dependencies from their real package directories; depende
 <a id="use-this-package"></a>
 ## Use this package
 
+The published runtime includes its JavaScript entry and sibling chunks required by Vitest snapshot operations.
+
 This package gives a browser feature spec a real runtime to mount against: create the bench, declare the slots your feature occupies, mount the feature plugin, render a slot, assert on the local view, and dispose — with no second implementation of production logic.
 
 ### Setting up a feature spec

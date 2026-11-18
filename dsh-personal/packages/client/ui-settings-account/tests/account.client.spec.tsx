@@ -20,6 +20,7 @@ import {
   type AccountSnapshot,
 } from "../src/client/AccountSection.tsx";
 import type { AccountMenuProps } from "../src/client/AccountMenu.tsx";
+import { AccountNotices, type AccountNoticesProps } from "../src/client/AccountNotices.tsx";
 import type { AccountNotificationsOwnerProps } from "../src/client/account-ui.ts";
 import type {} from "../src/client/index.ts";
 import { en, zh, type AccountKey } from "../src/client/locales.ts";
@@ -144,13 +145,12 @@ async function accountMenu(
   operations: AccountSectionInjected,
   snapshot: () => AccountSnapshot,
   settingsOpen: boolean,
-  renderSlot: AccountMenuProps["renderSlot"] = () => null,
+  renderSlot: AccountNoticesProps["renderSlot"] = () => null,
   openSettings: AccountMenuProps["openSettings"] = () => {},
   wide = true,
 ) {
   const { AccountMenu } = await import("../src/client/AccountMenu.tsx");
-  return h(AccountMenu, {
-    renderSlot: renderSlot,
+  return h(Fragment, null, [h("div", { hidden: !wide }, [h(AccountNotices, { renderSlot, openSettings, useAccount: (selector: (state: AccountSnapshot) => unknown) => computed(() => selector(snapshot())) } as AccountNoticesProps)]), h(AccountMenu, {
     ...({} as GlobalStandardProps),
     ...operations,
     settingsOpen: settingsOpen,
@@ -160,7 +160,7 @@ async function accountMenu(
     openOnboarding: () => {},
     openSettings: openSettings,
     t: (key) => (key in en ? en[key as AccountKey] : key),
-  });
+  })]);
 }
 it.each([en, zh])(
   "renders account cards without inventing profile or balance data",
@@ -207,7 +207,6 @@ it.each(
   const { AccountMenu } = await import("../src/client/AccountMenu.tsx");
   render(
     h(AccountMenu, {
-      renderSlot: () => null,
       ...({} as GlobalStandardProps),
       ...operations,
       settingsOpen: false,
@@ -266,7 +265,6 @@ it.each([en, zh])(
     cleanup();
     const { AccountMenu } = await import("../src/client/AccountMenu.tsx");
     const props: AccountMenuProps = {
-      renderSlot: () => null,
       ...({} as GlobalStandardProps),
       ...operations,
       wide: true,
@@ -313,8 +311,7 @@ it.each([en, zh])(
     const { AccountMenu } = await import("../src/client/AccountMenu.tsx");
     render(
       h(AccountMenu, {
-        renderSlot: () => null,
-        ...({} as GlobalStandardProps),
+          ...({} as GlobalStandardProps),
         ...operations,
         settingsOpen: false,
         useAccount: (selector) => computed(() => selector(operations.hooks.account.getSnapshot())),
@@ -350,7 +347,6 @@ it.each([true, false])(
     const { AccountMenu } = await import("../src/client/AccountMenu.tsx");
     const operations = shallowRef(operationsOf({ status: "signed-out", attempt: null }));
     const props: AccountMenuProps = {
-      renderSlot: () => null,
       ...({} as GlobalStandardProps),
       ...operations.value,
       wide,
@@ -398,7 +394,6 @@ it("reports a failed start in the login dialog, not as a sidebar alert", async (
   });
   const view = render(
     h(AccountMenu, {
-      renderSlot: () => null,
       ...({} as GlobalStandardProps),
       ...operations,
       settingsOpen: false,
@@ -419,7 +414,6 @@ it("reports a failed start in the login dialog, not as a sidebar alert", async (
   expect(screen.queryByRole("alert")).toBeNull();
   await view.rerender(
     h(AccountMenu, {
-      renderSlot: () => null,
       ...({} as GlobalStandardProps),
       ...operations,
       settingsOpen: false,
@@ -447,7 +441,6 @@ it("keeps the confirmation dialog open after a failed sign-out", async () => {
   const signOut = vi.fn((): Promise<void> => Promise.reject(new Error("account sign-out failed")));
   render(
     h(AccountMenu, {
-      renderSlot: () => null,
       ...({} as GlobalStandardProps),
       ...operations,
       settingsOpen: false,
@@ -735,7 +728,6 @@ it.each([
   const { AccountMenu } = await import("../src/client/AccountMenu.tsx");
   render(
     h(AccountMenu, {
-      renderSlot: () => null,
       ...({} as GlobalStandardProps),
       ...operations,
       settingsOpen: false,
@@ -771,7 +763,6 @@ it("shows the same shared picture outcome in settings and the sidebar", async ()
   const { AccountMenu } = await import("../src/client/AccountMenu.tsx");
   render(
     h(AccountMenu, {
-      renderSlot: () => null,
       ...({} as GlobalStandardProps),
       ...operations,
       settingsOpen: false,
@@ -1226,7 +1217,6 @@ it.each([en, zh])(
     };
     const { AccountMenu } = await import("../src/client/AccountMenu.tsx");
     const element = h(AccountMenu, {
-      renderSlot: () => null,
       ...({} as GlobalStandardProps),
       ...operations,
       settingsOpen: false,
@@ -1272,7 +1262,7 @@ it.each(["desktopOnboardingVisible", "onboarding"] as const)(
     let active: boolean | undefined;
     let openAccount: (() => void) | undefined;
     const openSettings = vi.fn();
-    const renderSlot: AccountMenuProps["renderSlot"] = (name, owner) => {
+    const renderSlot: AccountNoticesProps["renderSlot"] = (name, owner) => {
       expect(name).toBe("settings.launcher.notifications");
       const value: object = owner;
       const props = value as AccountNotificationsOwnerProps;
@@ -1293,10 +1283,44 @@ it.each(["desktopOnboardingVisible", "onboarding"] as const)(
     expect(openSettings).toHaveBeenCalledExactlyOnceWith("account");
   },
 );
-it("keeps notification DOM inside the launcher while the collapsed rail hides it", async () => {
+it("updates notice activity from the Host stream and releases it on unmount", async () => {
+  const operations = operationsOf({ status: "credential-stored", attempt: null });
+  let snapshot = operations.hooks.account.getSnapshot();
+  const listeners = new Set<() => void>();
+  const useAccount = bindSnapshotSelector({
+    getSnapshot: () => snapshot,
+    subscribe: listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+  });
+  const openSettings = vi.fn();
+  const renderSlot: AccountNoticesProps["renderSlot"] = (name, owner) => {
+    expect(name).toBe("settings.launcher.notifications");
+    const value: object = owner;
+    const props = value as AccountNotificationsOwnerProps;
+    return h("button", { disabled: !props.active, onClick: props.openAccount }, "Account notice");
+  };
+  const view = render(h(AccountNotices, { useAccount, renderSlot, openSettings } as AccountNoticesProps));
+  const notice = screen.getByRole<HTMLButtonElement>("button", { name: "Account notice" });
+  expect(notice.disabled).toBe(false);
+  await act(() => {
+    snapshot = { ...snapshot, onboarding: true };
+    for (const listener of listeners) listener();
+  });
+  expect(notice.disabled).toBe(true);
+  await act(() => {
+    snapshot = { ...snapshot, onboarding: false };
+    for (const listener of listeners) listener();
+  });
+  expect(notice.disabled).toBe(false);
+  fireEvent.click(notice);
+  expect(openSettings).toHaveBeenCalledExactlyOnceWith("account");
+  expect(listeners.size).toBeGreaterThan(0);
+  view.unmount();
+  expect(listeners.size).toBe(0);
+});
+it("keeps notification DOM in the notice seat while the collapsed rail hides it", async () => {
   const operations = operationsOf({ status: "credential-stored", attempt: null });
   const snapshot = () => operations.hooks.account.getSnapshot();
-  const renderSlot: AccountMenuProps["renderSlot"] = () =>
+  const renderSlot: AccountNoticesProps["renderSlot"] = () =>
     h("div", { role: "status" }, "Notification");
   const view = render(await accountMenu(operations, snapshot, false, renderSlot));
   const notice = screen.getByRole("status");

@@ -536,9 +536,10 @@ describe.skipIf(MODE === "record")(
       expect(await panel.getAttribute("data-sidebar-right-panel")).toBe("push");
       expect(await paneSnapshot(page)).toEqual(retainedB);
       await open();
-      await expect.poll(() => workspaceDirectory.getAttribute("aria-expanded")).toBe("false");
+      // B stayed a recent view while A was shown, so its Files tree keeps the expanded directory.
+      await expect.poll(() => workspaceDirectory.getAttribute("aria-expanded")).toBe("true");
       expect(await paneSnapshot(page)).toEqual(retainedB);
-      await checkpoint("B restored: normal mode and collapsed Files directory");
+      await checkpoint("B restored: normal mode and expanded Files directory");
       await close();
       await select(original, "LIGHTHOUSE");
       await expect.poll(() => columns(page)).toEqual(normalColumns);

@@ -124,8 +124,8 @@ const delay = (ms = 0): Promise<void> =>
     als.run("thrower", () => {
       throw new Error("sync failure");
     });
-  } catch {
-    /* expected */
+  } catch (_syncFailure) {
+    /* The callback throws on purpose; the check below reads the store after it. */
   }
   check("boundary closes after sync throw", als.getStore(), undefined);
 }

@@ -3,6 +3,7 @@ import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { installProxyFromEnvironment } from "@deepseek-ai/dsh-http-proxy";
 import { customGuidance } from "./guidance.ts";
+import { keyCandidate } from "./sources.ts";
 
 let seen: string[] = [];
 let proxy: Server;
@@ -57,7 +58,7 @@ describe("deepseek search api egress", () => {
     const p = new DeepSeekSearchApiProvider(() => ({
       auth: {
         sources: [
-          { kind: "api-key", baseURL: "http://dsk-probe.invalid/api/v1/tools", key: "probe" },
+          keyCandidate("http://dsk-probe.invalid/api/v1/tools/search", "probe", "PROBE_KEY"),
         ],
       },
       count: 10,

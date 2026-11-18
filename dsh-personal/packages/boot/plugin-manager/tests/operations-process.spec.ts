@@ -92,8 +92,8 @@ function fixture(child: string, descendant: string) {
       const pid = Number(readFileSync(pidFile, "utf8"));
       try {
         process.kill(pid, "SIGKILL");
-      } catch {
-        /* the descendant exited with its own timer */
+      } catch (_alreadyExited) {
+        /* The descendant exited on its own timer, so there is nothing left to kill. */
       }
       await awaitGone(pid);
     }
@@ -183,8 +183,8 @@ it("waits for a run recorded by an exited operation before starting its own", as
   onTestFinished(async () => {
     try {
       orphan.kill("SIGKILL");
-    } catch {
-      /* the recorded run already exited */
+    } catch (_alreadyExited) {
+      /* The recorded run already exited, so there is nothing left to kill. */
     }
     await awaitGone(orphan.pid as number);
   });

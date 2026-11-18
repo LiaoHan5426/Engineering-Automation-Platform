@@ -125,6 +125,7 @@ it("withdraws every account surface and the account stream on revocation, and re
     Object.fromEntries(
       [
         "settings.launcher",
+        "settings.notice",
         "shell.quota-notice",
         "settings.models.sign-in",
         "settings.section",
@@ -137,6 +138,7 @@ it("withdraws every account surface and the account stream on revocation, and re
     await streams[0]!.accepted;
     expect(surfaces()).toEqual({
       "settings.launcher": 1,
+      "settings.notice": 1,
       "shell.quota-notice": 1,
       "settings.models.sign-in": 1,
       "settings.section": 1,
@@ -146,6 +148,7 @@ it("withdraws every account surface and the account stream on revocation, and re
     expect(streams[0]!.signal.aborted).toBe(true);
     expect(surfaces()).toEqual({
       "settings.launcher": 0,
+      "settings.notice": 0,
       "shell.quota-notice": 0,
       "settings.models.sign-in": 0,
       "settings.section": 0,
@@ -155,6 +158,7 @@ it("withdraws every account surface and the account stream on revocation, and re
     await streams[1]!.accepted;
     expect(surfaces()).toEqual({
       "settings.launcher": 1,
+      "settings.notice": 1,
       "shell.quota-notice": 1,
       "settings.models.sign-in": 1,
       "settings.section": 1,

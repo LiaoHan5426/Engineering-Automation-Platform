@@ -44,7 +44,7 @@ it("saves language and provider preferences without remounting and restores them
       installAnchor: join(home, "package.json"),
       cwd: home,
       home,
-      overlays: [],
+      overlayPaths: [],
       telemetryDisabledEnv: undefined,
     };
     const start = () =>

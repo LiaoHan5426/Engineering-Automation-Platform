@@ -19,6 +19,8 @@ export const FileTreePane = defineComponent(
     props: ChangedFilesProps & {
       readonly position: FileTreePosition
       readonly id: string
+      /** Width required by the toolbar cell above the tree. */
+      readonly least?: number
       /** Receives the pane's width in pixels whenever it changes, so the toolbar can align a cell with it. */
       readonly onWidth: (width: number) => void
     },
@@ -64,7 +66,9 @@ export const FileTreePane = defineComponent(
       },
       { immediate: true, flush: 'post' },
     )
-    const shown = computed(() => Math.min(width.value, maximum.value))
+    const floor = computed(() => Math.max(MIN_WIDTH, props.least ?? 0))
+    const top = computed(() => Math.max(floor.value, maximum.value))
+    const shown = computed(() => Math.max(floor.value, Math.min(width.value, top.value)))
     watch(
       () => [shown.value, props.onWidth],
       () => {
@@ -74,7 +78,7 @@ export const FileTreePane = defineComponent(
     )
     const direction = computed(() => (props.position === 'left' ? 1 : -1))
     const resize = (next: number): void => {
-      setWidth(Math.round(Math.max(MIN_WIDTH, Math.min(maximum.value, next))))
+      setWidth(Math.round(Math.max(floor.value, Math.min(top.value, next))))
     }
     return () => {
       return h(
@@ -94,8 +98,8 @@ export const FileTreePane = defineComponent(
             'aria-label': props.t('diff.resizeFileTree'),
             'aria-orientation': 'vertical',
             'aria-controls': props.id,
-            'aria-valuemin': MIN_WIDTH,
-            'aria-valuemax': maximum.value,
+            'aria-valuemin': floor.value,
+            'aria-valuemax': top.value,
             'aria-valuenow': shown.value,
             onPointerdown: (event) => {
               if (event.button !== 0) return
@@ -126,9 +130,9 @@ export const FileTreePane = defineComponent(
               event.preventDefault()
               resize(
                 event.key === 'Home'
-                  ? MIN_WIDTH
+                  ? floor.value
                   : event.key === 'End'
-                    ? maximum.value
+                    ? top.value
                     : shown.value + direction.value * (event.key === 'ArrowRight' ? 20 : -20),
               )
             },
@@ -150,7 +154,7 @@ export const FileTreePane = defineComponent(
     props: [
       'position',
       'id',
-      'onWidth',
+      'onWidth', 'least',
       'files',
       'state',
       'filter',
@@ -158,6 +162,8 @@ export const FileTreePane = defineComponent(
       'jump',
       'menu',
       'threadCounts',
+      'viewed',
+      'loading',
       't',
     ],
   },

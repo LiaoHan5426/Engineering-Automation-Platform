@@ -88,10 +88,15 @@ function reader(opened: Bench): Follower {
 const ready = (state: ForgePanelState): boolean =>
   state.checkout.state === "ready" && state.readiness !== null;
 
+/** Text of a notice a plugin queues for the next step, as the approval service does after a policy change. */
+const POLICY_NOTICE =
+  'The user changed the approval policy from "ask the user for approval" to "never ask the user for approval".';
+
 /** Worktree facts of a Session without a worktree service, request, or creation, whose checkout can host a worktree. */
 const UNAVAILABLE = {
   editable: false,
   blocker: null,
+  namePrefix: "dsh-",
   request: null,
   created: null,
   creation: null,
@@ -146,7 +151,7 @@ async function startInWorktree(
   opened: Bench,
   from: string | null = null,
 ): Promise<ForgeSessionWorktree> {
-  await opened.ctx.forgePanel.requestWorktree(opened.session, from, signal);
+  await opened.ctx.forgePanel.requestWorktree(opened.session, from, null, signal);
   sendPrompt(opened.agent, "first");
   await opened.agent.whenIdle();
   const created = worktreeState(opened)?.created ?? null;
@@ -198,7 +203,7 @@ describe("forgePanel.follow", () => {
         checkout: { root: repo, branch: "main", linked: false, commit: COMMIT },
       },
       repository: demo,
-      readiness: { state: "ready", message: null },
+      readiness: { state: "ready", message: null, signIn: null },
       changeRequests: [],
       worktree: UNAVAILABLE,
       // The remote was never fetched, so it names no default branch to fork from.
@@ -395,7 +400,7 @@ describe("forgePanel.follow", () => {
     opened.provider.readinessImpl = (host) =>
       host === "fake.test"
         ? held.promise
-        : Promise.resolve({ state: "unauthenticated", message: "sign in" });
+        : Promise.resolve({ state: "unauthenticated", message: "sign in", signIn: null });
     const follower = reader(opened);
     await follower.until((state) => state.repository?.host === "fake.test");
 
@@ -404,10 +409,10 @@ describe("forgePanel.follow", () => {
     const moved = await follower.until(
       (state) => state.repository?.host === "other.test" && state.readiness !== null,
     );
-    held.resolve({ state: "ready", message: null });
+    held.resolve({ state: "ready", message: null, signIn: null });
     await Promise.resolve();
 
-    expect(moved.readiness).toEqual({ state: "unauthenticated", message: "sign in" });
+    expect(moved.readiness).toEqual({ state: "unauthenticated", message: "sign in", signIn: null });
     expect(opened.provider.probes).toEqual(["fake.test", "other.test"]);
     // A new commit gives the next inspection a state of its own to publish.
     await git(repo, "commit", "--allow-empty", "-m", "again");
@@ -416,6 +421,7 @@ describe("forgePanel.follow", () => {
     expect(follower.states.at(-1)?.readiness).toEqual({
       state: "unauthenticated",
       message: "sign in",
+      signIn: null,
     });
     expect(opened.provider.probes).toEqual(["fake.test", "other.test"]);
   });
@@ -432,7 +438,7 @@ describe("forgePanel.follow", () => {
 
     await opened.ctx.workingDirectory.set(opened.agent, outside);
     await follower.until((state) => state.directory === outside && state.checkout.state === "none");
-    held.resolve({ state: "ready", message: null });
+    held.resolve({ state: "ready", message: null, signIn: null });
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(follower.states.at(-1)).toMatchObject({
@@ -530,7 +536,7 @@ describe("forgePanel.follow", () => {
     });
     await settle();
     expect(stopped).toBe(false);
-    held.resolve({ state: "ready", message: null });
+    held.resolve({ state: "ready", message: null, signIn: null });
     await stopping;
 
     await ending;
@@ -1414,9 +1420,9 @@ describe("forgePanel worktree requests", () => {
     const follower = reader(opened);
     await follower.until(ready);
 
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
     const requested = await follower.next(() => true);
-    await opened.ctx.forgePanel.requestWorktree(opened.session, "main", signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, "main", null, signal);
     const replaced = await follower.next(() => true);
     await opened.ctx.forgePanel.cancelWorktree(opened.session, signal);
     const withdrawn = await follower.next(() => true);
@@ -1425,8 +1431,8 @@ describe("forgePanel worktree requests", () => {
 
     const editable = { ...UNAVAILABLE, editable: true };
     expect(follower.states[0]?.worktree).toEqual(editable);
-    expect(requested.worktree).toEqual({ ...editable, request: { from: null } });
-    expect(replaced.worktree).toEqual({ ...editable, request: { from: "main" } });
+    expect(requested.worktree).toEqual({ ...editable, request: { from: null, name: null } });
+    expect(replaced.worktree).toEqual({ ...editable, request: { from: "main", name: null } });
     expect(withdrawn.worktree).toEqual(editable);
     expect(started.worktree).toEqual(UNAVAILABLE);
     expect(opened.records).toEqual([
@@ -1441,7 +1447,7 @@ describe("forgePanel worktree requests", () => {
     const opened = await open(repo, {}, { worktrees: true });
 
     await opened.ctx.forgePanel.cancelWorktree(opened.session, signal);
-    await opened.ctx.forgePanel.requestWorktree(opened.session, "main", signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, "main", null, signal);
     await opened.ctx.forgePanel.cancelWorktree(opened.session, signal);
     await opened.ctx.forgePanel.cancelWorktree(opened.session, signal);
 
@@ -1451,11 +1457,11 @@ describe("forgePanel worktree requests", () => {
   it("refuses worktree changes after the first turn starts", async () => {
     const { repo } = await project();
     const opened = await open(repo, {}, { worktrees: true });
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
     startTurn(opened.session, 1);
 
     await expect(
-      opened.ctx.forgePanel.requestWorktree(opened.session, "main", signal),
+      opened.ctx.forgePanel.requestWorktree(opened.session, "main", null, signal),
     ).rejects.toMatchObject({ code: "forgePanel/session-started" });
     await expect(
       opened.ctx.forgePanel.cancelWorktree(opened.session, signal),
@@ -1466,7 +1472,7 @@ describe("forgePanel worktree requests", () => {
   it("refuses worktree changes once the worktree exists, before any turn starts", async () => {
     const { repo } = await project();
     const opened = await open(repo, {}, { worktrees: true });
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
     await proposeStep(opened.ctx, opened.agent, {
       turn: 1,
       step: 1,
@@ -1475,13 +1481,13 @@ describe("forgePanel worktree requests", () => {
     });
 
     await expect(
-      opened.ctx.forgePanel.requestWorktree(opened.session, "main", signal),
+      opened.ctx.forgePanel.requestWorktree(opened.session, "main", null, signal),
     ).rejects.toMatchObject({ code: "forgePanel/session-started" });
     await expect(
       opened.ctx.forgePanel.cancelWorktree(opened.session, signal),
     ).rejects.toMatchObject({ code: "forgePanel/session-started" });
     expect(worktreeState(opened)).toMatchObject({
-      request: { from: null },
+      request: { from: null, name: null },
       locked: false,
       stepped: false,
       restoring: false,
@@ -1511,7 +1517,7 @@ describe("forgePanel worktree requests", () => {
     const opened = await open(repo);
 
     await expect(
-      opened.ctx.forgePanel.requestWorktree(opened.session, null, signal),
+      opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal),
     ).rejects.toMatchObject({ code: "forgePanel/worktrees-unavailable" });
     expect(opened.records).toEqual([]);
     appendPluginRecord(opened.session, WORKTREE_RECORD, { action: "request", from: null });
@@ -1521,8 +1527,10 @@ describe("forgePanel worktree requests", () => {
     expect(failed.worktree.failure).toEqual({
       branch: null,
       from: null,
+      fetch: false,
       phase: "prepare",
       message: "No worktree service is mounted",
+      exists: false,
     });
     // Withdrawing needs no worktree service, so the waiting message can go on.
     await opened.ctx.forgePanel.cancelWorktree(opened.session, signal);
@@ -1548,7 +1556,7 @@ describe("forgePanel worktree requests", () => {
     const opened = await open(repo, {}, { worktrees: true });
 
     await expect(
-      opened.ctx.forgePanel.requestWorktree(opened.session, "", signal),
+      opened.ctx.forgePanel.requestWorktree(opened.session, "", null, signal),
     ).rejects.toMatchObject({ code: "forgePanel/invalid-branch" });
     expect(opened.records).toEqual([]);
   });
@@ -1558,7 +1566,7 @@ describe("forgePanel worktree requests", () => {
     const opened = await open(repo, {}, { worktrees: true });
     const follower = reader(opened);
     await follower.until(ready);
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
 
     startTurn(opened.session, 1);
     await proposeStep(opened.ctx, opened.agent, {
@@ -1583,9 +1591,9 @@ describe("forgePanel worktree requests", () => {
         checkout: { root: created?.path, branch: created?.branch, linked: true, commit: COMMIT },
       },
       repository: demo,
-      readiness: { state: "ready", message: null },
+      readiness: { state: "ready", message: null, signIn: null },
       changeRequests: [],
-      worktree: { ...UNAVAILABLE, request: { from: null }, created },
+      worktree: { ...UNAVAILABLE, request: { from: null, name: null }, created },
       local: { base: created?.baseCommit.slice(0, 7), files: [] },
     });
     expect(opened.provider.probes).toEqual(["fake.test"]);
@@ -1622,7 +1630,7 @@ describe("forgePanel worktree requests", () => {
     };
     appendPluginRecord(opened.session, WORKTREE_RECORD, { action: "created", worktree });
     await expect(pending).resolves.toMatchObject({
-      worktree: { ...UNAVAILABLE, request: { from: null }, created: worktree },
+      worktree: { ...UNAVAILABLE, request: { from: null, name: null }, created: worktree },
     });
 
     const later = follower.next(() => true);
@@ -1643,13 +1651,147 @@ describe("forgePanel worktree requests", () => {
   });
 });
 
+describe("forgePanel named and remote-based worktrees", () => {
+  /** Whether the checkout was inspected; a clone of a local path names no code host, so no sign-in state follows. */
+  const inspected = (state: ForgePanelState): boolean => state.checkout.state === "ready";
+
+  /** A clone of a fresh repository, which then gains a commit the clone has not fetched. */
+  async function behind(): Promise<{ repo: string; fetched: string }> {
+    const { path, remove } = await scratch("dsh-forge-remote-");
+    cleanups.push(remove);
+    const upstream = await repository(path, "upstream");
+    const repo = join(path, "clone");
+    await git(path, "clone", "--quiet", upstream, repo);
+    return { repo, fetched: await commitAt(upstream, "remote.txt", "2026-02-01T00:00:00Z") };
+  }
+
+  it("records a request that names its branch, and refuses an invalid or taken name without recording it", async () => {
+    const { repo } = await project();
+    const opened = await open(repo, {}, { worktrees: true });
+    await git(repo, "branch", "taken");
+
+    await expect(
+      opened.ctx.forgePanel.requestWorktree(opened.session, "refs/heads/main", "fix/", signal),
+    ).rejects.toMatchObject({ code: "forgePanel/invalid-name" });
+    await expect(
+      opened.ctx.forgePanel.requestWorktree(opened.session, "refs/heads/main", "taken", signal),
+    ).rejects.toMatchObject({ code: "forgePanel/branch-exists" });
+    expect(opened.records).toEqual([]);
+    await opened.ctx.forgePanel.requestWorktree(
+      opened.session,
+      "refs/heads/main",
+      "fix/login",
+      signal,
+    );
+
+    expect(opened.records).toEqual([
+      { action: "request", from: "refs/heads/main", name: "fix/login" },
+    ]);
+    expect(worktreeState(opened).request).toEqual({ from: "refs/heads/main", name: "fix/login" });
+  });
+
+  it("refuses a named request outside a checkout", async () => {
+    const opened = await open(await plain(), {}, { worktrees: true });
+
+    await expect(
+      opened.ctx.forgePanel.requestWorktree(opened.session, null, "fix/login", signal),
+    ).rejects.toMatchObject({ code: "forgePanel/not-a-checkout" });
+  });
+
+  it("says a named attempt found its branch taken, and creates the worktree once the request names another branch", async () => {
+    const { repo } = await project();
+    const opened = await open(repo, {}, { worktrees: true });
+    const follower = reader(opened);
+    await follower.until(ready);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, "fix/login", signal);
+    // The branch appears after the request was checked, as when another checkout creates it meanwhile.
+    await git(repo, "branch", "fix/login");
+
+    sendPrompt(opened.agent, "first");
+    const failed = await follower.until(
+      (state) => state.worktree.failure !== null && state.worktree.creation === null,
+    );
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, "fix/login-2", signal);
+    await opened.ctx.forgePanel.retryWorktree(opened.session, true, signal);
+    await opened.agent.whenIdle();
+
+    expect(failed.worktree.failure).toMatchObject({
+      branch: "fix/login",
+      phase: "prepare",
+      exists: true,
+      fetch: false,
+    });
+    expect(worktreeState(opened).created).toMatchObject({ branch: "fix/login-2", from: null });
+    expect(queued(opened)).toEqual(["first"]);
+  });
+
+  it("fetches a remote base branch before creating the worktree from the fetched commit", async () => {
+    const { repo, fetched } = await behind();
+    const opened = await open(repo, {}, { worktrees: true });
+    const follower = reader(opened);
+    await follower.until(inspected);
+    await opened.ctx.forgePanel.requestWorktree(
+      opened.session,
+      "refs/remotes/origin/main",
+      null,
+      signal,
+    );
+
+    sendPrompt(opened.agent, "first");
+    const fetching = await follower.until((state) => state.worktree.creation?.phase === "fetch");
+    await opened.agent.whenIdle();
+
+    expect(fetching.worktree.creation).toMatchObject({
+      from: "refs/remotes/origin/main",
+      fetch: true,
+      held: true,
+    });
+    expect(worktreeState(opened).created).toMatchObject({
+      from: "refs/remotes/origin/main",
+      baseCommit: fetched,
+    });
+  });
+
+  it("keeps the message waiting after a failed fetch, and starts from the last fetched commit when asked to skip the fetch", async () => {
+    const { repo } = await behind();
+    const last = await git(repo, "rev-parse", "refs/remotes/origin/main");
+    await git(repo, "remote", "set-url", "origin", join(repo, "missing.git"));
+    const opened = await open(repo, {}, { worktrees: true });
+    const follower = reader(opened);
+    await follower.until(inspected);
+    await opened.ctx.forgePanel.requestWorktree(
+      opened.session,
+      "refs/remotes/origin/main",
+      null,
+      signal,
+    );
+
+    sendPrompt(opened.agent, "first");
+    const failed = await follower.until(
+      (state) => state.worktree.failure !== null && state.worktree.creation === null,
+    );
+    await opened.ctx.forgePanel.retryWorktree(opened.session, false, signal);
+    const retrying = await follower.next((state) => state.worktree.creation !== null);
+    await opened.agent.whenIdle();
+
+    expect(failed.worktree.failure).toMatchObject({
+      phase: "fetch",
+      fetch: true,
+      exists: false,
+      from: "refs/remotes/origin/main",
+    });
+    expect(retrying.worktree.creation).toMatchObject({ phase: "prepare", fetch: false });
+    expect(worktreeState(opened).created).toMatchObject({ baseCommit: last });
+  });
+});
+
 describe("forgePanel worktree creation while a message waits", () => {
   it("creates the requested worktree as Agent maintenance while the first message waits in the inbox, showing each step, then starts its turn", async () => {
     const { repo } = await project();
     const opened = await open(repo, {}, { worktrees: true });
     const follower = reader(opened);
     await follower.until(ready);
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
     const preparing = hold(opened.sandbox, "check-ref-format");
     const checkingOut = hold(opened.sandbox, "reset");
 
@@ -1673,16 +1815,20 @@ describe("forgePanel worktree creation while a message waits", () => {
     );
 
     const branch = created?.branch ?? "";
-    const running = { branch, from: null, held: true };
+    const running = { branch, from: null, fetch: false, held: true };
     const waiting = {
       ...UNAVAILABLE,
       editable: true,
-      request: { from: null },
+      request: { from: null, name: null },
       waiting: "creation",
     };
     expect(prepare.worktree).toEqual({ ...waiting, creation: { ...running, phase: "prepare" } });
     expect(checkout.worktree).toEqual({ ...waiting, creation: { ...running, phase: "checkout" } });
-    expect(moved.worktree).toEqual({ ...UNAVAILABLE, request: { from: null }, created });
+    expect(moved.worktree).toEqual({
+      ...UNAVAILABLE,
+      request: { from: null, name: null },
+      created,
+    });
     expect(moved.checkout).toEqual({
       state: "ready",
       checkout: { root: created?.path, branch, linked: true, commit: COMMIT },
@@ -1709,12 +1855,37 @@ describe("forgePanel worktree creation while a message waits", () => {
     ]);
   });
 
+  it("creates no worktree for a notice queued for the next step, and creates it when the first message arrives", async () => {
+    const { repo } = await project();
+    const opened = await open(repo, {}, { worktrees: true });
+    const follower = reader(opened);
+    await follower.until(ready);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
+    const maintenance = vi.spyOn(opened.agent, "runMaintenance");
+    const policy = prompt(POLICY_NOTICE);
+
+    opened.agent.inject(policy);
+    const afterNotice = maintenance.mock.calls.length;
+    const untouched = worktreeState(opened).created;
+    sendPrompt(opened.agent, "first");
+    await opened.agent.whenIdle();
+
+    const created = worktreeState(opened)?.created ?? null;
+    expect(afterNotice).toBe(0);
+    expect(untouched).toBeNull();
+    expect(maintenance).toHaveBeenCalledTimes(1);
+    expect(created?.repositoryRoot).toBe(repo);
+    expect(opened.agent.wakes).toBe(1);
+    expect(opened.agent.inbox.nextStep).toEqual([policy, notice(created?.path ?? "")]);
+    expect(queued(opened)).toEqual(["first"]);
+  });
+
   it("keeps the message waiting with the failure the panel shows, and tries again with a new branch when asked", async () => {
     const { repo } = await project();
     const opened = await open(repo, {}, { worktrees: true });
     const follower = reader(opened);
     await follower.until(ready);
-    await opened.ctx.forgePanel.requestWorktree(opened.session, "later", signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, "later", null, signal);
 
     sendPrompt(opened.agent, "first");
     const failed = await follower.until(
@@ -1722,16 +1893,23 @@ describe("forgePanel worktree creation while a message waits", () => {
     );
     expect(opened.agent.wakes).toBe(0);
     await git(repo, "branch", "later");
-    await opened.ctx.forgePanel.retryWorktree(opened.session, signal);
+    await opened.ctx.forgePanel.retryWorktree(opened.session, true, signal);
     const retrying = await follower.next((state) => state.worktree.creation !== null);
     await opened.agent.whenIdle();
 
     expect(failed.worktree).toEqual({
       ...UNAVAILABLE,
       editable: true,
-      request: { from: "later" },
+      request: { from: "later", name: null },
       waiting: "creation",
-      failure: { branch: GENERATED_BRANCH, from: "later", phase: "prepare", message: MISSING_BASE },
+      failure: {
+        branch: GENERATED_BRANCH,
+        from: "later",
+        fetch: false,
+        phase: "prepare",
+        message: MISSING_BASE,
+        exists: false,
+      },
     });
     expect(retrying.worktree.failure).toBeNull();
     const created = worktreeState(opened)?.created ?? null;
@@ -1751,13 +1929,13 @@ describe("forgePanel worktree creation while a message waits", () => {
     const opened = await open(repo, {}, { worktrees: true });
     const follower = reader(opened);
     await follower.until(ready);
-    await opened.ctx.forgePanel.requestWorktree(opened.session, "later", signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, "later", null, signal);
     sendPrompt(opened.agent, "first");
     await follower.until((state) => state.worktree.failure !== null);
 
-    await opened.ctx.forgePanel.requestWorktree(opened.session, "gone", signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, "gone", null, signal);
     const changed = await follower.next((state) => state.worktree.request?.from === "gone");
-    await opened.ctx.forgePanel.retryWorktree(opened.session, signal);
+    await opened.ctx.forgePanel.retryWorktree(opened.session, true, signal);
     const failedAgain = await follower.next((state) => state.worktree.failure !== null);
     const withdrawal = follower.next(
       (state) => state.worktree.request === null && state.worktree.waiting === null,
@@ -1769,7 +1947,7 @@ describe("forgePanel worktree creation while a message waits", () => {
     expect(changed.worktree).toEqual({
       ...UNAVAILABLE,
       editable: true,
-      request: { from: "gone" },
+      request: { from: "gone", name: null },
       waiting: "creation",
     });
     expect(failedAgain.worktree.failure).toMatchObject({ from: "gone" });
@@ -1790,7 +1968,7 @@ describe("forgePanel worktree creation while a message waits", () => {
     const opened = await open(repo, {}, { worktrees: true });
     const follower = reader(opened);
     await follower.until(ready);
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
     await opened.ctx.forgePanel.stopCreation(opened.session, signal);
     const held = hold(opened.sandbox, "check-ref-format");
 
@@ -1807,13 +1985,13 @@ describe("forgePanel worktree creation while a message waits", () => {
       records: [...opened.records],
       cwd: opened.ctx.workingDirectory.get(opened.session),
     };
-    await opened.ctx.forgePanel.retryWorktree(opened.session, signal);
+    await opened.ctx.forgePanel.retryWorktree(opened.session, true, signal);
     await opened.agent.whenIdle();
 
     expect(stopped.worktree).toEqual({
       ...UNAVAILABLE,
       editable: true,
-      request: { from: null },
+      request: { from: null, name: null },
       waiting: "creation",
     });
     expect(before).toEqual({ wakes: 0, records: [{ action: "request", from: null }], cwd: repo });
@@ -1826,14 +2004,14 @@ describe("forgePanel worktree creation while a message waits", () => {
     const opened = await open(repo, {}, { worktrees: true });
     const follower = reader(opened);
     await follower.until(ready);
-    await opened.ctx.forgePanel.requestWorktree(opened.session, "later", signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, "later", null, signal);
     sendPrompt(opened.agent, "first");
     await follower.until((state) => state.worktree.failure !== null);
     await git(repo, "branch", "later");
 
     // Both decisions arrive before the wait resumes, so the next attempt reads the withdrawn request.
     await Promise.all([
-      opened.ctx.forgePanel.retryWorktree(opened.session, signal),
+      opened.ctx.forgePanel.retryWorktree(opened.session, true, signal),
       opened.ctx.forgePanel.cancelWorktree(opened.session, signal),
     ]);
     await opened.agent.whenIdle();
@@ -1846,17 +2024,17 @@ describe("forgePanel worktree creation while a message waits", () => {
   it("refuses another attempt while no message waits or an attempt runs", async () => {
     const { repo } = await project();
     const opened = await open(repo, {}, { worktrees: true });
-    await expect(opened.ctx.forgePanel.retryWorktree(opened.session, signal)).rejects.toMatchObject(
-      { code: "forgePanel/not-waiting" },
-    );
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await expect(
+      opened.ctx.forgePanel.retryWorktree(opened.session, true, signal),
+    ).rejects.toMatchObject({ code: "forgePanel/not-waiting" });
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
     const held = hold(opened.sandbox, "check-ref-format");
 
     sendPrompt(opened.agent, "first");
     await held.reached;
-    await expect(opened.ctx.forgePanel.retryWorktree(opened.session, signal)).rejects.toMatchObject(
-      { code: "forgePanel/not-waiting" },
-    );
+    await expect(
+      opened.ctx.forgePanel.retryWorktree(opened.session, true, signal),
+    ).rejects.toMatchObject({ code: "forgePanel/not-waiting" });
     held.release();
     await opened.agent.whenIdle();
 
@@ -1869,7 +2047,7 @@ describe("forgePanel worktree creation while a message waits", () => {
     const opened = await open(repo, {}, { worktrees: true });
     const follower = reader(opened);
     await follower.until(ready);
-    await opened.ctx.forgePanel.requestWorktree(opened.session, "later", signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, "later", null, signal);
     sendPrompt(opened.agent, "first");
     await follower.until((state) => state.worktree.failure !== null);
 
@@ -1878,16 +2056,23 @@ describe("forgePanel worktree creation while a message waits", () => {
     await opened.agent.whenIdle();
     const ended = await ending;
 
-    expect(ended.worktree).toEqual({ ...UNAVAILABLE, editable: true, request: { from: "later" } });
+    expect(ended.worktree).toEqual({
+      ...UNAVAILABLE,
+      editable: true,
+      request: { from: "later", name: null },
+    });
     expect(opened.agent.wakes).toBe(0);
     expect(queued(opened)).toEqual([]);
-    expect(worktreeState(opened)).toMatchObject({ request: { from: "later" }, created: null });
+    expect(worktreeState(opened)).toMatchObject({
+      request: { from: "later", name: null },
+      created: null,
+    });
   });
 
   it("lets the waiting message go on when the panel stops", async () => {
     const { repo } = await project();
     const opened = await open(repo, {}, { worktrees: true });
-    await opened.ctx.forgePanel.requestWorktree(opened.session, "later", signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, "later", null, signal);
     sendPrompt(opened.agent, "first");
     await vi.waitFor(() => {
       expect(() => opened.agent.runMaintenance(() => Promise.resolve())).toThrow(
@@ -1900,13 +2085,16 @@ describe("forgePanel worktree creation while a message waits", () => {
 
     expect(opened.agent.wakes).toBe(1);
     expect(queued(opened)).toEqual(["first"]);
-    expect(worktreeState(opened)).toMatchObject({ request: { from: "later" }, created: null });
+    expect(worktreeState(opened)).toMatchObject({
+      request: { from: "later", name: null },
+      created: null,
+    });
   });
 
   it("holds one wait for every message that arrives during it", async () => {
     const { repo } = await project();
     const opened = await open(repo, {}, { worktrees: true });
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
     const held = hold(opened.sandbox, "check-ref-format");
 
     sendPrompt(opened.agent, "first");
@@ -1926,7 +2114,7 @@ describe("forgePanel worktree creation while a message waits", () => {
     const opened = await open(repo, {}, { worktrees: true });
     const follower = reader(opened);
     await follower.until(ready);
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
     await follower.until((state) => state.worktree.request !== null);
     const release = occupy(opened);
 
@@ -1935,16 +2123,23 @@ describe("forgePanel worktree creation while a message waits", () => {
     const busy = follower.states.at(-1);
     await release();
 
-    expect(busy?.worktree).toEqual({ ...UNAVAILABLE, editable: true, request: { from: null } });
+    expect(busy?.worktree).toEqual({
+      ...UNAVAILABLE,
+      editable: true,
+      request: { from: null, name: null },
+    });
     expect(opened.agent.wakes).toBe(1);
-    expect(worktreeState(opened)).toMatchObject({ request: { from: null }, created: null });
+    expect(worktreeState(opened)).toMatchObject({
+      request: { from: null, name: null },
+      created: null,
+    });
     expect(await branches(repo)).toEqual(["main"]);
   });
 
   it("lets a message go on without a wait once the first turn started, leaving the worktree to the first step", async () => {
     const { repo } = await project();
     const opened = await open(repo, {}, { worktrees: true });
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
     startTurn(opened.session, 1);
 
     sendPrompt(opened.agent, "steer");
@@ -1953,7 +2148,7 @@ describe("forgePanel worktree creation while a message waits", () => {
     expect(opened.agent.wakes).toBe(1);
     expect(queued(opened)).toEqual(["steer"]);
     expect(worktreeState(opened)).toMatchObject({
-      request: { from: null },
+      request: { from: null, name: null },
       created: null,
       locked: true,
     });
@@ -1965,7 +2160,7 @@ describe("forgePanel worktree requests during a creation", () => {
   it("refuses to change or withdraw the request while the worktree is being created, so the creation is recorded", async () => {
     const { repo } = await project();
     const opened = await open(repo, {}, { worktrees: true });
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
     const held = hold(opened.sandbox, "check-ref-format");
 
     sendPrompt(opened.agent, "first");
@@ -1974,7 +2169,7 @@ describe("forgePanel worktree requests during a creation", () => {
       opened.ctx.forgePanel.cancelWorktree(opened.session, signal),
     ).rejects.toMatchObject({ code: "forgePanel/session-busy" });
     await expect(
-      opened.ctx.forgePanel.requestWorktree(opened.session, "main", signal),
+      opened.ctx.forgePanel.requestWorktree(opened.session, "main", null, signal),
     ).rejects.toMatchObject({ code: "forgePanel/session-busy" });
     held.release();
     await opened.agent.whenIdle();
@@ -2031,7 +2226,7 @@ describe("forgePanel removed worktrees", () => {
 
     expect(missing.worktree).toEqual({
       ...UNAVAILABLE,
-      request: { from: null },
+      request: { from: null, name: null },
       created,
       missing: { branchExists: true },
       waiting: "restoration",
@@ -2046,7 +2241,11 @@ describe("forgePanel removed worktrees", () => {
       directory: created.path,
       checkout: { state: "ready", checkout: { root: created.path, branch: created.branch } },
     });
-    expect(restored.worktree).toEqual({ ...UNAVAILABLE, request: { from: null }, created });
+    expect(restored.worktree).toEqual({
+      ...UNAVAILABLE,
+      request: { from: null, name: null },
+      created,
+    });
     expect(await git(created.path, "rev-parse", "HEAD")).toBe(tip);
     expect(await readFile(join(created.path, "later.txt"), "utf8")).toBe("later.txt\n");
     expect(opened.ctx.workingDirectory.get(opened.session)).toBe(created.path);
@@ -2081,7 +2280,7 @@ describe("forgePanel removed worktrees", () => {
 
     expect(gone.worktree).toEqual({
       ...UNAVAILABLE,
-      request: { from: null },
+      request: { from: null, name: null },
       created,
       missing: { branchExists: false },
       waiting: "restoration",
@@ -2219,6 +2418,27 @@ describe("forgePanel removed worktrees", () => {
     expect(opened.agent.wakes).toBe(5);
     expect(opened.ctx.workingDirectory.get(opened.session)).toBe(repo);
     expect(queued(opened)).toEqual(["before", "first", "inside", "removed", "outside"]);
+  });
+
+  it("starts no check of a removed worktree for a notice queued for the next step", async () => {
+    const { repo } = await project();
+    const opened = await open(repo, {}, { worktrees: true });
+    const created = await startInWorktree(opened);
+    await rm(created.path, { recursive: true, force: true });
+    const maintenance = vi.spyOn(opened.agent, "runMaintenance");
+
+    opened.agent.inject(prompt(POLICY_NOTICE));
+    const afterNotice = maintenance.mock.calls.length;
+    sendPrompt(opened.agent, "removed");
+    await vi.waitFor(async () => {
+      await expect(
+        opened.ctx.forgePanel.continueInProject(opened.session, signal),
+      ).resolves.toBeUndefined();
+    });
+    await opened.agent.whenIdle();
+
+    expect(afterNotice).toBe(0);
+    expect(opened.ctx.workingDirectory.get(opened.session)).toBe(repo);
   });
 
   it("leaves a worktree whose directory exists unchanged", async () => {
@@ -2368,7 +2588,11 @@ describe("forgePanel leaving a worktree", () => {
       state: "ready",
       checkout: { root: repo, branch: "main", linked: false, commit: COMMIT },
     });
-    expect(moved.worktree).toEqual({ ...UNAVAILABLE, request: { from: null }, created });
+    expect(moved.worktree).toEqual({
+      ...UNAVAILABLE,
+      request: { from: null, name: null },
+      created,
+    });
     expect(await branches(repo)).toEqual([created.branch, "main"]);
   });
 
@@ -2503,7 +2727,7 @@ describe("forgePanel actions", () => {
     });
     await settle();
     expect(settled).toBe(false);
-    probe.resolve({ state: "ready", message: null });
+    probe.resolve({ state: "ready", message: null, signIn: null });
     await probed;
     expect(opened.provider.probes).toHaveLength(3);
   });
@@ -2524,6 +2748,27 @@ describe("forgePanel actions", () => {
     expect(opened.sandbox.calls.length).toBeGreaterThan(inspections);
     expect(opened.provider.probes).toHaveLength(2);
     expect(follower.states).toHaveLength(published);
+  });
+
+  it("names the code host of each bound change request, and none once its provider no longer describes it", async () => {
+    const opened = await open(await plain());
+    shellTurn(opened.session, 1, [
+      { callId: "create", command: "gh pr create --fill", output: `${pullUrl(7)}\n` },
+    ]);
+    const follower = reader(opened);
+    const named = await follower.until((state) => state.changeRequests.length === 1);
+    expect(named.changeRequests[0]?.forge).toEqual({
+      forge: "fake",
+      label: "Fake",
+      changeRequestNoun: "pull-request",
+    });
+
+    vi.spyOn(opened.ctx.forge, "describe").mockReturnValue(undefined);
+    shellTurn(opened.session, 2, [
+      { callId: "view", command: "gh pr view", output: `${pullUrl(8)}\n` },
+    ]);
+    const unnamed = await follower.until((state) => state.changeRequests.length === 2);
+    expect(unnamed.changeRequests.map((entry) => entry.forge)).toEqual([null, null]);
   });
 
   it("refreshes a Session outside a checkout without polling change requests that no provider serves", async () => {
@@ -2549,6 +2794,7 @@ describe("forgePanel actions", () => {
         url: "https://unserved.test/a/b/pull/3",
         origin: "created",
         ref: null,
+        forge: null,
         update: null,
         snapshot: null,
         reviewRevision: 0,
@@ -2858,27 +3104,58 @@ describe("forgePanel actions", () => {
     expect(opened.provider.actions).toEqual([]);
   });
 
-  it("lists the base branches of the Session's current checkout, at most maxBranches", async () => {
+  it("lists the bases of a new worktree: the checked-out branch, remote defaults, local branches, and each remote, at most maxBranches each", async () => {
     const { repo } = await project();
+    await withDefaultBranch(repo);
+    await git(repo, "remote", "add", "fork", "/srv/fork.git");
     await commitAt(repo, "main.txt", "2026-03-01T00:00:00Z");
     await git(repo, "checkout", "-b", "older");
     await commitAt(repo, "older.txt", "2026-01-01T00:00:00Z");
+    await git(repo, "update-ref", "refs/remotes/origin/topic", "HEAD");
+    await git(repo, "update-ref", "refs/remotes/fork/idea", "HEAD");
     await git(repo, "checkout", "-b", "newer", "main");
     await commitAt(repo, "newer.txt", "2026-02-01T00:00:00Z");
-    const opened = await open(repo, { maxBranches: 2 });
+    const opened = await open(repo, { maxBranches: 1 });
 
-    await expect(opened.ctx.forgePanel.branches(opened.session, signal)).resolves.toEqual({
-      current: "newer",
-      branches: ["newer", "main"],
+    await expect(opened.ctx.forgePanel.worktreeBases(opened.session, "", signal)).resolves.toEqual({
+      current: { ref: "refs/heads/newer", name: "newer" },
+      defaults: [{ ref: "refs/remotes/origin/main", name: "origin/main", remote: "origin" }],
+      local: [{ ref: "refs/heads/main", name: "main" }],
+      remotes: [
+        {
+          name: "origin",
+          repository: "octo/demo",
+          branches: [{ ref: "refs/remotes/origin/topic", name: "origin/topic" }],
+        },
+        {
+          name: "fork",
+          repository: "/srv/fork.git",
+          branches: [{ ref: "refs/remotes/fork/idea", name: "fork/idea" }],
+        },
+      ],
+    });
+    await expect(
+      opened.ctx.forgePanel.worktreeBases(opened.session, "IDEA", signal),
+    ).resolves.toEqual({
+      current: null,
+      defaults: [],
+      local: [],
+      remotes: [
+        {
+          name: "fork",
+          repository: "/srv/fork.git",
+          branches: [{ ref: "refs/remotes/fork/idea", name: "fork/idea" }],
+        },
+      ],
     });
   });
 
-  it("refuses to list branches outside a checkout", async () => {
+  it("refuses to list worktree bases outside a checkout", async () => {
     const opened = await open(await plain());
 
-    await expect(opened.ctx.forgePanel.branches(opened.session, signal)).rejects.toThrow(
-      /^git (symbolic-ref|for-each-ref) failed \(128\): fatal: not a git repository/,
-    );
+    await expect(
+      opened.ctx.forgePanel.worktreeBases(opened.session, "", signal),
+    ).rejects.toMatchObject({ code: "forgePanel/not-a-checkout" });
   });
 
   it("checks the caller signal before every action", async () => {
@@ -2931,11 +3208,11 @@ describe("forgePanel actions", () => {
         controller.signal,
       ),
     ).rejects.toThrow("closed");
-    await expect(opened.ctx.forgePanel.branches(opened.session, controller.signal)).rejects.toThrow(
-      "closed",
-    );
     await expect(
-      opened.ctx.forgePanel.requestWorktree(opened.session, null, controller.signal),
+      opened.ctx.forgePanel.worktreeBases(opened.session, "", controller.signal),
+    ).rejects.toThrow("closed");
+    await expect(
+      opened.ctx.forgePanel.requestWorktree(opened.session, null, null, controller.signal),
     ).rejects.toThrow("closed");
     await expect(
       opened.ctx.forgePanel.cancelWorktree(opened.session, controller.signal),
@@ -2957,7 +3234,7 @@ describe("forgePanel lifecycle", () => {
   it("removes its Remote, worktree projection, and inbox and pre-step listeners when stopped, and folds the recorded request again after a restart", async () => {
     const { repo } = await project();
     const opened = await open(repo, {}, { worktrees: true });
-    await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+    await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
     const proposed = prompt("go");
     const row = opened.ctx.sessionProjections.checkpoint(opened.session).forgeWorktree;
 
@@ -2982,7 +3259,7 @@ describe("forgePanel lifecycle", () => {
     await opened.ctx.plugin(ForgePanelController, {});
 
     expect(opened.ctx.sessionProjections.checkpoint(opened.session).forgeWorktree?.val).toEqual({
-      request: { from: null },
+      request: { from: null, name: null },
       created: null,
       locked: false,
       stepped: false,
@@ -3096,7 +3373,7 @@ describe("worktree recovery and unload", () => {
       const opened = await open(repo, {}, { worktrees: true });
       const created = kind !== "creation" ? await startInWorktree(opened) : undefined;
       if (created !== undefined) await rm(created.path, { recursive: true, force: true });
-      else await opened.ctx.forgePanel.requestWorktree(opened.session, null, signal);
+      else await opened.ctx.forgePanel.requestWorktree(opened.session, null, null, signal);
       const entered: PromiseWithResolvers<void> = Promise.withResolvers();
       const released: PromiseWithResolvers<void> = Promise.withResolvers();
       let cancellation: AbortSignal | undefined;

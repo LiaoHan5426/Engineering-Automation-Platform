@@ -4,7 +4,7 @@ import {
   Fragment,
   computed,
   shallowRef,
-  watch,
+  watch, watchEffect,
   onMounted,
   type VNodeChild,
 } from 'vue'
@@ -18,7 +18,7 @@ import {
 import clsx from 'clsx'
 import {
   FileTypeIcon,
-  IconChevronDownOutlineRegular,
+  IconChevronDownOutlineRegular, IconChevronUpOutlineRegular,
   IconChevronsUpDownOutlineRegular,
   IconEllipsisOutlineRegular,
   IconPlusOutlineRegular,
@@ -41,6 +41,7 @@ import {
   type SplitCell,
   type SplitRow,
 } from './diff-rows.ts'
+import { oldSideLines, sideRun, runKey, useContextHighlight } from './highlight-context.ts'
 import { codeSideAt, readCodeSelection } from './code-selection.ts'
 import { reviewMatches, selectReviewLines, type ReviewSelection } from './review.ts'
 import { ReviewThread, useFileReview } from './ReviewThread.tsx'
@@ -51,7 +52,7 @@ import {
   type LineThread,
   type ThreadActions,
 } from './ReviewThreads.tsx'
-import { gapOf } from './review-threads.ts'
+import { hidesLine, EXPAND_STEP, type DiffSegment, type GapReveal, type GapExpansion } from './diff-rows.ts'
 import type { FileReviewState } from './review-queue.ts'
 import { ReviewComposer, type ReviewActions } from './ReviewComposer.tsx'
 import reviewCss from './ReviewComposer.module.css'
@@ -81,7 +82,8 @@ export interface DiffFileHandlers {
   /** Show a large file anyway. */
   readonly reveal: (path: string) => void
   /** Expand one gap of a file. */
-  readonly expand: (file: ForgeDiffFile, index: number) => void
+  readonly readContext: (file: ForgeDiffFile) => void
+  readonly expand: (file: ForgeDiffFile, index: number, expansion: GapExpansion) => void
   /** Mark a file viewed, which also collapses it, or clear the mark. */
   readonly view: (file: ForgeDiffFile, viewed: boolean) => void
   /** Rows of a file's menu, read whenever the menu draws. */
@@ -116,7 +118,7 @@ export interface DiffFileProps {
   /** The file's new side, which supplies collapsed unchanged lines. */
   readonly text: DiffFileText
   /** Indexes of the expanded gaps. */
-  readonly open: ReadonlySet<number>
+  readonly open: ReadonlyMap<number, GapReveal>
   /** Whether deletions and additions show in two columns; a file with only additions or only deletions keeps one. */
   readonly split: boolean
   /** Whether long lines wrap. */
@@ -188,22 +190,7 @@ const SIGN: Record<DiffRow['kind'], string> = { add: '+', del: '-', context: '' 
 /** Highlighted tokens of one side's lines by line number, or undefined while the grammar is unavailable. */
 type SideSpans = ReadonlyMap<number, readonly HighlightSpan[]> | undefined
 /** A segment ready to draw: collapsed lines, or rows with the tokens of each side. */
-type Prepared =
-  | {
-    readonly kind: 'gap'
-    readonly index: number
-    readonly count: number | null
-  }
-  | {
-    readonly kind: 'folded'
-    readonly hunks: readonly number[]
-  }
-  | {
-    readonly kind: 'rows'
-    readonly rows: readonly DiffRow[]
-    readonly old: SideSpans
-    readonly new: SideSpans
-  }
+type Prepared = Exclude<DiffSegment, { readonly kind: 'rows' }> | { readonly kind: 'rows'; readonly rows: readonly DiffRow[]; readonly old: SideSpans; readonly new: SideSpans }
 /** Highlight one side of a run of rows as one fragment, so tokens spanning lines keep their state. */
 function sideSpans(
   rows: readonly DiffRow[],
@@ -513,14 +500,32 @@ const Lines = defineComponent(
           ))
       return new Set([...props.folded.hunks].filter(index => !holds(index)))
     })
+    const segments = computed(() => segmentsOf(props.file, lines.value, props.open, foldHunks.value))
+    const sides = computed(() => lines.value === undefined ? undefined : { old: oldSideLines(lines.value, props.file.hunks), new: lines.value })
+    const runs = computed(() => segments.value.flatMap(segment => segment.kind !== 'rows' ? [] : [sideRun(segment.rows, 'old'), sideRun(segment.rows, 'new')].filter(run => run !== undefined)))
+    const contextual = useContextHighlight(() => ({ runs: runs.value, sides: sides.value, change: props.file.digest, highlighter, selecting: selecting.value }), root)
+    watchEffect(() => {
+      if (props.text === undefined && segments.value.some(segment => segment.kind === 'gap') && languageForPath(props.file.path) !== undefined) props.handlers.readContext(props.file)
+    })
+    const kept = computed(() => { void props.file; return new Map<string, SideSpans>() })
+    const tokens = (rows: readonly DiffRow[], side: 'old' | 'new'): SideSpans => {
+      const run = sideRun(rows, side)
+      if (run === undefined) return new Map()
+      const key = runKey(props.file.digest, run)
+      const known = contextual.value.get(key) ?? kept.value.get(key)
+      if (known !== undefined) return known
+      const spans = sideSpans(rows, side, highlighter)
+      if (spans !== undefined) kept.value.set(key, spans)
+      return spans
+    }
     const prepared = computed(() =>
-      segmentsOf(props.file, lines.value, props.open, foldHunks.value).map((segment): Prepared =>
+      segments.value.map((segment): Prepared =>
         segment.kind !== 'rows'
           ? segment
           : {
             ...segment,
-            old: sideSpans(segment.rows, 'old', highlighter),
-            new: sideSpans(segment.rows, 'new', highlighter),
+            old: tokens(segment.rows, 'old'),
+            new: tokens(segment.rows, 'new'),
           },
       ),
     )
@@ -858,37 +863,20 @@ const Lines = defineComponent(
         )
       for (const [at, segment] of renderPrepared.entries()) {
         if (segment.kind === 'gap') {
-          renderRows.push(
-            h(
-              'button',
-              {
-                key: `gap-${segment.index}`,
-                type: 'button',
-                class: css.gap,
-                disabled: props.text === 'loading',
-                'data-forge-diff-gap': segment.index,
-                onClick: () => {
-                  props.handlers.expand(props.file, segment.index)
-                },
-              },
-              [
-                h(IconChevronsUpDownOutlineRegular, {
-                  size: 12,
-                }),
-                segment.count === null
-                  ? props.t('diff.unchangedRest')
-                  : props.t('diff.unchanged', { count: segment.count.toLocaleString('en-US') }),
-              ],
-            ),
-          )
+          const label = segment.count === null ? props.t('diff.unchangedRest') : props.t('diff.unchanged', { count: segment.count.toLocaleString('en-US') })
+          const step = (direction: 'down' | 'up'): VNodeChild => {
+            const name = props.t(direction === 'down' ? 'diff.expandDown' : 'diff.expandUp', { count: String(EXPAND_STEP) })
+            return h(Tooltip, { key: direction, label: name, side: 'bottom' }, { default: () => h('button', { type: 'button', class: css.gapStep, 'aria-label': name, disabled: props.text === 'loading', 'data-forge-gap-step': direction, onClick: () => props.handlers.expand(props.file, segment.index, direction) }, [h(direction === 'down' ? IconChevronDownOutlineRegular : IconChevronUpOutlineRegular, { size: 12 })]) })
+          }
+          renderRows.push(segment.count === null || segment.count <= EXPAND_STEP ? h('button', { key: 'gap-'+segment.index, type:'button', class:css.gap, disabled:props.text === 'loading', 'data-forge-diff-gap':segment.index, onClick:()=> props.handlers.expand(props.file, segment.index, segment.count === null ? 'down' : 'all') }, [h(IconChevronsUpDownOutlineRegular,{size:12}),label]) : h('div',{key:'gap-'+segment.index,class:css.gapSteps,role:'group','aria-label':label,'data-forge-diff-gap':segment.index},[segment.edge !== 'leading' && step('down'),segment.edge !== 'trailing' && step('up'),h('span',label)]))
           for (const item of renderUnplaced) {
-            if (gapOf(props.file, item.place.side, item.place.endLine) !== segment.index) continue
+            if (!hidesLine(segment, item.place.side, item.place.endLine)) continue
             renderRows.push(threadCard(item))
             renderUnplaced.delete(item)
           }
           for (const item of renderUnplacedNotes) {
             const at = lastLine(item)
-            if (gapOf(props.file, at.side, at.line) !== segment.index) continue
+            if (!hidesLine(segment, at.side, at.line)) continue
             renderRows.push(annotationOf(item))
             renderUnplacedNotes.delete(item)
           }
@@ -1639,11 +1627,10 @@ const DiffFileSection = defineComponent(
                   file: renderFile,
                   t: renderT,
                 }),
-              h(
+              h(Tooltip, { label: renderViewedNote, side: 'bottom', align: 'end', portal: true, delayMs: 500 }, { default: () => h(
                 'label',
                 {
                   class: css.viewed,
-                  title: renderViewedNote,
                   'data-disabled': renderViewedDisabled ? '' : undefined,
                 },
                 [
@@ -1666,7 +1653,7 @@ const DiffFileSection = defineComponent(
                     [renderT('viewed.label')],
                   ),
                 ],
-              ),
+              ) }),
               props.visible &&
                 h(FileMenu, {
                   name: renderName,

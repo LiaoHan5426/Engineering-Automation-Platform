@@ -1052,6 +1052,25 @@ it("requires the standalone shortcut protocol and rejects unrelated runtime file
   }
 });
 
+it.each([
+  ["packages/test-support/client-runtime", "lib/dist-*.js"],
+  ["packages/test-support/session-snapshot", "lib/dist-*.js"],
+  ["packages/experimental/claude-code-mods", "examples"],
+])("requires owned publication assets for %s", (dir, requiredFile) => {
+  const manifest = JSON.parse(
+    readFileSync(new URL(`../${dir}/package.json`, import.meta.url), "utf8"),
+  ) as WorkspaceManifest["manifest"];
+  expect(checkWorkspaceManifest({ dir, manifest })).toEqual([]);
+  for (const files of [
+    manifest.files!.filter((file) => file !== requiredFile),
+    [...manifest.files!, "lib/unrelated.js"],
+  ]) {
+    expect(checkWorkspaceManifest({ dir, manifest: { ...manifest, files } })).toEqual([
+      expect.stringContaining("package.json files must be"),
+    ]);
+  }
+});
+
 it("requires the OAR license while rejecting unrelated payload files", () => {
   const dir = "packages/experimental/subagent-oar";
   const manifest = JSON.parse(

@@ -148,14 +148,15 @@ export const Welcome = defineComponent(
       if (cancelling.value || attempt.value === null) return
       cancelling.value = true
       const current = ++revision.value
+      let state: AccountView | undefined
       try {
-        const state = await props.api.cancelSignIn(attempt.value.id)
-        if (mounted.value && revision.value === current) showAccount(state)
-      } catch {
+        state = await props.api.cancelSignIn(attempt.value.id)
+      } catch (_cancelFailed) {
         // The current attempt remains visible so cancellation can be retried.
       } finally {
         if (mounted.value) cancelling.value = false
       }
+      if (state !== undefined && mounted.value && revision.value === current) showAccount(state)
     }
     async function copyLink() {
       const current = attempt.value

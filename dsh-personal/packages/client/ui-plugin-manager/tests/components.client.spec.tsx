@@ -174,7 +174,7 @@ function subjectOf(owner: unknown): PluginsSubject | undefined {
     ? (owner as PluginDetailProps).subject
     : undefined;
 }
-const NO_CONFIG: ConfigLedger = { items: [], bundles: new Set(), rows: new Set() };
+const NO_CONFIG: ConfigLedger = { items: [], bundles: new Set(), rows: new Set(), sections: [] };
 function renderTab(
   state: Partial<PluginManagerState> = {},
   config: Partial<ConfigLedger> = {},
@@ -260,6 +260,9 @@ function renderTab(
     resolveText,
     ...actions,
     usePluginManager: bindSnapshotSelector(store),
+    useClientSync: bindSnapshotSelector(createSnapshotStore({ syncing: false, failures: [] })),
+    retryClient: vi.fn(),
+    renderFactorySlot: () => null,
     useConfigLedger: bindSnapshotSelector(ledger),
     usePluginTabs: bindSnapshotSelector(tabLedger),
     useBundleDetails: bindSnapshotSelector(bundleDetails),

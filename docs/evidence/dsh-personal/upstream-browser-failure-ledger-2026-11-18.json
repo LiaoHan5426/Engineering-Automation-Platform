@@ -1,0 +1,440 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-18T15:59:00+08:00",
+  "source": ".tmp/personal-sync-20261118/dsh-personal/.tmp/upstream-web-replay-final.log",
+  "sourceRun": {
+    "completed": false,
+    "stoppedAfterMinutes": 112.8,
+    "artifactVersion": "0.2.2-rc.3",
+    "currentArtifactVersion": "0.2.2-rc.4"
+  },
+  "interpretation": "Old-run failures are diagnostic leads, not latest-artifact results. Filtered tests are not passes. Latest status is scoped to the explicitly rerun cases.",
+  "files": [
+    {
+      "file": "apps/web/tests/forge-panel.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/forge-panel.e2e.ts (30 tests | 16 failed) 858826ms",
+      "failures": [
+        "automatically shows a numbered PR when gh JSON omits its URL 10515ms",
+        "automatically shows a numbered PR that a PTC program views when gh JSON omits its URL 11017ms",
+        "starts a Session in a worktree before its first message, follows its change request, and restores the removed worktree 37197ms",
+        "marks a draft change request ready for review and merges it with the usual method 31166ms",
+        "shows the local changes of the Session by scope and the changes of its change requests, expanding unchanged lines 48290ms",
+        "retains a wrapped code line and tree width across tab and Session switches 40193ms",
+        "opens a comment from the hover plus in one press without covering the line number or the code 48370ms",
+        "aligns localized status rows by their glyphs in the Session panel at every width 46065ms",
+        "types a review comment beside 120 changed lines 40252ms",
+        "types a review comment beside 4000 changed lines 40657ms",
+        "lets a plugin filter the changes by its lens, annotate lines and files, and act from the toolbar, comment form, and card 31710ms",
+        "reviews a change request by layer, hides test files, marks files viewed, and views chosen commits 41051ms",
+        "overlays the review threads of a change request and opens them from the thread list 40168ms",
+        "replies to, edits, deletes, and resolves review threads, and discards a pending review started from a reply 40717ms",
+        "reads and saves the viewed files of a change request on GitHub, keeping chosen commits in the browser 39799ms",
+        "summarizes checks, reviewers, and the merge state in one line each and acts on them from their menus 30094ms"
+      ],
+      "latestStatus": "latest-isolated-worktree-case-passed; prior-Windows-removal-and-teardown-failures-remain-unclassified-intermittency",
+      "latestVerification": {
+        "passed": 1,
+        "failed": 0,
+        "filtered": 29,
+        "durationSeconds": 35.68,
+        "log": ".tmp/personal-sync-20261118/dsh-personal/.tmp/forge-worktree-current-isolated.log"
+      }
+    },
+    {
+      "file": "apps/web/tests/document-preview.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/document-preview.e2e.ts (7 tests | 1 failed) 179143ms",
+      "failures": [
+        "opens text, isolated HTML, width-fitted images, and rendered PDF from the Session workspace 19770ms"
+      ],
+      "latestStatus": "clipboard-fixed-owner-one-pass-65.34s-and-root-one-pass-63.60s; intermediate-hide-failure-28.17s-remains-documented"
+    },
+    {
+      "file": "apps/web/tests/chat-scroll-contract.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/chat-scroll-contract.e2e.ts (17 tests | 2 failed) 224250ms",
+      "failures": [
+        "keeps streaming ownership and tool disclosure state across a long scroll-away cycle 23255ms",
+        "touch-style fling scrolling owns streaming bottom-follow without wheel input 23584ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/plugin-manager.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/plugin-manager.e2e.ts (26 tests | 5 failed) 235373ms",
+      "failures": [
+        "keeps touch actions direct before keyboard focus and mouse hover 3360ms",
+        "starts with an unavailable selected bundle and lets the user clear its error 2074ms",
+        "lists the installed bundles with their switches and leaves the installation's own to Settings 1081ms",
+        "localizes independent exports and falls back per field without activating the plugins 264ms",
+        "enables a bundle into the profile manifest, mounts its rows live, and switches one of them 11814ms"
+      ],
+      "latestStatus": "six-targeted-cases-passed-86.97s; root-independent-two-passed-48.08s; remaining-20-filtered-not-claimed"
+    },
+    {
+      "file": "apps/web/tests/question-composer.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/question-composer.e2e.ts (11 tests) 65806ms",
+      "failures": [],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/settings-chrome.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/settings-chrome.e2e.ts (20 tests | 4 failed) 224140ms",
+      "failures": [
+        "opens the settings dialog, switches sections, and closes by every path 31152ms",
+        "persists the settings language across reload and a distinct port 30948ms",
+        "opens a browser asking for no shipped language in English 39588ms",
+        "hides link-opening settings when the built-in browser is disabled 8153ms"
+      ],
+      "latestStatus": "four-original-failures-passed-unchanged-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/agent-team-panel.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/agent-team-panel.e2e.ts (20 tests | 2 failed) 84056ms",
+      "failures": [
+        "opens the member tree and live read-only tasks in their own sections 710ms",
+        "keeps compact tasks ordered, opens one full detail at a time, and scrolls only the Session panel 397ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/workspace-management.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/workspace-management.e2e.ts (17 tests | 2 failed) 75237ms",
+      "failures": [
+        "deletes only the Workspace registration and keeps its current Session, folder, and log 3966ms",
+        "reuses a deleted title for a different new directory without any transient error surface 2656ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/bonus-notice.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/bonus-notice.e2e.ts (1 test | 1 failed) 42343ms",
+      "failures": [
+        "acknowledges a notice shown under settings, refreshes once per entry, and localizes the request 31523ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/seeded-history.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/seeded-history.e2e.ts (16 tests | 1 failed | 2 skipped) 23089ms",
+      "failures": [
+        "file-path tool rows rebuilt from the cold log open the right Sidebar 1080ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/navigation-panes.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/navigation-panes.e2e.ts (14 tests | 4 failed | 1 skipped) 57578ms",
+      "failures": [
+        "finds an unopened seeded session by message content and opens it 3221ms",
+        "renders the trajectory ledger and opens its local record inspector 2589ms",
+        "copies the complete Session as Markdown from the Session Header 2362ms",
+        "renders the bash row as a terminal card in the real browser 2582ms"
+      ],
+      "latestStatus": "four-original-failures-passed-owner-24.71s; root-independent-navigation-four-and-terminal-three-all-seven-passed-59.46s"
+    },
+    {
+      "file": "apps/web/tests/changed-files-turn.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/changed-files-turn.e2e.ts (8 tests | 8 failed) 199105ms",
+      "failures": [
+        "records the edited, created, and shell-appended files with their line counts 2626ms",
+        "previews a single column with a scrollable path and no file notes or hunk headers 30007ms",
+        "reviews a shell-appended file from the snapshots and an ignored file from its captured copies in one tab 30013ms",
+        "keeps the file menu aligned while dragging the floating review 30001ms",
+        "keeps edge gestures inside either diff column and accepts reverse scrolling 30008ms",
+        "fills empty alignment rows across a mixed comparison’s scrollable columns 31367ms",
+        "replays the workspace and the Chinese conversation 16ms",
+        "preserves filename endings when the review narrows and updates the fade after resizing or selecting another file 31166ms"
+      ],
+      "latestStatus": "Windows-recorded-POSIX-scenario-fails-in-confined-Bash; adjacent-seven-not-rerun",
+      "latestVerification": {
+        "passed": 0,
+        "failed": 1,
+        "filtered": 7,
+        "log": ".tmp/personal-sync-20261118/dsh-personal/.tmp/changed-files-bash-resolution.log",
+        "observed": "The subprocess service resolves prepared MSYS Bash, while confined Bash emits UTF-16 WSL Bash/E_ACCESSDENIED and exit code 1. PATH-only launch changes did not resolve the confined launch. Existing replay and confinement are retained.",
+        "remaining": "Investigate Windows ACL runner bare executable selection, or verify the existing POSIX replay on its documented macOS/Linux platforms."
+      }
+    },
+    {
+      "file": "apps/web/tests/sidebar-drawer.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/sidebar-drawer.e2e.ts (7 tests | 2 failed) 101379ms",
+      "failures": [
+        "keeps the macOS drawer opaque and excludes inert content from window drag regions in light mode 16848ms",
+        "keeps the macOS drawer opaque and excludes inert content from window drag regions in dark mode 12171ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/preview-boot.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/preview-boot.e2e.ts (1 test | 1 failed) 252915ms",
+      "failures": [
+        "boots the packed worker deployment to an interactive page 252913ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/shipped-composition.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/shipped-composition.e2e.ts (7 tests | 4 failed) 53376ms",
+      "failures": [
+        "assembles the shipped Web transport, catalog, guidance, and defaults 10490ms",
+        "lets a preset producer reach the background-job registry 6803ms",
+        "routes one browser-authored Auto request through the same model and asks the user after a denial 7468ms",
+        "reviews initially authorized, restricted, and cold-resumed child calls independently 7888ms"
+      ],
+      "latestStatus": "four-original-failing-cases-passed-across-targeted-runs; other-three-not-rerun",
+      "latestVerification": {
+        "passedCases": 4,
+        "runs": [
+          {
+            "passed": 3,
+            "failed": 1,
+            "log": ".tmp/personal-sync-20261118/dsh-personal/.tmp/composition-changed-platform-fixed.log"
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "filtered": 6,
+            "durationSeconds": 11.14,
+            "log": ".tmp/personal-sync-20261118/dsh-personal/.tmp/shipped-auto-platform-final.log"
+          }
+        ],
+        "repair": "Use the shipped platform shell; parse review messages and compare the complete pending action."
+      }
+    },
+    {
+      "file": "apps/web/tests/file-browser.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/file-browser.e2e.ts (3 tests | 1 failed) 74566ms",
+      "failures": [
+        "searches the whole workspace, respects .gitignore on request, saves exclusion rules, restores the default list, and shows hidden entries 38995ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/lifecycle-chrome.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/lifecycle-chrome.e2e.ts (15 tests) 104081ms",
+      "failures": [],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/steering.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/steering.e2e.ts (8 tests | 2 failed) 111855ms",
+      "failures": [
+        "strictly steers one queued row and deduplicates its retry after claiming 6533ms",
+        "keeps both inputs before the response in Chat and Trajectory, including after reload 1255ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/desktop-onboarding.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/desktop-onboarding.e2e.ts (4 tests | 1 failed) 97797ms",
+      "failures": [
+        "leaves a bonus unacknowledged on onboarding exit and presents it only in the workspace 44505ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/plugin-config.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/plugin-config.e2e.ts (12 tests | 6 failed) 91967ms",
+      "failures": [
+        "selects search and fetch providers independently and keeps each provider’s settings 2092ms",
+        "stages an edit and writes it only when saved 268ms",
+        "drops a staged edit when the page is left, without touching the document 5322ms",
+        "clears the field back to the composed default on reset 217ms",
+        "renders a community bundle's row configuration, registered by its browser half, on the row's page 10307ms",
+        "shows a settings.section entry in Settings and on its bundle row 46621ms"
+      ],
+      "latestStatus": "latest-six-targeted-cases-passed; six-other-cases-filtered",
+      "latestVerification": {
+        "passed": 6,
+        "failed": 0,
+        "filtered": 6,
+        "durationSeconds": 64.3,
+        "log": ".tmp/personal-sync-20261118/dsh-personal/.tmp/plugin-config-fixed-six.log"
+      }
+    },
+    {
+      "file": "apps/web/tests/rich-text-quotes.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/rich-text-quotes.e2e.ts (2 tests | 1 failed) 29692ms",
+      "failures": [
+        "renders and restores rich quotes with uniform styling after reference recognition 11773ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/context-menus.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/context-menus.e2e.ts (24 tests | 3 failed) 57605ms",
+      "failures": [
+        "shares Workspace menus and keeps folder gestures independent from expansion 1358ms",
+        "shares Workspace menus and keeps folder gestures independent from expansion 1311ms",
+        "shares Workspace menus and keeps folder gestures independent from expansion 1361ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/minimal-preset.snapshot.ts",
+      "oldRunSummary": "❯ apps/web/tests/minimal-preset.snapshot.ts (13 tests | 5 failed) 68481ms",
+      "failures": [
+        "sends the exact RL prompt with shell and image schemas, then executes the persistent shell 20ms",
+        "expands the completed persistent Bash call in the Web conversation 32705ms",
+        "logs a durable image with the minimal tool roster 4ms",
+        "renders the existing image tool card and preview 2417ms",
+        "ends loading with a retryable failure when the persisted image is missing 1840ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/live-interactions.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/live-interactions.e2e.ts (11 tests | 1 failed | 1 skipped) 104196ms",
+      "failures": [
+        "matches the canonical persisted session 12045ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/reference-composer.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/reference-composer.e2e.ts (7 tests | 2 failed) 16827ms",
+      "failures": [
+        "groups both sources and projects files and sessions as structured inline icon labels 285ms",
+        "adds a sidebar file after retained selection without sending and undoes it as one edit 360ms"
+      ],
+      "latestStatus": "two-path-fixture-failures-fixed-and-passed"
+    },
+    {
+      "file": "apps/web/tests/plan-review.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/plan-review.e2e.ts (7 tests | 3 failed) 65388ms",
+      "failures": [
+        "opens a review that arrives while a global panel is active 6923ms",
+        "opens a review that arrives while another Session is on screen 313ms",
+        "opens a review for a Session whose Sidebar layout was never saved 5659ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/shortcuts-workspace.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/shortcuts-workspace.e2e.ts (4 tests | 1 failed) 48686ms",
+      "failures": [
+        "runs seven owner operations with saved bindings and preserves the completed fork prefix 6333ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/focus-rings.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/focus-rings.e2e.ts (13 tests | 9 skipped) 41299ms",
+      "failures": [],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/file-upload-round.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/file-upload-round.e2e.ts (8 tests) 18470ms",
+      "failures": [],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/turn-tail-actions.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/turn-tail-actions.e2e.ts (11 tests | 8 failed | 1 skipped) 151334ms",
+      "failures": [
+        "matches the canonical persisted session 14472ms",
+        "withholds the footer while the turn runs and grants it at turn/end 11468ms",
+        "shows exact completed-Turn usage and expands its available facts 12657ms",
+        "folds the Turn process after the completed reply becomes the answer 11932ms",
+        "applies whole-Turn presentation in compact mode 13548ms",
+        "applies whole-Turn presentation in standard mode 10540ms",
+        "applies whole-Turn presentation in verbose mode 10241ms",
+        "keeps a focused process member open when the completed reply arrives 49655ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/replay-round-trip.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/replay-round-trip.e2e.ts (8 tests | 3 failed) 22705ms",
+      "failures": [
+        "exposes the assembled Web URL to the real bash tool 6884ms",
+        "rendered the settled turn: markdown, tool row, composer restore 79ms",
+        "matches the conversation aria golden with stable anchors 383ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/markdown-file-links.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/markdown-file-links.e2e.ts (5 tests | 2 failed) 21314ms",
+      "failures": [
+        "previews relative and absolute links at the requested line without duplicate tabs 907ms",
+        "adds a recorded line-labeled file to the draft without its line suffix or a new turn 572ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/voice-input.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/voice-input.e2e.ts (1 test | 1 failed) 22234ms",
+      "failures": [
+        "guides voice setup, records from standby and submits only the reviewed transcript through Session replay 22232ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/plugin-install-cancel.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/plugin-install-cancel.e2e.ts (1 test | 1 failed) 48326ms",
+      "failures": [
+        "cancels installation, retries and highlights the enabled plugin at 40% alpha, and recovers unknown results 48325ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/ptc-round.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/ptc-round.e2e.ts (8 tests | 7 failed) 117019ms",
+      "failures": [
+        "drives the recorded prompt to a settled turn (all modes) 2536ms",
+        "the durable log carries run_code with full-content sub-dispatches 1ms",
+        "renders the code parent row with always-visible nested sub-rows 10184ms",
+        "expands the nested bash terminal inline before and after reload 30061ms",
+        "matches the expanded conversation aria golden with stable anchors 30068ms",
+        "inspects recorded PTC source, wrapping, and original JSON in the trajectory 411ms",
+        "renders the same recorded tool round in Japanese without translating model or tool data 31213ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/background-job-list.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/background-job-list.e2e.ts (6 tests | 5 failed) 89154ms",
+      "failures": [
+        "shows a running background job in the Session panel without a refresh, then kills it from the two-press stop control 266ms",
+        "opens the section over the conversation beside the expanded right sidebar and closes it with Escape 10682ms",
+        "fits the section into the narrow overlay and closes it on a press outside 30816ms",
+        "marks a job that finished with a nonzero exit code with the warning dot 15230ms",
+        "holds back the rows past five in each group behind its fold control and keeps the choice while the panel is hidden 20081ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/markdown-images.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/markdown-images.e2e.ts (2 tests | 1 failed) 15116ms",
+      "failures": [
+        "loads permitted images and shows authored text for failures 1621ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/chat-continuous-conversation.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/chat-continuous-conversation.e2e.ts (1 test | 1 failed) 16985ms",
+      "failures": [
+        "keeps twelve generated turns and tool rows bound to one live session 2357ms"
+      ],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/web-search-round.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/web-search-round.e2e.ts (6 tests) 14188ms",
+      "failures": [],
+      "latestStatus": "unverified-on-latest-artifacts"
+    },
+    {
+      "file": "apps/web/tests/shell-command-details.e2e.ts",
+      "oldRunSummary": "❯ apps/web/tests/shell-command-details.e2e.ts (7 tests | 3 failed) 77036ms",
+      "failures": [
+        "expands background to wrapped commands with only foreground output 15465ms",
+        "expands background-long-token to wrapped commands with only foreground output 11546ms",
+        "expands foreground-multiline to wrapped commands with only foreground output 11048ms"
+      ],
+      "latestStatus": "three-original-wrapped-command-cases-passed-root-independent-59.46s-combined-run; other-four-filtered-not-claimed"
+    }
+  ]
+}

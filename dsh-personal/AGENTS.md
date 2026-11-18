@@ -1,6 +1,6 @@
 # AGENTS.md
 
-DeepSeek Harness is an all-plugin Cordis agent harness. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
+DeepSeek Harness is an all-plugin Cordis agent harness. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md).
 
 ## Pre-stable APIs and released Session data
 
@@ -58,6 +58,7 @@ packages/    @deepseek-ai/dsh-<pkg> workspaces at packages/<group>/<pkg>/
   identity/             anonymous identity
   settings/             user settings
   credentials/          credentials/authorization
+  account/              DeepSeek
   acp/                  automation-only ACP
   interaction/          human interaction
   boot/                 application boot

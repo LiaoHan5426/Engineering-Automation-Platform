@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { lstatSync, readFileSync, readlinkSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import ts from 'typescript'
 import { canonicalReferenceText } from './verify-public-repository-links.ts'
 
 const root = resolve(import.meta.dirname, '..')
@@ -32,6 +33,37 @@ function isMaintained(file: string): boolean {
   return !excludedPrefixes.some(prefix => file.startsWith(prefix))
 }
 
+/** Operational state uses commit ids as data; other strings retain reference checks. */
+function stateCommitSpans(file: string, source: string): { start: number; end: number }[] {
+  if (file !== 'upstream-sync-state.json') return []
+  try { JSON.parse(source) } catch (error) {
+    if (error instanceof SyntaxError) return []
+    throw error
+  }
+  const parsed = ts.parseJsonText(file, source)
+  const statement = parsed.statements[0]
+  if (!statement || !ts.isExpressionStatement(statement) || !ts.isObjectLiteralExpression(statement.expression)) return []
+  const spans: { start: number; end: number }[] = []
+  function collect(object: ts.ObjectLiteralExpression, fields: readonly string[]): void {
+    for (const property of object.properties) {
+      if (!ts.isPropertyAssignment(property) || !ts.isStringLiteral(property.name) || !fields.includes(property.name.text)) continue
+      const value = property.initializer
+      if (ts.isStringLiteral(value) && /^[a-f0-9]{40}$/i.test(value.text)) {
+        spans.push({ start: value.getStart(parsed), end: value.end })
+      }
+    }
+  }
+  const state = statement.expression
+  collect(state, ['acceptedUpstreamCommit', 'acceptedPersonalCommit'])
+  for (const property of state.properties) {
+    if (ts.isPropertyAssignment(property) && ts.isStringLiteral(property.name) && property.name.text === 'pending' &&
+      ts.isObjectLiteralExpression(property.initializer)) {
+      collect(property.initializer, ['targetUpstreamCommit', 'personalBaseCommit'])
+    }
+  }
+  return spans
+}
+
 /**
  * Inspect a maintained source file against known commit identifiers.
  * @param file - Repository-relative path used in diagnostics and exclusions.
@@ -39,6 +71,10 @@ function isMaintained(file: string): boolean {
  * @param commits - Lowercase, unambiguous full or abbreviated commit identifiers.
  * @returns One finding per line and reference kind; digests and other Git object types are accepted.
  * Decimal-only tokens are ignored, including actual commit identifiers.
+ * In valid root upstream-sync-state.json only, full 40-digit commit strings at
+ * acceptedUpstreamCommit, acceptedPersonalCommit, pending.targetUpstreamCommit and
+ * pending.personalBaseCommit are operational metadata. Other fields, malformed JSON
+ * and organization URLs retain the normal reference checks.
  */
 export function findRepositoryReferences(
   file: string,
@@ -47,13 +83,17 @@ export function findRepositoryReferences(
 ): RepositoryReference[] {
   if (!isMaintained(file)) return []
   const references: RepositoryReference[] = []
+  const stateSpans = stateCommitSpans(file, source)
+  let offset = 0
   for (const [index, line] of source.split('\n').entries()) {
     if (organizationUrl.test(canonicalReferenceText(line).replace(kitRepositoryUrl, ''))) {
       references.push({ file, line: index + 1, kind: 'organization-url' })
     }
-    if ([...line.matchAll(commitCandidate)].some(match => commits.has(match[0].toLowerCase()))) {
+    if ([...line.matchAll(commitCandidate)].some(match => commits.has(match[0].toLowerCase()) &&
+      !stateSpans.some(span => offset + match.index >= span.start && offset + match.index + match[0].length <= span.end))) {
       references.push({ file, line: index + 1, kind: 'commit-hash' })
     }
+    offset += line.length + 1
   }
   return references
 }

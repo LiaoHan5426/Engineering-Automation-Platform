@@ -83,7 +83,9 @@ export const DetailsRow = defineComponent(
       const titleKey =
         typeof operation === 'string' && Object.hasOwn(LSP_TITLE_KEYS, operation)
           ? LSP_TITLE_KEYS[operation as keyof typeof LSP_TITLE_KEYS]
-          : model.titleKey
+          : toolName === 'cordis_inspect'
+            ? parsedToolCall(block)?.args.query === undefined ? 'tool.title.inspectProviders' : 'tool.title.queryRuntime'
+            : model.titleKey
       const isWait = toolName === 'wait_agent'
       return h(
         ToolRow,
@@ -185,6 +187,10 @@ export const detailsToolview = {
       )
       yield ctx.slots.register(
         { name: 'tool.call.toolview', key: 'schedule_update', locale: NS },
+        DetailsRow,
+      )
+      yield ctx.slots.register(
+        { name: 'tool.call.toolview', key: 'cordis_inspect', locale: NS },
         DetailsRow,
       )
       yield ctx.slots.register(

@@ -107,7 +107,7 @@ it.each(["normal", "consumer-unload"] as const)(
       startedBundles: loadProfileDirectory("test", dir, anchor).layers.map(
         (layer) => layer.packageName,
       ),
-      overlays: [],
+      overlayPaths: [],
       telemetryDisabledEnv: undefined,
     };
     const ctx = await boot(
@@ -152,7 +152,7 @@ it.each(["normal", "consumer-unload"] as const)(
       provider: "mock",
       model: "test",
     });
-    const callId = logProposal(ctx, agent, "call-live", {
+    const cardId = logProposal(ctx, agent, "card-live", {
       title: "Session search",
       brief: "Search saved conversations",
       details: { name },
@@ -176,15 +176,15 @@ it.each(["normal", "consumer-unload"] as const)(
       });
       await entered.promise;
       const exclusive = vi.spyOn(ctx.hmr, "runExclusive");
-      const action = ctx.actionCards.act(agent, callId, "enable");
+      const action = ctx.actionCards.act(agent, cardId, "enable");
       await vi.waitFor(() => {
         expect(exclusive).toHaveBeenCalledOnce();
       });
       release.resolve(undefined);
       await reload;
       expect(await action).toEqual({ status: "unconfirmed", reason: "closing" });
-      expect(ctx.actionCards.view(agent.session).decisions[callId]).toEqual({
-        callId,
+      expect(ctx.actionCards.view(agent.session).decisions[cardId]).toEqual({
+        cardId,
         action: ACTION,
         phase: "unconfirmed",
       });
@@ -198,8 +198,8 @@ it.each(["normal", "consumer-unload"] as const)(
       expect(model.requests).toHaveLength(0);
       return;
     }
-    const enabled = { callId, action: ACTION, phase: "enabled" };
-    expect(await ctx.actionCards.act(agent, callId, "enable")).toEqual({
+    const enabled = { cardId, action: ACTION, phase: "enabled" };
+    expect(await ctx.actionCards.act(agent, cardId, "enable")).toEqual({
       status: "settled",
       decision: enabled,
     });
@@ -213,7 +213,7 @@ it.each(["normal", "consumer-unload"] as const)(
     // The outcome reaches the model with the next request; enabling starts no turn by itself.
     expect(agent.status).toBe("idle");
     expect(model.requests).toHaveLength(0);
-    expect(ctx.actionCards.view(agent.session).decisions[callId]).toEqual(enabled);
+    expect(ctx.actionCards.view(agent.session).decisions[cardId]).toEqual(enabled);
     agent.followup(
       createUserMessage({ content: [{ type: "text", text: "Thanks." }], source: { kind: "user" } }),
     );

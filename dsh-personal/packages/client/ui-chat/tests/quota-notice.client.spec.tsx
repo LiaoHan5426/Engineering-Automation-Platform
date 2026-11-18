@@ -1,3 +1,4 @@
+import { syncedConfig } from '@deepseek-ai/dsh-client-test-runtime'
 /**
  * The frame-wide quota notice host: a live Chat failure publishes one notice
  * that outlives the Chat panel, and history scrollback never does.
@@ -93,15 +94,12 @@ async function bench() {
   runtime.ctx.provide("locale", locale);
   runtime.slots.installLocale(locale);
   runtime.ctx.provide("shortcuts", { catalog: createSnapshotStore([]) });
-  await runtime.mount({ inject: [...injectMenus], apply: applyMenus });
+  await runtime.mount({ inject: [...injectMenus], apply: applyMenus }, syncedConfig({ resolutionTimeoutMs: 1000 }));
   await runtime.declare({
     "shell.overlay": { kind: "list", scope: "root" },
     "conversation.approval.detail": { kind: "single", scope: "session" },
   });
-  const conversation = await runtime.mount({
-    inject: [...injectConversation],
-    apply: applyConversation,
-  });
+  const conversation = await runtime.mount({ inject: [...injectConversation], apply: applyConversation }, syncedConfig({ busyEnter: 'queue', maxConcurrentFileUploads: 2 }));
   let descriptor: Parameters<typeof runtime.ctx.uiSession.provide>[0] | undefined;
   const provide = runtime.ctx.uiSession.provide.bind(runtime.ctx.uiSession);
   runtime.ctx.uiSession.provide = (next) => {
@@ -145,6 +143,24 @@ async function attach(
   return reference;
 }
 describe("frame-wide quota notices", () => {
+  it("publishes only while a retained Conversation consumes the Session", async () => {
+    const b = await bench(); await b.runtime.sessions.add({ id: SID });
+    const background = b.runtime.sessions.retain(SID, { source: "testFixture" }); references.push(background);
+    b.sourceDescriptor.resolve(background.binding);
+    const notice = noticeFace(b.runtime).hooks.notice;
+    await b.runtime.sessions.appendEvent(SID, quotaEntry(0, "QUOTA")); expect(notice.getSnapshot()).toBeNull();
+    const rendered = b.runtime.sessions.retain(SID); references.push(rendered);
+    await b.runtime.sessions.appendEvent(SID, quotaEntry(1, "ACCOUNT_QUOTA")); expect(notice.getSnapshot()).toMatchObject({ code: "ACCOUNT_QUOTA" });
+  });
+  it("stops publishing within the dispatch that releases the Conversation", async () => {
+    const b = await bench(); await b.runtime.sessions.add({ id: SID });
+    const background = b.runtime.sessions.retain(SID, { source: "testFixture" }); references.push(background);
+    const rendered = b.runtime.sessions.retain(SID);
+    const stopReleaser = background.binding.eventSource.subscribe(() => { rendered.release(); });
+    b.sourceDescriptor.resolve(background.binding);
+    await b.runtime.sessions.appendEvent(SID, quotaEntry(0, "QUOTA"));
+    expect(noticeFace(b.runtime).hooks.notice.getSnapshot()).toBeNull(); stopReleaser();
+  });
   it("publishes one notice per live append and republishes the latest", async () => {
     const b = await bench();
     await attach(b.runtime, b.sourceDescriptor);

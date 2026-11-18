@@ -1,4 +1,4 @@
-/** Model-facing guidance enumerates the full available object API without unavailable operations. */
+/** Model-facing guidance lists the object API with platform availability and input constraints. */
 import { expect, it } from "vite-plus/test";
 import type { CuaApi, CuaApp, CuaSurface, CuaWindow } from "@deepseek-ai/dsh-cua/api";
 import { COMMON_GUIDANCE, withSystemPointerGuidance } from "@deepseek-ai/dsh-cua/guidance";
@@ -24,6 +24,7 @@ const windowNames: Array<keyof CuaWindow> = [
   "windowId",
   "getScreenshot",
   "mouseMove",
+  "toggleMouse",
   "click",
   "scroll",
   "drag",
@@ -38,15 +39,21 @@ it("keeps file-tool instructions in PTC and limits the program guidance to avail
   expect(PROGRAM_GUIDANCE).toContain("session’s file tools");
 });
 
-it("keeps exactly three ordered operation headings", () => {
-  const heads = COMMON_GUIDANCE.match(/^## .+$/gm);
-  expect(heads).toEqual(["## Accessibility tree", "## Simulated mouse", "## Simulated keyboard"]);
-  expect(COMMON_GUIDANCE.indexOf("## Accessibility tree")).toBeLessThan(
-    COMMON_GUIDANCE.indexOf("## Simulated mouse"),
-  );
-  expect(COMMON_GUIDANCE.indexOf("## Simulated mouse")).toBeLessThan(
-    COMMON_GUIDANCE.indexOf("## Simulated keyboard"),
-  );
+it("places observation chapters before simulated input with screenshots in their own chapter", () => {
+  for (const catalog of [COMMON_GUIDANCE, GUIDANCE, PROGRAM_GUIDANCE]) {
+    expect(catalog.match(/^## .+$/gm)).toEqual([
+      "## Accessibility tree",
+      "## Screenshots",
+      "## Simulated mouse",
+      "## Simulated keyboard",
+    ]);
+    const screenshots = catalog.slice(
+      catalog.indexOf("## Screenshots"),
+      catalog.indexOf("## Simulated mouse"),
+    );
+    expect(screenshots).toContain("- getScreenshot() -> Image");
+    expect(catalog.slice(catalog.indexOf("## Simulated mouse"))).not.toContain("- getScreenshot(");
+  }
 });
 
 it("prefixes concise platform guidance before the shared catalog", () => {
@@ -117,7 +124,28 @@ it("states the macOS accessibility, keyboard, and mouse levels", () => {
   }
 });
 
-it("enumerates every available method once in its catalog entry", () => {
+it("documents explicit mouse-button events immediately after mouseMove", () => {
+  const lines = COMMON_GUIDANCE.split("\n");
+  const index = lines.findIndex((line) => line.startsWith("- toggleMouse("));
+  expect(lines[index - 1]).toMatch(/^- mouseMove\(/);
+  expect(lines[index]).toBe(
+    "- toggleMouse(mouseButton: 'left' | 'right' | 'middle', direction: 'down' | 'up') -> ActionResult — press or release the specified mouse button at the current pointer position without moving it. No coordinates are accepted. Release held buttons explicitly with 'up'; the opposite event is not sent automatically.",
+  );
+  expect(index).toBeGreaterThan(lines.indexOf("## Simulated mouse"));
+  expect(index).toBeLessThan(lines.indexOf("## Simulated keyboard"));
+});
+
+it.each([GUIDANCE, PROGRAM_GUIDANCE])(
+  "marks toggleMouse as unavailable in the macOS method entry",
+  (catalog) => {
+    const shared = COMMON_GUIDANCE.split("\n").find((line) => line.startsWith("- toggleMouse("));
+    const entry = catalog.split("\n").find((line) => line.startsWith("- toggleMouse("));
+    expect(entry).toBe(`${shared} Not implemented on macOS.`);
+    expect(PLATFORM_GUIDANCE).not.toContain("toggleMouse");
+  },
+);
+
+it("enumerates every public method once in its catalog entry", () => {
   const signatures = [
     ...apiNames.map((name) => `cua.${name}(`),
     ...appNames.filter((name) => name !== "appHandle").map((name) => `app.${name}(`),
@@ -133,10 +161,10 @@ it("enumerates every available method once in its catalog entry", () => {
         1,
       );
   }
-  expect(signatures).toHaveLength(25);
+  expect(signatures).toHaveLength(26);
   expect(
     new Set(signatures.map((signature) => signature.slice(signature.indexOf(".") + 1, -1))).size,
-  ).toBe(24);
+  ).toBe(25);
   expect(COMMON_GUIDANCE).toContain("app.appHandle");
   expect(COMMON_GUIDANCE).toContain("window.windowId");
 });
@@ -248,8 +276,9 @@ it("references Modifier without defining its members in shared guidance", () => 
 });
 
 it("states platform-dependent levels without qualifying grouped method names", () => {
+  expect(COMMON_GUIDANCE).toContain("## Screenshots\nUse an explicit window for screenshots.");
   expect(COMMON_GUIDANCE).toContain(
-    "## Simulated mouse\nUse an explicit window for screenshots and pointer input.",
+    "## Simulated mouse\nUse an explicit window for pointer input.",
   );
   for (const heading of ["Accessibility tree", "Simulated keyboard"]) {
     expect(COMMON_GUIDANCE).toContain(
@@ -261,6 +290,18 @@ it("states platform-dependent levels without qualifying grouped method names", (
   expect(groups).not.toMatch(/^- (?:surface|window|app)\./m);
   expect(COMMON_GUIDANCE).toContain("target: string | [number, number]");
   expect(COMMON_GUIDANCE).toContain("from: [number, number]");
+});
+
+it("guides complex input combinations through platform-supported primitive operations", () => {
+  const advice =
+    "click, drag, and pressKey are convenience operations; sendKeyEvent, mouseMove, and toggleMouse are primitive operations. For complex action combinations, decompose convenience operations into sequences of primitive operations supported by the current platform.";
+  for (const catalog of [COMMON_GUIDANCE, GUIDANCE, PROGRAM_GUIDANCE]) {
+    expect(catalog).toContain(advice);
+    expect(catalog.indexOf(advice)).toBeGreaterThan(catalog.indexOf("- sendKeyEvent("));
+    expect(catalog.indexOf(advice)).toBeLessThan(
+      catalog.indexOf("Raw tools use { method, params }"),
+    );
+  }
 });
 
 it("keeps consent, lock, observation, and no-replay rules", () => {
@@ -287,7 +328,7 @@ it("documents explicit inspection and separate key arguments", () => {
   expect(COMMON_GUIDANCE).toContain("perform a left-button double-click");
 });
 
-it("omits stale names and unavailable platform operations", () => {
+it("omits stale names and unrelated operations", () => {
   for (const stale of [
     "getAXState",
     "emit",
@@ -300,7 +341,6 @@ it("omits stale names and unavailable platform operations", () => {
     "elementIndex",
     "verified: false",
     "browser tabs",
-    "not implemented",
   ])
     expect(GUIDANCE).not.toContain(stale);
 });

@@ -125,7 +125,7 @@ describe.skipIf(!existsSync(join(root, "apps/cli/lib/bin.js")))(
         cwd: workspace,
         home,
         startedBundles: profile.layers.map((layer) => layer.packageName),
-        overlays: [],
+        overlayPaths: [],
         telemetryDisabledEnv: "1",
       };
       const resolution = await app.createRuntimeResolution({ installAnchor, home, profile });
@@ -242,7 +242,6 @@ describe.skipIf(!existsSync(join(root, "apps/cli/lib/bin.js")))(
         "team_task_get",
         "team_task_list",
         "team_task_update",
-        "working_directory",
       ]);
       expect(names(minimal.agent)).toEqual([
         process.platform === "win32" ? "pwsh" : "bash",
@@ -251,7 +250,6 @@ describe.skipIf(!existsSync(join(root, "apps/cli/lib/bin.js")))(
         "team_task_get",
         "team_task_list",
         "team_task_update",
-        "working_directory",
       ]);
       for (const name of [
         "str_replace_editor",
@@ -372,7 +370,6 @@ describe.skipIf(!existsSync(join(root, "apps/cli/lib/bin.js")))(
         "team_task_get",
         "team_task_list",
         "team_task_update",
-        "working_directory",
       ]);
       await select(bundles.badge, false);
       expect((await load("badge-after")).isError).toBe(true);
@@ -527,9 +524,7 @@ describe.skipIf(!existsSync(join(root, "apps/cli/lib/bin.js")))(
       ]);
       expect(toolResult(coded, "combined-program")).toContain(coded.session.id);
       expect(toolResult(coded, "combined-program")).toContain("dsh-badge");
-      expect(names()).toEqual(
-        expect.arrayContaining(["session_search", "terminal_open", "ralph", "working_directory"]),
-      );
+      expect(names()).toEqual(expect.arrayContaining(["session_search", "terminal_open", "ralph"]));
       for (const name of [...Object.values(bundles)].reverse()) await select(name, false);
       expect(names((await agent()).agent)).not.toContain("session_search");
     });

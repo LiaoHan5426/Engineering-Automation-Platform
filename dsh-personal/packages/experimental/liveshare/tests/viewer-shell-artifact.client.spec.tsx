@@ -230,10 +230,7 @@ describe("Assembled liveshare viewer page", () => {
       },
       { timeout: 15000 },
     );
-    // A file path in the transcript stays readable, and opening it names the reader's own situation:
-    // this page claims workspace-file addresses with its own tab type, whose body states that a share
-    // hands over paths rather than contents, and the page must not hand the reader the type
-    // registry's wiring message instead.
+    // The reader receives Session data and file paths, without a workspaceFiles endpoint or tab type.
     const fileLinks = [
       ...document.querySelectorAll<HTMLButtonElement>('button[class*="fileLink"]'),
     ];
@@ -241,13 +238,6 @@ describe("Assembled liveshare viewer page", () => {
     await act(async () => {
       await act(() => fireEvent.click(fileLinks[0] as HTMLButtonElement));
     });
-    await waitFor(
-      () => {
-        expect(document.body.textContent).toContain("This page cannot open workspace files");
-      },
-      { timeout: 15000 },
-    );
-    expect(document.body.textContent).not.toContain("no registered tab type claims");
     expect(
       reported.mock.calls.filter(([message]) => String(message).startsWith("[session-status]")),
     ).toEqual([]);

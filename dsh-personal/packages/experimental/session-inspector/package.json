@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-experimental-session-inspector",
-  "version": "0.2.2-rc.3",
+  "version": "0.2.2-rc.4",
   "description": "Experimental virtualized Session log and live Chat group/node inspectors",
   "license": "MIT",
   "repository": {

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { Context } from "@deepseek-ai/cordis";
+import DeepSeekAuth from "@deepseek-ai/dsh-deepseek-auth";
 import WebRuntime from "@deepseek-ai/dsh-web";
 import {
   DeepSeekFetchApiProvider,
@@ -11,11 +12,12 @@ import {
   createLaunchEnvironmentSnapshot,
 } from "@deepseek-ai/dsh-launch-environment";
 import { customGuidance } from "./guidance.ts";
+import { keyCandidate } from "./sources.ts";
 const fetchProvider = (options: DeepSeekFetchApiOptions) =>
   new DeepSeekFetchApiProvider(() => options);
 const BASE = "https://api.deepseek.test/api/v1/tools";
-const auth = (key: string, baseURL = BASE): DeepSeekFetchApiOptions["auth"] => ({
-  sources: [{ kind: "api-key", baseURL, key }],
+const auth = (key: string): DeepSeekFetchApiOptions["auth"] => ({
+  sources: [keyCandidate(`${BASE}/fetch`, key)],
 });
 const options = { auth: auth("ds-key"), guidance: customGuidance("fetch") };
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
@@ -35,7 +37,7 @@ describe("DeepSeek Fetch API", () => {
       jsonResponse({ title: "Example", content: "# Article\n\nBody" }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    const provider = fetchProvider({ ...options, auth: auth("ds-key", `${BASE}/`) });
+    const provider = fetchProvider(options);
     expect(await provider.fetch({ url: "https://example.com/article" })).toEqual({
       url: "https://example.com/article",
       statusCode: 200,
@@ -111,12 +113,10 @@ describe("DeepSeek Fetch API", () => {
         "Only the user should choose or change the endpoint.",
     });
   });
-  it("is available only with a credential source and a parseable base", () => {
+  it("is available only with a credential source", () => {
     expect(fetchProvider(options).available()).toBe(true);
-    expect(fetchProvider({ ...options, auth: auth("") }).available()).toBe(false);
-    expect(fetchProvider({ ...options, auth: auth("ds-key", "not a url") }).available()).toBe(
-      false,
-    );
+    expect(fetchProvider({ ...options, auth: { sources: [] } }).available()).toBe(false);
+    expect(fetchProvider({ ...options, auth: auth("") }).available()).toBe(true);
   });
   it("unregisters both providers with its plugin fiber", async () => {
     vi.stubGlobal(
@@ -135,6 +135,7 @@ describe("DeepSeek Fetch API", () => {
           { source: "process", values: { DEEPSEEK_API_KEY: "ds-key" } },
         ]),
       );
+      await ctx.plugin(DeepSeekAuth);
       const fiber = await ctx.plugin(webApiPlugin, { fetchBaseURL: BASE });
       await expect(ctx.web.fetch({ url: "https://example.com" })).resolves.toMatchObject({
         body: { content: "body" },

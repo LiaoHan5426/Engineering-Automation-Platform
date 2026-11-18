@@ -1,6 +1,6 @@
 import { executeToolFixture } from "@deepseek-ai/dsh-tool-testkit";
 import { agentPresetProjectionDefinition } from "@deepseek-ai/dsh-agent-preset-registry";
-import { subagentModelSelectionProjectionDefinition } from "@deepseek-ai/dsh-tool-subagent/src/model-selection-state.ts";
+import type {} from "@deepseek-ai/dsh-tool-subagent/model-selection-settings";
 import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
@@ -289,7 +289,7 @@ async function bootWeb(
       home,
       cwd: home,
       startedBundles: profileBundles ?? ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"],
-      overlays: [],
+      overlayPaths: [],
       telemetryDisabledEnv: "1",
     });
     await bootCtx.plugin(PluginPackages, { resolution });
@@ -330,7 +330,6 @@ describe("the shipped Web composition", () => {
       "team_task_get",
       "team_task_list",
       "team_task_update",
-      "working_directory",
     ]);
   });
 
@@ -468,6 +467,7 @@ describe("the shipped Web composition", () => {
       ).toEqual([
         "ask_user_question",
         "bash",
+        "cordis_inspect",
         "create_goal",
         "edit",
         "exit_plan_mode",
@@ -502,16 +502,48 @@ describe("the shipped Web composition", () => {
         "web_fetch",
         "web_search",
         "workflow",
-        "working_directory",
         "write",
       ]);
       expect(ctx.commands.find(handle.agent, "goal")).toBeDefined();
+      for (const query of [
+        undefined,
+        {
+          platform: "host",
+          provider: "Config",
+          method: "listConfigs",
+          input: { name: "@deepseek-ai/dsh-agent-loop" },
+        },
+      ] as const) {
+        const inspected = await executeToolFixture(ctx, {
+          agent: handle.agent,
+          callId: brandString<ToolCallId>(
+            `standard-inspect-${query === undefined ? "list" : "query"}`,
+          ),
+          name: "cordis_inspect",
+          arguments: query === undefined ? {} : { query },
+          signal: new AbortController().signal,
+        });
+        expect(inspected.isError).toBe(false);
+        const text = inspected.content
+          .flatMap((block) => (block.type === "text" ? [block.text] : []))
+          .join("");
+        const value: unknown = JSON.parse(text);
+        const path = query === undefined ? "providers" : "data.entries";
+        const entry =
+          query === undefined
+            ? { platform: "host", id: "Config" }
+            : { name: "@deepseek-ai/dsh-agent-loop" };
+        expect(value).toHaveProperty(
+          path,
+          expect.arrayContaining([expect.objectContaining(entry)]),
+        );
+      }
     } finally {
       await handle.dispose();
     }
   });
 
-  it("applies the default-off subagent model allowlist only to new sessions", async () => {
+  it("reads the default-off subagent model allowlist live for existing sessions", async () => {
     await ctx.settings.update(SUBAGENT_MODEL_SELECTION_SETTINGS_NAMESPACE, {
       enabled: false,
       allowedModels: [],
@@ -528,32 +560,33 @@ describe("the shipped Web composition", () => {
       sessionId: brandString<SessionId>("preset-model-selection-enabled"),
       setup: (agentCtx) => ctx.agentPresets.mount(agentCtx, "standard").then(() => undefined),
     });
-    const policy = await ctx.sessionProjections.register(
-      subagentModelSelectionProjectionDefinition,
-    );
     try {
       expect(toolNames(ctx, disabled.agent)).toContain("list_subagent_models");
       expect(toolParameterNames(ctx, disabled.agent, "subagent")).toEqual(
         expect.arrayContaining(["model", "provider", "reasoning_effort"]),
       );
-      expect(policy.stateOf(disabled.agent.session)).toBeNull();
-      expect(policy.stateOf(enabled.agent.session)).toEqual([
+      expect(ctx.subagentModelSelection.allowedRoutes()).toEqual([
         { provider: "deepseek-official", model: "deepseek-v4-flash" },
       ]);
+      for (const agent of [disabled.agent, enabled.agent]) {
+        expect(
+          agent.session
+            .snapshotEvents()
+            .some((event) => event.type === "subagent/model-selection-policy"),
+        ).toBe(false);
+      }
       expect(toolNames(ctx, enabled.agent)).toContain("list_subagent_models");
       expect(toolParameterNames(ctx, enabled.agent, "subagent")).toEqual(
         expect.arrayContaining(["model", "provider", "reasoning_effort"]),
       );
       for (const agent of [disabled.agent, enabled.agent]) {
         expect(toolParameterNames(ctx, agent, "subagent_fork")).toEqual([
-          "cwd",
           "description",
           "name",
           "prompt",
         ]);
       }
     } finally {
-      await policy.dispose();
       await ctx.settings.update(SUBAGENT_MODEL_SELECTION_SETTINGS_NAMESPACE, { enabled: false });
       await enabled.dispose();
       await disabled.dispose();
@@ -637,7 +670,6 @@ describe("the shipped Web composition", () => {
         "team_task_get",
         "team_task_list",
         "team_task_update",
-        "working_directory",
       ]);
       expect(assembly.tools.find((tool) => tool.name === "bash")?.description).toBe(
         MINIMAL_BASH_DESCRIPTION,
@@ -707,11 +739,7 @@ describe("the shipped Web composition", () => {
       expect(JSON.stringify(adapter.requests[1]?.messages)).toContain(
         image.attachment.attachmentId,
       );
-      expect(adapter.requests[0]?.tools?.map((tool) => tool.name)).toEqual([
-        "bash",
-        "read_image",
-        "working_directory",
-      ]);
+      expect(adapter.requests[0]?.tools?.map((tool) => tool.name)).toEqual(["bash", "read_image"]);
       expect(result?.data.meta).toMatchObject({ path: await realpath(join(cwd, "red.png")) });
     } finally {
       await handle.dispose();
@@ -774,7 +802,6 @@ describe("the shipped Web composition", () => {
         "team_task_get",
         "team_task_list",
         "team_task_update",
-        "working_directory",
       ]);
     } finally {
       await handle.dispose();
@@ -833,7 +860,6 @@ describe("the shipped Web composition", () => {
         "team_task_get",
         "team_task_list",
         "team_task_update",
-        "working_directory",
       ]);
       expect(toolNames(ctx, full.agent).length).toBeGreaterThan(10);
       expect(ctx.agentPresets.serviceFor(minimal.agent, "compaction")).not.toBe(
@@ -849,7 +875,6 @@ describe("the shipped Web composition", () => {
         "team_task_get",
         "team_task_list",
         "team_task_update",
-        "working_directory",
       ]);
     } finally {
       await full.dispose();
@@ -863,9 +888,7 @@ describe("the shipped Web composition", () => {
     });
     try {
       const tools = toolNames(ctx, handle.agent);
-      expect(tools).toEqual(
-        expect.arrayContaining(["cordis_inspect_list", "cordis_inspect_query", "plugin_manager"]),
-      );
+      expect(tools).toEqual(expect.arrayContaining(["cordis_inspect", "plugin_manager"]));
       for (const removed of [
         "cordis_define",
         "cordis_run",
@@ -1118,7 +1141,6 @@ describe("the shipped Web composition", () => {
         "team_task_get",
         "team_task_list",
         "team_task_update",
-        "working_directory",
       ]);
     } finally {
       await handle.dispose();
@@ -1276,7 +1298,6 @@ describe.each(["web", "desktop"] as const)("%s native subagent bundles", (surfac
         try {
           for (const product of installed) {
             expect(toolParameterNames(productCtx, handle.agent, toolName(product))).toEqual([
-              "cwd",
               "description",
               "name",
               "prompt",
@@ -1398,8 +1419,7 @@ describe("the standard preset documentation skill", () => {
         ).toBe(definition.path);
         const schemas = testCtx.tools.schemas(standardAgent.agent);
         expect(schemas).toEqual(testCtx.tools.schemas(baseline.agent));
-        expect(schemas.map((tool) => tool.name)).not.toContain("cordis_inspect_list");
-        expect(schemas.map((tool) => tool.name)).not.toContain("cordis_inspect_query");
+        expect(schemas.map((tool) => tool.name)).toContain("cordis_inspect");
         for (const handle of [baseline, standardAgent]) {
           handle.agent.followup(
             createUserMessage({
@@ -1590,17 +1610,13 @@ describe("a user preset declared from the shipped cordis rows", () => {
       try {
         for (const handle of [shipped, copied]) {
           expect(toolNames(copyCtx, handle.agent)).toEqual(
-            expect.arrayContaining([
-              "cordis_inspect_list",
-              "cordis_inspect_query",
-              "plugin_manager",
-            ]),
+            expect.arrayContaining(["cordis_inspect", "plugin_manager"]),
           );
         }
         const signal = new AbortController().signal;
         const listed = await executeToolFixture(copyCtx, {
           callId: brandString<ToolCallId>("copied-preset-inspect-list"),
-          name: "cordis_inspect_list",
+          name: "cordis_inspect",
           arguments: {},
           signal,
           agent: copied.agent,
@@ -1613,7 +1629,7 @@ describe("a user preset declared from the shipped cordis rows", () => {
           providers
             .filter((provider) => provider.platform === "host")
             .map((provider) => provider.id),
-        ).toEqual(["Service", "Event", "Config", "Tool"]);
+        ).toEqual(["Service", "Event", "Config", "Runtime", "Tool"]);
 
         // The `Tool` provider is the one built over the host context: it
         // answers with the shared registry's view of the REQUESTING agent,
@@ -1624,20 +1640,15 @@ describe("a user preset declared from the shipped cordis rows", () => {
         });
         const queried = await executeToolFixture(copyCtx, {
           callId: brandString<ToolCallId>("copied-preset-inspect-tools"),
-          name: "cordis_inspect_query",
-          arguments: { platform: "host", provider: "Tool", method: "listTools" },
+          name: "cordis_inspect",
+          arguments: { query: { platform: "host", provider: "Tool", method: "listTools" } },
           signal,
           agent: copied.agent,
         });
         expect(queried.isError).toBe(false);
         // The tool catalog may exceed the inline budget; assert its complete stored text.
         const queriedText = spills.mock.calls.at(-1)?.[0].content ?? resultText(queried);
-        for (const toolName of [
-          "bash",
-          "cordis_inspect_list",
-          "cordis_inspect_query",
-          "plugin_manager",
-        ]) {
+        for (const toolName of ["bash", "cordis_inspect", "plugin_manager"]) {
           expect(queriedText).toContain(`"name": "${toolName}"`);
         }
 
@@ -1653,8 +1664,10 @@ describe("a user preset declared from the shipped cordis rows", () => {
         ): Promise<ConfigPage["data"]> => {
           const page = await executeToolFixture(copyCtx, {
             callId: brandString<ToolCallId>(callId),
-            name: "cordis_inspect_query",
-            arguments: { platform: "host", provider: "Config", method: "listConfigs", input },
+            name: "cordis_inspect",
+            arguments: {
+              query: { platform: "host", provider: "Config", method: "listConfigs", input },
+            },
             signal,
             agent: copied.agent,
           });
@@ -1680,12 +1693,14 @@ describe("a user preset declared from the shipped cordis rows", () => {
         expect(firstPage.nextOffset).toBe(5);
         const projected = await executeToolFixture(copyCtx, {
           callId: brandString<ToolCallId>("copied-preset-inspect-config"),
-          name: "cordis_inspect_query",
+          name: "cordis_inspect",
           arguments: {
-            platform: "host",
-            provider: "Config",
-            method: "listConfigs",
-            input: { entry: toolsRow!.id },
+            query: {
+              platform: "host",
+              provider: "Config",
+              method: "listConfigs",
+              input: { entry: toolsRow!.id },
+            },
           },
           signal,
           agent: copied.agent,
@@ -1876,7 +1891,6 @@ describe("the default preset as a user setting", () => {
           "team_task_get",
           "team_task_list",
           "team_task_update",
-          "working_directory",
         ]);
       } finally {
         await handle.dispose();
@@ -1936,7 +1950,6 @@ describe("a profile patch stored before Developer tools owned preset selection",
         "team_task_get",
         "team_task_list",
         "team_task_update",
-        "working_directory",
       ]);
     } finally {
       await handle.dispose();

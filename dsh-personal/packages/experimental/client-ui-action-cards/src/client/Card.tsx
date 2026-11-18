@@ -8,10 +8,11 @@ import type {
   Translate,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { ToolCallId } from '@deepseek-ai/dsh-llm/types'
 import type {
   ActionCardDecision,
   ActionCardFields,
+  ActionCardFence,
+  ActionCardId,
   ActionCardProposal,
   ActionCardResult,
   ActionCardView,
@@ -24,13 +25,13 @@ import css from './Card.module.css'
 export interface TailInjected {
   /**
    * Send one user action for a card of the displayed Session.
-   * @param callId - the card's call id.
+   * @param cardId - the card's call id.
    * @param verb - `dismiss` or one of the kind's verbs.
    * @param payload - kind-defined fields.
    * @returns the Host result, or undefined when the reply was lost.
    */
   act: (
-    callId: ToolCallId,
+    cardId: ActionCardId,
     verb: string,
     payload?: ActionCardFields,
   ) => Promise<ActionCardResult | undefined>
@@ -108,19 +109,27 @@ function proposalOf(
 ): ActionCardProposal | undefined {
   let found: ActionCardProposal | undefined
   for (const proposal of Object.values(view?.proposals ?? {})) {
-    if (proposal.turn === turn && (found === undefined || proposal.callId < found.callId))
+    if (proposal.turn === turn && (found === undefined || proposal.cardId < found.cardId))
       found = proposal
   }
   return found
 }
 function decisionOf(
   view: ActionCardView | undefined,
-  callId: string,
+  cardId: string,
 ): ActionCardDecision | undefined {
-  return view !== undefined && Object.hasOwn(view.decisions, callId)
-    ? view.decisions[callId]
+  return view !== undefined && Object.hasOwn(view.decisions, cardId)
+    ? view.decisions[cardId]
     : undefined
 }
+/** Language of answer blocks parsed by the Host as cards. */
+export const ACTION_CARD_FENCE: ActionCardFence = 'action-card'
+
+/** Hide card JSON wherever Chat renders Markdown. @returns no visible block. */
+export function HiddenCardBlock(): null {
+  return null
+}
+
 /**
  * Place the card admitted in a turn after that turn's final answer, once the turn has ended with one.
  * @param props - Turn location, projection reader, registered bodies and Session-bound actions.
@@ -138,7 +147,7 @@ export const ActionCardTail = defineComponent(
         : h(ActionCard, {
           ...props,
           proposal: proposal.value,
-          decision: decisionOf(view.value, proposal.value.callId),
+          decision: decisionOf(view.value, proposal.value.cardId),
         })
     }
   },
@@ -159,7 +168,7 @@ export const ActionCard = defineComponent(
   ) => {
     const body = props.useBodies(bodies => bodies.get(props.proposal.action))
     const send = (verb: string, payload?: ActionCardFields) =>
-      props.act(props.proposal.callId, verb, payload)
+      props.act(props.proposal.cardId, verb, payload)
     const summary = computed(() =>
       h(Fragment, {}, [
         h('strong', { class: css.title }, [props.proposal.title]),
@@ -185,6 +194,7 @@ export const ActionCard = defineComponent(
             decision: props.decision,
             sessionId: props.sessionId,
             summary: summary.value,
+            fallback: h(FallbackBody, { summary: summary.value, decision: props.decision, act: send, t: props.t }),
             Folded: FoldedText,
             act: send,
           },
@@ -197,7 +207,7 @@ export const ActionCard = defineComponent(
         {
           class: css.card,
           'aria-label': props.proposal.title,
-          'data-action-card': props.proposal.callId,
+          'data-action-card': props.proposal.cardId,
           'data-action': props.proposal.action,
         },
         [content.value],

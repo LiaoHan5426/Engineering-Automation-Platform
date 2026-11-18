@@ -445,39 +445,19 @@ describe("gate graph validation", () => {
     const ids = withPnpmEntrypoint(() => gatesForMode("hygiene").map((subject) => subject.id));
 
     expect(ids).toEqual([
-      "rescope-vendor",
-      "publint",
-      "constraints",
-      "default-product-isolation",
-      "product-use",
-      "official-bundle-catalog",
-      "provider-data",
-      "package-dependencies",
-      "application-entrypoints",
-      "dsh-package-licenses",
-      "node-next-types",
-      "optional-dependency-imports",
-      "client-packages",
-      "installer-locales",
-      "locale-metadata",
-      "client-ui-i18n",
-      "client-route-resolution",
-      "no-bare-dispatcher",
-      "plugin-record-callers",
-      "no-unknown-casts",
-      "empty-catch",
-      "no-top-level-await",
-      "plugin-entry-exports",
-      "cordis-config",
-      "runtime-closure",
-    ]);
-  });
+      'rescope-vendor', 'publint', 'constraints', 'default-product-isolation', 'product-use', 'official-bundle-catalog', 'provider-data', 'package-dependencies', 'application-entrypoints',
+      'dsh-package-licenses', 'node-next-types',
+      'optional-dependency-imports', 'client-packages', 'installer-locales', 'locale-metadata', 'client-ui-i18n', 'client-route-resolution', 'no-bare-dispatcher',
+      'plugin-record-callers', 'no-unknown-casts', 'empty-catch', 'cordis-root', 'no-top-level-await', 'plugin-entry-exports',
+      'cordis-config', 'runtime-closure',
+    ])
+  })
 
-  it("includes JSON resource checks in local and CI aggregates", () => {
-    for (const mode of ["i18n", "check-all", "ci-static", "hygiene"] as const) {
-      const ids = withPnpmEntrypoint(() => gatesForMode(mode).map((gate) => gate.id));
-      expect(ids).toEqual(expect.arrayContaining(["installer-locales", "locale-metadata"]));
-      if (mode !== "i18n") expect(ids).not.toContain("locale-dictionaries");
+  it('includes JSON resource checks in local and CI aggregates', () => {
+    for (const mode of ['i18n', 'check-all', 'ci-static', 'hygiene'] as const) {
+      const ids = withPnpmEntrypoint(() => gatesForMode(mode).map(gate => gate.id))
+      expect(ids).toEqual(expect.arrayContaining(['installer-locales', 'locale-metadata']))
+      if (mode !== 'i18n') expect(ids).not.toContain('locale-dictionaries')
     }
     expect(withPnpmEntrypoint(() => gatesForMode("i18n").map((gate) => gate.id))).toEqual([
       "installer-locales",
@@ -560,8 +540,18 @@ describe("gate graph validation", () => {
     },
   );
 
-  it.each(["ci-primary", "ci-static", "check-all", "hygiene"] as const)(
-    "keeps package dependency enforcement in %s",
+  it.each(['ci-primary', 'ci-static', 'check-all', 'hygiene'] as const)(
+    'rejects new Cordis root reads in %s',
+    (mode) => {
+      const gate = withPnpmEntrypoint(() => gatesForMode(mode).find(subject => subject.id === 'cordis-root'))
+
+      expect(gate?.args).toContain('verify-cordis-root')
+      expect(gate?.allowFailure).not.toBe(true)
+    },
+  )
+
+  it.each(['ci-primary', 'ci-static', 'check-all', 'hygiene'] as const)(
+    'keeps package dependency enforcement in %s',
     (mode) => {
       const ids = withPnpmEntrypoint(() => gatesForMode(mode).map((subject) => subject.id));
 
@@ -885,7 +875,7 @@ describe("gate graph validation", () => {
         label: "test",
         needs: ["native-system"],
         streamOutput: true,
-        args: ["/private/pnpm.cjs", "exec", "vp", "test", "run"],
+        args: ["/private/pnpm.cjs", "exec", "vp", "test", "run", "--config", "vitest.config.ts"],
       });
       expect(gates[1]?.env ?? {}).not.toHaveProperty("DSH_COVERAGE_TEST_TIMEOUT_MS");
     }
@@ -1099,8 +1089,7 @@ describe("Node compatibility graph", () => {
           args: [
             "/private/pnpm.cjs",
             "exec",
-            "vitest",
-            "run",
+            "vp", "test", "run", "--config", "vitest.config.ts",
             "packages/workflow/workflow-ptc/tests/source-runtime.compat.spec.ts",
             "packages/session/session-persistence-jsonl/tests/zstd.compat.spec.ts",
             "apps/cli/tests/source-launch.compat.spec.ts",

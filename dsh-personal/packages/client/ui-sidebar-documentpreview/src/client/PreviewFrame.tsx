@@ -41,7 +41,7 @@ export function PreviewFrame({
     banner,
     h('div', { class: css.header }, [
       h(PathLabel, { path, className: css.path, 'data-textpreview-path': '', ...pathTrigger }),
-      tools, handoff, h(NavigatorToggleSeat, { useTabInfo, renderFactorySlot }),
+      tools, h('div', { class: css.externalActions }, [handoff]), h(NavigatorToggleSeat, { useTabInfo, renderFactorySlot }),
     ]),
     h('div', { class: css.content, 'data-textpreview-content': '', 'data-files-navigator-row': '' }, [
       children, h(NavigatorSeat, { useTabInfo, renderFactorySlot }),

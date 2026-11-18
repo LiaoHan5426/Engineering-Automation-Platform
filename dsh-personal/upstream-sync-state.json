@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "acceptedUpstreamCommit": "39163dd30f703a79079e2d2446545cff3c453738",
+  "acceptedPersonalCommit": null,
+  "acceptedRecord": null,
+  "pending": {
+    "targetUpstreamCommit": "ca33fd6843b205e279c7ccb6cb73a472c78f5760",
+    "personalBaseCommit": "4f8231d0426b6c5c620ef27b4ab458b6c570b2f1",
+    "record": "../docs/evidence/dsh-personal/upstream-sync-2026-11-18.md"
+  }
+}

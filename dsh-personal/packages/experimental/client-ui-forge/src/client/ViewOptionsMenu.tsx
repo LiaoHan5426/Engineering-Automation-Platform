@@ -136,7 +136,7 @@ export const ViewOptionsMenu = defineComponent(
           anchor: () =>
             h(
               Tooltip,
-              { label: props.t('diff.moreOptions'), side: 'bottom' },
+              { label: props.t('diff.moreOptions'), side: 'bottom', delayMs: 500 },
               {
                 default: () => [
                   h(

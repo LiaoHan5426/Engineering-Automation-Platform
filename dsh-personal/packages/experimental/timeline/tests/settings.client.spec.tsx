@@ -230,7 +230,7 @@ describe("the Timeline Settings section", () => {
     );
     expect(taskPrompt.maxLength).toBe(32768);
     const count = (length: number) =>
-      `${length.toLocaleString()} / ${taskPrompt.maxLength.toLocaleString()}`;
+      `${length.toLocaleString("en")} / ${taskPrompt.maxLength.toLocaleString("en")}`;
     const prompt = "Explain results and remaining evidence in task details.";
     expect(within(section).getByText(count(value.taskPrompt.length))).toBeTruthy();
     await act(() => fireEvent.input(taskPrompt, { target: { value: prompt } }));

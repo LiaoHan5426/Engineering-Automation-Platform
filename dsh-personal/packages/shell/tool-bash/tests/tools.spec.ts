@@ -1322,6 +1322,7 @@ describe("processOutcome", () => {
     expect(processOutcome(settled({ exitCode: 3 }))).toEqual({
       status: "completed",
       detail: "exit code: 3",
+      exitCode: 3,
     });
   });
 
@@ -1329,6 +1330,7 @@ describe("processOutcome", () => {
     expect(processOutcome(settled({ exitCode: null }))).toEqual({
       status: "completed",
       detail: "exit code: 0",
+      exitCode: 0,
     });
   });
 

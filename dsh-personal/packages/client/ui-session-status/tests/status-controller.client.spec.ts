@@ -180,7 +180,10 @@ it("preserves unlisted child status through metadata updates and main view ackno
     completionUnread: true,
   });
 
-  using reference = sessions.retain(childId, { source: "mainView" });
+  using reference = sessions.retain(childId, {
+    source: "mainView",
+    facets: { conversation: true },
+  });
   await reference.ready;
   expect(sessions.list.getSnapshot().ids).not.toContain(childId);
   mock.streams.push("sessionStatus/follow", {

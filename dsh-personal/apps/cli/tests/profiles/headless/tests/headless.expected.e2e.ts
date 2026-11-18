@@ -1493,12 +1493,15 @@ describe("headless stream-json snapshots", () => {
         const parent = logs.find((log) => typeof log.header.parentSession !== "string");
         if (parent === undefined) throw new Error("Agent Teams snapshot did not persist its Lead");
         const rows = parseJsonl(parent.content);
+        const workflowTask = [
+          { type: "text", text: "Agent lead sent a message: " },
+          { type: "text", text: "TEAM_WORKFLOW_CHILD" },
+        ];
         const workflowChild = logs.find((log) =>
           parseJsonl(log.content).some(
             (row) =>
               row.type === "user/message" &&
-              JSON.stringify((row.data as JsonObject).content) ===
-                JSON.stringify([{ type: "text", text: "TEAM_WORKFLOW_CHILD" }]),
+              JSON.stringify((row.data as JsonObject).content) === JSON.stringify(workflowTask),
           ),
         );
         if (workflowChild === undefined)
@@ -1513,11 +1516,14 @@ describe("headless stream-json snapshots", () => {
             .filter(
               (row) =>
                 row.type === "user/message" &&
-                ((row.data as JsonObject).source as JsonObject).kind === "user",
+                ((row.data as JsonObject).source as JsonObject).kind === "agent-message",
             )
             .map((row) => row.data),
         ).toEqual([
-          expect.objectContaining({ content: [{ type: "text", text: "TEAM_WORKFLOW_CHILD" }] }),
+          expect.objectContaining({
+            content: workflowTask,
+            source: { kind: "agent-message", form: "relay", senderSessionId: parent.header.id },
+          }),
         ]);
         const teammates = rows
           .filter((row) => row.type === "subagent/catalog")
@@ -1583,7 +1589,8 @@ describe("headless stream-json snapshots", () => {
             typeof source === "object" &&
             source !== null &&
             !Array.isArray(source) &&
-            (source as JsonObject).kind === "agent-message"
+            (source as JsonObject).kind === "agent-message" &&
+            (source as JsonObject).senderSessionId !== parent.header.id
           );
         });
         const openTurnStart = implementerRows.findLastIndex(
@@ -1604,12 +1611,12 @@ describe("headless stream-json snapshots", () => {
             const initial = parseJsonl(log.content).find(
               (row) =>
                 row.type === "user/message" &&
-                ((row.data as JsonObject).source as JsonObject).kind === "user",
+                ((row.data as JsonObject).source as JsonObject).kind === "agent-message",
             );
             if (initial === undefined) throw new Error("Teammate Session has no initial task");
             const content = (initial.data as JsonObject).content as JsonObject[];
-            // The task block is followed by the standard return guidance naming the Lead.
-            expect(content).toHaveLength(2);
+            expect(content).toHaveLength(3);
+            expect(content[0]).toEqual({ type: "text", text: "Agent lead sent a message: " });
             const context = parseJsonl(log.content).find(
               (row) =>
                 row.type === "user/message" &&

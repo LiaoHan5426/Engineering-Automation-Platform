@@ -37,7 +37,7 @@ import {
   webSnapshotMode,
   type WebScaffold,
 } from "./scaffold.ts";
-import { newEnglishPage, openSettings } from "./support.ts";
+import { newEnglishPage, openSettings, showSessionPanel } from "./support.ts";
 
 declare global {
   interface Window {
@@ -936,10 +936,8 @@ async function prepareWorld(
   await page.goto(scaffold.authenticatedUrl, { waitUntil: "load" });
   await openSessionBySearch(page, parentFixture.markers.user(1));
   await choosePreferences(page, scenario);
-  const trigger = page.getByRole("button", { name: "1 subagent", exact: true });
-  await trigger.waitFor({ timeout: 15_000 });
-  await trigger.hover();
-  const openAside = page
+  const panel = await showSessionPanel(page);
+  const openAside = panel
     .getByRole("treeitem", { name: new RegExp(CHILD_LABEL) })
     .getByRole("button", { name: /^Open .+ in sidebar$/u });
   await expect.poll(() => openAside.count()).toBe(1);

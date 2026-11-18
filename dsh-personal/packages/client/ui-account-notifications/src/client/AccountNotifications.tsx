@@ -1,4 +1,4 @@
-/** Notification extension rendered inside the sidebar account menu. */
+/** Notification extension rendered in the sidebar row above the account menu. */
 import { defineComponent, h, shallowRef, watch, onScopeDispose } from 'vue'
 import { Button, IconCloseOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {

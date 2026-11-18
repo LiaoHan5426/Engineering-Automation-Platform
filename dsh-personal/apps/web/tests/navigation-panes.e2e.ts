@@ -8,7 +8,7 @@
 // trajectory ledger/timing lanes), turn 2 a markdown-rich reply.
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { join } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 import type { Browser, Page, Response } from "playwright";
 import { chromium } from "playwright";
 import { strFromU8, unzipSync } from "fflate";
@@ -119,6 +119,7 @@ async function ensureSeedOpen(page: Page): Promise<void> {
 
 describe("web e2e: navigation & panes over a rich seeded session", () => {
   let scaffold: WebScaffold;
+  let fixtureCwd: string;
   let browser: Browser;
   let page: Page;
   let tripwire: ReturnType<typeof watchConsole> = { warnings: [], pageErrors: [] };
@@ -126,10 +127,12 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
 
   beforeAll(async () => {
     scaffold = await launchWebScaffold({});
+    // Forward slashes address the same Windows directory and keep seeded ARIA paths portable.
+    fixtureCwd = scaffold.workspaceCwd.replaceAll("\\", "/");
     // The workspace-aware flow runs sessions in <workspaceCwd>/workspace;
     // the read targets must live in that session cwd (pre-creation is safe
     // because the picker adopts an existing directory by path).
-    const sessionCwd = join(scaffold.workspaceCwd, "workspace");
+    const sessionCwd = join(fixtureCwd, "workspace");
     await mkdir(sessionCwd, { recursive: true });
     await writeFile(join(sessionCwd, "nav-a.md"), "# alpha nav\n");
     await writeFile(join(sessionCwd, "nav-b.md"), "# beta nav\n");
@@ -140,7 +143,9 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
         "seed fixture must carry exactly the two drive prompts",
       ).toEqual([PROMPT_TURN1, PROMPT_TURN2]);
       // The inspector's calendar date must not depend on the day the test runs.
-      await seedSession(scaffold, raw, SEED_ID, undefined, { createdAt: Date.UTC(2026, 0, 1) });
+      await seedSession({ ...scaffold, workspaceCwd: fixtureCwd }, raw, SEED_ID, undefined, {
+        createdAt: Date.UTC(2026, 0, 1),
+      });
     }
     browser = await chromium.launch();
   }, 120_000);
@@ -260,7 +265,7 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
         .waitFor({ state: "detached", timeout: 30_000 });
       await compareOrRefreshGolden(
         ID_SEARCH_EXPECTED,
-        await captureStableAria(page, '[class*="listArea"]', scaffold.workspaceCwd),
+        await captureStableAria(page, '[class*="listArea"]', fixtureCwd),
         MODE,
       );
 
@@ -271,7 +276,7 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
           timeout: 10_000,
         })
         .toBeGreaterThanOrEqual(1);
-      const snapshot = (await captureStableAria(page, '[class*="listArea"]', scaffold.workspaceCwd))
+      const snapshot = (await captureStableAria(page, '[class*="listArea"]', fixtureCwd))
         .split(SEED_ID)
         .join("{{seededId}}");
       await compareOrRefreshGolden(SEARCH_EXPECTED, snapshot, MODE);
@@ -305,7 +310,7 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
       await block.waitFor({ timeout: 15_000 });
       await compareOrRefreshGolden(
         CODE_CARD_EXPECTED,
-        await captureStableAria(page, selector, scaffold.workspaceCwd),
+        await captureStableAria(page, selector, fixtureCwd),
         MODE,
       );
       const code = block.locator("pre");
@@ -396,7 +401,7 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
       await page
         .getByText("Raw results are only available for live tool calls", { exact: true })
         .waitFor();
-      const snapshot = (await captureStableAria(page, '[class*="viewArea"]', scaffold.workspaceCwd))
+      const snapshot = (await captureStableAria(page, '[class*="viewArea"]', fixtureCwd))
         .split(SEED_ID)
         .join("{{seededId}}");
       await compareOrRefreshGolden(TRAJECTORY_EXPECTED, snapshot, MODE);
@@ -479,7 +484,7 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
       const snapshot = await captureStableAria(
         page,
         "#trajectory-detail-panel",
-        scaffold.workspaceCwd,
+        fixtureCwd,
       );
       await compareOrRefreshGolden(TIMING_EXPECTED, snapshot, MODE);
     },
@@ -659,13 +664,20 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
       if (sourcePath === undefined)
         throw new Error("seeded Session has no materialized artifact location");
       expect((await stat(sourcePath)).isFile()).toBe(true);
-      expect(sourcePath.startsWith(`${scaffold.persistenceRoot}/`)).toBe(true);
-      const markdown = await page.evaluate(() => navigator.clipboard.readText());
+      const persistedPath = relative(scaffold.persistenceRoot, sourcePath);
+      expect(isAbsolute(persistedPath)).toBe(false);
+      expect(persistedPath.split(/[\\/]/)).not.toContain("..");
+      const markdown = await response.text();
+      const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+      // The Windows clipboard converts text/plain line endings to CRLF.
+      expect(clipboardText).toBe(
+        process.platform === "win32" ? markdown.replaceAll("\n", "\r\n") : markdown,
+      );
       expect(markdown).toContain(`Session file:\n\n\`\`\`text\n${sourcePath}\n\`\`\``);
       const normalized = markdown
         .split(sourcePath)
         .join("{{sessionFile}}")
-        .split(scaffold.workspaceCwd)
+        .split(fixtureCwd)
         .join("{{cwd}}");
       // compareOrRefreshGolden appends its own newline; the clipboard text already ends with exactly one.
       await compareOrRefreshGolden(COPY_MARKDOWN_EXPECTED, normalized.replace(/\n$/u, ""), MODE);
@@ -784,7 +796,8 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
       if ((await bashRow.getAttribute("aria-expanded")) !== "true") await bashRow.click();
       const card = page.locator('[data-sample="bash"] ~ div [data-terminal]').first();
       await card.waitFor({ timeout: 15_000 });
-      const commandWrap = await expectWrappedTerminalCommand(page, card, "echo NAVIGATION_OK", 300);
+      // The 18-character command fits at 300px; 220px leaves 29px for real wrapping.
+      const commandWrap = await expectWrappedTerminalCommand(page, card, "echo NAVIGATION_OK", 220);
       await compareOrRefreshGolden(
         COMMAND_WRAP_EXPECTED,
         JSON.stringify(commandWrap, null, 2),
@@ -866,7 +879,7 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
       expect(dot.color).toBe(dot.success);
       // Golden of the card at rest — captured before the copy click, whose
       // confirmation label self-reverts on a timer and would not hold still.
-      const snapshot = (await captureStableAria(page, "[data-terminal]", scaffold.workspaceCwd))
+      const snapshot = (await captureStableAria(page, "[data-terminal]", fixtureCwd))
         .split(SEED_ID)
         .join("{{seededId}}");
       await compareOrRefreshGolden(TERMINAL_EXPECTED, snapshot, MODE);
@@ -970,7 +983,7 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
       );
       await compareOrRefreshGolden(
         LIVE_RESULT_EXPECTED,
-        await captureStableAria(page, "#trajectory-detail-panel", scaffold.workspaceCwd),
+        await captureStableAria(page, "#trajectory-detail-panel", fixtureCwd),
         MODE,
       );
       const unregisterJson = scaffold.ctx.tools.register(
@@ -1068,7 +1081,7 @@ describe("web e2e: navigation & panes over a rich seeded session", () => {
       await details.getByRole("tooltip").waitFor({ state: "hidden" });
       await compareOrRefreshGolden(
         EVICTED_RESULT_EXPECTED,
-        await captureStableAria(page, "#trajectory-detail-panel", scaffold.workspaceCwd),
+        await captureStableAria(page, "#trajectory-detail-panel", fixtureCwd),
         MODE,
       );
       await details.getByText("LIVE_RESULT_RENDERED", { exact: true }).waitFor();

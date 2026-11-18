@@ -18,7 +18,7 @@
  * scrollbar indirection away while it is elsewhere, so a list the user is not
  * pointing at carries no bar.
  */
-import { computed, defineComponent, h, nextTick, onScopeDispose, ref, shallowRef, watch } from 'vue'
+import { computed, defineComponent, h, nextTick, ref, shallowRef, watch } from 'vue'
 import clsx from 'clsx'
 import { FishLogo, IconAppsAddOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconPanelLeftOutlineRegular, IconPinFillRegular, focusWithoutRing, isBehindModal, isDarwinDesktop, Menu, ShortcutKeys, Toast, Tooltip, useModalLayer, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsRenderFactories, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -34,7 +34,6 @@ const COLLAPSE_SETTLE_MS = 150
  * itself makes it blink out while the pointer is only crossing the column's
  * edge — on the way to the conversation, or around a portalled menu.
  */
-const SCROLLBAR_LINGER_MS = 2000
 /** Format complete-build metadata for the local brand badge. */
 function localBuildVersion(): string | undefined {
   const version = process.env.DSH_CLIENT_VERSION
@@ -198,24 +197,12 @@ export const SidebarRoot = defineComponent((props: SidebarRootComponentProps) =>
     })
   }, { flush:'pre' })
   const pointerInside = ref(false)
-  let lingerTimer: number | undefined
-  const cancelLinger = () => { window.clearTimeout(lingerTimer); lingerTimer = undefined }
-  const armLinger = () => { if (lingerTimer !== undefined) return; lingerTimer = window.setTimeout(() => {
-    lingerTimer = undefined; pointerInside.value = false }, SCROLLBAR_LINGER_MS) }
-  watch(pointerInside, (inside, _old, onCleanup) => {
-    if (!inside) return
-    const onMove = (event: PointerEvent) => {
-      const rect = column.value?.getBoundingClientRect()
-      /* v8 ignore next -- pointer listener is owned by the mounted column. */
-      if (rect === undefined) return
-      if (event.clientX >= rect.left && event.clientX < rect.right && event.clientY >= rect.top &&
-        event.clientY < rect.bottom) cancelLinger()
-      else armLinger()
-    }
-    document.addEventListener('pointermove',onMove)
-    onCleanup(() => { document.removeEventListener('pointermove',onMove); cancelLinger() })
-  }, { flush:'sync' })
-  onScopeDispose(cancelLinger)
+  // Fixed descendants and teleported surfaces can extend beyond the column.
+  const trackPointer = (event: PointerEvent) => {
+    const rect = (event.currentTarget as HTMLDivElement).getBoundingClientRect()
+    pointerInside.value = event.clientX >= rect.left && event.clientX < rect.right
+      && event.clientY >= rect.top && event.clientY < rect.bottom
+  }
   const buildVersion = localBuildVersion()
   const copiedToast = ref<number | null>(null)
   const copyVersion = (version: string) => () => { void writeClipboard(version).then((ok) => { if (
@@ -266,11 +253,9 @@ export const SidebarRoot = defineComponent((props: SidebarRootComponentProps) =>
       'tabindex': props.drawer ? -1 : undefined,
       'class': clsx(css.root, !wide.value && css.collapsed, !wide.value && animateRail && css.railIn, !props.drawer && props.collapsed && wide.value && css.fading, !pointerInside.value && css.quietBars),
       'style': wide.value ? { width: `${!props.drawer && props.collapsed ? lastWideWidth : props.width}px` } : undefined,
-      'onPointerenter': () => {
-        cancelLinger()
-        pointerInside.value = true
-      },
-      'onPointerleave': () => { armLinger() },
+      'onPointerenter': trackPointer,
+      'onPointermove': trackPointer,
+      'onPointerleave': () => { pointerInside.value = false },
     }, [
       darwinDesktop && h('div', {
         'class': css.topStrip,

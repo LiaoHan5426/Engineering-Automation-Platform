@@ -72,7 +72,7 @@ it("loads the shipped Office rows with separately patched settings and authorize
     (message) => {
       throw new Error(message);
     },
-  );
+  ).data;
   expect(configured.find((row) => row.id === "ui-sidebar-documentpreview")!.config).toEqual(
     clientConfig,
   );

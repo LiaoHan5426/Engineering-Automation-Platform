@@ -1302,12 +1302,10 @@ describe("UI presentation", () => {
     const { ctx } = await setup();
     const args = { command: "x", description: "x" };
     expect(
-      ctx.tools
-        .get("pwsh")
-        ?.presentResult?.(args, {
-          content: [{ type: "text", text: "slow\n[timed out after 100ms]\n[exit code: 143]" }],
-          isError: false,
-        }),
+      ctx.tools.get("pwsh")?.presentResult?.(args, {
+        content: [{ type: "text", text: "slow\n[timed out after 100ms]\n[exit code: 143]" }],
+        isError: false,
+      }),
     ).toEqual({ card: "terminal", output: "slow\n[timed out after 100ms]", exitCode: 143 });
   });
 
@@ -1530,6 +1528,7 @@ describe("processOutcome", () => {
     expect(processOutcome(settled({ exitCode: 3 }))).toEqual({
       status: "completed",
       detail: "exit code: 3",
+      exitCode: 3,
     });
   });
 
@@ -1537,6 +1536,7 @@ describe("processOutcome", () => {
     expect(processOutcome(settled({ exitCode: null }))).toEqual({
       status: "completed",
       detail: "exit code: 0",
+      exitCode: 0,
     });
   });
 

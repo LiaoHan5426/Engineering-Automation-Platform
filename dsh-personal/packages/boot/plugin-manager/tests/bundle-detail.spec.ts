@@ -99,7 +99,7 @@ async function fixture(config: Config = {}) {
     installAnchor: join(home, "package.json"),
     cwd: home,
     home,
-    overlays: [],
+    overlayPaths: [],
     telemetryDisabledEnv: undefined,
   };
   const ctx = await boot(

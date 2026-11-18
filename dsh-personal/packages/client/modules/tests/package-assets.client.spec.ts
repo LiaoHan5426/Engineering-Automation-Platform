@@ -177,7 +177,7 @@ async function composeHost(): Promise<Host> {
       for (const name of [NO_EXPORT_ID, ASSETS_ID]) {
         yield {
           options: { name },
-          fiber: {},
+          fiber: { ctx: { fiber: {} } },
           disabled: false,
           parent: { tree: { ctx: { baseUrl } } },
         };

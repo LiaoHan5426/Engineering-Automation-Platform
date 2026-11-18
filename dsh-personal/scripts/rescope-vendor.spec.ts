@@ -1,11 +1,12 @@
 /** Recorded npm evidence stays intact while authored files and exact edits remain checked. */
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import {
+  EXACT_EDITS,
   exactEditState,
   isRescopeExcluded,
   listRescopeFiles,
@@ -42,14 +43,17 @@ it("lists the complete eligible corpus when tracked paths exceed one MiB", () =>
       (_, i) => `packages/example/src/${String(i).padStart(5, "0")}-${"x".repeat(80)}.ts`,
     );
     expect(Buffer.byteLength(paths.join("\0"))).toBeGreaterThan(1024 * 1024);
-    // Index-only entries exercise Git's complete output without creating thousands of source files.
-    const entries = [...paths, "scripts/dependency-catalog/package-lock.json"];
+    // Absent tracked entries exercise full index output and pending deletions.
+    // Existing files sort after that corpus, so truncation would omit them.
+    const existing = ["y-present.ts", "z-present.ts"];
+    for (const file of existing) writeFileSync(join(root, file), "export {}\n");
+    const entries = [...paths, "scripts/dependency-catalog/package-lock.json", ...existing];
     execFileSync("git", ["update-index", "--index-info"], {
       cwd: root,
       env,
       input: entries.map((path) => `100644 ${blob}\t${path}\n`).join(""),
     });
-    expect(listRescopeFiles(root, env)).toEqual(paths);
+    expect(listRescopeFiles(root, env)).toEqual(existing);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -101,10 +105,34 @@ describe("exactEditState", () => {
   });
 });
 
+describe("current Vue and fixture exact edits", () => {
+  it.each([
+    "agent-preset-spec-framework-import",
+    "web-agent-presets-e2e-framework-import",
+    "notices-spec-row-fixture",
+    "notices-spec-shape-fixture",
+    "packed-install-registry-spec",
+  ])("keeps %s applied and rejects incomplete or duplicated sites", (id) => {
+    const edit = EXACT_EDITS.find((entry) => entry.id === id);
+    if (!edit) throw new Error(`Missing exact edit: ${id}`);
+    const text = readFileSync(new URL(`../${edit.file}`, import.meta.url), "utf8");
+    expect(exactEditState(text, edit.find, edit.replace, edit.expect)).toBe("applied");
+    const pending = text.replace(edit.replace, edit.find);
+    expect(exactEditState(pending, edit.find, edit.replace, edit.expect)).toBe("pending");
+    expect(exactEditState(text, edit.replace, edit.find, edit.expect)).toBe("pending");
+    expect(exactEditState(pending, edit.replace, edit.find, edit.expect)).toBe("applied");
+    expect(exactEditState(text + edit.replace, edit.find, edit.replace, edit.expect)).toBe("invalid");
+    expect(exactEditState(pending + edit.replace, edit.find, edit.replace, edit.expect)).toBe("invalid");
+    expect(exactEditState(text.replace(edit.replace, "moved"), edit.find, edit.replace, edit.expect)).toBe("invalid");
+    expect(exactEditState(text.replace(edit.replace, edit.replace.slice(1)), edit.find, edit.replace, edit.expect)).toBe("invalid");
+  });
+});
+
 describe("product identifiers", () => {
   it.each([
     "apps/cli/tests/optional-bundle-transitions.e2e.ts",
     "apps/web/tests/agent-preset-selection.e2e.ts",
+    "apps/web/tests/creator-persona.e2e.ts",
     "apps/web/tests/developer-tools-settings.e2e.ts",
     "docs/subsystems/extensions.md",
     "docs/subsystems/extensions.zh.md",
@@ -116,6 +144,8 @@ describe("product identifiers", () => {
     "docs/upgrade-guide/v0.2.1-alpha.1/subagent-preset-composition/guide.zh.md",
     "docs/upgrade-guide/v0.2.2-alpha.2/fs-observation-policy-default-off/guide.md",
     "docs/upgrade-guide/v0.2.2-alpha.2/fs-observation-policy-default-off/guide.zh.md",
+    "docs/upgrade-guide/v0.2.2-rc.1/subagent-interrupt-default/guide.md",
+    "docs/upgrade-guide/v0.2.2-rc.1/subagent-interrupt-default/guide.zh.md",
     "docs/user/guide/schedule.md",
     "docs/user/guide/schedule.zh.md",
     "packages/bundle/web-app/cordis.patch.yml",
@@ -125,6 +155,7 @@ describe("product identifiers", () => {
     "packages/client/ui-agent-preset/tests/components.client.spec.tsx",
     "packages/client/ui-agent-preset/tests/create-plugin-menu-item.client.spec.tsx",
     "packages/client/ui-agent-preset/tests/section-store.client.spec.ts",
+    "packages/client/ui-agent-preset/tests/locales.client.spec.ts",
     "packages/client/ui-conversation/src/client/input/submission-analytics.ts",
     "packages/client/ui-conversation/tests/service-orchestration.client.spec.ts",
     "packages/client/ui-entry-customization/src/client/index.ts",
@@ -150,6 +181,19 @@ describe("product identifiers", () => {
     expect(rescopeText(text, file)).toEqual({ text: scoped, lines: 2 });
     expect(rescopeText(scoped, file)).toEqual({ text: scoped, lines: 0 });
     expect(rescopeText(scoped, file, true)).toEqual({ text, lines: 2 });
+  });
+
+  it.each([
+    "apps/web/tests/creator-persona.e2e.ts",
+    "docs/upgrade-guide/v0.2.2-rc.1/subagent-interrupt-default/guide.md",
+    "docs/upgrade-guide/v0.2.2-rc.1/subagent-interrupt-default/guide.zh.md",
+  ])("still rewrites package imports in %s", (file) => {
+    const source = "const preset = 'cordis'\nimport { Context } from 'cordis'\n";
+    const text = file.endsWith(".md")
+      ? `The \`cordis\` preset.\n\`\`\`ts\n${source}\`\`\`\n`
+      : source;
+    const scoped = text.replace("from 'cordis'", "from '@deepseek-ai/cordis'");
+    expectRoundTrip(file, text, scoped, 1);
   });
 
   it("keeps unlisted package references subject to residue detection", () => {
@@ -236,7 +280,7 @@ describe("product identifiers", () => {
     ["snapshots/session/cordis-inspect-timeout/client-fixture.mjs", 2],
   ] as const)("reverses real package references in %s and restores them", (file, lines) => {
     const scoped = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
-    const text = scoped.replaceAll("'@deepseek-ai/cordis'", "'cordis'");
+    const text = scoped.replace(/(['"])@deepseek-ai\/cordis\1/g, "$1cordis$1");
     expect(text).not.toBe(scoped);
     expectRoundTrip(file, text, scoped, lines);
     expect(rescopeText(text, file, true)).toEqual({ text, lines: 0 });

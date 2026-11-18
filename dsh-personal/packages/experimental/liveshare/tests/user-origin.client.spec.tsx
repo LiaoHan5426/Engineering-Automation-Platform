@@ -119,7 +119,7 @@ describe("shareViewerSubject", () => {
 });
 /** The registered chain seat, its selector, and its component. */
 describe("shared-session origin chain", () => {
-  it("registers one chain entry whose selector elects only a share-viewer user row", async () => {
+  it("registers one chain entry whose selector elects a share-viewer row of either kind", async () => {
     const { runtime } = await renderBench();
     const entries = runtime.slots.entriesOfSlot("conversation.chat.user.before");
     expect(entries).toHaveLength(1);
@@ -135,7 +135,7 @@ describe("shared-session origin chain", () => {
       displayName: "许翰翔",
     });
     expect(select({ source: OWNER, kind: "user" })).toBeNull();
-    expect(select({ source: SHARED, kind: "steering" })).toBeNull();
+    expect(select({ source: SHARED, kind: "steering" })).toEqual({ subjectId: "subject-42" });
     expect(
       select({ source: { kind: "user", principal: { kind: "owner" } }, kind: "user" }),
     ).toBeNull();

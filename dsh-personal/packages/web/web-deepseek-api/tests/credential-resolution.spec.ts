@@ -4,10 +4,12 @@
  * operation would send.
  */
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { Context, FiberState } from "@deepseek-ai/cordis";
+import { Context } from "@deepseek-ai/cordis";
 import AgentRegistry from "@deepseek-ai/dsh-agent";
 import type { Agent } from "@deepseek-ai/dsh-agent";
 import type { DeepSeekAccount } from "@deepseek-ai/dsh-deepseek-account";
+import DeepSeekAuth from "@deepseek-ai/dsh-deepseek-auth";
+import { accountStub } from "../../../account/deepseek-account/tests/account-stub.ts";
 import {
   DSH_LAUNCH_ENVIRONMENT_KEY,
   createLaunchEnvironmentSnapshot,
@@ -18,20 +20,6 @@ import WebRuntime from "@deepseek-ai/dsh-web";
 import * as webApiPlugin from "@deepseek-ai/dsh-web-deepseek-api";
 import { provideRoutes, type RouteRow } from "./routes.ts";
 import { brandString } from "@deepseek-ai/dsh-brand";
-
-/** A value the API-key route resolver throws instead of resolving; undefined lets it resolve normally. */
-const resolverThrow = vi.hoisted(() => ({ value: undefined as string | undefined }));
-
-vi.mock("@deepseek-ai/dsh-llm-deepseek-api-key", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@deepseek-ai/dsh-llm-deepseek-api-key")>();
-  return {
-    ...original,
-    resolveAdapterOptions: (...args: Parameters<typeof original.resolveAdapterOptions>) => {
-      if (resolverThrow.value !== undefined) throw resolverThrow.value;
-      return original.resolveAdapterOptions(...args);
-    },
-  };
-});
 
 type Operation = "search" | "fetch";
 
@@ -45,7 +33,6 @@ const mounted: Context[] = [];
 
 afterEach(async () => {
   vi.unstubAllGlobals();
-  resolverThrow.value = undefined;
   await Promise.all(mounted.splice(0).map((ctx) => ctx.fiber.dispose()));
 });
 
@@ -54,10 +41,10 @@ interface Setup {
   config?: Record<string, unknown>;
   /** Launch-environment variables. */
   environment?: Record<string, string>;
-  /** Model routes the provider directory lists. */
+  /** Model routes connected to the authentication service. */
   routes?: readonly RouteRow[];
   /** Account service stand-in. */
-  account?: Pick<DeepSeekAccount, "resolveToken"> & Partial<Pick<DeepSeekAccount, "rejectToken">>;
+  account?: DeepSeekAccount;
   /** Credentials service stand-in. */
   credentials?: object;
   /** API response status. */
@@ -97,8 +84,9 @@ async function mount(setup: Setup): Promise<{ ctx: Context; sent: () => Sent[] }
     DSH_LAUNCH_ENVIRONMENT_KEY,
     createLaunchEnvironmentSnapshot([{ source: "process", values: setup.environment ?? {} }]),
   );
-  if (setup.account !== undefined) ctx.provide("deepseekAccount", setup.account as DeepSeekAccount);
+  if (setup.account !== undefined) ctx.provide("deepseekAccount", setup.account);
   if (setup.credentials !== undefined) ctx.provide("credentials", setup.credentials as never);
+  await ctx.plugin(DeepSeekAuth);
   if (setup.routes !== undefined) provideRoutes(ctx, setup.routes);
   await ctx.plugin(SessionStore);
   await ctx.plugin(SessionProjectionRegistry);
@@ -148,15 +136,24 @@ function ready(ctx: Context, operation: Operation, route: string | undefined): P
   return operation === "search" ? ctx.web.searchReady(route) : ctx.web.fetchReady(route);
 }
 
-/** The account service of a signed-in user, recording the URLs it is asked for. */
-function signedIn(asked: string[] = []): Pick<DeepSeekAccount, "resolveToken"> {
-  return {
-    resolveToken: async (url: string) => {
+/** The account service of a signed-in user, recording the URLs it is asked for and the tokens it is told to reject. */
+function signedIn(
+  asked: string[] = [],
+  reject?: (token: string) => Promise<void>,
+): DeepSeekAccount {
+  return accountStub({
+    token: (url) => {
       asked.push(url);
       return "account-token";
     },
-  };
+    ...(reject === undefined ? {} : { reject }),
+  });
 }
+/** The account service of a signed-out user. */
+const signedOut = (): DeepSeekAccount => accountStub({ token: () => undefined });
+/** An account service whose stored grant cannot be read. */
+const unreadable = (): DeepSeekAccount =>
+  accountStub({ token: () => Promise.reject(new Error("grant unreadable")) });
 
 const officialRoute = (
   config: Record<string, unknown> = { baseURL: "https://route.deepseek.test/anthropic" },
@@ -199,10 +196,10 @@ describe.each(OPERATIONS)("%s in a conversation on the DeepSeek account route", 
   });
 
   it("invalidates the token the API rejects with 401", async () => {
-    const rejectToken = vi.fn(async () => {});
+    const rejectToken = vi.fn(async (_token: string) => {});
     const { ctx } = await mount({
       routes: bothRoutes,
-      account: { ...signedIn(), rejectToken },
+      account: signedIn([], rejectToken),
       status: 401,
     });
     const failure = operate(ctx, operation, "deepseek-account");
@@ -212,8 +209,7 @@ describe.each(OPERATIONS)("%s in a conversation on the DeepSeek account route", 
   });
 
   it.each<[string, Setup["account"]]>([
-    ["the user is not signed in", { resolveToken: async () => undefined }],
-    ["the account releases an empty token", { resolveToken: async () => "" }],
+    ["the user is not signed in", signedOut()],
     ["no account service is mounted", undefined],
   ])("sends the API key to the API-key endpoint when %s", async (_label, account) => {
     const { ctx, sent } = await mount({
@@ -230,10 +226,7 @@ describe.each(OPERATIONS)("%s in a conversation on the DeepSeek account route", 
 
   it("is not ready and names both recoveries when neither a sign-in nor the key is available", async () => {
     const subject = operation === "search" ? "Search" : "Fetch";
-    const { ctx, sent } = await mount({
-      routes: bothRoutes,
-      account: { resolveToken: async () => undefined },
-    });
+    const { ctx, sent } = await mount({ routes: bothRoutes, account: signedOut() });
     expect(await ready(ctx, operation, "deepseek-account")).toBe(false);
     await expect(operate(ctx, operation, "deepseek-account")).rejects.toMatchObject({
       code: "WEB_PROVIDER_CREDENTIAL_MISSING",
@@ -299,7 +292,7 @@ describe.each(OPERATIONS)("%s in a conversation on the DeepSeek account route", 
   it("fails instead of sending DEEPSEEK_API_KEY when there is no sign-in and the API-key route settings do not resolve", async () => {
     const { ctx, sent } = await mount({
       routes: [officialRoute({ thinking: "disabled", reasoningEffort: "high" }), accountRoute()],
-      account: { resolveToken: async () => undefined },
+      account: signedOut(),
       environment: { DEEPSEEK_API_KEY: "chat-key" },
     });
     expect(await ready(ctx, operation, "deepseek-account")).toBe(false);
@@ -312,7 +305,7 @@ describe.each(OPERATIONS)("%s in a conversation on the DeepSeek account route", 
   it("is not ready and fails without trying the key when the account grant cannot be read", async () => {
     const { ctx, sent } = await mount({
       routes: bothRoutes,
-      account: { resolveToken: () => Promise.reject(new Error("grant unreadable")) },
+      account: unreadable(),
       environment: { DEEPSEEK_API_KEY: "chat-key" },
     });
     expect(await ready(ctx, operation, "deepseek-account")).toBe(false);
@@ -401,9 +394,39 @@ describe.each(OPERATIONS)("%s in any other conversation", (operation) => {
     ]);
   });
 
+  it.each(["deepseek-account", "deepseek-official"])(
+    "orders route %s as any other route while no plugin connected it",
+    async (route) => {
+      const asked: string[] = [];
+      const withKey = await mount({
+        account: signedIn(asked),
+        environment: { DEEPSEEK_API_KEY: "chat-key" },
+      });
+      expect(await ready(withKey.ctx, operation, route)).toBe(true);
+      await operate(withKey.ctx, operation, route);
+      expect(withKey.sent()).toEqual([
+        { endpoint: `${OFFICIAL}/${operation}`, authorization: "Bearer chat-key", token: null },
+      ]);
+      expect(asked).toEqual([]);
+      const signedInOnly = await mount({ account: signedIn() });
+      expect(await ready(signedInOnly.ctx, operation, route)).toBe(true);
+      await operate(signedInOnly.ctx, operation, route);
+      expect(signedInOnly.sent()).toEqual([
+        { endpoint: `${OFFICIAL}/${operation}`, authorization: null, token: "account-token" },
+      ]);
+      const neither = await mount({ account: signedOut() });
+      expect(await ready(neither.ctx, operation, route)).toBe(false);
+      const failure = operate(neither.ctx, operation, route);
+      await expect(failure).rejects.toMatchObject({ code: "WEB_PROVIDER_CREDENTIAL_MISSING" });
+      await expect(failure).rejects.toThrow(
+        "uses the DeepSeek API key, then the DeepSeek account sign-in, and neither is available",
+      );
+    },
+  );
+
   it("is not ready and names both recoveries without a key and a sign-in", async () => {
     const subject = operation === "search" ? "Search" : "Fetch";
-    for (const account of [{ resolveToken: async () => undefined }, undefined]) {
+    for (const account of [signedOut(), undefined]) {
       const { ctx, sent } = await mount({
         routes: bothRoutes,
         ...(account === undefined ? {} : { account }),
@@ -496,34 +519,15 @@ describe.each(OPERATIONS)("%s in any other conversation", (operation) => {
   });
 
   it.each<[string, readonly RouteRow[] | undefined]>([
-    ["no model provider directory is mounted", undefined],
+    ["no model service is mounted", undefined],
+    ["no route registers deepseek-official", [accountRoute()]],
     [
-      "the route entry is not active",
+      "the registered deepseek-official adapter connects no deployment",
       [
         {
           provider: "deepseek-official",
           config: { apiKeyEnv: "TEAM_KEY" },
-          state: FiberState.DISPOSED,
-        },
-      ],
-    ],
-    [
-      "another package registers the route",
-      [
-        {
-          provider: "deepseek-official",
-          config: { apiKeyEnv: "TEAM_KEY" },
-          name: "@example/other-llm",
-        },
-      ],
-    ],
-    [
-      "the route settings are nested",
-      [
-        {
-          provider: "deepseek-official",
-          config: { apiKeyEnv: "TEAM_KEY" },
-          settingsPath: ["routes", "official"],
+          withoutConnection: true,
         },
       ],
     ],
@@ -676,8 +680,7 @@ describe.each(OPERATIONS)("%s billed to the signed-in DeepSeek account", (operat
   });
 
   it.each<[string, Setup["account"]]>([
-    ["the user is not signed in", { resolveToken: async () => undefined }],
-    ["the account releases an empty token", { resolveToken: async () => "" }],
+    ["the user is not signed in", signedOut()],
     ["no account service is mounted", undefined],
   ])("is not ready and never sends the key when %s", async (_label, account) => {
     const { ctx, sent } = await mount({
@@ -717,24 +720,53 @@ describe.each(OPERATIONS)("%s billed to the signed-in DeepSeek account", (operat
     expect(asked).toEqual([]);
   });
 
-  it("is not ready and fails without a token when the default account settings do not resolve", async () => {
+  it("is not ready and never sends the key without the account route and the account service", async () => {
     const { ctx, sent } = await mount({
       config,
-      account: signedIn(),
-      environment: { DEEPSEEK_BASE_URL: "https://user:secret@internal.deepseek.test/anthropic" },
+      routes: [officialRoute()],
+      environment: { DEEPSEEK_API_KEY: "chat-key" },
     });
-    expect(await ready(ctx, operation, undefined)).toBe(false);
-    await expect(operate(ctx, operation)).rejects.toMatchObject({
-      code: "WEB_PROVIDER_MISCONFIGURED",
+    expect(await ready(ctx, operation, "moonshotai")).toBe(false);
+    await expect(operate(ctx, operation, "moonshotai")).rejects.toMatchObject({
+      code: "WEB_PROVIDER_CREDENTIAL_MISSING",
     });
     expect(sent()).toEqual([]);
   });
+
+  it.each([
+    "https://user:secret@internal.deepseek.test/anthropic",
+    "https://:secret@internal.deepseek.test/anthropic",
+    "ftp://internal.deepseek.test/anthropic",
+    "not a url",
+  ])(
+    "is not ready and fails without a token when DEEPSEEK_BASE_URL is %s and no account route is mounted",
+    async (baseURL) => {
+      const asked: string[] = [];
+      const { ctx, sent } = await mount({
+        config,
+        account: signedIn(asked),
+        environment: { DEEPSEEK_BASE_URL: baseURL },
+      });
+      expect(await ready(ctx, operation, undefined)).toBe(false);
+      const failure = operate(ctx, operation);
+      await expect(failure).rejects.toMatchObject({ code: "WEB_PROVIDER_MISCONFIGURED" });
+      await expect(failure).rejects.toThrow(
+        `DeepSeek ${subject} API sends the DeepSeek account sign-in to the origin of DEEPSEEK_BASE_URL,` +
+          " and that value does not resolve: ",
+      );
+      await expect(failure).rejects.toThrow(
+        "Guide the user to correct DEEPSEEK_BASE_URL in the launching environment, or to set",
+      );
+      expect(sent()).toEqual([]);
+      expect(asked).toEqual([]);
+    },
+  );
 
   it("is not ready and fails when the account grant cannot be read", async () => {
     const { ctx, sent } = await mount({
       config,
       routes: bothRoutes,
-      account: { resolveToken: () => Promise.reject(new Error("grant unreadable")) },
+      account: unreadable(),
       environment: { DEEPSEEK_API_KEY: "chat-key" },
     });
     expect(await ready(ctx, operation, "moonshotai")).toBe(false);
@@ -745,11 +777,11 @@ describe.each(OPERATIONS)("%s billed to the signed-in DeepSeek account", (operat
   });
 
   it("invalidates the token the API rejects with 401", async () => {
-    const rejectToken = vi.fn(async () => {});
+    const rejectToken = vi.fn(async (_token: string) => {});
     const { ctx } = await mount({
       config,
       routes: bothRoutes,
-      account: { ...signedIn(), rejectToken },
+      account: signedIn([], rejectToken),
       status: 401,
     });
     await expect(operate(ctx, operation, "moonshotai")).rejects.toThrow("HTTP 401");
@@ -876,6 +908,11 @@ describe.each(OPERATIONS)("%s with its own endpoint settings", (operation) => {
       { [baseURL]: OWN, [apiKeyEnv]: "OWN_KEY" },
       { endpoint: `${OWN}/${operation}`, authorization: "Bearer own-key", token: null },
     ],
+    [
+      "a base URL with trailing slashes",
+      { [baseURL]: `${OWN}//` },
+      { endpoint: `${OWN}/${operation}`, authorization: "Bearer chat-key", token: null },
+    ],
   ])(
     "uses %s on every conversation route and never the account token",
     async (_label, config, expected) => {
@@ -926,16 +963,19 @@ describe.each(OPERATIONS)("%s with its own endpoint settings", (operation) => {
     ]);
   });
 
-  it("reports an unparseable base URL as an unavailable provider", async () => {
-    const { ctx, sent } = await mount({
-      config: { [baseURL]: "not a url" },
-      environment: { DEEPSEEK_API_KEY: "chat-key" },
-    });
-    await expect(operate(ctx, operation)).rejects.toMatchObject({
-      code: "WEB_PROVIDER_CONFIGURED_UNAVAILABLE",
-    });
-    expect(sent()).toEqual([]);
-  });
+  it.each(["not a url", "https://user:secret@own.deepseek.test/api/v1/tools"])(
+    "reports the base URL %s, which does not parse or embeds credentials, as an unavailable provider",
+    async (value) => {
+      const { ctx, sent } = await mount({
+        config: { [baseURL]: value },
+        environment: { DEEPSEEK_API_KEY: "chat-key" },
+      });
+      await expect(operate(ctx, operation)).rejects.toMatchObject({
+        code: "WEB_PROVIDER_CONFIGURED_UNAVAILABLE",
+      });
+      expect(sent()).toEqual([]);
+    },
+  );
 });
 
 describe("independent capabilities", () => {
@@ -982,17 +1022,30 @@ describe("independent capabilities", () => {
   });
 });
 
-describe("route resolver failures", () => {
+describe("model route settings failures", () => {
   it("reports a thrown non-Error value as its string", async () => {
     const { ctx, sent } = await mount({
-      routes: [officialRoute()],
+      routes: [{ provider: "deepseek-official", throws: "route resolver unavailable" }],
       environment: { DEEPSEEK_API_KEY: "chat-key" },
     });
-    resolverThrow.value = "route resolver unavailable";
     const failure = operate(ctx, "search", "deepseek-official");
     await expect(failure).rejects.toMatchObject({ code: "WEB_PROVIDER_MISCONFIGURED" });
     await expect(failure).rejects.toThrow(
       "that provider's settings do not resolve: route resolver unavailable. Search did not send",
+    );
+    expect(sent()).toEqual([]);
+  });
+
+  it("reports a route whose base URL does not parse as misconfigured, before readiness and without sending", async () => {
+    const { ctx, sent } = await mount({
+      routes: [{ provider: "deepseek-official", connectedBaseURL: "not a url" }],
+      environment: { DEEPSEEK_API_KEY: "chat-key" },
+    });
+    expect(await ready(ctx, "search", "deepseek-official")).toBe(false);
+    const failure = operate(ctx, "search", "deepseek-official");
+    await expect(failure).rejects.toMatchObject({ code: "WEB_PROVIDER_MISCONFIGURED" });
+    await expect(failure).rejects.toThrow(
+      "that provider's settings do not resolve: Invalid URL. Search did not send",
     );
     expect(sent()).toEqual([]);
   });

@@ -162,13 +162,22 @@ function holdTextAfter(world: ScrollWorld, initialDeltas: number): () => void {
   };
 }
 
-function toolStream(): StreamChunk[] {
-  const command = [
-    `: > ${TOOL_READY_FILE}`,
-    `while [ ! -f ${TOOL_RELEASE_FILE} ]; do sleep 0.02; done`,
-    "line=1",
-    `while [ "$line" -le 64 ]; do printf '${LIVE_TOOL_RESULT} line %02d\\n' "$line"; line=$((line + 1)); done`,
-  ].join("; ");
+function toolStream(
+  shellName: "bash" | "pwsh" = process.platform === "win32" ? "pwsh" : "bash",
+): StreamChunk[] {
+  const command =
+    shellName === "pwsh"
+      ? [
+          `Set-Content -LiteralPath '${TOOL_READY_FILE}' -Value '' -NoNewline`,
+          `while (-not (Test-Path -LiteralPath '${TOOL_RELEASE_FILE}')) { Start-Sleep -Milliseconds 20 }`,
+          `1..64 | ForEach-Object { '${LIVE_TOOL_RESULT} line {0:D2}' -f $_ }`,
+        ].join("; ")
+      : [
+          `: > ${TOOL_READY_FILE}`,
+          `while [ ! -f ${TOOL_RELEASE_FILE} ]; do sleep 0.02; done`,
+          "line=1",
+          `while [ "$line" -le 64 ]; do printf '${LIVE_TOOL_RESULT} line %02d\\n' "$line"; line=$((line + 1)); done`,
+        ].join("; ");
   const args = JSON.stringify({ command, description: LIVE_TOOL_RESULT });
   return [
     { type: "block-start", index: 0, blockType: "tool-call" },
@@ -176,13 +185,13 @@ function toolStream(): StreamChunk[] {
       type: "tool-call-delta",
       index: 0,
       id: LIVE_TOOL_CALL_ID,
-      name: "bash",
+      name: shellName,
       argumentsDelta: args,
     },
     {
       type: "block-end",
       index: 0,
-      block: { type: "tool-call", id: LIVE_TOOL_CALL_ID, name: "bash", arguments: args },
+      block: { type: "tool-call", id: LIVE_TOOL_CALL_ID, name: shellName, arguments: args },
     },
     { type: "usage", usage: { inputTokens: 256, outputTokens: 48 } },
     { type: "finish", reason: { kind: "tool-calls" } },
@@ -292,8 +301,8 @@ async function withScrollWorld(
     runFailure = error;
     try {
       await saveFailureShot(world.page, options.failureShot);
-    } catch {
-      // Best-effort evidence must never prevent cleanup of the owned world.
+    } catch (_failureShotFailed) {
+      // A missing screenshot loses evidence only; cleanup of the owned world and the rethrown run failure still follow.
     }
   }
   let cleanupFailure: unknown;
@@ -1825,13 +1834,7 @@ describe("web e2e: long Chat scroll contract", () => {
                     const top = viewport.top + element.clientTop;
                     return Math.max(
                       Math.abs((railBox.top + railBox.bottom) / 2 - (top + composerBox.top) / 2),
-                      Math.abs(
-                        viewport.left +
-                          element.clientLeft +
-                          element.clientWidth -
-                          railBox.right -
-                          12,
-                      ),
+                      Math.abs(railBox.left - viewport.left - element.clientLeft - 12),
                       Math.abs(composerBox.top - buttonBox.bottom - 16),
                     );
                   }),
@@ -2343,7 +2346,7 @@ describe("web e2e: long Chat scroll contract", () => {
         {
           failureShot: "web-e2e-chat-scroll-live-tool",
           replay: [
-            replayEntry(toolStream()),
+            replayEntry(toolStream("bash")),
             replayEntry(textStream(LIVE_TOOL_FIRST, LIVE_TOOL_DONE, 84)),
           ],
           seeds: [{ fixture: TOOL_FIXTURE, id: TOOL_SESSION_ID }],

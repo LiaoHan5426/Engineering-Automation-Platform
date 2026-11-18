@@ -31,6 +31,8 @@ export interface ActionCardBodyProps<N extends Extract<keyof LocaleNamespaceMap,
   readonly sessionId: SessionId
   /** Title and folded brief rendered by the frame; the body places them in its layout. */
   readonly summary: VNodeChild
+  /** Dismiss-only content when a body rejects its details. */
+  readonly fallback: VNodeChild
   /** The frame's width-weighted text fold. */
   readonly Folded: Component<FoldedTextProps>
   /**

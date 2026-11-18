@@ -60,7 +60,7 @@ export async function managerProfile(
     installAnchor: join(home, "package.json"),
     cwd: home,
     home,
-    overlays: [],
+    overlayPaths: [],
     telemetryDisabledEnv: undefined,
   };
   if (options.user !== undefined)

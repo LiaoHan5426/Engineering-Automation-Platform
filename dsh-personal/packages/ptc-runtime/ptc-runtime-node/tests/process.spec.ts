@@ -108,7 +108,7 @@ it.each(["awaited", "unawaited", "unawaited script"] as const)(
         async invoke(_global, _name, args) {
           expect(decodePtcJsonWire(args)).toEqual({ n: 21 });
           return scenario === "awaited"
-            ? encodePtcJsonWire(42)
+            ? { value: encodePtcJsonWire(42) }
             : await new Promise<never>(() => {});
         },
         log(text) {

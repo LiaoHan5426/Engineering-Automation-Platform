@@ -5,9 +5,10 @@ import { afterEach, expect, it, vi } from "vite-plus/test";
 import { Context } from "@deepseek-ai/cordis";
 import { brandString } from "@deepseek-ai/dsh-brand";
 import LlmRuntime, { type ReasoningEffortId } from "@deepseek-ai/dsh-llm";
-import type { DeepSeekAccount } from "@deepseek-ai/dsh-deepseek-account";
+import { accountStub } from "../../../account/deepseek-account/tests/account-stub.ts";
 import * as ApiKey from "@deepseek-ai/dsh-llm-deepseek-api-key";
 import * as Account from "../src/index.ts";
+import DeepSeekAuth from "@deepseek-ai/dsh-deepseek-auth";
 
 const MESSAGES = { output_modalities: ["text"], api_capabilities: { anthropic_messages: {} } };
 const FLASH = {
@@ -69,10 +70,10 @@ async function host(
   const ctx = new Context();
   contexts.push(ctx);
   await ctx.plugin(LlmRuntime);
-  ctx.provide("deepseekAccount", {
-    resolveToken: (url: string) =>
-      Promise.resolve(new URL(url).origin === origin ? token() : undefined),
-  } as DeepSeekAccount);
+  ctx.provide(
+    "deepseekAccount",
+    accountStub({ token: (url) => (new URL(url).origin === origin ? token() : undefined) }),
+  );
   return ctx;
 }
 
@@ -81,6 +82,7 @@ it("keeps discovery and disposal independent across the two credential routes", 
   const server = await listing(json({ data: [FLASH, PRO] }));
   let token: string | undefined = "fixture-account-token";
   const ctx = await host(server.origin, () => token);
+  await ctx.plugin(DeepSeekAuth);
   const account = ctx.plugin(Account, { baseURL: server.baseURL });
   await account;
   const official = ctx.plugin(ApiKey, { models: [{ id: "api-key-model", name: "API-key model" }] });
@@ -114,6 +116,7 @@ it("keeps discovery and disposal independent across the two credential routes", 
 it("resolves listed capabilities with this build's model knowledge", async () => {
   const server = await listing(json({ data: [FLASH, PRO] }));
   const ctx = await host(server.origin);
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(Account, { baseURL: server.baseURL });
   await expect(
     ctx.llm.resolveModelInfo("deepseek-account", "deepseek-flash"),
@@ -139,6 +142,7 @@ it("advertises the badges its listing declares", async () => {
     json({ data: [{ ...FLASH, client_metadata: { "deepseek-harness": { badge } } }, PRO] }),
   );
   const ctx = await host(server.origin);
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(Account, { baseURL: server.baseURL });
   expect((await ctx.llm.listModels("deepseek-account")).map((row) => [row.id, row.badge])).toEqual([
     ["deepseek-flash", badge],
@@ -163,6 +167,7 @@ it("publishes an account badge removal after the default idle refresh interval",
   });
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
   try {
+    await ctx.plugin(DeepSeekAuth);
     await ctx.plugin(Account, { baseURL: server.baseURL });
     expect((await ctx.llm.listModels("deepseek-account"))[0]?.badge?.text).toBe("New");
     badge = undefined;
@@ -186,6 +191,7 @@ it("falls back to the bundled catalog when the listing fails", async () => {
     response.writeHead(503).end("down");
   });
   const ctx = await host(server.origin);
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(Account, { baseURL: server.baseURL });
   expect((await ctx.llm.listModels("deepseek-account")).map((row) => row.id)).toEqual([
     "deepseek-flash",
@@ -215,6 +221,7 @@ it("hides and refuses listed models this build cannot serve before any inference
     }),
   );
   const ctx = await host(server.origin);
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(Account, { baseURL: server.baseURL });
   expect((await ctx.llm.listModels("deepseek-account")).map((row) => row.id)).toEqual([
     "deepseek-flash",
@@ -258,6 +265,7 @@ it("applies model overrides and reports stale ones on the provider directory unt
     json({ data: rows })(request, response);
   });
   const ctx = await host(server.origin, () => token);
+  await ctx.plugin(DeepSeekAuth);
   await ctx.plugin(Account, {
     baseURL: server.baseURL,
     modelOverrides: {
@@ -282,6 +290,7 @@ it("applies model overrides and reports stale ones on the provider directory unt
 
 it("rejects the retired models setting at load", async () => {
   const ctx = await host("http://127.0.0.1:1");
+  await ctx.plugin(DeepSeekAuth);
   await expect(ctx.plugin(Account, { models: [] })).rejects.toThrow(
     /models is no longer configurable/,
   );
@@ -294,6 +303,7 @@ it("aborts an in-flight listing request when the plugin is disposed", async () =
     held.resolve(request);
   });
   const ctx = await host(server.origin);
+  await ctx.plugin(DeepSeekAuth);
   const account = ctx.plugin(Account, { baseURL: server.baseURL });
   await account;
   const pending = ctx.llm.listModels("deepseek-account");
@@ -302,4 +312,43 @@ it("aborts an in-flight listing request when the plugin is disposed", async () =
   await account.dispose();
   await closed;
   await expect(pending).resolves.toEqual(expect.any(Array));
+});
+
+it("connects its route id and deployment, so other DeepSeek consumers send the account sign-in to its origin", async () => {
+  const asked: string[] = [];
+  const ctx = new Context();
+  contexts.push(ctx);
+  await ctx.plugin(LlmRuntime);
+  ctx.provide(
+    "deepseekAccount",
+    accountStub({
+      token: (url) => {
+        asked.push(url);
+        return "fixture-account-token";
+      },
+    }),
+  );
+  await ctx.plugin(DeepSeekAuth);
+  const search = {
+    consumer: "web-test",
+    accepts: ["account"],
+    billing: "account",
+    destination: { path: "/v1/tools/search" },
+  } as const;
+  const route = await ctx.plugin(Account, { baseURL: "https://account.deepseek.test/anthropic" });
+  expect(ctx.deepseekAuth.routeKind("deepseek-account")).toBe("account");
+  expect(await ctx.deepseekAuth.authorize(search)).toMatchObject({
+    kind: "account",
+    endpoint: "https://account.deepseek.test/v1/tools/search",
+    headers: { "x-dsh-auth-token": "fixture-account-token" },
+  });
+  await route.dispose();
+  expect(ctx.deepseekAuth.routeKind("deepseek-account")).toBeUndefined();
+  expect(await ctx.deepseekAuth.authorize(search)).toMatchObject({
+    endpoint: "https://api.deepseek.com/v1/tools/search",
+  });
+  expect(asked).toEqual([
+    "https://account.deepseek.test/v1/tools/search",
+    "https://api.deepseek.com/v1/tools/search",
+  ]);
 });

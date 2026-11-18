@@ -5,6 +5,7 @@ import LlmRuntime, { createToolResultMessage, createUserMessage } from "@deepsee
 import type { Message } from "@deepseek-ai/dsh-llm";
 import * as LlmPiAi from "@deepseek-ai/dsh-llm-pi-ai";
 import * as DeepSeek from "@deepseek-ai/dsh-llm-deepseek-api-key";
+import DeepSeekAuth from "@deepseek-ai/dsh-deepseek-auth";
 import { assemble } from "./assemble.ts";
 import { anthropicFrame, closeMockServers, mockServer } from "./mock-server.ts";
 
@@ -235,6 +236,7 @@ describe("protocol history round trips", () => {
               }),
         },
       });
+      await ctx.plugin(DeepSeekAuth);
       if (b === "deepseek-messages")
         await ctx.plugin(DeepSeek, {
           baseURL: target.url,

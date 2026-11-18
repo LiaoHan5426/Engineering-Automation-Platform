@@ -134,7 +134,7 @@ async function mount(options: { profile?: boolean; connection?: boolean } = {}) 
       installAnchor: join(home, "package.json"),
       cwd: home,
       home,
-      overlays: [],
+      overlayPaths: [],
       telemetryDisabledEnv: undefined,
     });
   }

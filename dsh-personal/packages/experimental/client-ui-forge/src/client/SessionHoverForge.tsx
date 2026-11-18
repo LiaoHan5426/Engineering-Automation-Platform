@@ -8,6 +8,7 @@ import { IconBranchOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the ui-workspace SlotMap merge (the Session row seats).
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import { branchLabel } from '../branch-name.ts'
 import { ChangeRequestGlyph } from './glyphs.tsx'
 import type { NS } from './locales.ts'
 import { useSessionForgeFacts, type SessionListInjected } from './session-list.ts'
@@ -44,7 +45,7 @@ export const SessionHoverForge = defineComponent(
               h('span', { class: css.hoverBranch }, [worktree.branch]),
               h('span', { class: css.hoverNote }, [
                 t('checkout.worktreeFrom', {
-                  base: worktree.from ?? worktree.baseCommit.slice(0, 7),
+                  base: worktree.from === null ? worktree.baseCommit.slice(0, 7) : branchLabel(worktree.from),
                 }),
               ]),
             ]),

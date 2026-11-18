@@ -101,7 +101,9 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   { file: 'apps/cli/tests/web-agent-presets.e2e.ts', upstream: ['cordis'] },
   { file: 'apps/cli/tests/profiles/web/tests/fixtures/creator-plugin-manager.mjs', upstream: ['cordis'] },
   { file: 'apps/web/tests/agent-preset-authoring.e2e.ts', upstream: ['cordis'] },
+  { file: 'apps/web/tests/creator-persona.e2e.ts', upstream: ['cordis'] },
   { file: 'packages/preset/agent-preset-registry/tests/session.spec.ts', upstream: ['cordis'] },
+  { file: 'packages/experimental/cua/tests/agent-scopes.spec.ts', upstream: ['cordis'] },
   { file: 'packages/experimental/creation-recommendations/src/index.ts', upstream: ['cordis'] },
   { file: 'packages/experimental/creation-recommendations/tests/creation.spec.ts', upstream: ['cordis'] },
   { file: 'packages/experimental/creation-recommendations/tests/loader-composition.spec.ts', upstream: ['cordis'] },
@@ -113,6 +115,8 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   { file: 'docs/tool-catalog.zh.md', upstream: ['cordis'] },
   { file: 'docs/upgrade-guide/v0.2.2-alpha.2/fs-observation-policy-default-off/guide.md', upstream: ['cordis'] },
   { file: 'docs/upgrade-guide/v0.2.2-alpha.2/fs-observation-policy-default-off/guide.zh.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.2-rc.1/subagent-interrupt-default/guide.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.2-rc.1/subagent-interrupt-default/guide.zh.md', upstream: ['cordis'] },
   { file: 'scripts/gen-tool-catalog.ts', upstream: ['cordis'] },
   { file: 'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.md', upstream: ['cordis'] },
   { file: 'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.zh.md', upstream: ['cordis'] },
@@ -169,7 +173,6 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   { file: 'packages/experimental/inspector/tests/plugin.client.spec.ts', upstream: ['cordis'] },
   { file: 'scripts/gen-cordis-catalog.ts', upstream: ['cordis'] },
   // The UI locale namespace and input-trigger source id are product keys.
-  { file: 'packages/client/ui-settings-plugin-inventory/src/client/PluginInventorySettingsTab.tsx', upstream: ['cordis'] },
   { file: 'packages/extensions/ui-cordis/src/client/CordisActionRow.tsx', upstream: ['cordis'] },
   { file: 'packages/extensions/ui-cordis/src/client/CordisDefineRow.tsx', upstream: ['cordis'] },
   { file: 'packages/extensions/ui-cordis/src/client/CordisPanel.tsx', upstream: ['cordis'] },
@@ -198,7 +201,7 @@ const POSTCONDITIONS: readonly PostCondition[] = [
   { file: 'vendor/README.md', text: '`@deepseek-ai` rescope**', count: 1 },
   { file: 'pnpm-workspace.yaml', text: 'cordis@4.0.0-rc.7', count: 0 },
   // The preset ids in this table are product data, not package names.
-  { file: 'packages/client/ui-agent-preset/tests/locales.client.spec.ts', text: '[\'cordis\', \'presetCordisName\'', count: 1 },
+  { file: 'packages/client/ui-agent-preset/tests/locales.client.spec.ts', text: '["cordis", "presetCordisName"', count: 1 },
   // The preset id the shipped composition documents to its own model.
 ]
 
@@ -207,7 +210,7 @@ const POSTCONDITIONS: readonly PostCondition[] = [
  * PRE-rename text because these run before the generic pass, so no `find` may
  * quote a neighbouring line the generic pass would rewrite.
  */
-const EXACT_EDITS: readonly ExactEdit[] = [
+export const EXACT_EDITS: readonly ExactEdit[] = [
   {
     id: 'loader-diff-schemastery-import',
     file: 'vendor/loader/src/config/diff.ts',
@@ -347,15 +350,15 @@ const VENDORED_LIBRARY = /^@deepseek-ai\\/(?:(?:cosmokit|schemastery)(?:\\/|$)|c
     // The real package references in files whose other `cordis` strings are preset ids.
     id: 'agent-preset-spec-framework-import',
     file: 'packages/client/ui-agent-preset/tests/apply.client.spec.ts',
-    find: "import { Context } from 'cordis'",
-    replace: "import { Context } from '@deepseek-ai/cordis'",
+    find: 'import { Context } from "cordis";',
+    replace: 'import { Context } from "@deepseek-ai/cordis";',
     expect: 1,
   },
   {
     id: 'web-agent-presets-e2e-framework-import',
     file: 'apps/cli/tests/web-agent-presets.e2e.ts',
-    find: "import { Context } from 'cordis'",
-    replace: "import { Context } from '@deepseek-ai/cordis'",
+    find: 'import { Context } from "cordis";',
+    replace: 'import { Context } from "@deepseek-ai/cordis";',
     expect: 1,
   },
   {
@@ -410,32 +413,41 @@ const VENDORED_LIBRARY = /^@deepseek-ai\\/(?:(?:cosmokit|schemastery)(?:\\/|$)|c
   {
     id: 'notices-spec-row-fixture',
     file: 'scripts/gen-third-party-notices.spec.ts',
-    find: '    expect(rows).toContainEqual({ npmName: \'cordis\', upstream: \'https://github.com/cordiverse/cordis\' })',
+    find: `    expect(rows).toContainEqual({
+      npmName: "cordis",
+      upstream: "https://github.com/cordiverse/cordis",
+    });`,
     replace: `    expect(rows).toContainEqual({
-      npmName: '@deepseek-ai/cordis',
-      upstreamName: 'cordis',
-      upstream: 'https://github.com/cordiverse/cordis',
-    })`,
+      npmName: "@deepseek-ai/cordis",
+      upstreamName: "cordis",
+      upstream: "https://github.com/cordiverse/cordis",
+    });`,
     expect: 1,
   },
   {
     id: 'notices-spec-shape-fixture',
     file: 'scripts/gen-third-party-notices.spec.ts',
-    find: 'parseVendoredRows(\'| `cordis/` | cordis | 4.0.0 | https://example.com | `abc123` |\\n\')',
-    replace: 'parseVendoredRows(\'| `cordis/` | `@deepseek-ai/cordis` | cordis | 4.0.0 | https://example.com | `abc123` |\\n\')',
+    find: '"| `cordis/` | cordis | 4.0.0 | https://example.com | `abc123` |\\n",',
+    replace: '"| `cordis/` | `@deepseek-ai/cordis` | cordis | 4.0.0 | https://example.com | `abc123` |\\n",',
     expect: 1,
   },
   {
     id: 'packed-install-registry-spec',
     file: 'packages/sandbox/sandbox-local/tests/packed-install.e2e.ts',
-    find: `    // Peer ranges resolve to the tarballs; Cordis is pinned to their peer range. Do not omit optional
-    // dependencies because the launcher selects its OS/CPU package through one.
-    writeFileSync(join(consumerDir, 'package.json'), JSON.stringify({ name: 'dsh-packed-consumer', private: true, type: 'module' }))
-    const install = spawnSync('npm', ['install', '--no-audit', '--no-fund', ...tarballs, 'cordis@4.0.0-rc.7'], {`,
-    replace: `    // Peer ranges resolve to the tarballs, the framework peer included. Do not omit optional
-    // dependencies because the launcher selects its OS/CPU package through one.
-    writeFileSync(join(consumerDir, 'package.json'), JSON.stringify({ name: 'dsh-packed-consumer', private: true, type: 'module' }))
-    const install = spawnSync('npm', ['install', '--no-audit', '--no-fund', ...tarballs], {`,
+    find: `      // Peer ranges resolve to the tarballs; Cordis is pinned to their peer range. Do not omit optional
+      // dependencies because the launcher selects its OS/CPU package through one.
+      writeFileSync(
+        join(consumerDir, "package.json"),
+        JSON.stringify({ name: "dsh-packed-consumer", private: true, type: "module" }),
+      );
+      const install = spawnSync("npm", ["install", "--no-audit", "--no-fund", ...tarballs, "cordis@4.0.0-rc.7"], {`,
+    replace: `      // Peer ranges resolve to the tarballs, the framework peer included. Do not omit optional
+      // dependencies because the launcher selects its OS/CPU package through one.
+      writeFileSync(
+        join(consumerDir, "package.json"),
+        JSON.stringify({ name: "dsh-packed-consumer", private: true, type: "module" }),
+      );
+      const install = spawnSync("npm", ["install", "--no-audit", "--no-fund", ...tarballs], {`,
     expect: 1,
   },
   {
@@ -666,7 +678,7 @@ export function exactEditState(text: string, find: string, replace: string, expe
 }
 
 /**
- * List tracked paths that the rescope checks or rewrites.
+ * List existing tracked files that the rescope checks or rewrites.
  * @param repoRoot - Git working directory.
  * @param env - Git's environment; omitted, Git inherits this process's environment.
  * @returns eligible repository-relative paths, including large tracked corpora.
@@ -674,7 +686,7 @@ export function exactEditState(text: string, find: string, replace: string, expe
 export function listRescopeFiles(repoRoot: string, env?: NodeJS.ProcessEnv): string[] {
   return execFileSync('git', ['ls-files', '-z'], { cwd: repoRoot, env, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 })
     .split('\0')
-    .filter(file => file !== '' && !isRescopeExcluded(file))
+    .filter(file => file !== '' && !isRescopeExcluded(file) && existsSync(resolve(repoRoot, file)))
 }
 
 function main(): void {

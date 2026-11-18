@@ -1952,9 +1952,10 @@ else process.exit(1);
     await copyCode.hover();
     await page.getByRole("tooltip", { name: "Copy", exact: true }).waitFor();
     await copyCode.click();
+    // Native Windows clipboard text uses CRLF; retain every copied line and trailing empty line.
     await expect
-      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-      .toBe(codeLines.join("\n"));
+      .poll(() => page.evaluate(async () => (await navigator.clipboard.readText()).split(/\r?\n/)))
+      .toEqual(codeLines);
     sections.push(
       [
         "## Code paging",

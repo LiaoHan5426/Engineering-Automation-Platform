@@ -102,7 +102,7 @@ async function boot(
     cwd: workspace,
     home: "/home",
     startedBundles: [],
-    overlays: [],
+    overlayPaths: [],
     telemetryDisabledEnv: undefined,
   });
   ctx.provide("dshHomePath", dshHomePath);

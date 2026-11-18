@@ -3,7 +3,7 @@ import { h as vueH, computed, defineComponent } from "vue";
 import { liveFixtureProps, act, cleanup, fireEvent, render, screen } from "./vue-render.client.ts";
 import { afterEach, expect, it, vi } from "vite-plus/test";
 import { brandString } from "@deepseek-ai/dsh-brand";
-import type { ToolCallId } from "@deepseek-ai/dsh-llm/types";
+import type { ActionCardId } from "@deepseek-ai/dsh-action-cards/types";
 import { type SessionId, SessionSeq } from "@deepseek-ai/dsh-session/types";
 import type {
   ActionCardDecision,
@@ -24,9 +24,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 type CardProps = InstanceType<typeof NativeActionCard>["$props"];
-const callId = brandString<ToolCallId>("card-1");
+const cardId = brandString<ActionCardId>("card-1");
 const proposal = {
-  callId,
+  cardId,
   turn: 3,
   action: "test_action",
   title: "Counter",
@@ -44,7 +44,7 @@ function props(
     sessionId: brandString<SessionId>("session-1"),
     act: vi.fn(async (): Promise<ActionCardResult | undefined> => ({
       status: "settled",
-      decision: { callId, action: "test_action", phase: "dismissed" },
+      decision: { cardId, action: "test_action", phase: "dismissed" },
     })),
     bind: vi.fn(() => (key: string) => `body:${key}`),
     useBodies: (selector) => computed(() => selector(bodies)),
@@ -79,7 +79,7 @@ it("places the card admitted in its turn once the turn has ended with an answer,
   });
   const card = (id: string, turn: number) => ({
     ...proposal,
-    callId: brandString<ToolCallId>(id),
+    cardId: brandString<ActionCardId>(id),
     turn,
   });
   const rendered = render(vueH(ActionCardTail, { ...tail(ended) }));
@@ -107,7 +107,7 @@ it("places the card admitted in its turn once the turn has ended with an answer,
   view = {
     ...view,
     decisions: {
-      a: { callId: brandString<ToolCallId>("a"), action: "test_action", phase: "dismissed" },
+      a: { cardId: brandString<ActionCardId>("a"), action: "test_action", phase: "dismissed" },
     },
   };
   await rendered.rerender(vueH(ActionCardTail, { ...tail(ended) }));
@@ -143,7 +143,7 @@ it("renders a registered body with the frame summary, the fold, its own translat
   const bodies = new Map<string, RegisteredBody>([
     ["test_action", { locale: "testCard", render: (frame, t) => vueH(Body, { ...frame, t: t }) }],
   ]);
-  const value = props(bodies, { callId, action: "test_action", phase: "running" });
+  const value = props(bodies, { cardId, action: "test_action", phase: "running" });
   render(vueH(ActionCard, { ...value }));
   expect(value.bind).toHaveBeenCalledWith("testCard");
   expect(screen.getByRole("region", { name: "Counter" }).textContent).toContain(
@@ -157,7 +157,7 @@ it("renders a registered body with the frame summary, the fold, its own translat
     Folded: FoldedText,
   });
   await fireEvent.click(screen.getByRole("button", { name: "body:start" }));
-  expect(value.act).toHaveBeenCalledWith(callId, "start", { value: "x" });
+  expect(value.act).toHaveBeenCalledWith(cardId, "start", { value: "x" });
 });
 it("offers only Not now for a card whose kind registered no body, and reports refusals and lost replies", async () => {
   const value = props(new Map(), undefined, true);
@@ -176,7 +176,7 @@ it("offers only Not now for a card whose kind registered no body, and reports re
   const dismiss = screen.getByRole("button", { name: zh.dismiss });
   await fireEvent.click(dismiss);
   expect(dismiss.hasAttribute("disabled")).toBe(true);
-  expect(value.act).toHaveBeenCalledWith(callId, "dismiss", undefined);
+  expect(value.act).toHaveBeenCalledWith(cardId, "dismiss", undefined);
   await act(async () => {
     pending.resolve({ status: "refused", reason: "unknown" });
   });
@@ -197,7 +197,7 @@ it("dismisses a card through the fallback Not now when the Host records the dism
   render(vueH(ActionCard, { ...value }));
   const dismiss = screen.getByRole("button", { name: en.dismiss });
   await fireEvent.click(dismiss);
-  expect(value.act).toHaveBeenCalledWith(callId, "dismiss", undefined);
+  expect(value.act).toHaveBeenCalledWith(cardId, "dismiss", undefined);
   await vi.waitFor(() => {
     expect(dismiss.hasAttribute("disabled")).toBe(false);
   });
@@ -209,7 +209,7 @@ it.each([
   ["finished", undefined],
   ["toString", undefined],
 ] as const)("shows the fallback status of a %s card without actions", (phase, text) => {
-  render(vueH(ActionCard, { ...props(new Map(), { callId, action: "test_action", phase }) }));
+  render(vueH(ActionCard, { ...props(new Map(), { cardId, action: "test_action", phase }) }));
   expect(screen.queryByRole("status")?.textContent).toBe(text);
   expect(screen.queryByRole("button", { name: en.dismiss })).toBeNull();
 });
@@ -266,3 +266,13 @@ const ActionCardTail = defineComponent(
     props: ["turn", "useProjection", "act", "bind", "sessionId", "useBodies", "t"],
   },
 );
+
+it("hands a registered body the fallback with only Not now for unreadable cards", async () => {
+  const value = props(new Map([["test_action", { locale: "testCard", render: frame => frame.fallback }]]));
+  render(vueH(ActionCard, { ...value }));
+  expect(screen.getByRole("region", { name: "Counter" }).textContent).toContain("Keep my task count visible.");
+  const dismiss = screen.getByRole("button", { name: en.dismiss });
+  await fireEvent.click(dismiss);
+  expect(value.act).toHaveBeenCalledWith(cardId, "dismiss", undefined);
+  await vi.waitFor(() => { expect(dismiss.hasAttribute("disabled")).toBe(false); });
+});

@@ -50,7 +50,8 @@ When the composer submits with images or generic files, only a host command decl
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
-Popup selection panels fill the composer overlay's width, matching the slash menu. Popup search fields keep transparent backgrounds and borders in both palettes. Grouped options use [ui-primitives](../ui-primitives/README.md#understand-the-implementation)' shared `MenuGroup` headings and `observeStickyMenuGroups`; a Vue watcher owns the asynchronous observation and rebuilds it after rendered groups change, disposing it when the viewport leaves. Menus use the shared `MenuSurface` material, including the macOS backing for background blur; custom content follows the [menu rules](../../../docs/web-styling.md#component-rules).
+Popup selection panels fill the composer overlay's width, matching the slash menu. Popup search fields keep transparent backgrounds in both palettes and share their text inset with option rows and group headings. Grouped options use [ui-primitives](../ui-primitives/README.md#understand-the-implementation)' shared `MenuGroup` headings and `observeStickyMenuGroups`; a Vue watcher owns the asynchronous observation and rebuilds it after rendered groups change, disposing it when the viewport leaves. Menus use the shared `MenuSurface` material, including the macOS backing for background blur; custom content follows the [menu rules](../../../docs/web-styling.md#component-rules).
+
 
 <details>
 <summary>Implementation internals — click to expand</summary>

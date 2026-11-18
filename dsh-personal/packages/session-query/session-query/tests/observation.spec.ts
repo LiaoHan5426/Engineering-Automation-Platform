@@ -261,6 +261,7 @@ describe("SessionObservationReader cold path", () => {
     expect(observed.source).toBe("prepared");
     expect(observed.header).toMatchObject({ id: meta.id, cwd: "/workspace" });
     expect(observed.revision).toBe(brandString<SessionPersistenceRevision>("r1"));
+    expect(observed.persistedEventCount).toBe(2);
     expect(observed.events.map((event) => event.type)).toEqual([
       "turn/start",
       "user/message",
@@ -287,6 +288,7 @@ describe("SessionObservationReader cold path", () => {
     });
 
     expect(observed.events).toEqual([]);
+    expect(observed.persistedEventCount).toBe(0);
     expect(observed.cursor).toBe(-1);
     await ctx.fiber.dispose();
   });

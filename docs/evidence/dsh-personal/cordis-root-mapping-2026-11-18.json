@@ -1,0 +1,7 @@
+{
+  "file": "apps/web/tests/default-product-isolation.e2e.ts",
+  "oldFingerprint": "d0b9e422bcad4455b7450e6bef2d6fa774afc3f44cdc75bc1d480c11b9fd0214",
+  "newFingerprint": "b53468fa785d7fbf43dc7f350898ff96a15c9ea36ae58a85852ca24686f21b36",
+  "reason": "U and C both use Symbol.for cordis.root with Context.root type; only literal quote spelling changed",
+  "total": 42
+}

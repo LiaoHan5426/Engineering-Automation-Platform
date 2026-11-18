@@ -29,13 +29,12 @@ import {
   IconChevronsUpDownOutlineRegular,
   IconCompareSplitOutlineRegular,
   IconInfoOutlineRegular,
-  IconListPenOutlineRegular,
+  IconFilesDiffOutlineRegular,
   IconNowrapFillRegular,
   IconRightUpOutlineRegular,
   IconWorkspaceTreeOutlineRegular,
   IconWrapFillRegular,
   Menu,
-  StateDot,
   Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
@@ -102,7 +101,9 @@ import { SectionReach } from './section-reach.ts'
 import { FileTreePane, type FileTreePosition } from './FileTreePane.tsx'
 import { changedFileTree, filesInTreeOrder } from './file-tree.ts'
 import { ChangedFilesMenu, type ChangedFilesState } from './ChangedFiles.tsx'
-import { drawnLines, matchesHunks, textLines } from './diff-rows.ts'
+import { drawnLines, matchesHunks, revealGap, textLines, type GapExpansion, type GapReveal } from './diff-rows.ts'
+import { ChangesLoading } from './ChangesLoading.tsx'
+import { useForgeCopy } from './forge-copy.ts'
 import { ChangeRequestGlyph } from './glyphs.tsx'
 import type { ForgePanelKey, NS } from './locales.ts'
 import { RefreshGlyph } from './RefreshGlyph.tsx'
@@ -297,13 +298,13 @@ interface Expansion {
     >
     | null
   readonly texts: Readonly<Record<string, readonly string[] | 'loading'>>
-  readonly open: Readonly<Record<string, ReadonlySet<number>>>
+  readonly open: Readonly<Record<string, ReadonlyMap<number, GapReveal>>>
 }
 /** Files whose hunks draw more lines show the large-file notice until revealed. */
 const LARGE_FILE_LINES = 1000
 /** Lines the files above may change before a file starts collapsed. */
 const OPEN_LINES = 5000
-const NO_GAPS: ReadonlySet<number> = new Set()
+const NO_GAPS: ReadonlyMap<number, GapReveal> = new Map()
 const NO_FOLDS: ReadonlyMap<
   string,
   {
@@ -563,7 +564,7 @@ const ChangeHeader = defineComponent(
           ),
           h(
             Tooltip,
-            {
+            { delayMs: 500,
               label: props.t('change.view'),
               side: 'bottom',
             },
@@ -655,7 +656,7 @@ const LocalHeader = defineComponent(
               ),
               h(
                 Tooltip,
-                {
+                { delayMs: 500,
                   label: renderHead,
                   side: 'bottom',
                 },
@@ -706,7 +707,7 @@ const LocalHeader = defineComponent(
                   class: css.headerIcon,
                 },
                 [
-                  h(IconListPenOutlineRegular, {
+                  h(IconFilesDiffOutlineRegular, {
                     size: 15,
                   }),
                 ],
@@ -934,35 +935,36 @@ export const ChangesTab = defineComponent(
       complete: (url: string) => boolean,
     ): Promise<string | undefined> => {
       const capture11 = queue
-      if (reviewRunning.value || !capture11.begin(request)) return props.t('review.saveFailed')
+      if (reviewRunning.value || !capture11.begin(request)) return t('review.saveFailed')
       reviewRunning.value = true
       reviewBusy.value = true
       reviewError.value = null
       try {
         const response = await props.submitReview(url, request)
         if (!response.ok || (!response.value.ok && response.value.code === 'unknown')) {
-          reviewError.value = props.t('review.unknown')
-          return props.t('review.unknown')
+          reviewError.value = t('review.unknown')
+          return t('review.unknown')
         }
         const result = response.value
         if (!result.ok) {
           capture11.finish(false)
           const message =
             result.code === 'stale'
-              ? props.t('review.stale')
+              ? t('review.stale')
               : result.code === 'unsupported'
-                ? props.t('review.unsupported')
-                : props.t('review.failed', { message: result.message })
+                ? t('review.unsupported')
+                : t('review.failed', { message: result.message })
           reviewError.value = message
           return message
         }
-        if (!complete(result.url)) return props.t('review.unknown')
-        props.report(request.kind === 'review' ? 'review.submitted' : 'review.published')
+        if (!complete(result.url)) return t('review.unknown')
+        if (request.kind === 'review') props.report('review.submitted')
+        else props.report('review.published', copy.value.host)
         if (request.kind === 'review') reviewOpen.value = false
         return undefined
       } catch (_error) {
-        reviewError.value = props.t('review.unknown')
-        return props.t('review.unknown')
+        reviewError.value = t('review.unknown')
+        return t('review.unknown')
       } finally {
         reviewRunning.value = false
         reviewBusy.value = false
@@ -977,12 +979,12 @@ export const ChangesTab = defineComponent(
         if (!response.ok) {
           if (response.error.code === 'forgePanel/not-bound') {
             return {
-              message: props.t('thread.writeFailed', { message: response.error.message }),
+              message: t('thread.writeFailed', { message: response.error.message }),
               unknown: false,
             }
           }
           reviewRevision.value = (value => value + 1)(capture12)
-          return { message: props.t('thread.writeUnknown'), unknown: true }
+          return { message: t('thread.writeUnknown'), unknown: true }
         }
         const result = response.value
         if (result.ok) {
@@ -991,18 +993,18 @@ export const ChangesTab = defineComponent(
         }
         switch (result.code) {
           case 'unsupported':
-            return { message: props.t('thread.writeUnsupported'), unknown: false }
+            return { message: t('thread.writeUnsupported'), unknown: false }
           case 'failed':
             reviewRevision.value = (value => value + 1)(capture12)
             return {
-              message: props.t('thread.writeFailed', { message: result.message }),
+              message: t('thread.writeFailed', { message: result.message }),
               unknown: false,
             }
           case 'stale':
-            return { message: props.t('thread.writeStale'), unknown: false }
+            return { message: t('thread.writeStale'), unknown: false }
           case 'unknown':
             reviewRevision.value = (value => value + 1)(capture12)
-            return { message: props.t('thread.writeUnknown'), unknown: true }
+            return { message: t('thread.writeUnknown'), unknown: true }
           default:
             return assertNever(result.code, 'ForgeReviewWriteResult.code')
         }
@@ -1018,6 +1020,7 @@ export const ChangesTab = defineComponent(
     const treeState = shallowRef<ChangedFilesState>({ query: '', collapsed: {}, selected: null })
     const treePosition = shallowRef<FileTreePosition>('left')
     const treeWidth = shallowRef(0)
+    const lensWidth = shallowRef(0)
     const treeId = useId()
     const chosen = shallowRef<Readonly<Record<string, boolean>>>({})
     onMounted(() => {
@@ -1123,6 +1126,8 @@ export const ChangesTab = defineComponent(
         ? state.value?.changeRequests.find(item => item.url === current.url)
         : undefined
     })
+    const copy = computed(() => useForgeCopy(props.t, source.value.kind === 'change' ? source.value.url : null, entry.value?.forge ?? null))
+    const t: ChangesTabProps['t'] = (key, ...args) => copy.value.t(key, ...args)
     const pending = computed(
       () => entry.value !== undefined && entry.value.ref !== null && entry.value.update === null,
     )
@@ -1476,10 +1481,10 @@ export const ChangesTab = defineComponent(
       () => hostOwner.value,
       () => props.setFileViewed,
       () => (failure) => {
-        if (failure.kind === 'stale') props.report('viewed.syncStale')
+        if (failure.kind === 'stale') props.report('viewed.syncStale', copy.value.host)
         else if (failure.kind === 'unknown')
           props.report('viewed.syncUnknown', { message: failure.message })
-        else props.report('viewed.syncFailed', { message: failure.message })
+        else props.report('viewed.syncFailed', { ...copy.value.host, message: failure.message })
       },
     )
     const marks = computed(() => host.value?.marks ?? localMarks.value)
@@ -1636,7 +1641,7 @@ export const ChangesTab = defineComponent(
       ),
     )
     const message = computed(() => (failed.value === null ? undefined : FAILURE[failed.value]))
-    const failureText = computed(() => baseFailure.value ?? props.t(message.value ?? 'diff.error'))
+    const failureText = computed(() => baseFailure.value ?? t(message.value ?? 'diff.error'))
     const changeUrl = computed(() =>
       source.value.kind === 'change' ? (entry.value?.snapshot?.url ?? source.value.url) : null,
     )
@@ -1657,7 +1662,7 @@ export const ChangesTab = defineComponent(
               props.actions.based(capture51.id, null)
             },
           },
-          { default: () => [props.t('diff.useAutomaticBase')] },
+          { default: () => [t('diff.useAutomaticBase')] },
         )
         : (failed.value === 'forgePanel/commits-missing' ||
             failed.value === 'forgePanel/commits-not-linear') &&
@@ -1671,10 +1676,10 @@ export const ChangesTab = defineComponent(
                 props.actions.committed(capture52.id, null)
               },
             },
-            { default: () => [props.t('commits.showAll')] },
+            { default: () => [t('commits.showAll')] },
           ),
     )
-    const expand = (owner: ChangesData, file: ForgeDiffFile, index: number): void => {
+    const expand = (owner: ChangesData, file: ForgeDiffFile, index: number, direction: GapExpansion): void => {
       const capture55 = current.value
       const expectedSource = expansionSource.value
       const update = (change: (value: Expansion) => Expansion): void => {
@@ -1691,7 +1696,7 @@ export const ChangesTab = defineComponent(
       const path = file.path
       update(value => ({
         ...value,
-        open: { ...value.open, [path]: new Set([...(value.open[path] ?? []), index]) },
+        open: { ...value.open, [path]: revealGap(value.open[path], index, direction) },
       }))
       if (capture55.texts[path] !== undefined) return
       update(value => ({ ...value, texts: { ...value.texts, [path]: 'loading' } }))
@@ -1712,6 +1717,22 @@ export const ChangesTab = defineComponent(
           const { [path]: _open, ...open } = value.open
           return { ...value, texts, open }
         })
+      })
+    }
+    const contextReads = new Set<string>()
+    const readContext = (file: ForgeDiffFile): void => {
+      const owner = data.value
+      const expected = expansionSource.value
+      if (owner === null || owner.kind !== 'local' || expected === null) return
+      const key = JSON.stringify([expected, file.path])
+      if (contextReads.has(key)) return
+      contextReads.add(key)
+      void props.localText(owner.scope, file.path).then(result => {
+        if (latest.value !== expected || !result.ok) return
+        const lines = textLines(result.value)
+        if (lines === undefined || !matchesHunks(lines, file.hunks)) return
+        const previous = expansion.value.source === expected ? expansion.value : { source: expected, texts: {}, open: {} }
+        expansion.value = { ...previous, texts: { ...previous.texts, [file.path]: lines } }
       })
     }
     const fileActions = (owner: ChangesData, file: ForgeDiffFile): DiffFileAction[] => {
@@ -1751,12 +1772,6 @@ export const ChangesTab = defineComponent(
       return list
     }
     const pendingReview = computed(() => review.value?.pendingReview ?? null)
-    const ownChangeRequest = computed(
-      () =>
-        review.value?.viewer != null &&
-        prAuthor.value !== null &&
-        review.value.viewer.toLowerCase() === prAuthor.value.toLowerCase(),
-    )
     const finishWrite = async (
       send: () => Promise<string | undefined>,
       done: ForgePanelKey,
@@ -1794,7 +1809,7 @@ export const ChangesTab = defineComponent(
         url: owner.url,
         headSha: owner.headSha,
         pending: pending,
-        own: ownChangeRequest.value,
+        events: review.value?.reviewEvents ?? null,
         busy: reviewBusy.value,
         error: reviewError.value,
         close: () => {
@@ -1841,7 +1856,7 @@ export const ChangesTab = defineComponent(
                 comments: [],
               })
             ) {
-              return props.t('review.saveFailed')
+              return t('review.saveFailed')
             }
             const refusal = await sendWrite(capture63.url, {
               kind: 'submit-pending',
@@ -1872,11 +1887,11 @@ export const ChangesTab = defineComponent(
                 'review.discarded',
               )
             },
-        t: props.t,
+        t: t,
       })
     })
     const addPending = (selection: ReviewSelection): Promise<string | undefined> => {
-      if (selection.source.kind !== 'change') return Promise.resolve(props.t('review.stale'))
+      if (selection.source.kind !== 'change') return Promise.resolve(t('review.stale'))
       const { path, side, startLine, endLine, body } = selection.comment
       return writeReview(selection.source.url, {
         kind: 'add-pending',
@@ -1918,7 +1933,7 @@ export const ChangesTab = defineComponent(
           key: path,
           path: path,
           actions: recordActions.value,
-          t: props.t,
+          t: t,
         }),
       ),
     )
@@ -2113,7 +2128,7 @@ export const ChangesTab = defineComponent(
       lensTitle,
       renderSlot: props.renderSlot,
       kept: kept.value,
-      t: props.t,
+      t: t,
     }))
     const live = shallowRef(callbacks.value)
     const handlers = computed((): DiffFileHandlers => ({
@@ -2128,9 +2143,10 @@ export const ChangesTab = defineComponent(
         const capture89 = revealed.value
         revealed.value = (value => new Set([...value, path]))(capture89)
       },
-      expand: (file, index) => {
+      readContext,
+      expand: (file, index, expansion) => {
         const { data: owner, expand: open } = live.value
-        if (owner !== null) open(owner, file, index)
+        if (owner !== null) open(owner, file, index, expansion)
       },
       view: (file, viewed) => {
         const { data: owner, markViewed: mark } = live.value
@@ -2212,8 +2228,9 @@ export const ChangesTab = defineComponent(
     )
     const navigator = computed(() => ({
       files: files.value,
+      viewed: new Set(files.value.filter(file => viewedStateOf(marks.value, file.path, file.digest) === 'viewed').map(file => file.path)),
       state: treeState.value,
-      t: props.t,
+      t: t,
       filter: (query: string) => {
         const capture92 = treeState.value
         treeState.value = (value => ({ ...value, query }))(capture92)
@@ -2230,7 +2247,7 @@ export const ChangesTab = defineComponent(
     }))
     const anyExpanded = computed(() => files.value.some(isExpanded))
     const expansionLabel = computed(() =>
-      props.t(anyExpanded.value ? 'diff.collapseAll' : 'diff.expandAll'),
+      t(anyExpanded.value ? 'diff.collapseAll' : 'diff.expandAll'),
     )
     const toggleExpansion = (): void => {
       const capture94 = files.value
@@ -2249,7 +2266,7 @@ export const ChangesTab = defineComponent(
       props.actions.toggledTests(capture97.id)
     }
     const treeAction = computed(() =>
-      props.t(
+      t(
         treePosition.value === 'left'
           ? 'diff.moveFileTreeRight'
           : treePosition.value === 'right'
@@ -2272,7 +2289,7 @@ export const ChangesTab = defineComponent(
         const capture98 = tab.value
         props.actions.lensed(capture98.id, next)
       },
-      t: props.t,
+      t: t,
     }))
     const commitMenu = computed(() =>
       source.value.kind === 'local' && scope.value !== 'branch'
@@ -2287,10 +2304,10 @@ export const ChangesTab = defineComponent(
             const capture99 = tab.value
             props.actions.committed(capture99.id, next)
           },
-          t: props.t,
+          t: t,
         }),
     )
-    const toolbarStyle = computed(() => ({ '--forge-tree-width': `${treeWidth.value}px` }))
+    const toolbarStyle = computed(() => ({ '--forge-tree-width': `${Math.max(treeWidth.value, lensWidth.value)}px` }))
     return () => {
       const capture100 = tab.value
       const capture101 = target.value
@@ -2420,7 +2437,7 @@ export const ChangesTab = defineComponent(
               class: css.centered,
             },
             [
-              h('span', {}, [props.t('stream.failed')]),
+              h('span', {}, [t('stream.failed')]),
               h(
                 Button,
                 {
@@ -2428,22 +2445,12 @@ export const ChangesTab = defineComponent(
                   variant: 'outline',
                   onClick: props.reconnect,
                 },
-                { default: () => [props.t('retry')] },
+                { default: () => [t('retry')] },
               ),
             ],
           )
         } else if (renderFailed === null) {
-          body = h(
-            'div',
-            {
-              class: css.centered,
-            },
-            [
-              h(StateDot, {
-                state: 'ongoing',
-              }),
-            ],
-          )
+          body = h(ChangesLoading, { split: renderSplit, t })
         } else {
           body = h(
             'div',
@@ -2468,7 +2475,7 @@ export const ChangesTab = defineComponent(
                           variant: 'outline',
                           onClick: refresh,
                         },
-                        { default: () => [props.t('retry')] },
+                        { default: () => [t('retry')] },
                       ),
                     renderAutomaticBase,
                     renderChangeUrl !== null &&
@@ -2481,7 +2488,7 @@ export const ChangesTab = defineComponent(
                             props.openLink(renderChangeUrl)
                           },
                         },
-                        { default: () => [props.t('diff.viewInBrowser')] },
+                        { default: () => [t('diff.viewInBrowser')] },
                       ),
                   ],
                 ),
@@ -2501,7 +2508,7 @@ export const ChangesTab = defineComponent(
               {
                 class: css.centered,
               },
-              [props.t('diff.empty')],
+              [t('diff.empty')],
             ),
           ],
         )
@@ -2518,7 +2525,7 @@ export const ChangesTab = defineComponent(
               {
                 class: css.centered,
               },
-              [props.t('lens.empty')],
+              [t('lens.empty')],
             ),
           ],
         )
@@ -2530,7 +2537,7 @@ export const ChangesTab = defineComponent(
             class: css.files,
             'data-forge-changes-scroll': '',
             role: 'region',
-            'aria-label': props.t('diff.allFiles', { count: renderFiles.length }),
+            'aria-label': t('diff.allFiles', { count: renderFiles.length }),
             'aria-keyshortcuts': 'ArrowLeft ArrowRight V',
             tabindex: 0,
             onKeydown: navigateFiles,
@@ -2568,16 +2575,16 @@ export const ChangesTab = defineComponent(
                 viewed: viewedStateOf(renderMarks, path, file.digest),
                 viewedNote:
                   renderHost === null
-                    ? props.t('viewed.hint')
+                    ? t('viewed.hint')
                     : renderHost.unavailable
-                      ? props.t('viewed.unavailable')
+                      ? t('viewed.unavailable')
                       : renderHost.saving(path)
-                        ? props.t('viewed.saving')
-                        : props.t('viewed.hintHost'),
+                        ? t('viewed.saving')
+                        : t('viewed.hintHost'),
                 viewedDisabled:
                   renderHost !== null && (renderHost.unavailable || renderHost.saving(path)),
                 handlers: renderHandlers,
-                t: props.t,
+                t: t,
               })
             }),
             renderOrphanRecords,
@@ -2611,7 +2618,7 @@ export const ChangesTab = defineComponent(
               },
               commitMenu: renderCommitMenu,
               createChangeRequest: props.createChangeRequest,
-              t: props.t,
+              t: t,
             })
             : h(ChangeHeader, {
               url: renderSource.url,
@@ -2624,7 +2631,7 @@ export const ChangesTab = defineComponent(
               onReview: () => {
                 reviewOpen.value = true
               },
-              t: props.t,
+              t: t,
             }),
           !renderReviewOpen &&
             renderReviewState.error !== null &&
@@ -2633,7 +2640,7 @@ export const ChangesTab = defineComponent(
               {},
               {
                 default: () => [
-                  props.t(
+                  t(
                     renderReviewState.error === 'load' ? 'review.loadFailed' : 'review.saveFailed',
                   ),
                 ],
@@ -2650,7 +2657,7 @@ export const ChangesTab = defineComponent(
                 role: 'alert',
               },
               [
-                h('span', {}, [props.t('review.unknown')]),
+                h('span', {}, [t('review.unknown')]),
                 renderReviewState.uncertain.kind === 'comment' &&
                   h('blockquote', {}, [renderReviewState.uncertain.comment.body]),
                 h(
@@ -2662,7 +2669,7 @@ export const ChangesTab = defineComponent(
                       props.openLink(renderSource.url)
                     },
                   },
-                  { default: () => [props.t('review.recheck')] },
+                  { default: () => [t('review.recheck')] },
                 ),
                 h(
                   Button,
@@ -2674,7 +2681,7 @@ export const ChangesTab = defineComponent(
                       reviewError.value = null
                     },
                   },
-                  { default: () => [props.t('review.confirmRetry')] },
+                  { default: () => [t('review.confirmRetry')] },
                 ),
               ],
             ),
@@ -2699,6 +2706,7 @@ export const ChangesTab = defineComponent(
                   [
                     h(LensControl, {
                       ...renderLensProps,
+need: (width: number) => { lensWidth.value = width },
                     }),
                   ],
                 ),
@@ -2716,7 +2724,7 @@ export const ChangesTab = defineComponent(
                       choose: (next) => {
                         props.actions.scoped(renderTab.id, next)
                       },
-                      t: props.t,
+                      t: t,
                     }),
                   renderTab.visible &&
                     h(
@@ -2727,6 +2735,7 @@ export const ChangesTab = defineComponent(
                       [
                         h(ChangedFilesMenu, {
                           ...renderNavigator,
+                          loading: renderData === null && renderFailed === null,
                           visible: true,
                         }),
                       ],
@@ -2755,7 +2764,7 @@ export const ChangesTab = defineComponent(
                         h(HideTestsSwitch, {
                           hidden: renderHideTests,
                           toggle: toggleTests,
-                          t: props.t,
+                          t: t,
                         }),
                       ],
                     ),
@@ -2774,7 +2783,7 @@ export const ChangesTab = defineComponent(
                           run: renderRun,
                           choose: chooseLens,
                           visible: true,
-                          t: props.t,
+                          t: t,
                         }),
                       ],
                     ),
@@ -2805,7 +2814,7 @@ export const ChangesTab = defineComponent(
                         class: css.threadsToggle,
                         'aria-pressed': renderThreadList.open,
                         'data-forge-threads-toggle': '',
-                        'aria-label': props.t('thread.listAria', {
+                        'aria-label': t('thread.listAria', {
                           count: renderReview.threads.length,
                         }),
                         onClick: () => {
@@ -2817,7 +2826,7 @@ export const ChangesTab = defineComponent(
                         },
                       },
                       [
-                        props.t('thread.list'),
+                        t('thread.list'),
                         h(
                           'span',
                           {
@@ -2836,7 +2845,7 @@ export const ChangesTab = defineComponent(
                       h(ViewedProgress, {
                         viewed: renderViewedCount,
                         total: renderFiles.length,
-                        t: props.t,
+                        t: t,
                       }),
                     ],
                   ),
@@ -2849,7 +2858,7 @@ export const ChangesTab = defineComponent(
                       [
                         h(Counts, {
                           file: { additions, deletions, binary: false },
-                          t: props.t,
+                          t: t,
                         }),
                       ],
                     ),
@@ -2861,8 +2870,8 @@ export const ChangesTab = defineComponent(
                     [
                       h(
                         Tooltip,
-                        {
-                          label: props.t('diff.refresh'),
+                        { delayMs: 500,
+                          label: t('diff.refresh'),
                           side: 'bottom',
                         },
                         {
@@ -2872,7 +2881,7 @@ export const ChangesTab = defineComponent(
                               {
                                 type: 'button',
                                 class: clsx(css.tool, css.foldRefresh),
-                                'aria-label': props.t('diff.refresh'),
+                                'aria-label': t('diff.refresh'),
                                 onClick: refresh,
                               },
                               [
@@ -2887,7 +2896,7 @@ export const ChangesTab = defineComponent(
                       ),
                       h(
                         Tooltip,
-                        {
+                        { delayMs: 500,
                           label: renderExpansionLabel,
                           side: 'bottom',
                         },
@@ -2910,8 +2919,8 @@ export const ChangesTab = defineComponent(
                       ),
                       h(
                         Tooltip,
-                        {
-                          label: props.t(renderSplit ? 'diff.unified' : 'diff.split'),
+                        { delayMs: 500,
+                          label: t(renderSplit ? 'diff.unified' : 'diff.split'),
                           side: 'bottom',
                         },
                         {
@@ -2922,7 +2931,7 @@ export const ChangesTab = defineComponent(
                                 type: 'button',
                                 class: clsx(css.tool, css.foldViews),
                                 'aria-pressed': renderSplit,
-                                'aria-label': props.t('diff.splitAria'),
+                                'aria-label': t('diff.splitAria'),
                                 onClick: toggleSplit,
                               },
                               [
@@ -2936,8 +2945,8 @@ export const ChangesTab = defineComponent(
                       ),
                       h(
                         Tooltip,
-                        {
-                          label: props.t(renderWrap ? 'diff.nowrap' : 'diff.wrap'),
+                        { delayMs: 500,
+                          label: t(renderWrap ? 'diff.nowrap' : 'diff.wrap'),
                           side: 'bottom',
                         },
                         {
@@ -2948,7 +2957,7 @@ export const ChangesTab = defineComponent(
                                 type: 'button',
                                 class: clsx(css.tool, css.foldViews),
                                 'aria-pressed': renderWrap,
-                                'aria-label': props.t('diff.wrapAria'),
+                                'aria-label': t('diff.wrapAria'),
                                 onClick: toggleWrap,
                               },
                               [
@@ -2968,7 +2977,7 @@ export const ChangesTab = defineComponent(
                         [
                           h(
                             Tooltip,
-                            {
+                            { delayMs: 500,
                               label: renderTreeAction,
                               side: 'bottom',
                             },
@@ -3024,7 +3033,7 @@ export const ChangesTab = defineComponent(
                               close,
                             }),
                         },
-                        t: props.t,
+                        t: t,
                       }),
                     ],
                   ),
@@ -3046,7 +3055,7 @@ export const ChangesTab = defineComponent(
                       className: css.noticeAction ?? '',
                       onClick: refresh,
                     },
-                    { default: () => [props.t('retry')] },
+                    { default: () => [t('retry')] },
                   )
                   : renderAutomaticBase !== false &&
                     h(
@@ -3065,14 +3074,14 @@ export const ChangesTab = defineComponent(
             h(
               Notice,
               {},
-              { default: () => [props.t('diff.stale', { count: renderData.localAhead })] },
+              { default: () => [t('diff.stale', { count: renderData.localAhead })] },
             ),
           renderData?.kind === 'local' &&
             renderData.omitted > 0 &&
             h(
               Notice,
               {},
-              { default: () => [props.t('diff.omitted', { count: renderData.omitted })] },
+              { default: () => [t('diff.omitted', { count: renderData.omitted })] },
             ),
           renderRun.kind === 'failed' &&
             renderChosenChoice !== null &&
@@ -3093,7 +3102,7 @@ export const ChangesTab = defineComponent(
                           variant: 'outline',
                           onClick: refresh,
                         },
-                        { default: () => [props.t('diff.refresh')] },
+                        { default: () => [t('diff.refresh')] },
                       )
                       : h(
                         Button,
@@ -3104,7 +3113,7 @@ export const ChangesTab = defineComponent(
                             lensAttempt.value = (value => value + 1)(renderLensAttempt)
                           },
                         },
-                        { default: () => [props.t('retry')] },
+                        { default: () => [t('retry')] },
                       ),
                     h(
                       Button,
@@ -3115,7 +3124,7 @@ export const ChangesTab = defineComponent(
                           chooseLens(null)
                         },
                       },
-                      { default: () => [props.t('filterLens.clear')] },
+                      { default: () => [t('filterLens.clear')] },
                     ),
                   ],
                 ),
@@ -3123,10 +3132,10 @@ export const ChangesTab = defineComponent(
               {
                 default: () => [
                   renderRun.code === 'forgePanel/lens-stale'
-                    ? props.t('filterLens.stale', { lens: renderChosenChoice.title })
+                    ? t('filterLens.stale', { lens: renderChosenChoice.title })
                     : renderRun.code === 'forgePanel/lens-interrupted'
-                      ? props.t('filterLens.interrupted', { lens: renderChosenChoice.title })
-                      : props.t('filterLens.failed', {
+                      ? t('filterLens.interrupted', { lens: renderChosenChoice.title })
+                      : t('filterLens.failed', {
                         lens: renderChosenChoice.title,
                         message: renderRun.message,
                       }),
@@ -3146,11 +3155,11 @@ export const ChangesTab = defineComponent(
                     className: css.noticeAction ?? '',
                     onClick: refresh,
                   },
-                  { default: () => [props.t('retry')] },
+                  { default: () => [t('retry')] },
                 ),
               },
               {
-                default: () => [props.t('viewed.readFailed', { message: renderViewed.message })],
+                default: () => [t('viewed.readFailed', { message: renderViewed.message })],
               },
             ),
           renderData?.kind === 'change' &&
@@ -3166,12 +3175,12 @@ export const ChangesTab = defineComponent(
                     className: css.noticeAction ?? '',
                     onClick: refresh,
                   },
-                  { default: () => [props.t('retry')] },
+                  { default: () => [t('retry')] },
                 ),
               },
               {
                 default: () => [
-                  props.t('thread.loadFailed', { message: renderThreadRead.failure }),
+                  t('thread.loadFailed', { message: renderThreadRead.failure }),
                 ],
               },
             ),
@@ -3186,6 +3195,7 @@ export const ChangesTab = defineComponent(
               renderAllFiles.length > 0 &&
                 h(FileTreePane, {
                   ...renderNavigator,
+                  least: lensWidth.value,
                   id: treeId,
                   position: renderTreePosition,
                   onWidth: (width: number) => {
@@ -3215,7 +3225,7 @@ export const ChangesTab = defineComponent(
                   },
                   openLink: props.openLink,
                   close: closeThreadList,
-                  t: props.t,
+                  t: t,
                 }),
             ],
           ),

@@ -114,7 +114,8 @@ async function fixture(
   writeFileSync(join(dir, "package.json"), JSON.stringify(manifest));
   writeFileSync(join(dir, "cordis.yml"), "[]\n");
   prepareFiles?.(dir);
-  const overlays: PatchOptions[] = overlay ? [{ id: "managed", disabled: true }] : [];
+  const overlayPath = join(home, "overlay.patch.yml");
+  writeFileSync(overlayPath, JSON.stringify(overlay ? [{ id: "managed", disabled: true }] : []));
   const profile: ProfileContext = {
     name: "test",
     ...(packageManager === undefined ? {} : { packageManager }),
@@ -126,7 +127,7 @@ async function fixture(
     installAnchor: anchor,
     cwd: home,
     home,
-    overlays,
+    overlayPaths: [overlayPath],
     telemetryDisabledEnv: undefined,
   };
   const ctx = await boot(
@@ -175,7 +176,7 @@ async function fixture(
     bundle,
     profile,
     stopHmr,
-    overlays,
+    overlayPath,
     connection,
     gitConnection,
   };
@@ -437,15 +438,13 @@ it("installs the spec the Git transport probe chooses with the profile Git envir
   const transport = vi
     .spyOn(gitTransport, "chooseGitTransport")
     .mockResolvedValue("git+ssh://git@git.example/team/sub/plugin.git#main");
-  const pnpm = vi
-    .spyOn(operations, "runProfilePnpm")
-    .mockResolvedValue({
-      exitCode: 1,
-      output: "stop",
-      truncated: false,
-      logPath: "pnpm.log",
-      kind: "unknown",
-    });
+  const pnpm = vi.spyOn(operations, "runProfilePnpm").mockResolvedValue({
+    exitCode: 1,
+    output: "stop",
+    truncated: false,
+    logPath: "pnpm.log",
+    kind: "unknown",
+  });
   onTestFinished(() => {
     transport.mockRestore();
     pnpm.mockRestore();
@@ -1374,6 +1373,15 @@ it("reports an overlay overriding a saved plugin toggle", async () => {
   });
 });
 
+it("lists plugins from current overlay files in a startup-only profile", async () => {
+  const { manager, overlayPath } = await fixture("startup");
+  const id = (await manager.listPlugins()).find((row) => row.patchId === "managed")!.entryId;
+  rmSync(overlayPath);
+  await expect(manager.listPlugins()).rejects.toThrow(`failed to read overlay ${overlayPath}`);
+  writeFileSync(overlayPath, "[]\n");
+  expect((await manager.listPlugins()).some((row) => row.entryId === id)).toBe(true);
+});
+
 it("saves startup-only toggles and refuses removal of currently used packages", async () => {
   const { manager } = await fixture("startup");
   const id = (await manager.listPlugins()).find((row) => row.patchId === "managed")!.entryId;
@@ -1526,14 +1534,12 @@ it("retains approved policy and reports it as changed when the registry fails be
     join(dir, "pnpm-workspace.yaml"),
     "allowBuilds:\n  native: set this to true or false\n",
   );
-  const run = vi
-    .spyOn(operations, "runProfilePnpm")
-    .mockResolvedValue({
-      exitCode: 1,
-      output: "registry unavailable",
-      truncated: false,
-      logPath: "/log",
-    });
+  const run = vi.spyOn(operations, "runProfilePnpm").mockResolvedValue({
+    exitCode: 1,
+    output: "registry unavailable",
+    truncated: false,
+    logPath: "/log",
+  });
   onTestFinished(() => {
     run.mockRestore();
   });
@@ -1668,14 +1674,12 @@ it.each(["[", "allowBuilds: false\n"])(
   async (policy) => {
     const { manager, dir } = await fixture();
     writeFileSync(join(dir, "pnpm-workspace.yaml"), policy);
-    const run = vi
-      .spyOn(operations, "runProfilePnpm")
-      .mockResolvedValue({
-        exitCode: 1,
-        output: "original pnpm failure",
-        truncated: false,
-        logPath: "/log",
-      });
+    const run = vi.spyOn(operations, "runProfilePnpm").mockResolvedValue({
+      exitCode: 1,
+      output: "original pnpm failure",
+      truncated: false,
+      logPath: "/log",
+    });
     onTestFinished(() => {
       run.mockRestore();
     });
@@ -2100,14 +2104,12 @@ it("returns unchanged failures as warnings while toggling and removing another b
 
 it("recognizes a repeated installation without HMR that leaves the saved dependency as it was", async () => {
   const { manager, dir } = await fixture("startup");
-  const install = vi
-    .spyOn(operations, "runProfilePnpm")
-    .mockResolvedValue({
-      exitCode: 0,
-      output: "",
-      truncated: false,
-      logPath: join(dir, "pnpm.log"),
-    });
+  const install = vi.spyOn(operations, "runProfilePnpm").mockResolvedValue({
+    exitCode: 0,
+    output: "",
+    truncated: false,
+    logPath: join(dir, "pnpm.log"),
+  });
   onTestFinished(() => {
     install.mockRestore();
   });
@@ -2123,14 +2125,12 @@ it("recognizes a repeated installation without HMR that leaves the saved depende
 
 it("reports ambiguous package changes as failures", async () => {
   const { manager, dir } = await fixture();
-  const install = vi
-    .spyOn(operations, "runProfilePnpm")
-    .mockResolvedValue({
-      exitCode: 0,
-      output: "",
-      truncated: false,
-      logPath: join(dir, "pnpm.log"),
-    });
+  const install = vi.spyOn(operations, "runProfilePnpm").mockResolvedValue({
+    exitCode: 0,
+    output: "",
+    truncated: false,
+    logPath: join(dir, "pnpm.log"),
+  });
   onTestFinished(() => {
     install.mockRestore();
   });
@@ -2788,9 +2788,10 @@ it("omits installation-owned plain packages from the bundle inventory", async ()
 });
 
 it("does not delete a bundle retained by a higher-priority overlay", async () => {
-  const { ctx, manager, overlays, dir } = await fixture();
+  const { ctx, manager, overlayPath, dir } = await fixture();
   const entry = [...ctx.loader.entries()].find((row) => row.id === "include:managed")!;
-  overlays.push({ insert: [{ ...entry.options }] });
+  const retained: PatchOptions[] = [{ insert: [{ ...entry.options }] }];
+  writeFileSync(overlayPath, JSON.stringify(retained));
   const remove = vi.spyOn(operations, "runProfilePnpm");
   onTestFinished(() => {
     remove.mockRestore();
@@ -3174,14 +3175,12 @@ it("drops the earlier registry failure once a later attempt is terminated for si
 
 it("bounds each package run with the configured silence timeout", async () => {
   const { manager } = await fixture("live", false, undefined, { idleTimeoutMs: 1234 });
-  const install = vi
-    .spyOn(operations, "runProfilePnpm")
-    .mockResolvedValue({
-      exitCode: 1,
-      output: "plain failure",
-      truncated: false,
-      logPath: "/dev/null",
-    });
+  const install = vi.spyOn(operations, "runProfilePnpm").mockResolvedValue({
+    exitCode: 1,
+    output: "plain failure",
+    truncated: false,
+    logPath: "/dev/null",
+  });
   onTestFinished(() => {
     install.mockRestore();
   });

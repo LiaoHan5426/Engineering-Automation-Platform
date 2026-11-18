@@ -415,6 +415,14 @@ export const Menu = defineComponent({ name: 'Menu', props: { open: { type: Boole
         if (document.activeElement instanceof HTMLIFrameElement)
           props.onClose()
       }
+      const onOtherTrigger = (event: MouseEvent): void => {
+        const trigger = event.target instanceof Element ? event.target.closest('[aria-haspopup]') : null
+        if (trigger === null || rootRef.value?.contains(trigger) === true || props.anchorRef?.value?.contains(trigger) === true) return
+        if (props.isExternalTrigger?.(trigger) === true) return
+        if (listRef.value?.contains(trigger) === true || submenuEvents.value.contains(trigger)) return
+        props.onClose()
+      }
+      document.addEventListener('click', onOtherTrigger, true)
       document.addEventListener('pointerdown', onPointerDown)
       const onEscape = (event: KeyboardEvent): void => {
         if (event.key === 'Escape')
@@ -429,6 +437,7 @@ export const Menu = defineComponent({ name: 'Menu', props: { open: { type: Boole
       window.addEventListener('blur', onWindowBlur)
       return () => {
         composition.dispose()
+        document.removeEventListener('click', onOtherTrigger, true)
         document.removeEventListener('pointerdown', onPointerDown)
         document.removeEventListener('keydown', onOtherKey)
         document.removeEventListener('keydown', onEscape, true)

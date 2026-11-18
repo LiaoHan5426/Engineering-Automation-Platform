@@ -286,6 +286,7 @@ describe("persistent PTC host protocol", () => {
   );
 
   it.each([
+    { outputTruncated: "yes" },
     { error: { kind: "other", message: "" } },
     { error: { kind: "exception", message: 1 } },
   ])("rejects malformed results %j", async (raw) => {
@@ -326,9 +327,24 @@ describe("persistent PTC host protocol", () => {
     const limited = await setup({ maxOutputBytes: 30 });
     limited.onBoot(() => {
       limited.emit({ t: "q", m: "log", a: ["x".repeat(100)] });
+      limited.complete({ value: encodePtcJsonWire(42) });
     });
-    expect((await limited.start()).error?.kind).toBe("output-limit");
+    expect(await limited.start()).toMatchObject({ value: 42, outputTruncated: true });
   });
+
+  it.each([undefined, encodePtcJsonWire(42), "invalid wire"])(
+    "preserves a reported truncation flag with completion %j",
+    async (value) => {
+      const h = await setup();
+      h.onBoot(() => {
+        h.complete({ value, outputTruncated: true });
+      });
+      const result = await h.start();
+      expect(result.outputTruncated).toBe(true);
+      expect(result.error?.kind).toBe(value === "invalid wire" ? "invalid-output" : undefined);
+      expect(result.value).toBe(Array.isArray(value) ? 42 : undefined);
+    },
+  );
 
   it("returns current binding successes, exceptions and unavailable bindings", async () => {
     const cases: Record<string, PtcBindingFunction>[] = [
@@ -422,18 +438,19 @@ describe("persistent PTC host protocol", () => {
     expect(h.terminate).not.toHaveBeenCalled();
   });
 
-  it("clears retained resources when final diagnostic accounting detects an overflow", async () => {
+  it("preserves retained resources and the failure kind when a diagnostic is truncated", async () => {
     const h = await setup({ maxOutputBytes: 100 });
     h.onBoot(() => {
       h.complete({ error: { kind: "exception", message: "x".repeat(1000) } });
     });
     const result = await h.start();
-    expect(result.error?.kind).toBe("output-limit");
-    expect(result.error?.message).toContain("retained variables were cleared");
-    expect(h.terminate).toHaveBeenCalledTimes(1);
+    expect(result.error?.kind).toBe("exception");
+    expect(result.outputTruncated).toBe(true);
+    expect(result.error?.message).toBe("x".repeat(96));
+    expect(h.terminate).not.toHaveBeenCalled();
   });
 
-  it("keeps the first outcome when tagged output overflows beside a terminal frame", async () => {
+  it("keeps the completion when tagged output overflows beside a terminal frame", async () => {
     const h = await setup({ maxOutputBytes: 100 });
     h.onBoot(() => {
       h.complete({ value: encodePtcJsonWire(42) });
@@ -441,9 +458,9 @@ describe("persistent PTC host protocol", () => {
         h.emit({ t: "q", m: "log", a: ["x".repeat(1000)] });
       });
     });
-    expect((await h.start()).error?.kind).toBe("output-limit");
+    expect(await h.start()).toMatchObject({ value: 42, outputTruncated: true });
     await setImmediate();
-    expect(h.terminate).toHaveBeenCalledTimes(1);
+    expect(h.terminate).not.toHaveBeenCalled();
   });
 
   it("reports the exit result when the control pipe ends beside process completion", async () => {
@@ -578,36 +595,27 @@ describe("persistent PTC host protocol", () => {
     const h = await setup();
     h.waitForExit.mockRejectedValue(new Error("cleanup failed"));
     h.onBoot(() => {
-      h.emit({ t: "q", m: "outputLimit", a: [] });
+      h.emit({ t: "q", m: "log", a: [42] });
     });
     expect((await h.start()).error?.message).toContain("cleanup failed");
   });
 
-  it.each([
-    { maxOutputBytes: 38, kind: "worker-exit" },
-    { maxOutputBytes: 4, kind: "output-limit" },
-  ])(
-    "bounds cleanup failure after parse diagnostics overflow a $maxOutputBytes-byte budget",
-    async ({ maxOutputBytes, kind }) => {
+  it.each([38, 4])(
+    "preserves the exception kind when parse diagnostics exceed %s bytes",
+    async (maxOutputBytes) => {
       const h = await setup({ maxOutputBytes });
       h.onBoot(() => {
         h.complete({});
       });
-      expect(await h.start()).toMatchObject({ output: [] });
-      h.waitForExit.mockRejectedValue(new Error("x"));
+      await h.start();
       const result = await h.runtime.run(h.runtime.resolve({ ...request, program: "return 1" }));
-      expect(result.error?.kind).toBe(kind);
-      if (kind === "worker-exit") expect(result.error?.message).toContain("cleanup failed: x");
-      const bytes =
-        Buffer.byteLength(
-          JSON.stringify(
-            result.output.filter((block) => block.type === "text").map((block) => block.text),
-          ),
-        ) + Buffer.byteLength(JSON.stringify(result.error?.message));
-      expect(bytes).toBeLessThanOrEqual(maxOutputBytes);
-      expect(h.terminate).toHaveBeenCalledTimes(1);
-      expect(h.waitForExit).toHaveBeenCalledTimes(1);
-      await expect(h.runtime.release(request.stateOwner!)).rejects.toThrow("x");
+      expect(result.error?.kind).toBe("exception");
+      expect(result.outputTruncated).toBe(true);
+      expect(Buffer.byteLength(JSON.stringify(result.error?.message)) + 2).toBeLessThanOrEqual(
+        maxOutputBytes,
+      );
+      expect(h.terminate).not.toHaveBeenCalled();
+      expect(h.waitForExit).not.toHaveBeenCalled();
     },
   );
 
@@ -848,33 +856,6 @@ it("retries process observation before releasing an owner after cleanup fails", 
     expect(h.waitForExit).toHaveBeenCalledTimes(2);
   } finally {
     reported.mockRestore();
-  }
-});
-
-it("reserves the owner while parse-output overflow releases its environment", async () => {
-  const h = await setup({ maxOutputBytes: 32 });
-  const cleanup = Promise.withResolvers<true>();
-  const stopped = Promise.withResolvers<boolean>();
-  h.onBoot(() => {
-    h.complete({});
-  });
-  await h.start();
-  h.waitForExit.mockImplementation(async () => {
-    cleanup.resolve(true);
-    return stopped.promise;
-  });
-  const pending = h.runtime.run(h.runtime.resolve({ ...request, program: "return 1" }));
-  try {
-    await cleanup.promise;
-    await expect(h.runtime.run(h.runtime.resolve(request))).rejects.toThrow(
-      "does not accept concurrent",
-    );
-    expect(h.spawn).toHaveBeenCalledOnce();
-    stopped.resolve(true);
-    expect((await pending).error?.kind).toBe("output-limit");
-  } finally {
-    stopped.resolve(true);
-    await pending;
   }
 });
 

@@ -133,16 +133,17 @@ async function bench() {
       );
       ctx.slots.register({ name: "conversation.user.text.node", key: "text" }, PlainUserText);
       ctx.slots.register({ name: "conversation.user.text.node", key: "session" }, SessionReference);
+      const keyedHooks = { pathPresence: () => ({ getSnapshot: () => "present" as const, subscribe: () => () => {} }) };
       ctx.slots.register(
         {
           name: "conversation.user.text.node",
           key: "file",
           locale: "reference",
-          inject: () => ({ openFile, resolveFilePath: (path: string) => path }),
+          inject: () => ({ openFile, resolveFilePath: (path: string) => path, keyedHooks }),
         },
         FileReference,
       );
-      ctx.slots.register({ name: "conversation.user.text.node", key: "folder" }, FolderReference);
+      ctx.slots.register({ name: "conversation.user.text.node", key: "folder", inject: () => ({ keyedHooks }) }, FolderReference);
       ctx.slots.register(
         { name: "conversation.user.text.node", key: "skill", inject: () => ({ openSkill }) },
         SkillReference,

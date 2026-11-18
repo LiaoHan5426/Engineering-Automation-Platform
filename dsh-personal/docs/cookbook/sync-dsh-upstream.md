@@ -4,124 +4,156 @@ English | [中文](sync-dsh-upstream.zh.md)
 
 ## Summary
 
-This contributor procedure updates the imported DSH sources while preserving the native Vue implementation. It applies to the repository copy, not the installed DSH application. The [migration plan](../../migration-plan.md) owns completion status; writing this guide does not establish a successful upgrade.
+This contributor tutorial prepares an upstream update for the repository copy while preserving native Vue behavior. Start with an existing Personal checkout, installed workspace tooling and a separate upstream Git checkout. The result is a reviewable candidate and evidence; the [migration plan](../../migration-plan.md) owns acceptance status. The installed DSH application is a separate deployment.
 
 ## Contents
 
 - [Prepare](#prepare)
 - [Compare](#compare)
 - [Integrate](#integrate)
-- [Validate and recover](#validate)
+- [Validate and accept](#validate)
 - [Record template](#record)
 
 <a id="prepare"></a>
 
-## 1. Prepare an isolated update
+## 1. Fix the three inputs
 
-Run this Bash preflight from the EAP root. The first synchronization uses the inventory baseline; after a fully accepted update, replace BASE_COMMIT with the commit in that record. Resolve remote HEAD rather than assuming the default branch is main.
+Select the upgrade track first: a release upgrade uses explicit start and end tags; tracking master uses a fixed default-branch commit. A version tag and the merge that synchronizes its release branch back to master can have different trees. For release work, add `--mode release --release-base TAG_B --release-target TAG_U` to check the intended range; for master work, use `--mode master`. Resolve a reported `scope-mismatch` before treating additional master changes as required release work. Remote HEAD discovery selects the master track, not a release tag.
+
+Use B = last fully accepted upstream commit, U = proposed upstream commit and P = Personal checkpoint. The [state file](../../upstream-sync-state.json) owns the accepted baseline: schemaVersion is 1; acceptedUpstreamCommit is B; acceptedPersonalCommit and acceptedRecord identify its acceptance evidence, or remain null for the historical import. Its pending entry records targetUpstreamCommit, personalBaseCommit and record for an unresolved candidate. A pending or partial candidate never advances B.
+
+Run these Bash commands from the Personal root. Inspect status and preserve P before creating a candidate. The EAP origin remote is not the upstream DSH remote; a directory import creates no shared Git ancestry. Preserve a binary diff, staged changes and untracked sources when P is dirty: a worktree made from HEAD alone omits them.
 
 ```sh
 set -eu
-UPSTREAM_URL=https://github.com/deepseek-ai/deepseek-harness.git
 git status --short --branch
 git rev-parse HEAD
-git ls-remote --symref "$UPSTREAM_URL" HEAD
-BASE_COMMIT=$(node -p "JSON.parse(require('node:fs').readFileSync('dsh-personal/source-inventory.json','utf8')).sourceCommit")
-TARGET_COMMIT=$(git ls-remote "$UPSTREAM_URL" HEAD | cut -f1)
-test "${#TARGET_COMMIT}" -eq 40
-if [ "$BASE_COMMIT" = "$TARGET_COMMIT" ]; then
-  printf "NO_UPSTREAM_CHANGE %s\n" "$TARGET_COMMIT"
-else
-  printf "UPDATE_AVAILABLE %s -> %s\n" "$BASE_COMMIT" "$TARGET_COMMIT"
-fi
+pnpm exec tsx scripts/upstream-sync.ts --help
+UPSTREAM_URL=https://github.com/deepseek-ai/deepseek-harness.git
+pnpm exec tsx scripts/upstream-sync.ts --discover "$UPSTREAM_URL"
 ```
 
-Stop on a failed remote query or an empty result; neither means no update. NO_UPSTREAM_CHANGE means B equals U: retain the query output and current Personal state, record no-change, and skip candidate creation, dependency installation and product builds. Do not advance the baseline. This verifies version discovery, not conflict resolution or Vue behavior porting. Continue with isolation only for UPDATE_AVAILABLE.
+Discovery performs one git ls-remote --symref query and returns its symbolic ref and full commit. Save that output once and pin U to the returned commit; do not query HEAD again to populate another field. A failed query, empty response, detached or ambiguous remote HEAD stops the operation. The discovered result is neither no-change nor acceptance. An existing pending target must match U; resolve that candidate before selecting another target.
 
-Read the [fixed-source inventory](../../source-inventory.json), [contract audit](../../contract-audit.md), and [migration plan](../../migration-plan.md). Preserve the original inventory and its blob IDs as historical evidence. Record later accepted upstream versions in dated upgrade records linked from the plan; do not overwrite the original inventory to imply that a newer version was the migration input.
-
-Use three inputs: B = last fully accepted upstream commit, U = proposed upstream commit, P = current Personal checkpoint. Before the first completed synchronization, B is the sourceCommit in the inventory. A partially integrated candidate does not advance B; record applied and deferred changes individually.
-
-Inspect git status, branch, HEAD and remotes at the EAP repository root. Preserve existing changes and use an isolated worktree for integration. The origin remote belongs to EAP; importing a directory does not establish shared Git ancestry with DSH. Do not run an unconditional upstream merge or rebase on the EAP branch.
-
-Prepare a separate upstream checkout containing both B and U, and retain the P source/artifact checkpoint. Before runtime tests, back up the test profile and persistent data; use isolated data rather than the installed application data. Synchronization includes reading upstream and preparing an isolated candidate; confirm commits, pushes, publication and deployment separately. A worktree contains committed state only. For a dirty checkout, also retain a binary diff and untracked sources, then inspect and restore them in the candidate; HEAD alone is not the complete P.
+Prepare a separate, non-nested upstream checkout whose root contains both B and U. Obtain missing objects explicitly before the local planner runs. Preserve the [original inventory](../../source-inventory.json) and blob IDs; later upgrades use accepted state rather than rewriting historical input. Back up the candidate profile and persistent data separately from the installed application.
 
 <a id="compare"></a>
 
-## 2. Compare upstream changes and local changes
+## 2. Produce the complete read-only plan
 
-In Bash, set UPSTREAM_DIR to that checkout and BASE_COMMIT/TARGET_COMMIT to verified full commits. These are parameterized commands for a future upgrade, not a claim that the upgrade has been rehearsed.
+Set UPSTREAM_DIR to the checkout root and TARGET_COMMIT to the pinned full U hash. The state path resolves from the command working directory and must exist inside Personal. The planner validates full commit objects and B ancestry of U, then emits JSON with B/U/P, commitCount, summary and every diff entry. It reads state and Git; it performs no merge, install, source update or acceptance write.
 
 ```sh
-git -C "$UPSTREAM_DIR" rev-parse --verify "${BASE_COMMIT}^{commit}"
-git -C "$UPSTREAM_DIR" rev-parse --verify "${TARGET_COMMIT}^{commit}"
-git -C "$UPSTREAM_DIR" diff --name-status --find-renames "$BASE_COMMIT" "$TARGET_COMMIT"
-git -C "$UPSTREAM_DIR" diff --stat "$BASE_COMMIT" "$TARGET_COMMIT"
-git -C "$UPSTREAM_DIR" diff "$BASE_COMMIT" "$TARGET_COMMIT" -- packages/core packages/api packages/client apps scripts
+UPSTREAM_DIR=/path/to/upstream-checkout
+TARGET_COMMIT=FULL_UPSTREAM_COMMIT
+pnpm exec tsx scripts/upstream-sync.ts --personal . --upstream "$UPSTREAM_DIR" --target "$TARGET_COMMIT" --state upstream-sync-state.json
 ```
 
-The unfiltered name-status report defines coverage; the final command only helps inspect common areas. Include all other changed paths, lockfiles, vendor sources and persistence changes. Compare B against P separately using source files rather than generated lib, dist or node_modules trees. Record renames and deletions explicitly.
+Capture stdout in a dated evidence file if required. For the first import only, replace --state upstream-sync-state.json with --initial to read source-inventory.sourceCommit. Alternatively pass --baseline FULL_ACCEPTED_COMMIT explicitly. Exactly one of these inputs is required; missing or malformed state never falls back to the inventory. The checked-in pending entry records a target awaiting acceptance and leaves acceptedPersonalCommit and acceptedRecord null.
 
-| Change class | Integration rule |
-| --- | --- |
-| Unmodified Host/core logic | Apply the upstream change after checking consumers and tests; directory membership alone does not prove it is unmodified. |
-| Locally modified shared logic | Compare B/U/P and reconcile behavior and lifecycle obligations. |
-| React components/hooks/rendering | Port the behavior to the mapped Vue component, selector, scope or slot; do not restore the replaced React runtime. |
-| Build, dependencies and platform registry | Preserve the Vite+ entry and shared Vue identity; reconcile manifests before regenerating the lockfile. |
-| Session formats, schemas and wire APIs | Review migration requirements and update all consumers and applicable persistence acknowledgements. |
-| New/deleted/renamed modules | Classify product scope, ownership and replacement; check registrations, imports, tests and documentation together. |
+A no-change result means B equals U: retain discovery and Personal evidence, then skip candidate creation, installation and product builds. update-available means different commits even when their trees match. The underlying comparison uses git diff --name-status -z --find-renames over the entire B/U range, without path filters. Count both rename paths. An API compare response limited to 300 files, a printed excerpt or a rename-free path list is not the complete comparison.
+
+Planning disables implicit lazy fetch. A missing object, invalid UTF-8, truncated output, non-ancestor baseline, Git failure, 30-second per-command timeout or output beyond 64 MiB stops the plan. Fix the checkout or record the failure before retrying; never reinterpret a failed comparison as no-change.
+
+The plan's `upgradeScope` compares both endpoint trees against the release tags and reports commit, file and line counts for both ranges. `incremental` reads workspace manifests from B/U to assign owners, direct changes, downstream impact, dependency batches and validation suggestions; it does not use manifests from an unrelated checked-out revision. Runtime, optional and peer dependencies precede consumers, cycles form one SCC batch, and dev dependency consumers appear separately as test impact.
+
+Reconcile APIs, types and dependencies before their consumers. Independent work within a batch can run concurrently; consumers start once dependency interfaces are clear. Retain Personal customizations and evidence outside the B/U delta. A version manifest change does not require remigrating every source file in that package. Preserve both owners for renames and deletions.
+
+Before expensive builds, run the [platform preflight](../../scripts/upstream-platform-preflight.ts) on the fixtures included in the plan:
+
+```sh
+node --import tsx/esm scripts/upstream-platform-preflight.ts --root . --platform win32 --plan PLAN_JSON
+```
+
+The preflight distinguishes filesystem paths, mention/clipboard protocol paths, JSON/ARIA strings and shell argv. Its `problem` and `review` findings identify demonstrated mismatches and review candidates, not passing tests. Run Bash examples in Bash; PowerShell uses different environment, quoting and redirection syntax. Prefer Node with structured argv for portable steps while retaining tests that exercise a specific shell.
 
 <a id="integrate"></a>
 
-## 3. Integrate by behavior
+## 3. Reconcile behavior in an isolated candidate
 
-Create one mapping row per affected module using the template below. Confirm current paths in the working tree; the contract audit explains migration choices but is not a complete file mapping. Resolve shared Host/API changes first, Vue consumers second, and build/configuration changes with their consumers. A clean textual merge is not proof of equivalent behavior.
+Create the candidate from the saved P, including preserved local changes, and retain B/U/P snapshots separately. When formatting dominates the diff, create derived B/U/P copies with the same formatter and options, then compare those copies. Keep raw Git output, original blobs and original snapshots unchanged; a formatting-only finding needs both raw and normalized evidence. Do not rewrite the actual historical checkout or inventory to simplify comparison.
 
-Preserve synchronous business state changes, cancellation, stale-result protection, scope disposal, focus, drafts and session isolation. For upstream tests tied to React internals, retain user-visible assertions while adapting their harness. Record why any upstream change is deferred; a deferred applicable change keeps the candidate partial.
+Build one mapping row per changed entry; confirm paths in the current tree and use the [contract audit](../../contract-audit.md) to understand local decisions. An upstream TSX path may map to a Vue component, composable, selector or slot under a different directory. Map both ends of every rename and trace every deletion to its replacement or removal. Close imports, registrations, exports, tests, styles and documentation together; every complete diff entry needs an applied, deferred or not-applicable disposition with evidence.
+
+| Change class | Integration rule |
+| --- | --- |
+| Host/core and shared APIs | Reconcile B/U/P and all consumers; directory membership does not establish unchanged behavior. |
+| React components and hooks | Port behavior to mapped Vue ownership without restoring the replaced React runtime. |
+| Build and dependencies | Use Vite+ Pack and existing build scripts; do not restore tsdown or a standalone vitest dependency. Reconcile manifests before the lockfile. |
+| Session schemas and wire APIs | Update consumers, migrations and required persistence acknowledgements together. |
+| Added, deleted and renamed modules | Close ownership, references, registration and replacement evidence for both old and new paths. |
+
+The [Vue converter](../../scripts/upstream-vue-codemod.ts) handles the fixed case of known Ref selectors created in setup-returned render functions or computed getters. It defaults to dry-run with explicit hooks and files. `--apply` also requires each file's `--expect SHA256`, keeps an exclusive .bak original and checks content and hashes before writing. Whole React files, arbitrary hooks, slots and event semantics remain outside this converter; complex closures and render-local dependencies receive manual-review findings. Review its report and diff before applying supported rules:
+
+```sh
+pnpm exec tsx scripts/upstream-vue-codemod.ts --hook useAccount --hook useConnectorAccounts --file SOURCE_FILE
+```
+
+Resolve shared Host/API behavior before Vue consumers, then reconcile build configuration with its consumers. Preserve synchronous state changes, cancellation, stale-result protection, scope disposal, focus, drafts and session isolation. Adapt upstream tests to assert behavior with vite-plus/test. A textual merge or passing type check does not establish equivalent Vue interaction; any deferred applicable change leaves the candidate partial.
 
 <a id="validate"></a>
 
 ## 4. Validate, accept or recover
 
-Run commands from the candidate dsh-personal directory after reconciling dependencies. The [testing policy](../testing.md) owns test selection. Run focused behavior and positive/negative type checks, then the artifact build and its aggregate checks in order.
+Run focused behavior tests and positive/negative type checks in the candidate Personal directory. Reconcile the lockfile deliberately before a frozen install, and use the [testing policy](../testing.md) to select additional checks. The commands below describe acceptance preparation; record actual outcomes rather than assuming they pass.
 
 ```sh
-vp install --frozen-lockfile
-vp run build:artifacts
-vp run build:check
-vp run test:docs
-vp run doc-sync
-vp run lint
+pnpm install --frozen-lockfile
+pnpm run build:artifacts
+pnpm run build:check
+pnpm run test:docs
+pnpm run doc-sync
+pnpm run lint
 git diff --check
 ```
 
-Start the candidate through the supported dsh profile entry, using its own host and data. Verify affected real-browser flows on desktop and narrow screens, plugin unload/reload, draft retention and cancellation. Audit application bundles for reintroduced React runtime; indirect documentation-tool dependencies are a separate concern. Compare failures against the same tests on B and P; keep existing migration failures distinct from new regressions.
+Select validation from the changes and their dependency impact. The build commands above apply to a product candidate, not every script or documentation edit.
 
-Record exact commands, source revision, environment, results and evidence locations. Mark passed, failed, skipped and unverified separately. Advance B only after all applicable upstream changes are accounted for and the agreed acceptance checks pass; update the plan and link the accepted record. Existing migration acceptance remains independently tracked.
+| Change | Required checks | Broaden when |
+| --- | --- | --- |
+| Host/shared API | Owner and direct-consumer tests, types and affected snapshots | Public types cross build faces or focused failures reveal wider impact |
+| Vue component/selector | Real selector-adapter tests, reactive updates, disposal and affected browser paths | Shared rendering or state infrastructure changes |
+| Build/dependencies/code generation | Owning script tests, latest official artifacts and build:check, plain Node artifact loading | Global build configuration, workspace dependencies or published layout changes |
+| Tests/docs | Affected tests, lint or documentation pairing | The tested execution path also changes |
 
-On failure, stop the candidate host and preserve its logs and diff. Keep the accepted version active or restore the saved source/artifact checkpoint. Restore data only from the matching pre-upgrade backup after stopping writers; older code is not assumed to read a newer Session format or database schema. Avoid destructive resets of a shared working tree.
+Install matching browsers only when the Playwright version changes or required binaries are absent. Start one affected browser case to verify the [Web scaffold](../../apps/web/tests/scaffold.ts), then run the affected dependency range. Set WEB_SPEC and WEB_CASE to the affected path and case before running:
+
+```sh
+DSH_SNAPSHOT=replay pnpm run test:web:built "$WEB_SPEC" -t "$WEB_CASE"
+```
+
+Use the full Web replay for explicitly requested repository-wide validation, global Client infrastructure changes or demonstrated propagation from focused failures. It is not the default upgrade step. After source changes, old builds and browser results remain historical evidence; rebuild before verifying the changed runtime.
+
+Retain replay mode throughout acceptance; do not refresh snapshots. A scaffold startup error is a failed check, not a platform skip.
+
+Launch the built candidate with an isolated profile and data. Verify browser or desktop behavior for every affected Vue path, including empty/error states, cancellation, drafts and cleanup; retain source revision and evidence. Separate passed, failed, skipped and unverified checks, and pre-existing migration failures from new regressions. Successful static checks or product builds alone leave runtime acceptance open.
+
+After every applicable change is reconciled and required acceptance is recorded, explicitly advance acceptedUpstreamCommit to U, set acceptedPersonalCommit to the accepted Personal checkpoint, link acceptedRecord and clear pending. This is a reviewed state change, not a planner command. Update the migration plan and its acceptance rows together. Until then retain B and pending; a partial or merely built candidate is not an accepted upgrade. Keep pending while a real Personal commit containing the upgrade does not yet exist.
+
+Recover by restoring the saved candidate source, profile and data checkpoint or discarding the isolated candidate. Preserve failure evidence and leave the accepted baseline unchanged. Inspect dirty changes before any recovery; avoid blanket resets of the shared workspace. Commit, push, publish and deployment are separate actions.
 
 <a id="record"></a>
 
 ## Reference: upgrade record template
 
-Store each real attempt as a dated record beside the migration evidence and link it from the plan. This template is not an existing successful upgrade record.
+Create a dated record linked from pending while work remains open, and from acceptedRecord only after acceptance. This template establishes no execution or acceptance result.
 
 ```text
 Date / owner:
 Status: no-change | proposed | partial | validated | accepted | rolled-back
-Original inventory: source-inventory.json (unchanged)
-B / U / P: full upstream commits / Personal checkpoint
-Upstream checkout / candidate worktree / isolated data:
-Backup and recovery checkpoint:
-Upstream path | Personal path | local change reason | action | evidence
+Original inventory and raw evidence (unchanged):
+B / U / P and accepted baseline source:
+Discovery output / complete diff JSON / commit and path counts:
+Candidate checkout / profile / data / recovery checkpoint:
+Derived B/U/P formatter and options / original snapshot locations:
+Upstream old/new path | Personal path | local reason | disposition | evidence
 Applied / deferred / not-applicable changes and reasons:
 Commands / source revision / environment / evidence paths:
 Passed / failed / skipped / unverified:
 Pre-existing migration failures / new regressions:
-Acceptance decision / accepted upstream commit / rollback result:
+Acceptance decision / state change / rollback result:
 ```
 
 ## Dev note
 
-This guide defines a maintenance procedure, not an automated synchronization tool. No target upstream commit is selected here. Actual upgrade, build and runtime results belong to the dated record; document checks alone do not establish product acceptance.
+The read-only [planner](../../scripts/upstream-sync.ts) and its [tests](../../scripts/upstream-sync.spec.ts) own discovery and plan validation. This guide owns the contributor sequence; dated records own execution evidence. A pending target and successful document checks do not establish an accepted Personal upgrade.

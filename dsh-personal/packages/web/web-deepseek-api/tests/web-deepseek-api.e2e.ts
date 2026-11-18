@@ -4,18 +4,21 @@ import {
   DeepSeekSearchApiProvider,
 } from "@deepseek-ai/dsh-web-deepseek-api";
 import { customGuidance } from "./guidance.ts";
+import { keyCandidate } from "./sources.ts";
 
 /** Real Search and Fetch API probes; the base names the deployment the key authenticates. */
 const apiKey = process.env.DEEPSEEK_API_KEY;
 const baseURL = process.env.DEEPSEEK_SEARCH_API_TEST_BASE_URL ?? "";
-const auth = { sources: [{ kind: "api-key", baseURL, key: apiKey ?? "" }] } as const;
+const auth = (path: "/search" | "/fetch") => ({
+  sources: [keyCandidate(`${baseURL}${path}`, apiKey ?? "", "DEEPSEEK_API_KEY")],
+});
 const maybe =
   apiKey !== undefined && apiKey.length > 0 && baseURL.length > 0 ? describe : describe.skip;
 
 maybe("DeepSeek Search and Fetch real API", () => {
   it("returns citeable sources from the Search API", async () => {
     const provider = new DeepSeekSearchApiProvider(() => ({
-      auth,
+      auth: auth("/search"),
       count: 10,
       requestsPerSecond: 5,
       guidance: customGuidance("search"),
@@ -31,7 +34,7 @@ maybe("DeepSeek Search and Fetch real API", () => {
 
   it("returns Markdown from the Fetch API", async () => {
     const provider = new DeepSeekFetchApiProvider(() => ({
-      auth,
+      auth: auth("/fetch"),
       guidance: customGuidance("fetch"),
     }));
     const result = await provider.fetch(

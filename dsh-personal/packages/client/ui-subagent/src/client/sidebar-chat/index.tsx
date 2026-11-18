@@ -102,7 +102,7 @@ function subagentChatResourceProvider(sessions: ISessions): ResourceProvider<'su
         throw new Error(`ui-subagent: invalid chat resource address "${resourceAddress}"`)
       if (isAbortRequested(signal))
         return
-      const reference = sessions.retain(address, { source: 'sidebarChat', signal })
+      const reference = sessions.retain(address, { source: 'sidebarChat', signal, facets: { conversation: true } })
       try {
         yield { ok: true, value: { address, reference } }
         await waitForAbort(signal)

@@ -1,3 +1,4 @@
+import { syncedConfig } from '@deepseek-ai/dsh-client-test-runtime'
 import type { AssistantNodeInjected } from "../src/client/chat/AssistantNodeView.tsx";
 import type { MessageId } from "@deepseek-ai/dsh-llm/types";
 import {
@@ -51,6 +52,7 @@ type ChatActions = ChatInstance["actions"];
 function sessionFakeFor() {
   return {
     loadOlder: vi.fn<ISession["loadOlder"]>(() => Promise.resolve()),
+    consumeOlder: vi.fn<ISession["consumeOlder"]>(() => true),
     loadThrough: vi.fn<ISession["loadThrough"]>(() => Promise.resolve()),
     readAttachment: vi.fn<ISession["readAttachment"]>(() =>
       Promise.resolve({
@@ -122,7 +124,7 @@ async function bench(
   runtime.ctx.provide("locale", locale);
   runtime.slots.installLocale(locale);
   runtime.ctx.provide("shortcuts", { catalog: createSnapshotStore([]) });
-  await runtime.mount({ inject: [...injectMenus], apply: applyMenus });
+  await runtime.mount({ inject: [...injectMenus], apply: applyMenus }, syncedConfig({ resolutionTimeoutMs: 1000 }));
   await runtime.root.declare(
     {
       main: { kind: "keyed", scope: "root" },
@@ -130,7 +132,7 @@ async function bench(
     },
     (_props: { renderSlot?: unknown }) => null,
   );
-  await runtime.mount({ inject: [...injectConversation], apply: applyConversation });
+  await runtime.mount({ inject: [...injectConversation], apply: applyConversation }, syncedConfig({ busyEnter: 'queue', maxConcurrentFileUploads: 2 }));
   const registerGroups = withProcessGroups
     ? undefined
     : vi.spyOn(runtime.ctx.uiConversation.groups, "register").mockImplementation(() => () => {});
@@ -335,6 +337,8 @@ describe("Chat inject API", () => {
     const { injected } = b.chatViewApi(b.rootReference);
     injected.loadOlder();
     expect(b.session.loadOlder).toHaveBeenCalledExactlyOnceWith({ deferConsumption: true });
+    expect(injected.consumeOlder()).toBe(true);
+    expect(b.session.consumeOlder).toHaveBeenCalledExactlyOnceWith();
     void injected.loadThrough(SessionSeq(42));
     expect(b.session.loadThrough).toHaveBeenCalledWith(42);
     const track = vi.fn();

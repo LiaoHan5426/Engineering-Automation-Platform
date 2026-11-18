@@ -2,6 +2,10 @@
 import { contextMenuHook } from "@deepseek-ai/dsh-client-test-runtime";
 import assert from "node:assert/strict";
 import { Context, Service } from "@deepseek-ai/cordis";
+import {
+  createClientModuleSystem,
+  type ClientModuleLoaderTarget,
+} from "@deepseek-ai/dsh-client-modules/client";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vite-plus/test";
 import { within } from "@testing-library/dom";
 import { cleanupVue as cleanup, renderVue } from "../../ui-primitives/tests/vue-render.ts";
@@ -129,6 +133,19 @@ async function bench(allows: ((action: string) => boolean) | "switchable" = () =
     openRightbar: vi.fn(),
     closeRightbar: vi.fn(),
   });
+  const target: ClientModuleLoaderTarget = {
+    mode: "queue",
+    pendingQueue: [],
+    load: () => {},
+    create: (options) =>
+      createClientModuleSystem(target, { id: "bootstrap", exports: {} }, options),
+  };
+  const modules = target.create({
+    boot: { rev: "0", entries: [], batches: [] },
+    staticModules: [],
+  });
+  ctx.provide("modules", modules);
+  onTestFinished(() => modules.dispose());
   await ctx.plugin(settings).await();
   return {
     ctx,
@@ -269,6 +286,7 @@ describe("ui-plugin-manager browser plugin", () => {
       "configForms",
       "layout",
       "remoteAccess",
+      "modules",
     ]);
   });
   it("reads the Host again on a later grant after showing the page, and not while access is withdrawn", async () => {
@@ -379,6 +397,7 @@ describe("ui-plugin-manager browser plugin", () => {
       items: [],
       bundles: new Set(),
       rows: new Set(),
+      sections: [],
     });
     // A Host change before the first render is not a reason to read.
     b.remote.emit("plugin-manager/changed", [{ reason: "install" }]);

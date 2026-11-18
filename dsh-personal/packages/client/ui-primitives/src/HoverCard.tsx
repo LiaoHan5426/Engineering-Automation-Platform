@@ -1,4 +1,4 @@
-import { computed, defineComponent, h, inject, shallowRef, watch, Teleport } from 'vue'
+import { computed, defineComponent, h, inject, shallowRef, watch, Teleport, useId } from 'vue'
 import type { CSSProperties, PropType, Ref } from 'vue'
 import clsx from 'clsx'
 import { writeClipboard } from './clipboard.ts'
@@ -14,8 +14,8 @@ const INLINE_PREVIEW_WIDTH = 300
 const ANCHOR_GAP = 8
 const VIEWPORT_MARGIN = 8
 interface CardPosition {
-  left: number
-  top: number
+  left?: number
+  top?: number
   width?: number
   maxWidth?: number
   maxHeight?: number
@@ -26,6 +26,7 @@ interface CardPosition {
     height: number
   }
 }
+const ANCHORED: CardPosition = {}
 /**
  * Render an anchor with a hover-triggered preview card independently of nested tooltips.
  * Touch entry does not open a preview or intercept the anchor's action.
@@ -50,6 +51,8 @@ interface CardPosition {
  * @returns anchor wrapper with the conditional portaled card.
  */
 export const HoverCard = defineComponent({ name: 'HoverCard', props: { openDelayMs: { type: Number, default: 500 }, disabled: Boolean, grouped: Boolean, copyText: String, copyLabel: String, copiedLabel: String, variant: { type: String as PropType<'compact' | 'preview'>, default: 'compact' }, widthAnchorRef: Object as PropType<Readonly<Ref<HTMLElement | null>>>, inline: Boolean, fitContent: Boolean }, setup(props, { slots }) {
+  const compact = computed(() => props.variant !== 'preview' && !props.inline)
+  const anchorName = `--dsh-hover-card-${useId().replaceAll(':', '')}`
   const rootRef = shallowRef<HTMLSpanElement | null>(null)
   const cardRef = shallowRef<HTMLDivElement | null>(null)
   const portalRef = shallowRef<HTMLSpanElement | null>(null)
@@ -180,6 +183,10 @@ export const HoverCard = defineComponent({ name: 'HoverCard', props: { openDelay
           dismissImmediately()
           return
         }
+        if (compact.value) {
+          pos.value = ANCHORED
+          return
+        }
         const r = wrapper.getBoundingClientRect()
         const h = cardRef.value?.offsetHeight ?? 0
         if (props.variant === 'preview') {
@@ -199,50 +206,47 @@ export const HoverCard = defineComponent({ name: 'HoverCard', props: { openDelay
           }
           return
         }
-        if (props.inline) {
-          const height = Math.max(h, cardRef.value?.scrollHeight ?? 0)
-          const maxWidth = Math.max(0, Math.min(INLINE_PREVIEW_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2))
-          const width = props.fitContent ? Math.min(cardRef.value?.offsetWidth ?? maxWidth, maxWidth) : maxWidth
-          const topMargin = overlayTopMargin(VIEWPORT_MARGIN, r, ANCHOR_GAP)
-          const belowTop = Math.max(topMargin, r.bottom + ANCHOR_GAP)
-          const above = Math.max(0, r.top - ANCHOR_GAP - topMargin)
-          const below = Math.max(0, window.innerHeight - belowTop - VIEWPORT_MARGIN)
-          const onTop = height > below && above > below
-          const maxHeight = onTop ? above : below
-          const left = Math.max(VIEWPORT_MARGIN, Math.min(r.left, window.innerWidth - width - VIEWPORT_MARGIN))
-          const top = onTop ? r.top - ANCHOR_GAP - Math.min(height, maxHeight) : belowTop
-          const bridgeTop = onTop ? top + Math.min(height, maxHeight) : r.bottom
-          const bridgeLeft = Math.min(r.left, left)
-          pos.value = {
-            left,
-            top,
-            ...props.fitContent ? {} : { width },
-            maxWidth,
-            maxHeight,
-            bridge: {
-              left: bridgeLeft,
-              top: bridgeTop,
-              width: Math.max(r.right, left + width) - bridgeLeft,
-              height: Math.max(0, (onTop ? r.top : top) - bridgeTop),
-            },
-          }
-          return
+        const height = Math.max(h, cardRef.value?.scrollHeight ?? 0)
+        const maxWidth = Math.max(0, Math.min(INLINE_PREVIEW_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2))
+        const width = props.fitContent ? Math.min(cardRef.value?.offsetWidth ?? maxWidth, maxWidth) : maxWidth
+        const topMargin = overlayTopMargin(VIEWPORT_MARGIN, r, ANCHOR_GAP)
+        const belowTop = Math.max(topMargin, r.bottom + ANCHOR_GAP)
+        const above = Math.max(0, r.top - ANCHOR_GAP - topMargin)
+        const below = Math.max(0, window.innerHeight - belowTop - VIEWPORT_MARGIN)
+        const onTop = height > below && above > below
+        const maxHeight = onTop ? above : below
+        const left = Math.max(VIEWPORT_MARGIN, Math.min(r.left, window.innerWidth - width - VIEWPORT_MARGIN))
+        const top = onTop ? r.top - ANCHOR_GAP - Math.min(height, maxHeight) : belowTop
+        const bridgeTop = onTop ? top + Math.min(height, maxHeight) : r.bottom
+        const bridgeLeft = Math.min(r.left, left)
+        pos.value = {
+          left,
+          top,
+          ...props.fitContent ? {} : { width },
+          maxWidth,
+          maxHeight,
+          bridge: {
+            left: bridgeLeft,
+            top: bridgeTop,
+            width: Math.max(r.right, left + width) - bridgeLeft,
+            height: Math.max(0, (onTop ? r.top : top) - bridgeTop),
+          },
         }
-        const top = r.top + h > window.innerHeight - VIEWPORT_MARGIN ? window.innerHeight - h - VIEWPORT_MARGIN : r.top
-        pos.value = { left: r.right + ANCHOR_GAP, top }
       }
       place()
       const visibility = new MutationObserver(place)
       for (let ancestor = rootRef.value?.parentElement; ancestor != null; ancestor = ancestor.parentElement) {
         visibility.observe(ancestor, { attributes: true, attributeFilter: ['inert', 'hidden'] })
       }
-      const observer = (props.variant === 'preview' || props.inline) && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null
+      const observer = !compact.value && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null
       for (const element of [cardRef.value, rootRef.value, props.widthAnchorRef?.value]) {
         if (element !== null && element !== undefined)
           observer?.observe(element)
       }
-      window.addEventListener('scroll', place, true)
-      window.addEventListener('resize', place)
+      if (!compact.value) {
+        window.addEventListener('scroll', place, true)
+        window.addEventListener('resize', place)
+      }
       return () => {
         observer?.disconnect()
         visibility.disconnect()
@@ -252,17 +256,6 @@ export const HoverCard = defineComponent({ name: 'HoverCard', props: { openDelay
     })()
     if (typeof dispose === 'function')
       onCleanup(dispose)
-  }, { immediate: true, flush: 'post' })
-  // The first placement ran before the card mounted (height read 0): once the
-  // card's real height is measurable, correct the bottom-edge clamp. The
-  // correction converges — a clamped top satisfies the guard, so it runs once.
-  watch([() => open.value, () => pos.value, () => props.variant, () => props.inline, () => rootRef.value], () => {
-    if (!open.value || pos.value === null || props.variant === 'preview' || props.inline)
-      return
-    const h = cardRef.value?.offsetHeight ?? 0
-    if (pos.value.top + h > window.innerHeight - VIEWPORT_MARGIN) {
-      pos.value = { left: pos.value.left, top: window.innerHeight - h - VIEWPORT_MARGIN }
-    }
   }, { immediate: true, flush: 'post' })
   const copy = async (text: string): Promise<void> => {
     if (copied.value || copyingRef.value)
@@ -289,8 +282,9 @@ export const HoverCard = defineComponent({ name: 'HoverCard', props: { openDelay
     close()
   }
   return () => {
-    const card = open.value && pos.value !== null && (h('div', { 'ref': cardRef, 'class': clsx(css.card, props.variant === 'preview' && css.preview, props.inline && css.media, props.inline && props.fitContent && css.fitContent, copyable.value && css.copyable, copied.value && css.feedback), 'data-closing': closing.value || undefined, 'style': {
-      left: `${pos.value.left}px`, top: `${pos.value.top}px`, width: pos.value.width === undefined ? undefined : `${pos.value.width}px`, maxWidth: pos.value.maxWidth === undefined ? undefined : `${pos.value.maxWidth}px`, maxHeight: pos.value.maxHeight === undefined ? undefined : `${pos.value.maxHeight}px`,
+    const card = open.value && pos.value !== null && (h('div', { 'ref': cardRef, 'class': clsx(css.card, compact.value && css.compact, props.variant === 'preview' && css.preview, props.inline && css.media, props.inline && props.fitContent && css.fitContent, copyable.value && css.copyable, copied.value && css.feedback), 'data-closing': closing.value || undefined, 'style': {
+      positionAnchor: compact.value ? anchorName : undefined,
+      left: pos.value.left === undefined ? undefined : `${pos.value.left}px`, top: pos.value.top === undefined ? undefined : `${pos.value.top}px`, width: pos.value.width === undefined ? undefined : `${pos.value.width}px`, maxWidth: pos.value.maxWidth === undefined ? undefined : `${pos.value.maxWidth}px`, maxHeight: pos.value.maxHeight === undefined ? undefined : `${pos.value.maxHeight}px`,
       minHeight: copied.value && copyHeightRef.value !== null ? `${copyHeightRef.value}px` : undefined,
       '--dsh-hover-preview-fade': `${PREVIEW_FADE_MS}ms`,
     } satisfies CSSProperties, 'role': copyable.value ? 'button' : undefined, 'tabIndex': copyable.value ? 0 : undefined, 'aria-label': copyable.value ? `${props.copyLabel}: ${props.copyText}` : undefined, 'onClick': copyable.value ? (e: MouseEvent) => {
@@ -310,7 +304,7 @@ export const HoverCard = defineComponent({ name: 'HoverCard', props: { openDelay
       if (props.copyText !== undefined) void copy(props.copyText)
     }
       : undefined }, [copied.value ? h('span', { 'class': css.copied, 'aria-hidden': 'true' }, [props.copiedLabel]) : slots.default?.()]))
-    return (h('span', { 'ref': rootRef, 'class': clsx(css.root, props.inline && css.inline), 'onFocusin': props.inline ? (event: FocusEvent) => {
+    return (h('span', { 'ref': rootRef, 'class': clsx(css.root, props.inline && css.inline), 'style': compact.value && open.value ? { anchorName } : undefined, 'onFocusin': props.inline ? (event: FocusEvent) => {
       if (!props.disabled && event.target instanceof Element && event.target.matches(':focus-visible')) {
         cancelClose()
         phase.value = 'open'

@@ -25,6 +25,8 @@ English | [中文](README.zh.md)
 <a id="use-this-package"></a>
 ## Use this package
 
+The published runtime includes its JavaScript entry and sibling chunks required by Vitest snapshot operations.
+
 This package turns a shipped profile scenario into a keyless snapshot suite: write a scenario table and a fixtures directory, call the matching adapter once, and the kit owns launching or composing the profile, driving the scenario, comparing normalized output, and guarding the committed fixtures.
 
 ### Writing a snapshot suite

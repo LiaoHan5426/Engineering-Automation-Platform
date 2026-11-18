@@ -231,7 +231,7 @@ describe("list_subagent_models", () => {
     });
   });
 
-  it("reads the recorded Session allowlist through the delegation plugin", async () => {
+  it("reads the Host allowlist through the delegation plugin", async () => {
     const ctx = await setup({ provider: "mock", withModelSelection: true });
     ctx.llm.registerAdapter(["alpha", "secret"], new CatalogAdapter());
     const result = await executeToolFixture(ctx, {
@@ -255,6 +255,10 @@ describe("list_subagent_models", () => {
     await ctx.plugin(AgentRegistry);
     await mountWorkingDirectoryFixture(ctx);
     await ctx.plugin(SubagentRuntime);
+    await ctx.plugin(SubagentModelSelectionConfig, {
+      enabled: true,
+      allowedModels: [{ provider: "alpha", model: "fast" }],
+    });
     await ctx.plugin(tool, { provider: "unused", modelDiscovery: true });
     callingAgents.set(ctx, callingAgents.get(parent)!);
     expect(ctx.tools.get("list_subagent_models")).toBeDefined();
@@ -307,7 +311,9 @@ describe("list_subagent_models", () => {
 
     const denied = await call(ctx, { provider: "alpha", model: "plain" });
     expect(denied.isError).toBe(true);
-    expect(text(denied)).toContain("is not allowed for this Session");
+    expect(text(denied)).toContain(
+      "is not allowed by the current subagent model selection setting",
+    );
     expect(denied.error?.info).toEqual({ name: "SubagentError", code: "MODEL_ROUTE_NOT_ALLOWED" });
   });
 
@@ -320,7 +326,9 @@ describe("list_subagent_models", () => {
     const result = await call(ctx, { provider: "secret" });
 
     expect(result.isError).toBe(true);
-    expect(text(result)).toContain('provider "secret" is not allowed for this Session');
+    expect(text(result)).toContain(
+      'provider "secret" is not allowed by the current subagent model selection setting',
+    );
     expect(result.error?.info).toEqual({ name: "SubagentError", code: "MODEL_ROUTE_NOT_ALLOWED" });
     expect(listModels).not.toHaveBeenCalled();
   });
@@ -443,13 +451,13 @@ describe("list_subagent_models", () => {
       info: { name: "ToolArgsError", code: "INVALID_ARGS" },
     },
     {
-      args: { provider: "" },
-      expected: "`provider` must be non-empty",
+      args: { provider: "", model: "fast" },
+      expected: "`model` requires `provider`",
       info: { name: "ToolArgsError", code: "INVALID_ARGS" },
     },
     {
       args: { provider: "missing" },
-      expected: "is not allowed for this Session",
+      expected: "is not allowed by the current subagent model selection setting",
       info: { name: "SubagentError", code: "MODEL_ROUTE_NOT_ALLOWED" },
     },
   ])("rejects incomplete or unavailable provider requests", async ({ args, expected, info }) => {
@@ -460,13 +468,14 @@ describe("list_subagent_models", () => {
     expect(result.error?.info).toEqual(info);
   });
 
-  it("rejects an empty exact model after resolving the provider", async () => {
+  it("treats empty query fields as omitted", async () => {
     const ctx = await setupListTool();
     ctx.llm.registerAdapter(["alpha"], new CatalogAdapter());
-    const result = await call(ctx, { provider: "alpha", model: "" });
-    expect(result.isError).toBe(true);
-    expect(text(result)).toContain("`model` must be non-empty");
-    expect(result.error?.info).toEqual({ name: "ToolArgsError", code: "INVALID_ARGS" });
+    expect(text(await call(ctx, { provider: "", model: "" }))).toBe(text(await call(ctx, {})));
+    expect(text(await call(ctx, { provider: "alpha", model: "" }))).toBe(
+      text(await call(ctx, { provider: "alpha" })),
+    );
+    expect((await call(ctx, { provider: "alpha", model: "" })).isError).toBe(false);
   });
 
   it("reports registered alternatives for an unavailable provider", async () => {

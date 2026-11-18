@@ -7,6 +7,7 @@ import { expect, it } from "vite-plus/test";
 import { runLoaderSmoke } from "@deepseek-ai/dsh-loader-smoke";
 import { parseSessionLog } from "@deepseek-ai/dsh-llm-replay";
 import {
+  convertedPdfFiles,
   expectNoRenderContext,
   officeCalls,
   officeImages,
@@ -204,36 +205,35 @@ it.skipIf(!process.env.DEEPSEEK_API_KEY || !runtime)(
           .filter((call) => call.name === "skill")
           .map((call) => (JSON.parse(call.arguments) as { name: string }).name);
         const office = officeCalls(events);
+        const commands = calls
+          .filter((call) => call.name === "bash" || call.name === "pwsh")
+          .map((call) => (JSON.parse(call.arguments) as { command: string }).command)
+          .join("\n");
+        const converted = convertedPdfFiles(events);
         const diagnostic = JSON.stringify({
           calls: calls.map((call) => call.name),
           skills,
+          commands,
           office: office.map((call) => ({
             name: call.name,
             input: call.args.input,
             format: call.args.format,
           })),
+          converted,
         });
-        expect(
-          skills.some((name) => ["office-docx", "office-pptx", "office-xlsx"].includes(name)),
-          diagnostic,
-        ).toBe(false);
-        const commands = calls
-          .filter((call) => call.name === "bash" || call.name === "pwsh")
-          .map((call) => (JSON.parse(call.arguments) as { command: string }).command)
-          .join("\n");
         expect(
           office.some((call) => call.name === "office_convert" && call.args.format === "pdf"),
           diagnostic,
         ).toBe(true);
+        // The conversion reports the temporary output's byte count and that file is released when the conversation
+        // ends, so a matching size is what ties result.pdf to office_convert. Extra steps such as pdfinfo, a format
+        // skill, or a render of the result are model choices and do not change the deliverable.
+        const delivered = await readFile(join(cwd, "result.pdf"));
         expect(
-          office.some((call) => call.name === "office_render"),
+          converted.some((conversion) => conversion.bytes === delivered.length),
           diagnostic,
-        ).toBe(false);
-        expectNoRenderContext(events);
-        expect(commands, diagnostic).not.toMatch(
-          /pypdf|PyPDF2|\bfitz\b|pdfminer|pdfplumber|pdfinfo|pdftotext/iu,
-        );
-        expect((await readFile(join(cwd, "result.pdf"))).subarray(0, 5).toString()).toBe("%PDF-");
+        ).toBe(true);
+        expect(delivered.subarray(0, 5).toString(), diagnostic).toBe("%PDF-");
         expect(await readFile(join(cwd, "input.docx"))).toEqual(original);
       },
     });

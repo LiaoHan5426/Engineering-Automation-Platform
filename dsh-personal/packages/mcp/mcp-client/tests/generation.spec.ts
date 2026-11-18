@@ -29,6 +29,8 @@ const config: Config = {
   closeTimeoutMs: 5_000,
   expandTemplates: false,
   failOnStartupError: true,
+  toolLoading: "eager",
+  catalogDescriptionMaxLength: 160,
 };
 
 it("unregisters tools when disposal interrupts the registration result", async () => {

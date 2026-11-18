@@ -14,6 +14,7 @@ import { fireEvent, screen } from "@testing-library/dom";
 import { act } from "../../../test-support/client-runtime/src/vue-test.ts";
 import {
   SlotTestRuntime,
+  syncedConfig,
   stubConfigForm,
   usePinnedBrowserLanguages,
 } from "@deepseek-ai/dsh-client-test-runtime";
@@ -160,7 +161,7 @@ async function bench() {
   const locale = new LocaleRuntime(runtime.ctx);
   runtime.ctx.provide("locale", locale);
   runtime.ctx.provide("shortcuts", { catalog: createSnapshotStore([]) });
-  await runtime.mount({ apply: applyMenus, inject: injectMenus });
+  await runtime.mount({ apply: applyMenus, inject: injectMenus }, syncedConfig({ resolutionTimeoutMs: 1000 }));
   runtime.slots.installLocale(locale);
   runtime.ctx.effect(
     () => locale.register("settings.account", { en, zh }),
@@ -170,7 +171,7 @@ async function bench() {
     "shell.overlay": { kind: "list", scope: "root" },
     "settings.section": { kind: "list", scope: "root" },
   });
-  await runtime.mount({ inject: [...injectConversation], apply: applyConversation });
+  await runtime.mount({ inject: [...injectConversation], apply: applyConversation }, syncedConfig({ busyEnter: "queue", maxConcurrentFileUploads: 2 }));
   let descriptor: Parameters<typeof runtime.ctx.uiSession.provide>[0] | undefined;
   const provide = runtime.ctx.uiSession.provide.bind(runtime.ctx.uiSession);
   runtime.ctx.uiSession.provide = (next) => {

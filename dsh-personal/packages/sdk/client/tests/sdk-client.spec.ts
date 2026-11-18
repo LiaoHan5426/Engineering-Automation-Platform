@@ -98,14 +98,25 @@ describe("DeepSeekHarness", () => {
     ).toBe(false);
   });
 
-  it("returns a restored handle that can run followups on the same identity", async () => {
-    const harness = harnessWith();
-    const session = await harness.resumeSession("saved-session");
-    expect(session.id).toBe("saved-session");
-    expect((await session.run([{ type: "text", text: "continue" }])).sessionId).toBe(
-      "saved-session",
-    );
-  });
+  it.each([undefined, "danger-full-access"])(
+    "restores a handle with optional permissions: %s",
+    async (permissionMode) => {
+      const harness = harnessWith();
+      const request = vi.spyOn(harness.client, "request");
+      const session = await harness.resumeSession(
+        "saved-session",
+        permissionMode === undefined ? {} : { permissionMode },
+      );
+      expect(request).toHaveBeenCalledWith("session/resume", {
+        sessionId: "saved-session",
+        ...(permissionMode === undefined ? {} : { permissionMode }),
+      });
+      expect(session.id).toBe("saved-session");
+      expect((await session.run([{ type: "text", text: "continue" }])).sessionId).toBe(
+        "saved-session",
+      );
+    },
+  );
 
   it("propagates resume failures", async () => {
     await expect(harnessWith({ FAKE_RESUME_ERROR: "1" }).resumeSession("missing")).rejects.toThrow(

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import type { SessionPendingInteractionBase } from "@deepseek-ai/dsh-client-ui-session/client";
 import type {
@@ -46,7 +47,7 @@ async function bench() {
   const fiber = runtime.ctx.plugin(ConversationController, {
     input: hub,
     blocks: new ComposerBlockRegistry(),
-    maxConcurrentFileUploads: 2,
+    maxConcurrentFileUploads: createSnapshotStore(2),
   });
   await fiber.await();
   const conversation = new UiConversation(runtime.ctx, runtime.sessions);

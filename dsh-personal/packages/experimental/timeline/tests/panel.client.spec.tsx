@@ -893,7 +893,7 @@ describe("the Task Tree and Timeline tabs", () => {
     expect(titles).toEqual([
       "Task Tree: Review release",
       "Review release · Verify behavior",
-      `Level 1 · 1m: ${new Date(report.start).toLocaleString()} – ${new Date(report.end).toLocaleString()}`,
+      `Level 1 · 1m: ${new Date(report.start).toLocaleString("en")} – ${new Date(report.end).toLocaleString("en")}`,
     ]);
     expect(screen.getByText(en.controlWaiting)).toBeTruthy();
     expect(screen.getByText("The saved result is verified.")).toBeTruthy();

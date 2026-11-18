@@ -247,10 +247,15 @@ it.skipIf(MODE === "record")(
     const account = scaffold.ctx.get("deepseekAccount");
     if (account === undefined) throw new Error("Shipped native Account service is absent");
     // Only credential acquisition is nondeterministic; the Loader-owned native route and wire remain real.
+    const credential = {
+      headers: { "x-dsh-auth-token": "paid-browser-fixture-token" },
+      revoked: new AbortController().signal,
+      reject: () => Promise.resolve(),
+    };
     const auth = vi
-      .spyOn(account, "resolveToken")
+      .spyOn(account, "resolveRequestCredential")
       .mockImplementation(async (url: string) =>
-        new URL(url).origin === origin ? "paid-browser-fixture-token" : undefined,
+        new URL(url).origin === origin ? credential : undefined,
       );
     resources.restoreAuth = () => {
       auth.mockRestore();

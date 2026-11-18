@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { expect, it } from "vite-plus/test";
@@ -239,6 +240,7 @@ it.each([
             page,
             '[data-chat-call-id="shell-command-details-background"]',
             scaffold.workspaceCwd,
+            { replacements: [[basename(scaffold.workspaceCwd), "{{workspace}}"]] },
           ),
           webSnapshotMode(),
         );

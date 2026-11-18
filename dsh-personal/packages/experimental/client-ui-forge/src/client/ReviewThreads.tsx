@@ -373,17 +373,7 @@ const Comment = defineComponent(
                     },
                     [renderLogin ?? props.t('thread.deletedAuthor')],
                   ),
-                  h(
-                    'span',
-                    {
-                      class: css.time,
-                      title: props.comment.createdAt,
-                    },
-                    [
-                      formatAgo(props.comment.createdAt, props.now, props.t) ??
-                        props.comment.createdAt,
-                    ],
-                  ),
+                  h(Tooltip, { label: props.comment.createdAt, side: 'bottom', portal: true, delayMs: 500 }, { default: () => [h('span', { class: css.time }, [formatAgo(props.comment.createdAt, props.now, props.t) ?? props.comment.createdAt])] }),
                   renderLogin !== null &&
                     renderLogin === props.actions.author &&
                     h(

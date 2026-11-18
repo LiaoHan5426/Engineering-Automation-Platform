@@ -205,7 +205,8 @@ describe("subagent sibling messages", () => {
 
     await ctx.subagents.sendMessage(sender, b, [{ type: "text", text: "hello" }], { signal });
     const delivered = (await storedUserMessages(ctx, b)).find(
-      (event) => event.data.source.kind === "agent-message",
+      (event) =>
+        event.data.source.kind === "agent-message" && event.data.source.senderSessionId === a,
     )!;
     expect(textOf(delivered)).toBe("Agent agent-1 sent a message: hello");
     expect(delivered.data.source).toEqual({
@@ -347,7 +348,10 @@ describe("tree-wide messages", () => {
     });
 
     const messages = await storedUserMessages(ctx, leafId);
-    const delivered = messages.find((event) => event.data.source.kind === "agent-message")!;
+    const delivered = messages.find(
+      (event) =>
+        event.data.source.kind === "agent-message" && event.data.source.senderSessionId === a,
+    )!;
     expect(textOf(delivered)).toBe("Agent agent-2 sent a message: cold cousin");
     expect(delivered.data.source).toEqual({
       kind: "agent-message",

@@ -55,8 +55,7 @@ it("lists dsh-doc once without loading instructions or calling tools for an ordi
         ),
       ).toEqual([]);
       const names = scaffold.ctx.tools.schemas(agent).map((tool) => tool.name);
-      expect(names).not.toContain("cordis_inspect_list");
-      expect(names).not.toContain("cordis_inspect_query");
+      expect(names).toContain("cordis_inspect");
       await page.getByText("READY", { exact: true }).waitFor();
       await assertFixtureInventory(dirname(FIXTURE), ["session.v4.jsonl"]);
     } finally {

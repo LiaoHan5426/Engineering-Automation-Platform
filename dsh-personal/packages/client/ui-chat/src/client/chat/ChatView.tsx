@@ -19,6 +19,7 @@ import type { ChatFlowHookContext, ChatViewSlotProps, OpenFileOptions } from '..
 import type { ChatSnapshot } from '../contract/snapshot.ts'
 import { markdownLabels } from '../markdown-labels.ts'
 import { TurnNavigator } from './TurnNavigator.tsx'
+import { ChatAside } from './ChatAside.tsx'
 import { mergeTurnRailItems } from './turn-rail-items.ts'
 import { useTextInteraction } from './text-interaction.ts'
 import { useChatScroll } from './use-chat-scroll.ts'
@@ -306,6 +307,7 @@ export const ChatView = defineComponent(
             t,
           })
           : null,
+        h(ChatAside, { renderSlot: props.renderSlot }),
         h(
           'div',
           {
@@ -462,7 +464,7 @@ export const ChatView = defineComponent(
                 'aria-label': t('chat.toBottom'),
                 onClick: scroll.returnToBottom,
               },
-              [h(IconChevronDownOutlineRegular)],
+              [h(IconChevronDownOutlineRegular, { size: 16 })],
             ),
           ]),
         error === null

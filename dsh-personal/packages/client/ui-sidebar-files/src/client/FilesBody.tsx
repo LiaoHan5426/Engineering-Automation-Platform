@@ -144,7 +144,7 @@ export const FilesBody = defineComponent((props: FilesBodyProps) => {
             ]),
           ],
         }),
-        renderSlot('sidebar.right.tab.files.actions', { absolutePath: cwd }),
+        h('div', { class: css.externalActions }, [renderSlot('sidebar.right.tab.files.actions', { absolutePath: cwd })]),
       ]),
       h('div', {
         'class': css.content,

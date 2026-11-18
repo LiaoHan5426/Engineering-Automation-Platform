@@ -15,7 +15,13 @@ import {
   webSnapshotMode,
   type WebScaffold,
 } from "./scaffold.ts";
-import { connectFreshWorkspace, newEnglishPage, openSettings, saveFailureShot } from "./support.ts";
+import {
+  connectFreshWorkspace,
+  newEnglishPage,
+  openSettings,
+  saveFailureShot,
+  showSessionPanel,
+} from "./support.ts";
 
 const BASE_FIXTURE = fileURLToPath(
   new URL("../../../snapshots/web/live-interactions/session.v3.jsonl", import.meta.url),
@@ -126,8 +132,9 @@ describe("web e2e: composer paste routing", () => {
       parent,
     });
     await waitForAgentToSettle(scaffold, started.childId);
-    await page.getByRole("button", { name: "1 subagent", exact: true }).hover();
-    await page
+    await (
+      await showSessionPanel(page)
+    )
       .getByRole("treeitem", { name: new RegExp(LABEL) })
       .getByRole("button", { name: `Open ${LABEL} in sidebar`, exact: true })
       .click();

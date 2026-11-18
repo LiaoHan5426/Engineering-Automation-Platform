@@ -512,6 +512,7 @@ export const PermissionPanel = defineComponent(
     const refresh = computed(() => props.refresh)
     const state = props.useCuaPermissions(value => value)
     const observed = computed(() => state.value.system.value)
+    const windows = computed(() => observed.value?.platform === 'windows' || (observed.value === null && state.value.windowsProvider.value === true))
     const apps = computed(() => state.value.applications.value)
     const transitioning = computed(() => state.value.changing)
     const busy = computed(() => transitioning.value || state.value.system.busy)
@@ -554,6 +555,13 @@ export const PermissionPanel = defineComponent(
               'aria-label': t.value('title'),
             },
             [
+              h('div', { class: css.guidance, 'data-cua-guidance': true }, [
+                h('p', null, [t.value('previewNotice')]),
+                windows.value && h(Fragment, null, [
+                  h('p', null, [t.value('windowsHelperBuild', { directory: 'packages/experimental/cua-windows', x64: 'pnpm run build:native:x64', arm64: 'pnpm run build:native:arm64' })]),
+                  h('p', null, [t.value('windowsHelperPath', { patch: 'cordis.patch.yml', entry: 'cua-windows', config: 'config', path: 'helperPath', exe: 'dsh-cua-windows.exe' })]),
+                ]),
+              ]),
               h('h3', null, [t.value('title')]),
               h(
                 'div',
@@ -567,6 +575,8 @@ export const PermissionPanel = defineComponent(
                   h(PersistentPtcSetting, {
                     ...props,
                   }),
+                  observed.value === null && state.value.windowsProvider.error !== null &&
+                    h('p', { role: 'alert', class: css.error }, [t.value('providerLookupFailed', { message: state.value.windowsProvider.error })]),
                   state.value.system.error !== null &&
                     h(
                       'div',

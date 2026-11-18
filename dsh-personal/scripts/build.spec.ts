@@ -1,7 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
-import { describe, expect, it } from "vite-plus/test";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { describe, expect, it, onTestFinished } from "vite-plus/test";
 import { buildGates, parseBuildArguments } from "./build.ts";
+import { removeFixtureSafely } from "./test-fixture-cleanup.ts";
 
 const root = resolve(import.meta.dirname, "..");
 
@@ -13,6 +16,7 @@ const artifactGraph = {
   "desktop-bundle": ["host-bundle"],
   "client-src": ["desktop-bundle"],
   "client-bundle": ["client-src"],
+  "host-runtime-exports": ["host-bundle"],
   web: ["client-bundle"],
 };
 
@@ -99,8 +103,29 @@ describe("repository build steps", () => {
   it.each(["complete", "artifacts", "check", "typecheck"] as const)(
     "chains every %s step when serial execution is selected",
     (scope) => {
-      const original = buildGates(root, scope);
-      const serial = buildGates(root, scope, {}, true);
+      const fixtureRoot = mkdtempSync(join(tmpdir(), "dsh-serial-build-"));
+      onTestFinished(() => {
+        removeFixtureSafely(fixtureRoot);
+      });
+      const leaf = join(fixtureRoot, "leaf");
+      mkdirSync(leaf);
+      writeFileSync(join(leaf, "index.ts"), "export {};\n");
+      writeFileSync(
+        join(leaf, "tsconfig.json"),
+        JSON.stringify({ compilerOptions: { composite: true }, files: ["index.ts"] }),
+      );
+      for (const face of ["host", "client"]) {
+        writeFileSync(
+          join(fixtureRoot, `tsconfig.${face}.json`),
+          JSON.stringify({
+            compilerOptions: { noEmit: true },
+            files: [],
+            references: [{ path: "./leaf" }],
+          }),
+        );
+      }
+      const original = buildGates(fixtureRoot, scope);
+      const serial = buildGates(fixtureRoot, scope, {}, true);
       expect(serial.map((gate) => gate.id)).toEqual(original.map((gate) => gate.id));
       for (const [index, gate] of serial.entries()) {
         const previous = serial[index - 1];

@@ -67,7 +67,7 @@ async function bench() {
         Promise.resolve(sessionId === PARENT ? { meta: header, events } : undefined),
     }) as never,
   );
-  installSessionReadTestServices(ctx);
+  await installSessionReadTestServices(ctx);
   provideWorkingDirectoryFixture(ctx);
   await ctx.plugin(SubagentRuntime);
   const controller = await createSessionTestController(ctx, defaults);
@@ -260,7 +260,7 @@ describe("SessionController subagent catalog", () => {
     await ctx.plugin(SessionStore);
     await ctx.plugin(SessionProjectionRegistry);
     await ctx.plugin(AgentRegistry);
-    installSessionReadTestServices(ctx);
+    await installSessionReadTestServices(ctx);
     const controller = await createSessionTestController(ctx, defaults);
     const session = ctx.sessions.create(PARENT, { meta: { cwd: "/workspace" } });
     const expected = ctx.sessionProjections.snapshot(session);

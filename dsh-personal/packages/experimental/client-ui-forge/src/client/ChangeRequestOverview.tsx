@@ -41,7 +41,7 @@ import { CheckGlyph } from './glyphs.tsx'
 import type { ForgePanelKey, NS } from './locales.ts'
 import { checkCounts, checkDuration } from './status.ts'
 import { searchFieldKeyDown } from './menu-search.ts'
-import css from './ForgeTab.module.css'
+import css from './Forge.module.css'
 import overview from './ChangeRequestOverview.module.css'
 type Translate = PropsLocale<typeof NS>['t']
 /** Milliseconds between the last keystroke of a reviewer search and the listing it reads. */
@@ -1506,7 +1506,7 @@ export function IssuesRow({
         h(
           Tooltip,
           {
-            label: issue.title,
+            label: issue.title, delayMs: 500,
             side: 'top',
           },
           {

@@ -107,7 +107,7 @@ function ZoneGlyph({ zone }: { readonly zone: DockZone }): VNodeChild {
     {
       width: '16',
       height: '16',
-      viewBox: '0 0 16 16',
+      viewBox: '-1 -1 18 18',
       fill: 'none',
       'aria-hidden': 'true',
     },

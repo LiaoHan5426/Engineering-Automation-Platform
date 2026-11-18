@@ -25,6 +25,8 @@ Browse the commands available in the current window and find them by action, Eng
 <a id="use-this-package"></a>
 ## Use this package
 
+Shortcut save feedback reuses the shared 16px Regular warning and circled-check glyphs.
+
 The Web app bundle mounts this package together with `shortcuts`. The reference shows only registered commands and existing fixed input actions. Desktop shows the effective device keys; commands without a Web default show No shortcut. The Settings entry and Mod+/ open the same single dialog, titled “Keyboard shortcuts” in English and “快捷键” in Chinese. Its 480×600 CSS-pixel card shrinks to fit smaller windows; the header and search remain above an internally scrolling list. The search field receives focus on open without changing its border color. Automatic entry and return focus in the reference, recorder, and reset confirmation omit outlines, including returns after Escape and application close shortcuts. Containers remain outline-free, and Tab and directional navigation retain their visible focus indicators. The Settings entry follows Coding Tools and is labeled “Edit shortcuts”, with an “Open from anywhere” shortcut tooltip, and uses a filled button with the same standard radius as adjacent settings controls and no dropdown icon and reads the same effective binding for its tooltip and `aria-keyshortcuts`; both are absent without a binding.
 
 `Mod+/` opens the reference when no modal is open or Settings is in front, and closes it when the reference is in front. While the reference is in front, the Settings command cannot open or close Settings. Held-key repeats are ignored. Recording, pending writes, and a nested confirmation prevent the reference shortcut from closing the dialog.
@@ -43,7 +45,12 @@ Hover an application row to highlight its rounded surface and reveal the edit ic
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The General Settings entry and shell overlay share one declared interaction store. Catalog and configuration updates arrive through injected observable hooks; recording and persistence use injected service callbacks. The shared modal primitive owns top-layer Escape, Tab traversal, initial search focus, and restoration to the invoking control. Native Vue components bind the injected selectors once in setup and read their readonly refs; the catalog search and current profile count remain computed projections of the same stores. Default and footer slots carry dialog content. The recorder owns its physical-key listeners, composition state and recording acknowledgement in a scoped watcher, and releases them when its identity changes or it unmounts. A synchronous write guard retains single-flight persistence, while the reviewed revision and captured draft remain local to that recorder.
+Native Vue components bind the injected selectors once in setup and read their readonly refs; the catalog search and current profile count remain computed projections of the same stores. Default and footer slots carry dialog content. The recorder owns its physical-key listeners, composition state and recording acknowledgement in a scoped watcher, and releases them when its identity changes or it unmounts. A synchronous write guard retains single-flight persistence, while the reviewed revision and captured draft remain local to that recorder.
+
+The search icon and empty query hint use the same foreground role; entered text keeps the primary text color.
+
+The General Settings entry and shell overlay share one declared interaction store. Catalog and configuration updates arrive through injected observable hooks; recording and persistence use injected service callbacks. The shared modal primitive owns top-layer Escape, Tab traversal, and restoration to the invoking control.
+
 
 All fixed actions come from the service's observable fixed catalog. Conversation and approval plugins contribute their own actions; this integration contributes shared menu actions. Rows follow locale updates and disappear when their registration is disposed.
 

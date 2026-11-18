@@ -1,8 +1,7 @@
-import { defineComponent, h, computed, shallowRef, watch, type VNodeChild } from 'vue'
+import { defineComponent, h, computed, shallowRef, type VNodeChild } from 'vue'
 /** Base branch picker of the local changes view's `branch` scope: the automatic fork point, then remote-tracking and local branches. */
 import clsx from 'clsx'
 import {
-  Button,
   IconBranchOutlineRegular,
   IconCheckOutlineRegular,
   IconChevronDownOutlineRegular,
@@ -11,7 +10,6 @@ import {
   Input,
   Menu,
   MenuItemButton,
-  StateDot,
   Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
@@ -19,9 +17,8 @@ import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type { ForgeBaseBranch, ForgeBaseBranches } from '../types.ts'
 import type { NS } from './locales.ts'
 import { searchFieldKeyDown } from './menu-search.ts'
+import { useBranchSearch, branchSearchStatus } from './branch-search.tsx'
 import css from './BaseMenu.module.css'
-/** Milliseconds between the last keystroke of a search and the listing it reads. */
-const SEARCH_DELAY_MS = 150
 /** Props of the base branch picker. */
 export interface BaseMenuProps extends PropsLocale<typeof NS> {
   /** Chosen branch, or null for the automatic fork point. */
@@ -59,75 +56,12 @@ export const BaseMenu = defineComponent(
     ) => {
       open.value = typeof next === 'function' ? next(open.value) : next
     }
-    const query = shallowRef('')
-    const setQuery = (
-      next: typeof query.value | ((previous: typeof query.value) => typeof query.value),
-    ) => {
-      query.value = typeof next === 'function' ? next(query.value) : next
-    }
-    const attempt = shallowRef(0)
-    const setAttempt = (
-      next: typeof attempt.value | ((previous: typeof attempt.value) => typeof attempt.value),
-    ) => {
-      attempt.value = typeof next === 'function' ? next(attempt.value) : next
-    }
-    const listing = shallowRef<RemoteResult<ForgeBaseBranches> | null>(null)
-    const setListing = (
-      next: typeof listing.value | ((previous: typeof listing.value) => typeof listing.value),
-    ) => {
-      listing.value = typeof next === 'function' ? next(listing.value) : next
-    }
-    const search = shallowRef<HTMLInputElement | null>(null)
     const shown = computed(() => props.visible && open.value)
-    watch(
-      () => [shown.value, query.value, attempt.value, props.list],
-      (_next, _previous, onCleanup) => {
-        const dispose = (() => {
-          if (!shown.value) return
-          const controller = new AbortController()
-          const timer = setTimeout(
-            () => {
-              void props.list(query.value, controller.signal).then((result) => {
-                if (!controller.signal.aborted) setListing(result)
-              })
-            },
-            query.value === '' ? 0 : SEARCH_DELAY_MS,
-          )
-          return () => {
-            clearTimeout(timer)
-            controller.abort()
-          }
-        })()
-        if (typeof dispose === 'function') onCleanup(dispose)
-      },
-      { immediate: true, flush: 'post' },
-    )
-    // The portalled menu measures itself hidden before its first frame, and a hidden field cannot take the keyboard.
-    // A touch screen keeps its on-screen keyboard closed until the field is tapped.
-    watch(
-      () => [shown.value],
-      (_next, _previous, onCleanup) => {
-        const dispose = (() => {
-          if (
-            !shown.value ||
-            (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches)
-          )
-            return
-          const frame = requestAnimationFrame(() => {
-            search.value?.focus()
-          })
-          return () => {
-            cancelAnimationFrame(frame)
-          }
-        })()
-        if (typeof dispose === 'function') onCleanup(dispose)
-      },
-      { immediate: true, flush: 'post' },
-    )
+    const { query, listing, field, setQuery, retry, reset } = useBranchSearch(() => shown.value, (text, signal) => props.list(text, signal))
     return () => {
       const close = (): void => {
         setOpen(false)
-        setQuery('')
+        reset()
       }
       const pick = (base: ForgeBaseBranch | null): void => {
         close()
@@ -178,31 +112,7 @@ export const BaseMenu = defineComponent(
         },
       ].filter(group => group.options.length > 0)
       const first = groups[0]?.options[0]
-      let body: VNodeChild
-      if (listing.value === null) {
-        body = h('div', { class: css.status, role: 'status' }, [
-          h(StateDot, { state: 'ongoing' }),
-          props.t('diff.base.loading'),
-        ])
-      } else if (!listing.value.ok) {
-        body = h('div', { class: css.status, role: 'status' }, [
-          h('span', null, [props.t('toast.branchesFailed')]),
-          h(
-            Button,
-            {
-              size: 'sm',
-              variant: 'outline',
-              onClick: () => {
-                setAttempt(count => count + 1)
-              },
-            },
-            { default: () => [props.t('retry')] },
-          ),
-        ])
-      } else if (groups.length === 0) {
-        body = h('div', { class: css.status }, [props.t('diff.base.empty')])
-      } else {
-        body = groups.map(group =>
+      const body: VNodeChild = branchSearchStatus({ listing: listing.value, empty: groups.length === 0, retry, className: css.status, t: props.t }) ?? groups.map(group =>
           h('div', { key: group.id, role: 'group', 'aria-label': group.label }, [
             group.id !== 'automatic' &&
               h('div', { class: css.label, role: 'presentation' }, [group.label]),
@@ -232,7 +142,7 @@ export const BaseMenu = defineComponent(
             }),
           ]),
         )
-      }
+
       return h(
         Menu,
         {
@@ -288,7 +198,7 @@ export const BaseMenu = defineComponent(
               h('div', { class: css.search }, [
                 h(Input, {
                   elementRef: (element: HTMLInputElement | null) => {
-                    search.value = element
+                    field.value = element
                   },
                   className: clsx(css.searchInput),
                   icon: h(IconSearchOutlineRegular, { size: 14 }),

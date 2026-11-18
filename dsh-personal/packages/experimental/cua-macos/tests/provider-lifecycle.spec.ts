@@ -1748,7 +1748,7 @@ async function permissionProfile(
     installAnchor: join(home, "package.json"),
     cwd: home,
     home,
-    overlays: [],
+    overlayPaths: [],
     telemetryDisabledEnv: undefined,
   };
   f.ctx.baseUrl = pathToFileURL(home).href + "/";
@@ -2240,11 +2240,9 @@ it.each([true, false])(
       meta: { origin: "subagent", parentSession: f.handle.agent.id },
     });
     // This case starts with application access already granted to the child.
-    const selectAnswer = vi
-      .spyOn(f.ctx.userQuestions, "ask")
-      .mockResolvedValueOnce({
-        answers: [{ id: "cua-app-access", selected: ["Allow for this session"] }],
-      });
+    const selectAnswer = vi.spyOn(f.ctx.userQuestions, "ask").mockResolvedValueOnce({
+      answers: [{ id: "cua-app-access", selected: ["Allow for this session"] }],
+    });
     await f.select(agent);
     selectAnswer.mockClear();
     native.request.mockClear();

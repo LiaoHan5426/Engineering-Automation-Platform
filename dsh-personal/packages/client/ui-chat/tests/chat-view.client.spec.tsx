@@ -798,6 +798,7 @@ function makeHarness(
     owner: MarkdownDelegateFenceInfo;
     entryKey: string | undefined;
   }[] = [];
+  const asideRenders = { count: 0 };
   const renderSlot = (
     key: string,
     owner: ChatFlowOwnerProps | MarkdownDelegateFenceInfo,
@@ -807,6 +808,7 @@ function makeHarness(
     },
   ) => {
     if (key === "conversation.chat.text-interaction") return null;
+    if (key === "conversation.chat.aside") { asideRenders.count += 1; return vueH("span", { "data-chat-aside-probe": "" }); }
     if (key === "conversation.chat.markdown.fence" && "lang" in owner) {
       fenceCalls.push({ owner, entryKey: opts.entryKey });
       return opts.children ?? null;
@@ -957,6 +959,7 @@ function makeHarness(
     forkAt,
     toolOwners,
     fenceCalls,
+    asideRenders,
     setPerformanceUsage: (mode: "compact" | "detailed") => {
       performanceUsage.set(mode);
     },
@@ -1172,7 +1175,7 @@ describe("Chat node rendering", () => {
       ]);
     }
     const view = await render(
-      vueH(ChatView, { ...h.props, renderSlot: () => vueH(References, null, []) }),
+      vueH(ChatView, { ...h.props, renderSlot: (key: string) => key === "conversation.chat.aside" ? null : vueH(References, null, []) }),
     );
     directory = "/workspace/moved";
     for (const [index, target] of targets.entries()) {
@@ -1282,6 +1285,19 @@ describe("Chat node rendering", () => {
   });
 });
 describe("ChatView", () => {
+  it("places the aside directly in the frame without size observation", async () => {
+    const observed: Element[] = [];
+    vi.stubGlobal("ResizeObserver", class { observe(target: Element) { observed.push(target); } unobserve() {} disconnect() {} });
+    const harness = makeHarness({}, {}, chatSnapshotFixture({ nodes: [user(1, "hello")] }));
+    const view = await render(vueH(ChatView, harness.props));
+    const frame = view.container.firstElementChild!;
+    const layer = frame.querySelector("[data-chat-aside]")!;
+    expect(layer.parentElement).toBe(frame);
+    expect(layer.querySelector("[data-chat-aside-probe]")).not.toBeNull();
+    expect(observed).not.toContain(layer);
+    await act(() => { harness.setSession({ running: true }); });
+    expect(harness.asideRenders.count).toBe(1);
+  });
   it("renders only referenced Nodes without deleting unreferenced Node data", async () => {
     const snapshot = chatSnapshotFixture({ nodes: [user(1, "included"), user(2, "omitted")] });
     const h = makeHarness({}, {}, snapshot);
@@ -6546,7 +6562,7 @@ it("does not infer menu targets from links or data attributes inside a plugin fl
   const view = await render(
     vueH(ChatView, {
       ...h.props,
-      renderSlot: () =>
+      renderSlot: (key: string) => key === "conversation.chat.aside" ? null :
         vueH(Fragment, null, [
           vueH("a", { href: "https://example.com/plugin" }, ["Plugin link"]),
           vueH("button", { "data-file-path": "/plugin/private.txt" }, ["Undeclared file"]),

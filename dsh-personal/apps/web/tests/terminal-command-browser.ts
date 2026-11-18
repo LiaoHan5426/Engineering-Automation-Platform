@@ -193,9 +193,14 @@ export async function expectWrappedCommandText(
       });
     const sentinel = `${expected}\nclipboard-before-copy`;
     await page.evaluate((value) => navigator.clipboard.writeText(value), sentinel);
-    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(sentinel);
+    // Compare all logical lines across the native clipboard CRLF/LF conversion.
+    await expect
+      .poll(() => page.evaluate(async () => (await navigator.clipboard.readText()).split(/\r?\n/)))
+      .toEqual(sentinel.split(/\r?\n/));
     await page.keyboard.press("ControlOrMeta+C");
-    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(expected);
+    await expect
+      .poll(() => page.evaluate(async () => (await navigator.clipboard.readText()).split(/\r?\n/)))
+      .toEqual(expected.split(/\r?\n/));
     return {
       wrapped,
       text: await command.textContent(),

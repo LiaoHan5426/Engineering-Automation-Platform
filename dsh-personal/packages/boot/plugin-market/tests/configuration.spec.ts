@@ -57,7 +57,7 @@ it("saves index sources without remounting, announces them, and restores them at
       installAnchor: join(home, "package.json"),
       cwd: home,
       home,
-      overlays: [],
+      overlayPaths: [],
       telemetryDisabledEnv: undefined,
     };
     const start = () =>
@@ -79,14 +79,13 @@ it("saves index sources without remounting, announces them, and restores them at
     ctx.on("plugin-market/changed", () => {
       changes++;
     });
-    await market.setIndexes([
-      "https://second.example/index.json ",
-      "http://127.0.0.1:8080/index.json",
-    ]);
-    expect(market.listIndexes().map((index) => index.url)).toEqual([
+    const sources = [
       "https://second.example/index.json",
       "http://127.0.0.1:8080/index.json",
-    ]);
+      "git+ssh://git@git.example/plugins/market.git",
+    ];
+    await market.setIndexes(["https://second.example/index.json ", ...sources.slice(1)]);
+    expect(market.listIndexes().map((index) => index.url)).toEqual(sources);
     expect(entry.fiber === fiber).toBe(true);
     expect(changes).toBe(1);
     expect(readFileSync(profile.patchPath, "utf8")).toContain("https://second.example/index.json");
@@ -97,7 +96,7 @@ it("saves index sources without remounting, announces them, and restores them at
         .get("pluginMarket")!
         .listIndexes()
         .map((index) => index.url),
-    ).toEqual(["https://second.example/index.json", "http://127.0.0.1:8080/index.json"]);
+    ).toEqual(sources);
   } finally {
     try {
       await ctx?.fiber.dispose();
@@ -188,7 +187,7 @@ it("reads a market entry detail document and serves its images through the compo
       installAnchor: join(home, "package.json"),
       cwd: home,
       home,
-      overlays: [],
+      overlayPaths: [],
       telemetryDisabledEnv: undefined,
     };
     ctx = await boot(

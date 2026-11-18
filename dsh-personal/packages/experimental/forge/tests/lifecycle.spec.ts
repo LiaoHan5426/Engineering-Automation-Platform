@@ -184,7 +184,7 @@ it.each([
   };
   vi.spyOn(provider, "readiness").mockImplementation(async (_host, signal) => {
     await hold(signal);
-    return { state: "ready", message: null };
+    return { state: "ready", message: null, signIn: null };
   });
   vi.spyOn(provider, "markReady").mockImplementation(async (_ref, signal) => {
     await hold(signal);

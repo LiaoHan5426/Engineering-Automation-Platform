@@ -6,6 +6,7 @@ import { tabLedgerSource } from "../src/client/tab-ledger.ts";
 
 interface Registration {
   options: { id?: string; key?: string; label?: string | (() => string) };
+  module?: string;
 }
 
 /** A slot registry and locale stand-in: ledgers by slot, versions that move on registration, and a locale revision. */
@@ -15,12 +16,14 @@ function bench() {
     "plugins.bundle.config": [],
     "plugins.row.config": [],
     "plugins.tab": [],
+    "settings.section": [],
   };
   const versions: Record<string, number> = {
     "plugins.item": 0,
     "plugins.bundle.config": 0,
     "plugins.row.config": 0,
     "plugins.tab": 0,
+    "settings.section": 0,
   };
   const listeners = new Map<string, Set<() => void>>();
   const localeListeners = new Set<() => void>();
@@ -50,8 +53,8 @@ function bench() {
   };
   return {
     ctx: ctx as never,
-    register: (name: string, options: Registration["options"]): void => {
-      entries[name]?.push({ options });
+    register: (name: string, options: Registration["options"], module?: string): void => {
+      entries[name]?.push(module === undefined ? { options } : { options, module });
       versions[name] = (versions[name] ?? 0) + 1;
       for (const listener of listeners.get(name) ?? []) listener();
     },
@@ -68,13 +71,20 @@ describe("configLedgerSource", () => {
   it("projects the official items in ledger order with locale-following labels, and the bundle and row keys", () => {
     const b = bench();
     const source = configLedgerSource(b.ctx);
-    expect(source.getSnapshot()).toEqual({ items: [], bundles: new Set(), rows: new Set() });
+    expect(source.getSnapshot()).toEqual({
+      items: [],
+      bundles: new Set(),
+      rows: new Set(),
+      sections: [],
+    });
 
     let title = "Shell";
     b.register("plugins.item", { id: "bash", label: () => title });
     b.register("plugins.item", { id: "loop", label: "Agent loop" });
     b.register("plugins.bundle.config", { key: "dsh-x" });
     b.register("plugins.row.config", { key: rowConfigKey("dsh-x", "row") });
+    b.register("settings.section", { id: "timeline", label: () => title }, "@scope/dsh-timeline");
+    b.register("settings.section", { id: "loose", label: "Loose" });
 
     expect(source.getSnapshot()).toEqual({
       items: [
@@ -83,6 +93,10 @@ describe("configLedgerSource", () => {
       ],
       bundles: new Set(["dsh-x"]),
       rows: new Set(["dsh-x#row"]),
+      sections: [
+        { id: "timeline", label: "Shell", module: "@scope/dsh-timeline" },
+        { id: "loose", label: "Loose" },
+      ],
     });
     // A label thunk is re-read when the locale moves, not before.
     title = "终端";
@@ -96,11 +110,13 @@ describe("configLedgerSource", () => {
     const source = configLedgerSource(b.ctx);
     b.register("plugins.item", { id: "bare" });
     b.register("plugins.bundle.config", {});
+    b.register("settings.section", { id: "unlabelled" });
 
     expect(source.getSnapshot()).toEqual({
       items: [{ id: "bare", label: "" }],
       bundles: new Set(),
       rows: new Set(),
+      sections: [{ id: "unlabelled", label: "unlabelled" }],
     });
   });
 

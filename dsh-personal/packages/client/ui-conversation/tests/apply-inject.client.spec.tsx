@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { syncedConfig } from '@deepseek-ai/dsh-client-test-runtime'
 import {
   apply as applyMenus,
   inject as injectMenus,
@@ -63,6 +64,7 @@ type ConversationActions = ConversationInstance["actions"];
 function sessionFakeFor() {
   return {
     loadOlder: vi.fn<ISession["loadOlder"]>(() => Promise.resolve()),
+    consumeOlder: vi.fn<ISession["consumeOlder"]>(() => true),
     prompt: vi.fn<ISession["prompt"]>(() =>
       Promise.resolve({ ok: true, value: { accepted: true } }),
     ),
@@ -105,7 +107,7 @@ async function bench(renderQuote = false) {
   const opened = vi.fn<(id: SessionId) => void>();
   let mainReference: SessionReference | undefined;
   const replaceMain = (id: SessionId, beforeOpen?: (id: SessionId) => void): void => {
-    const next = runtime.sessions.retain(id, { source: "mainView" });
+    const next = runtime.sessions.retain(id, { source: 'mainView', facets: { conversation: true } });
     try {
       beforeOpen?.(id);
     } catch (error: unknown) {
@@ -138,7 +140,7 @@ async function bench(renderQuote = false) {
   runtime.ctx.provide("locale", locale);
   runtime.slots.installLocale(locale);
   runtime.ctx.provide("shortcuts", { catalog: createSnapshotStore([]) });
-  await runtime.mount({ inject: [...injectMenus], apply: applyMenus });
+  await runtime.mount({ inject: [...injectMenus], apply: applyMenus }, syncedConfig({ resolutionTimeoutMs: 1000 }));
   await runtime.root.declare(
     {
       main: { kind: "keyed", scope: "root" },
@@ -171,7 +173,7 @@ async function bench(renderQuote = false) {
           )
         : null,
   );
-  const feature = await runtime.mount({ inject: [...inject], apply });
+  const feature = await runtime.mount({ inject: [...inject], apply }, syncedConfig({ busyEnter: 'queue', maxConcurrentFileUploads: 2 }));
   if (renderQuote) await runtime.mount(messageQuotes);
   runtime.renderRoot();
   const entryOf = (
@@ -644,7 +646,7 @@ describe("Conversation inject API", () => {
       await b.runtime.flush();
       expect(activate).toHaveBeenLastCalledWith("custom");
       activate.mockClear();
-      using mainReference = b.runtime.sessions.retain(ROOT, { source: "mainView" });
+      using mainReference = b.runtime.sessions.retain(ROOT, { source: 'mainView', facets: { conversation: true } });
       await b.runtime.flush();
       expect(mainReference.sessionId).toBe(ROOT);
       expect(activate).not.toHaveBeenCalled();

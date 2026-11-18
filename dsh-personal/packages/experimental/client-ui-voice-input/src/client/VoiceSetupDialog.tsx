@@ -30,6 +30,7 @@ export function VoiceSetupDialog({
       title: t(needsInstallation ? 'setupPrompt.title' : 'setupPrompt.unavailableTitle'),
       closeLabel: t('cancel'),
       onClose: onDismiss,
+      description: t(needsInstallation ? 'setupPrompt.body' : 'setupPrompt.unavailableBody'),
     },
     {
       footer: () =>
@@ -48,11 +49,6 @@ export function VoiceSetupDialog({
               },
             ),
         ]),
-      default: () => [
-        h('p', undefined, [
-          t(needsInstallation ? 'setupPrompt.body' : 'setupPrompt.unavailableBody'),
-        ]),
-      ],
     },
   )
 }

@@ -177,6 +177,7 @@ function mount({
       },
     }),
     renderSlot,
+    renderFactorySlot: (_name, owner) => h("div", { "data-testid": `section-${"id" in owner ? owner.id : "all"}` }),
   };
   const view = render(h(SettingsRoot, { ...props }));
   const bump = async (next: Row[]) => {
@@ -585,7 +586,7 @@ describe("SettingsPanel navigation", () => {
     await openPanel();
     expect(document.activeElement).toBe(screen.getByText("Settings Title"));
     expect(screen.getByRole("dialog")).toBeTruthy();
-    const sectionCalls = renderSlot.mock.calls.filter((c) => c[0] === "settings.section");
+    const sectionCalls = renderSlot.mock.calls.filter((c) => String(c[0]) === "settings.section");
     expect(sectionCalls).toHaveLength(0);
   });
   it("drops the ledger subscription on unmount", async () => {

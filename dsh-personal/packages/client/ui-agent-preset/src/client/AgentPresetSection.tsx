@@ -165,8 +165,10 @@ export const AgentPresetSection = defineComponent(
             [h(IconPlusOutlineRegular, { size: 14 }), t('creatorDraft')],
           )
       return h('section', { class: css.section }, [
-        h('h2', { class: css.title }, [t('nav')]),
-        h('p', { class: css.intro }, [t('sectionIntro')]),
+        h('div', { class: css.sectionHeader }, [
+          h('h2', { class: css.title }, [t('nav')]),
+          h('p', { class: css.intro }, [t('sectionIntro')]),
+        ]),
         state.value.error === null
           ? null
           : h('p', { class: css.error, role: 'alert' }, [state.value.error]),

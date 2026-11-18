@@ -305,7 +305,7 @@ export const ReviewComposer = defineComponent(
                   run: () => {
                     void send(props.actions.queue)
                   },
-                  menuLabel: props.t('review.githubActions'),
+                  menuLabel: props.t('review.hostActions'),
                   other:
                     props.actions.publish === undefined ? undefined : props.t('review.publish'),
                   menu: () => {

@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
+    "preserveConstEnums": true,
     "outDir": "lib/types",
     "noImplicitAny": false,
     "noImplicitThis": false,

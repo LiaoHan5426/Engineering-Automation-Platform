@@ -47,7 +47,7 @@ it.each(["desktop", "web"])(
       cwd: "/workspace",
       home: "/home",
       startedBundles: [],
-      overlays: [],
+      overlayPaths: [],
       telemetryDisabledEnv: undefined,
     });
     const identity = vi.fn().mockResolvedValue(undefined);

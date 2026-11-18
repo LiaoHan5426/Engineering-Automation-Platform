@@ -635,8 +635,8 @@ describe("session.list projections column", () => {
       ...ctx.sessionProjections.summaryKeys(),
     ]);
     expect(Object.keys(row?.projections?.values ?? {})).toEqual([
-      "conversationContinuation",
       "sessionListMetadata",
+      "conversationContinuation",
     ]);
     expect(row?.projections?.values.conversationContinuation).toBeNull();
   });
@@ -968,8 +968,8 @@ describe("Session control projection frames", () => {
         seq: 0,
         changes: [
           { key: "test/last-user", val: { text: "m0" } },
-          { key: "conversationContinuation", val: null },
           { key: "sessionListMetadata", val: { blank: true, lastPromptAt: 100 } },
+          { key: "conversationContinuation", val: null },
         ],
       },
       {
@@ -1017,8 +1017,8 @@ describe("Session control projection frames", () => {
         seq: 0,
         changes: [
           { key: "test/last-user", val: { text: "m0" } },
-          { key: "conversationContinuation", val: null },
           { key: "sessionListMetadata", val: { blank: true, lastPromptAt: 100 } },
+          { key: "conversationContinuation", val: null },
         ],
       },
     });

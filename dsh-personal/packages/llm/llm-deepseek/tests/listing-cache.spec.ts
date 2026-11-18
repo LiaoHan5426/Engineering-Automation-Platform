@@ -10,6 +10,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** Header the fixture route sends its credential under. */
+const TOKEN_HEADER = "x-test-token";
+const headersOf = (token: string | undefined): Readonly<Record<string, string>> | undefined =>
+  token === undefined ? undefined : { [TOKEN_HEADER]: token };
+
 const listing = (...ids: string[]): ModelListing => ({
   skipped: 0,
   entries: ids.map((id) => ({
@@ -23,7 +28,7 @@ function harness(timeoutMs = 60_000, honorsAbort = true) {
   let clock = 0;
   let token: string | undefined = "token-a";
   const loads: Array<{
-    token: string;
+    token: string | undefined;
     signal: AbortSignal;
     settle: PromiseWithResolvers<ModelListing>;
   }> = [];
@@ -36,11 +41,11 @@ function harness(timeoutMs = 60_000, honorsAbort = true) {
     maxAgeMs: 100,
   };
   const resolveSettings = vi.fn<() => ListingSettings | undefined>(() => settings);
-  const resolveCredential = vi.fn(() => Promise.resolve(token));
+  const resolveCredential = vi.fn(() => Promise.resolve(headersOf(token)));
   const cache = new ModelListingCache({
     settings: resolveSettings,
     credential: resolveCredential,
-    load: (_url, value, signal) => {
+    load: (_url, headers, signal) => {
       const settle = Promise.withResolvers<ModelListing>();
       if (honorsAbort)
         signal.addEventListener(
@@ -50,7 +55,7 @@ function harness(timeoutMs = 60_000, honorsAbort = true) {
           },
           { once: true },
         );
-      loads.push({ token: value, signal, settle });
+      loads.push({ token: headers[TOKEN_HEADER], signal, settle });
       return settle.promise;
     },
     now: () => clock,
@@ -424,7 +429,7 @@ it("retains badges on credential lookup failures, reports the streak once, and r
   expect(warn).toHaveBeenCalledExactlyOnceWith(
     expect.stringContaining("check listing configuration and credentials"),
   );
-  resolveCredential.mockResolvedValue("token-a");
+  resolveCredential.mockResolvedValue(headersOf("token-a"));
   advance(100);
   await vi.advanceTimersByTimeAsync(100);
   loads[1]!.settle.resolve(badgedListing("Back"));
@@ -442,7 +447,7 @@ it.each(["resolve", "reject"] as const)(
     await flush();
     loads[0]!.settle.resolve(listing("a"));
     await first;
-    const credential = Promise.withResolvers<string | undefined>();
+    const credential = Promise.withResolvers<Readonly<Record<string, string>> | undefined>();
     resolveCredential.mockReturnValue(credential.promise);
     advance(100);
     await vi.advanceTimersByTimeAsync(100);
@@ -452,7 +457,7 @@ it.each(["resolve", "reject"] as const)(
     });
     await flush();
     expect(disposed).toBe(false);
-    if (outcome === "resolve") credential.resolve("token-a");
+    if (outcome === "resolve") credential.resolve(headersOf("token-a"));
     else credential.reject(new Error("lookup failed"));
     await disposal;
     expect(loads).toHaveLength(1);

@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-session-snapshot",
-  "version": "0.2.2-rc.3",
+  "version": "0.2.2-rc.4",
   "description": "Session-log snapshot core with an ACP protocol adapter, expected-output normalization, and fixture invariants",
   "license": "MIT",
   "repository": {
@@ -10,6 +10,7 @@
   },
   "files": [
     "lib/index.js",
+    "lib/dist-*.js",
     "lib/types/**/*.d.ts",
     "lib/types/**/*.d.ts.map",
     "lib/**/*.js.map",

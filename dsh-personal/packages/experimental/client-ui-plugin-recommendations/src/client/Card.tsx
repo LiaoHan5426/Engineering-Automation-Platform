@@ -5,7 +5,7 @@ import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { LocalizedText } from '@deepseek-ai/dsh-package-manifest'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { ToolCallId } from '@deepseek-ai/dsh-llm/types'
+import type { ActionCardId } from '@deepseek-ai/dsh-action-cards/types'
 import type { ActionCardBodyProps } from '@deepseek-ai/dsh-client-ui-action-cards/client'
 import type {
   PluginDetails,
@@ -27,12 +27,12 @@ export interface PluginCardServices {
   /**
    * Read the current catalog text of a card's plugin.
    * @param sessionId - the displayed Session.
-   * @param callId - the card's call id.
+   * @param cardId - the card's call id.
    * @returns the Host's answer, or undefined when the reply was lost.
    */
   readonly describe: (
     sessionId: SessionId,
-    callId: ToolCallId,
+    cardId: ActionCardId,
   ) => Promise<RecommendationDetails | undefined>
   /** Open the plugin's details page without enabling it. */
   readonly openDetails: (packageName: string) => void
@@ -107,7 +107,7 @@ export const PluginCardBody = defineComponent(
         () => props.catalog,
         () => props.describe,
         () => props.sessionId,
-        () => props.proposal.callId,
+        () => props.proposal.cardId,
         () => name.value,
         () => phase.value,
         () => attempt.value,
@@ -116,7 +116,7 @@ export const PluginCardBody = defineComponent(
         const cleanup: void | (() => void) = (() => {
           if (name.value === undefined) return undefined
           let current = true
-          props.describe(props.sessionId, props.proposal.callId).then(
+          props.describe(props.sessionId, props.proposal.cardId).then(
             (value) => {
               if (!current) return
               const currentName = name.value
@@ -196,7 +196,7 @@ export const PluginCardBody = defineComponent(
     }
     const busy = computed(() => pending.value !== undefined)
     return () => {
-      if (name.value === undefined) return h('div', { class: css.body }, [props.summary])
+      if (name.value === undefined) return props.fallback
       return h(Fragment, {}, [
         h('header', { class: css.header }, [
           h('span', {}, [props.t('heading')]),
@@ -298,7 +298,7 @@ export const PluginCardBody = defineComponent(
       'proposal',
       'decision',
       'sessionId',
-      'summary',
+      'summary', 'fallback',
       'Folded',
       'act',
       't',

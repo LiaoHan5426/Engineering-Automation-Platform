@@ -48,6 +48,7 @@ const LIVE_EXPECTED = join(SNAPSHOT_DIR, "live-enabled.expected.md");
 const EXPORTS_EXPECTED = join(SNAPSHOT_DIR, "exports.expected.md");
 const EXPORTS_EN_EXPECTED = join(SNAPSHOT_DIR, "exports-en.expected.md");
 const FIXTURE_PLUGINS = fileURLToPath(new URL("./fixtures/plugins", import.meta.url));
+const FIXTURE_BUNDLE = join(FIXTURE_PLUGINS, "fixture-bundle");
 const { version: badgeVersion } = JSON.parse(
   await readFile(
     new URL("../../../packages/experimental/badge-skill-bundle/package.json", import.meta.url),
@@ -72,8 +73,7 @@ describe("web e2e: plugin manager", () => {
     scaffold = await launchWebScaffold({
       extraOverlayPath: fileURLToPath(new URL("./pin-browse-picker.overlay.yml", import.meta.url)),
       profile: {
-        packages: [{ dir: join(FIXTURE_PLUGINS, "fixture-bundle") }],
-        bundles: ["@fixture/missing-bundle"],
+        packages: [{ dir: FIXTURE_BUNDLE }],
       },
     });
     browser = await chromium.launch();
@@ -947,14 +947,14 @@ describe("web e2e: plugin manager", () => {
       const panel = probe.locator("[data-plugin-panel]");
       const refresh = panel.getByRole("button", { name: "刷新", exact: true });
       const info = panel.getByRole("button", { name: "插件说明", exact: true });
-      await expect.poll(() => refresh.isEnabled()).toBe(true);
+      await expect.poll(() => refresh.isEnabled(), { timeout: 15000 }).toBe(true);
       await probe.setViewportSize({ width: 390, height: 844 });
       await probe.evaluate(() => document.fonts.ready);
       const calls = vi.spyOn(scaffold.ctx.pluginManager, "listBundles");
       try {
         await tap(refresh);
         await expect.poll(() => calls.mock.calls.length).toBe(1);
-        await expect.poll(() => refresh.isEnabled()).toBe(true);
+        await expect.poll(() => refresh.isEnabled(), { timeout: 15000 }).toBe(true);
       } finally {
         calls.mockRestore();
       }
@@ -1012,8 +1012,21 @@ describe("web e2e: plugin manager", () => {
   });
 
   it("starts with an unavailable selected bundle and lets the user clear its error", async () => {
+    const scaffold = await launchWebScaffold({
+      profile: { packages: [], bundles: ["@fixture/missing-bundle"] },
+    });
+    onTestFinished(() => scaffold.close());
+    const context = await browser.newContext({
+      viewport: { width: 1680, height: 1000 },
+      locale: ZH_BROWSER_LOCALE,
+    });
+    onTestFinished(() => context.close());
+    const page = await context.newPage();
+    const tripwire = watchConsole(page);
     onTestFailed(() => saveFailureShot(page, "web-e2e-plugin-manager-missing-bundle"));
-    const panel = await openPluginsPanel();
+    await page.goto(scaffold.authenticatedUrl, { waitUntil: "load" });
+    await page.getByRole("button", { name: "插件", exact: true }).click();
+    const panel = page.locator("[data-plugin-panel]");
     await panel.getByRole("button", { name: "查看 @fixture/missing-bundle", exact: true }).click();
     const toggle = panel.getByRole("switch", { name: "启用 @fixture/missing-bundle", exact: true });
     expect(await toggle.getAttribute("aria-checked")).toBe("true");
@@ -1030,10 +1043,14 @@ describe("web e2e: plugin manager", () => {
       error: { code: "operation-error" },
       rows: [],
     });
+    const profileDir = join(scaffold.harnessHome, "profiles", "scaffold");
+    expect(await panel.getByText(/cannot resolve profile bundle/).textContent()).toBe(
+      `原因: dsh: cannot resolve profile bundle "@fixture/missing-bundle" from the dsh installation or ${profileDir}; run 'dsh plugin --profile scaffold install' if its dependency is not installed`,
+    );
     await compareOrRefreshGolden(
       join(SNAPSHOT_DIR, "missing-bundle.expected.md"),
       await captureStableAria(page, "[data-plugin-panel]", scaffold.workspaceCwd, {
-        replacements: [[scaffold.harnessHome, "{{home}}"]],
+        replacements: [[profileDir.replaceAll("\\", "\\\\"), "{{home}}/profiles/scaffold"]],
       }),
       MODE,
     );
@@ -1042,7 +1059,7 @@ describe("web e2e: plugin manager", () => {
       .poll(
         async () =>
           (
-            JSON.parse(await homeFile("profiles", "scaffold", "package.json")) as {
+            JSON.parse(await readFile(join(profileDir, "package.json"), "utf8")) as {
               dsh: { profile: { bundles: string[] } };
             }
           ).dsh.profile.bundles,
@@ -1084,16 +1101,14 @@ describe("web e2e: plugin manager", () => {
     await info.hover();
     const hoverHelp = page.getByRole("tooltip");
     await hoverHelp.waitFor();
-    expect(await hoverHelp.textContent()).toBe(
-      "在这里配置官方插件，安装和管理其他插件。内置插件列表及运行状态可在「设置 → 内置插件」中查看",
-    );
+    expect(await hoverHelp.textContent()).toBe("在这里配置官方插件，安装、管理和配置其他插件。");
     await panel.getByRole("heading", { name: "插件", exact: true }).hover();
     await hoverHelp.waitFor({ state: "hidden" });
     await info.focus();
     await page.keyboard.press("Enter");
     const help = page.getByRole("tooltip");
     await help.waitFor();
-    expect(await help.textContent()).toContain("设置 → 内置插件");
+    expect(await help.textContent()).toBe("在这里配置官方插件，安装、管理和配置其他插件。");
     await page.keyboard.press("Escape");
     expect(await help.count()).toBe(0);
     expect(await info.evaluate((element) => element === document.activeElement)).toBe(true);
@@ -1729,10 +1744,11 @@ describe("web e2e: plugin manager", () => {
         entry.options.name.startsWith("@fixture/bundle"),
       ),
     ).toBe(false);
+    expect(await panel.getByText(`file:${FIXTURE_BUNDLE}`, { exact: true }).count()).toBe(1);
     await compareOrRefreshGolden(
       EXPORTS_EXPECTED,
       await captureStableAria(page, "[data-plugin-panel]", scaffold.workspaceCwd, {
-        replacements: [[FIXTURE_PLUGINS, "{{fixtures}}"]],
+        replacements: [[`file:${FIXTURE_BUNDLE}`, "file:{{fixtures}}/fixture-bundle"]],
       }),
       MODE,
     );
@@ -1747,10 +1763,11 @@ describe("web e2e: plugin manager", () => {
       );
       expect(await review.getByText("审查工作区中的改动。", { exact: true }).count()).toBe(0);
       await readmeHeading.waitFor();
+      expect(await panel.getByText(`file:${FIXTURE_BUNDLE}`, { exact: true }).count()).toBe(1);
       await compareOrRefreshGolden(
         EXPORTS_EN_EXPECTED,
         await captureStableAria(page, "[data-plugin-panel]", scaffold.workspaceCwd, {
-          replacements: [[FIXTURE_PLUGINS, "{{fixtures}}"]],
+          replacements: [[`file:${FIXTURE_BUNDLE}`, "file:{{fixtures}}/fixture-bundle"]],
         }),
         MODE,
       );

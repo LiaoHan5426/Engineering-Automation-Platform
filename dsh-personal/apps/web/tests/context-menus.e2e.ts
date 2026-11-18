@@ -330,6 +330,12 @@ describe.each(["MacIntel", "Win32", "Linux x86_64"])("web context menus on %s", 
     expect(await page.getByRole("menuitem", { name: "Save as…", exact: true }).count()).toBe(0);
     expect(
       await page
+        .getByRole("menuitem", { name: "Add to chat", exact: true })
+        .evaluate((element) => element === document.activeElement),
+    ).toBe(true);
+    await page.keyboard.press("ArrowUp");
+    expect(
+      await page
         .getByRole("menuitem", { name: "Download", exact: true })
         .evaluate((element) => element === document.activeElement),
     ).toBe(true);

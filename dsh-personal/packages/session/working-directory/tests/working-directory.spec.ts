@@ -1,4 +1,3 @@
-import { executeToolFixture } from "@deepseek-ai/dsh-tool-testkit";
 import { mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,9 +13,7 @@ import {
   mountAgentLoopTestHarness,
 } from "@deepseek-ai/dsh-agent-loop-testkit";
 import type { SessionId } from "@deepseek-ai/dsh-session";
-import type { ToolCallId } from "@deepseek-ai/dsh-llm";
 import { renderContextSnapshot, renderPrompt } from "@deepseek-ai/dsh-system-prompt";
-import * as WorkingDirectoryTool from "@deepseek-ai/dsh-tool-working-directory";
 import { brandString } from "@deepseek-ai/dsh-brand";
 
 async function fixture(config?: (root: string) => WorkingDirectoryConfig) {
@@ -63,7 +60,7 @@ describe("Session working directories", () => {
     expect(f.agent.session.header.cwd).toBe(f.root);
     expect(f.agent.session.snapshotEvents()).toContainEqual(
       expect.objectContaining({
-        type: "working-directory/change",
+        type: "workspace-root/change",
         data: { cwd: child },
       }),
     );
@@ -174,7 +171,7 @@ describe("Session working directories", () => {
       name: "WorkingDirectoryError",
       code: "WORKING_DIRECTORY_NOT_FOUND",
     });
-    await expect(f.ctx.workingDirectory.set(f.agent, "")).rejects.toThrow("cd must not be empty");
+    await expect(f.ctx.workingDirectory.set(f.agent, "")).rejects.toThrow("path must not be empty");
     await expect(f.ctx.workingDirectory.set(f.agent, "")).rejects.toMatchObject({
       name: "WorkingDirectoryError",
       code: "WORKING_DIRECTORY_INVALID",
@@ -186,7 +183,7 @@ describe("Session working directories", () => {
     );
     expect(f.ctx.workingDirectory.get(f.agent.session)).toBe(f.root);
     expect(
-      f.agent.session.snapshotEvents().filter((event) => event.type === "working-directory/change"),
+      f.agent.session.snapshotEvents().filter((event) => event.type === "workspace-root/change"),
     ).toEqual([]);
   });
 
@@ -218,7 +215,7 @@ describe("Session working directories", () => {
     await expect(f.ctx.workingDirectory.ensure(agent)).resolves.toBe(fallback);
     expect(agent.session.snapshotEvents()).toContainEqual(
       expect.objectContaining({
-        type: "working-directory/change",
+        type: "workspace-root/change",
         data: { cwd: fallback },
       }),
     );
@@ -324,9 +321,7 @@ describe("Session working directories", () => {
       await rejection;
       await expect(queued).resolves.toBe(join(f.root, "second"));
       expect(
-        f.agent.session
-          .snapshotEvents()
-          .filter((event) => event.type === "working-directory/change"),
+        f.agent.session.snapshotEvents().filter((event) => event.type === "workspace-root/change"),
       ).toEqual([expect.objectContaining({ data: { cwd: join(f.root, "second") } })]);
       expect(f.harness.claim(f.agent, "next-step", 1)).toHaveLength(1);
     } finally {
@@ -381,7 +376,7 @@ describe("Session working directories", () => {
         expect(
           f.agent.session
             .snapshotEvents()
-            .filter((event) => event.type === "working-directory/change"),
+            .filter((event) => event.type === "workspace-root/change"),
         ).toEqual([]);
         expect(f.harness.claim(f.agent, "next-step", 1)).toEqual([]);
         await expect(directories.ensure(f.agent)).rejects.toThrow(
@@ -420,9 +415,7 @@ describe("Session working directories", () => {
       release.resolve(undefined);
       await rejection;
       expect(
-        f.agent.session
-          .snapshotEvents()
-          .filter((event) => event.type === "working-directory/change"),
+        f.agent.session.snapshotEvents().filter((event) => event.type === "workspace-root/change"),
       ).toEqual([]);
       await expect(f.ctx.workingDirectory.ensure(f.agent)).rejects.toThrow("inactive context");
       expect(probe).toHaveBeenCalledOnce();
@@ -465,39 +458,5 @@ describe("Session working directories", () => {
       inject.mockRestore();
       warn.mockRestore();
     }
-  });
-
-  it("exposes reading and changing through the same model tool and unregisters it on disposal", async () => {
-    await using f = await fixture();
-    await mkdir(join(f.root, "child"));
-    const fiber = f.ctx.plugin(WorkingDirectoryTool);
-    await fiber;
-    const execute = (arguments_: { cd?: string }, withAgent = true) =>
-      executeToolFixture(f.ctx, {
-        name: "working_directory",
-        callId: brandString<ToolCallId>("directory-call"),
-        arguments: arguments_,
-        signal: new AbortController().signal,
-        ...(withAgent ? { agent: f.agent } : {}),
-      });
-    expect(await execute({})).toMatchObject({ value: { cwd: f.root }, isError: false });
-    expect(await execute({ cd: "child" })).toMatchObject({
-      value: { cwd: join(f.root, "child") },
-      isError: false,
-    });
-    expect(await execute({}, false)).toMatchObject({
-      isError: true,
-      error: { info: { name: "ToolContextUnavailableError", code: "TOOL_CONTEXT_UNAVAILABLE" } },
-    });
-    expect(await execute({ cd: "" })).toMatchObject({
-      isError: true,
-      error: { info: { name: "ToolArgsError", code: "INVALID_ARGS" } },
-    });
-    expect(await execute({ cd: "missing" })).toMatchObject({
-      isError: true,
-      error: { info: { name: "WorkingDirectoryError", code: "WORKING_DIRECTORY_NOT_FOUND" } },
-    });
-    await fiber.dispose();
-    expect(f.ctx.tools.schemas().some((tool) => tool.name === "working_directory")).toBe(false);
   });
 });

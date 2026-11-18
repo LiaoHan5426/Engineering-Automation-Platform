@@ -212,8 +212,13 @@ export function useShareRelayAddress(options: ShareRelayAddressOptions): ShareRe
         const dispose = (() => {
           let cancelled = false
           const load = async (): Promise<void> => {
+            let current
             try {
-              const current = await options.shares.relay()
+              current = await options.shares.relay()
+            } catch (_readFailed) {
+              // Preserve the host default when the read fails.
+              return
+            }
               if (cancelled || !current.ok) return
               setRelayState({
                 ...(current.value.override === undefined
@@ -223,9 +228,6 @@ export function useShareRelayAddress(options: ShareRelayAddressOptions): ShareRe
                   ? {}
                   : { effective: current.value.effective }),
               })
-            } catch {
-              /* Keep the host-provided default when the read fails. */
-            }
           }
           void load()
           return () => {

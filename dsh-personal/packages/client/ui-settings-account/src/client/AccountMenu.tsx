@@ -4,15 +4,14 @@ import {
   Toast,
   Menu,
   IconEllipsisOutlineMedium,
-  IconPaperPlaneOutlineMedium,
-  IconSettingsOutlineMedium,
-  IconUserOutlineMedium,
+  IconPaperPlaneOutlineRegular,
+  IconSettingsOutlineRegular,
+  IconUserOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   InjectFace,
   PropsLocale,
   PropsRuntime,
-  PropsRenderSlots,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type { AccountSectionInjected } from './AccountSection.tsx'
 import { SignOutDialog } from './SignOutDialog.tsx'
@@ -23,7 +22,6 @@ import type {} from './account-ui.ts'
 import css from './AccountMenu.module.css'
 /** Account launcher composed by the settings shell. */
 export type AccountMenuProps = PropsRuntime<'settings.launcher'> &
-  PropsRenderSlots<'settings.launcher.notifications'> &
   PropsLocale<'settings.account'> &
   InjectFace<AccountSectionInjected>
 /** The signed-in label stays empty while the profile loads.
@@ -138,9 +136,6 @@ export const AccountMenu = defineComponent(
       setOpen(false)
       void componentProps.start().catch(() => undefined)
     }
-    const openAccount = () => {
-      componentProps.openSettings('account')
-    }
     return () => {
       const render_signedInRef = signedInRef.value
       const render_signInNoticeRef = signInNoticeRef.value
@@ -153,7 +148,6 @@ export const AccountMenu = defineComponent(
       const render_signOutImpactRef = signOutImpactRef.value
       const render_prop_wide = componentProps.wide
       const render_prop_t = componentProps.t
-      const render_prop_renderSlot = componentProps.renderSlot
       const render_prop_settingsShortcut = componentProps.settingsShortcut
       const render_prop_openSettings = componentProps.openSettings
       const render_prop_contactUs = componentProps.contactUs
@@ -179,15 +173,6 @@ export const AccountMenu = defineComponent(
               setExpiryNotice(false)
             },
           }),
-        h('div', { class: css.notifications, hidden: !render_prop_wide }, [
-          render_prop_renderSlot('settings.launcher.notifications', {
-            active:
-              render_signedInRef &&
-              !render_accountRef.desktopOnboardingVisible &&
-              !render_accountRef.onboarding,
-            openAccount,
-          }),
-        ]),
         h(
           Menu,
           {
@@ -201,7 +186,7 @@ export const AccountMenu = defineComponent(
               {
                 id: 'settings',
                 label: render_prop_t('settings'),
-                icon: h(IconSettingsOutlineMedium, { size: 16 }),
+                icon: h(IconSettingsOutlineRegular, { size: 14 }),
                 ...(render_prop_settingsShortcut === undefined
                   ? {}
                   : { shortcut: render_prop_settingsShortcut }),
@@ -209,7 +194,7 @@ export const AccountMenu = defineComponent(
               {
                 id: 'contact',
                 label: render_prop_t('contactUs'),
-                icon: h(IconPaperPlaneOutlineMedium, { size: 16 }),
+                icon: h(IconPaperPlaneOutlineRegular, { size: 14 }),
               },
               ...(render_signedInRef
                 ? [
@@ -224,7 +209,7 @@ export const AccountMenu = defineComponent(
                   {
                     id: 'signin',
                     label: render_prop_t('signIn'),
-                    icon: h(IconUserOutlineMedium, { size: 16 }),
+                    icon: h(IconUserOutlineRegular, { size: 14 }),
                   },
                 ]),
             ],
@@ -328,7 +313,6 @@ export const AccountMenu = defineComponent(
       'signOut',
       'hasRunningAccountTasks',
       'refreshAccount',
-      'renderSlot',
       'contactUs',
       'showLogin',
       'start',

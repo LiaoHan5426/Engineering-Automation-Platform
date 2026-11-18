@@ -25,6 +25,8 @@ kind: "package-library"
 <a id="use-this-package"></a>
 ## 使用本包
 
+发布的运行时包含 JavaScript 入口及 Vitest 快照操作依赖的同目录分块。
+
 本包把随附 profile 场景变成无密钥快照套件：写一张场景表和一个 fixture 目录，调用一次匹配的适配器，工具包就负责启动或组合 profile、驱动场景、比较规范化输出并守护已提交的 fixture。
 
 ### 编写快照套件

@@ -185,6 +185,10 @@ export function readWorkspaceManifests(repositoryRoot: string): WorkspaceManifes
 }
 
 const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
+  // Snapshot writers load MagicString through generated sibling chunks.
+  '@deepseek-ai/dsh-client-test-runtime': ['lib/dist-*.js'],
+  '@deepseek-ai/dsh-session-snapshot': ['lib/dist-*.js'],
+  '@deepseek-ai/dsh-experimental-claude-code-mods': ['examples'],
   // Tools entry points share error classes and invocation stages through runtime chunks.
   '@deepseek-ai/dsh-tools': ['lib/pipeline.js', 'lib/shared-*.js'],
   '@deepseek-ai/dsh-tool-executor-ptc': ['lib/run-code.js', 'lib/_chunks/*.js'],

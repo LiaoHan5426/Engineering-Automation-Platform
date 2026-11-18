@@ -482,8 +482,10 @@ const Loaded = defineComponent(
           ? undefined
           : state.rows.find(row => row.entry.provider === draft.target.provider)
       return h('div', { class: styles['section'] }, [
-        h('h2', { class: styles['title'] }, [t('title')]),
-        h('p', { class: styles['intro'] }, [t('intro')]),
+        h('div', { class: styles['sectionHeader'] }, [
+          h('h2', { class: styles['title'] }, [t('title')]),
+          h('p', { class: styles['intro'] }, [t('intro')]),
+        ]),
         !state.writable && state.status === 'ready'
           ? h('p', { class: styles['notice'] }, [t('readOnly')])
           : null,

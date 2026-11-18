@@ -2,7 +2,7 @@
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { Context } from "@deepseek-ai/cordis";
 import { createLaunchEnvironmentSnapshot } from "@deepseek-ai/dsh-launch-environment";
 import {
@@ -186,7 +186,7 @@ describe("runProfile with an application-owned profile", () => {
         environment,
         profile: "desktop",
         resolvedProfile: runtime,
-        patchFiles: [overlay],
+        patchFiles: [relative(process.cwd(), overlay)],
         args: ["--port", "0", "--no-open"],
       });
       expect(installProxyFromEnvironment).toHaveBeenCalledWith(environment, expect.any(Function));
@@ -221,6 +221,7 @@ describe("runProfile with an application-owned profile", () => {
         dir: home,
         patchPath: profilePatch,
         installAnchor: runtime.installAnchor,
+        overlayPaths: [overlay],
       });
       await shutdown.shutdown(0);
       expect(dispose).toHaveBeenCalledOnce();
